@@ -39,6 +39,7 @@ func pingRelayBackendUpdate(t *testing.T, contentType string, body []byte, metri
 
 	if inMemory == nil {
 		inMemory = &storage.InMemory{}
+
 	}
 
 	recorder := httptest.NewRecorder()
@@ -383,9 +384,16 @@ func TestRelayUpdateRelayUnmarshalFailure(t *testing.T) {
 		PingStats: make([]routing.RelayStatsPing, 0),
 	}
 
+	storedToken := make([]byte, crypto.KeySize)
 	entry := routing.RelayCacheEntry{
-		ID: crypto.HashID(addr),
-	}
+		ID:   crypto.HashID(addr),
+		Addr: *udp,
+		Datacenter: routing.Datacenter{
+			ID:   1,
+			Name: "some name",
+		},
+		PublicKey:      storedToken,
+		LastUpdateTime: time.Now().Add(-time.Second)}
 
 	redisServer.Set(entry.Key(), "0")
 	redisServer.HSet(routing.HashKeyAllRelays, entry.Key(), "invalid relay data")
@@ -402,11 +410,32 @@ func TestRelayUpdateRelayUnmarshalFailure(t *testing.T) {
 
 	updateMetrics.ErrorMetrics.RelayUnmarshalFailure = metric
 
+	// add a relay to storage to pass the ghost checks in RelayUpdateHandlerFunc
+	relay := routing.Relay{
+		ID:   entry.ID,
+		Addr: entry.Addr,
+		Seller: routing.Seller{
+			ID:   "sellerID",
+			Name: "seller name",
+		},
+		Datacenter: entry.Datacenter,
+		PublicKey:  entry.PublicKey,
+		State:      routing.RelayStateEnabled,
+	}
+
+	inMemory := &storage.InMemory{}
+	err = inMemory.AddSeller(context.Background(), relay.Seller)
+	assert.NoError(t, err)
+	err = inMemory.AddDatacenter(context.Background(), relay.Datacenter)
+	assert.NoError(t, err)
+	err = inMemory.AddRelay(context.Background(), relay)
+	assert.NoError(t, err)
+
 	// Binary version
 	{
 		buff, err := packet.MarshalBinary()
 		assert.NoError(t, err)
-		recorder := pingRelayBackendUpdate(t, "application/octet-stream", buff, updateMetrics, redisClient, geoClient, nil, nil)
+		recorder := pingRelayBackendUpdate(t, "application/octet-stream", buff, updateMetrics, redisClient, geoClient, nil, inMemory)
 		relayUpdateErrorAssertions(t, recorder, http.StatusInternalServerError, metric)
 	}
 
@@ -414,7 +443,7 @@ func TestRelayUpdateRelayUnmarshalFailure(t *testing.T) {
 	{
 		buff, err := packet.MarshalJSON()
 		assert.NoError(t, err)
-		recorder := pingRelayBackendUpdate(t, "application/json", buff, updateMetrics, redisClient, geoClient, nil, nil)
+		recorder := pingRelayBackendUpdate(t, "application/json", buff, updateMetrics, redisClient, geoClient, nil, inMemory)
 		relayUpdateErrorAssertions(t, recorder, http.StatusInternalServerError, metric)
 	}
 }
@@ -465,11 +494,32 @@ func TestRelayUpdateInvalidToken(t *testing.T) {
 
 	updateMetrics.ErrorMetrics.InvalidToken = metric
 
+	// add a relay to storage to pass the ghost checks in RelayUpdateHandlerFunc
+	relay := routing.Relay{
+		ID:   entry.ID,
+		Addr: entry.Addr,
+		Seller: routing.Seller{
+			ID:   "sellerID",
+			Name: "seller name",
+		},
+		Datacenter: entry.Datacenter,
+		PublicKey:  entry.PublicKey,
+		State:      routing.RelayStateEnabled,
+	}
+
+	inMemory := &storage.InMemory{}
+	err = inMemory.AddSeller(context.Background(), relay.Seller)
+	assert.NoError(t, err)
+	err = inMemory.AddDatacenter(context.Background(), relay.Datacenter)
+	assert.NoError(t, err)
+	err = inMemory.AddRelay(context.Background(), relay)
+	assert.NoError(t, err)
+
 	// Binary version
 	{
 		buff, err := packet.MarshalBinary()
 		assert.NoError(t, err)
-		recorder := pingRelayBackendUpdate(t, "application/octet-stream", buff, updateMetrics, redisClient, geoClient, nil, nil)
+		recorder := pingRelayBackendUpdate(t, "application/octet-stream", buff, updateMetrics, redisClient, geoClient, nil, inMemory)
 		relayUpdateErrorAssertions(t, recorder, http.StatusBadRequest, metric)
 	}
 
@@ -477,7 +527,7 @@ func TestRelayUpdateInvalidToken(t *testing.T) {
 	{
 		buff, err := packet.MarshalJSON()
 		assert.NoError(t, err)
-		recorder := pingRelayBackendUpdate(t, "application/json", buff, updateMetrics, redisClient, geoClient, nil, nil)
+		recorder := pingRelayBackendUpdate(t, "application/json", buff, updateMetrics, redisClient, geoClient, nil, inMemory)
 		relayUpdateErrorAssertions(t, recorder, http.StatusBadRequest, metric)
 	}
 }
