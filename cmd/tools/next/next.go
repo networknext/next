@@ -31,6 +31,17 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
+type arrayFlags []string
+
+func (i *arrayFlags) String() string {
+	return ""
+}
+
+func (i *arrayFlags) Set(value string) error {
+	*i = append(*i, value)
+	return nil
+}
+
 func isWindows() bool {
 	return runtime.GOOS == "windows"
 }
@@ -261,6 +272,16 @@ func main() {
 		},
 	})
 
+	var srcRelays arrayFlags
+	var destRelays arrayFlags
+	var routeRTT float64
+	var routeHash uint64
+	routesfs := flag.NewFlagSet("routes", flag.ExitOnError)
+	routesfs.Var(&srcRelays, "src", "source relay names")
+	routesfs.Var(&destRelays, "dest", "destination relay names")
+	routesfs.Float64Var(&routeRTT, "rtt", 5, "route RTT required for selection")
+	routesfs.Uint64Var(&routeHash, "hash", 0, "a previous hash to use")
+
 	root := &ffcli.Command{
 		ShortUsage: "next <subcommand>",
 		Subcommands: []*ffcli.Command{
@@ -353,6 +374,18 @@ func main() {
 				},
 			},
 			{
+				Name:       "routes",
+				ShortUsage: "next routes <name>",
+				ShortHelp:  "List routes between relays",
+				FlagSet:    routesfs,
+				Exec: func(_ context.Context, args []string) error {
+
+					routes(rpcClient, env, srcRelays, destRelays, routeRTT, routeHash)
+
+					return nil
+				},
+			},
+			{
 				Name:       "datacenters",
 				ShortUsage: "next datacenters <name>",
 				ShortHelp:  "List datacenters",
@@ -387,7 +420,7 @@ func main() {
 			// more complex commands to modify things below here
 
 			{
-				Name: "relay",
+				Name:       "relay",
 				ShortUsage: "next relay <subcommand>",
 				ShortHelp:  "Manage relays",
 				Subcommands: []*ffcli.Command{
@@ -885,7 +918,7 @@ func main() {
 			},
 		},
 		Exec: func(context.Context, []string) error {
-			fmt.Printf( "Network Next Operator Tool\n\n")
+			fmt.Printf("Network Next Operator Tool\n\n")
 			return flag.ErrHelp
 		},
 	}
@@ -893,9 +926,9 @@ func main() {
 	fmt.Printf("\n")
 
 	if err := root.ParseAndRun(context.Background(), os.Args[1:]); err != nil {
-		fmt.Printf( "\n")
+		fmt.Printf("\n")
 		log.Fatal(err)
 	}
 
-	fmt.Printf( "\n")
+	fmt.Printf("\n")
 }
