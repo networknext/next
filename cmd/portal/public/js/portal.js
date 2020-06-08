@@ -560,8 +560,8 @@ WorkspaceHandler = {
 						mapStyle: 'mapbox://styles/mapbox/dark-v10',
 						initialViewState: {
 							zoom: 4,
-							longitude: 0, // 'Center' of the world map
-							latitude: 0,
+							longitude: d.location.longitude, // 'Center' of the world map
+							latitude: d.location.latitude,
 							minZoom: 2,
 						},
 						container: 'session-tool-map',
