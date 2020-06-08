@@ -14,6 +14,7 @@ import (
 // If the selector couldn't produce a non-empty slice of routes, then it returns nil.
 type SelectorFunc func(routes []Route) []Route
 
+// SelectLogger logs all of the routes currently being selected
 func SelectLogger(logger log.Logger) SelectorFunc {
 	return func(routes []Route) []Route {
 		for _, route := range routes {

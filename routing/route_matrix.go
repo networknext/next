@@ -175,7 +175,7 @@ func (m *RouteMatrix) Routes(from []Relay, to []Relay, routeSelectors ...Selecto
 	for _, selector := range routeSelectors {
 		routes = selector(routes)
 
-		if len(routes) <= 1 {
+		if len(routes) == 0 {
 			break
 		}
 	}
