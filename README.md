@@ -166,7 +166,7 @@ A good test to see if everything works and is installed is to run the "Happy Pat
 3. `make BACKEND_LOG_LEVEL=info dev-server-backend`: this will run the server backend and start pulling route information from the relay backend every 10 seconds
 4. `make dev-server`: this will run a fake game server and register itself with the server backend
 5. `make dev-client`: this will run a fake game client and request a route from the server which will ask the server backend for a new route for the game client. You can also run `make dev-multi-clients` to create 20 client sessions.
-6. `make dev-portal`: this will run the Portal RPC API and Portal UI. You can visit https://localhost:20000 to view currently connected sessions.
+6. `make JWT_AUDIENCE="oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n" dev-portal`: this will run the Portal RPC API and Portal UI. You can visit https://localhost:20000 to view currently connected sessions.
 
 You should see the fake game server upgrade the clients session and get `(next route)` and `(continue route)` from the server backend which it sends to the fake game client.
 
