@@ -695,7 +695,6 @@ func (m *RouteMatrix) WriteRoutesTo(writer io.Writer) {
 
 				// display ip addr locally
 				// dispaly actual name in dev/prod
-				fmt.Printf("%s\n", relay.Name)
 				name := relay.Addr.String()
 				if len(relay.Name) != 0 {
 					name = relay.Name
