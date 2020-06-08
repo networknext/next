@@ -747,6 +747,16 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			return
 		}
 
+		//If the relay does not exist in redis and also does not exist in Firestore it's a ghost, ignore it
+		_, err = params.Storer.Relay(relayCacheEntry.ID)
+		if err != nil {
+			sentry.CaptureException(err)
+			level.Error(locallogger).Log("msg", "relay does not exist in Firestore (ghost)", "err", err)
+			http.Error(writer, "relay does not exist in Firestore (ghost)", http.StatusNotFound)
+			params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
+			return
+		}
+
 		hgetResult := params.RedisClient.HGet(routing.HashKeyAllRelays, relayCacheEntry.Key())
 		if hgetResult.Err() != nil && hgetResult.Err() != redis.Nil {
 			level.Error(locallogger).Log("msg", "failed to get relays", "err", exists.Err())
