@@ -96,22 +96,22 @@ Several makefiles are available for building. If you are not developing the rela
 
 The relay can be shutdown in a few ways depending on the signals you give it.
 
-### Graceful shutdown
-
-Signals: SIGINT, SIGTERM
-
-This is just a standard graceful shutdown. The relay will join threads, clean up memory, and log it's shutting down.
-
 ### Clean shutdown
 
 Signal: SIGHUP
 
-This shutdown performs like the graceful shutdown, but additionally it will do one of two things:
+This shutdown makes sure that any sessions going across the relay have time to redirect to another route before the relay shuts down.
 
   1. Tell the backend it is shutting down, and then upon getting a response wait an additional 30 seconds.
   2. Wait 60 seconds and then proceed with shutting down if there is no communication with the backend.
 
-This is so the relay can keep serving game clients connected to it until it is removed from any routes.
+### Hard shutdown
+
+Signals: SIGINT, SIGTERM
+
+The relay will join threads, clean up memory, and log it's shutting down.
+
+Any sessions running across the relay will be disrupted and potentially time out or disconnect.
 
 ### Regular process termination
 
