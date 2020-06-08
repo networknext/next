@@ -78,7 +78,8 @@ func (m *RouteMatrix) ResolveRelay(id uint64) (Relay, error) {
 	}
 
 	return Relay{
-		ID: m.RelayIDs[relayIndex],
+		ID:   m.RelayIDs[relayIndex],
+		Name: m.RelayNames[relayIndex],
 		Addr: net.UDPAddr{
 			IP:   net.ParseIP(host),
 			Port: int(iport),
@@ -691,7 +692,14 @@ func (m *RouteMatrix) WriteRoutesTo(writer io.Writer) {
 				if err != nil {
 					fmt.Println(err)
 				}
-				b.WriteString(relay.Addr.String())
+
+				// display ip addr locally
+				// dispaly actual name in dev/prod
+				name := relay.Addr.String()
+				if len(relay.Name) != 0 {
+					name = relay.Name
+				}
+				b.WriteString(name)
 				b.WriteString(" ")
 			}
 			b.WriteByte('\n')
