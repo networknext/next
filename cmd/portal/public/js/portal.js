@@ -541,11 +541,32 @@ WorkspaceHandler = {
 				setTimeout(() => {
 					generateCharts(response.slices);
 
-					var sessionToolMapInstance = new mapboxgl.Map({
+					const NNCOLOR = [0,109,44];
+					const DIRECTCOLOR = [49,130,189];
+
+					let sessionLocationLayer = new deck.ScatterplotLayer({
+						id: 'session-location-layer',
+						data: [meta],
+						radiusScale: 10,
+						radiusMinPixels: 0.5,
+						getPosition: d => [d.location.longitude, d.location.latitude],
+						getFillColor: d => (d.on_network_next ? NNCOLOR : DIRECTCOLOR),
+						getLineColor: d => (d.on_network_next ? NNCOLOR : DIRECTCOLOR),
+						getRadius: d => 5000
+					});
+
+					let sessionToolMapInstance = new deck.DeckGL({
+						mapboxApiAccessToken: mapboxgl.accessToken,
+						mapStyle: 'mapbox://styles/mapbox/dark-v10',
+						initialViewState: {
+							zoom: 4,
+							longitude: 0, // 'Center' of the world map
+							latitude: 0,
+							minZoom: 2,
+						},
 						container: 'session-tool-map',
-						style: 'mapbox://styles/mapbox/dark-v10',
-						center: [meta.location.longitude, meta.location.latitude],
-						zoom: 2
+						controller: true,
+						layers: [sessionLocationLayer],
 					});
 				});
 			})
