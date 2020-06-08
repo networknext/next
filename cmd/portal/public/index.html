@@ -246,7 +246,7 @@
                             User Tool
                         </a>
                     </li>
-                    <li class="nav-item text-nowrap">
+                    <li class="nav-item text-nowrap" v-if="!handlers.userHandler.isAnonymous()">
                         <a class="nav-link" href="#" v-bind:class="{ active: pages.downloads.show }" v-on:click="handlers.workspaceHandler.changePage('downloads', '')">
                             Downloads
                         </a>

@@ -95,15 +95,15 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 				if err != nil {
 					return err
 				}
-			}
 
-			if !isAdmin {
-				isSameBuyer, err = s.IsSameBuyer(r, meta.CustomerID)
-				if err != nil {
-					return err
+				if !isAdmin {
+					isSameBuyer, err = s.IsSameBuyer(r, meta.CustomerID)
+					if err != nil {
+						return err
+					}
+				} else {
+					isSameBuyer = true
 				}
-			} else {
-				isSameBuyer = true
 			}
 
 			if isAnon || (!isSameBuyer && !isAdmin) {
