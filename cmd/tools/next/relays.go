@@ -35,14 +35,6 @@ func relays(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 		LastUpdated string
 	}{}
 
-	formatLastUpdated := func(state string, updateTime time.Time) string {
-		if state == "enabled" {
-			return time.Since(updateTime).Truncate(time.Second).String()
-		}
-
-		return ""
-	}
-
 	for _, relay := range reply.Relays {
 		tx := fmt.Sprintf("%.02fGB", float64(relay.BytesSent)/float64(1000000000))
 		if relay.BytesSent < 1000000000 {
@@ -51,6 +43,10 @@ func relays(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 		rx := fmt.Sprintf("%.02fGB", float64(relay.BytesReceived)/float64(1000000000))
 		if relay.BytesReceived < 1000000000 {
 			rx = fmt.Sprintf("%.02fMB", float64(relay.BytesReceived)/float64(1000000))
+		}
+		lastUpdated := ""
+		if relay.State == "enabled" {
+			lastUpdated = time.Since(relay.LastUpdateTime).Truncate(time.Second).String()
 		}
 
 		relays = append(relays, struct {
@@ -66,7 +62,7 @@ func relays(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 			Sessions:    fmt.Sprintf("%d", relay.SessionCount),
 			Tx:          tx,
 			Rx:          rx,
-			LastUpdated: formatLastUpdated(relay.State, relay.LastUpdateTime),
+			LastUpdated: lastUpdated,
 		})
 	}
 
