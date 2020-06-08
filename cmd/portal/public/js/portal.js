@@ -557,7 +557,7 @@ WorkspaceHandler = {
 						id: 'session-location-layer',
 						data: [meta],
 						opacity: 0.8,
-						getPosition: d => [d.longitude, d.latitude],
+						getPosition: d => [d.location.longitude, d.location.latitude],
 						getWeight: d => 1,
 						cellSizePixels: cellSize,
 						colorRange: meta.on_network_next ? [NNCOLOR] : [DIRECTCOLOR],
