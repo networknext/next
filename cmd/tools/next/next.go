@@ -344,12 +344,15 @@ func main() {
 					env.Write()
 
 					fmt.Printf("Selected %s environment\n", env.Name)
-				}, 
+					return nil
+				},
+			},
 			{
 				Name:       "customers",
 				ShortUsage: "next customers",
-				ShortHelp:  "Output a list of customers with details for each",
+				ShortHelp:  "Generate a list of customers (buyers and sellers)",
 				Exec: func(_ context.Context, args []string) error {
+					// call OpsService.Customers
 					return nil
 				},
 			},
