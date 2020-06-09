@@ -35,6 +35,7 @@ func TestBuyers(t *testing.T) {
 	})
 }
 
+// 1 customer with a buyer and a seller ID
 func TestCustomersSingle(t *testing.T) {
 	storer := storage.InMemory{}
 	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, Name: "Fred Scuttle"})
@@ -54,6 +55,8 @@ func TestCustomersSingle(t *testing.T) {
 		assert.Equal(t, "Fred Scuttle", reply.Customers[0].Name)
 	})
 }
+
+// Multiple customers with different names (2 records)
 func TestCustomersMultiple(t *testing.T) {
 	storer := storage.InMemory{}
 	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, Name: "Fred Scuttle"})
@@ -68,14 +71,14 @@ func TestCustomersMultiple(t *testing.T) {
 		err := svc.Customers(nil, &jsonrpc.CustomersArgs{}, &reply)
 		assert.NoError(t, err)
 
-		assert.Equal(t, uint64(1), reply.Customers[1].BuyerID)
-		assert.Equal(t, "", reply.Customers[1].SellerID)
-		assert.Equal(t, "Fred Scuttle", reply.Customers[1].Name)
-
+		// sorted alphabetically by name
 		assert.Equal(t, uint64(0), reply.Customers[0].BuyerID)
 		assert.Equal(t, "some seller", reply.Customers[0].SellerID)
 		assert.Equal(t, "Bull Winkle", reply.Customers[0].Name)
 
+		assert.Equal(t, uint64(1), reply.Customers[1].BuyerID)
+		assert.Equal(t, "", reply.Customers[1].SellerID)
+		assert.Equal(t, "Fred Scuttle", reply.Customers[1].Name)
 	})
 }
 
