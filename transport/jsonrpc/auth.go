@@ -216,7 +216,7 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 	for _, u := range accountList.Users {
 		userEmailParts := strings.Split(*u.Email, "@")
 		if len(emailParts) <= 0 {
-			return fmt.Errorf("failed to parse email %s for domain", e)
+			return fmt.Errorf("failed to parse email %s for domain", args.Emails[0])
 		}
 		userDomain := emailParts[len(userEmailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
 		if found {
@@ -451,108 +451,6 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 
 	reply.Roles = args.Roles
 	return nil
-}
-
-type OnboardArgs struct {
-	CompanyName string `json:"company_name"`
-	Email       string `json:"email"`
-}
-
-type OnboardReply struct {
-	Account account       `json:"account"`
-	Buyer   routing.Buyer `json:"buyer"`
-}
-
-func (s *AuthService) OnboardNewBuyer(r *http.Request, args *OnboardArgs, reply *OnboardReply) error {
-	var found bool = false
-	var roleNames []string = []string{
-		"rol_ScQpWhLvmTKRlqLU",
-		"rol_8r0281hf2oC4cvrD",
-	}
-	var roleTypes []string = []string{
-		"Viewer",
-		"Owner",
-	}
-	var roleDescriptions []string = []string{
-		"Can see current sessions and the map.",
-		"Can access and manage everything in an account.",
-	}
-	var roles []*management.Role = []*management.Role{
-		{
-			ID:          &roleNames[0],
-			Name:        &roleTypes[0],
-			Description: &roleDescriptions[0],
-		},
-		{
-			ID:          &roleNames[1],
-			Name:        &roleTypes[1],
-			Description: &roleDescriptions[1],
-		},
-	}
-
-	emailParts := strings.Split(args.Email, "@")
-	if len(emailParts) <= 0 {
-		return fmt.Errorf("failed to parse email %s for domain", args.Email)
-	}
-	domain := emailParts[len(emailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
-
-	buyer, err := s.Storage.BuyerWithDomain(domain)
-
-	// Buyer already exists
-	if err == nil {
-		accountList, err := s.Auth0.Manager.User.List()
-
-		if err != nil {
-			return fmt.Errorf("failed to fetch user list")
-		}
-
-		// Does user exist in auth0?
-		for _, a := range accountList.Users {
-			if found {
-				continue
-			}
-			if a.Email == &args.Email {
-				found = true
-			}
-		}
-
-		// No?
-		if !found {
-			connectionID := "Username-Password-Authentication"
-			falseValue := false
-
-			newCustomerIDsMap := make(map[string]interface{})
-
-			pw, err := GenerateRandomString(32)
-			if err != nil {
-				return fmt.Errorf("failed to generate a random password: %w", err)
-			}
-			newUser := &management.User{
-				Connection:    &connectionID,
-				Email:         &args.Email,
-				EmailVerified: &falseValue,
-				VerifyEmail:   &falseValue,
-				Password:      &pw,
-				AppMetadata: map[string]interface{}{
-					"customer": newCustomerIDsMap,
-				},
-			}
-			if err = s.Auth0.Manager.User.Create(newUser); err != nil {
-				return fmt.Errorf("failed to create new user: %w", err)
-			}
-
-			if err = s.Auth0.Manager.User.AssignRoles(*newUser.ID, roles[0]); err != nil {
-				return fmt.Errorf("failed to add user roles: %w", err)
-			}
-
-			account := newAccount(newUser, roles, buyer)
-			reply.Account = account
-			reply.Buyer = buyer
-			return nil
-		}
-		return fmt.Errorf("buyer and user already exist")
-	}
-	// Buyer does not exist
 }
 
 type response struct {

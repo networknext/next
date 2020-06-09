@@ -467,7 +467,7 @@ func TestGameConfiguration(t *testing.T) {
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 	storer := storage.InMemory{}
 	pubkey := make([]byte, 4)
-	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, Name: "local.local.1", PublicKey: pubkey})
+	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, Name: "local.local.1", Domain: "local.com", PublicKey: pubkey})
 
 	svc := jsonrpc.BuyersService{
 		RedisClient: redisClient,
@@ -487,21 +487,21 @@ func TestGameConfiguration(t *testing.T) {
 	authMiddleware.ServeHTTP(res, req)
 	assert.Equal(t, http.StatusOK, res.Code)
 
-	t.Run("missing buyer_id", func(t *testing.T) {
+	t.Run("missing name", func(t *testing.T) {
 		var reply jsonrpc.GameConfigurationReply
-		err := svc.GameConfiguration(req, &jsonrpc.GameConfigurationArgs{}, &reply)
+		err := svc.UpdateGameConfiguration(req, &jsonrpc.GameConfigurationArgs{}, &reply)
 		assert.Error(t, err)
 	})
 
-	t.Run("failed to convert buyer_id to uint64", func(t *testing.T) {
+	t.Run("missing domain", func(t *testing.T) {
 		var reply jsonrpc.GameConfigurationReply
-		err := svc.GameConfiguration(req, &jsonrpc.GameConfigurationArgs{BuyerID: "asdgagasdgfa"}, &reply)
+		err := svc.UpdateGameConfiguration(req, &jsonrpc.GameConfigurationArgs{Name: "local.local.1"}, &reply)
 		assert.Error(t, err)
 	})
 
 	t.Run("single", func(t *testing.T) {
 		var reply jsonrpc.GameConfigurationReply
-		err := svc.GameConfiguration(req, &jsonrpc.GameConfigurationArgs{BuyerID: "1"}, &reply)
+		err := svc.GameConfiguration(req, &jsonrpc.GameConfigurationArgs{Domain: "local.com"}, &reply)
 		assert.NoError(t, err)
 
 		assert.Equal(t, reply.GameConfiguration.PublicKey, "AAAAAA==")
@@ -509,17 +509,19 @@ func TestGameConfiguration(t *testing.T) {
 
 	t.Run("update public key", func(t *testing.T) {
 		var reply jsonrpc.GameConfigurationReply
-		err := svc.UpdateGameConfiguration(req, &jsonrpc.GameConfigurationArgs{BuyerID: "1", NewPublicKey: "iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAYA"}, &reply)
+		err := svc.UpdateGameConfiguration(req, &jsonrpc.GameConfigurationArgs{Domain: "local.com", Name: "local.local.1", NewPublicKey: "iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAYA"}, &reply)
 
 		assert.NoError(t, err)
 
-		assert.Equal(t, reply.GameConfiguration.PublicKey, "iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAYA")
+		assert.Equal(t, "iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAYA", reply.GameConfiguration.PublicKey)
 	})
 
 	t.Run("failed to update public key", func(t *testing.T) {
 		var reply jsonrpc.GameConfigurationReply
-		err := svc.UpdateGameConfiguration(req, &jsonrpc.GameConfigurationArgs{BuyerID: "1", NewPublicKey: "askjfgbdalksjdf balkjsdbf lkja flfakjs bdlkafs"}, &reply)
+		err := svc.UpdateGameConfiguration(req, &jsonrpc.GameConfigurationArgs{Domain: "local.com", Name: "local.local.1", NewPublicKey: "askjfgbdalksjdf balkjsdbf lkja flfakjs bdlkafs"}, &reply)
 
 		assert.Error(t, err)
+
+		assert.Equal(t, "", reply.GameConfiguration.PublicKey)
 	})
 }

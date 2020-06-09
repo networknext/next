@@ -479,12 +479,12 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		})
 
 		if err != nil {
-			fmt.Errorf("failed to add buyer")
+			return fmt.Errorf("failed to add buyer")
 		}
-	}
 
-	if buyer, err = s.Storage.Buyer(buyerID); err != nil {
-		return nil
+		if buyer, err = s.Storage.Buyer(buyerID); err != nil {
+			return nil
+		}
 	}
 
 	if err = buyer.DecodedPublicKey(args.NewPublicKey); err != nil {
@@ -494,6 +494,8 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 	if err = s.Storage.SetBuyer(ctx, buyer); err != nil {
 		return fmt.Errorf("failed to update buyer public key")
 	}
+
+	fmt.Println(buyer.EncodedPublicKey())
 
 	reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
 	reply.GameConfiguration.Company = buyer.Name
