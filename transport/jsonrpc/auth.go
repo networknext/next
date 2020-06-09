@@ -216,10 +216,10 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 	found := false
 	for _, u := range accountList.Users {
 		userEmailParts := strings.Split(*u.Email, "@")
-		if len(emailParts) <= 0 {
-			return fmt.Errorf("failed to parse email %s for domain", args.Emails[0])
+		if len(userEmailParts) <= 0 {
+			return fmt.Errorf("failed to parse email %s for domain", *u.Email)
 		}
-		userDomain := emailParts[len(userEmailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
+		userDomain := userEmailParts[len(userEmailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
 		if found {
 			continue
 		}
@@ -255,7 +255,7 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 				Description: &roleDescriptions[1],
 			},
 		}
-	} else if len(args.Roles) == 0 {
+	} else if found && len(args.Roles) == 0 {
 		// Not an onboard signup
 		roles = []*management.Role{
 			{
@@ -303,7 +303,7 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 			return fmt.Errorf("failed to create new user: %w", err)
 		}
 
-		if err = s.Auth0.Manager.User.AssignRoles(*newUser.ID, args.Roles...); err != nil {
+		if err = s.Auth0.Manager.User.AssignRoles(*newUser.ID, roles...); err != nil {
 			return fmt.Errorf("failed to add user roles: %w", err)
 		}
 

@@ -425,7 +425,6 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 	reply.GameConfiguration.Company = ""
 
 	buyer, err = s.Storage.BuyerWithDomain(args.Domain)
-
 	// Buyer not found
 	if err != nil {
 		return nil
@@ -465,14 +464,11 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 	if buyer.ID == 0 {
 		byteKey := []byte(args.NewPublicKey)
 
-		if err != nil {
-			return fmt.Errorf("failed to parse pubkey")
-		}
-		buyerID = binary.LittleEndian.Uint64(byteKey[0:7])
+		buyerID = binary.LittleEndian.Uint64(byteKey[0:8])
 		err := s.Storage.AddBuyer(ctx, routing.Buyer{
 			ID:        buyerID,
-			Name:      args.Domain,
-			Domain:    args.Name,
+			Name:      args.Name,
+			Domain:    args.Domain,
 			Active:    false,
 			Live:      false,
 			PublicKey: byteKey,
@@ -494,8 +490,6 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 	if err = s.Storage.SetBuyer(ctx, buyer); err != nil {
 		return fmt.Errorf("failed to update buyer public key")
 	}
-
-	fmt.Println(buyer.EncodedPublicKey())
 
 	reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
 	reply.GameConfiguration.Company = buyer.Name
