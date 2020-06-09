@@ -130,3 +130,19 @@ This will adjust the NIC speed field in Firestore for the given relay to the pro
 To see the public and update keys of a relay: `next relay keys <relay name>`
 
 Shows the public key and update key for the given relay.
+
+### Cost
+
+Downloads the current cost matrix from the relay backend to 'cost.bin' or the first argument supplied.
+
+### Optimize
+
+Optimizes the downloaded cost matrix into a route matrix.
+
+The first argument is the rtt threshold which defaults to 1. \
+The second argument is the path of the cost matrix if you don't have it saved as 'cost.bin'. \
+The third argument is the path you want the route matrix written to. Default is 'optimize.bin'.
+
+### Analyze
+
+Analyzes the route matrix and produces high level data. The file read in is 'optimize.bin' or the first argument supplied.

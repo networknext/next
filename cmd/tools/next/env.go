@@ -19,7 +19,7 @@ const (
 	RouterPublicKeyDev   = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
 	RouterPublicKeyProd  = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
 
-	RelayBackendHostnameLocal = "localhost:30000"
+	RelayBackendHostnameLocal = "http://localhost:30000"
 	RelayBackendHostnameDev   = "http://relay_backend.dev.networknext.com:40000"
 	RelayBackendHostnameProd  = "http://relay_backend.prod.networknext.com"
 
