@@ -467,8 +467,8 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		buyerID = binary.LittleEndian.Uint64(byteKey[0:8])
 		err := s.Storage.AddBuyer(ctx, routing.Buyer{
 			ID:        buyerID,
-			Name:      args.Domain,
-			Domain:    args.Name,
+			Name:      args.Name,
+			Domain:    args.Domain,
 			Active:    false,
 			Live:      false,
 			PublicKey: byteKey,
