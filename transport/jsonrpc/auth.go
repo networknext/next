@@ -178,25 +178,103 @@ func (s *AuthService) DeleteUserAccount(r *http.Request, args *AccountArgs, repl
 }
 
 func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply *AccountsReply) error {
-	if IsAnonymous(r) {
-		return fmt.Errorf("insufficient privileges")
+	var adminString string = "Admin"
+	var accounts []account
+	var roles []*management.Role
+
+	isAdmin := false
+
+	if !IsAnonymous(r) {
+		if _, err := CheckRoles(r, "Admin"); err != nil {
+			if _, err := CheckRoles(r, "Owner"); err != nil {
+				return err
+			}
+		}
 	}
 
-	if _, err := CheckRoles(r, "Admin"); err != nil {
-		if _, err := CheckRoles(r, "Owner"); err != nil {
-			return err
+	// Check if non admin is assigning admin role
+	for _, r := range args.Roles {
+		if r.Name == &adminString && !isAdmin {
+			return fmt.Errorf("insufficient privileges")
 		}
+	}
+
+	// Check if onboarding
+	emailParts := strings.Split(args.Emails[0], "@")
+	if len(emailParts) <= 0 {
+		return fmt.Errorf("failed to parse email %s for domain", args.Emails[0])
+	}
+	domain := emailParts[len(emailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
+
+	// Check if any other users in company exist
+	accountList, err := s.Auth0.Manager.User.List()
+
+	if err != nil {
+		return fmt.Errorf("failed to fetch user accounts")
+	}
+
+	found := false
+	for _, u := range accountList.Users {
+		userEmailParts := strings.Split(*u.Email, "@")
+		if len(emailParts) <= 0 {
+			return fmt.Errorf("failed to parse email %s for domain", args.Emails[0])
+		}
+		userDomain := emailParts[len(userEmailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
+		if found {
+			continue
+		}
+		if domain == userDomain {
+			found = true
+		}
+	}
+
+	roleNames := []string{
+		"rol_ScQpWhLvmTKRlqLU",
+		"rol_8r0281hf2oC4cvrD",
+	}
+	roleTypes := []string{
+		"Viewer",
+		"Owner",
+	}
+	roleDescriptions := []string{
+		"Can see current sessions and the map.",
+		"Can access and manage everything in an account.",
+	}
+
+	if !found {
+		// Onboard signup
+		roles = []*management.Role{
+			{
+				ID:          &roleNames[0],
+				Name:        &roleTypes[0],
+				Description: &roleDescriptions[0],
+			},
+			{
+				ID:          &roleNames[1],
+				Name:        &roleTypes[1],
+				Description: &roleDescriptions[1],
+			},
+		}
+	} else if len(args.Roles) == 0 {
+		// Not an onboard signup
+		roles = []*management.Role{
+			{
+				ID:          &roleNames[0],
+				Name:        &roleTypes[0],
+				Description: &roleDescriptions[0],
+			},
+		}
+	} else {
+		roles = args.Roles
 	}
 
 	connectionID := "Username-Password-Authentication"
 	emails := args.Emails
-	roles := args.Roles
 	falseValue := false
-
-	var accounts []account
 
 	newCustomerIDsMap := make(map[string]interface{})
 
+	// Not an onboard signup
 	for _, e := range emails {
 
 		emailParts := strings.Split(e, "@")

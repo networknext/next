@@ -249,11 +249,13 @@ UserHandler = {
 					return;
 				}
 				this.userInfo = {
+					company: "",
+					domain: response.email.split("@")[1],
 					email: response.email,
 					name: response.name,
 					nickname: response.nickname,
 					userId: response.sub,
-					token: response.__raw,
+					token: response.__raw
 				};
 				return JSONRPCClient.call("AuthService.UserAccount", {user_id: this.userInfo.userId});
 			})
@@ -284,10 +286,38 @@ UserHandler = {
 	isViewer() {
 		return !this.isAnonymous() ? this.userInfo.roles.findIndex((role) => role.name == "Viewer") !== -1 : false;
 	},
+	signUp() {
+		JSONRPCClient
+		.call("AuthService.AddUserAccount", {emails: [rootComponent.modals.signup.email], roles: []})
+		.then((response) => {
+			// Account created successfully
+			Object.assign(rootComponent.$data.modals.signup, {
+				showSuccess: true,
+			});
+			setTimeout(() => {
+				Object.assign(rootComponent.$data.modals.signup, {
+					showSuccess: false,
+				});
+			}, 5000);
+		})
+		.catch((e) => {
+			console.log("Something went wrong creating new user");
+			Sentry.captureException(e);
+			Object.assign(rootComponent.$data.modals.signup, {
+				showFailure: true,
+			});
+			setTimeout(() => {
+				Object.assign(rootComponent.$data.modals.signup, {
+					showFailure: false,
+				});
+			}, 5000);
+		});
+	}
 }
 
 WorkspaceHandler = {
 	sessionLoop: null,
+	welcomeTimeout: null,
 	changeSettingsPage(page) {
 		let showSettings = false;
 		let showConfig = false;
@@ -302,6 +332,36 @@ WorkspaceHandler = {
 		Object.assign(rootComponent.$data.pages.settings, {
 			showConfig: showConfig,
 			showSettings: showSettings,
+		});
+	},
+	changeModal(modal) {
+		switch (modal) {
+			case 'signup':
+				Object.assign(rootComponent.$data.modals.signup, {
+					companyName: "",
+					email: ""
+				});
+				break;
+		}
+
+		Object.keys(rootComponent.$data.modals).forEach((modal) => {
+			Object.assign(rootComponent.$data.modals[modal], {show: false});
+		});
+
+		Object.assign(rootComponent.$data.modals[modal], {show: true});
+
+		this.welcomeTimeout !== null ? clearTimeout(this.welcomeTimeout) : null;
+
+		if (!($("#video-modal").data('bs.modal') || {})._isShown) {
+			$('#video-modal').modal('toggle');
+		}
+
+		$('#video-modal').on('hidden.bs.modal', function () {
+			let videoPlayer = document.getElementById("video-player");
+			if (videoPlayer) {
+				videoPlayer.parentElement.removeChild(videoPlayer)
+				videoPlayer.innerHTML = "<div></div>"
+			}
 		});
 	},
 	changePage(page, options) {
@@ -455,7 +515,7 @@ WorkspaceHandler = {
 		}
 		if (UserHandler.userInfo.id != '') {
 			JSONRPCClient
-				.call('BuyersService.GameConfiguration', {buyer_id: UserHandler.userInfo.id})
+				.call('BuyersService.GameConfiguration', {domain: UserHandler.userInfo.domain})
 				.then((response) => {
 					UserHandler.userInfo.pubKey = response.game_config.public_key;
 				})
@@ -479,7 +539,7 @@ WorkspaceHandler = {
 			return;
 		}
 		JSONRPCClient
-			.call('BuyersService.GameConfiguration', {buyer_id: UserHandler.userInfo.id})
+			.call('BuyersService.GameConfiguration', {domain: UserHandler.userInfo.domain})
 			.then((response) => {
 				UserHandler.userInfo.pubKey = response.game_config.public_key;
 			})
@@ -699,6 +759,7 @@ WorkspaceHandler = {
 				.then((responses) => {
 					let accounts = responses[0].accounts;
 					allRoles = responses[1].roles;
+					console.log(allRoles)
 
 					if (filter.buyerId != '') {
 						accounts = accounts.filter((account) => {
@@ -767,27 +828,6 @@ WorkspaceHandler = {
 								);
 							}
 
-							/* choices = allRoles.map((role) => {
-								return {
-									value: role,
-									label: role.name,
-									customProperties: {
-										description: role.description,
-									},
-									selected: role.name === 'Viewer'
-								};
-							});
-
-							if (!autoSigninPermissions) {
-								autoSigninPermissions = new Choices(
-									document.getElementById("auto-signin-permissions"),
-									{
-										removeItemButton: true,
-										choices: choices,
-									}
-								);
-							} */
-
 							generateRolesDropdown(accounts);
 						} catch(e) {
 							rootComponent.$data.pages.settings.show ? Sentry.captureException(e) : null;
@@ -821,13 +861,9 @@ function startApp() {
 				.then((response) => {
 					Object.assign(rootComponent.$data, {allBuyers: response.Buyers});
 					if (UserHandler.isAnonymous()) {
-						setTimeout(() => {
-							$('#video-modal').modal('toggle')
-							$('#video-modal').on('hidden.bs.modal', function () {
-									let videoPlayer = document.getElementById("video-player");
-									videoPlayer.parentElement.removeChild(videoPlayer)
-									videoPlayer.innerHTML = "<div></div>"
-							});
+						WorkspaceHandler.welcomeTimeout = setTimeout(() => {
+							WorkspaceHandler.changeModal('welcome');
+							WorkspaceHandler.welcomeTimeout = null;
 						}, 60000)
 					}
 				})
@@ -857,6 +893,17 @@ function createVueComponents() {
 				mapHandler: MapHandler,
 				userHandler: UserHandler,
 				workspaceHandler: WorkspaceHandler,
+			},
+			modals: {
+				signup: {
+					email: "",
+					show: false,
+					showFailure: false,
+					showSuccess: false,
+				},
+				welcome: {
+					show: false,
+				},
 			},
 			pages: {
 				downloads: {
@@ -942,10 +989,12 @@ function createVueComponents() {
 }
 
 function updatePubKey() {
-	let newPubkey = document.getElementById("pubkey-input").value;
+	let newPubkey = UserHandler.userInfo.pubkey;
+	let company = UserHandler.userInfo.company;
+	let domain = UserHandler.userInfo.domain
 
 	JSONRPCClient
-		.call("BuyersService.UpdateGameConfiguration", {buyer_id: UserHandler.userInfo.id, new_public_key: newPubkey})
+		.call("BuyersService.UpdateGameConfiguration", {name: company, domain: domain, new_public_key: newPubkey})
 		.then((response) => {
 			UserHandler.userInfo.pubkey = response.game_config.public_key;
 			Object.assign(rootComponent.$data.pages.settings.updateKey, {
