@@ -367,7 +367,7 @@ func main() {
 					env.Name = args[0]
 					env.Write()
 
-					fmt.Printf("Selected %s environment", env.Name)
+					fmt.Printf("Selected %s environment\n", env.Name)
 					return nil
 				},
 			},
