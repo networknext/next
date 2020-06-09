@@ -310,6 +310,32 @@ func (packet *ServerUpdatePacket) MarshalBinary() ([]byte, error) {
 	return ws.GetData()[:ws.GetBytesProcessed()], nil
 }
 
+type SessionUpdatePacketHeader struct {
+	Sequence      uint64
+	CustomerID    uint64
+	ServerAddress net.UDPAddr
+	SessionID     uint64
+}
+
+func (header *SessionUpdatePacketHeader) Serialize(stream encoding.Stream) error {
+	packetType := uint32(PacketTypeSessionUpdate)
+	stream.SerializeBits(&packetType, 8)
+
+	stream.SerializeUint64(&header.Sequence)
+	stream.SerializeUint64(&header.CustomerID)
+	stream.SerializeAddress(&header.ServerAddress)
+	stream.SerializeUint64(&header.SessionID)
+
+	return nil
+}
+
+func (header *SessionUpdatePacketHeader) UnmarshalBinary(data []byte) error {
+	if err := header.Serialize(encoding.CreateReadStream(data)); err != nil {
+		return err
+	}
+	return nil
+}
+
 type SessionUpdatePacket struct {
 	Sequence                  uint64
 	CustomerID                uint64

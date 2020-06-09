@@ -386,28 +386,28 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 		// Flag to check if this session is a new session
 		newSession := false
 
-		// Deserialize the Session packet
-		var packet SessionUpdatePacket
-		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
+		// Deserialize the Session packet header
+		var header SessionUpdatePacketHeader
+		if err := header.UnmarshalBinary(incoming.Data); err != nil {
 			sentry.CaptureException(err)
-			level.Error(logger).Log("msg", "could not read packet", "err", err)
+			level.Error(logger).Log("msg", "could not read packet header", "err", err)
 			metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 			metrics.ErrorMetrics.ReadPacketFailure.Add(1)
 			return
 		}
 
-		serverCacheKey := fmt.Sprintf("SERVER-%d-%s", packet.CustomerID, packet.ServerAddress.String())
-		sessionCacheKey := fmt.Sprintf("SESSION-%d-%d", packet.CustomerID, packet.SessionID)
+		serverCacheKey := fmt.Sprintf("SERVER-%d-%s", header.CustomerID, header.ServerAddress.String())
+		sessionCacheKey := fmt.Sprintf("SESSION-%d-%d", header.CustomerID, header.SessionID)
 
-		locallogger := log.With(logger, "src_addr", incoming.SourceAddr.String(), "server_addr", packet.ServerAddress.String(), "client_addr", packet.ClientAddress.String(), "session_id", packet.SessionID)
+		locallogger := log.With(logger, "src_addr", incoming.SourceAddr.String(), "server_addr", header.ServerAddress.String(), "session_id", header.SessionID)
 
 		var serverCacheEntry ServerCacheEntry
 		var sessionCacheEntry SessionCacheEntry
 
 		// Start building session response packet, defaulting to a direct route
 		response := SessionResponsePacket{
-			Sequence:  packet.Sequence,
-			SessionID: packet.SessionID,
+			Sequence:  header.Sequence,
+			SessionID: header.SessionID,
 			RouteType: int32(routing.RouteTypeDirect),
 		}
 
@@ -481,9 +481,19 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 				newSession = true
 			}
 		}
-		packet.Version = serverCacheEntry.SDKVersion
 
-		locallogger = log.With(locallogger, "datacenter_id", serverCacheEntry.Datacenter.ID)
+		// Deserialize the Session packet now that we have the version
+		var packet SessionUpdatePacket
+		packet.Version = serverCacheEntry.SDKVersion
+		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
+			sentry.CaptureException(err)
+			level.Error(logger).Log("msg", "could not read packet", "err", err)
+			metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+			metrics.ErrorMetrics.ReadPacketFailure.Add(1)
+			return
+		}
+
+		locallogger = log.With(locallogger, "client_addr", packet.ClientAddress.String(), "datacenter_id", serverCacheEntry.Datacenter.ID)
 
 		buyer, err := storer.Buyer(packet.CustomerID)
 		if err != nil {
