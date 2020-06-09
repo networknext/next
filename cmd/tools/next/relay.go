@@ -4,7 +4,9 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"os"
 	"time"
 
@@ -130,10 +132,27 @@ func updateRelayState(rpcClient jsonrpc.RPCClient, info relayInfo, state routing
 }
 
 func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []string) {
-	// Make sure the relay is built
-	if !runCommandEnv("make", []string{"build-relay-new"}, nil) {
-		log.Fatal("Failed to build relay")
+	// Fetch and save the latest binary
+
+	if url, err := env.RelayArtifactURL(); err == nil {
+		if r, err := http.Get(url); err == nil {
+			defer r.Body.Close()
+			if file, err := os.Create("dist/relay.tar.gz"); err == nil {
+				defer file.Close()
+				if _, err := io.Copy(file, r.Body); err != nil {
+					log.Fatalf("failed to copy http response to file: %v\n", err)
+				}
+			} else {
+				log.Fatalf("could not open 'dist/relay.tar.gz' for writing: %v\n", err)
+			}
+		} else {
+			log.Fatalf("could not acquire relay tar: %v\n", err)
+		}
+	} else {
+		log.Fatalf("%v\n", err)
 	}
+
+	runCommand("tar", []string{"-C", "./dist", "-xzf", "dist/relay.tar.gz"})
 
 	for _, relayName := range relayNames {
 		fmt.Printf("Updating %s\n", relayName)
@@ -212,19 +231,17 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 			envvars["RELAY_V3_SPEED"] = info.nicSpeed
 			envvars["RELAY_V3_NAME"] = info.firestoreID
 
-			f, err := os.Create("deploy/relay/relay.env")
+			f, err := os.Create("dist/relay.env")
 			if err != nil {
-				log.Fatalf("could not create relay.env file locally in deploy/relay/relay.env: %v", err)
+				log.Fatalf("could not create 'dist/relay.env': %v", err)
 			}
+			defer f.Close()
 
 			for k, v := range envvars {
 				if _, err := f.WriteString(fmt.Sprintf("%s=%s\n", k, v)); err != nil {
-					f.Close()
-					log.Fatalf("could not write %s=%s to relay.env file locally in deploy/relay/relay.env: %v", k, v, err)
+					log.Fatalf("could not write %s=%s to 'dist/relay.env': %v", k, v, err)
 				}
 			}
-
-			f.Close()
 		}
 
 		// Set the public key in storage

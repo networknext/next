@@ -49,7 +49,7 @@ The development and production artifacts are only published to GCP Storage. They
 - `make deploy-relay-backend` or `make deploy-relay-backend-prod` to deploy the relay backend to dev and prod respectively
 - `make deploy-server-backend` or `make deploy-server-backend-prod` to deploy the server backend to dev and prod respectively
 
-For more information about deployment and artifcats see the [deploy](deploy) folder.
+For more information about deployment and artifacts see the [deploy](deploy) folder.
 
 ## Development
 
