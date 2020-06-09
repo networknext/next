@@ -183,6 +183,8 @@ type ServerInitResponsePacket struct {
 	RequestID uint64
 	Response  uint32
 	Signature []byte
+
+	Version SDKVersion
 }
 
 func (packet *ServerInitResponsePacket) Serialize(stream encoding.Stream) error {
