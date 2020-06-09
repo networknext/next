@@ -199,6 +199,52 @@ func (s *OpsService) Sellers(r *http.Request, args *SellersArgs, reply *SellersR
 	return nil
 }
 
+type CustomersArgs struct{}
+
+type CustomersReply struct {
+	Customers []customer
+}
+
+type customer struct {
+	BuyerID  uint64 `json:"buyer_id"`
+	SellerID string `json:"seller_id"`
+	Name     string `json:"name"`
+}
+
+func (s *OpsService) Customers(r *http.Request, args *CustomersArgs, reply *CustomersReply) error {
+
+	customers := map[string]customer{}
+
+	for _, b := range s.Storage.Buyers() {
+		customers[b.Name] = customer{
+			BuyerID: b.ID,
+			Name:    b.Name,
+		}
+	}
+
+	for _, s := range s.Storage.Sellers() {
+		if _, ok := customers[s.Name]; ok {
+			cust := customers[s.Name]
+			cust.SellerID = s.ID
+			customers[s.Name] = cust
+		} else {
+			customers[s.Name] = customer{
+				SellerID: s.ID,
+				Name:     s.Name,
+			}
+		}
+	}
+
+	for _, c := range customers {
+		reply.Customers = append(reply.Customers, c)
+	}
+
+	sort.Slice(reply.Customers, func(i int, j int) bool {
+		return reply.Customers[i].Name < reply.Customers[j].Name
+	})
+	return nil
+}
+
 type AddSellerArgs struct {
 	Seller routing.Seller
 }
