@@ -138,9 +138,10 @@ Downloads the current cost matrix from the relay backend to 'cost.bin' or the fi
 ### Optimize
 
 Optimizes the downloaded cost matrix into a route matrix.
-First argument is the rtt threshold which defaults to 1.
-Second argument is the path of the cost matrix if you don't have it saved as 'cost.bin'.
-Third argument is the path you want the route matrix written to. Default is 'optimize.bin'.
+
+The first argument is the rtt threshold which defaults to 1. \
+The second argument is the path of the cost matrix if you don't have it saved as 'cost.bin'. \
+The third argument is the path you want the route matrix written to. Default is 'optimize.bin'.
 
 ### Analyze
 
