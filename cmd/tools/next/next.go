@@ -336,6 +336,18 @@ func main() {
 				},
 			},
 			{
+				Name:       "select",
+				ShortUsage: "next select <local|dev|prod|other_portal_hostname>",
+				ShortHelp:  "Select environment to use (local|dev|prod)",
+				Exec: func(_ context.Context, args []string) error {
+					env.Name = args[0]
+					env.Write()
+
+					fmt.Printf("Selected %s environment\n", env.Name)
+					return nil
+				},
+			},
+			{
 				Name:       "env",
 				ShortUsage: "next env",
 				ShortHelp:  "Display environment",
@@ -355,19 +367,7 @@ func main() {
 
 					env.CLIRelease = release
 					env.CLIBuildTime = buildtime
-					fmt.Println(env.String())
-					return nil
-				},
-			},
-			{
-				Name:       "select",
-				ShortUsage: "next select <local|dev|prod|other_portal_hostname>",
-				ShortHelp:  "Select environment to use (local|dev|prod)",
-				Exec: func(_ context.Context, args []string) error {
-					env.Name = args[0]
-					env.Write()
-
-					fmt.Printf("Selected %s environment\n", env.Name)
+					fmt.Print(env.String())
 					return nil
 				},
 			},
