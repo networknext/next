@@ -2,6 +2,7 @@ package jsonrpc
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 	fnv "hash/fnv"
 	"net/http"
@@ -398,7 +399,8 @@ func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, r
 }
 
 type GameConfigurationArgs struct {
-	BuyerID      string `json:"buyer_id"`
+	Domain       string `json:"domain"`
+	Name         string `json:"name"`
 	NewPublicKey string `json:"new_public_key"`
 }
 
@@ -421,12 +423,28 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 
 	reply.GameConfiguration.PublicKey = ""
 
-	if args.BuyerID == "" {
-		return fmt.Errorf("buyer_id is required")
-	}
+	buyer, err = s.Storage.BuyerWithDomain(args.Domain)
 
-	if buyerID, err = strconv.ParseUint(args.BuyerID, 10, 64); err != nil {
-		return fmt.Errorf("failed to convert BuyerID to uint64")
+	// Buyer not found
+	if buyer.ID == 0 {
+		byteKey := []byte(args.NewPublicKey)
+
+		if err != nil {
+			return fmt.Errorf("failed to parse pubkey")
+		}
+		buyerID = binary.LittleEndian.Uint64(byteKey[0:7])
+		err := s.Storage.AddBuyer(context.Background(), routing.Buyer{
+			ID:        buyerID,
+			Name:      args.Domain,
+			Domain:    args.Name,
+			Active:    false,
+			Live:      false,
+			PublicKey: byteKey,
+		})
+
+		if err != nil {
+			fmt.Errorf("failed to add buyer")
+		}
 	}
 
 	if buyer, err = s.Storage.Buyer(buyerID); err != nil {

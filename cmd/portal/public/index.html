@@ -259,21 +259,21 @@
                 </ul>
                 <ul class="navbar-nav px-3" v-if="handlers.userHandler.isAnonymous()">
                     <li class="nav-item text-nowrap  ">
-                        <a class="nav-link" href="#" onclick="AuthHandler.login()">
-                            Signup
+                        <a class="nav-link" href="#" v-on:click="handlers.workspaceHandler.changeModal('signup')">
+                            Sign Up
                         </a>
                     </li>
                 </ul>
                 <ul class="navbar-nav px-3" v-if="handlers.userHandler.isAnonymous()">
                     <li class="nav-item text-nowrap  ">
-                        <a class="nav-link" href="#" onclick="AuthHandler.login()">
+                        <a class="nav-link" href="#" v-on:click="handlers.authHandler.login()">
                             Login
                         </a>
                     </li>
                 </ul>
                 <ul class="navbar-nav px-3" v-if="!handlers.userHandler.isAnonymous()">
                     <li class="nav-item text-nowrap  ">
-                        <a class="nav-link" href="#" onclick="AuthHandler.logout()">
+                        <a class="nav-link" href="#" v-on:click="handlers.authHandler.logout()">
                             Logout
                         </a>
                     </li>
@@ -1197,7 +1197,7 @@
                     </main>
                     <div class="modal" tabindex="-1" role="dialog" id="video-modal">
                         <div class="modal-dialog modal-lg" role="document">
-                            <div class="modal-content">
+                            <div class="modal-content" v-if="modals.welcome.show">
                                 <div class="modal-header">
                                     <h5 class="modal-title align-items-left">New to Network Next?</h5>
                                     <button type="button" class="close align-items-right" data-dismiss="modal" aria-label="Close">
@@ -1210,8 +1210,21 @@
                                         frameborder="0">
                                 </iframe>
                                 <div class="modal-footer">
-                                    <button class="btn btn-info" href="#" onclick="AuthHandler.login()">
-                                        Signup
+                                    <button class="btn btn-info" href="#" v-on:click="handlers.workspaceHandler.changeModal('signup')">
+                                        Sign Up
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="modal-content" v-if="modals.signup.show">
+                                <div class="modal-header">
+                                    <h5 class="modal-title align-items-left">Sign Up for Network Next</h5>
+                                    <button type="button" class="close align-items-right" data-dismiss="modal" aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                </div>
+                                <div class="modal-footer">
+                                    <button class="btn btn-info" href="#" v-on:click="handlers.userHandler.signUp()">
+                                        Sign Up
                                     </button>
                                 </div>
                             </div>

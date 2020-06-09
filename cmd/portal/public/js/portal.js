@@ -284,10 +284,14 @@ UserHandler = {
 	isViewer() {
 		return !this.isAnonymous() ? this.userInfo.roles.findIndex((role) => role.name == "Viewer") !== -1 : false;
 	},
+	signUp() {
+		console.log("Signing up")
+	}
 }
 
 WorkspaceHandler = {
 	sessionLoop: null,
+	welcomeTimeout: null,
 	changeSettingsPage(page) {
 		let showSettings = false;
 		let showConfig = false;
@@ -302,6 +306,36 @@ WorkspaceHandler = {
 		Object.assign(rootComponent.$data.pages.settings, {
 			showConfig: showConfig,
 			showSettings: showSettings,
+		});
+	},
+	changeModal(modal) {
+		switch (modal) {
+			case 'signup':
+				Object.assign(rootComponent.$data.modals.signup, {
+					companyName: "",
+					email: ""
+				});
+				break;
+		}
+
+		Object.keys(rootComponent.$data.modals).forEach((modal) => {
+			Object.assign(rootComponent.$data.modals[modal], {show: false});
+		});
+
+		Object.assign(rootComponent.$data.modals[modal], {show: true});
+
+		this.welcomeTimeout !== null ? clearTimeout(this.welcomeTimeout) : null;
+
+		if (!($("#video-modal").data('bs.modal') || {})._isShown) {
+			$('#video-modal').modal('toggle');
+		}
+
+		$('#video-modal').on('hidden.bs.modal', function () {
+			let videoPlayer = document.getElementById("video-player");
+			if (videoPlayer) {
+				videoPlayer.parentElement.removeChild(videoPlayer)
+				videoPlayer.innerHTML = "<div></div>"
+			}
 		});
 	},
 	changePage(page, options) {
@@ -699,6 +733,7 @@ WorkspaceHandler = {
 				.then((responses) => {
 					let accounts = responses[0].accounts;
 					allRoles = responses[1].roles;
+					console.log(allRoles)
 
 					if (filter.buyerId != '') {
 						accounts = accounts.filter((account) => {
@@ -767,27 +802,6 @@ WorkspaceHandler = {
 								);
 							}
 
-							/* choices = allRoles.map((role) => {
-								return {
-									value: role,
-									label: role.name,
-									customProperties: {
-										description: role.description,
-									},
-									selected: role.name === 'Viewer'
-								};
-							});
-
-							if (!autoSigninPermissions) {
-								autoSigninPermissions = new Choices(
-									document.getElementById("auto-signin-permissions"),
-									{
-										removeItemButton: true,
-										choices: choices,
-									}
-								);
-							} */
-
 							generateRolesDropdown(accounts);
 						} catch(e) {
 							rootComponent.$data.pages.settings.show ? Sentry.captureException(e) : null;
@@ -821,13 +835,9 @@ function startApp() {
 				.then((response) => {
 					Object.assign(rootComponent.$data, {allBuyers: response.Buyers});
 					if (UserHandler.isAnonymous()) {
-						setTimeout(() => {
-							$('#video-modal').modal('toggle')
-							$('#video-modal').on('hidden.bs.modal', function () {
-									let videoPlayer = document.getElementById("video-player");
-									videoPlayer.parentElement.removeChild(videoPlayer)
-									videoPlayer.innerHTML = "<div></div>"
-							});
+						WorkspaceHandler.welcomeTimeout = setTimeout(() => {
+							WorkspaceHandler.changeModal('welcome');
+							WorkspaceHandler.welcomeTimeout = null;
 						}, 60000)
 					}
 				})
@@ -857,6 +867,16 @@ function createVueComponents() {
 				mapHandler: MapHandler,
 				userHandler: UserHandler,
 				workspaceHandler: WorkspaceHandler,
+			},
+			modals: {
+				signup: {
+					companyName: "",
+					email: "",
+					show: false,
+				},
+				welcome: {
+					show: false,
+				},
 			},
 			pages: {
 				downloads: {
