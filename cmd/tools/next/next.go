@@ -966,27 +966,27 @@ func main() {
 			},
 			{
 				Name:       "optimize",
-				ShortUsage: "next optimize <input_file> <output_file>",
-				ShortHelp:  "Optimize a local cost matrix into a route matrix, arguments can be supplied to specify the input and output files",
+				ShortUsage: "next optimize <rtt> <input_file> <output_file>",
+				ShortHelp:  "Optimize a local cost matrix into a route matrix, arguments can be supplied to specify the rtt threshold, input, and output files",
 				Exec: func(ctx context.Context, args []string) error {
 					input := "cost.bin"
 					output := "optimize.bin"
 					rtt := int32(1)
 
 					if len(args) > 0 {
-						input = args[0]
+						if res, err := strconv.ParseInt(args[0], 10, 32); err == nil {
+							rtt = int32(res)
+						} else {
+							log.Fatalln(fmt.Errorf("could not parse 1st argument to number: %w", err))
+						}
 					}
 
 					if len(args) > 1 {
-						output = args[1]
+						input = args[1]
 					}
 
 					if len(args) > 2 {
-						if res, err := strconv.ParseInt(args[2], 10, 32); err == nil {
-							rtt = int32(res)
-						} else {
-							log.Fatalln(fmt.Errorf("could not parse 3rd argument to number: %w", err))
-						}
+						output = args[2]
 					}
 
 					optimizeCostMatrix(input, output, rtt)
