@@ -26,9 +26,15 @@ import (
 
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
+	localjsonrpc "github.com/networknext/backend/transport/jsonrpc"
 	"github.com/peterbourgon/ff/v3/ffcli"
 	"github.com/tidwall/gjson"
 	"github.com/ybbus/jsonrpc"
+)
+
+var (
+	release   string
+	buildtime string
 )
 
 type arrayFlags []string
@@ -339,6 +345,16 @@ func main() {
 						env.Write()
 					}
 
+					env.RemoteRelease = "Unknown"
+					env.RemoteBuildTime = "Unknown"
+					var reply localjsonrpc.CurrentReleaseReply
+					if err := rpcClient.CallFor(&reply, "OpsService.CurrentRelease", localjsonrpc.CurrentReleaseArgs{}); err == nil {
+						env.RemoteRelease = reply.Release
+						env.RemoteBuildTime = reply.BuildTime
+					}
+
+					env.CLIRelease = release
+					env.CLIBuildTime = buildtime
 					fmt.Println(env.String())
 					return nil
 				},

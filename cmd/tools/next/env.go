@@ -29,6 +29,12 @@ const (
 )
 
 type Environment struct {
+	CLIRelease   string
+	CLIBuildTime string
+
+	RemoteRelease   string
+	RemoteBuildTime string
+
 	Hostname       string `json:"hostname"`
 	AuthToken      string `json:"auth_token"`
 	SSHKeyFilePath string `json:"ssh_key_filepath`
@@ -38,6 +44,12 @@ func (e *Environment) String() string {
 	var sb strings.Builder
 
 	sb.WriteString(fmt.Sprintf("Hostname: %s\n", e.Hostname))
+	sb.WriteString("\n")
+	sb.WriteString(fmt.Sprintf("CLI Release: %s\n", e.CLIRelease))
+	sb.WriteString(fmt.Sprintf("CLI Build Time: %s\n", e.CLIBuildTime))
+	sb.WriteString(fmt.Sprintf("Remote Release: %s\n", e.RemoteRelease))
+	sb.WriteString(fmt.Sprintf("Remote Build Time: %s\n", e.RemoteBuildTime))
+	sb.WriteString("\n")
 	sb.WriteString(fmt.Sprintf("AuthToken: %s\n", e.AuthToken))
 	sb.WriteString(fmt.Sprintf("SSHKeyFilePath: %s\n", e.SSHKeyFilePath))
 
