@@ -26,6 +26,9 @@ const (
 	OldRelayBackendHostnameLocal = "localhost"
 	OldRelayBackendHostnameDev   = "relays.v3-dev.networknext.com"
 	OldRelayBackendHostnameProd  = "relays.v3.networknext.com"
+
+	RelayArtifactURLDev  = "https://storage.googleapis.com/artifacts.network-next-v3-dev.appspot.com/relay.dev.tar.gz"
+	RelayArtifactURLProd = "nope"
 )
 
 type Environment struct {
@@ -142,6 +145,10 @@ func (e *Environment) OldRelayBackendHostname() (string, error) {
 	return e.localDevOrProd(OldRelayBackendHostnameLocal, OldRelayBackendHostnameDev, OldRelayBackendHostnameProd)
 }
 
+func (e *Environment) RelayArtifactURL() (string, error) {
+	return e.devOrProd(RelayArtifactURLDev, RelayArtifactURLProd)
+}
+
 func (e *Environment) localDevOrProd(ifIsLocal, ifIsDev, ifIsProd string) (string, error) {
 	switch e.Hostname {
 	case "local":
@@ -152,5 +159,16 @@ func (e *Environment) localDevOrProd(ifIsLocal, ifIsDev, ifIsProd string) (strin
 		return ifIsProd, nil
 	default:
 		return "", errors.New("Environment does not match 'local', 'dev', or 'prod'")
+	}
+}
+
+func (e *Environment) devOrProd(ifIsDev, ifIsProd string) (string, error) {
+	switch e.Hostname {
+	case "dev":
+		return ifIsDev, nil
+	case "prod":
+		return ifIsProd, nil
+	default:
+		return "", errors.New("Environment does not match 'dev' or 'prod'")
 	}
 }

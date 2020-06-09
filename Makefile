@@ -298,6 +298,7 @@ build-relay-ref: ## builds the reference relay
 .PHONY: build-relay-new
 build-relay-new: ## builds the new relay
 	@printf "Building new relay... "
+	@mkdir -p $(DIST_DIR)
 	@cd $(NEW_RELAY_DIR) && $(MAKE) release
 	@echo "done"
 
@@ -514,6 +515,22 @@ deploy-server-backend-prod: ## builds and deploys the server backend to the prod
 
 .PHONY: build-backend-artifacts
 build-backend-artifacts: build-portal-artifact build-relay-backend-artifact build-server-backend-artifact ## builds the backend artifacts
+
+.PHONY: build-relay-artifact
+build-relay-artifact: build-relay-new ## builds the relay artifact
+	@printf "Building relay artifact..."
+	@mkdir -p $(DIST_DIR)/artifact/relay
+	@cp $(DIST_DIR)/relay_new $(DIST_DIR)/artifact/relay/relay
+	@cp $(DEPLOY_DIR)/relay/relay.service $(DIST_DIR)/artifact/relay/relay.service
+	@cp $(DEPLOY_DIR)/relay/install.sh $(DIST_DIR)/artifact/relay/install.sh
+	@cd $(DIST_DIR)/artifact/relay && tar -zcf ../../relay.dev.tar.gz relay relay.service install.sh && cd ../..
+	@printf "$(DIST_DIR)/relay.dev.tar.gz\n"
+
+.PHONY: publish-relay-artifact
+publish-relay-artifact: ## publishes the relay artifact
+	@printf "Publishing relay artifact... \n\n"
+	@gsutil cp $(DIST_DIR)/relay.dev.tar.gz $(ARTIFACT_BUCKET)/relay.dev.tar.gz
+	@printf "done\n"
 
 .PHONY: build-backend-prod-artifacts
 build-backend-prod-artifacts: build-portal-prod-artifact build-relay-backend-prod-artifact build-server-backend-prod-artifact ## builds the backend artifacts
