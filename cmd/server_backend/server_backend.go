@@ -119,10 +119,11 @@ func main() {
 		}
 	}
 
-	redisPortalHost := os.Getenv("REDIS_HOST_PORTAL")
-	redisClientPortal := storage.NewRedisClient(redisPortalHost)
+	redisPortalHosts := os.Getenv("REDIS_HOST_PORTAL")
+	splitPortalHosts := strings.Split(redisPortalHosts, ",")
+	redisClientPortal := storage.NewRedisClient(splitPortalHosts...)
 	if err := redisClientPortal.Ping().Err(); err != nil {
-		level.Error(logger).Log("envvar", "REDIS_HOST_PORTAL", "value", redisPortalHost, "err", err)
+		level.Error(logger).Log("envvar", "REDIS_HOST_PORTAL", "value", redisPortalHosts, "err", err)
 		os.Exit(1)
 	}
 
