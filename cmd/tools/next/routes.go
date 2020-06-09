@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -46,18 +47,14 @@ func saveCostMatrix(env Environment, filename string) {
 	uri += "/cost_matrix"
 
 	if r, err := http.Get(uri); err == nil {
+		defer r.Body.Close()
 		if r.StatusCode == http.StatusOK {
-			var matrix routing.CostMatrix
-			if _, err := matrix.ReadFrom(r.Body); err == nil {
-				if file, err := os.Create(filename); err == nil {
-					if _, err := matrix.WriteTo(file); err != nil {
-						log.Fatalln(fmt.Errorf("error writing cost matrix to file: %w", err))
-					}
-				} else {
-					log.Fatalln(fmt.Errorf("could not open file for writing: %w", err))
+			if file, err := os.Create(filename); err == nil {
+				if _, err := io.Copy(file, r.Body); err != nil {
+					log.Fatalln(fmt.Errorf("error writing cost matrix to file: %w", err))
 				}
 			} else {
-				log.Fatalln(fmt.Errorf("error reading cost matrix: %w", err))
+				log.Fatalln(fmt.Errorf("could not open file for writing: %w", err))
 			}
 		} else {
 			log.Fatalf("relay backend returns non 200 response code: %d\n", r.StatusCode)
