@@ -7,6 +7,8 @@ if [ -z "$NEXT_HOME" ]; then
 fi
 
 source="cmd/tools/next"
+timestamp=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+release=$(git describe --tags --exact-match 2> /dev/null || git rev-parse --short HEAD)
 
 unset -v latest
 for file in $source/*; do
@@ -15,6 +17,6 @@ done
 
 tool_path="dist/next"
 if [ ! -f $tool_path ] || [ $latest -nt $tool_path ]; then
-	go build -o $tool_path $source/*.go
+	go build -ldflags "-s -w -X main.buildtime=$timestamp -X main.release=$release" -o $tool_path $source/*.go
 fi
 $tool_path "$@"
