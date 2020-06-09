@@ -510,7 +510,7 @@ WorkspaceHandler = {
 		Object.assign(rootComponent.$data.pages.settings, {accounts: accounts});
 	},
 	loadSettingsPage() {
-		if (UserHandler.userInfo == null) {
+		if (UserHandler.isAnonymous()) {
 			return;
 		}
 		if (UserHandler.userInfo.id != '') {
