@@ -22,7 +22,6 @@ import (
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
-	"github.com/networknext/backend/stats"
 	"github.com/networknext/backend/storage"
 )
 
@@ -33,13 +32,12 @@ const (
 )
 
 type RelayHandlerConfig struct {
-	RedisClient           redis.Cmdable
-	GeoClient             *routing.GeoClient
-	Storer                storage.Storer
-	StatsDb               *routing.StatsDatabase
-	TrafficStatsPublisher stats.Publisher
-	Metrics               *metrics.RelayHandlerMetrics
-	RouterPrivateKey      []byte
+	RedisClient      redis.Cmdable
+	GeoClient        *routing.GeoClient
+	Storer           storage.Storer
+	StatsDb          *routing.StatsDatabase
+	Metrics          *metrics.RelayHandlerMetrics
+	RouterPrivateKey []byte
 }
 
 type RelayInitHandlerConfig struct {
@@ -51,12 +49,11 @@ type RelayInitHandlerConfig struct {
 }
 
 type RelayUpdateHandlerConfig struct {
-	RedisClient           redis.Cmdable
-	GeoClient             *routing.GeoClient
-	StatsDb               *routing.StatsDatabase
-	Metrics               *metrics.RelayUpdateMetrics
-	TrafficStatsPublisher stats.Publisher
-	Storer                storage.Storer
+	RedisClient redis.Cmdable
+	GeoClient   *routing.GeoClient
+	StatsDb     *routing.StatsDatabase
+	Metrics     *metrics.RelayUpdateMetrics
+	Storer      storage.Storer
 }
 
 // RemoveRelayCacheEntry cleans up a relay cache entry and all its associated data

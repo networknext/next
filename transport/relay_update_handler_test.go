@@ -19,7 +19,6 @@ import (
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
-	"github.com/networknext/backend/stats"
 	"github.com/networknext/backend/storage"
 
 	"github.com/networknext/backend/transport"
@@ -48,12 +47,11 @@ func pingRelayBackendUpdate(t *testing.T, contentType string, body []byte, metri
 	request.Header.Add("Content-Type", contentType)
 
 	handler := transport.RelayUpdateHandlerFunc(log.NewNopLogger(), log.NewNopLogger(), &transport.RelayUpdateHandlerConfig{
-		RedisClient:           redisClient,
-		GeoClient:             geoClient,
-		StatsDb:               statsdb,
-		Metrics:               &metrics,
-		TrafficStatsPublisher: &stats.NoOpTrafficStatsPublisher{},
-		Storer:                inMemory,
+		RedisClient: redisClient,
+		GeoClient:   geoClient,
+		StatsDb:     statsdb,
+		Metrics:     &metrics,
+		Storer:      inMemory,
 	})
 
 	handler(recorder, request)

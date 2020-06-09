@@ -21,7 +21,6 @@ import (
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
-	"github.com/networknext/backend/stats"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
 	"github.com/stretchr/testify/assert"
@@ -59,13 +58,12 @@ func pingRelayBackendHandler(t *testing.T, headers map[string]string, body []byt
 	}
 
 	handler := transport.RelayHandlerFunc(log.NewNopLogger(), log.NewNopLogger(), &transport.RelayHandlerConfig{
-		RedisClient:           redisClient,
-		GeoClient:             geoClient,
-		Storer:                inMemory,
-		StatsDb:               statsdb,
-		TrafficStatsPublisher: &stats.NoOpTrafficStatsPublisher{},
-		Metrics:               &metrics,
-		RouterPrivateKey:      routerPrivateKey,
+		RedisClient:      redisClient,
+		GeoClient:        geoClient,
+		Storer:           inMemory,
+		StatsDb:          statsdb,
+		Metrics:          &metrics,
+		RouterPrivateKey: routerPrivateKey,
 	})
 
 	handler(recorder, request)
