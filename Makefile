@@ -526,10 +526,26 @@ build-relay-artifact: build-relay-new ## builds the relay artifact
 	@cd $(DIST_DIR)/artifact/relay && tar -zcf ../../relay.dev.tar.gz relay relay.service install.sh && cd ../..
 	@printf "$(DIST_DIR)/relay.dev.tar.gz\n"
 
+.PHONY: build-relay-prod-artifact
+build-relay-prod-artifact: build-relay-new ## builds the relay prod artifact
+	@printf "Building relay artifact..."
+	@mkdir -p $(DIST_DIR)/artifact/relay
+	@cp $(DIST_DIR)/relay_new $(DIST_DIR)/artifact/relay/relay
+	@cp $(DEPLOY_DIR)/relay/relay.service $(DIST_DIR)/artifact/relay/relay.service
+	@cp $(DEPLOY_DIR)/relay/install.sh $(DIST_DIR)/artifact/relay/install.sh
+	@cd $(DIST_DIR)/artifact/relay && tar -zcf ../../relay.prod.tar.gz relay relay.service install.sh && cd ../..
+	@printf "$(DIST_DIR)/relay.prod.tar.gz\n"
+
 .PHONY: publish-relay-artifact
-publish-relay-artifact: ## publishes the relay artifact
+publish-relay-artifact: ## publishes the relay artifact to GCP storage with gsutil
 	@printf "Publishing relay artifact... \n\n"
 	@gsutil cp $(DIST_DIR)/relay.dev.tar.gz $(ARTIFACT_BUCKET)/relay.dev.tar.gz
+	@printf "done\n"
+
+.PHONY: publish-relay-prod-artifact
+publish-relay-prod-artifact: ## publishes the relay prod artifact to GCP storage with gsutil
+	@printf "Publishing relay artifact... \n\n"
+	@gsutil cp $(DIST_DIR)/relay.prod.tar.gz $(ARTIFACT_BUCKET_PROD)/relay.prod.tar.gz
 	@printf "done\n"
 
 .PHONY: build-backend-prod-artifacts

@@ -28,7 +28,7 @@ const (
 	OldRelayBackendHostnameProd  = "relays.v3.networknext.com"
 
 	RelayArtifactURLDev  = "https://storage.googleapis.com/artifacts.network-next-v3-dev.appspot.com/relay.dev.tar.gz"
-	RelayArtifactURLProd = "nope"
+	RelayArtifactURLProd = "https://storage.googleapis.com/us.artifacts.network-next-v3-prod.appspot.com/relay.prod.tar.gz"
 )
 
 type Environment struct {
