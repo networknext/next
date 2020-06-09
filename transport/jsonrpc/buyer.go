@@ -414,7 +414,6 @@ type gameConfiguration struct {
 
 func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurationArgs, reply *GameConfigurationReply) error {
 	var err error
-	var buyerID uint64
 	var buyer routing.Buyer
 
 	if IsAnonymous(r) {
@@ -426,28 +425,7 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 	buyer, err = s.Storage.BuyerWithDomain(args.Domain)
 
 	// Buyer not found
-	if buyer.ID == 0 {
-		byteKey := []byte(args.NewPublicKey)
-
-		if err != nil {
-			return fmt.Errorf("failed to parse pubkey")
-		}
-		buyerID = binary.LittleEndian.Uint64(byteKey[0:7])
-		err := s.Storage.AddBuyer(context.Background(), routing.Buyer{
-			ID:        buyerID,
-			Name:      args.Domain,
-			Domain:    args.Name,
-			Active:    false,
-			Live:      false,
-			PublicKey: byteKey,
-		})
-
-		if err != nil {
-			fmt.Errorf("failed to add buyer")
-		}
-	}
-
-	if buyer, err = s.Storage.Buyer(buyerID); err != nil {
+	if err != nil {
 		return nil
 	}
 
@@ -466,16 +444,36 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 
 	ctx := context.Background()
 
-	if args.BuyerID == "" {
-		return fmt.Errorf("buyer_id is required")
+	if args.Domain == "" {
+		return fmt.Errorf("domain is required")
 	}
 
-	if buyerID, err = strconv.ParseUint(args.BuyerID, 10, 64); err != nil {
-		return fmt.Errorf("failed to convert BuyerID to uint64")
+	buyer, err = s.Storage.BuyerWithDomain(args.Domain)
+
+	// Buyer not found
+	if buyer.ID == 0 {
+		byteKey := []byte(args.NewPublicKey)
+
+		if err != nil {
+			return fmt.Errorf("failed to parse pubkey")
+		}
+		buyerID = binary.LittleEndian.Uint64(byteKey[0:7])
+		err := s.Storage.AddBuyer(ctx, routing.Buyer{
+			ID:        buyerID,
+			Name:      args.Domain,
+			Domain:    args.Name,
+			Active:    false,
+			Live:      false,
+			PublicKey: byteKey,
+		})
+
+		if err != nil {
+			fmt.Errorf("failed to add buyer")
+		}
 	}
 
 	if buyer, err = s.Storage.Buyer(buyerID); err != nil {
-		return fmt.Errorf("failed to fetch buyer info from Storer")
+		return nil
 	}
 
 	if err = buyer.DecodedPublicKey(args.NewPublicKey); err != nil {

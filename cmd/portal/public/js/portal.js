@@ -965,7 +965,7 @@ function updatePubKey() {
 	let newPubkey = document.getElementById("pubkey-input").value;
 
 	JSONRPCClient
-		.call("BuyersService.UpdateGameConfiguration", {buyer_id: UserHandler.userInfo.id, new_public_key: newPubkey})
+		.call("BuyersService.UpdateGameConfiguration", {name: "", domain: "", new_public_key: newPubkey})
 		.then((response) => {
 			UserHandler.userInfo.pubkey = response.game_config.public_key;
 			Object.assign(rootComponent.$data.pages.settings.updateKey, {
