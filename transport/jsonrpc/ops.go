@@ -223,11 +223,10 @@ func (s *OpsService) Customers(r *http.Request, args *CustomersArgs, reply *Cust
 	}
 
 	for _, s := range s.Storage.Sellers() {
-
 		if _, ok := customers[s.Name]; ok {
-			customers[s.Name] = customer{
-				SellerID: s.ID,
-			}
+			cust := customers[s.Name]
+			cust.SellerID = s.ID
+			customers[s.Name] = cust
 		} else {
 			customers[s.Name] = customer{
 				SellerID: s.ID,
@@ -240,6 +239,9 @@ func (s *OpsService) Customers(r *http.Request, args *CustomersArgs, reply *Cust
 		reply.Customers = append(reply.Customers, c)
 	}
 
+	sort.Slice(reply.Customers, func(i int, j int) bool {
+		return reply.Customers[i].Name < reply.Customers[j].Name
+	})
 	return nil
 }
 

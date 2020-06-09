@@ -35,6 +35,50 @@ func TestBuyers(t *testing.T) {
 	})
 }
 
+func TestCustomersSingle(t *testing.T) {
+	storer := storage.InMemory{}
+	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, Name: "Fred Scuttle"})
+	storer.AddSeller(context.Background(), routing.Seller{ID: "some seller", Name: "Fred Scuttle"})
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	t.Run("list", func(t *testing.T) {
+		var reply jsonrpc.CustomersReply
+		err := svc.Customers(nil, &jsonrpc.CustomersArgs{}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, uint64(1), reply.Customers[0].BuyerID)
+		assert.Equal(t, "some seller", reply.Customers[0].SellerID)
+		assert.Equal(t, "Fred Scuttle", reply.Customers[0].Name)
+	})
+}
+func TestCustomersMultiple(t *testing.T) {
+	storer := storage.InMemory{}
+	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, Name: "Fred Scuttle"})
+	storer.AddSeller(context.Background(), routing.Seller{ID: "some seller", Name: "Bull Winkle"})
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	t.Run("list", func(t *testing.T) {
+		var reply jsonrpc.CustomersReply
+		err := svc.Customers(nil, &jsonrpc.CustomersArgs{}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, uint64(1), reply.Customers[1].BuyerID)
+		assert.Equal(t, "", reply.Customers[1].SellerID)
+		assert.Equal(t, "Fred Scuttle", reply.Customers[1].Name)
+
+		assert.Equal(t, uint64(0), reply.Customers[0].BuyerID)
+		assert.Equal(t, "some seller", reply.Customers[0].SellerID)
+		assert.Equal(t, "Bull Winkle", reply.Customers[0].Name)
+
+	})
+}
+
 func TestAddBuyer(t *testing.T) {
 	storer := storage.InMemory{}
 
