@@ -31,6 +31,11 @@ import (
 	"github.com/networknext/backend/transport/jsonrpc"
 )
 
+var (
+	release   string
+	buildtime string
+)
+
 func main() {
 	ctx := context.Background()
 
@@ -295,6 +300,8 @@ func main() {
 		})
 		s.RegisterCodec(json2.NewCodec(), "application/json")
 		s.RegisterService(&jsonrpc.OpsService{
+			Release:     release,
+			BuildTime:   buildtime,
 			RedisClient: redisClientRelays,
 			Storage:     db,
 			RouteMatrix: &routeMatrix,
