@@ -539,7 +539,7 @@ func (packet *SessionUpdatePacket) GetSignData() []byte {
 	binary.Write(buf, binary.LittleEndian, packet.KbpsUp)
 	binary.Write(buf, binary.LittleEndian, packet.KbpsDown)
 
-	if packet.Version.AtLeast(SDKVersion{3, 3, 4}) {
+	if packet.Version.AtLeast(SDKVersion{3, 3, 2}) {
 		if packet.Version.AtLeast(SDKVersion{3, 4, 5}) {
 			binary.Write(buf, binary.LittleEndian, packet.PacketsSentClientToServer)
 			binary.Write(buf, binary.LittleEndian, packet.PacketsSentServerToClient)
