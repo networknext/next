@@ -202,10 +202,10 @@ func (s *OpsService) Sellers(r *http.Request, args *SellersArgs, reply *SellersR
 type CustomersArgs struct{}
 
 type CustomersReply struct {
-	Customers []customer
+	Customers []Customer
 }
 
-type customer struct {
+type Customer struct {
 	BuyerID  uint64 `json:"buyer_id"`
 	SellerID string `json:"seller_id"`
 	Name     string `json:"name"`
@@ -213,10 +213,10 @@ type customer struct {
 
 func (s *OpsService) Customers(r *http.Request, args *CustomersArgs, reply *CustomersReply) error {
 
-	customers := map[string]customer{}
+	customers := map[string]Customer{}
 
 	for _, b := range s.Storage.Buyers() {
-		customers[b.Name] = customer{
+		customers[b.Name] = Customer{
 			BuyerID: b.ID,
 			Name:    b.Name,
 		}
@@ -228,7 +228,7 @@ func (s *OpsService) Customers(r *http.Request, args *CustomersArgs, reply *Cust
 			cust.SellerID = s.ID
 			customers[s.Name] = cust
 		} else {
-			customers[s.Name] = customer{
+			customers[s.Name] = Customer{
 				SellerID: s.ID,
 				Name:     s.Name,
 			}
