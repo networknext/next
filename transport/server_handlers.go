@@ -136,6 +136,7 @@ func ServerInitHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer 
 		response := ServerInitResponsePacket{
 			RequestID: packet.RequestID,
 			Response:  InitResponseOK,
+			Version:   packet.Version,
 		}
 		defer func() {
 			if err := writeInitResponse(w, response, serverPrivateKey); err != nil {
@@ -485,6 +486,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 		// Deserialize the Session packet now that we have the version
 		var packet SessionUpdatePacket
 		packet.Version = serverCacheEntry.SDKVersion
+		response.Version = serverCacheEntry.SDKVersion
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
 			sentry.CaptureException(err)
 			level.Error(logger).Log("msg", "could not read packet", "err", err)
