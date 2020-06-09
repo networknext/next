@@ -286,7 +286,7 @@ UserHandler = {
 	isViewer() {
 		return !this.isAnonymous() ? this.userInfo.roles.findIndex((role) => role.name == "Viewer") !== -1 : false;
 	},
-	signUp() {
+	signUp(e) {
 		JSONRPCClient
 		.call("AuthService.AddUserAccount", {emails: [rootComponent.modals.signup.email], roles: []})
 		.then((response) => {
@@ -324,9 +324,11 @@ WorkspaceHandler = {
 		switch (page) {
 			case 'users':
 				showSettings = true;
+				this.loadSettingsPage();
 				break;
 			case 'config':
 				showConfig = true;
+				this.loadConfigPage();
 				break;
 		}
 		Object.assign(rootComponent.$data.pages.settings, {
@@ -518,15 +520,18 @@ WorkspaceHandler = {
 				.call('BuyersService.GameConfiguration', {domain: UserHandler.userInfo.domain})
 				.then((response) => {
 					UserHandler.userInfo.pubKey = response.game_config.public_key;
+					UserHandler.userInfo.company = response.game_config.company;
 				})
 				.catch((e) => {
 					console.log("Something went wrong fetching public key");
 					console.log(e)
 					Sentry.captureException(e);
 					UserHandler.userInfo.pubKey = "";
+					UserHandler.userInfo.company = "";
 				});
 		} else {
-			UserHandler.userInfo.pubkey = "";
+			UserHandler.userInfo.pubKey = "";
+			UserHandler.userInfo.company = "";
 		}
 
 		let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
@@ -542,6 +547,7 @@ WorkspaceHandler = {
 			.call('BuyersService.GameConfiguration', {domain: UserHandler.userInfo.domain})
 			.then((response) => {
 				UserHandler.userInfo.pubKey = response.game_config.public_key;
+				UserHandler.userInfo.company = response.game_config.company;
 			})
 			.catch((e) => {
 				console.log("Something went wrong fetching relays");
@@ -759,7 +765,6 @@ WorkspaceHandler = {
 				.then((responses) => {
 					let accounts = responses[0].accounts;
 					allRoles = responses[1].roles;
-					console.log(allRoles)
 
 					if (filter.buyerId != '') {
 						accounts = accounts.filter((account) => {
@@ -849,6 +854,15 @@ function startApp() {
 	 * QUESTION: Instead of grabbing the user here can we use the token to then go off and get everything from the backend?
 	 * TODO:	 There are 3 different promises going off to get user details. There should be a better way to do this
 	 */
+
+	$(document).ready(function() {
+		$(window).keydown(function(event){
+			if(event.keyCode == 13) {
+				event.preventDefault();
+				return false;
+			}
+		});
+	});
 
 	UserHandler
 		.fetchCurrentUserInfo()
@@ -989,14 +1003,14 @@ function createVueComponents() {
 }
 
 function updatePubKey() {
-	let newPubkey = UserHandler.userInfo.pubkey;
+	let newPubKey = UserHandler.userInfo.pubKey;
 	let company = UserHandler.userInfo.company;
 	let domain = UserHandler.userInfo.domain
 
 	JSONRPCClient
-		.call("BuyersService.UpdateGameConfiguration", {name: company, domain: domain, new_public_key: newPubkey})
+		.call("BuyersService.UpdateGameConfiguration", {name: company, domain: domain, new_public_key: newPubKey})
 		.then((response) => {
-			UserHandler.userInfo.pubkey = response.game_config.public_key;
+			UserHandler.userInfo.pubKey = response.game_config.public_key;
 			Object.assign(rootComponent.$data.pages.settings.updateKey, {
 				success: 'Updated public key successfully',
 			});
