@@ -694,7 +694,7 @@ func (m *RouteMatrix) WriteRoutesTo(writer io.Writer) {
 				}
 
 				// display ip addr locally
-				// dispaly actual name in dev/prod
+				// display actual name in dev/prod
 				name := relay.Addr.String()
 				if len(relay.Name) != 0 {
 					name = relay.Name
@@ -763,7 +763,7 @@ func (m *RouteMatrix) WriteAnalysisTo(writer io.Writer) {
 		}
 	}
 
-	fmt.Fprintf(writer, "\n%s Improvement:\n\n", "RTT")
+	fmt.Fprintf(writer, "%s Improvement:\n\n", "RTT")
 	fmt.Fprintf(writer, "    None: %d (%.2f%%)\n", int(numValidRelayPairsWithoutImprovement), numValidRelayPairsWithoutImprovement/numValidRelayPairs*100.0)
 
 	for i := range buckets {
@@ -813,7 +813,6 @@ func (m *RouteMatrix) WriteAnalysisTo(writer io.Writer) {
 	fmt.Fprintf(writer, "\n%s Summary:\n\n", "Route")
 	fmt.Fprintf(writer, "    %.1f routes per relay pair on average (%d max)\n", averageNumRoutes, maxRoutesPerRelayPair)
 	fmt.Fprintf(writer, "    %.1f relays per route on average (%d max)\n", averageRouteLength, maxRouteLength)
-	fmt.Fprintf(writer, "    %.1f%% of relay pairs have no route\n", float64(relayPairsWithNoRoutes)/float64(numRelayPairs)*100)
 	fmt.Fprintf(writer, "    %.1f%% of relay pairs have only one route\n", float64(relayPairsWithOneRoute)/float64(numRelayPairs)*100)
-	fmt.Fprintf(writer, "\n")
+	fmt.Fprintf(writer, "    %.1f%% of relay pairs have no route\n", float64(relayPairsWithNoRoutes)/float64(numRelayPairs)*100)
 }

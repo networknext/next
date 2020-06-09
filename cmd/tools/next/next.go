@@ -972,23 +972,21 @@ func main() {
 			{
 				Name:       "cost",
 				ShortUsage: "next cost <output_file>",
-				ShortHelp:  "Acquire the current cost matrix from the relay backend and save it to the file pointed to by the first argument. Defaults to 'cost.bin' if not supplied",
+				ShortHelp:  "Get cost matrix from current environment",
 				Exec: func(ctx context.Context, args []string) error {
 					output := "cost.bin"
-
 					if len(args) > 0 {
 						output = args[0]
 					}
-
 					saveCostMatrix(env, output)
-
+					fmt.Printf("Cost matrix from %s saved to %s\n", env.Name, output)
 					return nil
 				},
 			},
 			{
 				Name:       "optimize",
 				ShortUsage: "next optimize <rtt> <input_file> <output_file>",
-				ShortHelp:  "Optimize a local cost matrix into a route matrix, arguments can be supplied to specify the rtt threshold, input, and output files. Defaults reading from 'cost.bin' and writing to 'optimize.bin'",
+				ShortHelp:  "Optimize cost matrix into a route matrix",
 				Exec: func(ctx context.Context, args []string) error {
 					input := "cost.bin"
 					output := "optimize.bin"
@@ -1012,13 +1010,15 @@ func main() {
 
 					optimizeCostMatrix(input, output, rtt)
 
+					fmt.Printf("Generated route matrix %s from %s\n", output, input)
+
 					return nil
 				},
 			},
 			{
 				Name:       "analyze",
 				ShortUsage: "next analyze <input_file>",
-				ShortHelp:  "Analyze a local route matrix and display it to stdout, the first argument is where to read the route matrix from. Defaults to 'optimize.bin'",
+				ShortHelp:  "Analyze route matrix from optimize",
 				Exec: func(ctx context.Context, args []string) error {
 					input := "optimize.bin"
 
