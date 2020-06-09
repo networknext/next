@@ -12,9 +12,16 @@ The relay and server backend artifacts just have 2 files to make deployment easy
 - `app` binary is the compiled Go source
 - `app.env` text file of the environment variables needed to run
 
-The artifacts creates are named `(portal|relay_backend|server_backend).(dev|prod).tar.gz` and end up in the `./dist` folder.
+The relay artifact contains 3 files compressed into its `.tar.gz`.
+
+- `relay` binary is the compiled C++ source
+- `relay.service` the service file that starts the relay
+- `install.sh` script that is ran over ssh to take care of installing the relay
+
+The artifacts creates are named `(portal|relay_backend|server_backend|relay).(dev|prod).tar.gz` and end up in the `./dist` folder.
 
 Each relay and server backends have their own `(dev|prod).env` for now which gets renamed to `app.dev` during building.
+Relays themselves have a `relay.env` file that is generated for each relay on update so it is not included in the artifact.
 
 ## Development
 
@@ -25,6 +32,7 @@ GCP Project: `network-next-v3-dev`
 - portal: `gs://artifacts.network-next-v3-dev.appspot.com/portal.dev.tar.gz`
 - relay backend: `gs://artifacts.network-next-v3-dev.appspot.com/relay_backend.dev.tar.gz`
 - server backend: `gs://artifacts.network-next-v3-dev.appspot.com/server_backend.dev.tar.gz`
+- relay: `gs://artifacts.network-next-v3-dev.appspot.com/relay.dev.tar.gz`
 
 ### Domains
 
@@ -59,6 +67,7 @@ GCP Project: `network-next-v3-prod`
 - portal: `gs://us.artifacts.network-next-v3-prod.appspot.com/portal.dev.tar.gz`
 - relay backend: `gs://us.artifacts.network-next-v3-prod.appspot.com/relay_backend.dev.tar.gz`
 - server backend: `gs://us.artifacts.network-next-v3-prod.appspot.com/server_backend.dev.tar.gz`
+- relay: `gs://us.artifacts.network-next-v3-prod.appspot.com/relay.prod.tar.gz`
 
 ### Domains
 
