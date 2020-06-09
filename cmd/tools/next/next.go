@@ -232,8 +232,8 @@ func handleJSONRPCError(env Environment, err error) {
 			log.Fatalf("%d: %s", e.Code, http.StatusText(e.Code))
 		}
 	default:
-		if env.Hostname != "local" && env.Hostname != "dev" && env.Hostname != "prod" {
-			log.Fatalf("%v - make sure the hostname is set to either 'prod', 'dev', or 'local' with\nnext env <env>", err)
+		if env.Name != "local" && env.Name != "dev" && env.Name != "prod" {
+			log.Fatalf("%v - make sure the env name is set to either 'prod', 'dev', or 'local' with\nnext select <env>", err)
 		} else {
 			log.Fatal(err)
 		}
@@ -330,18 +330,18 @@ func main() {
 					env.AuthToken = gjson.ParseBytes(body).Get("access_token").String()
 					env.Write()
 
-					fmt.Print(env.String())
+					fmt.Print("Successfully authorized")
 
 					return nil
 				},
 			},
 			{
 				Name:       "env",
-				ShortUsage: "next env <local|dev|prod|other_portal_hostname>",
-				ShortHelp:  "Select environment to use (dev|prod)",
+				ShortUsage: "next env",
+				ShortHelp:  "Display environment",
 				Exec: func(_ context.Context, args []string) error {
 					if len(args) > 0 {
-						env.Hostname = args[0]
+						env.Name = args[0]
 						env.Write()
 					}
 
@@ -356,6 +356,18 @@ func main() {
 					env.CLIRelease = release
 					env.CLIBuildTime = buildtime
 					fmt.Println(env.String())
+					return nil
+				},
+			},
+			{
+				Name:       "select",
+				ShortUsage: "next select <local|dev|prod|other_portal_hostname>",
+				ShortHelp:  "Select environment to use (dev|prod)",
+				Exec: func(_ context.Context, args []string) error {
+					env.Name = args[0]
+					env.Write()
+
+					fmt.Printf("Selected %s environment", env.Name)
 					return nil
 				},
 			},
