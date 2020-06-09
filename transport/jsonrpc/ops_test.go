@@ -45,7 +45,7 @@ func TestCustomersSingle(t *testing.T) {
 		Storage: &storer,
 	}
 
-	t.Run("list", func(t *testing.T) {
+	t.Run("single customer", func(t *testing.T) {
 		var reply jsonrpc.CustomersReply
 		err := svc.Customers(nil, &jsonrpc.CustomersArgs{}, &reply)
 		assert.NoError(t, err)
@@ -66,7 +66,7 @@ func TestCustomersMultiple(t *testing.T) {
 		Storage: &storer,
 	}
 
-	t.Run("list", func(t *testing.T) {
+	t.Run("multiple customers", func(t *testing.T) {
 		var reply jsonrpc.CustomersReply
 		err := svc.Customers(nil, &jsonrpc.CustomersArgs{}, &reply)
 		assert.NoError(t, err)

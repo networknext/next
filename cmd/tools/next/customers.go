@@ -15,5 +15,23 @@ func customers(rpcClient jsonrpc.RPCClient, env Environment) {
 		return
 	}
 
-	table.Output(reply.Customers)
+	customers := []struct {
+		Name     string
+		BuyerID  uint64
+		SellerID string
+	}{}
+
+	for _, customer := range reply.Customers {
+		customers = append(customers, struct {
+			Name     string
+			BuyerID  uint64
+			SellerID string
+		}{
+			Name:     customer.Name,
+			BuyerID:  customer.BuyerID,
+			SellerID: customer.SellerID,
+		})
+	}
+
+	table.Output(customers)
 }
