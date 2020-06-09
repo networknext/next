@@ -46,32 +46,38 @@ func saveCostMatrix(env Environment, filename string) {
 
 	uri += "/cost_matrix"
 
-	if r, err := http.Get(uri); err == nil {
-		defer r.Body.Close()
-		if r.StatusCode == http.StatusOK {
-			if file, err := os.Create(filename); err == nil {
-				if _, err := io.Copy(file, r.Body); err != nil {
-					log.Fatalln(fmt.Errorf("error writing cost matrix to file: %w", err))
-				}
-			} else {
-				log.Fatalln(fmt.Errorf("could not open file for writing: %w", err))
-			}
-		} else {
-			log.Fatalf("relay backend returns non 200 response code: %d\n", r.StatusCode)
-		}
-	} else {
+	r, err := http.Get(uri)
+	if err != nil {
 		log.Fatalln(fmt.Errorf("could not get the route matrix from the backend: %w", err))
+	}
+	defer r.Body.Close()
+
+	if r.StatusCode != http.StatusOK {
+		log.Fatalf("relay backend returns non 200 response code: %d\n", r.StatusCode)
+	}
+
+	file, err := os.Create(filename)
+	if err != nil {
+		log.Fatalln(fmt.Errorf("could not open file for writing: %w", err))
+	}
+	defer file.Close()
+
+	if _, err := io.Copy(file, r.Body); err != nil {
+		log.Fatalln(fmt.Errorf("error writing cost matrix to file: %w", err))
 	}
 }
 
-func optimizeCostMatrix(costFile, routeFile string, rtt int32) {
+func optimizeCostMatrix(costFilename, routeFilename string, rtt int32) {
 	var costMatrix routing.CostMatrix
-	if file, err := os.Open(costFile); err == nil {
-		if _, err := costMatrix.ReadFrom(file); err != nil {
-			log.Fatalln(fmt.Errorf("error reading cost matrix: %w", err))
-		}
-	} else {
+
+	costFile, err := os.Open(costFilename)
+	if err != nil {
 		log.Fatalln(fmt.Errorf("could open the cost matrix file for reading: %w", err))
+	}
+	defer costFile.Close()
+
+	if _, err := costMatrix.ReadFrom(costFile); err != nil {
+		log.Fatalln(fmt.Errorf("error reading cost matrix: %w", err))
 	}
 
 	var routeMatrix routing.RouteMatrix
@@ -79,24 +85,28 @@ func optimizeCostMatrix(costFile, routeFile string, rtt int32) {
 		log.Fatalln(fmt.Errorf("error optimizing cost matrix: %w", err))
 	}
 
-	if file, err := os.Create(routeFile); err == nil {
-		if _, err := routeMatrix.WriteTo(file); err != nil {
-			log.Fatalln(fmt.Errorf("error writing route matrix: %w", err))
-		}
-	} else {
+	routeFile, err := os.Create(routeFilename)
+	if err != nil {
 		log.Fatalln(fmt.Errorf("could not open the route matrix file for writing: %w", err))
+	}
+	defer routeFile.Close()
+
+	if _, err := routeMatrix.WriteTo(routeFile); err != nil {
+		log.Fatalln(fmt.Errorf("error writing route matrix: %w", err))
 	}
 }
 
 func analyzeRouteMatrix(inputFile string) {
-	if file, err := os.Open(inputFile); err == nil {
-		var routeMatrix routing.RouteMatrix
-		if _, err := routeMatrix.ReadFrom(file); err == nil {
-			routeMatrix.WriteAnalysisTo(os.Stdout)
-		} else {
-			log.Fatalln(fmt.Errorf("error reading route matrix: %w", err))
-		}
-	} else {
+	file, err := os.Open(inputFile)
+	if err != nil {
 		log.Fatalln(fmt.Errorf("could not open the route matrix file for reading: %w", err))
 	}
+	defer file.Close()
+
+	var routeMatrix routing.RouteMatrix
+	if _, err := routeMatrix.ReadFrom(file); err != nil {
+		log.Fatalln(fmt.Errorf("error reading route matrix: %w", err))
+	}
+
+	routeMatrix.WriteAnalysisTo(os.Stdout)
 }
