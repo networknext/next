@@ -299,6 +299,7 @@ type relay struct {
 	PublicKey           string    `json:"public_key"`
 	UpdateKey           string    `json:"update_key"`
 	FirestoreID         string    `json:"firestore_id"`
+	Version             string    `json:"relay_version"`
 }
 
 func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysReply) error {
@@ -341,6 +342,7 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 				relay.BytesReceived = relayCacheEntry.TrafficStats.BytesReceived
 
 				relay.LastUpdateTime = relayCacheEntry.LastUpdateTime
+				relay.Version = relayCacheEntry.Version
 			}
 		}
 

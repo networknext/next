@@ -33,6 +33,7 @@ func relays(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 		Sessions    string
 		Tx          string
 		Rx          string
+		Version     string
 		LastUpdated string
 	}{}
 
@@ -59,6 +60,7 @@ func relays(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 			Sessions    string
 			Tx          string
 			Rx          string
+			Version     string
 			LastUpdated string
 		}{
 			Name:        relay.Name,
@@ -67,6 +69,7 @@ func relays(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 			Sessions:    fmt.Sprintf("%d", relay.SessionCount),
 			Tx:          tx,
 			Rx:          rx,
+			Version:     relay.Version,
 			LastUpdated: lastUpdated,
 		})
 	}

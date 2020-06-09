@@ -308,9 +308,10 @@ func (r *RelayInitResponse) UnmarshalBinary(buf []byte) error {
 }
 
 type RelayUpdateRequest struct {
-	Version uint32
-	Address net.UDPAddr
-	Token   []byte
+	Version      uint32
+	RelayVersion string
+	Address      net.UDPAddr
+	Token        []byte
 
 	PingStats    []routing.RelayStatsPing
 	TrafficStats routing.RelayTrafficStats
@@ -324,6 +325,7 @@ func (r *RelayUpdateRequest) UnmarshalJSON(buff []byte) error {
 	doc := gjson.ParseBytes(buff)
 
 	r.Version = uint32(doc.Get("version").Int())
+	r.RelayVersion = doc.Get("relay_version").String()
 
 	addr := doc.Get("relay_address").String()
 	host, port, err := net.SplitHostPort(addr)
