@@ -910,7 +910,6 @@ func RelayDashboardHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.R
 		Analysis string
 		Relays   []displayRelay
 		Stats    map[string]map[string]routing.Stats
-		Routes   string
 	}
 
 	funcmap := template.FuncMap{
@@ -954,9 +953,6 @@ func RelayDashboardHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.R
 
 				<h2>Stats</h2>
 				{{ .Stats | statsTable }}
-
-				<h2>Routes</h2>
-				<pre>{{ .Routes }}</pre>
 			</body>
 		</html>
 	`))
@@ -998,8 +994,15 @@ func RelayDashboardHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.R
 				Addr:       relay.Addr.String(),
 				Datacenter: relay.Datacenter,
 			}
+			if display.Name == "" {
+				display.Name = display.Addr
+			}
 			res.Relays = append(res.Relays, display)
 		}
+
+		sort.Slice(res.Relays, func(i int, j int) bool {
+			return res.Relays[i].Name < res.Relays[j].Name
+		})
 
 		res.Stats = make(map[string]map[string]routing.Stats)
 		for _, a := range res.Relays {
@@ -1020,10 +1023,6 @@ func RelayDashboardHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.R
 				res.Stats[aKey][bKey] = routing.Stats{RTT: float64(rtt), Jitter: float64(jitter), PacketLoss: float64(packetloss)}
 			}
 		}
-
-		buf.Reset()
-		routeMatrix.WriteRoutesTo(&buf)
-		res.Routes = buf.String()
 
 		if err := tmpl.Execute(writer, res); err != nil {
 			fmt.Println(err)
