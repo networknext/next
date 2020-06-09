@@ -26,9 +26,15 @@ import (
 
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
+	localjsonrpc "github.com/networknext/backend/transport/jsonrpc"
 	"github.com/peterbourgon/ff/v3/ffcli"
 	"github.com/tidwall/gjson"
 	"github.com/ybbus/jsonrpc"
+)
+
+var (
+	release   string
+	buildtime string
 )
 
 type arrayFlags []string
@@ -226,8 +232,8 @@ func handleJSONRPCError(env Environment, err error) {
 			log.Fatalf("%d: %s", e.Code, http.StatusText(e.Code))
 		}
 	default:
-		if env.Hostname != "local" && env.Hostname != "dev" && env.Hostname != "prod" {
-			log.Fatalf("%v - make sure the hostname is set to either 'prod', 'dev', or 'local' with\nnext env <env>", err)
+		if env.Name != "local" && env.Name != "dev" && env.Name != "prod" {
+			log.Fatalf("%v - make sure the env name is set to either 'prod', 'dev', or 'local' with\nnext select <env>", err)
 		} else {
 			log.Fatal(err)
 		}
@@ -324,22 +330,44 @@ func main() {
 					env.AuthToken = gjson.ParseBytes(body).Get("access_token").String()
 					env.Write()
 
-					fmt.Print(env.String())
+					fmt.Print("Successfully authorized")
 
 					return nil
 				},
 			},
 			{
+				Name:       "select",
+				ShortUsage: "next select <local|dev|prod|other_portal_hostname>",
+				ShortHelp:  "Select environment to use (local|dev|prod)",
+				Exec: func(_ context.Context, args []string) error {
+					env.Name = args[0]
+					env.Write()
+
+					fmt.Printf("Selected %s environment\n", env.Name)
+					return nil
+				},
+			},
+			{
 				Name:       "env",
-				ShortUsage: "next env <local|dev|prod|other_portal_hostname>",
-				ShortHelp:  "Select environment to use (dev|prod)",
+				ShortUsage: "next env",
+				ShortHelp:  "Display environment",
 				Exec: func(_ context.Context, args []string) error {
 					if len(args) > 0 {
-						env.Hostname = args[0]
+						env.Name = args[0]
 						env.Write()
 					}
 
-					fmt.Println(env.String())
+					env.RemoteRelease = "Unknown"
+					env.RemoteBuildTime = "Unknown"
+					var reply localjsonrpc.CurrentReleaseReply
+					if err := rpcClient.CallFor(&reply, "OpsService.CurrentRelease", localjsonrpc.CurrentReleaseArgs{}); err == nil {
+						env.RemoteRelease = reply.Release
+						env.RemoteBuildTime = reply.BuildTime
+					}
+
+					env.CLIRelease = release
+					env.CLIBuildTime = buildtime
+					fmt.Print(env.String())
 					return nil
 				},
 			},

@@ -28,6 +28,7 @@ func relays(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 
 	relays := []struct {
 		Name        string
+		Address     string
 		State       string
 		Sessions    string
 		Tx          string
@@ -44,13 +45,16 @@ func relays(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 		if relay.BytesReceived < 1000000000 {
 			rx = fmt.Sprintf("%.02fMB", float64(relay.BytesReceived)/float64(1000000))
 		}
-		lastUpdated := ""
+		lastUpdated := "n/a"
 		if relay.State == "enabled" {
 			lastUpdated = time.Since(relay.LastUpdateTime).Truncate(time.Second).String()
 		}
 
+		address := relay.Addr
+
 		relays = append(relays, struct {
 			Name        string
+			Address     string
 			State       string
 			Sessions    string
 			Tx          string
@@ -58,6 +62,7 @@ func relays(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 			LastUpdated string
 		}{
 			Name:        relay.Name,
+			Address:     address,
 			State:       relay.State,
 			Sessions:    fmt.Sprintf("%d", relay.SessionCount),
 			Tx:          tx,

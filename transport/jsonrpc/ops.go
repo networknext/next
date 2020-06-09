@@ -16,9 +16,25 @@ import (
 )
 
 type OpsService struct {
+	Release   string
+	BuildTime string
+
 	RedisClient redis.Cmdable
 	Storage     storage.Storer
 	RouteMatrix *routing.RouteMatrix
+}
+
+type CurrentReleaseArgs struct{}
+
+type CurrentReleaseReply struct {
+	Release   string
+	BuildTime string
+}
+
+func (s *OpsService) CurrentRelease(r *http.Request, args *CurrentReleaseArgs, reply *CurrentReleaseReply) error {
+	reply.Release = s.Release
+	reply.BuildTime = s.BuildTime
+	return nil
 }
 
 type BuyersArgs struct{}

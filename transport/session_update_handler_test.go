@@ -81,32 +81,6 @@ func validateNextResponsePacket(t *testing.T, resbuf bytes.Buffer, sessionID uin
 	return actual
 }
 
-func TestFailToUnmarshalPacket(t *testing.T) {
-	redisServer, err := miniredis.Run()
-	assert.NoError(t, err)
-	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
-
-	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
-	assert.NoError(t, err)
-
-	sessionMetrics := metrics.EmptySessionMetrics
-	localMetrics := metrics.LocalHandler{}
-
-	metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
-	assert.NoError(t, err)
-
-	sessionMetrics.ErrorMetrics.ReadPacketFailure = metric
-
-	var resbuf bytes.Buffer
-
-	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, redisClient, 10*time.Second, nil, nil, nil, nil, &sessionMetrics, nil, nil, nil)
-	handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: []byte("this is not a proper packet")})
-
-	assert.Equal(t, 0, resbuf.Len())
-
-	assert.Equal(t, 1.0, sessionMetrics.ErrorMetrics.ReadPacketFailure.Value())
-}
-
 func TestFailToExecPipeline(t *testing.T) {
 	redisServer, err := miniredis.Run()
 	assert.NoError(t, err)
@@ -271,6 +245,60 @@ func TestFailToUnmarshalSessionData(t *testing.T) {
 	handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 	validateDirectResponsePacket(t, resbuf, sessionMetrics.DirectSessions, sessionMetrics.ErrorMetrics.UnmarshalSessionDataFailure)
+}
+
+func TestFailToUnmarshalPacket(t *testing.T) {
+	redisServer, err := miniredis.Run()
+	assert.NoError(t, err)
+	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+
+	sessionMetrics := metrics.EmptySessionMetrics
+	localMetrics := metrics.LocalHandler{}
+
+	metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "err metric"})
+	assert.NoError(t, err)
+
+	sessionMetrics.ErrorMetrics.ReadPacketFailure = metric
+
+	db := storage.InMemory{}
+
+	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
+	assert.NoError(t, err)
+
+	serverCacheEntry := transport.ServerCacheEntry{
+		Sequence: 13,
+		Server: routing.Server{
+			Addr:      *addr,
+			PublicKey: TestServerBackendPublicKey,
+		},
+	}
+	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
+	assert.NoError(t, err)
+
+	err = redisServer.Set("SERVER-0-0.0.0.0:13", string(serverCacheEntryData))
+	assert.NoError(t, err)
+
+	packet := transport.SessionUpdatePacket{
+		Sequence:             13,
+		CustomerID:           0,
+		ServerAddress:        *addr,
+		ClientRoutePublicKey: make([]byte, crypto.KeySize),
+	}
+
+	packet.Signature = crypto.Sign(TestBuyersServerPrivateKey, packet.GetSignData())
+
+	data, err := packet.MarshalBinary()
+	assert.NoError(t, err)
+
+	// Malform the packet
+	data = data[:200]
+
+	var resbuf bytes.Buffer
+
+	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, redisClient, 10*time.Second, &db, nil, nil, nil, &sessionMetrics, nil, TestServerBackendPrivateKey, nil)
+	handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
+
+	assert.Equal(t, 1.0, sessionMetrics.ErrorMetrics.ReadPacketFailure.Value())
 }
 
 func TestNoBuyerFound(t *testing.T) {
