@@ -324,11 +324,9 @@ WorkspaceHandler = {
 		switch (page) {
 			case 'users':
 				showSettings = true;
-				this.loadSettingsPage();
 				break;
 			case 'config':
 				showConfig = true;
-				this.loadConfigPage();
 				break;
 		}
 		Object.assign(rootComponent.$data.pages.settings, {
@@ -538,35 +536,6 @@ WorkspaceHandler = {
 		this.updateAccountsTableFilter({
 			buyerId: buyerId,
 		});
-	},
-	loadConfigPage() {
-		if (UserHandler.isAnonymous()) {
-			return;
-		}
-		JSONRPCClient
-			.call('BuyersService.GameConfiguration', {domain: UserHandler.userInfo.domain})
-			.then((response) => {
-				UserHandler.userInfo.pubKey = response.game_config.public_key;
-				UserHandler.userInfo.company = response.game_config.company;
-			})
-			.catch((e) => {
-				console.log("Something went wrong fetching relays");
-				Sentry.captureException(e);
-			});
-		},
-		loadDownloadsPage() {
-			// Empty for now
-		},
-	loadRelayPage() {
-		JSONRPCClient
-			.call('OpsService.Relays', {})
-			.then((response) => {
-				// Save Relays somewhere
-			})
-			.catch((e) => {
-				console.log("Something went wrong fetching the top sessions list");
-				Sentry.captureException(e);
-			});
 	},
 	loadSessionsPage() {
 		let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
