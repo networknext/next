@@ -141,10 +141,6 @@ func (fs *Firestore) BuyerWithDomain(domain string) (routing.Buyer, error) {
 	defer fs.buyerMutex.RUnlock()
 
 	for _, buyer := range fs.buyers {
-		fmt.Println()
-		fmt.Println(buyer.Domain)
-		fmt.Println(domain)
-		fmt.Println()
 		if buyer.Domain == domain {
 			return buyer, nil
 		}

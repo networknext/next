@@ -286,7 +286,7 @@ UserHandler = {
 	isViewer() {
 		return !this.isAnonymous() ? this.userInfo.roles.findIndex((role) => role.name == "Viewer") !== -1 : false;
 	},
-	signUp(e) {
+	signUp() {
 		JSONRPCClient
 		.call("AuthService.AddUserAccount", {emails: [rootComponent.modals.signup.email], roles: []})
 		.then((response) => {
