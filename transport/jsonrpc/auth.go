@@ -210,7 +210,7 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 	accountList, err := s.Auth0.Manager.User.List()
 
 	if err != nil {
-		fmt.Errorf("failed to fetch user accounts")
+		return fmt.Errorf("failed to fetch user accounts")
 	}
 
 	found := false
@@ -228,20 +228,21 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 		}
 	}
 
+	roleNames := []string{
+		"rol_ScQpWhLvmTKRlqLU",
+		"rol_8r0281hf2oC4cvrD",
+	}
+	roleTypes := []string{
+		"Viewer",
+		"Owner",
+	}
+	roleDescriptions := []string{
+		"Can see current sessions and the map.",
+		"Can access and manage everything in an account.",
+	}
+
 	if !found {
 		// Onboard signup
-		roleNames := []string{
-			"rol_ScQpWhLvmTKRlqLU",
-			"rol_8r0281hf2oC4cvrD",
-		}
-		roleTypes := []string{
-			"Viewer",
-			"Owner",
-		}
-		roleDescriptions := []string{
-			"Can see current sessions and the map.",
-			"Can access and manage everything in an account.",
-		}
 		roles = []*management.Role{
 			{
 				ID:          &roleNames[0],
@@ -254,8 +255,16 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 				Description: &roleDescriptions[1],
 			},
 		}
-	} else {
+	} else if len(args.Roles) == 0 {
 		// Not an onboard signup
+		roles = []*management.Role{
+			{
+				ID:          &roleNames[0],
+				Name:        &roleTypes[0],
+				Description: &roleDescriptions[0],
+			},
+		}
+	} else {
 		roles = args.Roles
 	}
 
