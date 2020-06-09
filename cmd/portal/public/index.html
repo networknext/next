@@ -1245,7 +1245,7 @@
                                     Failed to create new account
                                 </div>
                                 <div class="modal-footer">
-                                    <button class="btn btn-primary btn-sm" v-on:click="handlers.userHandler.signUp()">
+                                    <button class="btn btn-primary btn-sm" v-on:click.prevent="handlers.userHandler.signUp()">
                                         Sign Up
                                     </button>
                                 </div>
