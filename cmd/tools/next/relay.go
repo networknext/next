@@ -152,7 +152,9 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 		log.Fatalf("%v\n", err)
 	}
 
-	runCommand("tar", []string{"-C", "./dist", "-xzf", "dist/relay.tar.gz"})
+	if !runCommand("tar", []string{"-C", "./dist", "-xzf", "dist/relay.tar.gz"}) {
+		log.Fatalln("failed to untar relay")
+	}
 
 	for _, relayName := range relayNames {
 		fmt.Printf("Updating %s\n", relayName)
