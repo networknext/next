@@ -547,9 +547,9 @@ func main() {
 						},
 					},
 					{
-						Name:       "setnic",
-						ShortUsage: "next relay setnic <relay name> <value (Mbps)>",
-						ShortHelp:  "Updates the NIC speed value of a relay in storage",
+						Name:       "speed",
+						ShortUsage: "next relay speed <relay name> <value (Mbps)>",
+						ShortHelp:  "sets the speed value of a relay",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) == 0 {
 								log.Fatal("You need to supply a relay name")
@@ -571,8 +571,8 @@ func main() {
 					},
 					{
 						Name:       "add",
-						ShortUsage: "next relays add <filepath>",
-						ShortHelp:  "Add a relay to storage from a JSON file or piped from stdin",
+						ShortUsage: "next relay add <filepath>",
+						ShortHelp:  "Add relay(s) from a JSON file or piped from stdin",
 						Exec: func(_ context.Context, args []string) error {
 							jsonData := readJSONData("relays", args)
 
@@ -620,7 +620,7 @@ func main() {
 						Subcommands: []*ffcli.Command{
 							{
 								Name:       "example",
-								ShortUsage: "next relays add example",
+								ShortUsage: "next relay add example",
 								ShortHelp:  "Displays an example relay for the correct JSON schema",
 								Exec: func(_ context.Context, args []string) error {
 									example := relay{
@@ -650,7 +650,7 @@ func main() {
 					},
 					{
 						Name:       "remove",
-						ShortUsage: "next relays remove <name>",
+						ShortUsage: "next relay remove <name>",
 						ShortHelp:  "Remove a relay from storage",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) == 0 {
@@ -752,7 +752,7 @@ func main() {
 					{
 						Name:       "add",
 						ShortUsage: "next buyer add [filepath]",
-						ShortHelp:  "Add a buyer to storage from a JSON file or piped from stdin",
+						ShortHelp:  "Add a buyer from a JSON file or piped from stdin",
 						Exec: func(_ context.Context, args []string) error {
 							jsonData := readJSONData("buyers", args)
 
@@ -849,7 +849,7 @@ func main() {
 										log.Fatal("Failed to marshal seller struct")
 									}
 
-									fmt.Println("Exmaple JSON schema to add a new seller:")
+									fmt.Println("Examaple JSON schema to add a new seller:")
 									fmt.Println(string(jsonBytes))
 									return nil
 								},
