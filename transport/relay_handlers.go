@@ -9,6 +9,7 @@ import (
 	"html/template"
 	"io/ioutil"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -21,7 +22,6 @@ import (
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
-	"github.com/networknext/backend/stats"
 	"github.com/networknext/backend/storage"
 )
 
@@ -32,13 +32,12 @@ const (
 )
 
 type RelayHandlerConfig struct {
-	RedisClient           redis.Cmdable
-	GeoClient             *routing.GeoClient
-	Storer                storage.Storer
-	StatsDb               *routing.StatsDatabase
-	TrafficStatsPublisher stats.Publisher
-	Metrics               *metrics.RelayHandlerMetrics
-	RouterPrivateKey      []byte
+	RedisClient      redis.Cmdable
+	GeoClient        *routing.GeoClient
+	Storer           storage.Storer
+	StatsDb          *routing.StatsDatabase
+	Metrics          *metrics.RelayHandlerMetrics
+	RouterPrivateKey []byte
 }
 
 type RelayInitHandlerConfig struct {
@@ -50,12 +49,11 @@ type RelayInitHandlerConfig struct {
 }
 
 type RelayUpdateHandlerConfig struct {
-	RedisClient           redis.Cmdable
-	GeoClient             *routing.GeoClient
-	StatsDb               *routing.StatsDatabase
-	Metrics               *metrics.RelayUpdateMetrics
-	TrafficStatsPublisher stats.Publisher
-	Storer                storage.Storer
+	RedisClient redis.Cmdable
+	GeoClient   *routing.GeoClient
+	StatsDb     *routing.StatsDatabase
+	Metrics     *metrics.RelayUpdateMetrics
+	Storer      storage.Storer
 }
 
 // RemoveRelayCacheEntry cleans up a relay cache entry and all its associated data
@@ -870,6 +868,8 @@ func statsTable(stats map[string]map[string]routing.Stats) template.HTML {
 		names = append(names, name)
 	}
 
+	sort.Strings(names)
+
 	html.WriteString("<tr>")
 	html.WriteString("<th>Name</th>")
 	for _, name := range names {
@@ -877,12 +877,12 @@ func statsTable(stats map[string]map[string]routing.Stats) template.HTML {
 	}
 	html.WriteString("</tr>")
 
-	for _, a := range names {
+	for x, a := range names {
 		html.WriteString("<tr>")
 		html.WriteString("<th>" + a + "</th>")
 
-		for _, b := range names {
-			if a == b {
+		for y, b := range names {
+			if a == b || y > x {
 				html.WriteString("<td>&nbsp;</td>")
 				continue
 			}
@@ -899,9 +899,16 @@ func statsTable(stats map[string]map[string]routing.Stats) template.HTML {
 }
 
 func RelayDashboardHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.RouteMatrix, statsdb *routing.StatsDatabase, username string, password string) func(writer http.ResponseWriter, request *http.Request) {
+	type displayRelay struct {
+		ID         uint64
+		Name       string
+		Addr       string
+		Datacenter routing.Datacenter
+	}
+
 	type response struct {
 		Analysis string
-		Relays   []routing.RelayCacheEntry
+		Relays   []displayRelay
 		Stats    map[string]map[string]routing.Stats
 		Routes   string
 	}
@@ -934,8 +941,6 @@ func RelayDashboardHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.R
 						<th>Address</th>
 						<th>Datacenter</th>
 						<th>Lat / Long</th>
-						<th>Seller</th>
-						<th>Ingress / Egress</th>
 					</tr>
 					{{ range .Relays }}
 					<tr>
@@ -943,8 +948,6 @@ func RelayDashboardHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.R
 						<td>{{ .Addr }}</td>
 						<td>{{ .Datacenter.Name }}</td>
 						<td>{{ .Datacenter.Location.Latitude }} / {{ .Datacenter.Location.Longitude }}</td>
-						<td>{{ .Seller.Name }}</td>
-						<td>{{ .Seller.IngressPriceCents }} / {{ .Seller.EgressPriceCents }}</td>
 					</tr>
 					{{ end }}
 				</table>
@@ -987,14 +990,22 @@ func RelayDashboardHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.R
 				fmt.Println(err)
 				return
 			}
-			res.Relays = append(res.Relays, relay)
+			display := displayRelay{
+				ID:   relay.ID,
+				Name: relay.Name,
+				// needs to be stringified before html,
+				//otherwise braces are displayed surrounding the ip
+				Addr:       relay.Addr.String(),
+				Datacenter: relay.Datacenter,
+			}
+			res.Relays = append(res.Relays, display)
 		}
 
 		res.Stats = make(map[string]map[string]routing.Stats)
 		for _, a := range res.Relays {
 			aKey := a.Name
 			if aKey == "" {
-				aKey = a.Addr.String()
+				aKey = a.Addr
 			}
 
 			res.Stats[aKey] = make(map[string]routing.Stats)
@@ -1002,7 +1013,7 @@ func RelayDashboardHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.R
 			for _, b := range res.Relays {
 				bKey := b.Name
 				if bKey == "" {
-					bKey = b.Addr.String()
+					bKey = b.Addr
 				}
 
 				rtt, jitter, packetloss := statsdb.GetSample(a.ID, b.ID)

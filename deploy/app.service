@@ -4,3 +4,5 @@ Description=Network Next App Server
 [Service]
 ExecStart=/app/app
 EnvironmentFile=/app/app.env
+Restart=always
+RestartSec=3
