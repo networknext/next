@@ -93,7 +93,6 @@ func analyzeRouteMatrix(inputFile string) {
 		var routeMatrix routing.RouteMatrix
 		if _, err := routeMatrix.ReadFrom(file); err == nil {
 			routeMatrix.WriteAnalysisTo(os.Stdout)
-			routeMatrix.WriteRoutesTo(os.Stdout)
 		} else {
 			log.Fatalln(fmt.Errorf("error reading route matrix: %w", err))
 		}
