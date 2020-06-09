@@ -182,6 +182,8 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 	var accounts []account
 	var roles []*management.Role
 
+	isAdmin := false
+
 	if !IsAnonymous(r) {
 		if _, err := CheckRoles(r, "Admin"); err != nil {
 			if _, err := CheckRoles(r, "Owner"); err != nil {
@@ -192,7 +194,7 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 
 	// Check if non admin is assigning admin role
 	for _, r := range args.Roles {
-		if r.Name == &adminString {
+		if r.Name == &adminString && !isAdmin {
 			return fmt.Errorf("insufficient privileges")
 		}
 	}
