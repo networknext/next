@@ -322,8 +322,8 @@ dev-optimizer: ## runs a local optimizer
 	$(GO) run cmd/optimizer/optimizer.go
 
 .PHONY: dev-portal
-dev-portal: ## runs a local portal web server
-	@PORT=20000 BASIC_AUTH_USERNAME=local BASIC_AUTH_PASSWORD=local UI_DIR=./cmd/portal/public $(GO) run cmd/portal/portal.go
+dev-portal: build-portal ## runs a local portal web server
+	@PORT=20000 BASIC_AUTH_USERNAME=local BASIC_AUTH_PASSWORD=local UI_DIR=./cmd/portal/public ./dist/portal
 
 .PHONY: dev-relay-backend
 dev-relay-backend: ## runs a local relay backend
@@ -369,7 +369,7 @@ build-sdk: $(DIST_DIR)/$(SDKNAME).so ## builds the sdk
 .PHONY: build-portal
 build-portal: ## builds the portal binary
 	@printf "Building portal... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/portal ./cmd/portal/portal.go
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA) -X main.release=$(RELEASE)" -o ${DIST_DIR}/portal ./cmd/portal/portal.go
 	@printf "done\n"
 
 .PHONY: build-portal-artifact
