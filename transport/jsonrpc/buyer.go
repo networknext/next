@@ -409,6 +409,7 @@ type GameConfigurationReply struct {
 }
 
 type gameConfiguration struct {
+	Company   string `json:"company"`
 	PublicKey string `json:"public_key"`
 }
 
@@ -421,6 +422,7 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 	}
 
 	reply.GameConfiguration.PublicKey = ""
+	reply.GameConfiguration.Company = ""
 
 	buyer, err = s.Storage.BuyerWithDomain(args.Domain)
 
@@ -430,6 +432,7 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 	}
 
 	reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
+	reply.GameConfiguration.Company = buyer.Name
 
 	return nil
 }
@@ -446,6 +449,14 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 
 	if args.Domain == "" {
 		return fmt.Errorf("domain is required")
+	}
+
+	if args.Name == "" {
+		return fmt.Errorf("company name is required")
+	}
+
+	if args.NewPublicKey == "" {
+		return fmt.Errorf("new public key is required")
 	}
 
 	buyer, err = s.Storage.BuyerWithDomain(args.Domain)
@@ -485,6 +496,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 	}
 
 	reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
+	reply.GameConfiguration.Company = buyer.Name
 
 	return nil
 }

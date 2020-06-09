@@ -249,11 +249,13 @@ UserHandler = {
 					return;
 				}
 				this.userInfo = {
+					company: "",
+					domain: response.email.split("@")[1],
 					email: response.email,
 					name: response.name,
 					nickname: response.nickname,
 					userId: response.sub,
-					token: response.__raw,
+					token: response.__raw
 				};
 				return JSONRPCClient.call("AuthService.UserAccount", {user_id: this.userInfo.userId});
 			})
@@ -285,7 +287,31 @@ UserHandler = {
 		return !this.isAnonymous() ? this.userInfo.roles.findIndex((role) => role.name == "Viewer") !== -1 : false;
 	},
 	signUp() {
-		console.log("Signing up")
+		JSONRPCClient
+		.call("AuthService.AddUserAccount", {emails: [rootComponent.modals.signup.email], roles: []})
+		.then((response) => {
+			// Account created successfully
+			Object.assign(rootComponent.$data.modals.signup, {
+				showSuccess: true,
+			});
+			setTimeout(() => {
+				Object.assign(rootComponent.$data.modals.signup, {
+					showSuccess: false,
+				});
+			}, 5000);
+		})
+		.catch((e) => {
+			console.log("Something went wrong creating new user");
+			Sentry.captureException(e);
+			Object.assign(rootComponent.$data.modals.signup, {
+				showFailure: true,
+			});
+			setTimeout(() => {
+				Object.assign(rootComponent.$data.modals.signup, {
+					showFailure: false,
+				});
+			}, 5000);
+		});
 	}
 }
 
@@ -489,7 +515,7 @@ WorkspaceHandler = {
 		}
 		if (UserHandler.userInfo.id != '') {
 			JSONRPCClient
-				.call('BuyersService.GameConfiguration', {buyer_id: UserHandler.userInfo.id})
+				.call('BuyersService.GameConfiguration', {domain: UserHandler.userInfo.domain})
 				.then((response) => {
 					UserHandler.userInfo.pubKey = response.game_config.public_key;
 				})
@@ -513,7 +539,7 @@ WorkspaceHandler = {
 			return;
 		}
 		JSONRPCClient
-			.call('BuyersService.GameConfiguration', {buyer_id: UserHandler.userInfo.id})
+			.call('BuyersService.GameConfiguration', {domain: UserHandler.userInfo.domain})
 			.then((response) => {
 				UserHandler.userInfo.pubKey = response.game_config.public_key;
 			})
@@ -870,9 +896,10 @@ function createVueComponents() {
 			},
 			modals: {
 				signup: {
-					companyName: "",
 					email: "",
 					show: false,
+					showFailure: false,
+					showSuccess: false,
 				},
 				welcome: {
 					show: false,
@@ -962,10 +989,12 @@ function createVueComponents() {
 }
 
 function updatePubKey() {
-	let newPubkey = document.getElementById("pubkey-input").value;
+	let newPubkey = UserHandler.userInfo.pubkey;
+	let company = UserHandler.userInfo.company;
+	let domain = UserHandler.userInfo.domain
 
 	JSONRPCClient
-		.call("BuyersService.UpdateGameConfiguration", {name: "", domain: "", new_public_key: newPubkey})
+		.call("BuyersService.UpdateGameConfiguration", {name: company, domain: domain, new_public_key: newPubkey})
 		.then((response) => {
 			UserHandler.userInfo.pubkey = response.game_config.public_key;
 			Object.assign(rootComponent.$data.pages.settings.updateKey, {

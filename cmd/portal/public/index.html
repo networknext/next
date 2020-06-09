@@ -1181,6 +1181,11 @@
                                     <form v-on:submit.prevent="updatePubKey()">
                                         <div class="form-group" id="pubKey">
                                             <label>
+                                                Company Name
+                                            </label>
+                                            <input type="text" class="form-control" placeholder="Enter your company name" id="company-input" v-model="handlers.userHandler.userInfo.company" :disabled="handlers.userHandler.userInfo.company != ''">
+                                            </input>
+                                            <label>
                                                 Public Key
                                             </label>
                                             <textarea class="form-control" placeholder="Enter your base64-encoded public key" id="pubkey-input" v-model="handlers.userHandler.userInfo.pubKey">
@@ -1204,11 +1209,11 @@
                                         <span aria-hidden="true">&times;</span>
                                     </button>
                                 </div>
-                                <iframe id="video-player"
+                                <!-- <iframe id="video-player"
                                         src="https://www.youtube.com/embed/G1IbRujko-A?autoplay=1&amp;autohide=1&amp;modestbranding=1&amp;showinfo=0&amp;controls=0&amp;vq=hd1080"
                                         style="width: 100%; height: 360px;"
                                         frameborder="0">
-                                </iframe>
+                                </iframe> -->
                                 <div class="modal-footer">
                                     <button class="btn btn-info" href="#" v-on:click="handlers.workspaceHandler.changeModal('signup')">
                                         Sign Up
@@ -1222,8 +1227,24 @@
                                         <span aria-hidden="true">&times;</span>
                                     </button>
                                 </div>
+                                <form id="signup-form">
+                                    <div class="form-group" style="padding: 10px;" id="signUpEmail">
+                                        <label for="signup-email-input">
+                                            Email Address
+                                        </label>
+                                        <input type="email" class="form-control" placeholder="Please enter your email" id="signup-email-input" v-model="modals.signup.email">
+                                        </input>
+                                    </div>
+                                    <p class="text-muted text-small mt-2"></p>
+                                </form>
+                                <div class="alert alert-success" role="alert" id="signup-alert-success" v-if="modals.signup.showSuccess">
+                                    Account created successfully. Please check your email to reset password
+                                </div>
+                                <div class="alert alert-danger" role="alert" id="signup-alert-failure" v-if="modals.signup.showFailure">
+                                    Failed to create new account
+                                </div>
                                 <div class="modal-footer">
-                                    <button class="btn btn-info" href="#" v-on:click="handlers.userHandler.signUp()">
+                                    <button class="btn btn-primary btn-sm" v-on:click="handlers.userHandler.signUp()">
                                         Sign Up
                                     </button>
                                 </div>
