@@ -344,6 +344,12 @@ func main() {
 					env.Write()
 
 					fmt.Printf("Selected %s environment\n", env.Name)
+				}, 
+			{
+				Name:       "customers",
+				ShortUsage: "next customers",
+				ShortHelp:  "Output a list of customers with details for each",
+				Exec: func(_ context.Context, args []string) error {
 					return nil
 				},
 			},
