@@ -932,6 +932,68 @@ func main() {
 					},
 				},
 			},
+			{
+				Name:       "cost",
+				ShortUsage: "next cost <output_file>",
+				ShortHelp:  "Acquire the current cost matrix from the relay backend, saves it to 'cost.bin' or the first argument",
+				Exec: func(ctx context.Context, args []string) error {
+					output := "cost.bin"
+
+					if len(args) > 0 {
+						output = args[0]
+					}
+
+					saveCostMatrix(env, output)
+
+					return nil
+				},
+			},
+			{
+				Name:       "optimize",
+				ShortUsage: "next optimize <input_file> <output_file>",
+				ShortHelp:  "Optimize a local cost matrix into a route matrix, arguments can be supplied to specify the input and output files",
+				Exec: func(ctx context.Context, args []string) error {
+					input := "cost.bin"
+					output := "optimize.bin"
+					rtt := int32(1)
+
+					if len(args) > 0 {
+						input = args[0]
+					}
+
+					if len(args) > 1 {
+						output = args[1]
+					}
+
+					if len(args) > 2 {
+						if res, err := strconv.ParseInt(args[2], 10, 32); err == nil {
+							rtt = int32(res)
+						} else {
+							log.Fatalln(fmt.Errorf("could not parse 3rd argument to number: %w", err))
+						}
+					}
+
+					optimizeCostMatrix(input, output, rtt)
+
+					return nil
+				},
+			},
+			{
+				Name:       "analyze",
+				ShortUsage: "next analyze <input_file>",
+				ShortHelp:  "Analyze a local route matrix and display it to stdout, the first argument is where to read the route matrix from",
+				Exec: func(ctx context.Context, args []string) error {
+					input := "optimize.bin"
+
+					if len(args) > 0 {
+						input = args[0]
+					}
+
+					analyzeRouteMatrix(input)
+
+					return nil
+				},
+			},
 		},
 		Exec: func(context.Context, []string) error {
 			fmt.Printf("Network Next Operator Tool\n\n")
