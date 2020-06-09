@@ -972,7 +972,7 @@ func main() {
 			{
 				Name:       "cost",
 				ShortUsage: "next cost <output_file>",
-				ShortHelp:  "Get cost matrix from current environment",
+				ShortHelp:  "Gets cost matrix from current environment",
 				Exec: func(ctx context.Context, args []string) error {
 					output := "cost.bin"
 					if len(args) > 0 {
