@@ -348,15 +348,6 @@ func main() {
 				},
 			},
 			{
-				Name:       "customers",
-				ShortUsage: "next customers",
-				ShortHelp:  "Generate a list of customers (buyers and sellers)",
-				Exec: func(_ context.Context, args []string) error {
-					customers(rpcClient, env)
-					return nil
-				},
-			},
-			{
 				Name:       "env",
 				ShortUsage: "next env",
 				ShortHelp:  "Display environment",
@@ -448,6 +439,15 @@ func main() {
 						return nil
 					}
 					datacenters(rpcClient, env, "")
+					return nil
+				},
+			},
+			{
+				Name:       "customers",
+				ShortUsage: "next customers",
+				ShortHelp:  "List customers",
+				Exec: func(_ context.Context, args []string) error {
+					customers(rpcClient, env)
 					return nil
 				},
 			},
