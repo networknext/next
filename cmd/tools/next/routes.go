@@ -36,6 +36,7 @@ func routes(rpcClient jsonrpc.RPCClient, env Environment, srcrelays []string, de
 	}
 }
 
+// todo: move to cost
 func saveCostMatrix(env Environment, filename string) {
 	var uri string
 	var err error
@@ -67,6 +68,7 @@ func saveCostMatrix(env Environment, filename string) {
 	}
 }
 
+// todo: move to optimize
 func optimizeCostMatrix(costFilename, routeFilename string, rtt int32) {
 	var costMatrix routing.CostMatrix
 
@@ -96,6 +98,7 @@ func optimizeCostMatrix(costFilename, routeFilename string, rtt int32) {
 	}
 }
 
+// todo: move to analyze
 func analyzeRouteMatrix(inputFile string) {
 	file, err := os.Open(inputFile)
 	if err != nil {

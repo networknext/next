@@ -76,6 +76,8 @@ func debug(relayName string, inputFile string) {
 
 		index := routing.TriMatrixIndex(a, dest.index)
 
+		directRTT := routeMatrix.Entries[index].DirectRTT
+
 		numRoutes := int(routeMatrix.Entries[index].NumRoutes)
 
 		for i := 0; i < numRoutes; i++ {
@@ -91,5 +93,7 @@ func debug(relayName string, inputFile string) {
 				}
 			}
 		}
+
+		fmt.Printf("    %*dms: direct\n", 5, directRTT)
 	}
 }
