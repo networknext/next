@@ -462,6 +462,7 @@ type DatacentersReply struct {
 }
 
 type datacenter struct {
+	ID        uint64  `json:"id"`
 	Name      string  `json:"name"`
 	Latitude  float64 `json:"latitude"`
 	Longitude float64 `json:"longitude"`
@@ -471,6 +472,7 @@ type datacenter struct {
 func (s *OpsService) Datacenters(r *http.Request, args *DatacentersArgs, reply *DatacentersReply) error {
 	for _, d := range s.Storage.Datacenters() {
 		reply.Datacenters = append(reply.Datacenters, datacenter{
+			ID:        d.ID,
 			Name:      d.Name,
 			Enabled:   d.Enabled,
 			Latitude:  d.Location.Latitude,
