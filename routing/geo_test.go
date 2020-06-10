@@ -13,6 +13,14 @@ import (
 	"github.com/networknext/backend/routing"
 )
 
+func TestLocation(t *testing.T) {
+	zeroloc := routing.Location{}
+	assert.True(t, zeroloc.IsZero())
+
+	loc := routing.Location{Latitude: 13, Longitude: 15}
+	assert.False(t, loc.IsZero())
+}
+
 func TestIPLocator(t *testing.T) {
 	t.Run("IPStack", func(t *testing.T) {
 		ipstack := routing.IPStack{
