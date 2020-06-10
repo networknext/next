@@ -601,4 +601,4 @@ update-sdk: ## updates the sdk submodule to point at head revision
 
 .PHONY: sync
 sync: ## sync latest code including the sdk submodule
-	git pull && cd sdk && git pull
+	git pull && git submodule update --recursive
