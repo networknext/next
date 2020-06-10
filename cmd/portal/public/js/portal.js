@@ -298,7 +298,7 @@ UserHandler = {
 				Object.assign(rootComponent.$data.modals.signup, {
 					showSuccess: false,
 				});
-			}, 5000);
+			}, 30000);
 		})
 		.catch((e) => {
 			console.log("Something went wrong creating new user");
@@ -310,7 +310,7 @@ UserHandler = {
 				Object.assign(rootComponent.$data.modals.signup, {
 					showFailure: false,
 				});
-			}, 5000);
+			}, 30000);
 		});
 	}
 }
@@ -1170,40 +1170,30 @@ function generateCharts(data) {
 		height: 260,
 	};
 
-	const latencyImprovementOpts = {
-		...defaultOpts,
-		series: [
-			{},
-			{
-				stroke: "green",
-				fill: "rgba(0,255,0,0.1)",
-				label: "Improvement",
-			},
-		],
-		axes: [
-			{},
-			{
-			  show: true,
-			  gap: 5,
-			  size: 70,
-			  values: (self, ticks) => ticks.map(rawValue => rawValue + "ms"),
-			}
-		  ]
-	};
-
 	const latencycomparisonOpts = {
 		...defaultOpts,
+		scales: {
+			y: {
+				auto: false,
+				range: (self, min, max) => [
+					0,
+					max,
+				],
+			}
+		},
 		series: [
 			{},
 			{
 				stroke: "blue",
 				fill: "rgba(0,0,255,0.1)",
 				label: "Network Next",
+				value: (self, rawValue) => rawValue.toFixed(2)
 			},
 			{
 				stroke: "red",
 				fill: "rgba(255,0,0,0.1)",
 				label: "Direct",
+				value: (self, rawValue) => rawValue.toFixed(2)
 			},
 		],
 		axes: [
@@ -1214,58 +1204,55 @@ function generateCharts(data) {
 			  size: 70,
 			  values: (self, ticks) => ticks.map(rawValue => rawValue + "ms"),
 			}
-		  ]
-	};
-
-	const packetLossImprovementOpts = {
-		...defaultOpts,
-		series: [
-			{},
-			{
-				stroke: "green",
-				fill: "rgba(0,255,0,0.1)",
-				label: "Improvement",
-			},
 		],
-		axes: [
-			{},
-			{
-			  show: true,
-			  gap: 5,
-			  size: 50,
-			  values: (self, ticks) => ticks.map(rawValue => rawValue + "%"),
-			}
-		  ]
 	};
 
 	const packetLossComparisonOpts = {
 		...defaultOpts,
+		scales: {
+			y: {
+				auto: false,
+				range: [0, 100],
+			}
+		},
 		series: [
 			{},
 			{
 				stroke: "blue",
 				fill: "rgba(0,0,255,0.1)",
 				label: "Network Next",
+				value: (self, rawValue) => rawValue.toFixed(2)
 			},
 			{
 				stroke: "red",
 				fill: "rgba(255,0,0,0.1)",
 				label: "Direct",
+				value: (self, rawValue) => rawValue.toFixed(2)
 			},
 		],
 		axes: [
 			{},
 			{
+				scale: "%",
 			  show: true,
 			  gap: 5,
 			  size: 50,
 			  values: (self, ticks) => ticks.map(rawValue => rawValue + "%"),
 			}
-		]
+		],
 	};
 
 	const bandwidthUpOpts = {
 		...defaultOpts,
+		scales: {
+			y: {
+				auto: false,
+				range: (self, min, max) => [
+					0,
+					max,
+				],
+			}
+		},
 		series: [
 			{},
 			{
@@ -1287,6 +1274,15 @@ function generateCharts(data) {
 
 	const bandwidthDownOpts = {
 		...defaultOpts,
+		scales: {
+			y: {
+				auto: false,
+				range: (self, min, max) => [
+					0,
+					max,
+				],
+			}
+		},
 		series: [
 			{},
 			{
@@ -1306,14 +1302,6 @@ function generateCharts(data) {
 		]
 	};
 
-	if (rootComponent.$data.pages.sessionTool.graphs.latencyImprovementChart != null) {
-		rootComponent.$data.pages.sessionTool.graphs.latencyImprovementChart.destroy();
-	}
-
-	Object.assign(rootComponent.$data.pages.sessionTool.graphs, {
-		latencyImprovementChart: new uPlot(latencyImprovementOpts, latencyData.improvement, document.getElementById("latency-chart-1"))
-	});
-
 	if (rootComponent.$data.pages.sessionTool.graphs.latencyComparisonChart != null) {
 		rootComponent.$data.pages.sessionTool.graphs.latencyComparisonChart.destroy();
 	}
@@ -1322,31 +1310,12 @@ function generateCharts(data) {
 		latencyComparisonChart: new uPlot(latencycomparisonOpts, latencyData.comparison, document.getElementById("latency-chart-2"))
 	});
 
-	// let jitterImprovementChart = new uPlot(latencyImprovementOpts, jitterData.improvement, document.getElementById("jitter-chart-1"));
-	// let jitterComparisonChart = new uPlot(latencycomparisonOpts, jitterData.comparison, document.getElementById("jitter-chart-2"));
-
-	if (rootComponent.$data.pages.sessionTool.graphs.jitterImprovementChart != null) {
-		rootComponent.$data.pages.sessionTool.graphs.jitterImprovementChart.destroy();
-	}
-
-	Object.assign(rootComponent.$data.pages.sessionTool.graphs, {
-		jitterImprovementChart: new uPlot(latencyImprovementOpts, jitterData.improvement, document.getElementById("jitter-chart-1"))
-	});
-
 	if (rootComponent.$data.pages.sessionTool.graphs.jitterComparisonChart != null) {
 		rootComponent.$data.pages.sessionTool.graphs.jitterComparisonChart.destroy();
 	}
 
 	Object.assign(rootComponent.$data.pages.sessionTool.graphs, {
 		jitterComparisonChart: new uPlot(latencycomparisonOpts, jitterData.comparison, document.getElementById("jitter-chart-2"))
-	});
-
-	if (rootComponent.$data.pages.sessionTool.graphs.packetLossImprovementChart != null) {
-		rootComponent.$data.pages.sessionTool.graphs.packetLossImprovementChart.destroy();
-	}
-
-	Object.assign(rootComponent.$data.pages.sessionTool.graphs, {
-		packetLossImprovementChart: new uPlot(packetLossImprovementOpts, packetLossData.improvement, document.getElementById("packet-loss-chart-1"))
 	});
 
 	if (rootComponent.$data.pages.sessionTool.graphs.packetLossComparisonChart != null) {
