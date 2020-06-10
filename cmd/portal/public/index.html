@@ -464,10 +464,10 @@
                                                 </span>
                                             </td>
                                             <td class="text-right ">
-                                                {{ parseFloat(session.direct_rtt).toFixed(2) || "-" }}
+                                                {{ parseFloat(session.direct_rtt).toFixed(2) == 0 ? "-" : parseFloat(session.direct_rtt).toFixed(2) }}
                                             </td>
                                             <td class="text-right ">
-                                                {{ parseFloat(session.next_rtt).toFixed(2) || "-"}}
+                                                {{ parseFloat(session.next_rtt).toFixed(2) == 0 ? "-" : parseFloat(session.next_rtt).toFixed(2) }}
                                             </td>
                                             <td class="text-right ">
                                                 <span v-if="session.delta_rtt > 0 && session.on_network_next"
