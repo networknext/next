@@ -15,5 +15,3 @@ printf "done\n"
 printf "Building functional tests... "
 go build -o ./dist/func_tests ./cmd/tools/functional/tests/func_tests.go
 printf "done\n"
-
-cd cmd/tools/keygen && ./build.sh
