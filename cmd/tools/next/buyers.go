@@ -95,5 +95,5 @@ func setRoutingRulesSettings(rpcClient jsonrpc.RPCClient, env Environment, buyer
 		return
 	}
 
-	fmt.Printf("Route shader for buyer with ID \"%d\" updated.\n", buyerID)
+	fmt.Printf("Route shader for buyer with ID \"%s\" updated.\n", buyerID)
 }
