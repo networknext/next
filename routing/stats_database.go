@@ -12,7 +12,7 @@ import (
 // HistorySize is the limit to how big the history of the relay entries should be
 const (
 	HistoryInvalidValue = -1
-	HistorySize         = 6
+	HistorySize         = 30	// 5 minutes @ 10 seconds per-sample
 
 	MaxJitter     = 250  // 10.0
 	MaxPacketLoss = 10.0 // 0.1
@@ -160,9 +160,9 @@ func (database *StatsDatabase) ProcessStats(statsUpdate *RelayStatsUpdate) {
 		relay.JitterHistory[relay.Index] = stats.Jitter
 		relay.PacketLossHistory[relay.Index] = stats.PacketLoss
 		relay.Index = (relay.Index + 1) % HistorySize
-		relay.RTT = HistoryMean(relay.RTTHistory[:])
-		relay.Jitter = HistoryMean(relay.JitterHistory[:])
-		relay.PacketLoss = HistoryMean(relay.PacketLossHistory[:])
+		relay.RTT = HistoryMax(relay.RTTHistory[:])
+		relay.Jitter = HistoryMax(relay.JitterHistory[:])
+		relay.PacketLoss = HistoryMax(relay.PacketLossHistory[:])
 
 		entry.Relays[destRelayID] = relay // is this needed? relay is a pointer
 	}
