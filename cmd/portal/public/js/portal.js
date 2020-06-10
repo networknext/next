@@ -116,7 +116,6 @@ MapHandler = {
 		},
 	},
 	mapInstance: null,
-	mapLoop: null,
 	initMap() {
 		let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
 		this.updateFilter('map', {
@@ -125,7 +124,7 @@ MapHandler = {
 		});
 
 		this.refreshMapSessions();
-		this.mapLoop = setInterval(() => {
+		setInterval(() => {
 			this.refreshMapSessions();
 		}, 10000);
 	},
@@ -366,7 +365,6 @@ WorkspaceHandler = {
 	},
 	changePage(page, options) {
 		// Clear all polling loops
-		MapHandler.mapLoop ? clearInterval(MapHandler.mapLoop) : null;
 		this.sessionLoop ? clearInterval(this.sessionLoop) : null;
 
 		switch (page) {
