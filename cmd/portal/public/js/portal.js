@@ -179,7 +179,7 @@ MapHandler = {
 					onNN: onNN,
 				});
 
-				const cellSize = 10, aggregation = 'MEAN';
+				const cellSize = 5, aggregation = 'MEAN';
 				let gpuAggregation = navigator.appVersion.indexOf("Win") == -1;
 
 				data = onNN;
