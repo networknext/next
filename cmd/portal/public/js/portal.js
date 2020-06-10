@@ -1173,7 +1173,8 @@ function generateCharts(data) {
 	const latencycomparisonOpts = {
 		...defaultOpts,
 		scales: {
-			y: {
+			"ms": {
+				from: "y",
 				auto: false,
 				range: (self, min, max) => [
 					0,
@@ -1199,6 +1200,7 @@ function generateCharts(data) {
 		axes: [
 			{},
 			{
+				scale: "ms",
 			  show: true,
 			  gap: 5,
 			  size: 70,
@@ -1233,7 +1235,6 @@ function generateCharts(data) {
 		axes: [
 			{},
 			{
-				scale: "%",
 			  show: true,
 			  gap: 5,
 			  size: 50,
@@ -1245,7 +1246,8 @@ function generateCharts(data) {
 	const bandwidthUpOpts = {
 		...defaultOpts,
 		scales: {
-			y: {
+			"kbps": {
+				from: "y",
 				auto: false,
 				range: (self, min, max) => [
 					0,
@@ -1264,6 +1266,7 @@ function generateCharts(data) {
 		axes: [
 			{},
 			{
+				scale: "kbps",
 			  show: true,
 			  gap: 5,
 			  size: 70,
@@ -1275,7 +1278,8 @@ function generateCharts(data) {
 	const bandwidthDownOpts = {
 		...defaultOpts,
 		scales: {
-			y: {
+			"kbps": {
+				from: "y",
 				auto: false,
 				range: (self, min, max) => [
 					0,
@@ -1294,6 +1298,7 @@ function generateCharts(data) {
 		axes: [
 			{},
 			{
+				scale: "kbps",
 			  show: true,
 			  gap: 5,
 			  size: 70,
