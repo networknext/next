@@ -357,6 +357,15 @@ func main() {
 				},
 			},
 			{
+				Name:       "invoice",
+				ShortUsage: "next invoice <start date, end date, buyer ID>",
+				ShortHelp:  "Returns invoicing data for one customer",
+				Exec: func(_ context.Context, args []string) error {
+					invoiceBuyer(rpcClient, env)
+					return nil
+				},
+			},
+			{
 				Name:       "env",
 				ShortUsage: "next env",
 				ShortHelp:  "Display environment",

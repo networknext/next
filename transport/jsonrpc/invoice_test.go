@@ -33,7 +33,7 @@ func TestInvoiceService(t *testing.T) {
 
 		svc.Invoices = mockGetInvoices
 
-		err := svc.InvoiceAllBuyers(nil, &args, &reply)
+		err := svc.InvoiceBuyer(nil, &args, &reply)
 		assert.NoError(t, err)
 
 		assert.Equal(t, "Fred Scuttle", string(reply.Invoices))

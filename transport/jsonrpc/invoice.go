@@ -23,6 +23,7 @@ type InvoiceService struct {
 }
 
 // InvoiceArgs maintains the start and end dates for the invoice query
+// BuyerID will be nil for InvoiceAllBuyers calls.
 type InvoiceArgs struct {
 	StartDate time.Time `json:"start_date"`
 	EndDate   time.Time `json:"end_date"`
@@ -69,9 +70,9 @@ func GetInvoices(s *InvoiceService, cacheName string) ([]byte, error) {
 	return existingData, nil
 }
 
-// InvoiceAllBuyers issues a BigQuery to generate invoices for all buyers within
-// a provided data range and return them in a single JSON reply.
-func (s *InvoiceService) InvoiceAllBuyers(r *http.Request, args *InvoiceArgs, reply *InvoiceReply) error {
+// InvoiceBuyer issues a BigQuery to generate invoices for a
+// specified buyer within a provided data range
+func (s *InvoiceService) InvoiceBuyer(r *http.Request, args *InvoiceArgs, reply *InvoiceReply) error {
 
 	ctx := context.Background()
 
@@ -168,3 +169,6 @@ func (s *InvoiceService) InvoiceAllBuyers(r *http.Request, args *InvoiceArgs, re
 	// fall through
 	return err
 }
+
+// InvoiceAllBuyers issues a BigQuery to generate invoices for all buyers within
+// a provided data range and return them in a single JSON reply.
