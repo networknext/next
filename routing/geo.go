@@ -41,6 +41,11 @@ type Location struct {
 	ISP       string  `json:"isp"`
 }
 
+// IsZero reports whether l represents the zero location lat/long 0,0 similar to how Time.IsZero works.
+func (l *Location) IsZero() bool {
+	return l.Latitude == 0 && l.Longitude == 0
+}
+
 type IPStack struct {
 	*http.Client
 
