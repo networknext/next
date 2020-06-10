@@ -12,7 +12,7 @@ import (
 // HistorySize is the limit to how big the history of the relay entries should be
 const (
 	HistoryInvalidValue = -1
-	HistorySize         = 30	// 5 minutes @ 10 seconds per-sample
+	HistorySize         = 300	// 5 minutes @ 1 relay update per-second
 
 	MaxJitter     = 250  // 10.0
 	MaxPacketLoss = 10.0 // 0.1
