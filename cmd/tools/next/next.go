@@ -971,7 +971,7 @@ func main() {
 			},
 			{
 				Name:       "cost",
-				ShortUsage: "next cost <output_file>",
+				ShortUsage: "next cost [output_file]",
 				ShortHelp:  "Get cost matrix from current environment",
 				Exec: func(ctx context.Context, args []string) error {
 					output := "cost.bin"
@@ -985,7 +985,7 @@ func main() {
 			},
 			{
 				Name:       "optimize",
-				ShortUsage: "next optimize <rtt> <input_file> <output_file>",
+				ShortUsage: "next optimize [rtt] [input_file] [output_file]",
 				ShortHelp:  "Optimize cost matrix into a route matrix",
 				Exec: func(ctx context.Context, args []string) error {
 					input := "cost.bin"
@@ -1028,6 +1028,23 @@ func main() {
 
 					analyzeRouteMatrix(input)
 
+					return nil
+				},
+			},
+			{
+				Name:       "debug",
+				ShortUsage: "next debug <relay_name> [input_file]",
+				ShortHelp:  "Debug tool",
+				Exec: func(ctx context.Context, args []string) error {
+					if len(args) == 0 {
+						log.Fatal("You need to supply a relay name")
+					}
+					relayName := args[0]
+					inputFile := "optimize.bin"
+					if len(args) > 1 {
+						inputFile = args[1]
+					}
+					debug(relayName, inputFile)
 					return nil
 				},
 			},
