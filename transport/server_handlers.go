@@ -272,7 +272,10 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, store
 			level.Error(locallogger).Log("msg", "failed to get datacenter from storage", "err", err, "customer_id", packet.CustomerID)
 			metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 			metrics.ErrorMetrics.DatacenterNotFound.Add(1)
-			return
+
+			// Don't return early, just set an UnknownDatacenter so the ServerCacheEntry gets sets so its used by SessionUpdateHandlerFunc
+			datacenter = routing.UnknownDatacenter
+			datacenter.ID = packet.DatacenterID
 		}
 
 		locallogger = log.With(locallogger, "customer_id", packet.CustomerID)
