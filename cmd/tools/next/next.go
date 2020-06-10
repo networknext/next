@@ -330,7 +330,7 @@ func main() {
 					env.AuthToken = gjson.ParseBytes(body).Get("access_token").String()
 					env.Write()
 
-					fmt.Print("Successfully authorized")
+					fmt.Print("Successfully authorize\n")
 
 					return nil
 				},
