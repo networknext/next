@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -44,14 +45,14 @@ type BuyersReply struct {
 }
 
 type buyer struct {
-	ID   uint64 `json:"id"`
+	ID   string `json:"id"`
 	Name string `json:"name"`
 }
 
 func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersReply) error {
 	for _, b := range s.Storage.Buyers() {
 		reply.Buyers = append(reply.Buyers, buyer{
-			ID:   b.ID,
+			ID:   fmt.Sprintf("%x", b.ID),
 			Name: b.Name,
 		})
 	}
@@ -77,7 +78,7 @@ func (s *OpsService) AddBuyer(r *http.Request, args *AddBuyerArgs, reply *AddBuy
 }
 
 type RemoveBuyerArgs struct {
-	ID uint64
+	ID string
 }
 
 type RemoveBuyerReply struct{}
@@ -86,11 +87,16 @@ func (s *OpsService) RemoveBuyer(r *http.Request, args *RemoveBuyerArgs, reply *
 	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
-	return s.Storage.RemoveBuyer(ctx, args.ID)
+	buyerID, err := strconv.ParseUint(args.ID, 16, 64)
+	if err != nil {
+		return fmt.Errorf("could not convert buyer ID %s to uint64: %v", args.ID, err)
+	}
+
+	return s.Storage.RemoveBuyer(ctx, buyerID)
 }
 
 type RoutingRulesSettingsArgs struct {
-	BuyerID uint64
+	BuyerID string
 }
 
 type RoutingRulesSettingsReply struct {
@@ -118,7 +124,12 @@ type routingRuleSettings struct {
 }
 
 func (s *OpsService) RoutingRulesSettings(r *http.Request, args *RoutingRulesSettingsArgs, reply *RoutingRulesSettingsReply) error {
-	buyer, err := s.Storage.Buyer(args.BuyerID)
+	buyerID, err := strconv.ParseUint(args.BuyerID, 16, 64)
+	if err != nil {
+		return fmt.Errorf("could not convert buyer ID %s to uint64: %v", args.BuyerID, err)
+	}
+
+	buyer, err := s.Storage.Buyer(buyerID)
 	if err != nil {
 		return err
 	}
@@ -149,7 +160,7 @@ func (s *OpsService) RoutingRulesSettings(r *http.Request, args *RoutingRulesSet
 }
 
 type SetRoutingRulesSettingsArgs struct {
-	BuyerID              uint64
+	BuyerID              string
 	RoutingRulesSettings routing.RoutingRulesSettings
 }
 
@@ -157,7 +168,12 @@ func (s *OpsService) SetRoutingRulesSettings(r *http.Request, args *SetRoutingRu
 	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
-	buyer, err := s.Storage.Buyer(args.BuyerID)
+	buyerID, err := strconv.ParseUint(args.BuyerID, 16, 64)
+	if err != nil {
+		return fmt.Errorf("could not convert buyer ID %s to uint64: %v", args.BuyerID, err)
+	}
+
+	buyer, err := s.Storage.Buyer(buyerID)
 	if err != nil {
 		return err
 	}

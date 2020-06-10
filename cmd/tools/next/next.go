@@ -8,6 +8,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/base64"
+	"encoding/binary"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -238,6 +239,14 @@ func handleJSONRPCError(env Environment, err error) {
 			log.Fatal(err)
 		}
 	}
+}
+
+type buyer struct {
+	Name      string
+	Domain    string
+	Active    bool
+	Live      bool
+	PublicKey string
 }
 
 type relay struct {
@@ -757,13 +766,30 @@ func main() {
 							jsonData := readJSONData("buyers", args)
 
 							// Unmarshal the JSON and create the Buyer struct
-							var buyer routing.Buyer
-							if err := json.Unmarshal(jsonData, &buyer); err != nil {
+							var b buyer
+							if err := json.Unmarshal(jsonData, &b); err != nil {
 								log.Fatalf("Could not unmarshal buyer: %v", err)
 							}
 
+							// Get the ID from the first 8 bytes of the public key
+							publicKey, err := base64.StdEncoding.DecodeString(b.PublicKey)
+							if err != nil {
+								log.Fatalf("Could not get buyer ID from public key: %v", err)
+							}
+
+							if len(publicKey) != crypto.KeySize+8 {
+								log.Fatalf("Invalid public key length %d", len(publicKey))
+							}
+
 							// Add the Buyer to storage
-							addBuyer(rpcClient, env, buyer)
+							addBuyer(rpcClient, env, routing.Buyer{
+								ID:        binary.LittleEndian.Uint64(publicKey[:8]),
+								Name:      b.Name,
+								Domain:    b.Domain,
+								Active:    b.Active,
+								Live:      b.Live,
+								PublicKey: publicKey,
+							})
 							return nil
 						},
 						Subcommands: []*ffcli.Command{
@@ -772,11 +798,15 @@ func main() {
 								ShortUsage: "next buyer add example",
 								ShortHelp:  "Displays an example buyer for the correct JSON schema",
 								Exec: func(_ context.Context, args []string) error {
-									example := routing.Buyer{
-										ID:        11818940844188991616,
+									examplePublicKey := make([]byte, crypto.KeySize+8) // 8 bytes for buyer ID
+									examplePublicKeyString := base64.StdEncoding.EncodeToString(examplePublicKey)
+
+									example := buyer{
 										Name:      "Psyonix",
 										Domain:    "example.com",
-										PublicKey: make([]byte, crypto.KeySize),
+										Active:    true,
+										Live:      true,
+										PublicKey: examplePublicKeyString,
 									}
 
 									jsonBytes, err := json.MarshalIndent(example, "", "\t")
@@ -800,12 +830,7 @@ func main() {
 								log.Fatal("Provide the buyer ID of the buyer you wish to remove\nFor a list of buyers, use next buyers")
 							}
 
-							buyerID, err := strconv.ParseInt(args[0], 10, 64)
-							if err != nil {
-								log.Fatalf("Error parsing ID %s: %v", args[0], err)
-							}
-
-							removeBuyer(rpcClient, env, uint64(buyerID))
+							removeBuyer(rpcClient, env, args[0])
 							return nil
 						},
 					},
@@ -880,14 +905,8 @@ func main() {
 						log.Fatal("No buyer ID provided.\nUsage:\nnext shader <buyer ID>\nbuyer ID: the buyer's ID\nFor a list of buyers, use next buyers")
 					}
 
-					// Parse buyerID into uint64
-					buyerID, err := strconv.ParseUint(args[0], 10, 64)
-					if err != nil {
-						log.Fatalf("Failed to parse \"%s\" as a buyer ID, must be a valid 64 bit unsigned integer\nFor a list of buyers, use next buyers", args[0])
-					}
-
 					// Get the buyer's route shader
-					routingRulesSettings(rpcClient, env, buyerID)
+					routingRulesSettings(rpcClient, env, args[0])
 					return nil
 				},
 				Subcommands: []*ffcli.Command{
@@ -900,12 +919,6 @@ func main() {
 								log.Fatal("No buyer ID provided.\nUsage:\nnext shader set <buyer ID> [filepath]\nbuyer ID: the buyer's ID\n(Optional) filepath: the filepath to a JSON file with the new route shader data. If this data is piped through stdin, this parameter is optional.\nFor a list of buyers, use next buyers")
 							}
 
-							// Parse buyerID into uint64
-							buyerID, err := strconv.ParseUint(args[0], 10, 64)
-							if err != nil {
-								log.Fatalf("Failed to parse \"%s\" as a buyer ID, must be a valid 64 bit unsigned integer\nFor a list of buyers, use next buyers", args[0])
-							}
-
 							jsonData := readJSONData("buyers", args[1:])
 
 							// Unmarshal the JSON and create the RoutingRuleSettings struct
@@ -915,7 +928,7 @@ func main() {
 							}
 
 							// Set the route shader in storage
-							setRoutingRulesSettings(rpcClient, env, buyerID, rrs)
+							setRoutingRulesSettings(rpcClient, env, args[0], rrs)
 							return nil
 						},
 						Subcommands: []*ffcli.Command{
