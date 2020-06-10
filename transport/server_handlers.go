@@ -668,7 +668,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 		}
 		level.Debug(locallogger).Log("client_ip", packet.ClientAddress.IP.String(), "lat", location.Latitude, "long", location.Longitude)
 
-		clientRelays, err := geoClient.RelaysWithin(location.Latitude, location.Longitude, 500, "mi")
+		clientRelays, err := geoClient.RelaysWithin(sessionCacheEntry.Location.Latitude, sessionCacheEntry.Location.Longitude, 2500, "mi")
 
 		if len(clientRelays) == 0 || err != nil {
 			if err != nil {
