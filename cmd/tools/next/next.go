@@ -370,13 +370,13 @@ func main() {
 						Name:       "buyer",
 						ShortUsage: "next invoice buyer <start date, end date, buyer ID>",
 						ShortHelp:  "Retrieve invoice data for a single buyer and month",
-						LongHelp:   "Start and end dates are specified in short form e.g. 2020-May-01.",
+						LongHelp:   "Start and end dates are specified in short form e.g. 2020-05-01 for May 1, 2020.",
 						Exec: func(_ context.Context, args []string) error {
-							startDate, err := time.Parse("2006-Jan-02", args[0])
+							startDate, err := time.Parse("2006-01-02", args[0])
 							if err != nil {
 								return err
 							}
-							endDate, err := time.Parse("2006-Jan-02", args[1])
+							endDate, err := time.Parse("2006-01-02", args[1])
 							if err != nil {
 								return err
 							}
@@ -397,13 +397,13 @@ func main() {
 						Name:       "all",
 						ShortUsage: "next invoice all <start date, end date>",
 						ShortHelp:  "Retrieve invoice data for all buyers for a single month",
-						LongHelp:   "Start and end dates are specified in short form e.g. 2020-May-01.",
+						LongHelp:   "Start and end dates are specified in short form e.g. 2020-05-01 for May 1, 2020.",
 						Exec: func(_ context.Context, args []string) error {
-							startDate, err := time.Parse("2006-Jan-02", args[0])
+							startDate, err := time.Parse("2006-01-02", args[0])
 							if err != nil {
 								return err
 							}
-							endDate, err := time.Parse("2006-Jan-02", args[1])
+							endDate, err := time.Parse("2006-01-02", args[1])
 							if err != nil {
 								return err
 							}
