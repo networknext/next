@@ -43,7 +43,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 
 	err := s.RedisClient.SMembers(fmt.Sprintf("user-%s-sessions", args.UserHash)).ScanSlice(&sessionIDs)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed getting user sessions: %v", err)
 	}
 
 	if len(sessionIDs) == 0 {
@@ -56,7 +56,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 
 		err = s.RedisClient.SMembers(fmt.Sprintf("user-%s-sessions", hashedID)).ScanSlice(&sessionIDs)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed getting user sessions: %v", err)
 		}
 	}
 
@@ -168,7 +168,7 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 	case "":
 		result, err = s.RedisClient.ZRangeWithScores("top-global", 0, 1000).Result()
 		if err != nil {
-			return err
+			return fmt.Errorf("failed getting top global sessions: %v", err)
 		}
 	default:
 		if !isSameBuyer && !isAdmin && !isOps {
@@ -176,7 +176,7 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 		}
 		result, err = s.RedisClient.ZRangeWithScores(fmt.Sprintf("top-buyer-%s", args.BuyerID), 0, 1000).Result()
 		if err != nil {
-			return err
+			return fmt.Errorf("failed getting top buyer sessions: %v", err)
 		}
 	}
 
@@ -188,7 +188,7 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 		}
 		_, err = gettx.Exec()
 		if err != nil && err != redis.Nil {
-			return err
+			return fmt.Errorf("failed getting top sessions meta: %v", err)
 		}
 	}
 
@@ -272,7 +272,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 
 	data, err := s.RedisClient.Get(fmt.Sprintf("session-%s-meta", args.SessionID)).Bytes()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed getting session meta: %v", err)
 	}
 	err = reply.Meta.UnmarshalBinary(data)
 	if err != nil {
@@ -299,7 +299,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 
 	err = s.RedisClient.SMembers(fmt.Sprintf("session-%s-slices", args.SessionID)).ScanSlice(&reply.Slices)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed getting session slices: %v", err)
 	}
 
 	sort.Slice(reply.Slices, func(i int, j int) bool {
@@ -348,7 +348,7 @@ func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, r
 	case "":
 		sessionIDs, err = s.RedisClient.SMembers("map-points-global").Result()
 		if err != nil {
-			return err
+			return fmt.Errorf("failed getting global map points: %v", err)
 		}
 	default:
 		if !isSameBuyer && !isAdmin {
@@ -356,7 +356,7 @@ func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, r
 		}
 		sessionIDs, err = s.RedisClient.SMembers(fmt.Sprintf("map-points-buyer-%s", args.BuyerID)).Result()
 		if err != nil {
-			return err
+			return fmt.Errorf("failed getting buyer map points: %v", err)
 		}
 	}
 
@@ -368,7 +368,7 @@ func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, r
 		}
 		_, err = gettx.Exec()
 		if err != nil && err != redis.Nil {
-			return err
+			return fmt.Errorf("failed getting session points: %v", err)
 		}
 	}
 
