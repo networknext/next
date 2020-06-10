@@ -6,8 +6,21 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
-func invoiceBuyer(rpcClient jsonrpc.RPCClient, env Environment) {
-	args := localjsonrpc.InvoiceArgs{}
+func invoiceBuyer(rpcClient jsonrpc.RPCClient, env Environment, args localjsonrpc.InvoiceArgs) {
+	// args := localjsonrpc.InvoiceArgs{}
+
+	var reply localjsonrpc.InvoiceReply
+	if err := rpcClient.CallFor(&reply, "InvoiceService.InvoiceBuyer", args); err != nil {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	// need to generate csv
+	table.Output(reply.Invoices)
+}
+
+func invoiceAllBuyers(rpcClient jsonrpc.RPCClient, env Environment, args localjsonrpc.InvoiceArgs) {
+	// args := localjsonrpc.InvoiceArgs{}
 
 	var reply localjsonrpc.InvoiceReply
 	if err := rpcClient.CallFor(&reply, "InvoiceService.InvoiceBuyer", args); err != nil {

@@ -23,6 +23,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
@@ -358,11 +359,63 @@ func main() {
 			},
 			{
 				Name:       "invoice",
-				ShortUsage: "next invoice <start date, end date, buyer ID>",
-				ShortHelp:  "Returns invoicing data for one customer",
+				ShortUsage: "next invoice <buyer|all>",
+				ShortHelp:  "Customer invoice commands",
 				Exec: func(_ context.Context, args []string) error {
-					invoiceBuyer(rpcClient, env)
+					fmt.Println("Subcommand required: <buyer|all>")
 					return nil
+				},
+				Subcommands: []*ffcli.Command{
+					{
+						Name:       "buyer",
+						ShortUsage: "next invoice buyer <start date, end date, buyer ID>",
+						ShortHelp:  "Retrieve invoice data for a single buyer and month",
+						LongHelp:   "Start and end dates are specified in short form e.g. 2020-May-01.",
+						Exec: func(_ context.Context, args []string) error {
+							startDate, err := time.Parse("2006-Jan-02", args[0])
+							if err != nil {
+								return err
+							}
+							endDate, err := time.Parse("2006-Jan-02", args[1])
+							if err != nil {
+								return err
+							}
+							if len(args) < 3 {
+								return fmt.Errorf("Buyer ID is required")
+							}
+							invoiceArgs := localjsonrpc.InvoiceArgs{
+								StartDate: startDate,
+								EndDate:   endDate,
+								BuyerID:   args[2],
+							}
+
+							invoiceBuyer(rpcClient, env, invoiceArgs)
+							return nil
+						},
+					},
+					{
+						Name:       "all",
+						ShortUsage: "next invoice all <start date, end date>",
+						ShortHelp:  "Retrieve invoice data for all buyers for a single month",
+						LongHelp:   "Start and end dates are specified in short form e.g. 2020-May-01.",
+						Exec: func(_ context.Context, args []string) error {
+							startDate, err := time.Parse("2006-Jan-02", args[0])
+							if err != nil {
+								return err
+							}
+							endDate, err := time.Parse("2006-Jan-02", args[1])
+							if err != nil {
+								return err
+							}
+							invoiceArgs := localjsonrpc.InvoiceArgs{
+								StartDate: startDate,
+								EndDate:   endDate,
+								BuyerID:   "",
+							}
+							invoiceAllBuyers(rpcClient, env, invoiceArgs)
+							return nil
+						},
+					},
 				},
 			},
 			{
