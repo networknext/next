@@ -80,7 +80,7 @@ func (s *InvoiceService) InvoiceBuyer(r *http.Request, args *InvoiceArgs, reply 
 	startDate := args.StartDate.Format("2006-01-02")
 	endDate := args.EndDate.Format("2006-01-02")
 
-	// fmt.Printf("Checking for cached result...\n")
+	fmt.Printf("Checking for cached result...\n")
 	cacheName := "cache-" + startDate + "-to-" + endDate + ".json"
 	fmt.Printf("cacheName: %s\n", cacheName)
 	d := NewGetter(s.Invoices)
@@ -88,10 +88,13 @@ func (s *InvoiceService) InvoiceBuyer(r *http.Request, args *InvoiceArgs, reply 
 
 	// if err != nil { // force BQ query
 	if err == nil {
+		fmt.Printf("Cache file found\n")
 		// cache file found, skip BQ query
 		reply.Invoices = rc
 		return nil
 	}
+
+	fmt.Printf("Cache file not found, err: %v\n", err)
 
 	// if err == nil { // force BQ query
 	if err == storage.ErrBucketNotExist {
