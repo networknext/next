@@ -30,7 +30,7 @@ func TestBuyers(t *testing.T) {
 		err := svc.Buyers(nil, &jsonrpc.BuyersArgs{}, &reply)
 		assert.NoError(t, err)
 
-		assert.Equal(t, reply.Buyers[0].ID, uint64(1))
+		assert.Equal(t, reply.Buyers[0].ID, "1")
 		assert.Equal(t, reply.Buyers[0].Name, "local.local.1")
 	})
 }
@@ -112,7 +112,7 @@ func TestAddBuyer(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Len(t, buyersReply.Buyers, 1)
-		assert.Equal(t, buyersReply.Buyers[0].ID, expected.ID)
+		assert.Equal(t, buyersReply.Buyers[0].ID, fmt.Sprintf("%x", expected.ID))
 		assert.Equal(t, buyersReply.Buyers[0].Name, expected.Name)
 	})
 
@@ -147,7 +147,7 @@ func TestRemoveBuyer(t *testing.T) {
 	t.Run("doesn't exist", func(t *testing.T) {
 		var reply jsonrpc.RemoveBuyerReply
 
-		err = svc.RemoveBuyer(nil, &jsonrpc.RemoveBuyerArgs{ID: expected.ID}, &reply)
+		err = svc.RemoveBuyer(nil, &jsonrpc.RemoveBuyerArgs{ID: fmt.Sprintf("%x", expected.ID)}, &reply)
 		assert.EqualError(t, err, "buyer with reference 1 not found")
 	})
 
@@ -157,7 +157,7 @@ func TestRemoveBuyer(t *testing.T) {
 		assert.NoError(t, err)
 
 		var reply jsonrpc.RemoveBuyerReply
-		err = svc.RemoveBuyer(nil, &jsonrpc.RemoveBuyerArgs{ID: expected.ID}, &reply)
+		err = svc.RemoveBuyer(nil, &jsonrpc.RemoveBuyerArgs{ID: fmt.Sprintf("%x", expected.ID)}, &reply)
 		assert.NoError(t, err)
 
 		var buyersReply jsonrpc.BuyersReply
@@ -178,7 +178,7 @@ func TestRoutingRulesSettings(t *testing.T) {
 	t.Run("doesn't exist", func(t *testing.T) {
 		var reply jsonrpc.RoutingRulesSettingsReply
 
-		err := svc.RoutingRulesSettings(nil, &jsonrpc.RoutingRulesSettingsArgs{}, &reply)
+		err := svc.RoutingRulesSettings(nil, &jsonrpc.RoutingRulesSettingsArgs{BuyerID: "0"}, &reply)
 		assert.EqualError(t, err, "buyer with reference 0 not found")
 	})
 
@@ -186,7 +186,7 @@ func TestRoutingRulesSettings(t *testing.T) {
 		storer.AddBuyer(context.Background(), routing.Buyer{ID: 0, Name: "local.local.1", RoutingRulesSettings: routing.DefaultRoutingRulesSettings})
 
 		var reply jsonrpc.RoutingRulesSettingsReply
-		err := svc.RoutingRulesSettings(nil, &jsonrpc.RoutingRulesSettingsArgs{}, &reply)
+		err := svc.RoutingRulesSettings(nil, &jsonrpc.RoutingRulesSettingsArgs{BuyerID: "0"}, &reply)
 		assert.NoError(t, err)
 
 		assert.Equal(t, reply.RoutingRuleSettings[0].EnvelopeKbpsUp, routing.DefaultRoutingRulesSettings.EnvelopeKbpsUp)
@@ -218,7 +218,7 @@ func TestSetRoutingRulesSettings(t *testing.T) {
 	t.Run("doesn't exist", func(t *testing.T) {
 		var reply jsonrpc.SetRoutingRulesSettingsReply
 
-		err := svc.SetRoutingRulesSettings(nil, &jsonrpc.SetRoutingRulesSettingsArgs{BuyerID: 0, RoutingRulesSettings: routing.LocalRoutingRulesSettings}, &reply)
+		err := svc.SetRoutingRulesSettings(nil, &jsonrpc.SetRoutingRulesSettingsArgs{BuyerID: "0", RoutingRulesSettings: routing.LocalRoutingRulesSettings}, &reply)
 		assert.EqualError(t, err, "buyer with reference 0 not found")
 	})
 
@@ -226,11 +226,11 @@ func TestSetRoutingRulesSettings(t *testing.T) {
 		storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, Name: "local.local.1", RoutingRulesSettings: routing.DefaultRoutingRulesSettings})
 
 		var reply jsonrpc.SetRoutingRulesSettingsReply
-		err := svc.SetRoutingRulesSettings(nil, &jsonrpc.SetRoutingRulesSettingsArgs{BuyerID: 1, RoutingRulesSettings: routing.LocalRoutingRulesSettings}, &reply)
+		err := svc.SetRoutingRulesSettings(nil, &jsonrpc.SetRoutingRulesSettingsArgs{BuyerID: "1", RoutingRulesSettings: routing.LocalRoutingRulesSettings}, &reply)
 		assert.NoError(t, err)
 
 		var rrsReply jsonrpc.RoutingRulesSettingsReply
-		err = svc.RoutingRulesSettings(nil, &jsonrpc.RoutingRulesSettingsArgs{BuyerID: 1}, &rrsReply)
+		err = svc.RoutingRulesSettings(nil, &jsonrpc.RoutingRulesSettingsArgs{BuyerID: "1"}, &rrsReply)
 		assert.NoError(t, err)
 
 		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnvelopeKbpsUp, routing.LocalRoutingRulesSettings.EnvelopeKbpsUp)

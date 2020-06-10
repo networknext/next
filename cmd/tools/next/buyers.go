@@ -24,17 +24,17 @@ func buyers(rpcClient jsonrpc.RPCClient, env Environment) {
 	})
 
 	buyers := []struct {
-		Name      string
-		ID        uint64
+		Name string
+		ID   string
 	}{}
 
 	for _, buyer := range reply.Buyers {
 		buyers = append(buyers, struct {
-			Name       string
-			ID         uint64
+			Name string
+			ID   string
 		}{
-			Name:        buyer.Name,
-			ID:          buyer.ID,
+			Name: buyer.Name,
+			ID:   buyer.ID,
 		})
 	}
 
@@ -55,7 +55,7 @@ func addBuyer(rpcClient jsonrpc.RPCClient, env Environment, buyer routing.Buyer)
 	fmt.Printf("Buyer \"%s\" added to storage.\n", buyer.Name)
 }
 
-func removeBuyer(rpcClient jsonrpc.RPCClient, env Environment, id uint64) {
+func removeBuyer(rpcClient jsonrpc.RPCClient, env Environment, id string) {
 	args := localjsonrpc.RemoveBuyerArgs{
 		ID: id,
 	}
@@ -66,10 +66,10 @@ func removeBuyer(rpcClient jsonrpc.RPCClient, env Environment, id uint64) {
 		return
 	}
 
-	fmt.Printf("Buyer with ID \"%d\" removed from storage.\n", id)
+	fmt.Printf("Buyer with ID \"%s\" removed from storage.\n", id)
 }
 
-func routingRulesSettings(rpcClient jsonrpc.RPCClient, env Environment, buyerID uint64) {
+func routingRulesSettings(rpcClient jsonrpc.RPCClient, env Environment, buyerID string) {
 	args := localjsonrpc.RoutingRulesSettingsArgs{
 		BuyerID: buyerID,
 	}
@@ -83,7 +83,7 @@ func routingRulesSettings(rpcClient jsonrpc.RPCClient, env Environment, buyerID 
 	table.Output(reply.RoutingRuleSettings)
 }
 
-func setRoutingRulesSettings(rpcClient jsonrpc.RPCClient, env Environment, buyerID uint64, rrs routing.RoutingRulesSettings) {
+func setRoutingRulesSettings(rpcClient jsonrpc.RPCClient, env Environment, buyerID string, rrs routing.RoutingRulesSettings) {
 	args := localjsonrpc.SetRoutingRulesSettingsArgs{
 		BuyerID:              buyerID,
 		RoutingRulesSettings: rrs,
@@ -95,5 +95,5 @@ func setRoutingRulesSettings(rpcClient jsonrpc.RPCClient, env Environment, buyer
 		return
 	}
 
-	fmt.Printf("Route shader for buyer with ID \"%d\" updated.\n", buyerID)
+	fmt.Printf("Route shader for buyer with ID \"%s\" updated.\n", buyerID)
 }

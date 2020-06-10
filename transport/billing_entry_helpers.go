@@ -1,8 +1,8 @@
 package transport
 
 import (
+	"fmt"
 	"net"
-	"strconv"
 	"time"
 
 	"github.com/networknext/backend/billing"
@@ -237,6 +237,6 @@ func NewBillingAddress(addr net.UDPAddr) *billing.Address {
 func NewEntityID(kind string, ID uint64) *billing.EntityID {
 	return &billing.EntityID{
 		Kind: kind,
-		Name: strconv.FormatUint(ID, 10),
+		Name: fmt.Sprintf("%x", ID),
 	}
 }
