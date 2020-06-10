@@ -154,11 +154,12 @@ func ServerInitHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer 
 
 		_, err := storer.Datacenter(packet.DatacenterID)
 		if err != nil {
+			// Log and track the missing datacenter metric, but don't respond with an error to the SDK
+			// as to allow the ServerUpdateHandlerFunc and SessionUpdateHandlerFunc to carry on working
+
 			sentry.CaptureException(err)
 			level.Error(locallogger).Log("msg", "failed to get datacenter from storage", "err", err)
-			response.Response = InitResponseUnknownDatacenter
 			metrics.ErrorMetrics.DatacenterNotFound.Add(1)
-			return
 		}
 
 		buyer, err := storer.Buyer(packet.CustomerID)
