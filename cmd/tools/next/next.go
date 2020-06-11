@@ -579,6 +579,24 @@ func main() {
 						},
 					},
 					{
+						Name:       "state",
+						ShortUsage: "next relay state <relay name> <state>",
+						ShortHelp:  "Sets the relay state directly",
+						LongHelp:   "This command should be avoided unless something goes wrong and the operator knows what he or she is doing.\nState values:\nenabled\noffline\nmaintenance\ndisabled\nquarantine\ndecommissioned",
+						Exec: func(ctx context.Context, args []string) error {
+							if len(args) == 0 {
+								log.Fatal("You need to supply a relay name")
+							}
+
+							if len(args) == 1 {
+								log.Fatal("You need to supply a relay state")
+							}
+
+							setRelayState(rpcClient, args[0], args[1])
+							return nil
+						},
+					},
+					{
 						Name:       "add",
 						ShortUsage: "next relay add <filepath>",
 						ShortHelp:  "Add relay(s) from a JSON file or piped from stdin",

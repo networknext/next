@@ -54,6 +54,26 @@ func (state RelayState) String() string {
 	}
 }
 
+// RelayStateFromString returns a relay state type given the state in string form
+func RelayStateFromString(str string) (RelayState, error) {
+	switch str {
+	case "enabled":
+		return RelayStateEnabled, nil
+	case "maintenance":
+		return RelayStateMaintenance, nil
+	case "disabled":
+		return RelayStateDisabled, nil
+	case "quarantine":
+		return RelayStateQuarantine, nil
+	case "decommissioned":
+		return RelayStateDecommissioned, nil
+	case "offline":
+		return RelayStateOffline, nil
+	default:
+		return RelayStateEnabled, fmt.Errorf("invalid relay state '%s'", str)
+	}
+}
+
 const (
 	// RelayStateEnabled if running and communicating with backend
 	RelayStateEnabled RelayState = 0
