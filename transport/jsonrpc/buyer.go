@@ -483,7 +483,7 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 	var err error
 	var buyer routing.Buyer
 
-	if IsAnonymous(r) {
+	if IsAnonymous(r) || IsAnonymousPlus(r) {
 		err = fmt.Errorf("GameConfiguration() insufficient privileges")
 		s.Logger.Log("err", err)
 		return err
