@@ -91,6 +91,17 @@ AuthHandler = {
 		}).catch((e) => {
 			Sentry.captureException(e);
 		});
+	},
+	signUp() {
+		this.auth0Client.loginWithRedirect({
+			connection: "Username-Password-Authentication",
+			redirect_uri: window.location.origin,
+			screen_hint: "signup"
+		}).then((response) => {
+			console.log(response)
+		}).catch((e) => {
+			Sentry.captureException(e);
+		});
 	}
 }
 
@@ -279,38 +290,14 @@ UserHandler = {
 	isAnonymous() {
 		return this.userInfo == null;
 	},
+	isAnonymousPlus() {
+		return !this.isAnonymous() ? this.userInfo.roles.length == 0 : false;
+	},
 	isOwner() {
 		return !this.isAnonymous() ? this.userInfo.roles.findIndex((role) => role.name == "Owner") !== -1 : false;
 	},
 	isViewer() {
 		return !this.isAnonymous() ? this.userInfo.roles.findIndex((role) => role.name == "Viewer") !== -1 : false;
-	},
-	signUp() {
-		JSONRPCClient
-		.call("AuthService.AddUserAccount", {emails: [rootComponent.modals.signup.email], roles: []})
-		.then((response) => {
-			// Account created successfully
-			Object.assign(rootComponent.$data.modals.signup, {
-				showSuccess: true,
-			});
-			setTimeout(() => {
-				Object.assign(rootComponent.$data.modals.signup, {
-					showSuccess: false,
-				});
-			}, 30000);
-		})
-		.catch((e) => {
-			console.log("Something went wrong creating new user");
-			Sentry.captureException(e);
-			Object.assign(rootComponent.$data.modals.signup, {
-				showFailure: true,
-			});
-			setTimeout(() => {
-				Object.assign(rootComponent.$data.modals.signup, {
-					showFailure: false,
-				});
-			}, 30000);
-		});
 	}
 }
 
@@ -369,7 +356,6 @@ WorkspaceHandler = {
 
 		switch (page) {
 			case 'downloads':
-				this.loadDownloadsPage();
 				break;
 			case 'map':
 				MapHandler.initMap();
@@ -388,6 +374,7 @@ WorkspaceHandler = {
 				id != '' ? this.fetchSessionInfo() : null;
 				break;
 			case 'settings':
+				let page = UserHandler.isAnonymousPlus() ? "config" : "users";
 				Object.assign(rootComponent.$data.pages.settings, {
 					newUser: {
 						failure: '',
@@ -395,7 +382,7 @@ WorkspaceHandler = {
 					},
 					showAccounts: false,
 					showConfig: false,
-					showSettings: true,
+					showSettings: false,
 					updateKey: {
 						failure: '',
 						success: '',
@@ -405,7 +392,8 @@ WorkspaceHandler = {
 						success: '',
 					},
 				});
-				this.loadSettingsPage();
+				this.changeSettingsPage(page);
+				page == "config" ? this.loadConfigPage() : this.loadSettingsPage();
 				break;
 			case 'userTool':
 				let hash = options || '';
@@ -507,8 +495,28 @@ WorkspaceHandler = {
 		accounts[index] = accountInfo;
 		Object.assign(rootComponent.$data.pages.settings, {accounts: accounts});
 	},
+	loadConfigPage() {
+		if (!UserHandler.isAnonymous()) {
+			JSONRPCClient
+				.call('BuyersService.GameConfiguration', {domain: UserHandler.userInfo.domain})
+				.then((response) => {
+					UserHandler.userInfo.pubKey = response.game_config.public_key;
+					UserHandler.userInfo.company = response.game_config.company;
+				})
+				.catch((e) => {
+					console.log("Something went wrong fetching public key");
+					console.log(e)
+					Sentry.captureException(e);
+					UserHandler.userInfo.pubKey = "";
+					UserHandler.userInfo.company = "";
+				});
+		} else {
+			UserHandler.userInfo.pubKey = "";
+			UserHandler.userInfo.company = "";
+		}
+	},
 	loadSettingsPage() {
-		if (UserHandler.isAnonymous()) {
+		if (UserHandler.isAnonymous() || UserHandler.isAnonymousPlus()) {
 			return;
 		}
 		if (UserHandler.userInfo.id != '') {
@@ -970,6 +978,7 @@ function createVueComponents() {
 }
 
 function updatePubKey() {
+	let userID = UserHandler.userInfo.userId;
 	let newPubKey = UserHandler.userInfo.pubKey;
 	let company = UserHandler.userInfo.company;
 	let domain = UserHandler.userInfo.domain
@@ -977,6 +986,31 @@ function updatePubKey() {
 	JSONRPCClient
 		.call("BuyersService.UpdateGameConfiguration", {name: company, domain: domain, new_public_key: newPubKey})
 		.then((response) => {
+			JSONRPCClient
+				.call("AuthService.UpgradeAccount", {company: company, user_id: userID})
+				.then((response) => {
+					UserHandler.userInfo = {
+						company: company,
+						domain: response.email.split("@")[1],
+						email: response.email,
+						name: response.name,
+						nickname: response.nickname,
+						userId: response.sub,
+						token: response.__raw
+					};
+				})
+				.catch((error) => {
+					console.log("Something went wrong upgrading your account");
+					Sentry.captureException(error);
+					Object.assign(rootComponent.$data.pages.settings.updateKey, {
+						failure: 'Failed to upgrade account',
+					});
+					setTimeout(() => {
+						Object.assign(rootComponent.$data.pages.settings.updateKey, {
+							failure: '',
+						});
+					}, 5000);
+				});
 			UserHandler.userInfo.pubKey = response.game_config.public_key;
 			Object.assign(rootComponent.$data.pages.settings.updateKey, {
 				success: 'Updated public key successfully',

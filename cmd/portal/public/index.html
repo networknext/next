@@ -236,12 +236,12 @@
                             Sessions
                         </a>
                     </li>
-                    <li class="nav-item text-nowrap" v-if="!handlers.userHandler.isAnonymous()">
+                    <li class="nav-item text-nowrap" v-if="!handlers.userHandler.isAnonymous() && !handlers.userHandler.isAnonymousPlus()">
                         <a class="nav-link" href="#" v-bind:class="{ active: pages.sessionTool.show }" v-on:click="handlers.workspaceHandler.changePage('sessionTool', '')">
                             Session Tool
                         </a>
                     </li>
-                    <li class="nav-item text-nowrap" v-if="!handlers.userHandler.isAnonymous()">
+                    <li class="nav-item text-nowrap" v-if="!handlers.userHandler.isAnonymous() && !handlers.userHandler.isAnonymousPlus()">
                         <a class="nav-link" href="#" v-bind:class="{ active: pages.userTool.show }" v-on:click="handlers.workspaceHandler.changePage('userTool', '')">
                             User Tool
                         </a>
@@ -251,7 +251,7 @@
                             Downloads
                         </a>
                     </li>
-                    <li class="nav-item text-nowrap" v-if="handlers.userHandler.isOwner() || handlers.userHandler.isAdmin()">
+                    <li class="nav-item text-nowrap" v-if="handlers.userHandler.isOwner() || handlers.userHandler.isAdmin() || handlers.userHandler.isAnonymousPlus()">
                         <a class="nav-link" href="#" v-bind:class="{ active: pages.settings.show }" v-on:click="handlers.workspaceHandler.changePage('settings')">
                             Settings
                         </a>
@@ -266,7 +266,7 @@
                 </ul>
                 <ul class="navbar-nav px-3" v-if="handlers.userHandler.isAnonymous()">
                     <li class="nav-item text-nowrap  ">
-                        <a class="nav-link" href="#" v-on:click="handlers.workspaceHandler.changeModal('signup')">
+                        <a class="nav-link" href="#" v-on:click="handlers.authHandler.signUp()">
                             Sign up
                         </a>
                     </li>
@@ -937,12 +937,12 @@
                         <div class="card" style="margin-bottom: 250px;">
                             <div class="card-header">
                                 <ul class="nav nav-tabs card-header-tabs">
-                                    <li class="nav-item">
+                                    <li class="nav-item"  v-if="handlers.userHandler.isOwner() || handlers.userHandler.isAdmin()">
                                         <a class="nav-link" id="accounts-link" href="#" v-bind:class="{ active: pages.settings.showSettings }" v-on:click="handlers.workspaceHandler.changeSettingsPage('users')">
                                             Users
                                         </a>
                                     </li>
-                                    <li class="nav-item" v-if="handlers.userHandler.isOwner()">
+                                    <li class="nav-item" v-if="handlers.userHandler.isOwner() || handlers.userHandler.isAdmin() || handlers.userHandler.isAnonymousPlus()">
                                         <a class="nav-link" id="config-link" href="#" v-bind:class="{ active: pages.settings.showConfig }" v-on:click="handlers.workspaceHandler.changeSettingsPage('config')">
                                             Game Configuration
                                         </a>
@@ -1226,7 +1226,7 @@
                                     Failed to create new account
                                 </div>
                                 <div class="modal-footer">
-                                    <button class="btn btn-primary btn-sm" v-on:click.prevent="handlers.userHandler.signUp()">
+                                    <button class="btn btn-primary btn-sm" v-on:click.prevent="handlers.authHandler.signUp()">
                                         Sign Up
                                     </button>
                                 </div>

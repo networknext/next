@@ -233,32 +233,92 @@ func TestAuthClient(t *testing.T) {
 
 		roles := []*management.Role{}
 
+<<<<<<< HEAD
 		// The user ID here is linked to baumbachandrew@gmail.com => Delete the user and this will not pass
 		err := svc.UpdateUserRoles(req, &jsonrpc.RolesArgs{UserID: "auth0|5b96f61cf1642721ad84eeb6", Roles: roles}, &reply)
+=======
+		err := svc.UpdateUserRoles(req, &jsonrpc.RolesArgs{UserID: "auth0|5eb41e3195054819ac206076", Roles: roles}, &reply)
+>>>>>>> got everything working but tests are giving me a hard time
 		assert.NoError(t, err)
 
 		assert.Equal(t, len(reply.Roles), 0)
 	})
+}
 
-	t.Run("Update auth0 roles", func(t *testing.T) {
+func TestAuthService(t *testing.T) {
+	jwtSideload := "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik5rWXpOekkwTkVVNVFrSTVNRVF4TURRMk5UWTBNakkzTmpOQlJESkVNa1E0TnpGRFF6QkdRdyJ9.eyJuaWNrbmFtZSI6ImpvaG4iLCJuYW1lIjoiam9obkBuZXR3b3JrbmV4dC5jb20iLCJwaWN0dXJlIjoiaHR0cHM6Ly9zLmdyYXZhdGFyLmNvbS9hdmF0YXIvMGIzZTgwMDFjYTJkN2NlM2I2ZmZlMTU2ZTczODRlZTU_cz00ODAmcj1wZyZkPWh0dHBzJTNBJTJGJTJGY2RuLmF1dGgwLmNvbSUyRmF2YXRhcnMlMkZqby5wbmciLCJ1cGRhdGVkX2F0IjoiMjAyMC0wNS0xOVQxOTo1MDoyMC44NjNaIiwiZW1haWwiOiJqb2huQG5ldHdvcmtuZXh0LmNvbSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJpc3MiOiJodHRwczovL25ldHdvcmtuZXh0LmF1dGgwLmNvbS8iLCJzdWIiOiJhdXRoMHw1ZWJhYzhiMjA3ZWU4YjFjMTliNGMwZTIiLCJhdWQiOiJvUUpIM1lQSGR2WkpueENQbzFJcnR6NVVLaTV6cnI2biIsImlhdCI6MTU4OTkxNzgyMiwiZXhwIjoxNzQ3NTk3ODIyLCJub25jZSI6IlJuRjFaVzlYYW1aS2VUTkVPRFJMTFhreVVVNVRielJSWVdjdVRGWjFUVlpFZDFVellYNDBXR05sTUE9PSJ9.Va2WRHDUj7XoXzvSkUDfx819RDpewyHMxyv0CIBfsWfVOCB80jRPBvQo7oImRM0FPMYyCl5r4i8-rU5jyg8fZUC3vSABVPALqxX4ViNy3qB4Zgn1RidXoUGKuAUTfi40fS_xDSDBoErRjkxzZuMby_9xNhBw5WwL6sKDGzGL-nayBWHf7LTf0wPwrhZPI4YtHdrJEzYUkwdMCJnMsuSZsgpwvfzvpLgg9NJ4me-VhTQAKJjxXIAsHD_QiI7EEPK1tcd58T11J_xsTktSmDVxuG0-QIs2ioWs0DJSepjcld4tLTlDDZObHIjo_edXd5Wk9zalxfAE7sPWUexFZPQMDA"
+	noopHandler := func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}
+	logger := log.NewNopLogger()
+
+	manager, err := management.New(
+		"networknext.auth0.com",
+		"0Hn8oZfUwy5UPo6bUk0hYCQ2hMJnwQYg",
+		"l2namTU5jKVAkuCwV3votIPcP87jcOuJREtscx07aLgo8EykReX69StUVBfJOzx5",
+	)
+	assert.NoError(t, err)
+
+	auth0Client := storage.Auth0{
+		Manager: manager,
+		Logger:  logger,
+	}
+	db := storage.InMemory{}
+	db.AddBuyer(context.Background(), routing.Buyer{ID: 111, Domain: "networknext.com"})
+
+	svc := jsonrpc.AuthService{
+		Auth0:   auth0Client,
+		Storage: &db,
+	}
+	authMiddleware := jsonrpc.AuthMiddleware("oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n", http.HandlerFunc(noopHandler))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Add("Authorization", "Bearer "+jwtSideload)
+	res := httptest.NewRecorder()
+
+	authMiddleware.ServeHTTP(res, req)
+	assert.Equal(t, http.StatusOK, res.Code)
+
+	t.Run("upgrade account", func(t *testing.T) {
+
 		var reply jsonrpc.RolesReply
 
-		id := "rol_YfFrtom32or4vH89"
-		name := "Admin"
-		description := "Can manage the Network Next system, including access to configstore."
+		roles := []*management.Role{}
 
-		roles := []*management.Role{
-			{ID: &id, Name: &name, Description: &description},
-		}
-
+<<<<<<< HEAD
 		// The user ID here is linked to baumbachandrew@gmail.com => Delete the user and this will not pass
 		err := svc.UpdateUserRoles(req, &jsonrpc.RolesArgs{UserID: "auth0|5b96f61cf1642721ad84eeb6", Roles: roles}, &reply)
+=======
+		err := svc.UpdateUserRoles(req, &jsonrpc.RolesArgs{UserID: "auth0|5eb41e3195054819ac206076", Roles: roles}, &reply)
+>>>>>>> got everything working but tests are giving me a hard time
 		assert.NoError(t, err)
 
-		assert.NotEqual(t, len(reply.Roles), 0)
-		assert.Equal(t, len(reply.Roles), 1)
-		assert.Equal(t, reply.Roles[0].ID, &id)
-		assert.Equal(t, reply.Roles[0].Name, &name)
-		assert.Equal(t, reply.Roles[0].Description, &description)
+		assert.Equal(t, len(reply.Roles), 0)
+
+		var upgradeReply jsonrpc.UpgradeReply
+
+		err = svc.UpgradeAccount(req, &jsonrpc.UpgradeArgs{UserID: "auth0|5eb41e3195054819ac206076", Company: "Test Company"}, &upgradeReply)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(upgradeReply.UpgradedAccount.Roles))
+
+		id := "rol_8r0281hf2oC4cvrD"
+		name := "Owner"
+		description := "Can access and manage everything in an account."
+
+		assert.Equal(t, &management.Role{
+			ID:          &id,
+			Name:        &name,
+			Description: &description,
+		}, upgradeReply.UpgradedAccount.Roles[0])
+
+		id = "rol_ScQpWhLvmTKRlqLU"
+		name = "Viewer"
+		description = "Can see current sessions and the map."
+
+		assert.Equal(t, &management.Role{
+			ID:          &id,
+			Name:        &name,
+			Description: &description,
+		}, upgradeReply.UpgradedAccount.Roles[0])
 	})
 }
