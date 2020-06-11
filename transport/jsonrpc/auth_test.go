@@ -190,12 +190,12 @@ func TestAuthClient(t *testing.T) {
 	t.Run("fetch user auth0 account", func(t *testing.T) {
 		var reply jsonrpc.AccountReply
 
-		err := svc.UserAccount(req, &jsonrpc.AccountArgs{UserID: "auth0|5e823e827e97a90cf402109e"}, &reply)
+		err := svc.UserAccount(req, &jsonrpc.AccountArgs{UserID: "auth0|5b96f61cf1642721ad84eeb6"}, &reply)
 		assert.NoError(t, err)
 
-		assert.Equal(t, reply.UserAccount.Name, "andrew@networknext.com")
-		assert.Equal(t, reply.UserAccount.Email, "andrew@networknext.com")
-		assert.Equal(t, reply.UserAccount.UserID, "5e823e827e97a90cf402109e")
+		assert.Equal(t, reply.UserAccount.Name, "test@networknext.com")
+		assert.Equal(t, reply.UserAccount.Email, "test@networknext.com")
+		assert.Equal(t, reply.UserAccount.UserID, "5b96f61cf1642721ad84eeb6")
 		assert.Equal(t, reply.UserAccount.ID, "111")
 		assert.Equal(t, reply.UserAccount.CompanyName, "")
 	})
@@ -210,7 +210,7 @@ func TestAuthClient(t *testing.T) {
 	t.Run("fetch user auth0 roles", func(t *testing.T) {
 		var reply jsonrpc.RolesReply
 
-		err := svc.UserRoles(req, &jsonrpc.RolesArgs{UserID: "auth0|5e823e827e97a90cf402109e"}, &reply)
+		err := svc.UserRoles(req, &jsonrpc.RolesArgs{UserID: "auth0|5b96f61cf1642721ad84eeb6"}, &reply)
 		assert.NoError(t, err)
 
 		assert.NotEqual(t, len(reply.Roles), 0)
@@ -231,7 +231,7 @@ func TestAuthClient(t *testing.T) {
 		roles := []*management.Role{}
 
 		// The user ID here is linked to baumbachandrew@gmail.com => Delete the user and this will not pass
-		err := svc.UpdateUserRoles(req, &jsonrpc.RolesArgs{UserID: "auth0|5eb41e3195054819ac206076", Roles: roles}, &reply)
+		err := svc.UpdateUserRoles(req, &jsonrpc.RolesArgs{UserID: "auth0|5b96f61cf1642721ad84eeb6", Roles: roles}, &reply)
 		assert.NoError(t, err)
 
 		assert.Equal(t, len(reply.Roles), 0)
@@ -249,7 +249,7 @@ func TestAuthClient(t *testing.T) {
 		}
 
 		// The user ID here is linked to baumbachandrew@gmail.com => Delete the user and this will not pass
-		err := svc.UpdateUserRoles(req, &jsonrpc.RolesArgs{UserID: "auth0|5eb41e3195054819ac206076", Roles: roles}, &reply)
+		err := svc.UpdateUserRoles(req, &jsonrpc.RolesArgs{UserID: "auth0|5b96f61cf1642721ad84eeb6", Roles: roles}, &reply)
 		assert.NoError(t, err)
 
 		assert.NotEqual(t, len(reply.Roles), 0)
