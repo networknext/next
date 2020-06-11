@@ -49,7 +49,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	var isSameBuyer bool = false
 	var isAnon bool = true
 
-	isAnon = IsAnonymous(r)
+	isAnon = IsAnonymous(r) || IsAnonymousPlus(r)
 
 	reply.Sessions = make([]routing.SessionMeta, 0)
 
@@ -155,7 +155,7 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 	var isAnon bool = true
 	var isOps bool = false
 
-	isAnon = IsAnonymous(r)
+	isAnon = IsAnonymous(r) || IsAnonymousPlus(r)
 	isOps = CheckIsOps(r)
 
 	if !isAnon && !isOps {
@@ -263,7 +263,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 	var isAnon bool = true
 	var isOps bool = false
 
-	isAnon = IsAnonymous(r)
+	isAnon = IsAnonymous(r) || IsAnonymousPlus(r)
 	isOps = CheckIsOps(r)
 
 	if !isAnon && !isOps {
@@ -337,7 +337,7 @@ func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, r
 	var isSameBuyer bool = false
 	var isAnon bool = true
 
-	isAnon = IsAnonymous(r)
+	isAnon = IsAnonymous(r) || IsAnonymousPlus(r)
 	if !isAnon {
 		isAdmin, err = CheckRoles(r, "Admin")
 		if err != nil {
@@ -470,6 +470,14 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		return fmt.Errorf("new public key is required")
 	}
 
+	allBuyers := s.Storage.Buyers()
+
+	for _, b := range allBuyers {
+		if b.EncodedPublicKey() == args.NewPublicKey {
+			return fmt.Errorf("key already in use")
+		}
+	}
+
 	buyer, err = s.Storage.BuyerWithDomain(args.Domain)
 
 	// Buyer not found
@@ -522,7 +530,7 @@ type buyerAccount struct {
 
 func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *BuyerListReply) error {
 	reply.Buyers = make([]buyerAccount, 0)
-	if IsAnonymous(r) {
+	if IsAnonymous(r) || IsAnonymousPlus(r) {
 		return nil
 	}
 

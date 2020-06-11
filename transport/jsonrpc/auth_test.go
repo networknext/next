@@ -210,15 +210,6 @@ func TestAuthClient(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	t.Run("fetch user auth0 roles", func(t *testing.T) {
-		var reply jsonrpc.RolesReply
-
-		err := svc.UserRoles(req, &jsonrpc.RolesArgs{UserID: "auth0|5b96f61cf1642721ad84eeb6"}, &reply)
-		assert.NoError(t, err)
-
-		assert.NotEqual(t, len(reply.Roles), 0)
-	})
-
 	t.Run("fetch all auth0 roles", func(t *testing.T) {
 		var reply jsonrpc.RolesReply
 
@@ -233,32 +224,9 @@ func TestAuthClient(t *testing.T) {
 
 		roles := []*management.Role{}
 
-		// The user ID here is linked to baumbachandrew@gmail.com => Delete the user and this will not pass
 		err := svc.UpdateUserRoles(req, &jsonrpc.RolesArgs{UserID: "auth0|5b96f61cf1642721ad84eeb6", Roles: roles}, &reply)
 		assert.NoError(t, err)
 
 		assert.Equal(t, len(reply.Roles), 0)
-	})
-
-	t.Run("Update auth0 roles", func(t *testing.T) {
-		var reply jsonrpc.RolesReply
-
-		id := "rol_YfFrtom32or4vH89"
-		name := "Admin"
-		description := "Can manage the Network Next system, including access to configstore."
-
-		roles := []*management.Role{
-			{ID: &id, Name: &name, Description: &description},
-		}
-
-		// The user ID here is linked to baumbachandrew@gmail.com => Delete the user and this will not pass
-		err := svc.UpdateUserRoles(req, &jsonrpc.RolesArgs{UserID: "auth0|5b96f61cf1642721ad84eeb6", Roles: roles}, &reply)
-		assert.NoError(t, err)
-
-		assert.NotEqual(t, len(reply.Roles), 0)
-		assert.Equal(t, len(reply.Roles), 1)
-		assert.Equal(t, reply.Roles[0].ID, &id)
-		assert.Equal(t, reply.Roles[0].Name, &name)
-		assert.Equal(t, reply.Roles[0].Description, &description)
 	})
 }

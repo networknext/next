@@ -61,7 +61,7 @@ type account struct {
 
 func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *AccountsReply) error {
 	var accountList *management.UserList
-	if IsAnonymous(r) {
+	if IsAnonymous(r) || IsAnonymousPlus(r) {
 		return ErrInsufficientPrivileges
 	}
 	_, err := CheckRoles(r, "Admin")
@@ -161,7 +161,7 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 }
 
 func (s *AuthService) DeleteUserAccount(r *http.Request, args *AccountArgs, reply *AccountReply) error {
-	if IsAnonymous(r) {
+	if IsAnonymous(r) || IsAnonymousPlus(r) {
 		return ErrInsufficientPrivileges
 	}
 
@@ -188,6 +188,10 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 
 	isAdmin := false
 
+	if IsAnonymous(r) || IsAnonymousPlus(r) {
+		return fmt.Errorf("insufficient privileges")
+	}
+
 	if !IsAnonymous(r) {
 		if _, err := CheckRoles(r, "Admin"); err != nil {
 			if _, err := CheckRoles(r, "Owner"); err != nil {
@@ -203,74 +207,7 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 		}
 	}
 
-	// Check if onboarding
-	emailParts := strings.Split(args.Emails[0], "@")
-	if len(emailParts) <= 0 {
-		return fmt.Errorf("failed to parse email %s for domain", args.Emails[0])
-	}
-	domain := emailParts[len(emailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
-
-	// Check if any other users in company exist
-	accountList, err := s.Auth0.Manager.User.List()
-
-	if err != nil {
-		return fmt.Errorf("failed to fetch user accounts")
-	}
-
-	found := false
-	for _, u := range accountList.Users {
-		userEmailParts := strings.Split(*u.Email, "@")
-		if len(userEmailParts) <= 0 {
-			return fmt.Errorf("failed to parse email %s for domain", *u.Email)
-		}
-		userDomain := userEmailParts[len(userEmailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
-		if found {
-			continue
-		}
-		if domain == userDomain {
-			found = true
-		}
-	}
-
-	roleNames := []string{
-		"rol_ScQpWhLvmTKRlqLU",
-		"rol_8r0281hf2oC4cvrD",
-	}
-	roleTypes := []string{
-		"Viewer",
-		"Owner",
-	}
-	roleDescriptions := []string{
-		"Can see current sessions and the map.",
-		"Can access and manage everything in an account.",
-	}
-
-	if !found {
-		// Onboard signup
-		roles = []*management.Role{
-			{
-				ID:          &roleNames[0],
-				Name:        &roleTypes[0],
-				Description: &roleDescriptions[0],
-			},
-			{
-				ID:          &roleNames[1],
-				Name:        &roleTypes[1],
-				Description: &roleDescriptions[1],
-			},
-		}
-	} else if found && len(args.Roles) == 0 {
-		// Not an onboard signup
-		roles = []*management.Role{
-			{
-				ID:          &roleNames[0],
-				Name:        &roleTypes[0],
-				Description: &roleDescriptions[0],
-			},
-		}
-	} else {
-		roles = args.Roles
-	}
+	roles = args.Roles
 
 	connectionID := "Username-Password-Authentication"
 	emails := args.Emails
@@ -399,7 +336,7 @@ func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesRep
 }
 
 func (s *AuthService) UserRoles(r *http.Request, args *RolesArgs, reply *RolesReply) error {
-	if IsAnonymous(r) {
+	if IsAnonymous(r) || IsAnonymousPlus(r) {
 		return ErrInsufficientPrivileges
 	}
 
@@ -426,7 +363,7 @@ func (s *AuthService) UserRoles(r *http.Request, args *RolesArgs, reply *RolesRe
 
 func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *RolesReply) error {
 	var err error
-	if IsAnonymous(r) {
+	if IsAnonymous(r) || IsAnonymousPlus(r) {
 		return ErrInsufficientPrivileges
 	}
 
@@ -464,6 +401,75 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 	}
 
 	reply.Roles = args.Roles
+	return nil
+}
+
+type UpgradeArgs struct {
+	Company string `json:"company"`
+	UserID  string `json:"user_id"`
+}
+
+type UpgradeReply struct {
+	UpgradedAccount account `json:"user_account"`
+}
+
+func (s *AuthService) UpgradeAccount(r *http.Request, args *UpgradeArgs, reply *UpgradeReply) error {
+	roleNames := []string{
+		"rol_ScQpWhLvmTKRlqLU",
+		"rol_8r0281hf2oC4cvrD",
+	}
+	roleTypes := []string{
+		"Viewer",
+		"Owner",
+	}
+	roleDescriptions := []string{
+		"Can see current sessions and the map.",
+		"Can access and manage everything in an account.",
+	}
+
+	// Upgrade account
+	roles := []*management.Role{
+		{
+			ID:          &roleNames[0],
+			Name:        &roleTypes[0],
+			Description: &roleDescriptions[0],
+		},
+		{
+			ID:          &roleNames[1],
+			Name:        &roleTypes[1],
+			Description: &roleDescriptions[1],
+		},
+	}
+
+	err := s.Auth0.Manager.User.AssignRoles(args.UserID, roles...)
+
+	if err != nil {
+		return err
+	}
+
+	userAccount, err := s.Auth0.Manager.User.Read(args.UserID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch user account: %w", err)
+	}
+
+	emailParts := strings.Split(*userAccount.Email, "@")
+	if len(emailParts) <= 0 {
+		return fmt.Errorf("failed to parse email %s for domain", *userAccount.Email)
+	}
+
+	domain := emailParts[len(emailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
+	buyer, err := s.Storage.BuyerWithDomain(domain)
+	if err != nil {
+		return err
+	}
+
+	userRoles, err := s.Auth0.Manager.User.Roles(*userAccount.ID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch user roles: %w", err)
+	}
+
+	reply.UpgradedAccount = newAccount(userAccount, userRoles.Roles, buyer)
+
 	return nil
 }
 
@@ -593,6 +599,15 @@ func SetIsAnonymous(r *http.Request, value bool) *http.Request {
 func IsAnonymous(r *http.Request) bool {
 	anon, ok := r.Context().Value(anonymousCallKey).(bool)
 	return ok && anon
+}
+
+func IsAnonymousPlus(r *http.Request) bool {
+	roles := r.Context().Value(rolesKey)
+
+	if roles != nil {
+		return len(roles.(management.RoleList).Roles) == 0
+	}
+	return false
 }
 
 func SetRoles(r *http.Request, roles management.RoleList) *http.Request {
