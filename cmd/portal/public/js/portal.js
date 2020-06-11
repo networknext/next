@@ -91,6 +91,17 @@ AuthHandler = {
 		}).catch((e) => {
 			Sentry.captureException(e);
 		});
+	},
+	signUp() {
+		this.auth0Client.loginWithRedirect({
+			connection: "Username-Password-Authentication",
+			redirect_uri: window.location.origin,
+			screen_hint: "signup"
+		}).then((response) => {
+			console.log(response)
+		}).catch((e) => {
+			Sentry.captureException(e);
+		});
 	}
 }
 
@@ -150,7 +161,7 @@ MapHandler = {
 	refreshMapSessions() {
 		let filter = rootComponent.$data.pages.map.filter;
 		JSONRPCClient
-			.call('BuyersService.SessionMapPoints', {buyer_id: filter.buyerId})
+			.call('BuyersService.SessionMapPoints', {buyer_id: filter.buyerId || ""})
 			.then((response) => {
 				let sessions = response.map_points;
 				let onNN = sessions.filter((point) => {
@@ -279,38 +290,14 @@ UserHandler = {
 	isAnonymous() {
 		return this.userInfo == null;
 	},
+	isAnonymousPlus() {
+		return !this.isAnonymous() ? this.userInfo.roles.length == 0 : false;
+	},
 	isOwner() {
 		return !this.isAnonymous() ? this.userInfo.roles.findIndex((role) => role.name == "Owner") !== -1 : false;
 	},
 	isViewer() {
 		return !this.isAnonymous() ? this.userInfo.roles.findIndex((role) => role.name == "Viewer") !== -1 : false;
-	},
-	signUp() {
-		JSONRPCClient
-		.call("AuthService.AddUserAccount", {emails: [rootComponent.modals.signup.email], roles: []})
-		.then((response) => {
-			// Account created successfully
-			Object.assign(rootComponent.$data.modals.signup, {
-				showSuccess: true,
-			});
-			setTimeout(() => {
-				Object.assign(rootComponent.$data.modals.signup, {
-					showSuccess: false,
-				});
-			}, 30000);
-		})
-		.catch((e) => {
-			console.log("Something went wrong creating new user");
-			Sentry.captureException(e);
-			Object.assign(rootComponent.$data.modals.signup, {
-				showFailure: true,
-			});
-			setTimeout(() => {
-				Object.assign(rootComponent.$data.modals.signup, {
-					showFailure: false,
-				});
-			}, 30000);
-		});
 	}
 }
 
@@ -333,43 +320,12 @@ WorkspaceHandler = {
 			showSettings: showSettings,
 		});
 	},
-	changeModal(modal) {
-		switch (modal) {
-			case 'signup':
-				Object.assign(rootComponent.$data.modals.signup, {
-					companyName: "",
-					email: ""
-				});
-				break;
-		}
-
-		Object.keys(rootComponent.$data.modals).forEach((modal) => {
-			Object.assign(rootComponent.$data.modals[modal], {show: false});
-		});
-
-		Object.assign(rootComponent.$data.modals[modal], {show: true});
-
-		this.welcomeTimeout !== null ? clearTimeout(this.welcomeTimeout) : null;
-
-		if (!($("#video-modal").data('bs.modal') || {})._isShown) {
-			$('#video-modal').modal('toggle');
-		}
-
-		$('#video-modal').on('hidden.bs.modal', function () {
-			let videoPlayer = document.getElementById("video-player");
-			if (videoPlayer) {
-				videoPlayer.parentElement.removeChild(videoPlayer)
-				videoPlayer.innerHTML = "<div></div>"
-			}
-		});
-	},
 	changePage(page, options) {
 		// Clear all polling loops
 		this.sessionLoop ? clearInterval(this.sessionLoop) : null;
 
 		switch (page) {
 			case 'downloads':
-				this.loadDownloadsPage();
 				break;
 			case 'map':
 				MapHandler.initMap();
@@ -388,6 +344,7 @@ WorkspaceHandler = {
 				id != '' ? this.fetchSessionInfo() : null;
 				break;
 			case 'settings':
+				let page = UserHandler.isAnonymousPlus() ? "config" : "users";
 				Object.assign(rootComponent.$data.pages.settings, {
 					newUser: {
 						failure: '',
@@ -395,7 +352,7 @@ WorkspaceHandler = {
 					},
 					showAccounts: false,
 					showConfig: false,
-					showSettings: true,
+					showSettings: false,
 					updateKey: {
 						failure: '',
 						success: '',
@@ -405,7 +362,8 @@ WorkspaceHandler = {
 						success: '',
 					},
 				});
-				this.loadSettingsPage();
+				this.changeSettingsPage(page);
+				page == "config" ? this.loadConfigPage() : this.loadSettingsPage();
 				break;
 			case 'userTool':
 				let hash = options || '';
@@ -507,8 +465,28 @@ WorkspaceHandler = {
 		accounts[index] = accountInfo;
 		Object.assign(rootComponent.$data.pages.settings, {accounts: accounts});
 	},
+	loadConfigPage() {
+		if (!UserHandler.isAnonymous()) {
+			JSONRPCClient
+				.call('BuyersService.GameConfiguration', {domain: UserHandler.userInfo.domain})
+				.then((response) => {
+					UserHandler.userInfo.pubKey = response.game_config.public_key;
+					UserHandler.userInfo.company = response.game_config.company;
+				})
+				.catch((e) => {
+					console.log("Something went wrong fetching public key");
+					console.log(e)
+					Sentry.captureException(e);
+					UserHandler.userInfo.pubKey = "";
+					UserHandler.userInfo.company = "";
+				});
+		} else {
+			UserHandler.userInfo.pubKey = "";
+			UserHandler.userInfo.company = "";
+		}
+	},
 	loadSettingsPage() {
-		if (UserHandler.isAnonymous()) {
+		if (UserHandler.isAnonymous() || UserHandler.isAnonymousPlus()) {
 			return;
 		}
 		if (UserHandler.userInfo.id != '') {
@@ -843,9 +821,20 @@ function startApp() {
 					Object.assign(rootComponent.$data, {allBuyers: response.Buyers});
 					if (UserHandler.isAnonymous()) {
 						WorkspaceHandler.welcomeTimeout = setTimeout(() => {
-							WorkspaceHandler.changeModal('welcome');
+							this.welcomeTimeout !== null ? clearTimeout(this.welcomeTimeout) : null;
+							if (!($("#video-modal").data('bs.modal') || {})._isShown) {
+								$('#video-modal').modal('toggle');
+							}
+
+							$('#video-modal').on('hidden.bs.modal', function () {
+								let videoPlayer = document.getElementById("video-player");
+								if (videoPlayer) {
+									videoPlayer.parentElement.removeChild(videoPlayer)
+									videoPlayer.innerHTML = "<div></div>"
+								}
+							});
 							WorkspaceHandler.welcomeTimeout = null;
-						}, 60000)
+						}, 30000)
 					}
 				})
 				.catch((e) => {
@@ -950,6 +939,10 @@ function createVueComponents() {
 						failure: '',
 						success: '',
 					},
+					upgrade: {
+						failure: '',
+						success: '',
+					},
 				},
 				userTool: {
 					danger: false,
@@ -970,6 +963,7 @@ function createVueComponents() {
 }
 
 function updatePubKey() {
+	let userID = UserHandler.userInfo.userId;
 	let newPubKey = UserHandler.userInfo.pubKey;
 	let company = UserHandler.userInfo.company;
 	let domain = UserHandler.userInfo.domain
@@ -977,6 +971,35 @@ function updatePubKey() {
 	JSONRPCClient
 		.call("BuyersService.UpdateGameConfiguration", {name: company, domain: domain, new_public_key: newPubKey})
 		.then((response) => {
+			UserHandler.isAnonymousPlus() ? JSONRPCClient
+				.call("AuthService.UpgradeAccount", {company: company, user_id: userID})
+				.then((response) => {
+					UserHandler.userInfo.company = company;
+					UserHandler.userInfo.name = response.user_account.name;
+					UserHandler.userInfo.domain = response.user_account.email.split("@")[1];
+					UserHandler.userInfo.roles = response.user_account.roles;
+					UserHandler.userInfo.id = response.user_account.id;
+					Object.assign(rootComponent.$data.pages.settings.upgrade, {
+						success: 'Successfully upgraded account',
+					});
+					setTimeout(() => {
+						Object.assign(rootComponent.$data.pages.settings.upgrade, {
+							success: '',
+						});
+					}, 5000);
+				})
+				.catch((error) => {
+					console.log("Something went wrong upgrading your account");
+					Sentry.captureException(error);
+					Object.assign(rootComponent.$data.pages.settings.upgrade, {
+						failure: 'Failed to upgraded account',
+					});
+					setTimeout(() => {
+						Object.assign(rootComponent.$data.pages.settings.upgrade, {
+							failure: '',
+						});
+					}, 5000);
+				}) : null;
 			UserHandler.userInfo.pubKey = response.game_config.public_key;
 			Object.assign(rootComponent.$data.pages.settings.updateKey, {
 				success: 'Updated public key successfully',
