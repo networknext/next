@@ -228,7 +228,7 @@ type RelayUpdateErrorMetrics struct {
 	RelayNotFound         Counter
 	RelayUnmarshalFailure Counter
 	InvalidToken          Counter
-	RelayInvalid          Counter
+	RelayNotEnabled       Counter
 }
 
 var EmptyRelayUpdateErrorMetrics RelayUpdateErrorMetrics = RelayUpdateErrorMetrics{
@@ -239,7 +239,7 @@ var EmptyRelayUpdateErrorMetrics RelayUpdateErrorMetrics = RelayUpdateErrorMetri
 	RelayNotFound:         &EmptyCounter{},
 	RelayUnmarshalFailure: &EmptyCounter{},
 	InvalidToken:          &EmptyCounter{},
-	RelayInvalid:          &EmptyCounter{},
+	RelayNotEnabled:       &EmptyCounter{},
 }
 
 type RelayHandlerMetrics struct {

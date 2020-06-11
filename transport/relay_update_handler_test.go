@@ -777,7 +777,7 @@ func TestRelayUpdateInvalidState(t *testing.T) {
 	metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
 	assert.NoError(t, err)
 
-	updateMetrics.ErrorMetrics.RelayInvalid = metric
+	updateMetrics.ErrorMetrics.RelayNotEnabled = metric
 
 	// Binary version
 	{
@@ -793,106 +793,6 @@ func TestRelayUpdateInvalidState(t *testing.T) {
 		assert.NoError(t, err)
 		recorder := pingRelayBackendUpdate(t, "application/json", buff, updateMetrics, redisClient, geoClient, statsdb, inMemory)
 		relayUpdateErrorAssertions(t, recorder, http.StatusUnauthorized, metric)
-	}
-}
-
-func TestRelayUpdateSuccessWithOfflineState(t *testing.T) {
-	redisServer, err := miniredis.Run()
-	assert.NoError(t, err)
-	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
-	addr := "127.0.0.1:40000"
-	udp, err := net.ResolveUDPAddr("udp", addr)
-	assert.NoError(t, err)
-	statsdb := routing.NewStatsDatabase()
-	statIps := []string{"127.0.0.2:40000", "127.0.0.3:40000", "127.0.0.4:40000", "127.0.0.5:40000"}
-	packet := transport.RelayUpdateRequest{
-		Address: *udp,
-		Token:   make([]byte, crypto.KeySize),
-	}
-
-	packet.PingStats = make([]routing.RelayStatsPing, len(statIps))
-	for i, addr := range statIps {
-		stats := &packet.PingStats[i]
-		stats.RelayID = crypto.HashID(addr)
-		stats.RTT = rand.Float32()
-		stats.Jitter = rand.Float32()
-		stats.PacketLoss = rand.Float32()
-	}
-
-	seedRedis(t, redisServer, statIps)
-
-	entry := routing.RelayCacheEntry{
-		ID:   crypto.HashID(addr),
-		Addr: *udp,
-		Datacenter: routing.Datacenter{
-			ID:   1,
-			Name: "some name",
-		},
-		PublicKey:      make([]byte, crypto.KeySize),
-		LastUpdateTime: time.Now().Add(-time.Second),
-	}
-
-	raw, err := entry.MarshalBinary()
-	assert.NoError(t, err)
-	redisServer.Set(entry.Key(), "0")
-	redisServer.HSet(routing.HashKeyAllRelays, entry.Key(), string(raw))
-
-	geoClient := &routing.GeoClient{
-		RedisClient: redisClient,
-	}
-
-	relay := routing.Relay{
-		ID:   entry.ID,
-		Addr: entry.Addr,
-		Seller: routing.Seller{
-			ID:   "sellerID",
-			Name: "seller name",
-		},
-		Datacenter: entry.Datacenter,
-		PublicKey:  entry.PublicKey,
-		State:      routing.RelayStateOffline,
-	}
-
-	inMemory := &storage.InMemory{}
-
-	err = inMemory.AddSeller(context.Background(), relay.Seller)
-	assert.NoError(t, err)
-	err = inMemory.AddDatacenter(context.Background(), relay.Datacenter)
-	assert.NoError(t, err)
-	err = inMemory.AddRelay(context.Background(), relay)
-	assert.NoError(t, err)
-
-	seedStorage(t, inMemory, statIps)
-
-	localMetrics := metrics.LocalHandler{}
-	metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
-	assert.NoError(t, err)
-
-	updateMetrics := metrics.RelayUpdateMetrics{
-		Invocations:   &metrics.EmptyCounter{},
-		DurationGauge: &metrics.EmptyGauge{},
-	}
-	v := reflect.ValueOf(&updateMetrics.ErrorMetrics).Elem()
-	for i := 0; i < v.NumField(); i++ {
-		if v.Field(i).CanSet() {
-			v.Field(i).Set(reflect.ValueOf(metric))
-		}
-	}
-
-	// Binary version
-	{
-		buff, err := packet.MarshalBinary()
-		assert.NoError(t, err)
-		recorder := pingRelayBackendUpdate(t, "application/octet-stream", buff, updateMetrics, redisClient, geoClient, statsdb, inMemory)
-		relayUpdateSuccessAssertions(t, recorder, "application/octet-stream", updateMetrics.ErrorMetrics, entry, redisClient, inMemory, statsdb, statIps, addr)
-	}
-
-	// JSON version
-	{
-		buff, err := packet.MarshalJSON()
-		assert.NoError(t, err)
-		recorder := pingRelayBackendUpdate(t, "application/json", buff, updateMetrics, redisClient, geoClient, statsdb, inMemory)
-		relayUpdateSuccessAssertions(t, recorder, "application/json", updateMetrics.ErrorMetrics, entry, redisClient, inMemory, statsdb, statIps, addr)
 	}
 }
 

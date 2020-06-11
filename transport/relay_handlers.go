@@ -747,28 +747,13 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			return
 		}
 
-		// Check if the relay state isn't set to enabled or offline, and as a failsafe quarantine the relay
+		// Check if the relay state isn't set to enabled, and as a failsafe quarantine the relay
 		if relay.State != routing.RelayStateEnabled {
-			if relay.State != routing.RelayStateOffline {
-				sentry.CaptureMessage("invalid relay attempting to update")
-				level.Error(locallogger).Log("msg", "invalid relay attempting to update", "relay_name", relay.Name, "relay_address", relay.Addr, "relay_state", relay.State)
-				http.Error(writer, "cannot allow invalid relay to update", http.StatusUnauthorized)
-				params.Metrics.ErrorMetrics.RelayInvalid.Add(1)
-				return
-			}
-
-			// Relay is valid but somehow is still set to offline, so enable it and continue
-			relay.State = routing.RelayStateEnabled
-
-			level.Warn(locallogger).Log("msg", "relay is valid but state was still set to offline. Setting to enabled.", "relay_name", relay.Name, "relay_address", relay.Addr)
-
-			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-			defer cancel()
-			if err := params.Storer.SetRelay(ctx, relay); err != nil {
-				level.Error(locallogger).Log("msg", "failed to set relay state in storage while in update", "err", err)
-				http.Error(writer, "failed to set relay state in storage while in update", http.StatusInternalServerError)
-				return
-			}
+			sentry.CaptureMessage("non-enabled relay attempting to update")
+			level.Error(locallogger).Log("msg", "non-enabled relay attempting to update", "relay_name", relay.Name, "relay_address", relay.Addr, "relay_state", relay.State)
+			http.Error(writer, "cannot allow non-enabled relay to update", http.StatusUnauthorized)
+			params.Metrics.ErrorMetrics.RelayNotEnabled.Add(1)
+			return
 		}
 
 		statsUpdate := &routing.RelayStatsUpdate{}
