@@ -990,7 +990,7 @@ function updatePubKey() {
 	JSONRPCClient
 		.call("BuyersService.UpdateGameConfiguration", {name: company, domain: domain, new_public_key: newPubKey})
 		.then((response) => {
-			JSONRPCClient
+			UserHandler.isAnonymousPlus() ? JSONRPCClient
 				.call("AuthService.UpgradeAccount", {company: company, user_id: userID})
 				.then((response) => {
 					UserHandler.userInfo.company = company;
@@ -1018,7 +1018,7 @@ function updatePubKey() {
 							failure: '',
 						});
 					}, 5000);
-				});
+				}) : null;
 			UserHandler.userInfo.pubKey = response.game_config.public_key;
 			Object.assign(rootComponent.$data.pages.settings.updateKey, {
 				success: 'Updated public key successfully',
