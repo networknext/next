@@ -161,7 +161,7 @@ MapHandler = {
 	refreshMapSessions() {
 		let filter = rootComponent.$data.pages.map.filter;
 		JSONRPCClient
-			.call('BuyersService.SessionMapPoints', {buyer_id: filter.buyerId})
+			.call('BuyersService.SessionMapPoints', {buyer_id: filter.buyerId || ""})
 			.then((response) => {
 				let sessions = response.map_points;
 				let onNN = sessions.filter((point) => {
@@ -958,6 +958,10 @@ function createVueComponents() {
 						failure: '',
 						success: '',
 					},
+					upgrade: {
+						failure: '',
+						success: '',
+					},
 				},
 				userTool: {
 					danger: false,
@@ -989,24 +993,28 @@ function updatePubKey() {
 			JSONRPCClient
 				.call("AuthService.UpgradeAccount", {company: company, user_id: userID})
 				.then((response) => {
-					UserHandler.userInfo = {
-						company: company,
-						domain: response.email.split("@")[1],
-						email: response.email,
-						name: response.name,
-						nickname: response.nickname,
-						userId: response.sub,
-						token: response.__raw
-					};
+					UserHandler.userInfo.company = company;
+					UserHandler.userInfo.name = response.user_account.name;
+					UserHandler.userInfo.domain = response.user_account.email.split("@")[1];
+					UserHandler.userInfo.roles = response.user_account.roles;
+					UserHandler.userInfo.id = response.user_account.id;
+					Object.assign(rootComponent.$data.pages.settings.upgrade, {
+						success: 'Successfully upgraded account',
+					});
+					setTimeout(() => {
+						Object.assign(rootComponent.$data.pages.settings.upgrade, {
+							success: '',
+						});
+					}, 5000);
 				})
 				.catch((error) => {
 					console.log("Something went wrong upgrading your account");
 					Sentry.captureException(error);
-					Object.assign(rootComponent.$data.pages.settings.updateKey, {
-						failure: 'Failed to upgrade account',
+					Object.assign(rootComponent.$data.pages.settings.upgrade, {
+						failure: 'Failed to upgraded account',
 					});
 					setTimeout(() => {
-						Object.assign(rootComponent.$data.pages.settings.updateKey, {
+						Object.assign(rootComponent.$data.pages.settings.upgrade, {
 							failure: '',
 						});
 					}, 5000);

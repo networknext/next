@@ -583,7 +583,7 @@ func CheckRoles(r *http.Request, requiredRole string) (bool, error) {
 	if found {
 		return true, nil
 	}
-	return false, fmt.Errorf("insufficient privileges")
+	return false, nil
 }
 
 func SetIsAnonymous(r *http.Request, value bool) *http.Request {

@@ -1159,6 +1159,20 @@
                                     >
                                         {{ pages.settings.updateKey.failure }}
                                     </div>
+                                    <div
+                                        class="alert alert-success"
+                                        role="alert"
+                                        v-show="pages.settings.upgrade.success != ''"
+                                    >
+                                        {{ pages.settings.upgrade.success }}
+                                    </div>
+                                    <div
+                                        class="alert alert-danger"
+                                        role="alert"
+                                        v-show="pages.settings.upgrade.failure != ''"
+                                    >
+                                        {{ pages.settings.upgrade.failure }}
+                                    </div>
                                     <form v-on:submit.prevent="updatePubKey()">
                                         <div class="form-group" id="pubKey">
                                             <label>
