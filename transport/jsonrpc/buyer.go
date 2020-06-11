@@ -520,14 +520,6 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		return err
 	}
 
-	allBuyers := s.Storage.Buyers()
-
-	for _, b := range allBuyers {
-		if b.EncodedPublicKey() == args.NewPublicKey {
-			return fmt.Errorf("key already in use")
-		}
-	}
-
 	buyer, err = s.Storage.BuyerWithDomain(args.Domain)
 
 	// Buyer not found
