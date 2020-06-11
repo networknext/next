@@ -301,6 +301,7 @@ func main() {
 		})
 		s.RegisterCodec(json2.NewCodec(), "application/json")
 		s.RegisterService(&jsonrpc.OpsService{
+			Logger:      logger,
 			Release:     release,
 			BuildTime:   buildtime,
 			RedisClient: redisClientRelays,
@@ -308,10 +309,12 @@ func main() {
 			RouteMatrix: &routeMatrix,
 		}, "")
 		s.RegisterService(&jsonrpc.BuyersService{
+			Logger:      logger,
 			RedisClient: redisClientPortal,
 			Storage:     db,
 		}, "")
 		s.RegisterService(&jsonrpc.AuthService{
+			Logger:  logger,
 			Auth0:   auth0Client,
 			Storage: db,
 		}, "")
