@@ -54,8 +54,8 @@ func (state RelayState) String() string {
 	}
 }
 
-// RelayStateFromString returns a relay state type given the state in string form
-func RelayStateFromString(str string) (RelayState, error) {
+// ParseRelayState returns a relay state type given the state in string form
+func ParseRelayState(str string) (RelayState, error) {
 	switch str {
 	case "enabled":
 		return RelayStateEnabled, nil
