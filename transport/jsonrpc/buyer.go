@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/go-kit/kit/log"
 	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
@@ -20,6 +21,7 @@ import (
 type BuyersService struct {
 	RedisClient redis.Cmdable
 	Storage     storage.Storer
+	Logger      log.Logger
 }
 
 type FlushSessionsArgs struct{}
@@ -55,20 +57,26 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 
 	err := s.RedisClient.SMembers(fmt.Sprintf("user-%s-sessions", args.UserHash)).ScanSlice(&sessionIDs)
 	if err != nil {
-		return fmt.Errorf("failed getting user sessions: %v", err)
+		err = fmt.Errorf("UserSessions() failed getting user sessions: %v", err)
+		s.Logger.Log("err", err)
+		return err
 	}
 
 	if len(sessionIDs) == 0 {
 		hash := fnv.New64a()
 		_, err := hash.Write([]byte(args.UserHash))
 		if err != nil {
+			err = fmt.Errorf("UserSessions() error writing 64a hash: %v", err)
+			s.Logger.Log("err", err)
 			return err
 		}
 		hashedID := fmt.Sprintf("%x", hash.Sum64())
 
 		err = s.RedisClient.SMembers(fmt.Sprintf("user-%s-sessions", hashedID)).ScanSlice(&sessionIDs)
 		if err != nil {
-			return fmt.Errorf("failed getting user sessions: %v", err)
+			err = fmt.Errorf("UserSessions() failed getting user sessions: %v", err)
+			s.Logger.Log("err", err)
+			return err
 		}
 	}
 
@@ -84,6 +92,8 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		}
 		_, err = gettx.Exec()
 		if err != nil && err != redis.Nil {
+			err = fmt.Errorf("UserSessions() redis.Pipeliner error: %v", err)
+			s.Logger.Log("err", err)
 			return err
 		}
 	}
@@ -106,12 +116,16 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 			if !isAnon {
 				isAdmin, err = CheckRoles(r, "Admin")
 				if err != nil {
+					err = fmt.Errorf("UserSessions() CheckRoles error: %v", err)
+					s.Logger.Log("err", err)
 					return err
 				}
 
 				if !isAdmin {
 					isSameBuyer, err = s.IsSameBuyer(r, meta.CustomerID)
 					if err != nil {
+						err = fmt.Errorf("UserSessions() IsSameBuyer error: %v", err)
+						s.Logger.Log("err", err)
 						return err
 					}
 				} else {
@@ -128,6 +142,8 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	}
 	_, err = exptx.Exec()
 	if err != nil && err != redis.Nil {
+		err = fmt.Errorf("UserSessions() redit.Pipeliner error: %v", err)
+		s.Logger.Log("err", err)
 		return err
 	}
 
@@ -161,6 +177,8 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 	if !isAnon && !isOps {
 		isAdmin, err = CheckRoles(r, "Admin")
 		if err != nil {
+			err = fmt.Errorf("TopSessions() CheckRoles error: %v", err)
+			s.Logger.Log("err", err)
 			return err
 		}
 	}
@@ -168,6 +186,8 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 	if !isAdmin && !isOps {
 		isSameBuyer, err = s.IsSameBuyer(r, args.BuyerID)
 		if err != nil {
+			err = fmt.Errorf("TopSessions() IsSameBuyer error: %v", err)
+			s.Logger.Log("err", err)
 			return err
 		}
 	} else {
@@ -180,15 +200,21 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 	case "":
 		result, err = s.RedisClient.ZRangeWithScores("top-global", 0, 1000).Result()
 		if err != nil {
-			return fmt.Errorf("failed getting top global sessions: %v", err)
+			err = fmt.Errorf("TopSessions() failed getting top global sessions: %v", err)
+			s.Logger.Log("err", err)
+			return err
 		}
 	default:
 		if !isSameBuyer && !isAdmin && !isOps {
-			return fmt.Errorf("insufficient privileges")
+			err = fmt.Errorf("TopSessions() insufficient privileges")
+			s.Logger.Log("err", err)
+			return err
 		}
 		result, err = s.RedisClient.ZRangeWithScores(fmt.Sprintf("top-buyer-%s", args.BuyerID), 0, 1000).Result()
 		if err != nil {
-			return fmt.Errorf("failed getting top buyer sessions: %v", err)
+			err = fmt.Errorf("TopSessions() failed getting top buyer sessions: %v", err)
+			s.Logger.Log("err", err)
+			return err
 		}
 	}
 
@@ -200,7 +226,9 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 		}
 		_, err = gettx.Exec()
 		if err != nil && err != redis.Nil {
-			return fmt.Errorf("failed getting top sessions meta: %v", err)
+			err = fmt.Errorf("TopSessions() failed getting top sessions meta: %v", err)
+			s.Logger.Log("err", err)
+			return err
 		}
 	}
 
@@ -228,6 +256,8 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 	}
 	_, err = exptx.Exec()
 	if err != nil && err != redis.Nil {
+		err = fmt.Errorf("TopSessions() redit.Pipeliner error: %v", err)
+		s.Logger.Log("err", err)
 		return err
 	}
 
@@ -269,6 +299,8 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 	if !isAnon && !isOps {
 		isAdmin, err = CheckRoles(r, "Admin")
 		if err != nil {
+			err = fmt.Errorf("SessionDetails() CheckRoles error: %v", err)
+			s.Logger.Log("err", err)
 			return err
 		}
 	}
@@ -276,6 +308,8 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 	if !isAdmin && !isOps {
 		isSameBuyer, err = s.IsSameBuyer(r, reply.Meta.CustomerID)
 		if err != nil {
+			err = fmt.Errorf("SessionDetails() IsSameBuyer error: %v", err)
+			s.Logger.Log("err", err)
 			return err
 		}
 	} else {
@@ -284,10 +318,14 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 
 	data, err := s.RedisClient.Get(fmt.Sprintf("session-%s-meta", args.SessionID)).Bytes()
 	if err != nil {
-		return fmt.Errorf("failed getting session meta: %v", err)
+		err = fmt.Errorf("SessionDetails() failed getting session meta: %v", err)
+		s.Logger.Log("err", err)
+		return err
 	}
 	err = reply.Meta.UnmarshalBinary(data)
 	if err != nil {
+		err = fmt.Errorf("SessionDetails() SessionMeta unmarshaling error: %v", err)
+		s.Logger.Log("err", err)
 		return err
 	}
 
@@ -311,7 +349,9 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 
 	err = s.RedisClient.SMembers(fmt.Sprintf("session-%s-slices", args.SessionID)).ScanSlice(&reply.Slices)
 	if err != nil {
-		return fmt.Errorf("failed getting session slices: %v", err)
+		err = fmt.Errorf("SessionDetails() failed getting session slices: %v", err)
+		s.Logger.Log("err", err)
+		return err
 	}
 
 	sort.Slice(reply.Slices, func(i int, j int) bool {
@@ -341,6 +381,8 @@ func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, r
 	if !isAnon {
 		isAdmin, err = CheckRoles(r, "Admin")
 		if err != nil {
+			err = fmt.Errorf("SessionMapPoints() CheckRoles error: %v", err)
+			s.Logger.Log("err", err)
 			return err
 		}
 	}
@@ -348,6 +390,8 @@ func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, r
 	if !isAdmin {
 		isSameBuyer, err = s.IsSameBuyer(r, args.BuyerID)
 		if err != nil {
+			err = fmt.Errorf("SessionMapPoints() IsSameBuyer error: %v", err)
+			s.Logger.Log("err", err)
 			return err
 		}
 	} else {
@@ -360,15 +404,21 @@ func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, r
 	case "":
 		sessionIDs, err = s.RedisClient.SMembers("map-points-global").Result()
 		if err != nil {
-			return fmt.Errorf("failed getting global map points: %v", err)
+			err = fmt.Errorf("SessionMapPoints() failed getting global map points: %v", err)
+			s.Logger.Log("err", err)
+			return err
 		}
 	default:
 		if !isSameBuyer && !isAdmin {
-			return fmt.Errorf("insufficient privileges")
+			err = fmt.Errorf("SessionMapPoints() insufficient privileges")
+			s.Logger.Log("err", err)
+			return err
 		}
 		sessionIDs, err = s.RedisClient.SMembers(fmt.Sprintf("map-points-buyer-%s", args.BuyerID)).Result()
 		if err != nil {
-			return fmt.Errorf("failed getting buyer map points: %v", err)
+			err = fmt.Errorf("SessionMapPoints() failed getting buyer map points: %v", err)
+			s.Logger.Log("err", err)
+			return err
 		}
 	}
 
@@ -380,7 +430,9 @@ func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, r
 		}
 		_, err = gettx.Exec()
 		if err != nil && err != redis.Nil {
-			return fmt.Errorf("failed getting session points: %v", err)
+			err = fmt.Errorf("SessionMapPoints() failed getting session points: %v", err)
+			s.Logger.Log("err", err)
+			return err
 		}
 	}
 
@@ -404,6 +456,8 @@ func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, r
 	}
 	_, err = exptx.Exec()
 	if err != nil && err != redis.Nil {
+		err = fmt.Errorf("SessionMapPoints() redit.Pipeliner error: %v", err)
+		s.Logger.Log("err", err)
 		return err
 	}
 
@@ -430,7 +484,9 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 	var buyer routing.Buyer
 
 	if IsAnonymous(r) {
-		return fmt.Errorf("insufficient privileges")
+		err = fmt.Errorf("GameConfiguration() insufficient privileges")
+		s.Logger.Log("err", err)
+		return err
 	}
 
 	reply.GameConfiguration.PublicKey = ""
@@ -450,7 +506,7 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 
 func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfigurationArgs, reply *GameConfigurationReply) error {
 	if IsAnonymous(r) {
-		return fmt.Errorf("insufficient privileges")
+		return fmt.Errorf("UpdateGameConfiguration() insufficient privileges")
 	}
 	var err error
 	var buyerID uint64
@@ -459,23 +515,21 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 	ctx := context.Background()
 
 	if args.Domain == "" {
-		return fmt.Errorf("domain is required")
+		err = fmt.Errorf("UpdateGameConfiguration() domain is required")
+		s.Logger.Log("err", err)
+		return err
 	}
 
 	if args.Name == "" {
-		return fmt.Errorf("company name is required")
+		err = fmt.Errorf("UpdateGameConfiguration() company name is required")
+		s.Logger.Log("err", err)
+		return err
 	}
 
 	if args.NewPublicKey == "" {
-		return fmt.Errorf("new public key is required")
-	}
-
-	allBuyers := s.Storage.Buyers()
-
-	for _, b := range allBuyers {
-		if b.EncodedPublicKey() == args.NewPublicKey {
-			return fmt.Errorf("key already in use")
-		}
+		err = fmt.Errorf("UpdateGameConfiguration() new public key is required")
+		s.Logger.Log("err", err)
+		return err
 	}
 
 	buyer, err = s.Storage.BuyerWithDomain(args.Domain)
@@ -495,7 +549,9 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		})
 
 		if err != nil {
-			return fmt.Errorf("failed to add buyer")
+			err = fmt.Errorf("UpdateGameConfiguration() failed to add buyer")
+			s.Logger.Log("err", err)
+			return err
 		}
 
 		if buyer, err = s.Storage.Buyer(buyerID); err != nil {
@@ -504,11 +560,15 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 	}
 
 	if err = buyer.DecodedPublicKey(args.NewPublicKey); err != nil {
-		return fmt.Errorf("failed to decode public key")
+		err = fmt.Errorf("UpdateGameConfiguration() failed to decode public key")
+		s.Logger.Log("err", err)
+		return err
 	}
 
 	if err = s.Storage.SetBuyer(ctx, buyer); err != nil {
-		return fmt.Errorf("failed to update buyer public key")
+		err = fmt.Errorf("UpdateGameConfiguration() failed to update buyer public key")
+		s.Logger.Log("err", err)
+		return err
 	}
 
 	reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
@@ -557,17 +617,23 @@ func (s *BuyersService) IsSameBuyer(r *http.Request, buyerID string) (bool, erro
 
 	requestUser := r.Context().Value("user")
 	if requestUser == nil {
-		return false, fmt.Errorf("unable to parse user from token")
+		err := fmt.Errorf("Buyers() unable to parse user from token")
+		s.Logger.Log("err", err)
+		return false, err
 	}
 
 	requestEmail, ok := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["email"].(string)
 	if !ok {
-		return false, fmt.Errorf("unable to parse email from token")
+		err := fmt.Errorf("Buyers() unable to parse email from token")
+		s.Logger.Log("err", err)
+		return false, err
 	}
 	requestEmailParts := strings.Split(requestEmail, "@")
 	requestDomain := requestEmailParts[len(requestEmailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
 	buyer, err := s.Storage.BuyerWithDomain(requestDomain)
 	if err != nil {
+		err = fmt.Errorf("Buyers() BuyerWithDomain error: %v", err)
+		s.Logger.Log("err", err)
 		return false, err
 	}
 

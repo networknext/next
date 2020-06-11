@@ -2,7 +2,10 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"sort"
+	"strconv"
+	"sync"
 	"time"
 
 	"github.com/modood/table"
@@ -72,6 +75,89 @@ func relays(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 	}
 
 	table.Output(relays)
+}
+
+func checkRelays(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
+	args := localjsonrpc.RelaysArgs{
+		Name: filter,
+	}
+
+	var reply localjsonrpc.RelaysReply
+	if err := rpcClient.CallFor(&reply, "OpsService.Relays", args); err != nil {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	sort.Slice(reply.Relays, func(i int, j int) bool {
+		return reply.Relays[i].Name < reply.Relays[j].Name
+	})
+
+	type checkInfo struct {
+		Name          string
+		CanSSH        string `table:"SSH Success"`
+		UbuntuVersion string `table:"Ubuntu"`
+		CPUCores      string `table:"Cores"`
+	}
+
+	info := make([]checkInfo, len(reply.Relays))
+
+	var wg sync.WaitGroup
+	wg.Add(len(reply.Relays))
+
+	fmt.Printf("acquiring check info for %d relays\n", len(info))
+	for i, relay := range reply.Relays {
+		r := relay
+		go func(indx int, wg *sync.WaitGroup) {
+			defer wg.Done()
+
+			infoIndx := &info[indx]
+			infoIndx.Name = r.Name
+
+			con := NewSSHConn(r.SSHUser, r.ManagementAddr, strconv.FormatInt(r.SSHPort, 10), env.SSHKeyFilePath)
+
+			// test ssh capability, if not success return
+			if con.TestConnect() {
+				infoIndx.CanSSH = "yes"
+			} else {
+				infoIndx.CanSSH = "no"
+				return
+			}
+
+			// get ubuntu version
+			{
+				if out, err := con.IssueCmdAndGetOutput(`lsb_release -r | grep -Po "([0-9]{2}\.[0-9]{2})"`); err == nil {
+					infoIndx.UbuntuVersion = out
+				} else {
+					log.Printf("error when acquiring ubuntu version for relay %s: %v\n", r.Name, err)
+					infoIndx.UbuntuVersion = "SSH Error"
+				}
+			}
+
+			// get logical core count
+			{
+				if out, err := con.IssueCmdAndGetOutput("nproc"); err == nil {
+					// test if the output of nproc is a number
+					if _, err := strconv.ParseUint(out, 10, 64); err == nil {
+						infoIndx.CPUCores = out
+					} else {
+						log.Printf("could not parse value of nproc (%s) to uint for relay %s: %v\n", out, r.Name, err)
+						infoIndx.CPUCores = "Unknown"
+					}
+				} else {
+					log.Printf("error when acquiring number of logical cpu cores for relay %s: %v\n", r.Name, err)
+					infoIndx.CPUCores = "SSH Error"
+				}
+			}
+
+			log.Printf("gathered info for relay %s\n", r.Name)
+		}(i, &wg)
+	}
+
+	log.Println("waiting for relays to complete")
+	wg.Wait()
+	log.Println("done, outputting results...")
+
+	table.Output(info)
 }
 
 func addRelay(rpcClient jsonrpc.RPCClient, env Environment, relay routing.Relay) {
