@@ -140,6 +140,25 @@ func TestUserSessions(t *testing.T) {
 	})
 }
 
+func TestTotalSessions(t *testing.T) {
+	redisServer, _ := miniredis.Run()
+	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+
+	redisServer.SetAdd("total-next", "session-1", "session-2", "session-5")
+	redisServer.SetAdd("total-direct", "session-2")
+
+	svc := jsonrpc.BuyersService{
+		RedisClient: redisClient,
+	}
+
+	var reply jsonrpc.TotalSessionsReply
+	err := svc.TotalSessions(nil, &jsonrpc.TotalSessionsArgs{}, &reply)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 3, reply.Next)
+	assert.Equal(t, 1, reply.Direct)
+}
+
 func TestTopSessions(t *testing.T) {
 	redisServer, _ := miniredis.Run()
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})

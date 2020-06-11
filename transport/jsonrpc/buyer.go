@@ -126,6 +126,32 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	return nil
 }
 
+type TotalSessionsArgs struct {
+	BuyerID string `json:"buyer_id"`
+}
+
+type TotalSessionsReply struct {
+	Direct int `json:"direct"`
+	Next   int `json:"next"`
+}
+
+func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, reply *TotalSessionsReply) error {
+	direct, err := s.RedisClient.SCard("total-direct").Result()
+	if err != nil {
+		return err
+	}
+
+	next, err := s.RedisClient.SCard("total-next").Result()
+	if err != nil {
+		return err
+	}
+
+	reply.Direct = int(direct)
+	reply.Next = int(next)
+
+	return nil
+}
+
 type TopSessionsArgs struct {
 	BuyerID string `json:"buyer_id"`
 }
