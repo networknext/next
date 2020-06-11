@@ -297,6 +297,10 @@ func main() {
 	routesfs.Float64Var(&routeRTT, "rtt", 5, "route RTT required for selection")
 	routesfs.Uint64Var(&routeHash, "hash", 0, "a previous hash to use")
 
+	var relayCoreCount uint64
+	coresfs := flag.NewFlagSet("relay update", flag.ExitOnError)
+	coresfs.Uint64Var(&relayCoreCount, "cores", 0, "number of cores for the relay to utilize")
+
 	root := &ffcli.Command{
 		ShortUsage: "next <subcommand>",
 		Subcommands: []*ffcli.Command{
@@ -503,12 +507,13 @@ func main() {
 						Name:       "update",
 						ShortUsage: "next relay update <relay name...>",
 						ShortHelp:  "Update the specified relay(s)",
+						FlagSet:    coresfs,
 						Exec: func(ctx context.Context, args []string) error {
 							if len(args) == 0 {
 								log.Fatal("You need to supply at least one relay name")
 							}
 
-							updateRelays(env, rpcClient, args)
+							updateRelays(env, rpcClient, args, relayCoreCount)
 
 							return nil
 						},
