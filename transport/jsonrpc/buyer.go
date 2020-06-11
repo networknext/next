@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/go-kit/kit/log"
 	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
@@ -20,6 +21,7 @@ import (
 type BuyersService struct {
 	RedisClient redis.Cmdable
 	Storage     storage.Storer
+	Logger      log.Logger
 }
 
 type UserSessionsArgs struct {

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-kit/kit/log"
 	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
@@ -23,6 +24,8 @@ type OpsService struct {
 	RedisClient redis.Cmdable
 	Storage     storage.Storer
 	RouteMatrix *routing.RouteMatrix
+
+	Logger log.Logger
 }
 
 type CurrentReleaseArgs struct{}

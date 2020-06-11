@@ -12,6 +12,7 @@ import (
 
 	jwtmiddleware "github.com/auth0/go-jwt-middleware"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/go-kit/kit/log"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"gopkg.in/auth0.v4/management"
@@ -27,6 +28,7 @@ const (
 type AuthService struct {
 	Auth0   storage.Auth0
 	Storage storage.Storer
+	Logger  log.Logger
 }
 
 type AccountsArgs struct {
