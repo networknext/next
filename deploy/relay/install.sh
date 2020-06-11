@@ -1,5 +1,7 @@
 #!/bin/bash
 
+desired_ubuntu_version="18.04"
+
 bin='relay'
 env='relay.env'
 svc='relay.service'
@@ -8,6 +10,15 @@ app='/app'
 bin_dest="$app/$bin"
 env_dest="$app/$env"
 svc_dest="/lib/systemd/system/$svc"
+
+ubuntu_version=$(lsb_release -r | grep -Po "([0-9]{2}\.[0-9]{2})")
+
+if [[ ! "$ubuntu_version" == "$desired_ubuntu_version" ]]; then
+  echo "This relay's ubuntu version is not valid."
+  echo "This relay is on on $ubuntu_version."
+  echo "Please update to $desired_ubuntu_version."
+  exit 1
+fi
 
 print_help() {
 	printf "Relay installer script\n\n"
