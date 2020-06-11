@@ -95,7 +95,8 @@ func runCommandEnv(command string, args []string, env map[string]string) bool {
 	return true
 }
 
-// stdout is returned as the string portion, stderr is returned in the error portion or nil if the command exited successfully
+// stdout is the string return value
+// stderr is contained in the error return value or nil if the command exited successfully
 func runCommandGetOutput(command string, args []string, env map[string]string) (string, error) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
