@@ -320,36 +320,6 @@ WorkspaceHandler = {
 			showSettings: showSettings,
 		});
 	},
-	changeModal(modal) {
-		switch (modal) {
-			case 'signup':
-				Object.assign(rootComponent.$data.modals.signup, {
-					companyName: "",
-					email: ""
-				});
-				break;
-		}
-
-		Object.keys(rootComponent.$data.modals).forEach((modal) => {
-			Object.assign(rootComponent.$data.modals[modal], {show: false});
-		});
-
-		Object.assign(rootComponent.$data.modals[modal], {show: true});
-
-		this.welcomeTimeout !== null ? clearTimeout(this.welcomeTimeout) : null;
-
-		if (!($("#video-modal").data('bs.modal') || {})._isShown) {
-			$('#video-modal').modal('toggle');
-		}
-
-		$('#video-modal').on('hidden.bs.modal', function () {
-			let videoPlayer = document.getElementById("video-player");
-			if (videoPlayer) {
-				videoPlayer.parentElement.removeChild(videoPlayer)
-				videoPlayer.innerHTML = "<div></div>"
-			}
-		});
-	},
 	changePage(page, options) {
 		// Clear all polling loops
 		this.sessionLoop ? clearInterval(this.sessionLoop) : null;
@@ -851,9 +821,20 @@ function startApp() {
 					Object.assign(rootComponent.$data, {allBuyers: response.Buyers});
 					if (UserHandler.isAnonymous()) {
 						WorkspaceHandler.welcomeTimeout = setTimeout(() => {
-							WorkspaceHandler.changeModal('welcome');
+							this.welcomeTimeout !== null ? clearTimeout(this.welcomeTimeout) : null;
+							if (!($("#video-modal").data('bs.modal') || {})._isShown) {
+								$('#video-modal').modal('toggle');
+							}
+
+							$('#video-modal').on('hidden.bs.modal', function () {
+								let videoPlayer = document.getElementById("video-player");
+								if (videoPlayer) {
+									videoPlayer.parentElement.removeChild(videoPlayer)
+									videoPlayer.innerHTML = "<div></div>"
+								}
+							});
 							WorkspaceHandler.welcomeTimeout = null;
-						}, 60000)
+						}, 30000)
 					}
 				})
 				.catch((e) => {

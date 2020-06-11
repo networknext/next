@@ -1198,7 +1198,7 @@
                     </main>
                     <div class="modal" tabindex="-1" role="dialog" id="video-modal">
                         <div class="modal-dialog modal-lg" role="document">
-                            <div class="modal-content" v-if="modals.welcome.show">
+                            <div class="modal-content">
                                 <div class="modal-header">
                                     <h5 class="modal-title align-items-left">New to Network Next?</h5>
                                     <button type="button" class="close align-items-right" data-dismiss="modal" aria-label="Close">
@@ -1211,36 +1211,7 @@
                                         frameborder="0">
                                 </iframe> -->
                                 <div class="modal-footer">
-                                    <button class="btn btn-primary btn-sm" href="#" v-on:click="handlers.workspaceHandler.changeModal('signup')">
-                                        Sign Up
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="modal-content" v-if="modals.signup.show">
-                                <div class="modal-header">
-                                    <h5 class="modal-title align-items-left">Sign Up for Network Next</h5>
-                                    <button type="button" class="close align-items-right" data-dismiss="modal" aria-label="Close">
-                                        <span aria-hidden="true">&times;</span>
-                                    </button>
-                                </div>
-                                <form id="signup-form">
-                                    <div class="form-group" style="padding: 10px;" id="signUpEmail">
-                                        <label for="signup-email-input">
-                                            Email Address
-                                        </label>
-                                        <input type="email" class="form-control" placeholder="Please enter your email" id="signup-email-input" v-model="modals.signup.email">
-                                        </input>
-                                    </div>
-                                    <p class="text-muted text-small mt-2"></p>
-                                </form>
-                                <div class="alert alert-success" role="alert" id="signup-alert-success" v-if="modals.signup.showSuccess">
-                                    Account created successfully. Please check your email to reset password
-                                </div>
-                                <div class="alert alert-danger" role="alert" id="signup-alert-failure" v-if="modals.signup.showFailure">
-                                    Failed to create new account
-                                </div>
-                                <div class="modal-footer">
-                                    <button class="btn btn-primary btn-sm" v-on:click.prevent="handlers.authHandler.signUp()">
+                                    <button class="btn btn-primary btn-sm" href="#" v-on:click="handlers.authHandler.signUp()">
                                         Sign Up
                                     </button>
                                 </div>
