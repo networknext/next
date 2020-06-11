@@ -50,26 +50,20 @@ check_if_running() {
 install_relay() {
 	check_if_running 'error, please disable relay before installing'
 
-  echo "Installing libsodium..."
   sudo apt install libsodium23
 
 	if [[ ! -d '/app' ]]; then
-    echo "Creating /app directory..."
 		sudo mkdir '/app'
 	fi
 
-  echo "Backing up existing relay files..."
 	backup_existing "$bin_dest" "$env_dest" "$svc_dest"
 
-  echo "Moving new relay files..."
 	sudo mv "$bin" "$bin_dest"
 	sudo mv "$env" "$env_dest"
 	sudo mv "$svc" "$svc_dest"
 
-  echo "Reloading systemctl daemon..."
 	sudo systemctl daemon-reload
 
-  echo "Starting relay..."
 	sudo systemctl enable relay
 	sudo systemctl start relay
 }
