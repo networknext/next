@@ -1187,7 +1187,7 @@
                                             <textarea class="form-control" placeholder="Enter your base64-encoded public key" id="pubkey-input" v-model="handlers.userHandler.userInfo.pubKey" :disabled="handlers.userHandler.isAnonymous() || handlers.userHandler.isAnonymousPlus()">
                                             </textarea>
                                         </div>
-                                        <button type="submit" class="btn btn-primary btn-sm" v-if="handlers.userHandler.isAnonymous() || handlers.userHandler.isAnonymousPlus()">
+                                        <button type="submit" class="btn btn-primary btn-sm" v-if="!handlers.userHandler.isAnonymous() && !handlers.userHandler.isAnonymousPlus()">
                                             Save game configuration
                                         </button>
                                         <p class="text-muted text-small mt-2"></p>
