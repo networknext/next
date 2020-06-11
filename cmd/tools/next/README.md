@@ -131,6 +131,14 @@ To see the public and update keys of a relay: `next relay keys <relay name>`
 
 Shows the public key and update key for the given relay.
 
+### State
+
+To set the state of a relay direct: `next relay state <relay name> <state>`
+
+Sets the state of a relay directly in Firestore. Note that this command should be avoided and only used when the state logic is not working correctly.
+
+Valid states are `enabled`, `offline`, `maintenance`, `disabled`, `quarantine`, and `decommissioned`
+
 ### Cost
 
 Downloads the current cost matrix from the relay backend to 'cost.bin' or the first argument supplied.
