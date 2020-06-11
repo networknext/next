@@ -598,8 +598,12 @@ func IsAnonymous(r *http.Request) bool {
 }
 
 func IsAnonymousPlus(r *http.Request) bool {
-	roles := r.Context().Value(rolesKey).(management.RoleList).Roles
-	return len(roles) == 0
+	roles := r.Context().Value(rolesKey)
+
+	if roles != nil {
+		return len(roles.(management.RoleList).Roles) == 0
+	}
+	return false
 }
 
 func SetRoles(r *http.Request, roles management.RoleList) *http.Request {
