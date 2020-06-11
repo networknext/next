@@ -60,11 +60,14 @@ type account struct {
 func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *AccountsReply) error {
 	var accountList *management.UserList
 	if IsAnonymous(r) {
-		return fmt.Errorf("insufficient privileges")
+		err := fmt.Errorf("AllAccounts() insufficient privileges")
+		s.Logger.Log("err", err)
+		return err
 	}
 	_, err := CheckRoles(r, "Admin")
 	if err != nil {
 		if _, err := CheckRoles(r, "Owner"); err != nil {
+			err = fmt.Errorf("AllAccounts() CheckRoles error: %v", err)
 			return err
 		}
 	}
@@ -74,16 +77,22 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 	reply.UserAccounts = make([]account, 0)
 
 	if err != nil {
-		return fmt.Errorf("failed to fetch user list: %w", err)
+		err = fmt.Errorf("AllAcounts() failed to fetch user list: %v", err)
+		s.Logger.Log("err", err)
+		return err
 	}
 	requestUser := r.Context().Value("user")
 	if requestUser == nil {
-		return fmt.Errorf("unable to parse user from token")
+		err = fmt.Errorf("AllAcounts() unable to parse user from token")
+		s.Logger.Log("err", err)
+		return err
 	}
 
 	requestEmail, ok := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["email"].(string)
 	if !ok {
-		return fmt.Errorf("unable to parse email from token")
+		err = fmt.Errorf("AllAcounts() unable to parse email from token")
+		s.Logger.Log("err", err)
+		return err
 	}
 	requestEmailParts := strings.Split(requestEmail, "@")
 	requestDomain := requestEmailParts[len(requestEmailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
@@ -91,7 +100,9 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 	for _, a := range accountList.Users {
 		emailParts := strings.Split(*a.Email, "@")
 		if len(emailParts) <= 0 {
-			return fmt.Errorf("failed to parse email %s for domain", *a.Email)
+			err = fmt.Errorf("AllAcounts() failed to parse email %s for domain", *a.Email)
+			s.Logger.Log("err", err)
+			return err
 		}
 		domain := emailParts[len(emailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
 		if requestDomain != domain {
@@ -99,7 +110,9 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 		}
 		userRoles, err := s.Auth0.Manager.User.Roles(*a.ID)
 		if err != nil {
-			return fmt.Errorf("failed to fetch user roles: %w", err)
+			err = fmt.Errorf("AllAcounts() failed to fetch user roles: %v", err)
+			s.Logger.Log("err", err)
+			return err
 		}
 
 		buyer, err := s.Storage.BuyerWithDomain(domain)
@@ -112,18 +125,24 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 
 func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *AccountReply) error {
 	if IsAnonymous(r) {
-		return fmt.Errorf("insufficient privileges")
+		err := fmt.Errorf("UserAccount() insufficient privileges")
+		s.Logger.Log("err", err)
+		return err
 	}
 
 	if args.UserID == "" {
-		return fmt.Errorf("user_id is required")
+		err := fmt.Errorf("UserAccount() user_id is required")
+		s.Logger.Log("err", err)
+		return err
 	}
 
 	// Check if this is for authed user profile or other users
 
 	user := r.Context().Value("user")
 	if user == nil {
-		return fmt.Errorf("failed to fetch calling user from token")
+		err := fmt.Errorf("UserAccount() failed to fetch calling user from token")
+		s.Logger.Log("err", err)
+		return err
 	}
 
 	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
@@ -131,6 +150,8 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 		// If they want a different user profile they need perms
 		if _, err := CheckRoles(r, "Admin"); err != nil {
 			if _, err := CheckRoles(r, "Owner"); err != nil {
+				err := fmt.Errorf("UserAccount() CheckRoles error: %v", err)
+				s.Logger.Log("err", err)
 				return err
 			}
 		}
@@ -138,19 +159,25 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 
 	userAccount, err := s.Auth0.Manager.User.Read(args.UserID)
 	if err != nil {
-		return fmt.Errorf("failed to fetch user account: %w", err)
+		err := fmt.Errorf("UserAccount() failed to fetch user account: %w", err)
+		s.Logger.Log("err", err)
+		return err
 	}
 
 	emailParts := strings.Split(*userAccount.Email, "@")
 	if len(emailParts) <= 0 {
-		return fmt.Errorf("failed to parse email %s for domain", *userAccount.Email)
+		err := fmt.Errorf("UserAccount() failed to parse email %s for domain", *userAccount.Email)
+		s.Logger.Log("err", err)
+		return err
 	}
 
 	domain := emailParts[len(emailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
 	buyer, err := s.Storage.BuyerWithDomain(domain)
 	userRoles, err := s.Auth0.Manager.User.Roles(*userAccount.ID)
 	if err != nil {
-		return fmt.Errorf("failed to fetch user roles: %w", err)
+		err := fmt.Errorf("UserAccount() failed to fetch user roles: %w", err)
+		s.Logger.Log("err", err)
+		return err
 	}
 
 	reply.UserAccount = newAccount(userAccount, userRoles.Roles, buyer)
@@ -160,21 +187,29 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 
 func (s *AuthService) DeleteUserAccount(r *http.Request, args *AccountArgs, reply *AccountReply) error {
 	if IsAnonymous(r) {
-		return fmt.Errorf("insufficient privileges")
+		err := fmt.Errorf("DeleteUserAccount() insufficient privileges")
+		s.Logger.Log("err", err)
+		return err
 	}
 
 	if _, err := CheckRoles(r, "Admin"); err != nil {
 		if _, err := CheckRoles(r, "Owner"); err != nil {
+			err := fmt.Errorf("DeleteUserAccount() CheckRoles error: %w", err)
+			s.Logger.Log("err", err)
 			return err
 		}
 	}
 
 	if args.UserID == "" {
-		return fmt.Errorf("user_id is required")
+		err := fmt.Errorf("DeleteUserAccount() user_id is required")
+		s.Logger.Log("err", err)
+		return err
 	}
 
 	if err := s.Auth0.Manager.User.Delete(args.UserID); err != nil {
-		return fmt.Errorf("failed to delete user: %w", err)
+		err := fmt.Errorf("DeleteUserAccount() failed to delete user: %w", err)
+		s.Logger.Log("err", err)
+		return err
 	}
 	return nil
 }
@@ -189,6 +224,8 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 	if !IsAnonymous(r) {
 		if _, err := CheckRoles(r, "Admin"); err != nil {
 			if _, err := CheckRoles(r, "Owner"); err != nil {
+				err := fmt.Errorf("AddUserAccount() CheckRoles error: %w", err)
+				s.Logger.Log("err", err)
 				return err
 			}
 		}
@@ -197,14 +234,18 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 	// Check if non admin is assigning admin role
 	for _, r := range args.Roles {
 		if r.Name == &adminString && !isAdmin {
-			return fmt.Errorf("insufficient privileges")
+			err := fmt.Errorf("AddUserAccount() insufficient privileges")
+			s.Logger.Log("err", err)
+			return err
 		}
 	}
 
 	// Check if onboarding
 	emailParts := strings.Split(args.Emails[0], "@")
 	if len(emailParts) <= 0 {
-		return fmt.Errorf("failed to parse email %s for domain", args.Emails[0])
+		err := fmt.Errorf("AddUserAccount() failed to parse email %s for domain", args.Emails[0])
+		s.Logger.Log("err", err)
+		return err
 	}
 	domain := emailParts[len(emailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
 
@@ -212,14 +253,18 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 	accountList, err := s.Auth0.Manager.User.List()
 
 	if err != nil {
-		return fmt.Errorf("failed to fetch user accounts")
+		err := fmt.Errorf("AddUserAccount() failed to fetch user accounts")
+		s.Logger.Log("err", err)
+		return err
 	}
 
 	found := false
 	for _, u := range accountList.Users {
 		userEmailParts := strings.Split(*u.Email, "@")
 		if len(userEmailParts) <= 0 {
-			return fmt.Errorf("failed to parse email %s for domain", *u.Email)
+			err := fmt.Errorf("AddUserAccount() failed to parse email %s for domain", *u.Email)
+			s.Logger.Log("err", err)
+			return err
 		}
 		userDomain := userEmailParts[len(userEmailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
 		if found {
@@ -281,7 +326,9 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 
 		emailParts := strings.Split(e, "@")
 		if len(emailParts) <= 0 {
-			return fmt.Errorf("failed to parse email %s for domain", e)
+			err := fmt.Errorf("AddUserAccount() failed to parse email %s for domain", e)
+			s.Logger.Log("err", err)
+			return err
 		}
 		domain := emailParts[len(emailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
 
@@ -289,7 +336,9 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 
 		pw, err := GenerateRandomString(32)
 		if err != nil {
-			return fmt.Errorf("failed to generate a random password: %w", err)
+			err := fmt.Errorf("AddUserAccount() failed to generate a random password: %w", err)
+			s.Logger.Log("err", err)
+			return err
 		}
 		newUser := &management.User{
 			Connection:    &connectionID,
@@ -302,11 +351,15 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 			},
 		}
 		if err = s.Auth0.Manager.User.Create(newUser); err != nil {
-			return fmt.Errorf("failed to create new user: %w", err)
+			err := fmt.Errorf("AddUserAccount() failed to create new user: %w", err)
+			s.Logger.Log("err", err)
+			return err
 		}
 
 		if err = s.Auth0.Manager.User.AssignRoles(*newUser.ID, roles...); err != nil {
-			return fmt.Errorf("failed to add user roles: %w", err)
+			err := fmt.Errorf("AddUserAccount() failed to add user roles: %w", err)
+			s.Logger.Log("err", err)
+			return err
 		}
 
 		accounts = append(accounts, newAccount(newUser, roles, buyer))
@@ -319,6 +372,7 @@ func GenerateRandomString(n int) (string, error) {
 	const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"
 	bytes, err := GenerateRandomBytes(n)
 	if err != nil {
+		// not method, no service logger
 		return "", err
 	}
 	for i, b := range bytes {
@@ -332,6 +386,7 @@ func GenerateRandomBytes(n int) ([]byte, error) {
 	_, err := rand.Read(b)
 	// Note that err == nil only if we read len(b) bytes.
 	if err != nil {
+		// not method, no service logger
 		return nil, err
 	}
 
@@ -369,18 +424,24 @@ type RolesReply struct {
 func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesReply) error {
 	reply.Roles = make([]*management.Role, 0)
 	if IsAnonymous(r) {
-		return fmt.Errorf("insufficient privileges")
+		err := fmt.Errorf("AllRoles() insufficient privileges")
+		s.Logger.Log("err", err)
+		return err
 	}
 	isAdmin, err := CheckRoles(r, "Admin")
 	if err != nil {
 		if _, err := CheckRoles(r, "Owner"); err != nil {
+			err := fmt.Errorf("AllRoles() CheckRoles error: %w", err)
+			s.Logger.Log("err", err)
 			return err
 		}
 	}
 
 	roleList, err := s.Auth0.Manager.Role.List()
 	if err != nil {
-		fmt.Errorf("failed to fetch role list: %w", err)
+		err := fmt.Errorf("AllRoles() failed to fetch role list: %w", err)
+		s.Logger.Log("err", err)
+		return err
 	}
 
 	if !isAdmin {
@@ -398,23 +459,31 @@ func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesRep
 
 func (s *AuthService) UserRoles(r *http.Request, args *RolesArgs, reply *RolesReply) error {
 	if IsAnonymous(r) {
-		return fmt.Errorf("insufficient privileges")
+		err := fmt.Errorf("UserRoles() insufficient privileges")
+		s.Logger.Log("err", err)
+		return err
 	}
 
 	if _, err := CheckRoles(r, "Admin"); err != nil {
 		if _, err := CheckRoles(r, "Owner"); err != nil {
+			err := fmt.Errorf("UserRoles() CheckRoles error: %w", err)
+			s.Logger.Log("err", err)
 			return err
 		}
 	}
 
 	if args.UserID == "" {
-		return fmt.Errorf("user_id is required")
+		err := fmt.Errorf("UserRoles() user_id is required")
+		s.Logger.Log("err", err)
+		return err
 	}
 
 	userRoles, err := s.Auth0.Manager.User.Roles(args.UserID)
 
 	if err != nil {
-		return fmt.Errorf("failed to get user roles: %w", err)
+		err := fmt.Errorf("UserRoles() failed to get user roles: %w", err)
+		s.Logger.Log("err", err)
+		return err
 	}
 
 	reply.Roles = userRoles.Roles
@@ -425,30 +494,40 @@ func (s *AuthService) UserRoles(r *http.Request, args *RolesArgs, reply *RolesRe
 func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *RolesReply) error {
 	var err error
 	if IsAnonymous(r) {
-		return fmt.Errorf("insufficient privileges")
+		err := fmt.Errorf("UpdateUserRoles() insufficient privileges")
+		s.Logger.Log("err", err)
+		return err
 	}
 
 	if _, err := CheckRoles(r, "Admin"); err != nil {
 		if _, err := CheckRoles(r, "Owner"); err != nil {
+			err := fmt.Errorf("UpdateUserRoles() CheckRoles error: %w", err)
+			s.Logger.Log("err", err)
 			return err
 		}
 	}
 
 	if args.UserID == "" {
-		return fmt.Errorf("user_id is required")
+		err := fmt.Errorf("UpdateUserRoles() user_id is required")
+		s.Logger.Log("err", err)
+		return err
 	}
 
 	userRoles, err := s.Auth0.Manager.User.Roles(args.UserID)
 
 	if err != nil {
-		return fmt.Errorf("failed to fetch user roles: %w", err)
+		err := fmt.Errorf("UpdateUserRoles() failed to fetch user roles: %w", err)
+		s.Logger.Log("err", err)
+		return err
 	}
 
 	if len(userRoles.Roles) > 0 {
 		err = s.Auth0.Manager.User.RemoveRoles(args.UserID, userRoles.Roles...)
-	}
-	if err != nil {
-		return fmt.Errorf("failed to remove current user role: %w", err)
+		if err != nil {
+			err := fmt.Errorf("UpdateUserRoles() failed to remove current user role: %w", err)
+			s.Logger.Log("err", err)
+			return err
+		}
 	}
 
 	if len(args.Roles) == 0 {
@@ -458,7 +537,9 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 
 	err = s.Auth0.Manager.User.AssignRoles(args.UserID, args.Roles...)
 	if err != nil {
-		return fmt.Errorf("failed to assign role: %w", err)
+		err := fmt.Errorf("UpdateUserRoles() failed to assign role: %w", err)
+		s.Logger.Log("err", err)
+		return err
 	}
 
 	reply.Roles = args.Roles
