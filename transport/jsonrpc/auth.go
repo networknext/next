@@ -595,22 +595,30 @@ func (s *AuthService) UpgradeAccount(r *http.Request, args *UpgradeArgs, reply *
 
 	userAccount, err := s.Auth0.Manager.User.Read(args.UserID)
 	if err != nil {
-		return fmt.Errorf("failed to fetch user account: %w", err)
+		err := fmt.Errorf("UpgradeAccount() failed to fetch user account: %w", err)
+		s.Logger.Log("err", err)
+		return err
 	}
 
 	emailParts := strings.Split(*userAccount.Email, "@")
 	if len(emailParts) <= 0 {
-		return fmt.Errorf("failed to parse email %s for domain", *userAccount.Email)
+		err := fmt.Errorf("UpgradeAccount() failed to parse email %s for domain", *userAccount.Email)
+		s.Logger.Log("err", err)
+		return err
 	}
 
 	domain := emailParts[len(emailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
 	buyer, err := s.Storage.BuyerWithDomain(domain)
 	if err != nil {
+		err := fmt.Errorf("UpgradeAccount() Storage.BuyerWithDomain error: %w", err)
+		s.Logger.Log("err", err)
 		return err
 	}
 
 	userRoles, err := s.Auth0.Manager.User.Roles(*userAccount.ID)
 	if err != nil {
+		err := fmt.Errorf("UpgradeAccount() failed to fetch user roles: %w", err)
+		s.Logger.Log("err", err)
 		return fmt.Errorf("failed to fetch user roles: %w", err)
 	}
 
