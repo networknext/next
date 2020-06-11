@@ -399,8 +399,7 @@ func main() {
 					{
 						Name:       "flush",
 						ShortUsage: "next sessions flush",
-						ShortHelp:  "Flush all sessions in from Redis in the Portal",
-						FlagSet:    routesfs,
+						ShortHelp:  "Flush all sessions in Redis in the Portal",
 						Exec: func(ctx context.Context, args []string) error {
 							flushsessions(rpcClient, env)
 							fmt.Println("All sessions flushed.")
