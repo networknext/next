@@ -295,6 +295,7 @@ type RelayCacheEntry struct {
 	LastUpdateTime time.Time
 	TrafficStats   RelayTrafficStats
 	MaxSessions    uint32
+	Version        string
 }
 
 func (e *RelayCacheEntry) UnmarshalBinary(data []byte) error {

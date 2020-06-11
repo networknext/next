@@ -388,6 +388,7 @@ namespace core
     doc.set(UpdateRequestVersion, "version");
     doc.set(mAddressStr, "relay_address");
     doc.set(mBase64RelayPublicKey, "Metadata", "PublicKey");
+    doc.set(RELAY_VERSION, "relay_version");
 
     // traffic stats
     {
