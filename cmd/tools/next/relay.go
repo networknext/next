@@ -157,6 +157,8 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 	}
 
 	for _, relayName := range relayNames {
+		disableRelays(env, rpcClient, []string{relayName})
+
 		fmt.Printf("Updating %s\n", relayName)
 		info := getRelayInfo(rpcClient, relayName)
 
