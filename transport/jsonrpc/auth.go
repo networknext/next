@@ -18,6 +18,10 @@ import (
 	"gopkg.in/auth0.v4/management"
 )
 
+var (
+	ErrInsufficientPrivileges = errors.New("insufficient privileges")
+)
+
 type contextType string
 
 const (
@@ -59,7 +63,7 @@ type account struct {
 
 func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *AccountsReply) error {
 	var accountList *management.UserList
-	if IsAnonymous(r) {
+	if IsAnonymous(r) || IsAnonymousPlus(r) {
 		err := fmt.Errorf("AllAccounts() insufficient privileges")
 		s.Logger.Log("err", err)
 		return err
@@ -186,7 +190,7 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 }
 
 func (s *AuthService) DeleteUserAccount(r *http.Request, args *AccountArgs, reply *AccountReply) error {
-	if IsAnonymous(r) {
+	if IsAnonymous(r) || IsAnonymousPlus(r) {
 		err := fmt.Errorf("DeleteUserAccount() insufficient privileges")
 		s.Logger.Log("err", err)
 		return err
@@ -462,8 +466,8 @@ func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesRep
 }
 
 func (s *AuthService) UserRoles(r *http.Request, args *RolesArgs, reply *RolesReply) error {
-	if IsAnonymous(r) {
-		err := fmt.Errorf("UserRoles() insufficient privileges")
+	if IsAnonymous(r) || IsAnonymousPlus(r) {
+	  err := fmt.Errorf("UserRoles() insufficient privileges")
 		s.Logger.Log("err", err)
 		return err
 	}
@@ -497,7 +501,7 @@ func (s *AuthService) UserRoles(r *http.Request, args *RolesArgs, reply *RolesRe
 
 func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *RolesReply) error {
 	var err error
-	if IsAnonymous(r) {
+	if IsAnonymous(r) || IsAnonymousPlus(r) {
 		err := fmt.Errorf("UpdateUserRoles() insufficient privileges")
 		s.Logger.Log("err", err)
 		return err
@@ -741,7 +745,7 @@ func CheckRoles(r *http.Request, requiredRole string) (bool, error) {
 	if found {
 		return true, nil
 	}
-	return false, nil
+	return false, ErrInsufficientPrivileges
 }
 
 func SetIsAnonymous(r *http.Request, value bool) *http.Request {

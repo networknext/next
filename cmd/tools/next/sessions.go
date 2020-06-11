@@ -8,6 +8,16 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
+func flushsessions(rpcClient jsonrpc.RPCClient, env Environment) {
+	relaysargs := localjsonrpc.FlushSessionsArgs{}
+
+	var relaysreply localjsonrpc.FlushSessionsReply
+	if err := rpcClient.CallFor(&relaysreply, "BuyersService.FlushSessions", relaysargs); err != nil {
+		handleJSONRPCError(env, err)
+		return
+	}
+}
+
 func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string) {
 	if sessionID != "" {
 		relaysargs := localjsonrpc.RelaysArgs{}

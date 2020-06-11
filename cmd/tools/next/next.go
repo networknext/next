@@ -427,6 +427,18 @@ func main() {
 					sessions(rpcClient, env, "")
 					return nil
 				},
+				Subcommands: []*ffcli.Command{
+					{
+						Name:       "flush",
+						ShortUsage: "next sessions flush",
+						ShortHelp:  "Flush all sessions in Redis in the Portal",
+						Exec: func(ctx context.Context, args []string) error {
+							flushsessions(rpcClient, env)
+							fmt.Println("All sessions flushed.")
+							return nil
+						},
+					},
+				},
 			},
 
 			{
