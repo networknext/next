@@ -64,3 +64,17 @@ func (con SSHConn) ConnectAndIssueCmd(cmd string) {
 		log.Fatalf("could not start ssh session")
 	}
 }
+
+func (con SSHConn) IssueCmdAndGetOutput(cmd string) (string, error) {
+	args := con.commonSSHCommands()
+	args = append(args, "-tt", con.user+"@"+con.address, "--", cmd)
+	return runCommandGetOutput("ssh", args, nil)
+}
+
+// TestConnect tries to connect for 60 seconds using ssh's connection timeout functionality
+func (con SSHConn) TestConnect() bool {
+	args := con.commonSSHCommands()
+	args = append(args, "-o", "ConnectTimeout=60", "-tt", con.user+"@"+con.address, "--", ":")
+	_, err := runCommandGetOutput("ssh", args, nil)
+	return err == nil
+}

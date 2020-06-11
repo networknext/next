@@ -66,6 +66,17 @@ To remove a relay: `next relays remove <name>`
 
 Removes a relay with the given relay name from Firestore.
 
+### Check
+
+To check relays: `next relays check [filter]`
+
+Displays a table of filtered relays, or all relays if no filter supplied, containing helpful information.
+
+The table will display if the relay can be ssh'ed into (yes/no), the version of Ubuntu it is running, and how many logical CPU cores are available. In the case of hyperthreaded CPUs this will be twice the number of physical cores.
+
+To test if the relay can be ssh'ed into, it uses ssh's `-o` flag with `ConnectTimeout=60`. This means the tool will report false if the relay is unreachable for 60 seconds. If the relay is reachable and will take longer than 60 seconds, the tool will continue. So for very distant relays, and especially those with high packet loss, this tool may take 2 or 3 minutes to complete.
+
+
 ## Route Shaders
 
 To get a route shader: `next routeshader <buyer ID>`
