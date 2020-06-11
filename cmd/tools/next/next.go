@@ -6,6 +6,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/binary"
@@ -92,6 +93,32 @@ func runCommandEnv(command string, args []string, env map[string]string) bool {
 	}
 
 	return true
+}
+
+// stdout is returned as the string portion, stderr is returned in the error portion or nil if the command exited successfully
+func runCommandGetOutput(command string, args []string, env map[string]string) (string, error) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	cmd := exec.Command(command, args...)
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	finalEnv := os.Environ()
+	for k, v := range env {
+		finalEnv = append(finalEnv, fmt.Sprintf("%s=%s", k, v))
+	}
+	cmd.Env = finalEnv
+
+	err := cmd.Run()
+
+	stdoutStr := strings.Trim(stdout.String(), "\r\n")
+	if err != nil {
+		stderrStr := strings.Trim(stderr.String(), "\r\n")
+		return stdoutStr, fmt.Errorf("%v, %s", err, stderrStr)
+	}
+
+	return stdoutStr, nil
 }
 
 func runCommandQuiet(command string, args []string, stdoutOnly bool) (bool, string) {
@@ -408,6 +435,23 @@ func main() {
 					}
 					relays(rpcClient, env, "")
 					return nil
+				},
+				Subcommands: []*ffcli.Command{
+					{
+						Name:       "check",
+						ShortUsage: "next relays check <filter>",
+						ShortHelp:  "List all or a subset of relays and see if they are ssh-able, what their ubuntu version is, and how many logical CPU cores they have.",
+						Exec: func(ctx context.Context, args []string) error {
+							filter := ""
+
+							if len(args) > 0 {
+								filter = args[0]
+							}
+
+							checkRelays(rpcClient, env, filter)
+							return nil
+						},
+					},
 				},
 			},
 			{
