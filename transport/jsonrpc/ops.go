@@ -92,7 +92,9 @@ func (s *OpsService) RemoveBuyer(r *http.Request, args *RemoveBuyerArgs, reply *
 
 	buyerID, err := strconv.ParseUint(args.ID, 16, 64)
 	if err != nil {
-		return fmt.Errorf("could not convert buyer ID %s to uint64: %v", args.ID, err)
+		err = fmt.Errorf("RemoveBuyer() could not convert buyer ID %s to uint64: %v", args.ID, err)
+		s.Logger.Log("err", err)
+		return err
 	}
 
 	return s.Storage.RemoveBuyer(ctx, buyerID)
@@ -129,7 +131,9 @@ type routingRuleSettings struct {
 func (s *OpsService) RoutingRulesSettings(r *http.Request, args *RoutingRulesSettingsArgs, reply *RoutingRulesSettingsReply) error {
 	buyerID, err := strconv.ParseUint(args.BuyerID, 16, 64)
 	if err != nil {
-		return fmt.Errorf("could not convert buyer ID %s to uint64: %v", args.BuyerID, err)
+		err = fmt.Errorf("RoutingRulesSettings() could not convert buyer ID %s to uint64: %v", args.BuyerID, err)
+		s.Logger.Log("err", err)
+		return err
 	}
 
 	buyer, err := s.Storage.Buyer(buyerID)
@@ -173,11 +177,15 @@ func (s *OpsService) SetRoutingRulesSettings(r *http.Request, args *SetRoutingRu
 
 	buyerID, err := strconv.ParseUint(args.BuyerID, 16, 64)
 	if err != nil {
-		return fmt.Errorf("could not convert buyer ID %s to uint64: %v", args.BuyerID, err)
+		err = fmt.Errorf("SetRoutingRulesSettings() could not convert buyer ID %s to uint64: %v", args.BuyerID, err)
+		s.Logger.Log("err", err)
+		return err
 	}
 
 	buyer, err := s.Storage.Buyer(buyerID)
 	if err != nil {
+		err = fmt.Errorf("SetRoutingRulesSettings() Storage.Buyer error: %w", err)
+		s.Logger.Log("err", err)
 		return err
 	}
 
@@ -274,7 +282,13 @@ func (s *OpsService) AddSeller(r *http.Request, args *AddSellerArgs, reply *AddS
 	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
-	return s.Storage.AddSeller(ctx, args.Seller)
+	if err := s.Storage.AddSeller(ctx, args.Seller); err != nil {
+		err = fmt.Errorf("AddSeller() error: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	return nil
 }
 
 type RemoveSellerArgs struct {
@@ -287,7 +301,13 @@ func (s *OpsService) RemoveSeller(r *http.Request, args *RemoveSellerArgs, reply
 	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
-	return s.Storage.RemoveSeller(ctx, args.ID)
+	if err := s.Storage.RemoveSeller(ctx, args.ID); err != nil {
+		err = fmt.Errorf("RemoveSeller() error: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	return nil
 }
 
 type RelaysArgs struct {
@@ -324,7 +344,9 @@ type relay struct {
 func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysReply) error {
 	hgetallResult := s.RedisClient.HGetAll(routing.HashKeyAllRelays)
 	if hgetallResult.Err() != nil && hgetallResult.Err() != redis.Nil {
-		return fmt.Errorf("failed to get all relays: %v", hgetallResult.Err())
+		err := fmt.Errorf("failed to get all relays: %v", hgetallResult.Err())
+		s.Logger.Log("err", err)
+		return err
 	}
 
 	relayCacheEntries := hgetallResult.Val()
@@ -395,7 +417,13 @@ func (s *OpsService) AddRelay(r *http.Request, args *AddRelayArgs, reply *AddRel
 	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
-	return s.Storage.AddRelay(ctx, args.Relay)
+	if err := s.Storage.AddRelay(ctx, args.Relay); err != nil {
+		err = fmt.Errorf("AddRelay() error: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	return nil
 }
 
 type RemoveRelayArgs struct {
@@ -408,7 +436,13 @@ func (s *OpsService) RemoveRelay(r *http.Request, args *RemoveRelayArgs, reply *
 	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
-	return s.Storage.RemoveRelay(ctx, args.RelayID)
+	if err := s.Storage.RemoveRelay(ctx, args.RelayID); err != nil {
+		err = fmt.Errorf("RemoveRelay() error: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	return nil
 }
 
 type RelayStateUpdateArgs struct {
@@ -420,14 +454,22 @@ type RelayStateUpdateReply struct {
 }
 
 func (s *OpsService) RelayStateUpdate(r *http.Request, args *RelayStateUpdateArgs, reply *RelayStateUpdateReply) error {
-	relay, err := s.Storage.Relay(args.RelayID)
 
+	relay, err := s.Storage.Relay(args.RelayID)
 	if err != nil {
+		err = fmt.Errorf("RelayStateUpdate() Storage.Relay error: %w", err)
+		s.Logger.Log("err", err)
 		return err
 	}
 
 	relay.State = args.RelayState
-	return s.Storage.SetRelay(context.Background(), relay)
+	if err = s.Storage.SetRelay(context.Background(), relay); err != nil {
+		err = fmt.Errorf("RelayStateUpdate() Storage.SetRelay error: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	return nil
 }
 
 type RelayPublicKeyUpdateArgs struct {
@@ -439,19 +481,28 @@ type RelayPublicKeyUpdateReply struct {
 }
 
 func (s *OpsService) RelayPublicKeyUpdate(r *http.Request, args *RelayPublicKeyUpdateArgs, reply *RelayPublicKeyUpdateReply) error {
-	relay, err := s.Storage.Relay(args.RelayID)
 
+	relay, err := s.Storage.Relay(args.RelayID)
 	if err != nil {
+		err = fmt.Errorf("RelayPublicKeyUpdate()")
 		return err
 	}
 
 	relay.PublicKey, err = base64.StdEncoding.DecodeString(args.RelayPublicKey)
 
 	if err != nil {
-		return fmt.Errorf("could not decode relay public key: %v", err)
+		err = fmt.Errorf("RelayPublicKeyUpdate() could not decode relay public key: %v", err)
+		s.Logger.Log("err", err)
+		return err
 	}
 
-	return s.Storage.SetRelay(context.Background(), relay)
+	if err = s.Storage.SetRelay(context.Background(), relay); err != nil {
+		err = fmt.Errorf("RelayPublicKeyUpdate() SetRelay error: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	return nil
 }
 
 type RelayNICSpeedUpdateArgs struct {
@@ -463,15 +514,22 @@ type RelayNICSpeedUpdateReply struct {
 }
 
 func (s *OpsService) RelayNICSpeedUpdate(r *http.Request, args *RelayNICSpeedUpdateArgs, reply *RelayNICSpeedUpdateReply) error {
-	relay, err := s.Storage.Relay(args.RelayID)
 
+	relay, err := s.Storage.Relay(args.RelayID)
 	if err != nil {
+		err = fmt.Errorf("RelayNICSpeedUpdate() Relay error: %w", err)
+		s.Logger.Log("err", err)
 		return err
 	}
 
 	relay.NICSpeedMbps = args.RelayNICSpeed
+	if err = s.Storage.SetRelay(context.Background(), relay); err != nil {
+		err = fmt.Errorf("RelayNICSpeedUpdate() SetRelay error: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
 
-	return s.Storage.SetRelay(context.Background(), relay)
+	return nil
 }
 
 type DatacentersArgs struct {
@@ -528,7 +586,13 @@ func (s *OpsService) AddDatacenter(r *http.Request, args *AddDatacenterArgs, rep
 	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
-	return s.Storage.AddDatacenter(ctx, args.Datacenter)
+	if err := s.Storage.AddDatacenter(ctx, args.Datacenter); err != nil {
+		err = fmt.Errorf("AddDatacenter() error: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	return nil
 }
 
 type RemoveDatacenterArgs struct {
@@ -543,7 +607,13 @@ func (s *OpsService) RemoveDatacenter(r *http.Request, args *RemoveDatacenterArg
 
 	id := crypto.HashID(args.Name)
 
-	return s.Storage.RemoveDatacenter(ctx, id)
+	if err := s.Storage.RemoveDatacenter(ctx, id); err != nil {
+		err = fmt.Errorf("RemoveDatacenter() error: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	return nil
 }
 
 type RouteSelectionArgs struct {
@@ -597,6 +667,8 @@ func (s *OpsService) RouteSelection(r *http.Request, args *RouteSelectionArgs, r
 
 	routes, err := s.RouteMatrix.Routes(srcrelays, destrelays, selectors...)
 	if err != nil {
+		err = fmt.Errorf("RouteSelection() Routes error: %w", err)
+		s.Logger.Log("err", err)
 		return err
 	}
 
@@ -604,6 +676,8 @@ func (s *OpsService) RouteSelection(r *http.Request, args *RouteSelectionArgs, r
 		for relayidx := range routes[routeidx].Relays {
 			routes[routeidx].Relays[relayidx], err = s.Storage.Relay(routes[routeidx].Relays[relayidx].ID)
 			if err != nil {
+				err = fmt.Errorf("RouteSelection() Relays error: %w", err)
+				s.Logger.Log("err", err)
 				return err
 			}
 		}
