@@ -325,6 +325,10 @@ func main() {
 	routesfs.Float64Var(&routeRTT, "rtt", 5, "route RTT required for selection")
 	routesfs.Uint64Var(&routeHash, "hash", 0, "a previous hash to use")
 
+	var relayCoreCount uint64
+	relayupdatefs := flag.NewFlagSet("relay update", flag.ExitOnError)
+	relayupdatefs.Uint64Var(&relayCoreCount, "cores", 0, "number of cores for the relay to utilize")
+
 	root := &ffcli.Command{
 		ShortUsage: "next <subcommand>",
 		Subcommands: []*ffcli.Command{
@@ -422,6 +426,18 @@ func main() {
 					}
 					sessions(rpcClient, env, "")
 					return nil
+				},
+				Subcommands: []*ffcli.Command{
+					{
+						Name:       "flush",
+						ShortUsage: "next sessions flush",
+						ShortHelp:  "Flush all sessions in Redis in the Portal",
+						Exec: func(ctx context.Context, args []string) error {
+							flushsessions(rpcClient, env)
+							fmt.Println("All sessions flushed.")
+							return nil
+						},
+					},
 				},
 			},
 
@@ -548,12 +564,13 @@ func main() {
 						Name:       "update",
 						ShortUsage: "next relay update <relay name...>",
 						ShortHelp:  "Update the specified relay(s)",
+						FlagSet:    relayupdatefs,
 						Exec: func(ctx context.Context, args []string) error {
 							if len(args) == 0 {
 								log.Fatal("You need to supply at least one relay name")
 							}
 
-							updateRelays(env, rpcClient, args)
+							updateRelays(env, rpcClient, args, relayCoreCount)
 
 							return nil
 						},

@@ -24,6 +24,18 @@ type BuyersService struct {
 	Logger      log.Logger
 }
 
+type FlushSessionsArgs struct{}
+
+type FlushSessionsReply struct{}
+
+func (s *BuyersService) FlushSessions(r *http.Request, args *FlushSessionsArgs, reply *FlushSessionsReply) error {
+	if !CheckIsOps(r) {
+		return ErrInsufficientPrivileges
+	}
+
+	return s.RedisClient.FlushAllAsync().Err()
+}
+
 type UserSessionsArgs struct {
 	UserHash string `json:"user_hash"`
 }

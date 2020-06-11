@@ -759,6 +759,8 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 
 		relayCacheEntry.TrafficStats = relayUpdateRequest.TrafficStats
 
+		relayCacheEntry.Version = relayUpdateRequest.RelayVersion
+
 		// Regular set for expiry
 		if res := params.RedisClient.Set(relayCacheEntry.Key(), 0, routing.RelayTimeout); res.Err() != nil {
 			level.Error(locallogger).Log("msg", "failed to store relay update expiry", "err", res.Err())

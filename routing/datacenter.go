@@ -2,7 +2,7 @@ package routing
 
 var UnknownDatacenter = Datacenter{
 	ID:      0,
-	Name:    "Unknown",
+	Name:    "unknown",
 	Enabled: false,
 }
 
