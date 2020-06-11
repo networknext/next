@@ -95,9 +95,15 @@ func runCommandEnv(command string, args []string, env map[string]string) bool {
 		sig := <-c
 
 		// If the command still exists send the os.Signal captured by next tool
-		// to the underlying process
+		// to the underlying process.
+		// If the signal is interrupt, then try to directly kill the process,
+		// otherwise forward the signal.
 		if cmd.Process != nil {
-			if err := cmd.Process.Signal(sig); err != nil {
+			if sig == syscall.SIGINT {
+				if err := cmd.Process.Kill(); err != nil {
+					log.Fatal(err)
+				}
+			} else if err := cmd.Process.Signal(sig); err != nil {
 				log.Fatal(err)
 			}
 			os.Exit(1)
