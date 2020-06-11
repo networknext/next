@@ -23,8 +23,11 @@ func TestBuyersList(t *testing.T) {
 	storer := storage.InMemory{}
 	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, Name: "local.local.1"})
 
+	logger := log.NewNopLogger()
+
 	svc := jsonrpc.BuyersService{
 		Storage: &storer,
+		Logger:  logger,
 	}
 	jwtSideload := "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik5rWXpOekkwTkVVNVFrSTVNRVF4TURRMk5UWTBNakkzTmpOQlJESkVNa1E0TnpGRFF6QkdRdyJ9.eyJuaWNrbmFtZSI6ImpvaG4iLCJuYW1lIjoiam9obkBuZXR3b3JrbmV4dC5jb20iLCJwaWN0dXJlIjoiaHR0cHM6Ly9zLmdyYXZhdGFyLmNvbS9hdmF0YXIvMGIzZTgwMDFjYTJkN2NlM2I2ZmZlMTU2ZTczODRlZTU_cz00ODAmcj1wZyZkPWh0dHBzJTNBJTJGJTJGY2RuLmF1dGgwLmNvbSUyRmF2YXRhcnMlMkZqby5wbmciLCJ1cGRhdGVkX2F0IjoiMjAyMC0wNS0xOVQxOTo1MDoyMC44NjNaIiwiZW1haWwiOiJqb2huQG5ldHdvcmtuZXh0LmNvbSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJpc3MiOiJodHRwczovL25ldHdvcmtuZXh0LmF1dGgwLmNvbS8iLCJzdWIiOiJhdXRoMHw1ZWJhYzhiMjA3ZWU4YjFjMTliNGMwZTIiLCJhdWQiOiJvUUpIM1lQSGR2WkpueENQbzFJcnR6NVVLaTV6cnI2biIsImlhdCI6MTU4OTkxNzgyMiwiZXhwIjoxNzQ3NTk3ODIyLCJub25jZSI6IlJuRjFaVzlYYW1aS2VUTkVPRFJMTFhreVVVNVRielJSWVdjdVRGWjFUVlpFZDFVellYNDBXR05sTUE9PSJ9.Va2WRHDUj7XoXzvSkUDfx819RDpewyHMxyv0CIBfsWfVOCB80jRPBvQo7oImRM0FPMYyCl5r4i8-rU5jyg8fZUC3vSABVPALqxX4ViNy3qB4Zgn1RidXoUGKuAUTfi40fS_xDSDBoErRjkxzZuMby_9xNhBw5WwL6sKDGzGL-nayBWHf7LTf0wPwrhZPI4YtHdrJEzYUkwdMCJnMsuSZsgpwvfzvpLgg9NJ4me-VhTQAKJjxXIAsHD_QiI7EEPK1tcd58T11J_xsTktSmDVxuG0-QIs2ioWs0DJSepjcld4tLTlDDZObHIjo_edXd5Wk9zalxfAE7sPWUexFZPQMDA"
 	noopHandler := func(w http.ResponseWriter, _ *http.Request) {
@@ -70,10 +73,12 @@ func TestUserSessions(t *testing.T) {
 	redisClient.Set(fmt.Sprintf("session-%s-meta", sessionID2), routing.SessionMeta{ID: sessionID2}, time.Hour)
 	redisClient.Set(fmt.Sprintf("session-%s-meta", sessionID3), routing.SessionMeta{ID: sessionID3}, time.Hour)
 
+	logger := log.NewNopLogger()
+
 	svc := jsonrpc.BuyersService{
 		RedisClient: redisClient,
+		Logger:      logger,
 	}
-	logger := log.NewNopLogger()
 
 	manager, err := management.New(
 		"networknext.auth0.com",
@@ -170,12 +175,12 @@ func TestTopSessions(t *testing.T) {
 	pubkey := make([]byte, 4)
 	storer.AddBuyer(context.Background(), routing.Buyer{ID: 111, Name: "local.local.1", PublicKey: pubkey, Domain: "networknext.com"})
 
+	logger := log.NewNopLogger()
 	svc := jsonrpc.BuyersService{
 		RedisClient: redisClient,
 		Storage:     &storer,
+		Logger:      logger,
 	}
-
-	logger := log.NewNopLogger()
 
 	manager, err := management.New(
 		"networknext.auth0.com",
@@ -286,11 +291,12 @@ func TestSessionDetails(t *testing.T) {
 	inMemory.AddDatacenter(context.Background(), routing.Datacenter{ID: 1})
 	inMemory.AddRelay(context.Background(), routing.Relay{ID: 1, Name: "local", Seller: routing.Seller{ID: "local"}, Datacenter: routing.Datacenter{ID: 1}})
 
+	logger := log.NewNopLogger()
 	svc := jsonrpc.BuyersService{
 		RedisClient: redisClient,
 		Storage:     &inMemory,
+		Logger:      logger,
 	}
-	logger := log.NewNopLogger()
 
 	manager, err := management.New(
 		"networknext.auth0.com",
@@ -389,12 +395,12 @@ func TestSessionMapPoints(t *testing.T) {
 	pubkey := make([]byte, 4)
 	storer.AddBuyer(context.Background(), routing.Buyer{ID: 111, Name: "local.local.1", PublicKey: pubkey})
 
+	logger := log.NewNopLogger()
 	svc := jsonrpc.BuyersService{
 		RedisClient: redisClient,
 		Storage:     &storer,
+		Logger:      logger,
 	}
-
-	logger := log.NewNopLogger()
 
 	manager, err := management.New(
 		"networknext.auth0.com",
@@ -469,9 +475,11 @@ func TestGameConfiguration(t *testing.T) {
 	pubkey := make([]byte, 4)
 	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, Name: "local.local.1", Domain: "local.com", PublicKey: pubkey})
 
+	logger := log.NewNopLogger()
 	svc := jsonrpc.BuyersService{
 		RedisClient: redisClient,
 		Storage:     &storer,
+		Logger:      logger,
 	}
 
 	jwtSideload := "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik5rWXpOekkwTkVVNVFrSTVNRVF4TURRMk5UWTBNakkzTmpOQlJESkVNa1E0TnpGRFF6QkdRdyJ9.eyJuaWNrbmFtZSI6ImpvaG4iLCJuYW1lIjoiam9obkBuZXR3b3JrbmV4dC5jb20iLCJwaWN0dXJlIjoiaHR0cHM6Ly9zLmdyYXZhdGFyLmNvbS9hdmF0YXIvMGIzZTgwMDFjYTJkN2NlM2I2ZmZlMTU2ZTczODRlZTU_cz00ODAmcj1wZyZkPWh0dHBzJTNBJTJGJTJGY2RuLmF1dGgwLmNvbSUyRmF2YXRhcnMlMkZqby5wbmciLCJ1cGRhdGVkX2F0IjoiMjAyMC0wNS0xOVQxOTo1MDoyMC44NjNaIiwiZW1haWwiOiJqb2huQG5ldHdvcmtuZXh0LmNvbSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJpc3MiOiJodHRwczovL25ldHdvcmtuZXh0LmF1dGgwLmNvbS8iLCJzdWIiOiJhdXRoMHw1ZWJhYzhiMjA3ZWU4YjFjMTliNGMwZTIiLCJhdWQiOiJvUUpIM1lQSGR2WkpueENQbzFJcnR6NVVLaTV6cnI2biIsImlhdCI6MTU4OTkxNzgyMiwiZXhwIjoxNzQ3NTk3ODIyLCJub25jZSI6IlJuRjFaVzlYYW1aS2VUTkVPRFJMTFhreVVVNVRielJSWVdjdVRGWjFUVlpFZDFVellYNDBXR05sTUE9PSJ9.Va2WRHDUj7XoXzvSkUDfx819RDpewyHMxyv0CIBfsWfVOCB80jRPBvQo7oImRM0FPMYyCl5r4i8-rU5jyg8fZUC3vSABVPALqxX4ViNy3qB4Zgn1RidXoUGKuAUTfi40fS_xDSDBoErRjkxzZuMby_9xNhBw5WwL6sKDGzGL-nayBWHf7LTf0wPwrhZPI4YtHdrJEzYUkwdMCJnMsuSZsgpwvfzvpLgg9NJ4me-VhTQAKJjxXIAsHD_QiI7EEPK1tcd58T11J_xsTktSmDVxuG0-QIs2ioWs0DJSepjcld4tLTlDDZObHIjo_edXd5Wk9zalxfAE7sPWUexFZPQMDA"
@@ -489,7 +497,7 @@ func TestGameConfiguration(t *testing.T) {
 
 	t.Run("missing name", func(t *testing.T) {
 		var reply jsonrpc.GameConfigurationReply
-		err := svc.UpdateGameConfiguration(req, &jsonrpc.GameConfigurationArgs{}, &reply)
+		err := svc.UpdateGameConfiguration(req, &jsonrpc.GameConfigurationArgs{Domain: "local.com"}, &reply)
 		assert.Error(t, err)
 	})
 
