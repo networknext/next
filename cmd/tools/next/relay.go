@@ -65,7 +65,7 @@ type relayInfo struct {
 
 func getRelayInfo(rpcClient jsonrpc.RPCClient, relayName string) relayInfo {
 	args := localjsonrpc.RelaysArgs{
-		Name: relayName,
+		Regex: relayName,
 	}
 
 	var reply localjsonrpc.RelaysReply

@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -291,7 +292,7 @@ func (s *OpsService) RemoveSeller(r *http.Request, args *RemoveSellerArgs, reply
 }
 
 type RelaysArgs struct {
-	Name string `json:"name"`
+	Regex string `json:"name"`
 }
 
 type RelaysReply struct {
@@ -366,11 +367,13 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 		reply.Relays = append(reply.Relays, relay)
 	}
 
-	if args.Name != "" {
+	if args.Regex != "" {
 		var filtered []relay
 		for idx := range reply.Relays {
-			if strings.Contains(reply.Relays[idx].Name, args.Name) {
+			if match, err := regexp.Match(args.Regex, []byte(reply.Relays[idx].Name)); match && err == nil {
 				filtered = append(filtered, reply.Relays[idx])
+			} else if err != nil {
+				return err
 			}
 		}
 		reply.Relays = filtered

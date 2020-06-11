@@ -14,9 +14,9 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
-func relays(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
+func relays(rpcClient jsonrpc.RPCClient, env Environment, regex string) {
 	args := localjsonrpc.RelaysArgs{
-		Name: filter,
+		Regex: regex,
 	}
 
 	var reply localjsonrpc.RelaysReply
@@ -79,7 +79,7 @@ func relays(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 
 func checkRelays(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 	args := localjsonrpc.RelaysArgs{
-		Name: filter,
+		Regex: filter,
 	}
 
 	var reply localjsonrpc.RelaysReply
