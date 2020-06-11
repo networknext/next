@@ -102,11 +102,10 @@ func checkRelays(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 	info := make([]checkInfo, len(reply.Relays))
 
 	var wg sync.WaitGroup
+	wg.Add(len(reply.Relays))
 
 	fmt.Printf("acquiring check info for %d relays\n", len(info))
 	for i, relay := range reply.Relays {
-		wg.Add(1)
-
 		r := relay
 		go func(indx int, wg *sync.WaitGroup) {
 			defer wg.Done()
