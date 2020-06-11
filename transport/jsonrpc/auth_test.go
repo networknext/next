@@ -97,6 +97,7 @@ func TestAuthClient(t *testing.T) {
 	svc := jsonrpc.AuthService{
 		Auth0:   auth0Client,
 		Storage: &db,
+		Logger:  logger,
 	}
 	authMiddleware := jsonrpc.AuthMiddleware("oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n", http.HandlerFunc(noopHandler))
 
