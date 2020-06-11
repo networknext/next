@@ -19,6 +19,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"os/signal"
 	"runtime"
 	"strconv"
 	"strings"
@@ -84,6 +85,24 @@ func runCommandEnv(command string, args []string, env map[string]string) bool {
 		finalEnv = append(finalEnv, fmt.Sprintf("%s=%s", k, v))
 	}
 	cmd.Env = finalEnv
+
+	// Make a os.Signal channel and attach any incoming os signals
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+
+	// Start a goroutine and block waiting for any os.Signal
+	go func() {
+		sig := <-c
+
+		// If the command still exists send the os.Signal captured by next tool
+		// to the underlying process
+		if cmd.Process != nil {
+			if err := cmd.Process.Signal(sig); err != nil {
+				log.Fatal(err)
+			}
+			os.Exit(1)
+		}
+	}()
 
 	err := cmd.Run()
 	if err != nil {
