@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/networknext/backend/routing"
@@ -131,25 +132,29 @@ func updateRelayState(rpcClient jsonrpc.RPCClient, info relayInfo, state routing
 	}
 }
 
-func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []string) {
+func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []string, coreCount uint64) {
 	// Fetch and save the latest binary
-
-	if url, err := env.RelayArtifactURL(); err == nil {
-		if r, err := http.Get(url); err == nil {
-			defer r.Body.Close()
-			if file, err := os.Create("dist/relay.tar.gz"); err == nil {
-				defer file.Close()
-				if _, err := io.Copy(file, r.Body); err != nil {
-					log.Fatalf("failed to copy http response to file: %v\n", err)
-				}
-			} else {
-				log.Fatalf("could not open 'dist/relay.tar.gz' for writing: %v\n", err)
-			}
-		} else {
-			log.Fatalf("could not acquire relay tar: %v\n", err)
-		}
-	} else {
+	url, err := env.RelayArtifactURL()
+	if err != nil {
 		log.Fatalf("%v\n", err)
+	}
+
+	r, err := http.Get(url)
+	if err != nil {
+		log.Fatalf("could not acquire relay tar: %v\n", err)
+	}
+
+	defer r.Body.Close()
+
+	file, err := os.Create("dist/relay.tar.gz")
+	if err != nil {
+		log.Fatalf("could not open 'dist/relay.tar.gz' for writing: %v\n", err)
+	}
+
+	defer file.Close()
+
+	if _, err := io.Copy(file, r.Body); err != nil {
+		log.Fatalf("failed to copy http response to file: %v\n", err)
 	}
 
 	if !runCommand("tar", []string{"-C", "./dist", "-xzf", "dist/relay.tar.gz"}) {
@@ -161,33 +166,6 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 
 		fmt.Printf("Updating %s\n", relayName)
 		info := getRelayInfo(rpcClient, relayName)
-
-		// Use the update key that exists on the relay already so that the relay
-		// can configure with the old backend correctly.
-		// Once we drop the old backend we can remove this block of code.
-		{
-			// Retrieve the update key that exists on the relay
-			success, output := runCommandQuiet("deploy/relay/retrieve-update-key.sh", []string{env.SSHKeyFilePath, info.user + "@" + info.sshAddr}, true)
-			if !success {
-				// Relay does not have the update key on it yet, so just make it blank for now
-				// This won't work if RELAY_V3_ENABLED=1 but it will make spinning up relays in dev
-				// faster for now
-
-				info.updateKey = ""
-
-				// log.Fatalf("could not execute the retrieve-update-key.sh script: %s", output)
-			}
-
-			// Make sure the update key env var on the relay wasn't empty
-			if len(output) == 0 {
-				info.updateKey = ""
-
-				// log.Fatalln("no update key found on relay")
-			}
-
-			// Remove extra newline and assign to relay info
-			info.updateKey = output[:len(output)-1]
-		}
 
 		// Update the relay's state to offline in storage
 		updateRelayState(rpcClient, info, routing.RelayStateOffline)
@@ -235,6 +213,10 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 			envvars["RELAY_V3_SPEED"] = info.nicSpeed
 			envvars["RELAY_V3_NAME"] = info.firestoreID
 
+			if coreCount > 0 {
+				envvars["RELAY_MAX_CORES"] = strconv.FormatUint(coreCount, 10)
+			}
+
 			f, err := os.Create("dist/relay.env")
 			if err != nil {
 				log.Fatalf("could not create 'dist/relay.env': %v", err)
@@ -265,12 +247,19 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 		// Give the relay backend enough time to pull down the new public key so that
 		// we don't get crypto open failed logs when the relay tries to initialize at first
 		fmt.Println("Waiting for backend to sync changes...")
-		time.Sleep(10 * time.Second)
+		time.Sleep(11 * time.Second)
 
 		// Run the relay update script
 		if !runCommandEnv("deploy/relay-update.sh", []string{env.SSHKeyFilePath, info.user + "@" + info.sshAddr}, nil) {
 			log.Fatal("could not execute the relay-update.sh script")
 		}
+
+		// Give the portal enough time to pull down the new state so that
+		// the relay doesn't appear disabled/offline
+		fmt.Println("Waiting for portal to sync changes...")
+		time.Sleep(11 * time.Second)
+
+		fmt.Printf("Update complete for %s!\n", relayName)
 	}
 }
 
