@@ -17,6 +17,10 @@ import (
 	"gopkg.in/auth0.v4/management"
 )
 
+var (
+	ErrInsufficientPrivileges = errors.New("insufficient privileges")
+)
+
 type contextType string
 
 const (
@@ -58,7 +62,7 @@ type account struct {
 func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *AccountsReply) error {
 	var accountList *management.UserList
 	if IsAnonymous(r) {
-		return fmt.Errorf("insufficient privileges")
+		return ErrInsufficientPrivileges
 	}
 	_, err := CheckRoles(r, "Admin")
 	if err != nil {
@@ -110,7 +114,7 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 
 func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *AccountReply) error {
 	if IsAnonymous(r) {
-		return fmt.Errorf("insufficient privileges")
+		return ErrInsufficientPrivileges
 	}
 
 	if args.UserID == "" {
@@ -158,7 +162,7 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 
 func (s *AuthService) DeleteUserAccount(r *http.Request, args *AccountArgs, reply *AccountReply) error {
 	if IsAnonymous(r) {
-		return fmt.Errorf("insufficient privileges")
+		return ErrInsufficientPrivileges
 	}
 
 	if _, err := CheckRoles(r, "Admin"); err != nil {
@@ -195,7 +199,7 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 	// Check if non admin is assigning admin role
 	for _, r := range args.Roles {
 		if r.Name == &adminString && !isAdmin {
-			return fmt.Errorf("insufficient privileges")
+			return ErrInsufficientPrivileges
 		}
 	}
 
@@ -367,7 +371,7 @@ type RolesReply struct {
 func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesReply) error {
 	reply.Roles = make([]*management.Role, 0)
 	if IsAnonymous(r) {
-		return fmt.Errorf("insufficient privileges")
+		return ErrInsufficientPrivileges
 	}
 	isAdmin, err := CheckRoles(r, "Admin")
 	if err != nil {
@@ -396,7 +400,7 @@ func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesRep
 
 func (s *AuthService) UserRoles(r *http.Request, args *RolesArgs, reply *RolesReply) error {
 	if IsAnonymous(r) {
-		return fmt.Errorf("insufficient privileges")
+		return ErrInsufficientPrivileges
 	}
 
 	if _, err := CheckRoles(r, "Admin"); err != nil {
@@ -423,7 +427,7 @@ func (s *AuthService) UserRoles(r *http.Request, args *RolesArgs, reply *RolesRe
 func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *RolesReply) error {
 	var err error
 	if IsAnonymous(r) {
-		return fmt.Errorf("insufficient privileges")
+		return ErrInsufficientPrivileges
 	}
 
 	if _, err := CheckRoles(r, "Admin"); err != nil {
@@ -577,7 +581,7 @@ func CheckRoles(r *http.Request, requiredRole string) (bool, error) {
 	if found {
 		return true, nil
 	}
-	return false, fmt.Errorf("insufficient privileges")
+	return false, ErrInsufficientPrivileges
 }
 
 func SetIsAnonymous(r *http.Request, value bool) *http.Request {
