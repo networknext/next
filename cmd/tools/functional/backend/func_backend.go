@@ -69,10 +69,13 @@ type ServerEntry struct {
 
 const RTT_Threshold = 1.0
 
+const MaxJitter = float32(10.0)
+const MaxPacketLoss = float32(0.1)
+
 func OptimizeThread() {
 	for {
 		backend.mutex.Lock()
-		if err := backend.statsDatabase.GetCostMatrix(backend.costMatrix, backend.redisClient); err != nil {
+		if err := backend.statsDatabase.GetCostMatrix(backend.costMatrix, backend.redisClient, MaxJitter, MaxPacketLoss); err != nil {
 			fmt.Printf("error generating cost matrix: %v\n", err)
 		}
 		if err := backend.costMatrix.Optimize(backend.routeMatrix, RTT_Threshold); err != nil {

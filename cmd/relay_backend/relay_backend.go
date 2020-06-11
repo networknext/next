@@ -281,10 +281,39 @@ func main() {
 		}
 	}
 
+	// Get the max jitter and max packet loss env vars
+	var maxJitter float64
+	var maxPacketLoss float64
+	{
+		maxJitterString, ok := os.LookupEnv("RELAY_ROUTER_MAX_JITTER")
+		if !ok {
+			level.Error(logger).Log("msg", "env var not set", "envvar", "RELAY_ROUTER_MAX_JITTER")
+			os.Exit(1)
+		}
+
+		maxJitter, err = strconv.ParseFloat(maxJitterString, 32)
+		if err != nil {
+			level.Error(logger).Log("err", "could not parse max jitter", "value", maxJitterString)
+			os.Exit(1)
+		}
+
+		maxPacketLossString, ok := os.LookupEnv("RELAY_ROUTER_MAX_PACKET_LOSS")
+		if !ok {
+			level.Error(logger).Log("msg", "env var not set", "envvar", "RELAY_ROUTER_MAX_PACKET_LOSS")
+			os.Exit(1)
+		}
+
+		maxPacketLoss, err = strconv.ParseFloat(maxPacketLossString, 32)
+		if err != nil {
+			level.Error(logger).Log("err", "could not parse max packet loss", "value", maxPacketLossString)
+			os.Exit(1)
+		}
+	}
+
 	// Periodically generate cost matrix from stats db
 	go func() {
 		for {
-			if err := statsdb.GetCostMatrix(&costmatrix, redisClientRelays); err != nil {
+			if err := statsdb.GetCostMatrix(&costmatrix, redisClientRelays, float32(maxJitter), float32(maxPacketLoss)); err != nil {
 				level.Warn(logger).Log("matrix", "cost", "op", "generate", "err", err)
 			}
 

@@ -13,9 +13,6 @@ import (
 const (
 	HistoryInvalidValue = -1
 	HistorySize         = 300 // 5 minutes @ 1 relay update per-second
-
-	MaxJitter     = 10.0
-	MaxPacketLoss = 0.1
 )
 
 // TriMatrixLength returns the length of a triangular shaped matrix
@@ -217,7 +214,7 @@ func (database *StatsDatabase) GetSample(relay1, relay2 uint64) (float32, float3
 }
 
 // GetCostMatrix returns the cost matrix composed of all current information
-func (database *StatsDatabase) GetCostMatrix(costMatrix *CostMatrix, redisClient redis.Cmdable) error {
+func (database *StatsDatabase) GetCostMatrix(costMatrix *CostMatrix, redisClient redis.Cmdable, maxJitter float32, maxPacketLoss float32) error {
 	hgetallResult := redisClient.HGetAll(HashKeyAllRelays)
 	if hgetallResult.Err() != nil && hgetallResult.Err() != redis.Nil {
 		return fmt.Errorf("failed to get all relays from redis: %v", hgetallResult.Err())
@@ -281,7 +278,7 @@ func (database *StatsDatabase) GetCostMatrix(costMatrix *CostMatrix, redisClient
 			idJ := uint64(costMatrix.RelayIDs[j])
 			rtt, jitter, packetLoss := database.GetSample(idI, idJ)
 			ijIndex := TriMatrixIndex(i, j)
-			if rtt != InvalidRouteValue && jitter <= MaxJitter && packetLoss <= MaxPacketLoss {
+			if rtt != InvalidRouteValue && jitter <= maxJitter && packetLoss <= maxPacketLoss {
 				costMatrix.RTT[ijIndex] = int32(math.Floor(float64(rtt + jitter)))
 			} else {
 				costMatrix.RTT[ijIndex] = -1
