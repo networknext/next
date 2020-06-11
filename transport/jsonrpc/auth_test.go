@@ -15,9 +15,11 @@ import (
 	"gopkg.in/auth0.v4/management"
 )
 
+// All tests listed below depend on test@networknext.com being a user in auth0
 func TestAuthMiddleware(t *testing.T) {
 	// JWT obtained from Portal Login Dev SPA (Auth0)
 	// Note: 5 year expiration time (expires on 18 May 2025)
+	// test@networknext.com => Delete this in auth0 and these tests will break
 	jwtSideload := "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik5rWXpOekkwTkVVNVFrSTVNRVF4TURRMk5UWTBNakkzTmpOQlJESkVNa1E0TnpGRFF6QkdRdyJ9.eyJuaWNrbmFtZSI6ImpvaG4iLCJuYW1lIjoiam9obkBuZXR3b3JrbmV4dC5jb20iLCJwaWN0dXJlIjoiaHR0cHM6Ly9zLmdyYXZhdGFyLmNvbS9hdmF0YXIvMGIzZTgwMDFjYTJkN2NlM2I2ZmZlMTU2ZTczODRlZTU_cz00ODAmcj1wZyZkPWh0dHBzJTNBJTJGJTJGY2RuLmF1dGgwLmNvbSUyRmF2YXRhcnMlMkZqby5wbmciLCJ1cGRhdGVkX2F0IjoiMjAyMC0wNS0xOVQxOTo1MDoyMC44NjNaIiwiZW1haWwiOiJqb2huQG5ldHdvcmtuZXh0LmNvbSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJpc3MiOiJodHRwczovL25ldHdvcmtuZXh0LmF1dGgwLmNvbS8iLCJzdWIiOiJhdXRoMHw1ZWJhYzhiMjA3ZWU4YjFjMTliNGMwZTIiLCJhdWQiOiJvUUpIM1lQSGR2WkpueENQbzFJcnR6NVVLaTV6cnI2biIsImlhdCI6MTU4OTkxNzgyMiwiZXhwIjoxNzQ3NTk3ODIyLCJub25jZSI6IlJuRjFaVzlYYW1aS2VUTkVPRFJMTFhreVVVNVRielJSWVdjdVRGWjFUVlpFZDFVellYNDBXR05sTUE9PSJ9.Va2WRHDUj7XoXzvSkUDfx819RDpewyHMxyv0CIBfsWfVOCB80jRPBvQo7oImRM0FPMYyCl5r4i8-rU5jyg8fZUC3vSABVPALqxX4ViNy3qB4Zgn1RidXoUGKuAUTfi40fS_xDSDBoErRjkxzZuMby_9xNhBw5WwL6sKDGzGL-nayBWHf7LTf0wPwrhZPI4YtHdrJEzYUkwdMCJnMsuSZsgpwvfzvpLgg9NJ4me-VhTQAKJjxXIAsHD_QiI7EEPK1tcd58T11J_xsTktSmDVxuG0-QIs2ioWs0DJSepjcld4tLTlDDZObHIjo_edXd5Wk9zalxfAE7sPWUexFZPQMDA"
 
 	noopHandler := func(w http.ResponseWriter, _ *http.Request) {
@@ -57,6 +59,7 @@ func TestAuthMiddleware(t *testing.T) {
 }
 
 func TestAuthClient(t *testing.T) {
+	// test@networknext.com => Delete this in auth0 and these tests will break
 	jwtSideload := "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik5rWXpOekkwTkVVNVFrSTVNRVF4TURRMk5UWTBNakkzTmpOQlJESkVNa1E0TnpGRFF6QkdRdyJ9.eyJuaWNrbmFtZSI6ImpvaG4iLCJuYW1lIjoiam9obkBuZXR3b3JrbmV4dC5jb20iLCJwaWN0dXJlIjoiaHR0cHM6Ly9zLmdyYXZhdGFyLmNvbS9hdmF0YXIvMGIzZTgwMDFjYTJkN2NlM2I2ZmZlMTU2ZTczODRlZTU_cz00ODAmcj1wZyZkPWh0dHBzJTNBJTJGJTJGY2RuLmF1dGgwLmNvbSUyRmF2YXRhcnMlMkZqby5wbmciLCJ1cGRhdGVkX2F0IjoiMjAyMC0wNS0xOVQxOTo1MDoyMC44NjNaIiwiZW1haWwiOiJqb2huQG5ldHdvcmtuZXh0LmNvbSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJpc3MiOiJodHRwczovL25ldHdvcmtuZXh0LmF1dGgwLmNvbS8iLCJzdWIiOiJhdXRoMHw1ZWJhYzhiMjA3ZWU4YjFjMTliNGMwZTIiLCJhdWQiOiJvUUpIM1lQSGR2WkpueENQbzFJcnR6NVVLaTV6cnI2biIsImlhdCI6MTU4OTkxNzgyMiwiZXhwIjoxNzQ3NTk3ODIyLCJub25jZSI6IlJuRjFaVzlYYW1aS2VUTkVPRFJMTFhreVVVNVRielJSWVdjdVRGWjFUVlpFZDFVellYNDBXR05sTUE9PSJ9.Va2WRHDUj7XoXzvSkUDfx819RDpewyHMxyv0CIBfsWfVOCB80jRPBvQo7oImRM0FPMYyCl5r4i8-rU5jyg8fZUC3vSABVPALqxX4ViNy3qB4Zgn1RidXoUGKuAUTfi40fS_xDSDBoErRjkxzZuMby_9xNhBw5WwL6sKDGzGL-nayBWHf7LTf0wPwrhZPI4YtHdrJEzYUkwdMCJnMsuSZsgpwvfzvpLgg9NJ4me-VhTQAKJjxXIAsHD_QiI7EEPK1tcd58T11J_xsTktSmDVxuG0-QIs2ioWs0DJSepjcld4tLTlDDZObHIjo_edXd5Wk9zalxfAE7sPWUexFZPQMDA"
 	noopHandler := func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -190,12 +193,12 @@ func TestAuthClient(t *testing.T) {
 	t.Run("fetch user auth0 account", func(t *testing.T) {
 		var reply jsonrpc.AccountReply
 
-		err := svc.UserAccount(req, &jsonrpc.AccountArgs{UserID: "auth0|5e823e827e97a90cf402109e"}, &reply)
+		err := svc.UserAccount(req, &jsonrpc.AccountArgs{UserID: "auth0|5b96f61cf1642721ad84eeb6"}, &reply)
 		assert.NoError(t, err)
 
-		assert.Equal(t, reply.UserAccount.Name, "andrew@networknext.com")
-		assert.Equal(t, reply.UserAccount.Email, "andrew@networknext.com")
-		assert.Equal(t, reply.UserAccount.UserID, "5e823e827e97a90cf402109e")
+		assert.Equal(t, reply.UserAccount.Name, "test@networknext.com")
+		assert.Equal(t, reply.UserAccount.Email, "test@networknext.com")
+		assert.Equal(t, reply.UserAccount.UserID, "5b96f61cf1642721ad84eeb6")
 		assert.Equal(t, reply.UserAccount.ID, "111")
 		assert.Equal(t, reply.UserAccount.CompanyName, "")
 	})
@@ -210,7 +213,7 @@ func TestAuthClient(t *testing.T) {
 	t.Run("fetch user auth0 roles", func(t *testing.T) {
 		var reply jsonrpc.RolesReply
 
-		err := svc.UserRoles(req, &jsonrpc.RolesArgs{UserID: "auth0|5e823e827e97a90cf402109e"}, &reply)
+		err := svc.UserRoles(req, &jsonrpc.RolesArgs{UserID: "auth0|5b96f61cf1642721ad84eeb6"}, &reply)
 		assert.NoError(t, err)
 
 		assert.NotEqual(t, len(reply.Roles), 0)
@@ -231,7 +234,7 @@ func TestAuthClient(t *testing.T) {
 		roles := []*management.Role{}
 
 		// The user ID here is linked to baumbachandrew@gmail.com => Delete the user and this will not pass
-		err := svc.UpdateUserRoles(req, &jsonrpc.RolesArgs{UserID: "auth0|5eb41e3195054819ac206076", Roles: roles}, &reply)
+		err := svc.UpdateUserRoles(req, &jsonrpc.RolesArgs{UserID: "auth0|5b96f61cf1642721ad84eeb6", Roles: roles}, &reply)
 		assert.NoError(t, err)
 
 		assert.Equal(t, len(reply.Roles), 0)
@@ -249,7 +252,7 @@ func TestAuthClient(t *testing.T) {
 		}
 
 		// The user ID here is linked to baumbachandrew@gmail.com => Delete the user and this will not pass
-		err := svc.UpdateUserRoles(req, &jsonrpc.RolesArgs{UserID: "auth0|5eb41e3195054819ac206076", Roles: roles}, &reply)
+		err := svc.UpdateUserRoles(req, &jsonrpc.RolesArgs{UserID: "auth0|5b96f61cf1642721ad84eeb6", Roles: roles}, &reply)
 		assert.NoError(t, err)
 
 		assert.NotEqual(t, len(reply.Roles), 0)
