@@ -332,15 +332,17 @@ func setRelayNIC(rpcClient jsonrpc.RPCClient, relayName string, nicSpeed uint64)
 	}
 }
 
-func setRelayState(rpcClient jsonrpc.RPCClient, relayName string, stateString string) {
-	info := getRelayInfo(rpcClient, relayName)
-
+func setRelayState(rpcClient jsonrpc.RPCClient, stateString string, relayNames []string) {
 	state, err := routing.ParseRelayState(stateString)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	updateRelayState(rpcClient, info, state)
+	for _, relayName := range relayNames {
+		info := getRelayInfo(rpcClient, relayName)
 
-	fmt.Printf("Relay state updated for %s to %v\n", info.name, state)
+		updateRelayState(rpcClient, info, state)
+
+		fmt.Printf("Relay state updated for %s to %v\n", info.name, state)
+	}
 }

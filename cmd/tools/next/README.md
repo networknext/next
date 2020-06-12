@@ -133,7 +133,7 @@ Shows the public key and update key for the given relay.
 
 ### State
 
-To set the state of a relay direct: `next relay state <relay name> <state>`
+To set the state of a relay direct: `next relay state <state> <relay name> [relay names...]`
 
 Sets the state of a relay directly in Firestore. Note that this command should be avoided and only used when the state logic is not working correctly.
 
