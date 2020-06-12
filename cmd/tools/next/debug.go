@@ -62,21 +62,21 @@ func debug(relayName string, inputFile string) {
 
 	for b := 0; b < numRelays; b++ {
 
-		if b > 0 {
-			fmt.Printf("\n")
-		}
-
 		dest := relays[b]
 
 		if a == dest.index {
 			continue
 		}
 
-		fmt.Printf("    %s:\n\n", dest.name)
+		if b > 0 {
+			fmt.Printf("\n")
+		}
 
 		index := routing.TriMatrixIndex(a, dest.index)
 
 		directRTT := routeMatrix.Entries[index].DirectRTT
+
+		fmt.Printf("    %s (%d)\n\n", dest.name, directRTT)
 
 		numRoutes := int(routeMatrix.Entries[index].NumRoutes)
 
@@ -93,7 +93,5 @@ func debug(relayName string, inputFile string) {
 				}
 			}
 		}
-
-		fmt.Printf("    %*dms: direct\n", 5, directRTT)
 	}
 }
