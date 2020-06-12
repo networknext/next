@@ -4,6 +4,8 @@
 
 Run `./next` in the root of the repo for available commands.
 
+Arguments surrounded by '[]' are optional. Those surrounded by '<>' are required.
+
 ## Env
 
 To set the current environment for the next tool: `next env <local|dev|prod>`
@@ -55,7 +57,7 @@ Removes a datacenter with the given datacenter name from Firestore.
 
 ## Relays
 
-To list relays: `next relays [optional regex]`
+To list relays: `next relays [regex]`
 
 To add a relay: `next relays add [filepath]`
 
@@ -90,13 +92,15 @@ To see an example route shader JSON schema, use `next routeshader set example`
 
 ## SSH
 
-To SSH: `next ssh [identifier]`
+To SSH: `next ssh <identifier>`
 
-SSH into a remote device. You must set the SSH key before attempting to connect to a device, otherwise you will get denied.
+SSH into a remote device. You must set the [SSH key](#Key) before attempting to connect to a device, otherwise you will get denied.
 
-To set the SSH key: `next ssh key [path to key file]`
+### Key
 
-- You can't use '~' in the path directly, it must be expanded by the shell first. Or in other words don't quote the argument
+To set the SSH key: `next ssh key <path to key file>`
+
+- You can't use '~' in the path directly, it must be expanded by the shell first. Or in other words, don't quote the argument.
 
 ## Relay
 
@@ -106,7 +110,7 @@ To do so reliably the regex must be of the form of `^seller_name$` otherwise if 
 
 ### Enable
 
-To Enable a relay: `next relay enable [regex]...`
+To Enable a relay: `next relay enable <regex>...`
 
 The tool will SSH into the relays that match the regex(s), start the relay service, and set the state to offline. If the service is already running the command will only update the state to offline.
 
@@ -114,13 +118,13 @@ Once the relay initializes with the backend the state will be changed to enabled
 
 ### Disable
 
-To Disable a relay: `next relay disable [regex]...`
+To Disable a relay: `next relay disable <regex>...`
 
 First the tool will update the matching relays' states in Firestore to the Disabled state. Then it will SSH into the relays and stop their services. If the service is already stopped the tool will do nothing aside from setting the state.
 
 ### Update
 
-To Update a relay: `next relay update [regex]...`
+To Update a relay: `next relay update <regex>...`
 
 The tool will perform several actions to update relays matching the supplied regex(s).
 
@@ -136,7 +140,7 @@ For each matching relay the tool will:
 
 ### Revert
 
-To Revert a relay: `next relay revert [regex]...`
+To Revert a relay: `next relay revert <regex>...`
 
 The tool will revert a relay back to the the previous version. It will remove the binary and associated files that are currently active and restore the most recent backup.
 
@@ -164,9 +168,13 @@ Valid states are `enabled`, `offline`, `maintenance`, `disabled`, `quarantine`, 
 
 ### Cost
 
+To download the cost matrix: `next cost [output file]`
+
 Downloads the current cost matrix from the relay backend to 'cost.bin' or the first argument supplied.
 
 ### Optimize
+
+To optimize a cost matrix: `next optimize [rtt threshold] [cost matrix file] [output file]`
 
 Optimizes the downloaded cost matrix into a route matrix.
 
@@ -175,5 +183,7 @@ The second argument is the path of the cost matrix if you don't have it saved as
 The third argument is the path you want the route matrix written to. Default is 'optimize.bin'.
 
 ### Analyze
+
+To analyze a route matrix: `next analyze [route matrix file]`
 
 Analyzes the route matrix and produces high level data. The file read in is 'optimize.bin' or the first argument supplied.

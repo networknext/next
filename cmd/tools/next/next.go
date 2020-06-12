@@ -568,7 +568,7 @@ func main() {
 					},
 					{
 						Name:       "update",
-						ShortUsage: "next relay update <relay name regex...>",
+						ShortUsage: "next relay update <regex> [regex...]",
 						ShortHelp:  "Update the specified relay(s)",
 						FlagSet:    relayupdatefs,
 						Exec: func(ctx context.Context, args []string) error {
@@ -583,7 +583,7 @@ func main() {
 					},
 					{
 						Name:       "revert",
-						ShortUsage: "next relay revert <relay name regex...>",
+						ShortUsage: "next relay revert <regex> [regex...]",
 						ShortHelp:  "revert all or some relays to the last binary placed on the server",
 						Exec: func(ctx context.Context, args []string) error {
 							if len(args) == 0 {
@@ -597,7 +597,7 @@ func main() {
 					},
 					{
 						Name:       "enable",
-						ShortUsage: "next relay enable <relay name regex...>",
+						ShortUsage: "next relay enable <regex> [regex...]",
 						ShortHelp:  "Enable the specified relay(s)",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) == 0 {
@@ -611,7 +611,7 @@ func main() {
 					},
 					{
 						Name:       "disable",
-						ShortUsage: "next relay disable <relay name regex...>",
+						ShortUsage: "next relay disable <regex> [regex...]",
 						ShortHelp:  "Disable the specified relay(s)",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) == 0 {
