@@ -283,9 +283,9 @@
                 <div class="row">
                     <main role="main" class="col-md-12 col-lg-12 px-4" v-show="pages.map.show">
                         <div class="alert alert-primary" style="text-align: center;" role="alert" v-if="alerts.verifyEmail.show">
-                            Please verify your email to unlock all features. To resend the verification email 
+                            Please confirm your email address: {{ handlers.userHandler.userInfo.email }} 
                             <a href="#" v-on:click="handlers.authHandler.resendVerificationEmail()">
-                                click here
+                                Resend email
                             </a>
                         </div>
                         <div class="alert alert-success" style="text-align: center;" role="alert" v-if="alerts.emailSent.show">
