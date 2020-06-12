@@ -467,7 +467,7 @@ func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesRep
 
 func (s *AuthService) UserRoles(r *http.Request, args *RolesArgs, reply *RolesReply) error {
 	if IsAnonymous(r) || IsAnonymousPlus(r) {
-	  err := fmt.Errorf("UserRoles() insufficient privileges")
+		err := fmt.Errorf("UserRoles() insufficient privileges")
 		s.Logger.Log("err", err)
 		return err
 	}
@@ -629,6 +629,19 @@ func (s *AuthService) UpgradeAccount(r *http.Request, args *UpgradeArgs, reply *
 	reply.UpgradedAccount = newAccount(userAccount, userRoles.Roles, buyer)
 
 	return nil
+}
+
+type VerifyEmailArgs struct {
+	UserID string `json:"user_id"`
+}
+
+type VerifyEmailReply struct {
+	Url string `json:"url"`
+}
+
+func (s *AuthService) VerifyEmailUrl(r *http.Request, args *VerifyEmailArgs, reply *VerifyEmailReply) error {
+	if !IsAnonymousPlus(r) {
+	}
 }
 
 type response struct {
