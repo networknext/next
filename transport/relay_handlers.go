@@ -652,6 +652,16 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			ID: crypto.HashID(relayUpdateRequest.Address.String()),
 		}
 
+		// If the relay does not exist in Firestore it's a ghost, ignore it
+		relay, err := params.Storer.Relay(relayCacheEntry.ID)
+		if err != nil {
+			sentry.CaptureException(err)
+			level.Error(locallogger).Log("msg", "relay does not exist in Firestore (ghost)", "err", err)
+			http.Error(writer, "relay does not exist in Firestore (ghost)", http.StatusNotFound)
+			params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
+			return
+		}
+
 		exists := params.RedisClient.Exists(relayCacheEntry.Key())
 
 		if exists.Err() != nil && exists.Err() != redis.Nil {
@@ -659,6 +669,14 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			level.Error(locallogger).Log("msg", "failed to check if relay is registered", "err", exists.Err())
 			http.Error(writer, "failed to check if relay is registered", http.StatusInternalServerError)
 			params.Metrics.ErrorMetrics.RedisFailure.Add(1)
+			return
+		}
+
+		if exists.Val() == 0 {
+			sentry.CaptureMessage("relay not initalized")
+			level.Warn(locallogger).Log("msg", "relay not initialized")
+			http.Error(writer, "relay not initialized", http.StatusNotFound)
+			params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
 			return
 		}
 
@@ -683,39 +701,19 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 				return
 			}
 
-			// Remove the relay cache entry if it exists
-			if exists.Val() == 1 {
-				if err := params.RedisClient.Del(relayCacheEntry.Key()).Err(); err != nil {
-					level.Error(locallogger).Log("msg", "failed to remove relay key from redis", "err", err)
-					http.Error(writer, err.Error(), http.StatusInternalServerError)
-					return
-				}
-
-				if err := RemoveRelayCacheEntry(ctx, relayCacheEntry.ID, relayCacheEntry.Key(), params.RedisClient, params.GeoClient, params.StatsDb); err != nil {
-					level.Error(locallogger).Log("err", err)
-					http.Error(writer, err.Error(), http.StatusInternalServerError)
-					return
-				}
+			// Remove the relay cache entry
+			if err := params.RedisClient.Del(relayCacheEntry.Key()).Err(); err != nil {
+				level.Error(locallogger).Log("msg", "failed to remove relay key from redis", "err", err)
+				http.Error(writer, err.Error(), http.StatusInternalServerError)
+				return
 			}
 
-			return
-		}
+			if err := RemoveRelayCacheEntry(ctx, relayCacheEntry.ID, relayCacheEntry.Key(), params.RedisClient, params.GeoClient, params.StatsDb); err != nil {
+				level.Error(locallogger).Log("err", err)
+				http.Error(writer, err.Error(), http.StatusInternalServerError)
+				return
+			}
 
-		if exists.Val() == 0 {
-			sentry.CaptureMessage("relay not initalized")
-			level.Warn(locallogger).Log("msg", "relay not initialized")
-			http.Error(writer, "relay not initialized", http.StatusNotFound)
-			params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
-			return
-		}
-
-		// If the relay does not exist in Firestore it's a ghost, ignore it
-		_, err = params.Storer.Relay(relayCacheEntry.ID)
-		if err != nil {
-			sentry.CaptureException(err)
-			level.Error(locallogger).Log("msg", "relay does not exist in Firestore (ghost)", "err", err)
-			http.Error(writer, "relay does not exist in Firestore (ghost)", http.StatusNotFound)
-			params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
 			return
 		}
 
@@ -746,6 +744,15 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			level.Error(locallogger).Log("msg", "relay public key doesn't match")
 			http.Error(writer, "relay public key doesn't match", http.StatusBadRequest)
 			params.Metrics.ErrorMetrics.InvalidToken.Add(1)
+			return
+		}
+
+		// Check if the relay state isn't set to enabled, and as a failsafe quarantine the relay
+		if relay.State != routing.RelayStateEnabled {
+			sentry.CaptureMessage("non-enabled relay attempting to update")
+			level.Error(locallogger).Log("msg", "non-enabled relay attempting to update", "relay_name", relay.Name, "relay_address", relay.Addr, "relay_state", relay.State)
+			http.Error(writer, "cannot allow non-enabled relay to update", http.StatusUnauthorized)
+			params.Metrics.ErrorMetrics.RelayNotEnabled.Add(1)
 			return
 		}
 
