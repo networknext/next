@@ -55,7 +55,7 @@ Removes a datacenter with the given datacenter name from Firestore.
 
 ## Relays
 
-To list relays: `next relays`
+To list relays: `next relays [optional regex]`
 
 To add a relay: `next relays add [filepath]`
 
@@ -102,33 +102,41 @@ To set the SSH key: `next ssh key [path to key file]`
 
 ### Enable
 
-To Enable a relay: `next relay enable [relay name]`
+To Enable a relay: `next relay enable [regex]...`
 
-The tool will SSH into the specified relay and start the relay service and set the state to enabled. If the service is already running the command will only update the state to enabled.
+The tool will SSH into the relays that match the regex(s), start the relay service, and set the state to offline. If the service is already running the command will only update the state to offline.
+
+Once the relay initializes with the backend the state will be changed to enabled.
 
 ### Disable
 
-To Disable a relay: `next relay disable [relay name]`
+To Disable a relay: `next relay disable [regex]...`
 
-First the tool will update the relay's state in Firestore to the Disabled state. Then it will SSH into a relay, stop the relay service, and end the session. If the service is already stopped the tool will do nothing.
+First the tool will update the matching relays' states in Firestore to the Disabled state. Then it will SSH into the relays and stop their services. If the service is already stopped the tool will do nothing aside from setting the state.
 
 ### Update
 
-To Update a relay: `next relay update [relay name]...`
+To Update a relay: `next relay update [regex]...`
 
-The tool will perform several actions to update a relay.
+The tool will perform several actions to update relays matching the supplied regex(s).
 
-First you must build the relay binary and ensure it is located at `dist/relay`
+Before updating make sure you have the desired environment set via the [relay env](#Env) setting.
 
-Then disable the relay using the [disable](#Disable) functionality
+Also if any updates fail throughout the process the program will quit and not continue to the next.
 
-Then you use the tool. You must have the desired environment set via the [relay env](#Env) setting. The tool will query the relay(s) from Firestore and then perform an update on those selected. If any fail for any reason the program will quit and not continue to the next. While updating it will re-generate public and private keys for the relay and set them both in the relay's environment file and publish the changes to Firestore as well. Lastly the command will update the state of the relay to enabled, much the same way the [enable](#Enable) command does it.
+For each matching relay the tool will:
+- download the latest version from the GCP bucket and untar it in the `dist` directory.
+- disable the relay using the [disable](#Disable) functionality.
+- generate a new set of public and private keys for the relay and set them both in the relay's environment file and publish the changes to Firestore as well.
+- update the state of the relay to offline, much the same way the [enable](#Enable) command does it. Once the relay initializes with the backend the state will change to enabled.
 
 ### Revert
 
-To Revert a relay: `next relay revert [relay name]...`
+To Revert a relay: `next relay revert [regex]...`
 
 The tool will revert a relay back to the the previous version. It will remove the binary and associated files that are currently active and restore the most recent backup.
+
+However it will not restore the previous public key in firestore as that is lost upon each update.
 
 ### Set NIC Speed
 
