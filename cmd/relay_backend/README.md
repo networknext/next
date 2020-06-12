@@ -31,9 +31,11 @@ The default setting is `warn` when running `make dev-relay-backend` and `make de
 
 - `BACKEND_LOG_LEVEL`: one of `none`, `error`, `warn`, `info`, `debug`
 - `REDIS_HOST_RELAYS`: address of the Redis server you want to connect to store relay information and their lat/long
-- `RELAY_ROUTER_PUBLIC_KEY`: the public key of the router.
-- `RELAY_ROUTER_PRIVATE_KEY`: the private key of the router.
+- `RELAY_ROUTER_PUBLIC_KEY`: the public key of the router
+- `RELAY_ROUTER_PRIVATE_KEY`: the private key of the router
 - `MAXMIND_DB_URI`: local path to a `.mmdb` file for IP lookups
+- `RELAY_ROUTER_MAX_JITTER`: the maximum allowed jitter when generating a cost matrix. 10.0 is a good starting value
+- `RELAY_ROUTER_MAX_PACKET_LOSS`: the maximum allowed packet loss when generating a cost matrix. 0.1 is a good starting value
 
 #### Optional
 

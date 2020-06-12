@@ -1168,6 +1168,12 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 	}
 
 	tx := redisClientPortal.TxPipeline()
+	switch meta.OnNetworkNext {
+	case true:
+		tx.SAdd("total-next", meta.ID)
+	case false:
+		tx.SAdd("total-direct", meta.ID)
+	}
 	tx.ZAdd("top-global", &redis.Z{Score: meta.DeltaRTT, Member: meta.ID})
 	tx.ZAdd(fmt.Sprintf("top-buyer-%x", packet.CustomerID), &redis.Z{Score: meta.DeltaRTT, Member: meta.ID})
 	tx.Set(fmt.Sprintf("session-%016x-meta", packet.SessionID), meta, redisClientPortalExp)

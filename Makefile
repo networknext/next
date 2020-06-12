@@ -112,6 +112,15 @@ ifndef RELAY_ROUTER_PRIVATE_KEY
 export RELAY_ROUTER_PRIVATE_KEY = ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=
 endif
 
+## Maximum allowed jitter and packet loss during the relay backend's cost matrix generation process
+ifndef RELAY_ROUTER_MAX_JITTER
+export RELAY_ROUTER_MAX_JITTER = 10.0
+endif
+
+ifndef RELAY_ROUTER_MAX_PACKET_LOSS
+export RELAY_ROUTER_MAX_PACKET_LOSS = 0.1
+endif
+
 ## By default we set only error and warning logs for server_backend and relay_backend
 ifndef BACKEND_LOG_LEVEL
 export BACKEND_LOG_LEVEL = warn

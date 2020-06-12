@@ -284,6 +284,9 @@ func main() {
 					tx.SRem(mapscaniter.Val(), sessionID)
 				}
 
+				tx.SRem("total-direct", sessionID)
+				tx.SRem("total-next", sessionID)
+
 				for userscaniter.Next() {
 					tx.SRem(userscaniter.Val(), sessionID)
 				}

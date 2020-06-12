@@ -314,6 +314,9 @@ func TestStatsDatabase(t *testing.T) {
 				entry.PacketLoss = packetloss
 			}
 
+			maxJitter := float32(10.0)
+			maxPacketLoss := float32(0.1)
+
 			// valid
 			modifyEntry("127.0.0.1:40000", "127.0.0.2:40000", 123.00, 1.3, 0.0)
 
@@ -321,13 +324,13 @@ func TestStatsDatabase(t *testing.T) {
 			modifyEntry("127.0.0.1:40000", "127.0.0.3:40000", routing.InvalidRouteValue, 0.3, 0.0)
 
 			// invalid - jitter > MaxJitter
-			modifyEntry("127.0.0.1:40000", "127.0.0.4:40000", 1.0, routing.MaxJitter+1, 0.0)
+			modifyEntry("127.0.0.1:40000", "127.0.0.4:40000", 1.0, maxJitter+1, 0.0)
 
 			// invalid - packet loss > MaxPacketLoss
-			modifyEntry("127.0.0.1:40000", "127.0.0.5:40000", 1.0, 0.3, routing.MaxPacketLoss+1)
+			modifyEntry("127.0.0.1:40000", "127.0.0.5:40000", 1.0, 0.3, maxPacketLoss+1)
 
 			var costMatrix routing.CostMatrix
-			assert.NoError(t, statsdb.GetCostMatrix(&costMatrix, redisClient))
+			assert.NoError(t, statsdb.GetCostMatrix(&costMatrix, redisClient, maxJitter, maxPacketLoss))
 
 			// Testing
 			hgetallResult = redisClient.HGetAll(routing.HashKeyAllRelays)
@@ -405,7 +408,7 @@ func TestStatsDatabase(t *testing.T) {
 
 			var costMatrix routing.CostMatrix
 			statsdb := routing.NewStatsDatabase()
-			err := statsdb.GetCostMatrix(&costMatrix, redisClient)
+			err := statsdb.GetCostMatrix(&costMatrix, redisClient, 10.0, 0.1)
 			assert.EqualError(t, err, fmt.Sprintf("failed to get all relays from redis: dial tcp %v: connect: connection refused", redisClient.Options().Addr))
 		})
 
@@ -440,7 +443,7 @@ func TestStatsDatabase(t *testing.T) {
 			statsdb := routing.NewStatsDatabase()
 
 			var costMatrix routing.CostMatrix
-			err = statsdb.GetCostMatrix(&costMatrix, redisClient)
+			err = statsdb.GetCostMatrix(&costMatrix, redisClient, 10.0, 0.1)
 			assert.Contains(t, err.Error(), "failed to unmarshal relay when creating cost matrix:")
 		})
 	})

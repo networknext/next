@@ -13,3 +13,8 @@ cover.out
 # There's no point storing this
 # Generated each time
 relay.env
+
+# next tool output
+cost.bin
+optimize.bin
+

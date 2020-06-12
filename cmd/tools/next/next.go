@@ -371,7 +371,7 @@ func main() {
 					env.AuthToken = gjson.ParseBytes(body).Get("access_token").String()
 					env.Write()
 
-					fmt.Print("Successfully authorize\n")
+					fmt.Print("Successfully authorized\n")
 
 					return nil
 				},
@@ -643,6 +643,24 @@ func main() {
 
 							setRelayNIC(rpcClient, args[0], nicSpeed)
 
+							return nil
+						},
+					},
+					{
+						Name:       "state",
+						ShortUsage: "next relay state <state> <relay name> [relay names...]",
+						ShortHelp:  "Sets the relay state directly",
+						LongHelp:   "This command should be avoided unless something goes wrong and the operator knows what he or she is doing.\nState values:\nenabled\noffline\nmaintenance\ndisabled\nquarantine\ndecommissioned",
+						Exec: func(ctx context.Context, args []string) error {
+							if len(args) == 0 {
+								log.Fatal("You need to supply a relay state")
+							}
+
+							if len(args) == 1 {
+								log.Fatal("You need to supply at least one relay name")
+							}
+
+							setRelayState(rpcClient, args[0], args[1:])
 							return nil
 						},
 					},

@@ -8,6 +8,8 @@ import (
 	"net"
 	"testing"
 
+	"github.com/go-kit/kit/log"
+
 	"github.com/alicebob/miniredis/v2"
 	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/crypto"
@@ -21,8 +23,10 @@ func TestBuyers(t *testing.T) {
 	storer := storage.InMemory{}
 	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, Name: "local.local.1"})
 
+	logger := log.NewNopLogger()
 	svc := jsonrpc.OpsService{
 		Storage: &storer,
+		Logger:  logger,
 	}
 
 	t.Run("list", func(t *testing.T) {
@@ -41,8 +45,10 @@ func TestCustomersSingle(t *testing.T) {
 	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, Name: "Fred Scuttle"})
 	storer.AddSeller(context.Background(), routing.Seller{ID: "some seller", Name: "Fred Scuttle"})
 
+	logger := log.NewNopLogger()
 	svc := jsonrpc.OpsService{
 		Storage: &storer,
+		Logger:  logger,
 	}
 
 	t.Run("single customer", func(t *testing.T) {
@@ -62,8 +68,10 @@ func TestCustomersMultiple(t *testing.T) {
 	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, Name: "Fred Scuttle"})
 	storer.AddSeller(context.Background(), routing.Seller{ID: "some seller", Name: "Bull Winkle"})
 
+	logger := log.NewNopLogger()
 	svc := jsonrpc.OpsService{
 		Storage: &storer,
+		Logger:  logger,
 	}
 
 	t.Run("multiple customers", func(t *testing.T) {
@@ -85,8 +93,10 @@ func TestCustomersMultiple(t *testing.T) {
 func TestAddBuyer(t *testing.T) {
 	storer := storage.InMemory{}
 
+	logger := log.NewNopLogger()
 	svc := jsonrpc.OpsService{
 		Storage: &storer,
+		Logger:  logger,
 	}
 
 	publicKey := make([]byte, crypto.KeySize)
@@ -127,8 +137,10 @@ func TestAddBuyer(t *testing.T) {
 func TestRemoveBuyer(t *testing.T) {
 	storer := storage.InMemory{}
 
+	logger := log.NewNopLogger()
 	svc := jsonrpc.OpsService{
 		Storage: &storer,
+		Logger:  logger,
 	}
 
 	publicKey := make([]byte, crypto.KeySize)
@@ -171,8 +183,10 @@ func TestRemoveBuyer(t *testing.T) {
 func TestRoutingRulesSettings(t *testing.T) {
 	storer := storage.InMemory{}
 
+	logger := log.NewNopLogger()
 	svc := jsonrpc.OpsService{
 		Storage: &storer,
+		Logger:  logger,
 	}
 
 	t.Run("doesn't exist", func(t *testing.T) {
@@ -211,15 +225,17 @@ func TestRoutingRulesSettings(t *testing.T) {
 func TestSetRoutingRulesSettings(t *testing.T) {
 	storer := storage.InMemory{}
 
+	logger := log.NewNopLogger()
 	svc := jsonrpc.OpsService{
 		Storage: &storer,
+		Logger:  logger,
 	}
 
 	t.Run("doesn't exist", func(t *testing.T) {
 		var reply jsonrpc.SetRoutingRulesSettingsReply
 
 		err := svc.SetRoutingRulesSettings(nil, &jsonrpc.SetRoutingRulesSettingsArgs{BuyerID: "0", RoutingRulesSettings: routing.LocalRoutingRulesSettings}, &reply)
-		assert.EqualError(t, err, "buyer with reference 0 not found")
+		assert.EqualError(t, err, "SetRoutingRulesSettings() Storage.Buyer error: buyer with reference 0 not found")
 	})
 
 	t.Run("set", func(t *testing.T) {
@@ -263,8 +279,10 @@ func TestSellers(t *testing.T) {
 	storer := storage.InMemory{}
 	storer.AddSeller(context.Background(), expected)
 
+	logger := log.NewNopLogger()
 	svc := jsonrpc.OpsService{
 		Storage: &storer,
+		Logger:  logger,
 	}
 
 	t.Run("list", func(t *testing.T) {
@@ -282,8 +300,10 @@ func TestSellers(t *testing.T) {
 func TestAddSeller(t *testing.T) {
 	storer := storage.InMemory{}
 
+	logger := log.NewNopLogger()
 	svc := jsonrpc.OpsService{
 		Storage: &storer,
+		Logger:  logger,
 	}
 
 	expected := routing.Seller{
@@ -313,15 +333,17 @@ func TestAddSeller(t *testing.T) {
 		var reply jsonrpc.AddSellerReply
 
 		err := svc.AddSeller(nil, &jsonrpc.AddSellerArgs{Seller: expected}, &reply)
-		assert.EqualError(t, err, "seller with reference id already exists")
+		assert.EqualError(t, err, "AddSeller() error: seller with reference id already exists")
 	})
 }
 
 func TestRemoveSeller(t *testing.T) {
 	storer := storage.InMemory{}
 
+	logger := log.NewNopLogger()
 	svc := jsonrpc.OpsService{
 		Storage: &storer,
+		Logger:  logger,
 	}
 
 	expected := routing.Seller{
@@ -335,7 +357,7 @@ func TestRemoveSeller(t *testing.T) {
 		var reply jsonrpc.RemoveSellerReply
 
 		err := svc.RemoveSeller(nil, &jsonrpc.RemoveSellerArgs{ID: expected.ID}, &reply)
-		assert.EqualError(t, err, "seller with reference 1 not found")
+		assert.EqualError(t, err, "RemoveSeller() error: seller with reference 1 not found")
 	})
 
 	t.Run("remove", func(t *testing.T) {
@@ -395,9 +417,11 @@ func TestRelays(t *testing.T) {
 	assert.NoError(t, err)
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
+	logger := log.NewNopLogger()
 	svc := jsonrpc.OpsService{
 		Storage:     &storer,
 		RedisClient: redisClient,
+		Logger:      logger,
 	}
 
 	t.Run("list", func(t *testing.T) {
@@ -453,9 +477,11 @@ func TestAddRelay(t *testing.T) {
 	assert.NoError(t, err)
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
+	logger := log.NewNopLogger()
 	svc := jsonrpc.OpsService{
 		Storage:     &storer,
 		RedisClient: redisClient,
+		Logger:      logger,
 	}
 
 	addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
@@ -470,7 +496,7 @@ func TestAddRelay(t *testing.T) {
 	t.Run("seller doesn't exist", func(t *testing.T) {
 		var reply jsonrpc.AddRelayReply
 		err := svc.AddRelay(nil, &jsonrpc.AddRelayArgs{Relay: expected}, &reply)
-		assert.EqualError(t, err, "seller with reference  not found")
+		assert.EqualError(t, err, "AddRelay() error: seller with reference  not found")
 	})
 
 	t.Run("datacenter doesn't exist", func(t *testing.T) {
@@ -487,7 +513,7 @@ func TestAddRelay(t *testing.T) {
 
 		var reply jsonrpc.AddRelayReply
 		err = svc.AddRelay(nil, &jsonrpc.AddRelayArgs{Relay: expected}, &reply)
-		assert.EqualError(t, err, "datacenter with reference 0 not found")
+		assert.EqualError(t, err, "AddRelay() error: datacenter with reference 0 not found")
 	})
 
 	t.Run("add", func(t *testing.T) {
@@ -520,7 +546,7 @@ func TestAddRelay(t *testing.T) {
 		var reply jsonrpc.AddRelayReply
 
 		err = svc.AddRelay(nil, &jsonrpc.AddRelayArgs{Relay: expected}, &reply)
-		assert.EqualError(t, err, fmt.Sprintf("relay with reference %d already exists", expected.ID))
+		assert.EqualError(t, err, fmt.Sprintf("AddRelay() error: relay with reference %d already exists", expected.ID))
 	})
 }
 
@@ -531,9 +557,11 @@ func TestRemoveRelay(t *testing.T) {
 	assert.NoError(t, err)
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
+	logger := log.NewNopLogger()
 	svc := jsonrpc.OpsService{
 		Storage:     &storer,
 		RedisClient: redisClient,
+		Logger:      logger,
 	}
 
 	addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
@@ -564,7 +592,7 @@ func TestRemoveRelay(t *testing.T) {
 		var reply jsonrpc.RemoveRelayReply
 
 		err = svc.RemoveRelay(nil, &jsonrpc.RemoveRelayArgs{RelayID: expected.ID}, &reply)
-		assert.EqualError(t, err, fmt.Sprintf("relay with reference %d not found", expected.ID))
+		assert.EqualError(t, err, fmt.Sprintf("RemoveRelay() error: relay with reference %d not found", expected.ID))
 	})
 
 	t.Run("remove", func(t *testing.T) {
@@ -585,6 +613,8 @@ func TestRemoveRelay(t *testing.T) {
 }
 
 func TestRelayStateUpdate(t *testing.T) {
+
+	logger := log.NewNopLogger()
 	makeSvc := func() *jsonrpc.OpsService {
 		var storer storage.InMemory
 
@@ -618,6 +648,7 @@ func TestRelayStateUpdate(t *testing.T) {
 
 		return &jsonrpc.OpsService{
 			Storage: &storer,
+			Logger:  logger,
 		}
 	}
 
@@ -657,6 +688,8 @@ func TestRelayStateUpdate(t *testing.T) {
 }
 
 func TestRelayPublicKeyUpdate(t *testing.T) {
+	logger := log.NewNopLogger()
+
 	makeSvc := func() *jsonrpc.OpsService {
 		var storer storage.InMemory
 
@@ -690,6 +723,7 @@ func TestRelayPublicKeyUpdate(t *testing.T) {
 
 		return &jsonrpc.OpsService{
 			Storage: &storer,
+			Logger:  logger,
 		}
 	}
 
@@ -729,6 +763,8 @@ func TestRelayPublicKeyUpdate(t *testing.T) {
 }
 
 func TestRelayNICSpeedUpdate(t *testing.T) {
+	logger := log.NewNopLogger()
+
 	makeSvc := func() *jsonrpc.OpsService {
 		var storer storage.InMemory
 
@@ -762,6 +798,7 @@ func TestRelayNICSpeedUpdate(t *testing.T) {
 
 		return &jsonrpc.OpsService{
 			Storage: &storer,
+			Logger:  logger,
 		}
 	}
 
@@ -805,8 +842,10 @@ func TestDatacenters(t *testing.T) {
 	storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 1, Name: "local.local.1"})
 	storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 2, Name: "local.local.2"})
 
+	logger := log.NewNopLogger()
 	svc := jsonrpc.OpsService{
 		Storage: &storer,
+		Logger:  logger,
 	}
 
 	t.Run("list", func(t *testing.T) {
@@ -837,8 +876,10 @@ func TestDatacenters(t *testing.T) {
 func TestAddDatacenter(t *testing.T) {
 	storer := storage.InMemory{}
 
+	logger := log.NewNopLogger()
 	svc := jsonrpc.OpsService{
 		Storage: &storer,
+		Logger:  logger,
 	}
 
 	expected := routing.Datacenter{
@@ -871,15 +912,17 @@ func TestAddDatacenter(t *testing.T) {
 		var reply jsonrpc.AddDatacenterReply
 
 		err := svc.AddDatacenter(nil, &jsonrpc.AddDatacenterArgs{Datacenter: expected}, &reply)
-		assert.EqualError(t, err, "datacenter with reference 1 already exists")
+		assert.EqualError(t, err, "AddDatacenter() error: datacenter with reference 1 already exists")
 	})
 }
 
 func TestRemoveDatacenter(t *testing.T) {
 	storer := storage.InMemory{}
 
+	logger := log.NewNopLogger()
 	svc := jsonrpc.OpsService{
 		Storage: &storer,
+		Logger:  logger,
 	}
 
 	expected := routing.Datacenter{
@@ -896,7 +939,7 @@ func TestRemoveDatacenter(t *testing.T) {
 		var reply jsonrpc.RemoveDatacenterReply
 
 		err := svc.RemoveDatacenter(nil, &jsonrpc.RemoveDatacenterArgs{Name: expected.Name}, &reply)
-		assert.EqualError(t, err, fmt.Sprintf("datacenter with reference %d not found", expected.ID))
+		assert.EqualError(t, err, fmt.Sprintf("RemoveDatacenter() error: datacenter with reference %d not found", expected.ID))
 	})
 
 	t.Run("remove", func(t *testing.T) {
