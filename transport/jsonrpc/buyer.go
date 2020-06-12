@@ -531,12 +531,30 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 }
 
 func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfigurationArgs, reply *GameConfigurationReply) error {
-	if IsAnonymous(r) {
+	if IsAnonymous(r) || IsAnonymousPlus(r) {
 		return fmt.Errorf("UpdateGameConfiguration() insufficient privileges")
 	}
+
 	var err error
 	var buyerID uint64
 	var buyer routing.Buyer
+
+	isAdmin, err := CheckRoles(r, "Admin")
+	if err != nil {
+		err = fmt.Errorf("UpdateGameConfiguration() CheckRoles error: %v", err)
+		return err
+	}
+
+	isOwner, err := CheckRoles(r, "Owner")
+	if err != nil {
+		err = fmt.Errorf("UpdateGameConfiguration() CheckRoles error: %v", err)
+		return err
+	}
+
+	if !isAdmin && !isOwner {
+		err = fmt.Errorf("UpdateGameConfiguration() CheckRoles error: %v", ErrInsufficientPrivileges)
+		return err
+	}
 
 	ctx := context.Background()
 
