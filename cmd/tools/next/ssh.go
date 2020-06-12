@@ -18,7 +18,11 @@ func testForSSHKey(env Environment) {
 }
 
 func SSHInto(env Environment, rpcClient jsonrpc.RPCClient, relayName string) {
-	info := getRelayInfo(rpcClient, relayName)
+	relays := getRelayInfo(rpcClient, relayName)
+	if len(relays) == 0 {
+		log.Fatalf("no relays matches the regex '%s'", relayName)
+	}
+	info := relays[0]
 	testForSSHKey(env)
 	con := NewSSHConn(info.user, info.sshAddr, info.sshPort, env.SSHKeyFilePath)
 	con.Connect()

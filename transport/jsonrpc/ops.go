@@ -320,6 +320,7 @@ type relay struct {
 	UpdateKey           string    `json:"update_key"`
 	FirestoreID         string    `json:"firestore_id"`
 	Version             string    `json:"relay_version"`
+	SellerName          string    `json:"seller_name"`
 }
 
 func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysReply) error {
@@ -348,6 +349,7 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			UpdateKey:           base64.StdEncoding.EncodeToString(r.UpdateKey),
 			FirestoreID:         r.FirestoreID,
 			MaxSessionCount:     r.MaxSessions,
+			SellerName:          r.Seller.Name,
 		}
 
 		relayCacheEntry := routing.RelayCacheEntry{
@@ -373,6 +375,13 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 		var filtered []relay
 		for idx := range reply.Relays {
 			if match, err := regexp.Match(args.Regex, []byte(reply.Relays[idx].Name)); match && err == nil {
+				filtered = append(filtered, reply.Relays[idx])
+				continue
+			} else if err != nil {
+				return err
+			}
+
+			if match, err := regexp.Match(args.Regex, []byte(reply.Relays[idx].SellerName)); match && err == nil {
 				filtered = append(filtered, reply.Relays[idx])
 			} else if err != nil {
 				return err

@@ -552,7 +552,13 @@ func main() {
 						ShortUsage: "next relay keys <relay name>",
 						ShortHelp:  "Show the public keys for the relay",
 						Exec: func(ctx context.Context, args []string) error {
-							relay := getRelayInfo(rpcClient, args[0])
+							relays := getRelayInfo(rpcClient, args[0])
+
+							if len(relays) == 0 {
+								log.Fatalf("no relays matched the name '%s'\n", args[0])
+							}
+
+							relay := &relays[0]
 
 							fmt.Printf("Public Key: %s\n", relay.publicKey)
 							fmt.Printf("Update Key: %s\n", relay.updateKey)
@@ -562,7 +568,7 @@ func main() {
 					},
 					{
 						Name:       "update",
-						ShortUsage: "next relay update <relay name...>",
+						ShortUsage: "next relay update <relay name regex...>",
 						ShortHelp:  "Update the specified relay(s)",
 						FlagSet:    relayupdatefs,
 						Exec: func(ctx context.Context, args []string) error {
@@ -577,7 +583,7 @@ func main() {
 					},
 					{
 						Name:       "revert",
-						ShortUsage: "next relay revert <ALL|relay name...>",
+						ShortUsage: "next relay revert <relay name regex...>",
 						ShortHelp:  "revert all or some relays to the last binary placed on the server",
 						Exec: func(ctx context.Context, args []string) error {
 							if len(args) == 0 {
@@ -591,7 +597,7 @@ func main() {
 					},
 					{
 						Name:       "enable",
-						ShortUsage: "next relay enable <relay name...>",
+						ShortUsage: "next relay enable <relay name regex...>",
 						ShortHelp:  "Enable the specified relay(s)",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) == 0 {
@@ -605,7 +611,7 @@ func main() {
 					},
 					{
 						Name:       "disable",
-						ShortUsage: "next relay disable <relay name...>",
+						ShortUsage: "next relay disable <relay name regex...>",
 						ShortHelp:  "Disable the specified relay(s)",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) == 0 {
