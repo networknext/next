@@ -443,7 +443,7 @@ func main() {
 
 			{
 				Name:       "relays",
-				ShortUsage: "next relays <name>",
+				ShortUsage: "next relays <regex>",
 				ShortHelp:  "List relays",
 				Exec: func(_ context.Context, args []string) error {
 					if len(args) > 0 {
