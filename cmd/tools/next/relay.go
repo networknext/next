@@ -188,7 +188,7 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 				log.Fatalf("could not get router public key: %v", err)
 			}
 
-			backendHostname, err := env.RelayBackendHostname()
+			backendURL, err := env.RelayBackendURL()
 
 			if err != nil {
 				log.Fatalf("could not get backend hostname: %v", err)
@@ -205,7 +205,7 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 			envvars["RELAY_PUBLIC_KEY"] = publicKeyB64
 			envvars["RELAY_PRIVATE_KEY"] = privateKeyB64
 			envvars["RELAY_ROUTER_PUBLIC_KEY"] = routerPublicKey
-			envvars["RELAY_BACKEND_HOSTNAME"] = backendHostname
+			envvars["RELAY_BACKEND_HOSTNAME"] = backendURL
 			envvars["RELAY_V3_ENABLED"] = "0"
 			envvars["RELAY_V3_BACKEND_HOSTNAME"] = oldBackendHostname
 			envvars["RELAY_V3_BACKEND_PORT"] = "40000"

@@ -14,6 +14,10 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
+const (
+	PortCheckScript = `echo "$(sudo lsof -i -P -n | grep '*:40000' | tr -s ' ' | cut -d ' ' -f 1 | head -1)"`
+)
+
 func relays(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 	args := localjsonrpc.RelaysArgs{
 		Name: filter,
@@ -96,10 +100,13 @@ func checkRelays(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 	})
 
 	type checkInfo struct {
-		Name          string
-		CanSSH        string `table:"SSH Success"`
-		UbuntuVersion string `table:"Ubuntu"`
-		CPUCores      string `table:"Cores"`
+		Name           string
+		CanSSH         string `table:"SSH Success"`
+		UbuntuVersion  string `table:"Ubuntu"`
+		CPUCores       string `table:"Cores"`
+		CanPingBackend string `table:"Ping Backend"`
+		ServiceRunning string `table:"Running"`
+		PortBound      string `table:"Bound"`
 	}
 
 	info := make([]checkInfo, len(reply.Relays))
@@ -149,6 +156,49 @@ func checkRelays(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 				} else {
 					log.Printf("error when acquiring number of logical cpu cores for relay %s: %v\n", r.Name, err)
 					infoIndx.CPUCores = "SSH Error"
+				}
+			}
+
+			// test ping ability
+			{
+				if backend, err := env.RelayBackendHostname(); err == nil {
+					if out, err := con.IssueCmdAndGetOutput("ping -c 1 " + backend + " > /dev/null; echo $?"); err == nil {
+						if out == "0" {
+							infoIndx.CanPingBackend = "yes"
+						} else {
+							infoIndx.CanPingBackend = "no"
+						}
+					} else {
+						log.Printf("error when checking relay %s can ping the backend: %v\n", r.Name, err)
+					}
+				} else {
+					log.Printf("%v\n", err)
+				}
+			}
+
+			// check if the service is running
+			{
+				if out, err := con.IssueCmdAndGetOutput("sudo systemctl status relay > /dev/null; echo $?"); err == nil {
+					if out == "0" {
+						infoIndx.ServiceRunning = "yes"
+					} else {
+						infoIndx.ServiceRunning = "no"
+					}
+				} else {
+					log.Printf("error when checking if relay %s has the service running: %v\n", r.Name, err)
+				}
+			}
+
+			// check if the port is bound
+			{
+				if out, err := con.IssueCmdAndGetOutput(PortCheckScript); err == nil {
+					if out == "relay" {
+						infoIndx.PortBound = "yes"
+					} else {
+						infoIndx.PortBound = "no"
+					}
+				} else {
+					log.Printf("error when checking if relay %s has the right port bound: %v\n", r.Name, err)
 				}
 			}
 
