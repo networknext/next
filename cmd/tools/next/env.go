@@ -19,20 +19,20 @@ const (
 	RouterPublicKeyDev   = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
 	RouterPublicKeyProd  = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
 
-	RelayBackendURLLocal = "http://localhost:30000"
-	RelayBackendURLDev   = "http://relay_backend.dev.networknext.com:40000"
-	RelayBackendURLProd  = "http://relay_backend.prod.networknext.com"
-
-	OldRelayBackendHostnameLocal = "localhost"
-	OldRelayBackendHostnameDev   = "relays.v3-dev.networknext.com"
-	OldRelayBackendHostnameProd  = "relays.v3.networknext.com"
-
 	RelayArtifactURLDev  = "https://storage.googleapis.com/artifacts.network-next-v3-dev.appspot.com/relay.dev.tar.gz"
 	RelayArtifactURLProd = "https://storage.googleapis.com/us.artifacts.network-next-v3-prod.appspot.com/relay.prod.tar.gz"
 
 	RelayBackendHostnameLocal = "localhost"
 	RelayBackendHostnameDev   = "relay_backend.dev.networknext.com"
 	RelayBackendHostnameProd  = "relay_backend.prod.networknext.com"
+
+	OldRelayBackendHostnameLocal = "localhost"
+	OldRelayBackendHostnameDev   = "relays.v3-dev.networknext.com"
+	OldRelayBackendHostnameProd  = "relays.v3.networknext.com"
+
+	RelayBackendURLLocal = "http://" + RelayBackendHostnameLocal + ":30000"
+	RelayBackendURLDev   = "http://" + RelayBackendHostnameDev + ":40000"
+	RelayBackendURLProd  = "http://" + RelayBackendHostnameProd
 )
 
 type Environment struct {
