@@ -4,10 +4,17 @@
 
 Run `./next` in the root of the repo for available commands.
 
+## Select
+
+To set the current environment for the next tool: `next select <local|dev|prod>`
+
+Only valid values are `local`, `dev`, or `prod`.
+
 ## Env
 
-To set the current environment for the next tool: `next env <local|dev|prod>`
+To display information about the current environment: `next env`
 
+The environment can also be changed with `next env [local|dev|prod]` in the same way as `next select <local|dev|prod>`
 Only valid values are `local`, `dev`, or `prod`.
 
 ## Auth
