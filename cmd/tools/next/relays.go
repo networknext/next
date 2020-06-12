@@ -15,6 +15,16 @@ import (
 )
 
 const (
+	CoreCheckScript = `
+		source /app/relay.env > /dev/null 2&>1
+		cores="$(nproc)"
+		if [ -z "$RELAY_MAX_CORES" ]; then
+			echo "$cores/$cores"
+		else
+			echo "$RELAY_MAX_CORES/$cores"
+		fi
+	`
+
 	PortCheckScript = `echo "$(sudo lsof -i -P -n | grep '*:40000' | tr -s ' ' | cut -d ' ' -f 1 | head -1)"`
 )
 
@@ -101,7 +111,7 @@ func checkRelays(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 
 	type checkInfo struct {
 		Name           string
-		CanSSH         string `table:"SSH Success"`
+		CanSSH         string `table:"SSH"`
 		UbuntuVersion  string `table:"Ubuntu"`
 		CPUCores       string `table:"Cores"`
 		CanPingBackend string `table:"Ping Backend"`
@@ -145,14 +155,8 @@ func checkRelays(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 
 			// get logical core count
 			{
-				if out, err := con.IssueCmdAndGetOutput("nproc"); err == nil {
-					// test if the output of nproc is a number
-					if _, err := strconv.ParseUint(out, 10, 64); err == nil {
-						infoIndx.CPUCores = out
-					} else {
-						log.Printf("could not parse value of nproc (%s) to uint for relay %s: %v\n", out, r.Name, err)
-						infoIndx.CPUCores = "Unknown"
-					}
+				if out, err := con.IssueCmdAndGetOutput(CoreCheckScript); err == nil {
+					infoIndx.CPUCores = out
 				} else {
 					log.Printf("error when acquiring number of logical cpu cores for relay %s: %v\n", r.Name, err)
 					infoIndx.CPUCores = "SSH Error"
