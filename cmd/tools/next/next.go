@@ -453,23 +453,6 @@ func main() {
 					relays(rpcClient, env, "")
 					return nil
 				},
-				Subcommands: []*ffcli.Command{
-					{
-						Name:       "check",
-						ShortUsage: "next relays check <filter>",
-						ShortHelp:  "List all or a subset of relays and see if they are ssh-able, what their ubuntu version is, and how many logical CPU cores they have.",
-						Exec: func(ctx context.Context, args []string) error {
-							filter := ""
-
-							if len(args) > 0 {
-								filter = args[0]
-							}
-
-							checkRelays(rpcClient, env, filter)
-							return nil
-						},
-					},
-				},
 			},
 			{
 				Name:       "routes",
@@ -547,6 +530,21 @@ func main() {
 				ShortUsage: "next relay <subcommand>",
 				ShortHelp:  "Manage relays",
 				Subcommands: []*ffcli.Command{
+					{
+						Name:       "check",
+						ShortUsage: "next relays check [filter]",
+						ShortHelp:  "List all or a subset of relays and see diagnostic information. Refer to the README for more information",
+						Exec: func(ctx context.Context, args []string) error {
+							filter := ""
+
+							if len(args) > 0 {
+								filter = args[0]
+							}
+
+							checkRelays(rpcClient, env, filter)
+							return nil
+						},
+					},
 					{
 						Name:       "keys",
 						ShortUsage: "next relay keys <relay name>",
