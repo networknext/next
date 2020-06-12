@@ -38,10 +38,23 @@ const (
 	echo 'Relay service shutdown'
 	`
 
+	// EnableRelayScript is the bash script used to enable relays
+	// If the relay is already running, it will clean shut down before re-enabling.
 	EnableRelayScript = `
 	if systemctl is-active --quiet relay; then
-		echo 'Relay service is already running'
-		exit
+		echo 'Relay service is already running, cleanly shutting down...'
+
+		echo "Waiting for the relay service to clean shutdown"
+
+		sudo systemctl stop relay || exit 1
+
+		while systemctl is-active --quiet relay; do
+			sleep 1
+		done
+
+		sudo systemctl disable relay
+
+		echo 'Relay service shutdown'
 	fi
 
 	sudo systemctl enable relay || exit 1
@@ -263,14 +276,19 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 				log.Fatal("could not execute the relay-update.sh script")
 			}
 
-			// Give the portal enough time to pull down the new state so that
-			// the relay doesn't appear disabled/offline
-			fmt.Println("Waiting for portal to sync changes...")
-			time.Sleep(11 * time.Second)
-
-			fmt.Printf("Update complete for %s!\n", regex)
-		}
+		fmt.Printf("%s finished updating\n", relayName)
 	}
+
+	// Give the portal enough time to pull down the new state so that
+	// the relay state doesn't appear incorrectly
+	fmt.Println("Waiting for portal to sync changes...")
+	time.Sleep(11 * time.Second)
+
+	str := "Updates"
+	if len(relayNames) == 1 {
+		str = "Update"
+	}
+	fmt.Printf("%s complete\n", str)
 }
 
 func revertRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string) {
@@ -305,6 +323,17 @@ func enableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 			con.ConnectAndIssueCmd(EnableRelayScript)
 		}
 	}
+
+	// Give the portal enough time to pull down the new state so that
+	// the relay state doesn't appear incorrectly
+	fmt.Println("Waiting for portal to sync changes...")
+	time.Sleep(11 * time.Second)
+
+	str := "Reverts"
+	if len(relayNames) == 1 {
+		str = "Revert"
+	}
+	fmt.Printf("%s complete\n", str)
 }
 
 func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string) {
@@ -322,6 +351,17 @@ func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []strin
 			updateRelayState(rpcClient, info, routing.RelayStateDisabled)
 		}
 	}
+
+	// Give the portal enough time to pull down the new state so that
+	// the relay state doesn't appear incorrectly
+	fmt.Println("Waiting for portal to sync changes...")
+	time.Sleep(11 * time.Second)
+
+	str := "Relays"
+	if len(relayNames) == 1 {
+		str = "Relay"
+	}
+	fmt.Printf("%s enabled\n", str)
 }
 
 func setRelayNIC(rpcClient jsonrpc.RPCClient, relayName string, nicSpeed uint64) {
@@ -330,6 +370,18 @@ func setRelayNIC(rpcClient jsonrpc.RPCClient, relayName string, nicSpeed uint64)
 	if len(relays) == 0 {
 		log.Fatalf("no relays matched the name '%s'\n", relayName)
 	}
+
+	// Give the portal enough time to pull down the new state so that
+	// the relay state doesn't appear incorrectly
+	fmt.Println("Waiting for portal to sync changes...")
+	time.Sleep(11 * time.Second)
+
+	str := "Relays"
+	if len(relayNames) == 1 {
+		str = "Relay"
+	}
+	fmt.Printf("%s disabled\n", str)
+}
 
 	info := relays[0]
 
@@ -342,6 +394,13 @@ func setRelayNIC(rpcClient jsonrpc.RPCClient, relayName string, nicSpeed uint64)
 	if err := rpcClient.CallFor(&reply, "OpsService.RelayNICSpeedUpdate", args); err != nil {
 		log.Fatal(err)
 	}
+
+	// Give the portal enough time to pull down the new state so that
+	// the relay state doesn't appear incorrectly
+	fmt.Println("Waiting for portal to sync changes...")
+	time.Sleep(11 * time.Second)
+
+	fmt.Printf("NIC speed set for %s\n", info.name)
 }
 
 func setRelayState(rpcClient jsonrpc.RPCClient, stateString string, relayNames []string) {

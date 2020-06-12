@@ -45,11 +45,13 @@ func NewSSHConn(user, address string, port string, authKeyFilename string) SSHCo
 }
 
 func (con SSHConn) commonSSHCommands() []string {
-	args := make([]string, 4)
+	args := make([]string, 6)
 	args[0] = "-i"
 	args[1] = con.keyfile
 	args[2] = "-p"
 	args[3] = con.port
+	args[4] = "-o"
+	args[5] = "StrictHostKeyChecking=no"
 	return args
 }
 
