@@ -110,7 +110,7 @@ AuthHandler = {
 			.call("AuthService.ResendVerificationEmail", {
 				user_id: userId,
 				user_email: email,
-				redirect: "window.location.origin",
+				redirect: window.location.origin,
 				connection: "Username-Password-Authentication"
 			})
 			.then((response) => {

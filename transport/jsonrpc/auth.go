@@ -632,10 +632,7 @@ func (s *AuthService) UpgradeAccount(r *http.Request, args *UpgradeArgs, reply *
 }
 
 type VerifyEmailArgs struct {
-	UserID       string `json:"user_id"`
-	UserEmail    string `json:"user_email"`
-	RedirectURL  string `json:"redirect"`
-	ConnectionID string `json:"connection"`
+	UserID string `json:"user_id"`
 }
 
 type VerifyEmailReply struct {
@@ -666,19 +663,11 @@ func (s *AuthService) ResendVerificationEmail(r *http.Request, args *VerifyEmail
 		return err
 	}
 
-	TTLSec := 0
-	faleValue := false
-
-	ticket := &management.Ticket{
-		ResultURL:           &args.RedirectURL,
-		UserID:              &args.UserID,
-		TTLSec:              &TTLSec,
-		ConnectionID:        &args.ConnectionID,
-		Email:               &args.UserEmail,
-		MarkEmailAsVerified: &faleValue,
+	job := &management.Job{
+		UserID: &args.UserID,
 	}
 
-	err := s.Auth0.Manager.Ticket.VerifyEmail(ticket)
+	err := s.Auth0.Manager.Job.VerifyEmail(job)
 	if err != nil {
 		err := fmt.Errorf("VerifyEmailUrl() failed to creating verification email link: %s", err)
 		s.Logger.Log("err", err)
