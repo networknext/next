@@ -175,6 +175,8 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 		log.Fatalln("failed to untar relay")
 	}
 
+	updatedRelays := 0
+
 	for _, regex := range regexes {
 		relays := getRelayInfo(rpcClient, regex)
 
@@ -276,7 +278,10 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 				log.Fatal("could not execute the relay-update.sh script")
 			}
 
-		fmt.Printf("%s finished updating\n", relayName)
+			updatedRelays++
+		}
+
+		fmt.Printf("%s finished updating relays matching '%s'\n", regex)
 	}
 
 	// Give the portal enough time to pull down the new state so that
@@ -285,7 +290,7 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 	time.Sleep(11 * time.Second)
 
 	str := "Updates"
-	if len(relayNames) == 1 {
+	if updatedRelays == 1 {
 		str = "Update"
 	}
 	fmt.Printf("%s complete\n", str)
@@ -309,6 +314,7 @@ func revertRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 }
 
 func enableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string) {
+	enabledRelays := 0
 	for _, regex := range regexes {
 		relays := getRelayInfo(rpcClient, regex)
 		if len(relays) == 0 {
@@ -321,6 +327,7 @@ func enableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 			updateRelayState(rpcClient, info, routing.RelayStateOffline)
 			con := NewSSHConn(info.user, info.sshAddr, info.sshPort, env.SSHKeyFilePath)
 			con.ConnectAndIssueCmd(EnableRelayScript)
+			enabledRelays++
 		}
 	}
 
@@ -330,13 +337,14 @@ func enableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 	time.Sleep(11 * time.Second)
 
 	str := "Reverts"
-	if len(relayNames) == 1 {
+	if enabledRelays == 1 {
 		str = "Revert"
 	}
 	fmt.Printf("%s complete\n", str)
 }
 
 func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string) {
+	relaysDisabled := 0
 	for _, regex := range regexes {
 		relays := getRelayInfo(rpcClient, regex)
 		if len(relays) == 0 {
@@ -349,6 +357,7 @@ func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []strin
 			con := NewSSHConn(info.user, info.sshAddr, info.sshPort, env.SSHKeyFilePath)
 			con.ConnectAndIssueCmd(DisableRelayScript)
 			updateRelayState(rpcClient, info, routing.RelayStateDisabled)
+			relaysDisabled++
 		}
 	}
 
@@ -358,7 +367,7 @@ func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []strin
 	time.Sleep(11 * time.Second)
 
 	str := "Relays"
-	if len(relayNames) == 1 {
+	if relaysDisabled == 1 {
 		str = "Relay"
 	}
 	fmt.Printf("%s enabled\n", str)
@@ -377,11 +386,10 @@ func setRelayNIC(rpcClient jsonrpc.RPCClient, relayName string, nicSpeed uint64)
 	time.Sleep(11 * time.Second)
 
 	str := "Relays"
-	if len(relayNames) == 1 {
+	if len(relays) == 1 {
 		str = "Relay"
 	}
-	fmt.Printf("%s disabled\n", str)
-}
+	fmt.Printf("%s \n", str)
 
 	info := relays[0]
 
