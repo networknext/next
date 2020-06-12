@@ -351,7 +351,14 @@ func setRelayState(rpcClient jsonrpc.RPCClient, stateString string, relayNames [
 	}
 
 	for _, relayName := range relayNames {
-		info := getRelayInfo(rpcClient, relayName)
+		relays := getRelayInfo(rpcClient, relayName)
+
+		if len(relays) == 0 {
+			log.Printf("no relay matched the name '%s'\n", relayName)
+			continue
+		}
+
+		info := relays[0]
 
 		updateRelayState(rpcClient, info, state)
 
