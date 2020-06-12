@@ -281,7 +281,7 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 			updatedRelays++
 		}
 
-		fmt.Printf("%s finished updating relays matching '%s'\n", regex)
+		fmt.Printf("finished updating relays matching '%s'\n", regex)
 	}
 
 	// Give the portal enough time to pull down the new state so that
@@ -379,17 +379,6 @@ func setRelayNIC(rpcClient jsonrpc.RPCClient, relayName string, nicSpeed uint64)
 	if len(relays) == 0 {
 		log.Fatalf("no relays matched the name '%s'\n", relayName)
 	}
-
-	// Give the portal enough time to pull down the new state so that
-	// the relay state doesn't appear incorrectly
-	fmt.Println("Waiting for portal to sync changes...")
-	time.Sleep(11 * time.Second)
-
-	str := "Relays"
-	if len(relays) == 1 {
-		str = "Relay"
-	}
-	fmt.Printf("%s \n", str)
 
 	info := relays[0]
 
