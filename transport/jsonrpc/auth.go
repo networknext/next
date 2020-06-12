@@ -632,16 +632,62 @@ func (s *AuthService) UpgradeAccount(r *http.Request, args *UpgradeArgs, reply *
 }
 
 type VerifyEmailArgs struct {
-	UserID string `json:"user_id"`
+	UserID       string `json:"user_id"`
+	UserEmail    string `json:"user_email"`
+	RedirectURL  string `json:"redirect"`
+	ConnectionID string `json:"connection"`
 }
 
 type VerifyEmailReply struct {
-	Url string `json:"url"`
+	Sent bool `json:"sent"`
 }
 
-func (s *AuthService) VerifyEmailUrl(r *http.Request, args *VerifyEmailArgs, reply *VerifyEmailReply) error {
+func (s *AuthService) ResendVerificationEmail(r *http.Request, args *VerifyEmailArgs, reply *VerifyEmailReply) error {
+	reply.Sent = false
+
 	if !IsAnonymousPlus(r) {
+		err := fmt.Errorf("VerifyEmailUrl() failed to creating verification email link: %s", ErrInsufficientPrivileges)
+		s.Logger.Log("err", err)
+		return err
 	}
+
+	user := r.Context().Value("user")
+	if user == nil {
+		err := fmt.Errorf("VerifyEmailUrl() failed to creating verification email link: %s", errors.New("failed to fetch user token"))
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
+	// Malicious change of email to try and get someone elses verification email
+	if email, ok := claims["email"]; ok && email.(string) != args.UserEmail {
+		err := fmt.Errorf("VerifyEmailUrl() failed to creating verification email link: %s", errors.New("emails do not match"))
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	TTLSec := 0
+	faleValue := false
+
+	ticket := &management.Ticket{
+		ResultURL:           &args.RedirectURL,
+		UserID:              &args.UserID,
+		TTLSec:              &TTLSec,
+		ConnectionID:        &args.ConnectionID,
+		Email:               &args.UserEmail,
+		MarkEmailAsVerified: &faleValue,
+	}
+
+	err := s.Auth0.Manager.Ticket.VerifyEmail(ticket)
+	if err != nil {
+		err := fmt.Errorf("VerifyEmailUrl() failed to creating verification email link: %s", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	reply.Sent = true
+
+	return nil
 }
 
 type response struct {
@@ -773,10 +819,15 @@ func IsAnonymous(r *http.Request) bool {
 }
 
 func IsAnonymousPlus(r *http.Request) bool {
-	roles := r.Context().Value(rolesKey)
+	user := r.Context().Value("user")
 
-	if roles != nil {
-		return len(roles.(management.RoleList).Roles) == 0
+	if user == nil {
+		return false
+	}
+	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
+
+	if verified, ok := claims["email_verified"]; ok && !verified.(bool) {
+		return true
 	}
 	return false
 }

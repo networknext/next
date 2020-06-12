@@ -102,6 +102,23 @@ AuthHandler = {
 		}).catch((e) => {
 			Sentry.captureException(e);
 		});
+	},
+	resendVerificationEmail() {
+		let userId = UserHandler.userInfo.userId;
+		let email = UserHandler.userInfo.email;
+		JSONRPCClient
+			.call("AuthService.ResendVerificationEmail", {
+				user_id: userId,
+				user_email: email,
+				redirect: "window.location.origin",
+				connection: "Username-Password-Authentication"
+			})
+			.then((response) => {
+				console.log(response)
+			})
+			.catch((error) => {
+				console.log("something went wrong with resending verification email")
+			})
 	}
 }
 
@@ -258,6 +275,7 @@ UserHandler = {
 				if (!response) {
 					return;
 				}
+				console.log(response)
 				this.userInfo = {
 					company: "",
 					domain: response.email.split("@")[1],
@@ -265,7 +283,9 @@ UserHandler = {
 					name: response.name,
 					nickname: response.nickname,
 					userId: response.sub,
-					token: response.__raw
+					token: response.__raw,
+					verified: response.email_verified,
+					roles: []
 				};
 				return JSONRPCClient.call("AuthService.UserAccount", {user_id: this.userInfo.userId});
 			})
@@ -291,7 +311,7 @@ UserHandler = {
 		return this.userInfo == null;
 	},
 	isAnonymousPlus() {
-		return !this.isAnonymous() ? this.userInfo.roles.length == 0 : false;
+		return !this.isAnonymous() ? this.userInfo.verified : false;
 	},
 	isOwner() {
 		return !this.isAnonymous() ? this.userInfo.roles.findIndex((role) => role.name == "Owner") !== -1 : false;

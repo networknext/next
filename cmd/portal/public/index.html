@@ -278,6 +278,13 @@
                         </a>
                     </li>
                 </ul>
+                <ul class="navbar-nav px-3" v-if="!handlers.userHandler.isAnonymous()">
+                    <li class="nav-item text-nowrap  ">
+                        <a class="nav-link" href="#" v-on:click="handlers.authHandler.resendVerificationEmail()">
+                            Verify Email
+                        </a>
+                    </li>
+                </ul>
             </nav>
             <div class="container-fluid">
                 <div class="row">
