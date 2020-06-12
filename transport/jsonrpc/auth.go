@@ -68,12 +68,22 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 		s.Logger.Log("err", err)
 		return err
 	}
-	_, err := CheckRoles(r, "Admin")
+
+	isAdmin, err := CheckRoles(r, "Admin")
 	if err != nil {
-		if _, err := CheckRoles(r, "Owner"); err != nil {
-			err = fmt.Errorf("AllAccounts() CheckRoles error: %v", err)
-			return err
-		}
+		err = fmt.Errorf("AllAccounts() CheckRoles error: %v", err)
+		return err
+	}
+
+	isOwner, err := CheckRoles(r, "Owner")
+	if err != nil {
+		err = fmt.Errorf("AllAccounts() CheckRoles error: %v", err)
+		return err
+	}
+
+	if !isAdmin && !isOwner {
+		err = fmt.Errorf("AllAccounts() CheckRoles error: %v", ErrInsufficientPrivileges)
+		return err
 	}
 
 	accountList, err = s.Auth0.Manager.User.List()
@@ -196,12 +206,21 @@ func (s *AuthService) DeleteUserAccount(r *http.Request, args *AccountArgs, repl
 		return err
 	}
 
-	if _, err := CheckRoles(r, "Admin"); err != nil {
-		if _, err := CheckRoles(r, "Owner"); err != nil {
-			err := fmt.Errorf("DeleteUserAccount() CheckRoles error: %w", err)
-			s.Logger.Log("err", err)
-			return err
-		}
+	isAdmin, err := CheckRoles(r, "Admin")
+	if err != nil {
+		err = fmt.Errorf("AllAccounts() CheckRoles error: %v", err)
+		return err
+	}
+
+	isOwner, err := CheckRoles(r, "Owner")
+	if err != nil {
+		err = fmt.Errorf("AllAccounts() CheckRoles error: %v", err)
+		return err
+	}
+
+	if !isAdmin || !isOwner {
+		err = fmt.Errorf("AllAccounts() CheckRoles error: %v", ErrInsufficientPrivileges)
+		return err
 	}
 
 	if args.UserID == "" {
@@ -229,14 +248,21 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 		return fmt.Errorf("insufficient privileges")
 	}
 
-	if !IsAnonymous(r) {
-		if _, err := CheckRoles(r, "Admin"); err != nil {
-			if _, err := CheckRoles(r, "Owner"); err != nil {
-				err := fmt.Errorf("AddUserAccount() CheckRoles error: %w", err)
-				s.Logger.Log("err", err)
-				return err
-			}
-		}
+	isAdmin, err := CheckRoles(r, "Admin")
+	if err != nil {
+		err = fmt.Errorf("AllAccounts() CheckRoles error: %v", err)
+		return err
+	}
+
+	isOwner, err := CheckRoles(r, "Owner")
+	if err != nil {
+		err = fmt.Errorf("AllAccounts() CheckRoles error: %v", err)
+		return err
+	}
+
+	if !isAdmin && !isOwner {
+		err = fmt.Errorf("AllAccounts() CheckRoles error: %v", ErrInsufficientPrivileges)
+		return err
 	}
 
 	// Check if non admin is assigning admin role
@@ -438,11 +464,19 @@ func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesRep
 	}
 	isAdmin, err := CheckRoles(r, "Admin")
 	if err != nil {
-		if _, err := CheckRoles(r, "Owner"); err != nil {
-			err := fmt.Errorf("AllRoles() CheckRoles error: %w", err)
-			s.Logger.Log("err", err)
-			return err
-		}
+		err = fmt.Errorf("AllAccounts() CheckRoles error: %v", err)
+		return err
+	}
+
+	isOwner, err := CheckRoles(r, "Owner")
+	if err != nil {
+		err = fmt.Errorf("AllAccounts() CheckRoles error: %v", err)
+		return err
+	}
+
+	if !isAdmin && !isOwner {
+		err = fmt.Errorf("AllAccounts() CheckRoles error: %v", ErrInsufficientPrivileges)
+		return err
 	}
 
 	roleList, err := s.Auth0.Manager.Role.List()
@@ -472,12 +506,21 @@ func (s *AuthService) UserRoles(r *http.Request, args *RolesArgs, reply *RolesRe
 		return err
 	}
 
-	if _, err := CheckRoles(r, "Admin"); err != nil {
-		if _, err := CheckRoles(r, "Owner"); err != nil {
-			err := fmt.Errorf("UserRoles() CheckRoles error: %w", err)
-			s.Logger.Log("err", err)
-			return err
-		}
+	isAdmin, err := CheckRoles(r, "Admin")
+	if err != nil {
+		err = fmt.Errorf("AllAccounts() CheckRoles error: %v", err)
+		return err
+	}
+
+	isOwner, err := CheckRoles(r, "Owner")
+	if err != nil {
+		err = fmt.Errorf("AllAccounts() CheckRoles error: %v", err)
+		return err
+	}
+
+	if !isAdmin && !isOwner {
+		err = fmt.Errorf("AllAccounts() CheckRoles error: %v", ErrInsufficientPrivileges)
+		return err
 	}
 
 	if args.UserID == "" {
@@ -507,12 +550,21 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 		return err
 	}
 
-	if _, err := CheckRoles(r, "Admin"); err != nil {
-		if _, err := CheckRoles(r, "Owner"); err != nil {
-			err := fmt.Errorf("UpdateUserRoles() CheckRoles error: %w", err)
-			s.Logger.Log("err", err)
-			return err
-		}
+	isAdmin, err := CheckRoles(r, "Admin")
+	if err != nil {
+		err = fmt.Errorf("AllAccounts() CheckRoles error: %v", err)
+		return err
+	}
+
+	isOwner, err := CheckRoles(r, "Owner")
+	if err != nil {
+		err = fmt.Errorf("AllAccounts() CheckRoles error: %v", err)
+		return err
+	}
+
+	if !isAdmin && !isOwner {
+		err = fmt.Errorf("AllAccounts() CheckRoles error: %v", ErrInsufficientPrivileges)
+		return err
 	}
 
 	if args.UserID == "" {
@@ -555,15 +607,68 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 }
 
 type UpgradeArgs struct {
-	Company string `json:"company"`
-	UserID  string `json:"user_id"`
 }
 
 type UpgradeReply struct {
-	UpgradedAccount account `json:"user_account"`
+	NewRoles []*management.Role `json:"new_roles"`
 }
 
 func (s *AuthService) UpgradeAccount(r *http.Request, args *UpgradeArgs, reply *UpgradeReply) error {
+	isAdmin, err := CheckRoles(r, "Admin")
+	if err != nil {
+		err = fmt.Errorf("AllAccounts() CheckRoles error: %v", err)
+		return err
+	}
+
+	isOwner, err := CheckRoles(r, "Owner")
+	if err != nil {
+		err = fmt.Errorf("AllAccounts() CheckRoles error: %v", err)
+		return err
+	}
+
+	if isAdmin || isOwner {
+		return nil
+	}
+	var companyUsers []*management.User
+	accountList, err := s.Auth0.Manager.User.List()
+
+	if err != nil {
+		err = fmt.Errorf("UpgradeAccount() failed to fetch user list: %v", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+	requestUser := r.Context().Value("user")
+	if requestUser == nil {
+		err = fmt.Errorf("UpgradeAccount() unable to parse user from token")
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	requestEmail, ok := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["email"].(string)
+	if !ok {
+		err = fmt.Errorf("UpgradeAccount() unable to parse email from token")
+		s.Logger.Log("err", err)
+		return err
+	}
+	requestEmailParts := strings.Split(requestEmail, "@")
+	requestDomain := requestEmailParts[len(requestEmailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
+
+	for _, a := range accountList.Users {
+		emailParts := strings.Split(*a.Email, "@")
+		if len(emailParts) <= 0 {
+			err = fmt.Errorf("UpgradeAccount() failed to parse email %s for domain", *a.Email)
+			s.Logger.Log("err", err)
+			return err
+		}
+		domain := emailParts[len(emailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
+		if requestDomain != domain {
+			continue
+		}
+		companyUsers = append(companyUsers, a)
+	}
+	if len(companyUsers) > 1 {
+		return nil
+	}
 	roleNames := []string{
 		"rol_ScQpWhLvmTKRlqLU",
 		"rol_8r0281hf2oC4cvrD",
@@ -577,6 +682,12 @@ func (s *AuthService) UpgradeAccount(r *http.Request, args *UpgradeArgs, reply *
 		"Can access and manage everything in an account.",
 	}
 
+	requestID, ok := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["sub"].(string)
+	if !ok {
+		err = fmt.Errorf("UpgradeAccount() unable to parse id from token")
+		s.Logger.Log("err", err)
+		return err
+	}
 	// Upgrade account
 	roles := []*management.Role{
 		{
@@ -591,30 +702,15 @@ func (s *AuthService) UpgradeAccount(r *http.Request, args *UpgradeArgs, reply *
 		},
 	}
 
-	err := s.Auth0.Manager.User.AssignRoles(args.UserID, roles...)
+	err = s.Auth0.Manager.User.AssignRoles(requestID, roles...)
 
 	if err != nil {
 		return err
 	}
 
-	userAccount, err := s.Auth0.Manager.User.Read(args.UserID)
+	userAccount, err := s.Auth0.Manager.User.Read(requestID)
 	if err != nil {
 		err := fmt.Errorf("UpgradeAccount() failed to fetch user account: %w", err)
-		s.Logger.Log("err", err)
-		return err
-	}
-
-	emailParts := strings.Split(*userAccount.Email, "@")
-	if len(emailParts) <= 0 {
-		err := fmt.Errorf("UpgradeAccount() failed to parse email %s for domain", *userAccount.Email)
-		s.Logger.Log("err", err)
-		return err
-	}
-
-	domain := emailParts[len(emailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
-	buyer, err := s.Storage.BuyerWithDomain(domain)
-	if err != nil {
-		err := fmt.Errorf("UpgradeAccount() Storage.BuyerWithDomain error: %w", err)
 		s.Logger.Log("err", err)
 		return err
 	}
@@ -626,7 +722,7 @@ func (s *AuthService) UpgradeAccount(r *http.Request, args *UpgradeArgs, reply *
 		return fmt.Errorf("failed to fetch user roles: %w", err)
 	}
 
-	reply.UpgradedAccount = newAccount(userAccount, userRoles.Roles, buyer)
+	reply.NewRoles = userRoles.Roles
 
 	return nil
 }
@@ -644,21 +740,6 @@ func (s *AuthService) ResendVerificationEmail(r *http.Request, args *VerifyEmail
 
 	if !IsAnonymousPlus(r) {
 		err := fmt.Errorf("VerifyEmailUrl() failed to creating verification email link: %s", ErrInsufficientPrivileges)
-		s.Logger.Log("err", err)
-		return err
-	}
-
-	user := r.Context().Value("user")
-	if user == nil {
-		err := fmt.Errorf("VerifyEmailUrl() failed to creating verification email link: %s", errors.New("failed to fetch user token"))
-		s.Logger.Log("err", err)
-		return err
-	}
-
-	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
-	// Malicious change of email to try and get someone elses verification email
-	if email, ok := claims["email"]; ok && email.(string) != args.UserEmail {
-		err := fmt.Errorf("VerifyEmailUrl() failed to creating verification email link: %s", errors.New("emails do not match"))
 		s.Logger.Log("err", err)
 		return err
 	}
@@ -790,10 +871,7 @@ func CheckRoles(r *http.Request, requiredRole string) (bool, error) {
 			found = true
 		}
 	}
-	if found {
-		return true, nil
-	}
-	return false, ErrInsufficientPrivileges
+	return found, nil
 }
 
 func SetIsAnonymous(r *http.Request, value bool) *http.Request {

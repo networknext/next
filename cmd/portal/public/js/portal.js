@@ -97,8 +97,6 @@ AuthHandler = {
 			connection: "Username-Password-Authentication",
 			redirect_uri: window.location.origin,
 			screen_hint: "signup"
-		}).then((response) => {
-			console.log(response)
 		}).catch((e) => {
 			Sentry.captureException(e);
 		});
@@ -114,10 +112,14 @@ AuthHandler = {
 				connection: "Username-Password-Authentication"
 			})
 			.then((response) => {
-				console.log(response)
+				Object.assign(rootComponent.$data.alerts.verifyEmail, {show: false})
+				Object.assign(rootComponent.$data.alerts.emailSent, {show: true})
 			})
 			.catch((error) => {
 				console.log("something went wrong with resending verification email")
+				Sentry.captureException(error)
+				Object.assign(rootComponent.$data.alerts.verifyEmail, {show: false})
+				Object.assign(rootComponent.$data.alerts.emailFailed, {show: true})
 			})
 	}
 }
@@ -275,7 +277,6 @@ UserHandler = {
 				if (!response) {
 					return;
 				}
-				console.log(response)
 				this.userInfo = {
 					company: "",
 					domain: response.email.split("@")[1],
@@ -311,7 +312,7 @@ UserHandler = {
 		return this.userInfo == null;
 	},
 	isAnonymousPlus() {
-		return !this.isAnonymous() ? this.userInfo.verified : false;
+		return !this.isAnonymous() ? !this.userInfo.verified : false;
 	},
 	isOwner() {
 		return !this.isAnonymous() ? this.userInfo.roles.findIndex((role) => role.name == "Owner") !== -1 : false;
@@ -364,7 +365,12 @@ WorkspaceHandler = {
 				id != '' ? this.fetchSessionInfo() : null;
 				break;
 			case 'settings':
-				let page = UserHandler.isAnonymousPlus() ? "config" : "users";
+				let page =
+					UserHandler.isAnonymousPlus() || (
+						!UserHandler.isOwner() &&
+						!UserHandler.isAnonymous() &&
+						!UserHandler.isAdmin()
+					) ? "config" : "users";
 				Object.assign(rootComponent.$data.pages.settings, {
 					newUser: {
 						failure: '',
@@ -383,7 +389,7 @@ WorkspaceHandler = {
 					},
 				});
 				this.changeSettingsPage(page);
-				page == "config" ? this.loadConfigPage() : this.loadSettingsPage();
+				this.loadSettingsPage();
 				break;
 			case 'userTool':
 				let hash = options || '';
@@ -485,48 +491,23 @@ WorkspaceHandler = {
 		accounts[index] = accountInfo;
 		Object.assign(rootComponent.$data.pages.settings, {accounts: accounts});
 	},
-	loadConfigPage() {
-		if (!UserHandler.isAnonymous()) {
-			JSONRPCClient
-				.call('BuyersService.GameConfiguration', {domain: UserHandler.userInfo.domain})
-				.then((response) => {
-					UserHandler.userInfo.pubKey = response.game_config.public_key;
-					UserHandler.userInfo.company = response.game_config.company;
-				})
-				.catch((e) => {
-					console.log("Something went wrong fetching public key");
-					console.log(e)
-					Sentry.captureException(e);
-					UserHandler.userInfo.pubKey = "";
-					UserHandler.userInfo.company = "";
-				});
-		} else {
-			UserHandler.userInfo.pubKey = "";
-			UserHandler.userInfo.company = "";
-		}
-	},
 	loadSettingsPage() {
 		if (UserHandler.isAnonymous() || UserHandler.isAnonymousPlus()) {
 			return;
 		}
-		if (UserHandler.userInfo.id != '') {
-			JSONRPCClient
-				.call('BuyersService.GameConfiguration', {domain: UserHandler.userInfo.domain})
-				.then((response) => {
-					UserHandler.userInfo.pubKey = response.game_config.public_key;
-					UserHandler.userInfo.company = response.game_config.company;
-				})
-				.catch((e) => {
-					console.log("Something went wrong fetching public key");
-					console.log(e)
-					Sentry.captureException(e);
-					UserHandler.userInfo.pubKey = "";
-					UserHandler.userInfo.company = "";
-				});
-		} else {
-			UserHandler.userInfo.pubKey = "";
-			UserHandler.userInfo.company = "";
-		}
+		JSONRPCClient
+			.call('BuyersService.GameConfiguration', {domain: UserHandler.userInfo.domain})
+			.then((response) => {
+				UserHandler.userInfo.pubKey = response.game_config.public_key;
+				UserHandler.userInfo.company = response.game_config.company;
+			})
+			.catch((e) => {
+				console.log("Something went wrong fetching public key");
+				console.log(e)
+				Sentry.captureException(e);
+				UserHandler.userInfo.pubKey = "";
+				UserHandler.userInfo.company = "";
+			});
 
 		let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
 		this.updateAccountsTableFilter({
@@ -833,6 +814,23 @@ function startApp() {
 		.fetchCurrentUserInfo()
 		.then(() => {
 			createVueComponents();
+			if (UserHandler.isAnonymousPlus()) {
+				Object.assign(rootComponent.$data.alerts.verifyEmail, {show: true});
+			}
+			if (!UserHandler.isAnonymous() && !UserHandler.isAnonymousPlus() && (!UserHandler.isOwner() || !UserHandler.isAdmin())) {
+				JSONRPCClient
+					.call("AuthService.UpgradeAccount", {user_id: UserHandler.userInfo.userId})
+					.then((response) => {
+						console.log(response)
+						if (response.new_roles.length > 0) {
+							UserHandler.userInfo.roles = response.new_roles;
+						}
+					})
+					.catch((error) => {
+						console.log("Something went wrong upgrading the account")
+						Sentry.captureException(error)
+					})
+			}
 			document.getElementById("app").style.display = 'block';
 			WorkspaceHandler.changePage('map');
 			JSONRPCClient
@@ -878,6 +876,17 @@ function createVueComponents() {
 			mapSessions: [],
 			onNN: [],
 			direct: [],
+			alerts: {
+				verifyEmail: {
+					show: false
+				},
+				emailSent: {
+					show: false
+				},
+				emailFailed: {
+					show: false
+				}
+			},
 			handlers: {
 				authHandler: AuthHandler,
 				mapHandler: MapHandler,
@@ -991,35 +1000,6 @@ function updatePubKey() {
 	JSONRPCClient
 		.call("BuyersService.UpdateGameConfiguration", {name: company, domain: domain, new_public_key: newPubKey})
 		.then((response) => {
-			UserHandler.isAnonymousPlus() ? JSONRPCClient
-				.call("AuthService.UpgradeAccount", {company: company, user_id: userID})
-				.then((response) => {
-					UserHandler.userInfo.company = company;
-					UserHandler.userInfo.name = response.user_account.name;
-					UserHandler.userInfo.domain = response.user_account.email.split("@")[1];
-					UserHandler.userInfo.roles = response.user_account.roles;
-					UserHandler.userInfo.id = response.user_account.id;
-					Object.assign(rootComponent.$data.pages.settings.upgrade, {
-						success: 'Successfully upgraded account',
-					});
-					setTimeout(() => {
-						Object.assign(rootComponent.$data.pages.settings.upgrade, {
-							success: '',
-						});
-					}, 5000);
-				})
-				.catch((error) => {
-					console.log("Something went wrong upgrading your account");
-					Sentry.captureException(error);
-					Object.assign(rootComponent.$data.pages.settings.upgrade, {
-						failure: 'Failed to upgraded account',
-					});
-					setTimeout(() => {
-						Object.assign(rootComponent.$data.pages.settings.upgrade, {
-							failure: '',
-						});
-					}, 5000);
-				}) : null;
 			UserHandler.userInfo.pubKey = response.game_config.public_key;
 			Object.assign(rootComponent.$data.pages.settings.updateKey, {
 				success: 'Updated public key successfully',

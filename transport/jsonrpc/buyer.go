@@ -531,7 +531,7 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 }
 
 func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfigurationArgs, reply *GameConfigurationReply) error {
-	if IsAnonymous(r) {
+	if IsAnonymous(r) || IsAnonymousPlus(r) {
 		return fmt.Errorf("UpdateGameConfiguration() insufficient privileges")
 	}
 	var err error
