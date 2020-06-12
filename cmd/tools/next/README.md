@@ -145,6 +145,8 @@ To check relays: `next relay check [filter]`
 
 Displays a table of filtered relays, or all relays if no filter supplied, containing diagnostic information.
 
+If any of the fields contain "SSH Error", a more detailed message will be visible within the messages above the table.
+
 Fields:
 - `SSH`: Was the relay able to be SSHed into?
 - `Ubuntu`: The version of Ubuntu the relay is running.
