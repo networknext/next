@@ -532,7 +532,7 @@ func main() {
 				Subcommands: []*ffcli.Command{
 					{
 						Name:       "check",
-						ShortUsage: "next relays check [filter]",
+						ShortUsage: "next relay check [filter]",
 						ShortHelp:  "List all or a subset of relays and see diagnostic information. Refer to the README for more information",
 						Exec: func(ctx context.Context, args []string) error {
 							filter := ""
