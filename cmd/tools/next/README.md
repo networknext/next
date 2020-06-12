@@ -148,7 +148,7 @@ Displays a table of filtered relays, or all relays if no filter supplied, contai
 Fields:
 - `SSH`: Was the relay able to be SSHed into?
 - `Ubuntu`: The version of Ubuntu the relay is running.
-- `Cores`: The cores allocated to the relay. If the `RELAY_MAX_CORES` environment variable is set, it's value will used here.
+- `Cores`: The cores allocated to the relay. If the `RELAY_MAX_CORES` environment variable is set, its value will used here.
 - `Ping Backend`: Was the relay able to ping the relay backend?
 - `Running`: Is the relay service running?
 - `Bound`: Is port 40000 bound to the relay process?
