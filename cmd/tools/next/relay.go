@@ -411,24 +411,23 @@ func setRelayNIC(rpcClient jsonrpc.RPCClient, relayName string, nicSpeed uint64)
 	fmt.Printf("NIC speed set for %s\n", info.name)
 }
 
-func setRelayState(rpcClient jsonrpc.RPCClient, stateString string, relayNames []string) {
+func setRelayState(rpcClient jsonrpc.RPCClient, stateString string, regexes []string) {
 	state, err := routing.ParseRelayState(stateString)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	for _, relayName := range relayNames {
-		relays := getRelayInfo(rpcClient, relayName)
+	for _, regex := range regexes {
+		relays := getRelayInfo(rpcClient, regex)
 
 		if len(relays) == 0 {
-			log.Printf("no relay matched the name '%s'\n", relayName)
+			log.Printf("no relay matched the regex '%s'\n", regex)
 			continue
 		}
 
-		info := relays[0]
-
-		updateRelayState(rpcClient, info, state)
-
-		fmt.Printf("Relay state updated for %s to %v\n", info.name, state)
+		for _, info := range relays {
+			updateRelayState(rpcClient, info, state)
+			fmt.Printf("Relay state updated for %s to %v\n", info.name, state)
+		}
 	}
 }
