@@ -66,7 +66,7 @@ func getPopulatedRouteMatrix(malformed bool) *routing.RouteMatrix {
 	matrix.DatacenterRelays[111][0] = 456
 
 	matrix.Entries = []routing.RouteMatrixEntry{
-		routing.RouteMatrixEntry{
+		{
 			DirectRTT:      123,
 			NumRoutes:      1,
 			RouteRTT:       [8]int32{1},
@@ -563,11 +563,11 @@ func getRouteMatrixDataV4() routeMatrixData {
 
 	// version 4 stuff
 	sellers := []routing.Seller{
-		routing.Seller{ID: "id0", Name: "name0", IngressPriceCents: 1, EgressPriceCents: 2},
-		routing.Seller{ID: "id1", Name: "name1", IngressPriceCents: 3, EgressPriceCents: 4},
-		routing.Seller{ID: "id2", Name: "name2", IngressPriceCents: 5, EgressPriceCents: 6},
-		routing.Seller{ID: "id3", Name: "name3", IngressPriceCents: 7, EgressPriceCents: 8},
-		routing.Seller{ID: "id4", Name: "name4", IngressPriceCents: 9, EgressPriceCents: 10},
+		{ID: "id0", Name: "name0", IngressPriceCents: 1, EgressPriceCents: 2},
+		{ID: "id1", Name: "name1", IngressPriceCents: 3, EgressPriceCents: 4},
+		{ID: "id2", Name: "name2", IngressPriceCents: 5, EgressPriceCents: 6},
+		{ID: "id3", Name: "name3", IngressPriceCents: 7, EgressPriceCents: 8},
+		{ID: "id4", Name: "name4", IngressPriceCents: 9, EgressPriceCents: 10},
 	}
 
 	buffSize := 0
@@ -644,11 +644,11 @@ func getRouteMatrixDataV5() routeMatrixData {
 
 	// version 4 stuff
 	sellers := []routing.Seller{
-		routing.Seller{ID: "id0", Name: "name0", IngressPriceCents: 1, EgressPriceCents: 2},
-		routing.Seller{ID: "id1", Name: "name1", IngressPriceCents: 3, EgressPriceCents: 4},
-		routing.Seller{ID: "id2", Name: "name2", IngressPriceCents: 5, EgressPriceCents: 6},
-		routing.Seller{ID: "id3", Name: "name3", IngressPriceCents: 7, EgressPriceCents: 8},
-		routing.Seller{ID: "id4", Name: "name4", IngressPriceCents: 9, EgressPriceCents: 10},
+		{ID: "id0", Name: "name0", IngressPriceCents: 1, EgressPriceCents: 2},
+		{ID: "id1", Name: "name1", IngressPriceCents: 3, EgressPriceCents: 4},
+		{ID: "id2", Name: "name2", IngressPriceCents: 5, EgressPriceCents: 6},
+		{ID: "id3", Name: "name3", IngressPriceCents: 7, EgressPriceCents: 8},
+		{ID: "id4", Name: "name4", IngressPriceCents: 9, EgressPriceCents: 10},
 	}
 
 	// version 5 stuff
@@ -2182,7 +2182,7 @@ func TestRelaysIn(t *testing.T) {
 		RelayIndicies:    map[uint64]int{0: 0},
 		RelayAddresses:   [][]byte{[]byte("127.0.0.1:abcde")},
 		RelayPublicKeys:  [][]byte{{0x58, 0xaf, 0x19, 0x5, 0xf7, 0xa8, 0xae, 0x73, 0xc6, 0xd3, 0xec, 0x85, 0x2f, 0xd8, 0x9b, 0x5a, 0xce, 0x0, 0x38, 0xca, 0x26, 0x39, 0xa4, 0x5d, 0x82, 0x3c, 0x71, 0xa8, 0x4, 0x11, 0xfb, 0x32}},
-		DatacenterRelays: map[uint64][]uint64{0: []uint64{0, 1}},
+		DatacenterRelays: map[uint64][]uint64{0: {0, 1}},
 	}
 	relays = routeMatrix.RelaysIn(routing.Datacenter{ID: 0})
 	assert.NotNil(t, relays)
@@ -2226,39 +2226,39 @@ func TestRoutes(t *testing.T) {
 			[]routing.Relay{{ID: 2836356269}},
 			[]routing.Relay{{ID: 3263834878}, {ID: 1500948990}},
 			[]routing.Route{
-				routing.Route{
+				{
 					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2923051732}, {ID: 1884974764}, {ID: 3263834878}},
 					Stats:  routing.Stats{RTT: 182},
 				},
-				routing.Route{
+				{
 					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2641807504}, {ID: 3263834878}},
 					Stats:  routing.Stats{RTT: 182},
 				},
-				routing.Route{
+				{
 					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 1348914502}, {ID: 1884974764}, {ID: 3263834878}},
 					Stats:  routing.Stats{RTT: 182},
 				},
-				routing.Route{
+				{
 					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2576485547}, {ID: 1835585494}, {ID: 3263834878}},
 					Stats:  routing.Stats{RTT: 183},
 				},
-				routing.Route{
+				{
 					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1348914502}, {ID: 1884974764}, {ID: 3263834878}},
 					Stats:  routing.Stats{RTT: 183},
 				},
-				routing.Route{
+				{
 					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2663193268}, {ID: 2504465311}, {ID: 3263834878}},
 					Stats:  routing.Stats{RTT: 184},
 				},
-				routing.Route{
+				{
 					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 427962386}, {ID: 2504465311}, {ID: 3263834878}},
 					Stats:  routing.Stats{RTT: 184},
 				},
-				routing.Route{
+				{
 					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 4058587524}, {ID: 1350942731}, {ID: 3263834878}},
 					Stats:  routing.Stats{RTT: 184},
 				},
-				routing.Route{
+				{
 					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1500948990}},
 					Stats:  routing.Stats{RTT: 311},
 				},
@@ -2271,15 +2271,15 @@ func TestRoutes(t *testing.T) {
 			[]routing.Relay{{ID: 2836356269}},
 			[]routing.Relay{{ID: 3263834878}, {ID: 1500948990}},
 			[]routing.Route{
-				routing.Route{
+				{
 					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2923051732}, {ID: 1884974764}, {ID: 3263834878}},
 					Stats:  routing.Stats{RTT: 182},
 				},
-				routing.Route{
+				{
 					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2641807504}, {ID: 3263834878}},
 					Stats:  routing.Stats{RTT: 182},
 				},
-				routing.Route{
+				{
 					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 1348914502}, {ID: 1884974764}, {ID: 3263834878}},
 					Stats:  routing.Stats{RTT: 182},
 				},
@@ -2294,35 +2294,35 @@ func TestRoutes(t *testing.T) {
 			[]routing.Relay{{ID: 2836356269}},
 			[]routing.Relay{{ID: 3263834878}, {ID: 1500948990}},
 			[]routing.Route{
-				routing.Route{
+				{
 					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2923051732}, {ID: 1884974764}, {ID: 3263834878}},
 					Stats:  routing.Stats{RTT: 182},
 				},
-				routing.Route{
+				{
 					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2641807504}, {ID: 3263834878}},
 					Stats:  routing.Stats{RTT: 182},
 				},
-				routing.Route{
+				{
 					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 1348914502}, {ID: 1884974764}, {ID: 3263834878}},
 					Stats:  routing.Stats{RTT: 182},
 				},
-				routing.Route{
+				{
 					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2576485547}, {ID: 1835585494}, {ID: 3263834878}},
 					Stats:  routing.Stats{RTT: 183},
 				},
-				routing.Route{
+				{
 					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1348914502}, {ID: 1884974764}, {ID: 3263834878}},
 					Stats:  routing.Stats{RTT: 183},
 				},
-				routing.Route{
+				{
 					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2663193268}, {ID: 2504465311}, {ID: 3263834878}},
 					Stats:  routing.Stats{RTT: 184},
 				},
-				routing.Route{
+				{
 					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 427962386}, {ID: 2504465311}, {ID: 3263834878}},
 					Stats:  routing.Stats{RTT: 184},
 				},
-				routing.Route{
+				{
 					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 4058587524}, {ID: 1350942731}, {ID: 3263834878}},
 					Stats:  routing.Stats{RTT: 184},
 				},
@@ -2337,7 +2337,7 @@ func TestRoutes(t *testing.T) {
 			[]routing.Relay{{ID: 2836356269}},
 			[]routing.Relay{{ID: 3263834878}, {ID: 1500948990}},
 			[]routing.Route{
-				routing.Route{
+				{
 					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2923051732}, {ID: 1884974764}, {ID: 3263834878}},
 					Stats:  routing.Stats{RTT: 182},
 				},
@@ -2352,35 +2352,35 @@ func TestRoutes(t *testing.T) {
 			[]routing.Relay{{ID: 2836356269}},
 			[]routing.Relay{{ID: 3263834878}, {ID: 1500948990}},
 			[]routing.Route{
-				routing.Route{
+				{
 					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2923051732}, {ID: 1884974764}, {ID: 3263834878}},
 					Stats:  routing.Stats{RTT: 182},
 				},
-				routing.Route{
+				{
 					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2641807504}, {ID: 3263834878}},
 					Stats:  routing.Stats{RTT: 182},
 				},
-				routing.Route{
+				{
 					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 1348914502}, {ID: 1884974764}, {ID: 3263834878}},
 					Stats:  routing.Stats{RTT: 182},
 				},
-				routing.Route{
+				{
 					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2576485547}, {ID: 1835585494}, {ID: 3263834878}},
 					Stats:  routing.Stats{RTT: 183},
 				},
-				routing.Route{
+				{
 					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1348914502}, {ID: 1884974764}, {ID: 3263834878}},
 					Stats:  routing.Stats{RTT: 183},
 				},
-				routing.Route{
+				{
 					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2663193268}, {ID: 2504465311}, {ID: 3263834878}},
 					Stats:  routing.Stats{RTT: 184},
 				},
-				routing.Route{
+				{
 					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 427962386}, {ID: 2504465311}, {ID: 3263834878}},
 					Stats:  routing.Stats{RTT: 184},
 				},
-				routing.Route{
+				{
 					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 4058587524}, {ID: 1350942731}, {ID: 3263834878}},
 					Stats:  routing.Stats{RTT: 184},
 				},
@@ -2395,7 +2395,7 @@ func TestRoutes(t *testing.T) {
 			[]routing.Relay{{ID: 2836356269}},
 			[]routing.Relay{{ID: 3263834878}, {ID: 1500948990}},
 			[]routing.Route{
-				routing.Route{
+				{
 					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1500948990}},
 					Stats:  routing.Stats{RTT: 311},
 				},
@@ -2410,7 +2410,7 @@ func TestRoutes(t *testing.T) {
 			[]routing.Relay{{ID: 2836356269}},
 			[]routing.Relay{{ID: 3263834878}, {ID: 1500948990}},
 			[]routing.Route{
-				routing.Route{
+				{
 					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2923051732}, {ID: 1884974764}},
 					Stats:  routing.Stats{RTT: 182},
 				},

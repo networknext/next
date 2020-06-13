@@ -190,7 +190,7 @@ test-unit-sdk: build-sdk-test ## runs sdk unit tests
 	@$(DIST_DIR)/$(SDKNAME)_test
 
 .PHONY: test-unit-relay
-test-unit-relay-new: build-relay-tests ## runs relay unit tests
+test-unit-relay: build-relay-tests ## runs relay unit tests
 	@$(NEW_RELAY_DIR)/bin/relay.test
 
 .PHONY: test-unit-reference-relay
@@ -290,7 +290,7 @@ dev-route: ## prints routes from relay to datacenter in route matrix
 # Relay Build Process #
 #######################
 
-NEW_RELAY_DIR := ./cmd/relay_new
+NEW_RELAY_DIR := ./cmd/relay
 NEW_RELAY_MAKEFILE := Makefile
 RELAY_EXE := relay
 
@@ -300,8 +300,8 @@ build-relay-ref: ## builds the reference relay
 	@$(CXX) $(CXX_FLAGS) -o $(DIST_DIR)/reference_relay reference/relay/*.cpp $(LDFLAGS)
 	@printf "done\n"
 
-.PHONY: build-relay-new
-build-relay-new: ## builds the new relay
+.PHONY: build-relay
+build-relay: ## builds the relay
 	@printf "Building new relay... "
 	@mkdir -p $(DIST_DIR)
 	@cd $(NEW_RELAY_DIR) && $(MAKE) release
@@ -314,11 +314,11 @@ build-relay-tests: ## builds the new relay tests
 	@echo "done"
 
 .PHONY: dev-relay
-dev-relay: build-relay-new ## runs a local relay
+dev-relay: build-relay ## runs a local relay
 	@$(DIST_DIR)/$(RELAY_EXE)
 
 .PHONY: dev-multi-relays
-dev-multi-relays: build-relay-new ## runs 10 local relays
+dev-multi-relays: build-relay ## runs 10 local relays
 	./scripts/relay-spawner.sh -n 10 -p 10000
 
 #######################
@@ -522,20 +522,20 @@ deploy-server-backend-prod: ## builds and deploys the server backend to the prod
 build-backend-artifacts: build-portal-artifact build-relay-backend-artifact build-server-backend-artifact ## builds the backend artifacts
 
 .PHONY: build-relay-artifact
-build-relay-artifact: build-relay-new ## builds the relay artifact
+build-relay-artifact: build-relay ## builds the relay artifact
 	@printf "Building relay artifact..."
 	@mkdir -p $(DIST_DIR)/artifact/relay
-	@cp $(DIST_DIR)/relay_new $(DIST_DIR)/artifact/relay/relay
+	@cp $(DIST_DIR)/relay $(DIST_DIR)/artifact/relay/relay
 	@cp $(DEPLOY_DIR)/relay/relay.service $(DIST_DIR)/artifact/relay/relay.service
 	@cp $(DEPLOY_DIR)/relay/install.sh $(DIST_DIR)/artifact/relay/install.sh
 	@cd $(DIST_DIR)/artifact/relay && tar -zcf ../../relay.dev.tar.gz relay relay.service install.sh && cd ../..
 	@printf "$(DIST_DIR)/relay.dev.tar.gz\n"
 
 .PHONY: build-relay-prod-artifact
-build-relay-prod-artifact: build-relay-new ## builds the relay prod artifact
+build-relay-prod-artifact: build-relay ## builds the relay prod artifact
 	@printf "Building relay artifact..."
 	@mkdir -p $(DIST_DIR)/artifact/relay
-	@cp $(DIST_DIR)/relay_new $(DIST_DIR)/artifact/relay/relay
+	@cp $(DIST_DIR)/relay $(DIST_DIR)/artifact/relay/relay
 	@cp $(DEPLOY_DIR)/relay/relay.service $(DIST_DIR)/artifact/relay/relay.service
 	@cp $(DEPLOY_DIR)/relay/install.sh $(DIST_DIR)/artifact/relay/install.sh
 	@cd $(DIST_DIR)/artifact/relay && tar -zcf ../../relay.prod.tar.gz relay relay.service install.sh && cd ../..

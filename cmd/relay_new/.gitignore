@@ -1,6 +1,0 @@
-bin/*
-obj/*
-*.gch
-tags
-.clang_complete
-.ycm_extra_conf.py
