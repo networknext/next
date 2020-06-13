@@ -440,7 +440,8 @@ func checkRelays(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 	var wg sync.WaitGroup
 	wg.Add(len(reply.Relays))
 
-	fmt.Printf("acquiring check info for %d relays\n", len(info))
+	fmt.Printf("Checking %d relays\n\n", len(info))
+
 	for i, relay := range reply.Relays {
 		r := relay
 		go func(indx int, wg *sync.WaitGroup) {
@@ -529,9 +530,7 @@ func checkRelays(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 		}(i, &wg)
 	}
 
-	log.Println("waiting for relays to complete")
 	wg.Wait()
-	log.Println("done, outputting results...")
 
 	table.Output(info)
 }
