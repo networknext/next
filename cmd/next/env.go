@@ -55,10 +55,6 @@ func (e *Environment) String() string {
 	sb.WriteString("\n")
 	sb.WriteString(fmt.Sprintf("Hostname: %s\n", e.PortalHostname()))
 	sb.WriteString("\n")
-	sb.WriteString(fmt.Sprintf("Operator Tool:\n"))
-	sb.WriteString(fmt.Sprintf("  + Local: %s [%s]\n", e.CLIRelease, e.CLIBuildTime))
-	sb.WriteString(fmt.Sprintf("  + Remote: %s [%s]\n", e.RemoteRelease, e.RemoteBuildTime))
-	sb.WriteString("\n")
 	sb.WriteString(fmt.Sprintf("AuthToken:\n\n    %s\n\n", e.AuthToken))
 	sb.WriteString(fmt.Sprintf("SSHKeyFilePath: %s\n", e.SSHKeyFilePath))
 
