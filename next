@@ -6,7 +6,7 @@ if [ -z "$NEXT_HOME" ]; then
 	export NEXT_HOME="$( cd "$(dirname "$0")" ; pwd -P )"
 fi
 
-source="cmd/tools/next"
+source="cmd/next"
 timestamp=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
 release=$(git describe --tags --exact-match 2> /dev/null || git rev-parse --short HEAD)
 

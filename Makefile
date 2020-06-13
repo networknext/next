@@ -199,7 +199,7 @@ test-unit-relay-ref: build-relay-ref
 
 .PHONY: test-unit-backend
 test-unit-backend: lint ## runs backend unit tests
-	@./cmd/tools/scripts/test-unit-backend.sh
+	@./scripts/test-unit-backend.sh
 
 .PHONY: test-unit
 test-unit: clean test-unit-sdk test-unit-relay test-unit-reference-relay test-unit-backend ## runs all unit tests
@@ -219,7 +219,7 @@ endif
 .PHONY: build-functional-backend
 build-functional-backend: ## builds the functional backend
 	@printf "Building functional backend... " ; \
-	$(GO) build -o ./dist/func_backend ./cmd/tools/functional/backend/*.go ; \
+	$(GO) build -o ./dist/func_backend ./cmd/functional/backend/*.go ; \
 	printf "done\n" ; \
 
 .PHONY: build-test-func
@@ -228,7 +228,7 @@ build-test-func: clean build-sdk build-relay-ref build-functional-server build-f
 .PHONY: run-test-func
 run-test-func:
 	@printf "\nRunning functional tests...\n\n" ; \
-	$(GO) run ./cmd/tools/functional/tests/func_tests.go $(tests) ; \
+	$(GO) run ./cmd/func_tests/func_tests.go $(tests) ; \
 	printf "\ndone\n\n"
 
 .PHONY: test-func
@@ -236,11 +236,11 @@ test-func: build-test-func run-test-func ## runs functional tests
 
 .PHONY: build-test-func-parallel
 build-test-func-parallel:
-	@docker build -t func_tests -f ./cmd/tools/functional/tests/Dockerfile .
+	@docker build -t func_tests -f ./cmd/func_tests/Dockerfile .
 
 .PHONY: run-test-func-parallel
 run-test-func-parallel:
-	@./cmd/tools/scripts/test-func-parallel.sh
+	@./scripts/test-func-parallel.sh
 
 .PHONY: test-func-parallel
 test-func-parallel: build-test-func-parallel run-test-func-parallel ## runs functional tests in parallel
@@ -256,10 +256,6 @@ build-soak-test: build-sdk ## builds the sdk test binary
 	@printf "Building soak test... "
 	@$(CXX) -Isdk/include -o $(DIST_DIR)/$(SDKNAME)_soak_test ./sdk/soak.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
-
-PHONY: build-tools
-build-tools: ## builds all the tools
-	@./cmd/tools/build.sh
 
 #####################
 ## MAIN COMPONENTS ##
@@ -323,7 +319,7 @@ dev-relay: build-relay-new ## runs a local relay
 
 .PHONY: dev-multi-relays
 dev-multi-relays: build-relay-new ## runs 10 local relays
-	./cmd/tools/scripts/relay-spawner.sh -n 10 -p 10000
+	./scripts/relay-spawner.sh -n 10 -p 10000
 
 #######################
 
@@ -361,11 +357,11 @@ dev-client: build-client  ## runs a local client
 
 .PHONY: dev-multi-clients
 dev-multi-clients: build-client ## runs 20 local clients
-	./cmd/tools/scripts/client-spawner.sh -n 20
+	./scripts/client-spawner.sh -n 20
 
 .PHONY: dev-relay-backend-old
 dev-relay-backend-old:
-	$(GO) run ./cmd/tools/functional/backend_old/*.go
+	$(GO) run ./cmd/func_backend_old/*.go
 
 
 $(DIST_DIR)/$(SDKNAME).so:
@@ -580,13 +576,13 @@ build-server: build-sdk ## builds the server
 .PHONY: build-functional-server
 build-functional-server:
 	@printf "Building functional server... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/func_server ./cmd/tools/functional/server/func_server.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
+	@$(CXX) -Isdk/include -o $(DIST_DIR)/func_server ./cmd/func_server/func_server.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional-client
 build-functional-client:
 	@printf "Building functional client... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/func_client ./cmd/tools/functional/client/func_client.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
+	@$(CXX) -Isdk/include -o $(DIST_DIR)/func_client ./cmd/func_client/func_client.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional
@@ -598,8 +594,13 @@ build-client: build-sdk ## builds the client
 	@$(CXX) -Isdk/include -o $(DIST_DIR)/client ./cmd/client/client.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
 
+.PHONY: build-next
+build-next: ## builds the operator tool
+	@printf "Building operator tool... "
+	@$(GO) build -o ./dist/next ./cmd/next/*.go
+	
 .PHONY: build-all
-build-all: build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-sdk-test build-soak-test build-tools ## builds everything
+build-all: build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-sdk-test build-soak-test build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all
