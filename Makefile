@@ -189,6 +189,12 @@ test: test-unit
 test-unit-sdk: build-sdk-test ## runs sdk unit tests
 	@$(DIST_DIR)/$(SDKNAME)_test
 
+ifeq ($(OS),linux)
+.PHONY: test-unit-relay
+test-unit-relay: build-relay-tests ## runs relay unit tests
+	@$(RELAY_DIR)/bin/relay.test
+endif
+
 .PHONY: test-unit-backend
 test-unit-backend: lint ## runs backend unit tests
 	@./scripts/test-unit-backend.sh
@@ -254,8 +260,8 @@ build-soak-test: build-sdk ## builds the sdk soak test binary
 # Relay Build Process #
 #######################
 
-NEW_RELAY_DIR := ./cmd/relay
-NEW_RELAY_MAKEFILE := Makefile
+RELAY_DIR := ./cmd/relay
+RELAY_MAKEFILE := Makefile
 RELAY_EXE := relay
 
 .PHONY: build-relay-ref
@@ -266,15 +272,15 @@ build-relay-ref: ## builds the reference relay
 
 .PHONY: build-relay
 build-relay: ## builds the relay
-	@printf "Building new relay... "
+	@printf "Building relay... "
 	@mkdir -p $(DIST_DIR)
-	@cd $(NEW_RELAY_DIR) && $(MAKE) release
+	@cd $(RELAY_DIR) && $(MAKE) release
 	@echo "done"
 
 .PHONY: build-relay-tests
-build-relay-tests: ## builds the new relay tests
+build-relay-tests: ## builds the relay unit tests (linux only)
 	@printf "Building relay with tests enabled... "
-	@cd $(NEW_RELAY_DIR) && $(MAKE) test
+	@cd $(RELAY_DIR) && $(MAKE) test
 	@echo "done"
 
 .PHONY: dev-relay
