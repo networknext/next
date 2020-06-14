@@ -19,6 +19,9 @@ import (
 )
 
 type BuyersService struct {
+	mu             sync.Mutex
+	mapPointsCache json.RawMessage
+
 	RedisClient redis.Cmdable
 	Storage     storage.Storer
 	Logger      log.Logger
@@ -392,62 +395,23 @@ type MapPointsArgs struct {
 }
 
 type MapPointsReply struct {
-	Points []routing.SessionMapPoint `json:"map_points"`
+	Points json.RawMessage `json:"map_points"`
 }
 
-func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, reply *MapPointsReply) error {
-	var err error
-	var sessionIDs []string
+// GenerateMapPoints warms a local cache of JSON to be used by SessionMapPoints
+func (s *BuyersService) GenerateMapPoints() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	var isAdmin bool = false
-	var isSameBuyer bool = false
-	var isAnon bool = true
-
-	isAnon = IsAnonymous(r) || IsAnonymousPlus(r)
-	if !isAnon {
-		isAdmin, err = CheckRoles(r, "Admin")
-		if err != nil {
-			err = fmt.Errorf("SessionMapPoints() CheckRoles error: %v", err)
-			s.Logger.Log("err", err)
-			return err
-		}
+	// get all the session IDs from the map-points-global key set
+	sessionIDs, err := s.RedisClient.SMembers("map-points-global").Result()
+	if err != nil {
+		err = fmt.Errorf("SessionMapPoints() failed getting global map points: %v", err)
+		s.Logger.Log("err", err)
+		return err
 	}
 
-	if !isAdmin {
-		isSameBuyer, err = s.IsSameBuyer(r, args.BuyerID)
-		if err != nil {
-			err = fmt.Errorf("SessionMapPoints() IsSameBuyer error: %v", err)
-			s.Logger.Log("err", err)
-			return err
-		}
-	} else {
-		isSameBuyer = true
-	}
-
-	reply.Points = make([]routing.SessionMapPoint, 0)
-
-	switch args.BuyerID {
-	case "":
-		sessionIDs, err = s.RedisClient.SMembers("map-points-global").Result()
-		if err != nil {
-			err = fmt.Errorf("SessionMapPoints() failed getting global map points: %v", err)
-			s.Logger.Log("err", err)
-			return err
-		}
-	default:
-		if !isSameBuyer && !isAdmin {
-			err = fmt.Errorf("SessionMapPoints() insufficient privileges")
-			s.Logger.Log("err", err)
-			return err
-		}
-		sessionIDs, err = s.RedisClient.SMembers(fmt.Sprintf("map-points-buyer-%s", args.BuyerID)).Result()
-		if err != nil {
-			err = fmt.Errorf("SessionMapPoints() failed getting buyer map points: %v", err)
-			s.Logger.Log("err", err)
-			return err
-		}
-	}
-
+	// build a single transaction of gets for each session ID
 	var getCmds []*redis.StringCmd
 	{
 		gettx := s.RedisClient.TxPipeline()
@@ -462,30 +426,58 @@ func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, r
 		}
 	}
 
-	exptx := s.RedisClient.TxPipeline()
+	// slice to hold all the final map points
+	mappoints := make([]routing.SessionMapPoint, 0)
+
+	// build a single transaction for any missing session-*-point keys to be
+	// removed from map-points-global, total-next, and total-direct key sets
+	sremtx := s.RedisClient.TxPipeline()
 	{
 		var point routing.SessionMapPoint
 		for _, cmd := range getCmds {
+			// scan the data from Redis into its SessionMapPoint struct
 			err = cmd.Scan(&point)
+
+			// if there was an error then the session-*-point key expired
+			// so add SREM commands to remove it from the key sets
 			if err != nil {
-				// If we get here then there is a point in the point map (map as in key -> val)
-				// but the actual point data is missing so we set an empty meta
-				// key to expire in 5 seconds for the main cleanup routine
-				// to clear the reference in the point map
-				args := cmd.Args()
-				exptx.Set(args[1].(string), "", 5*time.Second)
+				key := cmd.Args()[1].(string)
+				keyparts := strings.Split(key, "-")
+				sremtx.SRem("map-points-global", keyparts[1])
+				sremtx.SRem("total-next", keyparts[1])
+				sremtx.SRem("total-direct", keyparts[1])
 				continue
 			}
 
-			reply.Points = append(reply.Points, point)
+			// if there was no error then add the SessionMapPoint to the slice
+			mappoints = append(mappoints, point)
 		}
 	}
-	_, err = exptx.Exec()
-	if err != nil && err != redis.Nil {
-		err = fmt.Errorf("SessionMapPoints() redit.Pipeliner error: %v", err)
-		s.Logger.Log("err", err)
+
+	// execute the transaction to remove the sessions IDs from the key sets
+	sremcmds, err := sremtx.Exec()
+	if err != nil {
 		return err
 	}
+
+	level.Info(s.Logger).Log("key", "map-points-global", "removed", len(sremcmds))
+
+	// marshal the map points slice to local cache
+	s.mapPointsCache, err = json.Marshal(mappoints)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// SessionMapPoints returns the locally cached JSON from GenerateSessionMapPoints
+func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, reply *MapPointsReply) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// pull the local cache and reply with it
+	reply.Points = s.mapPointsCache
 
 	return nil
 }
