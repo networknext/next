@@ -2,6 +2,7 @@ package jsonrpc_test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -249,8 +250,6 @@ func TestTopSessions(t *testing.T) {
 		assert.Equal(t, sessionID1, reply.Sessions[0].ID)
 		assert.Equal(t, sessionID2, reply.Sessions[1].ID)
 		assert.Equal(t, sessionID3, reply.Sessions[2].ID)
-
-		assert.Greater(t, int(redisClient.TTL("session-missing-meta").Val()), 0)
 	})
 
 	t.Run("top buyer", func(t *testing.T) {
@@ -261,8 +260,6 @@ func TestTopSessions(t *testing.T) {
 		assert.Equal(t, 2, len(reply.Sessions))
 		assert.Equal(t, sessionID2, reply.Sessions[0].ID)
 		assert.Equal(t, sessionID3, reply.Sessions[1].ID)
-
-		assert.Greater(t, int(redisClient.TTL("session-missing-meta").Val()), 0)
 	})
 }
 
@@ -421,6 +418,9 @@ func TestSessionMapPoints(t *testing.T) {
 		Logger:      logger,
 	}
 
+	err := svc.GenerateMapPoints()
+	assert.NoError(t, err)
+
 	manager, err := management.New(
 		"networknext.auth0.com",
 		"0Hn8oZfUwy5UPo6bUk0hYCQ2hMJnwQYg",
@@ -465,12 +465,14 @@ func TestSessionMapPoints(t *testing.T) {
 		err := svc.SessionMapPoints(req, &jsonrpc.MapPointsArgs{}, &reply)
 		assert.NoError(t, err)
 
-		assert.Equal(t, 3, len(reply.Points))
-		assert.Contains(t, reply.Points, points[0])
-		assert.Contains(t, reply.Points, points[1])
-		assert.Contains(t, reply.Points, points[2])
+		var mappoints []routing.SessionMapPoint
+		err = json.Unmarshal(reply.Points, &mappoints)
+		assert.NoError(t, err)
 
-		assert.Greater(t, int(redisClient.TTL("session-missing-point").Val()), 0)
+		assert.Equal(t, 3, len(mappoints))
+		assert.Contains(t, mappoints, points[0])
+		assert.Contains(t, mappoints, points[1])
+		assert.Contains(t, mappoints, points[2])
 	})
 
 	/* t.Run("points by buyer", func(t *testing.T) {
