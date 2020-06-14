@@ -329,11 +329,6 @@ dev-client: build-client  ## runs a local client
 dev-multi-clients: build-client ## runs 20 local clients
 	./scripts/client-spawner.sh -n 20
 
-.PHONY: dev-relay-backend-old
-dev-relay-backend-old:
-	$(GO) run ./cmd/func_backend_old/*.go
-
-
 $(DIST_DIR)/$(SDKNAME).so:
 	@printf "Building sdk... "
 	@$(CXX) -fPIC -Isdk/include -shared -o $(DIST_DIR)/$(SDKNAME).so ./sdk/source/next.cpp ./sdk/source/next_ios.cpp ./sdk/source/next_linux.cpp ./sdk/source/next_mac.cpp ./sdk/source/next_ps4.cpp ./sdk/source/next_switch.cpp ./sdk/source/next_windows.cpp ./sdk/source/next_xboxone.cpp $(LDFLAGS)
