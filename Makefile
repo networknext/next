@@ -189,29 +189,16 @@ test: test-unit
 test-unit-sdk: build-sdk-test ## runs sdk unit tests
 	@$(DIST_DIR)/$(SDKNAME)_test
 
-.PHONY: test-unit-relay
-test-unit-relay: build-relay-tests ## runs relay unit tests
-	@$(NEW_RELAY_DIR)/bin/relay.test
-
-.PHONY: test-unit-reference-relay
-test-unit-relay-ref: build-relay-ref
-	@$(DIST_DIR)/relay test
-
 .PHONY: test-unit-backend
 test-unit-backend: lint ## runs backend unit tests
 	@./scripts/test-unit-backend.sh
 
 .PHONY: test-unit
-test-unit: clean test-unit-sdk test-unit-reference-relay test-unit-backend ## runs all unit tests
-
-.PHONY: test-soak
-test-soak: clean build-sdk-test build-soak-test ## runs soak test
-	@$(DIST_DIR)/$(SDKNAME)_soak_test
-	@printf "\n"
+test-unit: clean test-unit-sdk test-unit-backend ## runs unit tests
 
 ifeq ($(OS),linux)
 .PHONY: test-soak-valgrind
-test-soak-valgrind: clean build-sdk-test build-soak-test ## runs sdk soak test
+test-soak-valgrind: clean build-sdk-test build-soak-test ## runs sdk soak test under valgrind (linux only)
 	@valgrind --tool=memcheck --leak-check=yes --show-reachable=yes --num-callers=20 --track-fds=yes --track-origins=yes $(DIST_DIR)/$(SDKNAME)_soak_test
 	@printf "\n"
 endif
@@ -219,11 +206,17 @@ endif
 .PHONY: build-functional-backend
 build-functional-backend: ## builds the functional backend
 	@printf "Building functional backend... " ; \
-	$(GO) build -o ./dist/func_backend ./cmd/functional/backend/*.go ; \
+	$(GO) build -o ./dist/func_backend ./cmd/func_backend/*.go ; \
+	printf "done\n" ; \
+
+.PHONY: build-functional-tests
+build-functional-tests: ## builds functional tests
+	@printf "Building functional tests... " ; \
+	$(GO) build -o ./dist/func_tests ./cmd/func_tests/*.go ; \
 	printf "done\n" ; \
 
 .PHONY: build-test-func
-build-test-func: clean build-sdk build-relay-ref build-functional-server build-functional-client build-functional-backend ## builds the functional tests
+build-test-func: clean build-sdk build-relay-ref build-functional-server build-functional-client build-functional-backend build-functional-tests ## builds the functional tests
 
 .PHONY: run-test-func
 run-test-func:
@@ -252,39 +245,10 @@ build-sdk-test: build-sdk ## builds the sdk test binary
 	@printf "done\n"
 
 .PHONY: build-soak-test
-build-soak-test: build-sdk ## builds the sdk test binary
+build-soak-test: build-sdk ## builds the sdk soak test binary
 	@printf "Building soak test... "
 	@$(CXX) -Isdk/include -o $(DIST_DIR)/$(SDKNAME)_soak_test ./sdk/soak.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
-
-#####################
-## MAIN COMPONENTS ##
-#####################
-
-.PHONY: dev-cost
-dev-cost: ## gets the cost matrix from the local backend
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/cost ./cmd/tools/cost/cost.go
-	$(DIST_DIR)/cost -url=http://localhost:30000/cost_matrix > $(COST_FILE)
-
-.PHONY: dev-optimize
-dev-optimize: ## transforms the cost matrix into a route matrix
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/optimize ./cmd/tools/optimize/optimize.go
-	test -f $(COST_FILE) && cat $(COST_FILE) | ./dist/optimize -threshold-rtt=1 > $(OPTIMIZE_FILE)
-
-.PHONY: dev-analyze
-dev-analyze: ## analyzes the route matrix
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/analyze ./cmd/tools/analyze/analyze.go
-	test -f $(OPTIMIZE_FILE) && cat $(OPTIMIZE_FILE) | $(DIST_DIR)/analyze
-
-.PHONY: debug
-dev-debug: ## debugs relay in route matrix
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/debug ./cmd/tools/debug/debug.go
-	test -f $(OPTIMIZE_FILE) && cat $(OPTIMIZE_FILE) | $(DIST_DIR)/debug -relay=$(relay)
-
-.PHONY: dev-route
-dev-route: ## prints routes from relay to datacenter in route matrix
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/route ./cmd/tools/route/route.go
-	test -f $(OPTIMIZE_FILE) && cat $(OPTIMIZE_FILE) | $(DIST_DIR)/route -relay=$(relay) -datacenter=$(datacenter)
 
 #######################
 # Relay Build Process #
@@ -586,7 +550,7 @@ build-functional-client:
 	@printf "done\n"
 
 .PHONY: build-functional
-build-functional: build-functional-client build-functional-server
+build-functional: build-functional-client build-functional-server build-functional-backend build-functional-tests
 
 .PHONY: build-client
 build-client: build-sdk ## builds the client
@@ -611,5 +575,5 @@ update-sdk: ## updates the sdk submodule to point at head revision
 	git submodule update --remote --merge
 
 .PHONY: sync
-sync: ## sync latest code including the sdk submodule
+sync: ## syncs to latest code including the sdk submodule
 	git pull && git submodule update --recursive

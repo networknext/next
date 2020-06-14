@@ -11,4 +11,4 @@ RUN make build-test-func
 
 ENV test=test_direct_default
 
-CMD go run ./cmd/tools/functional/tests/func_tests.go ${test}
+CMD go run ./cmd/func_tests/func_tests.go ${test}
