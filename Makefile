@@ -202,7 +202,7 @@ test-unit-backend: lint ## runs backend unit tests
 	@./scripts/test-unit-backend.sh
 
 .PHONY: test-unit
-test-unit: clean test-unit-sdk test-unit-relay test-unit-reference-relay test-unit-backend ## runs all unit tests
+test-unit: clean test-unit-sdk test-unit-reference-relay test-unit-backend ## runs all unit tests
 
 .PHONY: test-soak
 test-soak: clean build-sdk-test build-soak-test ## runs soak test
