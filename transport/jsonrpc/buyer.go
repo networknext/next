@@ -3,16 +3,18 @@ package jsonrpc
 import (
 	"context"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	fnv "hash/fnv"
 	"net/http"
 	"sort"
 	"strconv"
 	"strings"
-	"time"
+	"sync"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
@@ -52,6 +54,8 @@ type UserSessionsReply struct {
 }
 
 func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, reply *UserSessionsReply) error {
+	userhash := args.UserHash
+
 	var sessionIDs []string
 
 	var isAdmin bool = false
@@ -62,7 +66,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 
 	reply.Sessions = make([]routing.SessionMeta, 0)
 
-	err := s.RedisClient.SMembers(fmt.Sprintf("user-%s-sessions", args.UserHash)).ScanSlice(&sessionIDs)
+	err := s.RedisClient.SMembers(fmt.Sprintf("user-%s-sessions", userhash)).ScanSlice(&sessionIDs)
 	if err != nil {
 		err = fmt.Errorf("UserSessions() failed getting user sessions: %v", err)
 		s.Logger.Log("err", err)
@@ -71,7 +75,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 
 	if len(sessionIDs) == 0 {
 		hash := fnv.New64a()
-		_, err := hash.Write([]byte(args.UserHash))
+		_, err := hash.Write([]byte(userhash))
 		if err != nil {
 			err = fmt.Errorf("UserSessions() error writing 64a hash: %v", err)
 			s.Logger.Log("err", err)
@@ -105,18 +109,17 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		}
 	}
 
-	exptx := s.RedisClient.TxPipeline()
+	sremtx := s.RedisClient.TxPipeline()
 	{
 		var meta routing.SessionMeta
 		for _, cmd := range getCmds {
 			err = cmd.Scan(&meta)
 			if err != nil {
-				// If we get here then there is a session in the top lists
-				// but has missing meta information so we set an empty meta
-				// key to expire in 5 seconds for the main cleanup routine
-				// to clear the reference in the top lists
 				args := cmd.Args()
-				exptx.Set(args[1].(string), "", 5*time.Second)
+				key := args[1].(string)
+				keyparts := strings.Split(key, "-")
+
+				sremtx.SRem(fmt.Sprintf("user-%s-sessions", userhash), keyparts[1])
 				continue
 			}
 
@@ -129,7 +132,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 				}
 
 				if !isAdmin {
-					isSameBuyer, err = s.IsSameBuyer(r, meta.CustomerID)
+					isSameBuyer, err = s.IsSameBuyer(r, meta.BuyerID)
 					if err != nil {
 						err = fmt.Errorf("UserSessions() IsSameBuyer error: %v", err)
 						s.Logger.Log("err", err)
@@ -147,12 +150,15 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 			reply.Sessions = append(reply.Sessions, meta)
 		}
 	}
-	_, err = exptx.Exec()
+
+	sremcmds, err := sremtx.Exec()
 	if err != nil && err != redis.Nil {
 		err = fmt.Errorf("UserSessions() redit.Pipeliner error: %v", err)
 		s.Logger.Log("err", err)
 		return err
 	}
+
+	level.Info(s.Logger).Log("key", "user-*-sessions", "removed", len(sremcmds))
 
 	sort.Slice(reply.Sessions, func(i int, j int) bool {
 		return reply.Sessions[i].ID < reply.Sessions[j].ID
@@ -363,7 +369,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 	}
 
 	if !isAdmin && !isOps {
-		isSameBuyer, err = s.IsSameBuyer(r, reply.Meta.CustomerID)
+		isSameBuyer, err = s.IsSameBuyer(r, reply.Meta.BuyerID)
 		if err != nil {
 			err = fmt.Errorf("SessionDetails() IsSameBuyer error: %v", err)
 			s.Logger.Log("err", err)
@@ -701,5 +707,5 @@ func (s *BuyersService) IsSameBuyer(r *http.Request, buyerID string) (bool, erro
 		return false, err
 	}
 
-	return buyerID != strconv.FormatUint(buyer.ID, 10), nil
+	return buyerID != fmt.Sprintf("%016x", buyer.ID), nil
 }
