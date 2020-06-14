@@ -18,6 +18,10 @@ import (
 	"github.com/networknext/backend/storage"
 )
 
+const (
+	TopSessionsSize = 10000
+)
+
 type BuyersService struct {
 	mu             sync.Mutex
 	mapPointsCache json.RawMessage
@@ -191,6 +195,7 @@ type TopSessionsReply struct {
 	Sessions []routing.SessionMeta `json:"sessions"`
 }
 
+// TopSessions generates the top sessions sorted by improved RTT
 func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, reply *TopSessionsReply) error {
 	var err error
 	var result []redis.Z
@@ -225,9 +230,10 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 
 	reply.Sessions = make([]routing.SessionMeta, 0)
 
+	// get the top session IDs globally or for a buyer from the sorted set
 	switch args.BuyerID {
 	case "":
-		result, err = s.RedisClient.ZRangeWithScores("top-global", 0, 1000).Result()
+		result, err = s.RedisClient.ZRangeWithScores("top-global", 0, TopSessionsSize*2).Result()
 		if err != nil {
 			err = fmt.Errorf("TopSessions() failed getting top global sessions: %v", err)
 			s.Logger.Log("err", err)
@@ -239,7 +245,7 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 			s.Logger.Log("err", err)
 			return err
 		}
-		result, err = s.RedisClient.ZRangeWithScores(fmt.Sprintf("top-buyer-%s", args.BuyerID), 0, 1000).Result()
+		result, err = s.RedisClient.ZRangeWithScores(fmt.Sprintf("top-buyer-%s", args.BuyerID), 0, TopSessionsSize*2).Result()
 		if err != nil {
 			err = fmt.Errorf("TopSessions() failed getting top buyer sessions: %v", err)
 			s.Logger.Log("err", err)
@@ -247,6 +253,7 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 		}
 	}
 
+	// build a single transaction to get the sessions details for the session IDs
 	var getCmds []*redis.StringCmd
 	{
 		gettx := s.RedisClient.TxPipeline()
@@ -261,18 +268,29 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 		}
 	}
 
-	exptx := s.RedisClient.TxPipeline()
+	buyers := s.Storage.Buyers()
+
+	// build a single transaction to remove any session ID from the sorted set if the
+	// session-*-meta key is missing or expired
+	zremtx := s.RedisClient.TxPipeline()
 	{
 		var meta routing.SessionMeta
 		for _, cmd := range getCmds {
+			// scan the data from Redis into its SessionMeta struct
 			err = cmd.Scan(&meta)
+
+			// if there was an error then the session-*-point key expired
+			// so add ZREM commands to remove it from the key sets globally
+			// and for each buyer
 			if err != nil {
-				// If we get here then there is a session in the top lists
-				// but has missing meta information so we set an empty meta
-				// key to expire in 5 seconds for the main cleanup routine
-				// to clear the reference in the top lists
 				args := cmd.Args()
-				exptx.Set(args[1].(string), "", 5*time.Second)
+				key := args[1].(string)
+				keyparts := strings.Split(key, "-")
+
+				zremtx.ZRem("top-global", keyparts[1])
+				for _, buyer := range buyers {
+					zremtx.ZRem(fmt.Sprintf("top-buyer-%016x", buyer.ID), keyparts[1])
+				}
 				continue
 			}
 
@@ -283,13 +301,18 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 			reply.Sessions = append(reply.Sessions, meta)
 		}
 	}
-	_, err = exptx.Exec()
+
+	// execute the transaction to remove the sessions IDs from the sorted key sets
+	zremcmds, err := zremtx.Exec()
 	if err != nil && err != redis.Nil {
 		err = fmt.Errorf("TopSessions() redit.Pipeliner error: %v", err)
 		s.Logger.Log("err", err)
 		return err
 	}
 
+	level.Info(s.Logger).Log("key", "top-global", "key", "top-buyer-*", "removed", len(zremcmds))
+
+	// sort the sessions
 	sort.Slice(reply.Sessions, func(i int, j int) bool {
 		// if comparing NN to Direct
 		if reply.Sessions[i].OnNetworkNext && !reply.Sessions[j].OnNetworkNext {
@@ -302,6 +325,11 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 		// if comparing Direct to NN or Direct to Direct
 		return false
 	})
+
+	// crop the list to TopSessionsSize if needed
+	if len(reply.Sessions) > TopSessionsSize {
+		reply.Sessions = reply.Sessions[:TopSessionsSize]
+	}
 
 	return nil
 }
