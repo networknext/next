@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	TopSessionsSize = 10000
+	TopSessionsSize = 1000
 )
 
 type BuyersService struct {
