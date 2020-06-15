@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	fnv "hash/fnv"
 	"io"
 	"math/rand"
 	"net"
@@ -1120,9 +1121,22 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 		return fmt.Errorf("failed to anonymize client addr")
 	}
 
+	if packet.Version.Compare(SDKVersion{3, 4, 5}) == SDKVersionOlder {
+		hash := fnv.New64a()
+		_, err := hash.Write(packet.UserHash)
+		if err != nil {
+			err = fmt.Errorf("updatePortalData() error writing 64a hash: %v", err)
+			s.Logger.Log("err", err)
+			return err
+		}
+		hashedID := fmt.Sprintf("%x", hash.Sum64())
+	} else {
+		hashedID := packet.UserHash
+	}
+
 	meta := routing.SessionMeta{
 		ID:            fmt.Sprintf("%016x", packet.SessionID),
-		UserHash:      fmt.Sprintf("%016x", packet.UserHash),
+		UserHash:      fmt.Sprintf("%016x", hashedID),
 		Datacenter:    datacenterName,
 		OnNetworkNext: onNetworkNext,
 		NextRTT:       nnStats.RTT,
