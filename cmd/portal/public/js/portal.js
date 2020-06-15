@@ -145,6 +145,7 @@ MapHandler = {
 			pitch: 0
 		},
 	},
+	mapCountLoop: null,
 	mapInstance: null,
 	initMap() {
 		let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
@@ -152,17 +153,10 @@ MapHandler = {
 			buyerId: buyerId,
 			sessionType: 'all'
 		});
-
-		this.refreshMapSessions();
-		this.mapLoop = setTimeout(() => {
-			this.refreshMapSessions();
-		}, 10000);
-	},
-	updateFilter(filter) {
 		this.mapCountLoop !== null ? clearInterval(this.sessionLoop) : null;
-		this.mapCountLoop = setTimeout(() => {
+		let refreshMapCount = () => {
 			JSONRPCClient
-				.call('BuyersService.TotalSessions', {buyer_id: filter.buyerId || ""})
+				.call('BuyersService.TotalSessions', {buyer_id: buyerId || ""})
 				.then((response) => {
 					let direct = response.direct
 					let next = response.next
@@ -178,7 +172,20 @@ MapHandler = {
 					console.log(error);
 					Sentry.captureException(error);
 				});
+		}
+
+		refreshMapCount();
+		this.mapCountLoop = setInterval(() => {
+			refreshMapCount();
+
 		}, 10000);
+
+		this.refreshMapSessions();
+		this.mapLoop = setInterval(() => {
+			this.refreshMapSessions();
+		}, 10000);
+	},
+	updateFilter(filter) {
 		Object.assign(rootComponent.$data.pages.map, {filter: filter});
 	},
 	updateMap(mapType) {
@@ -338,7 +345,6 @@ UserHandler = {
 }
 
 WorkspaceHandler = {
-	mapCountLoop: null,
 	mapLoop: null,
 	sessionLoop: null,
 	welcomeTimeout: null,
@@ -891,9 +897,9 @@ function createVueComponents() {
 		data: {
 			allBuyers: [],
 			showCount: false,
-			mapSessions: [],
-			onNN: [],
-			direct: [],
+			mapSessions: 0,
+			onNN: 0,
+			direct: 0,
 			alerts: {
 				verifyEmail: {
 					show: false
