@@ -164,11 +164,11 @@ Test(core_Backend_updateCycle_no_ack_for_40s_then_ack_then_wait)
   check(elapsed >= 63.0);
 }
 
-// Update the backend for 10 seconds, then switch the success of the request to false.
+// Update the backend for 2 seconds, then switch the success of the request to false.
 // That will trigger the failure attempts which the number of is controlled by the MaxUpdateAttempts constant.
 // After the max attempts is reached it will shutdown.
 // But because the success value is never reset to true, the cleanshutdown ack will never succeed
-// so the final duration should be 10 seconds of success and (MaxUpdateAttempts - 1) seconds of failure.
+// so the final duration should be 2 seconds of success and (MaxUpdateAttempts - 1) seconds of failure.
 Test(core_Backend_updateCycle_update_fails_for_max_number_of_attempts)
 {
   util::Clock testClock;
@@ -195,7 +195,9 @@ Test(core_Backend_updateCycle_update_fails_for_max_number_of_attempts)
   // time will be 2 seconds of good updates and
   // 10 seconds of bad updates, which will cause
   // the relay to abort with no clean shutdown
-  check(elapsed >= 12.0);
+  check(elapsed >= 5.0).onFail([&elapsed] {
+    std::cout << "elapsed: " << elapsed << '\n';
+  });
 }
 
 // When clean shutdown is not set to true, the function should return immediately

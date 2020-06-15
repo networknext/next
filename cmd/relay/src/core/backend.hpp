@@ -31,7 +31,7 @@ namespace core
   const uint32_t UpdateRequestVersion = 0;
   const uint32_t UpdateResponseVersion = 0;
 
-  const uint8_t MaxUpdateAttempts = 11;  // 1 initial + 10 more for failures
+  const uint8_t MaxUpdateAttempts = 4;  // 1 initial + 3 more for failures
 
   /*
    * A class that's responsible for backend related tasks
