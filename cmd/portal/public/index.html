@@ -19,6 +19,10 @@
         <!-- Include Choices CSS -->
         <link rel="stylesheet" href="./js/choices/styles/choices.min.css" />
         <style>
+            .uplot .legend.inline th::after {
+                content: "";
+                vertical-align: middle;
+            }
             .choices__list--multiple .choices__item {
                 background-color: lightgray;
                 border: 1px solid darkgray;
@@ -236,12 +240,12 @@
                             Sessions
                         </a>
                     </li>
-                    <li class="nav-item text-nowrap" v-if="!handlers.userHandler.isAnonymous()">
+                    <li class="nav-item text-nowrap" v-if="!handlers.userHandler.isAnonymous() && !handlers.userHandler.isAnonymousPlus()">
                         <a class="nav-link" href="#" v-bind:class="{ active: pages.sessionTool.show }" v-on:click="handlers.workspaceHandler.changePage('sessionTool', '')">
                             Session Tool
                         </a>
                     </li>
-                    <li class="nav-item text-nowrap" v-if="!handlers.userHandler.isAnonymous()">
+                    <li class="nav-item text-nowrap" v-if="!handlers.userHandler.isAnonymous() && !handlers.userHandler.isAnonymousPlus()">
                         <a class="nav-link" href="#" v-bind:class="{ active: pages.userTool.show }" v-on:click="handlers.workspaceHandler.changePage('userTool', '')">
                             User Tool
                         </a>
@@ -251,7 +255,7 @@
                             Downloads
                         </a>
                     </li>
-                    <li class="nav-item text-nowrap" v-if="handlers.userHandler.isOwner() || handlers.userHandler.isAdmin()">
+                    <li class="nav-item text-nowrap" v-if="!handlers.userHandler.isAnonymous()">
                         <a class="nav-link" href="#" v-bind:class="{ active: pages.settings.show }" v-on:click="handlers.workspaceHandler.changePage('settings')">
                             Settings
                         </a>
@@ -266,7 +270,7 @@
                 </ul>
                 <ul class="navbar-nav px-3" v-if="handlers.userHandler.isAnonymous()">
                     <li class="nav-item text-nowrap  ">
-                        <a class="nav-link" href="#" v-on:click="handlers.workspaceHandler.changeModal('signup')">
+                        <a class="nav-link" href="#" v-on:click="handlers.authHandler.signUp()">
                             Sign up
                         </a>
                     </li>
@@ -282,6 +286,18 @@
             <div class="container-fluid">
                 <div class="row">
                     <main role="main" class="col-md-12 col-lg-12 px-4" v-show="pages.map.show">
+                        <div class="alert alert-primary" style="text-align: center;" role="alert" v-if="alerts.verifyEmail.show">
+                            Please confirm your email address: {{ handlers.userHandler.userInfo.email }} 
+                            <a href="#" v-on:click="handlers.authHandler.resendVerificationEmail()">
+                                Resend email
+                            </a>
+                        </div>
+                        <div class="alert alert-success" style="text-align: center;" role="alert" v-if="alerts.emailSent.show">
+                            Verification email was sent successfully. Please check your email for futher instructions.
+                        </div>
+                        <div class="alert alert-danger" style="text-align: center;" role="alert" v-if="alerts.emailFailed.show">
+                            Something went wrong sending the verification email. Please try again later.
+                        </div>
                         <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom" id="map-sessions-count">
                             <div id="map-spinner" v-if="!showCount">
                                 <div class="spinner-border" role="status">
@@ -337,9 +353,22 @@
                                 </div>
                             </div>
                         </div>
-                        <div style="width: 100%; height: calc(-160px + 100vh); border: 1px solid rgb(136, 136, 136); background-color: rgb(27, 27, 27);" id="map-container"></div>
+                        <div v-if="handlers.userHandler.isAnonymousPlus()" style="width: 100%; height: calc(-160px + 90vh); border: 1px solid rgb(136, 136, 136); background-color: rgb(27, 27, 27);" id="map-container"></div>
+                        <div v-if="!handlers.userHandler.isAnonymousPlus()" style="width: 100%; height: calc(-160px + 100vh); border: 1px solid rgb(136, 136, 136); background-color: rgb(27, 27, 27);" id="map-container"></div>
                     </main>
                     <main role="main" class="col-md-12 col-lg-12 px-4" v-if="pages.sessions.show">
+                        <div class="alert alert-primary" style="text-align: center;" role="alert" v-if="alerts.verifyEmail.show">
+                            Please verify your email to unlock all features. To resend the verification email 
+                            <a href="#" v-on:click="handlers.authHandler.resendVerificationEmail()">
+                                click here
+                            </a>
+                        </div>
+                        <div class="alert alert-success" style="text-align: center;" role="alert" v-if="alerts.emailSent.show">
+                            Verification email was sent successfully. Please check your email for futher instructions.
+                        </div>
+                        <div class="alert alert-danger" style="text-align: center;" role="alert" v-if="alerts.emailFailed.show">
+                            Something went wrong sending the verification email. Please try again later.
+                        </div>
                         <div id="sessions">
                             <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                                 <h1 class="h2" id="workspace-title" v-if="showCount">
@@ -494,6 +523,18 @@
                         </div>
                     </main>
                     <main role="main" class="col-md-12 col-lg-12 px-4" v-if="pages.sessionTool.show">
+                        <div class="alert alert-primary" style="text-align: center;" role="alert" v-if="alerts.verifyEmail.show">
+                            Please verify your email to unlock all features. To resend the verification email 
+                            <a href="#" v-on:click="handlers.authHandler.resendVerificationEmail()">
+                                click here
+                            </a>
+                        </div>
+                        <div class="alert alert-success" style="text-align: center;" role="alert" v-if="alerts.emailSent.show">
+                            Verification email was sent successfully. Please check your email for futher instructions.
+                        </div>
+                        <div class="alert alert-danger" style="text-align: center;" role="alert" v-if="alerts.emailFailed.show">
+                            Something went wrong sending the verification email. Please try again later.
+                        </div>
                         <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                             <h1 class="h2">
                                 Session Tool
@@ -783,6 +824,18 @@
                         </div>
                     </main>
                     <main role="main" class="col-md-12 col-lg-12 px-4" v-if="pages.userTool.show">
+                        <div class="alert alert-primary" style="text-align: center;" role="alert" v-if="alerts.verifyEmail.show">
+                            Please verify your email to unlock all features. To resend the verification email 
+                            <a href="#" v-on:click="handlers.authHandler.resendVerificationEmail()">
+                                click here
+                            </a>
+                        </div>
+                        <div class="alert alert-success" style="text-align: center;" role="alert" v-if="alerts.emailSent.show">
+                            Verification email was sent successfully. Please check your email for futher instructions.
+                        </div>
+                        <div class="alert alert-danger" style="text-align: center;" role="alert" v-if="alerts.emailFailed.show">
+                            Something went wrong sending the verification email. Please try again later.
+                        </div>
                         <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                             <h1 class="h2">
                                 User Tool
@@ -887,6 +940,18 @@
                         </div>
                     </main>
                     <main role="main" class="col-md-12 col-lg-12 px-4" v-show="pages.downloads.show">
+                        <div class="alert alert-primary" style="text-align: center;" role="alert" v-if="alerts.verifyEmail.show">
+                            Please verify your email to unlock all features. To resend the verification email 
+                            <a href="#" v-on:click="handlers.authHandler.resendVerificationEmail()">
+                                click here
+                            </a>
+                        </div>
+                        <div class="alert alert-success" style="text-align: center;" role="alert" v-if="alerts.emailSent.show">
+                            Verification email was sent successfully. Please check your email for futher instructions.
+                        </div>
+                        <div class="alert alert-danger" style="text-align: center;" role="alert" v-if="alerts.emailFailed.show">
+                            Something went wrong sending the verification email. Please try again later.
+                        </div>
                         <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                             <h1 class="h2">
                                 Downloads
@@ -926,6 +991,18 @@
                           </div>
                     </main>
                     <main role="main" class="col-md-12 col-lg-12 px-4" v-if="pages.settings.show">
+                        <div class="alert alert-primary" style="text-align: center;" role="alert" v-if="alerts.verifyEmail.show">
+                            Please verify your email to unlock all features. To resend the verification email 
+                            <a href="#" v-on:click="handlers.authHandler.resendVerificationEmail()">
+                                click here
+                            </a>
+                        </div>
+                        <div class="alert alert-success" style="text-align: center;" role="alert" v-if="alerts.emailSent.show">
+                            Verification email was sent successfully. Please check your email for futher instructions.
+                        </div>
+                        <div class="alert alert-danger" style="text-align: center;" role="alert" v-if="alerts.emailFailed.show">
+                            Something went wrong sending the verification email. Please try again later.
+                        </div>
                         <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                             <h1 class="h2">
                                 Settings
@@ -937,12 +1014,12 @@
                         <div class="card" style="margin-bottom: 250px;">
                             <div class="card-header">
                                 <ul class="nav nav-tabs card-header-tabs">
-                                    <li class="nav-item">
+                                    <li class="nav-item"  v-if="handlers.userHandler.isOwner() || handlers.userHandler.isAdmin()">
                                         <a class="nav-link" id="accounts-link" href="#" v-bind:class="{ active: pages.settings.showSettings }" v-on:click="handlers.workspaceHandler.changeSettingsPage('users')">
                                             Users
                                         </a>
                                     </li>
-                                    <li class="nav-item" v-if="handlers.userHandler.isOwner()">
+                                    <li class="nav-item">
                                         <a class="nav-link" id="config-link" href="#" v-bind:class="{ active: pages.settings.showConfig }" v-on:click="handlers.workspaceHandler.changeSettingsPage('config')">
                                             Game Configuration
                                         </a>
@@ -1159,21 +1236,35 @@
                                     >
                                         {{ pages.settings.updateKey.failure }}
                                     </div>
+                                    <div
+                                        class="alert alert-success"
+                                        role="alert"
+                                        v-show="pages.settings.upgrade.success != ''"
+                                    >
+                                        {{ pages.settings.upgrade.success }}
+                                    </div>
+                                    <div
+                                        class="alert alert-danger"
+                                        role="alert"
+                                        v-show="pages.settings.upgrade.failure != ''"
+                                    >
+                                        {{ pages.settings.upgrade.failure }}
+                                    </div>
                                     <form v-on:submit.prevent="updatePubKey()">
                                         <div class="form-group" id="pubKey">
                                             <label>
                                                 Company Name
                                             </label>
-                                            <input type="text" class="form-control" placeholder="Enter your company name" id="company-input" v-model="handlers.userHandler.userInfo.company">
+                                            <input type="text" class="form-control" placeholder="Enter your company name" id="company-input" v-model="handlers.userHandler.userInfo.company" :disabled="!handlers.userHandler.isOwner() && !handlers.userHandler.isAdmin()">
                                             </input>
                                             <br>
                                             <label>
                                                 Public Key
                                             </label>
-                                            <textarea class="form-control" placeholder="Enter your base64-encoded public key" id="pubkey-input" v-model="handlers.userHandler.userInfo.pubKey">
+                                            <textarea class="form-control" placeholder="Enter your base64-encoded public key" id="pubkey-input" v-model="handlers.userHandler.userInfo.pubKey" :disabled="!handlers.userHandler.isOwner() && !handlers.userHandler.isAdmin()">
                                             </textarea>
                                         </div>
-                                        <button type="submit" class="btn btn-primary btn-sm">
+                                        <button type="submit" class="btn btn-primary btn-sm" v-if="handlers.userHandler.isOwner() || handlers.userHandler.isAdmin()">
                                             Save game configuration
                                         </button>
                                         <p class="text-muted text-small mt-2"></p>
@@ -1184,7 +1275,7 @@
                     </main>
                     <div class="modal" tabindex="-1" role="dialog" id="video-modal">
                         <div class="modal-dialog modal-lg" role="document">
-                            <div class="modal-content" v-if="modals.welcome.show">
+                            <div class="modal-content">
                                 <div class="modal-header">
                                     <h5 class="modal-title align-items-left">New to Network Next?</h5>
                                     <button type="button" class="close align-items-right" data-dismiss="modal" aria-label="Close">
@@ -1197,36 +1288,7 @@
                                         frameborder="0">
                                 </iframe> -->
                                 <div class="modal-footer">
-                                    <button class="btn btn-primary btn-sm" href="#" v-on:click="handlers.workspaceHandler.changeModal('signup')">
-                                        Sign Up
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="modal-content" v-if="modals.signup.show">
-                                <div class="modal-header">
-                                    <h5 class="modal-title align-items-left">Sign Up for Network Next</h5>
-                                    <button type="button" class="close align-items-right" data-dismiss="modal" aria-label="Close">
-                                        <span aria-hidden="true">&times;</span>
-                                    </button>
-                                </div>
-                                <form id="signup-form">
-                                    <div class="form-group" style="padding: 10px;" id="signUpEmail">
-                                        <label for="signup-email-input">
-                                            Email Address
-                                        </label>
-                                        <input type="email" class="form-control" placeholder="Please enter your email" id="signup-email-input" v-model="modals.signup.email">
-                                        </input>
-                                    </div>
-                                    <p class="text-muted text-small mt-2"></p>
-                                </form>
-                                <div class="alert alert-success" role="alert" id="signup-alert-success" v-if="modals.signup.showSuccess">
-                                    Account created successfully. Please check your email to reset password
-                                </div>
-                                <div class="alert alert-danger" role="alert" id="signup-alert-failure" v-if="modals.signup.showFailure">
-                                    Failed to create new account
-                                </div>
-                                <div class="modal-footer">
-                                    <button class="btn btn-primary btn-sm" v-on:click.prevent="handlers.userHandler.signUp()">
+                                    <button class="btn btn-primary btn-sm" href="#" v-on:click="handlers.authHandler.signUp()">
                                         Sign Up
                                     </button>
                                 </div>
