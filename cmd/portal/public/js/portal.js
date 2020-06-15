@@ -145,6 +145,7 @@ MapHandler = {
 			pitch: 0
 		},
 	},
+	mapCountLoop: null,
 	mapInstance: null,
 	initMap() {
 		let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
@@ -152,14 +153,21 @@ MapHandler = {
 			buyerId: buyerId,
 			sessionType: 'all'
 		});
-
-		this.refreshMapSessions();
-		setInterval(() => {
-			this.refreshMapSessions();
-		}, 10000);
 	},
 	updateFilter(filter) {
 		Object.assign(rootComponent.$data.pages.map, {filter: filter});
+		this.mapCountLoop ? clearInterval(this.mapCountLoop) : null;
+		this.mapLoop ? clearInterval(this.mapLoop) : null;
+
+		this.refreshMapCount();
+		this.mapCountLoop = setInterval(() => {
+			this.refreshMapCount();
+		}, 10000);
+
+		this.refreshMapSessions();
+		this.mapLoop = setInterval(() => {
+			this.refreshMapSessions();
+		}, 10000);
 	},
 	updateMap(mapType) {
 		switch (mapType) {
@@ -177,7 +185,7 @@ MapHandler = {
 				// Nothing for now
 		}
 	},
-	refreshMapSessions() {
+	refreshMapCount() {
 		let filter = rootComponent.$data.pages.map.filter;
 		JSONRPCClient
 			.call('BuyersService.TotalSessions', {buyer_id: filter.buyerId || ""})
@@ -195,7 +203,10 @@ MapHandler = {
 				console.log("Something went wrong fetching map point totals");
 				console.log(error);
 				Sentry.captureException(error);
-			})
+			});
+	},
+	refreshMapSessions() {
+		let filter = rootComponent.$data.pages.map.filter;
 
 		JSONRPCClient
 			.call('BuyersService.SessionMap', {buyer_id: filter.buyerId || ""})
@@ -335,6 +346,7 @@ UserHandler = {
 }
 
 WorkspaceHandler = {
+	mapLoop: null,
 	sessionLoop: null,
 	welcomeTimeout: null,
 	changeSettingsPage(page) {
@@ -356,6 +368,7 @@ WorkspaceHandler = {
 	changePage(page, options) {
 		// Clear all polling loops
 		this.sessionLoop ? clearInterval(this.sessionLoop) : null;
+		this.mapLoop ? clearInterval(this.mapLoop) : null;
 
 		switch (page) {
 			case 'downloads':
@@ -885,9 +898,9 @@ function createVueComponents() {
 		data: {
 			allBuyers: [],
 			showCount: false,
-			mapSessions: [],
-			onNN: [],
-			direct: [],
+			mapSessions: 0,
+			onNN: 0,
+			direct: 0,
 			alerts: {
 				verifyEmail: {
 					show: false
