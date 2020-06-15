@@ -186,6 +186,7 @@ MapHandler = {
 		}
 	},
 	refreshMapCount() {
+		let filter = rootComponent.$data.pages.map.filter;
 		JSONRPCClient
 			.call('BuyersService.TotalSessions', {buyer_id: filter.buyerId || ""})
 			.then((response) => {
