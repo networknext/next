@@ -63,25 +63,8 @@ type account struct {
 
 func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *AccountsReply) error {
 	var accountList *management.UserList
-	if IsAnonymous(r) || IsAnonymousPlus(r) {
-		err := fmt.Errorf("AllAccounts() insufficient privileges")
-		s.Logger.Log("err", err)
-		return err
-	}
 
-	isAdmin, err := CheckRoles(r, "Admin")
-	if err != nil {
-		err = fmt.Errorf("AllAccounts() CheckRoles error: %v", err)
-		return err
-	}
-
-	isOwner, err := CheckRoles(r, "Owner")
-	if err != nil {
-		err = fmt.Errorf("AllAccounts() CheckRoles error: %v", err)
-		return err
-	}
-
-	if !isAdmin && !isOwner {
+	if VerifyRoles(r, AdminRole) != nil && VerifyRoles(r, OwnerRole) != nil {
 		err = fmt.Errorf("AllAccounts() CheckRoles error: %v", ErrInsufficientPrivileges)
 		return err
 	}
@@ -138,12 +121,6 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 }
 
 func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *AccountReply) error {
-	if IsAnonymous(r) {
-		err := fmt.Errorf("UserAccount() insufficient privileges")
-		s.Logger.Log("err", err)
-		return err
-	}
-
 	if args.UserID == "" {
 		err := fmt.Errorf("UserAccount() user_id is required")
 		s.Logger.Log("err", err)
@@ -160,14 +137,17 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 	}
 
 	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
-	if requestID, ok := claims["sub"]; ok && requestID != args.UserID {
-		// If they want a different user profile they need perms
-		if _, err := CheckRoles(r, "Admin"); err != nil {
-			if _, err := CheckRoles(r, "Owner"); err != nil {
-				err := fmt.Errorf("UserAccount() CheckRoles error: %v", err)
-				s.Logger.Log("err", err)
-				return err
-			}
+	requestID, ok := claims["sub"]
+	if !ok {
+		err := fmt.Errorf("UserAccount(): failed to parse user id from token")
+		s.Logger.Log("err", err)
+		return err
+	}
+	if ok && requestID != args.UserID {
+		if VerifyRoles(r, OwnerRole) != nil && VerifyRoles(r, AdminRole) != nil {
+			err := fmt.Errorf("UserAccount(): %v", ErrInsufficientPrivileges)
+			s.Logger.Log("err", err)
+			return err
 		}
 	}
 
@@ -200,26 +180,9 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 }
 
 func (s *AuthService) DeleteUserAccount(r *http.Request, args *AccountArgs, reply *AccountReply) error {
-	if IsAnonymous(r) || IsAnonymousPlus(r) {
-		err := fmt.Errorf("DeleteUserAccount() insufficient privileges")
+	if VerifyRoles(r, OwnerRole) != nil && VerifyRoles(r, AdminRole) != nil {
+		err := fmt.Errorf("UserAccount(): %v", ErrInsufficientPrivileges)
 		s.Logger.Log("err", err)
-		return err
-	}
-
-	isAdmin, err := CheckRoles(r, "Admin")
-	if err != nil {
-		err = fmt.Errorf("AllAccounts() CheckRoles error: %v", err)
-		return err
-	}
-
-	isOwner, err := CheckRoles(r, "Owner")
-	if err != nil {
-		err = fmt.Errorf("AllAccounts() CheckRoles error: %v", err)
-		return err
-	}
-
-	if !isAdmin || !isOwner {
-		err = fmt.Errorf("AllAccounts() CheckRoles error: %v", ErrInsufficientPrivileges)
 		return err
 	}
 
@@ -242,32 +205,15 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 	var accounts []account
 	var roles []*management.Role
 
-	isAdmin := false
-
-	if IsAnonymous(r) || IsAnonymousPlus(r) {
-		return fmt.Errorf("insufficient privileges")
-	}
-
-	isAdmin, err := CheckRoles(r, "Admin")
-	if err != nil {
-		err = fmt.Errorf("AllAccounts() CheckRoles error: %v", err)
-		return err
-	}
-
-	isOwner, err := CheckRoles(r, "Owner")
-	if err != nil {
-		err = fmt.Errorf("AllAccounts() CheckRoles error: %v", err)
-		return err
-	}
-
-	if !isAdmin && !isOwner {
-		err = fmt.Errorf("AllAccounts() CheckRoles error: %v", ErrInsufficientPrivileges)
+	if VerifyRoles(r, OwnerRole) != nil && VerifyRoles(r, AdminRole) != nil {
+		err := fmt.Errorf("UserAccount(): %v", ErrInsufficientPrivileges)
+		s.Logger.Log("err", err)
 		return err
 	}
 
 	// Check if non admin is assigning admin role
 	for _, r := range args.Roles {
-		if r.Name == &adminString && !isAdmin {
+		if r.Name == &adminString && VerifyRoles(r, AdminRole) != nil {
 			err := fmt.Errorf("AddUserAccount() insufficient privileges")
 			s.Logger.Log("err", err)
 			return err
