@@ -331,7 +331,7 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 				continue
 			}
 
-			if isAnon || (!isSameBuyer && !isAdmin) {
+			if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
 				meta.Anonymise()
 			}
 
