@@ -40,6 +40,22 @@ To remove a seller: `next sellers remove <id>`
 
 Removes a seller with the given seller ID from Firestore. The seller ID can be found with `next sellers`
 
+## Customers
+
+To list customers: `next customers`
+
+To add a customer: Either add a buyer or seller, or both. The customer root object will be added for you when appropriate automatically.
+
+To remove a customer: Either remove a buyer or seller, or both. The customer root object will be remove for you when appropriate automatically.
+
+To edit a customer's buyer link: `next customer link buyer <customer name> <new buyer ID>`
+This will replace the customer's buyer reference with the buyer given by the buyer ID.
+This link is normally handled for you, but this may be necessary to edit older existing customer data.
+
+To edit a customer's seller link: `next customer link seller <customer name> <new seller ID>`
+This will replace the customer's seller reference with the seller given by the seller ID.
+This link is normally handled for you, but this may be necessary to edit older existing customer data.
+
 ## Datacenters
 
 To list datacenters: `next datacenters`
@@ -79,14 +95,14 @@ To test if the relay can be ssh'ed into, it uses ssh's `-o` flag with `ConnectTi
 
 ## Route Shaders
 
-To get a route shader: `next routeshader <buyer ID>`
+To get a route shader: `next shader <buyer ID>`
 
 Gets a route shader for a given buyer ID. You can find a buyer's ID with `next buyers`.
 
-To set or update a route shader: `next routeshader set <buyer ID> [filepath]`
+To set or update a route shader: `next shader set <buyer ID> [filepath]`
 
-Sets a route shader in Firestore for a given buyer based on the given JSON file. You can also pipe in the JSON data (ex. `cat relay.json | next routeshader set <buyer ID>`)
-To see an example route shader JSON schema, use `next routeshader set example`
+Sets a route shader in Firestore for a given buyer based on the given JSON file. You can also pipe in the JSON data (ex. `cat relay.json | next shader set <buyer ID>`)
+To see an example route shader JSON schema, use `next shader set example`
 
 ## SSH
 
@@ -104,7 +120,7 @@ To set the SSH key: `next ssh key [path to key file]`
 
 To Enable a relay: `next relay enable [relay name]`
 
-The tool will SSH into the specified relay and start the relay service and set the state to enabled. If the service is already running the command will only update the state to enabled.
+The tool will SSH into the specified relay and start the relay service and set the state to enabled. If the service is already running the command will first disable the relay and then enable it.
 
 ### Disable
 
@@ -114,15 +130,14 @@ First the tool will update the relay's state in Firestore to the Disabled state.
 
 ### Update
 
-To Update a relay: `next relay update [relay name]...`
+To Update a relay: `next relay update [-cores n] [relay name]...`
 
-The tool will perform several actions to update a relay.
+The tool will perform several actions to update a relay. You must have the desired environment set via the [relay env](#Env) setting.
+It will begin by building the relay binary and disabling the remote relays.
 
-First you must build the relay binary and ensure it is located at `dist/relay`
+The tool will query the relay(s) from Firestore and then perform an update on those selected. If any fail for any reason the program will quit and not continue to the next. While updating it will re-generate public and private keys for the relay and set them both in the relay's environment file and publish the changes to Firestore as well. Lastly the command will update the state of the relay to enabled, much the same way the [enable](#Enable) command does it.
 
-Then disable the relay using the [disable](#Disable) functionality
-
-Then you use the tool. You must have the desired environment set via the [relay env](#Env) setting. The tool will query the relay(s) from Firestore and then perform an update on those selected. If any fail for any reason the program will quit and not continue to the next. While updating it will re-generate public and private keys for the relay and set them both in the relay's environment file and publish the changes to Firestore as well. Lastly the command will update the state of the relay to enabled, much the same way the [enable](#Enable) command does it.
+If the `-cores` flag is provided followed by a number, it will set `RELAY_MAX_CORES` to that number. If this flag is omitted, then the relay will use all available cores. Generally you want to set this to half of the number of available cores for VMs and omit this flag for bare metal relays.
 
 ### Revert
 
