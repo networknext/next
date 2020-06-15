@@ -159,29 +159,9 @@ MapHandler = {
 		this.mapCountLoop ? clearInterval(this.mapCountLoop) : null;
 		this.mapLoop ? clearInterval(this.mapLoop) : null;
 
-		let refreshMapCount = () => {
-			JSONRPCClient
-				.call('BuyersService.TotalSessions', {buyer_id: filter.buyerId || ""})
-				.then((response) => {
-					let direct = response.direct
-					let next = response.next
-
-					Object.assign(rootComponent.$data, {
-						direct: direct,
-						mapSessions: direct + next,
-						onNN: next,
-					});
-				})
-				.catch((error) => {
-					console.log("Something went wrong fetching map point totals");
-					console.log(error);
-					Sentry.captureException(error);
-				});
-		}
-		refreshMapCount();
-
+		this.refreshMapCount();
 		this.mapCountLoop = setInterval(() => {
-			refreshMapCount();
+			this.refreshMapCount();
 		}, 10000);
 
 		this.refreshMapSessions();
@@ -204,6 +184,25 @@ MapHandler = {
 			default:
 				// Nothing for now
 		}
+	},
+	refreshMapCount() {
+		JSONRPCClient
+			.call('BuyersService.TotalSessions', {buyer_id: filter.buyerId || ""})
+			.then((response) => {
+				let direct = response.direct
+				let next = response.next
+
+				Object.assign(rootComponent.$data, {
+					direct: direct,
+					mapSessions: direct + next,
+					onNN: next,
+				});
+			})
+			.catch((error) => {
+				console.log("Something went wrong fetching map point totals");
+				console.log(error);
+				Sentry.captureException(error);
+			});
 	},
 	refreshMapSessions() {
 		let filter = rootComponent.$data.pages.map.filter;
