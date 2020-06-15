@@ -38,8 +38,8 @@ type FlushSessionsArgs struct{}
 type FlushSessionsReply struct{}
 
 func (s *BuyersService) FlushSessions(r *http.Request, args *FlushSessionsArgs, reply *FlushSessionsReply) error {
-	if !CheckIsOps(r) {
-		return ErrInsufficientPrivileges
+	if err := VerifyRoles(r, OpsRole); err != nil {
+		return err
 	}
 
 	return s.RedisClient.FlushAllAsync().Err()
@@ -54,16 +54,9 @@ type UserSessionsReply struct {
 }
 
 func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, reply *UserSessionsReply) error {
-	userhash := args.UserHash
-
 	var sessionIDs []string
 
-	var isAdmin bool = false
-	var isSameBuyer bool = false
-	var isAnon bool = true
-
-	isAnon = IsAnonymous(r) || IsAnonymousPlus(r)
-
+	userhash := args.UserHash
 	reply.Sessions = make([]routing.SessionMeta, 0)
 
 	err := s.RedisClient.SMembers(fmt.Sprintf("user-%s-sessions", userhash)).ScanSlice(&sessionIDs)
@@ -123,27 +116,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 				continue
 			}
 
-			if !isAnon {
-				isAdmin, err = CheckRoles(r, "Admin")
-				if err != nil {
-					err = fmt.Errorf("UserSessions() CheckRoles error: %v", err)
-					s.Logger.Log("err", err)
-					return err
-				}
-
-				if !isAdmin {
-					isSameBuyer, err = s.IsSameBuyer(r, meta.BuyerID)
-					if err != nil {
-						err = fmt.Errorf("UserSessions() IsSameBuyer error: %v", err)
-						s.Logger.Log("err", err)
-						return err
-					}
-				} else {
-					isSameBuyer = true
-				}
-			}
-
-			if isAnon || (!isSameBuyer && !isAdmin) {
+			if VerifyRoles(r, AnonymousRole) == nil || VerifyRoles(r, UnverifiedRole) == nil || VerifyRoles(r, s.SameBuyerRole(meta.BuyerID)) != nil {
 				meta.Anonymise()
 			}
 
@@ -210,36 +183,6 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 	var topnext []string
 	var topdirect []string
 
-	var isAdmin bool = false
-	var isSameBuyer bool = false
-	var isAnon bool = true
-	var isOps bool = false
-
-	isAnon = IsAnonymous(r) || IsAnonymousPlus(r)
-	isOps = CheckIsOps(r)
-
-	if !isAnon && !isOps {
-		isAdmin, err = CheckRoles(r, "Admin")
-		if err != nil {
-			err = fmt.Errorf("TopSessions() CheckRoles error: %v", err)
-			s.Logger.Log("err", err)
-			return err
-		}
-	}
-
-	if !isAdmin && !isOps {
-		isSameBuyer, err = s.IsSameBuyer(r, args.BuyerID)
-		if err != nil {
-			err = fmt.Errorf("TopSessions() IsSameBuyer error: %v", err)
-			s.Logger.Log("err", err)
-			return err
-		}
-	} else {
-		isSameBuyer = true
-	}
-
-	buyers := s.Storage.Buyers()
-
 	reply.Sessions = make([]routing.SessionMeta, 0)
 
 	// get the top session IDs globally or for a buyer from the sorted set
@@ -261,8 +204,8 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 			return err
 		}
 	default:
-		if !isSameBuyer && !isAdmin && !isOps {
-			err = fmt.Errorf("TopSessions() insufficient privileges")
+		if err := VerifyRoles(r, s.SameBuyerRole(args.BuyerID)); err != nil {
+			err = fmt.Errorf("TopSessions(): %v", err)
 			s.Logger.Log("err", err)
 			return err
 		}
@@ -320,7 +263,7 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 				continue
 			}
 
-			if isAnon || (!isSameBuyer && !isAdmin) {
+			if VerifyRoles(r, s.SameBuyerRole(args.BuyerID)) != nil {
 				meta.Anonymise()
 			}
 
@@ -427,33 +370,6 @@ type SessionDetailsReply struct {
 
 func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs, reply *SessionDetailsReply) error {
 	var err error
-	var isAdmin bool = false
-	var isSameBuyer bool = false
-	var isAnon bool = true
-	var isOps bool = false
-
-	isAnon = IsAnonymous(r) || IsAnonymousPlus(r)
-	isOps = CheckIsOps(r)
-
-	if !isAnon && !isOps {
-		isAdmin, err = CheckRoles(r, "Admin")
-		if err != nil {
-			err = fmt.Errorf("SessionDetails() CheckRoles error: %v", err)
-			s.Logger.Log("err", err)
-			return err
-		}
-	}
-
-	if !isAdmin && !isOps {
-		isSameBuyer, err = s.IsSameBuyer(r, reply.Meta.BuyerID)
-		if err != nil {
-			err = fmt.Errorf("SessionDetails() IsSameBuyer error: %v", err)
-			s.Logger.Log("err", err)
-			return err
-		}
-	} else {
-		isSameBuyer = true
-	}
 
 	data, err := s.RedisClient.Get(fmt.Sprintf("session-%s-meta", args.SessionID)).Bytes()
 	if err != nil {
@@ -469,7 +385,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 	}
 
 	// We fill in the name on the portal side so we don't spend time doing it while serving sessions
-	if isAdmin {
+	if VerifyRoles(r, AdminRole) == nil {
 		for idx, relay := range reply.Meta.NearbyRelays {
 			r, err := s.Storage.Relay(relay.ID)
 			if err != nil {
@@ -480,7 +396,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		}
 	}
 
-	if isAnon || (!isSameBuyer && !isAdmin && !isOps) {
+	if VerifyRoles(r, s.SameBuyerRole(reply.Meta.BuyerID)) != nil {
 		reply.Meta.Anonymise()
 	}
 
@@ -635,8 +551,8 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 	var err error
 	var buyer routing.Buyer
 
-	if IsAnonymous(r) || IsAnonymousPlus(r) {
-		err = fmt.Errorf("GameConfiguration() insufficient privileges")
+	if VerifyRoles(r, AnonymousRole) == nil || VerifyRoles(r, UnverifiedRole) == nil {
+		err = fmt.Errorf("GameConfiguration(): %v", ErrInsufficientPrivileges)
 		s.Logger.Log("err", err)
 		return err
 	}
@@ -657,28 +573,13 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 }
 
 func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfigurationArgs, reply *GameConfigurationReply) error {
-	if IsAnonymous(r) || IsAnonymousPlus(r) {
-		return fmt.Errorf("UpdateGameConfiguration() insufficient privileges")
-	}
-
 	var err error
 	var buyerID uint64
 	var buyer routing.Buyer
 
-	isAdmin, err := CheckRoles(r, "Admin")
-	if err != nil {
-		err = fmt.Errorf("UpdateGameConfiguration() CheckRoles error: %v", err)
-		return err
-	}
-
-	isOwner, err := CheckRoles(r, "Owner")
-	if err != nil {
-		err = fmt.Errorf("UpdateGameConfiguration() CheckRoles error: %v", err)
-		return err
-	}
-
-	if !isAdmin && !isOwner {
-		err = fmt.Errorf("UpdateGameConfiguration() CheckRoles error: %v", ErrInsufficientPrivileges)
+	if VerifyRoles(r, AdminRole) != nil && VerifyRoles(r, OwnerRole) != nil {
+		err = fmt.Errorf("UpdateGameConfiguration(): %v", ErrInsufficientPrivileges)
+		s.Logger.Log("err", err)
 		return err
 	}
 
@@ -760,7 +661,7 @@ type buyerAccount struct {
 
 func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *BuyerListReply) error {
 	reply.Buyers = make([]buyerAccount, 0)
-	if IsAnonymous(r) || IsAnonymousPlus(r) {
+	if VerifyRoles(r, AnonymousRole) == nil {
 		return nil
 	}
 
@@ -780,32 +681,36 @@ func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *Buye
 	return nil
 }
 
-func (s *BuyersService) IsSameBuyer(r *http.Request, buyerID string) (bool, error) {
-	if buyerID == "" {
-		return false, nil
-	}
+// SameBuyerRole checks the JWT for the correct passed in buyerID
+func (s *BuyersService) SameBuyerRole(buyerID string) RoleFunc {
+	return func(req *http.Request) (bool, error) {
+		if VerifyRoles(req, AdminRole) == nil || VerifyRoles(req, OpsRole) == nil {
+			return true, nil
+		}
+		if VerifyRoles(req, AnonymousRole) == nil {
+			return false, nil
+		}
 
-	requestUser := r.Context().Value("user")
-	if requestUser == nil {
-		err := fmt.Errorf("Buyers() unable to parse user from token")
-		s.Logger.Log("err", err)
-		return false, err
-	}
+		if buyerID == "" {
+			return false, fmt.Errorf("SameBuyerRole(): buyerID is required")
+		}
 
-	requestEmail, ok := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["email"].(string)
-	if !ok {
-		err := fmt.Errorf("Buyers() unable to parse email from token")
-		s.Logger.Log("err", err)
-		return false, err
-	}
-	requestEmailParts := strings.Split(requestEmail, "@")
-	requestDomain := requestEmailParts[len(requestEmailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
-	buyer, err := s.Storage.BuyerWithDomain(requestDomain)
-	if err != nil {
-		err = fmt.Errorf("Buyers() BuyerWithDomain error: %v", err)
-		s.Logger.Log("err", err)
-		return false, err
-	}
+		requestUser := req.Context().Value("user")
+		if requestUser == nil {
+			return false, fmt.Errorf("SameBuyerRole(): unable to parse user from token")
+		}
 
-	return buyerID != fmt.Sprintf("%016x", buyer.ID), nil
+		requestEmail, ok := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["email"].(string)
+		if !ok {
+			return false, fmt.Errorf("SameBuyerRole(): unable to parse email from token")
+		}
+		requestEmailParts := strings.Split(requestEmail, "@")
+		requestDomain := requestEmailParts[len(requestEmailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
+		buyer, err := s.Storage.BuyerWithDomain(requestDomain)
+		if err != nil {
+			return false, fmt.Errorf("SameBuyerRole(): BuyerWithDomain error: %v", err)
+		}
+
+		return buyerID != fmt.Sprintf("%016x", buyer.ID), nil
+	}
 }
