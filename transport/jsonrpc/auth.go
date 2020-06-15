@@ -218,7 +218,11 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 
 	// Check if non admin is assigning admin role
 	for _, r := range args.Roles {
+<<<<<<< HEAD
 		if r.Name == &adminString && !VerifyAllRoles(req, AdminRole) {
+=======
+		if r.Name == &adminString && VerifyRoles(r, AdminRole) != nil {
+>>>>>>> working on auth endpoints
 			err := fmt.Errorf("AddUserAccount() insufficient privileges")
 			s.Logger.Log("err", err)
 			return err
