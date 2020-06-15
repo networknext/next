@@ -195,7 +195,7 @@ Test(core_Backend_updateCycle_update_fails_for_max_number_of_attempts)
   // time will be 2 seconds of good updates and
   // 10 seconds of bad updates, which will cause
   // the relay to abort with no clean shutdown
-  check(elapsed >= 5.0).onFail([&elapsed] {
+  check(elapsed >= 12.0).onFail([&elapsed] {
     std::cout << "elapsed: " << elapsed << '\n';
   });
 }
