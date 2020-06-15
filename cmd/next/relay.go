@@ -201,11 +201,12 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 		out, err := con.IssueCmdAndGetOutput(VersionCheckScript + ` | awk 'BEGIN {FS="."}{print $1}'`)
 		if err != nil {
 			fmt.Printf("error updating '%s': %v\n", info.name, err)
+			continue
 		}
 
 		if val, err := strconv.ParseUint(out, 10, 32); err == nil {
 			if val < MinimumUbuntuVersion {
-				fmt.Printf("%s ubuntu version is too low: %d", info.name, val)
+				fmt.Printf("%s ubuntu version is too low: %d\n", info.name, val)
 				continue
 			}
 		} else {
