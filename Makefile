@@ -189,29 +189,22 @@ test: test-unit
 test-unit-sdk: build-sdk-test ## runs sdk unit tests
 	@$(DIST_DIR)/$(SDKNAME)_test
 
+ifeq ($(OS),linux)
 .PHONY: test-unit-relay
-test-unit-relay-new: build-relay-tests ## runs relay unit tests
-	@$(NEW_RELAY_DIR)/bin/relay.test
-
-.PHONY: test-unit-reference-relay
-test-unit-relay-ref: build-relay-ref
-	@$(DIST_DIR)/relay test
+test-unit-relay: build-relay-tests ## runs relay unit tests
+	@$(RELAY_DIR)/bin/relay.test
+endif
 
 .PHONY: test-unit-backend
 test-unit-backend: lint ## runs backend unit tests
-	@./cmd/tools/scripts/test-unit-backend.sh
+	@./scripts/test-unit-backend.sh
 
 .PHONY: test-unit
-test-unit: clean test-unit-sdk test-unit-relay test-unit-reference-relay test-unit-backend ## runs all unit tests
-
-.PHONY: test-soak
-test-soak: clean build-sdk-test build-soak-test ## runs soak test
-	@$(DIST_DIR)/$(SDKNAME)_soak_test
-	@printf "\n"
+test-unit: clean test-unit-sdk test-unit-backend ## runs unit tests
 
 ifeq ($(OS),linux)
 .PHONY: test-soak-valgrind
-test-soak-valgrind: clean build-sdk-test build-soak-test ## runs sdk soak test
+test-soak-valgrind: clean build-sdk-test build-soak-test ## runs sdk soak test under valgrind (linux only)
 	@valgrind --tool=memcheck --leak-check=yes --show-reachable=yes --num-callers=20 --track-fds=yes --track-origins=yes $(DIST_DIR)/$(SDKNAME)_soak_test
 	@printf "\n"
 endif
@@ -219,16 +212,22 @@ endif
 .PHONY: build-functional-backend
 build-functional-backend: ## builds the functional backend
 	@printf "Building functional backend... " ; \
-	$(GO) build -o ./dist/func_backend ./cmd/tools/functional/backend/*.go ; \
+	$(GO) build -o ./dist/func_backend ./cmd/func_backend/*.go ; \
+	printf "done\n" ; \
+
+.PHONY: build-functional-tests
+build-functional-tests: ## builds functional tests
+	@printf "Building functional tests... " ; \
+	$(GO) build -o ./dist/func_tests ./cmd/func_tests/*.go ; \
 	printf "done\n" ; \
 
 .PHONY: build-test-func
-build-test-func: clean build-sdk build-relay-ref build-functional-server build-functional-client build-functional-backend ## builds the functional tests
+build-test-func: clean build-sdk build-relay-ref build-functional-server build-functional-client build-functional-backend build-functional-tests ## builds the functional tests
 
 .PHONY: run-test-func
 run-test-func:
 	@printf "\nRunning functional tests...\n\n" ; \
-	$(GO) run ./cmd/tools/functional/tests/func_tests.go $(tests) ; \
+	$(GO) run ./cmd/func_tests/func_tests.go $(tests) ; \
 	printf "\ndone\n\n"
 
 .PHONY: test-func
@@ -236,11 +235,11 @@ test-func: build-test-func run-test-func ## runs functional tests
 
 .PHONY: build-test-func-parallel
 build-test-func-parallel:
-	@docker build -t func_tests -f ./cmd/tools/functional/tests/Dockerfile .
+	@docker build -t func_tests -f ./cmd/func_tests/Dockerfile .
 
 .PHONY: run-test-func-parallel
 run-test-func-parallel:
-	@./cmd/tools/scripts/test-func-parallel.sh
+	@./scripts/test-func-parallel.sh
 
 .PHONY: test-func-parallel
 test-func-parallel: build-test-func-parallel run-test-func-parallel ## runs functional tests in parallel
@@ -252,50 +251,17 @@ build-sdk-test: build-sdk ## builds the sdk test binary
 	@printf "done\n"
 
 .PHONY: build-soak-test
-build-soak-test: build-sdk ## builds the sdk test binary
+build-soak-test: build-sdk ## builds the sdk soak test binary
 	@printf "Building soak test... "
 	@$(CXX) -Isdk/include -o $(DIST_DIR)/$(SDKNAME)_soak_test ./sdk/soak.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
-
-PHONY: build-tools
-build-tools: ## builds all the tools
-	@./cmd/tools/build.sh
-
-#####################
-## MAIN COMPONENTS ##
-#####################
-
-.PHONY: dev-cost
-dev-cost: ## gets the cost matrix from the local backend
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/cost ./cmd/tools/cost/cost.go
-	$(DIST_DIR)/cost -url=http://localhost:30000/cost_matrix > $(COST_FILE)
-
-.PHONY: dev-optimize
-dev-optimize: ## transforms the cost matrix into a route matrix
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/optimize ./cmd/tools/optimize/optimize.go
-	test -f $(COST_FILE) && cat $(COST_FILE) | ./dist/optimize -threshold-rtt=1 > $(OPTIMIZE_FILE)
-
-.PHONY: dev-analyze
-dev-analyze: ## analyzes the route matrix
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/analyze ./cmd/tools/analyze/analyze.go
-	test -f $(OPTIMIZE_FILE) && cat $(OPTIMIZE_FILE) | $(DIST_DIR)/analyze
-
-.PHONY: debug
-dev-debug: ## debugs relay in route matrix
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/debug ./cmd/tools/debug/debug.go
-	test -f $(OPTIMIZE_FILE) && cat $(OPTIMIZE_FILE) | $(DIST_DIR)/debug -relay=$(relay)
-
-.PHONY: dev-route
-dev-route: ## prints routes from relay to datacenter in route matrix
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA)" -o ${DIST_DIR}/route ./cmd/tools/route/route.go
-	test -f $(OPTIMIZE_FILE) && cat $(OPTIMIZE_FILE) | $(DIST_DIR)/route -relay=$(relay) -datacenter=$(datacenter)
 
 #######################
 # Relay Build Process #
 #######################
 
-NEW_RELAY_DIR := ./cmd/relay_new
-NEW_RELAY_MAKEFILE := Makefile
+RELAY_DIR := ./cmd/relay
+RELAY_MAKEFILE := Makefile
 RELAY_EXE := relay
 
 .PHONY: build-relay-ref
@@ -304,26 +270,26 @@ build-relay-ref: ## builds the reference relay
 	@$(CXX) $(CXX_FLAGS) -o $(DIST_DIR)/reference_relay reference/relay/*.cpp $(LDFLAGS)
 	@printf "done\n"
 
-.PHONY: build-relay-new
-build-relay-new: ## builds the new relay
-	@printf "Building new relay... "
+.PHONY: build-relay
+build-relay: ## builds the relay
+	@printf "Building relay... "
 	@mkdir -p $(DIST_DIR)
-	@cd $(NEW_RELAY_DIR) && $(MAKE) release
+	@cd $(RELAY_DIR) && $(MAKE) release
 	@echo "done"
 
 .PHONY: build-relay-tests
-build-relay-tests: ## builds the new relay tests
+build-relay-tests: ## builds the relay unit tests (linux only)
 	@printf "Building relay with tests enabled... "
-	@cd $(NEW_RELAY_DIR) && $(MAKE) test
+	@cd $(RELAY_DIR) && $(MAKE) test
 	@echo "done"
 
 .PHONY: dev-relay
-dev-relay: build-relay-new ## runs a local relay
+dev-relay: build-relay ## runs a local relay
 	@$(DIST_DIR)/$(RELAY_EXE)
 
 .PHONY: dev-multi-relays
-dev-multi-relays: build-relay-new ## runs 10 local relays
-	./cmd/tools/scripts/relay-spawner.sh -n 10 -p 10000
+dev-multi-relays: build-relay ## runs 10 local relays
+	./scripts/relay-spawner.sh -n 10 -p 10000
 
 #######################
 
@@ -361,12 +327,7 @@ dev-client: build-client  ## runs a local client
 
 .PHONY: dev-multi-clients
 dev-multi-clients: build-client ## runs 20 local clients
-	./cmd/tools/scripts/client-spawner.sh -n 20
-
-.PHONY: dev-relay-backend-old
-dev-relay-backend-old:
-	$(GO) run ./cmd/tools/functional/backend_old/*.go
-
+	./scripts/client-spawner.sh -n 20
 
 $(DIST_DIR)/$(SDKNAME).so:
 	@printf "Building sdk... "
@@ -526,20 +487,20 @@ deploy-server-backend-prod: ## builds and deploys the server backend to the prod
 build-backend-artifacts: build-portal-artifact build-relay-backend-artifact build-server-backend-artifact ## builds the backend artifacts
 
 .PHONY: build-relay-artifact
-build-relay-artifact: build-relay-new ## builds the relay artifact
+build-relay-artifact: build-relay ## builds the relay artifact
 	@printf "Building relay artifact..."
 	@mkdir -p $(DIST_DIR)/artifact/relay
-	@cp $(DIST_DIR)/relay_new $(DIST_DIR)/artifact/relay/relay
+	@cp $(DIST_DIR)/relay $(DIST_DIR)/artifact/relay/relay
 	@cp $(DEPLOY_DIR)/relay/relay.service $(DIST_DIR)/artifact/relay/relay.service
 	@cp $(DEPLOY_DIR)/relay/install.sh $(DIST_DIR)/artifact/relay/install.sh
 	@cd $(DIST_DIR)/artifact/relay && tar -zcf ../../relay.dev.tar.gz relay relay.service install.sh && cd ../..
 	@printf "$(DIST_DIR)/relay.dev.tar.gz\n"
 
 .PHONY: build-relay-prod-artifact
-build-relay-prod-artifact: build-relay-new ## builds the relay prod artifact
+build-relay-prod-artifact: build-relay ## builds the relay prod artifact
 	@printf "Building relay artifact..."
 	@mkdir -p $(DIST_DIR)/artifact/relay
-	@cp $(DIST_DIR)/relay_new $(DIST_DIR)/artifact/relay/relay
+	@cp $(DIST_DIR)/relay $(DIST_DIR)/artifact/relay/relay
 	@cp $(DEPLOY_DIR)/relay/relay.service $(DIST_DIR)/artifact/relay/relay.service
 	@cp $(DEPLOY_DIR)/relay/install.sh $(DIST_DIR)/artifact/relay/install.sh
 	@cd $(DIST_DIR)/artifact/relay && tar -zcf ../../relay.prod.tar.gz relay relay.service install.sh && cd ../..
@@ -580,17 +541,17 @@ build-server: build-sdk ## builds the server
 .PHONY: build-functional-server
 build-functional-server:
 	@printf "Building functional server... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/func_server ./cmd/tools/functional/server/func_server.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
+	@$(CXX) -Isdk/include -o $(DIST_DIR)/func_server ./cmd/func_server/func_server.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional-client
 build-functional-client:
 	@printf "Building functional client... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/func_client ./cmd/tools/functional/client/func_client.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
+	@$(CXX) -Isdk/include -o $(DIST_DIR)/func_client ./cmd/func_client/func_client.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional
-build-functional: build-functional-client build-functional-server
+build-functional: build-functional-client build-functional-server build-functional-backend build-functional-tests
 
 .PHONY: build-client
 build-client: build-sdk ## builds the client
@@ -598,8 +559,14 @@ build-client: build-sdk ## builds the client
 	@$(CXX) -Isdk/include -o $(DIST_DIR)/client ./cmd/client/client.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
 
+.PHONY: build-next
+build-next: ## builds the operator tool
+	@printf "Building operator tool... "
+	@$(GO) build -o ./dist/next ./cmd/next/*.go
+	@printf "done\n"
+	
 .PHONY: build-all
-build-all: build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-sdk-test build-soak-test build-tools ## builds everything
+build-all: build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-sdk-test build-soak-test build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all
@@ -609,5 +576,5 @@ update-sdk: ## updates the sdk submodule to point at head revision
 	git submodule update --remote --merge
 
 .PHONY: sync
-sync: ## sync latest code including the sdk submodule
+sync: ## syncs to latest code including the sdk submodule
 	git pull && git submodule update --recursive

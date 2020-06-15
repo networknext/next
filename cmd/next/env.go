@@ -19,16 +19,20 @@ const (
 	RouterPublicKeyDev   = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
 	RouterPublicKeyProd  = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
 
-	RelayBackendHostnameLocal = "http://localhost:30000"
-	RelayBackendHostnameDev   = "http://relay_backend.dev.networknext.com:40000"
-	RelayBackendHostnameProd  = "http://relay_backend.prod.networknext.com"
+	RelayArtifactURLDev  = "https://storage.googleapis.com/artifacts.network-next-v3-dev.appspot.com/relay.dev.tar.gz"
+	RelayArtifactURLProd = "https://storage.googleapis.com/us.artifacts.network-next-v3-prod.appspot.com/relay.prod.tar.gz"
+
+	RelayBackendHostnameLocal = "localhost"
+	RelayBackendHostnameDev   = "relay_backend.dev.networknext.com"
+	RelayBackendHostnameProd  = "relay_backend.prod.networknext.com"
 
 	OldRelayBackendHostnameLocal = "localhost"
 	OldRelayBackendHostnameDev   = "relays.v3-dev.networknext.com"
 	OldRelayBackendHostnameProd  = "relays.v3.networknext.com"
 
-	RelayArtifactURLDev  = "https://storage.googleapis.com/artifacts.network-next-v3-dev.appspot.com/relay.dev.tar.gz"
-	RelayArtifactURLProd = "https://storage.googleapis.com/us.artifacts.network-next-v3-prod.appspot.com/relay.prod.tar.gz"
+	RelayBackendURLLocal = "http://" + RelayBackendHostnameLocal + ":30000"
+	RelayBackendURLDev   = "http://" + RelayBackendHostnameDev + ":40000"
+	RelayBackendURLProd  = "http://" + RelayBackendHostnameProd
 )
 
 type Environment struct {
@@ -50,10 +54,6 @@ func (e *Environment) String() string {
 	sb.WriteString(fmt.Sprintf("Environment: %s\n", e.Name))
 	sb.WriteString("\n")
 	sb.WriteString(fmt.Sprintf("Hostname: %s\n", e.PortalHostname()))
-	sb.WriteString("\n")
-	sb.WriteString(fmt.Sprintf("Operator Tool:\n"))
-	sb.WriteString(fmt.Sprintf("  + Local: %s [%s]\n", e.CLIRelease, e.CLIBuildTime))
-	sb.WriteString(fmt.Sprintf("  + Remote: %s [%s]\n", e.RemoteRelease, e.RemoteBuildTime))
 	sb.WriteString("\n")
 	sb.WriteString(fmt.Sprintf("AuthToken:\n\n    %s\n\n", e.AuthToken))
 	sb.WriteString(fmt.Sprintf("SSHKeyFilePath: %s\n", e.SSHKeyFilePath))
@@ -139,8 +139,8 @@ func (e *Environment) RouterPublicKey() (string, error) {
 	return e.localDevOrProd(RouterPublicKeyLocal, RouterPublicKeyDev, RouterPublicKeyProd)
 }
 
-func (e *Environment) RelayBackendHostname() (string, error) {
-	return e.localDevOrProd(RelayBackendHostnameLocal, RelayBackendHostnameDev, RelayBackendHostnameProd)
+func (e *Environment) RelayBackendURL() (string, error) {
+	return e.localDevOrProd(RelayBackendURLLocal, RelayBackendURLDev, RelayBackendURLProd)
 }
 
 func (e *Environment) OldRelayBackendHostname() (string, error) {
@@ -149,6 +149,10 @@ func (e *Environment) OldRelayBackendHostname() (string, error) {
 
 func (e *Environment) RelayArtifactURL() (string, error) {
 	return e.devOrProd(RelayArtifactURLDev, RelayArtifactURLProd)
+}
+
+func (e *Environment) RelayBackendHostname() (string, error) {
+	return e.localDevOrProd(RelayBackendHostnameLocal, RelayBackendHostnameDev, RelayBackendHostnameProd)
 }
 
 func (e *Environment) localDevOrProd(ifIsLocal, ifIsDev, ifIsProd string) (string, error) {

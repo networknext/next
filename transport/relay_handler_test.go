@@ -823,7 +823,7 @@ func TestRelayHandlerShuttingDown(t *testing.T) {
 	request := transport.RelayRequest{
 		Address: *udpAddr,
 		PingStats: []transport.RelayPingStats{
-			transport.RelayPingStats{
+			{
 				ID:         crypto.HashID(statIps[0]),
 				Address:    statIps[0],
 				RTT:        1,
@@ -831,7 +831,7 @@ func TestRelayHandlerShuttingDown(t *testing.T) {
 				PacketLoss: 3,
 			},
 
-			transport.RelayPingStats{
+			{
 				ID:         crypto.HashID(statIps[1]),
 				Address:    statIps[1],
 				RTT:        4,
@@ -839,7 +839,7 @@ func TestRelayHandlerShuttingDown(t *testing.T) {
 				PacketLoss: 6,
 			},
 
-			transport.RelayPingStats{
+			{
 				ID:         crypto.HashID(statIps[2]),
 				Address:    statIps[2],
 				RTT:        7,
@@ -847,7 +847,7 @@ func TestRelayHandlerShuttingDown(t *testing.T) {
 				PacketLoss: 9,
 			},
 
-			transport.RelayPingStats{
+			{
 				ID:         crypto.HashID(statIps[3]),
 				Address:    statIps[3],
 				RTT:        10,
@@ -988,7 +988,7 @@ func TestRelayHandlerSuccess(t *testing.T) {
 	request := transport.RelayRequest{
 		Address: *udpAddr,
 		PingStats: []transport.RelayPingStats{
-			transport.RelayPingStats{
+			{
 				ID:         crypto.HashID(statIps[0]),
 				Address:    statIps[0],
 				RTT:        1,
@@ -996,7 +996,7 @@ func TestRelayHandlerSuccess(t *testing.T) {
 				PacketLoss: 3,
 			},
 
-			transport.RelayPingStats{
+			{
 				ID:         crypto.HashID(statIps[1]),
 				Address:    statIps[1],
 				RTT:        4,
@@ -1004,7 +1004,7 @@ func TestRelayHandlerSuccess(t *testing.T) {
 				PacketLoss: 6,
 			},
 
-			transport.RelayPingStats{
+			{
 				ID:         crypto.HashID(statIps[2]),
 				Address:    statIps[2],
 				RTT:        7,
@@ -1012,7 +1012,7 @@ func TestRelayHandlerSuccess(t *testing.T) {
 				PacketLoss: 9,
 			},
 
-			transport.RelayPingStats{
+			{
 				ID:         crypto.HashID(statIps[3]),
 				Address:    statIps[3],
 				RTT:        10,

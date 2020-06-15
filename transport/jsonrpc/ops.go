@@ -235,7 +235,7 @@ type CustomersReply struct {
 
 type customer struct {
 	Name     string `json:"name"`
-	BuyerID  uint64 `json:"buyer_id"`
+	BuyerID  string `json:"buyer_id"`
 	SellerID string `json:"seller_id"`
 }
 
@@ -245,7 +245,7 @@ func (s *OpsService) Customers(r *http.Request, args *CustomersArgs, reply *Cust
 
 	for _, b := range s.Storage.Buyers() {
 		customers[b.Name] = customer{
-			BuyerID: b.ID,
+			BuyerID: fmt.Sprintf("%x", b.ID),
 			Name:    b.Name,
 		}
 	}
@@ -606,8 +606,8 @@ type DatacentersReply struct {
 }
 
 type datacenter struct {
-	ID        uint64  `json:"id"`
 	Name      string  `json:"name"`
+	ID        string  `json:"id"`
 	Latitude  float64 `json:"latitude"`
 	Longitude float64 `json:"longitude"`
 	Enabled   bool    `json:"enabled"`
@@ -616,8 +616,8 @@ type datacenter struct {
 func (s *OpsService) Datacenters(r *http.Request, args *DatacentersArgs, reply *DatacentersReply) error {
 	for _, d := range s.Storage.Datacenters() {
 		reply.Datacenters = append(reply.Datacenters, datacenter{
-			ID:        d.ID,
 			Name:      d.Name,
+			ID:        fmt.Sprintf("%x", d.ID),
 			Enabled:   d.Enabled,
 			Latitude:  d.Location.Latitude,
 			Longitude: d.Location.Longitude,

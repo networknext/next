@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"os/signal"
 	"runtime"
 	"strconv"
 	"strings"
@@ -85,6 +86,30 @@ func runCommandEnv(command string, args []string, env map[string]string) bool {
 		finalEnv = append(finalEnv, fmt.Sprintf("%s=%s", k, v))
 	}
 	cmd.Env = finalEnv
+
+	// Make a os.Signal channel and attach any incoming os signals
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+
+	// Start a goroutine and block waiting for any os.Signal
+	go func() {
+		sig := <-c
+
+		// If the command still exists send the os.Signal captured by next tool
+		// to the underlying process.
+		// If the signal is interrupt, then try to directly kill the process,
+		// otherwise forward the signal.
+		if cmd.Process != nil {
+			if sig == syscall.SIGINT {
+				if err := cmd.Process.Kill(); err != nil {
+					log.Fatal(err)
+				}
+			} else if err := cmd.Process.Signal(sig); err != nil {
+				log.Fatal(err)
+			}
+			os.Exit(1)
+		}
+	}()
 
 	err := cmd.Run()
 	if err != nil {
@@ -277,6 +302,12 @@ type buyer struct {
 	PublicKey string
 }
 
+type seller struct {
+	Name              string
+	IngressPriceCents uint64
+	EgressPriceCents  uint64
+}
+
 type relay struct {
 	Name                string
 	Addr                string
@@ -378,9 +409,17 @@ func main() {
 			},
 			{
 				Name:       "select",
-				ShortUsage: "next select <local|dev|prod|other_portal_hostname>",
+				ShortUsage: "next select <local|dev|prod>",
 				ShortHelp:  "Select environment to use (local|dev|prod)",
 				Exec: func(_ context.Context, args []string) error {
+					if len(args) == 0 {
+						log.Fatal("Provide an environment to switch to (local|dev|prod)")
+					}
+
+					if args[0] != "local" && args[0] != "dev" && args[0] != "prod" {
+						log.Fatalf("Invalid environment %s: use (local|dev|prod)", args[0])
+					}
+
 					env.Name = args[0]
 					env.Write()
 
@@ -394,8 +433,14 @@ func main() {
 				ShortHelp:  "Display environment",
 				Exec: func(_ context.Context, args []string) error {
 					if len(args) > 0 {
+						if args[0] != "local" && args[0] != "dev" && args[0] != "prod" {
+							log.Fatalf("Invalid environment %s: use (local|dev|prod)", args[0])
+						}
+
 						env.Name = args[0]
 						env.Write()
+
+						fmt.Printf("Selected %s environment\n", env.Name)
 					}
 
 					env.RemoteRelease = "Unknown"
@@ -452,23 +497,6 @@ func main() {
 					}
 					relays(rpcClient, env, "")
 					return nil
-				},
-				Subcommands: []*ffcli.Command{
-					{
-						Name:       "check",
-						ShortUsage: "next relays check <filter>",
-						ShortHelp:  "List all or a subset of relays and see if they are ssh-able, what their ubuntu version is, and how many logical CPU cores they have.",
-						Exec: func(ctx context.Context, args []string) error {
-							filter := ""
-
-							if len(args) > 0 {
-								filter = args[0]
-							}
-
-							checkRelays(rpcClient, env, filter)
-							return nil
-						},
-					},
 				},
 			},
 			{
@@ -550,6 +578,21 @@ func main() {
 					return flag.ErrHelp
 				},
 				Subcommands: []*ffcli.Command{
+					{
+						Name:       "check",
+						ShortUsage: "next relay check [filter]",
+						ShortHelp:  "List all or a subset of relays and see diagnostic information. Refer to the README for more information",
+						Exec: func(ctx context.Context, args []string) error {
+							filter := ""
+
+							if len(args) > 0 {
+								filter = args[0]
+							}
+
+							checkRelays(rpcClient, env, filter)
+							return nil
+						},
+					},
 					{
 						Name:       "keys",
 						ShortUsage: "next relay keys <relay name>",
@@ -929,13 +972,18 @@ func main() {
 							jsonData := readJSONData("sellers", args)
 
 							// Unmarshal the JSON and create the Seller struct
-							var seller routing.Seller
-							if err := json.Unmarshal(jsonData, &seller); err != nil {
+							var s seller
+							if err := json.Unmarshal(jsonData, &s); err != nil {
 								log.Fatalf("Could not unmarshal seller: %v", err)
 							}
 
 							// Add the Seller to storage
-							addSeller(rpcClient, env, seller)
+							addSeller(rpcClient, env, routing.Seller{
+								ID:                s.Name,
+								Name:              s.Name,
+								IngressPriceCents: s.IngressPriceCents,
+								EgressPriceCents:  s.EgressPriceCents,
+							})
 							return nil
 						},
 						Subcommands: []*ffcli.Command{
@@ -944,8 +992,7 @@ func main() {
 								ShortUsage: "next seller add example",
 								ShortHelp:  "Displays an example seller for the correct JSON schema",
 								Exec: func(_ context.Context, args []string) error {
-									example := routing.Seller{
-										ID:   "5tCm7KjOw3EBYojLe6PC",
+									example := seller{
 										Name: "amazon",
 									}
 

@@ -117,7 +117,7 @@ func TestRelayRequestMarshalJSON(t *testing.T) {
 	expected := transport.RelayRequest{
 		Address: *addr,
 		PingStats: []transport.RelayPingStats{
-			transport.RelayPingStats{
+			{
 				ID:         1,
 				Address:    statIps[0],
 				RTT:        1,
@@ -125,7 +125,7 @@ func TestRelayRequestMarshalJSON(t *testing.T) {
 				PacketLoss: 3,
 			},
 
-			transport.RelayPingStats{
+			{
 				ID:         2,
 				Address:    statIps[1],
 				RTT:        4,
@@ -133,7 +133,7 @@ func TestRelayRequestMarshalJSON(t *testing.T) {
 				PacketLoss: 6,
 			},
 
-			transport.RelayPingStats{
+			{
 				ID:         3,
 				Address:    statIps[2],
 				RTT:        7,
@@ -141,7 +141,7 @@ func TestRelayRequestMarshalJSON(t *testing.T) {
 				PacketLoss: 9,
 			},
 
-			transport.RelayPingStats{
+			{
 				ID:         4,
 				Address:    statIps[3],
 				RTT:        10,
@@ -887,7 +887,7 @@ func TestRelayUpdateResponseMarshalJSON(t *testing.T) {
 	assert.NoError(t, err)
 
 	relaysToPing := []routing.LegacyPingData{
-		routing.LegacyPingData{
+		{
 			RelayPingData: routing.RelayPingData{
 				ID:      crypto.HashID(addr),
 				Address: addr,
@@ -921,7 +921,7 @@ func TestRelayUpdateResponseMarshalBinary(t *testing.T) {
 
 	expected := transport.RelayUpdateResponse{
 		RelaysToPing: []routing.LegacyPingData{
-			routing.LegacyPingData{
+			{
 				RelayPingData: routing.RelayPingData{
 					ID:      crypto.HashID(addr),
 					Address: addr,

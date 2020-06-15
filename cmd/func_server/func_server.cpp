@@ -98,7 +98,7 @@ int main()
 
     next_server_t * server = NULL;
 
-    server = next_server_create( NULL, "127.0.0.1:32202", "0.0.0.0:32202", "local", server_packet_received );
+    server = next_server_create( NULL, "127.0.0.1:32202", "0.0.0.0:32202", "local", server_packet_received, NULL );
     if ( server == NULL )
         return 1;
 

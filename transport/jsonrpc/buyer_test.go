@@ -534,15 +534,6 @@ func TestGameConfiguration(t *testing.T) {
 		assert.Equal(t, reply.GameConfiguration.PublicKey, "AAAAAA==")
 	})
 
-	t.Run("update public key", func(t *testing.T) {
-		var reply jsonrpc.GameConfigurationReply
-		err := svc.UpdateGameConfiguration(req, &jsonrpc.GameConfigurationArgs{Domain: "local.com", Name: "local.local.1", NewPublicKey: "iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAYA"}, &reply)
-
-		assert.NoError(t, err)
-
-		assert.Equal(t, "iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAYA", reply.GameConfiguration.PublicKey)
-	})
-
 	t.Run("failed to update public key", func(t *testing.T) {
 		var reply jsonrpc.GameConfigurationReply
 		err := svc.UpdateGameConfiguration(req, &jsonrpc.GameConfigurationArgs{Domain: "local.com", Name: "local.local.1", NewPublicKey: "askjfgbdalksjdf balkjsdbf lkja flfakjs bdlkafs"}, &reply)

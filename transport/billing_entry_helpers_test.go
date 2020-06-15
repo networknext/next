@@ -41,18 +41,18 @@ func TestBuildRouteRequest(t *testing.T) {
 		ServerRoutePublicKey: TestBuyersServerPublicKey[:],
 		Tag:                  14,
 		NearRelays: []*billing.NearRelay{
-			&billing.NearRelay{
+			{
 				RelayID:    transport.NewEntityID("Relay", 100),
 				RTT:        1,
 				Jitter:     2,
 				PacketLoss: 3,
 			},
-			&billing.NearRelay{
+			{
 				RelayID:    transport.NewEntityID("Relay", 200),
 				RTT:        4,
 				Jitter:     5,
 				PacketLoss: 6,
-			}, &billing.NearRelay{
+			}, {
 				RelayID:    transport.NewEntityID("Relay", 300),
 				RTT:        7,
 				Jitter:     8,
@@ -60,7 +60,7 @@ func TestBuildRouteRequest(t *testing.T) {
 			},
 		},
 		IssuedNearRelays: []*billing.IssuedNearRelay{
-			&billing.IssuedNearRelay{
+			{
 				Index:   0,
 				RelayID: transport.NewEntityID("Relay", 100),
 				RelayIpAddress: transport.NewBillingAddress(net.UDPAddr{
@@ -68,7 +68,7 @@ func TestBuildRouteRequest(t *testing.T) {
 					Port: 1000,
 				}),
 			},
-			&billing.IssuedNearRelay{
+			{
 				Index:   1,
 				RelayID: transport.NewEntityID("Relay", 200),
 				RelayIpAddress: transport.NewBillingAddress(net.UDPAddr{
@@ -76,7 +76,7 @@ func TestBuildRouteRequest(t *testing.T) {
 					Port: 2000,
 				}),
 			},
-			&billing.IssuedNearRelay{
+			{
 				Index:   2,
 				RelayID: transport.NewEntityID("Relay", 300),
 				RelayIpAddress: transport.NewBillingAddress(net.UDPAddr{
@@ -189,7 +189,7 @@ func TestBuildRouteRequest(t *testing.T) {
 	}
 
 	clientRelays := []routing.Relay{
-		routing.Relay{
+		{
 			ID: 100,
 			Addr: net.UDPAddr{
 				IP:   net.ParseIP("127.0.0.1"),
@@ -198,7 +198,7 @@ func TestBuildRouteRequest(t *testing.T) {
 			Seller:     seller,
 			Datacenter: datacenter,
 		},
-		routing.Relay{
+		{
 			ID: 200,
 			Addr: net.UDPAddr{
 				IP:   net.ParseIP("127.0.0.2"),
@@ -207,7 +207,7 @@ func TestBuildRouteRequest(t *testing.T) {
 			Seller:     seller,
 			Datacenter: datacenter,
 		},
-		routing.Relay{
+		{
 			ID: 300,
 			Addr: net.UDPAddr{
 				IP:   net.ParseIP("127.0.0.3"),

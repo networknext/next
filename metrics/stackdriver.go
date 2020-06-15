@@ -113,7 +113,7 @@ func (handler *StackDriverHandler) WriteLoop(ctx context.Context, logger log.Log
 					},
 					Resource: handler.getMonitoredResource(),
 					Points: []*monitoringpb.Point{
-						&monitoringpb.Point{
+						{
 							Interval: &monitoringpb.TimeInterval{
 								EndTime: &googlepb.Timestamp{
 									Seconds: time.Now().Unix(),
@@ -141,7 +141,7 @@ func (handler *StackDriverHandler) WriteLoop(ctx context.Context, logger log.Log
 					},
 					Resource: handler.getMonitoredResource(),
 					Points: []*monitoringpb.Point{
-						&monitoringpb.Point{
+						{
 							Interval: &monitoringpb.TimeInterval{
 								EndTime: &googlepb.Timestamp{
 									Seconds: time.Now().Unix(),
@@ -174,7 +174,7 @@ func (handler *StackDriverHandler) WriteLoop(ctx context.Context, logger log.Log
 					},
 					Resource: handler.getMonitoredResource(),
 					Points: []*monitoringpb.Point{
-						&monitoringpb.Point{
+						{
 							Interval: &monitoringpb.TimeInterval{
 								EndTime: &googlepb.Timestamp{
 									Seconds: time.Now().Unix(),
