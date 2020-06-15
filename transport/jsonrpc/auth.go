@@ -65,16 +65,16 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 	var accountList *management.UserList
 
 	if VerifyRoles(r, AdminRole) != nil && VerifyRoles(r, OwnerRole) != nil {
-		err = fmt.Errorf("AllAccounts() CheckRoles error: %v", ErrInsufficientPrivileges)
+		err := fmt.Errorf("AllAccounts() CheckRoles error: %v", ErrInsufficientPrivileges)
 		return err
 	}
 
-	accountList, err = s.Auth0.Manager.User.List()
+	accountList, err := s.Auth0.Manager.User.List()
 
 	reply.UserAccounts = make([]account, 0)
 
 	if err != nil {
-		err = fmt.Errorf("AllAcounts() failed to fetch user list: %v", err)
+		err := fmt.Errorf("AllAcounts() failed to fetch user list: %v", err)
 		s.Logger.Log("err", err)
 		return err
 	}
@@ -200,99 +200,29 @@ func (s *AuthService) DeleteUserAccount(r *http.Request, args *AccountArgs, repl
 	return nil
 }
 
-func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply *AccountsReply) error {
+func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, reply *AccountsReply) error {
 	var adminString string = "Admin"
 	var accounts []account
-	var roles []*management.Role
 
-	if VerifyRoles(r, OwnerRole) != nil && VerifyRoles(r, AdminRole) != nil {
+	if VerifyRoles(req, OwnerRole) != nil && VerifyRoles(req, AdminRole) != nil {
 		err := fmt.Errorf("UserAccount(): %v", ErrInsufficientPrivileges)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	if len(args.Roles) == 0 {
+		err := fmt.Errorf("UserAccount(): roles are required")
 		s.Logger.Log("err", err)
 		return err
 	}
 
 	// Check if non admin is assigning admin role
 	for _, r := range args.Roles {
-		if r.Name == &adminString && VerifyRoles(r, AdminRole) != nil {
+		if r.Name == &adminString && VerifyRoles(req, AdminRole) != nil {
 			err := fmt.Errorf("AddUserAccount() insufficient privileges")
 			s.Logger.Log("err", err)
 			return err
 		}
-	}
-
-	// Check if onboarding
-	emailParts := strings.Split(args.Emails[0], "@")
-	if len(emailParts) <= 0 {
-		err := fmt.Errorf("AddUserAccount() failed to parse email %s for domain", args.Emails[0])
-		s.Logger.Log("err", err)
-		return err
-	}
-	domain := emailParts[len(emailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
-
-	// Check if any other users in company exist
-	accountList, err := s.Auth0.Manager.User.List()
-
-	if err != nil {
-		err := fmt.Errorf("AddUserAccount() failed to fetch user accounts")
-		s.Logger.Log("err", err)
-		return err
-	}
-
-	found := false
-	for _, u := range accountList.Users {
-		userEmailParts := strings.Split(*u.Email, "@")
-		if len(userEmailParts) <= 0 {
-			err := fmt.Errorf("AddUserAccount() failed to parse email %s for domain", *u.Email)
-			s.Logger.Log("err", err)
-			return err
-		}
-		userDomain := userEmailParts[len(userEmailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
-		if found {
-			continue
-		}
-		if domain == userDomain {
-			found = true
-		}
-	}
-
-	roleNames := []string{
-		"rol_ScQpWhLvmTKRlqLU",
-		"rol_8r0281hf2oC4cvrD",
-	}
-	roleTypes := []string{
-		"Viewer",
-		"Owner",
-	}
-	roleDescriptions := []string{
-		"Can see current sessions and the map.",
-		"Can access and manage everything in an account.",
-	}
-
-	if !found {
-		// Onboard signup
-		roles = []*management.Role{
-			{
-				ID:          &roleNames[0],
-				Name:        &roleTypes[0],
-				Description: &roleDescriptions[0],
-			},
-			{
-				ID:          &roleNames[1],
-				Name:        &roleTypes[1],
-				Description: &roleDescriptions[1],
-			},
-		}
-	} else if found && len(args.Roles) == 0 {
-		// Not an onboard signup
-		roles = []*management.Role{
-			{
-				ID:          &roleNames[0],
-				Name:        &roleTypes[0],
-				Description: &roleDescriptions[0],
-			},
-		}
-	} else {
-		roles = args.Roles
 	}
 
 	connectionID := "Username-Password-Authentication"
@@ -336,13 +266,13 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 			return err
 		}
 
-		if err = s.Auth0.Manager.User.AssignRoles(*newUser.ID, roles...); err != nil {
+		if err = s.Auth0.Manager.User.AssignRoles(*newUser.ID, args.Roles...); err != nil {
 			err := fmt.Errorf("AddUserAccount() failed to add user roles: %w", err)
 			s.Logger.Log("err", err)
 			return err
 		}
 
-		accounts = append(accounts, newAccount(newUser, roles, buyer))
+		accounts = append(accounts, newAccount(newUser, args.Roles, buyer))
 	}
 	reply.UserAccounts = accounts
 	return nil
@@ -403,25 +333,10 @@ type RolesReply struct {
 
 func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesReply) error {
 	reply.Roles = make([]*management.Role, 0)
-	if IsAnonymous(r) {
-		err := fmt.Errorf("AllRoles() insufficient privileges")
+
+	if VerifyRoles(r, OwnerRole) != nil && VerifyRoles(r, AdminRole) != nil {
+		err := fmt.Errorf("UserAccount(): %v", ErrInsufficientPrivileges)
 		s.Logger.Log("err", err)
-		return err
-	}
-	isAdmin, err := CheckRoles(r, "Admin")
-	if err != nil {
-		err = fmt.Errorf("AllAccounts() CheckRoles error: %v", err)
-		return err
-	}
-
-	isOwner, err := CheckRoles(r, "Owner")
-	if err != nil {
-		err = fmt.Errorf("AllAccounts() CheckRoles error: %v", err)
-		return err
-	}
-
-	if !isAdmin && !isOwner {
-		err = fmt.Errorf("AllAccounts() CheckRoles error: %v", ErrInsufficientPrivileges)
 		return err
 	}
 
@@ -432,7 +347,7 @@ func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesRep
 		return err
 	}
 
-	if !isAdmin {
+	if VerifyRoles(r, AdminRole) != nil {
 		for _, role := range roleList.Roles {
 			if *role.Name != "Admin" {
 				reply.Roles = append(reply.Roles, role)
@@ -446,26 +361,9 @@ func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesRep
 }
 
 func (s *AuthService) UserRoles(r *http.Request, args *RolesArgs, reply *RolesReply) error {
-	if IsAnonymous(r) || IsAnonymousPlus(r) {
-		err := fmt.Errorf("UserRoles() insufficient privileges")
+	if VerifyRoles(r, OwnerRole) != nil && VerifyRoles(r, AdminRole) != nil {
+		err := fmt.Errorf("UserAccount(): %v", ErrInsufficientPrivileges)
 		s.Logger.Log("err", err)
-		return err
-	}
-
-	isAdmin, err := CheckRoles(r, "Admin")
-	if err != nil {
-		err = fmt.Errorf("AllAccounts() CheckRoles error: %v", err)
-		return err
-	}
-
-	isOwner, err := CheckRoles(r, "Owner")
-	if err != nil {
-		err = fmt.Errorf("AllAccounts() CheckRoles error: %v", err)
-		return err
-	}
-
-	if !isAdmin && !isOwner {
-		err = fmt.Errorf("AllAccounts() CheckRoles error: %v", ErrInsufficientPrivileges)
 		return err
 	}
 
@@ -490,26 +388,9 @@ func (s *AuthService) UserRoles(r *http.Request, args *RolesArgs, reply *RolesRe
 
 func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *RolesReply) error {
 	var err error
-	if IsAnonymous(r) || IsAnonymousPlus(r) {
-		err := fmt.Errorf("UpdateUserRoles() insufficient privileges")
+	if VerifyRoles(r, OwnerRole) != nil && VerifyRoles(r, AdminRole) != nil {
+		err := fmt.Errorf("UserAccount(): %v", ErrInsufficientPrivileges)
 		s.Logger.Log("err", err)
-		return err
-	}
-
-	isAdmin, err := CheckRoles(r, "Admin")
-	if err != nil {
-		err = fmt.Errorf("AllAccounts() CheckRoles error: %v", err)
-		return err
-	}
-
-	isOwner, err := CheckRoles(r, "Owner")
-	if err != nil {
-		err = fmt.Errorf("AllAccounts() CheckRoles error: %v", err)
-		return err
-	}
-
-	if !isAdmin && !isOwner {
-		err = fmt.Errorf("AllAccounts() CheckRoles error: %v", ErrInsufficientPrivileges)
 		return err
 	}
 
@@ -604,19 +485,7 @@ type UpgradeReply struct {
 }
 
 func (s *AuthService) UpgradeAccount(r *http.Request, args *UpgradeArgs, reply *UpgradeReply) error {
-	isAdmin, err := CheckRoles(r, "Admin")
-	if err != nil {
-		err = fmt.Errorf("AllAccounts() CheckRoles error: %v", err)
-		return err
-	}
-
-	isOwner, err := CheckRoles(r, "Owner")
-	if err != nil {
-		err = fmt.Errorf("AllAccounts() CheckRoles error: %v", err)
-		return err
-	}
-
-	if isAdmin || isOwner {
+	if VerifyRoles(r, AdminRole) == nil || VerifyRoles(r, OwnerRole) == nil {
 		return nil
 	}
 	var companyUsers []*management.User
@@ -728,8 +597,8 @@ type VerifyEmailReply struct {
 func (s *AuthService) ResendVerificationEmail(r *http.Request, args *VerifyEmailArgs, reply *VerifyEmailReply) error {
 	reply.Sent = false
 
-	if !IsAnonymousPlus(r) {
-		err := fmt.Errorf("VerifyEmailUrl() failed to creating verification email link: %s", ErrInsufficientPrivileges)
+	if VerifyRoles(r, UnverifiedRole) != nil {
+		err := fmt.Errorf("VerifyEmailUrl() failed to creating verification email link: %v", ErrInsufficientPrivileges)
 		s.Logger.Log("err", err)
 		return err
 	}
@@ -831,39 +700,6 @@ func getPemCert(token *jwt.Token) (string, error) {
 	return cert, nil
 }
 
-func CheckIsOps(r *http.Request) bool {
-	user := r.Context().Value("user")
-
-	if user != nil {
-		claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
-
-		if _, ok := claims["scope"]; ok {
-			return true
-		}
-	}
-	return false
-}
-
-func CheckRoles(r *http.Request, requiredRole string) (bool, error) {
-	requestRoles := r.Context().Value(rolesKey)
-
-	if requestRoles == nil {
-		return false, fmt.Errorf("failed to get roles from context")
-	}
-
-	found := false
-
-	for _, role := range requestRoles.(management.RoleList).Roles {
-		if found {
-			continue
-		}
-		if *role.Name == requiredRole {
-			found = true
-		}
-	}
-	return found, nil
-}
-
 func SetIsAnonymous(r *http.Request, value bool) *http.Request {
 	ctx := r.Context()
 	ctx = context.WithValue(ctx, anonymousCallKey, value)
@@ -873,20 +709,6 @@ func SetIsAnonymous(r *http.Request, value bool) *http.Request {
 func IsAnonymous(r *http.Request) bool {
 	anon, ok := r.Context().Value(anonymousCallKey).(bool)
 	return ok && anon
-}
-
-func IsAnonymousPlus(r *http.Request) bool {
-	user := r.Context().Value("user")
-
-	if user == nil {
-		return false
-	}
-	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
-
-	if verified, ok := claims["email_verified"]; ok && !verified.(bool) {
-		return true
-	}
-	return false
 }
 
 func SetRoles(r *http.Request, roles management.RoleList) *http.Request {
