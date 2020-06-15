@@ -3,22 +3,31 @@ package jsonrpc
 import (
 	"context"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	fnv "hash/fnv"
 	"net/http"
 	"sort"
 	"strconv"
 	"strings"
-	"time"
+	"sync"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 )
 
+const (
+	TopSessionsSize = 1000
+)
+
 type BuyersService struct {
+	mu             sync.Mutex
+	mapPointsCache json.RawMessage
+
 	RedisClient redis.Cmdable
 	Storage     storage.Storer
 	Logger      log.Logger
@@ -45,6 +54,8 @@ type UserSessionsReply struct {
 }
 
 func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, reply *UserSessionsReply) error {
+	userhash := args.UserHash
+
 	var sessionIDs []string
 
 	var isAdmin bool = false
@@ -55,7 +66,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 
 	reply.Sessions = make([]routing.SessionMeta, 0)
 
-	err := s.RedisClient.SMembers(fmt.Sprintf("user-%s-sessions", args.UserHash)).ScanSlice(&sessionIDs)
+	err := s.RedisClient.SMembers(fmt.Sprintf("user-%s-sessions", userhash)).ScanSlice(&sessionIDs)
 	if err != nil {
 		err = fmt.Errorf("UserSessions() failed getting user sessions: %v", err)
 		s.Logger.Log("err", err)
@@ -64,7 +75,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 
 	if len(sessionIDs) == 0 {
 		hash := fnv.New64a()
-		_, err := hash.Write([]byte(args.UserHash))
+		_, err := hash.Write([]byte(userhash))
 		if err != nil {
 			err = fmt.Errorf("UserSessions() error writing 64a hash: %v", err)
 			s.Logger.Log("err", err)
@@ -98,18 +109,17 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		}
 	}
 
-	exptx := s.RedisClient.TxPipeline()
+	sremtx := s.RedisClient.TxPipeline()
 	{
 		var meta routing.SessionMeta
 		for _, cmd := range getCmds {
 			err = cmd.Scan(&meta)
 			if err != nil {
-				// If we get here then there is a session in the top lists
-				// but has missing meta information so we set an empty meta
-				// key to expire in 5 seconds for the main cleanup routine
-				// to clear the reference in the top lists
 				args := cmd.Args()
-				exptx.Set(args[1].(string), "", 5*time.Second)
+				key := args[1].(string)
+				keyparts := strings.Split(key, "-")
+
+				sremtx.SRem(fmt.Sprintf("user-%s-sessions", userhash), keyparts[1])
 				continue
 			}
 
@@ -122,7 +132,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 				}
 
 				if !isAdmin {
-					isSameBuyer, err = s.IsSameBuyer(r, meta.CustomerID)
+					isSameBuyer, err = s.IsSameBuyer(r, meta.BuyerID)
 					if err != nil {
 						err = fmt.Errorf("UserSessions() IsSameBuyer error: %v", err)
 						s.Logger.Log("err", err)
@@ -140,12 +150,15 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 			reply.Sessions = append(reply.Sessions, meta)
 		}
 	}
-	_, err = exptx.Exec()
+
+	sremcmds, err := sremtx.Exec()
 	if err != nil && err != redis.Nil {
 		err = fmt.Errorf("UserSessions() redit.Pipeliner error: %v", err)
 		s.Logger.Log("err", err)
 		return err
 	}
+
+	level.Info(s.Logger).Log("key", "user-*-sessions", "removed", len(sremcmds))
 
 	sort.Slice(reply.Sessions, func(i int, j int) bool {
 		return reply.Sessions[i].ID < reply.Sessions[j].ID
@@ -188,6 +201,7 @@ type TopSessionsReply struct {
 	Sessions []routing.SessionMeta `json:"sessions"`
 }
 
+// TopSessions generates the top sessions sorted by improved RTT
 func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, reply *TopSessionsReply) error {
 	var err error
 	var result []redis.Z
@@ -222,9 +236,10 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 
 	reply.Sessions = make([]routing.SessionMeta, 0)
 
+	// get the top session IDs globally or for a buyer from the sorted set
 	switch args.BuyerID {
 	case "":
-		result, err = s.RedisClient.ZRangeWithScores("top-global", 0, 1000).Result()
+		result, err = s.RedisClient.ZRangeWithScores("top-global", 0, TopSessionsSize*2).Result()
 		if err != nil {
 			err = fmt.Errorf("TopSessions() failed getting top global sessions: %v", err)
 			s.Logger.Log("err", err)
@@ -236,7 +251,7 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 			s.Logger.Log("err", err)
 			return err
 		}
-		result, err = s.RedisClient.ZRangeWithScores(fmt.Sprintf("top-buyer-%s", args.BuyerID), 0, 1000).Result()
+		result, err = s.RedisClient.ZRangeWithScores(fmt.Sprintf("top-buyer-%s", args.BuyerID), 0, TopSessionsSize*2).Result()
 		if err != nil {
 			err = fmt.Errorf("TopSessions() failed getting top buyer sessions: %v", err)
 			s.Logger.Log("err", err)
@@ -244,6 +259,7 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 		}
 	}
 
+	// build a single transaction to get the sessions details for the session IDs
 	var getCmds []*redis.StringCmd
 	{
 		gettx := s.RedisClient.TxPipeline()
@@ -258,18 +274,29 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 		}
 	}
 
-	exptx := s.RedisClient.TxPipeline()
+	buyers := s.Storage.Buyers()
+
+	// build a single transaction to remove any session ID from the sorted set if the
+	// session-*-meta key is missing or expired
+	zremtx := s.RedisClient.TxPipeline()
 	{
 		var meta routing.SessionMeta
 		for _, cmd := range getCmds {
+			// scan the data from Redis into its SessionMeta struct
 			err = cmd.Scan(&meta)
+
+			// if there was an error then the session-*-point key expired
+			// so add ZREM commands to remove it from the key sets globally
+			// and for each buyer
 			if err != nil {
-				// If we get here then there is a session in the top lists
-				// but has missing meta information so we set an empty meta
-				// key to expire in 5 seconds for the main cleanup routine
-				// to clear the reference in the top lists
 				args := cmd.Args()
-				exptx.Set(args[1].(string), "", 5*time.Second)
+				key := args[1].(string)
+				keyparts := strings.Split(key, "-")
+
+				zremtx.ZRem("top-global", keyparts[1])
+				for _, buyer := range buyers {
+					zremtx.ZRem(fmt.Sprintf("top-buyer-%016x", buyer.ID), keyparts[1])
+				}
 				continue
 			}
 
@@ -280,13 +307,18 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 			reply.Sessions = append(reply.Sessions, meta)
 		}
 	}
-	_, err = exptx.Exec()
+
+	// execute the transaction to remove the sessions IDs from the sorted key sets
+	zremcmds, err := zremtx.Exec()
 	if err != nil && err != redis.Nil {
 		err = fmt.Errorf("TopSessions() redit.Pipeliner error: %v", err)
 		s.Logger.Log("err", err)
 		return err
 	}
 
+	level.Info(s.Logger).Log("key", "top-global", "key", "top-buyer-*", "removed", len(zremcmds))
+
+	// sort the sessions
 	sort.Slice(reply.Sessions, func(i int, j int) bool {
 		// if comparing NN to Direct
 		if reply.Sessions[i].OnNetworkNext && !reply.Sessions[j].OnNetworkNext {
@@ -299,6 +331,11 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 		// if comparing Direct to NN or Direct to Direct
 		return false
 	})
+
+	// crop the list to TopSessionsSize if needed
+	if len(reply.Sessions) > TopSessionsSize {
+		reply.Sessions = reply.Sessions[:TopSessionsSize]
+	}
 
 	return nil
 }
@@ -332,7 +369,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 	}
 
 	if !isAdmin && !isOps {
-		isSameBuyer, err = s.IsSameBuyer(r, reply.Meta.CustomerID)
+		isSameBuyer, err = s.IsSameBuyer(r, reply.Meta.BuyerID)
 		if err != nil {
 			err = fmt.Errorf("SessionDetails() IsSameBuyer error: %v", err)
 			s.Logger.Log("err", err)
@@ -392,62 +429,23 @@ type MapPointsArgs struct {
 }
 
 type MapPointsReply struct {
-	Points []routing.SessionMapPoint `json:"map_points"`
+	Points json.RawMessage `json:"map_points"`
 }
 
-func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, reply *MapPointsReply) error {
-	var err error
-	var sessionIDs []string
+// GenerateMapPoints warms a local cache of JSON to be used by SessionMapPoints
+func (s *BuyersService) GenerateMapPoints() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	var isAdmin bool = false
-	var isSameBuyer bool = false
-	var isAnon bool = true
-
-	isAnon = IsAnonymous(r) || IsAnonymousPlus(r)
-	if !isAnon {
-		isAdmin, err = CheckRoles(r, "Admin")
-		if err != nil {
-			err = fmt.Errorf("SessionMapPoints() CheckRoles error: %v", err)
-			s.Logger.Log("err", err)
-			return err
-		}
+	// get all the session IDs from the map-points-global key set
+	sessionIDs, err := s.RedisClient.SMembers("map-points-global").Result()
+	if err != nil {
+		err = fmt.Errorf("SessionMapPoints() failed getting global map points: %v", err)
+		s.Logger.Log("err", err)
+		return err
 	}
 
-	if !isAdmin {
-		isSameBuyer, err = s.IsSameBuyer(r, args.BuyerID)
-		if err != nil {
-			err = fmt.Errorf("SessionMapPoints() IsSameBuyer error: %v", err)
-			s.Logger.Log("err", err)
-			return err
-		}
-	} else {
-		isSameBuyer = true
-	}
-
-	reply.Points = make([]routing.SessionMapPoint, 0)
-
-	switch args.BuyerID {
-	case "":
-		sessionIDs, err = s.RedisClient.SMembers("map-points-global").Result()
-		if err != nil {
-			err = fmt.Errorf("SessionMapPoints() failed getting global map points: %v", err)
-			s.Logger.Log("err", err)
-			return err
-		}
-	default:
-		if !isSameBuyer && !isAdmin {
-			err = fmt.Errorf("SessionMapPoints() insufficient privileges")
-			s.Logger.Log("err", err)
-			return err
-		}
-		sessionIDs, err = s.RedisClient.SMembers(fmt.Sprintf("map-points-buyer-%s", args.BuyerID)).Result()
-		if err != nil {
-			err = fmt.Errorf("SessionMapPoints() failed getting buyer map points: %v", err)
-			s.Logger.Log("err", err)
-			return err
-		}
-	}
-
+	// build a single transaction of gets for each session ID
 	var getCmds []*redis.StringCmd
 	{
 		gettx := s.RedisClient.TxPipeline()
@@ -462,30 +460,58 @@ func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, r
 		}
 	}
 
-	exptx := s.RedisClient.TxPipeline()
+	// slice to hold all the final map points
+	mappoints := make([]routing.SessionMapPoint, 0)
+
+	// build a single transaction for any missing session-*-point keys to be
+	// removed from map-points-global, total-next, and total-direct key sets
+	sremtx := s.RedisClient.TxPipeline()
 	{
 		var point routing.SessionMapPoint
 		for _, cmd := range getCmds {
+			// scan the data from Redis into its SessionMapPoint struct
 			err = cmd.Scan(&point)
+
+			// if there was an error then the session-*-point key expired
+			// so add SREM commands to remove it from the key sets
 			if err != nil {
-				// If we get here then there is a point in the point map (map as in key -> val)
-				// but the actual point data is missing so we set an empty meta
-				// key to expire in 5 seconds for the main cleanup routine
-				// to clear the reference in the point map
-				args := cmd.Args()
-				exptx.Set(args[1].(string), "", 5*time.Second)
+				key := cmd.Args()[1].(string)
+				keyparts := strings.Split(key, "-")
+				sremtx.SRem("map-points-global", keyparts[1])
+				sremtx.SRem("total-next", keyparts[1])
+				sremtx.SRem("total-direct", keyparts[1])
 				continue
 			}
 
-			reply.Points = append(reply.Points, point)
+			// if there was no error then add the SessionMapPoint to the slice
+			mappoints = append(mappoints, point)
 		}
 	}
-	_, err = exptx.Exec()
-	if err != nil && err != redis.Nil {
-		err = fmt.Errorf("SessionMapPoints() redit.Pipeliner error: %v", err)
-		s.Logger.Log("err", err)
+
+	// execute the transaction to remove the sessions IDs from the key sets
+	sremcmds, err := sremtx.Exec()
+	if err != nil {
 		return err
 	}
+
+	level.Info(s.Logger).Log("key", "map-points-global", "removed", len(sremcmds))
+
+	// marshal the map points slice to local cache
+	s.mapPointsCache, err = json.Marshal(mappoints)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// SessionMapPoints returns the locally cached JSON from GenerateSessionMapPoints
+func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, reply *MapPointsReply) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// pull the local cache and reply with it
+	reply.Points = s.mapPointsCache
 
 	return nil
 }
@@ -681,5 +707,5 @@ func (s *BuyersService) IsSameBuyer(r *http.Request, buyerID string) (bool, erro
 		return false, err
 	}
 
-	return buyerID != strconv.FormatUint(buyer.ID, 10), nil
+	return buyerID != fmt.Sprintf("%016x", buyer.ID), nil
 }

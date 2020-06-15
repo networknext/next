@@ -24,7 +24,7 @@ type SessionMeta struct {
 	Connection    string   `json:"connection"`
 	NearbyRelays  []Relay  `json:"nearby_relays"`
 	Platform      string   `json:"platform"`
-	CustomerID    string   `json:"customer_id"`
+	BuyerID       string   `json:"customer_id"`
 }
 
 func (s *SessionMeta) UnmarshalBinary(data []byte) error {
@@ -37,7 +37,7 @@ func (s SessionMeta) MarshalBinary() ([]byte, error) {
 
 func (s *SessionMeta) Anonymise() {
 	s.ServerAddr = ObscureString(s.ServerAddr, ".", -1)
-	s.CustomerID = ""
+	s.BuyerID = ""
 	s.NearbyRelays = []Relay{}
 	s.Hops = []Relay{}
 }
