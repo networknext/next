@@ -21,6 +21,8 @@ import (
 )
 
 const (
+	MinimumUbuntuVersion = 18
+
 	// DisableRelayScript is the bash script used to disable relays
 	DisableRelayScript = `
 	if ! systemctl is-active --quiet relay; then
@@ -65,6 +67,8 @@ const (
 
 	echo 'Relay service started'
 	`
+
+	VersionCheckScript = `lsb_release -r | grep -Po "([0-9]{2}\.[0-9]{2})"`
 
 	CoreCheckScript = `
 		source /app/relay.env > /dev/null 2&>1
@@ -190,10 +194,27 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 	}
 
 	for _, relayName := range relayNames {
-		disableRelays(env, rpcClient, []string{relayName})
-
 		fmt.Printf("Updating %s\n", relayName)
 		info := getRelayInfo(rpcClient, relayName)
+
+		con := NewSSHConn(info.user, info.sshAddr, info.sshPort, env.SSHKeyFilePath)
+		out, err := con.IssueCmdAndGetOutput(VersionCheckScript + ` | awk 'BEGIN {FS="."}{print $1}'`)
+		if err != nil {
+			fmt.Printf("error when acquiring ubuntu version for relay '%s': %v\n", info.name, err)
+			continue
+		}
+
+		if val, err := strconv.ParseUint(out, 10, 32); err == nil {
+			if val < MinimumUbuntuVersion {
+				fmt.Printf("%s's ubuntu version is too low (%s), please upgrade to 18.04 or greater\n", info.name, out)
+				continue
+			}
+		} else {
+			fmt.Printf("error when parsing ubuntu version for relay '%s': version = '%s', error = %v\n", info.name, out, err)
+			continue
+		}
+
+		disableRelays(env, rpcClient, []string{info.name})
 
 		// Update the relay's state to offline in storage
 		updateRelayState(rpcClient, info, routing.RelayStateOffline)
@@ -462,7 +483,7 @@ func checkRelays(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 
 			// get ubuntu version
 			{
-				if out, err := con.IssueCmdAndGetOutput(`lsb_release -r | grep -Po "([0-9]{2}\.[0-9]{2})"`); err == nil {
+				if out, err := con.IssueCmdAndGetOutput(VersionCheckScript); err == nil {
 					infoIndx.UbuntuVersion = out
 				} else {
 					log.Printf("error when acquiring ubuntu version for relay %s: %v\n", r.Name, err)
@@ -483,7 +504,7 @@ func checkRelays(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 			// test ping ability
 			{
 				if backend, err := env.RelayBackendHostname(); err == nil {
-					if out, err := con.IssueCmdAndGetOutput("ping -c 1 " + backend + " > /dev/null; echo $?"); err == nil {
+					if out, err := con.IssueCmdAndGetOutput("ping -c 20 " + backend + " > /dev/null; echo $?"); err == nil {
 						if out == "0" {
 							infoIndx.CanPingBackend = "yes"
 						} else {

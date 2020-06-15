@@ -564,7 +564,7 @@ build-next: ## builds the operator tool
 	@printf "Building operator tool... "
 	@$(GO) build -o ./dist/next ./cmd/next/*.go
 	@printf "done\n"
-	
+
 .PHONY: build-all
 build-all: build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-sdk-test build-soak-test build-next ## builds everything
 
