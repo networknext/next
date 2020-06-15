@@ -47,6 +47,16 @@ func main() {
 	// Configure logging
 	logger := log.NewLogfmtLogger(os.Stdout)
 	relayslogger := log.NewLogfmtLogger(os.Stdout)
+	if projectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
+		loggingClient, err := gcplogging.NewClient(ctx, projectID)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			os.Exit(1)
+		}
+
+		logger = logging.NewStackdriverLogger(loggingClient, "relay-backend")
+		relayslogger = logging.NewStackdriverLogger(loggingClient, "relays")
+	}
 	{
 		switch os.Getenv("BACKEND_LOG_LEVEL") {
 		case "none":
@@ -80,16 +90,6 @@ func main() {
 			relayslogger = level.NewFilter(relayslogger, level.AllowWarn())
 		}
 		relayslogger = log.With(relayslogger, "ts", log.DefaultTimestampUTC)
-	}
-	if projectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
-		loggingClient, err := gcplogging.NewClient(ctx, projectID)
-		if err != nil {
-			level.Error(logger).Log("err", err)
-			os.Exit(1)
-		}
-
-		logger = logging.NewStackdriverLogger(loggingClient, "relay-backend")
-		relayslogger = logging.NewStackdriverLogger(loggingClient, "relays")
 	}
 
 	sentryOpts := sentry.ClientOptions{
