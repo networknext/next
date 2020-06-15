@@ -25,8 +25,9 @@ const (
 )
 
 type BuyersService struct {
-	mu             sync.Mutex
-	mapPointsCache json.RawMessage
+	mu                    sync.Mutex
+	mapPointsCache        json.RawMessage
+	mapPointsCompactCache json.RawMessage
 
 	RedisClient redis.Cmdable
 	Storage     storage.Storer
@@ -462,6 +463,7 @@ func (s *BuyersService) GenerateMapPoints() error {
 
 	// slice to hold all the final map points
 	mappoints := make([]routing.SessionMapPoint, 0)
+	mappointscompact := make([][]interface{}, 0)
 
 	// build a single transaction for any missing session-*-point keys to be
 	// removed from map-points-global, total-next, and total-direct key sets
@@ -485,6 +487,11 @@ func (s *BuyersService) GenerateMapPoints() error {
 
 			// if there was no error then add the SessionMapPoint to the slice
 			mappoints = append(mappoints, point)
+			var onNN uint
+			if point.OnNetworkNext {
+				onNN = 1
+			}
+			mappointscompact = append(mappointscompact, []interface{}{point.Longitude, point.Latitude, onNN})
 		}
 	}
 
@@ -498,6 +505,11 @@ func (s *BuyersService) GenerateMapPoints() error {
 
 	// marshal the map points slice to local cache
 	s.mapPointsCache, err = json.Marshal(mappoints)
+	if err != nil {
+		return err
+	}
+
+	s.mapPointsCompactCache, err = json.Marshal(mappointscompact)
 	if err != nil {
 		return err
 	}
