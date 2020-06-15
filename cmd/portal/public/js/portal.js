@@ -1229,14 +1229,14 @@ function generateCharts(data) {
 		series: [
 			{},
 			{
-				stroke: "blue",
-				fill: "rgba(0,0,255,0.1)",
+				stroke: "rgb(0, 109, 44)",
+				fill: "rgba(0, 109, 44, 0.1)",
 				label: "Network Next",
 				value: (self, rawValue) => rawValue.toFixed(2)
 			},
 			{
-				stroke: "red",
-				fill: "rgba(255,0,0,0.1)",
+				stroke: "rgb(49, 130, 189)",
+				fill: "rgba(49, 130, 189, 0.1)",
 				label: "Direct",
 				value: (self, rawValue) => rawValue.toFixed(2)
 			},
@@ -1264,14 +1264,14 @@ function generateCharts(data) {
 		series: [
 			{},
 			{
-				stroke: "blue",
-				fill: "rgba(0,0,255,0.1)",
+				stroke: "rgb(0, 109, 44)",
+				fill: "rgba(0, 109, 44, 0.1)",
 				label: "Network Next",
 				value: (self, rawValue) => rawValue.toFixed(2)
 			},
 			{
-				stroke: "red",
-				fill: "rgba(255,0,0,0.1)",
+				stroke: "rgba(49, 130, 189)",
+				fill: "rgba(49, 130, 189, 0.1)",
 				label: "Direct",
 				value: (self, rawValue) => rawValue.toFixed(2)
 			},
