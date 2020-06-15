@@ -154,11 +154,31 @@ MapHandler = {
 		});
 
 		this.refreshMapSessions();
-		setInterval(() => {
+		this.mapLoop = setTimeout(() => {
 			this.refreshMapSessions();
 		}, 10000);
 	},
 	updateFilter(filter) {
+		this.mapCountLoop !== null ? clearInterval(this.sessionLoop) : null;
+		this.mapCountLoop = setTimeout(() => {
+			JSONRPCClient
+				.call('BuyersService.TotalSessions', {buyer_id: filter.buyerId || ""})
+				.then((response) => {
+					let direct = response.direct
+					let next = response.next
+
+					Object.assign(rootComponent.$data, {
+						direct: direct,
+						mapSessions: direct + next,
+						onNN: next,
+					});
+				})
+				.catch((error) => {
+					console.log("Something went wrong fetching map point totals");
+					console.log(error);
+					Sentry.captureException(error);
+				});
+		}, 10000);
 		Object.assign(rootComponent.$data.pages.map, {filter: filter});
 	},
 	updateMap(mapType) {
@@ -179,23 +199,6 @@ MapHandler = {
 	},
 	refreshMapSessions() {
 		let filter = rootComponent.$data.pages.map.filter;
-		JSONRPCClient
-			.call('BuyersService.TotalSessions', {buyer_id: filter.buyerId || ""})
-			.then((response) => {
-				let direct = response.direct
-				let next = response.next
-
-				Object.assign(rootComponent.$data, {
-					direct: direct,
-					mapSessions: direct + next,
-					onNN: next,
-				});
-			})
-			.catch((error) => {
-				console.log("Something went wrong fetching map point totals");
-				console.log(error);
-				Sentry.captureException(error);
-			})
 
 		JSONRPCClient
 			.call('BuyersService.SessionMap', {buyer_id: filter.buyerId || ""})
@@ -335,6 +338,8 @@ UserHandler = {
 }
 
 WorkspaceHandler = {
+	mapCountLoop: null,
+	mapLoop: null,
 	sessionLoop: null,
 	welcomeTimeout: null,
 	changeSettingsPage(page) {
@@ -356,6 +361,7 @@ WorkspaceHandler = {
 	changePage(page, options) {
 		// Clear all polling loops
 		this.sessionLoop ? clearInterval(this.sessionLoop) : null;
+		this.mapLoop ? clearInterval(this.mapLoop) : null;
 
 		switch (page) {
 			case 'downloads':
