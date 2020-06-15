@@ -48,7 +48,7 @@ func TestBuyersList(t *testing.T) {
 		err := svc.Buyers(req, &jsonrpc.BuyerListArgs{}, &reply)
 		assert.NoError(t, err)
 
-		assert.Equal(t, "1", reply.Buyers[0].ID)
+		assert.Equal(t, "0000000000000001", reply.Buyers[0].ID)
 		assert.Equal(t, "local.local.1", reply.Buyers[0].Name)
 	})
 }

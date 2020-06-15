@@ -8,7 +8,6 @@ import (
 	fnv "hash/fnv"
 	"net/http"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -665,7 +664,7 @@ func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *Buye
 	}
 
 	for _, b := range s.Storage.Buyers() {
-		id := strconv.FormatUint(b.ID, 10)
+		id := fmt.Sprintf("%016x", b.ID)
 		account := buyerAccount{
 			ID:   id,
 			Name: b.Name,
