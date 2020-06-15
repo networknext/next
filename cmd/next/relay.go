@@ -76,7 +76,7 @@ const (
 		fi
 	`
 
-	PortCheckScript = `echo "$(sudo lsof -i -P -n | grep '*:40000' | tr -s ' ' | cut -d ' ' -f 1 | head -1)"`
+	PortCheckScript = `echo "$(sudo lsof -i -P -n 2>/dev/null | grep '*:40000' | tr -s ' ' | cut -d ' ' -f 1 | head -1)"`
 )
 
 type relayInfo struct {
@@ -466,7 +466,7 @@ func checkRelays(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 					infoIndx.UbuntuVersion = out
 				} else {
 					log.Printf("error when acquiring ubuntu version for relay %s: %v\n", r.Name, err)
-					infoIndx.UbuntuVersion = "SSH Error"
+					infoIndx.UbuntuVersion = "Error"
 				}
 			}
 
@@ -476,7 +476,7 @@ func checkRelays(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 					infoIndx.CPUCores = out
 				} else {
 					log.Printf("error when acquiring number of logical cpu cores for relay %s: %v\n", r.Name, err)
-					infoIndx.CPUCores = "SSH Error"
+					infoIndx.CPUCores = "Error"
 				}
 			}
 
@@ -491,7 +491,7 @@ func checkRelays(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 						}
 					} else {
 						log.Printf("error when checking relay %s can ping the backend: %v\n", r.Name, err)
-						infoIndx.CanPingBackend = "SSH Error"
+						infoIndx.CanPingBackend = "Error"
 					}
 				} else {
 					log.Printf("%v\n", err)
@@ -500,7 +500,7 @@ func checkRelays(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 
 			// check if the service is running
 			{
-				if out, err := con.IssueCmdAndGetOutput("sudo systemctl status relay > /dev/null; echo $?"); err == nil {
+				if out, err := con.IssueCmdAndGetOutput("sudo systemctl status relay > /dev/null 2>&1; echo $?"); err == nil {
 					if out == "0" {
 						infoIndx.ServiceRunning = "yes"
 					} else {
@@ -508,7 +508,7 @@ func checkRelays(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 					}
 				} else {
 					log.Printf("error when checking if relay %s has the service running: %v\n", r.Name, err)
-					infoIndx.ServiceRunning = "SSH Error"
+					infoIndx.ServiceRunning = "Error"
 				}
 			}
 
@@ -522,7 +522,7 @@ func checkRelays(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 					}
 				} else {
 					log.Printf("error when checking if relay %s has the right port bound: %v\n", r.Name, err)
-					infoIndx.PortBound = "SSH Error"
+					infoIndx.PortBound = "Error"
 				}
 			}
 

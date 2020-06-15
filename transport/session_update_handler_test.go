@@ -1720,10 +1720,6 @@ func TestNextRouteResponse(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, globalDelta, float64(20))
 
-	buyerDelta, err := redisServer.ZScore(fmt.Sprintf("top-buyer-%x", packet.CustomerID), fmt.Sprintf("%016x", packet.SessionID))
-	assert.NoError(t, err)
-	assert.Equal(t, buyerDelta, float64(20))
-
 	assert.True(t, redisServer.Exists(fmt.Sprintf("session-%016x-meta", packet.SessionID)))
 	assert.Greater(t, redisServer.TTL(fmt.Sprintf("session-%016x-meta", packet.SessionID)).Hours(), float64(-1))
 
@@ -1857,10 +1853,6 @@ func TestContinueRouteResponse(t *testing.T) {
 	globalDelta, err := redisServer.ZScore("top-global", fmt.Sprintf("%016x", packet.SessionID))
 	assert.NoError(t, err)
 	assert.Equal(t, globalDelta, float64(20))
-
-	buyerDelta, err := redisServer.ZScore(fmt.Sprintf("top-buyer-%x", packet.CustomerID), fmt.Sprintf("%016x", packet.SessionID))
-	assert.NoError(t, err)
-	assert.Equal(t, buyerDelta, float64(20))
 
 	assert.True(t, redisServer.Exists(fmt.Sprintf("session-%016x-meta", packet.SessionID)))
 	assert.Greater(t, redisServer.TTL(fmt.Sprintf("session-%016x-meta", packet.SessionID)).Hours(), float64(-1))
