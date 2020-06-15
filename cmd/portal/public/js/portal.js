@@ -153,10 +153,15 @@ MapHandler = {
 			buyerId: buyerId,
 			sessionType: 'all'
 		});
-		this.mapCountLoop !== null ? clearInterval(this.sessionLoop) : null;
+	},
+	updateFilter(filter) {
+		Object.assign(rootComponent.$data.pages.map, {filter: filter});
+		this.mapCountLoop ? clearInterval(this.mapCountLoop) : null;
+		this.mapLoop ? clearInterval(this.mapLoop) : null;
+
 		let refreshMapCount = () => {
 			JSONRPCClient
-				.call('BuyersService.TotalSessions', {buyer_id: buyerId || ""})
+				.call('BuyersService.TotalSessions', {buyer_id: filter.buyerId || ""})
 				.then((response) => {
 					let direct = response.direct
 					let next = response.next
@@ -173,20 +178,16 @@ MapHandler = {
 					Sentry.captureException(error);
 				});
 		}
-
 		refreshMapCount();
+
 		this.mapCountLoop = setInterval(() => {
 			refreshMapCount();
-
 		}, 10000);
 
 		this.refreshMapSessions();
 		this.mapLoop = setInterval(() => {
 			this.refreshMapSessions();
 		}, 10000);
-	},
-	updateFilter(filter) {
-		Object.assign(rootComponent.$data.pages.map, {filter: filter});
 	},
 	updateMap(mapType) {
 		switch (mapType) {
