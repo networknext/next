@@ -72,7 +72,6 @@ func (s SessionSlice) MarshalBinary() ([]byte, error) {
 }
 
 type SessionMapPoint struct {
-	BuyerID       string  `json:"buyer_id"`
 	Latitude      float64 `json:"latitude"`
 	Longitude     float64 `json:"longitude"`
 	OnNetworkNext bool    `json:"on_network_next"`
