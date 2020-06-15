@@ -193,21 +193,12 @@ MapHandler = {
 			})
 			.catch((error) => {
 				console.log("Something went wrong fetching map point totals");
-<<<<<<< HEAD
 				console.log(error);
 				Sentry.captureException(error);
 			})
 
 		JSONRPCClient
 			.call('BuyersService.SessionMap', {buyer_id: filter.buyerId || ""})
-=======
-				console.log(e);
-				Sentry.captureException(e);
-			})
-
-		JSONRPCClient
-			.call('BuyersService.SessionMapPoints', {buyer_id: filter.buyerId || ""})
->>>>>>> 0172cb653e7dd3cde711532fcef0f0abdb2d72ef
 			.then((response) => {
 				let sessions = response.map_points;
 				let onNN = sessions.filter((point) => {
