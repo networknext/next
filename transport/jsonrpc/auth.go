@@ -64,7 +64,11 @@ type account struct {
 func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *AccountsReply) error {
 	var accountList *management.UserList
 
+<<<<<<< HEAD
 	if !VerifyAnyRole(r, AdminRole, OwnerRole) {
+=======
+	if VerifyRoles(r, AdminRole) != nil && VerifyRoles(r, OwnerRole) != nil {
+>>>>>>> Finished auth refactor
 		err := fmt.Errorf("AllAccounts() CheckRoles error: %v", ErrInsufficientPrivileges)
 		return err
 	}
@@ -204,7 +208,11 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 	var adminString string = "Admin"
 	var accounts []account
 
+<<<<<<< HEAD
 	if !VerifyAnyRole(req, AdminRole, OwnerRole) {
+=======
+	if VerifyRoles(req, OwnerRole) != nil && VerifyRoles(req, AdminRole) != nil {
+>>>>>>> Finished auth refactor
 		err := fmt.Errorf("UserAccount(): %v", ErrInsufficientPrivileges)
 		s.Logger.Log("err", err)
 		return err
@@ -219,10 +227,14 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 	// Check if non admin is assigning admin role
 	for _, r := range args.Roles {
 <<<<<<< HEAD
+<<<<<<< HEAD
 		if r.Name == &adminString && !VerifyAllRoles(req, AdminRole) {
 =======
 		if r.Name == &adminString && VerifyRoles(r, AdminRole) != nil {
 >>>>>>> working on auth endpoints
+=======
+		if r.Name == &adminString && VerifyRoles(req, AdminRole) != nil {
+>>>>>>> Finished auth refactor
 			err := fmt.Errorf("AddUserAccount() insufficient privileges")
 			s.Logger.Log("err", err)
 			return err
@@ -338,7 +350,11 @@ type RolesReply struct {
 func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesReply) error {
 	reply.Roles = make([]*management.Role, 0)
 
+<<<<<<< HEAD
 	if !VerifyAnyRole(r, AdminRole, OwnerRole) {
+=======
+	if VerifyRoles(r, OwnerRole) != nil && VerifyRoles(r, AdminRole) != nil {
+>>>>>>> Finished auth refactor
 		err := fmt.Errorf("UserAccount(): %v", ErrInsufficientPrivileges)
 		s.Logger.Log("err", err)
 		return err
@@ -351,7 +367,11 @@ func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesRep
 		return err
 	}
 
+<<<<<<< HEAD
 	if !VerifyAllRoles(r, AdminRole) {
+=======
+	if VerifyRoles(r, AdminRole) != nil {
+>>>>>>> Finished auth refactor
 		for _, role := range roleList.Roles {
 			if *role.Name != "Admin" {
 				reply.Roles = append(reply.Roles, role)
@@ -365,7 +385,11 @@ func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesRep
 }
 
 func (s *AuthService) UserRoles(r *http.Request, args *RolesArgs, reply *RolesReply) error {
+<<<<<<< HEAD
 	if !VerifyAnyRole(r, AdminRole, OwnerRole) {
+=======
+	if VerifyRoles(r, OwnerRole) != nil && VerifyRoles(r, AdminRole) != nil {
+>>>>>>> Finished auth refactor
 		err := fmt.Errorf("UserAccount(): %v", ErrInsufficientPrivileges)
 		s.Logger.Log("err", err)
 		return err
@@ -392,7 +416,11 @@ func (s *AuthService) UserRoles(r *http.Request, args *RolesArgs, reply *RolesRe
 
 func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *RolesReply) error {
 	var err error
+<<<<<<< HEAD
 	if !VerifyAnyRole(r, AdminRole, OwnerRole) {
+=======
+	if VerifyRoles(r, OwnerRole) != nil && VerifyRoles(r, AdminRole) != nil {
+>>>>>>> Finished auth refactor
 		err := fmt.Errorf("UserAccount(): %v", ErrInsufficientPrivileges)
 		s.Logger.Log("err", err)
 		return err
@@ -402,6 +430,7 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 		err := fmt.Errorf("UpdateUserRoles() user_id is required")
 		s.Logger.Log("err", err)
 		return err
+<<<<<<< HEAD
 	}
 
 	userRoles, err := s.Auth0.Manager.User.Roles(args.UserID)
@@ -435,6 +464,8 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 			Name:        &roleTypes[1],
 			Description: &roleDescriptions[1],
 		},
+=======
+>>>>>>> Finished auth refactor
 	}
 
 	// Need all this for admins that accidently delete admin role and for tests
@@ -489,7 +520,11 @@ type UpgradeReply struct {
 }
 
 func (s *AuthService) UpgradeAccount(r *http.Request, args *UpgradeArgs, reply *UpgradeReply) error {
+<<<<<<< HEAD
 	if VerifyAnyRole(r, AdminRole, OwnerRole) {
+=======
+	if VerifyRoles(r, AdminRole) == nil || VerifyRoles(r, OwnerRole) == nil {
+>>>>>>> Finished auth refactor
 		return nil
 	}
 	var companyUsers []*management.User
@@ -601,7 +636,11 @@ type VerifyEmailReply struct {
 func (s *AuthService) ResendVerificationEmail(r *http.Request, args *VerifyEmailArgs, reply *VerifyEmailReply) error {
 	reply.Sent = false
 
+<<<<<<< HEAD
 	if !VerifyAllRoles(r, UnverifiedRole) {
+=======
+	if VerifyRoles(r, UnverifiedRole) != nil {
+>>>>>>> Finished auth refactor
 		err := fmt.Errorf("VerifyEmailUrl() failed to creating verification email link: %v", ErrInsufficientPrivileges)
 		s.Logger.Log("err", err)
 		return err
@@ -708,6 +747,7 @@ func SetIsAnonymous(r *http.Request, value bool) *http.Request {
 	ctx := r.Context()
 	ctx = context.WithValue(ctx, anonymousCallKey, value)
 	return r.WithContext(ctx)
+<<<<<<< HEAD
 }
 
 func IsAnonymous(r *http.Request) bool {
@@ -787,6 +827,8 @@ var OwnerRole = func(req *http.Request) (bool, error) {
 		}
 	}
 	return found, nil
+=======
+>>>>>>> Finished auth refactor
 }
 
 // Ops checks the request for the appropriate "scope" in the JWT
@@ -795,6 +837,7 @@ var AnonymousRole = func(req *http.Request) (bool, error) {
 	return ok && anon, nil
 }
 
+<<<<<<< HEAD
 // Ops checks the request for the appropriate "scope" in the JWT
 var UnverifiedRole = func(req *http.Request) (bool, error) {
 	user := req.Context().Value("user")
@@ -818,6 +861,12 @@ func VerifyAllRoles(req *http.Request, roleFuncs ...RoleFunc) bool {
 		}
 	}
 	return true
+=======
+func SetRoles(r *http.Request, roles management.RoleList) *http.Request {
+	ctx := r.Context()
+	ctx = context.WithValue(ctx, rolesKey, roles)
+	return r.WithContext(ctx)
+>>>>>>> Finished auth refactor
 }
 
 func VerifyAnyRole(req *http.Request, roleFuncs ...RoleFunc) bool {
