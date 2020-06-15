@@ -10,7 +10,7 @@ WorkingDirectory=/app
 ExecStart=/app/relay
 EnvironmentFile=/app/relay.env
 Restart=on-failure
-RestartSec=10
+RestartSec=12
 
 [Install]
 WantedBy=multi-user.target

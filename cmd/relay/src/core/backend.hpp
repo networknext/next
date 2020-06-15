@@ -172,17 +172,25 @@ namespace core
     // if the update fails, try again, once per second for (MaxUpdateAttempts - 1) seconds
     // if there's still no successful update, exit the loop and return false, and skip the clean shutdown
     uint8_t updateAttempts = 0;
+
+    util::Clock backendTimeout;
     while (loopHandle) {
       if (update(recorder, false)) {
         updateAttempts = 0;
+        backendTimeout.reset();
       } else {
+        auto timeSinceLastUpdate = backendTimeout.elapsed<util::Second>();
         if (++updateAttempts == MaxUpdateAttempts) {
           Log("could not update relay, max attempts reached, aborting program");
           successfulRoutine = false;
           break;
+        } else if (timeSinceLastUpdate > 30) {
+          Log("could not update relay for over 30 seconds, aborting program");
+          break;
+          successfulRoutine = false;
         }
 
-        Log("could not update relay, attempts: ", (unsigned int)updateAttempts);
+        Log("could not update relay, attempts: ", (unsigned int)updateAttempts, ", time since last update: ", timeSinceLastUpdate);
       }
 
       sessions.purge(mRouterInfo.currentTime());
