@@ -180,6 +180,24 @@ MapHandler = {
 	refreshMapSessions() {
 		let filter = rootComponent.$data.pages.map.filter;
 		JSONRPCClient
+			.call('BuyersService.TotalSessions', {buyer_id: filter.buyerId || ""})
+			.then((response) => {
+				let direct = response.direct
+				let next = response.next
+
+				Object.assign(rootComponent.$data, {
+					direct: direct,
+					mapSessions: direct + next,
+					onNN: next,
+				});
+			})
+			.catch((error) => {
+				console.log("Something went wrong fetching map point totals");
+				console.log(error);
+				Sentry.captureException(error);
+			})
+
+		JSONRPCClient
 			.call('BuyersService.SessionMap', {buyer_id: filter.buyerId || ""})
 			.then((response) => {
 				let sessions = response.map_points;
@@ -201,12 +219,6 @@ MapHandler = {
 					default:
 						data = sessions;
 				}
-
-				Object.assign(rootComponent.$data, {
-					direct: direct,
-					mapSessions: sessions,
-					onNN: onNN,
-				});
 
 				const cellSize = 10, aggregation = 'MEAN';
 				let gpuAggregation = navigator.appVersion.indexOf("Win") == -1;
@@ -936,8 +948,7 @@ function createVueComponents() {
 					showSuccess: false,
 					slices: [],
 					graphs: {
-						bandwidthUpChart: null,
-						bandwidthDownChart: null,
+						bandwidthChart: null,
 						jitterImprovementChart: null,
 						jitterComparisonChart: null,
 						latencyImprovementChart: null,
@@ -992,7 +1003,6 @@ function createVueComponents() {
 }
 
 function updatePubKey() {
-	let userID = UserHandler.userInfo.userId;
 	let newPubKey = UserHandler.userInfo.pubKey;
 	let company = UserHandler.userInfo.company;
 	let domain = UserHandler.userInfo.domain
@@ -1135,16 +1145,11 @@ function generateCharts(data) {
 			[],
 		],
 	};
-	let bandwidthData = {
-		up: [
-			[],
-			[],
-		],
-		down: [
-			[],
-			[],
-		],
-	};
+	let bandwidthData = [
+		[],
+		[],
+		[],
+	];
 
 	data.map((entry) => {
 		let timestamp = new Date(entry.timestamp).getTime() / 1000;
@@ -1180,15 +1185,20 @@ function generateCharts(data) {
 		packetLossData.comparison[2].push(direct);
 
 		// Bandwidth
-		bandwidthData.up[0].push(timestamp);
-		bandwidthData.up[1].push(entry.envelope.up);
-		bandwidthData.down[0].push(timestamp);
-		bandwidthData.down[1].push(entry.envelope.down);
+		bandwidthData[0].push(timestamp);
+		bandwidthData[1].push(entry.envelope.up);
+		bandwidthData[2].push(entry.envelope.down);
 	});
 
 	const defaultOpts = {
 		width: document.getElementById("latency-chart-1").clientWidth,
 		height: 260,
+		cursor: {
+			drag: {
+				x: false,
+				y: false
+			}
+		}
 	};
 
 	const latencycomparisonOpts = {
@@ -1264,7 +1274,7 @@ function generateCharts(data) {
 		],
 	};
 
-	const bandwidthUpOpts = {
+	const bandwidthOpts = {
 		...defaultOpts,
 		scales: {
 			"kbps": {
@@ -1283,6 +1293,11 @@ function generateCharts(data) {
 				fill: "rgba(0,0,255,0.1)",
 				label: "Actual Up",
 			},
+			{
+				stroke: "orange",
+				fill: "rgba(255,165,0,0.1)",
+				label: "Actual Down"
+			},
 		],
 		axes: [
 			{},
@@ -1292,32 +1307,7 @@ function generateCharts(data) {
 			  gap: 5,
 			  size: 70,
 			  values: (self, ticks) => ticks.map(rawValue => rawValue + "kbps"),
-			}
-		]
-	};
-
-	const bandwidthDownOpts = {
-		...defaultOpts,
-		scales: {
-			"kbps": {
-				from: "y",
-				auto: false,
-				range: (self, min, max) => [
-					0,
-					max,
-				],
-			}
-		},
-		series: [
-			{},
-			{
-				stroke: "orange",
-				fill: "rgba(255,165,0,0.1)",
-				label: "Actual Down"
 			},
-		],
-		axes: [
-			{},
 			{
 				scale: "kbps",
 			  show: true,
@@ -1352,19 +1342,11 @@ function generateCharts(data) {
 		packetLossComparisonChart: new uPlot(packetLossComparisonOpts, packetLossData.comparison, document.getElementById("packet-loss-chart-1"))
 	});
 
-	if (rootComponent.$data.pages.sessionTool.graphs.bandwidthUpChart != null) {
-		rootComponent.$data.pages.sessionTool.graphs.bandwidthUpChart.destroy();
+	if (rootComponent.$data.pages.sessionTool.graphs.bandwidthChart != null) {
+		rootComponent.$data.pages.sessionTool.graphs.bandwidthChart.destroy();
 	}
 
 	Object.assign(rootComponent.$data.pages.sessionTool.graphs, {
-		bandwidthUpChart: new uPlot(bandwidthUpOpts, bandwidthData.up, document.getElementById("bandwidth-chart-1"))
-	});
-
-	if (rootComponent.$data.pages.sessionTool.graphs.bandwidthDownChart != null) {
-		rootComponent.$data.pages.sessionTool.graphs.bandwidthDownChart.destroy();
-	}
-
-	Object.assign(rootComponent.$data.pages.sessionTool.graphs, {
-		bandwidthDownChart: new uPlot(bandwidthDownOpts, bandwidthData.down, document.getElementById("bandwidth-chart-2"))
+		bandwidthChart: new uPlot(bandwidthOpts, bandwidthData, document.getElementById("bandwidth-chart-1"))
 	});
 }
