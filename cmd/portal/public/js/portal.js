@@ -180,14 +180,14 @@ MapHandler = {
 	refreshMapSessions() {
 		let filter = rootComponent.$data.pages.map.filter;
 		JSONRPCClient
-			.call('BuyersService.SessionMapPoints', {buyer_id: filter.buyerId || ""})
+			.call('BuyersService.SessionMap', {buyer_id: filter.buyerId || ""})
 			.then((response) => {
 				let sessions = response.map_points;
 				let onNN = sessions.filter((point) => {
-					return point.on_network_next;
+					return (point[2] == 1);
 				});
 				let direct = sessions.filter((point) => {
-					return !point.on_network_next;
+					return (point[2] == 0);
 				});
 				let data = [];
 
@@ -217,7 +217,7 @@ MapHandler = {
 					id: 'nn-layer',
 					data,
 					opacity: 0.8,
-					getPosition: d => [d.longitude, d.latitude],
+					getPosition: d => [d[0], d[1]],
 					getWeight: d => 1,
 					cellSizePixels: cellSize,
 					colorRange: [
@@ -233,7 +233,7 @@ MapHandler = {
 					id: 'direct-layer',
 					data,
 					opacity: 0.8,
-					getPosition: d => [d.longitude, d.latitude],
+					getPosition: d => [d[0], d[1]],
 					getWeight: d => 1,
 					cellSizePixels: cellSize,
 					colorRange: [
