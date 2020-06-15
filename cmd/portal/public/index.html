@@ -19,10 +19,6 @@
         <!-- Include Choices CSS -->
         <link rel="stylesheet" href="./js/choices/styles/choices.min.css" />
         <style>
-            .uplot .legend.inline th::after {
-                content: "";
-                vertical-align: middle;
-            }
             .choices__list--multiple .choices__item {
                 background-color: lightgray;
                 border: 1px solid darkgray;
@@ -706,7 +702,7 @@
                                                         </dt>
                                                         <dd v-if="!handlers.userHandler.isAnonymous()">
                                                             {{
-                                                                rootComponent.$data.allBuyers.length > 0 ? rootComponent.$data.allBuyers.find((buyer) => {
+                                                                allBuyers.length > 0 ? allBuyers.find((buyer) => {
                                                                     return buyer.id == pages.sessionTool.meta.customer_id
                                                                 }).name || "Private" : "Private"
                                                             }}
@@ -781,7 +777,7 @@
                                                                 <tr>
                                                                     <td>
                                                                         {{
-                                                                            !handlers.userHandler.isAnonymous() && rootComponent.$data.allBuyers.findIndex((buyer) => {
+                                                                            !handlers.userHandler.isAnonymous() && allBuyers.findIndex((buyer) => {
                                                                                 return buyer.id == pages.sessionTool.meta.customer_id
                                                                             }) !== -1 ? pages.sessionTool.meta.client_addr : "Player"
                                                                         }}
@@ -803,7 +799,7 @@
                                                                 <tr>
                                                                     <td>
                                                                         {{
-                                                                            !handlers.userHandler.isAnonymous() && rootComponent.$data.allBuyers.findIndex((buyer) => {
+                                                                            !handlers.userHandler.isAnonymous() && allBuyers.findIndex((buyer) => {
                                                                                 return buyer.id == pages.sessionTool.meta.customer_id
                                                                             }) !== -1 ? pages.sessionTool.meta.server_addr : "Game Server"
                                                                         }}
