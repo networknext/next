@@ -487,6 +487,7 @@ func (s *BuyersService) GenerateMapPoints() error {
 
 			// if there was no error then add the SessionMapPoint to the slice
 			mappoints = append(mappoints, point)
+
 			var onNN uint
 			if point.OnNetworkNext {
 				onNN = 1
@@ -524,6 +525,16 @@ func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, r
 
 	// pull the local cache and reply with it
 	reply.Points = s.mapPointsCache
+
+	return nil
+}
+
+func (s *BuyersService) SessionMap(r *http.Request, args *MapPointsArgs, reply *MapPointsReply) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// pull the local cache and reply with it
+	reply.Points = s.mapPointsCompactCache
 
 	return nil
 }
