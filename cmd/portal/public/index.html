@@ -706,7 +706,7 @@
                                                         </dt>
                                                         <dd v-if="!handlers.userHandler.isAnonymous()">
                                                             {{
-                                                                allBuyers.length > 0 ? allBuyers.find((buyer) => {
+                                                                rootComponent.$data.allBuyers.length > 0 ? rootComponent.$data.allBuyers.find((buyer) => {
                                                                     return buyer.id == pages.sessionTool.meta.customer_id
                                                                 }).name || "Private" : "Private"
                                                             }}
@@ -781,7 +781,7 @@
                                                                 <tr>
                                                                     <td>
                                                                         {{
-                                                                            !handlers.userHandler.isAnonymous() && allBuyers.findIndex((buyer) => {
+                                                                            !handlers.userHandler.isAnonymous() && rootComponent.$data.allBuyers.findIndex((buyer) => {
                                                                                 return buyer.id == pages.sessionTool.meta.customer_id
                                                                             }) !== -1 ? pages.sessionTool.meta.client_addr : "Player"
                                                                         }}
@@ -803,7 +803,7 @@
                                                                 <tr>
                                                                     <td>
                                                                         {{
-                                                                            !handlers.userHandler.isAnonymous() && allBuyers.findIndex((buyer) => {
+                                                                            !handlers.userHandler.isAnonymous() && rootComponent.$data.allBuyers.findIndex((buyer) => {
                                                                                 return buyer.id == pages.sessionTool.meta.customer_id
                                                                             }) !== -1 ? pages.sessionTool.meta.server_addr : "Game Server"
                                                                         }}
