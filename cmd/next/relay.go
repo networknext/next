@@ -200,17 +200,17 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, relayNames []str
 		con := NewSSHConn(info.user, info.sshAddr, info.sshPort, env.SSHKeyFilePath)
 		out, err := con.IssueCmdAndGetOutput(VersionCheckScript + ` | awk 'BEGIN {FS="."}{print $1}'`)
 		if err != nil {
-			fmt.Printf("error updating '%s': %v\n", info.name, err)
+			fmt.Printf("error when acquiring ubuntu version for relay '%s': %v\n", info.name, err)
 			continue
 		}
 
 		if val, err := strconv.ParseUint(out, 10, 32); err == nil {
 			if val < MinimumUbuntuVersion {
-				fmt.Printf("%s ubuntu version is too low: %d\n", info.name, val)
+				fmt.Printf("%s's ubuntu version is too low, please upgrade to 18.04 or greater: %d\n", info.name, val)
 				continue
 			}
 		} else {
-			fmt.Printf("error parsing ubuntu version: %v\n", err)
+			fmt.Printf("error when parsing ubuntu version for relay '%s': Version = '%s', error = %v\n", info.name, out, err)
 			continue
 		}
 
