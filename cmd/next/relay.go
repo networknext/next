@@ -532,5 +532,9 @@ func checkRelays(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 
 	wg.Wait()
 
+	if len(info) > 0 {
+		fmt.Printf("\n")
+	}
+
 	table.Output(info)
 }

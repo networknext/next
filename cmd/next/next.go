@@ -281,7 +281,7 @@ func handleJSONRPCError(env Environment, err error) {
 	case *jsonrpc.HTTPError:
 		switch e.Code {
 		case http.StatusUnauthorized:
-			log.Fatalf("%d: %s - use `next auth` to authorize the operator tool", e.Code, http.StatusText(e.Code))
+			log.Fatalf("%d: %s - use `next auth` to authorize the operator tool\n", e.Code, http.StatusText(e.Code))
 		default:
 			log.Fatalf("%d: %s", e.Code, http.StatusText(e.Code))
 		}
