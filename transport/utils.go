@@ -1,6 +1,7 @@
 package transport
 
 import (
+	"math"
 	"net"
 )
 
@@ -26,4 +27,9 @@ func AnonymizeAddr(addr net.UDPAddr) net.UDPAddr {
 		}
 	}
 	return net.UDPAddr{}
+}
+
+func Float64Precision(num float64, precision int) float64 {
+	p := math.Pow10(precision)
+	return float64(int(num*p)) / p
 }

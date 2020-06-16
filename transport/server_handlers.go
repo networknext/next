@@ -1176,8 +1176,8 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 		},
 	}
 	point := routing.SessionMapPoint{
-		Latitude:      location.Latitude,
-		Longitude:     location.Longitude,
+		Latitude:      Float64Precision(location.Latitude, 4),
+		Longitude:     Float64Precision(location.Longitude, 4),
 		OnNetworkNext: onNetworkNext,
 	}
 
