@@ -6,10 +6,8 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"expvar"
 	"fmt"
 	"net/http"
@@ -41,8 +39,6 @@ var (
 
 func main() {
 	ctx := context.Background()
-
-	env := os.Getenv("ENV")
 
 	// Configure logging
 	logger := log.NewLogfmtLogger(os.Stdout)
@@ -365,41 +361,6 @@ func main() {
 				if err := transport.RemoveRelayCacheEntry(ctx, rawID, msg.Payload, redisClientRelays, &geoClient, statsdb); err != nil {
 					level.Error(logger).Log("err", err)
 					os.Exit(1)
-				}
-
-				// Set the relay's state to quarantined in storage if it was previously enabled
-				relay, err := db.Relay(rawID)
-				if err != nil {
-					level.Error(logger).Log("msg", "Failed to retrieve relay from storage when attempting to set relay state to quarantined", "relayID", rawID, "err", err)
-					continue
-				}
-
-				// The relay was enabled and running properly but has failed to communicate to the backend for some reason
-				// This check is necessary so that if a relay is shut down by the backend, by the supplier, or manually
-				// then it won't incorrectly overwrite that state.
-				if relay.State == routing.RelayStateEnabled {
-					relay.State = routing.RelayStateQuarantine
-
-					if err := db.SetRelay(ctx, relay); err != nil {
-						level.Error(logger).Log("msg", "Failed to set relay in storage when attempting to set relay state to quarantined", "relayID", relay.ID, "err", err)
-						continue
-					}
-
-					notification := map[string]string{
-						"icon_emoji": ":biohazard_sign:",
-						"username":   fmt.Sprintf("Relay Backend (%s)", env),
-						"text":       fmt.Sprintf("Relay %s (%s) has been placed into quarantine.", relay.Name, relay.Addr.String()),
-					}
-
-					var buf bytes.Buffer
-					if err := json.NewEncoder(&buf).Encode(notification); err != nil {
-						level.Error(logger).Log("msg", "failed to encode notification to JSON", "err", err)
-						continue
-					}
-					if _, err := http.DefaultClient.Post("https://hooks.slack.com/services/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", "application/json", &buf); err != nil {
-						level.Error(logger).Log("msg", "failed to post notification to webhook", "err", err)
-						continue
-					}
 				}
 			}
 		}
