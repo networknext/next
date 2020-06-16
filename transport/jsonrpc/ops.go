@@ -445,11 +445,18 @@ type RemoveRelayArgs struct {
 type RemoveRelayReply struct{}
 
 func (s *OpsService) RemoveRelay(r *http.Request, args *RemoveRelayArgs, reply *RemoveRelayReply) error {
-	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
-	defer cancelFunc()
+	relay, err := s.Storage.Relay(args.RelayID)
+	if err != nil {
+		err = fmt.Errorf("RemoveRelay() Storage.Relay error: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
 
-	if err := s.Storage.RemoveRelay(ctx, args.RelayID); err != nil {
-		err = fmt.Errorf("RemoveRelay() error: %w", err)
+	// Rather than actually removing the relay from firestore, just set it to the decomissioned state
+	relay.State = routing.RelayStateDecommissioned
+
+	if err = s.Storage.SetRelay(context.Background(), relay); err != nil {
+		err = fmt.Errorf("RemoveRelay() Storage.SetRelay error: %w", err)
 		s.Logger.Log("err", err)
 		return err
 	}

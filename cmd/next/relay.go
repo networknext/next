@@ -25,8 +25,9 @@ const (
 
 	// DisableRelayScript is the bash script used to disable relays
 	DisableRelayScript = `
-	if ! systemctl is-active --quiet relay; then
-		echo 'Relay service has already been stopped'
+	service="$(sudo systemctl list-unit-files --state=enabled | grep 'relay.service')"
+	if [ -z "$service" ]; then
+		echo 'Relay service has already been disabled'
 		exit
 	fi
 
@@ -44,9 +45,10 @@ const (
 	`
 
 	// EnableRelayScript is the bash script used to enable relays
-	// If the relay is already running, it will clean shut down before re-enabling.
+	// If the relay service is already enabled, it will clean shut down before re-enabling.
 	EnableRelayScript = `
-	if systemctl is-active --quiet relay; then
+	service="$(sudo systemctl list-unit-files --state=enabled | grep 'relay.service')"
+	if [ ! -z "$service" ]; then
 		echo 'Relay service is already running, cleanly shutting down...'
 
 		echo "Waiting for the relay service to clean shutdown"
