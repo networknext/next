@@ -99,7 +99,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	addr := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 40000}
 	var db storage.Storer = &storage.InMemory{
 		LocalMode: true,
 	}
@@ -137,10 +136,43 @@ func main() {
 			os.Exit(1)
 		}
 
+		addr1 := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10000}
 		if err := db.AddRelay(ctx, routing.Relay{
-			Name:           "local.test_relay",
-			ID:             crypto.HashID(addr.String()),
-			Addr:           addr,
+			Name:           "local.test_relay.a",
+			ID:             crypto.HashID(addr1.String()),
+			Addr:           addr1,
+			PublicKey:      relayPublicKey,
+			Seller:         seller,
+			Datacenter:     datacenter,
+			ManagementAddr: "127.0.0.1",
+			SSHUser:        "root",
+			SSHPort:        22,
+		}); err != nil {
+			level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
+			os.Exit(1)
+		}
+
+		addr2 := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10001}
+		if err := db.AddRelay(ctx, routing.Relay{
+			Name:           "local.test_relay.b",
+			ID:             crypto.HashID(addr2.String()),
+			Addr:           addr2,
+			PublicKey:      relayPublicKey,
+			Seller:         seller,
+			Datacenter:     datacenter,
+			ManagementAddr: "127.0.0.1",
+			SSHUser:        "root",
+			SSHPort:        22,
+		}); err != nil {
+			level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
+			os.Exit(1)
+		}
+
+		addr3 := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10002}
+		if err := db.AddRelay(ctx, routing.Relay{
+			Name:           "abc.xyz",
+			ID:             crypto.HashID(addr3.String()),
+			Addr:           addr3,
 			PublicKey:      relayPublicKey,
 			Seller:         seller,
 			Datacenter:     datacenter,

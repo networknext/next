@@ -12,9 +12,9 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
-func relays(rpcClient jsonrpc.RPCClient, env Environment, filter string, relaysStateShowFlags [6]bool, relaysStateHideFlags [6]bool, relaysDownFlag bool) {
+func relays(rpcClient jsonrpc.RPCClient, env Environment, regex string, relaysStateShowFlags [6]bool, relaysStateHideFlags [6]bool, relaysDownFlag bool) {
 	args := localjsonrpc.RelaysArgs{
-		Name: filter,
+		Regex: regex,
 	}
 
 	var reply localjsonrpc.RelaysReply
@@ -128,7 +128,13 @@ func addRelay(rpcClient jsonrpc.RPCClient, env Environment, relay routing.Relay)
 }
 
 func removeRelay(rpcClient jsonrpc.RPCClient, env Environment, name string) {
-	info := getRelayInfo(rpcClient, name)
+	relays := getRelayInfo(rpcClient, name)
+
+	if len(relays) == 0 {
+		log.Fatalf("no relays matched the name '%s'\n", name)
+	}
+
+	info := relays[0]
 
 	args := localjsonrpc.RemoveRelayArgs{
 		RelayID: info.id,
