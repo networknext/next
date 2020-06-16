@@ -1122,7 +1122,6 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 	}
 
 	var hashedID string
-
 	if packet.Version.Compare(SDKVersion{3, 4, 5}) == SDKVersionOlder {
 		hash := fnv.New64a()
 		byteArray := make([]byte, 8)
@@ -1204,8 +1203,8 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 	tx.Expire(fmt.Sprintf("session-%016x-slices", packet.SessionID), redisClientPortalExp)
 
 	// set the user session reverse lookup sets with expiration on the entire key set for safety
-	tx.SAdd(fmt.Sprintf("user-%016x-sessions", packet.UserHash), meta.ID)
-	tx.Expire(fmt.Sprintf("user-%016x-sessions", packet.UserHash), redisClientPortalExp)
+	tx.SAdd(fmt.Sprintf("user-%016x-sessions", hashedID), meta.ID)
+	tx.Expire(fmt.Sprintf("user-%016x-sessions", hashedID), redisClientPortalExp)
 
 	// set the map point key and global sessions with expiration on the entire key set for safety
 	tx.Set(fmt.Sprintf("session-%016x-point", packet.SessionID), point, redisClientPortalExp)
