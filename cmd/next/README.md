@@ -64,6 +64,25 @@ Removes a datacenter with the given datacenter name from Firestore.
 
 To list relays: `next relays`
 
+Use the following flags to filter the relays output:
+`--enabled` only show enabled relays
+`--noenabled` hide enabled relays
+`--maintenance` only show relays in maintenane
+`--nomaintenance` hide relays in maintenance
+`--disabled` only show disabled relays
+`--nodisabled` hide disabled relays
+`--quarantined` only show quarantined relays
+`--noquarantined` hide quarantined relays
+`--decommissioned` only show decommissioned relays
+`--nodecommissioned` hide decommissioned relays
+`--offline` only show offline relays
+`--nooffline` hide offline relays
+`--down` only show relays that haven't pinged the backend in 30 seconds or more
+`--all` show all relays (excluding decommissioned ones)
+
+If no flags are provided, then the `--enabled`, `--quarantined`, and `--nodecommissioned` are set by default.
+You can also use a combination of them as well. Ex `--enabled` and `--quaratined` will show all relays that are either enabled or quaratined.
+
 To add a relay: `next relays add [filepath]`
 
 Adds a relay to Firestore based on the given JSON file. You can also pipe in the JSON data (ex. `cat relay.json | next relays add`)
