@@ -514,11 +514,11 @@ func getCostMatrixDataV4() costMatrixData {
 
 	// version 4 stuff
 	sellers := []routing.Seller{
-		routing.Seller{ID: "id0", Name: "name0", IngressPriceCents: 1, EgressPriceCents: 2},
-		routing.Seller{ID: "id1", Name: "name1", IngressPriceCents: 3, EgressPriceCents: 4},
-		routing.Seller{ID: "id2", Name: "name2", IngressPriceCents: 5, EgressPriceCents: 6},
-		routing.Seller{ID: "id3", Name: "name3", IngressPriceCents: 7, EgressPriceCents: 8},
-		routing.Seller{ID: "id4", Name: "name4", IngressPriceCents: 9, EgressPriceCents: 10},
+		{ID: "id0", Name: "name0", IngressPriceCents: 1, EgressPriceCents: 2},
+		{ID: "id1", Name: "name1", IngressPriceCents: 3, EgressPriceCents: 4},
+		{ID: "id2", Name: "name2", IngressPriceCents: 5, EgressPriceCents: 6},
+		{ID: "id3", Name: "name3", IngressPriceCents: 7, EgressPriceCents: 8},
+		{ID: "id4", Name: "name4", IngressPriceCents: 9, EgressPriceCents: 10},
 	}
 
 	buffSize := 0
@@ -595,11 +595,11 @@ func getCostMatrixDataV5() costMatrixData {
 
 	// version 4 stuff
 	sellers := []routing.Seller{
-		routing.Seller{ID: "id0", Name: "name0", IngressPriceCents: 1, EgressPriceCents: 2},
-		routing.Seller{ID: "id1", Name: "name1", IngressPriceCents: 3, EgressPriceCents: 4},
-		routing.Seller{ID: "id2", Name: "name2", IngressPriceCents: 5, EgressPriceCents: 6},
-		routing.Seller{ID: "id3", Name: "name3", IngressPriceCents: 7, EgressPriceCents: 8},
-		routing.Seller{ID: "id4", Name: "name4", IngressPriceCents: 9, EgressPriceCents: 10},
+		{ID: "id0", Name: "name0", IngressPriceCents: 1, EgressPriceCents: 2},
+		{ID: "id1", Name: "name1", IngressPriceCents: 3, EgressPriceCents: 4},
+		{ID: "id2", Name: "name2", IngressPriceCents: 5, EgressPriceCents: 6},
+		{ID: "id3", Name: "name3", IngressPriceCents: 7, EgressPriceCents: 8},
+		{ID: "id4", Name: "name4", IngressPriceCents: 9, EgressPriceCents: 10},
 	}
 
 	// version 5 stuff

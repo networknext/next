@@ -55,7 +55,7 @@ namespace net
     curl_easy_setopt(wrapper.mHandle, CURLOPT_MAXREDIRS, 50L);
     curl_easy_setopt(wrapper.mHandle, CURLOPT_HTTP_VERSION, (long)CURL_HTTP_VERSION_2TLS);
     curl_easy_setopt(wrapper.mHandle, CURLOPT_TCP_KEEPALIVE, 1L);
-    curl_easy_setopt(wrapper.mHandle, CURLOPT_TIMEOUT_MS, long(1000));
+    curl_easy_setopt(wrapper.mHandle, CURLOPT_TIMEOUT_MS, long(10000));
     curl_easy_setopt(wrapper.mHandle, CURLOPT_WRITEDATA, &response);
     curl_easy_setopt(wrapper.mHandle, CURLOPT_WRITEFUNCTION, &curlWriteFunction<RespType>);
 

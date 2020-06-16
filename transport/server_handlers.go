@@ -3,13 +3,14 @@ package transport
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
+	fnv "hash/fnv"
 	"io"
 	"math/rand"
 	"net"
 	"runtime"
-	"strconv"
 	"time"
 
 	"github.com/getsentry/sentry-go"
@@ -1120,9 +1121,21 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 		return fmt.Errorf("failed to anonymize client addr")
 	}
 
+	var hashedID string
+
+	if packet.Version.Compare(SDKVersion{3, 4, 5}) == SDKVersionOlder {
+		hash := fnv.New64a()
+		byteArray := make([]byte, 8)
+		binary.LittleEndian.PutUint64(byteArray, packet.UserHash)
+		hash.Write(byteArray)
+		hashedID = fmt.Sprintf("%016x", hash.Sum64())
+	} else {
+		hashedID = fmt.Sprintf("%016x", packet.UserHash)
+	}
+
 	meta := routing.SessionMeta{
 		ID:            fmt.Sprintf("%016x", packet.SessionID),
-		UserHash:      fmt.Sprintf("%016x", packet.UserHash),
+		UserHash:      hashedID,
 		Datacenter:    datacenterName,
 		OnNetworkNext: onNetworkNext,
 		NextRTT:       nnStats.RTT,
@@ -1135,7 +1148,7 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 		SDK:           packet.Version.String(),
 		Connection:    ConnectionTypeText(packet.ConnectionType),
 		Platform:      PlatformTypeText(packet.PlatformID),
-		CustomerID:    strconv.FormatUint(packet.CustomerID, 10),
+		BuyerID:       fmt.Sprintf("%016x", packet.CustomerID),
 	}
 
 	meta.NearbyRelays = make([]routing.Relay, 0)
@@ -1168,23 +1181,37 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 	}
 
 	tx := redisClientPortal.TxPipeline()
+
+	// set total session counts with expiration on the entire key set for safety
 	switch meta.OnNetworkNext {
 	case true:
 		tx.SAdd("total-next", meta.ID)
+		tx.Expire("total-next", redisClientPortalExp)
 	case false:
 		tx.SAdd("total-direct", meta.ID)
+		tx.Expire("total-direct", redisClientPortalExp)
 	}
+
+	// set top improved sessions with expiration on the entire key set for safety
 	tx.ZAdd("top-global", &redis.Z{Score: meta.DeltaRTT, Member: meta.ID})
-	tx.ZAdd(fmt.Sprintf("top-buyer-%x", packet.CustomerID), &redis.Z{Score: meta.DeltaRTT, Member: meta.ID})
+	tx.Expire("top-global", redisClientPortalExp)
+	tx.ZAdd(fmt.Sprintf("top-buyer-%016x", packet.CustomerID), &redis.Z{Score: meta.DeltaRTT, Member: meta.ID})
+	tx.Expire(fmt.Sprintf("top-buyer-%016x", packet.CustomerID), redisClientPortalExp)
+
+	// set session and slice information with expiration on the entire key set for safety
 	tx.Set(fmt.Sprintf("session-%016x-meta", packet.SessionID), meta, redisClientPortalExp)
 	tx.SAdd(fmt.Sprintf("session-%016x-slices", packet.SessionID), slice)
 	tx.Expire(fmt.Sprintf("session-%016x-slices", packet.SessionID), redisClientPortalExp)
+
+	// set the user session reverse lookup sets with expiration on the entire key set for safety
 	tx.SAdd(fmt.Sprintf("user-%016x-sessions", packet.UserHash), meta.ID)
 	tx.Expire(fmt.Sprintf("user-%016x-sessions", packet.UserHash), redisClientPortalExp)
-	tx.SAdd("map-points-global", meta.ID)
-	tx.SAdd(fmt.Sprintf("map-points-buyer-%x", packet.CustomerID), meta.ID)
-	tx.Expire(fmt.Sprintf("map-points-buyer-%x", packet.CustomerID), redisClientPortalExp)
+
+	// set the map point key and global sessions with expiration on the entire key set for safety
 	tx.Set(fmt.Sprintf("session-%016x-point", packet.SessionID), point, redisClientPortalExp)
+	tx.SAdd("map-points-global", meta.ID)
+	tx.Expire("map-points-global", redisClientPortalExp)
+
 	if _, err := tx.Exec(); err != nil {
 		return err
 	}

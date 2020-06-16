@@ -19,6 +19,10 @@
         <!-- Include Choices CSS -->
         <link rel="stylesheet" href="./js/choices/styles/choices.min.css" />
         <style>
+            .uplot .legend.inline th::after {
+                content: "";
+                vertical-align: middle;
+            }
             .choices__list--multiple .choices__item {
                 background-color: lightgray;
                 border: 1px solid darkgray;
@@ -303,10 +307,10 @@
                             <h1 class="h2" id="workspace-title" v-if="showCount">
                                 Map&nbsp;
                                 <span class="badge badge-dark">
-                                    {{ mapSessions.length }} Total Sessions
+                                    {{ mapSessions }} Total Sessions
                                 </span>&nbsp;
                                 <span class="badge badge-success">
-                                    {{ onNN.length }} on Network Next
+                                    {{ onNN }} on Network Next
                                 </span>
                             </h1>
                             <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1">
@@ -370,10 +374,10 @@
                                 <h1 class="h2" id="workspace-title" v-if="showCount">
                                     Sessions&nbsp;
                                     <span class="badge badge-dark">
-                                        {{ mapSessions.length }} Total Sessions
+                                        {{ mapSessions }} Total Sessions
                                     </span>&nbsp;
                                     <span class="badge badge-success">
-                                        {{ onNN.length }} on Network Next
+                                        {{ onNN }} on Network Next
                                     </span>
                                 </h1>
                                 <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1">

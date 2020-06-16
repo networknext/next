@@ -41,7 +41,7 @@ func saveCostMatrix(env Environment, filename string) {
 	var uri string
 	var err error
 
-	if uri, err = env.RelayBackendHostname(); err != nil {
+	if uri, err = env.RelayBackendURL(); err != nil {
 		log.Fatalf("Cannot get get relay backend hostname: %v\n", err)
 	}
 

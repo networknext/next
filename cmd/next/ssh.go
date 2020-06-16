@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 
@@ -25,6 +26,7 @@ func SSHInto(env Environment, rpcClient jsonrpc.RPCClient, relayName string) {
 	info := relays[0]
 	testForSSHKey(env)
 	con := NewSSHConn(info.user, info.sshAddr, info.sshPort, env.SSHKeyFilePath)
+	fmt.Printf("Connecting to %s\n", relayName)
 	con.Connect()
 }
 

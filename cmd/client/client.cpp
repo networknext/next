@@ -47,7 +47,7 @@ int main()
 
     next_init( NULL, NULL );
 
-    next_client_t * client = next_client_create( NULL, "0.0.0.0:0", client_packet_received );
+    next_client_t * client = next_client_create( NULL, "0.0.0.0:0", client_packet_received, NULL );
 
     if ( client == NULL )
     {

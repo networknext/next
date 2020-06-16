@@ -6,10 +6,17 @@ Run `./next` in the root of the repo for available commands.
 
 Arguments surrounded by '[]' are optional. Those surrounded by '<>' are required.
 
+## Select
+
+To set the current environment for the next tool: `next select <local|dev|prod>`
+
+Only valid values are `local`, `dev`, or `prod`.
+
 ## Env
 
-To set the current environment for the next tool: `next env <local|dev|prod>`
+To display information about the current environment: `next env`
 
+The environment can also be changed with `next env [local|dev|prod]` in the same way as `next select <local|dev|prod>`
 Only valid values are `local`, `dev`, or `prod`.
 
 ## Auth
@@ -67,17 +74,6 @@ To see an example relay JSON schema, use `next relays add example`
 To remove a relay: `next relays remove <name>`
 
 Removes a relay with the given relay name from Firestore.
-
-### Check
-
-To check relays: `next relays check [filter]`
-
-Displays a table of filtered relays, or all relays if no filter supplied, containing helpful information.
-
-The table will display if the relay can be ssh'ed into (yes/no), the version of Ubuntu it is running, and how many logical CPU cores are available. In the case of hyperthreaded CPUs this will be twice the number of physical cores.
-
-To test if the relay can be ssh'ed into, it uses ssh's `-o` flag with `ConnectTimeout=60`. This means the tool will report false if the relay is unreachable for 60 seconds. If the relay is reachable and will take longer than 60 seconds, the tool will continue. So for very distant relays, and especially those with high packet loss, this tool may take 2 or 3 minutes to complete.
-
 
 ## Route Shaders
 
@@ -166,13 +162,31 @@ Sets the state of a relay directly in Firestore. Note that this command should b
 
 Valid states are `enabled`, `offline`, `maintenance`, `disabled`, `quarantine`, and `decommissioned`
 
-### Cost
+### Check
+
+To check relays: `next relay check [filter]`
+
+Displays a table of filtered relays, or all relays if no filter supplied, containing diagnostic information.
+
+If any of the fields contain "SSH Error", a more detailed message will be visible within the messages above the table.
+
+Fields:
+- `SSH`: Was the relay able to be SSHed into?
+- `Ubuntu`: The version of Ubuntu the relay is running.
+- `Cores`: The cores allocated to the relay. If the `RELAY_MAX_CORES` environment variable is set, its value will used here.
+- `Ping Backend`: Was the relay able to ping the relay backend?
+- `Running`: Is the relay service running?
+- `Bound`: Is port 40000 bound to the relay process?
+
+Regarding SSH ability: The tool uses ssh's `-o` flag with `ConnectTimeout=60`. This means the tool will report false if the relay is unreachable for 60 seconds. If the relay is reachable and will take longer than 60 seconds, the tool will continue. So for very distant relays, and especially those with high packet loss, this tool function may take 2 or 3 minutes to complete.
+
+## Cost
 
 To download the cost matrix: `next cost [output file]`
 
 Downloads the current cost matrix from the relay backend to 'cost.bin' or the first argument supplied.
 
-### Optimize
+## Optimize
 
 To optimize a cost matrix: `next optimize [rtt threshold] [cost matrix file] [output file]`
 
@@ -182,7 +196,7 @@ The first argument is the rtt threshold which defaults to 1. \
 The second argument is the path of the cost matrix if you don't have it saved as 'cost.bin'. \
 The third argument is the path you want the route matrix written to. Default is 'optimize.bin'.
 
-### Analyze
+## Analyze
 
 To analyze a route matrix: `next analyze [route matrix file]`
 
