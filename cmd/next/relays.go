@@ -12,7 +12,7 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
-func relays(rpcClient jsonrpc.RPCClient, env Environment, filter string, relaysStateShowFlags [6]bool, relaysStateHideFlags [6]bool, relaysDownFlag bool) {
+func relays(rpcClient jsonrpc.RPCClient, env Environment, filter string, relaysStateShowFlags [6]bool, relaysStateHideFlags [6]bool, relaysDownFlag bool, relaysAllFlag bool) {
 	args := localjsonrpc.RelaysArgs{
 		Name: filter,
 	}
@@ -46,6 +46,11 @@ func relays(rpcClient jsonrpc.RPCClient, env Environment, filter string, relaysS
 
 		includeRelay := true
 
+		if relaysStateHideFlags[relayState] {
+			// Relay should be hidden, so don't include in final output
+			includeRelay = false
+		}
+
 		for i, flag := range relaysStateShowFlags {
 			if flag {
 				if relayState != routing.RelayState(i) {
@@ -57,11 +62,6 @@ func relays(rpcClient jsonrpc.RPCClient, env Environment, filter string, relaysS
 					break
 				}
 			}
-		}
-
-		if relaysStateHideFlags[relayState] {
-			// Relay should be hidden, so don't include in final output
-			includeRelay = false
 		}
 
 		tx := fmt.Sprintf("%.02fGB", float64(relay.BytesSent)/float64(1000000000))
@@ -81,6 +81,11 @@ func relays(rpcClient jsonrpc.RPCClient, env Environment, filter string, relaysS
 		if relaysDownFlag && lastUpdateDuration < 30*time.Second {
 			// Relay is still up and shouldn't be included in the final output
 			includeRelay = false
+		}
+
+		if relaysAllFlag {
+			// We should show all relays so include it regardless of previous logic
+			includeRelay = true
 		}
 
 		if !includeRelay {

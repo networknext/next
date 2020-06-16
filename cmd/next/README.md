@@ -74,10 +74,11 @@ Use the following flags to filter the relays output:
 `--quarantined` only show quarantined relays
 `--noquarantined` hide quarantined relays
 `--decommissioned` only show decommissioned relays
-`--nodecommissioned` hide decommissioned relays
+`--nodecommissioned` hide decommissioned relays (this is enabled by default)
 `--offline` only show offline relays
 `--nooffline` hide offline relays
 `--down` only show relays that haven't pinged the backend in 30 seconds or more
+`--all` show all relays (even decommissioned ones) regardless of other flags
 
 You can also use a combination of them as well. Ex `--enabled` and `--quaratined` will show all relays that are either enabled or quaratined.
 

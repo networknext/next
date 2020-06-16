@@ -377,12 +377,16 @@ func main() {
 	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateMaintenance], "nomaintenance", false, "hide relays in maintenance")
 	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateDisabled], "nodisabled", false, "hide disabled relays")
 	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateQuarantine], "noquarantined", false, "hide quarantined relays")
-	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateDecommissioned], "nodecommissioned", false, "hide decommissioned relays")
+	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateDecommissioned], "nodecommissioned", true, "hide decommissioned relays")
 	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateOffline], "nooffline", false, "hide offline relays")
 
 	// Flag to see relays that are down (haven't pinged backend in 30 seconds)
 	var relaysDownFlag bool
 	relaysfs.BoolVar(&relaysDownFlag, "down", false, "show relays that are down")
+
+	// Show all relays (including decommissioned ones) regardless of other flags
+	var relaysAllFlag bool
+	relaysfs.BoolVar(&relaysAllFlag, "all", false, "show all relays")
 
 	root := &ffcli.Command{
 		ShortUsage: "next <subcommand>",
@@ -517,10 +521,10 @@ func main() {
 				FlagSet:    relaysfs,
 				Exec: func(_ context.Context, args []string) error {
 					if len(args) > 0 {
-						relays(rpcClient, env, args[0], relaysStateShowFlags, relaysStateHideFlags, relaysDownFlag)
+						relays(rpcClient, env, args[0], relaysStateShowFlags, relaysStateHideFlags, relaysDownFlag, relaysAllFlag)
 						return nil
 					}
-					relays(rpcClient, env, "", relaysStateShowFlags, relaysStateHideFlags, relaysDownFlag)
+					relays(rpcClient, env, "", relaysStateShowFlags, relaysStateHideFlags, relaysDownFlag, relaysAllFlag)
 					return nil
 				},
 			},
