@@ -577,16 +577,15 @@ func main() {
 				Subcommands: []*ffcli.Command{
 					{
 						Name:       "check",
-						ShortUsage: "next relay check [filter]",
+						ShortUsage: "next relay check [regex]",
 						ShortHelp:  "List all or a subset of relays and see diagnostic information. Refer to the README for more information",
 						Exec: func(ctx context.Context, args []string) error {
-							filter := ""
-
+							regex := ".*"
 							if len(args) > 0 {
-								filter = args[0]
+								regex = args[0]
 							}
 
-							checkRelays(rpcClient, env, filter)
+							checkRelays(rpcClient, env, regex)
 							return nil
 						},
 					},
@@ -611,57 +610,61 @@ func main() {
 					},
 					{
 						Name:       "update",
-						ShortUsage: "next relay update <regex> [regex...]",
+						ShortUsage: "next relay update [regex...]",
 						ShortHelp:  "Update the specified relay(s)",
 						FlagSet:    relayupdatefs,
 						Exec: func(ctx context.Context, args []string) error {
-							if len(args) == 0 {
-								log.Fatal("You need to supply at least one relay name")
+							regexes := []string{".*"}
+							if len(args) > 0 {
+								regexes = args
 							}
 
-							updateRelays(env, rpcClient, args, relayCoreCount)
+							updateRelays(env, rpcClient, regexes, relayCoreCount)
 
 							return nil
 						},
 					},
 					{
 						Name:       "revert",
-						ShortUsage: "next relay revert <regex> [regex...]",
+						ShortUsage: "next relay revert [regex...]",
 						ShortHelp:  "revert all or some relays to the last binary placed on the server",
 						Exec: func(ctx context.Context, args []string) error {
-							if len(args) == 0 {
-								log.Fatal("You need to supply at least one relay name or 'ALL'")
+							regexes := []string{".*"}
+							if len(args) > 0 {
+								regexes = args
 							}
 
-							revertRelays(env, rpcClient, args)
+							revertRelays(env, rpcClient, regexes)
 
 							return nil
 						},
 					},
 					{
 						Name:       "enable",
-						ShortUsage: "next relay enable <regex> [regex...]",
+						ShortUsage: "next relay enable [regex...]",
 						ShortHelp:  "Enable the specified relay(s)",
 						Exec: func(_ context.Context, args []string) error {
-							if len(args) == 0 {
-								log.Fatal("You need to supply at least one relay name")
+							regexes := []string{".*"}
+							if len(args) > 0 {
+								regexes = args
 							}
 
-							enableRelays(env, rpcClient, args)
+							enableRelays(env, rpcClient, regexes)
 
 							return nil
 						},
 					},
 					{
 						Name:       "disable",
-						ShortUsage: "next relay disable <regex> [regex...]",
+						ShortUsage: "next relay disable [regex...]",
 						ShortHelp:  "Disable the specified relay(s)",
 						Exec: func(_ context.Context, args []string) error {
-							if len(args) == 0 {
-								log.Fatal("You need to supply at least one relay name")
+							regexes := []string{".*"}
+							if len(args) > 0 {
+								regexes = args
 							}
 
-							disableRelays(env, rpcClient, args)
+							disableRelays(env, rpcClient, regexes)
 
 							return nil
 						},
