@@ -762,15 +762,31 @@ var UnverifiedRole = func(req *http.Request) (bool, error) {
 	return false, nil
 }
 
-func VerifyRoles(req *http.Request, roleFuncs ...RoleFunc) error {
+func VerifyRolesAND(req *http.Request, roleFuncs ...RoleFunc) (bool, error) {
 	for _, f := range roleFuncs {
 		authorized, err := f(req)
 		if !authorized {
-			return fmt.Errorf("%v: %v", ErrInsufficientPrivileges, f)
+			return authorized, fmt.Errorf("%v: %v", ErrInsufficientPrivileges, f)
 		}
 		if err != nil {
-			return fmt.Errorf("%v: %v", err, f)
+			return false, fmt.Errorf("%v: %v", err, f)
 		}
 	}
-	return nil
+	return true, nil
+}
+
+func VerifyRolesOR(req *http.Request, roleFuncs ...RoleFunc) (bool, error) {
+	var authorized bool = false
+	for _, f := range roleFuncs {
+		if authorized {
+			return true, nil
+		}
+		authorized, err := f(req)
+	}
+	if !authorized {
+		return authorized, fmt.Errorf("%v: %v", ErrInsufficientPrivileges, f)
+	}
+	if err != nil {
+		return false, fmt.Errorf("%v: %v", err, f)
+	}
 }
