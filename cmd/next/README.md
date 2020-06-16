@@ -84,6 +84,13 @@ To set or update a route shader: `next routeshader set <buyer ID> [filepath]`
 Sets a route shader in Firestore for a given buyer based on the given JSON file. You can also pipe in the JSON data (ex. `cat relay.json | next routeshader set <buyer ID>`)
 To see an example route shader JSON schema, use `next routeshader set example`
 
+## Edit Buyer
+
+To edit a buyer's values: `next buyer edit <buyer ID> [filepath]`
+
+Edits a buyer's values directly based on the given JSON file. You can also pipe in the JSON data (ex. `cat buyer.json | next buyer edit <buyer ID>`)
+To see an example JSON schema, use `next buyer edit example`. Only include fields that should be changed and omit any that shouldn't.
+
 ## SSH
 
 To SSH: `next ssh [identifier]`
