@@ -574,7 +574,7 @@ func TestRemoveRelay(t *testing.T) {
 		var reply jsonrpc.RemoveRelayReply
 
 		err = svc.RemoveRelay(nil, &jsonrpc.RemoveRelayArgs{RelayID: expected.ID}, &reply)
-		assert.EqualError(t, err, fmt.Sprintf("RemoveRelay() error: relay with reference %d not found", expected.ID))
+		assert.EqualError(t, err, fmt.Sprintf("RemoveRelay() Storage.Relay error: relay with reference %d not found", expected.ID))
 	})
 
 	t.Run("remove", func(t *testing.T) {
@@ -590,7 +590,10 @@ func TestRemoveRelay(t *testing.T) {
 		err = svc.Relays(nil, &jsonrpc.RelaysArgs{}, &relaysReply)
 		assert.NoError(t, err)
 
-		assert.Len(t, relaysReply.Relays, 0)
+		// Remove shouldn't actually remove it anymore, just set the state to decommissioned
+		assert.Len(t, relaysReply.Relays, 1)
+		assert.Equal(t, relaysReply.Relays[0].ID, expected.ID)
+		assert.Equal(t, relaysReply.Relays[0].State, routing.RelayStateDecommissioned.String())
 	})
 }
 
