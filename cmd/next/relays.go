@@ -52,6 +52,7 @@ func relays(rpcClient jsonrpc.RPCClient, env Environment, filter string, relaysS
 					// An "only show" flag is set and this relay doesn't match that state, so don't include it in the final output
 					includeRelay = false
 				} else {
+					// One of the flags should include the relay, so set to true and break out, since combining the flags is an OR operation
 					includeRelay = true
 					break
 				}
