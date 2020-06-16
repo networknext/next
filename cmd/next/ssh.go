@@ -65,12 +65,15 @@ func (con SSHConn) Connect() {
 	}
 }
 
-func (con SSHConn) ConnectAndIssueCmd(cmd string) {
+func (con SSHConn) ConnectAndIssueCmd(cmd string) bool {
 	args := con.commonSSHCommands()
 	args = append(args, "-tt", con.user+"@"+con.address, "--", cmd)
 	if !runCommandEnv("ssh", args, nil) {
-		log.Fatalf("could not start ssh session")
+		fmt.Println("could not start ssh session")
+		return false
 	}
+
+	return true
 }
 
 func (con SSHConn) IssueCmdAndGetOutput(cmd string) (string, error) {

@@ -694,7 +694,7 @@ func main() {
 					},
 					{
 						Name:       "state",
-						ShortUsage: "next relay state <state> <relay name> [relay names...]",
+						ShortUsage: "next relay state <state> <regex> [regex...]",
 						ShortHelp:  "Sets the relay state directly",
 						LongHelp:   "This command should be avoided unless something goes wrong and the operator knows what he or she is doing.\nState values:\nenabled\noffline\nmaintenance\ndisabled\nquarantine\ndecommissioned",
 						Exec: func(ctx context.Context, args []string) error {
@@ -703,7 +703,7 @@ func main() {
 							}
 
 							if len(args) == 1 {
-								log.Fatal("You need to supply at least one relay name")
+								log.Fatal("You need to supply at least one relay name regex")
 							}
 
 							setRelayState(rpcClient, args[0], args[1:])

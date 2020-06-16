@@ -106,7 +106,7 @@ To do so reliably the regex must be of the form of `^seller_name$` otherwise if 
 
 ### Enable
 
-To Enable a relay: `next relay enable <regex>...`
+To Enable a relay: `next relay enable [regex...]`
 
 The tool will SSH into the relays that match the regex(s), start the relay service, and set the state to offline. If the service is already running the command will only update the state to offline.
 
@@ -114,13 +114,13 @@ Once the relay initializes with the backend the state will be changed to enabled
 
 ### Disable
 
-To Disable a relay: `next relay disable <regex>...`
+To Disable a relay: `next relay disable [regex...]`
 
 First the tool will update the matching relays' states in Firestore to the Disabled state. Then it will SSH into the relays and stop their services. If the service is already stopped the tool will do nothing aside from setting the state.
 
 ### Update
 
-To Update a relay: `next relay update <regex>...`
+To Update a relay: `next relay update [regex...]`
 
 The tool will perform several actions to update relays matching the supplied regex(s).
 
@@ -136,7 +136,7 @@ For each matching relay the tool will:
 
 ### Revert
 
-To Revert a relay: `next relay revert <regex>...`
+To Revert a relay: `next relay revert [regex...]`
 
 The tool will revert a relay back to the the previous version. It will remove the binary and associated files that are currently active and restore the most recent backup.
 
