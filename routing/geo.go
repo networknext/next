@@ -41,6 +41,14 @@ type Location struct {
 	ISP       string  `json:"isp"`
 }
 
+func (l *Location) UnmarshalBinary(data []byte) error {
+	return jsoniter.Unmarshal(data, l)
+}
+
+func (l Location) MarshalBinary() ([]byte, error) {
+	return jsoniter.Marshal(l)
+}
+
 // IsZero reports whether l represents the zero location lat/long 0,0 similar to how Time.IsZero works.
 func (l *Location) IsZero() bool {
 	return l.Latitude == 0 && l.Longitude == 0
