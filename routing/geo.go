@@ -162,11 +162,30 @@ func (mmdb *MaxmindDB) LocateIP(ip net.IP) (Location, error) {
 		return Location{}, fmt.Errorf("no location found for '%s'", ip.String())
 	}
 
+	continent := "unknown"
+	if val, ok := res.Continent.Names["en"]; ok {
+		continent = val
+	}
+	country := "unknown"
+	if val, ok := res.Country.Names["en"]; ok {
+		country = val
+	}
+	region := "unknown"
+	if len(res.Subdivisions) > 0 {
+		if val, ok := res.Subdivisions[0].Names["en"]; ok {
+			region = val
+		}
+	}
+	city := "unknown"
+	if val, ok := res.City.Names["en"]; ok {
+		city = val
+	}
+
 	return Location{
-		Continent: res.Continent.Names["en"],
-		Country:   res.Country.Names["en"],
-		Region:    res.Subdivisions[0].Names["en"],
-		City:      res.City.Names["en"],
+		Continent: continent,
+		Country:   country,
+		Region:    region,
+		City:      city,
 		Latitude:  res.Location.Latitude,
 		Longitude: res.Location.Longitude,
 		ISP:       "unknown",
