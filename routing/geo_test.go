@@ -1,6 +1,8 @@
 package routing_test
 
 import (
+	"bytes"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"testing"
@@ -13,6 +15,14 @@ import (
 	"github.com/networknext/backend/routing"
 )
 
+type mockRoundTripper struct {
+	Response *http.Response
+}
+
+func (mrt mockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	return mrt.Response, nil
+}
+
 func TestLocation(t *testing.T) {
 	zeroloc := routing.Location{}
 	assert.True(t, zeroloc.IsZero())
@@ -23,12 +33,31 @@ func TestLocation(t *testing.T) {
 
 func TestIPLocator(t *testing.T) {
 	t.Run("IPStack", func(t *testing.T) {
-		ipstack := routing.IPStack{
-			Client:    http.DefaultClient,
-			AccessKey: "2a3640e34301da9ab257c59243b0d7c6",
-		}
 
 		{
+			ipstack := routing.IPStack{
+				Client: &http.Client{
+					Transport: &mockRoundTripper{
+						Response: &http.Response{
+							StatusCode: http.StatusOK,
+							Header:     make(http.Header),
+							Body: ioutil.NopCloser(bytes.NewBufferString(`{
+								"continent_name": "Europe",
+								"country_name": "United Kingdom",
+								"region_name": "England",
+								"city": "Stroud",
+								"latitude": 51.750999450683594,
+								"longitude": -2.296999931335449,
+								"connection": {
+									"isp": "Andrews & Arnold Ltd"
+								}
+							}`)),
+						},
+					},
+				},
+				AccessKey: "2a3640e34301da9ab257c59243b0d7c6",
+			}
+
 			expected := routing.Location{
 				Continent: "Europe",
 				Country:   "United Kingdom",
@@ -46,6 +75,22 @@ func TestIPLocator(t *testing.T) {
 		}
 
 		{
+			ipstack := routing.IPStack{
+				Client: &http.Client{
+					Transport: &mockRoundTripper{
+						Response: &http.Response{
+							StatusCode: http.StatusOK,
+							Header:     make(http.Header),
+							Body: ioutil.NopCloser(bytes.NewBufferString(`{
+								"latitude": 0,
+								"longitude": 0
+							}`)),
+						},
+					},
+				},
+				AccessKey: "2a3640e34301da9ab257c59243b0d7c6",
+			}
+
 			actual, err := ipstack.LocateIP(net.ParseIP("127.0.0.1"))
 			assert.NoError(t, err)
 
@@ -53,6 +98,22 @@ func TestIPLocator(t *testing.T) {
 		}
 
 		{
+			ipstack := routing.IPStack{
+				Client: &http.Client{
+					Transport: &mockRoundTripper{
+						Response: &http.Response{
+							StatusCode: http.StatusOK,
+							Header:     make(http.Header),
+							Body: ioutil.NopCloser(bytes.NewBufferString(`{
+								"latitude": 0,
+								"longitude": 0
+							}`)),
+						},
+					},
+				},
+				AccessKey: "2a3640e34301da9ab257c59243b0d7c6",
+			}
+
 			actual, err := ipstack.LocateIP(([]byte)("localhost"))
 			assert.NoError(t, err)
 
@@ -60,6 +121,22 @@ func TestIPLocator(t *testing.T) {
 		}
 
 		{
+			ipstack := routing.IPStack{
+				Client: &http.Client{
+					Transport: &mockRoundTripper{
+						Response: &http.Response{
+							StatusCode: http.StatusOK,
+							Header:     make(http.Header),
+							Body: ioutil.NopCloser(bytes.NewBufferString(`{
+								"latitude": 0,
+								"longitude": 0
+							}`)),
+						},
+					},
+				},
+				AccessKey: "2a3640e34301da9ab257c59243b0d7c6",
+			}
+
 			actual, err := ipstack.LocateIP(net.ParseIP("0.0.0.0"))
 			assert.EqualError(t, err, "no location found for '0.0.0.0'")
 
