@@ -174,6 +174,8 @@ func (database *StatsDatabase) DeleteEntry(relayID uint64) {
 
 // MakeCopy makes a exact copy of the stats db
 func (database *StatsDatabase) MakeCopy() *StatsDatabase {
+	database.mu.Lock()
+	defer database.mu.Unlock()
 	databaseCopy := NewStatsDatabase()
 	for k, v := range database.Entries {
 		newEntry := NewStatsEntry()
