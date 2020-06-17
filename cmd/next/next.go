@@ -622,13 +622,33 @@ func main() {
 						Name:       "check",
 						ShortUsage: "next relay check [regex]",
 						ShortHelp:  "List all or a subset of relays and see diagnostic information. Refer to the README for more information",
+						FlagSet:    relaysfs,
 						Exec: func(ctx context.Context, args []string) error {
+							if relaysfs.NFlag() == 0 {
+								// If no flags are given, set the default set of flags
+								relaysStateHideFlags[routing.RelayStateDecommissioned] = true
+							}
+
+							if relaysAllFlag {
+								// Show all relays (except for decommissioned relays) with --all flag
+								relaysStateShowFlags[routing.RelayStateEnabled] = true
+								relaysStateShowFlags[routing.RelayStateMaintenance] = true
+								relaysStateShowFlags[routing.RelayStateDisabled] = true
+								relaysStateShowFlags[routing.RelayStateQuarantine] = true
+								relaysStateShowFlags[routing.RelayStateOffline] = true
+							}
+
+							if relaysStateShowFlags[routing.RelayStateDecommissioned] {
+								//  Show decommissioned relays with --decommissioned flag by essentially disabling --nodecommissioned flag
+								relaysStateHideFlags[routing.RelayStateDecommissioned] = false
+							}
+
 							regex := ".*"
 							if len(args) > 0 {
 								regex = args[0]
 							}
 
-							checkRelays(rpcClient, env, regex)
+							checkRelays(rpcClient, env, regex, relaysStateShowFlags, relaysStateHideFlags, relaysDownFlag)
 							return nil
 						},
 					},
