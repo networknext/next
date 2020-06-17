@@ -4,6 +4,8 @@
 
 Run `./next` in the root of the repo for available commands.
 
+Arguments surrounded by '[]' are optional. Those surrounded by '<>' are required.
+
 ## Select
 
 To set the current environment for the next tool: `next select <local|dev|prod>`
@@ -62,7 +64,26 @@ Removes a datacenter with the given datacenter name from Firestore.
 
 ## Relays
 
-To list relays: `next relays`
+To list relays: `next relays [regex]`
+
+Use the following flags to filter the relays output:
+`--enabled` only show enabled relays
+`--noenabled` hide enabled relays
+`--maintenance` only show relays in maintenane
+`--nomaintenance` hide relays in maintenance
+`--disabled` only show disabled relays
+`--nodisabled` hide disabled relays
+`--quarantined` only show quarantined relays
+`--noquarantined` hide quarantined relays
+`--decommissioned` only show decommissioned relays
+`--nodecommissioned` hide decommissioned relays
+`--offline` only show offline relays
+`--nooffline` hide offline relays
+`--down` only show relays that haven't pinged the backend in 30 seconds or more
+`--all` show all relays (excluding decommissioned ones)
+
+If no flags are provided, then the `--enabled`, `--quarantined`, and `--nodecommissioned` are set by default.
+You can also use a combination of them as well. Ex `--enabled` and `--quaratined` will show all relays that are either enabled or quaratined.
 
 To add a relay: `next relays add [filepath]`
 
@@ -93,45 +114,59 @@ To see an example JSON schema, use `next buyer edit example`. Only include field
 
 ## SSH
 
-To SSH: `next ssh [identifier]`
+To SSH: `next ssh <identifier>`
 
-SSH into a remote device. You must set the SSH key before attempting to connect to a device, otherwise you will get denied.
+SSH into a remote device. You must set the [SSH key](#Key) before attempting to connect to a device, otherwise you will get denied.
 
-To set the SSH key: `next ssh key [path to key file]`
+### Key
 
-- You can't use '~' in the path directly, it must be expanded by the shell first. Or in other words don't quote the argument
+To set the SSH key: `next ssh key <path to key file>`
+
+- You can't use '~' in the path directly, it must be expanded by the shell first. Or in other words, don't quote the argument.
 
 ## Relay
 
+[Enable](#Enable), [Disable](#Disable), [Update](#Update), and [Revert](#Revert) match sellers as well as relay names.
+
+To do so reliably the regex must be of the form of `^seller_name$` otherwise if any relay names also happen to match the seller's name, they will appear in the list too.
+
 ### Enable
 
-To Enable a relay: `next relay enable [relay name]`
+To Enable a relay: `next relay enable [regex...]`
 
-The tool will SSH into the specified relay and start the relay service and set the state to enabled. If the service is already running the command will only update the state to enabled.
+The tool will SSH into the relays that match the regex(s), start the relay service, and set the state to offline. If the service is already running the command will only update the state to offline.
+
+Once the relay initializes with the backend the state will be changed to enabled.
 
 ### Disable
 
-To Disable a relay: `next relay disable [relay name]`
+To Disable a relay: `next relay disable [regex...]`
 
-First the tool will update the relay's state in Firestore to the Disabled state. Then it will SSH into a relay, stop the relay service, and end the session. If the service is already stopped the tool will do nothing.
+First the tool will update the matching relays' states in Firestore to the Disabled state. Then it will SSH into the relays and stop their services. If the service is already stopped the tool will do nothing aside from setting the state.
 
 ### Update
 
-To Update a relay: `next relay update [relay name]...`
+To Update a relay: `next relay update [regex...]`
 
-The tool will perform several actions to update a relay.
+The tool will perform several actions to update relays matching the supplied regex(s).
 
-First you must build the relay binary and ensure it is located at `dist/relay`
+Before updating make sure you have the desired environment set via the [relay env](#Env) setting.
 
-Then disable the relay using the [disable](#Disable) functionality
+Also if any updates fail throughout the process the program will quit and not continue to the next.
 
-Then you use the tool. You must have the desired environment set via the [relay env](#Env) setting. The tool will query the relay(s) from Firestore and then perform an update on those selected. If any fail for any reason the program will quit and not continue to the next. While updating it will re-generate public and private keys for the relay and set them both in the relay's environment file and publish the changes to Firestore as well. Lastly the command will update the state of the relay to enabled, much the same way the [enable](#Enable) command does it.
+For each matching relay the tool will:
+- download the latest version from the GCP bucket and untar it in the `dist` directory.
+- disable the relay using the [disable](#Disable) functionality.
+- generate a new set of public and private keys for the relay and set them both in the relay's environment file and publish the changes to Firestore as well.
+- update the state of the relay to offline, much the same way the [enable](#Enable) command does it. Once the relay initializes with the backend the state will change to enabled.
 
 ### Revert
 
-To Revert a relay: `next relay revert [relay name]...`
+To Revert a relay: `next relay revert [regex...]`
 
 The tool will revert a relay back to the the previous version. It will remove the binary and associated files that are currently active and restore the most recent backup.
+
+However it will not restore the previous public key in firestore as that is lost upon each update.
 
 ### Set NIC Speed
 
@@ -173,9 +208,13 @@ Regarding SSH ability: The tool uses ssh's `-o` flag with `ConnectTimeout=60`. T
 
 ## Cost
 
+To download the cost matrix: `next cost [output file]`
+
 Downloads the current cost matrix from the relay backend to 'cost.bin' or the first argument supplied.
 
 ## Optimize
+
+To optimize a cost matrix: `next optimize [rtt threshold] [cost matrix file] [output file]`
 
 Optimizes the downloaded cost matrix into a route matrix.
 
@@ -184,5 +223,7 @@ The second argument is the path of the cost matrix if you don't have it saved as
 The third argument is the path you want the route matrix written to. Default is 'optimize.bin'.
 
 ## Analyze
+
+To analyze a route matrix: `next analyze [route matrix file]`
 
 Analyzes the route matrix and produces high level data. The file read in is 'optimize.bin' or the first argument supplied.

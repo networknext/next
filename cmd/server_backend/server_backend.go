@@ -20,7 +20,6 @@ import (
 
 	gcplogging "cloud.google.com/go/logging"
 
-	"github.com/getsentry/sentry-go"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/oschwald/geoip2-golang"
@@ -43,6 +42,15 @@ func main() {
 
 	// Configure logging
 	logger := log.NewLogfmtLogger(os.Stdout)
+	if projectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
+		loggingClient, err := gcplogging.NewClient(ctx, projectID)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			os.Exit(1)
+		}
+
+		logger = logging.NewStackdriverLogger(loggingClient, "server-backend")
+	}
 	{
 		switch os.Getenv("BACKEND_LOG_LEVEL") {
 		case "none":
@@ -61,31 +69,6 @@ func main() {
 
 		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
 	}
-	if projectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
-		loggingClient, err := gcplogging.NewClient(ctx, projectID)
-		if err != nil {
-			level.Error(logger).Log("err", err)
-			os.Exit(1)
-		}
-
-		logger = logging.NewStackdriverLogger(loggingClient, "server-backend")
-	}
-
-	sentryOpts := sentry.ClientOptions{
-		ServerName:       "Server Backend",
-		Release:          release,
-		Dist:             "linux",
-		AttachStacktrace: true,
-		Debug:            true,
-	}
-
-	if err := sentry.Init(sentryOpts); err != nil {
-		level.Error(logger).Log("msg", "failed to initialize sentry", "err", err)
-		os.Exit(1)
-	}
-
-	// force sentry to post any updates upon program exit
-	defer sentry.Flush(time.Second * 2)
 
 	// var serverPublicKey []byte
 	var customerPublicKey []byte
@@ -159,12 +142,13 @@ func main() {
 		}
 		defer mmreader.Close()
 	}
-	if key, ok := os.LookupEnv("IPSTACK_ACCESS_KEY"); ok {
-		ipLocator = &routing.IPStack{
-			Client:    http.DefaultClient,
-			AccessKey: key,
-		}
-	}
+	// Commented out to ensure it really does not load the IPStack version
+	// if key, ok := os.LookupEnv("IPSTACK_ACCESS_KEY"); ok {
+	// 	ipLocator = &routing.IPStack{
+	// 		Client:    http.DefaultClient,
+	// 		AccessKey: key,
+	// 	}
+	// }
 
 	geoClient := routing.GeoClient{
 		RedisClient: redisClientRelays,

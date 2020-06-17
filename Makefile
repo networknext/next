@@ -139,7 +139,7 @@ export REDIS_HOST_PORTAL = 127.0.0.1:6379
 endif
 
 ifndef REDIS_HOST_PORTAL_EXPIRATION
-export REDIS_HOST_PORTAL_EXPIRATION = 1m
+export REDIS_HOST_PORTAL_EXPIRATION = 30s
 endif
 
 ifndef REDIS_HOST_RELAYS
@@ -564,7 +564,7 @@ build-next: ## builds the operator tool
 	@printf "Building operator tool... "
 	@$(GO) build -o ./dist/next ./cmd/next/*.go
 	@printf "done\n"
-	
+
 .PHONY: build-all
 build-all: build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-sdk-test build-soak-test build-next ## builds everything
 

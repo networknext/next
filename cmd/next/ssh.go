@@ -19,7 +19,11 @@ func testForSSHKey(env Environment) {
 }
 
 func SSHInto(env Environment, rpcClient jsonrpc.RPCClient, relayName string) {
-	info := getRelayInfo(rpcClient, relayName)
+	relays := getRelayInfo(rpcClient, relayName)
+	if len(relays) == 0 {
+		log.Fatalf("no relays matches the regex '%s'", relayName)
+	}
+	info := relays[0]
 	testForSSHKey(env)
 	con := NewSSHConn(info.user, info.sshAddr, info.sshPort, env.SSHKeyFilePath)
 	fmt.Printf("Connecting to %s\n", relayName)
@@ -61,12 +65,15 @@ func (con SSHConn) Connect() {
 	}
 }
 
-func (con SSHConn) ConnectAndIssueCmd(cmd string) {
+func (con SSHConn) ConnectAndIssueCmd(cmd string) bool {
 	args := con.commonSSHCommands()
 	args = append(args, "-tt", con.user+"@"+con.address, "--", cmd)
 	if !runCommandEnv("ssh", args, nil) {
-		log.Fatalf("could not start ssh session")
+		fmt.Println("could not start ssh session")
+		return false
 	}
+
+	return true
 }
 
 func (con SSHConn) IssueCmdAndGetOutput(cmd string) (string, error) {

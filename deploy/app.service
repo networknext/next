@@ -3,6 +3,7 @@ Description=Network Next App Server
 
 [Service]
 ExecStart=/app/app
+ExecStartPost=/bin/bash -c "prlimit --nofile=200000:200000 --pid $(pidof app)"
 EnvironmentFile=/app/app.env
 Restart=always
 RestartSec=3
