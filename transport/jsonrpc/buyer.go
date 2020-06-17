@@ -177,12 +177,12 @@ type TotalSessionsReply struct {
 }
 
 func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, reply *TotalSessionsReply) error {
-	direct, err := s.RedisClient.SCard("total-direct").Result()
+	direct, err := s.RedisClient.ZCard("total-direct").Result()
 	if err != nil {
 		return err
 	}
 
-	next, err := s.RedisClient.SCard("total-next").Result()
+	next, err := s.RedisClient.ZCard("total-next").Result()
 	if err != nil {
 		return err
 	}
@@ -203,8 +203,11 @@ type TopSessionsReply struct {
 
 // TopSessions generates the top sessions sorted by improved RTT
 func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, reply *TopSessionsReply) error {
+	buyers := s.Storage.Buyers()
+
 	var err error
-	var result []redis.Z
+	var topnext []string
+	var topdirect []string
 
 	var isAdmin bool = false
 	var isSameBuyer bool = false
@@ -239,9 +242,18 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 	// get the top session IDs globally or for a buyer from the sorted set
 	switch args.BuyerID {
 	case "":
-		result, err = s.RedisClient.ZRangeWithScores("top-global", 0, TopSessionsSize*2).Result()
+		// Get top Next sessions sorted by greatest to least improved RTT
+		topnext, err = s.RedisClient.ZRevRange("total-next", 0, TopSessionsSize).Result()
 		if err != nil {
-			err = fmt.Errorf("TopSessions() failed getting top global sessions: %v", err)
+			err = fmt.Errorf("TopSessions() failed getting total-next sessions: %v", err)
+			s.Logger.Log("err", err)
+			return err
+		}
+
+		// Get top Direct sessions sorted by least to greatest direct RTT
+		topdirect, err = s.RedisClient.ZRange("total-direct", 0, TopSessionsSize).Result()
+		if err != nil {
+			err = fmt.Errorf("TopSessions() failed getting total-next sessions: %v", err)
 			s.Logger.Log("err", err)
 			return err
 		}
@@ -251,20 +263,26 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 			s.Logger.Log("err", err)
 			return err
 		}
-		result, err = s.RedisClient.ZRangeWithScores(fmt.Sprintf("top-buyer-%s", args.BuyerID), 0, TopSessionsSize*2).Result()
+		topnext, err = s.RedisClient.ZRevRange(fmt.Sprintf("total-next-buyer-%s", args.BuyerID), 0, TopSessionsSize).Result()
 		if err != nil {
-			err = fmt.Errorf("TopSessions() failed getting top buyer sessions: %v", err)
+			err = fmt.Errorf("TopSessions() failed getting total-next sessions: %v", err)
+			s.Logger.Log("err", err)
+			return err
+		}
+		topdirect, err = s.RedisClient.ZRange(fmt.Sprintf("total-direct-buyer-%s", args.BuyerID), 0, TopSessionsSize).Result()
+		if err != nil {
+			err = fmt.Errorf("TopSessions() failed getting total-next sessions: %v", err)
 			s.Logger.Log("err", err)
 			return err
 		}
 	}
 
 	// build a single transaction to get the sessions details for the session IDs
-	var getCmds []*redis.StringCmd
+	var getNextCmds []*redis.StringCmd
 	{
 		gettx := s.RedisClient.TxPipeline()
-		for _, member := range result {
-			getCmds = append(getCmds, gettx.Get(fmt.Sprintf("session-%s-meta", member.Member.(string))))
+		for _, sessionID := range topnext {
+			getNextCmds = append(getNextCmds, gettx.Get(fmt.Sprintf("session-%s-meta", sessionID)))
 		}
 		_, err = gettx.Exec()
 		if err != nil && err != redis.Nil {
@@ -274,14 +292,13 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 		}
 	}
 
-	buyers := s.Storage.Buyers()
-
 	// build a single transaction to remove any session ID from the sorted set if the
 	// session-*-meta key is missing or expired
+	var nextSessions []routing.SessionMeta
 	zremtx := s.RedisClient.TxPipeline()
 	{
 		var meta routing.SessionMeta
-		for _, cmd := range getCmds {
+		for _, cmd := range getNextCmds {
 			// scan the data from Redis into its SessionMeta struct
 			err = cmd.Scan(&meta)
 
@@ -293,9 +310,9 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 				key := args[1].(string)
 				keyparts := strings.Split(key, "-")
 
-				zremtx.ZRem("top-global", keyparts[1])
+				zremtx.ZRem("total-next", keyparts[1])
 				for _, buyer := range buyers {
-					zremtx.ZRem(fmt.Sprintf("top-buyer-%016x", buyer.ID), keyparts[1])
+					zremtx.ZRem(fmt.Sprintf("total-next-buyer-%016x", buyer.ID), keyparts[1])
 				}
 				continue
 			}
@@ -304,35 +321,91 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 				meta.Anonymise()
 			}
 
-			reply.Sessions = append(reply.Sessions, meta)
+			nextSessions = append(nextSessions, meta)
 		}
 	}
 
-	// execute the transaction to remove the sessions IDs from the sorted key sets
-	zremcmds, err := zremtx.Exec()
+	_, err = zremtx.Exec()
 	if err != nil && err != redis.Nil {
 		err = fmt.Errorf("TopSessions() redit.Pipeliner error: %v", err)
 		s.Logger.Log("err", err)
 		return err
 	}
 
-	level.Info(s.Logger).Log("key", "top-global", "key", "top-buyer-*", "removed", len(zremcmds))
-
-	// sort the sessions
-	sort.Slice(reply.Sessions, func(i int, j int) bool {
-		// if comparing NN to Direct
-		if reply.Sessions[i].OnNetworkNext && !reply.Sessions[j].OnNetworkNext {
-			return true
-		}
-		// if comparing NN to NN
-		if reply.Sessions[i].OnNetworkNext && reply.Sessions[j].OnNetworkNext {
-			return reply.Sessions[i].DeltaRTT > reply.Sessions[j].DeltaRTT
-		}
-		// if comparing Direct to NN or Direct to Direct
-		return false
+	sort.Slice(nextSessions, func(i int, j int) bool {
+		return nextSessions[i].DeltaRTT > nextSessions[j].DeltaRTT
 	})
 
-	// crop the list to TopSessionsSize if needed
+	// If the result of nextSessions fills the page then early out and do not fill with direct
+	// This will skip talking to redis to get meta details for sessions we do not need to get
+	if len(nextSessions) >= TopSessionsSize {
+		reply.Sessions = nextSessions[:TopSessionsSize]
+		return nil
+	}
+
+	// If we get here then there are not enough Next sessions to fill the list
+	// so we continue to get the top Direct sessions to fill it out more
+
+	var getDirectCmds []*redis.StringCmd
+	{
+		gettx := s.RedisClient.TxPipeline()
+		for _, sessionID := range topdirect {
+			getDirectCmds = append(getDirectCmds, gettx.Get(fmt.Sprintf("session-%s-meta", sessionID)))
+		}
+		_, err = gettx.Exec()
+		if err != nil && err != redis.Nil {
+			err = fmt.Errorf("TopSessions() failed getting top sessions meta: %v", err)
+			s.Logger.Log("err", err)
+			return err
+		}
+	}
+
+	var directSessions []routing.SessionMeta
+	zremtx = s.RedisClient.TxPipeline()
+	{
+		var meta routing.SessionMeta
+		for _, cmd := range getDirectCmds {
+			// scan the data from Redis into its SessionMeta struct
+			err = cmd.Scan(&meta)
+
+			// if there was an error then the session-*-point key expired
+			// so add ZREM commands to remove it from the key sets globally
+			// and for each buyer
+			if err != nil {
+				args := cmd.Args()
+				key := args[1].(string)
+				keyparts := strings.Split(key, "-")
+
+				zremtx.ZRem("total-direct", keyparts[1])
+				for _, buyer := range buyers {
+					zremtx.ZRem(fmt.Sprintf("total-direct-buyer-%016x", buyer.ID), keyparts[1])
+				}
+				continue
+			}
+
+			if isAnon || (!isSameBuyer && !isAdmin) {
+				meta.Anonymise()
+			}
+
+			directSessions = append(directSessions, meta)
+		}
+	}
+
+	// execute the transaction to remove the sessions IDs from the sorted key sets
+	_, err = zremtx.Exec()
+	if err != nil && err != redis.Nil {
+		err = fmt.Errorf("TopSessions() redit.Pipeliner error: %v", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	sort.Slice(directSessions, func(i int, j int) bool {
+		return directSessions[i].DeltaRTT < directSessions[j].DeltaRTT
+	})
+
+	reply.Sessions = append(reply.Sessions, nextSessions...)
+	reply.Sessions = append(reply.Sessions, directSessions...)
+
 	if len(reply.Sessions) > TopSessionsSize {
 		reply.Sessions = reply.Sessions[:TopSessionsSize]
 	}
@@ -479,8 +552,8 @@ func (s *BuyersService) GenerateMapPoints() error {
 				key := cmd.Args()[1].(string)
 				keyparts := strings.Split(key, "-")
 				sremtx.SRem("map-points-global", keyparts[1])
-				sremtx.SRem("total-next", keyparts[1])
-				sremtx.SRem("total-direct", keyparts[1])
+				sremtx.ZRem("total-next", keyparts[1])
+				sremtx.ZRem("total-direct", keyparts[1])
 				continue
 			}
 
