@@ -1716,7 +1716,7 @@ func TestNextRouteResponse(t *testing.T) {
 	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, redisClient, 10*time.Second, &db, &rp, &iploc, &geoClient, &sessionMetrics, &billing.NoOpBiller{}, TestServerBackendPrivateKey[:], TestRouterPrivateKey[:])
 	handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
-	globalDelta, err := redisServer.ZScore("top-global", fmt.Sprintf("%016x", packet.SessionID))
+	globalDelta, err := redisServer.ZScore("total-next", fmt.Sprintf("%016x", packet.SessionID))
 	assert.NoError(t, err)
 	assert.Equal(t, globalDelta, float64(20))
 
@@ -1850,7 +1850,7 @@ func TestContinueRouteResponse(t *testing.T) {
 	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, redisClient, 10*time.Second, &db, &rp, &iploc, &geoClient, &sessionMetrics, &billing.NoOpBiller{}, TestServerBackendPrivateKey[:], TestRouterPrivateKey[:])
 	handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
-	globalDelta, err := redisServer.ZScore("top-global", fmt.Sprintf("%016x", packet.SessionID))
+	globalDelta, err := redisServer.ZScore("total-next", fmt.Sprintf("%016x", packet.SessionID))
 	assert.NoError(t, err)
 	assert.Equal(t, globalDelta, float64(20))
 

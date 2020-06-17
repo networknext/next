@@ -792,7 +792,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 			}
 		}
 
-		if buyer.RoutingRulesSettings.Mode == routing.ModeForceDirect || int64(packet.SessionID%100) > buyer.RoutingRulesSettings.SelectionPercentage {
+		if buyer.RoutingRulesSettings.Mode == routing.ModeForceDirect || int64(packet.SessionID%100) >= buyer.RoutingRulesSettings.SelectionPercentage {
 			shouldSelect = false
 			routeDecision = routing.Decision{
 				OnNetworkNext: false,
@@ -1045,6 +1045,8 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 				}
 
 				level.Debug(locallogger).Log("msg", "session served network next route")
+
+				sessionCacheEntry.RouteDecision = routeDecision
 			}
 		}
 
@@ -1161,18 +1163,16 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 	// set total session counts with expiration on the entire key set for safety
 	switch meta.OnNetworkNext {
 	case true:
-		tx.SAdd("total-next", meta.ID)
+		tx.ZAdd("total-next", &redis.Z{Score: meta.DeltaRTT, Member: meta.ID})
 		tx.Expire("total-next", redisClientPortalExp)
+		tx.ZAdd(fmt.Sprintf("total-next-buyer-%016x", packet.CustomerID), &redis.Z{Score: meta.DeltaRTT, Member: meta.ID})
+		tx.Expire(fmt.Sprintf("total-next-buyer-%016x", packet.CustomerID), redisClientPortalExp)
 	case false:
-		tx.SAdd("total-direct", meta.ID)
+		tx.ZAdd("total-direct", &redis.Z{Score: meta.DeltaRTT, Member: meta.ID})
 		tx.Expire("total-direct", redisClientPortalExp)
+		tx.ZAdd(fmt.Sprintf("total-direct-buyer-%016x", packet.CustomerID), &redis.Z{Score: meta.DeltaRTT, Member: meta.ID})
+		tx.Expire(fmt.Sprintf("total-direct-buyer-%016x", packet.CustomerID), redisClientPortalExp)
 	}
-
-	// set top improved sessions with expiration on the entire key set for safety
-	tx.ZAdd("top-global", &redis.Z{Score: meta.DeltaRTT, Member: meta.ID})
-	tx.Expire("top-global", redisClientPortalExp)
-	tx.ZAdd(fmt.Sprintf("top-buyer-%016x", packet.CustomerID), &redis.Z{Score: meta.DeltaRTT, Member: meta.ID})
-	tx.Expire(fmt.Sprintf("top-buyer-%016x", packet.CustomerID), redisClientPortalExp)
 
 	// set session and slice information with expiration on the entire key set for safety
 	tx.Set(fmt.Sprintf("session-%016x-meta", packet.SessionID), meta, redisClientPortalExp)

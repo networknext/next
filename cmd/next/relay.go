@@ -323,7 +323,7 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 			time.Sleep(11 * time.Second)
 
 			// Run the relay update script
-			if !runCommandEnv("deploy/relay-update.sh", []string{env.SSHKeyFilePath, relay.user + "@" + relay.sshAddr}, nil) {
+			if !runCommandEnv("deploy/relay-update.sh", []string{env.SSHKeyFilePath, relay.sshPort, relay.user + "@" + relay.sshAddr}, nil) {
 				fmt.Println("could not execute the relay-update.sh script")
 				continue
 			}
