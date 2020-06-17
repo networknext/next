@@ -442,6 +442,8 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			return
 		}
 
+		defer request.Body.Close()
+
 		var relayInitRequest RelayInitRequest
 		switch request.Header.Get("Content-Type") {
 		case "application/json":
@@ -613,6 +615,8 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			writer.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+
+		defer request.Body.Close()
 
 		locallogger := log.With(handlerLogger, "req_addr", request.RemoteAddr)
 
@@ -863,6 +867,12 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 
 func HealthzHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		_, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}	
+		defer r.Body.Close()
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(http.StatusText(http.StatusOK)))
 	}
