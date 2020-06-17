@@ -186,8 +186,8 @@ namespace core
           break;
         } else if (timeSinceLastUpdate > 30) {
           Log("could not update relay for over 30 seconds, aborting program");
-          break;
           successfulRoutine = false;
+          break;
         }
 
         Log(
