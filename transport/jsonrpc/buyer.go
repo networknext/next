@@ -38,6 +38,7 @@ type FlushSessionsArgs struct{}
 type FlushSessionsReply struct{}
 
 func (s *BuyersService) FlushSessions(r *http.Request, args *FlushSessionsArgs, reply *FlushSessionsReply) error {
+	defer r.Body.Close()
 	if !CheckIsOps(r) {
 		return ErrInsufficientPrivileges
 	}
@@ -54,6 +55,7 @@ type UserSessionsReply struct {
 }
 
 func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, reply *UserSessionsReply) error {
+	defer r.Body.Close()
 	userhash := args.UserHash
 
 	var sessionIDs []string
@@ -177,7 +179,8 @@ type TotalSessionsReply struct {
 }
 
 func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, reply *TotalSessionsReply) error {
-	direct, err := s.RedisClient.ZCard("total-direct").Result()
+	defer r.Body.Close()
+	direct, err := s.RedisClient.SCard("total-direct").Result()
 	if err != nil {
 		return err
 	}
@@ -203,8 +206,7 @@ type TopSessionsReply struct {
 
 // TopSessions generates the top sessions sorted by improved RTT
 func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, reply *TopSessionsReply) error {
-	buyers := s.Storage.Buyers()
-
+	defer r.Body.Close()
 	var err error
 	var topnext []string
 	var topdirect []string
@@ -236,6 +238,8 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 	} else {
 		isSameBuyer = true
 	}
+
+	buyers := s.Storage.Buyers()
 
 	reply.Sessions = make([]routing.SessionMeta, 0)
 
@@ -423,6 +427,7 @@ type SessionDetailsReply struct {
 }
 
 func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs, reply *SessionDetailsReply) error {
+	defer r.Body.Close()
 	var err error
 	var isAdmin bool = false
 	var isSameBuyer bool = false
@@ -594,6 +599,7 @@ func (s *BuyersService) GenerateMapPoints() error {
 
 // SessionMapPoints returns the locally cached JSON from GenerateSessionMapPoints
 func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, reply *MapPointsReply) error {
+	defer r.Body.Close()
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -604,6 +610,7 @@ func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, r
 }
 
 func (s *BuyersService) SessionMap(r *http.Request, args *MapPointsArgs, reply *MapPointsReply) error {
+	r.Body.Close()
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -629,6 +636,7 @@ type gameConfiguration struct {
 }
 
 func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurationArgs, reply *GameConfigurationReply) error {
+	defer r.Body.Close()
 	var err error
 	var buyer routing.Buyer
 
@@ -654,6 +662,7 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 }
 
 func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfigurationArgs, reply *GameConfigurationReply) error {
+	defer r.Body.Close()
 	if IsAnonymous(r) || IsAnonymousPlus(r) {
 		return fmt.Errorf("UpdateGameConfiguration() insufficient privileges")
 	}
@@ -756,6 +765,7 @@ type buyerAccount struct {
 }
 
 func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *BuyerListReply) error {
+	defer r.Body.Close()
 	reply.Buyers = make([]buyerAccount, 0)
 	if IsAnonymous(r) || IsAnonymousPlus(r) {
 		return nil
@@ -778,6 +788,7 @@ func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *Buye
 }
 
 func (s *BuyersService) IsSameBuyer(r *http.Request, buyerID string) (bool, error) {
+	defer r.Body.Close()
 	if buyerID == "" {
 		return false, nil
 	}
