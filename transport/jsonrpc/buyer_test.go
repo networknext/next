@@ -150,8 +150,10 @@ func TestTotalSessions(t *testing.T) {
 	redisServer, _ := miniredis.Run()
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
-	redisServer.SetAdd("total-next", "session-1", "session-2", "session-5")
-	redisServer.SetAdd("total-direct", "session-2")
+	redisServer.ZAdd("total-next", 10, "session-1")
+	redisServer.ZAdd("total-next", 20, "session-2")
+	redisServer.ZAdd("total-next", 30, "session-5")
+	redisServer.ZAdd("total-direct", 5, "session-2")
 
 	svc := jsonrpc.BuyersService{
 		RedisClient: redisClient,
@@ -177,19 +179,19 @@ func TestTopSessions(t *testing.T) {
 	sessionID3 := fmt.Sprintf("%x", 333)
 	sessionID4 := "missing"
 
-	redisServer.ZAdd("top-global", 50, sessionID1)
-	redisServer.ZAdd("top-global", 100, sessionID2)
-	redisServer.ZAdd("top-global", 150, sessionID3)
-	redisServer.ZAdd("top-global", 150, sessionID4)
+	redisServer.ZAdd("total-next", 50, sessionID1)
+	redisServer.ZAdd("total-next", 100, sessionID2)
+	redisServer.ZAdd("total-next", 150, sessionID3)
+	redisServer.ZAdd("total-next", 150, sessionID4)
 
-	redisServer.ZAdd(fmt.Sprintf("top-buyer-%s", buyerID2), 50, sessionID1)
-	redisServer.ZAdd(fmt.Sprintf("top-buyer-%s", buyerID1), 100, sessionID2)
-	redisServer.ZAdd(fmt.Sprintf("top-buyer-%s", buyerID1), 150, sessionID3)
-	redisServer.ZAdd(fmt.Sprintf("top-buyer-%s", buyerID1), 150, sessionID4)
+	redisServer.ZAdd(fmt.Sprintf("total-next-buyer-%s", buyerID2), 50, sessionID1)
+	redisServer.ZAdd(fmt.Sprintf("total-next-buyer-%s", buyerID1), 100, sessionID2)
+	redisServer.ZAdd(fmt.Sprintf("total-next-buyer-%s", buyerID1), 150, sessionID3)
+	redisServer.ZAdd(fmt.Sprintf("total-next-buyer-%s", buyerID1), 150, sessionID4)
 
-	redisClient.Set(fmt.Sprintf("session-%s-meta", sessionID1), routing.SessionMeta{ID: sessionID1, NextRTT: 100}, time.Hour)
-	redisClient.Set(fmt.Sprintf("session-%s-meta", sessionID2), routing.SessionMeta{ID: sessionID2, NextRTT: 100}, time.Hour)
-	redisClient.Set(fmt.Sprintf("session-%s-meta", sessionID3), routing.SessionMeta{ID: sessionID3, NextRTT: 100}, time.Hour)
+	redisClient.Set(fmt.Sprintf("session-%s-meta", sessionID1), routing.SessionMeta{ID: sessionID1, DeltaRTT: 50}, time.Hour)
+	redisClient.Set(fmt.Sprintf("session-%s-meta", sessionID2), routing.SessionMeta{ID: sessionID2, DeltaRTT: 100}, time.Hour)
+	redisClient.Set(fmt.Sprintf("session-%s-meta", sessionID3), routing.SessionMeta{ID: sessionID3, DeltaRTT: 150}, time.Hour)
 
 	storer := storage.InMemory{}
 	pubkey := make([]byte, 4)
@@ -247,9 +249,9 @@ func TestTopSessions(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, 3, len(reply.Sessions))
-		assert.Equal(t, sessionID1, reply.Sessions[0].ID)
+		assert.Equal(t, sessionID3, reply.Sessions[0].ID)
 		assert.Equal(t, sessionID2, reply.Sessions[1].ID)
-		assert.Equal(t, sessionID3, reply.Sessions[2].ID)
+		assert.Equal(t, sessionID1, reply.Sessions[2].ID)
 	})
 
 	t.Run("top buyer", func(t *testing.T) {
@@ -258,8 +260,8 @@ func TestTopSessions(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, 2, len(reply.Sessions))
-		assert.Equal(t, sessionID2, reply.Sessions[0].ID)
-		assert.Equal(t, sessionID3, reply.Sessions[1].ID)
+		assert.Equal(t, sessionID3, reply.Sessions[0].ID)
+		assert.Equal(t, sessionID2, reply.Sessions[1].ID)
 	})
 }
 
