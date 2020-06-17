@@ -146,8 +146,9 @@ func (database *StatsDatabase) ProcessStats(statsUpdate *RelayStatsUpdate) {
 	for _, stats := range statsUpdate.PingStats {
 
 		destRelayID := stats.RelayID
-
+		database.mu.Lock()
 		relay, relayExists := entry.Relays[destRelayID]
+		database.mu.Unlock()
 
 		if !relayExists {
 			relay = NewStatsEntryRelay()
@@ -192,10 +193,8 @@ func (database *StatsDatabase) GetEntry(relay1, relay2 uint64) *StatsEntryRelay 
 	relay, relayExists := entry.Relays[relay2]
 	database.mu.Unlock()
 
-	if entryExists {
-		if relayExists {
-			return relay
-		}
+	if entryExists && relayExists {
+		return relay
 	}
 
 	return nil
