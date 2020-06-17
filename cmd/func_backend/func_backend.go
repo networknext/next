@@ -666,6 +666,8 @@ func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
+	defer request.Body.Close()
+
 	index := 0
 
 	var magic uint32
@@ -735,6 +737,8 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	if err != nil {
 		return
 	}
+
+	defer request.Body.Close()
 
 	index := 0
 

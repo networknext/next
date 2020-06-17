@@ -96,6 +96,8 @@ func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayH
 			return
 		}
 
+		defer request.Body.Close()
+
 		// Unmarshal the request packet
 		var relayRequest RelayRequest
 		if err := relayRequest.UnmarshalJSON(body); err != nil {
