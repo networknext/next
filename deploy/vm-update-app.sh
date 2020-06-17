@@ -40,4 +40,5 @@ systemctl daemon-reload
 systemctl start app.service
 
 # Ensure the file descriptor limit for the process is set
-prlimit --nofile=200000:200000 --pid $(pidof app)
+# --> Moved to ExecStartPost in the service script PR 830
+# prlimit --nofile=200000:200000 --pid $(pidof app)
