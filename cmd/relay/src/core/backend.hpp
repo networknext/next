@@ -190,7 +190,8 @@ namespace core
           successfulRoutine = false;
         }
 
-        Log("could not update relay, attempts: ", (unsigned int)updateAttempts, ", time since last update: ", timeSinceLastUpdate);
+        Log(
+         "could not update relay, attempts: ", (unsigned int)updateAttempts, ", time since last update: ", timeSinceLastUpdate);
       }
 
       sessions.purge(mRouterInfo.currentTime());
@@ -231,6 +232,12 @@ namespace core
       Log("curl request failed in update");
       return false;
     }
+
+    // early return if shutting down since the response won't be valid
+    if (shutdown) {
+      return true;
+    }
+
     recorder.addToSent(bytesSent);
     mStats.BytesPerSecManagementTx += bytesSent;
 

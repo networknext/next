@@ -66,7 +66,7 @@ namespace core
     readyToSend = true;
     GenericPacketBuffer<MaxPingsToSend, packets::NewRelayPingPacket::ByteSize> buffer;
 
-    while (mShouldProcess) {
+    while (!mSocket.closed() && mShouldProcess) {
       // Sleep for 10ms, but the actual ping rate is controlled by RELAY_PING_TIME
       std::this_thread::sleep_for(10ms);
 
@@ -122,6 +122,11 @@ namespace core
         // could also just do: (1 + 8) * number of relays to ping to make this faster
         mRecorder.addToSent(wholePacketSize);
         mStats.BytesPerSecManagementTx += wholePacketSize;
+
+        if (mSocket.closed() || !mShouldProcess) {
+          break;
+        }
+
 #ifndef RELAY_MULTISEND
         if (!mSocket.send(pkt)) {
           Log("failed to send new ping to ", pkt.Addr);
@@ -129,10 +134,12 @@ namespace core
 #endif
       }
 
-      buffer.Count = numberOfRelaysToPing;
 #ifdef RELAY_MULTISEND
-      if (!mSocket.multisend(buffer)) {
-        Log("failed to send messages, amount to send: ", numberOfRelaysToPing, ", actual sent: ", buffer.Count);
+      if (!mSocket.closed() && mShouldProcess) {
+        buffer.Count = numberOfRelaysToPing;
+        if (!mSocket.multisend(buffer)) {
+          Log("failed to send messages, amount to send: ", numberOfRelaysToPing, ", actual sent: ", buffer.Count);
+        }
       }
 #endif
     }
