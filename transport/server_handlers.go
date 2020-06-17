@@ -25,6 +25,11 @@ import (
 	"github.com/networknext/backend/storage"
 )
 
+const (
+	NextScoreMultiplier   = 1
+	DirectScoreMultiplier = 1000
+)
+
 type UDPPacket struct {
 	SourceAddr *net.UDPAddr
 	Data       []byte
@@ -1045,6 +1050,8 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 				}
 
 				level.Debug(locallogger).Log("msg", "session served network next route")
+
+				sessionCacheEntry.RouteDecision = routeDecision
 			}
 		}
 
@@ -1159,19 +1166,24 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 	tx := redisClientPortal.TxPipeline()
 
 	// set total session counts with expiration on the entire key set for safety
+	sessionScore := meta.DeltaRTT
 	switch meta.OnNetworkNext {
 	case true:
+		sessionScore = sessionScore * NextScoreMultiplier
+
 		tx.SAdd("total-next", meta.ID)
 		tx.Expire("total-next", redisClientPortalExp)
 	case false:
+		sessionScore = sessionScore * DirectScoreMultiplier
+
 		tx.SAdd("total-direct", meta.ID)
 		tx.Expire("total-direct", redisClientPortalExp)
 	}
 
 	// set top improved sessions with expiration on the entire key set for safety
-	tx.ZAdd("top-global", &redis.Z{Score: meta.DeltaRTT, Member: meta.ID})
+	tx.ZAdd("top-global", &redis.Z{Score: sessionScore, Member: meta.ID})
 	tx.Expire("top-global", redisClientPortalExp)
-	tx.ZAdd(fmt.Sprintf("top-buyer-%016x", packet.CustomerID), &redis.Z{Score: meta.DeltaRTT, Member: meta.ID})
+	tx.ZAdd(fmt.Sprintf("top-buyer-%016x", packet.CustomerID), &redis.Z{Score: sessionScore, Member: meta.ID})
 	tx.Expire(fmt.Sprintf("top-buyer-%016x", packet.CustomerID), redisClientPortalExp)
 
 	// set session and slice information with expiration on the entire key set for safety
