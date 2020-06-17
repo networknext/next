@@ -626,8 +626,6 @@ func main() {
 						Exec: func(ctx context.Context, args []string) error {
 							if relaysfs.NFlag() == 0 {
 								// If no flags are given, set the default set of flags
-								relaysStateShowFlags[routing.RelayStateEnabled] = true
-								relaysStateShowFlags[routing.RelayStateQuarantine] = true
 								relaysStateHideFlags[routing.RelayStateDecommissioned] = true
 							}
 
