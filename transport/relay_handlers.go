@@ -78,7 +78,6 @@ func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayH
 	handlerLogger := log.With(logger, "handler", "relay")
 
 	return func(writer http.ResponseWriter, request *http.Request) {
-		defer request.Body.Close()
 		// Set up metrics
 		durationStart := time.Now()
 		defer func() {
@@ -96,6 +95,7 @@ func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayH
 			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
+		defer request.Body.Close()
 
 		// Unmarshal the request packet
 		var relayRequest RelayRequest
@@ -415,7 +415,6 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 	handlerLogger := log.With(logger, "handler", "init")
 
 	return func(writer http.ResponseWriter, request *http.Request) {
-		defer request.Body.Close()
 		durationStart := time.Now()
 		defer func() {
 			durationSince := time.Since(durationStart)
@@ -431,6 +430,7 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
+		defer request.Body.Close()
 
 		var relayInitRequest RelayInitRequest
 		switch request.Header.Get("Content-Type") {
@@ -582,7 +582,6 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 	handlerLogger := log.With(logger, "handler", "update")
 
 	return func(writer http.ResponseWriter, request *http.Request) {
-		defer request.Body.Close()
 		durationStart := time.Now()
 		defer func() {
 			durationSince := time.Since(durationStart)
@@ -596,6 +595,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			writer.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+		defer request.Body.Close()
 
 		locallogger := log.With(handlerLogger, "req_addr", request.RemoteAddr)
 
@@ -837,7 +837,6 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 
 func HealthzHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		defer r.Body.Close()
 		_, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
