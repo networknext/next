@@ -38,7 +38,3 @@ cp app.service /etc/systemd/system/app.service
 # Start the service
 systemctl daemon-reload
 systemctl start app.service
-
-# Ensure the file descriptor limit for the process is set
-# --> Moved to ExecStartPost in the service script PR 830
-# prlimit --nofile=200000:200000 --pid $(pidof app)
