@@ -637,7 +637,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 			ID:        buyerID,
 			Name:      args.Name,
 			Domain:    args.Domain,
-			Active:    false,
+			Active:    true,
 			Live:      false,
 			PublicKey: byteKey,
 		})
