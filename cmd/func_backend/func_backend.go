@@ -660,13 +660,12 @@ func WriteBytes(data []byte, index *int, value []byte, numBytes int) {
 }
 
 func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
+	defer request.Body.Close()
 
 	body, err := ioutil.ReadAll(request.Body)
 	if err != nil {
 		return
 	}
-
-	defer request.Body.Close()
 
 	index := 0
 
@@ -732,13 +731,12 @@ func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 }
 
 func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
+	defer request.Body.Close()
 
 	body, err := ioutil.ReadAll(request.Body)
 	if err != nil {
 		return
 	}
-
-	defer request.Body.Close()
 
 	index := 0
 
