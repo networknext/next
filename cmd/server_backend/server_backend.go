@@ -20,7 +20,6 @@ import (
 
 	gcplogging "cloud.google.com/go/logging"
 
-	"github.com/getsentry/sentry-go"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/oschwald/geoip2-golang"
@@ -70,22 +69,6 @@ func main() {
 
 		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
 	}
-
-	sentryOpts := sentry.ClientOptions{
-		ServerName:       "Server Backend",
-		Release:          release,
-		Dist:             "linux",
-		AttachStacktrace: true,
-		Debug:            true,
-	}
-
-	if err := sentry.Init(sentryOpts); err != nil {
-		level.Error(logger).Log("msg", "failed to initialize sentry", "err", err)
-		os.Exit(1)
-	}
-
-	// force sentry to post any updates upon program exit
-	defer sentry.Flush(time.Second * 2)
 
 	// var serverPublicKey []byte
 	var customerPublicKey []byte
