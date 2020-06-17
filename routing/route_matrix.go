@@ -289,7 +289,6 @@ func (m *RouteMatrix) WriteTo(w io.Writer) (int64, error) {
 }
 
 func (m *RouteMatrix) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
 	w.Header().Set("Content-Type", "application/octet-stream")
 	_, err := m.WriteTo(w)
 	if err != nil {
