@@ -486,7 +486,7 @@ func setRelayState(rpcClient jsonrpc.RPCClient, stateString string, regexes []st
 	}
 }
 
-func checkRelays(rpcClient jsonrpc.RPCClient, env Environment, regex string) {
+func checkRelays(rpcClient jsonrpc.RPCClient, env Environment, regex string, relaysStateShowFlags [6]bool, relaysStateHideFlags [6]bool, relaysDownFlag bool) {
 	args := localjsonrpc.RelaysArgs{
 		Regex: regex,
 	}
@@ -511,22 +511,70 @@ func checkRelays(rpcClient jsonrpc.RPCClient, env Environment, regex string) {
 		PortBound      string `table:"Bound"`
 	}
 
-	info := make([]checkInfo, len(reply.Relays))
+	// filter the relays
+	includedRelays := make([]relayInfo, 0)
+
+	for _, relay := range reply.Relays {
+		relayState, err := routing.ParseRelayState(relay.State)
+		if err != nil {
+			fmt.Printf("could not parse relay state %s for relay %s", relay.State, relay.Name)
+			continue
+		}
+
+		includeRelay := true
+
+		for i, flag := range relaysStateShowFlags {
+			if flag {
+				if relayState != routing.RelayState(i) {
+					// An "only show" flag is set and this relay doesn't match that state, so don't include it in the final output
+					includeRelay = false
+				} else {
+					// One of the flags should include the relay, so set to true and break out, since combining the flags is an OR operation
+					includeRelay = true
+					break
+				}
+			}
+		}
+
+		if relaysStateHideFlags[relayState] {
+			// Relay should be hidden, so don't include in final output
+			includeRelay = false
+		}
+
+		lastUpdateDuration := time.Since(relay.LastUpdateTime).Truncate(time.Second)
+		if relaysDownFlag && lastUpdateDuration < 30*time.Second {
+			// Relay is still up and shouldn't be included in the final output
+			includeRelay = false
+		}
+
+		if !includeRelay {
+			continue
+		}
+
+		includedRelays = append(includedRelays, relayInfo{
+			name:    relay.Name,
+			user:    relay.SSHUser,
+			sshAddr: relay.ManagementAddr,
+			sshPort: strconv.FormatInt(relay.SSHPort, 10),
+		})
+	}
 
 	var wg sync.WaitGroup
-	wg.Add(len(reply.Relays))
+	wg.Add(len(includedRelays))
 
-	fmt.Printf("Checking %d relays\n\n", len(info))
+	fmt.Printf("Checking %d relays\n\n", len(includedRelays))
 
-	for i, relay := range reply.Relays {
+	info := make([]checkInfo, len(includedRelays))
+
+	for i, relay := range includedRelays {
 		r := relay
 		go func(indx int, wg *sync.WaitGroup) {
 			defer wg.Done()
 
 			infoIndx := &info[indx]
-			infoIndx.Name = r.Name
+			infoIndx.Name = r.name
 
-			con := NewSSHConn(r.SSHUser, r.ManagementAddr, strconv.FormatInt(r.SSHPort, 10), env.SSHKeyFilePath)
+			con := NewSSHConn(r.user, r.sshAddr, r.sshPort, env.SSHKeyFilePath)
 
 			// test ssh capability, if not success return
 			if con.TestConnect() {
@@ -541,7 +589,7 @@ func checkRelays(rpcClient jsonrpc.RPCClient, env Environment, regex string) {
 				if out, err := con.IssueCmdAndGetOutput(VersionCheckScript); err == nil {
 					infoIndx.UbuntuVersion = out
 				} else {
-					log.Printf("error when acquiring ubuntu version for relay %s: %v\n", r.Name, err)
+					log.Printf("error when acquiring ubuntu version for relay %s: %v\n", r.name, err)
 					infoIndx.UbuntuVersion = "Error"
 				}
 			}
@@ -551,7 +599,7 @@ func checkRelays(rpcClient jsonrpc.RPCClient, env Environment, regex string) {
 				if out, err := con.IssueCmdAndGetOutput(CoreCheckScript); err == nil {
 					infoIndx.CPUCores = out
 				} else {
-					log.Printf("error when acquiring number of logical cpu cores for relay %s: %v\n", r.Name, err)
+					log.Printf("error when acquiring number of logical cpu cores for relay %s: %v\n", r.name, err)
 					infoIndx.CPUCores = "Error"
 				}
 			}
@@ -566,7 +614,7 @@ func checkRelays(rpcClient jsonrpc.RPCClient, env Environment, regex string) {
 							infoIndx.CanPingBackend = "no"
 						}
 					} else {
-						log.Printf("error when checking relay %s can ping the backend: %v\n", r.Name, err)
+						log.Printf("error when checking relay %s can ping the backend: %v\n", r.name, err)
 						infoIndx.CanPingBackend = "Error"
 					}
 				} else {
@@ -583,7 +631,7 @@ func checkRelays(rpcClient jsonrpc.RPCClient, env Environment, regex string) {
 						infoIndx.ServiceRunning = "no"
 					}
 				} else {
-					log.Printf("error when checking if relay %s has the service running: %v\n", r.Name, err)
+					log.Printf("error when checking if relay %s has the service running: %v\n", r.name, err)
 					infoIndx.ServiceRunning = "Error"
 				}
 			}
@@ -597,12 +645,12 @@ func checkRelays(rpcClient jsonrpc.RPCClient, env Environment, regex string) {
 						infoIndx.PortBound = "no"
 					}
 				} else {
-					log.Printf("error when checking if relay %s has the right port bound: %v\n", r.Name, err)
+					log.Printf("error when checking if relay %s has the right port bound: %v\n", r.name, err)
 					infoIndx.PortBound = "Error"
 				}
 			}
 
-			log.Printf("gathered info for relay %s\n", r.Name)
+			log.Printf("gathered info for relay %s\n", r.name)
 		}(i, &wg)
 	}
 
