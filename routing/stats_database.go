@@ -192,7 +192,10 @@ func (database *StatsDatabase) GetEntry(relay1, relay2 uint64) *StatsEntryRelay 
 	database.mu.Unlock()
 
 	if entryExists {
-		if relay, relayExists := entry.Relays[relay2]; relayExists {
+		database.mu.Lock()
+		relay, relayExists := entry.Relays[relay2]
+		database.mu.Unlock()
+		if relayExists {
 			return relay
 		}
 	}
