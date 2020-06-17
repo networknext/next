@@ -179,7 +179,6 @@ type TotalSessionsReply struct {
 }
 
 func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, reply *TotalSessionsReply) error {
-	defer r.Body.Close()
 	direct, err := s.RedisClient.SCard("total-direct").Result()
 	if err != nil {
 		return err
