@@ -88,19 +88,6 @@ func main() {
 		relayslogger = log.With(relayslogger, "ts", log.DefaultTimestampUTC)
 	}
 
-	sentryOpts := sentry.ClientOptions{
-		ServerName:       "Relay Backend",
-		Release:          release,
-		Dist:             "linux",
-		AttachStacktrace: true,
-		Debug:            true,
-	}
-
-	if err := sentry.Init(sentryOpts); err != nil {
-		level.Error(logger).Log("msg", "failed to initialize sentry", "err", err)
-		os.Exit(1)
-	}
-
 	// force sentry to post any updates upon program exit
 	defer sentry.Flush(time.Second * 2)
 
