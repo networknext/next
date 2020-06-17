@@ -1110,12 +1110,12 @@ func main() {
 				},
 				Subcommands: []*ffcli.Command{
 					{
-						Name:       "set",
-						ShortUsage: "next shader set <buyer ID> [filepath]",
-						ShortHelp:  "Set the buyer's route shader in storage from a JSON file or piped from stdin",
+						Name:       "edit",
+						ShortUsage: "next shader edit <buyer ID> [filepath]",
+						ShortHelp:  "Edit the buyer's route shader in storage from a JSON file or piped from stdin",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) == 0 {
-								log.Fatal("No buyer ID provided.\nUsage:\nnext shader set <buyer ID> [filepath]\nbuyer ID: the buyer's ID\n(Optional) filepath: the filepath to a JSON file with the new route shader data. If this data is piped through stdin, this parameter is optional.\nFor a list of buyers, use next buyers")
+								log.Fatal("No buyer ID provided.\nUsage:\nnext shader edit <buyer ID> [filepath]\nbuyer ID: the buyer's ID\n(Optional) filepath: the filepath to a JSON file with the new route shader data. If this data is piped through stdin, this parameter is optional.\nFor a list of buyers, use next buyers")
 							}
 
 							jsonData := readJSONData("buyers", args[1:])
@@ -1133,7 +1133,7 @@ func main() {
 						Subcommands: []*ffcli.Command{
 							{
 								Name:       "example",
-								ShortUsage: "next shader set example",
+								ShortUsage: "next shader edit example",
 								ShortHelp:  "Displays an example route shader for the correct JSON schema",
 								Exec: func(_ context.Context, args []string) error {
 									jsonBytes, err := json.MarshalIndent(routing.DefaultRoutingRulesSettings, "", "\t")

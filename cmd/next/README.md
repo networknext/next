@@ -27,40 +27,55 @@ To authorize with the currently selected environment: `next auth`
 
 To list buyers: `next buyers`
 
-To add a buyer: `next buyers add [filepath]`
+To add a buyer: `next buyer add [filepath]`
 
 Adds a buyer to Firestore based on the given JSON file. You can also pipe in the JSON data (ex. `cat buyer.json | next buyers add`)
 To see an example buyer JSON schema, use `next buyers add example`
 
-To remove a buyer: `next buyers remove <id>`
+To remove a buyer: `next buyer remove <id>`
 
 Removes a buyer with the given buyer ID from Firestore. The buyer ID can be found with `next buyers`
+
+To edit a buyer's values: `next buyer edit <buyer ID> [filepath]`
+
+Edits a buyer's values directly based on the given JSON file. You can also pipe in the JSON data (ex. `cat buyer.json | next buyer edit <buyer ID>`)
+To see an example JSON schema, use `next buyer edit example`. Only include fields that should be changed and omit any that shouldn't.
 
 ## Sellers
 
 To list sellers: `next sellers`
 
-To add a seller: `next sellers add [filepath]`
+To add a seller: `next seller add [filepath]`
 
 Adds a seller to Firestore based on the given JSON file. You can also pipe in the JSON data (ex. `cat seller.json | next sellers add`)
 To see an example seller JSON schema, use `next sellers add example`
 
-To remove a seller: `next sellers remove <id>`
+To remove a seller: `next seller remove <id>`
 
 Removes a seller with the given seller ID from Firestore. The seller ID can be found with `next sellers`
+
+To edit a seller's values: `next seller edit <seller ID> [filepath]`
+
+Edits a seller's values directly based on the given JSON file. You can also pipe in the JSON data (ex. `cat seller.json | next seller edit <seller ID>`)
+To see an example JSON schema, use `next seller edit example`. Only include fields that should be changed and omit any that shouldn't.
 
 ## Datacenters
 
 To list datacenters: `next datacenters`
 
-To add a datacenter: `next datacenters add [filepath]`
+To add a datacenter: `next datacenter add [filepath]`
 
 Adds a datacenter to Firestore based on the given JSON file. You can also pipe in the JSON data (ex. `cat datacenter.json | next datacenters add`)
 To see an example datacenter JSON schema, use `next datacenters add example`
 
-To remove a datacenter: `next datacenters remove <name>`
+To remove a datacenter: `next datacenter remove <name>`
 
 Removes a datacenter with the given datacenter name from Firestore.
+
+To edit a datacenter's values: `next datacenter edit <datacenter ID> [filepath]`
+
+Edits a datacenter's values directly based on the given JSON file. You can also pipe in the JSON data (ex. `cat datacenter.json | next datacenter edit <datacenter ID>`)
+To see an example JSON schema, use `next datacenter edit example`. Only include fields that should be changed and omit any that shouldn't.
 
 ## Relays
 
@@ -85,32 +100,30 @@ Use the following flags to filter the relays output:
 If no flags are provided, then the `--enabled`, `--quarantined`, and `--nodecommissioned` are set by default.
 You can also use a combination of them as well. Ex `--enabled` and `--quaratined` will show all relays that are either enabled or quaratined.
 
-To add a relay: `next relays add [filepath]`
+To add a relay: `next relay add [filepath]`
 
 Adds a relay to Firestore based on the given JSON file. You can also pipe in the JSON data (ex. `cat relay.json | next relays add`)
 To see an example relay JSON schema, use `next relays add example`
 
-To remove a relay: `next relays remove <name>`
+To remove a relay: `next relay remove <name>`
 
-Removes a relay with the given relay name from Firestore.
+This sets the relay's state to decommissioned, rather than actually removing it from Firestore. This is done to preserve entries for historial purposes.
+
+To edit a relay's values: `next relay edit <relay ID> [filepath]`
+
+Edits a relay's values directly based on the given JSON file. You can also pipe in the JSON data (ex. `cat relay.json | next relay edit <relay ID>`)
+To see an example JSON schema, use `next relay edit example`. Only include fields that should be changed and omit any that shouldn't.
 
 ## Route Shaders
 
-To get a route shader: `next routeshader <buyer ID>`
+To get a route shader: `next shader <buyer ID>`
 
 Gets a route shader for a given buyer ID. You can find a buyer's ID with `next buyers`.
 
-To set or update a route shader: `next routeshader set <buyer ID> [filepath]`
+To edit a route shader: `next shader edit <buyer ID> [filepath]`
 
-Sets a route shader in Firestore for a given buyer based on the given JSON file. You can also pipe in the JSON data (ex. `cat relay.json | next routeshader set <buyer ID>`)
-To see an example route shader JSON schema, use `next routeshader set example`
-
-## Edit Buyer
-
-To edit a buyer's values: `next buyer edit <buyer ID> [filepath]`
-
-Edits a buyer's values directly based on the given JSON file. You can also pipe in the JSON data (ex. `cat buyer.json | next buyer edit <buyer ID>`)
-To see an example JSON schema, use `next buyer edit example`. Only include fields that should be changed and omit any that shouldn't.
+Edits a route shader's values for a given buyer based on the given JSON file. You can also pipe in the JSON data (ex. `cat routeshader.json | next shader set <buyer ID>`)
+To see an example route shader JSON schema, use `next shader edit example`. Only include fields that should be changed and omit any that shouldn't.
 
 ## SSH
 
