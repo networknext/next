@@ -64,7 +64,7 @@ type account struct {
 func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *AccountsReply) error {
 	var accountList *management.UserList
 
-	if VerifyRoles(r, AdminRole) != nil && VerifyRoles(r, OwnerRole) != nil {
+	if !VerifyAnyRole(r, AdminRole, OwnerRole) {
 		err := fmt.Errorf("AllAccounts() CheckRoles error: %v", ErrInsufficientPrivileges)
 		return err
 	}
@@ -144,7 +144,7 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 		return err
 	}
 	if ok && requestID != args.UserID {
-		if VerifyRoles(r, OwnerRole) != nil && VerifyRoles(r, AdminRole) != nil {
+		if !VerifyAnyRole(r, AdminRole, OwnerRole) {
 			err := fmt.Errorf("UserAccount(): %v", ErrInsufficientPrivileges)
 			s.Logger.Log("err", err)
 			return err
@@ -180,7 +180,7 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 }
 
 func (s *AuthService) DeleteUserAccount(r *http.Request, args *AccountArgs, reply *AccountReply) error {
-	if VerifyRoles(r, OwnerRole) != nil && VerifyRoles(r, AdminRole) != nil {
+	if !VerifyAnyRole(r, AdminRole, OwnerRole) {
 		err := fmt.Errorf("UserAccount(): %v", ErrInsufficientPrivileges)
 		s.Logger.Log("err", err)
 		return err
@@ -204,7 +204,7 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 	var adminString string = "Admin"
 	var accounts []account
 
-	if VerifyRoles(req, OwnerRole) != nil && VerifyRoles(req, AdminRole) != nil {
+	if !VerifyAnyRole(req, AdminRole, OwnerRole) {
 		err := fmt.Errorf("UserAccount(): %v", ErrInsufficientPrivileges)
 		s.Logger.Log("err", err)
 		return err
@@ -218,7 +218,7 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 
 	// Check if non admin is assigning admin role
 	for _, r := range args.Roles {
-		if r.Name == &adminString && VerifyRoles(req, AdminRole) != nil {
+		if r.Name == &adminString && !VerifyAllRoles(req, AdminRole) {
 			err := fmt.Errorf("AddUserAccount() insufficient privileges")
 			s.Logger.Log("err", err)
 			return err
@@ -334,7 +334,7 @@ type RolesReply struct {
 func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesReply) error {
 	reply.Roles = make([]*management.Role, 0)
 
-	if VerifyRoles(r, OwnerRole) != nil && VerifyRoles(r, AdminRole) != nil {
+	if !VerifyAnyRole(r, AdminRole, OwnerRole) {
 		err := fmt.Errorf("UserAccount(): %v", ErrInsufficientPrivileges)
 		s.Logger.Log("err", err)
 		return err
@@ -347,7 +347,7 @@ func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesRep
 		return err
 	}
 
-	if VerifyRoles(r, AdminRole) != nil {
+	if !VerifyAllRoles(r, AdminRole) {
 		for _, role := range roleList.Roles {
 			if *role.Name != "Admin" {
 				reply.Roles = append(reply.Roles, role)
@@ -361,7 +361,7 @@ func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesRep
 }
 
 func (s *AuthService) UserRoles(r *http.Request, args *RolesArgs, reply *RolesReply) error {
-	if VerifyRoles(r, OwnerRole) != nil && VerifyRoles(r, AdminRole) != nil {
+	if !VerifyAnyRole(r, AdminRole, OwnerRole) {
 		err := fmt.Errorf("UserAccount(): %v", ErrInsufficientPrivileges)
 		s.Logger.Log("err", err)
 		return err
@@ -388,7 +388,7 @@ func (s *AuthService) UserRoles(r *http.Request, args *RolesArgs, reply *RolesRe
 
 func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *RolesReply) error {
 	var err error
-	if VerifyRoles(r, OwnerRole) != nil && VerifyRoles(r, AdminRole) != nil {
+	if !VerifyAnyRole(r, AdminRole, OwnerRole) {
 		err := fmt.Errorf("UserAccount(): %v", ErrInsufficientPrivileges)
 		s.Logger.Log("err", err)
 		return err
@@ -441,7 +441,7 @@ type UpgradeReply struct {
 }
 
 func (s *AuthService) UpgradeAccount(r *http.Request, args *UpgradeArgs, reply *UpgradeReply) error {
-	if VerifyRoles(r, AdminRole) == nil || VerifyRoles(r, OwnerRole) == nil {
+	if VerifyAnyRole(r, AdminRole, OwnerRole) {
 		return nil
 	}
 	var companyUsers []*management.User
@@ -553,7 +553,7 @@ type VerifyEmailReply struct {
 func (s *AuthService) ResendVerificationEmail(r *http.Request, args *VerifyEmailArgs, reply *VerifyEmailReply) error {
 	reply.Sent = false
 
-	if VerifyRoles(r, UnverifiedRole) != nil {
+	if !VerifyAllRoles(r, UnverifiedRole) {
 		err := fmt.Errorf("VerifyEmailUrl() failed to creating verification email link: %v", ErrInsufficientPrivileges)
 		s.Logger.Log("err", err)
 		return err
@@ -762,15 +762,22 @@ var UnverifiedRole = func(req *http.Request) (bool, error) {
 	return false, nil
 }
 
-func VerifyRoles(req *http.Request, roleFuncs ...RoleFunc) error {
+func VerifyAllRoles(req *http.Request, roleFuncs ...RoleFunc) bool {
 	for _, f := range roleFuncs {
 		authorized, err := f(req)
-		if !authorized {
-			return fmt.Errorf("%v: %v", ErrInsufficientPrivileges, f)
-		}
-		if err != nil {
-			return fmt.Errorf("%v: %v", err, f)
+		if !authorized || err != nil {
+			return false
 		}
 	}
-	return nil
+	return true
+}
+
+func VerifyAnyRole(req *http.Request, roleFuncs ...RoleFunc) bool {
+	for _, f := range roleFuncs {
+		authorized, err := f(req)
+		if authorized && err == nil {
+			return true
+		}
+	}
+	return false
 }

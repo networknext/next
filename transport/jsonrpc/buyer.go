@@ -38,8 +38,8 @@ type FlushSessionsArgs struct{}
 type FlushSessionsReply struct{}
 
 func (s *BuyersService) FlushSessions(r *http.Request, args *FlushSessionsArgs, reply *FlushSessionsReply) error {
-	if err := VerifyRoles(r, OpsRole); err != nil {
-		return err
+	if !VerifyAllRoles(r, OpsRole) {
+		return fmt.Errorf("FlushSessions(): %v", ErrInsufficientPrivileges)
 	}
 
 	return s.RedisClient.FlushAllAsync().Err()
@@ -116,7 +116,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 				continue
 			}
 
-			if VerifyRoles(r, AnonymousRole) == nil || VerifyRoles(r, UnverifiedRole) == nil || VerifyRoles(r, s.SameBuyerRole(meta.BuyerID)) != nil {
+			if VerifyAnyRole(r, AnonymousRole, UnverifiedRole) || !VerifyAllRoles(r, s.SameBuyerRole(meta.BuyerID)) {
 				meta.Anonymise()
 			}
 
@@ -204,8 +204,8 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 			return err
 		}
 	default:
-		if err := VerifyRoles(r, s.SameBuyerRole(args.BuyerID)); err != nil {
-			err = fmt.Errorf("TopSessions(): %v", err)
+		if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
+			err = fmt.Errorf("TopSessions(): %v", ErrInsufficientPrivileges)
 			s.Logger.Log("err", err)
 			return err
 		}
@@ -263,7 +263,7 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 				continue
 			}
 
-			if VerifyRoles(r, s.SameBuyerRole(args.BuyerID)) != nil {
+			if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
 				meta.Anonymise()
 			}
 
@@ -385,7 +385,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 	}
 
 	// We fill in the name on the portal side so we don't spend time doing it while serving sessions
-	if VerifyRoles(r, AdminRole) == nil {
+	if VerifyAllRoles(r, AdminRole) {
 		for idx, relay := range reply.Meta.NearbyRelays {
 			r, err := s.Storage.Relay(relay.ID)
 			if err != nil {
@@ -396,7 +396,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		}
 	}
 
-	if VerifyRoles(r, s.SameBuyerRole(reply.Meta.BuyerID)) != nil {
+	if !VerifyAllRoles(r, s.SameBuyerRole(reply.Meta.BuyerID)) {
 		reply.Meta.Anonymise()
 	}
 
@@ -551,7 +551,7 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 	var err error
 	var buyer routing.Buyer
 
-	if VerifyRoles(r, AnonymousRole) == nil || VerifyRoles(r, UnverifiedRole) == nil {
+	if VerifyAnyRole(r, AnonymousRole, UnverifiedRole) {
 		err = fmt.Errorf("GameConfiguration(): %v", ErrInsufficientPrivileges)
 		s.Logger.Log("err", err)
 		return err
@@ -577,7 +577,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 	var buyerID uint64
 	var buyer routing.Buyer
 
-	if VerifyRoles(r, AdminRole) != nil && VerifyRoles(r, OwnerRole) != nil {
+	if !VerifyAnyRole(r, AdminRole, OwnerRole) {
 		err = fmt.Errorf("UpdateGameConfiguration(): %v", ErrInsufficientPrivileges)
 		s.Logger.Log("err", err)
 		return err
@@ -661,7 +661,7 @@ type buyerAccount struct {
 
 func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *BuyerListReply) error {
 	reply.Buyers = make([]buyerAccount, 0)
-	if VerifyRoles(r, AnonymousRole) == nil {
+	if VerifyAllRoles(r, AnonymousRole) {
 		return nil
 	}
 
@@ -684,10 +684,10 @@ func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *Buye
 // SameBuyerRole checks the JWT for the correct passed in buyerID
 func (s *BuyersService) SameBuyerRole(buyerID string) RoleFunc {
 	return func(req *http.Request) (bool, error) {
-		if VerifyRoles(req, AdminRole) == nil || VerifyRoles(req, OpsRole) == nil {
+		if VerifyAnyRole(req, AdminRole, OpsRole) {
 			return true, nil
 		}
-		if VerifyRoles(req, AnonymousRole) == nil {
+		if VerifyAllRoles(req, AnonymousRole) {
 			return false, nil
 		}
 
