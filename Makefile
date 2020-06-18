@@ -22,8 +22,6 @@ ARTIFACT_BUCKET = gs://artifacts.network-next-v3-dev.appspot.com
 ARTIFACT_BUCKET_PROD = gs://us.artifacts.network-next-v3-prod.appspot.com
 SYSTEMD_SERVICE_FILE = app.service
 
-RELAY_ARTIFACT_BUCKET = gs://relay_binaries
-
 COST_FILE = $(DIST_DIR)/cost.bin
 OPTIMIZE_FILE = $(DIST_DIR)/optimize.bin
 
@@ -511,8 +509,12 @@ build-relay-prod-artifact: build-relay ## builds the relay prod artifact
 .PHONY: publish-relay-artifact
 publish-relay-artifact: ## publishes the relay artifact to GCP storage with gsutil
 	@printf "Publishing relay artifact... \n\n"
-	@gsutil cp $(DIST_DIR)/relay.dev.tar.gz $(RELAY_ARTIFACT_BUCKET)/relay.dev.tar.gz
-	@gsutil acl set public-read $(RELAY_ARTIFACT_BUCKET)/relay.dev.tar.gz
+	@gsutil cp $(DIST_DIR)/relay.dev.tar.gz $(ARTIFACT_BUCKET)/relay.dev.tar.gz
+	@gsutil acl set public-read $(ARTIFACT_BUCKET)/relay.dev.tar.gz
+	@gsutil setmeta \
+	-h 'Content-Type:application/xtar' \
+	-h 'Cache-Control:no-cache, max-age=0' \
+	$(ARTIFACT_BUCKET)/relay.dev.tar.gz
 	@printf "done\n"
 
 .PHONY: publish-relay-prod-artifact
@@ -520,6 +522,10 @@ publish-relay-prod-artifact: ## publishes the relay prod artifact to GCP storage
 	@printf "Publishing relay artifact... \n\n"
 	@gsutil cp $(DIST_DIR)/relay.prod.tar.gz $(ARTIFACT_BUCKET_PROD)/relay.prod.tar.gz
 	@gsutil acl set public-read $(ARTIFACT_BUCKET_PROD)/relay.prod.tar.gz
+	@gsutil setmeta \
+	-h 'Content-Type:application/xtar' \
+	-h 'Cache-Control:no-cache, max-age=0' \
+	$(ARTIFACT_BUCKET_PROD)/relay.prod.tar.gz
 	@printf "done\n"
 
 .PHONY: build-backend-prod-artifacts

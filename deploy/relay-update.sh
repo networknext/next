@@ -32,16 +32,16 @@ cd "$dist_dir"
 
 # check dependencies afte cd-ing into the dist dir
 
-ensure_downloaded "$make_file" "$make_url" || exit 1
+# ensure_downloaded "$make_file" "$make_url" || exit 1
 ensure_downloaded "$libsodium_file" "$libsodium_url" || exit 1
 
 # copy them so they have a generic name
 
-cp "$make_file" "make.tar.gz"
-cp "$libsodium_file" "libsodium.tar.gz"
+# cp "$make_file" "make.tar.gz"
+cp "$libsodium_file" 'libsodium.tar.gz'
 
 # tar everything for scp-ing
-tar -zcf "$proj_root/dist/$tarfile" 'relay' 'relay.env' 'relay.service' 'install.sh' 'libsodium.tar.gz' 'make.tar.gz' || exit 1
+tar -zcf "$proj_root/dist/$tarfile" 'relay' 'relay.env' 'relay.service' 'install.sh' 'libsodium.tar.gz' || exit 1
 
 scp -i "$1" -P "$2" "$proj_root/dist/$tarfile" "$3:~/$tarfile" || exit 1
 
