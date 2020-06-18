@@ -177,7 +177,7 @@ type TotalSessionsReply struct {
 }
 
 func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, reply *TotalSessionsReply) error {
-	direct, err := s.RedisClient.SCard("total-direct").Result()
+	direct, err := s.RedisClient.ZCard("total-direct").Result()
 	if err != nil {
 		return err
 	}
