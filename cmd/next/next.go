@@ -1018,6 +1018,71 @@ func main() {
 							return nil
 						},
 					},
+					{
+						Name:       "view",
+						ShortUsage: "next datacenter view <name>",
+						ShortHelp:  "Views a datacenter's entry in storage",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) == 0 {
+								log.Fatal("Provide the datacenter name of the datacenter you wish to view\nFor a list of datacenters, use next datacenters")
+							}
+
+							// viewDatacenter(rpcClient, env, args[0])
+							return nil
+						},
+					},
+					{
+						Name:       "edit",
+						ShortUsage: "next datacenter edit <name> <filepath>",
+						ShortHelp:  "Edits a datacenter's entry in storage",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) == 0 {
+								log.Fatal("Provide the datacenter name of the datacenter you wish to edit\nFor a list of datacenters, use next datacenters")
+							}
+
+							// datacenterName := args[0]
+
+							if len(args) > 1 {
+								args = args[1:]
+							} else {
+								args = nil
+							}
+
+							jsonData := readJSONData("datacenters", args)
+
+							// Unmarshal the JSON and create the datacenter struct
+							var editDatacenterData map[string]interface{}
+							if err := json.Unmarshal(jsonData, &editDatacenterData); err != nil {
+								log.Fatalf("Could not unmarshal edit datacenter data: %v", err)
+							}
+
+							// editDatacenter(rpcClient, env, datacenterName, editDatacenterData)
+							return nil
+						},
+						Subcommands: []*ffcli.Command{
+							{
+								Name:       "example",
+								ShortUsage: "next datacenter edit example",
+								ShortHelp:  "Displays an example datacenter for the correct JSON schema",
+								Exec: func(_ context.Context, args []string) error {
+									example := datacenter{
+										Name:     "amazon.ohio.2",
+										Enabled:  true,
+										Location: routing.LocationNullIsland,
+									}
+
+									jsonBytes, err := json.MarshalIndent(example, "", "\t")
+									if err != nil {
+										log.Fatal("Failed to marshal datacenter struct")
+									}
+
+									fmt.Println("Exmaple JSON schema to edit a datacenter:")
+									fmt.Println(string(jsonBytes))
+									return nil
+								},
+							},
+						},
+					},
 				},
 			},
 			{
