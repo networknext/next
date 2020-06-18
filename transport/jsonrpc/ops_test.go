@@ -1140,3 +1140,65 @@ func TestRemoveDatacenter(t *testing.T) {
 		assert.Len(t, datacentersReply.Datacenters, 0)
 	})
 }
+
+func TestDatacenterEdit(t *testing.T) {
+	logger := log.NewNopLogger()
+
+	makeSvc := func() *jsonrpc.OpsService {
+		var storer storage.InMemory
+
+		err := storer.AddDatacenter(context.Background(), routing.Datacenter{
+			ID:       crypto.HashID("old datacenter name"),
+			Name:     "old datacenter name",
+			Enabled:  false,
+			Location: routing.LocationNullIsland,
+		})
+		assert.NoError(t, err)
+
+		return &jsonrpc.OpsService{
+			Storage: &storer,
+			Logger:  logger,
+		}
+	}
+
+	t.Run("datacenter not found", func(t *testing.T) {
+		svc := makeSvc()
+
+		err := svc.DatacenterEdit(nil, &jsonrpc.DatacenterEditArgs{
+			DatacenterID: 0,
+		}, &jsonrpc.DatacenterEditReply{})
+
+		assert.EqualError(t, err, "DatacenterEdit() Datacenter error: datacenter with reference 0 not found")
+	})
+
+	t.Run("success", func(t *testing.T) {
+		svc := makeSvc()
+
+		expected := routing.Datacenter{
+			ID:       crypto.HashID("new datacenter name"),
+			Name:     "new datacenter name",
+			Enabled:  true,
+			Location: routing.LocationNullIsland,
+		}
+
+		expected.Location.Latitude = 75
+		expected.Location.Longitude = 90
+
+		datacenterData := map[string]interface{}{
+			"Name":      expected.Name,
+			"Enabled":   expected.Enabled,
+			"Latitude":  expected.Location.Latitude,
+			"Longitude": expected.Location.Longitude,
+		}
+
+		err := svc.DatacenterEdit(nil, &jsonrpc.DatacenterEditArgs{
+			DatacenterID:   crypto.HashID("old datacenter name"),
+			DatacenterData: datacenterData,
+		}, &jsonrpc.DatacenterEditReply{})
+		assert.NoError(t, err)
+
+		datacenter, err := svc.Storage.Datacenter(crypto.HashID("new datacenter name"))
+		assert.NoError(t, err)
+		assert.Equal(t, expected, datacenter)
+	})
+}

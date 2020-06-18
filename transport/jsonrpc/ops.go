@@ -634,7 +634,7 @@ type DatacentersReply struct {
 
 type datacenter struct {
 	Name      string  `json:"name"`
-	ID        string  `json:"id"`
+	ID        uint64  `json:"id"`
 	Latitude  float64 `json:"latitude"`
 	Longitude float64 `json:"longitude"`
 	Enabled   bool    `json:"enabled"`
@@ -644,7 +644,7 @@ func (s *OpsService) Datacenters(r *http.Request, args *DatacentersArgs, reply *
 	for _, d := range s.Storage.Datacenters() {
 		reply.Datacenters = append(reply.Datacenters, datacenter{
 			Name:      d.Name,
-			ID:        fmt.Sprintf("%x", d.ID),
+			ID:        d.ID,
 			Enabled:   d.Enabled,
 			Latitude:  d.Location.Latitude,
 			Longitude: d.Location.Longitude,
@@ -701,6 +701,48 @@ func (s *OpsService) RemoveDatacenter(r *http.Request, args *RemoveDatacenterArg
 
 	if err := s.Storage.RemoveDatacenter(ctx, id); err != nil {
 		err = fmt.Errorf("RemoveDatacenter() error: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	return nil
+}
+
+type DatacenterEditArgs struct {
+	DatacenterID   uint64                 `json:"datacenter_id"`
+	DatacenterData map[string]interface{} `json:"datacenter_data"`
+}
+
+type DatacenterEditReply struct {
+}
+
+func (s *OpsService) DatacenterEdit(r *http.Request, args *DatacenterEditArgs, reply *DatacenterEditReply) error {
+	// Get current datacenter data
+	datacenter, err := s.Storage.Datacenter(args.DatacenterID)
+	if err != nil {
+		err = fmt.Errorf("DatacenterEdit() Datacenter error: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	// Edit data
+	// This way if a value isn't provided in the map data argument it won't be updated
+	for k, v := range args.DatacenterData {
+		switch k {
+		case "Name":
+			datacenter.Name = v.(string)
+		case "Enabled":
+			datacenter.Enabled = v.(bool)
+		case "Latitude":
+			datacenter.Location.Latitude = v.(float64)
+		case "Longitude":
+			datacenter.Location.Longitude = v.(float64)
+		}
+	}
+
+	// Save new datacenter data
+	if err = s.Storage.SetDatacenter(context.Background(), datacenter); err != nil {
+		err = fmt.Errorf("DatacenterEdit() SetDatacenter error: %w", err)
 		s.Logger.Log("err", err)
 		return err
 	}

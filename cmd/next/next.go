@@ -308,26 +308,6 @@ type seller struct {
 	EgressPriceCents  uint64
 }
 
-type relay struct {
-	Name                string
-	Addr                string
-	PublicKey           string
-	SellerID            string
-	DatacenterName      string
-	NicSpeedMbps        uint64
-	IncludedBandwidthGB uint64
-	ManagementAddr      string
-	SSHUser             string
-	SSHPort             int64
-	MaxSessions         uint32
-}
-
-type datacenter struct {
-	Name     string
-	Enabled  bool
-	Location routing.Location
-}
-
 func main() {
 	var env Environment
 
@@ -971,10 +951,13 @@ func main() {
 
 							// Build the actual Datacenter struct from the input datacenter struct
 							realDatacenter := routing.Datacenter{
-								ID:       crypto.HashID(datacenter.Name),
-								Name:     datacenter.Name,
-								Enabled:  datacenter.Enabled,
-								Location: datacenter.Location,
+								ID:      crypto.HashID(datacenter.Name),
+								Name:    datacenter.Name,
+								Enabled: datacenter.Enabled,
+								Location: routing.Location{
+									Latitude:  datacenter.Latitude,
+									Longitude: datacenter.Longitude,
+								},
 							}
 
 							// Add the Datacenter to storage
@@ -988,9 +971,10 @@ func main() {
 								ShortHelp:  "Displays an example datacenter for the correct JSON schema",
 								Exec: func(_ context.Context, args []string) error {
 									example := datacenter{
-										Name:     "amazon.ohio.2",
-										Enabled:  false,
-										Location: routing.LocationNullIsland,
+										Name:      "amazon.ohio.2",
+										Enabled:   false,
+										Latitude:  0,
+										Longitude: 0,
 									}
 
 									jsonBytes, err := json.MarshalIndent(example, "", "\t")
@@ -1027,7 +1011,7 @@ func main() {
 								log.Fatal("Provide the datacenter name of the datacenter you wish to view\nFor a list of datacenters, use next datacenters")
 							}
 
-							// viewDatacenter(rpcClient, env, args[0])
+							viewDatacenter(rpcClient, env, args[0])
 							return nil
 						},
 					},
@@ -1040,7 +1024,7 @@ func main() {
 								log.Fatal("Provide the datacenter name of the datacenter you wish to edit\nFor a list of datacenters, use next datacenters")
 							}
 
-							// datacenterName := args[0]
+							datacenterName := args[0]
 
 							if len(args) > 1 {
 								args = args[1:]
@@ -1056,7 +1040,7 @@ func main() {
 								log.Fatalf("Could not unmarshal edit datacenter data: %v", err)
 							}
 
-							// editDatacenter(rpcClient, env, datacenterName, editDatacenterData)
+							editDatacenter(rpcClient, env, datacenterName, editDatacenterData)
 							return nil
 						},
 						Subcommands: []*ffcli.Command{
@@ -1066,9 +1050,10 @@ func main() {
 								ShortHelp:  "Displays an example datacenter for the correct JSON schema",
 								Exec: func(_ context.Context, args []string) error {
 									example := datacenter{
-										Name:     "amazon.ohio.2",
-										Enabled:  true,
-										Location: routing.LocationNullIsland,
+										Name:      "amazon.ohio.2",
+										Enabled:   true,
+										Latitude:  0,
+										Longitude: 0,
 									}
 
 									jsonBytes, err := json.MarshalIndent(example, "", "\t")
