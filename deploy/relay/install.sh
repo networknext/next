@@ -43,7 +43,7 @@ install_make() {
     echo "not found, installing make from souce..."
 		readonly make_dir="$cur_dir/make"
 		mkdir "$make_dir" || return 1
-		tar -xvf make.tar.gx -C "$make_dir" || return 1
+		tar -xvf make.tar.gz -C "$make_dir" || return 1
 		cd "$make_dir"
 		./build.sh || return 1
 		sudo mv make /usr/bin/make || return 1
