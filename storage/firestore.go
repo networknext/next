@@ -1000,6 +1000,20 @@ func (fs *Firestore) RemoveDatacenter(ctx context.Context, id uint64) error {
 }
 
 func (fs *Firestore) SetDatacenter(ctx context.Context, d routing.Datacenter) error {
+	// Rehash the ID since it might have changed
+	newID := crypto.HashID(d.Name)
+
+	if newID != d.ID {
+		// Make sure the new ID isn't already in use if it's different
+		fs.datacenterMutex.RLock()
+		_, ok := fs.datacenters[newID]
+		fs.datacenterMutex.RUnlock()
+
+		if ok {
+			return &AlreadyExistsError{resourceType: "datacenter", resourceRef: fmt.Sprintf("%x", newID)}
+		}
+	}
+
 	// Get a copy of the datacenter in cached storage
 	fs.datacenterMutex.RLock()
 	datacenterInCachedStorage, ok := fs.datacenters[d.ID]
@@ -1030,7 +1044,8 @@ func (fs *Firestore) SetDatacenter(ctx context.Context, d routing.Datacenter) er
 		}
 
 		// If the datacenter is the one we want to update, update it with the new data
-		if crypto.HashID(datacenterInRemoteStorage.Name) == d.ID {
+		dID := crypto.HashID(datacenterInRemoteStorage.Name)
+		if dID == d.ID {
 			// Set the data to update the datacenter with
 			newDatacenterData := map[string]interface{}{
 				"name":      d.Name,
@@ -1046,10 +1061,19 @@ func (fs *Firestore) SetDatacenter(ctx context.Context, d routing.Datacenter) er
 
 			// Update the cached version
 			datacenterInCachedStorage = d
+			datacenterInCachedStorage.ID = newID
 
-			fs.datacenterMutex.Lock()
-			fs.datacenters[d.ID] = datacenterInCachedStorage
-			fs.datacenterMutex.Unlock()
+			// If the new ID is different, remake the entry in the map
+			if newID != d.ID {
+				fs.datacenterMutex.Lock()
+				delete(fs.datacenters, d.ID)
+				fs.datacenters[newID] = datacenterInCachedStorage
+				fs.datacenterMutex.Unlock()
+			} else {
+				fs.datacenterMutex.Lock()
+				fs.datacenters[newID] = datacenterInCachedStorage
+				fs.datacenterMutex.Unlock()
+			}
 
 			return nil
 		}

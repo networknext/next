@@ -913,18 +913,24 @@ func TestInMemorySetDatacenter(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		inMemory := storage.InMemory{}
 
+		oldDatancenterName := "datacenter name"
+		newDatacenterName := "new datacenter name"
+
 		datacenter := routing.Datacenter{
-			ID:   1,
-			Name: "datacenter name",
+			ID:   crypto.HashID(oldDatancenterName),
+			Name: oldDatancenterName,
 		}
 
 		err := inMemory.AddDatacenter(ctx, datacenter)
 		assert.NoError(t, err)
 
-		datacenter.Name = "new datacenter name"
+		datacenter.Name = newDatacenterName
 
 		err = inMemory.SetDatacenter(ctx, datacenter)
 		assert.NoError(t, err)
+
+		// ID has change since name changed, so rehash ID
+		datacenter.ID = crypto.HashID(newDatacenterName)
 
 		datacenterInStorage, err := inMemory.Datacenter(datacenter.ID)
 		assert.NoError(t, err)

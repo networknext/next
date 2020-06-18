@@ -1580,6 +1580,51 @@ func TestFirestore(t *testing.T) {
 			assert.EqualError(t, err, "datacenter with reference 1 not found")
 		})
 
+		t.Run("datacenter with new ID already exists", func(t *testing.T) {
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			assert.NoError(t, err)
+
+			defer func() {
+				err := cleanFireStore(ctx, fs.Client)
+				assert.NoError(t, err)
+			}()
+
+			oldName := "old datacenter name"
+			newName := "new datacenter name"
+
+			oldDatacenter := routing.Datacenter{
+				ID:      crypto.HashID(oldName),
+				Name:    oldName,
+				Enabled: true,
+				Location: routing.Location{
+					Latitude:  70.5,
+					Longitude: 120.5,
+				},
+			}
+
+			existingDatacenter := routing.Datacenter{
+				ID:      crypto.HashID(newName),
+				Name:    newName,
+				Enabled: true,
+				Location: routing.Location{
+					Latitude:  70.5,
+					Longitude: 120.5,
+				},
+			}
+
+			err = fs.AddDatacenter(ctx, oldDatacenter)
+			assert.NoError(t, err)
+
+			err = fs.AddDatacenter(ctx, existingDatacenter)
+			assert.NoError(t, err)
+
+			newDatacenter := oldDatacenter
+			newDatacenter.Name = newName
+
+			err = fs.SetDatacenter(ctx, newDatacenter)
+			assert.EqualError(t, err, fmt.Sprintf("datacenter with reference %x already exists", existingDatacenter.ID))
+		})
+
 		t.Run("success", func(t *testing.T) {
 			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 			assert.NoError(t, err)

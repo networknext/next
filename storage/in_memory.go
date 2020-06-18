@@ -339,6 +339,9 @@ func (m *InMemory) RemoveDatacenter(ctx context.Context, id uint64) error {
 func (m *InMemory) SetDatacenter(ctx context.Context, datacenter routing.Datacenter) error {
 	for i := 0; i < len(m.localDatacenters); i++ {
 		if m.localDatacenters[i].ID == datacenter.ID {
+			// Rehash the ID in case it has been updated
+			datacenter.ID = crypto.HashID(datacenter.Name)
+
 			m.localDatacenters[i] = datacenter
 			return nil
 		}
