@@ -508,6 +508,24 @@ type MapPointsReply struct {
 	Points json.RawMessage `json:"map_points"`
 }
 
+func (s *BuyersService) GenerateMapPointsPerBuyer() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	buyers := s.Storage.Buyers()
+
+	for _, b := range buyers {
+		// get all the session IDs from the map-points-global key set
+		sessionIDs, err := s.RedisClient.SMembers("map-points-global").Result()
+		if err != nil {
+			err = fmt.Errorf("SessionMapPoints() failed getting global map points: %v", err)
+			s.Logger.Log("err", err)
+			return err
+		}
+	}
+	return nil
+}
+
 // GenerateMapPoints warms a local cache of JSON to be used by SessionMapPoints
 func (s *BuyersService) GenerateMapPoints() error {
 	s.mu.Lock()
