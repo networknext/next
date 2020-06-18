@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -486,6 +487,47 @@ func setRelayState(rpcClient jsonrpc.RPCClient, stateString string, regexes []st
 	}
 }
 
+func viewRelay(rpcClient jsonrpc.RPCClient, env Environment, relayName string) {
+	args := localjsonrpc.RelaysArgs{
+		Regex: relayName,
+	}
+
+	var reply localjsonrpc.RelaysReply
+	if err := rpcClient.CallFor(&reply, "OpsService.Relays", args); err != nil {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	if len(reply.Relays) == 0 {
+		log.Fatalf("Could not find relay with pattern %s", relayName)
+	}
+
+	if len(reply.Relays) > 1 {
+		log.Fatalf("Found more than one relay matching %s", relayName)
+	}
+
+	relay := relay{
+		Name:                reply.Relays[0].Name,
+		Addr:                reply.Relays[0].Addr,
+		PublicKey:           reply.Relays[0].PublicKey,
+		SellerID:            reply.Relays[0].SellerID,
+		DatacenterName:      reply.Relays[0].DatacenterName,
+		NicSpeedMbps:        reply.Relays[0].NICSpeedMbps,
+		IncludedBandwidthGB: reply.Relays[0].IncludedBandwidthGB,
+		ManagementAddr:      reply.Relays[0].ManagementAddr,
+		SSHUser:             reply.Relays[0].SSHUser,
+		SSHPort:             reply.Relays[0].SSHPort,
+		MaxSessions:         reply.Relays[0].MaxSessionCount,
+	}
+
+	jsonData, err := json.MarshalIndent(relay, "", "\t")
+	if err != nil {
+		log.Fatalf("Could not marshal json data for relay: %v", err)
+	}
+
+	fmt.Println(string(jsonData))
+}
+
 func editRelay(rpcClient jsonrpc.RPCClient, env Environment, relayName string, editRelayData map[string]interface{}) {
 	relayInfo := getRelayInfo(rpcClient, relayName)
 
@@ -494,7 +536,7 @@ func editRelay(rpcClient jsonrpc.RPCClient, env Environment, relayName string, e
 	}
 
 	if len(relayInfo) > 1 {
-		log.Fatalf("Found more than one relay matching %s, did you mean %s?", relayName, relayInfo[0].name)
+		log.Fatalf("Found more than one relay matching %s", relayName)
 	}
 
 	args := localjsonrpc.RelayEditArgs{

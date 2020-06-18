@@ -869,6 +869,19 @@ func main() {
 						},
 					},
 					{
+						Name:       "view",
+						ShortUsage: "next relay view <name>",
+						ShortHelp:  "Views a relay's entry in storage",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) == 0 {
+								log.Fatal("Provide the relay name of the relay you wish to view\nFor a list of relays, use next relays")
+							}
+
+							viewRelay(rpcClient, env, args[0])
+							return nil
+						},
+					},
+					{
 						Name:       "edit",
 						ShortUsage: "next relay edit <name> <filepath>",
 						ShortHelp:  "Edits a relay's entry in storage",

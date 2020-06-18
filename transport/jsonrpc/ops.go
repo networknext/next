@@ -343,7 +343,7 @@ type relay struct {
 	Version             string    `json:"relay_version"`
 	SellerID            string    `json:"seller_id"`
 	SellerName          string    `json:"seller_name"`
-	DatacenterID        uint64    `json:"datacenter_id"`
+	DatacenterName      string    `json:"datacenter_name"`
 }
 
 func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysReply) error {
@@ -376,7 +376,7 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			MaxSessionCount:     r.MaxSessions,
 			SellerID:            r.Seller.ID,
 			SellerName:          r.Seller.Name,
-			DatacenterID:        r.Datacenter.ID,
+			DatacenterName:      r.Datacenter.Name,
 		}
 
 		relayCacheEntry := routing.RelayCacheEntry{
