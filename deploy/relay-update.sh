@@ -4,19 +4,13 @@
 # $2 = port
 # $3 = username@address
 
-readonly make_ver="4.3"
-readonly libsodium_ver="LATEST"
-
 readonly proj_root="$(pwd)"
 
 readonly dist_dir="$proj_root/dist"
 
 readonly tarfile="relay.tar.gz"
 
-readonly make_file="make-$make_ver.tar.gz"
-readonly make_url="https://ftp.gnu.org/gnu/make/$make_file"
-
-readonly libsodium_file="$libsodium_ver.tar.gz"
+readonly libsodium_file="LATEST.tar.gz"
 readonly libsodium_url="https://download.libsodium.org/libsodium/releases/$libsodium_file"
 
 ensure_downloaded() {
@@ -32,12 +26,10 @@ cd "$dist_dir"
 
 # check dependencies afte cd-ing into the dist dir
 
-# ensure_downloaded "$make_file" "$make_url" || exit 1
 ensure_downloaded "$libsodium_file" "$libsodium_url" || exit 1
 
 # copy them so they have a generic name
 
-# cp "$make_file" "make.tar.gz"
 cp "$libsodium_file" 'libsodium.tar.gz'
 
 # tar everything for scp-ing
