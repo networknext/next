@@ -130,8 +130,12 @@ ifndef ROUTE_MATRIX_URI
 export ROUTE_MATRIX_URI = http://127.0.0.1:30000/route_matrix
 endif
 
-ifndef MAXMIND_DB_URI
-export MAXMIND_DB_URI = ./testdata/GeoIP2-City-Test.mmdb
+ifndef MAXMIND_CITY_DB_URI
+export MAXMIND_CITY_DB_URI = ./testdata/GeoIP2-City-Test.mmdb
+endif
+
+ifndef MAXMIND_ISP_DB_URI
+export MAXMIND_ISP_DB_URI = ./testdata/GeoIP2-ISP-Test.mmdb
 endif
 
 ifndef REDIS_HOST_PORTAL

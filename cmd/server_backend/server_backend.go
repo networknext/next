@@ -22,7 +22,6 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/oschwald/geoip2-golang"
 
 	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/crypto"
@@ -132,15 +131,29 @@ func main() {
 
 	// Open the Maxmind DB and create a routing.MaxmindDB from it
 	var ipLocator routing.IPLocator = routing.NullIsland
-	if uri, ok := os.LookupEnv("MAXMIND_DB_URI"); ok {
-		mmreader, err := geoip2.Open(uri)
+	mmcitydburi := os.Getenv("MAXMIND_CITY_DB_URI")
+	mmispdburi := os.Getenv("MAXMIND_ISP_DB_URI")
+	if mmcitydburi != "" && mmispdburi != "" {
+		cityreader, err := routing.NewMaxmindReader(http.DefaultClient, mmcitydburi)
 		if err != nil {
-			level.Error(logger).Log("envvar", "MAXMIND_DB_URI", "value", uri, "err", err)
+			level.Error(logger).Log("envvar", "MAXMIND_CITY_DB_URI", "value", mmcitydburi, "err", err)
+			os.Exit(1)
 		}
+
+		ispreader, err := routing.NewMaxmindReader(http.DefaultClient, mmispdburi)
+		if err != nil {
+			level.Error(logger).Log("envvar", "MAXMIND_ISP_DB_URI", "value", mmispdburi, "err", err)
+
+		}
+
 		ipLocator = &routing.MaxmindDB{
-			Reader: mmreader,
+			CityReader: cityreader,
+			ISPReader:  ispreader,
 		}
-		defer mmreader.Close()
+		defer func() {
+			cityreader.Close()
+			ispreader.Close()
+		}()
 	}
 	// Commented out to ensure it really does not load the IPStack version
 	// if key, ok := os.LookupEnv("IPSTACK_ACCESS_KEY"); ok {
