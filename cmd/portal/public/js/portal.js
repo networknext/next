@@ -148,8 +148,8 @@ MapHandler = {
 	mapCountLoop: null,
 	mapInstance: null,
 	initMap() {
-		let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
-		this.updateFilter('map', {
+		let buyerId = !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
+		this.updateFilter({
 			buyerId: buyerId,
 			sessionType: 'all'
 		});
@@ -534,13 +534,13 @@ WorkspaceHandler = {
 				UserHandler.userInfo.company = "";
 			});
 
-		let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
+		let buyerId = !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
 		this.updateAccountsTableFilter({
 			buyerId: buyerId,
 		});
 	},
 	loadSessionsPage() {
-		let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
+		let buyerId = !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
 		this.updateSessionFilter({
 			buyerId: buyerId,
 			sessionType: 'all'
