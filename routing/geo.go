@@ -157,7 +157,7 @@ func NewMaxmindReader(httpClient *http.Client, uri string) (*geoip2.Reader, erro
 	}
 
 	// otherwise attempt to download it
-	mmres, err := http.Get(uri)
+	mmres, err := httpClient.Get(uri)
 	if err != nil {
 		return nil, err
 	}
