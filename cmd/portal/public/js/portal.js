@@ -862,7 +862,7 @@ function startApp() {
 				.call('BuyersService.Buyers', {})
 				.then((response) => {
 					Object.assign(rootComponent.$data, {allBuyers: response.Buyers});
-					if (UserHandler.isAnonymous()) {
+					/* if (UserHandler.isAnonymous()) {
 						WorkspaceHandler.welcomeTimeout = setTimeout(() => {
 							this.welcomeTimeout !== null ? clearTimeout(this.welcomeTimeout) : null;
 							if (!($("#video-modal").data('bs.modal') || {})._isShown) {
@@ -878,7 +878,7 @@ function startApp() {
 							});
 							WorkspaceHandler.welcomeTimeout = null;
 						}, 30000)
-					}
+					} */
 				})
 				.catch((e) => {
 					console.log("Something went wrong initializing the map");
