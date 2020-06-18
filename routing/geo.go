@@ -1,12 +1,18 @@
 package routing
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
+	"os"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/go-redis/redis/v7"
 	jsoniter "github.com/json-iterator/go"
@@ -14,7 +20,7 @@ import (
 )
 
 const (
-	regexLocalhostIPs = `127\.0\.0\.1|localhost`
+	regexLocalhostIPs = `0\.0\.0\.0|127\.0\.0\.1|localhost`
 )
 
 func isLocalHost(ip net.IP) bool {

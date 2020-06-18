@@ -138,18 +138,22 @@ func TestIPLocator(t *testing.T) {
 			}
 
 			actual, err := ipstack.LocateIP(net.ParseIP("0.0.0.0"))
-			assert.EqualError(t, err, "no location found for '0.0.0.0'")
+			assert.NoError(t, err)
 
-			assert.Equal(t, routing.Location{}, actual)
+			assert.Equal(t, routing.LocationNullIsland, actual)
 		}
 	})
 
 	t.Run("Maxmind", func(t *testing.T) {
-		mmreader, err := geoip2.Open("../testdata/GeoIP2-City-Test.mmdb")
+		cityreader, err := geoip2.Open("../testdata/GeoIP2-City-Test.mmdb")
+		assert.NoError(t, err)
+
+		ispreader, err := geoip2.Open("../testdata/GeoIP2-ISP-Test.mmdb")
 		assert.NoError(t, err)
 
 		mmdb := routing.MaxmindDB{
-			Reader: mmreader,
+			CityReader: cityreader,
+			ISPReader:  ispreader,
 		}
 
 		{
@@ -160,7 +164,7 @@ func TestIPLocator(t *testing.T) {
 				City:      "London",
 				Latitude:  51.5142,
 				Longitude: -0.0931,
-				ISP:       "unknown",
+				ISP:       "Andrews & Arnold Ltd",
 			}
 
 			actual, err := mmdb.LocateIP(net.ParseIP("81.2.69.160"))
@@ -185,15 +189,25 @@ func TestIPLocator(t *testing.T) {
 
 		{
 			actual, err := mmdb.LocateIP(net.ParseIP("0.0.0.0"))
-			assert.EqualError(t, err, "no location found for '0.0.0.0'")
+			assert.NoError(t, err)
 
-			assert.Equal(t, routing.Location{}, actual)
+			assert.Equal(t, routing.LocationNullIsland, actual)
 		}
 
 		{
 			mmdb := routing.MaxmindDB{}
 			actual, err := mmdb.LocateIP(net.ParseIP("0.0.0.0"))
-			assert.EqualError(t, err, "not configured with a Maxmind DB")
+			assert.EqualError(t, err, "not configured with a Maxmind City DB")
+
+			assert.Equal(t, routing.Location{}, actual)
+		}
+
+		{
+			mmdb := routing.MaxmindDB{
+				CityReader: cityreader,
+			}
+			actual, err := mmdb.LocateIP(net.ParseIP("0.0.0.0"))
+			assert.EqualError(t, err, "not configured with a Maxmind ISP DB")
 
 			assert.Equal(t, routing.Location{}, actual)
 		}
@@ -201,15 +215,17 @@ func TestIPLocator(t *testing.T) {
 		// Fail to locate IP because the database cannot be read from
 		{
 			mmdb := routing.MaxmindDB{
-				Reader: mmreader,
+				CityReader: cityreader,
+				ISPReader:  ispreader,
 			}
 
-			mmdb.Close()
+			cityreader.Close()
+			ispreader.Close()
 
 			actual, err := mmdb.LocateIP(net.ParseIP("0.0.0.0"))
-			assert.Error(t, err)
+			assert.NoError(t, err)
 
-			assert.Equal(t, routing.Location{}, actual)
+			assert.Equal(t, routing.LocationNullIsland, actual)
 		}
 	})
 }
