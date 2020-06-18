@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"net"
 	"net/http"
 	"regexp"
 	"sort"
@@ -340,7 +341,9 @@ type relay struct {
 	UpdateKey           string    `json:"update_key"`
 	FirestoreID         string    `json:"firestore_id"`
 	Version             string    `json:"relay_version"`
+	SellerID            string    `json:"seller_id"`
 	SellerName          string    `json:"seller_name"`
+	DatacenterID        uint64    `json:"datacenter_id"`
 }
 
 func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysReply) error {
@@ -371,7 +374,9 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			UpdateKey:           base64.StdEncoding.EncodeToString(r.UpdateKey),
 			FirestoreID:         r.FirestoreID,
 			MaxSessionCount:     r.MaxSessions,
+			SellerID:            r.Seller.ID,
 			SellerName:          r.Seller.Name,
+			DatacenterID:        r.Datacenter.ID,
 		}
 
 		relayCacheEntry := routing.RelayCacheEntry{
@@ -544,6 +549,74 @@ func (s *OpsService) RelayNICSpeedUpdate(r *http.Request, args *RelayNICSpeedUpd
 	relay.NICSpeedMbps = args.RelayNICSpeed
 	if err = s.Storage.SetRelay(context.Background(), relay); err != nil {
 		err = fmt.Errorf("RelayNICSpeedUpdate() SetRelay error: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	return nil
+}
+
+type RelayEditArgs struct {
+	RelayID   uint64                 `json:"relay_id"`
+	RelayData map[string]interface{} `json:"relay_data"`
+}
+
+type RelayEditReply struct {
+}
+
+func (s *OpsService) RelayEdit(r *http.Request, args *RelayEditArgs, reply *RelayEditReply) error {
+	// Get current relay data
+	relay, err := s.Storage.Relay(args.RelayID)
+	if err != nil {
+		err = fmt.Errorf("RelayEdit() Relay error: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	// Edit data
+	// This way if a value isn't provided in the map data argument it won't be updated
+	for k, v := range args.RelayData {
+		switch k {
+		case "Name":
+			relay.Name = v.(string)
+		case "Addr":
+			addr, err := net.ResolveUDPAddr("udp", v.(string))
+			if err != nil {
+				err = fmt.Errorf("RelayEdit() addr parse error: %w", err)
+				s.Logger.Log("err", err)
+				return err
+			}
+			relay.Addr = *addr
+		case "PublicKey":
+			publicKey, err := base64.StdEncoding.DecodeString(v.(string))
+			if err != nil {
+				err = fmt.Errorf("RelayEdit() public key parse error: %w", err)
+				s.Logger.Log("err", err)
+				return err
+			}
+			relay.PublicKey = publicKey
+		case "SellerID":
+			relay.Seller = routing.Seller{ID: v.(string)}
+		case "DatacenterName":
+			relay.Datacenter = routing.Datacenter{ID: crypto.HashID(v.(string))}
+		case "NicSpeedMbps":
+			relay.NICSpeedMbps = v.(uint64)
+		case "IncludedBandwidthGB":
+			relay.IncludedBandwidthGB = v.(uint64)
+		case "ManagementAddr":
+			relay.ManagementAddr = v.(string)
+		case "SSHUser":
+			relay.SSHUser = v.(string)
+		case "SSHPort":
+			relay.SSHPort = v.(int64)
+		case "MaxSessions":
+			relay.MaxSessions = v.(uint32)
+		}
+	}
+
+	// Save new relay data
+	if err = s.Storage.SetRelay(context.Background(), relay); err != nil {
+		err = fmt.Errorf("RelayEdit() SetRelay error: %w", err)
 		s.Logger.Log("err", err)
 		return err
 	}

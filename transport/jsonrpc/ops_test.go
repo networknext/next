@@ -546,7 +546,7 @@ func TestAddRelay(t *testing.T) {
 		var reply jsonrpc.AddRelayReply
 
 		err = svc.AddRelay(nil, &jsonrpc.AddRelayArgs{Relay: expected}, &reply)
-		assert.EqualError(t, err, fmt.Sprintf("AddRelay() error: relay with reference %d already exists", expected.ID))
+		assert.EqualError(t, err, fmt.Sprintf("AddRelay() error: relay with reference %x already exists", expected.ID))
 	})
 }
 
@@ -592,7 +592,7 @@ func TestRemoveRelay(t *testing.T) {
 		var reply jsonrpc.RemoveRelayReply
 
 		err = svc.RemoveRelay(nil, &jsonrpc.RemoveRelayArgs{RelayID: expected.ID}, &reply)
-		assert.EqualError(t, err, fmt.Sprintf("RemoveRelay() Storage.Relay error: relay with reference %d not found", expected.ID))
+		assert.EqualError(t, err, fmt.Sprintf("RemoveRelay() Storage.Relay error: relay with reference %x not found", expected.ID))
 	})
 
 	t.Run("remove", func(t *testing.T) {
@@ -616,8 +616,17 @@ func TestRemoveRelay(t *testing.T) {
 }
 
 func TestRelayStateUpdate(t *testing.T) {
-
 	logger := log.NewNopLogger()
+
+	addr1, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+	assert.NoError(t, err)
+
+	addr2, err := net.ResolveUDPAddr("udp", "127.0.0.2:40000")
+	assert.NoError(t, err)
+
+	id1 := crypto.HashID(addr1.String())
+	id2 := crypto.HashID(addr2.String())
+
 	makeSvc := func() *jsonrpc.OpsService {
 		var storer storage.InMemory
 
@@ -634,15 +643,17 @@ func TestRelayStateUpdate(t *testing.T) {
 		storer.AddSeller(context.Background(), seller)
 		storer.AddDatacenter(context.Background(), datacenter)
 
-		err := storer.AddRelay(context.Background(), routing.Relay{
-			ID:         1,
+		err = storer.AddRelay(context.Background(), routing.Relay{
+			ID:         id1,
+			Addr:       *addr1,
 			State:      0,
 			Seller:     seller,
 			Datacenter: datacenter,
 		})
 		assert.NoError(t, err)
 		err = storer.AddRelay(context.Background(), routing.Relay{
-			ID:         2,
+			ID:         id2,
+			Addr:       *addr2,
 			State:      123456,
 			Seller:     seller,
 			Datacenter: datacenter,
@@ -658,16 +669,16 @@ func TestRelayStateUpdate(t *testing.T) {
 	t.Run("found", func(t *testing.T) {
 		svc := makeSvc()
 		err := svc.RelayStateUpdate(nil, &jsonrpc.RelayStateUpdateArgs{
-			RelayID:    1,
+			RelayID:    id1,
 			RelayState: routing.RelayStateDisabled,
 		}, &jsonrpc.RelayStateUpdateReply{})
 		assert.NoError(t, err)
 
-		relay, err := svc.Storage.Relay(1)
+		relay, err := svc.Storage.Relay(id1)
 		assert.NoError(t, err)
 		assert.Equal(t, routing.RelayStateDisabled, relay.State)
 
-		relay, err = svc.Storage.Relay(2)
+		relay, err = svc.Storage.Relay(id2)
 		assert.NoError(t, err)
 		assert.Equal(t, routing.RelayState(123456), relay.State)
 	})
@@ -680,11 +691,11 @@ func TestRelayStateUpdate(t *testing.T) {
 		}, &jsonrpc.RelayStateUpdateReply{})
 		assert.Error(t, err)
 
-		relay, err := svc.Storage.Relay(1)
+		relay, err := svc.Storage.Relay(id1)
 		assert.NoError(t, err)
 		assert.Equal(t, routing.RelayState(0), relay.State)
 
-		relay, err = svc.Storage.Relay(2)
+		relay, err = svc.Storage.Relay(id2)
 		assert.NoError(t, err)
 		assert.Equal(t, routing.RelayState(123456), relay.State)
 	})
@@ -692,6 +703,15 @@ func TestRelayStateUpdate(t *testing.T) {
 
 func TestRelayPublicKeyUpdate(t *testing.T) {
 	logger := log.NewNopLogger()
+
+	addr1, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+	assert.NoError(t, err)
+
+	addr2, err := net.ResolveUDPAddr("udp", "127.0.0.2:40000")
+	assert.NoError(t, err)
+
+	id1 := crypto.HashID(addr1.String())
+	id2 := crypto.HashID(addr2.String())
 
 	makeSvc := func() *jsonrpc.OpsService {
 		var storer storage.InMemory
@@ -710,14 +730,16 @@ func TestRelayPublicKeyUpdate(t *testing.T) {
 		storer.AddDatacenter(context.Background(), datacenter)
 
 		err := storer.AddRelay(context.Background(), routing.Relay{
-			ID:         1,
+			ID:         id1,
+			Addr:       *addr1,
 			PublicKey:  []byte("oldpublickey"),
 			Seller:     seller,
 			Datacenter: datacenter,
 		})
 		assert.NoError(t, err)
 		err = storer.AddRelay(context.Background(), routing.Relay{
-			ID:         2,
+			ID:         id2,
+			Addr:       *addr2,
 			PublicKey:  []byte("oldpublickey"),
 			Seller:     seller,
 			Datacenter: datacenter,
@@ -733,16 +755,16 @@ func TestRelayPublicKeyUpdate(t *testing.T) {
 	t.Run("found", func(t *testing.T) {
 		svc := makeSvc()
 		err := svc.RelayPublicKeyUpdate(nil, &jsonrpc.RelayPublicKeyUpdateArgs{
-			RelayID:        1,
+			RelayID:        id1,
 			RelayPublicKey: "newpublickey",
 		}, &jsonrpc.RelayPublicKeyUpdateReply{})
 		assert.NoError(t, err)
 
-		relay, err := svc.Storage.Relay(1)
+		relay, err := svc.Storage.Relay(id1)
 		assert.NoError(t, err)
 		assert.Equal(t, "newpublickey", base64.StdEncoding.EncodeToString(relay.PublicKey))
 
-		relay, err = svc.Storage.Relay(2)
+		relay, err = svc.Storage.Relay(id2)
 		assert.NoError(t, err)
 		assert.Equal(t, []byte("oldpublickey"), relay.PublicKey)
 	})
@@ -755,11 +777,11 @@ func TestRelayPublicKeyUpdate(t *testing.T) {
 		}, &jsonrpc.RelayPublicKeyUpdateReply{})
 		assert.Error(t, err)
 
-		relay, err := svc.Storage.Relay(1)
+		relay, err := svc.Storage.Relay(id1)
 		assert.NoError(t, err)
 		assert.Equal(t, []byte("oldpublickey"), relay.PublicKey)
 
-		relay, err = svc.Storage.Relay(2)
+		relay, err = svc.Storage.Relay(id2)
 		assert.NoError(t, err)
 		assert.Equal(t, []byte("oldpublickey"), relay.PublicKey)
 	})
@@ -767,6 +789,15 @@ func TestRelayPublicKeyUpdate(t *testing.T) {
 
 func TestRelayNICSpeedUpdate(t *testing.T) {
 	logger := log.NewNopLogger()
+
+	addr1, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+	assert.NoError(t, err)
+
+	addr2, err := net.ResolveUDPAddr("udp", "127.0.0.2:40000")
+	assert.NoError(t, err)
+
+	id1 := crypto.HashID(addr1.String())
+	id2 := crypto.HashID(addr2.String())
 
 	makeSvc := func() *jsonrpc.OpsService {
 		var storer storage.InMemory
@@ -785,14 +816,16 @@ func TestRelayNICSpeedUpdate(t *testing.T) {
 		storer.AddDatacenter(context.Background(), datacenter)
 
 		err := storer.AddRelay(context.Background(), routing.Relay{
-			ID:           1,
+			ID:           id1,
+			Addr:         *addr1,
 			NICSpeedMbps: 1000,
 			Seller:       seller,
 			Datacenter:   datacenter,
 		})
 		assert.NoError(t, err)
 		err = storer.AddRelay(context.Background(), routing.Relay{
-			ID:           2,
+			ID:           id2,
+			Addr:         *addr2,
 			NICSpeedMbps: 2000,
 			Seller:       seller,
 			Datacenter:   datacenter,
@@ -808,16 +841,16 @@ func TestRelayNICSpeedUpdate(t *testing.T) {
 	t.Run("found", func(t *testing.T) {
 		svc := makeSvc()
 		err := svc.RelayNICSpeedUpdate(nil, &jsonrpc.RelayNICSpeedUpdateArgs{
-			RelayID:       1,
+			RelayID:       id1,
 			RelayNICSpeed: 10000,
 		}, &jsonrpc.RelayNICSpeedUpdateReply{})
 		assert.NoError(t, err)
 
-		relay, err := svc.Storage.Relay(1)
+		relay, err := svc.Storage.Relay(id1)
 		assert.NoError(t, err)
 		assert.Equal(t, uint64(10000), relay.NICSpeedMbps)
 
-		relay, err = svc.Storage.Relay(2)
+		relay, err = svc.Storage.Relay(id2)
 		assert.NoError(t, err)
 		assert.Equal(t, uint64(2000), relay.NICSpeedMbps)
 	})
@@ -830,13 +863,159 @@ func TestRelayNICSpeedUpdate(t *testing.T) {
 		}, &jsonrpc.RelayNICSpeedUpdateReply{})
 		assert.Error(t, err)
 
-		relay, err := svc.Storage.Relay(1)
+		relay, err := svc.Storage.Relay(id1)
 		assert.NoError(t, err)
 		assert.Equal(t, uint64(1000), relay.NICSpeedMbps)
 
-		relay, err = svc.Storage.Relay(2)
+		relay, err = svc.Storage.Relay(id2)
 		assert.NoError(t, err)
 		assert.Equal(t, uint64(2000), relay.NICSpeedMbps)
+	})
+}
+
+func TestRelayEdit(t *testing.T) {
+	logger := log.NewNopLogger()
+
+	oldSeller := routing.Seller{
+		ID:   "sellerID",
+		Name: "seller name",
+	}
+
+	oldDatacenter := routing.Datacenter{
+		ID:   crypto.HashID("datacenter name"),
+		Name: "datacenter name",
+	}
+
+	newSeller := routing.Seller{
+		ID:   "newSellerID",
+		Name: "new seller name",
+	}
+
+	newDatacenter := routing.Datacenter{
+		ID:   crypto.HashID("new datacenter name"),
+		Name: "new datacenter name",
+	}
+
+	oldAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+	assert.NoError(t, err)
+
+	oldPublicKey, err := base64.StdEncoding.DecodeString("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=")
+	assert.NoError(t, err)
+
+	newAddr, err := net.ResolveUDPAddr("udp", "127.0.0.2:40000")
+	assert.NoError(t, err)
+
+	newPublicKey, err := base64.StdEncoding.DecodeString("BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=")
+	assert.NoError(t, err)
+
+	makeSvc := func() *jsonrpc.OpsService {
+		var storer storage.InMemory
+
+		storer.AddSeller(context.Background(), oldSeller)
+		storer.AddDatacenter(context.Background(), oldDatacenter)
+		storer.AddSeller(context.Background(), newSeller)
+		storer.AddDatacenter(context.Background(), newDatacenter)
+
+		err := storer.AddRelay(context.Background(), routing.Relay{
+			ID:                  crypto.HashID(oldAddr.String()),
+			Name:                "old relay name",
+			Addr:                *oldAddr,
+			PublicKey:           oldPublicKey,
+			Seller:              oldSeller,
+			Datacenter:          oldDatacenter,
+			NICSpeedMbps:        1000,
+			IncludedBandwidthGB: 1,
+			ManagementAddr:      oldAddr.IP.String(),
+			SSHUser:             "root",
+			SSHPort:             40000,
+			MaxSessions:         3000,
+		})
+		assert.NoError(t, err)
+
+		return &jsonrpc.OpsService{
+			Storage: &storer,
+			Logger:  logger,
+		}
+	}
+
+	t.Run("relay not found", func(t *testing.T) {
+		svc := makeSvc()
+
+		err := svc.RelayEdit(nil, &jsonrpc.RelayEditArgs{
+			RelayID: 0,
+		}, &jsonrpc.RelayEditReply{})
+
+		assert.EqualError(t, err, "RelayEdit() Relay error: relay with reference 0 not found")
+	})
+
+	t.Run("seller not found", func(t *testing.T) {
+		svc := makeSvc()
+
+		err := svc.RelayEdit(nil, &jsonrpc.RelayEditArgs{
+			RelayID: crypto.HashID(oldAddr.String()),
+			RelayData: map[string]interface{}{
+				"SellerID": "invalid seller ID",
+			},
+		}, &jsonrpc.RelayEditReply{})
+
+		assert.EqualError(t, err, "RelayEdit() SetRelay error: seller with reference invalid seller ID not found")
+	})
+
+	t.Run("datacenter not found", func(t *testing.T) {
+		svc := makeSvc()
+
+		err := svc.RelayEdit(nil, &jsonrpc.RelayEditArgs{
+			RelayID: crypto.HashID(oldAddr.String()),
+			RelayData: map[string]interface{}{
+				"SellerID":       "newSellerID",
+				"DatacenterName": "invalid datacenter name",
+			},
+		}, &jsonrpc.RelayEditReply{})
+
+		assert.EqualError(t, err, fmt.Sprintf("RelayEdit() SetRelay error: datacenter with reference %x not found", crypto.HashID("invalid datacenter name")))
+	})
+
+	t.Run("success", func(t *testing.T) {
+		svc := makeSvc()
+
+		expected := routing.Relay{
+			ID:                  crypto.HashID(newAddr.String()),
+			Name:                "new relay name",
+			Addr:                *newAddr,
+			PublicKey:           newPublicKey,
+			Seller:              newSeller,
+			Datacenter:          newDatacenter,
+			NICSpeedMbps:        10000,
+			IncludedBandwidthGB: 100,
+			ManagementAddr:      newAddr.IP.String(),
+			SSHUser:             "ubuntu",
+			SSHPort:             22,
+			MaxSessions:         6000,
+		}
+
+		relayData := map[string]interface{}{
+			"Name":                expected.Name,
+			"Addr":                expected.Addr.String(),
+			"PublicKey":           base64.StdEncoding.EncodeToString(expected.PublicKey),
+			"SellerID":            expected.Seller.ID,
+			"DatacenterName":      expected.Datacenter.Name,
+			"NicSpeedMbps":        expected.NICSpeedMbps,
+			"IncludedBandwidthGB": expected.IncludedBandwidthGB,
+			"ManagementAddr":      expected.ManagementAddr,
+			"SSHUser":             expected.SSHUser,
+			"SSHPort":             expected.SSHPort,
+			"MaxSessions":         expected.MaxSessions,
+		}
+
+		err := svc.RelayEdit(nil, &jsonrpc.RelayEditArgs{
+			RelayID:   crypto.HashID(oldAddr.String()),
+			RelayData: relayData,
+		}, &jsonrpc.RelayEditReply{})
+		assert.NoError(t, err)
+
+		relay, err := svc.Storage.Relay(crypto.HashID(newAddr.String()))
+		assert.NoError(t, err)
+		assert.Equal(t, expected, relay)
 	})
 }
 
@@ -942,7 +1121,7 @@ func TestRemoveDatacenter(t *testing.T) {
 		var reply jsonrpc.RemoveDatacenterReply
 
 		err := svc.RemoveDatacenter(nil, &jsonrpc.RemoveDatacenterArgs{Name: expected.Name}, &reply)
-		assert.EqualError(t, err, fmt.Sprintf("RemoveDatacenter() error: datacenter with reference %d not found", expected.ID))
+		assert.EqualError(t, err, fmt.Sprintf("RemoveDatacenter() error: datacenter with reference %x not found", expected.ID))
 	})
 
 	t.Run("remove", func(t *testing.T) {

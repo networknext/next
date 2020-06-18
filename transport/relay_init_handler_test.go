@@ -780,6 +780,7 @@ func TestRelayInitSuccess(t *testing.T) {
 
 	relay := routing.Relay{
 		ID:        crypto.HashID(addr),
+		Addr:      *udpAddr,
 		PublicKey: relayPublicKey[:],
 		Seller: routing.Seller{
 			ID:   "sellerID",
