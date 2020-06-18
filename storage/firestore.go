@@ -758,6 +758,20 @@ func (fs *Firestore) RemoveRelay(ctx context.Context, id uint64) error {
 }
 
 func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
+	// Rehash the ID since it might have changed
+	newID := crypto.HashID(r.Addr.String())
+
+	if newID != r.ID {
+		// Make sure the new ID isn't already in use if it's different
+		fs.relayMutex.RLock()
+		_, ok := fs.relays[newID]
+		fs.relayMutex.RUnlock()
+
+		if ok {
+			return &AlreadyExistsError{resourceType: "relay", resourceRef: fmt.Sprintf("%x", newID)}
+		}
+	}
+
 	// Get a copy of the relay in cached storage
 	fs.relayMutex.RLock()
 	relayInCachedStorage, ok := fs.relays[r.ID]
@@ -871,10 +885,19 @@ func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 
 			// Update the cached version
 			relayInCachedStorage = r
+			relayInCachedStorage.ID = newID
 
-			fs.relayMutex.Lock()
-			fs.relays[r.ID] = relayInCachedStorage
-			fs.relayMutex.Unlock()
+			// If the new ID is different, remake the entry in the map
+			if newID != r.ID {
+				fs.relayMutex.Lock()
+				delete(fs.relays, r.ID)
+				fs.relays[newID] = relayInCachedStorage
+				fs.relayMutex.Unlock()
+			} else {
+				fs.relayMutex.Lock()
+				fs.relays[newID] = relayInCachedStorage
+				fs.relayMutex.Unlock()
+			}
 
 			return nil
 		}

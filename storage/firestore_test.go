@@ -2,6 +2,7 @@ package storage_test
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"os"
 	"testing"
@@ -1266,6 +1267,77 @@ func TestFirestore(t *testing.T) {
 
 			err = fs.SetRelay(ctx, actual)
 			assert.EqualError(t, err, "datacenter with reference 0 not found")
+		})
+
+		t.Run("relay with new ID already exists", func(t *testing.T) {
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			assert.NoError(t, err)
+
+			defer func() {
+				err := cleanFireStore(ctx, fs.Client)
+				assert.NoError(t, err)
+			}()
+
+			oldAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+			assert.NoError(t, err)
+
+			newAddr, err := net.ResolveUDPAddr("udp", "127.0.0.2:40000")
+			assert.NoError(t, err)
+
+			seller := routing.Seller{
+				ID:                "seller ID",
+				Name:              "seller name",
+				IngressPriceCents: 10,
+				EgressPriceCents:  20,
+			}
+
+			datacenter := routing.Datacenter{
+				ID:      crypto.HashID("datacenter name"),
+				Name:    "datacenter name",
+				Enabled: true,
+				Location: routing.Location{
+					Latitude:  70.5,
+					Longitude: 120.5,
+				},
+			}
+
+			oldRelay := routing.Relay{
+				ID:         crypto.HashID(oldAddr.String()),
+				Name:       "local",
+				Addr:       *oldAddr,
+				PublicKey:  make([]byte, crypto.KeySize),
+				Seller:     seller,
+				Datacenter: datacenter,
+				State:      routing.RelayStateEnabled,
+			}
+
+			existingRelay := routing.Relay{
+				ID:         crypto.HashID(newAddr.String()),
+				Name:       "local",
+				Addr:       *newAddr,
+				PublicKey:  make([]byte, crypto.KeySize),
+				Seller:     seller,
+				Datacenter: datacenter,
+				State:      routing.RelayStateEnabled,
+			}
+
+			err = fs.AddSeller(ctx, seller)
+			assert.NoError(t, err)
+
+			err = fs.AddDatacenter(ctx, datacenter)
+			assert.NoError(t, err)
+
+			err = fs.AddRelay(ctx, oldRelay)
+			assert.NoError(t, err)
+
+			err = fs.AddRelay(ctx, existingRelay)
+			assert.NoError(t, err)
+
+			newRelay := oldRelay
+			newRelay.Addr = *newAddr
+
+			err = fs.SetRelay(ctx, newRelay)
+			assert.EqualError(t, err, fmt.Sprintf("relay with reference %x already exists", existingRelay.ID))
 		})
 
 		t.Run("success", func(t *testing.T) {
