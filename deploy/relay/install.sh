@@ -57,7 +57,7 @@ install_libsodium() {
   echo "checking for libsodium..."
 	cur_dir="$(pwd)"
 	lib_versions="$(ldconfig -p | grep libsodium)"
-	if [ -z lib_versions ]; then
+	if [ -z "$lib_versions" ]; then
     echo "not found, installing libsodium from souce..."
 		install_make || return 1
     readonly libsodium_dir="$cur_dir/libsodium"
@@ -85,6 +85,7 @@ install_relay() {
 
 	backup_existing "$bin_dest" "$env_dest" "$svc_dest"
 
+	printf 'installing relay...'
 	sudo mv "$bin" "$bin_dest"
 	sudo mv "$env" "$env_dest"
 	sudo mv "$svc" "$svc_dest"
@@ -93,6 +94,7 @@ install_relay() {
 
 	sudo systemctl enable relay || return 1
 	sudo systemctl start relay || return 1
+	echo 'done'
 }
 
 revert_relay() {
