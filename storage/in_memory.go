@@ -2,7 +2,9 @@ package storage
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 )
 
@@ -22,7 +24,7 @@ func (m *InMemory) Buyer(id uint64) (routing.Buyer, error) {
 		}
 	}
 
-	return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer", resourceRef: id}
+	return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer", resourceRef: fmt.Sprintf("%x", id)}
 }
 
 func (m *InMemory) BuyerWithDomain(domain string) (routing.Buyer, error) {
@@ -47,7 +49,7 @@ func (m *InMemory) Buyers() []routing.Buyer {
 func (m *InMemory) AddBuyer(ctx context.Context, buyer routing.Buyer) error {
 	for _, b := range m.localBuyers {
 		if b.ID == buyer.ID {
-			return &AlreadyExistsError{resourceType: "buyer", resourceRef: buyer.ID}
+			return &AlreadyExistsError{resourceType: "buyer", resourceRef: fmt.Sprintf("%x", buyer.ID)}
 		}
 	}
 
@@ -64,7 +66,7 @@ func (m *InMemory) RemoveBuyer(ctx context.Context, id uint64) error {
 	}
 
 	if buyerIndex < 0 {
-		return &DoesNotExistError{resourceType: "buyer", resourceRef: id}
+		return &DoesNotExistError{resourceType: "buyer", resourceRef: fmt.Sprintf("%x", id)}
 	}
 
 	if buyerIndex+1 == len(m.localBuyers) {
@@ -86,7 +88,7 @@ func (m *InMemory) SetBuyer(ctx context.Context, buyer routing.Buyer) error {
 		}
 	}
 
-	return &DoesNotExistError{resourceType: "buyer", resourceRef: buyer.ID}
+	return &DoesNotExistError{resourceType: "buyer", resourceRef: fmt.Sprintf("%x", buyer.ID)}
 }
 
 func (m *InMemory) Seller(id string) (routing.Seller, error) {
@@ -165,7 +167,7 @@ func (m *InMemory) Relay(id uint64) (routing.Relay, error) {
 		return m.localRelays[0], nil
 	}
 
-	return routing.Relay{}, &DoesNotExistError{resourceType: "relay", resourceRef: id}
+	return routing.Relay{}, &DoesNotExistError{resourceType: "relay", resourceRef: fmt.Sprintf("%x", id)}
 }
 
 func (m *InMemory) Relays() []routing.Relay {
@@ -180,7 +182,7 @@ func (m *InMemory) Relays() []routing.Relay {
 func (m *InMemory) AddRelay(ctx context.Context, relay routing.Relay) error {
 	for _, r := range m.localRelays {
 		if r.ID == relay.ID {
-			return &AlreadyExistsError{resourceType: "relay", resourceRef: relay.ID}
+			return &AlreadyExistsError{resourceType: "relay", resourceRef: fmt.Sprintf("%x", relay.ID)}
 		}
 	}
 
@@ -204,7 +206,7 @@ func (m *InMemory) AddRelay(ctx context.Context, relay routing.Relay) error {
 	}
 
 	if !foundDatacenter {
-		return &DoesNotExistError{resourceType: "datacenter", resourceRef: relay.Datacenter.ID}
+		return &DoesNotExistError{resourceType: "datacenter", resourceRef: fmt.Sprintf("%x", relay.Datacenter.ID)}
 	}
 
 	m.localRelays = append(m.localRelays, relay)
@@ -220,7 +222,7 @@ func (m *InMemory) RemoveRelay(ctx context.Context, id uint64) error {
 	}
 
 	if relayIndex < 0 {
-		return &DoesNotExistError{resourceType: "relay", resourceRef: id}
+		return &DoesNotExistError{resourceType: "relay", resourceRef: fmt.Sprintf("%x", id)}
 	}
 
 	if relayIndex+1 == len(m.localRelays) {
@@ -237,6 +239,36 @@ func (m *InMemory) RemoveRelay(ctx context.Context, id uint64) error {
 func (m *InMemory) SetRelay(ctx context.Context, relay routing.Relay) error {
 	for i := 0; i < len(m.localRelays); i++ {
 		if m.localRelays[i].ID == relay.ID {
+			// Validate the seller ID exists to mimic firestore behavior
+			var sellerFound bool
+			for i := 0; i < len(m.localSellers); i++ {
+				if m.localSellers[i].ID == relay.Seller.ID {
+					relay.Seller = m.localSellers[i]
+					sellerFound = true
+					break
+				}
+			}
+
+			if !m.LocalMode && !sellerFound {
+				return &DoesNotExistError{resourceType: "seller", resourceRef: relay.Seller.ID}
+			}
+
+			// Validate the datacenter ID exists to mimic firestore behavior
+			var datacenterFound bool
+			for i := 0; i < len(m.localDatacenters); i++ {
+				if m.localDatacenters[i].ID == relay.Datacenter.ID {
+					relay.Datacenter = m.localDatacenters[i]
+					datacenterFound = true
+					break
+				}
+			}
+
+			if !m.LocalMode && !datacenterFound {
+				return &DoesNotExistError{resourceType: "datacenter", resourceRef: fmt.Sprintf("%x", relay.Datacenter.ID)}
+			}
+
+			// Rehash the ID in case it has been updated
+			relay.ID = crypto.HashID(relay.Addr.String())
 			m.localRelays[i] = relay
 			return nil
 		}
@@ -248,7 +280,7 @@ func (m *InMemory) SetRelay(ctx context.Context, relay routing.Relay) error {
 		return nil
 	}
 
-	return &DoesNotExistError{resourceType: "relay", resourceRef: relay.ID}
+	return &DoesNotExistError{resourceType: "relay", resourceRef: fmt.Sprintf("%x", relay.ID)}
 }
 
 func (m *InMemory) Datacenter(id uint64) (routing.Datacenter, error) {
@@ -258,7 +290,7 @@ func (m *InMemory) Datacenter(id uint64) (routing.Datacenter, error) {
 		}
 	}
 
-	return routing.Datacenter{}, &DoesNotExistError{resourceType: "datacenter", resourceRef: id}
+	return routing.Datacenter{}, &DoesNotExistError{resourceType: "datacenter", resourceRef: fmt.Sprintf("%x", id)}
 }
 
 func (m *InMemory) Datacenters() []routing.Datacenter {
@@ -273,7 +305,7 @@ func (m *InMemory) Datacenters() []routing.Datacenter {
 func (m *InMemory) AddDatacenter(ctx context.Context, datacenter routing.Datacenter) error {
 	for _, d := range m.localDatacenters {
 		if d.ID == datacenter.ID {
-			return &AlreadyExistsError{resourceType: "datacenter", resourceRef: datacenter.ID}
+			return &AlreadyExistsError{resourceType: "datacenter", resourceRef: fmt.Sprintf("%x", datacenter.ID)}
 		}
 	}
 
@@ -290,7 +322,7 @@ func (m *InMemory) RemoveDatacenter(ctx context.Context, id uint64) error {
 	}
 
 	if datacenterIndex < 0 {
-		return &DoesNotExistError{resourceType: "datacenter", resourceRef: id}
+		return &DoesNotExistError{resourceType: "datacenter", resourceRef: fmt.Sprintf("%x", id)}
 	}
 
 	if datacenterIndex+1 == len(m.localDatacenters) {
@@ -312,5 +344,5 @@ func (m *InMemory) SetDatacenter(ctx context.Context, datacenter routing.Datacen
 		}
 	}
 
-	return &DoesNotExistError{resourceType: "datacenter", resourceRef: datacenter.ID}
+	return &DoesNotExistError{resourceType: "datacenter", resourceRef: fmt.Sprintf("%x", datacenter.ID)}
 }

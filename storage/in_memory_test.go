@@ -2,6 +2,7 @@ package storage_test
 
 import (
 	"context"
+	"net"
 	"testing"
 
 	"github.com/networknext/backend/crypto"
@@ -701,9 +702,13 @@ func TestInMemorySetRelay(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		inMemory := storage.InMemory{}
 
+		addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+		assert.NoError(t, err)
+
 		relay := routing.Relay{
-			ID:   1,
+			ID:   crypto.HashID(addr.String()),
 			Name: "relay name",
+			Addr: *addr,
 			Seller: routing.Seller{
 				ID:   "seller ID",
 				Name: "seller name",
@@ -714,7 +719,7 @@ func TestInMemorySetRelay(t *testing.T) {
 			},
 		}
 
-		err := inMemory.AddSeller(ctx, relay.Seller)
+		err = inMemory.AddSeller(ctx, relay.Seller)
 		assert.NoError(t, err)
 
 		err = inMemory.AddDatacenter(ctx, relay.Datacenter)
