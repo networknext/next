@@ -36,6 +36,10 @@ To remove a buyer: `next buyer remove <id>`
 
 Removes a buyer with the given buyer ID from Firestore. The buyer ID can be found with `next buyers`
 
+To view a buyer's values: `next buyer view <relay name>`
+
+Shows a buyer's Firestore values. These values can be edited with `next buyer edit`.
+
 To edit a buyer's values: `next buyer edit <buyer ID> [filepath]`
 
 Edits a buyer's values directly based on the given JSON file. You can also pipe in the JSON data (ex. `cat buyer.json | next buyer edit <buyer ID>`)
@@ -54,6 +58,10 @@ To remove a seller: `next seller remove <id>`
 
 Removes a seller with the given seller ID from Firestore. The seller ID can be found with `next sellers`
 
+To view a seller's values: `next seller view <relay name>`
+
+Shows a seller's Firestore values. These values can be edited with `next seller edit`.
+
 To edit a seller's values: `next seller edit <seller ID> [filepath]`
 
 Edits a seller's values directly based on the given JSON file. You can also pipe in the JSON data (ex. `cat seller.json | next seller edit <seller ID>`)
@@ -71,6 +79,10 @@ To see an example datacenter JSON schema, use `next datacenters add example`
 To remove a datacenter: `next datacenter remove <name>`
 
 Removes a datacenter with the given datacenter name from Firestore.
+
+To view a datacenter's values: `next datacenter view <relay name>`
+
+Shows a datacenter's Firestore values. These values can be edited with `next datacenter edit`.
 
 To edit a datacenter's values: `next datacenter edit <datacenter ID> [filepath]`
 
@@ -108,6 +120,10 @@ To see an example relay JSON schema, use `next relays add example`
 To remove a relay: `next relay remove <name>`
 
 This sets the relay's state to decommissioned, rather than actually removing it from Firestore. This is done to preserve entries for historial purposes.
+
+To view a relay's values: `next relay view <relay name>`
+
+Shows a relay's Firestore values. These values can be edited with `next relay edit`.
 
 To edit a relay's values: `next relay edit <relay name> [filepath]`
 
