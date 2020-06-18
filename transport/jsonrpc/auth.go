@@ -62,6 +62,7 @@ type account struct {
 }
 
 func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *AccountsReply) error {
+	defer r.Body.Close()
 	var accountList *management.UserList
 	if IsAnonymous(r) || IsAnonymousPlus(r) {
 		err := fmt.Errorf("AllAccounts() insufficient privileges")
@@ -138,6 +139,7 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 }
 
 func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *AccountReply) error {
+	defer r.Body.Close()
 	if IsAnonymous(r) {
 		err := fmt.Errorf("UserAccount() insufficient privileges")
 		s.Logger.Log("err", err)
@@ -200,6 +202,7 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 }
 
 func (s *AuthService) DeleteUserAccount(r *http.Request, args *AccountArgs, reply *AccountReply) error {
+	defer r.Body.Close()
 	if IsAnonymous(r) || IsAnonymousPlus(r) {
 		err := fmt.Errorf("DeleteUserAccount() insufficient privileges")
 		s.Logger.Log("err", err)
@@ -238,6 +241,7 @@ func (s *AuthService) DeleteUserAccount(r *http.Request, args *AccountArgs, repl
 }
 
 func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply *AccountsReply) error {
+	defer r.Body.Close()
 	var adminString string = "Admin"
 	var accounts []account
 	var roles []*management.Role
@@ -456,6 +460,7 @@ type RolesReply struct {
 }
 
 func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesReply) error {
+	defer r.Body.Close()
 	reply.Roles = make([]*management.Role, 0)
 	if IsAnonymous(r) {
 		err := fmt.Errorf("AllRoles() insufficient privileges")
@@ -500,6 +505,7 @@ func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesRep
 }
 
 func (s *AuthService) UserRoles(r *http.Request, args *RolesArgs, reply *RolesReply) error {
+	defer r.Body.Close()
 	if IsAnonymous(r) || IsAnonymousPlus(r) {
 		err := fmt.Errorf("UserRoles() insufficient privileges")
 		s.Logger.Log("err", err)
@@ -543,6 +549,7 @@ func (s *AuthService) UserRoles(r *http.Request, args *RolesArgs, reply *RolesRe
 }
 
 func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *RolesReply) error {
+	defer r.Body.Close()
 	var err error
 	if IsAnonymous(r) || IsAnonymousPlus(r) {
 		err := fmt.Errorf("UpdateUserRoles() insufficient privileges")
@@ -614,6 +621,7 @@ type UpgradeReply struct {
 }
 
 func (s *AuthService) UpgradeAccount(r *http.Request, args *UpgradeArgs, reply *UpgradeReply) error {
+	defer r.Body.Close()
 	isAdmin, err := CheckRoles(r, "Admin")
 	if err != nil {
 		err = fmt.Errorf("AllAccounts() CheckRoles error: %v", err)
@@ -736,6 +744,7 @@ type VerifyEmailReply struct {
 }
 
 func (s *AuthService) ResendVerificationEmail(r *http.Request, args *VerifyEmailArgs, reply *VerifyEmailReply) error {
+	defer r.Body.Close()
 	reply.Sent = false
 
 	if !IsAnonymousPlus(r) {
