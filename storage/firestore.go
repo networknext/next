@@ -757,7 +757,6 @@ func (fs *Firestore) RemoveRelay(ctx context.Context, id uint64) error {
 	return &DoesNotExistError{resourceType: "relay", resourceRef: fmt.Sprintf("%x", id)}
 }
 
-// Only relay state, public key, and NIC speed are updated in firestore for now
 func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 	// Get a copy of the relay in cached storage
 	fs.relayMutex.RLock()
@@ -766,6 +765,61 @@ func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 
 	if !ok {
 		return &DoesNotExistError{resourceType: "relay", resourceRef: fmt.Sprintf("%x", r.ID)}
+	}
+
+	// Loop through all sellers in firestore to find the document reference
+	var sref *firestore.DocumentRef
+	sdocs := fs.Client.Collection("Seller").Documents(ctx)
+	defer sdocs.Stop()
+	for {
+		sdoc, err := sdocs.Next()
+		if err == iterator.Done {
+			break
+		}
+
+		if err != nil {
+			return &FirestoreError{err: err}
+		}
+
+		if sdoc.Ref.ID == r.Seller.ID {
+			sref = sdoc.Ref
+			break
+		}
+	}
+
+	if sref == nil {
+		return &DoesNotExistError{resourceType: "seller", resourceRef: r.Seller.ID}
+	}
+
+	// Loop through all datacenters in firestore to find the document reference
+	var dref *firestore.DocumentRef
+	ddocs := fs.Client.Collection("Datacenter").Documents(ctx)
+	defer ddocs.Stop()
+	for {
+		ddoc, err := ddocs.Next()
+		if err == iterator.Done {
+			break
+		}
+
+		if err != nil {
+			return &FirestoreError{err: err}
+		}
+
+		// Unmarshal the datacenter in firestore to see if it's the datacenter we want
+		var datacenterInRemoteStorage datacenter
+		err = ddoc.DataTo(&datacenterInRemoteStorage)
+		if err != nil {
+			return &UnmarshalError{err: err}
+		}
+
+		if crypto.HashID(datacenterInRemoteStorage.Name) == r.Datacenter.ID {
+			dref = ddoc.Ref
+			break
+		}
+	}
+
+	if dref == nil {
+		return &DoesNotExistError{resourceType: "datacenter", resourceRef: fmt.Sprintf("%x", r.Datacenter.ID)}
 	}
 
 	// Loop through all relays in firestore
@@ -793,11 +847,21 @@ func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 		if rid == r.ID {
 			// Set the data to update the relay with
 			newRelayData := map[string]interface{}{
-				"state":           r.State,
-				"lastUpdateTime":  r.LastUpdateTime,
-				"stateUpdateTime": time.Now(),
-				"publicKey":       r.PublicKey,
-				"nicSpeedMbps":    int64(r.NICSpeedMbps),
+				"displayName":         r.Name,
+				"publicAddress":       r.Addr.String(),
+				"publicKey":           r.PublicKey,
+				"updateKey":           r.UpdateKey,
+				"nicSpeedMbps":        int64(r.NICSpeedMbps),
+				"includedBandwidthGB": int64(r.IncludedBandwidthGB),
+				"datacenter":          dref,
+				"seller":              sref,
+				"managementAddress":   r.ManagementAddr,
+				"sshUser":             r.SSHUser,
+				"sshPort":             r.SSHPort,
+				"state":               r.State,
+				"lastUpdateTime":      r.LastUpdateTime,
+				"maxSessions":         r.MaxSessions,
+				"stateUpdateTime":     time.Now(),
 			}
 
 			// Update the relay in firestore
@@ -806,8 +870,7 @@ func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 			}
 
 			// Update the cached version
-			relayInCachedStorage.State = r.State
-			relayInCachedStorage.LastUpdateTime = r.LastUpdateTime
+			relayInCachedStorage = r
 
 			fs.relayMutex.Lock()
 			fs.relays[r.ID] = relayInCachedStorage

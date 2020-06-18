@@ -103,7 +103,7 @@ type Relay struct {
 	NICSpeedMbps        uint64 `json:"nic_speed_mbps"`
 	IncludedBandwidthGB uint64 `json:"included_bandwidth_GB"`
 
-	LastUpdateTime time.Time `json:"last_udpate_time"`
+	LastUpdateTime time.Time `json:"last_update_time"`
 
 	State RelayState `json:"state"`
 

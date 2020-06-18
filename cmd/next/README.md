@@ -109,9 +109,9 @@ To remove a relay: `next relay remove <name>`
 
 This sets the relay's state to decommissioned, rather than actually removing it from Firestore. This is done to preserve entries for historial purposes.
 
-To edit a relay's values: `next relay edit <relay ID> [filepath]`
+To edit a relay's values: `next relay edit <relay name> [filepath]`
 
-Edits a relay's values directly based on the given JSON file. You can also pipe in the JSON data (ex. `cat relay.json | next relay edit <relay ID>`)
+Edits a relay's values directly based on the given JSON file. You can also pipe in the JSON data (ex. `cat relay.json | next relay edit <relay name>`)
 To see an example JSON schema, use `next relay edit example`. Only include fields that should be changed and omit any that shouldn't.
 
 ## Route Shaders

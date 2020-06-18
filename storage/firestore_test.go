@@ -1158,6 +1158,116 @@ func TestFirestore(t *testing.T) {
 			assert.EqualError(t, err, "relay with reference 1 not found")
 		})
 
+		t.Run("seller not found", func(t *testing.T) {
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			assert.NoError(t, err)
+
+			defer func() {
+				err := cleanFireStore(ctx, fs.Client)
+				assert.NoError(t, err)
+			}()
+
+			addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+			assert.NoError(t, err)
+
+			seller := routing.Seller{
+				ID:                "seller ID",
+				Name:              "seller name",
+				IngressPriceCents: 10,
+				EgressPriceCents:  20,
+			}
+
+			datacenter := routing.Datacenter{
+				ID:      crypto.HashID("datacenter name"),
+				Name:    "datacenter name",
+				Enabled: true,
+				Location: routing.Location{
+					Latitude:  70.5,
+					Longitude: 120.5,
+				},
+			}
+
+			expected := routing.Relay{
+				ID:         crypto.HashID(addr.String()),
+				Name:       "local",
+				Addr:       *addr,
+				PublicKey:  make([]byte, crypto.KeySize),
+				Seller:     seller,
+				Datacenter: datacenter,
+				State:      routing.RelayStateEnabled,
+			}
+
+			err = fs.AddSeller(ctx, seller)
+			assert.NoError(t, err)
+
+			err = fs.AddDatacenter(ctx, datacenter)
+			assert.NoError(t, err)
+
+			err = fs.AddRelay(ctx, expected)
+			assert.NoError(t, err)
+
+			actual := expected
+			actual.Seller = routing.Seller{}
+
+			err = fs.SetRelay(ctx, actual)
+			assert.EqualError(t, err, "seller with reference  not found")
+		})
+
+		t.Run("datacenter not found", func(t *testing.T) {
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			assert.NoError(t, err)
+
+			defer func() {
+				err := cleanFireStore(ctx, fs.Client)
+				assert.NoError(t, err)
+			}()
+
+			addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+			assert.NoError(t, err)
+
+			seller := routing.Seller{
+				ID:                "seller ID",
+				Name:              "seller name",
+				IngressPriceCents: 10,
+				EgressPriceCents:  20,
+			}
+
+			datacenter := routing.Datacenter{
+				ID:      crypto.HashID("datacenter name"),
+				Name:    "datacenter name",
+				Enabled: true,
+				Location: routing.Location{
+					Latitude:  70.5,
+					Longitude: 120.5,
+				},
+			}
+
+			expected := routing.Relay{
+				ID:         crypto.HashID(addr.String()),
+				Name:       "local",
+				Addr:       *addr,
+				PublicKey:  make([]byte, crypto.KeySize),
+				Seller:     seller,
+				Datacenter: datacenter,
+				State:      routing.RelayStateEnabled,
+			}
+
+			err = fs.AddSeller(ctx, seller)
+			assert.NoError(t, err)
+
+			err = fs.AddDatacenter(ctx, datacenter)
+			assert.NoError(t, err)
+
+			err = fs.AddRelay(ctx, expected)
+			assert.NoError(t, err)
+
+			actual := expected
+			actual.Datacenter = routing.Datacenter{}
+
+			err = fs.SetRelay(ctx, actual)
+			assert.EqualError(t, err, "datacenter with reference 0 not found")
+		})
+
 		t.Run("success", func(t *testing.T) {
 			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 			assert.NoError(t, err)
@@ -1218,12 +1328,7 @@ func TestFirestore(t *testing.T) {
 			assert.NotEqual(t, expected, actual)
 			actual.State = routing.RelayStateEnabled
 
-			assert.Equal(t, expected.ID, actual.ID)
-			assert.Equal(t, expected.Name, actual.Name)
-			assert.Equal(t, expected.Addr, actual.Addr)
-			assert.Equal(t, expected.PublicKey, actual.PublicKey)
-			assert.Equal(t, expected.Seller, actual.Seller)
-			assert.Equal(t, expected.Datacenter, actual.Datacenter)
+			assert.Equal(t, expected, actual)
 		})
 	})
 
