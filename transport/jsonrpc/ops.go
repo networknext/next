@@ -600,17 +600,17 @@ func (s *OpsService) RelayEdit(r *http.Request, args *RelayEditArgs, reply *Rela
 		case "DatacenterName":
 			relay.Datacenter = routing.Datacenter{ID: crypto.HashID(v.(string))}
 		case "NicSpeedMbps":
-			relay.NICSpeedMbps = v.(uint64)
+			relay.NICSpeedMbps = uint64(v.(float64))
 		case "IncludedBandwidthGB":
-			relay.IncludedBandwidthGB = v.(uint64)
+			relay.IncludedBandwidthGB = uint64(v.(float64))
 		case "ManagementAddr":
 			relay.ManagementAddr = v.(string)
 		case "SSHUser":
 			relay.SSHUser = v.(string)
 		case "SSHPort":
-			relay.SSHPort = v.(int64)
+			relay.SSHPort = int64(v.(float64))
 		case "MaxSessions":
-			relay.MaxSessions = v.(uint32)
+			relay.MaxSessions = uint32(v.(float64))
 		}
 	}
 
