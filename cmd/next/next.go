@@ -319,6 +319,7 @@ type relay struct {
 	ManagementAddr      string
 	SSHUser             string
 	SSHPort             int64
+	MaxSessions         uint32
 }
 
 type datacenter struct {
@@ -793,7 +794,7 @@ func main() {
 
 							publicKey, err := base64.StdEncoding.DecodeString(relay.PublicKey)
 							if err != nil {
-								log.Fatalf("Could not decode bas64 public key %s: %v", relay.PublicKey, err)
+								log.Fatalf("Could not decode base64 public key %s: %v", relay.PublicKey, err)
 							}
 
 							// Build the actual Relay struct from the input relay struct
@@ -815,6 +816,7 @@ func main() {
 								ManagementAddr:      relay.ManagementAddr,
 								SSHUser:             relay.SSHUser,
 								SSHPort:             relay.SSHPort,
+								MaxSessions:         relay.MaxSessions,
 							}
 
 							// Add the Relay to storage
@@ -837,7 +839,8 @@ func main() {
 										IncludedBandwidthGB: 1,
 										ManagementAddr:      "127.0.0.1",
 										SSHUser:             "root",
-										SSHPort:             40000,
+										SSHPort:             22,
+										MaxSessions:         3000,
 									}
 
 									jsonBytes, err := json.MarshalIndent(example, "", "\t")
@@ -858,11 +861,71 @@ func main() {
 						ShortHelp:  "Remove a relay from storage",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) == 0 {
-								log.Fatal("Provide the relay name of the relay you wish to remove\nFor a list of relay, use next relay")
+								log.Fatal("Provide the relay name of the relay you wish to remove\nFor a list of relays, use next relays")
 							}
 
 							removeRelay(rpcClient, env, args[0])
 							return nil
+						},
+					},
+					{
+						Name:       "edit",
+						ShortUsage: "next relay edit <name> <filepath>",
+						ShortHelp:  "Edits a relay's entry in storage",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) == 0 {
+								log.Fatal("Provide the relay name of the relay you wish to edit\nFor a list of relays, use next relays")
+							}
+
+							relayName := args[0]
+
+							if len(args) > 1 {
+								args = args[1:]
+							} else {
+								args = nil
+							}
+
+							jsonData := readJSONData("relays", args)
+
+							// Unmarshal the JSON and create the relay struct
+							var editRelayData map[string]interface{}
+							if err := json.Unmarshal(jsonData, &editRelayData); err != nil {
+								log.Fatalf("Could not unmarshal edit relay data: %v", err)
+							}
+
+							editRelay(rpcClient, env, relayName, editRelayData)
+							return nil
+						},
+						Subcommands: []*ffcli.Command{
+							{
+								Name:       "example",
+								ShortUsage: "next relay edit example",
+								ShortHelp:  "Displays an example relay for the correct JSON schema",
+								Exec: func(_ context.Context, args []string) error {
+									example := relay{
+										Name:                "amazon.ohio.2",
+										Addr:                "127.0.0.1:40000",
+										PublicKey:           "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+										SellerID:            "5tCm7KjOw3EBYojLe6PC",
+										DatacenterName:      "amazon.ohio.2",
+										NicSpeedMbps:        1000,
+										IncludedBandwidthGB: 1,
+										ManagementAddr:      "127.0.0.1",
+										SSHUser:             "root",
+										SSHPort:             22,
+										MaxSessions:         3000,
+									}
+
+									jsonBytes, err := json.MarshalIndent(example, "", "\t")
+									if err != nil {
+										log.Fatal("Failed to marshal relay struct")
+									}
+
+									fmt.Println("Exmaple JSON schema to edit a relay:")
+									fmt.Println(string(jsonBytes))
+									return nil
+								},
+							},
 						},
 					},
 				},

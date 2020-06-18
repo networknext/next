@@ -486,6 +486,31 @@ func setRelayState(rpcClient jsonrpc.RPCClient, stateString string, regexes []st
 	}
 }
 
+func editRelay(rpcClient jsonrpc.RPCClient, env Environment, relayName string, editRelayData map[string]interface{}) {
+	relayInfo := getRelayInfo(rpcClient, relayName)
+
+	if len(relayInfo) == 0 {
+		log.Fatalf("Could not find relay with pattern %s", relayName)
+	}
+
+	if len(relayInfo) > 1 {
+		log.Fatalf("Found more than one relay matching %s, did you mean %s?", relayName, relayInfo[0].name)
+	}
+
+	args := localjsonrpc.RelayEditArgs{
+		RelayID:   relayInfo[0].id,
+		RelayData: editRelayData,
+	}
+
+	var reply localjsonrpc.RelayEditReply
+	if err := rpcClient.CallFor(&reply, "OpsService.RelayEdit", args); err != nil {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	fmt.Printf("Relay %s edited\n", relayInfo[0].name)
+}
+
 func checkRelays(rpcClient jsonrpc.RPCClient, env Environment, regex string, relaysStateShowFlags [6]bool, relaysStateHideFlags [6]bool, relaysDownFlag bool) {
 	args := localjsonrpc.RelaysArgs{
 		Regex: regex,
