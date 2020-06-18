@@ -999,12 +999,12 @@ func TestRelayEdit(t *testing.T) {
 			"PublicKey":           base64.StdEncoding.EncodeToString(expected.PublicKey),
 			"SellerID":            expected.Seller.ID,
 			"DatacenterName":      expected.Datacenter.Name,
-			"NicSpeedMbps":        expected.NICSpeedMbps,
-			"IncludedBandwidthGB": expected.IncludedBandwidthGB,
+			"NicSpeedMbps":        float64(expected.NICSpeedMbps),
+			"IncludedBandwidthGB": float64(expected.IncludedBandwidthGB),
 			"ManagementAddr":      expected.ManagementAddr,
 			"SSHUser":             expected.SSHUser,
-			"SSHPort":             expected.SSHPort,
-			"MaxSessions":         expected.MaxSessions,
+			"SSHPort":             float64(expected.SSHPort),
+			"MaxSessions":         float64(expected.MaxSessions),
 		}
 
 		err := svc.RelayEdit(nil, &jsonrpc.RelayEditArgs{
