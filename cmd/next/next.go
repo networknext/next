@@ -281,7 +281,7 @@ func handleJSONRPCError(env Environment, err error) {
 	case *jsonrpc.HTTPError:
 		switch e.Code {
 		case http.StatusUnauthorized:
-			log.Fatalf("%d: %s - use `next auth` to authorize the operator tool", e.Code, http.StatusText(e.Code))
+			log.Fatalf("%d: %s - use `next auth` to authorize the operator tool\n", e.Code, http.StatusText(e.Code))
 		default:
 			log.Fatalf("%d: %s", e.Code, http.StatusText(e.Code))
 		}
@@ -359,6 +359,34 @@ func main() {
 	var relayCoreCount uint64
 	relayupdatefs := flag.NewFlagSet("relay update", flag.ExitOnError)
 	relayupdatefs.Uint64Var(&relayCoreCount, "cores", 0, "number of cores for the relay to utilize")
+
+	relaysfs := flag.NewFlagSet("relays state", flag.ExitOnError)
+
+	// Flags to only show relays in certain states
+	var relaysStateShowFlags [6]bool
+	relaysfs.BoolVar(&relaysStateShowFlags[routing.RelayStateEnabled], "enabled", false, "only show enabled relays")
+	relaysfs.BoolVar(&relaysStateShowFlags[routing.RelayStateMaintenance], "maintenance", false, "only show relays in maintenance")
+	relaysfs.BoolVar(&relaysStateShowFlags[routing.RelayStateDisabled], "disabled", false, "only show disabled relays")
+	relaysfs.BoolVar(&relaysStateShowFlags[routing.RelayStateQuarantine], "quarantined", false, "only show quarantined relays")
+	relaysfs.BoolVar(&relaysStateShowFlags[routing.RelayStateDecommissioned], "decommissioned", false, "only show decommissioned relays")
+	relaysfs.BoolVar(&relaysStateShowFlags[routing.RelayStateOffline], "offline", false, "only show offline relays")
+
+	// Flags to hide relays in certain states
+	var relaysStateHideFlags [6]bool
+	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateEnabled], "noenabled", false, "hide enabled relays")
+	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateMaintenance], "nomaintenance", false, "hide relays in maintenance")
+	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateDisabled], "nodisabled", false, "hide disabled relays")
+	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateQuarantine], "noquarantined", false, "hide quarantined relays")
+	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateDecommissioned], "nodecommissioned", false, "hide decommissioned relays")
+	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateOffline], "nooffline", false, "hide offline relays")
+
+	// Flag to see relays that are down (haven't pinged backend in 30 seconds)
+	var relaysDownFlag bool
+	relaysfs.BoolVar(&relaysDownFlag, "down", false, "show relays that are down")
+
+	// Show all relays (including decommissioned ones) regardless of other flags
+	var relaysAllFlag bool
+	relaysfs.BoolVar(&relaysAllFlag, "all", false, "show all relays")
 
 	root := &ffcli.Command{
 		ShortUsage: "next <subcommand>",
@@ -488,14 +516,36 @@ func main() {
 
 			{
 				Name:       "relays",
-				ShortUsage: "next relays <name>",
+				ShortUsage: "next relays <regex>",
 				ShortHelp:  "List relays",
+				FlagSet:    relaysfs,
 				Exec: func(_ context.Context, args []string) error {
+					if relaysfs.NFlag() == 0 {
+						// If no flags are given, set the default set of flags
+						relaysStateShowFlags[routing.RelayStateEnabled] = true
+						relaysStateShowFlags[routing.RelayStateQuarantine] = true
+						relaysStateHideFlags[routing.RelayStateDecommissioned] = true
+					}
+
+					if relaysAllFlag {
+						// Show all relays (except for decommissioned relays) with --all flag
+						relaysStateShowFlags[routing.RelayStateEnabled] = true
+						relaysStateShowFlags[routing.RelayStateMaintenance] = true
+						relaysStateShowFlags[routing.RelayStateDisabled] = true
+						relaysStateShowFlags[routing.RelayStateQuarantine] = true
+						relaysStateShowFlags[routing.RelayStateOffline] = true
+					}
+
+					if relaysStateShowFlags[routing.RelayStateDecommissioned] {
+						//  Show decommissioned relays with --decommissioned flag by essentially disabling --nodecommissioned flag
+						relaysStateHideFlags[routing.RelayStateDecommissioned] = false
+					}
+
 					if len(args) > 0 {
-						relays(rpcClient, env, args[0])
+						relays(rpcClient, env, args[0], relaysStateShowFlags, relaysStateHideFlags, relaysDownFlag)
 						return nil
 					}
-					relays(rpcClient, env, "")
+					relays(rpcClient, env, "", relaysStateShowFlags, relaysStateHideFlags, relaysDownFlag)
 					return nil
 				},
 			},
@@ -580,16 +630,35 @@ func main() {
 				Subcommands: []*ffcli.Command{
 					{
 						Name:       "check",
-						ShortUsage: "next relay check [filter]",
+						ShortUsage: "next relay check [regex]",
 						ShortHelp:  "List all or a subset of relays and see diagnostic information. Refer to the README for more information",
+						FlagSet:    relaysfs,
 						Exec: func(ctx context.Context, args []string) error {
-							filter := ""
-
-							if len(args) > 0 {
-								filter = args[0]
+							if relaysfs.NFlag() == 0 {
+								// If no flags are given, set the default set of flags
+								relaysStateHideFlags[routing.RelayStateDecommissioned] = true
 							}
 
-							checkRelays(rpcClient, env, filter)
+							if relaysAllFlag {
+								// Show all relays (except for decommissioned relays) with --all flag
+								relaysStateShowFlags[routing.RelayStateEnabled] = true
+								relaysStateShowFlags[routing.RelayStateMaintenance] = true
+								relaysStateShowFlags[routing.RelayStateDisabled] = true
+								relaysStateShowFlags[routing.RelayStateQuarantine] = true
+								relaysStateShowFlags[routing.RelayStateOffline] = true
+							}
+
+							if relaysStateShowFlags[routing.RelayStateDecommissioned] {
+								//  Show decommissioned relays with --decommissioned flag by essentially disabling --nodecommissioned flag
+								relaysStateHideFlags[routing.RelayStateDecommissioned] = false
+							}
+
+							regex := ".*"
+							if len(args) > 0 {
+								regex = args[0]
+							}
+
+							checkRelays(rpcClient, env, regex, relaysStateShowFlags, relaysStateHideFlags, relaysDownFlag)
 							return nil
 						},
 					},
@@ -598,7 +667,13 @@ func main() {
 						ShortUsage: "next relay keys <relay name>",
 						ShortHelp:  "Show the public keys for the relay",
 						Exec: func(ctx context.Context, args []string) error {
-							relay := getRelayInfo(rpcClient, args[0])
+							relays := getRelayInfo(rpcClient, args[0])
+
+							if len(relays) == 0 {
+								log.Fatalf("no relays matched the name '%s'\n", args[0])
+							}
+
+							relay := &relays[0]
 
 							fmt.Printf("Public Key: %s\n", relay.publicKey)
 							fmt.Printf("Update Key: %s\n", relay.updateKey)
@@ -608,57 +683,61 @@ func main() {
 					},
 					{
 						Name:       "update",
-						ShortUsage: "next relay update <relay name...>",
+						ShortUsage: "next relay update [regex...]",
 						ShortHelp:  "Update the specified relay(s)",
 						FlagSet:    relayupdatefs,
 						Exec: func(ctx context.Context, args []string) error {
-							if len(args) == 0 {
-								log.Fatal("You need to supply at least one relay name")
+							regexes := []string{".*"}
+							if len(args) > 0 {
+								regexes = args
 							}
 
-							updateRelays(env, rpcClient, args, relayCoreCount)
+							updateRelays(env, rpcClient, regexes, relayCoreCount)
 
 							return nil
 						},
 					},
 					{
 						Name:       "revert",
-						ShortUsage: "next relay revert <ALL|relay name...>",
+						ShortUsage: "next relay revert [regex...]",
 						ShortHelp:  "revert all or some relays to the last binary placed on the server",
 						Exec: func(ctx context.Context, args []string) error {
-							if len(args) == 0 {
-								log.Fatal("You need to supply at least one relay name or 'ALL'")
+							regexes := []string{".*"}
+							if len(args) > 0 {
+								regexes = args
 							}
 
-							revertRelays(env, rpcClient, args)
+							revertRelays(env, rpcClient, regexes)
 
 							return nil
 						},
 					},
 					{
 						Name:       "enable",
-						ShortUsage: "next relay enable <relay name...>",
+						ShortUsage: "next relay enable [regex...]",
 						ShortHelp:  "Enable the specified relay(s)",
 						Exec: func(_ context.Context, args []string) error {
-							if len(args) == 0 {
-								log.Fatal("You need to supply at least one relay name")
+							regexes := []string{".*"}
+							if len(args) > 0 {
+								regexes = args
 							}
 
-							enableRelays(env, rpcClient, args)
+							enableRelays(env, rpcClient, regexes)
 
 							return nil
 						},
 					},
 					{
 						Name:       "disable",
-						ShortUsage: "next relay disable <relay name...>",
+						ShortUsage: "next relay disable [regex...]",
 						ShortHelp:  "Disable the specified relay(s)",
 						Exec: func(_ context.Context, args []string) error {
-							if len(args) == 0 {
-								log.Fatal("You need to supply at least one relay name")
+							regexes := []string{".*"}
+							if len(args) > 0 {
+								regexes = args
 							}
 
-							disableRelays(env, rpcClient, args)
+							disableRelays(env, rpcClient, regexes)
 
 							return nil
 						},
@@ -688,7 +767,7 @@ func main() {
 					},
 					{
 						Name:       "state",
-						ShortUsage: "next relay state <state> <relay name> [relay names...]",
+						ShortUsage: "next relay state <state> <regex> [regex...]",
 						ShortHelp:  "Sets the relay state directly",
 						LongHelp:   "This command should be avoided unless something goes wrong and the operator knows what he or she is doing.\nState values:\nenabled\noffline\nmaintenance\ndisabled\nquarantine\ndecommissioned",
 						Exec: func(ctx context.Context, args []string) error {
@@ -697,7 +776,7 @@ func main() {
 							}
 
 							if len(args) == 1 {
-								log.Fatal("You need to supply at least one relay name")
+								log.Fatal("You need to supply at least one relay name regex")
 							}
 
 							setRelayState(rpcClient, args[0], args[1:])

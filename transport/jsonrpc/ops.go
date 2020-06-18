@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -376,7 +377,7 @@ func (s *OpsService) SetCustomerLink(r *http.Request, args *SetCustomerLinkArgs,
 }
 
 type RelaysArgs struct {
-	Name string `json:"name"`
+	Regex string `json:"name"`
 }
 
 type RelaysReply struct {
@@ -404,6 +405,7 @@ type relay struct {
 	UpdateKey           string    `json:"update_key"`
 	FirestoreID         string    `json:"firestore_id"`
 	Version             string    `json:"relay_version"`
+	SellerName          string    `json:"seller_name"`
 }
 
 func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysReply) error {
@@ -434,6 +436,7 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			UpdateKey:           base64.StdEncoding.EncodeToString(r.UpdateKey),
 			FirestoreID:         r.FirestoreID,
 			MaxSessionCount:     r.MaxSessions,
+			SellerName:          r.Seller.Name,
 		}
 
 		relayCacheEntry := routing.RelayCacheEntry{
@@ -455,11 +458,20 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 		reply.Relays = append(reply.Relays, relay)
 	}
 
-	if args.Name != "" {
+	if args.Regex != "" {
 		var filtered []relay
 		for idx := range reply.Relays {
-			if strings.Contains(reply.Relays[idx].Name, args.Name) {
+			if match, err := regexp.Match(args.Regex, []byte(reply.Relays[idx].Name)); match && err == nil {
 				filtered = append(filtered, reply.Relays[idx])
+				continue
+			} else if err != nil {
+				return err
+			}
+
+			if match, err := regexp.Match(args.Regex, []byte(reply.Relays[idx].SellerName)); match && err == nil {
+				filtered = append(filtered, reply.Relays[idx])
+			} else if err != nil {
+				return err
 			}
 		}
 		reply.Relays = filtered
@@ -498,11 +510,18 @@ type RemoveRelayArgs struct {
 type RemoveRelayReply struct{}
 
 func (s *OpsService) RemoveRelay(r *http.Request, args *RemoveRelayArgs, reply *RemoveRelayReply) error {
-	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
-	defer cancelFunc()
+	relay, err := s.Storage.Relay(args.RelayID)
+	if err != nil {
+		err = fmt.Errorf("RemoveRelay() Storage.Relay error: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
 
-	if err := s.Storage.RemoveRelay(ctx, args.RelayID); err != nil {
-		err = fmt.Errorf("RemoveRelay() error: %w", err)
+	// Rather than actually removing the relay from firestore, just set it to the decomissioned state
+	relay.State = routing.RelayStateDecommissioned
+
+	if err = s.Storage.SetRelay(context.Background(), relay); err != nil {
+		err = fmt.Errorf("RemoveRelay() Storage.SetRelay error: %w", err)
 		s.Logger.Log("err", err)
 		return err
 	}

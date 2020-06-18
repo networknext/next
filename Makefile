@@ -130,8 +130,12 @@ ifndef ROUTE_MATRIX_URI
 export ROUTE_MATRIX_URI = http://127.0.0.1:30000/route_matrix
 endif
 
-ifndef MAXMIND_DB_URI
-export MAXMIND_DB_URI = ./testdata/GeoIP2-City-Test.mmdb
+ifndef MAXMIND_CITY_DB_URI
+export MAXMIND_CITY_DB_URI = ./testdata/GeoIP2-City-Test.mmdb
+endif
+
+ifndef MAXMIND_ISP_DB_URI
+export MAXMIND_ISP_DB_URI = ./testdata/GeoIP2-ISP-Test.mmdb
 endif
 
 ifndef REDIS_HOST_PORTAL
@@ -139,7 +143,7 @@ export REDIS_HOST_PORTAL = 127.0.0.1:6379
 endif
 
 ifndef REDIS_HOST_PORTAL_EXPIRATION
-export REDIS_HOST_PORTAL_EXPIRATION = 1m
+export REDIS_HOST_PORTAL_EXPIRATION = 30s
 endif
 
 ifndef REDIS_HOST_RELAYS
@@ -564,7 +568,7 @@ build-next: ## builds the operator tool
 	@printf "Building operator tool... "
 	@$(GO) build -o ./dist/next ./cmd/next/*.go
 	@printf "done\n"
-	
+
 .PHONY: build-all
 build-all: build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-sdk-test build-soak-test build-next ## builds everything
 

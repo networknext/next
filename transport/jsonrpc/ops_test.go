@@ -437,7 +437,7 @@ func TestRelays(t *testing.T) {
 
 	t.Run("filter", func(t *testing.T) {
 		var reply jsonrpc.RelaysReply
-		err := svc.Relays(nil, &jsonrpc.RelaysArgs{Name: "local.1"}, &reply)
+		err := svc.Relays(nil, &jsonrpc.RelaysArgs{Regex: "local.1"}, &reply)
 		assert.NoError(t, err)
 
 		assert.Equal(t, len(reply.Relays), 1)
@@ -445,7 +445,25 @@ func TestRelays(t *testing.T) {
 		assert.Equal(t, reply.Relays[0].Name, "local.local.1")
 
 		var empty jsonrpc.RelaysReply
-		err = svc.Relays(nil, &jsonrpc.RelaysArgs{Name: "not.found"}, &empty)
+		err = svc.Relays(nil, &jsonrpc.RelaysArgs{Regex: "not.found"}, &empty)
+		assert.NoError(t, err)
+
+		assert.Equal(t, len(empty.Relays), 0)
+	})
+
+	t.Run("filter by seller", func(t *testing.T) {
+		var reply jsonrpc.RelaysReply
+		err := svc.Relays(nil, &jsonrpc.RelaysArgs{Regex: "^seller name$"}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, len(reply.Relays), 2)
+		assert.Equal(t, reply.Relays[0].ID, uint64(1))
+		assert.Equal(t, reply.Relays[0].Name, "local.local.1")
+		assert.Equal(t, reply.Relays[1].ID, uint64(2))
+		assert.Equal(t, reply.Relays[1].Name, "local.local.2")
+
+		var empty jsonrpc.RelaysReply
+		err = svc.Relays(nil, &jsonrpc.RelaysArgs{Regex: "^not.found$"}, &empty)
 		assert.NoError(t, err)
 
 		assert.Equal(t, len(empty.Relays), 0)
@@ -574,7 +592,7 @@ func TestRemoveRelay(t *testing.T) {
 		var reply jsonrpc.RemoveRelayReply
 
 		err = svc.RemoveRelay(nil, &jsonrpc.RemoveRelayArgs{RelayID: expected.ID}, &reply)
-		assert.EqualError(t, err, fmt.Sprintf("RemoveRelay() error: relay with reference %d not found", expected.ID))
+		assert.EqualError(t, err, fmt.Sprintf("RemoveRelay() Storage.Relay error: relay with reference %d not found", expected.ID))
 	})
 
 	t.Run("remove", func(t *testing.T) {
@@ -590,7 +608,10 @@ func TestRemoveRelay(t *testing.T) {
 		err = svc.Relays(nil, &jsonrpc.RelaysArgs{}, &relaysReply)
 		assert.NoError(t, err)
 
-		assert.Len(t, relaysReply.Relays, 0)
+		// Remove shouldn't actually remove it anymore, just set the state to decommissioned
+		assert.Len(t, relaysReply.Relays, 1)
+		assert.Equal(t, relaysReply.Relays[0].ID, expected.ID)
+		assert.Equal(t, relaysReply.Relays[0].State, routing.RelayStateDecommissioned.String())
 	})
 }
 

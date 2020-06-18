@@ -20,10 +20,8 @@ import (
 
 	gcplogging "cloud.google.com/go/logging"
 
-	"github.com/getsentry/sentry-go"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/oschwald/geoip2-golang"
 
 	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/crypto"
@@ -43,6 +41,15 @@ func main() {
 
 	// Configure logging
 	logger := log.NewLogfmtLogger(os.Stdout)
+	if projectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
+		loggingClient, err := gcplogging.NewClient(ctx, projectID)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			os.Exit(1)
+		}
+
+		logger = logging.NewStackdriverLogger(loggingClient, "server-backend")
+	}
 	{
 		switch os.Getenv("BACKEND_LOG_LEVEL") {
 		case "none":
@@ -61,31 +68,6 @@ func main() {
 
 		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
 	}
-	if projectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
-		loggingClient, err := gcplogging.NewClient(ctx, projectID)
-		if err != nil {
-			level.Error(logger).Log("err", err)
-			os.Exit(1)
-		}
-
-		logger = logging.NewStackdriverLogger(loggingClient, "server-backend")
-	}
-
-	sentryOpts := sentry.ClientOptions{
-		ServerName:       "Server Backend",
-		Release:          release,
-		Dist:             "linux",
-		AttachStacktrace: true,
-		Debug:            true,
-	}
-
-	if err := sentry.Init(sentryOpts); err != nil {
-		level.Error(logger).Log("msg", "failed to initialize sentry", "err", err)
-		os.Exit(1)
-	}
-
-	// force sentry to post any updates upon program exit
-	defer sentry.Flush(time.Second * 2)
 
 	// var serverPublicKey []byte
 	var customerPublicKey []byte
@@ -149,22 +131,37 @@ func main() {
 
 	// Open the Maxmind DB and create a routing.MaxmindDB from it
 	var ipLocator routing.IPLocator = routing.NullIsland
-	if uri, ok := os.LookupEnv("MAXMIND_DB_URI"); ok {
-		mmreader, err := geoip2.Open(uri)
+	mmcitydburi := os.Getenv("MAXMIND_CITY_DB_URI")
+	mmispdburi := os.Getenv("MAXMIND_ISP_DB_URI")
+	if mmcitydburi != "" && mmispdburi != "" {
+		cityreader, err := routing.NewMaxmindReader(http.DefaultClient, mmcitydburi)
 		if err != nil {
-			level.Error(logger).Log("envvar", "MAXMIND_DB_URI", "value", uri, "err", err)
+			level.Error(logger).Log("envvar", "MAXMIND_CITY_DB_URI", "value", mmcitydburi, "err", err)
+			os.Exit(1)
 		}
+
+		ispreader, err := routing.NewMaxmindReader(http.DefaultClient, mmispdburi)
+		if err != nil {
+			level.Error(logger).Log("envvar", "MAXMIND_ISP_DB_URI", "value", mmispdburi, "err", err)
+
+		}
+
 		ipLocator = &routing.MaxmindDB{
-			Reader: mmreader,
+			CityReader: cityreader,
+			ISPReader:  ispreader,
 		}
-		defer mmreader.Close()
+		defer func() {
+			cityreader.Close()
+			ispreader.Close()
+		}()
 	}
-	if key, ok := os.LookupEnv("IPSTACK_ACCESS_KEY"); ok {
-		ipLocator = &routing.IPStack{
-			Client:    http.DefaultClient,
-			AccessKey: key,
-		}
-	}
+	// Commented out to ensure it really does not load the IPStack version
+	// if key, ok := os.LookupEnv("IPSTACK_ACCESS_KEY"); ok {
+	// 	ipLocator = &routing.IPStack{
+	// 		Client:    http.DefaultClient,
+	// 		AccessKey: key,
+	// 	}
+	// }
 
 	geoClient := routing.GeoClient{
 		RedisClient: redisClientRelays,

@@ -1,12 +1,18 @@
 package routing
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
+	"os"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/go-redis/redis/v7"
 	jsoniter "github.com/json-iterator/go"
@@ -14,7 +20,7 @@ import (
 )
 
 const (
-	regexLocalhostIPs = `127\.0\.0\.1|localhost`
+	regexLocalhostIPs = `0\.0\.0\.0|127\.0\.0\.1|localhost`
 )
 
 func isLocalHost(ip net.IP) bool {
@@ -39,6 +45,14 @@ type Location struct {
 	Latitude  float64 `json:"latitude"`
 	Longitude float64 `json:"longitude"`
 	ISP       string  `json:"isp"`
+}
+
+func (l *Location) UnmarshalBinary(data []byte) error {
+	return jsoniter.Unmarshal(data, l)
+}
+
+func (l Location) MarshalBinary() ([]byte, error) {
+	return jsoniter.Marshal(l)
 }
 
 // IsZero reports whether l represents the zero location lat/long 0,0 similar to how Time.IsZero works.
@@ -132,36 +146,105 @@ func (ips *IPStack) LocateIP(ip net.IP) (Location, error) {
 
 // MaxmindDB embeds the unofficial MaxmindDB reader so we can satisfy the IPLocator interface
 type MaxmindDB struct {
-	*geoip2.Reader
+	CityReader *geoip2.Reader
+	ISPReader  *geoip2.Reader
+}
+
+func NewMaxmindReader(httpClient *http.Client, uri string) (*geoip2.Reader, error) {
+	// If there is a local file at this uri then just open it
+	if _, err := os.Stat(uri); err == nil {
+		return geoip2.Open(uri)
+	}
+
+	// otherwise attempt to download it
+	mmres, err := httpClient.Get(uri)
+	if err != nil {
+		return nil, err
+	}
+	defer mmres.Body.Close()
+
+	if mmres.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("received %d: %s from Maxmind.com", mmres.StatusCode, http.StatusText(mmres.StatusCode))
+	}
+
+	gz, err := gzip.NewReader(mmres.Body)
+	if err != nil {
+		return nil, err
+	}
+	defer gz.Close()
+
+	buf := bytes.NewBuffer(nil)
+	tr := tar.NewReader(gz)
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		if strings.HasSuffix(hdr.Name, "mmdb") {
+			_, err := io.Copy(buf, tr)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return geoip2.FromBytes(buf.Bytes())
 }
 
 // LocateIP queries the Maxmind geoip2.Reader for the net.IP and parses the response into a routing.Location
 func (mmdb *MaxmindDB) LocateIP(ip net.IP) (Location, error) {
-	if mmdb.Reader == nil {
-		return Location{}, errors.New("not configured with a Maxmind DB")
+	if mmdb.CityReader == nil {
+		return Location{}, errors.New("not configured with a Maxmind City DB")
+	}
+	if mmdb.ISPReader == nil {
+		return Location{}, errors.New("not configured with a Maxmind ISP DB")
 	}
 
 	if isLocalHost(ip) {
 		return LocationNullIsland, nil
 	}
 
-	res, err := mmdb.Reader.City(ip)
+	cityres, err := mmdb.CityReader.City(ip)
 	if err != nil {
 		return Location{}, err
 	}
 
-	if len(res.City.Names) <= 0 {
-		return Location{}, fmt.Errorf("no location found for '%s'", ip.String())
+	continent := "unknown"
+	if val, ok := cityres.Continent.Names["en"]; ok {
+		continent = val
+	}
+	country := "unknown"
+	if val, ok := cityres.Country.Names["en"]; ok {
+		country = val
+	}
+	region := "unknown"
+	if len(cityres.Subdivisions) > 0 {
+		if val, ok := cityres.Subdivisions[0].Names["en"]; ok {
+			region = val
+		}
+	}
+	city := "unknown"
+	if val, ok := cityres.City.Names["en"]; ok {
+		city = val
+	}
+
+	ispres, err := mmdb.ISPReader.ISP(ip)
+	if err != nil {
+		return Location{}, err
 	}
 
 	return Location{
-		Continent: res.Continent.Names["en"],
-		Country:   res.Country.Names["en"],
-		Region:    res.Subdivisions[0].Names["en"],
-		City:      res.City.Names["en"],
-		Latitude:  res.Location.Latitude,
-		Longitude: res.Location.Longitude,
-		ISP:       "unknown",
+		Continent: continent,
+		Country:   country,
+		Region:    region,
+		City:      city,
+		Latitude:  cityres.Location.Latitude,
+		Longitude: cityres.Location.Longitude,
+		ISP:       ispres.ISP,
 	}, nil
 }
 

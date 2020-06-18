@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"sort"
 	"time"
 
@@ -11,9 +12,9 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
-func relays(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
+func relays(rpcClient jsonrpc.RPCClient, env Environment, regex string, relaysStateShowFlags [6]bool, relaysStateHideFlags [6]bool, relaysDownFlag bool) {
 	args := localjsonrpc.RelaysArgs{
-		Name: filter,
+		Regex: regex,
 	}
 
 	var reply localjsonrpc.RelaysReply
@@ -38,6 +39,31 @@ func relays(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 	}{}
 
 	for _, relay := range reply.Relays {
+		relayState, err := routing.ParseRelayState(relay.State)
+		if err != nil {
+			log.Fatalf("could not parse invalid relay state %s", relay.State)
+		}
+
+		includeRelay := true
+
+		for i, flag := range relaysStateShowFlags {
+			if flag {
+				if relayState != routing.RelayState(i) {
+					// An "only show" flag is set and this relay doesn't match that state, so don't include it in the final output
+					includeRelay = false
+				} else {
+					// One of the flags should include the relay, so set to true and break out, since combining the flags is an OR operation
+					includeRelay = true
+					break
+				}
+			}
+		}
+
+		if relaysStateHideFlags[relayState] {
+			// Relay should be hidden, so don't include in final output
+			includeRelay = false
+		}
+
 		tx := fmt.Sprintf("%.02fGB", float64(relay.BytesSent)/float64(1000000000))
 		if relay.BytesSent < 1000000000 {
 			tx = fmt.Sprintf("%.02fMB", float64(relay.BytesSent)/float64(1000000))
@@ -46,9 +72,19 @@ func relays(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 		if relay.BytesReceived < 1000000000 {
 			rx = fmt.Sprintf("%.02fMB", float64(relay.BytesReceived)/float64(1000000))
 		}
+		lastUpdateDuration := time.Since(relay.LastUpdateTime).Truncate(time.Second)
 		lastUpdated := "n/a"
 		if relay.State == "enabled" {
-			lastUpdated = time.Since(relay.LastUpdateTime).Truncate(time.Second).String()
+			lastUpdated = lastUpdateDuration.String()
+		}
+
+		if relaysDownFlag && lastUpdateDuration < 30*time.Second {
+			// Relay is still up and shouldn't be included in the final output
+			includeRelay = false
+		}
+
+		if !includeRelay {
+			continue
 		}
 
 		address := relay.Addr
@@ -92,7 +128,13 @@ func addRelay(rpcClient jsonrpc.RPCClient, env Environment, relay routing.Relay)
 }
 
 func removeRelay(rpcClient jsonrpc.RPCClient, env Environment, name string) {
-	info := getRelayInfo(rpcClient, name)
+	relays := getRelayInfo(rpcClient, name)
+
+	if len(relays) == 0 {
+		log.Fatalf("no relays matched the name '%s'\n", name)
+	}
+
+	info := relays[0]
 
 	args := localjsonrpc.RemoveRelayArgs{
 		RelayID: info.id,
@@ -104,5 +146,5 @@ func removeRelay(rpcClient jsonrpc.RPCClient, env Environment, name string) {
 		return
 	}
 
-	fmt.Printf("Relay \"%s\" removed from storage.\n", name)
+	fmt.Printf("Relay \"%s\" decommissioned.\n", name)
 }

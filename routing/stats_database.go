@@ -146,8 +146,9 @@ func (database *StatsDatabase) ProcessStats(statsUpdate *RelayStatsUpdate) {
 	for _, stats := range statsUpdate.PingStats {
 
 		destRelayID := stats.RelayID
-
+		database.mu.Lock()
 		relay, relayExists := entry.Relays[destRelayID]
+		database.mu.Unlock()
 
 		if !relayExists {
 			relay = NewStatsEntryRelay()
@@ -173,6 +174,8 @@ func (database *StatsDatabase) DeleteEntry(relayID uint64) {
 
 // MakeCopy makes a exact copy of the stats db
 func (database *StatsDatabase) MakeCopy() *StatsDatabase {
+	database.mu.Lock()
+	defer database.mu.Unlock()
 	databaseCopy := NewStatsDatabase()
 	for k, v := range database.Entries {
 		newEntry := NewStatsEntry()
@@ -189,12 +192,11 @@ func (database *StatsDatabase) MakeCopy() *StatsDatabase {
 func (database *StatsDatabase) GetEntry(relay1, relay2 uint64) *StatsEntryRelay {
 	database.mu.Lock()
 	entry, entryExists := database.Entries[relay1]
+	relay, relayExists := entry.Relays[relay2]
 	database.mu.Unlock()
 
-	if entryExists {
-		if relay, relayExists := entry.Relays[relay2]; relayExists {
-			return relay
-		}
+	if entryExists && relayExists {
+		return relay
 	}
 
 	return nil

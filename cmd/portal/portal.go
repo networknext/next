@@ -41,6 +41,15 @@ func main() {
 
 	// Configure logging
 	logger := log.NewLogfmtLogger(os.Stdout)
+	if projectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
+		loggingClient, err := gcplogging.NewClient(ctx, projectID)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			os.Exit(1)
+		}
+
+		logger = logging.NewStackdriverLogger(loggingClient, "relay-backend")
+	}
 	{
 		switch os.Getenv("BACKEND_LOG_LEVEL") {
 		case "none":
@@ -58,15 +67,6 @@ func main() {
 		}
 
 		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
-	}
-	if projectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
-		loggingClient, err := gcplogging.NewClient(ctx, projectID)
-		if err != nil {
-			level.Error(logger).Log("err", err)
-			os.Exit(1)
-		}
-
-		logger = logging.NewStackdriverLogger(loggingClient, "relay-backend")
 	}
 
 	var relayPublicKey []byte
@@ -99,7 +99,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	addr := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 40000}
 	var db storage.Storer = &storage.InMemory{
 		LocalMode: true,
 	}
@@ -137,10 +136,43 @@ func main() {
 			os.Exit(1)
 		}
 
+		addr1 := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10000}
 		if err := db.AddRelay(ctx, routing.Relay{
-			Name:           "local.test_relay",
-			ID:             crypto.HashID(addr.String()),
-			Addr:           addr,
+			Name:           "local.test_relay.a",
+			ID:             crypto.HashID(addr1.String()),
+			Addr:           addr1,
+			PublicKey:      relayPublicKey,
+			Seller:         seller,
+			Datacenter:     datacenter,
+			ManagementAddr: "127.0.0.1",
+			SSHUser:        "root",
+			SSHPort:        22,
+		}); err != nil {
+			level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
+			os.Exit(1)
+		}
+
+		addr2 := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10001}
+		if err := db.AddRelay(ctx, routing.Relay{
+			Name:           "local.test_relay.b",
+			ID:             crypto.HashID(addr2.String()),
+			Addr:           addr2,
+			PublicKey:      relayPublicKey,
+			Seller:         seller,
+			Datacenter:     datacenter,
+			ManagementAddr: "127.0.0.1",
+			SSHUser:        "root",
+			SSHPort:        22,
+		}); err != nil {
+			level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
+			os.Exit(1)
+		}
+
+		addr3 := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10002}
+		if err := db.AddRelay(ctx, routing.Relay{
+			Name:           "abc.xyz",
+			ID:             crypto.HashID(addr3.String()),
+			Addr:           addr3,
 			PublicKey:      relayPublicKey,
 			Seller:         seller,
 			Datacenter:     datacenter,
@@ -221,51 +253,19 @@ func main() {
 		}
 	}
 
-	// Remove sessions from top sessions when session meta keys expire
-	redisClientPortal.ConfigSet("notify-keyspace-events", "Ex")
+	// Generate Sessions Map Points periodically
+	buyerService := jsonrpc.BuyersService{
+		Logger:      logger,
+		RedisClient: redisClientPortal,
+		Storage:     db,
+	}
 	go func() {
-		ps := redisClientPortal.Subscribe("__keyevent@0__:expired")
 		for {
-			msg, err := ps.ReceiveMessage()
-			if err != nil {
-				level.Error(logger).Log("msg", "error receiving expired message from pubsub", "err", err)
+			if err := buyerService.GenerateMapPoints(); err != nil {
+				level.Error(logger).Log("msg", "error generating sessions map points", "err", err)
 				os.Exit(1)
 			}
-
-			if strings.HasSuffix(msg.Payload, "-meta") {
-				keyparts := strings.Split(msg.Payload, "-")
-				sessionID := keyparts[1]
-
-				topscaniter := redisClientPortal.Scan(0, "top-buyer-*", 1000).Iterator()
-				mapscaniter := redisClientPortal.Scan(0, "map-points-buyer-*", 1000).Iterator()
-				userscaniter := redisClientPortal.Scan(0, "user-*", 1000).Iterator()
-
-				tx := redisClientPortal.TxPipeline()
-
-				tx.ZRem("top-global", sessionID)
-				for topscaniter.Next() {
-					tx.ZRem(topscaniter.Val(), sessionID)
-				}
-
-				tx.SRem("map-points-global", sessionID)
-				for mapscaniter.Next() {
-					tx.SRem(mapscaniter.Val(), sessionID)
-				}
-
-				tx.SRem("total-direct", sessionID)
-				tx.SRem("total-next", sessionID)
-
-				for userscaniter.Next() {
-					tx.SRem(userscaniter.Val(), sessionID)
-				}
-
-				if _, err := tx.Exec(); err != nil {
-					level.Error(logger).Log("msg", "error cleaning up top sessions and map sessions", "err", err)
-					os.Exit(1)
-				}
-
-				level.Info(logger).Log("msg", "removed session from top sessions and map sessions", "session_id", sessionID)
-			}
+			time.Sleep(10 * time.Second)
 		}
 	}()
 
@@ -311,11 +311,7 @@ func main() {
 			Storage:     db,
 			RouteMatrix: &routeMatrix,
 		}, "")
-		s.RegisterService(&jsonrpc.BuyersService{
-			Logger:      logger,
-			RedisClient: redisClientPortal,
-			Storage:     db,
-		}, "")
+		s.RegisterService(&buyerService, "")
 		s.RegisterService(&jsonrpc.AuthService{
 			Logger:  logger,
 			Auth0:   auth0Client,
@@ -323,6 +319,7 @@ func main() {
 		}, "")
 
 		http.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), s))
+		http.HandleFunc("/healthz", transport.HealthzHandlerFunc())
 
 		http.Handle("/", http.FileServer(http.Dir(uiDir)))
 

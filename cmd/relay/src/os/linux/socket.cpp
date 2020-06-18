@@ -93,6 +93,10 @@ namespace os
     assert(data != nullptr);
     assert(size > 0);
 
+    if (mClosed) {
+      return false;
+    }
+
     if (to.Type == net::AddressType::IPv6) {
       sockaddr_in6 socket_address;
       to.to(socket_address);
@@ -123,6 +127,10 @@ namespace os
   {
     assert(data != nullptr);
     assert(maxSize > 0);
+
+    if (mClosed) {
+      return 0;
+    }
 
     sockaddr_storage sockaddr_from = {};
 

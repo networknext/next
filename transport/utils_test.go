@@ -31,3 +31,11 @@ func TestAnonAddr(t *testing.T) {
 		assert.Equal(t, addr4.IP, anonAddr4.IP)
 	})
 }
+
+func TestFloatPrecision(t *testing.T) {
+	val := -102.1683599948883057
+
+	assert.Equal(t, -102.1683, transport.Float64Precision(val, 4))
+	assert.Equal(t, -102.16, transport.Float64Precision(val, 2))
+	assert.Equal(t, -102.16835, transport.Float64Precision(val, 5))
+}
