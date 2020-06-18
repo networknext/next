@@ -508,8 +508,6 @@ int main(int argc, const char* argv[])
           break;
         }
 
-        std::cout << '.' << std::flush;
-
         std::this_thread::sleep_for(1s);
       }
 
