@@ -305,7 +305,7 @@ func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayH
 		}
 
 		level.Info(relayslogger).Log(
-			"id", relayCacheEntry.ID,
+			"id", fmt.Sprintf("%x", relayCacheEntry.ID),
 			"name", relayCacheEntry.Name,
 			"addr", relayCacheEntry.Addr.String(),
 			"datacenter", relayCacheEntry.Datacenter.Name,
@@ -788,7 +788,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 		}
 
 		level.Info(relayslogger).Log(
-			"id", relayCacheEntry.ID,
+			"id", fmt.Sprintf("%x", relayCacheEntry.ID),
 			"name", relayCacheEntry.Name,
 			"addr", relayCacheEntry.Addr.String(),
 			"datacenter", relayCacheEntry.Datacenter.Name,

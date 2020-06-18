@@ -342,7 +342,7 @@ func main() {
 				}
 
 				// Log the ID
-				level.Warn(logger).Log("msg", fmt.Sprintf("relay with id %v has disconnected.", rawID))
+				level.Warn(logger).Log("msg", fmt.Sprintf("relay with id %x has disconnected.", rawID))
 
 				// Remove the relay cache entry
 				if err := transport.RemoveRelayCacheEntry(ctx, rawID, msg.Payload, redisClientRelays, &geoClient, statsdb); err != nil {
