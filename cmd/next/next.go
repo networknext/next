@@ -426,6 +426,7 @@ func main() {
 					if err != nil {
 						return err
 					}
+					defer res.Body.Close()
 
 					env.AuthToken = gjson.ParseBytes(body).Get("access_token").String()
 					env.Write()

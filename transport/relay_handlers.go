@@ -947,7 +947,6 @@ func RelayDashboardHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.R
 	`))
 
 	return func(writer http.ResponseWriter, request *http.Request) {
-		defer request.Body.Close()
 		writer.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
 
 		u, p, _ := request.BasicAuth()
