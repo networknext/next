@@ -86,6 +86,20 @@ const (
 	PortCheckScript = `echo "$(sudo lsof -i -P -n 2>/dev/null | grep '*:40000' | tr -s ' ' | cut -d ' ' -f 1 | head -1)"`
 )
 
+type relay struct {
+	Name                string
+	Addr                string
+	PublicKey           string
+	SellerID            string
+	DatacenterName      string
+	NicSpeedMbps        uint64
+	IncludedBandwidthGB uint64
+	ManagementAddr      string
+	SSHUser             string
+	SSHPort             int64
+	MaxSessions         uint32
+}
+
 type relayInfo struct {
 	id          uint64
 	name        string
