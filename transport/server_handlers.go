@@ -1185,8 +1185,8 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 
 	// set the map point key and global sessions with expiration on the entire key set for safety
 	tx.Set(fmt.Sprintf("session-%016x-point", packet.SessionID), point, redisClientPortalExp)
-	tx.SAdd("map-points-global", meta.ID)
-	tx.Expire("map-points-global", redisClientPortalExp)
+	tx.SAdd(fmt.Sprintf("map-points-buyer-%016x", meta.BuyerID), meta.ID)
+	tx.Expire(fmt.Sprintf("map-points-buyer-%016x", meta.BuyerID), redisClientPortalExp)
 
 	if _, err := tx.Exec(); err != nil {
 		return err
