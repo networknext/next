@@ -545,10 +545,6 @@ WorkspaceHandler = {
 			buyerId: buyerId,
 			sessionType: 'all'
 		});
-		this.refreshSessionTable();
-		this.sessionLoop = setInterval(() => {
-			this.refreshSessionTable();
-		}, 10000);
 	},
 	fetchSessionInfo() {
 		let id = rootComponent.$data.pages.sessionTool.id;
@@ -672,11 +668,14 @@ WorkspaceHandler = {
 				Sentry.captureException(e);
 			});
 	},
-	loadUsersPage() {
-		// No Endpoint for this yet
-	},
 	updateSessionFilter(filter) {
 		Object.assign(rootComponent.$data.pages.sessions, {filter: filter});
+		this.sessionLoop ? clearInterval(this.sessionLoop) : null;
+
+		this.refreshSessionTable();
+		this.sessionLoop = setInterval(() => {
+			this.refreshSessionTable();
+		}, 10000);
 	},
 	refreshSessionTable() {
 		setTimeout(() => {
