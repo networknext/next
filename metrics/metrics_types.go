@@ -112,6 +112,34 @@ var EmptyDecisionMetrics DecisionMetrics = DecisionMetrics{
 	VetoCommit:          &EmptyCounter{},
 }
 
+type OptimizeMetrics struct {
+	Invocations   Counter
+	DurationGauge Gauge
+	ErrorMetrics  OptimizeErrorMetrics
+}
+
+type OptimizeErrorMetrics struct {
+	UnmarshalFailure    Counter
+	SDKTooOld           Counter
+	BuyerNotFound       Counter
+	VerificationFailure Counter
+	DatacenterNotFound  Counter
+}
+
+var EmptyOptimizeMetrics OptimizeMetrics = OptimizeMetrics{
+	Invocations:   &EmptyCounter{},
+	DurationGauge: &EmptyGauge{},
+	ErrorMetrics:  EmptyOptimizeErrorMetrics,
+}
+
+var EmptyOptimizeErrorMetrics OptimizeErrorMetrics = OptimizeErrorMetrics{
+	UnmarshalFailure:    &EmptyCounter{},
+	SDKTooOld:           &EmptyCounter{},
+	BuyerNotFound:       &EmptyCounter{},
+	DatacenterNotFound:  &EmptyCounter{},
+	VerificationFailure: &EmptyCounter{},
+}
+
 type ServerInitMetrics struct {
 	Invocations   Counter
 	DurationGauge Gauge
