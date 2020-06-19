@@ -10,9 +10,11 @@ import (
 	"runtime"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
+	"github.com/networknext/backend/metrics"
 )
 
 const (
@@ -356,7 +358,14 @@ func (m *CostMatrix) MarshalBinary() ([]byte, error) {
 }
 
 // Optimize will fill up a *RouteMatrix with the optimized routes based on cost.
-func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
+func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32, metrics *metrics.OptimizeMetrics) error {
+	durationStart := time.Now()
+	defer func() {
+		durationSince := time.Since(durationStart)
+		metrics.DurationGauge.Set(float64(durationSince.Milliseconds()))
+		metrics.Invocations.Add(1)
+	}()
+
 	m.mu.RLock()
 	routes.mu.Lock()
 	defer func() {
