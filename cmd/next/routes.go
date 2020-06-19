@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
 
+	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
 	localjsonrpc "github.com/networknext/backend/transport/jsonrpc"
 	"github.com/ybbus/jsonrpc"
@@ -82,8 +84,17 @@ func optimizeCostMatrix(costFilename, routeFilename string, rtt int32) {
 		log.Fatalln(fmt.Errorf("error reading cost matrix: %w", err))
 	}
 
+	// Create a local metrics handler
+	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
+
+	// Create server update metrics
+	optimizeMetrics, err := metrics.NewOptimizeMetrics(context.Background(), metricsHandler)
+	if err != nil {
+		log.Fatalln("failed to create optimize metrics: %w", err)
+	}
+
 	var routeMatrix routing.RouteMatrix
-	if err := costMatrix.Optimize(&routeMatrix, rtt); err != nil {
+	if err := costMatrix.Optimize(&routeMatrix, rtt, optimizeMetrics); err != nil {
 		log.Fatalln(fmt.Errorf("error optimizing cost matrix: %w", err))
 	}
 

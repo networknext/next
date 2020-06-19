@@ -302,7 +302,15 @@ func main() {
 
 			relayStatMetrics.NumRelays.Set(float64(len(statsdb.Entries)))
 
-			if err := costmatrix.Optimize(&routematrix, 1); err != nil {
+			var metricsHandler metrics.Handler = &metrics.LocalHandler{}
+
+			// Create server update metrics
+			optimizeMetrics, err := metrics.NewOptimizeMetrics(context.Background(), metricsHandler)
+			if err != nil {
+				level.Warn(logger).Log("msg", "failed to create optimize metrics", "err", err)
+			}
+
+			if err := costmatrix.Optimize(&routematrix, 1, optimizeMetrics); err != nil {
 				level.Warn(logger).Log("matrix", "cost", "op", "optimize", "err", err)
 			}
 

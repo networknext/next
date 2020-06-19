@@ -27,6 +27,7 @@ import (
 
 	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/crypto"
+	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/transport"
 )
@@ -73,12 +74,22 @@ const MaxJitter = float32(10.0)
 const MaxPacketLoss = float32(0.1)
 
 func OptimizeThread() {
+
+	// Create a local metrics handler
+	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
+
+	// Create server update metrics
+	optimizeMetrics, err := metrics.NewOptimizeMetrics(context.Background(), metricsHandler)
+	if err != nil {
+		fmt.Printf("failed to create optimize metrics: %v", err)
+	}
+
 	for {
 		backend.mutex.Lock()
 		if err := backend.statsDatabase.GetCostMatrix(backend.costMatrix, backend.redisClient, MaxJitter, MaxPacketLoss); err != nil {
 			fmt.Printf("error generating cost matrix: %v\n", err)
 		}
-		if err := backend.costMatrix.Optimize(backend.routeMatrix, RTT_Threshold); err != nil {
+		if err := backend.costMatrix.Optimize(backend.routeMatrix, RTT_Threshold, optimizeMetrics); err != nil {
 			fmt.Printf("error generating route matrix: %v\n", err)
 		}
 		backend.mutex.Unlock()
