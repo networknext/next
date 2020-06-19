@@ -119,11 +119,6 @@ type OptimizeMetrics struct {
 }
 
 type OptimizeErrorMetrics struct {
-	UnmarshalFailure    Counter
-	SDKTooOld           Counter
-	BuyerNotFound       Counter
-	VerificationFailure Counter
-	DatacenterNotFound  Counter
 }
 
 var EmptyOptimizeMetrics OptimizeMetrics = OptimizeMetrics{
@@ -132,12 +127,38 @@ var EmptyOptimizeMetrics OptimizeMetrics = OptimizeMetrics{
 	ErrorMetrics:  EmptyOptimizeErrorMetrics,
 }
 
-var EmptyOptimizeErrorMetrics OptimizeErrorMetrics = OptimizeErrorMetrics{
-	UnmarshalFailure:    &EmptyCounter{},
-	SDKTooOld:           &EmptyCounter{},
-	BuyerNotFound:       &EmptyCounter{},
-	DatacenterNotFound:  &EmptyCounter{},
-	VerificationFailure: &EmptyCounter{},
+var EmptyOptimizeErrorMetrics OptimizeErrorMetrics = OptimizeErrorMetrics{}
+
+func NewOptimizeMetrics(ctx context.Context, metricsHandler Handler) (*OptimizeMetrics, error) {
+	initDurationGauge, err := metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Optimize duration",
+		ServiceName: "routing",
+		ID:          "optimize.duration",
+		Unit:        "milliseconds",
+		Description: "How long it takes to optimize a cost matrix.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	initInvocationsCounter, err := metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Total cost matrix optimize invocations",
+		ServiceName: "routing",
+		ID:          "optimize.count",
+		Unit:        "invocations",
+		Description: "The total number of cost matrix optimizers",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	initMetrics := OptimizeMetrics{
+		Invocations:   initInvocationsCounter,
+		DurationGauge: initDurationGauge,
+		ErrorMetrics:  EmptyOptimizeErrorMetrics,
+	}
+
+	return &initMetrics, nil
 }
 
 type ServerInitMetrics struct {
