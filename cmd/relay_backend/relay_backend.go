@@ -186,7 +186,7 @@ func main() {
 
 		// Start a goroutine to sync from Firestore
 		go func() {
-			ticker := time.NewTicker(10 * time.Second)
+			ticker := time.NewTicker(1 * time.Second)
 			fs.SyncLoop(ctx, ticker.C)
 		}()
 
@@ -314,8 +314,7 @@ func main() {
 				sentry.CaptureMessage("no routes within route matrix")
 			}
 
-			// todo: should be one
-			time.Sleep(10 * time.Second)
+			time.Sleep(1 * time.Second)
 		}
 	}()
 
