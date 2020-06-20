@@ -162,7 +162,9 @@ func (database *StatsDatabase) ProcessStats(statsUpdate *RelayStatsUpdate) {
 		relay.Jitter = HistoryMax(relay.JitterHistory[:])
 		relay.PacketLoss = HistoryMax(relay.PacketLossHistory[:])
 
-		entry.Relays[destRelayID] = relay // is this needed? relay is a pointer
+		database.mu.Lock()
+		entry.Relays[destRelayID] = relay
+		database.mu.Unlock()
 	}
 }
 
@@ -207,7 +209,6 @@ func (database *StatsDatabase) GetSample(relay1, relay2 uint64) (float32, float3
 	a := database.GetEntry(relay1, relay2)
 	b := database.GetEntry(relay2, relay1)
 	if a != nil && b != nil {
-		// math.Max requires float64 but we're returning float32's hence... whatever this is
 		return float32(math.Max(float64(a.RTT), float64(b.RTT))),
 			float32(math.Max(float64(a.Jitter), float64(b.Jitter))),
 			float32(math.Max(float64(a.PacketLoss), float64(b.PacketLoss)))
