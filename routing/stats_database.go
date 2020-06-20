@@ -230,7 +230,7 @@ func (database *StatsDatabase) GetCostMatrix(costMatrix *CostMatrix, redisClient
 	costMatrix.RelayAddresses = make([][]byte, numRelays)
 	costMatrix.RelayPublicKeys = make([][]byte, numRelays)
 	costMatrix.DatacenterRelays = make(map[uint64][]uint64)
-	costMatrix.RTT = make([]int32, TriMatrixLength(numRelays))
+	costMatrix.RTT = make([]int32, TriMatrixLength(numRelays))			// todo: should be renamed to "Cost"
 	costMatrix.RelaySellers = make([]Seller, numRelays)
 	costMatrix.RelaySessionCounts = make([]uint32, numRelays)
 	costMatrix.RelayMaxSessionCounts = make([]uint32, numRelays)

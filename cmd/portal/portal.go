@@ -213,7 +213,7 @@ func main() {
 
 		// Start a goroutine to sync from Firestore
 		go func() {
-			ticker := time.NewTicker(10 * time.Second)
+			ticker := time.NewTicker(1 * time.Second)
 			fs.SyncLoop(ctx, ticker.C)
 		}()
 
@@ -247,7 +247,7 @@ func main() {
 
 					level.Info(logger).Log("matrix", "route", "entries", len(routeMatrix.Entries))
 
-					time.Sleep(10 * time.Second)
+					time.Sleep(1 * time.Second)
 				}
 			}()
 		}
@@ -265,7 +265,7 @@ func main() {
 				level.Error(logger).Log("msg", "error generating sessions map points", "err", err)
 				os.Exit(1)
 			}
-			time.Sleep(10 * time.Second)
+			time.Sleep(1 * time.Second)
 		}
 	}()
 
