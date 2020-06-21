@@ -177,6 +177,9 @@ type TotalSessionsReply struct {
 }
 
 func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, reply *TotalSessionsReply) error {
+	if r.Body != nil {
+		defer r.Body.Close()
+	}
 	direct, err := s.RedisClient.ZCard("total-direct").Result()
 	if err != nil {
 		return err
@@ -203,8 +206,6 @@ type TopSessionsReply struct {
 
 // TopSessions generates the top sessions sorted by improved RTT
 func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, reply *TopSessionsReply) error {
-	buyers := s.Storage.Buyers()
-
 	var err error
 	var topnext []string
 	var topdirect []string
@@ -236,6 +237,8 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 	} else {
 		isSameBuyer = true
 	}
+
+	buyers := s.Storage.Buyers()
 
 	reply.Sessions = make([]routing.SessionMeta, 0)
 
