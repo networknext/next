@@ -1158,6 +1158,15 @@ func main() {
 				},
 			},
 			{
+				Name:       "dataflow",
+				ShortUsage: "next dataflow",
+				ShortHelp:  "Manage dataflow",
+				Exec: func(ctx context.Context, args []string) error {
+					dataflow(env)
+					return nil
+				},
+			},
+			{
 				Name:       "ssh",
 				ShortUsage: "next ssh <relay name>",
 				ShortHelp:  "SSH into a relay by name",

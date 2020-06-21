@@ -9,7 +9,6 @@ import java.util.ArrayList;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TimePartitioning;
 import com.google.cloud.bigquery.storage.v1beta1.BigQueryStorageSettings;
-import com.google.cloud.bigtable.beam.CloudBigtableIO;
 import com.networknext.api.address.AddressOuterClass.Address;
 import com.networknext.api.ip2location.Ip2Location;
 import com.networknext.api.near_data.NearData;
@@ -22,7 +21,6 @@ import com.networknext.dataflow.platform.PlatformContext;
 import com.networknext.dataflow.util.EntityIdHelpers;
 import com.networknext.dataflow.util.Utils;
 import com.networknext.dataflow.util.bigquery.BigQuerySchemaUpdater;
-import com.networknext.dataflow.util.bigtable.BigTableOp;
 
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
@@ -35,142 +33,6 @@ import org.apache.hadoop.hbase.client.Put;
 public class BillingPipeline {
 
     public static void buildBillingPipeline(PlatformContext context) throws Exception {
-
-        if (context.bigTableBilling != null) {
-            // write to billing table
-            context.pubSubBilling.apply("Prepare data for billing table",
-                    ParDo.of(new DoFn<BillingEntry, Mutation>() {
-                        private static final long serialVersionUID = 6922898617241332266L;
-
-                        @ProcessElement
-                        public void processElement(ProcessContext c) throws Exception {
-
-                            BillingEntry entry = c.element();
-
-                            long timeTag = entry.getTimestamp() - entry.getTimestampStart();
-
-                            Put mutation = new Put(String
-                                    .format("%s#%s#%010d",
-                                            Utils.hexPrint(entry.getRequest().getSessionId()),
-                                            entry.getRequest().getBuyerId().getName(), timeTag)
-                                    .getBytes(StandardCharsets.UTF_8));
-
-                            BigTableOp.SetBytes(mutation, "data", "d", entry.toByteArray());
-
-                            c.output(mutation);
-                        }
-                    })).apply("Write to billing BigTable",
-                            CloudBigtableIO.writeToTable(context.bigTableBilling));
-        }
-
-        if (context.bigTableSession != null) {
-            // write to session table
-            context.pubSubBilling.apply("Prepare data for session table",
-                    ParDo.of(new DoFn<BillingEntry, Mutation>() {
-                        private static final long serialVersionUID = 6922898617241332266L;
-
-                        @ProcessElement
-                        public void processElement(ProcessContext c) throws Exception {
-
-                            BillingEntry entry = c.element();
-
-                            if (entry.getInitial()) {
-                                // initial route request
-
-                                // session table. key: buyer entity id, timestamp, flow ID. value:
-                                // flow
-                                // ID
-
-                                Put mutation = new Put(String
-                                        .format("%s#%010d#%016x",
-                                                entry.getRequest().getBuyerId().getName(),
-                                                entry.getTimestampStart(),
-                                                entry.getRequest().getSessionId())
-                                        .getBytes(StandardCharsets.UTF_8));
-                                BigTableOp.SetUint64(mutation, "flow", "id",
-                                        entry.getRequest().getSessionId());
-                                c.output(mutation);
-                            }
-                        }
-                    })).apply("Write to session BigTable",
-                            CloudBigtableIO.writeToTable(context.bigTableSession));
-        }
-
-        if (context.bigTableUser != null) {
-            // write to user table
-            context.pubSubBilling.apply("Prepare data for user table",
-                    ParDo.of(new DoFn<BillingEntry, Mutation>() {
-                        private static final long serialVersionUID = 6922898617241332266L;
-
-                        @ProcessElement
-                        public void processElement(ProcessContext c) throws Exception {
-
-                            BillingEntry entry = c.element();
-
-                            if (entry.getInitial()) {
-                                // initial route request
-
-                                // user table. key: buyer entity id, (unused), user ID, timestamp,
-                                // flow
-                                // ID.
-                                // value: flow
-                                // ID
-                                Put mutation = new Put(String.format("%s#%02x#%016x#%010d#%016x",
-                                        entry.getRequest().getBuyerId().getName(), 0,
-                                        entry.getRequest().getUserHash(), entry.getTimestampStart(),
-                                        entry.getRequest().getSessionId())
-                                        .getBytes(StandardCharsets.UTF_8));
-
-                                BigTableOp.SetUint64(mutation, "flow", "id",
-                                        entry.getRequest().getSessionId());
-
-                                // include all this data in the row, so that the "list sessions by
-                                // user"
-                                // functionality in the platform doesn't have to make lots of scans
-                                // (BigTable is
-                                // not a relational database, so for data like this, it's better to
-                                // include it
-                                // inline than make the reader perform O(n) lookups for related
-                                // data).
-                                BigTableOp.SetBytes(mutation, "flow", "buyer_entity_id",
-                                        entry.getRequest().getBuyerId().getName()
-                                                .getBytes(StandardCharsets.UTF_8));
-                                BigTableOp.SetUint64(mutation, "flow", "timestamp_start",
-                                        entry.getTimestampStart());
-                                BigTableOp.SetUint64(mutation, "flow", "user_id",
-                                        entry.getRequest().getUserHash());
-                                BigTableOp.SetBytes(mutation, "flow", "datacenter_entity_id",
-                                        entry.getRequest().getDatacenterId().getName()
-                                                .getBytes(StandardCharsets.UTF_8));
-                                BigTableOp.SetBytes(mutation, "flow", "server_address",
-                                        Utils.addressToString(
-                                                entry.getRequest().getServerIpAddress())
-                                                .getBytes(StandardCharsets.UTF_8));
-                                BigTableOp.SetUint64(mutation, "flow", "platform",
-                                        entry.getRequest().getPlatformId());
-                                BigTableOp.SetUint64(mutation, "flow", "version",
-                                        entry.getRequest().getVersionMajor() * 100
-                                                + entry.getRequest().getVersionMinor() * 10
-                                                + entry.getRequest().getVersionPatch());
-                                BigTableOp.SetUint64(mutation, "flow", "connection_type",
-                                        entry.getRequest().getConnectionType().getNumber());
-                                BigTableOp.SetBytes(mutation, "flow", "user_ip",
-                                        Utils.addressToString(
-                                                entry.getRequest().getClientIpAddress())
-                                                .getBytes(StandardCharsets.UTF_8));
-                                BigTableOp.SetBytes(mutation, "flow", "user_isp", entry.getRequest()
-                                        .getLocation().getIsp().getBytes(StandardCharsets.UTF_8));
-                                BigTableOp.SetFloat64(mutation, "flow", "user_latitude",
-                                        (double) entry.getRequest().getLocation().getLatitude());
-                                BigTableOp.SetFloat64(mutation, "flow", "user_longitude",
-                                        (double) entry.getRequest().getLocation().getLongitude());
-
-                                c.output(mutation);
-                            }
-                        }
-                    })).apply("Write to user BigTable",
-                            CloudBigtableIO.writeToTable(context.bigTableUser));
-        }
 
         // export to BigQuery
 

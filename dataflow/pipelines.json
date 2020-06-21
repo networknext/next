@@ -23,48 +23,13 @@
         },
         "envArgs": {
             "v3": {
-                "keyDbSessionListHost": "session-list.keydb.spacecats.net",
-                "keyDbSessionListPort": "6379",
-                "keyDbSessionToolHost": "session-tool.keydb.spacecats.net",
-                "keyDbSessionToolPort": "6379",
                 "disableBigTable": "false"
             },
             "v3-dev": {
-                "keyDbSessionListHost": "session-list.keydb.spacecats.net",
-                "keyDbSessionListPort": "6379",
-                "keyDbSessionToolHost": "session-tool.keydb.spacecats.net",
-                "keyDbSessionToolPort": "6379",
                 "disableBigTable": "false"
             },
             "local": {
-                "keyDbSessionListHost": "localhost",
-                "keyDbSessionListPort": "6380",
-                "keyDbSessionToolHost": "localhost",
-                "keyDbSessionToolPort": "6380",
                 "disableBigTable": "true"
-            }
-        }
-    },
-    {
-        "name": "export",
-        "className": "export.ExportPipeline",
-        "maxWorkers": 1,
-        "desiredWorkers": 1,
-        "workerSize": "n1-standard-8",
-        "enableStreamingEngine": false,
-        "args": {
-            "billingPubsubSubscription": "projects/{{ .Project }}/subscriptions/billing-export-{{ .Env }}",
-            "billingPubsubTopic": "projects/{{ .Project }}/topics/billing-{{ .Env }}"
-        },
-        "envArgs": {
-            "v3": {
-                "sellerExportConfig": "name=Stackpath,pubsub=projects/stackpath-nn-1/topics/session-export-{{ .Env }},parquet=gs://stackpath-nn-1-{{ .Env }}/002/"
-            },
-            "v3-dev": {
-                "sellerExportConfig": "name=SellerExportTest,pubsub=projects/seller-export-demo/topics/session-export-{{ .Env }},parquet=gs://nn-seller-export-demo-stackpath-{{ .Env }}/003/"
-            },
-            "local": {
-                "sellerExportConfig": "name=SellerExportTest,pubsub=projects/seller-export-demo/topics/session-export-{{ .Env }},parquet=gs://nn-seller-export-demo-stackpath-{{ .Env }}/003/"
             }
         }
     }
