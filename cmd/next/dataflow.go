@@ -130,6 +130,7 @@ func getProject() string {
 }
 
 func getMachineType(workerSize string) string {
+	// todo: "n1-standard-32" for prod, n1-standard-4 for dev.
 	return "n1-standard-32"
 	/*
 	if environment == "v3" {
@@ -140,6 +141,7 @@ func getMachineType(workerSize string) string {
 }
 
 func getMaxWorkers(pipelineMax int) int {
+	// todo: 2 for dev, 16 for prod (or possibly less once we finish cutting down)
 	return 16
 	/*
 	if pipelineMax == 0 {
@@ -155,6 +157,7 @@ func getMaxWorkers(pipelineMax int) int {
 }
 
 func getDesiredWorkers(pipelineDesired int, pipelineMax int) int {
+	// todo: 2 for dev, 16 for prod (or possibly less once we finish cutting down)
 	return 16
 	/*
 	if environment == "v3" {
@@ -170,6 +173,7 @@ func getDesiredWorkers(pipelineDesired int, pipelineMax int) int {
 }
 
 func getPipelineEnvironment(pipelineName string) pipelineEnvironment {
+	// todo: function of current env "dev", "prod". if not dev or prod, null
 	return pipelineEnvironment{
 		Project: "network-next-v3-prod",
 		Env:     "v3",
@@ -232,6 +236,7 @@ func loadPipelines() (map[string]*pipelineDefinition, error) {
 		}
 
 		if pipeline.EnvArgs != nil {
+			// todo: function of env
 			// envArgs := pipeline.EnvArgs[environment]
 			envArgs := pipeline.EnvArgs["v3"]
 			if envArgs != nil {
@@ -248,7 +253,6 @@ func loadPipelines() (map[string]*pipelineDefinition, error) {
 			}
 		}
 
-		// also change this
 		pipelines[pipeline.Name] = &pipelineDefinition{
 			Name:                  pipeline.Name,
 			ClassName:             pipeline.ClassName,
@@ -295,6 +299,7 @@ func filterPipelines(c *cli.Context, pipelines map[string]*pipelineDefinition, n
 
 /*
 
+ // todo: bring across any useful parts of old backend commands
 
 var environment string
 
