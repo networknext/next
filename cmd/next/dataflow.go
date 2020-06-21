@@ -45,6 +45,7 @@ func dataflow(env Environment) {
 		table.Append([]string{pipeline.Name, pipeline.ClassName, status, lastChange})
 	}
 
+	// todo: update this to the nicer table we use
 	table.Render()
 }
 
