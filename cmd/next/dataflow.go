@@ -85,6 +85,8 @@ func getExistingPipelineStates() (map[string]*dataflowPipelineStatus, error) {
 			"list",
 			"--format",
 			"json",
+			"--region",
+			"us-central1",
 		},
 		true,
 	)
