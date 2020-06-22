@@ -244,7 +244,7 @@ MapHandler = {
 					getWeight: d => 1,
 					cellSizePixels: cellSize,
 					colorRange: [
-						[0,109,44],
+						[5,245,85],
 					],
 					gpuAggregation,
 					aggregation
