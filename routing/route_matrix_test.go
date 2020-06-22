@@ -14,7 +14,6 @@ import (
 	"testing"
 
 	"github.com/networknext/backend/crypto"
-	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
 	"github.com/stretchr/testify/assert"
 )
@@ -1960,8 +1959,7 @@ func TestRouteMatrix(t *testing.T) {
 		err = cmatrix.UnmarshalBinary(raw)
 		assert.Nil(t, err)
 
-		optimizeMetrics := metrics.EmptyOptimizeMetrics
-		err = cmatrix.Optimize(&rmatrix, 1.0, &optimizeMetrics)
+		err = cmatrix.Optimize(&rmatrix, 1.0)
 		assert.Nil(t, err)
 
 		src := rmatrix.RelayIDs
@@ -2003,9 +2001,8 @@ func TestRouteMatrix(t *testing.T) {
 		assert.Nil(t, err)
 
 		var routeMatrix routing.RouteMatrix
-		optimizeMetrics := metrics.EmptyOptimizeMetrics
 
-		costMatrix.Optimize(&routeMatrix, 5, &optimizeMetrics)
+		costMatrix.Optimize(&routeMatrix, 5)
 		assert.NotNil(t, &routeMatrix)
 		assert.Equal(t, costMatrix.RelayIDs, routeMatrix.RelayIDs, "relay id mismatch")
 		assert.Equal(t, costMatrix.RelayAddresses, routeMatrix.RelayAddresses, "relay address mismatch")
@@ -2123,8 +2120,7 @@ func TestResolveRelay(t *testing.T) {
 		assert.NoError(t, err)
 
 		var routeMatrix routing.RouteMatrix
-		optimizeMetrics := metrics.EmptyOptimizeMetrics
-		err = costMatrix.Optimize(&routeMatrix, 1, &optimizeMetrics)
+		err = costMatrix.Optimize(&routeMatrix, 1)
 		assert.NoError(t, err)
 
 		expected := routing.Relay{
@@ -2151,8 +2147,7 @@ func TestRelaysIn(t *testing.T) {
 	assert.NoError(t, err)
 
 	var routeMatrix routing.RouteMatrix
-	optimizeMetrics := metrics.EmptyOptimizeMetrics
-	err = costMatrix.Optimize(&routeMatrix, 1, &optimizeMetrics)
+	err = costMatrix.Optimize(&routeMatrix, 1)
 	assert.NoError(t, err)
 
 	tests := []struct {
@@ -2203,8 +2198,7 @@ func TestRoutes(t *testing.T) {
 	assert.NoError(t, err)
 
 	var routeMatrix routing.RouteMatrix
-	optimizeMetrics := metrics.EmptyOptimizeMetrics
-	err = costMatrix.Optimize(&routeMatrix, 1, &optimizeMetrics)
+	err = costMatrix.Optimize(&routeMatrix, 1)
 	assert.NoError(t, err)
 
 	// Hack to insert relay session counts without regenerating a new route matrix
@@ -2460,8 +2454,7 @@ func BenchmarkRoutes(b *testing.B) {
 	costMatrix.ReadFrom(costfile)
 
 	var routeMatrix routing.RouteMatrix
-	optimizeMetrics := metrics.EmptyOptimizeMetrics
-	costMatrix.Optimize(&routeMatrix, 1, &optimizeMetrics)
+	costMatrix.Optimize(&routeMatrix, 1)
 
 	from := []routing.Relay{{ID: 2836356269}}
 	to := []routing.Relay{{ID: 3263834878}, {ID: 1500948990}}
@@ -2481,8 +2474,7 @@ func BenchmarkResolveRelay(b *testing.B) {
 	costMatrix.ReadFrom(costfile)
 
 	var routeMatrix routing.RouteMatrix
-	optimizeMetrics := metrics.EmptyOptimizeMetrics
-	costMatrix.Optimize(&routeMatrix, 1, &optimizeMetrics)
+	costMatrix.Optimize(&routeMatrix, 1)
 
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -2500,8 +2492,7 @@ func BenchmarkRelaysIn(b *testing.B) {
 	costMatrix.ReadFrom(costfile)
 
 	var routeMatrix routing.RouteMatrix
-	optimizeMetrics := metrics.EmptyOptimizeMetrics
-	costMatrix.Optimize(&routeMatrix, 1, &optimizeMetrics)
+	costMatrix.Optimize(&routeMatrix, 1)
 
 	b.ReportAllocs()
 	b.ResetTimer()
