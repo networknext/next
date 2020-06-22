@@ -362,7 +362,7 @@ func main() {
 	relayupdatefs.Uint64Var(&relayCoreCount, "cores", 0, "number of cores for the relay to utilize")
 
 	var forceUpdate bool
-	relayupdatefs.BoolVar(&forceUpdate, "force", false, "force the relay update regardless of state")
+	relayupdatefs.BoolVar(&forceUpdate, "force", false, "force the relay update regardless of the version")
 
 	relaysfs := flag.NewFlagSet("relays state", flag.ExitOnError)
 

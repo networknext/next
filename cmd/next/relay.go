@@ -220,6 +220,7 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 			continue
 		}
 
+		updates := 0
 		for _, relay := range relays {
 			if doAllEnabled && relay.state != "enabled" {
 				continue
@@ -348,22 +349,29 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 				continue
 			}
 
-			updatedRelays++
+			updates++
 		}
 
-		fmt.Printf("finished updating relays matching '%s'\n", regex)
+		if updates > 0 {
+			updatedRelays += updates
+			fmt.Printf("finished updating relays matching '%s'\n", regex)
+		}
 	}
 
-	// Give the portal enough time to pull down the new state so that
-	// the relay state doesn't appear incorrectly
-	fmt.Println("Waiting for portal to sync changes...")
-	time.Sleep(11 * time.Second)
+	if updatedRelays > 0 {
+		// Give the portal enough time to pull down the new state so that
+		// the relay state doesn't appear incorrectly
+		fmt.Println("Waiting for portal to sync changes...")
+		time.Sleep(11 * time.Second)
 
-	str := "Updates"
-	if updatedRelays == 1 {
-		str = "Update"
+		str := "Updates"
+		if updatedRelays == 1 {
+			str = "Update"
+		}
+		fmt.Printf("%s complete\n", str)
+	} else {
+		fmt.Println("No relays need to be updated")
 	}
-	fmt.Printf("%s complete\n", str)
 }
 
 func revertRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string) {
