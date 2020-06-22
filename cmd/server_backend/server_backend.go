@@ -18,11 +18,13 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigquery"
+	gcplogging "cloud.google.com/go/logging"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 
 	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/crypto"
+	"github.com/networknext/backend/logging"
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
@@ -38,15 +40,15 @@ func main() {
 
 	// Configure logging
 	logger := log.NewLogfmtLogger(os.Stdout)
-	// if projectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
-	// 	loggingClient, err := gcplogging.NewClient(ctx, projectID)
-	// 	if err != nil {
-	// 		level.Error(logger).Log("err", err)
-	// 		os.Exit(1)
-	// 	}
+	if projectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
+		loggingClient, err := gcplogging.NewClient(ctx, projectID)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			os.Exit(1)
+		}
 
-	// 	logger = logging.NewStackdriverLogger(loggingClient, "server-backend")
-	// }
+		logger = logging.NewStackdriverLogger(loggingClient, "server-backend")
+	}
 	{
 		switch os.Getenv("BACKEND_LOG_LEVEL") {
 		case "none":
