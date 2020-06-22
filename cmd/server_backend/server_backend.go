@@ -18,13 +18,11 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigquery"
-	gcplogging "cloud.google.com/go/logging"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 
 	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/crypto"
-	"github.com/networknext/backend/logging"
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
@@ -40,15 +38,15 @@ func main() {
 
 	// Configure logging
 	logger := log.NewLogfmtLogger(os.Stdout)
-	if projectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
-		loggingClient, err := gcplogging.NewClient(ctx, projectID)
-		if err != nil {
-			level.Error(logger).Log("err", err)
-			os.Exit(1)
-		}
+	// if projectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
+	// 	loggingClient, err := gcplogging.NewClient(ctx, projectID)
+	// 	if err != nil {
+	// 		level.Error(logger).Log("err", err)
+	// 		os.Exit(1)
+	// 	}
 
-		logger = logging.NewStackdriverLogger(loggingClient, "server-backend")
-	}
+	// 	logger = logging.NewStackdriverLogger(loggingClient, "server-backend")
+	// }
 	{
 		switch os.Getenv("BACKEND_LOG_LEVEL") {
 		case "none":
@@ -217,17 +215,34 @@ func main() {
 		db = fs
 
 		if billingDataset, ok := os.LookupEnv("GOOGLE_BIGQUERY_DATASET_BILLING"); ok {
+			batchSize := billing.DefaultBigQueryBatchSize
+			if size, ok := os.LookupEnv("GOOGLE_BIGQUERY_BATCH_SIZE"); ok {
+				s, err := strconv.ParseInt(size, 10, 64)
+				if err != nil {
+					level.Error(logger).Log("err", err)
+					os.Exit(1)
+				}
+				batchSize = int(s)
+			}
+
 			bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				os.Exit(1)
 			}
 			b := billing.GoogleBigQueryClient{
+				Logger:        logger,
 				TableInserter: bqClient.Dataset(billingDataset).Table(os.Getenv("GOOGLE_BIGQUERY_TABLE_BILLING")).Inserter(),
+				BatchSize:     batchSize,
 			}
 
 			// Set the Biller to Bigtable
 			biller = &b
+
+			// Start the background WriteLoop to batch write to BigQuery
+			go func() {
+				b.WriteLoop(ctx)
+			}()
 		}
 
 		// Set up StackDriver metrics
