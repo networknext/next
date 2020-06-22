@@ -27,7 +27,6 @@ import (
 
 	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/crypto"
-	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/transport"
 )
@@ -74,18 +73,6 @@ const MaxJitter = float32(10.0)
 const MaxPacketLoss = float32(0.1)
 
 func OptimizeThread() {
-
-	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
-	metrics, err := metrics.NewOptimizeMetrics(context.Background(), metricsHandler)
-	if err != nil {
-		fmt.Printf("failed to create optimize metrics: %v", err)
-	}
-	durationStart := time.Now()
-	defer func() {
-		durationSince := time.Since(durationStart)
-		metrics.DurationGauge.Set(float64(durationSince.Milliseconds()))
-		metrics.Invocations.Add(1)
-	}()
 
 	for {
 		backend.mutex.Lock()

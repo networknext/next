@@ -1,15 +1,12 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
-	"time"
 
-	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
 	localjsonrpc "github.com/networknext/backend/transport/jsonrpc"
 	"github.com/ybbus/jsonrpc"
@@ -74,19 +71,6 @@ func saveCostMatrix(env Environment, filename string) {
 // todo: move to optimize
 func optimizeCostMatrix(costFilename, routeFilename string, rtt int32) {
 	var costMatrix routing.CostMatrix
-
-	// Create a local metrics handler to time the whole function
-	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
-	metrics, err := metrics.NewOptimizeMetrics(context.Background(), metricsHandler)
-	if err != nil {
-		log.Fatalln("failed to create optimize metrics %w", err)
-	}
-	durationStart := time.Now()
-	defer func() {
-		durationSince := time.Since(durationStart)
-		metrics.DurationGauge.Set(float64(durationSince.Milliseconds()))
-		metrics.Invocations.Add(1)
-	}()
 
 	costFile, err := os.Open(costFilename)
 	if err != nil {

@@ -132,7 +132,7 @@ var EmptyOptimizeErrorMetrics OptimizeErrorMetrics = OptimizeErrorMetrics{}
 func NewOptimizeMetrics(ctx context.Context, metricsHandler Handler) (*OptimizeMetrics, error) {
 	initDurationGauge, err := metricsHandler.NewGauge(ctx, &Descriptor{
 		DisplayName: "Optimize duration",
-		ServiceName: "routing",
+		ServiceName: "relay_backend",
 		ID:          "optimize.duration",
 		Unit:        "milliseconds",
 		Description: "How long it takes to optimize a cost matrix.",
@@ -143,7 +143,7 @@ func NewOptimizeMetrics(ctx context.Context, metricsHandler Handler) (*OptimizeM
 
 	initInvocationsCounter, err := metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Total cost matrix optimize invocations",
-		ServiceName: "routing",
+		ServiceName: "relay_backend",
 		ID:          "optimize.count",
 		Unit:        "invocations",
 		Description: "The total number of cost matrix optimizers",
