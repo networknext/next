@@ -144,19 +144,6 @@ func (entry *Entry) Save() (map[string]bigquery.Value, string, error) {
 	}
 	e["acceptableRoutes"] = acceptableRoutes
 
-	consideredRoutes := make([]map[string]map[string]bigquery.Value, len(entry.ConsideredRoutes))
-	for ridx, route := range entry.ConsideredRoutes {
-		consideredRoutes[ridx] = make(map[string]map[string]bigquery.Value)
-		consideredRoutes[ridx]["route"] = make(map[string]bigquery.Value)
-		for idx := range route.Route {
-			consideredRoutes[ridx]["route"]["id"] = entry.Route[idx].RelayID.String()
-			consideredRoutes[ridx]["route"]["sellerId"] = entry.Route[idx].SellerID.String()
-			consideredRoutes[ridx]["route"]["priceIngress"] = int(entry.Route[idx].PriceIngress)
-			consideredRoutes[ridx]["route"]["priceEgress"] = int(entry.Route[idx].PriceEgress)
-		}
-	}
-	e["consideredRoutes"] = consideredRoutes
-
 	e["routeDecision"] = int(entry.RouteDecision)
 	e["routeChanged"] = entry.RouteChanged
 	e["sameRoute"] = entry.SameRoute
