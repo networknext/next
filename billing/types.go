@@ -1,6 +1,9 @@
 package billing
 
 import (
+	"fmt"
+	"net"
+
 	"github.com/golang/protobuf/proto"
 )
 
@@ -144,7 +147,7 @@ func (id *EntityID) Reset() {
 	*id = EntityID{}
 }
 func (id *EntityID) String() string {
-	return proto.CompactTextString(id)
+	return fmt.Sprintf("%s/%s", id.Kind, id.Name)
 }
 func (id *EntityID) ProtoMessage() {}
 
@@ -170,7 +173,7 @@ func (addr *Address) Reset() {
 	*addr = Address{}
 }
 func (addr *Address) String() string {
-	return proto.CompactTextString(addr)
+	return fmt.Sprintf("%s:%d", net.IP(addr.Ip).String(), addr.Port)
 }
 func (addr *Address) ProtoMessage() {}
 

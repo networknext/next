@@ -13,11 +13,11 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
 
+	"cloud.google.com/go/bigquery"
 	gcplogging "cloud.google.com/go/logging"
 	"cloud.google.com/go/profiler"
 
@@ -225,23 +225,35 @@ func main() {
 		// Set the Firestore Storer to give to handlers
 		db = fs
 
-		if billingTopicID, ok := os.LookupEnv("GOOGLE_PUBSUB_TOPIC_BILLING"); ok {
-			b, err := billing.NewBiller(ctx, logger, gcpProjectID, billingTopicID, &billing.Descriptor{
-				ClientCount:         4,
-				DelayThreshold:      time.Millisecond,
-				CountThreshold:      100,
-				ByteThreshold:       1e6,
-				NumGoroutines:       (25 * runtime.GOMAXPROCS(0)) / 4,
-				Timeout:             time.Minute,
-				ResultChannelBuffer: 10000 * 60 * 10, // 10,000 messages per second for 10 minutes
-			})
+		if billingDataset, ok := os.LookupEnv("GOOGLE_BIGQUERY_DATASET_BILLING"); ok {
+			batchSize := billing.DefaultBigQueryBatchSize
+			if size, ok := os.LookupEnv("GOOGLE_BIGQUERY_BATCH_SIZE"); ok {
+				s, err := strconv.ParseInt(size, 10, 64)
+				if err != nil {
+					level.Error(logger).Log("err", err)
+					os.Exit(1)
+				}
+				batchSize = int(s)
+			}
+
+			bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				os.Exit(1)
 			}
+			b := billing.GoogleBigQueryClient{
+				Logger:        logger,
+				TableInserter: bqClient.Dataset(billingDataset).Table(os.Getenv("GOOGLE_BIGQUERY_TABLE_BILLING")).Inserter(),
+				BatchSize:     batchSize,
+			}
 
-			// Set the Biller to the Pub/Sub version
-			biller = b
+			// Set the Biller to Bigtable
+			biller = &b
+
+			// Start the background WriteLoop to batch write to BigQuery
+			go func() {
+				b.WriteLoop(ctx)
+			}()
 		}
 
 		// Set up StackDriver metrics
