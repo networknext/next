@@ -238,6 +238,7 @@ func (database *StatsDatabase) GetCostMatrix(costMatrix *CostMatrix, redisClient
 
 	hgetallResult := redisClient.HGetAll(HashKeyAllRelays)
 	if hgetallResult.Err() != nil && hgetallResult.Err() != redis.Nil {
+		metrics.ErrorMetrics.GetAllRelaysFailure.Add(1)
 		return fmt.Errorf("failed to get all relays from redis: %v", hgetallResult.Err())
 	}
 	numRelays := len(hgetallResult.Val())
@@ -259,6 +260,7 @@ func (database *StatsDatabase) GetCostMatrix(costMatrix *CostMatrix, redisClient
 	for _, rawRelay := range hgetallResult.Val() {
 		var relay RelayCacheEntry
 		if err := relay.UnmarshalBinary([]byte(rawRelay)); err != nil {
+			metrics.ErrorMetrics.RelayUnmarshalFailure.Add(1)
 			return fmt.Errorf("failed to unmarshal relay when creating cost matrix: %v", err)
 		}
 		stableRelays = append(stableRelays, relay)
