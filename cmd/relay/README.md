@@ -5,7 +5,7 @@ The Relay is responsible for:
 1. Routing packets across other relays in the network to and from the game client and server
 2. Sending stats updates to the relay_backend that are optimized for route generation
 
-Whenever changes are made to the relay, update the `RELAY_VERSION` define in config.hpp appropriately. Also within "cmd/next/relay.go" update the `LatestRelayVersion` constant to the same value as well.
+Whenever changes are made to the relay, update the `RELAY_VERSION` define in config.hpp appropriately. Also within "cmd/next/relay.go" update the `LatestRelayVersion` constant to the same value.
 
 # Pre-build setup
 
