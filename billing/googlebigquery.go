@@ -43,9 +43,9 @@ func (entry *Entry) Save() (map[string]bigquery.Value, string, error) {
 
 	e["tag"] = int(entry.Request.Tag)
 
-	nrs := make([]map[string]interface{}, len(entry.Request.NearRelays))
+	nrs := make([]map[string]bigquery.Value, len(entry.Request.NearRelays))
 	for idx := range entry.Request.NearRelays {
-		nrs[idx] = make(map[string]interface{})
+		nrs[idx] = make(map[string]bigquery.Value)
 		nrs[idx]["id"] = entry.Request.NearRelays[idx].RelayID.String()
 		nrs[idx]["rtt"] = entry.Request.NearRelays[idx].RTT
 		nrs[idx]["jitter"] = entry.Request.NearRelays[idx].Jitter
@@ -53,9 +53,9 @@ func (entry *Entry) Save() (map[string]bigquery.Value, string, error) {
 	}
 	e["nearRelays"] = nrs
 
-	inrs := make([]map[string]interface{}, len(entry.Request.IssuedNearRelays))
-	for idx := range entry.Request.NearRelays {
-		inrs[idx] = make(map[string]interface{})
+	inrs := make([]map[string]bigquery.Value, len(entry.Request.IssuedNearRelays))
+	for idx := range entry.Request.IssuedNearRelays {
+		inrs[idx] = make(map[string]bigquery.Value)
 		inrs[idx]["index"] = int(entry.Request.IssuedNearRelays[idx].Index)
 		inrs[idx]["id"] = entry.Request.IssuedNearRelays[idx].RelayID.String()
 		inrs[idx]["ipAddress"] = entry.Request.IssuedNearRelays[idx].RelayIpAddress.String()
@@ -82,9 +82,9 @@ func (entry *Entry) Save() (map[string]bigquery.Value, string, error) {
 	e["longitude"] = entry.Request.Location.Longitude
 	e["isp"] = entry.Request.Location.Isp
 
-	selectedRoute := make([]map[string]interface{}, len(entry.Route))
+	selectedRoute := make([]map[string]bigquery.Value, len(entry.Route))
 	for idx := range entry.Route {
-		selectedRoute[idx] = make(map[string]interface{})
+		selectedRoute[idx] = make(map[string]bigquery.Value)
 		selectedRoute[idx]["id"] = entry.Route[idx].RelayID.String()
 		selectedRoute[idx]["sellerId"] = entry.Route[idx].SellerID.String()
 		selectedRoute[idx]["priceIngress"] = int(entry.Route[idx].PriceIngress)
@@ -92,10 +92,10 @@ func (entry *Entry) Save() (map[string]bigquery.Value, string, error) {
 	}
 	e["route"] = selectedRoute
 
-	acceptableRoutes := make([]map[string]map[string]interface{}, len(entry.AcceptableRoutes))
+	acceptableRoutes := make([]map[string]map[string]bigquery.Value, len(entry.AcceptableRoutes))
 	for ridx, route := range entry.AcceptableRoutes {
-		acceptableRoutes[ridx] = make(map[string]map[string]interface{})
-		acceptableRoutes[ridx]["route"] = make(map[string]interface{})
+		acceptableRoutes[ridx] = make(map[string]map[string]bigquery.Value)
+		acceptableRoutes[ridx]["route"] = make(map[string]bigquery.Value)
 		for idx := range route.Route {
 			acceptableRoutes[ridx]["route"]["id"] = entry.Route[idx].RelayID.String()
 			acceptableRoutes[ridx]["route"]["sellerId"] = entry.Route[idx].SellerID.String()
@@ -105,10 +105,10 @@ func (entry *Entry) Save() (map[string]bigquery.Value, string, error) {
 	}
 	e["acceptableRoutes"] = acceptableRoutes
 
-	consideredRoutes := make([]map[string]map[string]interface{}, len(entry.AcceptableRoutes))
-	for ridx, route := range entry.AcceptableRoutes {
-		consideredRoutes[ridx] = make(map[string]map[string]interface{})
-		consideredRoutes[ridx]["route"] = make(map[string]interface{})
+	consideredRoutes := make([]map[string]map[string]bigquery.Value, len(entry.ConsideredRoutes))
+	for ridx, route := range entry.ConsideredRoutes {
+		consideredRoutes[ridx] = make(map[string]map[string]bigquery.Value)
+		consideredRoutes[ridx]["route"] = make(map[string]bigquery.Value)
 		for idx := range route.Route {
 			consideredRoutes[ridx]["route"]["id"] = entry.Route[idx].RelayID.String()
 			consideredRoutes[ridx]["route"]["sellerId"] = entry.Route[idx].SellerID.String()
