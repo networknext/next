@@ -185,6 +185,8 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 
 	reply.Sessions = make([]routing.SessionMeta, 0)
 
+	buyers := s.Storage.Buyers()
+
 	// get the top session IDs globally or for a buyer from the sorted set
 	switch args.BuyerID {
 	case "":
@@ -329,7 +331,7 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 				continue
 			}
 
-			if isAnon || (!isSameBuyer && !isAdmin) {
+			if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
 				meta.Anonymise()
 			}
 

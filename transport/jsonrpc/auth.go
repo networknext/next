@@ -700,7 +700,6 @@ var OpsRole = func(req *http.Request) (bool, error) {
 }
 
 var AdminRole = func(req *http.Request) (bool, error) {
-
 	requestRoles := req.Context().Value(rolesKey)
 
 	if requestRoles == nil {
@@ -721,7 +720,6 @@ var AdminRole = func(req *http.Request) (bool, error) {
 }
 
 var OwnerRole = func(req *http.Request) (bool, error) {
-
 	requestRoles := req.Context().Value(rolesKey)
 
 	if requestRoles == nil {
