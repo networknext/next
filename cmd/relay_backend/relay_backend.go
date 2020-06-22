@@ -295,6 +295,19 @@ func main() {
 
 	// Periodically generate cost matrix from stats db
 	go func() {
+		// Create a local metrics handler to time the whole function
+		var metricsHandler metrics.Handler = &metrics.LocalHandler{}
+		metrics, err := metrics.NewOptimizeMetrics(context.Background(), metricsHandler)
+		if err != nil {
+			level.Warn(logger).Log("msg", "failed to create optimize metrics", "err", err)
+		}
+		durationStart := time.Now()
+		defer func() {
+			durationSince := time.Since(durationStart)
+			metrics.DurationGauge.Set(float64(durationSince.Milliseconds()))
+			metrics.Invocations.Add(1)
+		}()
+
 		for {
 			if err := statsdb.GetCostMatrix(&costmatrix, redisClientRelays, float32(maxJitter), float32(maxPacketLoss)); err != nil {
 				level.Warn(logger).Log("matrix", "cost", "op", "generate", "err", err)
@@ -302,15 +315,7 @@ func main() {
 
 			relayStatMetrics.NumRelays.Set(float64(len(statsdb.Entries)))
 
-			var metricsHandler metrics.Handler = &metrics.LocalHandler{}
-
-			// Create server update metrics
-			optimizeMetrics, err := metrics.NewOptimizeMetrics(context.Background(), metricsHandler)
-			if err != nil {
-				level.Warn(logger).Log("msg", "failed to create optimize metrics", "err", err)
-			}
-
-			if err := costmatrix.Optimize(&routematrix, 1, optimizeMetrics); err != nil {
+			if err := costmatrix.Optimize(&routematrix, 1); err != nil {
 				level.Warn(logger).Log("matrix", "cost", "op", "optimize", "err", err)
 			}
 

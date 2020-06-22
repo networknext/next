@@ -75,21 +75,24 @@ const MaxPacketLoss = float32(0.1)
 
 func OptimizeThread() {
 
-	// Create a local metrics handler
 	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
-
-	// Create server update metrics
-	optimizeMetrics, err := metrics.NewOptimizeMetrics(context.Background(), metricsHandler)
+	metrics, err := metrics.NewOptimizeMetrics(context.Background(), metricsHandler)
 	if err != nil {
 		fmt.Printf("failed to create optimize metrics: %v", err)
 	}
+	durationStart := time.Now()
+	defer func() {
+		durationSince := time.Since(durationStart)
+		metrics.DurationGauge.Set(float64(durationSince.Milliseconds()))
+		metrics.Invocations.Add(1)
+	}()
 
 	for {
 		backend.mutex.Lock()
 		if err := backend.statsDatabase.GetCostMatrix(backend.costMatrix, backend.redisClient, MaxJitter, MaxPacketLoss); err != nil {
 			fmt.Printf("error generating cost matrix: %v\n", err)
 		}
-		if err := backend.costMatrix.Optimize(backend.routeMatrix, RTT_Threshold, optimizeMetrics); err != nil {
+		if err := backend.costMatrix.Optimize(backend.routeMatrix, RTT_Threshold); err != nil {
 			fmt.Printf("error generating route matrix: %v\n", err)
 		}
 		backend.mutex.Unlock()

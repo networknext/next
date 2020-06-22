@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
@@ -74,6 +75,19 @@ func saveCostMatrix(env Environment, filename string) {
 func optimizeCostMatrix(costFilename, routeFilename string, rtt int32) {
 	var costMatrix routing.CostMatrix
 
+	// Create a local metrics handler to time the whole function
+	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
+	metrics, err := metrics.NewOptimizeMetrics(context.Background(), metricsHandler)
+	if err != nil {
+		log.Fatalln("failed to create optimize metrics %w", err)
+	}
+	durationStart := time.Now()
+	defer func() {
+		durationSince := time.Since(durationStart)
+		metrics.DurationGauge.Set(float64(durationSince.Milliseconds()))
+		metrics.Invocations.Add(1)
+	}()
+
 	costFile, err := os.Open(costFilename)
 	if err != nil {
 		log.Fatalln(fmt.Errorf("could open the cost matrix file for reading: %w", err))
@@ -84,17 +98,12 @@ func optimizeCostMatrix(costFilename, routeFilename string, rtt int32) {
 		log.Fatalln(fmt.Errorf("error reading cost matrix: %w", err))
 	}
 
-	// Create a local metrics handler
-	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
-
-	// Create server update metrics
-	optimizeMetrics, err := metrics.NewOptimizeMetrics(context.Background(), metricsHandler)
 	if err != nil {
 		log.Fatalln("failed to create optimize metrics: %w", err)
 	}
 
 	var routeMatrix routing.RouteMatrix
-	if err := costMatrix.Optimize(&routeMatrix, rtt, optimizeMetrics); err != nil {
+	if err := costMatrix.Optimize(&routeMatrix, rtt); err != nil {
 		log.Fatalln(fmt.Errorf("error optimizing cost matrix: %w", err))
 	}
 

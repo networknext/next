@@ -11,7 +11,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
 	"github.com/stretchr/testify/assert"
 )
@@ -1666,8 +1665,7 @@ func BenchmarkOptimize(b *testing.B) {
 
 	b.ReportAllocs()
 	b.ResetTimer()
-	optimizeMetrics := metrics.EmptyOptimizeMetrics
 	for i := 0; i < b.N; i++ {
-		costMatrix.Optimize(&routeMatrix, 1, &optimizeMetrics)
+		costMatrix.Optimize(&routeMatrix, 1)
 	}
 }
