@@ -12,7 +12,7 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
-func relays(rpcClient jsonrpc.RPCClient, env Environment, regex string, relaysStateShowFlags [6]bool, relaysStateHideFlags [6]bool, relaysDownFlag bool) {
+func relays(rpcClient jsonrpc.RPCClient, env Environment, regex string, relaysStateShowFlags [6]bool, relaysStateHideFlags [6]bool, relaysDownFlag bool, isDefault bool) {
 	args := localjsonrpc.RelaysArgs{
 		Regex: regex,
 	}
@@ -22,8 +22,6 @@ func relays(rpcClient jsonrpc.RPCClient, env Environment, regex string, relaysSt
 		handleJSONRPCError(env, err)
 		return
 	}
-
-	isDefault := relaysStateShowFlags[routing.RelayStateEnabled] == true && relaysStateShowFlags[routing.RelayStateQuarantine] == true && relaysStateHideFlags[routing.RelayStateDecommissioned] == true
 
 	sort.Slice(reply.Relays, func(i int, j int) bool {
 		return reply.Relays[i].SessionCount > reply.Relays[j].SessionCount

@@ -521,11 +521,14 @@ func main() {
 				ShortHelp:  "List relays",
 				FlagSet:    relaysfs,
 				Exec: func(_ context.Context, args []string) error {
+					isDefault := false
+
 					if relaysfs.NFlag() == 0 {
 						// If no flags are given, set the default set of flags
 						relaysStateShowFlags[routing.RelayStateEnabled] = true
 						relaysStateShowFlags[routing.RelayStateQuarantine] = true
 						relaysStateHideFlags[routing.RelayStateDecommissioned] = true
+						isDefault = true
 					}
 
 					if relaysAllFlag {
@@ -543,10 +546,10 @@ func main() {
 					}
 
 					if len(args) > 0 {
-						relays(rpcClient, env, args[0], relaysStateShowFlags, relaysStateHideFlags, relaysDownFlag)
+						relays(rpcClient, env, args[0], relaysStateShowFlags, relaysStateHideFlags, relaysDownFlag, isDefault)
 						return nil
 					}
-					relays(rpcClient, env, "", relaysStateShowFlags, relaysStateHideFlags, relaysDownFlag)
+					relays(rpcClient, env, "", relaysStateShowFlags, relaysStateHideFlags, relaysDownFlag, isDefault)
 					return nil
 				},
 			},
