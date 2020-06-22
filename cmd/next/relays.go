@@ -23,6 +23,8 @@ func relays(rpcClient jsonrpc.RPCClient, env Environment, regex string, relaysSt
 		return
 	}
 
+	isDefault := relaysStateShowFlags[routing.RelayStateEnabled] == true && relaysStateShowFlags[routing.RelayStateQuarantine] == true && relaysStateHideFlags[routing.RelayStateDecommissioned] == true
+
 	sort.Slice(reply.Relays, func(i int, j int) bool {
 		return reply.Relays[i].SessionCount > reply.Relays[j].SessionCount
 	})
@@ -81,6 +83,11 @@ func relays(rpcClient jsonrpc.RPCClient, env Environment, regex string, relaysSt
 		if relaysDownFlag && lastUpdateDuration < 30*time.Second {
 			// Relay is still up and shouldn't be included in the final output
 			includeRelay = false
+		}
+
+		// Only show relays that are enabled and reported in last 10 seconds for ./next relays
+		if isDefault {
+			includeRelay = lastUpdateDuration < 10*time.Second && relay.State == "enabled"
 		}
 
 		if !includeRelay {
