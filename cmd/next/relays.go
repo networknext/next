@@ -27,9 +27,6 @@ func relays(rpcClient jsonrpc.RPCClient, env Environment, regex string, relaysSt
 		if reply.Relays[i].State == "enabled" && reply.Relays[i].SessionCount == 0 && reply.Relays[j].State != "enabled" {
 			return true
 		}
-		if reply.Relays[i].SessionCount == 0 && reply.Relays[j].SessionCount == 0 {
-			return reply.Relays[i].Name < reply.Relays[j].Name
-		}
 		return reply.Relays[i].SessionCount > reply.Relays[j].SessionCount
 	})
 
