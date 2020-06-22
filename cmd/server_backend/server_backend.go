@@ -19,6 +19,7 @@ import (
 	"time"
 
 	gcplogging "cloud.google.com/go/logging"
+	"cloud.google.com/go/profiler"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -67,6 +68,13 @@ func main() {
 		}
 
 		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
+	}
+
+	// Get env
+	env, ok := os.LookupEnv("ENV")
+	if !ok {
+		level.Error(logger).Log("err", "ENV not set")
+		os.Exit(1)
 	}
 
 	// var serverPublicKey []byte
@@ -253,6 +261,17 @@ func main() {
 		go func() {
 			metricsHandler.WriteLoop(ctx, logger, time.Minute, 200)
 		}()
+
+		// Set up StackDriver profiler
+		if err := profiler.Start(profiler.Config{
+			Service:        "server_backend",
+			ServiceVersion: env,
+			ProjectID:      gcpProjectID,
+			MutexProfiling: true,
+		}); err != nil {
+			level.Error(logger).Log("msg", "Failed to initialze StackDriver profiler", "err", err)
+			os.Exit(1)
+		}
 	}
 
 	// Create server update metrics
