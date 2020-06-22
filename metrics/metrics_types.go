@@ -994,3 +994,53 @@ func NewRelayStatMetrics(ctx context.Context, metricsHandler Handler) (*RelaySta
 
 	return &statMetrics, nil
 }
+
+// Stats Metrics
+type StatsMetrics struct {
+	Invocations   Counter
+	DurationGauge Gauge
+	ErrorMetrics  StatsErrorMetrics
+}
+
+type StatsErrorMetrics struct {
+}
+
+var EmptyStatsMetrics StatsMetrics = StatsMetrics{
+	Invocations:   &EmptyCounter{},
+	DurationGauge: &EmptyGauge{},
+	ErrorMetrics:  EmptyStatsErrorMetrics,
+}
+
+var EmptyStatsErrorMetrics StatsErrorMetrics = StatsErrorMetrics{}
+
+func NewStatsMetrics(ctx context.Context, metricsHandler Handler) (*StatsMetrics, error) {
+	initDurationGauge, err := metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "StatsDB -> GetCostMatrix duration",
+		ServiceName: "relay_backend",
+		ID:          "stats.duration",
+		Unit:        "milliseconds",
+		Description: "How long it takes to (statsdb -> cost matrix).", // TODO reword
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	initInvocationsCounter, err := metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Total StatsDB -> CostMatrix invocations",
+		ServiceName: "relay_backend",
+		ID:          "stats.count",
+		Unit:        "invocations",
+		Description: "The total number of StatsDB -> CostMatrix invocations",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	initMetrics := StatsMetrics{
+		Invocations:   initInvocationsCounter,
+		DurationGauge: initDurationGauge,
+		ErrorMetrics:  EmptyStatsErrorMetrics,
+	}
+
+	return &initMetrics, nil
+}
