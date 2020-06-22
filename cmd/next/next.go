@@ -1286,15 +1286,14 @@ func main() {
 
 	fmt.Printf("\n")
 
-	args := os.Args[1:]
-
-	if len(args) == 0 {
-		args = append(args, "-h")
-	}
-
-	if err := root.ParseAndRun(context.Background(), args); err != nil {
+	if err := root.ParseAndRun(context.Background(), os.Args[1:]); err != nil {
 		fmt.Printf("\n")
 		log.Fatal(err)
+	}
+
+	args := os.Args[1:]
+	if len(args) == 0 {
+		root.FlagSet.Usage()
 	}
 
 	fmt.Printf("\n")
