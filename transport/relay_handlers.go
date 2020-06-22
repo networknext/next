@@ -876,7 +876,11 @@ func statsTable(stats map[string]map[string]routing.Stats) template.HTML {
 				continue
 			}
 
-			html.WriteString("<td>" + stats[a][b].String() + "</td>")
+			RTT := stats[a][b].RTT
+			Jitter := stats[a][b].Jitter
+			PacketLoss := stats[a][b].PacketLoss
+
+			html.WriteString("<td>" + fmt.Sprintf("RTT(%.0f) J(%.2f) PL(%.2f)", RTT, Jitter, PacketLoss) + "</td>")
 		}
 
 		html.WriteString("</tr>")
@@ -935,7 +939,7 @@ func RelayDashboardHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.R
 						<td>{{ .Name }}</td>
 						<td>{{ .Addr }}</td>
 						<td>{{ .Datacenter.Name }}</td>
-						<td>{{ .Datacenter.Location.Latitude }} / {{ .Datacenter.Location.Longitude }}</td>
+						<td>{{ printf "%.2f" .Datacenter.Location.Latitude }} / {{ printf "%.2f" .Datacenter.Location.Longitude }}</td>
 					</tr>
 					{{ end }}
 				</table>
