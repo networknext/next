@@ -25,15 +25,15 @@ require (
 	github.com/gorilla/mux v1.7.3
 	github.com/gorilla/rpc v1.2.0
 	github.com/json-iterator/go v1.1.9
-	github.com/logrusorgru/aurora v0.0.0-20200102142835-e9ef32dff381 // indirect
+	github.com/logrusorgru/aurora v0.0.0-20200102142835-e9ef32dff381
 	github.com/modood/table v0.0.0-20200225102042-88de94bb9876
-	github.com/olekukonko/tablewriter v0.0.4 // indirect
+	github.com/olekukonko/tablewriter v0.0.4
 	github.com/oschwald/geoip2-golang v1.4.0
 	github.com/peterbourgon/ff/v3 v3.0.0
 	github.com/stretchr/testify v1.4.0
 	github.com/tidwall/gjson v1.6.0
 	github.com/tidwall/pretty v1.0.1 // indirect
-	github.com/urfave/cli v1.22.4 // indirect
+	github.com/urfave/cli v1.22.4
 	github.com/ybbus/jsonrpc v2.1.2+incompatible
 	golang.org/x/crypto v0.0.0-20200510223506-06a226fb4e37
 	golang.org/x/exp v0.0.0-20200213203834-85f925bdd4d0 // indirect
