@@ -147,7 +147,7 @@ func (id *EntityID) Reset() {
 	*id = EntityID{}
 }
 func (id *EntityID) String() string {
-	return proto.CompactTextString(id)
+	return fmt.Sprintf("%s/%s", id.Kind, id.Name)
 }
 func (id *EntityID) ProtoMessage() {}
 
