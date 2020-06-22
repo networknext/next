@@ -404,6 +404,13 @@ func TestRelays(t *testing.T) {
 		Datacenter: datacenter,
 	}
 
+	relay3 := routing.Relay{
+		ID:         3,
+		Name:       "local.local.23",
+		Seller:     seller,
+		Datacenter: datacenter,
+	}
+
 	err := storer.AddSeller(context.Background(), seller)
 	assert.NoError(t, err)
 	err = storer.AddDatacenter(context.Background(), datacenter)
@@ -411,6 +418,8 @@ func TestRelays(t *testing.T) {
 	err = storer.AddRelay(context.Background(), relay1)
 	assert.NoError(t, err)
 	err = storer.AddRelay(context.Background(), relay2)
+	assert.NoError(t, err)
+	err = storer.AddRelay(context.Background(), relay3)
 	assert.NoError(t, err)
 
 	redisServer, err := miniredis.Run()
@@ -433,6 +442,24 @@ func TestRelays(t *testing.T) {
 		assert.Equal(t, reply.Relays[0].Name, "local.local.1")
 		assert.Equal(t, reply.Relays[1].ID, uint64(2))
 		assert.Equal(t, reply.Relays[1].Name, "local.local.2")
+		assert.Equal(t, reply.Relays[2].ID, uint64(3))
+		assert.Equal(t, reply.Relays[2].Name, "local.local.23")
+	})
+
+	t.Run("exact match", func(t *testing.T) {
+		var reply jsonrpc.RelaysReply
+		err := svc.Relays(nil, &jsonrpc.RelaysArgs{Regex: "local.local.2"}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, len(reply.Relays), 1)
+		assert.Equal(t, reply.Relays[0].ID, uint64(2))
+		assert.Equal(t, reply.Relays[0].Name, "local.local.2")
+
+		var empty jsonrpc.RelaysReply
+		err = svc.Relays(nil, &jsonrpc.RelaysArgs{Regex: "not.found"}, &empty)
+		assert.NoError(t, err)
+
+		assert.Equal(t, len(empty.Relays), 0)
 	})
 
 	t.Run("filter", func(t *testing.T) {
@@ -456,11 +483,13 @@ func TestRelays(t *testing.T) {
 		err := svc.Relays(nil, &jsonrpc.RelaysArgs{Regex: "^seller name$"}, &reply)
 		assert.NoError(t, err)
 
-		assert.Equal(t, len(reply.Relays), 2)
+		assert.Equal(t, len(reply.Relays), 3)
 		assert.Equal(t, reply.Relays[0].ID, uint64(1))
 		assert.Equal(t, reply.Relays[0].Name, "local.local.1")
 		assert.Equal(t, reply.Relays[1].ID, uint64(2))
 		assert.Equal(t, reply.Relays[1].Name, "local.local.2")
+		assert.Equal(t, reply.Relays[2].ID, uint64(3))
+		assert.Equal(t, reply.Relays[2].Name, "local.local.23")
 
 		var empty jsonrpc.RelaysReply
 		err = svc.Relays(nil, &jsonrpc.RelaysArgs{Regex: "^not.found$"}, &empty)
