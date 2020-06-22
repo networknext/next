@@ -38,13 +38,15 @@ type IPLocator interface {
 
 // Location represents a lat/long on Earth with additional metadata
 type Location struct {
-	Continent string  `json:"continent"`
-	Country   string  `json:"country"`
-	Region    string  `json:"region"`
-	City      string  `json:"city"`
-	Latitude  float64 `json:"latitude"`
-	Longitude float64 `json:"longitude"`
-	ISP       string  `json:"isp"`
+	Continent   string  `json:"continent"`
+	Country     string  `json:"country"`
+	CountryCode string  `json:"country_code"`
+	Region      string  `json:"region"`
+	City        string  `json:"city"`
+	Latitude    float64 `json:"latitude"`
+	Longitude   float64 `json:"longitude"`
+	ISP         string  `json:"isp"`
+	ASN         int     `json:"asn"`
 }
 
 func (l *Location) UnmarshalBinary(data []byte) error {
@@ -221,6 +223,10 @@ func (mmdb *MaxmindDB) LocateIP(ip net.IP) (Location, error) {
 	if val, ok := cityres.Country.Names["en"]; ok {
 		country = val
 	}
+	countryCode := "unknown"
+	if cityres.Country.IsoCode != "" {
+		countryCode = cityres.Country.IsoCode
+	}
 	region := "unknown"
 	if len(cityres.Subdivisions) > 0 {
 		if val, ok := cityres.Subdivisions[0].Names["en"]; ok {
@@ -238,13 +244,15 @@ func (mmdb *MaxmindDB) LocateIP(ip net.IP) (Location, error) {
 	}
 
 	return Location{
-		Continent: continent,
-		Country:   country,
-		Region:    region,
-		City:      city,
-		Latitude:  cityres.Location.Latitude,
-		Longitude: cityres.Location.Longitude,
-		ISP:       ispres.ISP,
+		Continent:   continent,
+		CountryCode: countryCode,
+		Country:     country,
+		Region:      region,
+		City:        city,
+		Latitude:    cityres.Location.Latitude,
+		Longitude:   cityres.Location.Longitude,
+		ISP:         ispres.ISP,
+		ASN:         int(ispres.AutonomousSystemNumber),
 	}, nil
 }
 
