@@ -91,6 +91,33 @@ func (entry *Entry) Save() (map[string]bigquery.Value, string, error) {
 		selectedRoute[idx]["priceEgress"] = int(entry.Route[idx].PriceEgress)
 	}
 	e["route"] = selectedRoute
+
+	acceptableRoutes := make([]map[string]map[string]interface{}, len(entry.AcceptableRoutes))
+	for ridx, route := range entry.AcceptableRoutes {
+		acceptableRoutes[ridx] = make(map[string]map[string]interface{})
+		acceptableRoutes[ridx]["route"] = make(map[string]interface{})
+		for idx := range route.Route {
+			acceptableRoutes[ridx]["route"]["id"] = entry.Route[idx].RelayID.String()
+			acceptableRoutes[ridx]["route"]["sellerId"] = entry.Route[idx].SellerID.String()
+			acceptableRoutes[ridx]["route"]["priceIngress"] = int(entry.Route[idx].PriceIngress)
+			acceptableRoutes[ridx]["route"]["priceEgress"] = int(entry.Route[idx].PriceEgress)
+		}
+	}
+	e["acceptableRoutes"] = acceptableRoutes
+
+	consideredRoutes := make([]map[string]map[string]interface{}, len(entry.AcceptableRoutes))
+	for ridx, route := range entry.AcceptableRoutes {
+		consideredRoutes[ridx] = make(map[string]map[string]interface{})
+		consideredRoutes[ridx]["route"] = make(map[string]interface{})
+		for idx := range route.Route {
+			consideredRoutes[ridx]["route"]["id"] = entry.Route[idx].RelayID.String()
+			consideredRoutes[ridx]["route"]["sellerId"] = entry.Route[idx].SellerID.String()
+			consideredRoutes[ridx]["route"]["priceIngress"] = int(entry.Route[idx].PriceIngress)
+			consideredRoutes[ridx]["route"]["priceEgress"] = int(entry.Route[idx].PriceEgress)
+		}
+	}
+	e["consideredRoutes"] = consideredRoutes
+
 	e["routeDecision"] = int(entry.RouteDecision)
 	e["routeChanged"] = entry.RouteChanged
 	e["sameRoute"] = entry.SameRoute
