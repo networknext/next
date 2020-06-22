@@ -515,6 +515,10 @@ publish-relay-artifact: ## publishes the relay artifact to GCP storage with gsut
 	@printf "Publishing relay artifact... \n\n"
 	@gsutil cp $(DIST_DIR)/relay.dev.tar.gz $(ARTIFACT_BUCKET)/relay.dev.tar.gz
 	@gsutil acl set public-read $(ARTIFACT_BUCKET)/relay.dev.tar.gz
+	@gsutil setmeta \
+	-h 'Content-Type:application/xtar' \
+	-h 'Cache-Control:no-cache, max-age=0' \
+	$(ARTIFACT_BUCKET)/relay.dev.tar.gz
 	@printf "done\n"
 
 .PHONY: publish-relay-prod-artifact
@@ -522,6 +526,10 @@ publish-relay-prod-artifact: ## publishes the relay prod artifact to GCP storage
 	@printf "Publishing relay artifact... \n\n"
 	@gsutil cp $(DIST_DIR)/relay.prod.tar.gz $(ARTIFACT_BUCKET_PROD)/relay.prod.tar.gz
 	@gsutil acl set public-read $(ARTIFACT_BUCKET_PROD)/relay.prod.tar.gz
+	@gsutil setmeta \
+	-h 'Content-Type:application/xtar' \
+	-h 'Cache-Control:no-cache, max-age=0' \
+	$(ARTIFACT_BUCKET_PROD)/relay.prod.tar.gz
 	@printf "done\n"
 
 .PHONY: build-backend-prod-artifacts
