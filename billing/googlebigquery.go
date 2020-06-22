@@ -133,5 +133,8 @@ func (entry *Entry) Save() (map[string]bigquery.Value, string, error) {
 	e["timestamp"] = entry.Timestamp
 	e["timestampStart"] = entry.TimestampStart
 
+	e["committed"] = entry.Request.Committed
+	e["user_flags"] = entry.Request.UserFlags
+
 	return e, "", nil
 }
