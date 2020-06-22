@@ -1,10 +1,14 @@
 package routing
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"sort"
 	"sync"
+	"time"
+
+	"github.com/networknext/backend/metrics"
 
 	"github.com/go-redis/redis/v7"
 )
@@ -218,6 +222,20 @@ func (database *StatsDatabase) GetSample(relay1, relay2 uint64) (float32, float3
 
 // GetCostMatrix returns the cost matrix composed of all current information
 func (database *StatsDatabase) GetCostMatrix(costMatrix *CostMatrix, redisClient redis.Cmdable, maxJitter float32, maxPacketLoss float32) error {
+
+	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
+	metrics, err := metrics.NewStatsMetrics(context.Background(), metricsHandler)
+	if err != nil {
+		return fmt.Errorf("failed to create NewStatsMetrics: %w", err)
+	}
+
+	durationStart := time.Now()
+	defer func() {
+		durationSince := time.Since(durationStart)
+		metrics.DurationGauge.Set(float64(durationSince.Milliseconds()))
+		metrics.Invocations.Add(1)
+	}()
+
 	hgetallResult := redisClient.HGetAll(HashKeyAllRelays)
 	if hgetallResult.Err() != nil && hgetallResult.Err() != redis.Nil {
 		return fmt.Errorf("failed to get all relays from redis: %v", hgetallResult.Err())
@@ -230,7 +248,7 @@ func (database *StatsDatabase) GetCostMatrix(costMatrix *CostMatrix, redisClient
 	costMatrix.RelayAddresses = make([][]byte, numRelays)
 	costMatrix.RelayPublicKeys = make([][]byte, numRelays)
 	costMatrix.DatacenterRelays = make(map[uint64][]uint64)
-	costMatrix.RTT = make([]int32, TriMatrixLength(numRelays))			// todo: should be renamed to "Cost"
+	costMatrix.RTT = make([]int32, TriMatrixLength(numRelays)) // todo: should be renamed to "Cost"
 	costMatrix.RelaySellers = make([]Seller, numRelays)
 	costMatrix.RelaySessionCounts = make([]uint32, numRelays)
 	costMatrix.RelayMaxSessionCounts = make([]uint32, numRelays)
