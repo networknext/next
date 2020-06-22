@@ -24,17 +24,17 @@ func buyers(rpcClient jsonrpc.RPCClient, env Environment) {
 	})
 
 	buyers := []struct {
-		Name string
-		ID   string
+		Name    string
+		BuyerID string
 	}{}
 
 	for _, buyer := range reply.Buyers {
 		buyers = append(buyers, struct {
-			Name string
-			ID   string
+			Name    string
+			BuyerID string
 		}{
-			Name: buyer.Name,
-			ID:   buyer.ID,
+			Name:    buyer.Name,
+			BuyerID: fmt.Sprintf("%016x", buyer.ID),
 		})
 	}
 
