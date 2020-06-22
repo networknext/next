@@ -1,6 +1,8 @@
 package billing
 
 import (
+	"fmt"
+
 	"github.com/golang/protobuf/proto"
 )
 
@@ -170,7 +172,7 @@ func (addr *Address) Reset() {
 	*addr = Address{}
 }
 func (addr *Address) String() string {
-	return proto.CompactTextString(addr)
+	return fmt.Sprintf("%s:%d", string(addr.Ip), addr.Port)
 }
 func (addr *Address) ProtoMessage() {}
 

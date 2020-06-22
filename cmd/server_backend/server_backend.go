@@ -13,13 +13,12 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
 
+	"cloud.google.com/go/bigquery"
 	gcplogging "cloud.google.com/go/logging"
-
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 
@@ -217,23 +216,18 @@ func main() {
 		// Set the Firestore Storer to give to handlers
 		db = fs
 
-		if billingTopicID, ok := os.LookupEnv("GOOGLE_PUBSUB_TOPIC_BILLING"); ok {
-			b, err := billing.NewBiller(ctx, logger, gcpProjectID, billingTopicID, &billing.Descriptor{
-				ClientCount:         4,
-				DelayThreshold:      time.Millisecond,
-				CountThreshold:      100,
-				ByteThreshold:       1e6,
-				NumGoroutines:       (25 * runtime.GOMAXPROCS(0)) / 4,
-				Timeout:             time.Minute,
-				ResultChannelBuffer: 10000 * 60 * 10, // 10,000 messages per second for 10 minutes
-			})
+		if billingDataset, ok := os.LookupEnv("GOOGLE_BIGQUERY_DATASET_BILLING"); ok {
+			bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				os.Exit(1)
 			}
+			b := billing.GoogleBigQueryClient{
+				TableInserter: bqClient.Dataset(billingDataset).Table(os.Getenv("GOOGLE_BIGQUERY_TABLE_BILLING")).Inserter(),
+			}
 
-			// Set the Biller to the Pub/Sub version
-			biller = b
+			// Set the Biller to Bigtable
+			biller = &b
 		}
 
 		// Set up StackDriver metrics
