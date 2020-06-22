@@ -1003,6 +1003,8 @@ type StatsMetrics struct {
 }
 
 type StatsErrorMetrics struct {
+	GetAllRelaysFailure   Counter
+	RelayUnmarshalFailure Counter
 }
 
 var EmptyStatsMetrics StatsMetrics = StatsMetrics{
