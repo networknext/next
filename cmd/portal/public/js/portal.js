@@ -962,11 +962,8 @@ function createVueComponents() {
 					slices: [],
 					graphs: {
 						bandwidthChart: null,
-						jitterImprovementChart: null,
 						jitterComparisonChart: null,
-						latencyImprovementChart: null,
 						latencyComparisonChart: null,
-						packetLossImprovementChart: null,
 						packetLossComparisonChart: null
 					}
 				},
@@ -1126,10 +1123,6 @@ function saveAutoSignIn() {
 
 function generateCharts(data) {
 	let latencyData = {
-		improvement: [
-			[],
-			[],
-		],
 		comparison: [
 			[],
 			[],
@@ -1137,10 +1130,6 @@ function generateCharts(data) {
 		],
 	};
 	let jitterData = {
-		improvement: [
-			[],
-			[],
-		],
 		comparison: [
 			[],
 			[],
@@ -1148,10 +1137,6 @@ function generateCharts(data) {
 		],
 	};
 	let packetLossData = {
-		improvement: [
-			[],
-			[],
-		],
 		comparison: [
 			[],
 			[],
@@ -1170,9 +1155,6 @@ function generateCharts(data) {
 		// Latency
 		let next = parseFloat(entry.next.rtt);
 		let direct = parseFloat(entry.direct.rtt);
-		let improvement = direct - next;
-		latencyData.improvement[0].push(timestamp);
-		latencyData.improvement[1].push(improvement);
 		latencyData.comparison[0].push(timestamp);
 		latencyData.comparison[1].push(next);
 		latencyData.comparison[2].push(direct);
@@ -1180,9 +1162,6 @@ function generateCharts(data) {
 		// Jitter
 		next = parseFloat(entry.next.jitter);
 		direct = parseFloat(entry.direct.jitter);
-		improvement = direct - next;
-		jitterData.improvement[0].push(timestamp);
-		jitterData.improvement[1].push(improvement);
 		jitterData.comparison[0].push(timestamp);
 		jitterData.comparison[1].push(next);
 		jitterData.comparison[2].push(direct);
@@ -1190,9 +1169,6 @@ function generateCharts(data) {
 		// Packetloss
 		next = parseFloat(entry.next.packet_loss);
 		direct = parseFloat(entry.direct.packet_loss);
-		improvement = direct - next;
-		packetLossData.improvement[0].push(timestamp);
-		packetLossData.improvement[1].push(improvement);
 		packetLossData.comparison[0].push(timestamp);
 		packetLossData.comparison[1].push(next);
 		packetLossData.comparison[2].push(direct);
