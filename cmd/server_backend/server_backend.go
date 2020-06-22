@@ -17,9 +17,8 @@ import (
 	"strings"
 	"time"
 
-	"cloud.google.com/go/bigtable"
+	"cloud.google.com/go/bigquery"
 	gcplogging "cloud.google.com/go/logging"
-
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 
@@ -217,14 +216,14 @@ func main() {
 		// Set the Firestore Storer to give to handlers
 		db = fs
 
-		if billingInstance, ok := os.LookupEnv("GOOGLE_BIGTABLE_INSTANCE_BILLING"); ok {
-			btClient, err := bigtable.NewClient(ctx, gcpProjectID, billingInstance)
+		if billingDataset, ok := os.LookupEnv("GOOGLE_BIGQUERY_DATASET_BILLING"); ok {
+			bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				os.Exit(1)
 			}
-			b := billing.GoogleBigTableClient{
-				Table: btClient.Open(os.Getenv("GOOGLE_BIGTABLE_TABLE_BILLING")),
+			b := billing.GoogleBigQueryClient{
+				TableInserter: bqClient.Dataset(billingDataset).Table(os.Getenv("GOOGLE_BIGQUERY_TABLE_BILLING")).Inserter(),
 			}
 
 			// Set the Biller to Bigtable
