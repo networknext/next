@@ -1038,11 +1038,26 @@ func NewStatsMetrics(ctx context.Context, metricsHandler Handler) (*StatsMetrics
 		return nil, err
 	}
 
+	// errorMetrics := StatsErrorMetrics{}
+
 	initMetrics := StatsMetrics{
 		Invocations:   initInvocationsCounter,
 		DurationGauge: initDurationGauge,
-		ErrorMetrics:  EmptyStatsErrorMetrics,
 	}
+
+	initMetrics.ErrorMetrics.GetAllRelaysFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Get All Redis Relays Failure",
+		ServiceName: "relay_backend",
+		ID:          "relay.error.get_all_relays_failure",
+		Unit:        "errors",
+	})
+
+	initMetrics.ErrorMetrics.RelayUnmarshalFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Unmarshal Failure",
+		ServiceName: "relay_backend",
+		ID:          "relay.error.relay_unmarshal_failure",
+		Unit:        "errors",
+	})
 
 	return &initMetrics, nil
 }
