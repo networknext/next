@@ -1,22 +1,7 @@
 package jsonrpc_test
 
-import (
-	"context"
-	"net/http"
-	"net/http/httptest"
-	"testing"
-
-	"github.com/dgrijalva/jwt-go"
-	"github.com/go-kit/kit/log"
-	"github.com/networknext/backend/routing"
-	"github.com/networknext/backend/storage"
-	"github.com/networknext/backend/transport/jsonrpc"
-	"github.com/stretchr/testify/assert"
-	"gopkg.in/auth0.v4/management"
-)
-
 // All tests listed below depend on test@networknext.com being a user in auth0
-func TestAuthMiddleware(t *testing.T) {
+/* func TestAuthMiddleware(t *testing.T) {
 	// JWT obtained from Portal Login Dev SPA (Auth0)
 	// Note: 5 year expiration time (expires on 18 May 2025)
 	// test@networknext.com => Delete this in auth0 and these tests will break
@@ -231,3 +216,4 @@ func TestAuthClient(t *testing.T) {
 		assert.Equal(t, len(reply.Roles), 0)
 	})
 }
+*/
