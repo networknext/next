@@ -689,7 +689,7 @@ func main() {
 						ShortHelp:  "Update the specified relay(s)",
 						FlagSet:    relayupdatefs,
 						Exec: func(ctx context.Context, args []string) error {
-							regexes := []string{".*"}
+							var regexes []string
 							if len(args) > 0 {
 								regexes = args
 							}

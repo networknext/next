@@ -21,6 +21,7 @@ import (
 )
 
 const (
+	LatestRelayVersion   = "1.0.2"
 	MinimumUbuntuVersion = 18
 
 	// DisableRelayScript is the bash script used to disable relays
@@ -97,6 +98,7 @@ type relayInfo struct {
 	nicSpeed    string
 	firestoreID string
 	state       string
+	version     string
 }
 
 func getRelayInfo(rpcClient jsonrpc.RPCClient, regex string) []relayInfo {
@@ -124,6 +126,7 @@ func getRelayInfo(rpcClient jsonrpc.RPCClient, regex string) []relayInfo {
 			nicSpeed:    fmt.Sprintf("%d", r.NICSpeedMbps),
 			firestoreID: r.FirestoreID,
 			state:       r.State,
+			version:     r.Version,
 		}
 	}
 
@@ -201,6 +204,13 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 		log.Fatalln("failed to untar relay")
 	}
 
+	doAllEnabled := false
+
+	if regexes == nil {
+		doAllEnabled = true
+		regexes = []string{".*"}
+	}
+
 	updatedRelays := 0
 	for _, regex := range regexes {
 		relays := getRelayInfo(rpcClient, regex)
@@ -211,7 +221,11 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 		}
 
 		for _, relay := range relays {
-			if relay.state != "enabled" && !force {
+			if doAllEnabled && relay.state != "enabled" {
+				continue
+			}
+
+			if !force && relay.version == LatestRelayVersion {
 				continue
 			}
 
