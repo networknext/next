@@ -884,10 +884,10 @@ func statsTable(stats map[string]map[string]routing.Stats) template.HTML {
 			jitterStyle := "</div><div>"
 
 			if Jitter > 10 {
-				jitterStyle = "</div>&nbsp<div style='color: red;'>"
+				jitterStyle = "</div><div style='color: red;'>"
 			}
 			if PacketLoss > .001 {
-				packetLossStyle = "</div>&nbsp<div style='color: red;'>"
+				packetLossStyle = "</div><div style='color: red;'>"
 			}
 
 			html.WriteString("<td><div>" +
