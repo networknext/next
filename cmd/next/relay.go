@@ -96,6 +96,7 @@ type relayInfo struct {
 	updateKey   string
 	nicSpeed    string
 	firestoreID string
+	state       string
 }
 
 func getRelayInfo(rpcClient jsonrpc.RPCClient, regex string) []relayInfo {
@@ -122,6 +123,7 @@ func getRelayInfo(rpcClient jsonrpc.RPCClient, regex string) []relayInfo {
 			updateKey:   r.UpdateKey,
 			nicSpeed:    fmt.Sprintf("%d", r.NICSpeedMbps),
 			firestoreID: r.FirestoreID,
+			state:       r.State,
 		}
 	}
 
@@ -170,7 +172,7 @@ func updateRelayState(rpcClient jsonrpc.RPCClient, info relayInfo, state routing
 	return true
 }
 
-func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string, coreCount uint64) {
+func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string, coreCount uint64, force bool) {
 	// Fetch and save the latest binary
 	url, err := env.RelayArtifactURL()
 	if err != nil {
@@ -209,6 +211,10 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 		}
 
 		for _, relay := range relays {
+			if relay.state != "enabled" && !force {
+				continue
+			}
+
 			fmt.Printf("Updating %s\n", relay.name)
 
 			// validate ubuntu version
