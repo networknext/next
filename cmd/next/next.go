@@ -1286,12 +1286,16 @@ func main() {
 
 	fmt.Printf("\n")
 
-	if err := root.ParseAndRun(context.Background(), os.Args[1:]); err != nil {
+	args := os.Args[1:]
+	if len(args) == 0 || args[0] == "-h" || args[0] == "-help" || args[0] == "--help" {
+		args = []string{}
+	}
+
+	if err := root.ParseAndRun(context.Background(), args); err != nil {
 		fmt.Printf("\n")
 		log.Fatal(err)
 	}
 
-	args := os.Args[1:]
 	if len(args) == 0 {
 		root.FlagSet.Usage()
 	}
