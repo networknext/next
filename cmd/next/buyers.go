@@ -34,7 +34,7 @@ func buyers(rpcClient jsonrpc.RPCClient, env Environment) {
 			BuyerID string
 		}{
 			Name:    buyer.Name,
-			BuyerID: fmt.Sprintf("%016x", buyer.ID),
+			BuyerID: buyer.ID,
 		})
 	}
 
