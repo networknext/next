@@ -4,14 +4,53 @@ import (
 	"context"
 
 	"cloud.google.com/go/bigquery"
+	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
+)
+
+const (
+	DefaultBigQueryBatchSize = 1000
 )
 
 type GoogleBigQueryClient struct {
+	Logger        log.Logger
 	TableInserter *bigquery.Inserter
+	BatchSize     int
+
+	buffer  []*Entry
+	entries chan *Entry
 }
 
+// Bill pushes an Entry to the channel
 func (bq *GoogleBigQueryClient) Bill(ctx context.Context, sessionID uint64, entry *Entry) error {
-	return bq.TableInserter.Put(ctx, entry)
+	bq.entries <- entry
+
+	return nil
+}
+
+// WriteLoop ranges over the incoming channel of Entry types and fills an internal buffer.
+// Once the buffer fills to the BatchSize it will write all entries to BigQuery. This should
+// only be called from 1 goroutine to avoid using a mutex around the internal buffer slice
+func (bq *GoogleBigQueryClient) WriteLoop(ctx context.Context) error {
+	if bq.entries == nil {
+		bq.entries = make(chan *Entry)
+	}
+
+	for entry := range bq.entries {
+		if len(bq.buffer) == bq.BatchSize {
+			if err := bq.TableInserter.Put(ctx, entry); err != nil {
+				level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)
+			}
+
+			bq.buffer = bq.buffer[:0]
+
+			level.Info(bq.Logger).Log("msg", "flushed entries to BigQuery", "size", bq.BatchSize)
+		}
+
+		bq.buffer = append(bq.buffer, entry)
+	}
+
+	return nil
 }
 
 // Save implements the bigquery.ValueSaver interface for an Entry
@@ -104,19 +143,6 @@ func (entry *Entry) Save() (map[string]bigquery.Value, string, error) {
 		}
 	}
 	e["acceptableRoutes"] = acceptableRoutes
-
-	consideredRoutes := make([]map[string]map[string]bigquery.Value, len(entry.ConsideredRoutes))
-	for ridx, route := range entry.ConsideredRoutes {
-		consideredRoutes[ridx] = make(map[string]map[string]bigquery.Value)
-		consideredRoutes[ridx]["route"] = make(map[string]bigquery.Value)
-		for idx := range route.Route {
-			consideredRoutes[ridx]["route"]["id"] = entry.Route[idx].RelayID.String()
-			consideredRoutes[ridx]["route"]["sellerId"] = entry.Route[idx].SellerID.String()
-			consideredRoutes[ridx]["route"]["priceIngress"] = int(entry.Route[idx].PriceIngress)
-			consideredRoutes[ridx]["route"]["priceEgress"] = int(entry.Route[idx].PriceEgress)
-		}
-	}
-	e["consideredRoutes"] = consideredRoutes
 
 	e["routeDecision"] = int(entry.RouteDecision)
 	e["routeChanged"] = entry.RouteChanged
