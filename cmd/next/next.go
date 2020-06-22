@@ -1280,13 +1280,19 @@ func main() {
 		},
 		Exec: func(context.Context, []string) error {
 			fmt.Printf("Network Next Operator Tool\n\n")
-			return flag.ErrHelp
+			return nil
 		},
 	}
 
 	fmt.Printf("\n")
 
-	if err := root.ParseAndRun(context.Background(), os.Args[1:]); err != nil {
+	args := os.Args[1:]
+
+	if len(args) == 0 {
+		args = append(args, "-h")
+	}
+
+	if err := root.ParseAndRun(context.Background(), args); err != nil {
 		fmt.Printf("\n")
 		log.Fatal(err)
 	}
