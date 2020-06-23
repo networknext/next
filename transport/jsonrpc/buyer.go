@@ -407,7 +407,7 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 	})
 
 	reply.Sessions = append(reply.Sessions, nextSessions...)
-	reply.Sessions = append(reply.Sessions, directSessions...)
+	// reply.Sessions = append(reply.Sessions, directSessions...)
 
 	if len(reply.Sessions) > TopSessionsSize {
 		reply.Sessions = reply.Sessions[:TopSessionsSize]
