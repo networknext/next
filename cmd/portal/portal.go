@@ -319,9 +319,7 @@ func main() {
 			Storage: db,
 		}, "")
 
-		s = handlers.CompressHandler(s)
-
-		http.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), s))
+		http.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s)))
 		http.HandleFunc("/healthz", transport.HealthzHandlerFunc())
 
 		http.Handle("/", http.FileServer(http.Dir(uiDir)))
