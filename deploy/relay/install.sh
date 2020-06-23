@@ -36,28 +36,8 @@ check_if_running() {
 	fi
 }
 
-install_libsodium() {
-  echo "checking for libsodium..."
-	cur_dir="$(pwd)"
-	lib_versions="$(ldconfig -p | grep libsodium)"
-	if [ -z "$lib_versions" ]; then
-    echo "not found, installing libsodium from souce..."
-		tar -xvf libsodium.tar.gz
-		cd 'libsodium-stable'
-		./configure || return 1
-		make && make check || return 1
-		sudo make install || return 1
-		sudo ldconfig || return 1
-  else
-    echo "found libsodium on target relay"
-	fi
-	cd "$cur_dir"
-}
-
 install_relay() {
 	check_if_running 'error, please disable relay before installing'
-
-  install_libsodium || return 1
 
 	if [[ ! -d '/app' ]]; then
 		sudo mkdir '/app' || return 1

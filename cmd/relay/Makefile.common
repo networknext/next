@@ -29,7 +29,7 @@ OBJ										:= obj
 INCLUDE								:= $(SRC)
 INCLUDE_DIRS					:= -I$(INCLUDE) -I$(LIB)
 
-LIBRARIES							:= -lsodium -lcurl -lpthread -lm
+LIBRARIES							:= -l:libsodium.a -lcurl -lpthread -lm
 
 LIB_SUB_DIRS					:= $(shell find lib/* -type d -print)
 LIB_OBJ_DIRS					:= $(patsubst $(LIB)/%, $(OBJ)/$(LIB)/%, $(LIB_SUB_DIRS))
