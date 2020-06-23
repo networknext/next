@@ -142,27 +142,26 @@ func main() {
 	mmcitydburi := os.Getenv("MAXMIND_CITY_DB_URI")
 	mmispdburi := os.Getenv("MAXMIND_ISP_DB_URI")
 	if mmcitydburi != "" && mmispdburi != "" {
-		mmdb := routing.MaxmindDB{}
-
-		err := mmdb.OpenCity(ctx, http.DefaultClient, mmcitydburi)
+		cityreader, err := routing.NewMaxmindReader(http.DefaultClient, mmcitydburi)
 		if err != nil {
 			level.Error(logger).Log("envvar", "MAXMIND_CITY_DB_URI", "value", mmcitydburi, "err", err)
 			os.Exit(1)
 		}
 
-		err = mmdb.OpenISP(ctx, http.DefaultClient, mmispdburi)
+		ispreader, err := routing.NewMaxmindReader(http.DefaultClient, mmispdburi)
 		if err != nil {
 			level.Error(logger).Log("envvar", "MAXMIND_ISP_DB_URI", "value", mmispdburi, "err", err)
-			os.Exit(1)
+
 		}
 
-		// Start a goroutine to sync from Maxmind.com
-		go func() {
-			ticker := time.NewTicker(24 * time.Hour)
-			mmdb.SyncLoop(ctx, ticker.C)
+		ipLocator = &routing.MaxmindDB{
+			CityReader: cityreader,
+			ISPReader:  ispreader,
+		}
+		defer func() {
+			cityreader.Close()
+			ispreader.Close()
 		}()
-
-		ipLocator = &mmdb
 	}
 	// Commented out to ensure it really does not load the IPStack version
 	// if key, ok := os.LookupEnv("IPSTACK_ACCESS_KEY"); ok {
