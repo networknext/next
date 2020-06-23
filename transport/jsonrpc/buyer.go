@@ -183,9 +183,9 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 	var topnext []string
 	var topdirect []string
 
-	buyers := s.Storage.Buyers()
-
 	reply.Sessions = make([]routing.SessionMeta, 0)
+
+	buyers := s.Storage.Buyers()
 
 	// get the top session IDs globally or for a buyer from the sorted set
 	switch args.BuyerID {
