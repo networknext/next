@@ -684,21 +684,6 @@ WorkspaceHandler = {
 				.then((response) => {
 					let sessions = response.sessions;
 
-					sessions.sort((a, b) => {
-						if (a.on_network_next && b.on_network_next) {
-							return a.delta_rtt > b.delta_rtt
-						}
-						if (a.on_network_next && !b.on_network_next) {
-							return 1
-						}
-						if (!a.on_network_next && !b.on_network_next) {
-							return a.delta_rtt < b.delta_rtt
-						}
-						if (!a.on_network_next && b.on_network_next) {
-							return -1
-						}
-						return 0
-					})
 					/**
 					 * I really dislike this but it is apparently the way to reload/update the data within a vue
 					 */
