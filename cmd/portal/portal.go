@@ -319,12 +319,12 @@ func main() {
 			Storage: db,
 		}, "")
 
+		s = handlers.CompressHandler(s)
+
 		http.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), s))
 		http.HandleFunc("/healthz", transport.HealthzHandlerFunc())
 
 		http.Handle("/", http.FileServer(http.Dir(uiDir)))
-
-		handlers.CompressHandler(s)
 
 		level.Info(logger).Log("addr", ":"+port)
 
