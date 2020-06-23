@@ -392,9 +392,9 @@ func enableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 	fmt.Println("Waiting for portal to sync changes...")
 	time.Sleep(11 * time.Second)
 
-	str := "Reverts"
+	str := "Enabling"
 	if enabledRelays == 1 {
-		str = "Revert"
+		str = "Enable"
 	}
 	fmt.Printf("%s complete\n", str)
 }
