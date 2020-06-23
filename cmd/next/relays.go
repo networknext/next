@@ -52,6 +52,13 @@ func relays(
 
 	relaysCSV := [][]string{{}}
 
+	if relaysListFlag {
+		relaysCSV = append(relaysCSV, []string{"Name"})
+	} else {
+		relaysCSV = append(relaysCSV, []string{
+			"Name", "Address", "State", "Sessions", "Tx", "Rx", "Version", "LastUpdated"})
+	}
+
 	for _, relay := range reply.Relays {
 		relayState, err := routing.ParseRelayState(relay.State)
 		if err != nil {
