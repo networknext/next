@@ -857,7 +857,7 @@ func main() {
 										log.Fatal("Failed to marshal relay struct")
 									}
 
-									fmt.Println("Exmaple JSON schema to add a new relay:")
+									fmt.Println("Example JSON schema to add a new relay:")
 									fmt.Println(string(jsonBytes))
 									return nil
 								},
@@ -934,7 +934,7 @@ func main() {
 										log.Fatal("Failed to marshal datacenter struct")
 									}
 
-									fmt.Println("Exmaple JSON schema to add a new datacenter:")
+									fmt.Println("Example JSON schema to add a new datacenter:")
 									fmt.Println(string(jsonBytes))
 									return nil
 								},
@@ -1021,7 +1021,7 @@ func main() {
 										log.Fatal("Failed to marshal buyer struct")
 									}
 
-									fmt.Println("Exmaple JSON schema to add a new buyer:")
+									fmt.Println("Example JSON schema to add a new buyer:")
 									fmt.Println(string(jsonBytes))
 									return nil
 								},
@@ -1153,7 +1153,7 @@ func main() {
 										log.Fatal("Failed to marshal route shader struct")
 									}
 
-									fmt.Println("Exmaple JSON schema to set a new route shader:")
+									fmt.Println("Example JSON schema to set a new route shader:")
 									fmt.Println(string(jsonBytes))
 									return nil
 								},
