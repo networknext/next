@@ -1,14 +1,10 @@
 package routing
 
 import (
-	"context"
 	"fmt"
 	"math"
 	"sort"
 	"sync"
-	"time"
-
-	"github.com/networknext/backend/metrics"
 
 	"github.com/go-redis/redis/v7"
 )
@@ -225,25 +221,23 @@ func (database *StatsDatabase) GetCostMatrix(
 	costMatrix *CostMatrix,
 	redisClient redis.Cmdable,
 	maxJitter float32,
-	maxPacketLoss float32,
-	metricsHandler metrics.Handler) error {
+	maxPacketLoss float32) error {
 
 	// var metricsHandler metrics.Handler = &metrics.LocalHandler{}
-	metrics, err := metrics.NewCostMatrixGenMetrics(context.Background(), metricsHandler)
-	if err != nil {
-		return fmt.Errorf("failed to create NewCostMatrixGenMetrics: %w", err)
-	}
+	// metrics, err := metrics.NewCostMatrixGenMetrics(context.Background(), metricsHandler)
+	// if err != nil {
+	// 	return fmt.Errorf("failed to create NewCostMatrixGenMetrics: %w", err)
+	// }
 
-	durationStart := time.Now()
-	defer func() {
-		durationSince := time.Since(durationStart)
-		metrics.DurationGauge.Set(float64(durationSince.Milliseconds()))
-		metrics.Invocations.Add(1)
-	}()
+	// durationStart := time.Now()
+	// defer func() {
+	// 	durationSince := time.Since(durationStart)
+	// 	metrics.DurationGauge.Set(float64(durationSince.Milliseconds()))
+	// 	metrics.Invocations.Add(1)
+	// }()
 
 	hgetallResult := redisClient.HGetAll(HashKeyAllRelays)
 	if hgetallResult.Err() != nil && hgetallResult.Err() != redis.Nil {
-		metrics.ErrorMetrics.GetAllRelaysFailure.Add(1)
 		return fmt.Errorf("failed to get all relays from redis: %v", hgetallResult.Err())
 	}
 	numRelays := len(hgetallResult.Val())
@@ -265,7 +259,6 @@ func (database *StatsDatabase) GetCostMatrix(
 	for _, rawRelay := range hgetallResult.Val() {
 		var relay RelayCacheEntry
 		if err := relay.UnmarshalBinary([]byte(rawRelay)); err != nil {
-			metrics.ErrorMetrics.RelayUnmarshalFailure.Add(1)
 			return fmt.Errorf("failed to unmarshal relay when creating cost matrix: %v", err)
 		}
 		stableRelays = append(stableRelays, relay)

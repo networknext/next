@@ -1016,7 +1016,7 @@ var EmptyCostMatrixGenMetrics CostMatrixGenMetrics = CostMatrixGenMetrics{
 var EmptyCostMatrixGenErrorMetrics CostMatrixGenErrorMetrics = CostMatrixGenErrorMetrics{}
 
 func NewCostMatrixGenMetrics(ctx context.Context, metricsHandler Handler) (*CostMatrixGenMetrics, error) {
-	initDurationGauge, err := metricsHandler.NewGauge(ctx, &Descriptor{
+	newCostMatrixGenDurationGauge, err := metricsHandler.NewGauge(ctx, &Descriptor{
 		DisplayName: "StatsDB -> GetCostMatrix duration",
 		ServiceName: "relay_backend",
 		ID:          "stats.duration",
@@ -1040,7 +1040,7 @@ func NewCostMatrixGenMetrics(ctx context.Context, metricsHandler Handler) (*Cost
 
 	costMatrixGenMetrics := CostMatrixGenMetrics{
 		Invocations:   costMatrixGenInvocationsCounter,
-		DurationGauge: initDurationGauge,
+		DurationGauge: newCostMatrixGenDurationGauge,
 	}
 
 	costMatrixGenMetrics.ErrorMetrics.GetAllRelaysFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{

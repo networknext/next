@@ -236,6 +236,11 @@ func main() {
 		level.Error(logger).Log("msg", "failed to create relay stat metrics", "err", err)
 	}
 
+	newCostMatrixGenMetrics, err := metrics.NewCostMatrixGenMetrics(context.Background(), metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create NewCostMatrixGenMetrics", "err", err)
+	}
+
 	statsdb := routing.NewStatsDatabase()
 	var costmatrix routing.CostMatrix
 	var routematrix routing.RouteMatrix
@@ -296,7 +301,9 @@ func main() {
 	// Periodically generate cost matrix from stats db
 	go func() {
 		for {
-			if err := statsdb.GetCostMatrix(&costmatrix, redisClientRelays, float32(maxJitter), float32(maxPacketLoss), metricsHandler); err != nil {
+			durationStart := time.Now()
+
+			if err := statsdb.GetCostMatrix(&costmatrix, redisClientRelays, float32(maxJitter), float32(maxPacketLoss)); err != nil {
 				level.Warn(logger).Log("matrix", "cost", "op", "generate", "err", err)
 			}
 
@@ -313,6 +320,10 @@ func main() {
 			if len(routematrix.Entries) == 0 {
 				sentry.CaptureMessage("no routes within route matrix")
 			}
+
+			durationSince := time.Since(durationStart)
+			newCostMatrixGenMetrics.DurationGauge.Set(float64(durationSince.Milliseconds()))
+			newCostMatrixGenMetrics.Invocations.Add(1)
 
 			time.Sleep(1 * time.Second)
 		}

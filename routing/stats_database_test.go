@@ -11,7 +11,6 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/crypto"
-	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
 	"github.com/stretchr/testify/assert"
 )
@@ -90,8 +89,6 @@ func TestStatsDatabase(t *testing.T) {
 		entry.PacketLossHistory[0] = 1
 		return entry
 	}
-
-	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
 
 	t.Run("ProcessStats()", func(t *testing.T) {
 		update := routing.RelayStatsUpdate{
@@ -334,7 +331,7 @@ func TestStatsDatabase(t *testing.T) {
 
 			var costMatrix routing.CostMatrix
 
-			assert.NoError(t, statsdb.GetCostMatrix(&costMatrix, redisClient, maxJitter, maxPacketLoss, metricsHandler))
+			assert.NoError(t, statsdb.GetCostMatrix(&costMatrix, redisClient, maxJitter, maxPacketLoss))
 
 			// Testing
 			hgetallResult = redisClient.HGetAll(routing.HashKeyAllRelays)
@@ -412,7 +409,7 @@ func TestStatsDatabase(t *testing.T) {
 
 			var costMatrix routing.CostMatrix
 			statsdb := routing.NewStatsDatabase()
-			err := statsdb.GetCostMatrix(&costMatrix, redisClient, 10.0, 0.1, metricsHandler)
+			err := statsdb.GetCostMatrix(&costMatrix, redisClient, 10.0, 0.1)
 			assert.EqualError(t, err, fmt.Sprintf("failed to get all relays from redis: dial tcp %v: connect: connection refused", redisClient.Options().Addr))
 		})
 
@@ -447,7 +444,7 @@ func TestStatsDatabase(t *testing.T) {
 			statsdb := routing.NewStatsDatabase()
 
 			var costMatrix routing.CostMatrix
-			err = statsdb.GetCostMatrix(&costMatrix, redisClient, 10.0, 0.1, metricsHandler)
+			err = statsdb.GetCostMatrix(&costMatrix, redisClient, 10.0, 0.1)
 			assert.Contains(t, err.Error(), "failed to unmarshal relay when creating cost matrix:")
 		})
 	})
