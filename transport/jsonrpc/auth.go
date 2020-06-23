@@ -574,14 +574,58 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 	}
 
 	userRoles, err := s.Auth0.Manager.User.Roles(args.UserID)
-
 	if err != nil {
 		err := fmt.Errorf("UpdateUserRoles() failed to fetch user roles: %w", err)
 		s.Logger.Log("err", err)
 		return err
 	}
 
-	if len(userRoles.Roles) > 0 {
+	roleNames := []string{
+		"rol_8r0281hf2oC4cvrD",
+		"rol_ScQpWhLvmTKRlqLU",
+	}
+	roleTypes := []string{
+		"Owner",
+		"Viewer",
+	}
+	roleDescriptions := []string{
+		"Can access and manage everything in an account.",
+		"Can see current sessions and the map.",
+	}
+
+	removeRoles := []*management.Role{
+		{
+			ID:          &roleNames[0],
+			Name:        &roleTypes[0],
+			Description: &roleDescriptions[0],
+		},
+		{
+			ID:          &roleNames[1],
+			Name:        &roleTypes[1],
+			Description: &roleDescriptions[1],
+		},
+	}
+
+	// Need all this for admins that accidently delete admin role and for tests
+	found := false
+
+	for _, role := range userRoles.Roles {
+		if found {
+			continue
+		}
+		if *role.Name == "Admin" {
+			found = true
+		}
+	}
+
+	if found {
+		err = s.Auth0.Manager.User.RemoveRoles(args.UserID, removeRoles...)
+		if err != nil {
+			err := fmt.Errorf("UpdateUserRoles() failed to remove current user role: %w", err)
+			s.Logger.Log("err", err)
+			return err
+		}
+	} else {
 		err = s.Auth0.Manager.User.RemoveRoles(args.UserID, userRoles.Roles...)
 		if err != nil {
 			err := fmt.Errorf("UpdateUserRoles() failed to remove current user role: %w", err)
