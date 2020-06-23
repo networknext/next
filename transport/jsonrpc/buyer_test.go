@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -278,98 +277,6 @@ func TestTopSessions(t *testing.T) {
 		assert.Equal(t, 2, len(reply.Sessions))
 		assert.Equal(t, sessionID3, reply.Sessions[0].ID)
 		assert.Equal(t, sessionID2, reply.Sessions[1].ID)
-	})
-}
-
-func TestTopSessionsExpanded(t *testing.T) {
-	redisServer, _ := miniredis.Run()
-	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
-
-	for i := 0; i < 50; i++ {
-		randomWeight := rand.Intn(10)
-		redisServer.ZAdd("total-next", float64(randomWeight), fmt.Sprintf("%x", i))
-		redisClient.Set(fmt.Sprintf("session-%s-meta", fmt.Sprintf("%x", i)), routing.SessionMeta{ID: fmt.Sprintf("%x", i), DeltaRTT: float64(randomWeight), OnNetworkNext: true}, time.Hour)
-	}
-	for i := 50; i < 2000; i++ {
-		randomWeight := rand.Intn(400)
-		redisServer.ZAdd("total-direct", float64(randomWeight), fmt.Sprintf("%x", i))
-		redisClient.Set(fmt.Sprintf("session-%s-meta", fmt.Sprintf("%x", i)), routing.SessionMeta{ID: fmt.Sprintf("%x", i), DeltaRTT: float64(randomWeight), OnNetworkNext: false}, time.Hour)
-	}
-
-	storer := storage.InMemory{}
-	pubkey := make([]byte, 4)
-	storer.AddBuyer(context.Background(), routing.Buyer{ID: 111, Name: "local.local.1", PublicKey: pubkey, Domain: "networknext.com"})
-
-	logger := log.NewNopLogger()
-	svc := jsonrpc.BuyersService{
-		RedisClient: redisClient,
-		Storage:     &storer,
-		Logger:      logger,
-	}
-
-	manager, err := management.New(
-		"networknext.auth0.com",
-		"0Hn8oZfUwy5UPo6bUk0hYCQ2hMJnwQYg",
-		"l2namTU5jKVAkuCwV3votIPcP87jcOuJREtscx07aLgo8EykReX69StUVBfJOzx5",
-	)
-	assert.NoError(t, err)
-
-	auth0Client := storage.Auth0{
-		Manager: manager,
-		Logger:  logger,
-	}
-
-	jwtSideload := "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik5rWXpOekkwTkVVNVFrSTVNRVF4TURRMk5UWTBNakkzTmpOQlJESkVNa1E0TnpGRFF6QkdRdyJ9.eyJuaWNrbmFtZSI6ImpvaG4iLCJuYW1lIjoiam9obkBuZXR3b3JrbmV4dC5jb20iLCJwaWN0dXJlIjoiaHR0cHM6Ly9zLmdyYXZhdGFyLmNvbS9hdmF0YXIvMGIzZTgwMDFjYTJkN2NlM2I2ZmZlMTU2ZTczODRlZTU_cz00ODAmcj1wZyZkPWh0dHBzJTNBJTJGJTJGY2RuLmF1dGgwLmNvbSUyRmF2YXRhcnMlMkZqby5wbmciLCJ1cGRhdGVkX2F0IjoiMjAyMC0wNS0xOVQxOTo1MDoyMC44NjNaIiwiZW1haWwiOiJqb2huQG5ldHdvcmtuZXh0LmNvbSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJpc3MiOiJodHRwczovL25ldHdvcmtuZXh0LmF1dGgwLmNvbS8iLCJzdWIiOiJhdXRoMHw1ZWJhYzhiMjA3ZWU4YjFjMTliNGMwZTIiLCJhdWQiOiJvUUpIM1lQSGR2WkpueENQbzFJcnR6NVVLaTV6cnI2biIsImlhdCI6MTU4OTkxNzgyMiwiZXhwIjoxNzQ3NTk3ODIyLCJub25jZSI6IlJuRjFaVzlYYW1aS2VUTkVPRFJMTFhreVVVNVRielJSWVdjdVRGWjFUVlpFZDFVellYNDBXR05sTUE9PSJ9.Va2WRHDUj7XoXzvSkUDfx819RDpewyHMxyv0CIBfsWfVOCB80jRPBvQo7oImRM0FPMYyCl5r4i8-rU5jyg8fZUC3vSABVPALqxX4ViNy3qB4Zgn1RidXoUGKuAUTfi40fS_xDSDBoErRjkxzZuMby_9xNhBw5WwL6sKDGzGL-nayBWHf7LTf0wPwrhZPI4YtHdrJEzYUkwdMCJnMsuSZsgpwvfzvpLgg9NJ4me-VhTQAKJjxXIAsHD_QiI7EEPK1tcd58T11J_xsTktSmDVxuG0-QIs2ioWs0DJSepjcld4tLTlDDZObHIjo_edXd5Wk9zalxfAE7sPWUexFZPQMDA"
-	noopHandler := func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}
-	authMiddleware := jsonrpc.AuthMiddleware("oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n", http.HandlerFunc(noopHandler))
-
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.Header.Add("Authorization", "Bearer "+jwtSideload)
-	res := httptest.NewRecorder()
-
-	authMiddleware.ServeHTTP(res, req)
-	assert.Equal(t, http.StatusOK, res.Code)
-
-	user := req.Context().Value("user")
-	assert.NotEqual(t, user, nil)
-	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
-
-	requestID, ok := claims["sub"]
-
-	assert.True(t, ok)
-	assert.Equal(t, "auth0|5ebac8b207ee8b1c19b4c0e2", requestID)
-
-	roles, err := auth0Client.Manager.User.Roles(requestID.(string))
-
-	assert.NoError(t, err)
-	req = jsonrpc.SetRoles(req, *roles)
-
-	t.Run("top global", func(t *testing.T) {
-		var reply jsonrpc.TopSessionsReply
-		err := svc.TopSessions(req, &jsonrpc.TopSessionsArgs{}, &reply)
-		assert.NoError(t, err)
-
-		assert.Equal(t, 1000, len(reply.Sessions))
-		assert.True(t, reply.Sessions[0].OnNetworkNext)
-		assert.True(t, reply.Sessions[1].OnNetworkNext)
-		assert.True(t, reply.Sessions[2].OnNetworkNext)
-		assert.True(t, reply.Sessions[3].OnNetworkNext)
-		assert.True(t, reply.Sessions[4].OnNetworkNext)
-		assert.True(t, reply.Sessions[5].OnNetworkNext)
-		assert.True(t, reply.Sessions[49].OnNetworkNext)
-		assert.False(t, reply.Sessions[50].OnNetworkNext)
-		assert.False(t, reply.Sessions[51].OnNetworkNext)
-		assert.False(t, reply.Sessions[52].OnNetworkNext)
-		assert.False(t, reply.Sessions[53].OnNetworkNext)
-		assert.False(t, reply.Sessions[54].OnNetworkNext)
-		assert.False(t, reply.Sessions[55].OnNetworkNext)
-		assert.False(t, reply.Sessions[200].OnNetworkNext)
-		assert.False(t, reply.Sessions[400].OnNetworkNext)
-		assert.False(t, reply.Sessions[600].OnNetworkNext)
-		assert.False(t, reply.Sessions[800].OnNetworkNext)
-		assert.False(t, reply.Sessions[999].OnNetworkNext)
 	})
 }
 
