@@ -128,13 +128,17 @@ func addRelay(rpcClient jsonrpc.RPCClient, env Environment, relay routing.Relay)
 }
 
 func removeRelay(rpcClient jsonrpc.RPCClient, env Environment, name string) {
-	relays := getRelayInfo(rpcClient, name)
+	relays := getRelayInfo(rpcClient, env, name)
 
 	if len(relays) == 0 {
 		log.Fatalf("no relays matched the name '%s'\n", name)
 	}
 
 	info := relays[0]
+
+	if info.state == routing.RelayStateDecommissioned.String() {
+		log.Fatalf("Relay \"%s\" already decommissioned\n", info.name)
+	}
 
 	args := localjsonrpc.RemoveRelayArgs{
 		RelayID: info.id,
@@ -146,5 +150,5 @@ func removeRelay(rpcClient jsonrpc.RPCClient, env Environment, name string) {
 		return
 	}
 
-	fmt.Printf("Relay \"%s\" decommissioned.\n", name)
+	fmt.Printf("Relay \"%s\" decommissioned.\n", info.name)
 }

@@ -3,6 +3,7 @@ package jsonrpc
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -234,9 +235,9 @@ type CustomersReply struct {
 }
 
 type customer struct {
+	Name     string `json:"name"`
 	BuyerID  string `json:"buyer_id"`
 	SellerID string `json:"seller_id"`
-	Name     string `json:"name"`
 }
 
 func (s *OpsService) Customers(r *http.Request, args *CustomersArgs, reply *CustomersReply) error {
@@ -304,6 +305,70 @@ func (s *OpsService) RemoveSeller(r *http.Request, args *RemoveSellerArgs, reply
 
 	if err := s.Storage.RemoveSeller(ctx, args.ID); err != nil {
 		err = fmt.Errorf("RemoveSeller() error: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	return nil
+}
+
+type SetCustomerLinkArgs struct {
+	CustomerName string
+	BuyerID      uint64
+	SellerID     string
+}
+
+type SetCustomerLinkReply struct{}
+
+func (s *OpsService) SetCustomerLink(r *http.Request, args *SetCustomerLinkArgs, reply *SetCustomerLinkReply) error {
+	if args.CustomerName == "" {
+		err := errors.New("SetCustomerLink() error: customer name empty")
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	if args.BuyerID == 0 && args.SellerID == "" {
+		err := errors.New("SetCustomerLink() error: invalid paramters - both buyer ID and seller ID are empty")
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	if args.BuyerID != 0 && args.SellerID != "" {
+		err := errors.New("SetCustomerLink() error: invalid paramters - both buyer ID and seller ID are given which is not allowed")
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelFunc()
+
+	buyerID := args.BuyerID
+	sellerID := args.SellerID
+
+	if buyerID != 0 {
+		// We're trying to update the link to the buyer ID, so get the existing seller ID so it doesn't change
+		var err error
+		sellerID, err = s.Storage.SellerIDFromCustomerName(ctx, args.CustomerName)
+		if err != nil {
+			err = fmt.Errorf("SetCustomerLink() error: %w", err)
+			s.Logger.Log("err", err)
+			return err
+		}
+	}
+
+	if sellerID != "" {
+		// We're trying to update the link to the seller ID, so get the existing buyer ID so it doesn't change
+		var err error
+		buyerID, err = s.Storage.BuyerIDFromCustomerName(ctx, args.CustomerName)
+		if err != nil {
+			err = fmt.Errorf("SetCustomerLink() error: %w", err)
+			s.Logger.Log("err", err)
+			return err
+		}
+	}
+
+	if err := s.Storage.SetCustomerLink(ctx, args.CustomerName, buyerID, sellerID); err != nil {
+		err = fmt.Errorf("SetCustomerLink() error: %w", err)
 		s.Logger.Log("err", err)
 		return err
 	}

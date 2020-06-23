@@ -23,6 +23,20 @@ type customer struct {
 	Seller *firestore.DocumentRef `firestore:"seller"`
 }
 
+type buyer struct {
+	ID        int64  `firestore:"sdkVersion3PublicKeyId"`
+	Name      string `firestore:"name"`
+	Active    bool   `firestore:"active"`
+	Live      bool   `firestore:"isLiveCustomer"`
+	PublicKey []byte `firestore:"sdkVersion3PublicKeyData"`
+}
+
+type seller struct {
+	Name                       string `firestore:"name"`
+	PricePublicIngressNibblins int64  `firestore:"pricePublicIngressNibblins"`
+	PricePublicEgressNibblins  int64  `firestore:"pricePublicEgressNibblins"`
+}
+
 func checkFirestoreEmulator(t *testing.T) {
 	firestoreEmulatorHost := os.Getenv("FIRESTORE_EMULATOR_HOST")
 	if firestoreEmulatorHost == "" {
@@ -821,6 +835,261 @@ func TestFirestore(t *testing.T) {
 		})
 	})
 
+	t.Run("SetCustomerLink", func(t *testing.T) {
+		t.Run("customer not found", func(t *testing.T) {
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			assert.NoError(t, err)
+
+			defer func() {
+				err := cleanFireStore(ctx, fs.Client)
+				assert.NoError(t, err)
+			}()
+
+			err = fs.SetCustomerLink(ctx, "not found", 0, "")
+			assert.EqualError(t, err, "customer with reference not found not found")
+		})
+
+		t.Run("clear buyer", func(t *testing.T) {
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			assert.NoError(t, err)
+
+			defer func() {
+				err := cleanFireStore(ctx, fs.Client)
+				assert.NoError(t, err)
+			}()
+
+			buyer := routing.Buyer{
+				ID:   1,
+				Name: "customer name",
+			}
+
+			err = fs.AddBuyer(ctx, buyer)
+			assert.NoError(t, err)
+
+			err = fs.SetCustomerLink(ctx, "customer name", 0, "")
+			assert.NoError(t, err)
+
+			// Check that the customer was updated successfully
+			cdocs := fs.Client.Collection("Customer").Documents(ctx)
+
+			cdoc, err := cdocs.Next()
+			assert.NoError(t, err)
+
+			var customerInRemoteStorage customer
+			err = cdoc.DataTo(&customerInRemoteStorage)
+			assert.NoError(t, err)
+
+			assert.Nil(t, customerInRemoteStorage.Buyer)
+		})
+
+		t.Run("clear seller", func(t *testing.T) {
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			assert.NoError(t, err)
+
+			defer func() {
+				err := cleanFireStore(ctx, fs.Client)
+				assert.NoError(t, err)
+			}()
+
+			seller := routing.Seller{
+				ID:   "sellerID",
+				Name: "customer name",
+			}
+
+			err = fs.AddSeller(ctx, seller)
+			assert.NoError(t, err)
+
+			err = fs.SetCustomerLink(ctx, "customer name", 0, "")
+			assert.NoError(t, err)
+
+			// Check that the customer was updated successfully
+			cdocs := fs.Client.Collection("Customer").Documents(ctx)
+
+			cdoc, err := cdocs.Next()
+			assert.NoError(t, err)
+
+			var customerInRemoteStorage customer
+			err = cdoc.DataTo(&customerInRemoteStorage)
+			assert.NoError(t, err)
+
+			assert.Nil(t, customerInRemoteStorage.Seller)
+		})
+
+		t.Run("change buyer", func(t *testing.T) {
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			assert.NoError(t, err)
+
+			defer func() {
+				err := cleanFireStore(ctx, fs.Client)
+				assert.NoError(t, err)
+			}()
+
+			oldBuyer := routing.Buyer{
+				ID:   1,
+				Name: "customer name",
+			}
+
+			newBuyer := routing.Buyer{
+				ID:   2,
+				Name: "different customer name",
+			}
+
+			err = fs.AddBuyer(ctx, oldBuyer)
+			assert.NoError(t, err)
+
+			err = fs.AddBuyer(ctx, newBuyer)
+			assert.NoError(t, err)
+
+			err = fs.SetCustomerLink(ctx, "customer name", newBuyer.ID, "")
+			assert.NoError(t, err)
+
+			// Check that the customer was updated successfully
+			cdocs := fs.Client.Collection("Customer").Documents(ctx)
+
+			cdoc, err := cdocs.Next()
+			assert.NoError(t, err)
+
+			var customerInRemoteStorage customer
+			err = cdoc.DataTo(&customerInRemoteStorage)
+			assert.NoError(t, err)
+
+			assert.NotNil(t, customerInRemoteStorage.Buyer)
+
+			// Verify that the buyer was set to the new buyer
+			var b buyer
+			bdoc, err := customerInRemoteStorage.Buyer.Get(ctx)
+			assert.NoError(t, err)
+
+			err = bdoc.DataTo(&b)
+			assert.NoError(t, err)
+
+			assert.Equal(t, newBuyer.ID, uint64(b.ID))
+		})
+
+		t.Run("change seller", func(t *testing.T) {
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			assert.NoError(t, err)
+
+			defer func() {
+				err := cleanFireStore(ctx, fs.Client)
+				assert.NoError(t, err)
+			}()
+
+			oldSeller := routing.Seller{
+				ID:   "oldSellerID",
+				Name: "customer name",
+			}
+
+			newSeller := routing.Seller{
+				ID:   "newSellerID",
+				Name: "different customer name",
+			}
+
+			err = fs.AddSeller(ctx, oldSeller)
+			assert.NoError(t, err)
+
+			err = fs.AddSeller(ctx, newSeller)
+			assert.NoError(t, err)
+
+			err = fs.SetCustomerLink(ctx, "customer name", 0, newSeller.ID)
+			assert.NoError(t, err)
+
+			// Check that the customer was updated successfully
+			cdocs := fs.Client.Collection("Customer").Documents(ctx)
+
+			cdoc, err := cdocs.Next()
+			assert.NoError(t, err)
+
+			var customerInRemoteStorage customer
+			err = cdoc.DataTo(&customerInRemoteStorage)
+			assert.NoError(t, err)
+
+			assert.NotNil(t, customerInRemoteStorage.Seller)
+
+			// Verify that the seller was set to the new seller
+			sdoc, err := customerInRemoteStorage.Seller.Get(ctx)
+			assert.NoError(t, err)
+
+			assert.Equal(t, newSeller.ID, sdoc.Ref.ID)
+		})
+	})
+
+	t.Run("BuyerIDFromCustomerName", func(t *testing.T) {
+		t.Run("customer not found", func(t *testing.T) {
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			assert.NoError(t, err)
+
+			defer func() {
+				err := cleanFireStore(ctx, fs.Client)
+				assert.NoError(t, err)
+			}()
+
+			buyerID, err := fs.BuyerIDFromCustomerName(ctx, "not found")
+			assert.Empty(t, buyerID)
+			assert.EqualError(t, err, "customer with reference not found not found")
+		})
+
+		t.Run("success", func(t *testing.T) {
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			assert.NoError(t, err)
+
+			defer func() {
+				err := cleanFireStore(ctx, fs.Client)
+				assert.NoError(t, err)
+			}()
+
+			buyer := routing.Buyer{
+				ID:   1,
+				Name: "customer",
+			}
+
+			err = fs.AddBuyer(ctx, buyer)
+			assert.NoError(t, err)
+
+			buyerID, err := fs.BuyerIDFromCustomerName(ctx, "customer")
+			assert.NoError(t, err)
+			assert.Equal(t, buyer.ID, buyerID)
+		})
+	})
+
+	t.Run("SellerIDFromCustomerName", func(t *testing.T) {
+		t.Run("customer not found", func(t *testing.T) {
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			assert.NoError(t, err)
+
+			defer func() {
+				err := cleanFireStore(ctx, fs.Client)
+				assert.NoError(t, err)
+			}()
+
+			buyerID, err := fs.SellerIDFromCustomerName(ctx, "not found")
+			assert.Empty(t, buyerID)
+			assert.EqualError(t, err, "customer with reference not found not found")
+		})
+
+		t.Run("success", func(t *testing.T) {
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			assert.NoError(t, err)
+
+			defer func() {
+				err := cleanFireStore(ctx, fs.Client)
+				assert.NoError(t, err)
+			}()
+
+			seller := routing.Seller{
+				ID:   "sellerID",
+				Name: "customer",
+			}
+
+			err = fs.AddSeller(ctx, seller)
+			assert.NoError(t, err)
+
+			sellerID, err := fs.SellerIDFromCustomerName(ctx, "customer")
+			assert.NoError(t, err)
+			assert.Equal(t, seller.ID, sellerID)
+		})
+	})
+
 	t.Run("Relay", func(t *testing.T) {
 		t.Run("relay not found", func(t *testing.T) {
 			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
@@ -1495,28 +1764,6 @@ func TestFirestore(t *testing.T) {
 
 		err = fs.AddSeller(ctx, expectedSeller)
 		assert.NoError(t, err)
-
-		// Need to inject a Customer above the Buyer and Seller since Sync requires the Customer exist to get the Domain
-		// This saves us from adding Customer(), AddCustomer(), RemoveCustomer() for now to get the portal working requiring
-		// the Buyer.ID based on Customer.Domain
-		{
-			snap, err := fs.Client.Collection("Buyer").Where("name", "==", "local").Documents(ctx).Next()
-			assert.NoError(t, err)
-			bdoc := snap.Ref
-
-			snap, err = fs.Client.Collection("Seller").Where("name", "==", "local").Documents(ctx).Next()
-			assert.NoError(t, err)
-			sdoc := snap.Ref
-
-			_, err = fs.Client.Collection("Customer").NewDoc().Create(ctx, map[string]interface{}{
-				"buyer":                 bdoc,
-				"seller":                sdoc,
-				"automaticSigninDomain": "example.com",
-				"name":                  "local",
-				"active":                true,
-			})
-			assert.NoError(t, err)
-		}
 
 		err = fs.AddDatacenter(ctx, expectedDatacenter)
 		assert.NoError(t, err)
