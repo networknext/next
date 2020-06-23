@@ -40,7 +40,44 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string) {
 
 		fmt.Println("Session ID:", sessionID)
 		fmt.Println("User Hash:", reply.Meta.UserHash)
-		fmt.Println("Current Route:")
+
+		fmt.Println()
+
+		fmt.Printf("Location: %s, %s\n", reply.Meta.Location.City, reply.Meta.Location.Region)
+
+		fmt.Println()
+
+		fmt.Println("Near Relays:")
+		for _, relay := range reply.Meta.NearbyRelays {
+			for _, r := range relaysreply.Relays {
+				if relay.ID == r.ID {
+					relay.Name = r.Name
+				}
+			}
+
+			fmt.Printf("\t%s: RTT(%.2f) Jitter(%.2f) PL(%.2f)\n", relay.Name, relay.ClientStats.RTT, relay.ClientStats.Jitter, relay.ClientStats.PacketLoss)
+		}
+
+		fmt.Println()
+
+		if len(reply.Slices) > 0 {
+			lastSlice := reply.Slices[len(reply.Slices)-1]
+			fmt.Println("Direct:")
+			fmt.Printf("\tRTT = %.2f\n", lastSlice.Direct.RTT)
+			fmt.Printf("\tJitter = %.2f\n", lastSlice.Direct.Jitter)
+			fmt.Printf("\tPL = %.2f\n", lastSlice.Direct.PacketLoss)
+
+			fmt.Println()
+
+			if reply.Meta.OnNetworkNext {
+				fmt.Println("Next:")
+				fmt.Printf("\tRTT = %.2f\n", lastSlice.Next.RTT)
+				fmt.Printf("\tJitter = %.2f\n", lastSlice.Next.Jitter)
+				fmt.Printf("\tPL = %.2f\n", lastSlice.Next.PacketLoss)
+			}
+		}
+
+		fmt.Println("Route:")
 		fmt.Printf("\t%s, %s (Client's Location)\n", reply.Meta.Location.City, reply.Meta.Location.Region)
 		for idx, hop := range reply.Meta.Hops {
 			for _, relay := range relaysreply.Relays {
