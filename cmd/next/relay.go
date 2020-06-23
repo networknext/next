@@ -101,14 +101,15 @@ type relayInfo struct {
 	version     string
 }
 
-func getRelayInfo(rpcClient jsonrpc.RPCClient, regex string) []relayInfo {
+func getRelayInfo(rpcClient jsonrpc.RPCClient, env Environment, regex string) []relayInfo {
 	args := localjsonrpc.RelaysArgs{
 		Regex: regex,
 	}
 
 	var reply localjsonrpc.RelaysReply
 	if err := rpcClient.CallFor(&reply, "OpsService.Relays", args); err != nil {
-		log.Fatal(err)
+		handleJSONRPCError(env, err)
+		return nil
 	}
 
 	relays := make([]relayInfo, len(reply.Relays))
@@ -133,12 +134,13 @@ func getRelayInfo(rpcClient jsonrpc.RPCClient, regex string) []relayInfo {
 	return relays
 }
 
-func getInfoForAllRelays(rpcClient jsonrpc.RPCClient) []relayInfo {
+func getInfoForAllRelays(rpcClient jsonrpc.RPCClient, env Environment) []relayInfo {
 	args := localjsonrpc.RelaysArgs{}
 
 	var reply localjsonrpc.RelaysReply
 	if err := rpcClient.CallFor(&reply, "OpsService.Relays", args); err != nil {
-		log.Fatal(err)
+		handleJSONRPCError(env, err)
+		return nil
 	}
 
 	if len(reply.Relays) == 0 {
@@ -213,7 +215,7 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 
 	updatedRelays := 0
 	for _, regex := range regexes {
-		relays := getRelayInfo(rpcClient, regex)
+		relays := getRelayInfo(rpcClient, env, regex)
 
 		if len(relays) == 0 {
 			log.Printf("no relays matched the regex '%s'\n", regex)
@@ -376,7 +378,7 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 
 func revertRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string) {
 	for _, regex := range regexes {
-		relays := getRelayInfo(rpcClient, regex)
+		relays := getRelayInfo(rpcClient, env, regex)
 		if len(relays) == 0 {
 			log.Printf("no relays matched the regex '%s'\n", regex)
 			continue
@@ -396,7 +398,7 @@ func revertRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 func enableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string) {
 	enabledRelays := 0
 	for _, regex := range regexes {
-		relays := getRelayInfo(rpcClient, regex)
+		relays := getRelayInfo(rpcClient, env, regex)
 		if len(relays) == 0 {
 			log.Printf("no relays matched the regex '%s'\n", regex)
 			continue
@@ -432,7 +434,7 @@ func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []strin
 	relaysDisabled := 0
 	testForSSHKey(env)
 	for _, regex := range regexes {
-		relays := getRelayInfo(rpcClient, regex)
+		relays := getRelayInfo(rpcClient, env, regex)
 		if len(relays) == 0 {
 			log.Printf("no relays matched the regex '%s'\n", regex)
 			continue
@@ -464,8 +466,8 @@ func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []strin
 	return success
 }
 
-func setRelayNIC(rpcClient jsonrpc.RPCClient, relayName string, nicSpeed uint64) {
-	relays := getRelayInfo(rpcClient, relayName)
+func setRelayNIC(rpcClient jsonrpc.RPCClient, env Environment, relayName string, nicSpeed uint64) {
+	relays := getRelayInfo(rpcClient, env, relayName)
 
 	if len(relays) == 0 {
 		log.Fatalf("no relays matched the name '%s'\n", relayName)
@@ -491,14 +493,14 @@ func setRelayNIC(rpcClient jsonrpc.RPCClient, relayName string, nicSpeed uint64)
 	fmt.Printf("NIC speed set for %s\n", info.name)
 }
 
-func setRelayState(rpcClient jsonrpc.RPCClient, stateString string, regexes []string) {
+func setRelayState(rpcClient jsonrpc.RPCClient, env Environment, stateString string, regexes []string) {
 	state, err := routing.ParseRelayState(stateString)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	for _, regex := range regexes {
-		relays := getRelayInfo(rpcClient, regex)
+		relays := getRelayInfo(rpcClient, env, regex)
 
 		if len(relays) == 0 {
 			log.Printf("no relay matched the regex '%s'\n", regex)

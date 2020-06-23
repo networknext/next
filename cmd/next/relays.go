@@ -128,7 +128,7 @@ func addRelay(rpcClient jsonrpc.RPCClient, env Environment, relay routing.Relay)
 }
 
 func removeRelay(rpcClient jsonrpc.RPCClient, env Environment, name string) {
-	relays := getRelayInfo(rpcClient, name)
+	relays := getRelayInfo(rpcClient, env, name)
 
 	if len(relays) == 0 {
 		log.Fatalf("no relays matched the name '%s'\n", name)

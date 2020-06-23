@@ -672,7 +672,7 @@ func main() {
 						ShortUsage: "next relay keys <relay name>",
 						ShortHelp:  "Show the public keys for the relay",
 						Exec: func(ctx context.Context, args []string) error {
-							relays := getRelayInfo(rpcClient, args[0])
+							relays := getRelayInfo(rpcClient, env, args[0])
 
 							if len(relays) == 0 {
 								log.Fatalf("no relays matched the name '%s'\n", args[0])
@@ -765,7 +765,7 @@ func main() {
 								log.Fatalf("Unable to parse %s as uint64", args[1])
 							}
 
-							setRelayNIC(rpcClient, args[0], nicSpeed)
+							setRelayNIC(rpcClient, env, args[0], nicSpeed)
 
 							return nil
 						},
@@ -784,7 +784,7 @@ func main() {
 								log.Fatal("You need to supply at least one relay name regex")
 							}
 
-							setRelayState(rpcClient, args[0], args[1:])
+							setRelayState(rpcClient, env, args[0], args[1:])
 							return nil
 						},
 					},
