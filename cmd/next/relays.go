@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/modood/table"
@@ -12,7 +13,16 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
-func relays(rpcClient jsonrpc.RPCClient, env Environment, regex string, relaysStateShowFlags [6]bool, relaysStateHideFlags [6]bool, relaysDownFlag bool) {
+func relays(
+	rpcClient jsonrpc.RPCClient,
+	env Environment,
+	regex string,
+	relaysStateShowFlags [6]bool,
+	relaysStateHideFlags [6]bool,
+	relaysDownFlag bool,
+	relaysListFlag bool,
+	csvOutputFlag bool,
+) {
 	args := localjsonrpc.RelaysArgs{
 		Regex: regex,
 	}
@@ -110,7 +120,25 @@ func relays(rpcClient jsonrpc.RPCClient, env Environment, regex string, relaysSt
 		})
 	}
 
+	if relaysListFlag {
+		if csvOutputFlag {
+			// return names list csv
+			return
+		}
+		// return space separated list of strings
+		relayNames := []string{}
+		for _, relay := range relays {
+			relayNames = append(relayNames, relay.Name)
+
+		}
+		fmt.Println(strings.Join(relayNames, " "))
+		return
+	} else if csvOutputFlag {
+		// return csv file of structs
+	}
+
 	table.Output(relays)
+
 }
 
 func addRelay(rpcClient jsonrpc.RPCClient, env Environment, relay routing.Relay) {

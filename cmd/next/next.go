@@ -392,6 +392,15 @@ func main() {
 	var relaysAllFlag bool
 	relaysfs.BoolVar(&relaysAllFlag, "all", false, "show all relays")
 
+	// -list and -csv should work with all other flags
+	// Show only a list or relay names
+	var relaysListFlag bool
+	relaysfs.BoolVar(&relaysListFlag, "list", false, "show list of names")
+
+	// Return a CSV file instead of a table
+	var csvOutputFlag bool
+	relaysfs.BoolVar(&csvOutputFlag, "csv", false, "return a CSV file")
+
 	root := &ffcli.Command{
 		ShortUsage: "next <subcommand>",
 		Subcommands: []*ffcli.Command{
@@ -547,10 +556,10 @@ func main() {
 					}
 
 					if len(args) > 0 {
-						relays(rpcClient, env, args[0], relaysStateShowFlags, relaysStateHideFlags, relaysDownFlag)
+						relays(rpcClient, env, args[0], relaysStateShowFlags, relaysStateHideFlags, relaysDownFlag, relaysListFlag, csvOutputFlag)
 						return nil
 					}
-					relays(rpcClient, env, "", relaysStateShowFlags, relaysStateHideFlags, relaysDownFlag)
+					relays(rpcClient, env, "", relaysStateShowFlags, relaysStateHideFlags, relaysDownFlag, relaysListFlag, csvOutputFlag)
 					return nil
 				},
 			},
