@@ -395,20 +395,37 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 
 	if args.Regex != "" {
 		var filtered []relay
-		for idx := range reply.Relays {
-			if match, err := regexp.Match(args.Regex, []byte(reply.Relays[idx].Name)); match && err == nil {
-				filtered = append(filtered, reply.Relays[idx])
-				continue
-			} else if err != nil {
-				return err
-			}
+		found := false
 
-			if match, err := regexp.Match(args.Regex, []byte(reply.Relays[idx].SellerName)); match && err == nil {
-				filtered = append(filtered, reply.Relays[idx])
-			} else if err != nil {
-				return err
+		// first check for an exact match
+		for idx := range reply.Relays {
+			relay := &reply.Relays[idx]
+			if relay.Name == args.Regex {
+				filtered = append(filtered, *relay)
+				found = true
+				break
 			}
 		}
+
+		// otherwise check for regex matches
+		if !found {
+			for idx := range reply.Relays {
+				relay := &reply.Relays[idx]
+				if match, err := regexp.Match(args.Regex, []byte(relay.Name)); match && err == nil {
+					filtered = append(filtered, *relay)
+					continue
+				} else if err != nil {
+					return err
+				}
+
+				if match, err := regexp.Match(args.Regex, []byte(relay.SellerName)); match && err == nil {
+					filtered = append(filtered, *relay)
+				} else if err != nil {
+					return err
+				}
+			}
+		}
+
 		reply.Relays = filtered
 	}
 

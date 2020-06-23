@@ -95,6 +95,7 @@ func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayH
 			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
+		defer request.Body.Close()
 
 		// Unmarshal the request packet
 		var relayRequest RelayRequest
@@ -429,7 +430,6 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
-
 		defer request.Body.Close()
 
 		var relayInitRequest RelayInitRequest
@@ -595,7 +595,6 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			writer.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-
 		defer request.Body.Close()
 
 		locallogger := log.With(handlerLogger, "req_addr", request.RemoteAddr)
@@ -877,7 +876,25 @@ func statsTable(stats map[string]map[string]routing.Stats) template.HTML {
 				continue
 			}
 
-			html.WriteString("<td>" + stats[a][b].String() + "</td>")
+			RTT := stats[a][b].RTT
+			Jitter := stats[a][b].Jitter
+			PacketLoss := stats[a][b].PacketLoss
+
+			packetLossStyle := "</div><div>"
+			jitterStyle := "</div><div>"
+
+			if Jitter > 10 {
+				jitterStyle = "</div><div style='color: red;'>"
+			}
+			if PacketLoss > .001 {
+				packetLossStyle = "</div><div style='color: red;'>"
+			}
+
+			html.WriteString("<td><div>" +
+				fmt.Sprintf("RTT(%.0f)", RTT) + jitterStyle +
+				fmt.Sprintf("Jitter(%.2f)", Jitter) + packetLossStyle +
+				fmt.Sprintf("PacketLoss(%.2f)", PacketLoss) + "</div></td>")
+
 		}
 
 		html.WriteString("</tr>")
@@ -936,7 +953,7 @@ func RelayDashboardHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.R
 						<td>{{ .Name }}</td>
 						<td>{{ .Addr }}</td>
 						<td>{{ .Datacenter.Name }}</td>
-						<td>{{ .Datacenter.Location.Latitude }} / {{ .Datacenter.Location.Longitude }}</td>
+						<td>{{ printf "%.2f" .Datacenter.Location.Latitude }} / {{ printf "%.2f" .Datacenter.Location.Longitude }}</td>
 					</tr>
 					{{ end }}
 				</table>
@@ -948,6 +965,7 @@ func RelayDashboardHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.R
 	`))
 
 	return func(writer http.ResponseWriter, request *http.Request) {
+		defer request.Body.Close()
 		writer.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
 
 		u, p, _ := request.BasicAuth()
@@ -1022,6 +1040,7 @@ func RelayDashboardHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.R
 
 func RoutesHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.RouteMatrix, statsdb *routing.StatsDatabase, username string, password string) func(writer http.ResponseWriter, request *http.Request) {
 	return func(writer http.ResponseWriter, request *http.Request) {
+		defer request.Body.Close()
 		writer.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
 
 		u, p, _ := request.BasicAuth()
