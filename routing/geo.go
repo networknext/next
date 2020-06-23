@@ -164,19 +164,19 @@ type MaxmindDB struct {
 
 func (mmdb *MaxmindDB) SyncLoop(ctx context.Context, c <-chan time.Time) error {
 	for {
-		mmdb.mu.Lock()
 		select {
 		case <-c:
+			mmdb.mu.Lock()
 			if err := mmdb.OpenCity(ctx, mmdb.httpClient, mmdb.cityURI); err != nil {
 				return err
 			}
 			if err := mmdb.OpenISP(ctx, mmdb.httpClient, mmdb.ispURI); err != nil {
 				return err
 			}
+			mmdb.mu.Unlock()
 		case <-ctx.Done():
 			return nil
 		}
-		mmdb.mu.Unlock()
 	}
 }
 
