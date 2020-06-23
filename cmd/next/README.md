@@ -143,15 +143,20 @@ To Update a relay: `next relay update [regex...]`
 
 The tool will perform several actions to update relays matching the supplied regex(s).
 
-Before updating make sure you have the desired environment set via the [relay env](#Env) setting.
+If no arguments are supplied the tool will update relays whose state is enabled and version is not the latest.
 
-Also if any updates fail throughout the process the program will quit and not continue to the next.
+Before updating make sure you have the desired environment set via the [relay env](#Env) setting.
 
 For each matching relay the tool will:
 - download the latest version from the GCP bucket and untar it in the `dist` directory.
 - disable the relay using the [disable](#Disable) functionality.
 - generate a new set of public and private keys for the relay and set them both in the relay's environment file and publish the changes to Firestore as well.
 - update the state of the relay to offline, much the same way the [enable](#Enable) command does it. Once the relay initializes with the backend the state will change to enabled.
+
+#### Flags
+
+`--cores`: Specify the number of cpu cores the relay should use. Typically set to half for VMs.
+`--force`: Force the relay update regardless if the version is already the latest.
 
 ### Revert
 

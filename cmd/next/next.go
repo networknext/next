@@ -356,9 +356,13 @@ func main() {
 	routesfs.Float64Var(&routeRTT, "rtt", 5, "route RTT required for selection")
 	routesfs.Uint64Var(&routeHash, "hash", 0, "a previous hash to use")
 
-	var relayCoreCount uint64
 	relayupdatefs := flag.NewFlagSet("relay update", flag.ExitOnError)
+
+	var relayCoreCount uint64
 	relayupdatefs.Uint64Var(&relayCoreCount, "cores", 0, "number of cores for the relay to utilize")
+
+	var forceUpdate bool
+	relayupdatefs.BoolVar(&forceUpdate, "force", false, "force the relay update regardless of the version")
 
 	relaysfs := flag.NewFlagSet("relays state", flag.ExitOnError)
 
@@ -685,12 +689,12 @@ func main() {
 						ShortHelp:  "Update the specified relay(s)",
 						FlagSet:    relayupdatefs,
 						Exec: func(ctx context.Context, args []string) error {
-							regexes := []string{".*"}
+							var regexes []string
 							if len(args) > 0 {
 								regexes = args
 							}
 
-							updateRelays(env, rpcClient, regexes, relayCoreCount)
+							updateRelays(env, rpcClient, regexes, relayCoreCount, forceUpdate)
 
 							return nil
 						},
