@@ -876,7 +876,25 @@ func statsTable(stats map[string]map[string]routing.Stats) template.HTML {
 				continue
 			}
 
-			html.WriteString("<td>" + stats[a][b].String() + "</td>")
+			RTT := stats[a][b].RTT
+			Jitter := stats[a][b].Jitter
+			PacketLoss := stats[a][b].PacketLoss
+
+			packetLossStyle := "</div><div>"
+			jitterStyle := "</div><div>"
+
+			if Jitter > 10 {
+				jitterStyle = "</div><div style='color: red;'>"
+			}
+			if PacketLoss > .001 {
+				packetLossStyle = "</div><div style='color: red;'>"
+			}
+
+			html.WriteString("<td><div>" +
+				fmt.Sprintf("RTT(%.0f)", RTT) + jitterStyle +
+				fmt.Sprintf("Jitter(%.2f)", Jitter) + packetLossStyle +
+				fmt.Sprintf("PacketLoss(%.2f)", PacketLoss) + "</div></td>")
+
 		}
 
 		html.WriteString("</tr>")
@@ -935,7 +953,7 @@ func RelayDashboardHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.R
 						<td>{{ .Name }}</td>
 						<td>{{ .Addr }}</td>
 						<td>{{ .Datacenter.Name }}</td>
-						<td>{{ .Datacenter.Location.Latitude }} / {{ .Datacenter.Location.Longitude }}</td>
+						<td>{{ printf "%.2f" .Datacenter.Location.Latitude }} / {{ printf "%.2f" .Datacenter.Location.Longitude }}</td>
 					</tr>
 					{{ end }}
 				</table>
