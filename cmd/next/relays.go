@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/csv"
 	"fmt"
 	"log"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -47,6 +49,8 @@ func relays(
 		Version     string
 		LastUpdated string
 	}{}
+
+	relaysCSV := [][]string{{}}
 
 	for _, relay := range reply.Relays {
 		relayState, err := routing.ParseRelayState(relay.State)
@@ -99,33 +103,69 @@ func relays(
 
 		address := relay.Addr
 
-		relays = append(relays, struct {
-			Name        string
-			Address     string
-			State       string
-			Sessions    string
-			Tx          string
-			Rx          string
-			Version     string
-			LastUpdated string
-		}{
-			Name:        relay.Name,
-			Address:     address,
-			State:       relay.State,
-			Sessions:    fmt.Sprintf("%d", relay.SessionCount),
-			Tx:          tx,
-			Rx:          rx,
-			Version:     relay.Version,
-			LastUpdated: lastUpdated,
-		})
+		// return csv file
+		if csvOutputFlag {
+
+			if relaysListFlag {
+				relaysCSV = append(relaysCSV, []string{
+					relay.Name,
+				})
+			} else {
+				relaysCSV = append(relaysCSV, []string{
+					relay.Name,
+					address,
+					relay.State,
+					fmt.Sprintf("%d", relay.SessionCount),
+					tx,
+					rx,
+					relay.Version,
+					lastUpdated,
+				})
+			}
+		} else {
+			relays = append(relays, struct {
+				Name        string
+				Address     string
+				State       string
+				Sessions    string
+				Tx          string
+				Rx          string
+				Version     string
+				LastUpdated string
+			}{
+				Name:        relay.Name,
+				Address:     address,
+				State:       relay.State,
+				Sessions:    fmt.Sprintf("%d", relay.SessionCount),
+				Tx:          tx,
+				Rx:          rx,
+				Version:     relay.Version,
+				LastUpdated: lastUpdated,
+			})
+		}
+
+	}
+
+	if csvOutputFlag {
+		// return csv file of structs
+		// fileName := "./relays-" + strconv.FormatInt(time.Now().Unix(), 10) + ".csv"
+		fileName := "./relays.csv"
+		f, err := os.Create(fileName)
+		if err != nil {
+			fmt.Printf("Error creating local CSV file %s: %v\n", fileName, err)
+			return
+		}
+
+		writer := csv.NewWriter(f)
+		err = writer.WriteAll(relaysCSV)
+		if err != nil {
+			fmt.Printf("Error writing local CSV file %s: %v\n", fileName, err)
+		}
+		fmt.Println("CSV file written: relays.csv")
+		return
 	}
 
 	if relaysListFlag {
-		if csvOutputFlag {
-			// return names list csv
-			return
-		}
-		// return space separated list of strings
 		relayNames := []string{}
 		for _, relay := range relays {
 			relayNames = append(relayNames, relay.Name)
@@ -133,8 +173,6 @@ func relays(
 		}
 		fmt.Println(strings.Join(relayNames, " "))
 		return
-	} else if csvOutputFlag {
-		// return csv file of structs
 	}
 
 	table.Output(relays)
