@@ -82,10 +82,6 @@ func optimizeCostMatrix(costFilename, routeFilename string, rtt int32) {
 		log.Fatalln(fmt.Errorf("error reading cost matrix: %w", err))
 	}
 
-	if err != nil {
-		log.Fatalln("failed to create optimize metrics: %w", err)
-	}
-
 	var routeMatrix routing.RouteMatrix
 	if err := costMatrix.Optimize(&routeMatrix, rtt); err != nil {
 		log.Fatalln(fmt.Errorf("error optimizing cost matrix: %w", err))
