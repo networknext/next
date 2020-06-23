@@ -219,27 +219,13 @@ MapHandler = {
 				let direct = sessions.filter((point) => {
 					return (point[2] == 0);
 				});
-				let data = [];
-
-				switch (filter.sessionType) {
-					case 'direct':
-						data = direct;
-						break;
-					case 'nn':
-						data = onNN;
-						break;
-					default:
-						data = sessions;
-				}
 
 				const cellSize = 10, aggregation = 'MEAN';
 				let gpuAggregation = navigator.appVersion.indexOf("Win") == -1;
 
-				data = onNN;
-
 				let nnLayer = new deck.ScreenGridLayer({
 					id: 'nn-layer',
-					data,
+					data: onNN,
 					opacity: 0.8,
 					getPosition: d => [d[0], d[1]],
 					getWeight: d => 1,
@@ -251,11 +237,9 @@ MapHandler = {
 					aggregation
 				});
 
-				data = direct;
-
 				let directLayer = new deck.ScreenGridLayer({
 					id: 'direct-layer',
-					data,
+					data: direct,
 					opacity: 0.8,
 					getPosition: d => [d[0], d[1]],
 					getWeight: d => 1,
@@ -688,9 +672,6 @@ WorkspaceHandler = {
 				Sentry.captureException(e);
 			});
 	},
-	loadUsersPage() {
-		// No Endpoint for this yet
-	},
 	updateSessionFilter(filter) {
 		Object.assign(rootComponent.$data.pages.sessions, {filter: filter});
 	},
@@ -702,28 +683,27 @@ WorkspaceHandler = {
 				.call('BuyersService.TopSessions', {buyer_id: filter.buyerId})
 				.then((response) => {
 					let sessions = response.sessions;
-					let onNN = sessions.filter((point) => {
-						return point.on_network_next;
-					});
-					let direct = sessions.filter((point) => {
-						return !point.on_network_next;
-					});
 
-					switch (filter.sessionType) {
-						case 'direct':
-							data = direct;
-							break;
-						case 'nn':
-							data = onNN;
-							break;
-						default:
-							data = sessions;
-					}
+					sessions.sort((a, b) => {
+						if (a.on_network_next && b.on_network_next) {
+							return a.delta_rtt > b.delta_rtt
+						}
+						if (a.on_network_next && !b.on_network_next) {
+							return 1
+						}
+						if (!a.on_network_next && !b.on_network_next) {
+							return a.delta_rtt < b.delta_rtt
+						}
+						if (!a.on_network_next && b.on_network_next) {
+							return -1
+						}
+						return 0
+					})
 					/**
 					 * I really dislike this but it is apparently the way to reload/update the data within a vue
 					 */
 					Object.assign(rootComponent.$data.pages.sessions, {
-						sessions: data,
+						sessions: sessions,
 						showTable: true,
 					});
 				})
