@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -13,6 +14,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/go-redis/redis/v7"
 	jsoniter "github.com/json-iterator/go"
@@ -38,13 +41,15 @@ type IPLocator interface {
 
 // Location represents a lat/long on Earth with additional metadata
 type Location struct {
-	Continent string  `json:"continent"`
-	Country   string  `json:"country"`
-	Region    string  `json:"region"`
-	City      string  `json:"city"`
-	Latitude  float64 `json:"latitude"`
-	Longitude float64 `json:"longitude"`
-	ISP       string  `json:"isp"`
+	Continent   string  `json:"continent"`
+	Country     string  `json:"country"`
+	CountryCode string  `json:"country_code"`
+	Region      string  `json:"region"`
+	City        string  `json:"city"`
+	Latitude    float64 `json:"latitude"`
+	Longitude   float64 `json:"longitude"`
+	ISP         string  `json:"isp"`
+	ASN         int     `json:"asn"`
 }
 
 func (l *Location) UnmarshalBinary(data []byte) error {
@@ -146,11 +151,62 @@ func (ips *IPStack) LocateIP(ip net.IP) (Location, error) {
 
 // MaxmindDB embeds the unofficial MaxmindDB reader so we can satisfy the IPLocator interface
 type MaxmindDB struct {
-	CityReader *geoip2.Reader
-	ISPReader  *geoip2.Reader
+	mu sync.RWMutex
+
+	httpClient *http.Client
+
+	cityReader *geoip2.Reader
+	cityURI    string
+
+	ispReader *geoip2.Reader
+	ispURI    string
 }
 
-func NewMaxmindReader(httpClient *http.Client, uri string) (*geoip2.Reader, error) {
+func (mmdb *MaxmindDB) SyncLoop(ctx context.Context, c <-chan time.Time) error {
+	for {
+		mmdb.mu.Lock()
+		select {
+		case <-c:
+			if err := mmdb.OpenCity(ctx, mmdb.httpClient, mmdb.cityURI); err != nil {
+				return err
+			}
+			if err := mmdb.OpenISP(ctx, mmdb.httpClient, mmdb.ispURI); err != nil {
+				return err
+			}
+		case <-ctx.Done():
+			return nil
+		}
+		mmdb.mu.Unlock()
+	}
+}
+
+func (mmdb *MaxmindDB) OpenCity(ctx context.Context, httpClient *http.Client, uri string) error {
+	reader, err := mmdb.openMaxmindDB(ctx, httpClient, uri)
+	if err != nil {
+		return err
+	}
+	mmdb.cityReader = reader
+	mmdb.cityURI = uri
+	mmdb.httpClient = httpClient
+
+	return nil
+}
+
+func (mmdb *MaxmindDB) OpenISP(ctx context.Context, httpClient *http.Client, uri string) error {
+	reader, err := mmdb.openMaxmindDB(ctx, httpClient, uri)
+	if err != nil {
+		return err
+	}
+	mmdb.ispReader = reader
+	mmdb.ispURI = uri
+	mmdb.httpClient = httpClient
+
+	return nil
+}
+
+func (mmdb *MaxmindDB) openMaxmindDB(ctx context.Context, httpClient *http.Client, uri string) (*geoip2.Reader, error) {
+	var err error
+
 	// If there is a local file at this uri then just open it
 	if _, err := os.Stat(uri); err == nil {
 		return geoip2.Open(uri)
@@ -197,10 +253,13 @@ func NewMaxmindReader(httpClient *http.Client, uri string) (*geoip2.Reader, erro
 
 // LocateIP queries the Maxmind geoip2.Reader for the net.IP and parses the response into a routing.Location
 func (mmdb *MaxmindDB) LocateIP(ip net.IP) (Location, error) {
-	if mmdb.CityReader == nil {
+	mmdb.mu.RLock()
+	defer mmdb.mu.RUnlock()
+
+	if mmdb.cityReader == nil {
 		return Location{}, errors.New("not configured with a Maxmind City DB")
 	}
-	if mmdb.ISPReader == nil {
+	if mmdb.ispReader == nil {
 		return Location{}, errors.New("not configured with a Maxmind ISP DB")
 	}
 
@@ -208,7 +267,7 @@ func (mmdb *MaxmindDB) LocateIP(ip net.IP) (Location, error) {
 		return LocationNullIsland, nil
 	}
 
-	cityres, err := mmdb.CityReader.City(ip)
+	cityres, err := mmdb.cityReader.City(ip)
 	if err != nil {
 		return Location{}, err
 	}
@@ -221,6 +280,10 @@ func (mmdb *MaxmindDB) LocateIP(ip net.IP) (Location, error) {
 	if val, ok := cityres.Country.Names["en"]; ok {
 		country = val
 	}
+	countryCode := "unknown"
+	if cityres.Country.IsoCode != "" {
+		countryCode = cityres.Country.IsoCode
+	}
 	region := "unknown"
 	if len(cityres.Subdivisions) > 0 {
 		if val, ok := cityres.Subdivisions[0].Names["en"]; ok {
@@ -232,19 +295,21 @@ func (mmdb *MaxmindDB) LocateIP(ip net.IP) (Location, error) {
 		city = val
 	}
 
-	ispres, err := mmdb.ISPReader.ISP(ip)
+	ispres, err := mmdb.ispReader.ISP(ip)
 	if err != nil {
 		return Location{}, err
 	}
 
 	return Location{
-		Continent: continent,
-		Country:   country,
-		Region:    region,
-		City:      city,
-		Latitude:  cityres.Location.Latitude,
-		Longitude: cityres.Location.Longitude,
-		ISP:       ispres.ISP,
+		Continent:   continent,
+		CountryCode: countryCode,
+		Country:     country,
+		Region:      region,
+		City:        city,
+		Latitude:    cityres.Location.Latitude,
+		Longitude:   cityres.Location.Longitude,
+		ISP:         ispres.ISP,
+		ASN:         int(ispres.AutonomousSystemNumber),
 	}, nil
 }
 

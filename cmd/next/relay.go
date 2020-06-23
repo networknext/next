@@ -21,6 +21,7 @@ import (
 )
 
 const (
+	LatestRelayVersion   = "1.0.2"
 	MinimumUbuntuVersion = 18
 
 	// DisableRelayScript is the bash script used to disable relays
@@ -96,6 +97,8 @@ type relayInfo struct {
 	updateKey   string
 	nicSpeed    string
 	firestoreID string
+	state       string
+	version     string
 }
 
 func getRelayInfo(rpcClient jsonrpc.RPCClient, regex string) []relayInfo {
@@ -122,6 +125,8 @@ func getRelayInfo(rpcClient jsonrpc.RPCClient, regex string) []relayInfo {
 			updateKey:   r.UpdateKey,
 			nicSpeed:    fmt.Sprintf("%d", r.NICSpeedMbps),
 			firestoreID: r.FirestoreID,
+			state:       r.State,
+			version:     r.Version,
 		}
 	}
 
@@ -170,7 +175,7 @@ func updateRelayState(rpcClient jsonrpc.RPCClient, info relayInfo, state routing
 	return true
 }
 
-func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string, coreCount uint64) {
+func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string, coreCount uint64, force bool) {
 	// Fetch and save the latest binary
 	url, err := env.RelayArtifactURL()
 	if err != nil {
@@ -199,6 +204,13 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 		log.Fatalln("failed to untar relay")
 	}
 
+	doAllEnabled := false
+
+	if regexes == nil {
+		doAllEnabled = true
+		regexes = []string{".*"}
+	}
+
 	updatedRelays := 0
 	for _, regex := range regexes {
 		relays := getRelayInfo(rpcClient, regex)
@@ -208,7 +220,16 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 			continue
 		}
 
+		updates := 0
 		for _, relay := range relays {
+			if doAllEnabled && relay.state != "enabled" {
+				continue
+			}
+
+			if !force && relay.version == LatestRelayVersion {
+				continue
+			}
+
 			fmt.Printf("Updating %s\n", relay.name)
 
 			// validate ubuntu version
@@ -328,22 +349,29 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 				continue
 			}
 
-			updatedRelays++
+			updates++
 		}
 
-		fmt.Printf("finished updating relays matching '%s'\n", regex)
+		if updates > 0 {
+			updatedRelays += updates
+			fmt.Printf("finished updating relays matching '%s'\n", regex)
+		}
 	}
 
-	// Give the portal enough time to pull down the new state so that
-	// the relay state doesn't appear incorrectly
-	fmt.Println("Waiting for portal to sync changes...")
-	time.Sleep(11 * time.Second)
+	if updatedRelays > 0 {
+		// Give the portal enough time to pull down the new state so that
+		// the relay state doesn't appear incorrectly
+		fmt.Println("Waiting for portal to sync changes...")
+		time.Sleep(11 * time.Second)
 
-	str := "Updates"
-	if updatedRelays == 1 {
-		str = "Update"
+		str := "Updates"
+		if updatedRelays == 1 {
+			str = "Update"
+		}
+		fmt.Printf("%s complete\n", str)
+	} else {
+		fmt.Println("No relays need to be updated")
 	}
-	fmt.Printf("%s complete\n", str)
 }
 
 func revertRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string) {

@@ -272,7 +272,7 @@ From the root of the project you can run `docker-compose` and specify the config
 $ docker-compose -f ./cmd/docker-compose.yaml up
 ```
 
-### Second, Third, Forth, and N Times
+### Second, Third, Fourth, and N Times
 
 After all of the `Dockerfile`s have been built subsequent runs of `docker-compose up` will ONLY run them. If you make changes to any of the code you need to rebuild all of the services.
 

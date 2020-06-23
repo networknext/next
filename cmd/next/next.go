@@ -356,9 +356,13 @@ func main() {
 	routesfs.Float64Var(&routeRTT, "rtt", 5, "route RTT required for selection")
 	routesfs.Uint64Var(&routeHash, "hash", 0, "a previous hash to use")
 
-	var relayCoreCount uint64
 	relayupdatefs := flag.NewFlagSet("relay update", flag.ExitOnError)
+
+	var relayCoreCount uint64
 	relayupdatefs.Uint64Var(&relayCoreCount, "cores", 0, "number of cores for the relay to utilize")
+
+	var forceUpdate bool
+	relayupdatefs.BoolVar(&forceUpdate, "force", false, "force the relay update regardless of the version")
 
 	relaysfs := flag.NewFlagSet("relays state", flag.ExitOnError)
 
@@ -625,6 +629,9 @@ func main() {
 				Name:       "relay",
 				ShortUsage: "next relay <subcommand>",
 				ShortHelp:  "Manage relays",
+				Exec: func(_ context.Context, args []string) error {
+					return flag.ErrHelp
+				},
 				Subcommands: []*ffcli.Command{
 					{
 						Name:       "check",
@@ -685,12 +692,12 @@ func main() {
 						ShortHelp:  "Update the specified relay(s)",
 						FlagSet:    relayupdatefs,
 						Exec: func(ctx context.Context, args []string) error {
-							regexes := []string{".*"}
+							var regexes []string
 							if len(args) > 0 {
 								regexes = args
 							}
 
-							updateRelays(env, rpcClient, regexes, relayCoreCount)
+							updateRelays(env, rpcClient, regexes, relayCoreCount, forceUpdate)
 
 							return nil
 						},
@@ -877,15 +884,10 @@ func main() {
 			},
 			{
 				Name:       "datacenter",
-				ShortUsage: "next datacenter <name>",
+				ShortUsage: "next datacenter <subcommand>",
 				ShortHelp:  "Manage datacenters",
 				Exec: func(_ context.Context, args []string) error {
-					if len(args) > 0 {
-						datacenters(rpcClient, env, args[0])
-						return nil
-					}
-					datacenters(rpcClient, env, "")
-					return nil
+					return flag.ErrHelp
 				},
 				Subcommands: []*ffcli.Command{
 					{
@@ -954,11 +956,10 @@ func main() {
 			},
 			{
 				Name:       "buyer",
-				ShortUsage: "next buyer",
+				ShortUsage: "next buyer <subcommand>",
 				ShortHelp:  "Manage buyers",
 				Exec: func(_ context.Context, args []string) error {
-					buyers(rpcClient, env)
-					return nil
+					return flag.ErrHelp
 				},
 				Subcommands: []*ffcli.Command{
 					{
@@ -1041,8 +1042,11 @@ func main() {
 			},
 			{
 				Name:       "seller",
-				ShortUsage: "next sellers",
+				ShortUsage: "next seller <subcommand>",
 				ShortHelp:  "Manage sellers",
+				Exec: func(_ context.Context, args []string) error {
+					return flag.ErrHelp
+				},
 				Subcommands: []*ffcli.Command{
 					{
 						Name:       "add",
@@ -1159,12 +1163,62 @@ func main() {
 				},
 			},
 			{
-				Name:       "dataflow",
-				ShortUsage: "next dataflow",
-				ShortHelp:  "Manage dataflow",
+				Name:       "customer",
+				ShortUsage: "next customer <subcommand>",
+				ShortHelp:  "Manage customers",
 				Exec: func(ctx context.Context, args []string) error {
-					dataflow(env)
-					return nil
+					return flag.ErrHelp
+				},
+				Subcommands: []*ffcli.Command{
+					{
+						Name:       "link",
+						ShortUsage: "next customer link <subcommand>",
+						ShortHelp:  "Edit customer links",
+						Exec: func(ctx context.Context, args []string) error {
+							return flag.ErrHelp
+						},
+						Subcommands: []*ffcli.Command{
+							{
+								Name:       "buyer",
+								ShortUsage: "next customer link buyer <customer name> <new buyer ID>",
+								ShortHelp:  "Edit what buyer this customer is linked to",
+								Exec: func(ctx context.Context, args []string) error {
+									if len(args) == 0 {
+										log.Fatal("You need to provide a customer name")
+									}
+
+									if len(args) == 1 {
+										log.Fatal("You need to provide a new buyer ID for the customer to link to")
+									}
+
+									buyerID, err := strconv.ParseUint(args[1], 10, 64)
+									if err != nil {
+										log.Fatalf("Could not parse %s as an unsigned 64-bit integer", args[1])
+									}
+
+									customerLink(rpcClient, env, args[0], buyerID, "")
+									return nil
+								},
+							},
+							{
+								Name:       "seller",
+								ShortUsage: "next customer link seller <customer name> <new seller ID>",
+								ShortHelp:  "Edit what seller this customer is linked to",
+								Exec: func(ctx context.Context, args []string) error {
+									if len(args) == 0 {
+										log.Fatal("You need to provide a customer name")
+									}
+
+									if len(args) == 1 {
+										log.Fatal("You need to provide a new seller ID for the customer to link to")
+									}
+
+									customerLink(rpcClient, env, args[0], 0, args[1])
+									return nil
+								},
+							},
+						},
+					},
 				},
 			},
 			{
@@ -1280,15 +1334,24 @@ func main() {
 		},
 		Exec: func(context.Context, []string) error {
 			fmt.Printf("Network Next Operator Tool\n\n")
-			return flag.ErrHelp
+			return nil
 		},
 	}
 
 	fmt.Printf("\n")
 
-	if err := root.ParseAndRun(context.Background(), os.Args[1:]); err != nil {
+	args := os.Args[1:]
+	if len(args) == 0 || args[0] == "-h" || args[0] == "-help" || args[0] == "--h" || args[0] == "--help" {
+		args = []string{}
+	}
+
+	if err := root.ParseAndRun(context.Background(), args); err != nil {
 		fmt.Printf("\n")
 		log.Fatal(err)
+	}
+
+	if len(args) == 0 {
+		root.FlagSet.Usage()
 	}
 
 	fmt.Printf("\n")
