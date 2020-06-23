@@ -37,14 +37,12 @@ func (bq *GoogleBigQueryClient) WriteLoop(ctx context.Context) error {
 	}
 
 	for entry := range bq.entries {
-		if len(bq.buffer) == bq.BatchSize {
-			if err := bq.TableInserter.Put(ctx, entry); err != nil {
+		if len(bq.buffer) >= bq.BatchSize {
 				level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)
 			}
+			level.Info(bq.Logger).Log("msg", "flushed entries to BigQuery", "size", bq.BatchSize, "total", len(bq.buffer))
 
 			bq.buffer = bq.buffer[:0]
-
-			level.Info(bq.Logger).Log("msg", "flushed entries to BigQuery", "size", bq.BatchSize)
 		}
 
 		bq.buffer = append(bq.buffer, entry)
