@@ -221,12 +221,17 @@ func (database *StatsDatabase) GetSample(relay1, relay2 uint64) (float32, float3
 }
 
 // GetCostMatrix returns the cost matrix composed of all current information
-func (database *StatsDatabase) GetCostMatrix(costMatrix *CostMatrix, redisClient redis.Cmdable, maxJitter float32, maxPacketLoss float32) error {
+func (database *StatsDatabase) GetCostMatrix(
+	costMatrix *CostMatrix,
+	redisClient redis.Cmdable,
+	maxJitter float32,
+	maxPacketLoss float32,
+	metricsHandler metrics.Handler) error {
 
-	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
-	metrics, err := metrics.NewStatsMetrics(context.Background(), metricsHandler)
+	// var metricsHandler metrics.Handler = &metrics.LocalHandler{}
+	metrics, err := metrics.NewCostMatrixGenMetrics(context.Background(), metricsHandler)
 	if err != nil {
-		return fmt.Errorf("failed to create NewStatsMetrics: %w", err)
+		return fmt.Errorf("failed to create NewCostMatrixGenMetrics: %w", err)
 	}
 
 	durationStart := time.Now()

@@ -296,7 +296,7 @@ func main() {
 	// Periodically generate cost matrix from stats db
 	go func() {
 		for {
-			if err := statsdb.GetCostMatrix(&costmatrix, redisClientRelays, float32(maxJitter), float32(maxPacketLoss)); err != nil {
+			if err := statsdb.GetCostMatrix(&costmatrix, redisClientRelays, float32(maxJitter), float32(maxPacketLoss), metricsHandler); err != nil {
 				level.Warn(logger).Log("matrix", "cost", "op", "generate", "err", err)
 			}
 

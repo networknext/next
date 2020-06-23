@@ -995,27 +995,27 @@ func NewRelayStatMetrics(ctx context.Context, metricsHandler Handler) (*RelaySta
 	return &statMetrics, nil
 }
 
-// Stats Metrics
-type StatsMetrics struct {
+// CostMatrixGenMetrics
+type CostMatrixGenMetrics struct {
 	Invocations   Counter
 	DurationGauge Gauge
-	ErrorMetrics  StatsErrorMetrics
+	ErrorMetrics  CostMatrixGenErrorMetrics
 }
 
-type StatsErrorMetrics struct {
+type CostMatrixGenErrorMetrics struct {
 	GetAllRelaysFailure   Counter
 	RelayUnmarshalFailure Counter
 }
 
-var EmptyStatsMetrics StatsMetrics = StatsMetrics{
+var EmptyCostMatrixGenMetrics CostMatrixGenMetrics = CostMatrixGenMetrics{
 	Invocations:   &EmptyCounter{},
 	DurationGauge: &EmptyGauge{},
-	ErrorMetrics:  EmptyStatsErrorMetrics,
+	ErrorMetrics:  EmptyCostMatrixGenErrorMetrics,
 }
 
-var EmptyStatsErrorMetrics StatsErrorMetrics = StatsErrorMetrics{}
+var EmptyCostMatrixGenErrorMetrics CostMatrixGenErrorMetrics = CostMatrixGenErrorMetrics{}
 
-func NewStatsMetrics(ctx context.Context, metricsHandler Handler) (*StatsMetrics, error) {
+func NewCostMatrixGenMetrics(ctx context.Context, metricsHandler Handler) (*CostMatrixGenMetrics, error) {
 	initDurationGauge, err := metricsHandler.NewGauge(ctx, &Descriptor{
 		DisplayName: "StatsDB -> GetCostMatrix duration",
 		ServiceName: "relay_backend",
@@ -1027,7 +1027,7 @@ func NewStatsMetrics(ctx context.Context, metricsHandler Handler) (*StatsMetrics
 		return nil, err
 	}
 
-	initInvocationsCounter, err := metricsHandler.NewCounter(ctx, &Descriptor{
+	costMatrixGenInvocationsCounter, err := metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Total StatsDB -> CostMatrix invocations",
 		ServiceName: "relay_backend",
 		ID:          "stats.count",
@@ -1038,26 +1038,24 @@ func NewStatsMetrics(ctx context.Context, metricsHandler Handler) (*StatsMetrics
 		return nil, err
 	}
 
-	// errorMetrics := StatsErrorMetrics{}
-
-	initMetrics := StatsMetrics{
-		Invocations:   initInvocationsCounter,
+	costMatrixGenMetrics := CostMatrixGenMetrics{
+		Invocations:   costMatrixGenInvocationsCounter,
 		DurationGauge: initDurationGauge,
 	}
 
-	initMetrics.ErrorMetrics.GetAllRelaysFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	costMatrixGenMetrics.ErrorMetrics.GetAllRelaysFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Get All Redis Relays Failure",
 		ServiceName: "relay_backend",
 		ID:          "relay.error.get_all_relays_failure",
 		Unit:        "errors",
 	})
 
-	initMetrics.ErrorMetrics.RelayUnmarshalFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	costMatrixGenMetrics.ErrorMetrics.RelayUnmarshalFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Relay Unmarshal Failure",
 		ServiceName: "relay_backend",
 		ID:          "relay.error.relay_unmarshal_failure",
 		Unit:        "errors",
 	})
 
-	return &initMetrics, nil
+	return &costMatrixGenMetrics, nil
 }
