@@ -309,6 +309,8 @@ func main() {
 
 			relayStatMetrics.NumRelays.Set(float64(len(statsdb.Entries)))
 
+			durationStart := time.Now()
+
 			if err := costmatrix.Optimize(&routematrix, 1); err != nil {
 				level.Warn(logger).Log("matrix", "cost", "op", "optimize", "err", err)
 			}
@@ -321,7 +323,6 @@ func main() {
 				sentry.CaptureMessage("no routes within route matrix")
 			}
 
-			durationStart := time.Now()
 			durationSince := time.Since(durationStart)
 			optimizeMetrics.DurationGauge.Set(float64(durationSince.Milliseconds()))
 			optimizeMetrics.Invocations.Add(1)

@@ -130,7 +130,7 @@ var EmptyOptimizeMetrics OptimizeMetrics = OptimizeMetrics{
 var EmptyOptimizeErrorMetrics OptimizeErrorMetrics = OptimizeErrorMetrics{}
 
 func NewOptimizeMetrics(ctx context.Context, metricsHandler Handler) (*OptimizeMetrics, error) {
-	initDurationGauge, err := metricsHandler.NewGauge(ctx, &Descriptor{
+	optimizeDurationGauge, err := metricsHandler.NewGauge(ctx, &Descriptor{
 		DisplayName: "Optimize duration",
 		ServiceName: "relay_backend",
 		ID:          "optimize.duration",
@@ -141,7 +141,7 @@ func NewOptimizeMetrics(ctx context.Context, metricsHandler Handler) (*OptimizeM
 		return nil, err
 	}
 
-	initInvocationsCounter, err := metricsHandler.NewCounter(ctx, &Descriptor{
+	optimizeInvocationsCounter, err := metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Total cost matrix optimize invocations",
 		ServiceName: "relay_backend",
 		ID:          "optimize.count",
@@ -152,13 +152,13 @@ func NewOptimizeMetrics(ctx context.Context, metricsHandler Handler) (*OptimizeM
 		return nil, err
 	}
 
-	initMetrics := OptimizeMetrics{
-		Invocations:   initInvocationsCounter,
-		DurationGauge: initDurationGauge,
+	optimizeMetrics := OptimizeMetrics{
+		Invocations:   optimizeInvocationsCounter,
+		DurationGauge: optimizeDurationGauge,
 		ErrorMetrics:  EmptyOptimizeErrorMetrics,
 	}
 
-	return &initMetrics, nil
+	return &optimizeMetrics, nil
 }
 
 type ServerInitMetrics struct {
