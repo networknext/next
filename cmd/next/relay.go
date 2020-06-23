@@ -382,7 +382,7 @@ func revertRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 			continue
 		}
 		for _, relay := range relays {
-			fmt.Printf("Reverting relay '%s' (id = %d)\n", relay.name, relay.id)
+			fmt.Printf("Reverting relay '%s' (id = %016x)\n", relay.name, relay.id)
 			testForSSHKey(env)
 			if !updateRelayState(rpcClient, relay, routing.RelayStateOffline) {
 				continue
@@ -402,7 +402,7 @@ func enableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 			continue
 		}
 		for _, relay := range relays {
-			fmt.Printf("Enabling relay '%s' (id = %d)\n", relay.name, relay.id)
+			fmt.Printf("Enabling relay '%s' (id = %016x)\n", relay.name, relay.id)
 			testForSSHKey(env)
 			if !updateRelayState(rpcClient, relay, routing.RelayStateOffline) {
 				continue
@@ -420,9 +420,9 @@ func enableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 	fmt.Println("Waiting for portal to sync changes...")
 	time.Sleep(11 * time.Second)
 
-	str := "Reverts"
+	str := "Enabling"
 	if enabledRelays == 1 {
-		str = "Revert"
+		str = "Enable"
 	}
 	fmt.Printf("%s complete\n", str)
 }
@@ -438,7 +438,7 @@ func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []strin
 			continue
 		}
 		for _, relay := range relays {
-			fmt.Printf("Disabling relay '%s' (id = %d)\n", relay.name, relay.id)
+			fmt.Printf("Disabling relay '%s' (id = %016x)\n", relay.name, relay.id)
 			con := NewSSHConn(relay.user, relay.sshAddr, relay.sshPort, env.SSHKeyFilePath)
 			if !con.ConnectAndIssueCmd(DisableRelayScript) || !updateRelayState(rpcClient, relay, routing.RelayStateDisabled) {
 				success = false
@@ -458,7 +458,7 @@ func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []strin
 		if relaysDisabled == 1 {
 			str = "Relay"
 		}
-		fmt.Printf("%s enabled\n", str)
+		fmt.Printf("%s disabled\n", str)
 	}
 
 	return success

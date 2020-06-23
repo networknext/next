@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/rpc/v2"
 	"github.com/gorilla/rpc/v2/json2"
 	"gopkg.in/auth0.v4/management"
@@ -337,7 +338,7 @@ func main() {
 			Storage: db,
 		}, "")
 
-		http.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), s))
+		http.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s)))
 		http.HandleFunc("/healthz", transport.HealthzHandlerFunc())
 
 		http.Handle("/", http.FileServer(http.Dir(uiDir)))
