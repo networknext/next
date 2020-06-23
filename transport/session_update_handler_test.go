@@ -1676,6 +1676,10 @@ func TestNextRouteResponse(t *testing.T) {
 		SessionID:      9999,
 		Sequence:       13,
 		TimestampStart: time.Now().Add(-5 * time.Second),
+		RouteDecision: routing.Decision{
+			Reason:        routing.DecisionInitialSlice,
+			OnNetworkNext: true,
+		},
 	}
 	sessionCacheEntryData, err := sessionCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
@@ -1810,6 +1814,10 @@ func TestContinueRouteResponse(t *testing.T) {
 		Sequence:       13,
 		RouteHash:      1511739644222804357,
 		TimestampStart: time.Now().Add(-5 * time.Second),
+		RouteDecision: routing.Decision{
+			Reason:        routing.DecisionRTTReduction,
+			OnNetworkNext: true,
+		},
 	}
 	sce, err := expectedsession.MarshalBinary()
 	assert.NoError(t, err)
