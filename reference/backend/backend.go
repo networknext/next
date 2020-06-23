@@ -1093,11 +1093,11 @@ func CryptoCheck(data []byte, nonce []byte, publicKey []byte, privateKey []byte)
 }
 
 func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
-
 	body, err := ioutil.ReadAll(request.Body)
 	if err != nil {
 		return
 	}
+	defer request.Body.Close()
 
 	index := 0
 
@@ -1179,11 +1179,11 @@ func CompareTokens(a []byte, b []byte) bool {
 }
 
 func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
-
 	body, err := ioutil.ReadAll(request.Body)
 	if err != nil {
 		return
 	}
+	defer request.Body.Close()
 
 	index := 0
 

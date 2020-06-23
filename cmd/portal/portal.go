@@ -20,6 +20,7 @@ import (
 	"gopkg.in/auth0.v4/management"
 
 	gcplogging "cloud.google.com/go/logging"
+	"cloud.google.com/go/profiler"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -67,6 +68,13 @@ func main() {
 		}
 
 		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
+	}
+
+	// Get env
+	env, ok := os.LookupEnv("ENV")
+	if !ok {
+		level.Error(logger).Log("err", "ENV not set")
+		os.Exit(1)
 	}
 
 	var relayPublicKey []byte
@@ -213,12 +221,23 @@ func main() {
 
 		// Start a goroutine to sync from Firestore
 		go func() {
-			ticker := time.NewTicker(10 * time.Second)
+			ticker := time.NewTicker(1 * time.Second)
 			fs.SyncLoop(ctx, ticker.C)
 		}()
 
 		// Set the Firestore Storer to give to handlers
 		db = fs
+
+		// Set up StackDriver profiler
+		if err := profiler.Start(profiler.Config{
+			Service:        "portal",
+			ServiceVersion: env,
+			ProjectID:      gcpProjectID,
+			MutexProfiling: true,
+		}); err != nil {
+			level.Error(logger).Log("msg", "Failed to initialze StackDriver profiler", "err", err)
+			os.Exit(1)
+		}
 	}
 
 	var routeMatrix routing.RouteMatrix
@@ -247,7 +266,7 @@ func main() {
 
 					level.Info(logger).Log("matrix", "route", "entries", len(routeMatrix.Entries))
 
-					time.Sleep(10 * time.Second)
+					time.Sleep(1 * time.Second)
 				}
 			}()
 		}
@@ -265,7 +284,7 @@ func main() {
 				level.Error(logger).Log("msg", "error generating sessions map points", "err", err)
 				os.Exit(1)
 			}
-			time.Sleep(10 * time.Second)
+			time.Sleep(1 * time.Second)
 		}
 	}()
 

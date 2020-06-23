@@ -147,6 +147,7 @@ MapHandler = {
 	},
 	mapCountLoop: null,
 	mapInstance: null,
+	sessionToolMapInstance: null,
 	initMap() {
 		let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
 		this.updateFilter('map', {
@@ -244,7 +245,7 @@ MapHandler = {
 					getWeight: d => 1,
 					cellSizePixels: cellSize,
 					colorRange: [
-						[0,109,44],
+						[5,245,85],
 					],
 					gpuAggregation,
 					aggregation
@@ -348,6 +349,7 @@ UserHandler = {
 WorkspaceHandler = {
 	mapLoop: null,
 	sessionLoop: null,
+	sessionToolLoop: null,
 	welcomeTimeout: null,
 	changeSettingsPage(page) {
 		let showSettings = false;
@@ -369,6 +371,7 @@ WorkspaceHandler = {
 		// Clear all polling loops
 		this.sessionLoop ? clearInterval(this.sessionLoop) : null;
 		this.mapLoop ? clearInterval(this.mapLoop) : null;
+		this.sessionToolLoop ? clearInterval(this.sessionToolLoop) : null;
 
 		switch (page) {
 			case 'downloads':
@@ -602,27 +605,36 @@ WorkspaceHandler = {
 						aggregation
 					});
 
-					let sessionToolMapInstance = new deck.DeckGL({
-						mapboxApiAccessToken: mapboxgl.accessToken,
-						mapStyle: 'mapbox://styles/mapbox/dark-v10',
-						initialViewState: {
-							zoom: 4,
-							longitude: meta.location.longitude, // 'Center' of the world map
-							latitude: meta.location.latitude,
-							minZoom: 2,
-							bearing: 0,
-							pitch: 0
-						},
-						container: 'session-tool-map',
-						controller: {
-							dragPan: false,
-							dragRotate: false
-						},
-						layers: [sessionLocationLayer],
-					});
+					if (this.sessionToolMapInstance) {
+						this.sessionToolMapInstance.setProps({layers: []})
+						this.sessionToolMapInstance.setProps({layers: [sessionLocationLayer]})
+					} else {
+						this.sessionToolMapInstance = new deck.DeckGL({
+							mapboxApiAccessToken: mapboxgl.accessToken,
+							mapStyle: 'mapbox://styles/mapbox/dark-v10',
+							initialViewState: {
+								zoom: 4,
+								longitude: meta.location.longitude, // 'Center' of the world map
+								latitude: meta.location.latitude,
+								minZoom: 2,
+								bearing: 0,
+								pitch: 0
+							},
+							container: 'session-tool-map',
+							controller: {
+								dragPan: false,
+								dragRotate: false
+							},
+							layers: [sessionLocationLayer],
+						});
+					}
 				});
 			})
 			.catch((e) => {
+				if (this.sessionToolLoop) {
+					this.changePage('sessions');
+					return;
+				}
 				Object.assign(rootComponent.$data.pages.sessionTool, {
 					danger: true,
 					id: '',
@@ -634,6 +646,10 @@ WorkspaceHandler = {
 				console.log("Something went wrong fetching session details: ");
 				Sentry.captureException(e);
 			});
+			this.sessionToolLoop ? clearInterval(this.sessionToolLoop) : null;
+			this.sessionToolLoop = setInterval(() => {
+				this.fetchSessionInfo();
+			}, 10000);
 	},
 	fetchUserSessions() {
 		let hash = rootComponent.$data.pages.userTool.hash;
@@ -862,7 +878,7 @@ function startApp() {
 				.call('BuyersService.Buyers', {})
 				.then((response) => {
 					Object.assign(rootComponent.$data, {allBuyers: response.Buyers});
-					if (UserHandler.isAnonymous()) {
+					/* if (UserHandler.isAnonymous()) {
 						WorkspaceHandler.welcomeTimeout = setTimeout(() => {
 							this.welcomeTimeout !== null ? clearTimeout(this.welcomeTimeout) : null;
 							if (!($("#video-modal").data('bs.modal') || {})._isShown) {
@@ -878,7 +894,7 @@ function startApp() {
 							});
 							WorkspaceHandler.welcomeTimeout = null;
 						}, 30000)
-					}
+					} */
 				})
 				.catch((e) => {
 					console.log("Something went wrong initializing the map");
