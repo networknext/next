@@ -629,6 +629,9 @@ func main() {
 				Name:       "relay",
 				ShortUsage: "next relay <subcommand>",
 				ShortHelp:  "Manage relays",
+				Exec: func(_ context.Context, args []string) error {
+					return flag.ErrHelp
+				},
 				Subcommands: []*ffcli.Command{
 					{
 						Name:       "check",
@@ -881,15 +884,10 @@ func main() {
 			},
 			{
 				Name:       "datacenter",
-				ShortUsage: "next datacenter <name>",
+				ShortUsage: "next datacenter <subcommand>",
 				ShortHelp:  "Manage datacenters",
 				Exec: func(_ context.Context, args []string) error {
-					if len(args) > 0 {
-						datacenters(rpcClient, env, args[0])
-						return nil
-					}
-					datacenters(rpcClient, env, "")
-					return nil
+					return flag.ErrHelp
 				},
 				Subcommands: []*ffcli.Command{
 					{
@@ -958,11 +956,10 @@ func main() {
 			},
 			{
 				Name:       "buyer",
-				ShortUsage: "next buyer",
+				ShortUsage: "next buyer <subcommand>",
 				ShortHelp:  "Manage buyers",
 				Exec: func(_ context.Context, args []string) error {
-					buyers(rpcClient, env)
-					return nil
+					return flag.ErrHelp
 				},
 				Subcommands: []*ffcli.Command{
 					{
@@ -1045,8 +1042,11 @@ func main() {
 			},
 			{
 				Name:       "seller",
-				ShortUsage: "next sellers",
+				ShortUsage: "next seller <subcommand>",
 				ShortHelp:  "Manage sellers",
+				Exec: func(_ context.Context, args []string) error {
+					return flag.ErrHelp
+				},
 				Subcommands: []*ffcli.Command{
 					{
 						Name:       "add",
@@ -1155,6 +1155,65 @@ func main() {
 
 									fmt.Println("Exmaple JSON schema to set a new route shader:")
 									fmt.Println(string(jsonBytes))
+									return nil
+								},
+							},
+						},
+					},
+				},
+			},
+			{
+				Name:       "customer",
+				ShortUsage: "next customer <subcommand>",
+				ShortHelp:  "Manage customers",
+				Exec: func(ctx context.Context, args []string) error {
+					return flag.ErrHelp
+				},
+				Subcommands: []*ffcli.Command{
+					{
+						Name:       "link",
+						ShortUsage: "next customer link <subcommand>",
+						ShortHelp:  "Edit customer links",
+						Exec: func(ctx context.Context, args []string) error {
+							return flag.ErrHelp
+						},
+						Subcommands: []*ffcli.Command{
+							{
+								Name:       "buyer",
+								ShortUsage: "next customer link buyer <customer name> <new buyer ID>",
+								ShortHelp:  "Edit what buyer this customer is linked to",
+								Exec: func(ctx context.Context, args []string) error {
+									if len(args) == 0 {
+										log.Fatal("You need to provide a customer name")
+									}
+
+									if len(args) == 1 {
+										log.Fatal("You need to provide a new buyer ID for the customer to link to")
+									}
+
+									buyerID, err := strconv.ParseUint(args[1], 10, 64)
+									if err != nil {
+										log.Fatalf("Could not parse %s as an unsigned 64-bit integer", args[1])
+									}
+
+									customerLink(rpcClient, env, args[0], buyerID, "")
+									return nil
+								},
+							},
+							{
+								Name:       "seller",
+								ShortUsage: "next customer link seller <customer name> <new seller ID>",
+								ShortHelp:  "Edit what seller this customer is linked to",
+								Exec: func(ctx context.Context, args []string) error {
+									if len(args) == 0 {
+										log.Fatal("You need to provide a customer name")
+									}
+
+									if len(args) == 1 {
+										log.Fatal("You need to provide a new seller ID for the customer to link to")
+									}
+
+									customerLink(rpcClient, env, args[0], 0, args[1])
 									return nil
 								},
 							},
