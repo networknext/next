@@ -112,6 +112,55 @@ var EmptyDecisionMetrics DecisionMetrics = DecisionMetrics{
 	VetoCommit:          &EmptyCounter{},
 }
 
+type OptimizeMetrics struct {
+	Invocations   Counter
+	DurationGauge Gauge
+	ErrorMetrics  OptimizeErrorMetrics
+}
+
+type OptimizeErrorMetrics struct {
+}
+
+var EmptyOptimizeMetrics OptimizeMetrics = OptimizeMetrics{
+	Invocations:   &EmptyCounter{},
+	DurationGauge: &EmptyGauge{},
+	ErrorMetrics:  EmptyOptimizeErrorMetrics,
+}
+
+var EmptyOptimizeErrorMetrics OptimizeErrorMetrics = OptimizeErrorMetrics{}
+
+func NewOptimizeMetrics(ctx context.Context, metricsHandler Handler) (*OptimizeMetrics, error) {
+	optimizeDurationGauge, err := metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Optimize duration",
+		ServiceName: "relay_backend",
+		ID:          "optimize.duration",
+		Unit:        "milliseconds",
+		Description: "How long it takes to optimize a cost matrix.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	optimizeInvocationsCounter, err := metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Total cost matrix optimize invocations",
+		ServiceName: "relay_backend",
+		ID:          "optimize.count",
+		Unit:        "invocations",
+		Description: "The total number of cost matrix optimizers",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	optimizeMetrics := OptimizeMetrics{
+		Invocations:   optimizeInvocationsCounter,
+		DurationGauge: optimizeDurationGauge,
+		ErrorMetrics:  EmptyOptimizeErrorMetrics,
+	}
+
+	return &optimizeMetrics, nil
+}
+
 type ServerInitMetrics struct {
 	Invocations   Counter
 	DurationGauge Gauge

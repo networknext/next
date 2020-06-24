@@ -73,6 +73,7 @@ const MaxJitter = float32(10.0)
 const MaxPacketLoss = float32(0.1)
 
 func OptimizeThread() {
+
 	for {
 		backend.mutex.Lock()
 		if err := backend.statsDatabase.GetCostMatrix(backend.costMatrix, backend.redisClient, MaxJitter, MaxPacketLoss); err != nil {
