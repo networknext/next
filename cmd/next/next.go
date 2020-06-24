@@ -356,9 +356,17 @@ func main() {
 	routesfs.Float64Var(&routeRTT, "rtt", 5, "route RTT required for selection")
 	routesfs.Uint64Var(&routeHash, "hash", 0, "a previous hash to use")
 
-	var relayCoreCount uint64
+	sessionsfs := flag.NewFlagSet("sessions", flag.ExitOnError)
+	var sessionCount int64
+	sessionsfs.Int64Var(&sessionCount, "n", 0, "number of top sessions to display (default: all)")
+
 	relayupdatefs := flag.NewFlagSet("relay update", flag.ExitOnError)
+
+	var relayCoreCount uint64
 	relayupdatefs.Uint64Var(&relayCoreCount, "cores", 0, "number of cores for the relay to utilize")
+
+	var forceUpdate bool
+	relayupdatefs.BoolVar(&forceUpdate, "force", false, "force the relay update regardless of the version")
 
 	relaysfs := flag.NewFlagSet("relays state", flag.ExitOnError)
 
@@ -387,6 +395,19 @@ func main() {
 	// Show all relays (including decommissioned ones) regardless of other flags
 	var relaysAllFlag bool
 	relaysfs.BoolVar(&relaysAllFlag, "all", false, "show all relays")
+
+	// -list and -csv should work with all other flags
+	// Show only a list or relay names
+	var relaysListFlag bool
+	relaysfs.BoolVar(&relaysListFlag, "list", false, "show list of names")
+
+	// Return a CSV file instead of a table
+	var csvOutputFlag bool
+	relaysfs.BoolVar(&csvOutputFlag, "csv", false, "return a CSV file")
+
+	// Return a CSV file instead of a table
+	var relayVersionFilter string
+	relaysfs.StringVar(&relayVersionFilter, "version", "all", "show only relays at this version level")
 
 	root := &ffcli.Command{
 		ShortUsage: "next <subcommand>",
@@ -493,12 +514,13 @@ func main() {
 				Name:       "sessions",
 				ShortUsage: "next sessions",
 				ShortHelp:  "List sessions",
+				FlagSet:    sessionsfs,
 				Exec: func(_ context.Context, args []string) error {
 					if len(args) > 0 {
-						sessions(rpcClient, env, args[0])
+						sessions(rpcClient, env, args[0], sessionCount)
 						return nil
 					}
-					sessions(rpcClient, env, "")
+					sessions(rpcClient, env, "", sessionCount)
 					return nil
 				},
 				Subcommands: []*ffcli.Command{
@@ -543,10 +565,30 @@ func main() {
 					}
 
 					if len(args) > 0 {
-						relays(rpcClient, env, args[0], relaysStateShowFlags, relaysStateHideFlags, relaysDownFlag)
+						relays(
+							rpcClient,
+							env,
+							args[0],
+							relaysStateShowFlags,
+							relaysStateHideFlags,
+							relaysDownFlag,
+							relaysListFlag,
+							csvOutputFlag,
+							relayVersionFilter,
+						)
 						return nil
 					}
-					relays(rpcClient, env, "", relaysStateShowFlags, relaysStateHideFlags, relaysDownFlag)
+					relays(
+						rpcClient,
+						env,
+						"",
+						relaysStateShowFlags,
+						relaysStateHideFlags,
+						relaysDownFlag,
+						relaysListFlag,
+						csvOutputFlag,
+						relayVersionFilter,
+					)
 					return nil
 				},
 			},
@@ -625,6 +667,9 @@ func main() {
 				Name:       "relay",
 				ShortUsage: "next relay <subcommand>",
 				ShortHelp:  "Manage relays",
+				Exec: func(_ context.Context, args []string) error {
+					return flag.ErrHelp
+				},
 				Subcommands: []*ffcli.Command{
 					{
 						Name:       "check",
@@ -656,7 +701,7 @@ func main() {
 								regex = args[0]
 							}
 
-							checkRelays(rpcClient, env, regex, relaysStateShowFlags, relaysStateHideFlags, relaysDownFlag)
+							checkRelays(rpcClient, env, regex, relaysStateShowFlags, relaysStateHideFlags, relaysDownFlag, csvOutputFlag)
 							return nil
 						},
 					},
@@ -665,7 +710,7 @@ func main() {
 						ShortUsage: "next relay keys <relay name>",
 						ShortHelp:  "Show the public keys for the relay",
 						Exec: func(ctx context.Context, args []string) error {
-							relays := getRelayInfo(rpcClient, args[0])
+							relays := getRelayInfo(rpcClient, env, args[0])
 
 							if len(relays) == 0 {
 								log.Fatalf("no relays matched the name '%s'\n", args[0])
@@ -685,12 +730,12 @@ func main() {
 						ShortHelp:  "Update the specified relay(s)",
 						FlagSet:    relayupdatefs,
 						Exec: func(ctx context.Context, args []string) error {
-							regexes := []string{".*"}
+							var regexes []string
 							if len(args) > 0 {
 								regexes = args
 							}
 
-							updateRelays(env, rpcClient, regexes, relayCoreCount)
+							updateRelays(env, rpcClient, regexes, relayCoreCount, forceUpdate)
 
 							return nil
 						},
@@ -758,7 +803,7 @@ func main() {
 								log.Fatalf("Unable to parse %s as uint64", args[1])
 							}
 
-							setRelayNIC(rpcClient, args[0], nicSpeed)
+							setRelayNIC(rpcClient, env, args[0], nicSpeed)
 
 							return nil
 						},
@@ -777,7 +822,7 @@ func main() {
 								log.Fatal("You need to supply at least one relay name regex")
 							}
 
-							setRelayState(rpcClient, args[0], args[1:])
+							setRelayState(rpcClient, env, args[0], args[1:])
 							return nil
 						},
 					},
@@ -853,7 +898,7 @@ func main() {
 										log.Fatal("Failed to marshal relay struct")
 									}
 
-									fmt.Println("Exmaple JSON schema to add a new relay:")
+									fmt.Println("Example JSON schema to add a new relay:")
 									fmt.Println(string(jsonBytes))
 									return nil
 								},
@@ -877,15 +922,10 @@ func main() {
 			},
 			{
 				Name:       "datacenter",
-				ShortUsage: "next datacenter <name>",
+				ShortUsage: "next datacenter <subcommand>",
 				ShortHelp:  "Manage datacenters",
 				Exec: func(_ context.Context, args []string) error {
-					if len(args) > 0 {
-						datacenters(rpcClient, env, args[0])
-						return nil
-					}
-					datacenters(rpcClient, env, "")
-					return nil
+					return flag.ErrHelp
 				},
 				Subcommands: []*ffcli.Command{
 					{
@@ -930,7 +970,7 @@ func main() {
 										log.Fatal("Failed to marshal datacenter struct")
 									}
 
-									fmt.Println("Exmaple JSON schema to add a new datacenter:")
+									fmt.Println("Example JSON schema to add a new datacenter:")
 									fmt.Println(string(jsonBytes))
 									return nil
 								},
@@ -954,11 +994,10 @@ func main() {
 			},
 			{
 				Name:       "buyer",
-				ShortUsage: "next buyer",
+				ShortUsage: "next buyer <subcommand>",
 				ShortHelp:  "Manage buyers",
 				Exec: func(_ context.Context, args []string) error {
-					buyers(rpcClient, env)
-					return nil
+					return flag.ErrHelp
 				},
 				Subcommands: []*ffcli.Command{
 					{
@@ -1017,7 +1056,7 @@ func main() {
 										log.Fatal("Failed to marshal buyer struct")
 									}
 
-									fmt.Println("Exmaple JSON schema to add a new buyer:")
+									fmt.Println("Example JSON schema to add a new buyer:")
 									fmt.Println(string(jsonBytes))
 									return nil
 								},
@@ -1041,8 +1080,11 @@ func main() {
 			},
 			{
 				Name:       "seller",
-				ShortUsage: "next sellers",
+				ShortUsage: "next seller <subcommand>",
 				ShortHelp:  "Manage sellers",
+				Exec: func(_ context.Context, args []string) error {
+					return flag.ErrHelp
+				},
 				Subcommands: []*ffcli.Command{
 					{
 						Name:       "add",
@@ -1149,7 +1191,7 @@ func main() {
 										log.Fatal("Failed to marshal route shader struct")
 									}
 
-									fmt.Println("Exmaple JSON schema to set a new route shader:")
+									fmt.Println("Example JSON schema to set a new route shader:")
 									fmt.Println(string(jsonBytes))
 									return nil
 								},
@@ -1159,12 +1201,62 @@ func main() {
 				},
 			},
 			{
-				Name:       "dataflow",
-				ShortUsage: "next dataflow",
-				ShortHelp:  "Manage dataflow",
+				Name:       "customer",
+				ShortUsage: "next customer <subcommand>",
+				ShortHelp:  "Manage customers",
 				Exec: func(ctx context.Context, args []string) error {
-					dataflow(env)
-					return nil
+					return flag.ErrHelp
+				},
+				Subcommands: []*ffcli.Command{
+					{
+						Name:       "link",
+						ShortUsage: "next customer link <subcommand>",
+						ShortHelp:  "Edit customer links",
+						Exec: func(ctx context.Context, args []string) error {
+							return flag.ErrHelp
+						},
+						Subcommands: []*ffcli.Command{
+							{
+								Name:       "buyer",
+								ShortUsage: "next customer link buyer <customer name> <new buyer ID>",
+								ShortHelp:  "Edit what buyer this customer is linked to",
+								Exec: func(ctx context.Context, args []string) error {
+									if len(args) == 0 {
+										log.Fatal("You need to provide a customer name")
+									}
+
+									if len(args) == 1 {
+										log.Fatal("You need to provide a new buyer ID for the customer to link to")
+									}
+
+									buyerID, err := strconv.ParseUint(args[1], 10, 64)
+									if err != nil {
+										log.Fatalf("Could not parse %s as an unsigned 64-bit integer", args[1])
+									}
+
+									customerLink(rpcClient, env, args[0], buyerID, "")
+									return nil
+								},
+							},
+							{
+								Name:       "seller",
+								ShortUsage: "next customer link seller <customer name> <new seller ID>",
+								ShortHelp:  "Edit what seller this customer is linked to",
+								Exec: func(ctx context.Context, args []string) error {
+									if len(args) == 0 {
+										log.Fatal("You need to provide a customer name")
+									}
+
+									if len(args) == 1 {
+										log.Fatal("You need to provide a new seller ID for the customer to link to")
+									}
+
+									customerLink(rpcClient, env, args[0], 0, args[1])
+									return nil
+								},
+							},
+						},
+					},
 				},
 			},
 			{
@@ -1277,18 +1369,73 @@ func main() {
 					return nil
 				},
 			},
+			{
+				Name:       "view",
+				ShortUsage: "next view <subcommand>",
+				ShortHelp:  "View data",
+				Exec: func(ctx context.Context, args []string) error {
+					return nil
+				},
+				Subcommands: []*ffcli.Command{
+					{
+						Name:       "cost",
+						ShortUsage: "next view cost",
+						ShortHelp:  "View the entries of the cost matrix",
+						Exec: func(ctx context.Context, args []string) error {
+							input := "cost.bin"
+							viewCostMatrix(input)
+							return nil
+						},
+					},
+					{
+						Name:       "route",
+						ShortUsage: "next view route [srcRelay] [destRelay]",
+						ShortHelp:  "View the entries of the route matrix with optional relay filtering.",
+						Exec: func(ctx context.Context, args []string) error {
+							input := "optimize.bin"
+
+							var srcRelay string
+							var destRelay string
+
+							if len(args) > 0 {
+								srcRelay = args[0]
+							}
+
+							if len(args) == 1 {
+								log.Fatalf("You must provide a destination relay if you provide a source relay. For all entries, omit the relay parameters")
+							}
+
+							if len(args) > 1 {
+								destRelay = args[1]
+							}
+
+							viewRouteMatrix(input, srcRelay, destRelay)
+							return nil
+						},
+					},
+				},
+			},
 		},
 		Exec: func(context.Context, []string) error {
 			fmt.Printf("Network Next Operator Tool\n\n")
-			return flag.ErrHelp
+			return nil
 		},
 	}
 
 	fmt.Printf("\n")
 
-	if err := root.ParseAndRun(context.Background(), os.Args[1:]); err != nil {
+	args := os.Args[1:]
+	if len(args) == 0 || args[0] == "-h" || args[0] == "-help" || args[0] == "--h" || args[0] == "--help" {
+		args = []string{}
+	}
+
+	if err := root.ParseAndRun(context.Background(), args); err != nil {
 		fmt.Printf("\n")
 		log.Fatal(err)
+	}
+
+	if len(args) == 0 {
+		root.FlagSet.Usage()
 	}
 
 	fmt.Printf("\n")

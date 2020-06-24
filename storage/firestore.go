@@ -597,6 +597,165 @@ func (fs *Firestore) SetSeller(ctx context.Context, seller routing.Seller) error
 	return nil
 }
 
+func (fs *Firestore) SetCustomerLink(ctx context.Context, customerName string, buyerID uint64, sellerID string) error {
+	// Loop through all customers in firestore
+	cdocs := fs.Client.Collection("Customer").Documents(ctx)
+	defer cdocs.Stop()
+	for {
+		cdoc, err := cdocs.Next()
+		if err == iterator.Done {
+			break
+		}
+
+		if err != nil {
+			return &FirestoreError{err: err}
+		}
+
+		// Unmarshal the customer so we can check if this is the customer we want to edit
+		var c customer
+		err = cdoc.DataTo(&c)
+		if err != nil {
+			return &UnmarshalError{err: err}
+		}
+
+		if c.Name == customerName {
+			// Customer was found, now find the associated buyer and seller we want to update the customer's references to
+			var buyerRef *firestore.DocumentRef
+			var sellerRef *firestore.DocumentRef
+
+			// Find the buyer
+			bdocs := fs.Client.Collection("Buyer").Documents(ctx)
+			defer bdocs.Stop()
+			for {
+				bdoc, err := bdocs.Next()
+				if err == iterator.Done {
+					break
+				}
+
+				if err != nil {
+					return &FirestoreError{err: err}
+				}
+
+				// Unmarshal the buyer so we can check if this is the buyer we want to link the customer to
+				var b buyer
+				err = bdoc.DataTo(&b)
+				if err != nil {
+					return &UnmarshalError{err: err}
+				}
+
+				if uint64(b.ID) == buyerID {
+					buyerRef = bdoc.Ref
+					break
+				}
+			}
+
+			// Find the seller
+			sdocs := fs.Client.Collection("Seller").Documents(ctx)
+			defer sdocs.Stop()
+			for {
+				sdoc, err := sdocs.Next()
+				if err == iterator.Done {
+					break
+				}
+
+				if err != nil {
+					return &FirestoreError{err: err}
+				}
+
+				if sdoc.Ref.ID == sellerID {
+					sellerRef = sdoc.Ref
+					break
+				}
+			}
+
+			// Assign the references and restore the customer
+			c.Buyer = buyerRef
+			c.Seller = sellerRef
+
+			if _, err := cdoc.Ref.Set(ctx, c); err != nil {
+				return &FirestoreError{err: err}
+			}
+
+			return nil
+		}
+	}
+
+	return &DoesNotExistError{resourceType: "customer", resourceRef: customerName}
+}
+
+func (fs *Firestore) BuyerIDFromCustomerName(ctx context.Context, customerName string) (uint64, error) {
+	// Loop through all customers in firestore
+	cdocs := fs.Client.Collection("Customer").Documents(ctx)
+	defer cdocs.Stop()
+	for {
+		cdoc, err := cdocs.Next()
+		if err == iterator.Done {
+			break
+		}
+
+		if err != nil {
+			return 0, &FirestoreError{err: err}
+		}
+
+		// Unmarshal the customer so we can check if this is the customer we want to edit
+		var c customer
+		err = cdoc.DataTo(&c)
+		if err != nil {
+			return 0, &UnmarshalError{err: err}
+		}
+
+		if c.Name == customerName {
+			bdoc, err := c.Buyer.Get(ctx)
+			if err != nil {
+				return 0, &DoesNotExistError{resourceType: "buyer", resourceRef: c.Buyer.ID}
+			}
+
+			var b buyer
+			if err := bdoc.DataTo(&b); err != nil {
+				return 0, &UnmarshalError{err: err}
+			}
+
+			return uint64(b.ID), nil
+		}
+	}
+
+	return 0, &DoesNotExistError{resourceType: "customer", resourceRef: customerName}
+}
+
+func (fs *Firestore) SellerIDFromCustomerName(ctx context.Context, customerName string) (string, error) {
+	// Loop through all customers in firestore
+	cdocs := fs.Client.Collection("Customer").Documents(ctx)
+	defer cdocs.Stop()
+	for {
+		cdoc, err := cdocs.Next()
+		if err == iterator.Done {
+			break
+		}
+
+		if err != nil {
+			return "", &FirestoreError{err: err}
+		}
+
+		// Unmarshal the customer so we can check if this is the customer we want to edit
+		var c customer
+		err = cdoc.DataTo(&c)
+		if err != nil {
+			return "", &UnmarshalError{err: err}
+		}
+
+		if c.Name == customerName {
+			sdoc, err := c.Seller.Get(ctx)
+			if err != nil {
+				return "", &DoesNotExistError{resourceType: "seller", resourceRef: c.Seller.ID}
+			}
+
+			return sdoc.Ref.ID, nil
+		}
+	}
+
+	return "", &DoesNotExistError{resourceType: "customer", resourceRef: customerName}
+}
+
 func (fs *Firestore) Relay(id uint64) (routing.Relay, error) {
 	fs.relayMutex.RLock()
 	defer fs.relayMutex.RUnlock()

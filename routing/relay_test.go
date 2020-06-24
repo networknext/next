@@ -13,6 +13,8 @@ import (
 )
 
 func TestRelay(t *testing.T) {
+	t.Parallel()
+
 	udp, _ := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
 	pk := make([]byte, crypto.KeySize)
 	rand.Read(pk)

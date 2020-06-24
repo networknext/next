@@ -19,6 +19,8 @@ import (
 
 	"cloud.google.com/go/bigquery"
 	gcplogging "cloud.google.com/go/logging"
+	"cloud.google.com/go/profiler"
+
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 
@@ -66,6 +68,13 @@ func main() {
 		}
 
 		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
+	}
+
+	// Get env
+	env, ok := os.LookupEnv("ENV")
+	if !ok {
+		level.Error(logger).Log("err", "ENV not set")
+		os.Exit(1)
 	}
 
 	// var serverPublicKey []byte
@@ -133,26 +142,27 @@ func main() {
 	mmcitydburi := os.Getenv("MAXMIND_CITY_DB_URI")
 	mmispdburi := os.Getenv("MAXMIND_ISP_DB_URI")
 	if mmcitydburi != "" && mmispdburi != "" {
-		cityreader, err := routing.NewMaxmindReader(http.DefaultClient, mmcitydburi)
+		mmdb := routing.MaxmindDB{}
+
+		err := mmdb.OpenCity(ctx, http.DefaultClient, mmcitydburi)
 		if err != nil {
 			level.Error(logger).Log("envvar", "MAXMIND_CITY_DB_URI", "value", mmcitydburi, "err", err)
 			os.Exit(1)
 		}
 
-		ispreader, err := routing.NewMaxmindReader(http.DefaultClient, mmispdburi)
+		err = mmdb.OpenISP(ctx, http.DefaultClient, mmispdburi)
 		if err != nil {
 			level.Error(logger).Log("envvar", "MAXMIND_ISP_DB_URI", "value", mmispdburi, "err", err)
-
+			os.Exit(1)
 		}
 
-		ipLocator = &routing.MaxmindDB{
-			CityReader: cityreader,
-			ISPReader:  ispreader,
-		}
-		defer func() {
-			cityreader.Close()
-			ispreader.Close()
+		// Start a goroutine to sync from Maxmind.com
+		go func() {
+			ticker := time.NewTicker(24 * time.Hour)
+			mmdb.SyncLoop(ctx, ticker.C)
 		}()
+
+		ipLocator = &mmdb
 	}
 	// Commented out to ensure it really does not load the IPStack version
 	// if key, ok := os.LookupEnv("IPSTACK_ACCESS_KEY"); ok {
@@ -217,17 +227,34 @@ func main() {
 		db = fs
 
 		if billingDataset, ok := os.LookupEnv("GOOGLE_BIGQUERY_DATASET_BILLING"); ok {
+			batchSize := billing.DefaultBigQueryBatchSize
+			if size, ok := os.LookupEnv("GOOGLE_BIGQUERY_BATCH_SIZE"); ok {
+				s, err := strconv.ParseInt(size, 10, 64)
+				if err != nil {
+					level.Error(logger).Log("err", err)
+					os.Exit(1)
+				}
+				batchSize = int(s)
+			}
+
 			bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				os.Exit(1)
 			}
 			b := billing.GoogleBigQueryClient{
+				Logger:        logger,
 				TableInserter: bqClient.Dataset(billingDataset).Table(os.Getenv("GOOGLE_BIGQUERY_TABLE_BILLING")).Inserter(),
+				BatchSize:     batchSize,
 			}
 
 			// Set the Biller to Bigtable
 			biller = &b
+
+			// Start the background WriteLoop to batch write to BigQuery
+			go func() {
+				b.WriteLoop(ctx)
+			}()
 		}
 
 		// Set up StackDriver metrics
@@ -247,6 +274,17 @@ func main() {
 		go func() {
 			metricsHandler.WriteLoop(ctx, logger, time.Minute, 200)
 		}()
+
+		// Set up StackDriver profiler
+		if err := profiler.Start(profiler.Config{
+			Service:        "server_backend",
+			ServiceVersion: env,
+			ProjectID:      gcpProjectID,
+			MutexProfiling: true,
+		}); err != nil {
+			level.Error(logger).Log("msg", "Failed to initialze StackDriver profiler", "err", err)
+			os.Exit(1)
+		}
 	}
 
 	// Create server update metrics

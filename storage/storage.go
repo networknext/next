@@ -43,6 +43,17 @@ type Storer interface {
 	// SetSeller updates the seller in storage with the provided copy and returns an error if the seller could not be updated.
 	SetSeller(ctx context.Context, seller routing.Seller) error
 
+	// BuyerIDFromCustomerName returns the buyer ID associated with the given customer name and an error if the customer wasn't found.
+	// If the customer has no buyer linked, then it will return a buyer ID of 0 and no error.
+	BuyerIDFromCustomerName(ctx context.Context, customerName string) (uint64, error)
+
+	// SellerIDFromCustomerName returns the seller ID associated with the given customer name and an error if the customer wasn't found.
+	// If the customer has no seller linked, then it will return an empty seller ID and no error.
+	SellerIDFromCustomerName(ctx context.Context, customerName string) (string, error)
+
+	// SetCustomerLink update the customer's buyer and seller references.
+	SetCustomerLink(ctx context.Context, customerName string, buyerID uint64, sellerID string) error
+
 	// Relay gets a copy of a relay with the specified relay ID
 	// and returns an empty relay and an error if a relay with that ID doesn't exist in storage.
 	Relay(id uint64) (routing.Relay, error)

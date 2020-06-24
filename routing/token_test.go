@@ -12,6 +12,8 @@ import (
 )
 
 func TestEncryptNextRouteToken(t *testing.T) {
+	t.Parallel()
+
 	t.Run("failures", func(t *testing.T) {
 		nodepublickey, privatekey, err := box.GenerateKey(rand.Reader)
 		assert.NoError(t, err)

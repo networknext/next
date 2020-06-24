@@ -2001,6 +2001,7 @@ func TestRouteMatrix(t *testing.T) {
 		assert.Nil(t, err)
 
 		var routeMatrix routing.RouteMatrix
+
 		costMatrix.Optimize(&routeMatrix, 5)
 		assert.NotNil(t, &routeMatrix)
 		assert.Equal(t, costMatrix.RelayIDs, routeMatrix.RelayIDs, "relay id mismatch")

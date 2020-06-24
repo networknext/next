@@ -20,6 +20,8 @@ import (
 )
 
 func TestServerInitHandlerFunc(t *testing.T) {
+	t.Parallel()
+
 	t.Run("failed to unmarshal packet", func(t *testing.T) {
 		addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
 		assert.NoError(t, err)

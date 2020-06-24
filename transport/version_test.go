@@ -20,6 +20,8 @@ func TestString(t *testing.T) {
 }
 
 func TestCompare(t *testing.T) {
+	t.Parallel()
+
 	t.Run("equal", func(t *testing.T) {
 		a := transport.SDKVersion{1, 1, 1}
 		b := transport.SDKVersion{1, 1, 1}
@@ -53,6 +55,8 @@ func TestCompare(t *testing.T) {
 }
 
 func TestAtLeast(t *testing.T) {
+	t.Parallel()
+
 	t.Run("equal", func(t *testing.T) {
 		a := transport.SDKVersionMin
 		b := transport.SDKVersionMin

@@ -223,19 +223,6 @@ func (database *StatsDatabase) GetCostMatrix(
 	maxJitter float32,
 	maxPacketLoss float32) error {
 
-	// var metricsHandler metrics.Handler = &metrics.LocalHandler{}
-	// metrics, err := metrics.NewCostMatrixGenMetrics(context.Background(), metricsHandler)
-	// if err != nil {
-	// 	return fmt.Errorf("failed to create NewCostMatrixGenMetrics: %w", err)
-	// }
-
-	// durationStart := time.Now()
-	// defer func() {
-	// 	durationSince := time.Since(durationStart)
-	// 	metrics.DurationGauge.Set(float64(durationSince.Milliseconds()))
-	// 	metrics.Invocations.Add(1)
-	// }()
-
 	hgetallResult := redisClient.HGetAll(HashKeyAllRelays)
 	if hgetallResult.Err() != nil && hgetallResult.Err() != redis.Nil {
 		return fmt.Errorf("failed to get all relays from redis: %v", hgetallResult.Err())
@@ -248,8 +235,9 @@ func (database *StatsDatabase) GetCostMatrix(
 	costMatrix.RelayAddresses = make([][]byte, numRelays)
 	costMatrix.RelayPublicKeys = make([][]byte, numRelays)
 	costMatrix.DatacenterRelays = make(map[uint64][]uint64)
-	costMatrix.RTT = make([]int32, TriMatrixLength(numRelays)) // todo: should be renamed to "Cost"
-	costMatrix.RelaySellers = make([]Seller, numRelays)
+	costMatrix.RTT = make([]int32, TriMatrixLength(numRelays))
+
+  costMatrix.RelaySellers = make([]Seller, numRelays)
 	costMatrix.RelaySessionCounts = make([]uint32, numRelays)
 	costMatrix.RelayMaxSessionCounts = make([]uint32, numRelays)
 
@@ -300,7 +288,7 @@ func (database *StatsDatabase) GetCostMatrix(
 			rtt, jitter, packetLoss := database.GetSample(idI, idJ)
 			ijIndex := TriMatrixIndex(i, j)
 			if rtt != InvalidRouteValue && jitter <= maxJitter && packetLoss <= maxPacketLoss {
-				costMatrix.RTT[ijIndex] = int32(math.Floor(float64(rtt + jitter)))
+				costMatrix.RTT[ijIndex] = int32(math.Floor(float64(rtt)))
 			} else {
 				costMatrix.RTT[ijIndex] = -1
 			}

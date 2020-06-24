@@ -20,6 +20,8 @@ import (
 )
 
 func TestBuyers(t *testing.T) {
+	t.Parallel()
+
 	storer := storage.InMemory{}
 	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, Name: "local.local.1"})
 
@@ -41,6 +43,8 @@ func TestBuyers(t *testing.T) {
 
 // 1 customer with a buyer and a seller ID
 func TestCustomersSingle(t *testing.T) {
+	t.Parallel()
+
 	storer := storage.InMemory{}
 	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, Name: "Fred Scuttle"})
 	storer.AddSeller(context.Background(), routing.Seller{ID: "some seller", Name: "Fred Scuttle"})
@@ -64,6 +68,8 @@ func TestCustomersSingle(t *testing.T) {
 
 // Multiple customers with different names (2 records)
 func TestCustomersMultiple(t *testing.T) {
+	t.Parallel()
+
 	storer := storage.InMemory{}
 	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, Name: "Fred Scuttle"})
 	storer.AddSeller(context.Background(), routing.Seller{ID: "some seller", Name: "Bull Winkle"})
@@ -91,6 +97,8 @@ func TestCustomersMultiple(t *testing.T) {
 }
 
 func TestAddBuyer(t *testing.T) {
+	t.Parallel()
+
 	storer := storage.InMemory{}
 
 	logger := log.NewNopLogger()
@@ -135,6 +143,8 @@ func TestAddBuyer(t *testing.T) {
 }
 
 func TestRemoveBuyer(t *testing.T) {
+	t.Parallel()
+
 	storer := storage.InMemory{}
 
 	logger := log.NewNopLogger()
@@ -181,6 +191,8 @@ func TestRemoveBuyer(t *testing.T) {
 }
 
 func TestRoutingRulesSettings(t *testing.T) {
+	t.Parallel()
+
 	storer := storage.InMemory{}
 
 	logger := log.NewNopLogger()
@@ -223,6 +235,8 @@ func TestRoutingRulesSettings(t *testing.T) {
 }
 
 func TestSetRoutingRulesSettings(t *testing.T) {
+	t.Parallel()
+
 	storer := storage.InMemory{}
 
 	logger := log.NewNopLogger()
@@ -269,6 +283,8 @@ func TestSetRoutingRulesSettings(t *testing.T) {
 }
 
 func TestSellers(t *testing.T) {
+	t.Parallel()
+
 	expected := routing.Seller{
 		ID:                "1",
 		Name:              "local.local.1",
@@ -298,6 +314,8 @@ func TestSellers(t *testing.T) {
 }
 
 func TestAddSeller(t *testing.T) {
+	t.Parallel()
+
 	storer := storage.InMemory{}
 
 	logger := log.NewNopLogger()
@@ -338,6 +356,8 @@ func TestAddSeller(t *testing.T) {
 }
 
 func TestRemoveSeller(t *testing.T) {
+	t.Parallel()
+
 	storer := storage.InMemory{}
 
 	logger := log.NewNopLogger()
@@ -378,6 +398,8 @@ func TestRemoveSeller(t *testing.T) {
 }
 
 func TestRelays(t *testing.T) {
+	t.Parallel()
+
 	storer := storage.InMemory{}
 
 	seller := routing.Seller{
@@ -500,6 +522,8 @@ func TestRelays(t *testing.T) {
 }
 
 func TestAddRelay(t *testing.T) {
+	t.Parallel()
+
 	storer := storage.InMemory{}
 
 	redisServer, err := miniredis.Run()
@@ -580,6 +604,8 @@ func TestAddRelay(t *testing.T) {
 }
 
 func TestRemoveRelay(t *testing.T) {
+	t.Parallel()
+
 	storer := storage.InMemory{}
 
 	redisServer, err := miniredis.Run()
@@ -645,6 +671,7 @@ func TestRemoveRelay(t *testing.T) {
 }
 
 func TestRelayStateUpdate(t *testing.T) {
+	t.Parallel()
 
 	logger := log.NewNopLogger()
 	makeSvc := func() *jsonrpc.OpsService {
@@ -720,6 +747,8 @@ func TestRelayStateUpdate(t *testing.T) {
 }
 
 func TestRelayPublicKeyUpdate(t *testing.T) {
+	t.Parallel()
+
 	logger := log.NewNopLogger()
 
 	makeSvc := func() *jsonrpc.OpsService {
@@ -795,6 +824,8 @@ func TestRelayPublicKeyUpdate(t *testing.T) {
 }
 
 func TestRelayNICSpeedUpdate(t *testing.T) {
+	t.Parallel()
+
 	logger := log.NewNopLogger()
 
 	makeSvc := func() *jsonrpc.OpsService {
@@ -870,6 +901,8 @@ func TestRelayNICSpeedUpdate(t *testing.T) {
 }
 
 func TestDatacenters(t *testing.T) {
+	t.Parallel()
+
 	storer := storage.InMemory{}
 	storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 1, Name: "local.local.1"})
 	storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 2, Name: "local.local.2"})
@@ -906,6 +939,8 @@ func TestDatacenters(t *testing.T) {
 }
 
 func TestAddDatacenter(t *testing.T) {
+	t.Parallel()
+
 	storer := storage.InMemory{}
 
 	logger := log.NewNopLogger()
@@ -949,6 +984,8 @@ func TestAddDatacenter(t *testing.T) {
 }
 
 func TestRemoveDatacenter(t *testing.T) {
+	t.Parallel()
+
 	storer := storage.InMemory{}
 
 	logger := log.NewNopLogger()

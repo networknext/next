@@ -371,7 +371,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 			metrics.Invocations.Add(1)
 		}()
 
-		timestampNow := time.Now()
+		timestampNow := durationStart
 
 		// Whether or not we should make a route selection/decision on a network next route, or serve a direct route
 		shouldSelect := true
@@ -605,7 +605,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 				metrics.ErrorMetrics.UpdateSessionFailure.Add(1)
 			}
 
-			if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, sessionCacheEntry.RouteDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, sessionCacheEntry.Location); err != nil {
+			if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, sessionCacheEntry.RouteDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, sessionCacheEntry.Location, timestampNow, response.Multipath); err != nil {
 
 				level.Error(locallogger).Log("msg", "failed to update portal data", "err", err)
 			}
@@ -641,7 +641,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 					metrics.ErrorMetrics.UpdateSessionFailure.Add(1)
 				}
 
-				if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, sessionCacheEntry.RouteDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, location); err != nil {
+				if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, sessionCacheEntry.RouteDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, location, timestampNow, response.Multipath); err != nil {
 
 					level.Error(locallogger).Log("msg", "failed to update portal data", "err", err)
 				}
@@ -683,7 +683,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 				metrics.ErrorMetrics.UpdateSessionFailure.Add(1)
 			}
 
-			if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, sessionCacheEntry.RouteDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, sessionCacheEntry.Location); err != nil {
+			if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, sessionCacheEntry.RouteDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, sessionCacheEntry.Location, timestampNow, response.Multipath); err != nil {
 
 				level.Error(locallogger).Log("msg", "failed to update portal data", "err", err)
 			}
@@ -727,7 +727,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 				metrics.ErrorMetrics.UpdateSessionFailure.Add(1)
 			}
 
-			if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, sessionCacheEntry.RouteDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, sessionCacheEntry.Location); err != nil {
+			if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, sessionCacheEntry.RouteDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, sessionCacheEntry.Location, timestampNow, response.Multipath); err != nil {
 
 				level.Error(locallogger).Log("msg", "failed to update portal data", "err", err)
 			}
@@ -763,7 +763,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 				metrics.ErrorMetrics.UpdateSessionFailure.Add(1)
 			}
 
-			if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, sessionCacheEntry.RouteDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, sessionCacheEntry.Location); err != nil {
+			if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, sessionCacheEntry.RouteDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, sessionCacheEntry.Location, timestampNow, response.Multipath); err != nil {
 
 				level.Error(locallogger).Log("msg", "failed to update portal data", "err", err)
 			}
@@ -778,17 +778,19 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 			return
 		}
 
-		if routing.IsVetoed(routeDecision) && sessionCacheEntry.VetoTimestamp.Before(timestampNow) {
-			shouldSelect = false
+		if routing.IsVetoed(routeDecision) {
+			shouldSelect = false // Don't allow vetoed sessions to get next routes
 
-			// Don't allow sessions vetoed with YOLO to come back on
-			if routeDecision.Reason&routing.DecisionVetoYOLO == 0 {
-				// Veto expired, bring the session back on with an initial slice
-				routeDecision = routing.Decision{
-					OnNetworkNext: false,
-					Reason:        routing.DecisionInitialSlice,
+			if sessionCacheEntry.VetoTimestamp.Before(timestampNow) {
+				// Don't allow sessions vetoed with YOLO to come back on
+				if routeDecision.Reason&routing.DecisionVetoYOLO == 0 {
+					// Veto expired, bring the session back on with an initial slice
+					routeDecision = routing.Decision{
+						OnNetworkNext: false,
+						Reason:        routing.DecisionInitialSlice,
+					}
+					newSession = true
 				}
-				newSession = true
 			}
 		}
 
@@ -855,7 +857,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 					metrics.ErrorMetrics.UpdateSessionFailure.Add(1)
 				}
 
-				if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, sessionCacheEntry.RouteDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, sessionCacheEntry.Location); err != nil {
+				if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, sessionCacheEntry.RouteDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, sessionCacheEntry.Location, timestampNow, response.Multipath); err != nil {
 
 					level.Error(locallogger).Log("msg", "failed to update portal data", "err", err)
 				}
@@ -890,7 +892,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 					metrics.ErrorMetrics.UpdateSessionFailure.Add(1)
 				}
 
-				if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, sessionCacheEntry.RouteDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, sessionCacheEntry.Location); err != nil {
+				if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, sessionCacheEntry.RouteDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, sessionCacheEntry.Location, timestampNow, response.Multipath); err != nil {
 
 					level.Error(locallogger).Log("msg", "failed to update portal data", "err", err)
 				}
@@ -1046,7 +1048,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 
 				level.Debug(locallogger).Log("msg", "session served network next route")
 
-				sessionCacheEntry.RouteDecision = routeDecision
+				// sessionCacheEntry.RouteDecision = routeDecision
 			}
 		}
 
@@ -1076,7 +1078,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 		}
 
 		// Set portal data
-		if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, sessionCacheEntry.RouteDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, sessionCacheEntry.Location); err != nil {
+		if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, sessionCacheEntry.RouteDecision.OnNetworkNext, serverCacheEntry.Datacenter.Name, sessionCacheEntry.Location, timestampNow, response.Multipath); err != nil {
 			level.Error(locallogger).Log("msg", "failed to update portal data", "err", err)
 		}
 
@@ -1089,7 +1091,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 	}
 }
 
-func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time.Duration, packet SessionUpdatePacket, nnStats routing.Stats, directStats routing.Stats, relayHops []routing.Relay, onNetworkNext bool, datacenterName string, location routing.Location) error {
+func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time.Duration, packet SessionUpdatePacket, nnStats routing.Stats, directStats routing.Stats, relayHops []routing.Relay, onNetworkNext bool, datacenterName string, location routing.Location, sessionTime time.Time, isMultiPath bool) error {
 	if (nnStats.RTT == 0 && directStats.RTT == 0) || (onNetworkNext && nnStats.RTT == 0) {
 		return nil
 	}
@@ -1111,6 +1113,13 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 		hashedID = fmt.Sprintf("%016x", packet.UserHash)
 	}
 
+	var deltaRTT float64
+	if !onNetworkNext {
+		deltaRTT = 0
+	} else {
+		deltaRTT = directStats.RTT - nnStats.RTT
+	}
+
 	meta := routing.SessionMeta{
 		ID:            fmt.Sprintf("%016x", packet.SessionID),
 		UserHash:      hashedID,
@@ -1118,7 +1127,7 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 		OnNetworkNext: onNetworkNext,
 		NextRTT:       nnStats.RTT,
 		DirectRTT:     directStats.RTT,
-		DeltaRTT:      directStats.RTT - nnStats.RTT,
+		DeltaRTT:      deltaRTT,
 		Location:      location,
 		ClientAddr:    clientAddr.String(),
 		ServerAddr:    packet.ServerAddress.String(),
@@ -1144,13 +1153,14 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 		})
 	}
 	slice := routing.SessionSlice{
-		Timestamp: time.Now(),
+		Timestamp: sessionTime,
 		Next:      nnStats,
 		Direct:    directStats,
 		Envelope: routing.Envelope{
 			Up:   int64(packet.KbpsUp),
 			Down: int64(packet.KbpsDown),
 		},
+		IsMultiPath: isMultiPath,
 	}
 	point := routing.SessionMapPoint{
 		Latitude:      location.Latitude,
@@ -1163,14 +1173,22 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 	// set total session counts with expiration on the entire key set for safety
 	switch meta.OnNetworkNext {
 	case true:
+		// Remove the session from the direct set if it exists
+		tx.ZRem("total-direct", meta.ID)
+		tx.ZRem(fmt.Sprintf("total-direct-buyer-%016x", packet.CustomerID), meta.ID)
+
 		tx.ZAdd("total-next", &redis.Z{Score: meta.DeltaRTT, Member: meta.ID})
 		tx.Expire("total-next", redisClientPortalExp)
 		tx.ZAdd(fmt.Sprintf("total-next-buyer-%016x", packet.CustomerID), &redis.Z{Score: meta.DeltaRTT, Member: meta.ID})
 		tx.Expire(fmt.Sprintf("total-next-buyer-%016x", packet.CustomerID), redisClientPortalExp)
 	case false:
-		tx.ZAdd("total-direct", &redis.Z{Score: meta.DeltaRTT, Member: meta.ID})
+		// Remove the session from the next set if it exists
+		tx.ZRem("total-next", meta.ID)
+		tx.ZRem(fmt.Sprintf("total-next-buyer-%016x", packet.CustomerID), meta.ID)
+
+		tx.ZAdd("total-direct", &redis.Z{Score: -meta.DirectRTT, Member: meta.ID})
 		tx.Expire("total-direct", redisClientPortalExp)
-		tx.ZAdd(fmt.Sprintf("total-direct-buyer-%016x", packet.CustomerID), &redis.Z{Score: meta.DeltaRTT, Member: meta.ID})
+		tx.ZAdd(fmt.Sprintf("total-direct-buyer-%016x", packet.CustomerID), &redis.Z{Score: -meta.DirectRTT, Member: meta.ID})
 		tx.Expire(fmt.Sprintf("total-direct-buyer-%016x", packet.CustomerID), redisClientPortalExp)
 	}
 
