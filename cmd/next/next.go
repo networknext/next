@@ -401,6 +401,10 @@ func main() {
 	var csvOutputFlag bool
 	relaysfs.BoolVar(&csvOutputFlag, "csv", false, "return a CSV file")
 
+	// Return a CSV file instead of a table
+	var relayVersionFilter string
+	relaysfs.StringVar(&relayVersionFilter, "version", "all", "show only relays at this version level")
+
 	root := &ffcli.Command{
 		ShortUsage: "next <subcommand>",
 		Subcommands: []*ffcli.Command{
@@ -556,10 +560,30 @@ func main() {
 					}
 
 					if len(args) > 0 {
-						relays(rpcClient, env, args[0], relaysStateShowFlags, relaysStateHideFlags, relaysDownFlag, relaysListFlag, csvOutputFlag)
+						relays(
+							rpcClient,
+							env,
+							args[0],
+							relaysStateShowFlags,
+							relaysStateHideFlags,
+							relaysDownFlag,
+							relaysListFlag,
+							csvOutputFlag,
+							relayVersionFilter,
+						)
 						return nil
 					}
-					relays(rpcClient, env, "", relaysStateShowFlags, relaysStateHideFlags, relaysDownFlag, relaysListFlag, csvOutputFlag)
+					relays(
+						rpcClient,
+						env,
+						"",
+						relaysStateShowFlags,
+						relaysStateHideFlags,
+						relaysDownFlag,
+						relaysListFlag,
+						csvOutputFlag,
+						relayVersionFilter,
+					)
 					return nil
 				},
 			},

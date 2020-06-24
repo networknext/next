@@ -24,6 +24,7 @@ func relays(
 	relaysDownFlag bool,
 	relaysListFlag bool,
 	csvOutputFlag bool,
+	relayVersionFilter string,
 ) {
 	args := localjsonrpc.RelaysArgs{
 		Regex: regex,
@@ -112,12 +113,11 @@ func relays(
 
 		// return csv file
 		if csvOutputFlag {
-
-			if relaysListFlag {
+			if relaysListFlag && (relayVersionFilter == "all" || relay.Version == relayVersionFilter) {
 				relaysCSV = append(relaysCSV, []string{
 					relay.Name,
 				})
-			} else {
+			} else if relayVersionFilter == "all" || relay.Version == relayVersionFilter {
 				relaysCSV = append(relaysCSV, []string{
 					relay.Name,
 					address,
@@ -129,7 +129,7 @@ func relays(
 					lastUpdated,
 				})
 			}
-		} else {
+		} else if relayVersionFilter == "all" || relay.Version == relayVersionFilter {
 			relays = append(relays, struct {
 				Name        string
 				Address     string
