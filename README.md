@@ -28,11 +28,10 @@ This is a monorepo that contains the Network Next backend.
 
 ### Production Release
 
-1. Cherry pick the bugs/features you would like to release to production into the `prod` branch
-2. Ensure tests pass locally as a sanity check
-3. Tag the commit with an acceptable tag name (see below)
-4. Push your changes to `prod` with `git push origin prod --tags` to include the tag created
-5. Wait for CI/CD to run tests one last time, recognize the new tag, and build a production artifact
+1. Ensure tests pass locally as a sanity check
+2. Tag the commit with an acceptable tag name, eg. `git tag PROD-20200427-01`
+3. Push your changes to git with `git push origin --tags` to include the tag created
+4. Wait for CI/CD to run tests one last time, recognize the new tag, and build a production artifact
 5. Manually `make deploy-(portal|relay_backend|server_backend)-prod` to copy the artifact to the production VMs and restart the service
 
 #### Acceptable tags:
