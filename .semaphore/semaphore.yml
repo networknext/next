@@ -17,7 +17,7 @@ global_job_config:
 blocks:
   - name: Relay Unit Tests
     run:
-      when: change_in(../cmd/relay)
+      when: change_in('../cmd/relay')
     task:
       jobs:
         - name: Relay
