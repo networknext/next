@@ -322,9 +322,6 @@ func main() {
 	go func() {
 
 		for {
-			durationStart := time.Now()
-
-
 			if err := statsdb.GetCostMatrix(&costmatrix, redisClientRelays, float32(maxJitter), float32(maxPacketLoss)); err != nil {
 				level.Warn(logger).Log("matrix", "cost", "op", "generate", "err", err)
 			}
