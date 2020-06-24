@@ -15,14 +15,6 @@ global_job_config:
       - sem-version go 1.13
       - make clean
 blocks:
-  # - name: Relay Unit Tests
-  #   run:
-  #     when: change_in('../cmd/relay')
-  #   task:
-  #     jobs:
-  #       - name: Relay
-  #         commands:
-  #           - make test-unit-relay
   - name: Backend Unit Tests
     task:
       jobs:
