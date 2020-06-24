@@ -189,8 +189,8 @@ func viewRouteMatrix(inputFile string, srcRelayNameFilter string, destRelayNameF
 		numRoutes := entry.NumRoutes
 
 		displayEntries := []struct {
-			NextRTT int32
-			Relays  string
+			IndirectRTT int32
+			Relays      string
 		}{}
 
 		if len(entry.RouteNumRelays) == 0 {
@@ -228,12 +228,17 @@ func viewRouteMatrix(inputFile string, srcRelayNameFilter string, destRelayNameF
 			}
 
 			displayEntries = append(displayEntries, struct {
-				NextRTT int32
-				Relays  string
+				IndirectRTT int32
+				Relays      string
 			}{
-				NextRTT: rtt,
-				Relays:  relays,
+				IndirectRTT: rtt,
+				Relays:      relays,
 			})
+		}
+
+		if len(displayEntries) > 0 {
+			// Pop off the last entry since it's just the direct route
+			displayEntries = displayEntries[:len(displayEntries)-1]
 		}
 
 		fmt.Println("Direct RTT:", directRTT)
