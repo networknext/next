@@ -356,6 +356,10 @@ func main() {
 	routesfs.Float64Var(&routeRTT, "rtt", 5, "route RTT required for selection")
 	routesfs.Uint64Var(&routeHash, "hash", 0, "a previous hash to use")
 
+	sessionsfs := flag.NewFlagSet("sessions", flag.ExitOnError)
+	var sessionCount int64
+	sessionsfs.Int64Var(&sessionCount, "n", 0, "number of top sessions to display (default: all)")
+
 	relayupdatefs := flag.NewFlagSet("relay update", flag.ExitOnError)
 
 	var relayCoreCount uint64
@@ -391,6 +395,19 @@ func main() {
 	// Show all relays (including decommissioned ones) regardless of other flags
 	var relaysAllFlag bool
 	relaysfs.BoolVar(&relaysAllFlag, "all", false, "show all relays")
+
+	// -list and -csv should work with all other flags
+	// Show only a list or relay names
+	var relaysListFlag bool
+	relaysfs.BoolVar(&relaysListFlag, "list", false, "show list of names")
+
+	// Return a CSV file instead of a table
+	var csvOutputFlag bool
+	relaysfs.BoolVar(&csvOutputFlag, "csv", false, "return a CSV file")
+
+	// Return a CSV file instead of a table
+	var relayVersionFilter string
+	relaysfs.StringVar(&relayVersionFilter, "version", "all", "show only relays at this version level")
 
 	root := &ffcli.Command{
 		ShortUsage: "next <subcommand>",
@@ -497,12 +514,13 @@ func main() {
 				Name:       "sessions",
 				ShortUsage: "next sessions",
 				ShortHelp:  "List sessions",
+				FlagSet:    sessionsfs,
 				Exec: func(_ context.Context, args []string) error {
 					if len(args) > 0 {
-						sessions(rpcClient, env, args[0])
+						sessions(rpcClient, env, args[0], sessionCount)
 						return nil
 					}
-					sessions(rpcClient, env, "")
+					sessions(rpcClient, env, "", sessionCount)
 					return nil
 				},
 				Subcommands: []*ffcli.Command{
@@ -547,10 +565,30 @@ func main() {
 					}
 
 					if len(args) > 0 {
-						relays(rpcClient, env, args[0], relaysStateShowFlags, relaysStateHideFlags, relaysDownFlag)
+						relays(
+							rpcClient,
+							env,
+							args[0],
+							relaysStateShowFlags,
+							relaysStateHideFlags,
+							relaysDownFlag,
+							relaysListFlag,
+							csvOutputFlag,
+							relayVersionFilter,
+						)
 						return nil
 					}
-					relays(rpcClient, env, "", relaysStateShowFlags, relaysStateHideFlags, relaysDownFlag)
+					relays(
+						rpcClient,
+						env,
+						"",
+						relaysStateShowFlags,
+						relaysStateHideFlags,
+						relaysDownFlag,
+						relaysListFlag,
+						csvOutputFlag,
+						relayVersionFilter,
+					)
 					return nil
 				},
 			},
@@ -663,7 +701,7 @@ func main() {
 								regex = args[0]
 							}
 
-							checkRelays(rpcClient, env, regex, relaysStateShowFlags, relaysStateHideFlags, relaysDownFlag)
+							checkRelays(rpcClient, env, regex, relaysStateShowFlags, relaysStateHideFlags, relaysDownFlag, csvOutputFlag)
 							return nil
 						},
 					},
