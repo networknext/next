@@ -153,7 +153,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 
 	sremcmds, err := sremtx.Exec()
 	if err != nil && err != redis.Nil {
-		err = fmt.Errorf("UserSessions() redit.Pipeliner error: %v", err)
+		err = fmt.Errorf("UserSessions() redis.Pipeliner error: %v", err)
 		s.Logger.Log("err", err)
 		return err
 	}
@@ -330,7 +330,7 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 
 	_, err = zremtx.Exec()
 	if err != nil && err != redis.Nil {
-		err = fmt.Errorf("TopSessions() redit.Pipeliner error: %v", err)
+		err = fmt.Errorf("TopSessions() redis.Pipeliner error: %v", err)
 		s.Logger.Log("err", err)
 		return err
 	}
@@ -397,17 +397,30 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 	// execute the transaction to remove the sessions IDs from the sorted key sets
 	_, err = zremtx.Exec()
 	if err != nil && err != redis.Nil {
-		err = fmt.Errorf("TopSessions() redit.Pipeliner error: %v", err)
+		err = fmt.Errorf("TopSessions() redis.Pipeliner error: %v", err)
 		s.Logger.Log("err", err)
 		return err
 	}
 
-	sort.Slice(directSessions, func(i int, j int) bool {
-		return directSessions[i].DeltaRTT < directSessions[j].DeltaRTT
+	// IMPORTANT: Clean direct sessions to remove any that are also in the next set
+	directMap := make(map[string]*routing.SessionMeta)
+	for i := range directSessions {
+		directMap[directSessions[i].ID] = &directSessions[i]
+	}
+	for i := range nextSessions {
+		delete(directMap, nextSessions[i].ID)
+	}
+	cleanDirectSessions := make([]*routing.SessionMeta, 0)
+	for _,v := range directMap {
+		cleanDirectSessions = append(cleanDirectSessions, v)
+	}
+
+	sort.Slice(cleanDirectSessions, func(i int, j int) bool {
+		return cleanDirectSessions[i].DirectRTT < cleanDirectSessions[j].DirectRTT
 	})
 
 	reply.Sessions = append(reply.Sessions, nextSessions...)
-	// reply.Sessions = append(reply.Sessions, directSessions...)
+	reply.Sessions = append(reply.Sessions, directSessions...)
 
 	if len(reply.Sessions) > TopSessionsSize {
 		reply.Sessions = reply.Sessions[:TopSessionsSize]
