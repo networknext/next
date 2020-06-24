@@ -411,7 +411,7 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 		delete(directMap, nextSessions[i].ID)
 	}
 	cleanDirectSessions := make([]routing.SessionMeta, 0)
-	for _,v := range directMap {
+	for _, v := range directMap {
 		cleanDirectSessions = append(cleanDirectSessions, *v)
 	}
 
@@ -427,6 +427,21 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 	if len(reply.Sessions) > TopSessionsSize {
 		reply.Sessions = reply.Sessions[:TopSessionsSize]
 	}
+
+	sort.SliceStable(reply.Sessions, func(i int, j int) bool {
+		firstSession := reply.Sessions[i]
+		secondSession := reply.Sessions[j]
+		if firstSession.OnNetworkNext && secondSession.OnNetworkNext {
+			return firstSession.DeltaRTT > secondSession.DeltaRTT
+		}
+		if firstSession.OnNetworkNext && !secondSession.OnNetworkNext {
+			return true
+		}
+		if !firstSession.OnNetworkNext && secondSession.OnNetworkNext {
+			return false
+		}
+		return firstSession.DirectRTT < secondSession.DirectRTT
+	})
 
 	return nil
 }
