@@ -410,9 +410,9 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 	for i := range nextSessions {
 		delete(directMap, nextSessions[i].ID)
 	}
-	cleanDirectSessions := make([]*routing.SessionMeta, 0)
+	cleanDirectSessions := make([]routing.SessionMeta, 0)
 	for _,v := range directMap {
-		cleanDirectSessions = append(cleanDirectSessions, v)
+		cleanDirectSessions = append(cleanDirectSessions, *v)
 	}
 
 	// Sort cleaned direct slices in order of least to greatest direct RTT
