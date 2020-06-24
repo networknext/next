@@ -35,6 +35,8 @@ func TestLocation(t *testing.T) {
 }
 
 func TestNewMaxmindDBReader(t *testing.T) {
+	t.Parallel()
+
 	t.Run("local file not found", func(t *testing.T) {
 		_, err := routing.NewMaxmindReader(http.DefaultClient, "./file/not/found")
 		assert.Error(t, err)
@@ -136,6 +138,8 @@ func TestNewMaxmindDBReader(t *testing.T) {
 }
 
 func TestIPLocator(t *testing.T) {
+	t.Parallel()
+
 	t.Run("IPStack", func(t *testing.T) {
 
 		{
@@ -336,6 +340,8 @@ func TestIPLocator(t *testing.T) {
 }
 
 func TestGeoClient(t *testing.T) {
+	t.Parallel()
+
 	redisServer, _ := miniredis.Run()
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
