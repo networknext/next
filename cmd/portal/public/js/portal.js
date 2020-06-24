@@ -1223,7 +1223,8 @@ function generateCharts(data) {
 			},
 		],
 		axes: [
-			{},
+			{
+			},
 			{
 				scale: "ms",
 			  show: true,
@@ -1303,11 +1304,7 @@ function generateCharts(data) {
 			  values: (self, ticks) => ticks.map(rawValue => rawValue + "kbps"),
 			},
 			{
-				scale: "kbps",
-			  show: true,
-			  gap: 5,
-			  size: 70,
-			  values: (self, ticks) => ticks.map(rawValue => rawValue + "kbps"),
+				show: false
 			}
 		]
 	};
