@@ -338,7 +338,7 @@
                                         </option>
                                     </select>
                                 </div>
-                                <div class="px-2" v-if="!handlers.userHandler.isAnonymous()">
+                                <div class="px-2 hidden" v-if="!handlers.userHandler.isAnonymous()">
                                     <select class="form-control">
                                         <option value="all" v-on:click="handlers.mapHandler.updateFilter({buyerId: '', sessionType: pages.map.filter.sessionType})">
                                             All
@@ -402,7 +402,7 @@
                                             </option>
                                         </select>
                                     </div>
-                                    <div class="px-2">
+                                    <div class="px-2 hidden">
                                         <select class="form-control" v-if="handlers.userHandler.isAdmin()">
                                             <option value="all" v-on:click="handlers.workspaceHandler.updateSessionFilter({buyerId: '', sessionType: pages.sessions.filter.sessionType})">
                                                 All

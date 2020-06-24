@@ -149,9 +149,10 @@ MapHandler = {
 	mapInstance: null,
 	sessionToolMapInstance: null,
 	initMap() {
-		let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
+		// Not working yet
+		// let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
 		this.updateFilter('map', {
-			buyerId: buyerId,
+			buyerId: "",
 			sessionType: 'all'
 		});
 	},
@@ -521,15 +522,17 @@ WorkspaceHandler = {
 				UserHandler.userInfo.company = "";
 			});
 
-		let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
+		// Not working / not necessary?
+		// let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
 		this.updateAccountsTableFilter({
-			buyerId: buyerId,
+			buyerId: "",
 		});
 	},
 	loadSessionsPage() {
-		let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
+		// Not working yet
+		// let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
 		this.updateSessionFilter({
-			buyerId: buyerId,
+			buyerId: "",
 			sessionType: 'all'
 		});
 		this.refreshSessionTable();
@@ -1163,8 +1166,10 @@ function generateCharts(data) {
 		jitterData.comparison[2].push(direct);
 
 		// Packetloss
-		next = parseFloat(entry.next.packet_loss);
-		direct = parseFloat(entry.direct.packet_loss);
+		let nextPL = parseFloat(entry.next.packet_loss);
+		let directPL = parseFloat(entry.direct.packet_loss);
+		next = entry.is_multipath && nextPL >= directPL ? directPL : nextPL;
+		direct = directPL;
 		packetLossData.comparison[0].push(timestamp);
 		packetLossData.comparison[1].push(next);
 		packetLossData.comparison[2].push(direct);
