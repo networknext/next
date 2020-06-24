@@ -23,7 +23,7 @@ blocks:
   #       - name: Relay
   #         commands:
   #           - make test-unit-relay
-  # - name: Backend Unit Tests
+  - name: Backend Unit Tests
     task:
       jobs:
         - name: Backend
