@@ -22,7 +22,7 @@ This is a monorepo that contains the Network Next backend.
 2. Do your work in your bug/feature branch
 3. Issue a pull request into `master` and mark it according to what you need
 	- **Draft**: mark a PR as a draft to expose you have started work and have questions/comments in order to complete the work
-	- **Reader for Review**: mark a PR as ready for review and include the appropriate reviewers when unit tests for your bug/feature are all passing
+	- **Ready for Review**: mark a PR as ready for review and include the appropriate reviewers when unit tests for your bug/feature are all passing
 4. Once your pull request has been reviewed merge it into `master` and wait for CI/CD to run the tests one last time and build a development artifact
 5. Manually `make deploy-(portal|relay_backend|server_backend)` to copy the artifact to the development VMs and restart the service
 
