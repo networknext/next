@@ -428,7 +428,7 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 		reply.Sessions = reply.Sessions[:TopSessionsSize]
 	}
 
-	sort.Slice(reply.Sessions, func(i int, j int) bool {
+	sort.SliceStable(reply.Sessions, func(i int, j int) bool {
 		firstSession := reply.Sessions[i]
 		secondSession := reply.Sessions[j]
 		if firstSession.OnNetworkNext && secondSession.OnNetworkNext {
