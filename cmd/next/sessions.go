@@ -86,7 +86,7 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string) {
 			table.Output(stats)
 		}
 
-		fmt.Println("\nNear Relays:\n")
+		fmt.Printf("\nNear Relays:\n")
 
 		near := []struct {
 			Name       string
