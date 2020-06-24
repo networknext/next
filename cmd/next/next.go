@@ -1331,6 +1331,52 @@ func main() {
 					return nil
 				},
 			},
+			{
+				Name:       "view",
+				ShortUsage: "next view <subcommand>",
+				ShortHelp:  "View data",
+				Exec: func(ctx context.Context, args []string) error {
+					return nil
+				},
+				Subcommands: []*ffcli.Command{
+					{
+						Name:       "costmatrix",
+						ShortUsage: "next view cost",
+						ShortHelp:  "View the entries of the cost matrix",
+						Exec: func(ctx context.Context, args []string) error {
+							input := "cost.bin"
+							viewCostMatrix(input)
+							return nil
+						},
+					},
+					{
+						Name:       "routematrix",
+						ShortUsage: "next view route [srcRelay] [destRelay]",
+						ShortHelp:  "View the entries of the route matrix with optional relay filtering.",
+						Exec: func(ctx context.Context, args []string) error {
+							input := "optimize.bin"
+
+							var srcRelay string
+							var destRelay string
+
+							if len(args) > 0 {
+								srcRelay = args[0]
+							}
+
+							if len(args) == 1 {
+								log.Fatalf("You must provide a destination relay if you provide a source relay. For all entries, omit the relay parameters")
+							}
+
+							if len(args) > 1 {
+								destRelay = args[1]
+							}
+
+							viewRouteMatrix(input, srcRelay, destRelay)
+							return nil
+						},
+					},
+				},
+			},
 		},
 		Exec: func(context.Context, []string) error {
 			fmt.Printf("Network Next Operator Tool\n\n")
