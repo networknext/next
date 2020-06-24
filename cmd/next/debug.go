@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"sort"
+	// "sort"
 
 	"github.com/networknext/backend/routing"
 )
@@ -54,10 +54,6 @@ func debug(relayName string, inputFile string) {
 		relays[i].index = i
 	}
 
-	sort.Slice(relays, func(i int, j int) bool {
-		return relays[i].name < relays[j].name
-	})
-
 	a := relayIndex
 
 	for b := 0; b < numRelays; b++ {
@@ -76,11 +72,14 @@ func debug(relayName string, inputFile string) {
 
 		directRTT := routeMatrix.Entries[index].DirectRTT
 
-		fmt.Printf("    %s (%d)\n\n", dest.name, directRTT)
+		fmt.Printf("    %s (%d)\n", dest.name, directRTT)
 
 		numRoutes := int(routeMatrix.Entries[index].NumRoutes)
 
 		for i := 0; i < numRoutes; i++ {
+			if i == 0 {
+				fmt.Printf("\n")
+			}
 			routeRTT := routeMatrix.Entries[index].RouteRTT[i]
 			routeNumRelays := int(routeMatrix.Entries[index].RouteNumRelays[i])
 			fmt.Printf("    %*dms: ", 5, routeRTT)

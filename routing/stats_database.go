@@ -213,7 +213,7 @@ func (database *StatsDatabase) GetSample(relay1, relay2 uint64) (float32, float3
 			float32(math.Max(float64(a.Jitter), float64(b.Jitter))),
 			float32(math.Max(float64(a.PacketLoss), float64(b.PacketLoss)))
 	}
-	return InvalidRouteValue, InvalidRouteValue, InvalidRouteValue
+	return InvalidRouteValue, 0, 100
 }
 
 // GetCostMatrix returns the cost matrix composed of all current information
@@ -223,19 +223,6 @@ func (database *StatsDatabase) GetCostMatrix(costMatrix *CostMatrix, redisClient
 		return fmt.Errorf("failed to get all relays from redis: %v", hgetallResult.Err())
 	}
 	numRelays := len(hgetallResult.Val())
-
-	costMatrix.RelayIndicies = make(map[uint64]int)
-	costMatrix.RelayIDs = make([]uint64, numRelays)
-	costMatrix.RelayNames = make([]string, numRelays)
-	costMatrix.RelayAddresses = make([][]byte, numRelays)
-	costMatrix.RelayPublicKeys = make([][]byte, numRelays)
-	costMatrix.DatacenterRelays = make(map[uint64][]uint64)
-	costMatrix.RTT = make([]int32, TriMatrixLength(numRelays))
-	costMatrix.RelaySellers = make([]Seller, numRelays)
-	costMatrix.RelaySessionCounts = make([]uint32, numRelays)
-	costMatrix.RelayMaxSessionCounts = make([]uint32, numRelays)
-
-	datacenterNameMap := make(map[uint64]string)
 
 	var stableRelays []RelayCacheEntry
 	for _, rawRelay := range hgetallResult.Val() {
@@ -249,6 +236,19 @@ func (database *StatsDatabase) GetCostMatrix(costMatrix *CostMatrix, redisClient
 	sort.SliceStable(stableRelays, func(i, j int) bool {
 		return stableRelays[i].ID < stableRelays[j].ID
 	})
+
+	costMatrix.RelayIndicies = make(map[uint64]int)
+	costMatrix.RelayIDs = make([]uint64, numRelays)
+	costMatrix.RelayNames = make([]string, numRelays)
+	costMatrix.RelayAddresses = make([][]byte, numRelays)
+	costMatrix.RelayPublicKeys = make([][]byte, numRelays)
+	costMatrix.DatacenterRelays = make(map[uint64][]uint64)
+	costMatrix.RTT = make([]int32, TriMatrixLength(numRelays))
+	costMatrix.RelaySellers = make([]Seller, numRelays)
+	costMatrix.RelaySessionCounts = make([]uint32, numRelays)
+	costMatrix.RelayMaxSessionCounts = make([]uint32, numRelays)
+
+	datacenterNameMap := make(map[uint64]string)
 
 	for i, relayData := range stableRelays {
 		costMatrix.RelayIndicies[relayData.ID] = i
