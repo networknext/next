@@ -415,7 +415,7 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 		cleanDirectSessions = append(cleanDirectSessions, v)
 	}
 
-	// Sort direct slices in order of least to greatest direct RTT
+	// Sort cleaned direct slices in order of least to greatest direct RTT
 	sort.Slice(cleanDirectSessions, func(i int, j int) bool {
 		return cleanDirectSessions[i].DirectRTT < cleanDirectSessions[j].DirectRTT
 	})
