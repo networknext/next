@@ -1052,8 +1052,6 @@ type CostMatrixGenMetrics struct {
 }
 
 type CostMatrixGenErrorMetrics struct {
-	GetAllRelaysFailure   Counter
-	RelayUnmarshalFailure Counter
 }
 
 var EmptyCostMatrixGenMetrics CostMatrixGenMetrics = CostMatrixGenMetrics{
