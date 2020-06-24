@@ -576,9 +576,9 @@ build-all: build-relay-backend build-server-backend build-relay-ref build-client
 rebuild-all: clean build-all
 
 .PHONY: update-sdk
-update-sdk: ## updates the sdk submodule to point at head revision
+update-sdk: ## updates the sdk submodule
 	git submodule update --remote --merge
 
 .PHONY: sync
-sync: ## syncs to latest code including the sdk submodule
+sync: ## syncs to latest code including submodules
 	git pull && git submodule update --recursive
