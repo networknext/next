@@ -672,7 +672,7 @@ func main() {
 								regex = args[0]
 							}
 
-							checkRelays(rpcClient, env, regex, relaysStateShowFlags, relaysStateHideFlags, relaysDownFlag)
+							checkRelays(rpcClient, env, regex, relaysStateShowFlags, relaysStateHideFlags, relaysDownFlag, csvOutputFlag)
 							return nil
 						},
 					},

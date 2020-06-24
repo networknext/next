@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/csv"
 	"fmt"
 	"io"
 	"log"
@@ -514,7 +515,15 @@ func setRelayState(rpcClient jsonrpc.RPCClient, stateString string, regexes []st
 	}
 }
 
-func checkRelays(rpcClient jsonrpc.RPCClient, env Environment, regex string, relaysStateShowFlags [6]bool, relaysStateHideFlags [6]bool, relaysDownFlag bool) {
+func checkRelays(
+	rpcClient jsonrpc.RPCClient,
+	env Environment,
+	regex string,
+	relaysStateShowFlags [6]bool,
+	relaysStateHideFlags [6]bool,
+	relaysDownFlag bool,
+	csvOutputFlag bool,
+) {
 	args := localjsonrpc.RelaysArgs{
 		Regex: regex,
 	}
@@ -688,5 +697,39 @@ func checkRelays(rpcClient jsonrpc.RPCClient, env Environment, regex string, rel
 		fmt.Printf("\n")
 	}
 
-	table.Output(info)
+	if csvOutputFlag {
+		var csvInfo [][]string
+		csvInfo = append(csvInfo, []string{
+			"Name", "SSH", "Ubuntu", "Cores", "Ping Backend", "Running", "Bound"})
+
+		for _, relayInfo := range info {
+			csvInfo = append(csvInfo, []string{
+				relayInfo.Name,
+				relayInfo.CanSSH,
+				relayInfo.UbuntuVersion,
+				relayInfo.CPUCores,
+				relayInfo.CanPingBackend,
+				relayInfo.ServiceRunning,
+				relayInfo.PortBound,
+			})
+
+			fileName := "./relay-check.csv"
+			f, err := os.Create(fileName)
+			if err != nil {
+				fmt.Printf("Error creating local CSV file %s: %v\n", fileName, err)
+				return
+			}
+
+			writer := csv.NewWriter(f)
+			err = writer.WriteAll(csvInfo)
+			if err != nil {
+				fmt.Printf("Error writing local CSV file %s: %v\n", fileName, err)
+			}
+		}
+		fmt.Println("CSV file written: relay-check.csv")
+
+	} else {
+		table.Output(info)
+	}
+
 }
