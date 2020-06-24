@@ -231,7 +231,7 @@ MapHandler = {
 					getWeight: d => 1,
 					cellSizePixels: cellSize,
 					colorRange: [
-						[5,245,85],
+						[40, 167, 69],
 					],
 					gpuAggregation,
 					aggregation
@@ -1151,9 +1151,6 @@ function generateCharts(data) {
 		// Latency
 		let next = parseFloat(entry.next.rtt);
 		let direct = parseFloat(entry.direct.rtt);
-		let improvement = direct - next;
-		latencyData.improvement[0].push(timestamp);
-		latencyData.improvement[1].push(improvement);
 		latencyData.comparison[0].push(timestamp);
 		latencyData.comparison[1].push(next);
 		latencyData.comparison[2].push(direct);
@@ -1161,9 +1158,6 @@ function generateCharts(data) {
 		// Jitter
 		next = parseFloat(entry.next.jitter);
 		direct = parseFloat(entry.direct.jitter);
-		improvement = direct - next;
-		jitterData.improvement[0].push(timestamp);
-		jitterData.improvement[1].push(improvement);
 		jitterData.comparison[0].push(timestamp);
 		jitterData.comparison[1].push(next);
 		jitterData.comparison[2].push(direct);
@@ -1171,9 +1165,6 @@ function generateCharts(data) {
 		// Packetloss
 		next = parseFloat(entry.next.packet_loss);
 		direct = parseFloat(entry.direct.packet_loss);
-		improvement = direct - next;
-		packetLossData.improvement[0].push(timestamp);
-		packetLossData.improvement[1].push(improvement);
 		packetLossData.comparison[0].push(timestamp);
 		packetLossData.comparison[1].push(next);
 		packetLossData.comparison[2].push(direct);
@@ -1208,7 +1199,8 @@ function generateCharts(data) {
 			}
 		},
 		series: [
-			{},
+			{
+			},
 			{
 				stroke: "rgb(0, 109, 44)",
 				fill: "rgba(0, 109, 44, 0.1)",
@@ -1223,7 +1215,9 @@ function generateCharts(data) {
 			},
 		],
 		axes: [
-			{},
+			{
+				show: false
+			},
 			{
 				scale: "ms",
 			  show: true,
@@ -1258,7 +1252,9 @@ function generateCharts(data) {
 			},
 		],
 		axes: [
-			{},
+			{
+				show: false
+			},
 			{
 			  show: true,
 			  gap: 5,
@@ -1294,7 +1290,9 @@ function generateCharts(data) {
 			},
 		],
 		axes: [
-			{},
+			{
+				show: false
+			},
 			{
 				scale: "kbps",
 			  show: true,
@@ -1303,11 +1301,7 @@ function generateCharts(data) {
 			  values: (self, ticks) => ticks.map(rawValue => rawValue + "kbps"),
 			},
 			{
-				scale: "kbps",
-			  show: true,
-			  gap: 5,
-			  size: 70,
-			  values: (self, ticks) => ticks.map(rawValue => rawValue + "kbps"),
+				show: false
 			}
 		]
 	};
