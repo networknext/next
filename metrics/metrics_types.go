@@ -1090,19 +1090,5 @@ func NewCostMatrixGenMetrics(ctx context.Context, metricsHandler Handler) (*Cost
 		DurationGauge: newCostMatrixGenDurationGauge,
 	}
 
-	costMatrixGenMetrics.ErrorMetrics.GetAllRelaysFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Get All Redis Relays Failure",
-		ServiceName: "relay_backend",
-		ID:          "relay.error.get_all_relays_failure",
-		Unit:        "errors",
-	})
-
-	costMatrixGenMetrics.ErrorMetrics.RelayUnmarshalFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Relay Unmarshal Failure",
-		ServiceName: "relay_backend",
-		ID:          "relay.error.relay_unmarshal_failure",
-		Unit:        "errors",
-	})
-
 	return &costMatrixGenMetrics, nil
 }
