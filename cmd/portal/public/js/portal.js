@@ -1163,7 +1163,7 @@ function generateCharts(data) {
 		jitterData.comparison[2].push(direct);
 
 		// Packetloss
-		next = parseFloat(entry.next.packet_loss);
+		next = entry.is_multipath ? entry.next.packet_loss >= entry.direct.packet_loss ? parseFloat(entry.direct.packet_loss) : parseFloat(entry.next.packet_loss) : parseFloat(entry.next.packet_loss);
 		direct = parseFloat(entry.direct.packet_loss);
 		packetLossData.comparison[0].push(timestamp);
 		packetLossData.comparison[1].push(next);
