@@ -9,6 +9,8 @@ import (
 )
 
 func TestAnonAddr(t *testing.T) {
+	t.Parallel()
+
 	t.Run("anon addr", func(t *testing.T) {
 		addr4 := net.UDPAddr{IP: net.ParseIP("68.14.255.202"), Port: 1313}
 		anonAddr4 := transport.AnonymizeAddr(addr4)

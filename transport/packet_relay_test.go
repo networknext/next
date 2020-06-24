@@ -21,6 +21,8 @@ import (
 )
 
 func TestRelayRequestUnmarshalJSON(t *testing.T) {
+	t.Parallel()
+
 	t.Run("unparsable json", func(t *testing.T) {
 		jsonRequest := []byte("{")
 
@@ -167,6 +169,8 @@ func TestRelayRequestMarshalJSON(t *testing.T) {
 }
 
 func TestRelayInitRequestUnmarshalJSON(t *testing.T) {
+	t.Parallel()
+
 	t.Run("unparsable json", func(t *testing.T) {
 		jsonRequest := []byte("{")
 
@@ -286,6 +290,8 @@ func TestRelayInitRequestMarshalJSON(t *testing.T) {
 }
 
 func TestRelayInitRequestUnmarshalBinary(t *testing.T) {
+	t.Parallel()
+
 	t.Run("returns 'invalid packet' when missing magic number", func(t *testing.T) {
 		var packet transport.RelayInitRequest
 		assert.Equal(t, packet.UnmarshalBinary(make([]byte, 0)), errors.New("invalid packet"))
@@ -399,6 +405,8 @@ func TestRelayInitResponseMarshalBinary(t *testing.T) {
 }
 
 func TestRelayInitResponseUnmarshalBinary(t *testing.T) {
+	t.Parallel()
+
 	t.Run("bad version", func(t *testing.T) {
 		var response transport.RelayInitResponse
 
@@ -459,6 +467,8 @@ func TestRelayInitResponseUnmarshalBinary(t *testing.T) {
 }
 
 func TestRelayUpdateRequestUnmarshalJSON(t *testing.T) {
+	t.Parallel()
+
 	t.Run("invalid address", func(t *testing.T) {
 		var packet transport.RelayUpdateRequest
 
@@ -568,6 +578,8 @@ func TestRelayUpdateRequestUnmarshalJSON(t *testing.T) {
 }
 
 func TestRelayUpdateRequestUnmarshalBinary(t *testing.T) {
+	t.Parallel()
+
 	t.Run("missing request version", func(t *testing.T) {
 		var packet transport.RelayUpdateRequest
 		assert.Equal(t, packet.UnmarshalBinary(make([]byte, 0)), errors.New("invalid packet"))
@@ -828,6 +840,8 @@ func TestRelayUpdateRequestMarshalBinary(t *testing.T) {
 }
 
 func TestRelayUpdateResponseUnmarshalBinary(t *testing.T) {
+	t.Parallel()
+
 	t.Run("missing response version", func(t *testing.T) {
 		var packet transport.RelayUpdateResponse
 		buff := make([]byte, 0)

@@ -54,6 +54,8 @@ func TestBuyersList(t *testing.T) {
 }
 
 func TestUserSessions(t *testing.T) {
+	t.Parallel()
+
 	redisServer, _ := miniredis.Run()
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
@@ -147,6 +149,8 @@ func TestUserSessions(t *testing.T) {
 }
 
 func TestTotalSessions(t *testing.T) {
+	t.Parallel()
+
 	redisServer, _ := miniredis.Run()
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
@@ -183,6 +187,8 @@ func TestTotalSessions(t *testing.T) {
 }
 
 func TestTopSessions(t *testing.T) {
+	t.Parallel()
+
 	redisServer, _ := miniredis.Run()
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
@@ -281,6 +287,8 @@ func TestTopSessions(t *testing.T) {
 }
 
 func TestSessionDetails(t *testing.T) {
+	t.Parallel()
+
 	redisServer, _ := miniredis.Run()
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
@@ -393,6 +401,8 @@ func TestSessionDetails(t *testing.T) {
 }
 
 func TestSessionMapPoints(t *testing.T) {
+	t.Parallel()
+
 	redisServer, _ := miniredis.Run()
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
@@ -507,6 +517,8 @@ func TestSessionMapPoints(t *testing.T) {
 }
 
 func TestSessionMap(t *testing.T) {
+	t.Parallel()
+
 	redisServer, _ := miniredis.Run()
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
@@ -621,6 +633,8 @@ func TestSessionMap(t *testing.T) {
 }
 
 func TestGameConfiguration(t *testing.T) {
+	t.Parallel()
+
 	redisServer, _ := miniredis.Run()
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 	storer := storage.InMemory{}

@@ -77,6 +77,8 @@ func cleanFireStore(ctx context.Context, client *firestore.Client) error {
 }
 
 func TestFirestore(t *testing.T) {
+	t.Parallel()
+
 	checkFirestoreEmulator(t)
 	ctx := context.Background()
 
