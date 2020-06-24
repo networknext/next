@@ -830,8 +830,8 @@ function startApp() {
 				JSONRPCClient
 					.call("AuthService.UpgradeAccount", {user_id: UserHandler.userInfo.userId})
 					.then((response) => {
-						console.log(response)
-						if (response.new_roles.length > 0) {
+						let newRoles = response.newRoles || []
+						if (newRoles.length > 0) {
 							UserHandler.userInfo.roles = response.new_roles;
 						}
 					})
