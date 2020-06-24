@@ -149,9 +149,10 @@ MapHandler = {
 	mapInstance: null,
 	sessionToolMapInstance: null,
 	initMap() {
-		let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
+		// Not working yet
+		// let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
 		this.updateFilter('map', {
-			buyerId: buyerId,
+			buyerId: "",
 			sessionType: 'all'
 		});
 	},
@@ -521,15 +522,17 @@ WorkspaceHandler = {
 				UserHandler.userInfo.company = "";
 			});
 
-		let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
+		// Not working / not necessary?
+		// let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
 		this.updateAccountsTableFilter({
-			buyerId: buyerId,
+			buyerId: "",
 		});
 	},
 	loadSessionsPage() {
-		let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
+		// Not working yet
+		// let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
 		this.updateSessionFilter({
-			buyerId: buyerId,
+			buyerId: "",
 			sessionType: 'all'
 		});
 		this.refreshSessionTable();
