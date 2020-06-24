@@ -1245,7 +1245,7 @@ func updateSessionCacheEntry(redisClient redis.Cmdable, sessionCacheKey string, 
 		Location:                   location,
 	}
 
-	getCmd := redisClient.Set(sessionCacheKey, updatedSessionCacheEntry, 30*time.Second)
+	getCmd := redisClient.Set(sessionCacheKey, updatedSessionCacheEntry, 5*time.Minute)
 	if getCmd.Err() != nil {
 		// This error case should never happen, can't produce it in test cases, but leaving it in anyway
 		return fmt.Errorf("failed to update session: %v", getCmd.Err())
