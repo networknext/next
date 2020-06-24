@@ -1340,7 +1340,7 @@ func main() {
 				},
 				Subcommands: []*ffcli.Command{
 					{
-						Name:       "costmatrix",
+						Name:       "cost",
 						ShortUsage: "next view cost",
 						ShortHelp:  "View the entries of the cost matrix",
 						Exec: func(ctx context.Context, args []string) error {
@@ -1350,7 +1350,7 @@ func main() {
 						},
 					},
 					{
-						Name:       "routematrix",
+						Name:       "route",
 						ShortUsage: "next view route [srcRelay] [destRelay]",
 						ShortHelp:  "View the entries of the route matrix with optional relay filtering.",
 						Exec: func(ctx context.Context, args []string) error {
