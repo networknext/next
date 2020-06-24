@@ -356,6 +356,10 @@ func main() {
 	routesfs.Float64Var(&routeRTT, "rtt", 5, "route RTT required for selection")
 	routesfs.Uint64Var(&routeHash, "hash", 0, "a previous hash to use")
 
+	sessionsfs := flag.NewFlagSet("sessions", flag.ExitOnError)
+	var sessionCount int64
+	sessionsfs.Int64Var(&sessionCount, "n", 0, "number of top sessions to display (default: all)")
+
 	relayupdatefs := flag.NewFlagSet("relay update", flag.ExitOnError)
 
 	var relayCoreCount uint64
@@ -510,12 +514,13 @@ func main() {
 				Name:       "sessions",
 				ShortUsage: "next sessions",
 				ShortHelp:  "List sessions",
+				FlagSet:    sessionsfs,
 				Exec: func(_ context.Context, args []string) error {
 					if len(args) > 0 {
-						sessions(rpcClient, env, args[0])
+						sessions(rpcClient, env, args[0], sessionCount)
 						return nil
 					}
-					sessions(rpcClient, env, "")
+					sessions(rpcClient, env, "", sessionCount)
 					return nil
 				},
 				Subcommands: []*ffcli.Command{

@@ -18,7 +18,7 @@ func flushsessions(rpcClient jsonrpc.RPCClient, env Environment) {
 	}
 }
 
-func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string) {
+func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string, sessionCount int64) {
 	if sessionID != "" {
 		relaysargs := localjsonrpc.RelaysArgs{}
 
@@ -98,5 +98,10 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string) {
 		})
 	}
 
-	table.Output(sessions)
+	if sessionCount > 0 {
+		table.Output(sessions[0:sessionCount])
+	} else {
+		table.Output(sessions)
+	}
+
 }
