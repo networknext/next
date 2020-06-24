@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/modood/table"
 	localjsonrpc "github.com/networknext/backend/transport/jsonrpc"
@@ -38,57 +39,96 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string) {
 			return
 		}
 
-		fmt.Println("Session ID:", sessionID)
-		fmt.Println("User Hash:", reply.Meta.UserHash)
+		stats := []struct {
+			Name       string
+			RTT        string
+			Jitter     string
+			PacketLoss string
+		}{}
 
-		fmt.Println()
+		if len(reply.Slices) > 0 {
+			
+			lastSlice := reply.Slices[len(reply.Slices)-1]
 
-		fmt.Printf("Location: %s, %s\n", reply.Meta.Location.City, reply.Meta.Location.Region)
+			if reply.Meta.OnNetworkNext {
+				fmt.Printf( "Session is on Network Next\n\n" )
+				fmt.Printf( "RTT improvement is %.1fms\n\n", lastSlice.Direct.RTT - lastSlice.Next.RTT)
+			} else {
+				fmt.Printf( "Session is going direct\n\n" )
+			}
 
-		fmt.Println()
+			stats = append(stats, struct {
+				Name       string
+				RTT        string
+				Jitter     string
+				PacketLoss string
+			}{
+				Name:       "Direct",
+				RTT:        fmt.Sprintf("%.01f", lastSlice.Direct.RTT),
+				Jitter:     fmt.Sprintf("%.01f", lastSlice.Direct.Jitter),
+				PacketLoss: fmt.Sprintf("%.01f", lastSlice.Direct.PacketLoss),
+			})
 
-		fmt.Println("Near Relays:")
+			if reply.Meta.OnNetworkNext {
+				stats = append(stats, struct {
+					Name       string
+					RTT        string
+					Jitter     string
+					PacketLoss string
+				}{
+					Name:       "Next",
+					RTT:        fmt.Sprintf("%.01f", lastSlice.Next.RTT),
+					Jitter:     fmt.Sprintf("%.01f", lastSlice.Next.Jitter),
+					PacketLoss: fmt.Sprintf("%.01f", lastSlice.Next.PacketLoss),
+				})
+			}
+	
+			table.Output(stats)
+		}
+
+		fmt.Println("\nNear Relays:\n")
+
+		near := []struct {
+			Name       string
+			RTT        string
+			Jitter     string
+			PacketLoss string
+		}{}
+
 		for _, relay := range reply.Meta.NearbyRelays {
 			for _, r := range relaysreply.Relays {
 				if relay.ID == r.ID {
-					relay.Name = r.Name
+				    relay.Name = r.Name
 				}
 			}
-
-			fmt.Printf("\t%s: RTT(%.2f) Jitter(%.2f) PL(%.2f)\n", relay.Name, relay.ClientStats.RTT, relay.ClientStats.Jitter, relay.ClientStats.PacketLoss)
+			near = append(near, struct {
+				Name       string
+				RTT        string
+				Jitter     string
+				PacketLoss string
+			}{
+				Name:       relay.Name,
+				RTT:        fmt.Sprintf("%.1f", relay.ClientStats.RTT),
+				Jitter:     fmt.Sprintf("%.1f", relay.ClientStats.Jitter),
+				PacketLoss: fmt.Sprintf("%.1f", relay.ClientStats.PacketLoss),
+			})
 		}
 
-		fmt.Println()
+		table.Output(near)
 
-		if len(reply.Slices) > 0 {
-			lastSlice := reply.Slices[len(reply.Slices)-1]
-			fmt.Println("Direct:")
-			fmt.Printf("\tRTT = %.2f\n", lastSlice.Direct.RTT)
-			fmt.Printf("\tJitter = %.2f\n", lastSlice.Direct.Jitter)
-			fmt.Printf("\tPL = %.2f\n", lastSlice.Direct.PacketLoss)
+		fmt.Printf( "\nRoute:\n\n" )
 
-			fmt.Println()
-
-			if reply.Meta.OnNetworkNext {
-				fmt.Println("Next:")
-				fmt.Printf("\tRTT = %.2f\n", lastSlice.Next.RTT)
-				fmt.Printf("\tJitter = %.2f\n", lastSlice.Next.Jitter)
-				fmt.Printf("\tPL = %.2f\n", lastSlice.Next.PacketLoss)
-			}
-		}
-
-		fmt.Println("Route:")
-		fmt.Printf("\t%s, %s (Client's Location)\n", reply.Meta.Location.City, reply.Meta.Location.Region)
-		for idx, hop := range reply.Meta.Hops {
+		clientAddr := strings.Replace(reply.Meta.ClientAddr, ":0", "", -1)
+		fmt.Printf("    %s\n", clientAddr)
+		for _, hop := range reply.Meta.Hops {
 			for _, relay := range relaysreply.Relays {
 				if hop.ID == relay.ID {
 					hop.Name = relay.Name
 				}
 			}
-
-			fmt.Printf("\t%s (Hop %d)\n", hop.Name, idx+1)
+			fmt.Printf("    %s\n", hop.Name)
 		}
-		fmt.Printf("\t%s (Game Server)\n", reply.Meta.ServerAddr)
+		fmt.Printf("    %s\n", reply.Meta.ServerAddr)
 
 		return
 	}
@@ -104,7 +144,7 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string) {
 	sessions := []struct {
 		ID          string
 		UserHash    string
-		Location    string
+		ISP         string
 		Datacenter  string
 		DirectRTT   string
 		NextRTT     string
@@ -119,7 +159,7 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string) {
 		sessions = append(sessions, struct {
 			ID          string
 			UserHash    string
-			Location    string
+			ISP         string
 			Datacenter  string
 			DirectRTT   string
 			NextRTT     string
@@ -127,7 +167,7 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string) {
 		}{
 			ID:          session.ID,
 			UserHash:    session.UserHash,
-			Location:    fmt.Sprintf("%s, %s", session.Location.City, session.Location.Region),
+			ISP:         session.Location.ISP,
 			Datacenter:  session.Datacenter,
 			DirectRTT:   fmt.Sprintf("%.02f", session.DirectRTT),
 			NextRTT:     fmt.Sprintf("%.02f", session.NextRTT),
