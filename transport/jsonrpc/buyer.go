@@ -415,12 +415,14 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 		cleanDirectSessions = append(cleanDirectSessions, v)
 	}
 
+	// Sort direct slices in order of least to greatest direct RTT
 	sort.Slice(cleanDirectSessions, func(i int, j int) bool {
 		return cleanDirectSessions[i].DirectRTT < cleanDirectSessions[j].DirectRTT
 	})
 
+	// Append the two sets. next sessions first, followed by direct sessions that are not included in the next set.
 	reply.Sessions = append(reply.Sessions, nextSessions...)
-	reply.Sessions = append(reply.Sessions, directSessions...)
+	reply.Sessions = append(reply.Sessions, cleanDirectSessions...)
 
 	if len(reply.Sessions) > TopSessionsSize {
 		reply.Sessions = reply.Sessions[:TopSessionsSize]
