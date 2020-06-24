@@ -1165,7 +1165,7 @@ function generateCharts(data) {
 		// Packetloss
 		let nextPL = parseFloat(entry.next.packet_loss);
 		let directPL = parseFloat(entry.direct.packet_loss);
-		next = entry.is_multipath ? nextPL >= directPL ? directPL : nextPL : nextPL;
+		next = entry.is_multipath && nextPL >= directPL ? directPL : nextPL;
 		direct = directPL;
 		packetLossData.comparison[0].push(timestamp);
 		packetLossData.comparison[1].push(next);
