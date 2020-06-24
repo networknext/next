@@ -230,7 +230,7 @@ func (database *StatsDatabase) GetCostMatrix(costMatrix *CostMatrix, redisClient
 	costMatrix.RelayAddresses = make([][]byte, numRelays)
 	costMatrix.RelayPublicKeys = make([][]byte, numRelays)
 	costMatrix.DatacenterRelays = make(map[uint64][]uint64)
-	costMatrix.RTT = make([]int32, TriMatrixLength(numRelays))			// todo: should be renamed to "Cost"
+	costMatrix.RTT = make([]int32, TriMatrixLength(numRelays))
 	costMatrix.RelaySellers = make([]Seller, numRelays)
 	costMatrix.RelaySessionCounts = make([]uint32, numRelays)
 	costMatrix.RelayMaxSessionCounts = make([]uint32, numRelays)
@@ -282,7 +282,7 @@ func (database *StatsDatabase) GetCostMatrix(costMatrix *CostMatrix, redisClient
 			rtt, jitter, packetLoss := database.GetSample(idI, idJ)
 			ijIndex := TriMatrixIndex(i, j)
 			if rtt != InvalidRouteValue && jitter <= maxJitter && packetLoss <= maxPacketLoss {
-				costMatrix.RTT[ijIndex] = int32(math.Floor(float64(rtt + jitter)))
+				costMatrix.RTT[ijIndex] = int32(math.Floor(float64(rtt)))
 			} else {
 				costMatrix.RTT[ijIndex] = -1
 			}

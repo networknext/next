@@ -173,10 +173,6 @@ clean: ## cleans the dist directory of all builds
 	@rm -fr $(DIST_DIR)
 	@mkdir $(DIST_DIR)
 
-.PHONY: lint
-lint: ## runs go vet
-	@printf "Skipping vet/staticcheck for now...\n\n"
-
 .PHONY: format
 format: ## runs gofmt on all go source code
 	@$(GOFMT) -s -w .
@@ -189,10 +185,6 @@ format: ## runs gofmt on all go source code
 .PHONY: test
 test: test-unit
 
-.PHONY: test-unit-sdk
-test-unit-sdk: build-sdk-test ## runs sdk unit tests
-	@$(DIST_DIR)/$(SDKNAME)_test
-
 ifeq ($(OS),linux)
 .PHONY: test-unit-relay
 test-unit-relay: build-relay-tests ## runs relay unit tests
@@ -200,11 +192,11 @@ test-unit-relay: build-relay-tests ## runs relay unit tests
 endif
 
 .PHONY: test-unit-backend
-test-unit-backend: lint ## runs backend unit tests
+test-unit-backend: ## runs backend unit tests
 	@./scripts/test-unit-backend.sh
 
 .PHONY: test-unit
-test-unit: clean test-unit-sdk test-unit-backend ## runs unit tests
+test-unit: clean test-unit-backend ## runs backend unit tests
 
 ifeq ($(OS),linux)
 .PHONY: test-soak-valgrind

@@ -23,7 +23,7 @@ if [[ ! -z "$PUBSUB_EMULATOR_HOST" ]]; then
     sleep 3
 fi
 
-printf "Running go tests:\n\n"
+printf "\nRunning go unit tests:\n\n"
 go test  ./... -coverprofile ./cover.out
 testResult=$?
 if [ ! $testResult -eq 0 ]; then
