@@ -778,17 +778,19 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 			return
 		}
 
-		if routing.IsVetoed(routeDecision) && sessionCacheEntry.VetoTimestamp.Before(timestampNow) {
-			shouldSelect = false
+		if routing.IsVetoed(routeDecision) {
+			shouldSelect = false // Don't allow vetoed sessions to get next routes
 
-			// Don't allow sessions vetoed with YOLO to come back on
-			if routeDecision.Reason&routing.DecisionVetoYOLO == 0 {
-				// Veto expired, bring the session back on with an initial slice
-				routeDecision = routing.Decision{
-					OnNetworkNext: false,
-					Reason:        routing.DecisionInitialSlice,
+			if sessionCacheEntry.VetoTimestamp.Before(timestampNow) {
+				// Don't allow sessions vetoed with YOLO to come back on
+				if routeDecision.Reason&routing.DecisionVetoYOLO == 0 {
+					// Veto expired, bring the session back on with an initial slice
+					routeDecision = routing.Decision{
+						OnNetworkNext: false,
+						Reason:        routing.DecisionInitialSlice,
+					}
+					newSession = true
 				}
-				newSession = true
 			}
 		}
 
