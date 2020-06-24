@@ -132,7 +132,7 @@ func (m *RouteMatrix) Routes(from []Relay, to []Relay, routeSelectors ...Selecto
 
 	type RelayPairResult struct {
 		fromtoidx int  // The index in the route matrix entry
-		reverse   bool // Whether or not to reverse the relays to stay on the same side of the diagnol in the triangular matrix
+		reverse   bool // Whether or not to reverse the relays to stay on the same side of the diagonal in the triangular matrix
 	}
 
 	relayPairLength := len(from) * len(to)
@@ -143,6 +143,8 @@ func (m *RouteMatrix) Routes(from []Relay, to []Relay, routeSelectors ...Selecto
 	for i, fromrelay := range from {
 		for j, torelay := range to {
 			fromtoidx, reverse := m.getFromToRelayIndex(fromrelay, torelay)
+
+			// todo: what the fuck
 
 			// Add a bad pair result so that the second pass will skip over it.
 			// This way we don't have to append only good results to a new list, which is more expensive.

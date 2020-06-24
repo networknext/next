@@ -83,12 +83,24 @@ func debug(relayName string, inputFile string) {
 			routeRTT := routeMatrix.Entries[index].RouteRTT[i]
 			routeNumRelays := int(routeMatrix.Entries[index].RouteNumRelays[i])
 			fmt.Printf("    %*dms: ", 5, routeRTT)
-			for j := 0; j < routeNumRelays; j++ {
-				fmt.Printf("%s", routeMatrix.RelayNames[routeMatrix.Entries[index].RouteRelays[i][j]])
-				if j != routeNumRelays-1 {
-					fmt.Printf(" - ")
-				} else {
-					fmt.Printf("\n")
+			reverse := a < b
+			if reverse {
+				for j := routeNumRelays - 1; j >= 0; j-- {
+					fmt.Printf("%s", routeMatrix.RelayNames[routeMatrix.Entries[index].RouteRelays[i][j]])
+					if j != 0 {
+						fmt.Printf(" - ")
+					} else {
+						fmt.Printf("\n")
+					}
+				}
+			} else {
+				for j := 0; j < routeNumRelays; j++ {
+					fmt.Printf("%s", routeMatrix.RelayNames[routeMatrix.Entries[index].RouteRelays[i][j]])
+					if j != routeNumRelays-1 {
+						fmt.Printf(" - ")
+					} else {
+						fmt.Printf("\n")
+					}
 				}
 			}
 		}
