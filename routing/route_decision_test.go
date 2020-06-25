@@ -76,7 +76,7 @@ func TestDecideDowngradeRTT(t *testing.T) {
 	assert.Equal(t, routing.Decision{true, routing.DecisionNoReason}, decision)
 
 	// Now test to see if the route gets downgraded to a direct route due to RTT
-	predictedStats.RTT = directStats.RTT + rttHyteresis + 1.0
+	predictedStats.RTT = directStats.RTT - rttHyteresis + 1.0
 
 	decision = routeDecisionFunc(decision, predictedStats, routing.Stats{}, directStats)
 	assert.Equal(t, routing.Decision{false, routing.DecisionRTTHysteresis}, decision)
