@@ -27,7 +27,6 @@ import (
 
 	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/crypto"
-	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/transport"
 )
@@ -77,33 +76,13 @@ func OptimizeThread() {
 	for {
 		backend.mutex.Lock()
 
-		// ToDo: metrics objects should not be created with every function call - init()?
-		var metricsHandler metrics.Handler = &metrics.LocalHandler{}
-		newCostMatrixGenMetrics, err := metrics.NewCostMatrixGenMetrics(context.Background(), metricsHandler)
-		if err != nil {
-			fmt.Printf("failed to create CostMatrixGenMetrics: %v", err)
-		}
-
-		newOptimizeMetrics, err := metrics.NewOptimizeMetrics(context.Background(), metricsHandler)
-		if err != nil {
-			fmt.Printf("failed to create NewOptimizeGenMetrics: %v", err)
-		}
-
-		costMatrixDurationStart := time.Now()
 		if err := backend.statsDatabase.GetCostMatrix(backend.costMatrix, backend.redisClient, MaxJitter, MaxPacketLoss); err != nil {
 			fmt.Printf("error generating cost matrix: %v\n", err)
 		}
-		costMatrixDurationSince := time.Since(costMatrixDurationStart)
-		newCostMatrixGenMetrics.DurationGauge.Set(float64(costMatrixDurationSince.Milliseconds()))
-		newCostMatrixGenMetrics.Invocations.Add(1)
 
-		optimizeDurationStart := time.Now()
 		if err := backend.costMatrix.Optimize(backend.routeMatrix, RTT_Threshold); err != nil {
 			fmt.Printf("error generating route matrix: %v\n", err)
 		}
-		optimizeDurationSince := time.Since(optimizeDurationStart)
-		newOptimizeMetrics.DurationGauge.Set(float64(optimizeDurationSince.Milliseconds()))
-		newOptimizeMetrics.Invocations.Add(1)
 
 		backend.mutex.Unlock()
 
