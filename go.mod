@@ -44,4 +44,5 @@ require (
 	google.golang.org/grpc v1.29.1
 	google.golang.org/protobuf v1.24.0
 	gopkg.in/auth0.v4 v4.3.4
+	gopkg.in/go-playground/assert.v1 v1.2.1
 )
