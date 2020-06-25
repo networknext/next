@@ -247,6 +247,72 @@ func TestFailToUnmarshalSessionData(t *testing.T) {
 	validateDirectResponsePacket(t, resbuf, sessionMetrics.DirectSessions, sessionMetrics.ErrorMetrics.UnmarshalSessionDataFailure)
 }
 
+func TestFailToUnmarshalVetoData(t *testing.T) {
+	redisServer, err := miniredis.Run()
+	assert.NoError(t, err)
+	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+
+	sessionMetrics := metrics.EmptySessionMetrics
+	localMetrics := metrics.LocalHandler{}
+
+	errMetric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "err metric"})
+	assert.NoError(t, err)
+	directMetric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "direct metric"})
+	assert.NoError(t, err)
+
+	sessionMetrics.ErrorMetrics.UnmarshalVetoDataFailure = errMetric
+	sessionMetrics.DirectSessions = directMetric
+
+	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
+	assert.NoError(t, err)
+
+	serverCacheEntry := transport.ServerCacheEntry{
+		Sequence: 13,
+		Server: routing.Server{
+			Addr:      *addr,
+			PublicKey: TestServerBackendPublicKey,
+		},
+	}
+	serverCacheEntryData, err := serverCacheEntry.MarshalBinary()
+	assert.NoError(t, err)
+
+	err = redisServer.Set("SERVER-0-0.0.0.0:13", string(serverCacheEntryData))
+	assert.NoError(t, err)
+
+	sessionCacheEntry := transport.SessionCacheEntry{
+		SessionID: 9999,
+		Sequence:  13,
+	}
+
+	sessionCacheEntryData, err := sessionCacheEntry.MarshalBinary()
+	assert.NoError(t, err)
+
+	err = redisServer.Set("SESSION-0-9999", string(sessionCacheEntryData))
+	assert.NoError(t, err)
+
+	err = redisServer.Set("VETO-0-9999", "bad veto data")
+	assert.NoError(t, err)
+
+	packet := transport.SessionUpdatePacket{
+		Sequence:             13,
+		SessionID:            9999,
+		ServerAddress:        net.UDPAddr{IP: net.IPv4zero, Port: 13},
+		ClientRoutePublicKey: make([]byte, crypto.KeySize),
+	}
+
+	packet.Signature = crypto.Sign(TestBuyersServerPrivateKey, packet.GetSignData())
+
+	data, err := packet.MarshalBinary()
+	assert.NoError(t, err)
+
+	var resbuf bytes.Buffer
+
+	handler := transport.SessionUpdateHandlerFunc(log.NewNopLogger(), redisClient, redisClient, 10*time.Second, nil, nil, nil, nil, &sessionMetrics, nil, TestServerBackendPrivateKey, nil)
+	handler(&resbuf, &transport.UDPPacket{SourceAddr: addr, Data: data})
+
+	validateDirectResponsePacket(t, resbuf, sessionMetrics.DirectSessions, sessionMetrics.ErrorMetrics.UnmarshalVetoDataFailure)
+}
+
 func TestFailToUnmarshalPacket(t *testing.T) {
 	redisServer, err := miniredis.Run()
 	assert.NoError(t, err)
@@ -2101,7 +2167,6 @@ func TestVetoedRTT(t *testing.T) {
 		SessionID:      9999,
 		Sequence:       13,
 		TimestampStart: time.Now().Add(-5 * time.Second),
-		VetoTimestamp:  time.Now().Add(5 * time.Second),
 		RouteDecision: routing.Decision{
 			OnNetworkNext: false,
 			Reason:        routing.DecisionVetoRTT,
@@ -2111,6 +2176,16 @@ func TestVetoedRTT(t *testing.T) {
 	assert.NoError(t, err)
 
 	err = redisServer.Set("SESSION-0-9999", string(sessionCacheEntryData))
+	assert.NoError(t, err)
+
+	vetoCacheEntry := transport.VetoCacheEntry{
+		VetoTimestamp: time.Now().Add(5 * time.Second),
+		Reason:        routing.DecisionVetoRTT,
+	}
+	vetoCacheEntryData, err := vetoCacheEntry.MarshalBinary()
+	assert.NoError(t, err)
+
+	err = redisServer.Set("VETO-0-9999", string(vetoCacheEntryData))
 	assert.NoError(t, err)
 
 	packet := transport.SessionUpdatePacket{
@@ -2222,7 +2297,6 @@ func TestVetoExpiredRTT(t *testing.T) {
 		SessionID:      9999,
 		Sequence:       13,
 		TimestampStart: time.Now().Add(-5 * time.Second),
-		VetoTimestamp:  time.Now().Add(-5 * time.Second),
 		RouteDecision: routing.Decision{
 			OnNetworkNext: false,
 			Reason:        routing.DecisionVetoRTT,
@@ -2232,6 +2306,15 @@ func TestVetoExpiredRTT(t *testing.T) {
 	assert.NoError(t, err)
 
 	err = redisServer.Set("SESSION-0-9999", string(sessionCacheEntryData))
+	assert.NoError(t, err)
+
+	vetoCacheEntry := transport.VetoCacheEntry{
+		VetoTimestamp: time.Now().Add(-5 * time.Second),
+	}
+	vetoCacheEntryData, err := vetoCacheEntry.MarshalBinary()
+	assert.NoError(t, err)
+
+	err = redisServer.Set("VETO-0-9999", string(vetoCacheEntryData))
 	assert.NoError(t, err)
 
 	packet := transport.SessionUpdatePacket{
@@ -2343,7 +2426,6 @@ func TestVetoedPacketLoss(t *testing.T) {
 		SessionID:      9999,
 		Sequence:       13,
 		TimestampStart: time.Now().Add(-5 * time.Second),
-		VetoTimestamp:  time.Now().Add(5 * time.Second),
 		RouteDecision: routing.Decision{
 			OnNetworkNext: false,
 			Reason:        routing.DecisionVetoPacketLoss,
@@ -2353,6 +2435,16 @@ func TestVetoedPacketLoss(t *testing.T) {
 	assert.NoError(t, err)
 
 	err = redisServer.Set("SESSION-0-9999", string(sessionCacheEntryData))
+	assert.NoError(t, err)
+
+	vetoCacheEntry := transport.VetoCacheEntry{
+		VetoTimestamp: time.Now().Add(5 * time.Second),
+		Reason:        routing.DecisionVetoPacketLoss,
+	}
+	vetoCacheEntryData, err := vetoCacheEntry.MarshalBinary()
+	assert.NoError(t, err)
+
+	err = redisServer.Set("VETO-0-9999", string(vetoCacheEntryData))
 	assert.NoError(t, err)
 
 	packet := transport.SessionUpdatePacket{
@@ -2464,7 +2556,6 @@ func TestVetoExpiredPacketLoss(t *testing.T) {
 		SessionID:      9999,
 		Sequence:       13,
 		TimestampStart: time.Now().Add(-5 * time.Second),
-		VetoTimestamp:  time.Now().Add(-5 * time.Second),
 		RouteDecision: routing.Decision{
 			OnNetworkNext: false,
 			Reason:        routing.DecisionVetoPacketLoss,
@@ -2474,6 +2565,15 @@ func TestVetoExpiredPacketLoss(t *testing.T) {
 	assert.NoError(t, err)
 
 	err = redisServer.Set("SESSION-0-9999", string(sessionCacheEntryData))
+	assert.NoError(t, err)
+
+	vetoCacheEntry := transport.VetoCacheEntry{
+		VetoTimestamp: time.Now().Add(-5 * time.Second),
+	}
+	vetoCacheEntryData, err := vetoCacheEntry.MarshalBinary()
+	assert.NoError(t, err)
+
+	err = redisServer.Set("VETO-0-9999", string(vetoCacheEntryData))
 	assert.NoError(t, err)
 
 	packet := transport.SessionUpdatePacket{
@@ -2588,7 +2688,6 @@ func TestVetoYOLONoReturn(t *testing.T) {
 		SessionID:      9999,
 		Sequence:       13,
 		TimestampStart: time.Now().Add(-5 * time.Second),
-		VetoTimestamp:  time.Now().Add(-5 * time.Second),
 		RouteDecision: routing.Decision{
 			OnNetworkNext: false,
 			Reason:        routing.DecisionVetoRTT | routing.DecisionVetoYOLO,
@@ -2598,6 +2697,15 @@ func TestVetoYOLONoReturn(t *testing.T) {
 	assert.NoError(t, err)
 
 	err = redisServer.Set("SESSION-0-9999", string(sessionCacheEntryData))
+	assert.NoError(t, err)
+
+	vetoCacheEntry := transport.VetoCacheEntry{
+		VetoTimestamp: time.Now().Add(-5 * time.Second),
+	}
+	vetoCacheEntryData, err := vetoCacheEntry.MarshalBinary()
+	assert.NoError(t, err)
+
+	err = redisServer.Set("VETO-0-9999", string(vetoCacheEntryData))
 	assert.NoError(t, err)
 
 	packet := transport.SessionUpdatePacket{
