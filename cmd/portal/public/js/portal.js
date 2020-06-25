@@ -1152,8 +1152,11 @@ function generateCharts(data) {
 		let timestamp = new Date(entry.timestamp).getTime() / 1000;
 
 		// Latency
-		let next = parseFloat(entry.next.rtt);
-		let direct = parseFloat(entry.direct.rtt);
+		let nextRTT = parseFloat(entry.next.rtt);
+		let directRTT = parseFloat(entry.direct.rtt);
+		next = entry.is_multipath && nextRTT >= directRTT ? directRTT : nextRTT;
+		let next = nextRTT;
+		let direct = directRTT;
 		latencyData.comparison[0].push(timestamp);
 		latencyData.comparison[1].push(next);
 		latencyData.comparison[2].push(direct);
