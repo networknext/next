@@ -80,7 +80,7 @@ func OptimizeThread() {
 			fmt.Printf("error generating cost matrix: %v\n", err)
 		}
 
-		if err := backend.costMatrix.Optimize(backend.routeMatrix, RTT_Threshold); err != nil {
+		if err := backend.costMatrix.Optimize(backend.routeMatrix, ThresholdRTT); err != nil {
 			fmt.Printf("error generating route matrix: %v\n", err)
 		}
 
