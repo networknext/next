@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"math"
 	fnv "hash/fnv"
 	"io"
 	"math/rand"
@@ -824,8 +825,16 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 			level.Debug(locallogger).Log("buyer_rtt_epsilon", buyer.RoutingRulesSettings.RTTEpsilon, "cached_route_hash", sessionCacheEntry.RouteHash)
 			// Get a set of possible routes from the RouteProvider and on error ensure it falls back to direct
 
-			// todo: fill in near relay costs here
+			// hackfix: fill in client relay costs
 			clientRelayCosts := make([]int, len(clientRelays))
+			for i := range clientRelays {
+				clientRelayCosts[i] = 10000
+				for j := 0; j < int(packet.NumNearRelays); j++ {
+					if packet.NearRelayIDs[j] == clientRelays[i].ID {
+						clientRelayCosts[i] = int(math.Ceil(float64(packet.NearRelayMinRTT[j])))
+					}
+				}
+			}
 
 			routes, err := rp.Routes(clientRelays, clientRelayCosts, dsRelays,
 				routing.SelectLogger(log.With(locallogger, "step", "start")),

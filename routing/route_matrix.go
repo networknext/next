@@ -131,6 +131,7 @@ func (m *RouteMatrix) Routes(from []Relay, fromCost []int, to []Relay, routeSele
 	m.mu.RLock()
 
 	type RelayPairResult struct {
+		fromcost  int  // The cost between the client and the from relay
 		fromtoidx int  // The index in the route matrix entry
 		reverse   bool // Whether or not to reverse the relays to stay on the same side of the diagonal in the triangular matrix
 	}
@@ -147,11 +148,11 @@ func (m *RouteMatrix) Routes(from []Relay, fromCost []int, to []Relay, routeSele
 			// Add a bad pair result so that the second pass will skip over it.
 			// This way we don't have to append only good results to a new list, which is more expensive.
 			if fromtoidx < 0 || fromtoidx >= len(m.Entries) {
-				relayPairResults[i+j*len(from)] = RelayPairResult{-1, false}
+				relayPairResults[i+j*len(from)] = RelayPairResult{0, -1, false}
 				continue
 			}
 
-			relayPairResults[i+j*len(from)] = RelayPairResult{fromtoidx, reverse}
+			relayPairResults[i+j*len(from)] = RelayPairResult{fromCost[i], fromtoidx, reverse}
 			routeTotal += int(m.Entries[fromtoidx].NumRoutes)
 		}
 	}
@@ -163,7 +164,7 @@ func (m *RouteMatrix) Routes(from []Relay, fromCost []int, to []Relay, routeSele
 	routes := make([]Route, routeTotal)
 	for i := 0; i < relayPairLength; i++ {
 		if relayPairResults[i].fromtoidx >= 0 {
-			m.fillRoutes(routes, &routeIndex, relayPairResults[i].fromtoidx, relayPairResults[i].reverse)
+			m.fillRoutes(routes, &routeIndex, relayPairResults[i].fromcost, relayPairResults[i].fromtoidx, relayPairResults[i].reverse)
 		}
 	}
 
@@ -202,7 +203,7 @@ func (m *RouteMatrix) getFromToRelayIndex(from Relay, to Relay) (int, bool) {
 // fillRoutes is just the internal function to populate the given route buffer.
 // It takes the fromtoidx and reverse data and fills the given route buffer, incrementing the routeIndex after
 // each route it adds.
-func (m *RouteMatrix) fillRoutes(routes []Route, routeIndex *int, fromtoidx int, reverse bool) error {
+func (m *RouteMatrix) fillRoutes(routes []Route, routeIndex *int, fromCost int, fromtoidx int, reverse bool) error {
 	var err error
 
 	m.mu.RLock()
@@ -236,10 +237,10 @@ func (m *RouteMatrix) fillRoutes(routes []Route, routeIndex *int, fromtoidx int,
 		route := Route{
 			Relays: routeRelays,
 			Stats: Stats{
-				RTT: float64(m.Entries[fromtoidx].RouteRTT[i]),
+				RTT: float64(fromCost + int(m.Entries[fromtoidx].RouteRTT[i])),
 			},
 			DirectStats: Stats{
-				RTT: float64(m.Entries[fromtoidx].DirectRTT),
+				RTT: float64(fromCost + int(m.Entries[fromtoidx].DirectRTT)),
 			},
 		}
 		m.mu.RUnlock()
