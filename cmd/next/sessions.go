@@ -5,6 +5,7 @@ import (
 	"log"
 	"fmt"
 	"sort"
+	"math"
 
 	"github.com/modood/table"
 	localjsonrpc "github.com/networknext/backend/transport/jsonrpc"
@@ -127,7 +128,7 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string, se
 
 		fmt.Printf( "\nCurrent Route:\n\n" )
 
-		cost := int(reply.Meta.DirectRTT)
+		cost := int(math.Ceil(float64(reply.Meta.DirectRTT)))
 		if reply.Meta.OnNetworkNext {
 			cost = int(reply.Meta.NextRTT)
 		}
