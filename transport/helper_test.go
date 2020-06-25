@@ -96,7 +96,7 @@ func (rp *mockRouteProvider) RelaysIn(ds routing.Datacenter) []routing.Relay {
 	return rp.datacenterRelays
 }
 
-func (rp *mockRouteProvider) Routes(from []routing.Relay, to []routing.Relay, routeSelectors ...routing.SelectorFunc) ([]routing.Route, error) {
+func (rp *mockRouteProvider) Routes(from []routing.Relay, fromCosts []int, to []routing.Relay, routeSelectors ...routing.SelectorFunc) ([]routing.Route, error) {
 	if rp.routes == nil || len(rp.routes) == 0 {
 		return nil, errors.New("No routes in route matrix")
 	}

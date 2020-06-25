@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"math"
 	fnv "hash/fnv"
 	"io"
 	"math/rand"
@@ -356,7 +357,7 @@ func (e SessionCacheEntry) MarshalBinary() ([]byte, error) {
 type RouteProvider interface {
 	ResolveRelay(uint64) (routing.Relay, error)
 	RelaysIn(routing.Datacenter) []routing.Relay
-	Routes([]routing.Relay, []routing.Relay, ...routing.SelectorFunc) ([]routing.Route, error)
+	Routes([]routing.Relay, []int, []routing.Relay, ...routing.SelectorFunc) ([]routing.Route, error)
 }
 
 // SessionUpdateHandlerFunc ...
@@ -823,7 +824,19 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 		if shouldSelect { // Only select a route if we should, early out for initial slice and force direct mode
 			level.Debug(locallogger).Log("buyer_rtt_epsilon", buyer.RoutingRulesSettings.RTTEpsilon, "cached_route_hash", sessionCacheEntry.RouteHash)
 			// Get a set of possible routes from the RouteProvider and on error ensure it falls back to direct
-			routes, err := rp.Routes(clientRelays, dsRelays,
+
+			// hackfix: fill in client relay costs
+			clientRelayCosts := make([]int, len(clientRelays))
+			for i := range clientRelays {
+				clientRelayCosts[i] = 10000
+				for j := 0; j < int(packet.NumNearRelays); j++ {
+					if packet.NearRelayIDs[j] == clientRelays[i].ID {
+						clientRelayCosts[i] = int(math.Ceil(float64(packet.NearRelayMinRTT[j])))
+					}
+				}
+			}
+
+			routes, err := rp.Routes(clientRelays, clientRelayCosts, dsRelays,
 				routing.SelectLogger(log.With(locallogger, "step", "start")),
 				routing.SelectUnencumberedRoutes(0.8),
 				routing.SelectLogger(log.With(locallogger, "step", "unencumbered-routes")),
@@ -1245,7 +1258,7 @@ func updateSessionCacheEntry(redisClient redis.Cmdable, sessionCacheKey string, 
 		Location:                   location,
 	}
 
-	getCmd := redisClient.Set(sessionCacheKey, updatedSessionCacheEntry, 30*time.Second)
+	getCmd := redisClient.Set(sessionCacheKey, updatedSessionCacheEntry, 5*time.Minute)
 	if getCmd.Err() != nil {
 		// This error case should never happen, can't produce it in test cases, but leaving it in anyway
 		return fmt.Errorf("failed to update session: %v", getCmd.Err())
