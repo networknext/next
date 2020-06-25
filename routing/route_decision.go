@@ -71,6 +71,8 @@ func (dr DecisionReason) String() string {
 		reason = "Veto Commit YOLO"
 	case DecisionDatacenterDisabled:
 		reason = "Datacenter Disabled"
+	case DecisionVetoNoRoute:
+		reason = "Vetoed No Route"
 	default:
 		reason = "Unknown"
 	}
@@ -99,6 +101,7 @@ const (
 	DecisionRTTHysteresis           DecisionReason = 1 << 18
 	DecisionVetoCommit              DecisionReason = 1 << 19
 	DecisionDatacenterDisabled      DecisionReason = 1 << 20
+	DecisionVetoNoRoute             DecisionReason = 1 << 21
 )
 
 // DecideUpgradeRTT will decide if the client should use the network next route if the RTT reduction is greater than the given threshold.
@@ -336,7 +339,7 @@ func DecideMultipath(rttMultipath bool, jitterMultipath bool, packetLossMultipat
 // IsVetoed returns true if the given route decision was a veto.
 func IsVetoed(decision Decision) bool {
 	if !decision.OnNetworkNext {
-		if decision.Reason&DecisionVetoPacketLoss != 0 || decision.Reason&DecisionVetoRTT != 0 || decision.Reason&DecisionVetoYOLO != 0 || decision.Reason&DecisionVetoCommit != 0 {
+		if decision.Reason&DecisionVetoPacketLoss != 0 || decision.Reason&DecisionVetoRTT != 0 || decision.Reason&DecisionVetoYOLO != 0 || decision.Reason&DecisionVetoCommit != 0 || decision.Reason&DecisionVetoNoRoute != 0 {
 			return true
 		}
 	}

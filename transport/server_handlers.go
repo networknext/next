@@ -918,7 +918,23 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 					return
 				}
 
-				routeDecision = routing.Decision{OnNetworkNext: false, Reason: routing.DecisionNoNextRoute}
+				reason := routing.DecisionNoNextRoute
+
+				if packet.OnNetworkNext {
+					// Session was on NN but now we can't find a route, probably due to relays flickering or the route being unstable
+					//  If this happens, veto the session
+					reason = routing.DecisionVetoNoRoute
+
+					// YOLO reason if enabled
+					if buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce {
+						reason |= routing.DecisionVetoYOLO
+					}
+
+					vetoCacheEntry.VetoTimestamp = timestampNow.Add(time.Hour)
+					vetoCacheEntry.Reason = reason
+				}
+
+				routeDecision = routing.Decision{OnNetworkNext: false, Reason: reason}
 				addRouteDecisionMetric(routeDecision, metrics)
 
 				if err := updateCacheEntries(redisClientCache, sessionCacheKey, vetoCacheKey, sessionCacheEntry, vetoCacheEntry, packet, chosenRoute.Hash64(), routeDecision, timestampStart, timestampExpire,
@@ -934,7 +950,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 				}
 
 				if err := submitBillingEntry(biller, serverCacheEntry, sessionCacheEntry, packet, response, buyer, chosenRoute, sessionCacheEntry.Location, storer, clientRelays,
-					routing.Decision{OnNetworkNext: false, Reason: routing.DecisionNoNextRoute}, sliceDuration, timestampStart, timestampNow, newSession); err != nil {
+					routeDecision, sliceDuration, timestampStart, timestampNow, newSession); err != nil {
 
 					level.Error(locallogger).Log("msg", "billing failed", "err", err)
 					metrics.ErrorMetrics.BillingFailure.Add(1)
@@ -953,7 +969,23 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 					return
 				}
 
-				routeDecision = routing.Decision{OnNetworkNext: false, Reason: routing.DecisionNoNextRoute}
+				reason := routing.DecisionNoNextRoute
+
+				if packet.OnNetworkNext {
+					// Session was on NN but now we can't find a route, probably due to relays flickering or the route being unstable
+					//  If this happens, veto the session
+					reason = routing.DecisionVetoNoRoute
+
+					// YOLO reason if enabled
+					if buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce {
+						reason |= routing.DecisionVetoYOLO
+					}
+
+					vetoCacheEntry.VetoTimestamp = timestampNow.Add(time.Hour)
+					vetoCacheEntry.Reason = reason
+				}
+
+				routeDecision = routing.Decision{OnNetworkNext: false, Reason: reason}
 				addRouteDecisionMetric(routeDecision, metrics)
 
 				if err := updateCacheEntries(redisClientCache, sessionCacheKey, vetoCacheKey, sessionCacheEntry, vetoCacheEntry, packet, chosenRoute.Hash64(), routeDecision, timestampStart, timestampExpire,
