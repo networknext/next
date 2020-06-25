@@ -542,6 +542,7 @@ func checkRelays(
 
 	type checkInfo struct {
 		Name           string
+		Address        string `table:"Address"`
 		CanSSH         string `table:"SSH"`
 		UbuntuVersion  string `table:"Ubuntu"`
 		CPUCores       string `table:"Cores"`
@@ -612,6 +613,7 @@ func checkRelays(
 
 			infoIndx := &info[indx]
 			infoIndx.Name = r.name
+			infoIndx.Address = r.sshAddr
 
 			con := NewSSHConn(r.user, r.sshAddr, r.sshPort, env.SSHKeyFilePath)
 
@@ -702,11 +704,12 @@ func checkRelays(
 	if csvOutputFlag {
 		var csvInfo [][]string
 		csvInfo = append(csvInfo, []string{
-			"Name", "SSH", "Ubuntu", "Cores", "Ping Backend", "Running", "Bound"})
+			"Name", "Address", "SSH", "Ubuntu", "Cores", "Ping Backend", "Running", "Bound"})
 
 		for _, relayInfo := range info {
 			csvInfo = append(csvInfo, []string{
 				relayInfo.Name,
+				relayInfo.Address,
 				relayInfo.CanSSH,
 				relayInfo.UbuntuVersion,
 				relayInfo.CPUCores,
