@@ -766,7 +766,10 @@ func (s *OpsService) RouteSelection(r *http.Request, args *RouteSelectionArgs, r
 		selectors = append(selectors, routing.SelectContainsRouteHash(args.RouteHash))
 	}
 
-	routes, err := s.RouteMatrix.Routes(srcrelays, destrelays, selectors...)
+	// todo: fill in source relay costs here
+	sourceRelayCosts := make([]int, len(srcrelays))
+
+	routes, err := s.RouteMatrix.Routes(srcrelays, sourceRelayCosts, destrelays, selectors...)
 	if err != nil {
 		err = fmt.Errorf("RouteSelection() Routes error: %w", err)
 		s.Logger.Log("err", err)
