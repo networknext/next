@@ -1050,18 +1050,16 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 				response.NumTokens = int32(numtokens) // Num of relays + client + server
 				response.Tokens = tokens
 
-				// Fill in the near relays
-				response.NumNearRelays = int32(len(clientRelays))
-				response.NearRelayIDs = make([]uint64, len(clientRelays))
-				response.NearRelayAddresses = make([]net.UDPAddr, len(clientRelays))
-				for idx, relay := range clientRelays {
-					response.NearRelayIDs[idx] = relay.ID
-					response.NearRelayAddresses[idx] = relay.Addr
-				}
-
 				level.Debug(locallogger).Log("msg", "session served network next route")
+			}
 
-				// sessionCacheEntry.RouteDecision = routeDecision
+			// Fill in the near relays
+			response.NumNearRelays = int32(len(clientRelays))
+			response.NearRelayIDs = make([]uint64, len(clientRelays))
+			response.NearRelayAddresses = make([]net.UDPAddr, len(clientRelays))
+			for idx, relay := range clientRelays {
+				response.NearRelayIDs[idx] = relay.ID
+				response.NearRelayAddresses[idx] = relay.Addr
 			}
 		}
 
