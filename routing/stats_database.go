@@ -213,7 +213,7 @@ func (database *StatsDatabase) GetSample(relay1, relay2 uint64) (float32, float3
 			float32(math.Max(float64(a.Jitter), float64(b.Jitter))),
 			float32(math.Max(float64(a.PacketLoss), float64(b.PacketLoss)))
 	}
-	return InvalidRouteValue, 0, 100
+	return InvalidRouteValue, InvalidRouteValue, InvalidRouteValue
 }
 
 // GetCostMatrix returns the cost matrix composed of all current information
@@ -237,7 +237,7 @@ func (database *StatsDatabase) GetCostMatrix(costMatrix *CostMatrix, redisClient
 		return stableRelays[i].ID < stableRelays[j].ID
 	})
 
-	costMatrix.RelayIndicies = make(map[uint64]int)
+	costMatrix.RelayIndices = make(map[uint64]int)
 	costMatrix.RelayIDs = make([]uint64, numRelays)
 	costMatrix.RelayNames = make([]string, numRelays)
 	costMatrix.RelayAddresses = make([][]byte, numRelays)
@@ -251,7 +251,7 @@ func (database *StatsDatabase) GetCostMatrix(costMatrix *CostMatrix, redisClient
 	datacenterNameMap := make(map[uint64]string)
 
 	for i, relayData := range stableRelays {
-		costMatrix.RelayIndicies[relayData.ID] = i
+		costMatrix.RelayIndices[relayData.ID] = i
 		costMatrix.RelayIDs[i] = relayData.ID
 		costMatrix.RelayNames[i] = relayData.Name
 		costMatrix.RelaySellers[i] = relayData.Seller
@@ -282,7 +282,7 @@ func (database *StatsDatabase) GetCostMatrix(costMatrix *CostMatrix, redisClient
 			rtt, jitter, packetLoss := database.GetSample(idI, idJ)
 			ijIndex := TriMatrixIndex(i, j)
 			if rtt != InvalidRouteValue && jitter <= maxJitter && packetLoss <= maxPacketLoss {
-				costMatrix.RTT[ijIndex] = int32(math.Floor(float64(rtt)))
+				costMatrix.RTT[ijIndex] = int32(math.Floor(float64(rtt)+float64(jitter)))
 			} else {
 				costMatrix.RTT[ijIndex] = -1
 			}

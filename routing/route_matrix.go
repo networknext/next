@@ -35,7 +35,7 @@ type RouteMatrixEntry struct {
 type RouteMatrix struct {
 	mu sync.RWMutex
 
-	RelayIndicies map[uint64]int
+	RelayIndices map[uint64]int
 
 	RelayIDs              []uint64
 	RelayNames            []string
@@ -54,7 +54,7 @@ func (m *RouteMatrix) ResolveRelay(id uint64) (Relay, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	relayIndex, ok := m.RelayIndicies[id]
+	relayIndex, ok := m.RelayIndices[id]
 	if !ok {
 		return Relay{}, fmt.Errorf("relay %d not in matrix", id)
 	}
@@ -188,12 +188,12 @@ func (m *RouteMatrix) Routes(from []Relay, to []Relay, routeSelectors ...Selecto
 
 // Returns the index in the route matrix representing the route between the from Relay and to Relay and whether or not to reverse them
 func (m *RouteMatrix) getFromToRelayIndex(from Relay, to Relay) (int, bool) {
-	toidx, ok := m.RelayIndicies[to.ID]
+	toidx, ok := m.RelayIndices[to.ID]
 	if !ok {
 		return -1, false
 	}
 
-	fromidx, ok := m.RelayIndicies[from.ID]
+	fromidx, ok := m.RelayIndices[from.ID]
 	if !ok {
 		return -1, false
 	}
@@ -358,7 +358,7 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.RelayIndicies = make(map[uint64]int)
+	m.RelayIndices = make(map[uint64]int)
 	m.RelayIDs = make([]uint64, numRelays)
 
 	for i := 0; i < int(numRelays); i++ {
@@ -366,7 +366,7 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 		if err := idReadFunc(data, &index, &tmp, "[RouteMatrix] invalid read at relay ids"); err != nil {
 			return err
 		}
-		m.RelayIndicies[tmp] = i
+		m.RelayIndices[tmp] = i
 		m.RelayIDs[i] = tmp
 	}
 

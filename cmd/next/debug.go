@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	// "sort"
 
 	"github.com/networknext/backend/routing"
 )
@@ -21,7 +20,6 @@ func GetRelayIndex(routeMatrix *routing.RouteMatrix, relayName string) int {
 type RelayEntry struct {
 	id    uint64
 	name  string
-	index int
 }
 
 func debug(relayName string, inputFile string) {
@@ -51,7 +49,6 @@ func debug(relayName string, inputFile string) {
 	for i := 0; i < numRelays; i++ {
 		relays[i].id = routeMatrix.RelayIDs[i]
 		relays[i].name = routeMatrix.RelayNames[i]
-		relays[i].index = i
 	}
 
 	a := relayIndex
@@ -60,7 +57,7 @@ func debug(relayName string, inputFile string) {
 
 		dest := relays[b]
 
-		if a == dest.index {
+		if a == b {
 			continue
 		}
 
@@ -68,7 +65,7 @@ func debug(relayName string, inputFile string) {
 			fmt.Printf("\n")
 		}
 
-		index := routing.TriMatrixIndex(a, dest.index)
+		index := routing.TriMatrixIndex(a, b)
 
 		directRTT := routeMatrix.Entries[index].DirectRTT
 
