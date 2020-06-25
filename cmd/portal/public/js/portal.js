@@ -58,6 +58,28 @@ AuthHandler = {
 			Sentry.captureException(e);
 		});
 
+		const query = window.location.search;
+		if (query.includes("message=") && query.includes("code=") && query.includes("success=")) {
+			let search = query.substring(1);
+			let vars = search.split('&');
+			let isSignupRedirect = true;
+			for (let i = 0; i < vars.length; i++) {
+				let pair = vars[i].split('=');
+				switch (pair[0]) {
+					case "message":
+						isSignupRedirect = isSignupRedirect && pair[1] == "Your%20email%20was%20verified.%20You%20can%20continue%20using%20the%20application.";
+						break;
+					case "code":
+						isSignupRedirect = isSignupRedirect && pair[1] == "success";
+						break;
+					case "success":
+						isSignupRedirect = isSignupRedirect && pair[1] == "true";
+						break;
+				}
+			}
+			this.isSignupRedirect = isSignupRedirect;
+		}
+
 		const isAuthenticated =
 			await this.auth0Client.isAuthenticated()
 				.catch((e) => {
@@ -65,10 +87,10 @@ AuthHandler = {
 				});
 
 		if (isAuthenticated) {
+			window.history.replaceState({}, document.title, "/");
 			startApp();
 			return;
 		}
-		const query = window.location.search;
 		if (query.includes("code=") && query.includes("state=")) {
 
 			await this.auth0Client.handleRedirectCallback()
@@ -81,6 +103,7 @@ AuthHandler = {
 		startApp();
 	},
 	auth0Client: null,
+	isSignupRedirect: false,
 	logout() {
 		this.auth0Client.logout({ returnTo: window.location.origin });
 	},
@@ -303,9 +326,25 @@ UserHandler = {
 				if (!response) {
 					return;
 				}
+
 				this.userInfo.id = response.account.id;
 				this.userInfo.company = response.account.company_name;
 				this.userInfo.roles = response.account.roles;
+
+				if (AuthHandler.isSignupRedirect && !UserHandler.isAnonymous() && !UserHandler.isAnonymousPlus() && (!UserHandler.isOwner() || !UserHandler.isAdmin())) {
+					JSONRPCClient
+						.call("AuthService.UpgradeAccount", {user_id: UserHandler.userInfo.userId})
+						.then((response) => {
+							let newRoles = response.new_roles || []
+							if (newRoles.length > 0) {
+								UserHandler.userInfo.roles = response.new_roles;
+							}
+						})
+						.catch((error) => {
+							console.log("Something went wrong upgrading the account")
+							Sentry.captureException(error)
+						})
+				}
 			}).catch((e) => {
 				console.log("Something went wrong getting the current user information");
 				console.log(e);
@@ -826,20 +865,6 @@ function startApp() {
 			if (UserHandler.isAnonymousPlus()) {
 				Object.assign(rootComponent.$data.alerts.verifyEmail, {show: true});
 			}
-			if (!UserHandler.isAnonymous() && !UserHandler.isAnonymousPlus() && (!UserHandler.isOwner() || !UserHandler.isAdmin())) {
-				JSONRPCClient
-					.call("AuthService.UpgradeAccount", {user_id: UserHandler.userInfo.userId})
-					.then((response) => {
-						let newRoles = response.newRoles || []
-						if (newRoles.length > 0) {
-							UserHandler.userInfo.roles = response.new_roles;
-						}
-					})
-					.catch((error) => {
-						console.log("Something went wrong upgrading the account")
-						Sentry.captureException(error)
-					})
-			}
 			document.getElementById("app").style.display = 'block';
 			WorkspaceHandler.changePage('map');
 			JSONRPCClient
@@ -1152,8 +1177,10 @@ function generateCharts(data) {
 		let timestamp = new Date(entry.timestamp).getTime() / 1000;
 
 		// Latency
-		let next = parseFloat(entry.next.rtt);
-		let direct = parseFloat(entry.direct.rtt);
+		let nextRTT = parseFloat(entry.next.rtt);
+		let directRTT = parseFloat(entry.direct.rtt);
+		let next = entry.is_multipath && nextRTT >= directRTT ? directRTT : nextRTT;
+		let direct = directRTT;
 		latencyData.comparison[0].push(timestamp);
 		latencyData.comparison[1].push(next);
 		latencyData.comparison[2].push(direct);
