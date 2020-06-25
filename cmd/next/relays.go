@@ -157,7 +157,7 @@ func relays(
 
 	if csvOutputFlag {
 		if relaysCount > 0 {
-			relaysCSV = relaysCSV[0:relaysCount]
+			relaysCSV = relaysCSV[:relaysCount]
 		}
 
 		// return csv file of structs
@@ -179,7 +179,7 @@ func relays(
 	}
 
 	if relaysCount > 0 {
-		relays = relays[0:relaysCount]
+		relays = relays[:relaysCount]
 	}
 
 	if relaysListFlag {
