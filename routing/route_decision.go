@@ -153,7 +153,7 @@ func DecideDowngradeRTT(rttHysteresis float64, yolo bool) DecisionFunc {
 // RTT by more than the RTT veto value, or increases packet loss if packet loss safety is enabled.
 // This decision only downgrades network next routes, so direct routes aren't considered.
 // Multipath sessions aren't considered.
-func DecideVeto(rttVeto float64, packetLossSafety bool, yolo bool) DecisionFunc {
+func DecideVeto(onNNSliceCounter uint64, rttVeto float64, packetLossSafety bool, yolo bool) DecisionFunc {
 	return func(prevDecision Decision, predictedNextStats Stats, lastNextStats Stats, directStats Stats) Decision {
 		// If we've already decided on multipath, then don't change the reason
 		if IsMultipath(prevDecision) {
@@ -172,7 +172,7 @@ func DecideVeto(rttVeto float64, packetLossSafety bool, yolo bool) DecisionFunc 
 			}
 
 			// Whether or not the network next route made the packet loss worse, if the buyer has packet loss safety enabled
-			if packetLossSafety && lastNextStats.PacketLoss > directStats.PacketLoss {
+			if onNNSliceCounter > 2 && packetLossSafety && lastNextStats.PacketLoss > directStats.PacketLoss {
 				// If the buyer has YouOnlyLiveOnce safety setting enabled, add that reason to the DecisionReason
 				if yolo {
 					return Decision{false, DecisionVetoPacketLoss | DecisionVetoYOLO}

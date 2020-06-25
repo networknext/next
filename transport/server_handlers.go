@@ -333,6 +333,7 @@ type SessionCacheEntry struct {
 	Sequence                   uint64
 	RouteHash                  uint64
 	RouteDecision              routing.Decision
+	OnNNSliceCounter           uint64
 	CommitPending              bool
 	CommitObservedSliceCounter uint8
 	Committed                  bool
@@ -944,7 +945,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 				deciderFuncs := []routing.DecisionFunc{
 					routing.DecideUpgradeRTT(float64(buyer.RoutingRulesSettings.RTTThreshold)),
 					routing.DecideDowngradeRTT(float64(buyer.RoutingRulesSettings.RTTHysteresis), buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
-					routing.DecideVeto(float64(buyer.RoutingRulesSettings.RTTVeto), buyer.RoutingRulesSettings.EnablePacketLossSafety, buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
+					routing.DecideVeto(sessionCacheEntry.OnNNSliceCounter, float64(buyer.RoutingRulesSettings.RTTVeto), buyer.RoutingRulesSettings.EnablePacketLossSafety, buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
 					routing.DecideMultipath(buyer.RoutingRulesSettings.EnableMultipathForRTT, buyer.RoutingRulesSettings.EnableMultipathForJitter, buyer.RoutingRulesSettings.EnableMultipathForPacketLoss, float64(buyer.RoutingRulesSettings.RTTThreshold)),
 				}
 
@@ -976,11 +977,20 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 				response.Multipath = true
 			}
 
+			if routeDecision.OnNetworkNext {
+				// Increment the on NN slice counter if we are on NN
+				sessionCacheEntry.OnNNSliceCounter++
+			} else if sessionCacheEntry.RouteDecision.OnNetworkNext {
+				// Reset the counter if we are going off NN this slice
+				sessionCacheEntry.OnNNSliceCounter = 0
+			}
+
 			level.Debug(locallogger).Log(
 				"prev_on_network_next", sessionCacheEntry.RouteDecision.OnNetworkNext,
 				"prev_decision_reason", sessionCacheEntry.RouteDecision.Reason.String(),
 				"on_network_next", routeDecision.OnNetworkNext,
 				"decision_reason", routeDecision.Reason.String(),
+				"on_NN_slice_counter", sessionCacheEntry.OnNNSliceCounter,
 			)
 
 			if routeDecision.OnNetworkNext {
@@ -1240,6 +1250,7 @@ func updateSessionCacheEntry(redisClient redis.Cmdable, sessionCacheKey string, 
 		Sequence:                   packet.Sequence,
 		RouteHash:                  chosenRouteHash,
 		RouteDecision:              routeDecision,
+		OnNNSliceCounter:           sessionCacheEntry.OnNNSliceCounter,
 		CommitPending:              sessionCacheEntry.CommitPending,
 		CommitObservedSliceCounter: sessionCacheEntry.CommitObservedSliceCounter,
 		Committed:                  sessionCacheEntry.Committed,
