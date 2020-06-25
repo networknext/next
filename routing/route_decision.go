@@ -69,6 +69,8 @@ func (dr DecisionReason) String() string {
 		reason = "Veto Commit"
 	case DecisionVetoCommit | DecisionVetoYOLO:
 		reason = "Veto Commit YOLO"
+	case DecisionDatacenterDisabled:
+		reason = "Datacenter Disabled"
 	default:
 		reason = "Unknown"
 	}

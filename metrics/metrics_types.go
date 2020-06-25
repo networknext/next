@@ -31,6 +31,8 @@ type SessionErrorMetrics struct {
 	UnmarshalServerDataFailure  Counter
 	GetSessionDataFailure       Counter
 	UnmarshalSessionDataFailure Counter
+	GetVetoDataFailure          Counter
+	UnmarshalVetoDataFailure    Counter
 	BuyerNotFound               Counter
 	VerifyFailure               Counter
 	OldSequence                 Counter
@@ -42,7 +44,7 @@ type SessionErrorMetrics struct {
 	RouteFailure                Counter
 	EncryptionFailure           Counter
 	WriteResponseFailure        Counter
-	UpdateSessionFailure        Counter
+	UpdateCacheFailure          Counter
 	BillingFailure              Counter
 }
 
@@ -55,6 +57,8 @@ var EmptySessionErrorMetrics SessionErrorMetrics = SessionErrorMetrics{
 	UnmarshalServerDataFailure:  &EmptyCounter{},
 	GetSessionDataFailure:       &EmptyCounter{},
 	UnmarshalSessionDataFailure: &EmptyCounter{},
+	GetVetoDataFailure:          &EmptyCounter{},
+	UnmarshalVetoDataFailure:    &EmptyCounter{},
 	BuyerNotFound:               &EmptyCounter{},
 	VerifyFailure:               &EmptyCounter{},
 	OldSequence:                 &EmptyCounter{},
@@ -66,7 +70,7 @@ var EmptySessionErrorMetrics SessionErrorMetrics = SessionErrorMetrics{
 	RouteFailure:                &EmptyCounter{},
 	EncryptionFailure:           &EmptyCounter{},
 	WriteResponseFailure:        &EmptyCounter{},
-	UpdateSessionFailure:        &EmptyCounter{},
+	UpdateCacheFailure:          &EmptyCounter{},
 	BillingFailure:              &EmptyCounter{},
 }
 
@@ -652,6 +656,16 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		return nil, err
 	}
 
+	sessionMetrics.ErrorMetrics.GetVetoDataFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Session Get Veto Data Failure",
+		ServiceName: "server_backend",
+		ID:          "session.error.get_veto_data_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	sessionMetrics.ErrorMetrics.NearRelaysLocateFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Session Near Relays Locate Failure",
 		ServiceName: "server_backend",
@@ -742,10 +756,20 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		return nil, err
 	}
 
-	sessionMetrics.ErrorMetrics.UpdateSessionFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Session Update Session Failure",
+	sessionMetrics.ErrorMetrics.UnmarshalVetoDataFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Session Unmarshal Veto Data Failure",
 		ServiceName: "server_backend",
-		ID:          "session.error.update_session_failure",
+		ID:          "session.error.unmarshal_veto_data_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.ErrorMetrics.UpdateCacheFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Session Update Cache Failure",
+		ServiceName: "server_backend",
+		ID:          "session.error.update_cache_failure",
 		Unit:        "errors",
 	})
 	if err != nil {
