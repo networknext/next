@@ -582,6 +582,11 @@ func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, r
 		// pull the local cache and reply with it
 		reply.Points = s.mapPointsCache
 	default:
+		if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
+			err := fmt.Errorf("SessionMap(): %v", ErrInsufficientPrivileges)
+			s.Logger.Log("err", err)
+			return err
+		}
 		reply.Points = s.mapPointsBuyerCache[args.BuyerID]
 	}
 
@@ -597,6 +602,11 @@ func (s *BuyersService) SessionMap(r *http.Request, args *MapPointsArgs, reply *
 		// pull the local cache and reply with it
 		reply.Points = s.mapPointsCompactCache
 	default:
+		if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
+			err := fmt.Errorf("SessionMap(): %v", ErrInsufficientPrivileges)
+			s.Logger.Log("err", err)
+			return err
+		}
 		reply.Points = s.mapPointsCompactBuyerCache[args.BuyerID]
 	}
 
