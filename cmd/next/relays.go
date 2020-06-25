@@ -25,6 +25,7 @@ func relays(
 	relaysListFlag bool,
 	csvOutputFlag bool,
 	relayVersionFilter string,
+	relaysCount int64,
 ) {
 	args := localjsonrpc.RelaysArgs{
 		Regex: regex,
@@ -129,6 +130,7 @@ func relays(
 					lastUpdated,
 				})
 			}
+
 		} else if relayVersionFilter == "all" || relay.Version == relayVersionFilter {
 			relays = append(relays, struct {
 				Name        string
@@ -154,6 +156,10 @@ func relays(
 	}
 
 	if csvOutputFlag {
+		if relaysCount > 0 {
+			relaysCSV = relaysCSV[:relaysCount]
+		}
+
 		// return csv file of structs
 		// fileName := "./relays-" + strconv.FormatInt(time.Now().Unix(), 10) + ".csv"
 		fileName := "./relays.csv"
@@ -170,6 +176,10 @@ func relays(
 		}
 		fmt.Println("CSV file written: relays.csv")
 		return
+	}
+
+	if relaysCount > 0 {
+		relays = relays[:relaysCount]
 	}
 
 	if relaysListFlag {
