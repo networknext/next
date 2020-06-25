@@ -257,8 +257,12 @@ func main() {
 
 	newCostMatrixGenMetrics, err := metrics.NewCostMatrixGenMetrics(context.Background(), metricsHandler)
 	if err != nil {
-		level.Error(logger).Log("msg", "failed to create NewCostMatrixGenMetrics", "err", err)
+		level.Error(logger).Log("msg", "failed to create CostMatrixGenMetrics", "err", err)
+	}
 
+	newOptimizeMetrics, err := metrics.NewOptimizeMetrics(context.Background(), metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create NewOptimizeGenMetrics", "err", err)
 	}
 
 	statsdb := routing.NewStatsDatabase()
@@ -322,17 +326,23 @@ func main() {
 	go func() {
 
 		for {
+			costMatrixDurationStart := time.Now()
 			if err := statsdb.GetCostMatrix(&costmatrix, redisClientRelays, float32(maxJitter), float32(maxPacketLoss)); err != nil {
 				level.Warn(logger).Log("matrix", "cost", "op", "generate", "err", err)
 			}
+			costMatrixDurationSince := time.Since(costMatrixDurationStart)
+			newCostMatrixGenMetrics.DurationGauge.Set(float64(costMatrixDurationSince.Milliseconds()))
+			newCostMatrixGenMetrics.Invocations.Add(1)
 
 			relayStatMetrics.NumRelays.Set(float64(len(statsdb.Entries)))
 
-			durationStart := time.Now()
-
+			optimizeDurationStart := time.Now()
 			if err := costmatrix.Optimize(&routematrix, 1); err != nil {
 				level.Warn(logger).Log("matrix", "cost", "op", "optimize", "err", err)
 			}
+			optimizeDurationSince := time.Since(optimizeDurationStart)
+			newOptimizeMetrics.DurationGauge.Set(float64(optimizeDurationSince.Milliseconds()))
+			newOptimizeMetrics.Invocations.Add(1)
 
 			relayStatMetrics.NumRoutes.Set(float64(len(routematrix.Entries)))
 
@@ -341,10 +351,6 @@ func main() {
 			if len(routematrix.Entries) == 0 {
 				sentry.CaptureMessage("no routes within route matrix")
 			}
-
-			durationSince := time.Since(durationStart)
-			newCostMatrixGenMetrics.DurationGauge.Set(float64(durationSince.Milliseconds()))
-			newCostMatrixGenMetrics.Invocations.Add(1)
 
 			time.Sleep(1 * time.Second)
 		}
