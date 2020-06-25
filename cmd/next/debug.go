@@ -83,7 +83,7 @@ func debug(relayName string, inputFile string) {
 			routeRTT := routeMatrix.Entries[index].RouteRTT[i]
 			routeNumRelays := int(routeMatrix.Entries[index].RouteNumRelays[i])
 			fmt.Printf("    %*dms: ", 5, routeRTT)
-			reverse := a < b
+			reverse := a >= b
 			if reverse {
 				for j := routeNumRelays - 1; j >= 0; j-- {
 					fmt.Printf("%s", routeMatrix.RelayNames[routeMatrix.Entries[index].RouteRelays[i][j]])
