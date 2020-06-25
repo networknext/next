@@ -68,8 +68,8 @@ type ServerEntry struct {
 }
 
 const ThresholdRTT = 1.0
-const MaxJitter = float32(100.0)
-const MaxPacketLoss = float32(0.1)
+const MaxJitter = float32(10.0)
+const MaxPacketLoss = float32(0.001)
 
 func OptimizeThread() {
 
