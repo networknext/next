@@ -6,9 +6,9 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"math"
 	fnv "hash/fnv"
 	"io"
+	"math"
 	"math/rand"
 	"net"
 	"runtime"
@@ -1052,15 +1052,15 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 
 				level.Debug(locallogger).Log("msg", "session served network next route")
 			}
+		}
 
-			// Fill in the near relays
-			response.NumNearRelays = int32(len(clientRelays))
-			response.NearRelayIDs = make([]uint64, len(clientRelays))
-			response.NearRelayAddresses = make([]net.UDPAddr, len(clientRelays))
-			for idx, relay := range clientRelays {
-				response.NearRelayIDs[idx] = relay.ID
-				response.NearRelayAddresses[idx] = relay.Addr
-			}
+		// Fill in the near relays
+		response.NumNearRelays = int32(len(clientRelays))
+		response.NearRelayIDs = make([]uint64, len(clientRelays))
+		response.NearRelayAddresses = make([]net.UDPAddr, len(clientRelays))
+		for idx, relay := range clientRelays {
+			response.NearRelayIDs[idx] = relay.ID
+			response.NearRelayAddresses[idx] = relay.Addr
 		}
 
 		addRouteDecisionMetric(routeDecision, metrics)
