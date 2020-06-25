@@ -664,9 +664,6 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 		clientRelays, err := geoClient.RelaysWithin(sessionCacheEntry.Location.Latitude, sessionCacheEntry.Location.Longitude, 2500, "mi")
 
 		if len(clientRelays) == 0 || err != nil {
-			if err != nil {
-
-			}
 
 			level.Error(locallogger).Log("msg", "failed to locate relays near client", "err", err)
 			responseData, err := writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.NearRelaysLocateFailure)
@@ -708,6 +705,15 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 		// Maybe we consider a nicer way to do this in the future
 		for idx := range clientRelays {
 			clientRelays[idx], _ = rp.ResolveRelay(clientRelays[idx].ID)
+		}
+
+		// Fill in the near relays
+		response.NumNearRelays = int32(len(clientRelays))
+		response.NearRelayIDs = make([]uint64, len(clientRelays))
+		response.NearRelayAddresses = make([]net.UDPAddr, len(clientRelays))
+		for idx, relay := range clientRelays {
+			response.NearRelayIDs[idx] = relay.ID
+			response.NearRelayAddresses[idx] = relay.Addr
 		}
 
 		if !serverCacheEntry.Datacenter.Enabled {
@@ -823,7 +829,6 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 
 		if shouldSelect { // Only select a route if we should, early out for initial slice and force direct mode
 			level.Debug(locallogger).Log("buyer_rtt_epsilon", buyer.RoutingRulesSettings.RTTEpsilon, "cached_route_hash", sessionCacheEntry.RouteHash)
-			// Get a set of possible routes from the RouteProvider and on error ensure it falls back to direct
 
 			// hackfix: fill in client relay costs
 			clientRelayCosts := make([]int, len(clientRelays))
@@ -836,6 +841,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 				}
 			}
 
+			// Get a set of possible routes from the RouteProvider and on error ensure sends back a direct route
 			routes, err := rp.Routes(clientRelays, clientRelayCosts, dsRelays,
 				routing.SelectLogger(log.With(locallogger, "step", "start")),
 				routing.SelectUnencumberedRoutes(0.8),
@@ -1052,15 +1058,6 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 
 				level.Debug(locallogger).Log("msg", "session served network next route")
 			}
-		}
-
-		// Fill in the near relays
-		response.NumNearRelays = int32(len(clientRelays))
-		response.NearRelayIDs = make([]uint64, len(clientRelays))
-		response.NearRelayAddresses = make([]net.UDPAddr, len(clientRelays))
-		for idx, relay := range clientRelays {
-			response.NearRelayIDs[idx] = relay.ID
-			response.NearRelayAddresses[idx] = relay.Addr
 		}
 
 		addRouteDecisionMetric(routeDecision, metrics)
