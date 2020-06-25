@@ -2425,7 +2425,10 @@ func TestRoutes(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			actual, err := routeMatrix.Routes(test.from, test.to, test.selectors...)
+
+			fromRelayCosts := make([]int, len(test.from))
+			
+			actual, err := routeMatrix.Routes(test.from, fromRelayCosts, test.to, test.selectors...)
 			assert.Equal(t, test.expectedErr, err)
 			assert.Equal(t, len(test.expected), len(actual))
 
@@ -2462,8 +2465,10 @@ func BenchmarkRoutes(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
+	fromRelayCosts := make([]int, len(from))
+
 	for i := 0; i < b.N; i++ {
-		routeMatrix.Routes(from, to)
+		routeMatrix.Routes(from, fromRelayCosts, to)
 	}
 }
 
