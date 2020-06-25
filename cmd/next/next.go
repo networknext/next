@@ -409,6 +409,10 @@ func main() {
 	var relayVersionFilter string
 	relaysfs.StringVar(&relayVersionFilter, "version", "all", "show only relays at this version level")
 
+	// Limit the number of relays displayed, in descending order of sessions carried
+	var relaysCount int64
+	relaysfs.Int64Var(&relaysCount, "n", 0, "number of relays to display (default: all)")
+
 	root := &ffcli.Command{
 		ShortUsage: "next <subcommand>",
 		Subcommands: []*ffcli.Command{
@@ -575,6 +579,7 @@ func main() {
 							relaysListFlag,
 							csvOutputFlag,
 							relayVersionFilter,
+							relaysCount,
 						)
 						return nil
 					}
@@ -588,6 +593,7 @@ func main() {
 						relaysListFlag,
 						csvOutputFlag,
 						relayVersionFilter,
+						relaysCount,
 					)
 					return nil
 				},
