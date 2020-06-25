@@ -127,7 +127,7 @@ func (m *RouteMatrix) RelaysIn(d Datacenter) []Relay {
 // The selectors are chained together in order, so the selected routes from the first selector will be passed
 // as the argument to the second selector. If at any point a selector fails to select a new slice of routes,
 // the chain breaks.
-func (m *RouteMatrix) Routes(from []Relay, to []Relay, routeSelectors ...SelectorFunc) ([]Route, error) {
+func (m *RouteMatrix) Routes(from []Relay, fromCost []int, to []Relay, routeSelectors ...SelectorFunc) ([]Route, error) {
 	m.mu.RLock()
 
 	type RelayPairResult struct {
@@ -143,8 +143,6 @@ func (m *RouteMatrix) Routes(from []Relay, to []Relay, routeSelectors ...Selecto
 	for i, fromrelay := range from {
 		for j, torelay := range to {
 			fromtoidx, reverse := m.getFromToRelayIndex(fromrelay, torelay)
-
-			// todo: what the fuck
 
 			// Add a bad pair result so that the second pass will skip over it.
 			// This way we don't have to append only good results to a new list, which is more expensive.
