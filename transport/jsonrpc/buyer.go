@@ -28,6 +28,9 @@ type BuyersService struct {
 	mapPointsCache        json.RawMessage
 	mapPointsCompactCache json.RawMessage
 
+	mapPointsBuyerCache        map[string]json.RawMessage
+	mapPointsCompactBuyerCache map[string]json.RawMessage
+
 	RedisClient redis.Cmdable
 	Storage     storage.Storer
 	Logger      log.Logger
@@ -457,93 +460,6 @@ type MapPointsReply struct {
 }
 
 // GenerateMapPoints warms a local cache of JSON to be used by SessionMapPoints
-func (s *BuyersService) GenerateMapPoints() error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	// get all the session IDs from the map-points-global key set
-	sessionIDs, err := s.RedisClient.SMembers("map-points-global").Result()
-	if err != nil {
-		err = fmt.Errorf("SessionMapPoints() failed getting global map points: %v", err)
-		s.Logger.Log("err", err)
-		return err
-	}
-
-	// build a single transaction of gets for each session ID
-	var getCmds []*redis.StringCmd
-	{
-		gettx := s.RedisClient.TxPipeline()
-		for _, sessionID := range sessionIDs {
-			getCmds = append(getCmds, gettx.Get(fmt.Sprintf("session-%s-point", sessionID)))
-		}
-		_, err = gettx.Exec()
-		if err != nil && err != redis.Nil {
-			err = fmt.Errorf("SessionMapPoints() failed getting session points: %v", err)
-			s.Logger.Log("err", err)
-			return err
-		}
-	}
-
-	// slice to hold all the final map points
-	mappoints := make([]routing.SessionMapPoint, 0)
-	mappointscompact := make([][]interface{}, 0)
-
-	// build a single transaction for any missing session-*-point keys to be
-	// removed from map-points-global, total-next, and total-direct key sets
-	sremtx := s.RedisClient.TxPipeline()
-	{
-		var point routing.SessionMapPoint
-		for _, cmd := range getCmds {
-			// scan the data from Redis into its SessionMapPoint struct
-			err = cmd.Scan(&point)
-
-			// if there was an error then the session-*-point key expired
-			// so add SREM commands to remove it from the key sets
-			if err != nil {
-				key := cmd.Args()[1].(string)
-				keyparts := strings.Split(key, "-")
-				sremtx.SRem("map-points-global", keyparts[1])
-				sremtx.ZRem("total-next", keyparts[1])
-				sremtx.ZRem("total-direct", keyparts[1])
-				continue
-			}
-
-			// if there was no error then add the SessionMapPoint to the slice
-			if point.Latitude != 0 && point.Longitude != 0 {
-				mappoints = append(mappoints, point)
-
-				var onNN uint
-				if point.OnNetworkNext {
-					onNN = 1
-				}
-				mappointscompact = append(mappointscompact, []interface{}{point.Longitude, point.Latitude, onNN})
-			}
-		}
-	}
-
-	// execute the transaction to remove the sessions IDs from the key sets
-	sremcmds, err := sremtx.Exec()
-	if err != nil {
-		return err
-	}
-
-	level.Info(s.Logger).Log("key", "map-points-global", "removed", len(sremcmds))
-
-	// marshal the map points slice to local cache
-	s.mapPointsCache, err = json.Marshal(mappoints)
-	if err != nil {
-		return err
-	}
-
-	s.mapPointsCompactCache, err = json.Marshal(mappointscompact)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// GenerateMapPoints warms a local cache of JSON to be used by SessionMapPoints
 func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -554,10 +470,17 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 	buyers := s.Storage.Buyers()
 
 	// slice to hold all the final map points
-	mappoints := make(map[uint64][]routing.SessionMapPoint, 0)
-	mappointscompact := make(map[uint64][][]interface{}, 0)
+	mapPointsBuyers := make(map[string][]routing.SessionMapPoint, 0)
+	mapPointsBuyerscompact := make(map[string][][]interface{}, 0)
+
+	mapPointsGlobal := make([]routing.SessionMapPoint, 0)
+	mapPointsGlobalcompact := make([][]interface{}, 0)
+
+	s.mapPointsBuyerCache = make(map[string]json.RawMessage, 0)
+	s.mapPointsCompactBuyerCache = make(map[string]json.RawMessage, 0)
 
 	for _, buyer := range buyers { // get all the session IDs from the map-points-global key set
+		stringID := fmt.Sprintf("%016x", buyer.ID)
 		sessionIDs, err = s.RedisClient.SMembers(fmt.Sprintf("map-points-%016x-buyer", buyer.ID)).Result()
 		if err != nil {
 			err = fmt.Errorf("SessionMapPoints() failed getting map points for buyer %016x: %v", buyer.ID, err)
@@ -601,15 +524,17 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 				}
 
 				// if there was no error then add the SessionMapPoint to the slice
-				if point.Latitude != 0 && point.Longitude != 0 {
-					mappoints[buyer.ID] = append(mappoints[buyer.ID], point)
+				//if point.Latitude != 0 && point.Longitude != 0 {
+				mapPointsBuyers[stringID] = append(mapPointsBuyers[stringID], point)
+				mapPointsGlobal = append(mapPointsGlobal, point)
 
-					var onNN uint
-					if point.OnNetworkNext {
-						onNN = 1
-					}
-					mappointscompact[buyer.ID] = append(mappointscompact[buyer.ID], []interface{}{point.Longitude, point.Latitude, onNN})
+				var onNN uint
+				if point.OnNetworkNext {
+					onNN = 1
 				}
+				mapPointsBuyerscompact[stringID] = append(mapPointsBuyerscompact[stringID], []interface{}{point.Longitude, point.Latitude, onNN})
+				mapPointsGlobalcompact = append(mapPointsGlobalcompact, []interface{}{point.Longitude, point.Latitude, onNN})
+				//}
 			}
 		}
 
@@ -621,15 +546,25 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 
 		level.Info(s.Logger).Log("key", "map-points-global", "removed", len(sremcmds))
 
+		// marshal the map points slice to local cache
+		s.mapPointsBuyerCache[stringID], err = json.Marshal(mapPointsBuyers[stringID])
+		if err != nil {
+			return err
+		}
+
+		s.mapPointsCompactBuyerCache[stringID], err = json.Marshal(mapPointsBuyerscompact[stringID])
+		if err != nil {
+			return err
+		}
 	}
 
 	// marshal the map points slice to local cache
-	s.mapPointsCache, err = json.Marshal(mappoints)
+	s.mapPointsCache, err = json.Marshal(mapPointsGlobal)
 	if err != nil {
 		return err
 	}
 
-	s.mapPointsCompactCache, err = json.Marshal(mappointscompact)
+	s.mapPointsCompactCache, err = json.Marshal(mapPointsGlobalcompact)
 	if err != nil {
 		return err
 	}
@@ -644,11 +579,11 @@ func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, r
 
 	switch args.BuyerID {
 	case "":
+		// pull the local cache and reply with it
+		reply.Points = s.mapPointsCache
 	default:
+		reply.Points = s.mapPointsBuyerCache[args.BuyerID]
 	}
-
-	// pull the local cache and reply with it
-	reply.Points = s.mapPointsCache
 
 	return nil
 }
@@ -659,11 +594,11 @@ func (s *BuyersService) SessionMap(r *http.Request, args *MapPointsArgs, reply *
 
 	switch args.BuyerID {
 	case "":
+		// pull the local cache and reply with it
+		reply.Points = s.mapPointsCompactCache
 	default:
+		reply.Points = s.mapPointsCompactBuyerCache[args.BuyerID]
 	}
-
-	// pull the local cache and reply with it
-	reply.Points = s.mapPointsCompactCache
 
 	return nil
 }
