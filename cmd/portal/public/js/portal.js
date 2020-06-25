@@ -1174,28 +1174,40 @@ function generateCharts(data) {
 	];
 
 	data.map((entry) => {
+		let wipeNN = entry.is_try_before_you_buy && UserHandler.isAdmin();
 		let timestamp = new Date(entry.timestamp).getTime() / 1000;
 
+		let nnRTT = 0;
+		let nnPl = 0;
+		let nnJitter = 0;
+		let up = 0;
+		let down = 0;
+
+		if (!wipeNN) {
+			nnRTT = parseFloat(entry.next.rtt);
+			nnJitter = parseFloat(entry.next.jitter);
+			nnPl = parseFloat(entry.next.packet_loss);
+			up = entry.envelope.up;
+			down = entry.envelope.down;
+		}
+
 		// Latency
-		let nextRTT = parseFloat(entry.next.rtt);
 		let directRTT = parseFloat(entry.direct.rtt);
-		let next = entry.is_multipath && nextRTT >= directRTT ? directRTT : nextRTT;
+		let next = entry.is_multipath && nnRTT >= directRTT ? directRTT : nnRTT;
 		let direct = directRTT;
 		latencyData.comparison[0].push(timestamp);
 		latencyData.comparison[1].push(next);
 		latencyData.comparison[2].push(direct);
 
 		// Jitter
-		next = parseFloat(entry.next.jitter);
 		direct = parseFloat(entry.direct.jitter);
 		jitterData.comparison[0].push(timestamp);
-		jitterData.comparison[1].push(next);
+		jitterData.comparison[1].push(nnJitter);
 		jitterData.comparison[2].push(direct);
 
 		// Packetloss
-		let nextPL = parseFloat(entry.next.packet_loss);
 		let directPL = parseFloat(entry.direct.packet_loss);
-		next = entry.is_multipath && nextPL >= directPL ? directPL : nextPL;
+		next = entry.is_multipath && nnPl >= directPL ? directPL : nnPl;
 		direct = directPL;
 		packetLossData.comparison[0].push(timestamp);
 		packetLossData.comparison[1].push(next);
@@ -1203,8 +1215,8 @@ function generateCharts(data) {
 
 		// Bandwidth
 		bandwidthData[0].push(timestamp);
-		bandwidthData[1].push(entry.envelope.up);
-		bandwidthData[2].push(entry.envelope.down);
+		bandwidthData[1].push(up);
+		bandwidthData[2].push(down);
 	});
 
 	const defaultOpts = {
@@ -1313,12 +1325,12 @@ function generateCharts(data) {
 			{
 				stroke: "blue",
 				fill: "rgba(0,0,255,0.1)",
-				label: "Actual Up",
+				label: "Up",
 			},
 			{
 				stroke: "orange",
 				fill: "rgba(255,165,0,0.1)",
-				label: "Actual Down"
+				label: "Down"
 			},
 		],
 		axes: [

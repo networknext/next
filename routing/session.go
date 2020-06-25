@@ -57,11 +57,12 @@ func ObscureString(source string, delim string, count int) string {
 }
 
 type SessionSlice struct {
-	Timestamp   time.Time `json:"timestamp"`
-	Next        Stats     `json:"next"`
-	Direct      Stats     `json:"direct"`
-	Envelope    Envelope  `json:"envelope"`
-	IsMultiPath bool      `json:"is_multipath"`
+	Timestamp         time.Time `json:"timestamp"`
+	Next              Stats     `json:"next"`
+	Direct            Stats     `json:"direct"`
+	Envelope          Envelope  `json:"envelope"`
+	IsMultiPath       bool      `json:"is_multipath"`
+	IsTryBeforeYouBuy bool      `json:"is_try_before_you_buy"`
 }
 
 func (s *SessionSlice) UnmarshalBinary(data []byte) error {
