@@ -149,9 +149,7 @@ MapHandler = {
 	mapInstance: null,
 	sessionToolMapInstance: null,
 	initMap() {
-		// Not working yet
-		// let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
-		this.updateFilter('map', {
+		this.updateFilter({
 			buyerId: "",
 			sessionType: 'all'
 		});
@@ -522,23 +520,15 @@ WorkspaceHandler = {
 				UserHandler.userInfo.company = "";
 			});
 
-		// Not working / not necessary?
-		// let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
 		this.updateAccountsTableFilter({
 			buyerId: "",
 		});
 	},
 	loadSessionsPage() {
-		// Not working yet
-		// let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
 		this.updateSessionFilter({
 			buyerId: "",
 			sessionType: 'all'
 		});
-		this.refreshSessionTable();
-		this.sessionLoop = setInterval(() => {
-			this.refreshSessionTable();
-		}, 10000);
 	},
 	fetchSessionInfo() {
 		let id = rootComponent.$data.pages.sessionTool.id;
@@ -677,6 +667,11 @@ WorkspaceHandler = {
 	},
 	updateSessionFilter(filter) {
 		Object.assign(rootComponent.$data.pages.sessions, {filter: filter});
+		this.sessionLoop ? clearInterval(this.sessionLoop) : null;
+		this.refreshSessionTable();
+		this.sessionLoop = setInterval(() => {
+			this.refreshSessionTable();
+		}, 10000);
 	},
 	refreshSessionTable() {
 		setTimeout(() => {

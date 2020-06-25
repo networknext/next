@@ -543,10 +543,109 @@ func (s *BuyersService) GenerateMapPoints() error {
 	return nil
 }
 
+// GenerateMapPoints warms a local cache of JSON to be used by SessionMapPoints
+func (s *BuyersService) GenerateMapPointsPerBuyer() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var sessionIDs []string
+	var err error
+
+	buyers := s.Storage.Buyers()
+
+	// slice to hold all the final map points
+	mappoints := make(map[uint64][]routing.SessionMapPoint, 0)
+	mappointscompact := make(map[uint64][][]interface{}, 0)
+
+	for _, buyer := range buyers { // get all the session IDs from the map-points-global key set
+		sessionIDs, err = s.RedisClient.SMembers(fmt.Sprintf("map-points-%016x-buyer", buyer.ID)).Result()
+		if err != nil {
+			err = fmt.Errorf("SessionMapPoints() failed getting map points for buyer %016x: %v", buyer.ID, err)
+			s.Logger.Log("err", err)
+			return err
+		}
+
+		// build a single transaction of gets for each session ID
+		var getCmds []*redis.StringCmd
+		{
+			gettx := s.RedisClient.TxPipeline()
+			for _, sessionID := range sessionIDs {
+				getCmds = append(getCmds, gettx.Get(fmt.Sprintf("session-%s-point", sessionID)))
+			}
+			_, err = gettx.Exec()
+			if err != nil && err != redis.Nil {
+				err = fmt.Errorf("SessionMapPoints() failed getting session points: %v", err)
+				s.Logger.Log("err", err)
+				return err
+			}
+		}
+
+		// build a single transaction for any missing session-*-point keys to be
+		// removed from map-points-global, total-next, and total-direct key sets
+		sremtx := s.RedisClient.TxPipeline()
+		{
+			var point routing.SessionMapPoint
+			for _, cmd := range getCmds {
+				// scan the data from Redis into its SessionMapPoint struct
+				err = cmd.Scan(&point)
+
+				// if there was an error then the session-*-point key expired
+				// so add SREM commands to remove it from the key sets
+				if err != nil {
+					key := cmd.Args()[1].(string)
+					keyparts := strings.Split(key, "-")
+					sremtx.SRem(fmt.Sprintf("map-points-%016x-buyer", buyer.ID), keyparts[1])
+					sremtx.ZRem("total-next", keyparts[1])
+					sremtx.ZRem("total-direct", keyparts[1])
+					continue
+				}
+
+				// if there was no error then add the SessionMapPoint to the slice
+				if point.Latitude != 0 && point.Longitude != 0 {
+					mappoints[buyer.ID] = append(mappoints[buyer.ID], point)
+
+					var onNN uint
+					if point.OnNetworkNext {
+						onNN = 1
+					}
+					mappointscompact[buyer.ID] = append(mappointscompact[buyer.ID], []interface{}{point.Longitude, point.Latitude, onNN})
+				}
+			}
+		}
+
+		// execute the transaction to remove the sessions IDs from the key sets
+		sremcmds, err := sremtx.Exec()
+		if err != nil {
+			return err
+		}
+
+		level.Info(s.Logger).Log("key", "map-points-global", "removed", len(sremcmds))
+
+	}
+
+	// marshal the map points slice to local cache
+	s.mapPointsCache, err = json.Marshal(mappoints)
+	if err != nil {
+		return err
+	}
+
+	s.mapPointsCompactCache, err = json.Marshal(mappointscompact)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // SessionMapPoints returns the locally cached JSON from GenerateSessionMapPoints
 func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, reply *MapPointsReply) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	switch args.BuyerID {
+	case "":
+	default:
+	}
 
 	// pull the local cache and reply with it
 	reply.Points = s.mapPointsCache
@@ -557,6 +656,11 @@ func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, r
 func (s *BuyersService) SessionMap(r *http.Request, args *MapPointsArgs, reply *MapPointsReply) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	switch args.BuyerID {
+	case "":
+	default:
+	}
 
 	// pull the local cache and reply with it
 	reply.Points = s.mapPointsCompactCache
