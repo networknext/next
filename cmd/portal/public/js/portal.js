@@ -1325,12 +1325,12 @@ function generateCharts(data) {
 			{
 				stroke: "blue",
 				fill: "rgba(0,0,255,0.1)",
-				label: "Actual Up",
+				label: "Up",
 			},
 			{
 				stroke: "orange",
 				fill: "rgba(255,165,0,0.1)",
-				label: "Actual Down"
+				label: "Down"
 			},
 		],
 		axes: [
