@@ -109,8 +109,10 @@ func DecideUpgradeRTT(rttThreshold float64) DecisionFunc {
 			return prevDecision
 		}
 
+		predictedImprovement := directStats.RTT - predictedNextStats.RTT
+
 		// If upgrading to a nextwork next route would reduce RTT by at least the given threshold, upgrade
-		if !prevDecision.OnNetworkNext && !IsVetoed(prevDecision) && directStats.RTT-predictedNextStats.RTT >= rttThreshold {
+		if !prevDecision.OnNetworkNext && !IsVetoed(prevDecision) && predictedImprovement >= rttThreshold {
 			return Decision{true, DecisionRTTReduction}
 		}
 
@@ -129,19 +131,22 @@ func DecideDowngradeRTT(rttHysteresis float64, yolo bool) DecisionFunc {
 			return prevDecision
 		}
 
-		// If staying on a nextwork next route doesn't increase RTT by more than the given hysteresis value, stay
+		// If we are on network next and we are improving RTT by less than the given hysteresis value, go direct
 		if prevDecision.OnNetworkNext {
-			if predictedNextStats.RTT-directStats.RTT <= rttHysteresis {
-				return prevDecision
+			predictedImprovement := directStats.RTT - predictedNextStats.RTT
+
+			if predictedImprovement < rttHysteresis {
+				// If the buyer has YouOnlyLiveOnce safety setting enabled, veto them and add that reason to the DecisionReason
+				if yolo {
+					return Decision{false, DecisionRTTHysteresis | DecisionVetoYOLO}
+				}
+
+				// Network next route increases RTT too much, switch back to direct
+				return Decision{false, DecisionRTTHysteresis}
 			}
 
-			// If the buyer has YouOnlyLiveOnce safety setting enabled, veto them and add that reason to the DecisionReason
-			if yolo {
-				return Decision{false, DecisionRTTHysteresis | DecisionVetoYOLO}
-			}
-
-			// Network next route increases RTT too much, switch back to direct
-			return Decision{false, DecisionRTTHysteresis}
+			// network next route is still good, so keep it
+			return prevDecision
 		}
 
 		// If the route is already direct, don't touch it
@@ -153,16 +158,18 @@ func DecideDowngradeRTT(rttHysteresis float64, yolo bool) DecisionFunc {
 // RTT by more than the RTT veto value, or increases packet loss if packet loss safety is enabled.
 // This decision only downgrades network next routes, so direct routes aren't considered.
 // Multipath sessions aren't considered.
-func DecideVeto(rttVeto float64, packetLossSafety bool, yolo bool) DecisionFunc {
+func DecideVeto(onNNSliceCounter uint64, rttVeto float64, packetLossSafety bool, yolo bool) DecisionFunc {
 	return func(prevDecision Decision, predictedNextStats Stats, lastNextStats Stats, directStats Stats) Decision {
 		// If we've already decided on multipath, then don't change the reason
 		if IsMultipath(prevDecision) {
 			return prevDecision
 		}
 
+		actualImprovement := directStats.RTT - lastNextStats.RTT
+
 		if prevDecision.OnNetworkNext {
 			// Whether or not the network next route made the RTT worse than the veto value
-			if lastNextStats.RTT-directStats.RTT > rttVeto {
+			if actualImprovement < rttVeto {
 				// If the buyer has YouOnlyLiveOnce safety setting enabled, add that reason to the DecisionReason
 				if yolo {
 					return Decision{false, DecisionVetoRTT | DecisionVetoYOLO}
@@ -172,7 +179,7 @@ func DecideVeto(rttVeto float64, packetLossSafety bool, yolo bool) DecisionFunc 
 			}
 
 			// Whether or not the network next route made the packet loss worse, if the buyer has packet loss safety enabled
-			if packetLossSafety && lastNextStats.PacketLoss > directStats.PacketLoss {
+			if onNNSliceCounter > 2 && packetLossSafety && lastNextStats.PacketLoss > directStats.PacketLoss {
 				// If the buyer has YouOnlyLiveOnce safety setting enabled, add that reason to the DecisionReason
 				if yolo {
 					return Decision{false, DecisionVetoPacketLoss | DecisionVetoYOLO}
@@ -188,7 +195,7 @@ func DecideVeto(rttVeto float64, packetLossSafety bool, yolo bool) DecisionFunc 
 		// Handle the case where another decision function decided to switch back to direct due
 		// to RTT hysteresis, but the increase is so severe it should be vetoed.
 		if prevDecision.Reason == DecisionRTTHysteresis {
-			if lastNextStats.RTT-directStats.RTT > rttVeto {
+			if actualImprovement < rttVeto {
 				// If the buyer has YouOnlyLiveOnce safety setting enabled, add that reason to the DecisionReason
 				if yolo {
 					return Decision{false, DecisionVetoRTT | DecisionVetoYOLO}

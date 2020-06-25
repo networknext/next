@@ -76,7 +76,7 @@ func TestDecideDowngradeRTT(t *testing.T) {
 	assert.Equal(t, routing.Decision{true, routing.DecisionNoReason}, decision)
 
 	// Now test to see if the route gets downgraded to a direct route due to RTT
-	predictedStats.RTT = directStats.RTT + rttHyteresis + 1.0
+	predictedStats.RTT = directStats.RTT - rttHyteresis + 1.0
 
 	decision = routeDecisionFunc(decision, predictedStats, routing.Stats{}, directStats)
 	assert.Equal(t, routing.Decision{false, routing.DecisionRTTHysteresis}, decision)
@@ -106,8 +106,10 @@ func TestDecideVeto(t *testing.T) {
 		PacketLoss: 0,
 	}
 
+	onNNSliceCounter := uint64(0)
+
 	rttVeto := float64(routing.DefaultRoutingRulesSettings.RTTVeto)
-	routeDecisionFunc := routing.DecideVeto(rttVeto, false, false)
+	routeDecisionFunc := routing.DecideVeto(onNNSliceCounter, rttVeto, false, false)
 
 	// Test if multipath is enabled
 	decision := routing.Decision{true, routing.DecisionRTTReductionMultipath}
@@ -121,23 +123,30 @@ func TestDecideVeto(t *testing.T) {
 
 	// Now test for yolo reason
 	decision.OnNetworkNext = true
-	routeDecisionFunc = routing.DecideVeto(rttVeto, false, true)
+	routeDecisionFunc = routing.DecideVeto(onNNSliceCounter, rttVeto, false, true)
 
 	decision = routeDecisionFunc(decision, routing.Stats{}, lastNextStats, directStats)
 	assert.Equal(t, routing.Decision{false, routing.DecisionVetoRTT | routing.DecisionVetoYOLO}, decision)
 
-	// Now test if the route is vetoed for packet loss increases
+	// Now test that the route won't be vetoed yet for packet loss increases since it's withing the first 3 slices
 	lastNextStats.RTT = directStats.RTT
 	lastNextStats.PacketLoss = directStats.PacketLoss + 1
-	decision.OnNetworkNext = true
-	routeDecisionFunc = routing.DecideVeto(rttVeto, true, false)
+	decision = routing.Decision{OnNetworkNext: true, Reason: routing.DecisionRTTReduction}
+	routeDecisionFunc = routing.DecideVeto(onNNSliceCounter, rttVeto, true, false)
+
+	decision = routeDecisionFunc(decision, routing.Stats{}, lastNextStats, directStats)
+	assert.Equal(t, routing.Decision{true, routing.DecisionRTTReduction}, decision)
+
+	// Now test if the route is vetoed for packet loss increases
+	onNNSliceCounter = 3
+	routeDecisionFunc = routing.DecideVeto(onNNSliceCounter, rttVeto, true, false)
 
 	decision = routeDecisionFunc(decision, routing.Stats{}, lastNextStats, directStats)
 	assert.Equal(t, routing.Decision{false, routing.DecisionVetoPacketLoss}, decision)
 
 	// Now test for yolo reason
 	decision.OnNetworkNext = true
-	routeDecisionFunc = routing.DecideVeto(rttVeto, true, true)
+	routeDecisionFunc = routing.DecideVeto(onNNSliceCounter, rttVeto, true, true)
 
 	decision = routeDecisionFunc(decision, routing.Stats{}, lastNextStats, directStats)
 	assert.Equal(t, routing.Decision{false, routing.DecisionVetoPacketLoss | routing.DecisionVetoYOLO}, decision)
@@ -145,7 +154,7 @@ func TestDecideVeto(t *testing.T) {
 	// Test if route isn't vetoed
 	lastNextStats.PacketLoss = directStats.PacketLoss
 	decision = routing.Decision{true, routing.DecisionNoReason}
-	routeDecisionFunc = routing.DecideVeto(rttVeto, true, true)
+	routeDecisionFunc = routing.DecideVeto(onNNSliceCounter, rttVeto, true, true)
 
 	decision = routeDecisionFunc(decision, routing.Stats{}, lastNextStats, directStats)
 	assert.Equal(t, routing.Decision{true, routing.DecisionNoReason}, decision)
@@ -153,14 +162,14 @@ func TestDecideVeto(t *testing.T) {
 	// Test if route was changed to direct from another function, but the RTT increase was so severe that it should be vetoed
 	lastNextStats.RTT = 60
 	decision = routing.Decision{OnNetworkNext: false, Reason: routing.DecisionRTTHysteresis}
-	routeDecisionFunc = routing.DecideVeto(rttVeto, true, false)
+	routeDecisionFunc = routing.DecideVeto(onNNSliceCounter, rttVeto, true, false)
 
 	decision = routeDecisionFunc(decision, routing.Stats{}, lastNextStats, directStats)
 	assert.Equal(t, routing.Decision{false, routing.DecisionVetoRTT}, decision)
 
 	// Now with yolo
 	decision = routing.Decision{OnNetworkNext: false, Reason: routing.DecisionRTTHysteresis}
-	routeDecisionFunc = routing.DecideVeto(rttVeto, true, true)
+	routeDecisionFunc = routing.DecideVeto(onNNSliceCounter, rttVeto, true, true)
 
 	decision = routeDecisionFunc(decision, routing.Stats{}, lastNextStats, directStats)
 	assert.Equal(t, routing.Decision{false, routing.DecisionVetoRTT | routing.DecisionVetoYOLO}, decision)
