@@ -1231,7 +1231,7 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 			Down: int64(packet.KbpsDown),
 		},
 		IsMultiPath:       isMultiPath,
-		IsTryBeforeYouBuy: packet.TryBeforeYouBuy,
+		IsTryBeforeYouBuy: packet.TryBeforeYouBuy || !packet.Committed,
 	}
 	point := routing.SessionMapPoint{
 		Latitude:      location.Latitude,
