@@ -1154,8 +1154,7 @@ function generateCharts(data) {
 		// Latency
 		let nextRTT = parseFloat(entry.next.rtt);
 		let directRTT = parseFloat(entry.direct.rtt);
-		next = entry.is_multipath && nextRTT >= directRTT ? directRTT : nextRTT;
-		let next = nextRTT;
+		let next = entry.is_multipath && nextRTT >= directRTT ? directRTT : nextRTT;
 		let direct = directRTT;
 		latencyData.comparison[0].push(timestamp);
 		latencyData.comparison[1].push(next);
