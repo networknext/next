@@ -1174,7 +1174,7 @@ function generateCharts(data) {
 	];
 
 	data.map((entry) => {
-		let wipeNN = entry.is_try_before_you_buy && UserHandler.isAdmin();
+		let wipeNN = entry.is_try_before_you_buy && !UserHandler.isAdmin();
 		let timestamp = new Date(entry.timestamp).getTime() / 1000;
 
 		let nnRTT = 0;
