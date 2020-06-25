@@ -1180,11 +1180,15 @@ function generateCharts(data) {
 		let nnRTT = 0;
 		let nnPl = 0;
 		let nnJitter = 0;
+		let up = 0;
+		let down = 0;
 
 		if (!wipeNN) {
 			nnRTT = parseFloat(entry.next.rtt);
 			nnJitter = parseFloat(entry.next.jitter);
-		  nnPl = parseFloat(entry.next.packet_loss);
+			nnPl = parseFloat(entry.next.packet_loss);
+			up = entry.envelope.up;
+			down = entry.envelope.down;
 		}
 
 		// Latency
@@ -1211,8 +1215,8 @@ function generateCharts(data) {
 
 		// Bandwidth
 		bandwidthData[0].push(timestamp);
-		bandwidthData[1].push(entry.envelope.up);
-		bandwidthData[2].push(entry.envelope.down);
+		bandwidthData[1].push(up);
+		bandwidthData[2].push(down);
 	});
 
 	const defaultOpts = {
