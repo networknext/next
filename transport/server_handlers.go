@@ -356,6 +356,7 @@ func (e SessionCacheEntry) MarshalBinary() ([]byte, error) {
 
 type VetoCacheEntry struct {
 	VetoTimestamp time.Time
+	Reason        routing.DecisionReason
 }
 
 func (e *VetoCacheEntry) UnmarshalBinary(data []byte) error {
@@ -514,6 +515,14 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 							metrics.ErrorMetrics.WriteResponseFailure.Add(1)
 						}
 						return
+					}
+
+					if !vetoCacheEntry.VetoTimestamp.Before(timestampNow) {
+						// If we have a veto cache entry and the session is still being vetoed, set the route decision as default-vetoed
+						sessionCacheEntry.RouteDecision = routing.Decision{
+							OnNetworkNext: false,
+							Reason:        vetoCacheEntry.Reason,
+						}
 					}
 				}
 			}
@@ -1006,6 +1015,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 				if !routing.IsVetoed(sessionCacheEntry.RouteDecision) && routing.IsVetoed(routeDecision) {
 					// Session was vetoed this update, so set the veto timeout
 					vetoCacheEntry.VetoTimestamp = timestampNow.Add(time.Hour)
+					vetoCacheEntry.Reason = routeDecision.Reason
 				}
 			}
 
@@ -1307,6 +1317,7 @@ func updateCacheEntries(redisClient redis.Cmdable, sessionCacheKey string, vetoC
 
 	updatedVetoCacheEntry := VetoCacheEntry{
 		VetoTimestamp: vetoCacheEntry.VetoTimestamp,
+		Reason:        vetoCacheEntry.Reason,
 	}
 
 	tx := redisClient.TxPipeline()

@@ -2180,6 +2180,7 @@ func TestVetoedRTT(t *testing.T) {
 
 	vetoCacheEntry := transport.VetoCacheEntry{
 		VetoTimestamp: time.Now().Add(5 * time.Second),
+		Reason:        routing.DecisionVetoRTT,
 	}
 	vetoCacheEntryData, err := vetoCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
@@ -2438,6 +2439,7 @@ func TestVetoedPacketLoss(t *testing.T) {
 
 	vetoCacheEntry := transport.VetoCacheEntry{
 		VetoTimestamp: time.Now().Add(5 * time.Second),
+		Reason:        routing.DecisionVetoPacketLoss,
 	}
 	vetoCacheEntryData, err := vetoCacheEntry.MarshalBinary()
 	assert.NoError(t, err)
