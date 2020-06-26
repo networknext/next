@@ -1174,8 +1174,9 @@ function generateCharts(data) {
 		[],
 	];
 
-	let lastEntryNN = false;
+	let lastEntryNN = true;
 	let count = 0;
+
 	data.map((entry) => {
 		let timestamp = new Date(entry.timestamp).getTime() / 1000;
 		let onNN = entry.on_network_next
@@ -1193,7 +1194,7 @@ function generateCharts(data) {
 			count = 0;
 		}
 
-		if (!lastEntryNN && onNN && count < 3) {
+		if ((!lastEntryNN && onNN && count < 3) || (count > 0 && count < 3)) {
 			nextRTT = nextRTT >= directRTT ? directRTT : nextRTT
 			nextJitter = nextJitter >= directJitter ? directJitter : nextJitter
 			nextPL = 0
@@ -1201,21 +1202,21 @@ function generateCharts(data) {
 		}
 
 		// Latency
-		let next = entry.is_multipath && nextRTT >= directRTT ? directRTT : nextRTT;
+		let next = (entry.is_multipath && nextRTT >= directRTT) ? directRTT : nextRTT;
 		let direct = directRTT;
 		latencyData.comparison[0].push(timestamp);
 		latencyData.comparison[1].push(next);
 		latencyData.comparison[2].push(direct);
 
 		// Jitter
-		next = entry.is_multipath && nextJitter >= directJitter ? directJitter : nextJitter;
+		next = (entry.is_multipath && nextJitter >= directJitter) ? directJitter : nextJitter;
 		direct = directJitter;
 		jitterData.comparison[0].push(timestamp);
 		jitterData.comparison[1].push(next);
 		jitterData.comparison[2].push(direct);
 
 		// Packetloss
-		next = entry.is_multipath && nextPL >= directPL ? directPL : nextPL;
+		next = (entry.is_multipath && nextPL >= directPL) ? directPL : nextPL;
 		direct = directPL;
 		packetLossData.comparison[0].push(timestamp);
 		packetLossData.comparison[1].push(next);
@@ -1225,6 +1226,8 @@ function generateCharts(data) {
 		bandwidthData[0].push(timestamp);
 		bandwidthData[1].push(entry.envelope.up);
 		bandwidthData[2].push(entry.envelope.down);
+
+		lastEntryNN = onNN;
 	});
 
 	const defaultOpts = {
