@@ -262,13 +262,26 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, store
 
 		datacenter, err := storer.Datacenter(packet.DatacenterID)
 		if err != nil {
-			level.Error(locallogger).Log("msg", "failed to get datacenter from storage", "err", err, "customer_id", packet.CustomerID)
-			metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-			metrics.ErrorMetrics.DatacenterNotFound.Add(1)
+			// Check if there is a datacenter with this alias
+			var datacenterAliasFound bool
+			allDatacenters := storer.Datacenters()
+			for _, d := range allDatacenters {
+				if packet.DatacenterID == crypto.HashID(d.AliasName) {
+					datacenter = d
+					datacenterAliasFound = true
+					break
+				}
+			}
 
-			// Don't return early, just set an UnknownDatacenter so the ServerCacheEntry gets sets so its used by SessionUpdateHandlerFunc
-			datacenter = routing.UnknownDatacenter
-			datacenter.ID = packet.DatacenterID
+			if !datacenterAliasFound {
+				level.Error(locallogger).Log("msg", "failed to get datacenter from storage", "err", err, "customer_id", packet.CustomerID)
+				metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+				metrics.ErrorMetrics.DatacenterNotFound.Add(1)
+
+				// Don't return early, just set an UnknownDatacenter so the ServerCacheEntry gets sets so its used by SessionUpdateHandlerFunc
+				datacenter = routing.UnknownDatacenter
+				datacenter.ID = packet.DatacenterID
+			}
 		}
 
 		locallogger = log.With(locallogger, "customer_id", packet.CustomerID)

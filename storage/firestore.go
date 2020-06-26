@@ -73,6 +73,7 @@ type relay struct {
 
 type datacenter struct {
 	Name      string  `firestore:"name"`
+	AliasName string  `firestore:"alias_name"`
 	Enabled   bool    `firestore:"enabled"`
 	Latitude  float64 `firestore:"latitude"`
 	Longitude float64 `firestore:"longitude"`
@@ -1204,9 +1205,10 @@ func (fs *Firestore) syncDatacenters(ctx context.Context) error {
 
 		did := crypto.HashID(d.Name)
 		datacenters[did] = routing.Datacenter{
-			ID:      did,
-			Name:    d.Name,
-			Enabled: d.Enabled,
+			ID:        did,
+			Name:      d.Name,
+			AliasName: d.AliasName,
+			Enabled:   d.Enabled,
 			Location: routing.Location{
 				Latitude:  float64(d.Latitude),
 				Longitude: float64(d.Longitude),
@@ -1301,9 +1303,10 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 		}
 
 		datacenter := routing.Datacenter{
-			ID:      crypto.HashID(d.Name),
-			Name:    d.Name,
-			Enabled: d.Enabled,
+			ID:        crypto.HashID(d.Name),
+			Name:      d.Name,
+			AliasName: d.AliasName,
+			Enabled:   d.Enabled,
 			Location: routing.Location{
 				Latitude:  d.Latitude,
 				Longitude: d.Longitude,
