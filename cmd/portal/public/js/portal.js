@@ -1174,8 +1174,8 @@ function generateCharts(data) {
 		[],
 	];
 
-	let lastEntryNN = true;
-	let count = 0;
+	let lastEntryNN = false;
+	let countNN = 0;
 
 	data.map((entry) => {
 		let timestamp = new Date(entry.timestamp).getTime() / 1000;
@@ -1190,15 +1190,15 @@ function generateCharts(data) {
 		let nextPL = parseFloat(entry.next.packet_loss);
 		let directPL = parseFloat(entry.direct.packet_loss);
 
-		if (count >= 3 || (lastEntryNN && !onNN)) {
-			count = 0;
+		if (lastEntryNN && !onNN) {
+			countNN = 0;
 		}
 
-		if ((!lastEntryNN && onNN && count < 3) || (count > 0 && count < 3)) {
+		if (onNN && countNN < 3) {
 			nextRTT = nextRTT >= directRTT ? directRTT : nextRTT
 			nextJitter = nextJitter >= directJitter ? directJitter : nextJitter
 			nextPL = 0
-			count++
+			countNN++
 		}
 
 		// Latency
