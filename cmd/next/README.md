@@ -137,8 +137,6 @@ To set the SSH key: `next ssh key <path to key file>`
 
 [Enable](#Enable), [Disable](#Disable), [Update](#Update), and [Revert](#Revert) match sellers as well as relay names.
 
-To do so reliably the regex must be of the form of `^seller_name$` otherwise if any relay names also happen to match the seller's name, they will appear in the list too.
-
 ### Enable
 
 To Enable a relay: `next relay enable [regex...]`

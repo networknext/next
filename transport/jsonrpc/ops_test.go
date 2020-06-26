@@ -502,7 +502,7 @@ func TestRelays(t *testing.T) {
 
 	t.Run("filter by seller", func(t *testing.T) {
 		var reply jsonrpc.RelaysReply
-		err := svc.Relays(nil, &jsonrpc.RelaysArgs{Regex: "^seller name$"}, &reply)
+		err := svc.Relays(nil, &jsonrpc.RelaysArgs{Regex: "seller name"}, &reply)
 		assert.NoError(t, err)
 
 		assert.Equal(t, len(reply.Relays), 3)
@@ -514,7 +514,7 @@ func TestRelays(t *testing.T) {
 		assert.Equal(t, reply.Relays[2].Name, "local.local.23")
 
 		var empty jsonrpc.RelaysReply
-		err = svc.Relays(nil, &jsonrpc.RelaysArgs{Regex: "^not.found$"}, &empty)
+		err = svc.Relays(nil, &jsonrpc.RelaysArgs{Regex: "not.found"}, &empty)
 		assert.NoError(t, err)
 
 		assert.Equal(t, len(empty.Relays), 0)

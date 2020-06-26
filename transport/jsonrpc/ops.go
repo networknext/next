@@ -460,31 +460,33 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 
 	if args.Regex != "" {
 		var filtered []relay
-		found := false
 
 		// first check for an exact match
 		for idx := range reply.Relays {
 			relay := &reply.Relays[idx]
 			if relay.Name == args.Regex {
 				filtered = append(filtered, *relay)
-				found = true
 				break
 			}
 		}
 
-		// otherwise check for regex matches
-		if !found {
+		// if no relay found, attemt to see if the query matches any seller names
+		if len(filtered) == 0 {
+			for idx := range reply.Relays {
+				relay := &reply.Relays[idx]
+				if args.Regex == relay.SellerName {
+					filtered = append(filtered, *relay)
+				}
+			}
+		}
+
+		// if still no matches are found, match by regex
+		if len(filtered) == 0 {
 			for idx := range reply.Relays {
 				relay := &reply.Relays[idx]
 				if match, err := regexp.Match(args.Regex, []byte(relay.Name)); match && err == nil {
 					filtered = append(filtered, *relay)
 					continue
-				} else if err != nil {
-					return err
-				}
-
-				if match, err := regexp.Match(args.Regex, []byte(relay.SellerName)); match && err == nil {
-					filtered = append(filtered, *relay)
 				} else if err != nil {
 					return err
 				}
