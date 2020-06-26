@@ -940,7 +940,7 @@ func RelayDashboardHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.R
 				<h2>Route Matrix Analysis</h2>
 				<pre>{{ .Analysis }}</pre>
 
-				<h2>Relays</h2>
+				<h2>{{ len .Relays }} Relays</h2>
 				<table>
 					<tr>
 						<th>Name</th>
