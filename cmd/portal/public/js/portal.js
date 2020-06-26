@@ -580,6 +580,7 @@ WorkspaceHandler = {
 		}, 10000);
 	},
 	fetchSessionInfo() {
+		this.sessionToolMapInstance = null;
 		let id = rootComponent.$data.pages.sessionTool.id;
 
 		if (id == '') {
@@ -1173,12 +1174,33 @@ function generateCharts(data) {
 		[],
 	];
 
+	let lastEntryNN = false;
+	let count = 0;
 	data.map((entry) => {
 		let timestamp = new Date(entry.timestamp).getTime() / 1000;
+		let onNN = entry.on_network_next
 
-		// Latency
 		let nextRTT = parseFloat(entry.next.rtt);
 		let directRTT = parseFloat(entry.direct.rtt);
+
+		let nextJitter = parseFloat(entry.next.jitter)
+		let directJitter = parseFloat(entry.direct.jitter)
+
+		let nextPL = parseFloat(entry.next.packet_loss);
+		let directPL = parseFloat(entry.direct.packet_loss);
+
+		if (count >= 3 || (lastEntryNN && !onNN)) {
+			count = 0;
+		}
+
+		if (!lastEntryNN && onNN && count < 3) {
+			nextRTT = nextRTT >= directRTT ? directRTT : nextRTT
+			nextJitter = nextJitter >= directJitter ? directJitter : nextJitter
+			nextPL = 0
+			count++
+		}
+
+		// Latency
 		let next = entry.is_multipath && nextRTT >= directRTT ? directRTT : nextRTT;
 		let direct = directRTT;
 		latencyData.comparison[0].push(timestamp);
@@ -1186,15 +1208,13 @@ function generateCharts(data) {
 		latencyData.comparison[2].push(direct);
 
 		// Jitter
-		next = parseFloat(entry.next.jitter);
-		direct = parseFloat(entry.direct.jitter);
+		next = entry.is_multipath && nextJitter >= directJitter ? directJitter : nextJitter;
+		direct = directJitter;
 		jitterData.comparison[0].push(timestamp);
 		jitterData.comparison[1].push(next);
 		jitterData.comparison[2].push(direct);
 
 		// Packetloss
-		let nextPL = parseFloat(entry.next.packet_loss);
-		let directPL = parseFloat(entry.direct.packet_loss);
 		next = entry.is_multipath && nextPL >= directPL ? directPL : nextPL;
 		direct = directPL;
 		packetLossData.comparison[0].push(timestamp);
