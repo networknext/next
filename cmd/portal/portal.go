@@ -31,6 +31,7 @@ import (
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
 	"github.com/networknext/backend/transport/jsonrpc"
+	"github.com/networknext/backend/transport/middleware"
 )
 
 var (
@@ -341,7 +342,7 @@ func main() {
 		http.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s)))
 		http.HandleFunc("/healthz", transport.HealthzHandlerFunc())
 
-		http.Handle("/", http.FileServer(http.Dir(uiDir)))
+		http.Handle("/", middleware.CacheControl(os.Getenv("HTTP_CACHE_CONTROL"), http.FileServer(http.Dir(uiDir))))
 
 		level.Info(logger).Log("addr", ":"+port)
 
