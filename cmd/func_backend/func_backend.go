@@ -75,12 +75,15 @@ func OptimizeThread() {
 
 	for {
 		backend.mutex.Lock()
+
 		if err := backend.statsDatabase.GetCostMatrix(backend.costMatrix, backend.redisClient, MaxJitter, MaxPacketLoss); err != nil {
 			fmt.Printf("error generating cost matrix: %v\n", err)
 		}
+
 		if err := backend.costMatrix.Optimize(backend.routeMatrix, ThresholdRTT); err != nil {
 			fmt.Printf("error generating route matrix: %v\n", err)
 		}
+
 		backend.mutex.Unlock()
 
 		time.Sleep(1 * time.Second)

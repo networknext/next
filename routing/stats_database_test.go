@@ -330,6 +330,7 @@ func TestStatsDatabase(t *testing.T) {
 			modifyEntry("127.0.0.1:40000", "127.0.0.5:40000", 1.0, 0.3, maxPacketLoss+1)
 
 			var costMatrix routing.CostMatrix
+
 			assert.NoError(t, statsdb.GetCostMatrix(&costMatrix, redisClient, maxJitter, maxPacketLoss))
 
 			// Testing

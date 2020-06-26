@@ -217,7 +217,12 @@ func (database *StatsDatabase) GetSample(relay1, relay2 uint64) (float32, float3
 }
 
 // GetCostMatrix returns the cost matrix composed of all current information
-func (database *StatsDatabase) GetCostMatrix(costMatrix *CostMatrix, redisClient redis.Cmdable, maxJitter float32, maxPacketLoss float32) error {
+func (database *StatsDatabase) GetCostMatrix(
+	costMatrix *CostMatrix,
+	redisClient redis.Cmdable,
+	maxJitter float32,
+	maxPacketLoss float32) error {
+
 	hgetallResult := redisClient.HGetAll(HashKeyAllRelays)
 	if hgetallResult.Err() != nil && hgetallResult.Err() != redis.Nil {
 		return fmt.Errorf("failed to get all relays from redis: %v", hgetallResult.Err())
