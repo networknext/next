@@ -98,14 +98,13 @@ var DefaultRoutingRulesSettings = RoutingRulesSettings{
 // slower than direct. Ditto for hysterisis and veto (more "real" than
 // forcing with 'Mode: ModeForceNext`).
 var LocalRoutingRulesSettings = RoutingRulesSettings{
-	MaxCentsPerGB:            25.0,
-	EnvelopeKbpsUp:           256,
-	EnvelopeKbpsDown:         256,
-	AcceptableLatency:        -1.0,
-	RTTThreshold:             -5,
-	RTTEpsilon:               0.1,
-	RTTHysteresis:            -10,
-	RTTVeto:                  -20,
-	TryBeforeYouBuyMaxSlices: 3,
-	SelectionPercentage:      100,
+	MaxCentsPerGB:       25.0,
+	EnvelopeKbpsUp:      256,
+	EnvelopeKbpsDown:    256,
+	AcceptableLatency:   -1.0,
+	RTTThreshold:        -5,
+	RTTEpsilon:          0.1,
+	RTTHysteresis:       -10,
+	RTTVeto:             -20,
+	SelectionPercentage: 100,
 }
