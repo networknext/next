@@ -365,6 +365,11 @@ func main() {
 	var loglines uint
 	relaylogfs.UintVar(&loglines, "n", 10, "the number of log lines to display")
 
+	relaydisablefs := flag.NewFlagSet("relay disable", flag.ExitOnError)
+
+	var hardDisable bool
+	relaydisablefs.BoolVar(&hardDisable, "hard", false, "hard disable the relay(s), killing the process immediately")
+
 	relayupdatefs := flag.NewFlagSet("relay update", flag.ExitOnError)
 
 	var updateOpts updateOptions
@@ -800,13 +805,14 @@ func main() {
 						Name:       "disable",
 						ShortUsage: "next relay disable [regex...]",
 						ShortHelp:  "Disable the specified relay(s)",
+						FlagSet:    relaydisablefs,
 						Exec: func(_ context.Context, args []string) error {
 							regexes := []string{".*"}
 							if len(args) > 0 {
 								regexes = args
 							}
 
-							disableRelays(env, rpcClient, regexes, false)
+							disableRelays(env, rpcClient, regexes, hardDisable)
 
 							return nil
 						},

@@ -35,13 +35,13 @@ const (
 
 	echo "Waiting for the relay service to clean shutdown"
 
+	sudo systemctl disable relay || exit 1
+
 	sudo systemctl stop relay || exit 1
 
 	while systemctl is-active --quiet relay; do
 		sleep 1
 	done
-
-	sudo systemctl disable relay || exit 1
 
 	echo 'Relay service shutdown'
 	`
@@ -53,8 +53,9 @@ const (
 		exit
 	fi
 
-	sudo systemctl kill -s SIGKILL relay || exit 1
 	sudo systemctl disable relay || exit 1
+	sudo systemctl kill -s SIGKILL relay || exit 1
+	sudo systemctl stop relay || exit 1
 
 	echo 'Relay service shutdown hard'
 	`
