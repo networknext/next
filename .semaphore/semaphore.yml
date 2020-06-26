@@ -4,13 +4,12 @@ agent:
   machine:
     type: e1-standard-8
     os_image: ubuntu1804
-global_job_config:
-  prologue:
-    commands:
-      - sudo apt-get update && sudo apt-get -y install libsodium-dev google-cloud-sdk-firestore-emulator google-cloud-sdk-pubsub-emulator
-      - checkout
-      - sem-version go 1.13
-      - make clean
+  containers:
+    - name: backend
+      image: us.gcr.io/network-next-v3-prod/backend
+
+  image_pull_secrets:
+    - name: gcr-pull-secrets
 blocks:
   - name: Backend Unit Tests
     task:
