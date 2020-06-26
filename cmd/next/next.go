@@ -785,7 +785,7 @@ func main() {
 								regexes = args
 							}
 
-							disableRelays(env, rpcClient, regexes)
+							disableRelays(env, rpcClient, regexes, false)
 
 							return nil
 						},

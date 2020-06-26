@@ -46,6 +46,18 @@ const (
 	echo 'Relay service shutdown'
 	`
 
+	DisableRelayScriptHard = `
+	service="$(sudo systemctl list-unit-files --state=enabled | grep 'relay.service')"
+	if [ -z "$service" ]; then
+		echo 'Relay service has already been disabled'
+		exit
+	fi
+
+	sudo systemctl kill -s SIGKILL relay || exit 1
+
+	echo 'Relay service shutdown hard'
+	`
+
 	// EnableRelayScript is the bash script used to enable relays
 	// If the relay service is already enabled, it will clean shut down before re-enabling.
 	EnableRelayScript = `
@@ -180,8 +192,8 @@ func updateRelayState(rpcClient jsonrpc.RPCClient, info relayInfo, state routing
 
 type updateOptions struct {
 	coreCount uint64
-	force     bool
-	hard      bool
+	force     bool // force an update regardless of relay version
+	hard      bool // hard update the relay, don't clean shutdown
 }
 
 func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string, opts updateOptions) {
@@ -261,7 +273,7 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 				}
 			}
 
-			if !disableRelays(env, rpcClient, []string{relay.name}) {
+			if !disableRelays(env, rpcClient, []string{relay.name}, opts.hard) {
 				continue
 			}
 
@@ -436,10 +448,14 @@ func enableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 	fmt.Printf("%s complete\n", str)
 }
 
-func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string) bool {
+func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string, hard bool) bool {
 	success := true
 	relaysDisabled := 0
 	testForSSHKey(env)
+	script := DisableRelayScript
+	if hard {
+		script = DisableRelayScriptHard
+	}
 	for _, regex := range regexes {
 		relays := getRelayInfo(rpcClient, env, regex)
 		if len(relays) == 0 {
@@ -449,7 +465,7 @@ func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []strin
 		for _, relay := range relays {
 			fmt.Printf("Disabling relay '%s' (id = %016x)\n", relay.name, relay.id)
 			con := NewSSHConn(relay.user, relay.sshAddr, relay.sshPort, env.SSHKeyFilePath)
-			if !con.ConnectAndIssueCmd(DisableRelayScript) || !updateRelayState(rpcClient, relay, routing.RelayStateDisabled) {
+			if !con.ConnectAndIssueCmd(script) || !updateRelayState(rpcClient, relay, routing.RelayStateDisabled) {
 				success = false
 				continue
 			}
