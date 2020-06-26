@@ -580,6 +580,7 @@ WorkspaceHandler = {
 		}, 10000);
 	},
 	fetchSessionInfo() {
+		this.sessionToolMapInstance = null;
 		let id = rootComponent.$data.pages.sessionTool.id;
 
 		if (id == '') {
@@ -1173,29 +1174,49 @@ function generateCharts(data) {
 		[],
 	];
 
+	let lastEntryNN = false;
+	let countNN = 0;
+
 	data.map((entry) => {
 		let timestamp = new Date(entry.timestamp).getTime() / 1000;
+		let onNN = entry.on_network_next
 
-		// Latency
 		let nextRTT = parseFloat(entry.next.rtt);
 		let directRTT = parseFloat(entry.direct.rtt);
-		let next = entry.is_multipath && nextRTT >= directRTT ? directRTT : nextRTT;
+
+		let nextJitter = parseFloat(entry.next.jitter)
+		let directJitter = parseFloat(entry.direct.jitter)
+
+		let nextPL = parseFloat(entry.next.packet_loss);
+		let directPL = parseFloat(entry.direct.packet_loss);
+
+		if (lastEntryNN && !onNN) {
+			countNN = 0;
+		}
+
+		if (onNN && countNN < 3) {
+			nextRTT = nextRTT >= directRTT ? directRTT : nextRTT
+			nextJitter = nextJitter >= directJitter ? directJitter : nextJitter
+			nextPL = 0
+			countNN++
+		}
+
+		// Latency
+		let next = (entry.is_multipath && nextRTT >= directRTT) ? directRTT : nextRTT;
 		let direct = directRTT;
 		latencyData.comparison[0].push(timestamp);
 		latencyData.comparison[1].push(next);
 		latencyData.comparison[2].push(direct);
 
 		// Jitter
-		next = parseFloat(entry.next.jitter);
-		direct = parseFloat(entry.direct.jitter);
+		next = (entry.is_multipath && nextJitter >= directJitter) ? directJitter : nextJitter;
+		direct = directJitter;
 		jitterData.comparison[0].push(timestamp);
 		jitterData.comparison[1].push(next);
 		jitterData.comparison[2].push(direct);
 
 		// Packetloss
-		let nextPL = parseFloat(entry.next.packet_loss);
-		let directPL = parseFloat(entry.direct.packet_loss);
-		next = entry.is_multipath && nextPL >= directPL ? directPL : nextPL;
+		next = (entry.is_multipath && nextPL >= directPL) ? directPL : nextPL;
 		direct = directPL;
 		packetLossData.comparison[0].push(timestamp);
 		packetLossData.comparison[1].push(next);
@@ -1205,6 +1226,8 @@ function generateCharts(data) {
 		bandwidthData[0].push(timestamp);
 		bandwidthData[1].push(entry.envelope.up);
 		bandwidthData[2].push(entry.envelope.down);
+
+		lastEntryNN = onNN;
 	});
 
 	const defaultOpts = {
@@ -1313,12 +1336,12 @@ function generateCharts(data) {
 			{
 				stroke: "blue",
 				fill: "rgba(0,0,255,0.1)",
-				label: "Actual Up",
+				label: "Up",
 			},
 			{
 				stroke: "orange",
 				fill: "rgba(255,165,0,0.1)",
-				label: "Actual Down"
+				label: "Down"
 			},
 		],
 		axes: [
