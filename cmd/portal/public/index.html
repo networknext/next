@@ -217,7 +217,7 @@
                     </div>
                 </a>
                 <ul class="navbar-nav px-3 w-100 mr-auto">
-                    <li class="nav-item text-nowrap ">
+                    <li class="nav-item text-nowrap">
                         <a class="nav-link" href="#" v-bind:class="{ active: pages.map.show }" v-on:click="handlers.workspaceHandler.changePage('map')">
                             Map
                         </a>
@@ -227,7 +227,7 @@
                             Sessions
                         </a>
                     </li>
-                    <li class="nav-item text-nowrap" v-if="!handlers.userHandler.isAnonymous() && !handlers.userHandler.isAnonymousPlus()">
+                    <li class="nav-item text-nowrap">
                         <a class="nav-link" href="#" v-bind:class="{ active: pages.sessionTool.show }" v-on:click="handlers.workspaceHandler.changePage('sessionTool', '')">
                             Session Tool
                         </a>
@@ -508,7 +508,7 @@
                                 <div class="mr-auto"></div>
                             </div>
                         </div>
-                        <form class="flow-stats-form" v-on:submit.prevent="handlers.workspaceHandler.fetchSessionInfo()" v-if="!handlers.userHandler.isAnonymous()">
+                        <form class="flow-stats-form" v-on:submit.prevent="handlers.workspaceHandler.fetchSessionInfo()">
                             <div class="form-group">
                                 <label for="session-id-input">
                                     Session ID
