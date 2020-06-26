@@ -293,7 +293,8 @@ func handleJSONRPCErrorCustom(env Environment, err error, msg string) {
 		if env.Name != "local" && env.Name != "dev" && env.Name != "prod" {
 			log.Fatalf("%v - make sure the env name is set to either 'prod', 'dev', or 'local' with\nnext select <env>", err)
 		} else {
-			log.Fatal(msg)
+			fmt.Printf("%s\n\n", msg)
+			os.Exit(1)
 		}
 	}
 }
