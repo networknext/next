@@ -73,7 +73,7 @@ type relay struct {
 
 type datacenter struct {
 	Name      string  `firestore:"name"`
-	AliasName string  `firestore:"aliasName"`
+	AliasName string  `firestore:"alias_name"`
 	Enabled   bool    `firestore:"enabled"`
 	Latitude  float64 `firestore:"latitude"`
 	Longitude float64 `firestore:"longitude"`
