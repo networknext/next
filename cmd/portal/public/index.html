@@ -165,19 +165,6 @@
                 font-size: 0.75rem;
                 text-transform: uppercase;
             }
-
-            /*
-            * Content
-            */
-
-            [role="main"] {
-                padding-top: 48px; /* Space for fixed navbar */
-            }
-
-            /*
-            * Navbar
-            */
-
             .navbar-brand {
                 padding-top: 0.75rem;
                 padding-bottom: 0.75rem;
@@ -283,21 +270,23 @@
                     </li>
                 </ul>
             </nav>
+            <div style="padding-top: 48px;">
+                <div class="alert alert-primary" style="text-align: center;" role="alert" v-if="alerts.verifyEmail.show">
+                    Please confirm your email address: {{ handlers.userHandler.userInfo.email }}
+                    <a href="#" v-on:click="handlers.authHandler.resendVerificationEmail()">
+                        Resend email
+                    </a>
+                </div>
+                <div class="alert alert-success" style="text-align: center;" role="alert" v-if="alerts.emailSent.show">
+                    Verification email was sent successfully. Please check your email for futher instructions.
+                </div>
+                <div class="alert alert-danger" style="text-align: center;" role="alert" v-if="alerts.emailFailed.show">
+                    Something went wrong sending the verification email. Please try again later.
+                </div>
+            </div>
             <div class="container-fluid">
                 <div class="row">
                     <main role="main" class="col-md-12 col-lg-12 px-4" v-show="pages.map.show">
-                        <div class="alert alert-primary" style="text-align: center;" role="alert" v-if="alerts.verifyEmail.show">
-                            Please confirm your email address: {{ handlers.userHandler.userInfo.email }} 
-                            <a href="#" v-on:click="handlers.authHandler.resendVerificationEmail()">
-                                Resend email
-                            </a>
-                        </div>
-                        <div class="alert alert-success" style="text-align: center;" role="alert" v-if="alerts.emailSent.show">
-                            Verification email was sent successfully. Please check your email for futher instructions.
-                        </div>
-                        <div class="alert alert-danger" style="text-align: center;" role="alert" v-if="alerts.emailFailed.show">
-                            Something went wrong sending the verification email. Please try again later.
-                        </div>
                         <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom" id="map-sessions-count">
                             <div id="map-spinner" v-if="!showCount">
                                 <div class="spinner-border" role="status">
@@ -357,18 +346,6 @@
                         <div v-if="!handlers.userHandler.isAnonymousPlus()" style="width: 100%; height: calc(-160px + 100vh); border: 1px solid rgb(136, 136, 136); background-color: rgb(27, 27, 27);" id="map-container"></div>
                     </main>
                     <main role="main" class="col-md-12 col-lg-12 px-4" v-if="pages.sessions.show">
-                        <div class="alert alert-primary" style="text-align: center;" role="alert" v-if="alerts.verifyEmail.show">
-                            Please verify your email to unlock all features. To resend the verification email 
-                            <a href="#" v-on:click="handlers.authHandler.resendVerificationEmail()">
-                                click here
-                            </a>
-                        </div>
-                        <div class="alert alert-success" style="text-align: center;" role="alert" v-if="alerts.emailSent.show">
-                            Verification email was sent successfully. Please check your email for futher instructions.
-                        </div>
-                        <div class="alert alert-danger" style="text-align: center;" role="alert" v-if="alerts.emailFailed.show">
-                            Something went wrong sending the verification email. Please try again later.
-                        </div>
                         <div id="sessions">
                             <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                                 <h1 class="h2" id="workspace-title" v-if="showCount">
@@ -523,18 +500,6 @@
                         </div>
                     </main>
                     <main role="main" class="col-md-12 col-lg-12 px-4" v-if="pages.sessionTool.show">
-                        <div class="alert alert-primary" style="text-align: center;" role="alert" v-if="alerts.verifyEmail.show">
-                            Please verify your email to unlock all features. To resend the verification email 
-                            <a href="#" v-on:click="handlers.authHandler.resendVerificationEmail()">
-                                click here
-                            </a>
-                        </div>
-                        <div class="alert alert-success" style="text-align: center;" role="alert" v-if="alerts.emailSent.show">
-                            Verification email was sent successfully. Please check your email for futher instructions.
-                        </div>
-                        <div class="alert alert-danger" style="text-align: center;" role="alert" v-if="alerts.emailFailed.show">
-                            Something went wrong sending the verification email. Please try again later.
-                        </div>
                         <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                             <h1 class="h2">
                                 Session Tool
@@ -820,18 +785,6 @@
                         </div>
                     </main>
                     <main role="main" class="col-md-12 col-lg-12 px-4" v-if="pages.userTool.show">
-                        <div class="alert alert-primary" style="text-align: center;" role="alert" v-if="alerts.verifyEmail.show">
-                            Please verify your email to unlock all features. To resend the verification email 
-                            <a href="#" v-on:click="handlers.authHandler.resendVerificationEmail()">
-                                click here
-                            </a>
-                        </div>
-                        <div class="alert alert-success" style="text-align: center;" role="alert" v-if="alerts.emailSent.show">
-                            Verification email was sent successfully. Please check your email for futher instructions.
-                        </div>
-                        <div class="alert alert-danger" style="text-align: center;" role="alert" v-if="alerts.emailFailed.show">
-                            Something went wrong sending the verification email. Please try again later.
-                        </div>
                         <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                             <h1 class="h2">
                                 User Tool
@@ -936,18 +889,6 @@
                         </div>
                     </main>
                     <main role="main" class="col-md-12 col-lg-12 px-4" v-show="pages.downloads.show">
-                        <div class="alert alert-primary" style="text-align: center;" role="alert" v-if="alerts.verifyEmail.show">
-                            Please verify your email to unlock all features. To resend the verification email 
-                            <a href="#" v-on:click="handlers.authHandler.resendVerificationEmail()">
-                                click here
-                            </a>
-                        </div>
-                        <div class="alert alert-success" style="text-align: center;" role="alert" v-if="alerts.emailSent.show">
-                            Verification email was sent successfully. Please check your email for futher instructions.
-                        </div>
-                        <div class="alert alert-danger" style="text-align: center;" role="alert" v-if="alerts.emailFailed.show">
-                            Something went wrong sending the verification email. Please try again later.
-                        </div>
                         <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                             <h1 class="h2">
                                 Downloads
@@ -987,18 +928,6 @@
                           </div>
                     </main>
                     <main role="main" class="col-md-12 col-lg-12 px-4" v-if="pages.settings.show">
-                        <div class="alert alert-primary" style="text-align: center;" role="alert" v-if="alerts.verifyEmail.show">
-                            Please verify your email to unlock all features. To resend the verification email 
-                            <a href="#" v-on:click="handlers.authHandler.resendVerificationEmail()">
-                                click here
-                            </a>
-                        </div>
-                        <div class="alert alert-success" style="text-align: center;" role="alert" v-if="alerts.emailSent.show">
-                            Verification email was sent successfully. Please check your email for futher instructions.
-                        </div>
-                        <div class="alert alert-danger" style="text-align: center;" role="alert" v-if="alerts.emailFailed.show">
-                            Something went wrong sending the verification email. Please try again later.
-                        </div>
                         <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                             <h1 class="h2">
                                 Settings
