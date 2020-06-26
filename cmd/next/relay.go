@@ -41,7 +41,7 @@ const (
 		sleep 1
 	done
 
-	sudo systemctl disable relay
+	sudo systemctl disable relay || exit 1
 
 	echo 'Relay service shutdown'
 	`
@@ -54,6 +54,7 @@ const (
 	fi
 
 	sudo systemctl kill -s SIGKILL relay || exit 1
+	sudo systemctl disable relay || exit 1
 
 	echo 'Relay service shutdown hard'
 	`
