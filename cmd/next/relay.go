@@ -178,7 +178,13 @@ func updateRelayState(rpcClient jsonrpc.RPCClient, info relayInfo, state routing
 	return true
 }
 
-func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string, coreCount uint64, force bool) {
+type updateOptions struct {
+	coreCount uint64
+	force     bool
+	hard      bool
+}
+
+func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string, opts updateOptions) {
 	// Fetch and save the latest binary
 	url, err := env.RelayArtifactURL()
 	if err != nil {
@@ -229,7 +235,7 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 				continue
 			}
 
-			if !force && relay.version == LatestRelayVersion {
+			if !opts.force && relay.version == LatestRelayVersion {
 				continue
 			}
 
@@ -308,8 +314,8 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 				envvars["RELAY_V3_SPEED"] = relay.nicSpeed
 				envvars["RELAY_V3_NAME"] = relay.firestoreID
 
-				if coreCount > 0 {
-					envvars["RELAY_MAX_CORES"] = strconv.FormatUint(coreCount, 10)
+				if opts.coreCount > 0 {
+					envvars["RELAY_MAX_CORES"] = strconv.FormatUint(opts.coreCount, 10)
 				}
 
 				f, err := os.Create("dist/relay.env")

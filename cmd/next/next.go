@@ -362,11 +362,10 @@ func main() {
 
 	relayupdatefs := flag.NewFlagSet("relay update", flag.ExitOnError)
 
-	var relayCoreCount uint64
-	relayupdatefs.Uint64Var(&relayCoreCount, "cores", 0, "number of cores for the relay to utilize")
-
-	var forceUpdate bool
-	relayupdatefs.BoolVar(&forceUpdate, "force", false, "force the relay update regardless of the version")
+	var updateOpts updateOptions
+	relayupdatefs.Uint64Var(&updateOpts.coreCount, "cores", 0, "number of cores for the relay to utilize")
+	relayupdatefs.BoolVar(&updateOpts.force, "force", false, "force the relay update regardless of the version")
+	relayupdatefs.BoolVar(&updateOpts.hard, "hard", false, "hard update the relay(s), killing the process immediately")
 
 	relaysfs := flag.NewFlagSet("relays state", flag.ExitOnError)
 
@@ -741,7 +740,7 @@ func main() {
 								regexes = args
 							}
 
-							updateRelays(env, rpcClient, regexes, relayCoreCount, forceUpdate)
+							updateRelays(env, rpcClient, regexes, updateOpts)
 
 							return nil
 						},
