@@ -677,7 +677,6 @@ func main() {
 				Name:       "relay",
 				ShortUsage: "next relay <subcommand>",
 				ShortHelp:  "Manage relays",
-				FlagSet:    relaylogfs,
 				Exec: func(_ context.Context, args []string) error {
 
 					return flag.ErrHelp
@@ -687,6 +686,7 @@ func main() {
 						Name:       "logs",
 						ShortUsage: "next relay logs <regex> [regex]",
 						ShortHelp:  "Print the last n journalctl lines for each matching relay, if the n flag is unset it defaults to 10",
+						FlagSet:    relaylogfs,
 						Exec: func(ctx context.Context, args []string) error {
 							if len(args) == 0 {
 								log.Fatalln("you must supply at least one argument")
