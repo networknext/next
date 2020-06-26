@@ -15,11 +15,13 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/rpc/v2"
 	"github.com/gorilla/rpc/v2/json2"
 	"gopkg.in/auth0.v4/management"
 
 	gcplogging "cloud.google.com/go/logging"
+	"cloud.google.com/go/profiler"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -29,6 +31,7 @@ import (
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
 	"github.com/networknext/backend/transport/jsonrpc"
+	"github.com/networknext/backend/transport/middleware"
 )
 
 var (
@@ -67,6 +70,13 @@ func main() {
 		}
 
 		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
+	}
+
+	// Get env
+	env, ok := os.LookupEnv("ENV")
+	if !ok {
+		level.Error(logger).Log("err", "ENV not set")
+		os.Exit(1)
 	}
 
 	var relayPublicKey []byte
@@ -219,6 +229,17 @@ func main() {
 
 		// Set the Firestore Storer to give to handlers
 		db = fs
+
+		// Set up StackDriver profiler
+		if err := profiler.Start(profiler.Config{
+			Service:        "portal",
+			ServiceVersion: env,
+			ProjectID:      gcpProjectID,
+			MutexProfiling: true,
+		}); err != nil {
+			level.Error(logger).Log("msg", "Failed to initialze StackDriver profiler", "err", err)
+			os.Exit(1)
+		}
 	}
 
 	var routeMatrix routing.RouteMatrix
@@ -318,10 +339,10 @@ func main() {
 			Storage: db,
 		}, "")
 
-		http.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), s))
+		http.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s)))
 		http.HandleFunc("/healthz", transport.HealthzHandlerFunc())
 
-		http.Handle("/", http.FileServer(http.Dir(uiDir)))
+		http.Handle("/", middleware.CacheControl(os.Getenv("HTTP_CACHE_CONTROL"), http.FileServer(http.Dir(uiDir))))
 
 		level.Info(logger).Log("addr", ":"+port)
 

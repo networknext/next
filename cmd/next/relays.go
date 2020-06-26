@@ -1,9 +1,12 @@
 package main
 
 import (
+	"encoding/csv"
 	"fmt"
 	"log"
+	"os"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/modood/table"
@@ -12,7 +15,18 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
-func relays(rpcClient jsonrpc.RPCClient, env Environment, regex string, relaysStateShowFlags [6]bool, relaysStateHideFlags [6]bool, relaysDownFlag bool) {
+func relays(
+	rpcClient jsonrpc.RPCClient,
+	env Environment,
+	regex string,
+	relaysStateShowFlags [6]bool,
+	relaysStateHideFlags [6]bool,
+	relaysDownFlag bool,
+	relaysListFlag bool,
+	csvOutputFlag bool,
+	relayVersionFilter string,
+	relaysCount int64,
+) {
 	args := localjsonrpc.RelaysArgs{
 		Regex: regex,
 	}
@@ -37,6 +51,15 @@ func relays(rpcClient jsonrpc.RPCClient, env Environment, regex string, relaysSt
 		Version     string
 		LastUpdated string
 	}{}
+
+	relaysCSV := [][]string{{}}
+
+	if relaysListFlag {
+		relaysCSV = append(relaysCSV, []string{"Name"})
+	} else {
+		relaysCSV = append(relaysCSV, []string{
+			"Name", "Address", "State", "Sessions", "Tx", "Rx", "Version", "LastUpdated"})
+	}
 
 	for _, relay := range reply.Relays {
 		relayState, err := routing.ParseRelayState(relay.State)
@@ -89,28 +112,88 @@ func relays(rpcClient jsonrpc.RPCClient, env Environment, regex string, relaysSt
 
 		address := relay.Addr
 
-		relays = append(relays, struct {
-			Name        string
-			Address     string
-			State       string
-			Sessions    string
-			Tx          string
-			Rx          string
-			Version     string
-			LastUpdated string
-		}{
-			Name:        relay.Name,
-			Address:     address,
-			State:       relay.State,
-			Sessions:    fmt.Sprintf("%d", relay.SessionCount),
-			Tx:          tx,
-			Rx:          rx,
-			Version:     relay.Version,
-			LastUpdated: lastUpdated,
-		})
+		// return csv file
+		if csvOutputFlag {
+			if relaysListFlag && (relayVersionFilter == "all" || relay.Version == relayVersionFilter) {
+				relaysCSV = append(relaysCSV, []string{
+					relay.Name,
+				})
+			} else if relayVersionFilter == "all" || relay.Version == relayVersionFilter {
+				relaysCSV = append(relaysCSV, []string{
+					relay.Name,
+					address,
+					relay.State,
+					fmt.Sprintf("%d", relay.SessionCount),
+					tx,
+					rx,
+					relay.Version,
+					lastUpdated,
+				})
+			}
+
+		} else if relayVersionFilter == "all" || relay.Version == relayVersionFilter {
+			relays = append(relays, struct {
+				Name        string
+				Address     string
+				State       string
+				Sessions    string
+				Tx          string
+				Rx          string
+				Version     string
+				LastUpdated string
+			}{
+				Name:        relay.Name,
+				Address:     address,
+				State:       relay.State,
+				Sessions:    fmt.Sprintf("%d", relay.SessionCount),
+				Tx:          tx,
+				Rx:          rx,
+				Version:     relay.Version,
+				LastUpdated: lastUpdated,
+			})
+		}
+
+	}
+
+	if csvOutputFlag {
+		if relaysCount > 0 {
+			relaysCSV = relaysCSV[:relaysCount]
+		}
+
+		// return csv file of structs
+		// fileName := "./relays-" + strconv.FormatInt(time.Now().Unix(), 10) + ".csv"
+		fileName := "./relays.csv"
+		f, err := os.Create(fileName)
+		if err != nil {
+			fmt.Printf("Error creating local CSV file %s: %v\n", fileName, err)
+			return
+		}
+
+		writer := csv.NewWriter(f)
+		err = writer.WriteAll(relaysCSV)
+		if err != nil {
+			fmt.Printf("Error writing local CSV file %s: %v\n", fileName, err)
+		}
+		fmt.Println("CSV file written: relays.csv")
+		return
+	}
+
+	if relaysCount > 0 {
+		relays = relays[:relaysCount]
+	}
+
+	if relaysListFlag {
+		relayNames := []string{}
+		for _, relay := range relays {
+			relayNames = append(relayNames, relay.Name)
+
+		}
+		fmt.Println(strings.Join(relayNames, " "))
+		return
 	}
 
 	table.Output(relays)
+
 }
 
 func addRelay(rpcClient jsonrpc.RPCClient, env Environment, relay routing.Relay) {
@@ -128,13 +211,17 @@ func addRelay(rpcClient jsonrpc.RPCClient, env Environment, relay routing.Relay)
 }
 
 func removeRelay(rpcClient jsonrpc.RPCClient, env Environment, name string) {
-	relays := getRelayInfo(rpcClient, name)
+	relays := getRelayInfo(rpcClient, env, name)
 
 	if len(relays) == 0 {
 		log.Fatalf("no relays matched the name '%s'\n", name)
 	}
 
 	info := relays[0]
+
+	if info.state == routing.RelayStateDecommissioned.String() {
+		log.Fatalf("Relay \"%s\" already removed\n", info.name)
+	}
 
 	args := localjsonrpc.RemoveRelayArgs{
 		RelayID: info.id,
@@ -146,5 +233,5 @@ func removeRelay(rpcClient jsonrpc.RPCClient, env Environment, name string) {
 		return
 	}
 
-	fmt.Printf("Relay \"%s\" decommissioned.\n", name)
+	fmt.Printf("Relay \"%s\" removed.\n", info.name)
 }

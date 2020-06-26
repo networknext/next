@@ -87,8 +87,8 @@ var DefaultRoutingRulesSettings = RoutingRulesSettings{
 	AcceptableLatency:        -1.0,
 	RTTThreshold:             5.0,
 	RTTEpsilon:               2.0,
-	RTTHysteresis:            5.0,
-	RTTVeto:                  20.0,
+	RTTHysteresis:            -5.0,
+	RTTVeto:                  -20.0,
 	TryBeforeYouBuyMaxSlices: 3,
 	SelectionPercentage:      0,
 }
@@ -100,8 +100,8 @@ var LocalRoutingRulesSettings = RoutingRulesSettings{
 	AcceptableLatency:        -1.0,
 	RTTThreshold:             0.05,
 	RTTEpsilon:               0.1,
-	RTTHysteresis:            0.05,
-	RTTVeto:                  1.0,
+	RTTHysteresis:            -0.05,
+	RTTVeto:                  -1.0,
 	TryBeforeYouBuyMaxSlices: 3,
 	SelectionPercentage:      100,
 }

@@ -153,6 +153,21 @@ func (m *InMemory) SetSeller(ctx context.Context, seller routing.Seller) error {
 	return &DoesNotExistError{resourceType: "seller", resourceRef: seller.ID}
 }
 
+// SetCustomerLink is a no-op since InMemory has no concept on customers
+func (m *InMemory) SetCustomerLink(ctx context.Context, customerName string, buyerID uint64, sellerID string) error {
+	return nil
+}
+
+// BuyerIDFromCustomerName is a no-op since InMemory has no concept on customers
+func (m *InMemory) BuyerIDFromCustomerName(ctx context.Context, customerName string) (uint64, error) {
+	return 0, nil
+}
+
+// SellerIDFromCustomerName is a no-op since InMemory has no concept on customers
+func (m *InMemory) SellerIDFromCustomerName(ctx context.Context, customerName string) (string, error) {
+	return "", nil
+}
+
 func (m *InMemory) Relay(id uint64) (routing.Relay, error) {
 	for _, relay := range m.localRelays {
 		if relay.ID == id {

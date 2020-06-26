@@ -24,6 +24,7 @@ require (
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/protobuf v1.4.2
+	github.com/gorilla/handlers v1.4.2
 	github.com/gorilla/mux v1.7.3
 	github.com/gorilla/rpc v1.2.0
 	github.com/json-iterator/go v1.1.9
@@ -43,4 +44,5 @@ require (
 	google.golang.org/grpc v1.29.1
 	google.golang.org/protobuf v1.24.0
 	gopkg.in/auth0.v4 v4.3.4
+	gopkg.in/go-playground/assert.v1 v1.2.1
 )

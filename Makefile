@@ -173,10 +173,6 @@ clean: ## cleans the dist directory of all builds
 	@rm -fr $(DIST_DIR)
 	@mkdir $(DIST_DIR)
 
-.PHONY: lint
-lint: ## runs go vet
-	@printf "Skipping vet/staticcheck for now...\n\n"
-
 .PHONY: format
 format: ## runs gofmt on all go source code
 	@$(GOFMT) -s -w .
@@ -189,10 +185,6 @@ format: ## runs gofmt on all go source code
 .PHONY: test
 test: test-unit
 
-.PHONY: test-unit-sdk
-test-unit-sdk: build-sdk-test ## runs sdk unit tests
-	@$(DIST_DIR)/$(SDKNAME)_test
-
 ifeq ($(OS),linux)
 .PHONY: test-unit-relay
 test-unit-relay: build-relay-tests ## runs relay unit tests
@@ -200,11 +192,11 @@ test-unit-relay: build-relay-tests ## runs relay unit tests
 endif
 
 .PHONY: test-unit-backend
-test-unit-backend: lint ## runs backend unit tests
+test-unit-backend: ## runs backend unit tests
 	@./scripts/test-unit-backend.sh
 
 .PHONY: test-unit
-test-unit: clean test-unit-sdk test-unit-backend ## runs unit tests
+test-unit: clean test-unit-backend ## runs backend unit tests
 
 ifeq ($(OS),linux)
 .PHONY: test-soak-valgrind
@@ -515,6 +507,10 @@ publish-relay-artifact: ## publishes the relay artifact to GCP storage with gsut
 	@printf "Publishing relay artifact... \n\n"
 	@gsutil cp $(DIST_DIR)/relay.dev.tar.gz $(ARTIFACT_BUCKET)/relay.dev.tar.gz
 	@gsutil acl set public-read $(ARTIFACT_BUCKET)/relay.dev.tar.gz
+	@gsutil setmeta \
+	-h 'Content-Type:application/xtar' \
+	-h 'Cache-Control:no-cache, max-age=0' \
+	$(ARTIFACT_BUCKET)/relay.dev.tar.gz
 	@printf "done\n"
 
 .PHONY: publish-relay-prod-artifact
@@ -522,6 +518,10 @@ publish-relay-prod-artifact: ## publishes the relay prod artifact to GCP storage
 	@printf "Publishing relay artifact... \n\n"
 	@gsutil cp $(DIST_DIR)/relay.prod.tar.gz $(ARTIFACT_BUCKET_PROD)/relay.prod.tar.gz
 	@gsutil acl set public-read $(ARTIFACT_BUCKET_PROD)/relay.prod.tar.gz
+	@gsutil setmeta \
+	-h 'Content-Type:application/xtar' \
+	-h 'Cache-Control:no-cache, max-age=0' \
+	$(ARTIFACT_BUCKET_PROD)/relay.prod.tar.gz
 	@printf "done\n"
 
 .PHONY: build-backend-prod-artifacts
@@ -576,9 +576,9 @@ build-all: build-relay-backend build-server-backend build-relay-ref build-client
 rebuild-all: clean build-all
 
 .PHONY: update-sdk
-update-sdk: ## updates the sdk submodule to point at head revision
+update-sdk: ## updates the sdk submodule
 	git submodule update --remote --merge
 
 .PHONY: sync
-sync: ## syncs to latest code including the sdk submodule
+sync: ## syncs to latest code including submodules
 	git pull && git submodule update --recursive

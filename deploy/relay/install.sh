@@ -19,7 +19,7 @@ backup_existing() {
 	time=$(date -u +"%Y%m%d%H%M%S")
 	for file in "$@"; do
     # file is abs path, so reduce to just the filename
-    bname="$( basename $file )"
+    bname="$(basename $file)"
 		if [[ -f "$file" ]]; then
 			cp "$file" "$app/$bname.$time.backup"
     else
@@ -39,22 +39,22 @@ check_if_running() {
 install_relay() {
 	check_if_running 'error, please disable relay before installing'
 
-  sudo apt install libsodium23
-
 	if [[ ! -d '/app' ]]; then
-		sudo mkdir '/app'
+		sudo mkdir '/app' || return 1
 	fi
 
 	backup_existing "$bin_dest" "$env_dest" "$svc_dest"
 
+	echo 'installing relay...'
 	sudo mv "$bin" "$bin_dest"
 	sudo mv "$env" "$env_dest"
 	sudo mv "$svc" "$svc_dest"
 
-	sudo systemctl daemon-reload
+	sudo systemctl daemon-reload || return 1
 
-	sudo systemctl enable relay
-	sudo systemctl start relay
+	sudo systemctl enable relay || return 1
+	sudo systemctl start relay || return 1
+	echo 'done'
 }
 
 revert_relay() {
@@ -71,6 +71,7 @@ revert_relay() {
   # if the length of the array is 0
   if ! (( ${#relays[@]} )); then
     echo 'no relay to revert to'
+    return 1
   fi
 
   # get the most recent relay binary using negative indexing
@@ -97,7 +98,7 @@ revert_relay() {
   # however a service file is present for all versions so exit if this is not found
   if [ ! -f "$svc_file" ]; then
     echo 'no service file to revert to'
-    exit 1
+    return 1
   fi
 
   echo 'found matching service file'
@@ -106,9 +107,9 @@ revert_relay() {
   mv "$svc_file" "$svc_dest"
 
   # enable and start the relay service
-	sudo systemctl daemon-reload
-	sudo systemctl enable relay
-	sudo systemctl start relay
+	sudo systemctl daemon-reload || return 1
+	sudo systemctl enable relay || return 1
+	sudo systemctl start relay || return 1
 }
 
 cmd=''
@@ -127,7 +128,7 @@ while getopts 'irh' flag; do
 done
 
 if [ "$cmd" = 'i' ]; then
-	install_relay
+	install_relay || exit 1
 elif [ "$cmd" = 'r' ]; then
-	revert_relay
+	revert_relay || exit 1
 fi

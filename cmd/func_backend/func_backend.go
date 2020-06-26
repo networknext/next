@@ -67,20 +67,23 @@ type ServerEntry struct {
 	lastUpdate int64
 }
 
-const RTT_Threshold = 1.0
-
+const ThresholdRTT = 1.0
 const MaxJitter = float32(10.0)
 const MaxPacketLoss = float32(0.1)
 
 func OptimizeThread() {
+
 	for {
 		backend.mutex.Lock()
+
 		if err := backend.statsDatabase.GetCostMatrix(backend.costMatrix, backend.redisClient, MaxJitter, MaxPacketLoss); err != nil {
 			fmt.Printf("error generating cost matrix: %v\n", err)
 		}
-		if err := backend.costMatrix.Optimize(backend.routeMatrix, RTT_Threshold); err != nil {
+
+		if err := backend.costMatrix.Optimize(backend.routeMatrix, ThresholdRTT); err != nil {
 			fmt.Printf("error generating route matrix: %v\n", err)
 		}
+
 		backend.mutex.Unlock()
 
 		time.Sleep(1 * time.Second)
@@ -492,10 +495,6 @@ func main() {
 
 						Relays: nextRoute.Relays,
 
-						// todo: real backend should be setting these from the values in the route shader. that's where they are specified.
-
-						// Seems we have to do this as bandwidth limits are disabled according to comment in core_sodium.go
-						// Not sure how real backend gets away without setting this...
 						KbpsUp:   256 * 100,
 						KbpsDown: 256 * 100,
 					}

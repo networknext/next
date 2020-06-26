@@ -21,9 +21,9 @@ import (
 func getPopulatedRouteMatrix(malformed bool) *routing.RouteMatrix {
 	var matrix routing.RouteMatrix
 
-	matrix.RelayIndicies = make(map[uint64]int)
-	matrix.RelayIndicies[123] = 0
-	matrix.RelayIndicies[456] = 1
+	matrix.RelayIndices = make(map[uint64]int)
+	matrix.RelayIndices[123] = 0
+	matrix.RelayIndices[456] = 1
 
 	matrix.RelayIDs = make([]uint64, 2)
 	matrix.RelayIDs[0] = 123
@@ -2001,6 +2001,7 @@ func TestRouteMatrix(t *testing.T) {
 		assert.Nil(t, err)
 
 		var routeMatrix routing.RouteMatrix
+
 		costMatrix.Optimize(&routeMatrix, 5)
 		assert.NotNil(t, &routeMatrix)
 		assert.Equal(t, costMatrix.RelayIDs, routeMatrix.RelayIDs, "relay id mismatch")
@@ -2075,7 +2076,7 @@ func TestRouteMatrix(t *testing.T) {
 func TestResolveRelay(t *testing.T) {
 	t.Run("Relay ID not found", func(t *testing.T) {
 		routeMatrix := routing.RouteMatrix{
-			RelayIndicies: map[uint64]int{},
+			RelayIndices: map[uint64]int{},
 		}
 		_, err := routeMatrix.ResolveRelay(0)
 		assert.EqualError(t, err, "relay 0 not in matrix")
@@ -2083,7 +2084,7 @@ func TestResolveRelay(t *testing.T) {
 
 	t.Run("Invalid relay index", func(t *testing.T) {
 		routeMatrix := routing.RouteMatrix{
-			RelayIndicies:  map[uint64]int{0: 10},
+			RelayIndices:  map[uint64]int{0: 10},
 			RelayAddresses: [][]byte{},
 		}
 		_, err := routeMatrix.ResolveRelay(0)
@@ -2092,7 +2093,7 @@ func TestResolveRelay(t *testing.T) {
 
 	t.Run("Invalid relay address", func(t *testing.T) {
 		routeMatrix := routing.RouteMatrix{
-			RelayIndicies:   map[uint64]int{0: 0},
+			RelayIndices:   map[uint64]int{0: 0},
 			RelayAddresses:  [][]byte{[]byte("Invalid")},
 			RelayPublicKeys: [][]byte{{0x58, 0xaf, 0x19, 0x5, 0xf7, 0xa8, 0xae, 0x73, 0xc6, 0xd3, 0xec, 0x85, 0x2f, 0xd8, 0x9b, 0x5a, 0xce, 0x0, 0x38, 0xca, 0x26, 0x39, 0xa4, 0x5d, 0x82, 0x3c, 0x71, 0xa8, 0x4, 0x11, 0xfb, 0x32}},
 		}
@@ -2102,7 +2103,7 @@ func TestResolveRelay(t *testing.T) {
 
 	t.Run("Failed to parse port", func(t *testing.T) {
 		routeMatrix := routing.RouteMatrix{
-			RelayIndicies:   map[uint64]int{0: 0},
+			RelayIndices:   map[uint64]int{0: 0},
 			RelayAddresses:  [][]byte{[]byte("127.0.0.1:abcde")},
 			RelayPublicKeys: [][]byte{{0x58, 0xaf, 0x19, 0x5, 0xf7, 0xa8, 0xae, 0x73, 0xc6, 0xd3, 0xec, 0x85, 0x2f, 0xd8, 0x9b, 0x5a, 0xce, 0x0, 0x38, 0xca, 0x26, 0x39, 0xa4, 0x5d, 0x82, 0x3c, 0x71, 0xa8, 0x4, 0x11, 0xfb, 0x32}},
 		}
@@ -2179,7 +2180,7 @@ func TestRelaysIn(t *testing.T) {
 
 	// error while resolving at least one relay
 	routeMatrix = routing.RouteMatrix{
-		RelayIndicies:    map[uint64]int{0: 0},
+		RelayIndices:    map[uint64]int{0: 0},
 		RelayAddresses:   [][]byte{[]byte("127.0.0.1:abcde")},
 		RelayPublicKeys:  [][]byte{{0x58, 0xaf, 0x19, 0x5, 0xf7, 0xa8, 0xae, 0x73, 0xc6, 0xd3, 0xec, 0x85, 0x2f, 0xd8, 0x9b, 0x5a, 0xce, 0x0, 0x38, 0xca, 0x26, 0x39, 0xa4, 0x5d, 0x82, 0x3c, 0x71, 0xa8, 0x4, 0x11, 0xfb, 0x32}},
 		DatacenterRelays: map[uint64][]uint64{0: {0, 1}},
@@ -2424,7 +2425,10 @@ func TestRoutes(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			actual, err := routeMatrix.Routes(test.from, test.to, test.selectors...)
+
+			fromRelayCosts := make([]int, len(test.from))
+			
+			actual, err := routeMatrix.Routes(test.from, fromRelayCosts, test.to, test.selectors...)
 			assert.Equal(t, test.expectedErr, err)
 			assert.Equal(t, len(test.expected), len(actual))
 
@@ -2461,8 +2465,10 @@ func BenchmarkRoutes(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
+	fromRelayCosts := make([]int, len(from))
+
 	for i := 0; i < b.N; i++ {
-		routeMatrix.Routes(from, to)
+		routeMatrix.Routes(from, fromRelayCosts, to)
 	}
 }
 

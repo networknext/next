@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"sort"
 
 	"github.com/networknext/backend/routing"
 )
@@ -21,7 +20,6 @@ func GetRelayIndex(routeMatrix *routing.RouteMatrix, relayName string) int {
 type RelayEntry struct {
 	id    uint64
 	name  string
-	index int
 }
 
 func debug(relayName string, inputFile string) {
@@ -51,12 +49,7 @@ func debug(relayName string, inputFile string) {
 	for i := 0; i < numRelays; i++ {
 		relays[i].id = routeMatrix.RelayIDs[i]
 		relays[i].name = routeMatrix.RelayNames[i]
-		relays[i].index = i
 	}
-
-	sort.Slice(relays, func(i int, j int) bool {
-		return relays[i].name < relays[j].name
-	})
 
 	a := relayIndex
 
@@ -64,7 +57,7 @@ func debug(relayName string, inputFile string) {
 
 		dest := relays[b]
 
-		if a == dest.index {
+		if a == b {
 			continue
 		}
 
@@ -72,24 +65,39 @@ func debug(relayName string, inputFile string) {
 			fmt.Printf("\n")
 		}
 
-		index := routing.TriMatrixIndex(a, dest.index)
+		index := routing.TriMatrixIndex(a, b)
 
 		directRTT := routeMatrix.Entries[index].DirectRTT
 
-		fmt.Printf("    %s (%d)\n\n", dest.name, directRTT)
+		fmt.Printf("    %s (%d)\n", dest.name, directRTT)
 
 		numRoutes := int(routeMatrix.Entries[index].NumRoutes)
 
 		for i := 0; i < numRoutes; i++ {
+			if i == 0 {
+				fmt.Printf("\n")
+			}
 			routeRTT := routeMatrix.Entries[index].RouteRTT[i]
 			routeNumRelays := int(routeMatrix.Entries[index].RouteNumRelays[i])
 			fmt.Printf("    %*dms: ", 5, routeRTT)
-			for j := 0; j < routeNumRelays; j++ {
-				fmt.Printf("%s", routeMatrix.RelayNames[routeMatrix.Entries[index].RouteRelays[i][j]])
-				if j != routeNumRelays-1 {
-					fmt.Printf(" - ")
-				} else {
-					fmt.Printf("\n")
+			reverse := a >= b
+			if reverse {
+				for j := routeNumRelays - 1; j >= 0; j-- {
+					fmt.Printf("%s", routeMatrix.RelayNames[routeMatrix.Entries[index].RouteRelays[i][j]])
+					if j != 0 {
+						fmt.Printf(" - ")
+					} else {
+						fmt.Printf("\n")
+					}
+				}
+			} else {
+				for j := 0; j < routeNumRelays; j++ {
+					fmt.Printf("%s", routeMatrix.RelayNames[routeMatrix.Entries[index].RouteRelays[i][j]])
+					if j != routeNumRelays-1 {
+						fmt.Printf(" - ")
+					} else {
+						fmt.Printf("\n")
+					}
 				}
 			}
 		}

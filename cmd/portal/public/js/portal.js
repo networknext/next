@@ -58,6 +58,28 @@ AuthHandler = {
 			Sentry.captureException(e);
 		});
 
+		const query = window.location.search;
+		if (query.includes("message=") && query.includes("code=") && query.includes("success=")) {
+			let search = query.substring(1);
+			let vars = search.split('&');
+			let isSignupRedirect = true;
+			for (let i = 0; i < vars.length; i++) {
+				let pair = vars[i].split('=');
+				switch (pair[0]) {
+					case "message":
+						isSignupRedirect = isSignupRedirect && pair[1] == "Your%20email%20was%20verified.%20You%20can%20continue%20using%20the%20application.";
+						break;
+					case "code":
+						isSignupRedirect = isSignupRedirect && pair[1] == "success";
+						break;
+					case "success":
+						isSignupRedirect = isSignupRedirect && pair[1] == "true";
+						break;
+				}
+			}
+			this.isSignupRedirect = isSignupRedirect;
+		}
+
 		const isAuthenticated =
 			await this.auth0Client.isAuthenticated()
 				.catch((e) => {
@@ -65,10 +87,10 @@ AuthHandler = {
 				});
 
 		if (isAuthenticated) {
+			window.history.replaceState({}, document.title, "/");
 			startApp();
 			return;
 		}
-		const query = window.location.search;
 		if (query.includes("code=") && query.includes("state=")) {
 
 			await this.auth0Client.handleRedirectCallback()
@@ -81,6 +103,7 @@ AuthHandler = {
 		startApp();
 	},
 	auth0Client: null,
+	isSignupRedirect: false,
 	logout() {
 		this.auth0Client.logout({ returnTo: window.location.origin });
 	},
@@ -147,10 +170,12 @@ MapHandler = {
 	},
 	mapCountLoop: null,
 	mapInstance: null,
+	sessionToolMapInstance: null,
 	initMap() {
-		let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
+		// Not working yet
+		// let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
 		this.updateFilter('map', {
-			buyerId: buyerId,
+			buyerId: "",
 			sessionType: 'all'
 		});
 	},
@@ -218,43 +243,27 @@ MapHandler = {
 				let direct = sessions.filter((point) => {
 					return (point[2] == 0);
 				});
-				let data = [];
-
-				switch (filter.sessionType) {
-					case 'direct':
-						data = direct;
-						break;
-					case 'nn':
-						data = onNN;
-						break;
-					default:
-						data = sessions;
-				}
 
 				const cellSize = 10, aggregation = 'MEAN';
 				let gpuAggregation = navigator.appVersion.indexOf("Win") == -1;
 
-				data = onNN;
-
 				let nnLayer = new deck.ScreenGridLayer({
 					id: 'nn-layer',
-					data,
+					data: onNN,
 					opacity: 0.8,
 					getPosition: d => [d[0], d[1]],
 					getWeight: d => 1,
 					cellSizePixels: cellSize,
 					colorRange: [
-						[0,109,44],
+						[40, 167, 69],
 					],
 					gpuAggregation,
 					aggregation
 				});
 
-				data = direct;
-
 				let directLayer = new deck.ScreenGridLayer({
 					id: 'direct-layer',
-					data,
+					data: direct,
 					opacity: 0.8,
 					getPosition: d => [d[0], d[1]],
 					getWeight: d => 1,
@@ -317,9 +326,25 @@ UserHandler = {
 				if (!response) {
 					return;
 				}
+
 				this.userInfo.id = response.account.id;
 				this.userInfo.company = response.account.company_name;
 				this.userInfo.roles = response.account.roles;
+
+				if (AuthHandler.isSignupRedirect && !UserHandler.isAnonymous() && !UserHandler.isAnonymousPlus() && (!UserHandler.isOwner() || !UserHandler.isAdmin())) {
+					JSONRPCClient
+						.call("AuthService.UpgradeAccount", {user_id: UserHandler.userInfo.userId})
+						.then((response) => {
+							let newRoles = response.new_roles || []
+							if (newRoles.length > 0) {
+								UserHandler.userInfo.roles = response.new_roles;
+							}
+						})
+						.catch((error) => {
+							console.log("Something went wrong upgrading the account")
+							Sentry.captureException(error)
+						})
+				}
 			}).catch((e) => {
 				console.log("Something went wrong getting the current user information");
 				console.log(e);
@@ -348,6 +373,7 @@ UserHandler = {
 WorkspaceHandler = {
 	mapLoop: null,
 	sessionLoop: null,
+	sessionToolLoop: null,
 	welcomeTimeout: null,
 	changeSettingsPage(page) {
 		let showSettings = false;
@@ -369,6 +395,7 @@ WorkspaceHandler = {
 		// Clear all polling loops
 		this.sessionLoop ? clearInterval(this.sessionLoop) : null;
 		this.mapLoop ? clearInterval(this.mapLoop) : null;
+		this.sessionToolLoop ? clearInterval(this.sessionToolLoop) : null;
 
 		switch (page) {
 			case 'downloads':
@@ -534,15 +561,17 @@ WorkspaceHandler = {
 				UserHandler.userInfo.company = "";
 			});
 
-		let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
+		// Not working / not necessary?
+		// let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
 		this.updateAccountsTableFilter({
-			buyerId: buyerId,
+			buyerId: "",
 		});
 	},
 	loadSessionsPage() {
-		let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
+		// Not working yet
+		// let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
 		this.updateSessionFilter({
-			buyerId: buyerId,
+			buyerId: "",
 			sessionType: 'all'
 		});
 		this.refreshSessionTable();
@@ -551,6 +580,7 @@ WorkspaceHandler = {
 		}, 10000);
 	},
 	fetchSessionInfo() {
+		this.sessionToolMapInstance = null;
 		let id = rootComponent.$data.pages.sessionTool.id;
 
 		if (id == '') {
@@ -602,27 +632,36 @@ WorkspaceHandler = {
 						aggregation
 					});
 
-					let sessionToolMapInstance = new deck.DeckGL({
-						mapboxApiAccessToken: mapboxgl.accessToken,
-						mapStyle: 'mapbox://styles/mapbox/dark-v10',
-						initialViewState: {
-							zoom: 4,
-							longitude: meta.location.longitude, // 'Center' of the world map
-							latitude: meta.location.latitude,
-							minZoom: 2,
-							bearing: 0,
-							pitch: 0
-						},
-						container: 'session-tool-map',
-						controller: {
-							dragPan: false,
-							dragRotate: false
-						},
-						layers: [sessionLocationLayer],
-					});
+					if (this.sessionToolMapInstance) {
+						this.sessionToolMapInstance.setProps({layers: []})
+						this.sessionToolMapInstance.setProps({layers: [sessionLocationLayer]})
+					} else {
+						this.sessionToolMapInstance = new deck.DeckGL({
+							mapboxApiAccessToken: mapboxgl.accessToken,
+							mapStyle: 'mapbox://styles/mapbox/dark-v10',
+							initialViewState: {
+								zoom: 4,
+								longitude: meta.location.longitude, // 'Center' of the world map
+								latitude: meta.location.latitude,
+								minZoom: 2,
+								bearing: 0,
+								pitch: 0
+							},
+							container: 'session-tool-map',
+							controller: {
+								dragPan: false,
+								dragRotate: false
+							},
+							layers: [sessionLocationLayer],
+						});
+					}
 				});
 			})
 			.catch((e) => {
+				if (this.sessionToolLoop) {
+					this.changePage('sessions');
+					return;
+				}
 				Object.assign(rootComponent.$data.pages.sessionTool, {
 					danger: true,
 					id: '',
@@ -634,6 +673,10 @@ WorkspaceHandler = {
 				console.log("Something went wrong fetching session details: ");
 				Sentry.captureException(e);
 			});
+			this.sessionToolLoop ? clearInterval(this.sessionToolLoop) : null;
+			this.sessionToolLoop = setInterval(() => {
+				this.fetchSessionInfo();
+			}, 10000);
 	},
 	fetchUserSessions() {
 		let hash = rootComponent.$data.pages.userTool.hash;
@@ -672,9 +715,6 @@ WorkspaceHandler = {
 				Sentry.captureException(e);
 			});
 	},
-	loadUsersPage() {
-		// No Endpoint for this yet
-	},
 	updateSessionFilter(filter) {
 		Object.assign(rootComponent.$data.pages.sessions, {filter: filter});
 	},
@@ -686,28 +726,12 @@ WorkspaceHandler = {
 				.call('BuyersService.TopSessions', {buyer_id: filter.buyerId})
 				.then((response) => {
 					let sessions = response.sessions;
-					let onNN = sessions.filter((point) => {
-						return point.on_network_next;
-					});
-					let direct = sessions.filter((point) => {
-						return !point.on_network_next;
-					});
 
-					switch (filter.sessionType) {
-						case 'direct':
-							data = direct;
-							break;
-						case 'nn':
-							data = onNN;
-							break;
-						default:
-							data = sessions;
-					}
 					/**
 					 * I really dislike this but it is apparently the way to reload/update the data within a vue
 					 */
 					Object.assign(rootComponent.$data.pages.sessions, {
-						sessions: data,
+						sessions: sessions,
 						showTable: true,
 					});
 				})
@@ -841,20 +865,6 @@ function startApp() {
 			createVueComponents();
 			if (UserHandler.isAnonymousPlus()) {
 				Object.assign(rootComponent.$data.alerts.verifyEmail, {show: true});
-			}
-			if (!UserHandler.isAnonymous() && !UserHandler.isAnonymousPlus() && (!UserHandler.isOwner() || !UserHandler.isAdmin())) {
-				JSONRPCClient
-					.call("AuthService.UpgradeAccount", {user_id: UserHandler.userInfo.userId})
-					.then((response) => {
-						console.log(response)
-						if (response.new_roles.length > 0) {
-							UserHandler.userInfo.roles = response.new_roles;
-						}
-					})
-					.catch((error) => {
-						console.log("Something went wrong upgrading the account")
-						Sentry.captureException(error)
-					})
 			}
 			document.getElementById("app").style.display = 'block';
 			WorkspaceHandler.changePage('map');
@@ -1164,35 +1174,50 @@ function generateCharts(data) {
 		[],
 	];
 
+	let lastEntryNN = false;
+	let countNN = 0;
+
 	data.map((entry) => {
 		let timestamp = new Date(entry.timestamp).getTime() / 1000;
+		let onNN = entry.on_network_next
+
+		let nextRTT = parseFloat(entry.next.rtt);
+		let directRTT = parseFloat(entry.direct.rtt);
+
+		let nextJitter = parseFloat(entry.next.jitter)
+		let directJitter = parseFloat(entry.direct.jitter)
+
+		let nextPL = parseFloat(entry.next.packet_loss);
+		let directPL = parseFloat(entry.direct.packet_loss);
+
+		if (lastEntryNN && !onNN) {
+			countNN = 0;
+		}
+
+		if (onNN && countNN < 3) {
+			nextRTT = nextRTT >= directRTT ? directRTT : nextRTT
+			nextJitter = nextJitter >= directJitter ? directJitter : nextJitter
+			nextPL = 0
+			countNN++
+		}
 
 		// Latency
-		let next = parseFloat(entry.next.rtt);
-		let direct = parseFloat(entry.direct.rtt);
-		let improvement = direct - next;
-		latencyData.improvement[0].push(timestamp);
-		latencyData.improvement[1].push(improvement);
+		let next = (entry.is_multipath && nextRTT >= directRTT) ? directRTT : nextRTT;
+		let direct = directRTT;
 		latencyData.comparison[0].push(timestamp);
 		latencyData.comparison[1].push(next);
 		latencyData.comparison[2].push(direct);
 
 		// Jitter
-		next = parseFloat(entry.next.jitter);
-		direct = parseFloat(entry.direct.jitter);
-		improvement = direct - next;
-		jitterData.improvement[0].push(timestamp);
-		jitterData.improvement[1].push(improvement);
+		next = (entry.is_multipath && nextJitter >= directJitter) ? directJitter : nextJitter;
+		direct = directJitter;
 		jitterData.comparison[0].push(timestamp);
 		jitterData.comparison[1].push(next);
 		jitterData.comparison[2].push(direct);
 
 		// Packetloss
-		next = parseFloat(entry.next.packet_loss);
-		direct = parseFloat(entry.direct.packet_loss);
-		improvement = direct - next;
-		packetLossData.improvement[0].push(timestamp);
-		packetLossData.improvement[1].push(improvement);
+		next = (entry.is_multipath && nextPL >= directPL) ? directPL : nextPL;
+		direct = directPL;
 		packetLossData.comparison[0].push(timestamp);
 		packetLossData.comparison[1].push(next);
 		packetLossData.comparison[2].push(direct);
@@ -1201,6 +1226,8 @@ function generateCharts(data) {
 		bandwidthData[0].push(timestamp);
 		bandwidthData[1].push(entry.envelope.up);
 		bandwidthData[2].push(entry.envelope.down);
+
+		lastEntryNN = onNN;
 	});
 
 	const defaultOpts = {
@@ -1227,7 +1254,8 @@ function generateCharts(data) {
 			}
 		},
 		series: [
-			{},
+			{
+			},
 			{
 				stroke: "rgb(0, 109, 44)",
 				fill: "rgba(0, 109, 44, 0.1)",
@@ -1242,7 +1270,9 @@ function generateCharts(data) {
 			},
 		],
 		axes: [
-			{},
+			{
+				show: false
+			},
 			{
 				scale: "ms",
 			  show: true,
@@ -1277,7 +1307,9 @@ function generateCharts(data) {
 			},
 		],
 		axes: [
-			{},
+			{
+				show: false
+			},
 			{
 			  show: true,
 			  gap: 5,
@@ -1304,16 +1336,18 @@ function generateCharts(data) {
 			{
 				stroke: "blue",
 				fill: "rgba(0,0,255,0.1)",
-				label: "Actual Up",
+				label: "Up",
 			},
 			{
 				stroke: "orange",
 				fill: "rgba(255,165,0,0.1)",
-				label: "Actual Down"
+				label: "Down"
 			},
 		],
 		axes: [
-			{},
+			{
+				show: false
+			},
 			{
 				scale: "kbps",
 			  show: true,
@@ -1322,11 +1356,7 @@ function generateCharts(data) {
 			  values: (self, ticks) => ticks.map(rawValue => rawValue + "kbps"),
 			},
 			{
-				scale: "kbps",
-			  show: true,
-			  gap: 5,
-			  size: 70,
-			  values: (self, ticks) => ticks.map(rawValue => rawValue + "kbps"),
+				show: false
 			}
 		]
 	};

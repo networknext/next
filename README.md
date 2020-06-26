@@ -14,34 +14,42 @@ This is a monorepo that contains the Network Next backend.
 
 [![GCP Logs](https://img.shields.io/badge/GCP-logs-lightgray?style=for-the-badge&logo=google-cloud)](https://console.cloud.google.com/logs)
 
+## Git Workflow
+
+### Development Release
+
+1. Branch from `master` to a properly named branch for your bug/feature
+2. Do your work in your bug/feature branch
+3. Issue a pull request into `master` and mark it according to what you need
+	- **Draft**: mark a PR as a draft to expose you have started work and have questions/comments in order to complete the work
+	- **Ready for Review**: mark a PR as ready for review and include the appropriate reviewers when unit tests for your bug/feature are all passing
+4. Once your pull request has been reviewed merge it into `master` and wait for CI/CD to run the tests one last time and build a development artifact
+5. Manually `make deploy-(portal|relay_backend|server_backend)` to copy the artifact to the development VMs and restart the service
+
+### Production Release
+
+1. Ensure tests pass locally as a sanity check
+2. Tag the commit with an acceptable tag name, eg. `git tag PROD-20200427-01`
+3. Push your changes to git with `git push origin --tags` to include the tag created
+4. Wait for CI/CD to run tests one last time, recognize the new tag, and build a production artifact
+5. Manually `make deploy-(portal|relay_backend|server_backend)-prod` to copy the artifact to the production VMs and restart the service
+
+#### Acceptable tags:
+
+
+| Acceptable tags | Unacceptable tags |
+|---|---|
+| `PROD-20200427-01` | `PROD-20200427` |
+| `PROD-20200427-hotfix-packet` | `PROD-20200427-` |
+| `PROD-20200427-1300` | `PROD-20427-hotfix-session` |
+
 ## CI/CD
 
-SemaphoreCI is used for running tests and deploying artifacts to GCP Storage under certain conditions:
+SemaphoreCI is used for running tests and deploying development and production artifacts to GCP Storage buckets which can be deployed to their respective VMs.
 
 1. Unit tests are always run when a commit is pushed or a PR is issued
 2. **Development** artifacts are built and published when tests pass AND there is a merge to `master`
 3. **Production** artifacts are built and published when tests pass AND there is a tag matching `PROD-YYYYMMDD-*`
-
-Acceptable tags:
-
-- `PROD-20200427-01`
-- `PROD-20200427-hotfix-packet`
-
-Unacceptable tags:
-
-- `PROD-20200427`
-- `PROD-20200427-`
-
-### Tagging a Release
-
-```
-> git pull origin master
-Everything up to date.
-
-> git tag PROD-20200427-01
-
-> git push origin master --tags
-```
 
 The development and production artifacts are only published to GCP Storage. They are not sent to the VMs to start running. Once CI/CD completes you need to issue the appropriate `make` command to trigger a deployment to the VMs.
 
@@ -272,7 +280,7 @@ From the root of the project you can run `docker-compose` and specify the config
 $ docker-compose -f ./cmd/docker-compose.yaml up
 ```
 
-### Second, Third, Forth, and N Times
+### Second, Third, Fourth, and N Times
 
 After all of the `Dockerfile`s have been built subsequent runs of `docker-compose up` will ONLY run them. If you make changes to any of the code you need to rebuild all of the services.
 

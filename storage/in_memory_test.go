@@ -11,6 +11,8 @@ import (
 )
 
 func TestInMemoryGetBuyer(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 
 	t.Run("buyer not found", func(t *testing.T) {
@@ -40,6 +42,8 @@ func TestInMemoryGetBuyer(t *testing.T) {
 }
 
 func TestInMemoryGetBuyers(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 
 	t.Run("no buyers", func(t *testing.T) {
@@ -67,6 +71,8 @@ func TestInMemoryGetBuyers(t *testing.T) {
 }
 
 func TestInMemoryAddBuyer(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 
 	t.Run("buyer already exists", func(t *testing.T) {
@@ -102,6 +108,8 @@ func TestInMemoryAddBuyer(t *testing.T) {
 }
 
 func TestInMemoryRemoveBuyer(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 
 	t.Run("buyer doesn't exist", func(t *testing.T) {
@@ -167,6 +175,8 @@ func TestInMemoryRemoveBuyer(t *testing.T) {
 }
 
 func TestInMemorySetBuyer(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 
 	t.Run("buyer doesn't exist", func(t *testing.T) {
@@ -204,6 +214,8 @@ func TestInMemorySetBuyer(t *testing.T) {
 }
 
 func TestInMemoryGetSeller(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 
 	t.Run("seller not found", func(t *testing.T) {
@@ -233,6 +245,8 @@ func TestInMemoryGetSeller(t *testing.T) {
 }
 
 func TestInMemoryGetSellers(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 
 	t.Run("no sellers", func(t *testing.T) {
@@ -260,6 +274,8 @@ func TestInMemoryGetSellers(t *testing.T) {
 }
 
 func TestInMemoryAddSeller(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 
 	t.Run("seller already exists", func(t *testing.T) {
@@ -295,6 +311,8 @@ func TestInMemoryAddSeller(t *testing.T) {
 }
 
 func TestInMemoryRemoveSeller(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 
 	t.Run("seller doesn't exist", func(t *testing.T) {
@@ -360,6 +378,8 @@ func TestInMemoryRemoveSeller(t *testing.T) {
 }
 
 func TestInMemorySetSeller(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 
 	t.Run("seller doesn't exist", func(t *testing.T) {
@@ -397,6 +417,8 @@ func TestInMemorySetSeller(t *testing.T) {
 }
 
 func TestInMemoryGetRelay(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 
 	t.Run("relay not found", func(t *testing.T) {
@@ -440,6 +462,8 @@ func TestInMemoryGetRelay(t *testing.T) {
 }
 
 func TestInMemoryGetRelays(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 
 	t.Run("no relays", func(t *testing.T) {
@@ -481,6 +505,8 @@ func TestInMemoryGetRelays(t *testing.T) {
 }
 
 func TestInMemoryAddRelay(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 
 	t.Run("relay already exists", func(t *testing.T) {
@@ -575,6 +601,8 @@ func TestInMemoryAddRelay(t *testing.T) {
 }
 
 func TestInMemoryRemoveRelay(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 
 	t.Run("relay doesn't exist", func(t *testing.T) {
@@ -684,6 +712,8 @@ func TestInMemoryRemoveRelay(t *testing.T) {
 }
 
 func TestInMemorySetRelay(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 
 	t.Run("relay doesn't exist", func(t *testing.T) {
@@ -735,6 +765,8 @@ func TestInMemorySetRelay(t *testing.T) {
 }
 
 func TestInMemoryGetDatacenter(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 
 	t.Run("datacenter not found", func(t *testing.T) {
@@ -764,6 +796,8 @@ func TestInMemoryGetDatacenter(t *testing.T) {
 }
 
 func TestInMemoryGetDatacenters(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 
 	t.Run("no datacenters", func(t *testing.T) {
@@ -791,6 +825,8 @@ func TestInMemoryGetDatacenters(t *testing.T) {
 }
 
 func TestInMemoryAddDatacenter(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 
 	t.Run("datacenter already exists", func(t *testing.T) {
@@ -826,6 +862,8 @@ func TestInMemoryAddDatacenter(t *testing.T) {
 }
 
 func TestInMemoryRemoveDatacenter(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 
 	t.Run("datacenter doesn't exist", func(t *testing.T) {
@@ -891,6 +929,8 @@ func TestInMemoryRemoveDatacenter(t *testing.T) {
 }
 
 func TestInMemorySetDatacenter(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 
 	t.Run("datacenter doesn't exist", func(t *testing.T) {

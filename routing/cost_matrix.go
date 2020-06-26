@@ -25,7 +25,7 @@ const (
 type CostMatrix struct {
 	mu sync.RWMutex
 
-	RelayIndicies map[uint64]int
+	RelayIndices map[uint64]int
 
 	RelayIDs              []uint64
 	RelayNames            []string
@@ -131,7 +131,7 @@ func (m *CostMatrix) UnmarshalBinary(data []byte) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.RelayIndicies = make(map[uint64]int)
+	m.RelayIndices = make(map[uint64]int)
 	m.RelayIDs = make([]uint64, numRelays)
 
 	for i := 0; i < int(numRelays); i++ {
@@ -139,7 +139,7 @@ func (m *CostMatrix) UnmarshalBinary(data []byte) error {
 		if err := idReadFunc(data, &index, &tmp, "[CostMatrix] invalid read at relay ids"); err != nil {
 			return err
 		}
-		m.RelayIndicies[tmp] = i
+		m.RelayIndices[tmp] = i
 		m.RelayIDs[i] = tmp
 	}
 
@@ -368,7 +368,7 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 
 	entryCount := TriMatrixLength(numRelays)
 
-	routes.RelayIndicies = m.RelayIndicies
+	routes.RelayIndices = m.RelayIndices
 	routes.RelayIDs = m.RelayIDs
 	routes.RelayNames = m.RelayNames
 	routes.RelayAddresses = m.RelayAddresses

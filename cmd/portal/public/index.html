@@ -165,19 +165,6 @@
                 font-size: 0.75rem;
                 text-transform: uppercase;
             }
-
-            /*
-            * Content
-            */
-
-            [role="main"] {
-                padding-top: 48px; /* Space for fixed navbar */
-            }
-
-            /*
-            * Navbar
-            */
-
             .navbar-brand {
                 padding-top: 0.75rem;
                 padding-bottom: 0.75rem;
@@ -230,7 +217,7 @@
                     </div>
                 </a>
                 <ul class="navbar-nav px-3 w-100 mr-auto">
-                    <li class="nav-item text-nowrap ">
+                    <li class="nav-item text-nowrap">
                         <a class="nav-link" href="#" v-bind:class="{ active: pages.map.show }" v-on:click="handlers.workspaceHandler.changePage('map')">
                             Map
                         </a>
@@ -240,7 +227,7 @@
                             Sessions
                         </a>
                     </li>
-                    <li class="nav-item text-nowrap" v-if="!handlers.userHandler.isAnonymous() && !handlers.userHandler.isAnonymousPlus()">
+                    <li class="nav-item text-nowrap">
                         <a class="nav-link" href="#" v-bind:class="{ active: pages.sessionTool.show }" v-on:click="handlers.workspaceHandler.changePage('sessionTool', '')">
                             Session Tool
                         </a>
@@ -283,21 +270,23 @@
                     </li>
                 </ul>
             </nav>
+            <div style="padding-top: 48px;">
+                <div class="alert alert-primary" style="text-align: center;" role="alert" v-if="alerts.verifyEmail.show">
+                    Please confirm your email address: {{ handlers.userHandler.userInfo.email }}
+                    <a href="#" v-on:click="handlers.authHandler.resendVerificationEmail()">
+                        Resend email
+                    </a>
+                </div>
+                <div class="alert alert-success" style="text-align: center;" role="alert" v-if="alerts.emailSent.show">
+                    Verification email was sent successfully. Please check your email for futher instructions.
+                </div>
+                <div class="alert alert-danger" style="text-align: center;" role="alert" v-if="alerts.emailFailed.show">
+                    Something went wrong sending the verification email. Please try again later.
+                </div>
+            </div>
             <div class="container-fluid">
                 <div class="row">
                     <main role="main" class="col-md-12 col-lg-12 px-4" v-show="pages.map.show">
-                        <div class="alert alert-primary" style="text-align: center;" role="alert" v-if="alerts.verifyEmail.show">
-                            Please confirm your email address: {{ handlers.userHandler.userInfo.email }} 
-                            <a href="#" v-on:click="handlers.authHandler.resendVerificationEmail()">
-                                Resend email
-                            </a>
-                        </div>
-                        <div class="alert alert-success" style="text-align: center;" role="alert" v-if="alerts.emailSent.show">
-                            Verification email was sent successfully. Please check your email for futher instructions.
-                        </div>
-                        <div class="alert alert-danger" style="text-align: center;" role="alert" v-if="alerts.emailFailed.show">
-                            Something went wrong sending the verification email. Please try again later.
-                        </div>
                         <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom" id="map-sessions-count">
                             <div id="map-spinner" v-if="!showCount">
                                 <div class="spinner-border" role="status">
@@ -338,7 +327,7 @@
                                         </option>
                                     </select>
                                 </div>
-                                <div class="px-2" v-if="!handlers.userHandler.isAnonymous()">
+                                <div class="px-2 hidden" v-if="!handlers.userHandler.isAnonymous()">
                                     <select class="form-control">
                                         <option value="all" v-on:click="handlers.mapHandler.updateFilter({buyerId: '', sessionType: pages.map.filter.sessionType})">
                                             All
@@ -357,18 +346,6 @@
                         <div v-if="!handlers.userHandler.isAnonymousPlus()" style="width: 100%; height: calc(-160px + 100vh); border: 1px solid rgb(136, 136, 136); background-color: rgb(27, 27, 27);" id="map-container"></div>
                     </main>
                     <main role="main" class="col-md-12 col-lg-12 px-4" v-if="pages.sessions.show">
-                        <div class="alert alert-primary" style="text-align: center;" role="alert" v-if="alerts.verifyEmail.show">
-                            Please verify your email to unlock all features. To resend the verification email 
-                            <a href="#" v-on:click="handlers.authHandler.resendVerificationEmail()">
-                                click here
-                            </a>
-                        </div>
-                        <div class="alert alert-success" style="text-align: center;" role="alert" v-if="alerts.emailSent.show">
-                            Verification email was sent successfully. Please check your email for futher instructions.
-                        </div>
-                        <div class="alert alert-danger" style="text-align: center;" role="alert" v-if="alerts.emailFailed.show">
-                            Something went wrong sending the verification email. Please try again later.
-                        </div>
                         <div id="sessions">
                             <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                                 <h1 class="h2" id="workspace-title" v-if="showCount">
@@ -402,7 +379,7 @@
                                             </option>
                                         </select>
                                     </div>
-                                    <div class="px-2">
+                                    <div class="px-2 hidden">
                                         <select class="form-control" v-if="handlers.userHandler.isAdmin()">
                                             <option value="all" v-on:click="handlers.workspaceHandler.updateSessionFilter({buyerId: '', sessionType: pages.sessions.filter.sessionType})">
                                                 All
@@ -523,18 +500,6 @@
                         </div>
                     </main>
                     <main role="main" class="col-md-12 col-lg-12 px-4" v-if="pages.sessionTool.show">
-                        <div class="alert alert-primary" style="text-align: center;" role="alert" v-if="alerts.verifyEmail.show">
-                            Please verify your email to unlock all features. To resend the verification email 
-                            <a href="#" v-on:click="handlers.authHandler.resendVerificationEmail()">
-                                click here
-                            </a>
-                        </div>
-                        <div class="alert alert-success" style="text-align: center;" role="alert" v-if="alerts.emailSent.show">
-                            Verification email was sent successfully. Please check your email for futher instructions.
-                        </div>
-                        <div class="alert alert-danger" style="text-align: center;" role="alert" v-if="alerts.emailFailed.show">
-                            Something went wrong sending the verification email. Please try again later.
-                        </div>
                         <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                             <h1 class="h2">
                                 Session Tool
@@ -543,7 +508,7 @@
                                 <div class="mr-auto"></div>
                             </div>
                         </div>
-                        <form class="flow-stats-form" v-on:submit.prevent="handlers.workspaceHandler.fetchSessionInfo()" v-if="!handlers.userHandler.isAnonymous()">
+                        <form class="flow-stats-form" v-on:submit.prevent="handlers.workspaceHandler.fetchSessionInfo()">
                             <div class="form-group">
                                 <label for="session-id-input">
                                     Session ID
@@ -639,10 +604,10 @@
                                                 <div class="float-right">
                                                     <span class="mr-2" style="border-right: 2px dotted rgb(51, 51, 51); display: none;"></span>
                                                     <span style="color: orange;">
-                                                        — Actual Up
+                                                        — Up
                                                     </span>
                                                     <span style="color: blue;">
-                                                        — Actual Down
+                                                        — Down
                                                     </span>
                                                     <span></span>
                                                 </div>
@@ -702,7 +667,7 @@
                                                         </dt>
                                                         <dd v-if="!handlers.userHandler.isAnonymous()">
                                                             {{
-                                                                allBuyers.length > 0 ? allBuyers.find((buyer) => {
+                                                                Array.from(allBuyers.length) > 0 ? Aray.from(allBuyers).find((buyer) => {
                                                                     return buyer.id == pages.sessionTool.meta.customer_id
                                                                 }).name || "Private" : "Private"
                                                             }}
@@ -820,18 +785,6 @@
                         </div>
                     </main>
                     <main role="main" class="col-md-12 col-lg-12 px-4" v-if="pages.userTool.show">
-                        <div class="alert alert-primary" style="text-align: center;" role="alert" v-if="alerts.verifyEmail.show">
-                            Please verify your email to unlock all features. To resend the verification email 
-                            <a href="#" v-on:click="handlers.authHandler.resendVerificationEmail()">
-                                click here
-                            </a>
-                        </div>
-                        <div class="alert alert-success" style="text-align: center;" role="alert" v-if="alerts.emailSent.show">
-                            Verification email was sent successfully. Please check your email for futher instructions.
-                        </div>
-                        <div class="alert alert-danger" style="text-align: center;" role="alert" v-if="alerts.emailFailed.show">
-                            Something went wrong sending the verification email. Please try again later.
-                        </div>
                         <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                             <h1 class="h2">
                                 User Tool
@@ -936,18 +889,6 @@
                         </div>
                     </main>
                     <main role="main" class="col-md-12 col-lg-12 px-4" v-show="pages.downloads.show">
-                        <div class="alert alert-primary" style="text-align: center;" role="alert" v-if="alerts.verifyEmail.show">
-                            Please verify your email to unlock all features. To resend the verification email 
-                            <a href="#" v-on:click="handlers.authHandler.resendVerificationEmail()">
-                                click here
-                            </a>
-                        </div>
-                        <div class="alert alert-success" style="text-align: center;" role="alert" v-if="alerts.emailSent.show">
-                            Verification email was sent successfully. Please check your email for futher instructions.
-                        </div>
-                        <div class="alert alert-danger" style="text-align: center;" role="alert" v-if="alerts.emailFailed.show">
-                            Something went wrong sending the verification email. Please try again later.
-                        </div>
                         <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                             <h1 class="h2">
                                 Downloads
@@ -961,7 +902,7 @@
                                 <div class="btn-group-vertical btn-group-sm float-right">
                                     <a
                                         href="#"
-                                        onclick="window.open('https://storage.cloud.google.com/portal_sdk_download_storage_prod/next-3.4.6.zip?_ga=2.38724899.-1004716554.1585744318')"
+                                        onclick="window.open('https://storage.googleapis.com/portal_sdk_download_storage_prod/next-3.4.6.zip')"
                                         class="btn btn-primary m-1"
                                         title="SDK v3.4.6"
                                         style='width: "160px"'
@@ -987,18 +928,6 @@
                           </div>
                     </main>
                     <main role="main" class="col-md-12 col-lg-12 px-4" v-if="pages.settings.show">
-                        <div class="alert alert-primary" style="text-align: center;" role="alert" v-if="alerts.verifyEmail.show">
-                            Please verify your email to unlock all features. To resend the verification email 
-                            <a href="#" v-on:click="handlers.authHandler.resendVerificationEmail()">
-                                click here
-                            </a>
-                        </div>
-                        <div class="alert alert-success" style="text-align: center;" role="alert" v-if="alerts.emailSent.show">
-                            Verification email was sent successfully. Please check your email for futher instructions.
-                        </div>
-                        <div class="alert alert-danger" style="text-align: center;" role="alert" v-if="alerts.emailFailed.show">
-                            Something went wrong sending the verification email. Please try again later.
-                        </div>
                         <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                             <h1 class="h2">
                                 Settings

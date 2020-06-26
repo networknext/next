@@ -31,6 +31,8 @@ type SessionErrorMetrics struct {
 	UnmarshalServerDataFailure  Counter
 	GetSessionDataFailure       Counter
 	UnmarshalSessionDataFailure Counter
+	GetVetoDataFailure          Counter
+	UnmarshalVetoDataFailure    Counter
 	BuyerNotFound               Counter
 	VerifyFailure               Counter
 	OldSequence                 Counter
@@ -42,7 +44,7 @@ type SessionErrorMetrics struct {
 	RouteFailure                Counter
 	EncryptionFailure           Counter
 	WriteResponseFailure        Counter
-	UpdateSessionFailure        Counter
+	UpdateCacheFailure          Counter
 	BillingFailure              Counter
 }
 
@@ -55,6 +57,8 @@ var EmptySessionErrorMetrics SessionErrorMetrics = SessionErrorMetrics{
 	UnmarshalServerDataFailure:  &EmptyCounter{},
 	GetSessionDataFailure:       &EmptyCounter{},
 	UnmarshalSessionDataFailure: &EmptyCounter{},
+	GetVetoDataFailure:          &EmptyCounter{},
+	UnmarshalVetoDataFailure:    &EmptyCounter{},
 	BuyerNotFound:               &EmptyCounter{},
 	VerifyFailure:               &EmptyCounter{},
 	OldSequence:                 &EmptyCounter{},
@@ -66,7 +70,7 @@ var EmptySessionErrorMetrics SessionErrorMetrics = SessionErrorMetrics{
 	RouteFailure:                &EmptyCounter{},
 	EncryptionFailure:           &EmptyCounter{},
 	WriteResponseFailure:        &EmptyCounter{},
-	UpdateSessionFailure:        &EmptyCounter{},
+	UpdateCacheFailure:          &EmptyCounter{},
 	BillingFailure:              &EmptyCounter{},
 }
 
@@ -110,6 +114,55 @@ var EmptyDecisionMetrics DecisionMetrics = DecisionMetrics{
 	VetoPacketLossYOLO:  &EmptyCounter{},
 	RTTHysteresis:       &EmptyCounter{},
 	VetoCommit:          &EmptyCounter{},
+}
+
+type OptimizeMetrics struct {
+	Invocations   Counter
+	DurationGauge Gauge
+	ErrorMetrics  OptimizeErrorMetrics
+}
+
+type OptimizeErrorMetrics struct {
+}
+
+var EmptyOptimizeMetrics OptimizeMetrics = OptimizeMetrics{
+	Invocations:   &EmptyCounter{},
+	DurationGauge: &EmptyGauge{},
+	ErrorMetrics:  EmptyOptimizeErrorMetrics,
+}
+
+var EmptyOptimizeErrorMetrics OptimizeErrorMetrics = OptimizeErrorMetrics{}
+
+func NewOptimizeMetrics(ctx context.Context, metricsHandler Handler) (*OptimizeMetrics, error) {
+	optimizeDurationGauge, err := metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Optimize duration",
+		ServiceName: "relay_backend",
+		ID:          "optimize.duration",
+		Unit:        "milliseconds",
+		Description: "How long it takes to optimize a cost matrix.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	optimizeInvocationsCounter, err := metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Total cost matrix optimize invocations",
+		ServiceName: "relay_backend",
+		ID:          "optimize.count",
+		Unit:        "invocations",
+		Description: "The total number of cost matrix optimizers",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	optimizeMetrics := OptimizeMetrics{
+		Invocations:   optimizeInvocationsCounter,
+		DurationGauge: optimizeDurationGauge,
+		ErrorMetrics:  EmptyOptimizeErrorMetrics,
+	}
+
+	return &optimizeMetrics, nil
 }
 
 type ServerInitMetrics struct {
@@ -603,6 +656,16 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		return nil, err
 	}
 
+	sessionMetrics.ErrorMetrics.GetVetoDataFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Session Get Veto Data Failure",
+		ServiceName: "server_backend",
+		ID:          "session.error.get_veto_data_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	sessionMetrics.ErrorMetrics.NearRelaysLocateFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Session Near Relays Locate Failure",
 		ServiceName: "server_backend",
@@ -693,10 +756,20 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		return nil, err
 	}
 
-	sessionMetrics.ErrorMetrics.UpdateSessionFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Session Update Session Failure",
+	sessionMetrics.ErrorMetrics.UnmarshalVetoDataFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Session Unmarshal Veto Data Failure",
 		ServiceName: "server_backend",
-		ID:          "session.error.update_session_failure",
+		ID:          "session.error.unmarshal_veto_data_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.ErrorMetrics.UpdateCacheFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Session Update Cache Failure",
+		ServiceName: "server_backend",
+		ID:          "session.error.update_cache_failure",
 		Unit:        "errors",
 	})
 	if err != nil {
@@ -993,4 +1066,53 @@ func NewRelayStatMetrics(ctx context.Context, metricsHandler Handler) (*RelaySta
 	}
 
 	return &statMetrics, nil
+}
+
+// CostMatrixGenMetrics
+type CostMatrixGenMetrics struct {
+	Invocations   Counter
+	DurationGauge Gauge
+	ErrorMetrics  CostMatrixGenErrorMetrics
+}
+
+type CostMatrixGenErrorMetrics struct {
+}
+
+var EmptyCostMatrixGenMetrics CostMatrixGenMetrics = CostMatrixGenMetrics{
+	Invocations:   &EmptyCounter{},
+	DurationGauge: &EmptyGauge{},
+	ErrorMetrics:  EmptyCostMatrixGenErrorMetrics,
+}
+
+var EmptyCostMatrixGenErrorMetrics CostMatrixGenErrorMetrics = CostMatrixGenErrorMetrics{}
+
+func NewCostMatrixGenMetrics(ctx context.Context, metricsHandler Handler) (*CostMatrixGenMetrics, error) {
+	newCostMatrixGenDurationGauge, err := metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "StatsDB -> GetCostMatrix duration",
+		ServiceName: "relay_backend",
+		ID:          "stats.duration",
+		Unit:        "milliseconds",
+		Description: "How long it takes to (statsdb -> cost matrix).", // TODO reword
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	costMatrixGenInvocationsCounter, err := metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Total StatsDB -> CostMatrix invocations",
+		ServiceName: "relay_backend",
+		ID:          "stats.count",
+		Unit:        "invocations",
+		Description: "The total number of StatsDB -> CostMatrix invocations",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	costMatrixGenMetrics := CostMatrixGenMetrics{
+		Invocations:   costMatrixGenInvocationsCounter,
+		DurationGauge: newCostMatrixGenDurationGauge,
+	}
+
+	return &costMatrixGenMetrics, nil
 }
