@@ -761,3 +761,20 @@ func checkRelays(
 	}
 
 }
+
+func relayLogs(rpcClient jsonrpc.RPCClient, env Environment, lines uint, regexes []string) {
+	for _, regex := range regexes {
+		relays := getRelayInfo(rpcClient, env, regex)
+		for i, relay := range relays {
+			con := NewSSHConn(relay.user, relay.sshAddr, relay.sshPort, env.SSHKeyFilePath)
+			if out, err := con.IssueCmdAndGetOutput("journalctl -u relay -n " + strconv.FormatUint(uint64(lines), 10) + " | cat"); err == nil {
+				fmt.Printf("%s\n%s\n", relay.name, out)
+				if i < len(relays)-1 {
+					fmt.Printf("\n")
+				}
+			} else {
+				fmt.Printf("error gathering logs for relay %s: %v\n", relay.name, err)
+			}
+		}
+	}
+}

@@ -360,6 +360,11 @@ func main() {
 	var sessionCount int64
 	sessionsfs.Int64Var(&sessionCount, "n", 0, "number of top sessions to display (default: all)")
 
+	relaylogfs := flag.NewFlagSet("relay logs", flag.ExitOnError)
+
+	var loglines uint
+	relaylogfs.UintVar(&loglines, "n", 10, "the number of log lines to display")
+
 	relayupdatefs := flag.NewFlagSet("relay update", flag.ExitOnError)
 
 	var updateOpts updateOptions
@@ -672,10 +677,26 @@ func main() {
 				Name:       "relay",
 				ShortUsage: "next relay <subcommand>",
 				ShortHelp:  "Manage relays",
+				FlagSet:    relaylogfs,
 				Exec: func(_ context.Context, args []string) error {
+
 					return flag.ErrHelp
 				},
 				Subcommands: []*ffcli.Command{
+					{
+						Name:       "logs",
+						ShortUsage: "next relay logs <regex> [regex]",
+						ShortHelp:  "Print the last n journalctl lines for each matching relay, if the n flag is unset it defaults to 10",
+						Exec: func(ctx context.Context, args []string) error {
+							if len(args) == 0 {
+								log.Fatalln("you must supply at least one argument")
+							}
+
+							relayLogs(rpcClient, env, loglines, args)
+
+							return nil
+						},
+					},
 					{
 						Name:       "check",
 						ShortUsage: "next relay check [regex]",
