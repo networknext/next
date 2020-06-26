@@ -61,6 +61,7 @@ type SessionSlice struct {
 	Next              Stats     `json:"next"`
 	Direct            Stats     `json:"direct"`
 	Envelope          Envelope  `json:"envelope"`
+	OnNetworkNext     bool      `json:"on_network_next"`
 	IsMultiPath       bool      `json:"is_multipath"`
 	IsTryBeforeYouBuy bool      `json:"is_try_before_you_buy"`
 }
