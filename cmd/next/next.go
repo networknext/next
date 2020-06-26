@@ -277,6 +277,10 @@ func readJSONData(entity string, args []string) []byte {
 }
 
 func handleJSONRPCError(env Environment, err error) {
+	handleJSONRPCErrorCustom(env, err, fmt.Sprint(err))
+}
+
+func handleJSONRPCErrorCustom(env Environment, err error, msg string) {
 	switch e := err.(type) {
 	case *jsonrpc.HTTPError:
 		switch e.Code {
@@ -289,7 +293,7 @@ func handleJSONRPCError(env Environment, err error) {
 		if env.Name != "local" && env.Name != "dev" && env.Name != "prod" {
 			log.Fatalf("%v - make sure the env name is set to either 'prod', 'dev', or 'local' with\nnext select <env>", err)
 		} else {
-			log.Fatal(err)
+			log.Fatal(msg)
 		}
 	}
 }

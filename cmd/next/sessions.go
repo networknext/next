@@ -1,16 +1,16 @@
 package main
 
 import (
-	"os"
-	"log"
 	"fmt"
-	"sort"
+	"log"
 	"math"
+	"os"
+	"sort"
 
 	"github.com/modood/table"
+	"github.com/networknext/backend/routing"
 	localjsonrpc "github.com/networknext/backend/transport/jsonrpc"
 	"github.com/ybbus/jsonrpc"
-	"github.com/networknext/backend/routing"
 )
 
 func flushsessions(rpcClient jsonrpc.RPCClient, env Environment) {
@@ -39,7 +39,7 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string, se
 
 		var reply localjsonrpc.SessionDetailsReply
 		if err := rpcClient.CallFor(&reply, "BuyersService.SessionDetails", args); err != nil {
-			handleJSONRPCError(env, err)
+			handleJSONRPCErrorCustom(env, err, "Session not found")
 			return
 		}
 
@@ -57,10 +57,10 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string, se
 		lastSlice := reply.Slices[len(reply.Slices)-1]
 
 		if reply.Meta.OnNetworkNext {
-			fmt.Printf( "Session is on Network Next\n\n" )
-			fmt.Printf( "RTT improvement is %.1fms\n\n", lastSlice.Direct.RTT - lastSlice.Next.RTT)
+			fmt.Printf("Session is on Network Next\n\n")
+			fmt.Printf("RTT improvement is %.1fms\n\n", lastSlice.Direct.RTT-lastSlice.Next.RTT)
 		} else {
-			fmt.Printf( "Session is going direct\n\n" )
+			fmt.Printf("Session is going direct\n\n")
 		}
 
 		stats = append(stats, struct {
@@ -107,7 +107,7 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string, se
 			for _, relay := range reply.Meta.NearbyRelays {
 				for _, r := range relaysreply.Relays {
 					if relay.ID == r.ID {
-					    relay.Name = r.Name
+						relay.Name = r.Name
 					}
 				}
 				near = append(near, struct {
@@ -126,7 +126,7 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string, se
 			table.Output(near)
 		}
 
-		fmt.Printf( "\nCurrent Route:\n\n" )
+		fmt.Printf("\nCurrent Route:\n\n")
 
 		cost := int(math.Ceil(float64(reply.Meta.DirectRTT)))
 		if reply.Meta.OnNetworkNext {
@@ -145,7 +145,7 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string, se
 				if index != 0 {
 					fmt.Printf(" - %s", hop.Name)
 				} else {
-					fmt.Printf("%s", hop.Name)				
+					fmt.Printf("%s", hop.Name)
 				}
 			}
 			fmt.Printf("\n")
@@ -166,7 +166,7 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string, se
 		}
 
 		type AvailableRoute struct {
-			cost int
+			cost   int
 			relays string
 		}
 
@@ -201,9 +201,9 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string, se
 		}
 
 		for _, relay := range reply.Meta.NearbyRelays {
-			
+
 			sourceRelayId := relay.ID
-			
+
 			if sourceRelayId == destRelayId {
 				continue
 			}
@@ -212,9 +212,9 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string, se
 			if !ok {
 				log.Fatalln(fmt.Errorf("source relay %x not in matrix", sourceRelayId))
 			}
-			
+
 			nearRelayRTT := relay.ClientStats.RTT
-		
+
 			index := routing.TriMatrixIndex(sourceRelayIndex, destRelayIndex)
 
 			numRoutes := int(routeMatrix.Entries[index].NumRoutes)
@@ -248,12 +248,12 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string, se
 			}
 		}
 
-		fmt.Printf( "\nAvailable Routes:\n\n" )
+		fmt.Printf("\nAvailable Routes:\n\n")
 
 		sort.SliceStable(availableRoutes[:], func(i, j int) bool { return availableRoutes[i].cost < availableRoutes[j].cost })
 
 		for i := range availableRoutes {
-			fmt.Printf("    %*dms: %s\n", 5, availableRoutes[i].cost, availableRoutes[i].relays )
+			fmt.Printf("    %*dms: %s\n", 5, availableRoutes[i].cost, availableRoutes[i].relays)
 		}
 
 		// =======================================================
