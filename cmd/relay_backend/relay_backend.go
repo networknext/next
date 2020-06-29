@@ -192,9 +192,15 @@ func main() {
 			os.Exit(1)
 		}
 
+		fssyncinterval := os.Getenv("GOOGLE_FIRESTORE_SYNC_INTERVAL")
+		syncInterval, err := time.ParseDuration(fssyncinterval)
+		if err != nil {
+			level.Error(logger).Log("envvar", "GOOGLE_FIRESTORE_SYNC_INTERVAL", "value", fssyncinterval, "err", err)
+			os.Exit(1)
+		}
 		// Start a goroutine to sync from Firestore
 		go func() {
-			ticker := time.NewTicker(1 * time.Second)
+			ticker := time.NewTicker(syncInterval)
 			fs.SyncLoop(ctx, ticker.C)
 		}()
 
@@ -215,8 +221,14 @@ func main() {
 
 		metricsHandler = &sd
 
+		sdwriteinterval := os.Getenv("GOOGLE_STACKDRIVER_METRICS_WRITE_INTERVAL")
+		writeInterval, err := time.ParseDuration(sdwriteinterval)
+		if err != nil {
+			level.Error(logger).Log("envvar", "GOOGLE_STACKDRIVER_METRICS_WRITE_INTERVAL", "value", sdwriteinterval, "err", err)
+			os.Exit(1)
+		}
 		go func() {
-			metricsHandler.WriteLoop(ctx, logger, time.Minute, 200)
+			metricsHandler.WriteLoop(ctx, logger, writeInterval, 200)
 		}()
 
 		// Set up StackDriver profiler
@@ -323,6 +335,12 @@ func main() {
 	}
 
 	// Periodically generate cost matrix from stats db
+	cmsyncinterval := os.Getenv("COST_MATRIX_INTERVAL")
+	syncInterval, err := time.ParseDuration(cmsyncinterval)
+	if err != nil {
+		level.Error(logger).Log("envvar", "COST_MATRIX_INTERVAL", "value", cmsyncinterval, "err", err)
+		os.Exit(1)
+	}
 	go func() {
 
 		for {
@@ -352,7 +370,7 @@ func main() {
 				sentry.CaptureMessage("no routes within route matrix")
 			}
 
-			time.Sleep(1 * time.Second)
+			time.Sleep(syncInterval)
 		}
 	}()
 
