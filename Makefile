@@ -13,7 +13,8 @@ endif
 SDKNAME = libnext
 
 TIMESTAMP ?= $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
-RELEASE ?= $(shell git describe --tags --exact-match 2> /dev/null || git rev-parse --short HEAD)
+SHA ?= $(shell git rev-parse --short HEAD)
+RELEASE ?= $(shell git describe --tags --exact-match 2> /dev/null)
 
 CURRENT_DIR = $(shell pwd -P)
 DEPLOY_DIR = ./deploy
@@ -298,12 +299,12 @@ dev-portal: build-portal ## runs a local portal web server
 	@PORT=20000 BASIC_AUTH_USERNAME=local BASIC_AUTH_PASSWORD=local UI_DIR=./cmd/portal/public ./dist/portal
 
 .PHONY: dev-relay-backend
-dev-relay-backend: ## runs a local relay backend
-	@PORT=30000 $(GO) run cmd/relay_backend/relay_backend.go
+dev-relay-backend: build-relay-backend ## runs a local relay backend
+	@PORT=30000 ./dist/relay_backend
 
 .PHONY: dev-server-backend
-dev-server-backend: ## runs a local server backend
-	@PORT=40000 $(GO) run cmd/server_backend/server_backend.go
+dev-server-backend: build-server-backend ## runs a local server backend
+	@PORT=40000 ./dist/server_backend
 
 .PHONY: dev-reference-backend
 dev-reference-backend: ## runs a local reference backend
@@ -335,8 +336,11 @@ build-sdk: $(DIST_DIR)/$(SDKNAME).so ## builds the sdk
 
 .PHONY: build-portal
 build-portal: ## builds the portal binary
-	@printf "Building portal... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA) -X main.release=$(RELEASE)" -o ${DIST_DIR}/portal ./cmd/portal/portal.go
+	@printf "Building portal... \n"
+	@printf "TIMESTAMP: ${TIMESTAMP}\n"
+	@printf "SHA: ${SHA}\n"
+	@printf "RELEASE: ${RELEASE}\n"
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)" -o ${DIST_DIR}/portal ./cmd/portal/portal.go
 	@printf "done\n"
 
 .PHONY: build-portal-artifact
@@ -386,7 +390,7 @@ deploy-portal-prod: ## builds and deploys the portal to the prod instance group
 .PHONY: build-relay-backend
 build-relay-backend: ## builds the relay backend binary
 	@printf "Building relay backend... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.commitsha=$(SHA) -X main.release=$(RELEASE)" -o ${DIST_DIR}/relay_backend ./cmd/relay_backend/relay_backend.go
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)" -o ${DIST_DIR}/relay_backend ./cmd/relay_backend/relay_backend.go
 	@printf "done\n"
 
 .PHONY: build-relay-backend-artifact
@@ -434,7 +438,7 @@ deploy-relay-backend-prod: ## builds and deploys the relay backend to the prod i
 .PHONY: build-server-backend
 build-server-backend: ## builds the server backend binary
 	@printf "Building server backend... "
-	@$(GO) build -ldflags "-s -w -X main.release=$(RELEASE)" -o ${DIST_DIR}/server_backend ./cmd/server_backend/server_backend.go
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)" -o ${DIST_DIR}/server_backend ./cmd/server_backend/server_backend.go
 	@printf "done\n"
 
 .PHONY: build-server-backend-artifact

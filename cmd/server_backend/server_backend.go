@@ -34,7 +34,9 @@ import (
 )
 
 var (
-	release string
+	buildtime string
+	sha       string
+	tag       string
 )
 
 func main() {
@@ -378,6 +380,7 @@ func main() {
 
 		go func() {
 			http.HandleFunc("/healthz", transport.HealthzHandlerFunc())
+			http.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag))
 
 			level.Info(logger).Log("protocol", "http", "addr", conn.LocalAddr().String())
 			if err := http.ListenAndServe(conn.LocalAddr().String(), nil); err != nil {
