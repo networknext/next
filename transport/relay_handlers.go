@@ -835,19 +835,6 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 	}
 }
 
-func HealthzHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		_, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		defer r.Body.Close()
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(http.StatusText(http.StatusOK)))
-	}
-}
-
 func statsTable(stats map[string]map[string]routing.Stats) template.HTML {
 	html := strings.Builder{}
 	html.WriteString("<table>")
