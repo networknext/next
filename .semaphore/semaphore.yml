@@ -14,6 +14,7 @@ blocks:
       jobs:
         - name: Backend
           commands:
+            - checkout
             - make test-unit-backend
       env_vars:
         - name: FIRESTORE_EMULATOR_HOST
