@@ -1,4 +1,4 @@
-@startuml
+@startuml Relays
 node NetworkNext {
     node ServerBackend
 }

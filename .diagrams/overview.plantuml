@@ -1,14 +1,17 @@
-@startuml
+@startuml Overview
 node NetworkNext {
-    database BigTable
     database BigQuery
     database Firestore
     database RedisRelays
-    database RedisSessionCache
     database RedisPortal
-    queue PubSub
-    queue Dataflow
+    database RedisCache
 
+    node Portal [
+        Portal
+
+        - RPC API
+        - Web UI
+    ]
     node RelayBackend [
         RelayBackend
 
@@ -22,12 +25,6 @@ node NetworkNext {
         - Instance2
         - InstanceN
     ]
-    node Portal [
-        Portal
-
-        - RPC API
-        - Web UI
-    ]
 }
 
 cloud Internet {
@@ -40,27 +37,26 @@ cloud Internet {
 }
 
 RelayBackend <..> Relays : Ping Stats (1s)
-RelayBackend <..> RedisRelays
-RelayBackend <..> Firestore
+RelayBackend <..> RedisRelays : Read/Write active\nRelay data
+RelayBackend <.. Firestore : Sync Relays (1s)
+RelayBackend ..> Firestore : Set Relay State
 
 GameServer <..> GameClient : Direct Route
 GameClient <..> Relays : Next Route\nHop 0
 GameServer <..> Relays : Next Route\nHop (3..5)
 ServerBackend <..> GameServer : Session Updates (10s)
-ServerBackend <.. Firestore : Syncs Buyers\n&\nDatacenters (10s)
-ServerBackend <.. RelayBackend : Syncs Route Matrix (10s)
+ServerBackend <..> GameServer : Server Updates (10s)
+ServerBackend <.. Firestore : Syncs Buyers\n&\nDatacenters (1s)
+ServerBackend <.. RelayBackend : Syncs Route Matrix (1s)
 ServerBackend <.. RedisRelays : Relays Near\nClient IP
-ServerBackend <..> RedisSessionCache
-ServerBackend ..> RedisPortal
-ServerBackend ..> PubSub : Billing Slice Entries
+ServerBackend <..> RedisCache : Read/Write active\nServer and Session\ndata
+ServerBackend ..> RedisPortal : Write Map, Session,\nand User data
 
-PubSub ..> Dataflow
-Dataflow ..> BigTable
-BigTable ..> BigQuery
+ServerBackend ..> BigQuery : Billing Slice Entries
 
-Portal <.. Firestore : Syncs Buyers\n&\nDatacenters (10s)
-Portal <.. BigQuery : Session Details\n&\nUser Sessions
-Portal <.. RedisPortal : Session Map\n&\nTop Sessions
+Portal <.. Firestore : Syncs Buyers\n&\nDatacenters (1s)
+Portal <.. RedisPortal : Read Map, Session,\nand User data
+Portal <.. RedisRelays : Relay data for\nOps Service
 Portal <..> Auth0 : User Accounts
 @enduml
 
