@@ -1,0 +1,70 @@
+@startuml Entities
+package Entities {
+    node Customer {
+        object Buyer
+        object Seller
+    }
+
+    object Relay
+    object Datacenter
+    object RouteShader
+}
+
+
+Buyer *-- RouteShader
+
+Buyer : - ID
+Buyer : - Name
+Buyer : - Domain
+Buyer : - Active
+Buyer : - Live
+Buyer : - PublicKey
+Buyer : - RouteShader (RoutingRulesSettings)
+
+Seller : - ID
+Seller : - Name
+Seller : - IngressPriceCents
+Seller : - EgressPriceCents
+
+Relay : - ID
+Relay : - Name
+Relay : - Addr
+Relay : - PublicKey
+Relay : - Seller
+Relay : - Datacenter
+Relay : - NICSpeedMbps
+Relay : - IncludedBandwidthGB
+Relay : - State
+Relay : - ManagementAddr
+Relay : - SSHUser
+Relay : - SSHPort
+Relay : - MaxSessions
+Relay : - UpdateKey
+Relay : - FirestoreID
+
+Datacenter : - ID
+Datacenter : - Name
+Datacenter : - AliasName
+Datacenter : - Enabled
+Datacenter : - Location
+
+RouteShader : - EnvelopeKbpsUp
+RouteShader : - EnvelopeKbpsDown
+RouteShader : - Mode
+RouteShader : - MaxCentsPerGB
+RouteShader : - AcceptableLatency
+RouteShader : - RTTEpsilon (rttRouteSwtich)
+RouteShader : - RTTThreshold
+RouteShader : - RTTHysteresis
+RouteShader : - RTTVeto
+RouteShader : - EnableYouOnlyLiveOnce
+RouteShader : - EnablePacketLossSafety
+RouteShader : - EnableMultipathForPacketLoss
+RouteShader : - EnableMultipathForJitter
+RouteShader : - EnableMultipathForRTT
+RouteShader : - EnableABTest
+RouteShader : - EnableTryBeforeYouBuy
+RouteShader : - TryBeforeYouBuyMaxSlices
+RouteShader : - SelectionPercentage
+@enduml
+
