@@ -156,21 +156,22 @@ func main() {
 			os.Exit(1)
 		}
 
-		// Start a goroutine to sync from Maxmind.com
-		go func() {
-			ticker := time.NewTicker(24 * time.Hour)
-			mmdb.SyncLoop(ctx, ticker.C)
-		}()
+		if mmsyncinterval, ok := os.LookupEnv("MAXMIND_SYNC_DB_INTERVAL"); ok {
+			syncInterval, err := time.ParseDuration(mmsyncinterval)
+			if err != nil {
+				level.Error(logger).Log("envvar", "MAXMIND_SYNC_DB_INTERVAL", "value", mmsyncinterval, "err", err)
+				os.Exit(1)
+			}
+
+			// Start a goroutine to sync from Maxmind.com
+			go func() {
+				ticker := time.NewTicker(syncInterval)
+				mmdb.SyncLoop(ctx, ticker.C)
+			}()
+		}
 
 		ipLocator = &mmdb
 	}
-	// Commented out to ensure it really does not load the IPStack version
-	// if key, ok := os.LookupEnv("IPSTACK_ACCESS_KEY"); ok {
-	// 	ipLocator = &routing.IPStack{
-	// 		Client:    http.DefaultClient,
-	// 		AccessKey: key,
-	// 	}
-	// }
 
 	geoClient := routing.GeoClient{
 		RedisClient: redisClientRelays,
@@ -217,9 +218,15 @@ func main() {
 			os.Exit(1)
 		}
 
+		fssyncinterval := os.Getenv("GOOGLE_FIRESTORE_SYNC_INTERVAL")
+		syncInterval, err := time.ParseDuration(fssyncinterval)
+		if err != nil {
+			level.Error(logger).Log("envvar", "GOOGLE_FIRESTORE_SYNC_INTERVAL", "value", fssyncinterval, "err", err)
+			os.Exit(1)
+		}
 		// Start a goroutine to sync from Firestore
 		go func() {
-			ticker := time.NewTicker(1 * time.Second)
+			ticker := time.NewTicker(syncInterval)
 			fs.SyncLoop(ctx, ticker.C)
 		}()
 
@@ -271,8 +278,14 @@ func main() {
 
 		metricsHandler = &sd
 
+		sdwriteinterval := os.Getenv("GOOGLE_STACKDRIVER_METRICS_WRITE_INTERVAL")
+		writeInterval, err := time.ParseDuration(sdwriteinterval)
+		if err != nil {
+			level.Error(logger).Log("envvar", "GOOGLE_STACKDRIVER_METRICS_WRITE_INTERVAL", "value", sdwriteinterval, "err", err)
+			os.Exit(1)
+		}
 		go func() {
-			metricsHandler.WriteLoop(ctx, logger, time.Minute, 200)
+			metricsHandler.WriteLoop(ctx, logger, writeInterval, 200)
 		}()
 
 		// Set up StackDriver profiler
@@ -308,6 +321,13 @@ func main() {
 	var routeMatrix routing.RouteMatrix
 	{
 		if uri, ok := os.LookupEnv("ROUTE_MATRIX_URI"); ok {
+			rmsyncinterval := os.Getenv("ROUTE_MATRIX_SYNC_INTERVAL")
+			syncInterval, err := time.ParseDuration(rmsyncinterval)
+			if err != nil {
+				level.Error(logger).Log("envvar", "ROUTE_MATRIX_SYNC_INTERVAL", "value", rmsyncinterval, "err", err)
+				os.Exit(1)
+			}
+
 			go func() {
 				for {
 					var matrixReader io.Reader
@@ -331,7 +351,7 @@ func main() {
 
 					level.Info(logger).Log("matrix", "route", "entries", len(routeMatrix.Entries))
 
-					time.Sleep(1 * time.Second)
+					time.Sleep(syncInterval)
 				}
 			}()
 		}
