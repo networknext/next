@@ -20,7 +20,7 @@ const (
 	RouterPublicKeyProd  = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
 
 	RelayArtifactURLDev  = "https://storage.googleapis.com/artifacts.network-next-v3-dev.appspot.com/relay.dev.tar.gz"
-	RelayArtifactURLProd = "https://storage.googleapis.com/us.artifacts.network-next-v3-prod.appspot.com/relay.prod.tar.gz"
+	RelayArtifactURLProd = "https://storage.googleapis.com/prod_artifacts/relay.prod.tar.gz"
 
 	RelayBackendHostnameLocal = "localhost"
 	RelayBackendHostnameDev   = "relay_backend.dev.networknext.com"

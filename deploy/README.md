@@ -64,10 +64,10 @@ GCP Project: `network-next-v3-prod`
 
 ### GCP Artifacts
 
-- portal: `gs://us.artifacts.network-next-v3-prod.appspot.com/portal.dev.tar.gz`
-- relay backend: `gs://us.artifacts.network-next-v3-prod.appspot.com/relay_backend.dev.tar.gz`
-- server backend: `gs://us.artifacts.network-next-v3-prod.appspot.com/server_backend.dev.tar.gz`
-- relay: `gs://us.artifacts.network-next-v3-prod.appspot.com/relay.prod.tar.gz`
+- portal: `gs://prod_artifacts/portal.dev.tar.gz`
+- relay backend: `gs://prod_artifacts/relay_backend.dev.tar.gz`
+- server backend: `gs://prod_artifacts/server_backend.dev.tar.gz`
+- relay: `gs://prod_artifacts/relay.prod.tar.gz`
 
 ### Domains
 
