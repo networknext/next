@@ -78,7 +78,7 @@ node Firestore {
 }
 
 node Storage {
-    component "us.artifacts.network-next-v3-prod.appspot.com" {
+    component "prod_artifacts" {
         artifact "portal.prod.tar.gz"
         artifact "relay_backend.prod.tar.gz"
         artifact "server_backend.prod.tar.gz"

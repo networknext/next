@@ -19,7 +19,7 @@ CURRENT_DIR = $(shell pwd -P)
 DEPLOY_DIR = ./deploy
 DIST_DIR = ./dist
 ARTIFACT_BUCKET = gs://artifacts.network-next-v3-dev.appspot.com
-ARTIFACT_BUCKET_PROD = gs://us.artifacts.network-next-v3-prod.appspot.com
+ARTIFACT_BUCKET_PROD = gs://prod_artifacts
 SYSTEMD_SERVICE_FILE = app.service
 
 COST_FILE = $(DIST_DIR)/cost.bin
