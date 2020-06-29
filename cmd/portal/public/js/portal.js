@@ -613,48 +613,53 @@ WorkspaceHandler = {
 
 				setTimeout(() => {
 					generateCharts(response.slices);
+					if(!this.sessionToolLoop) {
+						const NNCOLOR = [0,109,44];
+						const DIRECTCOLOR = [49,130,189];
 
-					const NNCOLOR = [0,109,44];
-					const DIRECTCOLOR = [49,130,189];
+						const cellSize = 10, aggregation = 'MEAN';
+						let gpuAggregation = navigator.appVersion.indexOf("Win") == -1;
 
-					const cellSize = 10, aggregation = 'MEAN';
-					let gpuAggregation = navigator.appVersion.indexOf("Win") == -1;
-
-					let sessionLocationLayer = new deck.ScreenGridLayer({
-						id: 'session-location-layer',
-						data: [meta],
-						opacity: 0.8,
-						getPosition: d => [d.location.longitude, d.location.latitude],
-						getWeight: d => 1,
-						cellSizePixels: cellSize,
-						colorRange: meta.on_network_next ? [NNCOLOR] : [DIRECTCOLOR],
-						gpuAggregation,
-						aggregation
-					});
-
-					if (this.sessionToolMapInstance) {
-						this.sessionToolMapInstance.setProps({layers: []})
-						this.sessionToolMapInstance.setProps({layers: [sessionLocationLayer]})
-					} else {
-						this.sessionToolMapInstance = new deck.DeckGL({
-							mapboxApiAccessToken: mapboxgl.accessToken,
-							mapStyle: 'mapbox://styles/mapbox/dark-v10',
-							initialViewState: {
-								zoom: 4,
-								longitude: meta.location.longitude, // 'Center' of the world map
-								latitude: meta.location.latitude,
-								minZoom: 2,
-								bearing: 0,
-								pitch: 0
-							},
-							container: 'session-tool-map',
-							controller: {
-								dragPan: false,
-								dragRotate: false
-							},
-							layers: [sessionLocationLayer],
+						let sessionLocationLayer = new deck.ScreenGridLayer({
+							id: 'session-location-layer',
+							data: [meta],
+							opacity: 0.8,
+							getPosition: d => [d.location.longitude, d.location.latitude],
+							getWeight: d => 1,
+							cellSizePixels: cellSize,
+							colorRange: meta.on_network_next ? [NNCOLOR] : [DIRECTCOLOR],
+							gpuAggregation,
+							aggregation
 						});
+
+						if (this.sessionToolMapInstance) {
+							this.sessionToolMapInstance.setProps({layers: []})
+							this.sessionToolMapInstance.setProps({layers: [sessionLocationLayer]})
+						} else {
+							this.sessionToolMapInstance = new deck.DeckGL({
+								mapboxApiAccessToken: mapboxgl.accessToken,
+								mapStyle: 'mapbox://styles/mapbox/dark-v10',
+								initialViewState: {
+									zoom: 4,
+									longitude: meta.location.longitude, // 'Center' of the world map
+									latitude: meta.location.latitude,
+									minZoom: 2,
+									bearing: 0,
+									pitch: 0
+								},
+								container: 'session-tool-map',
+								controller: {
+									dragPan: false,
+									dragRotate: false
+								},
+								layers: [sessionLocationLayer],
+							});
+						}
 					}
+					this.sessionToolLoop ? clearInterval(this.sessionToolLoop) : null;
+					this.sessionToolLoop = setInterval(() => {
+						this.fetchSessionInfo();
+					}, 10000);
 				});
 			})
 			.catch((e) => {
@@ -673,10 +678,6 @@ WorkspaceHandler = {
 				console.log("Something went wrong fetching session details: ");
 				Sentry.captureException(e);
 			});
-			this.sessionToolLoop ? clearInterval(this.sessionToolLoop) : null;
-			this.sessionToolLoop = setInterval(() => {
-				this.fetchSessionInfo();
-			}, 10000);
 	},
 	fetchUserSessions() {
 		let hash = rootComponent.$data.pages.userTool.hash;
