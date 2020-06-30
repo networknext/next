@@ -471,7 +471,7 @@ func TimeoutSessions() {
 			}
 		}
 		sessionsMutex.Unlock()
-		fmt.Printf("%d sessions\n")
+		fmt.Printf("%d sessions\n", numSessions)
 		time.Sleep(time.Second * 10)
 	}
 }

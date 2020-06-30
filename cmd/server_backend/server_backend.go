@@ -430,6 +430,8 @@ func main() {
 			*/
 		}
 
+		go transport.TimeoutSessions()
+
 		go func() {
 			// level.Info(logger).Log("protocol", "udp", "addr", conn.LocalAddr().String())
 			if err := mux.Start(ctx); err != nil {
