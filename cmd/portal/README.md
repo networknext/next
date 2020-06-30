@@ -36,3 +36,18 @@ The default setting is `warn` when running `make JWT_AUDIENCE="oQJH3YPHdvZJnxCPo
 #### Optional
 
 - `BACKEND_LOG_LEVEL`: one of `none`, `error`, `warn`, `info`, `debug`
+
+#### Structure
+
+`portal.go`:
+* Sets up all env variables needed by the portal
+* Sets up all services needed by the portal through a JSONRPC server handler
+* Serves the static portal files (index.html and portal.js)
+
+`public/index.html`:
+* Template for the portal UI
+
+`public/js/portal.js`:
+* Consists of a single Vue component, and handlers that organize the logic used to run the Portal UI.
+* The Vue component is used to handle showing/hiding workspaces and functionality.
+* Handlers are used some what as a state management system and a way of organizing the different parts of the Portal
