@@ -1,0 +1,105 @@
+@startuml Entities
+
+package Classes{
+    class AuthHandler {
+        +init(): void
+        +logout(): void
+        +login(): void
+        +signUp(): void
+        +resendVerificationEmail(): void
+    }
+
+    class JSONRPCClient {
+        +call(method: string, params: any): void
+    }
+
+    class MapHandler {
+        defaultUSA: InitialViewState
+        defaultWorld: InitialViewState
+        mapCountLoop: number
+        mapInstance: DeckGL
+        sessionToolMapInstance: DeckGL
+        +initMap(): void
+        +updateFilter(filter: any): void
+        +updateMap(mapType: string): void
+        +refreshMapCount(): void
+        +refreshMapSessions(): void
+    }
+
+    class **RootComponent {
+        data: any
+        el: string
+        methods: any
+        -addUsers(): void
+        -saveAutoSignIn(): void
+        -updatePubKey(): void
+    }
+
+    class UserHandler {
+        userInfo UserInfo
+        +fetchCurrentUserInfo(): void
+        +isAdmin(): boolean
+        +isAnonymous(): boolean
+        +isAnonymousPlus(): boolean
+        +isOwner(): boolean
+    }
+
+    class WorkspaceHandler {
+        mapLoop: number
+        sessionLoop: number
+        sessionToolLoop: number
+        welcomeTimeout: number
+        +changeSettingsPage(page: string): void
+        +changePage(page: string, options: string): void
+        +editUser(accountInfo: any, index: number): void
+        +saveUser(accountInfo: any, index: number): void
+        +deleteUser(index: number): void
+        +cancelEditUser(accountInfo: any, index: number): void
+        +loadSettingsPage(): void
+        +loadSessionsPage(): void
+        +fetchSessionInfo(): void
+        +fetchUserSessions(): void
+        +updateSessionFilter(filter: any): void
+        +refreshSessionTable(): void
+        +updateAccountsTableFilter(filter: any): void
+        +refreshAccountsTable(): void
+    }
+
+    legend
+        |= Symbol |= Description |
+        |      ** | Vue Component |
+    endlegend
+}
+
+package Types {
+    object InitialViewState {
+        zoom: number
+        longitude: number
+        latitude: number
+        minZoom: number
+        bearing: number
+        pitch: number
+    }
+
+    object UserInfo {
+        company: string
+        domain: string
+        email: string
+        id: string
+        name: string
+        nickname: string
+        roles: []Role
+        token: string
+        userId: string
+        verified: boolean
+    }
+
+    object Role {
+        id: string
+        type: string
+        description: string
+    }
+}
+
+@enduml
+
