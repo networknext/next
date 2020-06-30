@@ -492,7 +492,7 @@ func SessionUpdateHandlerFunc(serverPrivateKey []byte) UDPHandlerFunc {
 		sessions[header.SessionID] = time.Now().Unix()
 		sessionsMutex.Unlock()
 		if _, err := writeSessionResponse(w, response, serverPrivateKey); err != nil {
-			fmt.Printf("could not write session update response packet!\n")
+			fmt.Printf("could not write session update response packet: %v\n", err)
 			return
 		}
 	}
