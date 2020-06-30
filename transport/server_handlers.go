@@ -3,16 +3,18 @@ package transport
 import (
 	"bytes"
 	"context"
+
 	// "encoding/binary"
 	"errors"
 	"fmt"
+
 	// fnv "hash/fnv"
 	"io"
 	// "math"
 	// "math/rand"
 	"net"
-	"sync"
 	"runtime"
+	"sync"
 	"time"
 
 	// "github.com/go-kit/kit/log"
@@ -20,11 +22,12 @@ import (
 	jsoniter "github.com/json-iterator/go"
 
 	// "github.com/go-redis/redis/v7"
-	// "github.com/networknext/backend/billing"
+	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/crypto"
+	"github.com/networknext/backend/storage"
+
 	// "github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
-	// "github.com/networknext/backend/storage"
 )
 
 type UDPPacket struct {
@@ -256,7 +259,7 @@ func (e ServerCacheEntry) MarshalBinary() ([]byte, error) {
 // =============================================================================
 
 type ServerData struct {
-	timestamp int64
+	timestamp      int64
 	routePublicKey []byte
 }
 
@@ -268,7 +271,7 @@ func TimeoutServers() {
 		timeout := time.Now().Unix() - 30
 		serversMutex.Lock()
 		numServers := 0
-		for k,v := range servers {
+		for k, v := range servers {
 			if v.timestamp < timeout {
 				delete(servers, k)
 			} else {
@@ -496,7 +499,7 @@ func TimeoutSessions() {
 		timeout := time.Now().Unix() - 30
 		sessionsMutex.Lock()
 		numSessions := 0
-		for k,v := range sessions {
+		for k, v := range sessions {
 			if v < timeout {
 				delete(sessions, k)
 			} else {
@@ -509,7 +512,7 @@ func TimeoutSessions() {
 	}
 }
 
-func SessionUpdateHandlerFunc(serverPrivateKey []byte) UDPHandlerFunc {
+func SessionUpdateHandlerFunc(biller billing.Biller, serverPrivateKey []byte) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
 		var header SessionUpdatePacketHeader
 		if err := header.UnmarshalBinary(incoming.Data); err != nil {
@@ -536,6 +539,17 @@ func SessionUpdateHandlerFunc(serverPrivateKey []byte) UDPHandlerFunc {
 		if _, err := writeSessionResponse(w, response, serverPrivateKey); err != nil {
 			fmt.Printf("could not write session update response packet: %v\n", err)
 			return
+		}
+
+		packet := SessionUpdatePacket{
+			SessionID: header.SessionID,
+		}
+
+		storer := storage.InMemory{}
+
+		if err := submitBillingEntry(biller, ServerCacheEntry{}, SessionCacheEntry{}, packet, response, routing.Buyer{}, routing.Route{}, routing.LocationNullIsland,
+			&storer, nil, routing.Decision{}, billing.BillingSliceSeconds, time.Now(), time.Now(), false); err != nil {
+			fmt.Printf("could not write billing entry for session %016x: %v", header.SessionID, err)
 		}
 	}
 }
@@ -1492,8 +1506,6 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 }
 */
 
-// todo: disabled
-/*
 func submitBillingEntry(biller billing.Biller, serverCacheEntry ServerCacheEntry, sessionCacheEntry SessionCacheEntry, request SessionUpdatePacket, response SessionResponsePacket,
 	buyer routing.Buyer, chosenRoute routing.Route, location routing.Location, storer storage.Storer, clientRelays []routing.Relay, routeDecision routing.Decision,
 	sliceDuration uint64, timestampStart time.Time, timestampNow time.Time, newSession bool) error {
@@ -1504,6 +1516,8 @@ func submitBillingEntry(biller billing.Biller, serverCacheEntry ServerCacheEntry
 	return biller.Bill(context.Background(), request.SessionID, billingEntry)
 }
 
+// todo: disabled
+/*
 func updateCacheEntries(redisClient redis.Cmdable, sessionCacheKey string, vetoCacheKey string, sessionCacheEntry SessionCacheEntry, vetoCacheEntry VetoCacheEntry, packet SessionUpdatePacket, chosenRouteHash uint64,
 	routeDecision routing.Decision, timestampStart time.Time, timestampExpire time.Time, responseData []byte, directRTT float64, nextRTT float64, location routing.Location) error {
 	updatedSessionCacheEntry := SessionCacheEntry{
@@ -1640,4 +1654,3 @@ func writeSessionErrorResponse(w io.Writer, response SessionResponsePacket, priv
 	return responseData, nil
 }
 */
-
