@@ -382,11 +382,6 @@ deploy-portal: ## builds and deploys the portal to the dev VM
 	@printf "Deploying portal... \n\n"
 	gcloud compute --project "network-next-v3-dev" ssh portal-dev-1 -- 'cd /app && sudo ./vm-update-app.sh -a $(ARTIFACT_BUCKET)/portal.dev.tar.gz'
 
-.PHONY: deploy-portal-prod
-deploy-portal-prod: ## builds and deploys the portal to the prod instance group
-	@printf "Deploying portal... \n\n"
-	@./deploy/prod.sh portal-mig $(ARTIFACT_BUCKET_PROD)/portal.prod.tar.gz
-
 .PHONY: build-relay-backend
 build-relay-backend: ## builds the relay backend binary
 	@printf "Building relay backend... "
@@ -430,11 +425,6 @@ deploy-relay-backend: ## builds and deploys the relay backend to the dev VM
 	@printf "Deploying relay backend... \n\n"
 	gcloud compute --project "network-next-v3-dev" ssh relay-backend-dev-1 -- 'cd /app && sudo ./vm-update-app.sh -a $(ARTIFACT_BUCKET)/relay_backend.dev.tar.gz'
 
-.PHONY: deploy-relay-backend-prod
-deploy-relay-backend-prod: ## builds and deploys the relay backend to the prod instance group
-	@printf "Deploying relay backend... \n\n"
-	@./deploy/prod.sh relay-backend-mig $(ARTIFACT_BUCKET_PROD)/relay_backend.prod.tar.gz
-
 .PHONY: build-server-backend
 build-server-backend: ## builds the server backend binary
 	@printf "Building server backend... "
@@ -477,11 +467,6 @@ publish-server-backend-prod-artifact: ## publishes the server backend artifact t
 deploy-server-backend: ## builds and deploys the server backend to the dev VM
 	@printf "Deploying server backend... \n\n"
 	gcloud compute --project "network-next-v3-dev" ssh server-backend-dev-1 -- 'cd /app && sudo ./vm-update-app.sh -a $(ARTIFACT_BUCKET)/server_backend.dev.tar.gz'
-
-.PHONY: deploy-server-backend-prod
-deploy-server-backend-prod: ## builds and deploys the server backend to the prod instance group
-	@printf "Deploying server backend... \n\n"
-	@./deploy/prod.sh server-backend-mig $(ARTIFACT_BUCKET_PROD)/server_backend.prod.tar.gz
 
 .PHONY: build-backend-artifacts
 build-backend-artifacts: build-portal-artifact build-relay-backend-artifact build-server-backend-artifact ## builds the backend artifacts
