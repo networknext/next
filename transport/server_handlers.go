@@ -11,6 +11,7 @@ import (
 	// "math"
 	// "math/rand"
 	"net"
+	"sync"
 	"runtime"
 	"time"
 
@@ -252,10 +253,6 @@ func (e ServerCacheEntry) MarshalBinary() ([]byte, error) {
 	return jsoniter.Marshal(e)
 }
 
-type ServerData struct {
-	// todo
-}
-
 // =============================================================================
 
 func ServerUpdateHandlerFunc() UDPHandlerFunc {
@@ -458,6 +455,27 @@ type RouteProvider interface {
 
 // =========================================================================================================
 
+var sessions = map[uint64]int64{}
+var sessionsMutex sync.Mutex
+
+func TimeoutSessions() {
+	for {
+		timeout := time.Now().Unix() - 30
+		sessionsMutex.Lock()
+		numSessions := 0
+		for k,v := range sessions {
+			if v < timeout {
+				delete(sessions, k)
+			} else {
+				numSessions++
+			}
+		}
+		sessionsMutex.Unlock()
+		fmt.Printf("%d sessions\n")
+		time.Sleep(time.Second * 10)
+	}
+}
+
 func SessionUpdateHandlerFunc(serverPrivateKey []byte) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
 		var header SessionUpdatePacketHeader
@@ -470,6 +488,9 @@ func SessionUpdateHandlerFunc(serverPrivateKey []byte) UDPHandlerFunc {
 			SessionID: header.SessionID,
 			RouteType: int32(routing.RouteTypeDirect),
 		}
+		sessionsMutex.Lock()
+		sessions[header.SessionID] = time.Now().Unix()
+		sessionsMutex.Unlock()
 		if _, err := writeSessionResponse(w, response, serverPrivateKey); err != nil {
 			fmt.Printf("could not write session update response packet!\n")
 			return
