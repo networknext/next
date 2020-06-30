@@ -1,0 +1,32 @@
+@startuml Relays
+(*) --> "AuthHandler Init"
+"AuthHandler Init" -> "Auth0"
+"AuthHandler Init" --> "StartApp"
+"Auth0" -> "AuthHandler Init"
+"StartApp" -left-> "UserHandler FetchCurrentUserInfo"
+"StartApp" -right-> "CreateVueComponents"
+"UserHandler FetchCurrentUserInfo" -up-> "Auth0 Token"
+"Auth0 Token" -down-> "UserHandler FetchCurrentUserInfo"
+"UserHandler FetchCurrentUserInfo" -left-> "JSONRPC AuthService UserAccount"
+"JSONRPC AuthService UserAccount" -right-> "UserHandler FetchCurrentUserInfo"
+if "SignUpRedirect" then
+    -right->[yes] "JSONRPC Authservice UpgradeAccount"
+else
+    -down->[no] if "Logged In" then
+        -left->[no] "UserHandler IsAnonymous true"
+    else
+        -right->[yes] if "Verified" then
+            -down->[no] "UserHandler IsAnonymousPlus true"
+        else
+            -right->[yes] "Check Roles"
+        endif
+    endif
+endif
+"JSONRPC Authservice UpgradeAccount" -down-> "Check Roles"
+"UserHandler IsAnonymousPlus true" -down-> "Show Portal"
+"UserHandler IsAnonymous true" -> "Show Portal"
+"Check Roles" -> "UserHandler IsAdmin true/false"
+"Check Roles" -> "UserHandler IsOwner true/false"
+"UserHandler IsAdmin true/false" -> "Show Portal"
+"UserHandler IsOwner true/false" -> "Show Portal"
+@enduml
