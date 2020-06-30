@@ -61,9 +61,11 @@ func (m *UDPServerMux) Start(ctx context.Context) error {
 
 func (m *UDPServerMux) handler(ctx context.Context, id int) {
 
+	buffer := make([]byte, m.MaxPacketSize)
+
 	for {
 
-		data := make([]byte, m.MaxPacketSize)
+		data := buffer[:]
 
 		numbytes, addr, _ := m.Conn.ReadFromUDP(data)
 		if numbytes <= 0 {
@@ -77,6 +79,7 @@ func (m *UDPServerMux) handler(ctx context.Context, id int) {
 		case true:
 			data = data[crypto.PacketHashSize:numbytes]
 		default:
+			// todo: once everybody has upgraded to SDK 3.4.5 or greater, this is an error. ignore packet.
 			data = data[:numbytes]
 		}
 

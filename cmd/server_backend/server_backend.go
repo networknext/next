@@ -359,6 +359,22 @@ func main() {
 			os.Exit(1)
 		}
 
+		readBufferString, ok := os.LookupEnv("READ_BUFFER")
+		if ok {
+			readBuffer, err := strconv.ParseInt(readBufferString, 10, 64)
+			if err == nil {
+				conn.SetReadBuffer(int(readBuffer));
+			}
+		}
+
+		writeBufferString, ok := os.LookupEnv("WRITE_BUFFER")
+		if ok {
+			writeBuffer, err := strconv.ParseInt(writeBufferString, 10, 64)
+			if err == nil {
+				conn.SetWriteBuffer(int(writeBuffer));
+			}
+		}
+
 		mux := transport.UDPServerMux{
 			Conn:          conn,
 			MaxPacketSize: transport.DefaultMaxPacketSize,
