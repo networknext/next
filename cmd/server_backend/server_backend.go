@@ -45,6 +45,9 @@ var (
 )
 
 func main() {
+
+	fmt.Printf("welcome to the nerd zone\n")
+
 	ctx := context.Background()
 
 	/*

@@ -508,6 +508,7 @@ func TimeoutSessions() {
 		}
 		sessionsMutex.Unlock()
 		fmt.Printf("%d sessions\n", numSessions)
+		fmt.Printf("%d goroutines\n", runtime.NumGoroutine)
 		time.Sleep(time.Second * 10)
 	}
 }
