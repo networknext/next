@@ -357,7 +357,7 @@ build-portal: ## builds the portal binary
 
 .PHONY: build-portal-artifact
 build-portal-artifact: build-portal ## builds the portal with the right env vars and creates a .tar.gz
-	@printf "Building portal artifact... "
+	@printf "Building portal dev artifact... "
 	@mkdir -p $(DIST_DIR)/artifact/portal
 	@cp $(DIST_DIR)/portal $(DIST_DIR)/artifact/portal/app
 	@cp -r ./cmd/portal/public $(DIST_DIR)/artifact/portal
@@ -366,9 +366,9 @@ build-portal-artifact: build-portal ## builds the portal with the right env vars
 	@cd $(DIST_DIR)/artifact/portal && tar -zcf ../../portal.dev.tar.gz public app app.env $(SYSTEMD_SERVICE_FILE) && cd ../..
 	@printf "$(DIST_DIR)/portal.dev.tar.gz\n"
 
-.PHONY: build-portal-artifact
+.PHONY: build-portal-prod-artifact
 build-portal-prod-artifact: build-portal ## builds the portal with the right env vars and creates a .tar.gz
-	@printf "Building portal artifact... "
+	@printf "Building portal prod artifact... "
 	@mkdir -p $(DIST_DIR)/artifact/portal
 	@cp $(DIST_DIR)/portal $(DIST_DIR)/artifact/portal/app
 	@cp -r ./cmd/portal/public $(DIST_DIR)/artifact/portal
@@ -379,21 +379,21 @@ build-portal-prod-artifact: build-portal ## builds the portal with the right env
 
 .PHONY: publish-portal-artifact
 publish-portal-artifact: ## publishes the portal artifact to GCP Storage with gsutil
-	@printf "Publishing portal artifact... \n\n"
+	@printf "Publishing portal dev artifact... \n\n"
 	@gsutil cp $(DIST_DIR)/portal.dev.tar.gz $(ARTIFACT_BUCKET)/portal.dev.tar.gz
 	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" $(ARTIFACT_BUCKET)/portal.dev.tar.gz
 	@printf "done\n"
 
 .PHONY: publish-portal-prod-artifact
 publish-portal-prod-artifact: ## publishes the portal artifact to GCP Storage with gsutil
-	@printf "Publishing portal artifact... \n\n"
+	@printf "Publishing portal prod artifact... \n\n"
 	@gsutil cp $(DIST_DIR)/portal.prod.tar.gz $(ARTIFACT_BUCKET_PROD)/portal.prod.tar.gz
-	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" $(ARTIFACT_BUCKET_PROD)/portal.dev.tar.gz
+	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" $(ARTIFACT_BUCKET_PROD)/portal.prod.tar.gz
 	@printf "done\n"
 
 .PHONY: deploy-portal
-deploy-portal: ## builds and deploys the portal to the dev VM
-	@printf "Deploying portal... \n\n"
+deploy-portal: ## builds and deploys the portal to dev
+	@printf "Deploying portal to dev... \n\n"
 	gcloud compute --project "network-next-v3-dev" ssh portal-dev-1 -- 'cd /app && sudo ./vm-update-app.sh -a $(ARTIFACT_BUCKET)/portal.dev.tar.gz'
 
 .PHONY: build-relay-backend
@@ -403,8 +403,8 @@ build-relay-backend: ## builds the relay backend binary
 	@printf "done\n"
 
 .PHONY: build-relay-backend-artifact
-build-relay-backend-artifact: build-relay-backend ## builds the relay backend with the right env vars and creates a .tar.gz
-	@printf "Building relay backend artifact... "
+build-relay-backend-artifact: build-relay-backend ## builds the relay backend and creates the dev artifact
+	@printf "Building relay backend dev artifact... "
 	@mkdir -p $(DIST_DIR)/artifact/relay_backend
 	@cp $(DIST_DIR)/relay_backend $(DIST_DIR)/artifact/relay_backend/app
 	@cp ./cmd/relay_backend/dev.env $(DIST_DIR)/artifact/relay_backend/app.env
@@ -412,9 +412,9 @@ build-relay-backend-artifact: build-relay-backend ## builds the relay backend wi
 	@cd $(DIST_DIR)/artifact/relay_backend && tar -zcf ../../relay_backend.dev.tar.gz app app.env $(SYSTEMD_SERVICE_FILE) && cd ../..
 	@printf "$(DIST_DIR)/relay_backend.dev.tar.gz\n"
 
-.PHONY: build-relay-backend-artifact
-build-relay-backend-prod-artifact: build-relay-backend ## builds the relay backend with the right env vars and creates a .tar.gz
-	@printf "Building relay backend artifact... "
+.PHONY: build-relay-backend-prod-artifact
+build-relay-backend-prod-artifact: build-relay-backend ## builds the relay backend and creates the prod artifact
+	@printf "Building relay backend prod artifact... "
 	@mkdir -p $(DIST_DIR)/artifact/relay_backend
 	@cp $(DIST_DIR)/relay_backend $(DIST_DIR)/artifact/relay_backend/app
 	@cp ./cmd/relay_backend/prod.env $(DIST_DIR)/artifact/relay_backend/app.env
@@ -423,22 +423,22 @@ build-relay-backend-prod-artifact: build-relay-backend ## builds the relay backe
 	@printf "$(DIST_DIR)/relay_backend.prod.tar.gz\n"
 
 .PHONY: publish-relay-backend-artifact
-publish-relay-backend-artifact: ## publishes the relay backend artifact to GCP Storage with gsutil
-	@printf "Publishing relay backend artifact... \n\n"
+publish-relay-backend-artifact: ## publishes the relay backend dev artifact
+	@printf "Publishing relay backend dev artifact... \n\n"
 	@gsutil cp $(DIST_DIR)/relay_backend.dev.tar.gz $(ARTIFACT_BUCKET)/relay_backend.dev.tar.gz
 	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" $(ARTIFACT_BUCKET)/relay_backend.dev.tar.gz
 	@printf "done\n"
 
-.PHONY: publish-relay-backend-artifact
-publish-relay-backend-prod-artifact: ## publishes the relay backend artifact to GCP Storage with gsutil
-	@printf "Publishing relay backend artifact... \n\n"
+.PHONY: publish-relay-backend-prod-artifact
+publish-relay-backend-prod-artifact: ## publishes the relay backend prod artifact
+	@printf "Publishing relay backend prod artifact... \n\n"
 	@gsutil cp $(DIST_DIR)/relay_backend.prod.tar.gz $(ARTIFACT_BUCKET_PROD)/relay_backend.prod.tar.gz
-	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" $(ARTIFACT_BUCKET_PROD)/relay_backend.dev.tar.gz
+	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" $(ARTIFACT_BUCKET_PROD)/relay_backend.prod.tar.gz
 	@printf "done\n"
 
 .PHONY: deploy-relay-backend
-deploy-relay-backend: ## builds and deploys the relay backend to the dev VM
-	@printf "Deploying relay backend... \n\n"
+deploy-relay-backend: ## builds and deploys the relay backend to dev
+	@printf "Deploying relay backend to dev... \n\n"
 	gcloud compute --project "network-next-v3-dev" ssh relay-backend-dev-1 -- 'cd /app && sudo ./vm-update-app.sh -a $(ARTIFACT_BUCKET)/relay_backend.dev.tar.gz'
 
 .PHONY: build-server-backend
@@ -448,8 +448,8 @@ build-server-backend: ## builds the server backend binary
 	@printf "done\n"
 
 .PHONY: build-server-backend-artifact
-build-server-backend-artifact: build-server-backend ## builds the server backend with the right env vars and creates a .tar.gz
-	@printf "Building server backend artifact..."
+build-server-backend-artifact: build-server-backend ## builds the server backend and creates the dev artifact
+	@printf "Building server backend dev artifact..."
 	@mkdir -p $(DIST_DIR)/artifact/server_backend
 	@cp $(DIST_DIR)/server_backend $(DIST_DIR)/artifact/server_backend/app
 	@cp ./cmd/server_backend/dev.env $(DIST_DIR)/artifact/server_backend/app.env
@@ -457,9 +457,9 @@ build-server-backend-artifact: build-server-backend ## builds the server backend
 	@cd $(DIST_DIR)/artifact/server_backend && tar -zcf ../../server_backend.dev.tar.gz app app.env $(SYSTEMD_SERVICE_FILE) && cd ../..
 	@printf "$(DIST_DIR)/server_backend.dev.tar.gz\n"
 
-.PHONY: build-server-backend-artifact
-build-server-backend-prod-artifact: build-server-backend ## builds the server backend with the right env vars and creates a .tar.gz
-	@printf "Building server backend artifact... "
+.PHONY: build-server-backend-prod-artifact
+build-server-backend-prod-artifact: build-server-backend ## builds the server backend and creates the prod artifact
+	@printf "Building server backend prod artifact... "
 	@mkdir -p $(DIST_DIR)/artifact/server_backend
 	@cp $(DIST_DIR)/server_backend $(DIST_DIR)/artifact/server_backend/app
 	@cp ./cmd/server_backend/prod.env $(DIST_DIR)/artifact/server_backend/app.env
@@ -468,29 +468,29 @@ build-server-backend-prod-artifact: build-server-backend ## builds the server ba
 	@printf "$(DIST_DIR)/server_backend.prod.tar.gz\n"
 
 .PHONY: publish-server-backend-artifact
-publish-server-backend-artifact: ## publishes the server backend artifact to GCP Storage with gsutil
-	@printf "Publishing server backend artifact... \n\n"
+publish-server-backend-artifact: ## publishes the server backend dev artifact
+	@printf "Publishing server backend dev artifact... \n\n"
 	@gsutil cp $(DIST_DIR)/server_backend.dev.tar.gz $(ARTIFACT_BUCKET)/server_backend.dev.tar.gz
 	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" $(ARTIFACT_BUCKET)/server_backend.dev.tar.gz
 	@printf "done\n"
 
-.PHONY: publish-server-backend-artifact
-publish-server-backend-prod-artifact: ## publishes the server backend artifact to GCP Storage with gsutil
-	@printf "Publishing server backend artifact... \n\n"
+.PHONY: publish-server-backend-prod-artifact
+publish-server-backend-prod-artifact: ## publishes the server backend prod artifact
+	@printf "Publishing server backend prod artifact... \n\n"
 	@gsutil cp $(DIST_DIR)/server_backend.prod.tar.gz $(ARTIFACT_BUCKET_PROD)/server_backend.prod.tar.gz
-	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" $(ARTIFACT_BUCKET_PROD)/server_backend.dev.tar.gz
+	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" $(ARTIFACT_BUCKET_PROD)/server_backend.prod.tar.gz
 	@printf "done\n"
 
 .PHONY: deploy-server-backend
-deploy-server-backend: ## builds and deploys the server backend to the dev VM
-	@printf "Deploying server backend... \n\n"
+deploy-server-backend: ## builds and deploys the server backend to dev
+	@printf "Deploying server backend to dev... \n\n"
 	gcloud compute --project "network-next-v3-dev" ssh server-backend-dev-1 -- 'cd /app && sudo ./vm-update-app.sh -a $(ARTIFACT_BUCKET)/server_backend.dev.tar.gz'
 
 .PHONY: build-backend-artifacts
 build-backend-artifacts: build-portal-artifact build-relay-backend-artifact build-server-backend-artifact ## builds the backend artifacts
 
 .PHONY: build-relay-artifact
-build-relay-artifact: build-relay ## builds the relay artifact
+build-relay-artifact: build-relay ## builds the relay and creates the dev artifact
 	@printf "Building relay artifact..."
 	@mkdir -p $(DIST_DIR)/artifact/relay
 	@cp $(DIST_DIR)/relay $(DIST_DIR)/artifact/relay/relay
@@ -500,7 +500,7 @@ build-relay-artifact: build-relay ## builds the relay artifact
 	@printf "$(DIST_DIR)/relay.dev.tar.gz\n"
 
 .PHONY: build-relay-prod-artifact
-build-relay-prod-artifact: build-relay ## builds the relay prod artifact
+build-relay-prod-artifact: build-relay ## builds the relay and creates the prod artifact
 	@printf "Building relay artifact..."
 	@mkdir -p $(DIST_DIR)/artifact/relay
 	@cp $(DIST_DIR)/relay $(DIST_DIR)/artifact/relay/relay
@@ -510,7 +510,7 @@ build-relay-prod-artifact: build-relay ## builds the relay prod artifact
 	@printf "$(DIST_DIR)/relay.prod.tar.gz\n"
 
 .PHONY: publish-relay-artifact
-publish-relay-artifact: ## publishes the relay artifact to GCP storage with gsutil
+publish-relay-artifact: ## publishes the dev relay artifact
 	@printf "Publishing relay artifact... \n\n"
 	@gsutil cp $(DIST_DIR)/relay.dev.tar.gz $(ARTIFACT_BUCKET)/relay.dev.tar.gz
 	@gsutil acl set public-read $(ARTIFACT_BUCKET)/relay.dev.tar.gz
@@ -521,7 +521,7 @@ publish-relay-artifact: ## publishes the relay artifact to GCP storage with gsut
 	@printf "done\n"
 
 .PHONY: publish-relay-prod-artifact
-publish-relay-prod-artifact: ## publishes the relay prod artifact to GCP storage with gsutil
+publish-relay-prod-artifact: ## publishes the prod relay artifact
 	@printf "Publishing relay artifact... \n\n"
 	@gsutil cp $(DIST_DIR)/relay.prod.tar.gz $(ARTIFACT_BUCKET_PROD)/relay.prod.tar.gz
 	@gsutil acl set public-read $(ARTIFACT_BUCKET_PROD)/relay.prod.tar.gz
