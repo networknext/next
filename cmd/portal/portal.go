@@ -35,8 +35,9 @@ import (
 )
 
 var (
-	release   string
 	buildtime string
+	sha       string
+	tag       string
 )
 
 func main() {
@@ -326,7 +327,7 @@ func main() {
 		s.RegisterCodec(json2.NewCodec(), "application/json")
 		s.RegisterService(&jsonrpc.OpsService{
 			Logger:      logger,
-			Release:     release,
+			Release:     tag,
 			BuildTime:   buildtime,
 			RedisClient: redisClientRelays,
 			Storage:     db,
@@ -341,6 +342,7 @@ func main() {
 
 		http.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s)))
 		http.HandleFunc("/healthz", transport.HealthzHandlerFunc())
+		http.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag))
 
 		http.Handle("/", middleware.CacheControl(os.Getenv("HTTP_CACHE_CONTROL"), http.FileServer(http.Dir(uiDir))))
 
