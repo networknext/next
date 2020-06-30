@@ -255,6 +255,32 @@ func (e ServerCacheEntry) MarshalBinary() ([]byte, error) {
 
 // =============================================================================
 
+type ServerData struct {
+	timestamp int64
+	routePublicKey []byte
+}
+
+var servers = map[string]ServerData{}
+var serversMutex sync.Mutex
+
+func TimeoutServers() {
+	for {
+		timeout := time.Now().Unix() - 30
+		serversMutex.Lock()
+		numServers := 0
+		for k,v := range servers {
+			if v.timestamp < timeout {
+				delete(servers, k)
+			} else {
+				numServers++
+			}
+		}
+		serversMutex.Unlock()
+		fmt.Printf("%d servers\n", numServers)
+		time.Sleep(time.Second * 10)
+	}
+}
+
 func ServerUpdateHandlerFunc() UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
 		var packet ServerUpdatePacket
@@ -262,6 +288,13 @@ func ServerUpdateHandlerFunc() UDPHandlerFunc {
 			fmt.Printf("could not read server update packet!\n")
 			return
 		}
+		serverAddress := packet.ServerAddress.String()
+		var server ServerData
+		server.timestamp = time.Now().Unix()
+		server.routePublicKey = packet.ServerRoutePublicKey
+		serversMutex.Lock()
+		servers[serverAddress] = server
+		serversMutex.Unlock()
 	}
 }
 
@@ -488,6 +521,11 @@ func SessionUpdateHandlerFunc(serverPrivateKey []byte) UDPHandlerFunc {
 			SessionID: header.SessionID,
 			RouteType: int32(routing.RouteTypeDirect),
 		}
+		serverAddress := header.ServerAddress.String()
+		serversMutex.Lock()
+		server := servers[serverAddress]
+		serversMutex.Unlock()
+		response.ServerRoutePublicKey = server.routePublicKey
 		sessionsMutex.Lock()
 		sessions[header.SessionID] = time.Now().Unix()
 		sessionsMutex.Unlock()

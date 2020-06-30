@@ -430,6 +430,8 @@ func main() {
 			*/
 		}
 
+		go transport.TimeoutServers()
+
 		go transport.TimeoutSessions()
 
 		go func() {
