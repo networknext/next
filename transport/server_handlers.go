@@ -129,7 +129,7 @@ func ServerInitHandlerFunc(serverPrivateKey []byte) UDPHandlerFunc {
 			Version:   packet.Version,
 		}
 		if err := writeInitResponse(w, response, serverPrivateKey); err != nil {
-			fmt.Printf("could not write server init response packet\n")
+			fmt.Printf("could not write server init response packet: %v\n", err)
 			return
 		}
 	}
