@@ -3,27 +3,28 @@ package transport
 import (
 	"bytes"
 	"context"
-	"encoding/binary"
+	// "encoding/binary"
 	"errors"
 	"fmt"
-	fnv "hash/fnv"
+	// fnv "hash/fnv"
 	"io"
-	"math"
-	"math/rand"
+	// "math"
+	// "math/rand"
 	"net"
+	"sync"
 	"runtime"
 	"time"
 
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
+	// "github.com/go-kit/kit/log"
+	// "github.com/go-kit/kit/log/level"
 	jsoniter "github.com/json-iterator/go"
 
-	"github.com/go-redis/redis/v7"
-	"github.com/networknext/backend/billing"
+	// "github.com/go-redis/redis/v7"
+	// "github.com/networknext/backend/billing"
 	"github.com/networknext/backend/crypto"
-	"github.com/networknext/backend/metrics"
+	// "github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
-	"github.com/networknext/backend/storage"
+	// "github.com/networknext/backend/storage"
 )
 
 type UDPPacket struct {
@@ -113,7 +114,34 @@ func (m *UDPServerMux) handler(ctx context.Context, id int) {
 	}
 }
 
+// ==========================================================================================
+
+func ServerInitHandlerFunc(serverPrivateKey []byte) UDPHandlerFunc {
+	return func(w io.Writer, incoming *UDPPacket) {
+		var packet ServerInitRequestPacket
+		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
+			fmt.Printf("could not read server init request packet\n")
+			return
+		}
+		response := ServerInitResponsePacket{
+			RequestID: packet.RequestID,
+			Response:  InitResponseOK,
+			Version:   packet.Version,
+		}
+		if err := writeInitResponse(w, response, serverPrivateKey); err != nil {
+			fmt.Printf("could not write server init response packet\n")
+			return
+		}
+	}
+}
+
+// ==========================================================================================
+
+/*
 func ServerInitHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, metrics *metrics.ServerInitMetrics, serverPrivateKey []byte) UDPHandlerFunc {
+
+	// todo: temporarily disabled
+
 	logger = log.With(logger, "handler", "init")
 
 	return func(w io.Writer, incoming *UDPPacket) {
@@ -208,6 +236,7 @@ func ServerInitHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer 
 		}
 	}
 }
+*/
 
 type ServerCacheEntry struct {
 	Sequence   uint64
@@ -224,8 +253,36 @@ func (e ServerCacheEntry) MarshalBinary() ([]byte, error) {
 	return jsoniter.Marshal(e)
 }
 
-// ServerUpdateHandlerFunc ...
+// =============================================================================
+
+func ServerUpdateHandlerFunc() UDPHandlerFunc {
+	return func(w io.Writer, incoming *UDPPacket) {
+		var packet ServerUpdatePacket
+		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
+			fmt.Printf("could not read server update packet!\n")
+			return
+		}
+	}
+}
+
+// =============================================================================
+
+// todo: cut down
+/*
 func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, metrics *metrics.ServerUpdateMetrics) UDPHandlerFunc {
+
+	return func(w io.Writer, incoming *UDPPacket) {
+		var packet ServerUpdatePacket
+		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
+			fmt.Printf("could not read server update packet!\n")
+			return
+		}
+		serverAddress := packet.ServerAddress.String()
+		// todo: store the info we need by server address in the server map
+		_ = serverAddress
+	}
+
+	/*
 	logger = log.With(logger, "handler", "server")
 
 	return func(w io.Writer, incoming *UDPPacket) {
@@ -345,6 +402,7 @@ func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, store
 		level.Debug(locallogger).Log("msg", "updated server")
 	}
 }
+*/
 
 type SessionCacheEntry struct {
 	CustomerID                 uint64
@@ -387,14 +445,65 @@ func (e VetoCacheEntry) MarshalBinary() ([]byte, error) {
 	return jsoniter.Marshal(e)
 }
 
+/*
 type RouteProvider interface {
 	ResolveRelay(uint64) (routing.Relay, error)
 	RelaysIn(routing.Datacenter) []routing.Relay
 	Routes([]routing.Relay, []int, []routing.Relay, ...routing.SelectorFunc) ([]routing.Route, error)
 }
+*/
 
-// SessionUpdateHandlerFunc ...
+// =========================================================================================================
+
+var sessions = map[uint64]int64{}
+var sessionsMutex sync.Mutex
+
+func TimeoutSessions() {
+	for {
+		timeout := time.Now().Unix() - 30
+		sessionsMutex.Lock()
+		numSessions := 0
+		for k,v := range sessions {
+			if v < timeout {
+				delete(sessions, k)
+			} else {
+				numSessions++
+			}
+		}
+		sessionsMutex.Unlock()
+		fmt.Printf("%d sessions\n", numSessions)
+		time.Sleep(time.Second * 10)
+	}
+}
+
+func SessionUpdateHandlerFunc(serverPrivateKey []byte) UDPHandlerFunc {
+	return func(w io.Writer, incoming *UDPPacket) {
+		var header SessionUpdatePacketHeader
+		if err := header.UnmarshalBinary(incoming.Data); err != nil {
+			fmt.Printf("could not read session update packet header!\n")
+			return
+		}
+		response := SessionResponsePacket{
+			Sequence:  header.Sequence,
+			SessionID: header.SessionID,
+			RouteType: int32(routing.RouteTypeDirect),
+		}
+		sessionsMutex.Lock()
+		sessions[header.SessionID] = time.Now().Unix()
+		sessionsMutex.Unlock()
+		if _, err := writeSessionResponse(w, response, serverPrivateKey); err != nil {
+			fmt.Printf("could not write session update response packet!\n")
+			return
+		}
+	}
+}
+
+// =========================================================================================================
+
+// todo: cut down
+/*
 func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable, redisClientPortal redis.Cmdable, redisClientPortalExp time.Duration, storer storage.Storer, rp RouteProvider, iploc routing.IPLocator, geoClient *routing.GeoClient, metrics *metrics.SessionMetrics, biller billing.Biller, serverPrivateKey []byte, routerPrivateKey []byte) UDPHandlerFunc {
+
 	logger = log.With(logger, "handler", "session")
 
 	return func(w io.Writer, incoming *UDPPacket) {
@@ -1212,7 +1321,10 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 		}
 	}
 }
+*/
 
+// todo: disabled
+/*
 func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time.Duration, packet SessionUpdatePacket, nnStats routing.Stats, directStats routing.Stats, relayHops []routing.Relay, onNetworkNext bool, datacenterName string, location routing.Location, sessionTime time.Time, isMultiPath bool) error {
 	if (nnStats.RTT == 0 && directStats.RTT == 0) || (onNetworkNext && nnStats.RTT == 0) {
 		return nil
@@ -1336,7 +1448,10 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 
 	return nil
 }
+*/
 
+// todo: disabled
+/*
 func submitBillingEntry(biller billing.Biller, serverCacheEntry ServerCacheEntry, sessionCacheEntry SessionCacheEntry, request SessionUpdatePacket, response SessionResponsePacket,
 	buyer routing.Buyer, chosenRoute routing.Route, location routing.Location, storer storage.Storer, clientRelays []routing.Relay, routeDecision routing.Decision,
 	sliceDuration uint64, timestampStart time.Time, timestampNow time.Time, newSession bool) error {
@@ -1427,6 +1542,7 @@ func addRouteDecisionMetric(d routing.Decision, m *metrics.SessionMetrics) {
 		m.DecisionMetrics.VetoCommit.Add(1)
 	}
 }
+*/
 
 // writeInitResponse encrypts the server init response packet and sends it back to the server. Returns the marshaled response and an error.
 func writeInitResponse(w io.Writer, response ServerInitResponsePacket, privateKey []byte) error {
@@ -1466,6 +1582,8 @@ func writeSessionResponse(w io.Writer, response SessionResponsePacket, privateKe
 	return responseData, nil
 }
 
+// todo: disabled
+/*
 func writeSessionErrorResponse(w io.Writer, response SessionResponsePacket, privateKey []byte, directSessions metrics.Counter, unserviceableUpdateCounter metrics.Counter, errCounter metrics.Counter) ([]byte, error) {
 	responseData, err := writeSessionResponse(w, response, privateKey)
 	if err != nil {
@@ -1479,3 +1597,5 @@ func writeSessionErrorResponse(w io.Writer, response SessionResponsePacket, priv
 
 	return responseData, nil
 }
+*/
+
