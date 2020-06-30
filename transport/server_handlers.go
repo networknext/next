@@ -523,7 +523,11 @@ func SessionUpdateHandlerFunc(serverPrivateKey []byte) UDPHandlerFunc {
 		}
 		serverAddress := header.ServerAddress.String()
 		serversMutex.Lock()
-		server := servers[serverAddress]
+		server, ok := servers[serverAddress]
+		if !ok {
+			fmt.Printf("no server entry for session\n")
+			return
+		}
 		serversMutex.Unlock()
 		response.ServerRoutePublicKey = server.routePublicKey
 		sessionsMutex.Lock()
