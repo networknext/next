@@ -526,11 +526,11 @@ func SessionUpdateHandlerFunc(biller billing.Biller, serverPrivateKey []byte) UD
 		serverAddress := header.ServerAddress.String()
 		serversMutex.Lock()
 		server, ok := servers[serverAddress]
+		serversMutex.Unlock()
 		if !ok {
 			fmt.Printf("no server entry for session\n")
 			return
 		}
-		serversMutex.Unlock()
 		response.ServerRoutePublicKey = server.routePublicKey
 		sessionsMutex.Lock()
 		sessions[header.SessionID] = time.Now().Unix()
