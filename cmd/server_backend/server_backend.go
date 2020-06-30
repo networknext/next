@@ -8,28 +8,31 @@ package main
 import (
 	"context"
 	"encoding/base64"
-	"io"
+	"fmt"
+	// "io"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
-	"strings"
-	"time"
+	// "strings"
+	// "time"
 
-	"cloud.google.com/go/bigquery"
-	gcplogging "cloud.google.com/go/logging"
-	"cloud.google.com/go/profiler"
+	// "cloud.google.com/go/bigquery"
+	// gcplogging "cloud.google.com/go/logging"
+	// "cloud.google.com/go/profiler"
 
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
+	// "github.com/go-kit/kit/log"
+	// "github.com/go-kit/kit/log/level"
 
+	/*
 	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/logging"
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
+	*/
 	"github.com/networknext/backend/transport"
 )
 
@@ -42,6 +45,7 @@ var (
 func main() {
 	ctx := context.Background()
 
+	/*
 	// Configure logging
 	logger := log.NewLogfmtLogger(os.Stdout)
 	if projectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
@@ -71,39 +75,48 @@ func main() {
 
 		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
 	}
+	*/
 
+	/*
 	// Get env
 	env, ok := os.LookupEnv("ENV")
 	if !ok {
 		level.Error(logger).Log("err", "ENV not set")
 		os.Exit(1)
 	}
+	*/
 
+	// todo: why is this commented out?
 	// var serverPublicKey []byte
 	var customerPublicKey []byte
 	var serverPrivateKey []byte
-	var routerPrivateKey []byte
+	// var routerPrivateKey []byte
 	{
 		if key := os.Getenv("SERVER_BACKEND_PUBLIC_KEY"); len(key) != 0 {
+			// todo: why?!
 			// serverPublicKey, _ = base64.StdEncoding.DecodeString(key)
 		} else {
-			level.Error(logger).Log("err", "SERVER_BACKEND_PUBLIC_KEY not set")
+			// level.Error(logger).Log("err", "SERVER_BACKEND_PUBLIC_KEY not set")
+			fmt.Printf("SERVER_BACKEND_PUBLIC_KEY not set")
 			os.Exit(1)
 		}
 
 		if key := os.Getenv("SERVER_BACKEND_PRIVATE_KEY"); len(key) != 0 {
 			serverPrivateKey, _ = base64.StdEncoding.DecodeString(key)
 		} else {
-			level.Error(logger).Log("err", "SERVER_BACKEND_PRIVATE_KEY not set")
+			// level.Error(logger).Log("err", "SERVER_BACKEND_PRIVATE_KEY not set")
+			fmt.Printf("SERVER_BACKEND_PRIVATE_KEY not set")
 			os.Exit(1)
 		}
 
+		/*
 		if key := os.Getenv("RELAY_ROUTER_PRIVATE_KEY"); len(key) != 0 {
 			routerPrivateKey, _ = base64.StdEncoding.DecodeString(key)
 		} else {
 			level.Error(logger).Log("err", "RELAY_ROUTER_PRIVATE_KEY not set")
 			os.Exit(1)
 		}
+		*/
 
 		if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
 			customerPublicKey, _ = base64.StdEncoding.DecodeString(key)
@@ -111,6 +124,7 @@ func main() {
 		}
 	}
 
+	/*
 	redisPortalHosts := os.Getenv("REDIS_HOST_PORTAL")
 	splitPortalHosts := strings.Split(redisPortalHosts, ",")
 	redisClientPortal := storage.NewRedisClient(splitPortalHosts...)
@@ -358,16 +372,19 @@ func main() {
 			}()
 		}
 	}
+	*/
 
 	{
 		port, ok := os.LookupEnv("PORT")
 		if !ok {
-			level.Error(logger).Log("err", "env var PORT must be set")
+			// level.Error(logger).Log("err", "env var PORT must be set")
+			fmt.Printf("env var PORT must be set\n")
 			os.Exit(1)
 		}
 		iport, err := strconv.ParseInt(port, 10, 64)
 		if err != nil {
-			level.Error(logger).Log("err", err)
+			// level.Error(logger).Log("err", err)
+			fmt.Printf("could not parse port value\n")
 			os.Exit(1)
 		}
 
@@ -377,7 +394,8 @@ func main() {
 
 		conn, err := net.ListenUDP("udp", &addr)
 		if err != nil {
-			level.Error(logger).Log("err", err)
+			// level.Error(logger).Log("err", err)
+			fmt.Printf("net.ListenUDP failed\n")			
 			os.Exit(1)
 		}
 
@@ -401,15 +419,22 @@ func main() {
 			Conn:          conn,
 			MaxPacketSize: transport.DefaultMaxPacketSize,
 
+			// todo: cut down temporarily
+			ServerInitHandlerFunc:    transport.ServerInitHandlerFunc(serverPrivateKey),
+			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(),
+			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(serverPrivateKey),
+			/*
 			ServerInitHandlerFunc:    transport.ServerInitHandlerFunc(logger, redisClientCache, db, serverInitMetrics, serverPrivateKey),
 			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(logger, redisClientCache, db, serverUpdateMetrics),
 			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(logger, redisClientCache, redisClientPortal, redisPortalHostExpiration, db, &routeMatrix, ipLocator, &geoClient, sessionMetrics, biller, serverPrivateKey, routerPrivateKey),
+			*/
 		}
 
 		go func() {
-			level.Info(logger).Log("protocol", "udp", "addr", conn.LocalAddr().String())
+			// level.Info(logger).Log("protocol", "udp", "addr", conn.LocalAddr().String())
 			if err := mux.Start(ctx); err != nil {
-				level.Error(logger).Log("protocol", "udp", "addr", conn.LocalAddr().String(), "err", err)
+				// level.Error(logger).Log("protocol", "udp", "addr", conn.LocalAddr().String(), "err", err)
+				fmt.Printf("could not start udp server\n")
 				os.Exit(1)
 			}
 		}()
@@ -418,9 +443,10 @@ func main() {
 			http.HandleFunc("/healthz", transport.HealthzHandlerFunc())
 			http.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag))
 
-			level.Info(logger).Log("protocol", "http", "addr", conn.LocalAddr().String())
+			// level.Info(logger).Log("protocol", "http", "addr", conn.LocalAddr().String())
 			if err := http.ListenAndServe(conn.LocalAddr().String(), nil); err != nil {
-				level.Error(logger).Log("protocol", "http", "addr", conn.LocalAddr().String(), "err", err)
+				// level.Error(logger).Log("protocol", "http", "addr", conn.LocalAddr().String(), "err", err)
+				fmt.Printf("could not start http server\n")
 				os.Exit(1)
 			}
 		}()
