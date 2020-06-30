@@ -32,7 +32,7 @@ This is a monorepo that contains the Network Next backend.
 2. Tag the commit with an acceptable tag name, eg. `git tag PROD-20200427-01`
 3. Push your changes to git with `git push origin --tags` to include the tag created
 4. Wait for CI/CD to run tests one last time, recognize the new tag, and build a production artifact
-5. Manually `make deploy-(portal|relay_backend|server_backend)-prod` to copy the artifact to the production VMs and restart the service
+5. Manually trigger a rolling update in google cloud on each managed instance group you want to update to latest code.
 
 #### Acceptable tags:
 
