@@ -61,51 +61,55 @@ func (m *UDPServerMux) Start(ctx context.Context) error {
 
 func (m *UDPServerMux) handler(ctx context.Context, id int) {
 
-	buffer := make([]byte, m.MaxPacketSize)
-
 	for {
 
-		data := buffer[:]
+		data := make([]byte, m.MaxPacketSize)
 
-		numbytes, addr, _ := m.Conn.ReadFromUDP(data)
-		if numbytes <= 0 {
+		size, addr, _ := m.Conn.ReadFromUDP(data)
+		if size <= 0 {
 			continue
 		}
 
-		// Check the packet hash is legit and remove the hash from the beginning of the packet
-		// to continue processing the packet as normal
-		hashedPacket := crypto.Check(crypto.PacketHashKey, data[:numbytes])
-		switch hashedPacket {
-		case true:
-			data = data[crypto.PacketHashSize:numbytes]
-		default:
-			// todo: once everybody has upgraded to SDK 3.4.5 or greater, this is an error. ignore packet.
-			data = data[:numbytes]
-		}
+		data = data[:size]
 
-		packet := UDPPacket{SourceAddr: addr, Data: data}
+		go func(packet_data []byte, packet_size int, from *net.UDPAddr) {
 
-		var buf bytes.Buffer
-
-		switch packet.Data[0] {
-		case PacketTypeServerInitRequest:
-			m.ServerInitHandlerFunc(&buf, &packet)
-		case PacketTypeServerUpdate:
-			m.ServerUpdateHandlerFunc(&buf, &packet)
-		case PacketTypeSessionUpdate:
-			m.SessionUpdateHandlerFunc(&buf, &packet)
-		}
-
-		if buf.Len() > 0 {
-			res := buf.Bytes()
-
-			// If the hashed checks out above then hash the response to the sender
-			if hashedPacket {
-				res = crypto.Hash(crypto.PacketHashKey, res)
+			// Check the packet hash is legit and remove the hash from the beginning of the packet
+			// to continue processing the packet as normal
+			hashedPacket := crypto.Check(crypto.PacketHashKey, packet_data)
+			switch hashedPacket {
+			case true:
+				packet_data = packet_data[crypto.PacketHashSize:packet_size]
+			default:
+				// todo: once everybody has upgraded to SDK 3.4.5 or greater, this is an error. ignore packet.
+				packet_data = packet_data[:packet_size]
 			}
 
-			m.Conn.WriteToUDP(res, packet.SourceAddr)
-		}
+			packet := UDPPacket{SourceAddr: from, Data: packet_data}
+
+			var buf bytes.Buffer
+
+			switch packet.Data[0] {
+			case PacketTypeServerInitRequest:
+				m.ServerInitHandlerFunc(&buf, &packet)
+			case PacketTypeServerUpdate:
+				m.ServerUpdateHandlerFunc(&buf, &packet)
+			case PacketTypeSessionUpdate:
+				m.SessionUpdateHandlerFunc(&buf, &packet)
+			}
+
+			if buf.Len() > 0 {
+				res := buf.Bytes()
+
+				// If the hash checks out above then hash the response to the sender
+				if hashedPacket {
+					res = crypto.Hash(crypto.PacketHashKey, res)
+				}
+
+				m.Conn.WriteToUDP(res, packet.SourceAddr)
+			}
+
+		}(data, size, addr)
 	}
 }
 
