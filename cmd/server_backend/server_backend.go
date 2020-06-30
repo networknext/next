@@ -46,7 +46,7 @@ var (
 
 func main() {
 
-	fmt.Printf("welcome to the nerd zone 2.0\n")
+	fmt.Printf("welcome to the nerd zone 3.0\n")
 
 	ctx := context.Background()
 
