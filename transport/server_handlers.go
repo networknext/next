@@ -28,7 +28,7 @@ import (
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/storage"
 
-	// "github.com/networknext/backend/metrics"
+	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
 )
 
@@ -119,11 +119,13 @@ func (m *UDPServerMux) handler(ctx context.Context, id int) {
 
 // ==========================================================================================
 
-func ServerInitHandlerFunc(serverPrivateKey []byte) UDPHandlerFunc {
+func ServerInitHandlerFunc(serverPrivateKey []byte, metrics *metrics.ServerInitMetrics) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
+		metrics.Invocations.Add(1)
 		var packet ServerInitRequestPacket
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
 			fmt.Printf("could not read server init request packet\n")
+			metrics.ErrorMetrics.UnmarshalFailure.Add(1)
 			return
 		}
 		response := ServerInitResponsePacket{
@@ -131,8 +133,14 @@ func ServerInitHandlerFunc(serverPrivateKey []byte) UDPHandlerFunc {
 			Response:  InitResponseOK,
 			Version:   packet.Version,
 		}
+		if !incoming.SourceAddr.IP.IsLoopback() && !packet.Version.AtLeast(SDKVersionMin) {
+			fmt.Printf("sdk version is too old\n")
+			response.Response = InitResponseOldSDKVersion
+			metrics.ErrorMetrics.SDKTooOld.Add(1)
+		}
 		if err := writeInitResponse(w, response, serverPrivateKey); err != nil {
 			fmt.Printf("could not write server init response packet: %v\n", err)
+			// todo: metric
 			return
 		}
 	}

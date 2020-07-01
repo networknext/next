@@ -20,23 +20,19 @@ import (
 	"strings"
 	"time"
 
-	// gcplogging "cloud.google.com/go/logging"
-	// "cloud.google.com/go/profiler"
+	"cloud.google.com/go/profiler"
 
 	// "github.com/go-kit/kit/log"
 	// "github.com/go-kit/kit/log/level"
+	// gcplogging "cloud.google.com/go/logging"
+	// "github.com/networknext/backend/logging"
 
-	/*
-		"github.com/networknext/backend/logging"
-		"github.com/networknext/backend/metrics"
-		
-	*/
-	// "cloud.google.com/go/bigquery"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/transport"
+	"github.com/networknext/backend/metrics"
 )
 
 var (
@@ -47,7 +43,7 @@ var (
 
 func main() {
 
-	fmt.Printf("welcome to the nerd zone 5.0\n")
+	fmt.Printf("welcome to the nerd zone 6.0\n")
 
 	ctx := context.Background()
 
@@ -83,52 +79,42 @@ func main() {
 		}
 	*/
 
-	/*
-		// Get env
-		env, ok := os.LookupEnv("ENV")
-		if !ok {
-			level.Error(logger).Log("err", "ENV not set")
-			os.Exit(1)
-		}
-	*/
+	// Get env
+	env, ok := os.LookupEnv("ENV")
+	if !ok {
+		//level.Error(logger).Log("err", "ENV not set")
+		fmt.Printf("ENV not set\n")
+		os.Exit(1)
+	}
 
-	// todo: why is this commented out?
-	// var serverPublicKey []byte
 	var customerPublicKey []byte
 	var serverPrivateKey []byte
-	// var routerPrivateKey []byte
+	var routerPrivateKey []byte
 	{
-		if key := os.Getenv("SERVER_BACKEND_PUBLIC_KEY"); len(key) != 0 {
-			// todo: why?!
-			// serverPublicKey, _ = base64.StdEncoding.DecodeString(key)
-		} else {
-			// level.Error(logger).Log("err", "SERVER_BACKEND_PUBLIC_KEY not set")
-			fmt.Printf("SERVER_BACKEND_PUBLIC_KEY not set")
-			os.Exit(1)
-		}
-
 		if key := os.Getenv("SERVER_BACKEND_PRIVATE_KEY"); len(key) != 0 {
 			serverPrivateKey, _ = base64.StdEncoding.DecodeString(key)
 		} else {
 			// level.Error(logger).Log("err", "SERVER_BACKEND_PRIVATE_KEY not set")
-			fmt.Printf("SERVER_BACKEND_PRIVATE_KEY not set")
+			fmt.Printf("SERVER_BACKEND_PRIVATE_KEY not set\n")
 			os.Exit(1)
 		}
 
-		/*
-			if key := os.Getenv("RELAY_ROUTER_PRIVATE_KEY"); len(key) != 0 {
-				routerPrivateKey, _ = base64.StdEncoding.DecodeString(key)
-			} else {
-				level.Error(logger).Log("err", "RELAY_ROUTER_PRIVATE_KEY not set")
-				os.Exit(1)
-			}
-		*/
+		if key := os.Getenv("RELAY_ROUTER_PRIVATE_KEY"); len(key) != 0 {
+			routerPrivateKey, _ = base64.StdEncoding.DecodeString(key)
+		} else {
+			//level.Error(logger).Log("err", "RELAY_ROUTER_PRIVATE_KEY not set")
+			fmt.Printf("RELAY_ROUTER_PRIVATE_KEY not set\n")
+			os.Exit(1)
+		}
 
 		if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
 			customerPublicKey, _ = base64.StdEncoding.DecodeString(key)
 			customerPublicKey = customerPublicKey[8:]
 		}
 	}
+
+	// todo:
+	_ = routerPrivateKey
 
 	redisPortalHosts := os.Getenv("REDIS_HOST_PORTAL")
 	splitPortalHosts := strings.Split(redisPortalHosts, ",")
@@ -240,15 +226,14 @@ func main() {
 	// Create a no-op biller
 	var biller billing.Biller = &billing.NoOpBiller{}
 
-	/*
-		// Create a local metrics handler
-		var metricsHandler metrics.Handler = &metrics.LocalHandler{}
-	*/
+	// Create a local metrics handler
+	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
 
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
 	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
 	// on creation so we can use that for the default then
-	// if gcpProjectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
+	if gcpProjectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
+	
 		/*
 			// Create a Firestore Storer
 			fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
@@ -310,100 +295,102 @@ func main() {
 		*/
 
 		/*
-			// Set up StackDriver metrics
-			sd := metrics.StackDriverHandler{
-				ProjectID:          gcpProjectID,
-				OverwriteFrequency: time.Second,
-				OverwriteTimeout:   10 * time.Second,
-			}
+		// Set up StackDriver metrics
+		sd := metrics.StackDriverHandler{
+			ProjectID:          gcpProjectID,
+			OverwriteFrequency: time.Second,
+			OverwriteTimeout:   10 * time.Second,
+		}
 
-			if err := sd.Open(ctx); err != nil {
-				level.Error(logger).Log("msg", "Failed to create StackDriver metrics client", "err", err)
-				os.Exit(1)
-			}
+		if err := sd.Open(ctx); err != nil {
+			level.Error(logger).Log("msg", "Failed to create StackDriver metrics client", "err", err)
+			os.Exit(1)
+		}
 
-			metricsHandler = &sd
+		metricsHandler = &sd
 
-			sdwriteinterval := os.Getenv("GOOGLE_STACKDRIVER_METRICS_WRITE_INTERVAL")
-			writeInterval, err := time.ParseDuration(sdwriteinterval)
-			if err != nil {
-				level.Error(logger).Log("envvar", "GOOGLE_STACKDRIVER_METRICS_WRITE_INTERVAL", "value", sdwriteinterval, "err", err)
-				os.Exit(1)
-			}
-			go func() {
-				metricsHandler.WriteLoop(ctx, logger, writeInterval, 200)
-			}()
-
-			// Set up StackDriver profiler
-			if err := profiler.Start(profiler.Config{
-				Service:        "server_backend",
-				ServiceVersion: env,
-				ProjectID:      gcpProjectID,
-				MutexProfiling: true,
-			}); err != nil {
-				level.Error(logger).Log("msg", "Failed to initialze StackDriver profiler", "err", err)
-				os.Exit(1)
-			}
+		sdwriteinterval := os.Getenv("GOOGLE_STACKDRIVER_METRICS_WRITE_INTERVAL")
+		writeInterval, err := time.ParseDuration(sdwriteinterval)
+		if err != nil {
+			level.Error(logger).Log("envvar", "GOOGLE_STACKDRIVER_METRICS_WRITE_INTERVAL", "value", sdwriteinterval, "err", err)
+			os.Exit(1)
+		}
+		go func() {
+			metricsHandler.WriteLoop(ctx, logger, writeInterval, 200)
+		}()
 		*/
-	//}
+
+		// Set up StackDriver profiler
+		if err := profiler.Start(profiler.Config{
+			Service:        "server_backend",
+			ServiceVersion: env,
+			ProjectID:      gcpProjectID,
+			MutexProfiling: true,
+		}); err != nil {
+			//level.Error(logger).Log("msg", "Failed to initialze StackDriver profiler", "err", err)
+			fmt.Printf("could not setup stackdriver profiler: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
+	// Create server update metrics
+	serverInitMetrics, err := metrics.NewServerInitMetrics(ctx, metricsHandler)
+	if err != nil {
+		// level.Error(logger).Log("msg", "failed to create server update metrics", "err", err)
+		fmt.Printf("could not create server update metrics: %v\n", err)
+	}
 
 	/*
-		// Create server update metrics
-		serverInitMetrics, err := metrics.NewServerInitMetrics(ctx, metricsHandler)
-		if err != nil {
-			level.Error(logger).Log("msg", "failed to create server update metrics", "err", err)
-		}
+	// Create server update metrics
+	serverUpdateMetrics, err := metrics.NewServerUpdateMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create server update metrics", "err", err)
+	}
 
-		// Create server update metrics
-		serverUpdateMetrics, err := metrics.NewServerUpdateMetrics(ctx, metricsHandler)
-		if err != nil {
-			level.Error(logger).Log("msg", "failed to create server update metrics", "err", err)
-		}
+	// Create session update metrics
+	sessionMetrics, err := metrics.NewSessionMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create session metrics", "err", err)
+	}
 
-		// Create session update metrics
-		sessionMetrics, err := metrics.NewSessionMetrics(ctx, metricsHandler)
-		if err != nil {
-			level.Error(logger).Log("msg", "failed to create session metrics", "err", err)
-		}
-
-		var routeMatrix routing.RouteMatrix
-		{
-			if uri, ok := os.LookupEnv("ROUTE_MATRIX_URI"); ok {
-				rmsyncinterval := os.Getenv("ROUTE_MATRIX_SYNC_INTERVAL")
-				syncInterval, err := time.ParseDuration(rmsyncinterval)
-				if err != nil {
-					level.Error(logger).Log("envvar", "ROUTE_MATRIX_SYNC_INTERVAL", "value", rmsyncinterval, "err", err)
-					os.Exit(1)
-				}
-
-				go func() {
-					for {
-						var matrixReader io.Reader
-
-						// Default to reading route matrix from file
-						if f, err := os.Open(uri); err == nil {
-							matrixReader = f
-						}
-
-						// Prefer to get it remotely if possible
-						if r, err := http.Get(uri); err == nil {
-							matrixReader = r.Body
-						}
-
-						// Attempt to read, and intentionally force to empty route matrix if any errors are encountered to avoid stale routes
-						_, err := routeMatrix.ReadFrom(matrixReader)
-						if err != nil {
-							routeMatrix = routing.RouteMatrix{}
-							level.Warn(logger).Log("matrix", "route", "op", "read", "envvar", "ROUTE_MATRIX_URI", "value", uri, "err", err, "msg", "forcing empty route matrix to avoid stale routes")
-						}
-
-						level.Info(logger).Log("matrix", "route", "entries", len(routeMatrix.Entries))
-
-						time.Sleep(syncInterval)
-					}
-				}()
+	var routeMatrix routing.RouteMatrix
+	{
+		if uri, ok := os.LookupEnv("ROUTE_MATRIX_URI"); ok {
+			rmsyncinterval := os.Getenv("ROUTE_MATRIX_SYNC_INTERVAL")
+			syncInterval, err := time.ParseDuration(rmsyncinterval)
+			if err != nil {
+				level.Error(logger).Log("envvar", "ROUTE_MATRIX_SYNC_INTERVAL", "value", rmsyncinterval, "err", err)
+				os.Exit(1)
 			}
+
+			go func() {
+				for {
+					var matrixReader io.Reader
+
+					// Default to reading route matrix from file
+					if f, err := os.Open(uri); err == nil {
+						matrixReader = f
+					}
+
+					// Prefer to get it remotely if possible
+					if r, err := http.Get(uri); err == nil {
+						matrixReader = r.Body
+					}
+
+					// Attempt to read, and intentionally force to empty route matrix if any errors are encountered to avoid stale routes
+					_, err := routeMatrix.ReadFrom(matrixReader)
+					if err != nil {
+						routeMatrix = routing.RouteMatrix{}
+						level.Warn(logger).Log("matrix", "route", "op", "read", "envvar", "ROUTE_MATRIX_URI", "value", uri, "err", err, "msg", "forcing empty route matrix to avoid stale routes")
+					}
+
+					level.Info(logger).Log("matrix", "route", "entries", len(routeMatrix.Entries))
+
+					time.Sleep(syncInterval)
+				}
+			}()
 		}
+	}
 	*/
 
 	{
@@ -452,7 +439,7 @@ func main() {
 			MaxPacketSize: transport.DefaultMaxPacketSize,
 
 			// todo: cut down temporarily
-			ServerInitHandlerFunc:    transport.ServerInitHandlerFunc(serverPrivateKey),
+			ServerInitHandlerFunc:    transport.ServerInitHandlerFunc(serverPrivateKey, serverInitMetrics),
 			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(),
 			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(biller, serverPrivateKey, redisClientPortal, redisPortalHostExpiration, ipLocator),
 			/*
