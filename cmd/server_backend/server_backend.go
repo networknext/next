@@ -20,8 +20,7 @@ import (
 	"strings"
 	"time"
 
-	"cloud.google.com/go/profiler"
-
+	// "cloud.google.com/go/profiler"
 	// "github.com/go-kit/kit/log"
 	// "github.com/go-kit/kit/log/level"
 	// gcplogging "cloud.google.com/go/logging"
@@ -43,7 +42,7 @@ var (
 
 func main() {
 
-	fmt.Printf("welcome to the nerd zone 9.0\n")
+	fmt.Printf("welcome to the nerd zone 10.0\n")
 
 	ctx := context.Background()
 
@@ -86,6 +85,9 @@ func main() {
 		fmt.Printf("ENV not set\n")
 		os.Exit(1)
 	}
+
+	// todo
+	_ = env
 
 	var customerPublicKey []byte
 	var serverPrivateKey []byte
@@ -232,7 +234,7 @@ func main() {
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
 	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
 	// on creation so we can use that for the default then
-	if gcpProjectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
+	// if gcpProjectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
 	
 		/*
 		// Create a Firestore Storer
@@ -322,6 +324,8 @@ func main() {
 		}()
 		*/
 
+		// todo: disabled profiler because we think it's slowing down handlers
+		/*
 		// Set up StackDriver profiler
 		if err := profiler.Start(profiler.Config{
 			Service:        "server_backend",
@@ -333,7 +337,8 @@ func main() {
 			fmt.Printf("could not setup stackdriver profiler: %v\n", err)
 			os.Exit(1)
 		}
-	}
+		*/
+	// }
 
 	// Create server update metrics
 	serverInitMetrics, err := metrics.NewServerInitMetrics(ctx, metricsHandler)
