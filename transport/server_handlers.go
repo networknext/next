@@ -119,28 +119,38 @@ func (m *UDPServerMux) handler(ctx context.Context, id int) {
 
 // ==========================================================================================
 
+var serverInitPackets uint64
+
 func ServerInitHandlerFunc(serverPrivateKey []byte, metrics *metrics.ServerInitMetrics) UDPHandlerFunc {
+	
 	return func(w io.Writer, incoming *UDPPacket) {
+
 		metrics.Invocations.Add(1)
+
+		atomic.AddUint64(&serverInitPackets, 1)
+
 		var packet ServerInitRequestPacket
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
 			fmt.Printf("could not read server init request packet\n")
 			metrics.ErrorMetrics.UnmarshalFailure.Add(1)
 			return
 		}
+
 		response := ServerInitResponsePacket{
 			RequestID: packet.RequestID,
 			Response:  InitResponseOK,
 			Version:   packet.Version,
 		}
+
 		if !incoming.SourceAddr.IP.IsLoopback() && !packet.Version.AtLeast(SDKVersionMin) {
 			fmt.Printf("sdk version is too old\n")
 			response.Response = InitResponseOldSDKVersion
 			metrics.ErrorMetrics.SDKTooOld.Add(1)
 		}
+
 		if err := writeInitResponse(w, response, serverPrivateKey); err != nil {
 			fmt.Printf("could not write server init response packet: %v\n", err)
-			// todo: metric
+			// todo: metric for failing to write server init response packet
 			return
 		}
 	}
@@ -541,6 +551,7 @@ func UpdateTimeouts(biller billing.Biller) {
 		fmt.Printf("%d billing entries submitted\n", numBillingEntriesSubmitted(biller))
 		fmt.Printf("%d billing entries queued\n", numBillingEntriesQueued(biller))
 		fmt.Printf("%d billing entries flushed\n", numBillingEntriesFlushed(biller))
+		fmt.Printf("%d server init packets processed\n", serverInitPackets)
 		fmt.Printf("%d server update packets processed\n", serverUpdatePackets)
 		fmt.Printf("%d session update packets processed\n", sessionUpdatePackets)
 		fmt.Printf("-----------------------------\n")
