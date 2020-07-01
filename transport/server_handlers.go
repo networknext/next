@@ -10,6 +10,7 @@ import (
 
 	fnv "hash/fnv"
 	"io"
+
 	// "math"
 	// "math/rand"
 	"net"
@@ -125,7 +126,7 @@ var serverInitPackets uint64
 var longServerInits uint64
 
 func ServerInitHandlerFunc(serverPrivateKey []byte, metrics *metrics.ServerInitMetrics, storer storage.Storer) UDPHandlerFunc {
-	
+
 	return func(w io.Writer, incoming *UDPPacket) {
 
 		start := time.Now()
@@ -133,7 +134,7 @@ func ServerInitHandlerFunc(serverPrivateKey []byte, metrics *metrics.ServerInitM
 			if time.Since(start).Seconds() > 0.1 {
 				fmt.Printf("long server init\n")
 				atomic.AddUint64(&longServerInits, 1)
-				// todo: add metric for long server inits
+				metrics.LongDuration.Add(1)
 			}
 		}()
 
@@ -144,7 +145,7 @@ func ServerInitHandlerFunc(serverPrivateKey []byte, metrics *metrics.ServerInitM
 		var packet ServerInitRequestPacket
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
 			fmt.Printf("could not read server init request packet\n")
-			metrics.ErrorMetrics.UnmarshalFailure.Add(1)
+			metrics.ErrorMetrics.ReadPacketFailure.Add(1)
 			return
 		}
 
@@ -162,7 +163,7 @@ func ServerInitHandlerFunc(serverPrivateKey []byte, metrics *metrics.ServerInitM
 
 		if err := writeInitResponse(w, response, serverPrivateKey); err != nil {
 			fmt.Printf("could not write server init response packet: %v\n", err)
-			// todo: metric for failing to write server init response packet
+			metrics.ErrorMetrics.WriteResponseFailure.Add(1)
 			return
 		}
 	}
@@ -291,7 +292,7 @@ func (e ServerCacheEntry) MarshalBinary() ([]byte, error) {
 type ServerData struct {
 	timestamp      int64
 	routePublicKey []byte
-	version SDKVersion
+	version        SDKVersion
 }
 
 var servers = map[string]ServerData{}
@@ -300,30 +301,30 @@ var serverUpdatePackets uint64
 var longServerUpdates uint64
 
 func ServerUpdateHandlerFunc(metrics *metrics.ServerUpdateMetrics, storer storage.Storer) UDPHandlerFunc {
-	
+
 	return func(w io.Writer, incoming *UDPPacket) {
-	
+
 		start := time.Now()
 		defer func() {
 			if time.Since(start).Seconds() > 0.1 {
 				fmt.Printf("long server update\n")
 				atomic.AddUint64(&longServerUpdates, 1)
-				// todo: add metric for long server updates
+				metrics.LongDuration.Add(1)
 			}
 		}()
 
 		metrics.Invocations.Add(1)
-	
+
 		atomic.AddUint64(&serverUpdatePackets, 1)
-	
+
 		var packet ServerUpdatePacket
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
 			fmt.Printf("could not read server update packet!\n")
 			metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-			metrics.ErrorMetrics.UnmarshalFailure.Add(1)			// todo: standardize on read packet failure
+			metrics.ErrorMetrics.ReadPacketFailure.Add(1)
 			return
 		}
-	
+
 		if !incoming.SourceAddr.IP.IsLoopback() && !packet.Version.AtLeast(SDKVersionMin) {
 			fmt.Printf("ignoring old sdk version: %s\n", packet.Version.String())
 			metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
@@ -332,12 +333,12 @@ func ServerUpdateHandlerFunc(metrics *metrics.ServerUpdateMetrics, storer storag
 		}
 
 		serverAddress := packet.ServerAddress.String()
-	
+
 		var server ServerData
 		server.timestamp = time.Now().Unix()
 		server.routePublicKey = packet.ServerRoutePublicKey
 		server.version = packet.Version
-	
+
 		serversMutex.Lock()
 		_, exists := servers[serverAddress]
 		if !exists {
@@ -546,15 +547,15 @@ var numServers uint64
 var numSessions uint64
 
 func memoryUsed() float64 {
-    var m runtime.MemStats
-    runtime.ReadMemStats(&m)
-    return float64(m.Alloc) / (1000.0*1000.0)
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	return float64(m.Alloc) / (1000.0 * 1000.0)
 }
 
 func UpdateTimeouts(biller billing.Biller) {
 
 	lastUpdate := time.Now()
-	
+
 	for {
 
 		timeout := time.Now().Unix() - 30
@@ -573,7 +574,7 @@ func UpdateTimeouts(biller billing.Biller) {
 		}
 		latestNumServers := numServers
 		serversMutex.Unlock()
-		
+
 		sessionsMutex.Lock()
 		numSessionIterations := 0
 		for k, v := range sessions {
@@ -588,7 +589,7 @@ func UpdateTimeouts(biller billing.Biller) {
 		}
 		latestNumSessions := numSessions
 		sessionsMutex.Unlock()
-		
+
 		if time.Since(lastUpdate).Seconds() >= 10.0 {
 			fmt.Printf("-----------------------------\n")
 			fmt.Printf("%d servers\n", latestNumServers)
@@ -613,36 +614,36 @@ func UpdateTimeouts(biller billing.Biller) {
 }
 
 func SessionUpdateHandlerFunc(biller billing.Biller, serverPrivateKey []byte, redisClientPortal redis.Cmdable, redisClientPortalExp time.Duration, iploc routing.IPLocator, metrics *metrics.SessionMetrics, storer storage.Storer) UDPHandlerFunc {
-	
+
 	return func(w io.Writer, incoming *UDPPacket) {
-	
+
 		start := time.Now()
 		defer func() {
 			if time.Since(start).Seconds() > 0.1 {
 				fmt.Printf("long session update\n")
 				atomic.AddUint64(&longSessionUpdates, 1)
-				// todo: add metric for long session updates
+				metrics.LongDuration.Add(1)
 			}
 		}()
 
 		metrics.Invocations.Add(1)
-		
+
 		atomic.AddUint64(&sessionUpdatePackets, 1)
-		
+
 		var header SessionUpdatePacketHeader
 		if err := header.UnmarshalBinary(incoming.Data); err != nil {
 			fmt.Printf("could not read session update packet header!\n")
 			metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-			metrics.ErrorMetrics.ReadPacketFailure.Add(1)		// todo: make read header failure separate from read packet failure
+			metrics.ErrorMetrics.ReadPacketHeaderFailure.Add(1)
 			return
 		}
-		
+
 		response := SessionResponsePacket{
 			Sequence:  header.Sequence,
 			SessionID: header.SessionID,
 			RouteType: int32(routing.RouteTypeDirect),
 		}
-		
+
 		serverAddress := header.ServerAddress.String()
 		serversMutex.Lock()
 		server, ok := servers[serverAddress]
@@ -655,7 +656,7 @@ func SessionUpdateHandlerFunc(biller billing.Biller, serverPrivateKey []byte, re
 		}
 
 		response.ServerRoutePublicKey = server.routePublicKey
-		
+
 		sessionsMutex.Lock()
 		_, exists := sessions[header.SessionID]
 		if !exists {
@@ -663,7 +664,7 @@ func SessionUpdateHandlerFunc(biller billing.Biller, serverPrivateKey []byte, re
 			numSessions++
 		}
 		sessionsMutex.Unlock()
-		
+
 		var packet SessionUpdatePacket
 		packet.Version = server.version
 		response.Version = server.version
@@ -673,12 +674,12 @@ func SessionUpdateHandlerFunc(biller billing.Biller, serverPrivateKey []byte, re
 			metrics.ErrorMetrics.ReadPacketFailure.Add(1)
 			return
 		}
-		
+
 		location, err := iploc.LocateIP(packet.ClientAddress.IP)
 		if err != nil {
 			fmt.Printf("failed to locate session\n")
 			metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-			// todo: metric for fail to locate session
+			metrics.ErrorMetrics.ClientLocateFailure.Add(1)
 			return
 		}
 
@@ -1555,7 +1556,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 */
 
 func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time.Duration, packet SessionUpdatePacket, nnStats routing.Stats, directStats routing.Stats, relayHops []routing.Relay, onNetworkNext bool, datacenterName string, location routing.Location, sessionTime time.Time, isMultiPath bool) error {
-	
+
 	if (nnStats.RTT == 0 && directStats.RTT == 0) || (onNetworkNext && nnStats.RTT == 0) {
 		return nil
 	}
