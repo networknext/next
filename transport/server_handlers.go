@@ -546,8 +546,8 @@ type RouteProvider interface {
 const NumSessionMapShards = 1024
 
 type SessionMapShard struct {
-	mutex sync.Mutex
-	sessions map[uint64]int64
+	mutex       sync.Mutex
+	sessions    map[uint64]int64
 	numSessions uint64
 }
 
@@ -671,7 +671,7 @@ func UpdateTimeouts(biller billing.Biller) {
 			lastUpdate = time.Now()
 		}
 
-		time.Sleep(time.Millisecond*100)
+		time.Sleep(time.Millisecond * 100)
 	}
 }
 
@@ -716,7 +716,7 @@ func SessionUpdateHandlerFunc(biller billing.Biller, serverPrivateKey []byte, re
 		}
 		if !ok {
 			metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-			metrics.ErrorMetrics.GetServerDataFailure.Add(1)
+			metrics.ErrorMetrics.ServerDataMissing.Add(1)
 			return
 		}
 
@@ -860,24 +860,32 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 
 			// Note that if we fail to retrieve the server data, we don't bother responding since server will ignore response without ServerRoutePublicKey set
 			// See next_server_internal_process_packet in next.cpp for full requirements of response packet
-			serverCacheData, err := serverCacheCmd.Bytes()
-			if err != nil {
+			if sessionCacheCmd.Err() != redis.Nil {
+				serverCacheData, err := serverCacheCmd.Bytes()
+				if err != nil {
+					// This error case should never happen, can't produce it in test cases, but leaving it in anyway
 
-				level.Error(locallogger).Log("msg", "failed to get server bytes", "err", err)
+					level.Error(locallogger).Log("msg", "failed to get server bytes", "err", err)
+					metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+					metrics.ErrorMetrics.GetServerDataFailure.Add(1)
+					return
+				}
+				if err := serverCacheEntry.UnmarshalBinary(serverCacheData); err != nil {
+
+					level.Error(locallogger).Log("msg", "failed to unmarshal server bytes", "err", err)
+					metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+					metrics.ErrorMetrics.UnmarshalServerDataFailure.Add(1)
+					return
+				}
+
+				// Set public key on response as soon as we get it
+				response.ServerRoutePublicKey = serverCacheEntry.Server.PublicKey
+			} else {
+				level.Error(locallogger).Log("msg", "server data missing")
 				metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-				metrics.ErrorMetrics.GetServerDataFailure.Add(1)
+				metrics.ErrorMetrics.ServerDataMissing.Add(1)
 				return
 			}
-			if err := serverCacheEntry.UnmarshalBinary(serverCacheData); err != nil {
-
-				level.Error(locallogger).Log("msg", "failed to unmarshal server bytes", "err", err)
-				metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-				metrics.ErrorMetrics.UnmarshalServerDataFailure.Add(1)
-				return
-			}
-
-			// Set public key on response as soon as we get it
-			response.ServerRoutePublicKey = serverCacheEntry.Server.PublicKey
 
 			if sessionCacheCmd.Err() != redis.Nil {
 				sessionCacheData, err := sessionCacheCmd.Bytes()
