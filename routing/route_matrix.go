@@ -10,7 +10,6 @@ import (
 	"net"
 	"net/http"
 	"strconv"
-	"sync"
 
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
@@ -32,9 +31,9 @@ type RouteMatrixEntry struct {
 }
 
 // RouteMatrix ...
+// There is no mutex in the route matrix, so it should be double buffered
+// when pulled down in the server backend and portal
 type RouteMatrix struct {
-	mu sync.RWMutex
-
 	RelayIndices map[uint64]int
 
 	RelayIDs              []uint64
@@ -51,9 +50,6 @@ type RouteMatrix struct {
 }
 
 func (m *RouteMatrix) ResolveRelay(id uint64) (Relay, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
 	relayIndex, ok := m.RelayIndices[id]
 	if !ok {
 		return Relay{}, fmt.Errorf("relay %d not in matrix", id)
@@ -95,15 +91,10 @@ func (m *RouteMatrix) ResolveRelay(id uint64) (Relay, error) {
 
 // RelaysIn will return the set of Relays in the provided Datacenter
 func (m *RouteMatrix) RelaysIn(d Datacenter) []Relay {
-	m.mu.RLock()
-
 	relayIDs, ok := m.DatacenterRelays[d.ID]
 	if !ok {
-		m.mu.RUnlock()
 		return nil
 	}
-
-	m.mu.RUnlock()
 
 	var err error
 	relayLength := len(relayIDs)
@@ -128,8 +119,6 @@ func (m *RouteMatrix) RelaysIn(d Datacenter) []Relay {
 // as the argument to the second selector. If at any point a selector fails to select a new slice of routes,
 // the chain breaks.
 func (m *RouteMatrix) Routes(from []Relay, fromCost []int, to []Relay, routeSelectors ...SelectorFunc) ([]Route, error) {
-	m.mu.RLock()
-
 	type RelayPairResult struct {
 		fromcost  int  // The cost between the client and the from relay
 		fromtoidx int  // The index in the route matrix entry
@@ -156,8 +145,6 @@ func (m *RouteMatrix) Routes(from []Relay, fromCost []int, to []Relay, routeSele
 			routeTotal += int(m.Entries[fromtoidx].NumRoutes)
 		}
 	}
-
-	m.mu.RUnlock()
 
 	// Now that we have the route total, make the Route buffer and fill it
 	var routeIndex int
@@ -206,9 +193,7 @@ func (m *RouteMatrix) getFromToRelayIndex(from Relay, to Relay) (int, bool) {
 func (m *RouteMatrix) fillRoutes(routes []Route, routeIndex *int, fromCost int, fromtoidx int, reverse bool) error {
 	var err error
 
-	m.mu.RLock()
 	entry := m.Entries[fromtoidx]
-	m.mu.RUnlock()
 
 	for i := 0; i < int(entry.NumRoutes); i++ {
 		numRelays := int(entry.RouteNumRelays[i])
@@ -218,9 +203,7 @@ func (m *RouteMatrix) fillRoutes(routes []Route, routeIndex *int, fromCost int, 
 		for j := 0; j < numRelays; j++ {
 			relayIndex := entry.RouteRelays[i][j]
 
-			m.mu.RLock()
 			id := m.RelayIDs[relayIndex]
-			m.mu.RUnlock()
 
 			if !reverse {
 				routeRelays[j], err = m.ResolveRelay(id)
@@ -233,7 +216,6 @@ func (m *RouteMatrix) fillRoutes(routes []Route, routeIndex *int, fromCost int, 
 			}
 		}
 
-		m.mu.RLock()
 		route := Route{
 			Relays: routeRelays,
 			Stats: Stats{
@@ -243,7 +225,6 @@ func (m *RouteMatrix) fillRoutes(routes []Route, routeIndex *int, fromCost int, 
 				RTT: float64(fromCost + int(m.Entries[fromtoidx].DirectRTT)),
 			},
 		}
-		m.mu.RUnlock()
 
 		if *routeIndex >= len(routes) {
 			continue
@@ -353,9 +334,6 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 	if !encoding.ReadUint32(data, &index, &numRelays) {
 		return errors.New("[RouteMatrix] invalid read at number of relays")
 	}
-
-	m.mu.Lock()
-	defer m.mu.Unlock()
 
 	m.RelayIndices = make(map[uint64]int)
 	m.RelayIDs = make([]uint64, numRelays)
@@ -518,9 +496,6 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 
 // MarshalBinary ...
 func (m *RouteMatrix) MarshalBinary() ([]byte, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
 	data := make([]byte, m.Size())
 	index := 0
 
@@ -625,9 +600,6 @@ func (m *RouteMatrix) MarshalBinary() ([]byte, error) {
 }
 
 func (m *RouteMatrix) Size() uint64 {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
 	var length uint64
 	numRelays := uint64(len(m.RelayIDs))
 	numDatacenters := uint64(len(m.DatacenterIDs))
@@ -680,9 +652,6 @@ func (m *RouteMatrix) Size() uint64 {
 }
 
 func (m *RouteMatrix) WriteRoutesTo(writer io.Writer) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
 	var b bytes.Buffer
 	for _, routeEntry := range m.Entries {
 		for routeidx := int32(0); routeidx < routeEntry.NumRoutes; routeidx++ {
@@ -711,9 +680,6 @@ func (m *RouteMatrix) WriteRoutesTo(writer io.Writer) {
 }
 
 func (m *RouteMatrix) WriteAnalysisTo(writer io.Writer) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
 	src := m.RelayIDs
 	dest := m.RelayIDs
 

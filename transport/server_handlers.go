@@ -636,7 +636,7 @@ func UpdateTimeouts(biller billing.Biller) {
 	}
 }
 
-func SessionUpdateHandlerFunc(biller billing.Biller, serverPrivateKey []byte, redisClientPortal redis.Cmdable, redisClientPortalExp time.Duration, iploc routing.IPLocator, metrics *metrics.SessionMetrics, storer storage.Storer) UDPHandlerFunc {
+func SessionUpdateHandlerFunc(biller billing.Biller, serverPrivateKey []byte, redisClientPortal redis.Cmdable, redisClientPortalExp time.Duration, iploc routing.IPLocator, metrics *metrics.SessionMetrics, storer storage.Storer, getRouteMatrix func() *routing.RouteMatrix) UDPHandlerFunc {
 
 	return func(w io.Writer, incoming *UDPPacket) {
 

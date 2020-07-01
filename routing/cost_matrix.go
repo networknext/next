@@ -358,10 +358,8 @@ func (m *CostMatrix) MarshalBinary() ([]byte, error) {
 // Optimize will fill up a *RouteMatrix with the optimized routes based on cost.
 func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 	m.mu.RLock()
-	routes.mu.Lock()
 	defer func() {
 		m.mu.RUnlock()
-		routes.mu.Unlock()
 	}()
 
 	numRelays := len(m.RelayIDs)
