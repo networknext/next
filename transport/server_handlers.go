@@ -543,17 +543,21 @@ type RouteProvider interface {
 
 // =========================================================================================================
 
-type SessionShard struct {
+const SessionShards = 1024
+
+type SessionsShard struct {
 	var sessions = map[uint64]int64{}
 	var sessionsMutex sync.Mutex
+	var numSessions uint64
 }
 
+type Sessions struct {
 
+}
 
 var sessionUpdatePackets uint64
 var longSessionUpdates uint64
 var numServers uint64
-var numSessions uint64
 
 func memoryUsed() float64 {
 	var m runtime.MemStats
