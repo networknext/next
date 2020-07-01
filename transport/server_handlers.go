@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"context"
 
-	// "encoding/binary"
+	"encoding/binary"
 	"errors"
 	"fmt"
 
-	// fnv "hash/fnv"
+	fnv "hash/fnv"
 	"io"
 	// "math"
 	// "math/rand"
@@ -23,7 +23,7 @@ import (
 	// "github.com/go-kit/kit/log/level"
 	jsoniter "github.com/json-iterator/go"
 
-	// "github.com/go-redis/redis/v7"
+	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/storage"
@@ -498,7 +498,6 @@ func UpdateTimeouts(biller billing.Biller) {
 			}
 		}
 		serversMutex.Unlock()
-		time.Sleep(time.Second * 10)
 		sessionsMutex.Lock()
 		numSessions := 0
 		for k, v := range sessions {
@@ -524,7 +523,7 @@ func UpdateTimeouts(biller billing.Biller) {
 	}
 }
 
-func SessionUpdateHandlerFunc(biller billing.Biller, serverPrivateKey []byte) UDPHandlerFunc {
+func SessionUpdateHandlerFunc(biller billing.Biller, serverPrivateKey []byte, redisClientPortal redis.Cmdable, redisClientPortalExp time.Duration) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
 		atomic.AddUint64(&sessionUpdatePackets, 1)
 		var header SessionUpdatePacketHeader
@@ -549,12 +548,31 @@ func SessionUpdateHandlerFunc(biller billing.Biller, serverPrivateKey []byte) UD
 		sessionsMutex.Lock()
 		sessions[header.SessionID] = time.Now().Unix()
 		sessionsMutex.Unlock()
+		// todo: read rest of packet with version		
+		packet := SessionUpdatePacket{
+			SessionID: header.SessionID,
+		}
 		if _, err := writeSessionResponse(w, response, serverPrivateKey); err != nil {
 			fmt.Printf("could not write session update response packet: %v\n", err)
 			return
 		}
-		packet := SessionUpdatePacket{
-			SessionID: header.SessionID,
+		var sessionCacheEntry SessionCacheEntry
+		nnStats := routing.Stats{
+			RTT:        float64(packet.NextMinRTT),
+			Jitter:     float64(packet.NextJitter),
+			PacketLoss: float64(packet.NextPacketLoss),
+		}
+		directStats := routing.Stats{
+			RTT:        float64(packet.DirectMinRTT),
+			Jitter:     float64(packet.DirectJitter),
+			PacketLoss: float64(packet.DirectPacketLoss),
+		}
+		chosenRoute := routing.Route{
+			Stats:  directStats,
+			Relays: make([]routing.Relay, 0),
+		}
+		if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, sessionCacheEntry.RouteDecision.OnNetworkNext, "datacenter", sessionCacheEntry.Location, time.Now(), false); err != nil {
+			fmt.Printf("could not update portal data: %v", err)
 		}
 		storer := storage.InMemory{}
 		if err := submitBillingEntry(biller, ServerCacheEntry{}, SessionCacheEntry{}, packet, response, routing.Buyer{}, routing.Route{}, routing.LocationNullIsland,
@@ -1389,8 +1407,6 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 }
 */
 
-// todo: disabled
-/*
 func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time.Duration, packet SessionUpdatePacket, nnStats routing.Stats, directStats routing.Stats, relayHops []routing.Relay, onNetworkNext bool, datacenterName string, location routing.Location, sessionTime time.Time, isMultiPath bool) error {
 	if (nnStats.RTT == 0 && directStats.RTT == 0) || (onNetworkNext && nnStats.RTT == 0) {
 		return nil
@@ -1514,7 +1530,6 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 
 	return nil
 }
-*/
 
 func submitBillingEntry(biller billing.Biller, serverCacheEntry ServerCacheEntry, sessionCacheEntry SessionCacheEntry, request SessionUpdatePacket, response SessionResponsePacket,
 	buyer routing.Buyer, chosenRoute routing.Route, location routing.Location, storer storage.Storer, clientRelays []routing.Relay, routeDecision routing.Decision,

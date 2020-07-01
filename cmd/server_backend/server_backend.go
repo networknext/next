@@ -17,8 +17,8 @@ import (
 	"os/signal"
 	"strconv"
 
-	// "strings"
-	// "time"
+	"strings"
+	"time"
 
 	// gcplogging "cloud.google.com/go/logging"
 	// "cloud.google.com/go/profiler"
@@ -27,13 +27,14 @@ import (
 	// "github.com/go-kit/kit/log/level"
 
 	/*
-		"github.com/networknext/backend/crypto"
 		"github.com/networknext/backend/logging"
 		"github.com/networknext/backend/metrics"
-		"github.com/networknext/backend/routing"
-		"github.com/networknext/backend/storage"
+		
 	*/
 	// "cloud.google.com/go/bigquery"
+	"github.com/networknext/backend/crypto"
+	"github.com/networknext/backend/routing"
+	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/transport"
 )
@@ -129,99 +130,112 @@ func main() {
 		}
 	}
 
-	/*
-		redisPortalHosts := os.Getenv("REDIS_HOST_PORTAL")
-		splitPortalHosts := strings.Split(redisPortalHosts, ",")
-		redisClientPortal := storage.NewRedisClient(splitPortalHosts...)
-		if err := redisClientPortal.Ping().Err(); err != nil {
-			level.Error(logger).Log("envvar", "REDIS_HOST_PORTAL", "value", redisPortalHosts, "err", err)
-			os.Exit(1)
-		}
+	redisPortalHosts := os.Getenv("REDIS_HOST_PORTAL")
+	splitPortalHosts := strings.Split(redisPortalHosts, ",")
+	redisClientPortal := storage.NewRedisClient(splitPortalHosts...)
+	if err := redisClientPortal.Ping().Err(); err != nil {
+		// level.Error(logger).Log("envvar", "REDIS_HOST_PORTAL", "value", redisPortalHosts, "err", err)
+		fmt.Printf("can't ping redis portal: %v", err)
+		os.Exit(1)
+	}
 
-		redisPortalHostExpiration, err := time.ParseDuration(os.Getenv("REDIS_HOST_PORTAL_EXPIRATION"))
+	redisPortalHostExpiration, err := time.ParseDuration(os.Getenv("REDIS_HOST_PORTAL_EXPIRATION"))
+	if err != nil {
+		// level.Error(logger).Log("envvar", "REDIS_HOST_PORTAL_EXPIRATION", "err", err)
+		fmt.Printf("could not parse REDIS_HOST_PORTAL_EXPIRATION\n")
+		os.Exit(1)
+	}
+
+	redisHost := os.Getenv("REDIS_HOST_RELAYS")
+	redisClientRelays := storage.NewRedisClient(redisHost)
+	if err := redisClientRelays.Ping().Err(); err != nil {
+		// level.Error(logger).Log("envvar", "REDIS_HOST_RELAYS", "value", redisHost, "err", err)
+		fmt.Printf("could not ping redis relays\n")
+		os.Exit(1)
+	}
+
+	redisHosts := strings.Split(os.Getenv("REDIS_HOST_CACHE"), ",")
+	redisClientCache := storage.NewRedisClient(redisHosts...)
+	if err := redisClientCache.Ping().Err(); err != nil {
+		// level.Error(logger).Log("envvar", "REDIS_HOST_CACHE", "value", redisHosts, "err", err)
+		fmt.Printf("could not ping redis cache\n")
+		os.Exit(1)
+	}
+
+	// Open the Maxmind DB and create a routing.MaxmindDB from it
+	var ipLocator routing.IPLocator = routing.NullIsland
+	mmcitydburi := os.Getenv("MAXMIND_CITY_DB_URI")
+	mmispdburi := os.Getenv("MAXMIND_ISP_DB_URI")
+	if mmcitydburi != "" && mmispdburi != "" {
+		mmdb := routing.MaxmindDB{}
+
+		err := mmdb.OpenCity(ctx, http.DefaultClient, mmcitydburi)
 		if err != nil {
-			level.Error(logger).Log("envvar", "REDIS_HOST_PORTAL_EXPIRATION", "err", err)
+			// level.Error(logger).Log("envvar", "MAXMIND_CITY_DB_URI", "value", mmcitydburi, "err", err)
+			fmt.Printf("could not open %s\n", mmcitydburi)
 			os.Exit(1)
 		}
 
-		redisHost := os.Getenv("REDIS_HOST_RELAYS")
-		redisClientRelays := storage.NewRedisClient(redisHost)
-		if err := redisClientRelays.Ping().Err(); err != nil {
-			level.Error(logger).Log("envvar", "REDIS_HOST_RELAYS", "value", redisHost, "err", err)
+		err = mmdb.OpenISP(ctx, http.DefaultClient, mmispdburi)
+		if err != nil {
+			// level.Error(logger).Log("envvar", "MAXMIND_ISP_DB_URI", "value", mmispdburi, "err", err)
+			fmt.Printf("could not open %s\n", mmispdburi)
 			os.Exit(1)
 		}
 
-		redisHosts := strings.Split(os.Getenv("REDIS_HOST_CACHE"), ",")
-		redisClientCache := storage.NewRedisClient(redisHosts...)
-		if err := redisClientCache.Ping().Err(); err != nil {
-			level.Error(logger).Log("envvar", "REDIS_HOST_CACHE", "value", redisHosts, "err", err)
-			os.Exit(1)
-		}
-
-		// Open the Maxmind DB and create a routing.MaxmindDB from it
-		var ipLocator routing.IPLocator = routing.NullIsland
-		mmcitydburi := os.Getenv("MAXMIND_CITY_DB_URI")
-		mmispdburi := os.Getenv("MAXMIND_ISP_DB_URI")
-		if mmcitydburi != "" && mmispdburi != "" {
-			mmdb := routing.MaxmindDB{}
-
-			err := mmdb.OpenCity(ctx, http.DefaultClient, mmcitydburi)
+		if mmsyncinterval, ok := os.LookupEnv("MAXMIND_SYNC_DB_INTERVAL"); ok {
+			syncInterval, err := time.ParseDuration(mmsyncinterval)
 			if err != nil {
-				level.Error(logger).Log("envvar", "MAXMIND_CITY_DB_URI", "value", mmcitydburi, "err", err)
+				// level.Error(logger).Log("envvar", "MAXMIND_SYNC_DB_INTERVAL", "value", mmsyncinterval, "err", err)
+				fmt.Printf("bad MAXMIND_SYNC_DB_INTERVAL\n")
 				os.Exit(1)
 			}
 
-			err = mmdb.OpenISP(ctx, http.DefaultClient, mmispdburi)
-			if err != nil {
-				level.Error(logger).Log("envvar", "MAXMIND_ISP_DB_URI", "value", mmispdburi, "err", err)
-				os.Exit(1)
-			}
-
-			if mmsyncinterval, ok := os.LookupEnv("MAXMIND_SYNC_DB_INTERVAL"); ok {
-				syncInterval, err := time.ParseDuration(mmsyncinterval)
-				if err != nil {
-					level.Error(logger).Log("envvar", "MAXMIND_SYNC_DB_INTERVAL", "value", mmsyncinterval, "err", err)
-					os.Exit(1)
-				}
-
-				// Start a goroutine to sync from Maxmind.com
-				go func() {
-					ticker := time.NewTicker(syncInterval)
-					mmdb.SyncLoop(ctx, ticker.C)
-				}()
-			}
-
-			ipLocator = &mmdb
+			// Start a goroutine to sync from Maxmind.com
+			go func() {
+				ticker := time.NewTicker(syncInterval)
+				mmdb.SyncLoop(ctx, ticker.C)
+			}()
 		}
 
-		geoClient := routing.GeoClient{
-			RedisClient: redisClientRelays,
-			Namespace:   "RELAY_LOCATIONS",
-		}
+		ipLocator = &mmdb
+	}
 
-		// Create an in-memory db
-		var db storage.Storer = &storage.InMemory{
-			LocalMode: true,
-		}
+	// todo
+	_ = ipLocator
 
-		if err := db.AddBuyer(ctx, routing.Buyer{
-			ID:                   13672574147039585173,
-			Name:                 "local",
-			PublicKey:            customerPublicKey,
-			RoutingRulesSettings: routing.LocalRoutingRulesSettings,
-		}); err != nil {
-			level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
-			os.Exit(1)
-		}
-		if err := db.AddDatacenter(ctx, routing.Datacenter{
-			ID:      crypto.HashID("local"),
-			Name:    "local",
-			Enabled: true,
-		}); err != nil {
-			level.Error(logger).Log("msg", "could not add datacenter to storage", "err", err)
-			os.Exit(1)
-		}
-	*/
+	geoClient := routing.GeoClient{
+		RedisClient: redisClientRelays,
+		Namespace:   "RELAY_LOCATIONS",
+	}
+
+	// todo
+	_ = geoClient
+
+	// Create an in-memory db
+	var db storage.Storer = &storage.InMemory{
+		LocalMode: true,
+	}
+
+	if err := db.AddBuyer(ctx, routing.Buyer{
+		ID:                   13672574147039585173,
+		Name:                 "local",
+		PublicKey:            customerPublicKey,
+		RoutingRulesSettings: routing.LocalRoutingRulesSettings,
+	}); err != nil {
+		// level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
+		fmt.Printf("could not add buyer to storage\n")
+		os.Exit(1)
+	}
+	if err := db.AddDatacenter(ctx, routing.Datacenter{
+		ID:      crypto.HashID("local"),
+		Name:    "local",
+		Enabled: true,
+	}); err != nil {
+		// level.Error(logger).Log("msg", "could not add datacenter to storage", "err", err)
+		fmt.Printf("could not add datacenter to storage\n")
+		os.Exit(1)
+	}
 
 	// Create a no-op biller
 	var biller billing.Biller = &billing.NoOpBiller{}
@@ -440,7 +454,7 @@ func main() {
 			// todo: cut down temporarily
 			ServerInitHandlerFunc:    transport.ServerInitHandlerFunc(serverPrivateKey),
 			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(),
-			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(biller, serverPrivateKey),
+			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(biller, serverPrivateKey, redisClientPortal, redisPortalHostExpiration),
 			/*
 				ServerInitHandlerFunc:    transport.ServerInitHandlerFunc(logger, redisClientCache, db, serverInitMetrics, serverPrivateKey),
 				ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(logger, redisClientCache, db, serverUpdateMetrics),
