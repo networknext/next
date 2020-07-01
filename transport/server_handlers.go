@@ -342,9 +342,9 @@ func ServerUpdateHandlerFunc(metrics *metrics.ServerUpdateMetrics, storer storag
 		serversMutex.Lock()
 		_, exists := servers[serverAddress]
 		if !exists {
-			servers[serverAddress] = server
 			numServers++
 		}
+		servers[serverAddress] = server
 		serversMutex.Unlock()
 	}
 }
@@ -567,6 +567,7 @@ func UpdateTimeouts(biller billing.Biller) {
 				break
 			}
 			if v.timestamp < timeout {
+				// fmt.Printf("timed out server: %s\n", k)
 				delete(servers, k)
 				numServers--
 			}
@@ -582,6 +583,7 @@ func UpdateTimeouts(biller billing.Biller) {
 				break
 			}
 			if v < timeout {
+				// fmt.Printf("timed out session: %x\n", k)
 				delete(sessions, k)
 				numSessions--
 			}
@@ -649,7 +651,7 @@ func SessionUpdateHandlerFunc(biller billing.Biller, serverPrivateKey []byte, re
 		server, ok := servers[serverAddress]
 		serversMutex.Unlock()
 		if !ok {
-			fmt.Printf("no server entry for session\n")
+			fmt.Printf("no server entry for session: %s\n", serverAddress)
 			metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 			metrics.ErrorMetrics.GetServerDataFailure.Add(1)
 			return
@@ -660,9 +662,9 @@ func SessionUpdateHandlerFunc(biller billing.Biller, serverPrivateKey []byte, re
 		sessionsMutex.Lock()
 		_, exists := sessions[header.SessionID]
 		if !exists {
-			sessions[header.SessionID] = time.Now().Unix()
 			numSessions++
 		}
+		sessions[header.SessionID] = time.Now().Unix()
 		sessionsMutex.Unlock()
 
 		var packet SessionUpdatePacket
