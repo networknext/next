@@ -362,7 +362,7 @@ func main() {
 		fmt.Printf("could not create session update metrics: %v\n", err)
 	}
 
-	var routeMatrix *routing.RouteMatrix
+	routeMatrix := &routing.RouteMatrix{}
 	var routeMatrixMutex sync.RWMutex
 
 	getRouteMatrixFunc := func() *routing.RouteMatrix {
@@ -385,7 +385,7 @@ func main() {
 
 			go func() {
 				for {
-					var newRouteMatrix *routing.RouteMatrix
+					newRouteMatrix := &routing.RouteMatrix{}
 					var matrixReader io.Reader
 
 					// Default to reading route matrix from file

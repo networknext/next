@@ -250,7 +250,7 @@ func main() {
 		}
 	}
 
-	var routeMatrix *routing.RouteMatrix
+	routeMatrix := &routing.RouteMatrix{}
 	var routeMatrixMutex sync.RWMutex
 
 	{
@@ -264,7 +264,7 @@ func main() {
 
 			go func() {
 				for {
-					var newRouteMatrix *routing.RouteMatrix
+					newRouteMatrix := &routing.RouteMatrix{}
 					var matrixReader io.Reader
 
 					// Default to reading route matrix from file
