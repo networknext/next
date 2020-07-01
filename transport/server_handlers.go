@@ -132,7 +132,7 @@ func ServerInitHandlerFunc(serverPrivateKey []byte, metrics *metrics.ServerInitM
 		start := time.Now()
 		defer func() {
 			if time.Since(start).Seconds() > 0.1 {
-				fmt.Printf("long server init\n")
+				// fmt.Printf("long server init\n")
 				atomic.AddUint64(&longServerInits, 1)
 				metrics.LongDuration.Add(1)
 			}
@@ -296,7 +296,7 @@ func ServerUpdateHandlerFunc(metrics *metrics.ServerUpdateMetrics, storer storag
 		start := time.Now()
 		defer func() {
 			if time.Since(start).Seconds() > 0.1 {
-				fmt.Printf("long server update\n")
+				// fmt.Printf("long server update\n")
 				atomic.AddUint64(&longServerUpdates, 1)
 				metrics.LongDuration.Add(1)
 			}
@@ -331,7 +331,7 @@ func ServerUpdateHandlerFunc(metrics *metrics.ServerUpdateMetrics, storer storag
 		serverMutexStart := time.Now()
 		serverMap.UpdateServerData(serverAddress, &server)
 		if time.Since(serverMutexStart).Seconds() > 0.1 {
-			fmt.Printf("long server mutex in server update\n")
+			// fmt.Printf("long server mutex in server update\n")
 		}
 	}
 }
@@ -608,7 +608,7 @@ func (serverMap *ServerMap) PerformTimeouts(timeoutTimestamp int64) {
 		}
 		serverMap.shard[index].mutex.Unlock()
 		if time.Since(serverTimeoutStart).Seconds() > 0.1 {
-			fmt.Printf("long server timeout check [%d]\n", index)
+			// fmt.Printf("long server timeout check [%d]\n", index)
 		}
 	}
 }
@@ -670,7 +670,7 @@ func (sessionMap *SessionMap) PerformTimeouts(timeoutTimestamp int64) {
 		}
 		sessionMap.shard[index].mutex.Unlock()
 		if time.Since(sessionTimeoutStart).Seconds() > 0.1 {
-			fmt.Printf("long session timeout check [%d]\n", index)
+			// fmt.Printf("long session timeout check [%d]\n", index)
 		}
 	}
 }
@@ -746,7 +746,7 @@ func SessionUpdateHandlerFunc(biller billing.Biller, serverPrivateKey []byte, re
 		start := time.Now()
 		defer func() {
 			if time.Since(start).Seconds() > 0.1 {
-				fmt.Printf("long session update\n")
+				// fmt.Printf("long session update\n")
 				atomic.AddUint64(&longSessionUpdates, 1)
 				metrics.LongDuration.Add(1)
 			}
@@ -778,7 +778,7 @@ func SessionUpdateHandlerFunc(biller billing.Biller, serverPrivateKey []byte, re
 			return
 		}
 		if time.Since(serverMutexStart).Seconds() > 0.1 {
-			fmt.Printf("long server mutex in session update\n")
+			// fmt.Printf("long server mutex in session update\n")
 		}
 
 		response.ServerRoutePublicKey = server.routePublicKey
@@ -786,7 +786,7 @@ func SessionUpdateHandlerFunc(biller billing.Biller, serverPrivateKey []byte, re
 		sessionMutexStart := time.Now()
 		sessionMap.UpdateSession(header.SessionID)
 		if time.Since(sessionMutexStart).Seconds() > 0.1 {
-			fmt.Printf("long session mutex in session update\n")
+			// fmt.Printf("long session mutex in session update\n")
 		}
 
 		var packet SessionUpdatePacket
