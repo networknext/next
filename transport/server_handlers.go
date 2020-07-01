@@ -525,7 +525,7 @@ func UpdateTimeouts(biller billing.Biller) {
 	}
 }
 
-func SessionUpdateHandlerFunc(biller billing.Biller, serverPrivateKey []byte, redisClientPortal redis.Cmdable, redisClientPortalExp time.Duration) UDPHandlerFunc {
+func SessionUpdateHandlerFunc(biller billing.Biller, serverPrivateKey []byte, redisClientPortal redis.Cmdable, redisClientPortalExp time.Duration, iploc routing.IPLocator ) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
 		atomic.AddUint64(&sessionUpdatePackets, 1)
 		var header SessionUpdatePacketHeader
@@ -557,11 +557,17 @@ func SessionUpdateHandlerFunc(biller billing.Biller, serverPrivateKey []byte, re
 			fmt.Printf("could not read session update packet\n")
 			return
 		}
+		location, err := iploc.LocateIP(packet.ClientAddress.IP)
+		if err != nil {
+			fmt.Printf("failed to locate session\n")
+			return
+		}
 		if _, err := writeSessionResponse(w, response, serverPrivateKey); err != nil {
 			fmt.Printf("could not write session update response packet: %v\n", err)
 			return
 		}
 		var sessionCacheEntry SessionCacheEntry
+		sessionCacheEntry.Location = location
 		nnStats := routing.Stats{
 			RTT:        float64(packet.NextMinRTT),
 			Jitter:     float64(packet.NextJitter),

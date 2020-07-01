@@ -454,7 +454,7 @@ func main() {
 			// todo: cut down temporarily
 			ServerInitHandlerFunc:    transport.ServerInitHandlerFunc(serverPrivateKey),
 			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(),
-			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(biller, serverPrivateKey, redisClientPortal, redisPortalHostExpiration),
+			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(biller, serverPrivateKey, redisClientPortal, redisPortalHostExpiration, ipLocator),
 			/*
 				ServerInitHandlerFunc:    transport.ServerInitHandlerFunc(logger, redisClientCache, db, serverInitMetrics, serverPrivateKey),
 				ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(logger, redisClientCache, db, serverUpdateMetrics),
