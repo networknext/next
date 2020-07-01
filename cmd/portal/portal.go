@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -249,7 +250,9 @@ func main() {
 		}
 	}
 
-	var routeMatrix routing.RouteMatrix
+	var routeMatrix *routing.RouteMatrix
+	var routeMatrixMutex sync.RWMutex
+
 	{
 		if uri, ok := os.LookupEnv("ROUTE_MATRIX_URI"); ok {
 			rmsyncinterval := os.Getenv("ROUTE_MATRIX_SYNC_INTERVAL")
@@ -261,6 +264,7 @@ func main() {
 
 			go func() {
 				for {
+					var newRouteMatrix *routing.RouteMatrix
 					var matrixReader io.Reader
 
 					// Default to reading route matrix from file
@@ -273,12 +277,19 @@ func main() {
 						matrixReader = r.Body
 					}
 
-					// Attempt to read, and intentionally force to empty route matrix if any errors are encountered to avoid stale routes
-					_, err := routeMatrix.ReadFrom(matrixReader)
+					// Don't swap route matrix if we fail to read
+					_, err := newRouteMatrix.ReadFrom(matrixReader)
 					if err != nil {
-						routeMatrix = routing.RouteMatrix{}
 						level.Warn(logger).Log("matrix", "route", "op", "read", "envvar", "ROUTE_MATRIX_URI", "value", uri, "err", err, "msg", "forcing empty route matrix to avoid stale routes")
+						time.Sleep(syncInterval)
+						continue
 					}
+
+					// Swap the route matrix pointer to the new one
+					// This double buffered route matrix approach makes the route matrix lockless
+					routeMatrixMutex.Lock()
+					routeMatrix = newRouteMatrix
+					routeMatrixMutex.Unlock()
 
 					level.Info(logger).Log("matrix", "route", "entries", len(routeMatrix.Entries))
 
@@ -352,7 +363,7 @@ func main() {
 			BuildTime:   buildtime,
 			RedisClient: redisClientRelays,
 			Storage:     db,
-			RouteMatrix: &routeMatrix,
+			// RouteMatrix: &routeMatrix,
 		}, "")
 		s.RegisterService(&buyerService, "")
 		s.RegisterService(&jsonrpc.AuthService{

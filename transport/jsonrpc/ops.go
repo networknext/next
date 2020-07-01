@@ -25,7 +25,7 @@ type OpsService struct {
 
 	RedisClient redis.Cmdable
 	Storage     storage.Storer
-	RouteMatrix *routing.RouteMatrix
+	// RouteMatrix *routing.RouteMatrix
 
 	Logger log.Logger
 }
@@ -730,70 +730,70 @@ type RouteSelectionReply struct {
 	Routes []routing.Route `json:"routes"`
 }
 
-func (s *OpsService) RouteSelection(r *http.Request, args *RouteSelectionArgs, reply *RouteSelectionReply) error {
-	relays := s.Storage.Relays()
+// func (s *OpsService) RouteSelection(r *http.Request, args *RouteSelectionArgs, reply *RouteSelectionReply) error {
+// 	relays := s.Storage.Relays()
 
-	var srcrelays []routing.Relay
-	for _, relay := range relays {
-		for _, srcrelay := range args.SourceRelays {
-			if relay.Name == srcrelay {
-				srcrelays = append(srcrelays, relay)
-			}
-		}
-	}
-	if len(srcrelays) == 0 {
-		srcrelays = relays
-	}
+// 	var srcrelays []routing.Relay
+// 	for _, relay := range relays {
+// 		for _, srcrelay := range args.SourceRelays {
+// 			if relay.Name == srcrelay {
+// 				srcrelays = append(srcrelays, relay)
+// 			}
+// 		}
+// 	}
+// 	if len(srcrelays) == 0 {
+// 		srcrelays = relays
+// 	}
 
-	var destrelays []routing.Relay
-	for _, relay := range relays {
-		for _, destrelay := range args.DestinationRelays {
-			if relay.Name == destrelay {
-				destrelays = append(destrelays, relay)
-			}
-		}
-	}
-	if len(destrelays) == 0 {
-		destrelays = relays
-	}
+// 	var destrelays []routing.Relay
+// 	for _, relay := range relays {
+// 		for _, destrelay := range args.DestinationRelays {
+// 			if relay.Name == destrelay {
+// 				destrelays = append(destrelays, relay)
+// 			}
+// 		}
+// 	}
+// 	if len(destrelays) == 0 {
+// 		destrelays = relays
+// 	}
 
-	var selectors []routing.SelectorFunc
-	selectors = append(selectors, routing.SelectUnencumberedRoutes(0.8))
+// 	var selectors []routing.SelectorFunc
+// 	selectors = append(selectors, routing.SelectUnencumberedRoutes(0.8))
 
-	if args.RTT > 0 {
-		selectors = append(selectors, routing.SelectAcceptableRoutesFromBestRTT(args.RTT))
-	}
+// 	if args.RTT > 0 {
+// 		selectors = append(selectors, routing.SelectAcceptableRoutesFromBestRTT(args.RTT))
+// 	}
 
-	if args.RouteHash > 0 {
-		selectors = append(selectors, routing.SelectContainsRouteHash(args.RouteHash))
-	}
+// 	if args.RouteHash > 0 {
+// 		selectors = append(selectors, routing.SelectContainsRouteHash(args.RouteHash))
+// 	}
 
-	// todo: fill in source relay costs here
-	sourceRelayCosts := make([]int, len(srcrelays))
+// 	// todo: fill in source relay costs here
+// 	sourceRelayCosts := make([]int, len(srcrelays))
 
-	routes, err := s.RouteMatrix.Routes(srcrelays, sourceRelayCosts, destrelays, selectors...)
-	if err != nil {
-		err = fmt.Errorf("RouteSelection() Routes error: %w", err)
-		s.Logger.Log("err", err)
-		return err
-	}
+// 	routes, err := s.RouteMatrix.Routes(srcrelays, sourceRelayCosts, destrelays, selectors...)
+// 	if err != nil {
+// 		err = fmt.Errorf("RouteSelection() Routes error: %w", err)
+// 		s.Logger.Log("err", err)
+// 		return err
+// 	}
 
-	for routeidx := range routes {
-		for relayidx := range routes[routeidx].Relays {
-			routes[routeidx].Relays[relayidx], err = s.Storage.Relay(routes[routeidx].Relays[relayidx].ID)
-			if err != nil {
-				err = fmt.Errorf("RouteSelection() Relays error: %w", err)
-				s.Logger.Log("err", err)
-				return err
-			}
-		}
-	}
+// 	for routeidx := range routes {
+// 		for relayidx := range routes[routeidx].Relays {
+// 			routes[routeidx].Relays[relayidx], err = s.Storage.Relay(routes[routeidx].Relays[relayidx].ID)
+// 			if err != nil {
+// 				err = fmt.Errorf("RouteSelection() Relays error: %w", err)
+// 				s.Logger.Log("err", err)
+// 				return err
+// 			}
+// 		}
+// 	}
 
-	sort.Slice(routes, func(i int, j int) bool {
-		return routes[i].Stats.RTT < routes[j].Stats.RTT && routes[i].Relays[0].Name < routes[j].Relays[0].Name
-	})
+// 	sort.Slice(routes, func(i int, j int) bool {
+// 		return routes[i].Stats.RTT < routes[j].Stats.RTT && routes[i].Relays[0].Name < routes[j].Relays[0].Name
+// 	})
 
-	reply.Routes = routes
+// 	reply.Routes = routes
 
-	return nil
-}
+// 	return nil
+// }

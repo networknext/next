@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"sync"
 
 	"io"
 	"net"
@@ -361,7 +362,17 @@ func main() {
 		fmt.Printf("could not create session update metrics: %v\n", err)
 	}
 
-	var routeMatrix routing.RouteMatrix
+	var routeMatrix *routing.RouteMatrix
+	var routeMatrixMutex sync.RWMutex
+
+	getRouteMatrixFunc := func() *routing.RouteMatrix {
+		routeMatrixMutex.RLock()
+		defer routeMatrixMutex.RUnlock()
+
+		rm := routeMatrix
+		return rm
+	}
+
 	{
 		if uri, ok := os.LookupEnv("ROUTE_MATRIX_URI"); ok {
 			rmsyncinterval := os.Getenv("ROUTE_MATRIX_SYNC_INTERVAL")
@@ -374,6 +385,7 @@ func main() {
 
 			go func() {
 				for {
+					var newRouteMatrix *routing.RouteMatrix
 					var matrixReader io.Reader
 
 					// Default to reading route matrix from file
@@ -389,13 +401,20 @@ func main() {
 					// todo: rather than reading into the same route matrix each time. double buffer and pointer swap.
 					// this avoids a long lock while reading that stalls out session update handlers until the read completes.
 
-					// Attempt to read, and intentionally force to empty route matrix if any errors are encountered to avoid stale routes
-					_, err := routeMatrix.ReadFrom(matrixReader)
+					// Don't swap route matrix if we fail to read
+					_, err := newRouteMatrix.ReadFrom(matrixReader)
 					if err != nil {
-						routeMatrix = routing.RouteMatrix{}
 						// level.Warn(logger).Log("matrix", "route", "op", "read", "envvar", "ROUTE_MATRIX_URI", "value", uri, "err", err, "msg", "forcing empty route matrix to avoid stale routes")
 						fmt.Printf("could not get route matrix\n")
+						time.Sleep(syncInterval)
+						continue
 					}
+
+					// Swap the route matrix pointer to the new one
+					// This double buffered route matrix approach makes the route matrix lockless
+					routeMatrixMutex.Lock()
+					routeMatrix = newRouteMatrix
+					routeMatrixMutex.Unlock()
 
 					// level.Info(logger).Log("matrix", "route", "entries", len(routeMatrix.Entries))
 
@@ -453,7 +472,7 @@ func main() {
 			// todo: cut down temporarily
 			ServerInitHandlerFunc:    transport.ServerInitHandlerFunc(serverPrivateKey, serverInitMetrics, db),
 			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(serverUpdateMetrics, db),
-			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(biller, serverPrivateKey, redisClientPortal, redisPortalHostExpiration, ipLocator, sessionUpdateMetrics, db),
+			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(biller, serverPrivateKey, redisClientPortal, redisPortalHostExpiration, ipLocator, sessionUpdateMetrics, db, getRouteMatrixFunc),
 			/*
 				ServerInitHandlerFunc:    transport.ServerInitHandlerFunc(logger, redisClientCache, db, serverInitMetrics, serverPrivateKey),
 				ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(logger, redisClientCache, db, serverUpdateMetrics),
