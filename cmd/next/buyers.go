@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"reflect"
 	"sort"
 
 	"github.com/modood/table"
@@ -70,6 +71,12 @@ func removeBuyer(rpcClient jsonrpc.RPCClient, env Environment, id string) {
 }
 
 func routingRulesSettings(rpcClient jsonrpc.RPCClient, env Environment, buyerID string) {
+
+	transpose := []struct {
+		RoutingRuleSetting string
+		Value              string
+	}{}
+
 	args := localjsonrpc.RoutingRulesSettingsArgs{
 		BuyerID: buyerID,
 	}
@@ -80,7 +87,20 @@ func routingRulesSettings(rpcClient jsonrpc.RPCClient, env Environment, buyerID 
 		return
 	}
 
-	table.Output(reply.RoutingRuleSettings)
+	v := reflect.ValueOf(reply.RoutingRuleSettings[0])
+	typeOfV := v.Type()
+
+	for i := 0; i < v.NumField(); i++ {
+		transpose = append(transpose, struct {
+			RoutingRuleSetting string
+			Value              string
+		}{
+			RoutingRuleSetting: typeOfV.Field(i).Name,
+			Value:              fmt.Sprintf("%v", v.Field(i).Interface()),
+		})
+	}
+
+	table.Output(transpose)
 }
 
 func setRoutingRulesSettings(rpcClient jsonrpc.RPCClient, env Environment, buyerID string, rrs routing.RoutingRulesSettings) {
