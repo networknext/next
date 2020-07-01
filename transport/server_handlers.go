@@ -543,18 +543,71 @@ type RouteProvider interface {
 
 // =========================================================================================================
 
-const SessionShards = 1024
+const NumSessionMapShards = 1024
 
-type SessionsShard struct {
-	var sessions = map[uint64]int64{}
-	var sessionsMutex sync.Mutex
-	var numSessions uint64
+type SessionMapShard struct {
+	mutex sync.Mutex
+	sessions map[uint64]int64
+	numSessions uint64
 }
 
-type Sessions struct {
-
+type SessionMap struct {
+	shard [NumSessionMapShards]*SessionMapShard
 }
 
+func NewSessionMap() *SessionMap {
+	sessionMap := &SessionMap{}
+	for i := 0; i < NumSessionMapShards; i++ {
+		sessionMap.shard[i] = &SessionMapShard{}
+		sessionMap.shard[i].sessions = make(map[uint64]int64)
+	}
+	return sessionMap
+}
+
+func (sessionMap *SessionMap) NumSessions() uint64 {
+	var total uint64
+	for i := 0; i < NumSessionMapShards; i++ {
+		numSessionsInShard := atomic.LoadUint64(&sessionMap.shard[i].numSessions)
+		total += numSessionsInShard
+	}
+	return total
+}
+
+func (sessionMap *SessionMap) UpdateSession(sessionId uint64) {
+	index := sessionId % NumSessionMapShards
+	sessionMap.shard[index].mutex.Lock()
+	_, exists := sessionMap.shard[index].sessions[sessionId]
+	sessionMap.shard[index].sessions[sessionId] = time.Now().Unix()
+	sessionMap.shard[index].mutex.Unlock()
+	if !exists {
+		atomic.AddUint64(&sessionMap.shard[index].numSessions, 1)
+	}
+}
+
+func (sessionMap *SessionMap) PerformTimeouts(timeoutTimestamp int64) {
+	for index := 0; index < NumSessionMapShards; index++ {
+		sessionTimeoutStart := time.Now()
+		sessionMap.shard[index].mutex.Lock()
+		numSessionIterations := 0
+		for k, v := range sessionMap.shard[index].sessions {
+			if numSessionIterations > 100 {
+				break
+			}
+			if v < timeoutTimestamp {
+				// fmt.Printf("timed out session: %x\n", k)
+				delete(sessionMap.shard[index].sessions, k)
+				atomic.AddUint64(&sessionMap.shard[index].numSessions, ^uint64(0))
+			}
+			numSessionIterations++
+		}
+		sessionMap.shard[index].mutex.Unlock()
+		if time.Since(sessionTimeoutStart).Seconds() > 0.1 {
+			fmt.Printf("long session timeout check [%d]\n", index)
+		}
+	}
+}
+
+var sessionMap *SessionMap
 var sessionUpdatePackets uint64
 var longSessionUpdates uint64
 var numServers uint64
@@ -565,13 +618,17 @@ func memoryUsed() float64 {
 	return float64(m.Alloc) / (1000.0 * 1000.0)
 }
 
+func InitializeSessionMap() {
+	sessionMap = NewSessionMap()
+}
+
 func UpdateTimeouts(biller billing.Biller) {
 
 	lastUpdate := time.Now()
 
 	for {
 
-		timeout := time.Now().Unix() - 30
+		timeoutTimestamp := time.Now().Unix() - 30
 
 		serverTimeoutStart := time.Now()
 		serversMutex.Lock()
@@ -580,7 +637,7 @@ func UpdateTimeouts(biller billing.Biller) {
 			if numServerIterations > 1000 {
 				break
 			}
-			if v.timestamp < timeout {
+			if v.timestamp < timeoutTimestamp {
 				// fmt.Printf("timed out server: %s\n", k)
 				delete(servers, k)
 				numServers--
@@ -593,30 +650,12 @@ func UpdateTimeouts(biller billing.Biller) {
 			fmt.Printf("long server timeout check\n")
 		}
 
-		sessionTimeoutStart := time.Now()
-		sessionsMutex.Lock()
-		numSessionIterations := 0
-		for k, v := range sessions {
-			if numSessionIterations > 1000 {
-				break
-			}
-			if v < timeout {
-				// fmt.Printf("timed out session: %x\n", k)
-				delete(sessions, k)
-				numSessions--
-			}
-			numSessionIterations++
-		}
-		latestNumSessions := numSessions
-		sessionsMutex.Unlock()
-		if time.Since(sessionTimeoutStart).Seconds() > 0.1 {
-			fmt.Printf("long session timeout check\n")
-		}
+		sessionMap.PerformTimeouts(timeoutTimestamp)
 
 		if time.Since(lastUpdate).Seconds() >= 10.0 {
 			fmt.Printf("-----------------------------\n")
 			fmt.Printf("%d servers\n", latestNumServers)
-			fmt.Printf("%d sessions\n", latestNumSessions)
+			fmt.Printf("%d sessions\n", sessionMap.NumSessions())
 			fmt.Printf("%d goroutines\n", runtime.NumGoroutine())
 			fmt.Printf("%.2f mb allocated\n", memoryUsed())
 			fmt.Printf("%d billing entries submitted\n", numBillingEntriesSubmitted(biller))
@@ -632,7 +671,7 @@ func UpdateTimeouts(biller billing.Biller) {
 			lastUpdate = time.Now()
 		}
 
-		time.Sleep(time.Second)
+		time.Sleep(time.Millisecond*100)
 	}
 }
 
@@ -684,13 +723,7 @@ func SessionUpdateHandlerFunc(biller billing.Biller, serverPrivateKey []byte, re
 		response.ServerRoutePublicKey = server.routePublicKey
 
 		sessionMutexStart := time.Now()
-		sessionsMutex.Lock()
-		_, exists := sessions[header.SessionID]
-		if !exists {
-			numSessions++
-		}
-		sessions[header.SessionID] = time.Now().Unix()
-		sessionsMutex.Unlock()
+		sessionMap.UpdateSession(header.SessionID)
 		if time.Since(sessionMutexStart).Seconds() > 0.1 {
 			fmt.Printf("long session mutex in session update\n")
 		}

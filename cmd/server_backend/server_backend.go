@@ -465,6 +465,10 @@ func main() {
 			}
 		}
 
+		transport.InitializeSessionMap()
+
+		go transport.UpdateTimeouts(biller)
+
 		mux := transport.UDPServerMux{
 			Conn:          conn,
 			MaxPacketSize: transport.DefaultMaxPacketSize,
@@ -479,8 +483,6 @@ func main() {
 				SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(logger, redisClientCache, redisClientPortal, redisPortalHostExpiration, db, &routeMatrix, ipLocator, &geoClient, sessionMetrics, biller, serverPrivateKey, routerPrivateKey),
 			*/
 		}
-
-		go transport.UpdateTimeouts(biller)
 
 		go func() {
 			// level.Info(logger).Log("protocol", "udp", "addr", conn.LocalAddr().String())
