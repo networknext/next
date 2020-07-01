@@ -33,7 +33,7 @@ import (
 		"github.com/networknext/backend/routing"
 		"github.com/networknext/backend/storage"
 	*/
-	"cloud.google.com/go/bigquery"
+	// "cloud.google.com/go/bigquery"
 	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/transport"
 )
@@ -46,7 +46,7 @@ var (
 
 func main() {
 
-	fmt.Printf("welcome to the nerd zone 4.0\n")
+	fmt.Printf("welcome to the nerd zone 5.0\n")
 
 	ctx := context.Background()
 
@@ -234,7 +234,7 @@ func main() {
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
 	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
 	// on creation so we can use that for the default then
-	if gcpProjectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
+	// if gcpProjectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
 		/*
 			// Create a Firestore Storer
 			fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
@@ -259,6 +259,8 @@ func main() {
 			db = fs
 		*/
 
+		// todo: biller is disabled. bigquery can't keep up
+		/*
 		if billingDataset, ok := os.LookupEnv("GOOGLE_BIGQUERY_DATASET_BILLING"); ok {
 			batchSize := billing.DefaultBigQueryBatchSize
 			if size, ok := os.LookupEnv("GOOGLE_BIGQUERY_BATCH_SIZE"); ok {
@@ -291,6 +293,7 @@ func main() {
 				b.WriteLoop(ctx)
 			}()
 		}
+		*/
 
 		/*
 			// Set up StackDriver metrics
@@ -328,7 +331,7 @@ func main() {
 				os.Exit(1)
 			}
 		*/
-	}
+	//}
 
 	/*
 		// Create server update metrics
