@@ -526,8 +526,8 @@ type RouteProvider interface {
 
 // =========================================================================================================
 
-const NumServerMapShards = 1024
-const NumSessionMapShards = 1024
+const NumServerMapShards = 4096
+const NumSessionMapShards = 4096
 
 type ServerData struct {
 	timestamp      int64
