@@ -339,6 +339,7 @@ func ServerUpdateHandlerFunc(metrics *metrics.ServerUpdateMetrics, storer storag
 		server.routePublicKey = packet.ServerRoutePublicKey
 		server.version = packet.Version
 
+		serverMutexStart := time.Now()
 		serversMutex.Lock()
 		_, exists := servers[serverAddress]
 		if !exists {
@@ -346,6 +347,9 @@ func ServerUpdateHandlerFunc(metrics *metrics.ServerUpdateMetrics, storer storag
 		}
 		servers[serverAddress] = server
 		serversMutex.Unlock()
+		if time.Since(serverMutexStart).Seconds() > 0.1 {
+			fmt.Printf("long server mutex in server update\n")
+		}
 	}
 }
 
@@ -560,6 +564,7 @@ func UpdateTimeouts(biller billing.Biller) {
 
 		timeout := time.Now().Unix() - 30
 
+		serverTimeoutStart := time.Now()
 		serversMutex.Lock()
 		numServerIterations := 0
 		for k, v := range servers {
@@ -575,7 +580,11 @@ func UpdateTimeouts(biller billing.Biller) {
 		}
 		latestNumServers := numServers
 		serversMutex.Unlock()
+		if time.Since(serverTimeoutStart).Seconds() > 0.1 {
+			fmt.Printf("long server timeout check\n")
+		}
 
+		sessionTimeoutStart := time.Now()
 		sessionsMutex.Lock()
 		numSessionIterations := 0
 		for k, v := range sessions {
@@ -591,6 +600,9 @@ func UpdateTimeouts(biller billing.Biller) {
 		}
 		latestNumSessions := numSessions
 		sessionsMutex.Unlock()
+		if time.Since(sessionTimeoutStart).Seconds() > 0.1 {
+			fmt.Printf("long session timeout check\n")
+		}
 
 		if time.Since(lastUpdate).Seconds() >= 10.0 {
 			fmt.Printf("-----------------------------\n")
@@ -647,11 +659,14 @@ func SessionUpdateHandlerFunc(biller billing.Biller, serverPrivateKey []byte, re
 		}
 
 		serverAddress := header.ServerAddress.String()
+		serverMutexStart := time.Now()
 		serversMutex.Lock()
 		server, ok := servers[serverAddress]
 		serversMutex.Unlock()
+		if time.Since(serverMutexStart).Seconds() > 0.1 {
+			fmt.Printf("long server mutex in session update\n")
+		}
 		if !ok {
-			// fmt.Printf("no server entry for session: %s\n", serverAddress)
 			metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 			metrics.ErrorMetrics.GetServerDataFailure.Add(1)
 			return
@@ -659,6 +674,7 @@ func SessionUpdateHandlerFunc(biller billing.Biller, serverPrivateKey []byte, re
 
 		response.ServerRoutePublicKey = server.routePublicKey
 
+		sessionMutexStart := time.Now()
 		sessionsMutex.Lock()
 		_, exists := sessions[header.SessionID]
 		if !exists {
@@ -666,6 +682,9 @@ func SessionUpdateHandlerFunc(biller billing.Biller, serverPrivateKey []byte, re
 		}
 		sessions[header.SessionID] = time.Now().Unix()
 		sessionsMutex.Unlock()
+		if time.Since(sessionMutexStart).Seconds() > 0.1 {
+			fmt.Printf("long session mutex in session update\n")
+		}
 
 		var packet SessionUpdatePacket
 		packet.Version = server.version
