@@ -186,7 +186,7 @@ var EmptyServerInitMetrics ServerInitMetrics = ServerInitMetrics{
 }
 
 type ServerInitErrorMetrics struct {
-	UnmarshalFailure     Counter
+	ReadPacketFailure    Counter
 	SDKTooOld            Counter
 	BuyerNotFound        Counter
 	VerificationFailure  Counter
@@ -195,7 +195,7 @@ type ServerInitErrorMetrics struct {
 }
 
 var EmptyServerInitErrorMetrics ServerInitErrorMetrics = ServerInitErrorMetrics{
-	UnmarshalFailure:     &EmptyCounter{},
+	ReadPacketFailure:    &EmptyCounter{},
 	SDKTooOld:            &EmptyCounter{},
 	BuyerNotFound:        &EmptyCounter{},
 	DatacenterNotFound:   &EmptyCounter{},
@@ -889,10 +889,10 @@ func NewServerInitMetrics(ctx context.Context, metricsHandler Handler) (*ServerI
 		return nil, err
 	}
 
-	initMetrics.ErrorMetrics.UnmarshalFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Server Init Unmarshal Failure",
+	initMetrics.ErrorMetrics.ReadPacketFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Server Init Read Packet Failure",
 		ServiceName: "server_backend",
-		ID:          "server.init.error.unmarshal_failure",
+		ID:          "server.init.error.read_packet_failure",
 		Unit:        "errors",
 	})
 	if err != nil {

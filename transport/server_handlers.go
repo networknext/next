@@ -145,7 +145,7 @@ func ServerInitHandlerFunc(serverPrivateKey []byte, metrics *metrics.ServerInitM
 		var packet ServerInitRequestPacket
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
 			fmt.Printf("could not read server init request packet\n")
-			metrics.ErrorMetrics.UnmarshalFailure.Add(1)
+			metrics.ErrorMetrics.ReadPacketFailure.Add(1)
 			return
 		}
 
