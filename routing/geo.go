@@ -163,9 +163,15 @@ type MaxmindDB struct {
 }
 
 func (mmdb *MaxmindDB) SyncLoop(ctx context.Context, c <-chan time.Time) error {
+	// todo: sync loop is disabled because it will throw off sessions once every 24 hours until we fix lock below
+	return nil
+	/*
 	for {
 		select {
 		case <-c:
+			// todo: this is a very long lock. it will block session updates
+			// instead, double buffer and open the city and isp database on a
+			// new instance, then pointer swap under mutex.
 			mmdb.mu.Lock()
 			if err := mmdb.OpenCity(ctx, mmdb.httpClient, mmdb.cityURI); err != nil {
 				return err
@@ -178,6 +184,7 @@ func (mmdb *MaxmindDB) SyncLoop(ctx context.Context, c <-chan time.Time) error {
 			return nil
 		}
 	}
+	*/
 }
 
 func (mmdb *MaxmindDB) OpenCity(ctx context.Context, httpClient *http.Client, uri string) error {

@@ -114,7 +114,7 @@ func (m *UDPServerMux) handler(ctx context.Context, id int) {
 
 				m.Conn.WriteToUDP(res, packet.SourceAddr)
 			}
-			
+
 		}(data, size, addr)
 	}
 }
@@ -122,10 +122,20 @@ func (m *UDPServerMux) handler(ctx context.Context, id int) {
 // ==========================================================================================
 
 var serverInitPackets uint64
+var longServerInits uint64
 
-func ServerInitHandlerFunc(serverPrivateKey []byte, metrics *metrics.ServerInitMetrics) UDPHandlerFunc {
+func ServerInitHandlerFunc(serverPrivateKey []byte, metrics *metrics.ServerInitMetrics, storer storage.Storer) UDPHandlerFunc {
 	
 	return func(w io.Writer, incoming *UDPPacket) {
+
+		start := time.Now()
+		defer func() {
+			if time.Since(start).Seconds() > 0.1 {
+				fmt.Printf("long server init\n")
+				atomic.AddUint64(&longServerInits, 1)
+				// todo: add metric for long server inits
+			}
+		}()
 
 		metrics.Invocations.Add(1)
 
@@ -287,11 +297,21 @@ type ServerData struct {
 var servers = map[string]ServerData{}
 var serversMutex sync.Mutex
 var serverUpdatePackets uint64
+var longServerUpdates uint64
 
-func ServerUpdateHandlerFunc(metrics *metrics.ServerUpdateMetrics) UDPHandlerFunc {
+func ServerUpdateHandlerFunc(metrics *metrics.ServerUpdateMetrics, storer storage.Storer) UDPHandlerFunc {
 	
 	return func(w io.Writer, incoming *UDPPacket) {
 	
+		start := time.Now()
+		defer func() {
+			if time.Since(start).Seconds() > 0.1 {
+				fmt.Printf("long server update\n")
+				atomic.AddUint64(&longServerUpdates, 1)
+				// todo: add metric for long server updates
+			}
+		}()
+
 		metrics.Invocations.Add(1)
 	
 		atomic.AddUint64(&serverUpdatePackets, 1)
@@ -304,6 +324,13 @@ func ServerUpdateHandlerFunc(metrics *metrics.ServerUpdateMetrics) UDPHandlerFun
 			return
 		}
 	
+		if !incoming.SourceAddr.IP.IsLoopback() && !packet.Version.AtLeast(SDKVersionMin) {
+			fmt.Printf("ignoring old sdk version: %s\n", packet.Version.String())
+			metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+			metrics.ErrorMetrics.SDKTooOld.Add(1)
+			return
+		}
+
 		serverAddress := packet.ServerAddress.String()
 	
 		var server ServerData
@@ -510,6 +537,7 @@ type RouteProvider interface {
 var sessions = map[uint64]int64{}
 var sessionsMutex sync.Mutex
 var sessionUpdatePackets uint64
+var longSessionUpdates uint64
 
 func memoryUsed() float64 {
     var m runtime.MemStats
@@ -553,19 +581,31 @@ func UpdateTimeouts(biller billing.Biller) {
 		fmt.Printf("%d billing entries submitted\n", numBillingEntriesSubmitted(biller))
 		fmt.Printf("%d billing entries queued\n", numBillingEntriesQueued(biller))
 		fmt.Printf("%d billing entries flushed\n", numBillingEntriesFlushed(biller))
-		fmt.Printf("%d server init packets processed\n", serverInitPackets)
-		fmt.Printf("%d server update packets processed\n", serverUpdatePackets)
-		fmt.Printf("%d session update packets processed\n", sessionUpdatePackets)
+		fmt.Printf("%d server init packets processed\n", atomic.LoadUint64(&serverInitPackets))
+		fmt.Printf("%d server update packets processed\n", atomic.LoadUint64(&serverUpdatePackets))
+		fmt.Printf("%d session update packets processed\n", atomic.LoadUint64(&sessionUpdatePackets))
+		fmt.Printf("%d long server inits\n", atomic.LoadUint64(&longServerInits))
+		fmt.Printf("%d long server updates\n", atomic.LoadUint64(&longServerUpdates))
+		fmt.Printf("%d long session updates\n", atomic.LoadUint64(&longSessionUpdates))
 		fmt.Printf("-----------------------------\n")
 
 		time.Sleep(time.Second * 10)
 	}
 }
 
-func SessionUpdateHandlerFunc(biller billing.Biller, serverPrivateKey []byte, redisClientPortal redis.Cmdable, redisClientPortalExp time.Duration, iploc routing.IPLocator, metrics *metrics.SessionMetrics) UDPHandlerFunc {
+func SessionUpdateHandlerFunc(biller billing.Biller, serverPrivateKey []byte, redisClientPortal redis.Cmdable, redisClientPortalExp time.Duration, iploc routing.IPLocator, metrics *metrics.SessionMetrics, storer storage.Storer) UDPHandlerFunc {
 	
 	return func(w io.Writer, incoming *UDPPacket) {
 	
+		start := time.Now()
+		defer func() {
+			if time.Since(start).Seconds() > 0.1 {
+				fmt.Printf("long session update\n")
+				atomic.AddUint64(&longSessionUpdates, 1)
+				// todo: add metric for long session updates
+			}
+		}()
+
 		metrics.Invocations.Add(1)
 		
 		atomic.AddUint64(&sessionUpdatePackets, 1)
@@ -618,43 +658,49 @@ func SessionUpdateHandlerFunc(biller billing.Biller, serverPrivateKey []byte, re
 			// todo: metric for fail to locate session
 			return
 		}
-		
-		var sessionCacheEntry SessionCacheEntry
-		sessionCacheEntry.Location = location
-		nnStats := routing.Stats{
-			RTT:        float64(packet.NextMinRTT),
-			Jitter:     float64(packet.NextJitter),
-			PacketLoss: float64(packet.NextPacketLoss),
-		}
-		directStats := routing.Stats{
-			RTT:        float64(packet.DirectMinRTT),
-			Jitter:     float64(packet.DirectJitter),
-			PacketLoss: float64(packet.DirectPacketLoss),
-		}
-		chosenRoute := routing.Route{
-			Stats:  directStats,
-			Relays: make([]routing.Relay, 0),
-		}
-		if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, sessionCacheEntry.RouteDecision.OnNetworkNext, "datacenter", sessionCacheEntry.Location, time.Now(), false); err != nil {
-			fmt.Printf("could not update portal data: %v", err)
-			// todo: metric for faiing to update portal data
-			metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-		}
-		
-		storer := storage.InMemory{}
-		if err := submitBillingEntry(biller, ServerCacheEntry{}, SessionCacheEntry{}, packet, response, routing.Buyer{}, routing.Route{}, routing.LocationNullIsland,
-			&storer, nil, routing.Decision{}, billing.BillingSliceSeconds, time.Now(), time.Now(), false); err != nil {
-			fmt.Printf("could not write billing entry: %v", err)
-			metrics.ErrorMetrics.BillingFailure.Add(1)
-			metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-		}
 
-		if _, err := writeSessionResponse(w, response, serverPrivateKey); err != nil {
-			fmt.Printf("could not write session update response packet: %v\n", err)
-			metrics.ErrorMetrics.WriteResponseFailure.Add(1)
-			metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-			return
-		}
+		go func() {
+
+			// IMPORTANT: run this part in parallel so it doesn't block the response!
+
+			var sessionCacheEntry SessionCacheEntry
+			sessionCacheEntry.Location = location
+			nnStats := routing.Stats{
+				RTT:        float64(packet.NextMinRTT),
+				Jitter:     float64(packet.NextJitter),
+				PacketLoss: float64(packet.NextPacketLoss),
+			}
+			directStats := routing.Stats{
+				RTT:        float64(packet.DirectMinRTT),
+				Jitter:     float64(packet.DirectJitter),
+				PacketLoss: float64(packet.DirectPacketLoss),
+			}
+			chosenRoute := routing.Route{
+				Stats:  directStats,
+				Relays: make([]routing.Relay, 0),
+			}
+			if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, sessionCacheEntry.RouteDecision.OnNetworkNext, "datacenter", sessionCacheEntry.Location, time.Now(), false); err != nil {
+				fmt.Printf("could not update portal data: %v", err)
+				// todo: metric for faiing to update portal data
+				metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+			}
+			
+			storer := storage.InMemory{}
+			if err := submitBillingEntry(biller, ServerCacheEntry{}, SessionCacheEntry{}, packet, response, routing.Buyer{}, routing.Route{}, routing.LocationNullIsland,
+				&storer, nil, routing.Decision{}, billing.BillingSliceSeconds, time.Now(), time.Now(), false); err != nil {
+				fmt.Printf("could not write billing entry: %v", err)
+				metrics.ErrorMetrics.BillingFailure.Add(1)
+				metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+			}
+
+			if _, err := writeSessionResponse(w, response, serverPrivateKey); err != nil {
+				fmt.Printf("could not write session update response packet: %v\n", err)
+				metrics.ErrorMetrics.WriteResponseFailure.Add(1)
+				metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+				return
+			}
+
+		}()
 	}
 }
 

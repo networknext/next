@@ -10,7 +10,7 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	// "io"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -43,7 +43,7 @@ var (
 
 func main() {
 
-	fmt.Printf("welcome to the nerd zone 6.0\n")
+	fmt.Printf("welcome to the nerd zone 7.0\n")
 
 	ctx := context.Background()
 
@@ -235,27 +235,29 @@ func main() {
 	if gcpProjectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
 	
 		/*
-			// Create a Firestore Storer
-			fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
-			if err != nil {
-				level.Error(logger).Log("err", err)
-				os.Exit(1)
-			}
+		// Create a Firestore Storer
+		fs, err := storage.NewFirestore(ctx, gcpProjectID)//, logger)
+		if err != nil {
+			// level.Error(logger).Log("err", err)
+			fmt.Printf("could not create firestore: %v\n", err)
+			os.Exit(1)
+		}
 
-			fssyncinterval := os.Getenv("GOOGLE_FIRESTORE_SYNC_INTERVAL")
-			syncInterval, err := time.ParseDuration(fssyncinterval)
-			if err != nil {
-				level.Error(logger).Log("envvar", "GOOGLE_FIRESTORE_SYNC_INTERVAL", "value", fssyncinterval, "err", err)
-				os.Exit(1)
-			}
-			// Start a goroutine to sync from Firestore
-			go func() {
-				ticker := time.NewTicker(syncInterval)
-				fs.SyncLoop(ctx, ticker.C)
-			}()
+		fssyncinterval := os.Getenv("GOOGLE_FIRESTORE_SYNC_INTERVAL")
+		syncInterval, err := time.ParseDuration(fssyncinterval)
+		if err != nil {
+			// level.Error(logger).Log("envvar", "GOOGLE_FIRESTORE_SYNC_INTERVAL", "value", fssyncinterval, "err", err)
+			fmt.Printf("bad GOOGLE_FIRESTORE_SYNC_INTERVAL\n")
+			os.Exit(1)
+		}
+		// Start a goroutine to sync from Firestore
+		go func() {
+			ticker := time.NewTicker(syncInterval)
+			fs.SyncLoop(ctx, ticker.C)
+		}()
 
-			// Set the Firestore Storer to give to handlers
-			db = fs
+		// Set the Firestore Storer to give to handlers
+		db = fs
 		*/
 
 		// todo: biller is disabled. bigquery can't keep up
@@ -354,14 +356,14 @@ func main() {
 		fmt.Printf("could not create session update metrics: %v\n", err)
 	}
 
-	/*
 	var routeMatrix routing.RouteMatrix
 	{
 		if uri, ok := os.LookupEnv("ROUTE_MATRIX_URI"); ok {
 			rmsyncinterval := os.Getenv("ROUTE_MATRIX_SYNC_INTERVAL")
 			syncInterval, err := time.ParseDuration(rmsyncinterval)
 			if err != nil {
-				level.Error(logger).Log("envvar", "ROUTE_MATRIX_SYNC_INTERVAL", "value", rmsyncinterval, "err", err)
+				// level.Error(logger).Log("envvar", "ROUTE_MATRIX_SYNC_INTERVAL", "value", rmsyncinterval, "err", err)
+				fmt.Printf("bad ROUTE_MATRIX_SYNC_INTERVAL\n")
 				os.Exit(1)
 			}
 
@@ -379,21 +381,24 @@ func main() {
 						matrixReader = r.Body
 					}
 
+					// todo: rather than reading into the same route matrix each time. double buffer and pointer swap. 
+					// this avoids a long lock while reading that stalls out session update handlers until the read completes.
+
 					// Attempt to read, and intentionally force to empty route matrix if any errors are encountered to avoid stale routes
 					_, err := routeMatrix.ReadFrom(matrixReader)
 					if err != nil {
 						routeMatrix = routing.RouteMatrix{}
-						level.Warn(logger).Log("matrix", "route", "op", "read", "envvar", "ROUTE_MATRIX_URI", "value", uri, "err", err, "msg", "forcing empty route matrix to avoid stale routes")
+						// level.Warn(logger).Log("matrix", "route", "op", "read", "envvar", "ROUTE_MATRIX_URI", "value", uri, "err", err, "msg", "forcing empty route matrix to avoid stale routes")
+						fmt.Printf("could not get route matrix\n")
 					}
 
-					level.Info(logger).Log("matrix", "route", "entries", len(routeMatrix.Entries))
+					// level.Info(logger).Log("matrix", "route", "entries", len(routeMatrix.Entries))
 
 					time.Sleep(syncInterval)
 				}
 			}()
 		}
 	}
-	*/
 
 	{
 		port, ok := os.LookupEnv("PORT")
@@ -441,9 +446,9 @@ func main() {
 			MaxPacketSize: transport.DefaultMaxPacketSize,
 
 			// todo: cut down temporarily
-			ServerInitHandlerFunc:    transport.ServerInitHandlerFunc(serverPrivateKey, serverInitMetrics),
-			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(serverUpdateMetrics),
-			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(biller, serverPrivateKey, redisClientPortal, redisPortalHostExpiration, ipLocator, sessionUpdateMetrics),
+			ServerInitHandlerFunc:    transport.ServerInitHandlerFunc(serverPrivateKey, serverInitMetrics, db),
+			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(serverUpdateMetrics, db),
+			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(biller, serverPrivateKey, redisClientPortal, redisPortalHostExpiration, ipLocator, sessionUpdateMetrics, db),
 			/*
 				ServerInitHandlerFunc:    transport.ServerInitHandlerFunc(logger, redisClientCache, db, serverInitMetrics, serverPrivateKey),
 				ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(logger, redisClientCache, db, serverUpdateMetrics),
