@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"sync"
 
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
@@ -47,6 +48,9 @@ type RouteMatrix struct {
 	RelaySellers          []Seller
 	RelaySessionCounts    []uint32
 	RelayMaxSessionCounts []uint32
+
+	responseBuffer     []byte
+	reponseBufferMutex sync.RWMutex
 }
 
 func (m *RouteMatrix) ResolveRelay(id uint64) (Relay, error) {
@@ -272,7 +276,11 @@ func (m *RouteMatrix) WriteTo(w io.Writer) (int64, error) {
 
 func (m *RouteMatrix) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/octet-stream")
-	_, err := m.WriteTo(w)
+
+	data := m.GetResponseData()
+
+	buffer := bytes.NewBuffer(data)
+	_, err := buffer.WriteTo(w)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
@@ -782,4 +790,25 @@ func (m *RouteMatrix) WriteAnalysisTo(writer io.Writer) {
 	fmt.Fprintf(writer, "    %.1f relays per route on average (%d max)\n", averageRouteLength, maxRouteLength)
 	fmt.Fprintf(writer, "    %.1f%% of relay pairs have only one route\n", float64(relayPairsWithOneRoute)/float64(numRelayPairs)*100)
 	fmt.Fprintf(writer, "    %.1f%% of relay pairs have no route\n", float64(relayPairsWithNoRoutes)/float64(numRelayPairs)*100)
+}
+
+func (m *RouteMatrix) GetResponseData() []byte {
+	m.reponseBufferMutex.RLock()
+	defer m.reponseBufferMutex.RUnlock()
+
+	data := m.responseBuffer
+	return data
+}
+
+func (m *RouteMatrix) WriteResponseData() error {
+	var buffer bytes.Buffer
+	if _, err := m.WriteTo(&buffer); err != nil {
+		return err
+	}
+
+	m.reponseBufferMutex.Lock()
+	defer m.reponseBufferMutex.Unlock()
+
+	m.responseBuffer = buffer.Bytes()
+	return nil
 }

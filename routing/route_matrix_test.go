@@ -1764,26 +1764,11 @@ func TestRouteMatrixMarshalBinary(t *testing.T) {
 }
 
 func TestRouteMatrixServerHTTP(t *testing.T) {
-	t.Run("Failure to serve HTTP", func(t *testing.T) {
-		// Create and populate a malformed route matrix
-		matrix := getPopulatedRouteMatrix(true)
-
-		// Create a dummy http request to test ServeHTTP
-		recorder := httptest.NewRecorder()
-		request, err := http.NewRequest("GET", "/", nil)
-		assert.NoError(t, err)
-
-		matrix.ServeHTTP(recorder, request)
-
-		// Get the response
-		response := recorder.Result()
-
-		assert.Equal(t, 500, response.StatusCode)
-	})
-
 	t.Run("Successful Serve", func(t *testing.T) {
 		// Create and populate a route matrix
 		matrix := getPopulatedRouteMatrix(false)
+		err := matrix.WriteResponseData()
+		assert.NoError(t, err)
 
 		// Create a dummy http request to test ServeHTTP
 		recorder := httptest.NewRecorder()
@@ -1803,6 +1788,10 @@ func TestRouteMatrixServerHTTP(t *testing.T) {
 		// Create a new matrix to store the response
 		var receivedMatrix routing.RouteMatrix
 		err = receivedMatrix.UnmarshalBinary(body)
+		assert.NoError(t, err)
+
+		// Write the response data again so we can compare the entire cost matrix with the expected
+		err = receivedMatrix.WriteResponseData()
 		assert.NoError(t, err)
 
 		// Validate the response
@@ -2084,7 +2073,7 @@ func TestResolveRelay(t *testing.T) {
 
 	t.Run("Invalid relay index", func(t *testing.T) {
 		routeMatrix := routing.RouteMatrix{
-			RelayIndices:  map[uint64]int{0: 10},
+			RelayIndices:   map[uint64]int{0: 10},
 			RelayAddresses: [][]byte{},
 		}
 		_, err := routeMatrix.ResolveRelay(0)
@@ -2093,7 +2082,7 @@ func TestResolveRelay(t *testing.T) {
 
 	t.Run("Invalid relay address", func(t *testing.T) {
 		routeMatrix := routing.RouteMatrix{
-			RelayIndices:   map[uint64]int{0: 0},
+			RelayIndices:    map[uint64]int{0: 0},
 			RelayAddresses:  [][]byte{[]byte("Invalid")},
 			RelayPublicKeys: [][]byte{{0x58, 0xaf, 0x19, 0x5, 0xf7, 0xa8, 0xae, 0x73, 0xc6, 0xd3, 0xec, 0x85, 0x2f, 0xd8, 0x9b, 0x5a, 0xce, 0x0, 0x38, 0xca, 0x26, 0x39, 0xa4, 0x5d, 0x82, 0x3c, 0x71, 0xa8, 0x4, 0x11, 0xfb, 0x32}},
 		}
@@ -2103,7 +2092,7 @@ func TestResolveRelay(t *testing.T) {
 
 	t.Run("Failed to parse port", func(t *testing.T) {
 		routeMatrix := routing.RouteMatrix{
-			RelayIndices:   map[uint64]int{0: 0},
+			RelayIndices:    map[uint64]int{0: 0},
 			RelayAddresses:  [][]byte{[]byte("127.0.0.1:abcde")},
 			RelayPublicKeys: [][]byte{{0x58, 0xaf, 0x19, 0x5, 0xf7, 0xa8, 0xae, 0x73, 0xc6, 0xd3, 0xec, 0x85, 0x2f, 0xd8, 0x9b, 0x5a, 0xce, 0x0, 0x38, 0xca, 0x26, 0x39, 0xa4, 0x5d, 0x82, 0x3c, 0x71, 0xa8, 0x4, 0x11, 0xfb, 0x32}},
 		}
@@ -2180,7 +2169,7 @@ func TestRelaysIn(t *testing.T) {
 
 	// error while resolving at least one relay
 	routeMatrix = routing.RouteMatrix{
-		RelayIndices:    map[uint64]int{0: 0},
+		RelayIndices:     map[uint64]int{0: 0},
 		RelayAddresses:   [][]byte{[]byte("127.0.0.1:abcde")},
 		RelayPublicKeys:  [][]byte{{0x58, 0xaf, 0x19, 0x5, 0xf7, 0xa8, 0xae, 0x73, 0xc6, 0xd3, 0xec, 0x85, 0x2f, 0xd8, 0x9b, 0x5a, 0xce, 0x0, 0x38, 0xca, 0x26, 0x39, 0xa4, 0x5d, 0x82, 0x3c, 0x71, 0xa8, 0x4, 0x11, 0xfb, 0x32}},
 		DatacenterRelays: map[uint64][]uint64{0: {0, 1}},
@@ -2427,7 +2416,7 @@ func TestRoutes(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 
 			fromRelayCosts := make([]int, len(test.from))
-			
+
 			actual, err := routeMatrix.Routes(test.from, fromRelayCosts, test.to, test.selectors...)
 			assert.Equal(t, test.expectedErr, err)
 			assert.Equal(t, len(test.expected), len(actual))

@@ -372,6 +372,22 @@ func main() {
 				sentry.CaptureMessage("no routes within route matrix")
 			}
 
+			// Write the cost matrix to a buffer and serve that instead
+			// of writing a new buffer every time we want to serve the cost matrix
+			err := costmatrix.WriteResponseData()
+			if err != nil {
+				sentry.CaptureException(err)
+				level.Error(logger).Log("matrix", "cost", "msg", "failed to write cost matrix response data", "err", err)
+			}
+
+			// Write the route matrix to a buffer and serve that instead
+			// of writing a new buffer every time we want to serve the route matrix
+			err = routematrix.WriteResponseData()
+			if err != nil {
+				sentry.CaptureException(err)
+				level.Error(logger).Log("matrix", "route", "msg", "failed to write route matrix response data", "err", err)
+			}
+
 			time.Sleep(syncInterval)
 		}
 	}()
