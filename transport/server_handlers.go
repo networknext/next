@@ -261,6 +261,7 @@ func (e ServerCacheEntry) MarshalBinary() ([]byte, error) {
 type ServerData struct {
 	timestamp      int64
 	routePublicKey []byte
+	version SDKVersion
 }
 
 var servers = map[string]ServerData{}
@@ -279,6 +280,7 @@ func ServerUpdateHandlerFunc() UDPHandlerFunc {
 		var server ServerData
 		server.timestamp = time.Now().Unix()
 		server.routePublicKey = packet.ServerRoutePublicKey
+		server.version = packet.Version
 		serversMutex.Lock()
 		servers[serverAddress] = server
 		serversMutex.Unlock()
@@ -548,9 +550,12 @@ func SessionUpdateHandlerFunc(biller billing.Biller, serverPrivateKey []byte, re
 		sessionsMutex.Lock()
 		sessions[header.SessionID] = time.Now().Unix()
 		sessionsMutex.Unlock()
-		// todo: read rest of packet with version		
-		packet := SessionUpdatePacket{
-			SessionID: header.SessionID,
+		var packet SessionUpdatePacket
+		packet.Version = server.version
+		response.Version = server.version
+		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
+			fmt.Printf("could not read session update packet\n")
+			return
 		}
 		if _, err := writeSessionResponse(w, response, serverPrivateKey); err != nil {
 			fmt.Printf("could not write session update response packet: %v\n", err)
