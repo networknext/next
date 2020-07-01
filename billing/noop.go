@@ -17,7 +17,7 @@ func (noop *NoOpBiller) Bill(ctx context.Context, sessionID uint64, entry *Entry
 }
 
 func (noop *NoOpBiller) NumSubmitted() uint64 {
-	return noop.submitted
+	return atomic.LoadUint64(&noop.submitted)
 }
 
 func (noop *NoOpBiller) NumQueued() uint64 {
@@ -25,5 +25,5 @@ func (noop *NoOpBiller) NumQueued() uint64 {
 }
 
 func (noop *NoOpBiller) NumFlushed() uint64 {
-	return noop.submitted
+	return atomic.LoadUint64(&noop.submitted)
 }

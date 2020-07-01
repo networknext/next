@@ -36,7 +36,7 @@ func (bq *GoogleBigQueryClient) Bill(ctx context.Context, sessionID uint64, entr
 }
 
 func (bq *GoogleBigQueryClient) NumSubmitted() uint64 {
-	return bq.submitted
+	return atomic.LoadUint64(&bq.submitted)
 }
 
 func (bq *GoogleBigQueryClient) NumQueued() uint64 {
@@ -44,7 +44,7 @@ func (bq *GoogleBigQueryClient) NumQueued() uint64 {
 }
 
 func (bq *GoogleBigQueryClient) NumFlushed() uint64 {
-	return bq.flushed
+	return atomic.LoadUint64(&bq.flushed)
 }
 
 // WriteLoop ranges over the incoming channel of Entry types and fills an internal buffer.
