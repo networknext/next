@@ -21,12 +21,8 @@ import (
 	"strings"
 	"time"
 
-	// "cloud.google.com/go/profiler"
-	// "github.com/go-kit/kit/log"
-	// "github.com/go-kit/kit/log/level"
-	// gcplogging "cloud.google.com/go/logging"
-	// "github.com/networknext/backend/logging"
-
+	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/metrics"
@@ -47,9 +43,9 @@ func main() {
 
 	ctx := context.Background()
 
+	// Configure logging
+	logger := log.NewLogfmtLogger(os.Stdout)
 	/*
-		// Configure logging
-		logger := log.NewLogfmtLogger(os.Stdout)
 		if projectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
 			loggingClient, err := gcplogging.NewClient(ctx, projectID)
 			if err != nil {
@@ -59,31 +55,30 @@ func main() {
 
 			logger = logging.NewStackdriverLogger(loggingClient, "server-backend")
 		}
-		{
-			switch os.Getenv("BACKEND_LOG_LEVEL") {
-			case "none":
-				logger = level.NewFilter(logger, level.AllowNone())
-			case level.ErrorValue().String():
-				logger = level.NewFilter(logger, level.AllowError())
-			case level.WarnValue().String():
-				logger = level.NewFilter(logger, level.AllowWarn())
-			case level.InfoValue().String():
-				logger = level.NewFilter(logger, level.AllowInfo())
-			case level.DebugValue().String():
-				logger = level.NewFilter(logger, level.AllowDebug())
-			default:
-				logger = level.NewFilter(logger, level.AllowWarn())
-			}
-
-			logger = log.With(logger, "ts", log.DefaultTimestampUTC)
-		}
 	*/
+	{
+		switch os.Getenv("BACKEND_LOG_LEVEL") {
+		case "none":
+			logger = level.NewFilter(logger, level.AllowNone())
+		case level.ErrorValue().String():
+			logger = level.NewFilter(logger, level.AllowError())
+		case level.WarnValue().String():
+			logger = level.NewFilter(logger, level.AllowWarn())
+		case level.InfoValue().String():
+			logger = level.NewFilter(logger, level.AllowInfo())
+		case level.DebugValue().String():
+			logger = level.NewFilter(logger, level.AllowDebug())
+		default:
+			logger = level.NewFilter(logger, level.AllowWarn())
+		}
+
+		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
+	}
 
 	// Get env
 	env, ok := os.LookupEnv("ENV")
 	if !ok {
-		//level.Error(logger).Log("err", "ENV not set")
-		fmt.Printf("ENV not set\n")
+		level.Error(logger).Log("err", "ENV not set")
 		os.Exit(1)
 	}
 
@@ -97,16 +92,14 @@ func main() {
 		if key := os.Getenv("SERVER_BACKEND_PRIVATE_KEY"); len(key) != 0 {
 			serverPrivateKey, _ = base64.StdEncoding.DecodeString(key)
 		} else {
-			// level.Error(logger).Log("err", "SERVER_BACKEND_PRIVATE_KEY not set")
-			fmt.Printf("SERVER_BACKEND_PRIVATE_KEY not set\n")
+			level.Error(logger).Log("err", "SERVER_BACKEND_PRIVATE_KEY not set")
 			os.Exit(1)
 		}
 
 		if key := os.Getenv("RELAY_ROUTER_PRIVATE_KEY"); len(key) != 0 {
 			routerPrivateKey, _ = base64.StdEncoding.DecodeString(key)
 		} else {
-			//level.Error(logger).Log("err", "RELAY_ROUTER_PRIVATE_KEY not set")
-			fmt.Printf("RELAY_ROUTER_PRIVATE_KEY not set\n")
+			level.Error(logger).Log("err", "RELAY_ROUTER_PRIVATE_KEY not set")
 			os.Exit(1)
 		}
 
@@ -123,31 +116,27 @@ func main() {
 	splitPortalHosts := strings.Split(redisPortalHosts, ",")
 	redisClientPortal := storage.NewRedisClient(splitPortalHosts...)
 	if err := redisClientPortal.Ping().Err(); err != nil {
-		// level.Error(logger).Log("envvar", "REDIS_HOST_PORTAL", "value", redisPortalHosts, "err", err)
-		fmt.Printf("can't ping redis portal: %v", err)
+		level.Error(logger).Log("envvar", "REDIS_HOST_PORTAL", "value", redisPortalHosts, "msg", "could not ping redis portal", "err", err)
 		os.Exit(1)
 	}
 
 	redisPortalHostExpiration, err := time.ParseDuration(os.Getenv("REDIS_HOST_PORTAL_EXPIRATION"))
 	if err != nil {
-		// level.Error(logger).Log("envvar", "REDIS_HOST_PORTAL_EXPIRATION", "err", err)
-		fmt.Printf("could not parse REDIS_HOST_PORTAL_EXPIRATION\n")
+		level.Error(logger).Log("envvar", "REDIS_HOST_PORTAL_EXPIRATION", "msg", "could not parse REDIS_HOST_PORTAL_EXPIRATION", "err", err)
 		os.Exit(1)
 	}
 
 	redisHost := os.Getenv("REDIS_HOST_RELAYS")
 	redisClientRelays := storage.NewRedisClient(redisHost)
 	if err := redisClientRelays.Ping().Err(); err != nil {
-		// level.Error(logger).Log("envvar", "REDIS_HOST_RELAYS", "value", redisHost, "err", err)
-		fmt.Printf("could not ping redis relays\n")
+		level.Error(logger).Log("envvar", "REDIS_HOST_RELAYS", "value", redisHost, "msg", "could not ping redis relays", "err", err)
 		os.Exit(1)
 	}
 
 	redisHosts := strings.Split(os.Getenv("REDIS_HOST_CACHE"), ",")
 	redisClientCache := storage.NewRedisClient(redisHosts...)
 	if err := redisClientCache.Ping().Err(); err != nil {
-		// level.Error(logger).Log("envvar", "REDIS_HOST_CACHE", "value", redisHosts, "err", err)
-		fmt.Printf("could not ping redis cache\n")
+		level.Error(logger).Log("envvar", "REDIS_HOST_CACHE", "value", redisHosts, "msg", "could not ping redis cache", "err", err)
 		os.Exit(1)
 	}
 
@@ -160,23 +149,20 @@ func main() {
 
 		err := mmdb.OpenCity(ctx, http.DefaultClient, mmcitydburi)
 		if err != nil {
-			// level.Error(logger).Log("envvar", "MAXMIND_CITY_DB_URI", "value", mmcitydburi, "err", err)
-			fmt.Printf("could not open %s\n", mmcitydburi)
+			level.Error(logger).Log("envvar", "MAXMIND_CITY_DB_URI", "value", mmcitydburi, "msg", "could not open maxmind db uri", "err", err)
 			os.Exit(1)
 		}
 
 		err = mmdb.OpenISP(ctx, http.DefaultClient, mmispdburi)
 		if err != nil {
-			// level.Error(logger).Log("envvar", "MAXMIND_ISP_DB_URI", "value", mmispdburi, "err", err)
-			fmt.Printf("could not open %s\n", mmispdburi)
+			level.Error(logger).Log("envvar", "MAXMIND_ISP_DB_URI", "value", mmispdburi, "msg", "could not open maxmind db isp uri", "err", err)
 			os.Exit(1)
 		}
 
 		if mmsyncinterval, ok := os.LookupEnv("MAXMIND_SYNC_DB_INTERVAL"); ok {
 			syncInterval, err := time.ParseDuration(mmsyncinterval)
 			if err != nil {
-				// level.Error(logger).Log("envvar", "MAXMIND_SYNC_DB_INTERVAL", "value", mmsyncinterval, "err", err)
-				fmt.Printf("bad MAXMIND_SYNC_DB_INTERVAL\n")
+				level.Error(logger).Log("envvar", "MAXMIND_SYNC_DB_INTERVAL", "value", mmsyncinterval, "msg", "could not parse maxmind sync interval", "err", err)
 				os.Exit(1)
 			}
 
@@ -212,8 +198,7 @@ func main() {
 		PublicKey:            customerPublicKey,
 		RoutingRulesSettings: routing.LocalRoutingRulesSettings,
 	}); err != nil {
-		// level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
-		fmt.Printf("could not add buyer to storage\n")
+		level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
 		os.Exit(1)
 	}
 	if err := db.AddDatacenter(ctx, routing.Datacenter{
@@ -221,8 +206,7 @@ func main() {
 		Name:    "local",
 		Enabled: true,
 	}); err != nil {
-		// level.Error(logger).Log("msg", "could not add datacenter to storage", "err", err)
-		fmt.Printf("could not add datacenter to storage\n")
+		level.Error(logger).Log("msg", "could not add datacenter to storage", "err", err)
 		os.Exit(1)
 	}
 
@@ -235,22 +219,19 @@ func main() {
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
 	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
 	// on creation so we can use that for the default then
-	// if gcpProjectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
+	if gcpProjectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
 
-	/*
 		// Create a Firestore Storer
-		fs, err := storage.NewFirestore(ctx, gcpProjectID)//, logger)
+		fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
 		if err != nil {
-			// level.Error(logger).Log("err", err)
-			fmt.Printf("could not create firestore: %v\n", err)
+			level.Error(logger).Log("msg", "could not create firestore", "err", err)
 			os.Exit(1)
 		}
 
 		fssyncinterval := os.Getenv("GOOGLE_FIRESTORE_SYNC_INTERVAL")
 		syncInterval, err := time.ParseDuration(fssyncinterval)
 		if err != nil {
-			// level.Error(logger).Log("envvar", "GOOGLE_FIRESTORE_SYNC_INTERVAL", "value", fssyncinterval, "err", err)
-			fmt.Printf("bad GOOGLE_FIRESTORE_SYNC_INTERVAL\n")
+			level.Error(logger).Log("envvar", "GOOGLE_FIRESTORE_SYNC_INTERVAL", "value", fssyncinterval, "msg", "could not parse GOOGLE_FIRESTORE_SYNC_INTERVAL", "err", err)
 			os.Exit(1)
 		}
 		// Start a goroutine to sync from Firestore
@@ -261,105 +242,98 @@ func main() {
 
 		// Set the Firestore Storer to give to handlers
 		db = fs
-	*/
 
-	// todo: biller is disabled. bigquery can't keep up
-	/*
-		if billingDataset, ok := os.LookupEnv("GOOGLE_BIGQUERY_DATASET_BILLING"); ok {
-			batchSize := billing.DefaultBigQueryBatchSize
-			if size, ok := os.LookupEnv("GOOGLE_BIGQUERY_BATCH_SIZE"); ok {
-				s, err := strconv.ParseInt(size, 10, 64)
+		// todo: biller is disabled. bigquery can't keep up
+		/*
+			if billingDataset, ok := os.LookupEnv("GOOGLE_BIGQUERY_DATASET_BILLING"); ok {
+				batchSize := billing.DefaultBigQueryBatchSize
+				if size, ok := os.LookupEnv("GOOGLE_BIGQUERY_BATCH_SIZE"); ok {
+					s, err := strconv.ParseInt(size, 10, 64)
+					if err != nil {
+						level.Error(logger).Log("msg", "could not parse GOOGLE_BIGQUERY_BATCH_SIZE ", "err", err)
+						os.Exit(1)
+					}
+					batchSize = int(s)
+				}
+
+				bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
 				if err != nil {
-					// level.Error(logger).Log("err", err)
-					fmt.Println(err)
+					level.Error(logger).Log("msg", "could not create BiqQuery client", "err", err)
 					os.Exit(1)
 				}
-				batchSize = int(s)
+				b := billing.GoogleBigQueryClient{
+					Logger:        logger,
+					TableInserter: bqClient.Dataset(billingDataset).Table(os.Getenv("GOOGLE_BIGQUERY_TABLE_BILLING")).Inserter(),
+					BatchSize:     batchSize,
+				}
+
+				// Set the Biller to BigQuery
+				biller = &b
+
+				// Start the background WriteLoop to batch write to BigQuery
+				go func() {
+					b.WriteLoop(ctx)
+				}()
+			}
+		*/
+
+		/*
+			// Set up StackDriver metrics
+			sd := metrics.StackDriverHandler{
+				ProjectID:          gcpProjectID,
+				OverwriteFrequency: time.Second,
+				OverwriteTimeout:   10 * time.Second,
 			}
 
-			bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
-			if err != nil {
-				// level.Error(logger).Log("err", err)
-				fmt.Println(err)
+			if err := sd.Open(ctx); err != nil {
+				level.Error(logger).Log("msg", "Failed to create StackDriver metrics client", "err", err)
 				os.Exit(1)
 			}
-			b := billing.GoogleBigQueryClient{
-				// Logger:        logger,
-				TableInserter: bqClient.Dataset(billingDataset).Table(os.Getenv("GOOGLE_BIGQUERY_TABLE_BILLING")).Inserter(),
-				BatchSize:     batchSize,
+
+			metricsHandler = &sd
+
+			sdwriteinterval := os.Getenv("GOOGLE_STACKDRIVER_METRICS_WRITE_INTERVAL")
+			writeInterval, err := time.ParseDuration(sdwriteinterval)
+			if err != nil {
+				level.Error(logger).Log("envvar", "GOOGLE_STACKDRIVER_METRICS_WRITE_INTERVAL", "value", sdwriteinterval, "err", err)
+				os.Exit(1)
 			}
-
-			// Set the Biller to BigQuery
-			biller = &b
-
-			// Start the background WriteLoop to batch write to BigQuery
 			go func() {
-				b.WriteLoop(ctx)
+				metricsHandler.WriteLoop(ctx, logger, writeInterval, 200)
 			}()
-		}
-	*/
+		*/
 
-	/*
-		// Set up StackDriver metrics
-		sd := metrics.StackDriverHandler{
-			ProjectID:          gcpProjectID,
-			OverwriteFrequency: time.Second,
-			OverwriteTimeout:   10 * time.Second,
-		}
-
-		if err := sd.Open(ctx); err != nil {
-			level.Error(logger).Log("msg", "Failed to create StackDriver metrics client", "err", err)
-			os.Exit(1)
-		}
-
-		metricsHandler = &sd
-
-		sdwriteinterval := os.Getenv("GOOGLE_STACKDRIVER_METRICS_WRITE_INTERVAL")
-		writeInterval, err := time.ParseDuration(sdwriteinterval)
-		if err != nil {
-			level.Error(logger).Log("envvar", "GOOGLE_STACKDRIVER_METRICS_WRITE_INTERVAL", "value", sdwriteinterval, "err", err)
-			os.Exit(1)
-		}
-		go func() {
-			metricsHandler.WriteLoop(ctx, logger, writeInterval, 200)
-		}()
-	*/
-
-	// todo: disabled profiler because we think it's slowing down handlers
-	/*
-		// Set up StackDriver profiler
-		if err := profiler.Start(profiler.Config{
-			Service:        "server_backend",
-			ServiceVersion: env,
-			ProjectID:      gcpProjectID,
-			MutexProfiling: true,
-		}); err != nil {
-			//level.Error(logger).Log("msg", "Failed to initialze StackDriver profiler", "err", err)
-			fmt.Printf("could not setup stackdriver profiler: %v\n", err)
-			os.Exit(1)
-		}
-	*/
-	// }
+		// todo: disabled profiler because we think it's slowing down handlers
+		/*
+			// Set up StackDriver profiler
+			if err := profiler.Start(profiler.Config{
+				Service:        "server_backend",
+				ServiceVersion: env,
+				ProjectID:      gcpProjectID,
+				MutexProfiling: true,
+			}); err != nil {
+				level.Error(logger).Log("msg", "failed to initialze StackDriver profiler", "err", err)
+				os.Exit(1)
+			}
+		*/
+	}
 
 	// Create server update metrics
 	serverInitMetrics, err := metrics.NewServerInitMetrics(ctx, metricsHandler)
 	if err != nil {
-		// level.Error(logger).Log("msg", "failed to create server update metrics", "err", err)
-		fmt.Printf("could not create server update metrics: %v\n", err)
+		level.Error(logger).Log("msg", "failed to create server update metrics", "err", err)
 	}
 
 	// Create server update metrics
 	serverUpdateMetrics, err := metrics.NewServerUpdateMetrics(ctx, metricsHandler)
 	if err != nil {
-		// level.Error(logger).Log("msg", "failed to create server update metrics", "err", err)
-		fmt.Printf("could not create server update metrics: %v\n", err)
+		level.Error(logger).Log("msg", "failed to create server update metrics", "err", err)
 	}
 
 	// Create session update metrics
 	sessionUpdateMetrics, err := metrics.NewSessionMetrics(ctx, metricsHandler)
 	if err != nil {
-		// level.Error(logger).Log("msg", "failed to create session metrics", "err", err)
-		fmt.Printf("could not create session update metrics: %v\n", err)
+		level.Error(logger).Log("msg", "failed to create session metrics", "err", err)
 	}
 
 	routeMatrix := &routing.RouteMatrix{}
@@ -378,8 +352,7 @@ func main() {
 			rmsyncinterval := os.Getenv("ROUTE_MATRIX_SYNC_INTERVAL")
 			syncInterval, err := time.ParseDuration(rmsyncinterval)
 			if err != nil {
-				// level.Error(logger).Log("envvar", "ROUTE_MATRIX_SYNC_INTERVAL", "value", rmsyncinterval, "err", err)
-				fmt.Printf("bad ROUTE_MATRIX_SYNC_INTERVAL\n")
+				level.Error(logger).Log("envvar", "ROUTE_MATRIX_SYNC_INTERVAL", "value", rmsyncinterval, "msg", "could not parse ROUTE_MATRIX_SYNC_INTERVAL", "err", err)
 				os.Exit(1)
 			}
 
@@ -398,14 +371,10 @@ func main() {
 						matrixReader = r.Body
 					}
 
-					// todo: rather than reading into the same route matrix each time. double buffer and pointer swap.
-					// this avoids a long lock while reading that stalls out session update handlers until the read completes.
-
 					// Don't swap route matrix if we fail to read
 					_, err := newRouteMatrix.ReadFrom(matrixReader)
 					if err != nil {
-						// level.Warn(logger).Log("matrix", "route", "op", "read", "envvar", "ROUTE_MATRIX_URI", "value", uri, "err", err, "msg", "forcing empty route matrix to avoid stale routes")
-						fmt.Printf("could not get route matrix\n")
+						level.Warn(logger).Log("matrix", "route", "op", "read", "envvar", "ROUTE_MATRIX_URI", "value", uri, "msg", "could not read route matrix", "err", err)
 						time.Sleep(syncInterval)
 						continue
 					}
@@ -416,7 +385,7 @@ func main() {
 					routeMatrix = newRouteMatrix
 					routeMatrixMutex.Unlock()
 
-					// level.Info(logger).Log("matrix", "route", "entries", len(routeMatrix.Entries))
+					level.Info(logger).Log("matrix", "route", "entries", len(routeMatrix.Entries))
 
 					time.Sleep(syncInterval)
 				}
@@ -427,14 +396,12 @@ func main() {
 	{
 		port, ok := os.LookupEnv("PORT")
 		if !ok {
-			// level.Error(logger).Log("err", "env var PORT must be set")
-			fmt.Printf("env var PORT must be set\n")
+			level.Error(logger).Log("err", "env var PORT must be set")
 			os.Exit(1)
 		}
 		iport, err := strconv.ParseInt(port, 10, 64)
 		if err != nil {
-			// level.Error(logger).Log("err", err)
-			fmt.Printf("could not parse port value\n")
+			level.Error(logger).Log("msg", "could not parse PORT", "err", err)
 			os.Exit(1)
 		}
 
@@ -444,25 +411,30 @@ func main() {
 
 		conn, err := net.ListenUDP("udp", &addr)
 		if err != nil {
-			// level.Error(logger).Log("err", err)
-			fmt.Printf("net.ListenUDP failed\n")
+			level.Error(logger).Log("msg", "failed to start listening for UDP traffic", "err", err)
 			os.Exit(1)
 		}
 
 		readBufferString, ok := os.LookupEnv("READ_BUFFER")
 		if ok {
 			readBuffer, err := strconv.ParseInt(readBufferString, 10, 64)
-			if err == nil {
-				conn.SetReadBuffer(int(readBuffer))
+			if err != nil {
+				level.Error(logger).Log("msg", "could not parse READ_BUFFER", "err", err)
+				os.Exit(1)
 			}
+
+			conn.SetReadBuffer(int(readBuffer))
 		}
 
 		writeBufferString, ok := os.LookupEnv("WRITE_BUFFER")
 		if ok {
 			writeBuffer, err := strconv.ParseInt(writeBufferString, 10, 64)
-			if err == nil {
-				conn.SetWriteBuffer(int(writeBuffer))
+			if err != nil {
+				level.Error(logger).Log("msg", "could not parse WRITE_BUFFER", "err", err)
+				os.Exit(1)
 			}
+
+			conn.SetWriteBuffer(int(writeBuffer))
 		}
 
 		transport.InitializeServerMap()
@@ -487,10 +459,9 @@ func main() {
 		}
 
 		go func() {
-			// level.Info(logger).Log("protocol", "udp", "addr", conn.LocalAddr().String())
+			level.Info(logger).Log("protocol", "udp", "addr", conn.LocalAddr().String())
 			if err := mux.Start(ctx); err != nil {
-				// level.Error(logger).Log("protocol", "udp", "addr", conn.LocalAddr().String(), "err", err)
-				fmt.Printf("could not start udp server\n")
+				level.Error(logger).Log("protocol", "udp", "addr", conn.LocalAddr().String(), "msg", "could not start udp server", "err", err)
 				os.Exit(1)
 			}
 		}()
@@ -499,10 +470,9 @@ func main() {
 			http.HandleFunc("/healthz", transport.HealthzHandlerFunc())
 			http.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag))
 
-			// level.Info(logger).Log("protocol", "http", "addr", conn.LocalAddr().String())
+			level.Info(logger).Log("protocol", "http", "addr", conn.LocalAddr().String())
 			if err := http.ListenAndServe(conn.LocalAddr().String(), nil); err != nil {
-				// level.Error(logger).Log("protocol", "http", "addr", conn.LocalAddr().String(), "err", err)
-				fmt.Printf("could not start http server\n")
+				level.Error(logger).Log("protocol", "http", "addr", conn.LocalAddr().String(), "msg", "could not start http server", "err", err)
 				os.Exit(1)
 			}
 		}()

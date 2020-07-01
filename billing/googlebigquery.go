@@ -2,19 +2,20 @@ package billing
 
 import (
 	"context"
-	"fmt"
 	"sync/atomic"
 
 	"cloud.google.com/go/bigquery"
+	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 )
 
 const (
-	DefaultBigQueryBatchSize = 1000
+	DefaultBigQueryBatchSize   = 1000
 	DefaultBigQueryChannelSize = 10000
 )
 
 type GoogleBigQueryClient struct {
-	// Logger        log.Logger
+	Logger        log.Logger
 	TableInserter *bigquery.Inserter
 	BatchSize     int
 
@@ -22,7 +23,7 @@ type GoogleBigQueryClient struct {
 	entries chan *Entry
 
 	submitted uint64
-	flushed uint64
+	flushed   uint64
 }
 
 // Bill pushes an Entry to the channel
@@ -57,11 +58,9 @@ func (bq *GoogleBigQueryClient) WriteLoop(ctx context.Context) error {
 	for entry := range bq.entries {
 		if len(bq.buffer) >= bq.BatchSize {
 			if err := bq.TableInserter.Put(ctx, bq.buffer); err != nil {
-				fmt.Printf("failed to write to BigQuery: %v\n", err)
-				// level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)
+				level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)
 			}
-			// level.Info(bq.Logger).Log("msg", "flushed entries to BigQuery", "size", bq.BatchSize, "total", len(bq.buffer))
-			fmt.Printf("flushed %d entries to BigQuery\n", len(bq.buffer))
+			level.Info(bq.Logger).Log("msg", "flushed entries to BigQuery", "size", bq.BatchSize, "total", len(bq.buffer))
 			atomic.AddUint64(&bq.submitted, uint64(len(bq.buffer)))
 			bq.buffer = bq.buffer[:0]
 		}
