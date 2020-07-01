@@ -276,19 +276,29 @@ var servers = map[string]ServerData{}
 var serversMutex sync.Mutex
 var serverUpdatePackets uint64
 
-func ServerUpdateHandlerFunc() UDPHandlerFunc {
+func ServerUpdateHandlerFunc(metrics *metrics.ServerUpdateMetrics) UDPHandlerFunc {
+	
 	return func(w io.Writer, incoming *UDPPacket) {
+	
+		metrics.Invocations.Add(1)
+	
 		atomic.AddUint64(&serverUpdatePackets, 1)
+	
 		var packet ServerUpdatePacket
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
 			fmt.Printf("could not read server update packet!\n")
+			metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+			metrics.ErrorMetrics.UnmarshalFailure.Add(1)			// todo: standardize on read packet failure
 			return
 		}
+	
 		serverAddress := packet.ServerAddress.String()
+	
 		var server ServerData
 		server.timestamp = time.Now().Unix()
 		server.routePublicKey = packet.ServerRoutePublicKey
 		server.version = packet.Version
+	
 		serversMutex.Lock()
 		servers[serverAddress] = server
 		serversMutex.Unlock()
@@ -496,8 +506,11 @@ func memoryUsed() float64 {
 }
 
 func UpdateTimeouts(biller billing.Biller) {
+	
 	for {
+
 		timeout := time.Now().Unix() - 30
+
 		serversMutex.Lock()
 		numServers := 0
 		for k, v := range servers {
@@ -508,6 +521,7 @@ func UpdateTimeouts(biller billing.Biller) {
 			}
 		}
 		serversMutex.Unlock()
+		
 		sessionsMutex.Lock()
 		numSessions := 0
 		for k, v := range sessions {
@@ -518,6 +532,7 @@ func UpdateTimeouts(biller billing.Biller) {
 			}
 		}
 		sessionsMutex.Unlock()
+		
 		fmt.Printf("-----------------------------\n")
 		fmt.Printf("%d servers\n", numServers)
 		fmt.Printf("%d sessions\n", numSessions)
@@ -529,51 +544,68 @@ func UpdateTimeouts(biller billing.Biller) {
 		fmt.Printf("%d server update packets processed\n", serverUpdatePackets)
 		fmt.Printf("%d session update packets processed\n", sessionUpdatePackets)
 		fmt.Printf("-----------------------------\n")
+
 		time.Sleep(time.Second * 10)
 	}
 }
 
-func SessionUpdateHandlerFunc(biller billing.Biller, serverPrivateKey []byte, redisClientPortal redis.Cmdable, redisClientPortalExp time.Duration, iploc routing.IPLocator ) UDPHandlerFunc {
+func SessionUpdateHandlerFunc(biller billing.Biller, serverPrivateKey []byte, redisClientPortal redis.Cmdable, redisClientPortalExp time.Duration, iploc routing.IPLocator, metrics *metrics.SessionMetrics) UDPHandlerFunc {
+	
 	return func(w io.Writer, incoming *UDPPacket) {
+	
+		metrics.Invocations.Add(1)
+		
 		atomic.AddUint64(&sessionUpdatePackets, 1)
+		
 		var header SessionUpdatePacketHeader
 		if err := header.UnmarshalBinary(incoming.Data); err != nil {
 			fmt.Printf("could not read session update packet header!\n")
+			metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+			metrics.ErrorMetrics.ReadPacketFailure.Add(1)		// todo: make read header failure separate from read packet failure
 			return
 		}
+		
 		response := SessionResponsePacket{
 			Sequence:  header.Sequence,
 			SessionID: header.SessionID,
 			RouteType: int32(routing.RouteTypeDirect),
 		}
+		
 		serverAddress := header.ServerAddress.String()
 		serversMutex.Lock()
 		server, ok := servers[serverAddress]
 		serversMutex.Unlock()
 		if !ok {
 			fmt.Printf("no server entry for session\n")
+			metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+			metrics.ErrorMetrics.GetServerDataFailure.Add(1)
 			return
 		}
+
 		response.ServerRoutePublicKey = server.routePublicKey
+		
 		sessionsMutex.Lock()
 		sessions[header.SessionID] = time.Now().Unix()
 		sessionsMutex.Unlock()
+		
 		var packet SessionUpdatePacket
 		packet.Version = server.version
 		response.Version = server.version
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
 			fmt.Printf("could not read session update packet\n")
+			metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+			metrics.ErrorMetrics.ReadPacketFailure.Add(1)
 			return
 		}
+		
 		location, err := iploc.LocateIP(packet.ClientAddress.IP)
 		if err != nil {
 			fmt.Printf("failed to locate session\n")
+			metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+			// todo: metric for fail to locate session
 			return
 		}
-		if _, err := writeSessionResponse(w, response, serverPrivateKey); err != nil {
-			fmt.Printf("could not write session update response packet: %v\n", err)
-			return
-		}
+		
 		var sessionCacheEntry SessionCacheEntry
 		sessionCacheEntry.Location = location
 		nnStats := routing.Stats{
@@ -592,11 +624,23 @@ func SessionUpdateHandlerFunc(biller billing.Biller, serverPrivateKey []byte, re
 		}
 		if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, sessionCacheEntry.RouteDecision.OnNetworkNext, "datacenter", sessionCacheEntry.Location, time.Now(), false); err != nil {
 			fmt.Printf("could not update portal data: %v", err)
+			// todo: metric for faiing to update portal data
+			metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 		}
+		
 		storer := storage.InMemory{}
 		if err := submitBillingEntry(biller, ServerCacheEntry{}, SessionCacheEntry{}, packet, response, routing.Buyer{}, routing.Route{}, routing.LocationNullIsland,
 			&storer, nil, routing.Decision{}, billing.BillingSliceSeconds, time.Now(), time.Now(), false); err != nil {
 			fmt.Printf("could not write billing entry: %v", err)
+			metrics.ErrorMetrics.BillingFailure.Add(1)
+			metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+		}
+
+		if _, err := writeSessionResponse(w, response, serverPrivateKey); err != nil {
+			fmt.Printf("could not write session update response packet: %v\n", err)
+			metrics.ErrorMetrics.WriteResponseFailure.Add(1)
+			metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+			return
 		}
 	}
 }
@@ -1427,6 +1471,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 */
 
 func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time.Duration, packet SessionUpdatePacket, nnStats routing.Stats, directStats routing.Stats, relayHops []routing.Relay, onNetworkNext bool, datacenterName string, location routing.Location, sessionTime time.Time, isMultiPath bool) error {
+	
 	if (nnStats.RTT == 0 && directStats.RTT == 0) || (onNetworkNext && nnStats.RTT == 0) {
 		return nil
 	}

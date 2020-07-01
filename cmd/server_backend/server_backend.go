@@ -340,19 +340,21 @@ func main() {
 		fmt.Printf("could not create server update metrics: %v\n", err)
 	}
 
-	/*
 	// Create server update metrics
 	serverUpdateMetrics, err := metrics.NewServerUpdateMetrics(ctx, metricsHandler)
 	if err != nil {
-		level.Error(logger).Log("msg", "failed to create server update metrics", "err", err)
+		// level.Error(logger).Log("msg", "failed to create server update metrics", "err", err)
+		fmt.Printf("could not create server update metrics: %v\n", err)
 	}
 
 	// Create session update metrics
-	sessionMetrics, err := metrics.NewSessionMetrics(ctx, metricsHandler)
+	sessionUpdateMetrics, err := metrics.NewSessionMetrics(ctx, metricsHandler)
 	if err != nil {
-		level.Error(logger).Log("msg", "failed to create session metrics", "err", err)
+		// level.Error(logger).Log("msg", "failed to create session metrics", "err", err)
+		fmt.Printf("could not create session update metrics: %v\n", err)
 	}
 
+	/*
 	var routeMatrix routing.RouteMatrix
 	{
 		if uri, ok := os.LookupEnv("ROUTE_MATRIX_URI"); ok {
@@ -440,8 +442,8 @@ func main() {
 
 			// todo: cut down temporarily
 			ServerInitHandlerFunc:    transport.ServerInitHandlerFunc(serverPrivateKey, serverInitMetrics),
-			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(),
-			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(biller, serverPrivateKey, redisClientPortal, redisPortalHostExpiration, ipLocator),
+			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(serverUpdateMetrics),
+			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(biller, serverPrivateKey, redisClientPortal, redisPortalHostExpiration, ipLocator, sessionUpdateMetrics),
 			/*
 				ServerInitHandlerFunc:    transport.ServerInitHandlerFunc(logger, redisClientCache, db, serverInitMetrics, serverPrivateKey),
 				ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(logger, redisClientCache, db, serverUpdateMetrics),
