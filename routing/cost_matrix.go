@@ -1,6 +1,7 @@
 package routing
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -38,6 +39,9 @@ type CostMatrix struct {
 	RelaySellers          []Seller
 	RelaySessionCounts    []uint32
 	RelayMaxSessionCounts []uint32
+
+	responseBuffer     []byte
+	reponseBufferMutex sync.RWMutex
 }
 
 // ReadFrom implements the io.ReadFrom interface
@@ -71,7 +75,11 @@ func (m *CostMatrix) WriteTo(w io.Writer) (int64, error) {
 
 func (m *CostMatrix) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/octet-stream")
-	_, err := m.WriteTo(w)
+
+	data := m.GetResponseData()
+
+	buffer := bytes.NewBuffer(data)
+	_, err := buffer.WriteTo(w)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
@@ -655,4 +663,25 @@ func (m *CostMatrix) Size() uint64 {
 	length += uint64(len(m.RelayMaxSessionCounts) * 4)
 
 	return length
+}
+
+func (m *CostMatrix) GetResponseData() []byte {
+	m.reponseBufferMutex.RLock()
+	defer m.reponseBufferMutex.RUnlock()
+
+	data := m.responseBuffer
+	return data
+}
+
+func (m *CostMatrix) WriteResponseData() error {
+	var buffer bytes.Buffer
+	if _, err := m.WriteTo(&buffer); err != nil {
+		return err
+	}
+
+	m.reponseBufferMutex.Lock()
+	defer m.reponseBufferMutex.Unlock()
+
+	m.responseBuffer = buffer.Bytes()
+	return nil
 }

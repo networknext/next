@@ -1508,26 +1508,11 @@ func TestCostMatrixMarshalBinary(t *testing.T) {
 }
 
 func TestCostMatrixServeHTTP(t *testing.T) {
-	t.Run("Failure to serve HTTP", func(t *testing.T) {
-		// Create and populate a malformed cost matrix
-		matrix := getPopulatedCostMatrix(true)
-
-		// Create a dummy http request to test ServeHTTP
-		recorder := httptest.NewRecorder()
-		request, err := http.NewRequest("GET", "/", nil)
-		assert.NoError(t, err)
-
-		matrix.ServeHTTP(recorder, request)
-
-		// Get the response
-		response := recorder.Result()
-
-		assert.Equal(t, 500, response.StatusCode)
-	})
-
 	t.Run("Successful Serve", func(t *testing.T) {
 		// Create and populate a cost matrix
 		matrix := getPopulatedCostMatrix(false)
+		err := matrix.WriteResponseData()
+		assert.NoError(t, err)
 
 		// Create a dummy http request to test ServeHTTP
 		recorder := httptest.NewRecorder()
@@ -1547,6 +1532,10 @@ func TestCostMatrixServeHTTP(t *testing.T) {
 		// Create a new matrix to store the response
 		var receivedMatrix routing.CostMatrix
 		err = receivedMatrix.UnmarshalBinary(body)
+		assert.NoError(t, err)
+
+		// Write the response data again so we can compare the entire cost matrix with the expected
+		err = receivedMatrix.WriteResponseData()
 		assert.NoError(t, err)
 
 		// Validate the response
