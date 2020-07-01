@@ -8,6 +8,9 @@ import (
 // Biller is a billing interface that handles sending billing entries to remote services
 type Biller interface {
 	Bill(ctx context.Context, sessionID uint64, entry *Entry) error
+	NumSubmitted() uint64
+	NumQueued() uint64
+	NumFlushed() uint64
 }
 
 // Descriptor contains metadata on how to send billing data to the service.

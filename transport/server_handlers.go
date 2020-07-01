@@ -492,7 +492,7 @@ type RouteProvider interface {
 var sessions = map[uint64]int64{}
 var sessionsMutex sync.Mutex
 
-func TimeoutSessions() {
+func TimeoutSessions(biller billing.Biller) {
 	for {
 		timeout := time.Now().Unix() - 30
 		sessionsMutex.Lock()
@@ -507,6 +507,9 @@ func TimeoutSessions() {
 		sessionsMutex.Unlock()
 		fmt.Printf("%d sessions\n", numSessions)
 		fmt.Printf("%d goroutines\n", runtime.NumGoroutine())
+		fmt.Printf("%d billing entries submitted\n", numBillingEntriesSubmitted(biller))
+		fmt.Printf("%d billing entries queued\n", numBillingEntriesQueued(biller))
+		fmt.Printf("%d billing entries flushed\n", numBillingEntriesFlushed(biller))
 		time.Sleep(time.Second * 10)
 	}
 }
@@ -539,16 +542,13 @@ func SessionUpdateHandlerFunc(biller billing.Biller, serverPrivateKey []byte) UD
 			fmt.Printf("could not write session update response packet: %v\n", err)
 			return
 		}
-
 		packet := SessionUpdatePacket{
 			SessionID: header.SessionID,
 		}
-
 		storer := storage.InMemory{}
-
 		if err := submitBillingEntry(biller, ServerCacheEntry{}, SessionCacheEntry{}, packet, response, routing.Buyer{}, routing.Route{}, routing.LocationNullIsland,
 			&storer, nil, routing.Decision{}, billing.BillingSliceSeconds, time.Now(), time.Now(), false); err != nil {
-			fmt.Printf("could not write billing entry for session %016x: %v", header.SessionID, err)
+			fmt.Printf("could not write billing entry: %v", err)
 		}
 	}
 }
@@ -1513,6 +1513,18 @@ func submitBillingEntry(biller billing.Biller, serverCacheEntry ServerCacheEntry
 	routeRequest := NewRouteRequest(request, &buyer, serverCacheEntry, location, storer, clientRelays)
 	billingEntry := NewBillingEntry(routeRequest, &chosenRoute, int(response.RouteType), sameRoute, &buyer.RoutingRulesSettings, routeDecision, &request, sliceDuration, timestampStart, timestampNow, newSession)
 	return biller.Bill(context.Background(), request.SessionID, billingEntry)
+}
+
+func numBillingEntriesSubmitted(biller billing.Biller) uint64 {
+	return biller.NumSubmitted()
+}
+
+func numBillingEntriesQueued(biller billing.Biller) uint64 {
+	return biller.NumQueued()
+}
+
+func numBillingEntriesFlushed(biller billing.Biller) uint64 {
+	return biller.NumFlushed()
 }
 
 // todo: disabled

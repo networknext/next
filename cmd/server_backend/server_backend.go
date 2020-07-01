@@ -46,7 +46,7 @@ var (
 
 func main() {
 
-	fmt.Printf("welcome to the nerd zone 3.0\n")
+	fmt.Printf("welcome to the nerd zone 4.0\n")
 
 	ctx := context.Background()
 
@@ -447,7 +447,7 @@ func main() {
 
 		go transport.TimeoutServers()
 
-		go transport.TimeoutSessions()
+		go transport.TimeoutSessions(biller)
 
 		go func() {
 			// level.Info(logger).Log("protocol", "udp", "addr", conn.LocalAddr().String())

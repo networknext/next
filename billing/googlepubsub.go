@@ -87,6 +87,21 @@ func (biller *GooglePubSubBiller) Bill(ctx context.Context, sessionID uint64, en
 	return nil
 }
 
+func (biller *GooglePubSubBiller) NumSubmitted() uint64 {
+	// todo
+	return 0
+}
+
+func (biller *GooglePubSubBiller) NumQueued() uint64 {
+	// todo
+	return 0
+}
+
+func (biller *GooglePubSubBiller) NumFlushed() uint64 {
+	// todo
+	return 0
+}
+
 func printPubSubResults(ctx context.Context, logger log.Logger, results chan *pubsub.PublishResult) {
 	for {
 		select {
