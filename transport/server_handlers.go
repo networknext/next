@@ -289,17 +289,6 @@ func (e ServerCacheEntry) MarshalBinary() ([]byte, error) {
 
 // =============================================================================
 
-type ServerData struct {
-	timestamp      int64
-	routePublicKey []byte
-	version        SDKVersion
-}
-
-var servers = map[string]ServerData{}
-var serversMutex sync.Mutex
-var serverUpdatePackets uint64
-var longServerUpdates uint64
-
 func ServerUpdateHandlerFunc(metrics *metrics.ServerUpdateMetrics, storer storage.Storer) UDPHandlerFunc {
 
 	return func(w io.Writer, incoming *UDPPacket) {
@@ -340,13 +329,7 @@ func ServerUpdateHandlerFunc(metrics *metrics.ServerUpdateMetrics, storer storag
 		server.version = packet.Version
 
 		serverMutexStart := time.Now()
-		serversMutex.Lock()
-		_, exists := servers[serverAddress]
-		if !exists {
-			numServers++
-		}
-		servers[serverAddress] = server
-		serversMutex.Unlock()
+		serverMap.UpdateServerData(serverAddress, &server)
 		if time.Since(serverMutexStart).Seconds() > 0.1 {
 			fmt.Printf("long server mutex in server update\n")
 		}
@@ -543,7 +526,92 @@ type RouteProvider interface {
 
 // =========================================================================================================
 
+const NumServerMapShards = 1024
 const NumSessionMapShards = 1024
+
+type ServerData struct {
+	timestamp      int64
+	routePublicKey []byte
+	version        SDKVersion
+}
+
+type ServerMapShard struct {
+	mutex sync.Mutex
+	servers map[string]*ServerData
+	numServers uint64
+}
+
+type ServerMap struct {
+	shard [NumServerMapShards]*ServerMapShard
+}
+
+func NewServerMap() *ServerMap {
+	serverMap := &ServerMap{}
+	for i := 0; i < NumServerMapShards; i++ {
+		serverMap.shard[i] = &ServerMapShard{}
+		serverMap.shard[i].servers = make(map[string]*ServerData)
+	}
+	return serverMap
+}
+
+func (serverMap *ServerMap) NumServers() uint64 {
+	var total uint64
+	for i := 0; i < NumServerMapShards; i++ {
+		numServersInShard := atomic.LoadUint64(&serverMap.shard[i].numServers)
+		total += numServersInShard
+	}
+	return total
+}
+
+func ServerHash(serverName string) uint64 {
+    hash := fnv.New64a()
+    hash.Write([]byte(serverName))
+    return hash.Sum64()
+}
+
+func (serverMap *ServerMap) UpdateServerData(serverAddress string, serverData *ServerData) {
+	serverHash := ServerHash(serverAddress)
+	index := serverHash % NumServerMapShards
+	serverMap.shard[index].mutex.Lock()
+	_, exists := serverMap.shard[index].servers[serverAddress]
+	serverMap.shard[index].servers[serverAddress] = serverData
+	serverMap.shard[index].mutex.Unlock()
+	if !exists {
+		atomic.AddUint64(&serverMap.shard[index].numServers, 1)
+	}
+}
+
+func (serverMap *ServerMap) GetServerData(serverAddress string) *ServerData {
+	serverHash := ServerHash(serverAddress)
+	index := serverHash % NumServerMapShards
+	serverMap.shard[index].mutex.Lock()
+	serverData, _ := serverMap.shard[index].servers[serverAddress]
+	serverMap.shard[index].mutex.Unlock()
+	return serverData
+}
+
+func (serverMap *ServerMap) PerformTimeouts(timeoutTimestamp int64) {
+	for index := 0; index < NumServerMapShards; index++ {
+		serverTimeoutStart := time.Now()
+		serverMap.shard[index].mutex.Lock()
+		numServerIterations := 0
+		for k, v := range serverMap.shard[index].servers {
+			if numServerIterations > 100 {
+				break
+			}
+			if v.timestamp < timeoutTimestamp {
+				// fmt.Printf("timed out server: %x\n", k)
+				delete(serverMap.shard[index].servers, k)
+				atomic.AddUint64(&serverMap.shard[index].numServers, ^uint64(0))
+			}
+			numServerIterations++
+		}
+		serverMap.shard[index].mutex.Unlock()
+		if time.Since(serverTimeoutStart).Seconds() > 0.1 {
+			fmt.Printf("long server timeout check [%d]\n", index)
+		}
+	}
+}
 
 type SessionMapShard struct {
 	mutex       sync.Mutex
@@ -607,10 +675,20 @@ func (sessionMap *SessionMap) PerformTimeouts(timeoutTimestamp int64) {
 	}
 }
 
+var serverMap *ServerMap
 var sessionMap *SessionMap
+var serverUpdatePackets uint64
 var sessionUpdatePackets uint64
 var longSessionUpdates uint64
-var numServers uint64
+var longServerUpdates uint64
+
+func InitializeServerMap() {
+	serverMap = NewServerMap()
+}
+
+func InitializeSessionMap() {
+	sessionMap = NewSessionMap()
+}
 
 func memoryUsed() float64 {
 	var m runtime.MemStats
@@ -618,8 +696,22 @@ func memoryUsed() float64 {
 	return float64(m.Alloc) / (1000.0 * 1000.0)
 }
 
-func InitializeSessionMap() {
-	sessionMap = NewSessionMap()
+func PrintStats(biller billing.Biller) {
+	fmt.Printf("-----------------------------\n")
+	fmt.Printf("%d servers\n", serverMap.NumServers())
+	fmt.Printf("%d sessions\n", sessionMap.NumSessions())
+	fmt.Printf("%d goroutines\n", runtime.NumGoroutine())
+	fmt.Printf("%.2f mb allocated\n", memoryUsed())
+	fmt.Printf("%d billing entries submitted\n", numBillingEntriesSubmitted(biller))
+	fmt.Printf("%d billing entries queued\n", numBillingEntriesQueued(biller))
+	fmt.Printf("%d billing entries flushed\n", numBillingEntriesFlushed(biller))
+	fmt.Printf("%d server init packets processed\n", atomic.LoadUint64(&serverInitPackets))
+	fmt.Printf("%d server update packets processed\n", atomic.LoadUint64(&serverUpdatePackets))
+	fmt.Printf("%d session update packets processed\n", atomic.LoadUint64(&sessionUpdatePackets))
+	fmt.Printf("%d long server inits\n", atomic.LoadUint64(&longServerInits))
+	fmt.Printf("%d long server updates\n", atomic.LoadUint64(&longServerUpdates))
+	fmt.Printf("%d long session updates\n", atomic.LoadUint64(&longSessionUpdates))
+	fmt.Printf("-----------------------------\n")
 }
 
 func UpdateTimeouts(biller billing.Biller) {
@@ -630,45 +722,13 @@ func UpdateTimeouts(biller billing.Biller) {
 
 		timeoutTimestamp := time.Now().Unix() - 30
 
-		serverTimeoutStart := time.Now()
-		serversMutex.Lock()
-		numServerIterations := 0
-		for k, v := range servers {
-			if numServerIterations > 1000 {
-				break
-			}
-			if v.timestamp < timeoutTimestamp {
-				// fmt.Printf("timed out server: %s\n", k)
-				delete(servers, k)
-				numServers--
-			}
-			numServerIterations++
-		}
-		latestNumServers := numServers
-		serversMutex.Unlock()
-		if time.Since(serverTimeoutStart).Seconds() > 0.1 {
-			fmt.Printf("long server timeout check\n")
-		}
+		serverMap.PerformTimeouts(timeoutTimestamp)
 
 		sessionMap.PerformTimeouts(timeoutTimestamp)
 
 		if time.Since(lastUpdate).Seconds() >= 10.0 {
-			fmt.Printf("-----------------------------\n")
-			fmt.Printf("%d servers\n", latestNumServers)
-			fmt.Printf("%d sessions\n", sessionMap.NumSessions())
-			fmt.Printf("%d goroutines\n", runtime.NumGoroutine())
-			fmt.Printf("%.2f mb allocated\n", memoryUsed())
-			fmt.Printf("%d billing entries submitted\n", numBillingEntriesSubmitted(biller))
-			fmt.Printf("%d billing entries queued\n", numBillingEntriesQueued(biller))
-			fmt.Printf("%d billing entries flushed\n", numBillingEntriesFlushed(biller))
-			fmt.Printf("%d server init packets processed\n", atomic.LoadUint64(&serverInitPackets))
-			fmt.Printf("%d server update packets processed\n", atomic.LoadUint64(&serverUpdatePackets))
-			fmt.Printf("%d session update packets processed\n", atomic.LoadUint64(&sessionUpdatePackets))
-			fmt.Printf("%d long server inits\n", atomic.LoadUint64(&longServerInits))
-			fmt.Printf("%d long server updates\n", atomic.LoadUint64(&longServerUpdates))
-			fmt.Printf("%d long session updates\n", atomic.LoadUint64(&longSessionUpdates))
-			fmt.Printf("-----------------------------\n")
 			lastUpdate = time.Now()
+			PrintStats(biller)
 		}
 
 		time.Sleep(time.Millisecond * 100)
@@ -706,18 +766,15 @@ func SessionUpdateHandlerFunc(biller billing.Biller, serverPrivateKey []byte, re
 			RouteType: int32(routing.RouteTypeDirect),
 		}
 
-		serverAddress := header.ServerAddress.String()
 		serverMutexStart := time.Now()
-		serversMutex.Lock()
-		server, ok := servers[serverAddress]
-		serversMutex.Unlock()
-		if time.Since(serverMutexStart).Seconds() > 0.1 {
-			fmt.Printf("long server mutex in session update\n")
-		}
-		if !ok {
+		server := serverMap.GetServerData(header.ServerAddress.String())
+		if server == nil {
 			metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 			metrics.ErrorMetrics.ServerDataMissing.Add(1)
 			return
+		}
+		if time.Since(serverMutexStart).Seconds() > 0.1 {
+			fmt.Printf("long server mutex in session update\n")
 		}
 
 		response.ServerRoutePublicKey = server.routePublicKey

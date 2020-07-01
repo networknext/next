@@ -43,7 +43,7 @@ var (
 
 func main() {
 
-	fmt.Printf("welcome to the nerd zone 13.0\n")
+	fmt.Printf("welcome to the nerd zone 14.0\n")
 
 	ctx := context.Background()
 
@@ -464,6 +464,8 @@ func main() {
 				conn.SetWriteBuffer(int(writeBuffer))
 			}
 		}
+
+		transport.InitializeServerMap()
 
 		transport.InitializeSessionMap()
 
