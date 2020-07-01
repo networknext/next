@@ -1534,13 +1534,14 @@ func TestCostMatrixServeHTTP(t *testing.T) {
 		err = receivedMatrix.UnmarshalBinary(body)
 		assert.NoError(t, err)
 
-		// Write the response data again so we can compare the entire cost matrix with the expected
-		err = receivedMatrix.WriteResponseData()
+		// Create a new expected matrix so that the response buffer is empty
+		var expected routing.CostMatrix
+		err = expected.UnmarshalBinary(matrix.GetResponseData())
 		assert.NoError(t, err)
 
 		// Validate the response
 		assert.Equal(t, "application/octet-stream", response.Header.Get("Content-Type"))
-		assert.Equal(t, matrix, &receivedMatrix)
+		assert.Equal(t, &expected, &receivedMatrix)
 	})
 }
 
