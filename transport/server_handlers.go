@@ -339,7 +339,11 @@ func ServerUpdateHandlerFunc(metrics *metrics.ServerUpdateMetrics, storer storag
 		server.version = packet.Version
 	
 		serversMutex.Lock()
-		servers[serverAddress] = server
+		_, exists := servers[serverAddress]
+		if !exists {
+			servers[serverAddress] = server
+			numServers++
+		}
 		serversMutex.Unlock()
 	}
 }
@@ -538,6 +542,8 @@ var sessions = map[uint64]int64{}
 var sessionsMutex sync.Mutex
 var sessionUpdatePackets uint64
 var longSessionUpdates uint64
+var numServers uint64
+var numSessions uint64
 
 func memoryUsed() float64 {
     var m runtime.MemStats
@@ -546,50 +552,63 @@ func memoryUsed() float64 {
 }
 
 func UpdateTimeouts(biller billing.Biller) {
+
+	lastUpdate := time.Now()
 	
 	for {
 
 		timeout := time.Now().Unix() - 30
 
 		serversMutex.Lock()
-		numServers := 0
+		numServerIterations := 0
 		for k, v := range servers {
+			if numServerIterations > 1000 {
+				break
+			}
 			if v.timestamp < timeout {
 				delete(servers, k)
-			} else {
-				numServers++
+				numServers--
 			}
+			numServerIterations++
 		}
+		latestNumServers := numServers
 		serversMutex.Unlock()
 		
 		sessionsMutex.Lock()
-		numSessions := 0
+		numSessionIterations := 0
 		for k, v := range sessions {
+			if numSessionIterations > 1000 {
+				break
+			}
 			if v < timeout {
 				delete(sessions, k)
-			} else {
-				numSessions++
+				numSessions--
 			}
+			numSessionIterations++
 		}
+		latestNumSessions := numSessions
 		sessionsMutex.Unlock()
 		
-		fmt.Printf("-----------------------------\n")
-		fmt.Printf("%d servers\n", numServers)
-		fmt.Printf("%d sessions\n", numSessions)
-		fmt.Printf("%d goroutines\n", runtime.NumGoroutine())
-		fmt.Printf("%.2f mb allocated\n", memoryUsed())
-		fmt.Printf("%d billing entries submitted\n", numBillingEntriesSubmitted(biller))
-		fmt.Printf("%d billing entries queued\n", numBillingEntriesQueued(biller))
-		fmt.Printf("%d billing entries flushed\n", numBillingEntriesFlushed(biller))
-		fmt.Printf("%d server init packets processed\n", atomic.LoadUint64(&serverInitPackets))
-		fmt.Printf("%d server update packets processed\n", atomic.LoadUint64(&serverUpdatePackets))
-		fmt.Printf("%d session update packets processed\n", atomic.LoadUint64(&sessionUpdatePackets))
-		fmt.Printf("%d long server inits\n", atomic.LoadUint64(&longServerInits))
-		fmt.Printf("%d long server updates\n", atomic.LoadUint64(&longServerUpdates))
-		fmt.Printf("%d long session updates\n", atomic.LoadUint64(&longSessionUpdates))
-		fmt.Printf("-----------------------------\n")
+		if time.Since(lastUpdate).Seconds() >= 10.0 {
+			fmt.Printf("-----------------------------\n")
+			fmt.Printf("%d servers\n", latestNumServers)
+			fmt.Printf("%d sessions\n", latestNumSessions)
+			fmt.Printf("%d goroutines\n", runtime.NumGoroutine())
+			fmt.Printf("%.2f mb allocated\n", memoryUsed())
+			fmt.Printf("%d billing entries submitted\n", numBillingEntriesSubmitted(biller))
+			fmt.Printf("%d billing entries queued\n", numBillingEntriesQueued(biller))
+			fmt.Printf("%d billing entries flushed\n", numBillingEntriesFlushed(biller))
+			fmt.Printf("%d server init packets processed\n", atomic.LoadUint64(&serverInitPackets))
+			fmt.Printf("%d server update packets processed\n", atomic.LoadUint64(&serverUpdatePackets))
+			fmt.Printf("%d session update packets processed\n", atomic.LoadUint64(&sessionUpdatePackets))
+			fmt.Printf("%d long server inits\n", atomic.LoadUint64(&longServerInits))
+			fmt.Printf("%d long server updates\n", atomic.LoadUint64(&longServerUpdates))
+			fmt.Printf("%d long session updates\n", atomic.LoadUint64(&longSessionUpdates))
+			fmt.Printf("-----------------------------\n")
+			lastUpdate = time.Now()
+		}
 
-		time.Sleep(time.Second * 10)
+		time.Sleep(time.Second)
 	}
 }
 
@@ -638,7 +657,11 @@ func SessionUpdateHandlerFunc(biller billing.Biller, serverPrivateKey []byte, re
 		response.ServerRoutePublicKey = server.routePublicKey
 		
 		sessionsMutex.Lock()
-		sessions[header.SessionID] = time.Now().Unix()
+		_, exists := sessions[header.SessionID]
+		if !exists {
+			sessions[header.SessionID] = time.Now().Unix()
+			numSessions++
+		}
 		sessionsMutex.Unlock()
 		
 		var packet SessionUpdatePacket
