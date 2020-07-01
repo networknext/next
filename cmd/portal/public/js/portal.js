@@ -312,6 +312,12 @@ UserHandler = {
 				// Need to handle no BuyerID gracefully
 			});
 	},
+	getBuyerName() {
+		let allBuyers = rootComponent.$data.allBuyers;
+		return Array.from(allBuyers).length > 0 ? Array.from(allBuyers).find((buyer) => {
+				return buyer.id == this.userInfo.id || this.isAdmin()
+		}).name : "Private";
+	},
 	isAdmin() {
 		return !this.isAnonymous() ? this.userInfo.roles.findIndex((role) => role.name == "Admin") !== -1 : false;
 	},
@@ -840,7 +846,8 @@ function startApp() {
 			JSONRPCClient
 				.call('BuyersService.Buyers', {})
 				.then((response) => {
-					Object.assign(rootComponent.$data, {allBuyers: response.Buyers});
+					let allBuyers = response.Buyers || [];
+					Object.assign(rootComponent.$data, {allBuyers: allBuyers});
 					/* if (UserHandler.isAnonymous()) {
 						WorkspaceHandler.welcomeTimeout = setTimeout(() => {
 							this.welcomeTimeout !== null ? clearTimeout(this.welcomeTimeout) : null;
