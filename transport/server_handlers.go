@@ -682,48 +682,50 @@ func SessionUpdateHandlerFunc(biller billing.Biller, serverPrivateKey []byte, re
 			return
 		}
 
-		go func() {
+		// IMPORTANT: run post in parallel so it doesn't block the response
+		go PostSessionUpdate(biller, serverPrivateKey, redisClientPortal, redisClientPortalExp, iploc, metrics, storer, &packet, &response, &location)
 
-			// IMPORTANT: run this part in parallel so it doesn't block the response!
+		if _, err := writeSessionResponse(w, response, serverPrivateKey); err != nil {
+			fmt.Printf("could not write session update response packet: %v\n", err)
+			metrics.ErrorMetrics.WriteResponseFailure.Add(1)
+			metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+			return
+		}
+	}
+}
 
-			var sessionCacheEntry SessionCacheEntry
-			sessionCacheEntry.Location = location
-			nnStats := routing.Stats{
-				RTT:        float64(packet.NextMinRTT),
-				Jitter:     float64(packet.NextJitter),
-				PacketLoss: float64(packet.NextPacketLoss),
-			}
-			directStats := routing.Stats{
-				RTT:        float64(packet.DirectMinRTT),
-				Jitter:     float64(packet.DirectJitter),
-				PacketLoss: float64(packet.DirectPacketLoss),
-			}
-			chosenRoute := routing.Route{
-				Stats:  directStats,
-				Relays: make([]routing.Relay, 0),
-			}
-			if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, sessionCacheEntry.RouteDecision.OnNetworkNext, "datacenter", sessionCacheEntry.Location, time.Now(), false); err != nil {
-				fmt.Printf("could not update portal data: %v", err)
-				// todo: metric for faiing to update portal data
-				metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-			}
-			
-			storer := storage.InMemory{}
-			if err := submitBillingEntry(biller, ServerCacheEntry{}, SessionCacheEntry{}, packet, response, routing.Buyer{}, routing.Route{}, routing.LocationNullIsland,
-				&storer, nil, routing.Decision{}, billing.BillingSliceSeconds, time.Now(), time.Now(), false); err != nil {
-				fmt.Printf("could not write billing entry: %v", err)
-				metrics.ErrorMetrics.BillingFailure.Add(1)
-				metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-			}
+func PostSessionUpdate(biller billing.Biller, serverPrivateKey []byte, redisClientPortal redis.Cmdable, redisClientPortalExp time.Duration, iploc routing.IPLocator, metrics *metrics.SessionMetrics, storer storage.Storer, packet *SessionUpdatePacket, response *SessionResponsePacket, location *routing.Location) {
 
-			if _, err := writeSessionResponse(w, response, serverPrivateKey); err != nil {
-				fmt.Printf("could not write session update response packet: %v\n", err)
-				metrics.ErrorMetrics.WriteResponseFailure.Add(1)
-				metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-				return
-			}
+	var sessionCacheEntry SessionCacheEntry
+	sessionCacheEntry.Location = *location
+	nnStats := routing.Stats{
+		RTT:        float64(packet.NextMinRTT),
+		Jitter:     float64(packet.NextJitter),
+		PacketLoss: float64(packet.NextPacketLoss),
+	}
+	directStats := routing.Stats{
+		RTT:        float64(packet.DirectMinRTT),
+		Jitter:     float64(packet.DirectJitter),
+		PacketLoss: float64(packet.DirectPacketLoss),
+	}
+	chosenRoute := routing.Route{
+		Stats:  directStats,
+		Relays: make([]routing.Relay, 0),
+	}
+	// todo: pass as pointer to packet
+	if err := updatePortalData(redisClientPortal, redisClientPortalExp, *packet, nnStats, directStats, chosenRoute.Relays, sessionCacheEntry.RouteDecision.OnNetworkNext, "datacenter", sessionCacheEntry.Location, time.Now(), false); err != nil {
+		fmt.Printf("could not update portal data: %v", err)
+		// todo: metric for faiing to update portal data
+		metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+	}
 
-		}()
+	// todo: pass pointer to packet, not by value
+	// todo: pass pointer to response, not by value
+	if err := submitBillingEntry(biller, ServerCacheEntry{}, SessionCacheEntry{}, *packet, *response, routing.Buyer{}, routing.Route{}, routing.LocationNullIsland,
+		storer, nil, routing.Decision{}, billing.BillingSliceSeconds, time.Now(), time.Now(), false); err != nil {
+		fmt.Printf("could not write billing entry: %v", err)
+		metrics.ErrorMetrics.BillingFailure.Add(1)
+		metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 	}
 }
 
