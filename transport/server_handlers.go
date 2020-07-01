@@ -596,7 +596,7 @@ func (serverMap *ServerMap) PerformTimeouts(timeoutTimestamp int64) {
 		serverMap.shard[index].mutex.Lock()
 		numServerIterations := 0
 		for k, v := range serverMap.shard[index].servers {
-			if numServerIterations > 100 {
+			if numServerIterations > 10 {
 				break
 			}
 			if v.timestamp < timeoutTimestamp {
@@ -658,7 +658,7 @@ func (sessionMap *SessionMap) PerformTimeouts(timeoutTimestamp int64) {
 		sessionMap.shard[index].mutex.Lock()
 		numSessionIterations := 0
 		for k, v := range sessionMap.shard[index].sessions {
-			if numSessionIterations > 100 {
+			if numSessionIterations > 10 {
 				break
 			}
 			if v < timeoutTimestamp {
@@ -724,14 +724,18 @@ func UpdateTimeouts(biller billing.Biller) {
 
 		serverMap.PerformTimeouts(timeoutTimestamp)
 
+		time.Sleep(time.Millisecond*10)
+
 		sessionMap.PerformTimeouts(timeoutTimestamp)
+
+		time.Sleep(time.Millisecond*10)
 
 		if time.Since(lastUpdate).Seconds() >= 10.0 {
 			lastUpdate = time.Now()
 			PrintStats(biller)
 		}
 
-		time.Sleep(time.Millisecond*100)
+		time.Sleep(time.Millisecond*10)
 	}
 }
 
