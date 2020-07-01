@@ -543,8 +543,13 @@ type RouteProvider interface {
 
 // =========================================================================================================
 
-var sessions = map[uint64]int64{}
-var sessionsMutex sync.Mutex
+type SessionShard struct {
+	var sessions = map[uint64]int64{}
+	var sessionsMutex sync.Mutex
+}
+
+
+
 var sessionUpdatePackets uint64
 var longSessionUpdates uint64
 var numServers uint64
