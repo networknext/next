@@ -651,7 +651,7 @@ func SessionUpdateHandlerFunc(biller billing.Biller, serverPrivateKey []byte, re
 		server, ok := servers[serverAddress]
 		serversMutex.Unlock()
 		if !ok {
-			fmt.Printf("no server entry for session: %s\n", serverAddress)
+			// fmt.Printf("no server entry for session: %s\n", serverAddress)
 			metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 			metrics.ErrorMetrics.GetServerDataFailure.Add(1)
 			return
