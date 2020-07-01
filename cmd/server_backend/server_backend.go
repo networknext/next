@@ -26,12 +26,12 @@ import (
 	// gcplogging "cloud.google.com/go/logging"
 	// "github.com/networknext/backend/logging"
 
+	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/crypto"
+	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
-	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/transport"
-	"github.com/networknext/backend/metrics"
 )
 
 var (
@@ -228,15 +228,15 @@ func main() {
 	// Create a no-op biller
 	var biller billing.Biller = &billing.NoOpBiller{}
 
-	// Create a local metrics handler
-	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
+	// Create a no-op metrics handler
+	var metricsHandler metrics.Handler = &metrics.NoOpHandler{}
 
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
 	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
 	// on creation so we can use that for the default then
 	// if gcpProjectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
-	
-		/*
+
+	/*
 		// Create a Firestore Storer
 		fs, err := storage.NewFirestore(ctx, gcpProjectID)//, logger)
 		if err != nil {
@@ -260,10 +260,10 @@ func main() {
 
 		// Set the Firestore Storer to give to handlers
 		db = fs
-		*/
+	*/
 
-		// todo: biller is disabled. bigquery can't keep up
-		/*
+	// todo: biller is disabled. bigquery can't keep up
+	/*
 		if billingDataset, ok := os.LookupEnv("GOOGLE_BIGQUERY_DATASET_BILLING"); ok {
 			batchSize := billing.DefaultBigQueryBatchSize
 			if size, ok := os.LookupEnv("GOOGLE_BIGQUERY_BATCH_SIZE"); ok {
@@ -296,9 +296,9 @@ func main() {
 				b.WriteLoop(ctx)
 			}()
 		}
-		*/
+	*/
 
-		/*
+	/*
 		// Set up StackDriver metrics
 		sd := metrics.StackDriverHandler{
 			ProjectID:          gcpProjectID,
@@ -322,10 +322,10 @@ func main() {
 		go func() {
 			metricsHandler.WriteLoop(ctx, logger, writeInterval, 200)
 		}()
-		*/
+	*/
 
-		// todo: disabled profiler because we think it's slowing down handlers
-		/*
+	// todo: disabled profiler because we think it's slowing down handlers
+	/*
 		// Set up StackDriver profiler
 		if err := profiler.Start(profiler.Config{
 			Service:        "server_backend",
@@ -337,7 +337,7 @@ func main() {
 			fmt.Printf("could not setup stackdriver profiler: %v\n", err)
 			os.Exit(1)
 		}
-		*/
+	*/
 	// }
 
 	// Create server update metrics
@@ -386,7 +386,7 @@ func main() {
 						matrixReader = r.Body
 					}
 
-					// todo: rather than reading into the same route matrix each time. double buffer and pointer swap. 
+					// todo: rather than reading into the same route matrix each time. double buffer and pointer swap.
 					// this avoids a long lock while reading that stalls out session update handlers until the read completes.
 
 					// Attempt to read, and intentionally force to empty route matrix if any errors are encountered to avoid stale routes
