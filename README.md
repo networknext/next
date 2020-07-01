@@ -1,5 +1,17 @@
 # portal
 
+## Install Vue
+
+```
+npm install -g @vue/cli
+```
+
+## Launch Web GUI
+
+```
+vue ui
+```
+
 ## Project setup
 ```
 npm install
