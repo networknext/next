@@ -536,8 +536,8 @@ type ServerData struct {
 }
 
 type ServerMapShard struct {
-	mutex sync.Mutex
-	servers map[string]*ServerData
+	mutex      sync.Mutex
+	servers    map[string]*ServerData
 	numServers uint64
 }
 
@@ -564,9 +564,9 @@ func (serverMap *ServerMap) NumServers() uint64 {
 }
 
 func ServerHash(serverName string) uint64 {
-    hash := fnv.New64a()
-    hash.Write([]byte(serverName))
-    return hash.Sum64()
+	hash := fnv.New64a()
+	hash.Write([]byte(serverName))
+	return hash.Sum64()
 }
 
 func (serverMap *ServerMap) UpdateServerData(serverAddress string, serverData *ServerData) {
@@ -724,18 +724,18 @@ func UpdateTimeouts(biller billing.Biller) {
 
 		serverMap.PerformTimeouts(timeoutTimestamp)
 
-		time.Sleep(time.Millisecond*10)
+		time.Sleep(time.Millisecond * 10)
 
 		sessionMap.PerformTimeouts(timeoutTimestamp)
 
-		time.Sleep(time.Millisecond*10)
+		time.Sleep(time.Millisecond * 10)
 
 		if time.Since(lastUpdate).Seconds() >= 10.0 {
 			lastUpdate = time.Now()
 			PrintStats(biller)
 		}
 
-		time.Sleep(time.Millisecond*10)
+		time.Sleep(time.Millisecond * 10)
 	}
 }
 
@@ -837,16 +837,14 @@ func PostSessionUpdate(biller billing.Biller, serverPrivateKey []byte, redisClie
 		Stats:  directStats,
 		Relays: make([]routing.Relay, 0),
 	}
-	// todo: pass as pointer to packet
-	if err := updatePortalData(redisClientPortal, redisClientPortalExp, *packet, nnStats, directStats, chosenRoute.Relays, sessionCacheEntry.RouteDecision.OnNetworkNext, "datacenter", sessionCacheEntry.Location, time.Now(), false); err != nil {
+
+	if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, sessionCacheEntry.RouteDecision.OnNetworkNext, "datacenter", &sessionCacheEntry.Location, time.Now(), false); err != nil {
 		fmt.Printf("could not update portal data: %v", err)
-		// todo: metric for faiing to update portal data
+		metrics.ErrorMetrics.UpdatePortalFailure.Add(1)
 		metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 	}
 
-	// todo: pass pointer to packet, not by value
-	// todo: pass pointer to response, not by value
-	if err := submitBillingEntry(biller, ServerCacheEntry{}, SessionCacheEntry{}, *packet, *response, routing.Buyer{}, routing.Route{}, routing.LocationNullIsland,
+	if err := submitBillingEntry(biller, &ServerCacheEntry{}, 0, packet, response, &routing.Buyer{}, &routing.Route{}, &routing.LocationNullIsland,
 		storer, nil, routing.Decision{}, billing.BillingSliceSeconds, time.Now(), time.Now(), false); err != nil {
 		fmt.Printf("could not write billing entry: %v", err)
 		metrics.ErrorMetrics.BillingFailure.Add(1)
@@ -1687,7 +1685,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 }
 */
 
-func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time.Duration, packet SessionUpdatePacket, nnStats routing.Stats, directStats routing.Stats, relayHops []routing.Relay, onNetworkNext bool, datacenterName string, location routing.Location, sessionTime time.Time, isMultiPath bool) error {
+func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time.Duration, packet *SessionUpdatePacket, nnStats routing.Stats, directStats routing.Stats, relayHops []routing.Relay, onNetworkNext bool, datacenterName string, location *routing.Location, sessionTime time.Time, isMultiPath bool) error {
 
 	if (nnStats.RTT == 0 && directStats.RTT == 0) || (onNetworkNext && nnStats.RTT == 0) {
 		return nil
@@ -1725,7 +1723,7 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 		NextRTT:       nnStats.RTT,
 		DirectRTT:     directStats.RTT,
 		DeltaRTT:      deltaRTT,
-		Location:      location,
+		Location:      *location,
 		ClientAddr:    clientAddr.String(),
 		ServerAddr:    packet.ServerAddress.String(),
 		Hops:          relayHops,
@@ -1812,13 +1810,13 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 	return nil
 }
 
-func submitBillingEntry(biller billing.Biller, serverCacheEntry ServerCacheEntry, sessionCacheEntry SessionCacheEntry, request SessionUpdatePacket, response SessionResponsePacket,
-	buyer routing.Buyer, chosenRoute routing.Route, location routing.Location, storer storage.Storer, clientRelays []routing.Relay, routeDecision routing.Decision,
+func submitBillingEntry(biller billing.Biller, serverCacheEntry *ServerCacheEntry, prevRouteHash uint64, request *SessionUpdatePacket, response *SessionResponsePacket,
+	buyer *routing.Buyer, chosenRoute *routing.Route, location *routing.Location, storer storage.Storer, clientRelays []routing.Relay, routeDecision routing.Decision,
 	sliceDuration uint64, timestampStart time.Time, timestampNow time.Time, newSession bool) error {
 
-	sameRoute := chosenRoute.Hash64() == sessionCacheEntry.RouteHash
-	routeRequest := NewRouteRequest(request, &buyer, serverCacheEntry, location, storer, clientRelays)
-	billingEntry := NewBillingEntry(routeRequest, &chosenRoute, int(response.RouteType), sameRoute, &buyer.RoutingRulesSettings, routeDecision, &request, sliceDuration, timestampStart, timestampNow, newSession)
+	sameRoute := chosenRoute.Hash64() == prevRouteHash
+	routeRequest := NewRouteRequest(request, buyer, serverCacheEntry, location, storer, clientRelays)
+	billingEntry := NewBillingEntry(routeRequest, chosenRoute, int(response.RouteType), sameRoute, &buyer.RoutingRulesSettings, routeDecision, request, sliceDuration, timestampStart, timestampNow, newSession)
 	return biller.Bill(context.Background(), request.SessionID, billingEntry)
 }
 
@@ -1836,8 +1834,8 @@ func numBillingEntriesFlushed(biller billing.Biller) uint64 {
 
 // todo: disabled
 /*
-func updateCacheEntries(redisClient redis.Cmdable, sessionCacheKey string, vetoCacheKey string, sessionCacheEntry SessionCacheEntry, vetoCacheEntry VetoCacheEntry, packet SessionUpdatePacket, chosenRouteHash uint64,
-	routeDecision routing.Decision, timestampStart time.Time, timestampExpire time.Time, responseData []byte, directRTT float64, nextRTT float64, location routing.Location) error {
+func updateCacheEntries(redisClient redis.Cmdable, sessionCacheKey string, vetoCacheKey string, sessionCacheEntry *SessionCacheEntry, vetoCacheEntry *VetoCacheEntry, packet *SessionUpdatePacket, chosenRouteHash uint64,
+	routeDecision routing.Decision, timestampStart time.Time, timestampExpire time.Time, responseData []byte, directRTT float64, nextRTT float64, location *routing.Location) error {
 	updatedSessionCacheEntry := SessionCacheEntry{
 		CustomerID:                 packet.CustomerID,
 		SessionID:                  packet.SessionID,
@@ -1855,7 +1853,7 @@ func updateCacheEntries(redisClient redis.Cmdable, sessionCacheKey string, vetoC
 		Response:                   responseData,
 		DirectRTT:                  directRTT,
 		NextRTT:                    nextRTT,
-		Location:                   location,
+		Location:                   *location,
 	}
 
 	updatedVetoCacheEntry := VetoCacheEntry{
@@ -1917,7 +1915,6 @@ func addRouteDecisionMetric(d routing.Decision, m *metrics.SessionMetrics) {
 	}
 }
 */
-
 // writeInitResponse encrypts the server init response packet and sends it back to the server. Returns the marshaled response and an error.
 func writeInitResponse(w io.Writer, response ServerInitResponsePacket, privateKey []byte) error {
 	// Sign the response

@@ -105,7 +105,7 @@ func NewBillingRoute(route *routing.Route, bytesUp uint64, bytesDown uint64) []*
 }
 
 // Convert new representation of data into old for billing entry
-func NewRouteRequest(updatePacket SessionUpdatePacket, buyer *routing.Buyer, serverData ServerCacheEntry, location routing.Location, storer storage.Storer, clientRelays []routing.Relay) *billing.RouteRequest {
+func NewRouteRequest(updatePacket *SessionUpdatePacket, buyer *routing.Buyer, serverData *ServerCacheEntry, location *routing.Location, storer storage.Storer, clientRelays []routing.Relay) *billing.RouteRequest {
 	return &billing.RouteRequest{
 		BuyerID:                NewEntityID("Buyer", buyer.ID),
 		SessionID:              updatePacket.SessionID,
@@ -159,7 +159,7 @@ func NewRouteRequest(updatePacket SessionUpdatePacket, buyer *routing.Buyer, ser
 }
 
 // The list of relays the client actually believes it is close to / is using (should match issued near relays)
-func newNearRelayList(updatePacket SessionUpdatePacket, storer storage.Storer) []*billing.NearRelay {
+func newNearRelayList(updatePacket *SessionUpdatePacket, storer storage.Storer) []*billing.NearRelay {
 	var nearRelays []*billing.NearRelay
 	var i int32
 	for i = 0; i < updatePacket.NumNearRelays; i++ {

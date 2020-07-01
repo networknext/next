@@ -230,7 +230,7 @@ func TestBuildRouteRequest(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	actual := transport.NewRouteRequest(updatePacket, buyer, serverData, location, &storer, clientRelays)
+	actual := transport.NewRouteRequest(&updatePacket, buyer, &serverData, &location, &storer, clientRelays)
 
 	assert.Equal(t, expected, actual)
 }
