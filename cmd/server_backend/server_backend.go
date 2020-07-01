@@ -448,9 +448,7 @@ func main() {
 			*/
 		}
 
-		go transport.TimeoutServers()
-
-		go transport.TimeoutSessions(biller)
+		go transport.UpdateTimeouts(biller)
 
 		go func() {
 			// level.Info(logger).Log("protocol", "udp", "addr", conn.LocalAddr().String())

@@ -17,6 +17,8 @@ import (
 	"sync"
 	"time"
 
+	"sync/atomic"
+
 	// "github.com/go-kit/kit/log"
 	// "github.com/go-kit/kit/log/level"
 	jsoniter "github.com/json-iterator/go"
@@ -263,27 +265,11 @@ type ServerData struct {
 
 var servers = map[string]ServerData{}
 var serversMutex sync.Mutex
-
-func TimeoutServers() {
-	for {
-		timeout := time.Now().Unix() - 30
-		serversMutex.Lock()
-		numServers := 0
-		for k, v := range servers {
-			if v.timestamp < timeout {
-				delete(servers, k)
-			} else {
-				numServers++
-			}
-		}
-		serversMutex.Unlock()
-		fmt.Printf("%d servers\n", numServers)
-		time.Sleep(time.Second * 10)
-	}
-}
+var serverUpdatePackets uint64
 
 func ServerUpdateHandlerFunc() UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
+		atomic.AddUint64(&serverUpdatePackets, 1)
 		var packet ServerUpdatePacket
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
 			fmt.Printf("could not read server update packet!\n")
@@ -491,10 +477,28 @@ type RouteProvider interface {
 
 var sessions = map[uint64]int64{}
 var sessionsMutex sync.Mutex
+var sessionUpdatePackets uint64
 
-func TimeoutSessions(biller billing.Biller) {
+func memoryUsed() float64 {
+    var m runtime.MemStats
+    runtime.ReadMemStats(&m)
+    return float64(m.Alloc) / (1000.0*1000.0)
+}
+
+func UpdateTimeouts(biller billing.Biller) {
 	for {
 		timeout := time.Now().Unix() - 30
+		serversMutex.Lock()
+		numServers := 0
+		for k, v := range servers {
+			if v.timestamp < timeout {
+				delete(servers, k)
+			} else {
+				numServers++
+			}
+		}
+		serversMutex.Unlock()
+		time.Sleep(time.Second * 10)
 		sessionsMutex.Lock()
 		numSessions := 0
 		for k, v := range sessions {
@@ -505,17 +509,24 @@ func TimeoutSessions(biller billing.Biller) {
 			}
 		}
 		sessionsMutex.Unlock()
+		fmt.Printf("-----------------------------\n")
+		fmt.Printf("%d servers\n", numServers)
 		fmt.Printf("%d sessions\n", numSessions)
 		fmt.Printf("%d goroutines\n", runtime.NumGoroutine())
+		fmt.Printf("%.2f mb allocated\n", memoryUsed())
 		fmt.Printf("%d billing entries submitted\n", numBillingEntriesSubmitted(biller))
 		fmt.Printf("%d billing entries queued\n", numBillingEntriesQueued(biller))
 		fmt.Printf("%d billing entries flushed\n", numBillingEntriesFlushed(biller))
+		fmt.Printf("%d server update packets processed\n", serverUpdatePackets)
+		fmt.Printf("%d session update packets processed\n", sessionUpdatePackets)
+		fmt.Printf("-----------------------------\n")
 		time.Sleep(time.Second * 10)
 	}
 }
 
 func SessionUpdateHandlerFunc(biller billing.Biller, serverPrivateKey []byte) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
+		atomic.AddUint64(&sessionUpdatePackets, 1)
 		var header SessionUpdatePacketHeader
 		if err := header.UnmarshalBinary(incoming.Data); err != nil {
 			fmt.Printf("could not read session update packet header!\n")
