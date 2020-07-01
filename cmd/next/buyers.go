@@ -72,35 +72,53 @@ func removeBuyer(rpcClient jsonrpc.RPCClient, env Environment, id string) {
 
 func routingRulesSettings(rpcClient jsonrpc.RPCClient, env Environment, buyerID string) {
 
-	transpose := []struct {
-		RoutingRuleSetting string
-		Value              string
-	}{}
-
-	args := localjsonrpc.RoutingRulesSettingsArgs{
-		BuyerID: buyerID,
-	}
-
-	var reply localjsonrpc.RoutingRulesSettingsReply
-	if err := rpcClient.CallFor(&reply, "OpsService.RoutingRulesSettings", args); err != nil {
+	buyerArgs := localjsonrpc.BuyersArgs{}
+	var buyers localjsonrpc.BuyersReply
+	if err := rpcClient.CallFor(&buyers, "OpsService.Buyers", buyerArgs); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}
 
-	v := reflect.ValueOf(reply.RoutingRuleSettings[0])
-	typeOfV := v.Type()
+	for i := range buyers.Buyers {
+		if buyers.Buyers[i].ID == buyerID {
 
-	for i := 0; i < v.NumField(); i++ {
-		transpose = append(transpose, struct {
-			RoutingRuleSetting string
-			Value              string
-		}{
-			RoutingRuleSetting: typeOfV.Field(i).Name,
-			Value:              fmt.Sprintf("%v", v.Field(i).Interface()),
-		})
+			fmt.Printf(" Routing rules for %s:\n\n", buyers.Buyers[i].Name)
+
+			transpose := []struct {
+				RoutingRuleSetting string
+				Value              string
+			}{}
+
+			args := localjsonrpc.RoutingRulesSettingsArgs{
+				BuyerID: buyerID,
+			}
+
+			var reply localjsonrpc.RoutingRulesSettingsReply
+			if err := rpcClient.CallFor(&reply, "OpsService.RoutingRulesSettings", args); err != nil {
+				handleJSONRPCError(env, err)
+				return
+			}
+
+			v := reflect.ValueOf(reply.RoutingRuleSettings[0])
+			typeOfV := v.Type()
+
+			for i := 0; i < v.NumField(); i++ {
+				transpose = append(transpose, struct {
+					RoutingRuleSetting string
+					Value              string
+				}{
+					RoutingRuleSetting: typeOfV.Field(i).Name,
+					Value:              fmt.Sprintf("%v", v.Field(i).Interface()),
+				})
+			}
+
+			table.Output(transpose)
+			return
+		}
 	}
 
-	table.Output(transpose)
+	fmt.Printf("Buyer id %s not found", buyerID)
+
 }
 
 func setRoutingRulesSettings(rpcClient jsonrpc.RPCClient, env Environment, buyerID string, rrs routing.RoutingRulesSettings) {
