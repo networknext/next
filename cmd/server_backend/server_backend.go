@@ -43,7 +43,7 @@ var (
 
 func main() {
 
-	fmt.Printf("welcome to the nerd zone 7.0\n")
+	fmt.Printf("welcome to the nerd zone 8.0\n")
 
 	ctx := context.Background()
 

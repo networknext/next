@@ -340,7 +340,11 @@ func ServerUpdateHandlerFunc(metrics *metrics.ServerUpdateMetrics, storer storag
 		server.version = packet.Version
 
 		serversMutex.Lock()
-		servers[serverAddress] = server
+		_, exists := servers[serverAddress]
+		if !exists {
+			servers[serverAddress] = server
+			numServers++
+		}
 		serversMutex.Unlock()
 	}
 }
@@ -539,6 +543,8 @@ var sessions = map[uint64]int64{}
 var sessionsMutex sync.Mutex
 var sessionUpdatePackets uint64
 var longSessionUpdates uint64
+var numServers uint64
+var numSessions uint64
 
 func memoryUsed() float64 {
 	var m runtime.MemStats
@@ -548,49 +554,62 @@ func memoryUsed() float64 {
 
 func UpdateTimeouts(biller billing.Biller) {
 
+	lastUpdate := time.Now()
+
 	for {
 
 		timeout := time.Now().Unix() - 30
 
 		serversMutex.Lock()
-		numServers := 0
+		numServerIterations := 0
 		for k, v := range servers {
+			if numServerIterations > 1000 {
+				break
+			}
 			if v.timestamp < timeout {
 				delete(servers, k)
-			} else {
-				numServers++
+				numServers--
 			}
+			numServerIterations++
 		}
+		latestNumServers := numServers
 		serversMutex.Unlock()
 
 		sessionsMutex.Lock()
-		numSessions := 0
+		numSessionIterations := 0
 		for k, v := range sessions {
+			if numSessionIterations > 1000 {
+				break
+			}
 			if v < timeout {
 				delete(sessions, k)
-			} else {
-				numSessions++
+				numSessions--
 			}
+			numSessionIterations++
 		}
+		latestNumSessions := numSessions
 		sessionsMutex.Unlock()
 
-		fmt.Printf("-----------------------------\n")
-		fmt.Printf("%d servers\n", numServers)
-		fmt.Printf("%d sessions\n", numSessions)
-		fmt.Printf("%d goroutines\n", runtime.NumGoroutine())
-		fmt.Printf("%.2f mb allocated\n", memoryUsed())
-		fmt.Printf("%d billing entries submitted\n", numBillingEntriesSubmitted(biller))
-		fmt.Printf("%d billing entries queued\n", numBillingEntriesQueued(biller))
-		fmt.Printf("%d billing entries flushed\n", numBillingEntriesFlushed(biller))
-		fmt.Printf("%d server init packets processed\n", atomic.LoadUint64(&serverInitPackets))
-		fmt.Printf("%d server update packets processed\n", atomic.LoadUint64(&serverUpdatePackets))
-		fmt.Printf("%d session update packets processed\n", atomic.LoadUint64(&sessionUpdatePackets))
-		fmt.Printf("%d long server inits\n", atomic.LoadUint64(&longServerInits))
-		fmt.Printf("%d long server updates\n", atomic.LoadUint64(&longServerUpdates))
-		fmt.Printf("%d long session updates\n", atomic.LoadUint64(&longSessionUpdates))
-		fmt.Printf("-----------------------------\n")
+		if time.Since(lastUpdate).Seconds() >= 10.0 {
+			fmt.Printf("-----------------------------\n")
+			fmt.Printf("%d servers\n", latestNumServers)
+			fmt.Printf("%d sessions\n", latestNumSessions)
+			fmt.Printf("%d goroutines\n", runtime.NumGoroutine())
+			fmt.Printf("%.2f mb allocated\n", memoryUsed())
+			fmt.Printf("%d billing entries submitted\n", numBillingEntriesSubmitted(biller))
+			fmt.Printf("%d billing entries queued\n", numBillingEntriesQueued(biller))
+			fmt.Printf("%d billing entries flushed\n", numBillingEntriesFlushed(biller))
+			fmt.Printf("%d server init packets processed\n", atomic.LoadUint64(&serverInitPackets))
+			fmt.Printf("%d server update packets processed\n", atomic.LoadUint64(&serverUpdatePackets))
+			fmt.Printf("%d session update packets processed\n", atomic.LoadUint64(&sessionUpdatePackets))
+			fmt.Printf("%d long server inits\n", atomic.LoadUint64(&longServerInits))
+			fmt.Printf("%d long server updates\n", atomic.LoadUint64(&longServerUpdates))
+			fmt.Printf("%d long session updates\n", atomic.LoadUint64(&longSessionUpdates))
+			fmt.Printf("-----------------------------\n")
+			lastUpdate = time.Now()
+		}
 
-		time.Sleep(time.Second * 10)
+		time.Sleep(time.Second)
 	}
 }
 
@@ -639,7 +658,11 @@ func SessionUpdateHandlerFunc(biller billing.Biller, serverPrivateKey []byte, re
 		response.ServerRoutePublicKey = server.routePublicKey
 
 		sessionsMutex.Lock()
-		sessions[header.SessionID] = time.Now().Unix()
+		_, exists := sessions[header.SessionID]
+		if !exists {
+			sessions[header.SessionID] = time.Now().Unix()
+			numSessions++
+		}
 		sessionsMutex.Unlock()
 
 		var packet SessionUpdatePacket
@@ -660,48 +683,50 @@ func SessionUpdateHandlerFunc(biller billing.Biller, serverPrivateKey []byte, re
 			return
 		}
 
-		go func() {
+		// IMPORTANT: run post in parallel so it doesn't block the response
+		go PostSessionUpdate(biller, serverPrivateKey, redisClientPortal, redisClientPortalExp, iploc, metrics, storer, &packet, &response, &location)
 
-			// IMPORTANT: run this part in parallel so it doesn't block the response!
+		if _, err := writeSessionResponse(w, response, serverPrivateKey); err != nil {
+			fmt.Printf("could not write session update response packet: %v\n", err)
+			metrics.ErrorMetrics.WriteResponseFailure.Add(1)
+			metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+			return
+		}
+	}
+}
 
-			var sessionCacheEntry SessionCacheEntry
-			sessionCacheEntry.Location = location
-			nnStats := routing.Stats{
-				RTT:        float64(packet.NextMinRTT),
-				Jitter:     float64(packet.NextJitter),
-				PacketLoss: float64(packet.NextPacketLoss),
-			}
-			directStats := routing.Stats{
-				RTT:        float64(packet.DirectMinRTT),
-				Jitter:     float64(packet.DirectJitter),
-				PacketLoss: float64(packet.DirectPacketLoss),
-			}
-			chosenRoute := routing.Route{
-				Stats:  directStats,
-				Relays: make([]routing.Relay, 0),
-			}
-			if err := updatePortalData(redisClientPortal, redisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, sessionCacheEntry.RouteDecision.OnNetworkNext, "datacenter", sessionCacheEntry.Location, time.Now(), false); err != nil {
-				fmt.Printf("could not update portal data: %v", err)
-				metrics.ErrorMetrics.UpdatePortalFailure.Add(1)
-				metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-			}
+func PostSessionUpdate(biller billing.Biller, serverPrivateKey []byte, redisClientPortal redis.Cmdable, redisClientPortalExp time.Duration, iploc routing.IPLocator, metrics *metrics.SessionMetrics, storer storage.Storer, packet *SessionUpdatePacket, response *SessionResponsePacket, location *routing.Location) {
 
-			storer := storage.InMemory{}
-			if err := submitBillingEntry(biller, ServerCacheEntry{}, SessionCacheEntry{}, packet, response, routing.Buyer{}, routing.Route{}, routing.LocationNullIsland,
-				&storer, nil, routing.Decision{}, billing.BillingSliceSeconds, time.Now(), time.Now(), false); err != nil {
-				fmt.Printf("could not write billing entry: %v", err)
-				metrics.ErrorMetrics.BillingFailure.Add(1)
-				metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-			}
+	var sessionCacheEntry SessionCacheEntry
+	sessionCacheEntry.Location = *location
+	nnStats := routing.Stats{
+		RTT:        float64(packet.NextMinRTT),
+		Jitter:     float64(packet.NextJitter),
+		PacketLoss: float64(packet.NextPacketLoss),
+	}
+	directStats := routing.Stats{
+		RTT:        float64(packet.DirectMinRTT),
+		Jitter:     float64(packet.DirectJitter),
+		PacketLoss: float64(packet.DirectPacketLoss),
+	}
+	chosenRoute := routing.Route{
+		Stats:  directStats,
+		Relays: make([]routing.Relay, 0),
+	}
+	// todo: pass as pointer to packet
+	if err := updatePortalData(redisClientPortal, redisClientPortalExp, *packet, nnStats, directStats, chosenRoute.Relays, sessionCacheEntry.RouteDecision.OnNetworkNext, "datacenter", sessionCacheEntry.Location, time.Now(), false); err != nil {
+		fmt.Printf("could not update portal data: %v", err)
+		// todo: metric for faiing to update portal data
+		metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+	}
 
-			if _, err := writeSessionResponse(w, response, serverPrivateKey); err != nil {
-				fmt.Printf("could not write session update response packet: %v\n", err)
-				metrics.ErrorMetrics.WriteResponseFailure.Add(1)
-				metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-				return
-			}
-
-		}()
+	// todo: pass pointer to packet, not by value
+	// todo: pass pointer to response, not by value
+	if err := submitBillingEntry(biller, ServerCacheEntry{}, SessionCacheEntry{}, *packet, *response, routing.Buyer{}, routing.Route{}, routing.LocationNullIsland,
+		storer, nil, routing.Decision{}, billing.BillingSliceSeconds, time.Now(), time.Now(), false); err != nil {
+		fmt.Printf("could not write billing entry: %v", err)
+		metrics.ErrorMetrics.BillingFailure.Add(1)
+		metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 	}
 }
 
