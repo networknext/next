@@ -132,6 +132,7 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 
 	return func(w io.Writer, incoming *UDPPacket) {
 
+		// Check if this function takes too long
 		start := time.Now()
 		defer func() {
 			if time.Since(start).Seconds() > 0.1 {
@@ -145,6 +146,7 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 
 		atomic.AddUint64(&params.Counters.Packets, 1)
 
+		// Unmarshal the server init request packet
 		var packet ServerInitRequestPacket
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
 			level.Error(params.Logger).Log("msg", "could not read server init request packet", "err", err)
@@ -152,18 +154,44 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 			return
 		}
 
+		// Set up the default response packet
 		response := ServerInitResponsePacket{
 			RequestID: packet.RequestID,
 			Response:  InitResponseOK,
 			Version:   packet.Version,
 		}
 
+		// Check if the sdk version is too old (when not running locally)
 		if !incoming.SourceAddr.IP.IsLoopback() && !packet.Version.AtLeast(SDKVersionMin) {
 			level.Error(params.Logger).Log("err", "sdk version is too old", "version", packet.Version.String())
 			response.Response = InitResponseOldSDKVersion
 			params.Metrics.ErrorMetrics.SDKTooOld.Add(1)
 		}
 
+		// Validate the datacenter ID
+		_, err := params.Storer.Datacenter(packet.DatacenterID)
+		if err != nil {
+			// Check if there is a datacenter with this alias
+			// todo: inefficient, need to optimize this
+			var datacenterAliasFound bool
+			allDatacenters := params.Storer.Datacenters()
+			for _, d := range allDatacenters {
+				if packet.DatacenterID == crypto.HashID(d.AliasName) {
+					datacenterAliasFound = true
+					break
+				}
+			}
+
+			if !datacenterAliasFound {
+				// Log and track the missing datacenter metric, but don't respond with an error to the SDK
+				// as to allow the ServerUpdateHandlerFunc and SessionUpdateHandlerFunc to carry on working
+
+				level.Error(params.Logger).Log("msg", "failed to get datacenter from storage", "err", err)
+				params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
+			}
+		}
+
+		// Send the response back to the server
 		if err := writeInitResponse(w, response, params.ServerPrivateKey); err != nil {
 			level.Error(params.Logger).Log("msg", "could not write server init request packet", "err", err)
 			params.Metrics.ErrorMetrics.WriteResponseFailure.Add(1)
@@ -309,6 +337,7 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 
 	return func(w io.Writer, incoming *UDPPacket) {
 
+		// Check if this function takes too long
 		start := time.Now()
 		defer func() {
 			if time.Since(start).Seconds() > 0.1 {
@@ -322,6 +351,7 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 
 		atomic.AddUint64(&params.Counters.Packets, 1)
 
+		// Unmarshal the server update packet
 		var packet ServerUpdatePacket
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
 			level.Error(params.Logger).Log("msg", "could not read server update packet", "err", err)
@@ -330,6 +360,7 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 			return
 		}
 
+		// Check if the sdk version is too old (when not running locally)
 		if !incoming.SourceAddr.IP.IsLoopback() && !packet.Version.AtLeast(SDKVersionMin) {
 			level.Error(params.Logger).Log("msg", "ignoring old sdk version", "version", packet.Version.String())
 			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
@@ -337,12 +368,40 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 			return
 		}
 
+		// Validate the datacenter ID
+		datacenter, err := params.Storer.Datacenter(packet.DatacenterID)
+		if err != nil {
+			// Check if there is a datacenter with this alias
+			// todo: inefficient, need to optimize this
+			var datacenterAliasFound bool
+			allDatacenters := params.Storer.Datacenters()
+			for _, d := range allDatacenters {
+				if packet.DatacenterID == crypto.HashID(d.AliasName) {
+					datacenter = d
+					datacenterAliasFound = true
+					break
+				}
+			}
+
+			if !datacenterAliasFound {
+				level.Error(params.Logger).Log("msg", "failed to get datacenter from storage", "err", err, "customer_id", packet.CustomerID)
+				params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+				params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
+
+				// Don't return early, just set an UnknownDatacenter so the ServerData gets set so its used by SessionUpdateHandlerFunc
+				datacenter = routing.UnknownDatacenter
+				datacenter.ID = packet.DatacenterID
+			}
+		}
+
 		serverAddress := packet.ServerAddress.String()
 
+		// Update the server data
 		var server ServerData
 		server.timestamp = time.Now().Unix()
 		server.routePublicKey = packet.ServerRoutePublicKey
 		server.version = packet.Version
+		server.datacenter = datacenter
 
 		serverMutexStart := time.Now()
 		params.ServerMap.UpdateServerData(serverAddress, &server)
@@ -568,6 +627,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 
 	return func(w io.Writer, incoming *UDPPacket) {
 
+		// Check if this function takes too long
 		start := time.Now()
 		defer func() {
 			if time.Since(start).Seconds() > 0.1 {
@@ -581,6 +641,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 
 		atomic.AddUint64(&params.Counters.Packets, 1)
 
+		// Unmarshal the session update packet header
 		var header SessionUpdatePacketHeader
 		if err := header.UnmarshalBinary(incoming.Data); err != nil {
 			level.Error(params.Logger).Log("msg", "could not read session update packet header", "err", err)
@@ -589,12 +650,14 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			return
 		}
 
+		// Set up the default response packet
 		response := SessionResponsePacket{
 			Sequence:  header.Sequence,
 			SessionID: header.SessionID,
 			RouteType: int32(routing.RouteTypeDirect),
 		}
 
+		// Retrieve the server data
 		serverMutexStart := time.Now()
 		server := params.ServerMap.GetServerData(header.ServerAddress.String())
 		if server == nil {
@@ -606,8 +669,10 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			level.Debug(params.Logger).Log("msg", "long server mutex in session update")
 		}
 
+		// Set the server's public key on the response
 		response.ServerRoutePublicKey = server.routePublicKey
 
+		// Update the session data
 		var session SessionData
 		session.timestamp = time.Now().Unix()
 
@@ -617,6 +682,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			level.Debug(params.Logger).Log("msg", "long session mutex in session update")
 		}
 
+		// Unmarshal the full session update packet and set the version on the updatge packet and the response packet
 		var packet SessionUpdatePacket
 		packet.Version = server.version
 		response.Version = server.version
@@ -627,6 +693,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			return
 		}
 
+		// Locate the session
 		location, err := params.IPLoc.LocateIP(packet.ClientAddress.IP)
 		if err != nil {
 			level.Error(params.Logger).Log("msg", "failed to locate session", "err", err)
@@ -635,9 +702,11 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			return
 		}
 
+		// Perform post-update functions
 		// IMPORTANT: run post in parallel so it doesn't block the response
-		go PostSessionUpdate(params, &packet, &response, &location, false)
+		go PostSessionUpdate(params, &packet, &response, server, &location, false)
 
+		// Send the response back to the server
 		if _, err := writeSessionResponse(w, response, params.ServerPrivateKey); err != nil {
 			level.Error(params.Logger).Log("msg", "could not write session update response packet", "err", err)
 			params.Metrics.ErrorMetrics.WriteResponseFailure.Add(1)
@@ -647,8 +716,9 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 	}
 }
 
-func PostSessionUpdate(config *SessionUpdateParams, packet *SessionUpdatePacket, response *SessionResponsePacket, location *routing.Location, prevOnNetworkNext bool) {
+func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket, response *SessionResponsePacket, serverData *ServerData, location *routing.Location, prevOnNetworkNext bool) {
 
+	// Get the last next and direct stats
 	nnStats := routing.Stats{
 		RTT:        float64(packet.NextMinRTT),
 		Jitter:     float64(packet.NextJitter),
@@ -659,22 +729,30 @@ func PostSessionUpdate(config *SessionUpdateParams, packet *SessionUpdatePacket,
 		Jitter:     float64(packet.DirectJitter),
 		PacketLoss: float64(packet.DirectPacketLoss),
 	}
+
+	// Construct the chosen route (direct)
 	chosenRoute := routing.Route{
 		Stats:  directStats,
 		Relays: make([]routing.Relay, 0),
 	}
 
-	if err := updatePortalData(config.RedisClientPortal, config.RedisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, prevOnNetworkNext, "datacenter", location, time.Now(), false); err != nil {
-		level.Error(config.Logger).Log("msg", "could not update portal data", "err", err)
-		config.Metrics.ErrorMetrics.UpdatePortalFailure.Add(1)
-		config.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+	// Determine the datacenter name
+	datacenterName := serverData.datacenter.Name
+	if serverData.datacenter.AliasName != "" {
+		datacenterName = serverData.datacenter.AliasName
 	}
 
-	if err := submitBillingEntry(config.Biller, &ServerCacheEntry{}, 0, packet, response, &routing.Buyer{}, &routing.Route{}, &routing.LocationNullIsland,
-		config.Storer, nil, routing.Decision{}, billing.BillingSliceSeconds, time.Now(), time.Now(), false); err != nil {
-		level.Error(config.Logger).Log("msg", "could not write billing entry", "err", err)
-		config.Metrics.ErrorMetrics.BillingFailure.Add(1)
-		config.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+	if err := updatePortalData(params.RedisClientPortal, params.RedisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, prevOnNetworkNext, datacenterName, location, time.Now(), false); err != nil {
+		level.Error(params.Logger).Log("msg", "could not update portal data", "err", err)
+		params.Metrics.ErrorMetrics.UpdatePortalFailure.Add(1)
+		params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+	}
+
+	if err := submitBillingEntry(params.Biller, &ServerCacheEntry{}, 0, packet, response, &routing.Buyer{}, &routing.Route{}, &routing.LocationNullIsland,
+		params.Storer, nil, routing.Decision{}, billing.BillingSliceSeconds, time.Now(), time.Now(), false); err != nil {
+		level.Error(params.Logger).Log("msg", "could not write billing entry", "err", err)
+		params.Metrics.ErrorMetrics.BillingFailure.Add(1)
+		params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 	}
 }
 

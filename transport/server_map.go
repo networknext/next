@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/networknext/backend/crypto"
+	"github.com/networknext/backend/routing"
 )
 
 const NumServerMapShards = 4096
@@ -15,6 +16,7 @@ type ServerData struct {
 	timestamp      int64
 	routePublicKey []byte
 	version        SDKVersion
+	datacenter     routing.Datacenter
 }
 
 type ServerMapShard struct {
