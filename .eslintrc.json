@@ -2,6 +2,6 @@
   "extends": "airbnb-typescript/base",
   "parserOptions": {
     "project": "./tsconfig.json",
-    "extraFileExtensions": ".vue"
+    "extraFileExtensions": "*.vue"
   }
 }
