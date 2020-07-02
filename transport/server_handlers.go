@@ -591,13 +591,11 @@ func (e VetoCacheEntry) MarshalBinary() ([]byte, error) {
 	return jsoniter.Marshal(e)
 }
 
-/*
 type RouteProvider interface {
 	ResolveRelay(uint64) (routing.Relay, error)
 	RelaysIn(routing.Datacenter) []routing.Relay
 	Routes([]routing.Relay, []int, []routing.Relay, ...routing.SelectorFunc) ([]routing.Route, error)
 }
-*/
 
 type SessionUpdateCounters struct {
 	Packets      uint64
@@ -607,7 +605,7 @@ type SessionUpdateCounters struct {
 type SessionUpdateParams struct {
 	ServerPrivateKey     []byte
 	RouterPrivateKey     []byte
-	GetRouteMatrix       func() *routing.RouteMatrix
+	GetRouteProvider     func() RouteProvider
 	GeoClient            *routing.GeoClient
 	IPLoc                routing.IPLocator
 	Storer               storage.Storer
@@ -672,17 +670,15 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 		// Set the server's public key on the response
 		response.ServerRoutePublicKey = server.routePublicKey
 
-		// Update the session data
-		var session SessionData
-		session.timestamp = time.Now().Unix()
+		// Retrieve the session data
+		session := params.SessionMap.GetSessionData(header.SessionID)
 
-		sessionMutexStart := time.Now()
-		params.SessionMap.UpdateSessionData(header.SessionID, &session)
-		if time.Since(sessionMutexStart).Seconds() > 0.1 {
-			level.Debug(params.Logger).Log("msg", "long session mutex in session update")
+		// If this is a new session, initialize the session data
+		if session == nil {
+			session = &SessionData{}
 		}
 
-		// Unmarshal the full session update packet and set the version on the updatge packet and the response packet
+		// Unmarshal the full session update packet and set the version on the update packet and the response packet
 		var packet SessionUpdatePacket
 		packet.Version = server.version
 		response.Version = server.version
@@ -693,56 +689,88 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			return
 		}
 
-		// Locate the session
-		location, err := params.IPLoc.LocateIP(packet.ClientAddress.IP)
-		if err != nil {
-			level.Error(params.Logger).Log("msg", "failed to locate session", "err", err)
+		// Construct the stats from last slice
+		lastNNStats := routing.Stats{
+			RTT:        float64(packet.NextMeanRTT),
+			Jitter:     float64(packet.NextJitter),
+			PacketLoss: float64(packet.NextPacketLoss),
+		}
+
+		lastDirectStats := routing.Stats{
+			RTT:        float64(packet.DirectMeanRTT),
+			Jitter:     float64(packet.DirectJitter),
+			PacketLoss: float64(packet.DirectPacketLoss),
+		}
+
+		// Initialize a direct route
+		chosenRoute := routing.Route{}
+
+		location := session.location
+
+		// Get the session's location if we don't have it yet
+		if session.location.IsZero() {
+			// Locate the session
+			var err error
+			location, err = params.IPLoc.LocateIP(packet.ClientAddress.IP)
+			if err != nil {
+				location = routing.LocationNullIsland
+
+				level.Error(params.Logger).Log("msg", "failed to locate session", "err", err)
+				params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+				params.Metrics.ErrorMetrics.ClientLocateFailure.Add(1)
+
+				sendRouteResponse(w, &chosenRoute, params, &packet, &response, server, &lastNNStats, &lastDirectStats, &location)
+				return
+			}
+		}
+
+		// Locate near relays
+		issuedNearRelays, err := params.GeoClient.RelaysWithin(session.location.Latitude, session.location.Longitude, 2500, "mi")
+		if len(issuedNearRelays) == 0 || err != nil {
+			level.Error(params.Logger).Log("msg", "failed to locate relays near session", "err", err)
 			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-			params.Metrics.ErrorMetrics.ClientLocateFailure.Add(1)
+			params.Metrics.ErrorMetrics.NearRelaysLocateFailure.Add(1)
+
+			sendRouteResponse(w, &chosenRoute, params, &packet, &response, server, &lastNNStats, &lastDirectStats, &location)
 			return
 		}
 
-		// Perform post-update functions
-		// IMPORTANT: run post in parallel so it doesn't block the response
-		go PostSessionUpdate(params, &packet, &response, server, &location, false)
-
-		// Send the response back to the server
-		if _, err := writeSessionResponse(w, response, params.ServerPrivateKey); err != nil {
-			level.Error(params.Logger).Log("msg", "could not write session update response packet", "err", err)
-			params.Metrics.ErrorMetrics.WriteResponseFailure.Add(1)
-			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-			return
+		// Clamp relay count to max
+		if len(issuedNearRelays) > int(MaxNearRelays) {
+			issuedNearRelays = issuedNearRelays[:MaxNearRelays]
 		}
+
+		// Get the route matrix pointer
+		routeMatrix := params.GetRouteProvider()
+
+		// We need to do this because RelaysWithin only has the ID of the relay and we need the Addr and PublicKey too
+		// Maybe we consider a nicer way to do this in the future
+		for idx := range issuedNearRelays {
+			issuedNearRelays[idx], _ = routeMatrix.ResolveRelay(issuedNearRelays[idx].ID)
+		}
+
+		// Fill in the near relays
+		response.NumNearRelays = int32(len(issuedNearRelays))
+		response.NearRelayIDs = make([]uint64, len(issuedNearRelays))
+		response.NearRelayAddresses = make([]net.UDPAddr, len(issuedNearRelays))
+		for idx, relay := range issuedNearRelays {
+			response.NearRelayIDs[idx] = relay.ID
+			response.NearRelayAddresses[idx] = relay.Addr
+		}
+
+		sendRouteResponse(w, &chosenRoute, params, &packet, &response, server, &lastNNStats, &lastDirectStats, &location)
 	}
 }
 
-func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket, response *SessionResponsePacket, serverData *ServerData, location *routing.Location, prevOnNetworkNext bool) {
-
-	// Get the last next and direct stats
-	nnStats := routing.Stats{
-		RTT:        float64(packet.NextMinRTT),
-		Jitter:     float64(packet.NextJitter),
-		PacketLoss: float64(packet.NextPacketLoss),
-	}
-	directStats := routing.Stats{
-		RTT:        float64(packet.DirectMinRTT),
-		Jitter:     float64(packet.DirectJitter),
-		PacketLoss: float64(packet.DirectPacketLoss),
-	}
-
-	// Construct the chosen route (direct)
-	chosenRoute := routing.Route{
-		Stats:  directStats,
-		Relays: make([]routing.Relay, 0),
-	}
-
-	// Determine the datacenter name
+func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket, response *SessionResponsePacket, serverData *ServerData,
+	chosenRoute *routing.Route, lastNNStats *routing.Stats, lastDirectStats *routing.Stats, location *routing.Location, prevOnNetworkNext bool) {
+	// Determine the datacenter name to display on the portal
 	datacenterName := serverData.datacenter.Name
 	if serverData.datacenter.AliasName != "" {
 		datacenterName = serverData.datacenter.AliasName
 	}
 
-	if err := updatePortalData(params.RedisClientPortal, params.RedisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, prevOnNetworkNext, datacenterName, location, time.Now(), false); err != nil {
+	if err := updatePortalData(params.RedisClientPortal, params.RedisClientPortalExp, packet, lastNNStats, lastDirectStats, chosenRoute.Relays, prevOnNetworkNext, datacenterName, location, time.Now(), false); err != nil {
 		level.Error(params.Logger).Log("msg", "could not update portal data", "err", err)
 		params.Metrics.ErrorMetrics.UpdatePortalFailure.Add(1)
 		params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
@@ -1589,9 +1617,9 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 }
 */
 
-func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time.Duration, packet *SessionUpdatePacket, nnStats routing.Stats, directStats routing.Stats, relayHops []routing.Relay, onNetworkNext bool, datacenterName string, location *routing.Location, sessionTime time.Time, isMultiPath bool) error {
+func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time.Duration, packet *SessionUpdatePacket, lastNNStats *routing.Stats, lastDirectStats *routing.Stats, relayHops []routing.Relay, onNetworkNext bool, datacenterName string, location *routing.Location, sessionTime time.Time, isMultiPath bool) error {
 
-	if (nnStats.RTT == 0 && directStats.RTT == 0) || (onNetworkNext && nnStats.RTT == 0) {
+	if (lastNNStats.RTT == 0 && lastDirectStats.RTT == 0) || (onNetworkNext && lastNNStats.RTT == 0) {
 		return nil
 	}
 
@@ -1616,7 +1644,7 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 	if !onNetworkNext {
 		deltaRTT = 0
 	} else {
-		deltaRTT = directStats.RTT - nnStats.RTT
+		deltaRTT = lastDirectStats.RTT - lastNNStats.RTT
 	}
 
 	meta := routing.SessionMeta{
@@ -1624,8 +1652,8 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 		UserHash:      hashedID,
 		Datacenter:    datacenterName,
 		OnNetworkNext: onNetworkNext,
-		NextRTT:       nnStats.RTT,
-		DirectRTT:     directStats.RTT,
+		NextRTT:       lastNNStats.RTT,
+		DirectRTT:     lastDirectStats.RTT,
 		DeltaRTT:      deltaRTT,
 		Location:      *location,
 		ClientAddr:    clientAddr.String(),
@@ -1653,8 +1681,8 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 	}
 	slice := routing.SessionSlice{
 		Timestamp: sessionTime,
-		Next:      nnStats,
-		Direct:    directStats,
+		Next:      *lastNNStats,
+		Direct:    *lastDirectStats,
 		Envelope: routing.Envelope{
 			Up:   int64(packet.KbpsUp),
 			Down: int64(packet.KbpsDown),
@@ -1827,7 +1855,7 @@ func writeInitResponse(w io.Writer, response ServerInitResponsePacket, privateKe
 }
 
 // writeSessionResponse encrypts the session response packet and sends it back to the server. Returns the marshaled response and an error.
-func writeSessionResponse(w io.Writer, response SessionResponsePacket, privateKey []byte) ([]byte, error) {
+func writeSessionResponse(w io.Writer, response *SessionResponsePacket, privateKey []byte) ([]byte, error) {
 	// Sign the response
 	response.Signature = crypto.Sign(privateKey, response.GetSignData())
 
@@ -1843,6 +1871,32 @@ func writeSessionResponse(w io.Writer, response SessionResponsePacket, privateKe
 	}
 
 	return responseData, nil
+}
+
+func sendRouteResponse(w io.Writer, chosenRoute *routing.Route, params *SessionUpdateParams, packet *SessionUpdatePacket, response *SessionResponsePacket,
+	serverData *ServerData, lastNNStats *routing.Stats, lastDirectStats *routing.Stats, location *routing.Location) {
+	// Update the session data
+	session := SessionData{
+		timestamp: time.Now().Unix(),
+		location:  *location,
+	}
+
+	sessionMutexStart := time.Now()
+	params.SessionMap.UpdateSessionData(packet.SessionID, &session)
+	if time.Since(sessionMutexStart).Seconds() > 0.1 {
+		level.Debug(params.Logger).Log("msg", "long session mutex in session update")
+	}
+
+	// Perform post-update functions
+	// IMPORTANT: run post in parallel so it doesn't block the response
+	go PostSessionUpdate(params, packet, response, serverData, chosenRoute, lastNNStats, lastDirectStats, location, false)
+
+	// Send the response back to the server
+	if _, err := writeSessionResponse(w, response, params.ServerPrivateKey); err != nil {
+		level.Error(params.Logger).Log("msg", "could not write session update response packet", "err", err)
+		params.Metrics.ErrorMetrics.WriteResponseFailure.Add(1)
+		return
+	}
 }
 
 // todo: disabled

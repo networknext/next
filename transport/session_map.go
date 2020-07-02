@@ -5,12 +5,15 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/networknext/backend/routing"
 )
 
 const NumSessionMapShards = 4096
 
 type SessionData struct {
 	timestamp int64
+	location  routing.Location
 }
 
 type SessionMapShard struct {
@@ -50,6 +53,14 @@ func (sessionMap *SessionMap) UpdateSessionData(sessionId uint64, sessionData *S
 	if !exists {
 		atomic.AddUint64(&sessionMap.shard[index].numSessions, 1)
 	}
+}
+
+func (sessionMap *SessionMap) GetSessionData(sessionId uint64) *SessionData {
+	index := sessionId % NumServerMapShards
+	sessionMap.shard[index].mutex.Lock()
+	sessionData, _ := sessionMap.shard[index].sessions[sessionId]
+	sessionMap.shard[index].mutex.Unlock()
+	return sessionData
 }
 
 func (sessionMap *SessionMap) TimeoutLoop(ctx context.Context, timeout time.Duration, c <-chan time.Time) {
