@@ -9,7 +9,9 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"runtime"
 	"sync"
+	"sync/atomic"
 
 	"io"
 	"net"
@@ -502,38 +504,86 @@ func main() {
 	}
 
 	// Initialize server and session maps
+	serverMap := transport.NewServerMap()
+	sessionMap := transport.NewSessionMap()
 	{
-		// todo: move the serverMap and sessionMap instances in here
+		// Start a goroutine to timeout servers
+		go func() {
+			timeout := time.Second * 30
+			frequency := time.Millisecond * 30
+			ticker := time.NewTicker(frequency)
+			serverMap.TimeoutLoop(ctx, timeout, ticker.C)
+		}()
 
-		// todo: move the counters inside server_handlers globals into a new struct called "Counters"
+		// Start a goroutine to timeout sessions
+		go func() {
+			timeout := time.Second * 30
+			frequency := time.Millisecond * 30
+			ticker := time.NewTicker(frequency)
+			sessionMap.TimeoutLoop(ctx, timeout, ticker.C)
+		}()
+	}
 
-		// todo: pass the serverMap, sessionMap and counter instances into the handler creators below, like you do for the rest of the data
+	// Initialize the counters
+	serverInitCounters := &transport.ServerInitCounters{}
+	serverUpdateCounters := &transport.ServerUpdateCounters{}
+	sessionUpdateCounters := &transport.SessionUpdateCounters{}
 
-		// todo: server_handlers.go should no longer have any globals, and it's now possible to write unit tests for serverMap, sessionMap at a later date
+	// Setup the print routine
+	{
+		memoryUsed := func() float64 {
+			var m runtime.MemStats
+			runtime.ReadMemStats(&m)
+			return float64(m.Alloc) / (1000.0 * 1000.0)
+		}
 
-		transport.InitializeServerMap()
+		ticker := time.NewTicker(time.Second * 10)
+		go func() {
+			for {
+				select {
+				case <-ticker.C:
+					fmt.Printf("-----------------------------\n")
+					fmt.Printf("%d servers\n", serverMap.NumServers())
+					fmt.Printf("%d sessions\n", sessionMap.NumSessions())
+					fmt.Printf("%d goroutines\n", runtime.NumGoroutine())
+					fmt.Printf("%.2f mb allocated\n", memoryUsed())
+					fmt.Printf("%d billing entries submitted\n", biller.NumSubmitted())
+					fmt.Printf("%d billing entries queued\n", biller.NumQueued())
+					fmt.Printf("%d billing entries flushed\n", biller.NumFlushed())
+					fmt.Printf("%d server init packets processed\n", atomic.LoadUint64(&serverInitCounters.Packets))
+					fmt.Printf("%d server update packets processed\n", atomic.LoadUint64(&serverUpdateCounters.Packets))
+					fmt.Printf("%d session update packets processed\n", atomic.LoadUint64(&sessionUpdateCounters.Packets))
+					fmt.Printf("%d long server inits\n", atomic.LoadUint64(&serverInitCounters.LongDuration))
+					fmt.Printf("%d long server updates\n", atomic.LoadUint64(&serverUpdateCounters.LongDuration))
+					fmt.Printf("%d long session updates\n", atomic.LoadUint64(&sessionUpdateCounters.LongDuration))
+					fmt.Printf("-----------------------------\n")
 
-		transport.InitializeSessionMap()
-
-		go transport.UpdateTimeouts(biller)
+				case <-ctx.Done():
+					return
+				}
+			}
+		}()
 	}
 
 	// Start UDP server
 	{
-		serverInitConfig := &transport.ServerInitConfig{
+		serverInitConfig := &transport.ServerInitParams{
 			ServerPrivateKey: serverPrivateKey,
 			Storer:           db,
 			Metrics:          serverInitMetrics,
 			Logger:           logger,
+			Counters:         serverInitCounters,
 		}
 
-		serverUpdateConfig := &transport.ServerUpdateConfig{
-			Storer:  db,
-			Metrics: serverUpdateMetrics,
-			Logger:  logger,
+		serverUpdateConfig := &transport.ServerUpdateParams{
+			Storer:    db,
+			Metrics:   serverUpdateMetrics,
+			Logger:    logger,
+			ServerMap: serverMap,
+			Counters:  serverUpdateCounters,
 		}
 
-		sessionUpdateConfig := &transport.SessionUpdateConfig{
+		sessionUpdateConfig := &transport.SessionUpdateParams{
 			ServerPrivateKey:     serverPrivateKey,
 			RouterPrivateKey:     routerPrivateKey,
 			GetRouteMatrix:       getRouteMatrixFunc,
@@ -545,6 +595,9 @@ func main() {
 			Biller:               biller,
 			Metrics:              sessionUpdateMetrics,
 			Logger:               logger,
+			ServerMap:            serverMap,
+			SessionMap:           sessionMap,
+			Counters:             sessionUpdateCounters,
 		}
 
 		mux := transport.UDPServerMux{

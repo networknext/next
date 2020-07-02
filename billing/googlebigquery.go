@@ -61,7 +61,7 @@ func (bq *GoogleBigQueryClient) WriteLoop(ctx context.Context) error {
 				level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)
 			}
 			level.Info(bq.Logger).Log("msg", "flushed entries to BigQuery", "size", bq.BatchSize, "total", len(bq.buffer))
-			atomic.AddUint64(&bq.submitted, uint64(len(bq.buffer)))
+			atomic.AddUint64(&bq.flushed, uint64(len(bq.buffer)))
 			bq.buffer = bq.buffer[:0]
 		}
 		bq.buffer = append(bq.buffer, entry)

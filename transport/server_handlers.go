@@ -9,7 +9,6 @@ import (
 	"io"
 	"net"
 	"runtime"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -116,37 +115,40 @@ func (m *UDPServerMux) handler(ctx context.Context, id int) {
 
 // ==========================================================================================
 
-type ServerInitConfig struct {
+type ServerInitCounters struct {
+	Packets      uint64
+	LongDuration uint64
+}
+
+type ServerInitParams struct {
 	ServerPrivateKey []byte
 	Storer           storage.Storer
 	Metrics          *metrics.ServerInitMetrics
 	Logger           log.Logger
+	Counters         *ServerInitCounters
 }
 
-var serverInitPackets uint64
-var longServerInits uint64
-
-func ServerInitHandlerFunc(config *ServerInitConfig) UDPHandlerFunc {
+func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 
 	return func(w io.Writer, incoming *UDPPacket) {
 
 		start := time.Now()
 		defer func() {
 			if time.Since(start).Seconds() > 0.1 {
-				level.Debug(config.Logger).Log("msg", "long server init")
-				atomic.AddUint64(&longServerInits, 1)
-				config.Metrics.LongDuration.Add(1)
+				level.Debug(params.Logger).Log("msg", "long server init")
+				atomic.AddUint64(&params.Counters.LongDuration, 1)
+				params.Metrics.LongDuration.Add(1)
 			}
 		}()
 
-		config.Metrics.Invocations.Add(1)
+		params.Metrics.Invocations.Add(1)
 
-		atomic.AddUint64(&serverInitPackets, 1)
+		atomic.AddUint64(&params.Counters.Packets, 1)
 
 		var packet ServerInitRequestPacket
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
-			level.Error(config.Logger).Log("msg", "could not read server init request packet", "err", err)
-			config.Metrics.ErrorMetrics.ReadPacketFailure.Add(1)
+			level.Error(params.Logger).Log("msg", "could not read server init request packet", "err", err)
+			params.Metrics.ErrorMetrics.ReadPacketFailure.Add(1)
 			return
 		}
 
@@ -157,14 +159,14 @@ func ServerInitHandlerFunc(config *ServerInitConfig) UDPHandlerFunc {
 		}
 
 		if !incoming.SourceAddr.IP.IsLoopback() && !packet.Version.AtLeast(SDKVersionMin) {
-			level.Error(config.Logger).Log("err", "sdk version is too old", "version", packet.Version.String())
+			level.Error(params.Logger).Log("err", "sdk version is too old", "version", packet.Version.String())
 			response.Response = InitResponseOldSDKVersion
-			config.Metrics.ErrorMetrics.SDKTooOld.Add(1)
+			params.Metrics.ErrorMetrics.SDKTooOld.Add(1)
 		}
 
-		if err := writeInitResponse(w, response, config.ServerPrivateKey); err != nil {
-			level.Error(config.Logger).Log("msg", "could not write server init request packet", "err", err)
-			config.Metrics.ErrorMetrics.WriteResponseFailure.Add(1)
+		if err := writeInitResponse(w, response, params.ServerPrivateKey); err != nil {
+			level.Error(params.Logger).Log("msg", "could not write server init request packet", "err", err)
+			params.Metrics.ErrorMetrics.WriteResponseFailure.Add(1)
 			return
 		}
 	}
@@ -288,43 +290,50 @@ func (e ServerCacheEntry) MarshalBinary() ([]byte, error) {
 	return jsoniter.Marshal(e)
 }
 
-type ServerUpdateConfig struct {
-	Storer  storage.Storer
-	Metrics *metrics.ServerUpdateMetrics
-	Logger  log.Logger
+type ServerUpdateCounters struct {
+	Packets      uint64
+	LongDuration uint64
+}
+
+type ServerUpdateParams struct {
+	Storer    storage.Storer
+	Metrics   *metrics.ServerUpdateMetrics
+	Logger    log.Logger
+	ServerMap *ServerMap
+	Counters  *ServerUpdateCounters
 }
 
 // =============================================================================
 
-func ServerUpdateHandlerFunc(config *ServerUpdateConfig) UDPHandlerFunc {
+func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 
 	return func(w io.Writer, incoming *UDPPacket) {
 
 		start := time.Now()
 		defer func() {
 			if time.Since(start).Seconds() > 0.1 {
-				level.Debug(config.Logger).Log("msg", "long server update")
-				atomic.AddUint64(&longServerUpdates, 1)
-				config.Metrics.LongDuration.Add(1)
+				level.Debug(params.Logger).Log("msg", "long server update")
+				atomic.AddUint64(&params.Counters.LongDuration, 1)
+				params.Metrics.LongDuration.Add(1)
 			}
 		}()
 
-		config.Metrics.Invocations.Add(1)
+		params.Metrics.Invocations.Add(1)
 
-		atomic.AddUint64(&serverUpdatePackets, 1)
+		atomic.AddUint64(&params.Counters.Packets, 1)
 
 		var packet ServerUpdatePacket
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
-			level.Error(config.Logger).Log("msg", "could not read server update packet", "err", err)
-			config.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-			config.Metrics.ErrorMetrics.ReadPacketFailure.Add(1)
+			level.Error(params.Logger).Log("msg", "could not read server update packet", "err", err)
+			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+			params.Metrics.ErrorMetrics.ReadPacketFailure.Add(1)
 			return
 		}
 
 		if !incoming.SourceAddr.IP.IsLoopback() && !packet.Version.AtLeast(SDKVersionMin) {
-			level.Error(config.Logger).Log("msg", "ignoring old sdk version", "version", packet.Version.String())
-			config.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-			config.Metrics.ErrorMetrics.SDKTooOld.Add(1)
+			level.Error(params.Logger).Log("msg", "ignoring old sdk version", "version", packet.Version.String())
+			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+			params.Metrics.ErrorMetrics.SDKTooOld.Add(1)
 			return
 		}
 
@@ -336,9 +345,9 @@ func ServerUpdateHandlerFunc(config *ServerUpdateConfig) UDPHandlerFunc {
 		server.version = packet.Version
 
 		serverMutexStart := time.Now()
-		serverMap.UpdateServerData(serverAddress, &server)
+		params.ServerMap.UpdateServerData(serverAddress, &server)
 		if time.Since(serverMutexStart).Seconds() > 0.1 {
-			level.Debug(config.Logger).Log("msg", "long server mutex in server update")
+			level.Debug(params.Logger).Log("msg", "long server mutex in server update")
 		}
 	}
 }
@@ -531,7 +540,12 @@ type RouteProvider interface {
 }
 */
 
-type SessionUpdateConfig struct {
+type SessionUpdateCounters struct {
+	Packets      uint64
+	LongDuration uint64
+}
+
+type SessionUpdateParams struct {
 	ServerPrivateKey     []byte
 	RouterPrivateKey     []byte
 	GetRouteMatrix       func() *routing.RouteMatrix
@@ -543,258 +557,35 @@ type SessionUpdateConfig struct {
 	Biller               billing.Biller
 	Metrics              *metrics.SessionMetrics
 	Logger               log.Logger
+	ServerMap            *ServerMap
+	SessionMap           *SessionMap
+	Counters             *SessionUpdateCounters
 }
 
 // =========================================================================================================
 
-const NumServerMapShards = 4096
-
-type ServerData struct {
-	timestamp      int64
-	routePublicKey []byte
-	version        SDKVersion
-}
-
-type ServerMapShard struct {
-	mutex      sync.Mutex
-	servers    map[string]*ServerData
-	numServers uint64
-}
-
-type ServerMap struct {
-	shard [NumServerMapShards]*ServerMapShard
-}
-
-func NewServerMap() *ServerMap {
-	serverMap := &ServerMap{}
-	for i := 0; i < NumServerMapShards; i++ {
-		serverMap.shard[i] = &ServerMapShard{}
-		serverMap.shard[i].servers = make(map[string]*ServerData)
-	}
-	return serverMap
-}
-
-func (serverMap *ServerMap) NumServers() uint64 {
-	var total uint64
-	for i := 0; i < NumServerMapShards; i++ {
-		numServersInShard := atomic.LoadUint64(&serverMap.shard[i].numServers)
-		total += numServersInShard
-	}
-	return total
-}
-
-func ServerHash(serverName string) uint64 {
-	hash := fnv.New64a()
-	hash.Write([]byte(serverName))
-	return hash.Sum64()
-}
-
-func (serverMap *ServerMap) UpdateServerData(serverAddress string, serverData *ServerData) {
-	serverHash := ServerHash(serverAddress)
-	index := serverHash % NumServerMapShards
-	serverMap.shard[index].mutex.Lock()
-	_, exists := serverMap.shard[index].servers[serverAddress]
-	serverMap.shard[index].servers[serverAddress] = serverData
-	serverMap.shard[index].mutex.Unlock()
-	if !exists {
-		atomic.AddUint64(&serverMap.shard[index].numServers, 1)
-	}
-}
-
-func (serverMap *ServerMap) GetServerData(serverAddress string) *ServerData {
-	serverHash := ServerHash(serverAddress)
-	index := serverHash % NumServerMapShards
-	serverMap.shard[index].mutex.Lock()
-	serverData, _ := serverMap.shard[index].servers[serverAddress]
-	serverMap.shard[index].mutex.Unlock()
-	return serverData
-}
-
-func (serverMap *ServerMap) PerformTimeouts(timeoutTimestamp int64) {
-	for index := 0; index < NumServerMapShards; index++ {
-		serverTimeoutStart := time.Now()
-		serverMap.shard[index].mutex.Lock()
-		numServerIterations := 0
-		for k, v := range serverMap.shard[index].servers {
-			if numServerIterations > 10 {
-				break
-			}
-			if v.timestamp < timeoutTimestamp {
-				// fmt.Printf("timed out server: %x\n", k)
-				delete(serverMap.shard[index].servers, k)
-				atomic.AddUint64(&serverMap.shard[index].numServers, ^uint64(0))
-			}
-			numServerIterations++
-		}
-		serverMap.shard[index].mutex.Unlock()
-		if time.Since(serverTimeoutStart).Seconds() > 0.1 {
-			// fmt.Printf("long server timeout check [%d]\n", index)
-		}
-	}
-}
-
-const NumSessionMapShards = 4096
-
-type SessionMapShard struct {
-	mutex       sync.Mutex
-	sessions    map[uint64]*SessionData
-	numSessions uint64
-}
-
-type SessionData struct {
-	timestamp int64
-}
-
-type SessionMap struct {
-	shard [NumSessionMapShards]*SessionMapShard
-}
-
-func NewSessionMap() *SessionMap {
-	sessionMap := &SessionMap{}
-	for i := 0; i < NumSessionMapShards; i++ {
-		sessionMap.shard[i] = &SessionMapShard{}
-		sessionMap.shard[i].sessions = make(map[uint64]*SessionData)
-	}
-	return sessionMap
-}
-
-func (sessionMap *SessionMap) NumSessions() uint64 {
-	var total uint64
-	for i := 0; i < NumSessionMapShards; i++ {
-		numSessionsInShard := atomic.LoadUint64(&sessionMap.shard[i].numSessions)
-		total += numSessionsInShard
-	}
-	return total
-}
-
-func (sessionMap *SessionMap) UpdateSession(sessionId uint64) {
-	index := sessionId % NumSessionMapShards
-
-	sessionMap.shard[index].mutex.Lock()
-
-	_, exists := sessionMap.shard[index].sessions[sessionId]
-	if !exists {
-		sessionMap.shard[index].sessions[sessionId] = &SessionData{
-			timestamp: time.Now().Unix(),
-		}
-
-		atomic.AddUint64(&sessionMap.shard[index].numSessions, 1)
-	} else {
-		sessionMap.shard[index].sessions[sessionId].timestamp = time.Now().Unix()
-	}
-
-	sessionMap.shard[index].mutex.Unlock()
-}
-
-func (sessionMap *SessionMap) PerformTimeouts(timeoutTimestamp int64) {
-	for index := 0; index < NumSessionMapShards; index++ {
-		sessionTimeoutStart := time.Now()
-		sessionMap.shard[index].mutex.Lock()
-		numSessionIterations := 0
-		for k, v := range sessionMap.shard[index].sessions {
-			if numSessionIterations > 10 {
-				break
-			}
-			if v.timestamp < timeoutTimestamp {
-				// fmt.Printf("timed out session: %x\n", k)
-				delete(sessionMap.shard[index].sessions, k)
-				atomic.AddUint64(&sessionMap.shard[index].numSessions, ^uint64(0))
-			}
-			numSessionIterations++
-		}
-		sessionMap.shard[index].mutex.Unlock()
-		if time.Since(sessionTimeoutStart).Seconds() > 0.1 {
-			// fmt.Printf("long session timeout check [%d]\n", index)
-		}
-	}
-}
-
-var serverMap *ServerMap
-var sessionMap *SessionMap
-var serverUpdatePackets uint64
-var sessionUpdatePackets uint64
-var longSessionUpdates uint64
-var longServerUpdates uint64
-
-func InitializeServerMap() {
-	serverMap = NewServerMap()
-}
-
-func InitializeSessionMap() {
-	sessionMap = NewSessionMap()
-}
-
-func memoryUsed() float64 {
-	var m runtime.MemStats
-	runtime.ReadMemStats(&m)
-	return float64(m.Alloc) / (1000.0 * 1000.0)
-}
-
-func PrintStats(biller billing.Biller) {
-	fmt.Printf("-----------------------------\n")
-	fmt.Printf("%d servers\n", serverMap.NumServers())
-	fmt.Printf("%d sessions\n", sessionMap.NumSessions())
-	fmt.Printf("%d goroutines\n", runtime.NumGoroutine())
-	fmt.Printf("%.2f mb allocated\n", memoryUsed())
-	fmt.Printf("%d billing entries submitted\n", numBillingEntriesSubmitted(biller))
-	fmt.Printf("%d billing entries queued\n", numBillingEntriesQueued(biller))
-	fmt.Printf("%d billing entries flushed\n", numBillingEntriesFlushed(biller))
-	fmt.Printf("%d server init packets processed\n", atomic.LoadUint64(&serverInitPackets))
-	fmt.Printf("%d server update packets processed\n", atomic.LoadUint64(&serverUpdatePackets))
-	fmt.Printf("%d session update packets processed\n", atomic.LoadUint64(&sessionUpdatePackets))
-	fmt.Printf("%d long server inits\n", atomic.LoadUint64(&longServerInits))
-	fmt.Printf("%d long server updates\n", atomic.LoadUint64(&longServerUpdates))
-	fmt.Printf("%d long session updates\n", atomic.LoadUint64(&longSessionUpdates))
-	fmt.Printf("-----------------------------\n")
-}
-
-func UpdateTimeouts(biller billing.Biller) {
-
-	lastUpdate := time.Now()
-
-	for {
-
-		timeoutTimestamp := time.Now().Unix() - 30
-
-		serverMap.PerformTimeouts(timeoutTimestamp)
-
-		time.Sleep(time.Millisecond * 10)
-
-		sessionMap.PerformTimeouts(timeoutTimestamp)
-
-		time.Sleep(time.Millisecond * 10)
-
-		if time.Since(lastUpdate).Seconds() >= 10.0 {
-			lastUpdate = time.Now()
-			PrintStats(biller)
-		}
-
-		time.Sleep(time.Millisecond * 10)
-	}
-}
-
-func SessionUpdateHandlerFunc(config *SessionUpdateConfig) UDPHandlerFunc {
+func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 
 	return func(w io.Writer, incoming *UDPPacket) {
 
 		start := time.Now()
 		defer func() {
 			if time.Since(start).Seconds() > 0.1 {
-				level.Debug(config.Logger).Log("msg", "long session update")
-				atomic.AddUint64(&longSessionUpdates, 1)
-				config.Metrics.LongDuration.Add(1)
+				level.Debug(params.Logger).Log("msg", "long session update")
+				atomic.AddUint64(&params.Counters.LongDuration, 1)
+				params.Metrics.LongDuration.Add(1)
 			}
 		}()
 
-		config.Metrics.Invocations.Add(1)
+		params.Metrics.Invocations.Add(1)
 
-		atomic.AddUint64(&sessionUpdatePackets, 1)
+		atomic.AddUint64(&params.Counters.Packets, 1)
 
 		var header SessionUpdatePacketHeader
 		if err := header.UnmarshalBinary(incoming.Data); err != nil {
-			level.Error(config.Logger).Log("msg", "could not read session update packet header", "err", err)
-			config.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-			config.Metrics.ErrorMetrics.ReadPacketHeaderFailure.Add(1)
+			level.Error(params.Logger).Log("msg", "could not read session update packet header", "err", err)
+			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+			params.Metrics.ErrorMetrics.ReadPacketHeaderFailure.Add(1)
 			return
 		}
 
@@ -805,55 +596,58 @@ func SessionUpdateHandlerFunc(config *SessionUpdateConfig) UDPHandlerFunc {
 		}
 
 		serverMutexStart := time.Now()
-		server := serverMap.GetServerData(header.ServerAddress.String())
+		server := params.ServerMap.GetServerData(header.ServerAddress.String())
 		if server == nil {
-			config.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-			config.Metrics.ErrorMetrics.ServerDataMissing.Add(1)
+			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+			params.Metrics.ErrorMetrics.ServerDataMissing.Add(1)
 			return
 		}
 		if time.Since(serverMutexStart).Seconds() > 0.1 {
-			level.Debug(config.Logger).Log("msg", "long server mutex in session update")
+			level.Debug(params.Logger).Log("msg", "long server mutex in session update")
 		}
 
 		response.ServerRoutePublicKey = server.routePublicKey
 
+		var session SessionData
+		session.timestamp = time.Now().Unix()
+
 		sessionMutexStart := time.Now()
-		sessionMap.UpdateSession(header.SessionID)
+		params.SessionMap.UpdateSessionData(header.SessionID, &session)
 		if time.Since(sessionMutexStart).Seconds() > 0.1 {
-			level.Debug(config.Logger).Log("msg", "long session mutex in session update")
+			level.Debug(params.Logger).Log("msg", "long session mutex in session update")
 		}
 
 		var packet SessionUpdatePacket
 		packet.Version = server.version
 		response.Version = server.version
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
-			level.Error(config.Logger).Log("msg", "could not read session update packet", "err", err)
-			config.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-			config.Metrics.ErrorMetrics.ReadPacketFailure.Add(1)
+			level.Error(params.Logger).Log("msg", "could not read session update packet", "err", err)
+			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+			params.Metrics.ErrorMetrics.ReadPacketFailure.Add(1)
 			return
 		}
 
-		location, err := config.IPLoc.LocateIP(packet.ClientAddress.IP)
+		location, err := params.IPLoc.LocateIP(packet.ClientAddress.IP)
 		if err != nil {
-			level.Error(config.Logger).Log("msg", "failed to locate session", "err", err)
-			config.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-			config.Metrics.ErrorMetrics.ClientLocateFailure.Add(1)
+			level.Error(params.Logger).Log("msg", "failed to locate session", "err", err)
+			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+			params.Metrics.ErrorMetrics.ClientLocateFailure.Add(1)
 			return
 		}
 
 		// IMPORTANT: run post in parallel so it doesn't block the response
-		go PostSessionUpdate(config, &packet, &response, &location, false)
+		go PostSessionUpdate(params, &packet, &response, &location, false)
 
-		if _, err := writeSessionResponse(w, response, config.ServerPrivateKey); err != nil {
-			level.Error(config.Logger).Log("msg", "could not write session update response packet", "err", err)
-			config.Metrics.ErrorMetrics.WriteResponseFailure.Add(1)
-			config.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+		if _, err := writeSessionResponse(w, response, params.ServerPrivateKey); err != nil {
+			level.Error(params.Logger).Log("msg", "could not write session update response packet", "err", err)
+			params.Metrics.ErrorMetrics.WriteResponseFailure.Add(1)
+			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 			return
 		}
 	}
 }
 
-func PostSessionUpdate(config *SessionUpdateConfig, packet *SessionUpdatePacket, response *SessionResponsePacket, location *routing.Location, prevOnNetworkNext bool) {
+func PostSessionUpdate(config *SessionUpdateParams, packet *SessionUpdatePacket, response *SessionResponsePacket, location *routing.Location, prevOnNetworkNext bool) {
 
 	nnStats := routing.Stats{
 		RTT:        float64(packet.NextMinRTT),
@@ -1850,18 +1644,6 @@ func submitBillingEntry(biller billing.Biller, serverCacheEntry *ServerCacheEntr
 	routeRequest := NewRouteRequest(request, buyer, serverCacheEntry, location, storer, clientRelays)
 	billingEntry := NewBillingEntry(routeRequest, chosenRoute, int(response.RouteType), sameRoute, &buyer.RoutingRulesSettings, routeDecision, request, sliceDuration, timestampStart, timestampNow, newSession)
 	return biller.Bill(context.Background(), request.SessionID, billingEntry)
-}
-
-func numBillingEntriesSubmitted(biller billing.Biller) uint64 {
-	return biller.NumSubmitted()
-}
-
-func numBillingEntriesQueued(biller billing.Biller) uint64 {
-	return biller.NumQueued()
-}
-
-func numBillingEntriesFlushed(biller billing.Biller) uint64 {
-	return biller.NumFlushed()
 }
 
 // todo: disabled
