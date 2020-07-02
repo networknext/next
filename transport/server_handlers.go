@@ -637,11 +637,10 @@ const NumSessionMapShards = 4096
 
 type SessionMapShard struct {
 	mutex       sync.Mutex
-	sessions    map[uint64]int64
+	sessions    map[uint64]*SessionData
 	numSessions uint64
 }
 
-// todo: update the session map below to use this session data, like it has a struct in the map for the server map above. we'll need this shortly.
 type SessionData struct {
 	timestamp int64
 }
@@ -654,7 +653,7 @@ func NewSessionMap() *SessionMap {
 	sessionMap := &SessionMap{}
 	for i := 0; i < NumSessionMapShards; i++ {
 		sessionMap.shard[i] = &SessionMapShard{}
-		sessionMap.shard[i].sessions = make(map[uint64]int64)
+		sessionMap.shard[i].sessions = make(map[uint64]*SessionData)
 	}
 	return sessionMap
 }
@@ -670,13 +669,21 @@ func (sessionMap *SessionMap) NumSessions() uint64 {
 
 func (sessionMap *SessionMap) UpdateSession(sessionId uint64) {
 	index := sessionId % NumSessionMapShards
+
 	sessionMap.shard[index].mutex.Lock()
+
 	_, exists := sessionMap.shard[index].sessions[sessionId]
-	sessionMap.shard[index].sessions[sessionId] = time.Now().Unix()
-	sessionMap.shard[index].mutex.Unlock()
 	if !exists {
+		sessionMap.shard[index].sessions[sessionId] = &SessionData{
+			timestamp: time.Now().Unix(),
+		}
+
 		atomic.AddUint64(&sessionMap.shard[index].numSessions, 1)
+	} else {
+		sessionMap.shard[index].sessions[sessionId].timestamp = time.Now().Unix()
 	}
+
+	sessionMap.shard[index].mutex.Unlock()
 }
 
 func (sessionMap *SessionMap) PerformTimeouts(timeoutTimestamp int64) {
@@ -688,7 +695,7 @@ func (sessionMap *SessionMap) PerformTimeouts(timeoutTimestamp int64) {
 			if numSessionIterations > 10 {
 				break
 			}
-			if v < timeoutTimestamp {
+			if v.timestamp < timeoutTimestamp {
 				// fmt.Printf("timed out session: %x\n", k)
 				delete(sessionMap.shard[index].sessions, k)
 				atomic.AddUint64(&sessionMap.shard[index].numSessions, ^uint64(0))
