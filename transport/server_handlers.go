@@ -171,24 +171,11 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 		// Validate the datacenter ID
 		_, err := params.Storer.Datacenter(packet.DatacenterID)
 		if err != nil {
-			// Check if there is a datacenter with this alias
-			// todo: inefficient, need to optimize this
-			var datacenterAliasFound bool
-			allDatacenters := params.Storer.Datacenters()
-			for _, d := range allDatacenters {
-				if packet.DatacenterID == crypto.HashID(d.AliasName) {
-					datacenterAliasFound = true
-					break
-				}
-			}
+			// Log and track the missing datacenter metric, but don't respond with an error to the SDK
+			// as to allow the ServerUpdateHandlerFunc and SessionUpdateHandlerFunc to carry on working
 
-			if !datacenterAliasFound {
-				// Log and track the missing datacenter metric, but don't respond with an error to the SDK
-				// as to allow the ServerUpdateHandlerFunc and SessionUpdateHandlerFunc to carry on working
-
-				level.Error(params.Logger).Log("msg", "failed to get datacenter from storage", "err", err)
-				params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
-			}
+			level.Error(params.Logger).Log("msg", "failed to get datacenter from storage", "err", err)
+			params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
 		}
 
 		// Send the response back to the server
@@ -371,27 +358,13 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 		// Validate the datacenter ID
 		datacenter, err := params.Storer.Datacenter(packet.DatacenterID)
 		if err != nil {
-			// Check if there is a datacenter with this alias
-			// todo: inefficient, need to optimize this
-			var datacenterAliasFound bool
-			allDatacenters := params.Storer.Datacenters()
-			for _, d := range allDatacenters {
-				if packet.DatacenterID == crypto.HashID(d.AliasName) {
-					datacenter = d
-					datacenterAliasFound = true
-					break
-				}
-			}
+			level.Error(params.Logger).Log("msg", "failed to get datacenter from storage", "err", err, "customer_id", packet.CustomerID)
+			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+			params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
 
-			if !datacenterAliasFound {
-				level.Error(params.Logger).Log("msg", "failed to get datacenter from storage", "err", err, "customer_id", packet.CustomerID)
-				params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-				params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
-
-				// Don't return early, just set an UnknownDatacenter so the ServerData gets set so its used by SessionUpdateHandlerFunc
-				datacenter = routing.UnknownDatacenter
-				datacenter.ID = packet.DatacenterID
-			}
+			// Don't return early, just set an UnknownDatacenter so the ServerData gets set so its used by SessionUpdateHandlerFunc
+			datacenter = routing.UnknownDatacenter
+			datacenter.ID = packet.DatacenterID
 		}
 
 		serverAddress := packet.ServerAddress.String()
