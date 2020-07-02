@@ -1,10 +1,37 @@
 # portal
 
-## Install Vue
+## Setup
+
+Install Vue CLI
 
 ```
 npm install -g @vue/cli
 ```
+
+Install required node_modules
+
+```
+npm install
+```
+
+Build static bundle
+
+```
+npm run build
+```
+
+Symlink dist
+- This is a bit tricky. We need to link the built dist folder to a dist folder located in the backend repo. This location needs to be defined in your backend makefile.
+
+Define dist location in backend makefile
+```UI_DIR=./cmd/portal/dist```
+
+Linux/macos
+```
+ln -s LOCATION_OF_BUILT_DIST UI_DIR
+```
+
+## Optional
 
 ## Launch Web GUI
 
@@ -12,35 +39,7 @@ npm install -g @vue/cli
 vue ui
 ```
 
-## Project setup
-```
-npm install
-```
-
 ### Compiles and hot-reloads for development
 ```
 npm run serve
 ```
-
-### Compiles and minifies for production
-```
-npm run build
-```
-
-### Run your unit tests
-```
-npm run test:unit
-```
-
-### Run your end-to-end tests
-```
-npm run test:e2e
-```
-
-### Lints and fixes files
-```
-npm run lint
-```
-
-### Customize configuration
-See [Configuration Reference](https://cli.vuejs.org/config/).
