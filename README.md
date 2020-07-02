@@ -30,6 +30,8 @@ Linux/macos
 ```
 ln -s LOCATION_OF_BUILT_DIST UI_DIR
 ```
+Windows
+???????????????
 
 ## Optional
 
@@ -40,6 +42,7 @@ vue ui
 ```
 
 ### Compiles and hot-reloads for development
+This breaks all API calls because of CORS
 ```
 npm run serve
 ```
