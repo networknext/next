@@ -628,25 +628,8 @@ func main() {
 	// Start HTTP server
 	{
 		go func() {
-			healthFunc := func(w http.ResponseWriter, r *http.Request) {
-				_, err := ioutil.ReadAll(r.Body)
-				if err != nil {
-					w.WriteHeader(http.StatusInternalServerError)
-					return
-				}
-				defer r.Body.Close()
-
-				statusCode := http.StatusOK
-				if atomic.LoadUint64(&readRouteMatrixSuccessCount) < 10 {
-					statusCode = http.StatusNotFound
-				}
-
-				w.WriteHeader(statusCode)
-				w.Write([]byte(http.StatusText(statusCode)))
-			}
-
-			http.HandleFunc("/health", healthFunc)
-			http.HandleFunc("/healthz", healthFunc)
+			http.HandleFunc("/health", HealthHandlerFunc(&readRouteMatrixSuccessCount))
+			http.HandleFunc("/healthz", HealthHandlerFunc(&readRouteMatrixSuccessCount)) // todo: remove once we update the LBs
 			http.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag))
 
 			level.Info(logger).Log("protocol", "http", "addr", conn.LocalAddr().String())
@@ -661,4 +644,23 @@ func main() {
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)
 	<-sigint
+}
+
+func HealthHandlerFunc(readRouteMatrixSuccessCount *uint64) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		_, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		defer r.Body.Close()
+
+		statusCode := http.StatusOK
+		if atomic.LoadUint64(readRouteMatrixSuccessCount) < 10 {
+			statusCode = http.StatusNotFound
+		}
+
+		w.WriteHeader(statusCode)
+		w.Write([]byte(http.StatusText(statusCode)))
+	}
 }
