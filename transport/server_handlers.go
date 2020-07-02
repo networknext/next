@@ -1517,6 +1517,8 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 		return nil
 	}
 
+	// todo: we should anonymize this sooner. as soon as possible, right after we do the ip2location. and clear the data in memory in place
+	// so nobody can accidentally use it non-anonymized. this is a legal requirement.
 	clientAddr := AnonymizeAddr(packet.ClientAddress)
 
 	if clientAddr.IP == nil {
