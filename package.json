@@ -1,5 +1,5 @@
 {
-  "name": "portal-2",
+  "name": "portal",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -26,7 +26,7 @@
   "devDependencies": {
     "@types/jest": "^24.0.19",
     "@typescript-eslint/eslint-plugin": "^3.5.0",
-    "@typescript-eslint/parser": "^2.33.0",
+    "@typescript-eslint/parser": "^2.34.0",
     "@vue/cli-plugin-babel": "~4.4.0",
     "@vue/cli-plugin-e2e-cypress": "~4.4.0",
     "@vue/cli-plugin-eslint": "~4.4.0",
