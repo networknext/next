@@ -46,7 +46,7 @@ var (
 
 func main() {
 
-	fmt.Printf("welcome to the nerd zone 17.0\n")
+	fmt.Printf("welcome to the nerd zone 18.0\n")
 
 	ctx := context.Background()
 
@@ -399,7 +399,7 @@ func main() {
 	routeMatrix := &routing.RouteMatrix{}
 	var routeMatrixMutex sync.RWMutex
 
-	getRouteMatrixFunc := func() *routing.RouteMatrix {
+	getRouteMatrixFunc := func() transport.RouteProvider {
 		routeMatrixMutex.RLock()
 		defer routeMatrixMutex.RUnlock()
 
@@ -593,7 +593,7 @@ func main() {
 		sessionUpdateConfig := &transport.SessionUpdateParams{
 			ServerPrivateKey:     serverPrivateKey,
 			RouterPrivateKey:     routerPrivateKey,
-			GetRouteMatrix:       getRouteMatrixFunc,
+			GetRouteProvider:     getRouteMatrixFunc,
 			GeoClient:            &geoClient,
 			IPLoc:                ipLocator,
 			Storer:               db,

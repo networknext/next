@@ -132,6 +132,7 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 
 	return func(w io.Writer, incoming *UDPPacket) {
 
+		// Check if this function takes too long
 		start := time.Now()
 		defer func() {
 			if time.Since(start).Seconds() > 0.1 {
@@ -145,6 +146,7 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 
 		atomic.AddUint64(&params.Counters.Packets, 1)
 
+		// Unmarshal the server init request packet
 		var packet ServerInitRequestPacket
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
 			level.Error(params.Logger).Log("msg", "could not read server init request packet", "err", err)
@@ -152,18 +154,31 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 			return
 		}
 
+		// Set up the default response packet
 		response := ServerInitResponsePacket{
 			RequestID: packet.RequestID,
 			Response:  InitResponseOK,
 			Version:   packet.Version,
 		}
 
+		// Check if the sdk version is too old (when not running locally)
 		if !incoming.SourceAddr.IP.IsLoopback() && !packet.Version.AtLeast(SDKVersionMin) {
 			level.Error(params.Logger).Log("err", "sdk version is too old", "version", packet.Version.String())
 			response.Response = InitResponseOldSDKVersion
 			params.Metrics.ErrorMetrics.SDKTooOld.Add(1)
 		}
 
+		// Validate the datacenter ID
+		_, err := params.Storer.Datacenter(packet.DatacenterID)
+		if err != nil {
+			// Log and track the missing datacenter metric, but don't respond with an error to the SDK
+			// as to allow the ServerUpdateHandlerFunc and SessionUpdateHandlerFunc to carry on working
+
+			level.Error(params.Logger).Log("msg", "failed to get datacenter from storage", "err", err)
+			params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
+		}
+
+		// Send the response back to the server
 		if err := writeInitResponse(w, response, params.ServerPrivateKey); err != nil {
 			level.Error(params.Logger).Log("msg", "could not write server init request packet", "err", err)
 			params.Metrics.ErrorMetrics.WriteResponseFailure.Add(1)
@@ -309,6 +324,7 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 
 	return func(w io.Writer, incoming *UDPPacket) {
 
+		// Check if this function takes too long
 		start := time.Now()
 		defer func() {
 			if time.Since(start).Seconds() > 0.1 {
@@ -322,6 +338,7 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 
 		atomic.AddUint64(&params.Counters.Packets, 1)
 
+		// Unmarshal the server update packet
 		var packet ServerUpdatePacket
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
 			level.Error(params.Logger).Log("msg", "could not read server update packet", "err", err)
@@ -330,6 +347,7 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 			return
 		}
 
+		// Check if the sdk version is too old (when not running locally)
 		if !incoming.SourceAddr.IP.IsLoopback() && !packet.Version.AtLeast(SDKVersionMin) {
 			level.Error(params.Logger).Log("msg", "ignoring old sdk version", "version", packet.Version.String())
 			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
@@ -337,12 +355,26 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 			return
 		}
 
+		// Validate the datacenter ID
+		datacenter, err := params.Storer.Datacenter(packet.DatacenterID)
+		if err != nil {
+			level.Error(params.Logger).Log("msg", "failed to get datacenter from storage", "err", err, "customer_id", packet.CustomerID)
+			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+			params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
+
+			// Don't return early, just set an UnknownDatacenter so the ServerData gets set so its used by SessionUpdateHandlerFunc
+			datacenter = routing.UnknownDatacenter
+			datacenter.ID = packet.DatacenterID
+		}
+
 		serverAddress := packet.ServerAddress.String()
 
+		// Update the server data
 		var server ServerData
 		server.timestamp = time.Now().Unix()
 		server.routePublicKey = packet.ServerRoutePublicKey
 		server.version = packet.Version
+		server.datacenter = datacenter
 
 		serverMutexStart := time.Now()
 		params.ServerMap.UpdateServerData(serverAddress, &server)
@@ -532,13 +564,11 @@ func (e VetoCacheEntry) MarshalBinary() ([]byte, error) {
 	return jsoniter.Marshal(e)
 }
 
-/*
 type RouteProvider interface {
 	ResolveRelay(uint64) (routing.Relay, error)
 	RelaysIn(routing.Datacenter) []routing.Relay
 	Routes([]routing.Relay, []int, []routing.Relay, ...routing.SelectorFunc) ([]routing.Route, error)
 }
-*/
 
 type SessionUpdateCounters struct {
 	Packets      uint64
@@ -548,7 +578,7 @@ type SessionUpdateCounters struct {
 type SessionUpdateParams struct {
 	ServerPrivateKey     []byte
 	RouterPrivateKey     []byte
-	GetRouteMatrix       func() *routing.RouteMatrix
+	GetRouteProvider     func() RouteProvider
 	GeoClient            *routing.GeoClient
 	IPLoc                routing.IPLocator
 	Storer               storage.Storer
@@ -568,6 +598,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 
 	return func(w io.Writer, incoming *UDPPacket) {
 
+		// Check if this function takes too long
 		start := time.Now()
 		defer func() {
 			if time.Since(start).Seconds() > 0.1 {
@@ -581,6 +612,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 
 		atomic.AddUint64(&params.Counters.Packets, 1)
 
+		// Unmarshal the session update packet header
 		var header SessionUpdatePacketHeader
 		if err := header.UnmarshalBinary(incoming.Data); err != nil {
 			level.Error(params.Logger).Log("msg", "could not read session update packet header", "err", err)
@@ -589,12 +621,14 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			return
 		}
 
+		// Set up the default response packet
 		response := SessionResponsePacket{
 			Sequence:  header.Sequence,
 			SessionID: header.SessionID,
 			RouteType: int32(routing.RouteTypeDirect),
 		}
 
+		// Retrieve the server data
 		serverMutexStart := time.Now()
 		server := params.ServerMap.GetServerData(header.ServerAddress.String())
 		if server == nil {
@@ -606,17 +640,18 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			level.Debug(params.Logger).Log("msg", "long server mutex in session update")
 		}
 
+		// Set the server's public key on the response
 		response.ServerRoutePublicKey = server.routePublicKey
 
-		var session SessionData
-		session.timestamp = time.Now().Unix()
+		// Retrieve the session data
+		session := params.SessionMap.GetSessionData(header.SessionID)
 
-		sessionMutexStart := time.Now()
-		params.SessionMap.UpdateSessionData(header.SessionID, &session)
-		if time.Since(sessionMutexStart).Seconds() > 0.1 {
-			level.Debug(params.Logger).Log("msg", "long session mutex in session update")
+		// If this is a new session, initialize the session data
+		if session == nil {
+			session = &SessionData{}
 		}
 
+		// Unmarshal the full session update packet and set the version on the update packet and the response packet
 		var packet SessionUpdatePacket
 		packet.Version = server.version
 		response.Version = server.version
@@ -627,54 +662,98 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			return
 		}
 
-		location, err := params.IPLoc.LocateIP(packet.ClientAddress.IP)
-		if err != nil {
-			level.Error(params.Logger).Log("msg", "failed to locate session", "err", err)
+		// Construct the stats from last slice
+		lastNNStats := routing.Stats{
+			RTT:        float64(packet.NextMeanRTT),
+			Jitter:     float64(packet.NextJitter),
+			PacketLoss: float64(packet.NextPacketLoss),
+		}
+
+		lastDirectStats := routing.Stats{
+			RTT:        float64(packet.DirectMeanRTT),
+			Jitter:     float64(packet.DirectJitter),
+			PacketLoss: float64(packet.DirectPacketLoss),
+		}
+
+		// Initialize a direct route
+		chosenRoute := routing.Route{}
+
+		location := session.location
+
+		// Get the session's location if we don't have it yet
+		if session.location.IsZero() {
+			// Locate the session
+			var err error
+			location, err = params.IPLoc.LocateIP(packet.ClientAddress.IP)
+			if err != nil {
+				location = routing.LocationNullIsland
+
+				level.Error(params.Logger).Log("msg", "failed to locate session", "err", err)
+				params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+				params.Metrics.ErrorMetrics.ClientLocateFailure.Add(1)
+
+				sendRouteResponse(w, &chosenRoute, params, &packet, &response, server, &lastNNStats, &lastDirectStats, &location)
+				return
+			}
+		}
+
+		// Locate near relays
+		issuedNearRelays, err := params.GeoClient.RelaysWithin(session.location.Latitude, session.location.Longitude, 2500, "mi")
+		if len(issuedNearRelays) == 0 || err != nil {
+			level.Error(params.Logger).Log("msg", "failed to locate relays near session", "err", err)
 			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-			params.Metrics.ErrorMetrics.ClientLocateFailure.Add(1)
+			params.Metrics.ErrorMetrics.NearRelaysLocateFailure.Add(1)
+
+			sendRouteResponse(w, &chosenRoute, params, &packet, &response, server, &lastNNStats, &lastDirectStats, &location)
 			return
 		}
 
-		// IMPORTANT: run post in parallel so it doesn't block the response
-		go PostSessionUpdate(params, &packet, &response, &location, false)
-
-		if _, err := writeSessionResponse(w, response, params.ServerPrivateKey); err != nil {
-			level.Error(params.Logger).Log("msg", "could not write session update response packet", "err", err)
-			params.Metrics.ErrorMetrics.WriteResponseFailure.Add(1)
-			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-			return
+		// Clamp relay count to max
+		if len(issuedNearRelays) > int(MaxNearRelays) {
+			issuedNearRelays = issuedNearRelays[:MaxNearRelays]
 		}
+
+		// Get the route matrix pointer
+		routeMatrix := params.GetRouteProvider()
+
+		// We need to do this because RelaysWithin only has the ID of the relay and we need the Addr and PublicKey too
+		// Maybe we consider a nicer way to do this in the future
+		for idx := range issuedNearRelays {
+			issuedNearRelays[idx], _ = routeMatrix.ResolveRelay(issuedNearRelays[idx].ID)
+		}
+
+		// Fill in the near relays
+		response.NumNearRelays = int32(len(issuedNearRelays))
+		response.NearRelayIDs = make([]uint64, len(issuedNearRelays))
+		response.NearRelayAddresses = make([]net.UDPAddr, len(issuedNearRelays))
+		for idx, relay := range issuedNearRelays {
+			response.NearRelayIDs[idx] = relay.ID
+			response.NearRelayAddresses[idx] = relay.Addr
+		}
+
+		sendRouteResponse(w, &chosenRoute, params, &packet, &response, server, &lastNNStats, &lastDirectStats, &location)
 	}
 }
 
-func PostSessionUpdate(config *SessionUpdateParams, packet *SessionUpdatePacket, response *SessionResponsePacket, location *routing.Location, prevOnNetworkNext bool) {
-
-	nnStats := routing.Stats{
-		RTT:        float64(packet.NextMinRTT),
-		Jitter:     float64(packet.NextJitter),
-		PacketLoss: float64(packet.NextPacketLoss),
-	}
-	directStats := routing.Stats{
-		RTT:        float64(packet.DirectMinRTT),
-		Jitter:     float64(packet.DirectJitter),
-		PacketLoss: float64(packet.DirectPacketLoss),
-	}
-	chosenRoute := routing.Route{
-		Stats:  directStats,
-		Relays: make([]routing.Relay, 0),
+func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket, response *SessionResponsePacket, serverData *ServerData,
+	chosenRoute *routing.Route, lastNNStats *routing.Stats, lastDirectStats *routing.Stats, location *routing.Location, prevOnNetworkNext bool) {
+	// Determine the datacenter name to display on the portal
+	datacenterName := serverData.datacenter.Name
+	if serverData.datacenter.AliasName != "" {
+		datacenterName = serverData.datacenter.AliasName
 	}
 
-	if err := updatePortalData(config.RedisClientPortal, config.RedisClientPortalExp, packet, nnStats, directStats, chosenRoute.Relays, prevOnNetworkNext, "datacenter", location, time.Now(), false); err != nil {
-		level.Error(config.Logger).Log("msg", "could not update portal data", "err", err)
-		config.Metrics.ErrorMetrics.UpdatePortalFailure.Add(1)
-		config.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+	if err := updatePortalData(params.RedisClientPortal, params.RedisClientPortalExp, packet, lastNNStats, lastDirectStats, chosenRoute.Relays, prevOnNetworkNext, datacenterName, location, time.Now(), false); err != nil {
+		level.Error(params.Logger).Log("msg", "could not update portal data", "err", err)
+		params.Metrics.ErrorMetrics.UpdatePortalFailure.Add(1)
+		params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 	}
 
-	if err := submitBillingEntry(config.Biller, &ServerCacheEntry{}, 0, packet, response, &routing.Buyer{}, &routing.Route{}, &routing.LocationNullIsland,
-		config.Storer, nil, routing.Decision{}, billing.BillingSliceSeconds, time.Now(), time.Now(), false); err != nil {
-		level.Error(config.Logger).Log("msg", "could not write billing entry", "err", err)
-		config.Metrics.ErrorMetrics.BillingFailure.Add(1)
-		config.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+	if err := submitBillingEntry(params.Biller, &ServerCacheEntry{}, 0, packet, response, &routing.Buyer{}, &routing.Route{}, &routing.LocationNullIsland,
+		params.Storer, nil, routing.Decision{}, billing.BillingSliceSeconds, time.Now(), time.Now(), false); err != nil {
+		level.Error(params.Logger).Log("msg", "could not write billing entry", "err", err)
+		params.Metrics.ErrorMetrics.BillingFailure.Add(1)
+		params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 	}
 }
 
@@ -1511,9 +1590,9 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 }
 */
 
-func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time.Duration, packet *SessionUpdatePacket, nnStats routing.Stats, directStats routing.Stats, relayHops []routing.Relay, onNetworkNext bool, datacenterName string, location *routing.Location, sessionTime time.Time, isMultiPath bool) error {
+func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time.Duration, packet *SessionUpdatePacket, lastNNStats *routing.Stats, lastDirectStats *routing.Stats, relayHops []routing.Relay, onNetworkNext bool, datacenterName string, location *routing.Location, sessionTime time.Time, isMultiPath bool) error {
 
-	if (nnStats.RTT == 0 && directStats.RTT == 0) || (onNetworkNext && nnStats.RTT == 0) {
+	if (lastNNStats.RTT == 0 && lastDirectStats.RTT == 0) || (onNetworkNext && lastNNStats.RTT == 0) {
 		return nil
 	}
 
@@ -1540,7 +1619,7 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 	if !onNetworkNext {
 		deltaRTT = 0
 	} else {
-		deltaRTT = directStats.RTT - nnStats.RTT
+		deltaRTT = lastDirectStats.RTT - lastNNStats.RTT
 	}
 
 	meta := routing.SessionMeta{
@@ -1548,8 +1627,8 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 		UserHash:      hashedID,
 		Datacenter:    datacenterName,
 		OnNetworkNext: onNetworkNext,
-		NextRTT:       nnStats.RTT,
-		DirectRTT:     directStats.RTT,
+		NextRTT:       lastNNStats.RTT,
+		DirectRTT:     lastDirectStats.RTT,
 		DeltaRTT:      deltaRTT,
 		Location:      *location,
 		ClientAddr:    clientAddr.String(),
@@ -1577,8 +1656,8 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 	}
 	slice := routing.SessionSlice{
 		Timestamp: sessionTime,
-		Next:      nnStats,
-		Direct:    directStats,
+		Next:      *lastNNStats,
+		Direct:    *lastDirectStats,
 		Envelope: routing.Envelope{
 			Up:   int64(packet.KbpsUp),
 			Down: int64(packet.KbpsDown),
@@ -1751,7 +1830,7 @@ func writeInitResponse(w io.Writer, response ServerInitResponsePacket, privateKe
 }
 
 // writeSessionResponse encrypts the session response packet and sends it back to the server. Returns the marshaled response and an error.
-func writeSessionResponse(w io.Writer, response SessionResponsePacket, privateKey []byte) ([]byte, error) {
+func writeSessionResponse(w io.Writer, response *SessionResponsePacket, privateKey []byte) ([]byte, error) {
 	// Sign the response
 	response.Signature = crypto.Sign(privateKey, response.GetSignData())
 
@@ -1767,6 +1846,32 @@ func writeSessionResponse(w io.Writer, response SessionResponsePacket, privateKe
 	}
 
 	return responseData, nil
+}
+
+func sendRouteResponse(w io.Writer, chosenRoute *routing.Route, params *SessionUpdateParams, packet *SessionUpdatePacket, response *SessionResponsePacket,
+	serverData *ServerData, lastNNStats *routing.Stats, lastDirectStats *routing.Stats, location *routing.Location) {
+	// Update the session data
+	session := SessionData{
+		timestamp: time.Now().Unix(),
+		location:  *location,
+	}
+
+	sessionMutexStart := time.Now()
+	params.SessionMap.UpdateSessionData(packet.SessionID, &session)
+	if time.Since(sessionMutexStart).Seconds() > 0.1 {
+		level.Debug(params.Logger).Log("msg", "long session mutex in session update")
+	}
+
+	// Perform post-update functions
+	// IMPORTANT: run post in parallel so it doesn't block the response
+	go PostSessionUpdate(params, packet, response, serverData, chosenRoute, lastNNStats, lastDirectStats, location, false)
+
+	// Send the response back to the server
+	if _, err := writeSessionResponse(w, response, params.ServerPrivateKey); err != nil {
+		level.Error(params.Logger).Log("msg", "could not write session update response packet", "err", err)
+		params.Metrics.ErrorMetrics.WriteResponseFailure.Add(1)
+		return
+	}
 }
 
 // todo: disabled
