@@ -472,7 +472,7 @@ func main() {
 		_ = geoClient
 
 		// todo: the health function should be updated return true if we have received a healthy route matrix
-		// the 10 times we tried. when this contition is true we know the server backend is able to serve routes.
+		// the 10 times we tried. when this condition is true we know the server backend is able to serve routes.
 
 		go func() {
 			http.HandleFunc("/health", transport.HealthHandlerFunc())
