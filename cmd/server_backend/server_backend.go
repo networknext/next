@@ -439,7 +439,8 @@ func main() {
 						// Reset the successful route matrix read counter
 						atomic.StoreUint64(&readRouteMatrixSuccessCount, 0)
 
-						level.Warn(logger).Log("matrix", "route", "op", "read", "envvar", "ROUTE_MATRIX_URI", "value", uri, "msg", "could not read route matrix", "err", err)
+						// todo: go away :)
+						// level.Warn(logger).Log("matrix", "route", "op", "read", "envvar", "ROUTE_MATRIX_URI", "value", uri, "msg", "could not read route matrix", "err", err)
 						time.Sleep(syncInterval)
 						continue
 					}

@@ -670,7 +670,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 		}
 
 		// Construct the stats from last slice
-		lastNNStats := routing.Stats{
+		lastNextStats := routing.Stats{
 			RTT:        float64(packet.NextMeanRTT),
 			Jitter:     float64(packet.NextJitter),
 			PacketLoss: float64(packet.NextPacketLoss),
@@ -699,7 +699,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 				params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 				params.Metrics.ErrorMetrics.ClientLocateFailure.Add(1)
 
-				sendRouteResponse(w, &chosenRoute, params, &packet, &response, server, &lastNNStats, &lastDirectStats, &location)
+				sendRouteResponse(w, &chosenRoute, params, &packet, &response, server, &lastNextStats, &lastDirectStats, &location)
 				return
 			}
 		}
@@ -711,7 +711,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 			params.Metrics.ErrorMetrics.NearRelaysLocateFailure.Add(1)
 
-			sendRouteResponse(w, &chosenRoute, params, &packet, &response, server, &lastNNStats, &lastDirectStats, &location)
+			sendRouteResponse(w, &chosenRoute, params, &packet, &response, server, &lastNextStats, &lastDirectStats, &location)
 			return
 		}
 
@@ -738,19 +738,19 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			response.NearRelayAddresses[idx] = relay.Addr
 		}
 
-		sendRouteResponse(w, &chosenRoute, params, &packet, &response, server, &lastNNStats, &lastDirectStats, &location)
+		sendRouteResponse(w, &chosenRoute, params, &packet, &response, server, &lastNextStats, &lastDirectStats, &location)
 	}
 }
 
 func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket, response *SessionResponsePacket, serverData *ServerData,
-	chosenRoute *routing.Route, lastNNStats *routing.Stats, lastDirectStats *routing.Stats, location *routing.Location, prevOnNetworkNext bool) {
+	chosenRoute *routing.Route, lastNextStats *routing.Stats, lastDirectStats *routing.Stats, location *routing.Location, prevOnNetworkNext bool) {
 	// Determine the datacenter name to display on the portal
 	datacenterName := serverData.datacenter.Name
 	if serverData.datacenter.AliasName != "" {
 		datacenterName = serverData.datacenter.AliasName
 	}
 
-	if err := updatePortalData(params.RedisClientPortal, params.RedisClientPortalExp, packet, lastNNStats, lastDirectStats, chosenRoute.Relays, prevOnNetworkNext, datacenterName, location, time.Now(), false); err != nil {
+	if err := updatePortalData(params.RedisClientPortal, params.RedisClientPortalExp, packet, lastNextStats, lastDirectStats, chosenRoute.Relays, prevOnNetworkNext, datacenterName, location, time.Now(), false); err != nil {
 		fmt.Printf("could not update portal data: %v\n", err)
 		// level.Error(params.Logger).Log("msg", "could not update portal data", "err", err)
 		params.Metrics.ErrorMetrics.UpdatePortalFailure.Add(1)
