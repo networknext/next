@@ -12,7 +12,7 @@ print_usage() {
     printf "> bootstrap.sh -b gs://development_artifacts -a server_backend.dev.tar.gz\n"
 }
 
-while getopts 'a:h' flag; do
+while getopts 'b:a:h' flag; do
   case "${flag}" in
     b) bucket="${OPTARG}" ;;
     a) artifact="${OPTARG}" ;;
