@@ -19,9 +19,6 @@
         <!-- Include Choices CSS -->
         <link rel="stylesheet" href="./js/choices/styles/choices.min.css" />
         <style>
-            body {
-                font-size: 0.875rem;
-            }
             .uplot .legend.inline th::after {
                 content: "";
                 vertical-align: middle;
@@ -65,13 +62,15 @@
                 width: 100%;
             }
             #session-tool-map { position: absolute; top: 0; bottom: 0; width: 100%; }
+            body {
+                font-size: 0.875rem;
+            }
 
             .feather {
                 width: 16px;
                 height: 16px;
                 vertical-align: text-bottom;
             }
-
             .logo-container {
                 width: 100%;
                 height: 24px;
@@ -81,31 +80,28 @@
                 align-items: center;
                 justify-content: left;
             }
-
             .logo-fit {
                 max-height: 24px;
                 max-width: 100%;
             }
-
             .fixed-width {
                 font-family: monospace;
                 font-size: 120%;
             }
-
             .hidden {
                 display: none;
             }
-
             div.table-no-top-line th {
                 border-top: none !important;
             }
-
             .mapboxgl-ctrl-bottom-left {
                 display: none;
             }
-
             .mapboxgl-ctrl-bottom-right {
                 display: none;
+            }
+            .h2 {
+	            font-size: 2rem;
             }
 
             /*
@@ -160,51 +156,6 @@
             .sidebar-heading {
                 font-size: 0.75rem;
                 text-transform: uppercase;
-            }
-
-            .h2 {
-	            font-size: 2rem;
-            }
-            .navbar-brand {
-                padding-top: 0.75rem;
-                padding-bottom: 0.75rem;
-                font-size: 1rem;
-                background-color: rgba(0, 0, 0, 0.25);
-                box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.25);
-            }
-
-            .navbar .form-control {
-                padding: 0.75rem 1rem;
-                border-width: 0;
-                border-radius: 0;
-            }
-
-            .form-control-dark {
-                color: #fff;
-                background-color: rgba(255, 255, 255, 0.1);
-                border-color: rgba(255, 255, 255, 0.1);
-            }
-
-            .form-control-dark:focus {
-                border-color: transparent;
-                box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.25);
-            }
-
-            .btn-group-xs > .btn,
-            .btn-xs {
-                padding: 0.25rem 0.4rem;
-                font-size: 0.875rem;
-                line-height: 0.5;
-                border-radius: 0.2rem;
-            }
-
-            td.td-btn {
-                padding-top: 0.15rem;
-                padding-bottom: 0;
-            }
-
-            td.td-btn > a.btn-xs {
-                padding-bottom: calc(0.25rem + 1px);
             }
         </style>
     </head>
