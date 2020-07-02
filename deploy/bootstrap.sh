@@ -9,7 +9,7 @@ print_usage() {
     printf "a [string]\tArtifact name on GCP Storage\n"
 
     printf "Example:\n\n"
-    printf "> bootstrap.sh -b gs://dev_artifacts -a server_backend.dev.tar.gz\n"
+    printf "> bootstrap.sh -b gs://development_artifacts -a server_backend.dev.tar.gz\n"
 }
 
 while getopts 'a:h' flag; do

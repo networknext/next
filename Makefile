@@ -19,7 +19,7 @@ RELEASE ?= $(shell git describe --tags --exact-match 2> /dev/null)
 CURRENT_DIR = $(shell pwd -P)
 DEPLOY_DIR = ./deploy
 DIST_DIR = ./dist
-ARTIFACT_BUCKET = gs://dev_artifacts
+ARTIFACT_BUCKET = gs://development_artifacts
 ARTIFACT_BUCKET_PROD = gs://prod_artifacts
 SYSTEMD_SERVICE_FILE = app.service
 
