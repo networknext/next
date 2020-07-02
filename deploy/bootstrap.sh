@@ -1,17 +1,20 @@
 #!/bin/bash
 
+bucket=
 artifact=
 
 print_usage() {
-    printf "Usage: vm-update-app.sh -a artifact\n\n"
-    printf "a [string]\tPath to artifact on GCP Storage\n"
+    printf "Usage: bootstrap.sh -a artifact\n\n"
+    printf "b [string]\tBucket name on GCP Storage\n"
+    printf "a [string]\tArtifact name on GCP Storage\n"
 
     printf "Example:\n\n"
-    printf "> vm-update-app.sh -a gs://artifacts.network-next-v3-dev.appspot.com/server_backend.dev.tar.gz\n"
+    printf "> bootstrap.sh -b gs://dev_artifacts -a server_backend.dev.tar.gz\n"
 }
 
 while getopts 'a:h' flag; do
   case "${flag}" in
+    b) bucket="${OPTARG}" ;;
     a) artifact="${OPTARG}" ;;
     h) print_usage
        exit 1 ;;
@@ -20,8 +23,14 @@ while getopts 'a:h' flag; do
   esac
 done
 
+# Copy libsodium from GCP Storage
+gsutil cp "$bucket/libsodium.so" '/usr/local/lib'
+
+# Refresh the known libs on the system
+ldconfig
+
 # Copy the required files for the service from GCP Storage
-gsutil cp ${artifact} artifact.tar.gz
+gsutil cp "$bucket/$artifact" artifact.tar.gz
 
 # Stop the service
 systemctl stop app.service

@@ -29,10 +29,10 @@ GCP Project: `network-next-v3-dev`
 
 ### GCP Artifacts
 
-- portal: `gs://artifacts.network-next-v3-dev.appspot.com/portal.dev.tar.gz`
-- relay backend: `gs://artifacts.network-next-v3-dev.appspot.com/relay_backend.dev.tar.gz`
-- server backend: `gs://artifacts.network-next-v3-dev.appspot.com/server_backend.dev.tar.gz`
-- relay: `gs://artifacts.network-next-v3-dev.appspot.com/relay.dev.tar.gz`
+- portal: `gs://dev_artifacts/portal.dev.tar.gz`
+- relay backend: `gs://dev_artifacts/relay_backend.dev.tar.gz`
+- server backend: `gs://dev_artifacts/server_backend.dev.tar.gz`
+- relay: `gs://dev_artifacts/relay.dev.tar.gz`
 
 ### Domains
 
