@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"reflect"
+	"regexp"
 	"sort"
 
 	"github.com/modood/table"
@@ -70,7 +71,7 @@ func removeBuyer(rpcClient jsonrpc.RPCClient, env Environment, id string) {
 	fmt.Printf("Buyer with ID \"%s\" removed from storage.\n", id)
 }
 
-func routingRulesSettingsById(rpcClient jsonrpc.RPCClient, env Environment, buyerID string) {
+func routingRulesSettingsByID(rpcClient jsonrpc.RPCClient, env Environment, buyerID string) {
 
 	buyerArgs := localjsonrpc.BuyersArgs{}
 	var buyers localjsonrpc.BuyersReply
@@ -119,6 +120,71 @@ func routingRulesSettingsById(rpcClient jsonrpc.RPCClient, env Environment, buye
 
 	fmt.Printf("Buyer id %s not found", buyerID)
 
+}
+
+func routingRulesSettings(rpcClient jsonrpc.RPCClient, env Environment, buyerName string) {
+
+	buyerArgs := localjsonrpc.BuyersArgs{}
+	var buyers localjsonrpc.BuyersReply
+	if err := rpcClient.CallFor(&buyers, "OpsService.Buyers", buyerArgs); err != nil {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	var filtered [][]string
+
+	r := regexp.MustCompile("(?i)" + buyerName) // case-insensitive regex
+	for _, buyer := range buyers.Buyers {
+		if r.MatchString(buyer.Name) {
+			filtered = append(filtered, []string{buyer.Name, buyer.ID})
+		}
+	}
+
+	if len(filtered) == 0 {
+		fmt.Printf("No matches found for '%s'", buyerName)
+		return
+	}
+
+	if len(filtered) > 1 {
+		fmt.Printf("Found several  matches for '%s'", buyerName)
+		for _, match := range filtered {
+			fmt.Printf("\t%s", match[0])
+		}
+		return
+	}
+
+	fmt.Printf(" Routing rules for %s:\n\n", filtered[0][0])
+
+	transpose := []struct {
+		RoutingRuleSetting string
+		Value              string
+	}{}
+
+	args := localjsonrpc.RoutingRulesSettingsArgs{
+		BuyerID: filtered[0][1],
+	}
+
+	var reply localjsonrpc.RoutingRulesSettingsReply
+	if err := rpcClient.CallFor(&reply, "OpsService.RoutingRulesSettings", args); err != nil {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	v := reflect.ValueOf(reply.RoutingRuleSettings[0])
+	typeOfV := v.Type()
+
+	for i := 0; i < v.NumField(); i++ {
+		transpose = append(transpose, struct {
+			RoutingRuleSetting string
+			Value              string
+		}{
+			RoutingRuleSetting: typeOfV.Field(i).Name,
+			Value:              fmt.Sprintf("%v", v.Field(i).Interface()),
+		})
+	}
+
+	table.Output(transpose)
+	return
 }
 
 func setRoutingRulesSettings(rpcClient jsonrpc.RPCClient, env Environment, buyerID string, rrs routing.RoutingRulesSettings) {
