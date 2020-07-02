@@ -82,7 +82,7 @@ node Storage {
         artifact "portal.prod.tar.gz"
         artifact "relay_backend.prod.tar.gz"
         artifact "server_backend.prod.tar.gz"
-        artifact "vm-update-app.sh"
+        artifact "bootstrap.sh"
         artifact "GeoLite2-City.mmdb"
     }
 }

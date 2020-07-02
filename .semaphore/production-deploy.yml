@@ -22,10 +22,8 @@ blocks:
             - make build-portal-prod-artifact
             - make build-relay-backend-prod-artifact
             - make build-server-backend-prod-artifact
-            - make build-relay-prod-artifact
             - make publish-portal-prod-artifact
             - make publish-relay-backend-prod-artifact
             - make publish-server-backend-prod-artifact
-            - make publish-relay-prod-artifact
       secrets:
         - name: google-cloud-platform-prod
