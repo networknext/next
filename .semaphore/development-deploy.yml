@@ -22,10 +22,8 @@ blocks:
             - make build-portal-artifact
             - make build-relay-backend-artifact
             - make build-server-backend-artifact
-            - make build-relay-artifact
             - make publish-portal-artifact
             - make publish-relay-backend-artifact
             - make publish-server-backend-artifact
-            - make publish-relay-artifact
       secrets:
         - name: google-cloud-platform
