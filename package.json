@@ -1,5 +1,5 @@
 {
-  "name": "portal",
+  "name": "portal-2",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -13,7 +13,6 @@
     "@fortawesome/fontawesome-svg-core": "^1.2.29",
     "@fortawesome/free-solid-svg-icons": "^5.13.1",
     "@fortawesome/vue-fontawesome": "^0.1.10",
-    "axios": "^0.19.2",
     "bootstrap": "^4.5.0",
     "core-js": "^3.6.5",
     "jquery": "^3.5.1",
@@ -26,7 +25,7 @@
   },
   "devDependencies": {
     "@types/jest": "^24.0.19",
-    "@typescript-eslint/eslint-plugin": "^2.33.0",
+    "@typescript-eslint/eslint-plugin": "^3.5.0",
     "@typescript-eslint/parser": "^2.33.0",
     "@vue/cli-plugin-babel": "~4.4.0",
     "@vue/cli-plugin-e2e-cypress": "~4.4.0",
@@ -40,7 +39,8 @@
     "@vue/eslint-config-typescript": "^5.0.2",
     "@vue/test-utils": "^1.0.3",
     "eslint": "^6.7.2",
-    "eslint-plugin-import": "^2.20.2",
+    "eslint-config-airbnb-typescript": "^8.0.2",
+    "eslint-plugin-import": "^2.22.0",
     "eslint-plugin-vue": "^6.2.2",
     "node-sass": "^4.12.0",
     "sass-loader": "^8.0.2",

@@ -6,6 +6,7 @@ export default class APIService {
       Accept: 'application/jsosn',
       'Accept-Encoding': 'gzip',
       'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
     };
 
     /**
