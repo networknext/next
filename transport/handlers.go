@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-func HealthzHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
+func HealthHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		_, err := ioutil.ReadAll(r.Body)
 		if err != nil {

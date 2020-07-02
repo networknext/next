@@ -527,7 +527,6 @@ type RouteProvider interface {
 // =========================================================================================================
 
 const NumServerMapShards = 4096
-const NumSessionMapShards = 4096
 
 type ServerData struct {
 	timestamp      int64
@@ -613,10 +612,17 @@ func (serverMap *ServerMap) PerformTimeouts(timeoutTimestamp int64) {
 	}
 }
 
+const NumSessionMapShards = 4096
+
 type SessionMapShard struct {
 	mutex       sync.Mutex
 	sessions    map[uint64]int64
 	numSessions uint64
+}
+
+// todo: update the session map below to use this session data, like it has a struct in the map for the server map above. we'll need this shortly.
+type SessionData struct {
+	timestamp int64
 }
 
 type SessionMap struct {

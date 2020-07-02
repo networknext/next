@@ -39,13 +39,15 @@ var (
 
 func main() {
 
-	fmt.Printf("welcome to the nerd zone 15.0\n")
+	fmt.Printf("welcome to the nerd zone 16.0\n")
 
 	ctx := context.Background()
 
 	// Configure logging
 	logger := log.NewLogfmtLogger(os.Stdout)
 	/*
+		// todo: environment variable to enable logging, off by default: ENABLE_STACKDRIVER_LOGGING
+
 		if projectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
 			loggingClient, err := gcplogging.NewClient(ctx, projectID)
 			if err != nil {
@@ -82,9 +84,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// todo
-	_ = env
-
 	var customerPublicKey []byte
 	var serverPrivateKey []byte
 	var routerPrivateKey []byte
@@ -109,9 +108,6 @@ func main() {
 		}
 	}
 
-	// todo:
-	_ = routerPrivateKey
-
 	redisPortalHosts := os.Getenv("REDIS_HOST_PORTAL")
 	splitPortalHosts := strings.Split(redisPortalHosts, ",")
 	redisClientPortal := storage.NewRedisClient(splitPortalHosts...)
@@ -133,12 +129,15 @@ func main() {
 		os.Exit(1)
 	}
 
+	// we aren't using redis as cache at the moment
+	/*
 	redisHosts := strings.Split(os.Getenv("REDIS_HOST_CACHE"), ",")
 	redisClientCache := storage.NewRedisClient(redisHosts...)
 	if err := redisClientCache.Ping().Err(); err != nil {
 		level.Error(logger).Log("envvar", "REDIS_HOST_CACHE", "value", redisHosts, "msg", "could not ping redis cache", "err", err)
 		os.Exit(1)
 	}
+	*/
 
 	// Open the Maxmind DB and create a routing.MaxmindDB from it
 	var ipLocator routing.IPLocator = routing.NullIsland
@@ -176,38 +175,35 @@ func main() {
 		ipLocator = &mmdb
 	}
 
-	// todo
-	_ = ipLocator
-
 	geoClient := routing.GeoClient{
 		RedisClient: redisClientRelays,
 		Namespace:   "RELAY_LOCATIONS",
 	}
-
-	// todo
-	_ = geoClient
 
 	// Create an in-memory db
 	var db storage.Storer = &storage.InMemory{
 		LocalMode: true,
 	}
 
-	if err := db.AddBuyer(ctx, routing.Buyer{
-		ID:                   13672574147039585173,
-		Name:                 "local",
-		PublicKey:            customerPublicKey,
-		RoutingRulesSettings: routing.LocalRoutingRulesSettings,
-	}); err != nil {
-		level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
-		os.Exit(1)
-	}
-	if err := db.AddDatacenter(ctx, routing.Datacenter{
-		ID:      crypto.HashID("local"),
-		Name:    "local",
-		Enabled: true,
-	}); err != nil {
-		level.Error(logger).Log("msg", "could not add datacenter to storage", "err", err)
-		os.Exit(1)
+	// Create dummy buyer and datacenter for local testing
+	if env == "local" {
+		if err := db.AddBuyer(ctx, routing.Buyer{
+			ID:                   13672574147039585173,
+			Name:                 "local",
+			PublicKey:            customerPublicKey,
+			RoutingRulesSettings: routing.LocalRoutingRulesSettings,
+		}); err != nil {
+			level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
+			os.Exit(1)
+		}
+		if err := db.AddDatacenter(ctx, routing.Datacenter{
+			ID:      crypto.HashID("local"),
+			Name:    "local",
+			Enabled: true,
+		}); err != nil {
+			level.Error(logger).Log("msg", "could not add datacenter to storage", "err", err)
+			os.Exit(1)
+		}
 	}
 
 	// Create a no-op biller
@@ -277,6 +273,7 @@ func main() {
 			}
 		*/
 
+		// todo: add env var to enable stackdriver metrics: "ENABLE_STACKDRIVER_METRICS". off by default
 		/*
 			// Set up StackDriver metrics
 			sd := metrics.StackDriverHandler{
@@ -303,7 +300,8 @@ func main() {
 			}()
 		*/
 
-		// todo: disabled profiler because we think it's slowing down handlers
+		// todo: add env var to enable stackdriver profiler: "ENABLE_STACKDRIVER_PROFILER". off by default
+		// todo: disabled profiler in case it is slowing down handlers
 		/*
 			// Set up StackDriver profiler
 			if err := profiler.Start(profiler.Config{
@@ -374,7 +372,8 @@ func main() {
 					// Don't swap route matrix if we fail to read
 					_, err := newRouteMatrix.ReadFrom(matrixReader)
 					if err != nil {
-						level.Warn(logger).Log("matrix", "route", "op", "read", "envvar", "ROUTE_MATRIX_URI", "value", uri, "msg", "could not read route matrix", "err", err)
+						// level.Warn(logger).Log("matrix", "route", "op", "read", "envvar", "ROUTE_MATRIX_URI", "value", uri, "msg", "could not read route matrix", "err", err)
+						fmt.Printf("could not update route matrix\n")
 						time.Sleep(syncInterval)
 						continue
 					}
@@ -437,6 +436,14 @@ func main() {
 			conn.SetWriteBuffer(int(writeBuffer))
 		}
 
+		// todo: move the serverMap and sessionMap instances in here
+
+		// todo: move the counters inside server_handlers globals into a new struct called "Counters"
+
+		// todo: pass the serverMap, sessionMap and counter instances into the handler creators below, like you do for the rest of the data
+
+		// todo: server_handlers.go should no longer have any globals, and it's now possible to write unit tests for serverMap, sessionMap at a later date
+
 		transport.InitializeServerMap()
 
 		transport.InitializeSessionMap()
@@ -447,15 +454,9 @@ func main() {
 			Conn:          conn,
 			MaxPacketSize: transport.DefaultMaxPacketSize,
 
-			// todo: cut down temporarily
 			ServerInitHandlerFunc:    transport.ServerInitHandlerFunc(serverPrivateKey, serverInitMetrics, db),
 			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(serverUpdateMetrics, db),
 			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(biller, serverPrivateKey, redisClientPortal, redisPortalHostExpiration, ipLocator, sessionUpdateMetrics, db, getRouteMatrixFunc),
-			/*
-				ServerInitHandlerFunc:    transport.ServerInitHandlerFunc(logger, redisClientCache, db, serverInitMetrics, serverPrivateKey),
-				ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(logger, redisClientCache, db, serverUpdateMetrics),
-				SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(logger, redisClientCache, redisClientPortal, redisPortalHostExpiration, db, &routeMatrix, ipLocator, &geoClient, sessionMetrics, biller, serverPrivateKey, routerPrivateKey),
-			*/
 		}
 
 		go func() {
@@ -466,8 +467,16 @@ func main() {
 			}
 		}()
 
+		// todo: once these get passed into handlers, remove this code
+		_ = routerPrivateKey
+		_ = geoClient
+
+		// todo: the health function should be updated return true if we have received a healthy route matrix
+		// the 10 times we tried. when this contition is true we know the server backend is able to serve routes.
+
 		go func() {
-			http.HandleFunc("/healthz", transport.HealthzHandlerFunc())
+			http.HandleFunc("/health", transport.HealthHandlerFunc())
+			http.HandleFunc("/healthz", transport.HealthHandlerFunc())		// todo: remove once we update the LBs
 			http.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag))
 
 			level.Info(logger).Log("protocol", "http", "addr", conn.LocalAddr().String())

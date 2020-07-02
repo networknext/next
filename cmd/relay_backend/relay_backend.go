@@ -452,7 +452,8 @@ func main() {
 	}
 
 	router := mux.NewRouter()
-	router.HandleFunc("/healthz", transport.HealthzHandlerFunc())
+	router.HandleFunc("/health", transport.HealthHandlerFunc())
+	router.HandleFunc("/healthz", transport.HealthHandlerFunc())	// todo: remove once LBs are updated
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag))
 	router.HandleFunc("/relay_init", transport.RelayInitHandlerFunc(logger, &commonInitParams)).Methods("POST")
 	router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(logger, relayslogger, &commonUpdateParams)).Methods("POST")
