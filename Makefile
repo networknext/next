@@ -531,6 +531,18 @@ publish-relay-prod-artifact: ## publishes the prod relay artifact
 	$(ARTIFACT_BUCKET_PROD)/relay.prod.tar.gz
 	@printf "done\n"
 
+.PHONY: publish-bootstrap-script
+publish-bootstrap-script:
+	@printf "Publishing bootstrap script... \n\n"
+	@gsutil cp $(DEPLOY_DIR)/bootstrap.sh $(ARTIFACT_BUCKET)/bootstrap.sh
+	@printf "done\n"
+
+.PHONY: publish-bootstrap-script-prod
+publish-bootstrap-script-prod:
+	@printf "Publishing bootstrap script... \n\n"
+	@gsutil cp $(DEPLOY_DIR)/bootstrap.sh $(ARTIFACT_BUCKET_PROD)/bootstrap.sh
+	@printf "done\n"
+
 .PHONY: build-backend-prod-artifacts
 build-backend-prod-artifacts: build-portal-prod-artifact build-relay-backend-prod-artifact build-server-backend-prod-artifact ## builds the backend artifacts
 

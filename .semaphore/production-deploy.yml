@@ -25,5 +25,6 @@ blocks:
             - make publish-portal-prod-artifact
             - make publish-relay-backend-prod-artifact
             - make publish-server-backend-prod-artifact
+            - make publish-bootstrap-script-prod
       secrets:
         - name: google-cloud-platform-prod
