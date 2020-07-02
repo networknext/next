@@ -149,7 +149,8 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 		// Unmarshal the server init request packet
 		var packet ServerInitRequestPacket
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
-			level.Error(params.Logger).Log("msg", "could not read server init request packet", "err", err)
+			fmt.Printf("could not read server init request packet: %v\n", err)
+			// level.Error(params.Logger).Log("msg", "could not read server init request packet", "err", err)
 			params.Metrics.ErrorMetrics.ReadPacketFailure.Add(1)
 			return
 		}
@@ -163,7 +164,8 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 
 		// Check if the sdk version is too old (when not running locally)
 		if !incoming.SourceAddr.IP.IsLoopback() && !packet.Version.AtLeast(SDKVersionMin) {
-			level.Error(params.Logger).Log("err", "sdk version is too old", "version", packet.Version.String())
+			fmt.Printf("sdk version is too old: %s\n", packet.Version.String())
+			// level.Error(params.Logger).Log("err", "sdk version is too old", "version", packet.Version.String())
 			response.Response = InitResponseOldSDKVersion
 			params.Metrics.ErrorMetrics.SDKTooOld.Add(1)
 		}
@@ -174,13 +176,14 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 			// Log and track the missing datacenter metric, but don't respond with an error to the SDK
 			// as to allow the ServerUpdateHandlerFunc and SessionUpdateHandlerFunc to carry on working
 
-			level.Error(params.Logger).Log("msg", "failed to get datacenter from storage", "err", err)
+			// level.Error(params.Logger).Log("msg", "failed to get datacenter from storage", "err", err)
 			params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
 		}
 
 		// Send the response back to the server
 		if err := writeInitResponse(w, response, params.ServerPrivateKey); err != nil {
-			level.Error(params.Logger).Log("msg", "could not write server init request packet", "err", err)
+			fmt.Printf("could not write server init request packet: %v\n", err)
+			// level.Error(params.Logger).Log("msg", "could not write server init request packet", "err", err)
 			params.Metrics.ErrorMetrics.WriteResponseFailure.Add(1)
 			return
 		}
@@ -341,7 +344,8 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 		// Unmarshal the server update packet
 		var packet ServerUpdatePacket
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
-			level.Error(params.Logger).Log("msg", "could not read server update packet", "err", err)
+			fmt.Printf("could not read server update packet: %v\n", err)
+			// level.Error(params.Logger).Log("msg", "could not read server update packet", "err", err)
 			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 			params.Metrics.ErrorMetrics.ReadPacketFailure.Add(1)
 			return
@@ -349,7 +353,8 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 
 		// Check if the sdk version is too old (when not running locally)
 		if !incoming.SourceAddr.IP.IsLoopback() && !packet.Version.AtLeast(SDKVersionMin) {
-			level.Error(params.Logger).Log("msg", "ignoring old sdk version", "version", packet.Version.String())
+			fmt.Printf("ignoring old sdk version: %s\n", packet.Version.String())
+			// level.Error(params.Logger).Log("msg", "ignoring old sdk version", "version", packet.Version.String())
 			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 			params.Metrics.ErrorMetrics.SDKTooOld.Add(1)
 			return
@@ -358,7 +363,7 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 		// Validate the datacenter ID
 		datacenter, err := params.Storer.Datacenter(packet.DatacenterID)
 		if err != nil {
-			level.Error(params.Logger).Log("msg", "failed to get datacenter from storage", "err", err, "customer_id", packet.CustomerID)
+			// level.Error(params.Logger).Log("msg", "failed to get datacenter from storage", "err", err, "customer_id", packet.CustomerID)
 			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 			params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
 
@@ -615,7 +620,8 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 		// Unmarshal the session update packet header
 		var header SessionUpdatePacketHeader
 		if err := header.UnmarshalBinary(incoming.Data); err != nil {
-			level.Error(params.Logger).Log("msg", "could not read session update packet header", "err", err)
+			fmt.Printf("could not read session update packet header: %v\n", err)
+			// level.Error(params.Logger).Log("msg", "could not read session update packet header", "err", err)
 			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 			params.Metrics.ErrorMetrics.ReadPacketHeaderFailure.Add(1)
 			return
@@ -656,7 +662,8 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 		packet.Version = server.version
 		response.Version = server.version
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
-			level.Error(params.Logger).Log("msg", "could not read session update packet", "err", err)
+			fmt.Printf("could not read session update packet: %v\n", err)
+			// level.Error(params.Logger).Log("msg", "could not read session update packet", "err", err)
 			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 			params.Metrics.ErrorMetrics.ReadPacketFailure.Add(1)
 			return
@@ -688,7 +695,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			if err != nil {
 				location = routing.LocationNullIsland
 
-				level.Error(params.Logger).Log("msg", "failed to locate session", "err", err)
+				// level.Error(params.Logger).Log("msg", "failed to locate session", "err", err)
 				params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 				params.Metrics.ErrorMetrics.ClientLocateFailure.Add(1)
 
@@ -700,7 +707,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 		// Locate near relays
 		issuedNearRelays, err := params.GeoClient.RelaysWithin(session.location.Latitude, session.location.Longitude, 2500, "mi")
 		if len(issuedNearRelays) == 0 || err != nil {
-			level.Error(params.Logger).Log("msg", "failed to locate relays near session", "err", err)
+			// level.Error(params.Logger).Log("msg", "failed to locate relays near session", "err", err)
 			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 			params.Metrics.ErrorMetrics.NearRelaysLocateFailure.Add(1)
 
@@ -744,14 +751,16 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 	}
 
 	if err := updatePortalData(params.RedisClientPortal, params.RedisClientPortalExp, packet, lastNNStats, lastDirectStats, chosenRoute.Relays, prevOnNetworkNext, datacenterName, location, time.Now(), false); err != nil {
-		level.Error(params.Logger).Log("msg", "could not update portal data", "err", err)
+		fmt.Printf("could not update portal data: %v\n", err)
+		// level.Error(params.Logger).Log("msg", "could not update portal data", "err", err)
 		params.Metrics.ErrorMetrics.UpdatePortalFailure.Add(1)
 		params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 	}
 
 	if err := submitBillingEntry(params.Biller, &ServerCacheEntry{}, 0, packet, response, &routing.Buyer{}, &routing.Route{}, &routing.LocationNullIsland,
 		params.Storer, nil, routing.Decision{}, billing.BillingSliceSeconds, time.Now(), time.Now(), false); err != nil {
-		level.Error(params.Logger).Log("msg", "could not write billing entry", "err", err)
+		fmt.Printf("could not write billing entry: %v\n", err)
+		// level.Error(params.Logger).Log("msg", "could not write billing entry", "err", err)
 		params.Metrics.ErrorMetrics.BillingFailure.Add(1)
 		params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 	}
@@ -1868,7 +1877,8 @@ func sendRouteResponse(w io.Writer, chosenRoute *routing.Route, params *SessionU
 
 	// Send the response back to the server
 	if _, err := writeSessionResponse(w, response, params.ServerPrivateKey); err != nil {
-		level.Error(params.Logger).Log("msg", "could not write session update response packet", "err", err)
+		fmt.Printf("could not write session update response packet: %v\n", err)
+		// level.Error(params.Logger).Log("msg", "could not write session update response packet", "err", err)
 		params.Metrics.ErrorMetrics.WriteResponseFailure.Add(1)
 		return
 	}
