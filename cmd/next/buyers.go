@@ -70,7 +70,7 @@ func removeBuyer(rpcClient jsonrpc.RPCClient, env Environment, id string) {
 	fmt.Printf("Buyer with ID \"%s\" removed from storage.\n", id)
 }
 
-func routingRulesSettings(rpcClient jsonrpc.RPCClient, env Environment, buyerID string) {
+func routingRulesSettingsById(rpcClient jsonrpc.RPCClient, env Environment, buyerID string) {
 
 	buyerArgs := localjsonrpc.BuyersArgs{}
 	var buyers localjsonrpc.BuyersReply
