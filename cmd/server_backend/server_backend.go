@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"io/ioutil"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -407,6 +408,7 @@ func main() {
 	}
 
 	// Sync route matrix
+	var readRouteMatrixSuccessCount uint64
 	{
 		if uri, ok := os.LookupEnv("ROUTE_MATRIX_URI"); ok {
 			rmsyncinterval := os.Getenv("ROUTE_MATRIX_SYNC_INTERVAL")
@@ -434,8 +436,10 @@ func main() {
 					// Don't swap route matrix if we fail to read
 					_, err := newRouteMatrix.ReadFrom(matrixReader)
 					if err != nil {
-						// level.Warn(logger).Log("matrix", "route", "op", "read", "envvar", "ROUTE_MATRIX_URI", "value", uri, "msg", "could not read route matrix", "err", err)
-						fmt.Printf("could not update route matrix\n")
+						// Reset the successful route matrix read counter
+						atomic.StoreUint64(&readRouteMatrixSuccessCount, 0)
+
+						level.Warn(logger).Log("matrix", "route", "op", "read", "envvar", "ROUTE_MATRIX_URI", "value", uri, "msg", "could not read route matrix", "err", err)
 						time.Sleep(syncInterval)
 						continue
 					}
@@ -445,6 +449,9 @@ func main() {
 					routeMatrixMutex.Lock()
 					routeMatrix = newRouteMatrix
 					routeMatrixMutex.Unlock()
+
+					// Increment the successful route matrix read counter
+					atomic.AddUint64(&readRouteMatrixSuccessCount, 1)
 
 					level.Info(logger).Log("matrix", "route", "entries", len(routeMatrix.Entries))
 
@@ -620,12 +627,26 @@ func main() {
 
 	// Start HTTP server
 	{
-		// todo: the health function should be updated return true if we have received a healthy route matrix
-		// the 10 times we tried. when this condition is true we know the server backend is able to serve routes.
-
 		go func() {
-			http.HandleFunc("/health", transport.HealthHandlerFunc())
-			http.HandleFunc("/healthz", transport.HealthHandlerFunc()) // todo: remove once we update the LBs
+			healthFunc := func(w http.ResponseWriter, r *http.Request) {
+				_, err := ioutil.ReadAll(r.Body)
+				if err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+					return
+				}
+				defer r.Body.Close()
+
+				statusCode := http.StatusOK
+				if atomic.LoadUint64(&readRouteMatrixSuccessCount) < 10 {
+					statusCode = http.StatusNotFound
+				}
+
+				w.WriteHeader(statusCode)
+				w.Write([]byte(http.StatusText(statusCode)))
+			}
+
+			http.HandleFunc("/health", healthFunc)
+			http.HandleFunc("/healthz", healthFunc)
 			http.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag))
 
 			level.Info(logger).Log("protocol", "http", "addr", conn.LocalAddr().String())
