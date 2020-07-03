@@ -427,7 +427,7 @@ type RouteProvider interface {
 	ResolveRelay(uint64) (routing.Relay, error)
 	RelaysIn(routing.Datacenter) []routing.Relay
 	Routes([]routing.Relay, []int, []routing.Relay, ...routing.SelectorFunc) ([]routing.Route, error)
-	GetNearRelays(lattitude float64, longitude float64, maxNearRelays int) []routing.NearRelayData
+	GetNearRelays(latitude float64, longitude float64, maxNearRelays int) []routing.NearRelayData
 }
 
 type SessionUpdateCounters struct {
@@ -647,60 +647,33 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 
 		// todo: ryan, please anonymize the IP address here. make sure it is anonymized *in place* not on a copy. also, clear the from pointer to nil!
 
-		// Use the route matrix to get a list of relays near the lat/long of the client
+		// Use the route matrix to get a list of relays closest to the lat/long of the client.
 		// These near relays are returned back down to the SDK for this slice. The SDK then pings these relays,
-		// and reports back up to us in the next session update the result of these pings. We use the near relay
-		// pings to know the cost of the first hop, from the client to the first relay in their route.
+		// and reports the results back up to us in the next session update. We use the near relay pings to know 
+		// the cost of the first hop, from the client to the first relay in their route.
 
-		// todo: get route matrix, and get near relays from the route matrix instead of geoloc. geoloc is too slow (redis).
+		routeMatrix := params.GetRouteProvider()
 
-		// ...
+		nearRelays := routeMatrix.GetNearRelays(location.Latitude, location.Longitude, MaxNearRelays)
 
-		// ================================================================
-
-		// Get the route matrix pointer
-		// routeMatrix := params.GetRouteProvider()
-
-		// todo: this is too slow
-		/*
-			// Locate near relays
-			issuedNearRelays, err := params.GeoClient.RelaysWithin(session.location.Latitude, session.location.Longitude, 2500, "mi")
-			if len(issuedNearRelays) == 0 || err != nil {
-				// level.Error(params.Logger).Log("msg", "failed to locate relays near session", "err", err)
-				params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-				params.Metrics.ErrorMetrics.NearRelaysLocateFailure.Add(1)
-
-				sendRouteResponse(w, &chosenRoute, params, &packet, &response, server, &lastNextStats, &lastDirectStats, &location)
-				return
-			}
-
-			// Clamp relay count to max
-			if len(issuedNearRelays) > int(MaxNearRelays) {
-				issuedNearRelays = issuedNearRelays[:MaxNearRelays]
-			}
-
-			// We need to do this because RelaysWithin only has the ID of the relay and we need the Addr and PublicKey too
-			// Maybe we consider a nicer way to do this in the future
-			// todo: this is gross
-			for idx := range issuedNearRelays {
-				issuedNearRelays[idx], _ = routeMatrix.ResolveRelay(issuedNearRelays[idx].ID)
-			}
-
-			// Fill in the near relays
-			response.NumNearRelays = int32(len(issuedNearRelays))
-			response.NearRelayIDs = make([]uint64, len(issuedNearRelays))
-			response.NearRelayAddresses = make([]net.UDPAddr, len(issuedNearRelays))
-			for idx, relay := range issuedNearRelays {
-				response.NearRelayIDs[idx] = relay.ID
-				response.NearRelayAddresses[idx] = relay.Addr
-			}
-		*/
+		response.NumNearRelays = int32(len(nearRelays))
+		response.NearRelayIDs = make([]uint64, len(nearRelays))
+		response.NearRelayAddresses = make([]net.UDPAddr, len(nearRelays))
+		for i, relay := range issuedNearRelays {
+			// todo: fill in near relay data
+			/*
+			response.NearRelayIDs[i] = relay.ID
+			response.NearRelayAddresses[i] = relay.Addr
+			*/
+		}
 
 		// ================================================================
 
 		// todo: get real route :)
 
 		bestRoute := directRoute
+
+		// ================================================================
 
 		// Send a session update response back to the SDK.
 

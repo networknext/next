@@ -49,10 +49,11 @@ type RouteMatrix struct {
 }
 
 type NearRelayData struct {
-	// todo: fill with near relay data needed in the form the session update handler wants
+	ID uint64
+	Address *net.UDPAddr
 }
 
-func (m *RouteMatrix) GetNearRelays(lattitude float64, longitude float64, maxNearRelays int) []NearRelayData {
+func (m *RouteMatrix) GetNearRelays(latitude float64, longitude float64, maxNearRelays int) []NearRelayData {
 	// todo: implement :)
 	return make([]NearRelayData, 0)
 }
