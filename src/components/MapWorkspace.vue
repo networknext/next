@@ -66,20 +66,18 @@
         </div>
       </div>
     </div>
-    <div id="map-container"
-        class="map-container-no-offset"
-        v-bind:class="{
-            'map-container-no-offset': true,
-            'map-container-offset': false,
-        }"
-    ></div>
+    <SessionMap/>
   </main>
 </template>
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
-
-@Component
+import SessionMap from './SessionMap.vue'
+@Component({
+  components: {
+    SessionMap
+  }
+})
 export default class MapWorkspace extends Vue {
 }
 </script>
