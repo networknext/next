@@ -117,8 +117,9 @@ func (m *UDPServerMux) handler(ctx context.Context, id int) {
 
 // todo: I would prefer a single counters struct, with more descriptive names: eg: "NumServerInitPackets", "LongServerInits".
 // having generic names like you de below this makes it difficult to search throughout the code and find all instances where "Packets" and "LongDuration"
-// are used, in this instance, since it picks up the counters for server update and session update as well.
-// please prefer fully descriptive, not generic names within structs. in other words, avoid using structs as namespace.
+// are used, because it picks up the counters for server update and session update as well. please prefer fully descriptive, not generic names within structs.
+// in other words, avoid using structs as namespace.
+
 type ServerInitCounters struct {
 	Packets      uint64
 	LongDuration uint64
@@ -157,8 +158,8 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 
 		// Server init is called when the server first starts up.
 		// Its purpose is to give feedback to people integrating our SDK into their game server when something is not setup correctly.
-		// For example, if they have not setup the datacenter name, or the datacenter name does not exist, it will tell them.
-		
+		// For example, if they have not setup the datacenter name, or the datacenter name does not exist, it will tell them that.
+
 		// IMPORTANT: Server init is a new concept that only exists in SDK 3.4.5 and greater.
 
 		// Psyonix is currently on an older SDK version, so server inits don't show up for them.
@@ -220,7 +221,7 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 		// because it's really difficult to debug what the incorrectly datacenter string is, when we only
 		// see the hash :(
 
-		_, err = params.Storer.Datacenter(packet.DatacenterID)			// todo: profiling indicates this function is slow. please investigate ryan.
+		_, err = params.Storer.Datacenter(packet.DatacenterID) // todo: profiling indicates this function is slow. please investigate ryan.
 		if err != nil {
 			params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
 			writeServerInitResponse(params, w, &packet, InitResponseUnknownDatacenter)
@@ -231,8 +232,8 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 		// Once a server inits, it goes into a mode where it can potentially monitor and accelerate sessions.
 		// After 10 seconds, if the server fails to init, it will fall back to direct and never monitor or accelerate sessions until it is restarted.
 
-		// IMPORTANT: In a future SDK version, it is probably important that we extend the server code to retry initialization, 
-		// since right now it only re-initializes if that server is restarted, and we can't rely on all our customers to regularly 
+		// IMPORTANT: In a future SDK version, it is probably important that we extend the server code to retry initialization,
+		// since right now it only re-initializes if that server is restarted, and we can't rely on all our customers to regularly
 		// restart their servers (although Psyonix does do this).
 
 		writeServerInitResponse(params, w, &packet, InitResponseOK)
@@ -299,9 +300,8 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 			return
 		}
 
-		// todo: in the old code we checked if we were running on the network next account, and allowed 0.0.0 there
-		// this is really what we want to do, we don't want real customers to be able to get old SDK versions past
-		// this test by spoofing source ip address
+		// todo: in the old code we checked if we were running on a buyer account with "internal" set, and allowed 0.0.0 there only.
+		// this is much better than checking the loopback address here. please fix ryan
 
 		// Check if the sdk version is too old
 		if !incoming.SourceAddr.IP.IsLoopback() && !packet.Version.AtLeast(SDKVersionMin) {
@@ -312,7 +312,7 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 			return
 		}
 
-		// Get the buyer information for the id in the packet.
+		// Get the buyer information for the customer id in the packet.
 		// If the buyer does not exist, this is not a server we care about. Don't even waste bandwidth to respond.
 
 		buyer, err := params.Storer.Buyer(packet.CustomerID)
@@ -337,7 +337,7 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 		// Sometimes the customer has datacenter aliases, eg: "multiplay.newyork" -> "inap.newyork".
 		// To support this, when we can't find a datacenter directly by id, we look it up by alias instead.
 
-		datacenter, err := params.Storer.Datacenter(packet.DatacenterID)	// todo: ryan, profiling indicates this is slow. please investigate
+		datacenter, err := params.Storer.Datacenter(packet.DatacenterID) // todo: ryan, profiling indicates this is slow. please investigate
 		if err != nil {
 			// level.Error(params.Logger).Log("msg", "failed to get datacenter from storage", "err", err, "customer_id", packet.CustomerID)
 			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
@@ -348,24 +348,24 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 
 		// UDP packets may arrive out of order. So that we don't have stale server update packets arriving late and
 		// ruining our server map with stale information, we must check the session update sequence number, and discard
-		// any session updates that are not more recent than the version we currently have stored in the server map.
+		// any session updates that are the same sequence number or older than the current session entry in the sesion map.
 
 		// todo: ryan please implement the logic above. old code is below for reference.
 
 		/*
-		// Drop the packet if the sequence number is older than the previously cached sequence number
-		if packet.Sequence < serverentry.Sequence {
-			level.Error(locallogger).Log("msg", "packet too old", "packet sequence", packet.Sequence, "lastest sequence", serverentry.Sequence)
-			metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-			metrics.ErrorMetrics.PacketSequenceTooOld.Add(1)
-			return
-		}
+			// Drop the packet if the sequence number is older than the previously cached sequence number
+			if packet.Sequence < serverentry.Sequence {
+				level.Error(locallogger).Log("msg", "packet too old", "packet sequence", packet.Sequence, "lastest sequence", serverentry.Sequence)
+				metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+				metrics.ErrorMetrics.PacketSequenceTooOld.Add(1)
+				return
+			}
 		*/
 
 		// Each one of our customer's servers reports to us with this server update packet every 10 seconds.
 		// Therefore we must update the server data each time we receive an update, to keep this server entry live in our server map.
 		// When we don't receive an update for a server for a certain period of time (for example 30 seconds), that server entry times out.
-		
+
 		var server ServerData
 		server.timestamp = time.Now().Unix()
 		server.routePublicKey = packet.ServerRoutePublicKey
@@ -427,6 +427,7 @@ type RouteProvider interface {
 	ResolveRelay(uint64) (routing.Relay, error)
 	RelaysIn(routing.Datacenter) []routing.Relay
 	Routes([]routing.Relay, []int, []routing.Relay, ...routing.SelectorFunc) ([]routing.Route, error)
+	GetNearRelays(lattitude float64, longitude float64, maxNearRelays int) []routing.NearRelayData
 }
 
 type SessionUpdateCounters struct {
@@ -438,7 +439,6 @@ type SessionUpdateParams struct {
 	ServerPrivateKey     []byte
 	RouterPrivateKey     []byte
 	GetRouteProvider     func() RouteProvider
-	GeoClient            *routing.GeoClient
 	IPLoc                routing.IPLocator
 	Storer               storage.Storer
 	RedisClientPortal    redis.Cmdable
@@ -527,29 +527,29 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 		// otherwise this is a stale session update packet from an older slice so we ignore it!
 
 		// todo: ryan please extend the SessionData to include the sequence, and update the code below to work with the new style
-		
+
 		// IMPORTANT: make sure the sequence is written to the session data in the writeSessionResponse fn or it will break.
 
 		/*
-		switch seq := packet.Sequence; {
-		case seq < sessionCacheEntry.Sequence:
-			err := fmt.Errorf("packet sequence too old. current_sequence %v, previous sequence %v", packet.Sequence, sessionCacheEntry.Sequence)
-			level.Error(locallogger).Log("err", err)
-			if _, err := writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.OldSequence); err != nil {
-
-				level.Error(locallogger).Log("msg", "failed to write session error response", "err", err)
-				metrics.ErrorMetrics.WriteResponseFailure.Add(1)
-			}
-			return
-		case seq == sessionCacheEntry.Sequence:
-			if _, err := w.Write(sessionCacheEntry.Response); err != nil {
-
+			switch seq := packet.Sequence; {
+			case seq < sessionCacheEntry.Sequence:
+				err := fmt.Errorf("packet sequence too old. current_sequence %v, previous sequence %v", packet.Sequence, sessionCacheEntry.Sequence)
 				level.Error(locallogger).Log("err", err)
-				metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-				metrics.ErrorMetrics.WriteCachedResponseFailure.Add(1)
+				if _, err := writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.OldSequence); err != nil {
+
+					level.Error(locallogger).Log("msg", "failed to write session error response", "err", err)
+					metrics.ErrorMetrics.WriteResponseFailure.Add(1)
+				}
+				return
+			case seq == sessionCacheEntry.Sequence:
+				if _, err := w.Write(sessionCacheEntry.Response); err != nil {
+
+					level.Error(locallogger).Log("err", err)
+					metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+					metrics.ErrorMetrics.WriteCachedResponseFailure.Add(1)
+				}
+				return
 			}
-			return
-		}
 		*/
 
 		// Look up the buyer entry by the customer id. At this point if we can't find it, just ignore the session and don't respond.
@@ -571,10 +571,10 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			return
 		}
 
-		// When multiple session updates are in flight, especially under a retry storm, there can be simultaneous calls 
-		// to this handler for the same session. It is *extremely important* that we don't generate multiple route responses 
-		// for the same slice in this case, otherwise we'll bill our customers multiple times for the same slice!. Instead, 
-		// implement a locking system here, if the same slices is already being processed in another handler, we block until 
+		// When multiple session updates are in flight, especially under a retry storm, there can be simultaneous calls
+		// to this handler for the same session. It is *extremely important* that we don't generate multiple route responses
+		// for the same slice in this case, otherwise we'll bill our customers multiple times for the same slice!. Instead,
+		// implement a locking system here, if the same slices is already being processed in another handler, we block until
 		// that completes, then send down the cached session response. This ensures we bill our customers only once per-slice.
 
 		// todo: ryan. fun work below... :)
@@ -605,7 +605,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 		}
 
 		// The SDK uploads the result of pings to us for the previous 10 seconds (aka. "a slice")
-		// These ping values are uploaded to the portal for visibility, and are used when we plan a route, 
+		// These ping values are uploaded to the portal for visibility, and are used when we plan a route,
 		// both to determine the baseline cost across the default public internet route (direct),
 		// and to see how we have been doing so far if we served up a network next route for the previous slice (next).
 
@@ -625,9 +625,9 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 
 		// Run IP2Location on the session IP address.
 		// IMPORTANT: Immediately after ip2location we *must* anonymize the IP address so there is no chance we accidentally
-		// use or store the non-anonymized IP address past this point. This is an important business requirement because IP addresses 
+		// use or store the non-anonymized IP address past this point. This is an important business requirement because IP addresses
 		// are considered private identifiable information according to the GDRP and CCPA. We must *never* collect or store non-anonymized IP addresses!
-	
+
 		location := sessionDataReadOnly.location
 
 		if location.IsZero() {
@@ -646,7 +646,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 		// todo: ryan, please anonymize the IP address here. make sure it is anonymized *in place* not on a copy. also, clear the from pointer to nil!
 
 		// Use the route matrix to get a list of relays near the lat/long of the client
-		// These near relays are returned back down to the SDK for this slice. The SDK then pings these relays, 
+		// These near relays are returned back down to the SDK for this slice. The SDK then pings these relays,
 		// and reports back up to us in the next session update the result of these pings. We use the near relay
 		// pings to know the cost of the first hop, from the client to the first relay in their route.
 
@@ -704,7 +704,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 
 		// IMPORTANT: If the SDK does not receive a session update response quickly, it will resend the session update packet
 		// to us 10X every second. This is extremely aggressive resend behavior, and in hindsight was probably a mistake on our part.
-		// Even so, we want to avoid it if at all possible, because it greatly increases the number of packets we have to process, 
+		// Even so, we want to avoid it if at all possible, because it greatly increases the number of packets we have to process,
 		// and the cost to us to service each session.
 
 		// IMPORTANT: In future SDK versions we are much less aggressive with session update packet retries. eg. 3.4.5 and later.

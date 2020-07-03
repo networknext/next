@@ -209,18 +209,6 @@ func main() {
 		ipLocator = &mmdb
 	}
 
-	// todo: do not query the geoclient (redis) directly in the hot path session update
-	// instead, once per-second, update a local cache of the set of relays and store them
-	// in an array. then, in the session, iterate across this array, calculating the
-	// haversine distance between the player lat/long and the relay lat/long, and return
-	// the 32 nearest relays to the caller.
-	/*
-		geoClient := routing.GeoClient{
-			RedisClient: redisClientRelays,
-			Namespace:   "RELAY_LOCATIONS",
-		}
-	*/
-
 	// Create an in-memory db
 	var db storage.Storer = &storage.InMemory{
 		LocalMode: true,
@@ -408,9 +396,8 @@ func main() {
 
 	getRouteMatrixFunc := func() transport.RouteProvider {
 		routeMatrixMutex.RLock()
-		defer routeMatrixMutex.RUnlock()
-
 		rm := routeMatrix
+		routeMatrixMutex.RUnlock()
 		return rm
 	}
 
@@ -445,8 +432,6 @@ func main() {
 					if err != nil {
 						// Reset the successful route matrix read counter
 						atomic.StoreUint64(&readRouteMatrixSuccessCount, 0)
-
-						// todo: go away :)
 						// level.Warn(logger).Log("matrix", "route", "op", "read", "envvar", "ROUTE_MATRIX_URI", "value", uri, "msg", "could not read route matrix", "err", err)
 						time.Sleep(syncInterval)
 						continue
@@ -603,10 +588,9 @@ func main() {
 		}
 
 		sessionUpdateConfig := &transport.SessionUpdateParams{
-			ServerPrivateKey: serverPrivateKey,
-			RouterPrivateKey: routerPrivateKey,
-			GetRouteProvider: getRouteMatrixFunc,
-			// GeoClient:            &geoClient,
+			ServerPrivateKey:     serverPrivateKey,
+			RouterPrivateKey:     routerPrivateKey,
+			GetRouteProvider:     getRouteMatrixFunc,
 			IPLoc:                ipLocator,
 			Storer:               db,
 			RedisClientPortal:    redisClientPortal,
@@ -622,7 +606,6 @@ func main() {
 		mux := transport.UDPServerMux{
 			Conn:          conn,
 			MaxPacketSize: transport.DefaultMaxPacketSize,
-
 			ServerInitHandlerFunc:    transport.ServerInitHandlerFunc(serverInitConfig),
 			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(serverUpdateConfig),
 			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(sessionUpdateConfig),
@@ -631,7 +614,8 @@ func main() {
 		go func() {
 			level.Info(logger).Log("protocol", "udp", "addr", conn.LocalAddr().String())
 			if err := mux.Start(ctx); err != nil {
-				level.Error(logger).Log("protocol", "udp", "addr", conn.LocalAddr().String(), "msg", "could not start udp server", "err", err)
+				fmt.Printf("could not start udp server: %v\n", err)
+				// level.Error(logger).Log("protocol", "udp", "addr", conn.LocalAddr().String(), "msg", "could not start udp server", "err", err)
 				os.Exit(1)
 			}
 		}()
@@ -645,7 +629,8 @@ func main() {
 
 			level.Info(logger).Log("protocol", "http", "addr", conn.LocalAddr().String())
 			if err := http.ListenAndServe(conn.LocalAddr().String(), nil); err != nil {
-				level.Error(logger).Log("protocol", "http", "addr", conn.LocalAddr().String(), "msg", "could not start http server", "err", err)
+				fmt.Printf("could not start http server: %v\n", err)
+				// level.Error(logger).Log("protocol", "http", "addr", conn.LocalAddr().String(), "msg", "could not start http server", "err", err)
 				os.Exit(1)
 			}
 		}()

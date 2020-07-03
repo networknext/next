@@ -17,12 +17,10 @@ import (
 )
 
 const (
-	// RouteMatrixVersion ...
 	// IMPORTANT: Increment this when you change the binary format
 	RouteMatrixVersion = 5
 )
 
-// RouteMatrixEntry ...
 type RouteMatrixEntry struct {
 	DirectRTT      int32
 	NumRoutes      int32
@@ -31,9 +29,6 @@ type RouteMatrixEntry struct {
 	RouteRelays    [MaxRoutesPerRelayPair][MaxRelays]uint64
 }
 
-// RouteMatrix ...
-// There is no mutex in the route matrix, so it should be double buffered
-// when pulled down in the server backend and portal
 type RouteMatrix struct {
 	RelayIndices map[uint64]int
 
@@ -51,6 +46,15 @@ type RouteMatrix struct {
 
 	responseBuffer     []byte
 	reponseBufferMutex sync.RWMutex
+}
+
+type NearRelayData struct {
+	// todo: fill with near relay data needed in the form the session update handler wants
+}
+
+func (m *RouteMatrix) GetNearRelays(lattitude float64, longitude float64, maxNearRelays int) []NearRelayData {
+	// todo: implement :)
+	return make([]NearRelayData, 0)
 }
 
 func (m *RouteMatrix) ResolveRelay(id uint64) (Relay, error) {
@@ -94,6 +98,7 @@ func (m *RouteMatrix) ResolveRelay(id uint64) (Relay, error) {
 }
 
 // RelaysIn will return the set of Relays in the provided Datacenter
+// todo: ryan - please rename to "GetDatacenterRelays"
 func (m *RouteMatrix) RelaysIn(d Datacenter) []Relay {
 	relayIDs, ok := m.DatacenterRelays[d.ID]
 	if !ok {
@@ -122,6 +127,13 @@ func (m *RouteMatrix) RelaysIn(d Datacenter) []Relay {
 // The selectors are chained together in order, so the selected routes from the first selector will be passed
 // as the argument to the second selector. If at any point a selector fails to select a new slice of routes,
 // the chain breaks.
+
+// todo: ryan, this function is no longer really doing what the comment above says it is.
+// in fact, it is getting the routes from the client, through the near relays (not "from" relays)
+// and to the set of relays (destination relays), according to the route selector func.
+
+// todo: ryan - I would simply call the function "GetRoutes". That explains that it is a function that does something, and gets something from the route matrix.
+
 func (m *RouteMatrix) Routes(from []Relay, fromCost []int, to []Relay, routeSelectors ...SelectorFunc) ([]Route, error) {
 	type RelayPairResult struct {
 		fromcost  int  // The cost between the client and the from relay
@@ -177,6 +189,9 @@ func (m *RouteMatrix) Routes(from []Relay, fromCost []int, to []Relay, routeSele
 }
 
 // Returns the index in the route matrix representing the route between the from Relay and to Relay and whether or not to reverse them
+
+// todo: this function is poorly named. "GetEntryIndex" would be a *lot* better.
+
 func (m *RouteMatrix) getFromToRelayIndex(from Relay, to Relay) (int, bool) {
 	toidx, ok := m.RelayIndices[to.ID]
 	if !ok {
@@ -194,6 +209,11 @@ func (m *RouteMatrix) getFromToRelayIndex(from Relay, to Relay) (int, bool) {
 // fillRoutes is just the internal function to populate the given route buffer.
 // It takes the fromtoidx and reverse data and fills the given route buffer, incrementing the routeIndex after
 // each route it adds.
+
+// todo: FillRoutes. No need to keep this method internal. It's useful outside this module.
+
+// todo: fromtoidx is a terrible name. "entryIndex" is much better :)
+
 func (m *RouteMatrix) fillRoutes(routes []Route, routeIndex *int, fromCost int, fromtoidx int, reverse bool) error {
 	var err error
 
@@ -241,7 +261,7 @@ func (m *RouteMatrix) fillRoutes(routes []Route, routeIndex *int, fromCost int, 
 	return nil
 }
 
-// ReadFrom implements the io.ReadFrom interface
+// implements the io.ReadFrom interface
 func (m *RouteMatrix) ReadFrom(r io.Reader) (int64, error) {
 	if r == nil {
 		return 0, errors.New("reader is nil")
@@ -259,7 +279,7 @@ func (m *RouteMatrix) ReadFrom(r io.Reader) (int64, error) {
 	return int64(len(data)), nil
 }
 
-// WriteTo implements the io.WriteTo interface
+// implements the io.WriteTo interface
 func (m *RouteMatrix) WriteTo(w io.Writer) (int64, error) {
 	data, err := m.MarshalBinary()
 	if err != nil {
@@ -285,6 +305,10 @@ func (m *RouteMatrix) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
 }
+
+// todo: by documenting the structure here, instead of having it documented in the functions below, you have taken
+// two places you need to update everytime you make a change to the structure, and now you have three places you have
+// to update. this comment is worse than just reading the code below.
 
 /* Binary data outline for RouteMatrix v5: "->" means seqential elements in memory and not another section, "(...)" mean that section sequentially repeats for however many
  * Version number { uint32 }
@@ -314,7 +338,6 @@ func (m *RouteMatrix) ServeHTTP(w http.ResponseWriter, r *http.Request) {
  * Relay Max Session Counts { [NumberOfRelays]uint32 }
  */
 
-// UnmarshalBinary ...
 func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 	index := 0
 
@@ -502,7 +525,6 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
-// MarshalBinary ...
 func (m *RouteMatrix) MarshalBinary() ([]byte, error) {
 	data := make([]byte, m.Size())
 	index := 0
@@ -794,9 +816,8 @@ func (m *RouteMatrix) WriteAnalysisTo(writer io.Writer) {
 
 func (m *RouteMatrix) GetResponseData() []byte {
 	m.reponseBufferMutex.RLock()
-	defer m.reponseBufferMutex.RUnlock()
-
 	data := m.responseBuffer
+	m.reponseBufferMutex.RUnlock()
 	return data
 }
 
@@ -805,10 +826,8 @@ func (m *RouteMatrix) WriteResponseData() error {
 	if _, err := m.WriteTo(&buffer); err != nil {
 		return err
 	}
-
 	m.reponseBufferMutex.Lock()
-	defer m.reponseBufferMutex.Unlock()
-
 	m.responseBuffer = buffer.Bytes()
+	m.reponseBufferMutex.Unlock()
 	return nil
 }
