@@ -448,7 +448,7 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 			datacenter.ID = packet.DatacenterID
 		}
 
-		// Each one of our customer's servers reports to us with this server update every 10 seconds.
+		// Each one of our customer's servers reports to us with this server update packet every 10 seconds.
 		// Therefore we must update the server data each time we receive an update, to keep this server entry live in our server map.
 		// When we don't receive an update for a server for a certain period of time (for example 30 seconds), that server entry times out.
 		
