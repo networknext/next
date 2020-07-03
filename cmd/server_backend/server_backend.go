@@ -46,7 +46,7 @@ var (
 
 func main() {
 
-	fmt.Printf("welcome to the nerd zone 21.0\n")
+	fmt.Printf("welcome to the nerd zone 22.0\n")
 
 	ctx := context.Background()
 
@@ -523,7 +523,7 @@ func main() {
 		// Start a goroutine to timeout servers
 		go func() {
 			timeout := time.Second * 30
-			frequency := time.Millisecond * 10
+			frequency := time.Millisecond * 30
 			ticker := time.NewTicker(frequency)
 			serverMap.TimeoutLoop(ctx, timeout, ticker.C)
 		}()
@@ -531,7 +531,7 @@ func main() {
 		// Start a goroutine to timeout sessions
 		go func() {
 			timeout := time.Second * 30
-			frequency := time.Millisecond * 10
+			frequency := time.Millisecond * 30
 			ticker := time.NewTicker(frequency)
 			sessionMap.TimeoutLoop(ctx, timeout, ticker.C)
 		}()
