@@ -687,23 +687,24 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 
 		location := session.location
 
-		// Get the session's location if we don't have it yet
+		// Locate the session
 		if session.location.IsZero() {
-			// Locate the session
 			var err error
 			location, err = params.IPLoc.LocateIP(packet.ClientAddress.IP)
 			if err != nil {
 				location = routing.LocationNullIsland
-
-				// level.Error(params.Logger).Log("msg", "failed to locate session", "err", err)
 				params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 				params.Metrics.ErrorMetrics.ClientLocateFailure.Add(1)
-
 				sendRouteResponse(w, &chosenRoute, params, &packet, &response, server, &lastNextStats, &lastDirectStats, &location)
 				return
 			}
 		}
 
+		// Get the route matrix pointer
+		// routeMatrix := params.GetRouteProvider()
+
+		// todo: this is too slow
+		/*
 		// Locate near relays
 		issuedNearRelays, err := params.GeoClient.RelaysWithin(session.location.Latitude, session.location.Longitude, 2500, "mi")
 		if len(issuedNearRelays) == 0 || err != nil {
@@ -720,11 +721,9 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			issuedNearRelays = issuedNearRelays[:MaxNearRelays]
 		}
 
-		// Get the route matrix pointer
-		routeMatrix := params.GetRouteProvider()
-
 		// We need to do this because RelaysWithin only has the ID of the relay and we need the Addr and PublicKey too
 		// Maybe we consider a nicer way to do this in the future
+		// todo: this is gross
 		for idx := range issuedNearRelays {
 			issuedNearRelays[idx], _ = routeMatrix.ResolveRelay(issuedNearRelays[idx].ID)
 		}
@@ -737,6 +736,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			response.NearRelayIDs[idx] = relay.ID
 			response.NearRelayAddresses[idx] = relay.Addr
 		}
+		*/
 
 		sendRouteResponse(w, &chosenRoute, params, &packet, &response, server, &lastNextStats, &lastDirectStats, &location)
 	}

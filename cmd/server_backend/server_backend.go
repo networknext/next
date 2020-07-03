@@ -46,7 +46,7 @@ var (
 
 func main() {
 
-	fmt.Printf("welcome to the nerd zone 19.0\n")
+	fmt.Printf("welcome to the nerd zone 20.0\n")
 
 	ctx := context.Background()
 
@@ -209,10 +209,17 @@ func main() {
 		ipLocator = &mmdb
 	}
 
+	// todo: do not query the geoclient (redis) directly in the hot path session update
+	// instead, once per-second, update a local cache of the set of relays and store them
+	// in an array. then, in the session, iterate across this array, calculating the
+	// haversine distance between the player lat/long and the relay lat/long, and return
+	// the 32 nearest relays to the caller.
+	/*
 	geoClient := routing.GeoClient{
 		RedisClient: redisClientRelays,
 		Namespace:   "RELAY_LOCATIONS",
 	}
+	*/
 
 	// Create an in-memory db
 	var db storage.Storer = &storage.InMemory{
@@ -595,7 +602,7 @@ func main() {
 			ServerPrivateKey:     serverPrivateKey,
 			RouterPrivateKey:     routerPrivateKey,
 			GetRouteProvider:     getRouteMatrixFunc,
-			GeoClient:            &geoClient,
+			// GeoClient:            &geoClient,
 			IPLoc:                ipLocator,
 			Storer:               db,
 			RedisClientPortal:    redisClientPortal,
