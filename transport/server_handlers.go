@@ -371,7 +371,7 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 		// this test by spoofing source ip address
 
 		// Check if the sdk version is too old
-		if !incoming.SourceAddr.IP.IsLoopback() && packet.Version.AtLeast(SDKVersionMin) {
+		if !incoming.SourceAddr.IP.IsLoopback() && !packet.Version.AtLeast(SDKVersionMin) {
 			fmt.Printf("ignoring old sdk version: %s\n", packet.Version.String())
 			// level.Error(params.Logger).Log("msg", "ignoring old sdk version", "version", packet.Version.String())
 			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
