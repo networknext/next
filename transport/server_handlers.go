@@ -152,7 +152,17 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 		// are an anti-pattern. Read the code. The comments can lie to you, so you'll just end up reading the code anyway...
 		// save comments for important stuff that aren't immediately obvious from reading the code, the context around the code
 		// or why it is the way it is. not just a *description* of what the code does. don't just describe the code in comments.
-		// i can read code. i won't read the comments, i'll just read the code instead, always.
+		// i can read code. i won't read the comments, if they just describe what the code does, i'll just read the code instead, always.
+
+		// --------------------------------------------------------------------
+
+		// Server init is called when the server first starts up.
+		// Its purpose is to give feedback to people integrating our SDK into their game server when something is not setup correctly.
+		// For example, if they have not setup the datacenter name, or the datacenter name does not exist, it will tell them this.
+		
+		// IMPORTANT: Server init is a new concept that only exists in SDK 3.4.5 and greater.
+
+		// Psyonix is currently on an older SDK version, so server inits don't show up for them.
 
 		start := time.Now()
 		defer func() {
@@ -167,6 +177,8 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 
 		atomic.AddUint64(&params.Counters.Packets, 1)
 
+		// Read the server init packet. We can do this all at once because the server init packet includes the SDK version.
+
 		var packet ServerInitRequestPacket
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
 			params.Metrics.ErrorMetrics.ReadPacketFailure.Add(1)
@@ -174,12 +186,15 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 		}
 
 		// todo: in the old code we checked if this buyer had the "internal" flag set, and then in that case we
-		// allowed 0.0.0 version. this is a better approach than checking source ip address for loopback.
+		// allowed 0.0.0 version. this is a MUCH better approach than checking source ip address for loopback.
 		if !incoming.SourceAddr.IP.IsLoopback() && !packet.Version.AtLeast(SDKVersionMin) {
 			params.Metrics.ErrorMetrics.SDKTooOld.Add(1)
 			writeServerInitResponse(params, w, &packet, InitResponseOldSDKVersion)
 			return
 		}
+
+		// We need to look up the buyer from the customer id included in the packet.
+		// If the buyer does not exist, then the user has probably not setup their customer private/public keypair correctly.
 
 		buyer, err := params.Storer.Buyer(packet.CustomerID)
 		if err != nil {
@@ -188,18 +203,38 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 			return
 		}
 
+		// Now that we have the buyer, we know the public key that corresponds to this customer's private key.
+		// Only the customer knows their private key, but we can use the public key to cryptographically check
+		// that this server init packet was signed by somebody with the private key. This is how we ensure that
+		// only real customer servers are allowed on our system.
+
 		if !crypto.Verify(buyer.PublicKey, packet.GetSignData(), packet.Signature) {
 			params.Metrics.ErrorMetrics.VerificationFailure.Add(1)
 			writeServerInitResponse(params, w, &packet, InitResponseSignatureCheckFailed)
 			return
 		}
 
-		_, err = params.Storer.Datacenter(packet.DatacenterID)
+		// If the datacenter does not exist, the user has probably not set the datacenter string correctly
+		// on their server instance, or the datacenter name they are passing in does not exist (yet).
+
+		// IMPORTANT: In the future, we will extend the SDK to pass in the datacenter name as a string
+		// because it's really difficult to debug what the incorrectly datacenter string is, when we only
+		// see the hash :(
+
+		_, err = params.Storer.Datacenter(packet.DatacenterID)			// todo: profiling indicates this function is slow. please investigate ryan.
 		if err != nil {
 			params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
 			writeServerInitResponse(params, w, &packet, InitResponseUnknownDatacenter)
 			return
 		}
+
+		// If we get down here, all checks have passed and this server is OK to init.
+		// Once a server inits, it goes into a mode where it can potentially monitor and accelerate sessions.
+		// After 10 seconds, if the server fails to init, it will fall back to direct and never monitor or accelerate sessions until it is restarted.
+
+		// IMPORTANT: In a future SDK version, it is probably important that we extend the server code to retry
+		// initialization, since right now it only re-initializes if that server is restarted, and we can't rely
+		// on all our customers to regularly restart their servers (although Psyonix *does*).
 
 		writeServerInitResponse(params, w, &packet, InitResponseOK)
 	}
