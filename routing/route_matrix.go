@@ -22,6 +22,10 @@ const (
 	RouteMatrixVersion = 6
 )
 
+// todo: ryan, there's absolutely no reason to keep compatibility past the last route matrix version in production
+// currently that is version 5. this means we can drop anything before route matrix version 5.
+// the versioning code and tests are super complex :(
+
 type RouteMatrixEntry struct {
 	DirectRTT      int32
 	NumRoutes      int32
@@ -103,7 +107,7 @@ func (m *RouteMatrix) GetNearRelays(latitude float64, longitude float64, maxNear
 	_ = lat1
 	_ = long1
 
-	// IMPORTANT: Here we stable sort by distance
+	// IMPORTANT: Sort near relays by distance using a *stable sort*
 	// This is necessary to ensure that relays are always sorted in the same order,
 	// even when some relays have the same integer distance from the client. Without this
 	// the set of near relays passed down to the SDK can be different from one slice to the next!
@@ -648,8 +652,16 @@ func (m *RouteMatrix) MarshalBinary() ([]byte, error) {
 
 	if RouteMatrixVersion >= 6 {
 
+		if len(m.RelayLatitude) != numRelays {
+			return nil, fmt.Errorf("bad relay latitude array length")
+		}
+
 		for i := range m.RelayLatitude {
 			encoding.WriteFloat64(data, &index, m.RelayLatitude[i])
+		}
+
+		if len(m.RelayLongitude) != numRelays {
+			return nil, fmt.Errorf("bad relay longitude array length")
 		}
 
 		for i := range m.RelayLongitude {
@@ -720,26 +732,22 @@ func (m *RouteMatrix) Size() uint64 {
 	var length uint64
 	numRelays := uint64(len(m.RelayIDs))
 	numDatacenters := uint64(len(m.DatacenterIDs))
-	// same as CostMatrix's
 	length = 4 + 4 + 8*numRelays
 
 	for _, name := range m.RelayNames {
-		// same as CostMatrix's
 		length += uint64(4 + len(name))
 	}
 
-	// same as CostMatrix's
 	length += 8 + 8*numDatacenters
 
 	for _, name := range m.DatacenterNames {
-		// same as CostMatrix's
 		length += uint64(4 + len(name))
 	}
 
-	// same as CostMatrix's
 	length += numRelays*uint64(MaxRelayAddressLength+crypto.KeySize) + 4
 
-	// same as CostMatrix's
+	length += numRelays*8*2
+
 	for _, v := range m.DatacenterRelays {
 		length += uint64(8 + 4 + 8*len(v))
 	}

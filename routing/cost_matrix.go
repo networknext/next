@@ -378,6 +378,8 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 	routes.RelayIDs = m.RelayIDs
 	routes.RelayNames = m.RelayNames
 	routes.RelayAddresses = m.RelayAddresses
+	routes.RelayLatitude = make([]float64, len(m.RelayIDs))		// todo: m.RelayLatitude
+	routes.RelayLongitude = make([]float64, len(m.RelayIDs))	// todo: m.RelayLongitude
 	routes.RelayPublicKeys = m.RelayPublicKeys
 	routes.DatacenterIDs = m.DatacenterIDs
 	routes.DatacenterNames = m.DatacenterNames
