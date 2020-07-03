@@ -523,7 +523,7 @@ func main() {
 		// Start a goroutine to timeout servers
 		go func() {
 			timeout := time.Second * 30
-			frequency := time.Millisecond * 30
+			frequency := time.Millisecond * 10
 			ticker := time.NewTicker(frequency)
 			serverMap.TimeoutLoop(ctx, timeout, ticker.C)
 		}()
@@ -531,7 +531,7 @@ func main() {
 		// Start a goroutine to timeout sessions
 		go func() {
 			timeout := time.Second * 30
-			frequency := time.Millisecond * 30
+			frequency := time.Millisecond * 10
 			ticker := time.NewTicker(frequency)
 			sessionMap.TimeoutLoop(ctx, timeout, ticker.C)
 		}()

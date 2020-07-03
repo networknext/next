@@ -74,7 +74,7 @@ func (sessionMap *SessionMap) TimeoutLoop(ctx context.Context, timeout time.Dura
 				sessionMap.shard[index].mutex.Lock()
 				numSessionIterations := 0
 				for k, v := range sessionMap.shard[index].sessions {
-					if numSessionIterations > 10 {
+					if numSessionIterations > 3 {
 						break
 					}
 					if v.timestamp < timeoutTimestamp {
