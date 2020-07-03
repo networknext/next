@@ -659,8 +659,10 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 		response.NumNearRelays = int32(len(nearRelays))
 		response.NearRelayIDs = make([]uint64, len(nearRelays))
 		response.NearRelayAddresses = make([]net.UDPAddr, len(nearRelays))
-		for i, relay := range issuedNearRelays {
+		for i, relay := range nearRelays {
 			// todo: fill in near relay data
+			_ = relay
+			_ = i
 			/*
 			response.NearRelayIDs[i] = relay.ID
 			response.NearRelayAddresses[i] = relay.Addr
