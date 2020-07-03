@@ -705,7 +705,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 		}
 
 		// Create the default response packet with a direct route and same SDK version as the server data.
-		// This makes sure that we respond to the SDK with the packet version it expects.
+		// This makes sure that we respond to the session update with the packet version the SDK expects.
 
 		directRoute := routing.Route{}
 
@@ -756,7 +756,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			}
 		}
 
-		// todo: ryan, please anonymize the IP address here
+		// todo: ryan, please anonymize the IP address here. make sure it is anonymized *in place* not on a copy. also, clear the from pointer to nil!
 
 		// Use the route matrix to get a list of relays near the lat/long of the client
 		// These near relays are returned back down to the SDK for this slice. The SDK then pings these relays, 
@@ -812,9 +812,12 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket, response *SessionResponsePacket, serverData *ServerData,
 	chosenRoute *routing.Route, lastNextStats *routing.Stats, lastDirectStats *routing.Stats, location *routing.Location, prevOnNetworkNext bool) {
 
-	// todo: we actually need to display the true datacenter name in the anonymous, and the supplier view.
+	// IMPORTANT: we actually need to display the true datacenter name in the demo and demo plus views,
 	// while in the customer view of the portal, we need to display the alias. this is because aliases will
-	// become per-customer, thus there is really no global "multiplay.losangeles" or whatever.
+	// shortly become per-customer, thus there is really no global concept of "multiplay.losangeles", for example.
+
+	// todo: ryan, please make it so. you'll probably have to send both datacenter names down to the portal
+	// and let the portal select which one to display, depending on context.
 
 	// Determine the datacenter name to display on the portal
 	datacenterName := serverData.datacenter.Name
