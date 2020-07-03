@@ -735,7 +735,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			return
 		}
 
-		// IMPORTANT: The session data must be treated as *read only* or it is not threadsafe!
+		// IMPORTANT: The session data *must* be treated as read only or it is not threadsafe!
 		sessionMutexStart := time.Now()
 		sessionDataReadOnly := params.SessionMap.GetSessionData(header.SessionID)
 		if time.Since(sessionMutexStart).Seconds() > 0.1 {
@@ -743,6 +743,54 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 		}
 		if sessionDataReadOnly == nil {
 			sessionDataReadOnly = &SessionData{}
+		}
+
+		// Check the packet sequence number vs. the most recent sequence number in redis.
+		// The packet sequence number must be at least as old as the current session sequence #
+		// otherwise this is a stale session update packet from an older slice. When this happens, just ignore it.
+
+		// todo: ryan please extend the SessionData to include the sequence, and update the code below to work with the new style
+		// IMPORTANT: make sure the sequence is written to the session data in the writeSessionResponse fn or it will break.
+
+		/*
+		switch seq := packet.Sequence; {
+		case seq < sessionCacheEntry.Sequence:
+			err := fmt.Errorf("packet sequence too old. current_sequence %v, previous sequence %v", packet.Sequence, sessionCacheEntry.Sequence)
+			level.Error(locallogger).Log("err", err)
+			if _, err := writeSessionErrorResponse(w, response, serverPrivateKey, metrics.DirectSessions, metrics.ErrorMetrics.UnserviceableUpdate, metrics.ErrorMetrics.OldSequence); err != nil {
+
+				level.Error(locallogger).Log("msg", "failed to write session error response", "err", err)
+				metrics.ErrorMetrics.WriteResponseFailure.Add(1)
+			}
+			return
+		case seq == sessionCacheEntry.Sequence:
+			if _, err := w.Write(sessionCacheEntry.Response); err != nil {
+
+				level.Error(locallogger).Log("err", err)
+				metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+				metrics.ErrorMetrics.WriteCachedResponseFailure.Add(1)
+			}
+			return
+		}
+		*/
+
+		// Look up the buyer entry by the customer id. At this point if we can't find it, just ignore the session and don't respond.
+		// If somebody is sending us a session update with an invalid customer id, we don't need to waste any bandwidth responding to it.
+
+		buyer, err := params.Storer.Buyer(packet.CustomerID)
+		if err != nil {
+			// level.Error(locallogger).Log("msg", "failed to get buyer from storage", "err", err, "customer_id", packet.CustomerID)
+			// todo: ryan we need a metric for this
+			return
+		}
+
+		// Check the session update packet is properly signed with the customer private key.
+		// Any session update not signed is invalid, so we don't waste bandwidth responding to it.
+
+		if !crypto.Verify(buyer.PublicKey, packet.GetSignData(), packet.Signature) {
+			// todo: log error ryan, but comment it out
+			// todo: ryan, there should be a metric for this
+			return
 		}
 
 		// Create the default response packet with a direct route and same SDK version as the server data.
@@ -808,6 +856,8 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 
 		// ...
 
+		// ================================================================
+
 		// Get the route matrix pointer
 		// routeMatrix := params.GetRouteProvider()
 
@@ -846,7 +896,22 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			}
 		*/
 
-		sendRouteResponse(w, &directRoute, params, &packet, &response, serverData, &lastNextStats, &lastDirectStats, &location)
+		// ================================================================
+
+		// todo: get real route :)
+
+		bestRoute := directRoute
+
+		// Send a session update response back to the SDK.
+
+		// IMPORTANT: If the SDK does not receive a session update response quickly, it will resending the session update packet
+		// to us 10X every second. This is extremely aggressive resend behavior, and in hindsight was probably a mistake on our part.
+		// Even so, we want to avoid it if at all possible, because it greatly increases the number of packets we have to process, 
+		// and the cost to us to service each session.
+
+		// IMPORTANT: In future SDK versions we are much less aggressive with session update packet retries. eg. 3.4.5 and later.
+
+		sendRouteResponse(w, &bestRoute, params, &packet, &response, serverData, &lastNextStats, &lastDirectStats, &location)
 	}
 }
 
