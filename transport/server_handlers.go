@@ -749,7 +749,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			if err != nil {
 				params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 				params.Metrics.ErrorMetrics.ClientLocateFailure.Add(1)
-				// IMPORTANT: We send a direct route response here because we still want to see sessions in our portal, even if we can't ip2loc them
+				// IMPORTANT: We send a direct route response here because we want to see the session in our total session count, even if we can't ip2loc them.
 				// Context: As soon as we don't respond to a session update, the SDK "falls back to direct" and stops sending session update packets.
 				sendRouteResponse(w, &directRoute, params, &packet, &response, serverData, &lastNextStats, &lastDirectStats, &location)
 				return
@@ -757,6 +757,15 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 		}
 
 		// todo: ryan, please anonymize the IP address here
+
+		// Use the route matrix to get a list of relays near the lat/long of the client
+		// These near relays are returned back down to the SDK for this slice. The SDK then pings these relays, 
+		// and reports back up to us in the next session update the result of these pings. We use the near relay
+		// pings to know the cost of the first hop, from the client to the first relay in their route.
+
+		// todo: get route matrix, and get near relays from the route matrix instead of geoloc. geoloc is too slow (redis).
+
+		// ...
 
 		// Get the route matrix pointer
 		// routeMatrix := params.GetRouteProvider()
