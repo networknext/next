@@ -148,17 +148,16 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 
 	return func(w io.Writer, incoming *UDPPacket) {
 
-		// I have removed the comments below because comments that just duplicate what the code is doing below
-		// are an anti-pattern. Read the code. The comments can lie to you, so you'll just end up reading the code anyway...
+		// I have removed the comments below because comments that just duplicate what the code is doing.
+		// Read the code. The comments can lie to you, so you'll just end up reading the code anyway...
 		// save comments for important stuff that aren't immediately obvious from reading the code, the context around the code
-		// or why it is the way it is. not just a *description* of what the code does. don't just describe the code in comments.
-		// i can read code. i won't read the comments, if they just describe what the code does, i'll just read the code instead, always.
+		// or why it is the way it is. not just a *description* of what the code does!
 
 		// --------------------------------------------------------------------
 
 		// Server init is called when the server first starts up.
 		// Its purpose is to give feedback to people integrating our SDK into their game server when something is not setup correctly.
-		// For example, if they have not setup the datacenter name, or the datacenter name does not exist, it will tell them this.
+		// For example, if they have not setup the datacenter name, or the datacenter name does not exist, it will tell them.
 		
 		// IMPORTANT: Server init is a new concept that only exists in SDK 3.4.5 and greater.
 
@@ -185,8 +184,8 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 			return
 		}
 
-		// todo: in the old code we checked if this buyer had the "internal" flag set, and then in that case we
-		// allowed 0.0.0 version. this is a MUCH better approach than checking source ip address for loopback.
+		// todo: ryan. in the old code we checked if this buyer had the "internal" flag set, and then only in that case we
+		// allowed 0.0.0 version. this is a MUCH better approach than checking source ip address for loopback. please fix.
 		if !incoming.SourceAddr.IP.IsLoopback() && !packet.Version.AtLeast(SDKVersionMin) {
 			params.Metrics.ErrorMetrics.SDKTooOld.Add(1)
 			writeServerInitResponse(params, w, &packet, InitResponseOldSDKVersion)
@@ -204,7 +203,7 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 		}
 
 		// Now that we have the buyer, we know the public key that corresponds to this customer's private key.
-		// Only the customer knows their private key, but we can use the public key to cryptographically check
+		// Only the customer knows their private key, but we can use their public key to cryptographically check
 		// that this server init packet was signed by somebody with the private key. This is how we ensure that
 		// only real customer servers are allowed on our system.
 
@@ -232,116 +231,15 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 		// Once a server inits, it goes into a mode where it can potentially monitor and accelerate sessions.
 		// After 10 seconds, if the server fails to init, it will fall back to direct and never monitor or accelerate sessions until it is restarted.
 
-		// IMPORTANT: In a future SDK version, it is probably important that we extend the server code to retry
-		// initialization, since right now it only re-initializes if that server is restarted, and we can't rely
-		// on all our customers to regularly restart their servers (although Psyonix *does*).
+		// IMPORTANT: In a future SDK version, it is probably important that we extend the server code to retry initialization, 
+		// since right now it only re-initializes if that server is restarted, and we can't rely on all our customers to regularly 
+		// restart their servers (although Psyonix does do this).
 
 		writeServerInitResponse(params, w, &packet, InitResponseOK)
 	}
 }
 
 // ==========================================================================================
-
-/*
-func ServerInitHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, metrics *metrics.ServerInitMetrics, serverPrivateKey []byte) UDPHandlerFunc {
-
-	// todo: temporarily disabled
-
-	logger = log.With(logger, "handler", "init")
-
-	return func(w io.Writer, incoming *UDPPacket) {
-		durationStart := time.Now()
-		defer func() {
-			durationSince := time.Since(durationStart)
-			level.Info(logger).Log("duration", durationSince.Milliseconds())
-			metrics.Invocations.Add(1)
-		}()
-
-		var packet ServerInitRequestPacket
-		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
-			level.Error(logger).Log("msg", "could not read packet", "err", err)
-			metrics.ErrorMetrics.UnmarshalFailure.Add(1)
-			return
-		}
-
-		locallogger := log.With(
-			logger,
-			"src_addr", incoming.SourceAddr.String(),
-			"request_id", packet.RequestID,
-			"customer_id", packet.CustomerID,
-			"datacenter_id", packet.DatacenterID,
-			"sdk", packet.Version.String(),
-		)
-
-		response := ServerInitResponsePacket{
-			RequestID: packet.RequestID,
-			Response:  InitResponseOK,
-			Version:   packet.Version,
-		}
-		defer func() {
-			if err := writeInitResponse(w, response, serverPrivateKey); err != nil {
-				level.Error(locallogger).Log("msg", "failed to write init response", "err", err)
-			}
-		}()
-
-		if !incoming.SourceAddr.IP.IsLoopback() && !packet.Version.AtLeast(SDKVersionMin) {
-			level.Error(locallogger).Log("msg", "sdk version is too old")
-			response.Response = InitResponseOldSDKVersion
-			metrics.ErrorMetrics.SDKTooOld.Add(1)
-			return
-		}
-
-		_, err := storer.Datacenter(packet.DatacenterID)
-		if err != nil {
-			// Log and track the missing datacenter metric, but don't respond with an error to the SDK
-			// as to allow the ServerUpdateHandlerFunc and SessionUpdateHandlerFunc to carry on working
-
-			level.Error(locallogger).Log("msg", "failed to get datacenter from storage", "err", err)
-			metrics.ErrorMetrics.DatacenterNotFound.Add(1)
-		}
-
-		buyer, err := storer.Buyer(packet.CustomerID)
-		if err != nil {
-			level.Error(locallogger).Log("msg", "failed to get buyer from storage", "err", err)
-			response.Response = InitResponseUnknownCustomer
-			metrics.ErrorMetrics.BuyerNotFound.Add(1)
-			return
-		}
-
-		if !crypto.Verify(buyer.PublicKey, packet.GetSignData(), packet.Signature) {
-			level.Error(locallogger).Log("msg", "signature verification failed")
-			response.Response = InitResponseSignatureCheckFailed
-			metrics.ErrorMetrics.VerificationFailure.Add(1)
-			return
-		}
-
-		// Check if a cache entry exists for this server already in redis, and if so, remove it
-		// so that the server can update probably without packet sequence issues.
-		// This prevents the case where a server restarts but doesn't give the backend enough
-		// time to expire the entry in redis.
-		serverCacheKey := fmt.Sprintf("SERVER-%d-%s", packet.CustomerID, incoming.SourceAddr.String())
-		result := redisClient.Get(serverCacheKey)
-		if result.Err() != nil && result.Err() != redis.Nil {
-			level.Error(locallogger).Log("msg", "failed to get server in init", "err", result.Err())
-			return
-		}
-
-		// If there was no error, then the entry was found, so remove it
-		if err == nil && result.Val() != "" {
-			result := redisClient.Del(serverCacheKey)
-			if result.Err() != nil {
-				level.Error(locallogger).Log("msg", "failed to delete server cache entry in init", "server", serverCacheKey, "err", result.Err())
-				return
-			}
-
-			if result.Val() == 0 {
-				level.Error(locallogger).Log("msg", "could not find server cache entry in init to delete", "server", serverCacheKey, "err", result.Err())
-				return
-			}
-		}
-	}
-}
-*/
 
 type ServerCacheEntry struct {
 	Sequence   uint64
@@ -448,6 +346,22 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 			datacenter.ID = packet.DatacenterID
 		}
 
+		// UDP packets may arrive out of order. So that we don't have stale server update packets arriving late and
+		// ruining our server map with stale information, we must check the session update sequence number, and discard
+		// any session updates that are not more recent than the version we currently have stored in the server map.
+
+		// todo: ryan please implement the logic above. old code is below for reference.
+
+		/*
+		// Drop the packet if the sequence number is older than the previously cached sequence number
+		if packet.Sequence < serverentry.Sequence {
+			level.Error(locallogger).Log("msg", "packet too old", "packet sequence", packet.Sequence, "lastest sequence", serverentry.Sequence)
+			metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+			metrics.ErrorMetrics.PacketSequenceTooOld.Add(1)
+			return
+		}
+		*/
+
 		// Each one of our customer's servers reports to us with this server update packet every 10 seconds.
 		// Therefore we must update the server data each time we receive an update, to keep this server entry live in our server map.
 		// When we don't receive an update for a server for a certain period of time (for example 30 seconds), that server entry times out.
@@ -467,143 +381,6 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 }
 
 // =============================================================================
-
-// todo: cut down
-/*
-func ServerUpdateHandlerFunc(logger log.Logger, redisClient redis.Cmdable, storer storage.Storer, metrics *metrics.ServerUpdateMetrics) UDPHandlerFunc {
-
-	return func(w io.Writer, incoming *UDPPacket) {
-		var packet ServerUpdatePacket
-		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
-			fmt.Printf("could not read server update packet!\n")
-			return
-		}
-		serverAddress := packet.ServerAddress.String()
-		// todo: store the info we need by server address in the server map
-		_ = serverAddress
-	}
-
-	/*
-	logger = log.With(logger, "handler", "server")
-
-	return func(w io.Writer, incoming *UDPPacket) {
-		durationStart := time.Now()
-		defer func() {
-			durationSince := time.Since(durationStart)
-			level.Info(logger).Log("duration", durationSince.Milliseconds())
-			metrics.Invocations.Add(1)
-		}()
-
-		var packet ServerUpdatePacket
-		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
-			level.Error(logger).Log("msg", "could not read packet", "err", err)
-			metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-			metrics.ErrorMetrics.UnmarshalFailure.Add(1)
-			return
-		}
-
-		serverCacheKey := fmt.Sprintf("SERVER-%d-%s", packet.CustomerID, packet.ServerAddress.String())
-
-		locallogger := log.With(logger, "src_addr", incoming.SourceAddr.String(), "server_addr", packet.ServerAddress.String())
-
-		// Drop the packet if version is older that the minimun sdk version
-		if !incoming.SourceAddr.IP.IsLoopback() && !packet.Version.AtLeast(SDKVersionMin) {
-			level.Error(locallogger).Log("msg", "sdk version is too old", "sdk", packet.Version.String())
-			metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-			metrics.ErrorMetrics.SDKTooOld.Add(1)
-			return
-		}
-
-		locallogger = log.With(locallogger, "sdk", packet.Version.String())
-
-		// Get the buyer information for the id in the packet
-		buyer, err := storer.Buyer(packet.CustomerID)
-		if err != nil {
-			level.Error(locallogger).Log("msg", "failed to get buyer from storage", "err", err, "customer_id", packet.CustomerID)
-			metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-			metrics.ErrorMetrics.BuyerNotFound.Add(1)
-			return
-		}
-
-		datacenter, err := storer.Datacenter(packet.DatacenterID)
-		if err != nil {
-			// Check if there is a datacenter with this alias
-			var datacenterAliasFound bool
-			allDatacenters := storer.Datacenters()
-			for _, d := range allDatacenters {
-				if packet.DatacenterID == crypto.HashID(d.AliasName) {
-					datacenter = d
-					datacenterAliasFound = true
-					break
-				}
-			}
-
-			if !datacenterAliasFound {
-				level.Error(locallogger).Log("msg", "failed to get datacenter from storage", "err", err, "customer_id", packet.CustomerID)
-				metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-				metrics.ErrorMetrics.DatacenterNotFound.Add(1)
-
-				// Don't return early, just set an UnknownDatacenter so the ServerCacheEntry gets sets so its used by SessionUpdateHandlerFunc
-				datacenter = routing.UnknownDatacenter
-				datacenter.ID = packet.DatacenterID
-			}
-		}
-
-		locallogger = log.With(locallogger, "customer_id", packet.CustomerID)
-
-		// Drop the packet if the signed packet data cannot be verified with the buyers public key
-		if !crypto.Verify(buyer.PublicKey, packet.GetSignData(), packet.Signature) {
-			level.Error(locallogger).Log("msg", "signature verification failed")
-			metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-			metrics.ErrorMetrics.VerificationFailure.Add(1)
-			return
-		}
-
-		// Get the the old ServerCacheEntry if it exists, otherwise serverentry is in zero value state
-		var serverentry ServerCacheEntry
-		{
-			result := redisClient.Get(serverCacheKey)
-			if result.Err() != nil && result.Err() != redis.Nil {
-				level.Error(locallogger).Log("msg", "failed to get server", "err", result.Err())
-				return
-			}
-			serverdata, err := result.Bytes()
-			if err != nil && result.Err() != redis.Nil {
-				level.Error(locallogger).Log("msg", "failed to get server bytes", "err", err)
-				return
-			}
-			if serverdata != nil {
-				if err := serverentry.UnmarshalBinary(serverdata); err != nil {
-					level.Error(locallogger).Log("msg", "failed to unmarshal server bytes", "err", err)
-				}
-			}
-		}
-
-		// Drop the packet if the sequence number is older than the previously cached sequence number
-		if packet.Sequence < serverentry.Sequence {
-			level.Error(locallogger).Log("msg", "packet too old", "packet sequence", packet.Sequence, "lastest sequence", serverentry.Sequence)
-			metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-			metrics.ErrorMetrics.PacketSequenceTooOld.Add(1)
-			return
-		}
-
-		// Save some of the packet information to be used in SessionUpdateHandlerFunc
-		serverentry = ServerCacheEntry{
-			Sequence:   packet.Sequence,
-			Server:     routing.Server{Addr: packet.ServerPrivateAddress, PublicKey: packet.ServerRoutePublicKey},
-			Datacenter: datacenter,
-			SDKVersion: packet.Version,
-		}
-		result := redisClient.Set(serverCacheKey, serverentry, 60*time.Second)
-		if result.Err() != nil {
-			level.Error(locallogger).Log("msg", "failed to update server", "err", result.Err())
-			return
-		}
-
-		level.Debug(locallogger).Log("msg", "updated server")
-	}
-}
-*/
 
 type SessionCacheEntry struct {
 	CustomerID                 uint64
@@ -946,7 +723,6 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 	// todo: ryan, please make it so. you'll probably have to send both datacenter names down to the portal
 	// and let the portal select which one to display, depending on context.
 
-	// Determine the datacenter name to display on the portal
 	datacenterName := serverData.datacenter.Name
 	if serverData.datacenter.AliasName != "" {
 		datacenterName = serverData.datacenter.AliasName
@@ -959,7 +735,8 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 		params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 	}
 
-	if err := submitBillingEntry(params.Biller, &ServerCacheEntry{}, 0, packet, response, &routing.Buyer{}, &routing.Route{}, &routing.LocationNullIsland,
+	// todo: ryan please update this with all information we have available. we no longer need to fully pass in dummy values.
+	if err := submitBillingEntry(params.Biller, &ServerCacheEntry{}, 0, packet, response, &routing.Buyer{}, chosenRoute, location,
 		params.Storer, nil, routing.Decision{}, billing.BillingSliceSeconds, time.Now(), time.Now(), false); err != nil {
 		fmt.Printf("could not write billing entry: %v\n", err)
 		// level.Error(params.Logger).Log("msg", "could not write billing entry", "err", err)
