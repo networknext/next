@@ -253,18 +253,6 @@ run-test-func-parallel:
 .PHONY: test-func-parallel
 test-func-parallel: build-test-func-parallel run-test-func-parallel ## runs functional tests in parallel
 
-.PHONY: build-sdk-test
-build-sdk-test: build-sdk ## builds the sdk test binary
-	@printf "Building sdk test... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/$(SDKNAME)_test ./sdk/test.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
-	@printf "done\n"
-
-.PHONY: build-soak-test
-build-soak-test: build-sdk ## builds the sdk soak test binary
-	@printf "Building soak test... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/$(SDKNAME)_soak_test ./sdk/soak.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
-	@printf "done\n"
-
 #######################
 # Relay Build Process #
 #######################

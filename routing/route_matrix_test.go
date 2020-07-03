@@ -84,6 +84,9 @@ func getPopulatedRouteMatrix(malformed bool) *routing.RouteMatrix {
 
 	matrix.UpdateRelayAddressCache()
 
+	matrix.RelayLatitude = []float64{1.0, 2.0}
+	matrix.RelayLongitude = []float64{3.0, 4.0}
+
 	return &matrix
 }
 
@@ -260,6 +263,8 @@ func routeMatrixUnmarshalAssertionsVer5(t *testing.T, matrix *routing.RouteMatri
 	assert.Equal(t, matrix.RelaySessionCounts, sessionCounts)
 	assert.Equal(t, matrix.RelayMaxSessionCounts, maxSessionCounts)
 }
+
+// todo: ryan, v6
 
 type routeMatrixData struct {
 	buff             []byte
@@ -715,12 +720,12 @@ func TestRouteMatrixUnmarshalBinaryV0(t *testing.T) {
 	t.Run("version of incoming bin data too high", func(t *testing.T) {
 		buff := make([]byte, 4)
 		offset := 0
-		putVersionNumber(buff, &offset, 6)
+		putVersionNumber(buff, &offset, 100)
 		var matrix routing.RouteMatrix
 
 		err := matrix.UnmarshalBinary(buff)
 
-		assert.EqualError(t, err, "unknown route matrix version: 6")
+		assert.EqualError(t, err, "unknown route matrix version: 100")
 	})
 
 	t.Run("Invalid version read", func(t *testing.T) {
@@ -840,12 +845,12 @@ func TestRouteMatrixUnmarshalBinaryV1(t *testing.T) {
 	t.Run("version of incoming bin data too high", func(t *testing.T) {
 		buff := make([]byte, 4)
 		offset := 0
-		putVersionNumber(buff, &offset, 6)
+		putVersionNumber(buff, &offset, 100)
 		var matrix routing.RouteMatrix
 
 		err := matrix.UnmarshalBinary(buff)
 
-		assert.EqualError(t, err, "unknown route matrix version: 6")
+		assert.EqualError(t, err, "unknown route matrix version: 100")
 	})
 
 	t.Run("Invalid version read", func(t *testing.T) {
@@ -973,12 +978,12 @@ func TestRouteMatrixUnmarshalBinaryV2(t *testing.T) {
 	t.Run("version of incoming bin data too high", func(t *testing.T) {
 		buff := make([]byte, 4)
 		offset := 0
-		putVersionNumber(buff, &offset, 6)
+		putVersionNumber(buff, &offset, 100)
 		var matrix routing.RouteMatrix
 
 		err := matrix.UnmarshalBinary(buff)
 
-		assert.EqualError(t, err, "unknown route matrix version: 6")
+		assert.EqualError(t, err, "unknown route matrix version: 100")
 	})
 
 	t.Run("Invalid version read", func(t *testing.T) {
@@ -1138,12 +1143,12 @@ func TestRouteMatrixUnmarshalBinaryV3(t *testing.T) {
 	t.Run("version of incoming bin data too high", func(t *testing.T) {
 		buff := make([]byte, 4)
 		offset := 0
-		putVersionNumber(buff, &offset, 6)
+		putVersionNumber(buff, &offset, 100)
 		var matrix routing.RouteMatrix
 
 		err := matrix.UnmarshalBinary(buff)
 
-		assert.EqualError(t, err, "unknown route matrix version: 6")
+		assert.EqualError(t, err, "unknown route matrix version: 100")
 	})
 
 	t.Run("Invalid version read", func(t *testing.T) {
@@ -1302,12 +1307,12 @@ func TestRouteMatrixUnmarshalBinaryV4(t *testing.T) {
 	t.Run("version of incoming bin data too high", func(t *testing.T) {
 		buff := make([]byte, 4)
 		offset := 0
-		putVersionNumber(buff, &offset, 6)
+		putVersionNumber(buff, &offset, 100)
 		var matrix routing.RouteMatrix
 
 		err := matrix.UnmarshalBinary(buff)
 
-		assert.EqualError(t, err, "unknown route matrix version: 6")
+		assert.EqualError(t, err, "unknown route matrix version: 100")
 	})
 
 	t.Run("Invalid version read", func(t *testing.T) {
@@ -1503,12 +1508,12 @@ func TestRouteMatrixUnmarshalBinaryV5(t *testing.T) {
 	t.Run("version of incoming bin data too high", func(t *testing.T) {
 		buff := make([]byte, 4)
 		offset := 0
-		putVersionNumber(buff, &offset, 6)
+		putVersionNumber(buff, &offset, 100)
 		var matrix routing.RouteMatrix
 
 		err := matrix.UnmarshalBinary(buff)
 
-		assert.EqualError(t, err, "unknown route matrix version: 6")
+		assert.EqualError(t, err, "unknown route matrix version: 100")
 	})
 
 	t.Run("Invalid version read", func(t *testing.T) {
@@ -1764,6 +1769,8 @@ func TestRouteMatrixMarshalBinary(t *testing.T) {
 		assert.EqualError(t, err, errorString.Error())
 	})
 }
+
+// todo: Ryan, please add v6
 
 func TestRouteMatrixServerHTTP(t *testing.T) {
 	t.Run("Successful Serve", func(t *testing.T) {

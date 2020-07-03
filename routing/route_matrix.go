@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
+	"sort"
 
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
@@ -18,7 +19,7 @@ import (
 
 const (
 	// IMPORTANT: Increment this when you change the binary format
-	RouteMatrixVersion = 5
+	RouteMatrixVersion = 6
 )
 
 type RouteMatrixEntry struct {
@@ -35,6 +36,8 @@ type RouteMatrix struct {
 	RelayIDs              []uint64
 	RelayNames            []string
 	RelayAddresses        [][]byte
+	RelayLatitude		  []float64
+	RelayLongitude		  []float64
 	RelayPublicKeys       [][]byte
 	DatacenterRelays      map[uint64][]uint64
 	DatacenterIDs         []uint64
@@ -56,16 +59,60 @@ type NearRelayData struct {
 	Address *net.UDPAddr
 }
 
+func Truncate(value float64) float64 {
+	return float64(int64(value))
+}
+
+func HaversineDistance(lat1 float64, long1 float64, lat2 float64, long2 float64) float64 {
+	lat1 *= math.Pi / 180
+	lat2 *= math.Pi / 180
+	long1 *= math.Pi / 180
+	long2 *= math.Pi / 180
+	delta_lat := lat2 - lat1
+	delta_long := long2 - long1
+	lat_sine := math.Sin(delta_lat / 2)
+	long_sine := math.Sin(delta_long / 2)
+	a := lat_sine*lat_sine + math.Cos(lat1)*math.Cos(lat2)*long_sine*long_sine
+	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
+	r := 6371.0
+	d := r * c
+	return d // kilometers
+}
+
 func (m *RouteMatrix) GetNearRelays(latitude float64, longitude float64, maxNearRelays int) []NearRelayData {
 
 	nearRelays := make([]NearRelayData, len(m.relayAddressCache))
 
+	// IMPORTANT: We truncate the lat/long values to nearest integer.
+	// This fixes numerical instabilities that can happen in the haversine function
+	// when two relays are really close together, they can get sorted differently in
+	// subsequent passes otherwise.
+
+	lat1 := Truncate(latitude)
+	long1 := Truncate(longitude)
+
 	for i := range m.RelayIDs {
 		nearRelays[i].ID = m.RelayIDs[i]
-		// todo
+		/*
+		lat2 := m.RelayLatitude[i]
+		long2 := m.RelayLongitude[i]
+		nearRelays[i].Distance = int(HaversineDistance(lat1, long1, lat2, long2))
+		*/
 	}
 
-	// todo: distance sort etc.
+	_ = lat1
+	_ = long1
+
+	// IMPORTANT: Here we stable sort by distance
+	// This is necessary to ensure that relays are always sorted in the same order,
+	// even when some relays have the same integer distance from the client. Without this
+	// the set of near relays passed down to the SDK can be different from one slice to the next!
+
+	sort.SliceStable(nearRelays, func(i, j int) bool { return nearRelays[i].Distance < nearRelays[j].Distance })
+
+	if len(nearRelays) > maxNearRelays {
+		nearRelays = nearRelays[:maxNearRelays]
+	}
 
 	return nearRelays
 }
@@ -141,15 +188,16 @@ func (m *RouteMatrix) RelaysIn(d Datacenter) []Relay {
 // as the argument to the second selector. If at any point a selector fails to select a new slice of routes,
 // the chain breaks.
 
-// todo: ryan, this function is no longer really doing what the comment above says it is.
+// todo: ^--- ryan, this function is no longer really doing what the comment above says it is.
 // in fact, it is getting the routes from the client, through the near relays (not "from" relays)
-// and to the set of relays (destination relays), according to the route selector func.
+// and to the set of dest relays (destination relays), according to the route selector func.
 
 // todo: ryan - I would simply call the function "GetRoutes". That explains that it is a function that does something, and gets something from the route matrix.
 
 func (m *RouteMatrix) Routes(from []Relay, fromCost []int, to []Relay, routeSelectors ...SelectorFunc) ([]Route, error) {
 	type RelayPairResult struct {
-		fromcost  int  // The cost between the client and the from relay
+		fromcost  int  // The cost between the client and the from relay   // todo: from* -> near*
+		// fromtoidx -> entryIndex
 		fromtoidx int  // The index in the route matrix entry
 		reverse   bool // Whether or not to reverse the relays to stay on the same side of the diagonal in the triangular matrix
 	}
@@ -332,38 +380,6 @@ func ParseAddress(input string) *net.UDPAddr {
 	return address
 }
 
-// todo: ryan, by documenting the structure here, instead of having it documented in the functions below, you have taken
-// two places you need to update everytime you make a change to the structure, and now you have three places you have
-// to update :) this comment is worse than just reading the code below it...
-
-/* Binary data outline for RouteMatrix v5: "->" means seqential elements in memory and not another section, "(...)" mean that section sequentially repeats for however many
- * Version number { uint32 }
- * Number of relays { uint32 }
- * Relay IDs { [NumberOfRelays]uint64 }
- * Relay Names { [NumberOfRelays]string }
- * Number of Datacenters { uint32 }
- * Datacenter ID { [NumberOfDatacenters]uint64 } -> Datacenter Name { [NumberOfDatacenters]string }
- * Relay Addresses { [NumberOfRelays][MaxRelayAddressLength]byte }
- * Relay Public Keys { [NumberOfRelays][crypto.KeySize]byte }
- * Number of Datacenters { uint32 }
- * Datacenter ID { uint64 } -> Number of Relays in Datacenter { uint32 } -> Relay IDs in Datacenter { [NumberOfRelaysInDatacenter]uint64 }
- * Entries { []RouteMatrixEntry } (
- * 	Direct RTT { uint32 }
- *	Number of routes { uint32 }
- *	Route RTT { [8]uint32 }
- *	Number of relays in the route { [8]uint32 }
- *	Relay IDs in each route { [8][5]uint64 }
- * )
- * Sellers { [NumberOfRelays]Seller } (
- *	ID { string }
- *	Name { string }
- * 	IngressPriceCents { uint64 }
- *	EgressPriceCents { uint64 }
- * )
- * Relay Session Counts { [NumberOfRelays]uint32 }
- * Relay Max Session Counts { [NumberOfRelays]uint32 }
- */
-
 func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 	index := 0
 
@@ -439,6 +455,23 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 		}
 	}
 
+	if version >= 6 {
+
+		m.RelayLatitude = make([]float64, numRelays)
+		for i := range m.RelayLatitude {
+			if !encoding.ReadFloat64(data, &index, &m.RelayLatitude[i]) {
+				return errors.New("[RouteMatrix] invalid read at relay latitude")
+			}
+		}
+
+		m.RelayLongitude = make([]float64, numRelays)
+		for i := range m.RelayLongitude {
+			if !encoding.ReadFloat64(data, &index, &m.RelayLongitude[i]) {
+				return errors.New("[RouteMatrix] invalid read at relay longitude")
+			}
+		}
+	}
+
 	m.RelayPublicKeys = make([][]byte, numRelays)
 	for i := range m.RelayPublicKeys {
 		if err := bytesReadFunc(data, &index, &m.RelayPublicKeys[i], crypto.KeySize, "[RouteMatrix] invalid read at relay public keys"); err != nil {
@@ -475,6 +508,7 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 	}
 
 	entryCount := TriMatrixLength(int(numRelays))
+
 	m.Entries = make([]RouteMatrixEntry, entryCount)
 
 	for i := range m.Entries {
@@ -610,6 +644,18 @@ func (m *RouteMatrix) MarshalBinary() ([]byte, error) {
 		}
 
 		encoding.WriteBytes(data, &index, address, MaxRelayAddressLength)
+	}
+
+	if RouteMatrixVersion >= 6 {
+
+		for i := range m.RelayLatitude {
+			encoding.WriteFloat64(data, &index, m.RelayLatitude[i])
+		}
+
+		for i := range m.RelayLongitude {
+			encoding.WriteFloat64(data, &index, m.RelayLongitude[i])
+		}
+
 	}
 
 	for _, pk := range m.RelayPublicKeys {
