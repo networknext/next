@@ -502,7 +502,6 @@ func main() {
 				level.Error(logger).Log("envvar", "READ_BUFFER", "msg", "could not parse", "err", err)
 				os.Exit(1)
 			}
-
 			conn.SetReadBuffer(int(readBuffer))
 		}
 
@@ -513,7 +512,6 @@ func main() {
 				level.Error(logger).Log("envvar", "WRITE_BUFFER", "msg", "could not parse", "err", err)
 				os.Exit(1)
 			}
-
 			conn.SetWriteBuffer(int(writeBuffer))
 		}
 	}
@@ -539,6 +537,10 @@ func main() {
 		}()
 	}
 
+	// todo: i don't like separate counters per-handler
+	// transport. Counters is find, and there's no need to split
+	// them apart like this. what if you need to conut something
+	// across mulitple handlers? this is inflexible.
 	// Initialize the counters
 	serverInitCounters := &transport.ServerInitCounters{}
 	serverUpdateCounters := &transport.ServerUpdateCounters{}
@@ -637,7 +639,6 @@ func main() {
 	{
 		go func() {
 			http.HandleFunc("/health", HealthHandlerFunc(&readRouteMatrixSuccessCount))
-			http.HandleFunc("/healthz", HealthHandlerFunc(&readRouteMatrixSuccessCount)) // todo: remove once we update the LBs
 			http.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag))
 
 			level.Info(logger).Log("protocol", "http", "addr", conn.LocalAddr().String())

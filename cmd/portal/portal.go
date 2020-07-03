@@ -374,7 +374,6 @@ func main() {
 
 		http.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s)))
 		http.HandleFunc("/health", transport.HealthHandlerFunc())
-		http.HandleFunc("/healthz", transport.HealthHandlerFunc())	// todo: remove once LBs are updated
 		http.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag))
 
 		http.Handle("/", middleware.CacheControl(os.Getenv("HTTP_CACHE_CONTROL"), http.FileServer(http.Dir(uiDir))))
