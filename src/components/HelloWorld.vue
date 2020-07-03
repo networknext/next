@@ -4,15 +4,15 @@
 </template>
 
 <script lang="ts">
-import { Component, Vue } from 'vue-property-decorator';
+import { Component, Vue } from 'vue-property-decorator'
 
 @Component
 export default class HelloWorld extends Vue {
-  constructor() {
-    super();
+  constructor () {
+    super()
     Vue.prototype.$apiService.call('BuyersService.TopSessions', {}).then((response: any) => {
-      console.log(response);
-    });
+      console.log(response)
+    })
   }
 }
 </script>

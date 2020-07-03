@@ -4,22 +4,22 @@
 </template>
 
 <script lang="ts">
-import { Component, Vue } from 'vue-property-decorator';
+import { Component, Vue } from 'vue-property-decorator'
 
 @Component
 export default class SessionMap extends Vue {
-  constructor() {
-    super();
-    this.refreshMapSessions();
+  constructor () {
+    super()
+    this.refreshMapSessions()
     setInterval(() => {
-      this.refreshMapSessions();
-    }, 10000);
+      this.refreshMapSessions()
+    }, 10000)
   }
 
-  private refreshMapSessions() {
+  private refreshMapSessions () {
     Vue.prototype.$apiService.call('BuyersService.SessionMap', {}).then((response: any) => {
-      console.log(response);
-    });
+      console.log(response)
+    })
   }
 }
 </script>

@@ -175,7 +175,7 @@
   }
 </style>
 <script lang="ts">
-import Vue from 'vue';
+import Vue from 'vue'
 
 import {
   faCheck,
@@ -183,17 +183,17 @@ import {
   faDownload,
   faPen,
   faTimes,
-  faTrash,
-} from '@fortawesome/free-solid-svg-icons';
-import { library } from '@fortawesome/fontawesome-svg-core';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import NavBar from './components/NavBar.vue';
-import MapWorkspace from './components/MapWorkspace.vue';
-import SessionsWorkspace from './components/SessionsWorkspace.vue';
-import SessionToolWorkspace from './components/SessionToolWorkspace.vue';
-import UserToolWorkspace from './components/UserToolWorkspace.vue';
-import DownloadsWorkspace from './components/DownloadsWorkspace.vue';
-import SettingsWorkspace from './components/SettingsWorkspace.vue';
+  faTrash
+} from '@fortawesome/free-solid-svg-icons'
+import { library } from '@fortawesome/fontawesome-svg-core'
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+import NavBar from './components/NavBar.vue'
+import MapWorkspace from './components/MapWorkspace.vue'
+import SessionsWorkspace from './components/SessionsWorkspace.vue'
+import SessionToolWorkspace from './components/SessionToolWorkspace.vue'
+import UserToolWorkspace from './components/UserToolWorkspace.vue'
+import DownloadsWorkspace from './components/DownloadsWorkspace.vue'
+import SettingsWorkspace from './components/SettingsWorkspace.vue'
 
 const ICONS = [
   faCheck,
@@ -201,25 +201,25 @@ const ICONS = [
   faDownload,
   faPen,
   faTimes,
-  faTrash,
-];
+  faTrash
+]
 
-library.add(...ICONS);
+library.add(...ICONS)
 
-Vue.component('font-awesome-icon', FontAwesomeIcon);
-Vue.component('nav-bar', NavBar);
-Vue.component('map-workspace', MapWorkspace);
-Vue.component('sessions-workspace', SessionsWorkspace);
-Vue.component('session-tool-workspace', SessionToolWorkspace);
-Vue.component('user-tool-workspace', UserToolWorkspace);
-Vue.component('downloads-workspace', DownloadsWorkspace);
-Vue.component('settings-workspace', SettingsWorkspace);
+Vue.component('font-awesome-icon', FontAwesomeIcon)
+Vue.component('nav-bar', NavBar)
+Vue.component('map-workspace', MapWorkspace)
+Vue.component('sessions-workspace', SessionsWorkspace)
+Vue.component('session-tool-workspace', SessionToolWorkspace)
+Vue.component('user-tool-workspace', UserToolWorkspace)
+Vue.component('downloads-workspace', DownloadsWorkspace)
+Vue.component('settings-workspace', SettingsWorkspace)
 export default Vue.extend({
   beforeCreate: () => {
     Vue.prototype.$apiService.call('BuyersService.TopSessions', {}).then((response: any) => {
-      console.log(response);
-    });
-  },
-});
+      console.log(response)
+    })
+  }
+})
 
 </script>

@@ -1,13 +1,13 @@
 export default class APIService {
   private headers: any = null;
 
-  constructor() {
+  constructor () {
     this.headers = {
       Accept: 'application/jsosn',
       'Accept-Encoding': 'gzip',
       'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-    };
+      'Access-Control-Allow-Origin': '*'
+    }
 
     /**
      * TODO: Check if there is an auth token associated with
@@ -16,10 +16,10 @@ export default class APIService {
      * */
   }
 
-  public call(method: string, params: any): Promise<any> {
+  public call (method: string, params: any): Promise<any> {
     return new Promise((resolve, reject) => {
-      const options = params || {};
-      const id = JSON.stringify(params);
+      const options = params || {}
+      const id = JSON.stringify(params)
       fetch('http://127.0.0.1:20000/rpc', {
         method: 'POST',
         headers: this.headers,
@@ -27,15 +27,15 @@ export default class APIService {
           jsonrpc: '2.0',
           method,
           params: options,
-          id,
-        }),
+          id
+        })
       })
         .then((response: Response) => {
-          resolve(response.json());
+          resolve(response.json())
         })
         .catch((error: Error) => {
-          reject(error);
-        });
-    });
+          reject(error)
+        })
+    })
   }
 }
