@@ -1,11 +1,10 @@
 <template>
   <div id="app">
     <nav-bar></nav-bar>
-    <div style="padding-top: 48px;">
+    <div style="padding-top: 48px;" v-if="false">
       <div class="alert alert-primary"
             style="text-align: center;"
             role="alert"
-            v-if="false"
       >
         Please confirm your email address: EMAIL ADDRESS
         <a href="#">
@@ -15,33 +14,34 @@
       <div class="alert alert-success"
           style="text-align: center;"
           role="alert"
-          v-if="false"
       >
         Verification email was sent successfully. Please check your email for futher instructions.
       </div>
       <div class="alert alert-danger"
           style="text-align: center;"
           role="alert"
-          v-if="false"
       >
         Something went wrong sending the verification email. Please try again later.
       </div>
     </div>
-    <div class="container-fluid">
-      <div class="row">
-        <map-workspace></map-workspace>
-        <sessions-workspace v-if="false"></sessions-workspace>
-        <session-tool-workspace v-if="false"></session-tool-workspace>
-        <user-tool-workspace v-if="false"></user-tool-workspace>
-        <downloads-workspace v-if="false"></downloads-workspace>
-        <settings-workspace v-if="false"></settings-workspace>
-      </div>
-    </div>
+    <workspace></workspace>
   </div>
 </template>
 
 <style lang="scss">
   @import url('https://fonts.googleapis.com/css?family=Montserrat:400,700');
+  html, body {
+    height: 100%;
+    overflow: hidden;
+  }
+  #app {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    overflow: auto;
+  }
   .fill {
     width: 100%;
     height: 100%;
@@ -176,12 +176,7 @@ import {
 import { library } from '@fortawesome/fontawesome-svg-core'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import NavBar from './components/NavBar.vue'
-import MapWorkspace from './components/MapWorkspace.vue'
-import SessionsWorkspace from './components/SessionsWorkspace.vue'
-import SessionToolWorkspace from './components/SessionToolWorkspace.vue'
-import UserToolWorkspace from './components/UserToolWorkspace.vue'
-import DownloadsWorkspace from './components/DownloadsWorkspace.vue'
-import SettingsWorkspace from './components/SettingsWorkspace.vue'
+import Workspace from './components/workspaces/Workspace.vue'
 
 const ICONS = [
   faCheck,
@@ -196,18 +191,8 @@ library.add(...ICONS)
 
 Vue.component('font-awesome-icon', FontAwesomeIcon)
 Vue.component('nav-bar', NavBar)
-Vue.component('map-workspace', MapWorkspace)
-Vue.component('sessions-workspace', SessionsWorkspace)
-Vue.component('session-tool-workspace', SessionToolWorkspace)
-Vue.component('user-tool-workspace', UserToolWorkspace)
-Vue.component('downloads-workspace', DownloadsWorkspace)
-Vue.component('settings-workspace', SettingsWorkspace)
+Vue.component('workspace', Workspace)
 export default Vue.extend({
-  beforeCreate: () => {
-    Vue.prototype.$apiService.call('BuyersService.TopSessions', {}).then((response: any) => {
-      console.log(response)
-    })
-  }
 })
 
 </script>

@@ -72,7 +72,7 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
-import SessionMap from './SessionMap.vue'
+import SessionMap from '../SessionMap.vue'
 @Component({
   components: {
     SessionMap

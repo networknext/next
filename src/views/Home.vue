@@ -13,11 +13,6 @@ export default {
   name: 'Home',
   components: {
     HelloWorld
-  },
-  beforeCreate: () => {
-    this.$apiService.call('BuyersService.TopSessions', {}).then((response) => {
-      console.log(response)
-    })
   }
 }
 </script>
