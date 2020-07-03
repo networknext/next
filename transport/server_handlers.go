@@ -566,20 +566,22 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 		// Any session update not signed is invalid, so we don't waste bandwidth responding to it.
 
 		if !crypto.Verify(buyer.PublicKey, packet.GetSignData(), packet.Signature) {
-			// todo: log error ryan, but comment it out
+			// todo: ryan, please log an error, but comment it out
 			// todo: ryan, there should be a metric for this
 			return
 		}
 
 		// When multiple session updates are in flight, especially under a retry storm, there can be simultaneous calls
-		// to this handler for the same session. It is *extremely important* that we don't generate multiple route responses
-		// for the same slice in this case, otherwise we'll bill our customers multiple times for the same slice!. Instead,
-		// implement a locking system here, if the same slices is already being processed in another handler, we block until
-		// that completes, then send down the cached session response. This ensures we bill our customers only once per-slice.
+		// to this handler for the same session and slice. It is *extremely important* that we don't generate multiple route 
+		// responses in this case, otherwise we'll bill our customers multiple times for the same slice!. Instead, we implement 
+		// a locking system here, such that if the same slices is already being processed in another handler, we block until
+		// the other hanxdler completes, then send down the cached session response.
+
+		// IMPORTANT: This ensures we bill our customers only once per-slice!
 
 		// todo: ryan. fun work below... :)
 
-		// todo: acquire session lock for current silce. lock should be keyed on session id *and* current slice # (eg. the "sequence" in the packet)
+		// todo: acquire session lock for current slice. lock should be keyed on session id *and* current slice # (eg. the "sequence" in the packet)
 
 		// todo: if we can't lock, somebody else has it... block until the lock is released.
 
