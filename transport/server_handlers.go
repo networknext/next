@@ -377,7 +377,6 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 
 	return func(w io.Writer, incoming *UDPPacket) {
 
-		// Check if this function takes too long
 		start := time.Now()
 		defer func() {
 			if time.Since(start).Seconds() > 0.1 {
@@ -391,7 +390,8 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 
 		atomic.AddUint64(&params.Counters.Packets, 1)
 
-		// Unmarshal the server update packet
+		// Read the entire server update packet. We can do this all at once because the packet contains the SDK version in it.
+
 		var packet ServerUpdatePacket
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
 			fmt.Printf("could not read server update packet: %v\n", err)
@@ -414,7 +414,9 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 			return
 		}
 
-		// Get the buyer information for the id in the packet
+		// Get the buyer information for the id in the packet.
+		// If the buyer does not exist, this is not a server we care about. Don't even waste bandwidth to respond.
+
 		buyer, err := params.Storer.Buyer(packet.CustomerID)
 		if err != nil {
 			// level.Error(locallogger).Log("msg", "failed to get buyer from storage", "err", err, "customer_id", packet.CustomerID)
@@ -423,7 +425,9 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 			return
 		}
 
-		// Drop the packet if the signed packet data cannot be verified with the buyers public key
+		// Check the server update is signed by the private key of the buyer.
+		// If the signature does not match, this is not a server we care about. Don't even waste bandwidth to respond.
+
 		if !crypto.Verify(buyer.PublicKey, packet.GetSignData(), packet.Signature) {
 			// level.Error(locallogger).Log("msg", "signature verification failed")
 			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
@@ -431,21 +435,23 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 			return
 		}
 
-		// Validate the datacenter ID
-		datacenter, err := params.Storer.Datacenter(packet.DatacenterID)
+		// Look up the datacenter by id and make sure it exists.
+		// Sometimes the customer has datacenter aliases, eg: "multiplay.newyork" -> "inap.newyork".
+		// To support this, when we can't find a datacenter directly by id, we look it up by alias instead.
+
+		datacenter, err := params.Storer.Datacenter(packet.DatacenterID)	// todo: ryan, profiling indicates this is slow. please investigate
 		if err != nil {
 			// level.Error(params.Logger).Log("msg", "failed to get datacenter from storage", "err", err, "customer_id", packet.CustomerID)
 			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 			params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
-
-			// Don't return early, just set an UnknownDatacenter so the ServerData gets set so its used by SessionUpdateHandlerFunc
 			datacenter = routing.UnknownDatacenter
 			datacenter.ID = packet.DatacenterID
 		}
 
-		serverAddress := packet.ServerAddress.String()
-
-		// Update the server data
+		// Each one of our customer's servers reports to us with this server update every 10 seconds.
+		// Therefore we must update the server data each time we receive an update, to keep this server entry live in our server map.
+		// When we don't receive an update for a server for a certain period of time (for example 30 seconds), that server entry times out.
+		
 		var server ServerData
 		server.timestamp = time.Now().Unix()
 		server.routePublicKey = packet.ServerRoutePublicKey
@@ -453,7 +459,7 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 		server.datacenter = datacenter
 
 		serverMutexStart := time.Now()
-		params.ServerMap.UpdateServerData(serverAddress, &server)
+		params.ServerMap.UpdateServerData(packet.ServerAddress.String(), &server)
 		if time.Since(serverMutexStart).Seconds() > 0.1 {
 			level.Debug(params.Logger).Log("msg", "long server mutex in server update")
 		}
