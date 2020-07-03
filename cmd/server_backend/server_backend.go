@@ -556,6 +556,11 @@ func main() {
 			for {
 				select {
 				case <-ticker.C:
+
+					// todo: ryan. I would like to see all of the variables below, put into stackdriver metrics
+					// so we can track them over time. right here in place, update the values in stackdriver once
+					// every second, but only print out to stdout once every 10 seconds. -- thanks
+
 					fmt.Printf("-----------------------------\n")
 					fmt.Printf("%d servers\n", serverMap.NumServers())
 					fmt.Printf("%d sessions\n", sessionMap.NumSessions())

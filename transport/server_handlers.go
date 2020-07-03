@@ -753,10 +753,6 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 		
 		// IMPORTANT: make sure the sequence is written to the session data in the writeSessionResponse fn or it will break.
 
-		// IMPORTANT: there is a second part about caching the session response in redis and locking on it. let's hold on that part
-		// until next week when we can discuss it. This is to handle retries and it's fairly complex. Looking at the code below
-		// I don't think it was implemented correctly, so we need to redo that part.
-
 		/*
 		switch seq := packet.Sequence; {
 		case seq < sessionCacheEntry.Sequence:
@@ -797,6 +793,26 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			// todo: ryan, there should be a metric for this
 			return
 		}
+
+		// When multiple session updates are in flight, especially under a retry storm, there can be simultaneous calls 
+		// to this handler for the same session. It is *extremely important* that we don't generate multiple route responses 
+		// for the same slice in this case, otherwise we'll bill our customers multiple times for the same slice!. Instead, 
+		// implement a locking system here, if the same slices is already being processed in another handler, we block until 
+		// that completes, then send down the cached session response. This ensures we bill our customers only once per-slice.
+
+		// todo: ryan. fun work below... :)
+
+		// todo: acquire session lock for current silce. lock should be keyed on session id *and* current slice # (eg. the "sequence" in the packet)
+
+		// todo: if we can't lock, somebody else has it... block until the lock is released.
+
+		// todo: look for a cached session response for this session and slice sequence #
+
+		// todo: if the cached session response exists, write the cached response back to the SDK and return without any further processing.
+
+		// todo: if we did not acquire the lock, but no cached session response exists, something went wrong. increment an error counter and return.
+
+		// todo: otherwise, carry on with regular processing below. add a defer to make sure we unlock. (we must have acquired the lock to get here)
 
 		// Create the default response packet with a direct route and same SDK version as the server data.
 		// This makes sure that we respond to the session update with the packet version the SDK expects.
@@ -909,7 +925,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 
 		// Send a session update response back to the SDK.
 
-		// IMPORTANT: If the SDK does not receive a session update response quickly, it will resending the session update packet
+		// IMPORTANT: If the SDK does not receive a session update response quickly, it will resend the session update packet
 		// to us 10X every second. This is extremely aggressive resend behavior, and in hindsight was probably a mistake on our part.
 		// Even so, we want to avoid it if at all possible, because it greatly increases the number of packets we have to process, 
 		// and the cost to us to service each session.
