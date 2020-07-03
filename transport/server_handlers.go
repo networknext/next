@@ -747,10 +747,15 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 
 		// Check the packet sequence number vs. the most recent sequence number in redis.
 		// The packet sequence number must be at least as old as the current session sequence #
-		// otherwise this is a stale session update packet from an older slice. When this happens, just ignore it.
+		// otherwise this is a stale session update packet from an older slice so we ignore it!
 
 		// todo: ryan please extend the SessionData to include the sequence, and update the code below to work with the new style
+		
 		// IMPORTANT: make sure the sequence is written to the session data in the writeSessionResponse fn or it will break.
+
+		// IMPORTANT: there is a second part about caching the session response in redis and locking on it. let's hold on that part
+		// until next week when we can discuss it. This is to handle retries and it's fairly complex. Looking at the code below
+		// I don't think it was implemented correctly, so we need to redo that part.
 
 		/*
 		switch seq := packet.Sequence; {
