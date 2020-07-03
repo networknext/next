@@ -82,6 +82,8 @@ func getPopulatedRouteMatrix(malformed bool) *routing.RouteMatrix {
 	matrix.RelaySessionCounts = []uint32{100, 200}
 	matrix.RelayMaxSessionCounts = []uint32{100, 200}
 
+	matrix.UpdateRelayAddressCache()
+
 	return &matrix
 }
 

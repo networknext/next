@@ -46,16 +46,28 @@ type RouteMatrix struct {
 
 	responseBuffer     []byte
 	reponseBufferMutex sync.RWMutex
+
+	relayAddressCache []*net.UDPAddr
 }
 
 type NearRelayData struct {
 	ID uint64
+	Distance int
 	Address *net.UDPAddr
 }
 
 func (m *RouteMatrix) GetNearRelays(latitude float64, longitude float64, maxNearRelays int) []NearRelayData {
-	// todo: implement :)
-	return make([]NearRelayData, 0)
+
+	nearRelays := make([]NearRelayData, len(m.relayAddressCache))
+
+	for i := range m.RelayIDs {
+		nearRelays[i].ID = m.RelayIDs[i]
+		// todo
+	}
+
+	// todo: distance sort etc.
+
+	return nearRelays
 }
 
 func (m *RouteMatrix) ResolveRelay(id uint64) (Relay, error) {
@@ -307,9 +319,22 @@ func (m *RouteMatrix) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// todo: by documenting the structure here, instead of having it documented in the functions below, you have taken
+func ParseAddress(input string) *net.UDPAddr {
+	address := &net.UDPAddr{}
+	ip_string, port_string, err := net.SplitHostPort(input)
+	if err != nil {
+		address.IP = net.ParseIP(input)
+		address.Port = 0
+		return address
+	}
+	address.IP = net.ParseIP(ip_string)
+	address.Port, _ = strconv.Atoi(port_string)
+	return address
+}
+
+// todo: ryan, by documenting the structure here, instead of having it documented in the functions below, you have taken
 // two places you need to update everytime you make a change to the structure, and now you have three places you have
-// to update. this comment is worse than just reading the code below.
+// to update :) this comment is worse than just reading the code below it...
 
 /* Binary data outline for RouteMatrix v5: "->" means seqential elements in memory and not another section, "(...)" mean that section sequentially repeats for however many
  * Version number { uint32 }
@@ -523,6 +548,21 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 		}
 	}
 
+	m.UpdateRelayAddressCache()
+
+	return nil
+}
+
+func (m *RouteMatrix) UpdateRelayAddressCache() error {
+	if len(m.relayAddressCache) == 0 && len(m.RelayIDs) > 0 {
+		m.relayAddressCache = make([]*net.UDPAddr, len(m.RelayIDs))
+		for i := range m.RelayIDs {
+			m.relayAddressCache[i] = ParseAddress(string(m.RelayAddresses[i]))
+			if m.relayAddressCache[i] == nil {
+				return errors.New("[RouteMatrix] could not parse relay address")
+			}
+		}
+	}
 	return nil
 }
 
