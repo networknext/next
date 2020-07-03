@@ -537,16 +537,13 @@ func main() {
 		}()
 	}
 
-	// todo: i don't like separate counters per-handler
-	// transport. Counters is find, and there's no need to split
-	// them apart like this. what if you need to conut something
-	// across mulitple handlers? this is inflexible.
 	// Initialize the counters
+
 	serverInitCounters := &transport.ServerInitCounters{}
 	serverUpdateCounters := &transport.ServerUpdateCounters{}
 	sessionUpdateCounters := &transport.SessionUpdateCounters{}
 
-	// Setup the print routine
+	// Setup the stats print routine
 	{
 		memoryUsed := func() float64 {
 			var m runtime.MemStats
