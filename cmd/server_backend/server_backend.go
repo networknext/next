@@ -46,7 +46,7 @@ var (
 
 func main() {
 
-	fmt.Printf("welcome to the nerd zone 20.0\n")
+	fmt.Printf("welcome to the nerd zone 21.0\n")
 
 	ctx := context.Background()
 
@@ -215,10 +215,10 @@ func main() {
 	// haversine distance between the player lat/long and the relay lat/long, and return
 	// the 32 nearest relays to the caller.
 	/*
-	geoClient := routing.GeoClient{
-		RedisClient: redisClientRelays,
-		Namespace:   "RELAY_LOCATIONS",
-	}
+		geoClient := routing.GeoClient{
+			RedisClient: redisClientRelays,
+			Namespace:   "RELAY_LOCATIONS",
+		}
 	*/
 
 	// Create an in-memory db
@@ -523,7 +523,7 @@ func main() {
 		// Start a goroutine to timeout servers
 		go func() {
 			timeout := time.Second * 30
-			frequency := time.Millisecond * 30
+			frequency := time.Millisecond * 10
 			ticker := time.NewTicker(frequency)
 			serverMap.TimeoutLoop(ctx, timeout, ticker.C)
 		}()
@@ -531,7 +531,7 @@ func main() {
 		// Start a goroutine to timeout sessions
 		go func() {
 			timeout := time.Second * 30
-			frequency := time.Millisecond * 30
+			frequency := time.Millisecond * 10
 			ticker := time.NewTicker(frequency)
 			sessionMap.TimeoutLoop(ctx, timeout, ticker.C)
 		}()
@@ -601,9 +601,9 @@ func main() {
 		}
 
 		sessionUpdateConfig := &transport.SessionUpdateParams{
-			ServerPrivateKey:     serverPrivateKey,
-			RouterPrivateKey:     routerPrivateKey,
-			GetRouteProvider:     getRouteMatrixFunc,
+			ServerPrivateKey: serverPrivateKey,
+			RouterPrivateKey: routerPrivateKey,
+			GetRouteProvider: getRouteMatrixFunc,
 			// GeoClient:            &geoClient,
 			IPLoc:                ipLocator,
 			Storer:               db,

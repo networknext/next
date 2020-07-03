@@ -18,8 +18,8 @@ func GetRelayIndex(routeMatrix *routing.RouteMatrix, relayName string) int {
 }
 
 type RelayEntry struct {
-	id    uint64
-	name  string
+	id   uint64
+	name string
 }
 
 func debug(relayName string, inputFile string) {

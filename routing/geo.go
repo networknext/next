@@ -166,24 +166,24 @@ func (mmdb *MaxmindDB) SyncLoop(ctx context.Context, c <-chan time.Time) error {
 	// todo: sync loop is disabled because it will throw off sessions once every 24 hours until we fix lock below
 	return nil
 	/*
-	for {
-		select {
-		case <-c:
-			// todo: this is a very long lock. it will block session updates
-			// instead, double buffer and open the city and isp database on a
-			// new instance, then pointer swap under mutex.
-			mmdb.mu.Lock()
-			if err := mmdb.OpenCity(ctx, mmdb.httpClient, mmdb.cityURI); err != nil {
-				return err
+		for {
+			select {
+			case <-c:
+				// todo: this is a very long lock. it will block session updates
+				// instead, double buffer and open the city and isp database on a
+				// new instance, then pointer swap under mutex.
+				mmdb.mu.Lock()
+				if err := mmdb.OpenCity(ctx, mmdb.httpClient, mmdb.cityURI); err != nil {
+					return err
+				}
+				if err := mmdb.OpenISP(ctx, mmdb.httpClient, mmdb.ispURI); err != nil {
+					return err
+				}
+				mmdb.mu.Unlock()
+			case <-ctx.Done():
+				return nil
 			}
-			if err := mmdb.OpenISP(ctx, mmdb.httpClient, mmdb.ispURI); err != nil {
-				return err
-			}
-			mmdb.mu.Unlock()
-		case <-ctx.Done():
-			return nil
 		}
-	}
 	*/
 }
 
