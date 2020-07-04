@@ -46,7 +46,7 @@ var (
 
 func main() {
 
-	fmt.Printf("welcome to the nerd zone 22.0\n")
+	fmt.Printf("welcome to the nerd zone 23.0\n")
 
 	ctx := context.Background()
 
@@ -501,10 +501,21 @@ func main() {
 		}
 	}
 
-	// Initialize server and session maps
+	vetoMap := transport.NewVetoMap()
 	serverMap := transport.NewServerMap()
 	sessionMap := transport.NewSessionMap()
 	{
+		// todo: ryan, please add the number of iterations to perform each check to each map timeout func below. currently hardcoded.
+
+		// Start a goroutine to timeout vetoes
+		go func() {
+			timeout := time.Minute * 5
+			frequency := time.Millisecond * 10
+			// todo: iterations := 3 or whatever it is in the hardcoded...
+			ticker := time.NewTicker(frequency)
+			vetoMap.TimeoutLoop(ctx, timeout, ticker.C)
+		}()
+
 		// Start a goroutine to timeout servers
 		go func() {
 			timeout := time.Second * 30
@@ -537,16 +548,22 @@ func main() {
 		}
 
 		ticker := time.NewTicker(time.Second * 10)
-		go func() {
+
+	    first := make(chan bool, 1)
+	    first <- true
+
+    		go func() {
 			for {
 				select {
 				case <-ticker.C:
+				case <-first:
 
 					// todo: ryan. I would like to see all of the variables below, put into stackdriver metrics
 					// so we can track them over time. right here in place, update the values in stackdriver once
 					// every second, but only print out to stdout once every 10 seconds. -- thanks
 
 					fmt.Printf("-----------------------------\n")
+					fmt.Printf("%d vetoes\n", vetoMap.NumVetoes())
 					fmt.Printf("%d servers\n", serverMap.NumServers())
 					fmt.Printf("%d sessions\n", sessionMap.NumSessions())
 					fmt.Printf("%d goroutines\n", runtime.NumGoroutine())
@@ -598,6 +615,7 @@ func main() {
 			Biller:               biller,
 			Metrics:              sessionUpdateMetrics,
 			Logger:               logger,
+			VetoMap:              vetoMap,
 			ServerMap:            serverMap,
 			SessionMap:           sessionMap,
 			Counters:             sessionUpdateCounters,

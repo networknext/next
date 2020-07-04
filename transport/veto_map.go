@@ -42,23 +42,35 @@ func (vetoMap *VetoMap) NumVetoes() uint64 {
 	return total
 }
 
-func (vetoMap *VetoMap) UpdateVetoData(vetoId uint64, vetoData *VetoData) {
+// IMPORTANT: Only needs to be called once. Each time you call "GetVeto" it refreshes the timestamp so you don't have to get and set each time. Efficient.
+func (vetoMap *VetoMap) SetVeto(vetoId uint64, reason uint64) {
 	index := vetoId % NumVetoMapShards
+	vetoData := VetoData {
+		timestamp: time.Now().Unix(),
+		reason: reason,
+	}
 	vetoMap.shard[index].mutex.Lock()
 	_, exists := vetoMap.shard[index].vetoes[vetoId]
-	vetoMap.shard[index].vetoes[vetoId] = vetoData
+	vetoMap.shard[index].vetoes[vetoId] = &vetoData
 	vetoMap.shard[index].mutex.Unlock()
 	if !exists {
 		atomic.AddUint64(&vetoMap.shard[index].numVetoes, 1)
 	}
 }
 
-func (vetoMap *VetoMap) GetVetoData(vetoId uint64) *VetoData {
+func (vetoMap *VetoMap) GetVeto(vetoId uint64) uint64 {
 	index := vetoId % NumServerMapShards
 	vetoMap.shard[index].mutex.Lock()
 	vetoData, _ := vetoMap.shard[index].vetoes[vetoId]
+	if vetoData != nil {
+		vetoData.timestamp = time.Now().Unix()
+	}
 	vetoMap.shard[index].mutex.Unlock()
-	return vetoData
+	if vetoData != nil {
+		return vetoData.reason
+	} else {
+		return 0
+	}
 }
 
 func (vetoMap *VetoMap) TimeoutLoop(ctx context.Context, timeout time.Duration, c <-chan time.Time) {

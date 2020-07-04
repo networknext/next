@@ -446,6 +446,7 @@ type SessionUpdateParams struct {
 	Biller               billing.Biller
 	Metrics              *metrics.SessionMetrics
 	Logger               log.Logger
+	VetoMap              *VetoMap
 	ServerMap            *ServerMap
 	SessionMap           *SessionMap
 	Counters             *SessionUpdateCounters
@@ -645,6 +646,18 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 				sendRouteResponse(w, &directRoute, params, &packet, &response, serverData, &lastNextStats, &lastDirectStats, &location)
 				return
 			}
+		}
+
+		// Has this session been vetoed? A vetoed session must always go direct, because for some reason we have found a problem
+		// when they are going across network next. Perhaps we made packet loss or latency worse for this player? To make sure
+		// this doesn't happen repeatedly, the session is vetoed from taking network next until they connect to a new server.
+
+		vetoReason := params.VetoMap.GetVeto(header.SessionID)
+
+		if vetoReason != 0 {
+			// todo: ryan, we need metrics for veto here. vetoReason is the route decision you set when you veto (see "SetVeto")
+			sendRouteResponse(w, &directRoute, params, &packet, &response, serverData, &lastNextStats, &lastDirectStats, &location)
+			return
 		}
 
 		// todo: ryan, please anonymize the IP address here. make sure it is anonymized *in place* not on a copy. also, clear the from pointer to nil!
