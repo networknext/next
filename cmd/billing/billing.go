@@ -118,11 +118,11 @@ func main() {
 			os.Exit(1)
 		}
 
-		topicName := "billing"
+		subscriptionName := "billing"
 
-		fmt.Printf("billing topic name: %s\n", topicName)
+		fmt.Printf("subscription name: %s\n", subscriptionName)
 
-		pubsubSubscription := pubsubClient.Subscription("billing")
+		pubsubSubscription := pubsubClient.Subscription(subscriptionName)
 	
 		err = pubsubSubscription.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
 			// todo: process billing entry
