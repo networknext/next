@@ -352,14 +352,17 @@ func main() {
 			costMatrixDurationSince := time.Since(costMatrixDurationStart)
 	
 			if err != nil {
-				// todo: this really should be an error condition, not a warning!
 				level.Warn(logger).Log("matrix", "cost", "op", "generate", "err", err)
+				costMatrix = routing.CostMatrix{}
 			}
 
 			newCostMatrixGenMetrics.DurationGauge.Set(float64(costMatrixDurationSince.Milliseconds()))
 	
 			newCostMatrixGenMetrics.Invocations.Add(1)
 
+			// IMPORTANT: Fill the cost matrix with near relay lat/longs
+			// these are then passed in to the route matrix via "Optimize"
+			// and the server_backend uses them to find near relays.
 			for i := range costMatrix.RelayIDs {
 				relay, err := db.Relay(costMatrix.RelayIDs[i])
 				if err != nil {
@@ -370,6 +373,8 @@ func main() {
 
 			relayStatMetrics.NumRelays.Set(float64(len(statsdb.Entries)))
 
+			// todo: ryan, would be nice to upload the size of the cost matrix in bytes
+
 			optimizeDurationStart := time.Now()
 			if err := costMatrix.Optimize(&routeMatrix, 1); err != nil {
 				level.Warn(logger).Log("matrix", "cost", "op", "optimize", "err", err)
@@ -379,6 +384,8 @@ func main() {
 			newOptimizeMetrics.Invocations.Add(1)
 
 			relayStatMetrics.NumRoutes.Set(float64(len(routeMatrix.Entries)))
+
+			// todo: ryan, would be nice to upload the size of the route matrix in bytes
 
 			level.Info(logger).Log("matrix", "route", "entries", len(routeMatrix.Entries))
 
