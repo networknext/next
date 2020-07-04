@@ -306,6 +306,10 @@ dev-relay-backend: build-relay-backend ## runs a local relay backend
 dev-server-backend: build-server-backend ## runs a local server backend
 	@PORT=40000 ./dist/server_backend
 
+.PHONY: dev-billing
+dev-billing: build-billing ## runs a local billing service
+	@PORT=40000 ./dist/billing
+
 .PHONY: dev-reference-backend
 dev-reference-backend: ## runs a local reference backend
 	$(GO) run reference/backend/*.go
@@ -433,6 +437,46 @@ deploy-relay-backend: ## builds and deploys the relay backend to dev
 build-server-backend: ## builds the server backend binary
 	@printf "Building server backend... "
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)" -o ${DIST_DIR}/server_backend ./cmd/server_backend/server_backend.go
+	@printf "done\n"
+
+.PHONY: build-billing
+build-billing: ## builds the billing binary
+	@printf "Building billing... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)" -o ${DIST_DIR}/billing ./cmd/billing/billing.go
+	@printf "done\n"
+
+.PHONY: build-billing-artifact
+build-billing-artifact: build- billing ## builds the billing service and creates the dev artifact
+	@printf "Building billing dev artifact..."
+	@mkdir -p $(DIST_DIR)/artifact/server_backend
+	@cp $(DIST_DIR)/server_backend $(DIST_DIR)/artifact/server_backend/app
+	@cp ./cmd/server_backend/dev.env $(DIST_DIR)/artifact/server_backend/app.env
+	@cp $(DEPLOY_DIR)/$(SYSTEMD_SERVICE_FILE) $(DIST_DIR)/artifact/server_backend/$(SYSTEMD_SERVICE_FILE)
+	@cd $(DIST_DIR)/artifact/server_backend && tar -zcf ../../server_backend.dev.tar.gz app app.env $(SYSTEMD_SERVICE_FILE) && cd ../..
+	@printf "$(DIST_DIR)/server_backend.dev.tar.gz\n"
+
+.PHONY: build-billing-prod-artifact
+build-billing-prod-artifact: build-billing ## builds the belling service and creates the prod artifact
+	@printf "Building billing prod artifact... "
+	@mkdir -p $(DIST_DIR)/artifact/server_backend
+	@cp $(DIST_DIR)/server_backend $(DIST_DIR)/artifact/server_backend/app
+	@cp ./cmd/server_backend/prod.env $(DIST_DIR)/artifact/server_backend/app.env
+	@cp $(DEPLOY_DIR)/$(SYSTEMD_SERVICE_FILE) $(DIST_DIR)/artifact/server_backend/$(SYSTEMD_SERVICE_FILE)
+	@cd $(DIST_DIR)/artifact/server_backend && tar -zcf ../../server_backend.prod.tar.gz app app.env $(SYSTEMD_SERVICE_FILE) && cd ../..
+	@printf "$(DIST_DIR)/server_backend.prod.tar.gz\n"
+
+.PHONY: publish-billing-artifact
+publish-billing-artifact: ## publishes the billing dev artifact
+	@printf "Publishing billing dev artifact... \n\n"
+	@gsutil cp $(DIST_DIR)/server_backend.dev.tar.gz $(ARTIFACT_BUCKET)/server_backend.dev.tar.gz
+	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" $(ARTIFACT_BUCKET)/server_backend.dev.tar.gz
+	@printf "done\n"
+
+.PHONY: publish-billing-prod-artifact
+publish-billing-prod-artifact: ## publishes the billing prod artifact
+	@printf "Publishing billing prod artifact... \n\n"
+	@gsutil cp $(DIST_DIR)/server_backend.prod.tar.gz $(ARTIFACT_BUCKET_PROD)/server_backend.prod.tar.gz
+	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" $(ARTIFACT_BUCKET_PROD)/server_backend.prod.tar.gz
 	@printf "done\n"
 
 .PHONY: build-server-backend-artifact
@@ -577,7 +621,7 @@ build-next: ## builds the operator tool
 	@printf "done\n"
 
 .PHONY: build-all
-build-all: build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
+build-all: build-billing build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all

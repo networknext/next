@@ -19,9 +19,11 @@ blocks:
       jobs:
         - name: Build & Publish Artifacts to Storage
           commands:
+            - make build-billing-prod-artifact
             - make build-portal-prod-artifact
             - make build-relay-backend-prod-artifact
             - make build-server-backend-prod-artifact
+            - make publish-billing-prod-artifact
             - make publish-portal-prod-artifact
             - make publish-relay-backend-prod-artifact
             - make publish-server-backend-prod-artifact
