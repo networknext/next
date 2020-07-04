@@ -459,16 +459,17 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 		}
 	}
 
+	m.RelayLatitude = make([]float64, numRelays)
+	m.RelayLongitude = make([]float64, numRelays)
+
 	if version >= 6 {
 
-		m.RelayLatitude = make([]float64, numRelays)
 		for i := range m.RelayLatitude {
 			if !encoding.ReadFloat64(data, &index, &m.RelayLatitude[i]) {
 				return errors.New("[RouteMatrix] invalid read at relay latitude")
 			}
 		}
 
-		m.RelayLongitude = make([]float64, numRelays)
 		for i := range m.RelayLongitude {
 			if !encoding.ReadFloat64(data, &index, &m.RelayLongitude[i]) {
 				return errors.New("[RouteMatrix] invalid read at relay longitude")
