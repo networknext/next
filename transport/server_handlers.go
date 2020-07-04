@@ -656,6 +656,9 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 
 		routeMatrix := params.GetRouteProvider()
 
+		// todo: ryan, getting the near relays is pretty expensive relatively. just turning this on increases the CPU usage from 3% to 8%
+		// it would be really cool if you could cache the set of near relays in the session entry, and only get near relays once per-session
+
 		nearRelays := routeMatrix.GetNearRelays(location.Latitude, location.Longitude, MaxNearRelays)
 
 		response.NumNearRelays = int32(len(nearRelays))
