@@ -5,8 +5,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/networknext/backend/routing"
 )
 
 const NumVetoMapShards = 4096
@@ -35,7 +33,7 @@ func NewVetoMap() *VetoMap {
 	return vetoMap
 }
 
-func (vetoMap *VetoMap) NumVetos() uint64 {
+func (vetoMap *VetoMap) NumVetoes() uint64 {
 	var total uint64
 	for i := 0; i < NumVetoMapShards; i++ {
 		numVetoesInShard := atomic.LoadUint64(&vetoMap.shard[i].numVetoes)
@@ -51,7 +49,7 @@ func (vetoMap *VetoMap) UpdateVetoData(vetoId uint64, vetoData *VetoData) {
 	vetoMap.shard[index].vetoes[vetoId] = vetoData
 	vetoMap.shard[index].mutex.Unlock()
 	if !exists {
-		atomic.AddUint64(&vetoMap.shard[index].numVetos, 1)
+		atomic.AddUint64(&vetoMap.shard[index].numVetoes, 1)
 	}
 }
 
