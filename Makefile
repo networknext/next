@@ -446,37 +446,37 @@ build-billing: ## builds the billing binary
 	@printf "done\n"
 
 .PHONY: build-billing-artifact
-build-billing-artifact: build- billing ## builds the billing service and creates the dev artifact
+build-billing-artifact: build-billing ## builds the billing service and creates the dev artifact
 	@printf "Building billing dev artifact..."
-	@mkdir -p $(DIST_DIR)/artifact/server_backend
-	@cp $(DIST_DIR)/server_backend $(DIST_DIR)/artifact/server_backend/app
-	@cp ./cmd/server_backend/dev.env $(DIST_DIR)/artifact/server_backend/app.env
-	@cp $(DEPLOY_DIR)/$(SYSTEMD_SERVICE_FILE) $(DIST_DIR)/artifact/server_backend/$(SYSTEMD_SERVICE_FILE)
-	@cd $(DIST_DIR)/artifact/server_backend && tar -zcf ../../server_backend.dev.tar.gz app app.env $(SYSTEMD_SERVICE_FILE) && cd ../..
-	@printf "$(DIST_DIR)/server_backend.dev.tar.gz\n"
+	@mkdir -p $(DIST_DIR)/artifact/billing
+	@cp $(DIST_DIR)/billing $(DIST_DIR)/artifact/billing/app
+	@cp ./cmd/billing/dev.env $(DIST_DIR)/artifact/billing/app.env
+	@cp $(DEPLOY_DIR)/$(SYSTEMD_SERVICE_FILE) $(DIST_DIR)/artifact/billing/$(SYSTEMD_SERVICE_FILE)
+	@cd $(DIST_DIR)/artifact/billing && tar -zcf ../../billing.dev.tar.gz app app.env $(SYSTEMD_SERVICE_FILE) && cd ../..
+	@printf "$(DIST_DIR)/billing.dev.tar.gz\n"
 
 .PHONY: build-billing-prod-artifact
 build-billing-prod-artifact: build-billing ## builds the belling service and creates the prod artifact
 	@printf "Building billing prod artifact... "
-	@mkdir -p $(DIST_DIR)/artifact/server_backend
-	@cp $(DIST_DIR)/server_backend $(DIST_DIR)/artifact/server_backend/app
-	@cp ./cmd/server_backend/prod.env $(DIST_DIR)/artifact/server_backend/app.env
-	@cp $(DEPLOY_DIR)/$(SYSTEMD_SERVICE_FILE) $(DIST_DIR)/artifact/server_backend/$(SYSTEMD_SERVICE_FILE)
-	@cd $(DIST_DIR)/artifact/server_backend && tar -zcf ../../server_backend.prod.tar.gz app app.env $(SYSTEMD_SERVICE_FILE) && cd ../..
-	@printf "$(DIST_DIR)/server_backend.prod.tar.gz\n"
+	@mkdir -p $(DIST_DIR)/artifact/billing
+	@cp $(DIST_DIR)/billing $(DIST_DIR)/artifact/billing/app
+	@cp ./cmd/billing/prod.env $(DIST_DIR)/artifact/billing/app.env
+	@cp $(DEPLOY_DIR)/$(SYSTEMD_SERVICE_FILE) $(DIST_DIR)/artifact/billing/$(SYSTEMD_SERVICE_FILE)
+	@cd $(DIST_DIR)/artifact/billing && tar -zcf ../../billing.prod.tar.gz app app.env $(SYSTEMD_SERVICE_FILE) && cd ../..
+	@printf "$(DIST_DIR)/billing.prod.tar.gz\n"
 
 .PHONY: publish-billing-artifact
 publish-billing-artifact: ## publishes the billing dev artifact
 	@printf "Publishing billing dev artifact... \n\n"
-	@gsutil cp $(DIST_DIR)/server_backend.dev.tar.gz $(ARTIFACT_BUCKET)/server_backend.dev.tar.gz
-	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" $(ARTIFACT_BUCKET)/server_backend.dev.tar.gz
+	@gsutil cp $(DIST_DIR)/billing.dev.tar.gz $(ARTIFACT_BUCKET)/billing.dev.tar.gz
+	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" $(ARTIFACT_BUCKET)/billing.dev.tar.gz
 	@printf "done\n"
 
 .PHONY: publish-billing-prod-artifact
 publish-billing-prod-artifact: ## publishes the billing prod artifact
 	@printf "Publishing billing prod artifact... \n\n"
-	@gsutil cp $(DIST_DIR)/server_backend.prod.tar.gz $(ARTIFACT_BUCKET_PROD)/server_backend.prod.tar.gz
-	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" $(ARTIFACT_BUCKET_PROD)/server_backend.prod.tar.gz
+	@gsutil cp $(DIST_DIR)/billing.prod.tar.gz $(ARTIFACT_BUCKET_PROD)/billing.prod.tar.gz
+	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" $(ARTIFACT_BUCKET_PROD)/billing.prod.tar.gz
 	@printf "done\n"
 
 .PHONY: build-server-backend-artifact
