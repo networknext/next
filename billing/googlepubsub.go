@@ -6,7 +6,6 @@ import (
 	"sync/atomic"
 
 	"cloud.google.com/go/pubsub"
-	"github.com/golang/protobuf/proto"
 
 	"github.com/go-kit/kit/log"
 	// "github.com/go-kit/kit/log/level"
@@ -81,10 +80,16 @@ func (biller *GooglePubSubBiller) Bill(ctx context.Context, sessionID uint64, en
 
 	atomic.AddUint64(&biller.submitted, 1)
 
+	// todo: there's a problem with proto marshalling. let's replace this with something more sane
+	/*
 	data, err := proto.Marshal(entry)
 	if err != nil {
 		return err
 	}
+	*/
+
+	// temporarily just write blocks of zero bytes, to test throughput
+	data := make([]byte, 1024)
 
 	if biller.clients == nil {
 		return fmt.Errorf("billing: clients not initialized")
