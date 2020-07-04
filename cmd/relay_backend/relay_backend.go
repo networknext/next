@@ -17,7 +17,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/getsentry/sentry-go"
 	"github.com/gorilla/mux"
 	"github.com/networknext/backend/logging"
 	"github.com/networknext/backend/transport"
@@ -91,9 +90,6 @@ func main() {
 		relayslogger = log.With(relayslogger, "ts", log.DefaultTimestampUTC)
 	}
 
-	// force sentry to post any updates upon program exit
-	defer sentry.Flush(time.Second * 2)
-
 	// Get env
 	env, ok := os.LookupEnv("ENV")
 	if !ok {
@@ -144,7 +140,7 @@ func main() {
 		LocalMode: true,
 	}
 
-	{
+	if env == "local" {
 		seller := routing.Seller{
 			ID:                "sellerID",
 			Name:              "local",
@@ -284,8 +280,8 @@ func main() {
 	}
 
 	statsdb := routing.NewStatsDatabase()
-	var costmatrix routing.CostMatrix
-	var routematrix routing.RouteMatrix
+	var costMatrix routing.CostMatrix
+	var routeMatrix routing.RouteMatrix
 
 	// Clean up any relays that may have expired while the relay_backend was down (due to a deploy, maintenance, etc.)
 	hgetallResult := redisClientRelays.HGetAll(routing.HashKeyAllRelays)
@@ -350,43 +346,53 @@ func main() {
 	go func() {
 
 		for {
+	
 			costMatrixDurationStart := time.Now()
-			if err := statsdb.GetCostMatrix(&costmatrix, redisClientRelays, float32(maxJitter), float32(maxPacketLoss)); err != nil {
+			err := statsdb.GetCostMatrix(&costMatrix, redisClientRelays, float32(maxJitter), float32(maxPacketLoss)); 
+			costMatrixDurationSince := time.Since(costMatrixDurationStart)
+	
+			if err != nil {
+				// todo: this really should be an error condition, not a warning!
 				level.Warn(logger).Log("matrix", "cost", "op", "generate", "err", err)
 			}
-			costMatrixDurationSince := time.Since(costMatrixDurationStart)
+
 			newCostMatrixGenMetrics.DurationGauge.Set(float64(costMatrixDurationSince.Milliseconds()))
+	
 			newCostMatrixGenMetrics.Invocations.Add(1)
 
-			// todo: set relay lat/longs on cost
+			for i := range costMatrix.RelayIDs {
+				relay, err := db.Relay(costMatrix.RelayIDs[i])
+				if err != nil {
+					costMatrix.RelayLatitude[i] = relay.Datacenter.Location.Latitude
+					costMatrix.RelayLongitude[i] = relay.Datacenter.Location.Latitude
+				}
+			}
 
 			relayStatMetrics.NumRelays.Set(float64(len(statsdb.Entries)))
 
 			optimizeDurationStart := time.Now()
-			if err := costmatrix.Optimize(&routematrix, 1); err != nil {
+			if err := costMatrix.Optimize(&routeMatrix, 1); err != nil {
 				level.Warn(logger).Log("matrix", "cost", "op", "optimize", "err", err)
 			}
 			optimizeDurationSince := time.Since(optimizeDurationStart)
 			newOptimizeMetrics.DurationGauge.Set(float64(optimizeDurationSince.Milliseconds()))
 			newOptimizeMetrics.Invocations.Add(1)
 
-			relayStatMetrics.NumRoutes.Set(float64(len(routematrix.Entries)))
+			relayStatMetrics.NumRoutes.Set(float64(len(routeMatrix.Entries)))
 
-			level.Info(logger).Log("matrix", "route", "entries", len(routematrix.Entries))
+			level.Info(logger).Log("matrix", "route", "entries", len(routeMatrix.Entries))
 
 			// Write the cost matrix to a buffer and serve that instead
 			// of writing a new buffer every time we want to serve the cost matrix
-			err := costmatrix.WriteResponseData()
+			err = costMatrix.WriteResponseData()
 			if err != nil {
-				sentry.CaptureException(err)
 				level.Error(logger).Log("matrix", "cost", "msg", "failed to write cost matrix response data", "err", err)
 			}
 
 			// Write the route matrix to a buffer and serve that instead
 			// of writing a new buffer every time we want to serve the route matrix
-			err = routematrix.WriteResponseData()
+			err = routeMatrix.WriteResponseData()
 			if err != nil {
-				sentry.CaptureException(err)
 				level.Error(logger).Log("matrix", "route", "msg", "failed to write route matrix response data", "err", err)
 			}
 
@@ -459,11 +465,11 @@ func main() {
 	router.HandleFunc("/relay_init", transport.RelayInitHandlerFunc(logger, &commonInitParams)).Methods("POST")
 	router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(logger, relayslogger, &commonUpdateParams)).Methods("POST")
 	router.HandleFunc("/relays", transport.RelayHandlerFunc(logger, relayslogger, &commonHandlerParams)).Methods("POST")
-	router.Handle("/cost_matrix", &costmatrix).Methods("GET")
-	router.Handle("/route_matrix", &routematrix).Methods("GET")
+	router.Handle("/cost_matrix", &costMatrix).Methods("GET")
+	router.Handle("/route_matrix", &routeMatrix).Methods("GET")
 	router.Handle("/debug/vars", expvar.Handler())
-	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(redisClientRelays, &routematrix, statsdb, "local", "local"))
-	router.HandleFunc("/routes", transport.RoutesHandlerFunc(redisClientRelays, &routematrix, statsdb, "local", "local"))
+	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(redisClientRelays, &routeMatrix, statsdb, "local", "local"))
+	router.HandleFunc("/routes", transport.RoutesHandlerFunc(redisClientRelays, &routeMatrix, statsdb, "local", "local"))
 
 	go func() {
 		port, ok := os.LookupEnv("PORT")

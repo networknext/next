@@ -163,7 +163,7 @@ type MaxmindDB struct {
 }
 
 func (mmdb *MaxmindDB) SyncLoop(ctx context.Context, c <-chan time.Time) error {
-	// todo: sync loop is disabled because it will throw off sessions once every 24 hours until we fix lock below
+	// todo: ryan, please fix the sync loop to work with double buffering like the cost and route matrix
 	return nil
 	/*
 		for {
