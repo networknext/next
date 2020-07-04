@@ -124,18 +124,17 @@ func main() {
 
 		pubsubSubscription := pubsubClient.Subscription(subscriptionName)
 	
-		err = pubsubSubscription.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
-			// todo: process billing entry
-			atomic.AddUint64(&billingEntriesProcessed, 1)
-			m.Ack()
-		})
-		if err != context.Canceled {
-			fmt.Printf("could not setup to receive pubsub messages\n")
-			os.Exit(1)
-		}
-
-		// todo: goroutine or something to do work
-		_ = pubsubSubscription
+		go func() {
+			err = pubsubSubscription.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
+				// todo: process billing entry
+				atomic.AddUint64(&billingEntriesProcessed, 1)
+				m.Ack()
+			})
+			if err != context.Canceled {
+				fmt.Printf("could not setup to receive pubsub messages\n")
+				os.Exit(1)
+			}
+		}()
 
 		// StackDriver Metrics
 		{
