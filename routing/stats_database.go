@@ -246,6 +246,8 @@ func (database *StatsDatabase) GetCostMatrix(
 	costMatrix.RelayIDs = make([]uint64, numRelays)
 	costMatrix.RelayNames = make([]string, numRelays)
 	costMatrix.RelayAddresses = make([][]byte, numRelays)
+	costMatrix.RelayLatitude = make([]float64, numRelays)
+	costMatrix.RelayLongitude = make([]float64, numRelays)
 	costMatrix.RelayPublicKeys = make([][]byte, numRelays)
 	costMatrix.DatacenterRelays = make(map[uint64][]uint64)
 	costMatrix.RTT = make([]int32, TriMatrixLength(numRelays))
