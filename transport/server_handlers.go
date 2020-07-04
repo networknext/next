@@ -666,6 +666,15 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			response.NearRelayAddresses[i] = *nearRelays[i].Address
 		}
 
+		// If the session has fallen back to direct, just give them a direct route.
+
+		if packet.FallbackToDirect {
+			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+			// todo: ryan, there shoud be a metric for fallback to direct
+			// params.Metrics.ErrorMetrics.ClientLocateFailure.Add(1)
+			sendRouteResponse(w, &directRoute, params, &packet, &response, serverData, &lastNextStats, &lastDirectStats, &location)
+		}
+
 		// ================================================================
 
 		// todo: get real route :)
