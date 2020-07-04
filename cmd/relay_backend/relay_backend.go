@@ -476,6 +476,16 @@ func main() {
 		RouterPrivateKey: routerPrivateKey,
 	}
 
+	// todo: ryan, relay backend health check should only become healthy once it is ready to serve up a quality route matrix in prod.
+	// in the current production environment, this probably means that it has generated route matrices for 6 minutes. the reason for this
+	// being that the timeout for bad routes are 5 minutes, so when the relay backend first starts up, the route matrix is in a bad state
+	// (intentionally) for the first 5 minutes, as it assumes all routes are initially bad. only routes that are good past 5 minutes
+	// are good enough to serve up to our customers.
+
+	// todo: ryan, important. make sure on the first iteration of the stats db, that we always put in, for every relay pair, 100% packet loss.
+	// this will ensure the "takes 5 minutes to stabilize" policy, since the stats db is configured to take the *worst* packet loss it sees
+	// for the past 5 minutes...
+
 	router := mux.NewRouter()
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag))
