@@ -118,7 +118,11 @@ func main() {
 			os.Exit(1)
 		}
 
-		pubsubTopic, err := pubsubClient.CreateTopic(ctx, "projects/network-next-v3-prod/topics/billing")
+		topicName := "projects/network-next-v3-prod/topics/billing"
+
+		fmt.Printf("billing topic name: %s\n", topicName)
+
+		pubsubTopic, err := pubsubClient.CreateTopic(ctx, topicName)
 		if err != nil {
 			fmt.Printf("could not create pubsub topic\n")
 			os.Exit(1)
