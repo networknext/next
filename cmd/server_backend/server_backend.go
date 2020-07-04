@@ -270,41 +270,24 @@ func main() {
 			db = fs
 		}
 
-		// BigQuery
+		// Google Pubsub
 		{
-			// todo: biller is disabled. bigquery can't keep up
-			/*
-				if billingDataset, ok := os.LookupEnv("GOOGLE_BIGQUERY_DATASET_BILLING"); ok {
-					batchSize := billing.DefaultBigQueryBatchSize
-					if size, ok := os.LookupEnv("GOOGLE_BIGQUERY_BATCH_SIZE"); ok {
-						s, err := strconv.ParseInt(size, 10, 64)
-						if err != nil {
-							level.Error(logger).Log("envvar", "GOOGLE_BIGQUERY_BATCH_SIZE", "msg", "could not parse ", "err", err)
-							os.Exit(1)
-						}
-						batchSize = int(s)
-					}
+			descriptor := billing.Descriptor{
+				ClientCount: 1,
+				DelayThreshold: time.Second * 10,
+				CountThreshold: 1000,
+				ByteThreshold: 100*1024,
+				NumGoroutines: runtime.GOMAXPROCS(0),
+				Timeout: time.Minute,
+			}
 
-					bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
-					if err != nil {
-						level.Error(logger).Log("msg", "could not create BiqQuery client", "err", err)
-						os.Exit(1)
-					}
-					b := billing.GoogleBigQueryClient{
-						Logger:        logger,
-						TableInserter: bqClient.Dataset(billingDataset).Table(os.Getenv("GOOGLE_BIGQUERY_TABLE_BILLING")).Inserter(),
-						BatchSize:     batchSize,
-					}
+			pubsub, err := billing.NewBiller(ctx, logger, gcpProjectID, "billing", &descriptor)
+			if err != nil {
+				fmt.Printf("could not create pubsub biller\n")
+				os.Exit(1)
+			}
 
-					// Set the Biller to BigQuery
-					biller = &b
-
-					// Start the background WriteLoop to batch write to BigQuery
-					go func() {
-						b.WriteLoop(ctx)
-					}()
-				}
-			*/
+			biller = pubsub
 		}
 
 		// StackDriver Metrics
