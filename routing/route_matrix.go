@@ -100,6 +100,7 @@ func (m *RouteMatrix) GetNearRelays(latitude float64, longitude float64, maxNear
 		lat2 := m.RelayLatitude[i]
 		long2 := m.RelayLongitude[i]
 		nearRelays[i].Distance = int(HaversineDistance(lat1, long1, lat2, long2))
+		nearRelays[i].Address = m.relayAddressCache[i]
 	}
 
 	// IMPORTANT: Sort near relays by distance using a *stable sort*
