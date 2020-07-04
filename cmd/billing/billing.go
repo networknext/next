@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"sync/atomic"
 
 	"time"
 
@@ -27,6 +28,7 @@ import (
 
 	gcplogging "cloud.google.com/go/logging"
 	"cloud.google.com/go/profiler"
+	"cloud.google.com/go/pubsub"
 )
 
 var (
@@ -38,8 +40,6 @@ var (
 func main() {
 
 	fmt.Printf("welcome to the nerd zone 1.0\n")
-
-	var err error
 
 	ctx := context.Background()
 
@@ -101,32 +101,49 @@ func main() {
 		os.Exit(1)
 	}
 
+	var billingEntriesProcessed uint64
+
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
 	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
 	// on creation so we can use that for the default then
 	if gcpProjectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
 
-		/*
-		// Google Pubsub
-		{
-			descriptor := billing.Descriptor{
-				ClientCount: 1,
-				DelayThreshold: time.Second * 10,
-				CountThreshold: 1000,
-				ByteThreshold: 100*1024,
-				NumGoroutines: runtime.GOMAXPROCS(0),
-				Timeout: time.Minute,
-			}
+		// Google pubsub
 
-			pubsub, err := billing.NewBiller(ctx, logger, gcpProjectID, "billing", &descriptor)
-			if err != nil {
-				fmt.Printf("could not create pubsub biller\n")
-				os.Exit(1)
-			}
-
-			biller = pubsub
+		pubsubClient, err := pubsub.NewClient(ctx, gcpProjectID)
+		if err != nil {
+			fmt.Printf("could not create pubsub client\n")
+			os.Exit(1)
 		}
-		*/
+
+		pubsubTopic, err := pubsubClient.CreateTopic(ctx, "billing")
+		if err != nil {
+			fmt.Printf("could not create pubsub topic\n")
+			os.Exit(1)
+		}
+
+		pubsubSubscription, err := pubsubClient.CreateSubscription(ctx, "billing", pubsub.SubscriptionConfig{
+			Topic:            pubsubTopic,
+			AckDeadline:      10 * time.Second,
+			ExpirationPolicy: time.Duration(0),
+		})
+		if err != nil {
+			fmt.Printf("could not create pubsub subscription\n")
+			os.Exit(1)
+		}
+	
+		err = pubsubSubscription.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
+			// todo: process billing entry
+			atomic.AddUint64(&billingEntriesProcessed, 1)
+			m.Ack()
+		})
+		if err != context.Canceled {
+			fmt.Printf("could not setup to receive pubsub messages\n")
+			os.Exit(1)
+		}
+
+		// todo: goroutine or something to do work
+		_ = pubsubSubscription
 
 		// StackDriver Metrics
 		{
@@ -208,6 +225,7 @@ func main() {
 				fmt.Printf("-----------------------------\n")
 				fmt.Printf("%d goroutines\n", runtime.NumGoroutine())
 				fmt.Printf("%.2f mb allocated\n", memoryUsed())
+				fmt.Printf("%d billing entries processed\n", billingEntriesProcessed)
 				fmt.Printf("-----------------------------\n")
 
 				time.Sleep(time.Second * 10)
