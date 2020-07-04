@@ -118,25 +118,11 @@ func main() {
 			os.Exit(1)
 		}
 
-		topicName := "projects/network-next-v3-prod/topics/billing"
+		topicName := "billing"
 
 		fmt.Printf("billing topic name: %s\n", topicName)
 
-		pubsubTopic, err := pubsubClient.CreateTopic(ctx, topicName)
-		if err != nil {
-			fmt.Printf("could not create pubsub topic\n")
-			os.Exit(1)
-		}
-
-		pubsubSubscription, err := pubsubClient.CreateSubscription(ctx, "billing", pubsub.SubscriptionConfig{
-			Topic:            pubsubTopic,
-			AckDeadline:      10 * time.Second,
-			ExpirationPolicy: time.Duration(0),
-		})
-		if err != nil {
-			fmt.Printf("could not create pubsub subscription\n")
-			os.Exit(1)
-		}
+		pubsubSubscription := pubsubClient.Subscription("billing")
 	
 		err = pubsubSubscription.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
 			// todo: process billing entry
