@@ -87,7 +87,7 @@ func (m *RouteMatrix) GetNearRelays(latitude float64, longitude float64, maxNear
 
 	nearRelays := make([]NearRelayData, len(m.relayAddressCache))
 
-	// IMPORTANT: We truncate the lat/long values to nearest integer.
+	// IMPORTANT: Truncate the lat/long values to nearest integer.
 	// This fixes numerical instabilities that can happen in the haversine function
 	// when two relays are really close together, they can get sorted differently in
 	// subsequent passes otherwise.
@@ -97,15 +97,10 @@ func (m *RouteMatrix) GetNearRelays(latitude float64, longitude float64, maxNear
 
 	for i := range m.RelayIDs {
 		nearRelays[i].ID = m.RelayIDs[i]
-		/*
 		lat2 := m.RelayLatitude[i]
 		long2 := m.RelayLongitude[i]
 		nearRelays[i].Distance = int(HaversineDistance(lat1, long1, lat2, long2))
-		*/
 	}
-
-	_ = lat1
-	_ = long1
 
 	// IMPORTANT: Sort near relays by distance using a *stable sort*
 	// This is necessary to ensure that relays are always sorted in the same order,

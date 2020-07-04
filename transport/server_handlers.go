@@ -559,6 +559,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 		if err != nil {
 			// level.Error(locallogger).Log("msg", "failed to get buyer from storage", "err", err, "customer_id", packet.CustomerID)
 			// todo: ryan we need a metric for this
+			fmt.Printf("could not find customer\n")
 			return
 		}
 
@@ -568,6 +569,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 		if !crypto.Verify(buyer.PublicKey, packet.GetSignData(), packet.Signature) {
 			// todo: ryan, please log an error, but comment it out
 			// todo: ryan, there should be a metric for this
+			fmt.Printf("could not verify session update packet\n")
 			return
 		}
 
@@ -638,7 +640,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			if err != nil {
 				params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 				params.Metrics.ErrorMetrics.ClientLocateFailure.Add(1)
-				// IMPORTANT: We send a direct route response here because we want to see the session in our total session count, even if we can't ip2loc them.
+				// IMPORTANT: We send a direct route response here because we want to see the session in our total session count, even if ip2loc fails.
 				// Context: As soon as we don't respond to a session update, the SDK "falls back to direct" and stops sending session update packets.
 				sendRouteResponse(w, &directRoute, params, &packet, &response, serverData, &lastNextStats, &lastDirectStats, &location)
 				return
@@ -659,14 +661,9 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 		response.NumNearRelays = int32(len(nearRelays))
 		response.NearRelayIDs = make([]uint64, len(nearRelays))
 		response.NearRelayAddresses = make([]net.UDPAddr, len(nearRelays))
-		for i, relay := range nearRelays {
-			// todo: fill in near relay data
-			_ = relay
-			_ = i
-			/*
-			response.NearRelayIDs[i] = relay.ID
-			response.NearRelayAddresses[i] = relay.Addr
-			*/
+		for i := range nearRelays {
+			response.NearRelayIDs[i] = nearRelays[i].ID
+			response.NearRelayAddresses[i] = *nearRelays[i].Address
 		}
 
 		// ================================================================
@@ -1775,7 +1772,7 @@ func addRouteDecisionMetric(d routing.Decision, m *metrics.SessionMetrics) {
 	}
 }
 */
-// writeInitResponse encrypts the server init response packet and sends it back to the server. Returns the marshaled response and an error.
+
 func writeInitResponse(w io.Writer, response ServerInitResponsePacket, privateKey []byte) error {
 	// Sign the response
 	response.Signature = crypto.Sign(privateKey, response.GetSignData())
@@ -1794,7 +1791,6 @@ func writeInitResponse(w io.Writer, response ServerInitResponsePacket, privateKe
 	return nil
 }
 
-// writeSessionResponse encrypts the session response packet and sends it back to the server. Returns the marshaled response and an error.
 func writeSessionResponse(w io.Writer, response *SessionResponsePacket, privateKey []byte) ([]byte, error) {
 	// Sign the response
 	response.Signature = crypto.Sign(privateKey, response.GetSignData())
@@ -1837,20 +1833,3 @@ func sendRouteResponse(w io.Writer, chosenRoute *routing.Route, params *SessionU
 		return
 	}
 }
-
-// todo: disabled
-/*
-func writeSessionErrorResponse(w io.Writer, response SessionResponsePacket, privateKey []byte, directSessions metrics.Counter, unserviceableUpdateCounter metrics.Counter, errCounter metrics.Counter) ([]byte, error) {
-	responseData, err := writeSessionResponse(w, response, privateKey)
-	if err != nil {
-		return nil, err
-	}
-
-	directSessions.Add(1)
-
-	unserviceableUpdateCounter.Add(1)
-	errCounter.Add(1)
-
-	return responseData, nil
-}
-*/
