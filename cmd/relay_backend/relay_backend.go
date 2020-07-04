@@ -367,18 +367,17 @@ func main() {
 			// IMPORTANT: Fill the cost matrix with near relay lat/longs
 			// these are then passed in to the route matrix via "Optimize"
 			// and the server_backend uses them to find near relays.
-			// fmt.Printf("=====================================================\n")
 			for i := range costMatrix.RelayIDs {
 				relay, err := db.Relay(costMatrix.RelayIDs[i])
 				if err == nil {
 					costMatrix.RelayLatitude[i] = relay.Datacenter.Location.Latitude
 					costMatrix.RelayLongitude[i] = relay.Datacenter.Location.Longitude
-					// fmt.Printf("%s: %f, %f\n", costMatrix.RelayNames[i], costMatrix.RelayLatitude[i], costMatrix.RelayLongitude[i])
+					fmt.Printf("%s: %f, %f\n", costMatrix.RelayNames[i], costMatrix.RelayLatitude[i], costMatrix.RelayLongitude[i])
 				} else {
-					// fmt.Printf("%s: %v\n", costMatrix.RelayNames[i], err)
+					fmt.Printf("%s: %v\n", costMatrix.RelayNames[i], err)
 				}
 			}
-			// fmt.Printf("=====================================================\n")
+			fmt.Printf("=====================================================\n")
 
 			relayStatMetrics.NumRelays.Set(float64(len(statsdb.Entries)))
 

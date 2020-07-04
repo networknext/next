@@ -1363,14 +1363,10 @@ func main() {
 				ShortUsage: "next debug <relay_name> [input_file]",
 				ShortHelp:  "Debug tool",
 				Exec: func(ctx context.Context, args []string) error {
-					// todo: put back
-					/*
 					if len(args) == 0 {
 						log.Fatal("You need to supply a relay name")
 					}
 					relayName := args[0]
-					*/
-					relayName := "temporary"
 					inputFile := "optimize.bin"
 					if len(args) > 1 {
 						inputFile = args[1]

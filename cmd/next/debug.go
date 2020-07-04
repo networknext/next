@@ -35,19 +35,12 @@ func debug(relayName string, inputFile string) {
 		log.Fatalln(fmt.Errorf("error reading route matrix: %w", err))
 	}
 
-	/*
 	relayIndex := GetRelayIndex(&routeMatrix, relayName)
 
 	if relayIndex == -1 {
 		log.Fatalf("error: can't find relay called '%s'\n", relayName)
 	}
-	*/
 
-	for i := range routeMatrix.RelayIDs {
-		fmt.Printf("%s: %f,%f\n", routeMatrix.RelayNames[i], routeMatrix.RelayLatitude[i], routeMatrix.RelayLongitude[i])
-	}
-
-	/*
 	fmt.Printf("Routes to '%s':\n\n", relayName)
 
 	numRelays := len(routeMatrix.RelayIDs)
@@ -109,5 +102,4 @@ func debug(relayName string, inputFile string) {
 			}
 		}
 	}
-	*/
 }
