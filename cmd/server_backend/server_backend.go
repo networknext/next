@@ -530,41 +530,30 @@ func main() {
 			return float64(m.Alloc) / (1000.0 * 1000.0)
 		}
 
-		ticker := time.NewTicker(time.Second * 10)
-
-	    first := make(chan bool, 1)
-	    first <- true
-
-    		go func() {
+		go func() {
 			for {
-				select {
-				case <-ticker.C:
-				case <-first:
+				// todo: ryan. I would like to see all of the variables below, put into stackdriver metrics
+				// so we can track them over time. right here in place, update the values in stackdriver once
+				// every second, but only print out to stdout once every 10 seconds. -- thanks
 
-					// todo: ryan. I would like to see all of the variables below, put into stackdriver metrics
-					// so we can track them over time. right here in place, update the values in stackdriver once
-					// every second, but only print out to stdout once every 10 seconds. -- thanks
+				fmt.Printf("-----------------------------\n")
+				fmt.Printf("%d vetoes\n", vetoMap.NumVetoes())
+				fmt.Printf("%d servers\n", serverMap.NumServers())
+				fmt.Printf("%d sessions\n", sessionMap.NumSessions())
+				fmt.Printf("%d goroutines\n", runtime.NumGoroutine())
+				fmt.Printf("%.2f mb allocated\n", memoryUsed())
+				fmt.Printf("%d billing entries submitted\n", biller.NumSubmitted())
+				fmt.Printf("%d billing entries queued\n", biller.NumQueued())
+				fmt.Printf("%d billing entries flushed\n", biller.NumFlushed())
+				fmt.Printf("%d server init packets processed\n", atomic.LoadUint64(&serverInitCounters.Packets))
+				fmt.Printf("%d server update packets processed\n", atomic.LoadUint64(&serverUpdateCounters.Packets))
+				fmt.Printf("%d session update packets processed\n", atomic.LoadUint64(&sessionUpdateCounters.Packets))
+				fmt.Printf("%d long server inits\n", atomic.LoadUint64(&serverInitCounters.LongDuration))
+				fmt.Printf("%d long server updates\n", atomic.LoadUint64(&serverUpdateCounters.LongDuration))
+				fmt.Printf("%d long session updates\n", atomic.LoadUint64(&sessionUpdateCounters.LongDuration))
+				fmt.Printf("-----------------------------\n")
 
-					fmt.Printf("-----------------------------\n")
-					fmt.Printf("%d vetoes\n", vetoMap.NumVetoes())
-					fmt.Printf("%d servers\n", serverMap.NumServers())
-					fmt.Printf("%d sessions\n", sessionMap.NumSessions())
-					fmt.Printf("%d goroutines\n", runtime.NumGoroutine())
-					fmt.Printf("%.2f mb allocated\n", memoryUsed())
-					fmt.Printf("%d billing entries submitted\n", biller.NumSubmitted())
-					fmt.Printf("%d billing entries queued\n", biller.NumQueued())
-					fmt.Printf("%d billing entries flushed\n", biller.NumFlushed())
-					fmt.Printf("%d server init packets processed\n", atomic.LoadUint64(&serverInitCounters.Packets))
-					fmt.Printf("%d server update packets processed\n", atomic.LoadUint64(&serverUpdateCounters.Packets))
-					fmt.Printf("%d session update packets processed\n", atomic.LoadUint64(&sessionUpdateCounters.Packets))
-					fmt.Printf("%d long server inits\n", atomic.LoadUint64(&serverInitCounters.LongDuration))
-					fmt.Printf("%d long server updates\n", atomic.LoadUint64(&serverUpdateCounters.LongDuration))
-					fmt.Printf("%d long session updates\n", atomic.LoadUint64(&sessionUpdateCounters.LongDuration))
-					fmt.Printf("-----------------------------\n")
-
-				case <-ctx.Done():
-					return
-				}
+				time.Sleep(time.Second * 10)
 			}
 		}()
 	}
