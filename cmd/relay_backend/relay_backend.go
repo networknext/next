@@ -209,6 +209,8 @@ func main() {
 		// Set the Firestore Storer to give to handlers
 		db = fs
 
+		// todo: ryan, env var to enable stackdriver metrics. as per-server backend
+
 		// Set up StackDriver metrics
 		sd := metrics.StackDriverHandler{
 			ProjectID:          gcpProjectID,
@@ -232,6 +234,8 @@ func main() {
 		go func() {
 			metricsHandler.WriteLoop(ctx, logger, writeInterval, 200)
 		}()
+
+		// todo: ryan, env var to enable stackdriver profiler. as per-server backend
 
 		// Set up StackDriver profiler
 		if err := profiler.Start(profiler.Config{
@@ -354,6 +358,8 @@ func main() {
 			newCostMatrixGenMetrics.DurationGauge.Set(float64(costMatrixDurationSince.Milliseconds()))
 			newCostMatrixGenMetrics.Invocations.Add(1)
 
+			// todo: set relay lat/longs on cost
+
 			relayStatMetrics.NumRelays.Set(float64(len(statsdb.Entries)))
 
 			optimizeDurationStart := time.Now()
@@ -367,10 +373,6 @@ func main() {
 			relayStatMetrics.NumRoutes.Set(float64(len(routematrix.Entries)))
 
 			level.Info(logger).Log("matrix", "route", "entries", len(routematrix.Entries))
-
-			if len(routematrix.Entries) == 0 {
-				sentry.CaptureMessage("no routes within route matrix")
-			}
 
 			// Write the cost matrix to a buffer and serve that instead
 			// of writing a new buffer every time we want to serve the cost matrix

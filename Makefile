@@ -213,7 +213,7 @@ test-unit: clean test-unit-backend ## runs backend unit tests
 
 ifeq ($(OS),linux)
 .PHONY: test-soak-valgrind
-test-soak-valgrind: clean build-sdk-test build-soak-test ## runs sdk soak test under valgrind (linux only)
+test-soak-valgrind: clean build-soak-test ## runs sdk soak test under valgrind (linux only)
 	@valgrind --tool=memcheck --leak-check=yes --show-reachable=yes --num-callers=20 --track-fds=yes --track-origins=yes $(DIST_DIR)/$(SDKNAME)_soak_test
 	@printf "\n"
 endif
@@ -577,7 +577,7 @@ build-next: ## builds the operator tool
 	@printf "done\n"
 
 .PHONY: build-all
-build-all: build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-sdk-test build-soak-test build-next ## builds everything
+build-all: build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all
