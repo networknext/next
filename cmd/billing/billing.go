@@ -110,6 +110,8 @@ func main() {
 
 		// Google pubsub
 
+		fmt.Printf("google project: %s\n", gcpProjectID)
+
 		pubsubClient, err := pubsub.NewClient(ctx, gcpProjectID)
 		if err != nil {
 			fmt.Printf("could not create pubsub client\n")
