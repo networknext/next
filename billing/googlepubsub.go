@@ -75,27 +75,17 @@ func NewBiller(ctx context.Context, resultLogger log.Logger, projectID string, b
 	return biller, nil
 }
 
-// Bill sends the billing entry to Google Pub/Sub
-func (biller *GooglePubSubBiller) Bill(ctx context.Context, sessionID uint64, entry *Entry) error {
+func (biller *GooglePubSubBiller) Bill(ctx context.Context, entry *BillingEntry) error {
 
 	atomic.AddUint64(&biller.submitted, 1)
 
-	// todo: there's a problem with proto marshalling. let's replace this with something more sane
-	/*
-	data, err := proto.Marshal(entry)
-	if err != nil {
-		return err
-	}
-	*/
-
-	// temporarily just write blocks of zero bytes, to test throughput
-	data := make([]byte, 1024)
+	data := WriteBillingEntry(entry)
 
 	if biller.clients == nil {
 		return fmt.Errorf("billing: clients not initialized")
 	}
 
-	index := sessionID % uint64(len(biller.clients))
+	index := entry.SessionID % uint64(len(biller.clients))
 	topic := biller.clients[index].Topic
 	resultChan := biller.clients[index].ResultChan
 

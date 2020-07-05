@@ -727,20 +727,37 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 		datacenterName = serverData.datacenter.AliasName
 	}
 
+	// Send a massive amount of data to the portal via redis.
+	// This drives all the stuff you see in the portal, including the map and top sessions list.
+	// We send it via redis because google pubsub is not able to deliver data quickly enough.
+	
+	// IMPORTANT: We could possibly offload some work from here by sending to another service
+	// via redis pubsub (this is different to google pubsub).
+
 	if err := updatePortalData(params.RedisClientPortal, params.RedisClientPortalExp, packet, lastNextStats, lastDirectStats, chosenRoute.Relays, prevOnNetworkNext, datacenterName, location, time.Now(), false); err != nil {
 		fmt.Printf("could not update portal data: %v\n", err)
 		// level.Error(params.Logger).Log("msg", "could not update portal data", "err", err)
 		params.Metrics.ErrorMetrics.UpdatePortalFailure.Add(1)
-		params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 	}
 
-	// todo: ryan please update this with all information we have available. we no longer need to fully pass in dummy values.
-	if err := submitBillingEntry(params.Biller, &ServerCacheEntry{}, 0, packet, response, &routing.Buyer{}, chosenRoute, location,
-		params.Storer, nil, routing.Decision{}, billing.BillingSliceSeconds, time.Now(), time.Now(), false); err != nil {
-		fmt.Printf("could not write billing entry: %v\n", err)
-		// level.Error(params.Logger).Log("msg", "could not write billing entry", "err", err)
+	// Send billing specific data to the billing service via google pubsub
+	// The billing service subscribes to this topic, and writes the billing data to bigquery.
+	// We tried writing to bigquery directly here, but it didn't work because bigquery would stall out.
+	// BigQuery really doesn't make performance guarantees on how fast it is to load data, so we need 
+	// pubsub to act as a queue to smooth that out. Pubsub can buffer billing data for up to 7 days.
+
+	billingEntry := billing.BillingEntry{}
+	billingEntry.SessionID = packet.SessionID
+	billingEntry.DirectRTT = float32(lastDirectStats.RTT)
+	billingEntry.DirectJitter = float32(lastDirectStats.Jitter)
+	billingEntry.DirectPacketLoss = float32(lastDirectStats.PacketLoss)
+	
+	// todo: ryan, please fill rest billing entry
+	
+	if err := params.Biller.Bill(context.Background(), &billingEntry); err != nil {
+		fmt.Printf("could not submit billing entry: %v\n", err)
+		// level.Error(params.Logger).Log("msg", "could not submit billing entry", "err", err)
 		params.Metrics.ErrorMetrics.BillingFailure.Add(1)
-		params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 	}
 }
 
@@ -1703,6 +1720,7 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 	return nil
 }
 
+/*
 func submitBillingEntry(biller billing.Biller, serverCacheEntry *ServerCacheEntry, prevRouteHash uint64, request *SessionUpdatePacket, response *SessionResponsePacket,
 	buyer *routing.Buyer, chosenRoute *routing.Route, location *routing.Location, storer storage.Storer, clientRelays []routing.Relay, routeDecision routing.Decision,
 	sliceDuration uint64, timestampStart time.Time, timestampNow time.Time, newSession bool) error {
@@ -1712,6 +1730,7 @@ func submitBillingEntry(biller billing.Biller, serverCacheEntry *ServerCacheEntr
 	billingEntry := NewBillingEntry(routeRequest, chosenRoute, int(response.RouteType), sameRoute, &buyer.RoutingRulesSettings, routeDecision, request, sliceDuration, timestampStart, timestampNow, newSession)
 	return biller.Bill(context.Background(), request.SessionID, billingEntry)
 }
+*/
 
 // todo: disabled
 /*

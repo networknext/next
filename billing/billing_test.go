@@ -1,6 +1,7 @@
 package billing_test
 
 import (
+	/*
 	"context"
 	"os"
 	"testing"
@@ -9,8 +10,11 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/networknext/backend/billing"
 	"github.com/stretchr/testify/assert"
+	*/
 )
 
+// todo: disabled
+/*
 func checkPubsubEmulator(t *testing.T) {
 	pubsubEmulatorHost := os.Getenv("PUBSUB_EMULATOR_HOST")
 	if pubsubEmulatorHost == "" {
@@ -93,3 +97,4 @@ func TestNoOpBill(t *testing.T) {
 	biller := billing.NoOpBiller{}
 	biller.Bill(context.Background(), 0, nil)
 }
+*/

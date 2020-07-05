@@ -11,7 +11,7 @@ type NoOpBiller struct {
 }
 
 // Bill does nothing
-func (noop *NoOpBiller) Bill(ctx context.Context, sessionID uint64, entry *Entry) error {
+func (noop *NoOpBiller) Bill(ctx context.Context, entry *BillingEntry) error {
 	atomic.AddUint64(&noop.submitted, 1)
 	return nil
 }
