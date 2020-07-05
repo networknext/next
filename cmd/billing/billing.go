@@ -200,7 +200,7 @@ func main() {
 				// todo: process billing entry
 				atomic.AddUint64(&billingEntriesReceived, 1)
 				billingEntry := billing.BillingEntry{}
-				if !billing.ReadBillingEntry(&billingEntry, m.Data) {
+				if billing.ReadBillingEntry(&billingEntry, m.Data) {
 					if err := biller.Bill(context.Background(), &billingEntry); err != nil {
 						fmt.Printf("could not submit billing entry: %v\n", err)
 						// level.Error(params.Logger).Log("msg", "could not submit billing entry", "err", err)
