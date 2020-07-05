@@ -25,6 +25,7 @@ import (
 	"github.com/networknext/backend/logging"
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/transport"
+	"github.com/networknext/backend/billing"
 
 	gcplogging "cloud.google.com/go/logging"
 	"cloud.google.com/go/profiler"
@@ -128,6 +129,10 @@ func main() {
 			err = pubsubSubscription.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
 				// todo: process billing entry
 				atomic.AddUint64(&billingEntriesProcessed, 1)
+				billingEntry := billing.BillingEntry{}
+				billing.ReadBillingEntry(&billingEntry, m.Data)
+				// todo: load to bigquery
+				_ = billingEntry
 				m.Ack()
 			})
 			if err != context.Canceled {
