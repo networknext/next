@@ -21,6 +21,15 @@ func ReadBool(data []byte, index *int, value *bool) bool {
 	return true
 }
 
+func ReadUint8(data []byte, index *int, value *uint8) bool {
+	if *index+1 > len(data) {
+		return false
+	}
+	*value = data[*index]
+	*index += 1
+	return true
+}
+
 func ReadUint32(data []byte, index *int, value *uint32) bool {
 	if *index+4 > len(data) {
 		return false

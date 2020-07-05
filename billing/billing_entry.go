@@ -54,3 +54,28 @@ func WriteBillingEntry(entry *BillingEntry) []byte {
 	encoding.WriteUint64(data, &index, entry.TotalPrice)
 	return data
 }
+
+func ReadBillingEntry(entry *BillingEntry, data []byte)  {
+	index := 0
+	encoding.ReadUint32(data, &index, &entry.Version)
+	encoding.ReadUint64(data, &index, &entry.Timestamp)
+	encoding.ReadUint64(data, &index, &entry.SessionID)
+	encoding.ReadUint32(data, &index, &entry.SliceNumber)
+	encoding.ReadUint64(data, &index, &entry.BuyerID)
+	var next uint8
+	encoding.ReadUint8(data, &index, &next)
+	if next != 0 {
+		entry.Next = true
+	}
+	encoding.ReadFloat32(data, &index, &entry.DirectRTT)
+	encoding.ReadFloat32(data, &index, &entry.DirectJitter)
+	encoding.ReadFloat32(data, &index, &entry.DirectPacketLoss)
+	encoding.ReadFloat32(data, &index, &entry.NextRTT)
+	encoding.ReadFloat32(data, &index, &entry.NextJitter)
+	encoding.ReadFloat32(data, &index, &entry.NextPacketLoss)
+	encoding.ReadUint8(data, &index, &entry.NumNextRelays)
+	for i := 0; i < BillingEntryMaxRelays; i++ {
+		encoding.ReadUint64(data, &index, &entry.NextRelays[i])
+	}
+	encoding.ReadUint64(data, &index, &entry.TotalPrice)
+}
