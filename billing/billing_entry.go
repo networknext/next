@@ -8,7 +8,7 @@ const BillingEntryVersion = 0
 
 const BillingEntryMaxRelays = 5
 
-const BillingEntryBytes = 4 + 8 + 8 + 4 + 8 + 1 + (6*4) + 1 + (BillingEntryMaxRelays*4) + 8
+const BillingEntryBytes = 4 + 8 + 8 + 4 + 8 + 1 + (6*4) + 1 + (BillingEntryMaxRelays*8) + 8
 
 type BillingEntry struct {
 	Version uint32
