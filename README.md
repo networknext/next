@@ -8,8 +8,6 @@ This is a monorepo that contains the Network Next backend.
 
 [![Build Status](https://networknext.semaphoreci.com/badges/backend.svg?key=822a130a-66de-4659-adb2-74237df34843)](https://networknext.semaphoreci.com/projects/backend)
 
-[![Sentry Errors](https://img.shields.io/badge/sentry-errors-red?style=for-the-badge&logo=sentry)](https://sentry.io/organizations/network-next/issues/)
-
 [![GCP Metrics](https://img.shields.io/badge/GCP-metrics-lightgray?style=for-the-badge&logo=google-cloud)](https://console.cloud.google.com/monitoring/dashboards/custom/17676944979741730633?organizationId=434699063105&project=network-next-v3-stackdriver-ws&timeDomain=1h)
 
 [![GCP Logs](https://img.shields.io/badge/GCP-logs-lightgray?style=for-the-badge&logo=google-cloud)](https://console.cloud.google.com/logs)
