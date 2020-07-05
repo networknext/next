@@ -55,27 +55,61 @@ func WriteBillingEntry(entry *BillingEntry) []byte {
 	return data
 }
 
-func ReadBillingEntry(entry *BillingEntry, data []byte)  {
+func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 	index := 0
-	encoding.ReadUint32(data, &index, &entry.Version)
-	encoding.ReadUint64(data, &index, &entry.Timestamp)
-	encoding.ReadUint64(data, &index, &entry.SessionID)
-	encoding.ReadUint32(data, &index, &entry.SliceNumber)
-	encoding.ReadUint64(data, &index, &entry.BuyerID)
+	if !encoding.ReadUint32(data, &index, &entry.Version) {
+		return false
+	}
+	if entry.Version != BillingEntryVersion {
+		return false
+	}
+	if !encoding.ReadUint64(data, &index, &entry.Timestamp) {
+		return false
+	}
+	if !encoding.ReadUint64(data, &index, &entry.SessionID) {
+		return false
+	}
+	if !encoding.ReadUint32(data, &index, &entry.SliceNumber) {
+		return false
+	}
+	if !encoding.ReadUint64(data, &index, &entry.BuyerID) {
+		return false
+	}
 	var next uint8
-	encoding.ReadUint8(data, &index, &next)
+	if !encoding.ReadUint8(data, &index, &next) {
+		return false
+	}
 	if next != 0 {
 		entry.Next = true
 	}
-	encoding.ReadFloat32(data, &index, &entry.DirectRTT)
-	encoding.ReadFloat32(data, &index, &entry.DirectJitter)
-	encoding.ReadFloat32(data, &index, &entry.DirectPacketLoss)
-	encoding.ReadFloat32(data, &index, &entry.NextRTT)
-	encoding.ReadFloat32(data, &index, &entry.NextJitter)
-	encoding.ReadFloat32(data, &index, &entry.NextPacketLoss)
-	encoding.ReadUint8(data, &index, &entry.NumNextRelays)
-	for i := 0; i < BillingEntryMaxRelays; i++ {
-		encoding.ReadUint64(data, &index, &entry.NextRelays[i])
+	if !encoding.ReadFloat32(data, &index, &entry.DirectRTT) {
+		return false
 	}
-	encoding.ReadUint64(data, &index, &entry.TotalPrice)
+	if !encoding.ReadFloat32(data, &index, &entry.DirectJitter) {
+		return false
+	}
+	if !encoding.ReadFloat32(data, &index, &entry.DirectPacketLoss) {
+		return false
+	}
+	if !encoding.ReadFloat32(data, &index, &entry.NextRTT) {
+		return false
+	}
+	if !encoding.ReadFloat32(data, &index, &entry.NextJitter) {
+		return false
+	}
+	if !encoding.ReadFloat32(data, &index, &entry.NextPacketLoss) {
+		return false
+	}
+	if !encoding.ReadUint8(data, &index, &entry.NumNextRelays) {
+		return false
+	}
+	for i := 0; i < BillingEntryMaxRelays; i++ {
+		if !encoding.ReadUint64(data, &index, &entry.NextRelays[i]) {
+			return false
+		}
+	}
+	if !encoding.ReadUint64(data, &index, &entry.TotalPrice) {
+		return false
+	}
+	return true
 }

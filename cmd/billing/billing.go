@@ -130,10 +130,13 @@ func main() {
 				// todo: process billing entry
 				atomic.AddUint64(&billingEntriesProcessed, 1)
 				billingEntry := billing.BillingEntry{}
-				billing.ReadBillingEntry(&billingEntry, m.Data)
-				// todo: load to bigquery
-				_ = billingEntry
-				m.Ack()
+				if !billing.ReadBillingEntry(&billingEntry, m.Data) {
+					// todo: load to bigquery
+					_ = billingEntry
+				} else {
+					// todo: metric for read failures
+				} 
+				m.Ack() 
 			})
 			if err != context.Canceled {
 				fmt.Printf("could not setup to receive pubsub messages\n")
