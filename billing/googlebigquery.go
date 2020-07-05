@@ -75,6 +75,7 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 	
 	e := make(map[string]bigquery.Value)
 
+	e["timestamp"] = int(entry.Timestamp)
 	e["sessionId"] = int(entry.SessionID)
 	e["sliceNumber"] = int(entry.SliceNumber)
 	e["buyerId"] = int(entry.BuyerID)
