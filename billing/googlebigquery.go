@@ -88,7 +88,7 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 	e["totalPrice"] = int(entry.TotalPrice)
 
 	nextRelays := make([]bigquery.Value, entry.NumNextRelays)
-	for i := range entry.NextRelays {
+	for i := range entry.NumNextRelays {
 		nextRelays[i] = int(entry.NextRelays[i])
 	}
 	e["nextRelays"] = nextRelays
