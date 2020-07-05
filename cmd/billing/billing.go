@@ -30,6 +30,7 @@ import (
 	gcplogging "cloud.google.com/go/logging"
 	"cloud.google.com/go/profiler"
 	"cloud.google.com/go/pubsub"
+	"cloud.google.com/go/bigquery"
 )
 
 var (
@@ -102,12 +103,81 @@ func main() {
 		os.Exit(1)
 	}
 
-	var billingEntriesProcessed uint64
+	var billingEntriesReceived uint64
+
+	// Create a no-op biller
+	var biller billing.Biller = &billing.NoOpBiller{}
 
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
 	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
 	// on creation so we can use that for the default then
 	if gcpProjectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
+
+	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
+	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
+	// on creation so we can use that for the default then
+	// if gcpProjectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
+
+	/*
+		// Create a Firestore Storer
+		fs, err := storage.NewFirestore(ctx, gcpProjectID)//, logger)
+		if err != nil {
+			// level.Error(logger).Log("err", err)
+			fmt.Printf("could not create firestore: %v\n", err)
+			os.Exit(1)
+		}
+
+		fssyncinterval := os.Getenv("GOOGLE_FIRESTORE_SYNC_INTERVAL")
+		syncInterval, err := time.ParseDuration(fssyncinterval)
+		if err != nil {
+			// level.Error(logger).Log("envvar", "GOOGLE_FIRESTORE_SYNC_INTERVAL", "value", fssyncinterval, "err", err)
+			fmt.Printf("bad GOOGLE_FIRESTORE_SYNC_INTERVAL\n")
+			os.Exit(1)
+		}
+		// Start a goroutine to sync from Firestore
+		go func() {
+			ticker := time.NewTicker(syncInterval)
+			fs.SyncLoop(ctx, ticker.C)
+		}()
+
+		// Set the Firestore Storer to give to handlers
+		db = fs
+	*/
+
+		// Google BigQuery
+
+		if billingDataset, ok := os.LookupEnv("GOOGLE_BIGQUERY_DATASET_BILLING"); ok {
+			batchSize := billing.DefaultBigQueryBatchSize
+			if size, ok := os.LookupEnv("GOOGLE_BIGQUERY_BATCH_SIZE"); ok {
+				s, err := strconv.ParseInt(size, 10, 64)
+				if err != nil {
+					// level.Error(logger).Log("err", err)
+					fmt.Println(err)
+					os.Exit(1)
+				}
+				batchSize = int(s)
+			}
+
+			bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
+			if err != nil {
+				// level.Error(logger).Log("err", err)
+				fmt.Println(err)
+				os.Exit(1)
+			}
+			b := billing.GoogleBigQueryClient{
+				// Logger:        logger,
+				TableInserter: bqClient.Dataset(billingDataset).Table(os.Getenv("GOOGLE_BIGQUERY_TABLE_BILLING")).Inserter(),
+				BatchSize:     batchSize,
+			}
+
+			// Set the Biller to BigQuery
+			biller = &b
+
+			// Start the background WriteLoop to batch write to BigQuery
+			go func() {
+				b.WriteLoop(ctx)
+			}()
+		}
 
 		// Google pubsub
 
@@ -128,11 +198,14 @@ func main() {
 		go func() {
 			err = pubsubSubscription.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
 				// todo: process billing entry
-				atomic.AddUint64(&billingEntriesProcessed, 1)
+				atomic.AddUint64(&billingEntriesReceived, 1)
 				billingEntry := billing.BillingEntry{}
 				if !billing.ReadBillingEntry(&billingEntry, m.Data) {
-					// todo: load to bigquery
-					_ = billingEntry
+					if err := biller.Bill(context.Background(), &billingEntry); err != nil {
+						fmt.Printf("could not submit billing entry: %v\n", err)
+						// level.Error(params.Logger).Log("msg", "could not submit billing entry", "err", err)
+						// params.Metrics.ErrorMetrics.BillingFailure.Add(1)
+					}
 				} else {
 					// todo: metric for read failures
 				} 
@@ -224,7 +297,10 @@ func main() {
 				fmt.Printf("-----------------------------\n")
 				fmt.Printf("%d goroutines\n", runtime.NumGoroutine())
 				fmt.Printf("%.2f mb allocated\n", memoryUsed())
-				fmt.Printf("%d billing entries processed\n", billingEntriesProcessed)
+				fmt.Printf("%d billing entries received\n", billingEntriesReceived)
+				fmt.Printf("%d billing entries submitted\n", biller.NumSubmitted())
+				fmt.Printf("%d billing entries queued\n", biller.NumQueued())
+				fmt.Printf("%d billing entries flushed\n", biller.NumFlushed())
 				fmt.Printf("-----------------------------\n")
 
 				time.Sleep(time.Second * 10)
