@@ -20,31 +20,15 @@ This is a monorepo that contains the Network Next backend.
 	- **Draft**: mark a PR as a draft to expose you have started work and have questions/comments in order to complete the work
 	- **Ready for Review**: mark a PR as ready for review and include the appropriate reviewers when unit tests for your bug/feature are all passing
 4. Once your pull request has been reviewed merge it into `master`
-5. Semaphore will build your PR and copy dev artifacts to the google cloud gs://dev_artifacts bucket automatically.
+5. Semaphore will build your PR and copy artifacts to the google cloud gs://dev_artifacts bucket automatically.
 6. Manually trigger a rolling update in google cloud on each managed instance group you want to update to latest code.
 
 ### Production Release
 
 1. Ensure tests pass locally as a sanity check
 2. Create a PR to push your changes to the "prod" branch
-3. Commit the PR once tests pass. Semaphore will build the prod branch and publish prod artifacts to the gs://prod_artifacts bucket.
+5. Semaphore will build your PR and copy artifacts to the google cloud gs://prod_artifacts bucket automatically.
 5. Manually trigger a rolling update in google cloud on each managed instance group you want to update to latest code.
-
-## CI/CD
-
-SemaphoreCI is used for running tests and deploying development and production artifacts to GCP Storage buckets which can be deployed to their respective VMs.
-
-1. Unit tests are always run when a commit is pushed or a PR is issued
-2. **Development** artifacts are built and published when tests pass AND there is a merge to `master`
-3. **Production** artifacts are built and published when tests pass AND there is a tag matching `PROD-YYYYMMDD-*`
-
-The development and production artifacts are only published to GCP Storage. They are not sent to the VMs to start running. Once CI/CD completes you need to issue the appropriate `make` command to trigger a deployment to the VMs.
-
-- `make deploy-portal` or `make deploy-portal-prod` to deploy the portal to dev and prod respectively
-- `make deploy-relay-backend` or `make deploy-relay-backend-prod` to deploy the relay backend to dev and prod respectively
-- `make deploy-server-backend` or `make deploy-server-backend-prod` to deploy the server backend to dev and prod respectively
-
-For more information about deployment and artifacts see the [deploy](deploy) folder.
 
 ## Development
 
