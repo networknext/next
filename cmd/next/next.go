@@ -597,6 +597,22 @@ func main() {
 					)
 					return nil
 				},
+				Subcommands: []*ffcli.Command{
+					{
+						Name:       "count",
+						ShortUsage: "next relays count <regex>",
+						ShortHelp:  "Return the number of relays in each state",
+						Exec: func(ctx context.Context, args []string) error {
+							if len(args) > 0 {
+								countRelays(rpcClient, env, args[0])
+								return nil
+							}
+
+							countRelays(rpcClient, env, "")
+							return nil
+						},
+					},
+				},
 			},
 			{
 				Name:       "routes",
