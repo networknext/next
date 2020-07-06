@@ -14,49 +14,27 @@ global_job_config:
       - sem-version go 1.13
       - make clean
 blocks:
-  - name: Build
+  - name: Build & Publish Artifacts
     dependencies: []
     task:
       jobs:
-        - name: Build Billing
+        - name: Billing
           commands:
             - make build-billing-prod-artifact
-            - artifact push workflow ./dist/billing.prod.tar.gz
-        - name: Build Portal
+            - make publish-billing-prod-artifact
+        - name: Portal
           commands:
             - make build-portal-prod-artifact
-            - artifact push workflow ./dist/portal.prod.tar.gz
-        - name: Build Relay Backend
+            - make publish-portal-prod-artifact
+        - name: Relay Backend
           commands:
             - make build-relay-backend-prod-artifact
-            - artifact push workflow ./dist/relay_backend.prod.tar.gz
-        - name: Build Server Backend
+            - make publish-relay-backend-prod-artifact
+        - name: Server Backend
           commands:
             - make build-server-backend-prod-artifact
-            - artifact push workflow ./dist/server_backend.prod.tar.gz
-      secrets:
-        - name: google-cloud-platform-prod
-  - name: Publish
-    dependencies: ["Build"]
-    task:
-      jobs:
-        - name: Publish Billing
-          commands:
-            - artifact pull workflow ./dist/billing.prod.tar.gz
-            - make publish-billing-prod-artifact
-        - name: Publish Portal
-          commands:
-            - artifact pull workflow ./dist/portal.prod.tar.gz
-            - make publish-portal-prod-artifact
-        - name: Publish Relay Backend
-          commands:
-            - artifact pull workflow ./dist/relay_backend.prod.tar.gz
-            - make publish-relay-backend-prod-artifact
-        - name: Publish Server Backend
-          commands:
-            - artifact pull workflow ./dist/server_backend.prod.tar.gz
             - make publish-server-backend-prod-artifact
-        - name: Publish Bootstrap Script
+        - name: Bootstrap Script
           commands:
             - make publish-bootstrap-script-prod
       secrets:
