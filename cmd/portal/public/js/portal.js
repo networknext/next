@@ -177,6 +177,7 @@ MapHandler = {
   },
 	mapCountLoop: null,
 	mapInstance: null,
+	deckGlInstance: null,
 	sessionToolMapInstance: null,
 	initMap() {
 		// Not working yet
@@ -243,35 +244,39 @@ MapHandler = {
 		JSONRPCClient
 			.call('BuyersService.SessionMap', {buyer_id: filter.buyerId || ""})
 			.then((response) => {
-				this.mapInstance = new mapboxgl.Map({
-					accessToken: mapboxgl.accessToken,
-					style: 'mapbox://styles/mapbox/dark-v10',
-					center: [
-						0,
-						0
-					],
-					zoom: 2,
-					pitch: 0,
-					bearing: 0,
-					container: 'map'
-				})
-				// creating the deck.gl instance
-				this.deckGlInstance = new deck.Deck({
-					canvas: document.getElementById("deck-canvas"),
-					width: '100%',
-					height: '100%',
-					initialViewState: this.viewState,
-					controller: true,
-					// change the map's viewstate whenever the view state of deck.gl changes
-					onViewStateChange: ({ viewState }) => {
-						this.mapInstance.jumpTo({
-							center: [viewState.longitude, viewState.latitude],
-							zoom: viewState.zoom,
-							bearing: viewState.bearing,
-							pitch: viewState.pitch
-						})
-					}
-				})
+				if (!this.mapInstance) {
+					this.mapInstance = new mapboxgl.Map({
+						accessToken: mapboxgl.accessToken,
+						style: 'mapbox://styles/mapbox/dark-v10',
+						center: [
+							0,
+							0
+						],
+						zoom: 2,
+						pitch: 0,
+						bearing: 0,
+						container: 'map'
+					})
+				}
+				if (!this.deckGlInstance) {
+					// creating the deck.gl instance
+					this.deckGlInstance = new deck.Deck({
+						canvas: document.getElementById("deck-canvas"),
+						width: '100%',
+						height: '100%',
+						initialViewState: this.viewState,
+						controller: true,
+						// change the map's viewstate whenever the view state of deck.gl changes
+						onViewStateChange: ({ viewState }) => {
+							this.mapInstance.jumpTo({
+								center: [viewState.longitude, viewState.latitude],
+								zoom: viewState.zoom,
+								bearing: viewState.bearing,
+								pitch: viewState.pitch
+							})
+						}
+					})
+				}
 				/* let sessions = response.map_points;
 				let onNN = sessions.filter((point) => {
 					return (point[2] == 1);
