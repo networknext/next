@@ -244,6 +244,7 @@ MapHandler = {
 		JSONRPCClient
 			.call('BuyersService.SessionMap', {buyer_id: filter.buyerId || ""})
 			.then((response) => {
+				let bounds = [[-165.152199, -61.522695], [187.951980, 75.715633]]
 				if (!this.mapInstance) {
 					this.mapInstance = new mapboxgl.Map({
 						accessToken: mapboxgl.accessToken,
@@ -255,29 +256,11 @@ MapHandler = {
 						zoom: 2,
 						pitch: 0,
 						bearing: 0,
-						container: 'map'
-					})
+						container: 'map',
+						// maxBounds: bounds,
+					});
 				}
-				if (!this.deckGlInstance) {
-					// creating the deck.gl instance
-					this.deckGlInstance = new deck.Deck({
-						canvas: document.getElementById("deck-canvas"),
-						width: '100%',
-						height: '100%',
-						initialViewState: this.viewState,
-						controller: true,
-						// change the map's viewstate whenever the view state of deck.gl changes
-						onViewStateChange: ({ viewState }) => {
-							this.mapInstance.jumpTo({
-								center: [viewState.longitude, viewState.latitude],
-								zoom: viewState.zoom,
-								bearing: viewState.bearing,
-								pitch: viewState.pitch
-							})
-						}
-					})
-				}
-				/* let sessions = response.map_points;
+				let sessions = response.map_points;
 				let onNN = sessions.filter((point) => {
 					return (point[2] == 1);
 				});
@@ -317,21 +300,29 @@ MapHandler = {
 				});
 
 				let layers = (onNN.length > 0 || direct.length > 0) ? [directLayer, nnLayer] : [];
-				if (this.mapInstance) {
-					this.mapInstance.setProps({layers: []})
-					this.mapInstance.setProps({layers: layers})
-				} else {
-					this.mapInstance = new deck.DeckGL({
-						mapboxApiAccessToken: mapboxgl.accessToken,
-						mapStyle: 'mapbox://styles/mapbox/dark-v10',
-						initialViewState: {
-							...MapHandler.defaultWorld.initialViewState
-						},
-						container: 'map-container',
+				if (!this.deckGlInstance) {
+					// creating the deck.gl instance
+					this.deckGlInstance = new deck.Deck({
+						canvas: document.getElementById("deck-canvas"),
+						width: '100%',
+						height: '100%',
+						initialViewState: this.viewState,
 						controller: true,
-						layers: layers,
+						// change the map's viewstate whenever the view state of deck.gl changes
+						onViewStateChange: ({ viewState }) => {
+							this.mapInstance.jumpTo({
+								center: [viewState.longitude, viewState.latitude],
+								zoom: viewState.zoom,
+								bearing: viewState.bearing,
+								pitch: viewState.pitch
+							});
+						},
+						layers: layers
 					});
-				} */
+				} else {
+					this.deckGlInstance.setProps({layers: []});
+					this.deckGlInstance.setProps({layers: layers});
+				}
 				Object.assign(rootComponent.$data, {showCount: true});
 			})
 			.catch((e) => {
