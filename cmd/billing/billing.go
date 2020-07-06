@@ -197,10 +197,10 @@ func main() {
 	
 		go func() {
 			err = pubsubSubscription.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
-				// todo: process billing entry
 				atomic.AddUint64(&billingEntriesReceived, 1)
 				billingEntry := billing.BillingEntry{}
 				if billing.ReadBillingEntry(&billingEntry, m.Data) {
+					m.Ack() 
 					billingEntry.Timestamp = uint64(m.PublishTime.Unix())
 					if err := biller.Bill(context.Background(), &billingEntry); err != nil {
 						fmt.Printf("could not submit billing entry: %v\n", err)
@@ -210,7 +210,6 @@ func main() {
 				} else {
 					// todo: metric for read failures
 				} 
-				m.Ack() 
 			})
 			if err != context.Canceled {
 				fmt.Printf("could not setup to receive pubsub messages\n")

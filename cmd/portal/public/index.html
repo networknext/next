@@ -19,6 +19,37 @@
         <!-- Include Choices CSS -->
         <link rel="stylesheet" href="./js/choices/styles/choices.min.css" />
         <style>
+            .map-container-offset {
+                width: 100%;
+                height: calc(-160px + 90vh);
+                position: relative;
+                overflow: hidden;
+            }
+            .map-container-no-offset {
+                width: 100%;
+                height: calc(-160px + 100vh);
+                position: relative;
+                overflow: hidden;
+            }
+            #map {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                border: 1px solid rgb(136, 136, 136);
+                background-color: rgb(27, 27, 27);
+                overflow: hidden;
+            }
+            #deck-canvas {
+                position: absolute;
+                top: 0;
+                left: 0;
+            }
+            #deckgl-overlay {
+                width: inherit !important;
+                height: inherit !important;
+            }
             .uplot .legend.inline th::after {
                 content: "";
                 vertical-align: middle;
@@ -278,7 +309,7 @@
                                         </option>
                                     </select>
                                 </div>
-                                <div class="px-2 hidden" v-if="!handlers.userHandler.isAnonymous()">
+                                <div class="px-2" v-if="!handlers.userHandler.isAnonymous()">
                                     <select class="form-control">
                                         <option value="all" v-on:click="handlers.mapHandler.updateFilter({buyerId: '', sessionType: pages.map.filter.sessionType})">
                                             All
@@ -287,14 +318,19 @@
                                             {{ buyer.name }}
                                         </option>
                                         <option v-on:click="handlers.mapHandler.updateFilter({buyerId: handlers.userHandler.userInfo.id, sessionType: pages.map.filter.sessionType})" v-if="!handlers.userHandler.isAdmin() && !handlers.userHandler.isAnonymous()">
-                                            {{ handlers.userHandler.userInfo.name }}
+                                            {{  }}
                                         </option>
                                     </select>
                                 </div>
                             </div>
                         </div>
-                        <div v-if="handlers.userHandler.isAnonymousPlus()" style="width: 100%; height: calc(-160px + 90vh); border: 1px solid rgb(136, 136, 136); background-color: rgb(27, 27, 27);" id="map-container"></div>
-                        <div v-if="!handlers.userHandler.isAnonymousPlus()" style="width: 100%; height: calc(-160px + 100vh); border: 1px solid rgb(136, 136, 136); background-color: rgb(27, 27, 27);" id="map-container"></div>
+                        <div v-bind:class="{
+                                'map-container-no-offset': true,
+                                'map-container-offset': false,
+                             }">
+                            <div id="map" ref="map"></div>
+                            <canvas id="deck-canvas" ref="canvas"></canvas>
+                        </div>
                     </main>
                     <main role="main" class="col-md-12 col-lg-12 px-4" v-if="pages.sessions.show">
                         <div id="sessions">
@@ -330,7 +366,7 @@
                                             </option>
                                         </select>
                                     </div>
-                                    <div class="px-2 hidden">
+                                    <div class="px-2">
                                         <select class="form-control" v-if="handlers.userHandler.isAdmin()">
                                             <option value="all" v-on:click="handlers.workspaceHandler.updateSessionFilter({buyerId: '', sessionType: pages.sessions.filter.sessionType})">
                                                 All
@@ -341,7 +377,7 @@
                                         </select>
                                         <select class="form-control" v-if="!handlers.userHandler.isAdmin() && !handlers.userHandler.isAnonymous()">
                                             <option v-on:click="handlers.userHandler.workspaceHandler.updateSessionFilter({buyerId: handlers.userHandler.userInfo.id, sessionType: pages.sessions.filter.sessionType})">
-                                                {{ handlers.userHandler.userInfo.name }}
+                                                {{ handlers.userHandler.getBuyerName() }}
                                             </option>
                                         </select>
                                     </div>
@@ -413,7 +449,7 @@
                                                 </a>
                                             </td>
                                             <td>
-                                                {{ session.location.isp }}
+                                                {{ session.location.isp != "" ? session.location.isp : "Unknown" }}
                                             </td>
                                             <td>
                                                 <span class="text-dark">
@@ -586,7 +622,7 @@
                                                         </dt>
                                                         <dd>
                                                             <em>
-                                                                {{ pages.sessionTool.meta.location.isp }}
+                                                                {{ pages.sessionTool.meta.location.isp != "" ? pages.sessionTool.meta.location.isp : "Unknown" }}
                                                             </em>
                                                         </dd>
                                                         <div v-if="!handlers.userHandler.isAnonymous() && pages.sessionTool.meta.customer_id !== ''">
@@ -618,9 +654,7 @@
                                                         </dt>
                                                         <dd v-if="!handlers.userHandler.isAnonymous()">
                                                             {{
-                                                                Array.from(allBuyers.length) > 0 ? Aray.from(allBuyers).find((buyer) => {
-                                                                    return buyer.id == pages.sessionTool.meta.customer_id
-                                                                }).name || "Private" : "Private"
+                                                                handlers.userHandler.getBuyerName()
                                                             }}
                                                         </dd>
                                                         <dt>
@@ -818,7 +852,7 @@
                                                 {{ session.connection }}
                                             </td>
                                             <td>
-                                                {{ session.location.isp }}
+                                                {{ session.location.isp != "" ? session.location.isp : "Unknown"}}
                                             </td>
                                             <td>
                                                 {{ session.datacenter }}

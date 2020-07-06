@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -234,4 +235,52 @@ func removeRelay(rpcClient jsonrpc.RPCClient, env Environment, name string) {
 	}
 
 	fmt.Printf("Relay \"%s\" removed.\n", info.name)
+}
+
+func countRelays(rpcClient jsonrpc.RPCClient, env Environment, regex string) {
+	args := localjsonrpc.RelaysArgs{
+		Regex: regex,
+	}
+
+	var reply localjsonrpc.RelaysReply
+	if err := rpcClient.CallFor(&reply, "OpsService.Relays", args); err != nil {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	relayList := []struct {
+		State string
+		Count string
+	}{}
+
+	relayCountList := make(map[string]int)
+
+	for _, relay := range reply.Relays {
+		if _, ok := relayCountList[relay.State]; ok {
+			relayCountList[relay.State]++
+			continue
+		}
+		relayCountList[relay.State] = 1
+	}
+
+	for key, relayCount := range relayCountList {
+		relayList = append(relayList, struct {
+			State string
+			Count string
+		}{
+			State: key,
+			Count: strconv.Itoa(relayCount),
+		})
+	}
+
+	relayList = append(relayList, struct {
+		State string
+		Count string
+	}{
+		State: "total",
+		Count: strconv.Itoa(len(reply.Relays)),
+	})
+
+	table.Output(relayList)
+
 }

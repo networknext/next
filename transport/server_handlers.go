@@ -556,7 +556,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 
 		// When multiple session updates are in flight, especially under a retry storm, there can be simultaneous calls
 		// to this handler for the same session and slice. It is *extremely important* that we don't generate multiple route
-		// responses in this case, otherwise we'll bill our customers multiple times for the same slice! Instead, we implement
+		// responses in this case, otherwise we'll bill our customers multiple times for the same slice!. Instead, we implement
 		// a locking system here, such that if the same slices is already being processed in another handler, we block until
 		// the other handler completes, then send down the cached session response.
 
@@ -1864,10 +1864,10 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 	tx.SAdd(fmt.Sprintf("user-%s-sessions", hashedID), meta.ID)
 	tx.Expire(fmt.Sprintf("user-%s-sessions", hashedID), redisClientPortalExp)
 
-	// set the map point key and global sessions with expiration on the entire key set for safety
+	// set the map point key and buyer sessions with expiration on the entire key set for safety
 	tx.Set(fmt.Sprintf("session-%016x-point", packet.SessionID), point, redisClientPortalExp)
-	tx.SAdd("map-points-global", meta.ID)
-	tx.Expire("map-points-global", redisClientPortalExp)
+	tx.SAdd(fmt.Sprintf("map-points-%016x-buyer", packet.CustomerID), meta.ID)
+	tx.Expire(fmt.Sprintf("map-points-%016x-buyer", packet.CustomerID), redisClientPortalExp)
 
 	if _, err := tx.Exec(); err != nil {
 		return err

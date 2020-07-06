@@ -278,7 +278,6 @@ func TestSetRoutingRulesSettings(t *testing.T) {
 		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnableMultipathForRTT, routing.LocalRoutingRulesSettings.EnableMultipathForRTT)
 		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnableABTest, routing.LocalRoutingRulesSettings.EnableABTest)
 		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnableTryBeforeYouBuy, routing.DefaultRoutingRulesSettings.EnableTryBeforeYouBuy)
-		assert.Equal(t, rrsReply.RoutingRuleSettings[0].TryBeforeYouBuyMaxSlices, routing.DefaultRoutingRulesSettings.TryBeforeYouBuyMaxSlices)
 	})
 }
 

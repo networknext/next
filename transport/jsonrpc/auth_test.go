@@ -102,56 +102,56 @@ func TestAuthClient(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, "auth0|5b96f61cf1642721ad84eeb6", requestID)
 
-	roles, err := auth0Client.Manager.User.Roles(requestID.(string))
+// 	roles, err := auth0Client.Manager.User.Roles(requestID.(string))
 
-	assert.NoError(t, err)
-	req = jsonrpc.SetRoles(req, *roles)
+// 	assert.NoError(t, err)
+// 	req = jsonrpc.SetRoles(req, *roles)
 
-	t.Run("fetch all auth0 accounts", func(t *testing.T) {
-		var reply jsonrpc.AccountsReply
+// 	t.Run("fetch all auth0 accounts", func(t *testing.T) {
+// 		var reply jsonrpc.AccountsReply
 
-		err = svc.AllAccounts(req, &jsonrpc.AccountsArgs{}, &reply)
-		assert.NoError(t, err)
-	})
+// 		err = svc.AllAccounts(req, &jsonrpc.AccountsArgs{}, &reply)
+// 		assert.NoError(t, err)
+// 	})
 
-	t.Run("fetch user no user id", func(t *testing.T) {
-		var reply jsonrpc.AccountReply
+// 	t.Run("fetch user no user id", func(t *testing.T) {
+// 		var reply jsonrpc.AccountReply
 
-		err := svc.UserAccount(req, &jsonrpc.AccountArgs{}, &reply)
-		assert.Error(t, err)
-	})
+// 		err := svc.UserAccount(req, &jsonrpc.AccountArgs{}, &reply)
+// 		assert.Error(t, err)
+// 	})
 
-	t.Run("fetch user auth0 account", func(t *testing.T) {
-		var reply jsonrpc.AccountReply
+// 	t.Run("fetch user auth0 account", func(t *testing.T) {
+// 		var reply jsonrpc.AccountReply
 
-		err := svc.UserAccount(req, &jsonrpc.AccountArgs{UserID: "auth0|5b96f61cf1642721ad84eeb6"}, &reply)
-		assert.NoError(t, err)
+// 		err := svc.UserAccount(req, &jsonrpc.AccountArgs{UserID: "auth0|5b96f61cf1642721ad84eeb6"}, &reply)
+// 		assert.NoError(t, err)
 
-		assert.Equal(t, reply.UserAccount.Name, "test@networknext.com")
-		assert.Equal(t, reply.UserAccount.Email, "test@networknext.com")
-		assert.Equal(t, reply.UserAccount.UserID, "5b96f61cf1642721ad84eeb6")
-		assert.Equal(t, reply.UserAccount.ID, "111")
-		assert.Equal(t, reply.UserAccount.CompanyName, "")
-	})
+// 		assert.Equal(t, reply.UserAccount.Name, "test@networknext.com")
+// 		assert.Equal(t, reply.UserAccount.Email, "test@networknext.com")
+// 		assert.Equal(t, reply.UserAccount.UserID, "5b96f61cf1642721ad84eeb6")
+// 		assert.Equal(t, reply.UserAccount.ID, "111")
+// 		assert.Equal(t, reply.UserAccount.CompanyName, "")
+// 	})
 
-	t.Run("fetch user roles no user id", func(t *testing.T) {
-		var reply jsonrpc.RolesReply
+// 	t.Run("fetch user roles no user id", func(t *testing.T) {
+// 		var reply jsonrpc.RolesReply
 
-		err := svc.UserRoles(req, &jsonrpc.RolesArgs{}, &reply)
-		assert.Error(t, err)
-	})
+// 		err := svc.UserRoles(req, &jsonrpc.RolesArgs{}, &reply)
+// 		assert.Error(t, err)
+// 	})
 
-	t.Run("fetch all auth0 roles", func(t *testing.T) {
-		var reply jsonrpc.RolesReply
+// 	t.Run("fetch all auth0 roles", func(t *testing.T) {
+// 		var reply jsonrpc.RolesReply
 
-		err := svc.AllRoles(req, &jsonrpc.RolesArgs{}, &reply)
-		assert.NoError(t, err)
+// 		err := svc.AllRoles(req, &jsonrpc.RolesArgs{}, &reply)
+// 		assert.NoError(t, err)
 
-		assert.NotEqual(t, len(reply.Roles), 0)
-	})
+// 		assert.NotEqual(t, len(reply.Roles), 0)
+// 	})
 
-	t.Run("Remove all auth0 roles", func(t *testing.T) {
-		var reply jsonrpc.RolesReply
+// 	t.Run("Remove all auth0 roles", func(t *testing.T) {
+// 		var reply jsonrpc.RolesReply
 
 		id := "rol_YfFrtom32or4vH89"
 		name := "Admin"
@@ -166,8 +166,8 @@ func TestAuthClient(t *testing.T) {
 			},
 		}
 
-		err := svc.UpdateUserRoles(req, &jsonrpc.RolesArgs{UserID: "auth0|5b96f61cf1642721ad84eeb6", Roles: roles}, &reply)
-		assert.NoError(t, err)
+// 		err := svc.UpdateUserRoles(req, &jsonrpc.RolesArgs{UserID: "auth0|5b96f61cf1642721ad84eeb6", Roles: roles}, &reply)
+// 		assert.NoError(t, err)
 
 		assert.Equal(t, len(reply.Roles), 1)
 	})
