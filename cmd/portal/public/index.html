@@ -188,6 +188,40 @@
                 font-size: 0.75rem;
                 text-transform: uppercase;
             }
+            .signup {
+                width: 7rem;
+                display: block;
+                text-align: center;
+                border-radius: 9999px;
+            }
+            .signup:hover {
+                text-decoration: none;
+            }
+            .login {
+                width: 7rem;
+                display: block;
+                border-width: 1px;
+                border-color: #007bff;
+                border-radius: 9999px;
+                color: #007bff;
+                text-align: center;
+                background-color: #343a40;
+                border-style: solid;
+            }
+            .login:hover {
+                background-color: #343a40;
+                color: #007bff;
+                text-decoration: none;
+            }
+            .logout:hover {
+                text-decoration: none;
+            }
+            .logout {
+                width: 7rem;
+                display: block;
+                text-align: center;
+                border-radius: 9999px;
+            }
         </style>
     </head>
     <body class="hidden" id="app">
@@ -232,21 +266,21 @@
                 </ul>
                 <ul class="navbar-nav px-3" v-if="handlers.userHandler.isAnonymous()">
                     <li class="nav-item text-nowrap  ">
-                        <a class="nav-link" href="#" v-on:click="handlers.authHandler.login()">
+                        <a class="btn-sm btn-primary login" href="#" v-on:click="handlers.authHandler.login()">
                             Log in
                         </a>
                     </li>
                 </ul>
                 <ul class="navbar-nav px-3" v-if="handlers.userHandler.isAnonymous()">
                     <li class="nav-item text-nowrap  ">
-                        <a class="nav-link" href="#" v-on:click="handlers.authHandler.signUp()">
+                        <a class="btn-sm btn-primary signup" href="#" v-on:click="handlers.authHandler.signUp()">
                             Sign up
                         </a>
                     </li>
                 </ul>
                 <ul class="navbar-nav px-3" v-if="!handlers.userHandler.isAnonymous()">
                     <li class="nav-item text-nowrap  ">
-                        <a class="nav-link" href="#" v-on:click="handlers.authHandler.logout()">
+                        <a class="btn-sm btn-primary logout" href="#" v-on:click="handlers.authHandler.logout()">
                             Logout
                         </a>
                     </li>
