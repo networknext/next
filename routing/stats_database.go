@@ -246,6 +246,8 @@ func (database *StatsDatabase) GetCostMatrix(
 	costMatrix.RelayIDs = make([]uint64, numRelays)
 	costMatrix.RelayNames = make([]string, numRelays)
 	costMatrix.RelayAddresses = make([][]byte, numRelays)
+	costMatrix.RelayLatitude = make([]float64, numRelays)
+	costMatrix.RelayLongitude = make([]float64, numRelays)
 	costMatrix.RelayPublicKeys = make([][]byte, numRelays)
 	costMatrix.DatacenterRelays = make(map[uint64][]uint64)
 	costMatrix.RTT = make([]int32, TriMatrixLength(numRelays))
@@ -287,7 +289,7 @@ func (database *StatsDatabase) GetCostMatrix(
 			rtt, jitter, packetLoss := database.GetSample(idI, idJ)
 			ijIndex := TriMatrixIndex(i, j)
 			if rtt != InvalidRouteValue && jitter <= maxJitter && packetLoss <= maxPacketLoss {
-				costMatrix.RTT[ijIndex] = int32(math.Floor(float64(rtt)+float64(jitter)))
+				costMatrix.RTT[ijIndex] = int32(math.Floor(float64(rtt) + float64(jitter)))
 			} else {
 				costMatrix.RTT[ijIndex] = -1
 			}

@@ -89,7 +89,6 @@ const (
 	RelayStateOffline RelayState = 5
 )
 
-// Relay ...
 type Relay struct {
 	ID   uint64 `json:"id"`
 	Name string `json:"name"`

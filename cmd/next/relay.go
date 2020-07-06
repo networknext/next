@@ -264,16 +264,23 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 				continue
 			}
 
+			var publicKeyB64 string
+			var privateKeyB64 string
+
 			// Create the public and private keys for the relay
-			publicKey, privateKey, err := box.GenerateKey(rand.Reader)
-
-			if err != nil {
-				fmt.Println("could not generate public private keypair")
-				continue
+			if env.Name == "local" {
+				// if local, just reuse the ones from the environment
+				publicKeyB64 = os.Getenv("RELAY_PUBLIC_KEY")
+				privateKeyB64 = os.Getenv("RELAY_PRIVATE_KEY")
+			} else {
+				publicKey, privateKey, err := box.GenerateKey(rand.Reader)
+				if err != nil {
+					fmt.Println("could not generate public private keypair")
+					continue
+				}
+				publicKeyB64 = base64.StdEncoding.EncodeToString(publicKey[:])
+				privateKeyB64 = base64.StdEncoding.EncodeToString(privateKey[:])
 			}
-
-			publicKeyB64 := base64.StdEncoding.EncodeToString(publicKey[:])
-			privateKeyB64 := base64.StdEncoding.EncodeToString(privateKey[:])
 
 			// Create the environment
 			{

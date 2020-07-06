@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -35,8 +36,9 @@ import (
 )
 
 var (
-	release   string
 	buildtime string
+	sha       string
+	tag       string
 )
 
 func main() {
@@ -221,9 +223,15 @@ func main() {
 			os.Exit(1)
 		}
 
+		fssyncinterval := os.Getenv("GOOGLE_FIRESTORE_SYNC_INTERVAL")
+		syncInterval, err := time.ParseDuration(fssyncinterval)
+		if err != nil {
+			level.Error(logger).Log("envvar", "GOOGLE_FIRESTORE_SYNC_INTERVAL", "value", fssyncinterval, "err", err)
+			os.Exit(1)
+		}
 		// Start a goroutine to sync from Firestore
 		go func() {
-			ticker := time.NewTicker(1 * time.Second)
+			ticker := time.NewTicker(syncInterval)
 			fs.SyncLoop(ctx, ticker.C)
 		}()
 
@@ -242,11 +250,21 @@ func main() {
 		}
 	}
 
-	var routeMatrix routing.RouteMatrix
+	routeMatrix := &routing.RouteMatrix{}
+	var routeMatrixMutex sync.RWMutex
+
 	{
 		if uri, ok := os.LookupEnv("ROUTE_MATRIX_URI"); ok {
+			rmsyncinterval := os.Getenv("ROUTE_MATRIX_SYNC_INTERVAL")
+			syncInterval, err := time.ParseDuration(rmsyncinterval)
+			if err != nil {
+				level.Error(logger).Log("envvar", "ROUTE_MATRIX_SYNC_INTERVAL", "value", rmsyncinterval, "err", err)
+				os.Exit(1)
+			}
+
 			go func() {
 				for {
+					newRouteMatrix := &routing.RouteMatrix{}
 					var matrixReader io.Reader
 
 					// Default to reading route matrix from file
@@ -259,16 +277,23 @@ func main() {
 						matrixReader = r.Body
 					}
 
-					// Attempt to read, and intentionally force to empty route matrix if any errors are encountered to avoid stale routes
-					_, err := routeMatrix.ReadFrom(matrixReader)
+					// Don't swap route matrix if we fail to read
+					_, err := newRouteMatrix.ReadFrom(matrixReader)
 					if err != nil {
-						routeMatrix = routing.RouteMatrix{}
 						level.Warn(logger).Log("matrix", "route", "op", "read", "envvar", "ROUTE_MATRIX_URI", "value", uri, "err", err, "msg", "forcing empty route matrix to avoid stale routes")
+						time.Sleep(syncInterval)
+						continue
 					}
+
+					// Swap the route matrix pointer to the new one
+					// This double buffered route matrix approach makes the route matrix lockless
+					routeMatrixMutex.Lock()
+					routeMatrix = newRouteMatrix
+					routeMatrixMutex.Unlock()
 
 					level.Info(logger).Log("matrix", "route", "entries", len(routeMatrix.Entries))
 
-					time.Sleep(1 * time.Second)
+					time.Sleep(syncInterval)
 				}
 			}()
 		}
@@ -280,13 +305,21 @@ func main() {
 		RedisClient: redisClientPortal,
 		Storage:     db,
 	}
+
 	go func() {
+		genmapinterval := os.Getenv("SESSION_MAP_INTERVAL")
+		syncInterval, err := time.ParseDuration(genmapinterval)
+		if err != nil {
+			level.Error(logger).Log("envvar", "SESSION_MAP_INTERVAL", "value", genmapinterval, "err", err)
+			os.Exit(1)
+		}
+
 		for {
 			if err := buyerService.GenerateMapPoints(); err != nil {
 				level.Error(logger).Log("msg", "error generating sessions map points", "err", err)
 				os.Exit(1)
 			}
-			time.Sleep(1 * time.Second)
+			time.Sleep(syncInterval)
 		}
 	}()
 
@@ -326,11 +359,11 @@ func main() {
 		s.RegisterCodec(json2.NewCodec(), "application/json")
 		s.RegisterService(&jsonrpc.OpsService{
 			Logger:      logger,
-			Release:     release,
+			Release:     tag,
 			BuildTime:   buildtime,
 			RedisClient: redisClientRelays,
 			Storage:     db,
-			RouteMatrix: &routeMatrix,
+			// RouteMatrix: &routeMatrix,
 		}, "")
 		s.RegisterService(&buyerService, "")
 		s.RegisterService(&jsonrpc.AuthService{
@@ -340,7 +373,8 @@ func main() {
 		}, "")
 
 		http.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s)))
-		http.HandleFunc("/healthz", transport.HealthzHandlerFunc())
+		http.HandleFunc("/health", transport.HealthHandlerFunc())
+		http.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag))
 
 		http.Handle("/", middleware.CacheControl(os.Getenv("HTTP_CACHE_CONTROL"), http.FileServer(http.Dir(uiDir))))
 

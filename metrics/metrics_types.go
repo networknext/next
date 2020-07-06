@@ -9,6 +9,7 @@ type SessionMetrics struct {
 	DirectSessions  Counter
 	NextSessions    Counter
 	DurationGauge   Gauge
+	LongDuration    Counter
 	DecisionMetrics DecisionMetrics
 	ErrorMetrics    SessionErrorMetrics
 }
@@ -18,15 +19,18 @@ var EmptySessionMetrics SessionMetrics = SessionMetrics{
 	DirectSessions:  &EmptyCounter{},
 	NextSessions:    &EmptyCounter{},
 	DurationGauge:   &EmptyGauge{},
+	LongDuration:    &EmptyCounter{},
 	DecisionMetrics: EmptyDecisionMetrics,
 	ErrorMetrics:    EmptySessionErrorMetrics,
 }
 
 type SessionErrorMetrics struct {
 	UnserviceableUpdate         Counter
+	ReadPacketHeaderFailure     Counter
 	ReadPacketFailure           Counter
 	EarlyFallbackToDirect       Counter
 	PipelineExecFailure         Counter
+	ServerDataMissing           Counter
 	GetServerDataFailure        Counter
 	UnmarshalServerDataFailure  Counter
 	GetSessionDataFailure       Counter
@@ -46,13 +50,16 @@ type SessionErrorMetrics struct {
 	WriteResponseFailure        Counter
 	UpdateCacheFailure          Counter
 	BillingFailure              Counter
+	UpdatePortalFailure         Counter
 }
 
 var EmptySessionErrorMetrics SessionErrorMetrics = SessionErrorMetrics{
 	UnserviceableUpdate:         &EmptyCounter{},
 	ReadPacketFailure:           &EmptyCounter{},
+	ReadPacketHeaderFailure:     &EmptyCounter{},
 	EarlyFallbackToDirect:       &EmptyCounter{},
 	PipelineExecFailure:         &EmptyCounter{},
+	ServerDataMissing:           &EmptyCounter{},
 	GetServerDataFailure:        &EmptyCounter{},
 	UnmarshalServerDataFailure:  &EmptyCounter{},
 	GetSessionDataFailure:       &EmptyCounter{},
@@ -72,6 +79,7 @@ var EmptySessionErrorMetrics SessionErrorMetrics = SessionErrorMetrics{
 	WriteResponseFailure:        &EmptyCounter{},
 	UpdateCacheFailure:          &EmptyCounter{},
 	BillingFailure:              &EmptyCounter{},
+	UpdatePortalFailure:         &EmptyCounter{},
 }
 
 type DecisionMetrics struct {
@@ -168,46 +176,52 @@ func NewOptimizeMetrics(ctx context.Context, metricsHandler Handler) (*OptimizeM
 type ServerInitMetrics struct {
 	Invocations   Counter
 	DurationGauge Gauge
+	LongDuration  Counter
 	ErrorMetrics  ServerInitErrorMetrics
 }
 
 var EmptyServerInitMetrics ServerInitMetrics = ServerInitMetrics{
 	Invocations:   &EmptyCounter{},
 	DurationGauge: &EmptyGauge{},
+	LongDuration:  &EmptyCounter{},
 	ErrorMetrics:  EmptyServerInitErrorMetrics,
 }
 
 type ServerInitErrorMetrics struct {
-	UnmarshalFailure    Counter
-	SDKTooOld           Counter
-	BuyerNotFound       Counter
-	VerificationFailure Counter
-	DatacenterNotFound  Counter
+	ReadPacketFailure    Counter
+	SDKTooOld            Counter
+	BuyerNotFound        Counter
+	VerificationFailure  Counter
+	DatacenterNotFound   Counter
+	WriteResponseFailure Counter
 }
 
 var EmptyServerInitErrorMetrics ServerInitErrorMetrics = ServerInitErrorMetrics{
-	UnmarshalFailure:    &EmptyCounter{},
-	SDKTooOld:           &EmptyCounter{},
-	BuyerNotFound:       &EmptyCounter{},
-	DatacenterNotFound:  &EmptyCounter{},
-	VerificationFailure: &EmptyCounter{},
+	ReadPacketFailure:    &EmptyCounter{},
+	SDKTooOld:            &EmptyCounter{},
+	BuyerNotFound:        &EmptyCounter{},
+	DatacenterNotFound:   &EmptyCounter{},
+	VerificationFailure:  &EmptyCounter{},
+	WriteResponseFailure: &EmptyCounter{},
 }
 
 type ServerUpdateMetrics struct {
 	Invocations   Counter
 	DurationGauge Gauge
+	LongDuration  Counter
 	ErrorMetrics  ServerUpdateErrorMetrics
 }
 
 var EmptyServerUpdateMetrics ServerUpdateMetrics = ServerUpdateMetrics{
 	Invocations:   &EmptyCounter{},
 	DurationGauge: &EmptyGauge{},
+	LongDuration:  &EmptyCounter{},
 	ErrorMetrics:  EmptyServerUpdateErrorMetrics,
 }
 
 type ServerUpdateErrorMetrics struct {
 	UnserviceableUpdate  Counter
-	UnmarshalFailure     Counter
+	ReadPacketFailure    Counter
 	SDKTooOld            Counter
 	BuyerNotFound        Counter
 	DatacenterNotFound   Counter
@@ -217,7 +231,7 @@ type ServerUpdateErrorMetrics struct {
 
 var EmptyServerUpdateErrorMetrics ServerUpdateErrorMetrics = ServerUpdateErrorMetrics{
 	UnserviceableUpdate:  &EmptyCounter{},
-	UnmarshalFailure:     &EmptyCounter{},
+	ReadPacketFailure:    &EmptyCounter{},
 	SDKTooOld:            &EmptyCounter{},
 	BuyerNotFound:        &EmptyCounter{},
 	DatacenterNotFound:   &EmptyCounter{},
@@ -391,6 +405,17 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		ID:          "session.duration",
 		Unit:        "milliseconds",
 		Description: "How long it takes to process a session update request",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.LongDuration, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Long Session Update Durations",
+		ServiceName: "server_backend",
+		ID:          "session.long_durations",
+		Unit:        "durations",
+		Description: "The number of session update calls that took longer than 100ms to complete",
 	})
 	if err != nil {
 		return nil, err
@@ -596,6 +621,16 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		return nil, err
 	}
 
+	sessionMetrics.ErrorMetrics.UpdatePortalFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Session Update Portal Failure",
+		ServiceName: "server_backend",
+		ID:          "session.error.update_portal_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	sessionMetrics.ErrorMetrics.BuyerNotFound, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Session Buyer Not Found",
 		ServiceName: "server_backend",
@@ -630,6 +665,16 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		DisplayName: "Session Early Fallback To Direct",
 		ServiceName: "server_backend",
 		ID:          "session.error.early_fallback_to_direct",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.ErrorMetrics.ServerDataMissing, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Session Server Data Missing",
+		ServiceName: "server_backend",
+		ID:          "session.error.server_data_missing",
 		Unit:        "errors",
 	})
 	if err != nil {
@@ -710,6 +755,16 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		DisplayName: "Session Redis Pipeline Exec Failure",
 		ServiceName: "server_backend",
 		ID:          "session.error.redis_pipeline_exec_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.ErrorMetrics.ReadPacketHeaderFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Session Read Packet Header Failure",
+		ServiceName: "server_backend",
+		ID:          "session.error.read_packet_header_failure",
 		Unit:        "errors",
 	})
 	if err != nil {
@@ -810,7 +865,10 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 }
 
 func NewServerInitMetrics(ctx context.Context, metricsHandler Handler) (*ServerInitMetrics, error) {
-	initDurationGauge, err := metricsHandler.NewGauge(ctx, &Descriptor{
+	initMetrics := ServerInitMetrics{}
+	var err error
+
+	initMetrics.DurationGauge, err = metricsHandler.NewGauge(ctx, &Descriptor{
 		DisplayName: "Server init duration",
 		ServiceName: "server_backend",
 		ID:          "server.init.duration",
@@ -821,7 +879,7 @@ func NewServerInitMetrics(ctx context.Context, metricsHandler Handler) (*ServerI
 		return nil, err
 	}
 
-	initInvocationsCounter, err := metricsHandler.NewCounter(ctx, &Descriptor{
+	initMetrics.Invocations, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Total server init invocations",
 		ServiceName: "server_backend",
 		ID:          "server.init.count",
@@ -832,10 +890,75 @@ func NewServerInitMetrics(ctx context.Context, metricsHandler Handler) (*ServerI
 		return nil, err
 	}
 
-	initMetrics := ServerInitMetrics{
-		Invocations:   initInvocationsCounter,
-		DurationGauge: initDurationGauge,
-		ErrorMetrics:  EmptyServerInitErrorMetrics,
+	initMetrics.LongDuration, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Long Server Init Durations",
+		ServiceName: "server_backend",
+		ID:          "server.init.long_durations",
+		Unit:        "durations",
+		Description: "The number of server init calls that took longer than 100ms to complete",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	initMetrics.ErrorMetrics.ReadPacketFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Server Init Read Packet Failure",
+		ServiceName: "server_backend",
+		ID:          "server.init.error.read_packet_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	initMetrics.ErrorMetrics.SDKTooOld, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Server Init SDK Too Old",
+		ServiceName: "server_backend",
+		ID:          "server.init.error.sdk_too_old",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	initMetrics.ErrorMetrics.BuyerNotFound, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Server Init Buyer Not Found",
+		ServiceName: "server_backend",
+		ID:          "server.init.error.buyer_not_found",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	initMetrics.ErrorMetrics.VerificationFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Server Init Verification Failure",
+		ServiceName: "server_backend",
+		ID:          "server.init.error.verification_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	initMetrics.ErrorMetrics.DatacenterNotFound, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Server Init Datacenter Not Found",
+		ServiceName: "server_backend",
+		ID:          "server.init.error.datacenter_not_found",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	initMetrics.ErrorMetrics.WriteResponseFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Server Init Write Response Failure",
+		ServiceName: "server_backend",
+		ID:          "server.init.error.write_response_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return &initMetrics, nil
@@ -868,6 +991,17 @@ func NewServerUpdateMetrics(ctx context.Context, metricsHandler Handler) (*Serve
 		return nil, err
 	}
 
+	updateMetrics.LongDuration, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Long Server Update Durations",
+		ServiceName: "server_backend",
+		ID:          "server.long_durations",
+		Unit:        "durations",
+		Description: "The number of server update calls that took longer than 100ms to complete",
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	updateMetrics.ErrorMetrics.UnserviceableUpdate, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Unserviceable Server Updates",
 		ServiceName: "server_backend",
@@ -878,10 +1012,10 @@ func NewServerUpdateMetrics(ctx context.Context, metricsHandler Handler) (*Serve
 		return nil, err
 	}
 
-	updateMetrics.ErrorMetrics.UnmarshalFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Server Update Unmarshal Failure",
+	updateMetrics.ErrorMetrics.ReadPacketFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Server Update Read Packet Failure",
 		ServiceName: "server_backend",
-		ID:          "server.error.unmarshal_failure",
+		ID:          "server.error.read_packet_failure",
 		Unit:        "errors",
 	})
 	if err != nil {

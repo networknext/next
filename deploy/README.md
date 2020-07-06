@@ -29,10 +29,10 @@ GCP Project: `network-next-v3-dev`
 
 ### GCP Artifacts
 
-- portal: `gs://artifacts.network-next-v3-dev.appspot.com/portal.dev.tar.gz`
-- relay backend: `gs://artifacts.network-next-v3-dev.appspot.com/relay_backend.dev.tar.gz`
-- server backend: `gs://artifacts.network-next-v3-dev.appspot.com/server_backend.dev.tar.gz`
-- relay: `gs://artifacts.network-next-v3-dev.appspot.com/relay.dev.tar.gz`
+- portal: `gs://development_artifacts/portal.dev.tar.gz`
+- relay backend: `gs://development_artifacts/relay_backend.dev.tar.gz`
+- server backend: `gs://development_artifacts/server_backend.dev.tar.gz`
+- relay: `gs://development_artifacts/relay.dev.tar.gz`
 
 ### Domains
 
@@ -64,10 +64,10 @@ GCP Project: `network-next-v3-prod`
 
 ### GCP Artifacts
 
-- portal: `gs://us.artifacts.network-next-v3-prod.appspot.com/portal.dev.tar.gz`
-- relay backend: `gs://us.artifacts.network-next-v3-prod.appspot.com/relay_backend.dev.tar.gz`
-- server backend: `gs://us.artifacts.network-next-v3-prod.appspot.com/server_backend.dev.tar.gz`
-- relay: `gs://us.artifacts.network-next-v3-prod.appspot.com/relay.prod.tar.gz`
+- portal: `gs://prod_artifacts/portal.dev.tar.gz`
+- relay backend: `gs://prod_artifacts/relay_backend.dev.tar.gz`
+- server backend: `gs://prod_artifacts/server_backend.dev.tar.gz`
+- relay: `gs://prod_artifacts/relay.prod.tar.gz`
 
 ### Domains
 

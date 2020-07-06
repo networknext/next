@@ -42,7 +42,6 @@ func (a SDKVersion) Compare(b SDKVersion) int {
 			}
 		}
 	}
-
 	return SDKVersionOlder
 }
 

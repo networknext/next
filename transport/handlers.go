@@ -1,0 +1,36 @@
+package transport
+
+import (
+	"encoding/json"
+	"io/ioutil"
+	"net/http"
+)
+
+func HealthHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		_, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		defer r.Body.Close()
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(http.StatusText(http.StatusOK)))
+	}
+}
+
+func VersionHandlerFunc(buildtime string, sha string, tag string) func(w http.ResponseWriter, r *http.Request) {
+	version := map[string]string{
+		"build_timestamp": buildtime,
+		"sha":             sha,
+		"tag":             tag,
+	}
+
+	return func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(version); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+}

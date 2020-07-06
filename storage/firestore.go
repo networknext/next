@@ -986,6 +986,13 @@ func (fs *Firestore) Datacenter(id uint64) (routing.Datacenter, error) {
 
 	d, found := fs.datacenters[id]
 	if !found {
+		// Check if there is a datacenter with this alias
+		for _, datacenter := range fs.datacenters {
+			if id == crypto.HashID(datacenter.AliasName) {
+				return datacenter, nil
+			}
+		}
+
 		return routing.Datacenter{}, &DoesNotExistError{resourceType: "datacenter", resourceRef: fmt.Sprintf("%x", id)}
 	}
 
@@ -1380,7 +1387,7 @@ func (fs *Firestore) syncCustomers(ctx context.Context) error {
 		if c.Buyer != nil {
 			bdoc, err := c.Buyer.Get(ctx)
 			if err != nil {
-				level.Error(fs.Logger).Log("msg", fmt.Sprintf("failed to get buyer %v", c.Buyer.ID), "err", err)
+				level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to get buyer %v", c.Buyer.ID), "err", err)
 				continue
 			}
 			var b buyer
@@ -1408,7 +1415,7 @@ func (fs *Firestore) syncCustomers(ctx context.Context) error {
 		if c.Seller != nil {
 			sdoc, err := c.Seller.Get(ctx)
 			if err != nil {
-				level.Error(fs.Logger).Log("msg", fmt.Sprintf("failed to get seller %v", c.Seller.ID), "err", err)
+				level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to get seller %v", c.Seller.ID), "err", err)
 				continue
 			}
 			var s seller

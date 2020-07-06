@@ -82,7 +82,7 @@ func (handler *StackDriverHandler) Open(ctx context.Context) error {
 // WriteLoop is responsible for sending the metrics up to StackDriver. Call in a separate goroutine.
 // Pass a duration in seconds to have the routine send metrics up to StackDriver periodically.
 // If the duration is less than or equal to 0, a default of 1 minute is used.
-// maxMetricsCount is the maximum number of metrics to send in one push to StackDriver. 200 is the maximum number of time series allowed in a single request.
+// maxMetricsIncrement is the maximum number of metrics to send in one push to StackDriver. 200 is the maximum number of time series allowed in a single request.
 func (handler *StackDriverHandler) WriteLoop(ctx context.Context, logger log.Logger, duration time.Duration, maxMetricsIncrement int) {
 	if duration <= 0 {
 		duration = time.Minute

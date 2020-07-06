@@ -2,12 +2,12 @@ version: v1.0
 name: Production Deploy
 agent:
   machine:
-    type: e1-standard-2
+    type: e1-standard-8
     os_image: ubuntu1804
 global_job_config:
   prologue:
     commands:
-      - sudo apt-get update && sudo apt-get -y install libsodium-dev libcurl4-gnutls-dev g++-8 rapidjson-dev
+      - sudo apt-get update && sudo apt-get -y install libsodium-dev
       - gcloud auth activate-service-account --key-file=/home/semaphore/gcp-service-account.json
       - gcloud auth configure-docker -q
       - checkout
@@ -19,13 +19,14 @@ blocks:
       jobs:
         - name: Build & Publish Artifacts to Storage
           commands:
+            - make build-billing-prod-artifact
             - make build-portal-prod-artifact
             - make build-relay-backend-prod-artifact
             - make build-server-backend-prod-artifact
-            - make build-relay-prod-artifact
+            - make publish-billing-prod-artifact
             - make publish-portal-prod-artifact
             - make publish-relay-backend-prod-artifact
             - make publish-server-backend-prod-artifact
-            - make publish-relay-prod-artifact
+            - make publish-bootstrap-script-prod
       secrets:
         - name: google-cloud-platform-prod

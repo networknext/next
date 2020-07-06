@@ -1540,6 +1540,37 @@ func TestFirestore(t *testing.T) {
 
 			assert.Equal(t, expected, actual)
 		})
+
+		t.Run("success with alias", func(t *testing.T) {
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			assert.NoError(t, err)
+
+			defer func() {
+				err := cleanFireStore(ctx, fs.Client)
+				assert.NoError(t, err)
+			}()
+
+			expected := routing.Datacenter{
+				ID:        1,
+				Name:      "local",
+				AliasName: "multiplay",
+				Enabled:   true,
+				Location: routing.Location{
+					Latitude:  70.5,
+					Longitude: 120.5,
+				},
+			}
+
+			err = fs.AddDatacenter(ctx, expected)
+			assert.NoError(t, err)
+
+			multiplayID := crypto.HashID(expected.AliasName)
+
+			actual, err := fs.Datacenter(multiplayID)
+			assert.NoError(t, err)
+
+			assert.Equal(t, expected, actual)
+		})
 	})
 
 	t.Run("Datacenters", func(t *testing.T) {

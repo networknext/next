@@ -3,16 +3,19 @@ package billing
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 
 	"cloud.google.com/go/pubsub"
+
 	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
-	"github.com/golang/protobuf/proto"
+	// "github.com/go-kit/kit/log/level"
 )
 
 // GooglePubSubBiller is an implementation of a billing handler that sends billing data to Google Pub/Sub through multiple clients
 type GooglePubSubBiller struct {
 	clients []*GooglePubSubClient
+	submitted uint64
+	flushed   uint64
 }
 
 // GooglePubSubClient represents a single client that publishes billing data
@@ -25,7 +28,9 @@ type GooglePubSubClient struct {
 // NewBiller creates a new GooglePubSubBiller, sets up the pubsub clients, and starts goroutines to listen for publish results.
 // To clean up the results goroutine, use ctx.Done().
 func NewBiller(ctx context.Context, resultLogger log.Logger, projectID string, billingTopicID string, descriptor *Descriptor) (Biller, error) {
+	
 	var clientCount int
+	
 	if descriptor != nil {
 		clientCount = descriptor.ClientCount
 	}
@@ -35,6 +40,7 @@ func NewBiller(ctx context.Context, resultLogger log.Logger, projectID string, b
 	}
 
 	for i := 0; i < clientCount; i++ {
+		
 		var err error
 		biller.clients[i] = &GooglePubSubClient{}
 		biller.clients[i].PubsubClient, err = pubsub.NewClient(ctx, projectID)
@@ -60,42 +66,58 @@ func NewBiller(ctx context.Context, resultLogger log.Logger, projectID string, b
 			Timeout:           descriptor.Timeout,
 			BufferedByteLimit: pubsub.DefaultPublishSettings.BufferedByteLimit,
 		}
+
 		biller.clients[i].ResultChan = make(chan *pubsub.PublishResult, descriptor.ResultChannelBuffer)
-		go printPubSubResults(ctx, resultLogger, biller.clients[i].ResultChan)
+
+		go pubsubResults(biller, ctx, resultLogger, biller.clients[i].ResultChan)
 	}
 
 	return biller, nil
 }
 
-// Bill sends the billing entry to Google Pub/Sub
-func (biller *GooglePubSubBiller) Bill(ctx context.Context, sessionID uint64, entry *Entry) error {
-	data, err := proto.Marshal(entry)
-	if err != nil {
-		return err
-	}
+func (biller *GooglePubSubBiller) Bill(ctx context.Context, entry *BillingEntry) error {
+
+	atomic.AddUint64(&biller.submitted, 1)
+
+	data := WriteBillingEntry(entry)
 
 	if biller.clients == nil {
 		return fmt.Errorf("billing: clients not initialized")
 	}
 
-	index := sessionID % uint64(len(biller.clients))
+	index := entry.SessionID % uint64(len(biller.clients))
 	topic := biller.clients[index].Topic
 	resultChan := biller.clients[index].ResultChan
 
 	result := topic.Publish(ctx, &pubsub.Message{Data: data})
 	resultChan <- result
+
 	return nil
 }
 
-func printPubSubResults(ctx context.Context, logger log.Logger, results chan *pubsub.PublishResult) {
+func (biller *GooglePubSubBiller) NumSubmitted() uint64 {
+	return atomic.LoadUint64(&biller.submitted)
+}
+
+func (biller *GooglePubSubBiller) NumQueued() uint64 {
+	return atomic.LoadUint64(&biller.submitted) - atomic.LoadUint64(&biller.flushed)
+}
+
+func (biller *GooglePubSubBiller) NumFlushed() uint64 {
+	return atomic.LoadUint64(&biller.flushed)
+}
+
+func pubsubResults(biller *GooglePubSubBiller, ctx context.Context, logger log.Logger, results chan *pubsub.PublishResult) {
 	for {
 		select {
 		case result := <-results:
 			_, err := result.Get(ctx)
 			if err != nil {
-				level.Error(logger).Log("billing", "failed to publish to pub/sub", "err", err)
+				// level.Error(logger).Log("billing", "failed to publish to pub/sub", "err", err)
+				// todo: ryan, please increase pubsub error count metric
 			} else {
-				level.Debug(logger).Log("billing", "successfully published billing data")
+				// level.Debug(logger).Log("billing", "successfully published billing data")
+				atomic.AddUint64(&biller.flushed, 1)
 			}
 		case <-ctx.Done():
 			return
