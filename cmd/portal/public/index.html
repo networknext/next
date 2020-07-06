@@ -449,7 +449,7 @@
                                                 </a>
                                             </td>
                                             <td>
-                                                {{ session.location.isp }}
+                                                {{ session.location.isp != "" ? session.location.isp : "Unknown" }}
                                             </td>
                                             <td>
                                                 <span class="text-dark">
@@ -622,7 +622,7 @@
                                                         </dt>
                                                         <dd>
                                                             <em>
-                                                                {{ pages.sessionTool.meta.location.isp }}
+                                                                {{ pages.sessionTool.meta.location.isp != "" ? pages.sessionTool.meta.location.isp : "Unknown" }}
                                                             </em>
                                                         </dd>
                                                         <div v-if="!handlers.userHandler.isAnonymous() && pages.sessionTool.meta.customer_id !== ''">
@@ -854,7 +854,7 @@
                                                 {{ session.connection }}
                                             </td>
                                             <td>
-                                                {{ session.location.isp }}
+                                                {{ session.location.isp != "" ? session.location.isp : "Unknown"}}
                                             </td>
                                             <td>
                                                 {{ session.datacenter }}
