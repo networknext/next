@@ -187,7 +187,7 @@ MapHandler = {
 		this.refreshMapCount();
 		this.mapCountLoop = setInterval(() => {
 			this.refreshMapCount();
-		}, 10000);
+		}, 1000);
 
 		this.refreshMapSessions();
 		this.mapLoop = setInterval(() => {
@@ -577,7 +577,7 @@ WorkspaceHandler = {
 		this.refreshSessionTable();
 		this.sessionLoop = setInterval(() => {
 			this.refreshSessionTable();
-		}, 10000);
+		}, 1000);
 	},
 	fetchSessionInfo() {
 		this.sessionToolMapInstance = null;
@@ -676,7 +676,7 @@ WorkspaceHandler = {
 			this.sessionToolLoop ? clearInterval(this.sessionToolLoop) : null;
 			this.sessionToolLoop = setInterval(() => {
 				this.fetchSessionInfo();
-			}, 10000);
+			}, 1000);
 	},
 	fetchUserSessions() {
 		let hash = rootComponent.$data.pages.userTool.hash;
