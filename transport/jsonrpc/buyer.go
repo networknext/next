@@ -509,15 +509,15 @@ func (s *BuyersService) GenerateMapPoints() error {
 			}
 
 			// if there was no error then add the SessionMapPoint to the slice
-			//if point.Latitude != 0 && point.Longitude != 0 {
-			mappoints = append(mappoints, point)
+			if point.Latitude != 0 && point.Longitude != 0 {
+				mappoints = append(mappoints, point)
 
-			var onNN uint
-			if point.OnNetworkNext {
-				onNN = 1
+				var onNN uint
+				if point.OnNetworkNext {
+					onNN = 1
+				}
+				mappointscompact = append(mappointscompact, []interface{}{point.Longitude, point.Latitude, onNN})
 			}
-			mappointscompact = append(mappointscompact, []interface{}{point.Longitude, point.Latitude, onNN})
-			//}
 		}
 	}
 
