@@ -197,7 +197,6 @@ func main() {
 	
 		go func() {
 			err = pubsubSubscription.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
-				// todo: process billing entry
 				atomic.AddUint64(&billingEntriesReceived, 1)
 				billingEntry := billing.BillingEntry{}
 				if billing.ReadBillingEntry(&billingEntry, m.Data) {
