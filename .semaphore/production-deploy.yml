@@ -27,8 +27,8 @@ blocks:
             - make build-server-backend-prod-artifact
             - artifact push workflow ./dist/billing.prod.tar.gz
             - artifact push workflow ./dist/portal.prod.tar.gz
-            - artifact push workflow ./dist/relay-backend.prod.tar.gz
-            - artifact push workflow ./dist/server-backend.prod.tar.gz
+            - artifact push workflow ./dist/relay_backend.prod.tar.gz
+            - artifact push workflow ./dist/server_backend.prod.tar.gz
       secrets:
         - name: google-cloud-platform-prod
   - name: Publish
@@ -40,8 +40,8 @@ blocks:
           commands:
             - artifact pull workflow ./dist/billing.prod.tar.gz
             - artifact pull workflow ./dist/portal.prod.tar.gz
-            - artifact pull workflow ./dist/relay-backend.prod.tar.gz
-            - artifact pull workflow ./dist/server-backend.prod.tar.gz
+            - artifact pull workflow ./dist/relay_backend.prod.tar.gz
+            - artifact pull workflow ./dist/server_backend.prod.tar.gz
             - make publish-billing-prod-artifact
             - make publish-portal-prod-artifact
             - make publish-relay-backend-prod-artifact
