@@ -1215,10 +1215,15 @@ function generateCharts(data) {
 
 	let lastEntryNN = false;
 	let countNN = 0;
+	let directOnly = true;
 
 	data.map((entry) => {
 		let timestamp = new Date(entry.timestamp).getTime() / 1000;
 		let onNN = entry.on_network_next
+
+		if (directOnly && onNN) {
+			directOnly = false;
+		}
 
 		let nextRTT = parseFloat(entry.next.rtt);
 		let directRTT = parseFloat(entry.direct.rtt);
@@ -1269,6 +1274,12 @@ function generateCharts(data) {
 		lastEntryNN = onNN;
 	});
 
+	if (directOnly) {
+		latencyData.comparison.splice(1, 1);
+		jitterData.comparison.splice(1, 1);
+		packetLossData.comparison.splice(1, 1);
+	}
+
 	const defaultOpts = {
 		width: document.getElementById("latency-chart-1").clientWidth,
 		height: 260,
@@ -1279,6 +1290,28 @@ function generateCharts(data) {
 			}
 		}
 	};
+
+	let series = [
+		{}
+	];
+
+	if (!directOnly) {
+		series.push({
+			stroke: "rgb(0, 109, 44)",
+			fill: "rgba(0, 109, 44, 0.1)",
+			label: "Network Next",
+			value: (self, rawValue) => rawValue.toFixed(2)
+		});
+	}
+
+	series.push({
+		stroke: "rgb(49, 130, 189)",
+		fill: "rgba(49, 130, 189, 0.1)",
+		label: "Direct",
+		value: (self, rawValue) => rawValue.toFixed(2)
+	});
+
+	console.log(series)
 
 	const latencycomparisonOpts = {
 		...defaultOpts,
@@ -1292,22 +1325,7 @@ function generateCharts(data) {
 				],
 			}
 		},
-		series: [
-			{
-			},
-			{
-				stroke: "rgb(0, 109, 44)",
-				fill: "rgba(0, 109, 44, 0.1)",
-				label: "Network Next",
-				value: (self, rawValue) => rawValue.toFixed(2)
-			},
-			{
-				stroke: "rgb(49, 130, 189)",
-				fill: "rgba(49, 130, 189, 0.1)",
-				label: "Direct",
-				value: (self, rawValue) => rawValue.toFixed(2)
-			},
-		],
+		series: series,
 		axes: [
 			{
 				show: false
@@ -1322,6 +1340,26 @@ function generateCharts(data) {
 		],
 	};
 
+	series = [
+		{}
+	];
+
+	if (!directOnly) {
+		series.push({
+			stroke: "rgb(0, 109, 44)",
+			fill: "rgba(0, 109, 44, 0.1)",
+			label: "Network Next",
+			value: (self, rawValue) => rawValue.toFixed(2)
+		});
+	}
+
+	series.push({
+		stroke: "rgba(49, 130, 189)",
+		fill: "rgba(49, 130, 189, 0.1)",
+		label: "Direct",
+		value: (self, rawValue) => rawValue.toFixed(2)
+	});
+
 	const packetLossComparisonOpts = {
 		...defaultOpts,
 		scales: {
@@ -1330,21 +1368,7 @@ function generateCharts(data) {
 				range: [0, 100],
 			}
 		},
-		series: [
-			{},
-			{
-				stroke: "rgb(0, 109, 44)",
-				fill: "rgba(0, 109, 44, 0.1)",
-				label: "Network Next",
-				value: (self, rawValue) => rawValue.toFixed(2)
-			},
-			{
-				stroke: "rgba(49, 130, 189)",
-				fill: "rgba(49, 130, 189, 0.1)",
-				label: "Direct",
-				value: (self, rawValue) => rawValue.toFixed(2)
-			},
-		],
+		series: series,
 		axes: [
 			{
 				show: false
