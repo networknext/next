@@ -195,6 +195,42 @@ func main() {
 			level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
 			os.Exit(1)
 		}
+
+		if addr, ok := os.LookupEnv("STUBBED_RELAY_ADDRESS_1"); ok {
+			addr := net.UDPAddr{IP: net.ParseIP(addr), Port: 40000}
+			if err := db.AddRelay(ctx, routing.Relay{
+				Name:           "stubbed.relay.1",
+				ID:             crypto.HashID(addr.String()),
+				Addr:           addr,
+				PublicKey:      relayPublicKey,
+				Seller:         seller,
+				Datacenter:     datacenter,
+				ManagementAddr: addr.IP.String(),
+				SSHUser:        "root",
+				SSHPort:        22,
+			}); err != nil {
+				level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
+				os.Exit(1)
+			}
+		}
+
+		if addr, ok := os.LookupEnv("STUBBED_RELAY_ADDRESS_2"); ok {
+			addr := net.UDPAddr{IP: net.ParseIP(addr), Port: 40000}
+			if err := db.AddRelay(ctx, routing.Relay{
+				Name:           "stubbed.relay.2",
+				ID:             crypto.HashID(addr.String()),
+				Addr:           addr,
+				PublicKey:      relayPublicKey,
+				Seller:         seller,
+				Datacenter:     datacenter,
+				ManagementAddr: addr.IP.String(),
+				SSHUser:        "root",
+				SSHPort:        22,
+			}); err != nil {
+				level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
+				os.Exit(1)
+			}
+		}
 	}
 
 	manager, err := management.New(
