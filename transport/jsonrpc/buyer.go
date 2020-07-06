@@ -20,7 +20,8 @@ import (
 )
 
 const (
-	TopSessionsSize = 1000
+	TopSessionsSize     = 1000
+	TopNextSessionsSize = 1200
 )
 
 type BuyersService struct {
@@ -194,7 +195,7 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 	switch args.BuyerID {
 	case "":
 		// Get top Next sessions sorted by greatest to least improved RTT
-		topnext, err = s.RedisClient.ZRevRange("total-next", 0, TopSessionsSize).Result()
+		topnext, err = s.RedisClient.ZRevRange("total-next", 0, TopNextSessionsSize).Result()
 		if err != nil {
 			err = fmt.Errorf("TopSessions() failed getting total-next sessions: %v", err)
 			s.Logger.Log("err", err)
@@ -214,7 +215,7 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 			s.Logger.Log("err", err)
 			return err
 		}
-		topnext, err = s.RedisClient.ZRevRange(fmt.Sprintf("total-next-buyer-%s", args.BuyerID), 0, TopSessionsSize).Result()
+		topnext, err = s.RedisClient.ZRevRange(fmt.Sprintf("total-next-buyer-%s", args.BuyerID), 0, TopNextSessionsSize).Result()
 		if err != nil {
 			err = fmt.Errorf("TopSessions() failed getting total-next sessions: %v", err)
 			s.Logger.Log("err", err)
@@ -289,8 +290,8 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 
 	// If the result of nextSessions fills the page then early out and do not fill with direct
 	// This will skip talking to redis to get meta details for sessions we do not need to get
-	if len(nextSessions) >= TopSessionsSize {
-		reply.Sessions = nextSessions[:TopSessionsSize]
+	if len(nextSessions) >= TopNextSessionsSize {
+		reply.Sessions = nextSessions[:TopNextSessionsSize]
 		return nil
 	}
 
