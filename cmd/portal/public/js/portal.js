@@ -180,9 +180,7 @@ MapHandler = {
 	deckGlInstance: null,
 	sessionToolMapInstance: null,
 	initMap() {
-		// Not working yet
-		// let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
-		this.updateFilter('map', {
+		this.updateFilter({
 			buyerId: "",
 			sessionType: 'all'
 		});
@@ -382,6 +380,12 @@ UserHandler = {
 
 				// Need to handle no BuyerID gracefully
 			});
+	},
+	getBuyerName() {
+		let allBuyers = rootComponent.$data.allBuyers;
+		return Array.from(allBuyers).length > 0 ? Array.from(allBuyers).find((buyer) => {
+				return buyer.id == this.userInfo.id || this.isAdmin()
+		}).name : "Private";
 	},
 	isAdmin() {
 		return !this.isAnonymous() ? this.userInfo.roles.findIndex((role) => role.name == "Admin") !== -1 : false;
@@ -597,23 +601,15 @@ WorkspaceHandler = {
 				UserHandler.userInfo.company = "";
 			});
 
-		// Not working / not necessary?
-		// let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
 		this.updateAccountsTableFilter({
 			buyerId: "",
 		});
 	},
 	loadSessionsPage() {
-		// Not working yet
-		// let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
 		this.updateSessionFilter({
 			buyerId: "",
 			sessionType: 'all'
 		});
-		this.refreshSessionTable();
-		this.sessionLoop = setInterval(() => {
-			this.refreshSessionTable();
-		}, 10000);
 	},
 	fetchSessionInfo() {
 		this.sessionToolMapInstance = null;
@@ -756,6 +752,11 @@ WorkspaceHandler = {
 	},
 	updateSessionFilter(filter) {
 		Object.assign(rootComponent.$data.pages.sessions, {filter: filter});
+		this.sessionLoop ? clearInterval(this.sessionLoop) : null;
+		this.refreshSessionTable();
+		this.sessionLoop = setInterval(() => {
+			this.refreshSessionTable();
+		}, 10000);
 	},
 	refreshSessionTable() {
 		setTimeout(() => {
@@ -910,7 +911,8 @@ function startApp() {
 			JSONRPCClient
 				.call('BuyersService.Buyers', {})
 				.then((response) => {
-					Object.assign(rootComponent.$data, {allBuyers: response.Buyers});
+					let allBuyers = response.Buyers || [];
+					Object.assign(rootComponent.$data, {allBuyers: allBuyers});
 					/* if (UserHandler.isAnonymous()) {
 						WorkspaceHandler.welcomeTimeout = setTimeout(() => {
 							this.welcomeTimeout !== null ? clearTimeout(this.welcomeTimeout) : null;

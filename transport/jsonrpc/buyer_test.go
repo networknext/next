@@ -406,23 +406,18 @@ func TestSessionMapPoints(t *testing.T) {
 	redisServer, _ := miniredis.Run()
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
-	buyerID1 := fmt.Sprintf("%x", 111)
-	buyerID2 := fmt.Sprintf("%x", 222)
+	buyerID1 := fmt.Sprintf("%016x", 111)
+	buyerID2 := fmt.Sprintf("%016x", 222)
 
-	sessionID1 := fmt.Sprintf("%x", 111)
-	sessionID2 := fmt.Sprintf("%x", 222)
-	sessionID3 := fmt.Sprintf("%x", 333)
+	sessionID1 := fmt.Sprintf("%016x", 111)
+	sessionID2 := fmt.Sprintf("%016x", 222)
+	sessionID3 := fmt.Sprintf("%016x", 333)
 	sessionID4 := "missing"
 
-	redisServer.SetAdd("map-points-global", sessionID1)
-	redisServer.SetAdd("map-points-global", sessionID2)
-	redisServer.SetAdd("map-points-global", sessionID3)
-	redisServer.SetAdd("map-points-global", sessionID4)
-
-	redisServer.SetAdd(fmt.Sprintf("map-points-buyer-%s", buyerID2), sessionID1)
-	redisServer.SetAdd(fmt.Sprintf("map-points-buyer-%s", buyerID1), sessionID2)
-	redisServer.SetAdd(fmt.Sprintf("map-points-buyer-%s", buyerID1), sessionID3)
-	redisServer.SetAdd(fmt.Sprintf("map-points-buyer-%s", buyerID1), sessionID4)
+	redisServer.SetAdd(fmt.Sprintf("map-points-%s-buyer", buyerID2), sessionID1)
+	redisServer.SetAdd(fmt.Sprintf("map-points-%s-buyer", buyerID1), sessionID2)
+	redisServer.SetAdd(fmt.Sprintf("map-points-%s-buyer", buyerID1), sessionID3)
+	redisServer.SetAdd(fmt.Sprintf("map-points-%s-buyer", buyerID1), sessionID4)
 
 	points := []routing.SessionMapPoint{
 		{Latitude: 10, Longitude: 40, OnNetworkNext: true},
@@ -437,6 +432,7 @@ func TestSessionMapPoints(t *testing.T) {
 	storer := storage.InMemory{}
 	pubkey := make([]byte, 4)
 	storer.AddBuyer(context.Background(), routing.Buyer{ID: 111, Name: "local.local.1", PublicKey: pubkey})
+	storer.AddBuyer(context.Background(), routing.Buyer{ID: 222, Name: "local.local.2", PublicKey: pubkey})
 
 	logger := log.NewNopLogger()
 	svc := jsonrpc.BuyersService{
@@ -445,7 +441,7 @@ func TestSessionMapPoints(t *testing.T) {
 		Logger:      logger,
 	}
 
-	err := svc.GenerateMapPoints()
+	err := svc.GenerateMapPointsPerBuyer()
 	assert.NoError(t, err)
 
 	manager, err := management.New(
@@ -502,18 +498,18 @@ func TestSessionMapPoints(t *testing.T) {
 		assert.Contains(t, mappoints, points[2])
 	})
 
-	/* t.Run("points by buyer", func(t *testing.T) {
+	t.Run("points by buyer", func(t *testing.T) {
 		var reply jsonrpc.MapPointsReply
-		err := svc.SessionMapPoints(req, &jsonrpc.MapPointsArgs{BuyerID: buyerID1}, &reply)
+		err := svc.SessionMapPoints(req, &jsonrpc.MapPointsArgs{BuyerID: buyerID2}, &reply)
 		assert.NoError(t, err)
 
-		assert.Equal(t, 2, len(reply.Points))
-		assert.NotContains(t, reply.Points, points[0])
-		assert.Contains(t, reply.Points, points[1])
-		assert.Contains(t, reply.Points, points[2])
+		var mappoints []routing.SessionMapPoint
+		err = json.Unmarshal(reply.Points, &mappoints)
+		assert.NoError(t, err)
 
-		assert.Greater(t, int(redisClient.TTL("session-missing-point").Val()), 0)
-	}) */
+		assert.Equal(t, 1, len(mappoints))
+		assert.Contains(t, mappoints, points[0])
+	})
 }
 
 func TestSessionMap(t *testing.T) {
@@ -522,23 +518,18 @@ func TestSessionMap(t *testing.T) {
 	redisServer, _ := miniredis.Run()
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
-	buyerID1 := fmt.Sprintf("%x", 111)
-	buyerID2 := fmt.Sprintf("%x", 222)
+	buyerID1 := fmt.Sprintf("%016x", 111)
+	buyerID2 := fmt.Sprintf("%016x", 222)
 
-	sessionID1 := fmt.Sprintf("%x", 111)
-	sessionID2 := fmt.Sprintf("%x", 222)
-	sessionID3 := fmt.Sprintf("%x", 333)
+	sessionID1 := fmt.Sprintf("%016x", 111)
+	sessionID2 := fmt.Sprintf("%016x", 222)
+	sessionID3 := fmt.Sprintf("%016x", 333)
 	sessionID4 := "missing"
 
-	redisServer.SetAdd("map-points-global", sessionID1)
-	redisServer.SetAdd("map-points-global", sessionID2)
-	redisServer.SetAdd("map-points-global", sessionID3)
-	redisServer.SetAdd("map-points-global", sessionID4)
-
-	redisServer.SetAdd(fmt.Sprintf("map-points-buyer-%s", buyerID2), sessionID1)
-	redisServer.SetAdd(fmt.Sprintf("map-points-buyer-%s", buyerID1), sessionID2)
-	redisServer.SetAdd(fmt.Sprintf("map-points-buyer-%s", buyerID1), sessionID3)
-	redisServer.SetAdd(fmt.Sprintf("map-points-buyer-%s", buyerID1), sessionID4)
+	redisServer.SetAdd(fmt.Sprintf("map-points-%s-buyer", buyerID2), sessionID1)
+	redisServer.SetAdd(fmt.Sprintf("map-points-%s-buyer", buyerID1), sessionID2)
+	redisServer.SetAdd(fmt.Sprintf("map-points-%s-buyer", buyerID1), sessionID3)
+	redisServer.SetAdd(fmt.Sprintf("map-points-%s-buyer", buyerID1), sessionID4)
 
 	points := []routing.SessionMapPoint{
 		{Latitude: 10, Longitude: 40, OnNetworkNext: true},
@@ -553,6 +544,7 @@ func TestSessionMap(t *testing.T) {
 	storer := storage.InMemory{}
 	pubkey := make([]byte, 4)
 	storer.AddBuyer(context.Background(), routing.Buyer{ID: 111, Name: "local.local.1", PublicKey: pubkey})
+	storer.AddBuyer(context.Background(), routing.Buyer{ID: 222, Name: "local.local.2", PublicKey: pubkey})
 
 	logger := log.NewNopLogger()
 	svc := jsonrpc.BuyersService{
@@ -561,7 +553,7 @@ func TestSessionMap(t *testing.T) {
 		Logger:      logger,
 	}
 
-	err := svc.GenerateMapPoints()
+	err := svc.GenerateMapPointsPerBuyer()
 	assert.NoError(t, err)
 
 	manager, err := management.New(
@@ -613,23 +605,24 @@ func TestSessionMap(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, 3, len(mappoints))
-		assert.Equal(t, []interface{}{float64(60), float64(30), float64(1)}, mappoints[0])
-		assert.Equal(t, []interface{}{float64(40), float64(10), float64(1)}, mappoints[1])
-		assert.Equal(t, []interface{}{float64(50), float64(20), float64(0)}, mappoints[2])
+		assert.Equal(t, []interface{}{float64(50), float64(20), float64(0)}, mappoints[0])
+		assert.Equal(t, []interface{}{float64(60), float64(30), float64(1)}, mappoints[1])
+		assert.Equal(t, []interface{}{float64(40), float64(10), float64(1)}, mappoints[2])
 	})
 
-	/* t.Run("points by buyer", func(t *testing.T) {
+	t.Run("points by buyer", func(t *testing.T) {
 		var reply jsonrpc.MapPointsReply
-		err := svc.SessionMapPoints(req, &jsonrpc.MapPointsArgs{BuyerID: buyerID1}, &reply)
+		err := svc.SessionMap(req, &jsonrpc.MapPointsArgs{BuyerID: buyerID1}, &reply)
 		assert.NoError(t, err)
 
-		assert.Equal(t, 2, len(reply.Points))
-		assert.NotContains(t, reply.Points, points[0])
-		assert.Contains(t, reply.Points, points[1])
-		assert.Contains(t, reply.Points, points[2])
+		var mappoints [][]interface{}
+		err = json.Unmarshal(reply.Points, &mappoints)
+		assert.NoError(t, err)
 
-		assert.Greater(t, int(redisClient.TTL("session-missing-point").Val()), 0)
-	}) */
+		assert.Equal(t, 2, len(mappoints))
+		assert.Equal(t, []interface{}{float64(50), float64(20), float64(0)}, mappoints[0])
+		assert.Equal(t, []interface{}{float64(60), float64(30), float64(1)}, mappoints[1])
+	})
 }
 
 func TestGameConfiguration(t *testing.T) {

@@ -309,7 +309,7 @@
                                         </option>
                                     </select>
                                 </div>
-                                <div class="px-2 hidden" v-if="!handlers.userHandler.isAnonymous()">
+                                <div class="px-2" v-if="!handlers.userHandler.isAnonymous()">
                                     <select class="form-control">
                                         <option value="all" v-on:click="handlers.mapHandler.updateFilter({buyerId: '', sessionType: pages.map.filter.sessionType})">
                                             All
@@ -318,7 +318,7 @@
                                             {{ buyer.name }}
                                         </option>
                                         <option v-on:click="handlers.mapHandler.updateFilter({buyerId: handlers.userHandler.userInfo.id, sessionType: pages.map.filter.sessionType})" v-if="!handlers.userHandler.isAdmin() && !handlers.userHandler.isAnonymous()">
-                                            {{ handlers.userHandler.userInfo.name }}
+                                            {{  }}
                                         </option>
                                     </select>
                                 </div>
@@ -366,7 +366,7 @@
                                             </option>
                                         </select>
                                     </div>
-                                    <div class="px-2 hidden">
+                                    <div class="px-2">
                                         <select class="form-control" v-if="handlers.userHandler.isAdmin()">
                                             <option value="all" v-on:click="handlers.workspaceHandler.updateSessionFilter({buyerId: '', sessionType: pages.sessions.filter.sessionType})">
                                                 All
@@ -377,7 +377,7 @@
                                         </select>
                                         <select class="form-control" v-if="!handlers.userHandler.isAdmin() && !handlers.userHandler.isAnonymous()">
                                             <option v-on:click="handlers.userHandler.workspaceHandler.updateSessionFilter({buyerId: handlers.userHandler.userInfo.id, sessionType: pages.sessions.filter.sessionType})">
-                                                {{ handlers.userHandler.userInfo.name }}
+                                                {{ handlers.userHandler.getBuyerName() }}
                                             </option>
                                         </select>
                                     </div>
@@ -654,9 +654,7 @@
                                                         </dt>
                                                         <dd v-if="!handlers.userHandler.isAnonymous()">
                                                             {{
-                                                                Array.from(allBuyers.length) > 0 ? Aray.from(allBuyers).find((buyer) => {
-                                                                    return buyer.id == pages.sessionTool.meta.customer_id
-                                                                }).name || "Private" : "Private"
+                                                                handlers.userHandler.getBuyerName()
                                                             }}
                                                         </dd>
                                                         <dt>
