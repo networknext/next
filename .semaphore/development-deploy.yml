@@ -15,6 +15,7 @@ global_job_config:
       - make clean
 blocks:
   - name: Build
+    dependencies: []
     task:
       jobs:
         - name: Build Artifacts
