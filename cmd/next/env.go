@@ -31,7 +31,7 @@ const (
 	OldRelayBackendHostnameProd  = "relays.v3.networknext.com"
 
 	RelayBackendURLLocal = "http://" + RelayBackendHostnameLocal + ":30000"
-	RelayBackendURLDev   = "http://" + RelayBackendHostnameDev + ":40000"
+	RelayBackendURLDev   = "http://" + RelayBackendHostnameDev
 	RelayBackendURLProd  = "http://" + RelayBackendHostnameProd
 )
 
