@@ -179,11 +179,15 @@ MapHandler = {
 	mapInstance: null,
 	deckGlInstance: null,
 	sessionToolMapInstance: null,
-	mapHeight: 0,
-	mapWidth: 0,
+	mapHeight: null,
+	mapWidth: null,
 	initMap() {
 		// Not working yet
 		// let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
+		if (!this.mapHeight && !this.mapWidth) {
+			this.mapHeight = document.getElementById("map").offsetHeight;
+			this.mapWidth = document.getElementById("map").offsetWidth;
+		}
 		this.updateFilter('map', {
 			buyerId: "",
 			sessionType: 'all'
@@ -301,14 +305,11 @@ MapHandler = {
 
 				let layers = (onNN.length > 0 || direct.length > 0) ? [directLayer, nnLayer] : [];
 				if (!this.deckGlInstance) {
-					this.mapHeight = document.getElementById("map").offsetHeight;
-					this.mapWidth = document.getElementById("map").offsetWidth;
-
 					// creating the deck.gl instance
 					this.deckGlInstance = new deck.Deck({
 						canvas: document.getElementById("deck-canvas"),
-						width: `${this.mapWidth}px`,
-						height: `${this.mapHeight}px`,
+						width: '100%',
+						height: '100%',
 						initialViewState: this.viewState,
 						controller: true,
 						// change the map's viewstate whenever the view state of deck.gl changes
@@ -323,6 +324,8 @@ MapHandler = {
 						layers: layers
 					});
 				} else {
+					document.getElementById("deckgl-overlay").setAttribute("maxHeight", `${this.mapHeight}px`)
+					document.getElementById("deckgl-overlay").setAttribute("maxWidth", `${this.mapWidth}px`)
 					this.deckGlInstance.setProps({layers: []});
 					this.deckGlInstance.setProps({layers: layers});
 				}
