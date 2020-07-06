@@ -360,13 +360,22 @@ func main() {
 	var sessionCount int64
 	sessionsfs.Int64Var(&sessionCount, "n", 0, "number of top sessions to display (default: all)")
 
+	relaylogfs := flag.NewFlagSet("relay logs", flag.ExitOnError)
+
+	var loglines uint
+	relaylogfs.UintVar(&loglines, "n", 10, "the number of log lines to display")
+
+	relaydisablefs := flag.NewFlagSet("relay disable", flag.ExitOnError)
+
+	var hardDisable bool
+	relaydisablefs.BoolVar(&hardDisable, "hard", false, "hard disable the relay(s), killing the process immediately")
+
 	relayupdatefs := flag.NewFlagSet("relay update", flag.ExitOnError)
 
-	var relayCoreCount uint64
-	relayupdatefs.Uint64Var(&relayCoreCount, "cores", 0, "number of cores for the relay to utilize")
-
-	var forceUpdate bool
-	relayupdatefs.BoolVar(&forceUpdate, "force", false, "force the relay update regardless of the version")
+	var updateOpts updateOptions
+	relayupdatefs.Uint64Var(&updateOpts.coreCount, "cores", 0, "number of cores for the relay to utilize")
+	relayupdatefs.BoolVar(&updateOpts.force, "force", false, "force the relay update regardless of the version")
+	relayupdatefs.BoolVar(&updateOpts.hard, "hard", false, "hard update the relay(s), killing the process immediately")
 
 	relaysfs := flag.NewFlagSet("relays state", flag.ExitOnError)
 
@@ -690,9 +699,25 @@ func main() {
 				ShortUsage: "next relay <subcommand>",
 				ShortHelp:  "Manage relays",
 				Exec: func(_ context.Context, args []string) error {
+
 					return flag.ErrHelp
 				},
 				Subcommands: []*ffcli.Command{
+					{
+						Name:       "logs",
+						ShortUsage: "next relay logs <regex> [regex]",
+						ShortHelp:  "Print the last n journalctl lines for each matching relay, if the n flag is unset it defaults to 10",
+						FlagSet:    relaylogfs,
+						Exec: func(ctx context.Context, args []string) error {
+							if len(args) == 0 {
+								log.Fatalln("you must supply at least one argument")
+							}
+
+							relayLogs(rpcClient, env, loglines, args)
+
+							return nil
+						},
+					},
 					{
 						Name:       "check",
 						ShortUsage: "next relay check [regex]",
@@ -757,7 +782,7 @@ func main() {
 								regexes = args
 							}
 
-							updateRelays(env, rpcClient, regexes, relayCoreCount, forceUpdate)
+							updateRelays(env, rpcClient, regexes, updateOpts)
 
 							return nil
 						},
@@ -796,13 +821,14 @@ func main() {
 						Name:       "disable",
 						ShortUsage: "next relay disable [regex...]",
 						ShortHelp:  "Disable the specified relay(s)",
+						FlagSet:    relaydisablefs,
 						Exec: func(_ context.Context, args []string) error {
 							regexes := []string{".*"}
 							if len(args) > 0 {
 								regexes = args
 							}
 
-							disableRelays(env, rpcClient, regexes)
+							disableRelays(env, rpcClient, regexes, hardDisable)
 
 							return nil
 						},
