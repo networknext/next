@@ -106,6 +106,8 @@ func (m *UDPServerMux) handler(ctx context.Context, id int) {
 					res = crypto.Hash(crypto.PacketHashKey, res)
 				}
 
+				fmt.Printf("sending response packet (%d bytes)\n", res)
+
 				m.Conn.WriteToUDP(res, packet.SourceAddr)
 			}
 
@@ -244,6 +246,7 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 		// since right now it only re-initializes if that server is restarted, and we can't rely on all our customers to regularly
 		// restart their servers (although Psyonix does do this).
 
+		fmt.Printf("writeServerInitResponse\n")
 		writeServerInitResponse(params, w, &packet, InitResponseOK)
 	}
 }
