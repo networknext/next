@@ -179,6 +179,8 @@ MapHandler = {
 	mapInstance: null,
 	deckGlInstance: null,
 	sessionToolMapInstance: null,
+	mapHeight: 0,
+	mapWidth: 0,
 	initMap() {
 		// Not working yet
 		// let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
@@ -244,7 +246,6 @@ MapHandler = {
 		JSONRPCClient
 			.call('BuyersService.SessionMap', {buyer_id: filter.buyerId || ""})
 			.then((response) => {
-				let bounds = [[-165.152199, -61.522695], [187.951980, 75.715633]]
 				if (!this.mapInstance) {
 					this.mapInstance = new mapboxgl.Map({
 						accessToken: mapboxgl.accessToken,
@@ -257,7 +258,6 @@ MapHandler = {
 						pitch: 0,
 						bearing: 0,
 						container: 'map',
-						// maxBounds: bounds,
 					});
 				}
 				let sessions = response.map_points;
@@ -301,11 +301,14 @@ MapHandler = {
 
 				let layers = (onNN.length > 0 || direct.length > 0) ? [directLayer, nnLayer] : [];
 				if (!this.deckGlInstance) {
+					this.mapHeight = document.getElementById("map").offsetHeight;
+					this.mapWidth = document.getElementById("map").offsetWidth;
+
 					// creating the deck.gl instance
 					this.deckGlInstance = new deck.Deck({
 						canvas: document.getElementById("deck-canvas"),
-						width: '100%',
-						height: '100%',
+						width: `${this.mapWidth}px`,
+						height: `${this.mapHeight}px`,
 						initialViewState: this.viewState,
 						controller: true,
 						// change the map's viewstate whenever the view state of deck.gl changes
