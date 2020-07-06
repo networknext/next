@@ -577,7 +577,7 @@ WorkspaceHandler = {
 		this.refreshSessionTable();
 		this.sessionLoop = setInterval(() => {
 			this.refreshSessionTable();
-		}, 1000);
+		}, 10000);
 	},
 	fetchSessionInfo() {
 		this.sessionToolMapInstance = null;
