@@ -574,8 +574,8 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 		}
 
 		// When multiple session updates are in flight, especially under a retry storm, there can be simultaneous calls
-		// to this handler for the same session and slice. It is *extremely important* that we don't generate multiple route 
-		// responses in this case, otherwise we'll bill our customers multiple times for the same slice!. Instead, we implement 
+		// to this handler for the same session and slice. It is *extremely important* that we don't generate multiple route
+		// responses in this case, otherwise we'll bill our customers multiple times for the same slice!. Instead, we implement
 		// a locking system here, such that if the same slices is already being processed in another handler, we block until
 		// the other hanxdler completes, then send down the cached session response.
 
@@ -597,8 +597,6 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 
 		// Create the default response packet with a direct route and same SDK version as the server data.
 		// This makes sure that we respond to the session update with the packet version the SDK expects.
-
-		directRoute := routing.Route{}
 
 		response := SessionResponsePacket{
 			Version:              serverData.version,
@@ -625,6 +623,13 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			RTT:        float64(packet.DirectMinRTT),
 			Jitter:     float64(packet.DirectJitter),
 			PacketLoss: float64(packet.DirectPacketLoss),
+		}
+
+		// Create a default direct route with the direct stats from last slice
+		// since we don't have direct stats for a potential network next route
+		// from the route matrix yet and we need direct stats for billing
+		directRoute := routing.Route{
+			DirectStats: lastDirectStats,
 		}
 
 		// Run IP2Location on the session IP address.
@@ -663,7 +668,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 
 		// Use the route matrix to get a list of relays closest to the lat/long of the client.
 		// These near relays are returned back down to the SDK for this slice. The SDK then pings these relays,
-		// and reports the results back up to us in the next session update. We use the near relay pings to know 
+		// and reports the results back up to us in the next session update. We use the near relay pings to know
 		// the cost of the first hop, from the client to the first relay in their route.
 
 		routeMatrix := params.GetRouteProvider()
@@ -729,7 +734,7 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 	// Send a massive amount of data to the portal via redis.
 	// This drives all the stuff you see in the portal, including the map and top sessions list.
 	// We send it via redis because google pubsub is not able to deliver data quickly enough.
-	
+
 	// IMPORTANT: We could possibly offload some work from here by sending to another service
 	// via redis pubsub (this is different to google pubsub).
 
@@ -742,17 +747,30 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 	// Send billing specific data to the billing service via google pubsub
 	// The billing service subscribes to this topic, and writes the billing data to bigquery.
 	// We tried writing to bigquery directly here, but it didn't work because bigquery would stall out.
-	// BigQuery really doesn't make performance guarantees on how fast it is to load data, so we need 
+	// BigQuery really doesn't make performance guarantees on how fast it is to load data, so we need
 	// pubsub to act as a queue to smooth that out. Pubsub can buffer billing data for up to 7 days.
 
-	billingEntry := billing.BillingEntry{}
-	billingEntry.SessionID = packet.SessionID
-	billingEntry.DirectRTT = float32(lastDirectStats.RTT)
-	billingEntry.DirectJitter = float32(lastDirectStats.Jitter)
-	billingEntry.DirectPacketLoss = float32(lastDirectStats.PacketLoss)
-	
-	// todo: ryan, please fill rest billing entry
-	
+	nextRelays := [5]uint64{}
+	for i := 0; i < len(chosenRoute.Relays) && i < len(nextRelays); i++ {
+		nextRelays[i] = chosenRoute.Relays[i].ID
+	}
+
+	billingEntry := billing.BillingEntry{
+		BuyerID:          packet.CustomerID,
+		SessionID:        packet.SessionID,
+		SliceNumber:      uint32(packet.Sequence),
+		DirectRTT:        float32(chosenRoute.DirectStats.RTT),
+		DirectJitter:     float32(chosenRoute.DirectStats.Jitter),
+		DirectPacketLoss: float32(chosenRoute.DirectStats.PacketLoss),
+		Next:             len(chosenRoute.Relays) > 0,
+		NextRTT:          float32(chosenRoute.Stats.RTT),
+		NextJitter:       float32(chosenRoute.Stats.Jitter),
+		NextPacketLoss:   float32(chosenRoute.Stats.PacketLoss),
+		NumNextRelays:    uint8(len(chosenRoute.Relays)),
+		NextRelays:       nextRelays,
+		// TotalPrice: // ?,
+	}
+
 	if err := params.Biller.Bill(context.Background(), &billingEntry); err != nil {
 		fmt.Printf("could not submit billing entry: %v\n", err)
 		// level.Error(params.Logger).Log("msg", "could not submit billing entry", "err", err)
