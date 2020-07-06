@@ -290,7 +290,7 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 
 	// If the result of nextSessions fills the page then early out and do not fill with direct
 	// This will skip talking to redis to get meta details for sessions we do not need to get
-	if len(nextSessions) >= TopNextSessionsSize {
+	if len(nextSessions) >= TopSessionsSize {
 		reply.Sessions = nextSessions[:TopNextSessionsSize]
 		return nil
 	}
