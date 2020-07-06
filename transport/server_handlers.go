@@ -140,6 +140,7 @@ func writeServerInitResponse(params *ServerInitParams, w io.Writer, packet *Serv
 		Version:   packet.Version,
 	}
 	if err := writeInitResponse(w, responsePacket, params.ServerPrivateKey); err != nil {
+		fmt.Printf("failed to write server init response\n")
 		params.Metrics.ErrorMetrics.WriteResponseFailure.Add(1)
 		return
 	}
@@ -177,10 +178,13 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 
 		atomic.AddUint64(&params.Counters.Packets, 1)
 
+		fmt.Printf("server init\n")
+
 		// Read the server init packet. We can do this all at once because the server init packet includes the SDK version.
 
 		var packet ServerInitRequestPacket
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
+			fmt.Printf("could not read server init packet\n")
 			params.Metrics.ErrorMetrics.ReadPacketFailure.Add(1)
 			return
 		}
@@ -188,6 +192,7 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 		// todo: ryan. in the old code we checked if this buyer had the "internal" flag set, and then only in that case we
 		// allowed 0.0.0 version. this is a MUCH better approach than checking source ip address for loopback. please fix.
 		if !incoming.SourceAddr.IP.IsLoopback() && !packet.Version.AtLeast(SDKVersionMin) {
+			fmt.Printf("sdk too old\n")
 			params.Metrics.ErrorMetrics.SDKTooOld.Add(1)
 			writeServerInitResponse(params, w, &packet, InitResponseOldSDKVersion)
 			return
@@ -198,6 +203,7 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 
 		buyer, err := params.Storer.Buyer(packet.CustomerID)
 		if err != nil {
+			fmt.Printf("unknown customer\n")
 			params.Metrics.ErrorMetrics.BuyerNotFound.Add(1)
 			writeServerInitResponse(params, w, &packet, InitResponseUnknownCustomer)
 			return
@@ -209,6 +215,7 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 		// only real customer servers are allowed on our system.
 
 		if !crypto.Verify(buyer.PublicKey, packet.GetSignData(), packet.Signature) {
+			fmt.Printf("signature check failed\n")
 			params.Metrics.ErrorMetrics.VerificationFailure.Add(1)
 			writeServerInitResponse(params, w, &packet, InitResponseSignatureCheckFailed)
 			return
@@ -223,6 +230,7 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 
 		_, err = params.Storer.Datacenter(packet.DatacenterID) // todo: profiling indicates this function is slow. please investigate ryan.
 		if err != nil {
+			fmt.Printf("datacenter not found failed\n")
 			params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
 			writeServerInitResponse(params, w, &packet, InitResponseUnknownDatacenter)
 			return
