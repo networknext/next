@@ -35,7 +35,7 @@ blocks:
     dependencies: ["Build"]
     task:
       jobs:
-        - name: Publish Artifacts to Google Cloud
+        - name: Publish Artifacts
           parallelism: 5
           commands:
             - artifact pull workflow ./dist/billing.prod.tar.gz
