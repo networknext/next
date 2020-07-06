@@ -12,8 +12,10 @@ import (
 const NumSessionMapShards = 4096
 
 type SessionData struct {
-	timestamp int64
-	location  routing.Location
+	timestamp  int64
+	location   routing.Location
+	sequence   uint64
+	nearRelays []routing.Relay
 }
 
 type SessionMapShard struct {
