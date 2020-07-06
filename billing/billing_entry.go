@@ -31,7 +31,7 @@ type BillingEntry struct {
 func WriteBillingEntry(entry *BillingEntry) []byte {
 	data := make([]byte, MaxBillingEntryBytes)
 	index := 0
-	encoding.WriteUint8(data, &index, entry.Version)
+	encoding.WriteUint8(data, &index, BillingEntryVersion)
 	encoding.WriteUint64(data, &index, entry.BuyerID)
 	encoding.WriteUint64(data, &index, entry.SessionID)
 	encoding.WriteUint32(data, &index, entry.SliceNumber)
@@ -59,6 +59,9 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 	if !encoding.ReadUint8(data, &index, &entry.Version) {
 		return false
 	}
+	// todo: once we add more than one version and we are live with this system
+	// you will definitely want to change this to support binary compatibility
+	// with old versions otherwise we will lose billing entries
 	if entry.Version != BillingEntryVersion {
 		return false
 	}
