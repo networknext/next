@@ -39,7 +39,7 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string, se
 
 		var reply localjsonrpc.SessionDetailsReply
 		if err := rpcClient.CallFor(&reply, "BuyersService.SessionDetails", args); err != nil {
-			handleJSONRPCError(env, err)
+			handleJSONRPCErrorCustom(env, err, "Session not found")
 			return
 		}
 
