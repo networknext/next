@@ -373,9 +373,14 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 		reply.Sessions = reply.Sessions[:TopSessionsSize]
 	}
 
+	allDirectSessions := len(nextSessions) == 0
+
 	sort.SliceStable(reply.Sessions, func(i int, j int) bool {
 		firstSession := reply.Sessions[i]
 		secondSession := reply.Sessions[j]
+		if allDirectSessions {
+			return firstSession.DirectRTT > secondSession.DirectRTT
+		}
 		if firstSession.OnNetworkNext && secondSession.OnNetworkNext {
 			return firstSession.DeltaRTT > secondSession.DeltaRTT
 		}
