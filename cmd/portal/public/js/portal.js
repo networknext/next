@@ -168,13 +168,19 @@ MapHandler = {
 			pitch: 0
 		},
 	},
+	viewState: {
+    latitude: 0,
+    longitude: 0,
+    zoom: 2,
+    pitch: 0,
+    bearing: 0
+  },
 	mapCountLoop: null,
 	mapInstance: null,
+	deckGlInstance: null,
 	sessionToolMapInstance: null,
 	initMap() {
-		// Not working yet
-		// let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
-		this.updateFilter('map', {
+		this.updateFilter({
 			buyerId: "",
 			sessionType: 'all'
 		});
@@ -187,7 +193,7 @@ MapHandler = {
 		this.refreshMapCount();
 		this.mapCountLoop = setInterval(() => {
 			this.refreshMapCount();
-		}, 10000);
+		}, 1000);
 
 		this.refreshMapSessions();
 		this.mapLoop = setInterval(() => {
@@ -236,6 +242,20 @@ MapHandler = {
 		JSONRPCClient
 			.call('BuyersService.SessionMap', {buyer_id: filter.buyerId || ""})
 			.then((response) => {
+				if (!this.mapInstance) {
+					this.mapInstance = new mapboxgl.Map({
+						accessToken: mapboxgl.accessToken,
+						style: 'mapbox://styles/mapbox/dark-v10',
+						center: [
+							0,
+							0
+						],
+						zoom: 2,
+						pitch: 0,
+						bearing: 0,
+						container: 'map',
+					});
+				}
 				let sessions = response.map_points;
 				let onNN = sessions.filter((point) => {
 					return (point[2] == 1);
@@ -276,20 +296,28 @@ MapHandler = {
 				});
 
 				let layers = (onNN.length > 0 || direct.length > 0) ? [directLayer, nnLayer] : [];
-				if (this.mapInstance) {
-					this.mapInstance.setProps({layers: []})
-					this.mapInstance.setProps({layers: layers})
-				} else {
-					this.mapInstance = new deck.DeckGL({
-						mapboxApiAccessToken: mapboxgl.accessToken,
-						mapStyle: 'mapbox://styles/mapbox/dark-v10',
-						initialViewState: {
-							...MapHandler.defaultWorld.initialViewState
-						},
-						container: 'map-container',
+				if (!this.deckGlInstance) {
+					// creating the deck.gl instance
+					this.deckGlInstance = new deck.Deck({
+						canvas: document.getElementById("deck-canvas"),
+						width: '100%',
+						height: '100%',
+						initialViewState: this.viewState,
 						controller: true,
-						layers: layers,
+						// change the map's viewstate whenever the view state of deck.gl changes
+						onViewStateChange: ({ viewState }) => {
+							this.mapInstance.jumpTo({
+								center: [viewState.longitude, viewState.latitude],
+								zoom: viewState.zoom,
+								bearing: viewState.bearing,
+								pitch: viewState.pitch
+							});
+						},
+						layers: layers
 					});
+				} else {
+					this.deckGlInstance.setProps({layers: []});
+					this.deckGlInstance.setProps({layers: layers});
 				}
 				Object.assign(rootComponent.$data, {showCount: true});
 			})
@@ -353,6 +381,12 @@ UserHandler = {
 				// Need to handle no BuyerID gracefully
 			});
 	},
+	getBuyerName() {
+		let allBuyers = rootComponent.$data.allBuyers;
+		return Array.from(allBuyers).length > 0 ? Array.from(allBuyers).find((buyer) => {
+				return buyer.id == this.userInfo.id || this.isAdmin()
+		}).name : "Private";
+	},
 	isAdmin() {
 		return !this.isAnonymous() ? this.userInfo.roles.findIndex((role) => role.name == "Admin") !== -1 : false;
 	},
@@ -393,9 +427,15 @@ WorkspaceHandler = {
 	},
 	changePage(page, options) {
 		// Clear all polling loops
-		this.sessionLoop ? clearInterval(this.sessionLoop) : null;
-		this.mapLoop ? clearInterval(this.mapLoop) : null;
-		this.sessionToolLoop ? clearInterval(this.sessionToolLoop) : null;
+		clearInterval(this.sessionLoop);
+		clearInterval(this.mapLoop);
+		clearInterval(this.sessionToolLoop);
+
+		this.sessionLoop = null;
+		this.mapLoop = null;
+		this.sessionToolLoop = null;
+
+		this.sessionToolMapInstance = null;
 
 		switch (page) {
 			case 'downloads':
@@ -561,23 +601,15 @@ WorkspaceHandler = {
 				UserHandler.userInfo.company = "";
 			});
 
-		// Not working / not necessary?
-		// let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
 		this.updateAccountsTableFilter({
 			buyerId: "",
 		});
 	},
 	loadSessionsPage() {
-		// Not working yet
-		// let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
 		this.updateSessionFilter({
 			buyerId: "",
 			sessionType: 'all'
 		});
-		this.refreshSessionTable();
-		this.sessionLoop = setInterval(() => {
-			this.refreshSessionTable();
-		}, 10000);
 	},
 	fetchSessionInfo() {
 		this.sessionToolMapInstance = null;
@@ -614,52 +646,59 @@ WorkspaceHandler = {
 				setTimeout(() => {
 					generateCharts(response.slices);
 
-					const NNCOLOR = [0,109,44];
-					const DIRECTCOLOR = [49,130,189];
+					if(!this.sessionToolLoop) {
+						const NNCOLOR = [0,109,44];
+						const DIRECTCOLOR = [49,130,189];
 
-					const cellSize = 10, aggregation = 'MEAN';
-					let gpuAggregation = navigator.appVersion.indexOf("Win") == -1;
+						const cellSize = 10, aggregation = 'MEAN';
+						let gpuAggregation = navigator.appVersion.indexOf("Win") == -1;
 
-					let sessionLocationLayer = new deck.ScreenGridLayer({
-						id: 'session-location-layer',
-						data: [meta],
-						opacity: 0.8,
-						getPosition: d => [d.location.longitude, d.location.latitude],
-						getWeight: d => 1,
-						cellSizePixels: cellSize,
-						colorRange: meta.on_network_next ? [NNCOLOR] : [DIRECTCOLOR],
-						gpuAggregation,
-						aggregation
-					});
-
-					if (this.sessionToolMapInstance) {
-						this.sessionToolMapInstance.setProps({layers: []})
-						this.sessionToolMapInstance.setProps({layers: [sessionLocationLayer]})
-					} else {
-						this.sessionToolMapInstance = new deck.DeckGL({
-							mapboxApiAccessToken: mapboxgl.accessToken,
-							mapStyle: 'mapbox://styles/mapbox/dark-v10',
-							initialViewState: {
-								zoom: 4,
-								longitude: meta.location.longitude, // 'Center' of the world map
-								latitude: meta.location.latitude,
-								minZoom: 2,
-								bearing: 0,
-								pitch: 0
-							},
-							container: 'session-tool-map',
-							controller: {
-								dragPan: false,
-								dragRotate: false
-							},
-							layers: [sessionLocationLayer],
+						let sessionLocationLayer = new deck.ScreenGridLayer({
+							id: 'session-location-layer',
+							data: [meta],
+							opacity: 0.8,
+							getPosition: d => [d.location.longitude, d.location.latitude],
+							getWeight: d => 1,
+							cellSizePixels: cellSize,
+							colorRange: meta.on_network_next ? [NNCOLOR] : [DIRECTCOLOR],
+							gpuAggregation,
+							aggregation
 						});
+
+						if (this.sessionToolMapInstance) {
+							this.sessionToolMapInstance.setProps({layers: []})
+							this.sessionToolMapInstance.setProps({layers: [sessionLocationLayer]})
+						} else {
+							this.sessionToolMapInstance = new deck.DeckGL({
+								mapboxApiAccessToken: mapboxgl.accessToken,
+								mapStyle: 'mapbox://styles/mapbox/dark-v10',
+								initialViewState: {
+									zoom: 4,
+									longitude: meta.location.longitude, // 'Center' of the world map
+									latitude: meta.location.latitude,
+									minZoom: 2,
+									bearing: 0,
+									pitch: 0
+								},
+								container: 'session-tool-map',
+								controller: {
+									dragPan: false,
+									dragRotate: false
+								},
+								layers: [sessionLocationLayer],
+							});
+						}
 					}
+					this.sessionToolLoop ? clearInterval(this.sessionToolLoop) : null;
+					this.sessionToolLoop = setInterval(() => {
+						this.fetchSessionInfo();
+					}, 10000);
 				});
 			})
 			.catch((e) => {
 				if (this.sessionToolLoop) {
 					this.changePage('sessions');
+					clearInterval(this.sessionToolLoop);
 					return;
 				}
 				Object.assign(rootComponent.$data.pages.sessionTool, {
@@ -673,10 +712,6 @@ WorkspaceHandler = {
 				console.log("Something went wrong fetching session details: ");
 				Sentry.captureException(e);
 			});
-			this.sessionToolLoop ? clearInterval(this.sessionToolLoop) : null;
-			this.sessionToolLoop = setInterval(() => {
-				this.fetchSessionInfo();
-			}, 10000);
 	},
 	fetchUserSessions() {
 		let hash = rootComponent.$data.pages.userTool.hash;
@@ -717,6 +752,11 @@ WorkspaceHandler = {
 	},
 	updateSessionFilter(filter) {
 		Object.assign(rootComponent.$data.pages.sessions, {filter: filter});
+		this.sessionLoop ? clearInterval(this.sessionLoop) : null;
+		this.refreshSessionTable();
+		this.sessionLoop = setInterval(() => {
+			this.refreshSessionTable();
+		}, 10000);
 	},
 	refreshSessionTable() {
 		setTimeout(() => {
@@ -871,7 +911,8 @@ function startApp() {
 			JSONRPCClient
 				.call('BuyersService.Buyers', {})
 				.then((response) => {
-					Object.assign(rootComponent.$data, {allBuyers: response.Buyers});
+					let allBuyers = response.Buyers || [];
+					Object.assign(rootComponent.$data, {allBuyers: allBuyers});
 					/* if (UserHandler.isAnonymous()) {
 						WorkspaceHandler.welcomeTimeout = setTimeout(() => {
 							this.welcomeTimeout !== null ? clearTimeout(this.welcomeTimeout) : null;
@@ -1176,10 +1217,15 @@ function generateCharts(data) {
 
 	let lastEntryNN = false;
 	let countNN = 0;
+	let directOnly = true;
 
 	data.map((entry) => {
 		let timestamp = new Date(entry.timestamp).getTime() / 1000;
 		let onNN = entry.on_network_next
+
+		if (directOnly && onNN) {
+			directOnly = false;
+		}
 
 		let nextRTT = parseFloat(entry.next.rtt);
 		let directRTT = parseFloat(entry.direct.rtt);
@@ -1230,6 +1276,12 @@ function generateCharts(data) {
 		lastEntryNN = onNN;
 	});
 
+	if (directOnly) {
+		latencyData.comparison.splice(1, 1);
+		jitterData.comparison.splice(1, 1);
+		packetLossData.comparison.splice(1, 1);
+	}
+
 	const defaultOpts = {
 		width: document.getElementById("latency-chart-1").clientWidth,
 		height: 260,
@@ -1240,6 +1292,28 @@ function generateCharts(data) {
 			}
 		}
 	};
+
+	let series = [
+		{}
+	];
+
+	if (!directOnly) {
+		series.push({
+			stroke: "rgb(0, 109, 44)",
+			fill: "rgba(0, 109, 44, 0.1)",
+			label: "Network Next",
+			value: (self, rawValue) => rawValue.toFixed(2)
+		});
+	}
+
+	series.push({
+		stroke: "rgb(49, 130, 189)",
+		fill: "rgba(49, 130, 189, 0.1)",
+		label: "Direct",
+		value: (self, rawValue) => rawValue.toFixed(2)
+	});
+
+	console.log(series)
 
 	const latencycomparisonOpts = {
 		...defaultOpts,
@@ -1253,22 +1327,7 @@ function generateCharts(data) {
 				],
 			}
 		},
-		series: [
-			{
-			},
-			{
-				stroke: "rgb(0, 109, 44)",
-				fill: "rgba(0, 109, 44, 0.1)",
-				label: "Network Next",
-				value: (self, rawValue) => rawValue.toFixed(2)
-			},
-			{
-				stroke: "rgb(49, 130, 189)",
-				fill: "rgba(49, 130, 189, 0.1)",
-				label: "Direct",
-				value: (self, rawValue) => rawValue.toFixed(2)
-			},
-		],
+		series: series,
 		axes: [
 			{
 				show: false
@@ -1283,6 +1342,26 @@ function generateCharts(data) {
 		],
 	};
 
+	series = [
+		{}
+	];
+
+	if (!directOnly) {
+		series.push({
+			stroke: "rgb(0, 109, 44)",
+			fill: "rgba(0, 109, 44, 0.1)",
+			label: "Network Next",
+			value: (self, rawValue) => rawValue.toFixed(2)
+		});
+	}
+
+	series.push({
+		stroke: "rgba(49, 130, 189)",
+		fill: "rgba(49, 130, 189, 0.1)",
+		label: "Direct",
+		value: (self, rawValue) => rawValue.toFixed(2)
+	});
+
 	const packetLossComparisonOpts = {
 		...defaultOpts,
 		scales: {
@@ -1291,21 +1370,7 @@ function generateCharts(data) {
 				range: [0, 100],
 			}
 		},
-		series: [
-			{},
-			{
-				stroke: "rgb(0, 109, 44)",
-				fill: "rgba(0, 109, 44, 0.1)",
-				label: "Network Next",
-				value: (self, rawValue) => rawValue.toFixed(2)
-			},
-			{
-				stroke: "rgba(49, 130, 189)",
-				fill: "rgba(49, 130, 189, 0.1)",
-				label: "Direct",
-				value: (self, rawValue) => rawValue.toFixed(2)
-			},
-		],
+		series: series,
 		axes: [
 			{
 				show: false

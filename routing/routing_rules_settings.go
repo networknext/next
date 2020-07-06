@@ -93,15 +93,18 @@ var DefaultRoutingRulesSettings = RoutingRulesSettings{
 	SelectionPercentage:      0,
 }
 
+// LocalRoutingRulesSettings sets the rules for localhost:20000 Happy Path
+// RTTThreshold set to -5 to passively force the NN route, even if it's 5 ms
+// slower than direct. Ditto for hysterisis and veto (more "real" than
+// forcing with 'Mode: ModeForceNext`).
 var LocalRoutingRulesSettings = RoutingRulesSettings{
-	MaxCentsPerGB:            25.0,
-	EnvelopeKbpsUp:           256,
-	EnvelopeKbpsDown:         256,
-	AcceptableLatency:        -1.0,
-	RTTThreshold:             0.05,
-	RTTEpsilon:               0.1,
-	RTTHysteresis:            -0.05,
-	RTTVeto:                  -1.0,
-	TryBeforeYouBuyMaxSlices: 3,
-	SelectionPercentage:      100,
+	MaxCentsPerGB:       25.0,
+	EnvelopeKbpsUp:      256,
+	EnvelopeKbpsDown:    256,
+	AcceptableLatency:   -1.0,
+	RTTThreshold:        -5,
+	RTTEpsilon:          0.1,
+	RTTHysteresis:       -10,
+	RTTVeto:             -20,
+	SelectionPercentage: 100,
 }

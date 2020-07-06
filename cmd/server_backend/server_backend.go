@@ -33,7 +33,7 @@ import (
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
-
+	
 	gcplogging "cloud.google.com/go/logging"
 	"cloud.google.com/go/profiler"
 )
@@ -46,7 +46,7 @@ var (
 
 func main() {
 
-	fmt.Printf("welcome to the nerd zone 17.0\n")
+	fmt.Printf("welcome to the nerd zone 23.0\n")
 
 	ctx := context.Background()
 
@@ -209,11 +209,6 @@ func main() {
 		ipLocator = &mmdb
 	}
 
-	geoClient := routing.GeoClient{
-		RedisClient: redisClientRelays,
-		Namespace:   "RELAY_LOCATIONS",
-	}
-
 	// Create an in-memory db
 	var db storage.Storer = &storage.InMemory{
 		LocalMode: true,
@@ -275,41 +270,24 @@ func main() {
 			db = fs
 		}
 
-		// BigQuery
+		// Google Pubsub
 		{
-			// todo: biller is disabled. bigquery can't keep up
-			/*
-				if billingDataset, ok := os.LookupEnv("GOOGLE_BIGQUERY_DATASET_BILLING"); ok {
-					batchSize := billing.DefaultBigQueryBatchSize
-					if size, ok := os.LookupEnv("GOOGLE_BIGQUERY_BATCH_SIZE"); ok {
-						s, err := strconv.ParseInt(size, 10, 64)
-						if err != nil {
-							level.Error(logger).Log("envvar", "GOOGLE_BIGQUERY_BATCH_SIZE", "msg", "could not parse ", "err", err)
-							os.Exit(1)
-						}
-						batchSize = int(s)
-					}
+			descriptor := billing.Descriptor{
+				ClientCount: 1,
+				DelayThreshold: time.Second * 10,
+				CountThreshold: 1000,
+				ByteThreshold: 100*1024,
+				NumGoroutines: runtime.GOMAXPROCS(0),
+				Timeout: time.Minute,
+			}
 
-					bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
-					if err != nil {
-						level.Error(logger).Log("msg", "could not create BiqQuery client", "err", err)
-						os.Exit(1)
-					}
-					b := billing.GoogleBigQueryClient{
-						Logger:        logger,
-						TableInserter: bqClient.Dataset(billingDataset).Table(os.Getenv("GOOGLE_BIGQUERY_TABLE_BILLING")).Inserter(),
-						BatchSize:     batchSize,
-					}
+			pubsub, err := billing.NewBiller(ctx, logger, gcpProjectID, "billing", &descriptor)
+			if err != nil {
+				fmt.Printf("could not create pubsub biller\n")
+				os.Exit(1)
+			}
 
-					// Set the Biller to BigQuery
-					biller = &b
-
-					// Start the background WriteLoop to batch write to BigQuery
-					go func() {
-						b.WriteLoop(ctx)
-					}()
-				}
-			*/
+			biller = pubsub
 		}
 
 		// StackDriver Metrics
@@ -399,11 +377,10 @@ func main() {
 	routeMatrix := &routing.RouteMatrix{}
 	var routeMatrixMutex sync.RWMutex
 
-	getRouteMatrixFunc := func() *routing.RouteMatrix {
+	getRouteMatrixFunc := func() transport.RouteProvider {
 		routeMatrixMutex.RLock()
-		defer routeMatrixMutex.RUnlock()
-
 		rm := routeMatrix
+		routeMatrixMutex.RUnlock()
 		return rm
 	}
 
@@ -438,8 +415,7 @@ func main() {
 					if err != nil {
 						// Reset the successful route matrix read counter
 						atomic.StoreUint64(&readRouteMatrixSuccessCount, 0)
-
-						level.Warn(logger).Log("matrix", "route", "op", "read", "envvar", "ROUTE_MATRIX_URI", "value", uri, "msg", "could not read route matrix", "err", err)
+						// level.Warn(logger).Log("matrix", "route", "op", "read", "envvar", "ROUTE_MATRIX_URI", "value", uri, "msg", "could not read route matrix", "err", err)
 						time.Sleep(syncInterval)
 						continue
 					}
@@ -494,7 +470,6 @@ func main() {
 				level.Error(logger).Log("envvar", "READ_BUFFER", "msg", "could not parse", "err", err)
 				os.Exit(1)
 			}
-
 			conn.SetReadBuffer(int(readBuffer))
 		}
 
@@ -505,19 +480,29 @@ func main() {
 				level.Error(logger).Log("envvar", "WRITE_BUFFER", "msg", "could not parse", "err", err)
 				os.Exit(1)
 			}
-
 			conn.SetWriteBuffer(int(writeBuffer))
 		}
 	}
 
-	// Initialize server and session maps
+	vetoMap := transport.NewVetoMap()
 	serverMap := transport.NewServerMap()
 	sessionMap := transport.NewSessionMap()
 	{
+		// todo: ryan, please add the number of iterations to perform each check to each map timeout func below. currently hardcoded.
+
+		// Start a goroutine to timeout vetoes
+		go func() {
+			timeout := time.Minute * 5
+			frequency := time.Millisecond * 10
+			// todo: iterations := 3 or whatever it is in the hardcoded...
+			ticker := time.NewTicker(frequency)
+			vetoMap.TimeoutLoop(ctx, timeout, ticker.C)
+		}()
+
 		// Start a goroutine to timeout servers
 		go func() {
 			timeout := time.Second * 30
-			frequency := time.Millisecond * 30
+			frequency := time.Millisecond * 10
 			ticker := time.NewTicker(frequency)
 			serverMap.TimeoutLoop(ctx, timeout, ticker.C)
 		}()
@@ -525,18 +510,19 @@ func main() {
 		// Start a goroutine to timeout sessions
 		go func() {
 			timeout := time.Second * 30
-			frequency := time.Millisecond * 30
+			frequency := time.Millisecond * 10
 			ticker := time.NewTicker(frequency)
 			sessionMap.TimeoutLoop(ctx, timeout, ticker.C)
 		}()
 	}
 
 	// Initialize the counters
+
 	serverInitCounters := &transport.ServerInitCounters{}
 	serverUpdateCounters := &transport.ServerUpdateCounters{}
 	sessionUpdateCounters := &transport.SessionUpdateCounters{}
 
-	// Setup the print routine
+	// Setup the stats print routine
 	{
 		memoryUsed := func() float64 {
 			var m runtime.MemStats
@@ -544,30 +530,30 @@ func main() {
 			return float64(m.Alloc) / (1000.0 * 1000.0)
 		}
 
-		ticker := time.NewTicker(time.Second * 10)
 		go func() {
 			for {
-				select {
-				case <-ticker.C:
-					fmt.Printf("-----------------------------\n")
-					fmt.Printf("%d servers\n", serverMap.NumServers())
-					fmt.Printf("%d sessions\n", sessionMap.NumSessions())
-					fmt.Printf("%d goroutines\n", runtime.NumGoroutine())
-					fmt.Printf("%.2f mb allocated\n", memoryUsed())
-					fmt.Printf("%d billing entries submitted\n", biller.NumSubmitted())
-					fmt.Printf("%d billing entries queued\n", biller.NumQueued())
-					fmt.Printf("%d billing entries flushed\n", biller.NumFlushed())
-					fmt.Printf("%d server init packets processed\n", atomic.LoadUint64(&serverInitCounters.Packets))
-					fmt.Printf("%d server update packets processed\n", atomic.LoadUint64(&serverUpdateCounters.Packets))
-					fmt.Printf("%d session update packets processed\n", atomic.LoadUint64(&sessionUpdateCounters.Packets))
-					fmt.Printf("%d long server inits\n", atomic.LoadUint64(&serverInitCounters.LongDuration))
-					fmt.Printf("%d long server updates\n", atomic.LoadUint64(&serverUpdateCounters.LongDuration))
-					fmt.Printf("%d long session updates\n", atomic.LoadUint64(&sessionUpdateCounters.LongDuration))
-					fmt.Printf("-----------------------------\n")
+				// todo: ryan. I would like to see all of the variables below, put into stackdriver metrics
+				// so we can track them over time. right here in place, update the values in stackdriver once
+				// every second, but only print out to stdout once every 10 seconds. -- thanks
 
-				case <-ctx.Done():
-					return
-				}
+				fmt.Printf("-----------------------------\n")
+				fmt.Printf("%d vetoes\n", vetoMap.NumVetoes())
+				fmt.Printf("%d servers\n", serverMap.NumServers())
+				fmt.Printf("%d sessions\n", sessionMap.NumSessions())
+				fmt.Printf("%d goroutines\n", runtime.NumGoroutine())
+				fmt.Printf("%.2f mb allocated\n", memoryUsed())
+				fmt.Printf("%d billing entries submitted\n", biller.NumSubmitted())
+				fmt.Printf("%d billing entries queued\n", biller.NumQueued())
+				fmt.Printf("%d billing entries flushed\n", biller.NumFlushed())
+				fmt.Printf("%d server init packets processed\n", atomic.LoadUint64(&serverInitCounters.Packets))
+				fmt.Printf("%d server update packets processed\n", atomic.LoadUint64(&serverUpdateCounters.Packets))
+				fmt.Printf("%d session update packets processed\n", atomic.LoadUint64(&sessionUpdateCounters.Packets))
+				fmt.Printf("%d long server inits\n", atomic.LoadUint64(&serverInitCounters.LongDuration))
+				fmt.Printf("%d long server updates\n", atomic.LoadUint64(&serverUpdateCounters.LongDuration))
+				fmt.Printf("%d long session updates\n", atomic.LoadUint64(&sessionUpdateCounters.LongDuration))
+				fmt.Printf("-----------------------------\n")
+
+				time.Sleep(time.Second * 10)
 			}
 		}()
 	}
@@ -593,8 +579,7 @@ func main() {
 		sessionUpdateConfig := &transport.SessionUpdateParams{
 			ServerPrivateKey:     serverPrivateKey,
 			RouterPrivateKey:     routerPrivateKey,
-			GetRouteMatrix:       getRouteMatrixFunc,
-			GeoClient:            &geoClient,
+			GetRouteProvider:     getRouteMatrixFunc,
 			IPLoc:                ipLocator,
 			Storer:               db,
 			RedisClientPortal:    redisClientPortal,
@@ -602,6 +587,7 @@ func main() {
 			Biller:               biller,
 			Metrics:              sessionUpdateMetrics,
 			Logger:               logger,
+			VetoMap:              vetoMap,
 			ServerMap:            serverMap,
 			SessionMap:           sessionMap,
 			Counters:             sessionUpdateCounters,
@@ -610,7 +596,6 @@ func main() {
 		mux := transport.UDPServerMux{
 			Conn:          conn,
 			MaxPacketSize: transport.DefaultMaxPacketSize,
-
 			ServerInitHandlerFunc:    transport.ServerInitHandlerFunc(serverInitConfig),
 			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(serverUpdateConfig),
 			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(sessionUpdateConfig),
@@ -619,7 +604,8 @@ func main() {
 		go func() {
 			level.Info(logger).Log("protocol", "udp", "addr", conn.LocalAddr().String())
 			if err := mux.Start(ctx); err != nil {
-				level.Error(logger).Log("protocol", "udp", "addr", conn.LocalAddr().String(), "msg", "could not start udp server", "err", err)
+				fmt.Printf("could not start udp server: %v\n", err)
+				// level.Error(logger).Log("protocol", "udp", "addr", conn.LocalAddr().String(), "msg", "could not start udp server", "err", err)
 				os.Exit(1)
 			}
 		}()
@@ -629,12 +615,12 @@ func main() {
 	{
 		go func() {
 			http.HandleFunc("/health", HealthHandlerFunc(&readRouteMatrixSuccessCount))
-			http.HandleFunc("/healthz", HealthHandlerFunc(&readRouteMatrixSuccessCount)) // todo: remove once we update the LBs
 			http.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag))
 
 			level.Info(logger).Log("protocol", "http", "addr", conn.LocalAddr().String())
 			if err := http.ListenAndServe(conn.LocalAddr().String(), nil); err != nil {
-				level.Error(logger).Log("protocol", "http", "addr", conn.LocalAddr().String(), "msg", "could not start http server", "err", err)
+				fmt.Printf("could not start http server: %v\n", err)
+				// level.Error(logger).Log("protocol", "http", "addr", conn.LocalAddr().String(), "msg", "could not start http server", "err", err)
 				os.Exit(1)
 			}
 		}()

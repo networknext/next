@@ -6,10 +6,6 @@ This is a monorepo that contains the Network Next backend.
 
 ## Monitoring
 
-[![Build Status](https://networknext.semaphoreci.com/badges/backend.svg?key=822a130a-66de-4659-adb2-74237df34843)](https://networknext.semaphoreci.com/projects/backend)
-
-[![Sentry Errors](https://img.shields.io/badge/sentry-errors-red?style=for-the-badge&logo=sentry)](https://sentry.io/organizations/network-next/issues/)
-
 [![GCP Metrics](https://img.shields.io/badge/GCP-metrics-lightgray?style=for-the-badge&logo=google-cloud)](https://console.cloud.google.com/monitoring/dashboards/custom/17676944979741730633?organizationId=434699063105&project=network-next-v3-stackdriver-ws&timeDomain=1h)
 
 [![GCP Logs](https://img.shields.io/badge/GCP-logs-lightgray?style=for-the-badge&logo=google-cloud)](https://console.cloud.google.com/logs)
@@ -23,41 +19,16 @@ This is a monorepo that contains the Network Next backend.
 3. Issue a pull request into `master` and mark it according to what you need
 	- **Draft**: mark a PR as a draft to expose you have started work and have questions/comments in order to complete the work
 	- **Ready for Review**: mark a PR as ready for review and include the appropriate reviewers when unit tests for your bug/feature are all passing
-4. Once your pull request has been reviewed merge it into `master` and wait for CI/CD to run the tests one last time and build a development artifact
-5. Manually `make deploy-(portal|relay_backend|server_backend)` to copy the artifact to the development VMs and restart the service
+4. Once your pull request has been reviewed merge it into `master`
+5. Semaphore will build your PR and copy artifacts to the google cloud gs://dev_artifacts bucket automatically.
+6. Manually trigger a rolling update in google cloud on each managed instance group you want to update to latest code.
 
 ### Production Release
 
 1. Ensure tests pass locally as a sanity check
-2. Tag the commit with an acceptable tag name, eg. `git tag PROD-20200427-01`
-3. Push your changes to git with `git push origin --tags` to include the tag created
-4. Wait for CI/CD to run tests one last time, recognize the new tag, and build a production artifact
+2. Create a PR to push your changes to the "prod" branch
+5. Semaphore will build your PR and copy artifacts to the google cloud gs://prod_artifacts bucket automatically.
 5. Manually trigger a rolling update in google cloud on each managed instance group you want to update to latest code.
-
-#### Acceptable tags:
-
-
-| Acceptable tags | Unacceptable tags |
-|---|---|
-| `PROD-20200427-01` | `PROD-20200427` |
-| `PROD-20200427-hotfix-packet` | `PROD-20200427-` |
-| `PROD-20200427-1300` | `PROD-20427-hotfix-session` |
-
-## CI/CD
-
-SemaphoreCI is used for running tests and deploying development and production artifacts to GCP Storage buckets which can be deployed to their respective VMs.
-
-1. Unit tests are always run when a commit is pushed or a PR is issued
-2. **Development** artifacts are built and published when tests pass AND there is a merge to `master`
-3. **Production** artifacts are built and published when tests pass AND there is a tag matching `PROD-YYYYMMDD-*`
-
-The development and production artifacts are only published to GCP Storage. They are not sent to the VMs to start running. Once CI/CD completes you need to issue the appropriate `make` command to trigger a deployment to the VMs.
-
-- `make deploy-portal` or `make deploy-portal-prod` to deploy the portal to dev and prod respectively
-- `make deploy-relay-backend` or `make deploy-relay-backend-prod` to deploy the relay backend to dev and prod respectively
-- `make deploy-server-backend` or `make deploy-server-backend-prod` to deploy the server backend to dev and prod respectively
-
-For more information about deployment and artifacts see the [deploy](deploy) folder.
 
 ## Development
 

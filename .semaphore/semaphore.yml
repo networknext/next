@@ -7,22 +7,17 @@ agent:
 global_job_config:
   prologue:
     commands:
-      - sudo apt-get update && sudo apt-get -y install libsodium-dev google-cloud-sdk-firestore-emulator google-cloud-sdk-pubsub-emulator
+      - sudo apt-get update && sudo apt-get -y install libsodium-dev
       - checkout
       - sem-version go 1.13
       - make clean
 blocks:
-  - name: Backend Unit Tests
+  - name: Unit Tests
     task:
       jobs:
         - name: Backend
           commands:
-            - make test-unit-backend
-      env_vars:
-        - name: FIRESTORE_EMULATOR_HOST
-          value: "127.0.0.1:11000"
-        - name: PUBSUB_EMULATOR_HOST
-          value: "127.0.0.1:12000"
+            - make test
 promotions:
   - name: Development Deployment
     pipeline_file: development-deploy.yml
@@ -31,4 +26,4 @@ promotions:
   - name: Production Deployment
     pipeline_file: production-deploy.yml
     auto_promote:
-      when: "tag =~ '^PROD-(\\d{8})-(.+)' AND result = 'passed'"
+      when: branch = 'prod' AND result = 'passed'

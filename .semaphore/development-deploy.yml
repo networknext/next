@@ -14,16 +14,28 @@ global_job_config:
       - sem-version go 1.13
       - make clean
 blocks:
-  - name: Deploy
+  - name: Build & Publish Artifacts
+    dependencies: []
     task:
       jobs:
-        - name: Build & Publish Artifacts to Storage
+        - name: Billing
+          commands:
+            - make build-billing-artifact
+            - make publish-billing-artifact
+        - name: Portal
           commands:
             - make build-portal-artifact
-            - make build-relay-backend-artifact
-            - make build-server-backend-artifact
             - make publish-portal-artifact
+        - name: Relay Backend
+          commands:
+            - make build-relay-backend-artifact
             - make publish-relay-backend-artifact
+        - name: Server Backend
+          commands:
+            - make build-server-backend-artifact
             - make publish-server-backend-artifact
+        - name: Bootstrap Script
+          commands:
+            - make publish-bootstrap-script
       secrets:
         - name: google-cloud-platform

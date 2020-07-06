@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/networknext/backend/routing"
@@ -72,6 +71,9 @@ func getPopulatedCostMatrix(malformed bool) *routing.CostMatrix {
 
 	matrix.RelaySessionCounts = []uint32{100, 200}
 	matrix.RelayMaxSessionCounts = []uint32{3000, 6000}
+
+	matrix.RelayLatitude = []float64{1.0, 2.0}
+	matrix.RelayLongitude = []float64{3.0, 4.0}
 
 	return &matrix
 }
@@ -664,12 +666,12 @@ func TestCostMatrixUnmarshalBinaryV0(t *testing.T) {
 	t.Run("version of incoming bin data too high", func(t *testing.T) {
 		buff := make([]byte, 4)
 		offset := 0
-		putVersionNumber(buff, &offset, 6)
+		putVersionNumber(buff, &offset, 100)
 		var matrix routing.CostMatrix
 
 		err := matrix.UnmarshalBinary(buff)
 
-		assert.EqualError(t, err, "unknown cost matrix version 6")
+		assert.EqualError(t, err, "unknown cost matrix version 100")
 	})
 
 	t.Run("Invalid version read", func(t *testing.T) {
@@ -757,12 +759,12 @@ func TestCostMatrixUnmarshalBinaryV1(t *testing.T) {
 	t.Run("version of incoming bin data too high", func(t *testing.T) {
 		buff := make([]byte, 4)
 		offset := 0
-		putVersionNumber(buff, &offset, 6)
+		putVersionNumber(buff, &offset, 100)
 		var matrix routing.CostMatrix
 
 		err := matrix.UnmarshalBinary(buff)
 
-		assert.EqualError(t, err, "unknown cost matrix version 6")
+		assert.EqualError(t, err, "unknown cost matrix version 100")
 	})
 
 	t.Run("Invalid version read", func(t *testing.T) {
@@ -858,12 +860,12 @@ func TestCostMatrixUnmarshalBinaryV2(t *testing.T) {
 	t.Run("version of incoming bin data too high", func(t *testing.T) {
 		buff := make([]byte, 4)
 		offset := 0
-		putVersionNumber(buff, &offset, 6)
+		putVersionNumber(buff, &offset, 100)
 		var matrix routing.CostMatrix
 
 		err := matrix.UnmarshalBinary(buff)
 
-		assert.EqualError(t, err, "unknown cost matrix version 6")
+		assert.EqualError(t, err, "unknown cost matrix version 100")
 	})
 
 	t.Run("Invalid version read", func(t *testing.T) {
@@ -988,12 +990,12 @@ func TestCostMatrixUnmarshalBinaryV3(t *testing.T) {
 	t.Run("version of incoming bin data too high", func(t *testing.T) {
 		buff := make([]byte, 4)
 		offset := 0
-		putVersionNumber(buff, &offset, 6)
+		putVersionNumber(buff, &offset, 100)
 		var matrix routing.CostMatrix
 
 		err := matrix.UnmarshalBinary(buff)
 
-		assert.EqualError(t, err, "unknown cost matrix version 6")
+		assert.EqualError(t, err, "unknown cost matrix version 100")
 	})
 
 	t.Run("Invalid version read", func(t *testing.T) {
@@ -1116,12 +1118,12 @@ func TestCostMatrixUnmarshalBinaryV4(t *testing.T) {
 	t.Run("version of incoming bin data too high", func(t *testing.T) {
 		buff := make([]byte, 4)
 		offset := 0
-		putVersionNumber(buff, &offset, 6)
+		putVersionNumber(buff, &offset, 100)
 		var matrix routing.CostMatrix
 
 		err := matrix.UnmarshalBinary(buff)
 
-		assert.EqualError(t, err, "unknown cost matrix version 6")
+		assert.EqualError(t, err, "unknown cost matrix version 100")
 	})
 
 	t.Run("Invalid version read", func(t *testing.T) {
@@ -1281,12 +1283,12 @@ func TestCostMatrixUnmarshalBinaryV5(t *testing.T) {
 	t.Run("version of incoming bin data too high", func(t *testing.T) {
 		buff := make([]byte, 4)
 		offset := 0
-		putVersionNumber(buff, &offset, 6)
+		putVersionNumber(buff, &offset, 100)
 		var matrix routing.CostMatrix
 
 		err := matrix.UnmarshalBinary(buff)
 
-		assert.EqualError(t, err, "unknown cost matrix version 6")
+		assert.EqualError(t, err, "unknown cost matrix version 100")
 	})
 
 	t.Run("Invalid version read", func(t *testing.T) {
@@ -1611,38 +1613,6 @@ func TestCostMatrixReadFrom(t *testing.T) {
 		_, err = matrix.ReadFrom(bytes.NewBuffer(buff))
 		assert.NoError(t, err)
 	})
-}
-
-// Old test from core/core_test.go
-func TestCostMatrix(t *testing.T) {
-	raw, err := ioutil.ReadFile("test_data/cost.bin")
-	assert.Nil(t, err)
-	assert.Equal(t, len(raw), 355188, "cost.bin should be 355188 bytes")
-
-	var costMatrix routing.CostMatrix
-	err = costMatrix.UnmarshalBinary(raw)
-	assert.Nil(t, err)
-
-	costMatrixData, err := costMatrix.MarshalBinary()
-	assert.NoError(t, err)
-
-	var readCostMatrix routing.CostMatrix
-	err = readCostMatrix.UnmarshalBinary(costMatrixData)
-	assert.Nil(t, err)
-
-	assert.Equal(t, costMatrix.RelayIDs, readCostMatrix.RelayIDs, "relay id mismatch")
-
-	// this was the old line however because relay addresses are written with extra 0's this is how they must be checked
-	// assert.Equal(t, costMatrix.RelayAddresses, readCostMatrix.RelayAddresses, "relay address mismatch")
-
-	assert.Len(t, readCostMatrix.RelayAddresses, len(costMatrix.RelayAddresses))
-	for i, addr := range costMatrix.RelayAddresses {
-		assert.Equal(t, string(addr), strings.Trim(string(readCostMatrix.RelayAddresses[i]), string([]byte{0x0})))
-	}
-
-	assert.Equal(t, costMatrix.RelayPublicKeys, readCostMatrix.RelayPublicKeys, "relay public key mismatch")
-	assert.Equal(t, costMatrix.DatacenterRelays, readCostMatrix.DatacenterRelays, "datacenter relays mismatch")
-	assert.Equal(t, costMatrix.RTT, readCostMatrix.RTT, "relay rtt mismatch")
 }
 
 func BenchmarkOptimize(b *testing.B) {

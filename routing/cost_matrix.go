@@ -17,12 +17,10 @@ import (
 )
 
 const (
-	// CostMatrixVersion ...
 	// IMPORTANT: Bump this version whenever you change the binary format
-	CostMatrixVersion = 5
+	CostMatrixVersion = 7
 )
 
-// CostMatrix ...
 type CostMatrix struct {
 	mu sync.RWMutex
 
@@ -31,6 +29,8 @@ type CostMatrix struct {
 	RelayIDs              []uint64
 	RelayNames            []string
 	RelayAddresses        [][]byte
+	RelayLatitude         []float64
+	RelayLongitude        []float64
 	RelayPublicKeys       [][]byte
 	DatacenterIDs         []uint64
 	DatacenterNames       []string
@@ -44,7 +44,7 @@ type CostMatrix struct {
 	reponseBufferMutex sync.RWMutex
 }
 
-// ReadFrom implements the io.ReadFrom interface
+// implements the io.ReadFrom interface
 func (m *CostMatrix) ReadFrom(r io.Reader) (int64, error) {
 	data, err := ioutil.ReadAll(r)
 	if err != nil {
@@ -58,7 +58,7 @@ func (m *CostMatrix) ReadFrom(r io.Reader) (int64, error) {
 	return int64(len(data)), nil
 }
 
-// WriteTo implements the io.WriteTo interface
+// implements the io.WriteTo interface
 func (m *CostMatrix) WriteTo(w io.Writer) (int64, error) {
 	data, err := m.MarshalBinary()
 	if err != nil {
@@ -85,29 +85,6 @@ func (m *CostMatrix) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-/* Binary data outline for CostMatrix v5: "->" means seqential elements in memory and not another section
- * Version number { uint32 }
- * Number of relays { uint32 }
- * Relay IDs { [NumberOfRelays]uint64 }
- * Relay Names { [NumberOfRelays]string }
- * Number of Datacenters { uint32 }
- * Datacenter ID { [NumberOfDatacenters]uint64 } -> Datacenter Name { [NumberOfDatacenters]string }
- * Relay Addresses { [NumberOfRelays][MaxRelayAddressLength]byte }
- * Relay Public Keys { [NumberOfRelays][crypto.KeySize]byte }
- * Number of Datacenters { uint32 }
- * Datacenter ID { uint64 } -> Number of Relays in Datacenter { uint32 } -> Relay IDs in Datacenter { [NumberOfRelaysInDatacenter]uint64 }
- * RTT Info { []uint32 }
- * Sellers { [NumberOfRelays]Seller } (
- *	ID { string }
- *	Name { string }
- * 	IngressPriceCents { uint64 }
- *	EgressPriceCents { uint64 }
- * )
- * Relay Session Counts { [NumberOfRelays]uint32 }
- * Relay Max Session Counts { [NumberOfRelays]uint32 }
- */
-
-// UnmarshalBinary ...
 func (m *CostMatrix) UnmarshalBinary(data []byte) error {
 	index := 0
 
@@ -184,6 +161,24 @@ func (m *CostMatrix) UnmarshalBinary(data []byte) error {
 	for i := range m.RelayAddresses {
 		if err := bytesReadFunc(data, &index, &m.RelayAddresses[i], MaxRelayAddressLength, "[CostMatrix] invalid read at relay addresses"); err != nil {
 			return err
+		}
+	}
+
+	m.RelayLatitude = make([]float64, numRelays)
+	m.RelayLongitude = make([]float64, numRelays)
+
+	if version >= 6 {
+
+		for i := range m.RelayLatitude {
+			if !encoding.ReadFloat64(data, &index, &m.RelayLatitude[i]) {
+				return errors.New("[CostMatrix] invalid read at relay latitude")
+			}
+		}
+
+		for i := range m.RelayLongitude {
+			if !encoding.ReadFloat64(data, &index, &m.RelayLongitude[i]) {
+				return errors.New("[CostMatrix] invalid read at relay longitude")
+			}
 		}
 	}
 
@@ -273,7 +268,6 @@ func (m *CostMatrix) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
-// MarshalBinary ...
 func (m *CostMatrix) MarshalBinary() ([]byte, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -316,6 +310,26 @@ func (m *CostMatrix) MarshalBinary() ([]byte, error) {
 		tmp := make([]byte, MaxRelayAddressLength)
 		copy(tmp, m.RelayAddresses[i])
 		encoding.WriteBytes(data, &index, tmp, MaxRelayAddressLength)
+	}
+
+	if RouteMatrixVersion >= 6 {
+
+		if len(m.RelayLatitude) != numRelays {
+			return nil, fmt.Errorf("bad relay latitude array length")
+		}
+
+		for i := range m.RelayLatitude {
+			encoding.WriteFloat64(data, &index, m.RelayLatitude[i])
+		}
+
+		if len(m.RelayLongitude) != numRelays {
+			return nil, fmt.Errorf("bad relay longitude array length")
+		}
+
+		for i := range m.RelayLongitude {
+			encoding.WriteFloat64(data, &index, m.RelayLongitude[i])
+		}
+
 	}
 
 	for i := range m.RelayPublicKeys {
@@ -363,8 +377,8 @@ func (m *CostMatrix) MarshalBinary() ([]byte, error) {
 	return data, nil
 }
 
-// Optimize will fill up a *RouteMatrix with the optimized routes based on cost.
 func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
+
 	m.mu.RLock()
 	defer func() {
 		m.mu.RUnlock()
@@ -378,6 +392,8 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 	routes.RelayIDs = m.RelayIDs
 	routes.RelayNames = m.RelayNames
 	routes.RelayAddresses = m.RelayAddresses
+	routes.RelayLatitude = m.RelayLatitude
+	routes.RelayLongitude = m.RelayLongitude
 	routes.RelayPublicKeys = m.RelayPublicKeys
 	routes.DatacenterIDs = m.DatacenterIDs
 	routes.DatacenterNames = m.DatacenterNames
@@ -642,6 +658,9 @@ func (m *CostMatrix) Size() uint64 {
 
 	// allocation for relay addresses + allocation for relay public keys + the No. of datacenters, duplication?
 	length += numRelays*uint64(MaxRelayAddressLength+crypto.KeySize) + 4
+
+	// allocation for relay lat and longs
+	length += numRelays*8*2
 
 	for _, v := range m.DatacenterRelays {
 		// datacenter id + number of relays for that datacenter + allocation for all of those relay ids

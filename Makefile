@@ -213,7 +213,7 @@ test-unit: clean test-unit-backend ## runs backend unit tests
 
 ifeq ($(OS),linux)
 .PHONY: test-soak-valgrind
-test-soak-valgrind: clean build-sdk-test build-soak-test ## runs sdk soak test under valgrind (linux only)
+test-soak-valgrind: clean build-soak-test ## runs sdk soak test under valgrind (linux only)
 	@valgrind --tool=memcheck --leak-check=yes --show-reachable=yes --num-callers=20 --track-fds=yes --track-origins=yes $(DIST_DIR)/$(SDKNAME)_soak_test
 	@printf "\n"
 endif
@@ -252,18 +252,6 @@ run-test-func-parallel:
 
 .PHONY: test-func-parallel
 test-func-parallel: build-test-func-parallel run-test-func-parallel ## runs functional tests in parallel
-
-.PHONY: build-sdk-test
-build-sdk-test: build-sdk ## builds the sdk test binary
-	@printf "Building sdk test... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/$(SDKNAME)_test ./sdk/test.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
-	@printf "done\n"
-
-.PHONY: build-soak-test
-build-soak-test: build-sdk ## builds the sdk soak test binary
-	@printf "Building soak test... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/$(SDKNAME)_soak_test ./sdk/soak.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
-	@printf "done\n"
 
 #######################
 # Relay Build Process #
@@ -317,6 +305,10 @@ dev-relay-backend: build-relay-backend ## runs a local relay backend
 .PHONY: dev-server-backend
 dev-server-backend: build-server-backend ## runs a local server backend
 	@PORT=40000 ./dist/server_backend
+
+.PHONY: dev-billing
+dev-billing: build-billing ## runs a local billing service
+	@PORT=40000 ./dist/billing
 
 .PHONY: dev-reference-backend
 dev-reference-backend: ## runs a local reference backend
@@ -447,6 +439,46 @@ build-server-backend: ## builds the server backend binary
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)" -o ${DIST_DIR}/server_backend ./cmd/server_backend/server_backend.go
 	@printf "done\n"
 
+.PHONY: build-billing
+build-billing: ## builds the billing binary
+	@printf "Building billing... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)" -o ${DIST_DIR}/billing ./cmd/billing/billing.go
+	@printf "done\n"
+
+.PHONY: build-billing-artifact
+build-billing-artifact: build-billing ## builds the billing service and creates the dev artifact
+	@printf "Building billing dev artifact..."
+	@mkdir -p $(DIST_DIR)/artifact/billing
+	@cp $(DIST_DIR)/billing $(DIST_DIR)/artifact/billing/app
+	@cp ./cmd/billing/dev.env $(DIST_DIR)/artifact/billing/app.env
+	@cp $(DEPLOY_DIR)/$(SYSTEMD_SERVICE_FILE) $(DIST_DIR)/artifact/billing/$(SYSTEMD_SERVICE_FILE)
+	@cd $(DIST_DIR)/artifact/billing && tar -zcf ../../billing.dev.tar.gz app app.env $(SYSTEMD_SERVICE_FILE) && cd ../..
+	@printf "$(DIST_DIR)/billing.dev.tar.gz\n"
+
+.PHONY: build-billing-prod-artifact
+build-billing-prod-artifact: build-billing ## builds the belling service and creates the prod artifact
+	@printf "Building billing prod artifact... "
+	@mkdir -p $(DIST_DIR)/artifact/billing
+	@cp $(DIST_DIR)/billing $(DIST_DIR)/artifact/billing/app
+	@cp ./cmd/billing/prod.env $(DIST_DIR)/artifact/billing/app.env
+	@cp $(DEPLOY_DIR)/$(SYSTEMD_SERVICE_FILE) $(DIST_DIR)/artifact/billing/$(SYSTEMD_SERVICE_FILE)
+	@cd $(DIST_DIR)/artifact/billing && tar -zcf ../../billing.prod.tar.gz app app.env $(SYSTEMD_SERVICE_FILE) && cd ../..
+	@printf "$(DIST_DIR)/billing.prod.tar.gz\n"
+
+.PHONY: publish-billing-artifact
+publish-billing-artifact: ## publishes the billing dev artifact
+	@printf "Publishing billing dev artifact... \n\n"
+	@gsutil cp $(DIST_DIR)/billing.dev.tar.gz $(ARTIFACT_BUCKET)/billing.dev.tar.gz
+	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" $(ARTIFACT_BUCKET)/billing.dev.tar.gz
+	@printf "done\n"
+
+.PHONY: publish-billing-prod-artifact
+publish-billing-prod-artifact: ## publishes the billing prod artifact
+	@printf "Publishing billing prod artifact... \n\n"
+	@gsutil cp $(DIST_DIR)/billing.prod.tar.gz $(ARTIFACT_BUCKET_PROD)/billing.prod.tar.gz
+	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" $(ARTIFACT_BUCKET_PROD)/billing.prod.tar.gz
+	@printf "done\n"
+
 .PHONY: build-server-backend-artifact
 build-server-backend-artifact: build-server-backend ## builds the server backend and creates the dev artifact
 	@printf "Building server backend dev artifact..."
@@ -531,6 +563,18 @@ publish-relay-prod-artifact: ## publishes the prod relay artifact
 	$(ARTIFACT_BUCKET_PROD)/relay.prod.tar.gz
 	@printf "done\n"
 
+.PHONY: publish-bootstrap-script
+publish-bootstrap-script:
+	@printf "Publishing bootstrap script... \n\n"
+	@gsutil cp $(DEPLOY_DIR)/bootstrap.sh $(ARTIFACT_BUCKET)/bootstrap.sh
+	@printf "done\n"
+
+.PHONY: publish-bootstrap-script-prod
+publish-bootstrap-script-prod:
+	@printf "Publishing bootstrap script... \n\n"
+	@gsutil cp $(DEPLOY_DIR)/bootstrap.sh $(ARTIFACT_BUCKET_PROD)/bootstrap.sh
+	@printf "done\n"
+
 .PHONY: build-backend-prod-artifacts
 build-backend-prod-artifacts: build-portal-prod-artifact build-relay-backend-prod-artifact build-server-backend-prod-artifact ## builds the backend artifacts
 
@@ -577,7 +621,7 @@ build-next: ## builds the operator tool
 	@printf "done\n"
 
 .PHONY: build-all
-build-all: build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-sdk-test build-soak-test build-next ## builds everything
+build-all: build-billing build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all

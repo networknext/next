@@ -35,15 +35,29 @@ const (
 
 	echo "Waiting for the relay service to clean shutdown"
 
+	sudo systemctl disable relay || exit 1
+
 	sudo systemctl stop relay || exit 1
 
 	while systemctl is-active --quiet relay; do
 		sleep 1
 	done
 
-	sudo systemctl disable relay
-
 	echo 'Relay service shutdown'
+	`
+
+	DisableRelayScriptHard = `
+	service="$(sudo systemctl list-unit-files --state=enabled | grep 'relay.service')"
+	if [ -z "$service" ]; then
+		echo 'Relay service has already been disabled'
+		exit
+	fi
+
+	sudo systemctl disable relay || exit 1
+	sudo systemctl kill -s SIGKILL relay || exit 1
+	sudo systemctl stop relay || exit 1
+
+	echo 'Relay service shutdown hard'
 	`
 
 	// EnableRelayScript is the bash script used to enable relays
@@ -178,7 +192,13 @@ func updateRelayState(rpcClient jsonrpc.RPCClient, info relayInfo, state routing
 	return true
 }
 
-func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string, coreCount uint64, force bool) {
+type updateOptions struct {
+	coreCount uint64
+	force     bool // force an update regardless of relay version
+	hard      bool // hard update the relay, don't clean shutdown
+}
+
+func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string, opts updateOptions) {
 	// Fetch and save the latest binary
 	url, err := env.RelayArtifactURL()
 	if err != nil {
@@ -229,7 +249,7 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 				continue
 			}
 
-			if !force && relay.version == LatestRelayVersion {
+			if !opts.force && relay.version == LatestRelayVersion {
 				continue
 			}
 
@@ -255,7 +275,7 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 				}
 			}
 
-			if !disableRelays(env, rpcClient, []string{relay.name}) {
+			if !disableRelays(env, rpcClient, []string{relay.name}, opts.hard) {
 				continue
 			}
 
@@ -315,8 +335,8 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 				envvars["RELAY_V3_SPEED"] = relay.nicSpeed
 				envvars["RELAY_V3_NAME"] = relay.firestoreID
 
-				if coreCount > 0 {
-					envvars["RELAY_MAX_CORES"] = strconv.FormatUint(coreCount, 10)
+				if opts.coreCount > 0 {
+					envvars["RELAY_MAX_CORES"] = strconv.FormatUint(opts.coreCount, 10)
 				}
 
 				f, err := os.Create("dist/relay.env")
@@ -437,10 +457,14 @@ func enableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 	fmt.Printf("%s complete\n", str)
 }
 
-func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string) bool {
+func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string, hard bool) bool {
 	success := true
 	relaysDisabled := 0
 	testForSSHKey(env)
+	script := DisableRelayScript
+	if hard {
+		script = DisableRelayScriptHard
+	}
 	for _, regex := range regexes {
 		relays := getRelayInfo(rpcClient, env, regex)
 		if len(relays) == 0 {
@@ -450,7 +474,7 @@ func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []strin
 		for _, relay := range relays {
 			fmt.Printf("Disabling relay '%s' (id = %016x)\n", relay.name, relay.id)
 			con := NewSSHConn(relay.user, relay.sshAddr, relay.sshPort, env.SSHKeyFilePath)
-			if !con.ConnectAndIssueCmd(DisableRelayScript) || !updateRelayState(rpcClient, relay, routing.RelayStateDisabled) {
+			if !con.ConnectAndIssueCmd(script) || !updateRelayState(rpcClient, relay, routing.RelayStateDisabled) {
 				success = false
 				continue
 			}
@@ -744,4 +768,21 @@ func checkRelays(
 		table.Output(info)
 	}
 
+}
+
+func relayLogs(rpcClient jsonrpc.RPCClient, env Environment, lines uint, regexes []string) {
+	for _, regex := range regexes {
+		relays := getRelayInfo(rpcClient, env, regex)
+		for i, relay := range relays {
+			con := NewSSHConn(relay.user, relay.sshAddr, relay.sshPort, env.SSHKeyFilePath)
+			if out, err := con.IssueCmdAndGetOutput("journalctl -u relay -n " + strconv.FormatUint(uint64(lines), 10) + " | cat"); err == nil {
+				fmt.Printf("%s\n%s\n", relay.name, out)
+				if i < len(relays)-1 {
+					fmt.Printf("\n")
+				}
+			} else {
+				fmt.Printf("error gathering logs for relay %s: %v\n", relay.name, err)
+			}
+		}
+	}
 }

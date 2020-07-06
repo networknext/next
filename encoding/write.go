@@ -35,6 +35,11 @@ func WriteUint64(data []byte, index *int, value uint64) {
 	*index += 8
 }
 
+func WriteFloat32(data []byte, index *int, value float32) {
+	uintValue := math.Float32bits(value)
+	WriteUint32(data, index, uintValue)
+}
+
 func WriteFloat64(data []byte, index *int, value float64) {
 	uintValue := math.Float64bits(value)
 	WriteUint64(data, index, uintValue)

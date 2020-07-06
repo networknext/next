@@ -315,7 +315,7 @@ func main() {
 		}
 
 		for {
-			if err := buyerService.GenerateMapPoints(); err != nil {
+			if err := buyerService.GenerateMapPointsPerBuyer(); err != nil {
 				level.Error(logger).Log("msg", "error generating sessions map points", "err", err)
 				os.Exit(1)
 			}
@@ -374,7 +374,6 @@ func main() {
 
 		http.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s)))
 		http.HandleFunc("/health", transport.HealthHandlerFunc())
-		http.HandleFunc("/healthz", transport.HealthHandlerFunc()) // todo: remove once LBs are updated
 		http.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag))
 
 		http.Handle("/", middleware.CacheControl(os.Getenv("HTTP_CACHE_CONTROL"), http.FileServer(http.Dir(uiDir))))

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/networknext/backend/crypto"
+	"github.com/networknext/backend/routing"
 )
 
 const NumServerMapShards = 4096
@@ -15,6 +16,7 @@ type ServerData struct {
 	timestamp      int64
 	routePublicKey []byte
 	version        SDKVersion
+	datacenter     routing.Datacenter
 }
 
 type ServerMapShard struct {
@@ -77,7 +79,7 @@ func (serverMap *ServerMap) TimeoutLoop(ctx context.Context, timeout time.Durati
 				serverMap.shard[index].mutex.Lock()
 				numServerIterations := 0
 				for k, v := range serverMap.shard[index].servers {
-					if numServerIterations > 10 {
+					if numServerIterations > 3 {
 						break
 					}
 					if v.timestamp < timeoutTimestamp {
