@@ -31,8 +31,8 @@ blocks:
     task:
       jobs:
         - name: Publish Artifacts to Google Cloud
-          commands:
           parallelism: 5
+          commands:
             - make publish-billing-prod-artifact
             - make publish-portal-prod-artifact
             - make publish-relay-backend-prod-artifact
