@@ -106,7 +106,7 @@ func (m *UDPServerMux) handler(ctx context.Context, id int) {
 					res = crypto.Hash(crypto.PacketHashKey, res)
 				}
 
-				fmt.Printf("sending response packet (%d bytes)\n", res)
+				fmt.Printf("sending response packet (%d bytes) back to %s\n", res,packet.SourceAddr.String())
 
 				m.Conn.WriteToUDP(res, packet.SourceAddr)
 			}
