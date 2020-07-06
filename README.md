@@ -6,8 +6,6 @@ This is a monorepo that contains the Network Next backend.
 
 ## Monitoring
 
-[![Build Status](https://networknext.semaphoreci.com/badges/backend.svg?key=20ccb191-c7f4-4f65-9f00-88cfdf2a6c89)](https://networknext.semaphoreci.com/projects/backend)
-
 [![GCP Metrics](https://img.shields.io/badge/GCP-metrics-lightgray?style=for-the-badge&logo=google-cloud)](https://console.cloud.google.com/monitoring/dashboards/custom/17676944979741730633?organizationId=434699063105&project=network-next-v3-stackdriver-ws&timeDomain=1h)
 
 [![GCP Logs](https://img.shields.io/badge/GCP-logs-lightgray?style=for-the-badge&logo=google-cloud)](https://console.cloud.google.com/logs)
