@@ -201,6 +201,7 @@ func main() {
 				atomic.AddUint64(&billingEntriesReceived, 1)
 				billingEntry := billing.BillingEntry{}
 				if billing.ReadBillingEntry(&billingEntry, m.Data) {
+					billingEntry.Timestamp = uint64(m.PublishTime.Unix())
 					if err := biller.Bill(context.Background(), &billingEntry); err != nil {
 						fmt.Printf("could not submit billing entry: %v\n", err)
 						// level.Error(params.Logger).Log("msg", "could not submit billing entry", "err", err)

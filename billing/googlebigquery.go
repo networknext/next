@@ -78,14 +78,14 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 	e := make(map[string]bigquery.Value)
 
 	e["timestamp"] = int(entry.Timestamp)
+	e["buyerId"] = int(entry.BuyerID)
 	e["sessionId"] = int(entry.SessionID)
 	e["sliceNumber"] = int(entry.SliceNumber)
-	e["buyerId"] = int(entry.BuyerID)
-	e["next"] = entry.Next
-	e["directRtt"] = entry.DirectRTT
+	e["directRTT"] = entry.DirectRTT
 	e["directJitter"] = entry.DirectJitter
 	e["directPacketLoss"] = entry.DirectPacketLoss
-	e["nextRtt"] = entry.NextRTT
+	e["next"] = entry.Next
+	e["nextRTT"] = entry.NextRTT
 	e["nextJitter"] = entry.NextJitter
 	e["nextPacketLoss"] = entry.NextPacketLoss
 	e["totalPrice"] = int(entry.TotalPrice)
