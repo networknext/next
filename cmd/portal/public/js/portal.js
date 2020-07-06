@@ -179,15 +179,9 @@ MapHandler = {
 	mapInstance: null,
 	deckGlInstance: null,
 	sessionToolMapInstance: null,
-	mapHeight: null,
-	mapWidth: null,
 	initMap() {
 		// Not working yet
 		// let buyerId = !UserHandler.isAdmin() && !UserHandler.isAnonymous() ? UserHandler.userInfo.id : "";
-		if (!this.mapHeight && !this.mapWidth) {
-			this.mapHeight = document.getElementById("map").offsetHeight;
-			this.mapWidth = document.getElementById("map").offsetWidth;
-		}
 		this.updateFilter('map', {
 			buyerId: "",
 			sessionType: 'all'
@@ -324,8 +318,6 @@ MapHandler = {
 						layers: layers
 					});
 				} else {
-					document.getElementById("deckgl-overlay").setAttribute("maxHeight", `${this.mapHeight}px`)
-					document.getElementById("deckgl-overlay").setAttribute("maxWidth", `${this.mapWidth}px`)
 					this.deckGlInstance.setProps({layers: []});
 					this.deckGlInstance.setProps({layers: layers});
 				}
