@@ -14,15 +14,25 @@ global_job_config:
       - sem-version go 1.13
       - make clean
 blocks:
-  - name: Deploy
+  - name: Build
     task:
       jobs:
-        - name: Build & Publish Artifacts to Storage
+        - name: Build Artifacts
+          parallelism: 4
           commands:
             - make build-billing-artifact
             - make build-portal-artifact
             - make build-relay-backend-artifact
             - make build-server-backend-artifact
+      secrets:
+        - name: google-cloud-platform
+  - name: Publish
+    dependencies: ["Build"]
+    task:
+      jobs:
+        - name: Publish Artifacts to Google Cloud
+          commands:
+          parallelism: 5
             - make publish-billing-artifact
             - make publish-portal-artifact
             - make publish-relay-backend-artifact
