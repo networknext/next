@@ -168,8 +168,16 @@ MapHandler = {
 			pitch: 0
 		},
 	},
+	viewState: {
+    latitude: 0,
+    longitude: 0,
+    zoom: 2,
+    pitch: 0,
+    bearing: 0
+  },
 	mapCountLoop: null,
 	mapInstance: null,
+	deckGlInstance: null,
 	sessionToolMapInstance: null,
 	initMap() {
 		// Not working yet
@@ -236,6 +244,20 @@ MapHandler = {
 		JSONRPCClient
 			.call('BuyersService.SessionMap', {buyer_id: filter.buyerId || ""})
 			.then((response) => {
+				if (!this.mapInstance) {
+					this.mapInstance = new mapboxgl.Map({
+						accessToken: mapboxgl.accessToken,
+						style: 'mapbox://styles/mapbox/dark-v10',
+						center: [
+							0,
+							0
+						],
+						zoom: 2,
+						pitch: 0,
+						bearing: 0,
+						container: 'map',
+					});
+				}
 				let sessions = response.map_points;
 				let onNN = sessions.filter((point) => {
 					return (point[2] == 1);
@@ -276,20 +298,28 @@ MapHandler = {
 				});
 
 				let layers = (onNN.length > 0 || direct.length > 0) ? [directLayer, nnLayer] : [];
-				if (this.mapInstance) {
-					this.mapInstance.setProps({layers: []})
-					this.mapInstance.setProps({layers: layers})
-				} else {
-					this.mapInstance = new deck.DeckGL({
-						mapboxApiAccessToken: mapboxgl.accessToken,
-						mapStyle: 'mapbox://styles/mapbox/dark-v10',
-						initialViewState: {
-							...MapHandler.defaultWorld.initialViewState
-						},
-						container: 'map-container',
+				if (!this.deckGlInstance) {
+					// creating the deck.gl instance
+					this.deckGlInstance = new deck.Deck({
+						canvas: document.getElementById("deck-canvas"),
+						width: '100%',
+						height: '100%',
+						initialViewState: this.viewState,
 						controller: true,
-						layers: layers,
+						// change the map's viewstate whenever the view state of deck.gl changes
+						onViewStateChange: ({ viewState }) => {
+							this.mapInstance.jumpTo({
+								center: [viewState.longitude, viewState.latitude],
+								zoom: viewState.zoom,
+								bearing: viewState.bearing,
+								pitch: viewState.pitch
+							});
+						},
+						layers: layers
 					});
+				} else {
+					this.deckGlInstance.setProps({layers: []});
+					this.deckGlInstance.setProps({layers: layers});
 				}
 				Object.assign(rootComponent.$data, {showCount: true});
 			})
