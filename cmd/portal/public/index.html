@@ -19,6 +19,35 @@
         <!-- Include Choices CSS -->
         <link rel="stylesheet" href="./js/choices/styles/choices.min.css" />
         <style>
+            .map-container-offset {
+                width: 100%;
+                height: calc(-160px + 90vh);
+                position: relative;
+                overflow: hidden;
+            }
+            .map-container-no-offset {
+                width: 100%;
+                height: calc(-160px + 100vh);
+                position: relative;
+                overflow: hidden;
+            }
+            #map {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                border: 1px solid rgb(136, 136, 136);
+                background-color: rgb(27, 27, 27);
+                overflow: hidden;
+            }
+            #deck-canvas {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+            }
             .uplot .legend.inline th::after {
                 content: "";
                 vertical-align: middle;
@@ -293,8 +322,13 @@
                                 </div>
                             </div>
                         </div>
-                        <div v-if="handlers.userHandler.isAnonymousPlus()" style="width: 100%; height: calc(-160px + 90vh); border: 1px solid rgb(136, 136, 136); background-color: rgb(27, 27, 27);" id="map-container"></div>
-                        <div v-if="!handlers.userHandler.isAnonymousPlus()" style="width: 100%; height: calc(-160px + 100vh); border: 1px solid rgb(136, 136, 136); background-color: rgb(27, 27, 27);" id="map-container"></div>
+                        <div v-bind:class="{
+                                'map-container-no-offset': true,
+                                'map-container-offset': false,
+                             }">
+                            <div id="map" ref="map"></div>
+                            <canvas id="deck-canvas" ref="canvas"></canvas>
+                        </div>
                     </main>
                     <main role="main" class="col-md-12 col-lg-12 px-4" v-if="pages.sessions.show">
                         <div id="sessions">
