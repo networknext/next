@@ -34,6 +34,8 @@ blocks:
           commands:
             - make build-server-backend-prod-artifact
             - artifact push workflow ./dist/server_backend.prod.tar.gz
+      secrets:
+        - name: google-cloud-platform-prod
   - name: Publish
     dependencies: ["Build"]
     task:
