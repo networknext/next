@@ -20,13 +20,13 @@ func TestDecideUpgradeRoute(t *testing.T) {
 		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold)),
 	}
 
-	lastNNStats := routing.Stats{
+	lastNNStats := &routing.Stats{
 		RTT:        0,
 		Jitter:     0,
 		PacketLoss: 0,
 	}
 
-	lastDirectStats := routing.Stats{
+	lastDirectStats := &routing.Stats{
 		RTT:        50,
 		Jitter:     0,
 		PacketLoss: 0,
@@ -70,13 +70,13 @@ func TestDecideDowngradeRTTHysteresis(t *testing.T) {
 		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold)),
 	}
 
-	lastNNStats := routing.Stats{
+	lastNNStats := &routing.Stats{
 		RTT:        30,
 		Jitter:     0,
 		PacketLoss: 0,
 	}
 
-	lastDirectStats := routing.Stats{
+	lastDirectStats := &routing.Stats{
 		RTT:        30,
 		Jitter:     0,
 		PacketLoss: 0,
@@ -124,13 +124,13 @@ func TestDecideDowngradeRTTHysteresisYOLO(t *testing.T) {
 		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold)),
 	}
 
-	lastNNStats := routing.Stats{
+	lastNNStats := &routing.Stats{
 		RTT:        30,
 		Jitter:     0,
 		PacketLoss: 0,
 	}
 
-	lastDirectStats := routing.Stats{
+	lastDirectStats := &routing.Stats{
 		RTT:        30,
 		Jitter:     0,
 		PacketLoss: 0,
@@ -182,13 +182,13 @@ func TestDecideRTTVeto(t *testing.T) {
 		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold)),
 	}
 
-	lastNNStats := routing.Stats{
+	lastNNStats := &routing.Stats{
 		RTT:        61,
 		Jitter:     0,
 		PacketLoss: 0,
 	}
 
-	lastDirectStats := routing.Stats{
+	lastDirectStats := &routing.Stats{
 		RTT:        40,
 		Jitter:     0,
 		PacketLoss: 0,
@@ -241,13 +241,13 @@ func TestDecideRTTVetoYOLO(t *testing.T) {
 		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold)),
 	}
 
-	lastNNStats := routing.Stats{
+	lastNNStats := &routing.Stats{
 		RTT:        61,
 		Jitter:     0,
 		PacketLoss: 0,
 	}
 
-	lastDirectStats := routing.Stats{
+	lastDirectStats := &routing.Stats{
 		RTT:        40,
 		Jitter:     0,
 		PacketLoss: 0,
@@ -300,13 +300,13 @@ func TestDecidePacketLossVetoEarlySlice(t *testing.T) {
 		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold)),
 	}
 
-	lastNNStats := routing.Stats{
+	lastNNStats := &routing.Stats{
 		RTT:        40,
 		Jitter:     0,
 		PacketLoss: 10,
 	}
 
-	lastDirectStats := routing.Stats{
+	lastDirectStats := &routing.Stats{
 		RTT:        50,
 		Jitter:     0,
 		PacketLoss: 0,
@@ -359,13 +359,13 @@ func TestDecidePacketLossVeto(t *testing.T) {
 		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold)),
 	}
 
-	lastNNStats := routing.Stats{
+	lastNNStats := &routing.Stats{
 		RTT:        40,
 		Jitter:     0,
 		PacketLoss: 10,
 	}
 
-	lastDirectStats := routing.Stats{
+	lastDirectStats := &routing.Stats{
 		RTT:        50,
 		Jitter:     0,
 		PacketLoss: 0,
@@ -419,13 +419,13 @@ func TestDecidePacketLossVetoYOLO(t *testing.T) {
 		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold)),
 	}
 
-	lastNNStats := routing.Stats{
+	lastNNStats := &routing.Stats{
 		RTT:        40,
 		Jitter:     0,
 		PacketLoss: 10,
 	}
 
-	lastDirectStats := routing.Stats{
+	lastDirectStats := &routing.Stats{
 		RTT:        50,
 		Jitter:     0,
 		PacketLoss: 0,
@@ -477,13 +477,13 @@ func TestDecideStayOnDirectRoute(t *testing.T) {
 		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold)),
 	}
 
-	lastNNStats := routing.Stats{
+	lastNNStats := &routing.Stats{
 		RTT:        0,
 		Jitter:     0,
 		PacketLoss: 0,
 	}
 
-	lastDirectStats := routing.Stats{
+	lastDirectStats := &routing.Stats{
 		RTT:        30,
 		Jitter:     0,
 		PacketLoss: 0,
@@ -528,13 +528,13 @@ func TestDecideStayOnNNRoute(t *testing.T) {
 		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold)),
 	}
 
-	lastNNStats := routing.Stats{
+	lastNNStats := &routing.Stats{
 		RTT:        30,
 		Jitter:     0,
 		PacketLoss: 0,
 	}
 
-	lastDirectStats := routing.Stats{
+	lastDirectStats := &routing.Stats{
 		RTT:        40,
 		Jitter:     0,
 		PacketLoss: 0,
@@ -585,13 +585,13 @@ func TestValidateInitialSlice(t *testing.T) {
 		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold)),
 	}
 
-	lastNNStats := routing.Stats{
+	lastNNStats := &routing.Stats{
 		RTT:        30,
 		Jitter:     0,
 		PacketLoss: 0,
 	}
 
-	lastDirectStats := routing.Stats{
+	lastDirectStats := &routing.Stats{
 		RTT:        30,
 		Jitter:     0,
 		PacketLoss: 0,
@@ -633,25 +633,23 @@ func TestDecideCommitVeto(t *testing.T) {
 
 	onNNSliceCounter := uint64(0)
 
-	var commitPending bool
-	var commitObservedSliceCounter uint8
-	var committed bool
+	committedData := &routing.CommittedData{}
 
 	decisionFuncs := []routing.DecisionFunc{
 		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
 		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), rrs.EnableYouOnlyLiveOnce),
 		routing.DecideVeto(onNNSliceCounter, float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
 		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold)),
-		routing.DecideCommitted(true, uint8(rrs.TryBeforeYouBuyMaxSlices), rrs.EnableYouOnlyLiveOnce, &commitPending, &commitObservedSliceCounter, &committed),
+		routing.DecideCommitted(true, uint8(rrs.TryBeforeYouBuyMaxSlices), rrs.EnableYouOnlyLiveOnce, committedData),
 	}
 
-	lastNNStats := routing.Stats{
+	lastNNStats := &routing.Stats{
 		RTT:        45,
 		Jitter:     0,
 		PacketLoss: 0,
 	}
 
-	lastDirectStats := routing.Stats{
+	lastDirectStats := &routing.Stats{
 		RTT:        40,
 		Jitter:     0,
 		PacketLoss: 0,
@@ -684,15 +682,15 @@ func TestDecideCommitVeto(t *testing.T) {
 		funcs := replaceIndicesWithDecisionFuncs(perms, decisionFuncs)
 
 		for j := 0; j < len(funcs); j++ {
-			commitPending = true
-			commitObservedSliceCounter = uint8(rrs.TryBeforeYouBuyMaxSlices)
-			committed = false
+			committedData.Pending = true
+			committedData.ObservedSliceCounter = uint8(rrs.TryBeforeYouBuyMaxSlices)
+			committedData.Committed = false
 
 			decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, funcs[j]...)
 			assert.Equal(t, expected, decision)
-			assert.Equal(t, false, commitPending)
-			assert.Equal(t, uint8(0), commitObservedSliceCounter)
-			assert.Equal(t, false, committed)
+			assert.Equal(t, false, committedData.Pending)
+			assert.Equal(t, uint8(0), committedData.ObservedSliceCounter)
+			assert.Equal(t, false, committedData.Committed)
 		}
 	}
 }
@@ -704,25 +702,23 @@ func TestValidateCommitted(t *testing.T) {
 
 	onNNSliceCounter := uint64(0)
 
-	var commitPending bool
-	var commitObservedSliceCounter uint8
-	var committed bool
+	committedData := &routing.CommittedData{}
 
 	decisionFuncs := []routing.DecisionFunc{
 		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
 		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), rrs.EnableYouOnlyLiveOnce),
 		routing.DecideVeto(onNNSliceCounter, float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
 		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold)),
-		routing.DecideCommitted(true, uint8(rrs.TryBeforeYouBuyMaxSlices), rrs.EnableYouOnlyLiveOnce, &commitPending, &commitObservedSliceCounter, &committed),
+		routing.DecideCommitted(true, uint8(rrs.TryBeforeYouBuyMaxSlices), rrs.EnableYouOnlyLiveOnce, committedData),
 	}
 
-	lastNNStats := routing.Stats{
+	lastNNStats := &routing.Stats{
 		RTT:        30,
 		Jitter:     0,
 		PacketLoss: 0,
 	}
 
-	lastDirectStats := routing.Stats{
+	lastDirectStats := &routing.Stats{
 		RTT:        40,
 		Jitter:     0,
 		PacketLoss: 0,
@@ -755,15 +751,15 @@ func TestValidateCommitted(t *testing.T) {
 		funcs := replaceIndicesWithDecisionFuncs(perms, decisionFuncs)
 
 		for j := 0; j < len(funcs); j++ {
-			commitPending = true
-			commitObservedSliceCounter = uint8(rrs.TryBeforeYouBuyMaxSlices)
-			committed = false
+			committedData.Pending = true
+			committedData.ObservedSliceCounter = uint8(rrs.TryBeforeYouBuyMaxSlices)
+			committedData.Committed = false
 
 			decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, funcs[j]...)
 			assert.Equal(t, expected, decision)
-			assert.Equal(t, false, commitPending)
-			assert.Equal(t, uint8(0), commitObservedSliceCounter)
-			assert.Equal(t, true, committed)
+			assert.Equal(t, false, committedData.Pending)
+			assert.Equal(t, uint8(0), committedData.ObservedSliceCounter)
+			assert.Equal(t, true, committedData.Committed)
 		}
 	}
 }
@@ -784,13 +780,13 @@ func TestDecideMultipathDirect(t *testing.T) {
 		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold)),
 	}
 
-	lastNNStats := routing.Stats{
+	lastNNStats := &routing.Stats{
 		RTT:        0,
 		Jitter:     0,
 		PacketLoss: 0,
 	}
 
-	lastDirectStats := routing.Stats{
+	lastDirectStats := &routing.Stats{
 		RTT:        30,
 		Jitter:     0,
 		PacketLoss: 0,
@@ -838,13 +834,13 @@ func TestDecideMultipathStayActive(t *testing.T) {
 		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold)),
 	}
 
-	lastNNStats := routing.Stats{
+	lastNNStats := &routing.Stats{
 		RTT:        50,
 		Jitter:     0,
 		PacketLoss: 0,
 	}
 
-	lastDirectStats := routing.Stats{
+	lastDirectStats := &routing.Stats{
 		RTT:        30,
 		Jitter:     0,
 		PacketLoss: 0,
@@ -890,13 +886,13 @@ func TestValidateMultipathRTT(t *testing.T) {
 		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold)),
 	}
 
-	lastNNStats := routing.Stats{
+	lastNNStats := &routing.Stats{
 		RTT:        0,
 		Jitter:     0,
 		PacketLoss: 0,
 	}
 
-	lastDirectStats := routing.Stats{
+	lastDirectStats := &routing.Stats{
 		RTT:        40,
 		Jitter:     0,
 		PacketLoss: 0,
@@ -946,13 +942,13 @@ func TestValidateMultipathJitter(t *testing.T) {
 		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold)),
 	}
 
-	lastNNStats := routing.Stats{
+	lastNNStats := &routing.Stats{
 		RTT:        0,
 		Jitter:     0,
 		PacketLoss: 0,
 	}
 
-	lastDirectStats := routing.Stats{
+	lastDirectStats := &routing.Stats{
 		RTT:        0,
 		Jitter:     50,
 		PacketLoss: 0,
@@ -1002,13 +998,13 @@ func TestValidateMultipathPacketLoss(t *testing.T) {
 		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold)),
 	}
 
-	lastNNStats := routing.Stats{
+	lastNNStats := &routing.Stats{
 		RTT:        0,
 		Jitter:     0,
 		PacketLoss: 0,
 	}
 
-	lastDirectStats := routing.Stats{
+	lastDirectStats := &routing.Stats{
 		RTT:        0,
 		Jitter:     0,
 		PacketLoss: 1,

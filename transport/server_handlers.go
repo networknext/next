@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand"
 	"net"
 	"runtime"
 	"sync/atomic"
@@ -615,7 +616,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 		// Keep track if this is the first slice in a new session
 		// We need to check for this because we only run certain code paths on the first slice
 		// ex. always send a direct route first slice, cache the near relays on the first slice, etc.
-		newSession := packet.Sequence == 0
+		newSession := packet.Sequence == 1
 
 		// Retrieve the slice of near relays to the client.
 		// Because the session data should be read only and we need to update the near relay slice,
@@ -628,18 +629,36 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 		// use or store the non-anonymized IP address past this point. This is an important business requirement because IP addresses
 		// are considered private identifiable information according to the GDRP and CCPA. We must *never* collect or store non-anonymized IP addresses!
 
+		// Pull some data from the session data that we may need to modify
+		// Since it's not thread safe to modify the session data directly, we modify local copies and update it back later in the PostSessionUpdate
+		routeExpireTimestamp := sessionDataReadOnly.routeExpireTimestamp
 		location := sessionDataReadOnly.location
+		routeDecision := sessionDataReadOnly.routeDecision
+		onNNSliceCounter := sessionDataReadOnly.onNNSliceCounter
+		committedData := sessionDataReadOnly.committedData
+		committedData.Committed = !buyer.RoutingRulesSettings.EnableTryBeforeYouBuy // default state is based on the buyer's route shader. Will be overwritten later in the route decision if necessary.
+
+		// Purchase 20 seconds ahead for new sessions and 10 seconds ahead for existing ones
+		// This way we always have a 10 second buffer
+		var sliceDuration int64
+		if newSession {
+			sliceDuration = billing.BillingSliceSeconds * 2
+			routeExpireTimestamp = start.Unix() + sliceDuration
+		} else {
+			sliceDuration = billing.BillingSliceSeconds
+			routeExpireTimestamp += sliceDuration
+		}
 
 		if location.IsZero() {
 			var err error
 			location, err = params.IPLoc.LocateIP(packet.ClientAddress.IP)
 
 			if err != nil {
-				params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 				params.Metrics.ErrorMetrics.ClientLocateFailure.Add(1)
 				// IMPORTANT: We send a direct route response here because we want to see the session in our total session count, even if ip2loc fails.
 				// Context: As soon as we don't respond to a session update, the SDK "falls back to direct" and stops sending session update packets.
-				sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &lastNextStats, &lastDirectStats, &location, nearRelays)
+				sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelays, routeDecision, onNNSliceCounter,
+					committedData, sessionDataReadOnly.routeHash, sessionDataReadOnly.routeDecision.OnNetworkNext, start, routeExpireTimestamp, sessionDataReadOnly.tokenVersion, params.RouterPrivateKey)
 				return
 			}
 		}
@@ -652,7 +671,8 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 
 		if vetoReason != 0 {
 			// todo: ryan, we need metrics for veto here. vetoReason is the route decision you set when you veto (see "SetVeto")
-			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &lastNextStats, &lastDirectStats, &location, nearRelays)
+			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelays, routeDecision, onNNSliceCounter,
+				committedData, sessionDataReadOnly.routeHash, sessionDataReadOnly.routeDecision.OnNetworkNext, start, routeExpireTimestamp, sessionDataReadOnly.tokenVersion, params.RouterPrivateKey)
 			return
 		}
 
@@ -660,11 +680,11 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 		packet.ClientAddress = AnonymizeAddr(packet.ClientAddress)
 
 		if packet.ClientAddress.IP == nil {
-			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 			// todo: add client IP anonymize failure metric
 			// params.Metrics.ErrorMetrics.ClientIPAnonymizeFailure.Add(1)
 
-			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &lastNextStats, &lastDirectStats, &location, nearRelays)
+			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelays, routeDecision, onNNSliceCounter,
+				committedData, sessionDataReadOnly.routeHash, sessionDataReadOnly.routeDecision.OnNetworkNext, start, routeExpireTimestamp, sessionDataReadOnly.tokenVersion, params.RouterPrivateKey)
 			return
 		}
 
@@ -681,10 +701,10 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			// Because this is an expensive function, we only want to do this on the first slice, then just update
 			// the relays with the client stats every subsequent slice.
 			if nearRelays, err = routeMatrix.GetNearRelays(location.Latitude, location.Longitude, MaxNearRelays); err != nil {
-				params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 				params.Metrics.ErrorMetrics.NearRelaysLocateFailure.Add(1)
-
-				sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &lastNextStats, &lastDirectStats, &location, nearRelays)
+				sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelays, routeDecision, onNNSliceCounter,
+					committedData, sessionDataReadOnly.routeHash, sessionDataReadOnly.routeDecision.OnNetworkNext, start, routeExpireTimestamp, sessionDataReadOnly.tokenVersion, params.RouterPrivateKey)
+				return
 			}
 		} else {
 			// If this is not a new session, then just update the near relay list with the reported client stats.
@@ -712,11 +732,10 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 		}
 
 		// If the session has fallen back to direct, just give them a direct route.
-
 		if packet.FallbackToDirect {
-			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 			params.Metrics.DecisionMetrics.FallbackToDirect.Add(1)
-			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &lastNextStats, &lastDirectStats, &location, nearRelays)
+			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelays, routeDecision, onNNSliceCounter,
+				committedData, sessionDataReadOnly.routeHash, sessionDataReadOnly.routeDecision.OnNetworkNext, start, routeExpireTimestamp, sessionDataReadOnly.tokenVersion, params.RouterPrivateKey)
 			return
 		}
 
@@ -724,7 +743,8 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 		// This is necessary because the SDK needs to ping near relays and send back those
 		// stats for us to serve a network next route to that session.
 		if newSession {
-			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &lastNextStats, &lastDirectStats, &location, nearRelays)
+			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelays, routeDecision, onNNSliceCounter,
+				committedData, sessionDataReadOnly.routeHash, sessionDataReadOnly.routeDecision.OnNetworkNext, start, routeExpireTimestamp, sessionDataReadOnly.tokenVersion, params.RouterPrivateKey)
 			return
 		}
 
@@ -733,20 +753,20 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 		// relays in the same datacenter as the server (effectively 0 RTT from datacenter relay -> game server)
 		datacenterRelays := routeMatrix.RelaysIn(serverDataReadOnly.datacenter)
 		if len(datacenterRelays) == 0 {
-			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 			params.Metrics.ErrorMetrics.NoRelaysInDatacenter.Add(1)
-			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &lastNextStats, &lastDirectStats, &location, nearRelays)
+			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelays, routeDecision, onNNSliceCounter,
+				committedData, sessionDataReadOnly.routeHash, sessionDataReadOnly.routeDecision.OnNetworkNext, start, routeExpireTimestamp, sessionDataReadOnly.tokenVersion, params.RouterPrivateKey)
 			return
 		}
 
-		// ================================================================
+		// Now that we have a slice of all routes a client can take, we need to get the best route.
+		// This could either be a network next route or a direct route.
+		bestRoute, routeDecision := GetBestRoute(routeMatrix, nearRelays, datacenterRelays, &params.Metrics.ErrorMetrics, &buyer,
+			sessionDataReadOnly.routeHash, sessionDataReadOnly.routeDecision, &lastNextStats, &lastDirectStats, onNNSliceCounter, &committedData, &directRoute)
 
-		bestRoute := &directRoute
-
-		routes, err := routeMatrix.Routes(nearRelays, datacenterRelays)
-		_ = routes // todo: perform route selection and decision
-
-		// ================================================================
+		if routeDecision.OnNetworkNext {
+			onNNSliceCounter++
+		}
 
 		// Send a session update response back to the SDK.
 
@@ -757,24 +777,104 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 
 		// IMPORTANT: In future SDK versions we are much less aggressive with session update packet retries. eg. 3.4.5 and later.
 
-		sendRouteResponse(w, bestRoute, params, &packet, &response, serverDataReadOnly, &lastNextStats, &lastDirectStats, &location, nearRelays)
+		sendRouteResponse(w, bestRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelays, routeDecision, onNNSliceCounter,
+			committedData, sessionDataReadOnly.routeHash, sessionDataReadOnly.routeDecision.OnNetworkNext, start, routeExpireTimestamp, sessionDataReadOnly.tokenVersion, params.RouterPrivateKey)
 	}
 }
 
-func GetBestRoute() {
+// GetBestRoute returns the best route that a session can take for this slice. If we can't serve a network next route, the returned route will be the passed in direct route.
+// This function can either return a network next route or a direct route, and it also returns a reason as to why the route was chosen.
+func GetBestRoute(routeMatrix RouteProvider, nearRelays []routing.Relay, datacenterRelays []routing.Relay, errorMetrics *metrics.SessionErrorMetrics,
+	buyer *routing.Buyer, prevRouteHash uint64, prevRouteDecision routing.Decision, lastNextStats *routing.Stats, lastDirectStats *routing.Stats,
+	onNNSliceCounter uint64, committedData *routing.CommittedData, directRoute *routing.Route) (*routing.Route, routing.Decision) {
+	// We need to get a next route to compare against direct
+	nextRoute := GetNextRoute(routeMatrix, nearRelays, datacenterRelays, errorMetrics, buyer, prevRouteHash)
+	if nextRoute == nil {
+		return directRoute, routing.Decision{OnNetworkNext: false, Reason: routing.DecisionNoReason}
+	}
 
+	// Now that we have a next route, we have to decide if the route is worth taking over direct.
+	// This process can very based on the customer's route shader.
+
+	// The logic is as follows:
+	//	1. Decide if we should accelerate a session (direct -> next). If a session is already on network next, this decision is skipped.
+	//	2. Decide if we should bring a session back to direct (next -> direct). If a session is already on direct, this decision is skipped.
+	//	3. Decide if we should veto a session (next -> direct permanently). If a session is already on direct, this decision is skipped.
+	// 	4. Decide if we should consider multipath. If multipath is enabled, then the decision process is reset and only multipath logic is considered.
+	//	5. Decide if we should run the committed logic. This is only run if the buyer has "try before you buy" enabled in the route shader.
+	// More information on how each decision is made can be found in their respective decision functions.
+	deciderFuncs := []routing.DecisionFunc{
+		routing.DecideUpgradeRTT(float64(buyer.RoutingRulesSettings.RTTThreshold)),
+		routing.DecideDowngradeRTT(float64(buyer.RoutingRulesSettings.RTTHysteresis), buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
+		routing.DecideVeto(onNNSliceCounter, float64(buyer.RoutingRulesSettings.RTTVeto), buyer.RoutingRulesSettings.EnablePacketLossSafety, buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
+		routing.DecideMultipath(buyer.RoutingRulesSettings.EnableMultipathForRTT, buyer.RoutingRulesSettings.EnableMultipathForJitter, buyer.RoutingRulesSettings.EnableMultipathForPacketLoss, float64(buyer.RoutingRulesSettings.RTTThreshold)),
+	}
+
+	if buyer.RoutingRulesSettings.EnableTryBeforeYouBuy {
+		deciderFuncs = append(deciderFuncs,
+			routing.DecideCommitted(prevRouteDecision.OnNetworkNext, uint8(buyer.RoutingRulesSettings.TryBeforeYouBuyMaxSlices), buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce, committedData))
+	} else {
+		// If we aren't using the try before you buy logic, then we always want to commit to routes
+		committedData.Pending = false
+		committedData.ObservedSliceCounter = 0
+		committedData.Committed = true
+	}
+
+	routeDecision := nextRoute.Decide(prevRouteDecision, lastNextStats, lastDirectStats, deciderFuncs...)
+
+	if routeDecision.OnNetworkNext {
+		return nextRoute, routeDecision
+	}
+
+	return directRoute, routeDecision
 }
 
-func SelectNextRoute() {
+// GetNextRoute returns the best network next route a session can take for this slice, or nil if a route couldn't be found.
+func GetNextRoute(routeMatrix RouteProvider, nearRelays []routing.Relay, datacenterRelays []routing.Relay, errorMetrics *metrics.SessionErrorMetrics,
+	buyer *routing.Buyer, prevRouteHash uint64) *routing.Route {
+	// We need to get all of the routes from the route matrix that connect any of the client's near relays and any of the game server's datacenter relays
+	routes, err := routeMatrix.Routes(nearRelays, datacenterRelays)
+	if err != nil {
+		errorMetrics.RouteFailure.Add(1) // todo: separate RouteFailure into RouteFailure and RouteSelectFailure
+		return nil
+	}
 
+	// Now that we have all of the routes a client could take, we can start filtering the slice down to determine the best route among them.
+
+	// The logic is as follows:
+	//	1. Only select routes whose relays have session counts of less than 80% of their maximum allowed session counts (this is to avoid overloading a relay).
+	// 	2. Find the route with the lowest RTT, and return all routes whose RTT is with the given epsilon value. These are "acceptable routes".
+	// 	3. If the route the session is already taking is within the set of acceptable routes, choose that one. If it's not, continue to step 4.
+	// 	4. Choose a random destination relay (since all destination relays are in the same datacenter and have effectively the same RTT from relay -> game server)
+	//		and only select routes with that destination relay
+	//	5. If we still don't only have 1 route, choose a random one.
+	selectorFuncs := []routing.SelectorFunc{
+		routing.SelectUnencumberedRoutes(0.8),
+		routing.SelectAcceptableRoutesFromBestRTT(float64(buyer.RoutingRulesSettings.RTTEpsilon)),
+		routing.SelectContainsRouteHash(prevRouteHash),
+		routing.SelectRoutesByRandomDestRelay(rand.NewSource(rand.Int63())),
+		routing.SelectRandomRoute(rand.NewSource(rand.Int63())),
+	}
+
+	for _, selectorFunc := range selectorFuncs {
+		routes = selectorFunc(routes)
+
+		if len(routes) == 0 {
+			break
+		}
+	}
+
+	if len(routes) == 0 {
+		errorMetrics.RouteFailure.Add(1) // todo: separate RouteFailure into RouteFailure and RouteSelectFailure
+		return nil
+	}
+
+	return &routes[0]
 }
 
-func DecideNextRoute() {
-
-}
-
-func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket, response *SessionResponsePacket, serverData *ServerData,
-	chosenRoute *routing.Route, lastNextStats *routing.Stats, lastDirectStats *routing.Stats, location *routing.Location, nearRelays []routing.Relay, prevOnNetworkNext bool) {
+func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket, response *SessionResponsePacket, serverDataReadOnly *ServerData,
+	chosenRoute *routing.Route, lastNextStats *routing.Stats, lastDirectStats *routing.Stats, location *routing.Location, nearRelays []routing.Relay,
+	prevOnNetworkNext bool, routeDecision routing.Decision, timeNow time.Time) {
 
 	// IMPORTANT: we actually need to display the true datacenter name in the demo and demo plus views,
 	// while in the customer view of the portal, we need to display the alias. this is because aliases will
@@ -783,9 +883,9 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 	// todo: ryan, please make it so. you'll probably have to send both datacenter names down to the portal
 	// and let the portal select which one to display, depending on context.
 
-	datacenterName := serverData.datacenter.Name
-	if serverData.datacenter.AliasName != "" {
-		datacenterName = serverData.datacenter.AliasName
+	datacenterName := serverDataReadOnly.datacenter.Name
+	if serverDataReadOnly.datacenter.AliasName != "" {
+		datacenterName = serverDataReadOnly.datacenter.AliasName
 	}
 
 	// Send a massive amount of data to the portal via redis.
@@ -795,7 +895,8 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 	// IMPORTANT: We could possibly offload some work from here by sending to another service
 	// via redis pubsub (this is different to google pubsub).
 
-	if err := updatePortalData(params.RedisClientPortal, params.RedisClientPortalExp, packet, lastNextStats, lastDirectStats, chosenRoute.Relays, prevOnNetworkNext, datacenterName, location, nearRelays, time.Now(), false); err != nil {
+	if err := updatePortalData(params.RedisClientPortal, params.RedisClientPortalExp, packet, lastNextStats, lastDirectStats, chosenRoute.Relays,
+		prevOnNetworkNext, datacenterName, location, nearRelays, timeNow, routing.IsMultipath(routeDecision)); err != nil {
 		fmt.Printf("could not update portal data: %v\n", err)
 		// level.Error(params.Logger).Log("msg", "could not update portal data", "err", err)
 		params.Metrics.ErrorMetrics.UpdatePortalFailure.Add(1)
@@ -807,7 +908,7 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 	// BigQuery really doesn't make performance guarantees on how fast it is to load data, so we need
 	// pubsub to act as a queue to smooth that out. Pubsub can buffer billing data for up to 7 days.
 
-	nextRelays := [5]uint64{}
+	nextRelays := [billing.BillingEntryMaxRelays]uint64{}
 	for i := 0; i < len(chosenRoute.Relays) && i < len(nextRelays); i++ {
 		nextRelays[i] = chosenRoute.Relays[i].ID
 	}
@@ -1668,7 +1769,8 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 }
 */
 
-func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time.Duration, packet *SessionUpdatePacket, lastNNStats *routing.Stats, lastDirectStats *routing.Stats, relayHops []routing.Relay, onNetworkNext bool, datacenterName string, location *routing.Location, nearRelays []routing.Relay, sessionTime time.Time, isMultiPath bool) error {
+func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time.Duration, packet *SessionUpdatePacket, lastNNStats *routing.Stats, lastDirectStats *routing.Stats,
+	relayHops []routing.Relay, onNetworkNext bool, datacenterName string, location *routing.Location, nearRelays []routing.Relay, sessionTime time.Time, isMultiPath bool) error {
 
 	if (lastNNStats.RTT == 0 && lastDirectStats.RTT == 0) || (onNetworkNext && lastNNStats.RTT == 0) {
 		return nil
@@ -1906,15 +2008,95 @@ func writeSessionResponse(w io.Writer, response *SessionResponsePacket, privateK
 	return responseData, nil
 }
 
-func sendRouteResponse(w io.Writer, chosenRoute *routing.Route, params *SessionUpdateParams, packet *SessionUpdatePacket, response *SessionResponsePacket,
-	serverData *ServerData, lastNextStats *routing.Stats, lastDirectStats *routing.Stats, location *routing.Location, nearRelays []routing.Relay) {
+func sendRouteResponse(w io.Writer, route *routing.Route, params *SessionUpdateParams, packet *SessionUpdatePacket, response *SessionResponsePacket, serverDataReadOnly *ServerData,
+	buyer *routing.Buyer, lastNextStats *routing.Stats, lastDirectStats *routing.Stats, location *routing.Location, nearRelays []routing.Relay, routeDecision routing.Decision,
+	onNNSliceCounter uint64, committedData routing.CommittedData, prevRouteHash uint64, prevOnNetworkNext bool, timeNow time.Time, routeExpireTimestamp int64, tokenVersion uint8, routerPrivateKey []byte) {
+	// Update response data
+	{
+		if committedData.Committed {
+			response.Committed = true
+		}
+
+		if routing.IsMultipath(routeDecision) {
+			response.Multipath = true
+		}
+	}
+
+	// Tokenize the route
+	if routeDecision.OnNetworkNext {
+		var token routing.Token
+		if route.Hash64() == prevRouteHash {
+			token = &routing.ContinueRouteToken{
+				Expires: uint64(routeExpireTimestamp),
+
+				SessionID: packet.SessionID,
+
+				SessionVersion: tokenVersion,
+
+				Client: routing.Client{
+					Addr:      packet.ClientAddress,
+					PublicKey: packet.ClientRoutePublicKey,
+				},
+
+				Server: routing.Server{
+					Addr:      packet.ServerAddress,
+					PublicKey: serverDataReadOnly.routePublicKey,
+				},
+
+				Relays: route.Relays,
+			}
+		} else {
+			tokenVersion++
+
+			token = &routing.NextRouteToken{
+				Expires: uint64(routeExpireTimestamp),
+
+				SessionID: packet.SessionID,
+
+				SessionVersion: tokenVersion,
+
+				KbpsUp:   uint32(buyer.RoutingRulesSettings.EnvelopeKbpsUp),
+				KbpsDown: uint32(buyer.RoutingRulesSettings.EnvelopeKbpsDown),
+
+				Client: routing.Client{
+					Addr:      packet.ClientAddress,
+					PublicKey: packet.ClientRoutePublicKey,
+				},
+
+				Server: routing.Server{
+					Addr:      packet.ServerAddress,
+					PublicKey: serverDataReadOnly.routePublicKey,
+				},
+
+				Relays: route.Relays,
+			}
+		}
+
+		tokens, numtokens, err := token.Encrypt(routerPrivateKey)
+		if err != nil {
+			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+			params.Metrics.ErrorMetrics.EncryptionFailure.Add(1)
+			return
+		}
+
+		// Add token info to the Session Response
+		response.RouteType = int32(token.Type())
+		response.NumTokens = int32(numtokens) // Num of relays + client + server
+		response.Tokens = tokens
+	}
 
 	// Update the session data
 	session := SessionData{
-		timestamp:  time.Now().Unix(),
-		location:   *location,
-		sequence:   packet.Sequence,
-		nearRelays: nearRelays,
+		timestamp:            timeNow.Unix(),
+		location:             *location,
+		sequence:             packet.Sequence,
+		nearRelays:           nearRelays,
+		routeHash:            route.Hash64(),
+		routeDecision:        routeDecision,
+		onNNSliceCounter:     onNNSliceCounter,
+		committedData:        committedData,
+		routeExpireTimestamp: routeExpireTimestamp,
+		tokenVersion:         tokenVersion,
 	}
 	sessionMutexStart := time.Now()
 	params.SessionMap.UpdateSessionData(packet.SessionID, &session)
@@ -1923,7 +2105,7 @@ func sendRouteResponse(w io.Writer, chosenRoute *routing.Route, params *SessionU
 	}
 
 	// IMPORTANT: run post in parallel so it doesn't block the response
-	go PostSessionUpdate(params, packet, response, serverData, chosenRoute, lastNextStats, lastDirectStats, location, nearRelays, false)
+	go PostSessionUpdate(params, packet, response, serverDataReadOnly, route, lastNextStats, lastDirectStats, location, nearRelays, prevOnNetworkNext, routeDecision, timeNow)
 
 	if _, err := writeSessionResponse(w, response, params.ServerPrivateKey); err != nil {
 		fmt.Printf("could not write session update response packet: %v\n", err)
