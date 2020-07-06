@@ -1153,11 +1153,11 @@ func main() {
 			},
 			{
 				Name:       "shader",
-				ShortUsage: "next shader <buyer ID>",
-				ShortHelp:  "Manage shaders",
+				ShortUsage: "next shader <buyer name or substring>",
+				ShortHelp:  "Retrieve route shader settings for the specified buyer",
 				Exec: func(_ context.Context, args []string) error {
 					if len(args) == 0 {
-						log.Fatal("No buyer ID provided.\nUsage:\nnext shader <buyer ID>\nbuyer ID: the buyer's ID\nFor a list of buyers, use next buyers")
+						log.Fatal("No buyer name or substring provided.\nUsage:\nnext shader <buyer name or substring>\n")
 					}
 
 					// Get the buyer's route shader
@@ -1202,6 +1202,20 @@ func main() {
 									return nil
 								},
 							},
+						},
+					},
+					{
+						Name:       "id",
+						ShortUsage: "next shader id <buyer ID>",
+						ShortHelp:  "Retrieve route shader information for the given buyer ID",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) == 0 {
+								log.Fatal("No buyer ID provided.\nUsage:\nnext shader <buyer ID>\nbuyer ID: the buyer's ID\nFor a list of buyers, use next buyers")
+							}
+
+							// Get the buyer's route shader
+							routingRulesSettingsByID(rpcClient, env, args[0])
+							return nil
 						},
 					},
 				},
