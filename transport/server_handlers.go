@@ -107,7 +107,7 @@ func (m *UDPServerMux) handler(ctx context.Context, id int) {
 					res = crypto.Hash(crypto.PacketHashKey, res)
 				}
 
-				fmt.Printf("sending response packet (%d bytes) back to %s\n", res,packet.SourceAddr.String())
+				fmt.Printf("sending response packet (%d bytes) back to %s\n", res, packet.SourceAddr.String())
 
 				m.Conn.WriteToUDP(res, packet.SourceAddr)
 			}
@@ -946,10 +946,8 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 	// todo: ryan, please make it so. you'll probably have to send both datacenter names down to the portal
 	// and let the portal select which one to display, depending on context.
 
-	datacenterName := serverDataReadOnly.datacenter.Name
-	if serverDataReadOnly.datacenter.AliasName != "" {
-		datacenterName = serverDataReadOnly.datacenter.AliasName
-	}
+	datacenterName := serverData.datacenter.Name
+	datacenterAlias := serverData.datacenter.AliasName
 
 	// Send a massive amount of data to the portal via redis.
 	// This drives all the stuff you see in the portal, including the map and top sessions list.
@@ -959,7 +957,8 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 	// via redis pubsub (this is different to google pubsub).
 
 	if err := updatePortalData(params.RedisClientPortal, params.RedisClientPortalExp, packet, lastNextStats, lastDirectStats, chosenRoute.Relays,
-		prevOnNetworkNext, datacenterName, location, nearRelays, timeNow, routing.IsMultipath(routeDecision)); err != nil {
+		prevOnNetworkNext, datacenterName, location, nearRelays, timeNow, routing.IsMultipath(routeDecision), datacenterAlias); err != nil {
+
 		fmt.Printf("could not update portal data: %v\n", err)
 		// level.Error(params.Logger).Log("msg", "could not update portal data", "err", err)
 		params.Metrics.ErrorMetrics.UpdatePortalFailure.Add(1)
@@ -1833,7 +1832,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 */
 
 func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time.Duration, packet *SessionUpdatePacket, lastNNStats *routing.Stats, lastDirectStats *routing.Stats,
-	relayHops []routing.Relay, onNetworkNext bool, datacenterName string, location *routing.Location, nearRelays []routing.Relay, sessionTime time.Time, isMultiPath bool) error {
+	relayHops []routing.Relay, onNetworkNext bool, datacenterName string, location *routing.Location, nearRelays []routing.Relay, sessionTime time.Time, isMultiPath bool, datacenterAlias string) error {
 
 	if (lastNNStats.RTT == 0 && lastDirectStats.RTT == 0) || (onNetworkNext && lastNNStats.RTT == 0) {
 		return nil
@@ -1858,22 +1857,23 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 	}
 
 	meta := routing.SessionMeta{
-		ID:            fmt.Sprintf("%016x", packet.SessionID),
-		UserHash:      hashedID,
-		Datacenter:    datacenterName,
-		OnNetworkNext: onNetworkNext,
-		NextRTT:       lastNNStats.RTT,
-		DirectRTT:     lastDirectStats.RTT,
-		DeltaRTT:      deltaRTT,
-		Location:      *location,
-		ClientAddr:    packet.ClientAddress.String(),
-		ServerAddr:    packet.ServerAddress.String(),
-		Hops:          relayHops,
-		SDK:           packet.Version.String(),
-		Connection:    ConnectionTypeText(packet.ConnectionType),
-		NearbyRelays:  nearRelays,
-		Platform:      PlatformTypeText(packet.PlatformID),
-		BuyerID:       fmt.Sprintf("%016x", packet.CustomerID),
+		ID:                fmt.Sprintf("%016x", packet.SessionID),
+		UserHash:          hashedID,
+		DatacenterName:    datacenterName,
+		DatacenterAlias:   datacenterAlias,
+		OnNetworkNext:     onNetworkNext,
+		NextRTT:           lastNNStats.RTT,
+		DirectRTT:         lastDirectStats.RTT,
+		DeltaRTT:          deltaRTT,
+		Location:          *location,
+		ClientAddr:        packet.ClientAddress.String(),
+		ServerAddr:        packet.ServerAddress.String(),
+		Hops:              relayHops,
+		SDK:               packet.Version.String(),
+		Connection:        ConnectionTypeText(packet.ConnectionType),
+		NearbyRelays:      nearRelays,
+		Platform:          PlatformTypeText(packet.PlatformID),
+		BuyerID:           fmt.Sprintf("%016x", packet.CustomerID),
 	}
 
 	slice := routing.SessionSlice{
