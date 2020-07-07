@@ -724,13 +724,9 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			// If this is not a new session, then just update the near relay list with the reported client stats.
 			// We need to keep these stats updated so that if relays fluctuate we can recalculate the best route to serve.
 			for i, nearRelay := range nearRelays {
-				for _, clientNearRelayID := range packet.NearRelayIDs {
+				for j, clientNearRelayID := range packet.NearRelayIDs {
 					if nearRelay.ID == clientNearRelayID {
-						if nearRelay.ID >= uint64(len(packet.NearRelayMinRTT)) {
-							continue
-						}
-
-						nearRelays[i].ClientStats.RTT = float64(packet.NearRelayMinRTT[nearRelay.ID])
+						nearRelays[i].ClientStats.RTT = float64(packet.NearRelayMinRTT[j])
 					}
 				}
 			}
