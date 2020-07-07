@@ -5,13 +5,15 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/networknext/backend/routing"
 )
 
 const NumVetoMapShards = 4096
 
 type VetoData struct {
 	timestamp int64
-	reason uint64
+	reason    routing.DecisionReason
 }
 
 type VetoMapShard struct {
@@ -43,11 +45,11 @@ func (vetoMap *VetoMap) NumVetoes() uint64 {
 }
 
 // IMPORTANT: Only needs to be called once. Each time you call "GetVeto" it refreshes the timestamp so you don't have to get and set each time. Efficient.
-func (vetoMap *VetoMap) SetVeto(vetoId uint64, reason uint64) {
+func (vetoMap *VetoMap) SetVeto(vetoId uint64, reason routing.DecisionReason) {
 	index := vetoId % NumVetoMapShards
-	vetoData := VetoData {
+	vetoData := VetoData{
 		timestamp: time.Now().Unix(),
-		reason: reason,
+		reason:    reason,
 	}
 	vetoMap.shard[index].mutex.Lock()
 	_, exists := vetoMap.shard[index].vetoes[vetoId]
@@ -58,7 +60,7 @@ func (vetoMap *VetoMap) SetVeto(vetoId uint64, reason uint64) {
 	}
 }
 
-func (vetoMap *VetoMap) GetVeto(vetoId uint64) uint64 {
+func (vetoMap *VetoMap) GetVeto(vetoId uint64) routing.DecisionReason {
 	index := vetoId % NumServerMapShards
 	vetoMap.shard[index].mutex.Lock()
 	vetoData, _ := vetoMap.shard[index].vetoes[vetoId]
@@ -68,9 +70,9 @@ func (vetoMap *VetoMap) GetVeto(vetoId uint64) uint64 {
 	vetoMap.shard[index].mutex.Unlock()
 	if vetoData != nil {
 		return vetoData.reason
-	} else {
-		return 0
 	}
+
+	return routing.DecisionNoReason
 }
 
 func (vetoMap *VetoMap) TimeoutLoop(ctx context.Context, timeout time.Duration, c <-chan time.Time) {

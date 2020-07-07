@@ -305,7 +305,7 @@ func TestSessionDetails(t *testing.T) {
 		},
 		SDK: "3.4.4",
 		NearbyRelays: []routing.Relay{
-			{ID: 1, ClientStats: routing.Stats{RTT: 1, Jitter: 2, PacketLoss: 3}},
+			{ID: 1, Name: "local", ClientStats: routing.Stats{RTT: 1, Jitter: 2, PacketLoss: 3}},
 		},
 	}
 	slice1 := routing.SessionSlice{
@@ -323,9 +323,6 @@ func TestSessionDetails(t *testing.T) {
 
 	redisClient.Set(fmt.Sprintf("session-%s-meta", sessionID), meta, 30*time.Second)
 	redisClient.SAdd(fmt.Sprintf("session-%s-slices", sessionID), slice1, slice2)
-
-	// After setting the cache without the name, set the name to the expected output we need
-	meta.NearbyRelays[0].Name = "local"
 
 	inMemory := storage.InMemory{}
 	inMemory.AddSeller(context.Background(), routing.Seller{ID: "local"})

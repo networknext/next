@@ -45,7 +45,7 @@ type ContinueRouteToken struct {
 
 	SessionID      uint64
 	SessionVersion uint8
-	SessionFlags   uint8
+	SessionFlags   uint8 // unused
 
 	Client Client
 	Server Server
