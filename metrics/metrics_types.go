@@ -42,10 +42,12 @@ type SessionErrorMetrics struct {
 	OldSequence                 Counter
 	WriteCachedResponseFailure  Counter
 	ClientLocateFailure         Counter
+	ClientIPAnonymizeFailure    Counter
 	NearRelaysLocateFailure     Counter
 	DatacenterDisabled          Counter
 	NoRelaysInDatacenter        Counter
 	RouteFailure                Counter
+	RouteSelectFailure          Counter
 	EncryptionFailure           Counter
 	WriteResponseFailure        Counter
 	UpdateCacheFailure          Counter
@@ -71,10 +73,12 @@ var EmptySessionErrorMetrics SessionErrorMetrics = SessionErrorMetrics{
 	OldSequence:                 &EmptyCounter{},
 	WriteCachedResponseFailure:  &EmptyCounter{},
 	ClientLocateFailure:         &EmptyCounter{},
+	ClientIPAnonymizeFailure:    &EmptyCounter{},
 	NearRelaysLocateFailure:     &EmptyCounter{},
 	DatacenterDisabled:          &EmptyCounter{},
 	NoRelaysInDatacenter:        &EmptyCounter{},
 	RouteFailure:                &EmptyCounter{},
+	RouteSelectFailure:          &EmptyCounter{},
 	EncryptionFailure:           &EmptyCounter{},
 	WriteResponseFailure:        &EmptyCounter{},
 	UpdateCacheFailure:          &EmptyCounter{},
@@ -651,6 +655,16 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		return nil, err
 	}
 
+	sessionMetrics.ErrorMetrics.ClientIPAnonymizeFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Session Client IP Anonymize Failure",
+		ServiceName: "server_backend",
+		ID:          "session.error.client_ip_anonymize_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	sessionMetrics.ErrorMetrics.EncryptionFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Session Encryption Failure",
 		ServiceName: "server_backend",
@@ -785,6 +799,16 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		DisplayName: "Session Route Failure",
 		ServiceName: "server_backend",
 		ID:          "session.error.route_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.ErrorMetrics.RouteSelectFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Session Route Select Failure",
+		ServiceName: "server_backend",
+		ID:          "session.error.route_select_failure",
 		Unit:        "errors",
 	})
 	if err != nil {

@@ -34,7 +34,7 @@ import (
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
-	
+
 	gcplogging "cloud.google.com/go/logging"
 	"cloud.google.com/go/profiler"
 )
@@ -274,12 +274,12 @@ func main() {
 		// Google Pubsub
 		{
 			descriptor := billing.Descriptor{
-				ClientCount: 1,
+				ClientCount:    1,
 				DelayThreshold: time.Second * 10,
 				CountThreshold: 1000,
-				ByteThreshold: 100*1024,
-				NumGoroutines: runtime.GOMAXPROCS(0),
-				Timeout: time.Minute,
+				ByteThreshold:  100 * 1024,
+				NumGoroutines:  runtime.GOMAXPROCS(0),
+				Timeout:        time.Minute,
 			}
 
 			pubsub, err := billing.NewBiller(ctx, logger, gcpProjectID, "billing", &descriptor)
@@ -595,8 +595,8 @@ func main() {
 		}
 
 		mux := transport.UDPServerMux{
-			Conn:          conn,
-			MaxPacketSize: transport.DefaultMaxPacketSize,
+			Conn:                     conn,
+			MaxPacketSize:            transport.DefaultMaxPacketSize,
 			ServerInitHandlerFunc:    transport.ServerInitHandlerFunc(serverInitConfig),
 			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(serverUpdateConfig),
 			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(sessionUpdateConfig),
