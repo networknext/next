@@ -615,8 +615,8 @@ func main() {
 	// Start HTTP server
 	{
 		router := mux.NewRouter()
-		http.HandleFunc("/health", HealthHandlerFunc(&readRouteMatrixSuccessCount))
-		http.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag))
+		router.HandleFunc("/health", HealthHandlerFunc(&readRouteMatrixSuccessCount))
+		router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag))
 
 		go func() {
 			http_port, ok := os.LookupEnv("HTTP_PORT")
