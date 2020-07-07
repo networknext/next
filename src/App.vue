@@ -104,9 +104,6 @@
   .mapboxgl-ctrl-bottom-right {
     display: none;
   }
-  .h2 {
-    font-size: 2rem;
-  }
 
   /*
   * Sidebar

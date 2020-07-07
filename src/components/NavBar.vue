@@ -7,34 +7,22 @@
     </a>
     <ul class="navbar-nav px-3 w-100 mr-auto">
         <li class="nav-item text-nowrap">
-            <a class="nav-link" href="#">
-                Map
-            </a>
+            <router-link to="/" class="nav-link">Map</router-link>
         </li>
         <li class="nav-item text-nowrap">
-            <a class="nav-link" href="#">
-                Sessions
-            </a>
+            <router-link to="/sessions" class="nav-link">Sessions</router-link>
         </li>
         <li class="nav-item text-nowrap">
-            <a class="nav-link" href="#">
-                Session Tool
-            </a>
+            <router-link to="/session-tool" class="nav-link">Session Tool</router-link>
         </li>
         <li class="nav-item text-nowrap">
-            <a class="nav-link">
-                User Tool
-            </a>
+            <router-link to="/user-tool" class="nav-link">User Tool</router-link>
         </li>
         <li class="nav-item text-nowrap">
-            <a class="nav-link" href="#">
-                Downloads
-            </a>
+            <router-link to="/downloads" class="nav-link">Downloads</router-link>
         </li>
         <li class="nav-item text-nowrap">
-            <a class="nav-link" href="#">
-                Settings
-            </a>
+            <router-link to="/settings" class="nav-link">Settings</router-link>
         </li>
     </ul>
     <ul class="navbar-nav px-3">

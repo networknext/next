@@ -1,12 +1,7 @@
 <template>
   <div class="container-fluid below-nav-bar">
     <div class="row">
-        <map-workspace></map-workspace>
-        <sessions-workspace v-if="false"></sessions-workspace>
-        <session-tool-workspace v-if="false"></session-tool-workspace>
-        <user-tool-workspace v-if="false"></user-tool-workspace>
-        <downloads-workspace v-if="false"></downloads-workspace>
-        <settings-workspace v-if="false"></settings-workspace>
+      <router-view/>
     </div>
   </div>
 </template>

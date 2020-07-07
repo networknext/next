@@ -17,15 +17,7 @@
           <span class="sr-only">Loading...</span>
         </div>
       </div>
-      <h1 class="h2" id="workspace-title" v-if="true">
-        Map&nbsp;
-        <span class="badge badge-dark">
-          MAPSESSIONS Total Sessions
-        </span>&nbsp;
-        <span class="badge badge-success">
-          ONNN on Network Next
-        </span>
-      </h1>
+      <SessionCount />
       <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1">
         <div class="mr-auto"></div>
         <div class="px-2 hidden">
@@ -72,9 +64,12 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
+import SessionCount from '@/components/SessionCounts.vue'
 import SessionMap from '../SessionMap.vue'
+
 @Component({
   components: {
+    SessionCount,
     SessionMap
   }
 })

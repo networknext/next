@@ -11,15 +11,7 @@
               mb-3
               border-bottom"
       >
-        <h1 class="h2" id="workspace-title" v-if="true">
-          Sessions&nbsp;
-          <span class="badge badge-dark">
-            MAPSESSIONS Total Sessions
-          </span>&nbsp;
-          <span class="badge badge-success">
-            ONNN on Network Next
-          </span>
-        </h1>
+        <SessionCounts />
         <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1">
           <div class="mr-auto"></div>
           <div class="px-2 hidden">
@@ -172,8 +164,13 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
+import SessionCounts from '@/components/SessionCounts.vue'
 
-@Component
+@Component({
+  components: {
+    SessionCounts
+  }
+})
 export default class SessionsWorkspace extends Vue {
 }
 </script>
