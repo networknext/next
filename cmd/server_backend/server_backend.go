@@ -24,6 +24,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/billing"
@@ -441,20 +442,20 @@ func main() {
 
 	// Initialize UDP connection
 	{
-		port, ok := os.LookupEnv("PORT")
+		udp_port, ok := os.LookupEnv("UDP_PORT")
 		if !ok {
-			level.Error(logger).Log("err", "env var PORT must be set")
+			level.Error(logger).Log("err", "env var UDP_PORT must be set")
 			os.Exit(1)
 		}
 
-		iport, err := strconv.ParseInt(port, 10, 64)
+		i_udp_port, err := strconv.ParseInt(udp_port, 10, 64)
 		if err != nil {
-			level.Error(logger).Log("envvar", "PORT", "msg", "could not parse", "err", err)
+			level.Error(logger).Log("envvar", "UDP_PORT", "msg", "could not parse", "err", err)
 			os.Exit(1)
 		}
 
 		addr := net.UDPAddr{
-			Port: int(iport),
+			Port: int(i_udp_port),
 		}
 
 		conn, err = net.ListenUDP("udp", &addr)
@@ -613,14 +614,22 @@ func main() {
 
 	// Start HTTP server
 	{
-		go func() {
-			http.HandleFunc("/health", HealthHandlerFunc(&readRouteMatrixSuccessCount))
-			http.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag))
+		router := mux.NewRouter()
+		http.HandleFunc("/health", HealthHandlerFunc(&readRouteMatrixSuccessCount))
+		http.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag))
 
-			level.Info(logger).Log("protocol", "http", "addr", conn.LocalAddr().String())
-			if err := http.ListenAndServe(conn.LocalAddr().String(), nil); err != nil {
-				fmt.Printf("could not start http server: %v\n", err)
-				// level.Error(logger).Log("protocol", "http", "addr", conn.LocalAddr().String(), "msg", "could not start http server", "err", err)
+		go func() {
+			http_port, ok := os.LookupEnv("HTTP_PORT")
+			if !ok {
+				level.Error(logger).Log("err", "env var HTTP_PORT must be set")
+				os.Exit(1)
+			}
+
+			level.Info(logger).Log("addr", ":"+http_port)
+
+			err := http.ListenAndServe(":"+http_port, router)
+			if err != nil {
+				level.Error(logger).Log("err", err)
 				os.Exit(1)
 			}
 		}()

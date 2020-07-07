@@ -65,32 +65,6 @@ ifndef RELAY_PRIVATE_KEY
 export RELAY_PRIVATE_KEY = lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=
 endif
 
-## These variables are only used for old backend compatability
-
-ifndef RELAY_V3_ENABLED
-export RELAY_V3_ENABLED = 0
-endif
-
-ifndef RELAY_V3_BACKEND_HOSTNAME
-export RELAY_V3_BACKEND_HOSTNAME = localhost
-endif
-
-ifndef RELAY_V3_BACKEND_PORT
-export RELAY_V3_BACKEND_PORT = 40002
-endif
-
-ifndef RELAY_V3_UPDATE_KEY
-export RELAY_V3_UPDATE_KEY = AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
-endif
-
-ifndef RELAY_V3_SPEED
-export RELAY_V3_SPEED = 10000
-endif
-
-ifndef RELAY_V3_NAME
-export RELAY_V3_NAME = some name
-endif
-
 ######################
 ##    BACKEND ENV   ##
 ######################
@@ -304,11 +278,11 @@ dev-relay-backend: build-relay-backend ## runs a local relay backend
 
 .PHONY: dev-server-backend
 dev-server-backend: build-server-backend ## runs a local server backend
-	@PORT=40000 ./dist/server_backend
+	@HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend
 
 .PHONY: dev-billing
 dev-billing: build-billing ## runs a local billing service
-	@PORT=40000 ./dist/billing
+	@PORT=41000 ./dist/billing
 
 .PHONY: dev-reference-backend
 dev-reference-backend: ## runs a local reference backend
