@@ -867,9 +867,13 @@ func statsTable(stats map[string]map[string]routing.Stats) template.HTML {
 			Jitter := stats[a][b].Jitter
 			PacketLoss := stats[a][b].PacketLoss
 
-			packetLossStyle := "</div><div>"
+			rttStyle := "<div>"
 			jitterStyle := "</div><div>"
+			packetLossStyle := "</div><div>"
 
+			if RTT >= 10000 {
+				rttStyle = "<div style='color: red;'>"
+			}
 			if Jitter > 10 {
 				jitterStyle = "</div><div style='color: red;'>"
 			}
@@ -877,7 +881,7 @@ func statsTable(stats map[string]map[string]routing.Stats) template.HTML {
 				packetLossStyle = "</div><div style='color: red;'>"
 			}
 
-			html.WriteString("<td><div>" +
+			html.WriteString("<td>" + rttStyle +
 				fmt.Sprintf("RTT(%.0f)", RTT) + jitterStyle +
 				fmt.Sprintf("Jitter(%.2f)", Jitter) + packetLossStyle +
 				fmt.Sprintf("PacketLoss(%.2f)", PacketLoss) + "</div></td>")
