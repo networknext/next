@@ -946,8 +946,8 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 	// todo: ryan, please make it so. you'll probably have to send both datacenter names down to the portal
 	// and let the portal select which one to display, depending on context.
 
-	datacenterName := serverData.datacenter.Name
-	datacenterAlias := serverData.datacenter.AliasName
+	datacenterName := serverDataReadOnly.datacenter.Name
+	datacenterAlias := serverDataReadOnly.datacenter.AliasName
 
 	// Send a massive amount of data to the portal via redis.
 	// This drives all the stuff you see in the portal, including the map and top sessions list.
@@ -1857,23 +1857,23 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 	}
 
 	meta := routing.SessionMeta{
-		ID:                fmt.Sprintf("%016x", packet.SessionID),
-		UserHash:          hashedID,
-		DatacenterName:    datacenterName,
-		DatacenterAlias:   datacenterAlias,
-		OnNetworkNext:     onNetworkNext,
-		NextRTT:           lastNNStats.RTT,
-		DirectRTT:         lastDirectStats.RTT,
-		DeltaRTT:          deltaRTT,
-		Location:          *location,
-		ClientAddr:        packet.ClientAddress.String(),
-		ServerAddr:        packet.ServerAddress.String(),
-		Hops:              relayHops,
-		SDK:               packet.Version.String(),
-		Connection:        ConnectionTypeText(packet.ConnectionType),
-		NearbyRelays:      nearRelays,
-		Platform:          PlatformTypeText(packet.PlatformID),
-		BuyerID:           fmt.Sprintf("%016x", packet.CustomerID),
+		ID:              fmt.Sprintf("%016x", packet.SessionID),
+		UserHash:        hashedID,
+		DatacenterName:  datacenterName,
+		DatacenterAlias: datacenterAlias,
+		OnNetworkNext:   onNetworkNext,
+		NextRTT:         lastNNStats.RTT,
+		DirectRTT:       lastDirectStats.RTT,
+		DeltaRTT:        deltaRTT,
+		Location:        *location,
+		ClientAddr:      packet.ClientAddress.String(),
+		ServerAddr:      packet.ServerAddress.String(),
+		Hops:            relayHops,
+		SDK:             packet.Version.String(),
+		Connection:      ConnectionTypeText(packet.ConnectionType),
+		NearbyRelays:    nearRelays,
+		Platform:        PlatformTypeText(packet.PlatformID),
+		BuyerID:         fmt.Sprintf("%016x", packet.CustomerID),
 	}
 
 	slice := routing.SessionSlice{
