@@ -105,24 +105,30 @@ AuthHandler = {
 	auth0Client: null,
 	isSignupRedirect: false,
 	logout() {
-		this.auth0Client.logout({ returnTo: window.location.origin });
+		setTimeout(() => {
+			this.auth0Client.logout({ returnTo: window.location.origin });
+		}, 30);
 	},
 	login() {
-		this.auth0Client.loginWithRedirect({
+		setTimeout(() => {
+			this.auth0Client.loginWithRedirect({
 			connection: "Username-Password-Authentication",
 			redirect_uri: window.location.origin
 		}).catch((e) => {
 			Sentry.captureException(e);
 		});
+		}, 30);
 	},
 	signUp() {
-		this.auth0Client.loginWithRedirect({
-			connection: "Username-Password-Authentication",
-			redirect_uri: window.location.origin,
-			screen_hint: "signup"
-		}).catch((e) => {
-			Sentry.captureException(e);
-		});
+		setTimeout(() => {
+			this.auth0Client.loginWithRedirect({
+				connection: "Username-Password-Authentication",
+				redirect_uri: window.location.origin,
+				screen_hint: "signup"
+			}).catch((e) => {
+				Sentry.captureException(e);
+			});
+		}, 30);
 	},
 	resendVerificationEmail() {
 		let userId = UserHandler.userInfo.userId;
