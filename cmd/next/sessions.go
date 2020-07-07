@@ -296,7 +296,7 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string, se
 			ID:          session.ID,
 			UserHash:    session.UserHash,
 			ISP:         fmt.Sprintf("%.32s", session.Location.ISP),
-			Datacenter:  session.Datacenter,
+			Datacenter:  session.DatacenterName,
 			DirectRTT:   fmt.Sprintf("%.02f", session.DirectRTT),
 			NextRTT:     fmt.Sprintf("%.02f", session.NextRTT),
 			Improvement: improvement,
