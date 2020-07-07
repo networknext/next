@@ -16,7 +16,7 @@ type Decision struct {
 // the stats of the last network next route,
 // and the stats of the direct route and decides whether or not to take the predicted network next route.
 // A reason is also provided for billing.
-type DecisionFunc func(prevDecision Decision, predictedNextStats Stats, lastNextStats Stats, directStats Stats) Decision
+type DecisionFunc func(prevDecision Decision, predictedNextStats, lastNextStats, directStats *Stats) Decision
 
 // DecisionReason is the reason why a Decision was made.
 type DecisionReason uint64
@@ -108,7 +108,7 @@ const (
 // This decision only upgrades direct routes, so network next routes aren't considered.
 // Multipath sessions aren't considered.
 func DecideUpgradeRTT(rttThreshold float64) DecisionFunc {
-	return func(prevDecision Decision, predictedNextStats Stats, lastNextStats Stats, directStats Stats) Decision {
+	return func(prevDecision Decision, predictedNextStats, lastNextStats, directStats *Stats) Decision {
 		// If we've already decided on multipath, then don't change the reason
 		if IsMultipath(prevDecision) {
 			return prevDecision
@@ -130,7 +130,7 @@ func DecideUpgradeRTT(rttThreshold float64) DecisionFunc {
 // This decision only downgrades network next routes, so direct routes aren't considered.
 // Multipath sessions aren't considered.
 func DecideDowngradeRTT(rttHysteresis float64, yolo bool) DecisionFunc {
-	return func(prevDecision Decision, predictedNextStats Stats, lastNextStats Stats, directStats Stats) Decision {
+	return func(prevDecision Decision, predictedNextStats, lastNextStats, directStats *Stats) Decision {
 		// If we've already decided on multipath, then don't change the reason
 		if IsMultipath(prevDecision) {
 			return prevDecision
@@ -164,7 +164,7 @@ func DecideDowngradeRTT(rttHysteresis float64, yolo bool) DecisionFunc {
 // This decision only downgrades network next routes, so direct routes aren't considered.
 // Multipath sessions aren't considered.
 func DecideVeto(onNNSliceCounter uint64, rttVeto float64, packetLossSafety bool, yolo bool) DecisionFunc {
-	return func(prevDecision Decision, predictedNextStats Stats, lastNextStats Stats, directStats Stats) Decision {
+	return func(prevDecision Decision, predictedNextStats, lastNextStats, directStats *Stats) Decision {
 		// If we've already decided on multipath, then don't change the reason
 		if IsMultipath(prevDecision) {
 			return prevDecision
@@ -215,6 +215,12 @@ func DecideVeto(onNNSliceCounter uint64, rttVeto float64, packetLossSafety bool,
 	}
 }
 
+type CommittedData struct {
+	Pending              bool
+	ObservedSliceCounter uint8
+	Committed            bool
+}
+
 // DecideCommitted will decide if the route should be committed to the decided route through the committed out parameter.
 // This function will not ever upgrade a route, it will only either keep it the same or veto it if it ends up being much worse
 // than direct or if it takes too long to confidently decide.
@@ -223,19 +229,20 @@ func DecideVeto(onNNSliceCounter uint64, rttVeto float64, packetLossSafety bool,
 // maxObservedSlices: The maximum number of slices to observe before vetoing an inconclusive session
 // yolo: Whether or not the buyer has YOLO enabled
 // OUT VARS
-// commitPending: Whether or not the logic is still considering to commit or not
-// observedSliceCounter: How many slices have been observed while deciding whether or not to commit
-// committed: Whether or not the route is committed
+// committedData: container struct for the following fields:
+// 	commitPending: Whether or not the logic is still considering to commit or not
+// 	observedSliceCounter: How many slices have been observed while deciding whether or not to commit
+// 	committed: Whether or not the route is committed
 // The out vars describe the state of the committed logic to keep this function stateless.
 // This decision only downgrades network next routes, so direct routes aren't considered.
 // Multipath sessions aren't considered.
-func DecideCommitted(onNNLastSlice bool, maxObservedSlices uint8, yolo bool, commitPending *bool, observedSliceCounter *uint8, committed *bool) DecisionFunc {
-	return func(prevDecision Decision, predictedNextStats, lastNextStats, directStats Stats) Decision {
+func DecideCommitted(onNNLastSlice bool, maxObservedSlices uint8, yolo bool, committedData *CommittedData) DecisionFunc {
+	return func(prevDecision Decision, predictedNextStats, lastNextStats, directStats *Stats) Decision {
 		// If we've already decided on multipath, then don't change the reason
 		if IsMultipath(prevDecision) {
-			*commitPending = false
-			*observedSliceCounter = 0
-			*committed = true // Since network next routes will always be used in multipath, always commit to them
+			committedData.Pending = false
+			committedData.ObservedSliceCounter = 0
+			committedData.Committed = true // Since network next routes will always be used in multipath, always commit to them
 			return prevDecision
 		}
 
@@ -245,32 +252,32 @@ func DecideCommitted(onNNLastSlice bool, maxObservedSlices uint8, yolo bool, com
 			// Check if the session ID is newly on NN
 			if !onNNLastSlice {
 				// Set the session to pending commit
-				*commitPending = true
-				*observedSliceCounter = 0
-				*committed = false
+				committedData.Pending = true
+				committedData.ObservedSliceCounter = 0
+				committedData.Committed = false
 
 				// Don't change the route deicison yet
 				return prevDecision
-			} else if *commitPending { // See if the session is still pending
+			} else if committedData.Pending { // See if the session is still pending
 				if lastNextStats.RTT <= directStats.RTT && lastNextStats.PacketLoss <= directStats.PacketLoss {
 					// The NN route was the same or better than direct, so commit to it
-					*commitPending = false
-					*observedSliceCounter = 0
-					*committed = true
+					committedData.Pending = false
+					committedData.ObservedSliceCounter = 0
+					committedData.Committed = true
 
 					// Don't actually change the route decision since it's good
 					return prevDecision
 				} else if lastNextStats.RTT > directStats.RTT || lastNextStats.PacketLoss > directStats.PacketLoss {
 					// The route wasn't so bad that it was vetoed, so continue to observe the route
-					*commitPending = true
-					*observedSliceCounter++
-					*committed = false
+					committedData.Pending = true
+					committedData.ObservedSliceCounter++
+					committedData.Committed = false
 
-					if *observedSliceCounter >= maxObservedSlices {
+					if committedData.ObservedSliceCounter >= maxObservedSlices {
 						// This session doesn't seem to be working out, just veto it
-						*commitPending = false
-						*observedSliceCounter = 0
-						*committed = false
+						committedData.Pending = false
+						committedData.ObservedSliceCounter = 0
+						committedData.Committed = false
 
 						// Add yolo reason if yolo is enabled
 						if yolo {
@@ -286,9 +293,9 @@ func DecideCommitted(onNNLastSlice bool, maxObservedSlices uint8, yolo bool, com
 			}
 		}
 
-		*commitPending = false
-		*observedSliceCounter = 0
-		*committed = false
+		committedData.Pending = false
+		committedData.ObservedSliceCounter = 0
+		committedData.Committed = false
 
 		// Don't affect direct routes
 		return prevDecision
@@ -299,7 +306,7 @@ func DecideCommitted(onNNLastSlice bool, maxObservedSlices uint8, yolo bool, com
 // If the decision function can't find a good enough reason to send a network next route, then it decides to go direct
 // If multipath isn't enabled then the decision isn't affected
 func DecideMultipath(rttMultipath bool, jitterMultipath bool, packetLossMultipath bool, rttThreshold float64) DecisionFunc {
-	return func(prevDecision Decision, predictedNextStats, lastNextStats, directStats Stats) Decision {
+	return func(prevDecision Decision, predictedNextStats, lastNextStats, directStats *Stats) Decision {
 		// If we've already decided on multipath, then don't change the reason
 		// This is to make sure that the session can't go back to direct, since multipath always needs a next route
 		if IsMultipath(prevDecision) {

@@ -9,9 +9,9 @@ import (
 	"math"
 	"net"
 	"net/http"
+	"sort"
 	"strconv"
 	"sync"
-	"sort"
 
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
@@ -40,8 +40,8 @@ type RouteMatrix struct {
 	RelayIDs              []uint64
 	RelayNames            []string
 	RelayAddresses        [][]byte
-	RelayLatitude		  []float64
-	RelayLongitude		  []float64
+	RelayLatitude         []float64
+	RelayLongitude        []float64
 	RelayPublicKeys       [][]byte
 	DatacenterRelays      map[uint64][]uint64
 	DatacenterIDs         []uint64
@@ -55,12 +55,6 @@ type RouteMatrix struct {
 	reponseBufferMutex sync.RWMutex
 
 	relayAddressCache []*net.UDPAddr
-}
-
-type NearRelayData struct {
-	ID uint64
-	Distance int
-	Address *net.UDPAddr
 }
 
 func Truncate(value float64) float64 {
@@ -83,9 +77,13 @@ func HaversineDistance(lat1 float64, long1 float64, lat2 float64, long2 float64)
 	return d // kilometers
 }
 
-func (m *RouteMatrix) GetNearRelays(latitude float64, longitude float64, maxNearRelays int) []NearRelayData {
+func (m *RouteMatrix) GetNearRelays(latitude float64, longitude float64, maxNearRelays int) ([]Relay, error) {
+	type NearRelayData struct {
+		id       uint64
+		distance int
+	}
 
-	nearRelays := make([]NearRelayData, len(m.relayAddressCache))
+	nearRelayData := make([]NearRelayData, len(m.RelayIDs))
 
 	// IMPORTANT: Truncate the lat/long values to nearest integer.
 	// This fixes numerical instabilities that can happen in the haversine function
@@ -95,12 +93,11 @@ func (m *RouteMatrix) GetNearRelays(latitude float64, longitude float64, maxNear
 	lat1 := Truncate(latitude)
 	long1 := Truncate(longitude)
 
-	for i := range m.RelayIDs {
-		nearRelays[i].ID = m.RelayIDs[i]
+	for i, relayID := range m.RelayIDs {
+		nearRelayData[i].id = relayID
 		lat2 := m.RelayLatitude[i]
 		long2 := m.RelayLongitude[i]
-		nearRelays[i].Distance = int(HaversineDistance(lat1, long1, lat2, long2))
-		nearRelays[i].Address = m.relayAddressCache[i]
+		nearRelayData[i].distance = int(HaversineDistance(lat1, long1, lat2, long2))
 	}
 
 	// IMPORTANT: Sort near relays by distance using a *stable sort*
@@ -108,13 +105,23 @@ func (m *RouteMatrix) GetNearRelays(latitude float64, longitude float64, maxNear
 	// even when some relays have the same integer distance from the client. Without this
 	// the set of near relays passed down to the SDK can be different from one slice to the next!
 
-	sort.SliceStable(nearRelays, func(i, j int) bool { return nearRelays[i].Distance < nearRelays[j].Distance })
+	sort.SliceStable(nearRelayData, func(i, j int) bool { return nearRelayData[i].distance < nearRelayData[j].distance })
 
-	if len(nearRelays) > maxNearRelays {
-		nearRelays = nearRelays[:maxNearRelays]
+	if len(nearRelayData) > maxNearRelays {
+		nearRelayData = nearRelayData[:maxNearRelays]
 	}
 
-	return nearRelays
+	// Now that the relays are sorted by distance, construct the final near relays slice and return it
+	nearRelays := make([]Relay, len(nearRelayData))
+	var err error
+	for i, nearRelayData := range nearRelayData {
+		nearRelays[i], err = m.ResolveRelay(nearRelayData.id)
+		if err != nil {
+			return nil, fmt.Errorf("could not resolve relay ID %d: %v", nearRelayData.id, err)
+		}
+	}
+
+	return nearRelays, nil
 }
 
 func (m *RouteMatrix) ResolveRelay(id uint64) (Relay, error) {
@@ -123,7 +130,9 @@ func (m *RouteMatrix) ResolveRelay(id uint64) (Relay, error) {
 		return Relay{}, fmt.Errorf("relay %d not in matrix", id)
 	}
 
-	if relayIndex >= len(m.RelayAddresses) ||
+	if relayIndex >= len(m.RelayIDs) ||
+		relayIndex >= len(m.RelayNames) ||
+		relayIndex >= len(m.RelayAddresses) ||
 		relayIndex >= len(m.RelayPublicKeys) ||
 		relayIndex >= len(m.RelaySellers) ||
 		relayIndex >= len(m.RelaySessionCounts) ||
@@ -157,9 +166,8 @@ func (m *RouteMatrix) ResolveRelay(id uint64) (Relay, error) {
 	}, nil
 }
 
-// RelaysIn will return the set of Relays in the provided Datacenter
-// todo: ryan - please rename to "GetDatacenterRelays"
-func (m *RouteMatrix) RelaysIn(d Datacenter) []Relay {
+// GetDatacenterRelays will return the set of Relays in the provided Datacenter
+func (m *RouteMatrix) GetDatacenterRelays(d Datacenter) []Relay {
 	relayIDs, ok := m.DatacenterRelays[d.ID]
 	if !ok {
 		return nil
@@ -183,43 +191,32 @@ func (m *RouteMatrix) RelaysIn(d Datacenter) []Relay {
 	return relays
 }
 
-// Routes will return a set of routes for each from and to Relay based on the given selectors.
-// The selectors are chained together in order, so the selected routes from the first selector will be passed
-// as the argument to the second selector. If at any point a selector fails to select a new slice of routes,
-// the chain breaks.
-
-// todo: ^--- ryan, this function is no longer really doing what the comment above says it is.
-// in fact, it is getting the routes from the client, through the near relays (not "from" relays)
-// and to the set of dest relays (destination relays), according to the route selector func.
-
-// todo: ryan - I would simply call the function "GetRoutes". That explains that it is a function that does something, and gets something from the route matrix.
-
-func (m *RouteMatrix) Routes(from []Relay, fromCost []int, to []Relay, routeSelectors ...SelectorFunc) ([]Route, error) {
+// GetRoutes returns all routes between the set of near relays and destination relays.
+func (m *RouteMatrix) GetRoutes(near []Relay, dest []Relay) ([]Route, error) {
 	type RelayPairResult struct {
-		fromcost  int  // The cost between the client and the from relay   // todo: from* -> near*
-		// fromtoidx -> entryIndex
-		fromtoidx int  // The index in the route matrix entry
-		reverse   bool // Whether or not to reverse the relays to stay on the same side of the diagonal in the triangular matrix
+		nearCost   int  // The RTT cost between the client and the from relay
+		entryIndex int  // The index in the route matrix entry
+		reverse    bool // Whether or not to reverse the relays to stay on the same side of the diagonal in the triangular matrix
 	}
 
-	relayPairLength := len(from) * len(to)
+	relayPairLength := len(near) * len(dest)
 	relayPairResults := make([]RelayPairResult, relayPairLength)
 
 	// Do a "first pass" to determine the size of the Route buffer
 	var routeTotal int
-	for i, fromrelay := range from {
-		for j, torelay := range to {
-			fromtoidx, reverse := m.getFromToRelayIndex(fromrelay, torelay)
+	for i, nearRelay := range near {
+		for j, destRelay := range dest {
+			entryIndex, reverse := m.GetEntryIndex(nearRelay, destRelay)
 
 			// Add a bad pair result so that the second pass will skip over it.
 			// This way we don't have to append only good results to a new list, which is more expensive.
-			if fromtoidx < 0 || fromtoidx >= len(m.Entries) {
-				relayPairResults[i+j*len(from)] = RelayPairResult{0, -1, false}
+			if entryIndex < 0 || entryIndex >= len(m.Entries) {
+				relayPairResults[i+j*len(near)] = RelayPairResult{0, -1, false}
 				continue
 			}
 
-			relayPairResults[i+j*len(from)] = RelayPairResult{fromCost[i], fromtoidx, reverse}
-			routeTotal += int(m.Entries[fromtoidx].NumRoutes)
+			relayPairResults[i+j*len(near)] = RelayPairResult{int(math.Ceil(nearRelay.ClientStats.RTT)), entryIndex, reverse}
+			routeTotal += int(m.Entries[entryIndex].NumRoutes)
 		}
 	}
 
@@ -227,8 +224,8 @@ func (m *RouteMatrix) Routes(from []Relay, fromCost []int, to []Relay, routeSele
 	var routeIndex int
 	routes := make([]Route, routeTotal)
 	for i := 0; i < relayPairLength; i++ {
-		if relayPairResults[i].fromtoidx >= 0 {
-			m.fillRoutes(routes, &routeIndex, relayPairResults[i].fromcost, relayPairResults[i].fromtoidx, relayPairResults[i].reverse)
+		if relayPairResults[i].entryIndex >= 0 {
+			m.FillRoutes(routes, &routeIndex, relayPairResults[i].nearCost, relayPairResults[i].entryIndex, relayPairResults[i].reverse)
 		}
 	}
 
@@ -237,48 +234,31 @@ func (m *RouteMatrix) Routes(from []Relay, fromCost []int, to []Relay, routeSele
 		return nil, errors.New("no routes in route matrix")
 	}
 
-	// Apply the selectors in order
-	for _, selector := range routeSelectors {
-		routes = selector(routes)
-
-		if len(routes) == 0 {
-			break
-		}
-	}
-
 	return routes, nil
 }
 
-// Returns the index in the route matrix representing the route between the from Relay and to Relay and whether or not to reverse them
-
-// todo: this function is poorly named. "GetEntryIndex" would be a *lot* better.
-
-func (m *RouteMatrix) getFromToRelayIndex(from Relay, to Relay) (int, bool) {
-	toidx, ok := m.RelayIndices[to.ID]
+// Returns the index in the route matrix representing the route between the near Relay and dest Relay and whether or not to reverse them
+func (m *RouteMatrix) GetEntryIndex(near Relay, dest Relay) (int, bool) {
+	destidx, ok := m.RelayIndices[dest.ID]
 	if !ok {
 		return -1, false
 	}
 
-	fromidx, ok := m.RelayIndices[from.ID]
+	nearidx, ok := m.RelayIndices[near.ID]
 	if !ok {
 		return -1, false
 	}
 
-	return TriMatrixIndex(fromidx, toidx), toidx > fromidx
+	return TriMatrixIndex(nearidx, destidx), destidx > nearidx
 }
 
-// fillRoutes is just the internal function to populate the given route buffer.
-// It takes the fromtoidx and reverse data and fills the given route buffer, incrementing the routeIndex after
+// FillRoutes is just the internal function to populate the given route buffer.
+// It takes the entryIndex and reverse data and fills the given route buffer, incrementing the routeIndex after
 // each route it adds.
-
-// todo: FillRoutes. No need to keep this method internal. It's useful outside this module.
-
-// todo: fromtoidx is a terrible name. "entryIndex" is much better :)
-
-func (m *RouteMatrix) fillRoutes(routes []Route, routeIndex *int, fromCost int, fromtoidx int, reverse bool) error {
+func (m *RouteMatrix) FillRoutes(routes []Route, routeIndex *int, fromCost int, entryIndex int, reverse bool) error {
 	var err error
 
-	entry := m.Entries[fromtoidx]
+	entry := m.Entries[entryIndex]
 
 	for i := 0; i < int(entry.NumRoutes); i++ {
 		numRelays := int(entry.RouteNumRelays[i])
@@ -304,10 +284,10 @@ func (m *RouteMatrix) fillRoutes(routes []Route, routeIndex *int, fromCost int, 
 		route := Route{
 			Relays: routeRelays,
 			Stats: Stats{
-				RTT: float64(fromCost + int(m.Entries[fromtoidx].RouteRTT[i])),
+				RTT: float64(fromCost + int(m.Entries[entryIndex].RouteRTT[i])),
 			},
 			DirectStats: Stats{
-				RTT: float64(fromCost + int(m.Entries[fromtoidx].DirectRTT)),
+				RTT: float64(fromCost + int(m.Entries[entryIndex].DirectRTT)),
 			},
 		}
 
@@ -743,7 +723,7 @@ func (m *RouteMatrix) Size() uint64 {
 
 	length += numRelays*uint64(MaxRelayAddressLength+crypto.KeySize) + 4
 
-	length += numRelays*8*2
+	length += numRelays * 8 * 2
 
 	for _, v := range m.DatacenterRelays {
 		length += uint64(8 + 4 + 8*len(v))

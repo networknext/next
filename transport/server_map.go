@@ -17,6 +17,7 @@ type ServerData struct {
 	routePublicKey []byte
 	version        SDKVersion
 	datacenter     routing.Datacenter
+	sequence       uint64
 }
 
 type ServerMapShard struct {
