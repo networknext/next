@@ -186,7 +186,7 @@ func main() {
 	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
 	// on creation so we can use that for the default then
 	if gcpProjectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
-		
+
 		// Create a Firestore Storer
 		fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
 		if err != nil {
@@ -350,18 +350,18 @@ func main() {
 	go func() {
 
 		for {
-	
+
 			costMatrixDurationStart := time.Now()
-			err := statsdb.GetCostMatrix(&costMatrix, redisClientRelays, float32(maxJitter), float32(maxPacketLoss)); 
+			err := statsdb.GetCostMatrix(&costMatrix, redisClientRelays, float32(maxJitter), float32(maxPacketLoss))
 			costMatrixDurationSince := time.Since(costMatrixDurationStart)
-	
+
 			if err != nil {
 				level.Warn(logger).Log("matrix", "cost", "op", "generate", "err", err)
 				costMatrix = routing.CostMatrix{}
 			}
 
 			newCostMatrixGenMetrics.DurationGauge.Set(float64(costMatrixDurationSince.Milliseconds()))
-	
+
 			newCostMatrixGenMetrics.Invocations.Add(1)
 
 			// IMPORTANT: Fill the cost matrix with near relay lat/longs

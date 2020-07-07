@@ -27,11 +27,11 @@ JSONRPCClient = {
 			method: 'POST',
 			headers: headers,
 			body: JSON.stringify({
-            	jsonrpc: '2.0',
+				jsonrpc: '2.0',
 				method: method,
 				params: params,
 				id: id
-        	})
+			})
 		});
 
 		return response.json().then((json) => {
@@ -105,24 +105,30 @@ AuthHandler = {
 	auth0Client: null,
 	isSignupRedirect: false,
 	logout() {
-		this.auth0Client.logout({ returnTo: window.location.origin });
+		setTimeout(() => {
+			this.auth0Client.logout({ returnTo: window.location.origin });
+		}, 30);
 	},
 	login() {
-		this.auth0Client.loginWithRedirect({
+		setTimeout(() => {
+			this.auth0Client.loginWithRedirect({
 			connection: "Username-Password-Authentication",
 			redirect_uri: window.location.origin
 		}).catch((e) => {
 			Sentry.captureException(e);
 		});
+		}, 30);
 	},
 	signUp() {
-		this.auth0Client.loginWithRedirect({
-			connection: "Username-Password-Authentication",
-			redirect_uri: window.location.origin,
-			screen_hint: "signup"
-		}).catch((e) => {
-			Sentry.captureException(e);
-		});
+		setTimeout(() => {
+			this.auth0Client.loginWithRedirect({
+				connection: "Username-Password-Authentication",
+				redirect_uri: window.location.origin,
+				screen_hint: "signup"
+			}).catch((e) => {
+				Sentry.captureException(e);
+			});
+		}, 30);
 	},
 	resendVerificationEmail() {
 		let userId = UserHandler.userInfo.userId;
@@ -173,8 +179,9 @@ MapHandler = {
     longitude: 0,
     zoom: 2,
     pitch: 0,
-    bearing: 0
-  },
+    bearing: 0,
+		minZoom: 2,
+	},
 	mapCountLoop: null,
 	mapInstance: null,
 	deckGlInstance: null,
@@ -310,7 +317,8 @@ MapHandler = {
 								center: [viewState.longitude, viewState.latitude],
 								zoom: viewState.zoom,
 								bearing: viewState.bearing,
-								pitch: viewState.pitch
+								pitch: viewState.pitch,
+								minZoom: 2,
 							});
 						},
 						layers: layers
@@ -678,7 +686,8 @@ WorkspaceHandler = {
 									latitude: meta.location.latitude,
 									minZoom: 2,
 									bearing: 0,
-									pitch: 0
+									pitch: 0,
+									minZoom: 2,
 								},
 								container: 'session-tool-map',
 								controller: {
@@ -903,6 +912,24 @@ function startApp() {
 		.fetchCurrentUserInfo()
 		.then(() => {
 			createVueComponents();
+			const isDev = window.location.hostname == 'portal-dev.networknext.com';
+			if (UserHandler.isAdmin() || isDev) {
+				fetch("/version", {
+					headers: {
+						'Accept':		'application/json',
+						'Accept-Encoding':	'gzip',
+						'Content-Type':		'application/json',
+					},
+					method: "POST"
+				}).then((response) => {
+					response.json().then((json) => {
+						if (json.error) {
+							throw new Error(json.error);
+						}
+						Object.assign(rootComponent.$data, {portalVersion: `Git Hash: ${json.sha} - Release Tag: ${json.tag || "none"}`});
+					});
+				})
+			}
 			if (UserHandler.isAnonymousPlus()) {
 				Object.assign(rootComponent.$data.alerts.verifyEmail, {show: true});
 			}
@@ -1056,7 +1083,8 @@ function createVueComponents() {
 					show: false,
 					showTable: false,
 				}
-			}
+			},
+			portalVersion: ''
 		},
 		methods: {
 			addUsers: addUsers,

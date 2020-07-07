@@ -187,7 +187,7 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 		// todo: ryan. in the old code we checked if this buyer had the "internal" flag set, and then only in that case we
 		// allowed 0.0.0 version. this is a MUCH better approach than checking source ip address for loopback. please fix.
 		if !incoming.SourceAddr.IP.IsLoopback() && !packet.Version.AtLeast(SDKVersionMin) {
-			fmt.Printf("sdk too old\n")
+			fmt.Printf("sdk too old: %s\n", packet.Version.String())
 			params.Metrics.ErrorMetrics.SDKTooOld.Add(1)
 			writeServerInitResponse(params, w, &packet, InitResponseOldSDKVersion)
 			return
@@ -198,7 +198,7 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 
 		buyer, err := params.Storer.Buyer(packet.CustomerID)
 		if err != nil {
-			fmt.Printf("unknown customer\n")
+			fmt.Printf("unknown customer: %x\n", packet.CustomerID)
 			params.Metrics.ErrorMetrics.BuyerNotFound.Add(1)
 			writeServerInitResponse(params, w, &packet, InitResponseUnknownCustomer)
 			return
@@ -223,7 +223,7 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 		// because it's really difficult to debug what the incorrectly datacenter string is, when we only
 		// see the hash :(
 
-		_, err = params.Storer.Datacenter(packet.DatacenterID) // todo: profiling indicates this function is slow. please investigate ryan.
+		_, err = params.Storer.Datacenter(packet.DatacenterID)
 		if err != nil {
 			fmt.Printf("datacenter not found failed\n")
 			params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
@@ -733,13 +733,9 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			// If this is not a new session, then just update the near relay list with the reported client stats.
 			// We need to keep these stats updated so that if relays fluctuate we can recalculate the best route to serve.
 			for i, nearRelay := range nearRelays {
-				for _, clientNearRelayID := range packet.NearRelayIDs {
+				for j, clientNearRelayID := range packet.NearRelayIDs {
 					if nearRelay.ID == clientNearRelayID {
-						if nearRelay.ID >= uint64(len(packet.NearRelayMinRTT)) {
-							continue
-						}
-
-						nearRelays[i].ClientStats.RTT = float64(packet.NearRelayMinRTT[nearRelay.ID])
+						nearRelays[i].ClientStats.RTT = float64(packet.NearRelayMinRTT[j])
 					}
 				}
 			}
@@ -956,9 +952,7 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 	// and let the portal select which one to display, depending on context.
 
 	datacenterName := serverDataReadOnly.datacenter.Name
-	if serverDataReadOnly.datacenter.AliasName != "" {
-		datacenterName = serverDataReadOnly.datacenter.AliasName
-	}
+	datacenterAlias := serverDataReadOnly.datacenter.AliasName
 
 	// Send a massive amount of data to the portal via redis.
 	// This drives all the stuff you see in the portal, including the map and top sessions list.
@@ -968,7 +962,8 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 	// via redis pubsub (this is different to google pubsub).
 
 	if err := updatePortalData(params.RedisClientPortal, params.RedisClientPortalExp, packet, lastNextStats, lastDirectStats, chosenRoute.Relays,
-		prevOnNetworkNext, datacenterName, location, nearRelays, timeNow, routing.IsMultipath(routeDecision)); err != nil {
+		prevOnNetworkNext, datacenterName, location, nearRelays, timeNow, routing.IsMultipath(routeDecision), datacenterAlias); err != nil {
+
 		fmt.Printf("could not update portal data: %v\n", err)
 		// level.Error(params.Logger).Log("msg", "could not update portal data", "err", err)
 		params.Metrics.ErrorMetrics.UpdatePortalFailure.Add(1)
@@ -1842,7 +1837,7 @@ func SessionUpdateHandlerFunc(logger log.Logger, redisClientCache redis.Cmdable,
 */
 
 func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time.Duration, packet *SessionUpdatePacket, lastNNStats *routing.Stats, lastDirectStats *routing.Stats,
-	relayHops []routing.Relay, onNetworkNext bool, datacenterName string, location *routing.Location, nearRelays []routing.Relay, sessionTime time.Time, isMultiPath bool) error {
+	relayHops []routing.Relay, onNetworkNext bool, datacenterName string, location *routing.Location, nearRelays []routing.Relay, sessionTime time.Time, isMultiPath bool, datacenterAlias string) error {
 
 	if (lastNNStats.RTT == 0 && lastDirectStats.RTT == 0) || (onNetworkNext && lastNNStats.RTT == 0) {
 		return nil
@@ -1867,22 +1862,23 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 	}
 
 	meta := routing.SessionMeta{
-		ID:            fmt.Sprintf("%016x", packet.SessionID),
-		UserHash:      hashedID,
-		Datacenter:    datacenterName,
-		OnNetworkNext: onNetworkNext,
-		NextRTT:       lastNNStats.RTT,
-		DirectRTT:     lastDirectStats.RTT,
-		DeltaRTT:      deltaRTT,
-		Location:      *location,
-		ClientAddr:    packet.ClientAddress.String(),
-		ServerAddr:    packet.ServerAddress.String(),
-		Hops:          relayHops,
-		SDK:           packet.Version.String(),
-		Connection:    ConnectionTypeText(packet.ConnectionType),
-		NearbyRelays:  nearRelays,
-		Platform:      PlatformTypeText(packet.PlatformID),
-		BuyerID:       fmt.Sprintf("%016x", packet.CustomerID),
+		ID:              fmt.Sprintf("%016x", packet.SessionID),
+		UserHash:        hashedID,
+		DatacenterName:  datacenterName,
+		DatacenterAlias: datacenterAlias,
+		OnNetworkNext:   onNetworkNext,
+		NextRTT:         lastNNStats.RTT,
+		DirectRTT:       lastDirectStats.RTT,
+		DeltaRTT:        deltaRTT,
+		Location:        *location,
+		ClientAddr:      packet.ClientAddress.String(),
+		ServerAddr:      packet.ServerAddress.String(),
+		Hops:            relayHops,
+		SDK:             packet.Version.String(),
+		Connection:      ConnectionTypeText(packet.ConnectionType),
+		NearbyRelays:    nearRelays,
+		Platform:        PlatformTypeText(packet.PlatformID),
+		BuyerID:         fmt.Sprintf("%016x", packet.CustomerID),
 	}
 
 	slice := routing.SessionSlice{
