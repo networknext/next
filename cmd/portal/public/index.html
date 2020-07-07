@@ -312,8 +312,13 @@
                         </a>
                     </li>
                 </ul>
+                <ul class="navbar-nav px-3 w-100" v-if="handlers.userHandler.isAdmin()">
+                    <li class="nav-item text-nowrap" style="color: #9a9da0;">
+                        {{ portalVersion }}
+                    </li>
+                </ul>
                 <ul class="navbar-nav px-3" v-if="handlers.userHandler.isAnonymous()">
-                    <li class="nav-item text-nowrap  ">
+                    <li class="nav-item text-nowrap">
                         <a class="btn-sm btn-primary login" href="#" v-on:click="handlers.authHandler.login()">
                             Log in
                         </a>

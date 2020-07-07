@@ -27,11 +27,11 @@ JSONRPCClient = {
 			method: 'POST',
 			headers: headers,
 			body: JSON.stringify({
-            	jsonrpc: '2.0',
+				jsonrpc: '2.0',
 				method: method,
 				params: params,
 				id: id
-        	})
+			})
 		});
 
 		return response.json().then((json) => {
@@ -903,6 +903,24 @@ function startApp() {
 		.fetchCurrentUserInfo()
 		.then(() => {
 			createVueComponents();
+			const isDev = window.location.hostname == 'portal-dev.networknext.com';
+			if (UserHandler.isAdmin() || isDev) {
+				fetch("/version", {
+					headers: {
+						'Accept':		'application/json',
+						'Accept-Encoding':	'gzip',
+						'Content-Type':		'application/json',
+					},
+					method: "POST"
+				}).then((response) => {
+					response.json().then((json) => {
+						if (json.error) {
+							throw new Error(json.error);
+						}
+						Object.assign(rootComponent.$data, {portalVersion: `Git Hash: ${json.sha} - Release Tag: ${json.tag || "none"}`});
+					});
+				})
+			}
 			if (UserHandler.isAnonymousPlus()) {
 				Object.assign(rootComponent.$data.alerts.verifyEmail, {show: true});
 			}
@@ -1056,7 +1074,8 @@ function createVueComponents() {
 					show: false,
 					showTable: false,
 				}
-			}
+			},
+			portalVersion: ''
 		},
 		methods: {
 			addUsers: addUsers,
