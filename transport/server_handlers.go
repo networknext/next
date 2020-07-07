@@ -834,8 +834,19 @@ func GetBestRoute(routeMatrix RouteProvider, nearRelays []routing.Relay, datacen
 		return directRoute, routing.Decision{OnNetworkNext: false, Reason: routing.DecisionNoReason}
 	}
 
+	// If the buyer's route shader is set to force next, don't bother running the decision logic,
+	// just send back the route we've selected.
+	// Make sure to set the committed flag to true so the SDK always commits to the route.
+	if buyer.RoutingRulesSettings.Mode == routing.ModeForceNext {
+		committedData.Pending = false
+		committedData.ObservedSliceCounter = 0
+		committedData.Committed = true
+
+		return nextRoute, routing.Decision{OnNetworkNext: true, Reason: routing.DecisionForceNext}
+	}
+
 	// Now that we have a next route, we have to decide if the route is worth taking over direct.
-	// This process can very based on the customer's route shader.
+	// This process can vary based on the customer's route shader.
 
 	// The logic is as follows:
 	//	1. Decide if we should accelerate a session (direct -> next). If a session is already on network next, this decision is skipped.
