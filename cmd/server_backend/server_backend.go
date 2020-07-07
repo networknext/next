@@ -615,7 +615,8 @@ func main() {
 	// Start HTTP server
 	{
 		router := mux.NewRouter()
-		router.HandleFunc("/health", HealthHandlerFunc(&readRouteMatrixSuccessCount))
+		// router.HandleFunc("/health", HealthHandlerFunc(&readRouteMatrixSuccessCount))
+		router.HandleFunc("/health", transport.HealthHandlerFunc())
 		router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag))
 
 		go func() {
