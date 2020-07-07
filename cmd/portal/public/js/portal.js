@@ -179,8 +179,9 @@ MapHandler = {
     longitude: 0,
     zoom: 2,
     pitch: 0,
-    bearing: 0
-  },
+    bearing: 0,
+		minZoom: 2,
+	},
 	mapCountLoop: null,
 	mapInstance: null,
 	deckGlInstance: null,
@@ -316,7 +317,8 @@ MapHandler = {
 								center: [viewState.longitude, viewState.latitude],
 								zoom: viewState.zoom,
 								bearing: viewState.bearing,
-								pitch: viewState.pitch
+								pitch: viewState.pitch,
+								minZoom: 2,
 							});
 						},
 						layers: layers
@@ -684,7 +686,8 @@ WorkspaceHandler = {
 									latitude: meta.location.latitude,
 									minZoom: 2,
 									bearing: 0,
-									pitch: 0
+									pitch: 0,
+									minZoom: 2,
 								},
 								container: 'session-tool-map',
 								controller: {
