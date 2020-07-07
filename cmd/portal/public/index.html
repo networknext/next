@@ -196,10 +196,23 @@
                 border-radius: 9999px;
                 background-color: #f94a21;
                 font-weight: bold;
-                line-height: .9rem;
+                line-height: 1rem;
             }
             .signup:hover {
                 text-decoration: none;
+                background-color: rgba(249, 73, 33, 0.9);
+            }
+            .signup:not(:disabled):not(.disabled):active {
+                background-color: #007bff;
+                text-decoration: none;
+                border-color: #007bff;
+                box-shadow: none;
+            }
+            .signup:focus {
+                background-color: #007bff;
+                text-decoration: none;
+                border-color: #007bff;
+                box-shadow: none;
             }
             .login {
                 width: 6rem;
@@ -215,12 +228,21 @@
                 line-height: 1rem;
             }
             .login:hover {
-                background-color: #343a40;
-                color: #f94a21;
+                background-color: rgba(249, 73, 33, 0.1);
                 text-decoration: none;
+                border-color: #f94a21;
             }
-            .logout:hover {
+            .login:not(:disabled):not(.disabled):active {
+                background-color: #343a40;
                 text-decoration: none;
+                border-color: #007bff;
+                box-shadow: none;
+            }
+            .login:focus {
+                background-color: #343a40;
+                text-decoration: none;
+                border-color: #f94a21;
+                box-shadow: none;
             }
             .logout {
                 width: 6rem;
@@ -231,6 +253,22 @@
                 background-color: #f94a21;
                 font-weight: bold;
                 line-height: 1rem;
+            }
+            .logout:hover {
+                text-decoration: none;
+                background-color: rgba(249, 73, 33, 0.9);
+            }
+            .logout:not(:disabled):not(.disabled):active {
+                background-color: #007bff;
+                text-decoration: none;
+                border-color: #007bff;
+                box-shadow: none;
+            }
+            .logout:focus {
+                background-color: #007bff;
+                text-decoration: none;
+                border-color: #007bff;
+                box-shadow: none;
             }
         </style>
     </head>
