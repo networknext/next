@@ -889,7 +889,7 @@
                                                 {{ session.location.isp != "" ? session.location.isp : "Unknown"}}
                                             </td>
                                             <td>
-                                                {{ session.datacenter }}
+                                                {{ session.datacenter_alias != "" ? session.datacenter_alias : session.datacenter_name }}
                                             </td>
                                             <td>
                                                 {{ session.server_addr }}
