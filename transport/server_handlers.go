@@ -760,6 +760,34 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			return
 		}
 
+		// If the buyer's route shader is set to force direct, we always send a direct route.
+		// If we modulo the session ID and it's greater than or equal to the selection percentage, we send a direct route.
+		// This selection percentage is useful for controling what percentage of session should be considered for a network next route.
+		if buyer.RoutingRulesSettings.Mode == routing.ModeForceDirect || header.SessionID%100 >= uint64(buyer.RoutingRulesSettings.SelectionPercentage) {
+			routeDecision = routing.Decision{
+				OnNetworkNext: false,
+				Reason:        routing.DecisionForceDirect,
+			}
+
+			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelays, routeDecision, onNNSliceCounter,
+				committedData, sessionDataReadOnly.routeHash, sessionDataReadOnly.routeDecision.OnNetworkNext, start, routeExpireTimestamp, sessionDataReadOnly.tokenVersion, params.RouterPrivateKey)
+			return
+		}
+
+		// If the buyer's route shader has the AB test enabled, send all odd numbered sessions direct.
+		// This is a useful way to send roughly half of the sessions direct and the other half considering network next
+		// to show customers that network next really does improve sessions.
+		if buyer.RoutingRulesSettings.EnableABTest && header.SessionID%2 == 1 {
+			routeDecision = routing.Decision{
+				OnNetworkNext: false,
+				Reason:        routing.DecisionABTestDirect,
+			}
+
+			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelays, routeDecision, onNNSliceCounter,
+				committedData, sessionDataReadOnly.routeHash, sessionDataReadOnly.routeDecision.OnNetworkNext, start, routeExpireTimestamp, sessionDataReadOnly.tokenVersion, params.RouterPrivateKey)
+			return
+		}
+
 		// Retrieve all relays within the game server's datacenter.
 		// This way we can find all of the routes between the client's near relays and the
 		// relays in the same datacenter as the server (effectively 0 RTT from datacenter relay -> game server)
