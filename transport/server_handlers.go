@@ -425,8 +425,8 @@ func (e VetoCacheEntry) MarshalBinary() ([]byte, error) {
 
 type RouteProvider interface {
 	ResolveRelay(id uint64) (routing.Relay, error)
-	RelaysIn(datacenter routing.Datacenter) []routing.Relay
-	Routes(from []routing.Relay, to []routing.Relay) ([]routing.Route, error)
+	GetDatacenterRelays(datacenter routing.Datacenter) []routing.Relay
+	GetRoutes(near []routing.Relay, dest []routing.Relay) ([]routing.Route, error)
 	GetNearRelays(latitude float64, longitude float64, maxNearRelays int) ([]routing.Relay, error)
 }
 
@@ -791,7 +791,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 		// Retrieve all relays within the game server's datacenter.
 		// This way we can find all of the routes between the client's near relays and the
 		// relays in the same datacenter as the server (effectively 0 RTT from datacenter relay -> game server)
-		datacenterRelays := routeMatrix.RelaysIn(serverDataReadOnly.datacenter)
+		datacenterRelays := routeMatrix.GetDatacenterRelays(serverDataReadOnly.datacenter)
 		if len(datacenterRelays) == 0 {
 			params.Metrics.ErrorMetrics.NoRelaysInDatacenter.Add(1)
 			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelays, routeDecision, onNNSliceCounter,
@@ -885,7 +885,7 @@ func GetBestRoute(routeMatrix RouteProvider, nearRelays []routing.Relay, datacen
 func GetNextRoute(routeMatrix RouteProvider, nearRelays []routing.Relay, datacenterRelays []routing.Relay, errorMetrics *metrics.SessionErrorMetrics,
 	buyer *routing.Buyer, prevRouteHash uint64) *routing.Route {
 	// We need to get all of the routes from the route matrix that connect any of the client's near relays and any of the game server's datacenter relays
-	routes, err := routeMatrix.Routes(nearRelays, datacenterRelays)
+	routes, err := routeMatrix.GetRoutes(nearRelays, datacenterRelays)
 	if err != nil {
 		errorMetrics.RouteFailure.Add(1)
 		return nil
