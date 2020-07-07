@@ -487,7 +487,7 @@
                                             </td>
                                             <td>
                                                 <span class="text-dark">
-                                                    {{ session.datacenter }}
+                                                    {{ session.datacenter_alias != "" ? session.datacenter_alias : session.datacenter_name }}
                                                 </span>
                                             </td>
                                             <td class="text-right ">
