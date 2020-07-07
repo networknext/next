@@ -194,7 +194,7 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 		// todo: ryan. in the old code we checked if this buyer had the "internal" flag set, and then only in that case we
 		// allowed 0.0.0 version. this is a MUCH better approach than checking source ip address for loopback. please fix.
 		if !incoming.SourceAddr.IP.IsLoopback() && !packet.Version.AtLeast(SDKVersionMin) {
-			fmt.Printf("sdk too old\n")
+			fmt.Printf("sdk too old: %s\n", packet.Version.String())
 			params.Metrics.ErrorMetrics.SDKTooOld.Add(1)
 			writeServerInitResponse(params, w, &packet, InitResponseOldSDKVersion)
 			return
@@ -205,7 +205,7 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 
 		buyer, err := params.Storer.Buyer(packet.CustomerID)
 		if err != nil {
-			fmt.Printf("unknown customer\n")
+			fmt.Printf("unknown customer: %x\n", packet.CustomerID)
 			params.Metrics.ErrorMetrics.BuyerNotFound.Add(1)
 			writeServerInitResponse(params, w, &packet, InitResponseUnknownCustomer)
 			return
@@ -230,7 +230,7 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 		// because it's really difficult to debug what the incorrectly datacenter string is, when we only
 		// see the hash :(
 
-		_, err = params.Storer.Datacenter(packet.DatacenterID) // todo: profiling indicates this function is slow. please investigate ryan.
+		_, err = params.Storer.Datacenter(packet.DatacenterID)
 		if err != nil {
 			fmt.Printf("datacenter not found failed\n")
 			params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
