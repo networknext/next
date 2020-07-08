@@ -24,9 +24,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gorilla/mux"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
+	"github.com/gorilla/mux"
 	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/logging"
@@ -40,14 +40,15 @@ import (
 )
 
 var (
-	buildtime string
-	sha       string
-	tag       string
+	buildtime     string
+	commitMessage string
+	sha           string
+	tag           string
 )
 
 func main() {
 
-	fmt.Printf("welcome to the nerd zone 23.0\n")
+	fmt.Printf("welcome to the nerd zone 24.0\n")
 
 	ctx := context.Background()
 
@@ -401,6 +402,8 @@ func main() {
 					newRouteMatrix := &routing.RouteMatrix{}
 					var matrixReader io.Reader
 
+					start := time.Now()
+
 					// Default to reading route matrix from file
 					if f, err := os.Open(uri); err == nil {
 						matrixReader = f
@@ -414,11 +417,19 @@ func main() {
 					// Don't swap route matrix if we fail to read
 					_, err := newRouteMatrix.ReadFrom(matrixReader)
 					if err != nil {
-						// Reset the successful route matrix read counter
 						atomic.StoreUint64(&readRouteMatrixSuccessCount, 0)
 						// level.Warn(logger).Log("matrix", "route", "op", "read", "envvar", "ROUTE_MATRIX_URI", "value", uri, "msg", "could not read route matrix", "err", err)
 						time.Sleep(syncInterval)
 						continue
+					}
+
+					routeMatrixTime := time.Since(start)
+
+					// todo: ryan, please upload a metric for the time it takes to get the route matrix. we should watch it in stackdriver.
+
+					if routeMatrixTime > 1.0 {
+						fmt.Printf("long route matrix update\n")
+						// todo: ryan, please increase a counter here
 					}
 
 					// Swap the route matrix pointer to the new one
@@ -554,7 +565,8 @@ func main() {
 				fmt.Printf("%d long session updates\n", atomic.LoadUint64(&sessionUpdateCounters.LongDuration))
 				fmt.Printf("-----------------------------\n")
 
-				time.Sleep(time.Second * 10)
+				// todo: temporarily once per-second to test a theory...
+				time.Sleep(time.Second) // * 10)
 			}
 		}()
 	}
@@ -617,7 +629,7 @@ func main() {
 		router := mux.NewRouter()
 		// router.HandleFunc("/health", HealthHandlerFunc(&readRouteMatrixSuccessCount))
 		router.HandleFunc("/health", transport.HealthHandlerFunc())
-		router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag))
+		router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage))
 
 		go func() {
 			http_port, ok := os.LookupEnv("HTTP_PORT")

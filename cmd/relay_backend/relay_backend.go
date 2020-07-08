@@ -34,9 +34,10 @@ import (
 )
 
 var (
-	buildtime string
-	sha       string
-	tag       string
+	buildtime     string
+	commitMessage string
+	sha           string
+	tag           string
 )
 
 func main() {
@@ -186,7 +187,7 @@ func main() {
 	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
 	// on creation so we can use that for the default then
 	if gcpProjectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
-		
+
 		// Create a Firestore Storer
 		fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
 		if err != nil {
@@ -350,18 +351,18 @@ func main() {
 	go func() {
 
 		for {
-	
+
 			costMatrixDurationStart := time.Now()
-			err := statsdb.GetCostMatrix(&costMatrix, redisClientRelays, float32(maxJitter), float32(maxPacketLoss)); 
+			err := statsdb.GetCostMatrix(&costMatrix, redisClientRelays, float32(maxJitter), float32(maxPacketLoss))
 			costMatrixDurationSince := time.Since(costMatrixDurationStart)
-	
+
 			if err != nil {
 				level.Warn(logger).Log("matrix", "cost", "op", "generate", "err", err)
 				costMatrix = routing.CostMatrix{}
 			}
 
 			newCostMatrixGenMetrics.DurationGauge.Set(float64(costMatrixDurationSince.Milliseconds()))
-	
+
 			newCostMatrixGenMetrics.Invocations.Add(1)
 
 			// IMPORTANT: Fill the cost matrix with near relay lat/longs
@@ -372,12 +373,8 @@ func main() {
 				if err == nil {
 					costMatrix.RelayLatitude[i] = relay.Datacenter.Location.Latitude
 					costMatrix.RelayLongitude[i] = relay.Datacenter.Location.Longitude
-					fmt.Printf("%s: %f, %f\n", costMatrix.RelayNames[i], costMatrix.RelayLatitude[i], costMatrix.RelayLongitude[i])
-				} else {
-					fmt.Printf("%s: %v\n", costMatrix.RelayNames[i], err)
 				}
 			}
-			fmt.Printf("=====================================================\n")
 
 			relayStatMetrics.NumRelays.Set(float64(len(statsdb.Entries)))
 
@@ -488,7 +485,7 @@ func main() {
 
 	router := mux.NewRouter()
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
-	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag))
+	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage))
 	router.HandleFunc("/relay_init", transport.RelayInitHandlerFunc(logger, &commonInitParams)).Methods("POST")
 	router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(logger, relayslogger, &commonUpdateParams)).Methods("POST")
 	router.HandleFunc("/relays", transport.RelayHandlerFunc(logger, relayslogger, &commonHandlerParams)).Methods("POST")

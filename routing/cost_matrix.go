@@ -686,9 +686,8 @@ func (m *CostMatrix) Size() uint64 {
 
 func (m *CostMatrix) GetResponseData() []byte {
 	m.reponseBufferMutex.RLock()
-	defer m.reponseBufferMutex.RUnlock()
-
 	data := m.responseBuffer
+	m.reponseBufferMutex.RUnlock()
 	return data
 }
 
@@ -697,10 +696,8 @@ func (m *CostMatrix) WriteResponseData() error {
 	if _, err := m.WriteTo(&buffer); err != nil {
 		return err
 	}
-
 	m.reponseBufferMutex.Lock()
-	defer m.reponseBufferMutex.Unlock()
-
 	m.responseBuffer = buffer.Bytes()
+	m.reponseBufferMutex.Unlock()
 	return nil
 }
