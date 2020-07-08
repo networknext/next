@@ -994,6 +994,28 @@ func (fs *Firestore) DatacenterMaps(id string) []routing.DatacenterMap {
 	}
 
 	return dcs
+}
+
+func (fs *Firestore) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error {
+
+	dcMaps := fs.DatacenterMaps(dcMap.BuyerID)
+	if len(dcMaps) != 0 {
+		for _, dc := range dcMaps {
+			if dc.Alias == dcMap.Alias && dc.Datacenter == dcMap.Datacenter {
+				return &AlreadyExistsError{resourceType: "datacenterMap", resourceRef: dcMap.Alias}
+			}
+		}
+	}
+	_, _, err := fs.Client.Collection("DatacenterMaps").Add(ctx, dcMap)
+	if err != nil {
+		return &FirestoreError{err: err}
+	}
+
+	fs.datacenterMapMutex.Lock()
+	fs.datacenterMaps = append(fs.datacenterMaps, dcMap)
+	fs.datacenterMapMutex.Unlock()
+
+	return nil
 
 }
 

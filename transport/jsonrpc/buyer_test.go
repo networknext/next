@@ -148,6 +148,50 @@ func TestUserSessions(t *testing.T) {
 	})
 }
 
+func TestDatacenterMaps(t *testing.T) {
+	dcMap := routing.DatacenterMap{
+		Alias:      "some.server.alias",
+		BuyerID:    "bdbebdbf0f7be395",
+		Datacenter: "7edb88d7b6fc0713",
+	}
+
+	storer := storage.InMemory{}
+	storer.AddDatacenterMap(context.Background(), dcMap)
+
+	logger := log.NewNopLogger()
+
+	svc := jsonrpc.BuyersService{
+		Storage: &storer,
+		Logger:  logger,
+	}
+	jwtSideload := "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik5rWXpOekkwTkVVNVFrSTVNRVF4TURRMk5UWTBNakkzTmpOQlJESkVNa1E0TnpGRFF6QkdRdyJ9.eyJuaWNrbmFtZSI6InRlc3QiLCJuYW1lIjoidGVzdEBuZXR3b3JrbmV4dC5jb20iLCJwaWN0dXJlIjoiaHR0cHM6Ly9zLmdyYXZhdGFyLmNvbS9hdmF0YXIvMmRhNWMwMjU5ZTQ3NmI1MDg0MTBlZWY3ZjI5Zjc1NGE_cz00ODAmcj1wZyZkPWh0dHBzJTNBJTJGJTJGY2RuLmF1dGgwLmNvbSUyRmF2YXRhcnMlMkZ0ZS5wbmciLCJ1cGRhdGVkX2F0IjoiMjAyMC0wNi0yM1QxMzozOToyMS44ODFaIiwiZW1haWwiOiJ0ZXN0QG5ldHdvcmtuZXh0LmNvbSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJpc3MiOiJodHRwczovL25ldHdvcmtuZXh0LmF1dGgwLmNvbS8iLCJzdWIiOiJhdXRoMHw1Yjk2ZjYxY2YxNjQyNzIxYWQ4NGVlYjYiLCJhdWQiOiJvUUpIM1lQSGR2WkpueENQbzFJcnR6NVVLaTV6cnI2biIsImlhdCI6MTU5MjkxOTU2NSwiZXhwIjoxNzUwNzA0MzI1LCJub25jZSI6ImRHZFNUWEpRTnpkdE5GcHNjR0Z1YVg1dlQxVlNhVFZXUjJoK2VHdG1hMnB2TkcweFZuNTFZalJJZmc9PSJ9.BvMe5fWJcheGzKmt3nCIeLjMD-C5426cpjtJiR55i7lmbT0k4h8Z2X6rynZ_aKR-gaCTY7FG5gI-Ty9ZY1zboWcIkxaTi0VKQzdMUTYVMXVEK2cQ1NVbph7_RSJhLfgO5y7PkmuMZXJEFdrI_2PkO4b3tOU-vpUHFUPtTsESV79a81kXn2C5j_KkKzCOPZ4zol1aEU3WliaaJNT38iSz3NX9URshrrdCE39JRClx6wbUgrfCGnVtfens-Sg7atijivaOx8IlUGOxLMEciYwBL2aY5EXaa7tp7c8ZvoEEj7uZH2R35fV7eUzACwShU-JLR9oOsNEhS4XO1AzTMtNHQA"
+	noopHandler := func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}
+	authMiddleware := jsonrpc.AuthMiddleware("oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n", http.HandlerFunc(noopHandler))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Add("Authorization", "Bearer "+jwtSideload)
+	res := httptest.NewRecorder()
+
+	authMiddleware.ServeHTTP(res, req)
+	assert.Equal(t, http.StatusOK, res.Code)
+
+	t.Run("list", func(t *testing.T) {
+		var reply jsonrpc.DatacenterMapsReply
+		var args = jsonrpc.DatacenterMapsArgs{
+			ID: "bdbebdbf0f7be395",
+		}
+		err := svc.DatacenterMaps(req, &args, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, "7edb88d7b6fc0713", reply.DatacenterMaps[0].Datacenter)
+		assert.Equal(t, "some.server.alias", reply.DatacenterMaps[0].Alias)
+		assert.Equal(t, "bdbebdbf0f7be395", reply.DatacenterMaps[0].BuyerID)
+
+	})
+}
+
 func TestTotalSessions(t *testing.T) {
 	t.Parallel()
 

@@ -267,6 +267,20 @@ func (m *InMemory) SetRelay(ctx context.Context, relay routing.Relay) error {
 	return &DoesNotExistError{resourceType: "relay", resourceRef: relay.ID}
 }
 
+func (m *InMemory) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error {
+
+	for _, dc := range m.localDatacenterMaps {
+		if dc.BuyerID == dcMap.BuyerID && dc.Alias == dcMap.Alias && dc.Datacenter == dcMap.Datacenter {
+			return &AlreadyExistsError{resourceType: "datacenterMap", resourceRef: dcMap.Alias}
+		}
+	}
+
+	m.localDatacenterMaps = append(m.localDatacenterMaps, dcMap)
+
+	return nil
+
+}
+
 func (m *InMemory) DatacenterMaps(id string) []routing.DatacenterMap {
 	var dcs []routing.DatacenterMap
 	for _, dc := range m.localDatacenterMaps {

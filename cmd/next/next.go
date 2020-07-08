@@ -11,6 +11,7 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -657,16 +658,31 @@ func main() {
 				},
 			},
 			{
-				Name:       "datacenters",
+				Name:       "datacenter",
 				ShortUsage: "next datacenters <name>",
-				ShortHelp:  "List datacenters",
-				Exec: func(_ context.Context, args []string) error {
-					if len(args) > 0 {
-						datacenters(rpcClient, env, args[0])
-						return nil
-					}
-					datacenters(rpcClient, env, "")
-					return nil
+				ShortHelp:  "Manage datacenters and mappings",
+				// Exec: func(_ context.Context, args []string) error {
+				// 	if len(args) > 0 {
+				// 		datacenters(rpcClient, env, args[0])
+				// 		return nil
+				// 	}
+				// 	datacenters(rpcClient, env, "")
+				// 	return nil
+				// },
+				Subcommands: []*ffcli.Command{
+					{
+						Name:       "list",
+						ShortUsage: "next datacenter list",
+						ShortHelp:  "Display a current list of datacenters",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) > 0 {
+								datacenters(rpcClient, env, args[0])
+								return nil
+							}
+							datacenters(rpcClient, env, "")
+							return nil
+						},
+					},
 				},
 			},
 			{
@@ -678,15 +694,15 @@ func main() {
 					return nil
 				},
 			},
-			{
-				Name:       "buyers",
-				ShortUsage: "next buyers",
-				ShortHelp:  "List buyers",
-				Exec: func(_ context.Context, args []string) error {
-					buyers(rpcClient, env)
-					return nil
-				},
-			},
+			// {
+			// 	Name:       "buyers",
+			// 	ShortUsage: "next buyers",
+			// 	ShortHelp:  "List buyers",
+			// 	Exec: func(_ context.Context, args []string) error {
+			// 		buyers(rpcClient, env)
+			// 		return nil
+			// 	},
+			// },
 			{
 				Name:       "sellers",
 				ShortUsage: "next sellers",
@@ -1036,7 +1052,8 @@ func main() {
 						ShortHelp:  "Remove a datacenter from storage",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) == 0 {
-								log.Fatal("Provide the datacenter name of the datacenter you wish to remove\nFor a list of datacenters, use next datacenters")
+								err := errors.New("Provide the datacenter name of the datacenter you wish to remove\nFor a list of datacenters, use next datacenters")
+								return err
 							}
 
 							removeDatacenter(rpcClient, env, args[0])
@@ -1053,7 +1070,16 @@ func main() {
 					return flag.ErrHelp
 				},
 				Subcommands: []*ffcli.Command{
-					{
+					{ // list
+						Name:       "list",
+						ShortUsage: "next buyer list",
+						ShortHelp:  "Return a list of all current buyers",
+						Exec: func(_ context.Context, args []string) error {
+							buyers(rpcClient, env)
+							return nil
+						},
+					},
+					{ // add
 						Name:       "add",
 						ShortUsage: "next buyer add [filepath]",
 						ShortHelp:  "Add a buyer from a JSON file or piped from stdin",
@@ -1116,7 +1142,7 @@ func main() {
 							},
 						},
 					},
-					{
+					{ // remove
 						Name:       "remove",
 						ShortUsage: "next buyer remove <id>",
 						ShortHelp:  "Remove a buyer from storage",
@@ -1126,6 +1152,21 @@ func main() {
 							}
 
 							removeBuyer(rpcClient, env, args[0])
+							return nil
+						},
+					},
+					{ // datacenters
+						Name:       "datacenters",
+						ShortUsage: "next buyer datacenters <id|name>",
+						ShortHelp:  "Show all datacenter info for the specified buyer",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 1 {
+								err := errors.New("A buyer ID or name must be supplied")
+								return err
+							}
+
+							datacenterMaps(rpcClient, env, args[0])
+
 							return nil
 						},
 					},

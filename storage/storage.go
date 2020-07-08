@@ -88,7 +88,10 @@ type Storer interface {
 
 	// DatacenterMaps returns the list of datacenter aliases in use for a given (internally generated) buyerID. Returns
 	// an empty []routing.DatacenterMap if there are no aliases for that buyerID.
-	DatacenterMaps(id string) []routing.DatacenterMap
+	DatacenterMaps(buyerID string) []routing.DatacenterMap
+
+	// AddDatacenterMap adds a new datacenter alias for the given buyer and datacenter IDs
+	// AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error
 }
 
 type UnmarshalError struct {
