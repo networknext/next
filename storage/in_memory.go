@@ -267,7 +267,7 @@ func (m *InMemory) SetRelay(ctx context.Context, relay routing.Relay) error {
 	return &DoesNotExistError{resourceType: "relay", resourceRef: relay.ID}
 }
 
-func (m *InMemory) DatacenterMaps(id string) ([]routing.DatacenterMap, error) {
+func (m *InMemory) DatacenterMaps(id string) []routing.DatacenterMap {
 	var dcs []routing.DatacenterMap
 	for _, dc := range m.localDatacenterMaps {
 		if dc.BuyerID == id {
@@ -275,7 +275,7 @@ func (m *InMemory) DatacenterMaps(id string) ([]routing.DatacenterMap, error) {
 		}
 	}
 
-	return dcs, nil
+	return dcs
 }
 
 func (m *InMemory) Datacenter(id uint64) (routing.Datacenter, error) {

@@ -756,6 +756,25 @@ func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *Buye
 	return nil
 }
 
+type DatacenterMapsArgs struct {
+	ID string `json:"buyer_id"`
+}
+
+type DatacenterMapsReply struct {
+	DatacenterMaps []routing.DatacenterMap
+}
+
+func (s *BuyersService) DatacenterMaps(r *http.Request, args *DatacenterMapsArgs, reply *DatacenterMapsReply) error {
+	reply.DatacenterMaps = make([]routing.DatacenterMap, 0)
+	if VerifyAllRoles(r, AnonymousRole) {
+		return nil
+	}
+
+	reply.DatacenterMaps = s.Storage.DatacenterMaps(args.ID)
+	return nil
+
+}
+
 // SameBuyerRole checks the JWT for the correct passed in buyerID
 func (s *BuyersService) SameBuyerRole(buyerID string) RoleFunc {
 	return func(req *http.Request) (bool, error) {

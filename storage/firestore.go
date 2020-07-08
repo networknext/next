@@ -982,7 +982,7 @@ func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 	return &DoesNotExistError{resourceType: "relay", resourceRef: fmt.Sprintf("%x", r.ID)}
 }
 
-func (fs *Firestore) DatacenterMaps(id string) ([]routing.DatacenterMap, error) {
+func (fs *Firestore) DatacenterMaps(id string) []routing.DatacenterMap {
 	fs.datacenterMapMutex.RLock()
 	defer fs.datacenterMapMutex.RUnlock()
 
@@ -993,16 +993,9 @@ func (fs *Firestore) DatacenterMaps(id string) ([]routing.DatacenterMap, error) 
 		}
 	}
 
-	return dcs, nil
+	return dcs
 
 }
-
-// func (fs *Firestore) DatacenterMapList() ([]routing.DatacenterMap, error) {
-// 	fs.datacenterMapMutex.RLock()
-// 	defer fs.datacenterMapMutex.RUnlock()
-
-// 	return []routing.DatacenterMap{}, nil
-// }
 
 func (fs *Firestore) Datacenter(id uint64) (routing.Datacenter, error) {
 	fs.datacenterMutex.RLock()
@@ -1204,6 +1197,13 @@ func (fs *Firestore) Sync(ctx context.Context) error {
 	go func() {
 		if err := fs.syncDatacenters(ctx); err != nil {
 			outerErr = fmt.Errorf("failed to sync datacenters: %v", err)
+		}
+		wg.Done()
+	}()
+
+	go func() {
+		if err := fs.syncDatacenterMaps(ctx); err != nil {
+			outerErr = fmt.Errorf("failed to sync datacenterMaps: %v", err)
 		}
 		wg.Done()
 	}()
