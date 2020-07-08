@@ -657,6 +657,20 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			location, err = params.IPLoc.LocateIP(packet.ClientAddress.IP)
 
 			if err != nil {
+				if buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce {
+					// If we can't locate the client then make sure to veto the session, since
+					// we can't serve them network next routes anyway
+					routeDecision = routing.Decision{
+						OnNetworkNext: false,
+						Reason:        routing.DecisionVetoNoRoute,
+					}
+				} else {
+					routeDecision = routing.Decision{
+						OnNetworkNext: false,
+						Reason:        routing.DecisionNoLocation,
+					}
+				}
+
 				params.Metrics.ErrorMetrics.ClientLocateFailure.Add(1)
 				// IMPORTANT: We send a direct route response here because we want to see the session in our total session count, even if ip2loc fails.
 				// Context: As soon as we don't respond to a session update, the SDK "falls back to direct" and stops sending session update packets.
@@ -685,6 +699,12 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 		packet.ClientAddress = AnonymizeAddr(packet.ClientAddress)
 
 		if packet.ClientAddress.IP == nil {
+			// If we can't anonymize the IP, then we somehow have a bad IP address, so just veto the session
+			routeDecision = routing.Decision{
+				OnNetworkNext: false,
+				Reason:        routing.DecisionVetoNoRoute,
+			}
+
 			params.Metrics.ErrorMetrics.ClientIPAnonymizeFailure.Add(1)
 
 			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelays, routeDecision, vetoReason, onNNSliceCounter,
@@ -705,6 +725,19 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			// Because this is an expensive function, we only want to do this on the first slice, then just update
 			// the relays with the client stats every subsequent slice.
 			if nearRelays, err = routeMatrix.GetNearRelays(location.Latitude, location.Longitude, MaxNearRelays); err != nil {
+				if buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce {
+					// If the buyer has yolo enabled and we can't find near relays, then just veto the session since we won't be able to serve a network next route
+					routeDecision = routing.Decision{
+						OnNetworkNext: false,
+						Reason:        routing.DecisionVetoNoRoute,
+					}
+				} else {
+					routeDecision = routing.Decision{
+						OnNetworkNext: false,
+						Reason:        routing.DecisionNoNearRelays,
+					}
+				}
+
 				params.Metrics.ErrorMetrics.NearRelaysLocateFailure.Add(1)
 				sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelays, routeDecision, vetoReason, onNNSliceCounter,
 					committedData, sessionDataReadOnly.routeHash, sessionDataReadOnly.routeDecision.OnNetworkNext, start, routeExpireTimestamp, sessionDataReadOnly.tokenVersion, params.RouterPrivateKey)
@@ -790,6 +823,19 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 		// relays in the same datacenter as the server (effectively 0 RTT from datacenter relay -> game server)
 		datacenterRelays := routeMatrix.GetDatacenterRelays(serverDataReadOnly.datacenter)
 		if len(datacenterRelays) == 0 {
+			if buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce {
+				// If the buyer has yolo enabled and we can't find datacenter relays for the game server, then veto the session since we can't serve a network next route anyway
+				routeDecision = routing.Decision{
+					OnNetworkNext: false,
+					Reason:        routing.DecisionVetoNoRoute,
+				}
+			} else {
+				routeDecision = routing.Decision{
+					OnNetworkNext: false,
+					Reason:        routing.DecisionDatacenterHasNoRelays,
+				}
+			}
+
 			params.Metrics.ErrorMetrics.NoRelaysInDatacenter.Add(1)
 			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelays, routeDecision, vetoReason, onNNSliceCounter,
 				committedData, sessionDataReadOnly.routeHash, sessionDataReadOnly.routeDecision.OnNetworkNext, start, routeExpireTimestamp, sessionDataReadOnly.tokenVersion, params.RouterPrivateKey)
@@ -828,7 +874,13 @@ func GetBestRoute(routeMatrix RouteProvider, nearRelays []routing.Relay, datacen
 	// We need to get a next route to compare against direct
 	nextRoute := GetNextRoute(routeMatrix, nearRelays, datacenterRelays, errorMetrics, buyer, prevRouteHash)
 	if nextRoute == nil {
-		return directRoute, routing.Decision{OnNetworkNext: false, Reason: routing.DecisionNoReason}
+		if buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce {
+			// If we can't find a network next route at all, veto the session if the buyer has yolo enabled.
+			// This may happen if something goes wrong with the route matrix or if relays are flickering.
+			return directRoute, routing.Decision{OnNetworkNext: false, Reason: routing.DecisionVetoNoRoute}
+		}
+
+		return directRoute, routing.Decision{OnNetworkNext: false, Reason: routing.DecisionNoNextRoute}
 	}
 
 	// If the buyer's route shader is set to force next, don't bother running the decision logic,
@@ -870,6 +922,13 @@ func GetBestRoute(routeMatrix RouteProvider, nearRelays []routing.Relay, datacen
 	}
 
 	routeDecision := nextRoute.Decide(prevRouteDecision, lastNextStats, lastDirectStats, deciderFuncs...)
+
+	// As a safety measure, if the route decision goes from on network next to direct with yolo enabled for any reason, veto the session with yolo reason
+	if buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce && prevRouteDecision.OnNetworkNext && !routeDecision.OnNetworkNext {
+		if routeDecision.Reason&routing.DecisionVetoYOLO == 0 {
+			routeDecision.Reason |= routing.DecisionVetoYOLO
+		}
+	}
 
 	if routeDecision.OnNetworkNext {
 		return nextRoute, routeDecision
