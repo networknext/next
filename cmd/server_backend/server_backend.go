@@ -175,42 +175,6 @@ func main() {
 		}
 	*/
 
-	// Open the Maxmind DB and create a routing.MaxmindDB from it
-	var ipLocator routing.IPLocator = routing.NullIsland
-	mmcitydburi := os.Getenv("MAXMIND_CITY_DB_URI")
-	mmispdburi := os.Getenv("MAXMIND_ISP_DB_URI")
-	if mmcitydburi != "" && mmispdburi != "" {
-		mmdb := routing.MaxmindDB{}
-
-		err := mmdb.OpenCity(ctx, http.DefaultClient, mmcitydburi)
-		if err != nil {
-			level.Error(logger).Log("envvar", "MAXMIND_CITY_DB_URI", "value", mmcitydburi, "msg", "could not open maxmind db uri", "err", err)
-			os.Exit(1)
-		}
-
-		err = mmdb.OpenISP(ctx, http.DefaultClient, mmispdburi)
-		if err != nil {
-			level.Error(logger).Log("envvar", "MAXMIND_ISP_DB_URI", "value", mmispdburi, "msg", "could not open maxmind db isp uri", "err", err)
-			os.Exit(1)
-		}
-
-		if mmsyncinterval, ok := os.LookupEnv("MAXMIND_SYNC_DB_INTERVAL"); ok {
-			syncInterval, err := time.ParseDuration(mmsyncinterval)
-			if err != nil {
-				level.Error(logger).Log("envvar", "MAXMIND_SYNC_DB_INTERVAL", "value", mmsyncinterval, "msg", "could not parse", "err", err)
-				os.Exit(1)
-			}
-
-			// Start a goroutine to sync from Maxmind.com
-			go func() {
-				ticker := time.NewTicker(syncInterval)
-				mmdb.SyncLoop(ctx, ticker.C)
-			}()
-		}
-
-		ipLocator = &mmdb
-	}
-
 	// Create an in-memory db
 	var db storage.Storer = &storage.InMemory{
 		LocalMode: true,
@@ -376,6 +340,74 @@ func main() {
 		level.Error(logger).Log("msg", "failed to create session metrics", "err", err)
 	}
 
+	// Create maxmindb sync metrics
+	maxmindSyncMetrics, err := metrics.NewMaxmindSyncMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create session metrics", "err", err)
+	}
+
+	getIPLocatorFunc := func() routing.IPLocator {
+		return routing.NullIsland
+	}
+
+	// Open the Maxmind DB and create a routing.MaxmindDB from it
+	mmcitydburi := os.Getenv("MAXMIND_CITY_DB_URI")
+	mmispdburi := os.Getenv("MAXMIND_ISP_DB_URI")
+	if mmcitydburi != "" && mmispdburi != "" {
+		mmdb := &routing.MaxmindDB{
+			HTTPClient: http.DefaultClient,
+			CityURI:    mmcitydburi,
+			IspURI:     mmispdburi,
+		}
+		var mmdbMutex sync.RWMutex
+
+		getIPLocatorFunc = func() routing.IPLocator {
+			mmdbMutex.RLock()
+			defer mmdbMutex.RUnlock()
+
+			mmdbRet := mmdb
+			return mmdbRet
+		}
+
+		if err := mmdb.Sync(ctx, maxmindSyncMetrics); err != nil {
+			level.Error(logger).Log("err", err)
+			os.Exit(1)
+		}
+
+		if mmsyncinterval, ok := os.LookupEnv("MAXMIND_SYNC_DB_INTERVAL"); ok {
+			syncInterval, err := time.ParseDuration(mmsyncinterval)
+			if err != nil {
+				level.Error(logger).Log("envvar", "MAXMIND_SYNC_DB_INTERVAL", "value", mmsyncinterval, "msg", "could not parse", "err", err)
+				os.Exit(1)
+			}
+
+			// Start a goroutine to sync from Maxmind.com
+			go func() {
+				ticker := time.NewTicker(syncInterval)
+				for {
+					newMMDB := &routing.MaxmindDB{}
+
+					select {
+					case <-ticker.C:
+						if err := newMMDB.Sync(ctx, maxmindSyncMetrics); err != nil {
+							level.Error(logger).Log("err", err)
+							continue
+						}
+
+						// Pointer swap the mmdb so we can sync from Maxmind.com lock free
+						mmdbMutex.Lock()
+						mmdb = newMMDB
+						mmdbMutex.Unlock()
+					case <-ctx.Done():
+						return
+					}
+
+					time.Sleep(syncInterval)
+				}
+			}()
+		}
+	}
+
 	routeMatrix := &routing.RouteMatrix{}
 	var routeMatrixMutex sync.RWMutex
 
@@ -427,7 +459,7 @@ func main() {
 
 					// todo: ryan, please upload a metric for the time it takes to get the route matrix. we should watch it in stackdriver.
 
-					if routeMatrixTime > 1.0 {
+					if routeMatrixTime > 1.0*time.Second {
 						fmt.Printf("long route matrix update\n")
 						// todo: ryan, please increase a counter here
 					}
@@ -592,7 +624,7 @@ func main() {
 			ServerPrivateKey:     serverPrivateKey,
 			RouterPrivateKey:     routerPrivateKey,
 			GetRouteProvider:     getRouteMatrixFunc,
-			IPLoc:                ipLocator,
+			GetIPLocator:         getIPLocatorFunc,
 			Storer:               db,
 			RedisClientPortal:    redisClientPortal,
 			RedisClientPortalExp: redisPortalHostExpiration,

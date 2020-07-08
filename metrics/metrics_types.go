@@ -365,6 +365,45 @@ var EmptyRelayStatMetrics RelayStatMetrics = RelayStatMetrics{
 	NumRoutes: &EmptyGauge{},
 }
 
+// CostMatrixGenMetrics
+type CostMatrixGenMetrics struct {
+	Invocations   Counter
+	DurationGauge Gauge
+	ErrorMetrics  CostMatrixGenErrorMetrics
+}
+
+var EmptyCostMatrixGenMetrics CostMatrixGenMetrics = CostMatrixGenMetrics{
+	Invocations:   &EmptyCounter{},
+	DurationGauge: &EmptyGauge{},
+	ErrorMetrics:  EmptyCostMatrixGenErrorMetrics,
+}
+
+type CostMatrixGenErrorMetrics struct {
+}
+
+var EmptyCostMatrixGenErrorMetrics CostMatrixGenErrorMetrics = CostMatrixGenErrorMetrics{}
+
+type MaxmindSyncMetrics struct {
+	Invocations   Counter
+	DurationGauge Gauge
+	ErrorMetrics  MaxmindSyncErrorMetrics
+}
+
+var EmptyMaxmindSyncMetrics MaxmindSyncMetrics = MaxmindSyncMetrics{
+	Invocations:   &EmptyCounter{},
+	DurationGauge: &EmptyGauge{},
+}
+
+type MaxmindSyncErrorMetrics struct {
+	FailedToSync    Counter
+	FailedToSyncISP Counter
+}
+
+var EmptyMaxmindSyncErrorMetrics MaxmindSyncErrorMetrics = MaxmindSyncErrorMetrics{
+	FailedToSync:    &EmptyCounter{},
+	FailedToSyncISP: &EmptyCounter{},
+}
+
 func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMetrics, error) {
 	var err error
 
@@ -1226,31 +1265,13 @@ func NewRelayStatMetrics(ctx context.Context, metricsHandler Handler) (*RelaySta
 	return &statMetrics, nil
 }
 
-// CostMatrixGenMetrics
-type CostMatrixGenMetrics struct {
-	Invocations   Counter
-	DurationGauge Gauge
-	ErrorMetrics  CostMatrixGenErrorMetrics
-}
-
-type CostMatrixGenErrorMetrics struct {
-}
-
-var EmptyCostMatrixGenMetrics CostMatrixGenMetrics = CostMatrixGenMetrics{
-	Invocations:   &EmptyCounter{},
-	DurationGauge: &EmptyGauge{},
-	ErrorMetrics:  EmptyCostMatrixGenErrorMetrics,
-}
-
-var EmptyCostMatrixGenErrorMetrics CostMatrixGenErrorMetrics = CostMatrixGenErrorMetrics{}
-
 func NewCostMatrixGenMetrics(ctx context.Context, metricsHandler Handler) (*CostMatrixGenMetrics, error) {
 	newCostMatrixGenDurationGauge, err := metricsHandler.NewGauge(ctx, &Descriptor{
 		DisplayName: "StatsDB -> GetCostMatrix duration",
 		ServiceName: "relay_backend",
 		ID:          "stats.duration",
 		Unit:        "milliseconds",
-		Description: "How long it takes to (statsdb -> cost matrix).", // TODO reword
+		Description: "How long it takes to generate a cost matrix from the stats database.",
 	})
 	if err != nil {
 		return nil, err
@@ -1273,4 +1294,55 @@ func NewCostMatrixGenMetrics(ctx context.Context, metricsHandler Handler) (*Cost
 	}
 
 	return &costMatrixGenMetrics, nil
+}
+
+func NewMaxmindSyncMetrics(ctx context.Context, metricsHandler Handler) (*MaxmindSyncMetrics, error) {
+	duration, err := metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Maxmind Sync Duration",
+		ServiceName: "relay_backend",
+		ID:          "maxmind.duration",
+		Unit:        "milliseconds",
+		Description: "How long it takes to sync the maxmind database from Maxmind.com",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	invocations, err := metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Total Maxmind Sync Invocations",
+		ServiceName: "relay_backend",
+		ID:          "maxmind.count",
+		Unit:        "invocations",
+		Description: "The total number of Maxmind sync invocations",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	maxmindSyncMetrics := MaxmindSyncMetrics{
+		Invocations:   invocations,
+		DurationGauge: duration,
+	}
+
+	maxmindSyncMetrics.ErrorMetrics.FailedToSync, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Failed To Sync MaxmindDB",
+		ServiceName: "relay_backend",
+		ID:          "maxmind.error.failed_to_sync",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	maxmindSyncMetrics.ErrorMetrics.FailedToSyncISP, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Failed To Sync MaxmindDB ISP",
+		ServiceName: "relay_backend",
+		ID:          "maxmind.error.failed_to_sync_isp",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &maxmindSyncMetrics, nil
 }
