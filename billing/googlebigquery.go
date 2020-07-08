@@ -2,12 +2,11 @@ package billing
 
 import (
 	"context"
-	"sync/atomic"
 	"fmt"
+	"sync/atomic"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/go-kit/kit/log"
-	// "github.com/go-kit/kit/log/level"
 )
 
 const (
@@ -74,7 +73,7 @@ func (bq *GoogleBigQueryClient) WriteLoop(ctx context.Context) error {
 // Save implements the bigquery.ValueSaver interface for an Entry
 // so it can be used in Put()
 func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
-	
+
 	e := make(map[string]bigquery.Value)
 
 	e["timestamp"] = int(entry.Timestamp)
@@ -89,6 +88,14 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 	e["nextJitter"] = entry.NextJitter
 	e["nextPacketLoss"] = entry.NextPacketLoss
 	e["totalPrice"] = int(entry.TotalPrice)
+
+	if entry.ClientToServerPacketsLost > 0 {
+		e["clientToServerPacketsLost"] = entry.ClientToServerPacketsLost
+	}
+
+	if entry.ServerToClientPacketsLost > 0 {
+		e["serverToClientPacketsLost"] = entry.ServerToClientPacketsLost
+	}
 
 	nextRelays := make([]bigquery.Value, entry.NumNextRelays)
 	for i := 0; i < int(entry.NumNextRelays); i++ {
