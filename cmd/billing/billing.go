@@ -19,24 +19,25 @@ import (
 
 	"time"
 
-	"github.com/gorilla/mux"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
+	"github.com/gorilla/mux"
+	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/logging"
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/transport"
-	"github.com/networknext/backend/billing"
 
+	"cloud.google.com/go/bigquery"
 	gcplogging "cloud.google.com/go/logging"
 	"cloud.google.com/go/profiler"
 	"cloud.google.com/go/pubsub"
-	"cloud.google.com/go/bigquery"
 )
 
 var (
-	buildtime string
-	sha       string
-	tag       string
+	buildtime     string
+	commitMessage string
+	sha           string
+	tag           string
 )
 
 func main() {
@@ -113,36 +114,36 @@ func main() {
 	// on creation so we can use that for the default then
 	if gcpProjectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
 
-	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
-	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
-	// on creation so we can use that for the default then
-	// if gcpProjectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
+		// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
+		// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
+		// on creation so we can use that for the default then
+		// if gcpProjectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
 
-	/*
-		// Create a Firestore Storer
-		fs, err := storage.NewFirestore(ctx, gcpProjectID)//, logger)
-		if err != nil {
-			// level.Error(logger).Log("err", err)
-			fmt.Printf("could not create firestore: %v\n", err)
-			os.Exit(1)
-		}
+		/*
+			// Create a Firestore Storer
+			fs, err := storage.NewFirestore(ctx, gcpProjectID)//, logger)
+			if err != nil {
+				// level.Error(logger).Log("err", err)
+				fmt.Printf("could not create firestore: %v\n", err)
+				os.Exit(1)
+			}
 
-		fssyncinterval := os.Getenv("GOOGLE_FIRESTORE_SYNC_INTERVAL")
-		syncInterval, err := time.ParseDuration(fssyncinterval)
-		if err != nil {
-			// level.Error(logger).Log("envvar", "GOOGLE_FIRESTORE_SYNC_INTERVAL", "value", fssyncinterval, "err", err)
-			fmt.Printf("bad GOOGLE_FIRESTORE_SYNC_INTERVAL\n")
-			os.Exit(1)
-		}
-		// Start a goroutine to sync from Firestore
-		go func() {
-			ticker := time.NewTicker(syncInterval)
-			fs.SyncLoop(ctx, ticker.C)
-		}()
+			fssyncinterval := os.Getenv("GOOGLE_FIRESTORE_SYNC_INTERVAL")
+			syncInterval, err := time.ParseDuration(fssyncinterval)
+			if err != nil {
+				// level.Error(logger).Log("envvar", "GOOGLE_FIRESTORE_SYNC_INTERVAL", "value", fssyncinterval, "err", err)
+				fmt.Printf("bad GOOGLE_FIRESTORE_SYNC_INTERVAL\n")
+				os.Exit(1)
+			}
+			// Start a goroutine to sync from Firestore
+			go func() {
+				ticker := time.NewTicker(syncInterval)
+				fs.SyncLoop(ctx, ticker.C)
+			}()
 
-		// Set the Firestore Storer to give to handlers
-		db = fs
-	*/
+			// Set the Firestore Storer to give to handlers
+			db = fs
+		*/
 
 		// Google BigQuery
 
@@ -194,13 +195,13 @@ func main() {
 		fmt.Printf("subscription name: %s\n", subscriptionName)
 
 		pubsubSubscription := pubsubClient.Subscription(subscriptionName)
-	
+
 		go func() {
 			err = pubsubSubscription.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
 				atomic.AddUint64(&billingEntriesReceived, 1)
 				billingEntry := billing.BillingEntry{}
 				if billing.ReadBillingEntry(&billingEntry, m.Data) {
-					m.Ack() 
+					m.Ack()
 					billingEntry.Timestamp = uint64(m.PublishTime.Unix())
 					if err := biller.Bill(context.Background(), &billingEntry); err != nil {
 						fmt.Printf("could not submit billing entry: %v\n", err)
@@ -209,7 +210,7 @@ func main() {
 					}
 				} else {
 					// todo: metric for read failures
-				} 
+				}
 			})
 			if err != context.Canceled {
 				fmt.Printf("could not setup to receive pubsub messages\n")
@@ -313,8 +314,8 @@ func main() {
 		go func() {
 			router := mux.NewRouter()
 			router.HandleFunc("/health", HealthHandlerFunc())
-			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag))
-		
+			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage))
+
 			port, ok := os.LookupEnv("PORT")
 			if !ok {
 				level.Error(logger).Log("err", "env var PORT must be set")

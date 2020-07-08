@@ -40,9 +40,10 @@ import (
 )
 
 var (
-	buildtime string
-	sha       string
-	tag       string
+	buildtime     string
+	commitMessage string
+	sha           string
+	tag           string
 )
 
 func main() {
@@ -565,7 +566,7 @@ func main() {
 				fmt.Printf("-----------------------------\n")
 
 				// todo: temporarily once per-second to test a theory...
-				time.Sleep(time.Second)// * 10)
+				time.Sleep(time.Second) // * 10)
 			}
 		}()
 	}
@@ -628,7 +629,7 @@ func main() {
 		router := mux.NewRouter()
 		// router.HandleFunc("/health", HealthHandlerFunc(&readRouteMatrixSuccessCount))
 		router.HandleFunc("/health", transport.HealthHandlerFunc())
-		router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag))
+		router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage))
 
 		go func() {
 			http_port, ok := os.LookupEnv("HTTP_PORT")
