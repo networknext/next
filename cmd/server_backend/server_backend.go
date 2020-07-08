@@ -427,7 +427,7 @@ func main() {
 
 					// todo: ryan, please upload a metric for the time it takes to get the route matrix. we should watch it in stackdriver.
 
-					if routeMatrixTime > 1.0 {
+					if routeMatrixTime > 1.0*time.Second {
 						fmt.Printf("long route matrix update\n")
 						// todo: ryan, please increase a counter here
 					}

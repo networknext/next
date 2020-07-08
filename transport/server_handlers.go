@@ -351,7 +351,7 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 		serverAddress := packet.ServerAddress.String()
 
 		// IMPORTANT: The server data *must* be treated as read only or it is not threadsafe!
-		serverDataReadOnly := params.ServerMap.GetServerData(serverAddress)
+		serverDataReadOnly := params.ServerMap.GetServerData(buyer.ID, serverAddress)
 		if serverDataReadOnly != nil {
 			sequence = serverDataReadOnly.sequence
 		}
@@ -377,7 +377,7 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 		}
 
 		serverMutexStart := time.Now()
-		params.ServerMap.UpdateServerData(serverAddress, &server)
+		params.ServerMap.UpdateServerData(buyer.ID, serverAddress, &server)
 		if time.Since(serverMutexStart).Seconds() > 0.1 {
 			level.Debug(params.Logger).Log("msg", "long server mutex in server update")
 		}
@@ -487,12 +487,23 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			return
 		}
 
+		// Look up the buyer entry by the customer id. At this point if we can't find it, just ignore the session and don't respond.
+		// If somebody is sending us a session update with an invalid customer id, we don't need to waste any bandwidth responding to it.
+
+		buyer, err := params.Storer.Buyer(header.CustomerID)
+		if err != nil {
+			// level.Error(locallogger).Log("msg", "failed to get buyer from storage", "err", err, "customer_id", packet.CustomerID)
+			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+			params.Metrics.ErrorMetrics.BuyerNotFound.Add(1)
+			return
+		}
+
 		// Grab the server data corresponding to the server this session is talking to.
 		// The server data is necessary for us to read the rest of the session update packet.
 
 		// IMPORTANT: The server data *must* be treated as read only or it is not threadsafe!
 		serverMutexStart := time.Now()
-		serverDataReadOnly := params.ServerMap.GetServerData(header.ServerAddress.String())
+		serverDataReadOnly := params.ServerMap.GetServerData(buyer.ID, header.ServerAddress.String())
 		if serverDataReadOnly == nil {
 			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 			params.Metrics.ErrorMetrics.ServerDataMissing.Add(1)
@@ -531,17 +542,6 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			// level.Error(params.Logger).Log("handler", "session", "msg", "packet too old", "packet sequence", packet.Sequence, "lastest sequence", sessionDataReadOnly.sequence)
 			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 			params.Metrics.ErrorMetrics.OldSequence.Add(1)
-			return
-		}
-
-		// Look up the buyer entry by the customer id. At this point if we can't find it, just ignore the session and don't respond.
-		// If somebody is sending us a session update with an invalid customer id, we don't need to waste any bandwidth responding to it.
-
-		buyer, err := params.Storer.Buyer(packet.CustomerID)
-		if err != nil {
-			// level.Error(locallogger).Log("msg", "failed to get buyer from storage", "err", err, "customer_id", packet.CustomerID)
-			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-			params.Metrics.ErrorMetrics.BuyerNotFound.Add(1)
 			return
 		}
 
