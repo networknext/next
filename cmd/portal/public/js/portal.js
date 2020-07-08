@@ -706,7 +706,6 @@ WorkspaceHandler = {
 			})
 			.catch((e) => {
 				if (this.sessionToolLoop) {
-					this.changePage('sessions');
 					clearInterval(this.sessionToolLoop);
 					return;
 				}
@@ -926,7 +925,7 @@ function startApp() {
 						if (json.error) {
 							throw new Error(json.error);
 						}
-						Object.assign(rootComponent.$data, {portalVersion: `Git Hash: ${json.sha} - Release Tag: ${json.tag || "none"}`});
+						Object.assign(rootComponent.$data, {portalVersion: `Git Hash: ${json.sha} - Commit: ${json.commit_message || "none"}`});
 					});
 				})
 			}

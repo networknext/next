@@ -19,9 +19,10 @@ func HealthHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func VersionHandlerFunc(buildtime string, sha string, tag string) func(w http.ResponseWriter, r *http.Request) {
+func VersionHandlerFunc(buildtime string, sha string, tag string, commitMessage string) func(w http.ResponseWriter, r *http.Request) {
 	version := map[string]string{
 		"build_timestamp": buildtime,
+		"commit_message":  commitMessage,
 		"sha":             sha,
 		"tag":             tag,
 	}
