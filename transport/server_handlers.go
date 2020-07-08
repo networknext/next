@@ -141,7 +141,6 @@ func writeServerInitResponse(params *ServerInitParams, w io.Writer, packet *Serv
 		Version:   packet.Version,
 	}
 	if err := writeInitResponse(w, responsePacket, params.ServerPrivateKey); err != nil {
-		fmt.Printf("failed to write server init response\n")
 		params.Metrics.ErrorMetrics.WriteResponseFailure.Add(1)
 		return
 	}
@@ -176,7 +175,7 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 
 		var packet ServerInitRequestPacket
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
-			fmt.Printf("could not read server init packet\n")
+			// fmt.Printf("could not read server init packet\n")
 			params.Metrics.ErrorMetrics.ReadPacketFailure.Add(1)
 			return
 		}
@@ -184,7 +183,7 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 		// todo: ryan. in the old code we checked if this buyer had the "internal" flag set, and then only in that case we
 		// allowed 0.0.0 version. this is a MUCH better approach than checking source ip address for loopback. please fix.
 		if !incoming.SourceAddr.IP.IsLoopback() && !packet.Version.AtLeast(SDKVersionMin) {
-			fmt.Printf("sdk too old: %s\n", packet.Version.String())
+			// fmt.Printf("sdk too old: %s\n", packet.Version.String())
 			params.Metrics.ErrorMetrics.SDKTooOld.Add(1)
 			writeServerInitResponse(params, w, &packet, InitResponseOldSDKVersion)
 			return
@@ -195,7 +194,7 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 
 		buyer, err := params.Storer.Buyer(packet.CustomerID)
 		if err != nil {
-			fmt.Printf("unknown customer: %x\n", packet.CustomerID)
+			// fmt.Printf("unknown customer: %x\n", packet.CustomerID)
 			params.Metrics.ErrorMetrics.BuyerNotFound.Add(1)
 			writeServerInitResponse(params, w, &packet, InitResponseUnknownCustomer)
 			return
@@ -207,7 +206,7 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 		// only real customer servers are allowed on our system.
 
 		if !crypto.Verify(buyer.PublicKey, packet.GetSignData(), packet.Signature) {
-			fmt.Printf("signature check failed\n")
+			// fmt.Printf("signature check failed\n")
 			params.Metrics.ErrorMetrics.VerificationFailure.Add(1)
 			writeServerInitResponse(params, w, &packet, InitResponseSignatureCheckFailed)
 			return
@@ -222,7 +221,7 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 
 		_, err = params.Storer.Datacenter(packet.DatacenterID)
 		if err != nil {
-			fmt.Printf("datacenter not found failed\n")
+			// fmt.Printf("datacenter not found\n")
 			params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
 			writeServerInitResponse(params, w, &packet, InitResponseUnknownDatacenter)
 			return
@@ -279,7 +278,7 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 		start := time.Now()
 		defer func() {
 			if time.Since(start).Seconds() > 0.1 {
-				level.Debug(params.Logger).Log("msg", "long server update")
+				// level.Debug(params.Logger).Log("msg", "long server update")
 				atomic.AddUint64(&params.Counters.LongDuration, 1)
 				params.Metrics.LongDuration.Add(1)
 			}
@@ -293,7 +292,6 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 
 		var packet ServerUpdatePacket
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
-			fmt.Printf("could not read server update packet: %v\n", err)
 			// level.Error(params.Logger).Log("msg", "could not read server update packet", "err", err)
 			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 			params.Metrics.ErrorMetrics.ReadPacketFailure.Add(1)
@@ -483,7 +481,6 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 
 		var header SessionUpdatePacketHeader
 		if err := header.UnmarshalBinary(incoming.Data); err != nil {
-			fmt.Printf("could not read session update packet header: %v\n", err)
 			// level.Error(params.Logger).Log("msg", "could not read session update packet header", "err", err)
 			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 			params.Metrics.ErrorMetrics.ReadPacketHeaderFailure.Add(1)
@@ -510,7 +507,6 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 		var packet SessionUpdatePacket
 		packet.Version = serverDataReadOnly.version
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
-			fmt.Printf("could not read session update packet: %v\n", err)
 			// level.Error(params.Logger).Log("msg", "could not read session update packet", "err", err)
 			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 			params.Metrics.ErrorMetrics.ReadPacketFailure.Add(1)
@@ -544,7 +540,6 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 		buyer, err := params.Storer.Buyer(packet.CustomerID)
 		if err != nil {
 			// level.Error(locallogger).Log("msg", "failed to get buyer from storage", "err", err, "customer_id", packet.CustomerID)
-			fmt.Printf("could not find customer\n")
 			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 			params.Metrics.ErrorMetrics.BuyerNotFound.Add(1)
 			return
@@ -555,7 +550,6 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 
 		if !crypto.Verify(buyer.PublicKey, packet.GetSignData(), packet.Signature) {
 			// level.Error(locallogger).Log("err", "could not verify session update packet", "customer_id", packet.CustomerID)
-			fmt.Printf("could not verify session update packet\n")
 			params.Metrics.ErrorMetrics.VerifyFailure.Add(1)
 			return
 		}
@@ -646,7 +640,6 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 
 		// Grab the veto reason so that we can use it later to keep off vetoed sessions and check if a session was vetoed this slice.
 		vetoReason := params.VetoMap.GetVeto(header.SessionID)
-		fmt.Println(vetoReason)
 
 		// Purchase 20 seconds ahead for new sessions and 10 seconds ahead for existing ones
 		// This way we always have a 10 second buffer
@@ -951,8 +944,6 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 
 	if err := updatePortalData(params.RedisClientPortal, params.RedisClientPortalExp, packet, lastNextStats, lastDirectStats, chosenRoute.Relays,
 		prevOnNetworkNext, datacenterName, location, nearRelays, timeNow, routing.IsMultipath(routeDecision), datacenterAlias); err != nil {
-
-		fmt.Printf("could not update portal data: %v\n", err)
 		// level.Error(params.Logger).Log("msg", "could not update portal data", "err", err)
 		params.Metrics.ErrorMetrics.UpdatePortalFailure.Add(1)
 	}
@@ -985,7 +976,6 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 	}
 
 	if err := params.Biller.Bill(context.Background(), &billingEntry); err != nil {
-		fmt.Printf("could not submit billing entry: %v\n", err)
 		// level.Error(params.Logger).Log("msg", "could not submit billing entry", "err", err)
 		params.Metrics.ErrorMetrics.BillingFailure.Add(1)
 	}
@@ -2171,7 +2161,6 @@ func sendRouteResponse(w io.Writer, route *routing.Route, params *SessionUpdateP
 	go PostSessionUpdate(params, packet, response, serverDataReadOnly, route, lastNextStats, lastDirectStats, location, nearRelays, prevOnNetworkNext, routeDecision, timeNow)
 
 	if _, err := writeSessionResponse(w, response, params.ServerPrivateKey); err != nil {
-		fmt.Printf("could not write session update response packet: %v\n", err)
 		// level.Error(params.Logger).Log("msg", "could not write session update response packet", "err", err)
 		params.Metrics.ErrorMetrics.WriteResponseFailure.Add(1)
 		return

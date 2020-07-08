@@ -372,12 +372,8 @@ func main() {
 				if err == nil {
 					costMatrix.RelayLatitude[i] = relay.Datacenter.Location.Latitude
 					costMatrix.RelayLongitude[i] = relay.Datacenter.Location.Longitude
-					fmt.Printf("%s: %f, %f\n", costMatrix.RelayNames[i], costMatrix.RelayLatitude[i], costMatrix.RelayLongitude[i])
-				} else {
-					fmt.Printf("%s: %v\n", costMatrix.RelayNames[i], err)
 				}
 			}
-			fmt.Printf("=====================================================\n")
 
 			relayStatMetrics.NumRelays.Set(float64(len(statsdb.Entries)))
 
