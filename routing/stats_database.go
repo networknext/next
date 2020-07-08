@@ -249,6 +249,8 @@ func (database *StatsDatabase) GetCostMatrix(
 	costMatrix.RelayLatitude = make([]float64, numRelays)
 	costMatrix.RelayLongitude = make([]float64, numRelays)
 	costMatrix.RelayPublicKeys = make([][]byte, numRelays)
+	// DatacenterIDs is handled below
+	// DatacenterNames is handled below
 	costMatrix.DatacenterRelays = make(map[uint64][]uint64)
 	costMatrix.RTT = make([]int32, TriMatrixLength(numRelays))
 	costMatrix.RelaySellers = make([]Seller, numRelays)
@@ -277,9 +279,13 @@ func (database *StatsDatabase) GetCostMatrix(
 		}
 	}
 
+	costMatrix.DatacenterIDs = make([]uint64, len(datacenterNameMap))
+	costMatrix.DatacenterNames = make([]string, len(datacenterNameMap))
+	idx := 0
 	for id, name := range datacenterNameMap {
-		costMatrix.DatacenterIDs = append(costMatrix.DatacenterIDs, id)
-		costMatrix.DatacenterNames = append(costMatrix.DatacenterNames, name)
+		costMatrix.DatacenterIDs[idx] = id
+		costMatrix.DatacenterNames[idx] = name
+		idx++
 	}
 
 	for i := 0; i < numRelays; i++ {
