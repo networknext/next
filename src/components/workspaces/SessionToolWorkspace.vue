@@ -27,8 +27,8 @@
         <div class="row">
           <div class="col">
             <input class="form-control"
-                  type="text"
-                  placeholder="Enter a Session ID to view statistics"
+                   type="text"
+                   placeholder="Enter a Session ID to view statistics"
             >
           </div>
           <div class="col-auto">
@@ -69,7 +69,7 @@
                 </div>
               </div>
               <div class="card-body">
-                  <div id="latency-chart-1"></div>
+                <div id="latency-chart-1"></div>
               </div>
             </div>
             <div class="card mb-2">
@@ -147,13 +147,13 @@
             <div class="card">
               <div class="card-img-top">
                 <div id="session-tool-map"
-                    style="
+                     style="
                           width: 100%;
                           height: 40vh;
                           margin: 0px;
                           padding: 0px;
                           position: relative;
-                    "
+                     "
                 ></div>
               </div>
               <div class="card-body">
@@ -305,9 +305,51 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
+import { SessionMeta } from '../types/APITypes'
+
+/**
+ * TODO: Cleanup template
+ * TODO: Figure out what sessionMeta fields need to be required
+ * TODO: Hookup API call
+ * TODO: Hookup loop logic
+ */
 
 @Component
 export default class SessionToolWorkspace extends Vue {
+  private sessionMeta: SessionMeta
+
+  constructor () {
+    super()
+    this.sessionMeta = {
+      id: '',
+      userHash: '',
+      datacenterName: '',
+      datacenterAlias: '',
+      onNetworkNext: false,
+      nextRTT: 0,
+      directRTT: 0,
+      deltaRTT: 0,
+      location: {
+        continent: '',
+        country: '',
+        countryCode: '',
+        region: '',
+        city: '',
+        latitude: -1,
+        longitude: -1,
+        ISP: '',
+        ASN: -1
+      },
+      hops: [],
+      clientAddr: '',
+      serverAddr: '',
+      SDK: '',
+      connection: '',
+      nearbyRelays: [],
+      platform: '',
+      buyerID: ''
+    }
+  }
 }
 </script>
 

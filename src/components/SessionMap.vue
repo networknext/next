@@ -13,6 +13,12 @@ import { Component, Vue } from 'vue-property-decorator'
 import { Deck } from '@deck.gl/core'
 import mapboxgl from 'mapbox-gl'
 
+/**
+ * TODO: Hookup API call
+ * TODO: Hookup looping logic
+ * TODO: Cleanup template
+ */
+
 @Component({
   name: 'SessionMap'
 })

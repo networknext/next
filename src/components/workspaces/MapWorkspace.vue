@@ -65,7 +65,12 @@
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
 import SessionCount from '@/components/SessionCounts.vue'
-import SessionMap from '../SessionMap.vue'
+import SessionMap from '@/components/SessionMap.vue'
+
+/**
+ * TODO: Move the filter dropdown bar to its own component
+ * TODO: Cleanup template
+ */
 
 @Component({
   components: {
