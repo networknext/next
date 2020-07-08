@@ -546,7 +546,7 @@ func main() {
 			for {
 				// todo: ryan. I would like to see all of the variables below, put into stackdriver metrics
 				// so we can track them over time. right here in place, update the values in stackdriver once
-				// every second, but only print out to stdout once every 10 seconds. -- thanks
+				// every second
 
 				fmt.Printf("-----------------------------\n")
 				fmt.Printf("%d vetoes\n", vetoMap.NumVetoes())
@@ -565,8 +565,7 @@ func main() {
 				fmt.Printf("%d long session updates\n", atomic.LoadUint64(&sessionUpdateCounters.LongDuration))
 				fmt.Printf("-----------------------------\n")
 
-				// todo: temporarily once per-second to test a theory...
-				time.Sleep(time.Second) // * 10)
+				time.Sleep(time.Second)
 			}
 		}()
 	}
