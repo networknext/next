@@ -450,8 +450,6 @@ func main() {
 		}
 	}()
 
-	// todo: ryan, would be nice to have a loop every 10 seconds to print out basic stats, like server_backend
-
 	// Sub to expiry events for cleanup
 	redisClientRelays.ConfigSet("notify-keyspace-events", "Ex")
 	go func() {
