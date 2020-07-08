@@ -22,7 +22,6 @@ JSONRPCClient = {
 		}
 
 		params = params || {}
-		const id = JSON.stringify(params)
 		const response = await fetch('/rpc', {
 			method: 'POST',
 			headers: headers,
@@ -30,7 +29,7 @@ JSONRPCClient = {
 				jsonrpc: '2.0',
 				method: method,
 				params: params,
-				id: id
+				id: "id"
 			})
 		});
 
@@ -201,14 +200,14 @@ MapHandler = {
 		this.mapLoop ? clearInterval(this.mapLoop) : null;
 
 		this.refreshMapCount();
-		this.mapCountLoop = setInterval(() => {
+		/* this.mapCountLoop = setInterval(() => {
 			this.refreshMapCount();
-		}, 1000);
+		}, 1000); */
 
 		this.refreshMapSessions();
-		this.mapLoop = setInterval(() => {
+		/* this.mapLoop = setInterval(() => {
 			this.refreshMapSessions();
-		}, 10000);
+		}, 10000); */
 	},
 	updateMap(mapType) {
 		switch (mapType) {
@@ -266,7 +265,7 @@ MapHandler = {
 		let filter = rootComponent.$data.pages.map.filter;
 
 		JSONRPCClient
-			.call('BuyersService.SessionMap', {buyer_id: filter.buyerId || ""})
+			.call('BuyersService.SessionMap', {buyer_id: "bdbebdbf0f7be395"})
 			.then((response) => {
 				if (!this.mapInstance) {
 					this.mapInstance = new mapboxgl.Map({
@@ -282,7 +281,7 @@ MapHandler = {
 						container: 'map',
 					});
 				}
-				let sessions = response.map_points;
+				let sessions = response.map_points || [];
 				let onNN = sessions.filter((point) => {
 					return (point[2] == 1);
 				});
