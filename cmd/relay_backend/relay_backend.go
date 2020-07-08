@@ -424,7 +424,7 @@ func main() {
 			// todo: calculate this in optimize and store in route matrix so we don't have to calc this here
 			numRoutes := 0
 			for i := range routeMatrix.Entries {
-				i += int(routeMatrix.Entries[i].NumRoutes)
+				numRoutes += int(routeMatrix.Entries[i].NumRoutes)
 			}
 
 			memoryUsed := func() float64 {
