@@ -15,6 +15,7 @@ SDKNAME = libnext
 TIMESTAMP ?= $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
 SHA ?= $(shell git rev-parse --short HEAD)
 RELEASE ?= $(shell git describe --tags --exact-match 2> /dev/null)
+COMMITMESSAGE ?= $(shell git log -1 --pretty=%B)
 
 CURRENT_DIR = $(shell pwd -P)
 DEPLOY_DIR = ./deploy
@@ -318,7 +319,7 @@ build-portal: ## builds the portal binary
 	@printf "TIMESTAMP: ${TIMESTAMP}\n"
 	@printf "SHA: ${SHA}\n"
 	@printf "RELEASE: ${RELEASE}\n"
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)" -o ${DIST_DIR}/portal ./cmd/portal/portal.go
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(COMMITMESSAGE)" -o ${DIST_DIR}/portal ./cmd/portal/portal.go
 	@printf "done\n"
 
 .PHONY: build-portal-artifact
@@ -365,7 +366,7 @@ deploy-portal: ## builds and deploys the portal to dev
 .PHONY: build-relay-backend
 build-relay-backend: ## builds the relay backend binary
 	@printf "Building relay backend... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)" -o ${DIST_DIR}/relay_backend ./cmd/relay_backend/relay_backend.go
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(COMMITMESSAGE)" -o ${DIST_DIR}/relay_backend ./cmd/relay_backend/relay_backend.go
 	@printf "done\n"
 
 .PHONY: build-relay-backend-artifact
@@ -410,13 +411,13 @@ deploy-relay-backend: ## builds and deploys the relay backend to dev
 .PHONY: build-server-backend
 build-server-backend: ## builds the server backend binary
 	@printf "Building server backend... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)" -o ${DIST_DIR}/server_backend ./cmd/server_backend/server_backend.go
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(COMMITMESSAGE)" -o ${DIST_DIR}/server_backend ./cmd/server_backend/server_backend.go
 	@printf "done\n"
 
 .PHONY: build-billing
 build-billing: ## builds the billing binary
 	@printf "Building billing... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)" -o ${DIST_DIR}/billing ./cmd/billing/billing.go
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(COMMITMESSAGE)" -o ${DIST_DIR}/billing ./cmd/billing/billing.go
 	@printf "done\n"
 
 .PHONY: build-billing-artifact
