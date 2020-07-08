@@ -88,8 +88,14 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 	e["nextJitter"] = entry.NextJitter
 	e["nextPacketLoss"] = entry.NextPacketLoss
 	e["totalPrice"] = int(entry.TotalPrice)
-	e["clientToServerPacketsLost"] = entry.ClientToServerPacketsLost
-	e["serverToClientPacketsLost"] = entry.ServerToClientPacketsLost
+
+	if entry.ClientToServerPacketsLost > 0 {
+		e["clientToServerPacketsLost"] = entry.ClientToServerPacketsLost
+	}
+
+	if entry.ServerToClientPacketsLost > 0 {
+		e["serverToClientPacketsLost"] = entry.ServerToClientPacketsLost
+	}
 
 	nextRelays := make([]bigquery.Value, entry.NumNextRelays)
 	for i := 0; i < int(entry.NumNextRelays); i++ {
