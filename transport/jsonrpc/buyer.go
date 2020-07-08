@@ -475,8 +475,6 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 
 	for _, buyer := range buyers { // get all the session IDs from the map-points-global key set
 		stringID := fmt.Sprintf("%016x", buyer.ID)
-		fmt.Println(stringID)
-		fmt.Println(buyer.ID)
 		sessionIDs, err = s.RedisClient.SMembers(fmt.Sprintf("map-points-%016x-buyer", buyer.ID)).Result()
 		if err != nil {
 			err = fmt.Errorf("SessionMapPoints() failed getting map points for buyer %016x: %v", buyer.ID, err)
