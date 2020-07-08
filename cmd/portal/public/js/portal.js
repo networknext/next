@@ -200,14 +200,14 @@ MapHandler = {
 		this.mapLoop ? clearInterval(this.mapLoop) : null;
 
 		this.refreshMapCount();
-		/* this.mapCountLoop = setInterval(() => {
+		this.mapCountLoop = setInterval(() => {
 			this.refreshMapCount();
-		}, 1000); */
+		}, 1000);
 
 		this.refreshMapSessions();
-		/* this.mapLoop = setInterval(() => {
+		this.mapLoop = setInterval(() => {
 			this.refreshMapSessions();
-		}, 10000); */
+		}, 10000);
 	},
 	updateMap(mapType) {
 		switch (mapType) {
@@ -265,7 +265,7 @@ MapHandler = {
 		let filter = rootComponent.$data.pages.map.filter;
 
 		JSONRPCClient
-			.call('BuyersService.SessionMap', {buyer_id: "bdbebdbf0f7be395"})
+			.call('BuyersService.SessionMap', {buyer_id: filter.buyerId || ""})
 			.then((response) => {
 				if (!this.mapInstance) {
 					this.mapInstance = new mapboxgl.Map({
@@ -755,7 +755,7 @@ WorkspaceHandler = {
 		JSONRPCClient
 			.call("BuyersService.UserSessions", {user_hash: hash})
 			.then((response) => {
-				let sessions = response.sessions;
+				let sessions = response.sessions || [];
 
 				Object.assign(rootComponent.$data.pages.userTool, {
 					danger: false,
@@ -791,7 +791,7 @@ WorkspaceHandler = {
 			JSONRPCClient
 				.call('BuyersService.TopSessions', {buyer_id: filter.buyerId})
 				.then((response) => {
-					let sessions = response.sessions;
+					let sessions = response.sessions || [];
 
 					/**
 					 * I really dislike this but it is apparently the way to reload/update the data within a vue
