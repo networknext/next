@@ -7,10 +7,11 @@ import (
 )
 
 type InMemory struct {
-	localBuyers      []routing.Buyer
-	localSellers     []routing.Seller
-	localRelays      []routing.Relay
-	localDatacenters []routing.Datacenter
+	localBuyers         []routing.Buyer
+	localSellers        []routing.Seller
+	localRelays         []routing.Relay
+	localDatacenters    []routing.Datacenter
+	localDatacenterMaps []routing.DatacenterMap
 
 	LocalMode bool
 }
@@ -264,6 +265,17 @@ func (m *InMemory) SetRelay(ctx context.Context, relay routing.Relay) error {
 	}
 
 	return &DoesNotExistError{resourceType: "relay", resourceRef: relay.ID}
+}
+
+func (m *InMemory) DatacenterMaps(id string) ([]routing.DatacenterMap, error) {
+	var dcs []routing.DatacenterMap
+	for _, dc := range m.localDatacenterMaps {
+		if dc.BuyerID == id {
+			dcs = append(dcs, dc)
+		}
+	}
+
+	return dcs, nil
 }
 
 func (m *InMemory) Datacenter(id uint64) (routing.Datacenter, error) {

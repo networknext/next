@@ -85,6 +85,9 @@ type Storer interface {
 
 	// SetDatacenter updates the datacenter in storage with the provided copy and returns an error if the datacenter could not be updated.
 	SetDatacenter(ctx context.Context, datacenter routing.Datacenter) error
+
+	// DatacenterMaps returns the list of datacenter aliases in use for a given (internally generated) buyerID
+	DatacenterMaps(id string) ([]routing.DatacenterMap, error)
 }
 
 type UnmarshalError struct {

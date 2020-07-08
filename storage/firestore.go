@@ -21,15 +21,17 @@ type Firestore struct {
 	Client *firestore.Client
 	Logger log.Logger
 
-	datacenters map[uint64]routing.Datacenter
-	relays      map[uint64]routing.Relay
-	buyers      map[uint64]routing.Buyer
-	sellers     map[string]routing.Seller
+	datacenters    map[uint64]routing.Datacenter
+	relays         map[uint64]routing.Relay
+	buyers         map[uint64]routing.Buyer
+	sellers        map[string]routing.Seller
+	datacenterMaps []routing.DatacenterMap
 
-	datacenterMutex sync.RWMutex
-	relayMutex      sync.RWMutex
-	buyerMutex      sync.RWMutex
-	sellerMutex     sync.RWMutex
+	datacenterMutex    sync.RWMutex
+	relayMutex         sync.RWMutex
+	buyerMutex         sync.RWMutex
+	sellerMutex        sync.RWMutex
+	datacenterMapMutex sync.RWMutex
 }
 
 type customer struct {
@@ -980,6 +982,28 @@ func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 	return &DoesNotExistError{resourceType: "relay", resourceRef: fmt.Sprintf("%x", r.ID)}
 }
 
+func (fs *Firestore) DatacenterMaps(id string) ([]routing.DatacenterMap, error) {
+	fs.datacenterMapMutex.RLock()
+	defer fs.datacenterMapMutex.RUnlock()
+
+	var dcs []routing.DatacenterMap
+	for _, dc := range fs.datacenterMaps {
+		if dc.BuyerID == id {
+			dcs = append(dcs, dc)
+		}
+	}
+
+	return dcs, nil
+
+}
+
+// func (fs *Firestore) DatacenterMapList() ([]routing.DatacenterMap, error) {
+// 	fs.datacenterMapMutex.RLock()
+// 	defer fs.datacenterMapMutex.RUnlock()
+
+// 	return []routing.DatacenterMap{}, nil
+// }
+
 func (fs *Firestore) Datacenter(id uint64) (routing.Datacenter, error) {
 	fs.datacenterMutex.RLock()
 	defer fs.datacenterMutex.RUnlock()
@@ -1355,6 +1379,35 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 	level.Info(fs.Logger).Log("during", "syncRelays", "num", len(fs.relays))
 
 	return nil
+}
+
+func (fs *Firestore) syncDatacenterMaps(ctx context.Context) error {
+	dcMaps := []routing.DatacenterMap{}
+
+	dcdocs := fs.Client.Collection("DatacenterMaps").Documents(ctx)
+	defer dcdocs.Stop()
+	for {
+		dcdoc, err := dcdocs.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return &FirestoreError{err: err}
+		}
+
+		var dcMap routing.DatacenterMap
+		err = dcdoc.DataTo(&dcMap)
+		if err != nil {
+			level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to unmarshal datacenterMap %v", dcdoc.Ref.ID), "err", err)
+			continue
+		}
+
+		dcMaps = append(dcMaps, dcMap)
+	}
+
+	fs.datacenterMaps = dcMaps
+	return nil
+
 }
 
 func (fs *Firestore) syncCustomers(ctx context.Context) error {
