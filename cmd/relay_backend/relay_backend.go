@@ -356,6 +356,11 @@ func main() {
 			err := statsdb.GetCostMatrix(&costMatrix, redisClientRelays, float32(maxJitter), float32(maxPacketLoss))
 			costMatrixDurationSince := time.Since(costMatrixDurationStart)
 
+			if costMatrixDurationSince > 1.0 {
+				// todo: ryan, same treatment for cost matrix duration. thanks
+				fmt.Printf("long get cost matrix")
+			}
+
 			if err != nil {
 				level.Warn(logger).Log("matrix", "cost", "op", "generate", "err", err)
 				costMatrix = routing.CostMatrix{}
