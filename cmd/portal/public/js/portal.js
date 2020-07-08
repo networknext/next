@@ -234,18 +234,27 @@ MapHandler = {
 				let direct = response.direct
 				let next = response.next
 
-				this.totalDirectSessions[this.totalSessionCountCalls % 32] = direct
-				this.totalNextSessions[this.totalSessionCountCalls % 32] = next
+				const isDev = window.location.hostname == 'portal-dev.networknext.com';
+				if (!isDev) {
+					this.totalDirectSessions[this.totalSessionCountCalls % 32] = direct
+					this.totalNextSessions[this.totalSessionCountCalls % 32] = next
 
-				let maxDirectTotal = Math.max(...this.totalDirectSessions)
-				let maxNextTotal = Math.max(...this.totalNextSessions)
+					let maxDirectTotal = Math.max(...this.totalDirectSessions)
+					let maxNextTotal = Math.max(...this.totalNextSessions)
 
+					Object.assign(rootComponent.$data, {
+						direct: maxDirectTotal,
+						mapSessions: maxDirectTotal + maxNextTotal,
+						onNN: maxNextTotal,
+					});
+					this.totalSessionCountCalls++
+					return
+				}
 				Object.assign(rootComponent.$data, {
-					direct: maxDirectTotal,
-					mapSessions: maxDirectTotal + maxNextTotal,
-					onNN: maxNextTotal,
+					direct: direct,
+					mapSessions: direct + next,
+					onNN: next,
 				});
-				this.totalSessionCountCalls++
 			})
 			.catch((error) => {
 				console.log("Something went wrong fetching map point totals");
