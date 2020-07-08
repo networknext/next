@@ -186,6 +186,9 @@ MapHandler = {
 	mapInstance: null,
 	deckGlInstance: null,
 	sessionToolMapInstance: null,
+	totalNextSessions: [],
+	totalDirectSessions: [],
+	totalSessionCountCalls: 0,
 	initMap() {
 		this.updateFilter({
 			buyerId: "",
@@ -231,10 +234,18 @@ MapHandler = {
 				let direct = response.direct
 				let next = response.next
 
+				this.totalSessionCountCalls++
+
+				this.totalDirectSessions[this.totalSessionCountCalls % 32] = direct
+				this.totalNextSessions[this.totalSessionCountCalls % 32] = next
+
+				let maxDirectTotal = Math.max(...this.totalDirectSessions)
+				let maxNextTotal = Math.max(...this.totalNextSessions)
+
 				Object.assign(rootComponent.$data, {
-					direct: direct,
-					mapSessions: direct + next,
-					onNN: next,
+					direct: maxDirectTotal,
+					mapSessions: maxDirectTotal + maxNextTotal,
+					onNN: maxNextTotal,
 				});
 			})
 			.catch((error) => {
