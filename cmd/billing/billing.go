@@ -272,7 +272,7 @@ func main() {
 			if enableSDProfiler {
 				// Set up StackDriver profiler
 				if err := profiler.Start(profiler.Config{
-					Service:        "server_backend",
+					Service:        "billing",
 					ServiceVersion: env,
 					ProjectID:      gcpProjectID,
 					MutexProfiling: true,
@@ -313,7 +313,7 @@ func main() {
 	{
 		go func() {
 			router := mux.NewRouter()
-			router.HandleFunc("/health", HealthHandlerFunc()) 
+			router.HandleFunc("/health", HealthHandlerFunc())
 			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage))
 
 			port, ok := os.LookupEnv("PORT")
