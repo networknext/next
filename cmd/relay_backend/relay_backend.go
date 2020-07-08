@@ -433,6 +433,7 @@ func main() {
 				return float64(m.Alloc) / (1000.0 * 1000.0)
 			}
 
+			// todo: ryan please put everything below into metrics for this service (where not already)
 			fmt.Printf("-----------------------------\n")
 			fmt.Printf("%d goroutines\n", runtime.NumGoroutine())
 			fmt.Printf("%.2f mb allocated\n", memoryUsed())
