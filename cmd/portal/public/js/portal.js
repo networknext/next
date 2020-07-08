@@ -706,7 +706,6 @@ WorkspaceHandler = {
 			})
 			.catch((e) => {
 				if (this.sessionToolLoop) {
-					this.changePage('sessions');
 					clearInterval(this.sessionToolLoop);
 					return;
 				}
