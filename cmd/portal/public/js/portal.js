@@ -234,8 +234,6 @@ MapHandler = {
 				let direct = response.direct
 				let next = response.next
 
-				this.totalSessionCountCalls++
-
 				this.totalDirectSessions[this.totalSessionCountCalls % 32] = direct
 				this.totalNextSessions[this.totalSessionCountCalls % 32] = next
 
@@ -247,6 +245,7 @@ MapHandler = {
 					mapSessions: maxDirectTotal + maxNextTotal,
 					onNN: maxNextTotal,
 				});
+				this.totalSessionCountCalls++
 			})
 			.catch((error) => {
 				console.log("Something went wrong fetching map point totals");
