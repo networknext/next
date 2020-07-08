@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"runtime"
 
 	"github.com/gorilla/mux"
 	"github.com/networknext/backend/logging"
@@ -350,15 +351,18 @@ func main() {
 	}
 	go func() {
 
+		var longCostMatrix uint64
+		var longRouteMatrix uint64
+
 		for {
 
 			costMatrixDurationStart := time.Now()
 			err := statsdb.GetCostMatrix(&costMatrix, redisClientRelays, float32(maxJitter), float32(maxPacketLoss))
 			costMatrixDurationSince := time.Since(costMatrixDurationStart)
 
-			if costMatrixDurationSince > 1.0 {
+			if costMatrixDurationSince.Seconds() > 1.0 {
 				// todo: ryan, same treatment for cost matrix duration. thanks
-				fmt.Printf("long get cost matrix")
+				longCostMatrix++
 			}
 
 			if err != nil {
@@ -393,6 +397,10 @@ func main() {
 			newOptimizeMetrics.DurationGauge.Set(float64(optimizeDurationSince.Milliseconds()))
 			newOptimizeMetrics.Invocations.Add(1)
 
+			if optimizeDurationSince.Seconds() > 1.0 {
+				longRouteMatrix++
+			}
+
 			relayStatMetrics.NumRoutes.Set(float64(len(routeMatrix.Entries)))
 
 			// todo: ryan, would be nice to upload the size of the route matrix in bytes
@@ -412,6 +420,30 @@ func main() {
 			if err != nil {
 				level.Error(logger).Log("matrix", "route", "msg", "failed to write route matrix response data", "err", err)
 			}
+
+			// todo: calculate this in optimize and store in route matrix so we don't have to calc this here
+			numRoutes := 0
+			for i := range routeMatrix.Entries {
+				i += int(routeMatrix.Entries[i].NumRoutes)
+			}
+
+			memoryUsed := func() float64 {
+				var m runtime.MemStats
+				runtime.ReadMemStats(&m)
+				return float64(m.Alloc) / (1000.0 * 1000.0)
+			}
+
+			fmt.Printf("-----------------------------\n")
+			fmt.Printf("%d goroutines\n", runtime.NumGoroutine())
+			fmt.Printf("%.2f mb allocated\n", memoryUsed())
+			fmt.Printf("%d datacenters\n", len(routeMatrix.DatacenterIDs))
+			fmt.Printf("%d relays\n", len(routeMatrix.RelayIDs))
+			fmt.Printf("%d routes\n", numRoutes)
+			fmt.Printf("%d long cost matrix\n", longCostMatrix )
+			fmt.Printf("%d long route matrix\n", longRouteMatrix )
+			fmt.Printf("cost matrix: %.2f seconds\n", costMatrixDurationSince.Seconds())
+			fmt.Printf("route matrix: %.2f seconds\n", optimizeDurationSince.Seconds())
+			fmt.Printf("-----------------------------\n")
 
 			time.Sleep(syncInterval)
 		}
