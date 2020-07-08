@@ -313,7 +313,7 @@ func main() {
 	{
 		go func() {
 			router := mux.NewRouter()
-			router.HandleFunc("/health", HealthHandlerFunc())
+			router.HandleFunc("/health", HealthHandlerFunc()) 
 			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage))
 
 			port, ok := os.LookupEnv("PORT")
