@@ -202,7 +202,28 @@ func setRoutingRulesSettings(rpcClient jsonrpc.RPCClient, env Environment, buyer
 	fmt.Printf("Route shader for buyer with ID \"%s\" updated.\n", buyerID)
 }
 
-func datacenterMaps(rpcClient jsonrpc.RPCClient, env Environment, buyerID string) {
+func datacenterMaps(rpcClient jsonrpc.RPCClient, env Environment, arg string) {
+	// check to see if user entered name or substring (not id)
+	buyerArgs := localjsonrpc.BuyersArgs{}
+	var buyers localjsonrpc.BuyersReply
+	if err := rpcClient.CallFor(&buyers, "OpsService.Buyers", buyerArgs); err != nil {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	var buyerID string
+
+	r := regexp.MustCompile("(?i)" + arg) // case-insensitive regex
+	for _, buyer := range buyers.Buyers {
+		if r.MatchString(buyer.Name) || arg == buyer.ID {
+			buyerID = buyer.ID
+		}
+	}
+
+	if buyerID == "" {
+		fmt.Printf("No matches found for '%s'", arg)
+		return
+	}
 	args := localjsonrpc.DatacenterMapsArgs{
 		ID: buyerID,
 	}
@@ -217,7 +238,7 @@ func datacenterMaps(rpcClient jsonrpc.RPCClient, env Environment, buyerID string
 
 }
 
-func addDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm routing.DatacenterMap) {
+func addDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm routing.DatacenterMap) error {
 	arg := localjsonrpc.AddDatacenterMapArgs{
 		DatacenterMap: dcm,
 	}
@@ -225,7 +246,9 @@ func addDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm routing.
 	var reply localjsonrpc.AddDatacenterMapReply
 	if err := rpcClient.CallFor(&reply, "BuyersService.AddDatacenterMap", arg); err != nil {
 		handleJSONRPCError(env, err)
-		return
+		return err
 	}
+
+	return nil
 
 }
