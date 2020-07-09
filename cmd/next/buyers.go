@@ -229,12 +229,10 @@ func addDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm routing.
 	if buyerID = returnBuyerID(rpcClient, env, dcm.BuyerID); buyerID == "" {
 		return fmt.Errorf("No buyer matches found for '%s'", dcm.BuyerID)
 	}
-
 	var dcID string
 	if dcID = returnDatacenterID(rpcClient, env, dcm.Datacenter); dcID == "" {
 		return fmt.Errorf("No matches found for '%s'", dcm.Datacenter)
 	}
-
 	arg := localjsonrpc.AddDatacenterMapArgs{
 		DatacenterMap: routing.DatacenterMap{
 			BuyerID:    buyerID,

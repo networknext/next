@@ -60,9 +60,15 @@ func listDatacenterMaps(rpcClient jsonrpc.RPCClient, env Environment, datacenter
 	}
 
 	var reply localjsonrpc.ListDatacenterMapsReply
-	if err := rpcClient.CallFor(&reply, "OpsService.ListDatacenterMaps", dcID); err != nil {
+	var arg = localjsonrpc.ListDatacenterMapsArgs{
+		DatacenterID: dcID,
+	}
+
+	if err := rpcClient.CallFor(&reply, "OpsService.ListDatacenterMaps", arg); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}
+
+	table.Output(reply.DatacenterMaps)
 
 }

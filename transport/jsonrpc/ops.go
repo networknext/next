@@ -728,11 +728,13 @@ type ListDatacenterMapsReply struct {
 }
 
 // An empty DatacenterID returns a list of all maps.
-func (s *OpsService) ListDatacenterMaps(r *http.Request, args *ListDatacenterMapsArgs, reply *ListDatacenterMapsReply) {
+func (s *OpsService) ListDatacenterMaps(r *http.Request, args *ListDatacenterMapsArgs, reply *ListDatacenterMapsReply) error {
 
 	var dc []routing.DatacenterMap
 	dc = s.Storage.ListDatacenterMaps(args.DatacenterID)
 	reply.DatacenterMaps = dc
+
+	return nil
 }
 
 type RouteSelectionArgs struct {
