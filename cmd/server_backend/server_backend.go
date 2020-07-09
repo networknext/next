@@ -48,7 +48,7 @@ var (
 
 func main() {
 
-	fmt.Printf("welcome to the nerd zone 24.0\n")
+	fmt.Printf("server_backend: Git Hash: %s - Commit: %s", sha, commitMessage)
 
 	ctx := context.Background()
 
