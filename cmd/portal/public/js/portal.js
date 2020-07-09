@@ -714,7 +714,8 @@ WorkspaceHandler = {
 								container: 'session-tool-map',
 								controller: {
 									dragPan: false,
-									dragRotate: false
+									dragRotate: false,
+									dragTilt: false
 								},
 								layers: [sessionLocationLayer],
 							});
