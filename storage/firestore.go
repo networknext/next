@@ -85,7 +85,6 @@ type routingRulesSettings struct {
 	EnvelopeKbpsDown             int64   `firestore:"envelopeKbpsDown"`
 	Mode                         int64   `firestore:"mode"`
 	MaxPricePerGBNibblins        int64   `firestore:"maxPricePerGBNibblins"`
-	AcceptableLatency            float32 `firestore:"acceptableLatency"`
 	RTTEpsilon                   float32 `firestore:"rttRouteSwitch"`
 	RTTThreshold                 float32 `firestore:"rttThreshold"`
 	RTTHysteresis                float32 `firestore:"rttHysteresis"`
@@ -1460,7 +1459,6 @@ func (fs *Firestore) createRouteRulesSettingsForBuyerID(ctx context.Context, ID 
 		EnvelopeKbpsDown:             rrs.EnvelopeKbpsDown,
 		Mode:                         rrs.Mode,
 		MaxPricePerGBNibblins:        convertCentsToNibblins(rrs.MaxCentsPerGB),
-		AcceptableLatency:            rrs.AcceptableLatency,
 		RTTEpsilon:                   rrs.RTTEpsilon,
 		RTTThreshold:                 rrs.RTTThreshold,
 		RTTHysteresis:                rrs.RTTHysteresis,
@@ -1520,7 +1518,6 @@ func (fs *Firestore) getRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 	rrs.EnvelopeKbpsDown = tempRRS.EnvelopeKbpsDown
 	rrs.Mode = tempRRS.Mode
 	rrs.MaxCentsPerGB = convertNibblinsToCents(tempRRS.MaxPricePerGBNibblins)
-	rrs.AcceptableLatency = tempRRS.AcceptableLatency
 	rrs.RTTEpsilon = tempRRS.RTTEpsilon
 	rrs.RTTThreshold = tempRRS.RTTThreshold
 	rrs.RTTHysteresis = tempRRS.RTTHysteresis
@@ -1550,7 +1547,6 @@ func (fs *Firestore) setRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 		"envelopeKbpsDown":         rrs.EnvelopeKbpsDown,
 		"mode":                     rrs.Mode,
 		"maxPricePerGBNibblins":    convertCentsToNibblins(rrs.MaxCentsPerGB),
-		"acceptableLatency":        rrs.AcceptableLatency,
 		"rttRouteSwitch":           rrs.RTTEpsilon,
 		"rttThreshold":             rrs.RTTThreshold,
 		"rttHysteresis":            rrs.RTTHysteresis,

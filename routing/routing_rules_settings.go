@@ -21,10 +21,6 @@ type RoutingRulesSettings struct {
 	// For example a value of 100 here would mean the customer is willing to pay $1.00 USD per GB of network next accelerated traffic
 	MaxCentsPerGB uint64
 
-	// The maximum acceptable latency for the game. If we can't reduce the latency to be at least this then don't take network next
-	// Note: not currently being used in old backend
-	AcceptableLatency float32
-
 	// How close to the best route in terms of latency routes need to be to be considered acceptable to take.
 	// For example if RTTEpsilon was set to 20ms the best route in the matrix had an RTT of 60ms, routes with an RTT of more than 80ms would be filtered out
 	RTTEpsilon float32
@@ -84,7 +80,6 @@ var DefaultRoutingRulesSettings = RoutingRulesSettings{
 	MaxCentsPerGB:            25.0,
 	EnvelopeKbpsUp:           256,
 	EnvelopeKbpsDown:         256,
-	AcceptableLatency:        -1.0,
 	RTTThreshold:             5.0,
 	RTTEpsilon:               2.0,
 	RTTHysteresis:            -5.0,
@@ -101,7 +96,6 @@ var LocalRoutingRulesSettings = RoutingRulesSettings{
 	MaxCentsPerGB:       25.0,
 	EnvelopeKbpsUp:      256,
 	EnvelopeKbpsDown:    256,
-	AcceptableLatency:   -1.0,
 	RTTThreshold:        -5,
 	RTTEpsilon:          0.1,
 	RTTHysteresis:       -10,
