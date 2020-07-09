@@ -362,8 +362,8 @@ func main() {
 	}
 	go func() {
 
-		var longCostMatrix uint64
-		var longRouteMatrix uint64
+		var longCostMatrixUpdates uint64
+		var longRouteMatrixUpdates uint64
 
 		for {
 
@@ -373,7 +373,7 @@ func main() {
 
 			if costMatrixDurationSince.Seconds() > 1.0 {
 				// todo: ryan, same treatment for cost matrix duration. thanks
-				longCostMatrix++
+				longCostMatrixUpdates++
 			}
 
 			if err != nil {
@@ -411,7 +411,7 @@ func main() {
 			newOptimizeMetrics.Invocations.Add(1)
 
 			if optimizeDurationSince.Seconds() > 1.0 {
-				longRouteMatrix++
+				longRouteMatrixUpdates++
 			}
 
 			relayStatMetrics.NumRoutes.Set(float64(len(newRouteMatrix.Entries)))
@@ -458,10 +458,10 @@ func main() {
 			fmt.Printf("%d datacenters\n", len(newRouteMatrix.DatacenterIDs))
 			fmt.Printf("%d relays\n", len(newRouteMatrix.RelayIDs))
 			fmt.Printf("%d routes\n", numRoutes)
-			fmt.Printf("%d long cost matrix\n", longCostMatrix)
-			fmt.Printf("%d long route matrix\n", longRouteMatrix)
-			fmt.Printf("cost matrix: %.2f seconds\n", costMatrixDurationSince.Seconds())
-			fmt.Printf("route matrix: %.2f seconds\n", optimizeDurationSince.Seconds())
+			fmt.Printf("%d long cost matrix updates\n", longCostMatrixUpdates)
+			fmt.Printf("%d long route matri updates\n", longRouteMatrixUpdates)
+			fmt.Printf("cost matrix update: %.2f seconds\n", costMatrixDurationSince.Seconds())
+			fmt.Printf("route matrix update: %.2f seconds\n", optimizeDurationSince.Seconds())
 			fmt.Printf("-----------------------------\n")
 
 			// Swap the route matrix pointer to the new one
