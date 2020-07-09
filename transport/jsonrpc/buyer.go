@@ -765,13 +765,13 @@ type DatacenterMapsReply struct {
 	DatacenterMaps []routing.DatacenterMap
 }
 
-func (s *BuyersService) DatacenterMaps(r *http.Request, args *DatacenterMapsArgs, reply *DatacenterMapsReply) error {
+func (s *BuyersService) DatacenterMapsForBuyer(r *http.Request, args *DatacenterMapsArgs, reply *DatacenterMapsReply) error {
 	reply.DatacenterMaps = make([]routing.DatacenterMap, 0)
 	if VerifyAllRoles(r, AnonymousRole) {
 		return nil
 	}
 
-	reply.DatacenterMaps = s.Storage.DatacenterMaps(args.ID)
+	reply.DatacenterMaps = s.Storage.DatacenterMapsForBuyer(args.ID)
 	return nil
 
 }

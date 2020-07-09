@@ -988,7 +988,7 @@ func main() {
 			return flag.ErrHelp
 		},
 		Subcommands: []*ffcli.Command{
-			{
+			{ // add
 				Name:       "add",
 				ShortUsage: "next datacenter add <filepath>",
 				ShortHelp:  "Add a datacenter to storage from a JSON file or piped from stdin",
@@ -1037,7 +1037,7 @@ func main() {
 					},
 				},
 			},
-			{
+			{ // remove
 				Name:       "remove",
 				ShortUsage: "next datacenter remove <name>",
 				ShortHelp:  "Remove a datacenter from storage",
@@ -1048,6 +1048,25 @@ func main() {
 					}
 
 					removeDatacenter(rpcClient, env, args[0])
+					return nil
+				},
+			},
+			{ //buyers
+				Name:       "buyers",
+				ShortUsage: "next datacenter buyers <datacenter ID|name>",
+				ShortHelp:  "Returns a list of all buyers and aliases for a given datacenter",
+				LongHelp:   "Returns a list of all buyers and aliases for a given datacenter. Providing an empty string for the datacenter ID|name returns a list of all mappings.",
+				Exec: func(_ context.Context, args []string) error {
+					id := ""
+
+					if len(args) > 1 {
+						err := errors.New("Exactly zero or one datacenter ID or name must be provided.")
+						return err
+					} else if len(args) == 1 {
+						id = args[0]
+					}
+
+					listDatacenterMaps(rpcClient, env, id)
 					return nil
 				},
 			},
@@ -1166,7 +1185,7 @@ func main() {
 							}
 
 							// ToDo: error return
-							datacenterMaps(rpcClient, env, args[0])
+							datacenterMapsForBuyer(rpcClient, env, args[0])
 
 							return nil
 						},

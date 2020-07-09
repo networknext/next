@@ -281,10 +281,21 @@ func (m *InMemory) AddDatacenterMap(ctx context.Context, dcMap routing.Datacente
 
 }
 
-func (m *InMemory) DatacenterMaps(id string) []routing.DatacenterMap {
+func (m *InMemory) DatacenterMapsForBuyer(id string) []routing.DatacenterMap {
 	var dcs []routing.DatacenterMap
 	for _, dc := range m.localDatacenterMaps {
 		if dc.BuyerID == id {
+			dcs = append(dcs, dc)
+		}
+	}
+
+	return dcs
+}
+
+func (m *InMemory) ListDatacenterMaps(dcID string) []routing.DatacenterMap {
+	var dcs []routing.DatacenterMap
+	for _, dc := range m.localDatacenterMaps {
+		if dc.Datacenter == dcID || dcID == "" {
 			dcs = append(dcs, dc)
 		}
 	}

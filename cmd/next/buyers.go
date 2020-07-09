@@ -202,7 +202,7 @@ func setRoutingRulesSettings(rpcClient jsonrpc.RPCClient, env Environment, buyer
 	fmt.Printf("Route shader for buyer with ID \"%s\" updated.\n", buyerID)
 }
 
-func datacenterMaps(rpcClient jsonrpc.RPCClient, env Environment, arg string) {
+func datacenterMapsForBuyer(rpcClient jsonrpc.RPCClient, env Environment, arg string) {
 
 	var buyerID string
 	if buyerID = returnBuyerID(rpcClient, env, arg); buyerID == "" {
@@ -214,7 +214,7 @@ func datacenterMaps(rpcClient jsonrpc.RPCClient, env Environment, arg string) {
 	}
 
 	var reply localjsonrpc.DatacenterMapsReply
-	if err := rpcClient.CallFor(&reply, "BuyersService.DatacenterMaps", args); err != nil {
+	if err := rpcClient.CallFor(&reply, "BuyersService.DatacenterMapsForBuyer", args); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}

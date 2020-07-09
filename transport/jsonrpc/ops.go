@@ -719,6 +719,22 @@ func (s *OpsService) RemoveDatacenter(r *http.Request, args *RemoveDatacenterArg
 	return nil
 }
 
+type ListDatacenterMapsArgs struct {
+	DatacenterID string
+}
+
+type ListDatacenterMapsReply struct {
+	DatacenterMaps []routing.DatacenterMap
+}
+
+// An empty DatacenterID returns a list of all maps.
+func (s *OpsService) ListDatacenterMaps(r *http.Request, args *ListDatacenterMapsArgs, reply *ListDatacenterMapsReply) {
+
+	var dc []routing.DatacenterMap
+	dc = s.Storage.ListDatacenterMaps(args.DatacenterID)
+	reply.DatacenterMaps = dc
+}
+
 type RouteSelectionArgs struct {
 	SourceRelays      []string `json:"src_relays"`
 	DestinationRelays []string `json:"dest_relays"`
