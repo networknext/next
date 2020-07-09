@@ -96,6 +96,9 @@ type Storer interface {
 	// ListDatacenterMaps returns a list of alias/buyer mappings for the specified datacenter ID. An
 	// empty dcID returns a list of all maps.
 	ListDatacenterMaps(dcID string) []routing.DatacenterMap
+
+	// RemoveDatacenterMap removes an entry from the DatacenterMaps table
+	RemoveDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error
 }
 
 type UnmarshalError struct {

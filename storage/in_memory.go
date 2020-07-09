@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/networknext/backend/routing"
 )
@@ -301,6 +302,30 @@ func (m *InMemory) ListDatacenterMaps(dcID string) []routing.DatacenterMap {
 	}
 
 	return dcs
+}
+
+func (m *InMemory) RemoveDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error {
+
+	idx := -1
+	for i, dcm := range m.localDatacenterMaps {
+		if dcMap.Alias == dcm.Alias && dcMap.BuyerID == dcm.BuyerID && dcMap.Datacenter == dcm.Datacenter {
+			idx = i
+		}
+	}
+
+	if idx < 1 {
+		return &DoesNotExistError{resourceType: "datacenterMap", resourceRef: fmt.Sprintf("%v", dcMap)}
+	}
+
+	if idx+1 == len(m.localDatacenterMaps) {
+		m.localDatacenterMaps = m.localDatacenterMaps[:idx]
+		return nil
+	}
+
+	m.localDatacenterMaps = append(m.localDatacenterMaps[:idx], m.localDatacenterMaps[idx+1:]...)
+	return nil
+
+	return nil
 }
 
 func (m *InMemory) Datacenter(id uint64) (routing.Datacenter, error) {

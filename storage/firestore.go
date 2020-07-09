@@ -1036,6 +1036,56 @@ func (fs *Firestore) ListDatacenterMaps(dcID string) []routing.DatacenterMap {
 	return dcs
 }
 
+func (fs *Firestore) RemoveDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error {
+	dmdocs := fs.Client.Collection("DatacenterMaps").Documents(ctx)
+	defer dmdocs.Stop()
+
+	found := false
+	for {
+		dmdoc, err := dmdocs.Next()
+		ref := dmdoc.Ref
+		if err == iterator.Done {
+			break
+		}
+
+		if err != nil {
+			return &FirestoreError{err: err}
+		}
+
+		var dcm routing.DatacenterMap
+		err = dmdoc.DataTo(&dcm)
+		if err != nil {
+			return &UnmarshalError{err: err}
+		}
+
+		// all components must match (one-to-many)
+		// could use cmp?
+		if dcMap.Alias == dcm.Alias && dcMap.BuyerID == dcm.BuyerID && dcMap.Datacenter == dcm.Datacenter {
+			_, err := ref.Delete(ctx)
+			if err != nil {
+				return &FirestoreError{err: err}
+			}
+			found = true
+		}
+	}
+
+	if found {
+		fs.datacenterMapMutex.RLock()
+		idx := -1
+		for i, dcm := range fs.datacenterMaps {
+			if dcMap.Alias == dcm.Alias && dcMap.BuyerID == dcm.BuyerID && dcMap.Datacenter == dcm.Datacenter {
+				idx = i
+			}
+		}
+		// re-slice
+		fs.datacenterMaps = append(fs.datacenterMaps[:idx], fs.datacenterMaps[idx+1:]...)
+		fs.datacenterMapMutex.RUnlock()
+		return nil
+	}
+
+	return &DoesNotExistError{resourceType: "datacenterMap", resourceRef: fmt.Sprintf("%v", dcMap)}
+}
+
 func (fs *Firestore) Datacenter(id uint64) (routing.Datacenter, error) {
 	fs.datacenterMutex.RLock()
 	defer fs.datacenterMutex.RUnlock()
