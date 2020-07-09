@@ -403,6 +403,10 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 	routes.RelaySessionCounts = m.RelaySessionCounts
 	routes.RelayMaxSessionCounts = m.RelayMaxSessionCounts
 
+	if err := routes.UpdateRelayAddressCache(); err != nil {
+		return err
+	}
+
 	type Indirect struct {
 		relay uint64
 		rtt   int32
@@ -660,7 +664,7 @@ func (m *CostMatrix) Size() uint64 {
 	length += numRelays*uint64(MaxRelayAddressLength+crypto.KeySize) + 4
 
 	// allocation for relay lat and longs
-	length += numRelays*8*2
+	length += numRelays * 8 * 2
 
 	for _, v := range m.DatacenterRelays {
 		// datacenter id + number of relays for that datacenter + allocation for all of those relay ids

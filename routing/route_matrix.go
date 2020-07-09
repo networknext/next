@@ -134,7 +134,7 @@ func (m *RouteMatrix) ResolveRelay(id uint64) (Relay, error) {
 
 	if relayIndex >= len(m.RelayIDs) ||
 		relayIndex >= len(m.RelayNames) ||
-		relayIndex >= len(m.RelayAddresses) ||
+		relayIndex >= len(m.relayAddressCache) ||
 		relayIndex >= len(m.RelayPublicKeys) ||
 		relayIndex >= len(m.RelaySellers) ||
 		relayIndex >= len(m.RelaySessionCounts) ||
@@ -142,23 +142,10 @@ func (m *RouteMatrix) ResolveRelay(id uint64) (Relay, error) {
 		return Relay{}, fmt.Errorf("relay %d has an invalid index %d", id, relayIndex)
 	}
 
-	host, port, err := net.SplitHostPort(string(bytes.Trim(m.RelayAddresses[relayIndex], string([]byte{0x00}))))
-	if err != nil {
-		return Relay{}, err
-	}
-
-	iport, err := strconv.ParseInt(port, 10, 64)
-	if err != nil {
-		return Relay{}, err
-	}
-
 	return Relay{
-		ID:   m.RelayIDs[relayIndex],
-		Name: m.RelayNames[relayIndex],
-		Addr: net.UDPAddr{
-			IP:   net.ParseIP(host),
-			Port: int(iport),
-		},
+		ID:        m.RelayIDs[relayIndex],
+		Name:      m.RelayNames[relayIndex],
+		Addr:      *m.relayAddressCache[relayIndex],
 		PublicKey: m.RelayPublicKeys[relayIndex],
 		Seller:    m.RelaySellers[relayIndex],
 		TrafficStats: RelayTrafficStats{
@@ -335,19 +322,6 @@ func (m *RouteMatrix) WriteTo(w io.Writer) (int64, error) {
 	}
 
 	return int64(n), nil
-}
-
-func ParseAddress(input string) *net.UDPAddr {
-	address := &net.UDPAddr{}
-	ip_string, port_string, err := net.SplitHostPort(input)
-	if err != nil {
-		address.IP = net.ParseIP(input)
-		address.Port = 0
-		return address
-	}
-	address.IP = net.ParseIP(ip_string)
-	address.Port, _ = strconv.Atoi(port_string)
-	return address
 }
 
 func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
@@ -562,9 +536,20 @@ func (m *RouteMatrix) UpdateRelayAddressCache() error {
 	if len(m.relayAddressCache) == 0 && len(m.RelayIDs) > 0 {
 		m.relayAddressCache = make([]*net.UDPAddr, len(m.RelayIDs))
 		for i := range m.RelayIDs {
-			m.relayAddressCache[i] = ParseAddress(string(m.RelayAddresses[i]))
-			if m.relayAddressCache[i] == nil {
-				return errors.New("[RouteMatrix] could not parse relay address")
+			// This trim is necessary because RelayAddresses has a fixed size of MaxRelayAddressLength which causes extra 0 bytes to be parsed if we don't trim
+			host, port, err := net.SplitHostPort(string(bytes.Trim(m.RelayAddresses[i], string([]byte{0x00}))))
+			if err != nil {
+				return err
+			}
+
+			iport, err := strconv.Atoi(port)
+			if err != nil {
+				return err
+			}
+
+			m.relayAddressCache[i] = &net.UDPAddr{
+				IP:   net.ParseIP(host),
+				Port: int(iport),
 			}
 		}
 	}
