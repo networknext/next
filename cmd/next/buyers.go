@@ -228,6 +228,4 @@ func addDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm routing.
 		return
 	}
 
-	fmt.Printf("Datacenter alias created:\n%s\n", dcm)
-
 }

@@ -1198,6 +1198,9 @@ datacenter names.
 								log.Fatalf("Could not unmarshal datacenter map: %v", err)
 							}
 
+							fmt.Println("Datacenter alias created:")
+							fmt.Println(dcm)
+
 							addDatacenterMap(rpcClient, env, dcm)
 							return nil
 						},
