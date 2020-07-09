@@ -22,7 +22,6 @@ JSONRPCClient = {
 		}
 
 		params = params || {}
-		const id = JSON.stringify(params)
 		const response = await fetch('/rpc', {
 			method: 'POST',
 			headers: headers,
@@ -30,7 +29,7 @@ JSONRPCClient = {
 				jsonrpc: '2.0',
 				method: method,
 				params: params,
-				id: id
+				id: "id"
 			})
 		});
 
@@ -282,7 +281,7 @@ MapHandler = {
 						container: 'map',
 					});
 				}
-				let sessions = response.map_points;
+				let sessions = response.map_points || [];
 				let onNN = sessions.filter((point) => {
 					return (point[2] == 1);
 				});
@@ -760,7 +759,7 @@ WorkspaceHandler = {
 		JSONRPCClient
 			.call("BuyersService.UserSessions", {user_hash: hash})
 			.then((response) => {
-				let sessions = response.sessions;
+				let sessions = response.sessions || [];
 
 				Object.assign(rootComponent.$data.pages.userTool, {
 					danger: false,
@@ -796,7 +795,7 @@ WorkspaceHandler = {
 			JSONRPCClient
 				.call('BuyersService.TopSessions', {buyer_id: filter.buyerId})
 				.then((response) => {
-					let sessions = response.sessions;
+					let sessions = response.sessions || [];
 
 					/**
 					 * I really dislike this but it is apparently the way to reload/update the data within a vue
