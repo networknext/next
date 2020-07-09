@@ -201,3 +201,33 @@ func setRoutingRulesSettings(rpcClient jsonrpc.RPCClient, env Environment, buyer
 
 	fmt.Printf("Route shader for buyer with ID \"%s\" updated.\n", buyerID)
 }
+
+func datacenterMaps(rpcClient jsonrpc.RPCClient, env Environment, buyerID string) {
+	args := localjsonrpc.DatacenterMapsArgs{
+		ID: buyerID,
+	}
+
+	var reply localjsonrpc.DatacenterMapsReply
+	if err := rpcClient.CallFor(&reply, "BuyersService.DatacenterMaps", args); err != nil {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	table.Output(reply.DatacenterMaps)
+
+}
+
+func addDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm routing.DatacenterMap) {
+	arg := localjsonrpc.AddDatacenterMapArgs{
+		DatacenterMap: dcm,
+	}
+
+	var reply localjsonrpc.AddDatacenterMapReply
+	if err := rpcClient.CallFor(&reply, "BuyersService.AddDatacenterMap", arg); err != nil {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	fmt.Printf("Datacenter alias created:\n%s\n", dcm)
+
+}

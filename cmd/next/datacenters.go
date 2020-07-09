@@ -9,23 +9,6 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
-func datacenterMaps(rpcClient jsonrpc.RPCClient, env Environment, buyerID string) {
-	args := localjsonrpc.DatacenterMapsArgs{
-		ID: buyerID,
-	}
-
-	var reply localjsonrpc.DatacenterMapsReply
-	if err := rpcClient.CallFor(&reply, "BuyersService.DatacenterMaps", args); err != nil {
-		handleJSONRPCError(env, err)
-		return
-	}
-
-	table.Output(reply.DatacenterMaps)
-
-}
-
-// func addDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, ))
-
 func datacenters(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 	args := localjsonrpc.DatacentersArgs{
 		Name: filter,

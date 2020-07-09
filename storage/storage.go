@@ -91,7 +91,7 @@ type Storer interface {
 	DatacenterMaps(buyerID string) []routing.DatacenterMap
 
 	// AddDatacenterMap adds a new datacenter alias for the given buyer and datacenter IDs
-	// AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error
+	AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error
 }
 
 type UnmarshalError struct {

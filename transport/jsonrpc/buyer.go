@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-kit/kit/log"
@@ -772,6 +773,20 @@ func (s *BuyersService) DatacenterMaps(r *http.Request, args *DatacenterMapsArgs
 
 	reply.DatacenterMaps = s.Storage.DatacenterMaps(args.ID)
 	return nil
+
+}
+
+type AddDatacenterMapArgs struct {
+	DatacenterMap routing.DatacenterMap
+}
+
+type AddDatacenterMapReply struct{}
+
+func (s *BuyersService) AddDatacenterMap(r *http.Request, args *AddDatacenterMapArgs, reply *AddDatacenterMapReply) error {
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelFunc()
+
+	return s.Storage.AddDatacenterMap(ctx, args.DatacenterMap)
 
 }
 

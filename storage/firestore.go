@@ -998,6 +998,8 @@ func (fs *Firestore) DatacenterMaps(id string) []routing.DatacenterMap {
 
 func (fs *Firestore) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error {
 
+	// ToDo: make sure buyer and datacenter exist?
+
 	dcMaps := fs.DatacenterMaps(dcMap.BuyerID)
 	if len(dcMaps) != 0 {
 		for _, dc := range dcMaps {
@@ -1011,6 +1013,7 @@ func (fs *Firestore) AddDatacenterMap(ctx context.Context, dcMap routing.Datacen
 		return &FirestoreError{err: err}
 	}
 
+	// update local store
 	fs.datacenterMapMutex.Lock()
 	fs.datacenterMaps = append(fs.datacenterMaps, dcMap)
 	fs.datacenterMapMutex.Unlock()

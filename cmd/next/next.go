@@ -1189,7 +1189,16 @@ The buyer and datacenter must exist. Substrings accepted for the buyer and
 datacenter names.
 						`,
 						Exec: func(_ context.Context, args []string) error {
-							// addDatacenterMap()
+
+							jsonData := readJSONData("datacenter add", args)
+
+							// Unmarshal the JSON and create the Buyer struct
+							var dcm routing.DatacenterMap
+							if err := json.Unmarshal(jsonData, &dcm); err != nil {
+								log.Fatalf("Could not unmarshal datacenter map: %v", err)
+							}
+
+							addDatacenterMap(rpcClient, env, dcm)
 							return nil
 						},
 					},
