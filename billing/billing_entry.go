@@ -4,11 +4,11 @@ import (
 	"github.com/networknext/backend/encoding"
 )
 
-const BillingEntryVersion = uint8(1)
+const BillingEntryVersion = uint8(2)
 
 const BillingEntryMaxRelays = 5
 
-const MaxBillingEntryBytes = 1 + 8 + 4 + 8 + 1 + (6*4) + 1 + (BillingEntryMaxRelays*8) + 8
+const MaxBillingEntryBytes = 1 + 8 + 4 + 8 + 1 + (6*4) + 1 + (BillingEntryMaxRelays*8) + 8 + 8 + 8
 
 type BillingEntry struct {
 	Timestamp uint64           // IMPORTANT: Timestamp is not serialized. Pubsub already has the timestamp so we use that instead.
@@ -26,6 +26,8 @@ type BillingEntry struct {
 	NumNextRelays uint8
 	NextRelays [BillingEntryMaxRelays]uint64
 	TotalPrice uint64
+	ClientToServerPacketsLost uint64
+	ServerToClientPacketsLost uint64
 }
 
 func WriteBillingEntry(entry *BillingEntry) []byte {
@@ -51,6 +53,8 @@ func WriteBillingEntry(entry *BillingEntry) []byte {
 	} else {
 		encoding.WriteUint8(data, &index, 0)
 	}
+	encoding.WriteUint64(data, &index, entry.ClientToServerPacketsLost)
+	encoding.WriteUint64(data, &index, entry.ServerToClientPacketsLost)
 	return data[:index]
 }
 
@@ -59,10 +63,7 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 	if !encoding.ReadUint8(data, &index, &entry.Version) {
 		return false
 	}
-	// todo: once we add more than one version and we are live with this system
-	// you will definitely want to change this to support binary compatibility
-	// with old versions otherwise we will lose billing entries
-	if entry.Version != BillingEntryVersion {
+	if entry.Version != 1 && entry.Version != 2 {
 		return false
 	}
 	if !encoding.ReadUint64(data, &index, &entry.BuyerID) {
@@ -110,6 +111,14 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 			}
 		}
 		if !encoding.ReadUint64(data, &index, &entry.TotalPrice) {
+			return false
+		}
+	}
+	if entry.Version == 2 {
+		if !encoding.ReadUint64(data, &index, &entry.ClientToServerPacketsLost) {
+			return false
+		}
+		if !encoding.ReadUint64(data, &index, &entry.ServerToClientPacketsLost) {
 			return false
 		}
 	}

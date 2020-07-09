@@ -896,7 +896,7 @@ func statsTable(stats map[string]map[string]routing.Stats) template.HTML {
 	return template.HTML(html.String())
 }
 
-func RelayDashboardHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.RouteMatrix, statsdb *routing.StatsDatabase, username string, password string) func(writer http.ResponseWriter, request *http.Request) {
+func RelayDashboardHandlerFunc(redisClient redis.Cmdable, GetRouteMatrix func() *routing.RouteMatrix, statsdb *routing.StatsDatabase, username string, password string) func(writer http.ResponseWriter, request *http.Request) {
 	type displayRelay struct {
 		ID         uint64
 		Name       string
@@ -968,10 +968,8 @@ func RelayDashboardHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.R
 
 		var res response
 
-		buf := bytes.Buffer{}
-
-		routeMatrix.WriteAnalysisTo(&buf)
-		res.Analysis = buf.String()
+		routeMatrix := GetRouteMatrix()
+		res.Analysis = string(routeMatrix.GetAnalysisData())
 
 		hgetallResult := redisClient.HGetAll(routing.HashKeyAllRelays)
 		if hgetallResult.Err() != nil && hgetallResult.Err() != redis.Nil {
@@ -1029,7 +1027,7 @@ func RelayDashboardHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.R
 	}
 }
 
-func RoutesHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.RouteMatrix, statsdb *routing.StatsDatabase, username string, password string) func(writer http.ResponseWriter, request *http.Request) {
+func RoutesHandlerFunc(redisClient redis.Cmdable, GetRouteMatrix func() *routing.RouteMatrix, statsdb *routing.StatsDatabase, username string, password string) func(writer http.ResponseWriter, request *http.Request) {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		defer request.Body.Close()
 		writer.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
@@ -1044,6 +1042,8 @@ func RoutesHandlerFunc(redisClient redis.Cmdable, routeMatrix *routing.RouteMatr
 		qs := request.URL.Query()
 		relayName := qs["relay"][0]
 		datacenterName := qs["datacenter"][0]
+
+		routeMatrix := GetRouteMatrix()
 
 		var relayIndex int
 		for i := range routeMatrix.RelayNames {

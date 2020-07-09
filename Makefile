@@ -15,7 +15,7 @@ SDKNAME = libnext
 TIMESTAMP ?= $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
 SHA ?= $(shell git rev-parse --short HEAD)
 RELEASE ?= $(shell git describe --tags --exact-match 2> /dev/null)
-COMMITMESSAGE ?= $(shell git log -1 --pretty=%B)
+COMMITMESSAGE ?= $(shell git log -1 --pretty=%B | tr '\n' ' ')
 
 CURRENT_DIR = $(shell pwd -P)
 DEPLOY_DIR = ./deploy
@@ -319,7 +319,8 @@ build-portal: ## builds the portal binary
 	@printf "TIMESTAMP: ${TIMESTAMP}\n"
 	@printf "SHA: ${SHA}\n"
 	@printf "RELEASE: ${RELEASE}\n"
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(COMMITMESSAGE)" -o ${DIST_DIR}/portal ./cmd/portal/portal.go
+	@printf "COMMITMESSAGE: ${COMMITMESSAGE}\n"
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/portal ./cmd/portal/portal.go
 	@printf "done\n"
 
 .PHONY: build-portal-artifact
@@ -348,14 +349,14 @@ build-portal-prod-artifact: build-portal ## builds the portal with the right env
 publish-portal-artifact: ## publishes the portal artifact to GCP Storage with gsutil
 	@printf "Publishing portal dev artifact... \n\n"
 	@gsutil cp $(DIST_DIR)/portal.dev.tar.gz $(ARTIFACT_BUCKET)/portal.dev.tar.gz
-	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" $(ARTIFACT_BUCKET)/portal.dev.tar.gz
+	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" -h "x-goog-meta-commitMessage:$(echo "$COMMITMESSAGE")" $(ARTIFACT_BUCKET)/portal.dev.tar.gz
 	@printf "done\n"
 
 .PHONY: publish-portal-prod-artifact
 publish-portal-prod-artifact: ## publishes the portal artifact to GCP Storage with gsutil
 	@printf "Publishing portal prod artifact... \n\n"
 	@gsutil cp $(DIST_DIR)/portal.prod.tar.gz $(ARTIFACT_BUCKET_PROD)/portal.prod.tar.gz
-	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" $(ARTIFACT_BUCKET_PROD)/portal.prod.tar.gz
+	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" -h "x-goog-meta-commitMessage:$(echo "$COMMITMESSAGE")" $(ARTIFACT_BUCKET_PROD)/portal.prod.tar.gz
 	@printf "done\n"
 
 .PHONY: deploy-portal
@@ -366,7 +367,7 @@ deploy-portal: ## builds and deploys the portal to dev
 .PHONY: build-relay-backend
 build-relay-backend: ## builds the relay backend binary
 	@printf "Building relay backend... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(COMMITMESSAGE)" -o ${DIST_DIR}/relay_backend ./cmd/relay_backend/relay_backend.go
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/relay_backend ./cmd/relay_backend/relay_backend.go
 	@printf "done\n"
 
 .PHONY: build-relay-backend-artifact
@@ -393,14 +394,14 @@ build-relay-backend-prod-artifact: build-relay-backend ## builds the relay backe
 publish-relay-backend-artifact: ## publishes the relay backend dev artifact
 	@printf "Publishing relay backend dev artifact... \n\n"
 	@gsutil cp $(DIST_DIR)/relay_backend.dev.tar.gz $(ARTIFACT_BUCKET)/relay_backend.dev.tar.gz
-	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" $(ARTIFACT_BUCKET)/relay_backend.dev.tar.gz
+	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" -h "x-goog-meta-commitMessage:$(echo "$COMMITMESSAGE")" $(ARTIFACT_BUCKET)/relay_backend.dev.tar.gz
 	@printf "done\n"
 
 .PHONY: publish-relay-backend-prod-artifact
 publish-relay-backend-prod-artifact: ## publishes the relay backend prod artifact
 	@printf "Publishing relay backend prod artifact... \n\n"
 	@gsutil cp $(DIST_DIR)/relay_backend.prod.tar.gz $(ARTIFACT_BUCKET_PROD)/relay_backend.prod.tar.gz
-	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" $(ARTIFACT_BUCKET_PROD)/relay_backend.prod.tar.gz
+	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" -h "x-goog-meta-commitMessage:$(echo "$COMMITMESSAGE")" $(ARTIFACT_BUCKET_PROD)/relay_backend.prod.tar.gz
 	@printf "done\n"
 
 .PHONY: deploy-relay-backend
@@ -411,13 +412,13 @@ deploy-relay-backend: ## builds and deploys the relay backend to dev
 .PHONY: build-server-backend
 build-server-backend: ## builds the server backend binary
 	@printf "Building server backend... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(COMMITMESSAGE)" -o ${DIST_DIR}/server_backend ./cmd/server_backend/server_backend.go
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/server_backend ./cmd/server_backend/server_backend.go
 	@printf "done\n"
 
 .PHONY: build-billing
 build-billing: ## builds the billing binary
 	@printf "Building billing... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(COMMITMESSAGE)" -o ${DIST_DIR}/billing ./cmd/billing/billing.go
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/billing ./cmd/billing/billing.go
 	@printf "done\n"
 
 .PHONY: build-billing-artifact
@@ -444,14 +445,14 @@ build-billing-prod-artifact: build-billing ## builds the belling service and cre
 publish-billing-artifact: ## publishes the billing dev artifact
 	@printf "Publishing billing dev artifact... \n\n"
 	@gsutil cp $(DIST_DIR)/billing.dev.tar.gz $(ARTIFACT_BUCKET)/billing.dev.tar.gz
-	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" $(ARTIFACT_BUCKET)/billing.dev.tar.gz
+	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" -h "x-goog-meta-commitMessage:$(echo "$COMMITMESSAGE")" $(ARTIFACT_BUCKET)/billing.dev.tar.gz
 	@printf "done\n"
 
 .PHONY: publish-billing-prod-artifact
 publish-billing-prod-artifact: ## publishes the billing prod artifact
 	@printf "Publishing billing prod artifact... \n\n"
 	@gsutil cp $(DIST_DIR)/billing.prod.tar.gz $(ARTIFACT_BUCKET_PROD)/billing.prod.tar.gz
-	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" $(ARTIFACT_BUCKET_PROD)/billing.prod.tar.gz
+	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" -h "x-goog-meta-commitMessage:$(echo "$COMMITMESSAGE")" $(ARTIFACT_BUCKET_PROD)/billing.prod.tar.gz
 	@printf "done\n"
 
 .PHONY: build-server-backend-artifact
@@ -478,14 +479,14 @@ build-server-backend-prod-artifact: build-server-backend ## builds the server ba
 publish-server-backend-artifact: ## publishes the server backend dev artifact
 	@printf "Publishing server backend dev artifact... \n\n"
 	@gsutil cp $(DIST_DIR)/server_backend.dev.tar.gz $(ARTIFACT_BUCKET)/server_backend.dev.tar.gz
-	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" $(ARTIFACT_BUCKET)/server_backend.dev.tar.gz
+	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" -h "x-goog-meta-commitMessage:$(echo "$COMMITMESSAGE")" $(ARTIFACT_BUCKET)/server_backend.dev.tar.gz
 	@printf "done\n"
 
 .PHONY: publish-server-backend-prod-artifact
 publish-server-backend-prod-artifact: ## publishes the server backend prod artifact
 	@printf "Publishing server backend prod artifact... \n\n"
 	@gsutil cp $(DIST_DIR)/server_backend.prod.tar.gz $(ARTIFACT_BUCKET_PROD)/server_backend.prod.tar.gz
-	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" $(ARTIFACT_BUCKET_PROD)/server_backend.prod.tar.gz
+	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" -h "x-goog-meta-commitMessage:$(echo "$COMMITMESSAGE")" $(ARTIFACT_BUCKET_PROD)/server_backend.prod.tar.gz
 	@printf "done\n"
 
 .PHONY: deploy-server-backend

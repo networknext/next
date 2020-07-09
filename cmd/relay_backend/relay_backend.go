@@ -6,6 +6,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"expvar"
@@ -13,8 +14,10 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -42,7 +45,7 @@ var (
 
 func main() {
 
-	fmt.Printf("welcome to the nerd zone 1.0\n")
+	fmt.Printf("relay_backend: Git Hash: %s - Commit: %s", sha, commitMessage)
 
 	ctx := context.Background()
 
@@ -286,7 +289,16 @@ func main() {
 
 	statsdb := routing.NewStatsDatabase()
 	var costMatrix routing.CostMatrix
-	var routeMatrix routing.RouteMatrix
+
+	routeMatrix := &routing.RouteMatrix{}
+	var routeMatrixMutex sync.RWMutex
+
+	getRouteMatrixFunc := func() *routing.RouteMatrix {
+		routeMatrixMutex.RLock()
+		rm := routeMatrix
+		routeMatrixMutex.RUnlock()
+		return rm
+	}
 
 	// Clean up any relays that may have expired while the relay_backend was down (due to a deploy, maintenance, etc.)
 	hgetallResult := redisClientRelays.HGetAll(routing.HashKeyAllRelays)
@@ -350,16 +362,28 @@ func main() {
 	}
 	go func() {
 
+		var longCostMatrixUpdates uint64
+		var longRouteMatrixUpdates uint64
+		var costMatrixBytes int
+		var routeMatrixBytes int
+
 		for {
 
 			costMatrixDurationStart := time.Now()
 			err := statsdb.GetCostMatrix(&costMatrix, redisClientRelays, float32(maxJitter), float32(maxPacketLoss))
 			costMatrixDurationSince := time.Since(costMatrixDurationStart)
 
+			if costMatrixDurationSince.Seconds() > 1.0 {
+				// todo: ryan, same treatment for cost matrix duration. thanks
+				longCostMatrixUpdates++
+			}
+
 			if err != nil {
 				level.Warn(logger).Log("matrix", "cost", "op", "generate", "err", err)
 				costMatrix = routing.CostMatrix{}
 			}
+
+			costMatrixBytes = len(costMatrix.GetResponseData())
 
 			newCostMatrixGenMetrics.DurationGauge.Set(float64(costMatrixDurationSince.Milliseconds()))
 
@@ -380,19 +404,23 @@ func main() {
 
 			// todo: ryan, would be nice to upload the size of the cost matrix in bytes
 
+			newRouteMatrix := &routing.RouteMatrix{}
+
 			optimizeDurationStart := time.Now()
-			if err := costMatrix.Optimize(&routeMatrix, 1); err != nil {
+			if err := costMatrix.Optimize(newRouteMatrix, 1); err != nil {
 				level.Warn(logger).Log("matrix", "cost", "op", "optimize", "err", err)
 			}
 			optimizeDurationSince := time.Since(optimizeDurationStart)
 			newOptimizeMetrics.DurationGauge.Set(float64(optimizeDurationSince.Milliseconds()))
 			newOptimizeMetrics.Invocations.Add(1)
 
-			relayStatMetrics.NumRoutes.Set(float64(len(routeMatrix.Entries)))
+			if optimizeDurationSince.Seconds() > 1.0 {
+				longRouteMatrixUpdates++
+			}
 
-			// todo: ryan, would be nice to upload the size of the route matrix in bytes
+			relayStatMetrics.NumRoutes.Set(float64(len(newRouteMatrix.Entries)))
 
-			level.Info(logger).Log("matrix", "route", "entries", len(routeMatrix.Entries))
+			level.Info(logger).Log("matrix", "route", "entries", len(newRouteMatrix.Entries))
 
 			// Write the cost matrix to a buffer and serve that instead
 			// of writing a new buffer every time we want to serve the cost matrix
@@ -403,16 +431,55 @@ func main() {
 
 			// Write the route matrix to a buffer and serve that instead
 			// of writing a new buffer every time we want to serve the route matrix
-			err = routeMatrix.WriteResponseData()
+			err = newRouteMatrix.WriteResponseData()
 			if err != nil {
 				level.Error(logger).Log("matrix", "route", "msg", "failed to write route matrix response data", "err", err)
+				continue // Don't store the new route matrix if we fail to write response data
 			}
+
+			// todo: ryan, would be nice to upload the size of the route matrix in bytes as a metric
+			routeMatrixBytes = len(routeMatrix.GetResponseData())
+
+			// Write the route matrix analysis to a buffer and serve that instead
+			// of writing a new analysis every time we want to view the analysis in the relay dashboard
+			newRouteMatrix.WriteAnalysisData()
+
+			// todo: calculate this in optimize and store in route matrix so we don't have to calc this here
+			numRoutes := 0
+			for i := range newRouteMatrix.Entries {
+				numRoutes += int(newRouteMatrix.Entries[i].NumRoutes)
+			}
+
+			memoryUsed := func() float64 {
+				var m runtime.MemStats
+				runtime.ReadMemStats(&m)
+				return float64(m.Alloc) / (1000.0 * 1000.0)
+			}
+
+			// todo: ryan please put everything below into metrics for this service (where not already)
+			fmt.Printf("-----------------------------\n")
+			fmt.Printf("%d goroutines\n", runtime.NumGoroutine())
+			fmt.Printf("%.2f mb allocated\n", memoryUsed())
+			fmt.Printf("%d datacenters\n", len(newRouteMatrix.DatacenterIDs))
+			fmt.Printf("%d relays\n", len(newRouteMatrix.RelayIDs))
+			fmt.Printf("%d routes\n", numRoutes)
+			fmt.Printf("%d long cost matrix updates\n", longCostMatrixUpdates)
+			fmt.Printf("%d long route matrix updates\n", longRouteMatrixUpdates)
+			fmt.Printf("cost matrix bytes: %d\n", costMatrixBytes)
+			fmt.Printf("route matrix bytes: %d\n", routeMatrixBytes)
+			fmt.Printf("cost matrix update: %.2f seconds\n", costMatrixDurationSince.Seconds())
+			fmt.Printf("route matrix update: %.2f seconds\n", optimizeDurationSince.Seconds())
+			fmt.Printf("-----------------------------\n")
+
+			// Swap the route matrix pointer to the new one
+			// This double buffered route matrix approach makes the route matrix lockless
+			routeMatrixMutex.Lock()
+			routeMatrix = newRouteMatrix
+			routeMatrixMutex.Unlock()
 
 			time.Sleep(syncInterval)
 		}
 	}()
-
-	// todo: ryan, would be nice to have a loop every 10 seconds to print out basic stats, like server_backend
 
 	// Sub to expiry events for cleanup
 	redisClientRelays.ConfigSet("notify-keyspace-events", "Ex")
@@ -483,6 +550,20 @@ func main() {
 	// this will ensure the "takes 5 minutes to stabilize" policy, since the stats db is configured to take the *worst* packet loss it sees
 	// for the past 5 minutes...
 
+	serveRouteMatrixFunc := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/octet-stream")
+
+		m := getRouteMatrixFunc()
+
+		data := m.GetResponseData()
+
+		buffer := bytes.NewBuffer(data)
+		_, err := buffer.WriteTo(w)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}
+
 	router := mux.NewRouter()
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage))
@@ -490,10 +571,10 @@ func main() {
 	router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(logger, relayslogger, &commonUpdateParams)).Methods("POST")
 	router.HandleFunc("/relays", transport.RelayHandlerFunc(logger, relayslogger, &commonHandlerParams)).Methods("POST")
 	router.Handle("/cost_matrix", &costMatrix).Methods("GET")
-	router.Handle("/route_matrix", &routeMatrix).Methods("GET")
+	router.HandleFunc("/route_matrix", serveRouteMatrixFunc).Methods("GET")
 	router.Handle("/debug/vars", expvar.Handler())
-	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(redisClientRelays, &routeMatrix, statsdb, "local", "local"))
-	router.HandleFunc("/routes", transport.RoutesHandlerFunc(redisClientRelays, &routeMatrix, statsdb, "local", "local"))
+	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(redisClientRelays, getRouteMatrixFunc, statsdb, "local", "local"))
+	router.HandleFunc("/routes", transport.RoutesHandlerFunc(redisClientRelays, getRouteMatrixFunc, statsdb, "local", "local"))
 
 	go func() {
 		port, ok := os.LookupEnv("PORT")

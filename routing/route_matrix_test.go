@@ -7,8 +7,6 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"net"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
@@ -1773,44 +1771,6 @@ func TestRouteMatrixMarshalBinary(t *testing.T) {
 }
 
 // todo: Ryan, please add v6
-
-func TestRouteMatrixServerHTTP(t *testing.T) {
-	t.Run("Successful Serve", func(t *testing.T) {
-		// Create and populate a route matrix
-		matrix := getPopulatedRouteMatrix(false)
-		err := matrix.WriteResponseData()
-		assert.NoError(t, err)
-
-		// Create a dummy http request to test ServeHTTP
-		recorder := httptest.NewRecorder()
-		request, err := http.NewRequest("GET", "/", nil)
-		assert.NoError(t, err)
-
-		matrix.ServeHTTP(recorder, request)
-
-		// Get the response
-		response := recorder.Result()
-
-		// Read the response body
-		body, err := ioutil.ReadAll(response.Body)
-		assert.NoError(t, err)
-		response.Body.Close()
-
-		// Create a new matrix to store the response
-		var receivedMatrix routing.RouteMatrix
-		err = receivedMatrix.UnmarshalBinary(body)
-		assert.NoError(t, err)
-
-		// Create a new expected matrix so that the response buffer is empty
-		var expected routing.RouteMatrix
-		err = expected.UnmarshalBinary(matrix.GetResponseData())
-		assert.NoError(t, err)
-
-		// Validate the response
-		assert.Equal(t, "application/octet-stream", response.Header.Get("Content-Type"))
-		assert.Equal(t, &expected, &receivedMatrix)
-	})
-}
 
 func TestRouteMatrixWriteTo(t *testing.T) {
 	t.Run("Error during MarshalBinary()", func(t *testing.T) {

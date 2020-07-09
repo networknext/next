@@ -280,8 +280,16 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string, se
 	}{}
 
 	for _, session := range reply.Sessions {
+		directRTT := fmt.Sprintf("%.02f", session.DirectRTT)
+		if session.DirectRTT == 0 {
+			directRTT = "-"
+		}
+		nextRTT := fmt.Sprintf("%.02f", session.NextRTT)
+		if session.NextRTT == 0 {
+			nextRTT = "-"
+		}
 		improvement := fmt.Sprintf("%.02f", session.DeltaRTT)
-		if session.NextRTT <= 0 || session.DeltaRTT <= 0 {
+		if nextRTT == "-" || directRTT == "-" {
 			improvement = "-"
 		}
 		sessions = append(sessions, struct {
@@ -297,8 +305,8 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string, se
 			UserHash:    session.UserHash,
 			ISP:         fmt.Sprintf("%.32s", session.Location.ISP),
 			Datacenter:  session.DatacenterName,
-			DirectRTT:   fmt.Sprintf("%.02f", session.DirectRTT),
-			NextRTT:     fmt.Sprintf("%.02f", session.NextRTT),
+			DirectRTT:   directRTT,
+			NextRTT:     nextRTT,
 			Improvement: improvement,
 		})
 	}

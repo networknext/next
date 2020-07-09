@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"math"
 	"net"
-	"net/http"
 	"sort"
 	"strconv"
 	"sync"
@@ -53,6 +52,9 @@ type RouteMatrix struct {
 
 	responseBuffer     []byte
 	reponseBufferMutex sync.RWMutex
+
+	analysisBuffer      []byte
+	analysisBufferMutex sync.RWMutex
 
 	relayAddressCache []*net.UDPAddr
 }
@@ -333,18 +335,6 @@ func (m *RouteMatrix) WriteTo(w io.Writer) (int64, error) {
 	}
 
 	return int64(n), nil
-}
-
-func (m *RouteMatrix) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/octet-stream")
-
-	data := m.GetResponseData()
-
-	buffer := bytes.NewBuffer(data)
-	_, err := buffer.WriteTo(w)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-	}
 }
 
 func ParseAddress(input string) *net.UDPAddr {
@@ -902,4 +892,20 @@ func (m *RouteMatrix) WriteResponseData() error {
 	m.responseBuffer = buffer.Bytes()
 	m.reponseBufferMutex.Unlock()
 	return nil
+}
+
+func (m *RouteMatrix) GetAnalysisData() []byte {
+	m.analysisBufferMutex.RLock()
+	data := m.analysisBuffer
+	m.analysisBufferMutex.RUnlock()
+	return data
+}
+
+func (m *RouteMatrix) WriteAnalysisData() {
+	var buffer bytes.Buffer
+	m.WriteAnalysisTo(&buffer)
+
+	m.analysisBufferMutex.Lock()
+	m.analysisBuffer = buffer.Bytes()
+	m.analysisBufferMutex.Unlock()
 }
