@@ -19,7 +19,7 @@
         <div class="mr-auto"></div>
       </div>
     </div>
-    <form class="flow-stats-form">
+    <form class="flow-stats-form" @submit.prevent="loadUserSessions()">
       <div class="form-group">
         <label for="user-hash-input">
             User Hash
@@ -29,6 +29,7 @@
             <input class="form-control"
                     type="text"
                     placeholder="Enter a User Hash to view statistics"
+                    v-model="searchID"
             >
           </div>
           <div class="col-auto">
@@ -39,84 +40,14 @@
         </div>
       </div>
     </form>
-    <div class="alert alert-info" role="alert" id="user-tool-alert" v-if="false">
+    <!-- TODO: Refactor these alerts to their own component -->
+    <div class="alert alert-info" role="alert" id="user-tool-alert" v-if="showAlert">
         Please enter a User ID or Hash to view their sessions.
     </div>
-    <div class="alert alert-danger" role="alert" id="user-tool-danger" v-if="false">
+    <div class="alert alert-danger" role="alert" id="user-tool-danger" v-if="showError">
         Failed to fetch user sessions
     </div>
-    <div id="user-sessions">
-      <div class="table-responsive table-no-top-line">
-        <table class="table table-sm" v-if="true">
-          <thead>
-            <tr>
-              <th>
-                <span>
-                  Session ID
-                </span>
-              </th>
-              <th>
-                <span>
-                  Platform
-                </span>
-              </th>
-              <th>
-                <span>
-                  Connection Type
-                </span>
-              </th>
-              <th>
-                <span>
-                  ISP
-                </span>
-              </th>
-              <th>
-                <span>
-                  Datacenter
-                </span>
-              </th>
-              <th>
-                <span>
-                  Server Address
-                </span>
-              </th>
-            </tr>
-          </thead>
-          <tbody v-if="true">
-            <!-- <tr v-for="session in pages.userTool.sessions"> -->
-            <tr>
-              <td>
-                <a class="text-dark fixed-width" href="#">
-                    SESSION ID
-                </a>
-              </td>
-              <td>
-                SESSION PLATFORM
-              </td>
-              <td>
-                SESSION CONNECTION
-              </td>
-              <td>
-                SESSION LOCATION ISP
-              </td>
-              <td>
-                SESSION DATACENTER
-              </td>
-              <td>
-                SESSION SERVER ADDR
-              </td>
-            </tr>
-          </tbody>
-          <tbody v-if="false">
-            <tr>
-              <td colspan="7" class="text-muted">
-                  There are no sessions belonging to this user.
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
+    <router-view/>
   </main>
 </template>
 
@@ -125,6 +56,30 @@ import { Component, Vue } from 'vue-property-decorator'
 
 @Component
 export default class UserToolWorkspace extends Vue {
+  // TODO: Refactor out the alert/error into its own component.
+  private showAlert = false
+  private showError = false
+
+  private searchID = ''
+  private showDetails = false
+
+  private created () {
+    // Empty for now
+  }
+
+  private loadUserSessions () {
+    // API Call to fetch the details associated to ID
+    this.$router.push(`/user-tool/${this.searchID}`)
+  }
+
+  private beforeRouteUpdate (to: any, from: any, next: any) {
+    if (to.params.pathMatch) {
+      this.searchID = to.params.pathMatch
+    } else {
+      this.searchID = ''
+    }
+    next()
+  }
 }
 </script>
 
