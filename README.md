@@ -68,22 +68,40 @@ NOTE: This is NOT the only way to set up the project, this is just ONE way. Feel
 	`sudo apt update`
 
 2. Install build-essential -- This will install make, gcc, and g++
+	Linux:
 	`sudo apt install build-essential`
+	Mac:
+	`xcode-select --install`
 
 3. Install pkg-config
+	Linux:
 	`sudo apt install pkg-config`
+	Mac:
+	`brew install pkg-config`
 
 4. Install libsodium
+	Linux:
 	`sudo apt install libsodium-dev`
+	Mac:
+	`brew install libsodium`
 
 5. Install libcurl
+	Linux:
 	`sudo apt install libcurl4-openssl-dev`
+	Mac:
+	`brew install openssl`
 
 6. Install RapidJSON
+	Linux:
   `sudo apt install rapidjson-dev`
+	Mac:
+	`brew install rapidjson`
 
 7. Install g++ version 8
+	Linux:
   `sudo apt install g++-8`
+	Mac:
+	`brew install gcc@8`
 
 8. Install Go (must be 1.13+)
 	`cd /usr/local/`
