@@ -203,24 +203,9 @@ func setRoutingRulesSettings(rpcClient jsonrpc.RPCClient, env Environment, buyer
 }
 
 func datacenterMaps(rpcClient jsonrpc.RPCClient, env Environment, arg string) {
-	// check to see if user entered name or substring (not id)
-	buyerArgs := localjsonrpc.BuyersArgs{}
-	var buyers localjsonrpc.BuyersReply
-	if err := rpcClient.CallFor(&buyers, "OpsService.Buyers", buyerArgs); err != nil {
-		handleJSONRPCError(env, err)
-		return
-	}
 
 	var buyerID string
-
-	r := regexp.MustCompile("(?i)" + arg) // case-insensitive regex
-	for _, buyer := range buyers.Buyers {
-		if r.MatchString(buyer.Name) || arg == buyer.ID {
-			buyerID = buyer.ID
-		}
-	}
-
-	if buyerID == "" {
+	if buyerID = returnBuyerID(rpcClient, env, arg); buyerID == "" {
 		fmt.Printf("No matches found for '%s'", arg)
 		return
 	}
@@ -239,8 +224,23 @@ func datacenterMaps(rpcClient jsonrpc.RPCClient, env Environment, arg string) {
 }
 
 func addDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm routing.DatacenterMap) error {
+
+	var buyerID string
+	if buyerID = returnBuyerID(rpcClient, env, dcm.BuyerID); buyerID == "" {
+		return fmt.Errorf("No buyer matches found for '%s'", dcm.BuyerID)
+	}
+
+	var dcID string
+	if dcID = returnDatacenterID(rpcClient, env, dcm.Datacenter); dcID == "" {
+		return fmt.Errorf("No matches found for '%s'", dcm.Datacenter)
+	}
+
 	arg := localjsonrpc.AddDatacenterMapArgs{
-		DatacenterMap: dcm,
+		DatacenterMap: routing.DatacenterMap{
+			BuyerID:    buyerID,
+			Datacenter: dcID,
+			Alias:      dcm.Alias,
+		},
 	}
 
 	var reply localjsonrpc.AddDatacenterMapReply
@@ -250,5 +250,47 @@ func addDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm routing.
 	}
 
 	return nil
+
+}
+
+func returnBuyerID(rpcClient jsonrpc.RPCClient, env Environment, arg string) string {
+	// check to see if user entered name or substring (not id)
+	buyerArgs := localjsonrpc.BuyersArgs{}
+	var buyers localjsonrpc.BuyersReply
+	if err := rpcClient.CallFor(&buyers, "OpsService.Buyers", buyerArgs); err != nil {
+		handleJSONRPCError(env, err)
+		return ""
+	}
+
+	var buyerID string
+
+	r := regexp.MustCompile("(?i)" + arg) // case-insensitive regex
+	for _, buyer := range buyers.Buyers {
+		if r.MatchString(buyer.Name) || arg == buyer.ID {
+			buyerID = buyer.ID
+		}
+	}
+
+	return buyerID
+}
+
+func returnDatacenterID(rpcClient jsonrpc.RPCClient, env Environment, arg string) string {
+	args := localjsonrpc.DatacentersArgs{}
+
+	var reply localjsonrpc.DatacentersReply
+	if err := rpcClient.CallFor(&reply, "OpsService.Datacenters", args); err != nil {
+		handleJSONRPCError(env, err)
+		return ""
+	}
+
+	var datacenterID string
+	r := regexp.MustCompile("(?i)" + arg) // case-insensitive regex
+	for _, dc := range reply.Datacenters {
+		if r.MatchString(dc.Name) || arg == dc.ID {
+			datacenterID = dc.ID
+		}
+	}
+
+	return datacenterID
 
 }
