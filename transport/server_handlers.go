@@ -444,7 +444,7 @@ type SessionUpdateParams struct {
 	ServerPrivateKey     []byte
 	RouterPrivateKey     []byte
 	GetRouteProvider     func() RouteProvider
-	IPLoc                routing.IPLocator
+	GetIPLocator         func() routing.IPLocator
 	Storer               storage.Storer
 	RedisClientPortal    redis.Cmdable
 	RedisClientPortalExp time.Duration
@@ -660,7 +660,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 
 		if location.IsZero() {
 			var err error
-			location, err = params.IPLoc.LocateIP(packet.ClientAddress.IP)
+			location, err = params.GetIPLocator().LocateIP(packet.ClientAddress.IP)
 
 			if err != nil {
 				routeDecision = routing.Decision{

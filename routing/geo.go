@@ -14,11 +14,10 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"sync"
-	"time"
 
 	"github.com/go-redis/redis/v7"
 	jsoniter "github.com/json-iterator/go"
+	"github.com/networknext/backend/metrics"
 	"github.com/oschwald/geoip2-golang"
 )
 
@@ -151,40 +150,25 @@ func (ips *IPStack) LocateIP(ip net.IP) (Location, error) {
 
 // MaxmindDB embeds the unofficial MaxmindDB reader so we can satisfy the IPLocator interface
 type MaxmindDB struct {
-	mu sync.RWMutex
-
-	httpClient *http.Client
+	HTTPClient *http.Client
+	CityURI    string
+	IspURI     string
 
 	cityReader *geoip2.Reader
-	cityURI    string
-
-	ispReader *geoip2.Reader
-	ispURI    string
+	ispReader  *geoip2.Reader
 }
 
-func (mmdb *MaxmindDB) SyncLoop(ctx context.Context, c <-chan time.Time) error {
-	// todo: ryan, please fix the sync loop to work with double buffering like the cost and route matrix
+func (mmdb *MaxmindDB) Sync(ctx context.Context, metrics *metrics.MaxmindSyncMetrics) error {
+	if err := mmdb.OpenCity(ctx, mmdb.HTTPClient, mmdb.CityURI); err != nil {
+		metrics.ErrorMetrics.FailedToSync.Add(1)
+		return fmt.Errorf("could not open maxmind db uri: %v", err)
+	}
+	if err := mmdb.OpenISP(ctx, mmdb.HTTPClient, mmdb.IspURI); err != nil {
+		metrics.ErrorMetrics.FailedToSyncISP.Add(1)
+		return fmt.Errorf("could not open maxmind db isp uri: %v", err)
+	}
+
 	return nil
-	/*
-		for {
-			select {
-			case <-c:
-				// todo: this is a very long lock. it will block session updates
-				// instead, double buffer and open the city and isp database on a
-				// new instance, then pointer swap under mutex.
-				mmdb.mu.Lock()
-				if err := mmdb.OpenCity(ctx, mmdb.httpClient, mmdb.cityURI); err != nil {
-					return err
-				}
-				if err := mmdb.OpenISP(ctx, mmdb.httpClient, mmdb.ispURI); err != nil {
-					return err
-				}
-				mmdb.mu.Unlock()
-			case <-ctx.Done():
-				return nil
-			}
-		}
-	*/
 }
 
 func (mmdb *MaxmindDB) OpenCity(ctx context.Context, httpClient *http.Client, uri string) error {
@@ -192,10 +176,8 @@ func (mmdb *MaxmindDB) OpenCity(ctx context.Context, httpClient *http.Client, ur
 	if err != nil {
 		return err
 	}
-	mmdb.cityReader = reader
-	mmdb.cityURI = uri
-	mmdb.httpClient = httpClient
 
+	mmdb.cityReader = reader
 	return nil
 }
 
@@ -204,10 +186,8 @@ func (mmdb *MaxmindDB) OpenISP(ctx context.Context, httpClient *http.Client, uri
 	if err != nil {
 		return err
 	}
-	mmdb.ispReader = reader
-	mmdb.ispURI = uri
-	mmdb.httpClient = httpClient
 
+	mmdb.ispReader = reader
 	return nil
 }
 
@@ -260,9 +240,6 @@ func (mmdb *MaxmindDB) openMaxmindDB(ctx context.Context, httpClient *http.Clien
 
 // LocateIP queries the Maxmind geoip2.Reader for the net.IP and parses the response into a routing.Location
 func (mmdb *MaxmindDB) LocateIP(ip net.IP) (Location, error) {
-	mmdb.mu.RLock()
-	defer mmdb.mu.RUnlock()
-
 	if mmdb.cityReader == nil {
 		return Location{}, errors.New("not configured with a Maxmind City DB")
 	}
@@ -320,7 +297,7 @@ func (mmdb *MaxmindDB) LocateIP(ip net.IP) (Location, error) {
 	}, nil
 }
 
-// LocateIPFunc allows anyone to define a custom function to lookup and net.IP for a routing.Location
+// LocateIPFunc allows anyone to define a custom function to lookup a net.IP for a routing.Location
 type LocateIPFunc func(net.IP) (Location, error)
 
 // LocateIP just invokes the func itself and allows this to satisfy the IPLocator interface
