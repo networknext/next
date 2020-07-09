@@ -532,7 +532,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			level.Debug(params.Logger).Log("msg", "long session mutex in session update")
 		}
 		if sessionDataReadOnly == nil {
-			sessionDataReadOnly = &SessionData{}
+			sessionDataReadOnly = NewSessionData()
 		}
 
 		// Check the packet sequence number vs. the most recent sequence number in redis.
@@ -980,9 +980,53 @@ func GetNextRoute(routeMatrix RouteProvider, nearRelays []routing.Relay, datacen
 	return &routes[0]
 }
 
+func CalculateTotalPriceNibblins(chosenRoute *routing.Route, envelopeKbpsUp uint64, envelopeKbpsDown uint64, sliceDuration uint64) uint64 {
+	if len(chosenRoute.Relays) == 0 {
+		// no revenue on direct
+		return 0
+	}
+
+	nnRakeCentsPerGB := uint64(1)
+
+	var totalPriceNibblins uint64
+
+	// The envelope values are averages, so need to multiply by slice duration
+	envelopeBytesUp := (((1000 * envelopeKbpsUp) / 8) * sliceDuration)     // Converts Kbps to bytes
+	envelopeBytesDown := (((1000 * envelopeKbpsDown) / 8) * sliceDuration) // Converts Kbps to bytes
+
+	envelopeUpGB := float64(envelopeBytesUp) / 1000000000.0
+	envelopeDownGB := float64(envelopeBytesDown) / 1000000000.0
+
+	// Calculate the price up the route
+	for _, relay := range chosenRoute.Relays {
+		// EgressPriceCents is a rate of cents/GB, so converting to nibblins and multiplying by the GB gives us nibblins
+		upEgressPriceNibblins := uint64(float64(billing.CentsToNibblins(relay.Seller.EgressPriceCents)) * envelopeUpGB)
+
+		// Add NN rake
+		upEgressPriceNibblins += uint64(float64(billing.CentsToNibblins(nnRakeCentsPerGB)) * envelopeUpGB)
+
+		// Accumulate the price in the total price
+		totalPriceNibblins += upEgressPriceNibblins
+	}
+
+	// Calculate the price down the route
+	for _, relay := range chosenRoute.Relays {
+		// EgressPriceCents is a rate of cents/GB, so converting to nibblins and multiplying by the GB gives us nibblins
+		downEgressPriceNibblins := uint64(float64(billing.CentsToNibblins(relay.Seller.EgressPriceCents)) * envelopeDownGB)
+
+		// Add NN rake
+		downEgressPriceNibblins += uint64(float64(billing.CentsToNibblins(nnRakeCentsPerGB)) * envelopeDownGB)
+
+		// Accumulate the price in the total price
+		totalPriceNibblins += downEgressPriceNibblins
+	}
+
+	return totalPriceNibblins
+}
+
 func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket, response *SessionResponsePacket, serverDataReadOnly *ServerData,
 	chosenRoute *routing.Route, lastNextStats *routing.Stats, lastDirectStats *routing.Stats, location *routing.Location, nearRelays []routing.Relay,
-	routeDecision routing.Decision, timeNow time.Time, envelopeBytesUp uint64, envelopeBytesDown uint64) {
+	routeDecision routing.Decision, timeNow time.Time, totalPriceNibblins uint64) {
 
 	// IMPORTANT: we actually need to display the true datacenter name in the demo and demo plus views,
 	// while in the customer view of the portal, we need to display the alias. this is because aliases will
@@ -1020,13 +1064,6 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 
 	onNetworkNext := len(chosenRoute.Relays) > 0
 
-	bytes := envelopeBytesDown + envelopeBytesUp
-	totalPriceCents := 1000000000 * bytes // 1 cent per GB
-	if !onNetworkNext {
-		// no revenue on direct
-		totalPriceCents = 0
-	}
-
 	billingEntry := billing.BillingEntry{
 		BuyerID:                   packet.CustomerID,
 		SessionID:                 packet.SessionID,
@@ -1040,7 +1077,7 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 		NextPacketLoss:            float32(chosenRoute.Stats.PacketLoss),
 		NumNextRelays:             uint8(len(chosenRoute.Relays)),
 		NextRelays:                nextRelays,
-		TotalPrice:                totalPriceCents,
+		TotalPrice:                totalPriceNibblins,
 		ClientToServerPacketsLost: packet.PacketsLostClientToServer,
 		ServerToClientPacketsLost: packet.PacketsLostServerToClient,
 	}
@@ -2232,12 +2269,11 @@ func sendRouteResponse(w io.Writer, route *routing.Route, params *SessionUpdateP
 
 	addRouteDecisionMetric(routeDecision, params.Metrics)
 
-	// The envelope values are averages, so need to multiply by slice duration
-	envelopeBytesUp := ((1000 * uint64(buyer.RoutingRulesSettings.EnvelopeKbpsUp)) / 8) * sliceDuration
-	envelopeBytesDown := ((1000 * uint64(buyer.RoutingRulesSettings.EnvelopeKbpsDown)) / 8) * sliceDuration
+	// Calculate the total price for the billing entry
+	totalPriceNibblins := CalculateTotalPriceNibblins(route, uint64(buyer.RoutingRulesSettings.EnvelopeKbpsUp), uint64(buyer.RoutingRulesSettings.EnvelopeKbpsDown), sliceDuration)
 
 	// IMPORTANT: run post in parallel so it doesn't block the response
-	go PostSessionUpdate(params, packet, response, serverDataReadOnly, route, lastNextStats, lastDirectStats, location, nearRelays, routeDecision, timeNow, envelopeBytesUp, envelopeBytesDown)
+	go PostSessionUpdate(params, packet, response, serverDataReadOnly, route, lastNextStats, lastDirectStats, location, nearRelays, routeDecision, timeNow, totalPriceNibblins)
 
 	// Send the Session Response back to the server
 	if _, err := w.Write(responseData); err != nil {

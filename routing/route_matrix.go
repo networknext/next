@@ -21,10 +21,6 @@ const (
 	RouteMatrixVersion = 6
 )
 
-// todo: ryan, there's absolutely no reason to keep compatibility past the last route matrix version in production
-// currently that is version 5. this means we can drop anything before route matrix version 5.
-// the versioning code and tests are super complex :(
-
 type RouteMatrixEntry struct {
 	DirectRTT      int32
 	NumRoutes      int32
