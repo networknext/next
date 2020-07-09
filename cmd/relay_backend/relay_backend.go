@@ -362,8 +362,10 @@ func main() {
 	}
 	go func() {
 
-		var longCostMatrix uint64
-		var longRouteMatrix uint64
+		var longCostMatrixUpdates uint64
+		var longRouteMatrixUpdates uint64
+		var costMatrixBytes int
+		var routeMatrixBytes int
 
 		for {
 
@@ -373,13 +375,15 @@ func main() {
 
 			if costMatrixDurationSince.Seconds() > 1.0 {
 				// todo: ryan, same treatment for cost matrix duration. thanks
-				longCostMatrix++
+				longCostMatrixUpdates++
 			}
 
 			if err != nil {
 				level.Warn(logger).Log("matrix", "cost", "op", "generate", "err", err)
 				costMatrix = routing.CostMatrix{}
 			}
+
+			costMatrixBytes = len(costMatrix.GetResponseData())
 
 			newCostMatrixGenMetrics.DurationGauge.Set(float64(costMatrixDurationSince.Milliseconds()))
 
@@ -411,12 +415,10 @@ func main() {
 			newOptimizeMetrics.Invocations.Add(1)
 
 			if optimizeDurationSince.Seconds() > 1.0 {
-				longRouteMatrix++
+				longRouteMatrixUpdates++
 			}
 
 			relayStatMetrics.NumRoutes.Set(float64(len(newRouteMatrix.Entries)))
-
-			// todo: ryan, would be nice to upload the size of the route matrix in bytes
 
 			level.Info(logger).Log("matrix", "route", "entries", len(newRouteMatrix.Entries))
 
@@ -434,6 +436,9 @@ func main() {
 				level.Error(logger).Log("matrix", "route", "msg", "failed to write route matrix response data", "err", err)
 				continue // Don't store the new route matrix if we fail to write response data
 			}
+
+			// todo: ryan, would be nice to upload the size of the route matrix in bytes as a metric
+			routeMatrixBytes = len(routeMatrix.GetResponseData())
 
 			// Write the route matrix analysis to a buffer and serve that instead
 			// of writing a new analysis every time we want to view the analysis in the relay dashboard
@@ -458,10 +463,12 @@ func main() {
 			fmt.Printf("%d datacenters\n", len(newRouteMatrix.DatacenterIDs))
 			fmt.Printf("%d relays\n", len(newRouteMatrix.RelayIDs))
 			fmt.Printf("%d routes\n", numRoutes)
-			fmt.Printf("%d long cost matrix\n", longCostMatrix)
-			fmt.Printf("%d long route matrix\n", longRouteMatrix)
-			fmt.Printf("cost matrix: %.2f seconds\n", costMatrixDurationSince.Seconds())
-			fmt.Printf("route matrix: %.2f seconds\n", optimizeDurationSince.Seconds())
+			fmt.Printf("%d long cost matrix updates\n", longCostMatrixUpdates)
+			fmt.Printf("%d long route matrix updates\n", longRouteMatrixUpdates)
+			fmt.Printf("cost matrix bytes: %d\n", costMatrixBytes)
+			fmt.Printf("route matrix bytes: %d\n", routeMatrixBytes)
+			fmt.Printf("cost matrix update: %.2f seconds\n", costMatrixDurationSince.Seconds())
+			fmt.Printf("route matrix update: %.2f seconds\n", optimizeDurationSince.Seconds())
 			fmt.Printf("-----------------------------\n")
 
 			// Swap the route matrix pointer to the new one
