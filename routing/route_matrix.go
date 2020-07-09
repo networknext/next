@@ -288,9 +288,6 @@ func (m *RouteMatrix) FillRoutes(routes []Route, routeIndex *int, fromCost int, 
 			Stats: Stats{
 				RTT: float64(fromCost + int(m.Entries[entryIndex].RouteRTT[i])),
 			},
-			DirectStats: Stats{
-				RTT: float64(fromCost + int(m.Entries[entryIndex].DirectRTT)),
-			},
 		}
 
 		if *routeIndex >= len(routes) {
