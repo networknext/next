@@ -180,54 +180,58 @@ func (m *RouteMatrix) GetDatacenterRelays(d Datacenter) []Relay {
 	return relays
 }
 
-// GetRoutes returns all routes between the set of near relays and destination relays.
-func (m *RouteMatrix) GetRoutes(near []Relay, dest []Relay) ([]Route, error) {
-	type RelayPairResult struct {
-		nearCost   int  // The RTT cost between the client and the from relay
-		entryIndex int  // The index in the route matrix entry
-		reverse    bool // Whether or not to reverse the relays to stay on the same side of the diagonal in the triangular matrix
+// GetRoutes returns acceptable routes between the set of near relays and destination relays.
+// maxAcceptableRoutes is the maximum number of acceptable routes that can be returned.
+// Returns the acceptable routes, the number of routes in the slice, and an error, if one exists.
+func (m *RouteMatrix) GetRoutes(near []Relay, dest []Relay, maxAcceptableRoutes uint64) ([]Route, int, error) {
+	acceptableRoutes := make([]Route, maxAcceptableRoutes)
+	var acceptableRoutesLength uint64
+
+	for i := range acceptableRoutes {
+		acceptableRoutes[i] = Route{
+			Stats: Stats{
+				RTT:        InvalidRouteValue,
+				Jitter:     InvalidRouteValue,
+				PacketLoss: InvalidRouteValue,
+			},
+		}
 	}
 
-	relayPairLength := len(near) * len(dest)
-	relayPairResults := make([]RelayPairResult, relayPairLength)
+	// For all (near, dest) relay pairs, check each route to see if it is acceptable
+	for _, nearRelay := range near {
+		for _, destRelay := range dest {
+			entryIndex, reverse := m.GetEntryIndex(&nearRelay, &destRelay)
 
-	// Do a "first pass" to determine the size of the Route buffer
-	var routeTotal int
-	for i, nearRelay := range near {
-		for j, destRelay := range dest {
-			entryIndex, reverse := m.GetEntryIndex(nearRelay, destRelay)
+			entry := &m.Entries[entryIndex]
 
-			// Add a bad pair result so that the second pass will skip over it.
-			// This way we don't have to append only good results to a new list, which is more expensive.
-			if entryIndex < 0 || entryIndex >= len(m.Entries) {
-				relayPairResults[i+j*len(near)] = RelayPairResult{0, -1, false}
-				continue
+			for i := 0; i < int(entry.NumRoutes); i++ {
+				routeRTT := entry.RouteRTT[i]
+
+				if acceptableRoutesLength == 0 {
+					// no routes added yet, add the route
+
+					// get the route's relays
+
+					acceptableRoutes[acceptableRoutesLength] = Route{
+						// Relays: ,
+						Stats: Stats{
+							RTT: float64(int32(math.Ceil(near[i].ClientStats.RTT)) + routeRTT),
+						},
+					}
+
+				} else if acceptableRoutesLength < maxAcceptableRoutes {
+					// not at max routes yet, insert according RTT sort order
+				} else {
+					// route set is full, only insert if lower RTT than at least one current route.
+				}
 			}
 
-			relayPairResults[i+j*len(near)] = RelayPairResult{int(math.Ceil(nearRelay.ClientStats.RTT)), entryIndex, reverse}
-			routeTotal += int(m.Entries[entryIndex].NumRoutes)
 		}
 	}
-
-	// Now that we have the route total, make the Route buffer and fill it
-	var routeIndex int
-	routes := make([]Route, routeTotal)
-	for i := 0; i < relayPairLength; i++ {
-		if relayPairResults[i].entryIndex >= 0 {
-			m.FillRoutes(routes, &routeIndex, relayPairResults[i].nearCost, relayPairResults[i].entryIndex, relayPairResults[i].reverse)
-		}
-	}
-
-	// No routes found
-	if len(routes) == 0 {
-		return nil, errors.New("no routes in route matrix")
-	}
-
-	return routes, nil
 }
 
 // Returns the index in the route matrix representing the route between the near Relay and dest Relay and whether or not to reverse them
-func (m *RouteMatrix) GetEntryIndex(near Relay, dest Relay) (int, bool) {
+func (m *RouteMatrix) GetEntryIndex(near *Relay, dest *Relay) (int, bool) {
 	destidx, ok := m.RelayIndices[dest.ID]
 	if !ok {
 		return -1, false
@@ -241,10 +245,10 @@ func (m *RouteMatrix) GetEntryIndex(near Relay, dest Relay) (int, bool) {
 	return TriMatrixIndex(nearidx, destidx), destidx > nearidx
 }
 
-// FillRoutes is just the internal function to populate the given route buffer.
+// FillRoutes populates the given route buffer.
 // It takes the entryIndex and reverse data and fills the given route buffer, incrementing the routeIndex after
 // each route it adds.
-func (m *RouteMatrix) FillRoutes(routes []Route, routeIndex *int, fromCost int, entryIndex int, reverse bool) error {
+func (m *RouteMatrix) FillRoutes(routes []Route, routeIndex *int, nearCost int, entryIndex int, reverse bool) error {
 	var err error
 
 	entry := m.Entries[entryIndex]
@@ -273,7 +277,7 @@ func (m *RouteMatrix) FillRoutes(routes []Route, routeIndex *int, fromCost int, 
 		route := Route{
 			Relays: routeRelays,
 			Stats: Stats{
-				RTT: float64(fromCost + int(m.Entries[entryIndex].RouteRTT[i])),
+				RTT: float64(nearCost + int(m.Entries[entryIndex].RouteRTT[i])),
 			},
 		}
 
