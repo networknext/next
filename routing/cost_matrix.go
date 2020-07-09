@@ -18,7 +18,7 @@ import (
 
 const (
 	// IMPORTANT: Bump this version whenever you change the binary format
-	CostMatrixVersion = 7
+	CostMatrixVersion = 6
 )
 
 type CostMatrix struct {
