@@ -532,7 +532,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			level.Debug(params.Logger).Log("msg", "long session mutex in session update")
 		}
 		if sessionDataReadOnly == nil {
-			sessionDataReadOnly = &SessionData{}
+			sessionDataReadOnly = NewSessionData()
 		}
 
 		// Check the packet sequence number vs. the most recent sequence number in redis.
@@ -986,37 +986,42 @@ func CalculateTotalPriceNibblins(chosenRoute *routing.Route, envelopeKbpsUp uint
 		return 0
 	}
 
-	var totalPriceCents uint64
+	nnRakeCentsPerGB := uint64(1)
+
+	var totalPriceNibblins uint64
 
 	// The envelope values are averages, so need to multiply by slice duration
-	envelopeBytesUpGB := (((1000 * uint64(envelopeKbpsUp)) / 8) * sliceDuration) / 1000000000     // Converts Kbps to GB
-	envelopeBytesDownGB := (((1000 * uint64(envelopeKbpsDown)) / 8) * sliceDuration) / 1000000000 // Converts Kbps to GB
+	envelopeBytesUp := (((1000 * envelopeKbpsUp) / 8) * sliceDuration)     // Converts Kbps to bytes
+	envelopeBytesDown := (((1000 * envelopeKbpsDown) / 8) * sliceDuration) // Converts Kbps to bytes
+
+	envelopeUpGB := float64(envelopeBytesUp) / 1000000000.0
+	envelopeDownGB := float64(envelopeBytesDown) / 1000000000.0
 
 	// Calculate the price up the route
 	for _, relay := range chosenRoute.Relays {
-		// EgressPriceCents is a rate of cents/GB, so multiplying the by GB gives us cents
-		upEgressPriceCents := relay.Seller.EgressPriceCents * envelopeBytesUpGB
+		// EgressPriceCents is a rate of cents/GB, so converting to nibblins and multiplying by the GB gives us nibblins
+		upEgressPriceNibblins := uint64(float64(billing.CentsToNibblins(relay.Seller.EgressPriceCents)) * envelopeUpGB)
 
-		// Add 1c per GB for NN rake
-		upEgressPriceCents += 1 / envelopeBytesUpGB
+		// Add NN rake
+		upEgressPriceNibblins += uint64(float64(billing.CentsToNibblins(nnRakeCentsPerGB)) * envelopeUpGB)
 
 		// Accumulate the price in the total price
-		totalPriceCents += upEgressPriceCents
+		totalPriceNibblins += upEgressPriceNibblins
 	}
 
 	// Calculate the price down the route
 	for _, relay := range chosenRoute.Relays {
-		// EgressPriceCents is a rate of cents/GB, so multiplying the by GB gives us cents
-		downEgressPriceCents := relay.Seller.EgressPriceCents * envelopeBytesDownGB
+		// EgressPriceCents is a rate of cents/GB, so converting to nibblins and multiplying by the GB gives us nibblins
+		downEgressPriceNibblins := uint64(float64(billing.CentsToNibblins(relay.Seller.EgressPriceCents)) * envelopeDownGB)
 
-		// Add 1c per GB for NN rake
-		downEgressPriceCents += 1 * envelopeBytesDownGB
+		// Add NN rake
+		downEgressPriceNibblins += uint64(float64(billing.CentsToNibblins(nnRakeCentsPerGB)) * envelopeDownGB)
 
 		// Accumulate the price in the total price
-		totalPriceCents += downEgressPriceCents
+		totalPriceNibblins += downEgressPriceNibblins
 	}
 
-	return billing.CentsToNibblins(totalPriceCents)
+	return totalPriceNibblins
 }
 
 func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket, response *SessionResponsePacket, serverDataReadOnly *ServerData,

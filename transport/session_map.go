@@ -58,15 +58,14 @@ func (sessionMap *SessionMap) NumSessions() uint64 {
 	return total
 }
 
+func NewSessionData() *SessionData {
+	return &SessionData{
+		sliceMutexes: make([]sync.Mutex, NumSessionSliceMutexes),
+	}
+}
+
 func (sessionMap *SessionMap) UpdateSessionData(sessionId uint64, sessionData *SessionData) {
 	index := sessionId % NumSessionMapShards
-
-	// Prefer to do this nil check and have the slice stored on the heap rather than
-	// a fixed size stack array since the mutexes would be copied
-	if sessionData.sliceMutexes == nil {
-		sessionData.sliceMutexes = make([]sync.Mutex, NumSessionSliceMutexes)
-	}
-
 	sessionMap.shard[index].mutex.Lock()
 	_, exists := sessionMap.shard[index].sessions[sessionId]
 	sessionMap.shard[index].sessions[sessionId] = sessionData
