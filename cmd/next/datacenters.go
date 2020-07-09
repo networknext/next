@@ -24,6 +24,8 @@ func datacenterMaps(rpcClient jsonrpc.RPCClient, env Environment, buyerID string
 
 }
 
+// func addDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, ))
+
 func datacenters(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 	args := localjsonrpc.DatacentersArgs{
 		Name: filter,
