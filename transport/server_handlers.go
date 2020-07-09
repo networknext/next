@@ -980,9 +980,40 @@ func GetNextRoute(routeMatrix RouteProvider, nearRelays []routing.Relay, datacen
 	return &routes[0]
 }
 
+func CalculateTotalPriceNibblins(chosenRoute *routing.Route, envelopeKbpsUp int64, envelopeKbpsDown int64, sliceDuration uint64) uint64 {
+	if len(chosenRoute.Relays) == 0 {
+		// no revenue on direct
+		return 0
+	}
+
+	var totalPrice uint64
+
+	// The envelope values are averages, so need to multiply by slice duration
+	envelopeBytesUp := ((1000 * uint64(envelopeKbpsUp)) / 8) * sliceDuration     // Converts Kbps to bytes
+	envelopeBytesDown := ((1000 * uint64(envelopeKbpsDown)) / 8) * sliceDuration // Converts Kbps to bytes
+
+	// First, calculate the revenue of a NN route at 1c per GB
+	networkNextRevenue := 1000000000 * (envelopeBytesUp + envelopeBytesDown)
+
+	// Next calculate the price of the route taken
+	for _, relay := range chosenRoute.Relays {
+		seller := relay.Seller
+
+		upIngress := seller.IngressPriceCents * (envelopeBytesUp / 1000000000)
+		upEgress := seller.EgressPriceCents * (envelopeBytesUp / 1000000000)
+		downIngress := seller.IngressPriceCents * (envelopeBytesDown / 1000000000)
+		downEgress := seller.EgressPriceCents * (envelopeBytesDown / 1000000000)
+
+		totalPrice += (upIngress + downIngress) * networkNextRevenue
+		totalPrice += (upEgress + downEgress) * networkNextRevenue
+	}
+
+	return billing.CentsToNibblins(totalPrice)
+}
+
 func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket, response *SessionResponsePacket, serverDataReadOnly *ServerData,
 	chosenRoute *routing.Route, lastNextStats *routing.Stats, lastDirectStats *routing.Stats, location *routing.Location, nearRelays []routing.Relay,
-	routeDecision routing.Decision, timeNow time.Time, envelopeBytesUp uint64, envelopeBytesDown uint64) {
+	routeDecision routing.Decision, timeNow time.Time, totalPriceNibblins uint64) {
 
 	// IMPORTANT: we actually need to display the true datacenter name in the demo and demo plus views,
 	// while in the customer view of the portal, we need to display the alias. this is because aliases will
@@ -1020,13 +1051,6 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 
 	onNetworkNext := len(chosenRoute.Relays) > 0
 
-	bytes := envelopeBytesDown + envelopeBytesUp
-	totalPriceCents := 1000000000 * bytes // 1 cent per GB
-	if !onNetworkNext {
-		// no revenue on direct
-		totalPriceCents = 0
-	}
-
 	billingEntry := billing.BillingEntry{
 		BuyerID:                   packet.CustomerID,
 		SessionID:                 packet.SessionID,
@@ -1040,7 +1064,7 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 		NextPacketLoss:            float32(chosenRoute.Stats.PacketLoss),
 		NumNextRelays:             uint8(len(chosenRoute.Relays)),
 		NextRelays:                nextRelays,
-		TotalPrice:                totalPriceCents,
+		TotalPrice:                totalPriceNibblins,
 		ClientToServerPacketsLost: packet.PacketsLostClientToServer,
 		ServerToClientPacketsLost: packet.PacketsLostServerToClient,
 	}
@@ -2232,12 +2256,11 @@ func sendRouteResponse(w io.Writer, route *routing.Route, params *SessionUpdateP
 
 	addRouteDecisionMetric(routeDecision, params.Metrics)
 
-	// The envelope values are averages, so need to multiply by slice duration
-	envelopeBytesUp := ((1000 * uint64(buyer.RoutingRulesSettings.EnvelopeKbpsUp)) / 8) * sliceDuration
-	envelopeBytesDown := ((1000 * uint64(buyer.RoutingRulesSettings.EnvelopeKbpsDown)) / 8) * sliceDuration
+	// Calculate the total price for the billing entry
+	totalPriceNibblins := CalculateTotalPriceNibblins(route, buyer.RoutingRulesSettings.EnvelopeKbpsUp, buyer.RoutingRulesSettings.EnvelopeKbpsDown, sliceDuration)
 
 	// IMPORTANT: run post in parallel so it doesn't block the response
-	go PostSessionUpdate(params, packet, response, serverDataReadOnly, route, lastNextStats, lastDirectStats, location, nearRelays, routeDecision, timeNow, envelopeBytesUp, envelopeBytesDown)
+	go PostSessionUpdate(params, packet, response, serverDataReadOnly, route, lastNextStats, lastDirectStats, location, nearRelays, routeDecision, timeNow, totalPriceNibblins)
 
 	// Send the Session Response back to the server
 	if _, err := w.Write(responseData); err != nil {
