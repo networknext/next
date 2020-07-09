@@ -260,7 +260,6 @@ import { Component, Vue } from 'vue-property-decorator'
  * TODO: Cleanup template
  * TODO: Figure out what sessionMeta fields need to be required
  * TODO: Hookup API call
- * TODO: Hookup loop logic
  */
 
 @Component
