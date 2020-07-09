@@ -329,7 +329,10 @@ MapHandler = {
 						width: '100%',
 						height: '100%',
 						initialViewState: this.viewState,
-						controller: true,
+						controller: {
+							dragRotate: false,
+							dragTilt: false
+						},
 						// change the map's viewstate whenever the view state of deck.gl changes
 						onViewStateChange: ({ viewState }) => {
 							this.mapInstance.jumpTo({
@@ -711,7 +714,8 @@ WorkspaceHandler = {
 								container: 'session-tool-map',
 								controller: {
 									dragPan: false,
-									dragRotate: false
+									dragRotate: false,
+									dragTilt: false
 								},
 								layers: [sessionLocationLayer],
 							});
