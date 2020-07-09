@@ -980,35 +980,43 @@ func GetNextRoute(routeMatrix RouteProvider, nearRelays []routing.Relay, datacen
 	return &routes[0]
 }
 
-func CalculateTotalPriceNibblins(chosenRoute *routing.Route, envelopeKbpsUp int64, envelopeKbpsDown int64, sliceDuration uint64) uint64 {
+func CalculateTotalPriceNibblins(chosenRoute *routing.Route, envelopeKbpsUp uint64, envelopeKbpsDown uint64, sliceDuration uint64) uint64 {
 	if len(chosenRoute.Relays) == 0 {
 		// no revenue on direct
 		return 0
 	}
 
-	var totalPrice uint64
+	var totalPriceCents uint64
 
 	// The envelope values are averages, so need to multiply by slice duration
-	envelopeBytesUp := ((1000 * uint64(envelopeKbpsUp)) / 8) * sliceDuration     // Converts Kbps to bytes
-	envelopeBytesDown := ((1000 * uint64(envelopeKbpsDown)) / 8) * sliceDuration // Converts Kbps to bytes
+	envelopeBytesUpGB := (((1000 * uint64(envelopeKbpsUp)) / 8) * sliceDuration) / 1000000000     // Converts Kbps to GB
+	envelopeBytesDownGB := (((1000 * uint64(envelopeKbpsDown)) / 8) * sliceDuration) / 1000000000 // Converts Kbps to GB
 
-	// First, calculate the revenue of a NN route at 1c per GB
-	networkNextRevenue := 1000000000 * (envelopeBytesUp + envelopeBytesDown)
-
-	// Next calculate the price of the route taken
+	// Calculate the price up the route
 	for _, relay := range chosenRoute.Relays {
-		seller := relay.Seller
+		// EgressPriceCents is a rate of cents/GB, so multiplying the by GB gives us cents
+		upEgressPriceCents := relay.Seller.EgressPriceCents * envelopeBytesUpGB
 
-		upIngress := seller.IngressPriceCents * (envelopeBytesUp / 1000000000)
-		upEgress := seller.EgressPriceCents * (envelopeBytesUp / 1000000000)
-		downIngress := seller.IngressPriceCents * (envelopeBytesDown / 1000000000)
-		downEgress := seller.EgressPriceCents * (envelopeBytesDown / 1000000000)
+		// Add 1c per GB for NN rake
+		upEgressPriceCents += 1 / envelopeBytesUpGB
 
-		totalPrice += (upIngress + downIngress) * networkNextRevenue
-		totalPrice += (upEgress + downEgress) * networkNextRevenue
+		// Accumulate the price in the total price
+		totalPriceCents += upEgressPriceCents
 	}
 
-	return billing.CentsToNibblins(totalPrice)
+	// Calculate the price down the route
+	for _, relay := range chosenRoute.Relays {
+		// EgressPriceCents is a rate of cents/GB, so multiplying the by GB gives us cents
+		downEgressPriceCents := relay.Seller.EgressPriceCents * envelopeBytesDownGB
+
+		// Add 1c per GB for NN rake
+		downEgressPriceCents += 1 * envelopeBytesDownGB
+
+		// Accumulate the price in the total price
+		totalPriceCents += downEgressPriceCents
+	}
+
+	return billing.CentsToNibblins(totalPriceCents)
 }
 
 func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket, response *SessionResponsePacket, serverDataReadOnly *ServerData,
