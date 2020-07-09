@@ -364,7 +364,7 @@ func getRouteMatrixDataV6() routeMatrixData {
 	buff := make([]byte, buffSize)
 
 	offset := 0
-	putVersionNumber(buff, &offset, 5)
+	putVersionNumber(buff, &offset, 6)
 	putRelayIDs(buff, &offset, addrsToIDs(relayAddrs))
 	putRelayNames(buff, &offset, relayNames)
 	putDatacenterStuff(buff, &offset, datacenters, datacenterNames)
@@ -612,13 +612,244 @@ func TestRouteMatrixUnmarshalBinaryV5(t *testing.T) {
 		var matrix routing.RouteMatrix
 		err := matrix.UnmarshalBinary(data.buff)
 		assert.Nil(t, err)
-		routeMatrixUnmarshalAssertionsVer3(t, &matrix, data.numRelays, data.numDatacenters, data.relayIDs, data.datacenterIDs, data.relayAddrs, data.datacenterRelays, data.publicKeys, data.entries, data.relayNames, data.datacenterIDs, data.datacenterNames)
-		routeMatrixUnmarshalAssertionsVer4(t, &matrix, data.sellers)
-		routeMatrixUnmarshalAssertionsVer5(t, &matrix, data.sessionCounts, data.maxSessionCounts)
+		routeMatrixUnmarshalAssertionsVer5(t, &matrix, data.numRelays, data.numDatacenters, data.relayIDs, data.datacenterIDs, data.relayAddrs, data.datacenterRelays, data.publicKeys, data.entries, data.relayNames, data.datacenterIDs, data.datacenterNames, data.sellers, data.sessionCounts, data.maxSessionCounts)
 	})
 }
 
-// todo: Ryan, please add v6
+func TestRouteMatrixUnmarshalBinaryV6(t *testing.T) {
+	data := getRouteMatrixDataV6()
+
+	t.Run("version of incoming bin data too high", func(t *testing.T) {
+		buff := make([]byte, 4)
+		offset := 0
+		putVersionNumber(buff, &offset, 100)
+		var matrix routing.RouteMatrix
+
+		err := matrix.UnmarshalBinary(buff)
+
+		assert.EqualError(t, err, "unknown route matrix version: 100")
+	})
+
+	t.Run("Invalid version read", func(t *testing.T) {
+		var matrix routing.RouteMatrix
+		offset := sizeofVersionNumber() - 1
+		err := matrix.UnmarshalBinary(data.buff[:offset])
+		assert.EqualError(t, err, "[RouteMatrix] invalid read at version number")
+	})
+
+	t.Run("Invalid relay count read", func(t *testing.T) {
+		var matrix routing.RouteMatrix
+		offset := sizeofRelayCount() + sizeofVersionNumber() - 1
+		err := matrix.UnmarshalBinary(data.buff[:offset])
+		assert.EqualError(t, err, "[RouteMatrix] invalid read at number of relays")
+	})
+
+	t.Run("Invalid relay id read", func(t *testing.T) {
+		var matrix routing.RouteMatrix
+		offset := sizeofRelayIDs64(data.relayIDs) + sizeofRelayCount() + sizeofVersionNumber() - 1
+		err := matrix.UnmarshalBinary(data.buff[:offset])
+		assert.EqualError(t, err, "[RouteMatrix] invalid read at relay ids - ver >= v3")
+	})
+
+	t.Run("Invalid relay name read", func(t *testing.T) {
+		var matrix routing.RouteMatrix
+		offset := sizeofRelayNames(data.relayNames) + sizeofRelayIDs64(data.relayIDs) + sizeofRelayCount() + sizeofVersionNumber() - 1
+		err := matrix.UnmarshalBinary(data.buff[:offset])
+		assert.EqualError(t, err, "[RouteMatrix] invalid read at relay names")
+	})
+
+	t.Run("Invalid datacenter count read", func(t *testing.T) {
+		var matrix routing.RouteMatrix
+		offset := sizeofDatacenterCount() + sizeofRelayNames(data.relayNames) + sizeofRelayIDs64(data.relayIDs) + sizeofRelayCount() + sizeofVersionNumber() - 1
+		err := matrix.UnmarshalBinary(data.buff[:offset])
+		assert.EqualError(t, err, "[RouteMatrix] invalid read at datacenter count")
+	})
+
+	t.Run("Invalid datacenter id read", func(t *testing.T) {
+		var matrix routing.RouteMatrix
+		offset := 8 + sizeofDatacenterCount() + sizeofRelayNames(data.relayNames) + sizeofRelayIDs64(data.relayIDs) + sizeofRelayCount() + sizeofVersionNumber() - 1
+		err := matrix.UnmarshalBinary(data.buff[:offset])
+		assert.EqualError(t, err, "[RouteMatrix] invalid read at datacenter ids - ver >= v3")
+	})
+
+	t.Run("Invalid datacenter name read", func(t *testing.T) {
+		var matrix routing.RouteMatrix
+		offset := sizeofDatacenterNames(data.datacenterNames) + sizeofDatacenterCount() + sizeofRelayNames(data.relayNames) + sizeofRelayIDs64(data.relayIDs) + sizeofRelayCount() + sizeofVersionNumber() - 1
+		err := matrix.UnmarshalBinary(data.buff[:offset])
+		assert.EqualError(t, err, "[RouteMatrix] invalid read at datacenter names")
+	})
+
+	t.Run("Invalid relay address read", func(t *testing.T) {
+		var matrix routing.RouteMatrix
+		offset := sizeofRelayAddress(data.relayAddrs) + sizeofDatacenterNames(data.datacenterNames) + sizeofDatacenterIDs64(data.datacenterIDs) + sizeofDatacenterCount() +
+			sizeofRelayNames(data.relayNames) + sizeofRelayIDs64(data.relayIDs) + sizeofRelayCount() + sizeofVersionNumber() - 1
+		err := matrix.UnmarshalBinary(data.buff[:offset])
+		assert.EqualError(t, err, "[RouteMatrix] invalid read at relay addresses - ver >= v3")
+	})
+
+	t.Run("Invalid relay latitude read", func(t *testing.T) {
+		var matrix routing.RouteMatrix
+		offset := sizeofRelayLatitudes(data.relayLatitudes) + sizeofRelayAddress(data.relayAddrs) + sizeofDatacenterNames(data.datacenterNames) + sizeofDatacenterIDs64(data.datacenterIDs) + sizeofDatacenterCount() +
+			sizeofRelayNames(data.relayNames) + sizeofRelayIDs64(data.relayIDs) + sizeofRelayCount() + sizeofVersionNumber() - 1
+		err := matrix.UnmarshalBinary(data.buff[:offset])
+		assert.EqualError(t, err, "[RouteMatrix] invalid read at relay latitude")
+	})
+
+	t.Run("Invalid relay longitude read", func(t *testing.T) {
+		var matrix routing.RouteMatrix
+		offset := sizeofRelayLongitudes(data.relayLongitudes) + sizeofRelayLatitudes(data.relayLatitudes) + sizeofRelayAddress(data.relayAddrs) + sizeofDatacenterNames(data.datacenterNames) + sizeofDatacenterIDs64(data.datacenterIDs) + sizeofDatacenterCount() +
+			sizeofRelayNames(data.relayNames) + sizeofRelayIDs64(data.relayIDs) + sizeofRelayCount() + sizeofVersionNumber() - 1
+		err := matrix.UnmarshalBinary(data.buff[:offset])
+		assert.EqualError(t, err, "[RouteMatrix] invalid read at relay longitude")
+	})
+
+	t.Run("Invalid relay public key read", func(t *testing.T) {
+		var matrix routing.RouteMatrix
+		offset := sizeofRelayPublicKeys(data.publicKeys) + sizeofRelayLongitudes(data.relayLongitudes) + sizeofRelayLatitudes(data.relayLatitudes) + sizeofRelayAddress(data.relayAddrs) + sizeofDatacenterNames(data.datacenterNames) + sizeofDatacenterIDs64(data.datacenterIDs) + sizeofDatacenterCount() +
+			sizeofRelayNames(data.relayNames) + sizeofRelayIDs64(data.relayIDs) + sizeofRelayCount() + sizeofVersionNumber() - 1
+		err := matrix.UnmarshalBinary(data.buff[:offset])
+		assert.EqualError(t, err, "[RouteMatrix] invalid read at relay public keys - ver >= v3")
+	})
+
+	t.Run("Invalid datacenter count read second time", func(t *testing.T) {
+		var matrix routing.RouteMatrix
+		offset := sizeofDataCenterCount2() + sizeofRelayPublicKeys(data.publicKeys) + sizeofRelayLongitudes(data.relayLongitudes) + sizeofRelayLatitudes(data.relayLatitudes) + sizeofRelayAddress(data.relayAddrs) + sizeofDatacenterNames(data.datacenterNames) + sizeofDatacenterIDs64(data.datacenterIDs) + sizeofDatacenterCount() +
+			sizeofRelayNames(data.relayNames) + sizeofRelayIDs64(data.relayIDs) + sizeofRelayCount() + sizeofVersionNumber() - 1
+		err := matrix.UnmarshalBinary(data.buff[:offset])
+		assert.EqualError(t, err, "[RouteMatrix] invalid read at number of datacenters (second time)")
+	})
+
+	t.Run("Invalid datacenter id read second time", func(t *testing.T) {
+		var matrix routing.RouteMatrix
+		offset := 8 + sizeofDataCenterCount2() + sizeofRelayPublicKeys(data.publicKeys) + sizeofRelayLongitudes(data.relayLongitudes) + sizeofRelayLatitudes(data.relayLatitudes) + sizeofRelayAddress(data.relayAddrs) + sizeofDatacenterNames(data.datacenterNames) + sizeofDatacenterIDs64(data.datacenterIDs) + sizeofDatacenterCount() +
+			sizeofRelayNames(data.relayNames) + sizeofRelayIDs64(data.relayIDs) + sizeofRelayCount() + sizeofVersionNumber() - 1
+		err := matrix.UnmarshalBinary(data.buff[:offset])
+		assert.EqualError(t, err, "[RouteMatrix] invalid read at datacenter id - ver >= v3")
+	})
+
+	t.Run("Invalid datacenter relay count read", func(t *testing.T) {
+		var matrix routing.RouteMatrix
+		offset := 4 + 8 + sizeofDataCenterCount2() + sizeofRelayPublicKeys(data.publicKeys) + sizeofRelayLongitudes(data.relayLongitudes) + sizeofRelayLatitudes(data.relayLatitudes) + sizeofRelayAddress(data.relayAddrs) + sizeofDatacenterNames(data.datacenterNames) + sizeofDatacenterIDs64(data.datacenterIDs) + sizeofDatacenterCount() +
+			sizeofRelayNames(data.relayNames) + sizeofRelayIDs64(data.relayIDs) + sizeofRelayCount() + sizeofVersionNumber() - 1
+		err := matrix.UnmarshalBinary(data.buff[:offset])
+		assert.EqualError(t, err, "[RouteMatrix] invalid read at number of relays in datacenter")
+	})
+
+	t.Run("Invalid datacenter relay id read", func(t *testing.T) {
+		var matrix routing.RouteMatrix
+		offset := 8 + 4 + 8 + sizeofDataCenterCount2() + sizeofRelayPublicKeys(data.publicKeys) + sizeofRelayLongitudes(data.relayLongitudes) + sizeofRelayLatitudes(data.relayLatitudes) + sizeofRelayAddress(data.relayAddrs) + sizeofDatacenterNames(data.datacenterNames) + sizeofDatacenterIDs64(data.datacenterIDs) + sizeofDatacenterCount() +
+			sizeofRelayNames(data.relayNames) + sizeofRelayIDs64(data.relayIDs) + sizeofRelayCount() + sizeofVersionNumber() - 1
+		err := matrix.UnmarshalBinary(data.buff[:offset])
+		assert.EqualError(t, err, "[RouteMatrix] invalid read at relay ids for datacenter - ver >= v3")
+	})
+
+	t.Run("Invalid direct route RTT read in matrix entry", func(t *testing.T) {
+		var matrix routing.RouteMatrix
+		offset := 4 + sizeofRelayIDs64(data.relayIDs) + sizeofRelaysInDatacenterCount(data.datacenterIDs) + sizeofDatacenterIDs64(data.datacenterIDs) + sizeofDataCenterCount2() +
+			sizeofRelayPublicKeys(data.publicKeys) + sizeofRelayLongitudes(data.relayLongitudes) + sizeofRelayLatitudes(data.relayLatitudes) + sizeofRelayAddress(data.relayAddrs) + sizeofDatacenterNames(data.datacenterNames) + sizeofDatacenterIDs64(data.datacenterIDs) + sizeofDatacenterCount() +
+			sizeofRelayNames(data.relayNames) + sizeofRelayIDs64(data.relayIDs) + sizeofRelayCount() + sizeofVersionNumber() - 1
+		err := matrix.UnmarshalBinary(data.buff[:offset])
+		assert.EqualError(t, err, "[RouteMatrix] invalid read at direct rtt")
+	})
+
+	t.Run("Invalid route count read in matrix entry", func(t *testing.T) {
+		var matrix routing.RouteMatrix
+		offset := 4 + 4 + sizeofRelayIDs64(data.relayIDs) + sizeofRelaysInDatacenterCount(data.datacenterIDs) + sizeofDatacenterIDs64(data.datacenterIDs) + sizeofDataCenterCount2() +
+			sizeofRelayPublicKeys(data.publicKeys) + sizeofRelayLongitudes(data.relayLongitudes) + sizeofRelayLatitudes(data.relayLatitudes) + sizeofRelayAddress(data.relayAddrs) + sizeofDatacenterNames(data.datacenterNames) + sizeofDatacenterIDs64(data.datacenterIDs) + sizeofDatacenterCount() +
+			sizeofRelayNames(data.relayNames) + sizeofRelayIDs64(data.relayIDs) + sizeofRelayCount() + sizeofVersionNumber() - 1
+		err := matrix.UnmarshalBinary(data.buff[:offset])
+		assert.EqualError(t, err, "[RouteMatrix] invalid read at number of routes")
+	})
+
+	t.Run("Invalid route RTT read in matrix entry", func(t *testing.T) {
+		var matrix routing.RouteMatrix
+		offset := 4 + 4 + 4 + sizeofRelayIDs64(data.relayIDs) + sizeofRelaysInDatacenterCount(data.datacenterIDs) + sizeofDatacenterIDs64(data.datacenterIDs) + sizeofDataCenterCount2() +
+			sizeofRelayPublicKeys(data.publicKeys) + sizeofRelayLongitudes(data.relayLongitudes) + sizeofRelayLatitudes(data.relayLatitudes) + sizeofRelayAddress(data.relayAddrs) + sizeofDatacenterNames(data.datacenterNames) + sizeofDatacenterIDs64(data.datacenterIDs) + sizeofDatacenterCount() +
+			sizeofRelayNames(data.relayNames) + sizeofRelayIDs64(data.relayIDs) + sizeofRelayCount() + sizeofVersionNumber() - 1
+		err := matrix.UnmarshalBinary(data.buff[:offset])
+		assert.EqualError(t, err, "[RouteMatrix] invalid read at route rtt")
+	})
+
+	t.Run("Invalid relay count read in matrix entry", func(t *testing.T) {
+		var matrix routing.RouteMatrix
+		offset := 4 + 4 + 4 + 4 + sizeofRelayIDs64(data.relayIDs) + sizeofRelaysInDatacenterCount(data.datacenterIDs) + sizeofDatacenterIDs64(data.datacenterIDs) + sizeofDataCenterCount2() +
+			sizeofRelayPublicKeys(data.publicKeys) + sizeofRelayLongitudes(data.relayLongitudes) + sizeofRelayLatitudes(data.relayLatitudes) + sizeofRelayAddress(data.relayAddrs) + sizeofDatacenterNames(data.datacenterNames) + sizeofDatacenterIDs64(data.datacenterIDs) + sizeofDatacenterCount() +
+			sizeofRelayNames(data.relayNames) + sizeofRelayIDs64(data.relayIDs) + sizeofRelayCount() + sizeofVersionNumber() - 1
+		err := matrix.UnmarshalBinary(data.buff[:offset])
+		assert.EqualError(t, err, "[RouteMatrix] invalid read at number of relays in route")
+	})
+
+	t.Run("Invalid relay read in matrix entry", func(t *testing.T) {
+		var matrix routing.RouteMatrix
+		offset := sizeofRouteMatrixEntry(data.entries) + sizeofRelayIDs64(data.relayIDs) + sizeofRelaysInDatacenterCount(data.datacenterIDs) + sizeofDatacenterIDs64(data.datacenterIDs) + sizeofDataCenterCount2() +
+			sizeofRelayPublicKeys(data.publicKeys) + sizeofRelayLongitudes(data.relayLongitudes) + sizeofRelayLatitudes(data.relayLatitudes) + sizeofRelayAddress(data.relayAddrs) + sizeofDatacenterNames(data.datacenterNames) + sizeofDatacenterIDs64(data.datacenterIDs) + sizeofDatacenterCount() +
+			sizeofRelayNames(data.relayNames) + sizeofRelayIDs64(data.relayIDs) + sizeofRelayCount() + sizeofVersionNumber() - 1
+		err := matrix.UnmarshalBinary(data.buff[:offset])
+		assert.EqualError(t, err, "[RouteMatrix] invalid read at relays in route - ver >= v3")
+	})
+
+	t.Run("Invalid seller ID read", func(t *testing.T) {
+		var matrix routing.RouteMatrix
+		offset := 4 + len(data.sellers[0].ID) + sizeofRouteMatrixEntry(data.entries) + sizeofRelayIDs64(data.relayIDs) + sizeofRelaysInDatacenterCount(data.datacenterIDs) + sizeofDatacenterIDs64(data.datacenterIDs) + sizeofDataCenterCount2() +
+			sizeofRelayPublicKeys(data.publicKeys) + sizeofRelayLongitudes(data.relayLongitudes) + sizeofRelayLatitudes(data.relayLatitudes) + sizeofRelayAddress(data.relayAddrs) + sizeofDatacenterNames(data.datacenterNames) + sizeofDatacenterIDs64(data.datacenterIDs) + sizeofDatacenterCount() +
+			sizeofRelayNames(data.relayNames) + sizeofRelayIDs64(data.relayIDs) + sizeofRelayCount() + sizeofVersionNumber() - 1
+		err := matrix.UnmarshalBinary(data.buff[:offset])
+		assert.EqualError(t, err, "[RouteMatrix] invalid read on relay seller ID")
+	})
+
+	t.Run("Invalid seller name read", func(t *testing.T) {
+		var matrix routing.RouteMatrix
+		offset := 4 + len(data.sellers[0].Name) + 4 + len(data.sellers[0].ID) + sizeofRouteMatrixEntry(data.entries) + sizeofRelayIDs64(data.relayIDs) + sizeofRelaysInDatacenterCount(data.datacenterIDs) +
+			sizeofDatacenterIDs64(data.datacenterIDs) + sizeofDataCenterCount2() + sizeofRelayPublicKeys(data.publicKeys) + sizeofRelayLongitudes(data.relayLongitudes) + sizeofRelayLatitudes(data.relayLatitudes) + sizeofRelayAddress(data.relayAddrs) + sizeofDatacenterNames(data.datacenterNames) +
+			sizeofDatacenterIDs64(data.datacenterIDs) + sizeofDatacenterCount() + sizeofRelayNames(data.relayNames) + sizeofRelayIDs64(data.relayIDs) + sizeofRelayCount() + sizeofVersionNumber() - 1
+		err := matrix.UnmarshalBinary(data.buff[:offset])
+		assert.EqualError(t, err, "[RouteMatrix] invalid read on relay seller name")
+	})
+
+	t.Run("Invalid seller ingress price read", func(t *testing.T) {
+		var matrix routing.RouteMatrix
+		offset := 8 + 4 + len(data.sellers[0].Name) + 4 + len(data.sellers[0].ID) + sizeofRouteMatrixEntry(data.entries) + sizeofRelayIDs64(data.relayIDs) + sizeofRelaysInDatacenterCount(data.datacenterIDs) +
+			sizeofDatacenterIDs64(data.datacenterIDs) + sizeofDataCenterCount2() + sizeofRelayPublicKeys(data.publicKeys) + sizeofRelayLongitudes(data.relayLongitudes) + sizeofRelayLatitudes(data.relayLatitudes) + sizeofRelayAddress(data.relayAddrs) + sizeofDatacenterNames(data.datacenterNames) +
+			sizeofDatacenterIDs64(data.datacenterIDs) + sizeofDatacenterCount() + sizeofRelayNames(data.relayNames) + sizeofRelayIDs64(data.relayIDs) + sizeofRelayCount() + sizeofVersionNumber() - 1
+		err := matrix.UnmarshalBinary(data.buff[:offset])
+		assert.EqualError(t, err, "[RouteMatrix] invalid read on relay seller ingress price")
+	})
+
+	t.Run("Invalid seller egress price read", func(t *testing.T) {
+		var matrix routing.RouteMatrix
+		offset := 8 + 8 + 4 + len(data.sellers[0].Name) + 4 + len(data.sellers[0].ID) + sizeofRouteMatrixEntry(data.entries) + sizeofRelayIDs64(data.relayIDs) + sizeofRelaysInDatacenterCount(data.datacenterIDs) +
+			sizeofDatacenterIDs64(data.datacenterIDs) + sizeofDataCenterCount2() + sizeofRelayPublicKeys(data.publicKeys) + sizeofRelayLongitudes(data.relayLongitudes) + sizeofRelayLatitudes(data.relayLatitudes) + sizeofRelayAddress(data.relayAddrs) + sizeofDatacenterNames(data.datacenterNames) +
+			sizeofDatacenterIDs64(data.datacenterIDs) + sizeofDatacenterCount() + sizeofRelayNames(data.relayNames) + sizeofRelayIDs64(data.relayIDs) + sizeofRelayCount() + sizeofVersionNumber() - 1
+		err := matrix.UnmarshalBinary(data.buff[:offset])
+		assert.EqualError(t, err, "[RouteMatrix] invalid read on relay seller egress price")
+	})
+
+	t.Run("Invalid session count read", func(t *testing.T) {
+		var matrix routing.RouteMatrix
+		offset := 4 + sizeofSellers(data.sellers) + sizeofRouteMatrixEntry(data.entries) + sizeofRelayIDs64(data.relayIDs) + sizeofRelaysInDatacenterCount(data.datacenterIDs) +
+			sizeofDatacenterIDs64(data.datacenterIDs) + sizeofDataCenterCount2() + sizeofRelayPublicKeys(data.publicKeys) + sizeofRelayLongitudes(data.relayLongitudes) + sizeofRelayLatitudes(data.relayLatitudes) + sizeofRelayAddress(data.relayAddrs) + sizeofDatacenterNames(data.datacenterNames) +
+			sizeofDatacenterIDs64(data.datacenterIDs) + sizeofDatacenterCount() + sizeofRelayNames(data.relayNames) + sizeofRelayIDs64(data.relayIDs) + sizeofRelayCount() + sizeofVersionNumber() - 1
+		err := matrix.UnmarshalBinary(data.buff[:offset])
+		assert.EqualError(t, err, "[RouteMatrix] invalid read on relay session count")
+	})
+
+	t.Run("Invalid max session count read", func(t *testing.T) {
+		var matrix routing.RouteMatrix
+		offset := 4 + sizeofSessionCounts(data.sessionCounts) + sizeofSellers(data.sellers) + sizeofRouteMatrixEntry(data.entries) + sizeofRelayIDs64(data.relayIDs) + sizeofRelaysInDatacenterCount(data.datacenterIDs) +
+			sizeofDatacenterIDs64(data.datacenterIDs) + sizeofDataCenterCount2() + sizeofRelayPublicKeys(data.publicKeys) + sizeofRelayLongitudes(data.relayLongitudes) + sizeofRelayLatitudes(data.relayLatitudes) + sizeofRelayAddress(data.relayAddrs) + sizeofDatacenterNames(data.datacenterNames) +
+			sizeofDatacenterIDs64(data.datacenterIDs) + sizeofDatacenterCount() + sizeofRelayNames(data.relayNames) + sizeofRelayIDs64(data.relayIDs) + sizeofRelayCount() + sizeofVersionNumber() - 1
+		err := matrix.UnmarshalBinary(data.buff[:offset])
+		assert.EqualError(t, err, "[RouteMatrix] invalid read on relay max session count")
+	})
+
+	t.Run("Success", func(t *testing.T) {
+		var matrix routing.RouteMatrix
+		err := matrix.UnmarshalBinary(data.buff)
+		assert.Nil(t, err)
+		routeMatrixUnmarshalAssertionsVer5(t, &matrix, data.numRelays, data.numDatacenters, data.relayIDs, data.datacenterIDs, data.relayAddrs, data.datacenterRelays, data.publicKeys, data.entries, data.relayNames, data.datacenterIDs, data.datacenterNames, data.sellers, data.sessionCounts, data.maxSessionCounts)
+		routeMatrixUnmarshalAssertionsVer6(t, &matrix, data.relayLatitudes, data.relayLongitudes)
+	})
+}
 
 func TestRouteMatrixMarshalBinary(t *testing.T) {
 	t.Run("MarshalBinary -> UnmarshalBinary equality", func(t *testing.T) {
