@@ -49,6 +49,7 @@ type SessionErrorMetrics struct {
 	RouteFailure                Counter
 	RouteSelectFailure          Counter
 	EncryptionFailure           Counter
+	MarshalResponseFailure      Counter
 	WriteResponseFailure        Counter
 	UpdateCacheFailure          Counter
 	BillingFailure              Counter
@@ -80,6 +81,7 @@ var EmptySessionErrorMetrics SessionErrorMetrics = SessionErrorMetrics{
 	RouteFailure:                &EmptyCounter{},
 	RouteSelectFailure:          &EmptyCounter{},
 	EncryptionFailure:           &EmptyCounter{},
+	MarshalResponseFailure:      &EmptyCounter{},
 	WriteResponseFailure:        &EmptyCounter{},
 	UpdateCacheFailure:          &EmptyCounter{},
 	BillingFailure:              &EmptyCounter{},
@@ -908,6 +910,16 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		DisplayName: "Session Write Cached Response Failure",
 		ServiceName: "server_backend",
 		ID:          "session.error.write_cached_response_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.ErrorMetrics.MarshalResponseFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Session Marshal Response Failure",
+		ServiceName: "server_backend",
+		ID:          "session.error.marshal_response_failure",
 		Unit:        "errors",
 	})
 	if err != nil {
