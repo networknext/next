@@ -2265,7 +2265,7 @@ func sendRouteResponse(w io.Writer, route *routing.Route, params *SessionUpdateP
 	addRouteDecisionMetric(routeDecision, params.Metrics)
 
 	// Calculate the total price for the billing entry
-	totalPriceNibblins := CalculateTotalPriceNibblins(route, buyer.RoutingRulesSettings.EnvelopeKbpsUp, buyer.RoutingRulesSettings.EnvelopeKbpsDown, sliceDuration)
+	totalPriceNibblins := CalculateTotalPriceNibblins(route, uint64(buyer.RoutingRulesSettings.EnvelopeKbpsUp), uint64(buyer.RoutingRulesSettings.EnvelopeKbpsDown), sliceDuration)
 
 	// IMPORTANT: run post in parallel so it doesn't block the response
 	go PostSessionUpdate(params, packet, response, serverDataReadOnly, route, lastNextStats, lastDirectStats, location, nearRelays, routeDecision, timeNow, totalPriceNibblins)
