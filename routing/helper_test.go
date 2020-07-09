@@ -189,6 +189,10 @@ func putRelayAddressesOld(buff []byte, offset *int, addrs []string) {
 	}
 }
 
+func putLatitudes(buff []byte, offset *int, latitudes []float64) {
+	// putInt32s(buff, offset, latitudes...)
+}
+
 func putRelayPublicKeys(buff []byte, offset *int, pks [][]byte) {
 	putBytes(buff, offset, pks...)
 }
@@ -322,6 +326,14 @@ func sizeofRelayAddressOld(addrs []string) int {
 
 func sizeofRelayAddress(addrs []string) int {
 	return len(addrs) * routing.MaxRelayAddressLength
+}
+
+func sizeofRelayLatitudes(latitudes []float64) int {
+	return len(latitudes) * 8
+}
+
+func sizeofRelayLongitudes(longitudes []float64) int {
+	return len(longitudes) * 8
 }
 
 func sizeofRelayPublicKeysOld(keys [][]byte) int {
