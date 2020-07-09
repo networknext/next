@@ -462,12 +462,10 @@
                                             <option value="all" v-on:click="handlers.workspaceHandler.updateSessionFilter({buyerId: '', sessionType: pages.sessions.filter.sessionType})">
                                                 All
                                             </option>
-                                            <option v-for="buyer in allBuyers" v-on:click="handlers.workspaceHandler.updateSessionFilter({buyerId: buyer.id, sessionType: pages.sessions.filter.sessionType})">
+                                            <option v-for="buyer in allBuyers" v-on:click="handlers.workspaceHandler.updateSessionFilter({buyerId: buyer.id, sessionType: pages.sessions.filter.sessionType})" v-if="handlers.userHandler.isAdmin()">
                                                 {{ buyer.name }}
                                             </option>
-                                        </select>
-                                        <select class="form-control" v-if="!handlers.userHandler.isAdmin() && !handlers.userHandler.isAnonymous()">
-                                            <option v-on:click="handlers.userHandler.workspaceHandler.updateSessionFilter({buyerId: handlers.userHandler.userInfo.id, sessionType: pages.sessions.filter.sessionType})">
+                                            <option v-on:click="handlers.workspaceHandler.updateSessionFilter({buyerId: handlers.userHandler.userInfo.id, sessionType: pages.sessions.filter.sessionType})" v-if="!handlers.userHandler.isAdmin() && !handlers.userHandler.isAnonymous()">
                                                 {{ handlers.userHandler.getBuyerName() }}
                                             </option>
                                         </select>

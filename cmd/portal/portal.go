@@ -43,6 +43,8 @@ var (
 )
 
 func main() {
+	fmt.Printf("portal: Git Hash: %s - Commit: %s", sha, commitMessage)
+
 	ctx := context.Background()
 
 	// Configure logging

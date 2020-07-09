@@ -9,7 +9,11 @@ import (
 	"github.com/networknext/backend/routing"
 )
 
-const NumSessionMapShards = 4096
+const (
+	NumSessionMapShards = 4096
+
+	NumSessionSliceMutexes = 8
+)
 
 type SessionData struct {
 	timestamp            int64
@@ -22,6 +26,8 @@ type SessionData struct {
 	committedData        routing.CommittedData
 	routeExpireTimestamp int64
 	tokenVersion         uint8
+	cachedResponse       []byte
+	sliceMutexes         []sync.Mutex
 }
 
 type SessionMapShard struct {
@@ -54,6 +60,13 @@ func (sessionMap *SessionMap) NumSessions() uint64 {
 
 func (sessionMap *SessionMap) UpdateSessionData(sessionId uint64, sessionData *SessionData) {
 	index := sessionId % NumSessionMapShards
+
+	// Prefer to do this nil check and have the slice stored on the heap rather than
+	// a fixed size stack array since the mutexes would be copied
+	if sessionData.sliceMutexes == nil {
+		sessionData.sliceMutexes = make([]sync.Mutex, NumSessionSliceMutexes)
+	}
+
 	sessionMap.shard[index].mutex.Lock()
 	_, exists := sessionMap.shard[index].sessions[sessionId]
 	sessionMap.shard[index].sessions[sessionId] = sessionData

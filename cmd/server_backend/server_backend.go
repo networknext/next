@@ -48,7 +48,7 @@ var (
 
 func main() {
 
-	fmt.Printf("welcome to the nerd zone 24.0\n")
+	fmt.Printf("server_backend: Git Hash: %s - Commit: %s", sha, commitMessage)
 
 	ctx := context.Background()
 
@@ -387,6 +387,7 @@ func main() {
 	}
 
 	// Sync route matrix
+	var longRouteMatrixUpdates uint64
 	var readRouteMatrixSuccessCount uint64
 	{
 		if uri, ok := os.LookupEnv("ROUTE_MATRIX_URI"); ok {
@@ -427,9 +428,9 @@ func main() {
 
 					// todo: ryan, please upload a metric for the time it takes to get the route matrix. we should watch it in stackdriver.
 
-					if routeMatrixTime > 1.0*time.Second {
+					if routeMatrixTime.Seconds() > 1.0 {
 						fmt.Printf("long route matrix update\n")
-						// todo: ryan, please increase a counter here
+						atomic.AddUint64(&longRouteMatrixUpdates, 1)
 					}
 
 					// Swap the route matrix pointer to the new one
@@ -563,6 +564,7 @@ func main() {
 				fmt.Printf("%d long server inits\n", atomic.LoadUint64(&serverInitCounters.LongDuration))
 				fmt.Printf("%d long server updates\n", atomic.LoadUint64(&serverUpdateCounters.LongDuration))
 				fmt.Printf("%d long session updates\n", atomic.LoadUint64(&sessionUpdateCounters.LongDuration))
+				fmt.Printf("%d long route matrix updates\n", atomic.LoadUint64(&longRouteMatrixUpdates))
 				fmt.Printf("-----------------------------\n")
 
 				time.Sleep(time.Second)
