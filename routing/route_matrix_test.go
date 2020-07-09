@@ -2,16 +2,11 @@ package routing_test
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
-	"net"
 	"os"
-	"strings"
 	"testing"
 
-	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/stretchr/testify/assert"
 )
@@ -1851,562 +1846,564 @@ func TestRouteMatrixReadFrom(t *testing.T) {
 	})
 }
 
+// todo: tests are too slow, optimize them
+
 // Old tests from core/core_test.go
-func TestRouteMatrix(t *testing.T) {
-	analyze := func(t *testing.T, route_matrix *routing.RouteMatrix) {
-		src := route_matrix.RelayIDs
-		dest := route_matrix.RelayIDs
+// func TestRouteMatrix(t *testing.T) {
+// 	analyze := func(t *testing.T, route_matrix *routing.RouteMatrix) {
+// 		src := route_matrix.RelayIDs
+// 		dest := route_matrix.RelayIDs
 
-		numRelayPairs := 0
-		numValidRelayPairs := 0
-		numValidRelayPairsWithoutImprovement := 0
+// 		numRelayPairs := 0
+// 		numValidRelayPairs := 0
+// 		numValidRelayPairsWithoutImprovement := 0
 
-		buckets := make([]int, 11)
+// 		buckets := make([]int, 11)
 
-		for i := range src {
-			for j := range dest {
-				if j < i {
-					numRelayPairs++
-					abFlatIndex := routing.TriMatrixIndex(i, j)
-					if len(route_matrix.Entries[abFlatIndex].RouteRTT) > 0 {
-						numValidRelayPairs++
-						improvement := route_matrix.Entries[abFlatIndex].DirectRTT - route_matrix.Entries[abFlatIndex].RouteRTT[0]
-						if improvement > 0.0 {
-							if improvement <= 5 {
-								buckets[0]++
-							} else if improvement <= 10 {
-								buckets[1]++
-							} else if improvement <= 15 {
-								buckets[2]++
-							} else if improvement <= 20 {
-								buckets[3]++
-							} else if improvement <= 25 {
-								buckets[4]++
-							} else if improvement <= 30 {
-								buckets[5]++
-							} else if improvement <= 35 {
-								buckets[6]++
-							} else if improvement <= 40 {
-								buckets[7]++
-							} else if improvement <= 45 {
-								buckets[8]++
-							} else if improvement <= 50 {
-								buckets[9]++
-							} else {
-								buckets[10]++
-							}
-						} else {
-							numValidRelayPairsWithoutImprovement++
-						}
-					}
-				}
-			}
-		}
+// 		for i := range src {
+// 			for j := range dest {
+// 				if j < i {
+// 					numRelayPairs++
+// 					abFlatIndex := routing.TriMatrixIndex(i, j)
+// 					if len(route_matrix.Entries[abFlatIndex].RouteRTT) > 0 {
+// 						numValidRelayPairs++
+// 						improvement := route_matrix.Entries[abFlatIndex].DirectRTT - route_matrix.Entries[abFlatIndex].RouteRTT[0]
+// 						if improvement > 0.0 {
+// 							if improvement <= 5 {
+// 								buckets[0]++
+// 							} else if improvement <= 10 {
+// 								buckets[1]++
+// 							} else if improvement <= 15 {
+// 								buckets[2]++
+// 							} else if improvement <= 20 {
+// 								buckets[3]++
+// 							} else if improvement <= 25 {
+// 								buckets[4]++
+// 							} else if improvement <= 30 {
+// 								buckets[5]++
+// 							} else if improvement <= 35 {
+// 								buckets[6]++
+// 							} else if improvement <= 40 {
+// 								buckets[7]++
+// 							} else if improvement <= 45 {
+// 								buckets[8]++
+// 							} else if improvement <= 50 {
+// 								buckets[9]++
+// 							} else {
+// 								buckets[10]++
+// 							}
+// 						} else {
+// 							numValidRelayPairsWithoutImprovement++
+// 						}
+// 					}
+// 				}
+// 			}
+// 		}
 
-		assert.Equal(t, 43916, numValidRelayPairsWithoutImprovement, "optimizer is broken")
+// 		assert.Equal(t, 43916, numValidRelayPairsWithoutImprovement, "optimizer is broken")
 
-		expected := []int{2561, 8443, 6531, 4690, 3208, 2336, 1775, 1364, 1078, 749, 5159}
+// 		expected := []int{2561, 8443, 6531, 4690, 3208, 2336, 1775, 1364, 1078, 749, 5159}
 
-		assert.Equal(t, expected, buckets, "optimizer is broken")
-	}
+// 		assert.Equal(t, expected, buckets, "optimizer is broken")
+// 	}
 
-	t.Run("TestRouteMatrixSanity() - test using version 2 example data", func(t *testing.T) {
-		var cmatrix routing.CostMatrix
-		var rmatrix routing.RouteMatrix
+// 	t.Run("TestRouteMatrixSanity() - test using version 2 example data", func(t *testing.T) {
+// 		var cmatrix routing.CostMatrix
+// 		var rmatrix routing.RouteMatrix
 
-		raw, err := ioutil.ReadFile("test_data/cost-for-sanity-check.bin")
-		assert.Nil(t, err)
+// 		raw, err := ioutil.ReadFile("test_data/cost-for-sanity-check.bin")
+// 		assert.Nil(t, err)
 
-		err = cmatrix.UnmarshalBinary(raw)
-		assert.Nil(t, err)
+// 		err = cmatrix.UnmarshalBinary(raw)
+// 		assert.Nil(t, err)
 
-		err = cmatrix.Optimize(&rmatrix, 1.0)
-		assert.Nil(t, err)
+// 		err = cmatrix.Optimize(&rmatrix, 1.0)
+// 		assert.Nil(t, err)
 
-		src := rmatrix.RelayIDs
-		dest := rmatrix.RelayIDs
+// 		src := rmatrix.RelayIDs
+// 		dest := rmatrix.RelayIDs
 
-		for i := range src {
-			for j := range dest {
-				if j < i {
-					ijFlatIndex := routing.TriMatrixIndex(i, j)
+// 		for i := range src {
+// 			for j := range dest {
+// 				if j < i {
+// 					ijFlatIndex := routing.TriMatrixIndex(i, j)
 
-					entries := rmatrix.Entries[ijFlatIndex]
-					for k := 0; k < int(entries.NumRoutes); k++ {
-						numRelays := entries.RouteNumRelays[k]
-						firstRelay := entries.RouteRelays[k][0]
-						lastRelay := entries.RouteRelays[k][numRelays-1]
+// 					entries := rmatrix.Entries[ijFlatIndex]
+// 					for k := 0; k < int(entries.NumRoutes); k++ {
+// 						numRelays := entries.RouteNumRelays[k]
+// 						firstRelay := entries.RouteRelays[k][0]
+// 						lastRelay := entries.RouteRelays[k][numRelays-1]
 
-						assert.Equal(t, src[firstRelay], dest[i], "invalid route entry #%d at (%d,%d), near relay %d (idx %d) != %d (idx %d)\n", k, i, j, src[firstRelay], firstRelay, dest[i], i)
-						assert.Equal(t, src[lastRelay], dest[j], "invalid route entry #%d at (%d,%d), dest relay %d (idx %d) != %d (idx %d)\n", k, i, j, src[lastRelay], lastRelay, dest[j], j)
-					}
-				}
-			}
-		}
-	})
+// 						assert.Equal(t, src[firstRelay], dest[i], "invalid route entry #%d at (%d,%d), near relay %d (idx %d) != %d (idx %d)\n", k, i, j, src[firstRelay], firstRelay, dest[i], i)
+// 						assert.Equal(t, src[lastRelay], dest[j], "invalid route entry #%d at (%d,%d), dest relay %d (idx %d) != %d (idx %d)\n", k, i, j, src[lastRelay], lastRelay, dest[j], j)
+// 					}
+// 				}
+// 			}
+// 		}
+// 	})
 
-	t.Run("TestRouteMatrix() - another test with different version 0 sample data", func(t *testing.T) {
-		raw, err := ioutil.ReadFile("test_data/cost.bin")
-		assert.Nil(t, err)
-		assert.Equal(t, len(raw), 355188, "cost.bin should be 355188 bytes")
+// 	t.Run("TestRouteMatrix() - another test with different version 0 sample data", func(t *testing.T) {
+// 		raw, err := ioutil.ReadFile("test_data/cost.bin")
+// 		assert.Nil(t, err)
+// 		assert.Equal(t, len(raw), 355188, "cost.bin should be 355188 bytes")
 
-		var costMatrix routing.CostMatrix
-		err = costMatrix.UnmarshalBinary(raw)
-		assert.Nil(t, err)
+// 		var costMatrix routing.CostMatrix
+// 		err = costMatrix.UnmarshalBinary(raw)
+// 		assert.Nil(t, err)
 
-		costMatrixData, err := costMatrix.MarshalBinary()
-		assert.Nil(t, err)
+// 		costMatrixData, err := costMatrix.MarshalBinary()
+// 		assert.Nil(t, err)
 
-		var readCostMatrix routing.CostMatrix
-		err = readCostMatrix.UnmarshalBinary(costMatrixData)
-		assert.Nil(t, err)
+// 		var readCostMatrix routing.CostMatrix
+// 		err = readCostMatrix.UnmarshalBinary(costMatrixData)
+// 		assert.Nil(t, err)
 
-		var routeMatrix routing.RouteMatrix
+// 		var routeMatrix routing.RouteMatrix
 
-		costMatrix.Optimize(&routeMatrix, 5)
-		assert.NotNil(t, &routeMatrix)
-		assert.Equal(t, costMatrix.RelayIDs, routeMatrix.RelayIDs, "relay id mismatch")
-		assert.Equal(t, costMatrix.RelayAddresses, routeMatrix.RelayAddresses, "relay address mismatch")
-		assert.Equal(t, costMatrix.RelayPublicKeys, routeMatrix.RelayPublicKeys, "relay public key mismatch")
+// 		costMatrix.Optimize(&routeMatrix, 5)
+// 		assert.NotNil(t, &routeMatrix)
+// 		assert.Equal(t, costMatrix.RelayIDs, routeMatrix.RelayIDs, "relay id mismatch")
+// 		assert.Equal(t, costMatrix.RelayAddresses, routeMatrix.RelayAddresses, "relay address mismatch")
+// 		assert.Equal(t, costMatrix.RelayPublicKeys, routeMatrix.RelayPublicKeys, "relay public key mismatch")
 
-		routeMatrixData, err := routeMatrix.MarshalBinary()
-		assert.Nil(t, err)
+// 		routeMatrixData, err := routeMatrix.MarshalBinary()
+// 		assert.Nil(t, err)
 
-		var readRouteMatrix routing.RouteMatrix
-		err = readRouteMatrix.UnmarshalBinary(routeMatrixData)
-		assert.Nil(t, err)
+// 		var readRouteMatrix routing.RouteMatrix
+// 		err = readRouteMatrix.UnmarshalBinary(routeMatrixData)
+// 		assert.Nil(t, err)
 
-		assert.Equal(t, routeMatrix.RelayIDs, readRouteMatrix.RelayIDs, "relay id mismatch")
+// 		assert.Equal(t, routeMatrix.RelayIDs, readRouteMatrix.RelayIDs, "relay id mismatch")
 
-		assert.Len(t, readCostMatrix.RelayAddresses, len(costMatrix.RelayAddresses))
-		for i, addr := range costMatrix.RelayAddresses {
-			assert.Equal(t, string(addr), strings.Trim(string(readCostMatrix.RelayAddresses[i]), string([]byte{0x0})))
-		}
-		assert.Equal(t, routeMatrix.RelayPublicKeys, readRouteMatrix.RelayPublicKeys, "relay public key mismatch")
-		assert.Equal(t, routeMatrix.DatacenterRelays, readRouteMatrix.DatacenterRelays, "datacenter relays mismatch")
+// 		assert.Len(t, readCostMatrix.RelayAddresses, len(costMatrix.RelayAddresses))
+// 		for i, addr := range costMatrix.RelayAddresses {
+// 			assert.Equal(t, string(addr), strings.Trim(string(readCostMatrix.RelayAddresses[i]), string([]byte{0x0})))
+// 		}
+// 		assert.Equal(t, routeMatrix.RelayPublicKeys, readRouteMatrix.RelayPublicKeys, "relay public key mismatch")
+// 		assert.Equal(t, routeMatrix.DatacenterRelays, readRouteMatrix.DatacenterRelays, "datacenter relays mismatch")
 
-		equal := true
+// 		equal := true
 
-		assert.Len(t, readRouteMatrix.Entries, len(routeMatrix.Entries))
-		for i := 0; i < len(routeMatrix.Entries); i++ {
+// 		assert.Len(t, readRouteMatrix.Entries, len(routeMatrix.Entries))
+// 		for i := 0; i < len(routeMatrix.Entries); i++ {
 
-			if routeMatrix.Entries[i].DirectRTT != readRouteMatrix.Entries[i].DirectRTT {
-				t.Errorf("DirectRTT mismatch: %d != %d\n", routeMatrix.Entries[i].DirectRTT, readRouteMatrix.Entries[i].DirectRTT)
-				equal = false
-				break
-			}
+// 			if routeMatrix.Entries[i].DirectRTT != readRouteMatrix.Entries[i].DirectRTT {
+// 				t.Errorf("DirectRTT mismatch: %d != %d\n", routeMatrix.Entries[i].DirectRTT, readRouteMatrix.Entries[i].DirectRTT)
+// 				equal = false
+// 				break
+// 			}
 
-			if routeMatrix.Entries[i].NumRoutes != readRouteMatrix.Entries[i].NumRoutes {
-				t.Errorf("NumRoutes mismatch\n")
-				equal = false
-				break
-			}
+// 			if routeMatrix.Entries[i].NumRoutes != readRouteMatrix.Entries[i].NumRoutes {
+// 				t.Errorf("NumRoutes mismatch\n")
+// 				equal = false
+// 				break
+// 			}
 
-			for j := 0; j < int(routeMatrix.Entries[i].NumRoutes); j++ {
+// 			for j := 0; j < int(routeMatrix.Entries[i].NumRoutes); j++ {
 
-				if routeMatrix.Entries[i].RouteRTT[j] != readRouteMatrix.Entries[i].RouteRTT[j] {
-					t.Errorf("RouteRTT mismatch\n")
-					equal = false
-					break
-				}
+// 				if routeMatrix.Entries[i].RouteRTT[j] != readRouteMatrix.Entries[i].RouteRTT[j] {
+// 					t.Errorf("RouteRTT mismatch\n")
+// 					equal = false
+// 					break
+// 				}
 
-				if routeMatrix.Entries[i].RouteNumRelays[j] != readRouteMatrix.Entries[i].RouteNumRelays[j] {
-					t.Errorf("RouteNumRelays mismatch\n")
-					equal = false
-					break
-				}
+// 				if routeMatrix.Entries[i].RouteNumRelays[j] != readRouteMatrix.Entries[i].RouteNumRelays[j] {
+// 					t.Errorf("RouteNumRelays mismatch\n")
+// 					equal = false
+// 					break
+// 				}
 
-				for k := 0; k < int(routeMatrix.Entries[i].RouteNumRelays[j]); k++ {
-					if routeMatrix.Entries[i].RouteRelays[j][k] != readRouteMatrix.Entries[i].RouteRelays[j][k] {
-						t.Errorf("RouteRelayID mismatch\n")
-						equal = false
-						break
-					}
-				}
-			}
-		}
+// 				for k := 0; k < int(routeMatrix.Entries[i].RouteNumRelays[j]); k++ {
+// 					if routeMatrix.Entries[i].RouteRelays[j][k] != readRouteMatrix.Entries[i].RouteRelays[j][k] {
+// 						t.Errorf("RouteRelayID mismatch\n")
+// 						equal = false
+// 						break
+// 					}
+// 				}
+// 			}
+// 		}
 
-		assert.True(t, equal, "route matrix entries mismatch")
-		analyze(t, &readRouteMatrix)
-	})
-}
+// 		assert.True(t, equal, "route matrix entries mismatch")
+// 		analyze(t, &readRouteMatrix)
+// 	})
+// }
 
-func TestResolveRelay(t *testing.T) {
-	t.Run("Relay ID not found", func(t *testing.T) {
-		routeMatrix := routing.RouteMatrix{
-			RelayIndices: map[uint64]int{},
-		}
-		_, err := routeMatrix.ResolveRelay(0)
-		assert.EqualError(t, err, "relay 0 not in matrix")
-	})
+// func TestResolveRelay(t *testing.T) {
+// 	t.Run("Relay ID not found", func(t *testing.T) {
+// 		routeMatrix := routing.RouteMatrix{
+// 			RelayIndices: map[uint64]int{},
+// 		}
+// 		_, err := routeMatrix.ResolveRelay(0)
+// 		assert.EqualError(t, err, "relay 0 not in matrix")
+// 	})
 
-	t.Run("Invalid relay index", func(t *testing.T) {
-		routeMatrix := routing.RouteMatrix{
-			RelayIndices:   map[uint64]int{0: 10},
-			RelayAddresses: [][]byte{},
-		}
-		_, err := routeMatrix.ResolveRelay(0)
-		assert.EqualError(t, err, "relay 0 has an invalid index 10")
-	})
+// 	t.Run("Invalid relay index", func(t *testing.T) {
+// 		routeMatrix := routing.RouteMatrix{
+// 			RelayIndices:   map[uint64]int{0: 10},
+// 			RelayAddresses: [][]byte{},
+// 		}
+// 		_, err := routeMatrix.ResolveRelay(0)
+// 		assert.EqualError(t, err, "relay 0 has an invalid index 10")
+// 	})
 
-	t.Run("Invalid relay address", func(t *testing.T) {
-		routeMatrix := routing.RouteMatrix{
-			RelayIndices:    map[uint64]int{0: 0},
-			RelayAddresses:  [][]byte{[]byte("Invalid")},
-			RelayPublicKeys: [][]byte{{0x58, 0xaf, 0x19, 0x5, 0xf7, 0xa8, 0xae, 0x73, 0xc6, 0xd3, 0xec, 0x85, 0x2f, 0xd8, 0x9b, 0x5a, 0xce, 0x0, 0x38, 0xca, 0x26, 0x39, 0xa4, 0x5d, 0x82, 0x3c, 0x71, 0xa8, 0x4, 0x11, 0xfb, 0x32}},
-		}
-		_, err := routeMatrix.ResolveRelay(0)
-		assert.Error(t, err)
-	})
+// 	t.Run("Invalid relay address", func(t *testing.T) {
+// 		routeMatrix := routing.RouteMatrix{
+// 			RelayIndices:    map[uint64]int{0: 0},
+// 			RelayAddresses:  [][]byte{[]byte("Invalid")},
+// 			RelayPublicKeys: [][]byte{{0x58, 0xaf, 0x19, 0x5, 0xf7, 0xa8, 0xae, 0x73, 0xc6, 0xd3, 0xec, 0x85, 0x2f, 0xd8, 0x9b, 0x5a, 0xce, 0x0, 0x38, 0xca, 0x26, 0x39, 0xa4, 0x5d, 0x82, 0x3c, 0x71, 0xa8, 0x4, 0x11, 0xfb, 0x32}},
+// 		}
+// 		_, err := routeMatrix.ResolveRelay(0)
+// 		assert.Error(t, err)
+// 	})
 
-	t.Run("Failed to parse port", func(t *testing.T) {
-		routeMatrix := routing.RouteMatrix{
-			RelayIndices:    map[uint64]int{0: 0},
-			RelayAddresses:  [][]byte{[]byte("127.0.0.1:abcde")},
-			RelayPublicKeys: [][]byte{{0x58, 0xaf, 0x19, 0x5, 0xf7, 0xa8, 0xae, 0x73, 0xc6, 0xd3, 0xec, 0x85, 0x2f, 0xd8, 0x9b, 0x5a, 0xce, 0x0, 0x38, 0xca, 0x26, 0x39, 0xa4, 0x5d, 0x82, 0x3c, 0x71, 0xa8, 0x4, 0x11, 0xfb, 0x32}},
-		}
-		_, err := routeMatrix.ResolveRelay(0)
-		assert.Error(t, err)
-	})
+// 	t.Run("Failed to parse port", func(t *testing.T) {
+// 		routeMatrix := routing.RouteMatrix{
+// 			RelayIndices:    map[uint64]int{0: 0},
+// 			RelayAddresses:  [][]byte{[]byte("127.0.0.1:abcde")},
+// 			RelayPublicKeys: [][]byte{{0x58, 0xaf, 0x19, 0x5, 0xf7, 0xa8, 0xae, 0x73, 0xc6, 0xd3, 0xec, 0x85, 0x2f, 0xd8, 0x9b, 0x5a, 0xce, 0x0, 0x38, 0xca, 0x26, 0x39, 0xa4, 0x5d, 0x82, 0x3c, 0x71, 0xa8, 0x4, 0x11, 0xfb, 0x32}},
+// 		}
+// 		_, err := routeMatrix.ResolveRelay(0)
+// 		assert.Error(t, err)
+// 	})
 
-	t.Run("Success", func(t *testing.T) {
-		costfile, err := os.Open("./test_data/cost.bin")
-		assert.NoError(t, err)
+// 	t.Run("Success", func(t *testing.T) {
+// 		costfile, err := os.Open("./test_data/cost.bin")
+// 		assert.NoError(t, err)
 
-		var costMatrix routing.CostMatrix
-		_, err = costMatrix.ReadFrom(costfile)
-		assert.NoError(t, err)
+// 		var costMatrix routing.CostMatrix
+// 		_, err = costMatrix.ReadFrom(costfile)
+// 		assert.NoError(t, err)
 
-		var routeMatrix routing.RouteMatrix
-		err = costMatrix.Optimize(&routeMatrix, 1)
-		assert.NoError(t, err)
+// 		var routeMatrix routing.RouteMatrix
+// 		err = costMatrix.Optimize(&routeMatrix, 1)
+// 		assert.NoError(t, err)
 
-		expected := routing.Relay{
-			ID: 2836356269,
-			Addr: net.UDPAddr{
-				IP:   net.ParseIP("13.238.77.175"),
-				Port: 40000,
-			},
-			PublicKey: []byte{0x58, 0xaf, 0x19, 0x5, 0xf7, 0xa8, 0xae, 0x73, 0xc6, 0xd3, 0xec, 0x85, 0x2f, 0xd8, 0x9b, 0x5a, 0xce, 0x0, 0x38, 0xca, 0x26, 0x39, 0xa4, 0x5d, 0x82, 0x3c, 0x71, 0xa8, 0x4, 0x11, 0xfb, 0x32},
-		}
+// 		expected := routing.Relay{
+// 			ID: 2836356269,
+// 			Addr: net.UDPAddr{
+// 				IP:   net.ParseIP("13.238.77.175"),
+// 				Port: 40000,
+// 			},
+// 			PublicKey: []byte{0x58, 0xaf, 0x19, 0x5, 0xf7, 0xa8, 0xae, 0x73, 0xc6, 0xd3, 0xec, 0x85, 0x2f, 0xd8, 0x9b, 0x5a, 0xce, 0x0, 0x38, 0xca, 0x26, 0x39, 0xa4, 0x5d, 0x82, 0x3c, 0x71, 0xa8, 0x4, 0x11, 0xfb, 0x32},
+// 		}
 
-		actual, err := routeMatrix.ResolveRelay(2836356269)
-		assert.NoError(t, err)
-		assert.Equal(t, expected, actual)
-	})
-}
+// 		actual, err := routeMatrix.ResolveRelay(2836356269)
+// 		assert.NoError(t, err)
+// 		assert.Equal(t, expected, actual)
+// 	})
+// }
 
-func TestRelaysIn(t *testing.T) {
-	costfile, err := os.Open("./test_data/cost.bin")
-	assert.NoError(t, err)
+// func TestRelaysIn(t *testing.T) {
+// 	costfile, err := os.Open("./test_data/cost.bin")
+// 	assert.NoError(t, err)
 
-	var costMatrix routing.CostMatrix
-	_, err = costMatrix.ReadFrom(costfile)
-	assert.NoError(t, err)
+// 	var costMatrix routing.CostMatrix
+// 	_, err = costMatrix.ReadFrom(costfile)
+// 	assert.NoError(t, err)
 
-	var routeMatrix routing.RouteMatrix
-	err = costMatrix.Optimize(&routeMatrix, 1)
-	assert.NoError(t, err)
+// 	var routeMatrix routing.RouteMatrix
+// 	err = costMatrix.Optimize(&routeMatrix, 1)
+// 	assert.NoError(t, err)
 
-	tests := []struct {
-		name     string
-		input    routing.Datacenter
-		expected []routing.Relay
-	}{
-		{"datacenter not found", routing.Datacenter{ID: 0}, nil},
-		{
-			"datacenter with relays",
-			routing.Datacenter{ID: 69517923},
-			[]routing.Relay{
-				{ID: 3407334631, Addr: net.UDPAddr{IP: net.ParseIP("162.253.71.170"), Port: 40000}, PublicKey: []byte{0x87, 0xde, 0x7, 0x9, 0x35, 0xee, 0xdd, 0xb0, 0xf0, 0xfe, 0xfe, 0xa7, 0xa5, 0x4e, 0x14, 0xd1, 0x2d, 0x3b, 0xd9, 0x8c, 0x0, 0x49, 0xcd, 0xf0, 0x14, 0x7e, 0xa5, 0xe0, 0x52, 0xb4, 0xe6, 0x76}},
-				{ID: 1447163127, Addr: net.UDPAddr{IP: net.ParseIP("172.98.66.170"), Port: 40000}, PublicKey: []byte{0x1e, 0x80, 0x89, 0x6a, 0x46, 0xa9, 0xb4, 0x6d, 0x27, 0x54, 0x28, 0x16, 0x56, 0xe, 0x1f, 0x6f, 0xee, 0xee, 0x6a, 0x98, 0x5a, 0xbb, 0x8b, 0x83, 0x96, 0xcb, 0x13, 0xc5, 0x66, 0x8, 0x92, 0x31}},
-			},
-		},
-	}
+// 	tests := []struct {
+// 		name     string
+// 		input    routing.Datacenter
+// 		expected []routing.Relay
+// 	}{
+// 		{"datacenter not found", routing.Datacenter{ID: 0}, nil},
+// 		{
+// 			"datacenter with relays",
+// 			routing.Datacenter{ID: 69517923},
+// 			[]routing.Relay{
+// 				{ID: 3407334631, Addr: net.UDPAddr{IP: net.ParseIP("162.253.71.170"), Port: 40000}, PublicKey: []byte{0x87, 0xde, 0x7, 0x9, 0x35, 0xee, 0xdd, 0xb0, 0xf0, 0xfe, 0xfe, 0xa7, 0xa5, 0x4e, 0x14, 0xd1, 0x2d, 0x3b, 0xd9, 0x8c, 0x0, 0x49, 0xcd, 0xf0, 0x14, 0x7e, 0xa5, 0xe0, 0x52, 0xb4, 0xe6, 0x76}},
+// 				{ID: 1447163127, Addr: net.UDPAddr{IP: net.ParseIP("172.98.66.170"), Port: 40000}, PublicKey: []byte{0x1e, 0x80, 0x89, 0x6a, 0x46, 0xa9, 0xb4, 0x6d, 0x27, 0x54, 0x28, 0x16, 0x56, 0xe, 0x1f, 0x6f, 0xee, 0xee, 0x6a, 0x98, 0x5a, 0xbb, 0x8b, 0x83, 0x96, 0xcb, 0x13, 0xc5, 0x66, 0x8, 0x92, 0x31}},
+// 			},
+// 		},
+// 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			actual := routeMatrix.GetDatacenterRelays(test.input)
-			assert.Equal(t, test.expected, actual)
-		})
-	}
+// 	for _, test := range tests {
+// 		t.Run(test.name, func(t *testing.T) {
+// 			actual := routeMatrix.GetDatacenterRelays(test.input)
+// 			assert.Equal(t, test.expected, actual)
+// 		})
+// 	}
 
-	// relay length is 0
-	routeMatrix.DatacenterRelays[0] = []uint64{}
-	relays := routeMatrix.GetDatacenterRelays(routing.Datacenter{ID: 0})
-	assert.Nil(t, relays)
+// 	// relay length is 0
+// 	routeMatrix.DatacenterRelays[0] = []uint64{}
+// 	relays := routeMatrix.GetDatacenterRelays(routing.Datacenter{ID: 0})
+// 	assert.Nil(t, relays)
 
-	// error while resolving at least one relay
-	routeMatrix = routing.RouteMatrix{
-		RelayIndices:     map[uint64]int{0: 0},
-		RelayAddresses:   [][]byte{[]byte("127.0.0.1:abcde")},
-		RelayPublicKeys:  [][]byte{{0x58, 0xaf, 0x19, 0x5, 0xf7, 0xa8, 0xae, 0x73, 0xc6, 0xd3, 0xec, 0x85, 0x2f, 0xd8, 0x9b, 0x5a, 0xce, 0x0, 0x38, 0xca, 0x26, 0x39, 0xa4, 0x5d, 0x82, 0x3c, 0x71, 0xa8, 0x4, 0x11, 0xfb, 0x32}},
-		DatacenterRelays: map[uint64][]uint64{0: {0, 1}},
-	}
-	relays = routeMatrix.GetDatacenterRelays(routing.Datacenter{ID: 0})
-	assert.NotNil(t, relays)
-}
+// 	// error while resolving at least one relay
+// 	routeMatrix = routing.RouteMatrix{
+// 		RelayIndices:     map[uint64]int{0: 0},
+// 		RelayAddresses:   [][]byte{[]byte("127.0.0.1:abcde")},
+// 		RelayPublicKeys:  [][]byte{{0x58, 0xaf, 0x19, 0x5, 0xf7, 0xa8, 0xae, 0x73, 0xc6, 0xd3, 0xec, 0x85, 0x2f, 0xd8, 0x9b, 0x5a, 0xce, 0x0, 0x38, 0xca, 0x26, 0x39, 0xa4, 0x5d, 0x82, 0x3c, 0x71, 0xa8, 0x4, 0x11, 0xfb, 0x32}},
+// 		DatacenterRelays: map[uint64][]uint64{0: {0, 1}},
+// 	}
+// 	relays = routeMatrix.GetDatacenterRelays(routing.Datacenter{ID: 0})
+// 	assert.NotNil(t, relays)
+// }
 
-func TestRoutes(t *testing.T) {
-	costfile, err := os.Open("./test_data/cost.bin")
-	assert.NoError(t, err)
+// func TestRoutes(t *testing.T) {
+// 	costfile, err := os.Open("./test_data/cost.bin")
+// 	assert.NoError(t, err)
 
-	var costMatrix routing.CostMatrix
-	_, err = costMatrix.ReadFrom(costfile)
-	assert.NoError(t, err)
+// 	var costMatrix routing.CostMatrix
+// 	_, err = costMatrix.ReadFrom(costfile)
+// 	assert.NoError(t, err)
 
-	var routeMatrix routing.RouteMatrix
-	err = costMatrix.Optimize(&routeMatrix, 1)
-	assert.NoError(t, err)
+// 	var routeMatrix routing.RouteMatrix
+// 	err = costMatrix.Optimize(&routeMatrix, 1)
+// 	assert.NoError(t, err)
 
-	// Hack to insert relay session counts without regenerating a new route matrix
-	numRelays := len(routeMatrix.RelayIDs)
-	for i := 0; i < numRelays; i++ {
-		routeMatrix.RelaySessionCounts[i] = uint32(i)
-		routeMatrix.RelayMaxSessionCounts[i] = 3000
-	}
+// 	// Hack to insert relay session counts without regenerating a new route matrix
+// 	numRelays := len(routeMatrix.RelayIDs)
+// 	for i := 0; i < numRelays; i++ {
+// 		routeMatrix.RelaySessionCounts[i] = uint32(i)
+// 		routeMatrix.RelayMaxSessionCounts[i] = 3000
+// 	}
 
-	// Have a relay be encumbered
-	routeMatrix.RelaySessionCounts[3] = 3000
+// 	// Have a relay be encumbered
+// 	routeMatrix.RelaySessionCounts[3] = 3000
 
-	tests := []struct {
-		name        string
-		from        []routing.Relay
-		to          []routing.Relay
-		expected    []routing.Route
-		expectedErr error
-		selectors   []routing.SelectorFunc
-	}{
-		{"empty from/to sets", []routing.Relay{}, []routing.Relay{}, nil, errors.New("no routes in route matrix"), nil},
-		{"relays not found", []routing.Relay{{ID: 1}}, []routing.Relay{{ID: 2}}, nil, errors.New("no routes in route matrix"), nil},
-		{"one relay found", []routing.Relay{{ID: 1}}, []routing.Relay{{ID: 1500948990}}, nil, errors.New("no routes in route matrix"), nil},
-		{
-			"no selectors",
-			[]routing.Relay{{ID: 2836356269}},
-			[]routing.Relay{{ID: 3263834878}, {ID: 1500948990}},
-			[]routing.Route{
-				{
-					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2923051732}, {ID: 1884974764}, {ID: 3263834878}},
-					Stats:  routing.Stats{RTT: 182},
-				},
-				{
-					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2641807504}, {ID: 3263834878}},
-					Stats:  routing.Stats{RTT: 182},
-				},
-				{
-					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 1348914502}, {ID: 1884974764}, {ID: 3263834878}},
-					Stats:  routing.Stats{RTT: 182},
-				},
-				{
-					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2576485547}, {ID: 1835585494}, {ID: 3263834878}},
-					Stats:  routing.Stats{RTT: 183},
-				},
-				{
-					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1348914502}, {ID: 1884974764}, {ID: 3263834878}},
-					Stats:  routing.Stats{RTT: 183},
-				},
-				{
-					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2663193268}, {ID: 2504465311}, {ID: 3263834878}},
-					Stats:  routing.Stats{RTT: 184},
-				},
-				{
-					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 427962386}, {ID: 2504465311}, {ID: 3263834878}},
-					Stats:  routing.Stats{RTT: 184},
-				},
-				{
-					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 4058587524}, {ID: 1350942731}, {ID: 3263834878}},
-					Stats:  routing.Stats{RTT: 184},
-				},
-				{
-					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1500948990}},
-					Stats:  routing.Stats{RTT: 311},
-				},
-			},
-			nil,
-			nil,
-		},
-		// todo: get these tests working again (or repurpose them)
+// 	tests := []struct {
+// 		name        string
+// 		from        []routing.Relay
+// 		to          []routing.Relay
+// 		expected    []routing.Route
+// 		expectedErr error
+// 		selectors   []routing.SelectorFunc
+// 	}{
+// 		{"empty from/to sets", []routing.Relay{}, []routing.Relay{}, nil, errors.New("no routes in route matrix"), nil},
+// 		{"relays not found", []routing.Relay{{ID: 1}}, []routing.Relay{{ID: 2}}, nil, errors.New("no routes in route matrix"), nil},
+// 		{"one relay found", []routing.Relay{{ID: 1}}, []routing.Relay{{ID: 1500948990}}, nil, errors.New("no routes in route matrix"), nil},
+// 		{
+// 			"no selectors",
+// 			[]routing.Relay{{ID: 2836356269}},
+// 			[]routing.Relay{{ID: 3263834878}, {ID: 1500948990}},
+// 			[]routing.Route{
+// 				{
+// 					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2923051732}, {ID: 1884974764}, {ID: 3263834878}},
+// 					Stats:  routing.Stats{RTT: 182},
+// 				},
+// 				{
+// 					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2641807504}, {ID: 3263834878}},
+// 					Stats:  routing.Stats{RTT: 182},
+// 				},
+// 				{
+// 					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 1348914502}, {ID: 1884974764}, {ID: 3263834878}},
+// 					Stats:  routing.Stats{RTT: 182},
+// 				},
+// 				{
+// 					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2576485547}, {ID: 1835585494}, {ID: 3263834878}},
+// 					Stats:  routing.Stats{RTT: 183},
+// 				},
+// 				{
+// 					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1348914502}, {ID: 1884974764}, {ID: 3263834878}},
+// 					Stats:  routing.Stats{RTT: 183},
+// 				},
+// 				{
+// 					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2663193268}, {ID: 2504465311}, {ID: 3263834878}},
+// 					Stats:  routing.Stats{RTT: 184},
+// 				},
+// 				{
+// 					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 427962386}, {ID: 2504465311}, {ID: 3263834878}},
+// 					Stats:  routing.Stats{RTT: 184},
+// 				},
+// 				{
+// 					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 4058587524}, {ID: 1350942731}, {ID: 3263834878}},
+// 					Stats:  routing.Stats{RTT: 184},
+// 				},
+// 				{
+// 					Relays: []routing.Relay{{ID: 2836356269}, {ID: 1500948990}},
+// 					Stats:  routing.Stats{RTT: 311},
+// 				},
+// 			},
+// 			nil,
+// 			nil,
+// 		},
+// 		// todo: get these tests working again (or repurpose them)
 
-		// {
-		// 	"best RTT",
-		// 	[]routing.Relay{{ID: 2836356269}},
-		// 	[]routing.Relay{{ID: 3263834878}, {ID: 1500948990}},
-		// 	[]routing.Route{
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2923051732}, {ID: 1884974764}, {ID: 3263834878}},
-		// 			Stats:  routing.Stats{RTT: 182},
-		// 		},
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2641807504}, {ID: 3263834878}},
-		// 			Stats:  routing.Stats{RTT: 182},
-		// 		},
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 1348914502}, {ID: 1884974764}, {ID: 3263834878}},
-		// 			Stats:  routing.Stats{RTT: 182},
-		// 		},
-		// 	},
-		// 	nil,
-		// 	[]routing.SelectorFunc{
-		// 		routing.SelectBestRTT(),
-		// 	},
-		// },
-		// {
-		// 	"acceptable routes",
-		// 	[]routing.Relay{{ID: 2836356269}},
-		// 	[]routing.Relay{{ID: 3263834878}, {ID: 1500948990}},
-		// 	[]routing.Route{
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2923051732}, {ID: 1884974764}, {ID: 3263834878}},
-		// 			Stats:  routing.Stats{RTT: 182},
-		// 		},
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2641807504}, {ID: 3263834878}},
-		// 			Stats:  routing.Stats{RTT: 182},
-		// 		},
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 1348914502}, {ID: 1884974764}, {ID: 3263834878}},
-		// 			Stats:  routing.Stats{RTT: 182},
-		// 		},
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2576485547}, {ID: 1835585494}, {ID: 3263834878}},
-		// 			Stats:  routing.Stats{RTT: 183},
-		// 		},
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1348914502}, {ID: 1884974764}, {ID: 3263834878}},
-		// 			Stats:  routing.Stats{RTT: 183},
-		// 		},
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2663193268}, {ID: 2504465311}, {ID: 3263834878}},
-		// 			Stats:  routing.Stats{RTT: 184},
-		// 		},
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 427962386}, {ID: 2504465311}, {ID: 3263834878}},
-		// 			Stats:  routing.Stats{RTT: 184},
-		// 		},
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 4058587524}, {ID: 1350942731}, {ID: 3263834878}},
-		// 			Stats:  routing.Stats{RTT: 184},
-		// 		},
-		// 	},
-		// 	nil,
-		// 	[]routing.SelectorFunc{
-		// 		routing.SelectAcceptableRoutesFromBestRTT(10),
-		// 	},
-		// },
-		// {
-		// 	"contains route",
-		// 	[]routing.Relay{{ID: 2836356269}},
-		// 	[]routing.Relay{{ID: 3263834878}, {ID: 1500948990}},
-		// 	[]routing.Route{
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2923051732}, {ID: 1884974764}, {ID: 3263834878}},
-		// 			Stats:  routing.Stats{RTT: 182},
-		// 		},
-		// 	},
-		// 	nil,
-		// 	[]routing.SelectorFunc{
-		// 		routing.SelectContainsRouteHash(14287039991941962633),
-		// 	},
-		// },
-		// {
-		// 	"unencumbered routes",
-		// 	[]routing.Relay{{ID: 2836356269}},
-		// 	[]routing.Relay{{ID: 3263834878}, {ID: 1500948990}},
-		// 	[]routing.Route{
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2923051732}, {ID: 1884974764}, {ID: 3263834878}},
-		// 			Stats:  routing.Stats{RTT: 182},
-		// 		},
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2641807504}, {ID: 3263834878}},
-		// 			Stats:  routing.Stats{RTT: 182},
-		// 		},
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 1348914502}, {ID: 1884974764}, {ID: 3263834878}},
-		// 			Stats:  routing.Stats{RTT: 182},
-		// 		},
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2576485547}, {ID: 1835585494}, {ID: 3263834878}},
-		// 			Stats:  routing.Stats{RTT: 183},
-		// 		},
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1348914502}, {ID: 1884974764}, {ID: 3263834878}},
-		// 			Stats:  routing.Stats{RTT: 183},
-		// 		},
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2663193268}, {ID: 2504465311}, {ID: 3263834878}},
-		// 			Stats:  routing.Stats{RTT: 184},
-		// 		},
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 427962386}, {ID: 2504465311}, {ID: 3263834878}},
-		// 			Stats:  routing.Stats{RTT: 184},
-		// 		},
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 4058587524}, {ID: 1350942731}, {ID: 3263834878}},
-		// 			Stats:  routing.Stats{RTT: 184},
-		// 		},
-		// 	},
-		// 	nil,
-		// 	[]routing.SelectorFunc{
-		// 		routing.SelectUnencumberedRoutes(0.8),
-		// 	},
-		// },
-		// {
-		// 	"routes by random dest relay",
-		// 	[]routing.Relay{{ID: 2836356269}},
-		// 	[]routing.Relay{{ID: 3263834878}, {ID: 1500948990}},
-		// 	[]routing.Route{
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1500948990}},
-		// 			Stats:  routing.Stats{RTT: 311},
-		// 		},
-		// 	},
-		// 	nil,
-		// 	[]routing.SelectorFunc{
-		// 		routing.SelectRoutesByRandomDestRelay(rand.NewSource(0)),
-		// 	},
-		// },
-		// {
-		// 	"random route",
-		// 	[]routing.Relay{{ID: 2836356269}},
-		// 	[]routing.Relay{{ID: 3263834878}, {ID: 1500948990}},
-		// 	[]routing.Route{
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2923051732}, {ID: 1884974764}},
-		// 			Stats:  routing.Stats{RTT: 182},
-		// 		},
-		// 	},
-		// 	nil,
-		// 	[]routing.SelectorFunc{
-		// 		routing.SelectRandomRoute(rand.NewSource(0)),
-		// 	},
-		// },
-	}
+// 		// {
+// 		// 	"best RTT",
+// 		// 	[]routing.Relay{{ID: 2836356269}},
+// 		// 	[]routing.Relay{{ID: 3263834878}, {ID: 1500948990}},
+// 		// 	[]routing.Route{
+// 		// 		{
+// 		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2923051732}, {ID: 1884974764}, {ID: 3263834878}},
+// 		// 			Stats:  routing.Stats{RTT: 182},
+// 		// 		},
+// 		// 		{
+// 		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2641807504}, {ID: 3263834878}},
+// 		// 			Stats:  routing.Stats{RTT: 182},
+// 		// 		},
+// 		// 		{
+// 		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 1348914502}, {ID: 1884974764}, {ID: 3263834878}},
+// 		// 			Stats:  routing.Stats{RTT: 182},
+// 		// 		},
+// 		// 	},
+// 		// 	nil,
+// 		// 	[]routing.SelectorFunc{
+// 		// 		routing.SelectBestRTT(),
+// 		// 	},
+// 		// },
+// 		// {
+// 		// 	"acceptable routes",
+// 		// 	[]routing.Relay{{ID: 2836356269}},
+// 		// 	[]routing.Relay{{ID: 3263834878}, {ID: 1500948990}},
+// 		// 	[]routing.Route{
+// 		// 		{
+// 		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2923051732}, {ID: 1884974764}, {ID: 3263834878}},
+// 		// 			Stats:  routing.Stats{RTT: 182},
+// 		// 		},
+// 		// 		{
+// 		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2641807504}, {ID: 3263834878}},
+// 		// 			Stats:  routing.Stats{RTT: 182},
+// 		// 		},
+// 		// 		{
+// 		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 1348914502}, {ID: 1884974764}, {ID: 3263834878}},
+// 		// 			Stats:  routing.Stats{RTT: 182},
+// 		// 		},
+// 		// 		{
+// 		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2576485547}, {ID: 1835585494}, {ID: 3263834878}},
+// 		// 			Stats:  routing.Stats{RTT: 183},
+// 		// 		},
+// 		// 		{
+// 		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1348914502}, {ID: 1884974764}, {ID: 3263834878}},
+// 		// 			Stats:  routing.Stats{RTT: 183},
+// 		// 		},
+// 		// 		{
+// 		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2663193268}, {ID: 2504465311}, {ID: 3263834878}},
+// 		// 			Stats:  routing.Stats{RTT: 184},
+// 		// 		},
+// 		// 		{
+// 		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 427962386}, {ID: 2504465311}, {ID: 3263834878}},
+// 		// 			Stats:  routing.Stats{RTT: 184},
+// 		// 		},
+// 		// 		{
+// 		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 4058587524}, {ID: 1350942731}, {ID: 3263834878}},
+// 		// 			Stats:  routing.Stats{RTT: 184},
+// 		// 		},
+// 		// 	},
+// 		// 	nil,
+// 		// 	[]routing.SelectorFunc{
+// 		// 		routing.SelectAcceptableRoutesFromBestRTT(10),
+// 		// 	},
+// 		// },
+// 		// {
+// 		// 	"contains route",
+// 		// 	[]routing.Relay{{ID: 2836356269}},
+// 		// 	[]routing.Relay{{ID: 3263834878}, {ID: 1500948990}},
+// 		// 	[]routing.Route{
+// 		// 		{
+// 		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2923051732}, {ID: 1884974764}, {ID: 3263834878}},
+// 		// 			Stats:  routing.Stats{RTT: 182},
+// 		// 		},
+// 		// 	},
+// 		// 	nil,
+// 		// 	[]routing.SelectorFunc{
+// 		// 		routing.SelectContainsRouteHash(14287039991941962633),
+// 		// 	},
+// 		// },
+// 		// {
+// 		// 	"unencumbered routes",
+// 		// 	[]routing.Relay{{ID: 2836356269}},
+// 		// 	[]routing.Relay{{ID: 3263834878}, {ID: 1500948990}},
+// 		// 	[]routing.Route{
+// 		// 		{
+// 		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2923051732}, {ID: 1884974764}, {ID: 3263834878}},
+// 		// 			Stats:  routing.Stats{RTT: 182},
+// 		// 		},
+// 		// 		{
+// 		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2641807504}, {ID: 3263834878}},
+// 		// 			Stats:  routing.Stats{RTT: 182},
+// 		// 		},
+// 		// 		{
+// 		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 1348914502}, {ID: 1884974764}, {ID: 3263834878}},
+// 		// 			Stats:  routing.Stats{RTT: 182},
+// 		// 		},
+// 		// 		{
+// 		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2576485547}, {ID: 1835585494}, {ID: 3263834878}},
+// 		// 			Stats:  routing.Stats{RTT: 183},
+// 		// 		},
+// 		// 		{
+// 		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1348914502}, {ID: 1884974764}, {ID: 3263834878}},
+// 		// 			Stats:  routing.Stats{RTT: 183},
+// 		// 		},
+// 		// 		{
+// 		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2663193268}, {ID: 2504465311}, {ID: 3263834878}},
+// 		// 			Stats:  routing.Stats{RTT: 184},
+// 		// 		},
+// 		// 		{
+// 		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 427962386}, {ID: 2504465311}, {ID: 3263834878}},
+// 		// 			Stats:  routing.Stats{RTT: 184},
+// 		// 		},
+// 		// 		{
+// 		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 4058587524}, {ID: 1350942731}, {ID: 3263834878}},
+// 		// 			Stats:  routing.Stats{RTT: 184},
+// 		// 		},
+// 		// 	},
+// 		// 	nil,
+// 		// 	[]routing.SelectorFunc{
+// 		// 		routing.SelectUnencumberedRoutes(0.8),
+// 		// 	},
+// 		// },
+// 		// {
+// 		// 	"routes by random dest relay",
+// 		// 	[]routing.Relay{{ID: 2836356269}},
+// 		// 	[]routing.Relay{{ID: 3263834878}, {ID: 1500948990}},
+// 		// 	[]routing.Route{
+// 		// 		{
+// 		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1500948990}},
+// 		// 			Stats:  routing.Stats{RTT: 311},
+// 		// 		},
+// 		// 	},
+// 		// 	nil,
+// 		// 	[]routing.SelectorFunc{
+// 		// 		routing.SelectRoutesByRandomDestRelay(rand.NewSource(0)),
+// 		// 	},
+// 		// },
+// 		// {
+// 		// 	"random route",
+// 		// 	[]routing.Relay{{ID: 2836356269}},
+// 		// 	[]routing.Relay{{ID: 3263834878}, {ID: 1500948990}},
+// 		// 	[]routing.Route{
+// 		// 		{
+// 		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2923051732}, {ID: 1884974764}},
+// 		// 			Stats:  routing.Stats{RTT: 182},
+// 		// 		},
+// 		// 	},
+// 		// 	nil,
+// 		// 	[]routing.SelectorFunc{
+// 		// 		routing.SelectRandomRoute(rand.NewSource(0)),
+// 		// 	},
+// 		// },
+// 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
+// 	for _, test := range tests {
+// 		t.Run(test.name, func(t *testing.T) {
 
-			actual, err := routeMatrix.GetRoutes(test.from, test.to)
-			assert.Equal(t, test.expectedErr, err)
-			assert.Equal(t, len(test.expected), len(actual))
+// 			actual, err := routeMatrix.GetRoutes(test.from, test.to)
+// 			assert.Equal(t, test.expectedErr, err)
+// 			assert.Equal(t, len(test.expected), len(actual))
 
-			for routeidx, route := range test.expected {
-				assert.Equal(t, len(test.expected[routeidx].Relays), len(route.Relays))
+// 			for routeidx, route := range test.expected {
+// 				assert.Equal(t, len(test.expected[routeidx].Relays), len(route.Relays))
 
-				for relayidx := range route.Relays {
-					assert.Equal(t, test.expected[routeidx].Relays[relayidx].ID, actual[routeidx].Relays[relayidx].ID)
-					assert.NotNil(t, actual[routeidx].Relays[relayidx].Addr.IP)
-					assert.False(t, actual[routeidx].Relays[relayidx].Addr.IP.IsLoopback())
-					assert.Greater(t, actual[routeidx].Relays[relayidx].Addr.Port, 0)
-					assert.NotNil(t, actual[routeidx].Relays[relayidx].PublicKey)
-					assert.Equal(t, crypto.KeySize, len(actual[routeidx].Relays[relayidx].PublicKey))
-				}
+// 				for relayidx := range route.Relays {
+// 					assert.Equal(t, test.expected[routeidx].Relays[relayidx].ID, actual[routeidx].Relays[relayidx].ID)
+// 					assert.NotNil(t, actual[routeidx].Relays[relayidx].Addr.IP)
+// 					assert.False(t, actual[routeidx].Relays[relayidx].Addr.IP.IsLoopback())
+// 					assert.Greater(t, actual[routeidx].Relays[relayidx].Addr.Port, 0)
+// 					assert.NotNil(t, actual[routeidx].Relays[relayidx].PublicKey)
+// 					assert.Equal(t, crypto.KeySize, len(actual[routeidx].Relays[relayidx].PublicKey))
+// 				}
 
-				assert.Equal(t, test.expected[routeidx].Stats, actual[routeidx].Stats)
-			}
-		})
-	}
-}
+// 				assert.Equal(t, test.expected[routeidx].Stats, actual[routeidx].Stats)
+// 			}
+// 		})
+// 	}
+// }
 
 func BenchmarkGetRoutes(b *testing.B) {
 	costfile, _ := os.Open("./test_data/cost.bin")

@@ -24,7 +24,7 @@ if [[ ! -z "$PUBSUB_EMULATOR_HOST" ]]; then
 fi
 
 printf "\nRunning go unit tests:\n\n"
-go test  ./... -coverprofile ./cover.out -timeout 30s
+go test  ./... -coverprofile ./cover.out -timeout 10s
 testResult=$?
 if [ ! $testResult -eq 0 ]; then
     exit $testResult
