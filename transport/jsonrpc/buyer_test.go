@@ -159,7 +159,6 @@ func TestDatacenterMaps(t *testing.T) {
 	id := crypto.HashID(dcMap.Alias + dcMap.BuyerID + dcMap.Datacenter)
 
 	storer := storage.InMemory{}
-	storer.AddDatacenterMap(context.Background(), dcMap)
 
 	logger := log.NewNopLogger()
 
@@ -180,6 +179,16 @@ func TestDatacenterMaps(t *testing.T) {
 	authMiddleware.ServeHTTP(res, req)
 	assert.Equal(t, http.StatusOK, res.Code)
 
+	t.Run("add", func(t *testing.T) {
+		var reply jsonrpc.AddDatacenterMapReply
+		var args = jsonrpc.AddDatacenterMapArgs{
+			DatacenterMap: dcMap,
+		}
+		err := svc.AddDatacenterMap(req, &args, &reply)
+		assert.NoError(t, err)
+
+	})
+
 	t.Run("list", func(t *testing.T) {
 		var reply jsonrpc.DatacenterMapsReply
 		var args = jsonrpc.DatacenterMapsArgs{
@@ -193,6 +202,41 @@ func TestDatacenterMaps(t *testing.T) {
 		assert.Equal(t, "bdbebdbf0f7be395", reply.DatacenterMaps[id].BuyerID)
 
 	})
+
+	// belongs in ops
+	// t.Run("list w/o buyer ID", func(t *testing.T) {
+	// 	var reply jsonrpc.DatacenterMapsReply
+	// 	var args = jsonrpc.DatacenterMapsArgs{
+	// 		ID: "",
+	// 	}
+	// 	err := svc.ListDatacenterMaps(req, &args, &reply)
+	// 	assert.NoError(t, err)
+
+	// 	assert.Equal(t, "7edb88d7b6fc0713", reply.DatacenterMaps[id].Datacenter)
+	// 	assert.Equal(t, "some.server.alias", reply.DatacenterMaps[id].Alias)
+	// 	assert.Equal(t, "bdbebdbf0f7be395", reply.DatacenterMaps[id].BuyerID)
+
+	// })
+
+	t.Run("remove", func(t *testing.T) {
+		var reply jsonrpc.RemoveDatacenterMapReply
+		var args = jsonrpc.RemoveDatacenterMapArgs{
+			DatacenterMap: dcMap,
+		}
+		err := svc.RemoveDatacenterMap(req, &args, &reply)
+		assert.NoError(t, err)
+	})
+
+	// entry has been removed
+	t.Run("remove w/ error", func(t *testing.T) {
+		var reply jsonrpc.RemoveDatacenterMapReply
+		var args = jsonrpc.RemoveDatacenterMapArgs{
+			DatacenterMap: dcMap,
+		}
+		err := svc.RemoveDatacenterMap(req, &args, &reply)
+		assert.Error(t, err)
+	})
+
 }
 
 func TestTotalSessions(t *testing.T) {

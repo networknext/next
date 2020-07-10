@@ -228,7 +228,6 @@ func datacenterMapsForBuyer(rpcClient jsonrpc.RPCClient, env Environment, arg st
 		})
 	}
 
-	fmt.Println("right before output")
 	table.Output(list)
 
 }
