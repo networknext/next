@@ -406,6 +406,26 @@ var EmptyMaxmindSyncErrorMetrics MaxmindSyncErrorMetrics = MaxmindSyncErrorMetri
 	FailedToSyncISP: &EmptyCounter{},
 }
 
+type GooglePubSubForwarderMetrics struct {
+	BillingEntriesReceived Counter
+	ErrorMetrics           GooglePubSubForwarderErrorMetrics
+}
+
+var EmptyGooglePubSubForwarderMetrics GooglePubSubForwarderMetrics = GooglePubSubForwarderMetrics{
+	BillingEntriesReceived: &EmptyCounter{},
+	ErrorMetrics:           EmptyGooglePubSubForwarderErrorMetrics,
+}
+
+type GooglePubSubForwarderErrorMetrics struct {
+	BillingReadFailure  Counter
+	BillingWriteFailure Counter
+}
+
+var EmptyGooglePubSubForwarderErrorMetrics GooglePubSubForwarderErrorMetrics = GooglePubSubForwarderErrorMetrics{
+	BillingReadFailure:  &EmptyCounter{},
+	BillingWriteFailure: &EmptyCounter{},
+}
+
 func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMetrics, error) {
 	var err error
 
@@ -1357,4 +1377,42 @@ func NewMaxmindSyncMetrics(ctx context.Context, metricsHandler Handler) (*Maxmin
 	}
 
 	return &maxmindSyncMetrics, nil
+}
+
+func NewGooglePubSubForwarderMetrics(ctx context.Context, metricsHandler Handler) (*GooglePubSubForwarderMetrics, error) {
+	pubsubForwarderMetrics := GooglePubSubForwarderMetrics{}
+	var err error
+
+	pubsubForwarderMetrics.BillingEntriesReceived, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Billing Entries Received",
+		ServiceName: "billing",
+		ID:          "billing.entries",
+		Unit:        "entries",
+		Description: "The total number of billing entries received",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	pubsubForwarderMetrics.ErrorMetrics.BillingReadFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Billing Read Failure",
+		ServiceName: "billing",
+		ID:          "billing.error.read_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	pubsubForwarderMetrics.ErrorMetrics.BillingWriteFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Billing Write Failure",
+		ServiceName: "billing",
+		ID:          "billing.error.write_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &pubsubForwarderMetrics, nil
 }

@@ -221,7 +221,10 @@ func main() {
 				Timeout:        time.Minute,
 			}
 
-			pubsub, err := billing.NewGooglePubSubBiller(ctx, logger, "local", "billing", 1, 0, &settings)
+			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
+			defer cancelFunc()
+
+			pubsub, err := billing.NewGooglePubSubBiller(pubsubCtx, logger, "local", "billing", 1, 0, &settings)
 			if err != nil {
 				level.Error(logger).Log("msg", "could not create pubsub biller", "err", err)
 				os.Exit(1)

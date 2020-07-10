@@ -15,7 +15,6 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
-	"sync/atomic"
 
 	"time"
 
@@ -30,7 +29,6 @@ import (
 	"cloud.google.com/go/bigquery"
 	gcplogging "cloud.google.com/go/logging"
 	"cloud.google.com/go/profiler"
-	"cloud.google.com/go/pubsub"
 )
 
 var (
@@ -39,28 +37,6 @@ var (
 	sha           string
 	tag           string
 )
-
-// todo: make a new biller type to put this in
-func pubsubSubscriptionHandler(ctx context.Context, biller billing.Biller, logger log.Logger, pubsubSubscription *pubsub.Subscription, billingEntriesReceived *uint64) {
-	err := pubsubSubscription.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
-		atomic.AddUint64(billingEntriesReceived, 1)
-		billingEntry := billing.BillingEntry{}
-		if billing.ReadBillingEntry(&billingEntry, m.Data) {
-			m.Ack()
-			billingEntry.Timestamp = uint64(m.PublishTime.Unix())
-			if err := biller.Bill(context.Background(), &billingEntry); err != nil {
-				level.Error(logger).Log("msg", "could not submit billing entry", "err", err)
-				// params.Metrics.ErrorMetrics.BillingFailure.Add(1)
-			}
-		} else {
-			// todo: metric for read failures
-		}
-	})
-	if err != context.Canceled {
-		level.Error(logger).Log("msg", "could not setup to receive pubsub messages", "err", err)
-		os.Exit(1)
-	}
-}
 
 func main() {
 
@@ -131,48 +107,11 @@ func main() {
 	// Create a no-op biller
 	var biller billing.Biller = &billing.NoOpBiller{}
 
-	if _, ok := os.LookupEnv("PUBSUB_EMULATOR_HOST"); ok {
-		// If PUBSUB_EMULATOR_HOST is defined, we want to create the pubsub biller
-		// since it will use the emulator instead of GCP
-
-		// Use the local biller
-		biller = &billing.LocalBiller{
-			Logger: logger,
-		}
-
-		level.Info(logger).Log("msg", "Detected pubsub emulator")
-
-		// Google pubsub
-		{
-			gcpProjectID := "local"
-
-			pubsubClient, err := pubsub.NewClient(ctx, gcpProjectID)
-			if err != nil {
-				level.Error(logger).Log("msg", "could not create pubsub client", "err", err)
-				os.Exit(1)
-			}
-
-			subscriptionName := "billing"
-
-			// Create the billing subscription if running locally with the pubsub emulator
-			if _, err := pubsubClient.CreateSubscription(ctx, subscriptionName, pubsub.SubscriptionConfig{
-				Topic: pubsubClient.Topic("billing"),
-			}); err != nil && err.Error() != "rpc error: code = AlreadyExists desc = Subscription already exists" {
-				// Not the best, but the underlying error type is internal so we can't check for it
-				level.Error(logger).Log("msg", "could not create local pubsub subscription", "err", err)
-				os.Exit(1)
-			}
-
-			pubsubSubscription := pubsubClient.Subscription(subscriptionName)
-
-			go pubsubSubscriptionHandler(ctx, biller, logger, pubsubSubscription, &billingEntriesReceived)
-		}
-	}
-
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
 	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
 	// on creation so we can use that for the default then
-	if gcpProjectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
+	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
+	if gcpOK {
 
 		// Google BigQuery
 		{
@@ -206,20 +145,6 @@ func main() {
 					b.WriteLoop(ctx)
 				}()
 			}
-		}
-
-		// Google pubsub
-		{
-			pubsubClient, err := pubsub.NewClient(ctx, gcpProjectID)
-			if err != nil {
-				level.Error(logger).Log("msg", "could not create pubsub client", "err", err)
-				os.Exit(1)
-			}
-
-			subscriptionName := "billing"
-			pubsubSubscription := pubsubClient.Subscription(subscriptionName)
-
-			go pubsubSubscriptionHandler(ctx, biller, logger, pubsubSubscription, &billingEntriesReceived)
 		}
 
 		// StackDriver Metrics
@@ -287,6 +212,43 @@ func main() {
 					os.Exit(1)
 				}
 			}
+		}
+	}
+
+	// Create PubSubForwarder metrics
+	pubsubForwarderMetrics, err := metrics.NewGooglePubSubForwarderMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create pubsub forwarder metrics", "err", err)
+	}
+
+	_, emulatorOK := os.LookupEnv("PUBSUB_EMULATOR_HOST")
+	if emulatorOK { // Prefer to use the emulator instead of actual Google pubsub
+		gcpProjectID = "local"
+
+		// Use the local biller
+		biller = &billing.LocalBiller{
+			Logger: logger,
+		}
+
+		level.Info(logger).Log("msg", "Detected pubsub emulator")
+	}
+
+	if gcpOK || emulatorOK {
+		// Google pubsub forwarder
+		{
+			topicName := "billing"
+			subscriptionName := "billing"
+
+			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
+			defer cancelFunc()
+
+			pubsubForwarder, err := billing.NewPubSubForwarder(pubsubCtx, biller, logger, pubsubForwarderMetrics, gcpProjectID, topicName, subscriptionName)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				os.Exit(1)
+			}
+
+			go pubsubForwarder.Forward(ctx)
 		}
 	}
 
