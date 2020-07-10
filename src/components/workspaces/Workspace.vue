@@ -26,6 +26,7 @@ export default class Workspace extends Vue {
 </script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
+<style src="vue-multiselect/dist/vue-multiselect.min.css"></style>
 <style scoped lang="scss">
   .below-nav-bar {
     padding-top: 48px;

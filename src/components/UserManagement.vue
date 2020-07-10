@@ -1,59 +1,5 @@
 <template>
   <div class="card-body">
-    <div id="auto-signin" class="hidden">
-      <h5 class="card-title">
-        Automatic sign-in
-      </h5>
-      <p class="card-text">
-        Save time by allowing users with verified email
-        addresses automatic access to your Network Next account.
-      </p>
-      <div id="auto-sign-in-spinner" v-show="false">
-        <div class="spinner-border" role="status">
-          <span class="sr-only">Loading...</span>
-        </div>
-      </div>
-      <form v-show="true">
-        <div class="form-group">
-          <label for="customerId">
-            Automatic Sign-in Domain
-          </label>
-          <input type="text"
-                  class="form-control form-control-sm"
-                  value="networknext.com"
-                  id="auto-sign-in-domain"
-          >
-          <small class="form-text text-muted">
-            If you set this to a domain, such as "example.com",
-            then anyone with a verified email address with
-            this domain will automatically
-            join your account when logging in.
-            You can set this so that you don't need to
-            manually onboard everyone in your organization.
-          </small>
-        </div>
-        <div class="form-group">
-          <label for="customerId">
-            Permission Level
-          </label>
-          <select
-            class="form-control"
-            id="auto-signin-permissions"
-            multiple
-          >
-          </select>
-          <small class="form-text text-muted">
-            The permission level to grant accounts that
-            join your account via automatic sign-in.
-          </small>
-        </div>
-        <button type="submit" class="btn btn-primary btn-sm">
-          Save Automatic Sign-in
-        </button>
-        <p class="text-muted text-small mt-2"></p>
-      </form>
-      <hr class="mt-4 mb-4">
-    </div>
     <h5 class="card-title">
       Add new users
     </h5>
@@ -92,15 +38,7 @@
         <label for="customerId">
           Permission Level
         </label>
-        <!-- Replace these with a new dropdown component -->
-        <select
-          class="form-control"
-          id="add-user-permissions"
-          placeholder="Select..."
-          multiple
-        >
-        </select>
-        <!-- Replace these with a new dropdown component -->
+        <multiselect :options="options" :selected="newRoles" :multiple="true" :taggable="true" @tag="addTag" @update="updateSelectedTagging" tag-placeholder="Add this as new tag" placeholder="Type to search or add tag" label="name" key="code"></multiselect>
         <small class="form-text text-muted">
           The permission level to grant the added user accounts.
         </small>
@@ -124,21 +62,20 @@
     </div>
     <table class="table table-sm mt-4" v-show="true">
       <thead class="thead-light">
-          <tr>
-              <th style="width: 20%;">
-                  Email Address
-              </th>
-              <th style="width: 70%;">
-                  Permissions
-              </th>
-              <th style="width: 10%;">
-                  Actions
-              </th>
-          </tr>
+        <tr>
+          <th style="width: 20%;">
+            Email Address
+          </th>
+          <th style="width: 70%;">
+            Permissions
+          </th>
+          <th style="width: 10%;">
+            Actions
+          </th>
+        </tr>
       </thead>
       <tbody>
-        <!-- <tr v-for="(account, index) in pages.settings.accounts"> -->
-        <tr>
+        <tr v-for="(account, index) in companyUsers" :key="index">
           <div
             class="alert alert-success"
             role="alert"
@@ -157,14 +94,7 @@
             EMAIL
           </td>
           <td>
-          <!-- Replace these with a new dropdown component -->
-            <!-- <select
-              class="form-control"
-              :id="`edit-user-permissions-${account.user_id}`"
-              multiple
-            >
-            </select> -->
-          <!-- Replace these with a new dropdown component -->
+            <multiselect :options="options" :selected="newRoles" :multiple="true" :taggable="true" @tag="addTag" @update="updateSelectedTagging" tag-placeholder="Add this as new tag" placeholder="Type to search or add tag" label="name" key="code"></multiselect>
           </td>
           <td class="td-btn" v-show="true">
             <button
@@ -218,12 +148,58 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
+import Multiselect from 'vue-multiselect'
+import { UserAccount, Role } from './types/APITypes'
 
-@Component
+@Component({
+  components: {
+    Multiselect
+  }
+})
 export default class UserManagement extends Vue {
-  private switchToGameConfiguration () {
-    // Empty for now
-    this.$router.push('/user-tool/game-config')
+  private allRoles: Array<Role> = []
+  private companyUsers: Array<UserAccount> = []
+  private newRoles: any = []
+  private selected: any = []
+
+  private value = [
+    { name: 'Javascript', code: 'js' }
+  ]
+
+  private options = [
+    { name: 'Vue.js', code: 'vu' },
+    { name: 'Javascript', code: 'js' },
+    { name: 'Open Source', code: 'os' }
+  ]
+
+  private created () {
+    console.log('User Management Created')
+
+    // TODO: API call to get all role options
+    this.allRoles = [
+      {
+        id: '1234',
+        name: 'Admin',
+        description: 'With great power comes great responsibility'
+      }
+    ]
+    console.log(this.allRoles)
+  }
+
+  private addTag (newTag: any) {
+    const tag = {
+      name: newTag,
+      // Just for example needs as we use Array of Objects that should have other properties filled.
+      // For primitive values you can simply push the tag into options and selected arrays.
+      code: newTag.substring(0, 2) + Math.floor((Math.random() * 10000000))
+    }
+    this.selected.push(tag)
+    this.newRoles.push(tag)
+  }
+
+  private updateSelectedTagging (value: any) {
+    console.log('@tag: ', value)
+    this.newRoles = value
   }
 }
 

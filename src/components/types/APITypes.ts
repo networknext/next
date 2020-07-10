@@ -10,6 +10,12 @@ export interface Location {
   ASN: number;
 }
 
+export interface Role {
+  ID: string;
+  name: string;
+  description: string;
+}
+
 export interface SessionMeta {
   id: string;
   userHash: string;
@@ -28,4 +34,14 @@ export interface SessionMeta {
   nearbyRelays: Array<any>; // TODO add a Relay interface for this
   platform: string;
   buyerID: string;
+}
+
+export interface UserAccount {
+
+	userID: string;
+	ID: string;
+	companyName: string;
+	name: string;
+	email: string;
+	roles: Array<Role>;
 }

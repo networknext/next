@@ -73,10 +73,6 @@ import { Component, Vue } from 'vue-property-decorator'
 
 @Component
 export default class GameConfiguration extends Vue {
-  private switchToUserManagement () {
-    // Empty for now
-    this.$router.push('/user-tool/users')
-  }
 }
 
 </script>
