@@ -54,16 +54,16 @@ const routes: Array<RouteConfig> = [
   },
   {
     path: '/settings',
-    name: 'Settings',
+    name: 'settings',
     component: SettingsWorkspace,
     children: [
       {
-        name: 'Game Configuration',
+        name: 'config',
         path: 'game-config',
         component: GameConfiguration
       },
       {
-        name: 'User Management',
+        name: 'users',
         path: 'users',
         component: UserManagement
       }

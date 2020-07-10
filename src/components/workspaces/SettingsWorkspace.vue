@@ -25,7 +25,7 @@
             <router-link to="/settings/users" class="nav-link" v-bind:class="{ active: currentPage == 'users'}">Users</router-link>
           </li>
           <li class="nav-item">
-            <router-link to="/settings/game-config" class="nav-link" v-bind:class="{ active: currentPage == 'game-config'}">Game Configuration</router-link>
+            <router-link to="/settings/game-config" class="nav-link" v-bind:class="{ active: currentPage == 'config'}">Game Configuration</router-link>
           </li>
         </ul>
       </div>
@@ -42,8 +42,13 @@ import { Route, NavigationGuardNext } from 'vue-router'
 export default class SettingsWorkspace extends Vue {
   private currentPage = ''
 
+  private created () {
+    // TODO: Check perms to assign default page
+    this.currentPage = 'users'
+  }
+
   private beforeRouteEnter (to: Route, from: Route, next: NavigationGuardNext<Vue>) {
-    if (to.name === 'Settings') {
+    if (to.name === 'settings') {
       next('/settings/users')
     }
     next()
@@ -53,14 +58,18 @@ export default class SettingsWorkspace extends Vue {
     const toName = to.name || ''
     const fromName = from.name || ''
 
-    if (toName === 'Settings' && (fromName !== 'User Management' || fromName !== 'Game Configuration')) {
+    if (toName === 'settings' && (fromName !== 'users' || fromName !== 'config')) {
       // TODO: Check perms are route user to correct default tab
+      this.currentPage = 'users'
       next('/settings/users')
     }
-    if (toName === 'Settings' && (fromName === 'User Management' || fromName === 'Game Configuration')) {
+    if (toName === 'settings' && (fromName === 'users' || fromName === 'config')) {
       // If the user clicks the settings tab when already in settings do nothing
+      // TODO: Check perms are route user to correct default tab
+      this.currentPage = 'users'
       return
     }
+    this.currentPage = toName
     next()
   }
 }
