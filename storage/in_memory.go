@@ -304,6 +304,11 @@ func (m *InMemory) ListDatacenterMaps(dcID string) []routing.DatacenterMap {
 	return dcs
 }
 
+func (m *InMemory) ModifyDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error {
+
+	return nil
+}
+
 func (m *InMemory) RemoveDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error {
 
 	idx := -1

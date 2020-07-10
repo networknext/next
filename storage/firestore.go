@@ -1036,6 +1036,11 @@ func (fs *Firestore) ListDatacenterMaps(dcID string) []routing.DatacenterMap {
 	return dcs
 }
 
+func (fs *Firestore) ModifyDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error {
+
+	return nil
+}
+
 func (fs *Firestore) RemoveDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error {
 	dmdocs := fs.Client.Collection("DatacenterMaps").Documents(ctx)
 	defer dmdocs.Stop()
@@ -1077,7 +1082,12 @@ func (fs *Firestore) RemoveDatacenterMap(ctx context.Context, dcMap routing.Data
 				idx = i
 			}
 		}
-		// re-slice
+		// re-slice will panic if it's the last index
+		if idx+1 == len(fs.datacenterMaps) {
+			fs.datacenterMaps = fs.datacenterMaps[:idx]
+			return nil
+		}
+
 		fs.datacenterMaps = append(fs.datacenterMaps[:idx], fs.datacenterMaps[idx+1:]...)
 		fs.datacenterMapMutex.RUnlock()
 		return nil

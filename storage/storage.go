@@ -99,6 +99,9 @@ type Storer interface {
 
 	// RemoveDatacenterMap removes an entry from the DatacenterMaps table
 	RemoveDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error
+
+	// ModifyDatacenterMap modifies an existing entry
+	ModifyDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error
 }
 
 type UnmarshalError struct {
