@@ -205,42 +205,14 @@ func main() {
 	// Create a no-op biller
 	var biller billing.Biller = &billing.NoOpBiller{}
 
-	if _, ok := os.LookupEnv("PUBSUB_EMULATOR_HOST"); ok {
-		// If PUBSUB_EMULATOR_HOST is defined, we want to create the pubsub biller
-		// since it will use the emulator instead of GCP
-
-		level.Info(logger).Log("msg", "Detected pubsub emulator")
-
-		// Google Pubsub
-		{
-			settings := pubsub.PublishSettings{
-				DelayThreshold: time.Second * 10,
-				CountThreshold: 1000,
-				ByteThreshold:  100 * 1024,
-				NumGoroutines:  runtime.GOMAXPROCS(0),
-				Timeout:        time.Minute,
-			}
-
-			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
-			defer cancelFunc()
-
-			pubsub, err := billing.NewGooglePubSubBiller(pubsubCtx, logger, "local", "billing", 1, 0, &settings)
-			if err != nil {
-				level.Error(logger).Log("msg", "could not create pubsub biller", "err", err)
-				os.Exit(1)
-			}
-
-			biller = pubsub
-		}
-	}
-
 	// Create a no-op metrics handler
 	var metricsHandler metrics.Handler = &metrics.NoOpHandler{}
 
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
 	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
 	// on creation so we can use that for the default then
-	if gcpProjectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
+	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
+	if gcpOK {
 		// Firestore
 		{
 			// Create a Firestore Storer
@@ -264,25 +236,6 @@ func main() {
 
 			// Set the Firestore Storer to give to handlers
 			db = fs
-		}
-
-		// Google Pubsub
-		{
-			settings := pubsub.PublishSettings{
-				DelayThreshold: time.Second * 10,
-				CountThreshold: 1000,
-				ByteThreshold:  100 * 1024,
-				NumGoroutines:  runtime.GOMAXPROCS(0),
-				Timeout:        time.Minute,
-			}
-
-			pubsub, err := billing.NewGooglePubSubBiller(ctx, logger, gcpProjectID, "billing", 1, 0, &settings)
-			if err != nil {
-				level.Error(logger).Log("msg", "could not create pubsub biller", "err", err)
-				os.Exit(1)
-			}
-
-			biller = pubsub
 		}
 
 		// StackDriver Metrics
@@ -348,6 +301,38 @@ func main() {
 					os.Exit(1)
 				}
 			}
+		}
+	}
+
+	_, emulatorOK := os.LookupEnv("PUBSUB_EMULATOR_HOST")
+	if gcpOK || emulatorOK {
+
+		pubsubCtx := ctx
+		if emulatorOK {
+			var cancelFunc context.CancelFunc
+			pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(5*time.Second))
+			defer cancelFunc()
+
+			level.Info(logger).Log("msg", "Detected pubsub emulator")
+		}
+
+		// Google Pubsub
+		{
+			settings := pubsub.PublishSettings{
+				DelayThreshold: time.Second * 10,
+				CountThreshold: 1000,
+				ByteThreshold:  100 * 1024,
+				NumGoroutines:  runtime.GOMAXPROCS(0),
+				Timeout:        time.Minute,
+			}
+
+			pubsub, err := billing.NewGooglePubSubBiller(pubsubCtx, logger, "local", "billing", 1, 0, &settings)
+			if err != nil {
+				level.Error(logger).Log("msg", "could not create pubsub biller", "err", err)
+				os.Exit(1)
+			}
+
+			biller = pubsub
 		}
 	}
 
