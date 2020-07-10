@@ -27,21 +27,21 @@
     </ul>
     <ul class="navbar-nav px-3">
         <li class="nav-item text-nowrap">
-            <a class="nav-link" href="#">
+            <a class="login btn-sm btn-primary" href="#">
                 Log in
             </a>
         </li>
     </ul>
     <ul class="navbar-nav px-3">
         <li class="nav-item text-nowrap">
-            <a class="nav-link" href="#">
+            <a class="signup btn-sm btn-primary" href="#">
                 Sign up
             </a>
         </li>
     </ul>
     <ul class="navbar-nav px-3" v-if="false">
         <li class="nav-item text-nowrap">
-            <a class="nav-link" href="#">
+            <a class="logout btn-sm btn-primary" href="#">
                 Logout
             </a>
         </li>
@@ -59,9 +59,95 @@ export default class NavBar extends Vue {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
-  .navbar .form-control {
-      padding: 0.75rem 1rem;
-      border-width: 0;
-      border-radius: 0;
-  }
+    .navbar .form-control {
+        padding: 0.75rem 1rem;
+        border-width: 0;
+        border-radius: 0;
+    }
+    .signup {
+        width: 6rem;
+        height: 1.7rem;
+        display: block;
+        text-align: center;
+        border-radius: 9999px;
+        background-color: #f94a21;
+        font-weight: bold;
+        line-height: 1.1rem;
+    }
+    .signup:hover {
+        text-decoration: none;
+        background-color: rgba(249, 73, 33, 0.9);
+    }
+    .signup:not(:disabled):not(.disabled):active {
+        background-color: #007bff;
+        text-decoration: none;
+        border-color: #007bff;
+        box-shadow: none;
+    }
+    .signup:focus {
+        background-color: #007bff;
+        text-decoration: none;
+        border-color: #007bff;
+        box-shadow: none;
+    }
+    .login {
+        width: 6rem;
+        height: 1.7rem;
+        display: block;
+        border-width: 1px;
+        border-color: #f94a21;
+        border-radius: 9999px;
+        text-align: center;
+        background-color: #343a40;
+        border-style: solid;
+        font-weight: bold;
+        line-height: 1rem;
+    }
+    .login:hover {
+        background-color: rgba(249, 73, 33, 0.1);
+        text-decoration: none;
+        border-color: #f94a21;
+    }
+    .login:not(:disabled):not(.disabled):active {
+        background-color: #343a40;
+        text-decoration: none;
+        border-color: #007bff;
+        box-shadow: none;
+    }
+    .login:focus {
+        background-color: rgba(0, 123, 255, 0.1);
+        text-decoration: none;
+        border-color: #007bff;
+        box-shadow: none;
+    }
+    .logout {
+        width: 6rem;
+        height: 1.7rem;
+        display: block;
+        border-width: 1px;
+        border-color: #f94a21;
+        border-radius: 9999px;
+        text-align: center;
+        background-color: #343a40;
+        border-style: solid;
+        font-weight: bold;
+        line-height: 1rem;
+    }
+    .logout:hover {
+        background-color: rgba(249, 73, 33, 0.1);
+        text-decoration: none;
+        border-color: #f94a21;
+    }
+    .logout:not(:disabled):not(.disabled):active {
+        background-color: #343a40;
+        text-decoration: none;
+        border-color: #007bff;
+        box-shadow: none;
+    }
+    .logout:focus {
+        background-color: rgba(0, 123, 255, 0.1);
+        text-decoration: none;
+        border-color: #007bff;
+        box-shadow: none;
+    }
 </style>
