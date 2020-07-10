@@ -69,6 +69,15 @@ func listDatacenterMaps(rpcClient jsonrpc.RPCClient, env Environment, datacenter
 		return
 	}
 
-	table.Output(reply.DatacenterMaps)
+	var list []routing.DatacenterMap
+	for _, dc := range reply.DatacenterMaps {
+		list = append(list, routing.DatacenterMap{
+			Alias:      dc.Alias,
+			BuyerID:    dc.BuyerID,
+			Datacenter: dc.Datacenter,
+		})
+	}
+
+	table.Output(list)
 
 }

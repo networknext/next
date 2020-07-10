@@ -283,7 +283,7 @@ func (m *InMemory) AddDatacenterMap(ctx context.Context, dcMap routing.Datacente
 
 }
 
-func (m *InMemory) DatacenterMapsForBuyer(id string) map[uint64]routing.DatacenterMap {
+func (m *InMemory) GetDatacenterMapsForBuyer(id string) map[uint64]routing.DatacenterMap {
 	var dcs = make(map[uint64]routing.DatacenterMap)
 	for _, dc := range m.localDatacenterMaps {
 		if dc.BuyerID == id {
@@ -296,7 +296,7 @@ func (m *InMemory) DatacenterMapsForBuyer(id string) map[uint64]routing.Datacent
 }
 
 func (m *InMemory) ListDatacenterMaps(dcID string) map[uint64]routing.DatacenterMap {
-	var dcs map[uint64]routing.DatacenterMap
+	var dcs = make(map[uint64]routing.DatacenterMap)
 	for _, dc := range m.localDatacenterMaps {
 		if dc.Datacenter == dcID || dcID == "" {
 			id := crypto.HashID(dc.Alias + dc.BuyerID + dc.Datacenter)
@@ -305,11 +305,6 @@ func (m *InMemory) ListDatacenterMaps(dcID string) map[uint64]routing.Datacenter
 	}
 
 	return dcs
-}
-
-func (m *InMemory) ModifyDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error {
-
-	return nil
 }
 
 func (m *InMemory) RemoveDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error {
@@ -321,8 +316,8 @@ func (m *InMemory) RemoveDatacenterMap(ctx context.Context, dcMap routing.Datace
 		}
 	}
 
-	if idx < 1 {
-		return &DoesNotExistError{resourceType: "datacenterMap", resourceRef: fmt.Sprintf("%v", dcMap)}
+	if idx < 0 {
+		return fmt.Errorf("The specified datacentermap does not exist.")
 	}
 
 	if idx+1 == len(m.localDatacenterMaps) {
@@ -333,7 +328,6 @@ func (m *InMemory) RemoveDatacenterMap(ctx context.Context, dcMap routing.Datace
 	m.localDatacenterMaps = append(m.localDatacenterMaps[:idx], m.localDatacenterMaps[idx+1:]...)
 	return nil
 
-	return nil
 }
 
 func (m *InMemory) Datacenter(id uint64) (routing.Datacenter, error) {

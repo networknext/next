@@ -771,8 +771,24 @@ func (s *BuyersService) DatacenterMapsForBuyer(r *http.Request, args *Datacenter
 		return nil
 	}
 
-	reply.DatacenterMaps = s.Storage.DatacenterMapsForBuyer(args.ID)
+	reply.DatacenterMaps = s.Storage.GetDatacenterMapsForBuyer(args.ID)
 	return nil
+
+}
+
+type RemoveDatacenterMapArgs struct {
+	DatacenterMap routing.DatacenterMap
+}
+
+type RemoveDatacenterMapReply struct{}
+
+func (s *BuyersService) RemoveDatacenterMap(r *http.Request, args *RemoveDatacenterMapArgs, reply *RemoveDatacenterMapReply) error {
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelFunc()
+
+	fmt.Println("RemoveDatacenterMap endpoint")
+
+	return s.Storage.RemoveDatacenterMap(ctx, args.DatacenterMap)
 
 }
 

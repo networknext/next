@@ -1229,6 +1229,50 @@ datacenter names.
 							return nil
 						},
 					},
+					{
+						Name:       "remove",
+						ShortUsage: "next buyer datacenters remove <json file>",
+						ShortHelp:  "Removes the specified datacenter alias map from the system",
+						LongHelp: `Reads the specifics for the datacenter alias to be removedfrom
+the contents of the specified json file. The json file layout
+is as follows:
+
+{
+	"alias": "some.server.alias",
+	"datacenter": "2fe32c22450fb4c9" or "vultr.newyork",
+	"buyer_id": "bdbebdbf0f7be395" or "Some Buyer name"
+}
+
+The alias is uniquely defined by all three entries, so they must be provided.
+						`,
+						Exec: func(_ context.Context, args []string) error {
+							jsonData := readJSONData("datacenter remove", args)
+
+							// Unmarshal the JSON and create the Buyer struct
+							var dcm routing.DatacenterMap
+							if err := json.Unmarshal(jsonData, &dcm); err != nil {
+								log.Fatalf("Could not unmarshal datacenter map: %v", err)
+							}
+
+							err := rmDatacenterMap(rpcClient, env, dcm)
+
+							if err != nil {
+								return err
+							}
+
+							fmt.Println("Datacenter alias removed.")
+
+							return nil
+						},
+					},
+					// {
+					// 	Name: "modify",
+					// 	ShortUsage: "next buyer datacenters remove <json file>",
+					// 	ShortHelp: "Removes the specified datacenter alias map from the system",
+					// 	Exec: func(_ context.Context, args []string) error {
+					// 		return nil
+					// 	},
+					// },
 				},
 			},
 		},

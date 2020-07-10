@@ -982,7 +982,7 @@ func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 	return &DoesNotExistError{resourceType: "relay", resourceRef: fmt.Sprintf("%x", r.ID)}
 }
 
-func (fs *Firestore) DatacenterMapsForBuyer(buyerID string) map[uint64]routing.DatacenterMap {
+func (fs *Firestore) GetDatacenterMapsForBuyer(buyerID string) map[uint64]routing.DatacenterMap {
 	fs.datacenterMapMutex.RLock()
 	defer fs.datacenterMapMutex.RUnlock()
 
@@ -1002,7 +1002,7 @@ func (fs *Firestore) AddDatacenterMap(ctx context.Context, dcMap routing.Datacen
 
 	// ToDo: make sure buyer and datacenter exist?
 
-	dcMaps := fs.DatacenterMapsForBuyer(dcMap.BuyerID)
+	dcMaps := fs.GetDatacenterMapsForBuyer(dcMap.BuyerID)
 	if len(dcMaps) != 0 {
 		for _, dc := range dcMaps {
 			if dc.Alias == dcMap.Alias && dc.Datacenter == dcMap.Datacenter {
@@ -1042,11 +1042,6 @@ func (fs *Firestore) ListDatacenterMaps(dcID string) map[uint64]routing.Datacent
 	}
 
 	return dcs
-}
-
-func (fs *Firestore) ModifyDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error {
-
-	return nil
 }
 
 func (fs *Firestore) RemoveDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error {
