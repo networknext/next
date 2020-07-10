@@ -175,7 +175,7 @@ export default class UserManagement extends Vue {
     // TODO: API call to get all role options
     this.allRoles = [
       {
-        id: '1234',
+        ID: '1234',
         name: 'Admin',
         description: 'With great power comes great responsibility'
       }
