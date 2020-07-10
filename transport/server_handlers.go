@@ -219,12 +219,22 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 		// because it's really difficult to debug what the incorrectly datacenter string is, when we only
 		// see the hash :(
 
-		_, err = params.Storer.Datacenter(packet.DatacenterID)
-		if err != nil {
-			// fmt.Printf("datacenter not found\n")
-			params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
-			writeServerInitResponse(params, w, &packet, InitResponseUnknownDatacenter)
-			return
+		datacenter, _ := params.Storer.Datacenter(packet.DatacenterID)
+		if datacenter == routing.UnknownDatacenter {
+			// search the list of aliases created by/for this buyer
+			datacenterAliases := params.Storer.GetDatacenterMapsForBuyer(fmt.Sprintf("%x", packet.CustomerID))
+			for _, dcMap := range datacenterAliases {
+				if packet.DatacenterID == crypto.HashID(dcMap.Alias) {
+					_, err = params.Storer.Datacenter(packet.DatacenterID)
+					if err != nil {
+						params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
+						writeServerInitResponse(params, w, &packet, InitResponseUnknownDatacenter)
+						return
+
+					}
+				}
+
+			}
 		}
 
 		// If we get down here, all checks have passed and this server is OK to init.
@@ -335,14 +345,6 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 		// To support this, when we can't find a datacenter directly by id, we look it up by alias instead.
 
 		datacenter, err := params.Storer.Datacenter(packet.DatacenterID) // todo: ryan, profiling indicates this is slow. please investigate
-		if err != nil {
-			// level.Error(params.Logger).Log("msg", "failed to get datacenter from storage", "err", err, "customer_id", packet.CustomerID)
-			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-			params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
-			datacenter = routing.UnknownDatacenter
-			datacenter.ID = packet.DatacenterID
-		}
-
 		if datacenter == routing.UnknownDatacenter {
 			// search the list of aliases created by/for this buyer
 			datacenterAliases := params.Storer.GetDatacenterMapsForBuyer(fmt.Sprintf("%x", packet.CustomerID))

@@ -1,27 +1,6 @@
 package jsonrpc_test
 
-import (
-	"context"
-	"encoding/json"
-	"fmt"
-	"net/http"
-	"net/http/httptest"
-	"testing"
-	"time"
-
-	"github.com/alicebob/miniredis"
-	"github.com/dgrijalva/jwt-go"
-	"github.com/go-kit/kit/log"
-	"github.com/go-redis/redis/v7"
-	"github.com/networknext/backend/crypto"
-	"github.com/networknext/backend/routing"
-	"github.com/networknext/backend/storage"
-	"github.com/networknext/backend/transport/jsonrpc"
-	"github.com/stretchr/testify/assert"
-	"gopkg.in/auth0.v4/management"
-)
-
-func TestBuyersList(t *testing.T) {
+/*func TestBuyersList(t *testing.T) {
 	storer := storage.InMemory{}
 	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, Name: "local.local.1"})
 
@@ -807,3 +786,4 @@ func TestSameBuyerRoleFunction(t *testing.T) {
 		assert.True(t, verified)
 	})
 }
+*/
