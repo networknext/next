@@ -25,7 +25,6 @@ func NewPubSubForwarder(ctx context.Context, biller Biller, logger log.Logger, m
 		return nil, fmt.Errorf("could not create pubsub client: %v", err)
 	}
 
-	// Create the billing subscription if running locally with the pubsub emulator
 	if _, err := pubsubClient.CreateSubscription(ctx, subscriptionName, pubsub.SubscriptionConfig{
 		Topic: pubsubClient.Topic(topicName),
 	}); err != nil && err.Error() != "rpc error: code = AlreadyExists desc = Subscription already exists" {
