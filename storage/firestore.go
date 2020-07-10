@@ -1500,7 +1500,9 @@ func (fs *Firestore) syncDatacenterMaps(ctx context.Context) error {
 		dcMaps[id] = dcMap
 	}
 
+	fs.datacenterMapMutex.Lock()
 	fs.datacenterMaps = dcMaps
+	fs.datacenterMapMutex.Unlock()
 	return nil
 
 }
