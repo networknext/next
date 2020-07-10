@@ -38,7 +38,7 @@
         <label for="customerId">
           Permission Level
         </label>
-        <multiselect :options="options" :selected="newRoles" :multiple="true" :taggable="true" @tag="addTag" @update="updateSelectedTagging" tag-placeholder="Add this as new tag" placeholder="Type to search or add tag" label="name" key="code"></multiselect>
+        <multiselect track-by="name" label="name" v-model="value" :options="options" multiple></multiselect>
         <small class="form-text text-muted">
           The permission level to grant the added user accounts.
         </small>
@@ -94,7 +94,7 @@
             EMAIL
           </td>
           <td>
-            <multiselect :options="options" :selected="newRoles" :multiple="true" :taggable="true" @tag="addTag" @update="updateSelectedTagging" tag-placeholder="Add this as new tag" placeholder="Type to search or add tag" label="name" key="code"></multiselect>
+            <multiselect track-by="name" label="name" v-model="value" :options="options" multiple></multiselect>
           </td>
           <td class="td-btn" v-show="true">
             <button
@@ -159,11 +159,8 @@ import { UserAccount, Role } from './types/APITypes'
 export default class UserManagement extends Vue {
   private allRoles: Array<Role> = []
   private companyUsers: Array<UserAccount> = []
-  private newRoles: any = []
-  private selected: any = []
 
   private value = [
-    { name: 'Javascript', code: 'js' }
   ]
 
   private options = [
@@ -184,22 +181,6 @@ export default class UserManagement extends Vue {
       }
     ]
     console.log(this.allRoles)
-  }
-
-  private addTag (newTag: any) {
-    const tag = {
-      name: newTag,
-      // Just for example needs as we use Array of Objects that should have other properties filled.
-      // For primitive values you can simply push the tag into options and selected arrays.
-      code: newTag.substring(0, 2) + Math.floor((Math.random() * 10000000))
-    }
-    this.selected.push(tag)
-    this.newRoles.push(tag)
-  }
-
-  private updateSelectedTagging (value: any) {
-    console.log('@tag: ', value)
-    this.newRoles = value
   }
 }
 
