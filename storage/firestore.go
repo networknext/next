@@ -1001,6 +1001,23 @@ func (fs *Firestore) GetDatacenterMapsForBuyer(buyerID string) map[uint64]routin
 func (fs *Firestore) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error {
 
 	// ToDo: make sure buyer and datacenter exist?
+	bID, err := strconv.ParseUint(dcMap.BuyerID, 10, 64)
+	if err != nil {
+		return fmt.Errorf("Error parsing BuyerID %s", dcMap.BuyerID)
+	}
+
+	dcID, err := strconv.ParseUint(dcMap.Datacenter, 10, 64)
+	if err != nil {
+		return fmt.Errorf("Error parsing Datacenter ID %s", dcMap.Datacenter)
+	}
+
+	if _, ok := fs.buyers[bID]; !ok {
+		return &DoesNotExistError{resourceType: "BuyerID", resourceRef: dcMap.BuyerID}
+	}
+
+	if _, ok := fs.datacenters[dcID]; !ok {
+		return &DoesNotExistError{resourceType: "Datacenter", resourceRef: dcMap.Datacenter}
+	}
 
 	dcMaps := fs.GetDatacenterMapsForBuyer(dcMap.BuyerID)
 	if len(dcMaps) != 0 {
@@ -1010,7 +1027,7 @@ func (fs *Firestore) AddDatacenterMap(ctx context.Context, dcMap routing.Datacen
 			}
 		}
 	}
-	_, _, err := fs.Client.Collection("DatacenterMaps").Add(ctx, dcMap)
+	_, _, err = fs.Client.Collection("DatacenterMaps").Add(ctx, dcMap)
 	if err != nil {
 		return &FirestoreError{err: err}
 	}
