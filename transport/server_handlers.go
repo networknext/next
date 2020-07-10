@@ -632,6 +632,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 
 		// Pull some data from the session data that we may need to modify
 		// Since it's not thread safe to modify the session data directly, we modify local copies and update it back later in the PostSessionUpdate
+		routeExpireTimestamp := sessionDataReadOnly.routeExpireTimestamp
 		location := sessionDataReadOnly.location
 		routeDecision := sessionDataReadOnly.routeDecision
 		onNNSliceCounter := sessionDataReadOnly.onNNSliceCounter
@@ -666,7 +667,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 				// IMPORTANT: We send a direct route response here because we want to see the session in our total session count, even if ip2loc fails.
 				// Context: As soon as we don't respond to a session update, the SDK "falls back to direct" and stops sending session update packets.
 				sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelays, routeDecision, sessionDataReadOnly.routeDecision, sessionDataReadOnly.initial, vetoReason, onNNSliceCounter,
-					committedData, sessionDataReadOnly.routeHash, sessionDataReadOnly.routeDecision.OnNetworkNext, start, sessionDataReadOnly.tokenVersion, params.RouterPrivateKey, sliceMutexes)
+					committedData, sessionDataReadOnly.routeHash, sessionDataReadOnly.routeDecision.OnNetworkNext, start, routeExpireTimestamp, sessionDataReadOnly.tokenVersion, params.RouterPrivateKey, sliceMutexes)
 				return
 			}
 		}
@@ -682,7 +683,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			}
 
 			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelays, routeDecision, sessionDataReadOnly.routeDecision, sessionDataReadOnly.initial, vetoReason, onNNSliceCounter,
-				committedData, sessionDataReadOnly.routeHash, sessionDataReadOnly.routeDecision.OnNetworkNext, start, sessionDataReadOnly.tokenVersion, params.RouterPrivateKey, sliceMutexes)
+				committedData, sessionDataReadOnly.routeHash, sessionDataReadOnly.routeDecision.OnNetworkNext, start, routeExpireTimestamp, sessionDataReadOnly.tokenVersion, params.RouterPrivateKey, sliceMutexes)
 			return
 		}
 
@@ -703,7 +704,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			params.Metrics.ErrorMetrics.ClientIPAnonymizeFailure.Add(1)
 
 			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelays, routeDecision, sessionDataReadOnly.routeDecision, sessionDataReadOnly.initial, vetoReason, onNNSliceCounter,
-				committedData, sessionDataReadOnly.routeHash, sessionDataReadOnly.routeDecision.OnNetworkNext, start, sessionDataReadOnly.tokenVersion, params.RouterPrivateKey, sliceMutexes)
+				committedData, sessionDataReadOnly.routeHash, sessionDataReadOnly.routeDecision.OnNetworkNext, start, routeExpireTimestamp, sessionDataReadOnly.tokenVersion, params.RouterPrivateKey, sliceMutexes)
 			return
 		}
 
@@ -731,7 +732,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 
 				params.Metrics.ErrorMetrics.NearRelaysLocateFailure.Add(1)
 				sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelays, routeDecision, sessionDataReadOnly.routeDecision, sessionDataReadOnly.initial, vetoReason, onNNSliceCounter,
-					committedData, sessionDataReadOnly.routeHash, sessionDataReadOnly.routeDecision.OnNetworkNext, start, sessionDataReadOnly.tokenVersion, params.RouterPrivateKey, sliceMutexes)
+					committedData, sessionDataReadOnly.routeHash, sessionDataReadOnly.routeDecision.OnNetworkNext, start, routeExpireTimestamp, sessionDataReadOnly.tokenVersion, params.RouterPrivateKey, sliceMutexes)
 				return
 			}
 		} else {
@@ -763,7 +764,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			}
 
 			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelays, routeDecision, sessionDataReadOnly.routeDecision, sessionDataReadOnly.initial, vetoReason, onNNSliceCounter,
-				committedData, sessionDataReadOnly.routeHash, sessionDataReadOnly.routeDecision.OnNetworkNext, start, sessionDataReadOnly.tokenVersion, params.RouterPrivateKey, sliceMutexes)
+				committedData, sessionDataReadOnly.routeHash, sessionDataReadOnly.routeDecision.OnNetworkNext, start, routeExpireTimestamp, sessionDataReadOnly.tokenVersion, params.RouterPrivateKey, sliceMutexes)
 			return
 		}
 
@@ -777,7 +778,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			}
 
 			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelays, routeDecision, sessionDataReadOnly.routeDecision, sessionDataReadOnly.initial, vetoReason, onNNSliceCounter,
-				committedData, sessionDataReadOnly.routeHash, sessionDataReadOnly.routeDecision.OnNetworkNext, start, sessionDataReadOnly.tokenVersion, params.RouterPrivateKey, sliceMutexes)
+				committedData, sessionDataReadOnly.routeHash, sessionDataReadOnly.routeDecision.OnNetworkNext, start, routeExpireTimestamp, sessionDataReadOnly.tokenVersion, params.RouterPrivateKey, sliceMutexes)
 			return
 		}
 
@@ -791,7 +792,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			}
 
 			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelays, routeDecision, sessionDataReadOnly.routeDecision, sessionDataReadOnly.initial, vetoReason, onNNSliceCounter,
-				committedData, sessionDataReadOnly.routeHash, sessionDataReadOnly.routeDecision.OnNetworkNext, start, sessionDataReadOnly.tokenVersion, params.RouterPrivateKey, sliceMutexes)
+				committedData, sessionDataReadOnly.routeHash, sessionDataReadOnly.routeDecision.OnNetworkNext, start, routeExpireTimestamp, sessionDataReadOnly.tokenVersion, params.RouterPrivateKey, sliceMutexes)
 			return
 		}
 
@@ -805,7 +806,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			}
 
 			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelays, routeDecision, sessionDataReadOnly.routeDecision, sessionDataReadOnly.initial, vetoReason, onNNSliceCounter,
-				committedData, sessionDataReadOnly.routeHash, sessionDataReadOnly.routeDecision.OnNetworkNext, start, sessionDataReadOnly.tokenVersion, params.RouterPrivateKey, sliceMutexes)
+				committedData, sessionDataReadOnly.routeHash, sessionDataReadOnly.routeDecision.OnNetworkNext, start, routeExpireTimestamp, sessionDataReadOnly.tokenVersion, params.RouterPrivateKey, sliceMutexes)
 			return
 		}
 
@@ -825,7 +826,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 
 			params.Metrics.ErrorMetrics.NoRelaysInDatacenter.Add(1)
 			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelays, routeDecision, sessionDataReadOnly.routeDecision, sessionDataReadOnly.initial, vetoReason, onNNSliceCounter,
-				committedData, sessionDataReadOnly.routeHash, sessionDataReadOnly.routeDecision.OnNetworkNext, start, sessionDataReadOnly.tokenVersion, params.RouterPrivateKey, sliceMutexes)
+				committedData, sessionDataReadOnly.routeHash, sessionDataReadOnly.routeDecision.OnNetworkNext, start, routeExpireTimestamp, sessionDataReadOnly.tokenVersion, params.RouterPrivateKey, sliceMutexes)
 			return
 		}
 
@@ -849,7 +850,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 		// IMPORTANT: In future SDK versions we are much less aggressive with session update packet retries. eg. 3.4.5 and later.
 
 		sendRouteResponse(w, bestRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelays, routeDecision, sessionDataReadOnly.routeDecision, sessionDataReadOnly.initial, vetoReason, onNNSliceCounter,
-			committedData, sessionDataReadOnly.routeHash, sessionDataReadOnly.routeDecision.OnNetworkNext, start, sessionDataReadOnly.tokenVersion, params.RouterPrivateKey, sliceMutexes)
+			committedData, sessionDataReadOnly.routeHash, sessionDataReadOnly.routeDecision.OnNetworkNext, start, routeExpireTimestamp, sessionDataReadOnly.tokenVersion, params.RouterPrivateKey, sliceMutexes)
 	}
 }
 
@@ -2157,7 +2158,7 @@ func marshalResponse(response *SessionResponsePacket, privateKey []byte) ([]byte
 
 func sendRouteResponse(w io.Writer, chosenRoute *routing.Route, params *SessionUpdateParams, packet *SessionUpdatePacket, response *SessionResponsePacket, serverDataReadOnly *ServerData,
 	buyer *routing.Buyer, lastNextStats *routing.Stats, lastDirectStats *routing.Stats, location *routing.Location, nearRelays []routing.Relay, routeDecision routing.Decision, prevRouteDecision routing.Decision, prevInitial bool, vetoReason routing.DecisionReason,
-	onNNSliceCounter uint64, committedData routing.CommittedData, prevRouteHash uint64, prevOnNetworkNext bool, timeNow time.Time, tokenVersion uint8, routerPrivateKey []byte, sliceMutexes []sync.Mutex) {
+	onNNSliceCounter uint64, committedData routing.CommittedData, prevRouteHash uint64, prevOnNetworkNext bool, timeNow time.Time, routeExpireTimestamp uint64, tokenVersion uint8, routerPrivateKey []byte, sliceMutexes []sync.Mutex) {
 	// Update response data
 	{
 		if committedData.Committed {
@@ -2169,7 +2170,11 @@ func sendRouteResponse(w io.Writer, chosenRoute *routing.Route, params *SessionU
 		}
 	}
 
-	routeExpiresTimestamp := uint64(time.Now().Unix() + billing.BillingSliceSeconds)
+	if routeExpireTimestamp == 0 {
+		routeExpireTimestamp = uint64(timeNow.Unix())
+	}
+
+	routeExpireTimestamp += billing.BillingSliceSeconds
 
 	// Tokenize the route
 	if routeDecision.OnNetworkNext {
@@ -2177,7 +2182,7 @@ func sendRouteResponse(w io.Writer, chosenRoute *routing.Route, params *SessionU
 
 		if chosenRoute.Hash64() == prevRouteHash {
 			token = &routing.ContinueRouteToken{
-				Expires: routeExpiresTimestamp,
+				Expires: routeExpireTimestamp,
 
 				SessionID: packet.SessionID,
 
@@ -2197,9 +2202,9 @@ func sendRouteResponse(w io.Writer, chosenRoute *routing.Route, params *SessionU
 			}
 		} else {
 			tokenVersion++
-			routeExpiresTimestamp = uint64(timeNow.Unix() + billing.BillingSliceSeconds*2) // Add another slice duration for a new network next route
+			routeExpireTimestamp += billing.BillingSliceSeconds // Add another slice duration for a new network next route
 			token = &routing.NextRouteToken{
-				Expires: routeExpiresTimestamp,
+				Expires: routeExpireTimestamp,
 
 				SessionID: packet.SessionID,
 
@@ -2245,18 +2250,19 @@ func sendRouteResponse(w io.Writer, chosenRoute *routing.Route, params *SessionU
 
 	// Update the session data
 	session := SessionData{
-		timestamp:        timeNow.Unix(),
-		location:         *location,
-		sequence:         packet.Sequence,
-		nearRelays:       nearRelays,
-		routeHash:        chosenRoute.Hash64(),
-		initial:          response.RouteType == routing.RouteTypeNew,
-		routeDecision:    routeDecision,
-		onNNSliceCounter: onNNSliceCounter,
-		committedData:    committedData,
-		tokenVersion:     tokenVersion,
-		cachedResponse:   responseData,
-		sliceMutexes:     sliceMutexes,
+		timestamp:            timeNow.Unix(),
+		location:             *location,
+		sequence:             packet.Sequence,
+		nearRelays:           nearRelays,
+		routeHash:            chosenRoute.Hash64(),
+		initial:              response.RouteType == routing.RouteTypeNew,
+		routeDecision:        routeDecision,
+		onNNSliceCounter:     onNNSliceCounter,
+		committedData:        committedData,
+		routeExpireTimestamp: routeExpireTimestamp,
+		tokenVersion:         tokenVersion,
+		cachedResponse:       responseData,
+		sliceMutexes:         sliceMutexes,
 	}
 	sessionMutexStart := time.Now()
 	params.SessionMap.UpdateSessionData(packet.SessionID, &session)
