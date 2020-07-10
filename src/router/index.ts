@@ -1,5 +1,5 @@
 import Vue from 'vue'
-import VueRouter, { RouteConfig } from 'vue-router'
+import VueRouter, { RouteConfig, Route, NavigationGuardNext } from 'vue-router'
 
 import DownloadsWorkspace from '@/components/workspaces/DownloadsWorkspace.vue'
 import GameConfiguration from '@/components/GameConfiguration.vue'
