@@ -1025,7 +1025,7 @@ func CalculateTotalPriceNibblins(chosenRoute *routing.Route, envelopeKbpsUp uint
 }
 
 func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket, response *SessionResponsePacket, serverDataReadOnly *ServerData,
-	chosenRoute *routing.Route, lastNextStats *routing.Stats, lastDirectStats *routing.Stats, location *routing.Location, nearRelays []routing.Relay,
+	routeRelays []routing.Relay, lastNextStats *routing.Stats, lastDirectStats *routing.Stats, location *routing.Location, nearRelays []routing.Relay,
 	routeDecision routing.Decision, timeNow time.Time, totalPriceNibblins uint64) {
 
 	// IMPORTANT: we actually need to display the true datacenter name in the demo and demo plus views,
@@ -1045,7 +1045,7 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 	// IMPORTANT: We could possibly offload some work from here by sending to another service
 	// via redis pubsub (this is different to google pubsub).
 
-	if err := updatePortalData(params.RedisClientPortal, params.RedisClientPortalExp, packet, lastNextStats, lastDirectStats, chosenRoute.Relays,
+	if err := updatePortalData(params.RedisClientPortal, params.RedisClientPortalExp, packet, lastNextStats, lastDirectStats, routeRelays,
 		packet.OnNetworkNext, datacenterName, location, nearRelays, timeNow, routing.IsMultipath(routeDecision), datacenterAlias); err != nil {
 		// level.Error(params.Logger).Log("msg", "could not update portal data", "err", err)
 		params.Metrics.ErrorMetrics.UpdatePortalFailure.Add(1)
@@ -1058,11 +1058,11 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 	// pubsub to act as a queue to smooth that out. Pubsub can buffer billing data for up to 7 days.
 
 	nextRelays := [billing.BillingEntryMaxRelays]uint64{}
-	for i := 0; i < len(chosenRoute.Relays) && i < len(nextRelays); i++ {
-		nextRelays[i] = chosenRoute.Relays[i].ID
+	for i := 0; i < len(routeRelays) && i < len(nextRelays); i++ {
+		nextRelays[i] = routeRelays[i].ID
 	}
 
-	onNetworkNext := len(chosenRoute.Relays) > 0
+	onNetworkNext := len(routeRelays) > 0
 
 	billingEntry := billing.BillingEntry{
 		BuyerID:                   packet.CustomerID,
@@ -1072,10 +1072,10 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 		DirectJitter:              float32(lastDirectStats.Jitter),
 		DirectPacketLoss:          float32(lastDirectStats.PacketLoss),
 		Next:                      onNetworkNext,
-		NextRTT:                   float32(chosenRoute.Stats.RTT),
-		NextJitter:                float32(chosenRoute.Stats.Jitter),
-		NextPacketLoss:            float32(chosenRoute.Stats.PacketLoss),
-		NumNextRelays:             uint8(len(chosenRoute.Relays)),
+		NextRTT:                   float32(lastNextStats.RTT),
+		NextJitter:                float32(lastNextStats.Jitter),
+		NextPacketLoss:            float32(lastNextStats.PacketLoss),
+		NumNextRelays:             uint8(len(routeRelays)),
 		NextRelays:                nextRelays,
 		TotalPrice:                totalPriceNibblins,
 		ClientToServerPacketsLost: packet.PacketsLostClientToServer,
@@ -2156,7 +2156,7 @@ func marshalResponse(response *SessionResponsePacket, privateKey []byte) ([]byte
 	return responseData, nil
 }
 
-func sendRouteResponse(w io.Writer, route *routing.Route, params *SessionUpdateParams, packet *SessionUpdatePacket, response *SessionResponsePacket, serverDataReadOnly *ServerData,
+func sendRouteResponse(w io.Writer, chosenRoute *routing.Route, params *SessionUpdateParams, packet *SessionUpdatePacket, response *SessionResponsePacket, serverDataReadOnly *ServerData,
 	buyer *routing.Buyer, lastNextStats *routing.Stats, lastDirectStats *routing.Stats, location *routing.Location, nearRelays []routing.Relay, routeDecision routing.Decision, vetoReason routing.DecisionReason,
 	onNNSliceCounter uint64, committedData routing.CommittedData, prevRouteHash uint64, prevOnNetworkNext bool, timeNow time.Time, routeExpireTimestamp int64, tokenVersion uint8, sliceDuration uint64, routerPrivateKey []byte, sliceMutexes []sync.Mutex) {
 	// Update response data
@@ -2173,7 +2173,7 @@ func sendRouteResponse(w io.Writer, route *routing.Route, params *SessionUpdateP
 	// Tokenize the route
 	if routeDecision.OnNetworkNext {
 		var token routing.Token
-		if route.Hash64() == prevRouteHash {
+		if chosenRoute.Hash64() == prevRouteHash {
 			token = &routing.ContinueRouteToken{
 				Expires: uint64(routeExpireTimestamp),
 
@@ -2191,7 +2191,7 @@ func sendRouteResponse(w io.Writer, route *routing.Route, params *SessionUpdateP
 					PublicKey: serverDataReadOnly.routePublicKey,
 				},
 
-				Relays: route.Relays,
+				Relays: chosenRoute.Relays,
 			}
 		} else {
 			tokenVersion++
@@ -2216,7 +2216,7 @@ func sendRouteResponse(w io.Writer, route *routing.Route, params *SessionUpdateP
 					PublicKey: serverDataReadOnly.routePublicKey,
 				},
 
-				Relays: route.Relays,
+				Relays: chosenRoute.Relays,
 			}
 		}
 
@@ -2247,7 +2247,7 @@ func sendRouteResponse(w io.Writer, route *routing.Route, params *SessionUpdateP
 		location:             *location,
 		sequence:             packet.Sequence,
 		nearRelays:           nearRelays,
-		routeHash:            route.Hash64(),
+		routeHash:            chosenRoute.Hash64(),
 		routeDecision:        routeDecision,
 		onNNSliceCounter:     onNNSliceCounter,
 		committedData:        committedData,
@@ -2270,10 +2270,10 @@ func sendRouteResponse(w io.Writer, route *routing.Route, params *SessionUpdateP
 	addRouteDecisionMetric(routeDecision, params.Metrics)
 
 	// Calculate the total price for the billing entry
-	totalPriceNibblins := CalculateTotalPriceNibblins(route, uint64(buyer.RoutingRulesSettings.EnvelopeKbpsUp), uint64(buyer.RoutingRulesSettings.EnvelopeKbpsDown), sliceDuration)
+	totalPriceNibblins := CalculateTotalPriceNibblins(chosenRoute, uint64(buyer.RoutingRulesSettings.EnvelopeKbpsUp), uint64(buyer.RoutingRulesSettings.EnvelopeKbpsDown), sliceDuration)
 
 	// IMPORTANT: run post in parallel so it doesn't block the response
-	go PostSessionUpdate(params, packet, response, serverDataReadOnly, route, lastNextStats, lastDirectStats, location, nearRelays, routeDecision, timeNow, totalPriceNibblins)
+	go PostSessionUpdate(params, packet, response, serverDataReadOnly, chosenRoute.Relays, lastNextStats, lastDirectStats, location, nearRelays, routeDecision, timeNow, totalPriceNibblins)
 
 	// Send the Session Response back to the server
 	if _, err := w.Write(responseData); err != nil {

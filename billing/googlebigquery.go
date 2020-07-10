@@ -2,11 +2,11 @@ package billing
 
 import (
 	"context"
-	"fmt"
 	"sync/atomic"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 )
 
 const (
@@ -58,10 +58,9 @@ func (bq *GoogleBigQueryClient) WriteLoop(ctx context.Context) error {
 	for entry := range bq.entries {
 		if len(bq.buffer) >= bq.BatchSize {
 			if err := bq.TableInserter.Put(ctx, bq.buffer); err != nil {
-				// level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)
-				fmt.Printf("failed to write to bigquery: %v\n", err)
+				level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)
 			}
-			// level.Info(bq.Logger).Log("msg", "flushed entries to BigQuery", "size", bq.BatchSize, "total", len(bq.buffer))
+			level.Info(bq.Logger).Log("msg", "flushed entries to BigQuery", "size", bq.BatchSize, "total", len(bq.buffer))
 			atomic.AddUint64(&bq.flushed, uint64(len(bq.buffer)))
 			bq.buffer = bq.buffer[:0]
 		}

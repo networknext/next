@@ -37,6 +37,7 @@ import (
 
 	gcplogging "cloud.google.com/go/logging"
 	"cloud.google.com/go/profiler"
+	"cloud.google.com/go/pubsub"
 )
 
 var (
@@ -48,7 +49,7 @@ var (
 
 func main() {
 
-	fmt.Printf("server_backend: Git Hash: %s - Commit: %s", sha, commitMessage)
+	fmt.Printf("server_backend: Git Hash: %s - Commit: %s\n", sha, commitMessage)
 
 	ctx := context.Background()
 
@@ -204,6 +205,32 @@ func main() {
 	// Create a no-op biller
 	var biller billing.Biller = &billing.NoOpBiller{}
 
+	if _, ok := os.LookupEnv("PUBSUB_EMULATOR_HOST"); ok {
+		// If PUBSUB_EMULATOR_HOST is defined, we want to create the pubsub biller
+		// since it will use the emulator instead of GCP
+
+		level.Info(logger).Log("msg", "Detected pubsub emulator")
+
+		// Google Pubsub
+		{
+			settings := pubsub.PublishSettings{
+				DelayThreshold: time.Second * 10,
+				CountThreshold: 1000,
+				ByteThreshold:  100 * 1024,
+				NumGoroutines:  runtime.GOMAXPROCS(0),
+				Timeout:        time.Minute,
+			}
+
+			pubsub, err := billing.NewGooglePubSubBiller(ctx, logger, "local", "billing", 1, 0, &settings)
+			if err != nil {
+				level.Error(logger).Log("msg", "could not create pubsub biller", "err", err)
+				os.Exit(1)
+			}
+
+			biller = pubsub
+		}
+	}
+
 	// Create a no-op metrics handler
 	var metricsHandler metrics.Handler = &metrics.NoOpHandler{}
 
@@ -238,8 +265,7 @@ func main() {
 
 		// Google Pubsub
 		{
-			descriptor := billing.Descriptor{
-				ClientCount:    1,
+			settings := pubsub.PublishSettings{
 				DelayThreshold: time.Second * 10,
 				CountThreshold: 1000,
 				ByteThreshold:  100 * 1024,
@@ -247,9 +273,9 @@ func main() {
 				Timeout:        time.Minute,
 			}
 
-			pubsub, err := billing.NewBiller(ctx, logger, gcpProjectID, "billing", &descriptor)
+			pubsub, err := billing.NewGooglePubSubBiller(ctx, logger, gcpProjectID, "billing", 1, 0, &settings)
 			if err != nil {
-				fmt.Printf("could not create pubsub biller\n")
+				level.Error(logger).Log("msg", "could not create pubsub biller", "err", err)
 				os.Exit(1)
 			}
 
@@ -650,8 +676,7 @@ func main() {
 		go func() {
 			level.Info(logger).Log("protocol", "udp", "addr", conn.LocalAddr().String())
 			if err := mux.Start(ctx); err != nil {
-				fmt.Printf("could not start udp server: %v\n", err)
-				// level.Error(logger).Log("protocol", "udp", "addr", conn.LocalAddr().String(), "msg", "could not start udp server", "err", err)
+				level.Error(logger).Log("protocol", "udp", "addr", conn.LocalAddr().String(), "msg", "could not start udp server", "err", err)
 				os.Exit(1)
 			}
 		}()

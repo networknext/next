@@ -43,7 +43,7 @@ var (
 )
 
 func main() {
-	fmt.Printf("portal: Git Hash: %s - Commit: %s", sha, commitMessage)
+	fmt.Printf("portal: Git Hash: %s - Commit: %s\n", sha, commitMessage)
 
 	ctx := context.Background()
 
