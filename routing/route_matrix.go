@@ -187,6 +187,9 @@ func (m *RouteMatrix) GetRoutes(near []Relay, dest []Relay, maxAcceptableRoutes 
 	acceptableRoutes := make([]Route, maxAcceptableRoutes)
 	var acceptableRoutesLength uint64
 
+	// Keep a parallel slice of route hashes for quick route comparisons
+	acceptableRoutesHashes := make([]uint64, maxAcceptableRoutes)
+
 	for i := range acceptableRoutes {
 		acceptableRoutes[i] = Route{
 			Stats: Stats{
@@ -195,6 +198,8 @@ func (m *RouteMatrix) GetRoutes(near []Relay, dest []Relay, maxAcceptableRoutes 
 				PacketLoss: InvalidRouteValue,
 			},
 		}
+
+		acceptableRoutesHashes[i] = acceptableRoutes[i].Hash64()
 	}
 
 	// For all (near, dest) relay pairs, check each route to see if it is acceptable
@@ -210,17 +215,37 @@ func (m *RouteMatrix) GetRoutes(near []Relay, dest []Relay, maxAcceptableRoutes 
 				if acceptableRoutesLength == 0 {
 					// no routes added yet, add the route
 
-					// get the route's relays
+					routeRelays := make([]Relay, entry.RouteNumRelays[i])
+					var err error
+
+					numRelays := int(entry.RouteNumRelays[i])
+					for j := 0; j < numRelays; j++ {
+						relayIndex := entry.RouteRelays[i][j]
+						relayID := m.RelayIDs[relayIndex]
+
+						if !reverse {
+							routeRelays[j], err = m.ResolveRelay(relayID)
+						} else {
+							routeRelays[numRelays-1-j], err = m.ResolveRelay(relayID)
+						}
+
+						if err != nil {
+							return nil, 0, err
+						}
+					}
 
 					acceptableRoutes[acceptableRoutesLength] = Route{
-						// Relays: ,
+						Relays: routeRelays,
 						Stats: Stats{
 							RTT: float64(int32(math.Ceil(near[i].ClientStats.RTT)) + routeRTT),
 						},
 					}
 
+					acceptableRoutesLength++
+
 				} else if acceptableRoutesLength < maxAcceptableRoutes {
 					// not at max routes yet, insert according RTT sort order
+
 				} else {
 					// route set is full, only insert if lower RTT than at least one current route.
 				}
