@@ -724,13 +724,13 @@ type ListDatacenterMapsArgs struct {
 }
 
 type ListDatacenterMapsReply struct {
-	DatacenterMaps []routing.DatacenterMap
+	DatacenterMaps map[uint64]routing.DatacenterMap
 }
 
 // An empty DatacenterID returns a list of all maps.
 func (s *OpsService) ListDatacenterMaps(r *http.Request, args *ListDatacenterMapsArgs, reply *ListDatacenterMapsReply) error {
 
-	var dc []routing.DatacenterMap
+	var dc map[uint64]routing.DatacenterMap
 	dc = s.Storage.ListDatacenterMaps(args.DatacenterID)
 	reply.DatacenterMaps = dc
 

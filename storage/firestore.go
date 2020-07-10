@@ -25,7 +25,7 @@ type Firestore struct {
 	relays         map[uint64]routing.Relay
 	buyers         map[uint64]routing.Buyer
 	sellers        map[string]routing.Seller
-	datacenterMaps []routing.DatacenterMap
+	datacenterMaps map[uint64]routing.DatacenterMap
 
 	datacenterMutex    sync.RWMutex
 	relayMutex         sync.RWMutex
@@ -982,14 +982,16 @@ func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 	return &DoesNotExistError{resourceType: "relay", resourceRef: fmt.Sprintf("%x", r.ID)}
 }
 
-func (fs *Firestore) DatacenterMapsForBuyer(id string) []routing.DatacenterMap {
+func (fs *Firestore) DatacenterMapsForBuyer(buyerID string) map[uint64]routing.DatacenterMap {
 	fs.datacenterMapMutex.RLock()
 	defer fs.datacenterMapMutex.RUnlock()
 
-	var dcs []routing.DatacenterMap
+	// buyer can have multiple dc aliases
+	var dcs = make(map[uint64]routing.DatacenterMap)
 	for _, dc := range fs.datacenterMaps {
-		if dc.BuyerID == id {
-			dcs = append(dcs, dc)
+		if dc.BuyerID == buyerID {
+			id := crypto.HashID(dc.Alias + dc.BuyerID + dc.Datacenter)
+			dcs[id] = dc
 		}
 	}
 
@@ -1015,21 +1017,27 @@ func (fs *Firestore) AddDatacenterMap(ctx context.Context, dcMap routing.Datacen
 
 	// update local store
 	fs.datacenterMapMutex.Lock()
-	fs.datacenterMaps = append(fs.datacenterMaps, dcMap)
+	id := crypto.HashID(dcMap.Alias + dcMap.BuyerID + dcMap.Datacenter)
+	fs.datacenterMaps[id] = dcMap
 	fs.datacenterMapMutex.Unlock()
 
 	return nil
 
 }
 
-func (fs *Firestore) ListDatacenterMaps(dcID string) []routing.DatacenterMap {
+func (fs *Firestore) ListDatacenterMaps(dcID string) map[uint64]routing.DatacenterMap {
 	fs.datacenterMapMutex.RLock()
 	defer fs.datacenterMapMutex.RUnlock()
 
-	var dcs []routing.DatacenterMap
+	if dcID == "" {
+		return fs.datacenterMaps
+	}
+
+	var dcs = make(map[uint64]routing.DatacenterMap)
 	for _, dc := range fs.datacenterMaps {
-		if dc.Datacenter == dcID || dcID == "" {
-			dcs = append(dcs, dc)
+		if dc.Datacenter == dcID {
+			id := crypto.HashID(dc.Alias + dc.BuyerID + dc.Datacenter)
+			dcs[id] = dc
 		}
 	}
 
@@ -1045,6 +1053,7 @@ func (fs *Firestore) RemoveDatacenterMap(ctx context.Context, dcMap routing.Data
 	dmdocs := fs.Client.Collection("DatacenterMaps").Documents(ctx)
 	defer dmdocs.Stop()
 
+	// Firestore is the source of truth
 	found := false
 	for {
 		dmdoc, err := dmdocs.Next()
@@ -1076,19 +1085,10 @@ func (fs *Firestore) RemoveDatacenterMap(ctx context.Context, dcMap routing.Data
 
 	if found {
 		fs.datacenterMapMutex.RLock()
-		idx := -1
-		for i, dcm := range fs.datacenterMaps {
-			if dcMap.Alias == dcm.Alias && dcMap.BuyerID == dcm.BuyerID && dcMap.Datacenter == dcm.Datacenter {
-				idx = i
-			}
-		}
-		// re-slice will panic if it's the last index
-		if idx+1 == len(fs.datacenterMaps) {
-			fs.datacenterMaps = fs.datacenterMaps[:idx]
-			return nil
-		}
+		id := crypto.HashID(dcMap.Alias + dcMap.BuyerID + dcMap.Datacenter)
 
-		fs.datacenterMaps = append(fs.datacenterMaps[:idx], fs.datacenterMaps[idx+1:]...)
+		delete(fs.datacenterMaps, id)
+
 		fs.datacenterMapMutex.RUnlock()
 		return nil
 	}
@@ -1481,7 +1481,7 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 }
 
 func (fs *Firestore) syncDatacenterMaps(ctx context.Context) error {
-	dcMaps := []routing.DatacenterMap{}
+	dcMaps := make(map[uint64]routing.DatacenterMap)
 
 	dcdocs := fs.Client.Collection("DatacenterMaps").Documents(ctx)
 	defer dcdocs.Stop()
@@ -1501,7 +1501,8 @@ func (fs *Firestore) syncDatacenterMaps(ctx context.Context) error {
 			continue
 		}
 
-		dcMaps = append(dcMaps, dcMap)
+		id := crypto.HashID(dcMap.Alias + dcMap.BuyerID + dcMap.Datacenter)
+		dcMaps[id] = dcMap
 	}
 
 	fs.datacenterMaps = dcMaps

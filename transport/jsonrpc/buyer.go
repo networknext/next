@@ -762,11 +762,11 @@ type DatacenterMapsArgs struct {
 }
 
 type DatacenterMapsReply struct {
-	DatacenterMaps []routing.DatacenterMap
+	DatacenterMaps map[uint64]routing.DatacenterMap
 }
 
 func (s *BuyersService) DatacenterMapsForBuyer(r *http.Request, args *DatacenterMapsArgs, reply *DatacenterMapsReply) error {
-	reply.DatacenterMaps = make([]routing.DatacenterMap, 0)
+	// reply.DatacenterMaps = make(map[uint64]routing.DatacenterMap, 0)
 	if VerifyAllRoles(r, AnonymousRole) {
 		return nil
 	}

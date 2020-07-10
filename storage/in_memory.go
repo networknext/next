@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 )
 
@@ -282,22 +283,24 @@ func (m *InMemory) AddDatacenterMap(ctx context.Context, dcMap routing.Datacente
 
 }
 
-func (m *InMemory) DatacenterMapsForBuyer(id string) []routing.DatacenterMap {
-	var dcs []routing.DatacenterMap
+func (m *InMemory) DatacenterMapsForBuyer(id string) map[uint64]routing.DatacenterMap {
+	var dcs = make(map[uint64]routing.DatacenterMap)
 	for _, dc := range m.localDatacenterMaps {
 		if dc.BuyerID == id {
-			dcs = append(dcs, dc)
+			id := crypto.HashID(dc.Alias + dc.BuyerID + dc.Datacenter)
+			dcs[id] = dc
 		}
 	}
 
 	return dcs
 }
 
-func (m *InMemory) ListDatacenterMaps(dcID string) []routing.DatacenterMap {
-	var dcs []routing.DatacenterMap
+func (m *InMemory) ListDatacenterMaps(dcID string) map[uint64]routing.DatacenterMap {
+	var dcs map[uint64]routing.DatacenterMap
 	for _, dc := range m.localDatacenterMaps {
 		if dc.Datacenter == dcID || dcID == "" {
-			dcs = append(dcs, dc)
+			id := crypto.HashID(dc.Alias + dc.BuyerID + dc.Datacenter)
+			dcs[id] = dc
 		}
 	}
 
