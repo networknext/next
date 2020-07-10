@@ -132,7 +132,7 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 			return false
 		}
 	}
-	if entry.Version == 2 {
+	if entry.Version >= 2 {
 		if !encoding.ReadUint64(data, &index, &entry.ClientToServerPacketsLost) {
 			return false
 		}
@@ -141,7 +141,7 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 		}
 	}
 
-	if entry.Version == 3 {
+	if entry.Version >= 3 {
 		if !encoding.ReadBool(data, &index, &entry.Committed) {
 			return false
 		}
