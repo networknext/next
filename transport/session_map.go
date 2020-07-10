@@ -16,18 +16,18 @@ const (
 )
 
 type SessionData struct {
-	timestamp            int64
-	location             routing.Location
-	sequence             uint64
-	nearRelays           []routing.Relay
-	routeHash            uint64
-	routeDecision        routing.Decision
-	onNNSliceCounter     uint64
-	committedData        routing.CommittedData
-	routeExpireTimestamp int64
-	tokenVersion         uint8
-	cachedResponse       []byte
-	sliceMutexes         []sync.Mutex
+	timestamp        int64
+	location         routing.Location
+	sequence         uint64
+	nearRelays       []routing.Relay
+	routeHash        uint64
+	initial          bool
+	routeDecision    routing.Decision
+	onNNSliceCounter uint64
+	committedData    routing.CommittedData
+	tokenVersion     uint8
+	cachedResponse   []byte
+	sliceMutexes     []sync.Mutex
 }
 
 type SessionMapShard struct {

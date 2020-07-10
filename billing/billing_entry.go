@@ -8,7 +8,7 @@ const BillingEntryVersion = uint8(3)
 
 const BillingEntryMaxRelays = 5
 
-const MaxBillingEntryBytes = 1 + 8 + 4 + 8 + 1 + (6 * 4) + 1 + (BillingEntryMaxRelays * 8) + 8 + 8 + 8
+const MaxBillingEntryBytes = 1 + 8 + 4 + 8 + 1 + (6 * 4) + 1 + (BillingEntryMaxRelays * 8) + 8 + 8 + 8 + 4 + 8 + 8
 
 type BillingEntry struct {
 	Timestamp                 uint64 // IMPORTANT: Timestamp is not serialized. Pubsub already has the timestamp so we use that instead.
