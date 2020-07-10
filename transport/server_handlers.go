@@ -1056,8 +1056,6 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 		nextRelays[i] = routeRelays[i].ID
 	}
 
-	onNetworkNext := len(routeRelays) > 0
-
 	billingEntry := billing.BillingEntry{
 		BuyerID:                   packet.CustomerID,
 		SessionID:                 packet.SessionID,
@@ -1065,7 +1063,7 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 		DirectRTT:                 float32(lastDirectStats.RTT),
 		DirectJitter:              float32(lastDirectStats.Jitter),
 		DirectPacketLoss:          float32(lastDirectStats.PacketLoss),
-		Next:                      onNetworkNext,
+		Next:                      packet.OnNetworkNext,
 		NextRTT:                   float32(lastNextStats.RTT),
 		NextJitter:                float32(lastNextStats.Jitter),
 		NextPacketLoss:            float32(lastNextStats.PacketLoss),
