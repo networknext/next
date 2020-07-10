@@ -90,6 +90,12 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 		e["nextPacketLoss"] = entry.NextPacketLoss
 	}
 
+	nextRelays := make([]bigquery.Value, entry.NumNextRelays)
+	for i := 0; i < int(entry.NumNextRelays); i++ {
+		nextRelays[i] = int(entry.NextRelays[i])
+	}
+	e["nextRelays"] = nextRelays
+
 	e["totalPrice"] = int(entry.TotalPrice)
 
 	if entry.ClientToServerPacketsLost > 0 {
@@ -100,11 +106,16 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 		e["serverToClientPacketsLost"] = entry.ServerToClientPacketsLost
 	}
 
-	nextRelays := make([]bigquery.Value, entry.NumNextRelays)
-	for i := 0; i < int(entry.NumNextRelays); i++ {
-		nextRelays[i] = int(entry.NextRelays[i])
+	e["committed"] = entry.Committed
+	e["flagged"] = entry.Flagged
+	e["multipath"] = entry.Multipath
+
+	e["initial"] = entry.Initial
+
+	if entry.Initial {
+		e["nextBytesUp"] = entry.NextBytesUp
+		e["nextBytesDown"] = entry.NextBytesDown
 	}
-	e["nextRelays"] = nextRelays
 
 	return e, "", nil
 }
