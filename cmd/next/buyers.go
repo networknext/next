@@ -260,7 +260,7 @@ func addDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm routing.
 
 }
 
-func rmDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm routing.DatacenterMap) error {
+func removeDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm routing.DatacenterMap) error {
 	var buyerID string
 	if buyerID = returnBuyerID(rpcClient, env, dcm.BuyerID); buyerID == "" {
 		return fmt.Errorf("No buyer matches found for '%s'", dcm.BuyerID)

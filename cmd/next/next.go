@@ -1254,7 +1254,7 @@ The alias is uniquely defined by all three entries, so they must be provided.
 								log.Fatalf("Could not unmarshal datacenter map: %v", err)
 							}
 
-							err := rmDatacenterMap(rpcClient, env, dcm)
+							err := removeDatacenterMap(rpcClient, env, dcm)
 
 							if err != nil {
 								return err
