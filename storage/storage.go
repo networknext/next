@@ -72,7 +72,7 @@ type Storer interface {
 
 	// Datacenter gets a copy of a datacenter with the specified datacenter ID
 	// and returns an empty datacenter and an error if a datacenter with that ID doesn't exist in storage.
-	Datacenter(id uint64) (routing.Datacenter, error)
+	Datacenter(datacenterID uint64) (routing.Datacenter, error)
 
 	// Datacenters returns a copy of all stored datacenters.
 	Datacenters() []routing.Datacenter

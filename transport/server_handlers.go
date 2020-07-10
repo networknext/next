@@ -343,6 +343,23 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 			datacenter.ID = packet.DatacenterID
 		}
 
+		if datacenter == routing.UnknownDatacenter {
+			// search the list of aliases created by/for this buyer
+			datacenterAliases := params.Storer.GetDatacenterMapsForBuyer(fmt.Sprintf("%x", packet.CustomerID))
+			for _, dcMap := range datacenterAliases {
+				if packet.DatacenterID == crypto.HashID(dcMap.Alias) {
+					datacenter, err = params.Storer.Datacenter(packet.DatacenterID)
+					if err != nil {
+						params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+						params.Metrics.ErrorMetrics.VerificationFailure.Add(1)
+						return
+
+					}
+				}
+
+			}
+		}
+
 		// UDP packets may arrive out of order. So that we don't have stale server update packets arriving late and
 		// ruining our server map with stale information, we must check the server update sequence number, and discard
 		// any server updates that are the same sequence number or older than the current server entry in the server map.
