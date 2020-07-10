@@ -110,9 +110,8 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 	e["flagged"] = entry.Flagged
 	e["multipath"] = entry.Multipath
 
-	e["initial"] = entry.Initial
-
 	if entry.Initial {
+		e["initial"] = entry.Initial
 		e["nextBytesUp"] = entry.NextBytesUp
 		e["nextBytesDown"] = entry.NextBytesDown
 	}
