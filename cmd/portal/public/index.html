@@ -1327,7 +1327,6 @@
             Vue.config.devtools = !isProd
             Vue.config.debug = !isProd
             Vue.config.silent = isProd
-            Sentry.init({ dsn: 'https://e24b8397eac44e1eb7ac090b5492d29e@o382503.ingest.sentry.io/5211452' });
             window.onload = async () => {
                 AuthHandler.init();
             }
