@@ -726,7 +726,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 type BuyerListArgs struct{}
 
 type BuyerListReply struct {
-	Buyers []buyerAccount
+	Buyers []buyerAccount `json:"buyers"`
 }
 
 type buyerAccount struct {
@@ -746,7 +746,9 @@ func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *Buye
 			ID:   id,
 			Name: b.Name,
 		}
-		reply.Buyers = append(reply.Buyers, account)
+		if VerifyAllRoles(r, s.SameBuyerRole(id)) {
+			reply.Buyers = append(reply.Buyers, account)
+		}
 	}
 
 	sort.Slice(reply.Buyers, func(i int, j int) bool {
