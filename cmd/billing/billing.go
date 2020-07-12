@@ -15,7 +15,6 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
-	"sync/atomic"
 
 	"time"
 
@@ -30,7 +29,6 @@ import (
 	"cloud.google.com/go/bigquery"
 	gcplogging "cloud.google.com/go/logging"
 	"cloud.google.com/go/profiler"
-	"cloud.google.com/go/pubsub"
 )
 
 var (
@@ -42,7 +40,7 @@ var (
 
 func main() {
 
-	fmt.Printf("billing: Git Hash: %s - Commit: %s", sha, commitMessage)
+	fmt.Printf("billing: Git Hash: %s - Commit: %s\n", sha, commitMessage)
 
 	ctx := context.Background()
 
@@ -112,115 +110,47 @@ func main() {
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
 	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
 	// on creation so we can use that for the default then
-	if gcpProjectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
-
-		// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
-		// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
-		// on creation so we can use that for the default then
-		// if gcpProjectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
-
-		/*
-			// Create a Firestore Storer
-			fs, err := storage.NewFirestore(ctx, gcpProjectID)//, logger)
-			if err != nil {
-				// level.Error(logger).Log("err", err)
-				fmt.Printf("could not create firestore: %v\n", err)
-				os.Exit(1)
-			}
-
-			fssyncinterval := os.Getenv("GOOGLE_FIRESTORE_SYNC_INTERVAL")
-			syncInterval, err := time.ParseDuration(fssyncinterval)
-			if err != nil {
-				// level.Error(logger).Log("envvar", "GOOGLE_FIRESTORE_SYNC_INTERVAL", "value", fssyncinterval, "err", err)
-				fmt.Printf("bad GOOGLE_FIRESTORE_SYNC_INTERVAL\n")
-				os.Exit(1)
-			}
-			// Start a goroutine to sync from Firestore
-			go func() {
-				ticker := time.NewTicker(syncInterval)
-				fs.SyncLoop(ctx, ticker.C)
-			}()
-
-			// Set the Firestore Storer to give to handlers
-			db = fs
-		*/
+	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
+	if gcpOK {
 
 		// Google BigQuery
+		{
+			if billingDataset, ok := os.LookupEnv("GOOGLE_BIGQUERY_DATASET_BILLING"); ok {
+				batchSize := billing.DefaultBigQueryBatchSize
+				if size, ok := os.LookupEnv("GOOGLE_BIGQUERY_BATCH_SIZE"); ok {
+					s, err := strconv.ParseInt(size, 10, 64)
+					if err != nil {
+						level.Error(logger).Log("err", err)
+						os.Exit(1)
+					}
+					batchSize = int(s)
+				}
 
-		if billingDataset, ok := os.LookupEnv("GOOGLE_BIGQUERY_DATASET_BILLING"); ok {
-			batchSize := billing.DefaultBigQueryBatchSize
-			if size, ok := os.LookupEnv("GOOGLE_BIGQUERY_BATCH_SIZE"); ok {
-				s, err := strconv.ParseInt(size, 10, 64)
+				bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
 				if err != nil {
-					// level.Error(logger).Log("err", err)
-					fmt.Println(err)
+					level.Error(logger).Log("err", err)
 					os.Exit(1)
 				}
-				batchSize = int(s)
-			}
-
-			bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
-			if err != nil {
-				// level.Error(logger).Log("err", err)
-				fmt.Println(err)
-				os.Exit(1)
-			}
-			b := billing.GoogleBigQueryClient{
-				// Logger:        logger,
-				TableInserter: bqClient.Dataset(billingDataset).Table(os.Getenv("GOOGLE_BIGQUERY_TABLE_BILLING")).Inserter(),
-				BatchSize:     batchSize,
-			}
-
-			// Set the Biller to BigQuery
-			biller = &b
-
-			// Start the background WriteLoop to batch write to BigQuery
-			go func() {
-				b.WriteLoop(ctx)
-			}()
-		}
-
-		// Google pubsub
-
-		fmt.Printf("google project: %s\n", gcpProjectID)
-
-		pubsubClient, err := pubsub.NewClient(ctx, gcpProjectID)
-		if err != nil {
-			fmt.Printf("could not create pubsub client\n")
-			os.Exit(1)
-		}
-
-		subscriptionName := "billing"
-
-		fmt.Printf("subscription name: %s\n", subscriptionName)
-
-		pubsubSubscription := pubsubClient.Subscription(subscriptionName)
-
-		go func() {
-			err = pubsubSubscription.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
-				atomic.AddUint64(&billingEntriesReceived, 1)
-				billingEntry := billing.BillingEntry{}
-				if billing.ReadBillingEntry(&billingEntry, m.Data) {
-					m.Ack()
-					billingEntry.Timestamp = uint64(m.PublishTime.Unix())
-					if err := biller.Bill(context.Background(), &billingEntry); err != nil {
-						fmt.Printf("could not submit billing entry: %v\n", err)
-						// level.Error(params.Logger).Log("msg", "could not submit billing entry", "err", err)
-						// params.Metrics.ErrorMetrics.BillingFailure.Add(1)
-					}
-				} else {
-					// todo: metric for read failures
+				b := billing.GoogleBigQueryClient{
+					Logger:        logger,
+					TableInserter: bqClient.Dataset(billingDataset).Table(os.Getenv("GOOGLE_BIGQUERY_TABLE_BILLING")).Inserter(),
+					BatchSize:     batchSize,
 				}
-			})
-			if err != context.Canceled {
-				fmt.Printf("could not setup to receive pubsub messages\n")
-				os.Exit(1)
+
+				// Set the Biller to BigQuery
+				biller = &b
+
+				// Start the background WriteLoop to batch write to BigQuery
+				go func() {
+					b.WriteLoop(ctx)
+				}()
 			}
-		}()
+		}
 
 		// StackDriver Metrics
 		{
 			var enableSDMetrics bool
+			var err error
 			enableSDMetricsString, ok := os.LookupEnv("ENABLE_STACKDRIVER_METRICS")
 			if ok {
 				enableSDMetrics, err = strconv.ParseBool(enableSDMetricsString)
@@ -260,6 +190,7 @@ func main() {
 		// StackDriver Profiler
 		{
 			var enableSDProfiler bool
+			var err error
 			enableSDProfilerString, ok := os.LookupEnv("ENABLE_STACKDRIVER_PROFILER")
 			if ok {
 				enableSDProfiler, err = strconv.ParseBool(enableSDProfilerString)
@@ -281,6 +212,43 @@ func main() {
 					os.Exit(1)
 				}
 			}
+		}
+	}
+
+	// Create PubSubForwarder metrics
+	pubsubForwarderMetrics, err := metrics.NewGooglePubSubForwarderMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create pubsub forwarder metrics", "err", err)
+	}
+
+	_, emulatorOK := os.LookupEnv("PUBSUB_EMULATOR_HOST")
+	if emulatorOK { // Prefer to use the emulator instead of actual Google pubsub
+		gcpProjectID = "local"
+
+		// Use the local biller
+		biller = &billing.LocalBiller{
+			Logger: logger,
+		}
+
+		level.Info(logger).Log("msg", "Detected pubsub emulator")
+	}
+
+	if gcpOK || emulatorOK {
+		// Google pubsub forwarder
+		{
+			topicName := "billing"
+			subscriptionName := "billing"
+
+			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
+			defer cancelFunc()
+
+			pubsubForwarder, err := billing.NewPubSubForwarder(pubsubCtx, biller, logger, pubsubForwarderMetrics, gcpProjectID, topicName, subscriptionName)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				os.Exit(1)
+			}
+
+			go pubsubForwarder.Forward(ctx)
 		}
 	}
 

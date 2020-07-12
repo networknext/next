@@ -2,11 +2,11 @@ package billing
 
 import (
 	"context"
-	"fmt"
 	"sync/atomic"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 )
 
 const (
@@ -58,10 +58,9 @@ func (bq *GoogleBigQueryClient) WriteLoop(ctx context.Context) error {
 	for entry := range bq.entries {
 		if len(bq.buffer) >= bq.BatchSize {
 			if err := bq.TableInserter.Put(ctx, bq.buffer); err != nil {
-				// level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)
-				fmt.Printf("failed to write to bigquery: %v\n", err)
+				level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)
 			}
-			// level.Info(bq.Logger).Log("msg", "flushed entries to BigQuery", "size", bq.BatchSize, "total", len(bq.buffer))
+			level.Info(bq.Logger).Log("msg", "flushed entries to BigQuery", "size", bq.BatchSize, "total", len(bq.buffer))
 			atomic.AddUint64(&bq.flushed, uint64(len(bq.buffer)))
 			bq.buffer = bq.buffer[:0]
 		}
@@ -83,13 +82,19 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 	e["directRTT"] = entry.DirectRTT
 	e["directJitter"] = entry.DirectJitter
 	e["directPacketLoss"] = entry.DirectPacketLoss
-	e["next"] = entry.Next
 
 	if entry.Next {
+		e["next"] = entry.Next
 		e["nextRTT"] = entry.NextRTT
 		e["nextJitter"] = entry.NextJitter
 		e["nextPacketLoss"] = entry.NextPacketLoss
 	}
+
+	nextRelays := make([]bigquery.Value, entry.NumNextRelays)
+	for i := 0; i < int(entry.NumNextRelays); i++ {
+		nextRelays[i] = int(entry.NextRelays[i])
+	}
+	e["nextRelays"] = nextRelays
 
 	e["totalPrice"] = int(entry.TotalPrice)
 
@@ -101,11 +106,15 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 		e["serverToClientPacketsLost"] = entry.ServerToClientPacketsLost
 	}
 
-	nextRelays := make([]bigquery.Value, entry.NumNextRelays)
-	for i := 0; i < int(entry.NumNextRelays); i++ {
-		nextRelays[i] = int(entry.NextRelays[i])
+	e["committed"] = entry.Committed
+	e["flagged"] = entry.Flagged
+	e["multipath"] = entry.Multipath
+
+	if entry.Initial {
+		e["initial"] = entry.Initial
+		e["nextBytesUp"] = entry.NextBytesUp
+		e["nextBytesDown"] = entry.NextBytesDown
 	}
-	e["nextRelays"] = nextRelays
 
 	return e, "", nil
 }

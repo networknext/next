@@ -32,13 +32,13 @@ func (r Route) String() string {
 	return sb.String()
 }
 
-func (r *Route) Decide(prevDecision Decision, lastNextStats *Stats, directStats *Stats, routeDecisions ...DecisionFunc) Decision {
+func (r *Route) Decide(prevDecision Decision, lastNextStats *Stats, lastDirectStats *Stats, routeDecisions ...DecisionFunc) Decision {
 	nextDecision := prevDecision
 	if prevDecision.Reason == DecisionInitialSlice {
 		nextDecision = Decision{}
 	}
 	for _, routeDecision := range routeDecisions {
-		nextDecision = routeDecision(nextDecision, &r.Stats, lastNextStats, directStats)
+		nextDecision = routeDecision(nextDecision, &r.Stats, lastNextStats, lastDirectStats)
 	}
 	return nextDecision
 }
