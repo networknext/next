@@ -21,10 +21,11 @@ type SessionData struct {
 	sequence             uint64
 	nearRelays           []routing.Relay
 	routeHash            uint64
+	initial              bool
 	routeDecision        routing.Decision
 	onNNSliceCounter     uint64
 	committedData        routing.CommittedData
-	routeExpireTimestamp int64
+	routeExpireTimestamp uint64
 	tokenVersion         uint8
 	cachedResponse       []byte
 	sliceMutexes         []sync.Mutex

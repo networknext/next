@@ -1,6 +1,6 @@
 #!/bin/bash
 
-firestorfeSessionID=0
+firestoreSessionID=0
 pubsubSessionID=0
 
 if [[ ! -z "$FIRESTORE_EMULATOR_HOST" ]]; then
@@ -19,7 +19,11 @@ if [[ ! -z "$PUBSUB_EMULATOR_HOST" ]]; then
     pubsubSessionID=$! # Get the session ID of this process so we can close it later
 
     # Trap kill the process group so all pubsub emulator processes are closed properly
-    trap "kill -- -$firestoreSessionID -$pubsubSessionID" EXIT
+    if [ "$firestoreSessionID" -eq "0" ]; then
+        trap "kill -- -$pubsubSessionID" EXIT
+    else
+        trap "kill -- -$firestoreSessionID -$pubsubSessionID" EXIT
+    fi
     sleep 3
 fi
 
