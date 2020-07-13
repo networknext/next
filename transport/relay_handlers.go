@@ -9,7 +9,9 @@ import (
 	"html/template"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -874,7 +876,11 @@ func statsTable(stats map[string]map[string]routing.Stats) template.HTML {
 			if RTT >= 10000 {
 				rttStyle = "<div style='color: red;'>"
 			}
-			if Jitter > 10 {
+			maxJitter, err := strconv.ParseFloat(os.Getenv("RELAY_ROUTER_MAX_JITTER"), 64)
+			if err != nil {
+				maxJitter = 5
+			}
+			if Jitter > maxJitter {
 				jitterStyle = "</div><div style='color: red;'>"
 			}
 			if PacketLoss > .001 {
