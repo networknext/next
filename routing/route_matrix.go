@@ -183,12 +183,9 @@ func (m *RouteMatrix) GetDatacenterRelays(d Datacenter) []Relay {
 // GetRoutes returns acceptable routes between the set of near relays and destination relays.
 // maxAcceptableRoutes is the maximum number of acceptable routes that can be returned.
 // Returns the acceptable routes, the number of routes in the slice, and an error, if one exists.
-func (m *RouteMatrix) GetRoutes(near []Relay, dest []Relay, maxAcceptableRoutes uint64) ([]Route, int, error) {
+func (m *RouteMatrix) GetRoutes(near []Relay, dest []Relay, maxAcceptableRoutes uint64) ([]Route, uint64, error) {
 	acceptableRoutes := make([]Route, maxAcceptableRoutes)
 	var acceptableRoutesLength uint64
-
-	// Keep a parallel slice of route hashes for quick route comparisons
-	acceptableRoutesHashes := make([]uint64, maxAcceptableRoutes)
 
 	for i := range acceptableRoutes {
 		acceptableRoutes[i] = Route{
@@ -198,8 +195,6 @@ func (m *RouteMatrix) GetRoutes(near []Relay, dest []Relay, maxAcceptableRoutes 
 				PacketLoss: InvalidRouteValue,
 			},
 		}
-
-		acceptableRoutesHashes[i] = acceptableRoutes[i].Hash64()
 	}
 
 	// For all (near, dest) relay pairs, check each route to see if it is acceptable
@@ -210,49 +205,50 @@ func (m *RouteMatrix) GetRoutes(near []Relay, dest []Relay, maxAcceptableRoutes 
 			entry := &m.Entries[entryIndex]
 
 			for i := 0; i < int(entry.NumRoutes); i++ {
-				routeRTT := entry.RouteRTT[i]
+				routeRTT := float64(entry.RouteRTT[i])
 
 				if acceptableRoutesLength == 0 {
 					// no routes added yet, add the route
 
-					routeRelays := make([]Relay, entry.RouteNumRelays[i])
-					var err error
-
-					numRelays := int(entry.RouteNumRelays[i])
-					for j := 0; j < numRelays; j++ {
-						relayIndex := entry.RouteRelays[i][j]
-						relayID := m.RelayIDs[relayIndex]
-
-						if !reverse {
-							routeRelays[j], err = m.ResolveRelay(relayID)
-						} else {
-							routeRelays[numRelays-1-j], err = m.ResolveRelay(relayID)
-						}
-
-						if err != nil {
-							return nil, 0, err
-						}
+					if err := m.AppendRoute(acceptableRoutes, &acceptableRoutesLength, near[i].ClientStats.RTT+routeRTT, entry, i, reverse); err != nil {
+						return nil, 0, err
 					}
-
-					acceptableRoutes[acceptableRoutesLength] = Route{
-						Relays: routeRelays,
-						Stats: Stats{
-							RTT: float64(int32(math.Ceil(near[i].ClientStats.RTT)) + routeRTT),
-						},
-					}
-
-					acceptableRoutesLength++
 
 				} else if acceptableRoutesLength < maxAcceptableRoutes {
 					// not at max routes yet, insert according RTT sort order
 
+					if routeRTT >= acceptableRoutes[acceptableRoutesLength-1].Stats.RTT {
+
+						// RTT is greater than existing entries. append.
+
+						if err := m.AppendRoute(acceptableRoutes, &acceptableRoutesLength, near[i].ClientStats.RTT+routeRTT, entry, i, reverse); err != nil {
+							return nil, 0, err
+						}
+					} else {
+
+						// RTT is lower than at least one entry. insert.
+
+						if err := m.InsertRoute(acceptableRoutes, &acceptableRoutesLength, near[i].ClientStats.RTT+routeRTT, entry, i, reverse); err != nil {
+							return nil, 0, err
+						}
+						acceptableRoutesLength++
+					}
 				} else {
 					// route set is full, only insert if lower RTT than at least one current route.
+
+					if routeRTT >= acceptableRoutes[acceptableRoutesLength-1].Stats.RTT {
+						continue
+					}
+
+					if err := m.InsertRoute(acceptableRoutes, &acceptableRoutesLength, near[i].ClientStats.RTT+routeRTT, entry, i, reverse); err != nil {
+						return nil, 0, err
+					}
 				}
 			}
-
 		}
 	}
+
+	return acceptableRoutes, acceptableRoutesLength, nil
 }
 
 // Returns the index in the route matrix representing the route between the near Relay and dest Relay and whether or not to reverse them
@@ -270,48 +266,75 @@ func (m *RouteMatrix) GetEntryIndex(near *Relay, dest *Relay) (int, bool) {
 	return TriMatrixIndex(nearidx, destidx), destidx > nearidx
 }
 
-// FillRoutes populates the given route buffer.
-// It takes the entryIndex and reverse data and fills the given route buffer, incrementing the routeIndex after
-// each route it adds.
-func (m *RouteMatrix) FillRoutes(routes []Route, routeIndex *int, nearCost int, entryIndex int, reverse bool) error {
+// GetRouteRelays returns a slice of the relays in a given route entry in the route matrix
+func (m *RouteMatrix) GetRouteRelays(entry *RouteMatrixEntry, routeIndex int, reverse bool) ([]Relay, error) {
+	routeRelays := make([]Relay, entry.RouteNumRelays[routeIndex])
 	var err error
 
-	entry := m.Entries[entryIndex]
+	numRelays := int(entry.RouteNumRelays[routeIndex])
+	for i := 0; i < numRelays; i++ {
+		relayIndex := entry.RouteRelays[routeIndex][i]
+		relayID := m.RelayIDs[relayIndex]
 
-	for i := 0; i < int(entry.NumRoutes); i++ {
-		numRelays := int(entry.RouteNumRelays[i])
-
-		routeRelays := make([]Relay, numRelays)
-
-		for j := 0; j < numRelays; j++ {
-			relayIndex := entry.RouteRelays[i][j]
-
-			id := m.RelayIDs[relayIndex]
-
-			if !reverse {
-				routeRelays[j], err = m.ResolveRelay(id)
-			} else {
-				routeRelays[numRelays-1-j], err = m.ResolveRelay(id)
-			}
-
-			if err != nil {
-				return err
-			}
+		if !reverse {
+			routeRelays[i], err = m.ResolveRelay(relayID)
+		} else {
+			routeRelays[numRelays-1-i], err = m.ResolveRelay(relayID)
 		}
 
-		route := Route{
-			Relays: routeRelays,
-			Stats: Stats{
-				RTT: float64(nearCost + int(m.Entries[entryIndex].RouteRTT[i])),
-			},
+		if err != nil {
+			return nil, err
 		}
+	}
 
-		if *routeIndex >= len(routes) {
-			continue
+	return routeRelays, nil
+}
+
+// AppendRoute will add a new route to the end of the given routes buffer. The given length must be less than the actual capacity of the slice.
+func (m *RouteMatrix) AppendRoute(routes []Route, length *uint64, routeRTT float64, entry *RouteMatrixEntry, routeIndex int, reverse bool) error {
+	routeRelays, err := m.GetRouteRelays(entry, routeIndex, reverse)
+	if err != nil {
+		return err
+	}
+
+	routes[*length] = Route{
+		Relays: routeRelays,
+		Stats: Stats{
+			RTT: math.Ceil(routeRTT),
+		},
+	}
+
+	*length++
+	return nil
+}
+
+// InsertRoute will insert a new route to the given routes buffer sorted by the route's RTT. The routes buffer must already be sorted by RTT and
+// the given length must be less than the actual capacity of the slice.
+func (m *RouteMatrix) InsertRoute(routes []Route, length *uint64, routeRTT float64, entry *RouteMatrixEntry, routeIndex int, reverse bool) error {
+	insertIndex := *length - 1
+	for {
+		if insertIndex == 0 || routeRTT > routes[insertIndex].Stats.RTT {
+			break
 		}
+		insertIndex--
+	}
 
-		routes[*routeIndex] = route
-		*routeIndex++
+	*length++
+
+	routeRelays, err := m.GetRouteRelays(entry, routeIndex, reverse)
+	if err != nil {
+		return err
+	}
+
+	for i := *length - 1; i > insertIndex; i-- {
+		routes[i] = routes[i-1]
+	}
+
+	routes[insertIndex] = Route{
+		Relays: routeRelays,
+		Stats: Stats{
+			RTT: math.Ceil(routeRTT),
+		},
 	}
 
 	return nil
