@@ -45,7 +45,7 @@ var (
 
 func main() {
 
-	fmt.Printf("relay_backend: Git Hash: %s - Commit: %s", sha, commitMessage)
+	fmt.Printf("relay_backend: Git Hash: %s - Commit: %s\n", sha, commitMessage)
 
 	ctx := context.Background()
 

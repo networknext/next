@@ -112,6 +112,14 @@ func putUint64s(buff []byte, offset *int, nums ...uint64) {
 	}
 }
 
+func putFloat64s(buff []byte, offset *int, nums ...float64) {
+	for _, num := range nums {
+		uintNum := math.Float64bits(num)
+		binary.LittleEndian.PutUint64(buff[*offset:], uintNum)
+		*offset += 8
+	}
+}
+
 func putStrings(buff []byte, offset *int, strings ...string) {
 	for _, str := range strings {
 		putUint32s(buff, offset, uint32(len(str)))
@@ -187,6 +195,14 @@ func putRelayAddressesOld(buff []byte, offset *int, addrs []string) {
 	for _, addr := range addrs {
 		putBytesOld(buff, offset, []byte(addr))
 	}
+}
+
+func putRelayLatitudes(buff []byte, offset *int, latitudes []float64) {
+	putFloat64s(buff, offset, latitudes...)
+}
+
+func putRelayLongitudes(buff []byte, offset *int, latitudes []float64) {
+	putFloat64s(buff, offset, latitudes...)
 }
 
 func putRelayPublicKeys(buff []byte, offset *int, pks [][]byte) {
@@ -322,6 +338,14 @@ func sizeofRelayAddressOld(addrs []string) int {
 
 func sizeofRelayAddress(addrs []string) int {
 	return len(addrs) * routing.MaxRelayAddressLength
+}
+
+func sizeofRelayLatitudes(latitudes []float64) int {
+	return len(latitudes) * 8
+}
+
+func sizeofRelayLongitudes(longitudes []float64) int {
+	return len(longitudes) * 8
 }
 
 func sizeofRelayPublicKeysOld(keys [][]byte) int {

@@ -43,7 +43,7 @@ var (
 )
 
 func main() {
-	fmt.Printf("portal: Git Hash: %s - Commit: %s", sha, commitMessage)
+	fmt.Printf("portal: Git Hash: %s - Commit: %s\n", sha, commitMessage)
 
 	ctx := context.Background()
 
@@ -343,19 +343,22 @@ func main() {
 
 		s := rpc.NewServer()
 		s.RegisterInterceptFunc(func(i *rpc.RequestInfo) *http.Request {
-			var userRoles = management.RoleList{}
 			user := i.Request.Context().Value("user")
 			if user != nil {
 				claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
 
-				if requestID, ok := claims["sub"]; ok {
-					roles, err := auth0Client.Manager.User.Roles(requestID.(string))
-
-					if err == nil {
-						userRoles = *roles
+				if requestRoles, ok := claims["https://networknext.com/userRoles"]; ok {
+					if roles, ok := requestRoles.(map[string]interface{})["roles"]; ok {
+						rolesInterface := roles.([]interface{})
+						userRoles := make([]string, len(rolesInterface))
+						for i, v := range rolesInterface {
+							userRoles[i] = v.(string)
+						}
+						if len(userRoles) > 0 {
+							return jsonrpc.SetRoles(i.Request, userRoles)
+						}
 					}
 				}
-				return jsonrpc.SetRoles(i.Request, userRoles)
 			}
 			return jsonrpc.SetIsAnonymous(i.Request, i.Request.Header.Get("Authorization") == "")
 		})
