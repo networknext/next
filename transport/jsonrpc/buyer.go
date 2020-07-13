@@ -467,7 +467,7 @@ type mapPointsByte struct {
 type point struct {
 	Latitude      int16
 	Longitude     int16
-	OnNetworkNext byte
+	OnNetworkNext bool
 }
 
 func (s *BuyersService) GenerateMapPointsPerBuyerByte() error {
@@ -573,23 +573,26 @@ func WriteMapPointCache(points *mapPointsByte) []byte {
 	numGreenPoints := uint32(len(points.GreenPoints))
 	numBluePoints := uint32(len(points.BluePoints))
 
-	// uint32 version number + number of relays + allocation for all relay ids
-	length = 1 + 4 + (1+2+2)*numGreenPoints + (1+2+2)*numBluePoints
+	length = 1 + 4 + 4 + (1+2+2)*numGreenPoints + (1+2+2)*numBluePoints
 
 	data := make([]byte, length)
 	index := 0
 	encoding.WriteUint8(data, &index, MapPointByteCacheVersion)
 
+	encoding.WriteUint32(data, &index, numGreenPoints)
+
 	for _, point := range points.GreenPoints {
-		encoding.Writeint16(data, &index, point.Latitude)
-		encoding.Writeint16(data, &index, point.Longitude)
-		encoding.WriteByte(data, &index, point.OnNetworkNext)
+		encoding.WriteInt16(data, &index, point.Latitude)
+		encoding.WriteInt16(data, &index, point.Longitude)
+		encoding.WriteBool(data, &index, point.OnNetworkNext)
 	}
 
+	encoding.WriteUint32(data, &index, numBluePoints)
+
 	for _, point := range points.BluePoints {
-		encoding.Writeint16(data, &index, point.Latitude)
-		encoding.Writeint16(data, &index, point.Longitude)
-		encoding.WriteByte(data, &index, point.OnNetworkNext)
+		encoding.WriteInt16(data, &index, point.Latitude)
+		encoding.WriteInt16(data, &index, point.Longitude)
+		encoding.WriteBool(data, &index, point.OnNetworkNext)
 
 	}
 	return data

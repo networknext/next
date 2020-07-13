@@ -20,17 +20,12 @@ func WriteBool(data []byte, index *int, value bool) {
 	*index += 1
 }
 
-func WriteByte(data []byte, index *int, value byte) {
-	data[*index] = value
-	*index += 1
-}
-
 func WriteUint8(data []byte, index *int, value uint8) {
 	data[*index] = byte(value)
 	*index += 1
 }
 
-func Writeint16(data []byte, index *int, value int16) {
+func WriteInt16(data []byte, index *int, value int16) {
 	data[*index] = byte(value)
 	*index += 1
 }
