@@ -458,7 +458,7 @@
                                         </select>
                                     </div>
                                     <div class="px-2">
-                                        <select class="form-control" v-if="handlers.userHandler.isAdmin()">
+                                        <select class="form-control">
                                             <option v-on:click="handlers.workspaceHandler.updateSessionFilter({buyerId: handlers.userHandler.userInfo.id, sessionType: pages.sessions.filter.sessionType})" v-if="!handlers.userHandler.isAdmin() && handlers.userHandler.isBuyer()">
                                                 {{ handlers.userHandler.getBuyerName() }}
                                             </option>
