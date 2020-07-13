@@ -195,7 +195,7 @@ MapHandler = {
 	totalSessionCountCalls: 0,
 	initMap() {
 		this.updateFilter({
-			buyerId: UserHandler.isBuyer() ? UserHandler.userInfo.id : "",
+			buyerId: UserHandler.isBuyer() && !UserHandler.isAdmin() ? UserHandler.userInfo.id : "",
 			sessionType: 'all'
 		});
 	},
@@ -428,7 +428,10 @@ UserHandler = {
 		return !this.isAnonymous() ? !this.userInfo.verified : false;
 	},
 	isBuyer() {
-		return this.userInfo ? this.userInfo.id : "" != ""
+		if (this.userInfo) {
+			return this.userInfo.id !== ""
+		}
+		return false
 	},
 	isOwner() {
 		return !this.isAnonymous() ? this.userInfo.roles.findIndex((role) => role.name == "Owner") !== -1 : false;
@@ -640,7 +643,7 @@ WorkspaceHandler = {
 	},
 	loadSessionsPage() {
 		this.updateSessionFilter({
-			buyerId: "",
+			buyerId: UserHandler.isBuyer() && !UserHandler.isAdmin() ? UserHandler.userInfo.id : "",
 			sessionType: 'all'
 		});
 	},

@@ -819,6 +819,6 @@ func (s *BuyersService) SameBuyerRole(buyerID string) RoleFunc {
 			return false, fmt.Errorf("SameBuyerRole(): BuyerWithDomain error: %v", err)
 		}
 
-		return buyerID != fmt.Sprintf("%016x", buyer.ID), nil
+		return buyerID == fmt.Sprintf("%016x", buyer.ID), nil
 	}
 }
