@@ -537,11 +537,11 @@ func (s *BuyersService) GenerateMapPointsPerBuyerByte() error {
 					bytePoint := point{
 						Latitude:      int16(currentPoint.Latitude),
 						Longitude:     int16(currentPoint.Longitude),
-						OnNetworkNext: 0,
+						OnNetworkNext: false,
 					}
 
 					if currentPoint.OnNetworkNext {
-						bytePoint.OnNetworkNext = 1
+						bytePoint.OnNetworkNext = true
 						mapPointsGlobal.GreenPoints = append(mapPointsGlobal.GreenPoints, bytePoint)
 						mapPointsBuyer.GreenPoints = append(mapPointsGlobal.GreenPoints, bytePoint)
 					} else {
@@ -582,16 +582,16 @@ func WriteMapPointCache(points *mapPointsByte) []byte {
 	encoding.WriteUint32(data, &index, numGreenPoints)
 
 	for _, point := range points.GreenPoints {
-		encoding.WriteInt16(data, &index, point.Latitude)
-		encoding.WriteInt16(data, &index, point.Longitude)
+		encoding.WriteUint16(data, &index, uint16(point.Latitude))
+		encoding.WriteUint16(data, &index, uint16(point.Longitude))
 		encoding.WriteBool(data, &index, point.OnNetworkNext)
 	}
 
 	encoding.WriteUint32(data, &index, numBluePoints)
 
 	for _, point := range points.BluePoints {
-		encoding.WriteInt16(data, &index, point.Latitude)
-		encoding.WriteInt16(data, &index, point.Longitude)
+		encoding.WriteUint16(data, &index, uint16(point.Latitude))
+		encoding.WriteUint16(data, &index, uint16(point.Longitude))
 		encoding.WriteBool(data, &index, point.OnNetworkNext)
 
 	}
