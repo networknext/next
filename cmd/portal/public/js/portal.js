@@ -960,7 +960,7 @@ function startApp() {
 			JSONRPCClient
 				.call('BuyersService.Buyers', {})
 				.then((response) => {
-					let allBuyers = response.Buyers || [];
+					let allBuyers = response.buyers || [];
 					Object.assign(rootComponent.$data, {allBuyers: allBuyers});
 					/* if (UserHandler.isAnonymous()) {
 						WorkspaceHandler.welcomeTimeout = setTimeout(() => {
@@ -1360,8 +1360,6 @@ function generateCharts(data) {
 		label: "Direct",
 		value: (self, rawValue) => rawValue.toFixed(2)
 	});
-
-	console.log(series)
 
 	const latencycomparisonOpts = {
 		...defaultOpts,
