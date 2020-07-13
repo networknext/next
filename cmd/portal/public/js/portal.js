@@ -195,7 +195,7 @@ MapHandler = {
 	totalSessionCountCalls: 0,
 	initMap() {
 		this.updateFilter({
-			buyerId: "",
+			buyerId: UserHandler.isBuyer() ? UserHandler.userinfo.id : "",
 			sessionType: 'all'
 		});
 	},
@@ -378,7 +378,8 @@ UserHandler = {
 					userId: response.sub,
 					token: response.__raw,
 					verified: response.email_verified,
-					roles: []
+					roles: [],
+					id: ""
 				};
 				return JSONRPCClient.call("AuthService.UserAccount", {user_id: this.userInfo.userId});
 			})
@@ -425,6 +426,9 @@ UserHandler = {
 	},
 	isAnonymousPlus() {
 		return !this.isAnonymous() ? !this.userInfo.verified : false;
+	},
+	isBuyer() {
+		return this.userInfo ? this.userInfo.id : "" != ""
 	},
 	isOwner() {
 		return !this.isAnonymous() ? this.userInfo.roles.findIndex((role) => role.name == "Owner") !== -1 : false;
