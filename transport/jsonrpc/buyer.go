@@ -469,12 +469,12 @@ func (s *BuyersService) GenerateMapPointsPerBuyerByte() error {
 
 	var sessionIDs []string
 	var err error
+	var mapPointsGlobal mapPointsByte
 
 	buyers := s.Storage.Buyers()
 
 	// slice to hold all the final map points
 	mapPointsBuyers := make(map[string]mapPointsByte, 0)
-	mapPointsGlobal := make([]mapPointsByte, 0)
 
 	for _, buyer := range buyers { // get all the session IDs from the map-points-global key set
 		stringID := fmt.Sprintf("%016x", buyer.ID)
@@ -530,11 +530,10 @@ func (s *BuyersService) GenerateMapPointsPerBuyerByte() error {
 
 					if currentPoint.OnNetworkNext {
 						bytePoint.OnNetworkNext = 1
+						mapPointsGlobal.GreenPoints = append(mapPointsGlobal.GreenPoints, bytePoint)
+					} else {
+						mapPointsGlobal.BluePoints = append(mapPointsGlobal.BluePoints, bytePoint)
 					}
-
-					mapPointsGlobal = append(mapPointsGlobal, point)
-					mapPointsBuyerscompact[stringID] = append(mapPointsBuyerscompact[stringID], []interface{}{point.Longitude, point.Latitude, onNN})
-					mapPointsGlobalcompact = append(mapPointsGlobalcompact, []interface{}{point.Longitude, point.Latitude, onNN})
 				}
 			}
 		}
