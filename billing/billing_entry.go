@@ -66,7 +66,7 @@ func WriteBillingEntry(entry *BillingEntry) []byte {
 	encoding.WriteBool(data, &index, entry.Flagged)
 	encoding.WriteBool(data, &index, entry.Multipath)
 
-	if entry.Initial {
+	if entry.Next {
 		encoding.WriteBool(data, &index, true)
 		encoding.WriteUint64(data, &index, entry.NextBytesUp)
 		encoding.WriteUint64(data, &index, entry.NextBytesDown)
@@ -158,7 +158,7 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 			return false
 		}
 
-		if entry.Initial {
+		if entry.Next {
 			if !encoding.ReadUint64(data, &index, &entry.NextBytesUp) {
 				return false
 			}
