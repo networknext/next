@@ -2,18 +2,20 @@ package billing
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync/atomic"
 
 	"cloud.google.com/go/pubsub"
-
 	"github.com/go-kit/kit/log"
-	// "github.com/go-kit/kit/log/level"
+	"github.com/go-kit/kit/log/level"
 )
 
 // GooglePubSubBiller is an implementation of a billing handler that sends billing data to Google Pub/Sub through multiple clients
 type GooglePubSubBiller struct {
-	clients []*GooglePubSubClient
+	Logger log.Logger
+
+	clients   []*GooglePubSubClient
 	submitted uint64
 	flushed   uint64
 }
@@ -27,20 +29,18 @@ type GooglePubSubClient struct {
 
 // NewBiller creates a new GooglePubSubBiller, sets up the pubsub clients, and starts goroutines to listen for publish results.
 // To clean up the results goroutine, use ctx.Done().
-func NewBiller(ctx context.Context, resultLogger log.Logger, projectID string, billingTopicID string, descriptor *Descriptor) (Biller, error) {
-	
-	var clientCount int
-	
-	if descriptor != nil {
-		clientCount = descriptor.ClientCount
+func NewGooglePubSubBiller(ctx context.Context, resultLogger log.Logger, projectID string, billingTopicID string, clientCount int, clientChanBufferSize int, settings *pubsub.PublishSettings) (Biller, error) {
+	if settings == nil {
+		return nil, errors.New("nil google pubsub publish settings")
 	}
 
 	biller := &GooglePubSubBiller{
+		Logger:  resultLogger,
 		clients: make([]*GooglePubSubClient, clientCount),
 	}
 
 	for i := 0; i < clientCount; i++ {
-		
+
 		var err error
 		biller.clients[i] = &GooglePubSubClient{}
 		biller.clients[i].PubsubClient, err = pubsub.NewClient(ctx, projectID)
@@ -48,28 +48,21 @@ func NewBiller(ctx context.Context, resultLogger log.Logger, projectID string, b
 			return nil, fmt.Errorf("could not create pubsub client %v: %v", i, err)
 		}
 
+		// Create the billing topic if running locally with the pubsub emulator
+		if projectID == "local" {
+			if _, err := biller.clients[i].PubsubClient.CreateTopic(ctx, billingTopicID); err != nil {
+				// Not the best, but the underlying error type is internal so we can't check for it
+				if err.Error() != "rpc error: code = AlreadyExists desc = Topic already exists" {
+					return nil, err
+				}
+			}
+		}
+
 		biller.clients[i].Topic = biller.clients[i].PubsubClient.Topic(billingTopicID)
+		biller.clients[i].Topic.PublishSettings = *settings
+		biller.clients[i].ResultChan = make(chan *pubsub.PublishResult, clientChanBufferSize)
 
-		if descriptor.CountThreshold > pubsub.MaxPublishRequestCount {
-			descriptor.CountThreshold = pubsub.MaxPublishRequestCount
-		}
-
-		if descriptor.ByteThreshold > pubsub.MaxPublishRequestBytes {
-			descriptor.ByteThreshold = pubsub.MaxPublishRequestBytes
-		}
-
-		biller.clients[i].Topic.PublishSettings = pubsub.PublishSettings{
-			DelayThreshold:    descriptor.DelayThreshold,
-			CountThreshold:    descriptor.CountThreshold,
-			ByteThreshold:     descriptor.ByteThreshold,
-			NumGoroutines:     descriptor.NumGoroutines,
-			Timeout:           descriptor.Timeout,
-			BufferedByteLimit: pubsub.DefaultPublishSettings.BufferedByteLimit,
-		}
-
-		biller.clients[i].ResultChan = make(chan *pubsub.PublishResult, descriptor.ResultChannelBuffer)
-
-		go pubsubResults(biller, ctx, resultLogger, biller.clients[i].ResultChan)
+		go biller.clients[i].pubsubResults(ctx, biller)
 	}
 
 	return biller, nil
@@ -107,16 +100,16 @@ func (biller *GooglePubSubBiller) NumFlushed() uint64 {
 	return atomic.LoadUint64(&biller.flushed)
 }
 
-func pubsubResults(biller *GooglePubSubBiller, ctx context.Context, logger log.Logger, results chan *pubsub.PublishResult) {
+func (client *GooglePubSubClient) pubsubResults(ctx context.Context, biller *GooglePubSubBiller) {
 	for {
 		select {
-		case result := <-results:
+		case result := <-client.ResultChan:
 			_, err := result.Get(ctx)
 			if err != nil {
-				// level.Error(logger).Log("billing", "failed to publish to pub/sub", "err", err)
+				level.Error(biller.Logger).Log("billing", "failed to publish to pub/sub", "err", err)
 				// todo: ryan, please increase pubsub error count metric
 			} else {
-				// level.Debug(logger).Log("billing", "successfully published billing data")
+				level.Debug(biller.Logger).Log("billing", "successfully published billing data")
 				atomic.AddUint64(&biller.flushed, 1)
 			}
 		case <-ctx.Done():

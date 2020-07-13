@@ -9,7 +9,11 @@ import (
 	"github.com/networknext/backend/routing"
 )
 
-const NumSessionMapShards = 4096
+const (
+	NumSessionMapShards = 4096
+
+	NumSessionSliceMutexes = 8
+)
 
 type SessionData struct {
 	timestamp            int64
@@ -17,11 +21,14 @@ type SessionData struct {
 	sequence             uint64
 	nearRelays           []routing.Relay
 	routeHash            uint64
+	initial              bool
 	routeDecision        routing.Decision
 	onNNSliceCounter     uint64
 	committedData        routing.CommittedData
-	routeExpireTimestamp int64
+	routeExpireTimestamp uint64
 	tokenVersion         uint8
+	cachedResponse       []byte
+	sliceMutexes         []sync.Mutex
 }
 
 type SessionMapShard struct {
@@ -50,6 +57,12 @@ func (sessionMap *SessionMap) NumSessions() uint64 {
 		total += numSessionsInShard
 	}
 	return total
+}
+
+func NewSessionData() *SessionData {
+	return &SessionData{
+		sliceMutexes: make([]sync.Mutex, NumSessionSliceMutexes),
+	}
 }
 
 func (sessionMap *SessionMap) UpdateSessionData(sessionId uint64, sessionData *SessionData) {

@@ -711,7 +711,7 @@ func IsAnonymous(r *http.Request) bool {
 	return ok && anon
 }
 
-func SetRoles(r *http.Request, roles management.RoleList) *http.Request {
+func SetRoles(r *http.Request, roles []string) *http.Request {
 	ctx := r.Context()
 	ctx = context.WithValue(ctx, rolesKey, roles)
 	return r.WithContext(ctx)
@@ -752,11 +752,11 @@ var AdminRole = func(req *http.Request) (bool, error) {
 
 	found := false
 
-	for _, role := range requestRoles.(management.RoleList).Roles {
+	for _, role := range requestRoles.([]string) {
 		if found {
 			continue
 		}
-		if *role.Name == "Admin" {
+		if role == "Admin" {
 			found = true
 		}
 	}
@@ -772,11 +772,11 @@ var OwnerRole = func(req *http.Request) (bool, error) {
 
 	found := false
 
-	for _, role := range requestRoles.(management.RoleList).Roles {
+	for _, role := range requestRoles.([]string) {
 		if found {
 			continue
 		}
-		if *role.Name == "Owner" {
+		if role == "Owner" {
 			found = true
 		}
 	}

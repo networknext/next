@@ -8,19 +8,14 @@ import (
 )
 
 type Route struct {
-	Relays      []Relay `json:"relays"`
-	Stats       Stats   `json:"stats"`
-	DirectStats Stats   `json:"direct_stats"`
+	Relays []Relay `json:"relays"`
+	Stats  Stats   `json:"stats"`
 }
 
 func (r Route) String() string {
 	var sb strings.Builder
-	sb.WriteString("next_stats=")
+	sb.WriteString("stats=")
 	sb.WriteString(r.Stats.String())
-	sb.WriteString(" ")
-
-	sb.WriteString("direct_stats=")
-	sb.WriteString(r.DirectStats.String())
 	sb.WriteString(" ")
 
 	sb.WriteString("hash=")
@@ -37,13 +32,13 @@ func (r Route) String() string {
 	return sb.String()
 }
 
-func (r *Route) Decide(prevDecision Decision, lastNextStats *Stats, directStats *Stats, routeDecisions ...DecisionFunc) Decision {
+func (r *Route) Decide(prevDecision Decision, lastNextStats *Stats, lastDirectStats *Stats, routeDecisions ...DecisionFunc) Decision {
 	nextDecision := prevDecision
 	if prevDecision.Reason == DecisionInitialSlice {
 		nextDecision = Decision{}
 	}
 	for _, routeDecision := range routeDecisions {
-		nextDecision = routeDecision(nextDecision, &r.Stats, lastNextStats, directStats)
+		nextDecision = routeDecision(nextDecision, &r.Stats, lastNextStats, lastDirectStats)
 	}
 	return nextDecision
 }

@@ -37,6 +37,7 @@ import (
 
 	gcplogging "cloud.google.com/go/logging"
 	"cloud.google.com/go/profiler"
+	"cloud.google.com/go/pubsub"
 )
 
 var (
@@ -48,7 +49,7 @@ var (
 
 func main() {
 
-	fmt.Printf("welcome to the nerd zone 24.0\n")
+	fmt.Printf("server_backend: Git Hash: %s - Commit: %s\n", sha, commitMessage)
 
 	ctx := context.Background()
 
@@ -175,42 +176,6 @@ func main() {
 		}
 	*/
 
-	// Open the Maxmind DB and create a routing.MaxmindDB from it
-	var ipLocator routing.IPLocator = routing.NullIsland
-	mmcitydburi := os.Getenv("MAXMIND_CITY_DB_URI")
-	mmispdburi := os.Getenv("MAXMIND_ISP_DB_URI")
-	if mmcitydburi != "" && mmispdburi != "" {
-		mmdb := routing.MaxmindDB{}
-
-		err := mmdb.OpenCity(ctx, http.DefaultClient, mmcitydburi)
-		if err != nil {
-			level.Error(logger).Log("envvar", "MAXMIND_CITY_DB_URI", "value", mmcitydburi, "msg", "could not open maxmind db uri", "err", err)
-			os.Exit(1)
-		}
-
-		err = mmdb.OpenISP(ctx, http.DefaultClient, mmispdburi)
-		if err != nil {
-			level.Error(logger).Log("envvar", "MAXMIND_ISP_DB_URI", "value", mmispdburi, "msg", "could not open maxmind db isp uri", "err", err)
-			os.Exit(1)
-		}
-
-		if mmsyncinterval, ok := os.LookupEnv("MAXMIND_SYNC_DB_INTERVAL"); ok {
-			syncInterval, err := time.ParseDuration(mmsyncinterval)
-			if err != nil {
-				level.Error(logger).Log("envvar", "MAXMIND_SYNC_DB_INTERVAL", "value", mmsyncinterval, "msg", "could not parse", "err", err)
-				os.Exit(1)
-			}
-
-			// Start a goroutine to sync from Maxmind.com
-			go func() {
-				ticker := time.NewTicker(syncInterval)
-				mmdb.SyncLoop(ctx, ticker.C)
-			}()
-		}
-
-		ipLocator = &mmdb
-	}
-
 	// Create an in-memory db
 	var db storage.Storer = &storage.InMemory{
 		LocalMode: true,
@@ -246,7 +211,8 @@ func main() {
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
 	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
 	// on creation so we can use that for the default then
-	if gcpProjectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
+	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
+	if gcpOK {
 		// Firestore
 		{
 			// Create a Firestore Storer
@@ -270,26 +236,6 @@ func main() {
 
 			// Set the Firestore Storer to give to handlers
 			db = fs
-		}
-
-		// Google Pubsub
-		{
-			descriptor := billing.Descriptor{
-				ClientCount:    1,
-				DelayThreshold: time.Second * 10,
-				CountThreshold: 1000,
-				ByteThreshold:  100 * 1024,
-				NumGoroutines:  runtime.GOMAXPROCS(0),
-				Timeout:        time.Minute,
-			}
-
-			pubsub, err := billing.NewBiller(ctx, logger, gcpProjectID, "billing", &descriptor)
-			if err != nil {
-				fmt.Printf("could not create pubsub biller\n")
-				os.Exit(1)
-			}
-
-			biller = pubsub
 		}
 
 		// StackDriver Metrics
@@ -358,6 +304,40 @@ func main() {
 		}
 	}
 
+	_, emulatorOK := os.LookupEnv("PUBSUB_EMULATOR_HOST")
+	if gcpOK || emulatorOK {
+
+		pubsubCtx := ctx
+		if emulatorOK {
+			gcpProjectID = "local"
+
+			var cancelFunc context.CancelFunc
+			pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(5*time.Second))
+			defer cancelFunc()
+
+			level.Info(logger).Log("msg", "Detected pubsub emulator")
+		}
+
+		// Google Pubsub
+		{
+			settings := pubsub.PublishSettings{
+				DelayThreshold: time.Second * 10,
+				CountThreshold: 1000,
+				ByteThreshold:  100 * 1024,
+				NumGoroutines:  runtime.GOMAXPROCS(0),
+				Timeout:        time.Minute,
+			}
+
+			pubsub, err := billing.NewGooglePubSubBiller(pubsubCtx, logger, gcpProjectID, "billing", 1, 0, &settings)
+			if err != nil {
+				level.Error(logger).Log("msg", "could not create pubsub biller", "err", err)
+				os.Exit(1)
+			}
+
+			biller = pubsub
+		}
+	}
+
 	// Create server init metrics
 	serverInitMetrics, err := metrics.NewServerInitMetrics(ctx, metricsHandler)
 	if err != nil {
@@ -376,6 +356,74 @@ func main() {
 		level.Error(logger).Log("msg", "failed to create session metrics", "err", err)
 	}
 
+	// Create maxmindb sync metrics
+	maxmindSyncMetrics, err := metrics.NewMaxmindSyncMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create session metrics", "err", err)
+	}
+
+	getIPLocatorFunc := func() routing.IPLocator {
+		return routing.NullIsland
+	}
+
+	// Open the Maxmind DB and create a routing.MaxmindDB from it
+	mmcitydburi := os.Getenv("MAXMIND_CITY_DB_URI")
+	mmispdburi := os.Getenv("MAXMIND_ISP_DB_URI")
+	if mmcitydburi != "" && mmispdburi != "" {
+		mmdb := &routing.MaxmindDB{
+			HTTPClient: http.DefaultClient,
+			CityURI:    mmcitydburi,
+			IspURI:     mmispdburi,
+		}
+		var mmdbMutex sync.RWMutex
+
+		getIPLocatorFunc = func() routing.IPLocator {
+			mmdbMutex.RLock()
+			defer mmdbMutex.RUnlock()
+
+			mmdbRet := mmdb
+			return mmdbRet
+		}
+
+		if err := mmdb.Sync(ctx, maxmindSyncMetrics); err != nil {
+			level.Error(logger).Log("err", err)
+			os.Exit(1)
+		}
+
+		if mmsyncinterval, ok := os.LookupEnv("MAXMIND_SYNC_DB_INTERVAL"); ok {
+			syncInterval, err := time.ParseDuration(mmsyncinterval)
+			if err != nil {
+				level.Error(logger).Log("envvar", "MAXMIND_SYNC_DB_INTERVAL", "value", mmsyncinterval, "msg", "could not parse", "err", err)
+				os.Exit(1)
+			}
+
+			// Start a goroutine to sync from Maxmind.com
+			go func() {
+				ticker := time.NewTicker(syncInterval)
+				for {
+					newMMDB := &routing.MaxmindDB{}
+
+					select {
+					case <-ticker.C:
+						if err := newMMDB.Sync(ctx, maxmindSyncMetrics); err != nil {
+							level.Error(logger).Log("err", err)
+							continue
+						}
+
+						// Pointer swap the mmdb so we can sync from Maxmind.com lock free
+						mmdbMutex.Lock()
+						mmdb = newMMDB
+						mmdbMutex.Unlock()
+					case <-ctx.Done():
+						return
+					}
+
+					time.Sleep(syncInterval)
+				}
+			}()
+		}
+	}
+
 	routeMatrix := &routing.RouteMatrix{}
 	var routeMatrixMutex sync.RWMutex
 
@@ -387,6 +435,7 @@ func main() {
 	}
 
 	// Sync route matrix
+	var longRouteMatrixUpdates uint64
 	var readRouteMatrixSuccessCount uint64
 	{
 		if uri, ok := os.LookupEnv("ROUTE_MATRIX_URI"); ok {
@@ -427,9 +476,9 @@ func main() {
 
 					// todo: ryan, please upload a metric for the time it takes to get the route matrix. we should watch it in stackdriver.
 
-					if routeMatrixTime > 1.0 {
+					if routeMatrixTime.Seconds() > 1.0 {
 						fmt.Printf("long route matrix update\n")
-						// todo: ryan, please increase a counter here
+						atomic.AddUint64(&longRouteMatrixUpdates, 1)
 					}
 
 					// Swap the route matrix pointer to the new one
@@ -563,6 +612,7 @@ func main() {
 				fmt.Printf("%d long server inits\n", atomic.LoadUint64(&serverInitCounters.LongDuration))
 				fmt.Printf("%d long server updates\n", atomic.LoadUint64(&serverUpdateCounters.LongDuration))
 				fmt.Printf("%d long session updates\n", atomic.LoadUint64(&sessionUpdateCounters.LongDuration))
+				fmt.Printf("%d long route matrix updates\n", atomic.LoadUint64(&longRouteMatrixUpdates))
 				fmt.Printf("-----------------------------\n")
 
 				time.Sleep(time.Second)
@@ -592,7 +642,7 @@ func main() {
 			ServerPrivateKey:     serverPrivateKey,
 			RouterPrivateKey:     routerPrivateKey,
 			GetRouteProvider:     getRouteMatrixFunc,
-			IPLoc:                ipLocator,
+			GetIPLocator:         getIPLocatorFunc,
 			Storer:               db,
 			RedisClientPortal:    redisClientPortal,
 			RedisClientPortalExp: redisPortalHostExpiration,
@@ -616,8 +666,7 @@ func main() {
 		go func() {
 			level.Info(logger).Log("protocol", "udp", "addr", conn.LocalAddr().String())
 			if err := mux.Start(ctx); err != nil {
-				fmt.Printf("could not start udp server: %v\n", err)
-				// level.Error(logger).Log("protocol", "udp", "addr", conn.LocalAddr().String(), "msg", "could not start udp server", "err", err)
+				level.Error(logger).Log("protocol", "udp", "addr", conn.LocalAddr().String(), "msg", "could not start udp server", "err", err)
 				os.Exit(1)
 			}
 		}()

@@ -158,18 +158,49 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 	if r.Body != nil {
 		defer r.Body.Close()
 	}
-	direct, err := s.RedisClient.ZCard("total-direct").Result()
-	if err != nil {
-		return err
-	}
 
-	next, err := s.RedisClient.ZCard("total-next").Result()
-	if err != nil {
-		return err
-	}
+	// get the top session IDs globally or for a buyer from the sorted set
+	switch args.BuyerID {
+	case "":
+		// Get top Next sessions sorted by greatest to least improved RTT
+		next, err := s.RedisClient.ZCard("total-next").Result()
+		if err != nil {
+			err = fmt.Errorf("TotalSessions() failed getting total-next sessions: %v", err)
+			s.Logger.Log("err", err)
+			return err
+		}
 
-	reply.Direct = int(direct)
-	reply.Next = int(next)
+		// Get top Direct sessions sorted by least to greatest direct RTT
+		direct, err := s.RedisClient.ZCard("total-direct").Result()
+		if err != nil {
+			err = fmt.Errorf("TotalSessions() failed getting total-direct sessions: %v", err)
+			s.Logger.Log("err", err)
+			return err
+		}
+		reply.Direct = int(direct)
+		reply.Next = int(next)
+	default:
+		if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
+			err := fmt.Errorf("TotalSessions(): %v", ErrInsufficientPrivileges)
+			s.Logger.Log("err", err)
+			return err
+		}
+		next, err := s.RedisClient.ZCard(fmt.Sprintf("total-next-buyer-%s", args.BuyerID)).Result()
+		if err != nil {
+			err = fmt.Errorf("TotalSessions() failed getting total-next sessions: %v", err)
+			s.Logger.Log("err", err)
+			return err
+		}
+		direct, err := s.RedisClient.ZCard(fmt.Sprintf("total-direct-buyer-%s", args.BuyerID)).Result()
+		if err != nil {
+			err = fmt.Errorf("TotalSessions() failed getting total-next sessions: %v", err)
+			s.Logger.Log("err", err)
+			return err
+		}
+
+		reply.Direct = int(direct)
+		reply.Next = int(next)
+	}
 
 	return nil
 }
@@ -727,7 +758,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 type BuyerListArgs struct{}
 
 type BuyerListReply struct {
-	Buyers []buyerAccount
+	Buyers []buyerAccount `json:"buyers"`
 }
 
 type buyerAccount struct {
@@ -747,7 +778,9 @@ func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *Buye
 			ID:   id,
 			Name: b.Name,
 		}
-		reply.Buyers = append(reply.Buyers, account)
+		if VerifyAllRoles(r, s.SameBuyerRole(id)) {
+			reply.Buyers = append(reply.Buyers, account)
+		}
 	}
 
 	sort.Slice(reply.Buyers, func(i int, j int) bool {
@@ -836,6 +869,6 @@ func (s *BuyersService) SameBuyerRole(buyerID string) RoleFunc {
 			return false, fmt.Errorf("SameBuyerRole(): BuyerWithDomain error: %v", err)
 		}
 
-		return buyerID != fmt.Sprintf("%016x", buyer.ID), nil
+		return buyerID == fmt.Sprintf("%016x", buyer.ID), nil
 	}
 }
