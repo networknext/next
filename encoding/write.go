@@ -27,7 +27,7 @@ func WriteUint8(data []byte, index *int, value uint8) {
 
 func WriteUint16(data []byte, index *int, value uint16) {
 	binary.LittleEndian.PutUint16(data[*index:], value)
-	*index += 1
+	*index += 2
 }
 
 func WriteUint32(data []byte, index *int, value uint32) {
