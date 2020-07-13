@@ -221,8 +221,8 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 		// because it's really difficult to debug what the incorrectly datacenter string is, when we only
 		// see the hash :(
 
-		datacenter, _ := params.Storer.Datacenter(packet.DatacenterID)
-		if datacenter == routing.UnknownDatacenter {
+		datacenter, err := params.Storer.Datacenter(packet.DatacenterID)
+		if err != nil {
 			// search the list of aliases created by/for this buyer
 			datacenterAliases := params.Storer.GetDatacenterMapsForBuyer(packet.CustomerID)
 			if len(datacenterAliases) == 0 {
@@ -231,7 +231,7 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 			} else {
 				for _, dcMap := range datacenterAliases {
 					if packet.DatacenterID == crypto.HashID(dcMap.Alias) {
-						datacenter, err = params.Storer.Datacenter(packet.DatacenterID)
+						datacenter, err = params.Storer.Datacenter(dcMap.Datacenter)
 						if err != nil {
 							params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
 							writeServerInitResponse(params, w, &packet, InitResponseUnknownDatacenter)

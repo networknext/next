@@ -1234,7 +1234,8 @@ datacenter names.
 
 							var err error
 							dcm.Alias = dcmTemp.Alias
-							dcm.BuyerID, err = strconv.ParseUint(dcmTemp.BuyerID, 16, 64)
+							tempStr := dcmTemp.BuyerID
+							dcm.BuyerID, err = strconv.ParseUint(tempStr, 16, 64)
 							if err != nil {
 								return err
 							}
