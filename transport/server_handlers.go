@@ -227,15 +227,16 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 			if len(datacenterAliases) == 0 {
 				params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
 				writeServerInitResponse(params, w, &packet, InitResponseUnknownDatacenter)
-			}
-			for _, dcMap := range datacenterAliases {
-				if packet.DatacenterID == crypto.HashID(dcMap.Alias) {
-					datacenter, err = params.Storer.Datacenter(packet.DatacenterID)
-					if err != nil {
-						params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
-						writeServerInitResponse(params, w, &packet, InitResponseUnknownDatacenter)
+			} else {
+				for _, dcMap := range datacenterAliases {
+					if packet.DatacenterID == crypto.HashID(dcMap.Alias) {
+						datacenter, err = params.Storer.Datacenter(packet.DatacenterID)
+						if err != nil {
+							params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
+							writeServerInitResponse(params, w, &packet, InitResponseUnknownDatacenter)
+						}
+						datacenter.AliasName = dcMap.Alias
 					}
-					datacenter.AliasName = dcMap.Alias
 				}
 			}
 		}
