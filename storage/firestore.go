@@ -992,10 +992,11 @@ func (fs *Firestore) GetDatacenterMapsForBuyer(buyerID string) map[uint64]routin
 		if dc.BuyerID == buyerID {
 			id := crypto.HashID(dc.Alias + dc.BuyerID + dc.Datacenter)
 			dcs[id] = dc
+			return dcs
 		}
 	}
 
-	return dcs
+	return nil
 }
 
 func (fs *Firestore) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error {

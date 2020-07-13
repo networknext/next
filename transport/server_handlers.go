@@ -212,8 +212,9 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 			return
 		}
 
-		// If the datacenter does not exist, the user has probably not set the datacenter string correctly
-		// on their server instance, or the datacenter name they are passing in does not exist (yet).
+		// If neither the datacenter nor a relevent alias exists, the user has probably not set the
+		// datacenter string correctly on their server instance, or the datacenter name they are
+		// passing in does not exist (yet).
 
 		// IMPORTANT: In the future, we will extend the SDK to pass in the datacenter name as a string
 		// because it's really difficult to debug what the incorrectly datacenter string is, when we only
@@ -223,17 +224,18 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 		if datacenter == routing.UnknownDatacenter {
 			// search the list of aliases created by/for this buyer
 			datacenterAliases := params.Storer.GetDatacenterMapsForBuyer(fmt.Sprintf("%x", packet.CustomerID))
+			if len(datacenterAliases) == 0 {
+				params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
+				writeServerInitResponse(params, w, &packet, InitResponseUnknownDatacenter)
+			}
 			for _, dcMap := range datacenterAliases {
 				if packet.DatacenterID == crypto.HashID(dcMap.Alias) {
-					_, err = params.Storer.Datacenter(packet.DatacenterID)
+					datacenter, err = params.Storer.Datacenter(packet.DatacenterID)
 					if err != nil {
 						params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
 						writeServerInitResponse(params, w, &packet, InitResponseUnknownDatacenter)
-						return
-
 					}
 				}
-
 			}
 		}
 
