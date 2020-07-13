@@ -2,6 +2,7 @@ package jsonrpc_test
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -9,6 +10,7 @@ import (
 	"github.com/alicebob/miniredis"
 	"github.com/go-kit/kit/log"
 	"github.com/go-redis/redis/v7"
+	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport/jsonrpc"
@@ -151,11 +153,11 @@ import (
 func TestDatacenterMaps(t *testing.T) {
 	dcMap := routing.DatacenterMap{
 		Alias:      "some.server.alias",
-		BuyerID:    "bdbebdbf0f7be395",
-		Datacenter: "7edb88d7b6fc0713",
+		BuyerID:    0xbdbebdbf0f7be395,
+		Datacenter: 0x7edb88d7b6fc0713,
 	}
 
-	id := crypto.HashID(dcMap.Alias + dcMap.BuyerID + dcMap.Datacenter)
+	id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.Datacenter))
 
 	storer := storage.InMemory{}
 
@@ -191,14 +193,14 @@ func TestDatacenterMaps(t *testing.T) {
 	t.Run("list", func(t *testing.T) {
 		var reply jsonrpc.DatacenterMapsReply
 		var args = jsonrpc.DatacenterMapsArgs{
-			ID: "bdbebdbf0f7be395",
+			ID: 0xbdbebdbf0f7be395,
 		}
 		err := svc.DatacenterMapsForBuyer(req, &args, &reply)
 		assert.NoError(t, err)
 
-		assert.Equal(t, "7edb88d7b6fc0713", reply.DatacenterMaps[id].Datacenter)
+		assert.Equal(t, uint64(0x7edb88d7b6fc0713), reply.DatacenterMaps[id].Datacenter)
 		assert.Equal(t, "some.server.alias", reply.DatacenterMaps[id].Alias)
-		assert.Equal(t, "bdbebdbf0f7be395", reply.DatacenterMaps[id].BuyerID)
+		assert.Equal(t, uint64(0xbdbebdbf0f7be395), reply.DatacenterMaps[id].BuyerID)
 
 	})
 
@@ -281,7 +283,6 @@ func TestTotalSessions(t *testing.T) {
 
 // func TestTopSessions(t *testing.T) {
 // 	t.Parallel()
-
 
 // 	redisServer, _ := miniredis.Run()
 // 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
@@ -819,4 +820,3 @@ func TestSameBuyerRoleFunction(t *testing.T) {
 		assert.True(t, verified)
 	})
 } */
-
