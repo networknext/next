@@ -174,6 +174,7 @@ import { library } from '@fortawesome/fontawesome-svg-core'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import NavBar from './components/NavBar.vue'
 import Workspace from './components/workspaces/Workspace.vue'
+import { NavigationGuardNext, Route } from 'vue-router'
 
 const ICONS = [
   faCheck,
@@ -192,6 +193,10 @@ Vue.component('workspace', Workspace)
 export default Vue.extend({
   mounted () {
     console.log('Mounting the app')
+    this.$router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
+      this.$store.dispatch('updateCurrentPage', to.name)
+      next()
+    })
   }
 })
 

@@ -7,22 +7,22 @@
     </a>
     <ul class="navbar-nav px-3 w-100 mr-auto">
         <li class="nav-item text-nowrap">
-            <router-link to="/" class="nav-link">Map</router-link>
+            <router-link to="/" class="nav-link" v-bind:class="{ active: currentPage == 'map'}">Map</router-link>
         </li>
         <li class="nav-item text-nowrap">
-            <router-link to="/sessions" class="nav-link">Sessions</router-link>
+            <router-link to="/sessions" class="nav-link" v-bind:class="{ active: currentPage == 'sessions'}">Sessions</router-link>
         </li>
         <li class="nav-item text-nowrap">
-            <router-link to="/session-tool" class="nav-link">Session Tool</router-link>
+            <router-link to="/session-tool" class="nav-link" v-bind:class="{ active: currentPage == 'session-tool'}">Session Tool</router-link>
         </li>
         <li class="nav-item text-nowrap">
-            <router-link to="/user-tool" class="nav-link">User Tool</router-link>
+            <router-link to="/user-tool" class="nav-link" v-bind:class="{ active: currentPage == 'user-tool'}">User Tool</router-link>
         </li>
         <li class="nav-item text-nowrap">
-            <router-link to="/downloads" class="nav-link">Downloads</router-link>
+            <router-link to="/downloads" class="nav-link" v-bind:class="{ active: currentPage == 'downloads'}">Downloads</router-link>
         </li>
         <li class="nav-item text-nowrap">
-            <router-link to="/settings" class="nav-link">Settings</router-link>
+            <router-link to="/settings" class="nav-link" v-bind:class="{ active: currentPage == 'settings'}">Settings</router-link>
         </li>
     </ul>
     <ul class="navbar-nav px-3">
@@ -52,7 +52,6 @@
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
 import AuthService from '../services/auth.service'
-
 @Component
 export default class NavBar extends Vue {
     private authService: AuthService

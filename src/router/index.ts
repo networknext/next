@@ -1,5 +1,5 @@
 import Vue from 'vue'
-import VueRouter, { RouteConfig, Route, NavigationGuardNext } from 'vue-router'
+import VueRouter, { RouteConfig } from 'vue-router'
 
 import DownloadsWorkspace from '@/components/workspaces/DownloadsWorkspace.vue'
 import GameConfiguration from '@/components/GameConfiguration.vue'
@@ -17,17 +17,17 @@ Vue.use(VueRouter)
 const routes: Array<RouteConfig> = [
   {
     path: '/',
-    name: 'Map',
+    name: 'map',
     component: MapWorkspace
   },
   {
     path: '/sessions',
-    name: 'Sessions',
+    name: 'sessions',
     component: SessionsWorkspace
   },
   {
     path: '/session-tool',
-    name: 'Session Tool',
+    name: 'session-tool',
     component: SessionToolWorkspace,
     children: [
       {
@@ -38,7 +38,7 @@ const routes: Array<RouteConfig> = [
   },
   {
     path: '/user-tool',
-    name: 'User Tool',
+    name: 'user-tool',
     component: UserToolWorkspace,
     children: [
       {
@@ -49,7 +49,7 @@ const routes: Array<RouteConfig> = [
   },
   {
     path: '/downloads',
-    name: 'Downloads',
+    name: 'downloads',
     component: DownloadsWorkspace
   },
   {
@@ -58,13 +58,13 @@ const routes: Array<RouteConfig> = [
     component: SettingsWorkspace,
     children: [
       {
-        name: 'config',
         path: 'game-config',
+        name: 'config',
         component: GameConfiguration
       },
       {
-        name: 'users',
         path: 'users',
+        name: 'users',
         component: UserManagement
       }
     ]
