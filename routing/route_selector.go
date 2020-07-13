@@ -2,14 +2,13 @@ package routing
 
 import (
 	"math/rand"
-	"sort"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 )
 
 // SelectorFunc reduces a slice of routes according to the selector function.
-// Takes in a slice of routes as input and returns a new slice of selected routes.
+// Takes in a slice of routes sorted by lowest RTT as input and returns a new slice of selected routes.
 // A RouteSelector never modifies the input.
 // If the selector couldn't produce a non-empty slice of routes, then it returns nil.
 type SelectorFunc func(routes []Route) []Route
@@ -29,51 +28,51 @@ func SelectLogger(logger log.Logger) SelectorFunc {
 // This will return multiple routes if the routes have the same RTT.
 func SelectBestRTT() SelectorFunc {
 	return func(routes []Route) []Route {
-		bestRoutes := make([]Route, 0)
-		for _, route := range routes {
-			if len(bestRoutes) == 0 || route.Stats.RTT < bestRoutes[0].Stats.RTT {
-				bestRoutes = make([]Route, 1)
-				bestRoutes[0] = route
-			} else if route.Stats.RTT == bestRoutes[0].Stats.RTT {
-				bestRoutes = append(bestRoutes, route)
-			}
-		}
-
-		// Returns nil if there are no acceptable routes
-		if len(bestRoutes) == 0 {
+		if len(routes) == 0 {
 			return nil
 		}
 
-		return bestRoutes
+		bestRouteCount := 1
+
+		for i := range routes {
+
+			if i+1 < len(routes) && routes[i+1].Stats.RTT == routes[i].Stats.RTT {
+				bestRouteCount++
+			} else {
+				break
+			}
+		}
+
+		return routes[:bestRouteCount]
 	}
 }
 
 // SelectAcceptableRoutesFromBestRTT will return a slice of acceptable routes, which is defined as all routes whose RTT is within the given threshold of the best RTT.
 // Returns nil if there are no acceptable routes.
 func SelectAcceptableRoutesFromBestRTT(rttEpsilon float64) SelectorFunc {
-	// Use SelectBestRTT() to get the best RTT
-	bestRTTSelector := SelectBestRTT()
 	return func(routes []Route) []Route {
-		bestRoutes := bestRTTSelector(routes)
-		if bestRoutes == nil {
-			return nil // This selector needs the best RTT to work correctly
+		if len(routes) == 0 {
+			return nil
 		}
 
-		bestRTT := bestRoutes[0].Stats.RTT
-		acceptableRoutes := make([]Route, 0)
-		for _, route := range routes {
-			rttDifference := route.Stats.RTT - bestRTT
+		routeCount := 0
+		bestRTT := routes[0].Stats.RTT
+
+		for i := range routes {
+			rttDifference := routes[i].Stats.RTT - bestRTT
 			if rttDifference <= rttEpsilon {
-				acceptableRoutes = append(acceptableRoutes, route)
+				routeCount++
+			} else {
+				break
 			}
 		}
 
 		// Return nil if there are no acceptable routes
-		if len(acceptableRoutes) == 0 {
+		if routeCount == 0 {
 			return nil
 		}
 
-		return acceptableRoutes
+		return routes[:routeCount]
 	}
 }
 
@@ -81,10 +80,9 @@ func SelectAcceptableRoutesFromBestRTT(rttEpsilon float64) SelectorFunc {
 // If the route has doesn't match any of the routes, then it will return the existing list of routes to not break route selection.
 func SelectContainsRouteHash(routeHash uint64) SelectorFunc {
 	return func(routes []Route) []Route {
-		for _, route := range routes {
-			sameRoute := routeHash == route.Hash64()
-			if sameRoute {
-				return []Route{route}
+		for i := range routes {
+			if routeHash == routes[i].Hash64() {
+				return routes[i : i+1]
 			}
 		}
 
@@ -106,7 +104,7 @@ func SelectRoutesByRandomDestRelay(source rand.Source) SelectorFunc {
 			}
 
 			// Get the destination relay
-			destRelay := route.Relays[len(route.Relays)-1]
+			destRelay := &route.Relays[len(route.Relays)-1]
 
 			// If the relay isn't in the map yet, add an empty slice to add routes to
 			if _, ok := destRelayRouteMap[destRelay.ID]; !ok {
@@ -123,18 +121,17 @@ func SelectRoutesByRandomDestRelay(source rand.Source) SelectorFunc {
 		}
 
 		// Get a slice of all destination relay IDs
-		var destinationRelayIDs []uint64
+		destinationRelayIDs := make([]uint64, len(destRelayRouteMap))
+		var i int
 		for destRelayID := range destRelayRouteMap {
-			destinationRelayIDs = append(destinationRelayIDs, destRelayID)
+			destinationRelayIDs[i] = destRelayID
+			i++
 		}
 
-		// NOTE - Why does this need to be sorted if a random destination relay is chosen anyway?
-		sort.Slice(destinationRelayIDs, func(i, j int) bool {
-			return destinationRelayIDs[i] < destinationRelayIDs[j]
-		})
+		temp := randgen.Intn(len(destinationRelayIDs))
 
 		// choose a random destination relay, and use the routes from that
-		relayRoutes := destRelayRouteMap[destinationRelayIDs[randgen.Intn(len(destinationRelayIDs))]]
+		relayRoutes := destRelayRouteMap[destinationRelayIDs[temp]]
 		return relayRoutes
 	}
 }
@@ -149,7 +146,8 @@ func SelectRandomRoute(source rand.Source) SelectorFunc {
 			return nil
 		}
 
-		return []Route{routes[randgen.Intn(len(routes))]}
+		randomIndex := randgen.Intn(len(routes))
+		return routes[randomIndex : randomIndex+1]
 	}
 }
 
@@ -158,22 +156,28 @@ func SelectRandomRoute(source rand.Source) SelectorFunc {
 // is 80% or more of its max allowed session count would be filtered out
 func SelectUnencumberedRoutes(sessionThreshold float64) SelectorFunc {
 	return func(routes []Route) []Route {
-		unencumberedRoutes := make([]Route, 0)
+		unencumberedRoutes := make([]Route, len(routes))
+		unencumberedRouteCount := 0
 
-		for _, route := range routes {
-			isRouteUnencumbered := true
+		for i, route := range routes {
+			isUnencumbered := true
 			for _, relay := range route.Relays {
 				if relay.MaxSessions == 0 || float64(relay.TrafficStats.SessionCount)/float64(relay.MaxSessions) >= sessionThreshold {
-					isRouteUnencumbered = false
+					isUnencumbered = false
 					break
 				}
 			}
 
-			if isRouteUnencumbered {
-				unencumberedRoutes = append(unencumberedRoutes, route)
+			if isUnencumbered {
+				unencumberedRoutes[unencumberedRouteCount] = routes[i]
+				unencumberedRouteCount++
 			}
 		}
 
-		return unencumberedRoutes
+		if unencumberedRouteCount == 0 {
+			return nil
+		}
+
+		return unencumberedRoutes[:unencumberedRouteCount]
 	}
 }

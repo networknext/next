@@ -13,13 +13,6 @@ func TestSelectBestRTT(t *testing.T) {
 	routes := []routing.Route{
 		{
 			Stats: routing.Stats{
-				RTT:        5,
-				Jitter:     0,
-				PacketLoss: 0,
-			},
-		},
-		{
-			Stats: routing.Stats{
 				RTT:        1,
 				Jitter:     0,
 				PacketLoss: 0,
@@ -32,16 +25,6 @@ func TestSelectBestRTT(t *testing.T) {
 				PacketLoss: 0,
 			},
 		},
-	}
-
-	selectedRoutes := routing.SelectBestRTT()(routes)
-
-	assert.Equal(t, 1, len(selectedRoutes))
-	assert.Equal(t, float64(1), selectedRoutes[0].Stats.RTT)
-}
-
-func TestSelectAcceptableRoutesFromBestRTT(t *testing.T) {
-	routes := []routing.Route{
 		{
 			Stats: routing.Stats{
 				RTT:        5,
@@ -49,9 +32,30 @@ func TestSelectAcceptableRoutesFromBestRTT(t *testing.T) {
 				PacketLoss: 0,
 			},
 		},
+	}
+
+	selectedRoutes := routing.SelectBestRTT()(routes)
+
+	assert.Equal(t, 1, len(selectedRoutes))
+	assert.Equal(t, float64(1), selectedRoutes[0].Stats.RTT)
+
+	for _, route := range selectedRoutes {
+		assert.NotEmpty(t, route)
+	}
+}
+
+func TestSelectAcceptableRoutesFromBestRTT(t *testing.T) {
+	routes := []routing.Route{
 		{
 			Stats: routing.Stats{
 				RTT:        4.7,
+				Jitter:     0,
+				PacketLoss: 0,
+			},
+		},
+		{
+			Stats: routing.Stats{
+				RTT:        5,
 				Jitter:     0,
 				PacketLoss: 0,
 			},
@@ -72,12 +76,16 @@ func TestSelectAcceptableRoutesFromBestRTT(t *testing.T) {
 		},
 	}
 
-	selectedRoutes := routing.SelectAcceptableRoutesFromBestRTT(.5)(routes)
+	selectedRoutes := routing.SelectAcceptableRoutesFromBestRTT(0.5)(routes)
 
 	assert.Equal(t, 3, len(selectedRoutes))
-	assert.Equal(t, float64(5), selectedRoutes[0].Stats.RTT)
-	assert.Equal(t, float64(4.7), selectedRoutes[1].Stats.RTT)
+	assert.Equal(t, float64(4.7), selectedRoutes[0].Stats.RTT)
+	assert.Equal(t, float64(5), selectedRoutes[1].Stats.RTT)
 	assert.Equal(t, float64(5.2), selectedRoutes[2].Stats.RTT)
+
+	for _, route := range selectedRoutes {
+		assert.NotEmpty(t, route)
+	}
 }
 
 func TestSelectContainsRouteHash(t *testing.T) {
@@ -100,6 +108,10 @@ func TestSelectContainsRouteHash(t *testing.T) {
 	assert.Equal(t, uint64(1), selectedRoutes[0].Relays[0].ID)
 	assert.Equal(t, uint64(2), selectedRoutes[0].Relays[1].ID)
 	assert.Equal(t, uint64(3), selectedRoutes[0].Relays[2].ID)
+
+	for _, route := range selectedRoutes {
+		assert.NotEmpty(t, route)
+	}
 }
 
 func TestSelectUnencumberedRoutes(t *testing.T) {
@@ -177,26 +189,30 @@ func TestSelectUnencumberedRoutes(t *testing.T) {
 
 	assert.Equal(t, 1, len(selectedRoutes))
 	assert.Equal(t, routes[0], selectedRoutes[0])
+
+	for _, route := range selectedRoutes {
+		assert.NotEmpty(t, route)
+	}
 }
 
 func TestSelectRoutesByRandomDestRelay(t *testing.T) {
 	routes := []routing.Route{
 		{
 			Relays: []routing.Relay{
-				{ID: 1}, {ID: 2}, {ID: 3},
+				{ID: 4}, {ID: 2}, {ID: 5}, {ID: 3},
 			},
 			Stats: routing.Stats{
-				RTT:        5,
+				RTT:        4.7,
 				Jitter:     0,
 				PacketLoss: 0,
 			},
 		},
 		{
 			Relays: []routing.Relay{
-				{ID: 4}, {ID: 2}, {ID: 5}, {ID: 3},
+				{ID: 1}, {ID: 2}, {ID: 3},
 			},
 			Stats: routing.Stats{
-				RTT:        4.7,
+				RTT:        5,
 				Jitter:     0,
 				PacketLoss: 0,
 			},
@@ -214,24 +230,30 @@ func TestSelectRoutesByRandomDestRelay(t *testing.T) {
 	}
 
 	randsrc := rand.NewSource(0)
-	selectedRoutes := routing.SelectRandomRoute(randsrc)(routes)
+	selectedRoutes := routing.SelectRoutesByRandomDestRelay(randsrc)(routes)
 
-	assert.Equal(t, 1, len(selectedRoutes))
-	assert.Equal(t, float64(5), selectedRoutes[0].Stats.RTT)
+	assert.Equal(t, 3, len(selectedRoutes))
+	assert.Equal(t, float64(4.7), selectedRoutes[0].Stats.RTT)
+	assert.Equal(t, float64(5), selectedRoutes[1].Stats.RTT)
+	assert.Equal(t, float64(5.2), selectedRoutes[2].Stats.RTT)
+
+	for _, route := range selectedRoutes {
+		assert.NotEmpty(t, route)
+	}
 }
 
 func TestSelectRandomRoute(t *testing.T) {
 	routes := []routing.Route{
 		{
 			Stats: routing.Stats{
-				RTT:        5,
+				RTT:        4.7,
 				Jitter:     0,
 				PacketLoss: 0,
 			},
 		},
 		{
 			Stats: routing.Stats{
-				RTT:        4.7,
+				RTT:        5,
 				Jitter:     0,
 				PacketLoss: 0,
 			},
@@ -257,4 +279,8 @@ func TestSelectRandomRoute(t *testing.T) {
 
 	assert.Equal(t, 1, len(selectedRoutes))
 	assert.Equal(t, float64(5.2), selectedRoutes[0].Stats.RTT)
+
+	for _, route := range selectedRoutes {
+		assert.NotEmpty(t, route)
+	}
 }

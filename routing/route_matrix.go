@@ -20,7 +20,7 @@ const (
 	// IMPORTANT: Increment this when you change the binary format
 	RouteMatrixVersion = 6
 
-	MaxAcceptableRoutes = 16
+	MaxBestRoutes = 16
 )
 
 type RouteMatrixEntry struct {
@@ -179,14 +179,12 @@ func (m *RouteMatrix) GetDatacenterRelays(d Datacenter) []Relay {
 }
 
 // GetRoutes returns acceptable routes between the set of near relays and destination relays.
-// The returned slice always has capacity of MaxAcceptableRoutes, so the number of routes actually used is also returned.
-// Any "unused" routes will be set to direct routes with all of their stats set to InvalidRouteValue.
-func (m *RouteMatrix) GetRoutes(near []Relay, dest []Relay) ([]Route, uint64, error) {
-	acceptableRoutes := make([]Route, MaxAcceptableRoutes)
-	var acceptableRoutesLength uint64
+func (m *RouteMatrix) GetRoutes(near []Relay, dest []Relay) ([]Route, error) {
+	bestRoutes := make([]Route, MaxBestRoutes)
+	var bestRoutesLength uint64
 
-	for i := range acceptableRoutes {
-		acceptableRoutes[i] = Route{
+	for i := range bestRoutes {
+		bestRoutes[i] = Route{
 			Stats: Stats{
 				RTT:        InvalidRouteValue,
 				Jitter:     InvalidRouteValue,
@@ -201,7 +199,7 @@ func (m *RouteMatrix) GetRoutes(near []Relay, dest []Relay) ([]Route, uint64, er
 			entryIndex, reverse := m.GetEntryIndex(&nearRelay, &destRelay)
 
 			if entryIndex < 0 {
-				return nil, 0, fmt.Errorf("no entry for near relay %s and dest relay %s", nearRelay.Name, destRelay.Name)
+				return nil, fmt.Errorf("no entry for near relay %s and dest relay %s", nearRelay.Name, destRelay.Name)
 			}
 
 			entry := &m.Entries[entryIndex]
@@ -209,48 +207,54 @@ func (m *RouteMatrix) GetRoutes(near []Relay, dest []Relay) ([]Route, uint64, er
 			for i := 0; i < int(entry.NumRoutes); i++ {
 				routeRTT := float64(entry.RouteRTT[i])
 
-				if acceptableRoutesLength == 0 {
+				if bestRoutesLength == 0 {
 					// no routes added yet, add the route
 
-					if err := m.AppendRoute(acceptableRoutes, &acceptableRoutesLength, nearRelay.ClientStats.RTT+routeRTT, entry, i, reverse); err != nil {
-						return nil, 0, err
+					if err := m.AppendRoute(bestRoutes, &bestRoutesLength, nearRelay.ClientStats.RTT+routeRTT, entry, i, reverse); err != nil {
+						return nil, err
 					}
 
-				} else if acceptableRoutesLength < MaxAcceptableRoutes {
+				} else if bestRoutesLength < MaxBestRoutes {
 					// not at max routes yet, insert according RTT sort order
 
-					if routeRTT >= acceptableRoutes[acceptableRoutesLength-1].Stats.RTT {
+					if routeRTT >= bestRoutes[bestRoutesLength-1].Stats.RTT {
 
 						// RTT is greater than existing entries. append.
 
-						if err := m.AppendRoute(acceptableRoutes, &acceptableRoutesLength, nearRelay.ClientStats.RTT+routeRTT, entry, i, reverse); err != nil {
-							return nil, 0, err
+						if err := m.AppendRoute(bestRoutes, &bestRoutesLength, nearRelay.ClientStats.RTT+routeRTT, entry, i, reverse); err != nil {
+							return nil, err
 						}
 					} else {
 
 						// RTT is lower than at least one entry. insert.
 
-						if err := m.InsertRoute(acceptableRoutes, &acceptableRoutesLength, nearRelay.ClientStats.RTT+routeRTT, entry, i, reverse); err != nil {
-							return nil, 0, err
+						if err := m.InsertRoute(bestRoutes, &bestRoutesLength, nearRelay.ClientStats.RTT+routeRTT, entry, i, reverse); err != nil {
+							return nil, err
 						}
-						acceptableRoutesLength++
+						bestRoutesLength++
 					}
 				} else {
 					// route set is full, only insert if lower RTT than at least one current route.
 
-					if routeRTT >= acceptableRoutes[acceptableRoutesLength-1].Stats.RTT {
+					if routeRTT >= bestRoutes[bestRoutesLength-1].Stats.RTT {
 						continue
 					}
 
-					if err := m.InsertRoute(acceptableRoutes, &acceptableRoutesLength, nearRelay.ClientStats.RTT+routeRTT, entry, i, reverse); err != nil {
-						return nil, 0, err
+					if err := m.InsertRoute(bestRoutes, &bestRoutesLength, nearRelay.ClientStats.RTT+routeRTT, entry, i, reverse); err != nil {
+						return nil, err
 					}
 				}
 			}
 		}
 	}
 
-	return acceptableRoutes, acceptableRoutesLength, nil
+	bestRoutes = bestRoutes[:bestRoutesLength]
+
+	if len(bestRoutes) == 0 {
+		return nil, errors.New("no routes in route matrix")
+	}
+
+	return bestRoutes, nil
 }
 
 // Returns the index in the route matrix representing the route between the near Relay and dest Relay and whether or not to reverse them

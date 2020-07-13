@@ -1277,26 +1277,27 @@ func TestRouteMatrix(t *testing.T) {
 			near := []routing.Relay{}
 			dest := []routing.Relay{}
 
-			_, length, _ := routeMatrixCopy.GetRoutes(near, dest)
-			assert.Equal(t, uint64(0), length)
+			actual, err := routeMatrixCopy.GetRoutes(near, dest)
+			assert.EqualError(t, err, "no routes in route matrix")
+			assert.Equal(t, 0, len(actual))
 		})
 
 		t.Run("relays not found", func(t *testing.T) {
 			near := []routing.Relay{{ID: 1, Name: "relay.1"}}
 			dest := []routing.Relay{{ID: 2, Name: "relay.2"}}
 
-			_, length, err := routeMatrixCopy.GetRoutes(near, dest)
+			actual, err := routeMatrixCopy.GetRoutes(near, dest)
 			assert.EqualError(t, err, "no entry for near relay relay.1 and dest relay relay.2")
-			assert.Equal(t, uint64(0), length)
+			assert.Equal(t, 0, len(actual))
 		})
 
 		t.Run("one relay found", func(t *testing.T) {
 			near := []routing.Relay{{ID: 1, Name: "relay.1"}}
 			dest := []routing.Relay{{ID: 1500948990, Name: "relay.2"}}
 
-			_, length, err := routeMatrixCopy.GetRoutes(near, dest)
+			actual, err := routeMatrixCopy.GetRoutes(near, dest)
 			assert.EqualError(t, err, "no entry for near relay relay.1 and dest relay relay.2")
-			assert.Equal(t, uint64(0), length)
+			assert.Equal(t, 0, len(actual))
 		})
 
 		t.Run("success", func(t *testing.T) {
@@ -1342,9 +1343,9 @@ func TestRouteMatrix(t *testing.T) {
 				},
 			}
 
-			actual, length, err := routeMatrixCopy.GetRoutes(near, dest)
+			actual, err := routeMatrixCopy.GetRoutes(near, dest)
 			assert.NoError(t, err)
-			assert.Equal(t, uint64(len(expected)), length)
+			assert.Equal(t, len(expected), len(actual))
 
 			for routeidx, route := range expected {
 				assert.Equal(t, len(expected[routeidx].Relays), len(route.Relays))

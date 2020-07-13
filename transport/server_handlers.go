@@ -431,7 +431,7 @@ func (e VetoCacheEntry) MarshalBinary() ([]byte, error) {
 type RouteProvider interface {
 	ResolveRelay(id uint64) (routing.Relay, error)
 	GetDatacenterRelays(datacenter routing.Datacenter) []routing.Relay
-	GetRoutes(near []routing.Relay, dest []routing.Relay) ([]routing.Route, uint64, error)
+	GetRoutes(near []routing.Relay, dest []routing.Relay) ([]routing.Route, error)
 	GetNearRelays(latitude float64, longitude float64, maxNearRelays int) ([]routing.Relay, error)
 }
 
@@ -930,7 +930,7 @@ func GetBestRoute(routeMatrix RouteProvider, nearRelays []routing.Relay, datacen
 func GetNextRoute(routeMatrix RouteProvider, nearRelays []routing.Relay, datacenterRelays []routing.Relay, errorMetrics *metrics.SessionErrorMetrics,
 	buyer *routing.Buyer, prevRouteHash uint64) *routing.Route {
 	// We need to get all of the routes from the route matrix that connect any of the client's near relays and any of the game server's datacenter relays
-	routes, _, err := routeMatrix.GetRoutes(nearRelays, datacenterRelays)
+	acceptableRoutes, err := routeMatrix.GetRoutes(nearRelays, datacenterRelays)
 	if err != nil {
 		errorMetrics.RouteFailure.Add(1)
 		return nil
@@ -954,19 +954,19 @@ func GetNextRoute(routeMatrix RouteProvider, nearRelays []routing.Relay, datacen
 	}
 
 	for _, selectorFunc := range selectorFuncs {
-		routes = selectorFunc(routes)
+		acceptableRoutes = selectorFunc(acceptableRoutes)
 
-		if len(routes) == 0 {
+		if len(acceptableRoutes) == 0 {
 			break
 		}
 	}
 
-	if len(routes) == 0 {
+	if len(acceptableRoutes) == 0 {
 		errorMetrics.RouteSelectFailure.Add(1)
 		return nil
 	}
 
-	return &routes[0]
+	return &acceptableRoutes[0]
 }
 
 func CalculateNextBytesUpAndDown(envelopeKbpsUp uint64, envelopeKbpsDown uint64, sliceDuration uint64) (uint64, uint64) {
