@@ -359,6 +359,7 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 						return
 
 					}
+					datacenter.AliasName = dcMap.Alias
 				}
 
 			}
