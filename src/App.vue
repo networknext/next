@@ -190,6 +190,9 @@ Vue.component('font-awesome-icon', FontAwesomeIcon)
 Vue.component('nav-bar', NavBar)
 Vue.component('workspace', Workspace)
 export default Vue.extend({
+  mounted () {
+    console.log('Mounting the app')
+  }
 })
 
 </script>

@@ -27,14 +27,14 @@
     </ul>
     <ul class="navbar-nav px-3">
         <li class="nav-item text-nowrap">
-            <a class="login btn-sm btn-primary" href="#">
+            <a class="login btn-sm btn-primary" href="#" @click="authService.logIn()">
                 Log in
             </a>
         </li>
     </ul>
     <ul class="navbar-nav px-3">
         <li class="nav-item text-nowrap">
-            <a class="signup btn-sm btn-primary" href="#">
+            <a class="signup btn-sm btn-primary" href="#" @click="authService.signUp()">
                 Sign up
             </a>
         </li>
@@ -51,9 +51,16 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
+import AuthService from '../services/auth.service'
 
 @Component
 export default class NavBar extends Vue {
+    private authService: AuthService
+
+    constructor () {
+      super()
+      this.authService = Vue.prototype.$authService
+    }
 }
 </script>
 

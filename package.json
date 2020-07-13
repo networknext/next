@@ -10,12 +10,15 @@
     "lint": "vue-cli-service lint"
   },
   "dependencies": {
+    "@auth0/auth0-spa-js": "^1.10.0",
     "@deck.gl/core": "^8.2.0",
     "@deck.gl/layers": "^8.2.0",
     "@fortawesome/fontawesome-svg-core": "^1.2.29",
     "@fortawesome/free-solid-svg-icons": "^5.13.1",
     "@fortawesome/vue-fontawesome": "^0.1.10",
+    "@types/auth0-lock": "^11.4.13",
     "@types/mapbox-gl": "^1.11.0",
+    "auth0-lock": "^11.25.0",
     "bootstrap": "^4.5.0",
     "core-js": "^3.6.5",
     "jquery": "^3.5.1",
@@ -68,7 +71,9 @@
     "parserOptions": {
       "ecmaVersion": 2020
     },
-    "rules": {},
+    "rules": {
+      "@typescript-eslint/camelcase": "off"
+    },
     "overrides": [
       {
         "files": [
