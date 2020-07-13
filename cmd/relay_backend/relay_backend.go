@@ -573,7 +573,7 @@ func main() {
 	router.Handle("/cost_matrix", &costMatrix).Methods("GET")
 	router.HandleFunc("/route_matrix", serveRouteMatrixFunc).Methods("GET")
 	router.Handle("/debug/vars", expvar.Handler())
-	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(redisClientRelays, getRouteMatrixFunc, statsdb, "local", "local"))
+	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(redisClientRelays, getRouteMatrixFunc, statsdb, "local", "local", maxJitter))
 	router.HandleFunc("/routes", transport.RoutesHandlerFunc(redisClientRelays, getRouteMatrixFunc, statsdb, "local", "local"))
 
 	go func() {

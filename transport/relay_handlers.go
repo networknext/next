@@ -9,9 +9,7 @@ import (
 	"html/template"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -30,6 +28,10 @@ const (
 	InitRequestMagic = 0x9083708f
 
 	MaxRelays = 1024
+)
+
+var (
+	MaxJitter float64
 )
 
 type RelayHandlerConfig struct {
@@ -876,11 +878,7 @@ func statsTable(stats map[string]map[string]routing.Stats) template.HTML {
 			if RTT >= 10000 {
 				rttStyle = "<div style='color: red;'>"
 			}
-			maxJitter, err := strconv.ParseFloat(os.Getenv("RELAY_ROUTER_MAX_JITTER"), 64)
-			if err != nil {
-				maxJitter = 5
-			}
-			if Jitter > maxJitter {
+			if Jitter > MaxJitter {
 				jitterStyle = "</div><div style='color: red;'>"
 			}
 			if PacketLoss > .001 {
@@ -902,7 +900,7 @@ func statsTable(stats map[string]map[string]routing.Stats) template.HTML {
 	return template.HTML(html.String())
 }
 
-func RelayDashboardHandlerFunc(redisClient redis.Cmdable, GetRouteMatrix func() *routing.RouteMatrix, statsdb *routing.StatsDatabase, username string, password string) func(writer http.ResponseWriter, request *http.Request) {
+func RelayDashboardHandlerFunc(redisClient redis.Cmdable, GetRouteMatrix func() *routing.RouteMatrix, statsdb *routing.StatsDatabase, username string, password string, maxJitter float64) func(writer http.ResponseWriter, request *http.Request) {
 	type displayRelay struct {
 		ID         uint64
 		Name       string
@@ -915,6 +913,8 @@ func RelayDashboardHandlerFunc(redisClient redis.Cmdable, GetRouteMatrix func() 
 		Relays   []displayRelay
 		Stats    map[string]map[string]routing.Stats
 	}
+
+	MaxJitter = maxJitter
 
 	funcmap := template.FuncMap{
 		"statsTable": statsTable,
