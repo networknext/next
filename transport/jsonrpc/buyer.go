@@ -15,6 +15,7 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/go-redis/redis/v7"
+	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 )
@@ -29,6 +30,12 @@ type BuyersService struct {
 	mu                  sync.Mutex
 	mapPointsCache      []byte
 	mapPointsBuyerCache map[string][]byte
+
+	mapPointsCacheJSON    json.RawMessage
+	mapPointsCompactCache json.RawMessage
+
+	mapPointsBuyerCacheJSON    map[string]json.RawMessage
+	mapPointsCompactBuyerCache map[string]json.RawMessage
 
 	RedisClient redis.Cmdable
 	Storage     storage.Storer
@@ -468,16 +475,21 @@ func (s *BuyersService) GenerateMapPointsPerBuyerByte() error {
 	defer s.mu.Unlock()
 
 	var sessionIDs []string
+	var stringID string
 	var err error
 	var mapPointsGlobal mapPointsByte
+	var mapPointsBuyer mapPointsByte
+
+	s.mapPointsBuyerCache = make(map[string][]byte, 0)
+	s.mapPointsCache = make([]byte, 0)
 
 	buyers := s.Storage.Buyers()
 
-	// slice to hold all the final map points
-	mapPointsBuyers := make(map[string]mapPointsByte, 0)
-
 	for _, buyer := range buyers { // get all the session IDs from the map-points-global key set
-		stringID := fmt.Sprintf("%016x", buyer.ID)
+		mapPointsBuyer.GreenPoints = make([]point, 0)
+		mapPointsBuyer.BluePoints = make([]point, 0)
+
+		stringID = fmt.Sprintf("%016x", buyer.ID)
 		sessionIDs, err = s.RedisClient.SMembers(fmt.Sprintf("map-points-%016x-buyer", buyer.ID)).Result()
 		if err != nil {
 			err = fmt.Errorf("SessionMapPoints() failed getting map points for buyer %016x: %v", buyer.ID, err)
@@ -531,8 +543,10 @@ func (s *BuyersService) GenerateMapPointsPerBuyerByte() error {
 					if currentPoint.OnNetworkNext {
 						bytePoint.OnNetworkNext = 1
 						mapPointsGlobal.GreenPoints = append(mapPointsGlobal.GreenPoints, bytePoint)
+						mapPointsBuyer.GreenPoints = append(mapPointsGlobal.GreenPoints, bytePoint)
 					} else {
 						mapPointsGlobal.BluePoints = append(mapPointsGlobal.BluePoints, bytePoint)
+						mapPointsBuyer.BluePoints = append(mapPointsGlobal.BluePoints, bytePoint)
 					}
 				}
 			}
@@ -546,30 +560,39 @@ func (s *BuyersService) GenerateMapPointsPerBuyerByte() error {
 
 		level.Info(s.Logger).Log("key", "map-points-global", "removed", len(sremcmds))
 
-		// marshal the map points slice to local cache
-		s.mapPointsBuyerCache[stringID], err = json.Marshal(mapPointsBuyers[stringID])
-		if err != nil {
-			return err
-		}
-
-		s.mapPointsCompactBuyerCache[stringID], err = json.Marshal(mapPointsBuyerscompact[stringID])
-		if err != nil {
-			return err
-		}
+		// Write entries to byte cache
+		s.mapPointsBuyerCache[stringID] = WriteMapPointCache(&mapPointsBuyer)
 	}
-
-	// marshal the map points slice to local cache
-	s.mapPointsCache, err = json.Marshal(mapPointsGlobal)
-	if err != nil {
-		return err
-	}
-
-	s.mapPointsCompactCache, err = json.Marshal(mapPointsGlobalcompact)
-	if err != nil {
-		return err
-	}
+	s.mapPointsCache = WriteMapPointCache(&mapPointsGlobal)
 
 	return nil
+}
+
+func WriteMapPointCache(points *mapPointsByte) []byte {
+	var length uint32
+	numGreenPoints := uint32(len(points.GreenPoints))
+	numBluePoints := uint32(len(points.BluePoints))
+
+	// uint32 version number + number of relays + allocation for all relay ids
+	length = 1 + 4 + (1+2+2)*numGreenPoints + (1+2+2)*numBluePoints
+
+	data := make([]byte, length)
+	index := 0
+	encoding.WriteUint8(data, &index, MapPointByteCacheVersion)
+
+	for _, point := range points.GreenPoints {
+		encoding.Writeint16(data, &index, point.Latitude)
+		encoding.Writeint16(data, &index, point.Longitude)
+		encoding.WriteByte(data, &index, point.OnNetworkNext)
+	}
+
+	for _, point := range points.BluePoints {
+		encoding.Writeint16(data, &index, point.Latitude)
+		encoding.Writeint16(data, &index, point.Longitude)
+		encoding.WriteByte(data, &index, point.OnNetworkNext)
+
+	}
+	return data
 }
 
 // GenerateMapPoints warms a local cache of JSON to be used by SessionMapPoints
@@ -589,7 +612,7 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 	mapPointsGlobal := make([]routing.SessionMapPoint, 0)
 	mapPointsGlobalcompact := make([][]interface{}, 0)
 
-	s.mapPointsBuyerCache = make(map[string]json.RawMessage, 0)
+	s.mapPointsBuyerCacheJSON = make(map[string]json.RawMessage, 0)
 	s.mapPointsCompactBuyerCache = make(map[string]json.RawMessage, 0)
 
 	for _, buyer := range buyers { // get all the session IDs from the map-points-global key set
