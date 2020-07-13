@@ -25,11 +25,13 @@ func NewPubSubForwarder(ctx context.Context, biller Biller, logger log.Logger, m
 		return nil, fmt.Errorf("could not create pubsub client: %v", err)
 	}
 
-	if _, err := pubsubClient.CreateSubscription(ctx, subscriptionName, pubsub.SubscriptionConfig{
-		Topic: pubsubClient.Topic(topicName),
-	}); err != nil && err.Error() != "rpc error: code = AlreadyExists desc = Subscription already exists" {
-		// Not the best error check, but the underlying error type is internal so we can't check for it
-		return nil, fmt.Errorf("could not create local pubsub subscription: %v", err)
+	if gcpProjectID == "local" {
+		if _, err := pubsubClient.CreateSubscription(ctx, subscriptionName, pubsub.SubscriptionConfig{
+			Topic: pubsubClient.Topic(topicName),
+		}); err != nil && err.Error() != "rpc error: code = AlreadyExists desc = Subscription already exists" {
+			// Not the best error check, but the underlying error type is internal so we can't check for it
+			return nil, fmt.Errorf("could not create local pubsub subscription: %v", err)
+		}
 	}
 
 	return &PubSubForwarder{
