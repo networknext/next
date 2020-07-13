@@ -195,7 +195,7 @@ MapHandler = {
 	totalSessionCountCalls: 0,
 	initMap() {
 		this.updateFilter({
-			buyerId: UserHandler.isBuyer() ? UserHandler.userinfo.id : "",
+			buyerId: UserHandler.isBuyer() ? UserHandler.userInfo.id : "",
 			sessionType: 'all'
 		});
 	},
