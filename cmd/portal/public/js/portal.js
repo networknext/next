@@ -265,8 +265,13 @@ MapHandler = {
 		let filter = rootComponent.$data.pages.map.filter;
 
 		JSONRPCClient
-			.call('BuyersService.SessionMap', {buyer_id: filter.buyerId || ""})
+			.call('BuyersService.SessionMapBinary', {buyer_id: filter.buyerId || ""})
 			.then((response) => {
+				console.log(response)
+				let charArray = response.map_points.split("")
+				console.log(charArray)
+				let byteArray = Uint32Array.from(charArray)
+				console.log(byteArray)
 				if (!this.mapInstance) {
 					this.mapInstance = new mapboxgl.Map({
 						accessToken: mapboxgl.accessToken,

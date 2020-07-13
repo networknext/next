@@ -455,7 +455,7 @@ type MapPointsArgs struct {
 }
 
 type MapPointsReply struct {
-	Points json.RawMessage `json:"map_points"`
+	Points []byte `json:"map_points"`
 }
 
 type mapPointsByte struct {
@@ -747,6 +747,26 @@ func (s *BuyersService) SessionMap(r *http.Request, args *MapPointsArgs, reply *
 			return err
 		}
 		reply.Points = s.mapPointsCompactBuyerCache[args.BuyerID]
+	}
+
+	return nil
+}
+
+func (s *BuyersService) SessionMapBinary(r *http.Request, args *MapPointsArgs, reply *MapPointsReply) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	switch args.BuyerID {
+	case "":
+		// pull the local cache and reply with it
+		reply.Points = s.mapPointsCache
+	default:
+		if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
+			err := fmt.Errorf("SessionMap(): %v", ErrInsufficientPrivileges)
+			s.Logger.Log("err", err)
+			return err
+		}
+		reply.Points = s.mapPointsBuyerCache[args.BuyerID]
 	}
 
 	return nil
