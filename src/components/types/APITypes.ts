@@ -37,11 +37,10 @@ export interface SessionMeta {
 }
 
 export interface UserAccount {
-
-	userID: string;
-	ID: string;
-	companyName: string;
-	name: string;
-	email: string;
-	roles: Array<Role>;
+  auth0ID: string,
+  company: string,
+  email: string,
+  idToken: string,
+  name: string,
+  roles: Array<string>
 }

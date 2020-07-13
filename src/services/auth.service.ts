@@ -57,10 +57,19 @@ export default class AuthService {
   }
 
   private processAuthentification (authResult: AuthResult) {
-    console.log(authResult.idToken)
-    this.getUserInfo(authResult.accessToken, (error: auth0.Auth0Error, profile: auth0.Auth0UserProfile) => {
-      console.log(error)
-      console.log(profile)
+    this.getUserInfo(authResult.accessToken, (error: auth0.Auth0Error, profile: any) => {
+      if (!error) {
+        const roles = profile['https://networknext.com/userRoles'].roles
+        const userProfile = {
+          auth0ID: profile.sub,
+          company: '',
+          email: profile.email,
+          idToken: authResult.idToken,
+          name: profile.name,
+          roles: roles
+        }
+        console.log(userProfile)
+      }
     })
   }
 }
