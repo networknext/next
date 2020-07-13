@@ -1114,7 +1114,7 @@ func (fs *Firestore) Datacenter(id uint64) (routing.Datacenter, error) {
 
 	d, found := fs.datacenters[id]
 	if !found {
-		return routing.UnknownDatacenter, nil
+		return routing.Datacenter{}, &DoesNotExistError{resourceType: "datacenter", resourceRef: id}
 	}
 
 	return d, nil

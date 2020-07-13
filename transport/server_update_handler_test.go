@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/go-kit/kit/log"
+	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
@@ -52,8 +53,12 @@ func TestDatacenterNotFound(t *testing.T) {
 	// redisServer, _ := miniredis.Run()
 	// redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
+	buyersServerPubKey, buyersServerPrivKey, err := ed25519.GenerateKey(nil)
+
 	db := storage.InMemory{}
-	db.AddBuyer(context.Background(), routing.Buyer{})
+	db.AddBuyer(context.Background(), routing.Buyer{
+		PublicKey: buyersServerPubKey,
+	})
 
 	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
 	assert.NoError(t, err)
@@ -75,20 +80,22 @@ func TestDatacenterNotFound(t *testing.T) {
 		DatacenterID: 13,
 
 		Version: transport.SDKVersionMin,
-
-		Signature: make([]byte, ed25519.SignatureSize),
 	}
+	packet.Signature = crypto.Sign(buyersServerPrivKey, packet.GetSignData())
 
 	data, err := packet.MarshalBinary()
 	assert.NoError(t, err)
 
 	serverUpdateCounters := transport.ServerUpdateCounters{}
 
+	serverMap := transport.NewServerMap()
+
 	serverUpdateParams := transport.ServerUpdateParams{
-		Logger:   log.NewNopLogger(),
-		Storer:   &db,
-		Metrics:  &updateMetrics,
-		Counters: &serverUpdateCounters,
+		Logger:    log.NewNopLogger(),
+		Storer:    &db,
+		Metrics:   &updateMetrics,
+		Counters:  &serverUpdateCounters,
+		ServerMap: serverMap,
 	}
 
 	handler := transport.ServerUpdateHandlerFunc(&serverUpdateParams)

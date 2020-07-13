@@ -349,21 +349,27 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 		// To support this, when we can't find a datacenter directly by id, we look it up by alias instead.
 
 		datacenter, err := params.Storer.Datacenter(packet.DatacenterID) // todo: ryan, profiling indicates this is slow. please investigate
-		if datacenter == routing.UnknownDatacenter {
+		if err != nil {
 			// search the list of aliases created by/for this buyer
 			datacenterAliases := params.Storer.GetDatacenterMapsForBuyer(fmt.Sprintf("%x", packet.CustomerID))
-			for _, dcMap := range datacenterAliases {
-				if packet.DatacenterID == crypto.HashID(dcMap.Alias) {
-					datacenter, err = params.Storer.Datacenter(packet.DatacenterID)
-					if err != nil {
-						params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-						params.Metrics.ErrorMetrics.VerificationFailure.Add(1)
-						return
+			if len(datacenterAliases) == 0 {
+				params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
+				params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+				params.Metrics.ErrorMetrics.VerificationFailure.Add(1)
+			} else {
+				for _, dcMap := range datacenterAliases {
+					if packet.DatacenterID == crypto.HashID(dcMap.Alias) {
+						datacenter, err = params.Storer.Datacenter(packet.DatacenterID)
+						if err != nil {
+							params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
+							params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+							params.Metrics.ErrorMetrics.VerificationFailure.Add(1)
+							return
 
+						}
+						datacenter.AliasName = dcMap.Alias
 					}
-					datacenter.AliasName = dcMap.Alias
 				}
-
 			}
 		}
 
@@ -376,6 +382,7 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 
 		// IMPORTANT: The server data *must* be treated as read only or it is not threadsafe!
 		serverDataReadOnly := params.ServerMap.GetServerData(serverAddress)
+
 		if serverDataReadOnly != nil {
 			sequence = serverDataReadOnly.sequence
 		}
