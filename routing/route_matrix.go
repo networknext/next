@@ -200,6 +200,10 @@ func (m *RouteMatrix) GetRoutes(near []Relay, dest []Relay) ([]Route, uint64, er
 		for _, destRelay := range dest {
 			entryIndex, reverse := m.GetEntryIndex(&nearRelay, &destRelay)
 
+			if entryIndex < 0 {
+				return nil, 0, fmt.Errorf("no entry for near relay %s and dest relay %s", nearRelay.Name, destRelay.Name)
+			}
+
 			entry := &m.Entries[entryIndex]
 
 			for i := 0; i < int(entry.NumRoutes); i++ {
@@ -208,25 +212,25 @@ func (m *RouteMatrix) GetRoutes(near []Relay, dest []Relay) ([]Route, uint64, er
 				if acceptableRoutesLength == 0 {
 					// no routes added yet, add the route
 
-					if err := m.AppendRoute(acceptableRoutes, &acceptableRoutesLength, near[i].ClientStats.RTT+routeRTT, entry, i, reverse); err != nil {
+					if err := m.AppendRoute(acceptableRoutes, &acceptableRoutesLength, nearRelay.ClientStats.RTT+routeRTT, entry, i, reverse); err != nil {
 						return nil, 0, err
 					}
 
-				} else if acceptableRoutesLength < maxAcceptableRoutes {
+				} else if acceptableRoutesLength < MaxAcceptableRoutes {
 					// not at max routes yet, insert according RTT sort order
 
 					if routeRTT >= acceptableRoutes[acceptableRoutesLength-1].Stats.RTT {
 
 						// RTT is greater than existing entries. append.
 
-						if err := m.AppendRoute(acceptableRoutes, &acceptableRoutesLength, near[i].ClientStats.RTT+routeRTT, entry, i, reverse); err != nil {
+						if err := m.AppendRoute(acceptableRoutes, &acceptableRoutesLength, nearRelay.ClientStats.RTT+routeRTT, entry, i, reverse); err != nil {
 							return nil, 0, err
 						}
 					} else {
 
 						// RTT is lower than at least one entry. insert.
 
-						if err := m.InsertRoute(acceptableRoutes, &acceptableRoutesLength, near[i].ClientStats.RTT+routeRTT, entry, i, reverse); err != nil {
+						if err := m.InsertRoute(acceptableRoutes, &acceptableRoutesLength, nearRelay.ClientStats.RTT+routeRTT, entry, i, reverse); err != nil {
 							return nil, 0, err
 						}
 						acceptableRoutesLength++
@@ -238,7 +242,7 @@ func (m *RouteMatrix) GetRoutes(near []Relay, dest []Relay) ([]Route, uint64, er
 						continue
 					}
 
-					if err := m.InsertRoute(acceptableRoutes, &acceptableRoutesLength, near[i].ClientStats.RTT+routeRTT, entry, i, reverse); err != nil {
+					if err := m.InsertRoute(acceptableRoutes, &acceptableRoutesLength, nearRelay.ClientStats.RTT+routeRTT, entry, i, reverse); err != nil {
 						return nil, 0, err
 					}
 				}
