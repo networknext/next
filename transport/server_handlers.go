@@ -223,7 +223,7 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 		datacenter, _ := params.Storer.Datacenter(packet.DatacenterID)
 		if datacenter == routing.UnknownDatacenter {
 			// search the list of aliases created by/for this buyer
-			datacenterAliases := params.Storer.GetDatacenterMapsForBuyer(fmt.Sprintf("%x", packet.CustomerID))
+			datacenterAliases := params.Storer.GetDatacenterMapsForBuyer(packet.CustomerID)
 			if len(datacenterAliases) == 0 {
 				params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
 				writeServerInitResponse(params, w, &packet, InitResponseUnknownDatacenter)
@@ -336,7 +336,6 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 
 		// Check the server update is signed by the private key of the buyer.
 		// If the signature does not match, this is not a server we care about. Don't even waste bandwidth to respond.
-
 		if !crypto.Verify(buyer.PublicKey, packet.GetSignData(), packet.Signature) {
 			// level.Error(locallogger).Log("msg", "signature verification failed")
 			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
@@ -351,7 +350,7 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 		datacenter, err := params.Storer.Datacenter(packet.DatacenterID) // todo: ryan, profiling indicates this is slow. please investigate
 		if err != nil {
 			// search the list of aliases created by/for this buyer
-			datacenterAliases := params.Storer.GetDatacenterMapsForBuyer(fmt.Sprintf("%x", packet.CustomerID))
+			datacenterAliases := params.Storer.GetDatacenterMapsForBuyer(packet.CustomerID)
 			if len(datacenterAliases) == 0 {
 				params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
 				params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
@@ -359,7 +358,7 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 			} else {
 				for _, dcMap := range datacenterAliases {
 					if packet.DatacenterID == crypto.HashID(dcMap.Alias) {
-						datacenter, err = params.Storer.Datacenter(packet.DatacenterID)
+						datacenter, err = params.Storer.Datacenter(dcMap.Datacenter)
 						if err != nil {
 							params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
 							params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)

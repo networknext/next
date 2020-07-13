@@ -88,14 +88,14 @@ type Storer interface {
 
 	// DatacenterMaps returns the list of datacenter aliases in use for a given (internally generated) buyerID. Returns
 	// an empty []routing.DatacenterMap if there are no aliases for that buyerID.
-	GetDatacenterMapsForBuyer(buyerID string) map[uint64]routing.DatacenterMap
+	GetDatacenterMapsForBuyer(buyerID uint64) map[uint64]routing.DatacenterMap
 
 	// AddDatacenterMap adds a new datacenter alias for the given buyer and datacenter IDs
 	AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error
 
 	// ListDatacenterMaps returns a list of alias/buyer mappings for the specified datacenter ID. An
 	// empty dcID returns a list of all maps.
-	ListDatacenterMaps(dcID string) map[uint64]routing.DatacenterMap
+	ListDatacenterMaps(dcID uint64) map[uint64]routing.DatacenterMap
 
 	// RemoveDatacenterMap removes an entry from the DatacenterMaps table
 	RemoveDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error

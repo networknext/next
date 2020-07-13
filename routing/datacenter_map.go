@@ -4,8 +4,8 @@ import "fmt"
 
 // DatacenterMap maps buyer's alias names to the actual Datacenter
 type DatacenterMap struct {
-	BuyerID    string `json:"buyer_id"`
-	Datacenter string `json:"datacenter"`
+	BuyerID    uint64 `json:"buyer_id"`
+	Datacenter uint64 `json:"datacenter"`
 	Alias      string `json:"alias"`
 }
 

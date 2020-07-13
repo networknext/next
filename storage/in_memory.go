@@ -283,11 +283,11 @@ func (m *InMemory) AddDatacenterMap(ctx context.Context, dcMap routing.Datacente
 
 }
 
-func (m *InMemory) GetDatacenterMapsForBuyer(id string) map[uint64]routing.DatacenterMap {
+func (m *InMemory) GetDatacenterMapsForBuyer(id uint64) map[uint64]routing.DatacenterMap {
 	var dcs = make(map[uint64]routing.DatacenterMap)
 	for _, dc := range m.localDatacenterMaps {
 		if dc.BuyerID == id {
-			id := crypto.HashID(dc.Alias + dc.BuyerID + dc.Datacenter)
+			id := crypto.HashID(dc.Alias + fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.Datacenter))
 			dcs[id] = dc
 		}
 	}
@@ -295,11 +295,11 @@ func (m *InMemory) GetDatacenterMapsForBuyer(id string) map[uint64]routing.Datac
 	return dcs
 }
 
-func (m *InMemory) ListDatacenterMaps(dcID string) map[uint64]routing.DatacenterMap {
+func (m *InMemory) ListDatacenterMaps(dcID uint64) map[uint64]routing.DatacenterMap {
 	var dcs = make(map[uint64]routing.DatacenterMap)
 	for _, dc := range m.localDatacenterMaps {
-		if dc.Datacenter == dcID || dcID == "" {
-			id := crypto.HashID(dc.Alias + dc.BuyerID + dc.Datacenter)
+		if dc.Datacenter == dcID {
+			id := crypto.HashID(dc.Alias + fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.Datacenter))
 			dcs[id] = dc
 		}
 	}
