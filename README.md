@@ -20,8 +20,9 @@ This is a monorepo that contains the Network Next backend.
 	- **Draft**: mark a PR as a draft to expose you have started work and have questions/comments in order to complete the work
 	- **Ready for Review**: mark a PR as ready for review and include the appropriate reviewers when unit tests for your bug/feature are all passing
 4. Once your pull request has been reviewed merge it into `master`
-5. Semaphore will build your PR and copy artifacts to the google cloud gs://dev_artifacts bucket automatically.
-6. Manually trigger a rolling update in google cloud on each managed instance group you want to update to latest code.
+5. To deploy to dev, merge either your branch or `master` into the `dev` branch
+6. Semaphore will build your PR and copy artifacts to the google cloud gs://dev_artifacts bucket automatically.
+7. Manually trigger a rolling update in google cloud on each managed instance group you want to update to latest code.
 
 ### Production Release
 
@@ -160,7 +161,7 @@ A good test to see if everything works and is installed is to run the "Happy Pat
 
 1. `redis-cli flushall && make BACKEND_LOG_LEVEL=info dev-relay-backend`: this will clear your local redis completely to start fresh and then run the relay backend
 2. `make dev-multi-relays`: this will run 10 instances of a relay and each will register themselves with the relay backend
-3. `make BACKEND_LOG_LEVEL=info dev-server-backend`: this will run the server backend and start pulling route information from the relay backend every 10 seconds
+3. `make BACKEND_LOG_LEVEL=info dev-server-backend`: this will run the server backend and start pulling route information from the relay backend every second
 4. `make dev-server`: this will run a fake game server and register itself with the server backend
 5. `make dev-client`: this will run a fake game client and request a route from the server which will ask the server backend for a new route for the game client. You can also run `make dev-multi-clients` to create 20 client sessions.
 6. `make JWT_AUDIENCE="oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n" dev-portal`: this will run the Portal RPC API and Portal UI. You can visit https://localhost:20000 to view currently connected sessions.
@@ -168,6 +169,17 @@ A good test to see if everything works and is installed is to run the "Happy Pat
 You should see the fake game server upgrade the clients session and get `(next route)` and `(continue route)` from the server backend which it sends to the fake game client.
 
 Simultaneously you will see the terminal with the relays logging `session created` indicating traffic is passing through relays.
+
+## Local Billing
+
+It is also possible to locally debug what data is being sent to the `billing` service. To verify that the data being sent to `billing` is correct:
+
+1. Make sure you have the pubsub emulator installed (instructions are in [Recommended Setup](#Recommended-Setup))
+2. Define `PUBSUB_EMULATOR_HOST` in the makefile (ex. define it as `localhost:9000`)
+3. Along with the rest of the [Happy Path](#Running-the-"Happy-Path"), run the Google Pub/Sub Emulator with `gcloud beta emulators pubsub start --project=local --host-port=localhost:9000`
+3. run `make BACKEND_LOG_LEVEL=debug dev-billing`
+
+This will use a local billing implementation to print out the billing entry to the console window.
 
 ## Backend
 
@@ -177,6 +189,7 @@ All of these services are controlled and deployed by us.
 - [`cmd/relay`](cmd/relay)
 - [`cmd/relay_backend`](cmd/relay_backend)
 - [`cmd/server_backend`](cmd/server_backend)
+- [`cmd/billing`](cmd/billing)
 
 ## SDK
 
