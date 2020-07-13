@@ -48,14 +48,14 @@ func removeDatacenter(rpcClient jsonrpc.RPCClient, env Environment, name string)
 		return
 	}
 
-	fmt.Printf("Datacenter \"%s\" removed from storage.\n", name)
+	fmt.Printf("Datacenter \"%x\" removed from storage.\n", name)
 }
 
-func listDatacenterMaps(rpcClient jsonrpc.RPCClient, env Environment, datacenter string) {
+func listDatacenterMaps(rpcClient jsonrpc.RPCClient, env Environment, datacenter uint64) {
 	dcID := returnDatacenterID(rpcClient, env, datacenter)
 
-	if dcID == "" {
-		fmt.Printf("Datacenter '%s' not found.\n", datacenter)
+	if dcID == 0 {
+		fmt.Printf("Datacenter '%x' not found.\n", datacenter)
 		return
 	}
 

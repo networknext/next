@@ -1066,7 +1066,12 @@ func main() {
 						id = args[0]
 					}
 
-					listDatacenterMaps(rpcClient, env, id)
+					hexID, err := strconv.ParseUint(id, 10, 64)
+					if err != nil {
+						return fmt.Errorf("Can not work with datacenter ID%v\n", id)
+					}
+
+					listDatacenterMaps(rpcClient, env, hexID)
 					return nil
 				},
 			},
@@ -1184,8 +1189,13 @@ func main() {
 								return err
 							}
 
+							hexID, err := strconv.ParseUint(args[0], 10, 64)
+							if err != nil {
+								return fmt.Errorf("Can not work with datacenter ID%v\n", args[0])
+							}
+
 							// ToDo: error return
-							datacenterMapsForBuyer(rpcClient, env, args[0])
+							datacenterMapsForBuyer(rpcClient, env, hexID)
 
 							return nil
 						},
@@ -1200,8 +1210,8 @@ is as follows:
 
 {
 	"alias": "some.server.alias",
-	"datacenter": "2fe32c22450fb4c9" or "vultr.newyork",
-	"buyer_id": "bdbebdbf0f7be395" or "Some Buyer name"
+	"datacenter": "2fe32c22450fb4c9",
+	"buyer_id": "bdbebdbf0f7be395"
 }
 
 The buyer and datacenter must exist. Substrings accepted for the buyer and
@@ -1213,11 +1223,27 @@ datacenter names.
 
 							// Unmarshal the JSON and create the Buyer struct
 							var dcm routing.DatacenterMap
-							if err := json.Unmarshal(jsonData, &dcm); err != nil {
+							var dcmTemp struct {
+								BuyerID    string `json:"buyer_id"`
+								Datacenter string `json:"datacenter"`
+								Alias      string `json:"alias"`
+							}
+							if err := json.Unmarshal(jsonData, &dcmTemp); err != nil {
 								log.Fatalf("Could not unmarshal datacenter map: %v", err)
 							}
 
-							err := addDatacenterMap(rpcClient, env, dcm)
+							var err error
+							dcm.Alias = dcmTemp.Alias
+							dcm.BuyerID, err = strconv.ParseUint(dcmTemp.BuyerID, 16, 64)
+							if err != nil {
+								return err
+							}
+							dcm.Datacenter, err = strconv.ParseUint(dcmTemp.Datacenter, 16, 64)
+							if err != nil {
+								return err
+							}
+
+							err = addDatacenterMap(rpcClient, env, dcm)
 
 							if err != nil {
 								return err

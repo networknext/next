@@ -720,7 +720,7 @@ func (s *OpsService) RemoveDatacenter(r *http.Request, args *RemoveDatacenterArg
 }
 
 type ListDatacenterMapsArgs struct {
-	DatacenterID string
+	DatacenterID uint64
 }
 
 type ListDatacenterMapsReply struct {

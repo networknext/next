@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"regexp"
 	"sort"
+	"strconv"
 
 	"github.com/modood/table"
 	"github.com/networknext/backend/routing"
@@ -202,11 +203,11 @@ func setRoutingRulesSettings(rpcClient jsonrpc.RPCClient, env Environment, buyer
 	fmt.Printf("Route shader for buyer with ID \"%s\" updated.\n", buyerID)
 }
 
-func datacenterMapsForBuyer(rpcClient jsonrpc.RPCClient, env Environment, arg string) {
+func datacenterMapsForBuyer(rpcClient jsonrpc.RPCClient, env Environment, arg uint64) {
 
-	var buyerID string
-	if buyerID = returnBuyerID(rpcClient, env, arg); buyerID == "" {
-		fmt.Printf("No matches found for '%s'", arg)
+	var buyerID uint64
+	if buyerID = returnBuyerID(rpcClient, env, arg); buyerID == 0 {
+		fmt.Printf("No matches found for '%x'", arg)
 		return
 	}
 	args := localjsonrpc.DatacenterMapsArgs{
@@ -234,13 +235,13 @@ func datacenterMapsForBuyer(rpcClient jsonrpc.RPCClient, env Environment, arg st
 
 func addDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm routing.DatacenterMap) error {
 
-	var buyerID string
-	if buyerID = returnBuyerID(rpcClient, env, dcm.BuyerID); buyerID == "" {
-		return fmt.Errorf("No buyer matches found for '%s'", dcm.BuyerID)
+	var buyerID uint64
+	if buyerID = returnBuyerID(rpcClient, env, dcm.BuyerID); buyerID == 0 {
+		return fmt.Errorf("No buyer matches found for '%x'", dcm.BuyerID)
 	}
-	var dcID string
-	if dcID = returnDatacenterID(rpcClient, env, dcm.Datacenter); dcID == "" {
-		return fmt.Errorf("No matches found for '%s'", dcm.Datacenter)
+	var dcID uint64
+	if dcID = returnDatacenterID(rpcClient, env, dcm.Datacenter); dcID == 0 {
+		return fmt.Errorf("No matches found for '%x'", dcm.Datacenter)
 	}
 	arg := localjsonrpc.AddDatacenterMapArgs{
 		DatacenterMap: routing.DatacenterMap{
@@ -261,13 +262,13 @@ func addDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm routing.
 }
 
 func removeDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm routing.DatacenterMap) error {
-	var buyerID string
-	if buyerID = returnBuyerID(rpcClient, env, dcm.BuyerID); buyerID == "" {
-		return fmt.Errorf("No buyer matches found for '%s'", dcm.BuyerID)
+	var buyerID uint64
+	if buyerID = returnBuyerID(rpcClient, env, dcm.BuyerID); buyerID == 0 {
+		return fmt.Errorf("No buyer matches found for '%x'", dcm.BuyerID)
 	}
-	var dcID string
-	if dcID = returnDatacenterID(rpcClient, env, dcm.Datacenter); dcID == "" {
-		return fmt.Errorf("No matches found for '%s'", dcm.Datacenter)
+	var dcID uint64
+	if dcID = returnDatacenterID(rpcClient, env, dcm.Datacenter); dcID == 0 {
+		return fmt.Errorf("No matches found for '%x'", dcm.Datacenter)
 	}
 
 	arg := localjsonrpc.RemoveDatacenterMapArgs{
@@ -288,41 +289,51 @@ func removeDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm routi
 
 }
 
-func returnBuyerID(rpcClient jsonrpc.RPCClient, env Environment, arg string) string {
+func returnBuyerID(rpcClient jsonrpc.RPCClient, env Environment, arg uint64) uint64 {
 	// check to see if user entered name or substring (not id)
 	buyerArgs := localjsonrpc.BuyersArgs{}
 	var buyers localjsonrpc.BuyersReply
 	if err := rpcClient.CallFor(&buyers, "OpsService.Buyers", buyerArgs); err != nil {
 		handleJSONRPCError(env, err)
-		return ""
+		return 0
 	}
 
-	var buyerID string
+	var buyerID uint64
 
-	r := regexp.MustCompile("(?i)" + arg) // case-insensitive regex
+	r := regexp.MustCompile("(?i)" + fmt.Sprintf("%x", arg)) // case-insensitive regex
 	for _, buyer := range buyers.Buyers {
-		if r.MatchString(buyer.Name) || arg == buyer.ID {
-			buyerID = buyer.ID
+		hexBuyerID, err := strconv.ParseUint(buyer.ID, 10, 64)
+		if err != nil {
+			handleJSONRPCError(env, err)
+			return 0
+		}
+		if r.MatchString(buyer.Name) || arg == hexBuyerID {
+			buyerID = arg
 		}
 	}
 
 	return buyerID
 }
 
-func returnDatacenterID(rpcClient jsonrpc.RPCClient, env Environment, arg string) string {
+func returnDatacenterID(rpcClient jsonrpc.RPCClient, env Environment, arg uint64) uint64 {
 	args := localjsonrpc.DatacentersArgs{}
 
 	var reply localjsonrpc.DatacentersReply
 	if err := rpcClient.CallFor(&reply, "OpsService.Datacenters", args); err != nil {
 		handleJSONRPCError(env, err)
-		return ""
+		return 0
 	}
 
-	var datacenterID string
-	r := regexp.MustCompile("(?i)" + arg) // case-insensitive regex
+	var datacenterID uint64
+	r := regexp.MustCompile("(?i)" + fmt.Sprintf("%x", arg)) // case-insensitive regex
 	for _, dc := range reply.Datacenters {
-		if r.MatchString(dc.Name) || arg == dc.ID {
-			datacenterID = dc.ID
+		hexDatacenterID, err := strconv.ParseUint(dc.ID, 10, 64)
+		if err != nil {
+			handleJSONRPCError(env, err)
+			return 0
+		}
+		if r.MatchString(dc.Name) || arg == hexDatacenterID {
+			datacenterID = arg
 		}
 	}
 

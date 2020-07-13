@@ -758,7 +758,7 @@ func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *Buye
 }
 
 type DatacenterMapsArgs struct {
-	ID string `json:"buyer_id"`
+	ID uint64 `json:"buyer_id"`
 }
 
 type DatacenterMapsReply struct {
