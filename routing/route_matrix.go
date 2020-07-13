@@ -19,6 +19,8 @@ import (
 const (
 	// IMPORTANT: Increment this when you change the binary format
 	RouteMatrixVersion = 6
+
+	MaxAcceptableRoutes = 16
 )
 
 // todo: ryan, there's absolutely no reason to keep compatibility past the last route matrix version in production
@@ -181,10 +183,10 @@ func (m *RouteMatrix) GetDatacenterRelays(d Datacenter) []Relay {
 }
 
 // GetRoutes returns acceptable routes between the set of near relays and destination relays.
-// maxAcceptableRoutes is the maximum number of acceptable routes that can be returned.
-// Returns the acceptable routes, the number of routes in the slice, and an error, if one exists.
-func (m *RouteMatrix) GetRoutes(near []Relay, dest []Relay, maxAcceptableRoutes uint64) ([]Route, uint64, error) {
-	acceptableRoutes := make([]Route, maxAcceptableRoutes)
+// The returned slice always has capacity of MaxAcceptableRoutes, so the number of routes actually used is also returned.
+// Any "unused" routes will be set to direct routes with all of their stats set to InvalidRouteValue.
+func (m *RouteMatrix) GetRoutes(near []Relay, dest []Relay) ([]Route, uint64, error) {
+	acceptableRoutes := make([]Route, MaxAcceptableRoutes)
 	var acceptableRoutesLength uint64
 
 	for i := range acceptableRoutes {
