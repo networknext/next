@@ -235,6 +235,7 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 						params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
 						writeServerInitResponse(params, w, &packet, InitResponseUnknownDatacenter)
 					}
+					datacenter.AliasName = dcMap.Alias
 				}
 			}
 		}
