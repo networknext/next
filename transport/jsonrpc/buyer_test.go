@@ -692,6 +692,7 @@ func TestGameConfiguration(t *testing.T) {
 	})
 }
 
+/*
 func TestSameBuyerRoleFunction(t *testing.T) {
 	redisServer, _ := miniredis.Run()
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
@@ -725,4 +726,4 @@ func TestSameBuyerRoleFunction(t *testing.T) {
 		assert.NoError(t, err)
 		assert.True(t, verified)
 	})
-}
+} */
