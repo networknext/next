@@ -996,7 +996,7 @@ func (fs *Firestore) GetDatacenterMapsForBuyer(buyerID uint64) map[uint64]routin
 	var dcs = make(map[uint64]routing.DatacenterMap)
 	for _, dc := range fs.datacenterMaps {
 		if dc.BuyerID == buyerID {
-			id := crypto.HashID(dc.Alias + fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.Datacenter))
+			id := crypto.HashID(dc.Alias + fmt.Sprintf("%016x", dc.BuyerID) + fmt.Sprintf("%016x", dc.Datacenter))
 			dcs[id] = dc
 		}
 	}
@@ -1055,7 +1055,7 @@ func (fs *Firestore) ListDatacenterMaps(dcID uint64) map[uint64]routing.Datacent
 	var dcs = make(map[uint64]routing.DatacenterMap)
 	for _, dc := range fs.datacenterMaps {
 		if dc.Datacenter == dcID || dcID == 0 {
-			id := crypto.HashID(dc.Alias + fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.Datacenter))
+			id := crypto.HashID(dc.Alias + fmt.Sprintf("%016x", dc.BuyerID) + fmt.Sprintf("%016x", dc.Datacenter))
 			dcs[id] = dc
 		}
 	}
@@ -1099,7 +1099,7 @@ func (fs *Firestore) RemoveDatacenterMap(ctx context.Context, dcMap routing.Data
 
 	if found {
 		fs.datacenterMapMutex.RLock()
-		id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.Datacenter))
+		id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%016x", dcMap.BuyerID) + fmt.Sprintf("%016x", dcMap.Datacenter))
 
 		delete(fs.datacenterMaps, id)
 
@@ -1511,7 +1511,7 @@ func (fs *Firestore) syncDatacenterMaps(ctx context.Context) error {
 		dcMap.BuyerID = uint64(dcMapInt64.Buyer)
 		dcMap.Datacenter = uint64(dcMapInt64.Datacenter)
 
-		id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.Datacenter))
+		id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%016x", dcMap.BuyerID) + fmt.Sprintf("%016x", dcMap.Datacenter))
 		dcMaps[id] = dcMap
 	}
 
