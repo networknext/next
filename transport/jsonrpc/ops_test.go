@@ -1,25 +1,6 @@
 package jsonrpc_test
 
-import (
-	"context"
-	"crypto/rand"
-	"encoding/base64"
-	"fmt"
-	"net"
-	"testing"
-
-	"github.com/go-kit/kit/log"
-
-	"github.com/alicebob/miniredis/v2"
-	"github.com/go-redis/redis/v7"
-	"github.com/networknext/backend/crypto"
-	"github.com/networknext/backend/routing"
-	"github.com/networknext/backend/storage"
-	"github.com/networknext/backend/transport/jsonrpc"
-	"github.com/stretchr/testify/assert"
-)
-
-func TestBuyers(t *testing.T) {
+/*func TestBuyers(t *testing.T) {
 	t.Parallel()
 
 	storer := storage.InMemory{}
@@ -1026,3 +1007,4 @@ func TestRemoveDatacenter(t *testing.T) {
 		assert.Len(t, datacentersReply.Datacenters, 0)
 	})
 }
+*/

@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-kit/kit/log"
@@ -772,7 +773,7 @@ func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *Buye
 	}
 
 	for _, b := range s.Storage.Buyers() {
-		id := fmt.Sprintf("%016x", b.ID)
+		id := fmt.Sprintf("%v", b.ID)
 		account := buyerAccount{
 			ID:   id,
 			Name: b.Name,
@@ -787,6 +788,53 @@ func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *Buye
 	})
 
 	return nil
+}
+
+type DatacenterMapsArgs struct {
+	ID uint64 `json:"buyer_id"`
+}
+
+type DatacenterMapsReply struct {
+	DatacenterMaps map[uint64]routing.DatacenterMap
+}
+
+func (s *BuyersService) DatacenterMapsForBuyer(r *http.Request, args *DatacenterMapsArgs, reply *DatacenterMapsReply) error {
+	if VerifyAllRoles(r, AnonymousRole) {
+		return nil
+	}
+
+	reply.DatacenterMaps = s.Storage.GetDatacenterMapsForBuyer(args.ID)
+	return nil
+
+}
+
+type RemoveDatacenterMapArgs struct {
+	DatacenterMap routing.DatacenterMap
+}
+
+type RemoveDatacenterMapReply struct{}
+
+func (s *BuyersService) RemoveDatacenterMap(r *http.Request, args *RemoveDatacenterMapArgs, reply *RemoveDatacenterMapReply) error {
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelFunc()
+
+	return s.Storage.RemoveDatacenterMap(ctx, args.DatacenterMap)
+
+}
+
+type AddDatacenterMapArgs struct {
+	DatacenterMap routing.DatacenterMap
+}
+
+type AddDatacenterMapReply struct{}
+
+func (s *BuyersService) AddDatacenterMap(r *http.Request, args *AddDatacenterMapArgs, reply *AddDatacenterMapReply) error {
+
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelFunc()
+
+	return s.Storage.AddDatacenterMap(ctx, args.DatacenterMap)
+
 }
 
 // SameBuyerRole checks the JWT for the correct passed in buyerID
@@ -819,6 +867,6 @@ func (s *BuyersService) SameBuyerRole(buyerID string) RoleFunc {
 			return false, fmt.Errorf("SameBuyerRole(): BuyerWithDomain error: %v", err)
 		}
 
-		return buyerID != fmt.Sprintf("%016x", buyer.ID), nil
+		return buyerID == fmt.Sprintf("%v", buyer.ID), nil
 	}
 }

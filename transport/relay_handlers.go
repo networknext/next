@@ -30,6 +30,10 @@ const (
 	MaxRelays = 1024
 )
 
+var (
+	MaxJitter float64
+)
+
 type RelayHandlerConfig struct {
 	RedisClient      redis.Cmdable
 	GeoClient        *routing.GeoClient
@@ -874,7 +878,7 @@ func statsTable(stats map[string]map[string]routing.Stats) template.HTML {
 			if RTT >= 10000 {
 				rttStyle = "<div style='color: red;'>"
 			}
-			if Jitter > 10 {
+			if Jitter > MaxJitter {
 				jitterStyle = "</div><div style='color: red;'>"
 			}
 			if PacketLoss > .001 {
@@ -896,7 +900,7 @@ func statsTable(stats map[string]map[string]routing.Stats) template.HTML {
 	return template.HTML(html.String())
 }
 
-func RelayDashboardHandlerFunc(redisClient redis.Cmdable, GetRouteMatrix func() *routing.RouteMatrix, statsdb *routing.StatsDatabase, username string, password string) func(writer http.ResponseWriter, request *http.Request) {
+func RelayDashboardHandlerFunc(redisClient redis.Cmdable, GetRouteMatrix func() *routing.RouteMatrix, statsdb *routing.StatsDatabase, username string, password string, maxJitter float64) func(writer http.ResponseWriter, request *http.Request) {
 	type displayRelay struct {
 		ID         uint64
 		Name       string
@@ -909,6 +913,8 @@ func RelayDashboardHandlerFunc(redisClient redis.Cmdable, GetRouteMatrix func() 
 		Relays   []displayRelay
 		Stats    map[string]map[string]routing.Stats
 	}
+
+	MaxJitter = maxJitter
 
 	funcmap := template.FuncMap{
 		"statsTable": statsTable,

@@ -195,7 +195,7 @@ MapHandler = {
 	totalSessionCountCalls: 0,
 	initMap() {
 		this.updateFilter({
-			buyerId: UserHandler.isBuyer() ? UserHandler.userInfo.id : "",
+			buyerId: UserHandler.isBuyer() && !UserHandler.isAdmin() ? UserHandler.userInfo.id : "",
 			sessionType: 'all'
 		});
 	},
@@ -362,6 +362,7 @@ MapHandler = {
 }
 
 UserHandler = {
+	allBuyers: [],
 	userInfo: null,
 	async fetchCurrentUserInfo() {
 		return AuthHandler.auth0Client.getIdTokenClaims()
@@ -413,7 +414,7 @@ UserHandler = {
 			});
 	},
 	getBuyerName() {
-		let allBuyers = rootComponent.$data.allBuyers;
+		let allBuyers = UserHandler.allBuyers;
 		return Array.from(allBuyers).length > 0 ? Array.from(allBuyers).find((buyer) => {
 				return buyer.id == this.userInfo.id || this.isAdmin()
 		}).name : "Private";
@@ -428,7 +429,10 @@ UserHandler = {
 		return !this.isAnonymous() ? !this.userInfo.verified : false;
 	},
 	isBuyer() {
-		return this.userInfo ? this.userInfo.id : "" != ""
+		if (this.userInfo) {
+			return this.userInfo.id !== ""
+		}
+		return false
 	},
 	isOwner() {
 		return !this.isAnonymous() ? this.userInfo.roles.findIndex((role) => role.name == "Owner") !== -1 : false;
@@ -640,7 +644,7 @@ WorkspaceHandler = {
 	},
 	loadSessionsPage() {
 		this.updateSessionFilter({
-			buyerId: "",
+			buyerId: UserHandler.isBuyer() && !UserHandler.isAdmin() ? UserHandler.userInfo.id : "",
 			sessionType: 'all'
 		});
 	},
@@ -964,8 +968,7 @@ function startApp() {
 			JSONRPCClient
 				.call('BuyersService.Buyers', {})
 				.then((response) => {
-					let allBuyers = response.buyers || [];
-					Object.assign(rootComponent.$data, {allBuyers: allBuyers});
+					UserHandler.allBuyers = response.buyers || [];
 					/* if (UserHandler.isAnonymous()) {
 						WorkspaceHandler.welcomeTimeout = setTimeout(() => {
 							this.welcomeTimeout !== null ? clearTimeout(this.welcomeTimeout) : null;
@@ -998,7 +1001,6 @@ function createVueComponents() {
 	rootComponent = new Vue({
 		el: '#root',
 		data: {
-			allBuyers: [],
 			showCount: false,
 			mapSessions: 0,
 			onNN: 0,

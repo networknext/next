@@ -213,19 +213,33 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 			return
 		}
 
-		// If the datacenter does not exist, the user has probably not set the datacenter string correctly
-		// on their server instance, or the datacenter name they are passing in does not exist (yet).
+		// If neither the datacenter nor a relevent alias exists, the user has probably not set the
+		// datacenter string correctly on their server instance, or the datacenter name they are
+		// passing in does not exist (yet).
 
 		// IMPORTANT: In the future, we will extend the SDK to pass in the datacenter name as a string
 		// because it's really difficult to debug what the incorrectly datacenter string is, when we only
 		// see the hash :(
 
-		_, err = params.Storer.Datacenter(packet.DatacenterID)
+		datacenter, err := params.Storer.Datacenter(packet.DatacenterID)
 		if err != nil {
-			// fmt.Printf("datacenter not found\n")
-			params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
-			writeServerInitResponse(params, w, &packet, InitResponseUnknownDatacenter)
-			return
+			// search the list of aliases created by/for this buyer
+			datacenterAliases := params.Storer.GetDatacenterMapsForBuyer(packet.CustomerID)
+			if len(datacenterAliases) == 0 {
+				params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
+				writeServerInitResponse(params, w, &packet, InitResponseUnknownDatacenter)
+			} else {
+				for _, dcMap := range datacenterAliases {
+					if packet.DatacenterID == crypto.HashID(dcMap.Alias) {
+						datacenter, err = params.Storer.Datacenter(dcMap.Datacenter)
+						if err != nil {
+							params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
+							writeServerInitResponse(params, w, &packet, InitResponseUnknownDatacenter)
+						}
+						datacenter.AliasName = dcMap.Alias
+					}
+				}
+			}
 		}
 
 		// If we get down here, all checks have passed and this server is OK to init.
@@ -323,7 +337,6 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 
 		// Check the server update is signed by the private key of the buyer.
 		// If the signature does not match, this is not a server we care about. Don't even waste bandwidth to respond.
-
 		if !crypto.Verify(buyer.PublicKey, packet.GetSignData(), packet.Signature) {
 			// level.Error(locallogger).Log("msg", "signature verification failed")
 			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
@@ -337,11 +350,25 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 
 		datacenter, err := params.Storer.Datacenter(packet.DatacenterID) // todo: ryan, profiling indicates this is slow. please investigate
 		if err != nil {
-			// level.Error(params.Logger).Log("msg", "failed to get datacenter from storage", "err", err, "customer_id", packet.CustomerID)
-			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-			params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
-			datacenter = routing.UnknownDatacenter
-			datacenter.ID = packet.DatacenterID
+			// search the list of aliases created by/for this buyer
+			datacenterAliases := params.Storer.GetDatacenterMapsForBuyer(packet.CustomerID)
+			if len(datacenterAliases) == 0 {
+				params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
+				params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+			} else {
+				for _, dcMap := range datacenterAliases {
+					if packet.DatacenterID == crypto.HashID(dcMap.Alias) {
+						datacenter, err = params.Storer.Datacenter(dcMap.Datacenter)
+						if err != nil {
+							params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
+							params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+							return
+
+						}
+						datacenter.AliasName = dcMap.Alias
+					}
+				}
+			}
 		}
 
 		// UDP packets may arrive out of order. So that we don't have stale server update packets arriving late and
@@ -352,6 +379,7 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 		serverAddress := packet.ServerAddress.String()
 
 		// IMPORTANT: The server data *must* be treated as read only or it is not threadsafe!
+
 		serverDataReadOnly := params.ServerMap.GetServerData(buyer.ID, serverAddress)
 		if serverDataReadOnly != nil {
 			sequence = serverDataReadOnly.sequence
