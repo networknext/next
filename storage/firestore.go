@@ -82,7 +82,7 @@ type datacenter struct {
 }
 
 type datacenterMap struct {
-	Alias      string `firestore:"Alias`
+	Alias      string `firestore:"Alias"`
 	Datacenter int64  `firestore:"Datacenter"`
 	Buyer      int64  `firestore:"Buyer"`
 }
