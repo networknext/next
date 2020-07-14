@@ -317,7 +317,7 @@ func (m *InMemory) RemoveDatacenterMap(ctx context.Context, dcMap routing.Datace
 	}
 
 	if idx < 0 {
-		return fmt.Errorf("The specified datacentermap does not exist.")
+		return &DoesNotExistError{resourceType: "datacenterMap", resourceRef: dcMap.Alias}
 	}
 
 	if idx+1 == len(m.localDatacenterMaps) {
