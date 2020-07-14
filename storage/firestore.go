@@ -81,6 +81,12 @@ type datacenter struct {
 	Longitude float64 `firestore:"longitude"`
 }
 
+type datacenterMap struct {
+	Alias      string `firestore:"Alias`
+	Datacenter int64  `firestore:"Datacenter"`
+	Buyer      int64  `firestore:"Buyer"`
+}
+
 type routingRulesSettings struct {
 	DisplayName                  string  `firestore:"displayName"`
 	EnvelopeKbpsUp               int64   `firestore:"envelopeKbpsUp"`
@@ -1021,7 +1027,13 @@ func (fs *Firestore) AddDatacenterMap(ctx context.Context, dcMap routing.Datacen
 			}
 		}
 	}
-	_, _, err := fs.Client.Collection("DatacenterMaps").Add(ctx, dcMap)
+
+	var dcMapInt64 datacenterMap
+	dcMapInt64.Alias = dcMap.Alias
+	dcMapInt64.Buyer = int64(dcMap.BuyerID)
+	dcMapInt64.Datacenter = int64(dcMap.Datacenter)
+
+	_, _, err := fs.Client.Collection("DatacenterMaps").Add(ctx, dcMapInt64)
 	if err != nil {
 		return &FirestoreError{err: err}
 	}
@@ -1488,11 +1500,16 @@ func (fs *Firestore) syncDatacenterMaps(ctx context.Context) error {
 		}
 
 		var dcMap routing.DatacenterMap
-		err = dcdoc.DataTo(&dcMap)
+		var dcMapInt64 datacenterMap
+		err = dcdoc.DataTo(&dcMapInt64)
 		if err != nil {
 			level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to unmarshal datacenterMap %v", dcdoc.Ref.ID), "err", err)
 			continue
 		}
+
+		dcMap.Alias = dcMapInt64.Alias
+		dcMap.BuyerID = uint64(dcMapInt64.Buyer)
+		dcMap.Datacenter = uint64(dcMapInt64.Datacenter)
 
 		id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.Datacenter))
 		dcMaps[id] = dcMap
