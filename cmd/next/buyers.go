@@ -235,6 +235,15 @@ func datacenterMapsForBuyer(rpcClient jsonrpc.RPCClient, env Environment, arg ui
 		})
 	}
 
+	// var list []dcMapHex
+	// for _, dc := range reply.DatacenterMaps {
+	// 	list = append(list, dcMapHex{
+	// 		Alias:      dc.Alias,
+	// 		BuyerID:    fmt.Sprintf("%d", int64(dc.BuyerID)),
+	// 		Datacenter: fmt.Sprintf("%d", int64(dc.Datacenter)),
+	// 	})
+	// }
+
 	table.Output(list)
 
 }

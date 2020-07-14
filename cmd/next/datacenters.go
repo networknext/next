@@ -81,3 +81,27 @@ func listDatacenterMaps(rpcClient jsonrpc.RPCClient, env Environment, datacenter
 	table.Output(list)
 
 }
+
+func listAllDatacenterMaps(rpcClient jsonrpc.RPCClient, env Environment) {
+	var reply localjsonrpc.ListDatacenterMapsReply
+	var arg = localjsonrpc.ListDatacenterMapsArgs{
+		DatacenterID: 0,
+	}
+
+	if err := rpcClient.CallFor(&reply, "OpsService.ListDatacenterMaps", arg); err != nil {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	var list []routing.DatacenterMap
+	for _, dc := range reply.DatacenterMaps {
+		list = append(list, routing.DatacenterMap{
+			Alias:      dc.Alias,
+			BuyerID:    dc.BuyerID,
+			Datacenter: dc.Datacenter,
+		})
+	}
+
+	table.Output(list)
+
+}

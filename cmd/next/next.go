@@ -946,7 +946,7 @@ func main() {
 		Subcommands: []*ffcli.Command{
 			{
 				Name:       "list",
-				ShortUsage: "next datacenter list",
+				ShortUsage: "next datacenters list",
 				ShortHelp:  "Display a current list of datacenters",
 				Exec: func(_ context.Context, args []string) error {
 					if len(args) > 0 {
@@ -954,6 +954,20 @@ func main() {
 						return nil
 					}
 					datacenters(rpcClient, env, "")
+					return nil
+				},
+			},
+			{
+				Name:       "maps",
+				ShortUsage: "next datacenters maps ",
+				ShortHelp:  "Returns a list of all datacenter maps",
+				Exec: func(_ context.Context, args []string) error {
+					if len(args) > 0 {
+						err := errors.New("Exactly zero arguments must be provided.")
+						return err
+					}
+
+					listAllDatacenterMaps(rpcClient, env)
 					return nil
 				},
 			},
@@ -1066,7 +1080,8 @@ func main() {
 						id = args[0]
 					}
 
-					hexID, err := strconv.ParseUint(id, 10, 64)
+					hexID, err := strconv.ParseUint(id, 16, 64)
+					fmt.Printf("%d\n", hexID)
 					if err != nil {
 						return fmt.Errorf("Can not work with datacenter ID%v\n", id)
 					}
