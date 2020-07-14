@@ -819,8 +819,6 @@ func (s *BuyersService) RemoveDatacenterMap(r *http.Request, args *RemoveDatacen
 	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
-	fmt.Println("RemoveDatacenterMap endpoint")
-
 	return s.Storage.RemoveDatacenterMap(ctx, args.DatacenterMap)
 
 }
@@ -832,6 +830,7 @@ type AddDatacenterMapArgs struct {
 type AddDatacenterMapReply struct{}
 
 func (s *BuyersService) AddDatacenterMap(r *http.Request, args *AddDatacenterMapArgs, reply *AddDatacenterMapReply) error {
+
 	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 

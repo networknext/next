@@ -254,7 +254,7 @@ func addDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm routing.
 	var reply localjsonrpc.AddDatacenterMapReply
 	if err := rpcClient.CallFor(&reply, "BuyersService.AddDatacenterMap", arg); err != nil {
 		handleJSONRPCError(env, err)
-		return err
+		return fmt.Errorf("AddDatacenterMap error: %v\n", err)
 	}
 
 	return nil
@@ -290,6 +290,7 @@ func removeDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm routi
 }
 
 func returnBuyerID(rpcClient jsonrpc.RPCClient, env Environment, arg uint64) uint64 {
+
 	// check to see if user entered name or substring (not id)
 	buyerArgs := localjsonrpc.BuyersArgs{}
 	var buyers localjsonrpc.BuyersReply
@@ -302,7 +303,7 @@ func returnBuyerID(rpcClient jsonrpc.RPCClient, env Environment, arg uint64) uin
 
 	r := regexp.MustCompile("(?i)" + fmt.Sprintf("%x", arg)) // case-insensitive regex
 	for _, buyer := range buyers.Buyers {
-		hexBuyerID, err := strconv.ParseUint(buyer.ID, 10, 64)
+		hexBuyerID, err := strconv.ParseUint(buyer.ID, 16, 64)
 		if err != nil {
 			handleJSONRPCError(env, err)
 			return 0
@@ -316,6 +317,7 @@ func returnBuyerID(rpcClient jsonrpc.RPCClient, env Environment, arg uint64) uin
 }
 
 func returnDatacenterID(rpcClient jsonrpc.RPCClient, env Environment, arg uint64) uint64 {
+
 	args := localjsonrpc.DatacentersArgs{}
 
 	var reply localjsonrpc.DatacentersReply
@@ -327,7 +329,7 @@ func returnDatacenterID(rpcClient jsonrpc.RPCClient, env Environment, arg uint64
 	var datacenterID uint64
 	r := regexp.MustCompile("(?i)" + fmt.Sprintf("%x", arg)) // case-insensitive regex
 	for _, dc := range reply.Datacenters {
-		hexDatacenterID, err := strconv.ParseUint(dc.ID, 10, 64)
+		hexDatacenterID, err := strconv.ParseUint(dc.ID, 16, 64)
 		if err != nil {
 			handleJSONRPCError(env, err)
 			return 0

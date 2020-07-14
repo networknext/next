@@ -1191,7 +1191,7 @@ func main() {
 
 							hexID, err := strconv.ParseUint(args[0], 10, 64)
 							if err != nil {
-								return fmt.Errorf("Can not work with datacenter ID%v\n", args[0])
+								return fmt.Errorf("Can not work with datacenter ID: %v\n", args[0])
 							}
 
 							// ToDo: error return
@@ -1229,24 +1229,28 @@ datacenter names.
 								Alias      string `json:"alias"`
 							}
 							if err := json.Unmarshal(jsonData, &dcmTemp); err != nil {
-								log.Fatalf("Could not unmarshal datacenter map: %v", err)
+								fmt.Printf("Could not unmarshal datacenter map: %v", err)
 							}
 
 							var err error
 							dcm.Alias = dcmTemp.Alias
-							tempStr := dcmTemp.BuyerID
-							dcm.BuyerID, err = strconv.ParseUint(tempStr, 16, 64)
+
+							dcm.BuyerID, err = strconv.ParseUint(dcmTemp.BuyerID, 16, 64)
 							if err != nil {
+								fmt.Printf("Error parsing BuyerID")
 								return err
 							}
+
 							dcm.Datacenter, err = strconv.ParseUint(dcmTemp.Datacenter, 16, 64)
 							if err != nil {
+								fmt.Printf("Error parsing Datacenter ID")
 								return err
 							}
 
 							err = addDatacenterMap(rpcClient, env, dcm)
 
 							if err != nil {
+								fmt.Printf("addDatacenterError")
 								return err
 							}
 

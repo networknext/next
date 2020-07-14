@@ -10,5 +10,5 @@ type DatacenterMap struct {
 }
 
 func (dcm DatacenterMap) String() string {
-	return fmt.Sprintf("{\n\tBuyer ID     : %v\n\tDatacenter ID: %v\n\tAlias        : %v\n}", dcm.BuyerID, dcm.Datacenter, dcm.Alias)
+	return fmt.Sprintf("{\n\tBuyer ID     : %016x\n\tDatacenter ID: %016x\n\tAlias        : %s\n}", dcm.BuyerID, dcm.Datacenter, dcm.Alias)
 }
