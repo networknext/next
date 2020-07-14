@@ -1030,8 +1030,8 @@ func (fs *Firestore) AddDatacenterMap(ctx context.Context, dcMap routing.Datacen
 
 	var dcMapInt64 datacenterMap
 	dcMapInt64.Alias = dcMap.Alias
-	dcMapInt64.Buyer = fmt.Sprintf("%d", dcMap.BuyerID)
-	dcMapInt64.Datacenter = fmt.Sprintf("%d", dcMap.Datacenter)
+	dcMapInt64.Buyer = fmt.Sprintf("%016x", dcMap.BuyerID)
+	dcMapInt64.Datacenter = fmt.Sprintf("%016x", dcMap.Datacenter)
 
 	_, _, err := fs.Client.Collection("DatacenterMaps").Add(ctx, dcMapInt64)
 	if err != nil {
@@ -1507,13 +1507,13 @@ func (fs *Firestore) syncDatacenterMaps(ctx context.Context) error {
 			continue
 		}
 
-		buyerID, err := strconv.ParseUint(dcMapInt64.Buyer, 10, 64)
+		buyerID, err := strconv.ParseUint(dcMapInt64.Buyer, 16, 64)
 		if err != nil {
 			level.Error(fs.Logger).Log("msg", "could not parse buyerID on datacenter map", "buyerID", dcMapInt64.Buyer, "err", err)
 			continue
 		}
 
-		datacenterID, err := strconv.ParseUint(dcMapInt64.Datacenter, 10, 64)
+		datacenterID, err := strconv.ParseUint(dcMapInt64.Datacenter, 16, 64)
 		if err != nil {
 			level.Error(fs.Logger).Log("msg", "could not parse datacenterID on datacenter map", "datacenterID", dcMapInt64.Datacenter, "err", err)
 			continue
