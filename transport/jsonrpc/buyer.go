@@ -550,17 +550,17 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 				}
 
 				// if there was no error then add the SessionMapPoint to the slice
-				if point.Latitude != 0 && point.Longitude != 0 {
-					mapPointsBuyers[stringID] = append(mapPointsBuyers[stringID], point)
-					mapPointsGlobal = append(mapPointsGlobal, point)
+				//if point.Latitude != 0 && point.Longitude != 0 {
+				mapPointsBuyers[stringID] = append(mapPointsBuyers[stringID], point)
+				mapPointsGlobal = append(mapPointsGlobal, point)
 
-					var onNN uint
-					if point.OnNetworkNext {
-						onNN = 1
-					}
-					mapPointsBuyerscompact[stringID] = append(mapPointsBuyerscompact[stringID], []interface{}{point.Longitude, point.Latitude, onNN})
-					mapPointsGlobalcompact = append(mapPointsGlobalcompact, []interface{}{point.Longitude, point.Latitude, onNN})
+				var onNN uint
+				if point.OnNetworkNext {
+					onNN = 1
 				}
+				mapPointsBuyerscompact[stringID] = append(mapPointsBuyerscompact[stringID], []interface{}{point.Longitude, point.Latitude, onNN})
+				mapPointsGlobalcompact = append(mapPointsGlobalcompact, []interface{}{point.Longitude, point.Latitude, onNN})
+				//}
 			}
 		}
 
@@ -773,7 +773,7 @@ func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *Buye
 	}
 
 	for _, b := range s.Storage.Buyers() {
-		id := fmt.Sprintf("%v", b.ID)
+		id := fmt.Sprintf("%016x", b.ID)
 		account := buyerAccount{
 			ID:   id,
 			Name: b.Name,
@@ -867,6 +867,6 @@ func (s *BuyersService) SameBuyerRole(buyerID string) RoleFunc {
 			return false, fmt.Errorf("SameBuyerRole(): BuyerWithDomain error: %v", err)
 		}
 
-		return buyerID == fmt.Sprintf("%v", buyer.ID), nil
+		return buyerID == fmt.Sprintf("%016x", buyer.ID), nil
 	}
 }

@@ -195,8 +195,7 @@ MapHandler = {
 	totalSessionCountCalls: 0,
 	initMap() {
 		this.updateFilter({
-			buyerId: "",
-			sessionType: 'all'
+			buyerId: UserHandler.isBuyer() && !UserHandler.isAdmin() ? UserHandler.userInfo.id : ""
 		});
 	},
 	updateFilter(filter) {
@@ -238,7 +237,7 @@ MapHandler = {
 				let direct = response.direct
 				let next = response.next
 
-				const isDev = window.location.hostname == 'portal-dev.networknext.com';
+				const isDev = window.location.hostname == 'portal-dev.networknext.com' || window.location.hostname == '127.0.0.1';
 				if (!isDev) {
 					this.totalDirectSessions[this.totalSessionCountCalls % 32] = direct
 					this.totalNextSessions[this.totalSessionCountCalls % 32] = next
@@ -413,11 +412,23 @@ UserHandler = {
 				// Need to handle no BuyerID gracefully
 			});
 	},
+	getBuyerId() {
+		let allBuyers = UserHandler.allBuyers;
+		for (i = 0; i < allBuyers.length; i++) {
+			if (allBuyers[i].id == this.userInfo.id || this.isAdmin()) {
+				return allBuyers[i].id
+			}
+		}
+		return "Private"
+	},
 	getBuyerName() {
 		let allBuyers = UserHandler.allBuyers;
-		return Array.from(allBuyers).length > 0 ? Array.from(allBuyers).find((buyer) => {
-				return buyer.id == this.userInfo.id || this.isAdmin()
-		}).name : "Private";
+		for (i = 0; i < allBuyers.length; i++) {
+			if (allBuyers[i].id == this.userInfo.id || this.isAdmin()) {
+				return allBuyers[i].name
+			}
+		}
+		return "Private"
 	},
 	isAdmin() {
 		return !this.isAnonymous() ? this.userInfo.roles.findIndex((role) => role.name == "Admin") !== -1 : false;
@@ -479,7 +490,6 @@ WorkspaceHandler = {
 			case 'downloads':
 				break;
 			case 'map':
-				MapHandler.initMap();
 				break;
 			case 'sessions':
 				this.loadSessionsPage();
@@ -644,8 +654,7 @@ WorkspaceHandler = {
 	},
 	loadSessionsPage() {
 		this.updateSessionFilter({
-			buyerId: "",
-			sessionType: 'all'
+			buyerId: rootComponent.$data.pages.map.filter.buyerId,
 		});
 	},
 	fetchSessionInfo() {
@@ -789,7 +798,7 @@ WorkspaceHandler = {
 			});
 	},
 	updateSessionFilter(filter) {
-		Object.assign(rootComponent.$data.pages.sessions, {filter: filter});
+		Object.assign(rootComponent.$data.pages.map, {filter: filter});
 		this.sessionLoop ? clearInterval(this.sessionLoop) : null;
 		this.refreshSessionTable();
 		this.sessionLoop = setInterval(() => {
@@ -798,7 +807,7 @@ WorkspaceHandler = {
 	},
 	refreshSessionTable() {
 		setTimeout(() => {
-			let filter = rootComponent.$data.pages.sessions.filter;
+			let filter = rootComponent.$data.pages.map.filter;
 
 			JSONRPCClient
 				.call('BuyersService.TopSessions', {buyer_id: filter.buyerId})
@@ -964,7 +973,8 @@ function startApp() {
 				Object.assign(rootComponent.$data.alerts.verifyEmail, {show: true});
 			}
 			document.getElementById("app").style.display = 'block';
-			WorkspaceHandler.changePage('map');
+			WorkspaceHandler.changePage('map')
+			MapHandler.initMap()
 			JSONRPCClient
 				.call('BuyersService.Buyers', {})
 				.then((response) => {
