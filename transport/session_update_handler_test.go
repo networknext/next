@@ -1,5 +1,15 @@
 package transport_test
 
+import (
+	"os"
+	"testing"
+
+	"github.com/networknext/backend/metrics"
+	"github.com/networknext/backend/routing"
+	"github.com/networknext/backend/transport"
+	"github.com/stretchr/testify/assert"
+)
+
 // todo: disabled
 /*
 import (
@@ -4212,3 +4222,24 @@ func TestMultipathPacketLoss(t *testing.T) {
 	assert.Equal(t, true, actual.Multipath)
 }
 */
+
+func BenchmarkGetNextRoute(b *testing.B) {
+	costfile, err := os.Open("../routing/test_data/cost.bin")
+	assert.NoError(b, err)
+
+	var costMatrix routing.CostMatrix
+	costMatrix.ReadFrom(costfile)
+
+	var routeMatrix routing.RouteMatrix
+	costMatrix.Optimize(&routeMatrix, 1)
+
+	from := []routing.Relay{{ID: 2836356269}}
+	to := []routing.Relay{{ID: 3263834878}, {ID: 1500948990}}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		transport.GetNextRoute(&routeMatrix, from, to, &metrics.EmptySessionErrorMetrics, 2, 0)
+	}
+}

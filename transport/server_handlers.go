@@ -860,7 +860,7 @@ func GetBestRoute(routeMatrix RouteProvider, nearRelays []routing.Relay, datacen
 	buyer *routing.Buyer, prevRouteHash uint64, prevRouteDecision routing.Decision, lastNextStats *routing.Stats, lastDirectStats *routing.Stats,
 	onNNSliceCounter uint64, committedData *routing.CommittedData, directRoute *routing.Route) (*routing.Route, routing.Decision) {
 	// We need to get a next route to compare against direct
-	nextRoute := GetNextRoute(routeMatrix, nearRelays, datacenterRelays, errorMetrics, buyer, prevRouteHash)
+	nextRoute := GetNextRoute(routeMatrix, nearRelays, datacenterRelays, errorMetrics, float64(buyer.RoutingRulesSettings.RTTEpsilon), prevRouteHash)
 	if nextRoute == nil {
 		// We couldn't find a network next route at all. This may happen if something goes wrong with the route matrix or if relays are flickering.
 		decision := routing.Decision{OnNetworkNext: false, Reason: routing.DecisionNoNextRoute}
@@ -928,7 +928,7 @@ func GetBestRoute(routeMatrix RouteProvider, nearRelays []routing.Relay, datacen
 
 // GetNextRoute returns the best network next route a session can take for this slice, or nil if a route couldn't be found.
 func GetNextRoute(routeMatrix RouteProvider, nearRelays []routing.Relay, datacenterRelays []routing.Relay, errorMetrics *metrics.SessionErrorMetrics,
-	buyer *routing.Buyer, prevRouteHash uint64) *routing.Route {
+	rttEpsilon float64, prevRouteHash uint64) *routing.Route {
 	// We need to get all of the routes from the route matrix that connect any of the client's near relays and any of the game server's datacenter relays
 	acceptableRoutes, err := routeMatrix.GetRoutes(nearRelays, datacenterRelays)
 	if err != nil {
@@ -947,7 +947,7 @@ func GetNextRoute(routeMatrix RouteProvider, nearRelays []routing.Relay, datacen
 	//	5. If we still don't only have 1 route, choose a random one.
 	selectorFuncs := []routing.SelectorFunc{
 		routing.SelectUnencumberedRoutes(0.8),
-		routing.SelectAcceptableRoutesFromBestRTT(float64(buyer.RoutingRulesSettings.RTTEpsilon)),
+		routing.SelectAcceptableRoutesFromBestRTT(rttEpsilon),
 		routing.SelectContainsRouteHash(prevRouteHash),
 		routing.SelectRoutesByRandomDestRelay(rand.NewSource(rand.Int63())),
 		routing.SelectRandomRoute(rand.NewSource(rand.Int63())),
