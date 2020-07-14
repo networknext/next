@@ -550,17 +550,17 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 				}
 
 				// if there was no error then add the SessionMapPoint to the slice
-				//if point.Latitude != 0 && point.Longitude != 0 {
-				mapPointsBuyers[stringID] = append(mapPointsBuyers[stringID], point)
-				mapPointsGlobal = append(mapPointsGlobal, point)
+				if point.Latitude != 0 && point.Longitude != 0 {
+					mapPointsBuyers[stringID] = append(mapPointsBuyers[stringID], point)
+					mapPointsGlobal = append(mapPointsGlobal, point)
 
-				var onNN uint
-				if point.OnNetworkNext {
-					onNN = 1
+					var onNN uint
+					if point.OnNetworkNext {
+						onNN = 1
+					}
+					mapPointsBuyerscompact[stringID] = append(mapPointsBuyerscompact[stringID], []interface{}{point.Longitude, point.Latitude, onNN})
+					mapPointsGlobalcompact = append(mapPointsGlobalcompact, []interface{}{point.Longitude, point.Latitude, onNN})
 				}
-				mapPointsBuyerscompact[stringID] = append(mapPointsBuyerscompact[stringID], []interface{}{point.Longitude, point.Latitude, onNN})
-				mapPointsGlobalcompact = append(mapPointsGlobalcompact, []interface{}{point.Longitude, point.Latitude, onNN})
-				//}
 			}
 		}
 
