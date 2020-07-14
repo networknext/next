@@ -598,6 +598,59 @@ func WriteMapPointCache(points *mapPointsByte) []byte {
 	return data
 }
 
+func ReadMapPointsCache(points *mapPointsByte, data []byte) bool {
+	var numGreenPoints uint32
+	var numBluePoints uint32
+
+	index := 0
+	if !encoding.ReadUint8(data, &index, &points.Version) {
+		return false
+	}
+	if points.Version != 1 {
+		return false
+	}
+	if !encoding.ReadUint32(data, &index, &numGreenPoints) {
+		return false
+	}
+
+	var latitude uint16
+	var longitude uint16
+	var onNetworkNext bool
+	points.GreenPoints = make([]point, numGreenPoints)
+
+	for i := 0; i < int(numGreenPoints); i++ {
+		if !encoding.ReadUint16(data, &index, &latitude) {
+			return false
+		}
+		if !encoding.ReadUint16(data, &index, &longitude) {
+			return false
+		}
+		if !encoding.ReadBool(data, &index, &onNetworkNext) {
+			return false
+		}
+	}
+
+	if !encoding.ReadUint32(data, &index, &numBluePoints) {
+		return false
+	}
+
+	points.BluePoints = make([]point, numGreenPoints)
+
+	for i := 0; i < int(numGreenPoints); i++ {
+		if !encoding.ReadUint16(data, &index, &latitude) {
+			return false
+		}
+		if !encoding.ReadUint16(data, &index, &longitude) {
+			return false
+		}
+		if !encoding.ReadBool(data, &index, &onNetworkNext) {
+			return false
+		}
+	}
+
+	return true
+}
+
 // GenerateMapPoints warms a local cache of JSON to be used by SessionMapPoints
 func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 	s.mu.Lock()

@@ -30,6 +30,15 @@ func ReadUint8(data []byte, index *int, value *uint8) bool {
 	return true
 }
 
+func ReadUint16(data []byte, index *int, value *uint16) bool {
+	if *index+2 > len(data) {
+		return false
+	}
+	*value = binary.LittleEndian.Uint16(data[*index:])
+	*index += 2
+	return true
+}
+
 func ReadUint32(data []byte, index *int, value *uint32) bool {
 	if *index+4 > len(data) {
 		return false
