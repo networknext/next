@@ -748,6 +748,21 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			return
 		}
 
+		// Don't allow customers who aren't marked as "Live" to get a network next route. They have to pay first!
+		if !buyer.Live {
+			routeDecision = routing.Decision{
+				OnNetworkNext: false,
+				Reason:        routing.DecisionForceDirect, // todo: separate decision reason
+			}
+
+			// todo: metric here
+
+			// level.Error(locallogger).Log("err", "buyer is not live", "customer_id", packet.CustomerID)
+			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelays, routeDecision, sessionDataReadOnly.routeDecision, sessionDataReadOnly.initial, vetoReason, onNNSliceCounter,
+				committedData, sessionDataReadOnly.routeHash, sessionDataReadOnly.routeDecision.OnNetworkNext, start, routeExpireTimestamp, sessionDataReadOnly.tokenVersion, params.RouterPrivateKey, sliceMutexes)
+			return
+		}
+
 		// Use the route matrix to get a list of relays closest to the lat/long of the client.
 		// These near relays are returned back down to the SDK for this slice. The SDK then pings these relays,
 		// and reports the results back up to us in the next session update. We use the near relay pings to know
