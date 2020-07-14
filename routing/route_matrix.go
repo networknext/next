@@ -178,7 +178,7 @@ func (m *RouteMatrix) GetDatacenterRelays(d Datacenter) []Relay {
 	return relays
 }
 
-// GetRoutes returns acceptable routes between the set of near relays and destination relays.
+// GetRoutes returns the best routes between the set of near relays and destination relays.
 func (m *RouteMatrix) GetRoutes(near []Relay, dest []Relay) ([]Route, error) {
 	bestRoutes := make([]Route, MaxBestRoutes)
 	var bestRoutesLength uint64
