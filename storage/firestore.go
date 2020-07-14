@@ -82,9 +82,9 @@ type datacenter struct {
 }
 
 type datacenterMap struct {
-	Alias      string `firestore:"Alias`
-	Datacenter int64  `firestore:"Datacenter"`
-	Buyer      int64  `firestore:"Buyer"`
+	Alias      string `firestore:"Alias"`
+	Datacenter string `firestore:"Datacenter"`
+	Buyer      string `firestore:"Buyer"`
 }
 
 type routingRulesSettings struct {
@@ -995,15 +995,12 @@ func (fs *Firestore) GetDatacenterMapsForBuyer(buyerID uint64) map[uint64]routin
 	// buyer can have multiple dc aliases
 	var dcs = make(map[uint64]routing.DatacenterMap)
 	for _, dc := range fs.datacenterMaps {
-		level.Debug(fs.Logger).Log("current iteration datacenter map buyer ID", fmt.Sprintf("%016x", dc.BuyerID), "passed buyerID", fmt.Sprintf("%016x", buyerID))
 		if dc.BuyerID == buyerID {
-			level.Debug(fs.Logger).Log("msg", "datacenter map added", "buyerID", fmt.Sprintf("%016x", buyerID))
 			id := crypto.HashID(dc.Alias + fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.Datacenter))
 			dcs[id] = dc
 		}
 	}
 
-	level.Debug(fs.Logger).Log("returned datacenter map length", len(dcs))
 	return dcs
 }
 
@@ -1033,8 +1030,8 @@ func (fs *Firestore) AddDatacenterMap(ctx context.Context, dcMap routing.Datacen
 
 	var dcMapInt64 datacenterMap
 	dcMapInt64.Alias = dcMap.Alias
-	dcMapInt64.Buyer = int64(dcMap.BuyerID)
-	dcMapInt64.Datacenter = int64(dcMap.Datacenter)
+	dcMapInt64.Buyer = fmt.Sprintf("%d", dcMap.BuyerID)
+	dcMapInt64.Datacenter = fmt.Sprintf("%d", dcMap.Datacenter)
 
 	_, _, err := fs.Client.Collection("DatacenterMaps").Add(ctx, dcMapInt64)
 	if err != nil {
@@ -1510,9 +1507,21 @@ func (fs *Firestore) syncDatacenterMaps(ctx context.Context) error {
 			continue
 		}
 
+		buyerID, err := strconv.ParseUint(dcMapInt64.Buyer, 10, 64)
+		if err != nil {
+			level.Error(fs.Logger).Log("msg", "could not parse buyerID on datacenter map", "buyerID", dcMapInt64.Buyer, "err", err)
+			continue
+		}
+
+		datacenterID, err := strconv.ParseUint(dcMapInt64.Datacenter, 10, 64)
+		if err != nil {
+			level.Error(fs.Logger).Log("msg", "could not parse datacenterID on datacenter map", "datacenterID", dcMapInt64.Datacenter, "err", err)
+			continue
+		}
+
 		dcMap.Alias = dcMapInt64.Alias
-		dcMap.BuyerID = uint64(dcMapInt64.Buyer)
-		dcMap.Datacenter = uint64(dcMapInt64.Datacenter)
+		dcMap.BuyerID = buyerID
+		dcMap.Datacenter = datacenterID
 
 		id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.Datacenter))
 		dcMaps[id] = dcMap
@@ -1521,9 +1530,6 @@ func (fs *Firestore) syncDatacenterMaps(ctx context.Context) error {
 	fs.datacenterMapMutex.Lock()
 	fs.datacenterMaps = dcMaps
 	fs.datacenterMapMutex.Unlock()
-
-	level.Info(fs.Logger).Log("during", "syncDatacenterMaps", "num", len(fs.datacenterMaps))
-
 	return nil
 
 }
