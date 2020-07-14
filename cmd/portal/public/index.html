@@ -408,7 +408,7 @@
                                         <option v-on:click="handlers.mapHandler.updateFilter({buyerId: '', sessionType: pages.map.filter.sessionType})">
                                             All
                                         </option>
-                                        <option v-for="buyer in allBuyers" v-on:click="handlers.mapHandler.updateFilter({buyerId: buyer.id, sessionType: pages.map.filter.sessionType})" v-if="handlers.userHandler.isAdmin()">
+                                        <option v-for="buyer in handlers.userHandler.allBuyers" v-on:click="handlers.mapHandler.updateFilter({buyerId: buyer.id, sessionType: pages.map.filter.sessionType})" v-if="handlers.userHandler.isAdmin()">
                                             {{ buyer.name }}
                                         </option>
                                     </select>
@@ -465,7 +465,7 @@
                                             <option v-on:click="handlers.workspaceHandler.updateSessionFilter({buyerId: '', sessionType: pages.sessions.filter.sessionType})">
                                                 All
                                             </option>
-                                            <option v-for="buyer in allBuyers" v-on:click="handlers.workspaceHandler.updateSessionFilter({buyerId: buyer.id, sessionType: pages.sessions.filter.sessionType})" v-if="handlers.userHandler.isAdmin()">
+                                            <option v-for="buyer in handlers.userHandler.allBuyers" v-on:click="handlers.workspaceHandler.updateSessionFilter({buyerId: buyer.id, sessionType: pages.sessions.filter.sessionType})" v-if="handlers.userHandler.isAdmin()">
                                                 {{ buyer.name }}
                                             </option>
                                         </select>
@@ -816,7 +816,7 @@
                                                                 <tr>
                                                                     <td>
                                                                         {{
-                                                                            !handlers.userHandler.isAnonymous() && allBuyers.findIndex((buyer) => {
+                                                                            !handlers.userHandler.isAnonymous() && handlers.userHandler.allBuyers.findIndex((buyer) => {
                                                                                 return buyer.id == pages.sessionTool.meta.customer_id
                                                                             }) !== -1 ? pages.sessionTool.meta.client_addr : "Player"
                                                                         }}
@@ -838,7 +838,7 @@
                                                                 <tr>
                                                                     <td>
                                                                         {{
-                                                                            !handlers.userHandler.isAnonymous() && allBuyers.findIndex((buyer) => {
+                                                                            !handlers.userHandler.isAnonymous() && handlers.userHandler.allBuyers.findIndex((buyer) => {
                                                                                 return buyer.id == pages.sessionTool.meta.customer_id
                                                                             }) !== -1 ? pages.sessionTool.meta.server_addr : "Game Server"
                                                                         }}
