@@ -12,6 +12,7 @@ import (
 	"cloud.google.com/go/firestore"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
+	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"google.golang.org/api/iterator"
@@ -21,15 +22,17 @@ type Firestore struct {
 	Client *firestore.Client
 	Logger log.Logger
 
-	datacenters map[uint64]routing.Datacenter
-	relays      map[uint64]routing.Relay
-	buyers      map[uint64]routing.Buyer
-	sellers     map[string]routing.Seller
+	datacenters    map[uint64]routing.Datacenter
+	relays         map[uint64]routing.Relay
+	buyers         map[uint64]routing.Buyer
+	sellers        map[string]routing.Seller
+	datacenterMaps map[uint64]routing.DatacenterMap
 
-	datacenterMutex sync.RWMutex
-	relayMutex      sync.RWMutex
-	buyerMutex      sync.RWMutex
-	sellerMutex     sync.RWMutex
+	datacenterMutex    sync.RWMutex
+	relayMutex         sync.RWMutex
+	buyerMutex         sync.RWMutex
+	sellerMutex        sync.RWMutex
+	datacenterMapMutex sync.RWMutex
 }
 
 type customer struct {
@@ -73,10 +76,15 @@ type relay struct {
 
 type datacenter struct {
 	Name      string  `firestore:"name"`
-	AliasName string  `firestore:"name_alias"`
 	Enabled   bool    `firestore:"enabled"`
 	Latitude  float64 `firestore:"latitude"`
 	Longitude float64 `firestore:"longitude"`
+}
+
+type datacenterMap struct {
+	Alias      string `firestore:"Alias"`
+	Datacenter string `firestore:"Datacenter"`
+	Buyer      string `firestore:"Buyer"`
 }
 
 type routingRulesSettings struct {
@@ -434,8 +442,8 @@ func (fs *Firestore) AddSeller(ctx context.Context, s routing.Seller) error {
 
 	newSellerData := seller{
 		Name:                       s.Name,
-		PricePublicIngressNibblins: convertCentsToNibblins(s.IngressPriceCents),
-		PricePublicEgressNibblins:  convertCentsToNibblins(s.EgressPriceCents),
+		PricePublicIngressNibblins: int64(billing.CentsToNibblins(s.IngressPriceCents)),
+		PricePublicEgressNibblins:  int64(billing.CentsToNibblins(s.EgressPriceCents)),
 	}
 
 	// Add the seller in remote storage
@@ -580,8 +588,8 @@ func (fs *Firestore) SetSeller(ctx context.Context, seller routing.Seller) error
 	// Update the seller in firestore
 	newSellerData := map[string]interface{}{
 		"name":                       seller.Name,
-		"pricePublicIngressNibblins": convertCentsToNibblins(seller.IngressPriceCents),
-		"pricePublicEgressNibblins":  convertCentsToNibblins(seller.EgressPriceCents),
+		"pricePublicIngressNibblins": int64(billing.CentsToNibblins(seller.IngressPriceCents)),
+		"pricePublicEgressNibblins":  int64(billing.CentsToNibblins(seller.EgressPriceCents)),
 	}
 
 	if _, err := fs.Client.Collection("Seller").Doc(seller.ID).Set(ctx, newSellerData, firestore.MergeAll); err != nil {
@@ -980,20 +988,135 @@ func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 	return &DoesNotExistError{resourceType: "relay", resourceRef: fmt.Sprintf("%x", r.ID)}
 }
 
+func (fs *Firestore) GetDatacenterMapsForBuyer(buyerID uint64) map[uint64]routing.DatacenterMap {
+	fs.datacenterMapMutex.RLock()
+	defer fs.datacenterMapMutex.RUnlock()
+
+	// buyer can have multiple dc aliases
+	var dcs = make(map[uint64]routing.DatacenterMap)
+	for _, dc := range fs.datacenterMaps {
+		if dc.BuyerID == buyerID {
+			id := crypto.HashID(dc.Alias + fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.Datacenter))
+			dcs[id] = dc
+		}
+	}
+
+	return dcs
+}
+
+func (fs *Firestore) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error {
+
+	// ToDo: make sure buyer and datacenter exist?
+	bID := dcMap.BuyerID
+
+	dcID := dcMap.Datacenter
+
+	if _, ok := fs.buyers[bID]; !ok {
+		return &DoesNotExistError{resourceType: "BuyerID", resourceRef: dcMap.BuyerID}
+	}
+
+	if _, ok := fs.datacenters[dcID]; !ok {
+		return &DoesNotExistError{resourceType: "Datacenter", resourceRef: dcMap.Datacenter}
+	}
+
+	dcMaps := fs.GetDatacenterMapsForBuyer(dcMap.BuyerID)
+	if len(dcMaps) != 0 {
+		for _, dc := range dcMaps {
+			if dc.Alias == dcMap.Alias && dc.Datacenter == dcMap.Datacenter {
+				return &AlreadyExistsError{resourceType: "datacenterMap", resourceRef: dcMap.Alias}
+			}
+		}
+	}
+
+	var dcMapInt64 datacenterMap
+	dcMapInt64.Alias = dcMap.Alias
+	dcMapInt64.Buyer = fmt.Sprintf("%016x", dcMap.BuyerID)
+	dcMapInt64.Datacenter = fmt.Sprintf("%016x", dcMap.Datacenter)
+
+	_, _, err := fs.Client.Collection("DatacenterMaps").Add(ctx, dcMapInt64)
+	if err != nil {
+		return &FirestoreError{err: err}
+	}
+
+	// update local store
+	fs.datacenterMapMutex.Lock()
+	id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.Datacenter))
+	fs.datacenterMaps[id] = dcMap
+	fs.datacenterMapMutex.Unlock()
+
+	return nil
+
+}
+
+func (fs *Firestore) ListDatacenterMaps(dcID uint64) map[uint64]routing.DatacenterMap {
+	fs.datacenterMapMutex.RLock()
+	defer fs.datacenterMapMutex.RUnlock()
+
+	var dcs = make(map[uint64]routing.DatacenterMap)
+	for _, dc := range fs.datacenterMaps {
+		if dc.Datacenter == dcID {
+			id := crypto.HashID(dc.Alias + fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.Datacenter))
+			dcs[id] = dc
+		}
+	}
+
+	return dcs
+}
+
+func (fs *Firestore) RemoveDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error {
+	dmdocs := fs.Client.Collection("DatacenterMaps").Documents(ctx)
+	defer dmdocs.Stop()
+
+	// Firestore is the source of truth
+	found := false
+	for {
+		dmdoc, err := dmdocs.Next()
+		ref := dmdoc.Ref
+		if err == iterator.Done {
+			break
+		}
+
+		if err != nil {
+			return &FirestoreError{err: err}
+		}
+
+		var dcm routing.DatacenterMap
+		err = dmdoc.DataTo(&dcm)
+		if err != nil {
+			return &UnmarshalError{err: err}
+		}
+
+		// all components must match (one-to-many)
+		// could use cmp?
+		if dcMap.Alias == dcm.Alias && dcMap.BuyerID == dcm.BuyerID && dcMap.Datacenter == dcm.Datacenter {
+			_, err := ref.Delete(ctx)
+			if err != nil {
+				return &FirestoreError{err: err}
+			}
+			found = true
+		}
+	}
+
+	if found {
+		fs.datacenterMapMutex.RLock()
+		id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.Datacenter))
+
+		delete(fs.datacenterMaps, id)
+
+		fs.datacenterMapMutex.RUnlock()
+		return nil
+	}
+
+	return &DoesNotExistError{resourceType: "datacenterMap", resourceRef: fmt.Sprintf("%v", dcMap)}
+}
+
 func (fs *Firestore) Datacenter(id uint64) (routing.Datacenter, error) {
 	fs.datacenterMutex.RLock()
 	defer fs.datacenterMutex.RUnlock()
 
 	d, found := fs.datacenters[id]
 	if !found {
-		// Check if there is a datacenter with this alias
-		for _, datacenter := range fs.datacenters {
-			if id == crypto.HashID(datacenter.AliasName) {
-				return datacenter, nil
-			}
-		}
-
-		return routing.Datacenter{}, &DoesNotExistError{resourceType: "datacenter", resourceRef: fmt.Sprintf("%x", id)}
+		return routing.Datacenter{}, &DoesNotExistError{resourceType: "datacenter", resourceRef: id}
 	}
 
 	return d, nil
@@ -1161,7 +1284,7 @@ func (fs *Firestore) SyncLoop(ctx context.Context, c <-chan time.Time) {
 func (fs *Firestore) Sync(ctx context.Context) error {
 	var outerErr error
 	var wg sync.WaitGroup
-	wg.Add(3)
+	wg.Add(4)
 
 	go func() {
 		if err := fs.syncRelays(ctx); err != nil {
@@ -1180,6 +1303,13 @@ func (fs *Firestore) Sync(ctx context.Context) error {
 	go func() {
 		if err := fs.syncDatacenters(ctx); err != nil {
 			outerErr = fmt.Errorf("failed to sync datacenters: %v", err)
+		}
+		wg.Done()
+	}()
+
+	go func() {
+		if err := fs.syncDatacenterMaps(ctx); err != nil {
+			outerErr = fmt.Errorf("failed to sync datacenterMaps: %v", err)
 		}
 		wg.Done()
 	}()
@@ -1212,10 +1342,9 @@ func (fs *Firestore) syncDatacenters(ctx context.Context) error {
 
 		did := crypto.HashID(d.Name)
 		datacenters[did] = routing.Datacenter{
-			ID:        did,
-			Name:      d.Name,
-			AliasName: d.AliasName,
-			Enabled:   d.Enabled,
+			ID:      did,
+			Name:    d.Name,
+			Enabled: d.Enabled,
 			Location: routing.Location{
 				Latitude:  float64(d.Latitude),
 				Longitude: float64(d.Longitude),
@@ -1310,10 +1439,9 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 		}
 
 		datacenter := routing.Datacenter{
-			ID:        crypto.HashID(d.Name),
-			Name:      d.Name,
-			AliasName: d.AliasName,
-			Enabled:   d.Enabled,
+			ID:      crypto.HashID(d.Name),
+			Name:    d.Name,
+			Enabled: d.Enabled,
 			Location: routing.Location{
 				Latitude:  d.Latitude,
 				Longitude: d.Longitude,
@@ -1338,8 +1466,8 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 		seller := routing.Seller{
 			ID:                sdoc.Ref.ID,
 			Name:              s.Name,
-			IngressPriceCents: convertNibblinsToCents(s.PricePublicIngressNibblins),
-			EgressPriceCents:  convertNibblinsToCents(s.PricePublicEgressNibblins),
+			IngressPriceCents: billing.NibblinsToCents(uint64(s.PricePublicIngressNibblins)),
+			EgressPriceCents:  billing.NibblinsToCents(uint64(s.PricePublicEgressNibblins)),
 		}
 
 		relay.Seller = seller
@@ -1355,6 +1483,55 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 	level.Info(fs.Logger).Log("during", "syncRelays", "num", len(fs.relays))
 
 	return nil
+}
+
+func (fs *Firestore) syncDatacenterMaps(ctx context.Context) error {
+	dcMaps := make(map[uint64]routing.DatacenterMap)
+
+	dcdocs := fs.Client.Collection("DatacenterMaps").Documents(ctx)
+	defer dcdocs.Stop()
+	for {
+		dcdoc, err := dcdocs.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return &FirestoreError{err: err}
+		}
+
+		var dcMap routing.DatacenterMap
+		var dcMapInt64 datacenterMap
+		err = dcdoc.DataTo(&dcMapInt64)
+		if err != nil {
+			level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to unmarshal datacenterMap %v", dcdoc.Ref.ID), "err", err)
+			continue
+		}
+
+		buyerID, err := strconv.ParseUint(dcMapInt64.Buyer, 16, 64)
+		if err != nil {
+			level.Error(fs.Logger).Log("msg", "could not parse buyerID on datacenter map", "buyerID", dcMapInt64.Buyer, "err", err)
+			continue
+		}
+
+		datacenterID, err := strconv.ParseUint(dcMapInt64.Datacenter, 16, 64)
+		if err != nil {
+			level.Error(fs.Logger).Log("msg", "could not parse datacenterID on datacenter map", "datacenterID", dcMapInt64.Datacenter, "err", err)
+			continue
+		}
+
+		dcMap.Alias = dcMapInt64.Alias
+		dcMap.BuyerID = buyerID
+		dcMap.Datacenter = datacenterID
+
+		id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.Datacenter))
+		dcMaps[id] = dcMap
+	}
+
+	fs.datacenterMapMutex.Lock()
+	fs.datacenterMaps = dcMaps
+	fs.datacenterMapMutex.Unlock()
+	return nil
+
 }
 
 func (fs *Firestore) syncCustomers(ctx context.Context) error {
@@ -1428,8 +1605,8 @@ func (fs *Firestore) syncCustomers(ctx context.Context) error {
 			sellers[sdoc.Ref.ID] = routing.Seller{
 				ID:                sdoc.Ref.ID,
 				Name:              s.Name,
-				IngressPriceCents: convertNibblinsToCents(s.PricePublicIngressNibblins),
-				EgressPriceCents:  convertNibblinsToCents(s.PricePublicEgressNibblins),
+				IngressPriceCents: billing.NibblinsToCents(uint64(s.PricePublicIngressNibblins)),
+				EgressPriceCents:  billing.NibblinsToCents(uint64(s.PricePublicEgressNibblins)),
 			}
 		}
 	}
@@ -1459,7 +1636,7 @@ func (fs *Firestore) createRouteRulesSettingsForBuyerID(ctx context.Context, ID 
 		EnvelopeKbpsUp:               rrs.EnvelopeKbpsUp,
 		EnvelopeKbpsDown:             rrs.EnvelopeKbpsDown,
 		Mode:                         rrs.Mode,
-		MaxPricePerGBNibblins:        convertCentsToNibblins(rrs.MaxCentsPerGB),
+		MaxPricePerGBNibblins:        int64(billing.CentsToNibblins(rrs.MaxCentsPerGB)),
 		AcceptableLatency:            rrs.AcceptableLatency,
 		RTTEpsilon:                   rrs.RTTEpsilon,
 		RTTThreshold:                 rrs.RTTThreshold,
@@ -1519,7 +1696,7 @@ func (fs *Firestore) getRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 	rrs.EnvelopeKbpsUp = tempRRS.EnvelopeKbpsUp
 	rrs.EnvelopeKbpsDown = tempRRS.EnvelopeKbpsDown
 	rrs.Mode = tempRRS.Mode
-	rrs.MaxCentsPerGB = convertNibblinsToCents(tempRRS.MaxPricePerGBNibblins)
+	rrs.MaxCentsPerGB = billing.NibblinsToCents(uint64(tempRRS.MaxPricePerGBNibblins))
 	rrs.AcceptableLatency = tempRRS.AcceptableLatency
 	rrs.RTTEpsilon = tempRRS.RTTEpsilon
 	rrs.RTTThreshold = tempRRS.RTTThreshold
@@ -1549,7 +1726,7 @@ func (fs *Firestore) setRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 		"envelopeKbpsUp":           rrs.EnvelopeKbpsUp,
 		"envelopeKbpsDown":         rrs.EnvelopeKbpsDown,
 		"mode":                     rrs.Mode,
-		"maxPricePerGBNibblins":    convertCentsToNibblins(rrs.MaxCentsPerGB),
+		"maxPricePerGBNibblins":    int64(billing.CentsToNibblins(rrs.MaxCentsPerGB)),
 		"acceptableLatency":        rrs.AcceptableLatency,
 		"rttRouteSwitch":           rrs.RTTEpsilon,
 		"rttThreshold":             rrs.RTTThreshold,
@@ -1569,14 +1746,4 @@ func (fs *Firestore) setRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 	// Attempt to set route shader for buyer
 	_, err := fs.Client.Collection("RouteShader").Doc(routeShaderID).Set(ctx, rrsFirestore, firestore.MergeAll)
 	return err
-}
-
-// Note: Nibblins is a made up unit in the old backend presumably to deal with floating point issues. 1000000000 Niblins = $0.01 USD
-func convertNibblinsToCents(nibblins int64) uint64 {
-	return uint64(nibblins) / 1e9
-}
-
-// Note: Nibblins is a made up unit in the old backend presumably to deal with floating point issues. 1000000000 Niblins = $0.01 USD
-func convertCentsToNibblins(cents uint64) int64 {
-	return int64(cents * 1e9)
 }

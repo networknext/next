@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-kit/kit/log"
@@ -157,18 +158,49 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 	if r.Body != nil {
 		defer r.Body.Close()
 	}
-	direct, err := s.RedisClient.ZCard("total-direct").Result()
-	if err != nil {
-		return err
-	}
 
-	next, err := s.RedisClient.ZCard("total-next").Result()
-	if err != nil {
-		return err
-	}
+	// get the top session IDs globally or for a buyer from the sorted set
+	switch args.BuyerID {
+	case "":
+		// Get top Next sessions sorted by greatest to least improved RTT
+		next, err := s.RedisClient.ZCard("total-next").Result()
+		if err != nil {
+			err = fmt.Errorf("TotalSessions() failed getting total-next sessions: %v", err)
+			s.Logger.Log("err", err)
+			return err
+		}
 
-	reply.Direct = int(direct)
-	reply.Next = int(next)
+		// Get top Direct sessions sorted by least to greatest direct RTT
+		direct, err := s.RedisClient.ZCard("total-direct").Result()
+		if err != nil {
+			err = fmt.Errorf("TotalSessions() failed getting total-direct sessions: %v", err)
+			s.Logger.Log("err", err)
+			return err
+		}
+		reply.Direct = int(direct)
+		reply.Next = int(next)
+	default:
+		if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
+			err := fmt.Errorf("TotalSessions(): %v", ErrInsufficientPrivileges)
+			s.Logger.Log("err", err)
+			return err
+		}
+		next, err := s.RedisClient.ZCard(fmt.Sprintf("total-next-buyer-%s", args.BuyerID)).Result()
+		if err != nil {
+			err = fmt.Errorf("TotalSessions() failed getting total-next sessions: %v", err)
+			s.Logger.Log("err", err)
+			return err
+		}
+		direct, err := s.RedisClient.ZCard(fmt.Sprintf("total-direct-buyer-%s", args.BuyerID)).Result()
+		if err != nil {
+			err = fmt.Errorf("TotalSessions() failed getting total-next sessions: %v", err)
+			s.Logger.Log("err", err)
+			return err
+		}
+
+		reply.Direct = int(direct)
+		reply.Next = int(next)
+	}
 
 	return nil
 }
@@ -726,7 +758,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 type BuyerListArgs struct{}
 
 type BuyerListReply struct {
-	Buyers []buyerAccount
+	Buyers []buyerAccount `json:"buyers"`
 }
 
 type buyerAccount struct {
@@ -741,12 +773,14 @@ func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *Buye
 	}
 
 	for _, b := range s.Storage.Buyers() {
-		id := fmt.Sprintf("%016x", b.ID)
+		id := fmt.Sprintf("%v", b.ID)
 		account := buyerAccount{
 			ID:   id,
 			Name: b.Name,
 		}
-		reply.Buyers = append(reply.Buyers, account)
+		if VerifyAllRoles(r, s.SameBuyerRole(id)) {
+			reply.Buyers = append(reply.Buyers, account)
+		}
 	}
 
 	sort.Slice(reply.Buyers, func(i int, j int) bool {
@@ -754,6 +788,53 @@ func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *Buye
 	})
 
 	return nil
+}
+
+type DatacenterMapsArgs struct {
+	ID uint64 `json:"buyer_id"`
+}
+
+type DatacenterMapsReply struct {
+	DatacenterMaps map[uint64]routing.DatacenterMap
+}
+
+func (s *BuyersService) DatacenterMapsForBuyer(r *http.Request, args *DatacenterMapsArgs, reply *DatacenterMapsReply) error {
+	if VerifyAllRoles(r, AnonymousRole) {
+		return nil
+	}
+
+	reply.DatacenterMaps = s.Storage.GetDatacenterMapsForBuyer(args.ID)
+	return nil
+
+}
+
+type RemoveDatacenterMapArgs struct {
+	DatacenterMap routing.DatacenterMap
+}
+
+type RemoveDatacenterMapReply struct{}
+
+func (s *BuyersService) RemoveDatacenterMap(r *http.Request, args *RemoveDatacenterMapArgs, reply *RemoveDatacenterMapReply) error {
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelFunc()
+
+	return s.Storage.RemoveDatacenterMap(ctx, args.DatacenterMap)
+
+}
+
+type AddDatacenterMapArgs struct {
+	DatacenterMap routing.DatacenterMap
+}
+
+type AddDatacenterMapReply struct{}
+
+func (s *BuyersService) AddDatacenterMap(r *http.Request, args *AddDatacenterMapArgs, reply *AddDatacenterMapReply) error {
+
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelFunc()
+
+	return s.Storage.AddDatacenterMap(ctx, args.DatacenterMap)
+
 }
 
 // SameBuyerRole checks the JWT for the correct passed in buyerID
@@ -786,6 +867,6 @@ func (s *BuyersService) SameBuyerRole(buyerID string) RoleFunc {
 			return false, fmt.Errorf("SameBuyerRole(): BuyerWithDomain error: %v", err)
 		}
 
-		return buyerID != fmt.Sprintf("%016x", buyer.ID), nil
+		return buyerID == fmt.Sprintf("%v", buyer.ID), nil
 	}
 }

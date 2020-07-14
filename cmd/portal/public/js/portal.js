@@ -22,7 +22,6 @@ JSONRPCClient = {
 		}
 
 		params = params || {}
-		const id = JSON.stringify(params)
 		const response = await fetch('/rpc', {
 			method: 'POST',
 			headers: headers,
@@ -30,7 +29,7 @@ JSONRPCClient = {
 				jsonrpc: '2.0',
 				method: method,
 				params: params,
-				id: id
+				id: "id"
 			})
 		});
 
@@ -55,7 +54,8 @@ AuthHandler = {
 			domain: domain,
 		})
 		.catch((e) => {
-			Sentry.captureException(e);
+			console.log("Something went wrong initializing the auth0 client")
+			console.log(e);
 		});
 
 		const query = window.location.search;
@@ -83,7 +83,8 @@ AuthHandler = {
 		const isAuthenticated =
 			await this.auth0Client.isAuthenticated()
 				.catch((e) => {
-					Sentry.captureException(e);
+					console.log("something went wrong checking auth status");
+					console.log(e);
 				});
 
 		if (isAuthenticated) {
@@ -95,7 +96,8 @@ AuthHandler = {
 
 			await this.auth0Client.handleRedirectCallback()
 				.catch((e) => {
-					Sentry.captureException(e);
+					console.log("something went wrong with parsing the redirect callback");
+					console.log(e);
 				});
 
 			window.history.replaceState({}, document.title, "/");
@@ -115,7 +117,8 @@ AuthHandler = {
 			connection: "Username-Password-Authentication",
 			redirect_uri: window.location.origin
 		}).catch((e) => {
-			Sentry.captureException(e);
+			console.log("something went wrong with logging in");
+			console.log(e);
 		});
 		}, 30);
 	},
@@ -126,7 +129,8 @@ AuthHandler = {
 				redirect_uri: window.location.origin,
 				screen_hint: "signup"
 			}).catch((e) => {
-				Sentry.captureException(e);
+				console.log("something went wrong signing up")
+				console.log(e)
 			});
 		}, 30);
 	},
@@ -146,7 +150,7 @@ AuthHandler = {
 			})
 			.catch((error) => {
 				console.log("something went wrong with resending verification email")
-				Sentry.captureException(error)
+				console.log(error)
 				Object.assign(rootComponent.$data.alerts.verifyEmail, {show: false})
 				Object.assign(rootComponent.$data.alerts.emailFailed, {show: true})
 			})
@@ -259,7 +263,6 @@ MapHandler = {
 			.catch((error) => {
 				console.log("Something went wrong fetching map point totals");
 				console.log(error);
-				Sentry.captureException(error);
 			});
 	},
 	refreshMapSessions() {
@@ -282,7 +285,7 @@ MapHandler = {
 						container: 'map',
 					});
 				}
-				let sessions = response.map_points;
+				let sessions = response.map_points || [];
 				let onNN = sessions.filter((point) => {
 					return (point[2] == 1);
 				});
@@ -329,7 +332,10 @@ MapHandler = {
 						width: '100%',
 						height: '100%',
 						initialViewState: this.viewState,
-						controller: true,
+						controller: {
+							dragRotate: false,
+							dragTilt: false
+						},
 						// change the map's viewstate whenever the view state of deck.gl changes
 						onViewStateChange: ({ viewState }) => {
 							this.mapInstance.jumpTo({
@@ -351,12 +357,12 @@ MapHandler = {
 			.catch((e) => {
 				console.log("Something went wrong with map init");
 				console.log(e);
-				Sentry.captureException(e);
 			});
 	},
 }
 
 UserHandler = {
+	allBuyers: [],
 	userInfo: null,
 	async fetchCurrentUserInfo() {
 		return AuthHandler.auth0Client.getIdTokenClaims()
@@ -373,7 +379,8 @@ UserHandler = {
 					userId: response.sub,
 					token: response.__raw,
 					verified: response.email_verified,
-					roles: []
+					roles: [],
+					id: ""
 				};
 				return JSONRPCClient.call("AuthService.UserAccount", {user_id: this.userInfo.userId});
 			})
@@ -397,19 +404,17 @@ UserHandler = {
 						})
 						.catch((error) => {
 							console.log("Something went wrong upgrading the account")
-							Sentry.captureException(error)
+							console.log(error)
 						})
 				}
 			}).catch((e) => {
 				console.log("Something went wrong getting the current user information");
 				console.log(e);
-				Sentry.captureException(e);
-
 				// Need to handle no BuyerID gracefully
 			});
 	},
 	getBuyerName() {
-		let allBuyers = rootComponent.$data.allBuyers;
+		let allBuyers = UserHandler.allBuyers;
 		return Array.from(allBuyers).length > 0 ? Array.from(allBuyers).find((buyer) => {
 				return buyer.id == this.userInfo.id || this.isAdmin()
 		}).name : "Private";
@@ -422,6 +427,12 @@ UserHandler = {
 	},
 	isAnonymousPlus() {
 		return !this.isAnonymous() ? !this.userInfo.verified : false;
+	},
+	isBuyer() {
+		if (this.userInfo) {
+			return this.userInfo.id !== ""
+		}
+		return false
 	},
 	isOwner() {
 		return !this.isAnonymous() ? this.userInfo.roles.findIndex((role) => role.name == "Owner") !== -1 : false;
@@ -554,7 +565,7 @@ WorkspaceHandler = {
 				})
 				.catch((e) => {
 					console.log("Something went wrong updating the users permissions");
-					Sentry.captureException(e);
+					console.log(e)
 					Object.assign(rootComponent.$data.pages.settings.updateUser, {
 						failure: 'Failed to update user',
 					});
@@ -585,7 +596,7 @@ WorkspaceHandler = {
 				})
 				.catch((e) => {
 					console.log("Something went wrong updating the users permissions");
-					Sentry.captureException(e);
+					console.log(e)
 					Object.assign(rootComponent.$data.pages.settings.updateUser, {
 						failure: 'Failed to delete user',
 					});
@@ -623,7 +634,6 @@ WorkspaceHandler = {
 			.catch((e) => {
 				console.log("Something went wrong fetching public key");
 				console.log(e)
-				Sentry.captureException(e);
 				UserHandler.userInfo.pubKey = "";
 				UserHandler.userInfo.company = "";
 			});
@@ -711,7 +721,8 @@ WorkspaceHandler = {
 								container: 'session-tool-map',
 								controller: {
 									dragPan: false,
-									dragRotate: false
+									dragRotate: false,
+									dragTilt: false
 								},
 								layers: [sessionLocationLayer],
 							});
@@ -737,7 +748,7 @@ WorkspaceHandler = {
 					showDetails: false,
 				});
 				console.log("Something went wrong fetching session details: ");
-				Sentry.captureException(e);
+				console.log(e)
 			});
 	},
 	fetchUserSessions() {
@@ -756,7 +767,7 @@ WorkspaceHandler = {
 		JSONRPCClient
 			.call("BuyersService.UserSessions", {user_hash: hash})
 			.then((response) => {
-				let sessions = response.sessions;
+				let sessions = response.sessions || [];
 
 				Object.assign(rootComponent.$data.pages.userTool, {
 					danger: false,
@@ -774,7 +785,7 @@ WorkspaceHandler = {
 					showTable: false,
 				});
 				console.log("Something went wrong fetching user sessions: ");
-				Sentry.captureException(e);
+				console.log(e)
 			});
 	},
 	updateSessionFilter(filter) {
@@ -792,7 +803,7 @@ WorkspaceHandler = {
 			JSONRPCClient
 				.call('BuyersService.TopSessions', {buyer_id: filter.buyerId})
 				.then((response) => {
-					let sessions = response.sessions;
+					let sessions = response.sessions || [];
 
 					/**
 					 * I really dislike this but it is apparently the way to reload/update the data within a vue
@@ -805,7 +816,6 @@ WorkspaceHandler = {
 				.catch((e) => {
 					console.log("Something went wrong fetching the top sessions list");
 					console.log(e);
-					Sentry.captureException(e);
 				});
 		});
 	},
@@ -897,7 +907,10 @@ WorkspaceHandler = {
 
 							generateRolesDropdown(accounts);
 						} catch(e) {
-							rootComponent.$data.pages.settings.show ? Sentry.captureException(e) : null;
+							if (rootComponent.$data.pages.settings.show) {
+								console.log("something went wrong generating the role dropdowns")
+								console.log(e)
+							}
 						}
 					});
 				}
@@ -905,7 +918,6 @@ WorkspaceHandler = {
 			.catch((errors) => {
 				console.log("Something went wrong loading settings page");
 				console.log(errors);
-				Sentry.captureException(errors);
 			});
 		});
 	}
@@ -956,8 +968,7 @@ function startApp() {
 			JSONRPCClient
 				.call('BuyersService.Buyers', {})
 				.then((response) => {
-					let allBuyers = response.Buyers || [];
-					Object.assign(rootComponent.$data, {allBuyers: allBuyers});
+					UserHandler.allBuyers = response.buyers || [];
 					/* if (UserHandler.isAnonymous()) {
 						WorkspaceHandler.welcomeTimeout = setTimeout(() => {
 							this.welcomeTimeout !== null ? clearTimeout(this.welcomeTimeout) : null;
@@ -979,12 +990,10 @@ function startApp() {
 				.catch((e) => {
 					console.log("Something went wrong initializing the map");
 					console.log(e);
-					Sentry.captureException(e);
 				});
 		}).catch((e) => {
 			console.log("Something went wrong getting the current user information");
 			console.log(e);
-			Sentry.captureException(e);
 		});
 }
 
@@ -992,7 +1001,6 @@ function createVueComponents() {
 	rootComponent = new Vue({
 		el: '#root',
 		data: {
-			allBuyers: [],
 			showCount: false,
 			mapSessions: 0,
 			onNN: 0,
@@ -1132,7 +1140,7 @@ function updatePubKey() {
 		})
 		.catch((e) => {
 			console.log("Something went wrong updating the public key");
-			Sentry.captureException(e);
+			console.log(e)
 			Object.assign(rootComponent.$data.pages.settings.updateKey, {
 				failure: 'Failed to update public key',
 			});
@@ -1177,7 +1185,7 @@ function addUsers() {
 		})
 		.catch((e) => {
 			console.log("Something went wrong creating new users");
-			Sentry.captureException(e);
+			console.log(e)
 			Object.assign(rootComponent.$data.pages.settings.newUser, {
 				failure: 'Failed to add user account',
 			});
@@ -1358,8 +1366,6 @@ function generateCharts(data) {
 		label: "Direct",
 		value: (self, rawValue) => rawValue.toFixed(2)
 	});
-
-	console.log(series)
 
 	const latencycomparisonOpts = {
 		...defaultOpts,

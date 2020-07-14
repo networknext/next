@@ -2,15 +2,18 @@ package storage
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 )
 
 type InMemory struct {
-	localBuyers      []routing.Buyer
-	localSellers     []routing.Seller
-	localRelays      []routing.Relay
-	localDatacenters []routing.Datacenter
+	localBuyers         []routing.Buyer
+	localSellers        []routing.Seller
+	localRelays         []routing.Relay
+	localDatacenters    []routing.Datacenter
+	localDatacenterMaps []routing.DatacenterMap
 
 	LocalMode bool
 }
@@ -264,6 +267,67 @@ func (m *InMemory) SetRelay(ctx context.Context, relay routing.Relay) error {
 	}
 
 	return &DoesNotExistError{resourceType: "relay", resourceRef: relay.ID}
+}
+
+func (m *InMemory) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error {
+
+	for _, dc := range m.localDatacenterMaps {
+		if dc.BuyerID == dcMap.BuyerID && dc.Alias == dcMap.Alias && dc.Datacenter == dcMap.Datacenter {
+			return &AlreadyExistsError{resourceType: "datacenterMap", resourceRef: dcMap.Alias}
+		}
+	}
+
+	m.localDatacenterMaps = append(m.localDatacenterMaps, dcMap)
+
+	return nil
+
+}
+
+func (m *InMemory) GetDatacenterMapsForBuyer(id uint64) map[uint64]routing.DatacenterMap {
+	var dcs = make(map[uint64]routing.DatacenterMap)
+	for _, dc := range m.localDatacenterMaps {
+		if dc.BuyerID == id {
+			id := crypto.HashID(dc.Alias + fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.Datacenter))
+			dcs[id] = dc
+		}
+	}
+
+	return dcs
+}
+
+func (m *InMemory) ListDatacenterMaps(dcID uint64) map[uint64]routing.DatacenterMap {
+	var dcs = make(map[uint64]routing.DatacenterMap)
+	for _, dc := range m.localDatacenterMaps {
+		if dc.Datacenter == dcID {
+			id := crypto.HashID(dc.Alias + fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.Datacenter))
+			dcs[id] = dc
+		}
+	}
+
+	return dcs
+}
+
+func (m *InMemory) RemoveDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error {
+
+	idx := -1
+	for i, dcm := range m.localDatacenterMaps {
+		if dcMap.Alias == dcm.Alias && dcMap.BuyerID == dcm.BuyerID && dcMap.Datacenter == dcm.Datacenter {
+			idx = i
+		}
+	}
+
+	if idx < 0 {
+		return &DoesNotExistError{resourceType: "datacenterMap", resourceRef: dcMap.Alias}
+	}
+
+	if idx+1 == len(m.localDatacenterMaps) {
+		m.localDatacenterMaps = m.localDatacenterMaps[:idx]
+		return nil
+	}
+
+	m.localDatacenterMaps = append(m.localDatacenterMaps[:idx], m.localDatacenterMaps[idx+1:]...)
+	return nil
+
 }
 
 func (m *InMemory) Datacenter(id uint64) (routing.Datacenter, error) {

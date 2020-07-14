@@ -48,9 +48,9 @@ func (serverMap *ServerMap) NumServers() uint64 {
 	return total
 }
 
-func (serverMap *ServerMap) UpdateServerData(serverAddress string, serverData *ServerData) {
+func (serverMap *ServerMap) UpdateServerData(buyerID uint64, serverAddress string, serverData *ServerData) {
 	serverHash := crypto.HashID(serverAddress)
-	index := serverHash % NumServerMapShards
+	index := (buyerID + serverHash) % NumServerMapShards
 	serverMap.shard[index].mutex.Lock()
 	_, exists := serverMap.shard[index].servers[serverAddress]
 	serverMap.shard[index].servers[serverAddress] = serverData
@@ -60,9 +60,9 @@ func (serverMap *ServerMap) UpdateServerData(serverAddress string, serverData *S
 	}
 }
 
-func (serverMap *ServerMap) GetServerData(serverAddress string) *ServerData {
+func (serverMap *ServerMap) GetServerData(buyerID uint64, serverAddress string) *ServerData {
 	serverHash := crypto.HashID(serverAddress)
-	index := serverHash % NumServerMapShards
+	index := (buyerID + serverHash) % NumServerMapShards
 	serverMap.shard[index].mutex.Lock()
 	serverData, _ := serverMap.shard[index].servers[serverAddress]
 	serverMap.shard[index].mutex.Unlock()

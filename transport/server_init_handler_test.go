@@ -1,18 +1,15 @@
 package transport_test
 
 // todo: disabled
-/*
+
 import (
 	"bytes"
 	"context"
 	"crypto/ed25519"
 	"net"
 	"testing"
-	"time"
 
-	"github.com/alicebob/miniredis/v2"
 	"github.com/go-kit/kit/log"
-	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
@@ -24,7 +21,7 @@ import (
 func TestServerInitHandlerFunc(t *testing.T) {
 	t.Parallel()
 
-	t.Run("failed to unmarshal packet", func(t *testing.T) {
+	t.Run("failed to read packet", func(t *testing.T) {
 		addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
 		assert.NoError(t, err)
 
@@ -34,205 +31,303 @@ func TestServerInitHandlerFunc(t *testing.T) {
 		metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
 		assert.NoError(t, err)
 
-		initMetrics.ErrorMetrics.UnmarshalFailure = metric
+		initMetrics.ErrorMetrics.ReadPacketFailure = metric
+		serverInitCounters := transport.ServerInitCounters{}
 
-		handler := transport.ServerInitHandlerFunc(log.NewNopLogger(), nil, nil, &initMetrics, nil)
-		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: []byte("this is not a proper packet")})
-
-		assert.Equal(t, 1.0, initMetrics.ErrorMetrics.UnmarshalFailure.Value())
-	})
-
-	t.Run("SDK version too old", func(t *testing.T) {
-		addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
-		assert.NoError(t, err)
-
-		initMetrics := metrics.EmptyServerInitMetrics
-		localMetrics := metrics.LocalHandler{}
-
-		metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
-		assert.NoError(t, err)
-
-		initMetrics.ErrorMetrics.SDKTooOld = metric
-
-		packet := transport.ServerInitRequestPacket{
-			RequestID:    1,
-			CustomerID:   2,
-			DatacenterID: 13,
-
-			Version: transport.SDKVersion{1, 2, 3},
-
-			Signature: make([]byte, ed25519.SignatureSize),
+		serverInitParms := transport.ServerInitParams{
+			Logger:   log.NewNopLogger(),
+			Metrics:  &initMetrics,
+			Counters: &serverInitCounters,
 		}
 
-		data, err := packet.MarshalBinary()
-		assert.NoError(t, err)
+		handler := transport.ServerInitHandlerFunc(&serverInitParms)
+		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: []byte("this is not a proper packet")})
 
-		handler := transport.ServerInitHandlerFunc(log.NewNopLogger(), nil, nil, &initMetrics, nil)
-		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
-
-		assert.Equal(t, 1.0, initMetrics.ErrorMetrics.SDKTooOld.Value())
+		assert.Equal(t, 1.0, initMetrics.ErrorMetrics.ReadPacketFailure.Value())
 	})
 
 	t.Run("datacenter not found", func(t *testing.T) {
-		db := storage.InMemory{}
-
-		addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
-		assert.NoError(t, err)
-
-		initMetrics := metrics.EmptyServerInitMetrics
-		localMetrics := metrics.LocalHandler{}
-
-		metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
-		assert.NoError(t, err)
-
-		initMetrics.ErrorMetrics.DatacenterNotFound = metric
-
-		packet := transport.ServerInitRequestPacket{
-			RequestID:    1,
-			CustomerID:   2,
-			DatacenterID: 13,
-
-			Version: transport.SDKVersionMin,
-
-			Signature: make([]byte, ed25519.SignatureSize),
-		}
-
-		data, err := packet.MarshalBinary()
-		assert.NoError(t, err)
-
-		handler := transport.ServerInitHandlerFunc(log.NewNopLogger(), nil, &db, &initMetrics, nil)
-		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
-
-		assert.Equal(t, 1.0, initMetrics.ErrorMetrics.DatacenterNotFound.Value())
-	})
-
-	t.Run("customer not found", func(t *testing.T) {
-		db := storage.InMemory{}
-		db.AddDatacenter(context.Background(), routing.Datacenter{ID: 13})
-
-		addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
-		assert.NoError(t, err)
-
-		initMetrics := metrics.EmptyServerInitMetrics
-		localMetrics := metrics.LocalHandler{}
-
-		metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
-		assert.NoError(t, err)
-
-		initMetrics.ErrorMetrics.BuyerNotFound = metric
-
-		packet := transport.ServerInitRequestPacket{
-			RequestID:    1,
-			CustomerID:   2,
-			DatacenterID: 13,
-
-			Version: transport.SDKVersionMin,
-
-			Signature: make([]byte, ed25519.SignatureSize),
-		}
-
-		data, err := packet.MarshalBinary()
-		assert.NoError(t, err)
-
-		handler := transport.ServerInitHandlerFunc(log.NewNopLogger(), nil, &db, &initMetrics, nil)
-		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
-
-		assert.Equal(t, 1.0, initMetrics.ErrorMetrics.BuyerNotFound.Value())
-	})
-
-	t.Run("signature verification failed", func(t *testing.T) {
-		db := storage.InMemory{}
-		db.AddDatacenter(context.Background(), routing.Datacenter{ID: 13})
-		db.AddBuyer(context.Background(), routing.Buyer{ID: 2})
-
-		addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
-		assert.NoError(t, err)
-
-		initMetrics := metrics.EmptyServerInitMetrics
-		localMetrics := metrics.LocalHandler{}
-
-		metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
-		assert.NoError(t, err)
-
-		initMetrics.ErrorMetrics.VerificationFailure = metric
-
-		packet := transport.ServerInitRequestPacket{
-			RequestID:    1,
-			CustomerID:   2,
-			DatacenterID: 13,
-
-			Version: transport.SDKVersionMin,
-
-			Signature: make([]byte, ed25519.SignatureSize),
-		}
-
-		data, err := packet.MarshalBinary()
-		assert.NoError(t, err)
-
-		handler := transport.ServerInitHandlerFunc(log.NewNopLogger(), nil, &db, &initMetrics, nil)
-		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
-
-		assert.Equal(t, 1.0, initMetrics.ErrorMetrics.VerificationFailure.Value())
-	})
-
-	t.Run("success", func(t *testing.T) {
 		buyersServerPubKey, buyersServerPrivKey, err := ed25519.GenerateKey(nil)
-		assert.NoError(t, err)
-
-		redisServer, err := miniredis.Run()
-		assert.NoError(t, err)
-		redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
-
-		redisClient.Set("SERVER-2-0.0.0.0:13", 0, 10*time.Second)
 
 		db := storage.InMemory{}
-		db.AddDatacenter(context.Background(), routing.Datacenter{ID: 13})
 		db.AddBuyer(context.Background(), routing.Buyer{
-			ID:        2,
 			PublicKey: buyersServerPubKey,
+			ID:        15,
 		})
 
+		addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
+		assert.NoError(t, err)
+
 		initMetrics := metrics.EmptyServerInitMetrics
 		localMetrics := metrics.LocalHandler{}
 
 		metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
 		assert.NoError(t, err)
 
-		initMetrics.ErrorMetrics.SDKTooOld = metric
-		initMetrics.ErrorMetrics.BuyerNotFound = metric
 		initMetrics.ErrorMetrics.DatacenterNotFound = metric
-		initMetrics.ErrorMetrics.VerificationFailure = metric
+		serverInitCounters := transport.ServerInitCounters{}
 
-		// Create a ServerUpdatePacket and marshal it to binary so sent it into the UDP handler
 		packet := transport.ServerInitRequestPacket{
 			RequestID:    1,
-			CustomerID:   2,
+			CustomerID:   15,
 			DatacenterID: 13,
 
 			Version: transport.SDKVersionMin,
-
-			Signature: make([]byte, ed25519.SignatureSize),
 		}
 		packet.Signature = crypto.Sign(buyersServerPrivKey, packet.GetSignData())
 
 		data, err := packet.MarshalBinary()
 		assert.NoError(t, err)
 
+		serverInitParms := transport.ServerInitParams{
+			Logger:   log.NewNopLogger(),
+			Storer:   &db,
+			Metrics:  &initMetrics,
+			Counters: &serverInitCounters,
+		}
+
+		handler := transport.ServerInitHandlerFunc(&serverInitParms)
+		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
+
+		assert.Equal(t, 1.0, initMetrics.ErrorMetrics.DatacenterNotFound.Value())
+	})
+
+	t.Run("datacenter alias found", func(t *testing.T) {
+		buyersServerPubKey, buyersServerPrivKey, err := ed25519.GenerateKey(nil)
+
+		db := storage.InMemory{}
+		db.AddBuyer(context.Background(), routing.Buyer{
+			PublicKey: buyersServerPubKey,
+			ID:        15,
+		})
+
+		datacenter := routing.Datacenter{
+			ID:        13,
+			Name:      "local",
+			AliasName: "local.alias",
+			Enabled:   true,
+			// Location: omitted
+		}
+
+		db.AddDatacenter(context.Background(), datacenter)
+
+		dcMap := routing.DatacenterMap{
+			Alias:      "local.alias",
+			Datacenter: 13,
+			BuyerID:    15,
+		}
+
+		db.AddDatacenterMap(context.Background(), dcMap)
+
 		addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
 		assert.NoError(t, err)
 
-		// Initialize the UDP handler with the required redis client
-		handler := transport.ServerInitHandlerFunc(log.NewNopLogger(), redisClient, &db, &initMetrics, buyersServerPrivKey)
+		initMetrics := metrics.EmptyServerInitMetrics
+		localMetrics := metrics.LocalHandler{}
+
+		metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
+		assert.NoError(t, err)
+
+		initMetrics.ErrorMetrics.DatacenterNotFound = metric
+
+		packet := transport.ServerUpdatePacket{
+			// Sequence:             13,
+			ServerAddress:        net.UDPAddr{IP: net.IPv4zero, Port: 13},
+			ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
+			ServerRoutePublicKey: TestServerBackendPublicKey,
+			CustomerID:           15,
+
+			DatacenterID: crypto.HashID("local.alias"),
+
+			Version: transport.SDKVersionMin,
+		}
+		packet.Signature = crypto.Sign(buyersServerPrivKey, packet.GetSignData())
+
+		data, err := packet.MarshalBinary()
+		assert.NoError(t, err)
+
+		serverInitCounters := transport.ServerInitCounters{}
+
+		serverInitParams := transport.ServerInitParams{
+			Logger:   log.NewNopLogger(),
+			Storer:   &db,
+			Metrics:  &initMetrics,
+			Counters: &serverInitCounters,
+		}
+
+		handler := transport.ServerInitHandlerFunc(&serverInitParams)
 		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
-		assert.Equal(t, 0.0, initMetrics.ErrorMetrics.SDKTooOld.Value())
-		assert.Equal(t, 0.0, initMetrics.ErrorMetrics.BuyerNotFound.Value())
-		assert.Equal(t, 0.0, initMetrics.ErrorMetrics.DatacenterNotFound.Value())
-		assert.Equal(t, 0.0, initMetrics.ErrorMetrics.VerificationFailure.Value())
+		// _, err = redisServer.Get("SERVER-0-0.0.0.0:13")
+		// assert.Error(t, err)
 
-		cmd := redisClient.Get("SERVER-2-0.0.0.0:13")
-		assert.EqualError(t, cmd.Err(), "redis: nil")
-		assert.Equal(t, "", cmd.Val())
+		assert.Equal(t, 0.0, initMetrics.ErrorMetrics.DatacenterNotFound.Value())
 	})
+
+	/*
+		t.Run("SDK version too old", func(t *testing.T) {
+			t.Skip()
+			addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
+			assert.NoError(t, err)
+
+			initMetrics := metrics.EmptyServerInitMetrics
+			localMetrics := metrics.LocalHandler{}
+
+			metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
+			assert.NoError(t, err)
+
+			initMetrics.ErrorMetrics.SDKTooOld = metric
+
+			packet := transport.ServerInitRequestPacket{
+				RequestID:    1,
+				CustomerID:   2,
+				DatacenterID: 13,
+
+				Version: transport.SDKVersion{1, 2, 3},
+
+				Signature: make([]byte, ed25519.SignatureSize),
+			}
+
+			data, err := packet.MarshalBinary()
+			assert.NoError(t, err)
+
+			handler := transport.ServerInitHandlerFunc(log.NewNopLogger(), nil, nil, &initMetrics, nil)
+			handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
+
+			assert.Equal(t, 1.0, initMetrics.ErrorMetrics.SDKTooOld.Value())
+		})
+
+
+		t.Run("customer not found", func(t *testing.T) {
+			t.Skip()
+			db := storage.InMemory{}
+			db.AddDatacenter(context.Background(), routing.Datacenter{ID: 13})
+
+			addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
+			assert.NoError(t, err)
+
+			initMetrics := metrics.EmptyServerInitMetrics
+			localMetrics := metrics.LocalHandler{}
+
+			metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
+			assert.NoError(t, err)
+
+			initMetrics.ErrorMetrics.BuyerNotFound = metric
+
+			packet := transport.ServerInitRequestPacket{
+				RequestID:    1,
+				CustomerID:   2,
+				DatacenterID: 13,
+
+				Version: transport.SDKVersionMin,
+
+				Signature: make([]byte, ed25519.SignatureSize),
+			}
+
+			data, err := packet.MarshalBinary()
+			assert.NoError(t, err)
+
+			handler := transport.ServerInitHandlerFunc(log.NewNopLogger(), nil, &db, &initMetrics, nil)
+			handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
+
+			assert.Equal(t, 1.0, initMetrics.ErrorMetrics.BuyerNotFound.Value())
+		})
+
+		t.Run("signature verification failed", func(t *testing.T) {
+			t.Skip()
+			db := storage.InMemory{}
+			db.AddDatacenter(context.Background(), routing.Datacenter{ID: 13})
+			db.AddBuyer(context.Background(), routing.Buyer{ID: 2})
+
+			addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
+			assert.NoError(t, err)
+
+			initMetrics := metrics.EmptyServerInitMetrics
+			localMetrics := metrics.LocalHandler{}
+
+			metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
+			assert.NoError(t, err)
+
+			initMetrics.ErrorMetrics.VerificationFailure = metric
+
+			packet := transport.ServerInitRequestPacket{
+				RequestID:    1,
+				CustomerID:   2,
+				DatacenterID: 13,
+
+				Version: transport.SDKVersionMin,
+
+				Signature: make([]byte, ed25519.SignatureSize),
+			}
+
+			data, err := packet.MarshalBinary()
+			assert.NoError(t, err)
+
+			handler := transport.ServerInitHandlerFunc(log.NewNopLogger(), nil, &db, &initMetrics, nil)
+			handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
+
+			assert.Equal(t, 1.0, initMetrics.ErrorMetrics.VerificationFailure.Value())
+		})
+
+		t.Run("success", func(t *testing.T) {
+			t.Skip()
+			buyersServerPubKey, buyersServerPrivKey, err := ed25519.GenerateKey(nil)
+			assert.NoError(t, err)
+
+			redisServer, err := miniredis.Run()
+			assert.NoError(t, err)
+			redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+
+			redisClient.Set("SERVER-2-0.0.0.0:13", 0, 10*time.Second)
+
+			db := storage.InMemory{}
+			db.AddDatacenter(context.Background(), routing.Datacenter{ID: 13})
+			db.AddBuyer(context.Background(), routing.Buyer{
+				ID:        2,
+				PublicKey: buyersServerPubKey,
+			})
+
+			initMetrics := metrics.EmptyServerInitMetrics
+			localMetrics := metrics.LocalHandler{}
+
+			metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
+			assert.NoError(t, err)
+
+			initMetrics.ErrorMetrics.SDKTooOld = metric
+			initMetrics.ErrorMetrics.BuyerNotFound = metric
+			initMetrics.ErrorMetrics.DatacenterNotFound = metric
+			initMetrics.ErrorMetrics.VerificationFailure = metric
+
+			// Create a ServerUpdatePacket and marshal it to binary so sent it into the UDP handler
+			packet := transport.ServerInitRequestPacket{
+				RequestID:    1,
+				CustomerID:   2,
+				DatacenterID: 13,
+
+				Version: transport.SDKVersionMin,
+
+				Signature: make([]byte, ed25519.SignatureSize),
+			}
+			packet.Signature = crypto.Sign(buyersServerPrivKey, packet.GetSignData())
+
+			data, err := packet.MarshalBinary()
+			assert.NoError(t, err)
+
+			addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
+			assert.NoError(t, err)
+
+			// Initialize the UDP handler with the required redis client
+			handler := transport.ServerInitHandlerFunc(log.NewNopLogger(), redisClient, &db, &initMetrics, buyersServerPrivKey)
+			handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
+
+			assert.Equal(t, 0.0, initMetrics.ErrorMetrics.SDKTooOld.Value())
+			assert.Equal(t, 0.0, initMetrics.ErrorMetrics.BuyerNotFound.Value())
+			assert.Equal(t, 0.0, initMetrics.ErrorMetrics.DatacenterNotFound.Value())
+			assert.Equal(t, 0.0, initMetrics.ErrorMetrics.VerificationFailure.Value())
+
+			cmd := redisClient.Get("SERVER-2-0.0.0.0:13")
+			assert.EqualError(t, cmd.Err(), "redis: nil")
+			assert.Equal(t, "", cmd.Val())
+		})
+	*/
 }
-*/
