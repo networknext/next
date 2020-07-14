@@ -2313,6 +2313,12 @@ func sendRouteResponse(w io.Writer, chosenRoute *routing.Route, params *SessionU
 		params.VetoMap.SetVeto(packet.SessionID, routeDecision.Reason)
 	}
 
+	if response.RouteType == routing.RouteTypeDirect {
+		params.Metrics.DirectSessions.Add(1)
+	} else {
+		params.Metrics.NextSessions.Add(1)
+	}
+
 	addRouteDecisionMetric(routeDecision, params.Metrics)
 
 	// If the last slice was newly on NN, then we want to extend the slice duration to 20 seconds
