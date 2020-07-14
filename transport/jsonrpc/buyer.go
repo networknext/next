@@ -2,6 +2,7 @@ package jsonrpc
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
@@ -714,10 +715,15 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 
 	// Buyer not found
 	if buyer.ID == 0 {
-		byteKey := []byte(args.NewPublicKey)
+		byteKey, err := base64.StdEncoding.DecodeString(args.NewPublicKey)
 
+		if err != nil {
+			err = fmt.Errorf("UpdateGameConfiguration() could not decode public key string")
+			s.Logger.Log("err", err)
+			return err
+		}
 		buyerID = binary.LittleEndian.Uint64(byteKey[0:8])
-		err := s.Storage.AddBuyer(ctx, routing.Buyer{
+		err = s.Storage.AddBuyer(ctx, routing.Buyer{
 			ID:        buyerID,
 			Name:      args.Name,
 			Domain:    args.Domain,
