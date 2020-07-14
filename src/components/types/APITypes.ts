@@ -35,12 +35,3 @@ export interface SessionMeta {
   platform: string;
   buyerID: string;
 }
-
-export interface UserProfile {
-  auth0ID: string,
-  company: string,
-  email: string,
-  idToken: string,
-  name: string,
-  roles: Array<string>
-}

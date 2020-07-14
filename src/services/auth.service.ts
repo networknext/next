@@ -3,8 +3,8 @@ import store from '@/store'
 
 export default class AuthService {
   // TODO: Make these env vars
-  private baseURL = window.location.hostname
-  private clientID = this.baseURL === 'portal.networknext.com' ? 'MaSx99ma3AwYOwWMLm3XWNvQ5WyJWG2Y' : 'oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n'
+  private baseURL: string = window.location.hostname
+  private clientID: string = this.baseURL === 'portal.networknext.com' ? 'MaSx99ma3AwYOwWMLm3XWNvQ5WyJWG2Y' : 'oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n'
   private domain = 'networknext.auth0.com'
 
   private lockClient: Auth0LockStatic
@@ -59,19 +59,37 @@ export default class AuthService {
   }
 
   private processAuthentification (authResult: AuthResult) {
-    this.getUserInfo(authResult.accessToken, (error: auth0.Auth0Error, profile: any) => {
+    this.getUserInfo(authResult.accessToken, (error: auth0.Auth0Error, profile: NNAuth0Profile) => {
       if (!error) {
         const roles = profile['https://networknext.com/userRoles'].roles
-        const userProfile = {
+        const userProfile: UserProfile = {
           auth0ID: profile.sub,
           company: '',
-          email: profile.email,
+          email: profile.email || '',
           idToken: authResult.idToken,
           name: profile.name,
-          roles: roles
+          roles: roles,
+          verified: profile.email_verified || false
         }
+        console.log(userProfile)
         store.commit('UPDATE_USER_PROFILE', userProfile)
       }
     })
   }
+}
+
+interface NNAuth0Profile extends auth0.Auth0UserProfile {
+  'https://networknext.com/userRoles': {
+    roles: Array<string>;
+  };
+}
+
+export interface UserProfile {
+  auth0ID: string;
+  company: string;
+  email: string;
+  idToken: string;
+  name: string;
+  roles: Array<string>;
+  verified: boolean;
 }

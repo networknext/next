@@ -1,3 +1,5 @@
+import store from '@/store'
+
 export default class APIService {
   private headers: any = null;
 
@@ -8,15 +10,12 @@ export default class APIService {
       'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': '*'
     }
-
-    /**
-     * TODO: Check if there is an auth token associated with
-     *       the user and add the token to the auth header
-     *
-     * */
   }
 
   public call (method: string, params: any): Promise<any> {
+    if (!store.getters.isAnonymous) {
+      this.headers.Authorization = `Bearer ${store.getters.idToken}`
+    }
     return new Promise((resolve, reject) => {
       const options = params || {}
       const id = JSON.stringify(params)
