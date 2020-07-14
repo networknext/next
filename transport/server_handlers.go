@@ -355,7 +355,6 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 			if len(datacenterAliases) == 0 {
 				params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
 				params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-				params.Metrics.ErrorMetrics.VerificationFailure.Add(1)
 			} else {
 				for _, dcMap := range datacenterAliases {
 					if packet.DatacenterID == crypto.HashID(dcMap.Alias) {
@@ -363,7 +362,6 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 						if err != nil {
 							params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
 							params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-							params.Metrics.ErrorMetrics.VerificationFailure.Add(1)
 							return
 
 						}

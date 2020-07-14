@@ -799,7 +799,6 @@ type DatacenterMapsReply struct {
 }
 
 func (s *BuyersService) DatacenterMapsForBuyer(r *http.Request, args *DatacenterMapsArgs, reply *DatacenterMapsReply) error {
-	// reply.DatacenterMaps = make(map[uint64]routing.DatacenterMap, 0)
 	if VerifyAllRoles(r, AnonymousRole) {
 		return nil
 	}
