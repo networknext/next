@@ -430,6 +430,15 @@ UserHandler = {
 		}
 		return "Private"
 	},
+	getCustomerName(buyerId) {
+		let allBuyers = UserHandler.allBuyers;
+		for (i = 0; i < allBuyers.length; i++) {
+			if (allBuyers[i].id == buyerId || this.isAdmin()) {
+				return allBuyers[i].name
+			}
+		}
+		return "Private"
+	},
 	isAdmin() {
 		return !this.isAnonymous() ? this.userInfo.roles.findIndex((role) => role.name == "Admin") !== -1 : false;
 	},
