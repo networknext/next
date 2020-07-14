@@ -415,7 +415,7 @@ UserHandler = {
 	getBuyerId() {
 		let allBuyers = UserHandler.allBuyers;
 		for (i = 0; i < allBuyers.length; i++) {
-			if (allBuyers[i].id == this.userInfo.id || this.isAdmin()) {
+			if (allBuyers[i].id == this.userInfo.id) {
 				return allBuyers[i].id
 			}
 		}
@@ -424,7 +424,7 @@ UserHandler = {
 	getBuyerName() {
 		let allBuyers = UserHandler.allBuyers;
 		for (i = 0; i < allBuyers.length; i++) {
-			if (allBuyers[i].id == this.userInfo.id || this.isAdmin()) {
+			if (allBuyers[i].id == this.userInfo.id) {
 				return allBuyers[i].name
 			}
 		}
@@ -433,7 +433,7 @@ UserHandler = {
 	getCustomerName(buyerId) {
 		let allBuyers = UserHandler.allBuyers;
 		for (i = 0; i < allBuyers.length; i++) {
-			if (allBuyers[i].id == buyerId || this.isAdmin()) {
+			if (allBuyers[i].id == buyerId) {
 				return allBuyers[i].name
 			}
 		}
