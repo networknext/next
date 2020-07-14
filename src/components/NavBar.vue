@@ -7,22 +7,22 @@
     </a>
     <ul class="navbar-nav px-3 w-100 mr-auto">
         <li class="nav-item text-nowrap">
-            <router-link to="/" class="nav-link" v-bind:class="{ active: currentPage == 'map'}">Map</router-link>
+            <router-link to="/" class="nav-link" v-bind:class="{ active: $store.getters.currentPage == 'map'}">Map</router-link>
         </li>
         <li class="nav-item text-nowrap">
-            <router-link to="/sessions" class="nav-link" v-bind:class="{ active: currentPage == 'sessions'}">Sessions</router-link>
+            <router-link to="/sessions" class="nav-link" v-bind:class="{ active: $store.getters.currentPage == 'sessions'}">Sessions</router-link>
         </li>
         <li class="nav-item text-nowrap">
-            <router-link to="/session-tool" class="nav-link" v-bind:class="{ active: currentPage == 'session-tool'}">Session Tool</router-link>
+            <router-link to="/session-tool" class="nav-link" v-bind:class="{ active: $store.getters.currentPage == 'session-tool'}">Session Tool</router-link>
         </li>
         <li class="nav-item text-nowrap">
-            <router-link to="/user-tool" class="nav-link" v-bind:class="{ active: currentPage == 'user-tool'}">User Tool</router-link>
+            <router-link to="/user-tool" class="nav-link" v-bind:class="{ active: $store.getters.currentPage == 'user-tool'}">User Tool</router-link>
         </li>
         <li class="nav-item text-nowrap">
-            <router-link to="/downloads" class="nav-link" v-bind:class="{ active: currentPage == 'downloads'}">Downloads</router-link>
+            <router-link to="/downloads" class="nav-link" v-bind:class="{ active: $store.getters.currentPage == 'downloads'}">Downloads</router-link>
         </li>
         <li class="nav-item text-nowrap">
-            <router-link to="/settings" class="nav-link" v-bind:class="{ active: currentPage == 'settings'}">Settings</router-link>
+            <router-link to="/settings" class="nav-link" v-bind:class="{ active: $store.getters.currentPage == 'config' || $store.getters.currentPage == 'users' }">Settings</router-link>
         </li>
     </ul>
     <ul class="navbar-nav px-3">

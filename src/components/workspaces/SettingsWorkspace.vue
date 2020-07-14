@@ -22,10 +22,10 @@
       <div class="card-header">
         <ul class="nav nav-tabs card-header-tabs">
           <li class="nav-item">
-            <router-link to="/settings/users" class="nav-link" v-bind:class="{ active: currentPage == 'users'}">Users</router-link>
+            <router-link to="/settings/users" class="nav-link" v-bind:class="{ active: $store.getters.currentPage == 'users'}">Users</router-link>
           </li>
           <li class="nav-item">
-            <router-link to="/settings/game-config" class="nav-link" v-bind:class="{ active: currentPage == 'config'}">Game Configuration</router-link>
+            <router-link to="/settings/game-config" class="nav-link" v-bind:class="{ active: $store.getters.currentPage == 'config'}">Game Configuration</router-link>
           </li>
         </ul>
       </div>

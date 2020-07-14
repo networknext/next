@@ -192,7 +192,7 @@ Vue.component('nav-bar', NavBar)
 Vue.component('workspace', Workspace)
 export default Vue.extend({
   mounted () {
-    console.log('Mounting the app')
+    this.$store.dispatch('updateCurrentPage', this.$router.currentRoute.name)
     this.$router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
       this.$store.dispatch('updateCurrentPage', to.name)
       next()
