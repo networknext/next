@@ -362,6 +362,7 @@ MapHandler = {
 }
 
 UserHandler = {
+	allBuyers: [],
 	userInfo: null,
 	async fetchCurrentUserInfo() {
 		return AuthHandler.auth0Client.getIdTokenClaims()
@@ -413,7 +414,7 @@ UserHandler = {
 			});
 	},
 	getBuyerName() {
-		let allBuyers = rootComponent.$data.allBuyers;
+		let allBuyers = UserHandler.allBuyers;
 		return Array.from(allBuyers).length > 0 ? Array.from(allBuyers).find((buyer) => {
 				return buyer.id == this.userInfo.id || this.isAdmin()
 		}).name : "Private";
@@ -967,8 +968,7 @@ function startApp() {
 			JSONRPCClient
 				.call('BuyersService.Buyers', {})
 				.then((response) => {
-					let allBuyers = response.buyers || [];
-					Object.assign(rootComponent.$data, {allBuyers: allBuyers});
+					UserHandler.allBuyers = response.buyers || [];
 					/* if (UserHandler.isAnonymous()) {
 						WorkspaceHandler.welcomeTimeout = setTimeout(() => {
 							this.welcomeTimeout !== null ? clearTimeout(this.welcomeTimeout) : null;
@@ -1001,7 +1001,6 @@ function createVueComponents() {
 	rootComponent = new Vue({
 		el: '#root',
 		data: {
-			allBuyers: [],
 			showCount: false,
 			mapSessions: 0,
 			onNN: 0,

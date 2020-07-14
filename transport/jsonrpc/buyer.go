@@ -772,7 +772,7 @@ func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *Buye
 	}
 
 	for _, b := range s.Storage.Buyers() {
-		id := fmt.Sprintf("%016x", b.ID)
+		id := fmt.Sprintf("%v", b.ID)
 		account := buyerAccount{
 			ID:   id,
 			Name: b.Name,
@@ -819,6 +819,6 @@ func (s *BuyersService) SameBuyerRole(buyerID string) RoleFunc {
 			return false, fmt.Errorf("SameBuyerRole(): BuyerWithDomain error: %v", err)
 		}
 
-		return buyerID == fmt.Sprintf("%016x", buyer.ID), nil
+		return buyerID == fmt.Sprintf("%v", buyer.ID), nil
 	}
 }
