@@ -195,7 +195,7 @@ MapHandler = {
 	totalSessionCountCalls: 0,
 	initMap() {
 		this.updateFilter({
-			buyerId: UserHandler.isBuyer() && !UserHandler.isAdmin() ? UserHandler.userInfo.id : "",
+			buyerId: "",
 			sessionType: 'all'
 		});
 	},
@@ -644,7 +644,7 @@ WorkspaceHandler = {
 	},
 	loadSessionsPage() {
 		this.updateSessionFilter({
-			buyerId: UserHandler.isBuyer() && !UserHandler.isAdmin() ? UserHandler.userInfo.id : "",
+			buyerId: "",
 			sessionType: 'all'
 		});
 	},
