@@ -198,8 +198,8 @@ func (m *RouteMatrix) GetRoutes(near []Relay, dest []Relay) ([]Route, error) {
 		for _, destRelay := range dest {
 			entryIndex, reverse := m.GetEntryIndex(&nearRelay, &destRelay)
 
-			if entryIndex < 0 {
-				return nil, fmt.Errorf("no entry for near relay %s and dest relay %s", nearRelay.Name, destRelay.Name)
+			if entryIndex < 0 || entryIndex >= len(m.Entries) {
+				continue
 			}
 
 			entry := &m.Entries[entryIndex]
@@ -236,16 +236,20 @@ func (m *RouteMatrix) GetRoutes(near []Relay, dest []Relay) ([]Route, error) {
 				} else {
 					// route set is full, only insert if lower RTT than at least one current route.
 
-					if routeRTT >= bestRoutes[bestRoutesLength-1].Stats.RTT {
+					if routeRTT >= bestRoutes[MaxBestRoutes-1].Stats.RTT {
 						continue
 					}
 
-					if err := m.InsertRoute(bestRoutes, &bestRoutesLength, nearRelay.ClientStats.RTT+routeRTT, entry, i, reverse); err != nil {
+					if err := m.InsertRouteFull(bestRoutes, nearRelay.ClientStats.RTT+routeRTT, entry, i, reverse); err != nil {
 						return nil, err
 					}
 				}
 			}
 		}
+	}
+
+	if bestRoutesLength > MaxBestRoutes {
+		bestRoutesLength = MaxBestRoutes
 	}
 
 	bestRoutes = bestRoutes[:bestRoutesLength]
@@ -333,6 +337,36 @@ func (m *RouteMatrix) InsertRoute(routes []Route, length *uint64, routeRTT float
 	}
 
 	for i := *length - 1; i > insertIndex; i-- {
+		routes[i] = routes[i-1]
+	}
+
+	routes[insertIndex] = Route{
+		Relays: routeRelays,
+		Stats: Stats{
+			RTT: math.Ceil(routeRTT),
+		},
+	}
+
+	return nil
+}
+
+// InsertRouteFull will insert a new route to the given routes buffer sorted by the route's RTT. The routes buffer must already be sorted by RTT and
+// must be equal in length to MaxBestRoutes
+func (m *RouteMatrix) InsertRouteFull(routes []Route, routeRTT float64, entry *RouteMatrixEntry, routeIndex int, reverse bool) error {
+	insertIndex := MaxBestRoutes - 1
+	for {
+		if insertIndex == 0 || routeRTT > routes[insertIndex].Stats.RTT {
+			break
+		}
+		insertIndex--
+	}
+
+	routeRelays, err := m.GetRouteRelays(entry, routeIndex, reverse)
+	if err != nil {
+		return err
+	}
+
+	for i := MaxBestRoutes - 1; i > insertIndex; i-- {
 		routes[i] = routes[i-1]
 	}
 
