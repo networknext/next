@@ -995,12 +995,15 @@ func (fs *Firestore) GetDatacenterMapsForBuyer(buyerID uint64) map[uint64]routin
 	// buyer can have multiple dc aliases
 	var dcs = make(map[uint64]routing.DatacenterMap)
 	for _, dc := range fs.datacenterMaps {
+		level.Debug(fs.Logger).Log("current iteration datacenter map buyer ID", fmt.Sprintf("%016x", dc.BuyerID), "passed buyerID", fmt.Sprintf("%016x", buyerID))
 		if dc.BuyerID == buyerID {
+			level.Debug(fs.Logger).Log("msg", "datacenter map added", "buyerID", fmt.Sprintf("%016x", buyerID))
 			id := crypto.HashID(dc.Alias + fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.Datacenter))
 			dcs[id] = dc
 		}
 	}
 
+	level.Debug(fs.Logger).Log("returned datacenter map length", len(dcs))
 	return dcs
 }
 
@@ -1518,6 +1521,9 @@ func (fs *Firestore) syncDatacenterMaps(ctx context.Context) error {
 	fs.datacenterMapMutex.Lock()
 	fs.datacenterMaps = dcMaps
 	fs.datacenterMapMutex.Unlock()
+
+	level.Info(fs.Logger).Log("during", "syncDatacenterMaps", "num", len(fs.datacenterMaps))
+
 	return nil
 
 }
