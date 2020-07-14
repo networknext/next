@@ -36,7 +36,7 @@ export interface SessionMeta {
   buyerID: string;
 }
 
-export interface UserAccount {
+export interface UserProfile {
   auth0ID: string,
   company: string,
   email: string,

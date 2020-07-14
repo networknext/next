@@ -1,4 +1,5 @@
 import Auth0Lock from 'auth0-lock'
+import store from '@/store'
 
 export default class AuthService {
   // TODO: Make these env vars
@@ -24,6 +25,7 @@ export default class AuthService {
           params: {
             scope: 'openid profile email user_metadata app_metadata'
           },
+          redirect: false,
           responseType: 'token id_token'
         },
         defaultDatabaseConnection: 'Username-Password-Authentication',
@@ -68,7 +70,7 @@ export default class AuthService {
           name: profile.name,
           roles: roles
         }
-        console.log(userProfile)
+        store.commit('UPDATE_USER_PROFILE', userProfile)
       }
     })
   }

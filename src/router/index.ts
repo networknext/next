@@ -68,6 +68,10 @@ const routes: Array<RouteConfig> = [
         component: UserManagement
       }
     ]
+  },
+  {
+    path: '*',
+    name: 'undefined'
   }
 ]
 
