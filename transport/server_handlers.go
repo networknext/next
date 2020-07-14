@@ -353,20 +353,32 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 			// search the list of aliases created by/for this buyer
 			datacenterAliases := params.Storer.GetDatacenterMapsForBuyer(packet.CustomerID)
 			if len(datacenterAliases) == 0 {
+				level.Error(params.Logger).Log("err", "no datacenter map found", "buyerID", fmt.Sprintf("%016x", packet.CustomerID))
 				params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
 				params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 			} else {
+				aliasFound := false
 				for _, dcMap := range datacenterAliases {
 					if packet.DatacenterID == crypto.HashID(dcMap.Alias) {
 						datacenter, err = params.Storer.Datacenter(dcMap.Datacenter)
 						if err != nil {
+							level.Error(params.Logger).Log("msg", "datacenter alias found but could not retreive datacenter", "err", err, "buyerID", fmt.Sprintf("%016x", packet.CustomerID))
 							params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
 							params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 							return
 
 						}
 						datacenter.AliasName = dcMap.Alias
+						aliasFound = true
+						break
 					}
+				}
+
+				if !aliasFound {
+					level.Error(params.Logger).Log("msg", "datacenter alias map does not contain datacenter", "datacenterID", fmt.Sprintf("%016x", packet.DatacenterID), "buyerID", fmt.Sprintf("%016x", packet.CustomerID))
+					params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
+					params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+					return
 				}
 			}
 		}
