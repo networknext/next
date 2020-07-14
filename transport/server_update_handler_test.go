@@ -1,7 +1,7 @@
 package transport_test
 
 // todo: disabled
-/*
+
 import (
 	"bytes"
 	"context"
@@ -9,9 +9,7 @@ import (
 	"net"
 	"testing"
 
-	"github.com/alicebob/miniredis/v2"
 	"github.com/go-kit/kit/log"
-	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
@@ -20,9 +18,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+/*
 func TestReadPacketFailure(t *testing.T) {
-	redisServer, _ := miniredis.Run()
-	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+	t.Skip()
+
+	db := storage.InMemory{}
 
 	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
 	assert.NoError(t, err)
@@ -35,14 +35,159 @@ func TestReadPacketFailure(t *testing.T) {
 
 	updateMetrics.ErrorMetrics.ReadPacketFailure = metric
 
-	handler := transport.ServerUpdateHandlerFunc(log.NewNopLogger(), redisClient, nil, &updateMetrics)
-	handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: []byte("this is not a proper packet")})
+	serverUpdateCounters := transport.ServerUpdateCounters{}
 
-	_, err = redisServer.Get("SERVER-0-0.0.0.0:13")
-	assert.Error(t, err)
+	serverUpdateParams := transport.ServerUpdateParams{
+		Logger:   log.NewNopLogger(),
+		Storer:   &db,
+		Metrics:  &updateMetrics,
+		Counters: &serverUpdateCounters,
+	}
+
+	handler := transport.ServerUpdateHandlerFunc(&serverUpdateParams)
+	handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: []byte("this is not a proper packet")})
 
 	assert.Equal(t, 1.0, updateMetrics.ErrorMetrics.ReadPacketFailure.Value())
 }
+
+func TestDatacenterNotFound(t *testing.T) {
+	t.Skip()
+	// redisServer, _ := miniredis.Run()
+	// redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+
+	buyersServerPubKey, buyersServerPrivKey, err := ed25519.GenerateKey(nil)
+
+	db := storage.InMemory{}
+	db.AddBuyer(context.Background(), routing.Buyer{
+		PublicKey: buyersServerPubKey,
+	})
+
+	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
+	assert.NoError(t, err)
+
+	updateMetrics := metrics.EmptyServerUpdateMetrics
+	localMetrics := metrics.LocalHandler{}
+
+	metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
+	assert.NoError(t, err)
+
+	updateMetrics.ErrorMetrics.DatacenterNotFound = metric
+
+	packet := transport.ServerUpdatePacket{
+		Sequence:             13,
+		ServerAddress:        net.UDPAddr{IP: net.IPv4zero, Port: 13},
+		ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
+		ServerRoutePublicKey: TestServerBackendPublicKey,
+
+		DatacenterID: 13,
+
+		Version: transport.SDKVersionMin,
+	}
+	packet.Signature = crypto.Sign(buyersServerPrivKey, packet.GetSignData())
+
+	data, err := packet.MarshalBinary()
+	assert.NoError(t, err)
+
+	serverUpdateCounters := transport.ServerUpdateCounters{}
+
+	serverMap := transport.NewServerMap()
+
+	serverUpdateParams := transport.ServerUpdateParams{
+		Logger:    log.NewNopLogger(),
+		Storer:    &db,
+		Metrics:   &updateMetrics,
+		Counters:  &serverUpdateCounters,
+		ServerMap: serverMap,
+	}
+
+	handler := transport.ServerUpdateHandlerFunc(&serverUpdateParams)
+	handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
+
+	// _, err = redisServer.Get("SERVER-0-0.0.0.0:13")
+	// assert.Error(t, err)
+
+	assert.Equal(t, 1.0, updateMetrics.ErrorMetrics.DatacenterNotFound.Value())
+}
+*/
+func TestDatacenterAliasFound(t *testing.T) {
+	// redisServer, _ := miniredis.Run()
+	// redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+
+	buyersServerPubKey, buyersServerPrivKey, err := ed25519.GenerateKey(nil)
+
+	db := storage.InMemory{}
+	db.AddBuyer(context.Background(), routing.Buyer{
+		PublicKey: buyersServerPubKey,
+		ID:        15,
+	})
+
+	datacenter := routing.Datacenter{
+		ID:        13,
+		Name:      "local",
+		AliasName: "local.alias",
+		Enabled:   true,
+		// Location: omitted
+	}
+
+	db.AddDatacenter(context.Background(), datacenter)
+
+	dcMap := routing.DatacenterMap{
+		Alias:      "local.alias",
+		Datacenter: 13,
+		BuyerID:    15,
+	}
+
+	db.AddDatacenterMap(context.Background(), dcMap)
+
+	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
+	assert.NoError(t, err)
+
+	updateMetrics := metrics.EmptyServerUpdateMetrics
+	localMetrics := metrics.LocalHandler{}
+
+	metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
+	assert.NoError(t, err)
+
+	updateMetrics.ErrorMetrics.DatacenterNotFound = metric
+
+	packet := transport.ServerUpdatePacket{
+		// Sequence:             13,
+		ServerAddress:        net.UDPAddr{IP: net.IPv4zero, Port: 13},
+		ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
+		ServerRoutePublicKey: TestServerBackendPublicKey,
+		CustomerID:           15,
+
+		DatacenterID: crypto.HashID("local.alias"),
+
+		Version: transport.SDKVersionMin,
+	}
+	packet.Signature = crypto.Sign(buyersServerPrivKey, packet.GetSignData())
+
+	data, err := packet.MarshalBinary()
+	assert.NoError(t, err)
+
+	serverUpdateCounters := transport.ServerUpdateCounters{}
+
+	serverMap := transport.NewServerMap()
+
+	serverUpdateParams := transport.ServerUpdateParams{
+		Logger:    log.NewNopLogger(),
+		Storer:    &db,
+		Metrics:   &updateMetrics,
+		Counters:  &serverUpdateCounters,
+		ServerMap: serverMap,
+	}
+
+	handler := transport.ServerUpdateHandlerFunc(&serverUpdateParams)
+	handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
+
+	// _, err = redisServer.Get("SERVER-0-0.0.0.0:13")
+	// assert.Error(t, err)
+
+	assert.Equal(t, 0.0, updateMetrics.ErrorMetrics.DatacenterNotFound.Value())
+}
+
+/*
 
 func TestSDKVersionTooOld(t *testing.T) {
 	redisServer, _ := miniredis.Run()

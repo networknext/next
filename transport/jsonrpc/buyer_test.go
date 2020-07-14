@@ -2,6 +2,7 @@ package jsonrpc_test
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -9,6 +10,7 @@ import (
 	"github.com/alicebob/miniredis"
 	"github.com/go-kit/kit/log"
 	"github.com/go-redis/redis/v7"
+	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport/jsonrpc"
@@ -17,6 +19,7 @@ import (
 
 // This test depends on auth0 and the JWT doesn't have the right permissions.
 /* func TestBuyersList(t *testing.T) {
+
 	storer := storage.InMemory{}
 	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, Name: "local.local.1"})
 
@@ -146,6 +149,96 @@ import (
 // 		assert.Equal(t, reply.Sessions[1].ID, sessionID2)
 // 	})
 // }
+
+func TestDatacenterMaps(t *testing.T) {
+	dcMap := routing.DatacenterMap{
+		Alias:      "some.server.alias",
+		BuyerID:    0xbdbebdbf0f7be395,
+		Datacenter: 0x7edb88d7b6fc0713,
+	}
+
+	id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.Datacenter))
+
+	storer := storage.InMemory{}
+
+	logger := log.NewNopLogger()
+
+	svc := jsonrpc.BuyersService{
+		Storage: &storer,
+		Logger:  logger,
+	}
+	jwtSideload := "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik5rWXpOekkwTkVVNVFrSTVNRVF4TURRMk5UWTBNakkzTmpOQlJESkVNa1E0TnpGRFF6QkdRdyJ9.eyJuaWNrbmFtZSI6InRlc3QiLCJuYW1lIjoidGVzdEBuZXR3b3JrbmV4dC5jb20iLCJwaWN0dXJlIjoiaHR0cHM6Ly9zLmdyYXZhdGFyLmNvbS9hdmF0YXIvMmRhNWMwMjU5ZTQ3NmI1MDg0MTBlZWY3ZjI5Zjc1NGE_cz00ODAmcj1wZyZkPWh0dHBzJTNBJTJGJTJGY2RuLmF1dGgwLmNvbSUyRmF2YXRhcnMlMkZ0ZS5wbmciLCJ1cGRhdGVkX2F0IjoiMjAyMC0wNi0yM1QxMzozOToyMS44ODFaIiwiZW1haWwiOiJ0ZXN0QG5ldHdvcmtuZXh0LmNvbSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJpc3MiOiJodHRwczovL25ldHdvcmtuZXh0LmF1dGgwLmNvbS8iLCJzdWIiOiJhdXRoMHw1Yjk2ZjYxY2YxNjQyNzIxYWQ4NGVlYjYiLCJhdWQiOiJvUUpIM1lQSGR2WkpueENQbzFJcnR6NVVLaTV6cnI2biIsImlhdCI6MTU5MjkxOTU2NSwiZXhwIjoxNzUwNzA0MzI1LCJub25jZSI6ImRHZFNUWEpRTnpkdE5GcHNjR0Z1YVg1dlQxVlNhVFZXUjJoK2VHdG1hMnB2TkcweFZuNTFZalJJZmc9PSJ9.BvMe5fWJcheGzKmt3nCIeLjMD-C5426cpjtJiR55i7lmbT0k4h8Z2X6rynZ_aKR-gaCTY7FG5gI-Ty9ZY1zboWcIkxaTi0VKQzdMUTYVMXVEK2cQ1NVbph7_RSJhLfgO5y7PkmuMZXJEFdrI_2PkO4b3tOU-vpUHFUPtTsESV79a81kXn2C5j_KkKzCOPZ4zol1aEU3WliaaJNT38iSz3NX9URshrrdCE39JRClx6wbUgrfCGnVtfens-Sg7atijivaOx8IlUGOxLMEciYwBL2aY5EXaa7tp7c8ZvoEEj7uZH2R35fV7eUzACwShU-JLR9oOsNEhS4XO1AzTMtNHQA"
+	noopHandler := func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}
+	authMiddleware := jsonrpc.AuthMiddleware("oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n", http.HandlerFunc(noopHandler))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Add("Authorization", "Bearer "+jwtSideload)
+	res := httptest.NewRecorder()
+
+	authMiddleware.ServeHTTP(res, req)
+	assert.Equal(t, http.StatusOK, res.Code)
+
+	t.Run("add", func(t *testing.T) {
+		var reply jsonrpc.AddDatacenterMapReply
+		var args = jsonrpc.AddDatacenterMapArgs{
+			DatacenterMap: dcMap,
+		}
+		err := svc.AddDatacenterMap(req, &args, &reply)
+		assert.NoError(t, err)
+
+	})
+
+	t.Run("list", func(t *testing.T) {
+		var reply jsonrpc.DatacenterMapsReply
+		var args = jsonrpc.DatacenterMapsArgs{
+			ID: 0xbdbebdbf0f7be395,
+		}
+		err := svc.DatacenterMapsForBuyer(req, &args, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, uint64(0x7edb88d7b6fc0713), reply.DatacenterMaps[id].Datacenter)
+		assert.Equal(t, "some.server.alias", reply.DatacenterMaps[id].Alias)
+		assert.Equal(t, uint64(0xbdbebdbf0f7be395), reply.DatacenterMaps[id].BuyerID)
+
+	})
+
+	// belongs in ops
+	// t.Run("list w/o buyer ID", func(t *testing.T) {
+	// 	var reply jsonrpc.DatacenterMapsReply
+	// 	var args = jsonrpc.DatacenterMapsArgs{
+	// 		ID: "",
+	// 	}
+	// 	err := svc.ListDatacenterMaps(req, &args, &reply)
+	// 	assert.NoError(t, err)
+
+	// 	assert.Equal(t, "7edb88d7b6fc0713", reply.DatacenterMaps[id].Datacenter)
+	// 	assert.Equal(t, "some.server.alias", reply.DatacenterMaps[id].Alias)
+	// 	assert.Equal(t, "bdbebdbf0f7be395", reply.DatacenterMaps[id].BuyerID)
+
+	// })
+
+	t.Run("remove", func(t *testing.T) {
+		var reply jsonrpc.RemoveDatacenterMapReply
+		var args = jsonrpc.RemoveDatacenterMapArgs{
+			DatacenterMap: dcMap,
+		}
+		err := svc.RemoveDatacenterMap(req, &args, &reply)
+		assert.NoError(t, err)
+	})
+
+	// entry has been removed
+	t.Run("remove w/ error", func(t *testing.T) {
+		var reply jsonrpc.RemoveDatacenterMapReply
+		var args = jsonrpc.RemoveDatacenterMapArgs{
+			DatacenterMap: dcMap,
+		}
+		err := svc.RemoveDatacenterMap(req, &args, &reply)
+		assert.Error(t, err)
+	})
+
+}
 
 func TestTotalSessions(t *testing.T) {
 	t.Parallel()

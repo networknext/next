@@ -72,7 +72,7 @@ type Storer interface {
 
 	// Datacenter gets a copy of a datacenter with the specified datacenter ID
 	// and returns an empty datacenter and an error if a datacenter with that ID doesn't exist in storage.
-	Datacenter(id uint64) (routing.Datacenter, error)
+	Datacenter(datacenterID uint64) (routing.Datacenter, error)
 
 	// Datacenters returns a copy of all stored datacenters.
 	Datacenters() []routing.Datacenter
@@ -85,6 +85,20 @@ type Storer interface {
 
 	// SetDatacenter updates the datacenter in storage with the provided copy and returns an error if the datacenter could not be updated.
 	SetDatacenter(ctx context.Context, datacenter routing.Datacenter) error
+
+	// DatacenterMaps returns the list of datacenter aliases in use for a given (internally generated) buyerID. Returns
+	// an empty []routing.DatacenterMap if there are no aliases for that buyerID.
+	GetDatacenterMapsForBuyer(buyerID uint64) map[uint64]routing.DatacenterMap
+
+	// AddDatacenterMap adds a new datacenter alias for the given buyer and datacenter IDs
+	AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error
+
+	// ListDatacenterMaps returns a list of alias/buyer mappings for the specified datacenter ID. An
+	// empty dcID returns a list of all maps.
+	ListDatacenterMaps(dcID uint64) map[uint64]routing.DatacenterMap
+
+	// RemoveDatacenterMap removes an entry from the DatacenterMaps table
+	RemoveDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error
 }
 
 type UnmarshalError struct {
