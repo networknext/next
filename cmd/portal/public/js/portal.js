@@ -194,12 +194,13 @@ MapHandler = {
 	totalDirectSessions: [],
 	totalSessionCountCalls: 0,
 	initMap() {
-		this.updateFilter({
-			buyerId: UserHandler.isBuyer() && !UserHandler.isAdmin() ? UserHandler.userInfo.id : ""
-		});
+		this.updateFilter(
+			UserHandler.isBuyer() && !UserHandler.isAdmin() ? UserHandler.userInfo.id : ""
+		);
 	},
-	updateFilter(filter) {
-		Object.assign(rootComponent.$data.pages.map, {filter: filter});
+	updateFilter(id) {
+		Object.assign(rootComponent.$data.pages.map.filter, {buyerId: id});
+		console.log(rootComponent.$data.pages.map.filter)
 		this.mapCountLoop ? clearInterval(this.mapCountLoop) : null;
 		this.mapLoop ? clearInterval(this.mapLoop) : null;
 
@@ -662,9 +663,7 @@ WorkspaceHandler = {
 		});
 	},
 	loadSessionsPage() {
-		this.updateSessionFilter({
-			buyerId: rootComponent.$data.pages.map.filter.buyerId,
-		});
+		this.updateSessionFilter(rootComponent.$data.pages.map.filter.buyerId);
 	},
 	fetchSessionInfo() {
 		this.sessionToolMapInstance = null;
@@ -806,8 +805,8 @@ WorkspaceHandler = {
 				console.log(e)
 			});
 	},
-	updateSessionFilter(filter) {
-		Object.assign(rootComponent.$data.pages.map, {filter: filter});
+	updateSessionFilter(id) {
+		Object.assign(rootComponent.$data.pages.map.filter, {buyerId: id});
 		this.sessionLoop ? clearInterval(this.sessionLoop) : null;
 		this.refreshSessionTable();
 		this.sessionLoop = setInterval(() => {
