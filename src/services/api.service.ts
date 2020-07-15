@@ -19,7 +19,7 @@ export default class APIService {
     return new Promise((resolve, reject) => {
       const options = params || {}
       const id = 'id'
-      fetch('http://127.0.0.1:20000/rpc', {
+      fetch('/rpc', {
         method: 'POST',
         headers: this.headers,
         body: JSON.stringify({

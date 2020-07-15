@@ -33,10 +33,6 @@ export default class SessionCounts extends Vue {
       onNN: 0
     }
   }
-
-  mount () {
-    // Grab session counts and update them
-  }
 }
 </script>
 
