@@ -172,7 +172,7 @@ func TestServerUpdateDatacenterMaps(t *testing.T) {
 		}
 
 		handler := transport.ServerUpdateHandlerFunc(&serverUpdateParams)
-		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
+		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: *addr, Data: data})
 
 		assert.Equal(t, 0.0, updateMetrics.ErrorMetrics.DatacenterNotFound.Value())
 
@@ -236,7 +236,7 @@ func TestServerUpdateDatacenterMaps(t *testing.T) {
 
 		serverMap := transport.NewServerMap()
 
-    serverUpdateParams := transport.ServerUpdateParams{
+		serverUpdateParams := transport.ServerUpdateParams{
 			Logger:    log.NewNopLogger(),
 			Storer:    &db,
 			Metrics:   &updateMetrics,
@@ -245,7 +245,7 @@ func TestServerUpdateDatacenterMaps(t *testing.T) {
 		}
 
 		handler := transport.ServerUpdateHandlerFunc(&serverUpdateParams)
-		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
+		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: *addr, Data: data})
 
 		assert.Equal(t, 0.0, updateMetrics.ErrorMetrics.DatacenterNotFound.Value())
 	})
@@ -317,7 +317,7 @@ func TestServerUpdateDatacenterMaps(t *testing.T) {
 		}
 
 		handler := transport.ServerUpdateHandlerFunc(&serverUpdateParams)
-		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
+		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: *addr, Data: data})
 
 		assert.Equal(t, 1.0, updateMetrics.ErrorMetrics.DatacenterNotFound.Value())
 	})
