@@ -732,7 +732,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 			Domain:    args.Domain,
 			Active:    true,
 			Live:      false,
-			PublicKey: byteKey,
+			PublicKey: byteKey[8:],
 		})
 
 		if err != nil {
@@ -770,7 +770,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		Domain:    args.Domain,
 		Active:    active,
 		Live:      live,
-		PublicKey: byteKey,
+		PublicKey: byteKey[8:],
 	})
 
 	if err != nil {
