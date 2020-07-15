@@ -222,20 +222,12 @@ func datacenterMapsForBuyer(rpcClient jsonrpc.RPCClient, env Environment, arg ui
 
 	var reply localjsonrpc.DatacenterMapsReply
 	if err := rpcClient.CallFor(&reply, "BuyersService.DatacenterMapsForBuyer", args); err != nil {
+		fmt.Printf("rpc error: %v\n", err)
 		handleJSONRPCError(env, err)
 		return
 	}
 
-	var list []dcMapStrings
-	for _, dc := range reply.DatacenterMaps {
-		list = append(list, dcMapStrings{
-			Alias:      dc.Alias,
-			BuyerID:    fmt.Sprintf("%016x", dc.BuyerID),
-			Datacenter: fmt.Sprintf("%016x", dc.Datacenter),
-		})
-	}
-
-	table.Output(list)
+	table.Output(reply.DatacenterMaps)
 
 }
 

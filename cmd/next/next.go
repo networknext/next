@@ -1188,7 +1188,7 @@ func main() {
 				Subcommands: []*ffcli.Command{
 					{
 						Name:       "list",
-						ShortUsage: "next buyer datacenters list <id|name>",
+						ShortUsage: "next buyer datacenters list <buyer id|name>",
 						ShortHelp:  "Return a list of datacenters and aliases for the given buyer",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) != 1 {
