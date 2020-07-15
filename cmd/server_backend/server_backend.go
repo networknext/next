@@ -624,9 +624,8 @@ func main() {
 				fmt.Printf("%d long route matrix updates\n", atomic.LoadUint64(&longRouteMatrixUpdates))
 
 				unknownDatacentersLength := unknownDatacenters.Length()
-				fmt.Printf("%d unknown datacenters\n", unknownDatacentersLength)
 				if unknownDatacentersLength > 0 {
-					fmt.Printf("unknown datacenters: %v\n", unknownDatacenters.GetUnknownDatacenters())
+					fmt.Printf("%d unknown datacenters: %v\n", unknownDatacentersLength, unknownDatacenters.GetUnknownDatacenters())
 				}
 
 				fmt.Printf("-----------------------------\n")
