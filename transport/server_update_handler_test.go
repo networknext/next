@@ -236,7 +236,7 @@ func TestServerUpdateDatacenterMaps(t *testing.T) {
 
 		serverMap := transport.NewServerMap()
 
-		serverUpdateParams := transport.ServerUpdateParams{
+    serverUpdateParams := transport.ServerUpdateParams{
 			Logger:    log.NewNopLogger(),
 			Storer:    &db,
 			Metrics:   &updateMetrics,

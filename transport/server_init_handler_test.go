@@ -89,6 +89,7 @@ func TestServerInitDatacenterMaps(t *testing.T) {
 
 		assert.Equal(t, 0.0, initMetrics.ErrorMetrics.DatacenterNotFound.Value())
 
+
 	})
 
 	t.Run("datacenter not found, map alias found", func(t *testing.T) {
@@ -223,7 +224,7 @@ func TestServerInitDatacenterMaps(t *testing.T) {
 		}
 
 		handler := transport.ServerInitHandlerFunc(&serverInitParams)
-		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
+		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: *addr, Data: data})
 
 		assert.Equal(t, 0.0, initMetrics.ErrorMetrics.DatacenterNotFound.Value())
 	})
