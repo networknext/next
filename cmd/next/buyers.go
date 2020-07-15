@@ -205,6 +205,12 @@ func setRoutingRulesSettings(rpcClient jsonrpc.RPCClient, env Environment, buyer
 
 func datacenterMapsForBuyer(rpcClient jsonrpc.RPCClient, env Environment, arg uint64) {
 
+	type dcMapStrings struct {
+		BuyerID    string `json:"buyer_id"`
+		Datacenter string `json:"datacenter"`
+		Alias      string `json:"alias"`
+	}
+
 	var buyerID uint64
 	if buyerID = returnBuyerID(rpcClient, env, arg); buyerID == 0 {
 		fmt.Printf("No matches found for '%x'", arg)
@@ -216,20 +222,12 @@ func datacenterMapsForBuyer(rpcClient jsonrpc.RPCClient, env Environment, arg ui
 
 	var reply localjsonrpc.DatacenterMapsReply
 	if err := rpcClient.CallFor(&reply, "BuyersService.DatacenterMapsForBuyer", args); err != nil {
+		fmt.Printf("rpc error: %v\n", err)
 		handleJSONRPCError(env, err)
 		return
 	}
 
-	var list []routing.DatacenterMap
-	for _, dc := range reply.DatacenterMaps {
-		list = append(list, routing.DatacenterMap{
-			Alias:      dc.Alias,
-			BuyerID:    dc.BuyerID,
-			Datacenter: dc.Datacenter,
-		})
-	}
-
-	table.Output(list)
+	table.Output(reply.DatacenterMaps)
 
 }
 

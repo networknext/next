@@ -128,11 +128,12 @@ type ServerInitCounters struct {
 }
 
 type ServerInitParams struct {
-	ServerPrivateKey []byte
-	Storer           storage.Storer
-	Metrics          *metrics.ServerInitMetrics
-	Logger           log.Logger
-	Counters         *ServerInitCounters
+	ServerPrivateKey   []byte
+	Storer             storage.Storer
+	Metrics            *metrics.ServerInitMetrics
+	Logger             log.Logger
+	Counters           *ServerInitCounters
+	UnknownDatacenters *UnknownDatacenters
 }
 
 func writeServerInitResponse(params *ServerInitParams, w io.Writer, packet *ServerInitRequestPacket, response uint32) {
@@ -245,6 +246,11 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 			}
 		}
 
+		// Track datacenter IDs we don't know about so we can work with customers to add them to our database.
+		if datacenter.ID == routing.UnknownDatacenter.ID {
+			params.UnknownDatacenters.Add(packet.DatacenterID)
+		}
+
 		// If we get down here, all checks have passed and this server is OK to init.
 		// Once a server inits, it goes into a mode where it can potentially monitor and accelerate sessions.
 		// After 10 seconds, if the server fails to init, it will fall back to direct and not monitor or accelerate
@@ -281,11 +287,12 @@ type ServerUpdateCounters struct {
 }
 
 type ServerUpdateParams struct {
-	Storer    storage.Storer
-	Metrics   *metrics.ServerUpdateMetrics
-	Logger    log.Logger
-	ServerMap *ServerMap
-	Counters  *ServerUpdateCounters
+	Storer             storage.Storer
+	Metrics            *metrics.ServerUpdateMetrics
+	Logger             log.Logger
+	ServerMap          *ServerMap
+	Counters           *ServerUpdateCounters
+	UnknownDatacenters *UnknownDatacenters
 }
 
 // =============================================================================
@@ -394,6 +401,11 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 					params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 				}
 			}
+		}
+
+		// Track datacenter IDs we don't know about so we can work with customers to add them to our database.
+		if datacenter.ID == routing.UnknownDatacenter.ID {
+			params.UnknownDatacenters.Add(packet.DatacenterID)
 		}
 
 		// UDP packets may arrive out of order. So that we don't have stale server update packets arriving late and

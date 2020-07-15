@@ -832,8 +832,16 @@ type DatacenterMapsArgs struct {
 	ID uint64 `json:"buyer_id"`
 }
 
+type DatacenterMapsFull struct {
+	Alias          string
+	DatacenterName string
+	DatacenterID   string
+	BuyerName      string
+	BuyerID        string
+}
+
 type DatacenterMapsReply struct {
-	DatacenterMaps map[uint64]routing.DatacenterMap
+	DatacenterMaps []DatacenterMapsFull
 }
 
 func (s *BuyersService) DatacenterMapsForBuyer(r *http.Request, args *DatacenterMapsArgs, reply *DatacenterMapsReply) error {
@@ -841,7 +849,37 @@ func (s *BuyersService) DatacenterMapsForBuyer(r *http.Request, args *Datacenter
 		return nil
 	}
 
-	reply.DatacenterMaps = s.Storage.GetDatacenterMapsForBuyer(args.ID)
+	var dcm map[uint64]routing.DatacenterMap
+
+	dcm = s.Storage.GetDatacenterMapsForBuyer(args.ID)
+
+	var replySlice []DatacenterMapsFull
+	for _, dcMap := range dcm {
+		buyer, err := s.Storage.Buyer(dcMap.BuyerID)
+		if err != nil {
+			err = fmt.Errorf("DatacenterMapsForBuyer() could not parse buyer")
+			s.Logger.Log("err", err)
+			return err
+		}
+		datacenter, err := s.Storage.Datacenter(dcMap.Datacenter)
+		if err != nil {
+			err = fmt.Errorf("DatacenterMapsForBuyer() could not parse datacenter")
+			s.Logger.Log("err", err)
+			return err
+		}
+
+		dcmFull := DatacenterMapsFull{
+			Alias:          dcMap.Alias,
+			DatacenterName: datacenter.Name,
+			DatacenterID:   fmt.Sprintf("%016x", dcMap.Datacenter),
+			BuyerName:      buyer.Name,
+			BuyerID:        fmt.Sprintf("%016x", dcMap.BuyerID),
+		}
+
+		replySlice = append(replySlice, dcmFull)
+	}
+
+	reply.DatacenterMaps = replySlice
 	return nil
 
 }
