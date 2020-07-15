@@ -309,11 +309,12 @@ func TestServerUpdateDatacenterMaps(t *testing.T) {
 		serverMap := transport.NewServerMap()
 
 		serverUpdateParams := transport.ServerUpdateParams{
-			Logger:    log.NewNopLogger(),
-			Storer:    &db,
-			Metrics:   &updateMetrics,
-			Counters:  &serverUpdateCounters,
-			ServerMap: serverMap,
+			Logger:             log.NewNopLogger(),
+			Storer:             &db,
+			Metrics:            &updateMetrics,
+			Counters:           &serverUpdateCounters,
+			ServerMap:          serverMap,
+			UnknownDatacenters: transport.NewUnknownDatacenters(),
 		}
 
 		handler := transport.ServerUpdateHandlerFunc(&serverUpdateParams)
