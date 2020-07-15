@@ -1206,8 +1206,7 @@ is as follows:
 	"buyer_id": "bdbebdbf0f7be395"
 }
 
-The buyer and datacenter must exist. Substrings accepted for the buyer and
-datacenter names.
+The buyer and datacenter must exist. Hex IDs are required for now.
 						`,
 						Exec: func(_ context.Context, args []string) error {
 							var err error
@@ -1272,11 +1271,11 @@ is as follows:
 
 {
 	"alias": "some.server.alias",
-	"datacenter": "2fe32c22450fb4c9" or "vultr.newyork",
-	"buyer_id": "bdbebdbf0f7be395" or "Some Buyer name"
+	"datacenter": "2fe32c22450fb4c9",
+	"buyer_id": "bdbebdbf0f7be395"
 }
 
-The alias is uniquely defined by all three entries, so they must be provided.
+The alias is uniquely defined by all three entries, so they must be provided. Hex IDs are required for now."
 						`,
 						Exec: func(_ context.Context, args []string) error {
 							var err error
