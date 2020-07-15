@@ -41,7 +41,7 @@ func TestServerInitHandlerFunc(t *testing.T) {
 		}
 
 		handler := transport.ServerInitHandlerFunc(&serverInitParms)
-		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: []byte("this is not a proper packet")})
+		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: *addr, Data: []byte("this is not a proper packet")})
 
 		assert.Equal(t, 1.0, initMetrics.ErrorMetrics.ReadPacketFailure.Value())
 	})
@@ -87,7 +87,7 @@ func TestServerInitHandlerFunc(t *testing.T) {
 		}
 
 		handler := transport.ServerInitHandlerFunc(&serverInitParms)
-		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
+		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: *addr, Data: data})
 
 		assert.Equal(t, 1.0, initMetrics.ErrorMetrics.DatacenterNotFound.Value())
 	})
@@ -156,7 +156,7 @@ func TestServerInitHandlerFunc(t *testing.T) {
 		}
 
 		handler := transport.ServerInitHandlerFunc(&serverInitParams)
-		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
+		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: *addr, Data: data})
 
 		// _, err = redisServer.Get("SERVER-0-0.0.0.0:13")
 		// assert.Error(t, err)
