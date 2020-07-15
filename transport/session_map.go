@@ -14,8 +14,8 @@ const (
 
 	// todo: disable session locks for the moment
 	/*
-	// todo: ryan, this seems incredibly low... holy mutex contention batman!
-	NumSessionSliceMutexes = 8
+		// todo: ryan, this seems incredibly low... holy mutex contention batman!
+		NumSessionSliceMutexes = 8
 	*/
 )
 
@@ -27,7 +27,7 @@ type SessionData struct {
 	routeHash            uint64
 	initial              bool
 	routeDecision        routing.Decision
-	onNNSliceCounter     uint64
+	nextSliceCounter     uint64
 	committedData        routing.CommittedData
 	routeExpireTimestamp uint64
 	tokenVersion         uint8

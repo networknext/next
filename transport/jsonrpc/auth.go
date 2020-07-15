@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 
 	jwtmiddleware "github.com/auth0/go-jwt-middleware"
@@ -304,15 +303,13 @@ func GenerateRandomBytes(n int) ([]byte, error) {
 }
 
 func newAccount(u *management.User, r []*management.Role, buyer routing.Buyer) account {
-	id := strconv.FormatUint(buyer.ID, 10)
-
-	if id == "0" {
-		id = ""
+	buyerID := ""
+	if buyer.ID != 0 {
+		buyerID = fmt.Sprintf("%016x", buyer.ID)
 	}
-
 	account := account{
 		UserID:      *u.Identities[0].UserID,
-		ID:          id,
+		ID:          buyerID,
 		CompanyName: buyer.Name,
 		Name:        *u.Name,
 		Email:       *u.Email,

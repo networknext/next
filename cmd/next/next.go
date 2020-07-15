@@ -43,6 +43,13 @@ var (
 
 type arrayFlags []string
 
+// used to decode dcMap hex strings from json
+type dcMapStrings struct {
+	BuyerID    string `json:"buyer_id"`
+	Datacenter string `json:"datacenter"`
+	Alias      string `json:"alias"`
+}
+
 func (i *arrayFlags) String() string {
 	return ""
 }
@@ -935,28 +942,13 @@ func main() {
 		Name:       "datacenters",
 		ShortUsage: "next datacenters <name>",
 		ShortHelp:  "Manage datacenters and mappings",
-		// Exec: func(_ context.Context, args []string) error {
-		// 	if len(args) > 0 {
-		// 		datacenters(rpcClient, env, args[0])
-		// 		return nil
-		// 	}
-		// 	datacenters(rpcClient, env, "")
-		// 	return nil
-		// },
-		Subcommands: []*ffcli.Command{
-			{
-				Name:       "list",
-				ShortUsage: "next datacenter list",
-				ShortHelp:  "Display a current list of datacenters",
-				Exec: func(_ context.Context, args []string) error {
-					if len(args) > 0 {
-						datacenters(rpcClient, env, args[0])
-						return nil
-					}
-					datacenters(rpcClient, env, "")
-					return nil
-				},
-			},
+		Exec: func(_ context.Context, args []string) error {
+			if len(args) > 0 {
+				datacenters(rpcClient, env, args[0])
+				return nil
+			}
+			datacenters(rpcClient, env, "")
+			return nil
 		},
 	}
 
@@ -1066,15 +1058,29 @@ func main() {
 						id = args[0]
 					}
 
-					hexID, err := strconv.ParseUint(id, 10, 64)
+					hexID, err := strconv.ParseUint(id, 16, 64)
 					if err != nil {
-						return fmt.Errorf("Can not work with datacenter ID%v\n", id)
+						if id == "" {
+							id = "(empty string, no datacenter ID provided)"
+						}
+						fmt.Printf("Can not find datacenter ID %v\n", id)
+						return nil
 					}
 
 					listDatacenterMaps(rpcClient, env, hexID)
 					return nil
 				},
 			},
+		},
+	}
+
+	var buyersCommand = &ffcli.Command{
+		Name:       "buyers",
+		ShortUsage: "next buyers",
+		ShortHelp:  "Return a list of all current buyers",
+		Exec: func(_ context.Context, args []string) error {
+			buyers(rpcClient, env)
+			return nil
 		},
 	}
 
@@ -1172,8 +1178,8 @@ func main() {
 				},
 			},
 			{
-				Name:       "datacenters",
-				ShortUsage: "next buyer datacenters <command>",
+				Name:       "datacenter",
+				ShortUsage: "next buyer datacenter <command>",
 				ShortHelp:  "Display and manipulate datacenters and aliases",
 				Exec: func(_ context.Context, args []string) error {
 					return flag.ErrHelp
@@ -1181,17 +1187,19 @@ func main() {
 				Subcommands: []*ffcli.Command{
 					{
 						Name:       "list",
-						ShortUsage: "next buyer datacenters list <id|name>",
+						ShortUsage: "next buyer datacenter list <buyer id|name>",
 						ShortHelp:  "Return a list of datacenters and aliases for the given buyer",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) != 1 {
-								err := errors.New("A buyer ID or name must be supplied")
-								return err
+								fmt.Printf("A buyer ID or name must be supplied")
+								return nil
 							}
 
-							hexID, err := strconv.ParseUint(args[0], 10, 64)
+							hexID, err := strconv.ParseUint(args[0], 16, 64)
 							if err != nil {
-								return fmt.Errorf("Can not work with datacenter ID: %v\n", args[0])
+								fmt.Printf("Can not find datacenter ID: %v\n", args[0])
+								return nil
+
 							}
 
 							// ToDo: error return
@@ -1202,7 +1210,7 @@ func main() {
 					},
 					{
 						Name:       "add",
-						ShortUsage: "next buyer datacenters add <json file>",
+						ShortUsage: "next buyer datacenter add <json file>",
 						ShortHelp:  "Create a new datacenter/alias entry for the specified buyer",
 						LongHelp: `Reads the specifics for the new datacenter alias entry from
 the contents of the specified json file. The json file layout
@@ -1262,7 +1270,7 @@ datacenter names.
 					},
 					{
 						Name:       "remove",
-						ShortUsage: "next buyer datacenters remove <json file>",
+						ShortUsage: "next buyer datacenter remove <json file>",
 						ShortHelp:  "Removes the specified datacenter alias map from the system",
 						LongHelp: `Reads the specifics for the datacenter alias to be removedfrom
 the contents of the specified json file. The json file layout
@@ -1280,12 +1288,24 @@ The alias is uniquely defined by all three entries, so they must be provided.
 							jsonData := readJSONData("datacenter remove", args)
 
 							// Unmarshal the JSON and create the Buyer struct
-							var dcm routing.DatacenterMap
-							if err := json.Unmarshal(jsonData, &dcm); err != nil {
-								log.Fatalf("Could not unmarshal datacenter map: %v", err)
+							var err error
+							var dcmStrings dcMapStrings
+							if err = json.Unmarshal(jsonData, &dcmStrings); err != nil {
+								fmt.Printf("Could not unmarshal datacenter map: %v", err)
 							}
 
-							err := removeDatacenterMap(rpcClient, env, dcm)
+							var dcm routing.DatacenterMap
+							dcm.Alias = dcmStrings.Alias
+							dcm.BuyerID, err = strconv.ParseUint(dcmStrings.BuyerID, 16, 64)
+							if err := json.Unmarshal(jsonData, &dcmStrings); err != nil {
+								fmt.Printf("Could not parse BuyerID: %v", dcmStrings.BuyerID)
+							}
+							dcm.Datacenter, err = strconv.ParseUint(dcmStrings.Datacenter, 16, 64)
+							if err := json.Unmarshal(jsonData, &dcmStrings); err != nil {
+								fmt.Printf("Could not parse DatacenterID: %v", dcmStrings.Datacenter)
+							}
+
+							err = removeDatacenterMap(rpcClient, env, dcm)
 
 							if err != nil {
 								return err
@@ -1296,14 +1316,6 @@ The alias is uniquely defined by all three entries, so they must be provided.
 							return nil
 						},
 					},
-					// {
-					// 	Name: "modify",
-					// 	ShortUsage: "next buyer datacenters remove <json file>",
-					// 	ShortHelp: "Removes the specified datacenter alias map from the system",
-					// 	Exec: func(_ context.Context, args []string) error {
-					// 		return nil
-					// 	},
-					// },
 				},
 			},
 		},
@@ -1684,6 +1696,7 @@ The alias is uniquely defined by all three entries, so they must be provided.
 		sellersCommand,
 		sellerCommand,
 		buyerCommand,
+		buyersCommand,
 		shaderCommand,
 		sshCommand,
 		costCommand,

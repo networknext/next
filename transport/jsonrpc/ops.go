@@ -724,15 +724,42 @@ type ListDatacenterMapsArgs struct {
 }
 
 type ListDatacenterMapsReply struct {
-	DatacenterMaps map[uint64]routing.DatacenterMap
+	DatacenterMaps []DatacenterMapsFull
 }
 
 // An empty DatacenterID returns a list of all maps.
 func (s *OpsService) ListDatacenterMaps(r *http.Request, args *ListDatacenterMapsArgs, reply *ListDatacenterMapsReply) error {
 
-	var dc map[uint64]routing.DatacenterMap
-	dc = s.Storage.ListDatacenterMaps(args.DatacenterID)
-	reply.DatacenterMaps = dc
+	var dcm map[uint64]routing.DatacenterMap
+	dcm = s.Storage.ListDatacenterMaps(args.DatacenterID)
+
+	var replySlice []DatacenterMapsFull
+	for _, dcMap := range dcm {
+		buyer, err := s.Storage.Buyer(dcMap.BuyerID)
+		if err != nil {
+			err = fmt.Errorf("DatacenterMapsForBuyer() could not parse buyer")
+			s.Logger.Log("err", err)
+			return err
+		}
+		datacenter, err := s.Storage.Datacenter(dcMap.Datacenter)
+		if err != nil {
+			err = fmt.Errorf("DatacenterMapsForBuyer() could not parse datacenter")
+			s.Logger.Log("err", err)
+			return err
+		}
+
+		dcmFull := DatacenterMapsFull{
+			Alias:          dcMap.Alias,
+			DatacenterName: datacenter.Name,
+			DatacenterID:   fmt.Sprintf("%016x", dcMap.Datacenter),
+			BuyerName:      buyer.Name,
+			BuyerID:        fmt.Sprintf("%016x", dcMap.BuyerID),
+		}
+
+		replySlice = append(replySlice, dcmFull)
+	}
+
+	reply.DatacenterMaps = replySlice
 
 	return nil
 }
