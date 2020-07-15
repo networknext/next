@@ -18,3 +18,4 @@ if [ ! -f $tool_path ] || [ $latest -nt $tool_path ]; then
 	go build -o $tool_path $source/*.go
 fi
 $tool_path "$@"
+
