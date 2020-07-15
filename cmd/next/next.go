@@ -1191,7 +1191,7 @@ func main() {
 					{
 						Name:       "add",
 						ShortUsage: "next buyer datacenter add <json file>",
-						ShortHelp:  "Create a new datacenter/alias entry for the specified buyer",
+						ShortHelp:  "Create a new datacenter/alias entry using info supplied in a json file (see -h for an example)",
 						LongHelp: `Reads the specifics for the new datacenter alias entry from
 the contents of the specified json file. The json file layout
 is as follows:
@@ -1261,7 +1261,7 @@ datacenter names.
 					{
 						Name:       "remove",
 						ShortUsage: "next buyer datacenter remove <json file>",
-						ShortHelp:  "Removes the specified datacenter alias map from the system",
+						ShortHelp:  "Removes the datacenter alias described in the json file from the system (see -h for an example)",
 						LongHelp: `Reads the specifics for the datacenter alias to be removed from
 the contents of the specified json file. The json file layout
 is as follows:
