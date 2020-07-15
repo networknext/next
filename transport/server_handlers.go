@@ -376,6 +376,7 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 							level.Error(params.Logger).Log("msg", "datacenter alias found but could not retrieve datacenter", "err", err, "customerID", fmt.Sprintf("%016x", packet.CustomerID))
 							params.Metrics.ErrorMetrics.DatacenterNotFound.Add(1)
 							params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+							aliasFound = true // Set this to true to avoid double counting metrics
 							break
 
 						}
