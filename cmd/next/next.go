@@ -43,6 +43,13 @@ var (
 
 type arrayFlags []string
 
+// used to decode dcMap hex strings from json
+type dcMapStrings struct {
+	BuyerID    string `json:"buyer_id"`
+	Datacenter string `json:"datacenter"`
+	Alias      string `json:"alias"`
+}
+
 func (i *arrayFlags) String() string {
 	return ""
 }
@@ -1281,12 +1288,24 @@ The alias is uniquely defined by all three entries, so they must be provided.
 							jsonData := readJSONData("datacenter remove", args)
 
 							// Unmarshal the JSON and create the Buyer struct
-							var dcm routing.DatacenterMap
-							if err := json.Unmarshal(jsonData, &dcm); err != nil {
-								log.Fatalf("Could not unmarshal datacenter map: %v", err)
+							var err error
+							var dcmStrings dcMapStrings
+							if err = json.Unmarshal(jsonData, &dcmStrings); err != nil {
+								fmt.Printf("Could not unmarshal datacenter map: %v", err)
 							}
 
-							err := removeDatacenterMap(rpcClient, env, dcm)
+							var dcm routing.DatacenterMap
+							dcm.Alias = dcmStrings.Alias
+							dcm.BuyerID, err = strconv.ParseUint(dcmStrings.BuyerID, 16, 64)
+							if err := json.Unmarshal(jsonData, &dcmStrings); err != nil {
+								fmt.Printf("Could not parse BuyerID: %v", dcmStrings.BuyerID)
+							}
+							dcm.Datacenter, err = strconv.ParseUint(dcmStrings.Datacenter, 16, 64)
+							if err := json.Unmarshal(jsonData, &dcmStrings); err != nil {
+								fmt.Printf("Could not parse DatacenterID: %v", dcmStrings.Datacenter)
+							}
+
+							err = removeDatacenterMap(rpcClient, env, dcm)
 
 							if err != nil {
 								return err
@@ -1297,14 +1316,6 @@ The alias is uniquely defined by all three entries, so they must be provided.
 							return nil
 						},
 					},
-					// {
-					// 	Name: "modify",
-					// 	ShortUsage: "next buyer datacenters remove <json file>",
-					// 	ShortHelp: "Removes the specified datacenter alias map from the system",
-					// 	Exec: func(_ context.Context, args []string) error {
-					// 		return nil
-					// 	},
-					// },
 				},
 			},
 		},
