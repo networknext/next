@@ -1085,6 +1085,16 @@ func main() {
 		},
 	}
 
+	var buyersCommand = &ffcli.Command{
+		Name:       "buyers",
+		ShortUsage: "next buyers",
+		ShortHelp:  "Return a list of all current buyers",
+		Exec: func(_ context.Context, args []string) error {
+			buyers(rpcClient, env)
+			return nil
+		},
+	}
+
 	var buyerCommand = &ffcli.Command{
 		Name:       "buyer",
 		ShortUsage: "next buyer <subcommand>",
@@ -1696,6 +1706,7 @@ The alias is uniquely defined by all three entries, so they must be provided.
 		sellersCommand,
 		sellerCommand,
 		buyerCommand,
+		buyersCommand,
 		shaderCommand,
 		sshCommand,
 		costCommand,
