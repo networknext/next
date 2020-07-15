@@ -522,7 +522,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 
 		var header SessionUpdatePacketHeader
 		if err := header.UnmarshalBinary(incoming.Data); err != nil {
-			// level.Error(params.Logger).Log("msg", "could not read session update packet header", "err", err)
+			level.Error(params.Logger).Log("msg", "could not read session update packet header", "err", err)
 			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 			params.Metrics.ErrorMetrics.ReadPacketHeaderFailure.Add(1)
 			return
@@ -533,7 +533,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 
 		buyer, err := params.Storer.Buyer(header.CustomerID)
 		if err != nil {
-			// level.Error(locallogger).Log("msg", "failed to get buyer from storage", "err", err, "customer_id", packet.CustomerID)
+			level.Error(locallogger).Log("msg", "failed to get buyer from storage", "err", err, "customer_id", packet.CustomerID)
 			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 			params.Metrics.ErrorMetrics.BuyerNotFound.Add(1)
 			return
@@ -542,10 +542,10 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 		// Grab the server data corresponding to the server this session is talking to.
 		// The server data is necessary for us to read the rest of the session update packet.
 
-		// IMPORTANT: The server data *must* be treated as read only or it is not threadsafe!
 		serverMutexStart := time.Now()
 		serverDataReadOnly := params.ServerMap.GetServerData(buyer.ID, header.ServerAddress.String())
 		if serverDataReadOnly == nil {
+			level.Error(params.Logger).Log("msg", "server data missing")
 			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 			params.Metrics.ErrorMetrics.ServerDataMissing.Add(1)
 			return
@@ -559,7 +559,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 		var packet SessionUpdatePacket
 		packet.Version = serverDataReadOnly.version
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
-			// level.Error(params.Logger).Log("msg", "could not read session update packet", "err", err)
+			level.Error(params.Logger).Log("msg", "could not read session update packet", "err", err)
 			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 			params.Metrics.ErrorMetrics.ReadPacketFailure.Add(1)
 			return
@@ -580,7 +580,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 		// otherwise this is a stale session update packet from an older slice so we ignore it!
 
 		if packet.Sequence < sessionDataReadOnly.sequence {
-			// level.Error(params.Logger).Log("handler", "session", "msg", "packet too old", "packet sequence", packet.Sequence, "lastest sequence", sessionDataReadOnly.sequence)
+			level.Error(params.Logger).Log("handler", "session", "msg", "packet too old", "packet sequence", packet.Sequence, "lastest sequence", sessionDataReadOnly.sequence)
 			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 			params.Metrics.ErrorMetrics.OldSequence.Add(1)
 			return
