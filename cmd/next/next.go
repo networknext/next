@@ -1066,7 +1066,7 @@ func main() {
 						id = args[0]
 					}
 
-					hexID, err := strconv.ParseUint(id, 10, 64)
+					hexID, err := strconv.ParseUint(id, 16, 64)
 					if err != nil {
 						return fmt.Errorf("Can not work with datacenter ID%v\n", id)
 					}

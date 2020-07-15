@@ -52,6 +52,12 @@ func removeDatacenter(rpcClient jsonrpc.RPCClient, env Environment, name string)
 }
 
 func listDatacenterMaps(rpcClient jsonrpc.RPCClient, env Environment, datacenter uint64) {
+	type dcMapStrings struct {
+		BuyerID    string `json:"buyer_id"`
+		Datacenter string `json:"datacenter"`
+		Alias      string `json:"alias"`
+	}
+
 	dcID := returnDatacenterID(rpcClient, env, datacenter)
 
 	if dcID == 0 {
@@ -69,12 +75,12 @@ func listDatacenterMaps(rpcClient jsonrpc.RPCClient, env Environment, datacenter
 		return
 	}
 
-	var list []routing.DatacenterMap
+	var list []dcMapStrings
 	for _, dc := range reply.DatacenterMaps {
-		list = append(list, routing.DatacenterMap{
+		list = append(list, dcMapStrings{
 			Alias:      dc.Alias,
-			BuyerID:    dc.BuyerID,
-			Datacenter: dc.Datacenter,
+			BuyerID:    fmt.Sprintf("%016x", dc.BuyerID),
+			Datacenter: fmt.Sprintf("%016x", dc.Datacenter),
 		})
 	}
 
