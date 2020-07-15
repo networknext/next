@@ -34,7 +34,8 @@ export default class SessionMap extends Vue {
     longitude: 0,
     zoom: 2,
     pitch: 0,
-    bearing: 0
+    bearing: 0,
+    minZoom: 0
   }
 
   private mounted () {
@@ -46,36 +47,44 @@ export default class SessionMap extends Vue {
 
   private refreshMapSessions () {
     // creating the map
-    this.mapInstance = new mapboxgl.Map({
-      accessToken: this.accessToken,
-      style: 'mapbox://styles/mapbox/dark-v10',
-      center: [
-        0,
-        0
-      ],
-      zoom: 2,
-      pitch: 0,
-      bearing: 0,
-      container: 'map'
-    })
+    if (!this.mapInstance) {
+      this.mapInstance = new mapboxgl.Map({
+        accessToken: this.accessToken,
+        style: 'mapbox://styles/mapbox/dark-v10',
+        center: [
+          0,
+          0
+        ],
+        zoom: 2,
+        pitch: 0,
+        bearing: 0,
+        container: 'map'
+      })
+    }
 
-    // creating the deck.gl instance
-    this.deckGlInstance = new Deck({
-      canvas: this.$refs.canvas,
-      width: '100%',
-      height: '100%',
-      initialViewState: this.viewState,
-      controller: true,
-      // change the map's viewstate whenever the view state of deck.gl changes
-      onViewStateChange: ({ viewState }: any) => {
-        this.mapInstance.jumpTo({
-          center: [viewState.longitude, viewState.latitude],
-          zoom: viewState.zoom,
-          bearing: viewState.bearing,
-          pitch: viewState.pitch
-        })
-      }
-    })
+    if (!this.deckGlInstance) {
+      // creating the deck.gl instance
+      this.deckGlInstance = new Deck({
+        canvas: document.getElementById('deck-canvas'),
+        width: '100%',
+        height: '100%',
+        initialViewState: this.viewState,
+        controller: {
+          dragRotate: false,
+          dragTilt: false
+        },
+        // change the map's viewstate whenever the view state of deck.gl changes
+        onViewStateChange: ({ viewState }: any) => {
+          this.mapInstance.jumpTo({
+            center: [viewState.longitude, viewState.latitude],
+            zoom: viewState.zoom,
+            bearing: viewState.bearing,
+            pitch: viewState.pitch,
+            minZoom: 2
+          })
+        }
+      })
+    }
   }
 }
 </script>

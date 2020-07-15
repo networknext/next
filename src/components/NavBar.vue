@@ -25,23 +25,23 @@
             <router-link to="/settings" class="nav-link" v-bind:class="{ active: $store.getters.currentPage == 'config' || $store.getters.currentPage == 'users' }">Settings</router-link>
         </li>
     </ul>
-    <ul class="navbar-nav px-3">
+    <ul class="navbar-nav px-3" v-if="$store.getters.isAnonymous">
         <li class="nav-item text-nowrap">
             <a class="login btn-sm btn-primary" href="#" @click="authService.logIn()">
                 Log in
             </a>
         </li>
     </ul>
-    <ul class="navbar-nav px-3">
+    <ul class="navbar-nav px-3" v-if="$store.getters.isAnonymous">
         <li class="nav-item text-nowrap">
             <a class="signup btn-sm btn-primary" href="#" @click="authService.signUp()">
                 Sign up
             </a>
         </li>
     </ul>
-    <ul class="navbar-nav px-3" v-if="false">
+    <ul class="navbar-nav px-3" v-if="!$store.getters.isAnonymous">
         <li class="nav-item text-nowrap">
-            <a class="logout btn-sm btn-primary" href="#">
+            <a class="logout btn-sm btn-primary" href="#" @click="authService.logOut()">
                 Logout
             </a>
         </li>

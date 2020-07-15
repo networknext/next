@@ -175,6 +175,7 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import NavBar from './components/NavBar.vue'
 import Workspace from './components/workspaces/Workspace.vue'
 import { NavigationGuardNext, Route } from 'vue-router'
+import { UserProfile, NNAuth0Profile } from '@/services/auth.service'
 
 const ICONS = [
   faCheck,
@@ -190,14 +191,6 @@ library.add(...ICONS)
 Vue.component('font-awesome-icon', FontAwesomeIcon)
 Vue.component('nav-bar', NavBar)
 Vue.component('workspace', Workspace)
-export default Vue.extend({
-  mounted () {
-    this.$store.dispatch('updateCurrentPage', this.$router.currentRoute.name)
-    this.$router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
-      this.$store.dispatch('updateCurrentPage', to.name)
-      next()
-    })
-  }
-})
+export default Vue.extend({})
 
 </script>
