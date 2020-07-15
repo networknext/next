@@ -1049,25 +1049,13 @@ func main() {
 				ShortHelp:  "Returns a list of all buyers and aliases for a given datacenter",
 				LongHelp:   "Returns a list of all buyers and aliases for a given datacenter. Providing an empty string for the datacenter ID|name returns a list of all mappings.",
 				Exec: func(_ context.Context, args []string) error {
-					id := ""
 
-					if len(args) > 1 {
-						err := errors.New("Exactly zero or one datacenter ID or name must be provided.")
-						return err
-					} else if len(args) == 1 {
-						id = args[0]
-					}
-
-					hexID, err := strconv.ParseUint(id, 16, 64)
-					if err != nil {
-						if id == "" {
-							id = "(empty string, no datacenter ID provided)"
-						}
-						fmt.Printf("Can not find datacenter ID %v\n", id)
+					if len(args) == 0 {
+						fmt.Println("Exactly zero or one datacenter ID or name must be provided.")
 						return nil
 					}
 
-					listDatacenterMaps(rpcClient, env, hexID)
+					listDatacenterMaps(rpcClient, env, args[0])
 					return nil
 				},
 			},
