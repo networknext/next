@@ -1179,8 +1179,8 @@ func main() {
 				},
 			},
 			{
-				Name:       "datacenters",
-				ShortUsage: "next buyer datacenters <command>",
+				Name:       "datacenter",
+				ShortUsage: "next buyer datacenter <command>",
 				ShortHelp:  "Display and manipulate datacenters and aliases",
 				Exec: func(_ context.Context, args []string) error {
 					return flag.ErrHelp
@@ -1188,7 +1188,7 @@ func main() {
 				Subcommands: []*ffcli.Command{
 					{
 						Name:       "list",
-						ShortUsage: "next buyer datacenters list <buyer id|name>",
+						ShortUsage: "next buyer datacenter list <buyer id|name>",
 						ShortHelp:  "Return a list of datacenters and aliases for the given buyer",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) != 1 {
@@ -1210,7 +1210,7 @@ func main() {
 					},
 					{
 						Name:       "add",
-						ShortUsage: "next buyer datacenters add <json file>",
+						ShortUsage: "next buyer datacenter add <json file>",
 						ShortHelp:  "Create a new datacenter/alias entry for the specified buyer",
 						LongHelp: `Reads the specifics for the new datacenter alias entry from
 the contents of the specified json file. The json file layout
@@ -1270,7 +1270,7 @@ datacenter names.
 					},
 					{
 						Name:       "remove",
-						ShortUsage: "next buyer datacenters remove <json file>",
+						ShortUsage: "next buyer datacenter remove <json file>",
 						ShortHelp:  "Removes the specified datacenter alias map from the system",
 						LongHelp: `Reads the specifics for the datacenter alias to be removedfrom
 the contents of the specified json file. The json file layout
