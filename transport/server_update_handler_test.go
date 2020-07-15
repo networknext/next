@@ -179,7 +179,7 @@ func TestDatacenterAliasFound(t *testing.T) {
 	}
 
 	handler := transport.ServerUpdateHandlerFunc(&serverUpdateParams)
-	handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
+	handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: *addr, Data: data})
 
 	// _, err = redisServer.Get("SERVER-0-0.0.0.0:13")
 	// assert.Error(t, err)

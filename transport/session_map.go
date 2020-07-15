@@ -12,7 +12,11 @@ import (
 const (
 	NumSessionMapShards = 4096
 
+	// todo: disable session locks for the moment
+	/*
+	// todo: ryan, this seems incredibly low... holy mutex contention batman!
 	NumSessionSliceMutexes = 8
+	*/
 )
 
 type SessionData struct {
@@ -61,7 +65,8 @@ func (sessionMap *SessionMap) NumSessions() uint64 {
 
 func NewSessionData() *SessionData {
 	return &SessionData{
-		sliceMutexes: make([]sync.Mutex, NumSessionSliceMutexes),
+		// todo
+		// sliceMutexes: make([]sync.Mutex, NumSessionSliceMutexes),
 	}
 }
 
