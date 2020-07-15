@@ -1189,9 +1189,10 @@ func main() {
 								return err
 							}
 
-							hexID, err := strconv.ParseUint(args[0], 10, 64)
+							hexID, err := strconv.ParseUint(args[0], 16, 64)
 							if err != nil {
-								return fmt.Errorf("Can not work with datacenter ID: %v\n", args[0])
+								return fmt.Errorf("Can not work with datacenter ID: %v\nerr: %v", args[0], err)
+
 							}
 
 							// ToDo: error return
