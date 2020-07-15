@@ -400,7 +400,7 @@
                                         </option>
                                     </select>
                                 </div>
-                                <div class="px-2" v-if="handlers.userHandler.isBuyer() || handlers.userHandler.isAdmin()">
+                                <div class="px-2 hidden" v-if="handlers.userHandler.isBuyer() || handlers.userHandler.isAdmin()">
                                     <select class="form-control">
                                         <option :selected="handlers.userHandler.getBuyerId() == pages.map.filter.buyerId" v-on:click="handlers.mapHandler.updateFilter({buyerId: handlers.userHandler.userInfo.id, sessionType: pages.map.filter.sessionType})" v-if="!handlers.userHandler.isAdmin() && handlers.userHandler.isBuyer()">
                                             {{ handlers.userHandler.getBuyerName() }}
@@ -457,7 +457,7 @@
                                             </option>
                                         </select>
                                     </div>
-                                    <div class="px-2" v-if="handlers.userHandler.isBuyer() || handlers.userHandler.isAdmin()">
+                                    <div class="px-2 hidden" v-if="handlers.userHandler.isBuyer() || handlers.userHandler.isAdmin()">
                                         <select class="form-control">
                                             <option :selected="handlers.userHandler.getBuyerId() == pages.map.filter.buyerId" v-on:click="handlers.workspaceHandler.updateSessionFilter({buyerId: handlers.userHandler.userInfo.id})" v-if="!handlers.userHandler.isAdmin() && handlers.userHandler.isBuyer()">
                                                 {{ handlers.userHandler.getBuyerName() }}
