@@ -709,9 +709,10 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			}
 		}
 
-		// IMPORTANT: Immediately after ip2location we *must* anonymize the IP address so there is no chance we accidentally
-		// use or store the non-anonymized IP address past this point. This is an important business requirement because IP addresses
-		// are considered private identifiable information according to the GDRP and CCPA. We must *never* collect or store non-anonymized IP addresses!
+		// IMPORTANT: Immediately after ip2location we *must* anonymize the IP address so there is no chance 
+		// we accidentally use or store the non-anonymized IP address past this point. This is an important 
+		// business requirement because IP addresses are considered private identifiable information according 
+		// to the GDRP and CCPA. We must *never* collect or store non-anonymized IP addresses!
 
 		// todo: anonymize address should work in place instead, and not have a failure case.
 		// i mean this whole code here is dead code it's never ever going to run...
@@ -737,8 +738,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 
 		// Use the route matrix to get a list of relays closest to the lat/long of the client.
 		// These near relays are returned back down to the SDK for this slice. The SDK pings them
-		// and reports the results back up to us in the next session update. We use the near relay
-		// pings to know the cost from the client to the first relay in their route.
+		// and reports the results back up to us in the next session update.
 
 		routeMatrix := params.GetRouteProvider()
 
@@ -1381,8 +1381,7 @@ func sendRouteResponse(w io.Writer, chosenRoute *routing.Route, params *SessionU
 
 	responseData, err := marshalResponse(response, params.ServerPrivateKey)
 	if err != nil {
-		fmt.Printf("could not marshal session update response packet: %v\n", err)
-		// level.Error(params.Logger).Log("msg", "could not marshal session update response packet", "err", err)
+		level.Error(params.Logger).Log("msg", "could not marshal session update response packet", "err", err)
 		params.Metrics.ErrorMetrics.MarshalResponseFailure.Add(1)
 		return
 	}
@@ -1442,8 +1441,7 @@ func sendRouteResponse(w io.Writer, chosenRoute *routing.Route, params *SessionU
 
 	// Send the Session Response back to the server
 	if _, err := w.Write(responseData); err != nil {
-		fmt.Printf("could not write session update response packet: %v\n", err)
-		// level.Error(params.Logger).Log("msg", "could not write session update response packet", "err", err)
+		level.Error(params.Logger).Log("msg", "could not write session update response packet", "err", err)
 		params.Metrics.ErrorMetrics.WriteResponseFailure.Add(1)
 		return
 	}
