@@ -957,8 +957,6 @@ func GetBestRoute(routeMatrix RouteProvider, nearRelays []routing.Relay, datacen
 		routing.DecideMultipath(buyer.RoutingRulesSettings.EnableMultipathForRTT, buyer.RoutingRulesSettings.EnableMultipathForJitter, buyer.RoutingRulesSettings.EnableMultipathForPacketLoss, float64(buyer.RoutingRulesSettings.RTTThreshold)),
 	}
 
-	// todo: if multipath is true, always set committed = true
-
 	if buyer.RoutingRulesSettings.EnableTryBeforeYouBuy {
 		deciderFuncs = append(deciderFuncs,
 			routing.DecideCommitted(prevRouteDecision.OnNetworkNext, uint8(buyer.RoutingRulesSettings.TryBeforeYouBuyMaxSlices), buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce, committedData))
@@ -1223,61 +1221,6 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 	return nil
 }
 
-/*
-func submitBillingEntry(biller billing.Biller, serverCacheEntry *ServerCacheEntry, prevRouteHash uint64, request *SessionUpdatePacket, response *SessionResponsePacket,
-	buyer *routing.Buyer, chosenRoute *routing.Route, location *routing.Location, storer storage.Storer, clientRelays []routing.Relay, routeDecision routing.Decision,
-	sliceDuration uint64, timestampStart time.Time, timestampNow time.Time, newSession bool) error {
-
-	sameRoute := chosenRoute.Hash64() == prevRouteHash
-	routeRequest := NewRouteRequest(request, buyer, serverCacheEntry, location, storer, clientRelays)
-	billingEntry := NewBillingEntry(routeRequest, chosenRoute, int(response.RouteType), sameRoute, &buyer.RoutingRulesSettings, routeDecision, request, sliceDuration, timestampStart, timestampNow, newSession)
-	return biller.Bill(context.Background(), request.SessionID, billingEntry)
-}
-*/
-
-// todo: disabled
-/*
-func updateCacheEntries(redisClient redis.Cmdable, sessionCacheKey string, vetoCacheKey string, sessionCacheEntry *SessionCacheEntry, vetoCacheEntry *VetoCacheEntry, packet *SessionUpdatePacket, chosenRouteHash uint64,
-	routeDecision routing.Decision, timestampStart time.Time, timestampExpire time.Time, responseData []byte, directRTT float64, nextRTT float64, location *routing.Location) error {
-	updatedSessionCacheEntry := SessionCacheEntry{
-		CustomerID:                 packet.CustomerID,
-		SessionID:                  packet.SessionID,
-		UserHash:                   packet.UserHash,
-		Sequence:                   packet.Sequence,
-		RouteHash:                  chosenRouteHash,
-		RouteDecision:              routeDecision,
-		OnNNSliceCounter:           sessionCacheEntry.OnNNSliceCounter,
-		CommitPending:              sessionCacheEntry.CommitPending,
-		CommitObservedSliceCounter: sessionCacheEntry.CommitObservedSliceCounter,
-		Committed:                  sessionCacheEntry.Committed,
-		TimestampStart:             timestampStart,
-		TimestampExpire:            timestampExpire,
-		Version:                    sessionCacheEntry.Version, //This was already incremented for the route tokens
-		Response:                   responseData,
-		DirectRTT:                  directRTT,
-		NextRTT:                    nextRTT,
-		Location:                   *location,
-	}
-
-	updatedVetoCacheEntry := VetoCacheEntry{
-		VetoTimestamp: vetoCacheEntry.VetoTimestamp,
-		Reason:        vetoCacheEntry.Reason,
-	}
-
-	tx := redisClient.TxPipeline()
-	{
-		tx.Set(sessionCacheKey, updatedSessionCacheEntry, 5*time.Minute)
-		tx.Set(vetoCacheKey, updatedVetoCacheEntry, 1*time.Hour)
-
-		if _, err := tx.Exec(); err != nil {
-			return fmt.Errorf("failed to execute update cache tx pipeline: %v", err)
-		}
-	}
-
-	return nil
-}
-*/
-
 func addRouteDecisionMetric(d routing.Decision, m *metrics.SessionMetrics) {
 	switch d.Reason {
 	case routing.DecisionNoReason:
@@ -1361,6 +1304,7 @@ func sendRouteResponse(w io.Writer, chosenRoute *routing.Route, params *SessionU
 
 		if routing.IsMultipath(routeDecision) {
 			response.Multipath = true
+			response.Committed = true // Always commit to multipath routes
 		}
 	}
 
