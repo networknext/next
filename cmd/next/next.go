@@ -942,28 +942,13 @@ func main() {
 		Name:       "datacenters",
 		ShortUsage: "next datacenters <name>",
 		ShortHelp:  "Manage datacenters and mappings",
-		// Exec: func(_ context.Context, args []string) error {
-		// 	if len(args) > 0 {
-		// 		datacenters(rpcClient, env, args[0])
-		// 		return nil
-		// 	}
-		// 	datacenters(rpcClient, env, "")
-		// 	return nil
-		// },
-		Subcommands: []*ffcli.Command{
-			{
-				Name:       "list",
-				ShortUsage: "next datacenter list",
-				ShortHelp:  "Display a current list of datacenters",
-				Exec: func(_ context.Context, args []string) error {
-					if len(args) > 0 {
-						datacenters(rpcClient, env, args[0])
-						return nil
-					}
-					datacenters(rpcClient, env, "")
-					return nil
-				},
-			},
+		Exec: func(_ context.Context, args []string) error {
+			if len(args) > 0 {
+				datacenters(rpcClient, env, args[0])
+				return nil
+			}
+			datacenters(rpcClient, env, "")
+			return nil
 		},
 	}
 
