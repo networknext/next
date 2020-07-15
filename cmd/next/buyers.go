@@ -203,19 +203,38 @@ func setRoutingRulesSettings(rpcClient jsonrpc.RPCClient, env Environment, buyer
 	fmt.Printf("Route shader for buyer with ID \"%s\" updated.\n", buyerID)
 }
 
-func datacenterMapsForBuyer(rpcClient jsonrpc.RPCClient, env Environment, arg uint64) {
+func datacenterMapsForBuyer(rpcClient jsonrpc.RPCClient, env Environment, buyer string) {
 
 	type dcMapStrings struct {
 		BuyerID    string `json:"buyer_id"`
 		Datacenter string `json:"datacenter"`
 		Alias      string `json:"alias"`
 	}
-
 	var buyerID uint64
-	if buyerID = returnBuyerID(rpcClient, env, arg); buyerID == 0 {
-		fmt.Printf("No matches found for '%x'", arg)
+	var err error
+
+	buyerArgs := localjsonrpc.BuyersArgs{}
+	var buyers localjsonrpc.BuyersReply
+	if err = rpcClient.CallFor(&buyers, "OpsService.Buyers", buyerArgs); err != nil {
+		handleJSONRPCError(env, err)
 		return
 	}
+	r := regexp.MustCompile("(?i)" + buyer) // case-insensitive regex
+	for _, buyer := range buyers.Buyers {
+		if r.MatchString(buyer.Name) || r.MatchString(buyer.ID) {
+			buyerID, err = strconv.ParseUint(buyer.ID, 16, 64)
+			if err != nil {
+				fmt.Printf("Unable to convert %v to a hex BuyerID\n", buyer.ID)
+				return
+			}
+		}
+	}
+
+	if buyerID == 0 {
+		fmt.Printf("No match for provided buyer ID: %v\n", buyer)
+		return
+	}
+
 	args := localjsonrpc.DatacenterMapsArgs{
 		ID: buyerID,
 	}
@@ -235,10 +254,12 @@ func addDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm routing.
 
 	var buyerID uint64
 	if buyerID = returnBuyerID(rpcClient, env, dcm.BuyerID); buyerID == 0 {
+		fmt.Printf("No buyer matches found for '%x'", dcm.BuyerID)
 		return fmt.Errorf("No buyer matches found for '%x'", dcm.BuyerID)
 	}
 	var dcID uint64
 	if dcID = returnDatacenterID(rpcClient, env, dcm.Datacenter); dcID == 0 {
+		fmt.Printf("No matches found for '%x'", dcm.Datacenter)
 		return fmt.Errorf("No matches found for '%x'", dcm.Datacenter)
 	}
 	arg := localjsonrpc.AddDatacenterMapArgs{
@@ -251,8 +272,10 @@ func addDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm routing.
 
 	var reply localjsonrpc.AddDatacenterMapReply
 	if err := rpcClient.CallFor(&reply, "BuyersService.AddDatacenterMap", arg); err != nil {
-		handleJSONRPCError(env, err)
-		return fmt.Errorf("AddDatacenterMap error: %v\n", err)
+		// don't want to see timestamps and error numbers on the CLI
+		// handleJSONRPCError(env, err)
+		fmt.Printf("This alias already exists:\n%v\n", arg.DatacenterMap)
+		return err
 	}
 
 	return nil
@@ -262,11 +285,13 @@ func addDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm routing.
 func removeDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm routing.DatacenterMap) error {
 	var buyerID uint64
 	if buyerID = returnBuyerID(rpcClient, env, dcm.BuyerID); buyerID == 0 {
-		return fmt.Errorf("No buyer matches found for '%x'", dcm.BuyerID)
+		fmt.Printf("No buyer matches found for '%x'", dcm.BuyerID)
+		return fmt.Errorf("No buyer matches found for Buyer ID '%x'", dcm.BuyerID)
 	}
 	var dcID uint64
 	if dcID = returnDatacenterID(rpcClient, env, dcm.Datacenter); dcID == 0 {
-		return fmt.Errorf("No matches found for '%x'", dcm.Datacenter)
+		fmt.Printf("No matches found for Datacenter ID '%x'", dcm.Datacenter)
+		return fmt.Errorf("No matches found for Datacenter ID '%x'", dcm.Datacenter)
 	}
 
 	arg := localjsonrpc.RemoveDatacenterMapArgs{
@@ -279,7 +304,8 @@ func removeDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm routi
 
 	var reply localjsonrpc.RemoveDatacenterMapReply
 	if err := rpcClient.CallFor(&reply, "BuyersService.RemoveDatacenterMap", arg); err != nil {
-		handleJSONRPCError(env, err)
+		// handleJSONRPCError(env, err) // don't want to see timestamps and error numbers at the CLI
+		fmt.Printf("This alias does not exist and can not be removed:\n%v\n", arg.DatacenterMap)
 		return err
 	}
 
