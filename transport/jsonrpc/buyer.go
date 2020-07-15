@@ -712,17 +712,18 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 	}
 
 	buyer, err = s.Storage.BuyerWithDomain(args.Domain)
+	byteKey, err := base64.StdEncoding.DecodeString(args.NewPublicKey)
+	buyerID = binary.LittleEndian.Uint64(byteKey[0:8])
 
 	// Buyer not found
 	if buyer.ID == 0 {
-		byteKey, err := base64.StdEncoding.DecodeString(args.NewPublicKey)
-
 		if err != nil {
 			err = fmt.Errorf("UpdateGameConfiguration() could not decode public key string")
 			s.Logger.Log("err", err)
 			return err
 		}
-		buyerID = binary.LittleEndian.Uint64(byteKey[0:8])
+
+		// Create new buyer
 		err = s.Storage.AddBuyer(ctx, routing.Buyer{
 			ID:        buyerID,
 			Name:      args.Name,
@@ -738,23 +739,39 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 			return err
 		}
 
+		// Check if buyer is associated with the ID and everything worked
 		if buyer, err = s.Storage.Buyer(buyerID); err != nil {
 			return nil
 		}
+
+		// Setup reply
+		reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
+		reply.GameConfiguration.Company = buyer.Name
+
+		return nil
 	}
 
-	if err = buyer.DecodedPublicKey(args.NewPublicKey); err != nil {
-		err = fmt.Errorf("UpdateGameConfiguration() failed to decode public key")
+	if err = s.Storage.RemoveBuyer(ctx, buyer.ID); err != nil {
+		err = fmt.Errorf("UpdateGameConfiguration() failed to remove buyer")
 		s.Logger.Log("err", err)
 		return err
 	}
 
-	if err = s.Storage.SetBuyer(ctx, buyer); err != nil {
-		err = fmt.Errorf("UpdateGameConfiguration() failed to update buyer public key")
-		s.Logger.Log("err", err)
-		return err
+	err = s.Storage.AddBuyer(ctx, routing.Buyer{
+		ID:        buyerID,
+		Name:      args.Name,
+		Domain:    args.Domain,
+		Active:    true,
+		Live:      false,
+		PublicKey: byteKey,
+	})
+
+	// Check if buyer is associated with the ID and everything worked
+	if buyer, err = s.Storage.Buyer(buyerID); err != nil {
+		return nil
 	}
 
+	// Set reply
 	reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
 	reply.GameConfiguration.Company = buyer.Name
 
