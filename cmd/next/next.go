@@ -1187,23 +1187,15 @@ func main() {
 				Subcommands: []*ffcli.Command{
 					{
 						Name:       "list",
-						ShortUsage: "next buyer datacenter list <buyer id|name>",
-						ShortHelp:  "Return a list of datacenters and aliases for the given buyer",
+						ShortUsage: "next buyer datacenter list <buyer id|name|substring>",
+						ShortHelp:  "Return a list of datacenters and aliases for the given buyer ID or buyer name",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) != 1 {
 								fmt.Printf("A buyer ID or name must be supplied")
 								return nil
 							}
 
-							hexID, err := strconv.ParseUint(args[0], 16, 64)
-							if err != nil {
-								fmt.Printf("Can not find datacenter ID: %v\n", args[0])
-								return nil
-
-							}
-
-							// ToDo: error return
-							datacenterMapsForBuyer(rpcClient, env, hexID)
+							datacenterMapsForBuyer(rpcClient, env, args[0])
 
 							return nil
 						},

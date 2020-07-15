@@ -203,19 +203,38 @@ func setRoutingRulesSettings(rpcClient jsonrpc.RPCClient, env Environment, buyer
 	fmt.Printf("Route shader for buyer with ID \"%s\" updated.\n", buyerID)
 }
 
-func datacenterMapsForBuyer(rpcClient jsonrpc.RPCClient, env Environment, arg uint64) {
+func datacenterMapsForBuyer(rpcClient jsonrpc.RPCClient, env Environment, buyer string) {
 
 	type dcMapStrings struct {
 		BuyerID    string `json:"buyer_id"`
 		Datacenter string `json:"datacenter"`
 		Alias      string `json:"alias"`
 	}
-
 	var buyerID uint64
-	if buyerID = returnBuyerID(rpcClient, env, arg); buyerID == 0 {
-		fmt.Printf("No matches found for '%x'", arg)
+	var err error
+
+	buyerArgs := localjsonrpc.BuyersArgs{}
+	var buyers localjsonrpc.BuyersReply
+	if err = rpcClient.CallFor(&buyers, "OpsService.Buyers", buyerArgs); err != nil {
+		handleJSONRPCError(env, err)
 		return
 	}
+	r := regexp.MustCompile("(?i)" + buyer) // case-insensitive regex
+	for _, buyer := range buyers.Buyers {
+		if r.MatchString(buyer.Name) || r.MatchString(buyer.ID) {
+			buyerID, err = strconv.ParseUint(buyer.ID, 16, 64)
+			if err != nil {
+				fmt.Printf("Unable to convert %v to a hex BuyerID\n", buyer.ID)
+				return
+			}
+		}
+	}
+
+	if buyerID == 0 {
+		fmt.Printf("No match for provided buyer ID: %v\n", buyer)
+		return
+	}
+
 	args := localjsonrpc.DatacenterMapsArgs{
 		ID: buyerID,
 	}
