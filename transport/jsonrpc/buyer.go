@@ -847,8 +847,6 @@ func (s *BuyersService) DatacenterMapsForBuyer(r *http.Request, args *Datacenter
 		replySlice = append(replySlice, dcmFull)
 	}
 
-	fmt.Printf("replySlice: %v\n", replySlice)
-
 	reply.DatacenterMaps = replySlice
 	return nil
 
