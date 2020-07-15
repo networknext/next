@@ -1068,7 +1068,7 @@ func main() {
 		ShortHelp:  "Return a list of all current buyers",
 		Exec: func(_ context.Context, args []string) error {
 			if len(args) != 0 {
-				fmt.Println("No arguments necessary, everything after 'buyers' is ignored.\n\nA list of all current buyers:\n")
+				fmt.Println("No arguments necessary, everything after 'buyers' is ignored.\n\nA list of all current buyers:")
 			}
 			buyers(rpcClient, env)
 			return nil
