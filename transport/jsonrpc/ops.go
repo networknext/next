@@ -635,6 +635,29 @@ func (s *OpsService) RelayNICSpeedUpdate(r *http.Request, args *RelayNICSpeedUpd
 	return nil
 }
 
+type DatacenterArg struct {
+	ID uint64
+}
+
+type DatacenterReply struct {
+	Datacenter routing.Datacenter
+}
+
+func (s *OpsService) Datacenter(r *http.Request, arg *DatacenterArg, reply *DatacenterReply) error {
+
+	var datacenter routing.Datacenter
+	var err error
+	if datacenter, err = s.Storage.Datacenter(arg.ID); err != nil {
+		err = fmt.Errorf("Datacenter() error: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	reply.Datacenter = datacenter
+	return nil
+
+}
+
 type DatacentersArgs struct {
 	Name string `json:"name"`
 }

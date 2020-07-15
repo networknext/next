@@ -258,7 +258,7 @@ func readJSONData(entity string, args []string) []byte {
 	// Check if the input is piped or a filepath
 	fileInfo, err := os.Stdin.Stat()
 	if err != nil {
-		log.Fatalf("Error checking stdin stat: %v", err)
+		fmt.Printf("Error checking stdin stat: %v\n", err)
 	}
 	isPipedInput := fileInfo.Mode()&os.ModeCharDevice == 0
 
@@ -267,17 +267,17 @@ func readJSONData(entity string, args []string) []byte {
 		// Read the piped input from stdin
 		data, err = ioutil.ReadAll(bufio.NewReader(os.Stdin))
 		if err != nil {
-			log.Fatalf("Error reading from stdin: %v", err)
+			fmt.Printf("Error reading from stdin: %v\n", err)
 		}
 	} else {
 		// Read the file at the given filepath
 		if len(args) == 0 {
-			log.Fatalf("Supply a file path to read the %s JSON or pipe it through stdin\nnext %s add [filepath]\nor\ncat <filepath> | next %s add\n\nFor an example JSON schema:\nnext %s add example", entity, entity, entity, entity)
+			fmt.Printf("Supply a file path to read the %s JSON or pipe it through stdin\nnext %s add [filepath]\nor\ncat <filepath> | next %s add\n\nFor an example JSON schema:\nnext %s add example\n", entity, entity, entity, entity)
 		}
 
 		data, err = ioutil.ReadFile(args[0])
 		if err != nil {
-			log.Fatalf("Error reading %s JSON file: %v", entity, err)
+			fmt.Printf("Error reading %s JSON file: %v\n", entity, err)
 		}
 	}
 
@@ -1049,25 +1049,13 @@ func main() {
 				ShortHelp:  "Returns a list of all buyers and aliases for a given datacenter",
 				LongHelp:   "Returns a list of all buyers and aliases for a given datacenter. Providing an empty string for the datacenter ID|name returns a list of all mappings.",
 				Exec: func(_ context.Context, args []string) error {
-					id := ""
 
-					if len(args) > 1 {
-						err := errors.New("Exactly zero or one datacenter ID or name must be provided.")
-						return err
-					} else if len(args) == 1 {
-						id = args[0]
-					}
-
-					hexID, err := strconv.ParseUint(id, 16, 64)
-					if err != nil {
-						if id == "" {
-							id = "(empty string, no datacenter ID provided)"
-						}
-						fmt.Printf("Can not find datacenter ID %v\n", id)
+					if len(args) == 0 {
+						fmt.Println("Exactly zero or one datacenter ID or name must be provided.")
 						return nil
 					}
 
-					listDatacenterMaps(rpcClient, env, hexID)
+					listDatacenterMaps(rpcClient, env, args[0])
 					return nil
 				},
 			},
@@ -1079,6 +1067,9 @@ func main() {
 		ShortUsage: "next buyers",
 		ShortHelp:  "Return a list of all current buyers",
 		Exec: func(_ context.Context, args []string) error {
+			if len(args) != 0 {
+				fmt.Println("No arguments necessary, everything after 'buyers' is ignored.\n\nA list of all current buyers:")
+			}
 			buyers(rpcClient, env)
 			return nil
 		},
@@ -1187,23 +1178,16 @@ func main() {
 				Subcommands: []*ffcli.Command{
 					{
 						Name:       "list",
-						ShortUsage: "next buyer datacenter list <buyer id|name>",
-						ShortHelp:  "Return a list of datacenters and aliases for the given buyer",
+						ShortUsage: "next buyer datacenter list <buyer id|name|substring>",
+						ShortHelp:  "Return a list of datacenters and aliases for the given buyer ID or buyer name",
+						LongHelp:   "A buyer ID or name must be supplied. If the name includes spaces it must be enclosed in quotations marks.",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) != 1 {
-								fmt.Printf("A buyer ID or name must be supplied")
+								fmt.Printf("A buyer ID or name must be supplied. If the name includes spaces it must be enclosed in quotation marks.")
 								return nil
 							}
 
-							hexID, err := strconv.ParseUint(args[0], 16, 64)
-							if err != nil {
-								fmt.Printf("Can not find datacenter ID: %v\n", args[0])
-								return nil
-
-							}
-
-							// ToDo: error return
-							datacenterMapsForBuyer(rpcClient, env, hexID)
+							datacenterMapsForBuyer(rpcClient, env, args[0])
 
 							return nil
 						},
@@ -1211,7 +1195,7 @@ func main() {
 					{
 						Name:       "add",
 						ShortUsage: "next buyer datacenter add <json file>",
-						ShortHelp:  "Create a new datacenter/alias entry for the specified buyer",
+						ShortHelp:  "Create a new datacenter/alias entry using info supplied in a json file (see -h for an example)",
 						LongHelp: `Reads the specifics for the new datacenter alias entry from
 the contents of the specified json file. The json file layout
 is as follows:
@@ -1222,12 +1206,21 @@ is as follows:
 	"buyer_id": "bdbebdbf0f7be395"
 }
 
-The buyer and datacenter must exist. Substrings accepted for the buyer and
-datacenter names.
+The buyer and datacenter must exist. Hex IDs are required for now.
 						`,
 						Exec: func(_ context.Context, args []string) error {
+							var err error
 
-							jsonData := readJSONData("datacenter add", args)
+							if len(args) == 0 {
+								fmt.Printf("An input file name must be supplied. For more info run:\n\n./next buyer datacenter add -h")
+								return nil
+							}
+
+							jsonData, err := ioutil.ReadFile(args[0])
+							if err != nil {
+								fmt.Printf("Error reading JSON input file: %s\n", args[0])
+								return nil
+							}
 
 							// Unmarshal the JSON and create the Buyer struct
 							var dcm routing.DatacenterMap
@@ -1236,30 +1229,30 @@ datacenter names.
 								Datacenter string `json:"datacenter"`
 								Alias      string `json:"alias"`
 							}
-							if err := json.Unmarshal(jsonData, &dcmTemp); err != nil {
+							if err = json.Unmarshal(jsonData, &dcmTemp); err != nil {
 								fmt.Printf("Could not unmarshal datacenter map: %v", err)
+								return nil
 							}
 
-							var err error
 							dcm.Alias = dcmTemp.Alias
 
 							dcm.BuyerID, err = strconv.ParseUint(dcmTemp.BuyerID, 16, 64)
 							if err != nil {
 								fmt.Printf("Error parsing BuyerID")
-								return err
+								return nil
 							}
 
 							dcm.Datacenter, err = strconv.ParseUint(dcmTemp.Datacenter, 16, 64)
 							if err != nil {
 								fmt.Printf("Error parsing Datacenter ID")
-								return err
+								return nil
 							}
 
 							err = addDatacenterMap(rpcClient, env, dcm)
 
 							if err != nil {
-								fmt.Printf("addDatacenterError")
-								return err
+								// error handled in sender
+								return nil
 							}
 
 							fmt.Println("Datacenter alias created:")
@@ -1271,27 +1264,38 @@ datacenter names.
 					{
 						Name:       "remove",
 						ShortUsage: "next buyer datacenter remove <json file>",
-						ShortHelp:  "Removes the specified datacenter alias map from the system",
-						LongHelp: `Reads the specifics for the datacenter alias to be removedfrom
+						ShortHelp:  "Removes the datacenter alias described in the json file from the system (see -h for an example)",
+						LongHelp: `Reads the specifics for the datacenter alias to be removed from
 the contents of the specified json file. The json file layout
 is as follows:
 
 {
 	"alias": "some.server.alias",
-	"datacenter": "2fe32c22450fb4c9" or "vultr.newyork",
-	"buyer_id": "bdbebdbf0f7be395" or "Some Buyer name"
+	"datacenter": "2fe32c22450fb4c9",
+	"buyer_id": "bdbebdbf0f7be395"
 }
 
-The alias is uniquely defined by all three entries, so they must be provided.
+The alias is uniquely defined by all three entries, so they must be provided. Hex IDs are required for now."
 						`,
 						Exec: func(_ context.Context, args []string) error {
-							jsonData := readJSONData("datacenter remove", args)
+							var err error
+
+							if len(args) == 0 {
+								fmt.Printf("An input file name must be supplied. For more info run:\n\n./next buyer datacenter remove -h")
+								return nil
+							}
+
+							jsonData, err := ioutil.ReadFile(args[0])
+							if err != nil {
+								fmt.Printf("Error reading JSON input file: %s\n", args[0])
+								return nil
+							}
 
 							// Unmarshal the JSON and create the Buyer struct
-							var err error
 							var dcmStrings dcMapStrings
 							if err = json.Unmarshal(jsonData, &dcmStrings); err != nil {
 								fmt.Printf("Could not unmarshal datacenter map: %v", err)
+								return nil
 							}
 
 							var dcm routing.DatacenterMap
@@ -1299,10 +1303,12 @@ The alias is uniquely defined by all three entries, so they must be provided.
 							dcm.BuyerID, err = strconv.ParseUint(dcmStrings.BuyerID, 16, 64)
 							if err := json.Unmarshal(jsonData, &dcmStrings); err != nil {
 								fmt.Printf("Could not parse BuyerID: %v", dcmStrings.BuyerID)
+								return nil
 							}
 							dcm.Datacenter, err = strconv.ParseUint(dcmStrings.Datacenter, 16, 64)
 							if err := json.Unmarshal(jsonData, &dcmStrings); err != nil {
 								fmt.Printf("Could not parse DatacenterID: %v", dcmStrings.Datacenter)
+								return nil
 							}
 
 							err = removeDatacenterMap(rpcClient, env, dcm)
