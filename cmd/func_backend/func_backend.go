@@ -281,7 +281,7 @@ func main() {
 			}
 
 			serverEntry := ServerEntry{}
-			serverEntry.address = incoming.SourceAddr
+			serverEntry.address = &incoming.SourceAddr
 			serverEntry.publicKey = serverUpdate.ServerRoutePublicKey
 			serverEntry.lastUpdate = time.Now().Unix()
 
@@ -305,7 +305,7 @@ func main() {
 			}
 
 			if sessionUpdate.FallbackToDirect {
-				fmt.Printf("error: fallback to direct %s\n", incoming.SourceAddr)
+				fmt.Printf("error: fallback to direct %s\n", incoming.SourceAddr.String())
 				return
 			}
 
@@ -313,7 +313,7 @@ func main() {
 			serverEntry, ok := backend.serverDatabase[string(incoming.SourceAddr.String())]
 			backend.mutex.RUnlock()
 			if !ok {
-				fmt.Printf("error: could not find server %s\n", incoming.SourceAddr)
+				fmt.Printf("error: could not find server %s\n", incoming.SourceAddr.String())
 				return
 			}
 
