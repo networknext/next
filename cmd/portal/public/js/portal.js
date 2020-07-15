@@ -449,9 +449,9 @@ UserHandler = {
 		return !this.isAnonymous() ? !this.userInfo.verified : false;
 	},
 	isBuyer() {
-		/* if (this.userInfo) {
+		if (this.userInfo) {
 			return this.userInfo.id !== ""
-		} */
+		}
 		return false
 	},
 	isOwner() {
