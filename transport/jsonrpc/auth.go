@@ -303,9 +303,13 @@ func GenerateRandomBytes(n int) ([]byte, error) {
 }
 
 func newAccount(u *management.User, r []*management.Role, buyer routing.Buyer) account {
+	buyerID := ""
+	if buyer.ID != 0 {
+		buyerID = fmt.Sprintf("%016x", buyer.ID)
+	}
 	account := account{
 		UserID:      *u.Identities[0].UserID,
-		ID:          fmt.Sprintf("%016x", buyer.ID),
+		ID:          buyerID,
 		CompanyName: buyer.Name,
 		Name:        *u.Name,
 		Email:       *u.Email,
