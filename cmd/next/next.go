@@ -1067,6 +1067,9 @@ func main() {
 		ShortUsage: "next buyers",
 		ShortHelp:  "Return a list of all current buyers",
 		Exec: func(_ context.Context, args []string) error {
+			if len(args) != 0 {
+				fmt.Println("No arguments necessary, everything after 'buyers' is ignored.\n\nA list of all current buyers:\n")
+			}
 			buyers(rpcClient, env)
 			return nil
 		},
@@ -1177,9 +1180,10 @@ func main() {
 						Name:       "list",
 						ShortUsage: "next buyer datacenter list <buyer id|name|substring>",
 						ShortHelp:  "Return a list of datacenters and aliases for the given buyer ID or buyer name",
+						LongHelp:   "A buyer ID or name must be supplied. If the name includes spaces it must be enclosed in quotations marks.",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) != 1 {
-								fmt.Printf("A buyer ID or name must be supplied")
+								fmt.Printf("A buyer ID or name must be supplied. If the name includes spaces it must be enclosed in quotation marks.")
 								return nil
 							}
 
