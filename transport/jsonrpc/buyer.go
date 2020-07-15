@@ -713,23 +713,26 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 
 	buyer, err = s.Storage.BuyerWithDomain(args.Domain)
 
+	byteKey, err := base64.StdEncoding.DecodeString(args.NewPublicKey)
+	if err != nil {
+		err = fmt.Errorf("UpdateGameConfiguration() could not decode public key string")
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	buyerID = binary.LittleEndian.Uint64(byteKey[0:8])
+
 	// Buyer not found
 	if buyer.ID == 0 {
-		byteKey, err := base64.StdEncoding.DecodeString(args.NewPublicKey)
 
-		if err != nil {
-			err = fmt.Errorf("UpdateGameConfiguration() could not decode public key string")
-			s.Logger.Log("err", err)
-			return err
-		}
-		buyerID = binary.LittleEndian.Uint64(byteKey[0:8])
+		// Create new buyer
 		err = s.Storage.AddBuyer(ctx, routing.Buyer{
 			ID:        buyerID,
 			Name:      args.Name,
 			Domain:    args.Domain,
 			Active:    true,
 			Live:      false,
-			PublicKey: byteKey,
+			PublicKey: byteKey[8:],
 		})
 
 		if err != nil {
@@ -738,23 +741,52 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 			return err
 		}
 
+		// Check if buyer is associated with the ID and everything worked
 		if buyer, err = s.Storage.Buyer(buyerID); err != nil {
-			return nil
+			err = fmt.Errorf("UpdateGameConfiguration() buyer creation failed: %v", err)
+			s.Logger.Log("err", err)
+			return err
 		}
+
+		// Setup reply
+		reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
+		reply.GameConfiguration.Company = buyer.Name
+
+		return nil
 	}
 
-	if err = buyer.DecodedPublicKey(args.NewPublicKey); err != nil {
-		err = fmt.Errorf("UpdateGameConfiguration() failed to decode public key")
+	live := buyer.Live
+	active := buyer.Active
+
+	if err = s.Storage.RemoveBuyer(ctx, buyer.ID); err != nil {
+		err = fmt.Errorf("UpdateGameConfiguration() failed to remove buyer")
 		s.Logger.Log("err", err)
 		return err
 	}
 
-	if err = s.Storage.SetBuyer(ctx, buyer); err != nil {
-		err = fmt.Errorf("UpdateGameConfiguration() failed to update buyer public key")
+	err = s.Storage.AddBuyer(ctx, routing.Buyer{
+		ID:        buyerID,
+		Name:      args.Name,
+		Domain:    args.Domain,
+		Active:    active,
+		Live:      live,
+		PublicKey: byteKey[8:],
+	})
+
+	if err != nil {
+		err = fmt.Errorf("UpdateGameConfiguration() buyer update failed: %v", err)
 		s.Logger.Log("err", err)
 		return err
 	}
 
+	// Check if buyer is associated with the ID and everything worked
+	if buyer, err = s.Storage.Buyer(buyerID); err != nil {
+		err = fmt.Errorf("UpdateGameConfiguration() buyer update check failed: %v", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	// Set reply
 	reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
 	reply.GameConfiguration.Company = buyer.Name
 
@@ -779,7 +811,7 @@ func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *Buye
 	}
 
 	for _, b := range s.Storage.Buyers() {
-		id := fmt.Sprintf("%v", b.ID)
+		id := fmt.Sprintf("%016x", b.ID)
 		account := buyerAccount{
 			ID:   id,
 			Name: b.Name,
@@ -873,6 +905,6 @@ func (s *BuyersService) SameBuyerRole(buyerID string) RoleFunc {
 			return false, fmt.Errorf("SameBuyerRole(): BuyerWithDomain error: %v", err)
 		}
 
-		return buyerID == fmt.Sprintf("%v", buyer.ID), nil
+		return buyerID == fmt.Sprintf("%016x", buyer.ID), nil
 	}
 }
