@@ -18,6 +18,218 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestServerInitDatacenterMaps(t *testing.T) {
+	t.Parallel()
+
+	t.Run("datacenter found, no alias check", func(t *testing.T) {
+		buyersServerPubKey, buyersServerPrivKey, err := ed25519.GenerateKey(nil)
+
+		db := storage.InMemory{}
+		db.AddBuyer(context.Background(), routing.Buyer{
+			PublicKey: buyersServerPubKey,
+			ID:        15,
+		})
+
+		datacenter := routing.Datacenter{
+			ID:        13,
+			Name:      "local",
+			AliasName: "local.alias",
+			Enabled:   true,
+			// Location: omitted
+		}
+
+		db.AddDatacenter(context.Background(), datacenter)
+
+		// dcMap := routing.DatacenterMap{
+		// 	Alias:      "local.alias",
+		// 	Datacenter: 13,
+		// 	BuyerID:    15,
+		// }
+
+		// db.AddDatacenterMap(context.Background(), dcMap)
+
+		addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
+		assert.NoError(t, err)
+
+		initMetrics := metrics.EmptyServerInitMetrics
+		localMetrics := metrics.LocalHandler{}
+
+		metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
+		assert.NoError(t, err)
+
+		initMetrics.ErrorMetrics.DatacenterNotFound = metric
+
+		packet := transport.ServerUpdatePacket{
+			// Sequence:             13,
+			ServerAddress:        net.UDPAddr{IP: net.IPv4zero, Port: 13},
+			ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
+			ServerRoutePublicKey: TestServerBackendPublicKey,
+			CustomerID:           15,
+
+			DatacenterID: 13,
+
+			Version: transport.SDKVersionMin,
+		}
+		packet.Signature = crypto.Sign(buyersServerPrivKey, packet.GetSignData())
+
+		data, err := packet.MarshalBinary()
+		assert.NoError(t, err)
+
+		serverInitCounters := transport.ServerInitCounters{}
+
+		serverInitParams := transport.ServerInitParams{
+			Logger:   log.NewNopLogger(),
+			Storer:   &db,
+			Metrics:  &initMetrics,
+			Counters: &serverInitCounters,
+		}
+
+		handler := transport.ServerInitHandlerFunc(&serverInitParams)
+		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
+
+		assert.Equal(t, 0.0, initMetrics.ErrorMetrics.DatacenterNotFound.Value())
+
+	})
+
+	t.Run("datacenter not found, map alias found", func(t *testing.T) {
+		buyersServerPubKey, buyersServerPrivKey, err := ed25519.GenerateKey(nil)
+
+		db := storage.InMemory{}
+		db.AddBuyer(context.Background(), routing.Buyer{
+			PublicKey: buyersServerPubKey,
+			ID:        15,
+		})
+
+		datacenter := routing.Datacenter{
+			ID:        13,
+			Name:      "local",
+			AliasName: "local.alias",
+			Enabled:   true,
+		}
+
+		db.AddDatacenter(context.Background(), datacenter)
+
+		dcMap := routing.DatacenterMap{
+			Alias:      "local.alias",
+			Datacenter: 13,
+			BuyerID:    15,
+		}
+
+		db.AddDatacenterMap(context.Background(), dcMap)
+
+		addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
+		assert.NoError(t, err)
+
+		initMetrics := metrics.EmptyServerInitMetrics
+		localMetrics := metrics.LocalHandler{}
+
+		metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
+		assert.NoError(t, err)
+
+		initMetrics.ErrorMetrics.DatacenterNotFound = metric
+
+		packet := transport.ServerUpdatePacket{
+			// Sequence:             13,
+			ServerAddress:        net.UDPAddr{IP: net.IPv4zero, Port: 13},
+			ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
+			ServerRoutePublicKey: TestServerBackendPublicKey,
+			CustomerID:           15,
+
+			DatacenterID: crypto.HashID("local.alias"),
+
+			Version: transport.SDKVersionMin,
+		}
+		packet.Signature = crypto.Sign(buyersServerPrivKey, packet.GetSignData())
+
+		data, err := packet.MarshalBinary()
+		assert.NoError(t, err)
+
+		serverInitCounters := transport.ServerInitCounters{}
+
+		serverInitParams := transport.ServerInitParams{
+			Logger:   log.NewNopLogger(),
+			Storer:   &db,
+			Metrics:  &initMetrics,
+			Counters: &serverInitCounters,
+		}
+
+		handler := transport.ServerInitHandlerFunc(&serverInitParams)
+		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
+
+		assert.Equal(t, 0.0, initMetrics.ErrorMetrics.DatacenterNotFound.Value())
+	})
+
+	t.Run("datacenter not found, map alias not found", func(t *testing.T) {
+		buyersServerPubKey, buyersServerPrivKey, err := ed25519.GenerateKey(nil)
+
+		db := storage.InMemory{}
+		db.AddBuyer(context.Background(), routing.Buyer{
+			PublicKey: buyersServerPubKey,
+			ID:        15,
+		})
+
+		datacenter := routing.Datacenter{
+			ID:        13,
+			Name:      "local",
+			AliasName: "local.alias",
+			Enabled:   true,
+			// Location: omitted
+		}
+
+		db.AddDatacenter(context.Background(), datacenter)
+
+		dcMap := routing.DatacenterMap{
+			Alias:      "local.alias",
+			Datacenter: 17,
+			BuyerID:    15,
+		}
+
+		db.AddDatacenterMap(context.Background(), dcMap)
+
+		addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
+		assert.NoError(t, err)
+
+		initMetrics := metrics.EmptyServerInitMetrics
+		localMetrics := metrics.LocalHandler{}
+
+		metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
+		assert.NoError(t, err)
+
+		initMetrics.ErrorMetrics.DatacenterNotFound = metric
+
+		packet := transport.ServerUpdatePacket{
+			// Sequence:             13,
+			ServerAddress:        net.UDPAddr{IP: net.IPv4zero, Port: 13},
+			ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
+			ServerRoutePublicKey: TestServerBackendPublicKey,
+			CustomerID:           15,
+
+			DatacenterID: crypto.HashID("local.alias"),
+
+			Version: transport.SDKVersionMin,
+		}
+		packet.Signature = crypto.Sign(buyersServerPrivKey, packet.GetSignData())
+
+		data, err := packet.MarshalBinary()
+		assert.NoError(t, err)
+
+		serverInitCounters := transport.ServerInitCounters{}
+
+		serverInitParams := transport.ServerInitParams{
+			Logger:   log.NewNopLogger(),
+			Storer:   &db,
+			Metrics:  &initMetrics,
+			Counters: &serverInitCounters,
+		}
+
+		handler := transport.ServerInitHandlerFunc(&serverInitParams)
+		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
+
+		assert.Equal(t, 0.0, initMetrics.ErrorMetrics.DatacenterNotFound.Value())
+	})
+
+}
+
 func TestServerInitHandlerFunc(t *testing.T) {
 	t.Parallel()
 
@@ -90,78 +302,6 @@ func TestServerInitHandlerFunc(t *testing.T) {
 		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
 
 		assert.Equal(t, 1.0, initMetrics.ErrorMetrics.DatacenterNotFound.Value())
-	})
-
-	t.Run("datacenter alias found", func(t *testing.T) {
-		buyersServerPubKey, buyersServerPrivKey, err := ed25519.GenerateKey(nil)
-
-		db := storage.InMemory{}
-		db.AddBuyer(context.Background(), routing.Buyer{
-			PublicKey: buyersServerPubKey,
-			ID:        15,
-		})
-
-		datacenter := routing.Datacenter{
-			ID:        13,
-			Name:      "local",
-			AliasName: "local.alias",
-			Enabled:   true,
-			// Location: omitted
-		}
-
-		db.AddDatacenter(context.Background(), datacenter)
-
-		dcMap := routing.DatacenterMap{
-			Alias:      "local.alias",
-			Datacenter: 13,
-			BuyerID:    15,
-		}
-
-		db.AddDatacenterMap(context.Background(), dcMap)
-
-		addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:13")
-		assert.NoError(t, err)
-
-		initMetrics := metrics.EmptyServerInitMetrics
-		localMetrics := metrics.LocalHandler{}
-
-		metric, err := localMetrics.NewCounter(context.Background(), &metrics.Descriptor{ID: "test metric"})
-		assert.NoError(t, err)
-
-		initMetrics.ErrorMetrics.DatacenterNotFound = metric
-
-		packet := transport.ServerUpdatePacket{
-			// Sequence:             13,
-			ServerAddress:        net.UDPAddr{IP: net.IPv4zero, Port: 13},
-			ServerPrivateAddress: net.UDPAddr{IP: net.IPv4zero, Port: 13},
-			ServerRoutePublicKey: TestServerBackendPublicKey,
-			CustomerID:           15,
-
-			DatacenterID: crypto.HashID("local.alias"),
-
-			Version: transport.SDKVersionMin,
-		}
-		packet.Signature = crypto.Sign(buyersServerPrivKey, packet.GetSignData())
-
-		data, err := packet.MarshalBinary()
-		assert.NoError(t, err)
-
-		serverInitCounters := transport.ServerInitCounters{}
-
-		serverInitParams := transport.ServerInitParams{
-			Logger:   log.NewNopLogger(),
-			Storer:   &db,
-			Metrics:  &initMetrics,
-			Counters: &serverInitCounters,
-		}
-
-		handler := transport.ServerInitHandlerFunc(&serverInitParams)
-		handler(&bytes.Buffer{}, &transport.UDPPacket{SourceAddr: addr, Data: data})
-
-		// _, err = redisServer.Get("SERVER-0-0.0.0.0:13")
-		// assert.Error(t, err)
-
-		assert.Equal(t, 0.0, initMetrics.ErrorMetrics.DatacenterNotFound.Value())
 	})
 
 	/*
