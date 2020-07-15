@@ -221,6 +221,9 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 		// because it's really difficult to debug what the incorrectly datacenter string is, when we only
 		// see the hash :(
 
+		// IMPORTANT: Make sure that if we can't find the datacenter or alias, we *still* continue as normal
+		// and create an UnknownDatacenter so that we can respond to sessions on that game server with a direct route!
+
 		datacenter, err := params.Storer.Datacenter(packet.DatacenterID)
 		if err != nil {
 			// search the list of aliases created by/for this buyer
