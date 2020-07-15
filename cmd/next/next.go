@@ -942,28 +942,13 @@ func main() {
 		Name:       "datacenters",
 		ShortUsage: "next datacenters <name>",
 		ShortHelp:  "Manage datacenters and mappings",
-		// Exec: func(_ context.Context, args []string) error {
-		// 	if len(args) > 0 {
-		// 		datacenters(rpcClient, env, args[0])
-		// 		return nil
-		// 	}
-		// 	datacenters(rpcClient, env, "")
-		// 	return nil
-		// },
-		Subcommands: []*ffcli.Command{
-			{
-				Name:       "list",
-				ShortUsage: "next datacenter list",
-				ShortHelp:  "Display a current list of datacenters",
-				Exec: func(_ context.Context, args []string) error {
-					if len(args) > 0 {
-						datacenters(rpcClient, env, args[0])
-						return nil
-					}
-					datacenters(rpcClient, env, "")
-					return nil
-				},
-			},
+		Exec: func(_ context.Context, args []string) error {
+			if len(args) > 0 {
+				datacenters(rpcClient, env, args[0])
+				return nil
+			}
+			datacenters(rpcClient, env, "")
+			return nil
 		},
 	}
 
@@ -1075,7 +1060,11 @@ func main() {
 
 					hexID, err := strconv.ParseUint(id, 16, 64)
 					if err != nil {
-						return fmt.Errorf("Can not work with datacenter ID%v\n", id)
+						if id == "" {
+							id = "(empty string, no datacenter ID provided)"
+						}
+						fmt.Printf("Can not find datacenter ID %v\n", id)
+						return nil
 					}
 
 					listDatacenterMaps(rpcClient, env, hexID)
@@ -1202,13 +1191,14 @@ func main() {
 						ShortHelp:  "Return a list of datacenters and aliases for the given buyer",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) != 1 {
-								err := errors.New("A buyer ID or name must be supplied")
-								return err
+								fmt.Printf("A buyer ID or name must be supplied")
+								return nil
 							}
 
 							hexID, err := strconv.ParseUint(args[0], 16, 64)
 							if err != nil {
-								return fmt.Errorf("Can not work with datacenter ID: %v\nerr: %v", args[0], err)
+								fmt.Printf("Can not find datacenter ID: %v\n", args[0])
+								return nil
 
 							}
 
