@@ -2,7 +2,6 @@ package jsonrpc_test
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -10,7 +9,6 @@ import (
 	"github.com/alicebob/miniredis"
 	"github.com/go-kit/kit/log"
 	"github.com/go-redis/redis/v7"
-	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport/jsonrpc"
@@ -157,9 +155,20 @@ func TestDatacenterMaps(t *testing.T) {
 		Datacenter: 0x7edb88d7b6fc0713,
 	}
 
-	id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.Datacenter))
-
 	storer := storage.InMemory{}
+
+	buyer := routing.Buyer{
+		ID:   0xbdbebdbf0f7be395,
+		Name: "local.buyer",
+	}
+
+	datacenter := routing.Datacenter{
+		ID:   0x7edb88d7b6fc0713,
+		Name: "local.datacenter",
+	}
+
+	storer.AddBuyer(context.Background(), buyer)
+	storer.AddDatacenter(context.Background(), datacenter)
 
 	logger := log.NewNopLogger()
 
@@ -198,9 +207,9 @@ func TestDatacenterMaps(t *testing.T) {
 		err := svc.DatacenterMapsForBuyer(req, &args, &reply)
 		assert.NoError(t, err)
 
-		assert.Equal(t, uint64(0x7edb88d7b6fc0713), reply.DatacenterMaps[id].Datacenter)
-		assert.Equal(t, "some.server.alias", reply.DatacenterMaps[id].Alias)
-		assert.Equal(t, uint64(0xbdbebdbf0f7be395), reply.DatacenterMaps[id].BuyerID)
+		assert.Equal(t, "7edb88d7b6fc0713", reply.DatacenterMaps[0].DatacenterID)
+		assert.Equal(t, "some.server.alias", reply.DatacenterMaps[0].Alias)
+		assert.Equal(t, "bdbebdbf0f7be395", reply.DatacenterMaps[0].BuyerID)
 
 	})
 
