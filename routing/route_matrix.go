@@ -257,8 +257,10 @@ func (m *RouteMatrix) FillRoutes(routes []Route, routeIndex *int, fromCost int, 
 
 			if !reverse {
 				routeRelays[j], err = m.ResolveRelay(id)
+				fmt.Println(routeRelays[j].Seller)
 			} else {
 				routeRelays[numRelays-1-j], err = m.ResolveRelay(id)
+				fmt.Println(routeRelays[numRelays-1-j].Seller)
 			}
 
 			if err != nil {
