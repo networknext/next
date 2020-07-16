@@ -979,7 +979,7 @@ func GetBestRoute(routeMatrix RouteProvider, nearRelays []routing.Relay, datacen
 		routing.DecideUpgradeRTT(float64(buyer.RoutingRulesSettings.RTTThreshold)),
 		routing.DecideDowngradeRTT(float64(buyer.RoutingRulesSettings.RTTHysteresis), buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
 		routing.DecideVeto(onNNSliceCounter, float64(buyer.RoutingRulesSettings.RTTVeto), buyer.RoutingRulesSettings.EnablePacketLossSafety, buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
-		routing.DecideMultipath(buyer.RoutingRulesSettings.EnableMultipathForRTT, buyer.RoutingRulesSettings.EnableMultipathForJitter, buyer.RoutingRulesSettings.EnableMultipathForPacketLoss, float64(buyer.RoutingRulesSettings.RTTThreshold)),
+		routing.DecideMultipath(buyer.RoutingRulesSettings.EnableMultipathForRTT, buyer.RoutingRulesSettings.EnableMultipathForJitter, buyer.RoutingRulesSettings.EnableMultipathForPacketLoss, float64(buyer.RoutingRulesSettings.RTTThreshold), float64(buyer.RoutingRulesSettings.MultipathPacketLossThreshold)),
 	}
 
 	if buyer.RoutingRulesSettings.EnableTryBeforeYouBuy {
