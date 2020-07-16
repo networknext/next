@@ -781,7 +781,7 @@ func TestGameConfiguration(t *testing.T) {
 		err := svc.GameConfiguration(req, &jsonrpc.GameConfigurationArgs{Domain: "local.com"}, &reply)
 		assert.NoError(t, err)
 
-		assert.Equal(t, reply.GameConfiguration.PublicKey, "AAAAAA==")
+		assert.Equal(t, reply.GameConfiguration.PublicKey, "AQAAAAAAAAAAAAAA")
 	})
 
 	t.Run("failed to update public key", func(t *testing.T) {
