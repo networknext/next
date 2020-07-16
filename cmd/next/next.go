@@ -1051,7 +1051,7 @@ func main() {
 				Name:       "buyers",
 				ShortUsage: "next datacenter buyers <datacenter ID|name>",
 				ShortHelp:  "Returns a list of all buyers and aliases for a given datacenter",
-				LongHelp:   "Returns a list of all buyers and aliases for a given datacenter. Providing an empty string for the datacenter ID|name returns a list of all mappings.",
+				LongHelp:   "Returns a list of all buyers and aliases for a given datacenter. ",
 				Exec: func(_ context.Context, args []string) error {
 
 					if len(args) == 0 {
