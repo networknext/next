@@ -137,8 +137,9 @@ func main() {
 		}
 
 		datacenter := routing.Datacenter{
-			ID:   crypto.HashID("local"),
-			Name: "local",
+			ID:           crypto.HashID("local"),
+			Name:         "local",
+			SupplierName: "usw2-az4",
 		}
 
 		if err := db.AddSeller(ctx, seller); err != nil {
