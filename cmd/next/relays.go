@@ -44,6 +44,7 @@ func relays(
 
 	relays := []struct {
 		Name        string
+		ID          string
 		Address     string
 		State       string
 		Sessions    string
@@ -129,12 +130,14 @@ func relays(
 					rx,
 					relay.Version,
 					lastUpdated,
+					fmt.Sprintf("%016x", relay.ID),
 				})
 			}
 
 		} else if relayVersionFilter == "all" || relay.Version == relayVersionFilter {
 			relays = append(relays, struct {
 				Name        string
+				ID          string
 				Address     string
 				State       string
 				Sessions    string
@@ -144,6 +147,7 @@ func relays(
 				LastUpdated string
 			}{
 				Name:        relay.Name,
+				ID:          fmt.Sprintf("%016x", relay.ID),
 				Address:     address,
 				State:       relay.State,
 				Sessions:    fmt.Sprintf("%d", relay.SessionCount),
