@@ -635,6 +635,29 @@ func (s *OpsService) RelayNICSpeedUpdate(r *http.Request, args *RelayNICSpeedUpd
 	return nil
 }
 
+type DatacenterArg struct {
+	ID uint64
+}
+
+type DatacenterReply struct {
+	Datacenter routing.Datacenter
+}
+
+func (s *OpsService) Datacenter(r *http.Request, arg *DatacenterArg, reply *DatacenterReply) error {
+
+	var datacenter routing.Datacenter
+	var err error
+	if datacenter, err = s.Storage.Datacenter(arg.ID); err != nil {
+		err = fmt.Errorf("Datacenter() error: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	reply.Datacenter = datacenter
+	return nil
+
+}
+
 type DatacentersArgs struct {
 	Name string `json:"name"`
 }
@@ -644,21 +667,23 @@ type DatacentersReply struct {
 }
 
 type datacenter struct {
-	Name      string  `json:"name"`
-	ID        string  `json:"id"`
-	Latitude  float64 `json:"latitude"`
-	Longitude float64 `json:"longitude"`
-	Enabled   bool    `json:"enabled"`
+	Name         string  `json:"name"`
+	ID           string  `json:"id"`
+	Latitude     float64 `json:"latitude"`
+	Longitude    float64 `json:"longitude"`
+	Enabled      bool    `json:"enabled"`
+	SupplierName string  `json:"supplierName"`
 }
 
 func (s *OpsService) Datacenters(r *http.Request, args *DatacentersArgs, reply *DatacentersReply) error {
 	for _, d := range s.Storage.Datacenters() {
 		reply.Datacenters = append(reply.Datacenters, datacenter{
-			Name:      d.Name,
-			ID:        fmt.Sprintf("%x", d.ID),
-			Enabled:   d.Enabled,
-			Latitude:  d.Location.Latitude,
-			Longitude: d.Location.Longitude,
+			Name:         d.Name,
+			ID:           fmt.Sprintf("%x", d.ID),
+			Enabled:      d.Enabled,
+			Latitude:     d.Location.Latitude,
+			Longitude:    d.Location.Longitude,
+			SupplierName: d.SupplierName,
 		})
 	}
 

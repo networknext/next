@@ -7,9 +7,10 @@ var UnknownDatacenter = Datacenter{
 }
 
 type Datacenter struct {
-	ID        uint64
-	Name      string
-	AliasName string
-	Enabled   bool
-	Location  Location
+	ID           uint64
+	Name         string
+	AliasName    string
+	Enabled      bool
+	Location     Location
+	SupplierName string
 }
