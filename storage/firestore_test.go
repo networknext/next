@@ -320,6 +320,40 @@ func TestFirestore(t *testing.T) {
 
 			assert.Equal(t, expectedCustomer, customerInRemoteStorage)
 		})
+
+		t.Run("validate only 1 route shader", func(t *testing.T) {
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			assert.NoError(t, err)
+
+			defer func() {
+				err := cleanFireStore(ctx, fs.Client)
+				assert.NoError(t, err)
+			}()
+
+			expected := routing.Buyer{
+				ID:                   1,
+				Name:                 "local",
+				Domain:               "example.com",
+				Active:               true,
+				Live:                 false,
+				PublicKey:            make([]byte, crypto.KeySize),
+				RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
+			}
+
+			err = fs.AddBuyer(ctx, expected)
+			assert.NoError(t, err)
+
+			actual, err := fs.Buyer(expected.ID)
+			assert.NoError(t, err)
+
+			assert.Equal(t, expected, actual)
+
+			// Check that only 1 route shader exists in firestore at this point
+			rsdocs := fs.Client.Collection("RouteShader").Documents(ctx)
+			rsSnapshot, err := rsdocs.GetAll()
+			assert.NoError(t, err)
+			assert.Len(t, rsSnapshot, 1)
+		})
 	})
 
 	t.Run("RemoveBuyer", func(t *testing.T) {
@@ -1536,37 +1570,6 @@ func TestFirestore(t *testing.T) {
 			assert.NoError(t, err)
 
 			actual, err := fs.Datacenter(expected.ID)
-			assert.NoError(t, err)
-
-			assert.Equal(t, expected, actual)
-		})
-
-		t.Run("success with alias", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
-			assert.NoError(t, err)
-
-			defer func() {
-				err := cleanFireStore(ctx, fs.Client)
-				assert.NoError(t, err)
-			}()
-
-			expected := routing.Datacenter{
-				ID:        1,
-				Name:      "local",
-				AliasName: "multiplay",
-				Enabled:   true,
-				Location: routing.Location{
-					Latitude:  70.5,
-					Longitude: 120.5,
-				},
-			}
-
-			err = fs.AddDatacenter(ctx, expected)
-			assert.NoError(t, err)
-
-			multiplayID := crypto.HashID(expected.AliasName)
-
-			actual, err := fs.Datacenter(multiplayID)
 			assert.NoError(t, err)
 
 			assert.Equal(t, expected, actual)
