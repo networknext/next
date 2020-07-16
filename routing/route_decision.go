@@ -75,6 +75,8 @@ func (dr DecisionReason) String() string {
 		reason = "Vetoed No Route"
 	case DecisionNoLocation:
 		reason = "No Location"
+	case DecisionBuyerNotLive:
+		reason = "Buyer Not Live"
 	default:
 		reason = "Unknown"
 	}
@@ -105,6 +107,7 @@ const (
 	DecisionDatacenterDisabled      DecisionReason = 1 << 20
 	DecisionVetoNoRoute             DecisionReason = 1 << 21
 	DecisionNoLocation              DecisionReason = 1 << 22
+	DecisionBuyerNotLive            DecisionReason = 1 << 23
 )
 
 // DecideUpgradeRTT will decide if the client should use the network next route if the RTT reduction is greater than the given threshold.

@@ -4,11 +4,11 @@ import (
 	"github.com/networknext/backend/encoding"
 )
 
-const BillingEntryVersion = uint8(3)
+const BillingEntryVersion = uint8(4)
 
 const BillingEntryMaxRelays = 5
 
-const MaxBillingEntryBytes = 1 + 8 + 4 + 8 + 1 + (6 * 4) + 1 + (BillingEntryMaxRelays * 8) + 8 + 8 + 8 + 4 + 8 + 8
+const MaxBillingEntryBytes = 1 + 8 + 4 + 8 + 1 + (6 * 4) + 1 + (BillingEntryMaxRelays * 8) + 8 + 8 + 8 + 4 + 8 + 8 + 8 + 1 + 1
 
 type BillingEntry struct {
 	Timestamp                 uint64 // IMPORTANT: Timestamp is not serialized. Pubsub already has the timestamp so we use that instead.
@@ -34,6 +34,9 @@ type BillingEntry struct {
 	Initial                   bool
 	NextBytesUp               uint64
 	NextBytesDown             uint64
+	DatacenterID              uint64
+	RTTReduction              bool
+	PacketLossReduction       bool
 }
 
 func WriteBillingEntry(entry *BillingEntry) []byte {
@@ -72,6 +75,13 @@ func WriteBillingEntry(entry *BillingEntry) []byte {
 		encoding.WriteUint64(data, &index, entry.NextBytesDown)
 	} else {
 		encoding.WriteBool(data, &index, false)
+	}
+
+	encoding.WriteUint64(data, &index, entry.DatacenterID)
+
+	if entry.Next {
+		encoding.WriteBool(data, &index, entry.RTTReduction)
+		encoding.WriteBool(data, &index, entry.PacketLossReduction)
 	}
 
 	return data[:index]
@@ -163,6 +173,21 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 				return false
 			}
 			if !encoding.ReadUint64(data, &index, &entry.NextBytesDown) {
+				return false
+			}
+		}
+	}
+
+	if entry.Version >= 4 {
+		if !encoding.ReadUint64(data, &index, &entry.DatacenterID) {
+			return false
+		}
+
+		if entry.Next {
+			if !encoding.ReadBool(data, &index, &entry.RTTReduction) {
+				return false
+			}
+			if !encoding.ReadBool(data, &index, &entry.PacketLossReduction) {
 				return false
 			}
 		}

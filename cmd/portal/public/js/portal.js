@@ -199,8 +199,12 @@ MapHandler = {
 		);
 	},
 	updateFilter(id) {
+		this.totalNextSessions = []
+		this.totalDirectSessions = []
+		this.totalSessionCountCalls = 0
+
 		Object.assign(rootComponent.$data.pages.map.filter, {buyerId: id});
-		console.log(rootComponent.$data.pages.map.filter)
+
 		this.mapCountLoop ? clearInterval(this.mapCountLoop) : null;
 		this.mapLoop ? clearInterval(this.mapLoop) : null;
 
@@ -215,7 +219,13 @@ MapHandler = {
 		}, 10000);
 	},
 	updateMap(mapType) {
-		switch (mapType) {
+		/*
+			This isn't being used right now.
+			Fix in order to turn back on -
+				Chrome, Safari - option onClick events don't work (look at session filter implementation)
+				Edge - Object spread operators are a no go - babel will fix this in the Vue rewrite / don't use spreads (Object.assign) :(
+		 */
+		/* switch (mapType) {
 			case 'USA':
 				this.mapInstance.setProps({
 					...this.defaultUSA
@@ -228,7 +238,7 @@ MapHandler = {
 				break;
 			default:
 				// Nothing for now
-		}
+		} */
 	},
 	refreshMapCount() {
 		let filter = rootComponent.$data.pages.map.filter;
@@ -1385,8 +1395,7 @@ function generateCharts(data) {
 		value: (self, rawValue) => rawValue.toFixed(2)
 	});
 
-	const latencycomparisonOpts = {
-		...defaultOpts,
+	const latencyComparisonOpts = {
 		scales: {
 			"ms": {
 				from: "y",
@@ -1412,6 +1421,8 @@ function generateCharts(data) {
 		],
 	};
 
+	Object.assign(latencyComparisonOpts, defaultOpts)
+
 	series = [
 		{}
 	];
@@ -1433,7 +1444,6 @@ function generateCharts(data) {
 	});
 
 	const packetLossComparisonOpts = {
-		...defaultOpts,
 		scales: {
 			y: {
 				auto: false,
@@ -1454,8 +1464,9 @@ function generateCharts(data) {
 		],
 	};
 
+	Object.assign(packetLossComparisonOpts, defaultOpts)
+
 	const bandwidthOpts = {
-		...defaultOpts,
 		scales: {
 			"kbps": {
 				from: "y",
@@ -1496,12 +1507,14 @@ function generateCharts(data) {
 		]
 	};
 
+	Object.assign(bandwidthOpts, defaultOpts)
+
 	if (rootComponent.$data.pages.sessionTool.graphs.latencyComparisonChart != null) {
 		rootComponent.$data.pages.sessionTool.graphs.latencyComparisonChart.destroy();
 	}
 
 	Object.assign(rootComponent.$data.pages.sessionTool.graphs, {
-		latencyComparisonChart: new uPlot(latencycomparisonOpts, latencyData.comparison, document.getElementById("latency-chart-1"))
+		latencyComparisonChart: new uPlot(latencyComparisonOpts, latencyData.comparison, document.getElementById("latency-chart-1"))
 	});
 
 	if (rootComponent.$data.pages.sessionTool.graphs.jitterComparisonChart != null) {
@@ -1509,7 +1522,7 @@ function generateCharts(data) {
 	}
 
 	Object.assign(rootComponent.$data.pages.sessionTool.graphs, {
-		jitterComparisonChart: new uPlot(latencycomparisonOpts, jitterData.comparison, document.getElementById("jitter-chart-1"))
+		jitterComparisonChart: new uPlot(latencyComparisonOpts, jitterData.comparison, document.getElementById("jitter-chart-1"))
 	});
 
 	if (rootComponent.$data.pages.sessionTool.graphs.packetLossComparisonChart != null) {
