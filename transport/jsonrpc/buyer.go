@@ -207,7 +207,8 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 }
 
 type TopSessionsArgs struct {
-	BuyerID string `json:"buyer_id"`
+	BuyerID         string `json:"buyer_id"`
+	ImprovementType string `json:"improvement"`
 }
 
 type TopSessionsReply struct {
@@ -219,10 +220,15 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 	var err error
 	var topnext []string
 	var topdirect []string
+	var improvementType string = ""
 
 	reply.Sessions = make([]routing.SessionMeta, 0)
 
 	buyers := s.Storage.Buyers()
+
+	if args.ImprovementType != "" {
+		improvementType = args.ImprovementType
+	}
 
 	// get the top session IDs globally or for a buyer from the sorted set
 	switch args.BuyerID {
@@ -317,9 +323,20 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 		return err
 	}
 
-	sort.Slice(nextSessions, func(i int, j int) bool {
-		return nextSessions[i].DeltaRTT > nextSessions[j].DeltaRTT
-	})
+	switch improvementType {
+	case "rtt":
+		sort.Slice(nextSessions, func(i int, j int) bool {
+			return nextSessions[i].DeltaRTT > nextSessions[j].DeltaRTT
+		})
+	case "jitter":
+		sort.Slice(nextSessions, func(i int, j int) bool {
+			return nextSessions[i].DeltaJitter > nextSessions[j].DeltaJitter
+		})
+	case "pl":
+		sort.Slice(nextSessions, func(i int, j int) bool {
+			return nextSessions[i].DeltaPL > nextSessions[j].DeltaPL
+		})
+	}
 
 	// If the result of nextSessions fills the page then early out and do not fill with direct
 	// This will skip talking to redis to get meta details for sessions we do not need to get
@@ -398,9 +415,21 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 	}
 
 	// Sort cleaned direct slices in order of least to greatest direct RTT
-	sort.Slice(cleanDirectSessions, func(i int, j int) bool {
-		return cleanDirectSessions[i].DirectRTT < cleanDirectSessions[j].DirectRTT
-	})
+
+	switch improvementType {
+	case "rtt":
+		sort.Slice(cleanDirectSessions, func(i int, j int) bool {
+			return cleanDirectSessions[i].DirectRTT < cleanDirectSessions[j].DirectRTT
+		})
+	case "jitter":
+		sort.Slice(cleanDirectSessions, func(i int, j int) bool {
+			return cleanDirectSessions[i].DirectJitter < cleanDirectSessions[j].DirectJitter
+		})
+	case "pl":
+		sort.Slice(cleanDirectSessions, func(i int, j int) bool {
+			return cleanDirectSessions[i].DirectPL < cleanDirectSessions[j].DirectPL
+		})
+	}
 
 	// Append the two sets. next sessions first, followed by direct sessions that are not included in the next set.
 	reply.Sessions = append(reply.Sessions, nextSessions...)
@@ -412,23 +441,62 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 
 	allDirectSessions := len(nextSessions) == 0
 
-	sort.SliceStable(reply.Sessions, func(i int, j int) bool {
-		firstSession := reply.Sessions[i]
-		secondSession := reply.Sessions[j]
-		if allDirectSessions {
-			return firstSession.DirectRTT > secondSession.DirectRTT
-		}
-		if firstSession.OnNetworkNext && secondSession.OnNetworkNext {
-			return firstSession.DeltaRTT > secondSession.DeltaRTT
-		}
-		if firstSession.OnNetworkNext && !secondSession.OnNetworkNext {
-			return true
-		}
-		if !firstSession.OnNetworkNext && secondSession.OnNetworkNext {
-			return false
-		}
-		return firstSession.DirectRTT < secondSession.DirectRTT
-	})
+	switch improvementType {
+	case "rtt":
+		sort.SliceStable(reply.Sessions, func(i int, j int) bool {
+			firstSession := reply.Sessions[i]
+			secondSession := reply.Sessions[j]
+			if allDirectSessions {
+				return firstSession.DirectRTT > secondSession.DirectRTT
+			}
+			if firstSession.OnNetworkNext && secondSession.OnNetworkNext {
+				return firstSession.DeltaRTT > secondSession.DeltaRTT
+			}
+			if firstSession.OnNetworkNext && !secondSession.OnNetworkNext {
+				return true
+			}
+			if !firstSession.OnNetworkNext && secondSession.OnNetworkNext {
+				return false
+			}
+			return firstSession.DirectRTT < secondSession.DirectRTT
+		})
+	case "jitter":
+		sort.SliceStable(reply.Sessions, func(i int, j int) bool {
+			firstSession := reply.Sessions[i]
+			secondSession := reply.Sessions[j]
+			if allDirectSessions {
+				return firstSession.DirectJitter > secondSession.DirectJitter
+			}
+			if firstSession.OnNetworkNext && secondSession.OnNetworkNext {
+				return firstSession.DeltaJitter > secondSession.DeltaJitter
+			}
+			if firstSession.OnNetworkNext && !secondSession.OnNetworkNext {
+				return true
+			}
+			if !firstSession.OnNetworkNext && secondSession.OnNetworkNext {
+				return false
+			}
+			return firstSession.DirectJitter < secondSession.DirectJitter
+		})
+	case "pl":
+		sort.SliceStable(reply.Sessions, func(i int, j int) bool {
+			firstSession := reply.Sessions[i]
+			secondSession := reply.Sessions[j]
+			if allDirectSessions {
+				return firstSession.DirectPL > secondSession.DirectPL
+			}
+			if firstSession.OnNetworkNext && secondSession.OnNetworkNext {
+				return firstSession.DeltaPL > secondSession.DeltaPL
+			}
+			if firstSession.OnNetworkNext && !secondSession.OnNetworkNext {
+				return true
+			}
+			if !firstSession.OnNetworkNext && secondSession.OnNetworkNext {
+				return false
+			}
+			return firstSession.DirectPL < secondSession.DirectPL
+		})
+	}
 
 	return nil
 }

@@ -1160,10 +1160,16 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 	}
 
 	var deltaRTT float64
+	var deltaJitter float64
+	var deltaPL float64
 	if !onNetworkNext {
 		deltaRTT = 0
+		deltaJitter = 0
+		deltaPL = 0
 	} else {
 		deltaRTT = lastDirectStats.RTT - lastNNStats.RTT
+		deltaJitter = lastDirectStats.Jitter - lastNNStats.Jitter
+		deltaPL = lastDirectStats.PacketLoss - lastNNStats.PacketLoss
 	}
 
 	meta := routing.SessionMeta{
@@ -1175,6 +1181,12 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 		NextRTT:         lastNNStats.RTT,
 		DirectRTT:       lastDirectStats.RTT,
 		DeltaRTT:        deltaRTT,
+		NextJitter:      lastNNStats.Jitter,
+		DirectJitter:    lastDirectStats.Jitter,
+		DeltaJitter:     deltaJitter,
+		NextPL:          lastNNStats.Jitter,
+		DirectPL:        lastDirectStats.Jitter,
+		DeltaPL:         deltaPL,
 		Location:        *location,
 		ClientAddr:      packet.ClientAddress.String(),
 		ServerAddr:      packet.ServerAddress.String(),
