@@ -437,10 +437,16 @@
                                 </h1>
                                 <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1">
                                     <div class="mr-auto"></div>
-                                    <div class="px-2 hidden">
-                                        <select class="form-control">
+                                    <div class="px-2" v-if="handlers.userHandler.isAdmin()">
+                                        <select class="form-control" v-on:change="handlers.workspaceHandler.updateSessionFilter(pages.map.filter.buyerId, $event.target.value)">
                                             <option value="rtt">
-                                                Sort by RTT
+                                                Sort By RTT
+                                            </option>
+                                            <option value="jitter">
+                                                Sort By Jitter
+                                            </option>
+                                            <option value="pl">
+                                                Sort By Packet Loss
                                             </option>
                                         </select>
                                     </div>
@@ -458,7 +464,7 @@
                                         </select>
                                     </div>
                                     <div class="px-2" v-if="handlers.userHandler.isBuyer() || handlers.userHandler.isAdmin()">
-                                        <select class="form-control" v-on:change="handlers.workspaceHandler.updateSessionFilter($event.target.value)">
+                                        <select class="form-control" v-on:change="handlers.workspaceHandler.updateSessionFilter($event.target.value, pages.sessions.filter.improvement)">
                                             <option :value="handlers.userHandler.getBuyerId()" :selected="handlers.userHandler.getBuyerId() == pages.map.filter.buyerId" v-if="!handlers.userHandler.isAdmin() && handlers.userHandler.isBuyer()">
                                                 {{ handlers.userHandler.getBuyerName() }}
                                             </option>
@@ -506,12 +512,12 @@
                                             </th>
                                             <th class="text-right">
                                                 <span>
-                                                    Direct RTT
+                                                    Direct {{ pages.sessions.filter.improvement == 'rtt' || pages.sessions.filter.improvement == 'pl' ? pages.sessions.filter.improvement.toUpperCase() : pages.sessions.filter.improvement[0].toUpperCase() + pages.sessions.filter.improvement.slice(1) }}
                                                 </span>
                                             </th>
                                             <th class="text-right">
                                                 <span>
-                                                    Next RTT
+                                                    Next {{ pages.sessions.filter.improvement == 'rtt' || pages.sessions.filter.improvement == 'pl' ? pages.sessions.filter.improvement.toUpperCase() : pages.sessions.filter.improvement[0].toUpperCase() + pages.sessions.filter.improvement.slice(1) }}
                                                 </span>
                                             </th>
                                             <th class="text-right">
@@ -546,10 +552,10 @@
                                                 </span>
                                             </td>
                                             <td class="text-right ">
-                                                {{ parseFloat(session.direct_rtt).toFixed(2) == 0 ? "-" : parseFloat(session.direct_rtt).toFixed(2) }}
+                                                {{ parseFloat(session[`direct_${pages.sessions.filter.improvement}`]).toFixed(2) == 0 ? "-" : parseFloat(session[`direct_${pages.sessions.filter.improvement}`]).toFixed(2) }}
                                             </td>
                                             <td class="text-right ">
-                                                {{ parseFloat(session.next_rtt).toFixed(2) == 0 ? "-" : parseFloat(session.next_rtt).toFixed(2) }}
+                                                {{ parseFloat(session[`next_${pages.sessions.filter.improvement}`]).toFixed(2) == 0 ? "-" : parseFloat(session[`next_${pages.sessions.filter.improvement}`]).toFixed(2) }}
                                             </td>
                                             <td class="text-right ">
                                                 <span v-if="session.delta_rtt > 0 && session.on_network_next"
@@ -560,10 +566,20 @@
                                                         }"
                                                 >
                                                     <b>
-                                                        {{ parseFloat(session.delta_rtt).toFixed(2) }}
+                                                        {{ parseFloat(session[`delta_${pages.sessions.filter.improvement}`]).toFixed(2) }}
                                                     </b>
                                                 </span>
-                                                <span v-if="session.delta_rtt < 0 || !session.on_network_next">
+                                                <span v-if="pages.sessions.filter.improvement == 'rtt' && (session.delta_rtt < 0 || !session.on_network_next)">
+                                                    <b>
+                                                        -
+                                                    </b>
+                                                </span>
+                                                <span v-if="pages.sessions.filter.improvement == 'jitter' && (session.delta_jitter < 0 || !session.on_network_next)">
+                                                    <b>
+                                                        -
+                                                    </b>
+                                                </span>
+                                                <span v-if="pages.sessions.filter.improvement == 'pl' && (session.delta_pl < 0 || !session.on_network_next)">
                                                     <b>
                                                         -
                                                     </b>

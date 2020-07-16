@@ -17,6 +17,12 @@ type SessionMeta struct {
 	NextRTT         float64  `json:"next_rtt"`
 	DirectRTT       float64  `json:"direct_rtt"`
 	DeltaRTT        float64  `json:"delta_rtt"`
+	NextJitter      float64  `json:"next_jitter"`
+	DirectJitter    float64  `json:"direct_jitter"`
+	DeltaJitter     float64  `json:"delta_jitter"`
+	NextPL          float64  `json:"next_pl"`
+	DirectPL        float64  `json:"direct_pl"`
+	DeltaPL         float64  `json:"delta_pl"`
 	Location        Location `json:"location"`
 	ClientAddr      string   `json:"client_addr"`
 	ServerAddr      string   `json:"server_addr"`

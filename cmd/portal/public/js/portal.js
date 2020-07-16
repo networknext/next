@@ -673,7 +673,7 @@ WorkspaceHandler = {
 		});
 	},
 	loadSessionsPage() {
-		this.updateSessionFilter(rootComponent.$data.pages.map.filter.buyerId);
+		this.updateSessionFilter(rootComponent.$data.pages.map.filter.buyerId, "rtt");
 	},
 	fetchSessionInfo() {
 		this.sessionToolMapInstance = null;
@@ -815,8 +815,9 @@ WorkspaceHandler = {
 				console.log(e)
 			});
 	},
-	updateSessionFilter(id) {
+	updateSessionFilter(id, improvement) {
 		Object.assign(rootComponent.$data.pages.map.filter, {buyerId: id});
+		Object.assign(rootComponent.$data.pages.sessions.filter, {improvement: improvement});
 		this.sessionLoop ? clearInterval(this.sessionLoop) : null;
 		this.refreshSessionTable();
 		this.sessionLoop = setInterval(() => {
@@ -825,10 +826,11 @@ WorkspaceHandler = {
 	},
 	refreshSessionTable() {
 		setTimeout(() => {
-			let filter = rootComponent.$data.pages.map.filter;
+			let buyerId = rootComponent.$data.pages.map.filter.buyerId;
+			let improvement = rootComponent.$data.pages.sessions.filter.improvement;
 
 			JSONRPCClient
-				.call('BuyersService.TopSessions', {buyer_id: filter.buyerId})
+				.call('BuyersService.TopSessions', {buyer_id: buyerId, improvement: improvement})
 				.then((response) => {
 					let sessions = response.sessions || [];
 
@@ -1075,7 +1077,7 @@ function createVueComponents() {
 				sessions: {
 					filter: {
 						buyerId: '',
-						sessionType: '',
+						improvement: '',
 					},
 					sessions: [],
 					show: false,
