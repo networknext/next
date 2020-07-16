@@ -186,6 +186,7 @@ func main() {
 		if err := db.AddBuyer(ctx, routing.Buyer{
 			ID:                   13672574147039585173,
 			Name:                 "local",
+			Live:                 true,
 			PublicKey:            customerPublicKey,
 			RoutingRulesSettings: routing.LocalRoutingRulesSettings,
 		}); err != nil {
