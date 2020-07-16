@@ -14,12 +14,12 @@ import (
 type PubSubForwarder struct {
 	Biller  Biller
 	Logger  log.Logger
-	Metrics *metrics.GooglePubSubForwarderMetrics
+	Metrics *metrics.BillingMetrics
 
 	pubsubSubscription *pubsub.Subscription
 }
 
-func NewPubSubForwarder(ctx context.Context, biller Biller, logger log.Logger, metrics *metrics.GooglePubSubForwarderMetrics, gcpProjectID string, topicName string, subscriptionName string) (*PubSubForwarder, error) {
+func NewPubSubForwarder(ctx context.Context, biller Biller, logger log.Logger, metrics *metrics.BillingMetrics, gcpProjectID string, topicName string, subscriptionName string) (*PubSubForwarder, error) {
 	pubsubClient, err := pubsub.NewClient(ctx, gcpProjectID)
 	if err != nil {
 		return nil, fmt.Errorf("could not create pubsub client: %v", err)
@@ -52,7 +52,6 @@ func (psf *PubSubForwarder) Forward(ctx context.Context) {
 			billingEntry.Timestamp = uint64(m.PublishTime.Unix())
 			if err := psf.Biller.Bill(context.Background(), &billingEntry); err != nil {
 				level.Error(psf.Logger).Log("msg", "could not submit billing entry", "err", err)
-				psf.Metrics.ErrorMetrics.BillingWriteFailure.Add(1)
 			}
 		} else {
 			psf.Metrics.ErrorMetrics.BillingReadFailure.Add(1)

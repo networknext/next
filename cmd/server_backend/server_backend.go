@@ -304,6 +304,36 @@ func main() {
 		}
 	}
 
+	// Create server init metrics
+	serverInitMetrics, err := metrics.NewServerInitMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create server init metrics", "err", err)
+	}
+
+	// Create server update metrics
+	serverUpdateMetrics, err := metrics.NewServerUpdateMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create server update metrics", "err", err)
+	}
+
+	// Create session update metrics
+	sessionUpdateMetrics, err := metrics.NewSessionMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create session metrics", "err", err)
+	}
+
+	// Create maxmindb sync metrics
+	maxmindSyncMetrics, err := metrics.NewMaxmindSyncMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create session metrics", "err", err)
+	}
+
+	// Create billing metrics
+	billingMetrics, err := metrics.NewBillingMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create billing metrics", "err", err)
+	}
+
 	_, emulatorOK := os.LookupEnv("PUBSUB_EMULATOR_HOST")
 	if gcpOK || emulatorOK {
 
@@ -328,7 +358,7 @@ func main() {
 				Timeout:        time.Minute,
 			}
 
-			pubsub, err := billing.NewGooglePubSubBiller(pubsubCtx, logger, gcpProjectID, "billing", 1, 0, &settings)
+			pubsub, err := billing.NewGooglePubSubBiller(pubsubCtx, billingMetrics, logger, gcpProjectID, "billing", 1, 0, &settings)
 			if err != nil {
 				level.Error(logger).Log("msg", "could not create pubsub biller", "err", err)
 				os.Exit(1)
@@ -336,30 +366,6 @@ func main() {
 
 			biller = pubsub
 		}
-	}
-
-	// Create server init metrics
-	serverInitMetrics, err := metrics.NewServerInitMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create server init metrics", "err", err)
-	}
-
-	// Create server update metrics
-	serverUpdateMetrics, err := metrics.NewServerUpdateMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create server update metrics", "err", err)
-	}
-
-	// Create session update metrics
-	sessionUpdateMetrics, err := metrics.NewSessionMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create session metrics", "err", err)
-	}
-
-	// Create maxmindb sync metrics
-	maxmindSyncMetrics, err := metrics.NewMaxmindSyncMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create session metrics", "err", err)
 	}
 
 	getIPLocatorFunc := func() routing.IPLocator {

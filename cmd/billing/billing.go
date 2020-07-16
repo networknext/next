@@ -113,40 +113,6 @@ func main() {
 	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
 	if gcpOK {
 
-		// Google BigQuery
-		{
-			if billingDataset, ok := os.LookupEnv("GOOGLE_BIGQUERY_DATASET_BILLING"); ok {
-				batchSize := billing.DefaultBigQueryBatchSize
-				if size, ok := os.LookupEnv("GOOGLE_BIGQUERY_BATCH_SIZE"); ok {
-					s, err := strconv.ParseInt(size, 10, 64)
-					if err != nil {
-						level.Error(logger).Log("err", err)
-						os.Exit(1)
-					}
-					batchSize = int(s)
-				}
-
-				bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
-				if err != nil {
-					level.Error(logger).Log("err", err)
-					os.Exit(1)
-				}
-				b := billing.GoogleBigQueryClient{
-					Logger:        logger,
-					TableInserter: bqClient.Dataset(billingDataset).Table(os.Getenv("GOOGLE_BIGQUERY_TABLE_BILLING")).Inserter(),
-					BatchSize:     batchSize,
-				}
-
-				// Set the Biller to BigQuery
-				biller = &b
-
-				// Start the background WriteLoop to batch write to BigQuery
-				go func() {
-					b.WriteLoop(ctx)
-				}()
-			}
-		}
-
 		// StackDriver Metrics
 		{
 			var enableSDMetrics bool
@@ -215,10 +181,47 @@ func main() {
 		}
 	}
 
-	// Create PubSubForwarder metrics
-	pubsubForwarderMetrics, err := metrics.NewGooglePubSubForwarderMetrics(ctx, metricsHandler)
+	// Create billing metrics
+	billingMetrics, err := metrics.NewBillingMetrics(ctx, metricsHandler)
 	if err != nil {
-		level.Error(logger).Log("msg", "failed to create pubsub forwarder metrics", "err", err)
+		level.Error(logger).Log("msg", "failed to create billing metrics", "err", err)
+	}
+
+	if gcpOK {
+		// Google BigQuery
+		{
+			if billingDataset, ok := os.LookupEnv("GOOGLE_BIGQUERY_DATASET_BILLING"); ok {
+				batchSize := billing.DefaultBigQueryBatchSize
+				if size, ok := os.LookupEnv("GOOGLE_BIGQUERY_BATCH_SIZE"); ok {
+					s, err := strconv.ParseInt(size, 10, 64)
+					if err != nil {
+						level.Error(logger).Log("err", err)
+						os.Exit(1)
+					}
+					batchSize = int(s)
+				}
+
+				bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
+				if err != nil {
+					level.Error(logger).Log("err", err)
+					os.Exit(1)
+				}
+				b := billing.GoogleBigQueryClient{
+					Metrics:       billingMetrics,
+					Logger:        logger,
+					TableInserter: bqClient.Dataset(billingDataset).Table(os.Getenv("GOOGLE_BIGQUERY_TABLE_BILLING")).Inserter(),
+					BatchSize:     batchSize,
+				}
+
+				// Set the Biller to BigQuery
+				biller = &b
+
+				// Start the background WriteLoop to batch write to BigQuery
+				go func() {
+					b.WriteLoop(ctx)
+				}()
+			}
+		}
 	}
 
 	_, emulatorOK := os.LookupEnv("PUBSUB_EMULATOR_HOST")
@@ -242,7 +245,7 @@ func main() {
 			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
 			defer cancelFunc()
 
-			pubsubForwarder, err := billing.NewPubSubForwarder(pubsubCtx, biller, logger, pubsubForwarderMetrics, gcpProjectID, topicName, subscriptionName)
+			pubsubForwarder, err := billing.NewPubSubForwarder(pubsubCtx, biller, logger, billingMetrics, gcpProjectID, topicName, subscriptionName)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				os.Exit(1)
