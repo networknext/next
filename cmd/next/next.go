@@ -372,6 +372,8 @@ func main() {
 	sessionsfs := flag.NewFlagSet("sessions", flag.ExitOnError)
 	var sessionCount int64
 	sessionsfs.Int64Var(&sessionCount, "n", 0, "number of top sessions to display (default: all)")
+	var buyerName string
+	sessionsfs.StringVar(&buyerName, "buyer", "", "specify a buyer to filter sessions on")
 
 	relaylogfs := flag.NewFlagSet("relay logs", flag.ExitOnError)
 
@@ -547,7 +549,7 @@ func main() {
 				sessions(rpcClient, env, args[0], sessionCount)
 				return nil
 			}
-			sessions(rpcClient, env, "", sessionCount)
+			sessionsByBuyer(rpcClient, env, buyerName, sessionCount)
 			return nil
 		},
 		Subcommands: []*ffcli.Command{
