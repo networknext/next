@@ -297,18 +297,19 @@ func handleJSONRPCErrorCustom(env Environment, err error, msg string) {
 	case *jsonrpc.HTTPError:
 		switch e.Code {
 		case http.StatusUnauthorized:
-			log.Fatalf("%d: %s - use `next auth` to authorize the operator tool\n", e.Code, http.StatusText(e.Code))
+			fmt.Printf("%d: %s - use `next auth` to authorize the operator tool\n", e.Code, http.StatusText(e.Code))
 		default:
-			log.Fatalf("%d: %s", e.Code, http.StatusText(e.Code))
+			fmt.Printf("%d: %s", e.Code, http.StatusText(e.Code))
 		}
 	default:
 		if env.Name != "local" && env.Name != "dev" && env.Name != "prod" {
-			log.Fatalf("%v - make sure the env name is set to either 'prod', 'dev', or 'local' with\nnext select <env>", err)
+			fmt.Printf("%v - make sure the env name is set to either 'prod', 'dev', or 'local' with\nnext select <env>", err)
 		} else {
 			fmt.Printf("%s\n\n", msg)
-			os.Exit(1)
 		}
 	}
+	os.Exit(1)
+
 }
 
 type buyer struct {

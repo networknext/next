@@ -295,10 +295,8 @@ func addDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMapStr
 
 	var reply localjsonrpc.AddDatacenterMapReply
 	if err := rpcClient.CallFor(&reply, "BuyersService.AddDatacenterMap", arg); err != nil {
-		// don't want to see timestamps and error numbers on the CLI
-		// handleJSONRPCError(env, err)
-		fmt.Printf("This alias already exists:\n%v\n", arg.DatacenterMap)
-		return err
+		handleJSONRPCError(env, err)
+		return nil
 	}
 
 	return nil
@@ -355,9 +353,8 @@ func removeDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMap
 
 	var reply localjsonrpc.RemoveDatacenterMapReply
 	if err := rpcClient.CallFor(&reply, "BuyersService.RemoveDatacenterMap", arg); err != nil {
-		// handleJSONRPCError(env, err) // don't want to see timestamps and error numbers at the CLI
-		fmt.Printf("This alias does not exist and can not be removed:\n%v\n", arg.DatacenterMap)
-		return err
+		handleJSONRPCError(env, err)
+		return nil
 	}
 
 	return nil
