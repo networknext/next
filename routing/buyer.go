@@ -1,6 +1,9 @@
 package routing
 
-import "encoding/base64"
+import (
+	"encoding/base64"
+	"encoding/binary"
+)
 
 type Buyer struct {
 	ID                   uint64
@@ -13,7 +16,13 @@ type Buyer struct {
 }
 
 func (b *Buyer) EncodedPublicKey() string {
-	return base64.StdEncoding.EncodeToString(b.PublicKey)
+	totalPubkey := make([]byte, 0)
+	buyerIDBytes := make([]byte, 8)
+	binary.LittleEndian.PutUint64(buyerIDBytes, b.ID)
+
+	totalPubkey = append(totalPubkey, buyerIDBytes...)
+	totalPubkey = append(totalPubkey, b.PublicKey...)
+	return base64.StdEncoding.EncodeToString(totalPubkey)
 }
 
 func (b *Buyer) DecodedPublicKey(key string) error {
