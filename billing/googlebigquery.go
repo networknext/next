@@ -103,11 +103,11 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 	e["totalPrice"] = int(entry.TotalPrice)
 
 	if entry.ClientToServerPacketsLost > 0 {
-		e["clientToServerPacketsLost"] = entry.ClientToServerPacketsLost
+		e["clientToServerPacketsLost"] = int(entry.ClientToServerPacketsLost)
 	}
 
 	if entry.ServerToClientPacketsLost > 0 {
-		e["serverToClientPacketsLost"] = entry.ServerToClientPacketsLost
+		e["serverToClientPacketsLost"] = int(entry.ServerToClientPacketsLost)
 	}
 
 	e["committed"] = entry.Committed
@@ -116,11 +116,11 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 
 	if entry.Next {
 		e["initial"] = entry.Initial
-		e["nextBytesUp"] = entry.NextBytesUp
-		e["nextBytesDown"] = entry.NextBytesDown
+		e["nextBytesUp"] = int(entry.NextBytesUp)
+		e["nextBytesDown"] = int(entry.NextBytesDown)
 	}
 
-	e["datacenterID"] = entry.DatacenterID
+	e["datacenterID"] = int(entry.DatacenterID)
 
 	if entry.Next {
 		e["rttReduction"] = entry.RTTReduction
