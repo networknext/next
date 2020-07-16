@@ -1138,10 +1138,11 @@ func (fs *Firestore) Datacenters() []routing.Datacenter {
 
 func (fs *Firestore) AddDatacenter(ctx context.Context, d routing.Datacenter) error {
 	newDatacenterData := datacenter{
-		Name:      d.Name,
-		Enabled:   d.Enabled,
-		Latitude:  d.Location.Latitude,
-		Longitude: d.Location.Longitude,
+		Name:         d.Name,
+		Enabled:      d.Enabled,
+		Latitude:     d.Location.Latitude,
+		Longitude:    d.Location.Longitude,
+		SupplierName: d.SupplierName,
 	}
 
 	// Add the datacenter in remote storage
@@ -1449,6 +1450,7 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 				Latitude:  d.Latitude,
 				Longitude: d.Longitude,
 			},
+			SupplierName: d.SupplierName,
 		}
 
 		relay.Datacenter = datacenter
