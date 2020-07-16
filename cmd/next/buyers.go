@@ -305,16 +305,44 @@ func addDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMapStr
 
 }
 
-func removeDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm routing.DatacenterMap) error {
+func removeDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMapStrings) error {
+
+	var err error
 	var buyerID uint64
-	if buyerID = returnBuyerID(rpcClient, env, dcm.BuyerID); buyerID == 0 {
-		fmt.Printf("No buyer matches found for '%x'", dcm.BuyerID)
-		return fmt.Errorf("No buyer matches found for Buyer ID '%x'", dcm.BuyerID)
-	}
 	var dcID uint64
-	if dcID = returnDatacenterID(rpcClient, env, dcm.Datacenter); dcID == 0 {
-		fmt.Printf("No matches found for Datacenter ID '%x'", dcm.Datacenter)
-		return fmt.Errorf("No matches found for Datacenter ID '%x'", dcm.Datacenter)
+
+	buyerArgs := localjsonrpc.BuyersArgs{}
+	var buyers localjsonrpc.BuyersReply
+	if err = rpcClient.CallFor(&buyers, "OpsService.Buyers", buyerArgs); err != nil {
+		fmt.Printf("Unable to retrive buyer list.")
+		return nil
+	}
+	r := regexp.MustCompile("(?i)" + dcm.BuyerID) // case-insensitive regex
+	for _, buyer := range buyers.Buyers {
+		if r.MatchString(buyer.Name) || r.MatchString(buyer.ID) {
+			buyerID, err = strconv.ParseUint(buyer.ID, 16, 64)
+			if err != nil {
+				fmt.Printf("Unable to convert %v to a hex BuyerID\n", buyer.ID)
+				return nil
+			}
+		}
+	}
+
+	dcArgs := localjsonrpc.DatacentersArgs{}
+	var dcReply localjsonrpc.DatacentersReply
+	if err = rpcClient.CallFor(&dcReply, "OpsService.Datacenters", dcArgs); err != nil {
+		fmt.Printf("Unable to retrive datacenter list.")
+		return nil
+	}
+	r = regexp.MustCompile("(?i)" + dcm.Datacenter) // case-insensitive regex
+	for _, dc := range dcReply.Datacenters {
+		if r.MatchString(dc.Name) || r.MatchString(dc.ID) {
+			dcID, err = strconv.ParseUint(dc.ID, 16, 64)
+			if err != nil {
+				fmt.Printf("Unable to convert %v to a hex Datacenter ID\n", dc.ID)
+				return nil
+			}
+		}
 	}
 
 	arg := localjsonrpc.RemoveDatacenterMapArgs{
@@ -336,56 +364,56 @@ func removeDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm routi
 
 }
 
-func returnBuyerID(rpcClient jsonrpc.RPCClient, env Environment, arg uint64) uint64 {
+// func returnBuyerID(rpcClient jsonrpc.RPCClient, env Environment, arg uint64) uint64 {
 
-	// check to see if user entered name or substring (not id)
-	buyerArgs := localjsonrpc.BuyersArgs{}
-	var buyers localjsonrpc.BuyersReply
-	if err := rpcClient.CallFor(&buyers, "OpsService.Buyers", buyerArgs); err != nil {
-		handleJSONRPCError(env, err)
-		return 0
-	}
+// 	// check to see if user entered name or substring (not id)
+// 	buyerArgs := localjsonrpc.BuyersArgs{}
+// 	var buyers localjsonrpc.BuyersReply
+// 	if err := rpcClient.CallFor(&buyers, "OpsService.Buyers", buyerArgs); err != nil {
+// 		handleJSONRPCError(env, err)
+// 		return 0
+// 	}
 
-	var buyerID uint64
+// 	var buyerID uint64
 
-	r := regexp.MustCompile("(?i)" + fmt.Sprintf("%x", arg)) // case-insensitive regex
-	for _, buyer := range buyers.Buyers {
-		hexBuyerID, err := strconv.ParseUint(buyer.ID, 16, 64)
-		if err != nil {
-			handleJSONRPCError(env, err)
-			return 0
-		}
-		if r.MatchString(buyer.Name) || arg == hexBuyerID {
-			buyerID = arg
-		}
-	}
+// 	r := regexp.MustCompile("(?i)" + fmt.Sprintf("%x", arg)) // case-insensitive regex
+// 	for _, buyer := range buyers.Buyers {
+// 		hexBuyerID, err := strconv.ParseUint(buyer.ID, 16, 64)
+// 		if err != nil {
+// 			handleJSONRPCError(env, err)
+// 			return 0
+// 		}
+// 		if r.MatchString(buyer.Name) || arg == hexBuyerID {
+// 			buyerID = arg
+// 		}
+// 	}
 
-	return buyerID
-}
+// 	return buyerID
+// }
 
-func returnDatacenterID(rpcClient jsonrpc.RPCClient, env Environment, arg uint64) uint64 {
+// func returnDatacenterID(rpcClient jsonrpc.RPCClient, env Environment, arg uint64) uint64 {
 
-	args := localjsonrpc.DatacentersArgs{}
+// 	args := localjsonrpc.DatacentersArgs{}
 
-	var reply localjsonrpc.DatacentersReply
-	if err := rpcClient.CallFor(&reply, "OpsService.Datacenters", args); err != nil {
-		handleJSONRPCError(env, err)
-		return 0
-	}
+// 	var reply localjsonrpc.DatacentersReply
+// 	if err := rpcClient.CallFor(&reply, "OpsService.Datacenters", args); err != nil {
+// 		handleJSONRPCError(env, err)
+// 		return 0
+// 	}
 
-	var datacenterID uint64
-	r := regexp.MustCompile("(?i)" + fmt.Sprintf("%x", arg)) // case-insensitive regex
-	for _, dc := range reply.Datacenters {
-		hexDatacenterID, err := strconv.ParseUint(dc.ID, 16, 64)
-		if err != nil {
-			handleJSONRPCError(env, err)
-			return 0
-		}
-		if r.MatchString(dc.Name) || arg == hexDatacenterID {
-			datacenterID = arg
-		}
-	}
+// 	var datacenterID uint64
+// 	r := regexp.MustCompile("(?i)" + fmt.Sprintf("%x", arg)) // case-insensitive regex
+// 	for _, dc := range reply.Datacenters {
+// 		hexDatacenterID, err := strconv.ParseUint(dc.ID, 16, 64)
+// 		if err != nil {
+// 			handleJSONRPCError(env, err)
+// 			return 0
+// 		}
+// 		if r.MatchString(dc.Name) || arg == hexDatacenterID {
+// 			datacenterID = arg
+// 		}
+// 	}
 
-	return datacenterID
+// 	return datacenterID
 
-}
+// }

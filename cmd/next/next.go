@@ -1283,20 +1283,20 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 								return nil
 							}
 
-							var dcm routing.DatacenterMap
-							dcm.Alias = dcmStrings.Alias
-							dcm.BuyerID, err = strconv.ParseUint(dcmStrings.BuyerID, 16, 64)
-							if err := json.Unmarshal(jsonData, &dcmStrings); err != nil {
-								fmt.Printf("Could not parse BuyerID: %v", dcmStrings.BuyerID)
-								return nil
-							}
-							dcm.Datacenter, err = strconv.ParseUint(dcmStrings.Datacenter, 16, 64)
-							if err := json.Unmarshal(jsonData, &dcmStrings); err != nil {
-								fmt.Printf("Could not parse DatacenterID: %v", dcmStrings.Datacenter)
-								return nil
-							}
+							// var dcm routing.DatacenterMap
+							// dcm.Alias = dcmStrings.Alias
+							// dcm.BuyerID, err = strconv.ParseUint(dcmStrings.BuyerID, 16, 64)
+							// if err := json.Unmarshal(jsonData, &dcmStrings); err != nil {
+							// 	fmt.Printf("Could not parse BuyerID: %v", dcmStrings.BuyerID)
+							// 	return nil
+							// }
+							// dcm.Datacenter, err = strconv.ParseUint(dcmStrings.Datacenter, 16, 64)
+							// if err := json.Unmarshal(jsonData, &dcmStrings); err != nil {
+							// 	fmt.Printf("Could not parse DatacenterID: %v", dcmStrings.Datacenter)
+							// 	return nil
+							// }
 
-							err = removeDatacenterMap(rpcClient, env, dcm)
+							err = removeDatacenterMap(rpcClient, env, dcmStrings)
 
 							if err != nil {
 								return err
