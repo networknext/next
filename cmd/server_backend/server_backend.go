@@ -583,6 +583,15 @@ func main() {
 	serverUpdateCounters := &transport.ServerUpdateCounters{}
 	sessionUpdateCounters := &transport.SessionUpdateCounters{}
 
+	// Initialize the unknown datacenter map
+	unknownDatacenters := transport.NewUnknownDatacenters()
+	go func() {
+		timeout := time.Minute
+		frequency := time.Millisecond * 10
+		ticker := time.NewTicker(frequency)
+		unknownDatacenters.TimeoutLoop(ctx, timeout, ticker.C)
+	}()
+
 	// Setup the stats print routine
 	{
 		memoryUsed := func() float64 {
@@ -613,6 +622,12 @@ func main() {
 				fmt.Printf("%d long server updates\n", atomic.LoadUint64(&serverUpdateCounters.LongDuration))
 				fmt.Printf("%d long session updates\n", atomic.LoadUint64(&sessionUpdateCounters.LongDuration))
 				fmt.Printf("%d long route matrix updates\n", atomic.LoadUint64(&longRouteMatrixUpdates))
+
+				unknownDatacentersLength := unknownDatacenters.Length()
+				if unknownDatacentersLength > 0 {
+					fmt.Printf("%d unknown datacenters: %v\n", unknownDatacentersLength, unknownDatacenters.GetUnknownDatacenters())
+				}
+
 				fmt.Printf("-----------------------------\n")
 
 				time.Sleep(time.Second)
@@ -623,19 +638,21 @@ func main() {
 	// Start UDP server
 	{
 		serverInitConfig := &transport.ServerInitParams{
-			ServerPrivateKey: serverPrivateKey,
-			Storer:           db,
-			Metrics:          serverInitMetrics,
-			Logger:           logger,
-			Counters:         serverInitCounters,
+			ServerPrivateKey:   serverPrivateKey,
+			Storer:             db,
+			Metrics:            serverInitMetrics,
+			Logger:             logger,
+			Counters:           serverInitCounters,
+			UnknownDatacenters: unknownDatacenters,
 		}
 
 		serverUpdateConfig := &transport.ServerUpdateParams{
-			Storer:    db,
-			Metrics:   serverUpdateMetrics,
-			Logger:    logger,
-			ServerMap: serverMap,
-			Counters:  serverUpdateCounters,
+			Storer:             db,
+			Metrics:            serverUpdateMetrics,
+			Logger:             logger,
+			ServerMap:          serverMap,
+			Counters:           serverUpdateCounters,
+			UnknownDatacenters: unknownDatacenters,
 		}
 
 		sessionUpdateConfig := &transport.SessionUpdateParams{
