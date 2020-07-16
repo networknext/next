@@ -721,9 +721,9 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			}
 		}
 
-		// IMPORTANT: Immediately after ip2location we *must* anonymize the IP address so there is no chance 
-		// we accidentally use or store the non-anonymized IP address past this point. This is an important 
-		// business requirement because IP addresses are considered private identifiable information according 
+		// IMPORTANT: Immediately after ip2location we *must* anonymize the IP address so there is no chance
+		// we accidentally use or store the non-anonymized IP address past this point. This is an important
+		// business requirement because IP addresses are considered private identifiable information according
 		// to the GDRP and CCPA. We must *never* collect or store non-anonymized IP addresses!
 
 		// todo: anonymize address should work in place instead, and not have a failure case.
@@ -745,21 +745,6 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 
 			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelays, routeDecision, sessionDataReadOnly.routeDecision, sessionDataReadOnly.initial, vetoReason, nextSliceCounter,
 				committedData, sessionDataReadOnly.routeHash, sessionDataReadOnly.routeDecision.OnNetworkNext, start, routeExpireTimestamp, sessionDataReadOnly.tokenVersion, params.RouterPrivateKey, nil) //sliceMutexes)
-			return
-		}
-
-		// Don't allow customers who aren't marked as "Live" to get a network next route. They have to pay first!
-		if !buyer.Live {
-			routeDecision = routing.Decision{
-				OnNetworkNext: false,
-				Reason:        routing.DecisionForceDirect, // todo: separate decision reason
-			}
-
-			// todo: metric here
-
-			// level.Error(locallogger).Log("err", "buyer is not live", "customer_id", packet.CustomerID)
-			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelays, routeDecision, sessionDataReadOnly.routeDecision, sessionDataReadOnly.initial, vetoReason, onNNSliceCounter,
-				committedData, sessionDataReadOnly.routeHash, sessionDataReadOnly.routeDecision.OnNetworkNext, start, routeExpireTimestamp, sessionDataReadOnly.tokenVersion, params.RouterPrivateKey, sliceMutexes)
 			return
 		}
 
@@ -813,6 +798,18 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 		for i := range nearRelays {
 			response.NearRelayIDs[i] = nearRelays[i].ID
 			response.NearRelayAddresses[i] = nearRelays[i].Addr
+		}
+
+		// Don't allow customers who aren't marked as "Live" to get a network next route. They have to pay first!
+		if !buyer.Live {
+			routeDecision = routing.Decision{
+				OnNetworkNext: false,
+				Reason:        routing.DecisionBuyerNotLive,
+			}
+
+			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelays, routeDecision, sessionDataReadOnly.routeDecision, sessionDataReadOnly.initial, vetoReason, nextSliceCounter,
+				committedData, sessionDataReadOnly.routeHash, sessionDataReadOnly.routeDecision.OnNetworkNext, start, routeExpireTimestamp, sessionDataReadOnly.tokenVersion, params.RouterPrivateKey, nil) //, sliceMutexes
+			return
 		}
 
 		// If the session has fallen back to direct, just give them a direct route.
@@ -1072,7 +1069,7 @@ func CalculateTotalPriceNibblins(chosenRoute *routing.Route, envelopeBytesUp uin
 	envelopeUpGB := float64(envelopeBytesUp) / 1000000000.0
 	envelopeDownGB := float64(envelopeBytesDown) / 1000000000.0
 
-	totalPriceNibblins := nibblinsPerGB * ( envelopeUpGB + envelopeDownGB )
+	totalPriceNibblins := nibblinsPerGB * (envelopeUpGB + envelopeDownGB)
 
 	return uint64(totalPriceNibblins)
 }
@@ -1285,6 +1282,8 @@ func addRouteDecisionMetric(d routing.Decision, m *metrics.SessionMetrics) {
 		m.DecisionMetrics.RTTHysteresis.Add(1)
 	case routing.DecisionVetoCommit:
 		m.DecisionMetrics.VetoCommit.Add(1)
+	case routing.DecisionBuyerNotLive:
+		m.DecisionMetrics.BuyerNotLive.Add(1)
 	}
 }
 
