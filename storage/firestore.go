@@ -101,6 +101,7 @@ type routingRulesSettings struct {
 	EnableYouOnlyLiveOnce        bool    `firestore:"youOnlyLiveOnce"`
 	EnablePacketLossSafety       bool    `firestore:"packetLossSafety"`
 	EnableMultipathForPacketLoss bool    `firestore:"packetLossMultipath"`
+	MultipathPacketLossThreshold float32 `firestore:"multipathPacketLossThreshold"`
 	EnableMultipathForJitter     bool    `firestore:"jitterMultipath"`
 	EnableMultipathForRTT        bool    `firestore:"rttMultipath"`
 	EnableABTest                 bool    `firestore:"abTest"`
@@ -1645,6 +1646,7 @@ func (fs *Firestore) createRouteRulesSettingsForBuyerID(ctx context.Context, ID 
 		EnableYouOnlyLiveOnce:        rrs.EnableYouOnlyLiveOnce,
 		EnablePacketLossSafety:       rrs.EnablePacketLossSafety,
 		EnableMultipathForPacketLoss: rrs.EnableMultipathForPacketLoss,
+		MultipathPacketLossThreshold: rrs.MultipathPacketLossThreshold,
 		EnableMultipathForJitter:     rrs.EnableMultipathForJitter,
 		EnableMultipathForRTT:        rrs.EnableMultipathForRTT,
 		EnableABTest:                 rrs.EnableABTest,
@@ -1705,6 +1707,7 @@ func (fs *Firestore) getRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 	rrs.EnableYouOnlyLiveOnce = tempRRS.EnableYouOnlyLiveOnce
 	rrs.EnablePacketLossSafety = tempRRS.EnablePacketLossSafety
 	rrs.EnableMultipathForPacketLoss = tempRRS.EnableMultipathForPacketLoss
+	rrs.MultipathPacketLossThreshold = tempRRS.MultipathPacketLossThreshold
 	rrs.EnableMultipathForJitter = tempRRS.EnableMultipathForJitter
 	rrs.EnableMultipathForRTT = tempRRS.EnableMultipathForRTT
 	rrs.EnableABTest = tempRRS.EnableABTest
@@ -1722,25 +1725,26 @@ func (fs *Firestore) setRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 
 	// Convert RoutingRulesSettings struct to firestore map
 	rrsFirestore := map[string]interface{}{
-		"displayName":              name,
-		"envelopeKbpsUp":           rrs.EnvelopeKbpsUp,
-		"envelopeKbpsDown":         rrs.EnvelopeKbpsDown,
-		"mode":                     rrs.Mode,
-		"maxPricePerGBNibblins":    int64(billing.CentsToNibblins(rrs.MaxCentsPerGB)),
-		"acceptableLatency":        rrs.AcceptableLatency,
-		"rttRouteSwitch":           rrs.RTTEpsilon,
-		"rttThreshold":             rrs.RTTThreshold,
-		"rttHysteresis":            rrs.RTTHysteresis,
-		"rttVeto":                  rrs.RTTVeto,
-		"youOnlyLiveOnce":          rrs.EnableYouOnlyLiveOnce,
-		"packetLossSafety":         rrs.EnablePacketLossSafety,
-		"packetLossMultipath":      rrs.EnableMultipathForPacketLoss,
-		"jitterMultipath":          rrs.EnableMultipathForJitter,
-		"rttMultipath":             rrs.EnableMultipathForRTT,
-		"abTest":                   rrs.EnableABTest,
-		"tryBeforeYouBuy":          rrs.EnableTryBeforeYouBuy,
-		"tryBeforeYouBuyMaxSlices": rrs.TryBeforeYouBuyMaxSlices,
-		"selectionPercentage":      rrs.SelectionPercentage,
+		"displayName":                  name,
+		"envelopeKbpsUp":               rrs.EnvelopeKbpsUp,
+		"envelopeKbpsDown":             rrs.EnvelopeKbpsDown,
+		"mode":                         rrs.Mode,
+		"maxPricePerGBNibblins":        int64(billing.CentsToNibblins(rrs.MaxCentsPerGB)),
+		"acceptableLatency":            rrs.AcceptableLatency,
+		"rttRouteSwitch":               rrs.RTTEpsilon,
+		"rttThreshold":                 rrs.RTTThreshold,
+		"rttHysteresis":                rrs.RTTHysteresis,
+		"rttVeto":                      rrs.RTTVeto,
+		"youOnlyLiveOnce":              rrs.EnableYouOnlyLiveOnce,
+		"packetLossSafety":             rrs.EnablePacketLossSafety,
+		"packetLossMultipath":          rrs.EnableMultipathForPacketLoss,
+		"multipathPacketLossThreshold": rrs.MultipathPacketLossThreshold,
+		"jitterMultipath":              rrs.EnableMultipathForJitter,
+		"rttMultipath":                 rrs.EnableMultipathForRTT,
+		"abTest":                       rrs.EnableABTest,
+		"tryBeforeYouBuy":              rrs.EnableTryBeforeYouBuy,
+		"tryBeforeYouBuyMaxSlices":     rrs.TryBeforeYouBuyMaxSlices,
+		"selectionPercentage":          rrs.SelectionPercentage,
 	}
 
 	// Attempt to set route shader for buyer
