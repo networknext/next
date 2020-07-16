@@ -1062,15 +1062,16 @@ func CalculateTotalPriceNibblins(chosenRoute *routing.Route, envelopeBytesUp uin
 		return 0
 	}
 
-	// todo: temporary hack to average around 10c per-GB, until we sort out what's going on
-
-	nibblinsPerGB := float64(billing.CentsToNibblins(uint64(1 + 3*len(chosenRoute.Relays))))
-
 	envelopeUpGB := float64(envelopeBytesUp) / 1000000000.0
 	envelopeDownGB := float64(envelopeBytesDown) / 1000000000.0
 
-	totalPriceNibblins := nibblinsPerGB * (envelopeUpGB + envelopeDownGB)
+	sellerPriceNibblinsPerGB := 0.0
+	for _, relay := range chosenRoute.Relays {
+		sellerPriceNibblinsPerGB += float64(billing.CentsToNibblins(relay.Seller.EgressPriceCents))
+	}
 
+	nextPriceNibblinsPerGB := float64(billing.CentsToNibblins(1))
+	totalPriceNibblins := (sellerPriceNibblinsPerGB + nextPriceNibblinsPerGB) * (envelopeUpGB + envelopeDownGB)
 	return uint64(totalPriceNibblins)
 }
 
