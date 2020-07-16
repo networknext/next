@@ -199,8 +199,12 @@ MapHandler = {
 		);
 	},
 	updateFilter(id) {
+		this.totalNextSessions = []
+		this.totalDirectSessions = []
+		this.totalSessionCountCalls = 0
+
 		Object.assign(rootComponent.$data.pages.map.filter, {buyerId: id});
-		console.log(rootComponent.$data.pages.map.filter)
+
 		this.mapCountLoop ? clearInterval(this.mapCountLoop) : null;
 		this.mapLoop ? clearInterval(this.mapLoop) : null;
 
