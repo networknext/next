@@ -1514,7 +1514,7 @@ function generateCharts(data) {
 	}
 
 	Object.assign(rootComponent.$data.pages.sessionTool.graphs, {
-		latencyComparisonChart: new uPlot(latencycomparisonOpts, latencyData.comparison, document.getElementById("latency-chart-1"))
+		latencyComparisonChart: new uPlot(latencyComparisonOpts, latencyData.comparison, document.getElementById("latency-chart-1"))
 	});
 
 	if (rootComponent.$data.pages.sessionTool.graphs.jitterComparisonChart != null) {
@@ -1522,7 +1522,7 @@ function generateCharts(data) {
 	}
 
 	Object.assign(rootComponent.$data.pages.sessionTool.graphs, {
-		jitterComparisonChart: new uPlot(latencycomparisonOpts, jitterData.comparison, document.getElementById("jitter-chart-1"))
+		jitterComparisonChart: new uPlot(latencyComparisonOpts, jitterData.comparison, document.getElementById("jitter-chart-1"))
 	});
 
 	if (rootComponent.$data.pages.sessionTool.graphs.packetLossComparisonChart != null) {
