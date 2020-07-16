@@ -123,7 +123,7 @@ func relays(
 			} else if relayVersionFilter == "all" || relay.Version == relayVersionFilter {
 				relaysCSV = append(relaysCSV, []string{
 					relay.Name,
-					fmt.Sprintf("%d", relay.ID),
+					fmt.Sprintf("%d", int64(relay.ID)),
 					address,
 					relay.State,
 					fmt.Sprintf("%d", relay.SessionCount),
@@ -147,7 +147,7 @@ func relays(
 				LastUpdated string
 			}{
 				Name:        relay.Name,
-				ID:          fmt.Sprintf("%d", relay.ID),
+				ID:          fmt.Sprintf("%d", int64(relay.ID)),
 				Address:     address,
 				State:       relay.State,
 				Sessions:    fmt.Sprintf("%d", relay.SessionCount),
