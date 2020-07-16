@@ -667,21 +667,23 @@ type DatacentersReply struct {
 }
 
 type datacenter struct {
-	Name      string  `json:"name"`
-	ID        string  `json:"id"`
-	Latitude  float64 `json:"latitude"`
-	Longitude float64 `json:"longitude"`
-	Enabled   bool    `json:"enabled"`
+	Name         string  `json:"name"`
+	ID           string  `json:"id"`
+	Latitude     float64 `json:"latitude"`
+	Longitude    float64 `json:"longitude"`
+	Enabled      bool    `json:"enabled"`
+	SupplierName string  `json:"supplierName"`
 }
 
 func (s *OpsService) Datacenters(r *http.Request, args *DatacentersArgs, reply *DatacentersReply) error {
 	for _, d := range s.Storage.Datacenters() {
 		reply.Datacenters = append(reply.Datacenters, datacenter{
-			Name:      d.Name,
-			ID:        fmt.Sprintf("%x", d.ID),
-			Enabled:   d.Enabled,
-			Latitude:  d.Location.Latitude,
-			Longitude: d.Location.Longitude,
+			Name:         d.Name,
+			ID:           fmt.Sprintf("%x", d.ID),
+			Enabled:      d.Enabled,
+			Latitude:     d.Location.Latitude,
+			Longitude:    d.Location.Longitude,
+			SupplierName: d.SupplierName,
 		})
 	}
 
