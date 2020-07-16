@@ -838,6 +838,7 @@ type DatacenterMapsFull struct {
 	DatacenterID   string
 	BuyerName      string
 	BuyerID        string
+	SupplierName   string
 }
 
 type DatacenterMapsReply struct {
@@ -868,12 +869,15 @@ func (s *BuyersService) DatacenterMapsForBuyer(r *http.Request, args *Datacenter
 			return err
 		}
 
+		fmt.Printf("SupplierName: %s\n", datacenter.SupplierName)
+
 		dcmFull := DatacenterMapsFull{
 			Alias:          dcMap.Alias,
 			DatacenterName: datacenter.Name,
 			DatacenterID:   fmt.Sprintf("%016x", dcMap.Datacenter),
 			BuyerName:      buyer.Name,
 			BuyerID:        fmt.Sprintf("%016x", dcMap.BuyerID),
+			SupplierName:   datacenter.SupplierName,
 		}
 
 		replySlice = append(replySlice, dcmFull)
