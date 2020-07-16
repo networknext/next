@@ -54,11 +54,6 @@ func removeDatacenter(rpcClient jsonrpc.RPCClient, env Environment, name string)
 }
 
 func listDatacenterMaps(rpcClient jsonrpc.RPCClient, env Environment, datacenter string) {
-	type dcMapStrings struct {
-		BuyerID    string `json:"buyer_id"`
-		Datacenter string `json:"datacenter"`
-		Alias      string `json:"alias"`
-	}
 
 	var dcID uint64
 	var err error

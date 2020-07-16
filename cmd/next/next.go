@@ -50,6 +50,10 @@ type dcMapStrings struct {
 	Alias      string `json:"alias"`
 }
 
+func (dcm dcMapStrings) String() string {
+	return fmt.Sprintf("{\n\tBuyer ID     : %s\n\tDatacenter ID: %s\n\tAlias        : %s\n}", dcm.BuyerID, dcm.Datacenter, dcm.Alias)
+}
+
 func (i *arrayFlags) String() string {
 	return ""
 }
@@ -1223,32 +1227,13 @@ The buyer and datacenter must exist. Hex IDs are required for now.
 							}
 
 							// Unmarshal the JSON and create the Buyer struct
-							var dcm routing.DatacenterMap
-							var dcmTemp struct {
-								BuyerID    string `json:"buyer_id"`
-								Datacenter string `json:"datacenter"`
-								Alias      string `json:"alias"`
-							}
-							if err = json.Unmarshal(jsonData, &dcmTemp); err != nil {
+							var dcmStrings dcMapStrings
+							if err = json.Unmarshal(jsonData, &dcmStrings); err != nil {
 								fmt.Printf("Could not unmarshal datacenter map: %v", err)
 								return nil
 							}
 
-							dcm.Alias = dcmTemp.Alias
-
-							dcm.BuyerID, err = strconv.ParseUint(dcmTemp.BuyerID, 16, 64)
-							if err != nil {
-								fmt.Printf("Error parsing BuyerID")
-								return nil
-							}
-
-							dcm.Datacenter, err = strconv.ParseUint(dcmTemp.Datacenter, 16, 64)
-							if err != nil {
-								fmt.Printf("Error parsing Datacenter ID")
-								return nil
-							}
-
-							err = addDatacenterMap(rpcClient, env, dcm)
+							err = addDatacenterMap(rpcClient, env, dcmStrings)
 
 							if err != nil {
 								// error handled in sender
@@ -1256,7 +1241,7 @@ The buyer and datacenter must exist. Hex IDs are required for now.
 							}
 
 							fmt.Println("Datacenter alias created:")
-							fmt.Println(dcm)
+							fmt.Println(dcmStrings)
 
 							return nil
 						},

@@ -205,11 +205,6 @@ func setRoutingRulesSettings(rpcClient jsonrpc.RPCClient, env Environment, buyer
 
 func datacenterMapsForBuyer(rpcClient jsonrpc.RPCClient, env Environment, buyer string) {
 
-	type dcMapStrings struct {
-		BuyerID    string `json:"buyer_id"`
-		Datacenter string `json:"datacenter"`
-		Alias      string `json:"alias"`
-	}
 	var buyerID uint64
 	var err error
 
@@ -250,18 +245,46 @@ func datacenterMapsForBuyer(rpcClient jsonrpc.RPCClient, env Environment, buyer 
 
 }
 
-func addDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm routing.DatacenterMap) error {
+func addDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMapStrings) error {
 
+	var err error
 	var buyerID uint64
-	if buyerID = returnBuyerID(rpcClient, env, dcm.BuyerID); buyerID == 0 {
-		fmt.Printf("No buyer matches found for '%x'", dcm.BuyerID)
-		return fmt.Errorf("No buyer matches found for '%x'", dcm.BuyerID)
-	}
 	var dcID uint64
-	if dcID = returnDatacenterID(rpcClient, env, dcm.Datacenter); dcID == 0 {
-		fmt.Printf("No matches found for '%x'", dcm.Datacenter)
-		return fmt.Errorf("No matches found for '%x'", dcm.Datacenter)
+
+	buyerArgs := localjsonrpc.BuyersArgs{}
+	var buyers localjsonrpc.BuyersReply
+	if err = rpcClient.CallFor(&buyers, "OpsService.Buyers", buyerArgs); err != nil {
+		fmt.Printf("Unable to retrive buyer list.")
+		return nil
 	}
+	r := regexp.MustCompile("(?i)" + dcm.BuyerID) // case-insensitive regex
+	for _, buyer := range buyers.Buyers {
+		if r.MatchString(buyer.Name) || r.MatchString(buyer.ID) {
+			buyerID, err = strconv.ParseUint(buyer.ID, 16, 64)
+			if err != nil {
+				fmt.Printf("Unable to convert %v to a hex BuyerID\n", buyer.ID)
+				return nil
+			}
+		}
+	}
+
+	dcArgs := localjsonrpc.DatacentersArgs{}
+	var dcReply localjsonrpc.DatacentersReply
+	if err = rpcClient.CallFor(&dcReply, "OpsService.Datacenters", dcArgs); err != nil {
+		fmt.Printf("Unable to retrive datacenter list.")
+		return nil
+	}
+	r = regexp.MustCompile("(?i)" + dcm.Datacenter) // case-insensitive regex
+	for _, dc := range dcReply.Datacenters {
+		if r.MatchString(dc.Name) || r.MatchString(dc.ID) {
+			dcID, err = strconv.ParseUint(dc.ID, 16, 64)
+			if err != nil {
+				fmt.Printf("Unable to convert %v to a hex Datacenter ID\n", dc.ID)
+				return nil
+			}
+		}
+	}
+
 	arg := localjsonrpc.AddDatacenterMapArgs{
 		DatacenterMap: routing.DatacenterMap{
 			BuyerID:    buyerID,
