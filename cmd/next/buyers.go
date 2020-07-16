@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"reflect"
 	"regexp"
 	"sort"
@@ -255,7 +256,7 @@ func addDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMapStr
 	var buyers localjsonrpc.BuyersReply
 	if err = rpcClient.CallFor(&buyers, "OpsService.Buyers", buyerArgs); err != nil {
 		fmt.Printf("Unable to retrive buyer list.")
-		return nil
+		os.Exit(0)
 	}
 	r := regexp.MustCompile("(?i)" + dcm.BuyerID) // case-insensitive regex
 	for _, buyer := range buyers.Buyers {
@@ -263,16 +264,20 @@ func addDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMapStr
 			buyerID, err = strconv.ParseUint(buyer.ID, 16, 64)
 			if err != nil {
 				fmt.Printf("Unable to convert %v to a hex BuyerID\n", buyer.ID)
-				return nil
+				os.Exit(0)
 			}
 		}
+	}
+	if buyerID == 0 {
+		fmt.Printf("Buyer %s does not seem to exist.\n", dcm.BuyerID)
+		os.Exit(0)
 	}
 
 	dcArgs := localjsonrpc.DatacentersArgs{}
 	var dcReply localjsonrpc.DatacentersReply
 	if err = rpcClient.CallFor(&dcReply, "OpsService.Datacenters", dcArgs); err != nil {
 		fmt.Printf("Unable to retrive datacenter list.")
-		return nil
+		os.Exit(0)
 	}
 	r = regexp.MustCompile("(?i)" + dcm.Datacenter) // case-insensitive regex
 	for _, dc := range dcReply.Datacenters {
@@ -280,9 +285,13 @@ func addDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMapStr
 			dcID, err = strconv.ParseUint(dc.ID, 16, 64)
 			if err != nil {
 				fmt.Printf("Unable to convert %v to a hex Datacenter ID\n", dc.ID)
-				return nil
+				os.Exit(0)
 			}
 		}
+	}
+	if dcID == 0 {
+		fmt.Printf("Datacenter %s does not seem to exist.\n", dcm.Datacenter)
+		os.Exit(0)
 	}
 
 	arg := localjsonrpc.AddDatacenterMapArgs{
@@ -313,7 +322,7 @@ func removeDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMap
 	var buyers localjsonrpc.BuyersReply
 	if err = rpcClient.CallFor(&buyers, "OpsService.Buyers", buyerArgs); err != nil {
 		fmt.Printf("Unable to retrive buyer list.")
-		return nil
+		os.Exit(0)
 	}
 	r := regexp.MustCompile("(?i)" + dcm.BuyerID) // case-insensitive regex
 	for _, buyer := range buyers.Buyers {
@@ -321,16 +330,20 @@ func removeDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMap
 			buyerID, err = strconv.ParseUint(buyer.ID, 16, 64)
 			if err != nil {
 				fmt.Printf("Unable to convert %v to a hex BuyerID\n", buyer.ID)
-				return nil
+				os.Exit(0)
 			}
 		}
+	}
+	if buyerID == 0 {
+		fmt.Printf("Buyer %s does not seem to exist.\n", dcm.BuyerID)
+		os.Exit(0)
 	}
 
 	dcArgs := localjsonrpc.DatacentersArgs{}
 	var dcReply localjsonrpc.DatacentersReply
 	if err = rpcClient.CallFor(&dcReply, "OpsService.Datacenters", dcArgs); err != nil {
 		fmt.Printf("Unable to retrive datacenter list.")
-		return nil
+		os.Exit(0)
 	}
 	r = regexp.MustCompile("(?i)" + dcm.Datacenter) // case-insensitive regex
 	for _, dc := range dcReply.Datacenters {
@@ -338,9 +351,13 @@ func removeDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMap
 			dcID, err = strconv.ParseUint(dc.ID, 16, 64)
 			if err != nil {
 				fmt.Printf("Unable to convert %v to a hex Datacenter ID\n", dc.ID)
-				return nil
+				os.Exit(0)
 			}
 		}
+	}
+	if dcID == 0 {
+		fmt.Printf("Datacenter %s does not seem to exist.\n", dcm.Datacenter)
+		os.Exit(0)
 	}
 
 	arg := localjsonrpc.RemoveDatacenterMapArgs{
