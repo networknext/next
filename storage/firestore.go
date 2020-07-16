@@ -75,10 +75,11 @@ type relay struct {
 }
 
 type datacenter struct {
-	Name      string  `firestore:"name"`
-	Enabled   bool    `firestore:"enabled"`
-	Latitude  float64 `firestore:"latitude"`
-	Longitude float64 `firestore:"longitude"`
+	Name         string  `firestore:"name"`
+	Enabled      bool    `firestore:"enabled"`
+	Latitude     float64 `firestore:"latitude"`
+	Longitude    float64 `firestore:"longitude"`
+	SupplierName string  `firestore:"supplierName"`
 }
 
 type datacenterMap struct {
@@ -1137,10 +1138,11 @@ func (fs *Firestore) Datacenters() []routing.Datacenter {
 
 func (fs *Firestore) AddDatacenter(ctx context.Context, d routing.Datacenter) error {
 	newDatacenterData := datacenter{
-		Name:      d.Name,
-		Enabled:   d.Enabled,
-		Latitude:  d.Location.Latitude,
-		Longitude: d.Location.Longitude,
+		Name:         d.Name,
+		Enabled:      d.Enabled,
+		Latitude:     d.Location.Latitude,
+		Longitude:    d.Location.Longitude,
+		SupplierName: d.SupplierName,
 	}
 
 	// Add the datacenter in remote storage
@@ -1237,10 +1239,11 @@ func (fs *Firestore) SetDatacenter(ctx context.Context, d routing.Datacenter) er
 		if crypto.HashID(datacenterInRemoteStorage.Name) == d.ID {
 			// Set the data to update the datacenter with
 			newDatacenterData := map[string]interface{}{
-				"name":      d.Name,
-				"enabled":   d.Enabled,
-				"latitude":  d.Location.Latitude,
-				"longitude": d.Location.Longitude,
+				"name":         d.Name,
+				"enabled":      d.Enabled,
+				"latitude":     d.Location.Latitude,
+				"longitude":    d.Location.Longitude,
+				"supplierName": d.SupplierName,
 			}
 
 			// Update the datacenter in firestore
@@ -1349,6 +1352,7 @@ func (fs *Firestore) syncDatacenters(ctx context.Context) error {
 				Latitude:  float64(d.Latitude),
 				Longitude: float64(d.Longitude),
 			},
+			SupplierName: d.SupplierName,
 		}
 	}
 
@@ -1446,6 +1450,7 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 				Latitude:  d.Latitude,
 				Longitude: d.Longitude,
 			},
+			SupplierName: d.SupplierName,
 		}
 
 		relay.Datacenter = datacenter
