@@ -7,6 +7,7 @@ import (
 	"cloud.google.com/go/bigquery"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
+	"github.com/networknext/backend/metrics"
 )
 
 const (
@@ -15,6 +16,7 @@ const (
 )
 
 type GoogleBigQueryClient struct {
+	Metrics       *metrics.BillingMetrics
 	Logger        log.Logger
 	TableInserter *bigquery.Inserter
 	BatchSize     int
@@ -59,9 +61,11 @@ func (bq *GoogleBigQueryClient) WriteLoop(ctx context.Context) error {
 		if len(bq.buffer) >= bq.BatchSize {
 			if err := bq.TableInserter.Put(ctx, bq.buffer); err != nil {
 				level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)
+				bq.Metrics.ErrorMetrics.BillingWriteFailure.Add(float64(len(bq.buffer)))
 			}
 			level.Info(bq.Logger).Log("msg", "flushed entries to BigQuery", "size", bq.BatchSize, "total", len(bq.buffer))
 			atomic.AddUint64(&bq.flushed, uint64(len(bq.buffer)))
+			bq.Metrics.BillingEntriesWritten.Add(float64(len(bq.buffer)))
 			bq.buffer = bq.buffer[:0]
 		}
 		bq.buffer = append(bq.buffer, entry)
@@ -110,10 +114,17 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 	e["flagged"] = entry.Flagged
 	e["multipath"] = entry.Multipath
 
-	if entry.Initial {
+	if entry.Next {
 		e["initial"] = entry.Initial
 		e["nextBytesUp"] = entry.NextBytesUp
 		e["nextBytesDown"] = entry.NextBytesDown
+	}
+
+	e["datacenterID"] = entry.DatacenterID
+
+	if entry.Next {
+		e["rttReduction"] = entry.RTTReduction
+		e["packetLossReduction"] = entry.PacketLossReduction
 	}
 
 	return e, "", nil

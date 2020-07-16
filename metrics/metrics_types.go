@@ -406,24 +406,28 @@ var EmptyMaxmindSyncErrorMetrics MaxmindSyncErrorMetrics = MaxmindSyncErrorMetri
 	FailedToSyncISP: &EmptyCounter{},
 }
 
-type GooglePubSubForwarderMetrics struct {
+type BillingMetrics struct {
 	BillingEntriesReceived Counter
-	ErrorMetrics           GooglePubSubForwarderErrorMetrics
+	BillingEntriesWritten  Counter
+	ErrorMetrics           BillingErrorMetrics
 }
 
-var EmptyGooglePubSubForwarderMetrics GooglePubSubForwarderMetrics = GooglePubSubForwarderMetrics{
+var EmptyBillingMetrics BillingMetrics = BillingMetrics{
 	BillingEntriesReceived: &EmptyCounter{},
-	ErrorMetrics:           EmptyGooglePubSubForwarderErrorMetrics,
+	BillingEntriesWritten:  &EmptyCounter{},
+	ErrorMetrics:           EmptyBillingErrorMetrics,
 }
 
-type GooglePubSubForwarderErrorMetrics struct {
-	BillingReadFailure  Counter
-	BillingWriteFailure Counter
+type BillingErrorMetrics struct {
+	BillingPublishFailure Counter
+	BillingReadFailure    Counter
+	BillingWriteFailure   Counter
 }
 
-var EmptyGooglePubSubForwarderErrorMetrics GooglePubSubForwarderErrorMetrics = GooglePubSubForwarderErrorMetrics{
-	BillingReadFailure:  &EmptyCounter{},
-	BillingWriteFailure: &EmptyCounter{},
+var EmptyBillingErrorMetrics BillingErrorMetrics = BillingErrorMetrics{
+	BillingPublishFailure: &EmptyCounter{},
+	BillingReadFailure:    &EmptyCounter{},
+	BillingWriteFailure:   &EmptyCounter{},
 }
 
 func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMetrics, error) {
@@ -1379,22 +1383,43 @@ func NewMaxmindSyncMetrics(ctx context.Context, metricsHandler Handler) (*Maxmin
 	return &maxmindSyncMetrics, nil
 }
 
-func NewGooglePubSubForwarderMetrics(ctx context.Context, metricsHandler Handler) (*GooglePubSubForwarderMetrics, error) {
-	pubsubForwarderMetrics := GooglePubSubForwarderMetrics{}
+func NewBillingMetrics(ctx context.Context, metricsHandler Handler) (*BillingMetrics, error) {
+	billingMetrics := BillingMetrics{}
 	var err error
 
-	pubsubForwarderMetrics.BillingEntriesReceived, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	billingMetrics.BillingEntriesReceived, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Billing Entries Received",
 		ServiceName: "billing",
 		ID:          "billing.entries",
 		Unit:        "entries",
-		Description: "The total number of billing entries received",
+		Description: "The total number of billing entries received through pubsub",
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	pubsubForwarderMetrics.ErrorMetrics.BillingReadFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	billingMetrics.BillingEntriesWritten, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Billing Entries Written",
+		ServiceName: "billing",
+		ID:          "billing.entries.written",
+		Unit:        "entries",
+		Description: "The total number of billing entries written to bigquery",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	billingMetrics.ErrorMetrics.BillingPublishFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Billing Publish Failure",
+		ServiceName: "billing",
+		ID:          "billing.error.publish_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	billingMetrics.ErrorMetrics.BillingReadFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Billing Read Failure",
 		ServiceName: "billing",
 		ID:          "billing.error.read_failure",
@@ -1404,7 +1429,7 @@ func NewGooglePubSubForwarderMetrics(ctx context.Context, metricsHandler Handler
 		return nil, err
 	}
 
-	pubsubForwarderMetrics.ErrorMetrics.BillingWriteFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	billingMetrics.ErrorMetrics.BillingWriteFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Billing Write Failure",
 		ServiceName: "billing",
 		ID:          "billing.error.write_failure",
@@ -1414,5 +1439,5 @@ func NewGooglePubSubForwarderMetrics(ctx context.Context, metricsHandler Handler
 		return nil, err
 	}
 
-	return &pubsubForwarderMetrics, nil
+	return &billingMetrics, nil
 }
