@@ -1238,10 +1238,11 @@ func (fs *Firestore) SetDatacenter(ctx context.Context, d routing.Datacenter) er
 		if crypto.HashID(datacenterInRemoteStorage.Name) == d.ID {
 			// Set the data to update the datacenter with
 			newDatacenterData := map[string]interface{}{
-				"name":      d.Name,
-				"enabled":   d.Enabled,
-				"latitude":  d.Location.Latitude,
-				"longitude": d.Location.Longitude,
+				"name":         d.Name,
+				"enabled":      d.Enabled,
+				"latitude":     d.Location.Latitude,
+				"longitude":    d.Location.Longitude,
+				"supplierName": d.SupplierName,
 			}
 
 			// Update the datacenter in firestore
