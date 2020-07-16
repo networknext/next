@@ -5,6 +5,7 @@ import (
 	"log"
 	"math"
 	"os"
+	"regexp"
 	"sort"
 
 	"github.com/modood/table"
@@ -277,11 +278,11 @@ func sessionsByBuyer(rpcClient jsonrpc.RPCClient, env Environment, buyerName str
 	topSessionArgs := localjsonrpc.TopSessionsArgs{}
 
 	if len(buyers) > 0 && buyerName != "" {
-	loop:
+		r := regexp.MustCompile("(?i)" + buyerName) // case-insensitive regex
 		for _, buyer := range buyers {
-			if buyer.Name == buyerName {
+			if r.MatchString(buyer.Name) {
 				topSessionArgs.BuyerID = buyer.ID
-				break loop
+				break
 			}
 		}
 	}
