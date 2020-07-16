@@ -260,12 +260,40 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string, se
 
 		return
 	}
+	sessionsByBuyer(rpcClient, env, "", sessionCount)
+}
 
-	args := localjsonrpc.TopSessionsArgs{}
+func sessionsByBuyer(rpcClient jsonrpc.RPCClient, env Environment, buyerName string, sessionCount int64) {
 
-	var reply localjsonrpc.TopSessionsReply
-	if err := rpcClient.CallFor(&reply, "BuyersService.TopSessions", args); err != nil {
+	buyerArgs := localjsonrpc.BuyersArgs{}
+
+	var buyersReply localjsonrpc.BuyersReply
+	if err := rpcClient.CallFor(&buyersReply, "OpsService.Buyers", buyerArgs); err != nil {
 		handleJSONRPCError(env, err)
+		return
+	}
+
+	buyers := buyersReply.Buyers
+	topSessionArgs := localjsonrpc.TopSessionsArgs{}
+
+	if len(buyers) > 0 && buyerName != "" {
+	loop:
+		for _, buyer := range buyers {
+			if buyer.Name == buyerName {
+				topSessionArgs.BuyerID = buyer.ID
+				break loop
+			}
+		}
+	}
+
+	var topSessionsReply localjsonrpc.TopSessionsReply
+	if err := rpcClient.CallFor(&topSessionsReply, "BuyersService.TopSessions", topSessionArgs); err != nil {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	if len(topSessionsReply.Sessions) == 0 {
+		fmt.Printf("No sessions found for buyer ID: %v\n", topSessionArgs.BuyerID)
 		return
 	}
 
@@ -279,7 +307,7 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string, se
 		Improvement string
 	}{}
 
-	for _, session := range reply.Sessions {
+	for _, session := range topSessionsReply.Sessions {
 		directRTT := fmt.Sprintf("%.02f", session.DirectRTT)
 		if session.DirectRTT == 0 {
 			directRTT = "-"
@@ -316,5 +344,4 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string, se
 	} else {
 		table.Output(sessions)
 	}
-
 }
