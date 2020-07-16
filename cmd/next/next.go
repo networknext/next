@@ -435,6 +435,10 @@ func main() {
 	var relaysCount int64
 	relaysfs.Int64Var(&relaysCount, "n", 0, "number of relays to display (default: all)")
 
+	// Display relay IDs as signed ints instead of the default hex
+	var relayIDSigned bool
+	relaysfs.BoolVar(&relayIDSigned, "signed", false, "display relay IDs as signed integers")
+
 	var authCommand = &ffcli.Command{
 		Name:       "auth",
 		ShortUsage: "next auth",
@@ -599,6 +603,7 @@ func main() {
 					csvOutputFlag,
 					relayVersionFilter,
 					relaysCount,
+					relayIDSigned,
 				)
 				return nil
 			}
@@ -613,6 +618,7 @@ func main() {
 				csvOutputFlag,
 				relayVersionFilter,
 				relaysCount,
+				relayIDSigned,
 			)
 			return nil
 		},
