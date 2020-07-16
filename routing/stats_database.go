@@ -132,6 +132,10 @@ func NewStatsEntryRelay() *StatsEntryRelay {
 func (database *StatsDatabase) ProcessStats(statsUpdate *RelayStatsUpdate) {
 	sourceRelayID := statsUpdate.ID
 
+	if statsUpdate.PingStats == nil {
+		return
+	}
+
 	database.mu.Lock()
 	entry, entryExists := database.Entries[sourceRelayID]
 	database.mu.Unlock()
@@ -152,11 +156,17 @@ func (database *StatsDatabase) ProcessStats(statsUpdate *RelayStatsUpdate) {
 
 		if !relayExists {
 			relay = NewStatsEntryRelay()
+
+			relay.RTTHistory[relay.Index] = InvalidRouteValue
+			relay.JitterHistory[relay.Index] = InvalidRouteValue
+			relay.PacketLossHistory[relay.Index] = InvalidRouteValue
+
+		} else {
+			relay.RTTHistory[relay.Index] = stats.RTT
+			relay.JitterHistory[relay.Index] = stats.Jitter
+			relay.PacketLossHistory[relay.Index] = stats.PacketLoss
 		}
 
-		relay.RTTHistory[relay.Index] = stats.RTT
-		relay.JitterHistory[relay.Index] = stats.Jitter
-		relay.PacketLossHistory[relay.Index] = stats.PacketLoss
 		relay.Index = (relay.Index + 1) % HistorySize
 		relay.RTT = HistoryMax(relay.RTTHistory[:])
 		relay.Jitter = HistoryMax(relay.JitterHistory[:])

@@ -800,8 +800,9 @@ type BuyerListReply struct {
 }
 
 type buyerAccount struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	IsLive bool   `json:"is_live"`
 }
 
 func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *BuyerListReply) error {
@@ -813,8 +814,9 @@ func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *Buye
 	for _, b := range s.Storage.Buyers() {
 		id := fmt.Sprintf("%016x", b.ID)
 		account := buyerAccount{
-			ID:   id,
-			Name: b.Name,
+			ID:     id,
+			Name:   b.Name,
+			IsLive: b.Live,
 		}
 		if VerifyAllRoles(r, s.SameBuyerRole(id)) {
 			reply.Buyers = append(reply.Buyers, account)

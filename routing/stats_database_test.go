@@ -128,19 +128,19 @@ func TestStatsDatabase(t *testing.T) {
 			}
 		})
 
-		t.Run("source and destination both don't exist but entries are updated properly", func(t *testing.T) {
+		t.Run("source and destination both don't exist but entries are set to invalid value", func(t *testing.T) {
 			statsdb := routing.NewStatsDatabase()
 			statsdb.ProcessStats(&update)
 			entry, _ := statsdb.Entries[update.ID]
 			assert.Equal(t, len(entry.Relays), len(update.PingStats))
 			for _, stats := range update.PingStats {
 				destRelay, _ := entry.Relays[stats.RelayID]
-				assert.Equal(t, stats.RTT, destRelay.RTT)
-				assert.Equal(t, stats.Jitter, destRelay.Jitter)
-				assert.Equal(t, stats.PacketLoss, destRelay.PacketLoss)
-				assert.Equal(t, stats.RTT, destRelay.RTTHistory[0])
-				assert.Equal(t, stats.Jitter, destRelay.JitterHistory[0])
-				assert.Equal(t, stats.PacketLoss, destRelay.PacketLossHistory[0])
+				assert.Equal(t, float32(routing.InvalidRouteValue), destRelay.RTT)
+				assert.Equal(t, float32(routing.InvalidRouteValue), destRelay.Jitter)
+				assert.Equal(t, float32(routing.InvalidRouteValue), destRelay.PacketLoss)
+				assert.Equal(t, float32(routing.InvalidRouteValue), destRelay.RTTHistory[0])
+				assert.Equal(t, float32(routing.InvalidRouteValue), destRelay.JitterHistory[0])
+				assert.Equal(t, float32(routing.InvalidRouteValue), destRelay.PacketLossHistory[0])
 			}
 		})
 

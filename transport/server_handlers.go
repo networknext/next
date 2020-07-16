@@ -721,9 +721,9 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			}
 		}
 
-		// IMPORTANT: Immediately after ip2location we *must* anonymize the IP address so there is no chance 
-		// we accidentally use or store the non-anonymized IP address past this point. This is an important 
-		// business requirement because IP addresses are considered private identifiable information according 
+		// IMPORTANT: Immediately after ip2location we *must* anonymize the IP address so there is no chance
+		// we accidentally use or store the non-anonymized IP address past this point. This is an important
+		// business requirement because IP addresses are considered private identifiable information according
 		// to the GDRP and CCPA. We must *never* collect or store non-anonymized IP addresses!
 
 		// todo: anonymize address should work in place instead, and not have a failure case.
@@ -798,6 +798,18 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 		for i := range nearRelays {
 			response.NearRelayIDs[i] = nearRelays[i].ID
 			response.NearRelayAddresses[i] = nearRelays[i].Addr
+		}
+
+		// Don't allow customers who aren't marked as "Live" to get a network next route. They have to pay first!
+		if !buyer.Live {
+			routeDecision = routing.Decision{
+				OnNetworkNext: false,
+				Reason:        routing.DecisionBuyerNotLive,
+			}
+
+			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelays, routeDecision, sessionDataReadOnly.routeDecision, sessionDataReadOnly.initial, vetoReason, nextSliceCounter,
+				committedData, sessionDataReadOnly.routeHash, sessionDataReadOnly.routeDecision.OnNetworkNext, start, routeExpireTimestamp, sessionDataReadOnly.tokenVersion, params.RouterPrivateKey, nil) //, sliceMutexes
+			return
 		}
 
 		// If the session has fallen back to direct, just give them a direct route.
@@ -1057,13 +1069,13 @@ func CalculateTotalPriceNibblins(chosenRoute *routing.Route, envelopeBytesUp uin
 	envelopeUpGB := float64(envelopeBytesUp) / 1000000000.0
 	envelopeDownGB := float64(envelopeBytesDown) / 1000000000.0
 
-	totalPriceNibblins := nibblinsPerGB * ( envelopeUpGB + envelopeDownGB )
+	totalPriceNibblins := nibblinsPerGB * (envelopeUpGB + envelopeDownGB)
 
 	return uint64(totalPriceNibblins)
 }
 
 func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket, response *SessionResponsePacket, serverDataReadOnly *ServerData,
-	routeRelays []routing.Relay, lastNextStats *routing.Stats, lastDirectStats *routing.Stats, isMultipath bool, location *routing.Location, nearRelays []routing.Relay,
+	routeRelays []routing.Relay, lastNextStats *routing.Stats, lastDirectStats *routing.Stats, prevRouteDecision routing.Decision, location *routing.Location, nearRelays []routing.Relay,
 	routeDecision routing.Decision, timeNow time.Time, totalPriceNibblins uint64, nextBytesUp uint64, nextBytesDown uint64, prevInitial bool) {
 
 	// IMPORTANT: we actually need to display the true datacenter name in the demo and demo plus views,
@@ -1076,6 +1088,8 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 	// Send a massive amount of data to the portal via redis.
 	// This drives all the stuff you see in the portal, including the map and top sessions list.
 	// We send it via redis because google pubsub is not able to deliver data quickly enough.
+
+	isMultipath := routing.IsMultipath(prevRouteDecision)
 
 	if err := updatePortalData(params.RedisClientPortal, params.RedisClientPortalExp, packet, lastNextStats, lastDirectStats, routeRelays,
 		packet.OnNetworkNext, datacenterName, location, nearRelays, timeNow, isMultipath, datacenterAlias); err != nil {
@@ -1116,6 +1130,9 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 		Initial:                   prevInitial,
 		NextBytesUp:               nextBytesUp,
 		NextBytesDown:             nextBytesDown,
+		DatacenterID:              serverDataReadOnly.datacenter.ID,
+		RTTReduction:              prevRouteDecision.Reason&routing.DecisionRTTReduction != 0 || prevRouteDecision.Reason&routing.DecisionRTTReductionMultipath != 0,
+		PacketLossReduction:       prevRouteDecision.Reason&routing.DecisionHighPacketLossMultipath != 0,
 	}
 
 	if err := params.Biller.Bill(context.Background(), &billingEntry); err != nil {
@@ -1270,6 +1287,8 @@ func addRouteDecisionMetric(d routing.Decision, m *metrics.SessionMetrics) {
 		m.DecisionMetrics.RTTHysteresis.Add(1)
 	case routing.DecisionVetoCommit:
 		m.DecisionMetrics.VetoCommit.Add(1)
+	case routing.DecisionBuyerNotLive:
+		m.DecisionMetrics.BuyerNotLive.Add(1)
 	}
 }
 
@@ -1444,10 +1463,8 @@ func sendRouteResponse(w io.Writer, chosenRoute *routing.Route, params *SessionU
 	// Calculate the total price for the billing entry
 	totalPriceNibblins := CalculateTotalPriceNibblins(chosenRoute, envelopeBytesUp, envelopeBytesDown)
 
-	isMultipath := routing.IsMultipath(prevRouteDecision)
-
 	// IMPORTANT: run post in parallel so it doesn't block the response
-	go PostSessionUpdate(params, packet, response, serverDataReadOnly, chosenRoute.Relays, lastNextStats, lastDirectStats, isMultipath, location, nearRelays, routeDecision, timeNow, totalPriceNibblins, usageBytesUp, usageBytesDown, prevInitial)
+	go PostSessionUpdate(params, packet, response, serverDataReadOnly, chosenRoute.Relays, lastNextStats, lastDirectStats, prevRouteDecision, location, nearRelays, routeDecision, timeNow, totalPriceNibblins, usageBytesUp, usageBytesDown, prevInitial)
 
 	// Send the Session Response back to the server
 	if _, err := w.Write(responseData); err != nil {

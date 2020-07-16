@@ -8,6 +8,7 @@ import (
 	"cloud.google.com/go/pubsub"
 	"github.com/go-kit/kit/log"
 	"github.com/networknext/backend/billing"
+	"github.com/networknext/backend/metrics"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,12 +23,12 @@ func TestNewGooglePubSubBiller(t *testing.T) {
 	checkGooglePubsubEmulator(t)
 
 	t.Run("no publish settings", func(t *testing.T) {
-		_, err := billing.NewGooglePubSubBiller(context.Background(), log.NewNopLogger(), "", "", 0, 0, nil)
+		_, err := billing.NewGooglePubSubBiller(context.Background(), &metrics.EmptyBillingMetrics, log.NewNopLogger(), "", "", 0, 0, nil)
 		assert.EqualError(t, err, "nil google pubsub publish settings")
 	})
 
 	t.Run("success", func(t *testing.T) {
-		_, err := billing.NewGooglePubSubBiller(context.Background(), log.NewNopLogger(), "default", "billing", 1, 0, &pubsub.DefaultPublishSettings)
+		_, err := billing.NewGooglePubSubBiller(context.Background(), &metrics.EmptyBillingMetrics, log.NewNopLogger(), "default", "billing", 1, 0, &pubsub.DefaultPublishSettings)
 		assert.NoError(t, err)
 	})
 }
@@ -43,7 +44,7 @@ func TestGooglePubSubBill(t *testing.T) {
 	})
 
 	t.Run("success", func(t *testing.T) {
-		biller, err := billing.NewGooglePubSubBiller(context.Background(), log.NewNopLogger(), "default", "billing", 1, 0, &pubsub.DefaultPublishSettings)
+		biller, err := billing.NewGooglePubSubBiller(context.Background(), &metrics.EmptyBillingMetrics, log.NewNopLogger(), "default", "billing", 1, 0, &pubsub.DefaultPublishSettings)
 		assert.NoError(t, err)
 
 		biller.Bill(ctx, &billing.BillingEntry{})
