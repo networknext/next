@@ -7,7 +7,7 @@ agent:
 global_job_config:
   prologue:
     commands:
-      - sudo apt-get update && sudo apt-get -y install libsodium-dev
+      - sudo apt-get update && sudo apt-get -y install libsodium-dev google-cloud-sdk-firestore-emulator google-cloud-sdk-pubsub-emulator
       - checkout
       - sem-version go 1.13
       - make clean
@@ -18,6 +18,11 @@ blocks:
         - name: Backend
           commands:
             - make test
+      env_vars:
+        - name: FIRESTORE_EMULATOR_HOST
+          value: "127.0.0.1:11000"
+        - name: PUBSUB_EMULATOR_HOST
+          value: "127.0.0.1:12000"
 promotions:
   - name: Development Deployment
     pipeline_file: development-deploy.yml
