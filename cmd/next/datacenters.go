@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"regexp"
+	"strconv"
 
 	"github.com/modood/table"
 	"github.com/networknext/backend/routing"
@@ -51,17 +53,30 @@ func removeDatacenter(rpcClient jsonrpc.RPCClient, env Environment, name string)
 	fmt.Printf("Datacenter \"%x\" removed from storage.\n", name)
 }
 
-func listDatacenterMaps(rpcClient jsonrpc.RPCClient, env Environment, datacenter uint64) {
-	type dcMapStrings struct {
-		BuyerID    string `json:"buyer_id"`
-		Datacenter string `json:"datacenter"`
-		Alias      string `json:"alias"`
+func listDatacenterMaps(rpcClient jsonrpc.RPCClient, env Environment, datacenter string) {
+
+	var dcID uint64
+	var err error
+	datacentersArgs := localjsonrpc.DatacentersArgs{}
+	var datacenters localjsonrpc.DatacentersReply
+	if err = rpcClient.CallFor(&datacenters, "OpsService.Datacenters", datacentersArgs); err != nil {
+		handleJSONRPCError(env, err)
+		return
 	}
 
-	dcID := returnDatacenterID(rpcClient, env, datacenter)
+	r := regexp.MustCompile("(?i)" + datacenter) // case-insensitive regex
+	for _, dc := range datacenters.Datacenters {
+		if r.MatchString(dc.Name) || r.MatchString(dc.ID) {
+			dcID, err = strconv.ParseUint(dc.ID, 16, 64)
+			if err != nil {
+				fmt.Printf("Unable to convert %v to a hex DatacenterID\n", dc.ID)
+				return
+			}
+		}
+	}
 
 	if dcID == 0 {
-		fmt.Printf("Datacenter '%x' not found.\n", datacenter)
+		fmt.Printf("No match for provided datacenter ID: %v\n", datacenter)
 		return
 	}
 
