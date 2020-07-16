@@ -408,7 +408,7 @@
                                         <option :value="''" :selected="'' == pages.map.filter.buyerId">
                                             All
                                         </option>
-                                        <option :value="buyer.id" :selected="buyer.id == pages.map.filter.buyerId" v-for="buyer in handlers.userHandler.allBuyers" v-if="handlers.userHandler.isAdmin()">
+                                        <option :value="buyer.id" :selected="buyer.id == pages.map.filter.buyerId" v-for="buyer in handlers.userHandler.allBuyers" v-if="handlers.userHandler.isAdmin() && buyer.is_live">
                                             {{ buyer.name }}
                                         </option>
                                     </select>
@@ -465,7 +465,7 @@
                                             <option :value="''" :selected="'' == pages.map.filter.buyerId">
                                                 All
                                             </option>
-                                            <option :value="buyer.id" :selected="buyer.id == pages.map.filter.buyerId" v-for="buyer in handlers.userHandler.allBuyers" v-if="handlers.userHandler.isAdmin()">
+                                            <option :value="buyer.id" :selected="buyer.id == pages.map.filter.buyerId" v-for="buyer in handlers.userHandler.allBuyers" v-if="handlers.userHandler.isAdmin() && buyer.is_live">
                                                 {{ buyer.name }}
                                             </option>
                                         </select>
