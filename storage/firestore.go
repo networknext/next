@@ -75,10 +75,11 @@ type relay struct {
 }
 
 type datacenter struct {
-	Name      string  `firestore:"name"`
-	Enabled   bool    `firestore:"enabled"`
-	Latitude  float64 `firestore:"latitude"`
-	Longitude float64 `firestore:"longitude"`
+	Name         string  `firestore:"name"`
+	Enabled      bool    `firestore:"enabled"`
+	Latitude     float64 `firestore:"latitude"`
+	Longitude    float64 `firestore:"longitude"`
+	SupplierName string  `firestore:"supplierName"`
 }
 
 type datacenterMap struct {
@@ -1349,6 +1350,7 @@ func (fs *Firestore) syncDatacenters(ctx context.Context) error {
 				Latitude:  float64(d.Latitude),
 				Longitude: float64(d.Longitude),
 			},
+			SupplierName: d.SupplierName,
 		}
 	}
 
