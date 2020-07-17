@@ -1293,7 +1293,7 @@ func (fs *Firestore) SyncLoop(ctx context.Context, c <-chan time.Time) {
 func (fs *Firestore) Sync(ctx context.Context) error {
 	var outerErr error
 	var wg sync.WaitGroup
-	wg.Add(4)
+	wg.Add(5)
 
 	go func() {
 		if err := fs.syncRelays(ctx); err != nil {
@@ -1305,6 +1305,13 @@ func (fs *Firestore) Sync(ctx context.Context) error {
 	go func() {
 		if err := fs.syncCustomers(ctx); err != nil {
 			outerErr = fmt.Errorf("failed to sync customers: %v", err)
+		}
+		wg.Done()
+	}()
+
+	go func() {
+		if err := fs.syncSellers(ctx); err != nil {
+			outerErr = fmt.Errorf("failed to sync sellers: %v", err)
 		}
 		wg.Done()
 	}()
@@ -1496,6 +1503,48 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 	return nil
 }
 
+func (fs *Firestore) syncSellers(ctx context.Context) error {
+	sellers := make(map[string]routing.Seller)
+
+	sellerDocs := fs.Client.Collection("Sellers").Documents(ctx)
+	defer sellerDocs.Stop()
+
+	for {
+		sellerDoc, err := sellerDocs.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return &FirestoreError{err: err}
+		}
+
+		var s seller
+		err = sellerDoc.DataTo(&s)
+		if err != nil {
+			level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to unmarshal seller %v", sellerDoc.Ref.ID), "err", err)
+			continue
+		}
+
+		seller := routing.Seller{
+			ID:                sellerDoc.Ref.ID,
+			Name:              s.Name,
+			IngressPriceCents: billing.NibblinsToCents(uint64(s.PricePublicIngressNibblins)),
+			EgressPriceCents:  billing.NibblinsToCents(uint64(s.PricePublicEgressNibblins)),
+		}
+
+		sellers[sellerDoc.Ref.ID] = seller
+	}
+
+	fs.sellerMutex.Lock()
+	fs.sellers = sellers
+	fs.sellerMutex.Unlock()
+
+	level.Info(fs.Logger).Log("during", "syncSellers", "num", len(fs.sellers))
+
+	return nil
+
+}
+
 func (fs *Firestore) syncDatacenterMaps(ctx context.Context) error {
 	dcMaps := make(map[uint64]routing.DatacenterMap)
 
@@ -1620,6 +1669,7 @@ func (fs *Firestore) syncCustomers(ctx context.Context) error {
 				EgressPriceCents:  billing.NibblinsToCents(uint64(s.PricePublicEgressNibblins)),
 			}
 		}
+
 	}
 
 	fs.buyerMutex.Lock()
