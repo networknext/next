@@ -1070,14 +1070,8 @@ func (fs *Firestore) RemoveDatacenterMap(ctx context.Context, dcMap routing.Data
 	dmdocs := fs.Client.Collection("DatacenterMaps").Documents(ctx)
 	defer dmdocs.Stop()
 
-	type dcMapStrings struct {
-		Buyer      string `firestore:"Buyer"`
-		Datacenter string `firestore:"Datacenter"`
-		Alias      string `firestore:"Alias"`
-	}
-
 	// Firestore is the source of truth
-	var dcm dcMapStrings
+	var dcm datacenterMap
 	for {
 		dmdoc, err := dmdocs.Next()
 		ref := dmdoc.Ref
@@ -1097,11 +1091,11 @@ func (fs *Firestore) RemoveDatacenterMap(ctx context.Context, dcMap routing.Data
 		// all components must match (one-to-many)
 		buyerID, err := strconv.ParseUint(dcm.Buyer, 16, 64)
 		if err != nil {
-			return fmt.Errorf("error converting BuyerID %s to uint64: %v", dcm.Buyer, err)
+			return &HexStringConversionError{hexString: dcm.Buyer}
 		}
 		datacenter, err := strconv.ParseUint(dcm.Datacenter, 16, 64)
 		if err != nil {
-			return fmt.Errorf("error converting Datacenter %s to uint64: %v", dcm.Datacenter, err)
+			return &HexStringConversionError{hexString: dcm.Datacenter}
 		}
 
 		if dcMap.Alias == dcm.Alias && dcMap.BuyerID == buyerID && dcMap.Datacenter == datacenter {
@@ -1111,10 +1105,10 @@ func (fs *Firestore) RemoveDatacenterMap(ctx context.Context, dcMap routing.Data
 			}
 
 			// delete local copy as well
-			fs.datacenterMapMutex.RLock()
+			fs.datacenterMapMutex.Lock()
 			id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.Datacenter))
 			delete(fs.datacenterMaps, id)
-			fs.datacenterMapMutex.RUnlock()
+			fs.datacenterMapMutex.Unlock()
 
 			return nil
 		}
