@@ -10,8 +10,7 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
-import { Deck } from '@deck.gl/core'
-import { ScreenGridLayer } from '@deck.gl/layers'
+import { Deck, ScreenGridLayer } from '@deck.gl/core'
 import mapboxgl from 'mapbox-gl'
 import APIService from '../services/api.service'
 
