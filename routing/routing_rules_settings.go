@@ -104,8 +104,8 @@ var DefaultRoutingRulesSettings = RoutingRulesSettings{
 // forcing with 'Mode: ModeForceNext`).
 var LocalRoutingRulesSettings = RoutingRulesSettings{
 	MaxCentsPerGB:                25.0,
-	EnvelopeKbpsUp:               256,
-	EnvelopeKbpsDown:             256,
+	EnvelopeKbpsUp:               100,
+	EnvelopeKbpsDown:             100,
 	AcceptableLatency:            -1.0,
 	RTTThreshold:                 -5,
 	RTTEpsilon:                   0.1,

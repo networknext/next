@@ -152,7 +152,7 @@ func main() {
 			ID:                "sellerID",
 			Name:              "local",
 			IngressPriceCents: 10,
-			EgressPriceCents:  20,
+			EgressPriceCents:  50,
 		}
 
 		datacenter := routing.Datacenter{
