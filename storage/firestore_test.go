@@ -1904,7 +1904,7 @@ func TestFirestore(t *testing.T) {
 		actualBuyer, err := fs.Buyer(expectedBuyer.ID)
 		assert.NoError(t, err)
 
-		// actualSeller, err := fs.Seller(expectedSeller.ID)
+		actualSeller, err := fs.Seller(expectedSeller.ID)
 		assert.NoError(t, err)
 
 		actualDatacenter, err := fs.Datacenter(expectedDatacenter.ID)
@@ -1914,7 +1914,7 @@ func TestFirestore(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, expectedBuyer, actualBuyer)
-		// assert.Equal(t, expectedSeller, actualSeller)
+		assert.Equal(t, expectedSeller, actualSeller)
 		assert.Equal(t, expectedDatacenter, actualDatacenter)
 
 		// this is random, no easy way to test so just assert it is present

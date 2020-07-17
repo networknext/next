@@ -1596,6 +1596,7 @@ func (fs *Firestore) syncDatacenterMaps(ctx context.Context) error {
 
 func (fs *Firestore) syncCustomers(ctx context.Context) error {
 	buyers := make(map[uint64]routing.Buyer)
+	sellers := make(map[string]routing.Seller)
 
 	cdocs := fs.Client.Collection("Customer").Documents(ctx)
 	defer cdocs.Stop()
@@ -1647,13 +1648,40 @@ func (fs *Firestore) syncCustomers(ctx context.Context) error {
 			}
 		}
 
+		// Get the associated seller for the customer
+		if c.Seller != nil {
+			sdoc, err := c.Seller.Get(ctx)
+			if err != nil {
+				level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to get seller %v", c.Seller.ID), "err", err)
+				continue
+			}
+			var s seller
+			err = sdoc.DataTo(&s)
+			if err != nil {
+				level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to unmarshal seller %v", sdoc.Ref.ID), "err", err)
+				continue
+			}
+
+			sellers[sdoc.Ref.ID] = routing.Seller{
+				ID:                sdoc.Ref.ID,
+				Name:              s.Name,
+				IngressPriceCents: billing.NibblinsToCents(uint64(s.PricePublicIngressNibblins)),
+				EgressPriceCents:  billing.NibblinsToCents(uint64(s.PricePublicEgressNibblins)),
+			}
+		}
+
 	}
 
 	fs.buyerMutex.Lock()
 	fs.buyers = buyers
 	fs.buyerMutex.Unlock()
 
+	fs.sellerMutex.Lock()
+	fs.sellers = sellers
+	fs.sellerMutex.Unlock()
+
 	level.Info(fs.Logger).Log("during", "syncBuyers", "num", len(fs.buyers))
+	level.Info(fs.Logger).Log("during", "syncSellers", "num", len(fs.sellers))
 
 	return nil
 }
