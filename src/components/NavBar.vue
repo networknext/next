@@ -16,13 +16,13 @@
             <router-link to="/session-tool" class="nav-link" v-bind:class="{ active: $store.getters.currentPage == 'session-tool'}">Session Tool</router-link>
         </li>
         <li class="nav-item text-nowrap">
-            <router-link to="/user-tool" class="nav-link" v-bind:class="{ active: $store.getters.currentPage == 'user-tool'}">User Tool</router-link>
+            <router-link to="/user-tool" class="nav-link" v-bind:class="{ active: $store.getters.currentPage == 'user-tool'}" v-if="!$store.getters.isAnonymous">User Tool</router-link>
         </li>
         <li class="nav-item text-nowrap">
-            <router-link to="/downloads" class="nav-link" v-bind:class="{ active: $store.getters.currentPage == 'downloads'}">Downloads</router-link>
+            <router-link to="/downloads" class="nav-link" v-bind:class="{ active: $store.getters.currentPage == 'downloads'}" v-if="!$store.getters.isAnonymous">Downloads</router-link>
         </li>
         <li class="nav-item text-nowrap">
-            <router-link to="/settings" class="nav-link" v-bind:class="{ active: $store.getters.currentPage == 'config' || $store.getters.currentPage == 'users' }">Settings</router-link>
+            <router-link to="/settings" class="nav-link" v-bind:class="{ active: $store.getters.currentPage == 'config' || $store.getters.currentPage == 'users' }" v-if="!$store.getters.isAnonymous">Settings</router-link>
         </li>
     </ul>
     <ul class="navbar-nav px-3" v-if="$store.getters.isAnonymous">

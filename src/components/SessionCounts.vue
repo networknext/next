@@ -1,6 +1,6 @@
 <template>
   <h1 class="count-header">
-    Map&nbsp;
+    {{ $store.getters.currentPage[0].toUpperCase() + $store.getters.currentPage.slice(1) }}&nbsp;
     <span class="badge badge-dark">
       {{ this.totalSessions }} Total Sessions
     </span>&nbsp;
@@ -12,6 +12,7 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
+import APIService from '../services/api.service'
 
 interface TotalSessionsReply {
   direct: number;
@@ -21,6 +22,10 @@ interface TotalSessionsReply {
 @Component
 export default class SessionCounts extends Vue {
   private totalSessionsReply: TotalSessionsReply
+  private apiService: APIService
+  private countLoop = -1
+
+  // TODO: These values should probably go in a store
 
   get totalSessions () {
     return this.totalSessionsReply.direct + this.totalSessionsReply.onNN
@@ -28,10 +33,33 @@ export default class SessionCounts extends Vue {
 
   constructor () {
     super()
+    this.apiService = Vue.prototype.$apiService
     this.totalSessionsReply = {
       direct: 0,
       onNN: 0
     }
+  }
+
+  private mounted () {
+    this.fetchSessionCounts()
+    this.countLoop = setInterval(() => {
+      this.fetchSessionCounts()
+    }, 1000)
+  }
+
+  private beforeDestroy () {
+    clearInterval(this.countLoop)
+  }
+
+  private fetchSessionCounts () {
+    this.apiService.call('BuyersService.TotalSessions', {})
+      .then((response: any) => {
+        this.totalSessionsReply.direct = response.result.direct
+        this.totalSessionsReply.onNN = response.result.next
+      })
+      .catch((error: any) => {
+        console.log(error)
+      })
   }
 }
 </script>

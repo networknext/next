@@ -48,10 +48,10 @@
         </div>
       </div>
     </div>
-    <div class="spinner-border" role="status" id="sessions-spinner" v-if="false">
+    <div class="spinner-border" role="status" id="sessions-spinner" v-show="!$store.getters.showTable">
       <span class="sr-only">Loading...</span>
     </div>
-    <div class="table-responsive table-no-top-line" v-if="true">
+    <div class="table-responsive table-no-top-line" v-show="$store.getters.showTable">
       <table class="table table-sm table-striped table-hover">
         <thead>
           <tr>
@@ -65,7 +65,7 @@
                 Session ID
               </span>
             </th>
-            <th v-if="false">
+            <th v-if="!$store.getters.isAnonymous">
               <span>
                 User Hash
               </span>
@@ -115,34 +115,36 @@
             </td>
             <td v-if="false">
               <a class="text-dark fixed-width" href="#">
-                {{ session.userHash }}
+                {{ session.user_hash }}
               </a>
             </td>
             <td>
-              {{ session.location.ISP }}
+              {{ session.location.isp != "" ? session.location.isp : "Unknown" }}
             </td>
             <td>
               <span class="text-dark">
-                {{ session.datacenterAlias != '' ? session.datacenterAlias : session.datacenterName }}
+                {{ session.datacenter_alias != "" ? session.datacenter_alias : session.datacenter_name }}
               </span>
             </td>
-            <td class="text-right ">
-              {{ session.directRTT }}
+            <td class="text-right">
+              {{ parseFloat(session.direct_rtt).toFixed(2) == 0 ? "-" : parseFloat(session.direct_rtt).toFixed(2) }}
             </td>
-            <td class="text-right ">
-              {{ session.nextRTT }}
+            <td class="text-right">
+              {{ parseFloat(session.next_rtt).toFixed(2) == 0 ? "-" : parseFloat(session.next_rtt).toFixed(2) }}
             </td>
-            <td class="text-right ">
-                <!-- TODO: This should probably be a if/else -->
-              <span v-if="session.deltaRTT > 0 && session.onNetworkNext"
+            <td class="text-right">
+              <span v-if="session.delta_rtt > 0 && session.on_network_next"
                     v-bind:class="{
-                      'text-success': session.deltaRTT >= 5,
-                      'text-warning': session.deltaRTT >= 2 && session.deltaRTT < 5,
-                      'text-danger': session.deltaRTT < 2 && session.deltaRTT > 0
+                        'text-success': session.delta_rtt >= 5,
+                        'text-warning': session.delta_rtt >= 2 && session.delta_rtt < 5,
+                        'text-danger': session.delta_rtt < 2 && session.delta_rtt > 0
                     }"
               >
+                <b>
+                    {{ parseFloat(session.delta_rtt).toFixed(2) }}
+                </b>
               </span>
-              <span v-if="session.deltaRTT < 0 || !session.onNetworkNext">
+              <span v-if="session.delta_rtt < 0 || !session.on_network_next">
                 <b>
                   -
                 </b>
@@ -159,6 +161,7 @@
 import { Component, Vue } from 'vue-property-decorator'
 import SessionCounts from '@/components/SessionCounts.vue'
 import { SessionMeta } from '@/components/types/APITypes'
+import APIService from '../../services/api.service'
 
 /**
  * TODO: Move the filter dropdown bar to its own component
@@ -177,10 +180,39 @@ import { SessionMeta } from '@/components/types/APITypes'
 })
 export default class SessionsWorkspace extends Vue {
   private sessions: Array<SessionMeta>
+  private apiService: APIService
+  private showTable = false
+  private sessionsLoop = -1
 
   constructor () {
     super()
+    this.apiService = Vue.prototype.$apiService
     this.sessions = []
+  }
+
+  private mounted () {
+    this.fetchSessions()
+    this.sessionsLoop = setInterval(() => {
+      this.fetchSessions()
+    }, 10000)
+  }
+
+  private beforeDestroy () {
+    // Stop polling loop
+    this.sessions = []
+    this.$store.commit('TOGGLE_SESSION_TABLE', false)
+    clearInterval(this.sessionsLoop)
+  }
+
+  private fetchSessions () {
+    this.apiService.call('BuyersService.TopSessions', {})
+      .then((response: any) => {
+        this.sessions = response.result.sessions
+        this.$store.commit('TOGGLE_SESSION_TABLE', true)
+      })
+      .catch((error: any) => {
+        console.log(error)
+      })
   }
 }
 </script>

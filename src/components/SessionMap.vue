@@ -11,7 +11,9 @@
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
 import { Deck } from '@deck.gl/core'
+import { ScreenGridLayer } from '@deck.gl/layers'
 import mapboxgl from 'mapbox-gl'
+import APIService from '../services/api.service'
 
 /**
  * TODO: Hookup API call
@@ -29,6 +31,8 @@ export default class SessionMap extends Vue {
   private mapInstance: any = null
   private deckGlInstance: any = null
 
+  private apiService: APIService
+
   private viewState = {
     latitude: 0,
     longitude: 0,
@@ -38,53 +42,115 @@ export default class SessionMap extends Vue {
     minZoom: 0
   }
 
+  constructor () {
+    super()
+    this.apiService = Vue.prototype.$apiService
+  }
+
   private mounted () {
     this.refreshMapSessions()
-    /* setInterval(() => {
+    setInterval(() => {
       this.refreshMapSessions()
-    }, 10000) */
+    }, 10000)
   }
 
   private refreshMapSessions () {
     // creating the map
-    if (!this.mapInstance) {
-      this.mapInstance = new mapboxgl.Map({
-        accessToken: this.accessToken,
-        style: 'mapbox://styles/mapbox/dark-v10',
-        center: [
-          0,
-          0
-        ],
-        zoom: 2,
-        pitch: 0,
-        bearing: 0,
-        container: 'map'
-      })
-    }
-
-    if (!this.deckGlInstance) {
-      // creating the deck.gl instance
-      this.deckGlInstance = new Deck({
-        canvas: document.getElementById('deck-canvas'),
-        width: '100%',
-        height: '100%',
-        initialViewState: this.viewState,
-        controller: {
-          dragRotate: false,
-          dragTilt: false
-        },
-        // change the map's viewstate whenever the view state of deck.gl changes
-        onViewStateChange: ({ viewState }: any) => {
-          this.mapInstance.jumpTo({
-            center: [viewState.longitude, viewState.latitude],
-            zoom: viewState.zoom,
-            bearing: viewState.bearing,
-            pitch: viewState.pitch,
-            minZoom: 2
+    this.apiService.call('BuyersService.SessionMap', {})
+      .then((response: any) => {
+        if (!this.mapInstance) {
+          this.mapInstance = new mapboxgl.Map({
+            accessToken: this.accessToken,
+            style: 'mapbox://styles/mapbox/dark-v10',
+            center: [
+              0,
+              0
+            ],
+            zoom: 2,
+            pitch: 0,
+            bearing: 0,
+            container: 'map'
           })
         }
+
+        const sessions = response.result.map_points || []
+        const onNN = sessions.filter((point: any) => {
+          return (point[2] === 1)
+        })
+        const direct = sessions.filter((point: any) => {
+          return (point[2] === 0)
+        })
+
+        const cellSize = 10
+        const aggregation = 'MEAN'
+        const gpuAggregation = navigator.appVersion.indexOf('Win') === -1
+
+        const nnLayer = new Deck.ScreenGridLayer({
+          id: 'nn-layer',
+          data: onNN,
+          opacity: 0.8,
+          getPosition: (d: any) => [d[0], d[1]],
+          getWeight: (d: any) => 1,
+          cellSizePixels: cellSize,
+          colorRange: [
+            [
+              40,
+              167,
+              69
+            ]
+          ],
+          gpuAggregation,
+          aggregation
+        })
+
+        const directLayer = new ScreenGridLayer({
+          id: 'direct-layer',
+          data: direct,
+          opacity: 0.8,
+          getPosition: (d: any) => [d[0], d[1]],
+          getWeight: (d: any) => 1,
+          cellSizePixels: cellSize,
+          colorRange: [
+            [
+              49,
+              130,
+              189
+            ]
+          ],
+          gpuAggregation,
+          aggregation
+        })
+
+        const layers = (onNN.length > 0 || direct.length > 0) ? [directLayer, nnLayer] : []
+
+        if (!this.deckGlInstance) {
+          // creating the deck.gl instance
+          this.deckGlInstance = new Deck({
+            canvas: document.getElementById('deck-canvas'),
+            width: '100%',
+            height: '100%',
+            initialViewState: this.viewState,
+            controller: {
+              dragRotate: false,
+              dragTilt: false
+            },
+            // change the map's viewstate whenever the view state of deck.gl changes
+            onViewStateChange: ({ viewState }: any) => {
+              this.mapInstance.jumpTo({
+                center: [viewState.longitude, viewState.latitude],
+                zoom: viewState.zoom,
+                bearing: viewState.bearing,
+                pitch: viewState.pitch,
+                minZoom: 2
+              })
+            },
+            layers: layers
+          })
+        } else {
+          this.deckGlInstance.setProps({ layers: [] })
+          this.deckGlInstance.setProps({ layers: layers })
+        }
       })
-    }
   }
 }
 </script>
