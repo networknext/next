@@ -321,9 +321,9 @@ type buyer struct {
 }
 
 type seller struct {
-	Name              string
-	IngressPriceCents uint64
-	EgressPriceCents  uint64
+	Name                 string
+	IngressPriceNibblins uint64
+	EgressPriceNibblins  uint64
 }
 
 type relay struct {
@@ -1351,10 +1351,10 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 
 					// Add the Seller to storage
 					addSeller(rpcClient, env, routing.Seller{
-						ID:                s.Name,
-						Name:              s.Name,
-						IngressPriceCents: s.IngressPriceCents,
-						EgressPriceCents:  s.EgressPriceCents,
+						ID:                        s.Name,
+						Name:                      s.Name,
+						IngressPriceNibblinsPerGB: s.IngressPriceNibblins,
+						EgressPriceNibblinsPerGB:  s.EgressPriceNibblins,
 					})
 					return nil
 				},
