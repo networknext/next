@@ -126,12 +126,13 @@ func NewFirestore(ctx context.Context, gcpProjectID string, logger log.Logger) (
 	}
 
 	return &Firestore{
-		Client:      client,
-		Logger:      logger,
-		datacenters: make(map[uint64]routing.Datacenter),
-		relays:      make(map[uint64]routing.Relay),
-		buyers:      make(map[uint64]routing.Buyer),
-		sellers:     make(map[string]routing.Seller),
+		Client:         client,
+		Logger:         logger,
+		datacenters:    make(map[uint64]routing.Datacenter),
+		datacenterMaps: make(map[uint64]routing.DatacenterMap),
+		relays:         make(map[uint64]routing.Relay),
+		buyers:         make(map[uint64]routing.Buyer),
+		sellers:        make(map[string]routing.Seller),
 	}, nil
 }
 
@@ -1069,8 +1070,14 @@ func (fs *Firestore) RemoveDatacenterMap(ctx context.Context, dcMap routing.Data
 	dmdocs := fs.Client.Collection("DatacenterMaps").Documents(ctx)
 	defer dmdocs.Stop()
 
+	type dcMapStrings struct {
+		Buyer      string `firestore:"Buyer"`
+		Datacenter string `firestore:"Datacenter"`
+		Alias      string `firestore:"Alias"`
+	}
+
 	// Firestore is the source of truth
-	found := false
+	var dcm dcMapStrings
 	for {
 		dmdoc, err := dmdocs.Next()
 		ref := dmdoc.Ref
@@ -1082,31 +1089,35 @@ func (fs *Firestore) RemoveDatacenterMap(ctx context.Context, dcMap routing.Data
 			return &FirestoreError{err: err}
 		}
 
-		var dcm routing.DatacenterMap
 		err = dmdoc.DataTo(&dcm)
 		if err != nil {
 			return &UnmarshalError{err: err}
 		}
 
 		// all components must match (one-to-many)
-		// could use cmp?
-		if dcMap.Alias == dcm.Alias && dcMap.BuyerID == dcm.BuyerID && dcMap.Datacenter == dcm.Datacenter {
+		buyerID, err := strconv.ParseUint(dcm.Buyer, 16, 64)
+		if err != nil {
+			return fmt.Errorf("error converting BuyerID %s to uint64: %v", dcm.Buyer, err)
+		}
+		datacenter, err := strconv.ParseUint(dcm.Datacenter, 16, 64)
+		if err != nil {
+			return fmt.Errorf("error converting Datacenter %s to uint64: %v", dcm.Datacenter, err)
+		}
+
+		if dcMap.Alias == dcm.Alias && dcMap.BuyerID == buyerID && dcMap.Datacenter == datacenter {
 			_, err := ref.Delete(ctx)
 			if err != nil {
 				return &FirestoreError{err: err}
 			}
-			found = true
+
+			// delete local copy as well
+			fs.datacenterMapMutex.RLock()
+			id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.Datacenter))
+			delete(fs.datacenterMaps, id)
+			fs.datacenterMapMutex.RUnlock()
+
+			return nil
 		}
-	}
-
-	if found {
-		fs.datacenterMapMutex.RLock()
-		id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.Datacenter))
-
-		delete(fs.datacenterMaps, id)
-
-		fs.datacenterMapMutex.RUnlock()
-		return nil
 	}
 
 	return &DoesNotExistError{resourceType: "datacenterMap", resourceRef: fmt.Sprintf("%v", dcMap)}
