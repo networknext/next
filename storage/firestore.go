@@ -1070,14 +1070,8 @@ func (fs *Firestore) RemoveDatacenterMap(ctx context.Context, dcMap routing.Data
 	dmdocs := fs.Client.Collection("DatacenterMaps").Documents(ctx)
 	defer dmdocs.Stop()
 
-	type dcMapStrings struct {
-		Buyer      string `firestore:"Buyer"`
-		Datacenter string `firestore:"Datacenter"`
-		Alias      string `firestore:"Alias"`
-	}
-
 	// Firestore is the source of truth
-	var dcm dcMapStrings
+	var dcm datacenterMap
 	for {
 		dmdoc, err := dmdocs.Next()
 		ref := dmdoc.Ref
