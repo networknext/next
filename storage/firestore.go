@@ -1105,10 +1105,10 @@ func (fs *Firestore) RemoveDatacenterMap(ctx context.Context, dcMap routing.Data
 			}
 
 			// delete local copy as well
-			fs.datacenterMapMutex.RLock()
+			fs.datacenterMapMutex.Lock()
 			id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.Datacenter))
 			delete(fs.datacenterMaps, id)
-			fs.datacenterMapMutex.RUnlock()
+			fs.datacenterMapMutex.Unlock()
 
 			return nil
 		}
