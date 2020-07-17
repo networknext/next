@@ -71,12 +71,11 @@ func WriteBillingEntry(entry *BillingEntry) []byte {
 	encoding.WriteBool(data, &index, entry.Flagged)
 	encoding.WriteBool(data, &index, entry.Multipath)
 
+	encoding.WriteBool(data, &index, entry.Initial)
+
 	if entry.Next {
-		encoding.WriteBool(data, &index, true)
 		encoding.WriteUint64(data, &index, entry.NextBytesUp)
 		encoding.WriteUint64(data, &index, entry.NextBytesDown)
-	} else {
-		encoding.WriteBool(data, &index, false)
 	}
 
 	encoding.WriteUint64(data, &index, entry.DatacenterID)

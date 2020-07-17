@@ -242,8 +242,8 @@ func putRTTs(buff []byte, offset *int, rtts []int32) {
 func putSellers(buff []byte, offset *int, sellers []routing.Seller) {
 	for _, seller := range sellers {
 		putStrings(buff, offset, seller.ID, seller.Name)
-		putUint64s(buff, offset, seller.IngressPriceCents)
-		putUint64s(buff, offset, seller.EgressPriceCents)
+		putUint64s(buff, offset, seller.IngressPriceNibblinsPerGB)
+		putUint64s(buff, offset, seller.EgressPriceNibblinsPerGB)
 	}
 }
 

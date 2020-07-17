@@ -1069,18 +1069,14 @@ func CalculateTotalPriceNibblins(chosenRoute *routing.Route, envelopeBytesUp uin
 	envelopeUpGB := float64(envelopeBytesUp) / 1000000000.0
 	envelopeDownGB := float64(envelopeBytesDown) / 1000000000.0
 
-	level.Debug(logger).Log("in", "CalculateTotalPriceNibblins", "envelopeUpGB", envelopeUpGB, "envelopeDownGB", envelopeDownGB)
-
-	sellerPriceNibblinsPerGB := 0.0
+	sellerPriceNibblinsPerGB := uint64(0)
 	for _, relay := range chosenRoute.Relays {
-		level.Debug(logger).Log("in", "CalculateTotalPriceNibblins", "sellerNibblinsPerGB", float64(billing.CentsToNibblins(relay.Seller.EgressPriceCents)))
-		sellerPriceNibblinsPerGB += float64(billing.CentsToNibblins(relay.Seller.EgressPriceCents))
+		sellerPriceNibblinsPerGB += relay.Seller.EgressPriceNibblinsPerGB
 	}
 
-	nextPriceNibblinsPerGB := float64(billing.CentsToNibblins(1))
-	totalPriceNibblins := (sellerPriceNibblinsPerGB + nextPriceNibblinsPerGB) * (envelopeUpGB + envelopeDownGB)
+	nextPriceNibblinsPerGB := uint64(1e9)
+	totalPriceNibblins := float64(sellerPriceNibblinsPerGB+nextPriceNibblinsPerGB) * (envelopeUpGB + envelopeDownGB)
 
-	level.Debug(logger).Log("in", "CalculateTotalPriceNibblins", "totalNibblins", totalPriceNibblins)
 	return uint64(totalPriceNibblins)
 }
 
@@ -1094,13 +1090,9 @@ func CalculateRouteRelaysPrice(chosenRoute *routing.Route, envelopeBytesUp uint6
 	envelopeUpGB := float64(envelopeBytesUp) / 1000000000.0
 	envelopeDownGB := float64(envelopeBytesDown) / 1000000000.0
 
-	level.Debug(logger).Log("in", "CalculateRouteRelaysPrice", "envelopeUpGB", envelopeUpGB, "envelopeDownGB", envelopeDownGB)
-
 	for i, relay := range chosenRoute.Relays {
-		relayPriceNibblins := float64(billing.CentsToNibblins(relay.Seller.EgressPriceCents)) * (envelopeUpGB + envelopeDownGB)
+		relayPriceNibblins := float64(relay.Seller.EgressPriceNibblinsPerGB) * (envelopeUpGB + envelopeDownGB)
 		relayPrices[i] = uint64(relayPriceNibblins)
-
-		level.Debug(logger).Log("in", "CalculateRouteRelaysPrice", "index", i, "relayPrice", relayPrices[i])
 	}
 
 	return relayPrices
