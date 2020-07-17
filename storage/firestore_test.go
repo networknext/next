@@ -1787,8 +1787,6 @@ func TestFirestore(t *testing.T) {
 		assert.NoError(t, err)
 
 		actual := fs.GetDatacenterMapsForBuyer(buyer.ID)
-		// assert.NoError(t, err)
-
 		assert.Equal(t, expected, actual[id])
 	})
 
