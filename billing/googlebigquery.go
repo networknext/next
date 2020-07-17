@@ -127,5 +127,11 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 		e["packetLossReduction"] = entry.PacketLossReduction
 	}
 
+	nextRelaysPrice := make([]bigquery.Value, entry.NumNextRelaysPrice)
+	for i := 0; i < int(entry.NumNextRelaysPrice); i++ {
+		nextRelaysPrice[i] = int(entry.NextRelaysPrice[i])
+	}
+	e["nextRelaysPrice"] = nextRelaysPrice
+
 	return e, "", nil
 }
