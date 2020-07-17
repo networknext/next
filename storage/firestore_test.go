@@ -2,6 +2,7 @@ package storage_test
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"os"
 	"testing"
@@ -1743,6 +1744,52 @@ func TestFirestore(t *testing.T) {
 			actual.Enabled = true
 			assert.Equal(t, expected, actual)
 		})
+	})
+
+	t.Run("AddDatacenterMap", func(t *testing.T) {
+		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+		assert.NoError(t, err)
+
+		defer func() {
+			err := cleanFireStore(ctx, fs.Client)
+			assert.NoError(t, err)
+		}()
+
+		buyer := routing.Buyer{
+			ID: 11,
+		}
+
+		expected := routing.DatacenterMap{
+			BuyerID:    11,
+			Datacenter: 1,
+			Alias:      "local",
+		}
+
+		id := crypto.HashID(expected.Alias + fmt.Sprintf("%x", expected.BuyerID) + fmt.Sprintf("%x", expected.Datacenter))
+
+		datacenter := routing.Datacenter{
+			ID:      1,
+			Name:    "local",
+			Enabled: true,
+			Location: routing.Location{
+				Latitude:  70.5,
+				Longitude: 120.5,
+			},
+		}
+
+		err = fs.AddBuyer(ctx, buyer)
+		assert.NoError(t, err)
+
+		err = fs.AddDatacenter(ctx, datacenter)
+		assert.NoError(t, err)
+
+		err = fs.AddDatacenterMap(ctx, expected)
+		assert.NoError(t, err)
+
+		actual := fs.GetDatacenterMapsForBuyer(buyer.ID)
+		// assert.NoError(t, err)
+
+		assert.Equal(t, expected, actual[id])
 	})
 
 	t.Run("Sync", func(t *testing.T) {

@@ -126,12 +126,13 @@ func NewFirestore(ctx context.Context, gcpProjectID string, logger log.Logger) (
 	}
 
 	return &Firestore{
-		Client:      client,
-		Logger:      logger,
-		datacenters: make(map[uint64]routing.Datacenter),
-		relays:      make(map[uint64]routing.Relay),
-		buyers:      make(map[uint64]routing.Buyer),
-		sellers:     make(map[string]routing.Seller),
+		Client:         client,
+		Logger:         logger,
+		datacenters:    make(map[uint64]routing.Datacenter),
+		datacenterMaps: make(map[uint64]routing.DatacenterMap),
+		relays:         make(map[uint64]routing.Relay),
+		buyers:         make(map[uint64]routing.Buyer),
+		sellers:        make(map[string]routing.Seller),
 	}, nil
 }
 
