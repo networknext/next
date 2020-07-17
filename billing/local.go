@@ -27,17 +27,6 @@ func (local *LocalBiller) Bill(ctx context.Context, entry *BillingEntry) error {
 	output := fmt.Sprintf("%#v", entry)
 	level.Debug(local.Logger).Log("entry", output)
 
-	// values, _, err := entry.Save()
-	// if err != nil {
-	// 	return err
-	// }
-
-	// bytes, err := json.MarshalIndent(values, "", "\t")
-	// if err != nil {
-	// 	return err
-	// }
-
-	// fmt.Println(string(bytes))
 	return nil
 }
 
