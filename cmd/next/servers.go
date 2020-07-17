@@ -42,11 +42,7 @@ func servers(rpcClient jsonrpc.RPCClient, env Environment, buyerName string, ser
 			}
 			servers = append(servers, buyerServers{BuyerID: buyer.ID, NumServers: len(serversReply.ServerAddresses)})
 		}
-		if serverCount > 0 && serverCount < int64(len(serversReply.ServerAddresses)) {
-			table.Output(servers[0:serverCount])
-		} else {
-			table.Output(servers)
-		}
+		table.Output(servers)
 		return
 	}
 
