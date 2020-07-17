@@ -55,8 +55,12 @@ type RoutingRulesSettings struct {
 	// Multipath means network traffic is sent over multiple network routes (any combination of direct and multiple network next routes)
 	// Once a session has multipath enabled, it will stay on multipath until the session ends. As of such vetos are disabled
 
-	// If true, enables multipath when there is 1% or more packet loss on the direct route
+	// If true, enables multipath when there is MultipathPacketLossThreshold% or more packet loss on the direct route
 	EnableMultipathForPacketLoss bool
+
+	// The amount of allowed packet loss on the direct route before a multipath route will be sent.
+	// This is only used if EnableMultipathForPacketLoss is true.
+	MultipathPacketLossThreshold float32
 
 	// If true, enables multipath when there is 50ms or more jitter on the direct route
 	EnableMultipathForJitter bool
@@ -81,16 +85,17 @@ type RoutingRulesSettings struct {
 }
 
 var DefaultRoutingRulesSettings = RoutingRulesSettings{
-	MaxCentsPerGB:            25.0,
-	EnvelopeKbpsUp:           256,
-	EnvelopeKbpsDown:         256,
-	AcceptableLatency:        -1.0,
-	RTTThreshold:             5.0,
-	RTTEpsilon:               2.0,
-	RTTHysteresis:            -5.0,
-	RTTVeto:                  -20.0,
-	TryBeforeYouBuyMaxSlices: 3,
-	SelectionPercentage:      0,
+	MaxCentsPerGB:                25.0,
+	EnvelopeKbpsUp:               256,
+	EnvelopeKbpsDown:             256,
+	AcceptableLatency:            -1.0,
+	RTTThreshold:                 5.0,
+	RTTEpsilon:                   2.0,
+	RTTHysteresis:                -5.0,
+	RTTVeto:                      -20.0,
+	TryBeforeYouBuyMaxSlices:     3,
+	SelectionPercentage:          0,
+	MultipathPacketLossThreshold: 2.0,
 }
 
 // LocalRoutingRulesSettings sets the rules for localhost:20000 Happy Path
@@ -98,13 +103,14 @@ var DefaultRoutingRulesSettings = RoutingRulesSettings{
 // slower than direct. Ditto for hysterisis and veto (more "real" than
 // forcing with 'Mode: ModeForceNext`).
 var LocalRoutingRulesSettings = RoutingRulesSettings{
-	MaxCentsPerGB:       25.0,
-	EnvelopeKbpsUp:      256,
-	EnvelopeKbpsDown:    256,
-	AcceptableLatency:   -1.0,
-	RTTThreshold:        -5,
-	RTTEpsilon:          0.1,
-	RTTHysteresis:       -10,
-	RTTVeto:             -20,
-	SelectionPercentage: 100,
+	MaxCentsPerGB:                25.0,
+	EnvelopeKbpsUp:               256,
+	EnvelopeKbpsDown:             256,
+	AcceptableLatency:            -1.0,
+	RTTThreshold:                 -5,
+	RTTEpsilon:                   0.1,
+	RTTHysteresis:                -10,
+	RTTVeto:                      -20,
+	SelectionPercentage:          100,
+	MultipathPacketLossThreshold: 1.0,
 }

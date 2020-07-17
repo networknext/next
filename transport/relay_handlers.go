@@ -492,6 +492,7 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			Name:           relay.Name,
 			Addr:           relayInitRequest.Address,
 			PublicKey:      relay.PublicKey,
+			Seller:         relay.Seller,
 			Datacenter:     relay.Datacenter,
 			LastUpdateTime: time.Now(),
 			MaxSessions:    relay.MaxSessions,
