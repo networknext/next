@@ -2,6 +2,7 @@ package storage_test
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"os"
 	"testing"
@@ -1745,6 +1746,98 @@ func TestFirestore(t *testing.T) {
 		})
 	})
 
+	t.Run("Add and Get DatacenterMap", func(t *testing.T) {
+		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+		assert.NoError(t, err)
+
+		defer func() {
+			err := cleanFireStore(ctx, fs.Client)
+			assert.NoError(t, err)
+		}()
+
+		buyer := routing.Buyer{
+			ID: 11,
+		}
+
+		expected := routing.DatacenterMap{
+			BuyerID:    11,
+			Datacenter: 1,
+			Alias:      "local",
+		}
+
+		id := crypto.HashID(expected.Alias + fmt.Sprintf("%x", expected.BuyerID) + fmt.Sprintf("%x", expected.Datacenter))
+
+		datacenter := routing.Datacenter{
+			ID:      1,
+			Name:    "local",
+			Enabled: true,
+			Location: routing.Location{
+				Latitude:  70.5,
+				Longitude: 120.5,
+			},
+		}
+
+		err = fs.AddBuyer(ctx, buyer)
+		assert.NoError(t, err)
+
+		err = fs.AddDatacenter(ctx, datacenter)
+		assert.NoError(t, err)
+
+		err = fs.AddDatacenterMap(ctx, expected)
+		assert.NoError(t, err)
+
+		actual := fs.GetDatacenterMapsForBuyer(buyer.ID)
+		// assert.NoError(t, err)
+
+		assert.Equal(t, expected, actual[id])
+	})
+
+	t.Run("Add and Remove DatacenterMap", func(t *testing.T) {
+		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+		assert.NoError(t, err)
+
+		defer func() {
+			err := cleanFireStore(ctx, fs.Client)
+			assert.NoError(t, err)
+		}()
+
+		buyer := routing.Buyer{
+			ID: 11,
+		}
+
+		dcMap := routing.DatacenterMap{
+			BuyerID:    11,
+			Datacenter: 1,
+			Alias:      "local",
+		}
+
+		datacenter := routing.Datacenter{
+			ID:      1,
+			Name:    "local",
+			Enabled: true,
+			Location: routing.Location{
+				Latitude:  70.5,
+				Longitude: 120.5,
+			},
+		}
+
+		err = fs.AddBuyer(ctx, buyer)
+		assert.NoError(t, err)
+
+		err = fs.AddDatacenter(ctx, datacenter)
+		assert.NoError(t, err)
+
+		err = fs.AddDatacenterMap(ctx, dcMap)
+		assert.NoError(t, err)
+
+		err = fs.RemoveDatacenterMap(ctx, dcMap)
+		assert.NoError(t, err)
+
+		var dcMapsEmpty = make(map[uint64]routing.DatacenterMap)
+		dcMapsEmpty = fs.GetDatacenterMapsForBuyer(buyer.ID)
+		assert.Equal(t, 0, len(dcMapsEmpty))
+
+	})
 	t.Run("Sync", func(t *testing.T) {
 		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 		assert.NoError(t, err)
