@@ -128,12 +128,12 @@ type ServerInitCounters struct {
 }
 
 type ServerInitParams struct {
-	ServerPrivateKey   []byte
-	Storer             storage.Storer
-	Metrics            *metrics.ServerInitMetrics
-	Logger             log.Logger
-	Counters           *ServerInitCounters
-	UnknownDatacenters *UnknownDatacenters
+	ServerPrivateKey  []byte
+	Storer            storage.Storer
+	Metrics           *metrics.ServerInitMetrics
+	Logger            log.Logger
+	Counters          *ServerInitCounters
+	DatacenterTracker *DatacenterTracker
 }
 
 func writeServerInitResponse(params *ServerInitParams, w io.Writer, packet *ServerInitRequestPacket, response uint32) {
@@ -248,7 +248,7 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 
 		// Track datacenter IDs we don't know about so we can work with customers to add them to our database.
 		if datacenter.ID == routing.UnknownDatacenter.ID {
-			params.UnknownDatacenters.Add(packet.DatacenterID)
+			params.DatacenterTracker.AddUnknownDatacenter(packet.DatacenterID)
 		}
 
 		// If we get down here, all checks have passed and this server is OK to init.
@@ -287,12 +287,12 @@ type ServerUpdateCounters struct {
 }
 
 type ServerUpdateParams struct {
-	Storer             storage.Storer
-	Metrics            *metrics.ServerUpdateMetrics
-	Logger             log.Logger
-	ServerMap          *ServerMap
-	Counters           *ServerUpdateCounters
-	UnknownDatacenters *UnknownDatacenters
+	Storer            storage.Storer
+	Metrics           *metrics.ServerUpdateMetrics
+	Logger            log.Logger
+	ServerMap         *ServerMap
+	Counters          *ServerUpdateCounters
+	DatacenterTracker *DatacenterTracker
 }
 
 // =============================================================================
@@ -405,7 +405,7 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 
 		// Track datacenter IDs we don't know about so we can work with customers to add them to our database.
 		if datacenter.ID == routing.UnknownDatacenter.ID {
-			params.UnknownDatacenters.Add(packet.DatacenterID)
+			params.DatacenterTracker.AddUnknownDatacenter(packet.DatacenterID)
 		}
 
 		// UDP packets may arrive out of order. So that we don't have stale server update packets arriving late and
@@ -518,6 +518,7 @@ type SessionUpdateParams struct {
 	ServerMap            *ServerMap
 	SessionMap           *SessionMap
 	Counters             *SessionUpdateCounters
+	DatacenterTracker    *DatacenterTracker
 }
 
 // =========================================================================================================
@@ -900,6 +901,9 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			}
 
 			params.Metrics.ErrorMetrics.NoRelaysInDatacenter.Add(1)
+
+			params.DatacenterTracker.AddEmptyDatacenter(serverDataReadOnly.datacenter.Name)
+
 			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelays, routeDecision, sessionDataReadOnly.routeDecision, sessionDataReadOnly.initial, vetoReason, nextSliceCounter,
 				committedData, sessionDataReadOnly.routeHash, sessionDataReadOnly.routeDecision.OnNetworkNext, start, routeExpireTimestamp, sessionDataReadOnly.tokenVersion, params.RouterPrivateKey, nil) //, sliceMutexes)
 			return
