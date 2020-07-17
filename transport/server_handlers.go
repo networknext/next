@@ -1238,11 +1238,11 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 	tx.SAdd(fmt.Sprintf("user-%s-sessions", hashedID), meta.ID)
 	tx.Expire(fmt.Sprintf("user-%s-sessions", hashedID), redisClientPortalExp)
 
-	// set the user session reverse lookup sets with expiration on the entire key set for safety
+	// set the server reverse lookup sets with expiration on the entire key set for safety
 	tx.SAdd("servers", meta.ServerAddr)
 	tx.Expire("servers", redisClientPortalExp)
 
-	// set the user session reverse lookup sets with expiration on the entire key set for safety
+	// set the buyer specific server reverse lookup sets with expiration on the entire key set for safety
 	tx.SAdd(fmt.Sprintf("buyer-%016x-servers", packet.CustomerID), meta.ServerAddr)
 	tx.Expire(fmt.Sprintf("buyer-%016x-servers", packet.CustomerID), redisClientPortalExp)
 

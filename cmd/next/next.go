@@ -377,9 +377,8 @@ func main() {
 	serversfs := flag.NewFlagSet("servers", flag.ExitOnError)
 	var serverCount int64
 	serversfs.Int64Var(&serverCount, "n", 0, "number of servers or buyers to display (default: all)")
-	var buyerName string
-	serversfs.StringVar(&buyerName, "buyer", "", "specify a buyer to filter servers on")
 
+	var buyerName string
 	sessionsfs := flag.NewFlagSet("sessions", flag.ExitOnError)
 	var sessionCount int64
 	sessionsfs.Int64Var(&sessionCount, "n", 0, "number of top sessions to display (default: all)")
@@ -556,7 +555,11 @@ func main() {
 		LongHelp:   "List the number of servers associated to a buyer or all of the server addresses associated with a specific buyer",
 		FlagSet:    serversfs,
 		Exec: func(_ context.Context, args []string) error {
-			servers(rpcClient, env, buyerName, sessionCount)
+			if len(args) > 0 {
+				servers(rpcClient, env, args[0], sessionCount)
+				return nil
+			}
+			servers(rpcClient, env, "", sessionCount)
 			return nil
 		},
 	}
