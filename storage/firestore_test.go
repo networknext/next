@@ -1833,6 +1833,10 @@ func TestFirestore(t *testing.T) {
 		err = fs.RemoveDatacenterMap(ctx, dcMap)
 		assert.NoError(t, err)
 
+		var dcMapsEmpty = make(map[uint64]routing.DatacenterMap)
+		dcMapsEmpty = fs.GetDatacenterMapsForBuyer(buyer.ID)
+		assert.Equal(t, 0, len(dcMapsEmpty))
+
 	})
 	t.Run("Sync", func(t *testing.T) {
 		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
