@@ -789,6 +789,40 @@ func (s *OpsService) ListDatacenterMaps(r *http.Request, args *ListDatacenterMap
 	return nil
 }
 
+type ServerArgs struct {
+	BuyerID string `json:"buyer_id"`
+}
+
+type ServerReply struct {
+	ServerAddresses []string `json:"server_addrs"`
+}
+
+func (s *OpsService) Servers(r *http.Request, args *ServerArgs, reply *ServerReply) error {
+	var err error
+	var serverAddresses []string
+
+	// get the top session IDs globally or for a buyer from the sorted set
+	switch args.BuyerID {
+	case "":
+		err = s.RedisClient.SMembers("servers").ScanSlice(&serverAddresses)
+		if err != nil {
+			err = fmt.Errorf("Servers() failed getting servers: %v", err)
+			s.Logger.Log("err", err)
+			return err
+		}
+	default:
+		err = s.RedisClient.SMembers(fmt.Sprintf("buyer-%s-servers", args.BuyerID)).ScanSlice(&serverAddresses)
+		if err != nil {
+			err = fmt.Errorf("Servers() failed getting servers: %v", err)
+			s.Logger.Log("err", err)
+			return err
+		}
+	}
+
+	reply.ServerAddresses = serverAddresses
+	return nil
+}
+
 type RouteSelectionArgs struct {
 	SourceRelays      []string `json:"src_relays"`
 	DestinationRelays []string `json:"dest_relays"`

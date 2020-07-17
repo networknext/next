@@ -1060,7 +1060,7 @@ func CalculateNextBytesUpAndDown(envelopeKbpsUp uint64, envelopeKbpsDown uint64,
 	return envelopeBytesUp, envelopeBytesDown
 }
 
-func CalculateTotalPriceNibblins(chosenRoute *routing.Route, envelopeBytesUp uint64, envelopeBytesDown uint64) uint64 {
+func CalculateTotalPriceNibblins(chosenRoute *routing.Route, envelopeBytesUp uint64, envelopeBytesDown uint64, logger log.Logger) uint64 {
 
 	if len(chosenRoute.Relays) == 0 {
 		return 0
@@ -1069,17 +1069,22 @@ func CalculateTotalPriceNibblins(chosenRoute *routing.Route, envelopeBytesUp uin
 	envelopeUpGB := float64(envelopeBytesUp) / 1000000000.0
 	envelopeDownGB := float64(envelopeBytesDown) / 1000000000.0
 
+	level.Debug(logger).Log("in", "CalculateTotalPriceNibblins", "envelopeUpGB", envelopeUpGB, "envelopeDownGB", envelopeDownGB)
+
 	sellerPriceNibblinsPerGB := 0.0
 	for _, relay := range chosenRoute.Relays {
+		level.Debug(logger).Log("in", "CalculateTotalPriceNibblins", "sellerNibblinsPerGB", float64(billing.CentsToNibblins(relay.Seller.EgressPriceCents)))
 		sellerPriceNibblinsPerGB += float64(billing.CentsToNibblins(relay.Seller.EgressPriceCents))
 	}
 
 	nextPriceNibblinsPerGB := float64(billing.CentsToNibblins(1))
 	totalPriceNibblins := (sellerPriceNibblinsPerGB + nextPriceNibblinsPerGB) * (envelopeUpGB + envelopeDownGB)
+
+	level.Debug(logger).Log("in", "CalculateTotalPriceNibblins", "totalNibblins", totalPriceNibblins)
 	return uint64(totalPriceNibblins)
 }
 
-func CalculateRouteRelaysPrice(chosenRoute *routing.Route, envelopeBytesUp uint64, envelopeBytesDown uint64) []uint64 {
+func CalculateRouteRelaysPrice(chosenRoute *routing.Route, envelopeBytesUp uint64, envelopeBytesDown uint64, logger log.Logger) []uint64 {
 	if len(chosenRoute.Relays) == 0 {
 		return nil
 	}
@@ -1089,9 +1094,13 @@ func CalculateRouteRelaysPrice(chosenRoute *routing.Route, envelopeBytesUp uint6
 	envelopeUpGB := float64(envelopeBytesUp) / 1000000000.0
 	envelopeDownGB := float64(envelopeBytesDown) / 1000000000.0
 
+	level.Debug(logger).Log("in", "CalculateRouteRelaysPrice", "envelopeUpGB", envelopeUpGB, "envelopeDownGB", envelopeDownGB)
+
 	for i, relay := range chosenRoute.Relays {
 		relayPriceNibblins := float64(billing.CentsToNibblins(relay.Seller.EgressPriceCents)) * (envelopeUpGB + envelopeDownGB)
 		relayPrices[i] = uint64(relayPriceNibblins)
+
+		level.Debug(logger).Log("in", "CalculateRouteRelaysPrice", "index", i, "relayPrice", relayPrices[i])
 	}
 
 	return relayPrices
@@ -1266,6 +1275,14 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 	// set the user session reverse lookup sets with expiration on the entire key set for safety
 	tx.SAdd(fmt.Sprintf("user-%s-sessions", hashedID), meta.ID)
 	tx.Expire(fmt.Sprintf("user-%s-sessions", hashedID), redisClientPortalExp)
+
+	// set the server reverse lookup sets with expiration on the entire key set for safety
+	tx.SAdd("servers", meta.ServerAddr)
+	tx.Expire("servers", redisClientPortalExp)
+
+	// set the buyer specific server reverse lookup sets with expiration on the entire key set for safety
+	tx.SAdd(fmt.Sprintf("buyer-%016x-servers", packet.CustomerID), meta.ServerAddr)
+	tx.Expire(fmt.Sprintf("buyer-%016x-servers", packet.CustomerID), redisClientPortalExp)
 
 	// set the map point key and buyer sessions with expiration on the entire key set for safety
 	tx.Set(fmt.Sprintf("session-%016x-point", packet.SessionID), point, redisClientPortalExp)
@@ -1491,9 +1508,9 @@ func sendRouteResponse(w io.Writer, chosenRoute *routing.Route, params *SessionU
 	envelopeBytesUp, envelopeBytesDown := CalculateNextBytesUpAndDown(uint64(buyer.RoutingRulesSettings.EnvelopeKbpsUp), uint64(buyer.RoutingRulesSettings.EnvelopeKbpsDown), lastSliceDuration)
 
 	// Calculate the total price for the billing entry
-	totalPriceNibblins := CalculateTotalPriceNibblins(chosenRoute, envelopeBytesUp, envelopeBytesDown)
+	totalPriceNibblins := CalculateTotalPriceNibblins(chosenRoute, envelopeBytesUp, envelopeBytesDown, params.Logger)
 
-	nextRelaysPrice := CalculateRouteRelaysPrice(chosenRoute, envelopeBytesUp, envelopeBytesDown)
+	nextRelaysPrice := CalculateRouteRelaysPrice(chosenRoute, envelopeBytesUp, envelopeBytesDown, params.Logger)
 
 	// IMPORTANT: run post in parallel so it doesn't block the response
 	go PostSessionUpdate(params, packet, response, serverDataReadOnly, chosenRoute.Relays, lastNextStats, lastDirectStats, prevRouteDecision, location, nearRelays, routeDecision, timeNow, totalPriceNibblins, nextRelaysPrice, usageBytesUp, usageBytesDown, prevInitial)
