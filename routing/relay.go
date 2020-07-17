@@ -188,11 +188,11 @@ func (r *Relay) UnmarshalBinary(data []byte) error {
 		return errors.New("failed to unmarshal relay seller name")
 	}
 
-	if !encoding.ReadUint64(data, &index, &r.Seller.IngressPriceCents) {
+	if !encoding.ReadUint64(data, &index, &r.Seller.IngressPriceNibblinsPerGB) {
 		return errors.New("failed to unmarshal relay seller ingress price")
 	}
 
-	if !encoding.ReadUint64(data, &index, &r.Seller.EgressPriceCents) {
+	if !encoding.ReadUint64(data, &index, &r.Seller.EgressPriceNibblinsPerGB) {
 		return errors.New("failed to unmarshal relay seller egress price")
 	}
 
@@ -282,8 +282,8 @@ func (r Relay) MarshalBinary() (data []byte, err error) {
 	encoding.WriteBytes(data, &index, r.PublicKey, crypto.KeySize)
 	encoding.WriteString(data, &index, r.Seller.ID, uint32(len(r.Seller.ID)))
 	encoding.WriteString(data, &index, r.Seller.Name, uint32(len(r.Seller.Name)))
-	encoding.WriteUint64(data, &index, r.Seller.IngressPriceCents)
-	encoding.WriteUint64(data, &index, r.Seller.EgressPriceCents)
+	encoding.WriteUint64(data, &index, r.Seller.IngressPriceNibblinsPerGB)
+	encoding.WriteUint64(data, &index, r.Seller.EgressPriceNibblinsPerGB)
 	encoding.WriteUint64(data, &index, r.Datacenter.ID)
 	encoding.WriteString(data, &index, r.Datacenter.Name, uint32(len(r.Datacenter.Name)))
 	encoding.WriteBool(data, &index, r.Datacenter.Enabled)
