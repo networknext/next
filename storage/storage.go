@@ -126,3 +126,11 @@ type AlreadyExistsError struct {
 func (e *AlreadyExistsError) Error() string {
 	return fmt.Sprintf("%s with reference %v already exists", e.resourceType, e.resourceRef)
 }
+
+type HexStringConversionError struct {
+	hexString string
+}
+
+func (e *HexStringConversionError) Error() string {
+	return fmt.Sprintf("error converting hex string %s to uint64", e.hexString)
+}

@@ -1091,11 +1091,11 @@ func (fs *Firestore) RemoveDatacenterMap(ctx context.Context, dcMap routing.Data
 		// all components must match (one-to-many)
 		buyerID, err := strconv.ParseUint(dcm.Buyer, 16, 64)
 		if err != nil {
-			return fmt.Errorf("error converting BuyerID %s to uint64: %v", dcm.Buyer, err)
+			return &HexStringConversionError{hexString: dcm.Buyer}
 		}
 		datacenter, err := strconv.ParseUint(dcm.Datacenter, 16, 64)
 		if err != nil {
-			return fmt.Errorf("error converting Datacenter %s to uint64: %v", dcm.Datacenter, err)
+			return &HexStringConversionError{hexString: dcm.Datacenter}
 		}
 
 		if dcMap.Alias == dcm.Alias && dcMap.BuyerID == buyerID && dcMap.Datacenter == datacenter {
