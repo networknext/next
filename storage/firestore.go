@@ -75,10 +75,11 @@ type relay struct {
 }
 
 type datacenter struct {
-	Name      string  `firestore:"name"`
-	Enabled   bool    `firestore:"enabled"`
-	Latitude  float64 `firestore:"latitude"`
-	Longitude float64 `firestore:"longitude"`
+	Name         string  `firestore:"name"`
+	Enabled      bool    `firestore:"enabled"`
+	Latitude     float64 `firestore:"latitude"`
+	Longitude    float64 `firestore:"longitude"`
+	SupplierName string  `firestore:"supplierName"`
 }
 
 type datacenterMap struct {
@@ -101,6 +102,7 @@ type routingRulesSettings struct {
 	EnableYouOnlyLiveOnce        bool    `firestore:"youOnlyLiveOnce"`
 	EnablePacketLossSafety       bool    `firestore:"packetLossSafety"`
 	EnableMultipathForPacketLoss bool    `firestore:"packetLossMultipath"`
+	MultipathPacketLossThreshold float32 `firestore:"multipathPacketLossThreshold"`
 	EnableMultipathForJitter     bool    `firestore:"jitterMultipath"`
 	EnableMultipathForRTT        bool    `firestore:"rttMultipath"`
 	EnableABTest                 bool    `firestore:"abTest"`
@@ -124,12 +126,13 @@ func NewFirestore(ctx context.Context, gcpProjectID string, logger log.Logger) (
 	}
 
 	return &Firestore{
-		Client:      client,
-		Logger:      logger,
-		datacenters: make(map[uint64]routing.Datacenter),
-		relays:      make(map[uint64]routing.Relay),
-		buyers:      make(map[uint64]routing.Buyer),
-		sellers:     make(map[string]routing.Seller),
+		Client:         client,
+		Logger:         logger,
+		datacenters:    make(map[uint64]routing.Datacenter),
+		datacenterMaps: make(map[uint64]routing.DatacenterMap),
+		relays:         make(map[uint64]routing.Relay),
+		buyers:         make(map[uint64]routing.Buyer),
+		sellers:        make(map[string]routing.Seller),
 	}, nil
 }
 
@@ -1068,7 +1071,7 @@ func (fs *Firestore) RemoveDatacenterMap(ctx context.Context, dcMap routing.Data
 	defer dmdocs.Stop()
 
 	// Firestore is the source of truth
-	found := false
+	var dcm datacenterMap
 	for {
 		dmdoc, err := dmdocs.Next()
 		ref := dmdoc.Ref
@@ -1080,31 +1083,35 @@ func (fs *Firestore) RemoveDatacenterMap(ctx context.Context, dcMap routing.Data
 			return &FirestoreError{err: err}
 		}
 
-		var dcm routing.DatacenterMap
 		err = dmdoc.DataTo(&dcm)
 		if err != nil {
 			return &UnmarshalError{err: err}
 		}
 
 		// all components must match (one-to-many)
-		// could use cmp?
-		if dcMap.Alias == dcm.Alias && dcMap.BuyerID == dcm.BuyerID && dcMap.Datacenter == dcm.Datacenter {
+		buyerID, err := strconv.ParseUint(dcm.Buyer, 16, 64)
+		if err != nil {
+			return &HexStringConversionError{hexString: dcm.Buyer}
+		}
+		datacenter, err := strconv.ParseUint(dcm.Datacenter, 16, 64)
+		if err != nil {
+			return &HexStringConversionError{hexString: dcm.Datacenter}
+		}
+
+		if dcMap.Alias == dcm.Alias && dcMap.BuyerID == buyerID && dcMap.Datacenter == datacenter {
 			_, err := ref.Delete(ctx)
 			if err != nil {
 				return &FirestoreError{err: err}
 			}
-			found = true
+
+			// delete local copy as well
+			fs.datacenterMapMutex.Lock()
+			id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.Datacenter))
+			delete(fs.datacenterMaps, id)
+			fs.datacenterMapMutex.Unlock()
+
+			return nil
 		}
-	}
-
-	if found {
-		fs.datacenterMapMutex.RLock()
-		id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.Datacenter))
-
-		delete(fs.datacenterMaps, id)
-
-		fs.datacenterMapMutex.RUnlock()
-		return nil
 	}
 
 	return &DoesNotExistError{resourceType: "datacenterMap", resourceRef: fmt.Sprintf("%v", dcMap)}
@@ -1137,10 +1144,11 @@ func (fs *Firestore) Datacenters() []routing.Datacenter {
 
 func (fs *Firestore) AddDatacenter(ctx context.Context, d routing.Datacenter) error {
 	newDatacenterData := datacenter{
-		Name:      d.Name,
-		Enabled:   d.Enabled,
-		Latitude:  d.Location.Latitude,
-		Longitude: d.Location.Longitude,
+		Name:         d.Name,
+		Enabled:      d.Enabled,
+		Latitude:     d.Location.Latitude,
+		Longitude:    d.Location.Longitude,
+		SupplierName: d.SupplierName,
 	}
 
 	// Add the datacenter in remote storage
@@ -1237,10 +1245,11 @@ func (fs *Firestore) SetDatacenter(ctx context.Context, d routing.Datacenter) er
 		if crypto.HashID(datacenterInRemoteStorage.Name) == d.ID {
 			// Set the data to update the datacenter with
 			newDatacenterData := map[string]interface{}{
-				"name":      d.Name,
-				"enabled":   d.Enabled,
-				"latitude":  d.Location.Latitude,
-				"longitude": d.Location.Longitude,
+				"name":         d.Name,
+				"enabled":      d.Enabled,
+				"latitude":     d.Location.Latitude,
+				"longitude":    d.Location.Longitude,
+				"supplierName": d.SupplierName,
 			}
 
 			// Update the datacenter in firestore
@@ -1349,6 +1358,7 @@ func (fs *Firestore) syncDatacenters(ctx context.Context) error {
 				Latitude:  float64(d.Latitude),
 				Longitude: float64(d.Longitude),
 			},
+			SupplierName: d.SupplierName,
 		}
 	}
 
@@ -1446,6 +1456,7 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 				Latitude:  d.Latitude,
 				Longitude: d.Longitude,
 			},
+			SupplierName: d.SupplierName,
 		}
 
 		relay.Datacenter = datacenter
@@ -1645,6 +1656,7 @@ func (fs *Firestore) createRouteRulesSettingsForBuyerID(ctx context.Context, ID 
 		EnableYouOnlyLiveOnce:        rrs.EnableYouOnlyLiveOnce,
 		EnablePacketLossSafety:       rrs.EnablePacketLossSafety,
 		EnableMultipathForPacketLoss: rrs.EnableMultipathForPacketLoss,
+		MultipathPacketLossThreshold: rrs.MultipathPacketLossThreshold,
 		EnableMultipathForJitter:     rrs.EnableMultipathForJitter,
 		EnableMultipathForRTT:        rrs.EnableMultipathForRTT,
 		EnableABTest:                 rrs.EnableABTest,
@@ -1705,6 +1717,7 @@ func (fs *Firestore) getRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 	rrs.EnableYouOnlyLiveOnce = tempRRS.EnableYouOnlyLiveOnce
 	rrs.EnablePacketLossSafety = tempRRS.EnablePacketLossSafety
 	rrs.EnableMultipathForPacketLoss = tempRRS.EnableMultipathForPacketLoss
+	rrs.MultipathPacketLossThreshold = tempRRS.MultipathPacketLossThreshold
 	rrs.EnableMultipathForJitter = tempRRS.EnableMultipathForJitter
 	rrs.EnableMultipathForRTT = tempRRS.EnableMultipathForRTT
 	rrs.EnableABTest = tempRRS.EnableABTest
@@ -1722,25 +1735,26 @@ func (fs *Firestore) setRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 
 	// Convert RoutingRulesSettings struct to firestore map
 	rrsFirestore := map[string]interface{}{
-		"displayName":              name,
-		"envelopeKbpsUp":           rrs.EnvelopeKbpsUp,
-		"envelopeKbpsDown":         rrs.EnvelopeKbpsDown,
-		"mode":                     rrs.Mode,
-		"maxPricePerGBNibblins":    int64(billing.CentsToNibblins(rrs.MaxCentsPerGB)),
-		"acceptableLatency":        rrs.AcceptableLatency,
-		"rttRouteSwitch":           rrs.RTTEpsilon,
-		"rttThreshold":             rrs.RTTThreshold,
-		"rttHysteresis":            rrs.RTTHysteresis,
-		"rttVeto":                  rrs.RTTVeto,
-		"youOnlyLiveOnce":          rrs.EnableYouOnlyLiveOnce,
-		"packetLossSafety":         rrs.EnablePacketLossSafety,
-		"packetLossMultipath":      rrs.EnableMultipathForPacketLoss,
-		"jitterMultipath":          rrs.EnableMultipathForJitter,
-		"rttMultipath":             rrs.EnableMultipathForRTT,
-		"abTest":                   rrs.EnableABTest,
-		"tryBeforeYouBuy":          rrs.EnableTryBeforeYouBuy,
-		"tryBeforeYouBuyMaxSlices": rrs.TryBeforeYouBuyMaxSlices,
-		"selectionPercentage":      rrs.SelectionPercentage,
+		"displayName":                  name,
+		"envelopeKbpsUp":               rrs.EnvelopeKbpsUp,
+		"envelopeKbpsDown":             rrs.EnvelopeKbpsDown,
+		"mode":                         rrs.Mode,
+		"maxPricePerGBNibblins":        int64(billing.CentsToNibblins(rrs.MaxCentsPerGB)),
+		"acceptableLatency":            rrs.AcceptableLatency,
+		"rttRouteSwitch":               rrs.RTTEpsilon,
+		"rttThreshold":                 rrs.RTTThreshold,
+		"rttHysteresis":                rrs.RTTHysteresis,
+		"rttVeto":                      rrs.RTTVeto,
+		"youOnlyLiveOnce":              rrs.EnableYouOnlyLiveOnce,
+		"packetLossSafety":             rrs.EnablePacketLossSafety,
+		"packetLossMultipath":          rrs.EnableMultipathForPacketLoss,
+		"multipathPacketLossThreshold": rrs.MultipathPacketLossThreshold,
+		"jitterMultipath":              rrs.EnableMultipathForJitter,
+		"rttMultipath":                 rrs.EnableMultipathForRTT,
+		"abTest":                       rrs.EnableABTest,
+		"tryBeforeYouBuy":              rrs.EnableTryBeforeYouBuy,
+		"tryBeforeYouBuyMaxSlices":     rrs.TryBeforeYouBuyMaxSlices,
+		"selectionPercentage":          rrs.SelectionPercentage,
 	}
 
 	// Attempt to set route shader for buyer

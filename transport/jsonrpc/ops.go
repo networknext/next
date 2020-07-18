@@ -635,6 +635,29 @@ func (s *OpsService) RelayNICSpeedUpdate(r *http.Request, args *RelayNICSpeedUpd
 	return nil
 }
 
+type DatacenterArg struct {
+	ID uint64
+}
+
+type DatacenterReply struct {
+	Datacenter routing.Datacenter
+}
+
+func (s *OpsService) Datacenter(r *http.Request, arg *DatacenterArg, reply *DatacenterReply) error {
+
+	var datacenter routing.Datacenter
+	var err error
+	if datacenter, err = s.Storage.Datacenter(arg.ID); err != nil {
+		err = fmt.Errorf("Datacenter() error: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	reply.Datacenter = datacenter
+	return nil
+
+}
+
 type DatacentersArgs struct {
 	Name string `json:"name"`
 }
@@ -644,21 +667,23 @@ type DatacentersReply struct {
 }
 
 type datacenter struct {
-	Name      string  `json:"name"`
-	ID        string  `json:"id"`
-	Latitude  float64 `json:"latitude"`
-	Longitude float64 `json:"longitude"`
-	Enabled   bool    `json:"enabled"`
+	Name         string  `json:"name"`
+	ID           string  `json:"id"`
+	Latitude     float64 `json:"latitude"`
+	Longitude    float64 `json:"longitude"`
+	Enabled      bool    `json:"enabled"`
+	SupplierName string  `json:"supplierName"`
 }
 
 func (s *OpsService) Datacenters(r *http.Request, args *DatacentersArgs, reply *DatacentersReply) error {
 	for _, d := range s.Storage.Datacenters() {
 		reply.Datacenters = append(reply.Datacenters, datacenter{
-			Name:      d.Name,
-			ID:        fmt.Sprintf("%x", d.ID),
-			Enabled:   d.Enabled,
-			Latitude:  d.Location.Latitude,
-			Longitude: d.Location.Longitude,
+			Name:         d.Name,
+			ID:           fmt.Sprintf("%x", d.ID),
+			Enabled:      d.Enabled,
+			Latitude:     d.Location.Latitude,
+			Longitude:    d.Location.Longitude,
+			SupplierName: d.SupplierName,
 		})
 	}
 
@@ -761,6 +786,40 @@ func (s *OpsService) ListDatacenterMaps(r *http.Request, args *ListDatacenterMap
 
 	reply.DatacenterMaps = replySlice
 
+	return nil
+}
+
+type ServerArgs struct {
+	BuyerID string `json:"buyer_id"`
+}
+
+type ServerReply struct {
+	ServerAddresses []string `json:"server_addrs"`
+}
+
+func (s *OpsService) Servers(r *http.Request, args *ServerArgs, reply *ServerReply) error {
+	var err error
+	var serverAddresses []string
+
+	// get the top session IDs globally or for a buyer from the sorted set
+	switch args.BuyerID {
+	case "":
+		err = s.RedisClient.SMembers("servers").ScanSlice(&serverAddresses)
+		if err != nil {
+			err = fmt.Errorf("Servers() failed getting servers: %v", err)
+			s.Logger.Log("err", err)
+			return err
+		}
+	default:
+		err = s.RedisClient.SMembers(fmt.Sprintf("buyer-%s-servers", args.BuyerID)).ScanSlice(&serverAddresses)
+		if err != nil {
+			err = fmt.Errorf("Servers() failed getting servers: %v", err)
+			s.Logger.Log("err", err)
+			return err
+		}
+	}
+
+	reply.ServerAddresses = serverAddresses
 	return nil
 }
 
