@@ -941,7 +941,7 @@ func main() {
 	var datacentersCommand = &ffcli.Command{
 		Name:       "datacenters",
 		ShortUsage: "next datacenters <name>",
-		ShortHelp:  "Manage datacenters and mappings",
+		ShortHelp:  "List datacenters",
 		Exec: func(_ context.Context, args []string) error {
 			if len(args) > 0 {
 				datacenters(rpcClient, env, args[0])
