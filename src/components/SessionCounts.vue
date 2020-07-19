@@ -1,13 +1,20 @@
 <template>
-  <h1 class="count-header">
-    {{ $store.getters.currentPage[0].toUpperCase() + $store.getters.currentPage.slice(1) }}&nbsp;
-    <span class="badge badge-dark">
-      {{ this.totalSessions }} Total Sessions
-    </span>&nbsp;
-    <span class="badge badge-success">
-      {{ this.totalSessionsReply.onNN }} on Network Next
-    </span>
-  </h1>
+  <div>
+    <div v-if="!showCount">
+        <div class="spinner-border" role="status">
+            <span class="sr-only">Loading...</span>
+        </div>
+    </div>
+    <h1 class="count-header" v-if="showCount">
+      {{ $store.getters.currentPage[0].toUpperCase() + $store.getters.currentPage.slice(1) }}&nbsp;
+      <span class="badge badge-dark">
+        {{ this.totalSessions }} Total Sessions
+      </span>&nbsp;
+      <span class="badge badge-success">
+        {{ this.totalSessionsReply.onNN }} on Network Next
+      </span>
+    </h1>
+  </div>
 </template>
 
 <script lang="ts">
@@ -24,6 +31,8 @@ export default class SessionCounts extends Vue {
   private totalSessionsReply: TotalSessionsReply
   private apiService: APIService
   private countLoop = -1
+
+  private showCount = false
 
   // TODO: These values should probably go in a store
 
@@ -56,6 +65,9 @@ export default class SessionCounts extends Vue {
       .then((response: any) => {
         this.totalSessionsReply.direct = response.result.direct
         this.totalSessionsReply.onNN = response.result.next
+        if (!this.showCount) {
+          this.showCount = true
+        }
       })
       .catch((error: any) => {
         console.log(error)

@@ -19,7 +19,7 @@
         <div class="mr-auto"></div>
       </div>
     </div>
-    <form class="flow-stats-form" @submit.prevent="loadSessionDetails()">
+    <form class="flow-stats-form" @submit.prevent="fetchSessionDetails()">
       <div class="form-group">
         <label for="session-id-input">
             Session ID
@@ -29,7 +29,7 @@
             <input class="form-control"
                    type="text"
                    placeholder="Enter a Session ID to view statistics"
-                   v-model="searchID"
+                   v-model="searchInput"
             >
           </div>
           <div class="col-auto">
@@ -48,43 +48,52 @@
     <div class="alert alert-danger" role="alert" id="session-tool-danger" v-if="showError">
       Failed to fetch session details
     </div>
-    <router-view/>
+    <SessionDetails v-if="searchID != ''" v-bind:searchID="searchID"/>
   </main>
 </template>
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
+import { Route, NavigationGuardNext } from 'vue-router'
+import SessionDetails from '@/components/SessionDetails.vue'
 
 /**
  * TODO: Cleanup template
  * TODO: Figure out what sessionMeta fields need to be required
  */
 
-@Component
+@Component({
+  components: {
+    SessionDetails
+  }
+})
 export default class SessionToolWorkspace extends Vue {
   // TODO: Refactor out the alert/error into its own component.
+  // TODO: Figure out how to make searchID and searchInput the same
+
   private showAlert = false
   private showError = false
 
   private searchID = ''
+  private searchInput = ''
   private showDetails = false
 
   private created () {
     // Empty for now
+    this.searchID = this.$route.params.id || ''
+    this.searchInput = this.searchID
   }
 
-  private loadSessionDetails () {
-    // API Call to fetch the details associated to ID
-    this.$router.push(`/session-tool/${this.searchID}`)
-  }
-
-  private beforeRouteUpdate (to: any, from: any, next: any) {
-    if (to.params.pathMatch) {
-      this.searchID = to.params.pathMatch
-    } else {
+  private beforeRouteUpdate (to: Route, from: Route, next: NavigationGuardNext<Vue>) {
+    if (!to.params.id) {
+      this.searchInput = ''
       this.searchID = ''
     }
     next()
+  }
+
+  private fetchSessionDetails () {
+    this.searchID = this.searchInput
   }
 }
 

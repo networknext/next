@@ -1,6 +1,11 @@
 <template>
-  <div v-if="showDetails">
-    <div class="row">
+  <div>
+    <div v-if="!showDetails">
+        <div class="spinner-border" role="status">
+            <span class="sr-only">Loading...</span>
+        </div>
+    </div>
+    <div class="row" v-if="showDetails">
       <div class="col-12 col-lg-8">
         <div class="card mb-2">
           <div class="card-header">
@@ -98,15 +103,17 @@
       <div class="col-12 col-lg-4">
         <div class="card">
           <div class="card-img-top">
-            <div id="session-tool-map"
-                  style="
+            <div class="map-container-no-offset" style="
                       width: 100%;
                       height: 40vh;
                       margin: 0px;
                       padding: 0px;
                       position: relative;
-                  "
-            ></div>
+            ">
+              <div id="map" ref="map"></div>
+              <canvas id="deck-canvas" ref="canvas"></canvas>
+            </div>
+
           </div>
           <div class="card-body">
             <div class="card-text">
@@ -116,16 +123,16 @@
                 </dt>
                 <dd>
                   <em>
-                    META LOCATION ISP
+                    {{ this.meta.location.isp != "" ? this.meta.location.isp : "Unknown" }}
                   </em>
                 </dd>
-                <div v-if="false">
+                <div v-if="!$store.getters.isAnonymous">
                   <dt>
                     User Hash
                   </dt>
                   <dd>
                     <a class="text-dark">
-                      META USER HASH
+                      {{ this.meta.user_hash }}
                     </a>
                   </dd>
                 </div>
@@ -133,13 +140,13 @@
                     User IP Address
                 </dt>
                 <dd>
-                    META CLIENT ADDR
+                    {{ this.meta.client_addr }}
                 </dd>
                 <dt>
                     Platform
                 </dt>
                 <dd>
-                    META PLATFORM
+                    {{ this.meta.platform }}
                 </dd>
                 <dt v-if="false">
                     Customer
@@ -151,21 +158,22 @@
                   SDK Version
                 </dt>
                 <dd>
-                  META SDK
+                  {{ this.meta.sdk }}
                 </dd>
                 <dt>
                   Connection Type
                 </dt>
                 <dd>
-                  META CONNECTION
+                  {{ this.meta.connection }}
                 </dd>
-                <dt v-if="false">
+                <!-- TODO: Combine this so that we only check is Admin once -->
+                <dt v-if="$store.getters.isAdmin && meta.nearby_relays.length > 0">
                     Nearby Relays
                 </dt>
-                <dd v-if="false">
+                <dd v-if="$store.getters.isAdmin && meta.nearby_relays.length == 0">
                     No Nearby Relays
                 </dd>
-                <table class="table table-sm mt-1" v-if="false">
+                <table class="table table-sm mt-1" v-if="$store.getters.isAdmin && meta.nearby_relays.length > 0">
                   <thead>
                     <tr>
                       <th style="width: 50%;">
@@ -183,27 +191,26 @@
                     </tr>
                   </thead>
                   <tbody>
-                      <!-- <tr v-for="relay in pages.sessionTool.meta.nearby_relays"> -->
-                      <tr>
+                      <tr v-for="(relay, index) in this.meta.nearby_relays" :key="index">
                         <td>
-                          <a class="text-dark">NAME</a>&nbsp;
+                          <a class="text-dark">{{relay.name}}</a>&nbsp;
                         </td>
                         <td>
-                          CLIENT STATS RTT
+                          {{ parseFloat(relay.client_stats.rtt).toFixed(2) }}
                         </td>
                         <td>
-                          CLIENT STATS JITTER
+                          {{ parseFloat(relay.client_stats.jitter).toFixed(2) }}
                         </td>
                         <td>
-                          CLIENT STATS PACKETLOSS%
+                          {{ parseFloat(relay.client_stats.packet_loss).toFixed(2) }}%
                         </td>
                       </tr>
                   </tbody>
                 </table>
-                <dt  v-if="false">
+                <dt  v-if="$store.getters.isAdmin">
                     Route
                 </dt>
-                <table class="table table-sm mt-1" v-if="false">
+                <table class="table table-sm mt-1" v-if="$store.getters.isAdmin">
                   <thead>
                     <tr>
                       <th style="width: 50%;">
@@ -217,7 +224,7 @@
                   <tbody>
                     <tr>
                         <td>
-                            META CLIENT ADDR
+                            {{ meta.client_addr }}
                         </td>
                         <td>
                             <em>
@@ -225,18 +232,17 @@
                             </em>
                         </td>
                     </tr>
-<!-- <tr v-for="(hop, index) in pages.sessionTool.meta.hops" scope="row"> -->
-                    <tr>
+                    <tr v-for="(hop, index) in pages.sessionTool.meta.hops" :key="index" scope="row">
                       <td>
-                          NAME
+                          {{ hop.name }}
                       </td>
                       <td>
-                          Hop INDEX + 1
+                          Hop {{ index + 1 }}
                       </td>
                     </tr>
                     <tr>
                       <td>
-                        META SERVER ADDR
+                        {{ meta.server_addr }}
                       </td>
                       <td>
                           <em>Destination Server</em>
@@ -254,8 +260,14 @@
 </template>
 
 <script lang="ts">
-import { Component, Vue } from 'vue-property-decorator'
+import { Component, Vue, Prop } from 'vue-property-decorator'
+import { Route, NavigationGuardNext } from 'vue-router'
+import APIService from '@/services/api.service'
+import mapboxgl from 'mapbox-gl'
+import { Deck } from '@deck.gl/core'
+import { ScreenGridLayer } from '@deck.gl/aggregation-layers'
 
+import uPlot from 'uplot'
 /**
  * TODO: Cleanup template
  * TODO: Figure out what sessionMeta fields need to be required
@@ -264,20 +276,395 @@ import { Component, Vue } from 'vue-property-decorator'
 
 @Component
 export default class SessionDetails extends Vue {
+  @Prop({required: false, type: String, default: ''}) searchID!: string
+
   // TODO: Refactor out the alert/error into its own component.
   private showDetails = false
+  private apiService: APIService
 
-  private created () {
-    console.log('Creating session details')
+  private meta: any = null
+  private slices: Array<any> = []
+
+  private detailsLoop = -1
+
+  private latencyComparisonChart: any = null
+  private jitterComparisonChart: any = null
+  private packetLossComparisonChart: any = null
+  private bandwidthChart: any = null
+
+  private deckGlInstance: any = null
+  private mapInstance: any = null
+
+  private accessToken = 'pk.eyJ1Ijoibm5zZWN1cml0eSIsImEiOiJja2FmaXE1Y2cwZGRiMzBub2p3cnE4c3czIn0.3QIueg8fpEy5cBtqRuXMxw'
+
+  private viewState = {
+    latitude: 0,
+    longitude: 0,
+    zoom: 2,
+    pitch: 0,
+    bearing: 0,
+    minZoom: 0
+  }
+
+  constructor () {
+    super()
+    this.apiService = Vue.prototype.$apiService
+  }
+
+  private mounted () {
+    console.log(this.$refs)
     this.fetchSessionDetails()
-    /* setInterval(() => {
+    /* this.detailsLoop = setInterval(() => {
       this.fetchSessionDetails()
-    }, 10000) */
+    }, 1000) */
+  }
+
+  private beforeDestroy () {
+    clearInterval(this.detailsLoop)
   }
 
   private fetchSessionDetails () {
-    // API Call to fetch the details associated to ID
-    this.showDetails = true
+    this.apiService.call('BuyersService.SessionDetails', {session_id: this.searchID})
+      .then((response: any) => {
+        this.meta = response.result.meta
+        this.slices = response.result.slices
+        
+        this.meta.connection = this.meta.connection == "wifi" ? "Wifi" : this.meta.connection.charAt(0).toUpperCase() + this.meta.connection.slice(1)
+
+        if (!this.showDetails) {
+          this.showDetails = true
+        }
+
+        setTimeout(() => {
+          // this.generateCharts()
+					if(!this.detailsLoop) {
+
+            const NNCOLOR = [0,109,44];
+            const DIRECTCOLOR = [49,130,189];
+
+            const cellSize = 10
+            const aggregation = 'MEAN'
+            const gpuAggregation = navigator.appVersion.indexOf("Win") == -1;
+
+            if (!this.mapInstance) {
+              this.mapInstance = new mapboxgl.Map({
+                accessToken: this.accessToken,
+                style: 'mapbox://styles/mapbox/dark-v10',
+                center: [
+                  0,
+                  0
+                ],
+                zoom: 2,
+                pitch: 0,
+                bearing: 0,
+                container: 'map'
+              })
+            }
+
+            let sessionLocationLayer = new ScreenGridLayer({
+                id: 'session-location-layer',
+                data: [this.meta],
+                opacity: 0.8,
+                getPosition: (d: any) => [d.location.longitude, d.location.latitude],
+                getWeight: (d: any) => 1,
+                cellSizePixels: cellSize,
+                colorRange: this.meta.on_network_next ? [NNCOLOR] : [DIRECTCOLOR],
+                gpuAggregation,
+                aggregation
+              })
+
+            if (!this.deckGlInstance) {
+              // creating the deck.gl instance
+              this.deckGlInstance = new Deck({
+                canvas: document.getElementById('deck-canvas'),
+                width: '100%',
+                height: '100%',
+                initialViewState: this.viewState,
+                controller: {
+                  dragRotate: false,
+                  dragTilt: false
+                },
+                // change the map's viewstate whenever the view state of deck.gl changes
+                onViewStateChange: ({ viewState }: any) => {
+                  this.mapInstance.jumpTo({
+                    center: [viewState.longitude, viewState.latitude],
+                    zoom: viewState.zoom,
+                    bearing: viewState.bearing,
+                    pitch: viewState.pitch,
+                    minZoom: 2
+                  })
+                },
+                layers: [sessionLocationLayer]
+              })
+            } else {
+              this.deckGlInstance.setProps({ layers: [] })
+              this.deckGlInstance.setProps({ layers: [sessionLocationLayer] })
+            }
+          }
+        })
+
+        console.log(this.meta)
+        console.log(this.slices)
+      })
+      .catch((error: any) => {
+        console.log(error)
+      })
+  }
+
+  private generateCharts() {
+    let improvement: Array<any> = [[], []]
+    let comparison: Array<any> = [[], [], []]
+    let latencyData = {
+      improvement: improvement,
+      comparison: comparison
+    }
+    let jitterData = {
+      improvement: improvement,
+      comparison: comparison
+    }
+    let packetLossData = {
+      improvement: improvement,
+      comparison: comparison
+    }
+    let bandwidthData = comparison
+
+    let lastEntryNN = false
+    let countNN = 0
+    let directOnly = true
+
+    this.slices.map((entry: any) => {
+      let timestamp = new Date(entry.timestamp).getTime() / 1000
+      let onNN = entry.on_network_next
+
+      if (directOnly && onNN) {
+        directOnly = false
+      }
+
+      let nextRTT = parseFloat(entry.next.rtt)
+      let directRTT = parseFloat(entry.direct.rtt)
+
+      let nextJitter = parseFloat(entry.next.jitter)
+      let directJitter = parseFloat(entry.direct.jitter)
+
+      let nextPL = parseFloat(entry.next.packet_loss)
+      let directPL = parseFloat(entry.direct.packet_loss)
+
+      if (lastEntryNN && !onNN) {
+        countNN = 0
+      }
+
+      if (onNN && countNN < 3) {
+        nextRTT = nextRTT >= directRTT ? directRTT : nextRTT
+        nextJitter = nextJitter >= directJitter ? directJitter : nextJitter
+        nextPL = 0
+        countNN++
+      }
+
+      // Latency
+      let next = (entry.is_multipath && nextRTT >= directRTT) ? directRTT : nextRTT
+      let direct = directRTT
+      latencyData.comparison[0].push(timestamp)
+      latencyData.comparison[1].push(next)
+      latencyData.comparison[2].push(direct)
+
+      // Jitter
+      next = (entry.is_multipath && nextJitter >= directJitter) ? directJitter : nextJitter
+      direct = directJitter
+      jitterData.comparison[0].push(timestamp)
+      jitterData.comparison[1].push(next)
+      jitterData.comparison[2].push(direct)
+
+      // Packetloss
+      next = (entry.is_multipath && nextPL >= directPL) ? directPL : nextPL
+      direct = directPL
+      packetLossData.comparison[0].push(timestamp)
+      packetLossData.comparison[1].push(next)
+      packetLossData.comparison[2].push(direct)
+
+      // Bandwidth
+      bandwidthData[0].push(timestamp)
+      bandwidthData[1].push(entry.envelope.up)
+      bandwidthData[2].push(entry.envelope.down)
+
+      lastEntryNN = onNN
+    })
+
+    if (directOnly) {
+      latencyData.comparison.splice(1, 1)
+      jitterData.comparison.splice(1, 1)
+      packetLossData.comparison.splice(1, 1)
+    }
+
+    const latencyChartElement = document.getElementById('latency-chart-1')!
+    const jitterChartElement = document.getElementById('jitter-chart-1')!
+    const packetLossChartElement = document.getElementById('packet-loss-chart-1')!
+    const bandwidthChartElement = document.getElementById('bandwidth-chart-1')!
+
+    const defaultOpts = {
+      width: latencyChartElement.clientWidth,
+      height: 260,
+      cursor: {
+        drag: {
+          x: false,
+          y: false
+        }
+      }
+    }
+
+    let series = [
+      {}
+    ]
+
+    if (!directOnly) {
+      series.push({
+        stroke: "rgb(0, 109, 44)",
+        fill: "rgba(0, 109, 44, 0.1)",
+        label: "Network Next",
+        value: (self: any, rawValue: any) => rawValue.toFixed(2)
+      })
+    }
+
+    series.push({
+      stroke: "rgb(49, 130, 189)",
+      fill: "rgba(49, 130, 189, 0.1)",
+      label: "Direct",
+      value: (self: any, rawValue: any) => rawValue.toFixed(2)
+    })
+
+    const latencycomparisonOpts: uPlot.Options = {
+      ...defaultOpts,
+      scales: {
+        "ms": {
+          from: "y",
+          auto: false,
+          range: (self: any, min: any, max: any) => [
+            0,
+            max,
+          ],
+        }
+      },
+      series: series,
+      axes: [
+        {
+          show: false
+        },
+        {
+          scale: "ms",
+          show: true,
+          gap: 5,
+          size: 70,
+          values: (self: any, ticks: any) => ticks.map((rawValue: any) => rawValue + "ms"),
+        }
+      ],
+    }
+
+    series = [
+      {}
+    ]
+
+    if (!directOnly) {
+      series.push({
+        stroke: "rgb(0, 109, 44)",
+        fill: "rgba(0, 109, 44, 0.1)",
+        label: "Network Next",
+        value: (self: any, rawValue: any) => rawValue.toFixed(2)
+      })
+    }
+
+    series.push({
+      stroke: "rgba(49, 130, 189)",
+      fill: "rgba(49, 130, 189, 0.1)",
+      label: "Direct",
+      value: (self: any, rawValue: any) => rawValue.toFixed(2)
+    })
+
+    const packetLossComparisonOpts: uPlot.Options = {
+      ...defaultOpts,
+      scales: {
+        y: {
+          auto: false,
+          range: [0, 100],
+        }
+      },
+      series: series,
+      axes: [
+        {
+          show: false
+        },
+        {
+          show: true,
+          gap: 5,
+          size: 50,
+          values: (self: any, ticks: any) => ticks.map((rawValue: any) => rawValue + "%"),
+        }
+      ],
+    }
+
+    const bandwidthOpts: uPlot.Options = {
+      ...defaultOpts,
+      scales: {
+        "kbps": {
+          from: "y",
+          auto: false,
+          range: (self: any, min: any, max: any) => [
+            0,
+            max,
+          ],
+        }
+      },
+      series: [
+        {},
+        {
+          stroke: "blue",
+          fill: "rgba(0,0,255,0.1)",
+          label: "Up",
+        },
+        {
+          stroke: "orange",
+          fill: "rgba(255,165,0,0.1)",
+          label: "Down"
+        },
+      ],
+      axes: [
+        {
+          show: false
+        },
+        {
+          scale: "kbps",
+          show: true,
+          gap: 5,
+          size: 70,
+          values: (self: any, ticks: any) => ticks.map((rawValue: any) => rawValue + "kbps"),
+        },
+        {
+          show: false
+        }
+      ]
+    }
+
+    if (this.latencyComparisonChart !== null) {
+      this.latencyComparisonChart.destroy()
+    }
+
+    this.latencyComparisonChart = new uPlot(latencycomparisonOpts, latencyData.comparison, latencyChartElement)
+
+    if (this.jitterComparisonChart !== null) {
+      this.jitterComparisonChart.destroy()
+    }
+
+    this.jitterComparisonChart = new uPlot(latencycomparisonOpts, jitterData.comparison, jitterChartElement)
+
+    if (this.packetLossComparisonChart !== null) {
+      this.packetLossComparisonChart.destroy()
+    }
+
+    this.packetLossComparisonChart = new uPlot(packetLossComparisonOpts, packetLossData.comparison, packetLossChartElement)
+
+    if (this.bandwidthChart !== null) {
+      this.bandwidthChart.destroy()
+    }
+
+    this.bandwidthChart = new uPlot(bandwidthOpts, bandwidthData, bandwidthChartElement)
   }
 }
 
@@ -285,4 +672,27 @@ export default class SessionDetails extends Vue {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
+  .map-container-no-offset {
+    width: 100%;
+    height: calc(-160px + 100vh);
+    position: relative;
+    overflow: hidden;
+  }
+  #map {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: 1px solid rgb(136, 136, 136);
+    background-color: rgb(27, 27, 27);
+    overflow: hidden;
+  }
+  #deck-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
 </style>

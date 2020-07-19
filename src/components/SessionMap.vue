@@ -10,9 +10,10 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
-import { Deck, ScreenGridLayer } from '@deck.gl/core'
+import { Deck } from '@deck.gl/core'
+import { ScreenGridLayer } from '@deck.gl/aggregation-layers'
 import mapboxgl from 'mapbox-gl'
-import APIService from '../services/api.service'
+import APIService from '@/services/api.service'
 
 /**
  * TODO: Hookup API call
@@ -29,6 +30,8 @@ export default class SessionMap extends Vue {
 
   private mapInstance: any = null
   private deckGlInstance: any = null
+
+  private mapLoop = -1
 
   private apiService: APIService
 
@@ -48,9 +51,12 @@ export default class SessionMap extends Vue {
 
   private mounted () {
     this.refreshMapSessions()
-    setInterval(() => {
+    this. mapLoop = setInterval(() => {
       this.refreshMapSessions()
     }, 10000)
+  }
+  private beforeDestroy () {
+    clearInterval(this.mapLoop)
   }
 
   private refreshMapSessions () {
@@ -84,7 +90,7 @@ export default class SessionMap extends Vue {
         const aggregation = 'MEAN'
         const gpuAggregation = navigator.appVersion.indexOf('Win') === -1
 
-        const nnLayer = new Deck.ScreenGridLayer({
+        const nnLayer = new ScreenGridLayer({
           id: 'nn-layer',
           data: onNN,
           opacity: 0.8,

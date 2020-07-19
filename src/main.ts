@@ -20,6 +20,7 @@ Vue.prototype.$authService = authService
 
 store.dispatch('updateCurrentPage', router.currentRoute.name)
 router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
+  console.log(to.name)
   store.dispatch('updateCurrentPage', to.name)
   next()
 })

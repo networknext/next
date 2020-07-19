@@ -58,9 +58,7 @@
         </div>
       </div>
     </div>
-    <keep-alive>
-      <SessionMap/>
-    </keep-alive>
+    <SessionMap/>
   </main>
 </template>
 

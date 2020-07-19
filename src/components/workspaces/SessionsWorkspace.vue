@@ -109,9 +109,7 @@
               />
             </td>
             <td>
-              <a class="text-dark fixed-width" href="#">
-                {{ session.id }}
-              </a>
+              <router-link v-bind:to="`/session-tool/${session.id}`" class="nav-link">{{ session.id }}</router-link>
             </td>
             <td v-if="false">
               <a class="text-dark fixed-width" href="#">
@@ -162,6 +160,7 @@ import { Component, Vue } from 'vue-property-decorator'
 import SessionCounts from '@/components/SessionCounts.vue'
 import { SessionMeta } from '@/components/types/APITypes'
 import APIService from '../../services/api.service'
+import { Route, NavigationGuardNext } from 'vue-router'
 
 /**
  * TODO: Move the filter dropdown bar to its own component
@@ -213,6 +212,12 @@ export default class SessionsWorkspace extends Vue {
       .catch((error: any) => {
         console.log(error)
       })
+  }
+
+  private beforeRouteUpdate(to: Route, from: Route, next: NavigationGuardNext<Vue>) {
+    console.log('Before Route Update')
+    console.log(to)
+    console.log(from)
   }
 }
 </script>

@@ -149,7 +149,8 @@
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
 import Multiselect from 'vue-multiselect'
-import { UserAccount, Role } from './types/APITypes'
+import { Role } from './types/APITypes'
+import { UserProfile } from '../services/auth.service'
 
 @Component({
   components: {
@@ -158,7 +159,7 @@ import { UserAccount, Role } from './types/APITypes'
 })
 export default class UserManagement extends Vue {
   private allRoles: Array<Role> = []
-  private companyUsers: Array<UserAccount> = []
+  private companyUsers: Array<UserProfile> = []
 
   private value = [
   ]

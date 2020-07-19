@@ -135,22 +135,22 @@
     }
   }
 
-  .sidebar .nav-link {
+  .nav-link {
     font-weight: 500;
     color: #333;
   }
 
-  .sidebar .nav-link .feather {
+  .nav-link .feather {
     margin-right: 4px;
     color: #999;
   }
 
-  .sidebar .nav-link.active {
+  .nav-link.active {
     color: #007bff;
   }
 
-  .sidebar .nav-link:hover .feather,
-  .sidebar .nav-link.active .feather {
+  .nav-link:hover .feather,
+  .nav-link.active .feather {
     color: inherit;
   }
 
