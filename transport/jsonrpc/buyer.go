@@ -491,9 +491,9 @@ type mapPointsByte struct {
 }
 
 type point struct {
-	Latitude      int16
-	Longitude     int16
-	OnNetworkNext bool
+	Latitude      int16 `json:"latitude"`
+	Longitude     int16 `json:"longitude"`
+	OnNetworkNext bool  `json:"on_network_next"`
 }
 
 func (s *BuyersService) GenerateMapPointsPerBuyer() error {
