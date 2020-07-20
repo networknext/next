@@ -544,7 +544,7 @@
                                                 {{ session.location.isp != "" ? session.location.isp : "Unknown" }}
                                             </td>
                                             <td v-if="handlers.userHandler.isAdmin()">
-                                                {{ handlers.userHandler.getCustomerName(pages.sessionTool.meta.customer_id) }}
+                                                {{ handlers.userHandler.getCustomerName(session.customer_id) }}
                                             </td>
                                             <td>
                                                 <span class="text-dark">
