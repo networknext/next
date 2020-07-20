@@ -23,7 +23,7 @@ This is a monorepo that contains the Network Next backend.
 5. To deploy to dev, merge either your branch or `master` into the `dev` branch
 6. Semaphore will build your PR and copy artifacts to the google cloud gs://dev_artifacts bucket automatically.
 7. Manually trigger a rolling update in google cloud on each managed instance group you want to update to latest code. For dev there are managed instances for `billing` and `portal`.
-8. The server and relay dev backends must be deployed with the make tool via `make deply-server-backend` and `make deploy-relay-backend`.
+8. The server and relay dev backends must be deployed with the make tool via `make deploy-server-backend` and `make deploy-relay-backend`.
 
 ### Production Release
 
