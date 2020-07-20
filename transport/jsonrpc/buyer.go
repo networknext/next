@@ -526,22 +526,22 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 				}
 
 				// if there was no error then add the SessionMapPoint to the slice
-				//if currentPoint.Latitude != 0 && currentPoint.Longitude != 0 {
-				bytePoint := point{
-					Latitude:      int16(currentPoint.Latitude),
-					Longitude:     int16(currentPoint.Longitude),
-					OnNetworkNext: false,
-				}
+				if currentPoint.Latitude != 0 && currentPoint.Longitude != 0 {
+					bytePoint := point{
+						Latitude:      int16(currentPoint.Latitude),
+						Longitude:     int16(currentPoint.Longitude),
+						OnNetworkNext: false,
+					}
 
-				if currentPoint.OnNetworkNext {
-					bytePoint.OnNetworkNext = true
-					mapPointsGlobal.GreenPoints = append(mapPointsGlobal.GreenPoints, bytePoint)
-					mapPointsBuyer.GreenPoints = append(mapPointsGlobal.GreenPoints, bytePoint)
-				} else {
-					mapPointsGlobal.BluePoints = append(mapPointsGlobal.BluePoints, bytePoint)
-					mapPointsBuyer.BluePoints = append(mapPointsGlobal.BluePoints, bytePoint)
+					if currentPoint.OnNetworkNext {
+						bytePoint.OnNetworkNext = true
+						mapPointsGlobal.GreenPoints = append(mapPointsGlobal.GreenPoints, bytePoint)
+						mapPointsBuyer.GreenPoints = append(mapPointsGlobal.GreenPoints, bytePoint)
+					} else {
+						mapPointsGlobal.BluePoints = append(mapPointsGlobal.BluePoints, bytePoint)
+						mapPointsBuyer.BluePoints = append(mapPointsGlobal.BluePoints, bytePoint)
+					}
 				}
-				//}
 			}
 		}
 
