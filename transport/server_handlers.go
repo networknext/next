@@ -1161,7 +1161,6 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 		DatacenterID:              serverDataReadOnly.datacenter.ID,
 		RTTReduction:              prevRouteDecision.Reason&routing.DecisionRTTReduction != 0 || prevRouteDecision.Reason&routing.DecisionRTTReductionMultipath != 0,
 		PacketLossReduction:       prevRouteDecision.Reason&routing.DecisionHighPacketLossMultipath != 0,
-		NumNextRelaysPrice:        uint8(len(routeRelays)),
 		NextRelaysPrice:           nextRelaysPriceArray,
 	}
 
