@@ -354,7 +354,7 @@ func main() {
 			settings := pubsub.PublishSettings{
 				DelayThreshold: time.Hour,
 				CountThreshold: 1000,
-				ByteThreshold:  100 * 1024,
+				ByteThreshold:  60 * 1024,
 				NumGoroutines:  runtime.GOMAXPROCS(0),
 				Timeout:        time.Minute,
 			}
