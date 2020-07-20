@@ -265,13 +265,11 @@ MapHandler = {
 		let filter = rootComponent.$data.pages.map.filter;
 
 		JSONRPCClient
-			.call('BuyersService.SessionMapBinary', {buyer_id: filter.buyerId || ""})
+			.call('BuyersService.SessionMap', {buyer_id: filter.buyerId || ""})
 			.then((response) => {
-				console.log(response)
-				let charArray = response.map_points.split("")
-				console.log(charArray)
-				let byteArray = Uint32Array.from(charArray)
-				console.log(byteArray)
+				let onNN = response.map_points.green_points || [];
+				let direct = response.map_points.blue_points || [];
+
 				if (!this.mapInstance) {
 					this.mapInstance = new mapboxgl.Map({
 						accessToken: mapboxgl.accessToken,
@@ -286,13 +284,6 @@ MapHandler = {
 						container: 'map',
 					});
 				}
-				let sessions = response.map_points || [];
-				let onNN = sessions.filter((point) => {
-					return (point[2] == 1);
-				});
-				let direct = sessions.filter((point) => {
-					return (point[2] == 0);
-				});
 
 				const cellSize = 10, aggregation = 'MEAN';
 				let gpuAggregation = navigator.appVersion.indexOf("Win") == -1;
