@@ -352,14 +352,14 @@ func main() {
 		// Google Pubsub
 		{
 			settings := pubsub.PublishSettings{
-				DelayThreshold: time.Second * 10,
+				DelayThreshold: time.Hour,
 				CountThreshold: 1000,
-				ByteThreshold:  100 * 1024,
+				ByteThreshold:  60 * 1024,
 				NumGoroutines:  runtime.GOMAXPROCS(0),
 				Timeout:        time.Minute,
 			}
 
-			pubsub, err := billing.NewGooglePubSubBiller(pubsubCtx, billingMetrics, logger, gcpProjectID, "billing", 1, 0, &settings)
+			pubsub, err := billing.NewGooglePubSubBiller(pubsubCtx, billingMetrics, logger, gcpProjectID, "billing", 1, 1000, &settings)
 			if err != nil {
 				level.Error(logger).Log("msg", "could not create pubsub biller", "err", err)
 				os.Exit(1)
@@ -496,8 +496,6 @@ func main() {
 
 					// Increment the successful route matrix read counter
 					atomic.AddUint64(&readRouteMatrixSuccessCount, 1)
-
-					level.Info(logger).Log("matrix", "route", "entries", len(routeMatrix.Entries))
 
 					time.Sleep(syncInterval)
 				}
