@@ -1289,7 +1289,7 @@ is as follows:
 	"buyer_id": "bdbebdbf0f7be395"
 }
 
-The alias is uniquely defined by all three entries, so they must be provided. Hex IDs are required for now."
+The alias is uniquely defined by all three entries, so they must be provided. Hex IDs and names are supported."
 						`,
 						Exec: func(_ context.Context, args []string) error {
 							var err error
