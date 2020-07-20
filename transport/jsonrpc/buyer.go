@@ -463,7 +463,7 @@ type point struct {
 	OnNetworkNext bool
 }
 
-func (s *BuyersService) GenerateMapPointsPerBuyerByte() error {
+func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 

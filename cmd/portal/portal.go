@@ -318,7 +318,7 @@ func main() {
 		}
 
 		for {
-			if err := buyerService.GenerateMapPointsPerBuyerByte(); err != nil {
+			if err := buyerService.GenerateMapPointsPerBuyer(); err != nil {
 				level.Error(logger).Log("msg", "error generating sessions map points", "err", err)
 				os.Exit(1)
 			}
