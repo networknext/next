@@ -1707,7 +1707,7 @@ func (fs *Firestore) getRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 	rrs.EnvelopeKbpsUp = tempRRS.EnvelopeKbpsUp
 	rrs.EnvelopeKbpsDown = tempRRS.EnvelopeKbpsDown
 	rrs.Mode = tempRRS.Mode
-	rrs.MaxNibblinsPerGB = uint64(tempRRS.MaxPricePerGBNibblins)
+	rrs.MaxNibblinsPerGB = routing.Nibblin(tempRRS.MaxPricePerGBNibblins)
 	rrs.AcceptableLatency = tempRRS.AcceptableLatency
 	rrs.RTTEpsilon = tempRRS.RTTEpsilon
 	rrs.RTTThreshold = tempRRS.RTTThreshold

@@ -19,7 +19,7 @@ type RoutingRulesSettings struct {
 
 	// The maximum bid price in Nibblins a customer is willing to pay per GB of traffic sent over network next (1,000,000,000 Nibblins = $0.01 USD)
 	// For example a value of 100,000,000,000 here would mean the customer is willing to pay $1.00 USD per GB of network next accelerated traffic
-	MaxNibblinsPerGB uint64
+	MaxNibblinsPerGB Nibblin
 
 	// The maximum acceptable latency for the game. If we can't reduce the latency to be at least this then don't take network next
 	// Note: not currently being used in old backend

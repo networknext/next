@@ -111,23 +111,23 @@ type RoutingRulesSettingsReply struct {
 }
 
 type routingRuleSettings struct {
-	EnvelopeKbpsUp               int64   `json:"envelopeKbpsUp"`
-	EnvelopeKbpsDown             int64   `json:"envelopeKbpsDown"`
-	Mode                         int64   `json:"mode"`
-	MaxNibblinsPerGB             uint64  `json:"maxNibblinsPerGB"`
-	RTTEpsilon                   float32 `json:"rttEpsilon"`
-	RTTThreshold                 float32 `json:"rttThreshold"`
-	RTTHysteresis                float32 `json:"rttHysteresis"`
-	RTTVeto                      float32 `json:"rttVeto"`
-	EnableYouOnlyLiveOnce        bool    `json:"yolo"`
-	EnablePacketLossSafety       bool    `json:"plSafety"`
-	EnableMultipathForPacketLoss bool    `json:"plMultipath"`
-	EnableMultipathForJitter     bool    `json:"jitterMultipath"`
-	EnableMultipathForRTT        bool    `json:"rttMultipath"`
-	EnableABTest                 bool    `json:"abTest"`
-	EnableTryBeforeYouBuy        bool    `json:"tryBeforeYouBuy"`
-	TryBeforeYouBuyMaxSlices     int8    `json:"tryBeforeYouBuyMaxSlices"`
-	SelectionPercentage          int64   `json:"selectionPercentage"`
+	EnvelopeKbpsUp               int64           `json:"envelopeKbpsUp"`
+	EnvelopeKbpsDown             int64           `json:"envelopeKbpsDown"`
+	Mode                         int64           `json:"mode"`
+	MaxNibblinsPerGB             routing.Nibblin `json:"maxNibblinsPerGB"`
+	RTTEpsilon                   float32         `json:"rttEpsilon"`
+	RTTThreshold                 float32         `json:"rttThreshold"`
+	RTTHysteresis                float32         `json:"rttHysteresis"`
+	RTTVeto                      float32         `json:"rttVeto"`
+	EnableYouOnlyLiveOnce        bool            `json:"yolo"`
+	EnablePacketLossSafety       bool            `json:"plSafety"`
+	EnableMultipathForPacketLoss bool            `json:"plMultipath"`
+	EnableMultipathForJitter     bool            `json:"jitterMultipath"`
+	EnableMultipathForRTT        bool            `json:"rttMultipath"`
+	EnableABTest                 bool            `json:"abTest"`
+	EnableTryBeforeYouBuy        bool            `json:"tryBeforeYouBuy"`
+	TryBeforeYouBuyMaxSlices     int8            `json:"tryBeforeYouBuyMaxSlices"`
+	SelectionPercentage          int64           `json:"selectionPercentage"`
 }
 
 func (s *OpsService) RoutingRulesSettings(r *http.Request, args *RoutingRulesSettingsArgs, reply *RoutingRulesSettingsReply) error {
