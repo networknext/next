@@ -1476,8 +1476,8 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 		seller := routing.Seller{
 			ID:                        sdoc.Ref.ID,
 			Name:                      s.Name,
-			IngressPriceNibblinsPerGB: uint64(s.IngressPriceNibblinsPerGB),
-			EgressPriceNibblinsPerGB:  uint64(s.EgressPriceNibblinsPerGB),
+			IngressPriceNibblinsPerGB: routing.Nibblin(s.IngressPriceNibblinsPerGB),
+			EgressPriceNibblinsPerGB:  routing.Nibblin(s.EgressPriceNibblinsPerGB),
 		}
 
 		relay.Seller = seller
@@ -1615,8 +1615,8 @@ func (fs *Firestore) syncCustomers(ctx context.Context) error {
 			sellers[sdoc.Ref.ID] = routing.Seller{
 				ID:                        sdoc.Ref.ID,
 				Name:                      s.Name,
-				IngressPriceNibblinsPerGB: uint64(s.IngressPriceNibblinsPerGB),
-				EgressPriceNibblinsPerGB:  uint64(s.EgressPriceNibblinsPerGB),
+				IngressPriceNibblinsPerGB: routing.Nibblin(s.IngressPriceNibblinsPerGB),
+				EgressPriceNibblinsPerGB:  routing.Nibblin(s.EgressPriceNibblinsPerGB),
 			}
 		}
 	}

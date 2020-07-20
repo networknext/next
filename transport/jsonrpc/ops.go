@@ -205,10 +205,10 @@ type SellersReply struct {
 }
 
 type seller struct {
-	ID                   string `json:"id"`
-	Name                 string `json:"name"`
-	IngressPriceNibblins uint64 `json:"ingressPriceNibblins"`
-	EgressPriceNibblins  uint64 `json:"egressPriceNibblins"`
+	ID                   string          `json:"id"`
+	Name                 string          `json:"name"`
+	IngressPriceNibblins routing.Nibblin `json:"ingressPriceNibblins"`
+	EgressPriceNibblins  routing.Nibblin `json:"egressPriceNibblins"`
 }
 
 func (s *OpsService) Sellers(r *http.Request, args *SellersArgs, reply *SellersReply) error {

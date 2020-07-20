@@ -110,14 +110,14 @@ func TestRelay(t *testing.T) {
 		t.Run("missing seller egress price", func(t *testing.T) {
 			size += 8
 			buff = buff[:size]
-			encoding.WriteUint64(buff, &index, expected.Seller.IngressPriceNibblinsPerGB)
+			encoding.WriteUint64(buff, &index, uint64(expected.Seller.IngressPriceNibblinsPerGB))
 			assert.EqualError(t, actual.UnmarshalBinary(buff), "failed to unmarshal relay seller egress price")
 		})
 
 		t.Run("missing datacenter ID", func(t *testing.T) {
 			size += 8
 			buff = buff[:size]
-			encoding.WriteUint64(buff, &index, expected.Seller.EgressPriceNibblinsPerGB)
+			encoding.WriteUint64(buff, &index, uint64(expected.Seller.EgressPriceNibblinsPerGB))
 			assert.EqualError(t, actual.UnmarshalBinary(buff), "failed to unmarshal relay datacenter id")
 		})
 

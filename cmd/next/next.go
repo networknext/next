@@ -322,8 +322,8 @@ type buyer struct {
 
 type seller struct {
 	Name                 string
-	IngressPriceNibblins uint64
-	EgressPriceNibblins  uint64
+	IngressPriceNibblins routing.Nibblin
+	EgressPriceNibblins  routing.Nibblin
 }
 
 type relay struct {

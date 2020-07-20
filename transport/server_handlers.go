@@ -1069,12 +1069,12 @@ func CalculateTotalPriceNibblins(chosenRoute *routing.Route, envelopeBytesUp uin
 	envelopeUpGB := float64(envelopeBytesUp) / 1000000000.0
 	envelopeDownGB := float64(envelopeBytesDown) / 1000000000.0
 
-	sellerPriceNibblinsPerGB := uint64(0)
+	sellerPriceNibblinsPerGB := routing.Nibblin(0)
 	for _, relay := range chosenRoute.Relays {
 		sellerPriceNibblinsPerGB += relay.Seller.EgressPriceNibblinsPerGB
 	}
 
-	nextPriceNibblinsPerGB := uint64(1e9)
+	nextPriceNibblinsPerGB := routing.Nibblin(1e9)
 	totalPriceNibblins := float64(sellerPriceNibblinsPerGB+nextPriceNibblinsPerGB) * (envelopeUpGB + envelopeDownGB)
 
 	return uint64(totalPriceNibblins)
