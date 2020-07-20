@@ -547,9 +547,9 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 					sremtx.SRem("map-points-global", keyparts[1])
 					sremtx.SRem(fmt.Sprintf("map-points-%016x-buyer", buyer.ID), keyparts[1])
 					sremtx.ZRem("total-next", keyparts[1])
-					sremtx.SRem(fmt.Sprintf("total-next-buyer-%016x", buyer.ID), keyparts[1])
+					sremtx.ZRem(fmt.Sprintf("total-next-buyer-%016x", buyer.ID), keyparts[1])
 					sremtx.ZRem("total-direct", keyparts[1])
-					sremtx.SRem(fmt.Sprintf("total-direct-buyer-%016x", buyer.ID), keyparts[1])
+					sremtx.ZRem(fmt.Sprintf("total-direct-buyer-%016x", buyer.ID), keyparts[1])
 					continue
 				}
 
