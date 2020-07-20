@@ -596,7 +596,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 
 		body, err := ioutil.ReadAll(request.Body)
 		if err != nil {
-			level.Error(logger).Log("msg", "could not read packet", "err", err)
+			level.Error(handlerLogger).Log("msg", "could not read packet", "err", err)
 			writer.WriteHeader(http.StatusInternalServerError)
 			return
 		}
