@@ -52,16 +52,31 @@ func main() {
 	// Configure logging
 	logger := log.NewLogfmtLogger(os.Stdout)
 	relayslogger := log.NewLogfmtLogger(os.Stdout)
-	if projectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
-		loggingClient, err := gcplogging.NewClient(ctx, projectID)
+
+	var enableSDLogging bool
+	enableSDLoggingString, ok := os.LookupEnv("ENABLE_STACKDRIVER_LOGGING")
+	if ok {
+		var err error
+		enableSDLogging, err = strconv.ParseBool(enableSDLoggingString)
 		if err != nil {
-			level.Error(logger).Log("err", err)
+			level.Error(logger).Log("envvar", "ENABLE_STACKDRIVER_LOGGING", "msg", "could not parse", "err", err)
 			os.Exit(1)
 		}
-
-		logger = logging.NewStackdriverLogger(loggingClient, "relay-backend")
-		relayslogger = logging.NewStackdriverLogger(loggingClient, "relays")
 	}
+
+	if enableSDLogging {
+		if projectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
+			loggingClient, err := gcplogging.NewClient(ctx, projectID)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				os.Exit(1)
+			}
+
+			logger = logging.NewStackdriverLogger(loggingClient, "relay-backend")
+			relayslogger = logging.NewStackdriverLogger(loggingClient, "relays")
+		}
+	}
+
 	{
 		switch os.Getenv("BACKEND_LOG_LEVEL") {
 		case "none":
@@ -191,65 +206,96 @@ func main() {
 	// on creation so we can use that for the default then
 	if gcpProjectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
 
-		// Create a Firestore Storer
-		fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
-		if err != nil {
-			level.Error(logger).Log("err", err)
-			os.Exit(1)
+		// Firestore
+		{
+			// Create a Firestore Storer
+			fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				os.Exit(1)
+			}
+
+			fssyncinterval := os.Getenv("GOOGLE_FIRESTORE_SYNC_INTERVAL")
+			syncInterval, err := time.ParseDuration(fssyncinterval)
+			if err != nil {
+				level.Error(logger).Log("envvar", "GOOGLE_FIRESTORE_SYNC_INTERVAL", "value", fssyncinterval, "err", err)
+				os.Exit(1)
+			}
+			// Start a goroutine to sync from Firestore
+			go func() {
+				ticker := time.NewTicker(syncInterval)
+				fs.SyncLoop(ctx, ticker.C)
+			}()
+
+			// Set the Firestore Storer to give to handlers
+			db = fs
 		}
 
-		fssyncinterval := os.Getenv("GOOGLE_FIRESTORE_SYNC_INTERVAL")
-		syncInterval, err := time.ParseDuration(fssyncinterval)
-		if err != nil {
-			level.Error(logger).Log("envvar", "GOOGLE_FIRESTORE_SYNC_INTERVAL", "value", fssyncinterval, "err", err)
-			os.Exit(1)
+		// Stackdriver Metrics
+		{
+			var enableSDMetrics bool
+			var err error
+			enableSDMetricsString, ok := os.LookupEnv("ENABLE_STACKDRIVER_METRICS")
+			if ok {
+				enableSDMetrics, err = strconv.ParseBool(enableSDMetricsString)
+				if err != nil {
+					level.Error(logger).Log("envvar", "ENABLE_STACKDRIVER_METRICS", "msg", "could not parse", "err", err)
+					os.Exit(1)
+				}
+			}
+
+			if enableSDMetrics {
+				// Set up StackDriver metrics
+				sd := metrics.StackDriverHandler{
+					ProjectID:          gcpProjectID,
+					OverwriteFrequency: time.Second,
+					OverwriteTimeout:   10 * time.Second,
+				}
+
+				if err := sd.Open(ctx); err != nil {
+					level.Error(logger).Log("msg", "Failed to create StackDriver metrics client", "err", err)
+					os.Exit(1)
+				}
+
+				metricsHandler = &sd
+
+				sdwriteinterval := os.Getenv("GOOGLE_STACKDRIVER_METRICS_WRITE_INTERVAL")
+				writeInterval, err := time.ParseDuration(sdwriteinterval)
+				if err != nil {
+					level.Error(logger).Log("envvar", "GOOGLE_STACKDRIVER_METRICS_WRITE_INTERVAL", "value", sdwriteinterval, "err", err)
+					os.Exit(1)
+				}
+				go func() {
+					metricsHandler.WriteLoop(ctx, logger, writeInterval, 200)
+				}()
+			}
 		}
-		// Start a goroutine to sync from Firestore
-		go func() {
-			ticker := time.NewTicker(syncInterval)
-			fs.SyncLoop(ctx, ticker.C)
-		}()
 
-		// Set the Firestore Storer to give to handlers
-		db = fs
+		// Stackdriver Profiler
+		{
+			var enableSDProfiler bool
+			var err error
+			enableSDProfilerString, ok := os.LookupEnv("ENABLE_STACKDRIVER_PROFILER")
+			if ok {
+				enableSDProfiler, err = strconv.ParseBool(enableSDProfilerString)
+				if err != nil {
+					level.Error(logger).Log("envvar", "ENABLE_STACKDRIVER_PROFILER", "msg", "could not parse", "err", err)
+					os.Exit(1)
+				}
+			}
 
-		// todo: ryan, env var to enable stackdriver metrics. as per-server backend
-
-		// Set up StackDriver metrics
-		sd := metrics.StackDriverHandler{
-			ProjectID:          gcpProjectID,
-			OverwriteFrequency: time.Second,
-			OverwriteTimeout:   10 * time.Second,
-		}
-
-		if err := sd.Open(ctx); err != nil {
-			level.Error(logger).Log("msg", "Failed to create StackDriver metrics client", "err", err)
-			os.Exit(1)
-		}
-
-		metricsHandler = &sd
-
-		sdwriteinterval := os.Getenv("GOOGLE_STACKDRIVER_METRICS_WRITE_INTERVAL")
-		writeInterval, err := time.ParseDuration(sdwriteinterval)
-		if err != nil {
-			level.Error(logger).Log("envvar", "GOOGLE_STACKDRIVER_METRICS_WRITE_INTERVAL", "value", sdwriteinterval, "err", err)
-			os.Exit(1)
-		}
-		go func() {
-			metricsHandler.WriteLoop(ctx, logger, writeInterval, 200)
-		}()
-
-		// todo: ryan, env var to enable stackdriver profiler. as per-server backend
-
-		// Set up StackDriver profiler
-		if err := profiler.Start(profiler.Config{
-			Service:        "relay_backend",
-			ServiceVersion: env,
-			ProjectID:      gcpProjectID,
-			MutexProfiling: true,
-		}); err != nil {
-			level.Error(logger).Log("msg", "Failed to initialze StackDriver profiler", "err", err)
-			os.Exit(1)
+			if enableSDProfiler {
+				// Set up StackDriver profiler
+				if err := profiler.Start(profiler.Config{
+					Service:        "relay_backend",
+					ServiceVersion: env,
+					ProjectID:      gcpProjectID,
+					MutexProfiling: true,
+				}); err != nil {
+					level.Error(logger).Log("msg", "Failed to initialze StackDriver profiler", "err", err)
+					os.Exit(1)
+				}
+			}
 		}
 	}
 

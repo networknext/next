@@ -8,7 +8,7 @@ const BillingEntryVersion = uint8(5)
 
 const BillingEntryMaxRelays = 5
 
-const MaxBillingEntryBytes = 8 + 1 + 8 + 8 + (4 * 4) + 1 + (3 * 4) + 1 + (BillingEntryMaxRelays * 8) + (3 * 8) + (4 * 1) + 8 + 8 + 8 + 1 + 1 + 1 + (BillingEntryMaxRelays * 8)
+const MaxBillingEntryBytes = 8 + 1 + 8 + 8 + (4 * 4) + 1 + (3 * 4) + 1 + (BillingEntryMaxRelays * 8) + (3 * 8) + (4 * 1) + 8 + 8 + 8 + 1 + 1 + (BillingEntryMaxRelays * 8)
 
 type BillingEntry struct {
 	Timestamp                 uint64 // IMPORTANT: Timestamp is not serialized. Pubsub already has the timestamp so we use that instead.
@@ -37,7 +37,6 @@ type BillingEntry struct {
 	DatacenterID              uint64
 	RTTReduction              bool
 	PacketLossReduction       bool
-	NumNextRelaysPrice        uint8
 	NextRelaysPrice           [BillingEntryMaxRelays]uint64
 }
 
@@ -85,8 +84,8 @@ func WriteBillingEntry(entry *BillingEntry) []byte {
 		encoding.WriteBool(data, &index, entry.RTTReduction)
 		encoding.WriteBool(data, &index, entry.PacketLossReduction)
 
-		encoding.WriteUint8(data, &index, entry.NumNextRelaysPrice)
-		for i := 0; i < int(entry.NumNextRelaysPrice); i++ {
+		encoding.WriteUint8(data, &index, entry.NumNextRelays)
+		for i := 0; i < int(entry.NumNextRelays); i++ {
 			encoding.WriteUint64(data, &index, entry.NextRelaysPrice[i])
 		}
 	}
@@ -202,13 +201,13 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 
 	if entry.Version >= 5 {
 		if entry.Next {
-			if !encoding.ReadUint8(data, &index, &entry.NumNextRelaysPrice) {
+			if !encoding.ReadUint8(data, &index, &entry.NumNextRelays) {
 				return false
 			}
-			if entry.NumNextRelaysPrice > BillingEntryMaxRelays {
+			if entry.NumNextRelays > BillingEntryMaxRelays {
 				return false
 			}
-			for i := 0; i < int(entry.NumNextRelaysPrice); i++ {
+			for i := 0; i < int(entry.NumNextRelays); i++ {
 				if !encoding.ReadUint64(data, &index, &entry.NextRelaysPrice[i]) {
 					return false
 				}

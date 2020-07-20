@@ -499,6 +499,9 @@
                                                     ISP
                                                 </span>
                                             </th>
+                                            <th v-if="handlers.userHandler.isAdmin()">
+                                                Customer
+                                            </th>
                                             <th>
                                                 <span>
                                                     Datacenter
@@ -539,6 +542,9 @@
                                             </td>
                                             <td>
                                                 {{ session.location.isp != "" ? session.location.isp : "Unknown" }}
+                                            </td>
+                                            <td v-if="handlers.userHandler.isAdmin()">
+                                                {{ handlers.userHandler.getCustomerName(session.customer_id) }}
                                             </td>
                                             <td>
                                                 <span class="text-dark">
