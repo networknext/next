@@ -352,14 +352,14 @@ func main() {
 		// Google Pubsub
 		{
 			settings := pubsub.PublishSettings{
-				DelayThreshold: time.Second * 10,
+				DelayThreshold: time.Hour,
 				CountThreshold: 1000,
-				ByteThreshold:  100 * 1024,
+				ByteThreshold:  60 * 1024,
 				NumGoroutines:  runtime.GOMAXPROCS(0),
 				Timeout:        time.Minute,
 			}
 
-			pubsub, err := billing.NewGooglePubSubBiller(pubsubCtx, billingMetrics, logger, gcpProjectID, "billing", 1, 0, &settings)
+			pubsub, err := billing.NewGooglePubSubBiller(pubsubCtx, billingMetrics, logger, gcpProjectID, "billing", 1, 1000, &settings)
 			if err != nil {
 				level.Error(logger).Log("msg", "could not create pubsub biller", "err", err)
 				os.Exit(1)
@@ -497,8 +497,6 @@ func main() {
 					// Increment the successful route matrix read counter
 					atomic.AddUint64(&readRouteMatrixSuccessCount, 1)
 
-					level.Info(logger).Log("matrix", "route", "entries", len(routeMatrix.Entries))
-
 					time.Sleep(syncInterval)
 				}
 			}()
@@ -601,50 +599,50 @@ func main() {
 
 	// Setup the stats print routine
 	{
-		memoryUsed := func() float64 {
-			var m runtime.MemStats
-			runtime.ReadMemStats(&m)
-			return float64(m.Alloc) / (1000.0 * 1000.0)
-		}
+		// memoryUsed := func() float64 {
+		// 	var m runtime.MemStats
+		// 	runtime.ReadMemStats(&m)
+		// 	return float64(m.Alloc) / (1000.0 * 1000.0)
+		// }
 
-		go func() {
-			for {
-				// todo: ryan. I would like to see all of the variables below, put into stackdriver metrics
-				// so we can track them over time. right here in place, update the values in stackdriver once
-				// every second
+		// go func() {
+		// 	for {
+		// 		// todo: ryan. I would like to see all of the variables below, put into stackdriver metrics
+		// 		// so we can track them over time. right here in place, update the values in stackdriver once
+		// 		// every second
 
-				fmt.Printf("-----------------------------\n")
-				fmt.Printf("%d vetoes\n", vetoMap.NumVetoes())
-				fmt.Printf("%d servers\n", serverMap.NumServers())
-				fmt.Printf("%d sessions\n", sessionMap.NumSessions())
-				fmt.Printf("%d goroutines\n", runtime.NumGoroutine())
-				fmt.Printf("%.2f mb allocated\n", memoryUsed())
-				fmt.Printf("%d billing entries submitted\n", biller.NumSubmitted())
-				fmt.Printf("%d billing entries queued\n", biller.NumQueued())
-				fmt.Printf("%d billing entries flushed\n", biller.NumFlushed())
-				fmt.Printf("%d server init packets processed\n", atomic.LoadUint64(&serverInitCounters.Packets))
-				fmt.Printf("%d server update packets processed\n", atomic.LoadUint64(&serverUpdateCounters.Packets))
-				fmt.Printf("%d session update packets processed\n", atomic.LoadUint64(&sessionUpdateCounters.Packets))
-				fmt.Printf("%d long server inits\n", atomic.LoadUint64(&serverInitCounters.LongDuration))
-				fmt.Printf("%d long server updates\n", atomic.LoadUint64(&serverUpdateCounters.LongDuration))
-				fmt.Printf("%d long session updates\n", atomic.LoadUint64(&sessionUpdateCounters.LongDuration))
-				fmt.Printf("%d long route matrix updates\n", atomic.LoadUint64(&longRouteMatrixUpdates))
+		// 		fmt.Printf("-----------------------------\n")
+		// 		fmt.Printf("%d vetoes\n", vetoMap.NumVetoes())
+		// 		fmt.Printf("%d servers\n", serverMap.NumServers())
+		// 		fmt.Printf("%d sessions\n", sessionMap.NumSessions())
+		// 		fmt.Printf("%d goroutines\n", runtime.NumGoroutine())
+		// 		fmt.Printf("%.2f mb allocated\n", memoryUsed())
+		// 		fmt.Printf("%d billing entries submitted\n", biller.NumSubmitted())
+		// 		fmt.Printf("%d billing entries queued\n", biller.NumQueued())
+		// 		fmt.Printf("%d billing entries flushed\n", biller.NumFlushed())
+		// 		fmt.Printf("%d server init packets processed\n", atomic.LoadUint64(&serverInitCounters.Packets))
+		// 		fmt.Printf("%d server update packets processed\n", atomic.LoadUint64(&serverUpdateCounters.Packets))
+		// 		fmt.Printf("%d session update packets processed\n", atomic.LoadUint64(&sessionUpdateCounters.Packets))
+		// 		fmt.Printf("%d long server inits\n", atomic.LoadUint64(&serverInitCounters.LongDuration))
+		// 		fmt.Printf("%d long server updates\n", atomic.LoadUint64(&serverUpdateCounters.LongDuration))
+		// 		fmt.Printf("%d long session updates\n", atomic.LoadUint64(&sessionUpdateCounters.LongDuration))
+		// 		fmt.Printf("%d long route matrix updates\n", atomic.LoadUint64(&longRouteMatrixUpdates))
 
-				unknownDatacentersLength := datacenterTracker.UnknownDatacenterLength()
-				if unknownDatacentersLength > 0 {
-					fmt.Printf("%d unknown datacenters: %v\n", unknownDatacentersLength, datacenterTracker.GetUnknownDatacenters())
-				}
+		// 		unknownDatacentersLength := datacenterTracker.UnknownDatacenterLength()
+		// 		if unknownDatacentersLength > 0 {
+		// 			fmt.Printf("%d unknown datacenters: %v\n", unknownDatacentersLength, datacenterTracker.GetUnknownDatacenters())
+		// 		}
 
-				emptyDatacentersLength := datacenterTracker.EmptyDatacenterLength()
-				if emptyDatacentersLength > 0 {
-					fmt.Printf("%d empty datacenters: %v\n", emptyDatacentersLength, datacenterTracker.GetEmptyDatacenters())
-				}
+		// 		emptyDatacentersLength := datacenterTracker.EmptyDatacenterLength()
+		// 		if emptyDatacentersLength > 0 {
+		// 			fmt.Printf("%d empty datacenters: %v\n", emptyDatacentersLength, datacenterTracker.GetEmptyDatacenters())
+		// 		}
 
-				fmt.Printf("-----------------------------\n")
+		// 		fmt.Printf("-----------------------------\n")
 
-				time.Sleep(time.Second)
-			}
-		}()
+		// 		time.Sleep(time.Second)
+		// 	}
+		// }()
 	}
 
 	// Start UDP server
