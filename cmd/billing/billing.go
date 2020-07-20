@@ -102,8 +102,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	var billingEntriesReceived uint64
-
 	// Create a no-op biller
 	var biller billing.Biller = &billing.NoOpBiller{}
 
@@ -266,13 +264,16 @@ func main() {
 		go func() {
 			for {
 
+				billingMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
+				billingMetrics.MemoryAllocated.Set(memoryUsed())
+
 				fmt.Printf("-----------------------------\n")
-				fmt.Printf("%d goroutines\n", runtime.NumGoroutine())
-				fmt.Printf("%.2f mb allocated\n", memoryUsed())
-				fmt.Printf("%d billing entries received\n", billingEntriesReceived)
-				fmt.Printf("%d billing entries submitted\n", biller.NumSubmitted())
-				fmt.Printf("%d billing entries queued\n", biller.NumQueued())
-				fmt.Printf("%d billing entries flushed\n", biller.NumFlushed())
+				fmt.Printf("%d goroutines\n", int(billingMetrics.Goroutines.Value()))
+				fmt.Printf("%.2f mb allocated\n", billingMetrics.MemoryAllocated.Value())
+				fmt.Printf("%d billing entries received\n", int(billingMetrics.EntriesReceived.Value()))
+				fmt.Printf("%d billing entries submitted\n", int(billingMetrics.EntriesSubmitted.Value()))
+				fmt.Printf("%d billing entries queued\n", int(billingMetrics.EntriesQueued.Value()))
+				fmt.Printf("%d billing entries flushed\n", int(billingMetrics.EntriesFlushed.Value()))
 				fmt.Printf("-----------------------------\n")
 
 				time.Sleep(time.Second * 10)

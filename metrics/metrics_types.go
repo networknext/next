@@ -409,15 +409,29 @@ var EmptyMaxmindSyncErrorMetrics MaxmindSyncErrorMetrics = MaxmindSyncErrorMetri
 }
 
 type BillingMetrics struct {
-	BillingEntriesReceived Counter
-	BillingEntriesWritten  Counter
-	ErrorMetrics           BillingErrorMetrics
+	Goroutines       Gauge
+	MemoryAllocated  Gauge
+	EntriesReceived  Counter
+	EntriesSubmitted Counter
+	EntriesQueued    Counter
+	EntriesFlushed   Counter
+	ErrorMetrics     BillingErrorMetrics
 }
 
 var EmptyBillingMetrics BillingMetrics = BillingMetrics{
-	BillingEntriesReceived: &EmptyCounter{},
-	BillingEntriesWritten:  &EmptyCounter{},
-	ErrorMetrics:           EmptyBillingErrorMetrics,
+	Goroutines:       &EmptyGauge{},
+	MemoryAllocated:  &EmptyGauge{},
+	EntriesReceived:  &EmptyCounter{},
+	EntriesSubmitted: &EmptyCounter{},
+	EntriesQueued:    &EmptyCounter{},
+	EntriesFlushed:   &EmptyCounter{},
+	ErrorMetrics:     EmptyBillingErrorMetrics,
+}
+
+type Nibblin uint64
+
+func (n Nibblin) ToCents() float64 {
+	return float64(n) / 1e9
 }
 
 type BillingErrorMetrics struct {
@@ -1399,7 +1413,29 @@ func NewBillingMetrics(ctx context.Context, metricsHandler Handler) (*BillingMet
 	billingMetrics := BillingMetrics{}
 	var err error
 
-	billingMetrics.BillingEntriesReceived, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	billingMetrics.Goroutines, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Billing Goroutine Count",
+		ServiceName: "billing",
+		ID:          "billing.goroutines",
+		Unit:        "goroutines",
+		Description: "The number of goroutines the billing service is using",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	billingMetrics.MemoryAllocated, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Billing Memory Allocated",
+		ServiceName: "billing",
+		ID:          "billing.memory",
+		Unit:        "MB",
+		Description: "The amount of memory the billing service has allocated in MB",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	billingMetrics.EntriesReceived, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Billing Entries Received",
 		ServiceName: "billing",
 		ID:          "billing.entries",
@@ -1410,7 +1446,29 @@ func NewBillingMetrics(ctx context.Context, metricsHandler Handler) (*BillingMet
 		return nil, err
 	}
 
-	billingMetrics.BillingEntriesWritten, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	billingMetrics.EntriesSubmitted, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Billing Entries Submitted",
+		ServiceName: "billing",
+		ID:          "billing.entries.submitted",
+		Unit:        "entries",
+		Description: "The total number of billing entries submitted to BigQuery",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	billingMetrics.EntriesQueued, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Billing Entries Queued",
+		ServiceName: "billing",
+		ID:          "billing.entries.queued",
+		Unit:        "entries",
+		Description: "The total number of billing entries waiting to be sent to BigQuery",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	billingMetrics.EntriesFlushed, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Billing Entries Written",
 		ServiceName: "billing",
 		ID:          "billing.entries.written",
