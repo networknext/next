@@ -181,28 +181,6 @@ func main() {
 		LocalMode: true,
 	}
 
-	// Create dummy buyer and datacenter for local testing
-	if env == "local" {
-		if err := db.AddBuyer(ctx, routing.Buyer{
-			ID:                   13672574147039585173,
-			Name:                 "local",
-			Live:                 true,
-			PublicKey:            customerPublicKey,
-			RoutingRulesSettings: routing.LocalRoutingRulesSettings,
-		}); err != nil {
-			level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
-			os.Exit(1)
-		}
-		if err := db.AddDatacenter(ctx, routing.Datacenter{
-			ID:      crypto.HashID("local"),
-			Name:    "local",
-			Enabled: true,
-		}); err != nil {
-			level.Error(logger).Log("msg", "could not add datacenter to storage", "err", err)
-			os.Exit(1)
-		}
-	}
-
 	// Create a no-op biller
 	var biller billing.Biller = &billing.NoOpBiller{}
 
@@ -241,6 +219,28 @@ func main() {
 
 			// Set the Firestore Storer to give to handlers
 			db = fs
+		}
+	}
+
+	// Create dummy buyer and datacenter for local testing
+	if env == "local" {
+		if err := db.AddBuyer(ctx, routing.Buyer{
+			ID:                   13672574147039585173,
+			Name:                 "local",
+			Live:                 true,
+			PublicKey:            customerPublicKey,
+			RoutingRulesSettings: routing.LocalRoutingRulesSettings,
+		}); err != nil {
+			level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
+			os.Exit(1)
+		}
+		if err := db.AddDatacenter(ctx, routing.Datacenter{
+			ID:      crypto.HashID("local"),
+			Name:    "local",
+			Enabled: true,
+		}); err != nil {
+			level.Error(logger).Log("msg", "could not add datacenter to storage", "err", err)
+			os.Exit(1)
 		}
 	}
 
