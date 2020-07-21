@@ -311,7 +311,7 @@ func DecideCommitted(onNNLastSlice bool, maxObservedSlices uint8, yolo bool, com
 // DecideMultipath will decide if we should serve a network next route to be used for multipath
 // If the decision function can't find a good enough reason to send a network next route, then it decides to go direct
 // If multipath isn't enabled then the decision isn't affected
-func DecideMultipath(rttMultipath bool, jitterMultipath bool, packetLossMultipath bool, rttThreshold float64) DecisionFunc {
+func DecideMultipath(rttMultipath bool, jitterMultipath bool, packetLossMultipath bool, rttThreshold float64, packetLossThreshold float64) DecisionFunc {
 	return func(prevDecision Decision, predictedNextStats, lastNextStats, lastDirectStats *Stats) Decision {
 		// If we've already decided on multipath, then don't change the reason
 		// This is to make sure that the session can't go back to direct, since multipath always needs a next route
@@ -340,7 +340,7 @@ func DecideMultipath(rttMultipath bool, jitterMultipath bool, packetLossMultipat
 		}
 
 		// If the direct packet loss is more than 1%, then use multipath for packet loss
-		if packetLossMultipath && lastDirectStats.PacketLoss >= 1.0 {
+		if packetLossMultipath && lastDirectStats.PacketLoss >= packetLossThreshold {
 			decision.OnNetworkNext = true
 			decision.Reason |= DecisionHighPacketLossMultipath
 		}
