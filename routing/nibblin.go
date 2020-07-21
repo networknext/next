@@ -1,9 +1,13 @@
 package routing
 
-// Nibblin is the quantum used to calculate costs in the route_matrix and cost_matrix
+// Nibblin is a fake monetary currency to help with float point imprecision
+// during calculations (1,000,000,000 Nibblins = $0.01 USD)
 type Nibblin uint64
 
-// ToCents returns the nibblin count converted to cents
+func CentsToNibblins(cents float64) Nibblin {
+	return Nibblin(cents * 1e9)
+}
+
 func (n Nibblin) ToCents() float64 {
 	return float64(n) / 1e9
 }
