@@ -229,7 +229,8 @@ func main() {
 
 		// Use the local biller
 		biller = &billing.LocalBiller{
-			Logger: logger,
+			Logger:  logger,
+			Metrics: billingMetrics,
 		}
 
 		level.Info(logger).Log("msg", "Detected pubsub emulator")

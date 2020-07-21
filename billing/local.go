@@ -7,37 +7,26 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
+	"github.com/networknext/backend/metrics"
 )
 
 type LocalBiller struct {
-	Logger log.Logger
-
-	submitted uint64
+	Logger  log.Logger
+	Metrics *metrics.BillingMetrics
 }
 
 func (local *LocalBiller) Bill(ctx context.Context, entry *BillingEntry) error {
-	local.submitted++
+	local.Metrics.EntriesSubmitted.Add(1)
+	level.Info(local.Logger).Log("msg", "submitted billing entry")
 
 	if local.Logger == nil {
 		return errors.New("no logger for local biller, can't display entry")
 	}
 
-	level.Info(local.Logger).Log("msg", "submitted billing entry")
-
 	output := fmt.Sprintf("%#v", entry)
 	level.Debug(local.Logger).Log("entry", output)
 
+	local.Metrics.EntriesFlushed.Add(1)
+
 	return nil
-}
-
-func (local *LocalBiller) NumSubmitted() uint64 {
-	return local.submitted
-}
-
-func (local *LocalBiller) NumQueued() uint64 {
-	return 0
-}
-
-func (local *LocalBiller) NumFlushed() uint64 {
-	return local.submitted
 }
