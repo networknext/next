@@ -12,7 +12,6 @@ import (
 	"cloud.google.com/go/firestore"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"google.golang.org/api/iterator"
@@ -52,9 +51,9 @@ type buyer struct {
 }
 
 type seller struct {
-	Name                       string `firestore:"name"`
-	PricePublicIngressNibblins int64  `firestore:"pricePublicIngressNibblins"`
-	PricePublicEgressNibblins  int64  `firestore:"pricePublicEgressNibblins"`
+	Name                      string `firestore:"name"`
+	IngressPriceNibblinsPerGB int64  `firestore:"pricePublicIngressNibblins"`
+	EgressPriceNibblinsPerGB  int64  `firestore:"pricePublicEgressNibblins"`
 }
 
 type relay struct {
@@ -75,10 +74,11 @@ type relay struct {
 }
 
 type datacenter struct {
-	Name      string  `firestore:"name"`
-	Enabled   bool    `firestore:"enabled"`
-	Latitude  float64 `firestore:"latitude"`
-	Longitude float64 `firestore:"longitude"`
+	Name         string  `firestore:"name"`
+	Enabled      bool    `firestore:"enabled"`
+	Latitude     float64 `firestore:"latitude"`
+	Longitude    float64 `firestore:"longitude"`
+	SupplierName string  `firestore:"supplierName"`
 }
 
 type datacenterMap struct {
@@ -101,6 +101,7 @@ type routingRulesSettings struct {
 	EnableYouOnlyLiveOnce        bool    `firestore:"youOnlyLiveOnce"`
 	EnablePacketLossSafety       bool    `firestore:"packetLossSafety"`
 	EnableMultipathForPacketLoss bool    `firestore:"packetLossMultipath"`
+	MultipathPacketLossThreshold float32 `firestore:"multipathPacketLossThreshold"`
 	EnableMultipathForJitter     bool    `firestore:"jitterMultipath"`
 	EnableMultipathForRTT        bool    `firestore:"rttMultipath"`
 	EnableABTest                 bool    `firestore:"abTest"`
@@ -124,12 +125,13 @@ func NewFirestore(ctx context.Context, gcpProjectID string, logger log.Logger) (
 	}
 
 	return &Firestore{
-		Client:      client,
-		Logger:      logger,
-		datacenters: make(map[uint64]routing.Datacenter),
-		relays:      make(map[uint64]routing.Relay),
-		buyers:      make(map[uint64]routing.Buyer),
-		sellers:     make(map[string]routing.Seller),
+		Client:         client,
+		Logger:         logger,
+		datacenters:    make(map[uint64]routing.Datacenter),
+		datacenterMaps: make(map[uint64]routing.DatacenterMap),
+		relays:         make(map[uint64]routing.Relay),
+		buyers:         make(map[uint64]routing.Buyer),
+		sellers:        make(map[string]routing.Seller),
 	}, nil
 }
 
@@ -187,7 +189,7 @@ func (fs *Firestore) AddBuyer(ctx context.Context, b routing.Buyer) error {
 	}
 
 	// Add the buyer's routing rules settings to remote storage
-	if err := fs.createRouteRulesSettingsForBuyerID(ctx, ref.ID, b.Name, b.RoutingRulesSettings); err != nil {
+	if err := fs.setRoutingRulesSettingsForBuyerID(ctx, ref.ID, b.Name, b.RoutingRulesSettings); err != nil {
 		return &FirestoreError{err: err}
 	}
 
@@ -441,9 +443,9 @@ func (fs *Firestore) AddSeller(ctx context.Context, s routing.Seller) error {
 	}
 
 	newSellerData := seller{
-		Name:                       s.Name,
-		PricePublicIngressNibblins: int64(billing.CentsToNibblins(s.IngressPriceCents)),
-		PricePublicEgressNibblins:  int64(billing.CentsToNibblins(s.EgressPriceCents)),
+		Name:                      s.Name,
+		IngressPriceNibblinsPerGB: int64(s.IngressPriceNibblinsPerGB),
+		EgressPriceNibblinsPerGB:  int64(s.EgressPriceNibblinsPerGB),
 	}
 
 	// Add the seller in remote storage
@@ -588,8 +590,8 @@ func (fs *Firestore) SetSeller(ctx context.Context, seller routing.Seller) error
 	// Update the seller in firestore
 	newSellerData := map[string]interface{}{
 		"name":                       seller.Name,
-		"pricePublicIngressNibblins": int64(billing.CentsToNibblins(seller.IngressPriceCents)),
-		"pricePublicEgressNibblins":  int64(billing.CentsToNibblins(seller.EgressPriceCents)),
+		"pricePublicIngressNibblins": int64(seller.IngressPriceNibblinsPerGB),
+		"pricePublicEgressNibblins":  int64(seller.EgressPriceNibblinsPerGB),
 	}
 
 	if _, err := fs.Client.Collection("Seller").Doc(seller.ID).Set(ctx, newSellerData, firestore.MergeAll); err != nil {
@@ -1068,7 +1070,7 @@ func (fs *Firestore) RemoveDatacenterMap(ctx context.Context, dcMap routing.Data
 	defer dmdocs.Stop()
 
 	// Firestore is the source of truth
-	found := false
+	var dcm datacenterMap
 	for {
 		dmdoc, err := dmdocs.Next()
 		ref := dmdoc.Ref
@@ -1080,31 +1082,35 @@ func (fs *Firestore) RemoveDatacenterMap(ctx context.Context, dcMap routing.Data
 			return &FirestoreError{err: err}
 		}
 
-		var dcm routing.DatacenterMap
 		err = dmdoc.DataTo(&dcm)
 		if err != nil {
 			return &UnmarshalError{err: err}
 		}
 
 		// all components must match (one-to-many)
-		// could use cmp?
-		if dcMap.Alias == dcm.Alias && dcMap.BuyerID == dcm.BuyerID && dcMap.Datacenter == dcm.Datacenter {
+		buyerID, err := strconv.ParseUint(dcm.Buyer, 16, 64)
+		if err != nil {
+			return &HexStringConversionError{hexString: dcm.Buyer}
+		}
+		datacenter, err := strconv.ParseUint(dcm.Datacenter, 16, 64)
+		if err != nil {
+			return &HexStringConversionError{hexString: dcm.Datacenter}
+		}
+
+		if dcMap.Alias == dcm.Alias && dcMap.BuyerID == buyerID && dcMap.Datacenter == datacenter {
 			_, err := ref.Delete(ctx)
 			if err != nil {
 				return &FirestoreError{err: err}
 			}
-			found = true
+
+			// delete local copy as well
+			fs.datacenterMapMutex.Lock()
+			id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.Datacenter))
+			delete(fs.datacenterMaps, id)
+			fs.datacenterMapMutex.Unlock()
+
+			return nil
 		}
-	}
-
-	if found {
-		fs.datacenterMapMutex.RLock()
-		id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.Datacenter))
-
-		delete(fs.datacenterMaps, id)
-
-		fs.datacenterMapMutex.RUnlock()
-		return nil
 	}
 
 	return &DoesNotExistError{resourceType: "datacenterMap", resourceRef: fmt.Sprintf("%v", dcMap)}
@@ -1137,10 +1143,11 @@ func (fs *Firestore) Datacenters() []routing.Datacenter {
 
 func (fs *Firestore) AddDatacenter(ctx context.Context, d routing.Datacenter) error {
 	newDatacenterData := datacenter{
-		Name:      d.Name,
-		Enabled:   d.Enabled,
-		Latitude:  d.Location.Latitude,
-		Longitude: d.Location.Longitude,
+		Name:         d.Name,
+		Enabled:      d.Enabled,
+		Latitude:     d.Location.Latitude,
+		Longitude:    d.Location.Longitude,
+		SupplierName: d.SupplierName,
 	}
 
 	// Add the datacenter in remote storage
@@ -1237,10 +1244,11 @@ func (fs *Firestore) SetDatacenter(ctx context.Context, d routing.Datacenter) er
 		if crypto.HashID(datacenterInRemoteStorage.Name) == d.ID {
 			// Set the data to update the datacenter with
 			newDatacenterData := map[string]interface{}{
-				"name":      d.Name,
-				"enabled":   d.Enabled,
-				"latitude":  d.Location.Latitude,
-				"longitude": d.Location.Longitude,
+				"name":         d.Name,
+				"enabled":      d.Enabled,
+				"latitude":     d.Location.Latitude,
+				"longitude":    d.Location.Longitude,
+				"supplierName": d.SupplierName,
 			}
 
 			// Update the datacenter in firestore
@@ -1284,7 +1292,7 @@ func (fs *Firestore) SyncLoop(ctx context.Context, c <-chan time.Time) {
 func (fs *Firestore) Sync(ctx context.Context) error {
 	var outerErr error
 	var wg sync.WaitGroup
-	wg.Add(4)
+	wg.Add(5)
 
 	go func() {
 		if err := fs.syncRelays(ctx); err != nil {
@@ -1296,6 +1304,13 @@ func (fs *Firestore) Sync(ctx context.Context) error {
 	go func() {
 		if err := fs.syncCustomers(ctx); err != nil {
 			outerErr = fmt.Errorf("failed to sync customers: %v", err)
+		}
+		wg.Done()
+	}()
+
+	go func() {
+		if err := fs.syncSellers(ctx); err != nil {
+			outerErr = fmt.Errorf("failed to sync sellers: %v", err)
 		}
 		wg.Done()
 	}()
@@ -1349,6 +1364,7 @@ func (fs *Firestore) syncDatacenters(ctx context.Context) error {
 				Latitude:  float64(d.Latitude),
 				Longitude: float64(d.Longitude),
 			},
+			SupplierName: d.SupplierName,
 		}
 	}
 
@@ -1446,6 +1462,7 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 				Latitude:  d.Latitude,
 				Longitude: d.Longitude,
 			},
+			SupplierName: d.SupplierName,
 		}
 
 		relay.Datacenter = datacenter
@@ -1464,10 +1481,10 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 		}
 
 		seller := routing.Seller{
-			ID:                sdoc.Ref.ID,
-			Name:              s.Name,
-			IngressPriceCents: billing.NibblinsToCents(uint64(s.PricePublicIngressNibblins)),
-			EgressPriceCents:  billing.NibblinsToCents(uint64(s.PricePublicEgressNibblins)),
+			ID:                        sdoc.Ref.ID,
+			Name:                      s.Name,
+			IngressPriceNibblinsPerGB: routing.Nibblin(s.IngressPriceNibblinsPerGB),
+			EgressPriceNibblinsPerGB:  routing.Nibblin(s.EgressPriceNibblinsPerGB),
 		}
 
 		relay.Seller = seller
@@ -1483,6 +1500,48 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 	level.Info(fs.Logger).Log("during", "syncRelays", "num", len(fs.relays))
 
 	return nil
+}
+
+func (fs *Firestore) syncSellers(ctx context.Context) error {
+	sellers := make(map[string]routing.Seller)
+
+	sellerDocs := fs.Client.Collection("Sellers").Documents(ctx)
+	defer sellerDocs.Stop()
+
+	for {
+		sellerDoc, err := sellerDocs.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return &FirestoreError{err: err}
+		}
+
+		var s seller
+		err = sellerDoc.DataTo(&s)
+		if err != nil {
+			level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to unmarshal seller %v", sellerDoc.Ref.ID), "err", err)
+			continue
+		}
+
+		seller := routing.Seller{
+			ID:                        sellerDoc.Ref.ID,
+			Name:                      s.Name,
+			IngressPriceNibblinsPerGB: routing.Nibblin(s.IngressPriceNibblinsPerGB),
+			EgressPriceNibblinsPerGB:  routing.Nibblin(s.EgressPriceNibblinsPerGB),
+		}
+
+		sellers[sellerDoc.Ref.ID] = seller
+	}
+
+	fs.sellerMutex.Lock()
+	fs.sellers = sellers
+	fs.sellerMutex.Unlock()
+
+	level.Info(fs.Logger).Log("during", "syncSellers", "num", len(fs.sellers))
+
+	return nil
+
 }
 
 func (fs *Firestore) syncDatacenterMaps(ctx context.Context) error {
@@ -1603,12 +1662,13 @@ func (fs *Firestore) syncCustomers(ctx context.Context) error {
 			}
 
 			sellers[sdoc.Ref.ID] = routing.Seller{
-				ID:                sdoc.Ref.ID,
-				Name:              s.Name,
-				IngressPriceCents: billing.NibblinsToCents(uint64(s.PricePublicIngressNibblins)),
-				EgressPriceCents:  billing.NibblinsToCents(uint64(s.PricePublicEgressNibblins)),
+				ID:                        sdoc.Ref.ID,
+				Name:                      s.Name,
+				IngressPriceNibblinsPerGB: routing.Nibblin(s.IngressPriceNibblinsPerGB),
+				EgressPriceNibblinsPerGB:  routing.Nibblin(s.EgressPriceNibblinsPerGB),
 			}
 		}
+
 	}
 
 	fs.buyerMutex.Lock()
@@ -1623,42 +1683,6 @@ func (fs *Firestore) syncCustomers(ctx context.Context) error {
 	level.Info(fs.Logger).Log("during", "syncSellers", "num", len(fs.sellers))
 
 	return nil
-}
-
-func (fs *Firestore) createRouteRulesSettingsForBuyerID(ctx context.Context, ID string, name string, rrs routing.RoutingRulesSettings) error {
-	// Comment below taken from old backend, at least attempting to explain why we need to append _0 (no existing entries have suffixes other than _0)
-	// "Must be of the form '<buyer key>_<tag id>'. The buyer key can be found by looking at the ID under Buyer; it should be something like 763IMDH693HLsr2LGTJY. The tag ID should be 0 (for default) or the fnv64a hash of the tag the customer is using. Therefore this value should look something like: 763IMDH693HLsr2LGTJY_0. This value can not be changed after the entity is created."
-	routeShaderID := ID + "_0"
-
-	// Convert RoutingRulesSettings struct to firestore version
-	rrsFirestore := routingRulesSettings{
-		DisplayName:                  name,
-		EnvelopeKbpsUp:               rrs.EnvelopeKbpsUp,
-		EnvelopeKbpsDown:             rrs.EnvelopeKbpsDown,
-		Mode:                         rrs.Mode,
-		MaxPricePerGBNibblins:        int64(billing.CentsToNibblins(rrs.MaxCentsPerGB)),
-		AcceptableLatency:            rrs.AcceptableLatency,
-		RTTEpsilon:                   rrs.RTTEpsilon,
-		RTTThreshold:                 rrs.RTTThreshold,
-		RTTHysteresis:                rrs.RTTHysteresis,
-		RTTVeto:                      rrs.RTTVeto,
-		EnableYouOnlyLiveOnce:        rrs.EnableYouOnlyLiveOnce,
-		EnablePacketLossSafety:       rrs.EnablePacketLossSafety,
-		EnableMultipathForPacketLoss: rrs.EnableMultipathForPacketLoss,
-		EnableMultipathForJitter:     rrs.EnableMultipathForJitter,
-		EnableMultipathForRTT:        rrs.EnableMultipathForRTT,
-		EnableABTest:                 rrs.EnableABTest,
-		EnableTryBeforeYouBuy:        rrs.EnableTryBeforeYouBuy,
-		TryBeforeYouBuyMaxSlices:     rrs.TryBeforeYouBuyMaxSlices,
-		SelectionPercentage:          rrs.SelectionPercentage,
-	}
-
-	// Attempt to create route shader for buyer
-	rsDocRef := fs.Client.Collection("RouteShader").NewDoc()
-	rsDocRef.ID = routeShaderID
-
-	_, err := rsDocRef.Create(ctx, rrsFirestore)
-	return err
 }
 
 func (fs *Firestore) deleteRouteRulesSettingsForBuyerID(ctx context.Context, ID string) error {
@@ -1696,7 +1720,7 @@ func (fs *Firestore) getRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 	rrs.EnvelopeKbpsUp = tempRRS.EnvelopeKbpsUp
 	rrs.EnvelopeKbpsDown = tempRRS.EnvelopeKbpsDown
 	rrs.Mode = tempRRS.Mode
-	rrs.MaxCentsPerGB = billing.NibblinsToCents(uint64(tempRRS.MaxPricePerGBNibblins))
+	rrs.MaxNibblinsPerGB = routing.Nibblin(tempRRS.MaxPricePerGBNibblins)
 	rrs.AcceptableLatency = tempRRS.AcceptableLatency
 	rrs.RTTEpsilon = tempRRS.RTTEpsilon
 	rrs.RTTThreshold = tempRRS.RTTThreshold
@@ -1705,6 +1729,7 @@ func (fs *Firestore) getRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 	rrs.EnableYouOnlyLiveOnce = tempRRS.EnableYouOnlyLiveOnce
 	rrs.EnablePacketLossSafety = tempRRS.EnablePacketLossSafety
 	rrs.EnableMultipathForPacketLoss = tempRRS.EnableMultipathForPacketLoss
+	rrs.MultipathPacketLossThreshold = tempRRS.MultipathPacketLossThreshold
 	rrs.EnableMultipathForJitter = tempRRS.EnableMultipathForJitter
 	rrs.EnableMultipathForRTT = tempRRS.EnableMultipathForRTT
 	rrs.EnableABTest = tempRRS.EnableABTest
@@ -1722,25 +1747,26 @@ func (fs *Firestore) setRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 
 	// Convert RoutingRulesSettings struct to firestore map
 	rrsFirestore := map[string]interface{}{
-		"displayName":              name,
-		"envelopeKbpsUp":           rrs.EnvelopeKbpsUp,
-		"envelopeKbpsDown":         rrs.EnvelopeKbpsDown,
-		"mode":                     rrs.Mode,
-		"maxPricePerGBNibblins":    int64(billing.CentsToNibblins(rrs.MaxCentsPerGB)),
-		"acceptableLatency":        rrs.AcceptableLatency,
-		"rttRouteSwitch":           rrs.RTTEpsilon,
-		"rttThreshold":             rrs.RTTThreshold,
-		"rttHysteresis":            rrs.RTTHysteresis,
-		"rttVeto":                  rrs.RTTVeto,
-		"youOnlyLiveOnce":          rrs.EnableYouOnlyLiveOnce,
-		"packetLossSafety":         rrs.EnablePacketLossSafety,
-		"packetLossMultipath":      rrs.EnableMultipathForPacketLoss,
-		"jitterMultipath":          rrs.EnableMultipathForJitter,
-		"rttMultipath":             rrs.EnableMultipathForRTT,
-		"abTest":                   rrs.EnableABTest,
-		"tryBeforeYouBuy":          rrs.EnableTryBeforeYouBuy,
-		"tryBeforeYouBuyMaxSlices": rrs.TryBeforeYouBuyMaxSlices,
-		"selectionPercentage":      rrs.SelectionPercentage,
+		"displayName":                  name,
+		"envelopeKbpsUp":               rrs.EnvelopeKbpsUp,
+		"envelopeKbpsDown":             rrs.EnvelopeKbpsDown,
+		"mode":                         rrs.Mode,
+		"maxPricePerGBNibblins":        int64(rrs.MaxNibblinsPerGB),
+		"acceptableLatency":            rrs.AcceptableLatency,
+		"rttRouteSwitch":               rrs.RTTEpsilon,
+		"rttThreshold":                 rrs.RTTThreshold,
+		"rttHysteresis":                rrs.RTTHysteresis,
+		"rttVeto":                      rrs.RTTVeto,
+		"youOnlyLiveOnce":              rrs.EnableYouOnlyLiveOnce,
+		"packetLossSafety":             rrs.EnablePacketLossSafety,
+		"packetLossMultipath":          rrs.EnableMultipathForPacketLoss,
+		"multipathPacketLossThreshold": rrs.MultipathPacketLossThreshold,
+		"jitterMultipath":              rrs.EnableMultipathForJitter,
+		"rttMultipath":                 rrs.EnableMultipathForRTT,
+		"abTest":                       rrs.EnableABTest,
+		"tryBeforeYouBuy":              rrs.EnableTryBeforeYouBuy,
+		"tryBeforeYouBuyMaxSlices":     rrs.TryBeforeYouBuyMaxSlices,
+		"selectionPercentage":          rrs.SelectionPercentage,
 	}
 
 	// Attempt to set route shader for buyer
