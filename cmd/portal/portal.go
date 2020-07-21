@@ -233,6 +233,28 @@ func main() {
 		Logger:  logger,
 	}
 
+	if _, ok := os.LookupEnv("FIRESTORE_EMULATOR_HOST"); ok {
+		gcpProjectID := "local"
+
+		fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			os.Exit(1)
+		}
+
+		syncInterval, err := time.ParseDuration("1s")
+		if err != nil {
+			level.Error(logger).Log("envvar", "1s", "value", syncInterval, "err", err)
+			os.Exit(1)
+		}
+		// Start a goroutine to sync from Firestore
+		go func() {
+			ticker := time.NewTicker(syncInterval)
+			fs.SyncLoop(ctx, ticker.C)
+		}()
+		db = fs
+	}
+
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
 	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
 	// on creation so we can use that for the default then
