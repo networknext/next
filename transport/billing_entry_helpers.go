@@ -88,10 +88,10 @@ func NewBillingRoute(route *routing.Route, bytesUp uint64, bytesDown uint64) []*
 		// Get seller from relay
 		seller := relay.Seller
 
-		upIngress := seller.IngressPriceCents * bytesUp
-		upEgress := seller.EgressPriceCents * bytesUp
-		downIngress := seller.IngressPriceCents * bytesDown
-		downEgress := seller.EgressPriceCents * bytesDown
+		upIngress := uint64(seller.IngressPriceNibblinsPerGB) * bytesUp
+		upEgress := uint64(seller.EgressPriceNibblinsPerGB) * bytesUp
+		downIngress := uint64(seller.IngressPriceNibblinsPerGB) * bytesDown
+		downEgress := uint64(seller.EgressPriceNibblinsPerGB) * bytesDown
 
 		hops = append(hops, &billing.RouteHop{
 			RelayID:      NewEntityID("Relay", relay.ID),

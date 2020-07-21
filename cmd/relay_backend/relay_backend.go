@@ -164,10 +164,10 @@ func main() {
 
 	if env == "local" {
 		seller := routing.Seller{
-			ID:                "sellerID",
-			Name:              "local",
-			IngressPriceCents: 10,
-			EgressPriceCents:  20,
+			ID:                        "sellerID",
+			Name:                      "local",
+			IngressPriceNibblinsPerGB: 0.1 * 1e9,
+			EgressPriceNibblinsPerGB:  0.5 * 1e9,
 		}
 
 		datacenter := routing.Datacenter{

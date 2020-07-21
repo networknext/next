@@ -111,23 +111,23 @@ type RoutingRulesSettingsReply struct {
 }
 
 type routingRuleSettings struct {
-	EnvelopeKbpsUp               int64   `json:"envelopeKbpsUp"`
-	EnvelopeKbpsDown             int64   `json:"envelopeKbpsDown"`
-	Mode                         int64   `json:"mode"`
-	MaxCentsPerGB                uint64  `json:"maxCentsPerGB"`
-	RTTEpsilon                   float32 `json:"rttEpsilon"`
-	RTTThreshold                 float32 `json:"rttThreshold"`
-	RTTHysteresis                float32 `json:"rttHysteresis"`
-	RTTVeto                      float32 `json:"rttVeto"`
-	EnableYouOnlyLiveOnce        bool    `json:"yolo"`
-	EnablePacketLossSafety       bool    `json:"plSafety"`
-	EnableMultipathForPacketLoss bool    `json:"plMultipath"`
-	EnableMultipathForJitter     bool    `json:"jitterMultipath"`
-	EnableMultipathForRTT        bool    `json:"rttMultipath"`
-	EnableABTest                 bool    `json:"abTest"`
-	EnableTryBeforeYouBuy        bool    `json:"tryBeforeYouBuy"`
-	TryBeforeYouBuyMaxSlices     int8    `json:"tryBeforeYouBuyMaxSlices"`
-	SelectionPercentage          int64   `json:"selectionPercentage"`
+	EnvelopeKbpsUp               int64           `json:"envelopeKbpsUp"`
+	EnvelopeKbpsDown             int64           `json:"envelopeKbpsDown"`
+	Mode                         int64           `json:"mode"`
+	MaxNibblinsPerGB             routing.Nibblin `json:"maxNibblinsPerGB"`
+	RTTEpsilon                   float32         `json:"rttEpsilon"`
+	RTTThreshold                 float32         `json:"rttThreshold"`
+	RTTHysteresis                float32         `json:"rttHysteresis"`
+	RTTVeto                      float32         `json:"rttVeto"`
+	EnableYouOnlyLiveOnce        bool            `json:"yolo"`
+	EnablePacketLossSafety       bool            `json:"plSafety"`
+	EnableMultipathForPacketLoss bool            `json:"plMultipath"`
+	EnableMultipathForJitter     bool            `json:"jitterMultipath"`
+	EnableMultipathForRTT        bool            `json:"rttMultipath"`
+	EnableABTest                 bool            `json:"abTest"`
+	EnableTryBeforeYouBuy        bool            `json:"tryBeforeYouBuy"`
+	TryBeforeYouBuyMaxSlices     int8            `json:"tryBeforeYouBuyMaxSlices"`
+	SelectionPercentage          int64           `json:"selectionPercentage"`
 }
 
 func (s *OpsService) RoutingRulesSettings(r *http.Request, args *RoutingRulesSettingsArgs, reply *RoutingRulesSettingsReply) error {
@@ -148,7 +148,7 @@ func (s *OpsService) RoutingRulesSettings(r *http.Request, args *RoutingRulesSet
 			EnvelopeKbpsUp:               buyer.RoutingRulesSettings.EnvelopeKbpsUp,
 			EnvelopeKbpsDown:             buyer.RoutingRulesSettings.EnvelopeKbpsDown,
 			Mode:                         buyer.RoutingRulesSettings.Mode,
-			MaxCentsPerGB:                buyer.RoutingRulesSettings.MaxCentsPerGB,
+			MaxNibblinsPerGB:             buyer.RoutingRulesSettings.MaxNibblinsPerGB,
 			RTTEpsilon:                   buyer.RoutingRulesSettings.RTTEpsilon,
 			RTTThreshold:                 buyer.RoutingRulesSettings.RTTThreshold,
 			RTTHysteresis:                buyer.RoutingRulesSettings.RTTHysteresis,
@@ -205,19 +205,19 @@ type SellersReply struct {
 }
 
 type seller struct {
-	ID                string `json:"id"`
-	Name              string `json:"name"`
-	IngressPriceCents uint64 `json:"ingressPriceCents"`
-	EgressPriceCents  uint64 `json:"egressPriceCents"`
+	ID                   string          `json:"id"`
+	Name                 string          `json:"name"`
+	IngressPriceNibblins routing.Nibblin `json:"ingressPriceNibblins"`
+	EgressPriceNibblins  routing.Nibblin `json:"egressPriceNibblins"`
 }
 
 func (s *OpsService) Sellers(r *http.Request, args *SellersArgs, reply *SellersReply) error {
 	for _, s := range s.Storage.Sellers() {
 		reply.Sellers = append(reply.Sellers, seller{
-			ID:                s.ID,
-			Name:              s.Name,
-			IngressPriceCents: s.IngressPriceCents,
-			EgressPriceCents:  s.EgressPriceCents,
+			ID:                   s.ID,
+			Name:                 s.Name,
+			IngressPriceNibblins: s.IngressPriceNibblinsPerGB,
+			EgressPriceNibblins:  s.EgressPriceNibblinsPerGB,
 		})
 	}
 
