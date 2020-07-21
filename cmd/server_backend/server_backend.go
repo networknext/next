@@ -209,11 +209,15 @@ func main() {
 	// Create a no-op metrics handler
 	var metricsHandler metrics.Handler = &metrics.NoOpHandler{}
 
-	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
-	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
-	// on creation so we can use that for the default then
 	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
-	if gcpOK {
+	_, firestoreEmulatorOK := os.LookupEnv("FIRESTORE_EMULATOR_HOST")
+	if firestoreEmulatorOK {
+		gcpProjectID = "local"
+
+		level.Info(logger).Log("msg", "Detected firestore emulator")
+	}
+
+	if gcpOK || firestoreEmulatorOK {
 		// Firestore
 		{
 			// Create a Firestore Storer
@@ -238,7 +242,12 @@ func main() {
 			// Set the Firestore Storer to give to handlers
 			db = fs
 		}
+	}
 
+	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
+	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
+	// on creation so we can use that for the default then
+	if gcpOK {
 		// StackDriver Metrics
 		{
 			var enableSDMetrics bool
@@ -335,11 +344,11 @@ func main() {
 		level.Error(logger).Log("msg", "failed to create billing metrics", "err", err)
 	}
 
-	_, emulatorOK := os.LookupEnv("PUBSUB_EMULATOR_HOST")
-	if gcpOK || emulatorOK {
+	_, pubsubEmulatorOK := os.LookupEnv("PUBSUB_EMULATOR_HOST")
+	if gcpOK || pubsubEmulatorOK {
 
 		pubsubCtx := ctx
-		if emulatorOK {
+		if pubsubEmulatorOK {
 			gcpProjectID = "local"
 
 			var cancelFunc context.CancelFunc
@@ -352,14 +361,14 @@ func main() {
 		// Google Pubsub
 		{
 			settings := pubsub.PublishSettings{
-				DelayThreshold: time.Second * 10,
+				DelayThreshold: time.Hour,
 				CountThreshold: 1000,
-				ByteThreshold:  100 * 1024,
+				ByteThreshold:  60 * 1024,
 				NumGoroutines:  runtime.GOMAXPROCS(0),
 				Timeout:        time.Minute,
 			}
 
-			pubsub, err := billing.NewGooglePubSubBiller(pubsubCtx, billingMetrics, logger, gcpProjectID, "billing", 1, 0, &settings)
+			pubsub, err := billing.NewGooglePubSubBiller(pubsubCtx, billingMetrics, logger, gcpProjectID, "billing", 1, 1000, &settings)
 			if err != nil {
 				level.Error(logger).Log("msg", "could not create pubsub biller", "err", err)
 				os.Exit(1)
@@ -497,8 +506,6 @@ func main() {
 					// Increment the successful route matrix read counter
 					atomic.AddUint64(&readRouteMatrixSuccessCount, 1)
 
-					level.Info(logger).Log("matrix", "route", "entries", len(routeMatrix.Entries))
-
 					time.Sleep(syncInterval)
 				}
 			}()
@@ -590,13 +597,13 @@ func main() {
 	serverUpdateCounters := &transport.ServerUpdateCounters{}
 	sessionUpdateCounters := &transport.SessionUpdateCounters{}
 
-	// Initialize the unknown datacenter map
-	unknownDatacenters := transport.NewUnknownDatacenters()
+	// Initialize the datacenter tracker
+	datacenterTracker := transport.NewDatacenterTracker()
 	go func() {
 		timeout := time.Minute
 		frequency := time.Millisecond * 10
 		ticker := time.NewTicker(frequency)
-		unknownDatacenters.TimeoutLoop(ctx, timeout, ticker.C)
+		datacenterTracker.TimeoutLoop(ctx, timeout, ticker.C)
 	}()
 
 	// Setup the stats print routine
@@ -630,9 +637,14 @@ func main() {
 				fmt.Printf("%d long session updates\n", atomic.LoadUint64(&sessionUpdateCounters.LongDuration))
 				fmt.Printf("%d long route matrix updates\n", atomic.LoadUint64(&longRouteMatrixUpdates))
 
-				unknownDatacentersLength := unknownDatacenters.Length()
+				unknownDatacentersLength := datacenterTracker.UnknownDatacenterLength()
 				if unknownDatacentersLength > 0 {
-					fmt.Printf("%d unknown datacenters: %v\n", unknownDatacentersLength, unknownDatacenters.GetUnknownDatacenters())
+					fmt.Printf("%d unknown datacenters: %v\n", unknownDatacentersLength, datacenterTracker.GetUnknownDatacenters())
+				}
+
+				emptyDatacentersLength := datacenterTracker.EmptyDatacenterLength()
+				if emptyDatacentersLength > 0 {
+					fmt.Printf("%d empty datacenters: %v\n", emptyDatacentersLength, datacenterTracker.GetEmptyDatacenters())
 				}
 
 				fmt.Printf("-----------------------------\n")
@@ -645,21 +657,21 @@ func main() {
 	// Start UDP server
 	{
 		serverInitConfig := &transport.ServerInitParams{
-			ServerPrivateKey:   serverPrivateKey,
-			Storer:             db,
-			Metrics:            serverInitMetrics,
-			Logger:             logger,
-			Counters:           serverInitCounters,
-			UnknownDatacenters: unknownDatacenters,
+			ServerPrivateKey:  serverPrivateKey,
+			Storer:            db,
+			Metrics:           serverInitMetrics,
+			Logger:            logger,
+			Counters:          serverInitCounters,
+			DatacenterTracker: datacenterTracker,
 		}
 
 		serverUpdateConfig := &transport.ServerUpdateParams{
-			Storer:             db,
-			Metrics:            serverUpdateMetrics,
-			Logger:             logger,
-			ServerMap:          serverMap,
-			Counters:           serverUpdateCounters,
-			UnknownDatacenters: unknownDatacenters,
+			Storer:            db,
+			Metrics:           serverUpdateMetrics,
+			Logger:            logger,
+			ServerMap:         serverMap,
+			Counters:          serverUpdateCounters,
+			DatacenterTracker: datacenterTracker,
 		}
 
 		sessionUpdateConfig := &transport.SessionUpdateParams{
@@ -677,6 +689,7 @@ func main() {
 			ServerMap:            serverMap,
 			SessionMap:           sessionMap,
 			Counters:             sessionUpdateCounters,
+			DatacenterTracker:    datacenterTracker,
 		}
 
 		mux := transport.UDPServerMux{
