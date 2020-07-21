@@ -458,8 +458,8 @@ type mapPointsByte struct {
 }
 
 type point struct {
-	Latitude      int16
-	Longitude     int16
+	Latitude      float32
+	Longitude     float32
 	OnNetworkNext bool
 }
 
@@ -528,8 +528,8 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 				// if there was no error then add the SessionMapPoint to the slice
 				if currentPoint.Latitude != 0 && currentPoint.Longitude != 0 {
 					bytePoint := point{
-						Latitude:      int16(currentPoint.Latitude),
-						Longitude:     int16(currentPoint.Longitude),
+						Latitude:      float32(currentPoint.Latitude),
+						Longitude:     float32(currentPoint.Longitude),
 						OnNetworkNext: false,
 					}
 
@@ -566,7 +566,7 @@ func WriteMapPointCache(points *mapPointsByte) []byte {
 	numGreenPoints := uint32(len(points.GreenPoints))
 	numBluePoints := uint32(len(points.BluePoints))
 
-	length = 1 + 4 + 4 + (1+2+2)*numGreenPoints + (1+2+2)*numBluePoints
+	length = 1 + 4 + 4 + (1+4+4)*numGreenPoints + (1+4+4)*numBluePoints
 
 	data := make([]byte, length)
 	index := 0
@@ -575,18 +575,17 @@ func WriteMapPointCache(points *mapPointsByte) []byte {
 	encoding.WriteUint32(data, &index, numGreenPoints)
 
 	for _, point := range points.GreenPoints {
-		encoding.WriteUint16(data, &index, uint16(point.Latitude))
-		encoding.WriteUint16(data, &index, uint16(point.Longitude))
+		encoding.WriteFloat32(data, &index, point.Latitude)
+		encoding.WriteFloat32(data, &index, point.Longitude)
 		encoding.WriteBool(data, &index, point.OnNetworkNext)
 	}
 
 	encoding.WriteUint32(data, &index, numBluePoints)
 
 	for _, point := range points.BluePoints {
-		encoding.WriteUint16(data, &index, uint16(point.Latitude))
-		encoding.WriteUint16(data, &index, uint16(point.Longitude))
+		encoding.WriteFloat32(data, &index, point.Latitude)
+		encoding.WriteFloat32(data, &index, point.Longitude)
 		encoding.WriteBool(data, &index, point.OnNetworkNext)
-
 	}
 	return data
 }
@@ -606,24 +605,24 @@ func ReadMapPointsCache(points *mapPointsByte, data []byte) bool {
 		return false
 	}
 
-	var latitude uint16
-	var longitude uint16
+	var latitude float32
+	var longitude float32
 	var onNetworkNext bool
 	points.GreenPoints = make([]point, numGreenPoints)
 
 	for i := 0; i < int(numGreenPoints); i++ {
-		if !encoding.ReadUint16(data, &index, &latitude) {
+		if !encoding.ReadFloat32(data, &index, &latitude) {
 			return false
 		}
-		if !encoding.ReadUint16(data, &index, &longitude) {
+		if !encoding.ReadFloat32(data, &index, &longitude) {
 			return false
 		}
 		if !encoding.ReadBool(data, &index, &onNetworkNext) {
 			return false
 		}
 		points.GreenPoints[i] = point{
-			Latitude:      int16(latitude),
-			Longitude:     int16(longitude),
+			Latitude:      latitude,
+			Longitude:     longitude,
 			OnNetworkNext: onNetworkNext,
 		}
 	}
@@ -635,18 +634,18 @@ func ReadMapPointsCache(points *mapPointsByte, data []byte) bool {
 	points.BluePoints = make([]point, numBluePoints)
 
 	for i := 0; i < int(numBluePoints); i++ {
-		if !encoding.ReadUint16(data, &index, &latitude) {
+		if !encoding.ReadFloat32(data, &index, &latitude) {
 			return false
 		}
-		if !encoding.ReadUint16(data, &index, &longitude) {
+		if !encoding.ReadFloat32(data, &index, &longitude) {
 			return false
 		}
 		if !encoding.ReadBool(data, &index, &onNetworkNext) {
 			return false
 		}
 		points.BluePoints[i] = point{
-			Latitude:      int16(latitude),
-			Longitude:     int16(longitude),
+			Latitude:      latitude,
+			Longitude:     longitude,
 			OnNetworkNext: onNetworkNext,
 		}
 	}
