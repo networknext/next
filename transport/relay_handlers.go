@@ -614,6 +614,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			err = errors.New("unsupported content type")
 		}
 		if err != nil {
+			level.Error(locallogger).Log("msg", "error unmarshaling relay update request", "err", err)
 			http.Error(writer, err.Error(), http.StatusBadRequest)
 			params.Metrics.ErrorMetrics.UnmarshalFailure.Add(1)
 			return

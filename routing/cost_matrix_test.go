@@ -65,8 +65,8 @@ func getPopulatedCostMatrix(malformed bool) *routing.CostMatrix {
 	matrix.RTT[0] = 7
 
 	matrix.RelaySellers = []routing.Seller{
-		{ID: "1234", Name: "Seller One", IngressPriceCents: 10, EgressPriceCents: 20},
-		{ID: "5678", Name: "Seller Two", IngressPriceCents: 30, EgressPriceCents: 40},
+		{ID: "1234", Name: "Seller One", IngressPriceNibblinsPerGB: 10, EgressPriceNibblinsPerGB: 20},
+		{ID: "5678", Name: "Seller Two", IngressPriceNibblinsPerGB: 30, EgressPriceNibblinsPerGB: 40},
 	}
 
 	matrix.RelaySessionCounts = []uint32{100, 200}
@@ -132,8 +132,8 @@ func costMatrixUnmarshalAssertionsVer5(t *testing.T, matrix *routing.CostMatrix,
 	for i, seller := range sellers {
 		assert.Equal(t, seller.ID, matrix.RelaySellers[i].ID)
 		assert.Equal(t, seller.Name, matrix.RelaySellers[i].Name)
-		assert.Equal(t, seller.IngressPriceCents, matrix.RelaySellers[i].IngressPriceCents)
-		assert.Equal(t, seller.EgressPriceCents, matrix.RelaySellers[i].EgressPriceCents)
+		assert.Equal(t, seller.IngressPriceNibblinsPerGB, matrix.RelaySellers[i].IngressPriceNibblinsPerGB)
+		assert.Equal(t, seller.EgressPriceNibblinsPerGB, matrix.RelaySellers[i].EgressPriceNibblinsPerGB)
 	}
 
 	assert.Equal(t, sessionCounts, matrix.RelaySessionCounts)
@@ -192,11 +192,11 @@ func getCostMatrixDataV5() costMatrixData {
 
 	// version 4 stuff
 	sellers := []routing.Seller{
-		{ID: "id0", Name: "name0", IngressPriceCents: 1, EgressPriceCents: 2},
-		{ID: "id1", Name: "name1", IngressPriceCents: 3, EgressPriceCents: 4},
-		{ID: "id2", Name: "name2", IngressPriceCents: 5, EgressPriceCents: 6},
-		{ID: "id3", Name: "name3", IngressPriceCents: 7, EgressPriceCents: 8},
-		{ID: "id4", Name: "name4", IngressPriceCents: 9, EgressPriceCents: 10},
+		{ID: "id0", Name: "name0", IngressPriceNibblinsPerGB: 1, EgressPriceNibblinsPerGB: 2},
+		{ID: "id1", Name: "name1", IngressPriceNibblinsPerGB: 3, EgressPriceNibblinsPerGB: 4},
+		{ID: "id2", Name: "name2", IngressPriceNibblinsPerGB: 5, EgressPriceNibblinsPerGB: 6},
+		{ID: "id3", Name: "name3", IngressPriceNibblinsPerGB: 7, EgressPriceNibblinsPerGB: 8},
+		{ID: "id4", Name: "name4", IngressPriceNibblinsPerGB: 9, EgressPriceNibblinsPerGB: 10},
 	}
 
 	// version 5 stuff
@@ -280,11 +280,11 @@ func getCostMatrixDataV6() costMatrixData {
 	datacenterNames := []string{"a datacenter", "another datacenter", "third", "fourth", "fifth"}
 
 	sellers := []routing.Seller{
-		{ID: "id0", Name: "name0", IngressPriceCents: 1, EgressPriceCents: 2},
-		{ID: "id1", Name: "name1", IngressPriceCents: 3, EgressPriceCents: 4},
-		{ID: "id2", Name: "name2", IngressPriceCents: 5, EgressPriceCents: 6},
-		{ID: "id3", Name: "name3", IngressPriceCents: 7, EgressPriceCents: 8},
-		{ID: "id4", Name: "name4", IngressPriceCents: 9, EgressPriceCents: 10},
+		{ID: "id0", Name: "name0", IngressPriceNibblinsPerGB: 1, EgressPriceNibblinsPerGB: 2},
+		{ID: "id1", Name: "name1", IngressPriceNibblinsPerGB: 3, EgressPriceNibblinsPerGB: 4},
+		{ID: "id2", Name: "name2", IngressPriceNibblinsPerGB: 5, EgressPriceNibblinsPerGB: 6},
+		{ID: "id3", Name: "name3", IngressPriceNibblinsPerGB: 7, EgressPriceNibblinsPerGB: 8},
+		{ID: "id4", Name: "name4", IngressPriceNibblinsPerGB: 9, EgressPriceNibblinsPerGB: 10},
 	}
 
 	sessionCounts := []uint32{100, 200, 300, 400, 500}

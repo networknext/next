@@ -12,7 +12,6 @@ import (
 	"cloud.google.com/go/firestore"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"google.golang.org/api/iterator"
@@ -52,9 +51,9 @@ type buyer struct {
 }
 
 type seller struct {
-	Name                       string `firestore:"name"`
-	PricePublicIngressNibblins int64  `firestore:"pricePublicIngressNibblins"`
-	PricePublicEgressNibblins  int64  `firestore:"pricePublicEgressNibblins"`
+	Name                      string `firestore:"name"`
+	IngressPriceNibblinsPerGB int64  `firestore:"pricePublicIngressNibblins"`
+	EgressPriceNibblinsPerGB  int64  `firestore:"pricePublicEgressNibblins"`
 }
 
 type relay struct {
@@ -444,9 +443,9 @@ func (fs *Firestore) AddSeller(ctx context.Context, s routing.Seller) error {
 	}
 
 	newSellerData := seller{
-		Name:                       s.Name,
-		PricePublicIngressNibblins: int64(billing.CentsToNibblins(s.IngressPriceCents)),
-		PricePublicEgressNibblins:  int64(billing.CentsToNibblins(s.EgressPriceCents)),
+		Name:                      s.Name,
+		IngressPriceNibblinsPerGB: int64(s.IngressPriceNibblinsPerGB),
+		EgressPriceNibblinsPerGB:  int64(s.EgressPriceNibblinsPerGB),
 	}
 
 	// Add the seller in remote storage
@@ -591,8 +590,8 @@ func (fs *Firestore) SetSeller(ctx context.Context, seller routing.Seller) error
 	// Update the seller in firestore
 	newSellerData := map[string]interface{}{
 		"name":                       seller.Name,
-		"pricePublicIngressNibblins": int64(billing.CentsToNibblins(seller.IngressPriceCents)),
-		"pricePublicEgressNibblins":  int64(billing.CentsToNibblins(seller.EgressPriceCents)),
+		"pricePublicIngressNibblins": int64(seller.IngressPriceNibblinsPerGB),
+		"pricePublicEgressNibblins":  int64(seller.EgressPriceNibblinsPerGB),
 	}
 
 	if _, err := fs.Client.Collection("Seller").Doc(seller.ID).Set(ctx, newSellerData, firestore.MergeAll); err != nil {
@@ -1293,7 +1292,7 @@ func (fs *Firestore) SyncLoop(ctx context.Context, c <-chan time.Time) {
 func (fs *Firestore) Sync(ctx context.Context) error {
 	var outerErr error
 	var wg sync.WaitGroup
-	wg.Add(4)
+	wg.Add(5)
 
 	go func() {
 		if err := fs.syncRelays(ctx); err != nil {
@@ -1305,6 +1304,13 @@ func (fs *Firestore) Sync(ctx context.Context) error {
 	go func() {
 		if err := fs.syncCustomers(ctx); err != nil {
 			outerErr = fmt.Errorf("failed to sync customers: %v", err)
+		}
+		wg.Done()
+	}()
+
+	go func() {
+		if err := fs.syncSellers(ctx); err != nil {
+			outerErr = fmt.Errorf("failed to sync sellers: %v", err)
 		}
 		wg.Done()
 	}()
@@ -1475,10 +1481,10 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 		}
 
 		seller := routing.Seller{
-			ID:                sdoc.Ref.ID,
-			Name:              s.Name,
-			IngressPriceCents: billing.NibblinsToCents(uint64(s.PricePublicIngressNibblins)),
-			EgressPriceCents:  billing.NibblinsToCents(uint64(s.PricePublicEgressNibblins)),
+			ID:                        sdoc.Ref.ID,
+			Name:                      s.Name,
+			IngressPriceNibblinsPerGB: routing.Nibblin(s.IngressPriceNibblinsPerGB),
+			EgressPriceNibblinsPerGB:  routing.Nibblin(s.EgressPriceNibblinsPerGB),
 		}
 
 		relay.Seller = seller
@@ -1494,6 +1500,48 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 	level.Info(fs.Logger).Log("during", "syncRelays", "num", len(fs.relays))
 
 	return nil
+}
+
+func (fs *Firestore) syncSellers(ctx context.Context) error {
+	sellers := make(map[string]routing.Seller)
+
+	sellerDocs := fs.Client.Collection("Sellers").Documents(ctx)
+	defer sellerDocs.Stop()
+
+	for {
+		sellerDoc, err := sellerDocs.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return &FirestoreError{err: err}
+		}
+
+		var s seller
+		err = sellerDoc.DataTo(&s)
+		if err != nil {
+			level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to unmarshal seller %v", sellerDoc.Ref.ID), "err", err)
+			continue
+		}
+
+		seller := routing.Seller{
+			ID:                        sellerDoc.Ref.ID,
+			Name:                      s.Name,
+			IngressPriceNibblinsPerGB: routing.Nibblin(s.IngressPriceNibblinsPerGB),
+			EgressPriceNibblinsPerGB:  routing.Nibblin(s.EgressPriceNibblinsPerGB),
+		}
+
+		sellers[sellerDoc.Ref.ID] = seller
+	}
+
+	fs.sellerMutex.Lock()
+	fs.sellers = sellers
+	fs.sellerMutex.Unlock()
+
+	level.Info(fs.Logger).Log("during", "syncSellers", "num", len(fs.sellers))
+
+	return nil
+
 }
 
 func (fs *Firestore) syncDatacenterMaps(ctx context.Context) error {
@@ -1614,12 +1662,13 @@ func (fs *Firestore) syncCustomers(ctx context.Context) error {
 			}
 
 			sellers[sdoc.Ref.ID] = routing.Seller{
-				ID:                sdoc.Ref.ID,
-				Name:              s.Name,
-				IngressPriceCents: billing.NibblinsToCents(uint64(s.PricePublicIngressNibblins)),
-				EgressPriceCents:  billing.NibblinsToCents(uint64(s.PricePublicEgressNibblins)),
+				ID:                        sdoc.Ref.ID,
+				Name:                      s.Name,
+				IngressPriceNibblinsPerGB: routing.Nibblin(s.IngressPriceNibblinsPerGB),
+				EgressPriceNibblinsPerGB:  routing.Nibblin(s.EgressPriceNibblinsPerGB),
 			}
 		}
+
 	}
 
 	fs.buyerMutex.Lock()
@@ -1647,7 +1696,7 @@ func (fs *Firestore) createRouteRulesSettingsForBuyerID(ctx context.Context, ID 
 		EnvelopeKbpsUp:               rrs.EnvelopeKbpsUp,
 		EnvelopeKbpsDown:             rrs.EnvelopeKbpsDown,
 		Mode:                         rrs.Mode,
-		MaxPricePerGBNibblins:        int64(billing.CentsToNibblins(rrs.MaxCentsPerGB)),
+		MaxPricePerGBNibblins:        int64(rrs.MaxNibblinsPerGB),
 		AcceptableLatency:            rrs.AcceptableLatency,
 		RTTEpsilon:                   rrs.RTTEpsilon,
 		RTTThreshold:                 rrs.RTTThreshold,
@@ -1708,7 +1757,7 @@ func (fs *Firestore) getRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 	rrs.EnvelopeKbpsUp = tempRRS.EnvelopeKbpsUp
 	rrs.EnvelopeKbpsDown = tempRRS.EnvelopeKbpsDown
 	rrs.Mode = tempRRS.Mode
-	rrs.MaxCentsPerGB = billing.NibblinsToCents(uint64(tempRRS.MaxPricePerGBNibblins))
+	rrs.MaxNibblinsPerGB = routing.Nibblin(tempRRS.MaxPricePerGBNibblins)
 	rrs.AcceptableLatency = tempRRS.AcceptableLatency
 	rrs.RTTEpsilon = tempRRS.RTTEpsilon
 	rrs.RTTThreshold = tempRRS.RTTThreshold
@@ -1739,7 +1788,7 @@ func (fs *Firestore) setRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 		"envelopeKbpsUp":               rrs.EnvelopeKbpsUp,
 		"envelopeKbpsDown":             rrs.EnvelopeKbpsDown,
 		"mode":                         rrs.Mode,
-		"maxPricePerGBNibblins":        int64(billing.CentsToNibblins(rrs.MaxCentsPerGB)),
+		"maxPricePerGBNibblins":        int64(rrs.MaxNibblinsPerGB),
 		"acceptableLatency":            rrs.AcceptableLatency,
 		"rttRouteSwitch":               rrs.RTTEpsilon,
 		"rttThreshold":                 rrs.RTTThreshold,
