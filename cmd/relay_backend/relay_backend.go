@@ -201,10 +201,18 @@ func main() {
 	// Create a local metrics handler
 	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
 
+	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
+	_, emulatorOK := os.LookupEnv("FIRESTORE_EMULATOR_HOST")
+	if emulatorOK {
+		gcpProjectID = "local"
+
+		level.Info(logger).Log("msg", "Detected firestore emulator")
+	}
+
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
 	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
 	// on creation so we can use that for the default then
-	if gcpProjectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
+	if gcpOK || emulatorOK {
 
 		// Firestore
 		{
@@ -230,7 +238,9 @@ func main() {
 			// Set the Firestore Storer to give to handlers
 			db = fs
 		}
+	}
 
+	if gcpOK {
 		// Stackdriver Metrics
 		{
 			var enableSDMetrics bool
