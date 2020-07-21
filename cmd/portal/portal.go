@@ -233,32 +233,15 @@ func main() {
 		Logger:  logger,
 	}
 
-	if _, ok := os.LookupEnv("FIRESTORE_EMULATOR_HOST"); ok {
-		gcpProjectID := "local"
+	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
+	_, emulatorOK := os.LookupEnv("FIRESTORE_EMULATOR_HOST")
+	if emulatorOK {
+		gcpProjectID = "local"
 
-		fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
-		if err != nil {
-			level.Error(logger).Log("err", err)
-			os.Exit(1)
-		}
-
-		syncInterval, err := time.ParseDuration("1s")
-		if err != nil {
-			level.Error(logger).Log("envvar", "1s", "value", syncInterval, "err", err)
-			os.Exit(1)
-		}
-		// Start a goroutine to sync from Firestore
-		go func() {
-			ticker := time.NewTicker(syncInterval)
-			fs.SyncLoop(ctx, ticker.C)
-		}()
-		db = fs
+		level.Info(logger).Log("msg", "Detected firestore emulator")
 	}
 
-	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
-	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
-	// on creation so we can use that for the default then
-	if gcpProjectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
+	if gcpOK || emulatorOK {
 		// Firestore
 		{
 			// Create a Firestore Storer
@@ -283,7 +266,12 @@ func main() {
 			// Set the Firestore Storer to give to handlers
 			db = fs
 		}
+	}
 
+	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
+	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
+	// on creation so we can use that for the default then
+	if gcpOK {
 		// Stackdriver Profiler
 		{
 			var enableSDProfiler bool
