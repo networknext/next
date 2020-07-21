@@ -1085,17 +1085,17 @@ func CalculateRouteRelaysPrice(chosenRoute *routing.Route, envelopeBytesUp uint6
 		return nil
 	}
 
-	relayPricesNibblins := make([]routing.Nibblin, len(chosenRoute.Relays))
+	relayPrices := make([]routing.Nibblin, len(chosenRoute.Relays))
 
 	envelopeUpGB := float64(envelopeBytesUp) / 1000000000.0
 	envelopeDownGB := float64(envelopeBytesDown) / 1000000000.0
 
 	for i, relay := range chosenRoute.Relays {
 		relayPriceNibblins := float64(relay.Seller.EgressPriceNibblinsPerGB) * (envelopeUpGB + envelopeDownGB)
-		relayPricesNibblins[i] = routing.Nibblin(relayPriceNibblins)
+		relayPrices[i] = routing.Nibblin(relayPriceNibblins)
 	}
 
-	return relayPricesNibblins
+	return relayPrices
 }
 
 func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket, response *SessionResponsePacket, serverDataReadOnly *ServerData,
