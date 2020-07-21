@@ -311,7 +311,7 @@ MapHandler = {
 					id: 'nn-layer',
 					data: onNN,
 					opacity: 0.8,
-					getPosition: d => [d.longitude, d.latitude],
+					getPosition: d => [d[0], d[1]],
 					getWeight: d => 1,
 					cellSizePixels: cellSize,
 					colorRange: [
@@ -325,7 +325,7 @@ MapHandler = {
 					id: 'direct-layer',
 					data: direct,
 					opacity: 0.8,
-					getPosition: d => [d.longitude, d.latitude],
+					getPosition: d => [d[0], d[1]],
 					getWeight: d => 1,
 					cellSizePixels: cellSize,
 					colorRange: [
