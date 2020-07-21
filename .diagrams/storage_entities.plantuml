@@ -23,8 +23,8 @@ Buyer : - RouteShader (RoutingRulesSettings)
 
 Seller : - ID
 Seller : - Name
-Seller : - IngressPriceCents
-Seller : - EgressPriceCents
+Seller : - IngressPriceNibblins
+Seller : - EgressPriceNibblins
 
 Relay : - ID
 Relay : - Name
@@ -51,7 +51,7 @@ Datacenter : - Location
 RouteShader : - EnvelopeKbpsUp
 RouteShader : - EnvelopeKbpsDown
 RouteShader : - Mode
-RouteShader : - MaxCentsPerGB
+RouteShader : - MaxNibblinsPerGB
 RouteShader : - AcceptableLatency
 RouteShader : - RTTEpsilon (rttRouteSwtich)
 RouteShader : - RTTThreshold
