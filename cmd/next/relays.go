@@ -16,6 +16,173 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
+func opsRelays(
+	rpcClient jsonrpc.RPCClient,
+	env Environment,
+	regex string,
+	relaysStateShowFlags [6]bool,
+	relaysStateHideFlags [6]bool,
+	relaysDownFlag bool,
+	csvOutputFlag bool,
+	relayVersionFilter string,
+	relaysCount int64,
+	relayIDSigned bool,
+) {
+	args := localjsonrpc.RelaysArgs{
+		Regex: regex,
+	}
+
+	var reply localjsonrpc.RelaysReply
+	if err := rpcClient.CallFor(&reply, "OpsService.Relays", args); err != nil {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	sort.Slice(reply.Relays, func(i int, j int) bool {
+		return reply.Relays[i].Name > reply.Relays[j].Name
+	})
+
+	relays := []struct {
+		Name         string
+		MRC          string
+		Overage      string
+		BWRule       string
+		ContractTerm string
+		StartDate    string
+		EndDate      string
+		Type         string
+	}{}
+
+	relaysCSV := [][]string{{}}
+
+	relaysCSV = append(relaysCSV, []string{
+		"Name", "Address", "MRC", "Overage", "BW Rule", "Term", "Start Date", "End Date", "Type"})
+
+	for _, relay := range reply.Relays {
+		relayState, err := routing.ParseRelayState(relay.State)
+		if err != nil {
+			log.Fatalf("could not parse invalid relay state %s", relay.State)
+		}
+
+		includeRelay := true
+
+		for i, flag := range relaysStateShowFlags {
+			if flag {
+				if relayState != routing.RelayState(i) {
+					// An "only show" flag is set and this relay doesn't match that state, so don't include it in the final output
+					includeRelay = false
+				} else {
+					// One of the flags should include the relay, so set to true and break out, since combining the flags is an OR operation
+					includeRelay = true
+					break
+				}
+			}
+		}
+
+		if relaysStateHideFlags[relayState] {
+			// Relay should be hidden, so don't include in final output
+			includeRelay = false
+		}
+
+		if relaysDownFlag {
+			// Relay is still up and shouldn't be included in the final output
+			includeRelay = false
+		}
+
+		if !includeRelay {
+			continue
+		}
+
+		mrc := fmt.Sprintf("%.4f", relay.MRC.ToCents())
+		overage := fmt.Sprintf("%.4f", relay.Overage.ToCents())
+		var bwRule string
+		switch relay.BWRule {
+		case routing.BWRuleFlat:
+			bwRule = "flat"
+		case routing.BWRuleBurst:
+			bwRule = "burst"
+		case routing.BWRulePool:
+			bwRule = "pool"
+		default:
+			bwRule = "n/a"
+		}
+
+		var machineType string
+		switch relay.Type {
+		case routing.BareMetal:
+			machineType = "bare metal"
+		case routing.VirtualMachine:
+			machineType = "virtual machine"
+		default:
+			machineType = "n/a"
+		}
+
+		// return csv file
+		if csvOutputFlag {
+			relaysCSV = append(relaysCSV, []string{
+				relay.Name,
+				mrc,
+				overage,
+				bwRule,
+				fmt.Sprintf("%d", relay.ContractTerm),
+				relay.StartDate.String(),
+				relay.EndDate.String(),
+				machineType,
+			})
+		} else if relayVersionFilter == "all" || relay.Version == relayVersionFilter {
+			relays = append(relays, struct {
+				Name         string
+				MRC          string
+				Overage      string
+				BWRule       string
+				ContractTerm string
+				StartDate    string
+				EndDate      string
+				Type         string
+			}{
+				relay.Name,
+				mrc,
+				overage,
+				bwRule,
+				fmt.Sprintf("%d", relay.ContractTerm),
+				relay.StartDate.String(),
+				relay.EndDate.String(),
+				machineType,
+			})
+		}
+
+	}
+
+	if csvOutputFlag {
+		if relaysCount > 0 {
+			relaysCSV = relaysCSV[:relaysCount]
+		}
+
+		// return csv file of structs
+		// fileName := "./relays-" + strconv.FormatInt(time.Now().Unix(), 10) + ".csv"
+		fileName := "./relays.csv"
+		f, err := os.Create(fileName)
+		if err != nil {
+			fmt.Printf("Error creating local CSV file %s: %v\n", fileName, err)
+			return
+		}
+
+		writer := csv.NewWriter(f)
+		err = writer.WriteAll(relaysCSV)
+		if err != nil {
+			fmt.Printf("Error writing local CSV file %s: %v\n", fileName, err)
+		}
+		fmt.Println("CSV file written: relays.csv")
+		return
+	}
+
+	if relaysCount > 0 {
+		relays = relays[:relaysCount]
+	}
+
+	table.Output(relays)
+}
+
 func relays(
 	rpcClient jsonrpc.RPCClient,
 	env Environment,
