@@ -189,7 +189,7 @@ func (fs *Firestore) AddBuyer(ctx context.Context, b routing.Buyer) error {
 	}
 
 	// Add the buyer's routing rules settings to remote storage
-	if err := fs.createRouteRulesSettingsForBuyerID(ctx, ref.ID, b.Name, b.RoutingRulesSettings); err != nil {
+	if err := fs.setRoutingRulesSettingsForBuyerID(ctx, ref.ID, b.Name, b.RoutingRulesSettings); err != nil {
 		return &FirestoreError{err: err}
 	}
 
