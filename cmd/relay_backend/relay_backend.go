@@ -11,6 +11,7 @@ import (
 	"encoding/base64"
 	"expvar"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -35,6 +36,9 @@ import (
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 )
+
+// MaxRelayCount is the maximum number of relays you can run locally with the firestore emulator
+const MaxRelayCount = 10
 
 var (
 	buildtime     string
@@ -156,50 +160,9 @@ func main() {
 		Namespace:   "RELAY_LOCATIONS",
 	}
 
-	// Create an in-memory relay & datacenter store
-	// that doesn't require talking to configstore
 	var db storage.Storer = &storage.InMemory{
 		LocalMode: true,
 	}
-
-	if env == "local" {
-		seller := routing.Seller{
-			ID:                        "sellerID",
-			Name:                      "local",
-			IngressPriceNibblinsPerGB: 0.1 * 1e9,
-			EgressPriceNibblinsPerGB:  0.5 * 1e9,
-		}
-
-		datacenter := routing.Datacenter{
-			ID:       crypto.HashID("local"),
-			Name:     "local",
-			Location: routing.LocationNullIsland,
-		}
-
-		if err := db.AddSeller(ctx, seller); err != nil {
-			level.Error(logger).Log("msg", "could not add seller to storage", "err", err)
-			os.Exit(1)
-		}
-
-		if err := db.AddDatacenter(ctx, datacenter); err != nil {
-			level.Error(logger).Log("msg", "could not add datacenter to storage", "err", err)
-			os.Exit(1)
-		}
-
-		if err := db.AddRelay(ctx, routing.Relay{
-			Name:        "", // needs to be blank so the relay_dashboard shows ips and the stats
-			PublicKey:   relayPublicKey,
-			Seller:      seller,
-			Datacenter:  datacenter,
-			MaxSessions: 3000,
-		}); err != nil {
-			level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
-			os.Exit(1)
-		}
-	}
-
-	// Create a local metrics handler
-	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
 
 	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
 	_, emulatorOK := os.LookupEnv("FIRESTORE_EMULATOR_HOST")
@@ -239,6 +202,55 @@ func main() {
 			db = fs
 		}
 	}
+
+	if env == "local" {
+		seller := routing.Seller{
+			ID:                        "sellerID",
+			Name:                      "local",
+			IngressPriceNibblinsPerGB: 0.1 * 1e9,
+			EgressPriceNibblinsPerGB:  0.5 * 1e9,
+		}
+
+		datacenter := routing.Datacenter{
+			ID:       crypto.HashID("local"),
+			Name:     "local",
+			Location: routing.LocationNullIsland,
+		}
+
+		if err := db.AddSeller(ctx, seller); err != nil {
+			level.Error(logger).Log("msg", "could not add seller to storage", "err", err)
+			os.Exit(1)
+		}
+
+		if err := db.AddDatacenter(ctx, datacenter); err != nil {
+			level.Error(logger).Log("msg", "could not add datacenter to storage", "err", err)
+			os.Exit(1)
+		}
+
+		for i := int64(0); i < MaxRelayCount; i++ {
+			addressString := "127.0.0.1:1000" + strconv.FormatInt(i, 10)
+			addr, err := net.ResolveUDPAddr("udp", addressString)
+			if err != nil {
+				level.Error(logger).Log("msg", "could parse udp address", "address", addressString, "err", err)
+				os.Exit(1)
+			}
+
+			if err := db.AddRelay(ctx, routing.Relay{
+				ID:          crypto.HashID(addr.String()),
+				Name:        "", // needs to be blank so the relay_dashboard shows ips and the stats
+				Addr:        *addr,
+				PublicKey:   relayPublicKey,
+				Seller:      seller,
+				Datacenter:  datacenter,
+				MaxSessions: 3000,
+			}); err != nil {
+				level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
+				os.Exit(1)
+			}
+		}
+	}
+
+	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
 
 	if gcpOK {
 		// Stackdriver Metrics
