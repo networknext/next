@@ -22,10 +22,12 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/networknext/backend/logging"
+	"github.com/networknext/backend/stats"
 	"github.com/networknext/backend/transport"
 
 	gcplogging "cloud.google.com/go/logging"
 	"cloud.google.com/go/profiler"
+	"cloud.google.com/go/pubsub"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -64,9 +66,12 @@ func main() {
 		}
 	}
 
+	gcpOK := false
+	var gcpProjectID string
+
 	if enableSDLogging {
-		if projectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
-			loggingClient, err := gcplogging.NewClient(ctx, projectID)
+		if gcpProjectID, gcpOK = os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
+			loggingClient, err := gcplogging.NewClient(ctx, gcpProjectID)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				os.Exit(1)
@@ -556,6 +561,65 @@ func main() {
 				if err := transport.RemoveRelayCacheEntry(ctx, rawID, msg.Payload, redisClientRelays, &geoClient, statsdb); err != nil {
 					level.Error(logger).Log("err", err)
 					os.Exit(1)
+				}
+			}
+		}
+	}()
+
+	statsMetrics, err := metrics.NewRelayStatDBMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create statsdb metrics", "err", err)
+	}
+
+	// Create a no-op biller
+	var writer stats.PubSubWriter = &stats.NoOpPubSubWriter{}
+	_, emulatorOK := os.LookupEnv("PUBSUB_EMULATOR_HOST")
+	if gcpOK || emulatorOK {
+		pubsubCtx := ctx
+
+		if emulatorOK {
+			gcpProjectID = "local"
+
+			var cancelFunc context.CancelFunc
+			pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(5*time.Second))
+			defer cancelFunc()
+
+			level.Info(logger).Log("msg", "Detected pubsub emulator")
+		}
+
+		// Google Pubsub
+		{
+			settings := pubsub.PublishSettings{
+				DelayThreshold: time.Hour,
+				CountThreshold: 1000,
+				ByteThreshold:  60 * 1024,
+				NumGoroutines:  runtime.GOMAXPROCS(0),
+				Timeout:        time.Minute,
+			}
+
+			pubsub, err := stats.NewGooglePubSubWriter(pubsubCtx, statsMetrics, logger, gcpProjectID, "statsdb", 1, 1000, &settings)
+			if err != nil {
+				level.Error(logger).Log("msg", "could not create statsdb pubsub writer", "err", err)
+				os.Exit(1)
+			}
+
+			writer = pubsub
+		}
+	}
+
+	go func() {
+		time.Sleep(time.Minute)
+		for {
+			cpy := statsdb.MakeCopy()
+			for k1, s := range cpy.Entries {
+				for k2, r := range s.Relays {
+					writer.Write(ctx, stats.StatsEntry{
+						RelayA:     k1,
+						RelayB:     k2,
+						RTT:        r.RTT,
+						Jitter:     r.Jitter,
+						PacketLoss: r.PacketLoss,
+					})
 				}
 			}
 		}

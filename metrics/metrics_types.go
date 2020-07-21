@@ -432,6 +432,24 @@ var EmptyBillingErrorMetrics BillingErrorMetrics = BillingErrorMetrics{
 	BillingWriteFailure:   &EmptyCounter{},
 }
 
+type RelayStatDBMetrics struct {
+	StatsEntriesReceived Counter
+	StatsEntriesWritten  Counter
+	ErrorMetrics         RelayStatDBErrorMetrics
+}
+
+type RelayStatDBErrorMetrics struct {
+	RelayStatsPublishFailure Counter
+	RelayStatsReadFailure    Counter
+	RelayStatsWriteFailure   Counter
+}
+
+var EmptyRelayStatDBErrorMetrics RelayStatDBErrorMetrics = RelayStatDBErrorMetrics{
+	RelayStatsPublishFailure: &EmptyCounter{},
+	RelayStatsReadFailure:    &EmptyCounter{},
+	RelayStatsWriteFailure:   &EmptyCounter{},
+}
+
 func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMetrics, error) {
 	var err error
 
@@ -1452,4 +1470,61 @@ func NewBillingMetrics(ctx context.Context, metricsHandler Handler) (*BillingMet
 	}
 
 	return &billingMetrics, nil
+}
+
+func NewRelayStatDBMetrics(ctx context.Context, metricsHandler Handler) (*RelayStatDBMetrics, error) {
+	relayStatDBMetrics := RelayStatDBMetrics{}
+	var err error
+
+	relayStatDBMetrics.StatsEntriesReceived, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Stat DB Entries Received",
+		ServiceName: "relay_backend",
+		ID:          "statsdb.entries",
+		Unit:        "entries",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	relayStatDBMetrics.StatsEntriesWritten, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Stat DB Entries Written",
+		ServiceName: "relay_backend",
+		ID:          "statsdb.entries.written",
+		Unit:        "entries",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	relayStatDBMetrics.ErrorMetrics.RelayStatsPublishFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Stat DB Publish Failure",
+		ServiceName: "relay_backend",
+		ID:          "statsdb.error.publish_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	relayStatDBMetrics.ErrorMetrics.RelayStatsReadFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Stat DB Read Failure",
+		ServiceName: "relay_backend",
+		ID:          "statsdb.error.read_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	relayStatDBMetrics.ErrorMetrics.RelayStatsWriteFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Stat DB Write Failure",
+		ServiceName: "relay_backend",
+		ID:          "statsdb.error.write_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &relayStatDBMetrics, nil
 }
