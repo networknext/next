@@ -7,6 +7,7 @@ package main
 
 import (
 	"context"
+	"expvar"
 	"fmt"
 	"io/ioutil"
 	"runtime"
@@ -48,7 +49,7 @@ func main() {
 	logger := log.NewLogfmtLogger(os.Stdout)
 
 	// Create a no-op metrics handler
-	var metricsHandler metrics.Handler = &metrics.NoOpHandler{}
+	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
 
 	// StackDriver Logging
 	{
@@ -287,6 +288,7 @@ func main() {
 			router := mux.NewRouter()
 			router.HandleFunc("/health", HealthHandlerFunc())
 			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage))
+			router.Handle("/debug/vars", expvar.Handler())
 
 			port, ok := os.LookupEnv("PORT")
 			if !ok {
