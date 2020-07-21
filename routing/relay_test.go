@@ -25,10 +25,10 @@ func TestRelay(t *testing.T) {
 		Addr:      *udp,
 		PublicKey: pk,
 		Seller: routing.Seller{
-			ID:                        "12345678",
-			Name:                      "seller name",
-			IngressPriceNibblinsPerGB: 456,
-			EgressPriceNibblinsPerGB:  789,
+			ID:                "12345678",
+			Name:              "seller name",
+			IngressPriceCents: 456,
+			EgressPriceCents:  789,
 		},
 		Datacenter: routing.Datacenter{
 			ID:      321,
@@ -110,14 +110,14 @@ func TestRelay(t *testing.T) {
 		t.Run("missing seller egress price", func(t *testing.T) {
 			size += 8
 			buff = buff[:size]
-			encoding.WriteUint64(buff, &index, uint64(expected.Seller.IngressPriceNibblinsPerGB))
+			encoding.WriteUint64(buff, &index, expected.Seller.IngressPriceCents)
 			assert.EqualError(t, actual.UnmarshalBinary(buff), "failed to unmarshal relay seller egress price")
 		})
 
 		t.Run("missing datacenter ID", func(t *testing.T) {
 			size += 8
 			buff = buff[:size]
-			encoding.WriteUint64(buff, &index, uint64(expected.Seller.EgressPriceNibblinsPerGB))
+			encoding.WriteUint64(buff, &index, expected.Seller.EgressPriceCents)
 			assert.EqualError(t, actual.UnmarshalBinary(buff), "failed to unmarshal relay datacenter id")
 		})
 

@@ -292,11 +292,11 @@ func TestServerInitHandlerFunc(t *testing.T) {
 		assert.NoError(t, err)
 
 		serverInitParms := transport.ServerInitParams{
-			Logger:            log.NewNopLogger(),
-			Storer:            &db,
-			Metrics:           &initMetrics,
-			Counters:          &serverInitCounters,
-			DatacenterTracker: transport.NewDatacenterTracker(),
+			Logger:             log.NewNopLogger(),
+			Storer:             &db,
+			Metrics:            &initMetrics,
+			Counters:           &serverInitCounters,
+			UnknownDatacenters: transport.NewUnknownDatacenters(),
 		}
 
 		handler := transport.ServerInitHandlerFunc(&serverInitParms)

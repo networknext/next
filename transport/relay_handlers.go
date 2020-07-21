@@ -492,7 +492,6 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			Name:           relay.Name,
 			Addr:           relayInitRequest.Address,
 			PublicKey:      relay.PublicKey,
-			Seller:         relay.Seller,
 			Datacenter:     relay.Datacenter,
 			LastUpdateTime: time.Now(),
 			MaxSessions:    relay.MaxSessions,
@@ -596,7 +595,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 
 		body, err := ioutil.ReadAll(request.Body)
 		if err != nil {
-			level.Error(handlerLogger).Log("msg", "could not read packet", "err", err)
+			level.Error(logger).Log("msg", "could not read packet", "err", err)
 			writer.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -614,7 +613,6 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			err = errors.New("unsupported content type")
 		}
 		if err != nil {
-			level.Error(locallogger).Log("msg", "error unmarshaling relay update request", "err", err)
 			http.Error(writer, err.Error(), http.StatusBadRequest)
 			params.Metrics.ErrorMetrics.UnmarshalFailure.Add(1)
 			return
@@ -747,11 +745,6 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 		relayCacheEntry.TrafficStats = relayUpdateRequest.TrafficStats
 
 		relayCacheEntry.Version = relayUpdateRequest.RelayVersion
-
-		// Update these fields in case they change in Firestore
-		relayCacheEntry.Seller = relay.Seller
-		relayCacheEntry.Datacenter = relay.Datacenter
-		relayCacheEntry.MaxSessions = relay.MaxSessions
 
 		// Regular set for expiry
 		if res := params.RedisClient.Set(relayCacheEntry.Key(), 0, routing.RelayTimeout); res.Err() != nil {
