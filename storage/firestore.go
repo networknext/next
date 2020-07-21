@@ -71,6 +71,13 @@ type relay struct {
 	State              routing.RelayState     `firestore:"state"`
 	LastUpdateTime     time.Time              `firestore:"lastUpdateTime"`
 	MaxSessions        int32                  `firestore:"maxSessions"`
+	MRC                routing.Nibblin        `firestore:"monthlyRecurringChargeNibblins"`
+	Overage            routing.Nibblin        `firestore:"overage"`
+	BWRule             routing.BandWidthRule  `firestore:"bandwidthRule"`
+	ContractTerm       uint32                 `firestore:"contractTerm"`
+	StartDate          time.Time              `firestore:"startDate"`
+	EndDate            time.Time              `firestore:"endDate"`
+	Type               routing.MachineType    `firestore:"machineType"`
 }
 
 type datacenter struct {
@@ -1434,6 +1441,13 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 			MaxSessions:         uint32(r.MaxSessions),
 			UpdateKey:           r.UpdateKey,
 			FirestoreID:         rdoc.Ref.ID,
+			MRC:                 r.MRC,
+			Overage:             r.Overage,
+			BWRule:              r.BWRule,
+			ContractTerm:        r.ContractTerm,
+			StartDate:           r.StartDate,
+			EndDate:             r.EndDate,
+			Type:                r.Type,
 		}
 
 		// Set a default max session count of 3000 if the value isn't set in firestore
