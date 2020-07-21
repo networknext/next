@@ -1136,6 +1136,7 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 	for i := 0; i < len(nextRelaysPriceArray) && i < len(nextRelaysPrice); i++ {
 		nextRelaysPriceArray[i] = uint64(nextRelaysPrice[i])
 	}
+	fmt.Println(nextRelaysPriceArray)
 
 	billingEntry := billing.BillingEntry{
 		BuyerID:                   packet.CustomerID,
@@ -1266,14 +1267,6 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 	// set the user session reverse lookup sets with expiration on the entire key set for safety
 	tx.SAdd(fmt.Sprintf("user-%s-sessions", hashedID), meta.ID)
 	tx.Expire(fmt.Sprintf("user-%s-sessions", hashedID), redisClientPortalExp)
-
-	// set the server reverse lookup sets with expiration on the entire key set for safety
-	tx.SAdd("servers", meta.ServerAddr)
-	tx.Expire("servers", redisClientPortalExp)
-
-	// set the buyer specific server reverse lookup sets with expiration on the entire key set for safety
-	tx.SAdd(fmt.Sprintf("buyer-%016x-servers", packet.CustomerID), meta.ServerAddr)
-	tx.Expire(fmt.Sprintf("buyer-%016x-servers", packet.CustomerID), redisClientPortalExp)
 
 	// set the map point key and buyer sessions with expiration on the entire key set for safety
 	tx.Set(fmt.Sprintf("session-%016x-point", packet.SessionID), point, redisClientPortalExp)
