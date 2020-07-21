@@ -432,22 +432,22 @@ var EmptyBillingErrorMetrics BillingErrorMetrics = BillingErrorMetrics{
 	BillingWriteFailure:   &EmptyCounter{},
 }
 
-type RelayStatDBMetrics struct {
-	StatsEntriesReceived Counter
-	StatsEntriesWritten  Counter
-	ErrorMetrics         RelayStatDBErrorMetrics
+type AnalyticsMetrics struct {
+	AnalyticsEntriesReceived Counter
+	AnalyticsEntriesWritten  Counter
+	ErrorMetrics             AnalyticsErrorMetrics
 }
 
-type RelayStatDBErrorMetrics struct {
-	RelayStatsPublishFailure Counter
-	RelayStatsReadFailure    Counter
-	RelayStatsWriteFailure   Counter
+type AnalyticsErrorMetrics struct {
+	AnalyticsPublishFailure Counter
+	AnalyticsReadFailure    Counter
+	AnalyticsWriteFailure   Counter
 }
 
-var EmptyRelayStatDBErrorMetrics RelayStatDBErrorMetrics = RelayStatDBErrorMetrics{
-	RelayStatsPublishFailure: &EmptyCounter{},
-	RelayStatsReadFailure:    &EmptyCounter{},
-	RelayStatsWriteFailure:   &EmptyCounter{},
+var EmptyAnalyticsPubSubErrorMetrics AnalyticsErrorMetrics = AnalyticsErrorMetrics{
+	AnalyticsPublishFailure: &EmptyCounter{},
+	AnalyticsReadFailure:    &EmptyCounter{},
+	AnalyticsWriteFailure:   &EmptyCounter{},
 }
 
 func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMetrics, error) {
@@ -1472,59 +1472,59 @@ func NewBillingMetrics(ctx context.Context, metricsHandler Handler) (*BillingMet
 	return &billingMetrics, nil
 }
 
-func NewRelayStatDBMetrics(ctx context.Context, metricsHandler Handler) (*RelayStatDBMetrics, error) {
-	relayStatDBMetrics := RelayStatDBMetrics{}
+func NewAnalyticsMetrics(ctx context.Context, metricsHandler Handler) (*AnalyticsMetrics, error) {
+	analyticsMetrics := AnalyticsMetrics{}
 	var err error
 
-	relayStatDBMetrics.StatsEntriesReceived, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	analyticsMetrics.AnalyticsEntriesReceived, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Relay Stat DB Entries Received",
-		ServiceName: "relay_backend",
-		ID:          "statsdb.entries",
+		ServiceName: "analytics",
+		ID:          "analytics.entries",
 		Unit:        "entries",
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	relayStatDBMetrics.StatsEntriesWritten, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	analyticsMetrics.AnalyticsEntriesWritten, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Relay Stat DB Entries Written",
-		ServiceName: "relay_backend",
-		ID:          "statsdb.entries.written",
+		ServiceName: "analytics",
+		ID:          "analytics.entries.written",
 		Unit:        "entries",
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	relayStatDBMetrics.ErrorMetrics.RelayStatsPublishFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	analyticsMetrics.ErrorMetrics.AnalyticsPublishFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Relay Stat DB Publish Failure",
-		ServiceName: "relay_backend",
-		ID:          "statsdb.error.publish_failure",
+		ServiceName: "analytics",
+		ID:          "analytics.error.publish_failure",
 		Unit:        "errors",
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	relayStatDBMetrics.ErrorMetrics.RelayStatsReadFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	analyticsMetrics.ErrorMetrics.AnalyticsReadFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Relay Stat DB Read Failure",
-		ServiceName: "relay_backend",
-		ID:          "statsdb.error.read_failure",
+		ServiceName: "analytics",
+		ID:          "analytics.error.read_failure",
 		Unit:        "errors",
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	relayStatDBMetrics.ErrorMetrics.RelayStatsWriteFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	analyticsMetrics.ErrorMetrics.AnalyticsWriteFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Relay Stat DB Write Failure",
-		ServiceName: "relay_backend",
-		ID:          "statsdb.error.write_failure",
+		ServiceName: "analytics",
+		ID:          "analytics.error.write_failure",
 		Unit:        "errors",
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	return &relayStatDBMetrics, nil
+	return &analyticsMetrics, nil
 }

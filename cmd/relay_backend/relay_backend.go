@@ -21,8 +21,8 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/networknext/backend/analytics"
 	"github.com/networknext/backend/logging"
-	"github.com/networknext/backend/stats"
 	"github.com/networknext/backend/transport"
 
 	gcplogging "cloud.google.com/go/logging"
@@ -566,13 +566,13 @@ func main() {
 		}
 	}()
 
-	statsMetrics, err := metrics.NewRelayStatDBMetrics(ctx, metricsHandler)
+	analyticsMetrics, err := metrics.NewAnalyticsMetrics(ctx, metricsHandler)
 	if err != nil {
 		level.Error(logger).Log("msg", "failed to create statsdb metrics", "err", err)
 	}
 
 	// Create a no-op biller
-	var writer stats.PubSubWriter = &stats.NoOpPubSubWriter{}
+	var writer analytics.PubSubWriter = &analytics.NoOpPubSubWriter{}
 	_, emulatorOK := os.LookupEnv("PUBSUB_EMULATOR_HOST")
 	if gcpOK || emulatorOK {
 		pubsubCtx := ctx
@@ -597,7 +597,7 @@ func main() {
 				Timeout:        time.Minute,
 			}
 
-			pubsub, err := stats.NewGooglePubSubWriter(pubsubCtx, statsMetrics, logger, gcpProjectID, "statsdb", 1, 1000, &settings)
+			pubsub, err := analytics.NewGooglePubSubWriter(pubsubCtx, analyticsMetrics, logger, gcpProjectID, "statsdb", 1, 1000, &settings)
 			if err != nil {
 				level.Error(logger).Log("msg", "could not create statsdb pubsub writer", "err", err)
 				os.Exit(1)
@@ -613,7 +613,7 @@ func main() {
 			cpy := statsdb.MakeCopy()
 			for k1, s := range cpy.Entries {
 				for k2, r := range s.Relays {
-					writer.Write(ctx, stats.StatsEntry{
+					writer.Write(ctx, analytics.StatsEntry{
 						RelayA:     k1,
 						RelayB:     k2,
 						RTT:        r.RTT,

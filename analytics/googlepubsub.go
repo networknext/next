@@ -1,4 +1,4 @@
-package stats
+package analytics
 
 import (
 	"context"
@@ -13,11 +13,16 @@ import (
 )
 
 type PubSubWriter interface {
-	Write(ctx context.Context, entry StatsEntry) error
+	Write(ctx context.Context, entry *StatsEntry) error
 }
 
 type NoOpPubSubWriter struct {
-	submitted uint64
+	written uint64
+}
+
+func (writer *NoOpPubSubWriter) Write(ctx context.Context, entry StatsEntry) error {
+	atomic.AddUint64(&writer.written, 1)
+	return nil
 }
 
 type GooglePubSubWriter struct {
@@ -32,10 +37,10 @@ type GooglePubSubClient struct {
 	PubsubClient *pubsub.Client
 	Topic        *pubsub.Topic
 	ResultChan   chan *pubsub.PublishResult
-	Metrics      *metrics.RelayStatDBMetrics
+	Metrics      *metrics.AnalyticsMetrics
 }
 
-func NewGooglePubSubWriter(ctx context.Context, statsMetrics *metrics.RelayStatDBMetrics, resultLogger log.Logger, projectID string, topicID string, clientCount int, clientChanBufferSize int, settings *pubsub.PublishSettings) (*GooglePubSubWriter, error) {
+func NewGooglePubSubWriter(ctx context.Context, statsMetrics *metrics.AnalyticsMetrics, resultLogger log.Logger, projectID string, topicID string, clientCount int, clientChanBufferSize int, settings *pubsub.PublishSettings) (*GooglePubSubWriter, error) {
 	if settings == nil {
 		return nil, errors.New("nil google pubsub publish settings")
 	}
@@ -74,7 +79,7 @@ func NewGooglePubSubWriter(ctx context.Context, statsMetrics *metrics.RelayStatD
 	return writer, nil
 }
 
-func (writer *GooglePubSubWriter) Write(ctx context.Context, entry StatsEntry) error {
+func (writer *GooglePubSubWriter) Write(ctx context.Context, entry *StatsEntry) error {
 	atomic.AddUint64(&writer.submitted, 1)
 
 	data := WriteStatsEntry(entry)
@@ -100,7 +105,7 @@ func (client *GooglePubSubClient) pubsubResults(ctx context.Context, writer *Goo
 			_, err := result.Get(ctx)
 			if err != nil {
 				level.Error(writer.Logger).Log("statsdb", "failed to publish to pubsub", "err", err)
-				client.Metrics.ErrorMetrics.RelayStatsPublishFailure.Add(1)
+				client.Metrics.ErrorMetrics.AnalyticsPublishFailure.Add(1)
 			} else {
 				level.Debug(writer.Logger).Log("statsdb", "successfully published billing data")
 				atomic.AddUint64(&writer.flushed, 1)
@@ -109,9 +114,4 @@ func (client *GooglePubSubClient) pubsubResults(ctx context.Context, writer *Goo
 			return
 		}
 	}
-}
-
-func (writer *NoOpPubSubWriter) Write(ctx context.Context, entry StatsEntry) error {
-	atomic.AddUint64(&writer.submitted, 1)
-	return nil
 }

@@ -1,6 +1,7 @@
-package stats
+package analytics
 
 import (
+	"cloud.google.com/go/bigquery"
 	"github.com/networknext/backend/encoding"
 )
 
@@ -10,6 +11,8 @@ const (
 )
 
 type StatsEntry struct {
+	Timestamp uint64
+
 	Version    uint8
 	RelayA     uint64
 	RelayB     uint64
@@ -18,7 +21,7 @@ type StatsEntry struct {
 	PacketLoss float32
 }
 
-func WriteStatsEntry(entry StatsEntry) []byte {
+func WriteStatsEntry(entry *StatsEntry) []byte {
 	index := 0
 	data := make([]byte, MaxStatEntryBytes)
 
@@ -60,4 +63,19 @@ func ReadStatsEntry(entry *StatsEntry, data []byte) bool {
 	}
 
 	return true
+}
+
+// Save implements the bigquery.ValueSaver interface for an Entry
+// so it can be used in Put()
+func (e *StatsEntry) Save() (map[string]bigquery.Value, string, error) {
+	bqEntry := make(map[string]bigquery.Value)
+
+	bqEntry["timestamp"] = int(e.Timestamp)
+	bqEntry["relayA"] = int(e.RelayA)
+	bqEntry["relayB"] = int(e.RelayB)
+	bqEntry["rtt"] = e.RTT
+	bqEntry["jitter"] = e.Jitter
+	bqEntry["packetLoss"] = e.PacketLoss
+
+	return bqEntry, "", nil
 }
