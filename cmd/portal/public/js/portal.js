@@ -281,9 +281,6 @@ MapHandler = {
 		JSONRPCClient
 			.call('BuyersService.SessionMap', {buyer_id: filter.buyerId || ""})
 			.then((response) => {
-				let onNN = response.map_points.green_points || [];
-				let direct = response.map_points.blue_points || [];
-
 				if (!this.mapInstance) {
 					this.mapInstance = new mapboxgl.Map({
 						accessToken: mapboxgl.accessToken,
@@ -298,6 +295,13 @@ MapHandler = {
 						container: 'map',
 					});
 				}
+				let sessions = response.map_points || [];
+				let onNN = sessions.filter((point) => {
+					return (point[2] == 1);
+				});
+				let direct = sessions.filter((point) => {
+					return (point[2] == 0);
+				});
 
 				const cellSize = 10, aggregation = 'MEAN';
 				let gpuAggregation = navigator.appVersion.indexOf("Win") == -1;
@@ -306,7 +310,7 @@ MapHandler = {
 					id: 'nn-layer',
 					data: onNN,
 					opacity: 0.8,
-					getPosition: d => [d.longitude, d.latitude],
+					getPosition: d => [d[0], d[1]],
 					getWeight: d => 1,
 					cellSizePixels: cellSize,
 					colorRange: [
@@ -320,7 +324,7 @@ MapHandler = {
 					id: 'direct-layer',
 					data: direct,
 					opacity: 0.8,
-					getPosition: d => [d.longitude, d.latitude],
+					getPosition: d => [d[0], d[1]],
 					getWeight: d => 1,
 					cellSizePixels: cellSize,
 					colorRange: [

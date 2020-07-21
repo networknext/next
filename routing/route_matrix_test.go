@@ -185,8 +185,8 @@ func routeMatrixUnmarshalAssertionsVer5(t *testing.T, matrix *routing.RouteMatri
 	for i, seller := range sellers {
 		assert.Equal(t, matrix.RelaySellers[i].ID, seller.ID)
 		assert.Equal(t, matrix.RelaySellers[i].Name, seller.Name)
-		assert.Equal(t, matrix.RelaySellers[i].IngressPriceNibblinsPerGB, seller.IngressPriceNibblinsPerGB)
-		assert.Equal(t, matrix.RelaySellers[i].EgressPriceNibblinsPerGB, seller.EgressPriceNibblinsPerGB)
+		assert.Equal(t, matrix.RelaySellers[i].IngressPriceCents, seller.IngressPriceCents)
+		assert.Equal(t, matrix.RelaySellers[i].EgressPriceCents, seller.EgressPriceCents)
 	}
 
 	assert.Equal(t, matrix.RelaySessionCounts, sessionCounts)
@@ -240,11 +240,11 @@ func getRouteMatrixDataV5() routeMatrixData {
 	datacenterNames := []string{"a datacenter", "another datacenter", "third", "fourth", "fifth"}
 
 	sellers := []routing.Seller{
-		{ID: "id0", Name: "name0", IngressPriceNibblinsPerGB: 1, EgressPriceNibblinsPerGB: 2},
-		{ID: "id1", Name: "name1", IngressPriceNibblinsPerGB: 3, EgressPriceNibblinsPerGB: 4},
-		{ID: "id2", Name: "name2", IngressPriceNibblinsPerGB: 5, EgressPriceNibblinsPerGB: 6},
-		{ID: "id3", Name: "name3", IngressPriceNibblinsPerGB: 7, EgressPriceNibblinsPerGB: 8},
-		{ID: "id4", Name: "name4", IngressPriceNibblinsPerGB: 9, EgressPriceNibblinsPerGB: 10},
+		{ID: "id0", Name: "name0", IngressPriceCents: 1, EgressPriceCents: 2},
+		{ID: "id1", Name: "name1", IngressPriceCents: 3, EgressPriceCents: 4},
+		{ID: "id2", Name: "name2", IngressPriceCents: 5, EgressPriceCents: 6},
+		{ID: "id3", Name: "name3", IngressPriceCents: 7, EgressPriceCents: 8},
+		{ID: "id4", Name: "name4", IngressPriceCents: 9, EgressPriceCents: 10},
 	}
 
 	sessionCounts := []uint32{100, 200, 300, 400, 500}
@@ -326,11 +326,11 @@ func getRouteMatrixDataV6() routeMatrixData {
 	datacenterNames := []string{"a datacenter", "another datacenter", "third", "fourth", "fifth"}
 
 	sellers := []routing.Seller{
-		{ID: "id0", Name: "name0", IngressPriceNibblinsPerGB: 1, EgressPriceNibblinsPerGB: 2},
-		{ID: "id1", Name: "name1", IngressPriceNibblinsPerGB: 3, EgressPriceNibblinsPerGB: 4},
-		{ID: "id2", Name: "name2", IngressPriceNibblinsPerGB: 5, EgressPriceNibblinsPerGB: 6},
-		{ID: "id3", Name: "name3", IngressPriceNibblinsPerGB: 7, EgressPriceNibblinsPerGB: 8},
-		{ID: "id4", Name: "name4", IngressPriceNibblinsPerGB: 9, EgressPriceNibblinsPerGB: 10},
+		{ID: "id0", Name: "name0", IngressPriceCents: 1, EgressPriceCents: 2},
+		{ID: "id1", Name: "name1", IngressPriceCents: 3, EgressPriceCents: 4},
+		{ID: "id2", Name: "name2", IngressPriceCents: 5, EgressPriceCents: 6},
+		{ID: "id3", Name: "name3", IngressPriceCents: 7, EgressPriceCents: 8},
+		{ID: "id4", Name: "name4", IngressPriceCents: 9, EgressPriceCents: 10},
 	}
 
 	sessionCounts := []uint32{100, 200, 300, 400, 500}

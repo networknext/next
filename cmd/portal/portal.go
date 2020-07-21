@@ -6,12 +6,13 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -48,33 +49,15 @@ func main() {
 
 	// Configure logging
 	logger := log.NewLogfmtLogger(os.Stdout)
-
-	// Stackdriver Logging
-	{
-		var enableSDLogging bool
-		enableSDLoggingString, ok := os.LookupEnv("ENABLE_STACKDRIVER_LOGGING")
-		if ok {
-			var err error
-			enableSDLogging, err = strconv.ParseBool(enableSDLoggingString)
-			if err != nil {
-				level.Error(logger).Log("envvar", "ENABLE_STACKDRIVER_LOGGING", "msg", "could not parse", "err", err)
-				os.Exit(1)
-			}
+	if projectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
+		loggingClient, err := gcplogging.NewClient(ctx, projectID)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			os.Exit(1)
 		}
 
-		if enableSDLogging {
-			if projectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
-				loggingClient, err := gcplogging.NewClient(ctx, projectID)
-				if err != nil {
-					level.Error(logger).Log("err", err)
-					os.Exit(1)
-				}
-
-				logger = logging.NewStackdriverLogger(loggingClient, "portal")
-			}
-		}
+		logger = logging.NewStackdriverLogger(loggingClient, "relay-backend")
 	}
-
 	{
 		switch os.Getenv("BACKEND_LOG_LEVEL") {
 		case "none":
@@ -147,16 +130,15 @@ func main() {
 		}
 
 		seller := routing.Seller{
-			ID:                        "sellerID",
-			Name:                      "local",
-			IngressPriceNibblinsPerGB: 0.1 * 1e9,
-			EgressPriceNibblinsPerGB:  0.2 * 1e9,
+			ID:                "sellerID",
+			Name:              "local",
+			IngressPriceCents: 10,
+			EgressPriceCents:  20,
 		}
 
 		datacenter := routing.Datacenter{
-			ID:           crypto.HashID("local"),
-			Name:         "local",
-			SupplierName: "usw2-az4",
+			ID:   crypto.HashID("local"),
+			Name: "local",
 		}
 
 		if err := db.AddSeller(ctx, seller); err != nil {
@@ -233,121 +215,92 @@ func main() {
 		Logger:  logger,
 	}
 
-	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
-	_, emulatorOK := os.LookupEnv("FIRESTORE_EMULATOR_HOST")
-	if emulatorOK {
-		gcpProjectID = "local"
-
-		level.Info(logger).Log("msg", "Detected firestore emulator")
-	}
-
-	if gcpOK || emulatorOK {
-		// Firestore
-		{
-			// Create a Firestore Storer
-			fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
-			if err != nil {
-				level.Error(logger).Log("err", err)
-				os.Exit(1)
-			}
-
-			fssyncinterval := os.Getenv("GOOGLE_FIRESTORE_SYNC_INTERVAL")
-			syncInterval, err := time.ParseDuration(fssyncinterval)
-			if err != nil {
-				level.Error(logger).Log("envvar", "GOOGLE_FIRESTORE_SYNC_INTERVAL", "value", fssyncinterval, "err", err)
-				os.Exit(1)
-			}
-			// Start a goroutine to sync from Firestore
-			go func() {
-				ticker := time.NewTicker(syncInterval)
-				fs.SyncLoop(ctx, ticker.C)
-			}()
-
-			// Set the Firestore Storer to give to handlers
-			db = fs
-		}
-	}
-
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
 	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
 	// on creation so we can use that for the default then
-	if gcpOK {
-		// Stackdriver Profiler
-		{
-			var enableSDProfiler bool
-			enableSDProfilerString, ok := os.LookupEnv("ENABLE_STACKDRIVER_PROFILER")
-			if ok {
-				enableSDProfiler, err = strconv.ParseBool(enableSDProfilerString)
-				if err != nil {
-					level.Error(logger).Log("envvar", "ENABLE_STACKDRIVER_PROFILER", "msg", "could not parse", "err", err)
-					os.Exit(1)
-				}
-			}
+	if gcpProjectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
+		// Create a Firestore Storer
+		fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			os.Exit(1)
+		}
 
-			if enableSDProfiler {
-				// Set up StackDriver profiler
-				if err := profiler.Start(profiler.Config{
-					Service:        "portal",
-					ServiceVersion: env,
-					ProjectID:      gcpProjectID,
-					MutexProfiling: true,
-				}); err != nil {
-					level.Error(logger).Log("msg", "Failed to initialze StackDriver profiler", "err", err)
-					os.Exit(1)
-				}
-			}
+		fssyncinterval := os.Getenv("GOOGLE_FIRESTORE_SYNC_INTERVAL")
+		syncInterval, err := time.ParseDuration(fssyncinterval)
+		if err != nil {
+			level.Error(logger).Log("envvar", "GOOGLE_FIRESTORE_SYNC_INTERVAL", "value", fssyncinterval, "err", err)
+			os.Exit(1)
+		}
+		// Start a goroutine to sync from Firestore
+		go func() {
+			ticker := time.NewTicker(syncInterval)
+			fs.SyncLoop(ctx, ticker.C)
+		}()
+
+		// Set the Firestore Storer to give to handlers
+		db = fs
+
+		// Set up StackDriver profiler
+		if err := profiler.Start(profiler.Config{
+			Service:        "portal",
+			ServiceVersion: env,
+			ProjectID:      gcpProjectID,
+			MutexProfiling: true,
+		}); err != nil {
+			level.Error(logger).Log("msg", "Failed to initialze StackDriver profiler", "err", err)
+			os.Exit(1)
 		}
 	}
 
-	// We're not using the route matrix in the portal anymore, because RouteSelection()
-	// is commented out in the ops service.
+	routeMatrix := &routing.RouteMatrix{}
+	var routeMatrixMutex sync.RWMutex
 
-	// routeMatrix := &routing.RouteMatrix{}
-	// var routeMatrixMutex sync.RWMutex
+	{
+		if uri, ok := os.LookupEnv("ROUTE_MATRIX_URI"); ok {
+			rmsyncinterval := os.Getenv("ROUTE_MATRIX_SYNC_INTERVAL")
+			syncInterval, err := time.ParseDuration(rmsyncinterval)
+			if err != nil {
+				level.Error(logger).Log("envvar", "ROUTE_MATRIX_SYNC_INTERVAL", "value", rmsyncinterval, "err", err)
+				os.Exit(1)
+			}
 
-	// {
-	// 	if uri, ok := os.LookupEnv("ROUTE_MATRIX_URI"); ok {
-	// 		rmsyncinterval := os.Getenv("ROUTE_MATRIX_SYNC_INTERVAL")
-	// 		syncInterval, err := time.ParseDuration(rmsyncinterval)
-	// 		if err != nil {
-	// 			level.Error(logger).Log("envvar", "ROUTE_MATRIX_SYNC_INTERVAL", "value", rmsyncinterval, "err", err)
-	// 			os.Exit(1)
-	// 		}
+			go func() {
+				for {
+					newRouteMatrix := &routing.RouteMatrix{}
+					var matrixReader io.Reader
 
-	// 		go func() {
-	// 			for {
-	// 				newRouteMatrix := &routing.RouteMatrix{}
-	// 				var matrixReader io.Reader
+					// Default to reading route matrix from file
+					if f, err := os.Open(uri); err == nil {
+						matrixReader = f
+					}
 
-	// 				// Default to reading route matrix from file
-	// 				if f, err := os.Open(uri); err == nil {
-	// 					matrixReader = f
-	// 				}
+					// Prefer to get it remotely if possible
+					if r, err := http.Get(uri); err == nil {
+						matrixReader = r.Body
+					}
 
-	// 				// Prefer to get it remotely if possible
-	// 				if r, err := http.Get(uri); err == nil {
-	// 					matrixReader = r.Body
-	// 				}
+					// Don't swap route matrix if we fail to read
+					_, err := newRouteMatrix.ReadFrom(matrixReader)
+					if err != nil {
+						level.Warn(logger).Log("matrix", "route", "op", "read", "envvar", "ROUTE_MATRIX_URI", "value", uri, "err", err, "msg", "forcing empty route matrix to avoid stale routes")
+						time.Sleep(syncInterval)
+						continue
+					}
 
-	// 				// Don't swap route matrix if we fail to read
-	// 				_, err := newRouteMatrix.ReadFrom(matrixReader)
-	// 				if err != nil {
-	// 					level.Warn(logger).Log("matrix", "route", "op", "read", "envvar", "ROUTE_MATRIX_URI", "value", uri, "err", err, "msg", "forcing empty route matrix to avoid stale routes")
-	// 					time.Sleep(syncInterval)
-	// 					continue
-	// 				}
+					// Swap the route matrix pointer to the new one
+					// This double buffered route matrix approach makes the route matrix lockless
+					routeMatrixMutex.Lock()
+					routeMatrix = newRouteMatrix
+					routeMatrixMutex.Unlock()
 
-	// 				// Swap the route matrix pointer to the new one
-	// 				// This double buffered route matrix approach makes the route matrix lockless
-	// 				routeMatrixMutex.Lock()
-	// 				routeMatrix = newRouteMatrix
-	// 				routeMatrixMutex.Unlock()
+					level.Info(logger).Log("matrix", "route", "entries", len(routeMatrix.Entries))
 
-	// 				time.Sleep(syncInterval)
-	// 			}
-	// 		}()
-	// 	}
-	// }
+					time.Sleep(syncInterval)
+				}
+			}()
+		}
+	}
 
 	// Generate Sessions Map Points periodically
 	buyerService := jsonrpc.BuyersService{
