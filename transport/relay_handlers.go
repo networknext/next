@@ -748,6 +748,9 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 
 		relayCacheEntry.Version = relayUpdateRequest.RelayVersion
 
+		// Update these fields in case they change in Firestore
+		relayCacheEntry.Seller = relay.Seller
+		relayCacheEntry.Datacenter = relay.Datacenter
 		relayCacheEntry.MaxSessions = relay.MaxSessions
 
 		// Regular set for expiry
