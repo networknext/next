@@ -444,10 +444,16 @@ type AnalyticsErrorMetrics struct {
 	AnalyticsWriteFailure   Counter
 }
 
-var EmptyAnalyticsPubSubErrorMetrics AnalyticsErrorMetrics = AnalyticsErrorMetrics{
+var EmptyAnalyticsErrorMetrics AnalyticsErrorMetrics = AnalyticsErrorMetrics{
 	AnalyticsPublishFailure: &EmptyCounter{},
 	AnalyticsReadFailure:    &EmptyCounter{},
 	AnalyticsWriteFailure:   &EmptyCounter{},
+}
+
+var EmptyAnalyticsMetrics AnalyticsMetrics = AnalyticsMetrics{
+	AnalyticsEntriesReceived: &EmptyCounter{},
+	AnalyticsEntriesWritten:  &EmptyCounter{},
+	ErrorMetrics:             &EmptyAnalyticsErrorMetrics,
 }
 
 func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMetrics, error) {
