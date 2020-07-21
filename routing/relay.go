@@ -93,6 +93,7 @@ const (
 type BandWidthRule uint32
 
 const (
+	BWRuleNone  BandWidthRule = iota
 	BWRuleFlat  BandWidthRule = iota // can not go over allocated amount
 	BWRuleBurst BandWidthRule = iota // can go over amount
 	BWRulePool  BandWidthRule = iota // supplier gives X amount of bandwidth for all relays in the pool
@@ -102,6 +103,7 @@ const (
 type MachineType uint32
 
 const (
+	NoneSpecified  MachineType = iota
 	BareMetal      MachineType = iota
 	VirtualMachine MachineType = iota
 )

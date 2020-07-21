@@ -93,10 +93,19 @@ func opsRelays(
 			continue
 		}
 
-		mrc := fmt.Sprintf("%.4f", relay.MRC.ToCents())
-		overage := fmt.Sprintf("%.4f", relay.Overage.ToCents())
+		mrc := "n/a"
+		if relay.MRC > 0 {
+			mrc = fmt.Sprintf("%.4f", relay.MRC.ToCents())
+		}
+		overage := "n/a"
+		if relay.Overage > 0 {
+			overage = fmt.Sprintf("%.4f", relay.Overage.ToCents())
+		}
+
 		var bwRule string
 		switch relay.BWRule {
+		case routing.BWRuleNone:
+			bwRule = "n/a"
 		case routing.BWRuleFlat:
 			bwRule = "flat"
 		case routing.BWRuleBurst:
@@ -109,12 +118,29 @@ func opsRelays(
 
 		var machineType string
 		switch relay.Type {
+		case routing.NoneSpecified:
+			machineType = "n/a"
 		case routing.BareMetal:
 			machineType = "bare metal"
 		case routing.VirtualMachine:
 			machineType = "virtual machine"
 		default:
 			machineType = "n/a"
+		}
+
+		contractTerm := "n/a"
+		if relay.ContractTerm != 0 {
+			contractTerm = fmt.Sprintf("%d", relay.ContractTerm)
+		}
+
+		startDate := "n/a"
+		if !relay.StartDate.IsZero() {
+			startDate = relay.StartDate.String()
+		}
+
+		endDate := "n/a"
+		if !relay.EndDate.IsZero() {
+			endDate = relay.EndDate.String()
 		}
 
 		// return csv file
@@ -124,9 +150,9 @@ func opsRelays(
 				mrc,
 				overage,
 				bwRule,
-				fmt.Sprintf("%d", relay.ContractTerm),
-				relay.StartDate.String(),
-				relay.EndDate.String(),
+				contractTerm,
+				startDate,
+				endDate,
 				machineType,
 			})
 		} else if relayVersionFilter == "all" || relay.Version == relayVersionFilter {
@@ -144,9 +170,9 @@ func opsRelays(
 				mrc,
 				overage,
 				bwRule,
-				fmt.Sprintf("%d", relay.ContractTerm),
-				relay.StartDate.String(),
-				relay.EndDate.String(),
+				contractTerm,
+				startDate,
+				endDate,
 				machineType,
 			})
 		}
