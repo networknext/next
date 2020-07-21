@@ -189,7 +189,7 @@ func (fs *Firestore) AddBuyer(ctx context.Context, b routing.Buyer) error {
 	}
 
 	// Add the buyer's routing rules settings to remote storage
-	if err := fs.createRouteRulesSettingsForBuyerID(ctx, ref.ID, b.Name, b.RoutingRulesSettings); err != nil {
+	if err := fs.setRoutingRulesSettingsForBuyerID(ctx, ref.ID, b.Name, b.RoutingRulesSettings); err != nil {
 		return &FirestoreError{err: err}
 	}
 
@@ -1683,43 +1683,6 @@ func (fs *Firestore) syncCustomers(ctx context.Context) error {
 	level.Info(fs.Logger).Log("during", "syncSellers", "num", len(fs.sellers))
 
 	return nil
-}
-
-func (fs *Firestore) createRouteRulesSettingsForBuyerID(ctx context.Context, ID string, name string, rrs routing.RoutingRulesSettings) error {
-	// Comment below taken from old backend, at least attempting to explain why we need to append _0 (no existing entries have suffixes other than _0)
-	// "Must be of the form '<buyer key>_<tag id>'. The buyer key can be found by looking at the ID under Buyer; it should be something like 763IMDH693HLsr2LGTJY. The tag ID should be 0 (for default) or the fnv64a hash of the tag the customer is using. Therefore this value should look something like: 763IMDH693HLsr2LGTJY_0. This value can not be changed after the entity is created."
-	routeShaderID := ID + "_0"
-
-	// Convert RoutingRulesSettings struct to firestore version
-	rrsFirestore := routingRulesSettings{
-		DisplayName:                  name,
-		EnvelopeKbpsUp:               rrs.EnvelopeKbpsUp,
-		EnvelopeKbpsDown:             rrs.EnvelopeKbpsDown,
-		Mode:                         rrs.Mode,
-		MaxPricePerGBNibblins:        int64(rrs.MaxNibblinsPerGB),
-		AcceptableLatency:            rrs.AcceptableLatency,
-		RTTEpsilon:                   rrs.RTTEpsilon,
-		RTTThreshold:                 rrs.RTTThreshold,
-		RTTHysteresis:                rrs.RTTHysteresis,
-		RTTVeto:                      rrs.RTTVeto,
-		EnableYouOnlyLiveOnce:        rrs.EnableYouOnlyLiveOnce,
-		EnablePacketLossSafety:       rrs.EnablePacketLossSafety,
-		EnableMultipathForPacketLoss: rrs.EnableMultipathForPacketLoss,
-		MultipathPacketLossThreshold: rrs.MultipathPacketLossThreshold,
-		EnableMultipathForJitter:     rrs.EnableMultipathForJitter,
-		EnableMultipathForRTT:        rrs.EnableMultipathForRTT,
-		EnableABTest:                 rrs.EnableABTest,
-		EnableTryBeforeYouBuy:        rrs.EnableTryBeforeYouBuy,
-		TryBeforeYouBuyMaxSlices:     rrs.TryBeforeYouBuyMaxSlices,
-		SelectionPercentage:          rrs.SelectionPercentage,
-	}
-
-	// Attempt to create route shader for buyer
-	rsDocRef := fs.Client.Collection("RouteShader").NewDoc()
-	rsDocRef.ID = routeShaderID
-
-	_, err := rsDocRef.Create(ctx, rrsFirestore)
-	return err
 }
 
 func (fs *Firestore) deleteRouteRulesSettingsForBuyerID(ctx context.Context, ID string) error {

@@ -209,11 +209,15 @@ func main() {
 	// Create a no-op metrics handler
 	var metricsHandler metrics.Handler = &metrics.NoOpHandler{}
 
-	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
-	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
-	// on creation so we can use that for the default then
 	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
-	if gcpOK {
+	_, firestoreEmulatorOK := os.LookupEnv("FIRESTORE_EMULATOR_HOST")
+	if firestoreEmulatorOK {
+		gcpProjectID = "local"
+
+		level.Info(logger).Log("msg", "Detected firestore emulator")
+	}
+
+	if gcpOK || firestoreEmulatorOK {
 		// Firestore
 		{
 			// Create a Firestore Storer
@@ -238,7 +242,12 @@ func main() {
 			// Set the Firestore Storer to give to handlers
 			db = fs
 		}
+	}
 
+	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
+	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
+	// on creation so we can use that for the default then
+	if gcpOK {
 		// StackDriver Metrics
 		{
 			var enableSDMetrics bool
@@ -335,11 +344,11 @@ func main() {
 		level.Error(logger).Log("msg", "failed to create billing metrics", "err", err)
 	}
 
-	_, emulatorOK := os.LookupEnv("PUBSUB_EMULATOR_HOST")
-	if gcpOK || emulatorOK {
+	_, pubsubEmulatorOK := os.LookupEnv("PUBSUB_EMULATOR_HOST")
+	if gcpOK || pubsubEmulatorOK {
 
 		pubsubCtx := ctx
-		if emulatorOK {
+		if pubsubEmulatorOK {
 			gcpProjectID = "local"
 
 			var cancelFunc context.CancelFunc
