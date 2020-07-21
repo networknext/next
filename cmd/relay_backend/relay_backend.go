@@ -317,20 +317,24 @@ func main() {
 		level.Error(logger).Log("msg", "failed to create relay handler metrics", "err", err)
 	}
 
-	// Create relay stat metrics
-	relayStatMetrics, err := metrics.NewRelayStatMetrics(ctx, metricsHandler)
+	costMatrixMetrics, err := metrics.NewCostMatrixMetrics(context.Background(), metricsHandler)
 	if err != nil {
-		level.Error(logger).Log("msg", "failed to create relay stat metrics", "err", err)
+		level.Error(logger).Log("msg", "failed to create cost matrix metrics", "err", err)
 	}
 
-	newCostMatrixGenMetrics, err := metrics.NewCostMatrixGenMetrics(context.Background(), metricsHandler)
+	optimizeMetrics, err := metrics.NewOptimizeMetrics(context.Background(), metricsHandler)
 	if err != nil {
-		level.Error(logger).Log("msg", "failed to create CostMatrixGenMetrics", "err", err)
+		level.Error(logger).Log("msg", "failed to create optimize metrics", "err", err)
 	}
 
-	newOptimizeMetrics, err := metrics.NewOptimizeMetrics(context.Background(), metricsHandler)
+	routeMatrixMetrics, err := metrics.NewRouteMatrixMetrics(context.Background(), metricsHandler)
 	if err != nil {
-		level.Error(logger).Log("msg", "failed to create NewOptimizeGenMetrics", "err", err)
+		level.Error(logger).Log("msg", "failed to create route matrix metrics", "err", err)
+	}
+
+	relayBackendMetrics, err := metrics.NewRelayBackendMetrics(context.Background(), metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create relay backend metrics", "err", err)
 	}
 
 	statsdb := routing.NewStatsDatabase()
@@ -407,33 +411,23 @@ func main() {
 		os.Exit(1)
 	}
 	go func() {
-
-		var longCostMatrixUpdates uint64
-		var longRouteMatrixUpdates uint64
-		var costMatrixBytes int
-		var routeMatrixBytes int
-
 		for {
+			costMatrixMetrics.Invocations.Add(1)
 
 			costMatrixDurationStart := time.Now()
-			err := statsdb.GetCostMatrix(&costMatrix, redisClientRelays, float32(maxJitter), float32(maxPacketLoss))
-			costMatrixDurationSince := time.Since(costMatrixDurationStart)
 
-			if costMatrixDurationSince.Seconds() > 1.0 {
-				// todo: ryan, same treatment for cost matrix duration. thanks
-				longCostMatrixUpdates++
-			}
-
-			if err != nil {
+			if err := statsdb.GetCostMatrix(&costMatrix, redisClientRelays, float32(maxJitter), float32(maxPacketLoss)); err != nil {
 				level.Warn(logger).Log("matrix", "cost", "op", "generate", "err", err)
 				costMatrix = routing.CostMatrix{}
 			}
 
-			costMatrixBytes = len(costMatrix.GetResponseData())
+			costMatrixDurationSince := time.Since(costMatrixDurationStart)
+			costMatrixMetrics.DurationGauge.Set(float64(costMatrixDurationSince.Milliseconds()))
+			if costMatrixDurationSince.Seconds() > 1.0 {
+				costMatrixMetrics.LongUpdateCount.Add(1)
+			}
 
-			newCostMatrixGenMetrics.DurationGauge.Set(float64(costMatrixDurationSince.Milliseconds()))
-
-			newCostMatrixGenMetrics.Invocations.Add(1)
+			costMatrixMetrics.Bytes.Set(float64(len(costMatrix.GetResponseData())))
 
 			// IMPORTANT: Fill the cost matrix with near relay lat/longs
 			// these are then passed in to the route matrix via "Optimize"
@@ -446,27 +440,34 @@ func main() {
 				}
 			}
 
-			relayStatMetrics.NumRelays.Set(float64(len(statsdb.Entries)))
-
-			// todo: ryan, would be nice to upload the size of the cost matrix in bytes
-
 			newRouteMatrix := &routing.RouteMatrix{}
+
+			optimizeMetrics.Invocations.Add(1)
 
 			optimizeDurationStart := time.Now()
 			if err := costMatrix.Optimize(newRouteMatrix, 1); err != nil {
 				level.Warn(logger).Log("matrix", "cost", "op", "optimize", "err", err)
 			}
 			optimizeDurationSince := time.Since(optimizeDurationStart)
-			newOptimizeMetrics.DurationGauge.Set(float64(optimizeDurationSince.Milliseconds()))
-			newOptimizeMetrics.Invocations.Add(1)
+			optimizeMetrics.DurationGauge.Set(float64(optimizeDurationSince.Milliseconds()))
 
 			if optimizeDurationSince.Seconds() > 1.0 {
-				longRouteMatrixUpdates++
+				optimizeMetrics.LongUpdateCount.Add(1)
 			}
 
-			relayStatMetrics.NumRoutes.Set(float64(len(newRouteMatrix.Entries)))
+			routeMatrixMetrics.Bytes.Set(float64(len(routeMatrix.GetResponseData())))
 
-			level.Info(logger).Log("matrix", "route", "entries", len(newRouteMatrix.Entries))
+			routeMatrixMetrics.RelayCount.Set(float64(len(newRouteMatrix.RelayIDs)))
+
+			// todo: calculate this in optimize and store in route matrix so we don't have to calc this here
+			numRoutes := int32(0)
+			for i := range newRouteMatrix.Entries {
+				numRoutes += newRouteMatrix.Entries[i].NumRoutes
+			}
+
+			routeMatrixMetrics.RouteCount.Set(float64(numRoutes))
+
+			routeMatrixMetrics.DatacenterCount.Set(float64(len(newRouteMatrix.DatacenterIDs)))
 
 			// Write the cost matrix to a buffer and serve that instead
 			// of writing a new buffer every time we want to serve the cost matrix
@@ -483,18 +484,9 @@ func main() {
 				continue // Don't store the new route matrix if we fail to write response data
 			}
 
-			// todo: ryan, would be nice to upload the size of the route matrix in bytes as a metric
-			routeMatrixBytes = len(routeMatrix.GetResponseData())
-
 			// Write the route matrix analysis to a buffer and serve that instead
 			// of writing a new analysis every time we want to view the analysis in the relay dashboard
 			newRouteMatrix.WriteAnalysisData()
-
-			// todo: calculate this in optimize and store in route matrix so we don't have to calc this here
-			numRoutes := 0
-			for i := range newRouteMatrix.Entries {
-				numRoutes += int(newRouteMatrix.Entries[i].NumRoutes)
-			}
 
 			memoryUsed := func() float64 {
 				var m runtime.MemStats
@@ -502,19 +494,21 @@ func main() {
 				return float64(m.Alloc) / (1000.0 * 1000.0)
 			}
 
-			// todo: ryan please put everything below into metrics for this service (where not already)
+			relayBackendMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
+			relayBackendMetrics.MemoryAllocated.Set(memoryUsed())
+
 			fmt.Printf("-----------------------------\n")
-			fmt.Printf("%d goroutines\n", runtime.NumGoroutine())
-			fmt.Printf("%.2f mb allocated\n", memoryUsed())
-			fmt.Printf("%d datacenters\n", len(newRouteMatrix.DatacenterIDs))
-			fmt.Printf("%d relays\n", len(newRouteMatrix.RelayIDs))
-			fmt.Printf("%d routes\n", numRoutes)
-			fmt.Printf("%d long cost matrix updates\n", longCostMatrixUpdates)
-			fmt.Printf("%d long route matrix updates\n", longRouteMatrixUpdates)
-			fmt.Printf("cost matrix bytes: %d\n", costMatrixBytes)
-			fmt.Printf("route matrix bytes: %d\n", routeMatrixBytes)
-			fmt.Printf("cost matrix update: %.2f seconds\n", costMatrixDurationSince.Seconds())
-			fmt.Printf("route matrix update: %.2f seconds\n", optimizeDurationSince.Seconds())
+			fmt.Printf("%d goroutines\n", int(relayBackendMetrics.Goroutines.Value()))
+			fmt.Printf("%.2f mb allocated\n", relayBackendMetrics.MemoryAllocated.Value())
+			fmt.Printf("%d datacenters\n", int(routeMatrixMetrics.DatacenterCount.Value()))
+			fmt.Printf("%d relays\n", int(routeMatrixMetrics.RelayCount.Value()))
+			fmt.Printf("%d routes\n", int(routeMatrixMetrics.RouteCount.Value()))
+			fmt.Printf("%d long cost matrix updates\n", int(costMatrixMetrics.LongUpdateCount.Value()))
+			fmt.Printf("%d long route matrix updates\n", int(optimizeMetrics.LongUpdateCount.Value()))
+			fmt.Printf("cost matrix bytes: %d\n", int(costMatrixMetrics.Bytes.Value()))
+			fmt.Printf("route matrix bytes: %d\n", int(routeMatrixMetrics.Bytes.Value()))
+			fmt.Printf("cost matrix update: %.2f seconds\n", costMatrixMetrics.DurationGauge.Value())
+			fmt.Printf("route matrix update: %.2f seconds\n", optimizeMetrics.DurationGauge.Value())
 			fmt.Printf("-----------------------------\n")
 
 			// Swap the route matrix pointer to the new one
@@ -591,10 +585,6 @@ func main() {
 	// being that the timeout for bad routes are 5 minutes, so when the relay backend first starts up, the route matrix is in a bad state
 	// (intentionally) for the first 5 minutes, as it assumes all routes are initially bad. only routes that are good past 5 minutes
 	// are good enough to serve up to our customers.
-
-	// todo: ryan, important. make sure on the first iteration of the stats db, that we always put in, for every relay pair, 100% packet loss.
-	// this will ensure the "takes 5 minutes to stabilize" policy, since the stats db is configured to take the *worst* packet loss it sees
-	// for the past 5 minutes...
 
 	serveRouteMatrixFunc := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/octet-stream")
