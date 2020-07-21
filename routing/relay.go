@@ -98,6 +98,14 @@ const (
 	BWRulePool  BandWidthRule = iota // supplier gives X amount of bandwidth for all relays in the pool
 )
 
+// MachineType is the type of server the relay is running on
+type MachineType uint32
+
+const (
+	BareMetal      MachineType = iota
+	VirtualMachine MachineType = iota
+)
+
 type Relay struct {
 	ID   uint64 `json:"id"`
 	Name string `json:"name"`
@@ -137,7 +145,8 @@ type Relay struct {
 	// StartDate is the date the contract term starts
 	StartDate time.Time `json:"start_date"`
 	// EndDate is the date the contract term ends
-	EndDate time.Time `json:"end_date"`
+	EndDate time.Time   `json:"end_date"`
+	Type    MachineType `json:"machine_type"`
 }
 
 func (r *Relay) EncodedPublicKey() string {
@@ -174,6 +183,7 @@ func (r *Relay) Size() uint64 {
 		8 + // contract StartDate
 		8 + // Overage (Nibblin, uint64)
 		8 + // MRC (Nibblin, uint64)
+		4 + // MachineType
 		4, // Max Sessions
 	)
 }
