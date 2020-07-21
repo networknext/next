@@ -446,6 +446,10 @@ func main() {
 	var relayIDSigned bool
 	relaysfs.BoolVar(&relayIDSigned, "signed", false, "display relay IDs as signed integers")
 
+	// display the OPS version of the relay output
+	var relayOpsOutput bool
+	relaysfs.BoolVar(&relayOpsOutput, "ops", false, "display ops metadata (costs, bandwidth, terms, etc)")
+
 	var authCommand = &ffcli.Command{
 		Name:       "auth",
 		ShortUsage: "next auth",
@@ -598,11 +602,29 @@ func main() {
 				relaysStateHideFlags[routing.RelayStateDecommissioned] = false
 			}
 
+			var arg string
 			if len(args) > 0 {
+				arg = args[0]
+			}
+
+			if relayOpsOutput {
+				opsRelays(
+					rpcClient,
+					env,
+					arg,
+					relaysStateShowFlags,
+					relaysStateHideFlags,
+					relaysDownFlag,
+					csvOutputFlag,
+					relayVersionFilter,
+					relaysCount,
+					relayIDSigned,
+				)
+			} else {
 				relays(
 					rpcClient,
 					env,
-					args[0],
+					arg,
 					relaysStateShowFlags,
 					relaysStateHideFlags,
 					relaysDownFlag,
@@ -612,21 +634,8 @@ func main() {
 					relaysCount,
 					relayIDSigned,
 				)
-				return nil
 			}
-			relays(
-				rpcClient,
-				env,
-				"",
-				relaysStateShowFlags,
-				relaysStateHideFlags,
-				relaysDownFlag,
-				relaysListFlag,
-				csvOutputFlag,
-				relayVersionFilter,
-				relaysCount,
-				relayIDSigned,
-			)
+
 			return nil
 		},
 		Subcommands: []*ffcli.Command{
