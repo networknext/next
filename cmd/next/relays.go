@@ -135,12 +135,12 @@ func opsRelays(
 
 		startDate := "n/a"
 		if !relay.StartDate.IsZero() {
-			startDate = relay.StartDate.String()
+			startDate = relay.StartDate.Format("January 2, 2006")
 		}
 
 		endDate := "n/a"
 		if !relay.EndDate.IsZero() {
-			endDate = relay.EndDate.String()
+			endDate = relay.EndDate.Format("January 2, 2006")
 		}
 
 		// return csv file
