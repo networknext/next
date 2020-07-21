@@ -89,6 +89,15 @@ const (
 	RelayStateOffline RelayState = 5
 )
 
+// BandWidthRule Flat / Burst / Pool: Relates to bandwidth
+type BandWidthRule uint32
+
+const (
+	BWRuleFlat  BandWidthRule = iota // can not go over allocated amount
+	BWRuleBurst BandWidthRule = iota // can go over amount
+	BWRulePool  BandWidthRule = iota // supplier gives X amount of bandwidth for all relays in the pool
+)
+
 type Relay struct {
 	ID   uint64 `json:"id"`
 	Name string `json:"name"`
@@ -121,12 +130,8 @@ type Relay struct {
 	// MRC is the monthly recurring cost for the relay
 	MRC Nibblin `json:"mrc"`
 	// Overage is the charge/penalty if we exceed the bandwidth alloted for the relay
-	Overage Nibblin `json:"overage"`
-	// BWRule: Flat / Burst / Pool: Relates to bandwidth
-	//	Flat : can not go over allocated amount
-	// 	Burst: can go over amount
-	//	Pool : supplier gives X amount of bandwidth for all relays in the pool
-	BWRule string `json:"bw_rule"`
+	Overage Nibblin       `json:"overage"`
+	BWRule  BandWidthRule `json:"bw_rule"`
 	//ContractTerm is the term in months
 	ContractTerm uint32 `json:"contract_term"`
 	// StartDate is the date the contract term starts
@@ -163,10 +168,10 @@ func (r *Relay) Size() uint64 {
 		8 + // Traffic Stats Session Count
 		8 + // Traffic Stats Bytes Sent
 		8 + // Traffic Stats Bytes Received
-		4 + len(r.BWRule) + // bandwidth rule
+		4 + // BWRule
 		4 + // Contract Term
-		4 + len(r.StartDate.String()) + // contract start date converted to json date string
-		4 + len(r.EndDate.String()) + // contract start date converted to json date string
+		8 + // contract EndDate
+		8 + // contract StartDate
 		8 + // Overage (Nibblin, uint64)
 		8 + // MRC (Nibblin, uint64)
 		4, // Max Sessions
