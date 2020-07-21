@@ -162,9 +162,17 @@ func (database *StatsDatabase) ProcessStats(statsUpdate *RelayStatsUpdate) {
 			relay.PacketLossHistory[relay.Index] = InvalidRouteValue
 
 		} else {
-			relay.RTTHistory[relay.Index] = stats.RTT
-			relay.JitterHistory[relay.Index] = stats.Jitter
-			relay.PacketLossHistory[relay.Index] = stats.PacketLoss
+			// Make sure that relays with 100% packet loss do not have 0 RTT
+			// and will definitely be excluded during route optimzation
+			if stats.PacketLoss > 99 {
+				relay.RTTHistory[relay.Index] = InvalidRouteValue
+				relay.JitterHistory[relay.Index] = InvalidRouteValue
+				relay.PacketLossHistory[relay.Index] = InvalidRouteValue
+			} else {
+				relay.RTTHistory[relay.Index] = stats.RTT
+				relay.JitterHistory[relay.Index] = stats.Jitter
+				relay.PacketLossHistory[relay.Index] = stats.PacketLoss
+			}
 		}
 
 		relay.Index = (relay.Index + 1) % HistorySize

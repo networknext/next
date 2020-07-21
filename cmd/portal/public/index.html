@@ -279,7 +279,7 @@
     <body class="hidden" id="app">
         <div id="root">
             <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark p-0 shadow">
-                <a class="navbar-brand col-sm-3 col-md-2 mr-0" href="#">
+                <a class="navbar-brand col-sm-3 col-md-2 mr-0" href="https://networknext.com">
                     <div class="logo-container">
                         <img class="logo-fit" src="logo.png">
                     </div>
@@ -499,6 +499,9 @@
                                                     ISP
                                                 </span>
                                             </th>
+                                            <th v-if="handlers.userHandler.isAdmin()">
+                                                Customer
+                                            </th>
                                             <th>
                                                 <span>
                                                     Datacenter
@@ -539,6 +542,9 @@
                                             </td>
                                             <td>
                                                 {{ session.location.isp != "" ? session.location.isp : "Unknown" }}
+                                            </td>
+                                            <td v-if="handlers.userHandler.isAdmin()">
+                                                {{ handlers.userHandler.getCustomerName(session.customer_id) }}
                                             </td>
                                             <td>
                                                 <span class="text-dark">

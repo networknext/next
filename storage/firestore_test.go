@@ -2,6 +2,7 @@ package storage_test
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"os"
 	"testing"
@@ -559,16 +560,16 @@ func TestFirestore(t *testing.T) {
 
 		expected := []routing.Seller{
 			{
-				ID:                "id1",
-				Name:              "local",
-				IngressPriceCents: 10,
-				EgressPriceCents:  20,
+				ID:                        "id1",
+				Name:                      "local",
+				IngressPriceNibblinsPerGB: 10,
+				EgressPriceNibblinsPerGB:  20,
 			},
 			{
-				ID:                "id2",
-				Name:              "local",
-				IngressPriceCents: 10,
-				EgressPriceCents:  20,
+				ID:                        "id2",
+				Name:                      "local",
+				IngressPriceNibblinsPerGB: 10,
+				EgressPriceNibblinsPerGB:  20,
 			},
 		}
 
@@ -592,10 +593,10 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			expected := routing.Seller{
-				ID:                "id",
-				Name:              "local",
-				IngressPriceCents: 10,
-				EgressPriceCents:  20,
+				ID:                        "id",
+				Name:                      "local",
+				IngressPriceNibblinsPerGB: 10,
+				EgressPriceNibblinsPerGB:  20,
 			}
 
 			err = fs.AddSeller(ctx, expected)
@@ -615,10 +616,10 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			expected := routing.Seller{
-				ID:                "id",
-				Name:              "local",
-				IngressPriceCents: 10,
-				EgressPriceCents:  20,
+				ID:                        "id",
+				Name:                      "local",
+				IngressPriceNibblinsPerGB: 10,
+				EgressPriceNibblinsPerGB:  20,
 			}
 
 			expectedCustomer := customer{
@@ -671,10 +672,10 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			expected := routing.Seller{
-				ID:                "id",
-				Name:              "local",
-				IngressPriceCents: 10,
-				EgressPriceCents:  20,
+				ID:                        "id",
+				Name:                      "local",
+				IngressPriceNibblinsPerGB: 10,
+				EgressPriceNibblinsPerGB:  20,
 			}
 
 			expectedCustomer := customer{
@@ -750,10 +751,10 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			seller := routing.Seller{
-				ID:                "id",
-				Name:              "local",
-				IngressPriceCents: 10,
-				EgressPriceCents:  20,
+				ID:                        "id",
+				Name:                      "local",
+				IngressPriceNibblinsPerGB: 10,
+				EgressPriceNibblinsPerGB:  20,
 			}
 
 			err = fs.AddSeller(ctx, seller)
@@ -779,10 +780,10 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			seller := routing.Seller{
-				ID:                "id",
-				Name:              "local",
-				IngressPriceCents: 10,
-				EgressPriceCents:  20,
+				ID:                        "id",
+				Name:                      "local",
+				IngressPriceNibblinsPerGB: 10,
+				EgressPriceNibblinsPerGB:  20,
 			}
 
 			err = fs.AddSeller(ctx, seller)
@@ -825,10 +826,10 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			seller := routing.Seller{
-				ID:                "id",
-				Name:              "local",
-				IngressPriceCents: 10,
-				EgressPriceCents:  20,
+				ID:                        "id",
+				Name:                      "local",
+				IngressPriceNibblinsPerGB: 10,
+				EgressPriceNibblinsPerGB:  20,
 			}
 
 			err = fs.SetSeller(ctx, seller)
@@ -845,18 +846,18 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			expected := routing.Seller{
-				ID:                "id",
-				Name:              "local",
-				IngressPriceCents: 10,
-				EgressPriceCents:  20,
+				ID:                        "id",
+				Name:                      "local",
+				IngressPriceNibblinsPerGB: 10,
+				EgressPriceNibblinsPerGB:  20,
 			}
 
 			err = fs.AddSeller(ctx, expected)
 			assert.NoError(t, err)
 
 			actual := expected
-			actual.IngressPriceCents = 20
-			actual.EgressPriceCents = 10
+			actual.IngressPriceNibblinsPerGB = 20
+			actual.EgressPriceNibblinsPerGB = 10
 
 			err = fs.SetSeller(ctx, actual)
 			assert.NoError(t, err)
@@ -865,8 +866,8 @@ func TestFirestore(t *testing.T) {
 			assert.NoError(t, err)
 
 			assert.NotEqual(t, expected, actual)
-			actual.IngressPriceCents = 10
-			actual.EgressPriceCents = 20
+			actual.IngressPriceNibblinsPerGB = 10
+			actual.EgressPriceNibblinsPerGB = 20
 			assert.Equal(t, expected, actual)
 		})
 	})
@@ -1154,10 +1155,10 @@ func TestFirestore(t *testing.T) {
 			assert.NoError(t, err)
 
 			seller := routing.Seller{
-				ID:                "seller ID",
-				Name:              "seller name",
-				IngressPriceCents: 10,
-				EgressPriceCents:  20,
+				ID:                        "seller ID",
+				Name:                      "seller name",
+				IngressPriceNibblinsPerGB: 10,
+				EgressPriceNibblinsPerGB:  20,
 			}
 
 			datacenter := routing.Datacenter{
@@ -1211,10 +1212,10 @@ func TestFirestore(t *testing.T) {
 		assert.NoError(t, err)
 
 		seller := routing.Seller{
-			ID:                "seller ID",
-			Name:              "seller name",
-			IngressPriceCents: 10,
-			EgressPriceCents:  20,
+			ID:                        "seller ID",
+			Name:                      "seller name",
+			IngressPriceNibblinsPerGB: 10,
+			EgressPriceNibblinsPerGB:  20,
 		}
 
 		datacenter := routing.Datacenter{
@@ -1298,10 +1299,10 @@ func TestFirestore(t *testing.T) {
 			assert.NoError(t, err)
 
 			seller := routing.Seller{
-				ID:                "seller ID",
-				Name:              "seller name",
-				IngressPriceCents: 10,
-				EgressPriceCents:  20,
+				ID:                        "seller ID",
+				Name:                      "seller name",
+				IngressPriceNibblinsPerGB: 10,
+				EgressPriceNibblinsPerGB:  20,
 			}
 
 			expected := routing.Relay{
@@ -1332,10 +1333,10 @@ func TestFirestore(t *testing.T) {
 			assert.NoError(t, err)
 
 			seller := routing.Seller{
-				ID:                "seller ID",
-				Name:              "seller name",
-				IngressPriceCents: 10,
-				EgressPriceCents:  20,
+				ID:                        "seller ID",
+				Name:                      "seller name",
+				IngressPriceNibblinsPerGB: 10,
+				EgressPriceNibblinsPerGB:  20,
 			}
 
 			datacenter := routing.Datacenter{
@@ -1400,10 +1401,10 @@ func TestFirestore(t *testing.T) {
 			assert.NoError(t, err)
 
 			seller := routing.Seller{
-				ID:                "seller ID",
-				Name:              "seller name",
-				IngressPriceCents: 10,
-				EgressPriceCents:  20,
+				ID:                        "seller ID",
+				Name:                      "seller name",
+				IngressPriceNibblinsPerGB: 10,
+				EgressPriceNibblinsPerGB:  20,
 			}
 
 			datacenter := routing.Datacenter{
@@ -1476,10 +1477,10 @@ func TestFirestore(t *testing.T) {
 			assert.NoError(t, err)
 
 			seller := routing.Seller{
-				ID:                "seller ID",
-				Name:              "seller name",
-				IngressPriceCents: 10,
-				EgressPriceCents:  20,
+				ID:                        "seller ID",
+				Name:                      "seller name",
+				IngressPriceNibblinsPerGB: 10,
+				EgressPriceNibblinsPerGB:  20,
 			}
 
 			datacenter := routing.Datacenter{
@@ -1745,6 +1746,96 @@ func TestFirestore(t *testing.T) {
 		})
 	})
 
+	t.Run("Add and Get DatacenterMap", func(t *testing.T) {
+		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+		assert.NoError(t, err)
+
+		defer func() {
+			err := cleanFireStore(ctx, fs.Client)
+			assert.NoError(t, err)
+		}()
+
+		buyer := routing.Buyer{
+			ID: 11,
+		}
+
+		expected := routing.DatacenterMap{
+			BuyerID:    11,
+			Datacenter: 1,
+			Alias:      "local",
+		}
+
+		id := crypto.HashID(expected.Alias + fmt.Sprintf("%x", expected.BuyerID) + fmt.Sprintf("%x", expected.Datacenter))
+
+		datacenter := routing.Datacenter{
+			ID:      1,
+			Name:    "local",
+			Enabled: true,
+			Location: routing.Location{
+				Latitude:  70.5,
+				Longitude: 120.5,
+			},
+		}
+
+		err = fs.AddBuyer(ctx, buyer)
+		assert.NoError(t, err)
+
+		err = fs.AddDatacenter(ctx, datacenter)
+		assert.NoError(t, err)
+
+		err = fs.AddDatacenterMap(ctx, expected)
+		assert.NoError(t, err)
+
+		actual := fs.GetDatacenterMapsForBuyer(buyer.ID)
+		assert.Equal(t, expected, actual[id])
+	})
+
+	t.Run("Add and Remove DatacenterMap", func(t *testing.T) {
+		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+		assert.NoError(t, err)
+
+		defer func() {
+			err := cleanFireStore(ctx, fs.Client)
+			assert.NoError(t, err)
+		}()
+
+		buyer := routing.Buyer{
+			ID: 11,
+		}
+
+		dcMap := routing.DatacenterMap{
+			BuyerID:    11,
+			Datacenter: 1,
+			Alias:      "local",
+		}
+
+		datacenter := routing.Datacenter{
+			ID:      1,
+			Name:    "local",
+			Enabled: true,
+			Location: routing.Location{
+				Latitude:  70.5,
+				Longitude: 120.5,
+			},
+		}
+
+		err = fs.AddBuyer(ctx, buyer)
+		assert.NoError(t, err)
+
+		err = fs.AddDatacenter(ctx, datacenter)
+		assert.NoError(t, err)
+
+		err = fs.AddDatacenterMap(ctx, dcMap)
+		assert.NoError(t, err)
+
+		err = fs.RemoveDatacenterMap(ctx, dcMap)
+		assert.NoError(t, err)
+
+		var dcMapsEmpty = make(map[uint64]routing.DatacenterMap)
+		dcMapsEmpty = fs.GetDatacenterMapsForBuyer(buyer.ID)
+		assert.Equal(t, 0, len(dcMapsEmpty))
+
+	})
 	t.Run("Sync", func(t *testing.T) {
 		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 		assert.NoError(t, err)
@@ -1765,10 +1856,10 @@ func TestFirestore(t *testing.T) {
 		}
 
 		expectedSeller := routing.Seller{
-			ID:                "id",
-			Name:              "local",
-			IngressPriceCents: 10,
-			EgressPriceCents:  20,
+			ID:                        "id",
+			Name:                      "local",
+			IngressPriceNibblinsPerGB: 10,
+			EgressPriceNibblinsPerGB:  20,
 		}
 
 		expectedDatacenter := routing.Datacenter{
