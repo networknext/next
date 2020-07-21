@@ -142,6 +142,10 @@ ifndef REDIS_HOST_CACHE
 export REDIS_HOST_CACHE = 127.0.0.1:6379
 endif
 
+ifndef FIRESTORE_EMULATOR_HOST
+export FIRESTORE_EMULATOR_HOST = 127.0.0.1:9000
+endif
+
 ifndef AUTH_DOMAIN
 export AUTH_DOMAIN = networknext.auth0.com
 endif
