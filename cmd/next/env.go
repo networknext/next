@@ -19,7 +19,7 @@ const (
 	RouterPublicKeyDev   = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
 	RouterPublicKeyProd  = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
 
-	RelayArtifactURLDev  = "https://storage.googleapis.com/development_artifacts/relay.dev.tar.gz"
+	RelayArtifactURLDev  = "https://storage.googleapis.com/artifacts.network-next-v3-dev.appspot.com/relay.dev.tar.gz"
 	RelayArtifactURLProd = "https://storage.googleapis.com/prod_artifacts/relay.prod.tar.gz"
 
 	RelayBackendHostnameLocal = "localhost"
@@ -169,7 +169,7 @@ func (e *Environment) localDevOrProd(ifIsLocal, ifIsDev, ifIsProd string) (strin
 }
 
 func (e *Environment) devOrProd(ifIsDev, ifIsProd string) (string, error) {
-	switch e.Name {
+	switch e.Hostname {
 	case "dev":
 		return ifIsDev, nil
 	case "prod":

@@ -128,12 +128,12 @@ type ServerInitCounters struct {
 }
 
 type ServerInitParams struct {
-	ServerPrivateKey  []byte
-	Storer            storage.Storer
-	Metrics           *metrics.ServerInitMetrics
-	Logger            log.Logger
-	Counters          *ServerInitCounters
-	DatacenterTracker *DatacenterTracker
+	ServerPrivateKey   []byte
+	Storer             storage.Storer
+	Metrics            *metrics.ServerInitMetrics
+	Logger             log.Logger
+	Counters           *ServerInitCounters
+	UnknownDatacenters *UnknownDatacenters
 }
 
 func writeServerInitResponse(params *ServerInitParams, w io.Writer, packet *ServerInitRequestPacket, response uint32) {
@@ -248,7 +248,7 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 
 		// Track datacenter IDs we don't know about so we can work with customers to add them to our database.
 		if datacenter.ID == routing.UnknownDatacenter.ID {
-			params.DatacenterTracker.AddUnknownDatacenter(packet.DatacenterID)
+			params.UnknownDatacenters.Add(packet.DatacenterID)
 		}
 
 		// If we get down here, all checks have passed and this server is OK to init.
@@ -287,12 +287,12 @@ type ServerUpdateCounters struct {
 }
 
 type ServerUpdateParams struct {
-	Storer            storage.Storer
-	Metrics           *metrics.ServerUpdateMetrics
-	Logger            log.Logger
-	ServerMap         *ServerMap
-	Counters          *ServerUpdateCounters
-	DatacenterTracker *DatacenterTracker
+	Storer             storage.Storer
+	Metrics            *metrics.ServerUpdateMetrics
+	Logger             log.Logger
+	ServerMap          *ServerMap
+	Counters           *ServerUpdateCounters
+	UnknownDatacenters *UnknownDatacenters
 }
 
 // =============================================================================
@@ -405,7 +405,7 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 
 		// Track datacenter IDs we don't know about so we can work with customers to add them to our database.
 		if datacenter.ID == routing.UnknownDatacenter.ID {
-			params.DatacenterTracker.AddUnknownDatacenter(packet.DatacenterID)
+			params.UnknownDatacenters.Add(packet.DatacenterID)
 		}
 
 		// UDP packets may arrive out of order. So that we don't have stale server update packets arriving late and
@@ -518,7 +518,6 @@ type SessionUpdateParams struct {
 	ServerMap            *ServerMap
 	SessionMap           *SessionMap
 	Counters             *SessionUpdateCounters
-	DatacenterTracker    *DatacenterTracker
 }
 
 // =========================================================================================================
@@ -901,9 +900,6 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			}
 
 			params.Metrics.ErrorMetrics.NoRelaysInDatacenter.Add(1)
-
-			params.DatacenterTracker.AddEmptyDatacenter(serverDataReadOnly.datacenter.Name)
-
 			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelays, routeDecision, sessionDataReadOnly.routeDecision, sessionDataReadOnly.initial, vetoReason, nextSliceCounter,
 				committedData, sessionDataReadOnly.routeHash, sessionDataReadOnly.routeDecision.OnNetworkNext, start, routeExpireTimestamp, sessionDataReadOnly.tokenVersion, params.RouterPrivateKey, nil) //, sliceMutexes)
 			return
@@ -983,7 +979,7 @@ func GetBestRoute(routeMatrix RouteProvider, nearRelays []routing.Relay, datacen
 		routing.DecideUpgradeRTT(float64(buyer.RoutingRulesSettings.RTTThreshold)),
 		routing.DecideDowngradeRTT(float64(buyer.RoutingRulesSettings.RTTHysteresis), buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
 		routing.DecideVeto(onNNSliceCounter, float64(buyer.RoutingRulesSettings.RTTVeto), buyer.RoutingRulesSettings.EnablePacketLossSafety, buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
-		routing.DecideMultipath(buyer.RoutingRulesSettings.EnableMultipathForRTT, buyer.RoutingRulesSettings.EnableMultipathForJitter, buyer.RoutingRulesSettings.EnableMultipathForPacketLoss, float64(buyer.RoutingRulesSettings.RTTThreshold), float64(buyer.RoutingRulesSettings.MultipathPacketLossThreshold)),
+		routing.DecideMultipath(buyer.RoutingRulesSettings.EnableMultipathForRTT, buyer.RoutingRulesSettings.EnableMultipathForJitter, buyer.RoutingRulesSettings.EnableMultipathForPacketLoss, float64(buyer.RoutingRulesSettings.RTTThreshold)),
 	}
 
 	if buyer.RoutingRulesSettings.EnableTryBeforeYouBuy {
@@ -1060,47 +1056,27 @@ func CalculateNextBytesUpAndDown(envelopeKbpsUp uint64, envelopeKbpsDown uint64,
 	return envelopeBytesUp, envelopeBytesDown
 }
 
-func CalculateTotalPriceNibblins(chosenRoute *routing.Route, envelopeBytesUp uint64, envelopeBytesDown uint64) routing.Nibblin {
+func CalculateTotalPriceNibblins(chosenRoute *routing.Route, envelopeBytesUp uint64, envelopeBytesDown uint64) uint64 {
 
 	if len(chosenRoute.Relays) == 0 {
 		return 0
 	}
 
-	envelopeUpGB := float64(envelopeBytesUp) / 1000000000.0
-	envelopeDownGB := float64(envelopeBytesDown) / 1000000000.0
+	// todo: temporary hack to average around 10c per-GB, until we sort out what's going on
 
-	sellerPriceNibblinsPerGB := routing.Nibblin(0)
-	for _, relay := range chosenRoute.Relays {
-		sellerPriceNibblinsPerGB += relay.Seller.EgressPriceNibblinsPerGB
-	}
-
-	nextPriceNibblinsPerGB := routing.Nibblin(1e9)
-	totalPriceNibblins := float64(sellerPriceNibblinsPerGB+nextPriceNibblinsPerGB) * (envelopeUpGB + envelopeDownGB)
-
-	return routing.Nibblin(totalPriceNibblins)
-}
-
-func CalculateRouteRelaysPrice(chosenRoute *routing.Route, envelopeBytesUp uint64, envelopeBytesDown uint64) []routing.Nibblin {
-	if len(chosenRoute.Relays) == 0 {
-		return nil
-	}
-
-	relayPrices := make([]routing.Nibblin, len(chosenRoute.Relays))
+	nibblinsPerGB := float64(billing.CentsToNibblins(uint64(1 + 3*len(chosenRoute.Relays))))
 
 	envelopeUpGB := float64(envelopeBytesUp) / 1000000000.0
 	envelopeDownGB := float64(envelopeBytesDown) / 1000000000.0
 
-	for i, relay := range chosenRoute.Relays {
-		relayPriceNibblins := float64(relay.Seller.EgressPriceNibblinsPerGB) * (envelopeUpGB + envelopeDownGB)
-		relayPrices[i] = routing.Nibblin(relayPriceNibblins)
-	}
+	totalPriceNibblins := nibblinsPerGB * (envelopeUpGB + envelopeDownGB)
 
-	return relayPrices
+	return uint64(totalPriceNibblins)
 }
 
 func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket, response *SessionResponsePacket, serverDataReadOnly *ServerData,
 	routeRelays []routing.Relay, lastNextStats *routing.Stats, lastDirectStats *routing.Stats, prevRouteDecision routing.Decision, location *routing.Location, nearRelays []routing.Relay,
-	routeDecision routing.Decision, timeNow time.Time, totalPriceNibblins routing.Nibblin, nextRelaysPrice []routing.Nibblin, nextBytesUp uint64, nextBytesDown uint64, prevInitial bool) {
+	routeDecision routing.Decision, timeNow time.Time, totalPriceNibblins uint64, nextBytesUp uint64, nextBytesDown uint64, prevInitial bool) {
 
 	// IMPORTANT: we actually need to display the true datacenter name in the demo and demo plus views,
 	// while in the customer view of the portal, we need to display the alias. this is because aliases will
@@ -1132,12 +1108,6 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 		nextRelays[i] = routeRelays[i].ID
 	}
 
-	nextRelaysPriceArray := [billing.BillingEntryMaxRelays]uint64{}
-	for i := 0; i < len(nextRelaysPriceArray) && i < len(nextRelaysPrice); i++ {
-		nextRelaysPriceArray[i] = uint64(nextRelaysPrice[i])
-	}
-	fmt.Println(nextRelaysPriceArray)
-
 	billingEntry := billing.BillingEntry{
 		BuyerID:                   packet.CustomerID,
 		SessionID:                 packet.SessionID,
@@ -1151,7 +1121,7 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 		NextPacketLoss:            float32(lastNextStats.PacketLoss),
 		NumNextRelays:             uint8(len(routeRelays)),
 		NextRelays:                nextRelays,
-		TotalPrice:                uint64(totalPriceNibblins),
+		TotalPrice:                totalPriceNibblins,
 		ClientToServerPacketsLost: packet.PacketsLostClientToServer,
 		ServerToClientPacketsLost: packet.PacketsLostServerToClient,
 		Committed:                 packet.Committed,
@@ -1163,7 +1133,6 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 		DatacenterID:              serverDataReadOnly.datacenter.ID,
 		RTTReduction:              prevRouteDecision.Reason&routing.DecisionRTTReduction != 0 || prevRouteDecision.Reason&routing.DecisionRTTReductionMultipath != 0,
 		PacketLossReduction:       prevRouteDecision.Reason&routing.DecisionHighPacketLossMultipath != 0,
-		NextRelaysPrice:           nextRelaysPriceArray,
 	}
 
 	if err := params.Biller.Bill(context.Background(), &billingEntry); err != nil {
@@ -1494,10 +1463,8 @@ func sendRouteResponse(w io.Writer, chosenRoute *routing.Route, params *SessionU
 	// Calculate the total price for the billing entry
 	totalPriceNibblins := CalculateTotalPriceNibblins(chosenRoute, envelopeBytesUp, envelopeBytesDown)
 
-	nextRelaysPrice := CalculateRouteRelaysPrice(chosenRoute, envelopeBytesUp, envelopeBytesDown)
-
 	// IMPORTANT: run post in parallel so it doesn't block the response
-	go PostSessionUpdate(params, packet, response, serverDataReadOnly, chosenRoute.Relays, lastNextStats, lastDirectStats, prevRouteDecision, location, nearRelays, routeDecision, timeNow, totalPriceNibblins, nextRelaysPrice, usageBytesUp, usageBytesDown, prevInitial)
+	go PostSessionUpdate(params, packet, response, serverDataReadOnly, chosenRoute.Relays, lastNextStats, lastDirectStats, prevRouteDecision, location, nearRelays, routeDecision, timeNow, totalPriceNibblins, usageBytesUp, usageBytesDown, prevInitial)
 
 	// Send the Session Response back to the server
 	if _, err := w.Write(responseData); err != nil {

@@ -493,18 +493,12 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 			if !encoding.ReadString(data, &index, &m.RelaySellers[i].Name, math.MaxInt32) {
 				return errors.New("[RouteMatrix] invalid read on relay seller name")
 			}
-
-			var ingressNibblins uint64
-			if !encoding.ReadUint64(data, &index, &ingressNibblins) {
+			if !encoding.ReadUint64(data, &index, &m.RelaySellers[i].IngressPriceCents) {
 				return errors.New("[RouteMatrix] invalid read on relay seller ingress price")
 			}
-			m.RelaySellers[i].IngressPriceNibblinsPerGB = Nibblin(ingressNibblins)
-
-			var egressNibblins uint64
-			if !encoding.ReadUint64(data, &index, &egressNibblins) {
+			if !encoding.ReadUint64(data, &index, &m.RelaySellers[i].EgressPriceCents) {
 				return errors.New("[RouteMatrix] invalid read on relay seller egress price")
 			}
-			m.RelaySellers[i].EgressPriceNibblinsPerGB = Nibblin(egressNibblins)
 		}
 	}
 
@@ -664,8 +658,8 @@ func (m *RouteMatrix) MarshalBinary() ([]byte, error) {
 	for _, seller := range m.RelaySellers {
 		encoding.WriteString(data, &index, seller.ID, uint32(len(seller.ID)))
 		encoding.WriteString(data, &index, seller.Name, uint32(len(seller.Name)))
-		encoding.WriteUint64(data, &index, uint64(seller.IngressPriceNibblinsPerGB))
-		encoding.WriteUint64(data, &index, uint64(seller.EgressPriceNibblinsPerGB))
+		encoding.WriteUint64(data, &index, seller.IngressPriceCents)
+		encoding.WriteUint64(data, &index, seller.EgressPriceCents)
 	}
 
 	for i := range m.RelaySessionCounts {
