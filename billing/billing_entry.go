@@ -4,11 +4,11 @@ import (
 	"github.com/networknext/backend/encoding"
 )
 
-const BillingEntryVersion = uint8(4)
+const BillingEntryVersion = uint8(5)
 
 const BillingEntryMaxRelays = 5
 
-const MaxBillingEntryBytes = 1 + 8 + 4 + 8 + 1 + (6 * 4) + 1 + (BillingEntryMaxRelays * 8) + 8 + 8 + 8 + 4 + 8 + 8 + 8 + 1 + 1
+const MaxBillingEntryBytes = 8 + 1 + 8 + 8 + (4 * 4) + 1 + (3 * 4) + 1 + (BillingEntryMaxRelays * 8) + (3 * 8) + (4 * 1) + 8 + 8 + 8 + 1 + 1 + (BillingEntryMaxRelays * 8)
 
 type BillingEntry struct {
 	Timestamp                 uint64 // IMPORTANT: Timestamp is not serialized. Pubsub already has the timestamp so we use that instead.
@@ -37,6 +37,7 @@ type BillingEntry struct {
 	DatacenterID              uint64
 	RTTReduction              bool
 	PacketLossReduction       bool
+	NextRelaysPrice           [BillingEntryMaxRelays]uint64
 }
 
 func WriteBillingEntry(entry *BillingEntry) []byte {
@@ -69,12 +70,11 @@ func WriteBillingEntry(entry *BillingEntry) []byte {
 	encoding.WriteBool(data, &index, entry.Flagged)
 	encoding.WriteBool(data, &index, entry.Multipath)
 
+	encoding.WriteBool(data, &index, entry.Initial)
+
 	if entry.Next {
-		encoding.WriteBool(data, &index, true)
 		encoding.WriteUint64(data, &index, entry.NextBytesUp)
 		encoding.WriteUint64(data, &index, entry.NextBytesDown)
-	} else {
-		encoding.WriteBool(data, &index, false)
 	}
 
 	encoding.WriteUint64(data, &index, entry.DatacenterID)
@@ -82,6 +82,11 @@ func WriteBillingEntry(entry *BillingEntry) []byte {
 	if entry.Next {
 		encoding.WriteBool(data, &index, entry.RTTReduction)
 		encoding.WriteBool(data, &index, entry.PacketLossReduction)
+
+		encoding.WriteUint8(data, &index, entry.NumNextRelays)
+		for i := 0; i < int(entry.NumNextRelays); i++ {
+			encoding.WriteUint64(data, &index, entry.NextRelaysPrice[i])
+		}
 	}
 
 	return data[:index]
@@ -189,6 +194,22 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 			}
 			if !encoding.ReadBool(data, &index, &entry.PacketLossReduction) {
 				return false
+			}
+		}
+	}
+
+	if entry.Version >= 5 {
+		if entry.Next {
+			if !encoding.ReadUint8(data, &index, &entry.NumNextRelays) {
+				return false
+			}
+			if entry.NumNextRelays > BillingEntryMaxRelays {
+				return false
+			}
+			for i := 0; i < int(entry.NumNextRelays); i++ {
+				if !encoding.ReadUint64(data, &index, &entry.NextRelaysPrice[i]) {
+					return false
+				}
 			}
 		}
 	}

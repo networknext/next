@@ -27,6 +27,7 @@ func relays(
 	csvOutputFlag bool,
 	relayVersionFilter string,
 	relaysCount int64,
+	relayIDSigned bool,
 ) {
 	args := localjsonrpc.RelaysArgs{
 		Regex: regex,
@@ -44,6 +45,7 @@ func relays(
 
 	relays := []struct {
 		Name        string
+		ID          string
 		Address     string
 		State       string
 		Sessions    string
@@ -59,7 +61,7 @@ func relays(
 		relaysCSV = append(relaysCSV, []string{"Name"})
 	} else {
 		relaysCSV = append(relaysCSV, []string{
-			"Name", "Address", "State", "Sessions", "Tx", "Rx", "Version", "LastUpdated"})
+			"Name", "ID", "Address", "State", "Sessions", "Tx", "Rx", "Version", "LastUpdated"})
 	}
 
 	for _, relay := range reply.Relays {
@@ -120,8 +122,15 @@ func relays(
 					relay.Name,
 				})
 			} else if relayVersionFilter == "all" || relay.Version == relayVersionFilter {
+				var relayID string
+				if relayIDSigned {
+					relayID = fmt.Sprintf("%d", int64(relay.ID))
+				} else {
+					relayID = fmt.Sprintf("%016x", relay.ID)
+				}
 				relaysCSV = append(relaysCSV, []string{
 					relay.Name,
+					relayID,
 					address,
 					relay.State,
 					fmt.Sprintf("%d", relay.SessionCount),
@@ -133,8 +142,15 @@ func relays(
 			}
 
 		} else if relayVersionFilter == "all" || relay.Version == relayVersionFilter {
+			var relayID string
+			if relayIDSigned {
+				relayID = fmt.Sprintf("%d", int64(relay.ID))
+			} else {
+				relayID = fmt.Sprintf("%016x", relay.ID)
+			}
 			relays = append(relays, struct {
 				Name        string
+				ID          string
 				Address     string
 				State       string
 				Sessions    string
@@ -144,6 +160,7 @@ func relays(
 				LastUpdated string
 			}{
 				Name:        relay.Name,
+				ID:          relayID,
 				Address:     address,
 				State:       relay.State,
 				Sessions:    fmt.Sprintf("%d", relay.SessionCount),

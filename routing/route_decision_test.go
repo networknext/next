@@ -265,9 +265,10 @@ func TestDecideCommitted(t *testing.T) {
 
 func TestDecideMultipath(t *testing.T) {
 	rttThreshold := float64(routing.LocalRoutingRulesSettings.RTTThreshold)
+	packetLossThreshold := float64(routing.LocalRoutingRulesSettings.MultipathPacketLossThreshold)
 
 	// Test if multipath isn't enabled
-	routeDecisionFunc := routing.DecideMultipath(false, false, false, rttThreshold)
+	routeDecisionFunc := routing.DecideMultipath(false, false, false, rttThreshold, packetLossThreshold)
 	predictedNNStats := &routing.Stats{RTT: 30}
 	directStats := &routing.Stats{RTT: 60}
 	decision := routing.Decision{}
@@ -275,7 +276,7 @@ func TestDecideMultipath(t *testing.T) {
 	assert.Equal(t, routing.Decision{}, decision)
 
 	// Test if multipath is already active
-	routeDecisionFunc = routing.DecideMultipath(true, true, true, rttThreshold)
+	routeDecisionFunc = routing.DecideMultipath(true, true, true, rttThreshold, packetLossThreshold)
 	decision = routing.Decision{true, routing.DecisionRTTReductionMultipath}
 	decision = routeDecisionFunc(decision, predictedNNStats, &routing.Stats{}, directStats)
 	assert.Equal(t, routing.Decision{true, routing.DecisionRTTReductionMultipath}, decision)
@@ -288,7 +289,7 @@ func TestDecideMultipath(t *testing.T) {
 	// Test when multipath reason is high jitter
 	// directStats.RTT set to -6.0 as it must be less than LocalROutingRulesSettings.RTTTHreshold
 	// if predictedNNStats.RTT = 0 (default) for happy path to run and force NN.
-	routeDecisionFunc = routing.DecideMultipath(true, true, true, rttThreshold)
+	routeDecisionFunc = routing.DecideMultipath(true, true, true, rttThreshold, packetLossThreshold)
 	decision = routing.Decision{}
 	predictedNNStats = &routing.Stats{}
 	directStats = &routing.Stats{Jitter: 50, RTT: -6.0}
@@ -298,7 +299,7 @@ func TestDecideMultipath(t *testing.T) {
 	// Test when multipath reason is high packet loss
 	// directStats.RTT set to -5 as it must be less than LocalROutingRulesSettings.RTTTHreshold
 	// if predictedNNStats.RTT = 0 (default) for happy path to run and force NN.
-	routeDecisionFunc = routing.DecideMultipath(true, true, true, rttThreshold)
+	routeDecisionFunc = routing.DecideMultipath(true, true, true, rttThreshold, packetLossThreshold)
 	decision = routing.Decision{}
 	predictedNNStats = &routing.Stats{}
 	directStats = &routing.Stats{PacketLoss: 1, RTT: -6.0}
