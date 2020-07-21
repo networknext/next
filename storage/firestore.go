@@ -1525,10 +1525,10 @@ func (fs *Firestore) syncSellers(ctx context.Context) error {
 		}
 
 		seller := routing.Seller{
-			ID:                sellerDoc.Ref.ID,
-			Name:              s.Name,
-			IngressPriceCents: billing.NibblinsToCents(uint64(s.PricePublicIngressNibblins)),
-			EgressPriceCents:  billing.NibblinsToCents(uint64(s.PricePublicEgressNibblins)),
+			ID:                        sellerDoc.Ref.ID,
+			Name:                      s.Name,
+			IngressPriceNibblinsPerGB: routing.Nibblin(s.IngressPriceNibblinsPerGB),
+			EgressPriceNibblinsPerGB:  routing.Nibblin(s.EgressPriceNibblinsPerGB),
 		}
 
 		sellers[sellerDoc.Ref.ID] = seller
