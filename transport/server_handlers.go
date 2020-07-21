@@ -1060,7 +1060,7 @@ func CalculateNextBytesUpAndDown(envelopeKbpsUp uint64, envelopeKbpsDown uint64,
 	return envelopeBytesUp, envelopeBytesDown
 }
 
-func CalculateTotalPriceNibblins(chosenRoute *routing.Route, envelopeBytesUp uint64, envelopeBytesDown uint64) uint64 {
+func CalculateTotalPriceNibblins(chosenRoute *routing.Route, envelopeBytesUp uint64, envelopeBytesDown uint64) routing.Nibblin {
 
 	if len(chosenRoute.Relays) == 0 {
 		return 0
@@ -1077,22 +1077,22 @@ func CalculateTotalPriceNibblins(chosenRoute *routing.Route, envelopeBytesUp uin
 	nextPriceNibblinsPerGB := routing.Nibblin(1e9)
 	totalPriceNibblins := float64(sellerPriceNibblinsPerGB+nextPriceNibblinsPerGB) * (envelopeUpGB + envelopeDownGB)
 
-	return uint64(totalPriceNibblins)
+	return routing.Nibblin(totalPriceNibblins)
 }
 
-func CalculateRouteRelaysPrice(chosenRoute *routing.Route, envelopeBytesUp uint64, envelopeBytesDown uint64) []uint64 {
+func CalculateRouteRelaysPrice(chosenRoute *routing.Route, envelopeBytesUp uint64, envelopeBytesDown uint64) []routing.Nibblin {
 	if len(chosenRoute.Relays) == 0 {
 		return nil
 	}
 
-	relayPrices := make([]uint64, len(chosenRoute.Relays))
+	relayPrices := make([]routing.Nibblin, len(chosenRoute.Relays))
 
 	envelopeUpGB := float64(envelopeBytesUp) / 1000000000.0
 	envelopeDownGB := float64(envelopeBytesDown) / 1000000000.0
 
 	for i, relay := range chosenRoute.Relays {
 		relayPriceNibblins := float64(relay.Seller.EgressPriceNibblinsPerGB) * (envelopeUpGB + envelopeDownGB)
-		relayPrices[i] = uint64(relayPriceNibblins)
+		relayPrices[i] = routing.Nibblin(relayPriceNibblins)
 	}
 
 	return relayPrices
@@ -1100,7 +1100,7 @@ func CalculateRouteRelaysPrice(chosenRoute *routing.Route, envelopeBytesUp uint6
 
 func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket, response *SessionResponsePacket, serverDataReadOnly *ServerData,
 	routeRelays []routing.Relay, lastNextStats *routing.Stats, lastDirectStats *routing.Stats, prevRouteDecision routing.Decision, location *routing.Location, nearRelays []routing.Relay,
-	routeDecision routing.Decision, timeNow time.Time, totalPriceNibblins uint64, nextRelaysPrice []uint64, nextBytesUp uint64, nextBytesDown uint64, prevInitial bool) {
+	routeDecision routing.Decision, timeNow time.Time, totalPriceNibblins routing.Nibblin, nextRelaysPrice []routing.Nibblin, nextBytesUp uint64, nextBytesDown uint64, prevInitial bool) {
 
 	// IMPORTANT: we actually need to display the true datacenter name in the demo and demo plus views,
 	// while in the customer view of the portal, we need to display the alias. this is because aliases will
@@ -1134,7 +1134,7 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 
 	nextRelaysPriceArray := [billing.BillingEntryMaxRelays]uint64{}
 	for i := 0; i < len(nextRelaysPriceArray) && i < len(nextRelaysPrice); i++ {
-		nextRelaysPriceArray[i] = nextRelaysPrice[i]
+		nextRelaysPriceArray[i] = uint64(nextRelaysPrice[i])
 	}
 
 	billingEntry := billing.BillingEntry{
@@ -1150,7 +1150,7 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 		NextPacketLoss:            float32(lastNextStats.PacketLoss),
 		NumNextRelays:             uint8(len(routeRelays)),
 		NextRelays:                nextRelays,
-		TotalPrice:                totalPriceNibblins,
+		TotalPrice:                uint64(totalPriceNibblins),
 		ClientToServerPacketsLost: packet.PacketsLostClientToServer,
 		ServerToClientPacketsLost: packet.PacketsLostServerToClient,
 		Committed:                 packet.Committed,
