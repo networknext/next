@@ -493,7 +493,6 @@ func main() {
 					// todo: ryan, please upload a metric for the time it takes to get the route matrix. we should watch it in stackdriver.
 
 					if routeMatrixTime.Seconds() > 1.0 {
-						fmt.Printf("long route matrix update\n")
 						atomic.AddUint64(&longRouteMatrixUpdates, 1)
 					}
 
