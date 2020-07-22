@@ -8,6 +8,20 @@ import (
 	jsoniter "github.com/json-iterator/go"
 )
 
+type SessionData struct {
+	Meta  SessionMeta     `json:"meta"`
+	Slice SessionSlice    `json:"slice"`
+	Point SessionMapPoint `json:"point"`
+}
+
+func (s *SessionData) UnmarshalBinary(data []byte) error {
+	return jsoniter.Unmarshal(data, s)
+}
+
+func (s SessionData) MarshalBinary() ([]byte, error) {
+	return jsoniter.Marshal(s)
+}
+
 type SessionMeta struct {
 	ID              string   `json:"id"`
 	UserHash        string   `json:"user_hash"`
