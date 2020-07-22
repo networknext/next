@@ -71,6 +71,13 @@ type relay struct {
 	State              routing.RelayState     `firestore:"state"`
 	LastUpdateTime     time.Time              `firestore:"lastUpdateTime"`
 	MaxSessions        int32                  `firestore:"maxSessions"`
+	MRC                routing.Nibblin        `firestore:"monthlyRecurringChargeNibblins"`
+	Overage            routing.Nibblin        `firestore:"overage"`
+	BWRule             routing.BandWidthRule  `firestore:"bandwidthRule"`
+	ContractTerm       uint32                 `firestore:"contractTerm"`
+	StartDate          time.Time              `firestore:"startDate"`
+	EndDate            time.Time              `firestore:"endDate"`
+	Type               routing.MachineType    `firestore:"machineType"`
 }
 
 type datacenter struct {
@@ -1116,6 +1123,48 @@ func (fs *Firestore) RemoveDatacenterMap(ctx context.Context, dcMap routing.Data
 	return &DoesNotExistError{resourceType: "datacenterMap", resourceRef: fmt.Sprintf("%v", dcMap)}
 }
 
+func (fs *Firestore) SetRelayMetadata(ctx context.Context, modifiedRelay routing.Relay) error {
+
+	// Loop through all relays in firestore
+	rdocs := fs.Client.Collection("Relay").Documents(ctx)
+	defer rdocs.Stop()
+	for {
+		rdoc, err := rdocs.Next()
+		if err == iterator.Done {
+			break
+		}
+
+		if err != nil {
+			return &FirestoreError{err: err}
+		}
+
+		// Unmarshal the relay in firestore to see if it's the relay we want to update
+		var relayInRemoteStorage relay
+		err = rdoc.DataTo(&relayInRemoteStorage)
+		if err != nil {
+			return &UnmarshalError{err: err}
+		}
+
+		// If the relay is the one we want to update, update it with the new data
+		rid := crypto.HashID(relayInRemoteStorage.Address)
+		if rid == modifiedRelay.ID {
+			// Update the relay in firestore
+			if _, err := rdoc.Ref.Set(ctx, modifiedRelay, firestore.MergeAll); err != nil {
+				return &FirestoreError{err: err}
+			}
+
+			fs.relayMutex.Lock()
+			fs.relays[modifiedRelay.ID] = modifiedRelay
+			fs.relayMutex.Unlock()
+
+			return nil
+		}
+	}
+
+	return &DoesNotExistError{resourceType: "relay", resourceRef: fmt.Sprintf("%x", modifiedRelay.ID)}
+
+}
+
 func (fs *Firestore) Datacenter(id uint64) (routing.Datacenter, error) {
 	fs.datacenterMutex.RLock()
 	defer fs.datacenterMutex.RUnlock()
@@ -1434,6 +1483,13 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 			MaxSessions:         uint32(r.MaxSessions),
 			UpdateKey:           r.UpdateKey,
 			FirestoreID:         rdoc.Ref.ID,
+			MRC:                 r.MRC,
+			Overage:             r.Overage,
+			BWRule:              r.BWRule,
+			ContractTerm:        r.ContractTerm,
+			StartDate:           r.StartDate,
+			EndDate:             r.EndDate,
+			Type:                r.Type,
 		}
 
 		// Set a default max session count of 3000 if the value isn't set in firestore
