@@ -967,6 +967,18 @@ func main() {
 						ShortUsage: "next relay ops mrc <relay> <value>",
 						ShortHelp:  "Set the mrc value for the given relay (in $USD)",
 						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								fmt.Println("Must provide the relay name and an MRC value in $USD")
+								return nil
+							}
+
+							mrc, err := strconv.ParseFloat(args[1], 64)
+							if err != nil {
+								fmt.Printf("Could not parse %s as a decimal number", args[1])
+								return nil
+							}
+							opsMRC(rpcClient, env, args[0], mrc)
+
 							return nil
 						},
 					},
@@ -975,38 +987,108 @@ func main() {
 						ShortUsage: "next relay ops overage <relay> <value>",
 						ShortHelp:  "Set the overage value for the given relay (in $USD)",
 						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								fmt.Println("Must provide the relay name and an overage value in $USD")
+								return nil
+							}
+
+							overage, err := strconv.ParseFloat(args[1], 64)
+							if err != nil {
+								fmt.Printf("Could not parse %s as a decimal number", args[1])
+								return nil
+							}
+							opsOverage(rpcClient, env, args[0], overage)
+
 							return nil
 						},
 					},
 					{
 						Name:       "bwrule",
-						ShortUsage: "next relay ops bwrule <relay> <pool|burst|flat>",
+						ShortUsage: "next relay ops bwrule <relay> <pool|burst|flat|none>",
 						ShortHelp:  "Set the bandwidth rule for the given relay",
 						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								fmt.Println("Must provide the relay name and abandwidth rule")
+								return nil
+							}
+
+							rules := []string{"none", "flat", "pool", "burst"}
+							for _, rule := range rules {
+								if rule == args[1] {
+									opsBWRule(rpcClient, env, args[0], args[1])
+								}
+							}
+
+							fmt.Printf("'%s' not a valid bandwidth rule - must be one of none, flat, pool or burst", args[1])
+							return nil
+						},
+					},
+					{
+						Name:       "type",
+						ShortUsage: "next relay ops type <relay> <bare|vm|none>",
+						ShortHelp:  "Set the machine/server type for the given relay",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								fmt.Println("Must provide the relay name and amachine type")
+								return nil
+							}
+
+							rules := []string{"none", "vm", "bare"}
+							for _, rule := range rules {
+								if rule == args[1] {
+									opsType(rpcClient, env, args[0], args[1])
+								}
+							}
+
+							fmt.Printf("'%s' not a valid machine type - must be one of none, vm or bare", args[1])
 							return nil
 						},
 					},
 					{
 						Name:       "term",
-						ShortUsage: "next relay ops mrc <relay> <value>",
+						ShortUsage: "next relay ops term <relay> <value>",
 						ShortHelp:  "Set the contract term for the given relay (in months)",
 						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								fmt.Println("Must provide the relay name and a contract term in months")
+								return nil
+							}
+
+							term, err := strconv.ParseUint(args[1], 10, 32)
+							if err != nil {
+								fmt.Printf("Could not parse %s as an integer", args[1])
+								return nil
+							}
+							opsTerm(rpcClient, env, args[0], uint32(term))
+
 							return nil
 						},
 					},
 					{
 						Name:       "startdate",
 						ShortUsage: "next relay ops startdate <relay> <value>",
-						ShortHelp:  "Set the contract start date for the given relay (e.g. 2020-07-07)",
+						ShortHelp:  "Set the contract start date for the given relay (e.g. 'January 2, 2006')",
 						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								fmt.Println("Must provide the relay name and a contract start date e.g. 'January 2, 2006'")
+								return nil
+							}
+
+							opsStartDate(rpcClient, env, args[0], args[1])
 							return nil
 						},
 					},
 					{
 						Name:       "enddate",
 						ShortUsage: "next relay ops enddate <relay> <value>",
-						ShortHelp:  "Set the contract end date for the given relay (e.g. 2020-07-07)",
+						ShortHelp:  "Set the contract end date for the given relay (e.g. 'January 2, 2006')",
 						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								fmt.Println("Must provide the relay name and a contract end date e.g. 'January 2, 2006'")
+								return nil
+							}
+
+							opsEndDate(rpcClient, env, args[0], args[1])
 							return nil
 						},
 					},
@@ -1015,6 +1097,8 @@ func main() {
 						ShortUsage: "next relay ops modify <relay> <json file>",
 						ShortHelp:  "Set/update all of the above with a json file",
 						Exec: func(_ context.Context, args []string) error {
+							fmt.Println("Modify not yet implemented.")
+
 							return nil
 						},
 					},
