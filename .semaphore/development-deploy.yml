@@ -26,6 +26,10 @@ blocks:
           commands:
             - make build-portal-artifact
             - make publish-portal-artifact
+        - name: Portal Cruncher
+          commands:
+            - make build-portal-cruncher-artifact
+            - make publish-portal-cruncher-artifact
         - name: Relay Backend
           commands:
             - make build-relay-backend-artifact
