@@ -285,6 +285,10 @@ dev-server-backend: build-server-backend ## runs a local server backend
 dev-billing: build-billing ## runs a local billing service
 	@PORT=41000 ./dist/billing
 
+.PHONY: dev-analytics
+dev-analytics: build-analytics ## runs a local analytics service
+	@PORT=41001 ./dist/analytics
+
 .PHONY: dev-reference-backend
 dev-reference-backend: ## runs a local reference backend
 	$(GO) run reference/backend/*.go
@@ -419,6 +423,12 @@ build-server-backend: ## builds the server backend binary
 build-billing: ## builds the billing binary
 	@printf "Building billing... "
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/billing ./cmd/billing/billing.go
+	@printf "done\n"
+
+.PHONY: build-analytics
+build-analytics: ## builds the analytics binary
+	@printf "Building analytics... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/analytics ./cmd/billing/analytics.go
 	@printf "done\n"
 
 .PHONY: build-billing-artifact

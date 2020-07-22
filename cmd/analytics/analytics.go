@@ -199,7 +199,7 @@ func main() {
 
 	// google pubsub forwarder
 	if gcpOK || emulatorOK {
-		topicName := "analytics"
+		topicName := "ping_stats"
 		subscriptionName := "ping_stats"
 
 		pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(5*time.Second))

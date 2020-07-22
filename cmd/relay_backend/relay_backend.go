@@ -435,7 +435,7 @@ func main() {
 				Timeout:        time.Minute,
 			}
 
-			pubsub, err := analytics.NewGooglePubSubPublisher(pubsubCtx, analyticsMetrics, logger, gcpProjectID, "analytics", 1, 1000, &settings)
+			pubsub, err := analytics.NewGooglePubSubPublisher(pubsubCtx, analyticsMetrics, logger, gcpProjectID, "analytics", 1000, &settings)
 			if err != nil {
 				level.Error(logger).Log("msg", "could not create analytics pubsub publisher", "err", err)
 				os.Exit(1)
