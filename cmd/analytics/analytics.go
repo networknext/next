@@ -130,9 +130,7 @@ func main() {
 					level.Error(logger).Log("envvar", "GOOGLE_STACKDRIVER_METRICS_WRITE_INTERVAL", "value", sdwriteinterval, "err", err)
 					os.Exit(1)
 				}
-				go func() {
-					metricsHandler.WriteLoop(ctx, logger, writeInterval, 200)
-				}()
+				go metricsHandler.WriteLoop(ctx, logger, writeInterval, 200)
 			}
 		}
 

@@ -169,7 +169,7 @@ func main() {
 		LocalMode: true,
 	}
 
-	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
+	gcpProjectID, gcpOK = os.LookupEnv("GOOGLE_PROJECT_ID")
 	_, emulatorOK := os.LookupEnv("FIRESTORE_EMULATOR_HOST")
 	if emulatorOK {
 		gcpProjectID = "local"
@@ -433,7 +433,7 @@ func main() {
 
 	// Create a no-op biller
 	var publisher analytics.PubSubPublisher = &analytics.NoOpPubSubPublisher{}
-	_, emulatorOK := os.LookupEnv("PUBSUB_EMULATOR_HOST")
+	_, emulatorOK = os.LookupEnv("PUBSUB_EMULATOR_HOST")
 	if gcpOK || emulatorOK {
 		pubsubCtx := ctx
 
