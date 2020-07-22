@@ -26,6 +26,10 @@ done
 # Copy libsodium from GCP Storage
 gsutil cp "$bucket/libsodium.so" '/usr/local/lib'
 
+
+# Copy libzmq from GCP Storage
+gsutil cp "$bucket/libzmq.so" '/usr/local/lib'
+
 # Refresh the known libs on the system
 ldconfig
 
