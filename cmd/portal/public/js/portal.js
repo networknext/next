@@ -353,8 +353,18 @@ MapHandler = {
 				});
 
 				let layers = [];
+				let controller = {
+					dragRotate: false,
+					dragTilt: false,
+				}
 				if (maintenanceMode) {
 					layers = [textLayer]
+					controller = {
+						dragRotate: false,
+						dragTilt: false,
+						dragPan: false,
+						zoom: false
+					}
 				} else if (direct.length > 0 || onNN.length > 0) {
 					layers = [directLayer, nnLayer]
 				}
@@ -366,12 +376,7 @@ MapHandler = {
 						width: '100%',
 						height: '100%',
 						initialViewState: this.viewState,
-						controller: {
-							dragRotate: false,
-							dragTilt: false,
-							dragPan: !maintenanceMode,
-							zoom: !maintenanceMode
-						},
+						controller: controller,
 						// change the map's viewstate whenever the view state of deck.gl changes
 						onViewStateChange: ({ viewState }) => {
 							this.mapInstance.jumpTo({
