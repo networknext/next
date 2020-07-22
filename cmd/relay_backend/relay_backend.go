@@ -587,9 +587,9 @@ func main() {
 			fmt.Printf("route matrix bytes: %d\n", routeMatrixBytes)
 			fmt.Printf("cost matrix update: %.2f seconds\n", costMatrixDurationSince.Seconds())
 			fmt.Printf("route matrix update: %.2f seconds\n", optimizeDurationSince.Seconds())
-			fmt.Printf("%d analytics entries submitted\n", publisher.NumSubmitted())
-			fmt.Printf("%d analytics entries queued\n", publisher.NumQueued())
-			fmt.Printf("%d analytics entries flushed\n", publisher.NumFlushed())
+			fmt.Printf("%d analytics ps entries submitted\n", publisher.NumSubmitted())
+			fmt.Printf("%d analytics ps entries queued\n", publisher.NumQueued())
+			fmt.Printf("%d analytics ps entries flushed\n", publisher.NumFlushed())
 			fmt.Printf("-----------------------------\n")
 
 			// Swap the route matrix pointer to the new one

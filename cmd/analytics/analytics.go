@@ -226,9 +226,9 @@ func main() {
 				fmt.Printf("-----------------------------\n")
 				fmt.Printf("%d goroutines\n", runtime.NumGoroutine())
 				fmt.Printf("%.2f mb allocated\n", memoryUsed())
-				fmt.Printf("%d analytics entries submitted\n", writer.NumSubmitted())
-				fmt.Printf("%d analytics entries queued\n", writer.NumQueued())
-				fmt.Printf("%d analytics entries flushed\n", writer.NumFlushed())
+				fmt.Printf("%d analytics bq entries submitted\n", writer.NumSubmitted())
+				fmt.Printf("%d analytics bq entries queued\n", writer.NumQueued())
+				fmt.Printf("%d analytics bq entries flushed\n", writer.NumFlushed())
 				fmt.Printf("-----------------------------\n")
 
 				time.Sleep(time.Second * 10)
