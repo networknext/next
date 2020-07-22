@@ -31,7 +31,7 @@
                 position: relative;
                 overflow: hidden;
             }
-            #map {
+            .map {
                 position: absolute;
                 top: 0;
                 left: 0;
@@ -290,17 +290,17 @@
                             Map
                         </a>
                     </li>
-                    <li class="nav-item text-nowrap">
+                    <li class="nav-item text-nowrap" v-if="!maintenanceMode">
                         <a class="nav-link" href="#" v-bind:class="{ active: pages.sessions.show }" v-on:click="handlers.workspaceHandler.changePage('sessions')">
                             Sessions
                         </a>
                     </li>
-                    <li class="nav-item text-nowrap">
+                    <li class="nav-item text-nowrap" v-if="!maintenanceMode">
                         <a class="nav-link" href="#" v-bind:class="{ active: pages.sessionTool.show }" v-on:click="handlers.workspaceHandler.changePage('sessionTool', '')">
                             Session Tool
                         </a>
                     </li>
-                    <li class="nav-item text-nowrap" v-if="!handlers.userHandler.isAnonymous() && !handlers.userHandler.isAnonymousPlus()">
+                    <li class="nav-item text-nowrap" v-if="!handlers.userHandler.isAnonymous() && !handlers.userHandler.isAnonymousPlus() && !maintenanceMode">
                         <a class="nav-link" href="#" v-bind:class="{ active: pages.userTool.show }" v-on:click="handlers.workspaceHandler.changePage('userTool', '')">
                             User Tool
                         </a>
@@ -360,7 +360,7 @@
             <div class="container-fluid">
                 <div class="row">
                     <main role="main" class="col-md-12 col-lg-12 px-4" v-show="pages.map.show">
-                        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom" id="map-sessions-count">
+                        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom" id="map-sessions-count" v-if="!maintenanceMode">
                             <div id="map-spinner" v-if="!showCount">
                                 <div class="spinner-border" role="status">
                                     <span class="sr-only">Loading...</span>
@@ -419,7 +419,7 @@
                                 'map-container-no-offset': true,
                                 'map-container-offset': false,
                              }">
-                            <div id="map" ref="map"></div>
+                            <div id="map" class="map" ref="map"></div>
                             <canvas id="deck-canvas" ref="canvas"></canvas>
                         </div>
                     </main>
