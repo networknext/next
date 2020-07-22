@@ -639,29 +639,23 @@ func main() {
 		}()
 	}
 
-	fmt.Println("about to init portal publisher")
-
 	// Start portal cruncher publisher
 	var portalPublisher pubsub.Publisher
 	{
 		portalCruncherHost, ok := os.LookupEnv("PORTAL_CRUNCHER_HOST")
 		if !ok {
-			fmt.Printf("env var PORTAL_CRUNCHER_HOST must be set\n")
 			level.Error(logger).Log("err", "env var PORTAL_CRUNCHER_HOST must be set")
 			os.Exit(1)
 		}
 
 		portalCruncherPublisher, err := pubsub.NewPortalCruncherPublisher(portalCruncherHost)
 		if err != nil {
-			fmt.Printf("could not create portal cruncher publisher: %v\n", err)
 			level.Error(logger).Log("msg", "could not create portal cruncher publisher", "err", err)
 			os.Exit(1)
 		}
 
 		portalPublisher = portalCruncherPublisher
 	}
-
-	fmt.Println("finished init portal publisher")
 
 	// Start UDP server
 	{
