@@ -1136,7 +1136,6 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 	for i := 0; i < len(nextRelaysPriceArray) && i < len(nextRelaysPrice); i++ {
 		nextRelaysPriceArray[i] = uint64(nextRelaysPrice[i])
 	}
-	fmt.Println(nextRelaysPriceArray)
 
 	billingEntry := billing.BillingEntry{
 		BuyerID:                   packet.CustomerID,
