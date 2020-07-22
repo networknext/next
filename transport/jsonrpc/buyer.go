@@ -17,17 +17,22 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/go-redis/redis/v7"
+	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 )
 
 const (
-	TopSessionsSize     = 1000
-	TopNextSessionsSize = 1200
+	TopSessionsSize          = 1000
+	TopNextSessionsSize      = 1200
+	MapPointByteCacheVersion = uint8(1)
 )
 
 type BuyersService struct {
-	mu                    sync.Mutex
+	mu                      sync.Mutex
+	mapPointsByteCache      []byte
+	mapPointsBuyerByteCache map[string][]byte
+
 	mapPointsCache        json.RawMessage
 	mapPointsCompactCache json.RawMessage
 
@@ -486,7 +491,22 @@ type MapPointsReply struct {
 	Points json.RawMessage `json:"map_points"`
 }
 
-// GenerateMapPoints warms a local cache of JSON to be used by SessionMapPoints
+type MapPointsByteReply struct {
+	Points mapPointsByte `json:"map_points"`
+}
+
+type mapPointsByte struct {
+	Version     uint8   `json:"version"`
+	GreenPoints []point `json:"green_points"`
+	BluePoints  []point `json:"blue_points"`
+}
+
+type point struct {
+	Latitude      float32 `json:"latitude"`
+	Longitude     float32 `json:"longitude"`
+	OnNetworkNext bool    `json:"on_network_next"`
+}
+
 func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -498,10 +518,9 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 
 	// slice to hold all the final map points
 	mapPointsBuyers := make(map[string][]routing.SessionMapPoint, 0)
-	mapPointsBuyerscompact := make(map[string][][]interface{}, 0)
-
+	mapPointsBuyersCompact := make(map[string][][]interface{}, 0)
 	mapPointsGlobal := make([]routing.SessionMapPoint, 0)
-	mapPointsGlobalcompact := make([][]interface{}, 0)
+	mapPointsGlobalCompact := make([][]interface{}, 0)
 
 	s.mapPointsBuyerCache = make(map[string]json.RawMessage, 0)
 	s.mapPointsCompactBuyerCache = make(map[string]json.RawMessage, 0)
@@ -562,8 +581,8 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 					if point.OnNetworkNext {
 						onNN = 1
 					}
-					mapPointsBuyerscompact[stringID] = append(mapPointsBuyerscompact[stringID], []interface{}{point.Longitude, point.Latitude, onNN})
-					mapPointsGlobalcompact = append(mapPointsGlobalcompact, []interface{}{point.Longitude, point.Latitude, onNN})
+					mapPointsBuyersCompact[stringID] = append(mapPointsBuyersCompact[stringID], []interface{}{point.Longitude, point.Latitude, onNN})
+					mapPointsGlobalCompact = append(mapPointsGlobalCompact, []interface{}{point.Longitude, point.Latitude, onNN})
 				}
 			}
 		}
@@ -576,13 +595,12 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 
 		level.Info(s.Logger).Log("key", "map-points-global", "removed", len(sremcmds))
 
-		// marshal the map points slice to local cache
 		s.mapPointsBuyerCache[stringID], err = json.Marshal(mapPointsBuyers[stringID])
 		if err != nil {
 			return err
 		}
 
-		s.mapPointsCompactBuyerCache[stringID], err = json.Marshal(mapPointsBuyerscompact[stringID])
+		s.mapPointsCompactBuyerCache[stringID], err = json.Marshal(mapPointsBuyersCompact[stringID])
 		if err != nil {
 			return err
 		}
@@ -594,19 +612,228 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 		return err
 	}
 
-	s.mapPointsCompactCache, err = json.Marshal(mapPointsGlobalcompact)
+	s.mapPointsCompactCache, err = json.Marshal(mapPointsGlobalCompact)
 	if err != nil {
 		return err
+	}
+	return nil
+}
+
+func (s *BuyersService) GenerateMapPointsPerBuyerBytes() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var sessionIDs []string
+	var stringID string
+	var err error
+	var mapPointsGlobal mapPointsByte
+	var mapPointsBuyer mapPointsByte
+
+	s.mapPointsBuyerByteCache = make(map[string][]byte, 0)
+	s.mapPointsByteCache = make([]byte, 0)
+
+	buyers := s.Storage.Buyers()
+
+	for _, buyer := range buyers { // get all the session IDs from the map-points-global key set
+		mapPointsBuyer.GreenPoints = make([]point, 0)
+		mapPointsBuyer.BluePoints = make([]point, 0)
+
+		stringID = fmt.Sprintf("%016x", buyer.ID)
+		sessionIDs, err = s.RedisClient.SMembers(fmt.Sprintf("map-points-%016x-buyer", buyer.ID)).Result()
+		if err != nil {
+			err = fmt.Errorf("SessionMapPoints() failed getting map points for buyer %016x: %v", buyer.ID, err)
+			s.Logger.Log("err", err)
+			return err
+		}
+
+		// build a single transaction of gets for each session ID
+		var getCmds []*redis.StringCmd
+		{
+			gettx := s.RedisClient.TxPipeline()
+			for _, sessionID := range sessionIDs {
+				getCmds = append(getCmds, gettx.Get(fmt.Sprintf("session-%s-point", sessionID)))
+			}
+			_, err = gettx.Exec()
+			if err != nil && err != redis.Nil {
+				err = fmt.Errorf("SessionMapPoints() failed getting session points: %v", err)
+				s.Logger.Log("err", err)
+				return err
+			}
+		}
+
+		// build a single transaction for any missing session-*-point keys to be
+		// removed from map-points-global, total-next, and total-direct key sets
+		sremtx := s.RedisClient.TxPipeline()
+		{
+			var currentPoint routing.SessionMapPoint
+			for _, cmd := range getCmds {
+				// scan the data from Redis into its SessionMapPoint struct
+				err = cmd.Scan(&currentPoint)
+
+				// if there was an error then the session-*-point key expired
+				// so add SREM commands to remove it from the key sets
+				if err != nil {
+					key := cmd.Args()[1].(string)
+					keyparts := strings.Split(key, "-")
+					sremtx.SRem("map-points-global", keyparts[1])
+					sremtx.SRem(fmt.Sprintf("map-points-%016x-buyer", buyer.ID), keyparts[1])
+					sremtx.ZRem("total-next", keyparts[1])
+					sremtx.ZRem(fmt.Sprintf("total-next-buyer-%016x", buyer.ID), keyparts[1])
+					sremtx.ZRem("total-direct", keyparts[1])
+					sremtx.ZRem(fmt.Sprintf("total-direct-buyer-%016x", buyer.ID), keyparts[1])
+					continue
+				}
+
+				// if there was no error then add the SessionMapPoint to the slice
+				if currentPoint.Latitude != 0 && currentPoint.Longitude != 0 {
+					bytePoint := point{
+						Latitude:      float32(currentPoint.Latitude),
+						Longitude:     float32(currentPoint.Longitude),
+						OnNetworkNext: false,
+					}
+
+					if currentPoint.OnNetworkNext {
+						bytePoint.OnNetworkNext = true
+						mapPointsGlobal.GreenPoints = append(mapPointsGlobal.GreenPoints, bytePoint)
+						mapPointsBuyer.GreenPoints = append(mapPointsGlobal.GreenPoints, bytePoint)
+					} else {
+						mapPointsGlobal.BluePoints = append(mapPointsGlobal.BluePoints, bytePoint)
+						mapPointsBuyer.BluePoints = append(mapPointsGlobal.BluePoints, bytePoint)
+					}
+				}
+			}
+		}
+
+		// execute the transaction to remove the sessions IDs from the key sets
+		sremcmds, err := sremtx.Exec()
+		if err != nil {
+			return err
+		}
+
+		level.Info(s.Logger).Log("key", "map-points-global", "removed", len(sremcmds))
+
+		// Write entries to byte cache
+		s.mapPointsBuyerCache[stringID] = WriteMapPointCache(&mapPointsBuyer)
+	}
+	s.mapPointsCache = WriteMapPointCache(&mapPointsGlobal)
+
+	return nil
+}
+
+func WriteMapPointCache(points *mapPointsByte) []byte {
+	var length uint32
+	numGreenPoints := uint32(len(points.GreenPoints))
+	numBluePoints := uint32(len(points.BluePoints))
+
+	length = 1 + 4 + 4 + (1+4+4)*numGreenPoints + (1+4+4)*numBluePoints
+
+	data := make([]byte, length)
+	index := 0
+	encoding.WriteUint8(data, &index, MapPointByteCacheVersion)
+
+	encoding.WriteUint32(data, &index, numGreenPoints)
+
+	for _, point := range points.GreenPoints {
+		encoding.WriteFloat32(data, &index, point.Latitude)
+		encoding.WriteFloat32(data, &index, point.Longitude)
+		encoding.WriteBool(data, &index, point.OnNetworkNext)
+	}
+
+	encoding.WriteUint32(data, &index, numBluePoints)
+
+	for _, point := range points.BluePoints {
+		encoding.WriteFloat32(data, &index, point.Latitude)
+		encoding.WriteFloat32(data, &index, point.Longitude)
+		encoding.WriteBool(data, &index, point.OnNetworkNext)
+	}
+	return data
+}
+
+func ReadMapPointsCache(points *mapPointsByte, data []byte) bool {
+	var numGreenPoints uint32
+	var numBluePoints uint32
+
+	index := 0
+	if !encoding.ReadUint8(data, &index, &points.Version) {
+		return false
+	}
+	if points.Version != 1 {
+		return false
+	}
+	if !encoding.ReadUint32(data, &index, &numGreenPoints) {
+		return false
+	}
+
+	var latitude float32
+	var longitude float32
+	var onNetworkNext bool
+	points.GreenPoints = make([]point, numGreenPoints)
+
+	for i := 0; i < int(numGreenPoints); i++ {
+		if !encoding.ReadFloat32(data, &index, &latitude) {
+			return false
+		}
+		if !encoding.ReadFloat32(data, &index, &longitude) {
+			return false
+		}
+		if !encoding.ReadBool(data, &index, &onNetworkNext) {
+			return false
+		}
+		points.GreenPoints[i] = point{
+			Latitude:      latitude,
+			Longitude:     longitude,
+			OnNetworkNext: onNetworkNext,
+		}
+	}
+
+	if !encoding.ReadUint32(data, &index, &numBluePoints) {
+		return false
+	}
+
+	points.BluePoints = make([]point, numBluePoints)
+
+	for i := 0; i < int(numBluePoints); i++ {
+		if !encoding.ReadFloat32(data, &index, &latitude) {
+			return false
+		}
+		if !encoding.ReadFloat32(data, &index, &longitude) {
+			return false
+		}
+		if !encoding.ReadBool(data, &index, &onNetworkNext) {
+			return false
+		}
+		points.BluePoints[i] = point{
+			Latitude:      latitude,
+			Longitude:     longitude,
+			OnNetworkNext: onNetworkNext,
+		}
+	}
+
+	return true
+}
+
+func (s *BuyersService) SessionMap(r *http.Request, args *MapPointsArgs, reply *MapPointsReply) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	switch args.BuyerID {
+	case "":
+		// pull the local cache and reply with it
+		reply.Points = s.mapPointsCompactCache
+	default:
+		if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
+			err := fmt.Errorf("SessionMap(): %v", ErrInsufficientPrivileges)
+			s.Logger.Log("err", err)
+			return err
+		}
+		reply.Points = s.mapPointsCompactBuyerCache[args.BuyerID]
 	}
 
 	return nil
 }
 
-// SessionMapPoints returns the locally cached JSON from GenerateSessionMapPoints
 func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, reply *MapPointsReply) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
 	switch args.BuyerID {
 	case "":
 		// pull the local cache and reply with it
@@ -623,21 +850,42 @@ func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, r
 	return nil
 }
 
-func (s *BuyersService) SessionMap(r *http.Request, args *MapPointsArgs, reply *MapPointsReply) error {
+// SessionMapPoints returns the locally cached JSON from GenerateSessionMapPoints
+func (s *BuyersService) SessionMapPointsByte(r *http.Request, args *MapPointsArgs, reply *MapPointsByteReply) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	switch args.BuyerID {
 	case "":
 		// pull the local cache and reply with it
-		reply.Points = s.mapPointsCompactCache
+		ReadMapPointsCache(&reply.Points, s.mapPointsCache)
 	default:
 		if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
 			err := fmt.Errorf("SessionMap(): %v", ErrInsufficientPrivileges)
 			s.Logger.Log("err", err)
 			return err
 		}
-		reply.Points = s.mapPointsCompactBuyerCache[args.BuyerID]
+		ReadMapPointsCache(&reply.Points, s.mapPointsBuyerCache[args.BuyerID])
+	}
+
+	return nil
+}
+
+func (s *BuyersService) SessionMapByte(r *http.Request, args *MapPointsArgs, reply *MapPointsByteReply) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	switch args.BuyerID {
+	case "":
+		// pull the local cache and reply with it
+		ReadMapPointsCache(&reply.Points, s.mapPointsCache)
+	default:
+		if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
+			err := fmt.Errorf("SessionMap(): %v", ErrInsufficientPrivileges)
+			s.Logger.Log("err", err)
+			return err
+		}
+		ReadMapPointsCache(&reply.Points, s.mapPointsBuyerCache[args.BuyerID])
 	}
 
 	return nil
