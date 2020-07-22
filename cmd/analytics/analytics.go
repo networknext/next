@@ -88,8 +88,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	var statsEntriesReceived uint64
-
 	var writer analytics.BigQueryWriter = &analytics.NoOpBigQueryWriter{}
 
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
@@ -179,7 +177,7 @@ func main() {
 				level.Error(logger).Log("err", err)
 				os.Exit(1)
 			}
-			b := analytics.NewGoogleBigQueryClient(bqClient, logger, analyticsMetrics, analyticsDataset, os.Getenv("GOOGLE_BIGQUERY_TABLE_ANALYTICS"))
+			b := analytics.NewGoogleBigQueryWriter(bqClient, logger, analyticsMetrics, analyticsDataset, os.Getenv("GOOGLE_BIGQUERY_TABLE_ANALYTICS"))
 			writer = &b
 
 			go func() {
@@ -192,7 +190,7 @@ func main() {
 	if emulatorOK {
 		gcpProjectID = "local"
 
-		writer = &analytics.LocalPubSubWriter{
+		writer = &analytics.LocalBigQueryWriter{
 			Logger: logger,
 		}
 	}

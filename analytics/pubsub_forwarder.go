@@ -45,11 +45,14 @@ func NewPubSubForwarder(ctx context.Context, writer BigQueryWriter, logger log.L
 func (psf *PubSubForwarder) Forward(ctx context.Context) {
 	err := psf.pubsubSubscription.Receive(context.Background(), func(ctx context.Context, m *pubsub.Message) {
 		psf.Metrics.AnalyticsEntriesReceived.Add(1)
-		entry := StatsEntry{}
-		if ReadStatsEntry(&entry, m.Data) {
+		if entries, ok := ReadStatsEntries(m.Data); ok {
 			m.Ack()
-			entry.Timestamp = uint64(m.PublishTime.Unix())
-			psf.Writer.Write(context.Background(), &entry)
+
+			for i := range entries {
+				entry := &entries[i]
+				entry.Timestamp = uint64(m.PublishTime.Unix())
+				psf.Writer.Write(context.Background(), entry)
+			}
 		} else {
 			psf.Metrics.ErrorMetrics.AnalyticsReadFailure.Add(1)
 		}

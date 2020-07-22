@@ -12,23 +12,38 @@ import (
 	"github.com/networknext/backend/metrics"
 )
 
-type PubSubWriter interface {
-	Write(ctx context.Context, entry *StatsEntry) error
+type PubSubPublisher interface {
+	Publish(ctx context.Context, entries []StatsEntry) error
+	NumSubmitted() uint64
+	NumQueued() uint64
+	NumFlushed() uint64
 }
 
-type NoOpPubSubWriter struct {
-	written uint64
+type NoOpPubSubPublisher struct {
+	submitted uint64
 }
 
-func (writer *NoOpPubSubWriter) Write(ctx context.Context, entry StatsEntry) error {
-	atomic.AddUint64(&writer.written, 1)
+func (publisher *NoOpPubSubPublisher) Publish(ctx context.Context, entries []StatsEntry) error {
+	atomic.AddUint64(&publisher.submitted, uint64(len(entries)))
 	return nil
 }
 
-type GooglePubSubWriter struct {
+func (publisher *NoOpPubSubPublisher) NumSubmitted() uint64 {
+	return atomic.LoadUint64(&publisher.submitted)
+}
+
+func (publisher *NoOpPubSubPublisher) NumQueued() uint64 {
+	return 0
+}
+
+func (publisher *NoOpPubSubPublisher) NumFlushed() uint64 {
+	return atomic.LoadUint64(&publisher.submitted)
+}
+
+type GooglePubSubPublisher struct {
 	Logger log.Logger
 
-	clients   []*GooglePubSubClient
+	client    *GooglePubSubClient
 	submitted uint64
 	flushed   uint64
 }
@@ -40,57 +55,55 @@ type GooglePubSubClient struct {
 	Metrics      *metrics.AnalyticsMetrics
 }
 
-func NewGooglePubSubWriter(ctx context.Context, statsMetrics *metrics.AnalyticsMetrics, resultLogger log.Logger, projectID string, topicID string, clientCount int, clientChanBufferSize int, settings *pubsub.PublishSettings) (*GooglePubSubWriter, error) {
+func NewGooglePubSubPublisher(ctx context.Context, statsMetrics *metrics.AnalyticsMetrics, resultLogger log.Logger, projectID string, topicID string, clientChanBufferSize int, settings *pubsub.PublishSettings) (*GooglePubSubPublisher, error) {
 	if settings == nil {
 		return nil, errors.New("nil google pubsub publish settings")
 	}
 
-	writer := &GooglePubSubWriter{
-		Logger:  resultLogger,
-		clients: make([]*GooglePubSubClient, clientCount),
+	publisher := &GooglePubSubPublisher{
+		Logger: resultLogger,
 	}
 
-	for i := 0; i < clientCount; i++ {
-		var err error
-		client := &GooglePubSubClient{}
-		client.PubsubClient, err = pubsub.NewClient(ctx, projectID)
-		client.Metrics = statsMetrics
-		if err != nil {
-			return nil, fmt.Errorf("could not create pubsub client %d: %v", i, err)
-		}
+	var err error
+	client := &GooglePubSubClient{}
 
-		if projectID == "local" {
-			if _, err := client.PubsubClient.CreateTopic(ctx, topicID); err != nil {
-				if err.Error() != "rpc error: code = AlreadyExists desc = Topic already exists" {
-					return nil, err
-				}
+	client.PubsubClient, err = pubsub.NewClient(ctx, projectID)
+
+	if err != nil {
+		return nil, fmt.Errorf("could not create pubsub client: %v", err)
+	}
+
+	if projectID == "local" {
+		if _, err := client.PubsubClient.CreateTopic(ctx, topicID); err != nil {
+			if err.Error() != "rpc error: code = AlreadyExists desc = Topic already exists" {
+				return nil, err
 			}
 		}
-
-		client.Topic = client.PubsubClient.Topic(topicID)
-		client.Topic.PublishSettings = *settings
-		client.ResultChan = make(chan *pubsub.PublishResult, clientChanBufferSize)
-
-		go client.pubsubResults(ctx, writer)
-
-		writer.clients[i] = client
 	}
 
-	return writer, nil
+	client.Metrics = statsMetrics
+	client.Topic = client.PubsubClient.Topic(topicID)
+	client.Topic.PublishSettings = *settings
+	client.ResultChan = make(chan *pubsub.PublishResult, clientChanBufferSize)
+
+	go client.pubsubResults(ctx, publisher)
+
+	publisher.client = client
+
+	return publisher, nil
 }
 
-func (writer *GooglePubSubWriter) Write(ctx context.Context, entry *StatsEntry) error {
-	atomic.AddUint64(&writer.submitted, 1)
+func (publisher *GooglePubSubPublisher) Publish(ctx context.Context, entries []StatsEntry) error {
+	atomic.AddUint64(&publisher.submitted, 1)
 
-	data := WriteStatsEntry(entry)
+	data := WriteStatsEntries(entries)
 
-	if writer.clients == nil {
-		return fmt.Errorf("statsdb: clients not initialized")
+	if publisher.client == nil {
+		return fmt.Errorf("analytics: clients not initialized")
 	}
 
-	index := entry.RelayA % uint64(len(writer.clients))
-	topic := writer.clients[index].Topic
-	resultChan := writer.clients[index].ResultChan
+	topic := publisher.client.Topic
+	resultChan := publisher.client.ResultChan
 
 	result := topic.Publish(ctx, &pubsub.Message{Data: data})
 	resultChan <- result
@@ -98,17 +111,29 @@ func (writer *GooglePubSubWriter) Write(ctx context.Context, entry *StatsEntry) 
 	return nil
 }
 
-func (client *GooglePubSubClient) pubsubResults(ctx context.Context, writer *GooglePubSubWriter) {
+func (publisher *GooglePubSubPublisher) NumSubmitted() uint64 {
+	return atomic.LoadUint64(&publisher.submitted)
+}
+
+func (publisher *GooglePubSubPublisher) NumQueued() uint64 {
+	return atomic.LoadUint64(&publisher.submitted) - atomic.LoadUint64(&publisher.flushed)
+}
+
+func (publisher *GooglePubSubPublisher) NumFlushed() uint64 {
+	return atomic.LoadUint64(&publisher.flushed)
+}
+
+func (client *GooglePubSubClient) pubsubResults(ctx context.Context, publisher *GooglePubSubPublisher) {
 	for {
 		select {
 		case result := <-client.ResultChan:
 			_, err := result.Get(ctx)
 			if err != nil {
-				level.Error(writer.Logger).Log("statsdb", "failed to publish to pubsub", "err", err)
+				level.Error(publisher.Logger).Log("analytics", "failed to publish to pubsub", "err", err)
 				client.Metrics.ErrorMetrics.AnalyticsPublishFailure.Add(1)
 			} else {
-				level.Debug(writer.Logger).Log("statsdb", "successfully published billing data")
-				atomic.AddUint64(&writer.flushed, 1)
+				level.Debug(publisher.Logger).Log("analytics", "successfully published billing data")
+				atomic.AddUint64(&publisher.flushed, 1)
 			}
 		case <-ctx.Done():
 			return

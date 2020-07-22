@@ -453,7 +453,7 @@ var EmptyAnalyticsErrorMetrics AnalyticsErrorMetrics = AnalyticsErrorMetrics{
 var EmptyAnalyticsMetrics AnalyticsMetrics = AnalyticsMetrics{
 	AnalyticsEntriesReceived: &EmptyCounter{},
 	AnalyticsEntriesWritten:  &EmptyCounter{},
-	ErrorMetrics:             &EmptyAnalyticsErrorMetrics,
+	ErrorMetrics:             EmptyAnalyticsErrorMetrics,
 }
 
 func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMetrics, error) {

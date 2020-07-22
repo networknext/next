@@ -297,7 +297,7 @@ func main() {
 					ProjectID:      gcpProjectID,
 					MutexProfiling: true,
 				}); err != nil {
-					level.Error(logger).Log("msg", "Failed to initialze StackDriver profiler", "err", err)
+					level.Error(logger).Log("msg", "Failed to initialize StackDriver profiler", "err", err)
 					os.Exit(1)
 				}
 			}
@@ -403,6 +403,73 @@ func main() {
 			os.Exit(1)
 		}
 	}
+
+	analyticsMetrics, err := metrics.NewAnalyticsMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create statsdb metrics", "err", err)
+	}
+
+	// Create a no-op biller
+	var publisher analytics.PubSubPublisher = &analytics.NoOpPubSubPublisher{}
+	_, emulatorOK := os.LookupEnv("PUBSUB_EMULATOR_HOST")
+	if gcpOK || emulatorOK {
+		pubsubCtx := ctx
+
+		if emulatorOK {
+			gcpProjectID = "local"
+
+			var cancelFunc context.CancelFunc
+			pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(5*time.Second))
+			defer cancelFunc()
+
+			level.Info(logger).Log("msg", "Detected pubsub emulator")
+		}
+
+		// Google Pubsub
+		{
+			settings := pubsub.PublishSettings{
+				DelayThreshold: time.Hour,
+				CountThreshold: 1000,
+				ByteThreshold:  60 * 1024,
+				NumGoroutines:  runtime.GOMAXPROCS(0),
+				Timeout:        time.Minute,
+			}
+
+			pubsub, err := analytics.NewGooglePubSubPublisher(pubsubCtx, analyticsMetrics, logger, gcpProjectID, "analytics", 1, 1000, &settings)
+			if err != nil {
+				level.Error(logger).Log("msg", "could not create analytics pubsub publisher", "err", err)
+				os.Exit(1)
+			}
+
+			publisher = pubsub
+		}
+	}
+
+	go func() {
+		time.Sleep(time.Minute)
+		for {
+			cpy := statsdb.MakeCopy()
+			length := len(cpy.Entries) * 2
+			entries := make([]analytics.StatsEntry, length)
+
+			i := 0
+			for k1, s := range cpy.Entries {
+				for k2, r := range s.Relays {
+					entries[i] = analytics.StatsEntry{
+						RelayA:     k1,
+						RelayB:     k2,
+						RTT:        r.RTT,
+						Jitter:     r.Jitter,
+						PacketLoss: r.PacketLoss,
+					}
+
+					i++
+				}
+			}
+
+			publisher.Publish(ctx, entries)
+		}
+	}()
 
 	// Periodically generate cost matrix from stats db
 	cmsyncinterval := os.Getenv("COST_MATRIX_INTERVAL")
@@ -520,6 +587,9 @@ func main() {
 			fmt.Printf("route matrix bytes: %d\n", routeMatrixBytes)
 			fmt.Printf("cost matrix update: %.2f seconds\n", costMatrixDurationSince.Seconds())
 			fmt.Printf("route matrix update: %.2f seconds\n", optimizeDurationSince.Seconds())
+			fmt.Printf("%d analytics entries submitted\n", publisher.NumSubmitted())
+			fmt.Printf("%d analytics entries queued\n", publisher.NumQueued())
+			fmt.Printf("%d analytics entries flushed\n", publisher.NumFlushed())
 			fmt.Printf("-----------------------------\n")
 
 			// Swap the route matrix pointer to the new one
@@ -537,10 +607,10 @@ func main() {
 	go func() {
 		ps := redisClientRelays.Subscribe("__keyevent@0__:expired")
 		for {
-			// Recieve expiry event message
+			// Receive expiry event message
 			msg, err := ps.ReceiveMessage()
 			if err != nil {
-				level.Error(logger).Log("msg", "Error recieving expired message from pubsub", "err", err)
+				level.Error(logger).Log("msg", "Error receiving expired message from pubsub", "err", err)
 				os.Exit(1)
 			}
 
@@ -561,65 +631,6 @@ func main() {
 				if err := transport.RemoveRelayCacheEntry(ctx, rawID, msg.Payload, redisClientRelays, &geoClient, statsdb); err != nil {
 					level.Error(logger).Log("err", err)
 					os.Exit(1)
-				}
-			}
-		}
-	}()
-
-	analyticsMetrics, err := metrics.NewAnalyticsMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create statsdb metrics", "err", err)
-	}
-
-	// Create a no-op biller
-	var writer analytics.PubSubWriter = &analytics.NoOpPubSubWriter{}
-	_, emulatorOK := os.LookupEnv("PUBSUB_EMULATOR_HOST")
-	if gcpOK || emulatorOK {
-		pubsubCtx := ctx
-
-		if emulatorOK {
-			gcpProjectID = "local"
-
-			var cancelFunc context.CancelFunc
-			pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(5*time.Second))
-			defer cancelFunc()
-
-			level.Info(logger).Log("msg", "Detected pubsub emulator")
-		}
-
-		// Google Pubsub
-		{
-			settings := pubsub.PublishSettings{
-				DelayThreshold: time.Hour,
-				CountThreshold: 1000,
-				ByteThreshold:  60 * 1024,
-				NumGoroutines:  runtime.GOMAXPROCS(0),
-				Timeout:        time.Minute,
-			}
-
-			pubsub, err := analytics.NewGooglePubSubWriter(pubsubCtx, analyticsMetrics, logger, gcpProjectID, "statsdb", 1, 1000, &settings)
-			if err != nil {
-				level.Error(logger).Log("msg", "could not create statsdb pubsub writer", "err", err)
-				os.Exit(1)
-			}
-
-			writer = pubsub
-		}
-	}
-
-	go func() {
-		time.Sleep(time.Minute)
-		for {
-			cpy := statsdb.MakeCopy()
-			for k1, s := range cpy.Entries {
-				for k2, r := range s.Relays {
-					writer.Write(ctx, analytics.StatsEntry{
-						RelayA:     k1,
-						RelayB:     k2,
-						RTT:        r.RTT,
-						Jitter:     r.Jitter,
-						PacketLoss: r.PacketLoss,
-					})
 				}
 			}
 		}
