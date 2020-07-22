@@ -29,10 +29,10 @@ func TestGooglePubSubPublisher(t *testing.T) {
 	checkGooglePubsubEmulator(t)
 	ctx := context.Background()
 
-	t.Run("uninitialized writing clients", func(t *testing.T) {
+	t.Run("uninitialized writing client", func(t *testing.T) {
 		publisher := &analytics.GooglePubSubPublisher{}
 		err := publisher.Publish(ctx, []analytics.StatsEntry{})
-		assert.EqualError(t, err, "analytics: clients not initialized")
+		assert.EqualError(t, err, "analytics: client not initialized")
 	})
 
 	t.Run("success", func(t *testing.T) {
