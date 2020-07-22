@@ -162,7 +162,7 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 
 		start := time.Now()
 		defer func() {
-			if time.Since(start).Seconds() > 0.1 {
+			if time.Since(start).Seconds() > 1.0 {
 				level.Debug(params.Logger).Log("msg", "long server init")
 				atomic.AddUint64(&params.Counters.LongDuration, 1)
 				params.Metrics.LongDuration.Add(1)
@@ -303,7 +303,7 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 
 		start := time.Now()
 		defer func() {
-			if time.Since(start).Seconds() > 0.1 {
+			if time.Since(start).Seconds() > 1.0 {
 				level.Error(params.Logger).Log("msg", "long server update")
 				atomic.AddUint64(&params.Counters.LongDuration, 1)
 				params.Metrics.LongDuration.Add(1)
@@ -442,7 +442,7 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 
 		serverMutexStart := time.Now()
 		params.ServerMap.UpdateServerData(buyer.ID, serverAddress, &server)
-		if time.Since(serverMutexStart).Seconds() > 0.1 {
+		if time.Since(serverMutexStart).Seconds() > 1.0 {
 			level.Debug(params.Logger).Log("msg", "long server mutex in server update")
 		}
 	}
@@ -529,7 +529,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 
 		start := time.Now()
 		defer func() {
-			if time.Since(start).Seconds() > 0.1 {
+			if time.Since(start).Seconds() > 1.0 {
 				level.Debug(params.Logger).Log("msg", "long session update")
 				atomic.AddUint64(&params.Counters.LongDuration, 1)
 				params.Metrics.LongDuration.Add(1)
@@ -574,7 +574,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			params.Metrics.ErrorMetrics.ServerDataMissing.Add(1)
 			return
 		}
-		if time.Since(serverMutexStart).Seconds() > 0.1 {
+		if time.Since(serverMutexStart).Seconds() > 1.0 {
 			level.Debug(params.Logger).Log("msg", "long server mutex in session update")
 		}
 
@@ -591,7 +591,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 
 		sessionMutexStart := time.Now()
 		sessionDataReadOnly := params.SessionMap.GetSessionData(header.SessionID)
-		if time.Since(sessionMutexStart).Seconds() > 0.1 {
+		if time.Since(sessionMutexStart).Seconds() > 1.0 {
 			level.Debug(params.Logger).Log("msg", "long session mutex in session update")
 		}
 		if sessionDataReadOnly == nil {
@@ -1463,7 +1463,7 @@ func sendRouteResponse(w io.Writer, chosenRoute *routing.Route, params *SessionU
 	}
 	sessionMutexStart := time.Now()
 	params.SessionMap.UpdateSessionData(packet.SessionID, &session)
-	if time.Since(sessionMutexStart).Seconds() > 0.1 {
+	if time.Since(sessionMutexStart).Seconds() > 1.0 {
 		level.Debug(params.Logger).Log("msg", "long session mutex in send route response")
 	}
 
