@@ -21,16 +21,8 @@ func checkGooglePubsubEmulator(t *testing.T) {
 
 func TestNewGooglePubSubPublisher(t *testing.T) {
 	checkGooglePubsubEmulator(t)
-
-	t.Run("no publish settings", func(t *testing.T) {
-		_, err := analytics.NewGooglePubSubPublisher(context.Background(), &metrics.EmptyAnalyticsMetrics, log.NewNopLogger(), "", "", 0, nil)
-		assert.EqualError(t, err, "nil google pubsub publish settings")
-	})
-
-	t.Run("success", func(t *testing.T) {
-		_, err := analytics.NewGooglePubSubPublisher(context.Background(), &metrics.EmptyAnalyticsMetrics, log.NewNopLogger(), "default", "analytics", 0, &pubsub.DefaultPublishSettings)
-		assert.NoError(t, err)
-	})
+	_, err := analytics.NewGooglePubSubPublisher(context.Background(), &metrics.EmptyAnalyticsMetrics, log.NewNopLogger(), "default", "analytics", pubsub.DefaultPublishSettings)
+	assert.NoError(t, err)
 }
 
 func TestGooglePubSubPublisher(t *testing.T) {
@@ -44,7 +36,7 @@ func TestGooglePubSubPublisher(t *testing.T) {
 	})
 
 	t.Run("success", func(t *testing.T) {
-		publisher, err := analytics.NewGooglePubSubPublisher(ctx, &metrics.EmptyAnalyticsMetrics, log.NewNopLogger(), "default", "analytics", 0, &pubsub.DefaultPublishSettings)
+		publisher, err := analytics.NewGooglePubSubPublisher(ctx, &metrics.EmptyAnalyticsMetrics, log.NewNopLogger(), "default", "analytics", pubsub.DefaultPublishSettings)
 		assert.NoError(t, err)
 		err = publisher.Publish(ctx, []analytics.StatsEntry{})
 		assert.NoError(t, err)

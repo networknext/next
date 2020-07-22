@@ -2,7 +2,6 @@ package analytics
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync/atomic"
 
@@ -55,11 +54,7 @@ type GooglePubSubClient struct {
 	Metrics      *metrics.AnalyticsMetrics
 }
 
-func NewGooglePubSubPublisher(ctx context.Context, statsMetrics *metrics.AnalyticsMetrics, resultLogger log.Logger, projectID string, topicID string, clientChanBufferSize int, settings *pubsub.PublishSettings) (*GooglePubSubPublisher, error) {
-	if settings == nil {
-		return nil, errors.New("nil google pubsub publish settings")
-	}
-
+func NewGooglePubSubPublisher(ctx context.Context, statsMetrics *metrics.AnalyticsMetrics, resultLogger log.Logger, projectID string, topicID string, settings pubsub.PublishSettings) (*GooglePubSubPublisher, error) {
 	publisher := &GooglePubSubPublisher{
 		Logger: resultLogger,
 	}
@@ -83,8 +78,8 @@ func NewGooglePubSubPublisher(ctx context.Context, statsMetrics *metrics.Analyti
 
 	client.Metrics = statsMetrics
 	client.Topic = client.PubsubClient.Topic(topicID)
-	client.Topic.PublishSettings = *settings
-	client.ResultChan = make(chan *pubsub.PublishResult, clientChanBufferSize)
+	client.Topic.PublishSettings = settings
+	client.ResultChan = make(chan *pubsub.PublishResult, 1)
 
 	go client.pubsubResults(ctx, publisher)
 

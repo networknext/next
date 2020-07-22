@@ -428,14 +428,14 @@ func main() {
 		// Google Pubsub
 		{
 			settings := pubsub.PublishSettings{
-				DelayThreshold: time.Hour,
-				CountThreshold: 1000,
-				ByteThreshold:  60 * 1024,
+				DelayThreshold: time.Second,
+				CountThreshold: 1,
+				ByteThreshold:  1 << 20,
 				NumGoroutines:  runtime.GOMAXPROCS(0),
 				Timeout:        time.Minute,
 			}
 
-			pubsub, err := analytics.NewGooglePubSubPublisher(pubsubCtx, analyticsMetrics, logger, gcpProjectID, "ping_stats", 1000, &settings)
+			pubsub, err := analytics.NewGooglePubSubPublisher(pubsubCtx, analyticsMetrics, logger, gcpProjectID, "ping_stats", settings)
 			if err != nil {
 				level.Error(logger).Log("msg", "could not create analytics pubsub publisher", "err", err)
 				os.Exit(1)
@@ -446,8 +446,8 @@ func main() {
 	}
 
 	go func() {
-		time.Sleep(time.Minute)
 		for {
+			time.Sleep(time.Minute)
 			cpy := statsdb.MakeCopy()
 			length := len(cpy.Entries) * 2
 			entries := make([]analytics.StatsEntry, length)
