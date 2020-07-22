@@ -1,5 +1,5 @@
 version: v1.0
-name: Development Deploy
+name: Staging Deploy
 agent:
   machine:
     type: e1-standard-8
@@ -7,7 +7,7 @@ agent:
 global_job_config:
   prologue:
     commands:
-      - sudo apt-get update && sudo apt-get -y install libsodium-dev libzmq3-dev
+      - sudo apt-get update && sudo apt-get -y install libsodium-dev
       - gcloud auth activate-service-account --key-file=/home/semaphore/gcp-service-account.json
       - gcloud auth configure-docker -q
       - checkout
@@ -20,9 +20,9 @@ blocks:
       jobs:
         - name: Build Artifacts
           commands:
-            - make build-backend-artifacts-dev
+            - make build-backend-artifacts-staging
         - name: Publish Artifacts
           commands:
-            - make publish-backend-artifacts-dev
+            - make publish-backend-artifacts-staging
       secrets:
-        - name: google-cloud-platform
+        - name: google-cloud-platform-staging
