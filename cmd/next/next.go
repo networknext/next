@@ -374,14 +374,10 @@ func main() {
 	routesfs.Float64Var(&routeRTT, "rtt", 5, "route RTT required for selection")
 	routesfs.Uint64Var(&routeHash, "hash", 0, "a previous hash to use")
 
-	serversfs := flag.NewFlagSet("servers", flag.ExitOnError)
-	var serverCount int64
-	serversfs.Int64Var(&serverCount, "n", 0, "number of servers or buyers to display (default: all)")
-
-	var buyerName string
 	sessionsfs := flag.NewFlagSet("sessions", flag.ExitOnError)
 	var sessionCount int64
 	sessionsfs.Int64Var(&sessionCount, "n", 0, "number of top sessions to display (default: all)")
+	var buyerName string
 	sessionsfs.StringVar(&buyerName, "buyer", "", "specify a buyer to filter sessions on")
 
 	relaylogfs := flag.NewFlagSet("relay logs", flag.ExitOnError)
@@ -548,22 +544,6 @@ func main() {
 			env.CLIRelease = release
 			env.CLIBuildTime = buildtime
 			fmt.Print(env.String())
-			return nil
-		},
-	}
-
-	var serverCommand = &ffcli.Command{
-		Name:       "servers",
-		ShortUsage: "next servers",
-		ShortHelp:  "List servers",
-		LongHelp:   "List the number of servers associated to a buyer or all of the server addresses associated with a specific buyer",
-		FlagSet:    serversfs,
-		Exec: func(_ context.Context, args []string) error {
-			if len(args) > 0 {
-				servers(rpcClient, env, args[0], sessionCount)
-				return nil
-			}
-			servers(rpcClient, env, "", sessionCount)
 			return nil
 		},
 	}
@@ -1859,7 +1839,6 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		authCommand,
 		selectCommand,
 		envCommand,
-		serverCommand,
 		sessionCommand,
 		relaysCommand,
 		relayCommand,

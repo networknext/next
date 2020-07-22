@@ -162,7 +162,7 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 
 		start := time.Now()
 		defer func() {
-			if time.Since(start).Seconds() > 0.1 {
+			if time.Since(start).Seconds() > 1.0 {
 				level.Debug(params.Logger).Log("msg", "long server init")
 				atomic.AddUint64(&params.Counters.LongDuration, 1)
 				params.Metrics.LongDuration.Add(1)
@@ -303,7 +303,7 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 
 		start := time.Now()
 		defer func() {
-			if time.Since(start).Seconds() > 0.1 {
+			if time.Since(start).Seconds() > 1.0 {
 				level.Error(params.Logger).Log("msg", "long server update")
 				atomic.AddUint64(&params.Counters.LongDuration, 1)
 				params.Metrics.LongDuration.Add(1)
@@ -442,7 +442,7 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 
 		serverMutexStart := time.Now()
 		params.ServerMap.UpdateServerData(buyer.ID, serverAddress, &server)
-		if time.Since(serverMutexStart).Seconds() > 0.1 {
+		if time.Since(serverMutexStart).Seconds() > 1.0 {
 			level.Debug(params.Logger).Log("msg", "long server mutex in server update")
 		}
 	}
@@ -509,8 +509,9 @@ type SessionUpdateParams struct {
 	GetRouteProvider     func() RouteProvider
 	GetIPLocator         func() routing.IPLocator
 	Storer               storage.Storer
-	RedisClientPortal    redis.Cmdable
-	RedisClientPortalExp time.Duration
+	// todo: temporary
+	// RedisClientPortal    redis.Cmdable
+	// RedisClientPortalExp time.Duration
 	Biller               billing.Biller
 	Metrics              *metrics.SessionMetrics
 	Logger               log.Logger
@@ -529,7 +530,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 
 		start := time.Now()
 		defer func() {
-			if time.Since(start).Seconds() > 0.1 {
+			if time.Since(start).Seconds() > 1.0 {
 				level.Debug(params.Logger).Log("msg", "long session update")
 				atomic.AddUint64(&params.Counters.LongDuration, 1)
 				params.Metrics.LongDuration.Add(1)
@@ -574,7 +575,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			params.Metrics.ErrorMetrics.ServerDataMissing.Add(1)
 			return
 		}
-		if time.Since(serverMutexStart).Seconds() > 0.1 {
+		if time.Since(serverMutexStart).Seconds() > 1.0 {
 			level.Debug(params.Logger).Log("msg", "long server mutex in session update")
 		}
 
@@ -591,7 +592,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 
 		sessionMutexStart := time.Now()
 		sessionDataReadOnly := params.SessionMap.GetSessionData(header.SessionID)
-		if time.Since(sessionMutexStart).Seconds() > 0.1 {
+		if time.Since(sessionMutexStart).Seconds() > 1.0 {
 			level.Debug(params.Logger).Log("msg", "long session mutex in session update")
 		}
 		if sessionDataReadOnly == nil {
@@ -1060,7 +1061,7 @@ func CalculateNextBytesUpAndDown(envelopeKbpsUp uint64, envelopeKbpsDown uint64,
 	return envelopeBytesUp, envelopeBytesDown
 }
 
-func CalculateTotalPriceNibblins(chosenRoute *routing.Route, envelopeBytesUp uint64, envelopeBytesDown uint64) uint64 {
+func CalculateTotalPriceNibblins(chosenRoute *routing.Route, envelopeBytesUp uint64, envelopeBytesDown uint64) routing.Nibblin {
 
 	if len(chosenRoute.Relays) == 0 {
 		return 0
@@ -1077,22 +1078,22 @@ func CalculateTotalPriceNibblins(chosenRoute *routing.Route, envelopeBytesUp uin
 	nextPriceNibblinsPerGB := routing.Nibblin(1e9)
 	totalPriceNibblins := float64(sellerPriceNibblinsPerGB+nextPriceNibblinsPerGB) * (envelopeUpGB + envelopeDownGB)
 
-	return uint64(totalPriceNibblins)
+	return routing.Nibblin(totalPriceNibblins)
 }
 
-func CalculateRouteRelaysPrice(chosenRoute *routing.Route, envelopeBytesUp uint64, envelopeBytesDown uint64) []uint64 {
+func CalculateRouteRelaysPrice(chosenRoute *routing.Route, envelopeBytesUp uint64, envelopeBytesDown uint64) []routing.Nibblin {
 	if len(chosenRoute.Relays) == 0 {
 		return nil
 	}
 
-	relayPrices := make([]uint64, len(chosenRoute.Relays))
+	relayPrices := make([]routing.Nibblin, len(chosenRoute.Relays))
 
 	envelopeUpGB := float64(envelopeBytesUp) / 1000000000.0
 	envelopeDownGB := float64(envelopeBytesDown) / 1000000000.0
 
 	for i, relay := range chosenRoute.Relays {
 		relayPriceNibblins := float64(relay.Seller.EgressPriceNibblinsPerGB) * (envelopeUpGB + envelopeDownGB)
-		relayPrices[i] = uint64(relayPriceNibblins)
+		relayPrices[i] = routing.Nibblin(relayPriceNibblins)
 	}
 
 	return relayPrices
@@ -1100,14 +1101,15 @@ func CalculateRouteRelaysPrice(chosenRoute *routing.Route, envelopeBytesUp uint6
 
 func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket, response *SessionResponsePacket, serverDataReadOnly *ServerData,
 	routeRelays []routing.Relay, lastNextStats *routing.Stats, lastDirectStats *routing.Stats, prevRouteDecision routing.Decision, location *routing.Location, nearRelays []routing.Relay,
-	routeDecision routing.Decision, timeNow time.Time, totalPriceNibblins uint64, nextRelaysPrice []uint64, nextBytesUp uint64, nextBytesDown uint64, prevInitial bool) {
+	routeDecision routing.Decision, timeNow time.Time, totalPriceNibblins routing.Nibblin, nextRelaysPrice []routing.Nibblin, nextBytesUp uint64, nextBytesDown uint64, prevInitial bool) {
 
 	// IMPORTANT: we actually need to display the true datacenter name in the demo and demo plus views,
 	// while in the customer view of the portal, we need to display the alias. this is because aliases will
 	// shortly become per-customer, thus there is really no global concept of "multiplay.losangeles", for example.
 
-	datacenterName := serverDataReadOnly.datacenter.Name
-	datacenterAlias := serverDataReadOnly.datacenter.AliasName
+	// todo: temp
+	// datacenterName := serverDataReadOnly.datacenter.Name
+	// datacenterAlias := serverDataReadOnly.datacenter.AliasName
 
 	// Send a massive amount of data to the portal via redis.
 	// This drives all the stuff you see in the portal, including the map and top sessions list.
@@ -1115,11 +1117,14 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 
 	isMultipath := routing.IsMultipath(prevRouteDecision)
 
+	// todo: massive temporary. disable portal redis data
+	/*
 	if err := updatePortalData(params.RedisClientPortal, params.RedisClientPortalExp, packet, lastNextStats, lastDirectStats, routeRelays,
 		packet.OnNetworkNext, datacenterName, location, nearRelays, timeNow, isMultipath, datacenterAlias); err != nil {
 		level.Error(params.Logger).Log("msg", "could not update portal data", "err", err)
 		params.Metrics.ErrorMetrics.UpdatePortalFailure.Add(1)
 	}
+	*/
 
 	// Send billing specific data to the billing service via google pubsub
 	// The billing service subscribes to this topic, and writes the billing data to bigquery.
@@ -1134,7 +1139,7 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 
 	nextRelaysPriceArray := [billing.BillingEntryMaxRelays]uint64{}
 	for i := 0; i < len(nextRelaysPriceArray) && i < len(nextRelaysPrice); i++ {
-		nextRelaysPriceArray[i] = nextRelaysPrice[i]
+		nextRelaysPriceArray[i] = uint64(nextRelaysPrice[i])
 	}
 
 	billingEntry := billing.BillingEntry{
@@ -1150,7 +1155,7 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 		NextPacketLoss:            float32(lastNextStats.PacketLoss),
 		NumNextRelays:             uint8(len(routeRelays)),
 		NextRelays:                nextRelays,
-		TotalPrice:                totalPriceNibblins,
+		TotalPrice:                uint64(totalPriceNibblins),
 		ClientToServerPacketsLost: packet.PacketsLostClientToServer,
 		ServerToClientPacketsLost: packet.PacketsLostServerToClient,
 		Committed:                 packet.Committed,
@@ -1266,14 +1271,6 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 	// set the user session reverse lookup sets with expiration on the entire key set for safety
 	tx.SAdd(fmt.Sprintf("user-%s-sessions", hashedID), meta.ID)
 	tx.Expire(fmt.Sprintf("user-%s-sessions", hashedID), redisClientPortalExp)
-
-	// set the server reverse lookup sets with expiration on the entire key set for safety
-	tx.SAdd("servers", meta.ServerAddr)
-	tx.Expire("servers", redisClientPortalExp)
-
-	// set the buyer specific server reverse lookup sets with expiration on the entire key set for safety
-	tx.SAdd(fmt.Sprintf("buyer-%016x-servers", packet.CustomerID), meta.ServerAddr)
-	tx.Expire(fmt.Sprintf("buyer-%016x-servers", packet.CustomerID), redisClientPortalExp)
 
 	// set the map point key and buyer sessions with expiration on the entire key set for safety
 	tx.Set(fmt.Sprintf("session-%016x-point", packet.SessionID), point, redisClientPortalExp)
@@ -1471,7 +1468,7 @@ func sendRouteResponse(w io.Writer, chosenRoute *routing.Route, params *SessionU
 	}
 	sessionMutexStart := time.Now()
 	params.SessionMap.UpdateSessionData(packet.SessionID, &session)
-	if time.Since(sessionMutexStart).Seconds() > 0.1 {
+	if time.Since(sessionMutexStart).Seconds() > 1.0 {
 		level.Debug(params.Logger).Log("msg", "long session mutex in send route response")
 	}
 

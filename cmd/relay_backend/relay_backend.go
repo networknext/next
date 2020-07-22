@@ -11,6 +11,7 @@ import (
 	"encoding/base64"
 	"expvar"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -35,6 +36,9 @@ import (
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 )
+
+// MaxRelayCount is the maximum number of relays you can run locally with the firestore emulator
+const MaxRelayCount = 10
 
 var (
 	buildtime     string
@@ -156,10 +160,47 @@ func main() {
 		Namespace:   "RELAY_LOCATIONS",
 	}
 
-	// Create an in-memory relay & datacenter store
-	// that doesn't require talking to configstore
 	var db storage.Storer = &storage.InMemory{
 		LocalMode: true,
+	}
+
+	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
+	_, emulatorOK := os.LookupEnv("FIRESTORE_EMULATOR_HOST")
+	if emulatorOK {
+		gcpProjectID = "local"
+
+		level.Info(logger).Log("msg", "Detected firestore emulator")
+	}
+
+	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
+	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
+	// on creation so we can use that for the default then
+	if gcpOK || emulatorOK {
+
+		// Firestore
+		{
+			// Create a Firestore Storer
+			fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				os.Exit(1)
+			}
+
+			fssyncinterval := os.Getenv("GOOGLE_FIRESTORE_SYNC_INTERVAL")
+			syncInterval, err := time.ParseDuration(fssyncinterval)
+			if err != nil {
+				level.Error(logger).Log("envvar", "GOOGLE_FIRESTORE_SYNC_INTERVAL", "value", fssyncinterval, "err", err)
+				os.Exit(1)
+			}
+			// Start a goroutine to sync from Firestore
+			go func() {
+				ticker := time.NewTicker(syncInterval)
+				fs.SyncLoop(ctx, ticker.C)
+			}()
+
+			// Set the Firestore Storer to give to handlers
+			db = fs
+		}
 	}
 
 	if env == "local" {
@@ -186,51 +227,32 @@ func main() {
 			os.Exit(1)
 		}
 
-		if err := db.AddRelay(ctx, routing.Relay{
-			Name:        "", // needs to be blank so the relay_dashboard shows ips and the stats
-			PublicKey:   relayPublicKey,
-			Seller:      seller,
-			Datacenter:  datacenter,
-			MaxSessions: 3000,
-		}); err != nil {
-			level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
-			os.Exit(1)
+		for i := int64(0); i < MaxRelayCount; i++ {
+			addressString := "127.0.0.1:1000" + strconv.FormatInt(i, 10)
+			addr, err := net.ResolveUDPAddr("udp", addressString)
+			if err != nil {
+				level.Error(logger).Log("msg", "could parse udp address", "address", addressString, "err", err)
+				os.Exit(1)
+			}
+
+			if err := db.AddRelay(ctx, routing.Relay{
+				ID:          crypto.HashID(addr.String()),
+				Name:        "", // needs to be blank so the relay_dashboard shows ips and the stats
+				Addr:        *addr,
+				PublicKey:   relayPublicKey,
+				Seller:      seller,
+				Datacenter:  datacenter,
+				MaxSessions: 3000,
+			}); err != nil {
+				level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
+				os.Exit(1)
+			}
 		}
 	}
 
-	// Create a local metrics handler
 	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
 
-	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
-	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
-	// on creation so we can use that for the default then
-	if gcpProjectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
-
-		// Firestore
-		{
-			// Create a Firestore Storer
-			fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
-			if err != nil {
-				level.Error(logger).Log("err", err)
-				os.Exit(1)
-			}
-
-			fssyncinterval := os.Getenv("GOOGLE_FIRESTORE_SYNC_INTERVAL")
-			syncInterval, err := time.ParseDuration(fssyncinterval)
-			if err != nil {
-				level.Error(logger).Log("envvar", "GOOGLE_FIRESTORE_SYNC_INTERVAL", "value", fssyncinterval, "err", err)
-				os.Exit(1)
-			}
-			// Start a goroutine to sync from Firestore
-			go func() {
-				ticker := time.NewTicker(syncInterval)
-				fs.SyncLoop(ctx, ticker.C)
-			}()
-
-			// Set the Firestore Storer to give to handlers
-			db = fs
-		}
-
+	if gcpOK {
 		// Stackdriver Metrics
 		{
 			var enableSDMetrics bool

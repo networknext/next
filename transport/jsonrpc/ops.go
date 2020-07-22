@@ -857,6 +857,7 @@ func (s *OpsService) RelayMetadata(r *http.Request, args *RelayMetadataArgs, rep
 }
 
 // used in routes.go
+
 type RouteSelectionArgs struct {
 	SourceRelays      []string `json:"src_relays"`
 	DestinationRelays []string `json:"dest_relays"`
