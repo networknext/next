@@ -948,6 +948,78 @@ func main() {
 					return nil
 				},
 			},
+			{
+				Name:       "ops",
+				ShortUsage: "next relay ops <command>",
+				ShortHelp:  "Operations-related relay setup commands",
+				Exec: func(_ context.Context, args []string) error {
+					if len(args) == 0 {
+						fmt.Println("Please provide at least one command name")
+						return nil
+					}
+
+					removeRelay(rpcClient, env, args[0])
+					return nil
+				},
+				Subcommands: []*ffcli.Command{
+					{
+						Name:       "mrc",
+						ShortUsage: "next relay ops mrc <relay> <value>",
+						ShortHelp:  "Set the mrc value for the given relay (in $USD)",
+						Exec: func(_ context.Context, args []string) error {
+							return nil
+						},
+					},
+					{
+						Name:       "overage",
+						ShortUsage: "next relay ops overage <relay> <value>",
+						ShortHelp:  "Set the overage value for the given relay (in $USD)",
+						Exec: func(_ context.Context, args []string) error {
+							return nil
+						},
+					},
+					{
+						Name:       "bwrule",
+						ShortUsage: "next relay ops bwrule <relay> <pool|burst|flat>",
+						ShortHelp:  "Set the bandwidth rule for the given relay",
+						Exec: func(_ context.Context, args []string) error {
+							return nil
+						},
+					},
+					{
+						Name:       "term",
+						ShortUsage: "next relay ops mrc <relay> <value>",
+						ShortHelp:  "Set the contract term for the given relay (in months)",
+						Exec: func(_ context.Context, args []string) error {
+							return nil
+						},
+					},
+					{
+						Name:       "startdate",
+						ShortUsage: "next relay ops startdate <relay> <value>",
+						ShortHelp:  "Set the contract start date for the given relay (e.g. 2020-07-07)",
+						Exec: func(_ context.Context, args []string) error {
+							return nil
+						},
+					},
+					{
+						Name:       "enddate",
+						ShortUsage: "next relay ops enddate <relay> <value>",
+						ShortHelp:  "Set the contract end date for the given relay (e.g. 2020-07-07)",
+						Exec: func(_ context.Context, args []string) error {
+							return nil
+						},
+					},
+					{
+						Name:       "modify",
+						ShortUsage: "next relay ops modify <relay> <json file>",
+						ShortHelp:  "Set/update all of the above with a json file",
+						Exec: func(_ context.Context, args []string) error {
+							return nil
+						},
+					},
+				},
+			},
 		},
 	}
 

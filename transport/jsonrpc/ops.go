@@ -837,6 +837,26 @@ func (s *OpsService) Servers(r *http.Request, args *ServerArgs, reply *ServerRep
 	return nil
 }
 
+type RelayMetadataArgs struct {
+	Relay routing.Relay
+}
+
+type RelayMetadataReply struct {
+	Ok           bool
+	ErrorMessage string
+}
+
+func (s *OpsService) RelayMetadata(r *http.Request, args *RelayMetadataArgs, reply *RelayMetadataReply) error {
+
+	err := s.Storage.SetRelayMetadata(context.Background(), args.Relay)
+	if err != nil {
+		return err // TODO detail
+	}
+
+	return nil
+}
+
+// used in routes.go
 type RouteSelectionArgs struct {
 	SourceRelays      []string `json:"src_relays"`
 	DestinationRelays []string `json:"dest_relays"`

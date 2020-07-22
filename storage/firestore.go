@@ -1123,6 +1123,48 @@ func (fs *Firestore) RemoveDatacenterMap(ctx context.Context, dcMap routing.Data
 	return &DoesNotExistError{resourceType: "datacenterMap", resourceRef: fmt.Sprintf("%v", dcMap)}
 }
 
+func (fs *Firestore) SetRelayMetadata(ctx context.Context, modifiedRelay routing.Relay) error {
+
+	// Loop through all relays in firestore
+	rdocs := fs.Client.Collection("Relay").Documents(ctx)
+	defer rdocs.Stop()
+	for {
+		rdoc, err := rdocs.Next()
+		if err == iterator.Done {
+			break
+		}
+
+		if err != nil {
+			return &FirestoreError{err: err}
+		}
+
+		// Unmarshal the relay in firestore to see if it's the relay we want to update
+		var relayInRemoteStorage relay
+		err = rdoc.DataTo(&relayInRemoteStorage)
+		if err != nil {
+			return &UnmarshalError{err: err}
+		}
+
+		// If the relay is the one we want to update, update it with the new data
+		rid := crypto.HashID(relayInRemoteStorage.Address)
+		if rid == modifiedRelay.ID {
+			// Update the relay in firestore
+			if _, err := rdoc.Ref.Set(ctx, modifiedRelay, firestore.MergeAll); err != nil {
+				return &FirestoreError{err: err}
+			}
+
+			fs.relayMutex.Lock()
+			fs.relays[modifiedRelay.ID] = modifiedRelay
+			fs.relayMutex.Unlock()
+
+			return nil
+		}
+	}
+
+	return &DoesNotExistError{resourceType: "relay", resourceRef: fmt.Sprintf("%x", modifiedRelay.ID)}
+
+}
+
 func (fs *Firestore) Datacenter(id uint64) (routing.Datacenter, error) {
 	fs.datacenterMutex.RLock()
 	defer fs.datacenterMutex.RUnlock()
