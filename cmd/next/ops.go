@@ -17,8 +17,8 @@ func opsMRC(rpcClient jsonrpc.RPCClient,
 ) {
 
 	var relay routing.Relay
-	var err error
-	if relay, err = checkForRelay(rpcClient, env, relayRegex); err != nil {
+	var ok bool
+	if relay, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
 		// error msg printed by called function
 		return
 	}
@@ -46,8 +46,8 @@ func opsOverage(rpcClient jsonrpc.RPCClient,
 	overageUSD float64,
 ) {
 	var relay routing.Relay
-	var err error
-	if relay, err = checkForRelay(rpcClient, env, relayRegex); err != nil {
+	var ok bool
+	if relay, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
 		// error msg printed by called function
 		return
 	}
@@ -74,8 +74,8 @@ func opsBWRule(rpcClient jsonrpc.RPCClient,
 	rule string,
 ) {
 	var relay routing.Relay
-	var err error
-	if relay, err = checkForRelay(rpcClient, env, relayRegex); err != nil {
+	var ok bool
+	if relay, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
 		// error msg printed by called function
 		return
 	}
@@ -101,7 +101,7 @@ func opsBWRule(rpcClient jsonrpc.RPCClient,
 	}
 
 	var reply localjsonrpc.RelaysReply
-	if err := rpcClient.CallFor(&reply, "OpsService.RelayMetadata", args); err != nil {
+	if err := rpcClient.CallFor(&reply, "OpsService.RelayMetadata", args); !ok {
 		handleJSONRPCError(env, err)
 		return
 	}
@@ -116,8 +116,8 @@ func opsTerm(rpcClient jsonrpc.RPCClient,
 	months uint32,
 ) {
 	var relay routing.Relay
-	var err error
-	if relay, err = checkForRelay(rpcClient, env, relayRegex); err != nil {
+	var ok bool
+	if relay, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
 		// error msg printed by called function
 		return
 	}
@@ -129,7 +129,7 @@ func opsTerm(rpcClient jsonrpc.RPCClient,
 	}
 
 	var reply localjsonrpc.RelaysReply
-	if err := rpcClient.CallFor(&reply, "OpsService.RelayMetadata", args); err != nil {
+	if err := rpcClient.CallFor(&reply, "OpsService.RelayMetadata", args); !ok {
 		handleJSONRPCError(env, err)
 		return
 	}
@@ -145,15 +145,17 @@ func opsStartDate(rpcClient jsonrpc.RPCClient,
 	startDate string,
 ) {
 	var relay routing.Relay
-	var err error
-	if relay, err = checkForRelay(rpcClient, env, relayRegex); err != nil {
+	var ok bool
+	if relay, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
 		// error msg printed by called function
 		return
 	}
 
+	var err error
 	relay.StartDate, err = time.Parse("January 2, 2006", startDate)
 	if err != nil {
 		fmt.Printf("Could not parse `%s` - must be of the form 'January 2, 2006'\n", startDate)
+		return
 	}
 
 	args := localjsonrpc.RelayMetadataArgs{
@@ -176,15 +178,17 @@ func opsEndDate(rpcClient jsonrpc.RPCClient,
 	endDate string,
 ) {
 	var relay routing.Relay
-	var err error
-	if relay, err = checkForRelay(rpcClient, env, relayRegex); err != nil {
+	var ok bool
+	if relay, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
 		// error msg printed by called function
 		return
 	}
 
+	var err error
 	relay.EndDate, err = time.Parse("January 2, 2006", endDate)
 	if err != nil {
 		fmt.Printf("Could not parse `%s` - must be of the form 'January 2, 2006'\n", endDate)
+		return
 	}
 
 	args := localjsonrpc.RelayMetadataArgs{
@@ -207,8 +211,8 @@ func opsType(rpcClient jsonrpc.RPCClient,
 	machineType string,
 ) {
 	var relay routing.Relay
-	var err error
-	if relay, err = checkForRelay(rpcClient, env, relayRegex); err != nil {
+	var ok bool
+	if relay, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
 		// error msg printed by called function
 		return
 	}
@@ -222,7 +226,7 @@ func opsType(rpcClient jsonrpc.RPCClient,
 	case "none":
 		serverType = routing.NoneSpecified
 	default:
-		fmt.Println("Bandwidth rule must be one of bare, vm or none.")
+		fmt.Println("machine type must be one of bare, vm or none.")
 		return
 	}
 	relay.Type = serverType
@@ -237,7 +241,7 @@ func opsType(rpcClient jsonrpc.RPCClient,
 		return
 	}
 
-	fmt.Println("Bandwidth rule successfully updated.")
+	fmt.Println("Machine type successfully updated.")
 	return
 }
 
@@ -249,7 +253,7 @@ func opsModify(rpcClient jsonrpc.RPCClient,
 	fmt.Println("Modify not yet implemented.")
 }
 
-func checkForRelay(rpcClient jsonrpc.RPCClient, env Environment, regex string) (routing.Relay, error) {
+func checkForRelay(rpcClient jsonrpc.RPCClient, env Environment, regex string) (routing.Relay, bool) {
 	args := localjsonrpc.RelaysArgs{
 		Regex: regex,
 	}
@@ -258,15 +262,15 @@ func checkForRelay(rpcClient jsonrpc.RPCClient, env Environment, regex string) (
 	err := rpcClient.CallFor(&reply, "OpsService.Relays", args)
 	if err != nil {
 		handleJSONRPCError(env, err)
-		return routing.Relay{}, err
+		return routing.Relay{}, false
 	}
 
 	if len(reply.Relays) == 0 {
 		fmt.Printf("Zero relays found matching '%s'", regex)
-		return routing.Relay{}, err
+		return routing.Relay{}, false
 	} else if len(reply.Relays) > 1 {
 		fmt.Printf("'%s' returned more than one relay - please be more specific.", regex)
-		return routing.Relay{}, err
+		return routing.Relay{}, false
 	}
 
 	replyRelay := routing.Relay{
@@ -282,6 +286,6 @@ func checkForRelay(rpcClient jsonrpc.RPCClient, env Environment, regex string) (
 		Type:         reply.Relays[0].Type,
 	}
 
-	return replyRelay, nil
+	return replyRelay, true
 
 }

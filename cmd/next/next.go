@@ -1016,6 +1016,7 @@ func main() {
 							for _, rule := range rules {
 								if rule == args[1] {
 									opsBWRule(rpcClient, env, args[0], args[1])
+									return nil
 								}
 							}
 
@@ -1037,6 +1038,7 @@ func main() {
 							for _, rule := range rules {
 								if rule == args[1] {
 									opsType(rpcClient, env, args[0], args[1])
+									return nil
 								}
 							}
 
