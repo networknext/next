@@ -21,7 +21,6 @@ import (
 	"os/signal"
 	"strconv"
 
-	"strings"
 	"time"
 
 	"github.com/go-kit/kit/log"
@@ -34,10 +33,11 @@ import (
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
+	"github.com/networknext/backend/transport/pubsub"
 
 	gcplogging "cloud.google.com/go/logging"
 	"cloud.google.com/go/profiler"
-	"cloud.google.com/go/pubsub"
+	googlepubsub "cloud.google.com/go/pubsub"
 )
 
 var (
@@ -145,20 +145,6 @@ func main() {
 		}
 	}
 
-	redisPortalHosts := os.Getenv("REDIS_HOST_PORTAL")
-	splitPortalHosts := strings.Split(redisPortalHosts, ",")
-	redisClientPortal := storage.NewRedisClient(splitPortalHosts...)
-	if err := redisClientPortal.Ping().Err(); err != nil {
-		level.Error(logger).Log("envvar", "REDIS_HOST_PORTAL", "value", redisPortalHosts, "msg", "could not ping", "err", err)
-		os.Exit(1)
-	}
-
-	redisPortalHostExpiration, err := time.ParseDuration(os.Getenv("REDIS_HOST_PORTAL_EXPIRATION"))
-	if err != nil {
-		level.Error(logger).Log("envvar", "REDIS_HOST_PORTAL_EXPIRATION", "msg", "could not parse", "err", err)
-		os.Exit(1)
-	}
-
 	redisHost := os.Getenv("REDIS_HOST_RELAYS")
 	redisClientRelays := storage.NewRedisClient(redisHost)
 	if err := redisClientRelays.Ping().Err(); err != nil {
@@ -185,7 +171,7 @@ func main() {
 	var biller billing.Biller = &billing.NoOpBiller{}
 
 	// Create a no-op metrics handler
-	var metricsHandler metrics.Handler = &metrics.NoOpHandler{}
+	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
 
 	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
 	_, firestoreEmulatorOK := os.LookupEnv("FIRESTORE_EMULATOR_HOST")
@@ -360,7 +346,7 @@ func main() {
 
 		// Google Pubsub
 		{
-			settings := pubsub.PublishSettings{
+			settings := googlepubsub.PublishSettings{
 				DelayThreshold: time.Hour,
 				CountThreshold: 1000,
 				ByteThreshold:  60 * 1024,
@@ -654,6 +640,24 @@ func main() {
 		}()
 	}
 
+	// Start portal cruncher publisher
+	var portalPublisher pubsub.Publisher
+	{
+		portalCruncherHost, ok := os.LookupEnv("PORTAL_CRUNCHER_HOST")
+		if !ok {
+			level.Error(logger).Log("err", "env var PORTAL_CRUNCHER_HOST must be set")
+			os.Exit(1)
+		}
+
+		portalCruncherPublisher, err := pubsub.NewPortalCruncherPublisher(portalCruncherHost)
+		if err != nil {
+			level.Error(logger).Log("msg", "could not create portal cruncher publisher", "err", err)
+			os.Exit(1)
+		}
+
+		portalPublisher = portalCruncherPublisher
+	}
+
 	// Start UDP server
 	{
 		serverInitConfig := &transport.ServerInitParams{
@@ -675,21 +679,20 @@ func main() {
 		}
 
 		sessionUpdateConfig := &transport.SessionUpdateParams{
-			ServerPrivateKey:     serverPrivateKey,
-			RouterPrivateKey:     routerPrivateKey,
-			GetRouteProvider:     getRouteMatrixFunc,
-			GetIPLocator:         getIPLocatorFunc,
-			Storer:               db,
-			RedisClientPortal:    redisClientPortal,
-			RedisClientPortalExp: redisPortalHostExpiration,
-			Biller:               biller,
-			Metrics:              sessionUpdateMetrics,
-			Logger:               logger,
-			VetoMap:              vetoMap,
-			ServerMap:            serverMap,
-			SessionMap:           sessionMap,
-			Counters:             sessionUpdateCounters,
-			DatacenterTracker:    datacenterTracker,
+			ServerPrivateKey:  serverPrivateKey,
+			RouterPrivateKey:  routerPrivateKey,
+			GetRouteProvider:  getRouteMatrixFunc,
+			GetIPLocator:      getIPLocatorFunc,
+			Storer:            db,
+			Biller:            biller,
+			Metrics:           sessionUpdateMetrics,
+			Logger:            logger,
+			VetoMap:           vetoMap,
+			ServerMap:         serverMap,
+			SessionMap:        sessionMap,
+			Counters:          sessionUpdateCounters,
+			DatacenterTracker: datacenterTracker,
+			PortalPublisher:   portalPublisher,
 		}
 
 		mux := transport.UDPServerMux{

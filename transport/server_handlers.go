@@ -16,16 +16,14 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
+	"github.com/networknext/backend/transport/pubsub"
 
 	fnv "hash/fnv"
-
-	jsoniter "github.com/json-iterator/go"
 )
 
 type UDPPacket struct {
@@ -264,23 +262,6 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 	}
 }
 
-// ==========================================================================================
-
-type ServerCacheEntry struct {
-	Sequence   uint64
-	Server     routing.Server
-	Datacenter routing.Datacenter
-	SDKVersion SDKVersion
-}
-
-func (e *ServerCacheEntry) UnmarshalBinary(data []byte) error {
-	return jsoniter.Unmarshal(data, e)
-}
-
-func (e ServerCacheEntry) MarshalBinary() ([]byte, error) {
-	return jsoniter.Marshal(e)
-}
-
 type ServerUpdateCounters struct {
 	Packets      uint64
 	LongDuration uint64
@@ -294,8 +275,6 @@ type ServerUpdateParams struct {
 	Counters          *ServerUpdateCounters
 	DatacenterTracker *DatacenterTracker
 }
-
-// =============================================================================
 
 func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 
@@ -448,49 +427,6 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 	}
 }
 
-// =============================================================================
-
-type SessionCacheEntry struct {
-	CustomerID                 uint64
-	SessionID                  uint64
-	UserHash                   uint64
-	Sequence                   uint64
-	RouteHash                  uint64
-	RouteDecision              routing.Decision
-	OnNNSliceCounter           uint64
-	CommitPending              bool
-	CommitObservedSliceCounter uint8
-	Committed                  bool
-	TimestampStart             time.Time
-	TimestampExpire            time.Time
-	Version                    uint8
-	DirectRTT                  float64
-	NextRTT                    float64
-	Location                   routing.Location
-	Response                   []byte
-}
-
-func (e *SessionCacheEntry) UnmarshalBinary(data []byte) error {
-	return jsoniter.Unmarshal(data, e)
-}
-
-func (e SessionCacheEntry) MarshalBinary() ([]byte, error) {
-	return jsoniter.Marshal(e)
-}
-
-type VetoCacheEntry struct {
-	VetoTimestamp time.Time
-	Reason        routing.DecisionReason
-}
-
-func (e *VetoCacheEntry) UnmarshalBinary(data []byte) error {
-	return jsoniter.Unmarshal(data, e)
-}
-
-func (e VetoCacheEntry) MarshalBinary() ([]byte, error) {
-	return jsoniter.Marshal(e)
-}
-
 type RouteProvider interface {
 	ResolveRelay(id uint64) (routing.Relay, error)
 	GetDatacenterRelays(datacenter routing.Datacenter) []routing.Relay
@@ -504,24 +440,21 @@ type SessionUpdateCounters struct {
 }
 
 type SessionUpdateParams struct {
-	ServerPrivateKey     []byte
-	RouterPrivateKey     []byte
-	GetRouteProvider     func() RouteProvider
-	GetIPLocator         func() routing.IPLocator
-	Storer               storage.Storer
-	RedisClientPortal    redis.Cmdable
-	RedisClientPortalExp time.Duration
-	Biller               billing.Biller
-	Metrics              *metrics.SessionMetrics
-	Logger               log.Logger
-	VetoMap              *VetoMap
-	ServerMap            *ServerMap
-	SessionMap           *SessionMap
-	Counters             *SessionUpdateCounters
-	DatacenterTracker    *DatacenterTracker
+	ServerPrivateKey  []byte
+	RouterPrivateKey  []byte
+	GetRouteProvider  func() RouteProvider
+	GetIPLocator      func() routing.IPLocator
+	Storer            storage.Storer
+	Biller            billing.Biller
+	Metrics           *metrics.SessionMetrics
+	Logger            log.Logger
+	VetoMap           *VetoMap
+	ServerMap         *ServerMap
+	SessionMap        *SessionMap
+	Counters          *SessionUpdateCounters
+	DatacenterTracker *DatacenterTracker
+	PortalPublisher   pubsub.Publisher
 }
-
-// =========================================================================================================
 
 func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 
@@ -1115,11 +1048,14 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 
 	isMultipath := routing.IsMultipath(prevRouteDecision)
 
-	if err := updatePortalData(params.RedisClientPortal, params.RedisClientPortalExp, packet, lastNextStats, lastDirectStats, routeRelays,
-		packet.OnNetworkNext, datacenterName, location, nearRelays, timeNow, isMultipath, datacenterAlias); err != nil {
+	portalDataBytes, err := updatePortalData(params.PortalPublisher, packet, lastNextStats, lastDirectStats, routeRelays,
+		packet.OnNetworkNext, datacenterName, location, nearRelays, timeNow, isMultipath, datacenterAlias)
+	if err != nil {
 		level.Error(params.Logger).Log("msg", "could not update portal data", "err", err)
 		params.Metrics.ErrorMetrics.UpdatePortalFailure.Add(1)
 	}
+
+	level.Debug(params.Logger).Log("msg", fmt.Sprintf("published %d bytes to portal cruncher", portalDataBytes))
 
 	// Send billing specific data to the billing service via google pubsub
 	// The billing service subscribes to this topic, and writes the billing data to bigquery.
@@ -1136,7 +1072,6 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 	for i := 0; i < len(nextRelaysPriceArray) && i < len(nextRelaysPrice); i++ {
 		nextRelaysPriceArray[i] = uint64(nextRelaysPrice[i])
 	}
-	fmt.Println(nextRelaysPriceArray)
 
 	billingEntry := billing.BillingEntry{
 		BuyerID:                   packet.CustomerID,
@@ -1172,11 +1107,11 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 	}
 }
 
-func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time.Duration, packet *SessionUpdatePacket, lastNNStats *routing.Stats, lastDirectStats *routing.Stats,
-	relayHops []routing.Relay, onNetworkNext bool, datacenterName string, location *routing.Location, nearRelays []routing.Relay, sessionTime time.Time, isMultiPath bool, datacenterAlias string) error {
+func updatePortalData(portalPublisher pubsub.Publisher, packet *SessionUpdatePacket, lastNNStats *routing.Stats, lastDirectStats *routing.Stats, relayHops []routing.Relay,
+	onNetworkNext bool, datacenterName string, location *routing.Location, nearRelays []routing.Relay, sessionTime time.Time, isMultiPath bool, datacenterAlias string) (int, error) {
 
 	if (lastNNStats.RTT == 0 && lastDirectStats.RTT == 0) || (onNetworkNext && lastNNStats.RTT == 0) {
-		return nil
+		return 0, nil
 	}
 
 	var hashedID string
@@ -1197,87 +1132,52 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 		deltaRTT = lastDirectStats.RTT - lastNNStats.RTT
 	}
 
-	meta := routing.SessionMeta{
-		ID:              fmt.Sprintf("%016x", packet.SessionID),
-		UserHash:        hashedID,
-		DatacenterName:  datacenterName,
-		DatacenterAlias: datacenterAlias,
-		OnNetworkNext:   onNetworkNext,
-		NextRTT:         lastNNStats.RTT,
-		DirectRTT:       lastDirectStats.RTT,
-		DeltaRTT:        deltaRTT,
-		Location:        *location,
-		ClientAddr:      packet.ClientAddress.String(),
-		ServerAddr:      packet.ServerAddress.String(),
-		Hops:            relayHops,
-		SDK:             packet.Version.String(),
-		Connection:      ConnectionTypeText(packet.ConnectionType),
-		NearbyRelays:    nearRelays,
-		Platform:        PlatformTypeText(packet.PlatformID),
-		BuyerID:         fmt.Sprintf("%016x", packet.CustomerID),
-	}
-
-	slice := routing.SessionSlice{
-		Timestamp: sessionTime,
-		Next:      *lastNNStats,
-		Direct:    *lastDirectStats,
-		Envelope: routing.Envelope{
-			Up:   int64(packet.KbpsUp),
-			Down: int64(packet.KbpsDown),
+	data := routing.SessionData{
+		Meta: routing.SessionMeta{
+			ID:              fmt.Sprintf("%016x", packet.SessionID),
+			UserHash:        hashedID,
+			DatacenterName:  datacenterName,
+			DatacenterAlias: datacenterAlias,
+			OnNetworkNext:   onNetworkNext,
+			NextRTT:         lastNNStats.RTT,
+			DirectRTT:       lastDirectStats.RTT,
+			DeltaRTT:        deltaRTT,
+			Location:        *location,
+			ClientAddr:      packet.ClientAddress.String(),
+			ServerAddr:      packet.ServerAddress.String(),
+			Hops:            relayHops,
+			SDK:             packet.Version.String(),
+			Connection:      ConnectionTypeText(packet.ConnectionType),
+			NearbyRelays:    nearRelays,
+			Platform:        PlatformTypeText(packet.PlatformID),
+			BuyerID:         fmt.Sprintf("%016x", packet.CustomerID),
 		},
-		IsMultiPath:       isMultiPath,
-		IsTryBeforeYouBuy: packet.TryBeforeYouBuy || !packet.Committed,
-		OnNetworkNext:     onNetworkNext,
-	}
-	point := routing.SessionMapPoint{
-		Latitude:      location.Latitude,
-		Longitude:     location.Longitude,
-		OnNetworkNext: onNetworkNext,
-	}
-
-	tx := redisClientPortal.TxPipeline()
-
-	// set total session counts with expiration on the entire key set for safety
-	switch meta.OnNetworkNext {
-	case true:
-		// Remove the session from the direct set if it exists
-		tx.ZRem("total-direct", meta.ID)
-		tx.ZRem(fmt.Sprintf("total-direct-buyer-%016x", packet.CustomerID), meta.ID)
-
-		tx.ZAdd("total-next", &redis.Z{Score: meta.DeltaRTT, Member: meta.ID})
-		tx.Expire("total-next", redisClientPortalExp)
-		tx.ZAdd(fmt.Sprintf("total-next-buyer-%016x", packet.CustomerID), &redis.Z{Score: meta.DeltaRTT, Member: meta.ID})
-		tx.Expire(fmt.Sprintf("total-next-buyer-%016x", packet.CustomerID), redisClientPortalExp)
-	case false:
-		// Remove the session from the next set if it exists
-		tx.ZRem("total-next", meta.ID)
-		tx.ZRem(fmt.Sprintf("total-next-buyer-%016x", packet.CustomerID), meta.ID)
-
-		tx.ZAdd("total-direct", &redis.Z{Score: -meta.DirectRTT, Member: meta.ID})
-		tx.Expire("total-direct", redisClientPortalExp)
-		tx.ZAdd(fmt.Sprintf("total-direct-buyer-%016x", packet.CustomerID), &redis.Z{Score: -meta.DirectRTT, Member: meta.ID})
-		tx.Expire(fmt.Sprintf("total-direct-buyer-%016x", packet.CustomerID), redisClientPortalExp)
+		Slice: routing.SessionSlice{
+			Timestamp: sessionTime,
+			Next:      *lastNNStats,
+			Direct:    *lastDirectStats,
+			Envelope: routing.Envelope{
+				Up:   int64(packet.KbpsUp),
+				Down: int64(packet.KbpsDown),
+			},
+			IsMultiPath:       isMultiPath,
+			IsTryBeforeYouBuy: packet.TryBeforeYouBuy || !packet.Committed,
+			OnNetworkNext:     onNetworkNext,
+		},
+		Point: routing.SessionMapPoint{
+			Latitude:      location.Latitude,
+			Longitude:     location.Longitude,
+			OnNetworkNext: onNetworkNext,
+		},
 	}
 
-	// set session and slice information with expiration on the entire key set for safety
-	tx.Set(fmt.Sprintf("session-%016x-meta", packet.SessionID), meta, redisClientPortalExp)
-	tx.SAdd(fmt.Sprintf("session-%016x-slices", packet.SessionID), slice)
-	tx.Expire(fmt.Sprintf("session-%016x-slices", packet.SessionID), redisClientPortalExp)
-
-	// set the user session reverse lookup sets with expiration on the entire key set for safety
-	tx.SAdd(fmt.Sprintf("user-%s-sessions", hashedID), meta.ID)
-	tx.Expire(fmt.Sprintf("user-%s-sessions", hashedID), redisClientPortalExp)
-
-	// set the map point key and buyer sessions with expiration on the entire key set for safety
-	tx.Set(fmt.Sprintf("session-%016x-point", packet.SessionID), point, redisClientPortalExp)
-	tx.SAdd(fmt.Sprintf("map-points-%016x-buyer", packet.CustomerID), meta.ID)
-	tx.Expire(fmt.Sprintf("map-points-%016x-buyer", packet.CustomerID), redisClientPortalExp)
-
-	if _, err := tx.Exec(); err != nil {
-		return err
+	bytes, err := data.MarshalBinary()
+	if err != nil {
+		return 0, err
 	}
 
-	return nil
+	byteCount, err := portalPublisher.Publish(pubsub.TopicPortalCruncherSessionData, bytes)
+	return byteCount, err
 }
 
 func addRouteDecisionMetric(d routing.Decision, m *metrics.SessionMetrics) {
