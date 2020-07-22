@@ -162,7 +162,7 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 
 		start := time.Now()
 		defer func() {
-			if time.Since(start).Seconds() > 0.1 {
+			if time.Since(start).Seconds() > 1.0 {
 				level.Debug(params.Logger).Log("msg", "long server init")
 				atomic.AddUint64(&params.Counters.LongDuration, 1)
 				params.Metrics.LongDuration.Add(1)
@@ -303,7 +303,7 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 
 		start := time.Now()
 		defer func() {
-			if time.Since(start).Seconds() > 0.1 {
+			if time.Since(start).Seconds() > 1.0 {
 				level.Error(params.Logger).Log("msg", "long server update")
 				atomic.AddUint64(&params.Counters.LongDuration, 1)
 				params.Metrics.LongDuration.Add(1)
@@ -442,7 +442,7 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 
 		serverMutexStart := time.Now()
 		params.ServerMap.UpdateServerData(buyer.ID, serverAddress, &server)
-		if time.Since(serverMutexStart).Seconds() > 0.1 {
+		if time.Since(serverMutexStart).Seconds() > 1.0 {
 			level.Debug(params.Logger).Log("msg", "long server mutex in server update")
 		}
 	}
@@ -509,8 +509,9 @@ type SessionUpdateParams struct {
 	GetRouteProvider     func() RouteProvider
 	GetIPLocator         func() routing.IPLocator
 	Storer               storage.Storer
-	RedisClientPortal    redis.Cmdable
-	RedisClientPortalExp time.Duration
+	// todo: temporary
+	// RedisClientPortal    redis.Cmdable
+	// RedisClientPortalExp time.Duration
 	Biller               billing.Biller
 	Metrics              *metrics.SessionMetrics
 	Logger               log.Logger
@@ -529,7 +530,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 
 		start := time.Now()
 		defer func() {
-			if time.Since(start).Seconds() > 0.1 {
+			if time.Since(start).Seconds() > 1.0 {
 				level.Debug(params.Logger).Log("msg", "long session update")
 				atomic.AddUint64(&params.Counters.LongDuration, 1)
 				params.Metrics.LongDuration.Add(1)
@@ -574,7 +575,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			params.Metrics.ErrorMetrics.ServerDataMissing.Add(1)
 			return
 		}
-		if time.Since(serverMutexStart).Seconds() > 0.1 {
+		if time.Since(serverMutexStart).Seconds() > 1.0 {
 			level.Debug(params.Logger).Log("msg", "long server mutex in session update")
 		}
 
@@ -591,7 +592,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 
 		sessionMutexStart := time.Now()
 		sessionDataReadOnly := params.SessionMap.GetSessionData(header.SessionID)
-		if time.Since(sessionMutexStart).Seconds() > 0.1 {
+		if time.Since(sessionMutexStart).Seconds() > 1.0 {
 			level.Debug(params.Logger).Log("msg", "long session mutex in session update")
 		}
 		if sessionDataReadOnly == nil {
@@ -1106,8 +1107,9 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 	// while in the customer view of the portal, we need to display the alias. this is because aliases will
 	// shortly become per-customer, thus there is really no global concept of "multiplay.losangeles", for example.
 
-	datacenterName := serverDataReadOnly.datacenter.Name
-	datacenterAlias := serverDataReadOnly.datacenter.AliasName
+	// todo: temp
+	// datacenterName := serverDataReadOnly.datacenter.Name
+	// datacenterAlias := serverDataReadOnly.datacenter.AliasName
 
 	// Send a massive amount of data to the portal via redis.
 	// This drives all the stuff you see in the portal, including the map and top sessions list.
@@ -1115,11 +1117,14 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 
 	isMultipath := routing.IsMultipath(prevRouteDecision)
 
+	// todo: massive temporary. disable portal redis data
+	/*
 	if err := updatePortalData(params.RedisClientPortal, params.RedisClientPortalExp, packet, lastNextStats, lastDirectStats, routeRelays,
 		packet.OnNetworkNext, datacenterName, location, nearRelays, timeNow, isMultipath, datacenterAlias); err != nil {
 		level.Error(params.Logger).Log("msg", "could not update portal data", "err", err)
 		params.Metrics.ErrorMetrics.UpdatePortalFailure.Add(1)
 	}
+	*/
 
 	// Send billing specific data to the billing service via google pubsub
 	// The billing service subscribes to this topic, and writes the billing data to bigquery.
@@ -1136,7 +1141,6 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 	for i := 0; i < len(nextRelaysPriceArray) && i < len(nextRelaysPrice); i++ {
 		nextRelaysPriceArray[i] = uint64(nextRelaysPrice[i])
 	}
-	fmt.Println(nextRelaysPriceArray)
 
 	billingEntry := billing.BillingEntry{
 		BuyerID:                   packet.CustomerID,
@@ -1464,7 +1468,7 @@ func sendRouteResponse(w io.Writer, chosenRoute *routing.Route, params *SessionU
 	}
 	sessionMutexStart := time.Now()
 	params.SessionMap.UpdateSessionData(packet.SessionID, &session)
-	if time.Since(sessionMutexStart).Seconds() > 0.1 {
+	if time.Since(sessionMutexStart).Seconds() > 1.0 {
 		level.Debug(params.Logger).Log("msg", "long session mutex in send route response")
 	}
 

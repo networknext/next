@@ -289,6 +289,8 @@ MapHandler = {
 					return (point[2] == 0);
 				});
 
+				let maintenanceMode = rootComponent.$data.maintenanceMode
+
 				if (!this.mapInstance) {
 					this.mapInstance = new mapboxgl.Map({
 						accessToken: mapboxgl.accessToken,
@@ -300,12 +302,27 @@ MapHandler = {
 						zoom: 2,
 						pitch: 0,
 						bearing: 0,
-						container: 'map',
+						container: 'map'
 					});
 				}
 
 				const cellSize = 10, aggregation = 'MEAN';
 				let gpuAggregation = navigator.appVersion.indexOf("Win") == -1;
+
+				let textLayer = null
+
+				if (maintenanceMode) {
+					textLayer = new deck.TextLayer({
+						id: 'text-layer',
+						data: [[0, 0]],
+						getPosition: d => [0, 0],
+						getText: d => "Down For Maintenance",
+						getSize: 48,
+						getColor: [255, 255, 255],
+						getTextAnchor: 'middle',
+						getAlignmentBaseline: 'center'
+					});
+				}
 
 				let nnLayer = new deck.ScreenGridLayer({
 					id: 'nn-layer',
@@ -335,7 +352,23 @@ MapHandler = {
 					aggregation
 				});
 
-				let layers = (onNN.length > 0 || direct.length > 0) ? [directLayer, nnLayer] : [];
+				let layers = [];
+				let controller = {
+					dragRotate: false,
+					dragTilt: false,
+				}
+				if (maintenanceMode) {
+					layers = [textLayer]
+					controller = {
+						dragRotate: false,
+						dragTilt: false,
+						dragPan: false,
+						zoom: false
+					}
+				} else if (direct.length > 0 || onNN.length > 0) {
+					layers = [directLayer, nnLayer]
+				}
+
 				if (!this.deckGlInstance) {
 					// creating the deck.gl instance
 					this.deckGlInstance = new deck.Deck({
@@ -343,10 +376,7 @@ MapHandler = {
 						width: '100%',
 						height: '100%',
 						initialViewState: this.viewState,
-						controller: {
-							dragRotate: false,
-							dragTilt: false
-						},
+						controller: controller,
 						// change the map's viewstate whenever the view state of deck.gl changes
 						onViewStateChange: ({ viewState }) => {
 							this.mapInstance.jumpTo({
@@ -1030,6 +1060,7 @@ function createVueComponents() {
 	rootComponent = new Vue({
 		el: '#root',
 		data: {
+			maintenanceMode: true,
 			showCount: false,
 			mapSessions: 0,
 			onNN: 0,
