@@ -465,6 +465,40 @@ publish-billing-prod-artifact: ## publishes the billing prod artifact
 	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" -h "x-goog-meta-commitMessage:$(COMMITMESSAGE)" $(ARTIFACT_BUCKET_PROD)/billing.prod.tar.gz
 	@printf "done\n"
 
+.PHONY: build-analytics-artifact
+build-analytics-artifact: build-analytics ## builds the analytics service and creates the dev artifact
+	@printf "Building analytics dev artifact..."
+	@mkdir -p $(DIST_DIR)/artifact/analytics
+	@cp $(DIST_DIR)/analytics $(DIST_DIR)/artifact/analytics/app
+	@cp ./cmd/analytics/dev.env $(DIST_DIR)/artifact/analytics/app.env
+	@cp $(DEPLOY_DIR)/$(SYSTEMD_SERVICE_FILE) $(DIST_DIR)/artifact/analytics/$(SYSTEMD_SERVICE_FILE)
+	@cd $(DIST_DIR)/artifact/analytics && tar -zcf ../../analytics.dev.tar.gz app app.env $(SYSTEMD_SERVICE_FILE) && cd ../..
+	@printf "$(DIST_DIR)/analytics.dev.tar.gz\n"
+
+.PHONY: build-analytics-prod-artifact
+build-analytics-prod-artifact: build-analytics ## builds the analyitcs service and creates the prod artifact
+	@printf "Building analytics prod artifact..."
+	@mkdir -p $(DIST_DIR)/artifact/analytics
+	@cp $(DIST_DIR)/analytics $(DIST_DIR)/artifact/analytics/app
+	@cp ./cmd/analytics/prod.env $(DIST_DIR)/artifact/analytics/app.env
+	@cp $(DEPLOY_DIR)/$(SYSTEMD_SERVICE_FILE) $(DIST_DIR)/artifact/analytics/$(SYSTEMD_SERVICE_FILE)
+	@cd $(DIST_DIR)/artifact/analytics && tar -zcf ../../analytics.prod.tar.gz app app.env $(SYSTEMD_SERVICE_FILE) && cd ../..
+	@printf "$(DIST_DIR)/analytics.prod.tar.gz\n"
+
+.PHONY: publish-analytics-artifact
+publish-analytics-artifact: ## publishes the analytics dev artifact
+	@printf "Publishing analyitcs dev artifact... \n\n"
+	@gsutil cp $(DIST_DIR)/analyitcs.dev.tar.gz $(ARTIFACT_BUCKET)/analyitcs.dev.tar.gz
+	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" -h "x-goog-meta-commitMessage:$(COMMITMESSAGE)" $(ARTIFACT_BUCKET)/analytics.dev.tar.gz
+	@printf "done\n"
+
+.PHONY: publish-analyitcs-prod-artifact
+publish-analyitcs-prod-artifact: ## publishes the analytics prod artifact
+	@printf "Publishing analyitcs prod artifact... \n\n"
+	@gsutil cp $(DIST_DIR)/analyitcs.prod.tar.gz $(ARTIFACT_BUCKET_PROD)/analyitcs.prod.tar.gz
+	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" -h "x-goog-meta-commitMessage:$(COMMITMESSAGE)" $(ARTIFACT_BUCKET_PROD)/analyitcs.prod.tar.gz
+	@printf "done\n"
+
 .PHONY: build-server-backend-artifact
 build-server-backend-artifact: build-server-backend ## builds the server backend and creates the dev artifact
 	@printf "Building server backend dev artifact..."
@@ -607,7 +641,7 @@ build-next: ## builds the operator tool
 	@printf "done\n"
 
 .PHONY: build-all
-build-all: build-billing build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
+build-all: build-analyitcs build-billing build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all
