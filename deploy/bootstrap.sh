@@ -26,6 +26,11 @@ done
 # Copy libsodium from GCP Storage
 gsutil cp "$bucket/libsodium.so" '/usr/local/lib'
 
+# Copy libnorm1 from GCP Storage
+gsutil cp "$bucket/libnorm.so.1" '/usr/local/lib'
+
+# Copy libpgm from GCP Storage
+gsutil cp "$bucket/libpgm-5.2.so.0" '/usr/local/lib'
 
 # Copy libzmq from GCP Storage
 gsutil cp "$bucket/libzmq.so" '/usr/local/lib'
