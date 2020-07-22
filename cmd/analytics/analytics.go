@@ -180,9 +180,7 @@ func main() {
 			b := analytics.NewGoogleBigQueryWriter(bqClient, logger, analyticsMetrics, analyticsDataset, os.Getenv("GOOGLE_BIGQUERY_TABLE_ANALYTICS"))
 			writer = &b
 
-			go func() {
-				b.WriteLoop(ctx)
-			}()
+			go b.WriteLoop(ctx)
 		}
 	}
 
@@ -193,9 +191,9 @@ func main() {
 		writer = &analytics.LocalBigQueryWriter{
 			Logger: logger,
 		}
-	}
 
-	level.Info(logger).Log("msg", "detected pubsub emulator")
+		level.Info(logger).Log("msg", "detected pubsub emulator")
+	}
 
 	// google pubsub forwarder
 	if gcpOK || emulatorOK {

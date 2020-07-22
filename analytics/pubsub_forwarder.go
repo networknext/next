@@ -29,7 +29,7 @@ func NewPubSubForwarder(ctx context.Context, writer BigQueryWriter, logger log.L
 		if _, err := pubsubClient.CreateSubscription(ctx, subscriptionName, pubsub.SubscriptionConfig{
 			Topic: pubsubClient.Topic(topicName),
 		}); err != nil && err.Error() != "rpc error: code = AlreadyExists desc = Subscription already exists" {
-			return nil, fmt.Errorf("could not create local pubsub subscription: %v", err)
+			return nil, fmt.Errorf("could not create local pubsub subscription '%s' for topic '%s' on project '%s': %v", subscriptionName, topicName, gcpProjectID, err)
 		}
 	}
 
