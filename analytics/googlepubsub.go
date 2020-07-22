@@ -94,7 +94,7 @@ func (publisher *GooglePubSubPublisher) Publish(ctx context.Context, entries []S
 	data := WriteStatsEntries(entries)
 
 	if publisher.client == nil {
-		return fmt.Errorf("analytics: clients not initialized")
+		return fmt.Errorf("analytics: client not initialized")
 	}
 
 	topic := publisher.client.Topic

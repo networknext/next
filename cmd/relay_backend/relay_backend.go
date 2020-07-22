@@ -429,8 +429,8 @@ func main() {
 		{
 			settings := pubsub.PublishSettings{
 				DelayThreshold: time.Second,
-				CountThreshold: 1,
-				ByteThreshold:  1 << 20,
+				CountThreshold: 1000,
+				ByteThreshold:  1 << 14,
 				NumGoroutines:  runtime.GOMAXPROCS(0),
 				Timeout:        time.Minute,
 			}
@@ -449,7 +449,7 @@ func main() {
 		for {
 			time.Sleep(time.Minute)
 			cpy := statsdb.MakeCopy()
-			length := len(cpy.Entries) * 2
+			length := len(cpy.Entries) * (len(cpy.Entries) - 1)
 			entries := make([]analytics.StatsEntry, length)
 
 			i := 0
