@@ -50,7 +50,7 @@ type Backend struct {
 	dirty           bool
 	mode            int
 	serverDatabase  map[string]ServerEntry
-	sessionDatabase map[uint64]transport.SessionCacheEntry
+	sessionDatabase map[uint64]SessionCacheEntry
 	statsDatabase   *routing.StatsDatabase
 	costMatrix      *routing.CostMatrix
 	routeMatrix     *routing.RouteMatrix
@@ -65,6 +65,26 @@ type ServerEntry struct {
 	address    *net.UDPAddr
 	publicKey  []byte
 	lastUpdate int64
+}
+
+type SessionCacheEntry struct {
+	CustomerID                 uint64
+	SessionID                  uint64
+	UserHash                   uint64
+	Sequence                   uint64
+	RouteHash                  uint64
+	RouteDecision              routing.Decision
+	OnNNSliceCounter           uint64
+	CommitPending              bool
+	CommitObservedSliceCounter uint8
+	Committed                  bool
+	TimestampStart             time.Time
+	TimestampExpire            time.Time
+	Version                    uint8
+	DirectRTT                  float64
+	NextRTT                    float64
+	Location                   routing.Location
+	Response                   []byte
 }
 
 const ThresholdRTT = 1.0
@@ -167,7 +187,7 @@ func main() {
 	rand.Seed(time.Now().UnixNano())
 
 	backend.serverDatabase = make(map[string]ServerEntry)
-	backend.sessionDatabase = make(map[uint64]transport.SessionCacheEntry)
+	backend.sessionDatabase = make(map[uint64]SessionCacheEntry)
 	backend.statsDatabase = routing.NewStatsDatabase()
 	backend.costMatrix = &routing.CostMatrix{}
 	backend.routeMatrix = &routing.RouteMatrix{}
