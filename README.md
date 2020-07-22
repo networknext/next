@@ -22,7 +22,7 @@ This is a monorepo that contains the Network Next backend.
 4. Once your pull request has been reviewed merge it into `master`
 5. To deploy to dev, merge either your branch or `master` into the `dev` branch
 6. Semaphore will build your PR and copy artifacts to the google cloud gs://dev_artifacts bucket automatically.
-7. Manually trigger a rolling update in google cloud on each managed instance group you want to update to latest code. For dev there are managed instances for `billing` and `portal`.
+7. Manually trigger a rolling update in google cloud on each managed instance group you want to update to latest code. For dev there are managed instances for `billing`, `portal`, and `portal_cruncher`.
 8. The server and relay dev backends must be deployed with the make tool via `make deploy-server-backend` and `make deploy-relay-backend`.
 
 ### Production Release
@@ -55,6 +55,7 @@ The tool chain used for development is kept simple to make it easy for any opera
   - [libcurl](https://curl.haxx.se/libcurl/)
   - [libsodium](https://libsodium.gitbook.io)
   - [libpthread](https://www.gnu.org/software/hurd/libpthread.html)
+  - [libzmq3-dev](https://zeromq.org/download/)
 
 Developers should install these requirements however they need to be installed based on your operating system. Windows users can leverage WSL to get all of these.
 
@@ -93,19 +94,25 @@ NOTE: This is NOT the only way to set up the project, this is just ONE way. Feel
 	Mac:
 	`brew install openssl`
 
-6. Install RapidJSON
+6. Install libzmq3-dev
+	Linux:
+	`sudo apt install libzmq3-dev`
+	Mac:
+	`brew install zmq`
+
+7. Install RapidJSON
 	Linux:
   `sudo apt install rapidjson-dev`
 	Mac:
 	`brew install rapidjson`
 
-7. Install g++ version 8
+8. Install g++ version 8
 	Linux:
   `sudo apt install g++-8`
 	Mac:
 	`brew install gcc@8`
 
-8. Install Go (must be 1.13+)
+9. Install Go (must be 1.13+)
 	`cd /usr/local/`
 	`sudo curl https://dl.google.com/go/go1.14.2.linux-amd64.tar.gz | sudo tar -zxv`
 	Add Go to PATH:
@@ -113,14 +120,14 @@ NOTE: This is NOT the only way to set up the project, this is just ONE way. Feel
 	NOTE: For changes to your `.profile` to reflect in the terminal, sign out and sign back in.
 	If you're running WSL, you can stop it by typing `wsl -t <distro>` in Powershell and start it again.
 
-9. Install Redis
+10. Install Redis
 	`sudo apt install redis-server`
 
-10. Install Docker
+11. Install Docker
 	NOTE: If you're running Windows with WSL 1, follow this article: https://nickjanetakis.com/blog/setting-up-docker-for-windows-and-wsl-to-work-flawlessly
 	For WSL 2 these steps aren't necessary, installing Docker Desktop by itself is sufficient.
 
-11. Clone the repo with an SSH key
+12. Clone the repo with an SSH key
 	Instructions from `https://help.github.com/en/github/authenticating-to-github/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent`
 
 	`ssh-keygen -t rsa -b 4096 -C "your_email@example.com"`
@@ -132,11 +139,11 @@ NOTE: This is NOT the only way to set up the project, this is just ONE way. Feel
   `git clone git@github.com:networknext/backend.git`
   `cd <clone_path>` where `<clone_path>` is the directory you cloned the repo to (usually `~/backend`)
 
-12. Init and update git submodules
+13. Init and update git submodules
 	`git submodule init`
 	`git submodule update`
 
-13. Install Google Cloud SDK
+14. Install Google Cloud SDK
 	Instructions from `https://cloud.google.com/sdk/docs/quickstart-debian-ubuntu`
 	For other platforms, see `https://cloud.google.com/sdk/docs/quickstarts`
 
@@ -146,13 +153,13 @@ NOTE: This is NOT the only way to set up the project, this is just ONE way. Feel
 	`gcloud init`
 	When asked to choose a cloud project, choose `network-next-v3-dev`
 
-14. Install the Firestore emulator
+15. Install the Firestore emulator
 	`sudo apt install google-cloud-sdk-firestore-emulator`
 
-15. Install the Pub/Sub emulator
+16. Install the Pub/Sub emulator
 	`sudo apt install google-cloud-sdk-pubsub-emulator`
 
-16. Run tests to confirm everything is working properly
+17. Run tests to confirm everything is working properly
 	`make test`
 	`make test-func-parallel`
 
@@ -163,9 +170,10 @@ A good test to see if everything works and is installed is to run the "Happy Pat
 1. `redis-cli flushall && make BACKEND_LOG_LEVEL=info dev-relay-backend`: this will clear your local redis completely to start fresh and then run the relay backend
 2. `make dev-multi-relays`: this will run 10 instances of a relay and each will register themselves with the relay backend
 3. `make BACKEND_LOG_LEVEL=info dev-server-backend`: this will run the server backend and start pulling route information from the relay backend every second
-4. `make dev-server`: this will run a fake game server and register itself with the server backend
-5. `make dev-client`: this will run a fake game client and request a route from the server which will ask the server backend for a new route for the game client. You can also run `make dev-multi-clients` to create 20 client sessions.
-6. `make JWT_AUDIENCE="oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n" dev-portal`: this will run the Portal RPC API and Portal UI. You can visit https://localhost:20000 to view currently connected sessions.
+4. `make dev-portal-cruncher`: this will run the portal cruncher service that takes portal data from the server backend and inserts it into redis for the portal to use
+5. `make dev-server`: this will run a fake game server and register itself with the server backend
+6. `make dev-client`: this will run a fake game client and request a route from the server which will ask the server backend for a new route for the game client. You can also run `make dev-multi-clients` to create 20 client sessions.
+7. `make JWT_AUDIENCE="oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n" dev-portal`: this will run the Portal RPC API and Portal UI. You can visit https://localhost:20000 to view currently connected sessions.
 
 You should see the fake game server upgrade the clients session and get `(next route)` and `(continue route)` from the server backend which it sends to the fake game client.
 
@@ -190,6 +198,7 @@ All of these services are controlled and deployed by us.
 - [`cmd/relay`](cmd/relay)
 - [`cmd/relay_backend`](cmd/relay_backend)
 - [`cmd/server_backend`](cmd/server_backend)
+- [`cmd/portal_cruncher`](cmd/portal_cruncher)
 - [`cmd/billing`](cmd/billing)
 
 ## SDK
