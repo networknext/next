@@ -1236,6 +1236,8 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 
 	tx := redisClientPortal.TxPipeline()
 
+	// todo: counting is busted
+	/*
 	// set total session counts with expiration on the entire key set for safety
 	switch meta.OnNetworkNext {
 	case true:
@@ -1257,6 +1259,7 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 		tx.ZAdd(fmt.Sprintf("total-direct-buyer-%016x", packet.CustomerID), &redis.Z{Score: -meta.DirectRTT, Member: meta.ID})
 		tx.Expire(fmt.Sprintf("total-direct-buyer-%016x", packet.CustomerID), redisClientPortalExp)
 	}
+	*/
 
 	// set session and slice information with expiration on the entire key set for safety
 	tx.Set(fmt.Sprintf("session-%016x-meta", packet.SessionID), meta, redisClientPortalExp)
