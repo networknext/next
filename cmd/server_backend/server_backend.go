@@ -479,7 +479,6 @@ func main() {
 					// todo: ryan, please upload a metric for the time it takes to get the route matrix. we should watch it in stackdriver.
 
 					if routeMatrixTime.Seconds() > 1.0 {
-						fmt.Printf("long route matrix update\n")
 						atomic.AddUint64(&longRouteMatrixUpdates, 1)
 					}
 
@@ -562,7 +561,7 @@ func main() {
 
 		// Start a goroutine to timeout servers
 		go func() {
-			timeout := time.Second * 30
+			timeout := time.Second * 60
 			frequency := time.Millisecond * 10
 			ticker := time.NewTicker(frequency)
 			serverMap.TimeoutLoop(ctx, timeout, ticker.C)
