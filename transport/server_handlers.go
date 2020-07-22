@@ -509,8 +509,9 @@ type SessionUpdateParams struct {
 	GetRouteProvider     func() RouteProvider
 	GetIPLocator         func() routing.IPLocator
 	Storer               storage.Storer
-	RedisClientPortal    redis.Cmdable
-	RedisClientPortalExp time.Duration
+	// todo: temporary
+	// RedisClientPortal    redis.Cmdable
+	// RedisClientPortalExp time.Duration
 	Biller               billing.Biller
 	Metrics              *metrics.SessionMetrics
 	Logger               log.Logger
@@ -1106,8 +1107,9 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 	// while in the customer view of the portal, we need to display the alias. this is because aliases will
 	// shortly become per-customer, thus there is really no global concept of "multiplay.losangeles", for example.
 
-	datacenterName := serverDataReadOnly.datacenter.Name
-	datacenterAlias := serverDataReadOnly.datacenter.AliasName
+	// todo: temp
+	// datacenterName := serverDataReadOnly.datacenter.Name
+	// datacenterAlias := serverDataReadOnly.datacenter.AliasName
 
 	// Send a massive amount of data to the portal via redis.
 	// This drives all the stuff you see in the portal, including the map and top sessions list.
@@ -1115,11 +1117,14 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 
 	isMultipath := routing.IsMultipath(prevRouteDecision)
 
+	// todo: massive temporary. disable portal redis data
+	/*
 	if err := updatePortalData(params.RedisClientPortal, params.RedisClientPortalExp, packet, lastNextStats, lastDirectStats, routeRelays,
 		packet.OnNetworkNext, datacenterName, location, nearRelays, timeNow, isMultipath, datacenterAlias); err != nil {
 		level.Error(params.Logger).Log("msg", "could not update portal data", "err", err)
 		params.Metrics.ErrorMetrics.UpdatePortalFailure.Add(1)
 	}
+	*/
 
 	// Send billing specific data to the billing service via google pubsub
 	// The billing service subscribes to this topic, and writes the billing data to bigquery.
@@ -1236,8 +1241,6 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 
 	tx := redisClientPortal.TxPipeline()
 
-	// todo: counting is busted
-	/*
 	// set total session counts with expiration on the entire key set for safety
 	switch meta.OnNetworkNext {
 	case true:
@@ -1259,7 +1262,6 @@ func updatePortalData(redisClientPortal redis.Cmdable, redisClientPortalExp time
 		tx.ZAdd(fmt.Sprintf("total-direct-buyer-%016x", packet.CustomerID), &redis.Z{Score: -meta.DirectRTT, Member: meta.ID})
 		tx.Expire(fmt.Sprintf("total-direct-buyer-%016x", packet.CustomerID), redisClientPortalExp)
 	}
-	*/
 
 	// set session and slice information with expiration on the entire key set for safety
 	tx.Set(fmt.Sprintf("session-%016x-meta", packet.SessionID), meta, redisClientPortalExp)

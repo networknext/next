@@ -21,7 +21,7 @@ import (
 	"os/signal"
 	"strconv"
 
-	"strings"
+	// "strings"
 	"time"
 
 	"github.com/go-kit/kit/log"
@@ -145,6 +145,8 @@ func main() {
 		}
 	}
 
+	// todo: temporarily disabled
+	/*
 	redisPortalHosts := os.Getenv("REDIS_HOST_PORTAL")
 	splitPortalHosts := strings.Split(redisPortalHosts, ",")
 	redisClientPortal := storage.NewRedisClient(splitPortalHosts...)
@@ -158,6 +160,7 @@ func main() {
 		level.Error(logger).Log("envvar", "REDIS_HOST_PORTAL_EXPIRATION", "msg", "could not parse", "err", err)
 		os.Exit(1)
 	}
+	*/
 
 	redisHost := os.Getenv("REDIS_HOST_RELAYS")
 	redisClientRelays := storage.NewRedisClient(redisHost)
@@ -679,8 +682,8 @@ func main() {
 			GetRouteProvider:     getRouteMatrixFunc,
 			GetIPLocator:         getIPLocatorFunc,
 			Storer:               db,
-			RedisClientPortal:    redisClientPortal,
-			RedisClientPortalExp: redisPortalHostExpiration,
+			// RedisClientPortal:    redisClientPortal,
+			// RedisClientPortalExp: redisPortalHostExpiration,
 			Biller:               biller,
 			Metrics:              sessionUpdateMetrics,
 			Logger:               logger,
