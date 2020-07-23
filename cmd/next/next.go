@@ -450,6 +450,10 @@ func main() {
 	var relayOpsOutput bool
 	relaysfs.BoolVar(&relayOpsOutput, "ops", false, "display ops metadata (costs, bandwidth, terms, etc)")
 
+	// Sort -ops output by IncludedBandwidthGB, descending
+	var relayBWSort bool
+	relaysfs.BoolVar(&relayBWSort, "bw", false, "Sort -ops output by IncludedBandwidthGB, descending (ignored w/o -ops)")
+
 	var authCommand = &ffcli.Command{
 		Name:       "auth",
 		ShortUsage: "next auth",
@@ -619,6 +623,7 @@ func main() {
 					relayVersionFilter,
 					relaysCount,
 					relayIDSigned,
+					relayBWSort,
 				)
 			} else {
 				relays(

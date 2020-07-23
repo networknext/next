@@ -27,6 +27,7 @@ func opsRelays(
 	relayVersionFilter string,
 	relaysCount int64,
 	relayIDSigned bool,
+	relayBWSort bool,
 ) {
 	args := localjsonrpc.RelaysArgs{
 		Regex: regex,
@@ -38,9 +39,11 @@ func opsRelays(
 		return
 	}
 
-	sort.Slice(reply.Relays, func(i int, j int) bool {
-		return reply.Relays[i].Name > reply.Relays[j].Name
-	})
+	if relayBWSort {
+		sort.Slice(reply.Relays, func(i int, j int) bool {
+			return reply.Relays[i].IncludedBandwidthGB > reply.Relays[j].IncludedBandwidthGB
+		})
+	}
 
 	relays := []struct {
 		Name                string
