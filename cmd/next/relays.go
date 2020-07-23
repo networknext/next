@@ -43,25 +43,29 @@ func opsRelays(
 	})
 
 	relays := []struct {
-		Name         string
-		MRC          string
-		Overage      string
-		BWRule       string
-		ContractTerm string
-		StartDate    string
-		EndDate      string
-		Type         string
+		Name                string
+		MRC                 string
+		Overage             string
+		BWRule              string
+		ContractTerm        string
+		StartDate           string
+		EndDate             string
+		Type                string
+		IncludedBandwidthGB string
+		NICSpeedMbps        string
 	}{}
 
 	relaysCSV := [][]string{{}}
 
 	relaysCSV = append(relaysCSV, []string{
-		"Name", "Address", "MRC", "Overage", "BW Rule", "Term", "Start Date", "End Date", "Type"})
+		"Name", "Address", "MRC", "Overage", "BW Rule",
+		"Term", "Start Date", "End Date", "Type", "Bandwidth", "NIC Speed"})
 
 	for _, relay := range reply.Relays {
 		relayState, err := routing.ParseRelayState(relay.State)
 		if err != nil {
-			log.Fatalf("could not parse invalid relay state %s", relay.State)
+			fmt.Printf("could not parse invalid relay state %s", relay.State)
+			os.Exit(0)
 		}
 
 		includeRelay := true
@@ -143,6 +147,16 @@ func opsRelays(
 			endDate = relay.EndDate.Format("January 2, 2006")
 		}
 
+		bandwidth := strconv.FormatUint(relay.IncludedBandwidthGB, 10)
+		if bandwidth == "0" {
+			bandwidth = "n/a"
+		}
+
+		nicSpeed := strconv.FormatUint(relay.NICSpeedMbps, 10)
+		if nicSpeed == "0" {
+			nicSpeed = "n/a"
+		}
+
 		// return csv file
 		if csvOutputFlag {
 			relaysCSV = append(relaysCSV, []string{
@@ -154,17 +168,21 @@ func opsRelays(
 				startDate,
 				endDate,
 				machineType,
+				bandwidth,
+				nicSpeed,
 			})
 		} else if relayVersionFilter == "all" || relay.Version == relayVersionFilter {
 			relays = append(relays, struct {
-				Name         string
-				MRC          string
-				Overage      string
-				BWRule       string
-				ContractTerm string
-				StartDate    string
-				EndDate      string
-				Type         string
+				Name                string
+				MRC                 string
+				Overage             string
+				BWRule              string
+				ContractTerm        string
+				StartDate           string
+				EndDate             string
+				Type                string
+				IncludedBandwidthGB string
+				NICSpeedMbps        string
 			}{
 				relay.Name,
 				mrc,
@@ -174,6 +192,8 @@ func opsRelays(
 				startDate,
 				endDate,
 				machineType,
+				bandwidth,
+				nicSpeed,
 			})
 		}
 
