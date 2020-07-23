@@ -5,6 +5,9 @@ import (
 	"context"
 	"encoding/binary"
 	"hash/fnv"
+	"os"
+	"strconv"
+	"syscall"
 
 	"errors"
 	"fmt"
@@ -24,6 +27,7 @@ import (
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport/pubsub"
+	"golang.org/x/sys/unix"
 	// fnv "hash/fnv"
 )
 
@@ -45,6 +49,16 @@ type UDPServerMux struct {
 	SessionUpdateHandlerFunc UDPHandlerFunc
 }
 
+type UDPServerMux2 struct {
+	Logger        log.Logger
+	MaxPacketSize int
+	Port          int64
+
+	ServerInitHandlerFunc    UDPHandlerFunc
+	ServerUpdateHandlerFunc  UDPHandlerFunc
+	SessionUpdateHandlerFunc UDPHandlerFunc
+}
+
 // Start begins accepting UDP packets from the UDP connection and will block
 func (m *UDPServerMux) Start(ctx context.Context) error {
 	if m.Conn == nil {
@@ -53,6 +67,27 @@ func (m *UDPServerMux) Start(ctx context.Context) error {
 
 	// todo: fucks up on 96 core otherwise
 	numThreads := 8
+
+	for i := 0; i < numThreads; i++ {
+		go m.handler(ctx, i)
+	}
+
+	<-ctx.Done()
+
+	return nil
+}
+
+// Start begins accepting UDP packets from the UDP connection and will block
+func (m *UDPServerMux2) Start(ctx context.Context) error {
+	// todo: fucks up on 96 core otherwise
+	numThreads := 8
+	numSockets, ok := os.LookupEnv("NUM_UDP_SOCKETS")
+	if ok {
+		iNumSockets, err := strconv.ParseInt(numSockets, 10, 64)
+		if err == nil {
+			numThreads = int(iNumSockets)
+		}
+	}
 
 	for i := 0; i < numThreads; i++ {
 		go m.handler(ctx, i)
@@ -111,6 +146,104 @@ func (m *UDPServerMux) handler(ctx context.Context, id int) {
 				}
 
 				m.Conn.WriteToUDP(res, from)
+			}
+
+		}(data, size, addr)
+	}
+}
+
+func (m *UDPServerMux2) handler(ctx context.Context, id int) {
+	var conn *net.UDPConn
+	// Initialize UDP connection
+	{
+		lc := net.ListenConfig{
+			Control: func(network, address string, c syscall.RawConn) error {
+				var opErr error
+				err := c.Control(func(fd uintptr) {
+					opErr = unix.SetsockoptInt(int(fd), unix.SOL_SOCKET, unix.SO_REUSEPORT, 1)
+				})
+				if err != nil {
+					return err
+				}
+				return opErr
+			},
+		}
+
+		lp, err := lc.ListenPacket(context.Background(), "udp", fmt.Sprintf("0.0.0.0:%d", m.Port))
+		if err != nil {
+			level.Error(m.Logger).Log("udp", "listenPacket", "msg", "could not bind", "err", err)
+			os.Exit(1)
+		}
+
+		conn = lp.(*net.UDPConn)
+
+		readBufferString, ok := os.LookupEnv("READ_BUFFER")
+		if ok {
+			readBuffer, err := strconv.ParseInt(readBufferString, 10, 64)
+			if err != nil {
+				level.Error(m.Logger).Log("envvar", "READ_BUFFER", "msg", "could not parse", "err", err)
+				os.Exit(1)
+			}
+			conn.SetReadBuffer(int(readBuffer))
+		}
+
+		writeBufferString, ok := os.LookupEnv("WRITE_BUFFER")
+		if ok {
+			writeBuffer, err := strconv.ParseInt(writeBufferString, 10, 64)
+			if err != nil {
+				level.Error(m.Logger).Log("envvar", "WRITE_BUFFER", "msg", "could not parse", "err", err)
+				os.Exit(1)
+			}
+			conn.SetWriteBuffer(int(writeBuffer))
+		}
+	}
+
+	for {
+
+		data := make([]byte, m.MaxPacketSize)
+
+		size, addr, _ := conn.ReadFromUDP(data)
+		if size <= 0 {
+			continue
+		}
+
+		data = data[:size]
+
+		go func(packet_data []byte, packet_size int, from *net.UDPAddr) {
+
+			// Check the packet hash is legit and remove the hash from the beginning of the packet
+			// to continue processing the packet as normal
+			hashedPacket := crypto.Check(crypto.PacketHashKey, packet_data)
+			switch hashedPacket {
+			case true:
+				packet_data = packet_data[crypto.PacketHashSize:packet_size]
+			default:
+				// todo: once everybody has upgraded to SDK 3.4.5 or greater, this is an error. ignore packet.
+				packet_data = packet_data[:packet_size]
+			}
+
+			packet := UDPPacket{SourceAddr: *from, Data: packet_data}
+
+			var buf bytes.Buffer
+
+			switch packet.Data[0] {
+			case PacketTypeServerInitRequest:
+				m.ServerInitHandlerFunc(&buf, &packet)
+			case PacketTypeServerUpdate:
+				m.ServerUpdateHandlerFunc(&buf, &packet)
+			case PacketTypeSessionUpdate:
+				m.SessionUpdateHandlerFunc(&buf, &packet)
+			}
+
+			if buf.Len() > 0 {
+				res := buf.Bytes()
+
+				// If the hash checks out above then hash the response to the sender
+				if hashedPacket {
+					res = crypto.Hash(crypto.PacketHashKey, res)
+				}
+
+				conn.WriteToUDP(res, from)
 			}
 
 		}(data, size, addr)
