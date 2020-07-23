@@ -479,7 +479,7 @@ func main() {
 				idx++
 			}
 
-			for i := 0; i < len(cpy.Entries); i++ {
+			for i := 1; i < len(cpy.Entries); i++ {
 				for j := 0; j < i; j++ {
 					idA := ids[i]
 					idB := ids[j]
