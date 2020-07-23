@@ -74,7 +74,7 @@ func main() {
 	var gcpProjectID string
 
 	if enableSDLogging {
-		if gcpProjectID, gcpOK = os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
+		if gcpProjectID, gcpOK = os.LookupEnv("GOOGLE_PROJECT_ID"); gcpOK {
 			loggingClient, err := gcplogging.NewClient(ctx, gcpProjectID)
 			if err != nil {
 				level.Error(logger).Log("err", err)
@@ -451,7 +451,7 @@ func main() {
 		{
 			settings := pubsub.PublishSettings{
 				DelayThreshold: time.Second,
-				CountThreshold: 1000,
+				CountThreshold: 1,
 				ByteThreshold:  1 << 14,
 				NumGoroutines:  runtime.GOMAXPROCS(0),
 				Timeout:        time.Minute,
