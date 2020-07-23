@@ -25,9 +25,8 @@ const (
 	// HashKeyAllRelays ...
 	HashKeyAllRelays = "ALL_RELAYS"
 
-	// How frequently we need to recieve updates from relays to keep them in redis
-	// 10 seconds + a 1 second grace period
-	RelayTimeout = 11 * time.Second
+	// Relax
+	RelayTimeout = 60 * time.Second
 
 	// MaxRelayAddressLength ...
 	MaxRelayAddressLength = 256
