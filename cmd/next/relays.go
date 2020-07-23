@@ -99,11 +99,11 @@ func opsRelays(
 
 		mrc := "n/a"
 		if relay.MRC > 0 {
-			mrc = fmt.Sprintf("%.4f", relay.MRC.ToCents())
+			mrc = fmt.Sprintf("%.2f", relay.MRC.ToCents()/100)
 		}
 		overage := "n/a"
 		if relay.Overage > 0 {
-			overage = fmt.Sprintf("%.4f", relay.Overage.ToCents())
+			overage = fmt.Sprintf("%.2f", relay.Overage.ToCents()/100)
 		}
 
 		var bwRule string

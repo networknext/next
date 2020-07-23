@@ -180,7 +180,7 @@ func main() {
 			ManagementAddr: "127.0.0.1",
 			SSHUser:        "root",
 			SSHPort:        22,
-			MRC:            26000000000000,
+			MRC:            19700000000000,
 			Overage:        26000000000000,
 			BWRule:         routing.BWRuleBurst,
 			ContractTerm:   12,
