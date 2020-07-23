@@ -428,7 +428,7 @@ func main() {
 		level.Error(logger).Log("msg", "failed to create statsdb metrics", "err", err)
 	}
 
-	// Create a no-op biller
+	// Create a no-op publisher
 	var publisher analytics.PubSubPublisher = &analytics.NoOpPubSubPublisher{}
 	_, emulatorOK = os.LookupEnv("PUBSUB_EMULATOR_HOST")
 	if gcpOK || emulatorOK {
@@ -468,21 +468,31 @@ func main() {
 		for {
 			time.Sleep(time.Minute)
 			cpy := statsdb.MakeCopy()
-			length := len(cpy.Entries) * (len(cpy.Entries) - 1)
+			length := routing.TriMatrixLength(len(cpy.Entries))
+
 			entries := make([]analytics.StatsEntry, length)
+			ids := make([]uint64, length)
 
-			i := 0
-			for k1, s := range cpy.Entries {
-				for k2, r := range s.Relays {
-					entries[i] = analytics.StatsEntry{
-						RelayA:     k1,
-						RelayB:     k2,
-						RTT:        r.RTT,
-						Jitter:     r.Jitter,
-						PacketLoss: r.PacketLoss,
+			idx := 0
+			for k := range cpy.Entries {
+				ids[idx] = k
+				idx++
+			}
+
+			for i := 0; i < len(cpy.Entries); i++ {
+				for j := 0; j < i; j++ {
+					idA := ids[i]
+					idB := ids[j]
+
+					rtt, jitter, pl := cpy.GetSample(idA, idB)
+
+					entries[routing.TriMatrixIndex(i, j)] = analytics.StatsEntry{
+						RelayA:     idA,
+						RelayB:     idB,
+						RTT:        rtt,
+						Jitter:     jitter,
+						PacketLoss: pl,
 					}
-
-					i++
 				}
 			}
 
