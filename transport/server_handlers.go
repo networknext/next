@@ -9,7 +9,7 @@ import (
 	"io"
 	"math/rand"
 	"net"
-	"runtime"
+	// "runtime"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -50,7 +50,10 @@ func (m *UDPServerMux) Start(ctx context.Context) error {
 		return errors.New("udp connection cannot be nil")
 	}
 
-	for i := 0; i < runtime.NumCPU(); i++ {
+	// todo: fucks up on 96 core otherwise
+	numThreads := 8
+
+	for i := 0; i < numThreads; i++ {
 		go m.handler(ctx, i)
 	}
 
