@@ -1177,7 +1177,7 @@ func updatePortalData(portalPublisher pubsub.Publisher, packet *SessionUpdatePac
 	}
 
 	portalPublishTime := time.Now()
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < 10000; i++ {
 		go func() {
 			_, err := portalPublisher.Publish(pubsub.TopicPortalCruncherSessionData, bytes)
 			if err != nil {
