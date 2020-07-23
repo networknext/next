@@ -21,6 +21,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-redis/redis"
 	"github.com/gorilla/mux"
 	"github.com/networknext/backend/analytics"
 	"github.com/networknext/backend/logging"
@@ -500,7 +501,10 @@ func main() {
 					}
 				}
 
-				pingStatsPublisher.Publish(ctx, entries)
+				if err := pingStatsPublisher.Publish(ctx, entries); err != nil {
+					level.Error(logger).Log("err", err)
+					os.Exit(1)
+				}
 			}
 		}()
 	}
@@ -546,7 +550,35 @@ func main() {
 			for {
 				time.Sleep(time.Second * 10)
 
-				relayStatsPublisher.Publish(ctx, entries)
+				hgetallResult := redisClientRelays.HGetAll(routing.HashKeyAllRelays)
+				if hgetallResult.Err() != nil && hgetallResult.Err() != redis.Nil {
+					level.Error(logger).Log("msg", "failed to get other relays", "err", hgetallResult.Err())
+				}
+
+				entries := make([]analytics.RelayStatsEntry, len(hgetallResult.Val()))
+
+				idx := 0
+				for _, v := range hgetallResult.Val() {
+					var relay routing.RelayCacheEntry
+					if err := relay.UnmarshalBinary([]byte(v)); err != nil {
+						level.Error(logger).Log("msg", "failed to get relay from redis", "err", err)
+						continue
+					}
+
+					entries[idx] = analytics.RelayStatsEntry{
+						ID:          relay.ID,
+						NumSessions: relay.TrafficStats.SessionCount,
+						CPUUsage:    relay.CPUUsage,
+						RAMUsage:    relay.RAMUsage,
+						Tx:          relay.TrafficStats.BytesSent,
+						Rx:          relay.TrafficStats.BytesReceived,
+					}
+				}
+
+				if err := relayStatsPublisher.Publish(ctx, entries); err != nil {
+					level.Error(logger).Log("err", err)
+					os.Exit(1)
+				}
 			}
 		}()
 
@@ -671,6 +703,9 @@ func main() {
 			fmt.Printf("%d analytics ps entries submitted\n", pingStatsPublisher.NumSubmitted())
 			fmt.Printf("%d analytics ps entries queued\n", pingStatsPublisher.NumQueued())
 			fmt.Printf("%d analytics ps entries flushed\n", pingStatsPublisher.NumFlushed())
+			fmt.Printf("%d analytics rs entries submitted\n", relayStatsPublisher.NumSubmitted())
+			fmt.Printf("%d analytics rs entries queued\n", relayStatsPublisher.NumQueued())
+			fmt.Printf("%d analytics rs entries flushed\n", relayStatsPublisher.NumFlushed())
 			fmt.Printf("-----------------------------\n")
 
 			// Swap the route matrix pointer to the new one

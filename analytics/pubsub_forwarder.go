@@ -45,7 +45,7 @@ func NewPubSubForwarder(ctx context.Context, writer BigQueryWriter, logger log.L
 func (psf *PubSubForwarder) Forward(ctx context.Context) {
 	err := psf.pubsubSubscription.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
 		psf.Metrics.PingStatsEntriesReceived.Add(1)
-		if entries, ok := ReadStatsEntries(m.Data); ok {
+		if entries, ok := ReadPingStatsEntries(m.Data); ok {
 			m.Ack()
 
 			for i := range entries {
