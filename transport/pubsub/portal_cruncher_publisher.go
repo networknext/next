@@ -1,5 +1,6 @@
 package pubsub
 
+/*
 import (
 	"sync"
 
@@ -35,3 +36,4 @@ func (pub *PortalCruncherPublisher) Publish(topic Topic, message []byte) (int, e
 	defer pub.mutex.Unlock()
 	return pub.socket.SendMessageDontwait([]byte{byte(topic)}, message)
 }
+*/
