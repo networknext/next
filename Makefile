@@ -370,26 +370,28 @@ deploy-server-backend: ## builds and deploys the server backend to dev
 	gcloud compute --project "network-next-v3-dev" ssh server-backend-dev-1 -- 'cd /app && sudo ./bootstrap.sh -b $(ARTIFACT_BUCKET) -a server_backend.dev.tar.gz'
 
 .PHONY: build-backend-artifacts-dev
-build-backend-artifacts-dev: @./deploy/build-artifacts.sh -e dev ## builds the backend artifacts dev
+build-backend-artifacts-dev: ## builds the backend artifacts dev
+	./deploy/build-artifacts.sh -e dev
 
 .PHONY: build-backend-artifacts-staging
-build-backend-artifacts-staging: @./deploy/build-artifacts.sh -e staging ## builds the backend artifacts staging
+build-backend-artifacts-staging: ## builds the backend artifacts staging
+	./deploy/build-artifacts.sh -e staging
 
 .PHONY: build-backend-artifacts-prod
-build-backend-artifacts-prod: @./deploy/build-artifacts.sh -e prod ## builds the backend artifacts prod
+build-backend-artifacts-prod: ## builds the backend artifacts prod
+	./deploy/build-artifacts.sh -e prod
 
 .PHONY: publish-backend-artifacts-dev
 publish-backend-artifacts-dev: ## publishes the backend artifacts to GCP Storage with gsutil dev
-	@./deploy/publish.sh -e dev -b gs://developement_artifacts
+	./deploy/publish.sh -e dev -b gs://developement_artifacts
 
 .PHONY: publish-backend-artifacts-staging
-publish-backend-artifacts-staging: @./deploy/publish.sh -e staging -b gs://staging_artifacts ## publishes the backend artifacts to GCP Storage with gsutil staging
+publish-backend-artifacts-staging: ## publishes the backend artifacts to GCP Storage with gsutil staging
+	./deploy/publish.sh -e staging -b gs://staging_artifacts
 
 .PHONY: publish-backend-artifacts-prod
-publish-backend-artifacts-prod: @./deploy/publish.sh -e prod -b gs://prod_artifacts ## publishes the backend artifacts to GCP Storage with gsutil prod
-
-.PHONY: deploy-backend
-deploy-backend: deploy-relay-backend deploy-server-backend
+publish-backend-artifacts-prod: ## publishes the backend artifacts to GCP Storage with gsutil staging
+	./deploy/publish.sh -e prod -b gs://prod_artifacts
 
 .PHONY: build-server
 build-server: build-sdk ## builds the server
