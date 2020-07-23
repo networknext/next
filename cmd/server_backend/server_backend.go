@@ -617,9 +617,6 @@ func main() {
 				fmt.Printf("%d server init packets processed\n", atomic.LoadUint64(&serverInitCounters.Packets))
 				fmt.Printf("%d server update packets processed\n", atomic.LoadUint64(&serverUpdateCounters.Packets))
 				fmt.Printf("%d session update packets processed\n", atomic.LoadUint64(&sessionUpdateCounters.Packets))
-				fmt.Printf("%d long server inits\n", atomic.LoadUint64(&serverInitCounters.LongDuration))
-				fmt.Printf("%d long server updates\n", atomic.LoadUint64(&serverUpdateCounters.LongDuration))
-				fmt.Printf("%d long session updates\n", atomic.LoadUint64(&sessionUpdateCounters.LongDuration))
 				fmt.Printf("%d long route matrix updates\n", atomic.LoadUint64(&longRouteMatrixUpdates))
 
 				unknownDatacentersLength := datacenterTracker.UnknownDatacenterLength()
@@ -642,6 +639,8 @@ func main() {
 	// Start portal cruncher publisher
 	var portalPublisher pubsub.Publisher
 	{
+		// todo: disabled
+		/*
 		portalCruncherHost, ok := os.LookupEnv("PORTAL_CRUNCHER_HOST")
 		if !ok {
 			level.Error(logger).Log("err", "env var PORTAL_CRUNCHER_HOST must be set")
@@ -655,6 +654,7 @@ func main() {
 		}
 
 		portalPublisher = portalCruncherPublisher
+		*/
 	}
 
 	// Start UDP server
