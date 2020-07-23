@@ -2,13 +2,16 @@ package pubsub
 
 import (
 	"errors"
+	"sync"
 
 	"github.com/pebbe/zmq4"
 )
 
 type PortalCruncherSubscriber struct {
 	socket *zmq4.Socket
-	topic  Topic
+	mutex  sync.Mutex
+
+	topic Topic
 }
 
 func NewPortalCruncherSubscriber(port string) (*PortalCruncherSubscriber, error) {
@@ -27,11 +30,17 @@ func NewPortalCruncherSubscriber(port string) (*PortalCruncherSubscriber, error)
 }
 
 func (sub *PortalCruncherSubscriber) Subscribe(topic Topic) error {
+	sub.mutex.Lock()
+	defer sub.mutex.Unlock()
+
 	sub.topic = topic
 	return sub.socket.SetSubscribe(string(topic))
 }
 
 func (sub *PortalCruncherSubscriber) ReceiveMessage() ([]byte, error) {
+	sub.mutex.Lock()
+	defer sub.mutex.Unlock()
+
 	message, err := sub.socket.RecvMessageBytes(0)
 	if err != nil {
 		return nil, err
