@@ -127,7 +127,7 @@ func (client *GooglePubSubClient) pubsubResults(ctx context.Context, publisher *
 				level.Error(publisher.Logger).Log("analytics", "failed to publish to pubsub", "err", err)
 				client.Metrics.ErrorMetrics.AnalyticsPublishFailure.Add(1)
 			} else {
-				level.Debug(publisher.Logger).Log("analytics", "successfully published billing data")
+				level.Debug(publisher.Logger).Log("analytics", "successfully published analytics data")
 				atomic.AddUint64(&publisher.flushed, 1)
 			}
 		case <-ctx.Done():
