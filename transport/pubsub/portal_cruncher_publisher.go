@@ -1,7 +1,8 @@
 package pubsub
 
-/*
 import (
+	"sync"
+
 	"github.com/pebbe/zmq4"
 )
 
@@ -11,6 +12,7 @@ const (
 
 type PortalCruncherPublisher struct {
 	socket *zmq4.Socket
+	mutex  sync.Mutex
 }
 
 func NewPortalCruncherPublisher(host string) (*PortalCruncherPublisher, error) {
@@ -29,6 +31,7 @@ func NewPortalCruncherPublisher(host string) (*PortalCruncherPublisher, error) {
 }
 
 func (pub *PortalCruncherPublisher) Publish(topic Topic, message []byte) (int, error) {
+	pub.mutex.Lock()
+	defer pub.mutex.Unlock()
 	return pub.socket.SendMessageDontwait([]byte{byte(topic)}, message)
 }
-*/

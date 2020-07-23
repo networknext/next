@@ -5,7 +5,6 @@
 
 package main
 
-/*
 import (
 	"context"
 	"fmt"
@@ -341,9 +340,4 @@ func HealthHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(statusCode)
 		w.Write([]byte(http.StatusText(statusCode)))
 	}
-}
-*/
-
-func main() {
-
 }
