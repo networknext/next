@@ -3,6 +3,7 @@ package routing
 import (
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -52,16 +53,147 @@ type SessionMeta struct {
 }
 
 func (s *SessionMeta) UnmarshalBinary(data []byte) error {
-	return jsoniter.Unmarshal(data, s)
+	index := 0
+
+	var version uint32
+	if !encoding.ReadUint32(data, &index, &version) {
+		return errors.New("[SessionMeta] invalid read at version number")
+	}
+
+	if version > SessionMetaVersion {
+		return fmt.Errorf("unknown session meta version: %d", version)
+	}
+
+	if !encoding.ReadUint64(data, &index, &s.ID) {
+		return errors.New("[SessionMeta] invalid read at session ID")
+	}
+
+	if !encoding.ReadUint64(data, &index, &s.UserHash) {
+		return errors.New("[SessionMeta] invalid read at user hash")
+	}
+
+	if !encoding.ReadString(data, &index, &s.DatacenterName, math.MaxInt32) {
+		return errors.New("[SessionMeta] invalid read at datacenter name")
+	}
+
+	if !encoding.ReadString(data, &index, &s.DatacenterAlias, math.MaxInt32) {
+		return errors.New("[SessionMeta] invalid read at datacenter alias")
+	}
+
+	if !encoding.ReadBool(data, &index, &s.OnNetworkNext) {
+		return errors.New("[SessionMeta] invalid read at on network next")
+	}
+
+	if !encoding.ReadFloat64(data, &index, &s.NextRTT) {
+		return errors.New("[SessionMeta] invalid read at next RTT")
+	}
+
+	if !encoding.ReadFloat64(data, &index, &s.DirectRTT) {
+		return errors.New("[SessionMeta] invalid read at direct RTT")
+	}
+
+	if !encoding.ReadFloat64(data, &index, &s.DeltaRTT) {
+		return errors.New("[SessionMeta] invalid read at delta RTT")
+	}
+
+	var locationSize uint32
+	if !encoding.ReadUint32(data, &index, &locationSize) {
+		return errors.New("[SessionMeta] invalid read at location size")
+	}
+
+	var locationBytes []byte
+	if !encoding.ReadBytes(data, &index, &locationBytes, locationSize) {
+		return errors.New("[SessionMeta] invalid read at location bytes")
+	}
+
+	if err := s.Location.UnmarshalBinary(locationBytes); err != nil {
+		return err
+	}
+
+	if !encoding.ReadString(data, &index, &s.ClientAddr, math.MaxInt32) {
+		return errors.New("[SessionMeta] invalid read at client address")
+	}
+
+	if !encoding.ReadString(data, &index, &s.ServerAddr, math.MaxInt32) {
+		return errors.New("[SessionMeta] invalid read at server address")
+	}
+
+	return nil
 }
 
 func (s SessionMeta) MarshalBinary() ([]byte, error) {
-	return jsoniter.Marshal(s)
+	data := make([]byte, s.Size())
+	index := 0
+
+	locationBytes, err := s.Location.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+
+	hopsBytes := make([]byte, 0)
+	for _, relay := range s.Hops {
+		relayBytes, err := relay.MarshalBinary()
+		if err != nil {
+			return nil, err
+		}
+
+		hopsBytes = append(hopsBytes, relayBytes...)
+	}
+
+	nearbyRelaysBytes := make([]byte, 0)
+	for _, relay := range s.NearbyRelays {
+		relayBytes, err := relay.MarshalBinary()
+		if err != nil {
+			return nil, err
+		}
+
+		nearbyRelaysBytes = append(nearbyRelaysBytes, relayBytes...)
+	}
+
+	encoding.WriteUint32(data, &index, SessionMetaVersion)
+	encoding.WriteUint64(data, &index, s.ID)
+	encoding.WriteUint64(data, &index, s.UserHash)
+	encoding.WriteString(data, &index, s.DatacenterName, uint32(len(s.DatacenterName)))
+	encoding.WriteString(data, &index, s.DatacenterAlias, uint32(len(s.DatacenterAlias)))
+	encoding.WriteBool(data, &index, s.OnNetworkNext)
+	encoding.WriteFloat64(data, &index, s.NextRTT)
+	encoding.WriteFloat64(data, &index, s.DirectRTT)
+	encoding.WriteFloat64(data, &index, s.DeltaRTT)
+
+	encoding.WriteUint32(data, &index, uint32(len(locationBytes)))
+	encoding.WriteBytes(data, &index, locationBytes, len(locationBytes))
+
+	encoding.WriteString(data, &index, s.ClientAddr, uint32(len(s.ClientAddr)))
+	encoding.WriteString(data, &index, s.ServerAddr, uint32(len(s.ServerAddr)))
+
+	encoding.WriteUint32(data, &index, uint32(len(hopsBytes)))
+	encoding.WriteBytes(data, &index, hopsBytes, len(hopsBytes))
+
+	encoding.WriteString(data, &index, s.SDK, uint32(len(s.SDK)))
+	encoding.WriteUint8(data, &index, s.Connection)
+
+	encoding.WriteUint32(data, &index, uint32(len(nearbyRelaysBytes)))
+	encoding.WriteBytes(data, &index, nearbyRelaysBytes, len(nearbyRelaysBytes))
+
+	encoding.WriteUint8(data, &index, s.Platform)
+	encoding.WriteUint64(data, &index, s.BuyerID)
+
+	return data, nil
 }
 
 func (s SessionMeta) Size() uint64 {
-	return uint64(4 + 4*len(s.ID) + 4*len(s.UserHash) + 4*len(s.DatacenterName) + 4*len(s.DatacenterAlias) + 1 + 8 + 8 + 8 +
-		/*LOCATION*/ +4*len(s.ClientAddr) + 4*len(s.ServerAddr) /*HOPS*/ + 4*len(s.SDK) + 4*len(s.Connection) /*NEARBY_RELAYS*/ + 4*len(s.Platform) + 4*len(s.BuyerID))
+	var relayHopsSize uint64
+	for _, relay := range s.Hops {
+		relayHopsSize += relay.Size()
+	}
+
+	var nearbyRelaysSize uint64
+	for _, relay := range s.NearbyRelays {
+		nearbyRelaysSize += relay.Size()
+	}
+
+	return 4 + 8 + 8 + uint64(4*len(s.DatacenterName)) + uint64(4*len(s.DatacenterAlias)) + 1 + 8 + 8 + 8 + s.Location.Size() +
+		uint64(4*len(s.ClientAddr)) + uint64(4*len(s.ServerAddr)) + (4 + relayHopsSize) + uint64(4*len(s.SDK)) + 1 + (4 + nearbyRelaysSize) + 1 + 8
 }
 
 func (s *SessionMeta) Anonymise() {
