@@ -451,6 +451,9 @@ func main() {
 			if err == nil {
 				level.Warn(logger).Log("matrix", "cost", "op", "generate", "err", err)
 				costMatrix = &costMatrixNew
+			} else {
+				// todo: metric on this ryan
+				fmt.Printf("cost matrix fail\n")
 			}
 			
 			costMatrixBytes = len(costMatrix.GetResponseData())
