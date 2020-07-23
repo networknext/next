@@ -3,7 +3,7 @@ package transport
 import (
 	"bytes"
 	"context"
-	"encoding/binary"
+	// "encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -23,7 +23,7 @@ import (
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport/pubsub"
 
-	fnv "hash/fnv"
+	// fnv "hash/fnv"
 )
 
 type UDPPacket struct {
@@ -1072,6 +1072,7 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 	}
 }
 
+/*
 func updatePortalData(portalPublisher pubsub.Publisher, packet *SessionUpdatePacket, lastNNStats *routing.Stats, lastDirectStats *routing.Stats, relayHops []routing.Relay,
 	onNetworkNext bool, datacenterName string, location *routing.Location, nearRelays []routing.Relay, sessionTime time.Time, isMultiPath bool, datacenterAlias string) (int, error) {
 
@@ -1144,6 +1145,7 @@ func updatePortalData(portalPublisher pubsub.Publisher, packet *SessionUpdatePac
 	byteCount, err := portalPublisher.Publish(pubsub.TopicPortalCruncherSessionData, bytes)
 	return byteCount, err
 }
+*/
 
 func addRouteDecisionMetric(d routing.Decision, m *metrics.SessionMetrics) {
 	switch d.Reason {

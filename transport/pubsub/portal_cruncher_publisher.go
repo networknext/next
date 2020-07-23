@@ -1,5 +1,6 @@
 package pubsub
 
+/*
 import (
 	"github.com/pebbe/zmq4"
 )
@@ -30,3 +31,4 @@ func NewPortalCruncherPublisher(host string) (*PortalCruncherPublisher, error) {
 func (pub *PortalCruncherPublisher) Publish(topic Topic, message []byte) (int, error) {
 	return pub.socket.SendMessageDontwait([]byte{byte(topic)}, message)
 }
+*/
