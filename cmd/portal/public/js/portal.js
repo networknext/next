@@ -247,6 +247,7 @@ MapHandler = {
 			.then((response) => {
 				let direct = response.direct
 				let next = response.next
+				let total = direct + next
 
 				const isDev = window.location.hostname == 'portal-dev.networknext.com' || window.location.hostname == '127.0.0.1';
 				if (!isDev) {
@@ -255,14 +256,34 @@ MapHandler = {
 
 					let maxDirectTotal = Math.max(...this.totalDirectSessions)
 					let maxNextTotal = Math.max(...this.totalNextSessions)
+					let maxTotal = maxDirectTotal + maxNextTotal
+
+					if (maxTotal == 0) {
+						Object.assign(rootComponent.$data, {
+							maintenanceMode: true
+						})
+					} else if (maxTotal > 0 && rootComponent.$data.maintenanceMode) {
+						Object.assign(rootComponent.$data, {
+							maintenanceMode: false
+						})
+					}
 
 					Object.assign(rootComponent.$data, {
 						direct: maxDirectTotal,
-						mapSessions: maxDirectTotal + maxNextTotal,
+						mapSessions: maxTotal,
 						onNN: maxNextTotal,
 					});
 					this.totalSessionCountCalls++
 					return
+				}
+				if (total == 0) {
+					Object.assign(rootComponent.$data, {
+						maintenanceMode: true
+					})
+				} else if (total > 0 && rootComponent.$data.maintenanceMode) {
+					Object.assign(rootComponent.$data, {
+						maintenanceMode: false
+					})
 				}
 				Object.assign(rootComponent.$data, {
 					direct: direct,
@@ -1060,7 +1081,7 @@ function createVueComponents() {
 	rootComponent = new Vue({
 		el: '#root',
 		data: {
-			maintenanceMode: true,
+			maintenanceMode: false,
 			showCount: false,
 			mapSessions: 0,
 			onNN: 0,
