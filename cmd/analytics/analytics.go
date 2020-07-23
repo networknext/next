@@ -88,8 +88,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	var writer analytics.BigQueryWriter = &analytics.NoOpBigQueryWriter{}
-
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
 	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
 	// on creation so we can use that for the default then
@@ -167,47 +165,97 @@ func main() {
 		level.Error(logger).Log("msg", "failed to create analytics metrics", "err", err)
 	}
 
-	// BigQuery
-	if gcpOK {
-		if analyticsDataset, ok := os.LookupEnv("GOOGLE_BIGQUERY_DATASET_ANALYTICS"); ok {
-			bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
+	var pingStatsWriter analytics.PingStatsWriter = &analytics.NoOpPingStatsWriter{}
+	{
+
+		// BigQuery
+		if gcpOK {
+			if analyticsDataset, ok := os.LookupEnv("GOOGLE_BIGQUERY_DATASET_ANALYTICS"); ok {
+				bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
+				if err != nil {
+					level.Error(logger).Log("err", err)
+					os.Exit(1)
+				}
+				b := analytics.NewGoogleBigQueryPingStatsWriter(bqClient, logger, analyticsMetrics, analyticsDataset, os.Getenv("GOOGLE_BIGQUERY_TABLE_ANALYTICS"))
+				pingStatsWriter = &b
+
+				go b.WriteLoop(ctx)
+			}
+		}
+
+		_, emulatorOK := os.LookupEnv("PUBSUB_EMULATOR_HOST")
+		if emulatorOK {
+			gcpProjectID = "local"
+
+			pingStatsWriter = &analytics.LocalPingStatsWriter{
+				Logger: logger,
+			}
+
+			level.Info(logger).Log("msg", "detected pubsub emulator")
+		}
+
+		// google pubsub forwarder
+		if gcpOK || emulatorOK {
+			topicName := "ping_stats"
+			subscriptionName := "ping_stats"
+
+			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
+			defer cancelFunc()
+
+			pubsubForwarder, err := analytics.NewPingStatsPubSubForwarder(pubsubCtx, pingStatsWriter, logger, analyticsMetrics, gcpProjectID, topicName, subscriptionName)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				os.Exit(1)
 			}
-			b := analytics.NewGoogleBigQueryWriter(bqClient, logger, analyticsMetrics, analyticsDataset, os.Getenv("GOOGLE_BIGQUERY_TABLE_ANALYTICS"))
-			writer = &b
 
-			go b.WriteLoop(ctx)
+			go pubsubForwarder.Forward(ctx)
 		}
 	}
 
-	_, emulatorOK := os.LookupEnv("PUBSUB_EMULATOR_HOST")
-	if emulatorOK {
-		gcpProjectID = "local"
+	var relayStatsWriter analytics.RelayStatsWriter = &analytics.NoOpRelayStatsWriter{}
+	{
+		// BigQuery
+		if gcpOK {
+			if analyticsDataset, ok := os.LookupEnv("GOOGLE_BIGQUERY_DATASET_ANALYTICS"); ok {
+				bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
+				if err != nil {
+					level.Error(logger).Log("err", err)
+					os.Exit(1)
+				}
+				b := analytics.NewGoogleBigQueryRelayStatsWriter(bqClient, logger, analyticsMetrics, analyticsDataset, os.Getenv("GOOGLE_BIGQUERY_TABLE_ANALYTICS"))
+				relayStatsWriter = &b
 
-		writer = &analytics.LocalBigQueryWriter{
-			Logger: logger,
+				go b.WriteLoop(ctx)
+			}
 		}
 
-		level.Info(logger).Log("msg", "detected pubsub emulator")
-	}
+		_, emulatorOK := os.LookupEnv("PUBSUB_EMULATOR_HOST")
+		if emulatorOK {
+			gcpProjectID = "local"
 
-	// google pubsub forwarder
-	if gcpOK || emulatorOK {
-		topicName := "ping_stats"
-		subscriptionName := "ping_stats"
+			relayStatsWriter = &analytics.LocalRelayStatsWriter{
+				Logger: logger,
+			}
 
-		pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
-		defer cancelFunc()
-
-		pubsubForwarder, err := analytics.NewPubSubForwarder(pubsubCtx, writer, logger, analyticsMetrics, gcpProjectID, topicName, subscriptionName)
-		if err != nil {
-			level.Error(logger).Log("err", err)
-			os.Exit(1)
+			level.Info(logger).Log("msg", "detected pubsub emulator")
 		}
 
-		go pubsubForwarder.Forward(ctx)
+		// google pubsub forwarder
+		if gcpOK || emulatorOK {
+			topicName := "relay_stats"
+			subscriptionName := "relay_stats"
+
+			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
+			defer cancelFunc()
+
+			pubsubForwarder, err := analytics.NewRelayStatsPubSubForwarder(pubsubCtx, relayStatsWriter, logger, analyticsMetrics, gcpProjectID, topicName, subscriptionName)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				os.Exit(1)
+			}
+
+			go pubsubForwarder.Forward(ctx)
+		}
 	}
 
 	// Setup the stats print routine
@@ -224,9 +272,12 @@ func main() {
 				fmt.Printf("-----------------------------\n")
 				fmt.Printf("%d goroutines\n", runtime.NumGoroutine())
 				fmt.Printf("%.2f mb allocated\n", memoryUsed())
-				fmt.Printf("%d analytics bq entries submitted\n", writer.NumSubmitted())
-				fmt.Printf("%d analytics bq entries queued\n", writer.NumQueued())
-				fmt.Printf("%d analytics bq entries flushed\n", writer.NumFlushed())
+				fmt.Printf("%d analytics ps entries submitted\n", pingStatsWriter.NumSubmitted())
+				fmt.Printf("%d analytics ps entries queued\n", pingStatsWriter.NumQueued())
+				fmt.Printf("%d analytics ps entries flushed\n", pingStatsWriter.NumFlushed())
+				fmt.Printf("%d analytics rs entries submitted\n", pingStatsWriter.NumSubmitted())
+				fmt.Printf("%d analytics rs entries queued\n", pingStatsWriter.NumQueued())
+				fmt.Printf("%d analytics rs entries flushed\n", pingStatsWriter.NumFlushed())
 				fmt.Printf("-----------------------------\n")
 
 				time.Sleep(time.Second * 10)

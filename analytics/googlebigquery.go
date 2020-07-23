@@ -14,35 +14,35 @@ const (
 	DefaultBigQueryChannelSize = 10000
 )
 
-type BigQueryWriter interface {
+type PingStatsWriter interface {
 	Write(ctx context.Context, entry *PingStatsEntry) error
 	NumSubmitted() uint64
 	NumQueued() uint64
 	NumFlushed() uint64
 }
 
-type NoOpBigQueryWriter struct {
+type NoOpPingStatsWriter struct {
 	submitted uint64
 }
 
-func (bq *NoOpBigQueryWriter) Write(ctx context.Context, entry *PingStatsEntry) error {
+func (bq *NoOpPingStatsWriter) Write(ctx context.Context, entry *PingStatsEntry) error {
 	atomic.AddUint64(&bq.submitted, 1)
 	return nil
 }
 
-func (writer *NoOpBigQueryWriter) NumSubmitted() uint64 {
+func (writer *NoOpPingStatsWriter) NumSubmitted() uint64 {
 	return atomic.LoadUint64(&writer.submitted)
 }
 
-func (writer *NoOpBigQueryWriter) NumQueued() uint64 {
+func (writer *NoOpPingStatsWriter) NumQueued() uint64 {
 	return 0
 }
 
-func (writer *NoOpBigQueryWriter) NumFlushed() uint64 {
+func (writer *NoOpPingStatsWriter) NumFlushed() uint64 {
 	return atomic.LoadUint64(&writer.submitted)
 }
 
-type GoogleBigQueryWriter struct {
+type GoogleBigQueryPingStatsWriter struct {
 	Metrics       *metrics.AnalyticsMetrics
 	Logger        log.Logger
 	TableInserter *bigquery.Inserter
@@ -53,8 +53,8 @@ type GoogleBigQueryWriter struct {
 	flushed   uint64
 }
 
-func NewGoogleBigQueryWriter(client *bigquery.Client, logger log.Logger, metrics *metrics.AnalyticsMetrics, dataset, table string) GoogleBigQueryWriter {
-	return GoogleBigQueryWriter{
+func NewGoogleBigQueryPingStatsWriter(client *bigquery.Client, logger log.Logger, metrics *metrics.AnalyticsMetrics, dataset, table string) GoogleBigQueryPingStatsWriter {
+	return GoogleBigQueryPingStatsWriter{
 		Metrics:       metrics,
 		Logger:        logger,
 		TableInserter: client.Dataset(dataset).Table(table).Inserter(),
@@ -62,13 +62,13 @@ func NewGoogleBigQueryWriter(client *bigquery.Client, logger log.Logger, metrics
 	}
 }
 
-func (bq *GoogleBigQueryWriter) Write(ctx context.Context, entry *PingStatsEntry) error {
+func (bq *GoogleBigQueryPingStatsWriter) Write(ctx context.Context, entry *PingStatsEntry) error {
 	atomic.AddUint64(&bq.submitted, 1)
 	bq.entries <- entry
 	return nil
 }
 
-func (bq *GoogleBigQueryWriter) WriteLoop(ctx context.Context) {
+func (bq *GoogleBigQueryPingStatsWriter) WriteLoop(ctx context.Context) {
 	for entry := range bq.entries {
 		if err := bq.TableInserter.Put(ctx, entry); err != nil {
 			level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)
@@ -79,14 +79,91 @@ func (bq *GoogleBigQueryWriter) WriteLoop(ctx context.Context) {
 	}
 }
 
-func (bq *GoogleBigQueryWriter) NumSubmitted() uint64 {
+func (bq *GoogleBigQueryPingStatsWriter) NumSubmitted() uint64 {
 	return atomic.LoadUint64(&bq.submitted)
 }
 
-func (bq *GoogleBigQueryWriter) NumQueued() uint64 {
+func (bq *GoogleBigQueryPingStatsWriter) NumQueued() uint64 {
 	return uint64(len(bq.entries))
 }
 
-func (bq *GoogleBigQueryWriter) NumFlushed() uint64 {
+func (bq *GoogleBigQueryPingStatsWriter) NumFlushed() uint64 {
+	return atomic.LoadUint64(&bq.flushed)
+}
+
+type RelayStatsWriter interface {
+	Write(ctx context.Context, entry *RelayStatsEntry) error
+	NumSubmitted() uint64
+	NumQueued() uint64
+	NumFlushed() uint64
+}
+
+type NoOpRelayStatsWriter struct {
+	submitted uint64
+}
+
+func (bq *NoOpRelayStatsWriter) Write(ctx context.Context, entry *RelayStatsEntry) error {
+	atomic.AddUint64(&bq.submitted, 1)
+	return nil
+}
+
+func (writer *NoOpRelayStatsWriter) NumSubmitted() uint64 {
+	return atomic.LoadUint64(&writer.submitted)
+}
+
+func (writer *NoOpRelayStatsWriter) NumQueued() uint64 {
+	return 0
+}
+
+func (writer *NoOpRelayStatsWriter) NumFlushed() uint64 {
+	return atomic.LoadUint64(&writer.submitted)
+}
+
+type GoogleBigQueryRelayStatsWriter struct {
+	Metrics       *metrics.AnalyticsMetrics
+	Logger        log.Logger
+	TableInserter *bigquery.Inserter
+
+	entries chan *RelayStatsEntry
+
+	submitted uint64
+	flushed   uint64
+}
+
+func NewGoogleBigQueryRelayStatsWriter(client *bigquery.Client, logger log.Logger, metrics *metrics.AnalyticsMetrics, dataset, table string) GoogleBigQueryRelayStatsWriter {
+	return GoogleBigQueryRelayStatsWriter{
+		Metrics:       metrics,
+		Logger:        logger,
+		TableInserter: client.Dataset(dataset).Table(table).Inserter(),
+		entries:       make(chan *RelayStatsEntry, DefaultBigQueryChannelSize),
+	}
+}
+
+func (bq *GoogleBigQueryRelayStatsWriter) Write(ctx context.Context, entry *RelayStatsEntry) error {
+	atomic.AddUint64(&bq.submitted, 1)
+	bq.entries <- entry
+	return nil
+}
+
+func (bq *GoogleBigQueryRelayStatsWriter) WriteLoop(ctx context.Context) {
+	for entry := range bq.entries {
+		if err := bq.TableInserter.Put(ctx, entry); err != nil {
+			level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)
+			bq.Metrics.RelayStatsErrorMetrics.AnalyticsWriteFailure.Add(1)
+		}
+		atomic.AddUint64(&bq.flushed, 1)
+		bq.Metrics.RelayStatsEntriesWritten.Add(1)
+	}
+}
+
+func (bq *GoogleBigQueryRelayStatsWriter) NumSubmitted() uint64 {
+	return atomic.LoadUint64(&bq.submitted)
+}
+
+func (bq *GoogleBigQueryRelayStatsWriter) NumQueued() uint64 {
+	return uint64(len(bq.entries))
+}
+
+func (bq *GoogleBigQueryRelayStatsWriter) NumFlushed() uint64 {
 	return atomic.LoadUint64(&bq.flushed)
 }

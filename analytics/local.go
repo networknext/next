@@ -9,13 +9,13 @@ import (
 	"github.com/go-kit/kit/log/level"
 )
 
-type LocalBigQueryWriter struct {
+type LocalPingStatsWriter struct {
 	Logger log.Logger
 
 	submitted uint64
 }
 
-func (writer *LocalBigQueryWriter) Write(ctx context.Context, entry *PingStatsEntry) error {
+func (writer *LocalPingStatsWriter) Write(ctx context.Context, entry *PingStatsEntry) error {
 	writer.submitted++
 
 	if writer.Logger == nil {
@@ -30,14 +30,47 @@ func (writer *LocalBigQueryWriter) Write(ctx context.Context, entry *PingStatsEn
 	return nil
 }
 
-func (local *LocalBigQueryWriter) NumSubmitted() uint64 {
+func (local *LocalPingStatsWriter) NumSubmitted() uint64 {
 	return local.submitted
 }
 
-func (local *LocalBigQueryWriter) NumQueued() uint64 {
+func (local *LocalPingStatsWriter) NumQueued() uint64 {
 	return 0
 }
 
-func (local *LocalBigQueryWriter) NumFlushed() uint64 {
+func (local *LocalPingStatsWriter) NumFlushed() uint64 {
+	return local.submitted
+}
+
+type LocalRelayStatsWriter struct {
+	Logger log.Logger
+
+	submitted uint64
+}
+
+func (writer *LocalRelayStatsWriter) Write(ctx context.Context, entry *RelayStatsEntry) error {
+	writer.submitted++
+
+	if writer.Logger == nil {
+		return errors.New("no logger for local big query writer, can't display entry")
+	}
+
+	level.Info(writer.Logger).Log("msg", "wrote analytics bigquery entry")
+
+	output := fmt.Sprintf("%#v", entry)
+	level.Debug(writer.Logger).Log("entry", output)
+
+	return nil
+}
+
+func (local *LocalRelayStatsWriter) NumSubmitted() uint64 {
+	return local.submitted
+}
+
+func (local *LocalRelayStatsWriter) NumQueued() uint64 {
+	return 0
+}
+
+func (local *LocalRelayStatsWriter) NumFlushed() uint64 {
 	return local.submitted
 }
