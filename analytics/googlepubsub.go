@@ -80,10 +80,9 @@ func NewGooglePubSubPublisher(ctx context.Context, statsMetrics *metrics.Analyti
 	client.Topic = client.PubsubClient.Topic(topicID)
 	client.Topic.PublishSettings = settings
 	client.ResultChan = make(chan *pubsub.PublishResult, 1)
+	publisher.client = client
 
 	go client.pubsubResults(ctx, publisher)
-
-	publisher.client = client
 
 	return publisher, nil
 }
@@ -131,6 +130,7 @@ func (client *GooglePubSubClient) pubsubResults(ctx context.Context, publisher *
 				atomic.AddUint64(&publisher.flushed, 1)
 			}
 		case <-ctx.Done():
+			level.Debug(publisher.Logger).Log("msg", "SHOULD NOT GET HERE")
 			return
 		}
 	}

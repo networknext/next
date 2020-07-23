@@ -435,13 +435,13 @@ func main() {
 	var publisher analytics.PubSubPublisher = &analytics.NoOpPubSubPublisher{}
 	_, emulatorOK = os.LookupEnv("PUBSUB_EMULATOR_HOST")
 	if gcpOK || emulatorOK {
-		pubsubCtx := ctx
 
+		pubsubCtx := ctx
 		if emulatorOK {
 			gcpProjectID = "local"
 
 			var cancelFunc context.CancelFunc
-			pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(5*time.Second))
+			pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(5*time.Minute))
 			defer cancelFunc()
 
 			level.Info(logger).Log("msg", "Detected pubsub emulator")
