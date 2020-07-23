@@ -1176,6 +1176,7 @@ func updatePortalData(portalPublisher pubsub.Publisher, packet *SessionUpdatePac
 		return 0, err
 	}
 
+	portalPublishTime := time.Now()
 	for i := 0; i < 1000; i++ {
 		go func() {
 			_, err := portalPublisher.Publish(pubsub.TopicPortalCruncherSessionData, bytes)
@@ -1185,7 +1186,8 @@ func updatePortalData(portalPublisher pubsub.Publisher, packet *SessionUpdatePac
 		}()
 	}
 
-	return 0, err
+	fmt.Printf("portal publish duration (ms): %v\n", time.Since(portalPublishTime).Milliseconds())
+	return 0, nil
 }
 
 func addRouteDecisionMetric(d routing.Decision, m *metrics.SessionMetrics) {
