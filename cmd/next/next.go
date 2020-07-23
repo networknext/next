@@ -446,8 +446,6 @@ func main() {
 	var relayIDSigned bool
 	relaysfs.BoolVar(&relayIDSigned, "signed", false, "display relay IDs as signed integers")
 
-	datacentersfs := flag.NewFlagSet("datacenter filters", flag.ExitOnError)
-
 	var authCommand = &ffcli.Command{
 		Name:       "auth",
 		ShortUsage: "next auth",
