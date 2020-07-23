@@ -356,8 +356,7 @@ func main() {
 	}
 
 	statsdb := routing.NewStatsDatabase()
-	var costMatrix routing.CostMatrix
-
+	costMatrix := &routing.CostMatrix{}
 	routeMatrix := &routing.RouteMatrix{}
 	var routeMatrixMutex sync.RWMutex
 
@@ -437,8 +436,10 @@ func main() {
 
 		for {
 
+			costMatrixNew := routing.CostMatrix{}
+
 			costMatrixDurationStart := time.Now()
-			err := statsdb.GetCostMatrix(&costMatrix, redisClientRelays, float32(maxJitter), float32(maxPacketLoss))
+			err := statsdb.GetCostMatrix(&costMatrixNew, redisClientRelays, float32(maxJitter), float32(maxPacketLoss))
 			costMatrixDurationSince := time.Since(costMatrixDurationStart)
 
 			if costMatrixDurationSince.Seconds() > 1.0 {
@@ -446,11 +447,15 @@ func main() {
 				longCostMatrixUpdates++
 			}
 
-			if err != nil {
+			// todo: we need to handle this better in future, but just hold the previous cost matrix for the moment on error
+			if err == nil {
 				level.Warn(logger).Log("matrix", "cost", "op", "generate", "err", err)
-				costMatrix = routing.CostMatrix{}
+				costMatrix = &costMatrixNew
+			} else {
+				// todo: metric on this ryan
+				fmt.Printf("cost matrix fail\n")
 			}
-
+			
 			costMatrixBytes = len(costMatrix.GetResponseData())
 
 			newCostMatrixGenMetrics.DurationGauge.Set(float64(costMatrixDurationSince.Milliseconds()))
@@ -495,6 +500,7 @@ func main() {
 			err = costMatrix.WriteResponseData()
 			if err != nil {
 				level.Error(logger).Log("matrix", "cost", "msg", "failed to write cost matrix response data", "err", err)
+				continue // Don't store the new route matrix if we fail to write cost matrix data
 			}
 
 			// Write the route matrix to a buffer and serve that instead
@@ -638,7 +644,7 @@ func main() {
 	router.HandleFunc("/relay_init", transport.RelayInitHandlerFunc(logger, &commonInitParams)).Methods("POST")
 	router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(logger, relayslogger, &commonUpdateParams)).Methods("POST")
 	router.HandleFunc("/relays", transport.RelayHandlerFunc(logger, relayslogger, &commonHandlerParams)).Methods("POST")
-	router.Handle("/cost_matrix", &costMatrix).Methods("GET")
+	router.Handle("/cost_matrix", costMatrix).Methods("GET")
 	router.HandleFunc("/route_matrix", serveRouteMatrixFunc).Methods("GET")
 	router.Handle("/debug/vars", expvar.Handler())
 	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(redisClientRelays, getRouteMatrixFunc, statsdb, "local", "local", maxJitter))
