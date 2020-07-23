@@ -15,7 +15,7 @@ const (
 )
 
 type BigQueryWriter interface {
-	Write(ctx context.Context, entry *StatsEntry) error
+	Write(ctx context.Context, entry *PingStatsEntry) error
 	NumSubmitted() uint64
 	NumQueued() uint64
 	NumFlushed() uint64
@@ -25,7 +25,7 @@ type NoOpBigQueryWriter struct {
 	submitted uint64
 }
 
-func (bq *NoOpBigQueryWriter) Write(ctx context.Context, entry *StatsEntry) error {
+func (bq *NoOpBigQueryWriter) Write(ctx context.Context, entry *PingStatsEntry) error {
 	atomic.AddUint64(&bq.submitted, 1)
 	return nil
 }
@@ -47,7 +47,7 @@ type GoogleBigQueryWriter struct {
 	Logger        log.Logger
 	TableInserter *bigquery.Inserter
 
-	entries chan *StatsEntry
+	entries chan *PingStatsEntry
 
 	submitted uint64
 	flushed   uint64
@@ -58,11 +58,11 @@ func NewGoogleBigQueryWriter(client *bigquery.Client, logger log.Logger, metrics
 		Metrics:       metrics,
 		Logger:        logger,
 		TableInserter: client.Dataset(dataset).Table(table).Inserter(),
-		entries:       make(chan *StatsEntry, DefaultBigQueryChannelSize),
+		entries:       make(chan *PingStatsEntry, DefaultBigQueryChannelSize),
 	}
 }
 
-func (bq *GoogleBigQueryWriter) Write(ctx context.Context, entry *StatsEntry) error {
+func (bq *GoogleBigQueryWriter) Write(ctx context.Context, entry *PingStatsEntry) error {
 	atomic.AddUint64(&bq.submitted, 1)
 	bq.entries <- entry
 	return nil
@@ -72,10 +72,10 @@ func (bq *GoogleBigQueryWriter) WriteLoop(ctx context.Context) {
 	for entry := range bq.entries {
 		if err := bq.TableInserter.Put(ctx, entry); err != nil {
 			level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)
-			bq.Metrics.ErrorMetrics.AnalyticsWriteFailure.Add(1)
+			bq.Metrics.PingStatsErrorMetrics.AnalyticsWriteFailure.Add(1)
 		}
 		atomic.AddUint64(&bq.flushed, 1)
-		bq.Metrics.AnalyticsEntriesWritten.Add(1)
+		bq.Metrics.PingStatsEntriesWritten.Add(1)
 	}
 }
 

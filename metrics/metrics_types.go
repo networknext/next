@@ -433,9 +433,13 @@ var EmptyBillingErrorMetrics BillingErrorMetrics = BillingErrorMetrics{
 }
 
 type AnalyticsMetrics struct {
-	AnalyticsEntriesReceived Counter
-	AnalyticsEntriesWritten  Counter
-	ErrorMetrics             AnalyticsErrorMetrics
+	PingStatsEntriesReceived Counter
+	PingStatsEntriesWritten  Counter
+	PingStatsErrorMetrics    AnalyticsErrorMetrics
+
+	RelayStatsEntriesReceived Counter
+	RelayStatsEntriesWritten  Counter
+	RelayStatsErrorMetrics    AnalyticsErrorMetrics
 }
 
 type AnalyticsErrorMetrics struct {
@@ -451,9 +455,9 @@ var EmptyAnalyticsErrorMetrics AnalyticsErrorMetrics = AnalyticsErrorMetrics{
 }
 
 var EmptyAnalyticsMetrics AnalyticsMetrics = AnalyticsMetrics{
-	AnalyticsEntriesReceived: &EmptyCounter{},
-	AnalyticsEntriesWritten:  &EmptyCounter{},
-	ErrorMetrics:             EmptyAnalyticsErrorMetrics,
+	PingStatsEntriesReceived: &EmptyCounter{},
+	PingStatsEntriesWritten:  &EmptyCounter{},
+	PingStatsErrorMetrics:    EmptyAnalyticsErrorMetrics,
 }
 
 func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMetrics, error) {
@@ -1482,50 +1486,100 @@ func NewAnalyticsMetrics(ctx context.Context, metricsHandler Handler) (*Analytic
 	analyticsMetrics := AnalyticsMetrics{}
 	var err error
 
-	analyticsMetrics.AnalyticsEntriesReceived, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	analyticsMetrics.PingStatsEntriesReceived, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Relay Stat DB Entries Received",
 		ServiceName: "analytics",
-		ID:          "analytics.entries",
+		ID:          "analytics.ping_stats.entries",
 		Unit:        "entries",
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	analyticsMetrics.AnalyticsEntriesWritten, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	analyticsMetrics.PingStatsEntriesWritten, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Relay Stat DB Entries Written",
 		ServiceName: "analytics",
-		ID:          "analytics.entries.written",
+		ID:          "analytics.ping_stats.entries.written",
 		Unit:        "entries",
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	analyticsMetrics.ErrorMetrics.AnalyticsPublishFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	analyticsMetrics.PingStatsErrorMetrics.AnalyticsPublishFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Relay Stat DB Publish Failure",
 		ServiceName: "analytics",
-		ID:          "analytics.error.publish_failure",
+		ID:          "analytics.ping_stats.error.publish_failure",
 		Unit:        "errors",
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	analyticsMetrics.ErrorMetrics.AnalyticsReadFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	analyticsMetrics.PingStatsErrorMetrics.AnalyticsReadFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Relay Stat DB Read Failure",
 		ServiceName: "analytics",
-		ID:          "analytics.error.read_failure",
+		ID:          "analytics.ping_stats.error.read_failure",
 		Unit:        "errors",
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	analyticsMetrics.ErrorMetrics.AnalyticsWriteFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	analyticsMetrics.PingStatsErrorMetrics.AnalyticsWriteFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Relay Stat DB Write Failure",
 		ServiceName: "analytics",
-		ID:          "analytics.error.write_failure",
+		ID:          "analytics.ping_stats.error.write_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	analyticsMetrics.RelayStatsEntriesReceived, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Stat DB Entries Received",
+		ServiceName: "analytics",
+		ID:          "analytics.relay_stats.entries",
+		Unit:        "entries",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	analyticsMetrics.RelayStatsEntriesWritten, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Stat DB Entries Written",
+		ServiceName: "analytics",
+		ID:          "analytics.relay_stats.entries.written",
+		Unit:        "entries",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	analyticsMetrics.RelayStatsErrorMetrics.AnalyticsPublishFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Stat DB Publish Failure",
+		ServiceName: "analytics",
+		ID:          "analytics.relay_stats.error.publish_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	analyticsMetrics.RelayStatsErrorMetrics.AnalyticsReadFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Stat DB Read Failure",
+		ServiceName: "analytics",
+		ID:          "analytics.relay_stats.error.read_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	analyticsMetrics.RelayStatsErrorMetrics.AnalyticsWriteFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Stat DB Write Failure",
+		ServiceName: "analytics",
+		ID:          "analytics.relay_stats.error.write_failure",
 		Unit:        "errors",
 	})
 	if err != nil {

@@ -25,7 +25,7 @@ const (
 	// HashKeyAllRelays ...
 	HashKeyAllRelays = "ALL_RELAYS"
 
-	// How frequently we need to recieve updates from relays to keep them in redis
+	// How frequently we need to receive updates from relays to keep them in redis
 	// 10 seconds + a 1 second grace period
 	RelayTimeout = 11 * time.Second
 
@@ -115,6 +115,9 @@ type Relay struct {
 
 	MaxSessions uint32 `json:"max_sessions"`
 
+	CPUUsage float32 `json:"cpu_usage"`
+	RAMUsage float32 `json:"ram_usage"`
+
 	UpdateKey   []byte `json:"update_key"`
 	FirestoreID string `json:"firestore_id"`
 }
@@ -147,7 +150,9 @@ func (r *Relay) Size() uint64 {
 		8 + // Traffic Stats Session Count
 		8 + // Traffic Stats Bytes Sent
 		8 + // Traffic Stats Bytes Received
-		4, // Max Sessions
+		4 + // Max Sessions
+		4 + // CPU usage
+		4, // RAM usage
 	)
 }
 
@@ -270,6 +275,14 @@ func (r *Relay) UnmarshalBinary(data []byte) error {
 		return errors.New("failed to unmarshal relay max sessions")
 	}
 
+	if !encoding.ReadFloat32(data, &index, &r.CPUUsage) {
+		return errors.New("failed to unmarshal relay cpu usage")
+	}
+
+	if !encoding.ReadFloat32(data, &index, &r.RAMUsage) {
+		return errors.New("failed to unmarshal relay ram usage")
+	}
+
 	return nil
 }
 
@@ -304,6 +317,8 @@ func (r Relay) MarshalBinary() (data []byte, err error) {
 	encoding.WriteUint64(data, &index, r.TrafficStats.BytesSent)
 	encoding.WriteUint64(data, &index, r.TrafficStats.BytesReceived)
 	encoding.WriteUint32(data, &index, r.MaxSessions)
+	encoding.WriteFloat32(data, &index, r.CPUUsage)
+	encoding.WriteFloat32(data, &index, r.RAMUsage)
 
 	return data, err
 }
@@ -318,6 +333,8 @@ type RelayCacheEntry struct {
 	LastUpdateTime time.Time
 	TrafficStats   RelayTrafficStats
 	MaxSessions    uint32
+	CPUUsage       float32
+	RAMUsage       float32
 	Version        string
 }
 

@@ -15,7 +15,7 @@ type LocalBigQueryWriter struct {
 	submitted uint64
 }
 
-func (writer *LocalBigQueryWriter) Write(ctx context.Context, entry *StatsEntry) error {
+func (writer *LocalBigQueryWriter) Write(ctx context.Context, entry *PingStatsEntry) error {
 	writer.submitted++
 
 	if writer.Logger == nil {

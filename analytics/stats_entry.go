@@ -9,7 +9,17 @@ const (
 	StatsEntryVersion = uint8(1)
 )
 
-type StatsEntry struct {
+type RelayStatsEntry struct {
+	Timestamp uint64
+
+	ID          uint64
+	NumSessions uint32
+	CpuUsage    float32
+	Tx          uint64
+	Rx          uint64
+}
+
+type PingStatsEntry struct {
 	Timestamp uint64
 
 	RelayA     uint64
@@ -19,7 +29,7 @@ type StatsEntry struct {
 	PacketLoss float32
 }
 
-func WriteStatsEntries(entries []StatsEntry) []byte {
+func WriteStatsEntries(entries []PingStatsEntry) []byte {
 	length := 1 + 8 + len(entries)*(8+8+4+4+4)
 	data := make([]byte, length)
 
@@ -39,7 +49,7 @@ func WriteStatsEntries(entries []StatsEntry) []byte {
 	return data
 }
 
-func ReadStatsEntries(data []byte) ([]StatsEntry, bool) {
+func ReadStatsEntries(data []byte) ([]PingStatsEntry, bool) {
 	index := 0
 
 	var version uint8
@@ -52,7 +62,7 @@ func ReadStatsEntries(data []byte) ([]StatsEntry, bool) {
 		return nil, false
 	}
 
-	entries := make([]StatsEntry, length)
+	entries := make([]PingStatsEntry, length)
 
 	for i := range entries {
 		entry := &entries[i]
@@ -83,7 +93,7 @@ func ReadStatsEntries(data []byte) ([]StatsEntry, bool) {
 
 // Save implements the bigquery.ValueSaver interface for an Entry
 // so it can be used in Put()
-func (e *StatsEntry) Save() (map[string]bigquery.Value, string, error) {
+func (e *PingStatsEntry) Save() (map[string]bigquery.Value, string, error) {
 	bqEntry := make(map[string]bigquery.Value)
 
 	bqEntry["timestamp"] = int(e.Timestamp)

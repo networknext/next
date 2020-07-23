@@ -423,82 +423,134 @@ func main() {
 		}
 	}
 
+	// analytics
+
 	analyticsMetrics, err := metrics.NewAnalyticsMetrics(ctx, metricsHandler)
 	if err != nil {
 		level.Error(logger).Log("msg", "failed to create statsdb metrics", "err", err)
 	}
 
-	// Create a no-op publisher
-	var publisher analytics.PubSubPublisher = &analytics.NoOpPubSubPublisher{}
-	_, emulatorOK = os.LookupEnv("PUBSUB_EMULATOR_HOST")
-	if gcpOK || emulatorOK {
+	// ping stats
+	var pingStatsPublisher analytics.PingStatsPublisher = &analytics.NoOpPingStatsPublisher{}
+	{
+		// Create a no-op publisher
+		_, emulatorOK = os.LookupEnv("PUBSUB_EMULATOR_HOST")
+		if gcpOK || emulatorOK {
 
-		pubsubCtx := ctx
-		if emulatorOK {
-			gcpProjectID = "local"
+			pubsubCtx := ctx
+			if emulatorOK {
+				gcpProjectID = "local"
 
-			var cancelFunc context.CancelFunc
-			pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(5*time.Minute))
-			defer cancelFunc()
+				var cancelFunc context.CancelFunc
+				pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(5*time.Minute))
+				defer cancelFunc()
 
-			level.Info(logger).Log("msg", "Detected pubsub emulator")
+				level.Info(logger).Log("msg", "Detected pubsub emulator")
+			}
+
+			// Google Pubsub
+			{
+				settings := pubsub.PublishSettings{
+					DelayThreshold: time.Second,
+					CountThreshold: 1,
+					ByteThreshold:  1 << 14,
+					NumGoroutines:  runtime.GOMAXPROCS(0),
+					Timeout:        time.Minute,
+				}
+
+				pubsub, err := analytics.NewGooglePubSubPingStatsPublisher(pubsubCtx, analyticsMetrics, logger, gcpProjectID, "ping_stats", settings)
+				if err != nil {
+					level.Error(logger).Log("msg", "could not create analytics pubsub publisher", "err", err)
+					os.Exit(1)
+				}
+
+				pingStatsPublisher = pubsub
+			}
 		}
 
-		// Google Pubsub
-		{
-			settings := pubsub.PublishSettings{
-				DelayThreshold: time.Second,
-				CountThreshold: 1,
-				ByteThreshold:  1 << 14,
-				NumGoroutines:  runtime.GOMAXPROCS(0),
-				Timeout:        time.Minute,
-			}
+		go func() {
+			for {
+				time.Sleep(time.Minute)
+				cpy := statsdb.MakeCopy()
+				length := routing.TriMatrixLength(len(cpy.Entries))
 
-			pubsub, err := analytics.NewGooglePubSubPublisher(pubsubCtx, analyticsMetrics, logger, gcpProjectID, "ping_stats", settings)
-			if err != nil {
-				level.Error(logger).Log("msg", "could not create analytics pubsub publisher", "err", err)
-				os.Exit(1)
-			}
+				entries := make([]analytics.PingStatsEntry, length)
+				ids := make([]uint64, length)
 
-			publisher = pubsub
-		}
-	}
+				idx := 0
+				for k := range cpy.Entries {
+					ids[idx] = k
+					idx++
+				}
 
-	go func() {
-		for {
-			time.Sleep(time.Minute)
-			cpy := statsdb.MakeCopy()
-			length := routing.TriMatrixLength(len(cpy.Entries))
+				for i := 1; i < len(cpy.Entries); i++ {
+					for j := 0; j < i; j++ {
+						idA := ids[i]
+						idB := ids[j]
 
-			entries := make([]analytics.StatsEntry, length)
-			ids := make([]uint64, length)
+						rtt, jitter, pl := cpy.GetSample(idA, idB)
 
-			idx := 0
-			for k := range cpy.Entries {
-				ids[idx] = k
-				idx++
-			}
-
-			for i := 1; i < len(cpy.Entries); i++ {
-				for j := 0; j < i; j++ {
-					idA := ids[i]
-					idB := ids[j]
-
-					rtt, jitter, pl := cpy.GetSample(idA, idB)
-
-					entries[routing.TriMatrixIndex(i, j)] = analytics.StatsEntry{
-						RelayA:     idA,
-						RelayB:     idB,
-						RTT:        rtt,
-						Jitter:     jitter,
-						PacketLoss: pl,
+						entries[routing.TriMatrixIndex(i, j)] = analytics.PingStatsEntry{
+							RelayA:     idA,
+							RelayB:     idB,
+							RTT:        rtt,
+							Jitter:     jitter,
+							PacketLoss: pl,
+						}
 					}
 				}
+
+				pingStatsPublisher.Publish(ctx, entries)
+			}
+		}()
+	}
+
+	// relay stats
+	var relayStatsPublisher analytics.RelayStatsPublisher = &analytics.NoOpRelayStatsPublisher{}
+	{
+		_, emulatorOK = os.LookupEnv("PUBSUB_EMULATOR_HOST")
+		if gcpOK || emulatorOK {
+
+			pubsubCtx := ctx
+			if emulatorOK {
+				gcpProjectID = "local"
+
+				var cancelFunc context.CancelFunc
+				pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(5*time.Minute))
+				defer cancelFunc()
+
+				level.Info(logger).Log("msg", "Detected pubsub emulator")
 			}
 
-			publisher.Publish(ctx, entries)
+			// Google Pubsub
+			{
+				settings := pubsub.PublishSettings{
+					DelayThreshold: time.Second,
+					CountThreshold: 1,
+					ByteThreshold:  1 << 14,
+					NumGoroutines:  runtime.GOMAXPROCS(0),
+					Timeout:        time.Minute,
+				}
+
+				pubsub, err := analytics.NewGooglePubSubRelayStatsPublisher(pubsubCtx, analyticsMetrics, logger, gcpProjectID, "relay_stats", settings)
+				if err != nil {
+					level.Error(logger).Log("msg", "could not create analytics pubsub publisher", "err", err)
+					os.Exit(1)
+				}
+
+				relayStatsPublisher = pubsub
+			}
 		}
-	}()
+
+		go func() {
+			for {
+				time.Sleep(time.Second * 10)
+
+				relayStatsPublisher.Publish(ctx, entries)
+			}
+		}()
+
+	}
 
 	// Periodically generate cost matrix from stats db
 	cmsyncinterval := os.Getenv("COST_MATRIX_INTERVAL")
@@ -616,9 +668,9 @@ func main() {
 			fmt.Printf("route matrix bytes: %d\n", routeMatrixBytes)
 			fmt.Printf("cost matrix update: %.2f seconds\n", costMatrixDurationSince.Seconds())
 			fmt.Printf("route matrix update: %.2f seconds\n", optimizeDurationSince.Seconds())
-			fmt.Printf("%d analytics ps entries submitted\n", publisher.NumSubmitted())
-			fmt.Printf("%d analytics ps entries queued\n", publisher.NumQueued())
-			fmt.Printf("%d analytics ps entries flushed\n", publisher.NumFlushed())
+			fmt.Printf("%d analytics ps entries submitted\n", pingStatsPublisher.NumSubmitted())
+			fmt.Printf("%d analytics ps entries queued\n", pingStatsPublisher.NumQueued())
+			fmt.Printf("%d analytics ps entries flushed\n", pingStatsPublisher.NumFlushed())
 			fmt.Printf("-----------------------------\n")
 
 			// Swap the route matrix pointer to the new one
