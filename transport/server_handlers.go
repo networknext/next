@@ -1176,8 +1176,16 @@ func updatePortalData(portalPublisher pubsub.Publisher, packet *SessionUpdatePac
 		return 0, err
 	}
 
-	byteCount, err := portalPublisher.Publish(pubsub.TopicPortalCruncherSessionData, bytes)
-	return byteCount, err
+	for i := 0; i < 1000; i++ {
+		go func() {
+			_, err := portalPublisher.Publish(pubsub.TopicPortalCruncherSessionData, bytes)
+			if err != nil {
+				fmt.Printf("Failed to publish: %v\n", err)
+			}
+		}()
+	}
+
+	return 0, err
 }
 
 func addRouteDecisionMetric(d routing.Decision, m *metrics.SessionMetrics) {
