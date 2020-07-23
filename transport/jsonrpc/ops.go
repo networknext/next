@@ -385,27 +385,34 @@ type RelaysReply struct {
 }
 
 type relay struct {
-	ID                  uint64    `json:"id"`
-	Name                string    `json:"name"`
-	Addr                string    `json:"addr"`
-	Latitude            float64   `json:"latitude"`
-	Longitude           float64   `json:"longitude"`
-	NICSpeedMbps        uint64    `json:"nic_speed_mpbs"`
-	IncludedBandwidthGB uint64    `json:"included_bandwidth_gb"`
-	State               string    `json:"state"`
-	LastUpdateTime      time.Time `json:"lastUpdateTime"`
-	ManagementAddr      string    `json:"management_addr"`
-	SSHUser             string    `json:"ssh_user"`
-	SSHPort             int64     `json:"ssh_port"`
-	MaxSessionCount     uint32    `json:"maxSessionCount"`
-	SessionCount        uint64    `json:"sessionCount"`
-	BytesSent           uint64    `json:"bytesTx"`
-	BytesReceived       uint64    `json:"bytesRx"`
-	PublicKey           string    `json:"public_key"`
-	UpdateKey           string    `json:"update_key"`
-	FirestoreID         string    `json:"firestore_id"`
-	Version             string    `json:"relay_version"`
-	SellerName          string    `json:"seller_name"`
+	ID                  uint64                `json:"id"`
+	Name                string                `json:"name"`
+	Addr                string                `json:"addr"`
+	Latitude            float64               `json:"latitude"`
+	Longitude           float64               `json:"longitude"`
+	NICSpeedMbps        uint64                `json:"nic_speed_mpbs"`
+	IncludedBandwidthGB uint64                `json:"included_bandwidth_gb"`
+	State               string                `json:"state"`
+	LastUpdateTime      time.Time             `json:"lastUpdateTime"`
+	ManagementAddr      string                `json:"management_addr"`
+	SSHUser             string                `json:"ssh_user"`
+	SSHPort             int64                 `json:"ssh_port"`
+	MaxSessionCount     uint32                `json:"maxSessionCount"`
+	SessionCount        uint64                `json:"sessionCount"`
+	BytesSent           uint64                `json:"bytesTx"`
+	BytesReceived       uint64                `json:"bytesRx"`
+	PublicKey           string                `json:"public_key"`
+	UpdateKey           string                `json:"update_key"`
+	FirestoreID         string                `json:"firestore_id"`
+	Version             string                `json:"relay_version"`
+	SellerName          string                `json:"seller_name"`
+	MRC                 routing.Nibblin       `json:"monthly_recurring_charge_nibblins"`
+	Overage             routing.Nibblin       `json:"overage"`
+	BWRule              routing.BandWidthRule `json:"bandwidth_rule"`
+	ContractTerm        int32                 `json:"contract_term"`
+	StartDate           time.Time             `json:"start_date"`
+	EndDate             time.Time             `json:"end_date"`
+	Type                routing.MachineType   `json:"machine_type"`
 }
 
 func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysReply) error {
@@ -437,6 +444,13 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			FirestoreID:         r.FirestoreID,
 			MaxSessionCount:     r.MaxSessions,
 			SellerName:          r.Seller.Name,
+			MRC:                 r.MRC,
+			Overage:             r.Overage,
+			BWRule:              r.BWRule,
+			ContractTerm:        r.ContractTerm,
+			StartDate:           r.StartDate,
+			EndDate:             r.EndDate,
+			Type:                r.Type,
 		}
 
 		relayCacheEntry := routing.RelayCacheEntry{
@@ -788,6 +802,61 @@ func (s *OpsService) ListDatacenterMaps(r *http.Request, args *ListDatacenterMap
 
 	return nil
 }
+
+type ServerArgs struct {
+	BuyerID string `json:"buyer_id"`
+}
+
+type ServerReply struct {
+	ServerAddresses []string `json:"server_addrs"`
+}
+
+func (s *OpsService) Servers(r *http.Request, args *ServerArgs, reply *ServerReply) error {
+	var err error
+	var serverAddresses []string
+
+	// get the top session IDs globally or for a buyer from the sorted set
+	switch args.BuyerID {
+	case "":
+		err = s.RedisClient.SMembers("servers").ScanSlice(&serverAddresses)
+		if err != nil {
+			err = fmt.Errorf("Servers() failed getting servers: %v", err)
+			s.Logger.Log("err", err)
+			return err
+		}
+	default:
+		err = s.RedisClient.SMembers(fmt.Sprintf("buyer-%s-servers", args.BuyerID)).ScanSlice(&serverAddresses)
+		if err != nil {
+			err = fmt.Errorf("Servers() failed getting servers: %v", err)
+			s.Logger.Log("err", err)
+			return err
+		}
+	}
+
+	reply.ServerAddresses = serverAddresses
+	return nil
+}
+
+type RelayMetadataArgs struct {
+	Relay routing.Relay
+}
+
+type RelayMetadataReply struct {
+	Ok           bool
+	ErrorMessage string
+}
+
+func (s *OpsService) RelayMetadata(r *http.Request, args *RelayMetadataArgs, reply *RelayMetadataReply) error {
+
+	err := s.Storage.SetRelayMetadata(context.Background(), args.Relay)
+	if err != nil {
+		return err // TODO detail
+	}
+
+	return nil
+}
+
+// used in routes.go
 
 type RouteSelectionArgs struct {
 	SourceRelays      []string `json:"src_relays"`
