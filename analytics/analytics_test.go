@@ -43,19 +43,19 @@ func TestGooglePubSubPublisher(t *testing.T) {
 	})
 }
 
-func TestLocalPubSubPublisher(t *testing.T) {
+func TestLocalBigQueryWriter(t *testing.T) {
 	t.Run("no logger", func(t *testing.T) {
-		publisher := analytics.LocalPubSubPublisher{}
-		err := publisher.Publish(context.Background(), &analytics.StatsEntry{})
-		assert.EqualError(t, err, "no logger for local pubsub publisher, can't display entry")
+		writer := analytics.LocalBigQueryWriter{}
+		err := writer.Write(context.Background(), &analytics.StatsEntry{})
+		assert.EqualError(t, err, "no logger for local big query writer, can't display entry")
 	})
 
 	t.Run("success", func(t *testing.T) {
-		publisher := analytics.LocalPubSubPublisher{
+		writer := analytics.LocalBigQueryWriter{
 			Logger: log.NewNopLogger(),
 		}
 
-		err := publisher.Publish(context.Background(), &analytics.StatsEntry{})
+		err := writer.Write(context.Background(), &analytics.StatsEntry{})
 		assert.NoError(t, err)
 	})
 }

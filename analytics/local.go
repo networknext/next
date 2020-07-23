@@ -9,27 +9,6 @@ import (
 	"github.com/go-kit/kit/log/level"
 )
 
-type LocalPubSubPublisher struct {
-	Logger log.Logger
-
-	written uint64
-}
-
-func (publisher *LocalPubSubPublisher) Publish(ctx context.Context, entry *StatsEntry) error {
-	publisher.written++
-
-	if publisher.Logger == nil {
-		return errors.New("no logger for local pubsub publisher, can't display entry")
-	}
-
-	level.Info(publisher.Logger).Log("msg", "wrote analytics pubsub entry")
-
-	output := fmt.Sprintf("%#v", entry)
-	level.Debug(publisher.Logger).Log("entry", output)
-
-	return nil
-}
-
 type LocalBigQueryWriter struct {
 	Logger log.Logger
 
