@@ -71,8 +71,8 @@ func main() {
 	}
 
 	if enableSDLogging {
-		if gcpProjectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
-			loggingClient, err := gcplogging.NewClient(ctx, gcpProjectID)
+		if projectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
+			loggingClient, err := gcplogging.NewClient(ctx, projectID)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				os.Exit(1)
