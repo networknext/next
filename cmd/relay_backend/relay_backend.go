@@ -70,11 +70,8 @@ func main() {
 		}
 	}
 
-	gcpOK := false
-	var gcpProjectID string
-
 	if enableSDLogging {
-		if gcpProjectID, gcpOK = os.LookupEnv("GOOGLE_PROJECT_ID"); gcpOK {
+		if gcpProjectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
 			loggingClient, err := gcplogging.NewClient(ctx, gcpProjectID)
 			if err != nil {
 				level.Error(logger).Log("err", err)
@@ -169,7 +166,7 @@ func main() {
 		LocalMode: true,
 	}
 
-	gcpProjectID, gcpOK = os.LookupEnv("GOOGLE_PROJECT_ID")
+	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
 	_, emulatorOK := os.LookupEnv("FIRESTORE_EMULATOR_HOST")
 	if emulatorOK {
 		gcpProjectID = "local"
