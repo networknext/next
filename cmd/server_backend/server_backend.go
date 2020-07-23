@@ -639,8 +639,6 @@ func main() {
 	// Start portal cruncher publisher
 	var portalPublisher pubsub.Publisher
 	{
-		// todo: disabled
-		/*
 		portalCruncherHost, ok := os.LookupEnv("PORTAL_CRUNCHER_HOST")
 		if !ok {
 			level.Error(logger).Log("err", "env var PORTAL_CRUNCHER_HOST must be set")
@@ -654,7 +652,6 @@ func main() {
 		}
 
 		portalPublisher = portalCruncherPublisher
-		*/
 	}
 
 	// Start UDP server

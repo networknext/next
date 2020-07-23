@@ -3,13 +3,15 @@ package transport
 import (
 	"bytes"
 	"context"
-	// "encoding/binary"
+	"encoding/binary"
+	"hash/fnv"
+
 	"errors"
 	"fmt"
 	"io"
 	"math/rand"
 	"net"
-	// "runtime"
+
 	"sync"
 	"sync/atomic"
 	"time"
@@ -22,7 +24,6 @@ import (
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport/pubsub"
-
 	// fnv "hash/fnv"
 )
 
@@ -1006,8 +1007,8 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 	// shortly become per-customer, thus there is really no global concept of "multiplay.losangeles", for example.
 
 	// todo: temporary
-	// datacenterName := serverDataReadOnly.datacenter.Name
-	// datacenterAlias := serverDataReadOnly.datacenter.AliasName
+	datacenterName := serverDataReadOnly.datacenter.Name
+	datacenterAlias := serverDataReadOnly.datacenter.AliasName
 
 	// Send a massive amount of data to the portal via redis.
 	// This drives all the stuff you see in the portal, including the map and top sessions list.
@@ -1016,14 +1017,14 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 	isMultipath := routing.IsMultipath(prevRouteDecision)
 
 	// todo: commented out until we can figure out what's going on with zeromq
-	// portalDataBytes, err := updatePortalData(params.PortalPublisher, packet, lastNextStats, lastDirectStats, routeRelays,
-	// 	packet.OnNetworkNext, datacenterName, location, nearRelays, timeNow, isMultipath, datacenterAlias)
-	// if err != nil {
-	// 	level.Error(params.Logger).Log("msg", "could not update portal data", "err", err)
-	// 	params.Metrics.ErrorMetrics.UpdatePortalFailure.Add(1)
-	// }
+	portalDataBytes, err := updatePortalData(params.PortalPublisher, packet, lastNextStats, lastDirectStats, routeRelays,
+		packet.OnNetworkNext, datacenterName, location, nearRelays, timeNow, isMultipath, datacenterAlias)
+	if err != nil {
+		level.Error(params.Logger).Log("msg", "could not update portal data", "err", err)
+		params.Metrics.ErrorMetrics.UpdatePortalFailure.Add(1)
+	}
 
-	// level.Debug(params.Logger).Log("msg", fmt.Sprintf("published %d bytes to portal cruncher", portalDataBytes))
+	level.Debug(params.Logger).Log("msg", fmt.Sprintf("published %d bytes to portal cruncher", portalDataBytes))
 
 	// Send billing specific data to the billing service via google pubsub
 	// The billing service subscribes to this topic, and writes the billing data to bigquery.
@@ -1075,7 +1076,6 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 	}
 }
 
-/*
 func updatePortalData(portalPublisher pubsub.Publisher, packet *SessionUpdatePacket, lastNNStats *routing.Stats, lastDirectStats *routing.Stats, relayHops []routing.Relay,
 	onNetworkNext bool, datacenterName string, location *routing.Location, nearRelays []routing.Relay, sessionTime time.Time, isMultiPath bool, datacenterAlias string) (int, error) {
 
@@ -1148,7 +1148,6 @@ func updatePortalData(portalPublisher pubsub.Publisher, packet *SessionUpdatePac
 	byteCount, err := portalPublisher.Publish(pubsub.TopicPortalCruncherSessionData, bytes)
 	return byteCount, err
 }
-*/
 
 func addRouteDecisionMetric(d routing.Decision, m *metrics.SessionMetrics) {
 	switch d.Reason {
