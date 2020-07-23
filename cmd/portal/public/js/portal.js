@@ -1060,7 +1060,7 @@ function createVueComponents() {
 	rootComponent = new Vue({
 		el: '#root',
 		data: {
-			maintenanceMode: true,
+			maintenanceMode: false,
 			showCount: false,
 			mapSessions: 0,
 			onNN: 0,
