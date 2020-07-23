@@ -43,17 +43,6 @@ var (
 
 type arrayFlags []string
 
-// used to decode dcMap hex strings from json
-type dcMapStrings struct {
-	BuyerID    string `json:"buyer_id"`
-	Datacenter string `json:"datacenter"`
-	Alias      string `json:"alias"`
-}
-
-func (dcm dcMapStrings) String() string {
-	return fmt.Sprintf("{\n\tBuyer ID     : %s\n\tDatacenter ID: %s\n\tAlias        : %s\n}", dcm.BuyerID, dcm.Datacenter, dcm.Alias)
-}
-
 func (i *arrayFlags) String() string {
 	return ""
 }
@@ -343,6 +332,17 @@ type datacenter struct {
 	Name     string
 	Enabled  bool
 	Location routing.Location
+}
+
+// used to decode dcMap hex strings from json
+type dcMapStrings struct {
+	BuyerID    string `json:"buyer_id"`
+	Datacenter string `json:"datacenter"`
+	Alias      string `json:"alias"`
+}
+
+func (dcm dcMapStrings) String() string {
+	return fmt.Sprintf("{\n\tBuyer ID     : %s\n\tDatacenter ID: %s\n\tAlias        : %s\n}", dcm.BuyerID, dcm.Datacenter, dcm.Alias)
 }
 
 func main() {
