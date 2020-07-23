@@ -68,8 +68,42 @@ func (l *Location) UnmarshalBinary(data []byte) error {
 	}
 
 	if !encoding.ReadString(data, &index, &l.Continent, math.MaxInt32) {
-		return errors.New("[Location] invalid read at version number")
+		return errors.New("[Location] invalid read at continent")
 	}
+
+	if !encoding.ReadString(data, &index, &l.Country, math.MaxInt32) {
+		return errors.New("[Location] invalid read at country")
+	}
+
+	if !encoding.ReadString(data, &index, &l.CountryCode, math.MaxInt32) {
+		return errors.New("[Location] invalid read at country code")
+	}
+
+	if !encoding.ReadString(data, &index, &l.Region, math.MaxInt32) {
+		return errors.New("[Location] invalid read at region")
+	}
+
+	if !encoding.ReadString(data, &index, &l.City, math.MaxInt32) {
+		return errors.New("[Location] invalid read at city")
+	}
+
+	if !encoding.ReadFloat64(data, &index, &l.Latitude) {
+		return errors.New("[Location] invalid read at latitude")
+	}
+
+	if !encoding.ReadFloat64(data, &index, &l.Longitude) {
+		return errors.New("[Location] invalid read at longitude")
+	}
+
+	if !encoding.ReadString(data, &index, &l.ISP, math.MaxInt32) {
+		return errors.New("[Location] invalid read at ISP")
+	}
+
+	var asn uint32
+	if !encoding.ReadUint32(data, &index, &asn) {
+		return errors.New("[Location] invalid read at ASN")
+	}
+	l.ASN = int(asn)
 
 	return nil
 }
