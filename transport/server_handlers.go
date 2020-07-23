@@ -1176,17 +1176,34 @@ func updatePortalData(portalPublisher pubsub.Publisher, packet *SessionUpdatePac
 		return 0, err
 	}
 
-	portalPublishTime := time.Now()
+	portalPublishDoneChannel := make(chan bool)
+
 	for i := 0; i < 10000; i++ {
 		go func() {
 			_, err := portalPublisher.Publish(pubsub.TopicPortalCruncherSessionData, bytes)
 			if err != nil {
 				fmt.Printf("Failed to publish: %v\n", err)
 			}
+
+			portalPublishDoneChannel <- true
 		}()
 	}
 
-	fmt.Printf("portal publish duration (ms): %v\n", time.Since(portalPublishTime).Milliseconds())
+	go func() {
+		var doneCount int
+		portalPublishTime := time.Now()
+
+		for range portalPublishDoneChannel {
+			doneCount++
+
+			if doneCount == 10000 {
+				break
+			}
+		}
+
+		fmt.Printf("portal publish duration (ms): %v\n", time.Since(portalPublishTime).Milliseconds())
+	}()
+
 	return 0, nil
 }
 
