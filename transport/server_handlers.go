@@ -519,12 +519,16 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 			sequence = serverDataReadOnly.sequence
 		}
 
+		// todo: disable as a test
+		_ = sequence
+		/*
 		if packet.Sequence < sequence {
 			level.Error(params.Logger).Log("handler", "server", "msg", "packet too old", "packet sequence", packet.Sequence, "lastest sequence", serverDataReadOnly.sequence)
 			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 			params.Metrics.ErrorMetrics.PacketSequenceTooOld.Add(1)
 			return
 		}
+		*/
 
 		// Each one of our customer's servers reports to us with this server update packet every 10 seconds.
 		// Therefore we must update the server data each time we receive an update, to keep this server entry live in our server map.
@@ -629,6 +633,8 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			sessionDataReadOnly = NewSessionData()
 		}
 
+		// todo: disable for now as a test
+		/*
 		// Check the packet sequence number vs. the most recent sequence number in redis.
 		// The packet sequence number must be at least as old as the current session sequence #
 		// otherwise this is a stale session update packet from an older slice so we ignore it!
@@ -639,6 +645,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			params.Metrics.ErrorMetrics.OldSequence.Add(1)
 			return
 		}
+		*/
 
 		// Check the session update packet is properly signed with the customer private key.
 		// Any session update not signed is invalid, so we don't waste bandwidth responding to it.
