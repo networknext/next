@@ -458,8 +458,6 @@ func main() {
 					newRouteMatrix := &routing.RouteMatrix{}
 					var matrixReader io.Reader
 
-					start := time.Now()
-
 					// Default to reading route matrix from file
 					if f, err := os.Open(uri); err == nil {
 						matrixReader = f
@@ -469,6 +467,8 @@ func main() {
 					if r, err := http.Get(uri); err == nil {
 						matrixReader = r.Body
 					}
+
+					start := time.Now()
 
 					// Don't swap route matrix if we fail to read
 					_, err := newRouteMatrix.ReadFrom(matrixReader)
