@@ -872,8 +872,8 @@ func main() {
 							ID:   crypto.HashID(relay.DatacenterName),
 							Name: relay.DatacenterName,
 						},
-						NICSpeedMbps:        relay.NicSpeedMbps,
-						IncludedBandwidthGB: relay.IncludedBandwidthGB,
+						NICSpeedMbps:        int32(relay.NicSpeedMbps),
+						IncludedBandwidthGB: int32(relay.IncludedBandwidthGB),
 						State:               routing.RelayStateMaintenance,
 						ManagementAddr:      relay.ManagementAddr,
 						SSHUser:             relay.SSHUser,
@@ -1071,6 +1071,46 @@ func main() {
 							}
 
 							opsEndDate(rpcClient, env, args[0], args[1])
+							return nil
+						},
+					},
+					{
+						Name:       "bandwidth",
+						ShortUsage: "next relay ops bandwidth <relay> <value in GB, e.g. 20000>",
+						ShortHelp:  "Set the bandwidth allotment for the give relay",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								fmt.Println("Must provide the relay name and a bandwidth value in GB")
+								return nil
+							}
+
+							bw, err := strconv.ParseUint(args[1], 10, 32)
+							if err != nil {
+								fmt.Printf("Could not parse %s as an integer", args[1])
+								return nil
+							}
+
+							opsBandwidth(rpcClient, env, args[0], int32(bw))
+							return nil
+						},
+					},
+					{
+						Name:       "nic",
+						ShortUsage: "next relay ops nic <relay> <value in Mbps, e.g. 10000>",
+						ShortHelp:  "Set the NIC available to the specified relay",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								fmt.Println("Must provide the relay name and a value in Mbps")
+								return nil
+							}
+
+							nic, err := strconv.ParseUint(args[1], 10, 32)
+							if err != nil {
+								fmt.Printf("Could not parse %s as an integer", args[1])
+								return nil
+							}
+
+							opsNic(rpcClient, env, args[0], int32(nic))
 							return nil
 						},
 					},

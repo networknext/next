@@ -390,8 +390,8 @@ type relay struct {
 	Addr                string                `json:"addr"`
 	Latitude            float64               `json:"latitude"`
 	Longitude           float64               `json:"longitude"`
-	NICSpeedMbps        uint64                `json:"nic_speed_mpbs"`
-	IncludedBandwidthGB uint64                `json:"included_bandwidth_gb"`
+	NICSpeedMbps        int32                 `json:"nic_speed_mpbs"`
+	IncludedBandwidthGB int32                 `json:"included_bandwidth_gb"`
 	State               string                `json:"state"`
 	LastUpdateTime      time.Time             `json:"lastUpdateTime"`
 	ManagementAddr      string                `json:"management_addr"`
@@ -630,6 +630,7 @@ type RelayNICSpeedUpdateArgs struct {
 type RelayNICSpeedUpdateReply struct {
 }
 
+// TODO This endpoint has been deprecated by SetRelayMetadata()?
 func (s *OpsService) RelayNICSpeedUpdate(r *http.Request, args *RelayNICSpeedUpdateArgs, reply *RelayNICSpeedUpdateReply) error {
 
 	relay, err := s.Storage.Relay(args.RelayID)
@@ -639,7 +640,7 @@ func (s *OpsService) RelayNICSpeedUpdate(r *http.Request, args *RelayNICSpeedUpd
 		return err
 	}
 
-	relay.NICSpeedMbps = args.RelayNICSpeed
+	relay.NICSpeedMbps = int32(args.RelayNICSpeed)
 	if err = s.Storage.SetRelay(context.Background(), relay); err != nil {
 		err = fmt.Errorf("RelayNICSpeedUpdate() SetRelay error: %w", err)
 		s.Logger.Log("err", err)

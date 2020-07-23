@@ -147,12 +147,12 @@ func opsRelays(
 			endDate = relay.EndDate.Format("January 2, 2006")
 		}
 
-		bandwidth := strconv.FormatUint(relay.IncludedBandwidthGB, 10)
+		bandwidth := strconv.FormatInt(int64(relay.IncludedBandwidthGB), 10)
 		if bandwidth == "0" {
 			bandwidth = "n/a"
 		}
 
-		nicSpeed := strconv.FormatUint(relay.NICSpeedMbps, 10)
+		nicSpeed := strconv.FormatInt(int64(relay.NICSpeedMbps), 10)
 		if nicSpeed == "0" {
 			nicSpeed = "n/a"
 		}

@@ -245,6 +245,64 @@ func opsType(rpcClient jsonrpc.RPCClient,
 	return
 }
 
+func opsBandwidth(rpcClient jsonrpc.RPCClient,
+	env Environment,
+	relayRegex string,
+	bw int32,
+) {
+	var relay routing.Relay
+	var ok bool
+	if relay, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
+		// error msg printed by called function
+		return
+	}
+
+	relay.IncludedBandwidthGB = bw
+
+	args := localjsonrpc.RelayMetadataArgs{
+		Relay: relay,
+	}
+
+	var reply localjsonrpc.RelaysReply
+	if err := rpcClient.CallFor(&reply, "OpsService.RelayMetadata", args); !ok {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	fmt.Println("Bandwidth allotment successfully updated.")
+	return
+
+}
+
+func opsNic(rpcClient jsonrpc.RPCClient,
+	env Environment,
+	relayRegex string,
+	nic int32,
+) {
+	var relay routing.Relay
+	var ok bool
+	if relay, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
+		// error msg printed by called function
+		return
+	}
+
+	relay.NICSpeedMbps = nic
+
+	args := localjsonrpc.RelayMetadataArgs{
+		Relay: relay,
+	}
+
+	var reply localjsonrpc.RelaysReply
+	if err := rpcClient.CallFor(&reply, "OpsService.RelayMetadata", args); !ok {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	fmt.Println("NIC speed successfully updated.")
+	return
+
+}
+
 func checkForRelay(rpcClient jsonrpc.RPCClient, env Environment, regex string) (routing.Relay, bool) {
 	args := localjsonrpc.RelaysArgs{
 		Regex: regex,
