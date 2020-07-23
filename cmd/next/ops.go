@@ -113,7 +113,7 @@ func opsBWRule(rpcClient jsonrpc.RPCClient,
 func opsTerm(rpcClient jsonrpc.RPCClient,
 	env Environment,
 	relayRegex string,
-	months uint32,
+	months int32,
 ) {
 	var relay routing.Relay
 	var ok bool
@@ -243,14 +243,6 @@ func opsType(rpcClient jsonrpc.RPCClient,
 
 	fmt.Println("Machine type successfully updated.")
 	return
-}
-
-func opsModify(rpcClient jsonrpc.RPCClient,
-	env Environment,
-	relayRegex string,
-	jsonFile string,
-) {
-	fmt.Println("Modify not yet implemented.")
 }
 
 func checkForRelay(rpcClient jsonrpc.RPCClient, env Environment, regex string) (routing.Relay, bool) {

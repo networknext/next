@@ -143,7 +143,7 @@ type Relay struct {
 	Overage Nibblin       `json:"overage"`
 	BWRule  BandWidthRule `json:"bw_rule"`
 	//ContractTerm is the term in months
-	ContractTerm uint32 `json:"contract_term"`
+	ContractTerm int32 `json:"contract_term"`
 	// StartDate is the date the contract term starts
 	StartDate time.Time `json:"start_date"`
 	// EndDate is the date the contract term ends

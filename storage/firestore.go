@@ -71,13 +71,13 @@ type relay struct {
 	State              routing.RelayState     `firestore:"state"`
 	LastUpdateTime     time.Time              `firestore:"lastUpdateTime"`
 	MaxSessions        int32                  `firestore:"maxSessions"`
-	MRC                routing.Nibblin        `firestore:"monthlyRecurringChargeNibblins"`
-	Overage            routing.Nibblin        `firestore:"overage"`
-	BWRule             routing.BandWidthRule  `firestore:"bandwidthRule"`
-	ContractTerm       uint32                 `firestore:"contractTerm"`
+	MRC                int64                  `firestore:"monthlyRecurringChargeNibblins"`
+	Overage            int64                  `firestore:"overage"`
+	BWRule             int32                  `firestore:"bandwidthRule"`
+	ContractTerm       int32                  `firestore:"contractTerm"`
 	StartDate          time.Time              `firestore:"startDate"`
 	EndDate            time.Time              `firestore:"endDate"`
-	Type               routing.MachineType    `firestore:"machineType"`
+	Type               int32                  `firestore:"machineType"`
 }
 
 type datacenter struct {
@@ -813,6 +813,7 @@ func (fs *Firestore) AddRelay(ctx context.Context, r routing.Relay) error {
 		}
 
 		if err != nil {
+
 			return &FirestoreError{err: err}
 		}
 
@@ -872,6 +873,8 @@ func (fs *Firestore) AddRelay(ctx context.Context, r routing.Relay) error {
 		SSHPort:            r.SSHPort,
 		State:              r.State,
 		LastUpdateTime:     r.LastUpdateTime,
+		MRC:                int64(r.MRC),
+		Overage:            int64(r.Overage),
 	}
 
 	// Add the relay in remote storage
@@ -1465,6 +1468,32 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 			publicKey = r.UpdateKey
 		}
 
+		var bwRule routing.BandWidthRule
+		switch r.BWRule {
+		case 3:
+			bwRule = routing.BWRulePool
+		case 2:
+			bwRule = routing.BWRuleBurst
+		case 1:
+			bwRule = routing.BWRuleFlat
+		case 0:
+			bwRule = routing.BWRuleNone
+		default:
+			bwRule = routing.BWRuleNone
+		}
+
+		var serverType routing.MachineType
+		switch r.Type {
+		case 1:
+			serverType = routing.BareMetal
+		case 2:
+			serverType = routing.VirtualMachine
+		case 0:
+			serverType = routing.NoneSpecified
+		default:
+			serverType = routing.NoneSpecified
+		}
+
 		relay := routing.Relay{
 			ID:   rid,
 			Name: r.Name,
@@ -1483,13 +1512,13 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 			MaxSessions:         uint32(r.MaxSessions),
 			UpdateKey:           r.UpdateKey,
 			FirestoreID:         rdoc.Ref.ID,
-			MRC:                 r.MRC,
-			Overage:             r.Overage,
-			BWRule:              r.BWRule,
+			MRC:                 routing.Nibblin(r.MRC),
+			Overage:             routing.Nibblin(r.Overage),
+			BWRule:              bwRule,
 			ContractTerm:        r.ContractTerm,
 			StartDate:           r.StartDate,
 			EndDate:             r.EndDate,
-			Type:                r.Type,
+			Type:                serverType,
 		}
 
 		// Set a default max session count of 3000 if the value isn't set in firestore

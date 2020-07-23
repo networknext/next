@@ -1041,14 +1041,14 @@ func main() {
 								fmt.Printf("Could not parse %s as an integer", args[1])
 								return nil
 							}
-							opsTerm(rpcClient, env, args[0], uint32(term))
+							opsTerm(rpcClient, env, args[0], int32(term))
 
 							return nil
 						},
 					},
 					{
 						Name:       "startdate",
-						ShortUsage: "next relay ops startdate <relay> <value>",
+						ShortUsage: "next relay ops startdate <relay> <value, e.g. 'January 2, 2006'>",
 						ShortHelp:  "Set the contract start date for the given relay (e.g. 'January 2, 2006')",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) != 2 {
@@ -1062,7 +1062,7 @@ func main() {
 					},
 					{
 						Name:       "enddate",
-						ShortUsage: "next relay ops enddate <relay> <value>",
+						ShortUsage: "next relay ops enddate <relay> <value, e.g. 'January 2, 2006'>",
 						ShortHelp:  "Set the contract end date for the given relay (e.g. 'January 2, 2006')",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) != 2 {
@@ -1071,16 +1071,6 @@ func main() {
 							}
 
 							opsEndDate(rpcClient, env, args[0], args[1])
-							return nil
-						},
-					},
-					{
-						Name:       "modify",
-						ShortUsage: "next relay ops modify <relay> <json file>",
-						ShortHelp:  "Set/update all of the above with a json file",
-						Exec: func(_ context.Context, args []string) error {
-							fmt.Println("Modify not yet implemented.")
-
 							return nil
 						},
 					},

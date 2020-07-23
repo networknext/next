@@ -409,7 +409,7 @@ type relay struct {
 	MRC                 routing.Nibblin       `json:"monthly_recurring_charge_nibblins"`
 	Overage             routing.Nibblin       `json:"overage"`
 	BWRule              routing.BandWidthRule `json:"bandwidth_rule"`
-	ContractTerm        uint32                `json:"contract_term"`
+	ContractTerm        int32                 `json:"contract_term"`
 	StartDate           time.Time             `json:"start_date"`
 	EndDate             time.Time             `json:"end_date"`
 	Type                routing.MachineType   `json:"machine_type"`
