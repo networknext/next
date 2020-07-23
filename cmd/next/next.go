@@ -446,6 +446,10 @@ func main() {
 	var relayIDSigned bool
 	relaysfs.BoolVar(&relayIDSigned, "signed", false, "display relay IDs as signed integers")
 
+	// display the OPS version of the relay output
+	var relayOpsOutput bool
+	relaysfs.BoolVar(&relayOpsOutput, "ops", false, "display ops metadata (costs, bandwidth, terms, etc)")
+
 	var authCommand = &ffcli.Command{
 		Name:       "auth",
 		ShortUsage: "next auth",
@@ -598,11 +602,29 @@ func main() {
 				relaysStateHideFlags[routing.RelayStateDecommissioned] = false
 			}
 
+			var arg string
 			if len(args) > 0 {
+				arg = args[0]
+			}
+
+			if relayOpsOutput {
+				opsRelays(
+					rpcClient,
+					env,
+					arg,
+					relaysStateShowFlags,
+					relaysStateHideFlags,
+					relaysDownFlag,
+					csvOutputFlag,
+					relayVersionFilter,
+					relaysCount,
+					relayIDSigned,
+				)
+			} else {
 				relays(
 					rpcClient,
 					env,
-					args[0],
+					arg,
 					relaysStateShowFlags,
 					relaysStateHideFlags,
 					relaysDownFlag,
@@ -612,21 +634,8 @@ func main() {
 					relaysCount,
 					relayIDSigned,
 				)
-				return nil
 			}
-			relays(
-				rpcClient,
-				env,
-				"",
-				relaysStateShowFlags,
-				relaysStateHideFlags,
-				relaysDownFlag,
-				relaysListFlag,
-				csvOutputFlag,
-				relayVersionFilter,
-				relaysCount,
-				relayIDSigned,
-			)
+
 			return nil
 		},
 		Subcommands: []*ffcli.Command{
@@ -863,8 +872,8 @@ func main() {
 							ID:   crypto.HashID(relay.DatacenterName),
 							Name: relay.DatacenterName,
 						},
-						NICSpeedMbps:        relay.NicSpeedMbps,
-						IncludedBandwidthGB: relay.IncludedBandwidthGB,
+						NICSpeedMbps:        int32(relay.NicSpeedMbps),
+						IncludedBandwidthGB: int32(relay.IncludedBandwidthGB),
 						State:               routing.RelayStateMaintenance,
 						ManagementAddr:      relay.ManagementAddr,
 						SSHUser:             relay.SSHUser,
@@ -917,6 +926,194 @@ func main() {
 
 					removeRelay(rpcClient, env, args[0])
 					return nil
+				},
+			},
+			{
+				Name:       "ops",
+				ShortUsage: "next relay ops <command>",
+				ShortHelp:  "Operations-related relay setup commands",
+				Exec: func(_ context.Context, args []string) error {
+					if len(args) == 0 {
+						fmt.Println("Please provide at least one command name")
+						return nil
+					}
+
+					removeRelay(rpcClient, env, args[0])
+					return nil
+				},
+				Subcommands: []*ffcli.Command{
+					{
+						Name:       "mrc",
+						ShortUsage: "next relay ops mrc <relay> <value>",
+						ShortHelp:  "Set the mrc value for the given relay (in $USD)",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								fmt.Println("Must provide the relay name and an MRC value in $USD")
+								return nil
+							}
+
+							mrc, err := strconv.ParseFloat(args[1], 64)
+							if err != nil {
+								fmt.Printf("Could not parse %s as a decimal number", args[1])
+								return nil
+							}
+							opsMRC(rpcClient, env, args[0], mrc)
+
+							return nil
+						},
+					},
+					{
+						Name:       "overage",
+						ShortUsage: "next relay ops overage <relay> <value>",
+						ShortHelp:  "Set the overage value for the given relay (in $USD)",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								fmt.Println("Must provide the relay name and an overage value in $USD")
+								return nil
+							}
+
+							overage, err := strconv.ParseFloat(args[1], 64)
+							if err != nil {
+								fmt.Printf("Could not parse %s as a decimal number", args[1])
+								return nil
+							}
+							opsOverage(rpcClient, env, args[0], overage)
+
+							return nil
+						},
+					},
+					{
+						Name:       "bwrule",
+						ShortUsage: "next relay ops bwrule <relay> <pool|burst|flat|none>",
+						ShortHelp:  "Set the bandwidth rule for the given relay",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								fmt.Println("Must provide the relay name and abandwidth rule")
+								return nil
+							}
+
+							rules := []string{"none", "flat", "pool", "burst"}
+							for _, rule := range rules {
+								if rule == args[1] {
+									opsBWRule(rpcClient, env, args[0], args[1])
+									return nil
+								}
+							}
+
+							fmt.Printf("'%s' not a valid bandwidth rule - must be one of none, flat, pool or burst", args[1])
+							return nil
+						},
+					},
+					{
+						Name:       "type",
+						ShortUsage: "next relay ops type <relay> <bare|vm|none>",
+						ShortHelp:  "Set the machine/server type for the given relay",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								fmt.Println("Must provide the relay name and amachine type")
+								return nil
+							}
+
+							rules := []string{"none", "vm", "bare"}
+							for _, rule := range rules {
+								if rule == args[1] {
+									opsType(rpcClient, env, args[0], args[1])
+									return nil
+								}
+							}
+
+							fmt.Printf("'%s' not a valid machine type - must be one of none, vm or bare", args[1])
+							return nil
+						},
+					},
+					{
+						Name:       "term",
+						ShortUsage: "next relay ops term <relay> <value>",
+						ShortHelp:  "Set the contract term for the given relay (in months)",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								fmt.Println("Must provide the relay name and a contract term in months")
+								return nil
+							}
+
+							term, err := strconv.ParseUint(args[1], 10, 32)
+							if err != nil {
+								fmt.Printf("Could not parse %s as an integer", args[1])
+								return nil
+							}
+							opsTerm(rpcClient, env, args[0], int32(term))
+
+							return nil
+						},
+					},
+					{
+						Name:       "startdate",
+						ShortUsage: "next relay ops startdate <relay> <value, e.g. 'January 2, 2006'>",
+						ShortHelp:  "Set the contract start date for the given relay (e.g. 'January 2, 2006')",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								fmt.Println("Must provide the relay name and a contract start date e.g. 'January 2, 2006'")
+								return nil
+							}
+
+							opsStartDate(rpcClient, env, args[0], args[1])
+							return nil
+						},
+					},
+					{
+						Name:       "enddate",
+						ShortUsage: "next relay ops enddate <relay> <value, e.g. 'January 2, 2006'>",
+						ShortHelp:  "Set the contract end date for the given relay (e.g. 'January 2, 2006')",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								fmt.Println("Must provide the relay name and a contract end date e.g. 'January 2, 2006'")
+								return nil
+							}
+
+							opsEndDate(rpcClient, env, args[0], args[1])
+							return nil
+						},
+					},
+					{
+						Name:       "bandwidth",
+						ShortUsage: "next relay ops bandwidth <relay> <value in GB, e.g. 20000>",
+						ShortHelp:  "Set the bandwidth allotment for the give relay",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								fmt.Println("Must provide the relay name and a bandwidth value in GB")
+								return nil
+							}
+
+							bw, err := strconv.ParseUint(args[1], 10, 32)
+							if err != nil {
+								fmt.Printf("Could not parse %s as an integer", args[1])
+								return nil
+							}
+
+							opsBandwidth(rpcClient, env, args[0], int32(bw))
+							return nil
+						},
+					},
+					{
+						Name:       "nic",
+						ShortUsage: "next relay ops nic <relay> <value in Mbps, e.g. 10000>",
+						ShortHelp:  "Set the NIC available to the specified relay",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								fmt.Println("Must provide the relay name and a value in Mbps")
+								return nil
+							}
+
+							nic, err := strconv.ParseUint(args[1], 10, 32)
+							if err != nil {
+								fmt.Printf("Could not parse %s as an integer", args[1])
+								return nil
+							}
+
+							opsNic(rpcClient, env, args[0], int32(nic))
+							return nil
+						},
+					},
 				},
 			},
 		},
@@ -1324,9 +1521,31 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 					jsonData := readJSONData("sellers", args)
 
 					// Unmarshal the JSON and create the Seller struct
-					var s seller
-					if err := json.Unmarshal(jsonData, &s); err != nil {
+					var sellerUSD struct {
+						Name            string
+						IngressPriceUSD string
+						EgressPriceUSD  string
+					}
+
+					if err := json.Unmarshal(jsonData, &sellerUSD); err != nil {
 						log.Fatalf("Could not unmarshal seller: %v", err)
+					}
+
+					ingressUSD, err := strconv.ParseFloat(sellerUSD.IngressPriceUSD, 64)
+					if err != nil {
+						fmt.Printf("Unable to convert %s to a decimal number.", sellerUSD.IngressPriceUSD)
+						os.Exit(0)
+					}
+					egressUSD, err := strconv.ParseFloat(sellerUSD.EgressPriceUSD, 64)
+					if err != nil {
+						fmt.Printf("Unable to convert %s to a decimal number.", sellerUSD.EgressPriceUSD)
+						os.Exit(0)
+					}
+
+					s := seller{
+						Name:                 sellerUSD.Name,
+						IngressPriceNibblins: routing.DollarsToNibblins(ingressUSD),
+						EgressPriceNibblins:  routing.DollarsToNibblins(egressUSD),
 					}
 
 					// Add the Seller to storage
@@ -1344,8 +1563,14 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						ShortUsage: "next seller add example",
 						ShortHelp:  "Displays an example seller for the correct JSON schema",
 						Exec: func(_ context.Context, args []string) error {
-							example := seller{
-								Name: "amazon",
+							example := struct {
+								Name            string
+								IngressPriceUSD string
+								EgressPriceUSD  string
+							}{
+								Name:            "amazon",
+								IngressPriceUSD: "13",
+								EgressPriceUSD:  "15",
 							}
 
 							jsonBytes, err := json.MarshalIndent(example, "", "\t")
@@ -1353,7 +1578,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 								log.Fatal("Failed to marshal seller struct")
 							}
 
-							fmt.Println("Examaple JSON schema to add a new seller:")
+							fmt.Println("Example JSON schema to add a new seller - note that prices are in $USD:")
 							fmt.Println(string(jsonBytes))
 							return nil
 						},
