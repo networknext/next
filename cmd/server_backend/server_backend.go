@@ -15,7 +15,6 @@ import (
 	"sync/atomic"
 
 	"io"
-	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -503,51 +502,16 @@ func main() {
 		}
 	}
 
-	var conn *net.UDPConn
+	udp_port, ok := os.LookupEnv("UDP_PORT")
+	if !ok {
+		level.Error(logger).Log("err", "env var UDP_PORT must be set")
+		os.Exit(1)
+	}
 
-	// Initialize UDP connection
-	{
-		udp_port, ok := os.LookupEnv("UDP_PORT")
-		if !ok {
-			level.Error(logger).Log("err", "env var UDP_PORT must be set")
-			os.Exit(1)
-		}
-
-		i_udp_port, err := strconv.ParseInt(udp_port, 10, 64)
-		if err != nil {
-			level.Error(logger).Log("envvar", "UDP_PORT", "msg", "could not parse", "err", err)
-			os.Exit(1)
-		}
-
-		addr := net.UDPAddr{
-			Port: int(i_udp_port),
-		}
-
-		conn, err = net.ListenUDP("udp", &addr)
-		if err != nil {
-			level.Error(logger).Log("msg", "failed to start listening for UDP traffic", "err", err)
-			os.Exit(1)
-		}
-
-		readBufferString, ok := os.LookupEnv("READ_BUFFER")
-		if ok {
-			readBuffer, err := strconv.ParseInt(readBufferString, 10, 64)
-			if err != nil {
-				level.Error(logger).Log("envvar", "READ_BUFFER", "msg", "could not parse", "err", err)
-				os.Exit(1)
-			}
-			conn.SetReadBuffer(int(readBuffer))
-		}
-
-		writeBufferString, ok := os.LookupEnv("WRITE_BUFFER")
-		if ok {
-			writeBuffer, err := strconv.ParseInt(writeBufferString, 10, 64)
-			if err != nil {
-				level.Error(logger).Log("envvar", "WRITE_BUFFER", "msg", "could not parse", "err", err)
-				os.Exit(1)
-			}
-			conn.SetWriteBuffer(int(writeBuffer))
-		}
+	i_udp_port, err := strconv.ParseInt(udp_port, 10, 64)
+	if err != nil {
+		level.Error(logger).Log("envvar", "UDP_PORT", "msg", "could not parse", "err", err)
+		os.Exit(1)
 	}
 
 	vetoMap := transport.NewVetoMap()
@@ -700,8 +664,9 @@ func main() {
 			PortalPublisher:   portalPublisher,
 		}
 
-		mux := transport.UDPServerMux{
-			Conn:                     conn,
+		mux := transport.UDPServerMux2{
+			Logger:                   logger,
+			Port:                     i_udp_port,
 			MaxPacketSize:            transport.DefaultMaxPacketSize,
 			ServerInitHandlerFunc:    transport.ServerInitHandlerFunc(serverInitConfig),
 			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(serverUpdateConfig),
@@ -709,9 +674,8 @@ func main() {
 		}
 
 		go func() {
-			level.Info(logger).Log("protocol", "udp", "addr", conn.LocalAddr().String())
 			if err := mux.Start(ctx); err != nil {
-				level.Error(logger).Log("protocol", "udp", "addr", conn.LocalAddr().String(), "msg", "could not start udp server", "err", err)
+				fmt.Println(err)
 				os.Exit(1)
 			}
 		}()
