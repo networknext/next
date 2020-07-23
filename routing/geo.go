@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"net/http"
 	"os"
@@ -17,11 +18,14 @@ import (
 
 	"github.com/go-redis/redis/v7"
 	jsoniter "github.com/json-iterator/go"
+	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/metrics"
 	"github.com/oschwald/geoip2-golang"
 )
 
 const (
+	LocationVersion = 0
+
 	regexLocalhostIPs = `0\.0\.0\.0|127\.0\.0\.1|localhost`
 )
 
@@ -52,11 +56,44 @@ type Location struct {
 }
 
 func (l *Location) UnmarshalBinary(data []byte) error {
-	return jsoniter.Unmarshal(data, l)
+	index := 0
+
+	var version uint32
+	if !encoding.ReadUint32(data, &index, &version) {
+		return errors.New("[Location] invalid read at version number")
+	}
+
+	if version > LocationVersion {
+		return fmt.Errorf("unknown location version: %d", version)
+	}
+
+	if !encoding.ReadString(data, &index, &l.Continent, math.MaxInt32) {
+		return errors.New("[Location] invalid read at version number")
+	}
+
+	return nil
 }
 
 func (l Location) MarshalBinary() ([]byte, error) {
-	return jsoniter.Marshal(l)
+	data := make([]byte, l.Size())
+	index := 0
+
+	encoding.WriteUint32(data, &index, LocationVersion)
+	encoding.WriteString(data, &index, l.Continent, uint32(len(l.Continent)))
+	encoding.WriteString(data, &index, l.Country, uint32(len(l.Country)))
+	encoding.WriteString(data, &index, l.CountryCode, uint32(len(l.CountryCode)))
+	encoding.WriteString(data, &index, l.Region, uint32(len(l.Region)))
+	encoding.WriteString(data, &index, l.City, uint32(len(l.City)))
+	encoding.WriteFloat64(data, &index, l.Latitude)
+	encoding.WriteFloat64(data, &index, l.Longitude)
+	encoding.WriteString(data, &index, l.ISP, uint32(len(l.ISP)))
+	encoding.WriteUint32(data, &index, uint32(l.ASN))
+
+	return data, nil
+}
+
+func (l Location) Size() uint64 {
+	return uint64(4 + 4*len(l.Continent) + 4*len(l.Country) + 4*len(l.CountryCode) + 4*len(l.Region) + 4*len(l.City) + 8 + 8 + 4*len(l.ISP) + 4)
 }
 
 // IsZero reports whether l represents the zero location lat/long 0,0 similar to how Time.IsZero works.

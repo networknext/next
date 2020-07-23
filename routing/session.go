@@ -32,8 +32,8 @@ func (s SessionData) MarshalBinary() ([]byte, error) {
 }
 
 type SessionMeta struct {
-	ID              string   `json:"id"`
-	UserHash        string   `json:"user_hash"`
+	ID              uint64   `json:"id"`
+	UserHash        uint64   `json:"user_hash"`
 	DatacenterName  string   `json:"datacenter_name"`
 	DatacenterAlias string   `json:"datacenter_alias"`
 	OnNetworkNext   bool     `json:"on_network_next"`
@@ -45,10 +45,10 @@ type SessionMeta struct {
 	ServerAddr      string   `json:"server_addr"`
 	Hops            []Relay  `json:"hops"`
 	SDK             string   `json:"sdk"`
-	Connection      string   `json:"connection"`
+	Connection      uint8    `json:"connection"`
 	NearbyRelays    []Relay  `json:"nearby_relays"`
-	Platform        string   `json:"platform"`
-	BuyerID         string   `json:"customer_id"`
+	Platform        uint8    `json:"platform"`
+	BuyerID         uint64   `json:"customer_id"`
 }
 
 func (s *SessionMeta) UnmarshalBinary(data []byte) error {
