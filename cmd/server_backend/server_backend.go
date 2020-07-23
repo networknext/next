@@ -330,6 +330,12 @@ func main() {
 		level.Error(logger).Log("msg", "failed to create billing metrics", "err", err)
 	}
 
+	// Create server backend metrics
+	serverBackendMetrics, err := metrics.NewServerBackendMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create server backend metrics", "err", err)
+	}
+
 	_, pubsubEmulatorOK := os.LookupEnv("PUBSUB_EMULATOR_HOST")
 	if gcpOK || pubsubEmulatorOK {
 
@@ -605,10 +611,13 @@ func main() {
 				// so we can track them over time. right here in place, update the values in stackdriver once
 				// every second
 
+				numSessions := sessionMap.NumSessions()
+				serverBackendMetrics.SessionCount.Set(float64(numSessions))
+
 				fmt.Printf("-----------------------------\n")
 				fmt.Printf("%d vetoes\n", vetoMap.NumVetoes())
 				fmt.Printf("%d servers\n", serverMap.NumServers())
-				fmt.Printf("%d sessions\n", sessionMap.NumSessions())
+				fmt.Printf("%d sessions\n", numSessions)
 				fmt.Printf("%d goroutines\n", runtime.NumGoroutine())
 				fmt.Printf("%.2f mb allocated\n", memoryUsed())
 				fmt.Printf("%d billing entries submitted\n", biller.NumSubmitted())
