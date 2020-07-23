@@ -293,6 +293,10 @@ dev-server-backend: build-server-backend ## runs a local server backend
 dev-billing: build-billing ## runs a local billing service
 	@PORT=41000 ./dist/billing
 
+.PHONY: dev-analytics
+dev-analytics: build-analytics ## runs a local analytics service
+	@PORT=41001 ./dist/analytics
+
 .PHONY: dev-portal-cruncher
 dev-portal-cruncher: build-portal-cruncher ## runs a local portal cruncher
 	@HTTP_PORT=42000 CRUNCHER_PORT=5555 ./dist/portal_cruncher
@@ -428,6 +432,12 @@ build-billing: ## builds the billing binary
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/billing ./cmd/billing/billing.go
 	@printf "done\n"
 
+.PHONY: build-analytics
+build-analytics: ## builds the analytics binary
+	@printf "Building analytics... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/analytics ./cmd/analytics/analytics.go
+	@printf "done\n"
+
 .PHONY: build-billing-artifact
 build-billing-artifact: build-billing ## builds the billing service and creates the dev artifact
 	@printf "Building billing dev artifact..."
@@ -462,7 +472,40 @@ publish-billing-prod-artifact: ## publishes the billing prod artifact
 	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" -h "x-goog-meta-commitMessage:$(COMMITMESSAGE)" $(ARTIFACT_BUCKET_PROD)/billing.prod.tar.gz
 	@printf "done\n"
 
-PHONY: build-portal-cruncher
+.PHONY: build-analytics-artifact
+build-analytics-artifact: build-analytics ## builds the analytics service and creates the dev artifact
+	@printf "Building analytics dev artifact..."
+	@mkdir -p $(DIST_DIR)/artifact/analytics
+	@cp $(DIST_DIR)/analytics $(DIST_DIR)/artifact/analytics/app
+	@cp ./cmd/analytics/dev.env $(DIST_DIR)/artifact/analytics/app.env
+	@cp $(DEPLOY_DIR)/$(SYSTEMD_SERVICE_FILE) $(DIST_DIR)/artifact/analytics/$(SYSTEMD_SERVICE_FILE)
+	@cd $(DIST_DIR)/artifact/analytics && tar -zcf ../../analytics.dev.tar.gz app app.env $(SYSTEMD_SERVICE_FILE) && cd ../..
+	@printf "$(DIST_DIR)/analytics.dev.tar.gz\n"
+
+.PHONY: build-analytics-prod-artifact
+build-analytics-prod-artifact: build-analytics ## builds the analyitcs service and creates the prod artifact
+	@printf "Building analytics prod artifact..."
+	@mkdir -p $(DIST_DIR)/artifact/analytics
+	@cp $(DIST_DIR)/analytics $(DIST_DIR)/artifact/analytics/app
+	@cp ./cmd/analytics/prod.env $(DIST_DIR)/artifact/analytics/app.env
+	@cp $(DEPLOY_DIR)/$(SYSTEMD_SERVICE_FILE) $(DIST_DIR)/artifact/analytics/$(SYSTEMD_SERVICE_FILE)
+	@cd $(DIST_DIR)/artifact/analytics && tar -zcf ../../analytics.prod.tar.gz app app.env $(SYSTEMD_SERVICE_FILE) && cd ../..
+	@printf "$(DIST_DIR)/analytics.prod.tar.gz\n"
+
+.PHONY: publish-analytics-artifact
+publish-analytics-artifact: ## publishes the analytics dev artifact
+	@printf "Publishing analyitcs dev artifact... \n\n"
+	@gsutil cp $(DIST_DIR)/analyitcs.dev.tar.gz $(ARTIFACT_BUCKET)/analyitcs.dev.tar.gz
+	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" -h "x-goog-meta-commitMessage:$(COMMITMESSAGE)" $(ARTIFACT_BUCKET)/analytics.dev.tar.gz
+	@printf "done\n"
+
+.PHONY: publish-analyitcs-prod-artifact
+publish-analyitcs-prod-artifact: ## publishes the analytics prod artifact
+	@printf "Publishing analyitcs prod artifact... \n\n"
+	@gsutil cp $(DIST_DIR)/analyitcs.prod.tar.gz $(ARTIFACT_BUCKET_PROD)/analyitcs.prod.tar.gz
+	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" -h "x-goog-meta-commitMessage:$(COMMITMESSAGE)" $(ARTIFACT_BUCKET_PROD)/analyitcs.prod.tar.gz
+
+.PHONY: build-portal-cruncher
 build-portal-cruncher: ## builds the portal_cruncher binary
 	@printf "Building portal_cruncher... "
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/portal_cruncher ./cmd/portal_cruncher/portal_cruncher.go
@@ -644,7 +687,7 @@ build-next: ## builds the operator tool
 	@printf "done\n"
 
 .PHONY: build-all
-build-all: build-portal-cruncher build-billing build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
+build-all: build-portal-cruncher build-analyitcs build-billing build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all

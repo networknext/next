@@ -432,6 +432,30 @@ var EmptyBillingErrorMetrics BillingErrorMetrics = BillingErrorMetrics{
 	BillingWriteFailure:   &EmptyCounter{},
 }
 
+type AnalyticsMetrics struct {
+	AnalyticsEntriesReceived Counter
+	AnalyticsEntriesWritten  Counter
+	ErrorMetrics             AnalyticsErrorMetrics
+}
+
+type AnalyticsErrorMetrics struct {
+	AnalyticsPublishFailure Counter
+	AnalyticsReadFailure    Counter
+	AnalyticsWriteFailure   Counter
+}
+
+var EmptyAnalyticsErrorMetrics AnalyticsErrorMetrics = AnalyticsErrorMetrics{
+	AnalyticsPublishFailure: &EmptyCounter{},
+	AnalyticsReadFailure:    &EmptyCounter{},
+	AnalyticsWriteFailure:   &EmptyCounter{},
+}
+
+var EmptyAnalyticsMetrics AnalyticsMetrics = AnalyticsMetrics{
+	AnalyticsEntriesReceived: &EmptyCounter{},
+	AnalyticsEntriesWritten:  &EmptyCounter{},
+	ErrorMetrics:             EmptyAnalyticsErrorMetrics,
+}
+
 func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMetrics, error) {
 	var err error
 
@@ -1452,4 +1476,61 @@ func NewBillingMetrics(ctx context.Context, metricsHandler Handler) (*BillingMet
 	}
 
 	return &billingMetrics, nil
+}
+
+func NewAnalyticsMetrics(ctx context.Context, metricsHandler Handler) (*AnalyticsMetrics, error) {
+	analyticsMetrics := AnalyticsMetrics{}
+	var err error
+
+	analyticsMetrics.AnalyticsEntriesReceived, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Stat DB Entries Received",
+		ServiceName: "analytics",
+		ID:          "analytics.entries",
+		Unit:        "entries",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	analyticsMetrics.AnalyticsEntriesWritten, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Stat DB Entries Written",
+		ServiceName: "analytics",
+		ID:          "analytics.entries.written",
+		Unit:        "entries",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	analyticsMetrics.ErrorMetrics.AnalyticsPublishFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Stat DB Publish Failure",
+		ServiceName: "analytics",
+		ID:          "analytics.error.publish_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	analyticsMetrics.ErrorMetrics.AnalyticsReadFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Stat DB Read Failure",
+		ServiceName: "analytics",
+		ID:          "analytics.error.read_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	analyticsMetrics.ErrorMetrics.AnalyticsWriteFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Stat DB Write Failure",
+		ServiceName: "analytics",
+		ID:          "analytics.error.write_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &analyticsMetrics, nil
 }
