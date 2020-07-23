@@ -13,6 +13,7 @@ import (
 	"runtime"
 	"sync"
 	"sync/atomic"
+	"syscall"
 
 	"io"
 	"net"
@@ -34,6 +35,7 @@ import (
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
 	"github.com/networknext/backend/transport/pubsub"
+	"golang.org/x/sys/unix"
 
 	gcplogging "cloud.google.com/go/logging"
 	"cloud.google.com/go/profiler"
@@ -513,15 +515,25 @@ func main() {
 			os.Exit(1)
 		}
 
-		addr := net.UDPAddr{
-			Port: int(i_udp_port),
+		lc := net.ListenConfig{
+			Control: func(network, address string, c syscall.RawConn) error {
+				var opErr error
+				err := c.Control(func(fd uintptr) {
+					opErr = unix.SetsockoptInt(int(fd), unix.SOL_SOCKET, unix.SO_REUSEPORT, 1)
+				})
+				if err != nil {
+					return err
+				}
+				return opErr
+			},
 		}
 
-		conn, err = net.ListenUDP("udp", &addr)
+		lp, err := lc.ListenPacket(context.Background(), "udp", fmt.Sprintf("0.0.0.0:%d", i_udp_port))
 		if err != nil {
-			level.Error(logger).Log("msg", "failed to start listening for UDP traffic", "err", err)
-			os.Exit(1)
+			fmt.Println(err)
 		}
+
+		conn := lp.(*net.UDPConn)
 
 		readBufferString, ok := os.LookupEnv("READ_BUFFER")
 		if ok {

@@ -40,6 +40,8 @@ require (
 	github.com/urfave/cli v1.22.4
 	github.com/ybbus/jsonrpc v2.1.2+incompatible
 	golang.org/x/crypto v0.0.0-20200510223506-06a226fb4e37
+	golang.org/x/net v0.0.0-20200513185701-a91f0712d120
+	golang.org/x/sys v0.0.0-20200515095857-1151b9dac4a9
 	google.golang.org/api v0.24.0
 	google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013
 	google.golang.org/grpc v1.29.1
