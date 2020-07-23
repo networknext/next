@@ -43,17 +43,6 @@ var (
 
 type arrayFlags []string
 
-// used to decode dcMap hex strings from json
-type dcMapStrings struct {
-	BuyerID    string `json:"buyer_id"`
-	Datacenter string `json:"datacenter"`
-	Alias      string `json:"alias"`
-}
-
-func (dcm dcMapStrings) String() string {
-	return fmt.Sprintf("{\n\tBuyer ID     : %s\n\tDatacenter ID: %s\n\tAlias        : %s\n}", dcm.BuyerID, dcm.Datacenter, dcm.Alias)
-}
-
 func (i *arrayFlags) String() string {
 	return ""
 }
@@ -345,6 +334,17 @@ type datacenter struct {
 	Location routing.Location
 }
 
+// used to decode dcMap hex strings from json
+type dcMapStrings struct {
+	BuyerID    string `json:"buyer_id"`
+	Datacenter string `json:"datacenter"`
+	Alias      string `json:"alias"`
+}
+
+func (dcm dcMapStrings) String() string {
+	return fmt.Sprintf("{\n\tBuyer ID     : %s\n\tDatacenter ID: %s\n\tAlias        : %s\n}", dcm.BuyerID, dcm.Datacenter, dcm.Alias)
+}
+
 func main() {
 	var env Environment
 
@@ -445,6 +445,8 @@ func main() {
 	// Display relay IDs as signed ints instead of the default hex
 	var relayIDSigned bool
 	relaysfs.BoolVar(&relayIDSigned, "signed", false, "display relay IDs as signed integers")
+
+	datacentersfs := flag.NewFlagSet("datacenter filters", flag.ExitOnError)
 
 	var authCommand = &ffcli.Command{
 		Name:       "auth",
