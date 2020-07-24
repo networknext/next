@@ -460,6 +460,33 @@ var EmptyAnalyticsMetrics AnalyticsMetrics = AnalyticsMetrics{
 	PingStatsErrorMetrics:    EmptyAnalyticsErrorMetrics,
 }
 
+type ServerBackendMetrics struct {
+	SessionCount Gauge
+}
+
+var EmptyServerBackendMetrics ServerBackendMetrics = ServerBackendMetrics{
+	SessionCount: &EmptyGauge{},
+}
+
+func NewServerBackendMetrics(ctx context.Context, metricsHandler Handler) (*ServerBackendMetrics, error) {
+	var err error
+
+	serverBackendMetrics := ServerBackendMetrics{}
+
+	serverBackendMetrics.SessionCount, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Total session count",
+		ServiceName: "server_backend",
+		ID:          "server_backend.sessions",
+		Unit:        "sessions",
+		Description: "The total number of concurrent sessions",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &serverBackendMetrics, nil
+}
+
 func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMetrics, error) {
 	var err error
 

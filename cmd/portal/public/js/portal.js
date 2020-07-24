@@ -279,15 +279,19 @@ MapHandler = {
 		let filter = rootComponent.$data.pages.map.filter;
 
 		JSONRPCClient
-			.call('BuyersService.SessionMap', {buyer_id: filter.buyerId || ""})
+			.call('BuyersService.SessionMapByte', {buyer_id: filter.buyerId || ""})
 			.then((response) => {
-				let sessions = response.map_points || [];
-				let onNN = sessions.filter((point) => {
-					return (point[2] == 1);
-				});
-				let direct = sessions.filter((point) => {
-					return (point[2] == 0);
-				});
+				/*
+					let sessions = response.map_points || [];
+					let onNN = sessions.filter((point) => {
+						return (point[2] == 1);
+					});
+					let direct = sessions.filter((point) => {
+						return (point[2] == 0);
+					});
+				 */
+				let onNN = response.map_points.green_points || [];
+				let direct = response.map_points.blue_points || [];
 
 				let maintenanceMode = rootComponent.$data.maintenanceMode
 

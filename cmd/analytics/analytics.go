@@ -148,12 +148,12 @@ func main() {
 			if enableSDProfiler {
 				// Set up StackDriver profiler
 				if err := profiler.Start(profiler.Config{
-					Service:        "billing",
+					Service:        "analytics",
 					ServiceVersion: env,
 					ProjectID:      gcpProjectID,
 					MutexProfiling: true,
 				}); err != nil {
-					level.Error(logger).Log("msg", "failed to initialze StackDriver profiler", "err", err)
+					level.Error(logger).Log("msg", "failed to initialize StackDriver profiler", "err", err)
 					os.Exit(1)
 				}
 			}

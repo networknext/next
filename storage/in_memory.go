@@ -269,6 +269,23 @@ func (m *InMemory) SetRelay(ctx context.Context, relay routing.Relay) error {
 	return &DoesNotExistError{resourceType: "relay", resourceRef: relay.ID}
 }
 
+func (m *InMemory) SetRelayMetadata(ctx context.Context, relay routing.Relay) error {
+	for i := 0; i < len(m.localRelays); i++ {
+		if m.localRelays[i].ID == relay.ID {
+			m.localRelays[i] = relay
+			return nil
+		}
+	}
+
+	// If the relay isn't found then just set the first one, since we need to set one for local dev
+	if m.LocalMode && len(m.localRelays) > 0 {
+		m.localRelays[0] = relay
+		return nil
+	}
+
+	return &DoesNotExistError{resourceType: "relay", resourceRef: relay.ID}
+}
+
 func (m *InMemory) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error {
 
 	for _, dc := range m.localDatacenterMaps {
