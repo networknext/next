@@ -42,7 +42,7 @@ func (bq *GoogleBigQueryClient) WriteLoop(ctx context.Context) error {
 		bq.entries = make(chan *BillingEntry, DefaultBigQueryChannelSize)
 	}
 	for entry := range bq.entries {
-		bq.Metrics.EntriesQueued.Add(1)
+		bq.Metrics.EntriesQueued.Set(float64(len(bq.entries)))
 
 		if len(bq.buffer) >= bq.BatchSize {
 			if err := bq.TableInserter.Put(ctx, bq.buffer); err != nil {
