@@ -3,13 +3,18 @@ package transport
 import (
 	"bytes"
 	"context"
-	// "encoding/binary"
+	"encoding/binary"
+	"hash/fnv"
+	"os"
+	"strconv"
+	"syscall"
+
 	"errors"
 	"fmt"
 	"io"
 	"math/rand"
 	"net"
-	// "runtime"
+
 	"sync"
 	"sync/atomic"
 	"time"
@@ -22,7 +27,7 @@ import (
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport/pubsub"
-
+	"golang.org/x/sys/unix"
 	// fnv "hash/fnv"
 )
 
@@ -44,6 +49,16 @@ type UDPServerMux struct {
 	SessionUpdateHandlerFunc UDPHandlerFunc
 }
 
+type UDPServerMux2 struct {
+	Logger        log.Logger
+	MaxPacketSize int
+	Port          int64
+
+	ServerInitHandlerFunc    UDPHandlerFunc
+	ServerUpdateHandlerFunc  UDPHandlerFunc
+	SessionUpdateHandlerFunc UDPHandlerFunc
+}
+
 // Start begins accepting UDP packets from the UDP connection and will block
 func (m *UDPServerMux) Start(ctx context.Context) error {
 	if m.Conn == nil {
@@ -52,6 +67,27 @@ func (m *UDPServerMux) Start(ctx context.Context) error {
 
 	// todo: fucks up on 96 core otherwise
 	numThreads := 8
+
+	for i := 0; i < numThreads; i++ {
+		go m.handler(ctx, i)
+	}
+
+	<-ctx.Done()
+
+	return nil
+}
+
+// Start begins accepting UDP packets from the UDP connection and will block
+func (m *UDPServerMux2) Start(ctx context.Context) error {
+	// todo: fucks up on 96 core otherwise
+	numThreads := 8
+	numSockets, ok := os.LookupEnv("NUM_UDP_SOCKETS")
+	if ok {
+		iNumSockets, err := strconv.ParseInt(numSockets, 10, 64)
+		if err == nil {
+			numThreads = int(iNumSockets)
+		}
+	}
 
 	for i := 0; i < numThreads; i++ {
 		go m.handler(ctx, i)
@@ -110,6 +146,104 @@ func (m *UDPServerMux) handler(ctx context.Context, id int) {
 				}
 
 				m.Conn.WriteToUDP(res, from)
+			}
+
+		}(data, size, addr)
+	}
+}
+
+func (m *UDPServerMux2) handler(ctx context.Context, id int) {
+	var conn *net.UDPConn
+	// Initialize UDP connection
+	{
+		lc := net.ListenConfig{
+			Control: func(network, address string, c syscall.RawConn) error {
+				var opErr error
+				err := c.Control(func(fd uintptr) {
+					opErr = unix.SetsockoptInt(int(fd), unix.SOL_SOCKET, unix.SO_REUSEPORT, 1)
+				})
+				if err != nil {
+					return err
+				}
+				return opErr
+			},
+		}
+
+		lp, err := lc.ListenPacket(context.Background(), "udp", fmt.Sprintf("0.0.0.0:%d", m.Port))
+		if err != nil {
+			level.Error(m.Logger).Log("udp", "listenPacket", "msg", "could not bind", "err", err)
+			os.Exit(1)
+		}
+
+		conn = lp.(*net.UDPConn)
+
+		readBufferString, ok := os.LookupEnv("READ_BUFFER")
+		if ok {
+			readBuffer, err := strconv.ParseInt(readBufferString, 10, 64)
+			if err != nil {
+				level.Error(m.Logger).Log("envvar", "READ_BUFFER", "msg", "could not parse", "err", err)
+				os.Exit(1)
+			}
+			conn.SetReadBuffer(int(readBuffer))
+		}
+
+		writeBufferString, ok := os.LookupEnv("WRITE_BUFFER")
+		if ok {
+			writeBuffer, err := strconv.ParseInt(writeBufferString, 10, 64)
+			if err != nil {
+				level.Error(m.Logger).Log("envvar", "WRITE_BUFFER", "msg", "could not parse", "err", err)
+				os.Exit(1)
+			}
+			conn.SetWriteBuffer(int(writeBuffer))
+		}
+	}
+
+	for {
+
+		data := make([]byte, m.MaxPacketSize)
+
+		size, addr, _ := conn.ReadFromUDP(data)
+		if size <= 0 {
+			continue
+		}
+
+		data = data[:size]
+
+		go func(packet_data []byte, packet_size int, from *net.UDPAddr) {
+
+			// Check the packet hash is legit and remove the hash from the beginning of the packet
+			// to continue processing the packet as normal
+			hashedPacket := crypto.Check(crypto.PacketHashKey, packet_data)
+			switch hashedPacket {
+			case true:
+				packet_data = packet_data[crypto.PacketHashSize:packet_size]
+			default:
+				// todo: once everybody has upgraded to SDK 3.4.5 or greater, this is an error. ignore packet.
+				packet_data = packet_data[:packet_size]
+			}
+
+			packet := UDPPacket{SourceAddr: *from, Data: packet_data}
+
+			var buf bytes.Buffer
+
+			switch packet.Data[0] {
+			case PacketTypeServerInitRequest:
+				m.ServerInitHandlerFunc(&buf, &packet)
+			case PacketTypeServerUpdate:
+				m.ServerUpdateHandlerFunc(&buf, &packet)
+			case PacketTypeSessionUpdate:
+				m.SessionUpdateHandlerFunc(&buf, &packet)
+			}
+
+			if buf.Len() > 0 {
+				res := buf.Bytes()
+
+				// If the hash checks out above then hash the response to the sender
+				if hashedPacket {
+					res = crypto.Hash(crypto.PacketHashKey, res)
+				}
+
+				conn.WriteToUDP(res, from)
 			}
 
 		}(data, size, addr)
@@ -385,12 +519,16 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 			sequence = serverDataReadOnly.sequence
 		}
 
+		// todo: disable as a test
+		_ = sequence
+		/*
 		if packet.Sequence < sequence {
 			level.Error(params.Logger).Log("handler", "server", "msg", "packet too old", "packet sequence", packet.Sequence, "lastest sequence", serverDataReadOnly.sequence)
 			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 			params.Metrics.ErrorMetrics.PacketSequenceTooOld.Add(1)
 			return
 		}
+		*/
 
 		// Each one of our customer's servers reports to us with this server update packet every 10 seconds.
 		// Therefore we must update the server data each time we receive an update, to keep this server entry live in our server map.
@@ -495,6 +633,8 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			sessionDataReadOnly = NewSessionData()
 		}
 
+		// todo: disable for now as a test
+		/*
 		// Check the packet sequence number vs. the most recent sequence number in redis.
 		// The packet sequence number must be at least as old as the current session sequence #
 		// otherwise this is a stale session update packet from an older slice so we ignore it!
@@ -505,6 +645,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			params.Metrics.ErrorMetrics.OldSequence.Add(1)
 			return
 		}
+		*/
 
 		// Check the session update packet is properly signed with the customer private key.
 		// Any session update not signed is invalid, so we don't waste bandwidth responding to it.
@@ -1006,8 +1147,8 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 	// shortly become per-customer, thus there is really no global concept of "multiplay.losangeles", for example.
 
 	// todo: temporary
-	// datacenterName := serverDataReadOnly.datacenter.Name
-	// datacenterAlias := serverDataReadOnly.datacenter.AliasName
+	datacenterName := serverDataReadOnly.datacenter.Name
+	datacenterAlias := serverDataReadOnly.datacenter.AliasName
 
 	// Send a massive amount of data to the portal via redis.
 	// This drives all the stuff you see in the portal, including the map and top sessions list.
@@ -1016,14 +1157,14 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 	isMultipath := routing.IsMultipath(prevRouteDecision)
 
 	// todo: commented out until we can figure out what's going on with zeromq
-	// portalDataBytes, err := updatePortalData(params.PortalPublisher, packet, lastNextStats, lastDirectStats, routeRelays,
-	// 	packet.OnNetworkNext, datacenterName, location, nearRelays, timeNow, isMultipath, datacenterAlias)
-	// if err != nil {
-	// 	level.Error(params.Logger).Log("msg", "could not update portal data", "err", err)
-	// 	params.Metrics.ErrorMetrics.UpdatePortalFailure.Add(1)
-	// }
+	portalDataBytes, err := updatePortalData(params.PortalPublisher, packet, lastNextStats, lastDirectStats, routeRelays,
+		packet.OnNetworkNext, datacenterName, location, nearRelays, timeNow, isMultipath, datacenterAlias)
+	if err != nil {
+		level.Error(params.Logger).Log("msg", "could not update portal data", "err", err)
+		params.Metrics.ErrorMetrics.UpdatePortalFailure.Add(1)
+	}
 
-	// level.Debug(params.Logger).Log("msg", fmt.Sprintf("published %d bytes to portal cruncher", portalDataBytes))
+	level.Debug(params.Logger).Log("msg", fmt.Sprintf("published %d bytes to portal cruncher", portalDataBytes))
 
 	// Send billing specific data to the billing service via google pubsub
 	// The billing service subscribes to this topic, and writes the billing data to bigquery.
@@ -1075,7 +1216,6 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 	}
 }
 
-/*
 func updatePortalData(portalPublisher pubsub.Publisher, packet *SessionUpdatePacket, lastNNStats *routing.Stats, lastDirectStats *routing.Stats, relayHops []routing.Relay,
 	onNetworkNext bool, datacenterName string, location *routing.Location, nearRelays []routing.Relay, sessionTime time.Time, isMultiPath bool, datacenterAlias string) (int, error) {
 
@@ -1148,7 +1288,6 @@ func updatePortalData(portalPublisher pubsub.Publisher, packet *SessionUpdatePac
 	byteCount, err := portalPublisher.Publish(pubsub.TopicPortalCruncherSessionData, bytes)
 	return byteCount, err
 }
-*/
 
 func addRouteDecisionMetric(d routing.Decision, m *metrics.SessionMetrics) {
 	switch d.Reason {
