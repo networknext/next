@@ -18,28 +18,11 @@ blocks:
     dependencies: []
     task:
       jobs:
-        - name: Billing
+        - name: Build Artifacts
           commands:
-            - make build-billing-prod-artifact
-            - make publish-billing-prod-artifact
-        - name: Portal
+            - make build-backend-artifacts-prod
+        - name: Publish Artifacts
           commands:
-            - make build-portal-prod-artifact
-            - make publish-portal-prod-artifact
-        - name: Portal Cruncher
-          commands:
-            - make build-portal-cruncher-prod-artifact
-            - make publish-portal-cruncher-prod-artifact
-        - name: Relay Backend
-          commands:
-            - make build-relay-backend-prod-artifact
-            - make publish-relay-backend-prod-artifact
-        - name: Server Backend
-          commands:
-            - make build-server-backend-prod-artifact
-            - make publish-server-backend-prod-artifact
-        - name: Bootstrap Script
-          commands:
-            - make publish-bootstrap-script-prod
+            - make publish-backend-artifacts-prod
       secrets:
         - name: google-cloud-platform-prod
