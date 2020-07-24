@@ -7,6 +7,7 @@ package main
 
 import (
 	"context"
+	"expvar"
 	"fmt"
 	"io/ioutil"
 	"runtime"
@@ -102,8 +103,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	var billingEntriesReceived uint64
-
 	// Create a no-op biller
 	var biller billing.Biller = &billing.NoOpBiller{}
 
@@ -182,9 +181,9 @@ func main() {
 	}
 
 	// Create billing metrics
-	billingMetrics, err := metrics.NewBillingMetrics(ctx, metricsHandler)
+	billingServiceMetrics, err := metrics.NewBillingServiceMetrics(ctx, metricsHandler)
 	if err != nil {
-		level.Error(logger).Log("msg", "failed to create billing metrics", "err", err)
+		level.Error(logger).Log("msg", "failed to create billing service metrics", "err", err)
 	}
 
 	if gcpOK {
@@ -207,7 +206,7 @@ func main() {
 					os.Exit(1)
 				}
 				b := billing.GoogleBigQueryClient{
-					Metrics:       billingMetrics,
+					Metrics:       &billingServiceMetrics.BillingMetrics,
 					Logger:        logger,
 					TableInserter: bqClient.Dataset(billingDataset).Table(os.Getenv("GOOGLE_BIGQUERY_TABLE_BILLING")).Inserter(),
 					BatchSize:     batchSize,
@@ -230,7 +229,8 @@ func main() {
 
 		// Use the local biller
 		biller = &billing.LocalBiller{
-			Logger: logger,
+			Logger:  logger,
+			Metrics: &billingServiceMetrics.BillingMetrics,
 		}
 
 		level.Info(logger).Log("msg", "Detected pubsub emulator")
@@ -245,7 +245,7 @@ func main() {
 			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
 			defer cancelFunc()
 
-			pubsubForwarder, err := billing.NewPubSubForwarder(pubsubCtx, biller, logger, billingMetrics, gcpProjectID, topicName, subscriptionName)
+			pubsubForwarder, err := billing.NewPubSubForwarder(pubsubCtx, biller, logger, &billingServiceMetrics.BillingMetrics, gcpProjectID, topicName, subscriptionName)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				os.Exit(1)
@@ -266,13 +266,16 @@ func main() {
 		go func() {
 			for {
 
+				billingServiceMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
+				billingServiceMetrics.MemoryAllocated.Set(memoryUsed())
+
 				fmt.Printf("-----------------------------\n")
-				fmt.Printf("%d goroutines\n", runtime.NumGoroutine())
-				fmt.Printf("%.2f mb allocated\n", memoryUsed())
-				fmt.Printf("%d billing entries received\n", billingEntriesReceived)
-				fmt.Printf("%d billing entries submitted\n", biller.NumSubmitted())
-				fmt.Printf("%d billing entries queued\n", biller.NumQueued())
-				fmt.Printf("%d billing entries flushed\n", biller.NumFlushed())
+				fmt.Printf("%d goroutines\n", int(billingServiceMetrics.Goroutines.Value()))
+				fmt.Printf("%.2f mb allocated\n", billingServiceMetrics.MemoryAllocated.Value())
+				fmt.Printf("%d billing entries received\n", int(billingServiceMetrics.BillingMetrics.EntriesReceived.Value()))
+				fmt.Printf("%d billing entries submitted\n", int(billingServiceMetrics.BillingMetrics.EntriesSubmitted.Value()))
+				fmt.Printf("%d billing entries queued\n", int(billingServiceMetrics.BillingMetrics.EntriesQueued.Value()))
+				fmt.Printf("%d billing entries flushed\n", int(billingServiceMetrics.BillingMetrics.EntriesFlushed.Value()))
 				fmt.Printf("-----------------------------\n")
 
 				time.Sleep(time.Second * 10)
@@ -286,6 +289,7 @@ func main() {
 			router := mux.NewRouter()
 			router.HandleFunc("/health", HealthHandlerFunc())
 			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage))
+			router.Handle("/debug/vars", expvar.Handler())
 
 			port, ok := os.LookupEnv("PORT")
 			if !ok {
