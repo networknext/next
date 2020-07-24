@@ -18,6 +18,10 @@ blocks:
     dependencies: []
     task:
       jobs:
+        - name: Billing
+          commands:
+            - make build-billing-artifacts-staging
+            - make publish-billing-artifacts-staging
         - name: Portal
         commands:
           - make build-portal-artifacts-staging

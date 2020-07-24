@@ -18,6 +18,10 @@ blocks:
     dependencies: []
     task:
       jobs:
+        - name: Billing
+          commands:
+            - make build-billing-artifact-dev
+            - make publish-billing-artifact-dev
         - name: Portal
           commands:
             - make build-portal-artifacts-dev
