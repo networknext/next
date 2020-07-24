@@ -22,11 +22,13 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/networknext/backend/analytics"
 	"github.com/networknext/backend/logging"
 	"github.com/networknext/backend/transport"
 
 	gcplogging "cloud.google.com/go/logging"
 	"cloud.google.com/go/profiler"
+	"cloud.google.com/go/pubsub"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -314,7 +316,7 @@ func main() {
 					ProjectID:      gcpProjectID,
 					MutexProfiling: true,
 				}); err != nil {
-					level.Error(logger).Log("msg", "Failed to initialze StackDriver profiler", "err", err)
+					level.Error(logger).Log("msg", "Failed to initialize StackDriver profiler", "err", err)
 					os.Exit(1)
 				}
 			}
@@ -419,6 +421,83 @@ func main() {
 			os.Exit(1)
 		}
 	}
+
+	analyticsMetrics, err := metrics.NewAnalyticsMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create statsdb metrics", "err", err)
+	}
+
+	// Create a no-op publisher
+	var publisher analytics.PubSubPublisher = &analytics.NoOpPubSubPublisher{}
+	_, emulatorOK = os.LookupEnv("PUBSUB_EMULATOR_HOST")
+	if gcpOK || emulatorOK {
+
+		pubsubCtx := ctx
+		if emulatorOK {
+			gcpProjectID = "local"
+
+			var cancelFunc context.CancelFunc
+			pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(5*time.Minute))
+			defer cancelFunc()
+
+			level.Info(logger).Log("msg", "Detected pubsub emulator")
+		}
+
+		// Google Pubsub
+		{
+			settings := pubsub.PublishSettings{
+				DelayThreshold: time.Second,
+				CountThreshold: 1,
+				ByteThreshold:  1 << 14,
+				NumGoroutines:  runtime.GOMAXPROCS(0),
+				Timeout:        time.Minute,
+			}
+
+			pubsub, err := analytics.NewGooglePubSubPublisher(pubsubCtx, analyticsMetrics, logger, gcpProjectID, "ping_stats", settings)
+			if err != nil {
+				level.Error(logger).Log("msg", "could not create analytics pubsub publisher", "err", err)
+				os.Exit(1)
+			}
+
+			publisher = pubsub
+		}
+	}
+
+	go func() {
+		for {
+			time.Sleep(time.Minute)
+			cpy := statsdb.MakeCopy()
+			length := routing.TriMatrixLength(len(cpy.Entries))
+
+			entries := make([]analytics.StatsEntry, length)
+			ids := make([]uint64, length)
+
+			idx := 0
+			for k := range cpy.Entries {
+				ids[idx] = k
+				idx++
+			}
+
+			for i := 1; i < len(cpy.Entries); i++ {
+				for j := 0; j < i; j++ {
+					idA := ids[i]
+					idB := ids[j]
+
+					rtt, jitter, pl := cpy.GetSample(idA, idB)
+
+					entries[routing.TriMatrixIndex(i, j)] = analytics.StatsEntry{
+						RelayA:     idA,
+						RelayB:     idB,
+						RTT:        rtt,
+						Jitter:     jitter,
+						PacketLoss: pl,
+					}
+				}
+			}
+
+			publisher.Publish(ctx, entries)
+		}
+	}()
 
 	// Periodically generate cost matrix from stats db
 	cmsyncinterval := os.Getenv("COST_MATRIX_INTERVAL")
@@ -543,6 +622,9 @@ func main() {
 			fmt.Printf("route matrix bytes: %d\n", routeMatrixBytes)
 			fmt.Printf("cost matrix update: %.2f seconds\n", costMatrixDurationSince.Seconds())
 			fmt.Printf("route matrix update: %.2f seconds\n", optimizeDurationSince.Seconds())
+			fmt.Printf("%d analytics ps entries submitted\n", publisher.NumSubmitted())
+			fmt.Printf("%d analytics ps entries queued\n", publisher.NumQueued())
+			fmt.Printf("%d analytics ps entries flushed\n", publisher.NumFlushed())
 			fmt.Printf("-----------------------------\n")
 
 			// Swap the route matrix pointer to the new one
@@ -560,10 +642,10 @@ func main() {
 	go func() {
 		ps := redisClientRelays.Subscribe("__keyevent@0__:expired")
 		for {
-			// Recieve expiry event message
+			// Receive expiry event message
 			msg, err := ps.ReceiveMessage()
 			if err != nil {
-				level.Error(logger).Log("msg", "Error recieving expired message from pubsub", "err", err)
+				level.Error(logger).Log("msg", "Error receiving expired message from pubsub", "err", err)
 				os.Exit(1)
 			}
 
