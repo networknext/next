@@ -555,8 +555,17 @@ func main() {
 		}
 
 		go func() {
+			sleepTime := time.Second * 10
+			if publishInterval, ok := os.LookupEnv("RELAY_STATS_PUBLISH_INTERVAL"); ok {
+				if duration, err := time.ParseDuration(publishInterval); err == nil {
+					sleepTime = duration
+				} else {
+					level.Error(logger).Log("msg", "could not parse publish interval", "err", err)
+				}
+			}
+
 			for {
-				time.Sleep(time.Second * 10)
+				time.Sleep(sleepTime)
 
 				hgetallResult := redisClientRelays.HGetAll(routing.HashKeyAllRelays)
 				if hgetallResult.Err() != nil && hgetallResult.Err() != redis.Nil {
