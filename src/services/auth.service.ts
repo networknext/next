@@ -59,7 +59,7 @@ export default class AuthService {
   }
 
   private processAuthentification (authResult: AuthResult) {
-    this.getUserInfo(authResult.accessToken, (error: auth0.Auth0Error, profile: NNAuth0Profile) => {
+    this.lockClient.getUserInfo(authResult.accessToken, (error: auth0.Auth0Error, profile: NNAuth0Profile) => {
       if (!error) {
         const userRoles = profile['https://networknext.com/userRoles'] || { roles: [] }
         const userProfile: UserProfile = {
