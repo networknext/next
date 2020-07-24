@@ -21,21 +21,21 @@ func sellers(rpcClient jsonrpc.RPCClient, env Environment) {
 	sellers := []struct {
 		Name            string
 		ID              string
-		IngressPriceUSD float64
-		EgressPriceUSD  float64
+		IngressPriceUSD string
+		EgressPriceUSD  string
 	}{}
 
 	for _, seller := range reply.Sellers {
 		sellers = append(sellers, struct {
 			Name            string
 			ID              string
-			IngressPriceUSD float64
-			EgressPriceUSD  float64
+			IngressPriceUSD string
+			EgressPriceUSD  string
 		}{
 			Name:            seller.Name,
 			ID:              seller.ID,
-			IngressPriceUSD: seller.IngressPriceNibblins.ToDollars(),
-			EgressPriceUSD:  seller.EgressPriceNibblins.ToDollars(),
+			IngressPriceUSD: fmt.Sprintf("$%02.2f", seller.IngressPriceNibblins.ToDollars()),
+			EgressPriceUSD:  fmt.Sprintf("$%02.2f", seller.EgressPriceNibblins.ToDollars()),
 		})
 	}
 
