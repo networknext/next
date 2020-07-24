@@ -464,8 +464,17 @@ func main() {
 	}
 
 	go func() {
+		sleepTime := time.Minute
+		if publishInterval, ok := os.LookupEnv("PING_STATS_PUBLISH_INTERVAL"); ok {
+			if duration, err := time.ParseDuration(publishInterval); err == nil {
+				sleepTime = duration
+			} else {
+				level.Error(logger).Log("msg", "could not parse publish interval", "err", err)
+			}
+		}
+
 		for {
-			time.Sleep(time.Minute)
+			time.Sleep(sleepTime)
 			cpy := statsdb.MakeCopy()
 			length := routing.TriMatrixLength(len(cpy.Entries))
 
@@ -534,7 +543,7 @@ func main() {
 				// todo: metric on this ryan
 				fmt.Printf("cost matrix fail\n")
 			}
-			
+
 			costMatrixBytes = len(costMatrix.GetResponseData())
 
 			newCostMatrixGenMetrics.DurationGauge.Set(float64(costMatrixDurationSince.Milliseconds()))
