@@ -18,26 +18,22 @@ blocks:
     dependencies: []
     task:
       jobs:
-        - name: Billing
-          commands:
-            - make build-billing-prod-artifact
-            - make publish-billing-prod-artifact
         - name: Portal
           commands:
-            - make build-portal-prod-artifact
-            - make publish-portal-prod-artifact
+            - make build-portal-artifacts-prod
+            - make publish-portal-artifact
         - name: Portal Cruncher
           commands:
-            - make build-portal-cruncher-prod-artifact
-            - make publish-portal-cruncher-prod-artifact
+            - make build-portal-cruncher-artifacts-prod
+            - make publish-portal-cruncher-artifact
         - name: Relay Backend
           commands:
-            - make build-relay-backend-prod-artifact
-            - make publish-relay-backend-prod-artifact
+            - make build-relay-backend-artifacts-prod
+            - make publish-relay-backend-artifact
         - name: Server Backend
           commands:
-            - make build-server-backend-prod-artifact
-            - make publish-server-backend-prod-artifact
+            - make build-server-backend-artifacts-prod
+            - make publish-server-backend-artifact
         - name: Bootstrap Script
           commands:
             - make publish-bootstrap-script-prod
