@@ -10,76 +10,45 @@ SYSTEMD_SERVICE_FILE="app.service"
 DIST_DIR="${DIR}/../dist"
 
 ENV=
+SERVICE=
 
 build-artifacts() {
-  printf "Building relay backend ${ENV} artifact... \n"
-	mkdir -p ${DIST_DIR}/artifact/relay_backend
-	cp ${DIST_DIR}/relay_backend ${DIST_DIR}/artifact/relay_backend/app
-	cp ${DIR}/../cmd/relay_backend/${ENV}.env ${DIST_DIR}/artifact/relay_backend/app.env
-	cp ${DIR}/${SYSTEMD_SERVICE_FILE} ${DIST_DIR}/artifact/relay_backend/${SYSTEMD_SERVICE_FILE}
-	cd ${DIST_DIR}/artifact/relay_backend && tar -zcf ../../relay_backend.${ENV}.tar.gz app app.env ${SYSTEMD_SERVICE_FILE} && cd ../..
-	printf "${DIST_DIR}/relay_backend.${ENV}.tar.gz\n"
-	printf "done\n"
-	printf "Building portal ${ENV} artifact ... \n"
-	mkdir -p ${DIST_DIR}/artifact/portal
-	cp ${DIST_DIR}/portal ${DIST_DIR}/artifact/portal/app
-	cp -r ${DIR}/../cmd/portal/public ${DIST_DIR}/artifact/portal
-	cp ${DIR}/../cmd/portal/${ENV}.env ${DIST_DIR}/artifact/portal/app.env
-	cp ${DIR}/${SYSTEMD_SERVICE_FILE} ${DIST_DIR}/artifact/portal/${SYSTEMD_SERVICE_FILE}
-	cd ${DIST_DIR}/artifact/portal && tar -zcf ../../portal.${ENV}.tar.gz public app app.env ${SYSTEMD_SERVICE_FILE} && cd ../..
-	printf "${DIST_DIR}/portal.${ENV}.tar.gz\n"
-	printf "done\n"
-	printf "Building billing ${ENV} artifact ... \n"
-	mkdir -p ${DIST_DIR}/artifact/billing
-	cp ${DIST_DIR}/billing ${DIST_DIR}/artifact/billing/app
-	cp ${DIR}/../cmd/billing/${ENV}.env ${DIST_DIR}/artifact/billing/app.env
-	cp ${DIR}/${SYSTEMD_SERVICE_FILE} ${DIST_DIR}/artifact/billing/${SYSTEMD_SERVICE_FILE}
-	cd ${DIST_DIR}/artifact/billing && tar -zcf ../../billing.${ENV}.tar.gz app app.env ${SYSTEMD_SERVICE_FILE} && cd ../..
-	printf "${DIST_DIR}/billing.${ENV}.tar.gz\n"
-	printf "done\n"
-	printf "Building server backend ${ENV} artifact ... \n"
-	mkdir -p ${DIST_DIR}/artifact/server_backend
-	cp ${DIST_DIR}/server_backend ${DIST_DIR}/artifact/server_backend/app
-	cp ${DIR}/../cmd/server_backend/${ENV}.env ${DIST_DIR}/artifact/server_backend/app.env
-	cp ${DIR}/${SYSTEMD_SERVICE_FILE} ${DIST_DIR}/artifact/server_backend/${SYSTEMD_SERVICE_FILE}
-	cd ${DIST_DIR}/artifact/server_backend && tar -zcf ../../server_backend.${ENV}.tar.gz app app.env ${SYSTEMD_SERVICE_FILE} && cd ../..
-	printf "${DIST_DIR}/server_backend.${ENV}.tar.gz\n"
-	printf "done\n"
-  printf "Building relay artifact ... \n"
-	mkdir -p ${DIST_DIR}/artifact/relay
-	cp ${DIST_DIR}/relay ${DIST_DIR}/artifact/relay/relay
-	cp ${DIR}/relay/relay.service ${DIST_DIR}/artifact/relay/relay.service
-	cp ${DIR}/relay/install.sh ${DIST_DIR}/artifact/relay/install.sh
-	cd ${DIST_DIR}/artifact/relay && tar -zcf ../../relay.${ENV}.tar.gz relay relay.service install.sh && cd ../..
-	printf "${DIST_DIR}/relay.${ENV}.tar.gz\n"
-	printf "done\n"
-	printf "Building portal_cruncher ${ENV} artifact... \n"
-	mkdir -p ${DIST_DIR}/artifact/portal_cruncher
-	cp ${DIST_DIR}/portal_cruncher ${DIST_DIR}/artifact/portal_cruncher/app
-	cp ${DIR}/../cmd/portal_cruncher/${ENV}.env ${DIST_DIR}/artifact/portal_cruncher/app.env
-	cp ${DIR}/${SYSTEMD_SERVICE_FILE} ${DIST_DIR}/artifact/portal_cruncher/${SYSTEMD_SERVICE_FILE}
-	cd ${DIST_DIR}/artifact/portal_cruncher && tar -zcf ../../portal_cruncher.${ENV}.tar.gz app app.env ${SYSTEMD_SERVICE_FILE} && cd ../..
-	printf "${DIST_DIR}/portal_cruncher.${ENV}.tar.gz\n"
+  printf "Building ${SERVICE} ${ENV} artifact... \n"
+	mkdir -p ${DIST_DIR}/artifact/${SERVICE}
+	if [ "$SERVICE" = "relay" ]; then
+		cp ${DIST_DIR}/${SERVICE} ${DIST_DIR}/artifact/${SERVICE}/${SERVICE}
+		cp ${DIR}/${SERVICE}/${SERVICE}.service ${DIST_DIR}/artifact/${SERVICE}/${SERVICE}.service
+		cp ${DIR}/${SERVICE}/install.sh ${DIST_DIR}/artifact/${SERVICE}/install.sh
+		cd ${DIST_DIR}/artifact/${SERVICE} && tar -zcf ../../${SERVICE}.${ENV}.tar.gz ${SERVICE} ${SERVICE}.service install.sh && cd ../..
+	else
+		cp ${DIST_DIR}/${SERVICE} ${DIST_DIR}/artifact/${SERVICE}/app
+		cp ${DIR}/../cmd/${SERVICE}/${ENV}.env ${DIST_DIR}/artifact/${SERVICE}/app.env
+		cp ${DIR}/${SYSTEMD_SERVICE_FILE} ${DIST_DIR}/artifact/${SERVICE}/${SYSTEMD_SERVICE_FILE}
+		cd ${DIST_DIR}/artifact/${SERVICE} && tar -zcf ../../${SERVICE}.${ENV}.tar.gz app app.env ${SYSTEMD_SERVICE_FILE} && cd ../..
+	fi
+	printf "${DIST_DIR}/${SERVICE}.${ENV}.tar.gz\n"
 	printf "done\n"
 }
 
 print_usage() {
-  printf "Usage: publish.sh -e environment\n\n"
-  printf "e [string]\tPublishing environment [dev, staging, prod]\n"
+  printf "Usage: build-artifacts.sh -e environment -s service\n\n"
+  printf "s [string]\Building environment [dev, staging, prod]\n"
+  printf "e [string]\tService being built [portal, portal_cruncher, server_backend, etc]\n"
 
   printf "Example:\n\n"
-  printf "> publish.sh -e dev\n"
+  printf "> build-artifacts.sh -e dev -s portal\n"
 }
 
-if [ ! $# -eq 2 ]
+if [ ! $# -eq 4 ]
 then
   print_usage
   exit 1
 fi
 
-while getopts 'e:b:h' flag; do
+while getopts 'e:s:h' flag; do
   case "${flag}" in
     e) ENV="${OPTARG}" ;;
+    s) SERVICE="${OPTARG}" ;;
     h) print_usage
        exit 1 ;;
     *) print_usage
