@@ -378,6 +378,10 @@ func main() {
 	var buyersIdSigned bool
 	buyersfs.BoolVar(&buyersIdSigned, "signed", false, "Display buyer IDs as signed ints")
 
+	datacentersfs := flag.NewFlagSet("datacenters", flag.ExitOnError)
+	var datacenterIdSigned bool
+	datacentersfs.BoolVar(&datacenterIdSigned, "signed", false, "Display datacenter IDs as signed ints")
+
 	sessionsfs := flag.NewFlagSet("sessions", flag.ExitOnError)
 	var sessionCount int64
 	sessionsfs.Int64Var(&sessionCount, "n", 0, "number of top sessions to display (default: all)")
@@ -957,14 +961,15 @@ func main() {
 
 	var datacentersCommand = &ffcli.Command{
 		Name:       "datacenters",
-		ShortUsage: "next datacenters <name>",
+		ShortUsage: "next datacenters",
 		ShortHelp:  "List datacenters",
+		FlagSet:    datacentersfs,
 		Exec: func(_ context.Context, args []string) error {
 			if len(args) > 0 {
-				datacenters(rpcClient, env, args[0])
+				datacenters(rpcClient, env, args[0], datacenterIdSigned)
 				return nil
 			}
-			datacenters(rpcClient, env, "")
+			datacenters(rpcClient, env, "", datacenterIdSigned)
 			return nil
 		},
 	}

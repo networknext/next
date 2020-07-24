@@ -6,7 +6,6 @@ import (
 	"reflect"
 	"regexp"
 	"sort"
-	"strconv"
 
 	"github.com/modood/table"
 	"github.com/networknext/backend/routing"
@@ -285,12 +284,8 @@ func addDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMapStr
 	}
 	r = regexp.MustCompile("(?i)" + dcm.Datacenter) // case-insensitive regex
 	for _, dc := range dcReply.Datacenters {
-		if r.MatchString(dc.Name) || r.MatchString(dc.ID) {
-			dcID, err = strconv.ParseUint(dc.ID, 16, 64)
-			if err != nil {
-				fmt.Printf("Unable to convert %v to a hex Datacenter ID\n", dc.ID)
-				os.Exit(0)
-			}
+		if r.MatchString(dc.Name) || r.MatchString(fmt.Sprintf("%016x", dc.ID)) {
+			dcID = dc.ID
 		}
 	}
 	if dcID == 0 {
@@ -347,12 +342,8 @@ func removeDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMap
 	}
 	r = regexp.MustCompile("(?i)" + dcm.Datacenter) // case-insensitive regex
 	for _, dc := range dcReply.Datacenters {
-		if r.MatchString(dc.Name) || r.MatchString(dc.ID) {
-			dcID, err = strconv.ParseUint(dc.ID, 16, 64)
-			if err != nil {
-				fmt.Printf("Unable to convert %v to a hex Datacenter ID\n", dc.ID)
-				os.Exit(0)
-			}
+		if r.MatchString(dc.Name) || r.MatchString(fmt.Sprintf("%016x", dc.ID)) {
+			dcID = dc.ID
 		}
 	}
 	if dcID == 0 {
