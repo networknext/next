@@ -19,6 +19,7 @@ build-artifacts() {
 	cp ${DIR}/${SYSTEMD_SERVICE_FILE} ${DIST_DIR}/artifact/relay_backend/${SYSTEMD_SERVICE_FILE}
 	cd ${DIST_DIR}/artifact/relay_backend && tar -zcf ../../relay_backend.${ENV}.tar.gz app app.env ${SYSTEMD_SERVICE_FILE} && cd ../..
 	printf "${DIST_DIR}/relay_backend.${ENV}.tar.gz\n"
+	printf "done\n"
 	printf "Building portal ${ENV} artifact ... \n"
 	mkdir -p ${DIST_DIR}/artifact/portal
 	cp ${DIST_DIR}/portal ${DIST_DIR}/artifact/portal/app
@@ -52,13 +53,14 @@ build-artifacts() {
 	cd ${DIST_DIR}/artifact/relay && tar -zcf ../../relay.${ENV}.tar.gz relay relay.service install.sh && cd ../..
 	printf "${DIST_DIR}/relay.${ENV}.tar.gz\n"
 	printf "done\n"
-	printf "Building portal_cruncher ${ENV} artifact..."
+	printf "Building portal_cruncher ${ENV} artifact... \n"
 	mkdir -p ${DIST_DIR}/artifact/portal_cruncher
 	cp ${DIST_DIR}/portal_cruncher ${DIST_DIR}/artifact/portal_cruncher/app
-	cp ./cmd/portal_cruncher/${ENV}.env ${DIST_DIR}/artifact/portal_cruncher/app.env
-	cp ${DIST_DIR}/${SYSTEMD_SERVICE_FILE} ${DIST_DIR}/artifact/portal_cruncher/${SYSTEMD_SERVICE_FILE}
+	cp ${DIR}/../cmd/portal_cruncher/${ENV}.env ${DIST_DIR}/artifact/portal_cruncher/app.env
+	cp ${DIR}/${SYSTEMD_SERVICE_FILE} ${DIST_DIR}/artifact/portal_cruncher/${SYSTEMD_SERVICE_FILE}
 	cd ${DIST_DIR}/artifact/portal_cruncher && tar -zcf ../../portal_cruncher.${ENV}.tar.gz app app.env ${SYSTEMD_SERVICE_FILE} && cd ../..
 	printf "${DIST_DIR}/portal_cruncher.${ENV}.tar.gz\n"
+	printf "done\n"
 }
 
 print_usage() {

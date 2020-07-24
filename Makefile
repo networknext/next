@@ -323,6 +323,13 @@ $(DIST_DIR)/$(SDKNAME).so:
 .PHONY: build-sdk
 build-sdk: $(DIST_DIR)/$(SDKNAME).so ## builds the sdk
 
+
+PHONY: build-portal-cruncher
+build-portal-cruncher: ## builds the portal_cruncher binary
+	@printf "Building portal_cruncher... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/portal_cruncher ./cmd/portal_cruncher/portal_cruncher.go
+	@printf "done\n"
+
 .PHONY: build-portal
 build-portal: ## builds the portal binary
 	@printf "Building portal... \n"
