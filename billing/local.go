@@ -16,7 +16,6 @@ type LocalBiller struct {
 }
 
 func (local *LocalBiller) Bill(ctx context.Context, entry *BillingEntry) error {
-	fmt.Println(local)
 	local.Metrics.EntriesSubmitted.Add(1)
 
 	if local.Logger == nil {

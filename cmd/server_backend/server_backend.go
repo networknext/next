@@ -8,6 +8,7 @@ package main
 import (
 	"context"
 	"encoding/base64"
+	"expvar"
 	"fmt"
 	"runtime"
 	"sync"
@@ -468,11 +469,11 @@ func main() {
 						continue
 					}
 
-					routeMatrixTimeMS := time.Since(start).Milliseconds()
+					routeMatrixTime := time.Since(start)
 
-					serverBackendMetrics.RouteMatrixUpdateDuration.Set(float64(routeMatrixTimeMS))
+					serverBackendMetrics.RouteMatrixUpdateDuration.Set(float64(routeMatrixTime.Milliseconds()))
 
-					if routeMatrixTimeMS > 1000 {
+					if routeMatrixTime.Seconds() > 1.0 {
 						serverBackendMetrics.LongRouteMatrixUpdateCount.Add(1)
 					}
 
@@ -578,7 +579,7 @@ func main() {
 				fmt.Printf("%d server init packets processed\n", int(serverInitMetrics.Invocations.Value()))
 				fmt.Printf("%d server update packets processed\n", int(serverUpdateMetrics.Invocations.Value()))
 				fmt.Printf("%d session update packets processed\n", int(sessionUpdateMetrics.Invocations.Value()))
-				fmt.Printf("%.2f route matrix duration\n", serverBackendMetrics.RouteMatrixUpdateDuration.Value())
+				fmt.Printf("%.2f milliseconds route matrix update\n", serverBackendMetrics.RouteMatrixUpdateDuration.Value())
 				fmt.Printf("%d long route matrix updates\n", int(serverBackendMetrics.LongRouteMatrixUpdateCount.Value()))
 
 				unknownDatacentersLength := datacenterTracker.UnknownDatacenterLength()
@@ -674,6 +675,7 @@ func main() {
 		router := mux.NewRouter()
 		router.HandleFunc("/health", transport.HealthHandlerFunc())
 		router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage))
+		router.Handle("/debug/vars", expvar.Handler())
 
 		go func() {
 			httpPort, ok := os.LookupEnv("HTTP_PORT")

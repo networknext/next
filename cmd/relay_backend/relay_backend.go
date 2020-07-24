@@ -441,9 +441,9 @@ func main() {
 
 			if err := statsdb.GetCostMatrix(&costMatrixNew, redisClientRelays, float32(maxJitter), float32(maxPacketLoss)); err != nil {
 				level.Warn(logger).Log("matrix", "cost", "op", "generate", "err", err)
-				costMatrix = &costMatrixNew
-			} else {
 				costMatrixMetrics.ErrorMetrics.GenFailure.Add(1)
+			} else {
+				costMatrix = &costMatrixNew
 			}
 
 			costMatrixDurationSince := time.Since(costMatrixDurationStart)
@@ -451,8 +451,6 @@ func main() {
 			if costMatrixDurationSince.Seconds() > 1.0 {
 				costMatrixMetrics.LongUpdateCount.Add(1)
 			}
-
-			costMatrixMetrics.Bytes.Set(float64(len(costMatrix.GetResponseData())))
 
 			// IMPORTANT: Fill the cost matrix with near relay lat/longs
 			// these are then passed in to the route matrix via "Optimize"
@@ -480,20 +478,6 @@ func main() {
 				optimizeMetrics.LongUpdateCount.Add(1)
 			}
 
-			routeMatrixMetrics.Bytes.Set(float64(len(routeMatrix.GetResponseData())))
-
-			routeMatrixMetrics.RelayCount.Set(float64(len(newRouteMatrix.RelayIDs)))
-
-			// todo: calculate this in optimize and store in route matrix so we don't have to calc this here
-			numRoutes := int32(0)
-			for i := range newRouteMatrix.Entries {
-				numRoutes += newRouteMatrix.Entries[i].NumRoutes
-			}
-
-			routeMatrixMetrics.RouteCount.Set(float64(numRoutes))
-
-			routeMatrixMetrics.DatacenterCount.Set(float64(len(newRouteMatrix.DatacenterIDs)))
-
 			// Write the cost matrix to a buffer and serve that instead
 			// of writing a new buffer every time we want to serve the cost matrix
 			err = costMatrix.WriteResponseData()
@@ -514,6 +498,25 @@ func main() {
 			// of writing a new analysis every time we want to view the analysis in the relay dashboard
 			newRouteMatrix.WriteAnalysisData()
 
+			// Swap the route matrix pointer to the new one
+			// This double buffered route matrix approach makes the route matrix lockless
+			routeMatrixMutex.Lock()
+			routeMatrix = newRouteMatrix
+			routeMatrixMutex.Unlock()
+
+			costMatrixMetrics.Bytes.Set(float64(len(costMatrix.GetResponseData())))
+
+			routeMatrixMetrics.Bytes.Set(float64(len(newRouteMatrix.GetResponseData())))
+			routeMatrixMetrics.RelayCount.Set(float64(len(newRouteMatrix.RelayIDs)))
+			routeMatrixMetrics.DatacenterCount.Set(float64(len(newRouteMatrix.DatacenterIDs)))
+
+			// todo: calculate this in optimize and store in route matrix so we don't have to calc this here
+			numRoutes := int32(0)
+			for i := range newRouteMatrix.Entries {
+				numRoutes += newRouteMatrix.Entries[i].NumRoutes
+			}
+			routeMatrixMetrics.RouteCount.Set(float64(numRoutes))
+
 			memoryUsed := func() float64 {
 				var m runtime.MemStats
 				runtime.ReadMemStats(&m)
@@ -533,15 +536,9 @@ func main() {
 			fmt.Printf("%d long route matrix updates\n", int(optimizeMetrics.LongUpdateCount.Value()))
 			fmt.Printf("cost matrix bytes: %d\n", int(costMatrixMetrics.Bytes.Value()))
 			fmt.Printf("route matrix bytes: %d\n", int(routeMatrixMetrics.Bytes.Value()))
-			fmt.Printf("cost matrix update: %.2f seconds\n", costMatrixMetrics.DurationGauge.Value())
-			fmt.Printf("route matrix update: %.2f seconds\n", optimizeMetrics.DurationGauge.Value())
+			fmt.Printf("cost matrix update: %.2f milliseconds\n", costMatrixMetrics.DurationGauge.Value())
+			fmt.Printf("route matrix update: %.2f milliseconds\n", optimizeMetrics.DurationGauge.Value())
 			fmt.Printf("-----------------------------\n")
-
-			// Swap the route matrix pointer to the new one
-			// This double buffered route matrix approach makes the route matrix lockless
-			routeMatrixMutex.Lock()
-			routeMatrix = newRouteMatrix
-			routeMatrixMutex.Unlock()
 
 			time.Sleep(syncInterval)
 		}
