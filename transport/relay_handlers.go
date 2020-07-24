@@ -614,6 +614,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			err = errors.New("unsupported content type")
 		}
 		if err != nil {
+			level.Error(locallogger).Log("msg", "error unmarshaling relay update request", "err", err)
 			http.Error(writer, err.Error(), http.StatusBadRequest)
 			params.Metrics.ErrorMetrics.UnmarshalFailure.Add(1)
 			return
@@ -746,6 +747,11 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 		relayCacheEntry.TrafficStats = relayUpdateRequest.TrafficStats
 
 		relayCacheEntry.Version = relayUpdateRequest.RelayVersion
+
+		// Update these fields in case they change in Firestore
+		relayCacheEntry.Seller = relay.Seller
+		relayCacheEntry.Datacenter = relay.Datacenter
+		relayCacheEntry.MaxSessions = relay.MaxSessions
 
 		// Regular set for expiry
 		if res := params.RedisClient.Set(relayCacheEntry.Key(), 0, routing.RelayTimeout); res.Err() != nil {

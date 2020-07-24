@@ -25,9 +25,8 @@ const (
 	// HashKeyAllRelays ...
 	HashKeyAllRelays = "ALL_RELAYS"
 
-	// How frequently we need to recieve updates from relays to keep them in redis
-	// 10 seconds + a 1 second grace period
-	RelayTimeout = 11 * time.Second
+	// Relax
+	RelayTimeout = 60 * time.Second
 
 	// MaxRelayAddressLength ...
 	MaxRelayAddressLength = 256
@@ -188,13 +187,17 @@ func (r *Relay) UnmarshalBinary(data []byte) error {
 		return errors.New("failed to unmarshal relay seller name")
 	}
 
-	if !encoding.ReadUint64(data, &index, &r.Seller.IngressPriceCents) {
+	var ingressNibblins uint64
+	if !encoding.ReadUint64(data, &index, &ingressNibblins) {
 		return errors.New("failed to unmarshal relay seller ingress price")
 	}
+	r.Seller.IngressPriceNibblinsPerGB = Nibblin(ingressNibblins)
 
-	if !encoding.ReadUint64(data, &index, &r.Seller.EgressPriceCents) {
+	var egressNibblins uint64
+	if !encoding.ReadUint64(data, &index, &egressNibblins) {
 		return errors.New("failed to unmarshal relay seller egress price")
 	}
+	r.Seller.EgressPriceNibblinsPerGB = Nibblin(egressNibblins)
 
 	if !encoding.ReadUint64(data, &index, &r.Datacenter.ID) {
 		return errors.New("failed to unmarshal relay datacenter id")
@@ -282,8 +285,8 @@ func (r Relay) MarshalBinary() (data []byte, err error) {
 	encoding.WriteBytes(data, &index, r.PublicKey, crypto.KeySize)
 	encoding.WriteString(data, &index, r.Seller.ID, uint32(len(r.Seller.ID)))
 	encoding.WriteString(data, &index, r.Seller.Name, uint32(len(r.Seller.Name)))
-	encoding.WriteUint64(data, &index, r.Seller.IngressPriceCents)
-	encoding.WriteUint64(data, &index, r.Seller.EgressPriceCents)
+	encoding.WriteUint64(data, &index, uint64(r.Seller.IngressPriceNibblinsPerGB))
+	encoding.WriteUint64(data, &index, uint64(r.Seller.EgressPriceNibblinsPerGB))
 	encoding.WriteUint64(data, &index, r.Datacenter.ID)
 	encoding.WriteString(data, &index, r.Datacenter.Name, uint32(len(r.Datacenter.Name)))
 	encoding.WriteBool(data, &index, r.Datacenter.Enabled)

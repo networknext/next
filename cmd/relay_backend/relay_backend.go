@@ -11,6 +11,7 @@ import (
 	"encoding/base64"
 	"expvar"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -35,6 +36,9 @@ import (
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 )
+
+// MaxRelayCount is the maximum number of relays you can run locally with the firestore emulator
+const MaxRelayCount = 10
 
 var (
 	buildtime     string
@@ -156,55 +160,22 @@ func main() {
 		Namespace:   "RELAY_LOCATIONS",
 	}
 
-	// Create an in-memory relay & datacenter store
-	// that doesn't require talking to configstore
 	var db storage.Storer = &storage.InMemory{
 		LocalMode: true,
 	}
 
-	if env == "local" {
-		seller := routing.Seller{
-			ID:                "sellerID",
-			Name:              "local",
-			IngressPriceCents: 10,
-			EgressPriceCents:  20,
-		}
+	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
+	_, emulatorOK := os.LookupEnv("FIRESTORE_EMULATOR_HOST")
+	if emulatorOK {
+		gcpProjectID = "local"
 
-		datacenter := routing.Datacenter{
-			ID:       crypto.HashID("local"),
-			Name:     "local",
-			Location: routing.LocationNullIsland,
-		}
-
-		if err := db.AddSeller(ctx, seller); err != nil {
-			level.Error(logger).Log("msg", "could not add seller to storage", "err", err)
-			os.Exit(1)
-		}
-
-		if err := db.AddDatacenter(ctx, datacenter); err != nil {
-			level.Error(logger).Log("msg", "could not add datacenter to storage", "err", err)
-			os.Exit(1)
-		}
-
-		if err := db.AddRelay(ctx, routing.Relay{
-			Name:        "", // needs to be blank so the relay_dashboard shows ips and the stats
-			PublicKey:   relayPublicKey,
-			Seller:      seller,
-			Datacenter:  datacenter,
-			MaxSessions: 3000,
-		}); err != nil {
-			level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
-			os.Exit(1)
-		}
+		level.Info(logger).Log("msg", "Detected firestore emulator")
 	}
-
-	// Create a local metrics handler
-	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
 
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
 	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
 	// on creation so we can use that for the default then
-	if gcpProjectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
+	if gcpOK || emulatorOK {
 
 		// Firestore
 		{
@@ -230,7 +201,58 @@ func main() {
 			// Set the Firestore Storer to give to handlers
 			db = fs
 		}
+	}
 
+	if env == "local" {
+		seller := routing.Seller{
+			ID:                        "sellerID",
+			Name:                      "local",
+			IngressPriceNibblinsPerGB: 0.1 * 1e9,
+			EgressPriceNibblinsPerGB:  0.5 * 1e9,
+		}
+
+		datacenter := routing.Datacenter{
+			ID:       crypto.HashID("local"),
+			Name:     "local",
+			Location: routing.LocationNullIsland,
+		}
+
+		if err := db.AddSeller(ctx, seller); err != nil {
+			level.Error(logger).Log("msg", "could not add seller to storage", "err", err)
+			os.Exit(1)
+		}
+
+		if err := db.AddDatacenter(ctx, datacenter); err != nil {
+			level.Error(logger).Log("msg", "could not add datacenter to storage", "err", err)
+			os.Exit(1)
+		}
+
+		for i := int64(0); i < MaxRelayCount; i++ {
+			addressString := "127.0.0.1:1000" + strconv.FormatInt(i, 10)
+			addr, err := net.ResolveUDPAddr("udp", addressString)
+			if err != nil {
+				level.Error(logger).Log("msg", "could parse udp address", "address", addressString, "err", err)
+				os.Exit(1)
+			}
+
+			if err := db.AddRelay(ctx, routing.Relay{
+				ID:          crypto.HashID(addr.String()),
+				Name:        "", // needs to be blank so the relay_dashboard shows ips and the stats
+				Addr:        *addr,
+				PublicKey:   relayPublicKey,
+				Seller:      seller,
+				Datacenter:  datacenter,
+				MaxSessions: 3000,
+			}); err != nil {
+				level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
+				os.Exit(1)
+			}
+		}
+	}
+
+	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
+
+	if gcpOK {
 		// Stackdriver Metrics
 		{
 			var enableSDMetrics bool
@@ -338,8 +360,7 @@ func main() {
 	}
 
 	statsdb := routing.NewStatsDatabase()
-	var costMatrix routing.CostMatrix
-
+	costMatrix := &routing.CostMatrix{}
 	routeMatrix := &routing.RouteMatrix{}
 	var routeMatrixMutex sync.RWMutex
 
@@ -414,11 +435,16 @@ func main() {
 		for {
 			costMatrixMetrics.Invocations.Add(1)
 
+			costMatrixNew := routing.CostMatrix{}
+
 			costMatrixDurationStart := time.Now()
 
-			if err := statsdb.GetCostMatrix(&costMatrix, redisClientRelays, float32(maxJitter), float32(maxPacketLoss)); err != nil {
+			if err := statsdb.GetCostMatrix(&costMatrixNew, redisClientRelays, float32(maxJitter), float32(maxPacketLoss)); err != nil {
 				level.Warn(logger).Log("matrix", "cost", "op", "generate", "err", err)
-				costMatrix = routing.CostMatrix{}
+				costMatrix = &costMatrixNew
+			} else {
+				// todo: metric on this ryan
+				fmt.Printf("cost matrix fail\n")
 			}
 
 			costMatrixDurationSince := time.Since(costMatrixDurationStart)
@@ -474,6 +500,7 @@ func main() {
 			err = costMatrix.WriteResponseData()
 			if err != nil {
 				level.Error(logger).Log("matrix", "cost", "msg", "failed to write cost matrix response data", "err", err)
+				continue // Don't store the new route matrix if we fail to write cost matrix data
 			}
 
 			// Write the route matrix to a buffer and serve that instead
@@ -606,7 +633,7 @@ func main() {
 	router.HandleFunc("/relay_init", transport.RelayInitHandlerFunc(logger, &commonInitParams)).Methods("POST")
 	router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(logger, relayslogger, &commonUpdateParams)).Methods("POST")
 	router.HandleFunc("/relays", transport.RelayHandlerFunc(logger, relayslogger, &commonHandlerParams)).Methods("POST")
-	router.Handle("/cost_matrix", &costMatrix).Methods("GET")
+	router.Handle("/cost_matrix", costMatrix).Methods("GET")
 	router.HandleFunc("/route_matrix", serveRouteMatrixFunc).Methods("GET")
 	router.Handle("/debug/vars", expvar.Handler())
 	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(redisClientRelays, getRouteMatrixFunc, statsdb, "local", "local", maxJitter))

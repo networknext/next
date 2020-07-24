@@ -4,7 +4,9 @@
         <meta http-equiv='expires' content='0'>
         <meta http-equiv='pragma' content='no-cache'>
 
-        <title>Portal</title>
+        <title>Network Next</title>
+        <link rel="icon" href="/favicon.ico">
+
         <link href='https://fonts.googleapis.com/css?family=Montserrat:400,700' rel='stylesheet' type='text/css'>
         <link rel="stylesheet"
               href="https://use.fontawesome.com/releases/v5.7.0/css/all.css"
@@ -31,7 +33,7 @@
                 position: relative;
                 overflow: hidden;
             }
-            #map {
+            .map {
                 position: absolute;
                 top: 0;
                 left: 0;
@@ -200,7 +202,7 @@
             }
             .signup:hover {
                 text-decoration: none;
-                background-color: rgba(249, 73, 33, 0.9);
+                background-color: #f94a21e6;
             }
             .signup:not(:disabled):not(.disabled):active {
                 background-color: #007bff;
@@ -290,17 +292,17 @@
                             Map
                         </a>
                     </li>
-                    <li class="nav-item text-nowrap">
+                    <li class="nav-item text-nowrap" v-if="!maintenanceMode">
                         <a class="nav-link" href="#" v-bind:class="{ active: pages.sessions.show }" v-on:click="handlers.workspaceHandler.changePage('sessions')">
                             Sessions
                         </a>
                     </li>
-                    <li class="nav-item text-nowrap">
+                    <li class="nav-item text-nowrap" v-if="!maintenanceMode">
                         <a class="nav-link" href="#" v-bind:class="{ active: pages.sessionTool.show }" v-on:click="handlers.workspaceHandler.changePage('sessionTool', '')">
                             Session Tool
                         </a>
                     </li>
-                    <li class="nav-item text-nowrap" v-if="!handlers.userHandler.isAnonymous() && !handlers.userHandler.isAnonymousPlus()">
+                    <li class="nav-item text-nowrap" v-if="!handlers.userHandler.isAnonymous() && !handlers.userHandler.isAnonymousPlus() && !maintenanceMode">
                         <a class="nav-link" href="#" v-bind:class="{ active: pages.userTool.show }" v-on:click="handlers.workspaceHandler.changePage('userTool', '')">
                             User Tool
                         </a>
@@ -419,7 +421,7 @@
                                 'map-container-no-offset': true,
                                 'map-container-offset': false,
                              }">
-                            <div id="map" ref="map"></div>
+                            <div id="map" class="map" ref="map"></div>
                             <canvas id="deck-canvas" ref="canvas"></canvas>
                         </div>
                     </main>

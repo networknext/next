@@ -337,6 +337,7 @@ type CostMatrixMetrics struct {
 	DurationGauge   Gauge
 	LongUpdateCount Counter
 	Bytes           Gauge
+	ErrorMetrics    CostMatrixErrorMetrics
 }
 
 var EmptyCostMatrixMetrics CostMatrixMetrics = CostMatrixMetrics{
@@ -344,6 +345,15 @@ var EmptyCostMatrixMetrics CostMatrixMetrics = CostMatrixMetrics{
 	DurationGauge:   &EmptyGauge{},
 	LongUpdateCount: &EmptyCounter{},
 	Bytes:           &EmptyGauge{},
+	ErrorMetrics:    EmptyCostMatrixErrorMetrics,
+}
+
+type CostMatrixErrorMetrics struct {
+	GenFailure Counter
+}
+
+var EmptyCostMatrixErrorMetrics CostMatrixErrorMetrics = CostMatrixErrorMetrics{
+	GenFailure: &EmptyCounter{},
 }
 
 type MaxmindSyncMetrics struct {
@@ -421,6 +431,33 @@ var EmptyRouteMatrixMetrics RouteMatrixMetrics = RouteMatrixMetrics{
 	RelayCount:      &EmptyGauge{},
 	RouteCount:      &EmptyGauge{},
 	Bytes:           &EmptyGauge{},
+}
+
+type ServerBackendMetrics struct {
+	SessionCount Gauge
+}
+
+var EmptyServerBackendMetrics ServerBackendMetrics = ServerBackendMetrics{
+	SessionCount: &EmptyGauge{},
+}
+
+func NewServerBackendMetrics(ctx context.Context, metricsHandler Handler) (*ServerBackendMetrics, error) {
+	var err error
+
+	serverBackendMetrics := ServerBackendMetrics{}
+
+	serverBackendMetrics.SessionCount, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Total session count",
+		ServiceName: "server_backend",
+		ID:          "server_backend.sessions",
+		Unit:        "sessions",
+		Description: "The total number of concurrent sessions",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &serverBackendMetrics, nil
 }
 
 func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMetrics, error) {
@@ -1318,11 +1355,25 @@ func NewCostMatrixMetrics(ctx context.Context, metricsHandler Handler) (*CostMat
 		return nil, err
 	}
 
+	costMatrixGenFailure, err := metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Cost Matrix Gen Failure",
+		ServiceName: "relay_backend",
+		ID:          "cost_matrix.failure",
+		Unit:        "errors",
+		Description: "How many times the relay backend failed to generate the cost matrix",
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	costMatrixMetrics := CostMatrixMetrics{
 		Invocations:     costMatrixInvocationsCounter,
 		DurationGauge:   costMatrixDurationGauge,
 		LongUpdateCount: costMatrixLongUpdateCounter,
 		Bytes:           costMatrixBytes,
+		ErrorMetrics: CostMatrixErrorMetrics{
+			GenFailure: costMatrixGenFailure,
+		},
 	}
 
 	return &costMatrixMetrics, nil
