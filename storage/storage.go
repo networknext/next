@@ -99,6 +99,9 @@ type Storer interface {
 
 	// RemoveDatacenterMap removes an entry from the DatacenterMaps table
 	RemoveDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error
+
+	// SetRelayMetadata provides write access to ops metadat (mrc, overage, etc)
+	SetRelayMetadata(ctx context.Context, relay routing.Relay) error
 }
 
 type UnmarshalError struct {

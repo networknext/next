@@ -16,7 +16,6 @@ import (
 	"net"
 
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/go-kit/kit/log"
@@ -28,7 +27,6 @@ import (
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport/pubsub"
 	"golang.org/x/sys/unix"
-	// fnv "hash/fnv"
 )
 
 type UDPPacket struct {
@@ -252,22 +250,11 @@ func (m *UDPServerMux2) handler(ctx context.Context, id int) {
 
 // ==========================================================================================
 
-// todo: I would prefer a single counters struct, with more descriptive names: eg: "NumServerInitPackets", "LongServerInits".
-// having generic names like you do below this makes it difficult to search throughout the code and find all instances where "Packets" and "LongDuration"
-// are used, because it picks up the counters for server update and session update as well. please prefer fully descriptive, not generic names within structs.
-// in other words, avoid using structs as namespace.
-
-type ServerInitCounters struct {
-	Packets      uint64
-	LongDuration uint64
-}
-
 type ServerInitParams struct {
 	ServerPrivateKey  []byte
 	Storer            storage.Storer
 	Metrics           *metrics.ServerInitMetrics
 	Logger            log.Logger
-	Counters          *ServerInitCounters
 	DatacenterTracker *DatacenterTracker
 }
 
@@ -296,8 +283,6 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 		// Psyonix is currently on an older SDK version, so server inits don't show up for them.
 
 		params.Metrics.Invocations.Add(1)
-
-		atomic.AddUint64(&params.Counters.Packets, 1)
 
 		// Read the server init packet. We can do this all at once because the server init packet includes the SDK version.
 
@@ -390,17 +375,11 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 	}
 }
 
-type ServerUpdateCounters struct {
-	Packets      uint64
-	LongDuration uint64
-}
-
 type ServerUpdateParams struct {
 	Storer            storage.Storer
 	Metrics           *metrics.ServerUpdateMetrics
 	Logger            log.Logger
 	ServerMap         *ServerMap
-	Counters          *ServerUpdateCounters
 	DatacenterTracker *DatacenterTracker
 }
 
@@ -409,8 +388,6 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
 
 		params.Metrics.Invocations.Add(1)
-
-		atomic.AddUint64(&params.Counters.Packets, 1)
 
 		// Read the entire server update packet. We can do this all at once because the packet contains the SDK version in it.
 
@@ -519,12 +496,16 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 			sequence = serverDataReadOnly.sequence
 		}
 
-		if packet.Sequence < sequence {
-			level.Error(params.Logger).Log("handler", "server", "msg", "packet too old", "packet sequence", packet.Sequence, "lastest sequence", serverDataReadOnly.sequence)
-			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-			params.Metrics.ErrorMetrics.PacketSequenceTooOld.Add(1)
-			return
-		}
+		// todo: disable as a test
+		_ = sequence
+		/*
+			if packet.Sequence < sequence {
+				level.Error(params.Logger).Log("handler", "server", "msg", "packet too old", "packet sequence", packet.Sequence, "lastest sequence", serverDataReadOnly.sequence)
+				params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+				params.Metrics.ErrorMetrics.PacketSequenceTooOld.Add(1)
+				return
+			}
+		*/
 
 		// Each one of our customer's servers reports to us with this server update packet every 10 seconds.
 		// Therefore we must update the server data each time we receive an update, to keep this server entry live in our server map.
@@ -549,11 +530,6 @@ type RouteProvider interface {
 	GetNearRelays(latitude float64, longitude float64, maxNearRelays int) ([]routing.Relay, error)
 }
 
-type SessionUpdateCounters struct {
-	Packets      uint64
-	LongDuration uint64
-}
-
 type SessionUpdateParams struct {
 	ServerPrivateKey  []byte
 	RouterPrivateKey  []byte
@@ -566,7 +542,6 @@ type SessionUpdateParams struct {
 	VetoMap           *VetoMap
 	ServerMap         *ServerMap
 	SessionMap        *SessionMap
-	Counters          *SessionUpdateCounters
 	DatacenterTracker *DatacenterTracker
 	PortalPublisher   pubsub.Publisher
 }
@@ -576,8 +551,6 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
 
 		params.Metrics.Invocations.Add(1)
-
-		atomic.AddUint64(&params.Counters.Packets, 1)
 
 		// First, read the session update packet header.
 		// We have to read only the header first, because the rest of the session update packet depends on SDK version
@@ -629,16 +602,19 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			sessionDataReadOnly = NewSessionData()
 		}
 
-		// Check the packet sequence number vs. the most recent sequence number in redis.
-		// The packet sequence number must be at least as old as the current session sequence #
-		// otherwise this is a stale session update packet from an older slice so we ignore it!
+		// todo: disable for now as a test
+		/*
+			// Check the packet sequence number vs. the most recent sequence number in redis.
+			// The packet sequence number must be at least as old as the current session sequence #
+			// otherwise this is a stale session update packet from an older slice so we ignore it!
 
-		if packet.Sequence < sessionDataReadOnly.sequence {
-			level.Error(params.Logger).Log("handler", "session", "msg", "packet too old", "packet sequence", packet.Sequence, "lastest sequence", sessionDataReadOnly.sequence)
-			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
-			params.Metrics.ErrorMetrics.OldSequence.Add(1)
-			return
-		}
+			if packet.Sequence < sessionDataReadOnly.sequence {
+				level.Error(params.Logger).Log("handler", "session", "msg", "packet too old", "packet sequence", packet.Sequence, "lastest sequence", sessionDataReadOnly.sequence)
+				params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
+				params.Metrics.ErrorMetrics.OldSequence.Add(1)
+				return
+			}
+		*/
 
 		// Check the session update packet is properly signed with the customer private key.
 		// Any session update not signed is invalid, so we don't waste bandwidth responding to it.
