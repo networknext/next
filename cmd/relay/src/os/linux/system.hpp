@@ -115,11 +115,8 @@ namespace os
        &guest,
        &guestNice);
 
-      // because the relay binary is pretty much the ony thing running on the server
-      // iowait time is included with idle time because theoretically that is time
-      // the relay could be doing things if it had more than one process
-      curr.Idle = idle + iowait;
-      int nonIdle = user + nice + system + irq + softirq + steal + guest + guestNice;
+      curr.Idle = idle;
+      int nonIdle = user + nice + system + irq + softirq + steal + guest + guestNice + iowait;
       curr.Total = curr.Idle + nonIdle;
 
       int total = curr.Total - prev.Total;
