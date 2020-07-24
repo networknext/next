@@ -43,17 +43,6 @@ var (
 
 type arrayFlags []string
 
-// used to decode dcMap hex strings from json
-type dcMapStrings struct {
-	BuyerID    string `json:"buyer_id"`
-	Datacenter string `json:"datacenter"`
-	Alias      string `json:"alias"`
-}
-
-func (dcm dcMapStrings) String() string {
-	return fmt.Sprintf("{\n\tBuyer ID     : %s\n\tDatacenter ID: %s\n\tAlias        : %s\n}", dcm.BuyerID, dcm.Datacenter, dcm.Alias)
-}
-
 func (i *arrayFlags) String() string {
 	return ""
 }
@@ -345,6 +334,17 @@ type datacenter struct {
 	Location routing.Location
 }
 
+// used to decode dcMap hex strings from json
+type dcMapStrings struct {
+	BuyerID    string `json:"buyer_id"`
+	Datacenter string `json:"datacenter"`
+	Alias      string `json:"alias"`
+}
+
+func (dcm dcMapStrings) String() string {
+	return fmt.Sprintf("{\n\tBuyer ID     : %s\n\tDatacenter ID: %s\n\tAlias        : %s\n}", dcm.BuyerID, dcm.Datacenter, dcm.Alias)
+}
+
 func main() {
 	var env Environment
 
@@ -373,6 +373,14 @@ func main() {
 	routesfs.Var(&destRelays, "dest", "destination relay names")
 	routesfs.Float64Var(&routeRTT, "rtt", 5, "route RTT required for selection")
 	routesfs.Uint64Var(&routeHash, "hash", 0, "a previous hash to use")
+
+	buyersfs := flag.NewFlagSet("buyers", flag.ExitOnError)
+	var buyersIdSigned bool
+	buyersfs.BoolVar(&buyersIdSigned, "signed", false, "Display buyer IDs as signed ints")
+
+	datacentersfs := flag.NewFlagSet("datacenters", flag.ExitOnError)
+	var datacenterIdSigned bool
+	datacentersfs.BoolVar(&datacenterIdSigned, "signed", false, "Display datacenter IDs as signed ints")
 
 	sessionsfs := flag.NewFlagSet("sessions", flag.ExitOnError)
 	var sessionCount int64
@@ -1155,14 +1163,15 @@ func main() {
 
 	var datacentersCommand = &ffcli.Command{
 		Name:       "datacenters",
-		ShortUsage: "next datacenters <name>",
+		ShortUsage: "next datacenters",
 		ShortHelp:  "List datacenters",
+		FlagSet:    datacentersfs,
 		Exec: func(_ context.Context, args []string) error {
 			if len(args) > 0 {
-				datacenters(rpcClient, env, args[0])
+				datacenters(rpcClient, env, args[0], datacenterIdSigned)
 				return nil
 			}
-			datacenters(rpcClient, env, "")
+			datacenters(rpcClient, env, "", datacenterIdSigned)
 			return nil
 		},
 	}
@@ -1281,11 +1290,12 @@ func main() {
 		Name:       "buyers",
 		ShortUsage: "next buyers",
 		ShortHelp:  "Return a list of all current buyers",
+		FlagSet:    buyersfs,
 		Exec: func(_ context.Context, args []string) error {
 			if len(args) != 0 {
 				fmt.Println("No arguments necessary, everything after 'buyers' is ignored.\n\nA list of all current buyers:")
 			}
-			buyers(rpcClient, env)
+			buyers(rpcClient, env, buyersIdSigned)
 			return nil
 		},
 	}
@@ -1294,6 +1304,7 @@ func main() {
 		Name:       "buyer",
 		ShortUsage: "next buyer <subcommand>",
 		ShortHelp:  "Manage buyers",
+		FlagSet:    buyersfs,
 		Exec: func(_ context.Context, args []string) error {
 			return flag.ErrHelp
 		},
@@ -1303,7 +1314,7 @@ func main() {
 				ShortUsage: "next buyer list",
 				ShortHelp:  "Return a list of all current buyers",
 				Exec: func(_ context.Context, args []string) error {
-					buyers(rpcClient, env)
+					buyers(rpcClient, env, buyersIdSigned)
 					return nil
 				},
 			},
