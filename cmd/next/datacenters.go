@@ -22,12 +22,6 @@ func datacenters(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 		return
 	}
 
-	// if signed {
-	// 	for _, dc := range reply.Datacenters {
-	// 		dc.ID = int64(dc.ID)
-	// 	}
-	// }
-
 	table.Output(reply.Datacenters)
 }
 

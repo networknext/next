@@ -50,14 +50,14 @@ type BuyersReply struct {
 }
 
 type buyer struct {
-	ID   string `json:"id"`
+	ID   uint64 `json:"id"`
 	Name string `json:"name"`
 }
 
 func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersReply) error {
 	for _, b := range s.Storage.Buyers() {
 		reply.Buyers = append(reply.Buyers, buyer{
-			ID:   fmt.Sprintf("%x", b.ID),
+			ID:   b.ID,
 			Name: b.Name,
 		})
 	}

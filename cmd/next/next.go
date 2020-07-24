@@ -374,6 +374,10 @@ func main() {
 	routesfs.Float64Var(&routeRTT, "rtt", 5, "route RTT required for selection")
 	routesfs.Uint64Var(&routeHash, "hash", 0, "a previous hash to use")
 
+	buyersfs := flag.NewFlagSet("buyers", flag.ExitOnError)
+	var buyersIdSigned bool
+	buyersfs.BoolVar(&buyersIdSigned, "signed", false, "Display buyer IDs as signed ints")
+
 	sessionsfs := flag.NewFlagSet("sessions", flag.ExitOnError)
 	var sessionCount int64
 	sessionsfs.Int64Var(&sessionCount, "n", 0, "number of top sessions to display (default: all)")
@@ -1079,11 +1083,12 @@ func main() {
 		Name:       "buyers",
 		ShortUsage: "next buyers",
 		ShortHelp:  "Return a list of all current buyers",
+		FlagSet:    buyersfs,
 		Exec: func(_ context.Context, args []string) error {
 			if len(args) != 0 {
 				fmt.Println("No arguments necessary, everything after 'buyers' is ignored.\n\nA list of all current buyers:")
 			}
-			buyers(rpcClient, env)
+			buyers(rpcClient, env, buyersIdSigned)
 			return nil
 		},
 	}
@@ -1092,6 +1097,7 @@ func main() {
 		Name:       "buyer",
 		ShortUsage: "next buyer <subcommand>",
 		ShortHelp:  "Manage buyers",
+		FlagSet:    buyersfs,
 		Exec: func(_ context.Context, args []string) error {
 			return flag.ErrHelp
 		},
@@ -1101,7 +1107,7 @@ func main() {
 				ShortUsage: "next buyer list",
 				ShortHelp:  "Return a list of all current buyers",
 				Exec: func(_ context.Context, args []string) error {
-					buyers(rpcClient, env)
+					buyers(rpcClient, env, buyersIdSigned)
 					return nil
 				},
 			},
