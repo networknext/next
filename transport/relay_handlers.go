@@ -620,6 +620,8 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			return
 		}
 
+		level.Debug(locallogger).Log("msg", fmt.Sprintf("cpu: %f, ram: %f", relayUpdateRequest.CPUUsage, relayUpdateRequest.RAMUsage))
+
 		if relayUpdateRequest.Version != VersionNumberUpdateRequest {
 			level.Error(locallogger).Log("msg", "version mismatch", "version", relayUpdateRequest.Version)
 			http.Error(writer, "version mismatch", http.StatusBadRequest)
