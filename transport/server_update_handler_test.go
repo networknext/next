@@ -159,15 +159,12 @@ func TestServerUpdateDatacenterMaps(t *testing.T) {
 		data, err := packet.MarshalBinary()
 		assert.NoError(t, err)
 
-		serverUpdateCounters := transport.ServerUpdateCounters{}
-
 		serverMap := transport.NewServerMap()
 
 		serverUpdateParams := transport.ServerUpdateParams{
 			Logger:    log.NewNopLogger(),
 			Storer:    &db,
 			Metrics:   &updateMetrics,
-			Counters:  &serverUpdateCounters,
 			ServerMap: serverMap,
 		}
 
@@ -232,15 +229,12 @@ func TestServerUpdateDatacenterMaps(t *testing.T) {
 		data, err := packet.MarshalBinary()
 		assert.NoError(t, err)
 
-		serverUpdateCounters := transport.ServerUpdateCounters{}
-
 		serverMap := transport.NewServerMap()
 
 		serverUpdateParams := transport.ServerUpdateParams{
 			Logger:    log.NewNopLogger(),
 			Storer:    &db,
 			Metrics:   &updateMetrics,
-			Counters:  &serverUpdateCounters,
 			ServerMap: serverMap,
 		}
 
@@ -304,15 +298,12 @@ func TestServerUpdateDatacenterMaps(t *testing.T) {
 		data, err := packet.MarshalBinary()
 		assert.NoError(t, err)
 
-		serverUpdateCounters := transport.ServerUpdateCounters{}
-
 		serverMap := transport.NewServerMap()
 
 		serverUpdateParams := transport.ServerUpdateParams{
 			Logger:            log.NewNopLogger(),
 			Storer:            &db,
 			Metrics:           &updateMetrics,
-			Counters:          &serverUpdateCounters,
 			ServerMap:         serverMap,
 			DatacenterTracker: transport.NewDatacenterTracker(),
 		}
