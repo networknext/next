@@ -445,6 +445,15 @@ namespace core
       util::JSON sysStats;
 
       auto stats = os::GetUsage();
+      auto [alt, ok] = os::GetUsageAlt();
+
+      if (!ok) {
+        Log("could not get alt proc info");
+      }
+
+      Log("cpu = ", stats.CPU);
+      Log("alt = ", alt);
+      Log("ram = ", stats.RAM);
 
       sysStats.set(stats.CPU, "cpu_usage");
       sysStats.set(stats.RAM, "ram_usage");
