@@ -443,8 +443,7 @@ func main() {
 				level.Warn(logger).Log("matrix", "cost", "op", "generate", "err", err)
 				costMatrix = &costMatrixNew
 			} else {
-				// todo: metric on this ryan
-				fmt.Printf("cost matrix fail\n")
+				costMatrixMetrics.ErrorMetrics.GenFailure.Add(1)
 			}
 
 			costMatrixDurationSince := time.Since(costMatrixDurationStart)
