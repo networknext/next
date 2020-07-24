@@ -377,75 +377,75 @@ deploy-server-backend: ## builds and deploys the server backend to dev
 	gcloud compute --project "network-next-v3-dev" ssh server-backend-dev-1 -- 'cd /app && sudo ./bootstrap.sh -b $(ARTIFACT_BUCKET) -a server_backend.dev.tar.gz'
 
 .PHONY: build-billing-artifacts-dev
-build-billing-artifacts-dev: ## builds the billing artifacts dev
+build-billing-artifacts-dev: build-billing ## builds the billing artifacts dev
 	./deploy/build-artifacts.sh -e dev -s billing
 
 .PHONY: build-relay-artifacts-dev
-build-relay-artifacts-dev: ## builds the relay artifacts dev
+build-relay-artifacts-dev: build-relay ## builds the relay artifacts dev
 	./deploy/build-artifacts.sh -e dev -s relay
 
 .PHONY: build-portal-artifacts-dev
-build-portal-artifacts-dev: ## builds the portal artifacts dev
+build-portal-artifacts-dev: build-portal ## builds the portal artifacts dev
 	./deploy/build-artifacts.sh -e dev -s portal
 
 .PHONY: build-portal-cruncher-artifacts-dev
-build-portal-cruncher-artifacts-dev: ## builds the portal cruncher artifacts dev
+build-portal-cruncher-artifacts-dev: build-portal-cruncher ## builds the portal cruncher artifacts dev
 	./deploy/build-artifacts.sh -e dev -s portal_cruncher
 
 .PHONY: build-relay-backend-artifacts-dev
-build-relay-backend-artifacts-dev: ## builds the relay backend artifacts dev
+build-relay-backend-artifacts-dev: build-relay-backend ## builds the relay backend artifacts dev
 	./deploy/build-artifacts.sh -e dev -s relay_backend
 
 .PHONY: build-server-backend-artifacts-dev
-build-server-backend-artifacts-dev: ## builds the server backend artifacts dev
+build-server-backend-artifacts-dev: build-server-backend ## builds the server backend artifacts dev
 	./deploy/build-artifacts.sh -e dev -s server_backend
 
 .PHONY: build-billing-artifacts-staging
-build-billing-artifacts-staging: ## builds the billing artifacts staging
+build-billing-artifacts-staging: build-billing ## builds the billing artifacts staging
 	./deploy/build-artifacts.sh -e staging -s billing
 
 .PHONY: build-relay-artifacts-staging
-build-relay-artifacts-staging: ## builds the relay artifacts staging
+build-relay-artifacts-staging: build-relay ## builds the relay artifacts staging
 	./deploy/build-artifacts.sh -e staging -s relay
 
 .PHONY: build-portal-artifacts-staging
-build-portal-artifacts-staging: ## builds the portal artifacts staging
+build-portal-artifacts-staging: build-portal ## builds the portal artifacts staging
 	./deploy/build-artifacts.sh -e staging -s portal
 
 .PHONY: build-relay-backend-artifacts-staging
-build-relay-backend-artifacts-staging: ## builds the relay backend artifacts staging
+build-relay-backend-artifacts-staging: build-relay-backend ## builds the relay backend artifacts staging
 	./deploy/build-artifacts.sh -e staging -s relay_backend
 
 .PHONY: build-portal-cruncher-artifacts-staging
-build-portal-cruncher-artifacts-staging: ## builds the portal cruncher artifacts staging
+build-portal-cruncher-artifacts-staging: build-portal-cruncher ## builds the portal cruncher artifacts staging
 	./deploy/build-artifacts.sh -e staging -s portal_cruncher
 
 .PHONY: build-server-backend-artifacts-staging
-build-server-backend-artifacts-staging: ## builds the server backend artifacts staging
+build-server-backend-artifacts-staging: build-server-backend ## builds the server backend artifacts staging
 	./deploy/build-artifacts.sh -e staging -s server_backend
 
 .PHONY: build-billing-artifacts-prod
-build-billing-artifacts-prod: ## builds the billing artifacts prod
+build-billing-artifacts-prod: build-billing ## builds the billing artifacts prod
 	./deploy/build-artifacts.sh -e prod -s billing
 
 .PHONY: build-relay-artifacts-prod
-build-relay-artifacts-prod: ## builds the relay artifacts prod
+build-relay-artifacts-prod: build-relay ## builds the relay artifacts prod
 	./deploy/build-artifacts.sh -e prod -s relay
 
 .PHONY: build-portal-artifacts-prod
-build-portal-artifacts-prod: ## builds the portal artifacts prod
+build-portal-artifacts-prod: build-portal ## builds the portal artifacts prod
 	./deploy/build-artifacts.sh -e prod -s portal
 
 .PHONY: build-portal-cruncher-artifacts-prod
-build-portal-cruncher-artifacts-prod: ## builds the portal cruncher artifacts prod
+build-portal-cruncher-artifacts-prod: build-portal-cruncher ## builds the portal cruncher artifacts prod
 	./deploy/build-artifacts.sh -e prod -s portal_cruncher
 
 .PHONY: build-relay-backend-artifacts-prod
-build-relay-backend-artifacts-prod: ## builds the relay backend artifacts prod
+build-relay-backend-artifacts-prod: build-relay-backend ## builds the relay backend artifacts prod
 	./deploy/build-artifacts.sh -e prod -s relay_backend
 
 .PHONY: build-server-backend-artifacts-prod
-build-server-backend-artifacts-prod: ## builds the server backend artifacts prod
+build-server-backend-artifacts-prod: build-server-backend ## builds the server backend artifacts prod
 	./deploy/build-artifacts.sh -e prod -s server_backend
 
 .PHONY: publish-billing-artifacts-dev
