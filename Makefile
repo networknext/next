@@ -18,11 +18,8 @@ RELEASE ?= $(shell git describe --tags --exact-match 2> /dev/null)
 COMMITMESSAGE ?= $(shell git log -1 --pretty=%B | tr '\n' ' ')
 
 CURRENT_DIR = $(shell pwd -P)
-DEPLOY_DIR = ./deploy
 DIST_DIR = ./dist
 ARTIFACT_BUCKET = gs://development_artifacts
-ARTIFACT_BUCKET_STAGING = gs://staging_artifacts
-ARTIFACT_BUCKET_PROD = gs://prod_artifacts
 SYSTEMD_SERVICE_FILE = app.service
 
 COST_FILE = $(DIST_DIR)/cost.bin
@@ -383,7 +380,7 @@ build-backend-artifacts-prod: ## builds the backend artifacts prod
 
 .PHONY: publish-backend-artifacts-dev
 publish-backend-artifacts-dev: ## publishes the backend artifacts to GCP Storage with gsutil dev
-	./deploy/publish.sh -e dev -b gs://developement_artifacts
+	./deploy/publish.sh -e dev -b gs://development_artifacts
 
 .PHONY: publish-backend-artifacts-staging
 publish-backend-artifacts-staging: ## publishes the backend artifacts to GCP Storage with gsutil staging
