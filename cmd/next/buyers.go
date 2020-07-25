@@ -6,7 +6,6 @@ import (
 	"reflect"
 	"regexp"
 	"sort"
-	"strconv"
 
 	"github.com/modood/table"
 	"github.com/networknext/backend/routing"
@@ -14,7 +13,7 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
-func buyers(rpcClient jsonrpc.RPCClient, env Environment) {
+func buyers(rpcClient jsonrpc.RPCClient, env Environment, signed bool) {
 	args := localjsonrpc.BuyersArgs{}
 
 	var reply localjsonrpc.BuyersReply
@@ -32,14 +31,26 @@ func buyers(rpcClient jsonrpc.RPCClient, env Environment) {
 		BuyerID string
 	}{}
 
-	for _, buyer := range reply.Buyers {
-		buyers = append(buyers, struct {
-			Name    string
-			BuyerID string
-		}{
-			Name:    buyer.Name,
-			BuyerID: buyer.ID,
-		})
+	if signed {
+		for _, buyer := range reply.Buyers {
+			buyers = append(buyers, struct {
+				Name    string
+				BuyerID string
+			}{
+				Name:    buyer.Name,
+				BuyerID: fmt.Sprintf("%d", int64(buyer.ID)),
+			})
+		}
+	} else {
+		for _, buyer := range reply.Buyers {
+			buyers = append(buyers, struct {
+				Name    string
+				BuyerID string
+			}{
+				Name:    buyer.Name,
+				BuyerID: fmt.Sprintf("%016x", buyer.ID),
+			})
+		}
 	}
 
 	table.Output(buyers)
@@ -83,7 +94,7 @@ func routingRulesSettingsByID(rpcClient jsonrpc.RPCClient, env Environment, buye
 	}
 
 	for i := range buyers.Buyers {
-		if buyers.Buyers[i].ID == buyerID {
+		if fmt.Sprintf("%016x", buyers.Buyers[i].ID) == buyerID {
 
 			fmt.Printf(" Routing rules for %s:\n\n", buyers.Buyers[i].Name)
 
@@ -138,7 +149,7 @@ func routingRulesSettings(rpcClient jsonrpc.RPCClient, env Environment, buyerNam
 	r := regexp.MustCompile("(?i)" + buyerName) // case-insensitive regex
 	for _, buyer := range buyers.Buyers {
 		if r.MatchString(buyer.Name) {
-			filtered = append(filtered, []string{buyer.Name, buyer.ID})
+			filtered = append(filtered, []string{buyer.Name, fmt.Sprintf("%016x", buyer.ID)})
 		}
 	}
 
@@ -217,12 +228,8 @@ func datacenterMapsForBuyer(rpcClient jsonrpc.RPCClient, env Environment, buyer 
 	}
 	r := regexp.MustCompile("(?i)" + buyer) // case-insensitive regex
 	for _, buyer := range buyers.Buyers {
-		if r.MatchString(buyer.Name) || r.MatchString(buyer.ID) {
-			buyerID, err = strconv.ParseUint(buyer.ID, 16, 64)
-			if err != nil {
-				fmt.Printf("Unable to convert %v to a hex BuyerID\n", buyer.ID)
-				return
-			}
+		if r.MatchString(buyer.Name) || r.MatchString(fmt.Sprintf("%016x", buyer.ID)) {
+			buyerID = buyer.ID
 		}
 	}
 
@@ -260,12 +267,8 @@ func addDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMapStr
 	}
 	r := regexp.MustCompile("(?i)" + dcm.BuyerID) // case-insensitive regex
 	for _, buyer := range buyers.Buyers {
-		if r.MatchString(buyer.Name) || r.MatchString(buyer.ID) {
-			buyerID, err = strconv.ParseUint(buyer.ID, 16, 64)
-			if err != nil {
-				fmt.Printf("Unable to convert %v to a hex BuyerID\n", buyer.ID)
-				os.Exit(0)
-			}
+		if r.MatchString(buyer.Name) || r.MatchString(fmt.Sprintf("%016x", buyer.ID)) {
+			buyerID = buyer.ID
 		}
 	}
 	if buyerID == 0 {
@@ -281,12 +284,8 @@ func addDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMapStr
 	}
 	r = regexp.MustCompile("(?i)" + dcm.Datacenter) // case-insensitive regex
 	for _, dc := range dcReply.Datacenters {
-		if r.MatchString(dc.Name) || r.MatchString(dc.ID) {
-			dcID, err = strconv.ParseUint(dc.ID, 16, 64)
-			if err != nil {
-				fmt.Printf("Unable to convert %v to a hex Datacenter ID\n", dc.ID)
-				os.Exit(0)
-			}
+		if r.MatchString(dc.Name) || r.MatchString(fmt.Sprintf("%016x", dc.ID)) {
+			dcID = dc.ID
 		}
 	}
 	if dcID == 0 {
@@ -326,12 +325,8 @@ func removeDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMap
 	}
 	r := regexp.MustCompile("(?i)" + dcm.BuyerID) // case-insensitive regex
 	for _, buyer := range buyers.Buyers {
-		if r.MatchString(buyer.Name) || r.MatchString(buyer.ID) {
-			buyerID, err = strconv.ParseUint(buyer.ID, 16, 64)
-			if err != nil {
-				fmt.Printf("Unable to convert %v to a hex BuyerID\n", buyer.ID)
-				os.Exit(0)
-			}
+		if r.MatchString(buyer.Name) || r.MatchString(fmt.Sprintf("%016x", buyer.ID)) {
+			buyerID = buyer.ID
 		}
 	}
 	if buyerID == 0 {
@@ -347,12 +342,8 @@ func removeDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMap
 	}
 	r = regexp.MustCompile("(?i)" + dcm.Datacenter) // case-insensitive regex
 	for _, dc := range dcReply.Datacenters {
-		if r.MatchString(dc.Name) || r.MatchString(dc.ID) {
-			dcID, err = strconv.ParseUint(dc.ID, 16, 64)
-			if err != nil {
-				fmt.Printf("Unable to convert %v to a hex Datacenter ID\n", dc.ID)
-				os.Exit(0)
-			}
+		if r.MatchString(dc.Name) || r.MatchString(fmt.Sprintf("%016x", dc.ID)) {
+			dcID = dc.ID
 		}
 	}
 	if dcID == 0 {
