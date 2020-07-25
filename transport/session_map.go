@@ -5,6 +5,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"fmt"
 
 	"github.com/networknext/backend/routing"
 )
@@ -100,11 +101,11 @@ func (sessionMap *SessionMap) TimeoutLoop(ctx context.Context, timeout time.Dura
 				sessionMap.shard[index].mutex.Lock()
 				numSessionIterations := 0
 				for k, v := range sessionMap.shard[index].sessions {
-					if numSessionIterations > 3 {
+					if numSessionIterations > 100 {
 						break
 					}
 					if v.timestamp < timeoutTimestamp {
-						// fmt.Printf("timed out session: %x\n", k)
+						fmt.Printf("timed out session: %x\n", k)
 						delete(sessionMap.shard[index].sessions, k)
 						atomic.AddUint64(&sessionMap.shard[index].numSessions, ^uint64(0))
 					}

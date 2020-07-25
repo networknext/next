@@ -5,6 +5,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"fmt"
 
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
@@ -80,11 +81,11 @@ func (serverMap *ServerMap) TimeoutLoop(ctx context.Context, timeout time.Durati
 				serverMap.shard[index].mutex.Lock()
 				numServerIterations := 0
 				for k, v := range serverMap.shard[index].servers {
-					if numServerIterations > 3 {
+					if numServerIterations > 100 {
 						break
 					}
 					if v.timestamp < timeoutTimestamp {
-						// fmt.Printf("timed out server: %x\n", k)
+						fmt.Printf("timed out server: %x\n", k)
 						delete(serverMap.shard[index].servers, k)
 						atomic.AddUint64(&serverMap.shard[index].numServers, ^uint64(0))
 					}

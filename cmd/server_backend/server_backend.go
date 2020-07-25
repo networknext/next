@@ -524,7 +524,6 @@ func main() {
 		go func() {
 			timeout := time.Minute * 5
 			frequency := time.Millisecond * 10
-			// todo: iterations := 3 or whatever it is in the hardcoded...
 			ticker := time.NewTicker(frequency)
 			vetoMap.TimeoutLoop(ctx, timeout, ticker.C)
 		}()
