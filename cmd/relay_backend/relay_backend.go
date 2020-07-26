@@ -439,17 +439,19 @@ func main() {
 
 			costMatrixDurationStart := time.Now()
 
-			if err := statsdb.GetCostMatrix(&costMatrixNew, redisClientRelays, float32(maxJitter), float32(maxPacketLoss)); err != nil {
-				level.Warn(logger).Log("matrix", "cost", "op", "generate", "err", err)
-				costMatrixMetrics.ErrorMetrics.GenFailure.Add(1)
-			} else {
-				costMatrix = &costMatrixNew
-			}
+			err := statsdb.GetCostMatrix(&costMatrixNew, redisClientRelays, float32(maxJitter), float32(maxPacketLoss))
 
 			costMatrixDurationSince := time.Since(costMatrixDurationStart)
 			costMatrixMetrics.DurationGauge.Set(float64(costMatrixDurationSince.Milliseconds()))
 			if costMatrixDurationSince.Seconds() > 1.0 {
 				costMatrixMetrics.LongUpdateCount.Add(1)
+			}
+
+			// todo: we need to handle this better in future, but just hold the previous cost matrix for the moment on error
+			if err == nil {
+				costMatrix = &costMatrixNew
+			} else {
+				costMatrixMetrics.ErrorMetrics.GenFailure.Add(1)
 			}
 
 			// IMPORTANT: Fill the cost matrix with near relay lat/longs

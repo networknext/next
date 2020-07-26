@@ -237,6 +237,12 @@ run-test-func-parallel:
 .PHONY: test-func-parallel
 test-func-parallel: build-test-func-parallel run-test-func-parallel ## runs functional tests in parallel
 
+.PHONY: test-load
+test-load: ## runs load tests
+	@printf "\nRunning load tests...\n\n" ; \
+	$(GO) run ./cmd/load_tests/load_tests.go ; \
+	printf "\ndone\n\n"
+
 #######################
 # Relay Build Process #
 #######################

@@ -47,7 +47,9 @@ var (
 
 func main() {
 
-	fmt.Printf("server_backend: Git Hash: %s - Commit: %s\n", sha, commitMessage)
+	fmt.Printf("Welcome to the nerd zone 2.0\n")
+
+	// fmt.Printf("server_backend: Git Hash: %s - Commit: %s\n", sha, commitMessage)
 
 	ctx := context.Background()
 
@@ -149,16 +151,6 @@ func main() {
 		level.Error(logger).Log("envvar", "REDIS_HOST_RELAYS", "value", redisHost, "msg", "could not ping", "err", err)
 		os.Exit(1)
 	}
-
-	// we aren't using redis as cache at the moment
-	/*
-		redisHosts := strings.Split(os.Getenv("REDIS_HOST_CACHE"), ",")
-		redisClientCache := storage.NewRedisClient(redisHosts...)
-		if err := redisClientCache.Ping().Err(); err != nil {
-			level.Error(logger).Log("envvar", "REDIS_HOST_CACHE", "value", redisHosts, "msg", "could not ping", "err", err)
-			os.Exit(1)
-		}
-	*/
 
 	// Create an in-memory db
 	var db storage.Storer = &storage.InMemory{
@@ -509,25 +501,24 @@ func main() {
 
 		// Start a goroutine to timeout vetoes
 		go func() {
-			timeout := time.Minute * 5
-			frequency := time.Millisecond * 10
-			// todo: iterations := 3 or whatever it is in the hardcoded...
+			timeout := int64(60*5)
+			frequency := time.Millisecond * 100
 			ticker := time.NewTicker(frequency)
 			vetoMap.TimeoutLoop(ctx, timeout, ticker.C)
 		}()
 
 		// Start a goroutine to timeout servers
 		go func() {
-			timeout := time.Second * 60
-			frequency := time.Millisecond * 10
+			timeout := int64(30)
+			frequency := time.Millisecond * 100
 			ticker := time.NewTicker(frequency)
 			serverMap.TimeoutLoop(ctx, timeout, ticker.C)
 		}()
 
 		// Start a goroutine to timeout sessions
 		go func() {
-			timeout := time.Second * 30
-			frequency := time.Millisecond * 10
+			timeout := int64(30)
+			frequency := time.Millisecond * 100
 			ticker := time.NewTicker(frequency)
 			sessionMap.TimeoutLoop(ctx, timeout, ticker.C)
 		}()
@@ -582,16 +573,18 @@ func main() {
 				fmt.Printf("%.2f milliseconds route matrix update\n", serverBackendMetrics.RouteMatrixUpdateDuration.Value())
 				fmt.Printf("%d long route matrix updates\n", int(serverBackendMetrics.LongRouteMatrixUpdateCount.Value()))
 
-				unknownDatacentersLength := datacenterTracker.UnknownDatacenterLength()
-				serverBackendMetrics.UnknownDatacenterCount.Set(float64(unknownDatacentersLength))
-				if unknownDatacentersLength > 0 {
-					fmt.Printf("%d unknown datacenters: %v\n", unknownDatacentersLength, datacenterTracker.GetUnknownDatacenters())
-				}
+				if env != "local" {
+					unknownDatacentersLength := datacenterTracker.UnknownDatacenterLength()
+					serverBackendMetrics.UnknownDatacenterCount.Set(float64(unknownDatacentersLength))
+					if unknownDatacentersLength > 0 {
+						fmt.Printf("unknown datacenters: %v\n", datacenterTracker.GetUnknownDatacenters())
+					}
 
-				emptyDatacentersLength := datacenterTracker.EmptyDatacenterLength()
-				serverBackendMetrics.EmptyDatacenterCount.Set(float64(emptyDatacentersLength))
-				if emptyDatacentersLength > 0 {
-					fmt.Printf("%d empty datacenters: %v\n", emptyDatacentersLength, datacenterTracker.GetEmptyDatacenters())
+					emptyDatacentersLength := datacenterTracker.EmptyDatacenterLength()
+					serverBackendMetrics.EmptyDatacenterCount.Set(float64(emptyDatacentersLength))
+					if emptyDatacentersLength > 0 {
+						fmt.Printf("empty datacenters: %v\n", datacenterTracker.GetEmptyDatacenters())
+					}
 				}
 
 				fmt.Printf("-----------------------------\n")
