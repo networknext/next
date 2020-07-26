@@ -153,16 +153,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// we aren't using redis as cache at the moment
-	/*
-		redisHosts := strings.Split(os.Getenv("REDIS_HOST_CACHE"), ",")
-		redisClientCache := storage.NewRedisClient(redisHosts...)
-		if err := redisClientCache.Ping().Err(); err != nil {
-			level.Error(logger).Log("envvar", "REDIS_HOST_CACHE", "value", redisHosts, "msg", "could not ping", "err", err)
-			os.Exit(1)
-		}
-	*/
-
 	// Create an in-memory db
 	var db storage.Storer = &storage.InMemory{
 		LocalMode: true,

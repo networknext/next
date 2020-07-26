@@ -5,7 +5,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-	"fmt"
 
 	"github.com/networknext/backend/routing"
 )
@@ -37,7 +36,7 @@ type SessionData struct {
 }
 
 type SessionMapShard struct {
-	mutex       sync.Mutex
+	mutex       sync.RWMutex
 	sessions    map[uint64]*SessionData
 	numSessions uint64
 }
@@ -91,31 +90,36 @@ func (sessionMap *SessionMap) GetSessionData(sessionId uint64) *SessionData {
 }
 
 func (sessionMap *SessionMap) TimeoutLoop(ctx context.Context, timeout time.Duration, c <-chan time.Time) {
+	numIterations := 100
+	deleteList := make([]uint64, numIterations)
 	for {
 		select {
 		case <-c:
 			timeoutTimestamp := time.Now().Add(-timeout).Unix()
 
+			deleteList = deleteList[:0]
+
 			for index := 0; index < NumSessionMapShards; index++ {
-				sessionTimeoutStart := time.Now()
-				sessionMap.shard[index].mutex.Lock()
+				sessionMap.shard[index].mutex.RLock()
 				numSessionIterations := 0
 				for k, v := range sessionMap.shard[index].sessions {
-					if numSessionIterations > 100 {
+					if numSessionIterations > numIterations {
 						break
 					}
 					if v.timestamp < timeoutTimestamp {
-						fmt.Printf("timed out session: %x\n", k)
-						delete(sessionMap.shard[index].sessions, k)
 						atomic.AddUint64(&sessionMap.shard[index].numSessions, ^uint64(0))
+						deleteList = append(deleteList, k)
 					}
 					numSessionIterations++
 				}
-				sessionMap.shard[index].mutex.Unlock()
-				if time.Since(sessionTimeoutStart).Seconds() > 0.1 {
-					// fmt.Printf("long session timeout check [%d]\n", index)
+				sessionMap.shard[index].mutex.RUnlock()
+				sessionMap.shard[index].mutex.Lock()
+				for i := range deleteList {
+					delete(sessionMap.shard[index].sessions, deleteList[i])
 				}
+				sessionMap.shard[index].mutex.Unlock()
 			}
+
 		case <-ctx.Done():
 			return
 		}
