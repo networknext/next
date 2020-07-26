@@ -515,15 +515,15 @@ func main() {
 		// Start a goroutine to timeout vetoes
 		go func() {
 			timeout := time.Minute * 5
-			frequency := time.Millisecond * 10
+			frequency := time.Millisecond * 100
 			ticker := time.NewTicker(frequency)
 			vetoMap.TimeoutLoop(ctx, timeout, ticker.C)
 		}()
 
 		// Start a goroutine to timeout servers
 		go func() {
-			timeout := time.Second * 60
-			frequency := time.Millisecond * 10
+			timeout := time.Second * 30
+			frequency := time.Millisecond * 100
 			ticker := time.NewTicker(frequency)
 			serverMap.TimeoutLoop(ctx, timeout, ticker.C)
 		}()
@@ -531,7 +531,7 @@ func main() {
 		// Start a goroutine to timeout sessions
 		go func() {
 			timeout := time.Second * 30
-			frequency := time.Millisecond * 10
+			frequency := time.Millisecond * 100
 			ticker := time.NewTicker(frequency)
 			sessionMap.TimeoutLoop(ctx, timeout, ticker.C)
 		}()

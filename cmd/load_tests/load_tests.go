@@ -27,7 +27,7 @@ func test_server_map() {
 	ctx := context.Background()
 	{
 		go func() {
-			timeout := int64(60)
+			timeout := int64(10)
 			frequency := time.Millisecond * 100
 			ticker := time.NewTicker(frequency)
 			serverMap.TimeoutLoop(ctx, timeout, ticker.C)
@@ -85,7 +85,7 @@ func test_session_map() {
 	ctx := context.Background()
 	{
 		go func() {
-			timeout := int64(60)
+			timeout := int64(10)
 			frequency := time.Millisecond * 100
 			ticker := time.NewTicker(frequency)
 			sessionMap.TimeoutLoop(ctx, timeout, ticker.C)
@@ -147,8 +147,8 @@ type test_function func()
 
 func main() {
 	allTests := []test_function{
-		test_server_map,
-		// test_session_map,
+		// test_server_map,
+		test_session_map,
 	}
 
 	// If there are command line arguments, use reflection to see what tests to run
