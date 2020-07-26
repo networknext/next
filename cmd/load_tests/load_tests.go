@@ -10,13 +10,79 @@ import (
 	"os"
 	"runtime"
 	"reflect"
+	"context"
+	"time"
+
+	"github.com/networknext/backend/transport"
 )
 
 func test_session_map() {
 
 	fmt.Printf("test_session_map\n")
 
-	// ...
+	numThreads := 100000
+
+	sessionMap := transport.NewSessionMap()
+
+	ctx := context.Background()
+	{
+		go func() {
+			timeout := int64(60)
+			frequency := time.Millisecond * 100
+			ticker := time.NewTicker(frequency)
+			sessionMap.TimeoutLoop(ctx, timeout, ticker.C)
+		}()
+	}
+
+	for i := 0; i < numThreads; i++ {
+
+		go func() {
+
+			sessionId := uint64(1000*i)
+
+			for {
+
+				sessionId ++
+				sessionId := ( sessionId % 100000 )
+
+				sessionMap.Lock(sessionId)
+
+				sessionDataReadOnly := sessionMap.GetSessionData(sessionId)
+				if sessionDataReadOnly == nil {
+					sessionDataReadOnly = transport.NewSessionData()
+					fmt.Printf("new session %x\n", sessionId)
+				}
+
+				session := transport.SessionData{
+					Timestamp:            time.Now().Unix(),
+					Location:             sessionDataReadOnly.Location,
+					Sequence:             sessionDataReadOnly.Sequence + 1,
+					NearRelays:           sessionDataReadOnly.NearRelays,
+					RouteHash:            0,
+					Initial:              sessionDataReadOnly.Initial,
+					RouteDecision:        sessionDataReadOnly.RouteDecision,
+					NextSliceCounter:     sessionDataReadOnly.NextSliceCounter,
+					CommittedData:        sessionDataReadOnly.CommittedData,
+					RouteExpireTimestamp: sessionDataReadOnly.RouteExpireTimestamp,
+					TokenVersion:         sessionDataReadOnly.TokenVersion,
+					CachedResponse:       nil,
+					SliceMutexes:         sessionDataReadOnly.SliceMutexes,
+				}
+
+				// ...
+
+				sessionMap.UpdateSessionData(sessionId, &session)
+
+				sessionMap.Unlock(sessionId)
+			}
+
+		}()
+
+	}
+
+	for {
+		time.Sleep(time.Second)
+	}
 }
 
 type test_function func()
