@@ -516,7 +516,7 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 
 		serverDataReadOnly := params.ServerMap.GetServerData(buyer.ID, serverAddress)
 		if serverDataReadOnly != nil {
-			sequence = serverDataReadOnly.sequence
+			sequence = serverDataReadOnly.Sequence
 		}
 
 		// todo: disable as a test
@@ -535,11 +535,11 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 		// When we don't receive an update for a server for a certain period of time (for example 30 seconds), that server entry times out.
 
 		server := ServerData{
-			timestamp:      time.Now().Unix(),
-			routePublicKey: packet.ServerRoutePublicKey,
-			version:        packet.Version,
-			datacenter:     datacenter,
-			sequence:       packet.Sequence,
+			Timestamp:      time.Now().Unix(),
+			RoutePublicKey: packet.ServerRoutePublicKey,
+			Version:        packet.Version,
+			Datacenter:     datacenter,
+			Sequence:       packet.Sequence,
 		}
 
 		params.ServerMap.UpdateServerData(buyer.ID, serverAddress, &server)
@@ -620,7 +620,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 		// Now that we have the server data, we know the SDK version, so we can read the rest of the session update packet.
 
 		var packet SessionUpdatePacket
-		packet.Version = serverDataReadOnly.version
+		packet.Version = serverDataReadOnly.Version
 		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
 			level.Error(params.Logger).Log("msg", "could not read session update packet", "err", err)
 			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
@@ -683,11 +683,11 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 		// This makes sure that we respond to the session update with the packet version the SDK expects.
 
 		response := SessionResponsePacket{
-			Version:              serverDataReadOnly.version,
+			Version:              serverDataReadOnly.Version,
 			Sequence:             header.Sequence,
 			SessionID:            header.SessionID,
 			RouteType:            int32(routing.RouteTypeDirect),
-			ServerRoutePublicKey: serverDataReadOnly.routePublicKey,
+			ServerRoutePublicKey: serverDataReadOnly.RoutePublicKey,
 		}
 
 		directRoute := routing.Route{}
@@ -929,7 +929,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 		// Routes are planned between the near relays for this session,
 		// and the set of dest relays in the datacenter.
 
-		datacenterRelays := routeMatrix.GetDatacenterRelays(serverDataReadOnly.datacenter)
+		datacenterRelays := routeMatrix.GetDatacenterRelays(serverDataReadOnly.Datacenter)
 		if len(datacenterRelays) == 0 {
 			routeDecision = routing.Decision{
 				OnNetworkNext: false,
@@ -942,7 +942,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 
 			params.Metrics.ErrorMetrics.NoRelaysInDatacenter.Add(1)
 
-			params.DatacenterTracker.AddEmptyDatacenter(serverDataReadOnly.datacenter.Name)
+			params.DatacenterTracker.AddEmptyDatacenter(serverDataReadOnly.Datacenter.Name)
 
 			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelays, routeDecision, sessionDataReadOnly.RouteDecision, sessionDataReadOnly.Initial, vetoReason, nextSliceCounter,
 				committedData, sessionDataReadOnly.RouteHash, sessionDataReadOnly.RouteDecision.OnNetworkNext, timestamp, routeExpireTimestamp, sessionDataReadOnly.TokenVersion, params.RouterPrivateKey, nil) //, sliceMutexes)
@@ -1147,8 +1147,8 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 	// shortly become per-customer, thus there is really no global concept of "multiplay.losangeles", for example.
 
 	// todo: temporary
-	datacenterName := serverDataReadOnly.datacenter.Name
-	datacenterAlias := serverDataReadOnly.datacenter.AliasName
+	datacenterName := serverDataReadOnly.Datacenter.Name
+	datacenterAlias := serverDataReadOnly.Datacenter.AliasName
 
 	// Send a massive amount of data to the portal via redis.
 	// This drives all the stuff you see in the portal, including the map and top sessions list.
@@ -1204,7 +1204,7 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 		Initial:                   prevInitial,
 		NextBytesUp:               nextBytesUp,
 		NextBytesDown:             nextBytesDown,
-		DatacenterID:              serverDataReadOnly.datacenter.ID,
+		DatacenterID:              serverDataReadOnly.Datacenter.ID,
 		RTTReduction:              prevRouteDecision.Reason&routing.DecisionRTTReduction != 0 || prevRouteDecision.Reason&routing.DecisionRTTReductionMultipath != 0,
 		PacketLossReduction:       prevRouteDecision.Reason&routing.DecisionHighPacketLossMultipath != 0,
 		NextRelaysPrice:           nextRelaysPriceArray,
@@ -1403,7 +1403,7 @@ func sendRouteResponse(w io.Writer, chosenRoute *routing.Route, params *SessionU
 
 				Server: routing.Server{
 					Addr:      packet.ServerAddress,
-					PublicKey: serverDataReadOnly.routePublicKey,
+					PublicKey: serverDataReadOnly.RoutePublicKey,
 				},
 
 				Relays: chosenRoute.Relays,
@@ -1428,7 +1428,7 @@ func sendRouteResponse(w io.Writer, chosenRoute *routing.Route, params *SessionU
 
 				Server: routing.Server{
 					Addr:      packet.ServerAddress,
-					PublicKey: serverDataReadOnly.routePublicKey,
+					PublicKey: serverDataReadOnly.RoutePublicKey,
 				},
 
 				Relays: chosenRoute.Relays,

@@ -34,54 +34,40 @@ func test_server_map() {
 		}()
 	}
 
-	// todo
-	/*
+	buyerId := uint64(0)
+
 	for i := 0; i < numThreads; i++ {
 
 		go func() {
 
-			sessionId := uint64(1000*i)
+			serverId := uint64(1000*i)
 
 			for {
 
-				sessionId ++
-				sessionId := ( sessionId % 100000 )
+				serverId ++
+				serverId := ( serverId % 100000 )
 
-				sessionMap.Lock(sessionId)
+				serverAddress := fmt.Sprintf("%x", serverId)
 
-				sessionDataReadOnly := sessionMap.GetSessionData(sessionId)
-				if sessionDataReadOnly == nil {
-					sessionDataReadOnly = transport.NewSessionData()
-					fmt.Printf("new session %x\n", sessionId)
+				serverMap.Lock(buyerId, serverAddress)
+
+				serverDataReadOnly := serverMap.GetServerData(buyerId, serverAddress)
+				if serverDataReadOnly == nil {
+					serverDataReadOnly = &transport.ServerData{}
+					fmt.Printf("new server %x\n", serverId)
 				}
 
-				session := transport.SessionData{
-					Timestamp:            time.Now().Unix(),
-					Location:             sessionDataReadOnly.Location,
-					Sequence:             sessionDataReadOnly.Sequence + 1,
-					NearRelays:           sessionDataReadOnly.NearRelays,
-					RouteHash:            0,
-					Initial:              sessionDataReadOnly.Initial,
-					RouteDecision:        sessionDataReadOnly.RouteDecision,
-					NextSliceCounter:     sessionDataReadOnly.NextSliceCounter,
-					CommittedData:        sessionDataReadOnly.CommittedData,
-					RouteExpireTimestamp: sessionDataReadOnly.RouteExpireTimestamp,
-					TokenVersion:         sessionDataReadOnly.TokenVersion,
-					CachedResponse:       nil,
-					SliceMutexes:         sessionDataReadOnly.SliceMutexes,
-				}
+				serverCopy := *serverDataReadOnly
+				serverCopy.Timestamp = time.Now().Unix()
 
-				// ...
+				serverMap.UpdateServerData(buyerId, serverAddress, &serverCopy)
 
-				sessionMap.UpdateSessionData(sessionId, &session)
-
-				sessionMap.Unlock(sessionId)
+				serverMap.Unlock(buyerId, serverAddress)
 			}
 
 		}()
 
 	}
-	*/
 
 	for {
 		time.Sleep(time.Second)

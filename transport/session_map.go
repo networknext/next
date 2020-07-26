@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	NumSessionMapShards = 10000
+	NumSessionMapShards = 100000
 
 	// todo: disable session locks for the moment
 	/*
