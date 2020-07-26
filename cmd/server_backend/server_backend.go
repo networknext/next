@@ -438,7 +438,7 @@ func main() {
 
 			go func() {
 				for {
-					newRouteMatrix := &routing.RouteMatrix{}
+					newRouteMatrix := routing.RouteMatrix{}
 					var matrixReader io.Reader
 
 					// Default to reading route matrix from file
@@ -454,9 +454,11 @@ func main() {
 					start := time.Now()
 
 					// Don't swap route matrix if we fail to read
-					_, err := newRouteMatrix.ReadFrom(matrixReader)
+					routeMatrixBytes, err := newRouteMatrix.ReadFrom(matrixReader)
 					if err != nil {
-						level.Warn(logger).Log("envvar", "ROUTE_MATRIX_URI", "value", uri, "msg", "could not read route matrix", "err", err)
+						if env != "local" {
+							level.Warn(logger).Log("envvar", "ROUTE_MATRIX_URI", "value", uri, "msg", "could not read route matrix", "err", err)
+						}
 						time.Sleep(syncInterval)
 						continue
 					}
@@ -472,8 +474,10 @@ func main() {
 					// Swap the route matrix pointer to the new one
 					// This double buffered route matrix approach makes the route matrix lockless
 					routeMatrixMutex.Lock()
-					routeMatrix = newRouteMatrix
+					routeMatrix = &newRouteMatrix
 					routeMatrixMutex.Unlock()
+
+					serverBackendMetrics.RouteMatrixBytes.Set(float64(routeMatrixBytes))
 
 					time.Sleep(syncInterval)
 				}
@@ -559,8 +563,8 @@ func main() {
 				serverBackendMetrics.BillingMetrics.EntriesQueued.Set(numEntriesQueued)
 
 				fmt.Printf("-----------------------------\n")
-				fmt.Printf("%d goroutines\n", int(serverBackendMetrics.Goroutines.Value()))
 				fmt.Printf("%.2f mb allocated\n", serverBackendMetrics.MemoryAllocated.Value())
+				fmt.Printf("%d goroutines\n", int(serverBackendMetrics.Goroutines.Value()))
 				fmt.Printf("%d vetoes\n", numVetoes)
 				fmt.Printf("%d servers\n", numServers)
 				fmt.Printf("%d sessions\n", numSessions)
@@ -570,8 +574,9 @@ func main() {
 				fmt.Printf("%d server init packets processed\n", int(serverInitMetrics.Invocations.Value()))
 				fmt.Printf("%d server update packets processed\n", int(serverUpdateMetrics.Invocations.Value()))
 				fmt.Printf("%d session update packets processed\n", int(sessionUpdateMetrics.Invocations.Value()))
-				fmt.Printf("%.2f milliseconds route matrix update\n", serverBackendMetrics.RouteMatrixUpdateDuration.Value())
 				fmt.Printf("%d long route matrix updates\n", int(serverBackendMetrics.LongRouteMatrixUpdateCount.Value()))
+				fmt.Printf("route matrix update: %.2f milliseconds\n", serverBackendMetrics.RouteMatrixUpdateDuration.Value())
+				fmt.Printf("route matrix bytes: %d\n", int(serverBackendMetrics.RouteMatrixBytes.Value()))
 
 				if env != "local" {
 					unknownDatacentersLength := datacenterTracker.UnknownDatacenterLength()
