@@ -514,6 +514,9 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 
 		serverAddress := packet.ServerAddress.String()
 
+		params.ServerMap.Lock(buyer.ID, serverAddress)
+		defer params.ServerMap.Unlock(buyer.ID, serverAddress)
+
 		serverDataReadOnly := params.ServerMap.GetServerData(buyer.ID, serverAddress)
 		if serverDataReadOnly != nil {
 			sequence = serverDataReadOnly.Sequence
@@ -609,7 +612,9 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 		// Grab the server data corresponding to the server this session is talking to.
 		// The server data is necessary for us to read the rest of the session update packet.
 
+		params.ServerMap.RLock(buyer.ID, header.ServerAddress.String())
 		serverDataReadOnly := params.ServerMap.GetServerData(buyer.ID, header.ServerAddress.String())
+		params.ServerMap.RUnlock(buyer.ID, header.ServerAddress.String())
 		if serverDataReadOnly == nil {
 			level.Error(params.Logger).Log("msg", "server data missing")
 			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
@@ -627,6 +632,13 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 			params.Metrics.ErrorMetrics.ReadPacketFailure.Add(1)
 			return
 		}
+
+		// Get the session data from the SDK map
+		// Since we write back into this map, we must lock and unlock at the end of this function
+		// otherwise under heavy contention weird stuff happens with the session map.
+
+		params.SessionMap.Lock(header.SessionID)
+		defer params.SessionMap.Unlock(header.SessionID)
 
 		sessionDataReadOnly := params.SessionMap.GetSessionData(header.SessionID)
 		if sessionDataReadOnly == nil {
@@ -720,8 +732,11 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 		// We make copies of some read only session data here, and will store any modifications
 		// we make back into the session map later on.
 
-		newSession := packet.Sequence == 1
+		params.VetoMap.RLock(header.SessionID)
 		vetoReason := params.VetoMap.GetVeto(header.SessionID)
+		params.VetoMap.RUnlock(header.SessionID)
+
+		newSession := packet.Sequence == 1
 		nearRelays := make([]routing.Relay, len(sessionDataReadOnly.NearRelays))
 		copy(nearRelays, sessionDataReadOnly.NearRelays)
 		routeExpireTimestamp := sessionDataReadOnly.RouteExpireTimestamp
@@ -842,6 +857,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 		}
 
 		// Don't allow customers who aren't marked as "Live" to get a network next route. They have to pay first!
+
 		if !buyer.Live {
 			routeDecision = routing.Decision{
 				OnNetworkNext: false,

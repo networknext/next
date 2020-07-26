@@ -5,7 +5,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-	"fmt"
+	// "fmt"
 
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
@@ -49,6 +49,18 @@ func (serverMap *ServerMap) NumServers() uint64 {
 	return total
 }
 
+func (serverMap *ServerMap) RLock(buyerID uint64, serverAddress string) {
+	serverHash := crypto.HashID(serverAddress)
+	index := (buyerID + serverHash) % NumServerMapShards
+	serverMap.shard[index].mutex.RLock()
+}
+
+func (serverMap *ServerMap) RUnlock(buyerID uint64, serverAddress string) {
+	serverHash := crypto.HashID(serverAddress)
+	index := (buyerID + serverHash) % NumServerMapShards
+	serverMap.shard[index].mutex.RUnlock()
+}
+
 func (serverMap *ServerMap) Lock(buyerID uint64, serverAddress string) {
 	serverHash := crypto.HashID(serverAddress)
 	index := (buyerID + serverHash) % NumServerMapShards
@@ -86,9 +98,8 @@ func (serverMap *ServerMap) TimeoutLoop(ctx context.Context, timeoutSeconds int6
 		case <-c:
 			timeoutTimestamp := time.Now().Unix() - timeoutSeconds
 
-			deleteList = deleteList[:0]
-
 			for index := 0; index < NumServerMapShards; index++ {
+				deleteList = deleteList[:0]
 				serverMap.shard[index].mutex.RLock()
 				numIterations := 0
 				for k, v := range serverMap.shard[index].servers {
@@ -96,7 +107,6 @@ func (serverMap *ServerMap) TimeoutLoop(ctx context.Context, timeoutSeconds int6
 						break
 					}
 					if v.Timestamp < timeoutTimestamp {
-						fmt.Printf("timed out server: %x\n", k)
 						atomic.AddUint64(&serverMap.shard[index].numServers, ^uint64(0))
 						deleteList = append(deleteList, k)
 					}
@@ -105,7 +115,7 @@ func (serverMap *ServerMap) TimeoutLoop(ctx context.Context, timeoutSeconds int6
 				serverMap.shard[index].mutex.RUnlock()
 				serverMap.shard[index].mutex.Lock()
 				for i := range deleteList {
-					fmt.Printf("timeout server %x\n", deleteList[i])
+					// fmt.Printf("timeout server %x\n", deleteList[i])
 					delete(serverMap.shard[index].servers, deleteList[i])
 				}
 				serverMap.shard[index].mutex.Unlock()

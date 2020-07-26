@@ -449,7 +449,6 @@ func main() {
 
 			// todo: we need to handle this better in future, but just hold the previous cost matrix for the moment on error
 			if err == nil {
-				level.Warn(logger).Log("matrix", "cost", "op", "generate", "err", err)
 				costMatrix = &costMatrixNew
 			} else {
 				// todo: metric on this ryan

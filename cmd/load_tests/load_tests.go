@@ -200,7 +200,7 @@ type test_function func()
 func main() {
 	allTests := []test_function{
 		// test_server_map,
-		// test_session_map,
+		//test_session_map,
 		test_veto_map,
 	}
 

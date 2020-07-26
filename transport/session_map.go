@@ -103,10 +103,8 @@ func (sessionMap *SessionMap) TimeoutLoop(ctx context.Context, timeoutSeconds in
 		select {
 		case <-c:
 			timeoutTimestamp := time.Now().Unix() - timeoutSeconds
-
-			deleteList = deleteList[:0]
-
 			for index := 0; index < NumSessionMapShards; index++ {
+				deleteList = deleteList[:0]
 				sessionMap.shard[index].mutex.RLock()
 				numIterations := 0
 				for k, v := range sessionMap.shard[index].sessions {

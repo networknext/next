@@ -514,7 +514,7 @@ func main() {
 
 		// Start a goroutine to timeout vetoes
 		go func() {
-			timeout := time.Minute * 5
+			timeout := int64(60*5)
 			frequency := time.Millisecond * 100
 			ticker := time.NewTicker(frequency)
 			vetoMap.TimeoutLoop(ctx, timeout, ticker.C)
@@ -583,14 +583,16 @@ func main() {
 				fmt.Printf("%d session update packets processed\n", atomic.LoadUint64(&sessionUpdateCounters.Packets))
 				fmt.Printf("%d long route matrix updates\n", atomic.LoadUint64(&longRouteMatrixUpdates))
 
-				unknownDatacentersLength := datacenterTracker.UnknownDatacenterLength()
-				if unknownDatacentersLength > 0 {
-					fmt.Printf("%d unknown datacenters: %v\n", unknownDatacentersLength, datacenterTracker.GetUnknownDatacenters())
-				}
+				if env != "local" {
+					unknownDatacentersLength := datacenterTracker.UnknownDatacenterLength()
+					if unknownDatacentersLength > 0 {
+						fmt.Printf("unknown datacenters: %v\n", datacenterTracker.GetUnknownDatacenters())
+					}
 
-				emptyDatacentersLength := datacenterTracker.EmptyDatacenterLength()
-				if emptyDatacentersLength > 0 {
-					fmt.Printf("%d empty datacenters: %v\n", emptyDatacentersLength, datacenterTracker.GetEmptyDatacenters())
+					emptyDatacentersLength := datacenterTracker.EmptyDatacenterLength()
+					if emptyDatacentersLength > 0 {
+						fmt.Printf("empty datacenters: %v\n", datacenterTracker.GetEmptyDatacenters())
+					}
 				}
 
 				fmt.Printf("-----------------------------\n")

@@ -5,7 +5,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-	"fmt"
+	// "fmt"
 
 	"github.com/networknext/backend/routing"
 )
@@ -45,6 +45,16 @@ func (vetoMap *VetoMap) NumVetoes() uint64 {
 	return total
 }
 
+func (vetoMap *VetoMap) RLock(vetoId uint64) {
+	index := vetoId % NumVetoMapShards
+	vetoMap.shard[index].mutex.RLock()
+}
+
+func (vetoMap *VetoMap) RUnlock(vetoId uint64) {
+	index := vetoId % NumVetoMapShards
+	vetoMap.shard[index].mutex.RUnlock()
+}
+
 func (vetoMap *VetoMap) Lock(vetoId uint64) {
 	index := vetoId % NumVetoMapShards
 	vetoMap.shard[index].mutex.Lock()
@@ -64,7 +74,6 @@ func (vetoMap *VetoMap) SetVeto(vetoId uint64, reason routing.DecisionReason) {
 	_, exists := vetoMap.shard[index].vetoes[vetoId]
 	vetoMap.shard[index].vetoes[vetoId] = vetoData
 	if !exists {
-		atomic.AddUint64(&vetoMap.shard[index].numVetoes, 1)
 	}
 }
 
@@ -73,9 +82,7 @@ func (vetoMap *VetoMap) GetVeto(vetoId uint64) routing.DecisionReason {
 	vetoData, exists := vetoMap.shard[index].vetoes[vetoId]
 	if exists {
 		vetoData.timestamp = time.Now().Unix()
-	}
-	vetoMap.shard[index].vetoes[vetoId] = vetoData
-	if exists {
+		vetoMap.shard[index].vetoes[vetoId] = vetoData
 		return vetoData.reason
 	}
 	return routing.DecisionNoReason
@@ -88,10 +95,8 @@ func (vetoMap *VetoMap) TimeoutLoop(ctx context.Context, timeoutSeconds int64, c
 		select {
 		case <-c:
 			timeoutTimestamp := time.Now().Unix() - timeoutSeconds
-
-			deleteList = deleteList[:0]
-
 			for index := 0; index < NumVetoMapShards; index++ {
+				deleteList = deleteList[:0]
 				vetoMap.shard[index].mutex.RLock()
 				numIterations := 0
 				for k, v := range vetoMap.shard[index].vetoes {
@@ -99,7 +104,6 @@ func (vetoMap *VetoMap) TimeoutLoop(ctx context.Context, timeoutSeconds int64, c
 						break
 					}
 					if v.timestamp < timeoutTimestamp {
-						fmt.Printf("timed out veto: %x\n", k)
 						atomic.AddUint64(&vetoMap.shard[index].numVetoes, ^uint64(0))
 						deleteList = append(deleteList, k)
 					}
@@ -108,7 +112,7 @@ func (vetoMap *VetoMap) TimeoutLoop(ctx context.Context, timeoutSeconds int64, c
 				vetoMap.shard[index].mutex.RUnlock()
 				vetoMap.shard[index].mutex.Lock()
 				for i := range deleteList {
-					fmt.Printf("timeout veto %x\n", deleteList[i])
+					// fmt.Printf("timeout veto %x\n", deleteList[i])
 					delete(vetoMap.shard[index].vetoes, deleteList[i])
 				}
 				vetoMap.shard[index].mutex.Unlock()
