@@ -439,17 +439,19 @@ func main() {
 
 			costMatrixDurationStart := time.Now()
 
-			if err := statsdb.GetCostMatrix(&costMatrixNew, redisClientRelays, float32(maxJitter), float32(maxPacketLoss)); err != nil {
-				level.Warn(logger).Log("matrix", "cost", "op", "generate", "err", err)
-				costMatrixMetrics.ErrorMetrics.GenFailure.Add(1)
-			} else {
-				costMatrix = &costMatrixNew
-			}
+			err := statsdb.GetCostMatrix(&costMatrixNew, redisClientRelays, float32(maxJitter), float32(maxPacketLoss))
 
 			costMatrixDurationSince := time.Since(costMatrixDurationStart)
 			costMatrixMetrics.DurationGauge.Set(float64(costMatrixDurationSince.Milliseconds()))
 			if costMatrixDurationSince.Seconds() > 1.0 {
 				costMatrixMetrics.LongUpdateCount.Add(1)
+			}
+
+			// todo: we need to handle this better in future, but just hold the previous cost matrix for the moment on error
+			if err == nil {
+				costMatrix = &costMatrixNew
+			} else {
+				costMatrixMetrics.ErrorMetrics.GenFailure.Add(1)
 			}
 
 			// IMPORTANT: Fill the cost matrix with near relay lat/longs
@@ -527,17 +529,17 @@ func main() {
 			relayBackendMetrics.MemoryAllocated.Set(memoryUsed())
 
 			fmt.Printf("-----------------------------\n")
-			fmt.Printf("%d goroutines\n", int(relayBackendMetrics.Goroutines.Value()))
 			fmt.Printf("%.2f mb allocated\n", relayBackendMetrics.MemoryAllocated.Value())
+			fmt.Printf("%d goroutines\n", int(relayBackendMetrics.Goroutines.Value()))
 			fmt.Printf("%d datacenters\n", int(routeMatrixMetrics.DatacenterCount.Value()))
 			fmt.Printf("%d relays\n", int(routeMatrixMetrics.RelayCount.Value()))
 			fmt.Printf("%d routes\n", int(routeMatrixMetrics.RouteCount.Value()))
 			fmt.Printf("%d long cost matrix updates\n", int(costMatrixMetrics.LongUpdateCount.Value()))
 			fmt.Printf("%d long route matrix updates\n", int(optimizeMetrics.LongUpdateCount.Value()))
-			fmt.Printf("cost matrix bytes: %d\n", int(costMatrixMetrics.Bytes.Value()))
-			fmt.Printf("route matrix bytes: %d\n", int(routeMatrixMetrics.Bytes.Value()))
 			fmt.Printf("cost matrix update: %.2f milliseconds\n", costMatrixMetrics.DurationGauge.Value())
 			fmt.Printf("route matrix update: %.2f milliseconds\n", optimizeMetrics.DurationGauge.Value())
+			fmt.Printf("cost matrix bytes: %d\n", int(costMatrixMetrics.Bytes.Value()))
+			fmt.Printf("route matrix bytes: %d\n", int(routeMatrixMetrics.Bytes.Value()))
 			fmt.Printf("-----------------------------\n")
 
 			time.Sleep(syncInterval)

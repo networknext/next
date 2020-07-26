@@ -50,14 +50,14 @@ type BuyersReply struct {
 }
 
 type buyer struct {
-	ID   string `json:"id"`
+	ID   uint64 `json:"id"`
 	Name string `json:"name"`
 }
 
 func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersReply) error {
 	for _, b := range s.Storage.Buyers() {
 		reply.Buyers = append(reply.Buyers, buyer{
-			ID:   fmt.Sprintf("%x", b.ID),
+			ID:   b.ID,
 			Name: b.Name,
 		})
 	}
@@ -683,7 +683,7 @@ type DatacentersReply struct {
 
 type datacenter struct {
 	Name         string  `json:"name"`
-	ID           string  `json:"id"`
+	ID           uint64  `json:"id"`
 	Latitude     float64 `json:"latitude"`
 	Longitude    float64 `json:"longitude"`
 	Enabled      bool    `json:"enabled"`
@@ -694,7 +694,7 @@ func (s *OpsService) Datacenters(r *http.Request, args *DatacentersArgs, reply *
 	for _, d := range s.Storage.Datacenters() {
 		reply.Datacenters = append(reply.Datacenters, datacenter{
 			Name:         d.Name,
-			ID:           fmt.Sprintf("%x", d.ID),
+			ID:           d.ID,
 			Enabled:      d.Enabled,
 			Latitude:     d.Location.Latitude,
 			Longitude:    d.Location.Longitude,
