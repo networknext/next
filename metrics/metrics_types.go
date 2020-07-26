@@ -448,6 +448,7 @@ type ServerBackendMetrics struct {
 	ServerCount                Gauge
 	SessionCount               Gauge
 	BillingMetrics             BillingMetrics
+	RouteMatrixBytes           Gauge
 	RouteMatrixUpdateDuration  Gauge
 	LongRouteMatrixUpdateCount Counter
 	UnknownDatacenterCount     Gauge
@@ -461,6 +462,7 @@ var EmptyServerBackendMetrics ServerBackendMetrics = ServerBackendMetrics{
 	ServerCount:                &EmptyGauge{},
 	SessionCount:               &EmptyGauge{},
 	BillingMetrics:             EmptyBillingMetrics,
+	RouteMatrixBytes:           &EmptyGauge{},
 	RouteMatrixUpdateDuration:  &EmptyGauge{},
 	LongRouteMatrixUpdateCount: &EmptyCounter{},
 	UnknownDatacenterCount:     &EmptyGauge{},
@@ -575,6 +577,17 @@ func NewServerBackendMetrics(ctx context.Context, metricsHandler Handler) (*Serv
 
 	serverBackendMetrics.BillingMetrics.ErrorMetrics.BillingReadFailure = &EmptyCounter{}
 	serverBackendMetrics.BillingMetrics.ErrorMetrics.BillingWriteFailure = &EmptyCounter{}
+
+	serverBackendMetrics.RouteMatrixBytes, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Server Backend Route Matrix Bytes",
+		ServiceName: "server_backend",
+		ID:          "server_backend.route_matrix.bytes",
+		Unit:        "ms",
+		Description: "The size of the route matrix in bytes",
+	})
+	if err != nil {
+		return nil, err
+	}
 
 	serverBackendMetrics.RouteMatrixUpdateDuration, err = metricsHandler.NewGauge(ctx, &Descriptor{
 		DisplayName: "Server Backend Route Matrix Update Duration",
