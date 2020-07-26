@@ -143,12 +143,65 @@ func test_session_map() {
 	}
 }
 
+func test_veto_map() {
+
+	fmt.Printf("test_veto_map\n")
+
+	numThreads := 100000
+
+	vetoMap := transport.NewVetoMap()
+
+	ctx := context.Background()
+	{
+		go func() {
+			timeout := int64(10)
+			frequency := time.Millisecond * 100
+			ticker := time.NewTicker(frequency)
+			vetoMap.TimeoutLoop(ctx, timeout, ticker.C)
+		}()
+	}
+
+	for i := 0; i < numThreads; i++ {
+
+		go func() {
+
+			sessionId := uint64(1000*i)
+
+			for {
+
+				sessionId ++
+				sessionId := ( sessionId % 100000 )
+
+				vetoMap.Lock(sessionId)
+
+				vetoReason := vetoMap.GetVeto(sessionId)
+
+				if vetoReason == 0 {
+					fmt.Printf("new veto %x\n", sessionId)
+					vetoReason = 1
+				}
+
+				vetoMap.SetVeto(sessionId, vetoReason)
+				
+				vetoMap.Unlock(sessionId)
+			}
+
+		}()
+
+	}
+
+	for {
+		time.Sleep(time.Second)
+	}
+}
+
 type test_function func()
 
 func main() {
 	allTests := []test_function{
 		// test_server_map,
-		test_session_map,
+		// test_session_map,
+		test_veto_map,
 	}
 
 	// If there are command line arguments, use reflection to see what tests to run
