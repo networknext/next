@@ -237,6 +237,12 @@ run-test-func-parallel:
 .PHONY: test-func-parallel
 test-func-parallel: build-test-func-parallel run-test-func-parallel ## runs functional tests in parallel
 
+.PHONY: test-load
+test-load: ## runs load tests
+	@printf "\nRunning load tests...\n\n" ; \
+	$(GO) run ./cmd/load_tests/load_tests.go ; \
+	printf "\ndone\n\n"
+
 #######################
 # Relay Build Process #
 #######################
@@ -294,6 +300,10 @@ dev-server-backend: build-server-backend ## runs a local server backend
 dev-billing: build-billing ## runs a local billing service
 	@PORT=41000 ./dist/billing
 
+.PHONY: dev-analytics
+dev-analytics: build-analytics ## runs a local analytics service
+	@PORT=41001 ./dist/analytics
+
 .PHONY: dev-portal-cruncher
 dev-portal-cruncher: build-portal-cruncher ## runs a local portal cruncher
 	@HTTP_PORT=42000 CRUNCHER_PORT=5555 ./dist/portal_cruncher
@@ -325,7 +335,6 @@ $(DIST_DIR)/$(SDKNAME).so:
 
 .PHONY: build-sdk
 build-sdk: $(DIST_DIR)/$(SDKNAME).so ## builds the sdk
-
 
 PHONY: build-portal-cruncher
 build-portal-cruncher: ## builds the portal_cruncher binary
@@ -364,6 +373,11 @@ build-server-backend: ## builds the server backend binary
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/server_backend ./cmd/server_backend/server_backend.go
 	@printf "done\n"
 
+.PHONY: deploy-server-backend
+deploy-server-backend: ## builds and deploys the server backend to dev
+	@printf "Deploying server backend to dev... \n\n"
+	gcloud compute --project "network-next-v3-dev" ssh server-backend-dev-1 -- 'cd /app && sudo ./bootstrap.sh -b $(ARTIFACT_BUCKET) -a server_backend.dev.tar.gz'
+
 .PHONY: build-billing
 build-billing: ## builds the billing binary
 	@printf "Building billing... "
@@ -373,6 +387,12 @@ build-billing: ## builds the billing binary
 .PHONY: deploy-server-backend
 deploy-server-backend: ## builds and deploys the server backend to dev
 	./deploy/deploy.sh -e dev -c dev-1 -t server -b gs://development_artifacts
+
+.PHONY: build-analytics
+build-analytics: ## builds the analytics binary
+	@printf "Building analytics... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/analytics ./cmd/analytics/analytics.go
+	@printf "done\n"
 
 .PHONY: deploy-server-backend-psyonix
 deploy-server-backend-psyonix: ## builds and deploys the server backend to psyonix
@@ -399,80 +419,96 @@ deploy-server-backend-esl: ## builds and deploys the server backend to esl
 	./deploy/deploy.sh -e prod -c esl -t server -b gs://prod_artifacts
 
 .PHONY: build-billing-artifacts-dev
-build-billing-artifacts-dev: ## builds the billing artifacts dev
+build-billing-artifacts-dev: build-billing ## builds the billing artifacts dev
 	./deploy/build-artifacts.sh -e dev -s billing
 
+.PHONY: build-analytics-artifacts-dev
+build-analytics-artifacts-dev: build-analytics ## builds the analytics service and creates the dev artifact
+	./deploy/build-artifacts.sh -e dev -s analytics
+
 .PHONY: build-relay-artifacts-dev
-build-relay-artifacts-dev: ## builds the relay artifacts dev
+build-relay-artifacts-dev: build-relay ## builds the relay artifacts dev
 	./deploy/build-artifacts.sh -e dev -s relay
 
 .PHONY: build-portal-artifacts-dev
-build-portal-artifacts-dev: ## builds the portal artifacts dev
+build-portal-artifacts-dev: build-portal ## builds the portal artifacts dev
 	./deploy/build-artifacts.sh -e dev -s portal
 
 .PHONY: build-portal-cruncher-artifacts-dev
-build-portal-cruncher-artifacts-dev: ## builds the portal cruncher artifacts dev
+build-portal-cruncher-artifacts-dev: build-portal-cruncher ## builds the portal cruncher artifacts dev
 	./deploy/build-artifacts.sh -e dev -s portal_cruncher
 
 .PHONY: build-relay-backend-artifacts-dev
-build-relay-backend-artifacts-dev: ## builds the relay backend artifacts dev
+build-relay-backend-artifacts-dev: build-relay-backend ## builds the relay backend artifacts dev
 	./deploy/build-artifacts.sh -e dev -s relay_backend
 
 .PHONY: build-server-backend-artifacts-dev
-build-server-backend-artifacts-dev: ## builds the server backend artifacts dev
+build-server-backend-artifacts-dev: build-server-backend ## builds the server backend artifacts dev
 	./deploy/build-artifacts.sh -e dev -s server_backend
 
 .PHONY: build-billing-artifacts-staging
-build-billing-artifacts-staging: ## builds the billing artifacts staging
+build-billing-artifacts-staging: build-billing ## builds the billing artifacts staging
 	./deploy/build-artifacts.sh -e staging -s billing
 
+.PHONY: build-analytics-artifacts-staging
+build-analytics-artifacts-staging: build-analytics ## builds the analyitcs service and creates the prod artifact
+	./deploy/build-artifacts.sh -e staging -s analytics
+
 .PHONY: build-relay-artifacts-staging
-build-relay-artifacts-staging: ## builds the relay artifacts staging
+build-relay-artifacts-staging: build-relay ## builds the relay artifacts staging
 	./deploy/build-artifacts.sh -e staging -s relay
 
 .PHONY: build-portal-artifacts-staging
-build-portal-artifacts-staging: ## builds the portal artifacts staging
+build-portal-artifacts-staging: build-portal ## builds the portal artifacts staging
 	./deploy/build-artifacts.sh -e staging -s portal
 
 .PHONY: build-relay-backend-artifacts-staging
-build-relay-backend-artifacts-staging: ## builds the relay backend artifacts staging
+build-relay-backend-artifacts-staging: build-relay-backend ## builds the relay backend artifacts staging
 	./deploy/build-artifacts.sh -e staging -s relay_backend
 
 .PHONY: build-portal-cruncher-artifacts-staging
-build-portal-cruncher-artifacts-staging: ## builds the portal cruncher artifacts staging
+build-portal-cruncher-artifacts-staging: build-portal-cruncher ## builds the portal cruncher artifacts staging
 	./deploy/build-artifacts.sh -e staging -s portal_cruncher
 
 .PHONY: build-server-backend-artifacts-staging
-build-server-backend-artifacts-staging: ## builds the server backend artifacts staging
+build-server-backend-artifacts-staging: build-server-backend ## builds the server backend artifacts staging
 	./deploy/build-artifacts.sh -e staging -s server_backend
 
 .PHONY: build-billing-artifacts-prod
-build-billing-artifacts-prod: ## builds the billing artifacts prod
+build-billing-artifacts-prod: build-billing ## builds the billing artifacts prod
 	./deploy/build-artifacts.sh -e prod -s billing
 
+.PHONY: build-analytics-artifacts-prod
+build-analytics-artifacts-prod: build-analytics ## builds the analyitcs service and creates the prod artifact
+	./deploy/build-artifacts.sh -e prod -s analytics
+
 .PHONY: build-relay-artifacts-prod
-build-relay-artifacts-prod: ## builds the relay artifacts prod
+build-relay-artifacts-prod: build-relay ## builds the relay artifacts prod
 	./deploy/build-artifacts.sh -e prod -s relay
 
 .PHONY: build-portal-artifacts-prod
-build-portal-artifacts-prod: ## builds the portal artifacts prod
+build-portal-artifacts-prod: build-portal ## builds the portal artifacts prod
 	./deploy/build-artifacts.sh -e prod -s portal
 
 .PHONY: build-portal-cruncher-artifacts-prod
-build-portal-cruncher-artifacts-prod: ## builds the portal cruncher artifacts prod
+build-portal-cruncher-artifacts-prod: build-portal-cruncher ## builds the portal cruncher artifacts prod
 	./deploy/build-artifacts.sh -e prod -s portal_cruncher
 
 .PHONY: build-relay-backend-artifacts-prod
-build-relay-backend-artifacts-prod: ## builds the relay backend artifacts prod
+build-relay-backend-artifacts-prod: build-relay-backend ## builds the relay backend artifacts prod
 	./deploy/build-artifacts.sh -e prod -s relay_backend
 
 .PHONY: build-server-backend-artifacts-prod
-build-server-backend-artifacts-prod: ## builds the server backend artifacts prod
+build-server-backend-artifacts-prod: build-server-backend ## builds the server backend artifacts prod
 	./deploy/build-artifacts.sh -e prod -s server_backend
 
 .PHONY: publish-billing-artifacts-dev
 publish-billing-artifacts-dev: ## publishes the billing artifacts to GCP Storage with gsutil dev
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s billing
+
+.PHONY: publish-analytics-artifacts-dev
+publish-analytics-artifacts-dev: ## publishes the analytics dev artifact
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s analytics
 
 .PHONY: publish-relay-artifacts-dev
 publish-relay-artifacts-dev: ## publishes the relay artifacts to GCP Storage with gsutil dev
@@ -498,6 +534,10 @@ publish-server-backend-artifacts-dev: ## publishes the server backend artifacts 
 publish-billing-artifacts-staging: ## publishes the billing artifacts to GCP Storage with gsutil staging
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s billing
 
+.PHONY: publish-analyitcs-artifacts-staging
+publish-analyitcs-artifacts-staging: ## publishes the analytics prod artifact
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s analytics
+
 .PHONY: publish-relay-artifacts-staging
 publish-relay-artifacts-staging: ## publishes the relay artifacts to GCP Storage with gsutil staging
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay
@@ -521,6 +561,10 @@ publish-server-backend-artifacts-staging: ## publishes the server backend artifa
 .PHONY: publish-billing-artifacts-prod
 publish-billing-artifacts-prod: ## publishes the billing artifacts to GCP Storage with gsutil prod
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s billing
+
+.PHONY: publish-analyitcs-artifacts-prod
+publish-analyitcs-artifacts-prod: ## publishes the analytics prod artifact
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s analytics
 
 .PHONY: publish-relay-artifacts-prod
 publish-relay-artifacts-prod: ## publishes the relay artifacts to GCP Storage with gsutil prod
@@ -594,7 +638,7 @@ build-next: ## builds the operator tool
 	@printf "done\n"
 
 .PHONY: build-all
-build-all: build-portal-cruncher build-billing build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
+build-all: build-portal-cruncher build-analytics build-billing build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all

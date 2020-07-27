@@ -289,6 +289,8 @@ MapHandler = {
 				let direct = sessions.filter((point) => {
 					return (point[2] == 0);
 				});
+				/* let onNN = response.map_points.green_points || [];
+				let direct = response.map_points.blue_points || []; */
 
 				let maintenanceMode = rootComponent.$data.maintenanceMode
 
