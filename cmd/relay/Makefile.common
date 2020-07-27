@@ -17,11 +17,6 @@ BENCHMARK_MAKEFILE 		:= Makefile.benchmark
 
 STATIC_LIBS           := libsodium glib-2.0 libgtop-2.0 libcurl
 
-CXX										:= g++-8
-CXX_FLAGS 						:= -Wall -Wextra -std=c++17 $(shell pkg-config --cflags-only-other $(STATIC_LIBS))
-CXX_DBG_FLAGS					:= -g -O0
-CXX_PERF_FLAGS				:= -O3 # -march=native -frename-registers -funroll-loops -fopenmp -D_GLIBCXX_PARALLEL
-
 SRC										:= src
 LIB 									:= lib
 BIN										:= bin
@@ -41,6 +36,11 @@ LIB_FILES							:= $(call rwildcard,$(LIB),*.cpp)
 SRC_SUB_DIRS					:= $(shell find src/* -type d -print)
 SRC_OBJ_DIRS					:= $(patsubst $(SRC)/%, $(OBJ)/$(SRC)/%, $(SRC_SUB_DIRS))
 SRC_FILES							:= $(call rwildcard,$(SRC),*.cpp)
+
+CXX										:= g++-8
+CXX_FLAGS 						:= -Wall -Wextra -std=c++17 $(shell pkg-config --cflags-only-other $(STATIC_LIBS)) $(LIBRARY_DIRS)
+CXX_DBG_FLAGS					:= -g -O0
+CXX_PERF_FLAGS				:= -O3
 
 # precompiled header file
 PCH										:= $(INCLUDE)/includes.h
