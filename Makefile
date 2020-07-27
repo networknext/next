@@ -391,6 +391,11 @@ build-analytics: ## builds the analytics binary
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/analytics ./cmd/analytics/analytics.go
 	@printf "done\n"
 
+.PHONY: deploy-server-backend-psyonix
+deploy-server-backend-psyonix: ## builds and deploys the server backend to psyonix
+	@printf "Deploying server backend to Psyonix... \n\n"
+	gcloud compute --project "network-next-v3-dev" ssh server-backend-psyonix -- 'cd /app && sudo ./bootstrap.sh -b $(ARTIFACT_BUCKET_PROD) -a server_backend.prod.tar.gz'
+
 .PHONY: build-billing-artifacts-dev
 build-billing-artifacts-dev: build-billing ## builds the billing artifacts dev
 	./deploy/build-artifacts.sh -e dev -s billing
