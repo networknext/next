@@ -514,7 +514,8 @@ func setRelayNIC(rpcClient jsonrpc.RPCClient, env Environment, relayName string,
 
 	var reply localjsonrpc.RelayNICSpeedUpdateReply
 	if err := rpcClient.CallFor(&reply, "OpsService.RelayNICSpeedUpdate", args); err != nil {
-		log.Fatal(err)
+		fmt.Printf("Error setting relay NIC speed: %v\n", err)
+		os.Exit(0)
 	}
 
 	// Give the portal enough time to pull down the new state so that
@@ -523,6 +524,30 @@ func setRelayNIC(rpcClient jsonrpc.RPCClient, env Environment, relayName string,
 	time.Sleep(11 * time.Second)
 
 	fmt.Printf("NIC speed set for %s\n", info.name)
+}
+
+func updateRelayName(rpcClient jsonrpc.RPCClient, env Environment, oldName string, newName string) {
+
+	var relay routing.Relay
+	var ok bool
+	if relay, ok = checkForRelay(rpcClient, env, oldName); !ok {
+		// error msg printed by called function
+		return
+	}
+
+	var reply localjsonrpc.RelayNameUpdateReply
+	args := localjsonrpc.RelayNameUpdateArgs{
+		RelayID:   relay.ID,
+		RelayName: newName,
+	}
+
+	if err := rpcClient.CallFor(&reply, "OpsService.RelayNameUpdate", args); err != nil {
+		fmt.Printf("error renaming relay: %v\n", (err))
+	} else {
+		fmt.Printf("Relay renamed successfully: %s -> %s\n", oldName, newName)
+
+	}
+
 }
 
 func setRelayState(rpcClient jsonrpc.RPCClient, env Environment, stateString string, regexes []string) {
