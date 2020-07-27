@@ -22,6 +22,10 @@ blocks:
           commands:
             - make build-billing-artifacts-prod
             - make publish-billing-artifacts-prod
+        - name: Analytics
+          commands:
+            - make build-analytics-artifacts-prod
+            - make publish-analytics-artifacts-prod
         - name: Portal
           commands:
             - make build-portal-artifacts-prod
