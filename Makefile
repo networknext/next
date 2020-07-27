@@ -376,6 +376,11 @@ deploy-server-backend: ## builds and deploys the server backend to dev
 	@printf "Deploying server backend to dev... \n\n"
 	gcloud compute --project "network-next-v3-dev" ssh server-backend-dev-1 -- 'cd /app && sudo ./bootstrap.sh -b $(ARTIFACT_BUCKET) -a server_backend.dev.tar.gz'
 
+.PHONY: deploy-server-backend-psyonix
+deploy-server-backend-psyonix: ## builds and deploys the server backend to psyonix
+	@printf "Deploying server backend to Psyonix... \n\n"
+	gcloud compute --project "network-next-v3-dev" ssh server-backend-psyonix -- 'cd /app && sudo ./bootstrap.sh -b $(ARTIFACT_BUCKET_PROD) -a server_backend.prod.tar.gz'
+
 .PHONY: build-billing-artifacts-dev
 build-billing-artifacts-dev: ## builds the billing artifacts dev
 	./deploy/build-artifacts.sh -e dev -s billing
