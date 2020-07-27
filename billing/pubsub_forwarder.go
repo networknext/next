@@ -75,13 +75,12 @@ func (psf *PubSubForwarder) Forward(ctx context.Context) {
 func (psf *PubSubForwarder) readMessage(m *pubsub.Message) ([][]byte, error) {
 	messages := make([][]byte, 0)
 
-	var readBytes int
+	var offset int
 	for {
-		if len(m.Data) <= readBytes {
+		if offset >= len(m.Data) {
 			break
 		}
 
-		var offset int
 		var messageLength uint32
 		var message []byte
 		if !encoding.ReadUint32(m.Data, &offset, &messageLength) {
@@ -93,7 +92,6 @@ func (psf *PubSubForwarder) readMessage(m *pubsub.Message) ([][]byte, error) {
 		}
 
 		messages = append(messages, message)
-		readBytes += 4 + int(messageLength)
 	}
 
 	return messages, nil
