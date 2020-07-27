@@ -44,7 +44,7 @@ func NewPingStatsPubSubForwarder(ctx context.Context, writer PingStatsWriter, lo
 // Forward reads the analytics entry from pubsub and writes it to BigQuery
 func (psf *PingStatsPubSubForwarder) Forward(ctx context.Context) {
 	err := psf.pubsubSubscription.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
-		psf.Metrics.PingStatsEntriesReceived.Add(1)
+		psf.Metrics.EntriesReceived.Add(1)
 		if entries, ok := ReadPingStatsEntries(m.Data); ok {
 			m.Ack()
 
@@ -54,7 +54,7 @@ func (psf *PingStatsPubSubForwarder) Forward(ctx context.Context) {
 				psf.Writer.Write(context.Background(), entry)
 			}
 		} else {
-			psf.Metrics.PingStatsErrorMetrics.AnalyticsReadFailure.Add(1)
+			psf.Metrics.ErrorMetrics.ReadFailure.Add(1)
 		}
 	})
 
@@ -97,7 +97,7 @@ func NewRelayStatsPubSubForwarder(ctx context.Context, writer RelayStatsWriter, 
 // Forward reads the analytics entry from pubsub and writes it to BigQuery
 func (psf *RelayStatsPubSubForwarder) Forward(ctx context.Context) {
 	err := psf.pubsubSubscription.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
-		psf.Metrics.RelayStatsEntriesReceived.Add(1)
+		psf.Metrics.EntriesReceived.Add(1)
 		if entries, ok := ReadRelayStatsEntries(m.Data); ok {
 			m.Ack()
 
@@ -107,7 +107,7 @@ func (psf *RelayStatsPubSubForwarder) Forward(ctx context.Context) {
 				psf.Writer.Write(context.Background(), entry)
 			}
 		} else {
-			psf.Metrics.RelayStatsErrorMetrics.AnalyticsReadFailure.Add(1)
+			psf.Metrics.ErrorMetrics.ReadFailure.Add(1)
 		}
 	})
 

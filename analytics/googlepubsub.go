@@ -11,10 +11,6 @@ import (
 	"github.com/networknext/backend/metrics"
 )
 
-type flusher interface {
-	flush()
-}
-
 type PingStatsPublisher interface {
 	Publish(ctx context.Context, entries []PingStatsEntry) error
 }
@@ -61,17 +57,17 @@ func newGooglePubSubClient(ctx context.Context, statsMetrics *metrics.AnalyticsM
 	return client, nil
 }
 
-func (client *googlePubSubClient) pubsubResults(ctx context.Context, publisher *GooglePubSubPingStatsPublisher) {
+func (client *googlePubSubClient) pubsubResults(ctx context.Context, logger log.Logger) {
 	for {
 		select {
 		case result := <-client.ResultChan:
 			_, err := result.Get(ctx)
 			if err != nil {
-				level.Error(publisher.Logger).Log("analytics", "failed to publish to pubsub", "err", err)
+				level.Error(logger).Log("analytics", "failed to publish to pubsub", "err", err)
 				client.Metrics.ErrorMetrics.PublishFailure.Add(1)
 			} else {
-				level.Debug(publisher.Logger).Log("analytics", "successfully published analytics data")
-				publisher.client.Metrics.EntriesFlushed.Add(1)
+				level.Debug(logger).Log("analytics", "successfully published analytics data")
+				client.Metrics.EntriesFlushed.Add(1)
 			}
 		case <-ctx.Done():
 			return
@@ -80,7 +76,6 @@ func (client *googlePubSubClient) pubsubResults(ctx context.Context, publisher *
 }
 
 type GooglePubSubPingStatsPublisher struct {
-	Logger log.Logger
 	client *googlePubSubClient
 }
 
@@ -93,13 +88,13 @@ func NewGooglePubSubPingStatsPublisher(ctx context.Context, statsMetrics *metric
 	}
 	publisher.client = client
 
-	go client.pubsubResults(ctx, resultLogger, publisher)
+	go client.pubsubResults(ctx, resultLogger)
 
 	return publisher, nil
 }
 
 func (publisher *GooglePubSubPingStatsPublisher) Publish(ctx context.Context, entries []PingStatsEntry) error {
-	data := WriteStatsEntries(entries)
+	data := WritePingStatsEntries(entries)
 
 	if publisher.client == nil {
 		return fmt.Errorf("analytics: client not initialized")
@@ -113,10 +108,6 @@ func (publisher *GooglePubSubPingStatsPublisher) Publish(ctx context.Context, en
 	publisher.client.Metrics.EntriesSubmitted.Add(1)
 
 	return nil
-}
-
-func (publisher *GooglePubSubPingStatsPublisher) flush() {
-	atomic.AddUint64(&publisher.flushed, 1)
 }
 
 type RelayStatsPublisher interface {
@@ -145,14 +136,12 @@ func NewGooglePubSubRelayStatsPublisher(ctx context.Context, statsMetrics *metri
 	}
 	publisher.client = client
 
-	go client.pubsubResults(ctx, resultLogger, publisher)
+	go client.pubsubResults(ctx, resultLogger)
 
 	return publisher, nil
 }
 
 func (publisher *GooglePubSubRelayStatsPublisher) Publish(ctx context.Context, entries []RelayStatsEntry) error {
-	atomic.AddUint64(&publisher.submitted, 1)
-
 	data := WriteRelayStatsEntries(entries)
 
 	if publisher.client == nil {
@@ -164,10 +153,7 @@ func (publisher *GooglePubSubRelayStatsPublisher) Publish(ctx context.Context, e
 
 	result := topic.Publish(ctx, &pubsub.Message{Data: data})
 	resultChan <- result
+	publisher.client.Metrics.EntriesSubmitted.Add(1)
 
 	return nil
-}
-
-func (publisher *GooglePubSubRelayStatsPublisher) flush() {
-	atomic.AddUint64(&publisher.flushed, 1)
 }
