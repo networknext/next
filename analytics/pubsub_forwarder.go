@@ -1,4 +1,4 @@
-package billing
+package analytics
 
 import (
 	"context"
@@ -12,14 +12,14 @@ import (
 )
 
 type PubSubForwarder struct {
-	Biller  Biller
+	Writer  BigQueryWriter
 	Logger  log.Logger
-	Metrics *metrics.BillingMetrics
+	Metrics *metrics.AnalyticsMetrics
 
 	pubsubSubscription *pubsub.Subscription
 }
 
-func NewPubSubForwarder(ctx context.Context, biller Biller, logger log.Logger, metrics *metrics.BillingMetrics, gcpProjectID string, topicName string, subscriptionName string) (*PubSubForwarder, error) {
+func NewPubSubForwarder(ctx context.Context, writer BigQueryWriter, logger log.Logger, metrics *metrics.AnalyticsMetrics, gcpProjectID string, topicName string, subscriptionName string) (*PubSubForwarder, error) {
 	pubsubClient, err := pubsub.NewClient(ctx, gcpProjectID)
 	if err != nil {
 		return nil, fmt.Errorf("could not create pubsub client: %v", err)
@@ -29,34 +29,35 @@ func NewPubSubForwarder(ctx context.Context, biller Biller, logger log.Logger, m
 		if _, err := pubsubClient.CreateSubscription(ctx, subscriptionName, pubsub.SubscriptionConfig{
 			Topic: pubsubClient.Topic(topicName),
 		}); err != nil && err.Error() != "rpc error: code = AlreadyExists desc = Subscription already exists" {
-			// Not the best error check, but the underlying error type is internal so we can't check for it
-			return nil, fmt.Errorf("could not create local pubsub subscription: %v", err)
+			return nil, fmt.Errorf("could not create local pubsub subscription '%s' for topic '%s' on project '%s': %v", subscriptionName, topicName, gcpProjectID, err)
 		}
 	}
 
 	return &PubSubForwarder{
-		Biller:             biller,
+		Writer:             writer,
 		Logger:             logger,
 		Metrics:            metrics,
 		pubsubSubscription: pubsubClient.Subscription(subscriptionName),
 	}, nil
 }
 
-// Forward reads the billing entry from pubsub and writes it to BigQuery
+// Forward reads the analytics entry from pubsub and writes it to BigQuery
 func (psf *PubSubForwarder) Forward(ctx context.Context) {
 	err := psf.pubsubSubscription.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
 		psf.Metrics.EntriesReceived.Add(1)
-		billingEntry := BillingEntry{}
-		if ReadBillingEntry(&billingEntry, m.Data) {
+		if entries, ok := ReadStatsEntries(m.Data); ok {
 			m.Ack()
-			billingEntry.Timestamp = uint64(m.PublishTime.Unix())
-			if err := psf.Biller.Bill(context.Background(), &billingEntry); err != nil {
-				level.Error(psf.Logger).Log("msg", "could not submit billing entry", "err", err)
+
+			for i := range entries {
+				entry := &entries[i]
+				entry.Timestamp = uint64(m.PublishTime.Unix())
+				psf.Writer.Write(context.Background(), entry)
 			}
 		} else {
-			psf.Metrics.ErrorMetrics.BillingReadFailure.Add(1)
+			psf.Metrics.ErrorMetrics.ReadFailure.Add(1)
 		}
 	})
+
 	if err != context.Canceled {
 		level.Error(psf.Logger).Log("msg", "could not setup to receive pubsub messages", "err", err)
 		os.Exit(1)
