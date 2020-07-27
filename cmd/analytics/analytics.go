@@ -226,9 +226,10 @@ func main() {
 				fmt.Printf("-----------------------------\n")
 				fmt.Printf("%d goroutines\n", int(analyticsMetrics.Goroutines.Value()))
 				fmt.Printf("%.2f mb allocated\n", analyticsMetrics.MemoryAllocated.Value())
-				fmt.Printf("%d analytics bq entries submitted\n", int(analyticsMetrics.AnalyticsMetrics.EntriesSubmitted.Value()))
-				fmt.Printf("%d analytics bq entries queued\n", int(analyticsMetrics.AnalyticsMetrics.EntriesQueued.Value()))
-				fmt.Printf("%d analytics bq entries flushed\n", int(analyticsMetrics.AnalyticsMetrics.EntriesFlushed.Value()))
+				fmt.Printf("%d analytics entries received\n", int(analyticsMetrics.AnalyticsMetrics.EntriesReceived.Value()))
+				fmt.Printf("%d analytics entries submitted\n", int(analyticsMetrics.AnalyticsMetrics.EntriesSubmitted.Value()))
+				fmt.Printf("%d analytics entries queued\n", int(analyticsMetrics.AnalyticsMetrics.EntriesQueued.Value()))
+				fmt.Printf("%d analytics entries flushed\n", int(analyticsMetrics.AnalyticsMetrics.EntriesFlushed.Value()))
 				fmt.Printf("-----------------------------\n")
 
 				time.Sleep(time.Second * 10)

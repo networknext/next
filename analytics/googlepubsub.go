@@ -24,18 +24,6 @@ func (publisher *NoOpPubSubPublisher) Publish(ctx context.Context, entries []Sta
 	return nil
 }
 
-func (publisher *NoOpPubSubPublisher) NumSubmitted() uint64 {
-	return atomic.LoadUint64(&publisher.submitted)
-}
-
-func (publisher *NoOpPubSubPublisher) NumQueued() uint64 {
-	return 0
-}
-
-func (publisher *NoOpPubSubPublisher) NumFlushed() uint64 {
-	return atomic.LoadUint64(&publisher.submitted)
-}
-
 type GooglePubSubPublisher struct {
 	Logger log.Logger
 	client *GooglePubSubClient

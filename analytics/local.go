@@ -29,15 +29,3 @@ func (writer *LocalBigQueryWriter) Write(ctx context.Context, entry *StatsEntry)
 
 	return nil
 }
-
-func (local *LocalBigQueryWriter) NumSubmitted() uint64 {
-	return local.submitted
-}
-
-func (local *LocalBigQueryWriter) NumQueued() uint64 {
-	return 0
-}
-
-func (local *LocalBigQueryWriter) NumFlushed() uint64 {
-	return local.submitted
-}
