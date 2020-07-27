@@ -47,9 +47,7 @@ var (
 
 func main() {
 
-	fmt.Printf("Welcome to the nerd zone 2.0\n")
-
-	// fmt.Printf("server_backend: Git Hash: %s - Commit: %s\n", sha, commitMessage)
+	fmt.Printf("server_backend: Git Hash: %s - Commit: %s\n", sha, commitMessage)
 
 	ctx := context.Background()
 
@@ -107,6 +105,8 @@ func main() {
 		level.Error(logger).Log("err", "ENV not set")
 		os.Exit(1)
 	}
+
+	fmt.Printf("env is %s\n", env)
 
 	var customerPublicKey []byte
 	var serverPrivateKey []byte
@@ -166,14 +166,16 @@ func main() {
 	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
 	_, firestoreEmulatorOK := os.LookupEnv("FIRESTORE_EMULATOR_HOST")
 	if firestoreEmulatorOK {
+		fmt.Printf("using firestore emulator\n")
 		gcpProjectID = "local"
-
 		level.Info(logger).Log("msg", "Detected firestore emulator")
 	}
 
 	if gcpOK || firestoreEmulatorOK {
 		// Firestore
 		{
+			fmt.Printf("setting up firestore\n")
+
 			// Create a Firestore Storer
 			fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
 			if err != nil {
@@ -200,6 +202,7 @@ func main() {
 
 	// Create dummy buyer and datacenter for local testing
 	if env == "local" {
+		fmt.Printf("adding dummy local buyer and datacenter\n")
 		if err := db.AddBuyer(ctx, routing.Buyer{
 			ID:                   13672574147039585173,
 			Name:                 "local",
@@ -226,6 +229,8 @@ func main() {
 	if gcpOK {
 		// StackDriver Metrics
 		{
+			fmt.Printf("setting up stackdriver metrics\n")
+
 			var enableSDMetrics bool
 			enableSDMetricsString, ok := os.LookupEnv("ENABLE_STACKDRIVER_METRICS")
 			if ok {
@@ -265,6 +270,8 @@ func main() {
 
 		// StackDriver Profiler
 		{
+			fmt.Printf("setting up stackdriver profiler\n")
+
 			var enableSDProfiler bool
 			enableSDProfilerString, ok := os.LookupEnv("ENABLE_STACKDRIVER_PROFILER")
 			if ok {
@@ -325,6 +332,8 @@ func main() {
 
 		pubsubCtx := ctx
 		if pubsubEmulatorOK {
+			fmt.Printf("setting up pubsub emulator\n")
+
 			gcpProjectID = "local"
 
 			var cancelFunc context.CancelFunc
@@ -336,6 +345,8 @@ func main() {
 
 		// Google Pubsub
 		{
+			fmt.Printf("setting up pubsub\n")
+
 			settings := googlepubsub.PublishSettings{
 				DelayThreshold: time.Hour,
 				CountThreshold: 1000,
@@ -368,6 +379,8 @@ func main() {
 			IspURI:     mmispdburi,
 		}
 		var mmdbMutex sync.RWMutex
+
+		fmt.Printf("setting up maxmind ip2location\n")
 
 		getIPLocatorFunc = func() routing.IPLocator {
 			mmdbMutex.RLock()
@@ -501,8 +514,6 @@ func main() {
 	serverMap := transport.NewServerMap()
 	sessionMap := transport.NewSessionMap()
 	{
-		// todo: ryan, please add the number of iterations to perform each check to each map timeout func below. currently hardcoded.
-
 		// Start a goroutine to timeout vetoes
 		go func() {
 			timeout := int64(60*5)
@@ -602,6 +613,8 @@ func main() {
 	// Start portal cruncher publisher
 	var portalPublisher pubsub.Publisher
 	{
+		fmt.Printf("setting up portal cruncher\n")
+
 		portalCruncherHost, ok := os.LookupEnv("PORTAL_CRUNCHER_HOST")
 		if !ok {
 			level.Error(logger).Log("err", "env var PORTAL_CRUNCHER_HOST must be set")
@@ -619,6 +632,8 @@ func main() {
 
 	// Start UDP server
 	{
+		fmt.Printf("starting udp server\n")
+
 		serverInitConfig := &transport.ServerInitParams{
 			ServerPrivateKey:  serverPrivateKey,
 			Storer:            db,
@@ -670,6 +685,8 @@ func main() {
 
 	// Start HTTP server
 	{
+		fmt.Printf("starting http server\n")
+
 		router := mux.NewRouter()
 		router.HandleFunc("/health", transport.HealthHandlerFunc())
 		router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage))

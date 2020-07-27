@@ -126,6 +126,8 @@ func main() {
 		os.Exit(1)
 	}
 
+	fmt.Printf("env is %s\n", env)
+
 	var customerPublicKey []byte
 	{
 		if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
@@ -170,8 +172,8 @@ func main() {
 	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
 	_, emulatorOK := os.LookupEnv("FIRESTORE_EMULATOR_HOST")
 	if emulatorOK {
+		fmt.Printf("using firestore emulator\n")
 		gcpProjectID = "local"
-
 		level.Info(logger).Log("msg", "Detected firestore emulator")
 	}
 
@@ -182,6 +184,8 @@ func main() {
 
 		// Firestore
 		{
+			fmt.Printf("initializing firestore\n")
+
 			// Create a Firestore Storer
 			fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
 			if err != nil {
@@ -207,6 +211,9 @@ func main() {
 	}
 
 	if env == "local" {
+
+		fmt.Printf("creating dummy local seller\n")
+
 		seller := routing.Seller{
 			ID:                        "sellerID",
 			Name:                      "local",
@@ -258,6 +265,8 @@ func main() {
 	if gcpOK {
 		// Stackdriver Metrics
 		{
+			fmt.Printf("initializing stackdriver metrics\n")
+
 			var enableSDMetrics bool
 			var err error
 			enableSDMetricsString, ok := os.LookupEnv("ENABLE_STACKDRIVER_METRICS")
@@ -298,6 +307,8 @@ func main() {
 
 		// Stackdriver Profiler
 		{
+			fmt.Printf("initializing stackdriver profiler\n")
+
 			var enableSDProfiler bool
 			var err error
 			enableSDProfilerString, ok := os.LookupEnv("ENABLE_STACKDRIVER_PROFILER")
@@ -811,6 +822,8 @@ func main() {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}
+
+	fmt.Printf("starting http server\n")
 
 	router := mux.NewRouter()
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
