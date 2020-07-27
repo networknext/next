@@ -77,7 +77,7 @@ type relay struct {
 	ContractTerm       int32                  `firestore:"contractTerm"`
 	StartDate          time.Time              `firestore:"startDate"`
 	EndDate            time.Time              `firestore:"endDate"`
-	Type               int32                  `firestore:"machineType"`
+	Type               string                 `firestore:"machineType"`
 }
 
 type datacenter struct {
@@ -859,6 +859,19 @@ func (fs *Firestore) AddRelay(ctx context.Context, r routing.Relay) error {
 		return &DoesNotExistError{resourceType: "datacenter", resourceRef: fmt.Sprintf("%x", r.Datacenter.ID)}
 	}
 
+	// Firestore docs save machineType as a string, currently
+	var serverType string
+	switch r.Type {
+	case routing.BareMetal:
+		serverType = "bare-metal"
+	case routing.VirtualMachine:
+		serverType = "vm"
+	case routing.NoneSpecified:
+		serverType = "n/a"
+	default:
+		serverType = "n/a"
+	}
+
 	newRelayData := relay{
 		Name:               r.Name,
 		Address:            r.Addr.String(),
@@ -875,6 +888,7 @@ func (fs *Firestore) AddRelay(ctx context.Context, r routing.Relay) error {
 		LastUpdateTime:     r.LastUpdateTime,
 		MRC:                int64(r.MRC),
 		Overage:            int64(r.Overage),
+		Type:               serverType,
 	}
 
 	// Add the relay in remote storage
@@ -1484,11 +1498,11 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 
 		var serverType routing.MachineType
 		switch r.Type {
-		case 1:
+		case "vm":
 			serverType = routing.BareMetal
-		case 2:
+		case "bare-metal":
 			serverType = routing.VirtualMachine
-		case 0:
+		case "n/a":
 			serverType = routing.NoneSpecified
 		default:
 			serverType = routing.NoneSpecified
