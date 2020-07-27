@@ -447,7 +447,7 @@ namespace core
       auto stats = os::GetUsage();
 
       sysStats.set(stats.CPU, "cpu_usage");
-      sysStats.set(stats.RAM, "ram_usage");
+      sysStats.set(stats.Mem, "mem_usage");
 
       doc.set(sysStats, "sys_stats");
     }

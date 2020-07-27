@@ -132,7 +132,7 @@ type Relay struct {
 	MaxSessions uint32 `json:"max_sessions"`
 
 	CPUUsage float32 `json:"cpu_usage"`
-	RAMUsage float32 `json:"ram_usage"`
+	MemUsage float32 `json:"mem_usage"`
 
 	UpdateKey   []byte `json:"update_key"`
 	FirestoreID string `json:"firestore_id"`
@@ -188,7 +188,7 @@ func (r *Relay) Size() uint64 {
 		4 + // MachineType
 		4 + // Max Sessions
 		4 + // CPU usage
-		4, // RAM usage
+		4, // Mem usage
 	)
 }
 
@@ -203,7 +203,7 @@ type RelayCacheEntry struct {
 	TrafficStats   RelayTrafficStats
 	MaxSessions    uint32
 	CPUUsage       float32
-	RAMUsage       float32
+	MemUsage       float32
 	Version        string
 }
 

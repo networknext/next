@@ -620,8 +620,6 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			return
 		}
 
-		level.Debug(locallogger).Log("msg", fmt.Sprintf("cpu: %f, ram: %f", relayUpdateRequest.CPUUsage, relayUpdateRequest.RAMUsage))
-
 		if relayUpdateRequest.Version != VersionNumberUpdateRequest {
 			level.Error(locallogger).Log("msg", "version mismatch", "version", relayUpdateRequest.Version)
 			http.Error(writer, "version mismatch", http.StatusBadRequest)
@@ -756,7 +754,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 		relayCacheEntry.MaxSessions = relay.MaxSessions
 
 		relayCacheEntry.CPUUsage = float32(relayUpdateRequest.CPUUsage) * 100.0
-		relayCacheEntry.RAMUsage = float32(relayUpdateRequest.RAMUsage) * 100.0
+		relayCacheEntry.MemUsage = float32(relayUpdateRequest.MemUsage) * 100.0
 
 		// Regular set for expiry
 		if res := params.RedisClient.Set(relayCacheEntry.Key(), 0, routing.RelayTimeout); res.Err() != nil {

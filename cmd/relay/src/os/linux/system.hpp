@@ -10,7 +10,7 @@ namespace os
     LibTopWrapper();
 
     auto getCPU() -> double;
-    auto getRAM() -> double;
+    auto getMem() -> double;
   };
 
   inline LibTopWrapper::LibTopWrapper()
@@ -25,7 +25,7 @@ namespace os
     return static_cast<double>(cpu.total - cpu.idle) / static_cast<double>(cpu.total);
   }
 
-  inline auto LibTopWrapper::getRAM() -> double
+  inline auto LibTopWrapper::getMem() -> double
   {
     glibtop_mem mem;
     glibtop_get_mem(&mem);
@@ -35,7 +35,7 @@ namespace os
   struct SysUsage
   {
     double CPU;
-    double RAM;
+    double Mem;
   };
 
   inline auto GetUsage() -> SysUsage
@@ -43,7 +43,7 @@ namespace os
     static LibTopWrapper wrapper;
     return SysUsage{
      .CPU = wrapper.getCPU(),
-     .RAM = wrapper.getRAM(),
+     .Mem = wrapper.getMem(),
     };
   }
 
