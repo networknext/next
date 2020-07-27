@@ -574,7 +574,7 @@ func (s *OpsService) RelayNameUpdate(r *http.Request, args *RelayNameUpdateArgs,
 
 	relay, err := s.Storage.Relay(args.RelayID)
 	if err != nil {
-		err = fmt.Errorf("RelayStateUpdate() Storage.Relay error: %w", err)
+		err = fmt.Errorf("RelayNameUpdate() Storage.Relay error: %w", err)
 		s.Logger.Log("err", err)
 		return err
 	}

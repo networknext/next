@@ -514,7 +514,7 @@ func setRelayNIC(rpcClient jsonrpc.RPCClient, env Environment, relayName string,
 
 	var reply localjsonrpc.RelayNICSpeedUpdateReply
 	if err := rpcClient.CallFor(&reply, "OpsService.RelayNICSpeedUpdate", args); err != nil {
-		fmt.Printf("Error renaming relay: %v\n", err)
+		fmt.Printf("Error setting relay NIC speed: %v\n", err)
 		os.Exit(0)
 	}
 
