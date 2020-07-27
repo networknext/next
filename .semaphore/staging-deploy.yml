@@ -42,4 +42,4 @@ blocks:
           commands:
             - make publish-bootstrap-script-staging
       secrets:
-        - name: google-cloud-platform
+        - name: google-cloud-platform-prod
