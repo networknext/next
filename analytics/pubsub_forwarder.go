@@ -44,7 +44,7 @@ func NewPubSubForwarder(ctx context.Context, writer BigQueryWriter, logger log.L
 // Forward reads the analytics entry from pubsub and writes it to BigQuery
 func (psf *PubSubForwarder) Forward(ctx context.Context) {
 	err := psf.pubsubSubscription.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
-		psf.Metrics.AnalyticsEntriesReceived.Add(1)
+		psf.Metrics.EntriesReceived.Add(1)
 		if entries, ok := ReadStatsEntries(m.Data); ok {
 			m.Ack()
 
@@ -54,7 +54,7 @@ func (psf *PubSubForwarder) Forward(ctx context.Context) {
 				psf.Writer.Write(context.Background(), entry)
 			}
 		} else {
-			psf.Metrics.ErrorMetrics.AnalyticsReadFailure.Add(1)
+			psf.Metrics.ErrorMetrics.ReadFailure.Add(1)
 		}
 	})
 

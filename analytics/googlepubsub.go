@@ -13,9 +13,6 @@ import (
 
 type PubSubPublisher interface {
 	Publish(ctx context.Context, entries []StatsEntry) error
-	NumSubmitted() uint64
-	NumQueued() uint64
-	NumFlushed() uint64
 }
 
 type NoOpPubSubPublisher struct {
@@ -41,10 +38,7 @@ func (publisher *NoOpPubSubPublisher) NumFlushed() uint64 {
 
 type GooglePubSubPublisher struct {
 	Logger log.Logger
-
-	client    *GooglePubSubClient
-	submitted uint64
-	flushed   uint64
+	client *GooglePubSubClient
 }
 
 type GooglePubSubClient struct {
@@ -88,8 +82,6 @@ func NewGooglePubSubPublisher(ctx context.Context, statsMetrics *metrics.Analyti
 }
 
 func (publisher *GooglePubSubPublisher) Publish(ctx context.Context, entries []StatsEntry) error {
-	atomic.AddUint64(&publisher.submitted, 1)
-
 	data := WriteStatsEntries(entries)
 
 	if publisher.client == nil {
@@ -102,19 +94,9 @@ func (publisher *GooglePubSubPublisher) Publish(ctx context.Context, entries []S
 	result := topic.Publish(ctx, &pubsub.Message{Data: data})
 	resultChan <- result
 
+	publisher.client.Metrics.EntriesSubmitted.Add(1)
+
 	return nil
-}
-
-func (publisher *GooglePubSubPublisher) NumSubmitted() uint64 {
-	return atomic.LoadUint64(&publisher.submitted)
-}
-
-func (publisher *GooglePubSubPublisher) NumQueued() uint64 {
-	return atomic.LoadUint64(&publisher.submitted) - atomic.LoadUint64(&publisher.flushed)
-}
-
-func (publisher *GooglePubSubPublisher) NumFlushed() uint64 {
-	return atomic.LoadUint64(&publisher.flushed)
 }
 
 func (client *GooglePubSubClient) pubsubResults(ctx context.Context, publisher *GooglePubSubPublisher) {
@@ -124,10 +106,10 @@ func (client *GooglePubSubClient) pubsubResults(ctx context.Context, publisher *
 			_, err := result.Get(ctx)
 			if err != nil {
 				level.Error(publisher.Logger).Log("analytics", "failed to publish to pubsub", "err", err)
-				client.Metrics.ErrorMetrics.AnalyticsPublishFailure.Add(1)
+				client.Metrics.ErrorMetrics.PublishFailure.Add(1)
 			} else {
 				level.Debug(publisher.Logger).Log("analytics", "successfully published analytics data")
-				atomic.AddUint64(&publisher.flushed, 1)
+				publisher.client.Metrics.EntriesFlushed.Add(1)
 			}
 		case <-ctx.Done():
 			level.Debug(publisher.Logger).Log("msg", "SHOULD NOT GET HERE")

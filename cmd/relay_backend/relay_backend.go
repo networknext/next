@@ -426,11 +426,6 @@ func main() {
 		}
 	}
 
-	analyticsMetrics, err := metrics.NewAnalyticsMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create statsdb metrics", "err", err)
-	}
-
 	// Create a no-op publisher
 	var publisher analytics.PubSubPublisher = &analytics.NoOpPubSubPublisher{}
 	_, emulatorOK = os.LookupEnv("PUBSUB_EMULATOR_HOST")
@@ -457,7 +452,7 @@ func main() {
 				Timeout:        time.Minute,
 			}
 
-			pubsub, err := analytics.NewGooglePubSubPublisher(pubsubCtx, analyticsMetrics, logger, gcpProjectID, "ping_stats", settings)
+			pubsub, err := analytics.NewGooglePubSubPublisher(pubsubCtx, &relayBackendMetrics.AnalyticsMetrics, logger, gcpProjectID, "ping_stats", settings)
 			if err != nil {
 				level.Error(logger).Log("msg", "could not create analytics pubsub publisher", "err", err)
 				os.Exit(1)
@@ -628,9 +623,9 @@ func main() {
 			fmt.Printf("route matrix update: %.2f milliseconds\n", optimizeMetrics.DurationGauge.Value())
 			fmt.Printf("cost matrix bytes: %d\n", int(costMatrixMetrics.Bytes.Value()))
 			fmt.Printf("route matrix bytes: %d\n", int(routeMatrixMetrics.Bytes.Value()))
-			fmt.Printf("%d analytics ps entries submitted\n", publisher.NumSubmitted())
-			fmt.Printf("%d analytics ps entries queued\n", publisher.NumQueued())
-			fmt.Printf("%d analytics ps entries flushed\n", publisher.NumFlushed())
+			fmt.Printf("%d analytics entries submitted\n", int(relayBackendMetrics.AnalyticsMetrics.EntriesSubmitted.Value()))
+			fmt.Printf("%d analytics entries queued\n", int(relayBackendMetrics.AnalyticsMetrics.EntriesQueued.Value()))
+			fmt.Printf("%d analytics entries flushed\n", int(relayBackendMetrics.AnalyticsMetrics.EntriesFlushed.Value()))
 			fmt.Printf("-----------------------------\n")
 
 			time.Sleep(syncInterval)

@@ -162,7 +162,7 @@ func main() {
 		}
 	}
 
-	analyticsMetrics, err := metrics.NewAnalyticsMetrics(ctx, metricsHandler)
+	analyticsMetrics, err := metrics.NewAnalyticsServiceMetrics(ctx, metricsHandler)
 	if err != nil {
 		level.Error(logger).Log("msg", "failed to create analytics metrics", "err", err)
 	}
@@ -175,7 +175,7 @@ func main() {
 				level.Error(logger).Log("err", err)
 				os.Exit(1)
 			}
-			b := analytics.NewGoogleBigQueryWriter(bqClient, logger, analyticsMetrics, analyticsDataset, os.Getenv("GOOGLE_BIGQUERY_TABLE_ANALYTICS"))
+			b := analytics.NewGoogleBigQueryWriter(bqClient, logger, &analyticsMetrics.AnalyticsMetrics, analyticsDataset, os.Getenv("GOOGLE_BIGQUERY_TABLE_ANALYTICS"))
 			writer = &b
 
 			go b.WriteLoop(ctx)
@@ -201,7 +201,7 @@ func main() {
 		pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
 		defer cancelFunc()
 
-		pubsubForwarder, err := analytics.NewPubSubForwarder(pubsubCtx, writer, logger, analyticsMetrics, gcpProjectID, topicName, subscriptionName)
+		pubsubForwarder, err := analytics.NewPubSubForwarder(pubsubCtx, writer, logger, &analyticsMetrics.AnalyticsMetrics, gcpProjectID, topicName, subscriptionName)
 		if err != nil {
 			level.Error(logger).Log("err", err)
 			os.Exit(1)
@@ -220,13 +220,15 @@ func main() {
 
 		go func() {
 			for {
+				analyticsMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
+				analyticsMetrics.MemoryAllocated.Set(memoryUsed())
 
 				fmt.Printf("-----------------------------\n")
-				fmt.Printf("%d goroutines\n", runtime.NumGoroutine())
-				fmt.Printf("%.2f mb allocated\n", memoryUsed())
-				fmt.Printf("%d analytics bq entries submitted\n", writer.NumSubmitted())
-				fmt.Printf("%d analytics bq entries queued\n", writer.NumQueued())
-				fmt.Printf("%d analytics bq entries flushed\n", writer.NumFlushed())
+				fmt.Printf("%d goroutines\n", int(analyticsMetrics.Goroutines.Value()))
+				fmt.Printf("%.2f mb allocated\n", analyticsMetrics.MemoryAllocated.Value())
+				fmt.Printf("%d analytics bq entries submitted\n", int(analyticsMetrics.AnalyticsMetrics.EntriesSubmitted.Value()))
+				fmt.Printf("%d analytics bq entries queued\n", int(analyticsMetrics.AnalyticsMetrics.EntriesQueued.Value()))
+				fmt.Printf("%d analytics bq entries flushed\n", int(analyticsMetrics.AnalyticsMetrics.EntriesFlushed.Value()))
 				fmt.Printf("-----------------------------\n")
 
 				time.Sleep(time.Second * 10)
