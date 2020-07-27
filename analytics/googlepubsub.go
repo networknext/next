@@ -100,7 +100,6 @@ func (client *GooglePubSubClient) pubsubResults(ctx context.Context, publisher *
 				publisher.client.Metrics.EntriesFlushed.Add(1)
 			}
 		case <-ctx.Done():
-			level.Debug(publisher.Logger).Log("msg", "SHOULD NOT GET HERE")
 			return
 		}
 	}
