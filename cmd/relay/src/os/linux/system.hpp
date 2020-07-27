@@ -56,8 +56,6 @@ namespace os
   // This should basically do what libtop does
   // mainly a sanity check in case libtop behaves weird
   // after the binary is deployed
-  // This also will included io wait time as idle if we're tying
-  // to assess a relay's io performance
   inline auto GetUsageAlt() -> std::tuple<double, bool>
   {
     double usage = 0.0;
@@ -115,6 +113,8 @@ namespace os
        &guest,
        &guestNice);
 
+      // iowait is added to non-idle because the relay is basically the only thing running on the servers
+      // thus waiting is consumed cpu time since threads are locked to cores
       curr.Idle = idle;
       int nonIdle = user + nice + system + irq + softirq + steal + guest + guestNice + iowait;
       curr.Total = curr.Idle + nonIdle;
