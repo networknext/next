@@ -46,7 +46,7 @@ func NewPubSubForwarder(ctx context.Context, biller Biller, logger log.Logger, m
 // Forward reads the billing entry from pubsub and writes it to BigQuery
 func (psf *PubSubForwarder) Forward(ctx context.Context) {
 	err := psf.pubsubSubscription.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
-		entries, err := psf.readMessage(m)
+		entries, err := psf.unbatchMessages(m)
 		if err != nil {
 			level.Error(psf.Logger).Log("err", err)
 		}
@@ -72,7 +72,7 @@ func (psf *PubSubForwarder) Forward(ctx context.Context) {
 	}
 }
 
-func (psf *PubSubForwarder) readMessage(m *pubsub.Message) ([][]byte, error) {
+func (psf *PubSubForwarder) unbatchMessages(m *pubsub.Message) ([][]byte, error) {
 	messages := make([][]byte, 0)
 
 	var offset int
