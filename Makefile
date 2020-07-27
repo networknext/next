@@ -400,23 +400,23 @@ deploy-server-backend-psyonix: ## builds and deploys the server backend to psyon
 
 .PHONY: deploy-server-backend-liquidbit
 deploy-server-backend-liquidbit: ## builds and deploys the server backend to liquidbit
-	./deploy/deploy.sh -e prod -c liquidbit -t server -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c prod-42rz -t server -b gs://prod_artifacts
 
 .PHONY: deploy-server-backend-turtlerock
 deploy-server-backend-turtlerock: ## builds and deploys the server backend to turtlerock
-	./deploy/deploy.sh -e prod -c turtlerock -t server -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c turtlerock-xkgp -t server -b gs://prod_artifacts
 
 .PHONY: deploy-server-backend-valve
 deploy-server-backend-valve: ## builds and deploys the server backend to valve
-	./deploy/deploy.sh -e prod -c valve -t server -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c valve-r57d -t server -b gs://prod_artifacts
 
 .PHONY: deploy-server-backend-velan
 deploy-server-backend-velan: ## builds and deploys the server backend to velan
-	./deploy/deploy.sh -e prod -c velan -t server -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c velan-730n -t server -b gs://prod_artifacts
 
 .PHONY: deploy-server-backend-esl
 deploy-server-backend-esl: ## builds and deploys the server backend to esl
-	./deploy/deploy.sh -e prod -c esl -t server -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c esl-22dr -t server -b gs://prod_artifacts
 
 .PHONY: build-billing-artifacts-dev
 build-billing-artifacts-dev: build-billing ## builds the billing artifacts dev
