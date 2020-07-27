@@ -43,17 +43,6 @@ var (
 
 type arrayFlags []string
 
-// used to decode dcMap hex strings from json
-type dcMapStrings struct {
-	BuyerID    string `json:"buyer_id"`
-	Datacenter string `json:"datacenter"`
-	Alias      string `json:"alias"`
-}
-
-func (dcm dcMapStrings) String() string {
-	return fmt.Sprintf("{\n\tBuyer ID     : %s\n\tDatacenter ID: %s\n\tAlias        : %s\n}", dcm.BuyerID, dcm.Datacenter, dcm.Alias)
-}
-
 func (i *arrayFlags) String() string {
 	return ""
 }
@@ -345,6 +334,17 @@ type datacenter struct {
 	Location routing.Location
 }
 
+// used to decode dcMap hex strings from json
+type dcMapStrings struct {
+	BuyerID    string `json:"buyer_id"`
+	Datacenter string `json:"datacenter"`
+	Alias      string `json:"alias"`
+}
+
+func (dcm dcMapStrings) String() string {
+	return fmt.Sprintf("{\n\tBuyer ID     : %s\n\tDatacenter ID: %s\n\tAlias        : %s\n}", dcm.BuyerID, dcm.Datacenter, dcm.Alias)
+}
+
 func main() {
 	var env Environment
 
@@ -373,6 +373,14 @@ func main() {
 	routesfs.Var(&destRelays, "dest", "destination relay names")
 	routesfs.Float64Var(&routeRTT, "rtt", 5, "route RTT required for selection")
 	routesfs.Uint64Var(&routeHash, "hash", 0, "a previous hash to use")
+
+	buyersfs := flag.NewFlagSet("buyers", flag.ExitOnError)
+	var buyersIdSigned bool
+	buyersfs.BoolVar(&buyersIdSigned, "signed", false, "Display buyer IDs as signed ints")
+
+	datacentersfs := flag.NewFlagSet("datacenters", flag.ExitOnError)
+	var datacenterIdSigned bool
+	datacentersfs.BoolVar(&datacenterIdSigned, "signed", false, "Display datacenter IDs as signed ints")
 
 	sessionsfs := flag.NewFlagSet("sessions", flag.ExitOnError)
 	var sessionCount int64
@@ -445,6 +453,14 @@ func main() {
 	// Display relay IDs as signed ints instead of the default hex
 	var relayIDSigned bool
 	relaysfs.BoolVar(&relayIDSigned, "signed", false, "display relay IDs as signed integers")
+
+	// display the OPS version of the relay output
+	var relayOpsOutput bool
+	relaysfs.BoolVar(&relayOpsOutput, "ops", false, "display ops metadata (costs, bandwidth, terms, etc)")
+
+	// Sort -ops output by IncludedBandwidthGB, descending
+	var relayBWSort bool
+	relaysfs.BoolVar(&relayBWSort, "bw", false, "Sort -ops output by IncludedBandwidthGB, descending (ignored w/o -ops)")
 
 	var authCommand = &ffcli.Command{
 		Name:       "auth",
@@ -598,11 +614,30 @@ func main() {
 				relaysStateHideFlags[routing.RelayStateDecommissioned] = false
 			}
 
+			var arg string
 			if len(args) > 0 {
+				arg = args[0]
+			}
+
+			if relayOpsOutput {
+				opsRelays(
+					rpcClient,
+					env,
+					arg,
+					relaysStateShowFlags,
+					relaysStateHideFlags,
+					relaysDownFlag,
+					csvOutputFlag,
+					relayVersionFilter,
+					relaysCount,
+					relayIDSigned,
+					relayBWSort,
+				)
+			} else {
 				relays(
 					rpcClient,
 					env,
-					args[0],
+					arg,
 					relaysStateShowFlags,
 					relaysStateHideFlags,
 					relaysDownFlag,
@@ -612,21 +647,8 @@ func main() {
 					relaysCount,
 					relayIDSigned,
 				)
-				return nil
 			}
-			relays(
-				rpcClient,
-				env,
-				"",
-				relaysStateShowFlags,
-				relaysStateHideFlags,
-				relaysDownFlag,
-				relaysListFlag,
-				csvOutputFlag,
-				relayVersionFilter,
-				relaysCount,
-				relayIDSigned,
-			)
+
 			return nil
 		},
 		Subcommands: []*ffcli.Command{
@@ -863,8 +885,8 @@ func main() {
 							ID:   crypto.HashID(relay.DatacenterName),
 							Name: relay.DatacenterName,
 						},
-						NICSpeedMbps:        relay.NicSpeedMbps,
-						IncludedBandwidthGB: relay.IncludedBandwidthGB,
+						NICSpeedMbps:        int32(relay.NicSpeedMbps),
+						IncludedBandwidthGB: int32(relay.IncludedBandwidthGB),
 						State:               routing.RelayStateMaintenance,
 						ManagementAddr:      relay.ManagementAddr,
 						SSHUser:             relay.SSHUser,
@@ -919,6 +941,194 @@ func main() {
 					return nil
 				},
 			},
+			{
+				Name:       "ops",
+				ShortUsage: "next relay ops <command>",
+				ShortHelp:  "Operations-related relay setup commands",
+				Exec: func(_ context.Context, args []string) error {
+					if len(args) == 0 {
+						fmt.Println("Please provide at least one command name")
+						return nil
+					}
+
+					removeRelay(rpcClient, env, args[0])
+					return nil
+				},
+				Subcommands: []*ffcli.Command{
+					{
+						Name:       "mrc",
+						ShortUsage: "next relay ops mrc <relay> <value>",
+						ShortHelp:  "Set the mrc value for the given relay (in $USD)",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								fmt.Println("Must provide the relay name and an MRC value in $USD")
+								return nil
+							}
+
+							mrc, err := strconv.ParseFloat(args[1], 64)
+							if err != nil {
+								fmt.Printf("Could not parse %s as a decimal number", args[1])
+								return nil
+							}
+							opsMRC(rpcClient, env, args[0], mrc)
+
+							return nil
+						},
+					},
+					{
+						Name:       "overage",
+						ShortUsage: "next relay ops overage <relay> <value>",
+						ShortHelp:  "Set the overage value for the given relay (in $USD)",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								fmt.Println("Must provide the relay name and an overage value in $USD")
+								return nil
+							}
+
+							overage, err := strconv.ParseFloat(args[1], 64)
+							if err != nil {
+								fmt.Printf("Could not parse %s as a decimal number", args[1])
+								return nil
+							}
+							opsOverage(rpcClient, env, args[0], overage)
+
+							return nil
+						},
+					},
+					{
+						Name:       "bwrule",
+						ShortUsage: "next relay ops bwrule <relay> <pool|burst|flat|none>",
+						ShortHelp:  "Set the bandwidth rule for the given relay",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								fmt.Println("Must provide the relay name and abandwidth rule")
+								return nil
+							}
+
+							rules := []string{"none", "flat", "pool", "burst"}
+							for _, rule := range rules {
+								if rule == args[1] {
+									opsBWRule(rpcClient, env, args[0], args[1])
+									return nil
+								}
+							}
+
+							fmt.Printf("'%s' not a valid bandwidth rule - must be one of none, flat, pool or burst", args[1])
+							return nil
+						},
+					},
+					{
+						Name:       "type",
+						ShortUsage: "next relay ops type <relay> <bare|vm|none>",
+						ShortHelp:  "Set the machine/server type for the given relay",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								fmt.Println("Must provide the relay name and amachine type")
+								return nil
+							}
+
+							rules := []string{"none", "vm", "bare"}
+							for _, rule := range rules {
+								if rule == args[1] {
+									opsType(rpcClient, env, args[0], args[1])
+									return nil
+								}
+							}
+
+							fmt.Printf("'%s' not a valid machine type - must be one of none, vm or bare", args[1])
+							return nil
+						},
+					},
+					{
+						Name:       "term",
+						ShortUsage: "next relay ops term <relay> <value>",
+						ShortHelp:  "Set the contract term for the given relay (in months)",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								fmt.Println("Must provide the relay name and a contract term in months")
+								return nil
+							}
+
+							term, err := strconv.ParseUint(args[1], 10, 32)
+							if err != nil {
+								fmt.Printf("Could not parse %s as an integer", args[1])
+								return nil
+							}
+							opsTerm(rpcClient, env, args[0], int32(term))
+
+							return nil
+						},
+					},
+					{
+						Name:       "startdate",
+						ShortUsage: "next relay ops startdate <relay> <value, e.g. 'January 2, 2006'>",
+						ShortHelp:  "Set the contract start date for the given relay (e.g. 'January 2, 2006')",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								fmt.Println("Must provide the relay name and a contract start date e.g. 'January 2, 2006'")
+								return nil
+							}
+
+							opsStartDate(rpcClient, env, args[0], args[1])
+							return nil
+						},
+					},
+					{
+						Name:       "enddate",
+						ShortUsage: "next relay ops enddate <relay> <value, e.g. 'January 2, 2006'>",
+						ShortHelp:  "Set the contract end date for the given relay (e.g. 'January 2, 2006')",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								fmt.Println("Must provide the relay name and a contract end date e.g. 'January 2, 2006'")
+								return nil
+							}
+
+							opsEndDate(rpcClient, env, args[0], args[1])
+							return nil
+						},
+					},
+					{
+						Name:       "bandwidth",
+						ShortUsage: "next relay ops bandwidth <relay> <value in GB, e.g. 20000>",
+						ShortHelp:  "Set the bandwidth allotment for the give relay",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								fmt.Println("Must provide the relay name and a bandwidth value in GB")
+								return nil
+							}
+
+							bw, err := strconv.ParseUint(args[1], 10, 32)
+							if err != nil {
+								fmt.Printf("Could not parse %s as an integer", args[1])
+								return nil
+							}
+
+							opsBandwidth(rpcClient, env, args[0], int32(bw))
+							return nil
+						},
+					},
+					{
+						Name:       "nic",
+						ShortUsage: "next relay ops nic <relay> <value in Mbps, e.g. 10000>",
+						ShortHelp:  "Set the NIC available to the specified relay",
+						Exec: func(_ context.Context, args []string) error {
+							if len(args) != 2 {
+								fmt.Println("Must provide the relay name and a value in Mbps")
+								return nil
+							}
+
+							nic, err := strconv.ParseUint(args[1], 10, 32)
+							if err != nil {
+								fmt.Printf("Could not parse %s as an integer", args[1])
+								return nil
+							}
+
+							opsNic(rpcClient, env, args[0], int32(nic))
+							return nil
+						},
+					},
+				},
+			},
 		},
 	}
 
@@ -953,14 +1163,15 @@ func main() {
 
 	var datacentersCommand = &ffcli.Command{
 		Name:       "datacenters",
-		ShortUsage: "next datacenters <name>",
+		ShortUsage: "next datacenters",
 		ShortHelp:  "List datacenters",
+		FlagSet:    datacentersfs,
 		Exec: func(_ context.Context, args []string) error {
 			if len(args) > 0 {
-				datacenters(rpcClient, env, args[0])
+				datacenters(rpcClient, env, args[0], datacenterIdSigned)
 				return nil
 			}
-			datacenters(rpcClient, env, "")
+			datacenters(rpcClient, env, "", datacenterIdSigned)
 			return nil
 		},
 	}
@@ -1079,11 +1290,12 @@ func main() {
 		Name:       "buyers",
 		ShortUsage: "next buyers",
 		ShortHelp:  "Return a list of all current buyers",
+		FlagSet:    buyersfs,
 		Exec: func(_ context.Context, args []string) error {
 			if len(args) != 0 {
 				fmt.Println("No arguments necessary, everything after 'buyers' is ignored.\n\nA list of all current buyers:")
 			}
-			buyers(rpcClient, env)
+			buyers(rpcClient, env, buyersIdSigned)
 			return nil
 		},
 	}
@@ -1092,6 +1304,7 @@ func main() {
 		Name:       "buyer",
 		ShortUsage: "next buyer <subcommand>",
 		ShortHelp:  "Manage buyers",
+		FlagSet:    buyersfs,
 		Exec: func(_ context.Context, args []string) error {
 			return flag.ErrHelp
 		},
@@ -1101,7 +1314,7 @@ func main() {
 				ShortUsage: "next buyer list",
 				ShortHelp:  "Return a list of all current buyers",
 				Exec: func(_ context.Context, args []string) error {
-					buyers(rpcClient, env)
+					buyers(rpcClient, env, buyersIdSigned)
 					return nil
 				},
 			},

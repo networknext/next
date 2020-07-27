@@ -180,6 +180,13 @@ func main() {
 			ManagementAddr: "127.0.0.1",
 			SSHUser:        "root",
 			SSHPort:        22,
+			MRC:            19700000000000,
+			Overage:        26000000000000,
+			BWRule:         routing.BWRuleBurst,
+			ContractTerm:   12,
+			StartDate:      time.Now(),
+			EndDate:        time.Now(),
+			Type:           routing.BareMetal,
 		}); err != nil {
 			level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
 			os.Exit(1)

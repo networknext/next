@@ -7,10 +7,10 @@ package main
 
 import (
 	"context"
-	"expvar"
 	"fmt"
 	"io/ioutil"
 	"runtime"
+	"strings"
 
 	"net/http"
 	"os"
@@ -21,13 +21,15 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
+	"github.com/go-redis/redis/v7"
 	"github.com/gorilla/mux"
-	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/logging"
 	"github.com/networknext/backend/metrics"
+	"github.com/networknext/backend/routing"
+	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
+	"github.com/networknext/backend/transport/pubsub"
 
-	"cloud.google.com/go/bigquery"
 	gcplogging "cloud.google.com/go/logging"
 	"cloud.google.com/go/profiler"
 )
@@ -41,7 +43,7 @@ var (
 
 func main() {
 
-	fmt.Printf("billing: Git Hash: %s - Commit: %s\n", sha, commitMessage)
+	fmt.Printf("portal-cruncher: Git Hash: %s - Commit: %s\n", sha, commitMessage)
 
 	ctx := context.Background()
 
@@ -72,7 +74,7 @@ func main() {
 					os.Exit(1)
 				}
 
-				logger = logging.NewStackdriverLogger(loggingClient, "billing")
+				logger = logging.NewStackdriverLogger(loggingClient, "portal-cruncher")
 			}
 		}
 	}
@@ -103,8 +105,19 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Create a no-op biller
-	var biller billing.Biller = &billing.NoOpBiller{}
+	redisPortalHosts := os.Getenv("REDIS_HOST_PORTAL")
+	splitPortalHosts := strings.Split(redisPortalHosts, ",")
+	redisClientPortal := storage.NewRedisClient(splitPortalHosts...)
+	if err := redisClientPortal.Ping().Err(); err != nil {
+		level.Error(logger).Log("envvar", "REDIS_HOST_PORTAL", "value", redisPortalHosts, "msg", "could not ping", "err", err)
+		os.Exit(1)
+	}
+
+	redisPortalHostExp, err := time.ParseDuration(os.Getenv("REDIS_HOST_PORTAL_EXPIRATION"))
+	if err != nil {
+		level.Error(logger).Log("envvar", "REDIS_HOST_PORTAL_EXPIRATION", "msg", "could not parse", "err", err)
+		os.Exit(1)
+	}
 
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
 	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
@@ -168,7 +181,7 @@ func main() {
 			if enableSDProfiler {
 				// Set up StackDriver profiler
 				if err := profiler.Start(profiler.Config{
-					Service:        "billing",
+					Service:        "portal_cruncher",
 					ServiceVersion: env,
 					ProjectID:      gcpProjectID,
 					MutexProfiling: true,
@@ -177,81 +190,6 @@ func main() {
 					os.Exit(1)
 				}
 			}
-		}
-	}
-
-	// Create billing metrics
-	billingServiceMetrics, err := metrics.NewBillingServiceMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create billing service metrics", "err", err)
-	}
-
-	if gcpOK {
-		// Google BigQuery
-		{
-			if billingDataset, ok := os.LookupEnv("GOOGLE_BIGQUERY_DATASET_BILLING"); ok {
-				batchSize := billing.DefaultBigQueryBatchSize
-				if size, ok := os.LookupEnv("GOOGLE_BIGQUERY_BATCH_SIZE"); ok {
-					s, err := strconv.ParseInt(size, 10, 64)
-					if err != nil {
-						level.Error(logger).Log("err", err)
-						os.Exit(1)
-					}
-					batchSize = int(s)
-				}
-
-				bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
-				if err != nil {
-					level.Error(logger).Log("err", err)
-					os.Exit(1)
-				}
-				b := billing.GoogleBigQueryClient{
-					Metrics:       &billingServiceMetrics.BillingMetrics,
-					Logger:        logger,
-					TableInserter: bqClient.Dataset(billingDataset).Table(os.Getenv("GOOGLE_BIGQUERY_TABLE_BILLING")).Inserter(),
-					BatchSize:     batchSize,
-				}
-
-				// Set the Biller to BigQuery
-				biller = &b
-
-				// Start the background WriteLoop to batch write to BigQuery
-				go func() {
-					b.WriteLoop(ctx)
-				}()
-			}
-		}
-	}
-
-	_, emulatorOK := os.LookupEnv("PUBSUB_EMULATOR_HOST")
-	if emulatorOK { // Prefer to use the emulator instead of actual Google pubsub
-		gcpProjectID = "local"
-
-		// Use the local biller
-		biller = &billing.LocalBiller{
-			Logger:  logger,
-			Metrics: &billingServiceMetrics.BillingMetrics,
-		}
-
-		level.Info(logger).Log("msg", "Detected pubsub emulator")
-	}
-
-	if gcpOK || emulatorOK {
-		// Google pubsub forwarder
-		{
-			topicName := "billing"
-			subscriptionName := "billing"
-
-			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
-			defer cancelFunc()
-
-			pubsubForwarder, err := billing.NewPubSubForwarder(pubsubCtx, biller, logger, &billingServiceMetrics.BillingMetrics, gcpProjectID, topicName, subscriptionName)
-			if err != nil {
-				level.Error(logger).Log("err", err)
-				os.Exit(1)
-			}
-
-			go pubsubForwarder.Forward(ctx)
 		}
 	}
 
@@ -266,16 +204,9 @@ func main() {
 		go func() {
 			for {
 
-				billingServiceMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
-				billingServiceMetrics.MemoryAllocated.Set(memoryUsed())
-
 				fmt.Printf("-----------------------------\n")
-				fmt.Printf("%d goroutines\n", int(billingServiceMetrics.Goroutines.Value()))
-				fmt.Printf("%.2f mb allocated\n", billingServiceMetrics.MemoryAllocated.Value())
-				fmt.Printf("%d billing entries received\n", int(billingServiceMetrics.BillingMetrics.EntriesReceived.Value()))
-				fmt.Printf("%d billing entries submitted\n", int(billingServiceMetrics.BillingMetrics.EntriesSubmitted.Value()))
-				fmt.Printf("%d billing entries queued\n", int(billingServiceMetrics.BillingMetrics.EntriesQueued.Value()))
-				fmt.Printf("%d billing entries flushed\n", int(billingServiceMetrics.BillingMetrics.EntriesFlushed.Value()))
+				fmt.Printf("%d goroutines\n", runtime.NumGoroutine())
+				fmt.Printf("%.2f mb allocated\n", memoryUsed())
 				fmt.Printf("-----------------------------\n")
 
 				time.Sleep(time.Second * 10)
@@ -283,17 +214,99 @@ func main() {
 		}()
 	}
 
+	// Start portal cruncher subscriber
+	var portalSubscriber pubsub.Subscriber
+	{
+		cruncherPort, ok := os.LookupEnv("CRUNCHER_PORT")
+		if !ok {
+			level.Error(logger).Log("err", "env var CRUNCHER_PORT must be set")
+			os.Exit(1)
+		}
+
+		portalCruncherSubscriber, err := pubsub.NewPortalCruncherSubscriber(cruncherPort)
+		if err != nil {
+			level.Error(logger).Log("msg", "could not create portal cruncher subscriber", "err", err)
+			os.Exit(1)
+		}
+
+		if err := portalCruncherSubscriber.Subscribe(pubsub.TopicPortalCruncherSessionData); err != nil {
+			level.Error(logger).Log("msg", "could not subscribe to portal cruncher session data topic", "err", err)
+			os.Exit(1)
+		}
+
+		portalSubscriber = portalCruncherSubscriber
+	}
+
+	// Start receive loop
+	go func() {
+		for {
+			message, err := portalSubscriber.ReceiveMessage()
+			if err != nil {
+				level.Error(logger).Log("msg", "error receiving message", "err", err)
+				continue
+			}
+
+			var sessionData routing.SessionData
+			if err := sessionData.UnmarshalBinary(message); err != nil {
+				level.Error(logger).Log("msg", "error unmarshaling message", "err", err)
+				continue
+			}
+
+			tx := redisClientPortal.TxPipeline()
+
+			// set total session counts with expiration on the entire key set for safety
+			switch sessionData.Meta.OnNetworkNext {
+			case true:
+				// Remove the session from the direct set if it exists
+				tx.ZRem("total-direct", sessionData.Meta.ID)
+				tx.ZRem(fmt.Sprintf("total-direct-buyer-%s", sessionData.Meta.BuyerID), sessionData.Meta.ID)
+
+				tx.ZAdd("total-next", &redis.Z{Score: sessionData.Meta.DeltaRTT, Member: sessionData.Meta.ID})
+				tx.Expire("total-next", redisPortalHostExp)
+				tx.ZAdd(fmt.Sprintf("total-next-buyer-%s", sessionData.Meta.BuyerID), &redis.Z{Score: sessionData.Meta.DeltaRTT, Member: sessionData.Meta.ID})
+				tx.Expire(fmt.Sprintf("total-next-buyer-%s", sessionData.Meta.BuyerID), redisPortalHostExp)
+			case false:
+				// Remove the session from the next set if it exists
+				tx.ZRem("total-next", sessionData.Meta.ID)
+				tx.ZRem(fmt.Sprintf("total-next-buyer-%s", sessionData.Meta.BuyerID), sessionData.Meta.ID)
+
+				tx.ZAdd("total-direct", &redis.Z{Score: -sessionData.Meta.DirectRTT, Member: sessionData.Meta.ID})
+				tx.Expire("total-direct", redisPortalHostExp)
+				tx.ZAdd(fmt.Sprintf("total-direct-buyer-%s", sessionData.Meta.BuyerID), &redis.Z{Score: -sessionData.Meta.DirectRTT, Member: sessionData.Meta.ID})
+				tx.Expire(fmt.Sprintf("total-direct-buyer-%s", sessionData.Meta.BuyerID), redisPortalHostExp)
+			}
+
+			// set session and slice information with expiration on the entire key set for safety
+			tx.Set(fmt.Sprintf("session-%s-meta", sessionData.Meta.ID), sessionData.Meta, redisPortalHostExp)
+			tx.SAdd(fmt.Sprintf("session-%s-slices", sessionData.Meta.ID), sessionData.Slice)
+			tx.Expire(fmt.Sprintf("session-%s-slices", sessionData.Meta.ID), redisPortalHostExp)
+
+			// set the user session reverse lookup sets with expiration on the entire key set for safety
+			tx.SAdd(fmt.Sprintf("user-%s-sessions", sessionData.Meta.UserHash), sessionData.Meta.ID)
+			tx.Expire(fmt.Sprintf("user-%s-sessions", sessionData.Meta.UserHash), redisPortalHostExp)
+
+			// set the map point key and buyer sessions with expiration on the entire key set for safety
+			tx.Set(fmt.Sprintf("session-%s-point", sessionData.Meta.ID), sessionData.Point, redisPortalHostExp)
+			tx.SAdd(fmt.Sprintf("map-points-%s-buyer", sessionData.Meta.BuyerID), sessionData.Meta.ID)
+			tx.Expire(fmt.Sprintf("map-points-%s-buyer", sessionData.Meta.BuyerID), redisPortalHostExp)
+
+			if _, err := tx.Exec(); err != nil {
+				level.Error(logger).Log("msg", "error sending portal data to redis", "err", err)
+				continue
+			}
+		}
+	}()
+
 	// Start HTTP server
 	{
 		go func() {
 			router := mux.NewRouter()
 			router.HandleFunc("/health", HealthHandlerFunc())
 			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage))
-			router.Handle("/debug/vars", expvar.Handler())
 
-			port, ok := os.LookupEnv("PORT")
+			port, ok := os.LookupEnv("HTTP_PORT")
 			if !ok {
-				level.Error(logger).Log("err", "env var PORT must be set")
+				level.Error(logger).Log("err", "env var HTTP_PORT must be set")
 				os.Exit(1)
 			}
 
