@@ -75,13 +75,10 @@ func TestServerInitDatacenterMaps(t *testing.T) {
 		data, err := packet.MarshalBinary()
 		assert.NoError(t, err)
 
-		serverInitCounters := transport.ServerInitCounters{}
-
 		serverInitParams := transport.ServerInitParams{
-			Logger:   log.NewNopLogger(),
-			Storer:   &db,
-			Metrics:  &initMetrics,
-			Counters: &serverInitCounters,
+			Logger:  log.NewNopLogger(),
+			Storer:  &db,
+			Metrics: &initMetrics,
 		}
 
 		handler := transport.ServerInitHandlerFunc(&serverInitParams)
@@ -144,13 +141,10 @@ func TestServerInitDatacenterMaps(t *testing.T) {
 		data, err := packet.MarshalBinary()
 		assert.NoError(t, err)
 
-		serverInitCounters := transport.ServerInitCounters{}
-
 		serverInitParams := transport.ServerInitParams{
-			Logger:   log.NewNopLogger(),
-			Storer:   &db,
-			Metrics:  &initMetrics,
-			Counters: &serverInitCounters,
+			Logger:  log.NewNopLogger(),
+			Storer:  &db,
+			Metrics: &initMetrics,
 		}
 
 		handler := transport.ServerInitHandlerFunc(&serverInitParams)
@@ -213,13 +207,10 @@ func TestServerInitDatacenterMaps(t *testing.T) {
 		data, err := packet.MarshalBinary()
 		assert.NoError(t, err)
 
-		serverInitCounters := transport.ServerInitCounters{}
-
 		serverInitParams := transport.ServerInitParams{
-			Logger:   log.NewNopLogger(),
-			Storer:   &db,
-			Metrics:  &initMetrics,
-			Counters: &serverInitCounters,
+			Logger:  log.NewNopLogger(),
+			Storer:  &db,
+			Metrics: &initMetrics,
 		}
 
 		handler := transport.ServerInitHandlerFunc(&serverInitParams)
@@ -244,12 +235,10 @@ func TestServerInitHandlerFunc(t *testing.T) {
 		assert.NoError(t, err)
 
 		initMetrics.ErrorMetrics.ReadPacketFailure = metric
-		serverInitCounters := transport.ServerInitCounters{}
 
 		serverInitParms := transport.ServerInitParams{
-			Logger:   log.NewNopLogger(),
-			Metrics:  &initMetrics,
-			Counters: &serverInitCounters,
+			Logger:  log.NewNopLogger(),
+			Metrics: &initMetrics,
 		}
 
 		handler := transport.ServerInitHandlerFunc(&serverInitParms)
@@ -277,7 +266,6 @@ func TestServerInitHandlerFunc(t *testing.T) {
 		assert.NoError(t, err)
 
 		initMetrics.ErrorMetrics.DatacenterNotFound = metric
-		serverInitCounters := transport.ServerInitCounters{}
 
 		packet := transport.ServerInitRequestPacket{
 			RequestID:    1,
@@ -295,7 +283,6 @@ func TestServerInitHandlerFunc(t *testing.T) {
 			Logger:            log.NewNopLogger(),
 			Storer:            &db,
 			Metrics:           &initMetrics,
-			Counters:          &serverInitCounters,
 			DatacenterTracker: transport.NewDatacenterTracker(),
 		}
 

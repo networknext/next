@@ -8,11 +8,10 @@ package main
 import (
 	"context"
 	"encoding/base64"
+	"expvar"
 	"fmt"
-	"io/ioutil"
 	"runtime"
 	"sync"
-	"sync/atomic"
 
 	"io"
 	"net/http"
@@ -48,9 +47,7 @@ var (
 
 func main() {
 
-	fmt.Printf("Welcome to the nerd zone 2.0\n")
-
-	// fmt.Printf("server_backend: Git Hash: %s - Commit: %s\n", sha, commitMessage)
+	fmt.Printf("server_backend: Git Hash: %s - Commit: %s\n", sha, commitMessage)
 
 	ctx := context.Background()
 
@@ -108,6 +105,8 @@ func main() {
 		level.Error(logger).Log("err", "ENV not set")
 		os.Exit(1)
 	}
+
+	fmt.Printf("env is %s\n", env)
 
 	var customerPublicKey []byte
 	var serverPrivateKey []byte
@@ -167,14 +166,16 @@ func main() {
 	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
 	_, firestoreEmulatorOK := os.LookupEnv("FIRESTORE_EMULATOR_HOST")
 	if firestoreEmulatorOK {
+		fmt.Printf("using firestore emulator\n")
 		gcpProjectID = "local"
-
 		level.Info(logger).Log("msg", "Detected firestore emulator")
 	}
 
 	if gcpOK || firestoreEmulatorOK {
 		// Firestore
 		{
+			fmt.Printf("setting up firestore\n")
+
 			// Create a Firestore Storer
 			fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
 			if err != nil {
@@ -201,6 +202,7 @@ func main() {
 
 	// Create dummy buyer and datacenter for local testing
 	if env == "local" {
+		fmt.Printf("adding dummy local buyer and datacenter\n")
 		if err := db.AddBuyer(ctx, routing.Buyer{
 			ID:                   13672574147039585173,
 			Name:                 "local",
@@ -227,6 +229,8 @@ func main() {
 	if gcpOK {
 		// StackDriver Metrics
 		{
+			fmt.Printf("setting up stackdriver metrics\n")
+
 			var enableSDMetrics bool
 			enableSDMetricsString, ok := os.LookupEnv("ENABLE_STACKDRIVER_METRICS")
 			if ok {
@@ -266,6 +270,8 @@ func main() {
 
 		// StackDriver Profiler
 		{
+			fmt.Printf("setting up stackdriver profiler\n")
+
 			var enableSDProfiler bool
 			enableSDProfilerString, ok := os.LookupEnv("ENABLE_STACKDRIVER_PROFILER")
 			if ok {
@@ -315,12 +321,6 @@ func main() {
 		level.Error(logger).Log("msg", "failed to create session metrics", "err", err)
 	}
 
-	// Create billing metrics
-	billingMetrics, err := metrics.NewBillingMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create billing metrics", "err", err)
-	}
-
 	// Create server backend metrics
 	serverBackendMetrics, err := metrics.NewServerBackendMetrics(ctx, metricsHandler)
 	if err != nil {
@@ -332,6 +332,8 @@ func main() {
 
 		pubsubCtx := ctx
 		if pubsubEmulatorOK {
+			fmt.Printf("setting up pubsub emulator\n")
+
 			gcpProjectID = "local"
 
 			var cancelFunc context.CancelFunc
@@ -343,6 +345,8 @@ func main() {
 
 		// Google Pubsub
 		{
+			fmt.Printf("setting up pubsub\n")
+
 			settings := googlepubsub.PublishSettings{
 				DelayThreshold: time.Hour,
 				CountThreshold: 1000,
@@ -351,7 +355,7 @@ func main() {
 				Timeout:        time.Minute,
 			}
 
-			pubsub, err := billing.NewGooglePubSubBiller(pubsubCtx, billingMetrics, logger, gcpProjectID, "billing", 1, 1000, &settings)
+			pubsub, err := billing.NewGooglePubSubBiller(pubsubCtx, &serverBackendMetrics.BillingMetrics, logger, gcpProjectID, "billing", 1, 1000, &settings)
 			if err != nil {
 				level.Error(logger).Log("msg", "could not create pubsub biller", "err", err)
 				os.Exit(1)
@@ -375,6 +379,8 @@ func main() {
 			IspURI:     mmispdburi,
 		}
 		var mmdbMutex sync.RWMutex
+
+		fmt.Printf("setting up maxmind ip2location\n")
 
 		getIPLocatorFunc = func() routing.IPLocator {
 			mmdbMutex.RLock()
@@ -434,8 +440,6 @@ func main() {
 	}
 
 	// Sync route matrix
-	var longRouteMatrixUpdates uint64
-	var readRouteMatrixSuccessCount uint64
 	{
 		if uri, ok := os.LookupEnv("ROUTE_MATRIX_URI"); ok {
 			rmsyncinterval := os.Getenv("ROUTE_MATRIX_SYNC_INTERVAL")
@@ -447,7 +451,7 @@ func main() {
 
 			go func() {
 				for {
-					newRouteMatrix := &routing.RouteMatrix{}
+					newRouteMatrix := routing.RouteMatrix{}
 					var matrixReader io.Reader
 
 					// Default to reading route matrix from file
@@ -463,30 +467,30 @@ func main() {
 					start := time.Now()
 
 					// Don't swap route matrix if we fail to read
-					_, err := newRouteMatrix.ReadFrom(matrixReader)
+					routeMatrixBytes, err := newRouteMatrix.ReadFrom(matrixReader)
 					if err != nil {
-						atomic.StoreUint64(&readRouteMatrixSuccessCount, 0)
-						// level.Warn(logger).Log("matrix", "route", "op", "read", "envvar", "ROUTE_MATRIX_URI", "value", uri, "msg", "could not read route matrix", "err", err)
+						if env != "local" {
+							level.Warn(logger).Log("envvar", "ROUTE_MATRIX_URI", "value", uri, "msg", "could not read route matrix", "err", err)
+						}
 						time.Sleep(syncInterval)
 						continue
 					}
 
 					routeMatrixTime := time.Since(start)
 
-					// todo: ryan, please upload a metric for the time it takes to get the route matrix. we should watch it in stackdriver.
+					serverBackendMetrics.RouteMatrixUpdateDuration.Set(float64(routeMatrixTime.Milliseconds()))
 
 					if routeMatrixTime.Seconds() > 1.0 {
-						atomic.AddUint64(&longRouteMatrixUpdates, 1)
+						serverBackendMetrics.LongRouteMatrixUpdateCount.Add(1)
 					}
 
 					// Swap the route matrix pointer to the new one
 					// This double buffered route matrix approach makes the route matrix lockless
 					routeMatrixMutex.Lock()
-					routeMatrix = newRouteMatrix
+					routeMatrix = &newRouteMatrix
 					routeMatrixMutex.Unlock()
 
-					// Increment the successful route matrix read counter
-					atomic.AddUint64(&readRouteMatrixSuccessCount, 1)
+					serverBackendMetrics.RouteMatrixBytes.Set(float64(routeMatrixBytes))
 
 					time.Sleep(syncInterval)
 				}
@@ -494,13 +498,13 @@ func main() {
 		}
 	}
 
-	udp_port, ok := os.LookupEnv("UDP_PORT")
+	udpPortString, ok := os.LookupEnv("UDP_PORT")
 	if !ok {
 		level.Error(logger).Log("err", "env var UDP_PORT must be set")
 		os.Exit(1)
 	}
 
-	i_udp_port, err := strconv.ParseInt(udp_port, 10, 64)
+	udpPort, err := strconv.ParseInt(udpPortString, 10, 64)
 	if err != nil {
 		level.Error(logger).Log("envvar", "UDP_PORT", "msg", "could not parse", "err", err)
 		os.Exit(1)
@@ -510,8 +514,6 @@ func main() {
 	serverMap := transport.NewServerMap()
 	sessionMap := transport.NewSessionMap()
 	{
-		// todo: ryan, please add the number of iterations to perform each check to each map timeout func below. currently hardcoded.
-
 		// Start a goroutine to timeout vetoes
 		go func() {
 			timeout := int64(60*5)
@@ -537,12 +539,6 @@ func main() {
 		}()
 	}
 
-	// Initialize the counters
-
-	serverInitCounters := &transport.ServerInitCounters{}
-	serverUpdateCounters := &transport.ServerUpdateCounters{}
-	sessionUpdateCounters := &transport.SessionUpdateCounters{}
-
 	// Initialize the datacenter tracker
 	datacenterTracker := transport.NewDatacenterTracker()
 	go func() {
@@ -562,34 +558,46 @@ func main() {
 
 		go func() {
 			for {
-				// todo: ryan. I would like to see all of the variables below, put into stackdriver metrics
-				// so we can track them over time. right here in place, update the values in stackdriver once
-				// every second
+				serverBackendMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
+				serverBackendMetrics.MemoryAllocated.Set(memoryUsed())
+
+				numVetoes := vetoMap.NumVetoes()
+				serverBackendMetrics.VetoCount.Set(float64(numVetoes))
+
+				numServers := serverMap.NumServers()
+				serverBackendMetrics.ServerCount.Set(float64(numServers))
 
 				numSessions := sessionMap.NumSessions()
 				serverBackendMetrics.SessionCount.Set(float64(numSessions))
 
+				numEntriesQueued := serverBackendMetrics.BillingMetrics.EntriesSubmitted.Value() - serverBackendMetrics.BillingMetrics.EntriesFlushed.Value()
+				serverBackendMetrics.BillingMetrics.EntriesQueued.Set(numEntriesQueued)
+
 				fmt.Printf("-----------------------------\n")
-				fmt.Printf("%d vetoes\n", vetoMap.NumVetoes())
-				fmt.Printf("%d servers\n", serverMap.NumServers())
+				fmt.Printf("%.2f mb allocated\n", serverBackendMetrics.MemoryAllocated.Value())
+				fmt.Printf("%d goroutines\n", int(serverBackendMetrics.Goroutines.Value()))
+				fmt.Printf("%d vetoes\n", numVetoes)
+				fmt.Printf("%d servers\n", numServers)
 				fmt.Printf("%d sessions\n", numSessions)
-				fmt.Printf("%d goroutines\n", runtime.NumGoroutine())
-				fmt.Printf("%.2f mb allocated\n", memoryUsed())
-				fmt.Printf("%d billing entries submitted\n", biller.NumSubmitted())
-				fmt.Printf("%d billing entries queued\n", biller.NumQueued())
-				fmt.Printf("%d billing entries flushed\n", biller.NumFlushed())
-				fmt.Printf("%d server init packets processed\n", atomic.LoadUint64(&serverInitCounters.Packets))
-				fmt.Printf("%d server update packets processed\n", atomic.LoadUint64(&serverUpdateCounters.Packets))
-				fmt.Printf("%d session update packets processed\n", atomic.LoadUint64(&sessionUpdateCounters.Packets))
-				fmt.Printf("%d long route matrix updates\n", atomic.LoadUint64(&longRouteMatrixUpdates))
+				fmt.Printf("%d billing entries submitted\n", int(serverBackendMetrics.BillingMetrics.EntriesSubmitted.Value()))
+				fmt.Printf("%d billing entries queued\n", int(serverBackendMetrics.BillingMetrics.EntriesQueued.Value()))
+				fmt.Printf("%d billing entries flushed\n", int(serverBackendMetrics.BillingMetrics.EntriesFlushed.Value()))
+				fmt.Printf("%d server init packets processed\n", int(serverInitMetrics.Invocations.Value()))
+				fmt.Printf("%d server update packets processed\n", int(serverUpdateMetrics.Invocations.Value()))
+				fmt.Printf("%d session update packets processed\n", int(sessionUpdateMetrics.Invocations.Value()))
+				fmt.Printf("%d long route matrix updates\n", int(serverBackendMetrics.LongRouteMatrixUpdateCount.Value()))
+				fmt.Printf("route matrix update: %.2f milliseconds\n", serverBackendMetrics.RouteMatrixUpdateDuration.Value())
+				fmt.Printf("route matrix bytes: %d\n", int(serverBackendMetrics.RouteMatrixBytes.Value()))
 
 				if env != "local" {
 					unknownDatacentersLength := datacenterTracker.UnknownDatacenterLength()
+					serverBackendMetrics.UnknownDatacenterCount.Set(float64(unknownDatacentersLength))
 					if unknownDatacentersLength > 0 {
 						fmt.Printf("unknown datacenters: %v\n", datacenterTracker.GetUnknownDatacenters())
 					}
 
 					emptyDatacentersLength := datacenterTracker.EmptyDatacenterLength()
+					serverBackendMetrics.EmptyDatacenterCount.Set(float64(emptyDatacentersLength))
 					if emptyDatacentersLength > 0 {
 						fmt.Printf("empty datacenters: %v\n", datacenterTracker.GetEmptyDatacenters())
 					}
@@ -605,6 +613,8 @@ func main() {
 	// Start portal cruncher publisher
 	var portalPublisher pubsub.Publisher
 	{
+		fmt.Printf("setting up portal cruncher\n")
+
 		portalCruncherHost, ok := os.LookupEnv("PORTAL_CRUNCHER_HOST")
 		if !ok {
 			level.Error(logger).Log("err", "env var PORTAL_CRUNCHER_HOST must be set")
@@ -622,12 +632,13 @@ func main() {
 
 	// Start UDP server
 	{
+		fmt.Printf("starting udp server\n")
+
 		serverInitConfig := &transport.ServerInitParams{
 			ServerPrivateKey:  serverPrivateKey,
 			Storer:            db,
 			Metrics:           serverInitMetrics,
 			Logger:            logger,
-			Counters:          serverInitCounters,
 			DatacenterTracker: datacenterTracker,
 		}
 
@@ -636,7 +647,6 @@ func main() {
 			Metrics:           serverUpdateMetrics,
 			Logger:            logger,
 			ServerMap:         serverMap,
-			Counters:          serverUpdateCounters,
 			DatacenterTracker: datacenterTracker,
 		}
 
@@ -652,14 +662,13 @@ func main() {
 			VetoMap:           vetoMap,
 			ServerMap:         serverMap,
 			SessionMap:        sessionMap,
-			Counters:          sessionUpdateCounters,
 			DatacenterTracker: datacenterTracker,
 			PortalPublisher:   portalPublisher,
 		}
 
 		mux := transport.UDPServerMux2{
 			Logger:                   logger,
-			Port:                     i_udp_port,
+			Port:                     udpPort,
 			MaxPacketSize:            transport.DefaultMaxPacketSize,
 			ServerInitHandlerFunc:    transport.ServerInitHandlerFunc(serverInitConfig),
 			ServerUpdateHandlerFunc:  transport.ServerUpdateHandlerFunc(serverUpdateConfig),
@@ -676,21 +685,23 @@ func main() {
 
 	// Start HTTP server
 	{
+		fmt.Printf("starting http server\n")
+
 		router := mux.NewRouter()
-		// router.HandleFunc("/health", HealthHandlerFunc(&readRouteMatrixSuccessCount))
 		router.HandleFunc("/health", transport.HealthHandlerFunc())
 		router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage))
+		router.Handle("/debug/vars", expvar.Handler())
 
 		go func() {
-			http_port, ok := os.LookupEnv("HTTP_PORT")
+			httpPort, ok := os.LookupEnv("HTTP_PORT")
 			if !ok {
 				level.Error(logger).Log("err", "env var HTTP_PORT must be set")
 				os.Exit(1)
 			}
 
-			level.Info(logger).Log("addr", ":"+http_port)
+			level.Info(logger).Log("addr", ":"+httpPort)
 
-			err := http.ListenAndServe(":"+http_port, router)
+			err := http.ListenAndServe(":"+httpPort, router)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				os.Exit(1)
@@ -702,23 +713,4 @@ func main() {
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)
 	<-sigint
-}
-
-func HealthHandlerFunc(readRouteMatrixSuccessCount *uint64) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		_, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		defer r.Body.Close()
-
-		statusCode := http.StatusOK
-		if atomic.LoadUint64(readRouteMatrixSuccessCount) < 10 {
-			statusCode = http.StatusNotFound
-		}
-
-		w.WriteHeader(statusCode)
-		w.Write([]byte(http.StatusText(statusCode)))
-	}
 }

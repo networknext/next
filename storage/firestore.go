@@ -71,6 +71,13 @@ type relay struct {
 	State              routing.RelayState     `firestore:"state"`
 	LastUpdateTime     time.Time              `firestore:"lastUpdateTime"`
 	MaxSessions        int32                  `firestore:"maxSessions"`
+	MRC                int64                  `firestore:"monthlyRecurringChargeNibblins"`
+	Overage            int64                  `firestore:"overage"`
+	BWRule             int32                  `firestore:"bandwidthRule"`
+	ContractTerm       int32                  `firestore:"contractTerm"`
+	StartDate          time.Time              `firestore:"startDate"`
+	EndDate            time.Time              `firestore:"endDate"`
+	Type               string                 `firestore:"machineType"`
 }
 
 type datacenter struct {
@@ -806,6 +813,7 @@ func (fs *Firestore) AddRelay(ctx context.Context, r routing.Relay) error {
 		}
 
 		if err != nil {
+
 			return &FirestoreError{err: err}
 		}
 
@@ -851,6 +859,19 @@ func (fs *Firestore) AddRelay(ctx context.Context, r routing.Relay) error {
 		return &DoesNotExistError{resourceType: "datacenter", resourceRef: fmt.Sprintf("%x", r.Datacenter.ID)}
 	}
 
+	// Firestore docs save machineType as a string, currently
+	var serverType string
+	switch r.Type {
+	case routing.BareMetal:
+		serverType = "bare-metal"
+	case routing.VirtualMachine:
+		serverType = "vm"
+	case routing.NoneSpecified:
+		serverType = "n/a"
+	default:
+		serverType = "n/a"
+	}
+
 	newRelayData := relay{
 		Name:               r.Name,
 		Address:            r.Addr.String(),
@@ -865,6 +886,9 @@ func (fs *Firestore) AddRelay(ctx context.Context, r routing.Relay) error {
 		SSHPort:            r.SSHPort,
 		State:              r.State,
 		LastUpdateTime:     r.LastUpdateTime,
+		MRC:                int64(r.MRC),
+		Overage:            int64(r.Overage),
+		Type:               serverType,
 	}
 
 	// Add the relay in remote storage
@@ -1114,6 +1138,48 @@ func (fs *Firestore) RemoveDatacenterMap(ctx context.Context, dcMap routing.Data
 	}
 
 	return &DoesNotExistError{resourceType: "datacenterMap", resourceRef: fmt.Sprintf("%v", dcMap)}
+}
+
+func (fs *Firestore) SetRelayMetadata(ctx context.Context, modifiedRelay routing.Relay) error {
+
+	// Loop through all relays in firestore
+	rdocs := fs.Client.Collection("Relay").Documents(ctx)
+	defer rdocs.Stop()
+	for {
+		rdoc, err := rdocs.Next()
+		if err == iterator.Done {
+			break
+		}
+
+		if err != nil {
+			return &FirestoreError{err: err}
+		}
+
+		// Unmarshal the relay in firestore to see if it's the relay we want to update
+		var relayInRemoteStorage relay
+		err = rdoc.DataTo(&relayInRemoteStorage)
+		if err != nil {
+			return &UnmarshalError{err: err}
+		}
+
+		// If the relay is the one we want to update, update it with the new data
+		rid := crypto.HashID(relayInRemoteStorage.Address)
+		if rid == modifiedRelay.ID {
+			// Update the relay in firestore
+			if _, err := rdoc.Ref.Set(ctx, modifiedRelay, firestore.MergeAll); err != nil {
+				return &FirestoreError{err: err}
+			}
+
+			fs.relayMutex.Lock()
+			fs.relays[modifiedRelay.ID] = modifiedRelay
+			fs.relayMutex.Unlock()
+
+			return nil
+		}
+	}
+
+	return &DoesNotExistError{resourceType: "relay", resourceRef: fmt.Sprintf("%x", modifiedRelay.ID)}
+
 }
 
 func (fs *Firestore) Datacenter(id uint64) (routing.Datacenter, error) {
@@ -1416,6 +1482,32 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 			publicKey = r.UpdateKey
 		}
 
+		var bwRule routing.BandWidthRule
+		switch r.BWRule {
+		case 3:
+			bwRule = routing.BWRulePool
+		case 2:
+			bwRule = routing.BWRuleBurst
+		case 1:
+			bwRule = routing.BWRuleFlat
+		case 0:
+			bwRule = routing.BWRuleNone
+		default:
+			bwRule = routing.BWRuleNone
+		}
+
+		var serverType routing.MachineType
+		switch r.Type {
+		case "vm":
+			serverType = routing.BareMetal
+		case "bare-metal":
+			serverType = routing.VirtualMachine
+		case "n/a":
+			serverType = routing.NoneSpecified
+		default:
+			serverType = routing.NoneSpecified
+		}
+
 		relay := routing.Relay{
 			ID:   rid,
 			Name: r.Name,
@@ -1424,8 +1516,8 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 				Port: int(iport),
 			},
 			PublicKey:           publicKey,
-			NICSpeedMbps:        uint64(r.NICSpeedMbps),
-			IncludedBandwidthGB: uint64(r.IncludedBandwithGB),
+			NICSpeedMbps:        int32(r.NICSpeedMbps),
+			IncludedBandwidthGB: int32(r.IncludedBandwithGB),
 			ManagementAddr:      r.ManagementAddress,
 			SSHUser:             r.SSHUser,
 			SSHPort:             r.SSHPort,
@@ -1434,6 +1526,13 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 			MaxSessions:         uint32(r.MaxSessions),
 			UpdateKey:           r.UpdateKey,
 			FirestoreID:         rdoc.Ref.ID,
+			MRC:                 routing.Nibblin(r.MRC),
+			Overage:             routing.Nibblin(r.Overage),
+			BWRule:              bwRule,
+			ContractTerm:        r.ContractTerm,
+			StartDate:           r.StartDate,
+			EndDate:             r.EndDate,
+			Type:                serverType,
 		}
 
 		// Set a default max session count of 3000 if the value isn't set in firestore
