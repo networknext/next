@@ -550,8 +550,13 @@ func (s *OpsService) RemoveRelay(r *http.Request, args *RemoveRelayArgs, reply *
 		return err
 	}
 
-	// Rather than actually removing the relay from firestore, just set it to the decomissioned state
+	// Rather than actually removing the relay from firestore, just
+	// rename it and set it to the decomissioned state
 	relay.State = routing.RelayStateDecommissioned
+
+	shortDate := time.Now().Format("2006-01-02")
+	shortTime := time.Now().Format("15:04:05")
+	relay.Name = fmt.Sprintf("%s-%s-%s", relay.Name, shortDate, shortTime)
 
 	if err = s.Storage.SetRelay(context.Background(), relay); err != nil {
 		err = fmt.Errorf("RemoveRelay() Storage.SetRelay error: %w", err)
