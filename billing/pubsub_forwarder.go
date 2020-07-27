@@ -8,6 +8,7 @@ import (
 	"cloud.google.com/go/pubsub"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
+	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/metrics"
 )
 
@@ -45,20 +46,55 @@ func NewPubSubForwarder(ctx context.Context, biller Biller, logger log.Logger, m
 // Forward reads the billing entry from pubsub and writes it to BigQuery
 func (psf *PubSubForwarder) Forward(ctx context.Context) {
 	err := psf.pubsubSubscription.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
-		psf.Metrics.EntriesReceived.Add(1)
-		billingEntry := BillingEntry{}
-		if ReadBillingEntry(&billingEntry, m.Data) {
-			m.Ack()
-			billingEntry.Timestamp = uint64(m.PublishTime.Unix())
-			if err := psf.Biller.Bill(context.Background(), &billingEntry); err != nil {
-				level.Error(psf.Logger).Log("msg", "could not submit billing entry", "err", err)
+		entries, err := psf.readMessage(m)
+		if err != nil {
+			level.Error(psf.Logger).Log("err", err)
+		}
+
+		psf.Metrics.EntriesReceived.Add(float64(len(entries)))
+
+		billingEntries := make([]BillingEntry, len(entries))
+		for i := range billingEntries {
+			if ReadBillingEntry(&billingEntries[i], entries[i]) {
+				m.Ack()
+				billingEntries[i].Timestamp = uint64(m.PublishTime.Unix())
+				if err := psf.Biller.Bill(context.Background(), &billingEntries[i]); err != nil {
+					level.Error(psf.Logger).Log("msg", "could not submit billing entry", "err", err)
+				}
+			} else {
+				psf.Metrics.ErrorMetrics.BillingReadFailure.Add(1)
 			}
-		} else {
-			psf.Metrics.ErrorMetrics.BillingReadFailure.Add(1)
 		}
 	})
 	if err != context.Canceled {
 		level.Error(psf.Logger).Log("msg", "could not setup to receive pubsub messages", "err", err)
 		os.Exit(1)
 	}
+}
+
+func (psf *PubSubForwarder) readMessage(m *pubsub.Message) ([][]byte, error) {
+	messages := make([][]byte, 0)
+
+	var readBytes int
+	for {
+		if len(m.Data) <= readBytes {
+			break
+		}
+
+		var offset int
+		var messageLength uint32
+		var message []byte
+		if !encoding.ReadUint32(m.Data, &offset, &messageLength) {
+			return nil, fmt.Errorf("failed to read batched message length at offset %d (length %d)", offset, len(m.Data))
+		}
+
+		if !encoding.ReadBytes(m.Data, &offset, &message, messageLength) {
+			return nil, fmt.Errorf("failed to read batched message bytes at offset %d (length %d)", offset, len(m.Data))
+		}
+
+		messages = append(messages, message)
+		readBytes += 4 + int(messageLength)
+	}
+
+	return messages, nil
 }

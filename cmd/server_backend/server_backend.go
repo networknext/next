@@ -338,13 +338,13 @@ func main() {
 		{
 			settings := googlepubsub.PublishSettings{
 				DelayThreshold: time.Hour,
-				CountThreshold: 1000,
+				CountThreshold: 100,
 				ByteThreshold:  60 * 1024,
 				NumGoroutines:  runtime.GOMAXPROCS(0),
 				Timeout:        time.Minute,
 			}
 
-			pubsub, err := billing.NewGooglePubSubBiller(pubsubCtx, &serverBackendMetrics.BillingMetrics, logger, gcpProjectID, "billing", 1, 1000, &settings)
+			pubsub, err := billing.NewGooglePubSubBiller(pubsubCtx, &serverBackendMetrics.BillingMetrics, logger, gcpProjectID, "billing", 1, 100, 1024, &settings)
 			if err != nil {
 				level.Error(logger).Log("msg", "could not create pubsub biller", "err", err)
 				os.Exit(1)
@@ -505,7 +505,7 @@ func main() {
 
 		// Start a goroutine to timeout vetoes
 		go func() {
-			timeout := int64(60*5)
+			timeout := int64(60 * 5)
 			frequency := time.Millisecond * 100
 			ticker := time.NewTicker(frequency)
 			vetoMap.TimeoutLoop(ctx, timeout, ticker.C)
