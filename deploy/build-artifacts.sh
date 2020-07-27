@@ -21,8 +21,11 @@ build-artifacts() {
 		cp ${DIR}/${SERVICE}/install.sh ${DIST_DIR}/artifact/${SERVICE}/install.sh
 		cd ${DIST_DIR}/artifact/${SERVICE} && tar -zcf ../../${SERVICE}.${ENV}.tar.gz ${SERVICE} ${SERVICE}.service install.sh && cd ../..
   elif [ "$SERVICE" = "portal" ]; then
-	  cp -r ${DIR}/../cmd/portal/public ${DIST_DIR}/artifact/${SERVICE}
-		cd ${DIST_DIR}/artifact/${SERVICE} && tar -zcf ../../${SERVICE}.dev.tar.gz public app app.env ${SYSTEMD_SERVICE_FILE} && cd ../..
+    cp ${DIST_DIR}/${SERVICE} ${DIST_DIR}/artifact/${SERVICE}/app
+    cp -r ./cmd/${SERVICE}/public ${DIST_DIR}/artifact/${SERVICE}
+    cp ./cmd/${SERVICE}/dev.env ${DIST_DIR}/artifact/${SERVICE}/app.env
+    cp ${DIR}/${SYSTEMD_SERVICE_FILE} ${DIST_DIR}/artifact/${SERVICE}/${SYSTEMD_SERVICE_FILE}
+    cd ${DIST_DIR}/artifact/${SERVICE} && tar -zcf ../../${SERVICE}.dev.tar.gz public app app.env ${SYSTEMD_SERVICE_FILE} && cd ../..
 	else
 		cp ${DIST_DIR}/${SERVICE} ${DIST_DIR}/artifact/${SERVICE}/app
 		cp ${DIR}/../cmd/${SERVICE}/${ENV}.env ${DIST_DIR}/artifact/${SERVICE}/app.env
