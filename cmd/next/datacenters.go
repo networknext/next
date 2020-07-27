@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"regexp"
-	"strconv"
 
 	"github.com/modood/table"
 	"github.com/networknext/backend/routing"
@@ -11,7 +10,16 @@ import (
 	"github.com/ybbus/jsonrpc"
 )
 
-func datacenters(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
+type datacenterReply struct {
+	Name         string
+	ID           string
+	Latitude     float64
+	Longitude    float64
+	Enabled      bool
+	SupplierName string
+}
+
+func datacenters(rpcClient jsonrpc.RPCClient, env Environment, filter string, signed bool) {
 	args := localjsonrpc.DatacentersArgs{
 		Name: filter,
 	}
@@ -22,7 +30,33 @@ func datacenters(rpcClient jsonrpc.RPCClient, env Environment, filter string) {
 		return
 	}
 
-	table.Output(reply.Datacenters)
+	var dcs []datacenterReply
+
+	if signed {
+		for _, dc := range reply.Datacenters {
+			dcs = append(dcs, datacenterReply{
+				Name:         dc.Name,
+				ID:           fmt.Sprintf("%d", int64(dc.ID)),
+				Latitude:     dc.Latitude,
+				Longitude:    dc.Longitude,
+				Enabled:      dc.Enabled,
+				SupplierName: dc.SupplierName,
+			})
+		}
+	} else {
+		for _, dc := range reply.Datacenters {
+			dcs = append(dcs, datacenterReply{
+				Name:         dc.Name,
+				ID:           fmt.Sprintf("%016x", dc.ID),
+				Latitude:     dc.Latitude,
+				Longitude:    dc.Longitude,
+				Enabled:      dc.Enabled,
+				SupplierName: dc.SupplierName,
+			})
+		}
+	}
+
+	table.Output(dcs)
 }
 
 func addDatacenter(rpcClient jsonrpc.RPCClient, env Environment, datacenter routing.Datacenter) {
@@ -66,12 +100,8 @@ func listDatacenterMaps(rpcClient jsonrpc.RPCClient, env Environment, datacenter
 
 	r := regexp.MustCompile("(?i)" + datacenter) // case-insensitive regex
 	for _, dc := range datacenters.Datacenters {
-		if r.MatchString(dc.Name) || r.MatchString(dc.ID) {
-			dcID, err = strconv.ParseUint(dc.ID, 16, 64)
-			if err != nil {
-				fmt.Printf("Unable to convert %v to a hex DatacenterID\n", dc.ID)
-				return
-			}
+		if r.MatchString(dc.Name) || r.MatchString(fmt.Sprintf("%016x", dc.ID)) {
+			dcID = dc.ID
 		}
 	}
 

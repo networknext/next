@@ -12,11 +12,11 @@ import (
 type LocalPingStatsWriter struct {
 	Logger log.Logger
 
-	submitted uint64
+	written uint64
 }
 
 func (writer *LocalPingStatsWriter) Write(ctx context.Context, entry *PingStatsEntry) error {
-	writer.submitted++
+	writer.written++
 
 	if writer.Logger == nil {
 		return errors.New("no logger for local big query writer, can't display entry")
@@ -28,28 +28,16 @@ func (writer *LocalPingStatsWriter) Write(ctx context.Context, entry *PingStatsE
 	level.Debug(writer.Logger).Log("entry", output)
 
 	return nil
-}
-
-func (local *LocalPingStatsWriter) NumSubmitted() uint64 {
-	return local.submitted
-}
-
-func (local *LocalPingStatsWriter) NumQueued() uint64 {
-	return 0
-}
-
-func (local *LocalPingStatsWriter) NumFlushed() uint64 {
-	return local.submitted
 }
 
 type LocalRelayStatsWriter struct {
 	Logger log.Logger
 
-	submitted uint64
+	written uint64
 }
 
 func (writer *LocalRelayStatsWriter) Write(ctx context.Context, entry *RelayStatsEntry) error {
-	writer.submitted++
+	writer.written++
 
 	if writer.Logger == nil {
 		return errors.New("no logger for local big query writer, can't display entry")
@@ -61,16 +49,4 @@ func (writer *LocalRelayStatsWriter) Write(ctx context.Context, entry *RelayStat
 	level.Debug(writer.Logger).Log("entry", output)
 
 	return nil
-}
-
-func (local *LocalRelayStatsWriter) NumSubmitted() uint64 {
-	return local.submitted
-}
-
-func (local *LocalRelayStatsWriter) NumQueued() uint64 {
-	return 0
-}
-
-func (local *LocalRelayStatsWriter) NumFlushed() uint64 {
-	return local.submitted
 }

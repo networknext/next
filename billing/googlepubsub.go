@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync/atomic"
 
 	"cloud.google.com/go/pubsub"
 	"github.com/go-kit/kit/log"
@@ -14,11 +13,8 @@ import (
 
 // GooglePubSubBiller is an implementation of a billing handler that sends billing data to Google Pub/Sub through multiple clients
 type GooglePubSubBiller struct {
-	Logger log.Logger
-
-	clients   []*GooglePubSubClient
-	submitted uint64
-	flushed   uint64
+	Logger  log.Logger
+	clients []*GooglePubSubClient
 }
 
 // GooglePubSubClient represents a single client that publishes billing data
@@ -72,11 +68,6 @@ func NewGooglePubSubBiller(ctx context.Context, billingMetrics *metrics.BillingM
 }
 
 func (biller *GooglePubSubBiller) Bill(ctx context.Context, entry *BillingEntry) error {
-
-	atomic.AddUint64(&biller.submitted, 1)
-
-	data := WriteBillingEntry(entry)
-
 	if biller.clients == nil {
 		return fmt.Errorf("billing: clients not initialized")
 	}
@@ -85,22 +76,14 @@ func (biller *GooglePubSubBiller) Bill(ctx context.Context, entry *BillingEntry)
 	topic := biller.clients[index].Topic
 	resultChan := biller.clients[index].ResultChan
 
+	biller.clients[index].Metrics.EntriesSubmitted.Add(1)
+
+	data := WriteBillingEntry(entry)
+
 	result := topic.Publish(ctx, &pubsub.Message{Data: data})
 	resultChan <- result
 
 	return nil
-}
-
-func (biller *GooglePubSubBiller) NumSubmitted() uint64 {
-	return atomic.LoadUint64(&biller.submitted)
-}
-
-func (biller *GooglePubSubBiller) NumQueued() uint64 {
-	return atomic.LoadUint64(&biller.submitted) - atomic.LoadUint64(&biller.flushed)
-}
-
-func (biller *GooglePubSubBiller) NumFlushed() uint64 {
-	return atomic.LoadUint64(&biller.flushed)
 }
 
 func (client *GooglePubSubClient) pubsubResults(ctx context.Context, biller *GooglePubSubBiller) {
@@ -113,7 +96,7 @@ func (client *GooglePubSubClient) pubsubResults(ctx context.Context, biller *Goo
 				client.Metrics.ErrorMetrics.BillingPublishFailure.Add(1)
 			} else {
 				level.Debug(biller.Logger).Log("billing", "successfully published billing data")
-				atomic.AddUint64(&biller.flushed, 1)
+				client.Metrics.EntriesFlushed.Add(1)
 			}
 		case <-ctx.Done():
 			return

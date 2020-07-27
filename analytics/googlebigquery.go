@@ -16,30 +16,15 @@ const (
 
 type PingStatsWriter interface {
 	Write(ctx context.Context, entry *PingStatsEntry) error
-	NumSubmitted() uint64
-	NumQueued() uint64
-	NumFlushed() uint64
 }
 
 type NoOpPingStatsWriter struct {
-	submitted uint64
+	written uint64
 }
 
 func (bq *NoOpPingStatsWriter) Write(ctx context.Context, entry *PingStatsEntry) error {
-	atomic.AddUint64(&bq.submitted, 1)
+	atomic.AddUint64(&bq.written, 1)
 	return nil
-}
-
-func (writer *NoOpPingStatsWriter) NumSubmitted() uint64 {
-	return atomic.LoadUint64(&writer.submitted)
-}
-
-func (writer *NoOpPingStatsWriter) NumQueued() uint64 {
-	return 0
-}
-
-func (writer *NoOpPingStatsWriter) NumFlushed() uint64 {
-	return atomic.LoadUint64(&writer.submitted)
 }
 
 type GoogleBigQueryPingStatsWriter struct {
@@ -47,10 +32,7 @@ type GoogleBigQueryPingStatsWriter struct {
 	Logger        log.Logger
 	TableInserter *bigquery.Inserter
 
-	entries chan *PingStatsEntry
-
-	submitted uint64
-	flushed   uint64
+	entries chan *StatsEntry
 }
 
 func NewGoogleBigQueryPingStatsWriter(client *bigquery.Client, logger log.Logger, metrics *metrics.AnalyticsMetrics, dataset, table string) GoogleBigQueryPingStatsWriter {
@@ -63,7 +45,7 @@ func NewGoogleBigQueryPingStatsWriter(client *bigquery.Client, logger log.Logger
 }
 
 func (bq *GoogleBigQueryPingStatsWriter) Write(ctx context.Context, entry *PingStatsEntry) error {
-	atomic.AddUint64(&bq.submitted, 1)
+	bq.Metrics.EntriesSubmitted.Add(1)
 	bq.entries <- entry
 	return nil
 }
@@ -72,23 +54,10 @@ func (bq *GoogleBigQueryPingStatsWriter) WriteLoop(ctx context.Context) {
 	for entry := range bq.entries {
 		if err := bq.TableInserter.Put(ctx, entry); err != nil {
 			level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)
-			bq.Metrics.PingStatsErrorMetrics.AnalyticsWriteFailure.Add(1)
+			bq.Metrics.ErrorMetrics.WriteFailure.Add(1)
 		}
-		atomic.AddUint64(&bq.flushed, 1)
-		bq.Metrics.PingStatsEntriesWritten.Add(1)
+		bq.Metrics.EntriesFlushed.Add(1)
 	}
-}
-
-func (bq *GoogleBigQueryPingStatsWriter) NumSubmitted() uint64 {
-	return atomic.LoadUint64(&bq.submitted)
-}
-
-func (bq *GoogleBigQueryPingStatsWriter) NumQueued() uint64 {
-	return uint64(len(bq.entries))
-}
-
-func (bq *GoogleBigQueryPingStatsWriter) NumFlushed() uint64 {
-	return atomic.LoadUint64(&bq.flushed)
 }
 
 type RelayStatsWriter interface {
@@ -105,18 +74,6 @@ type NoOpRelayStatsWriter struct {
 func (bq *NoOpRelayStatsWriter) Write(ctx context.Context, entry *RelayStatsEntry) error {
 	atomic.AddUint64(&bq.submitted, 1)
 	return nil
-}
-
-func (writer *NoOpRelayStatsWriter) NumSubmitted() uint64 {
-	return atomic.LoadUint64(&writer.submitted)
-}
-
-func (writer *NoOpRelayStatsWriter) NumQueued() uint64 {
-	return 0
-}
-
-func (writer *NoOpRelayStatsWriter) NumFlushed() uint64 {
-	return atomic.LoadUint64(&writer.submitted)
 }
 
 type GoogleBigQueryRelayStatsWriter struct {

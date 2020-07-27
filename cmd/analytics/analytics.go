@@ -160,7 +160,7 @@ func main() {
 		}
 	}
 
-	analyticsMetrics, err := metrics.NewAnalyticsMetrics(ctx, metricsHandler)
+	analyticsMetrics, err := metrics.NewAnalyticsServiceMetrics(ctx, metricsHandler)
 	if err != nil {
 		level.Error(logger).Log("msg", "failed to create analytics metrics", "err", err)
 	}
@@ -268,16 +268,16 @@ func main() {
 
 		go func() {
 			for {
+				analyticsMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
+				analyticsMetrics.MemoryAllocated.Set(memoryUsed())
 
 				fmt.Printf("-----------------------------\n")
-				fmt.Printf("%d goroutines\n", runtime.NumGoroutine())
-				fmt.Printf("%.2f mb allocated\n", memoryUsed())
-				fmt.Printf("%d analytics ps entries submitted\n", pingStatsWriter.NumSubmitted())
-				fmt.Printf("%d analytics ps entries queued\n", pingStatsWriter.NumQueued())
-				fmt.Printf("%d analytics ps entries flushed\n", pingStatsWriter.NumFlushed())
-				fmt.Printf("%d analytics rs entries submitted\n", pingStatsWriter.NumSubmitted())
-				fmt.Printf("%d analytics rs entries queued\n", pingStatsWriter.NumQueued())
-				fmt.Printf("%d analytics rs entries flushed\n", pingStatsWriter.NumFlushed())
+				fmt.Printf("%d goroutines\n", int(analyticsMetrics.Goroutines.Value()))
+				fmt.Printf("%.2f mb allocated\n", analyticsMetrics.MemoryAllocated.Value())
+				fmt.Printf("%d analytics entries received\n", int(analyticsMetrics.AnalyticsMetrics.EntriesReceived.Value()))
+				fmt.Printf("%d analytics entries submitted\n", int(analyticsMetrics.AnalyticsMetrics.EntriesSubmitted.Value()))
+				fmt.Printf("%d analytics entries queued\n", int(analyticsMetrics.AnalyticsMetrics.EntriesQueued.Value()))
+				fmt.Printf("%d analytics entries flushed\n", int(analyticsMetrics.AnalyticsMetrics.EntriesFlushed.Value()))
 				fmt.Printf("-----------------------------\n")
 
 				time.Sleep(time.Second * 10)
