@@ -713,9 +713,9 @@ func (s *BuyersService) GenerateMapPointsPerBuyerBytes() error {
 		level.Info(s.Logger).Log("key", "map-points-global", "removed", len(sremcmds))
 
 		// Write entries to byte cache
-		s.mapPointsBuyerCache[stringID] = WriteMapPointCache(&mapPointsBuyer)
+		s.mapPointsBuyerByteCache[stringID] = WriteMapPointCache(&mapPointsBuyer)
 	}
-	s.mapPointsCache = WriteMapPointCache(&mapPointsGlobal)
+	s.mapPointsByteCache = WriteMapPointCache(&mapPointsGlobal)
 
 	return nil
 }
@@ -878,14 +878,14 @@ func (s *BuyersService) SessionMapByte(r *http.Request, args *MapPointsArgs, rep
 	switch args.BuyerID {
 	case "":
 		// pull the local cache and reply with it
-		ReadMapPointsCache(&reply.Points, s.mapPointsCache)
+		ReadMapPointsCache(&reply.Points, s.mapPointsByteCache)
 	default:
 		if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
 			err := fmt.Errorf("SessionMap(): %v", ErrInsufficientPrivileges)
 			s.Logger.Log("err", err)
 			return err
 		}
-		ReadMapPointsCache(&reply.Points, s.mapPointsBuyerCache[args.BuyerID])
+		ReadMapPointsCache(&reply.Points, s.mapPointsBuyerByteCache[args.BuyerID])
 	}
 
 	return nil

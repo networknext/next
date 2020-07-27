@@ -21,6 +21,7 @@ CURRENT_DIR = $(shell pwd -P)
 DEPLOY_DIR = ./deploy
 DIST_DIR = ./dist
 ARTIFACT_BUCKET = gs://development_artifacts
+ARTIFACT_BUCKET_STAGING = gs://staging_artifacts
 ARTIFACT_BUCKET_PROD = gs://prod_artifacts
 SYSTEMD_SERVICE_FILE = app.service
 
@@ -156,6 +157,10 @@ ifndef GOOGLE_FIRESTORE_SYNC_INTERVAL
 export GOOGLE_FIRESTORE_SYNC_INTERVAL = 1s
 endif
 
+ifndef PORTAL_CRUNCHER_HOST
+export PORTAL_CRUNCHER_HOST = tcp://127.0.0.1:5555
+endif
+
 .PHONY: help
 help: ## this list
 	@echo "$$(grep -hE '^\S+:.*##' $(MAKEFILE_LIST) | sed -e 's/:.*##\s*/:/' -e 's/^\(.\+\):\(.*\)/\\033[36m\1\\033[m:\2/' | column -c2 -t -s :)"
@@ -232,6 +237,12 @@ run-test-func-parallel:
 .PHONY: test-func-parallel
 test-func-parallel: build-test-func-parallel run-test-func-parallel ## runs functional tests in parallel
 
+.PHONY: test-load
+test-load: ## runs load tests
+	@printf "\nRunning load tests...\n\n" ; \
+	$(GO) run ./cmd/load_tests/load_tests.go ; \
+	printf "\ndone\n\n"
+
 #######################
 # Relay Build Process #
 #######################
@@ -289,6 +300,10 @@ dev-server-backend: build-server-backend ## runs a local server backend
 dev-billing: build-billing ## runs a local billing service
 	@PORT=41000 ./dist/billing
 
+.PHONY: dev-portal-cruncher
+dev-portal-cruncher: build-portal-cruncher ## runs a local portal cruncher
+	@HTTP_PORT=42000 CRUNCHER_PORT=5555 ./dist/portal_cruncher
+
 .PHONY: dev-reference-backend
 dev-reference-backend: ## runs a local reference backend
 	$(GO) run reference/backend/*.go
@@ -317,6 +332,13 @@ $(DIST_DIR)/$(SDKNAME).so:
 .PHONY: build-sdk
 build-sdk: $(DIST_DIR)/$(SDKNAME).so ## builds the sdk
 
+
+PHONY: build-portal-cruncher
+build-portal-cruncher: ## builds the portal_cruncher binary
+	@printf "Building portal_cruncher... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/portal_cruncher ./cmd/portal_cruncher/portal_cruncher.go
+	@printf "done\n"
+
 .PHONY: build-portal
 build-portal: ## builds the portal binary
 	@printf "Building portal... \n"
@@ -325,42 +347,6 @@ build-portal: ## builds the portal binary
 	@printf "RELEASE: ${RELEASE}\n"
 	@printf "COMMITMESSAGE: ${COMMITMESSAGE}\n"
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/portal ./cmd/portal/portal.go
-	@printf "done\n"
-
-.PHONY: build-portal-artifact
-build-portal-artifact: build-portal ## builds the portal with the right env vars and creates a .tar.gz
-	@printf "Building portal dev artifact... "
-	@mkdir -p $(DIST_DIR)/artifact/portal
-	@cp $(DIST_DIR)/portal $(DIST_DIR)/artifact/portal/app
-	@cp -r ./cmd/portal/public $(DIST_DIR)/artifact/portal
-	@cp ./cmd/portal/dev.env $(DIST_DIR)/artifact/portal/app.env
-	@cp $(DEPLOY_DIR)/$(SYSTEMD_SERVICE_FILE) $(DIST_DIR)/artifact/portal/$(SYSTEMD_SERVICE_FILE)
-	@cd $(DIST_DIR)/artifact/portal && tar -zcf ../../portal.dev.tar.gz public app app.env $(SYSTEMD_SERVICE_FILE) && cd ../..
-	@printf "$(DIST_DIR)/portal.dev.tar.gz\n"
-
-.PHONY: build-portal-prod-artifact
-build-portal-prod-artifact: build-portal ## builds the portal with the right env vars and creates a .tar.gz
-	@printf "Building portal prod artifact... "
-	@mkdir -p $(DIST_DIR)/artifact/portal
-	@cp $(DIST_DIR)/portal $(DIST_DIR)/artifact/portal/app
-	@cp -r ./cmd/portal/public $(DIST_DIR)/artifact/portal
-	@cp ./cmd/portal/prod.env $(DIST_DIR)/artifact/portal/app.env
-	@cp $(DEPLOY_DIR)/$(SYSTEMD_SERVICE_FILE) $(DIST_DIR)/artifact/portal/$(SYSTEMD_SERVICE_FILE)
-	@cd $(DIST_DIR)/artifact/portal && tar -zcf ../../portal.prod.tar.gz public app app.env $(SYSTEMD_SERVICE_FILE) && cd ../..
-	@printf "$(DIST_DIR)/portal.prod.tar.gz\n"
-
-.PHONY: publish-portal-artifact
-publish-portal-artifact: ## publishes the portal artifact to GCP Storage with gsutil
-	@printf "Publishing portal dev artifact... \n\n"
-	@gsutil cp $(DIST_DIR)/portal.dev.tar.gz $(ARTIFACT_BUCKET)/portal.dev.tar.gz
-	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" -h "x-goog-meta-commitMessage:$(COMMITMESSAGE)" $(ARTIFACT_BUCKET)/portal.dev.tar.gz
-	@printf "done\n"
-
-.PHONY: publish-portal-prod-artifact
-publish-portal-prod-artifact: ## publishes the portal artifact to GCP Storage with gsutil
-	@printf "Publishing portal prod artifact... \n\n"
-	@gsutil cp $(DIST_DIR)/portal.prod.tar.gz $(ARTIFACT_BUCKET_PROD)/portal.prod.tar.gz
-	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" -h "x-goog-meta-commitMessage:$(COMMITMESSAGE)" $(ARTIFACT_BUCKET_PROD)/portal.prod.tar.gz
 	@printf "done\n"
 
 .PHONY: deploy-portal
@@ -372,40 +358,6 @@ deploy-portal: ## builds and deploys the portal to dev
 build-relay-backend: ## builds the relay backend binary
 	@printf "Building relay backend... "
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/relay_backend ./cmd/relay_backend/relay_backend.go
-	@printf "done\n"
-
-.PHONY: build-relay-backend-artifact
-build-relay-backend-artifact: build-relay-backend ## builds the relay backend and creates the dev artifact
-	@printf "Building relay backend dev artifact... "
-	@mkdir -p $(DIST_DIR)/artifact/relay_backend
-	@cp $(DIST_DIR)/relay_backend $(DIST_DIR)/artifact/relay_backend/app
-	@cp ./cmd/relay_backend/dev.env $(DIST_DIR)/artifact/relay_backend/app.env
-	@cp $(DEPLOY_DIR)/$(SYSTEMD_SERVICE_FILE) $(DIST_DIR)/artifact/relay_backend/$(SYSTEMD_SERVICE_FILE)
-	@cd $(DIST_DIR)/artifact/relay_backend && tar -zcf ../../relay_backend.dev.tar.gz app app.env $(SYSTEMD_SERVICE_FILE) && cd ../..
-	@printf "$(DIST_DIR)/relay_backend.dev.tar.gz\n"
-
-.PHONY: build-relay-backend-prod-artifact
-build-relay-backend-prod-artifact: build-relay-backend ## builds the relay backend and creates the prod artifact
-	@printf "Building relay backend prod artifact... "
-	@mkdir -p $(DIST_DIR)/artifact/relay_backend
-	@cp $(DIST_DIR)/relay_backend $(DIST_DIR)/artifact/relay_backend/app
-	@cp ./cmd/relay_backend/prod.env $(DIST_DIR)/artifact/relay_backend/app.env
-	@cp $(DEPLOY_DIR)/$(SYSTEMD_SERVICE_FILE) $(DIST_DIR)/artifact/relay_backend/$(SYSTEMD_SERVICE_FILE)
-	@cd $(DIST_DIR)/artifact/relay_backend && tar -zcf ../../relay_backend.prod.tar.gz app app.env $(SYSTEMD_SERVICE_FILE) && cd ../..
-	@printf "$(DIST_DIR)/relay_backend.prod.tar.gz\n"
-
-.PHONY: publish-relay-backend-artifact
-publish-relay-backend-artifact: ## publishes the relay backend dev artifact
-	@printf "Publishing relay backend dev artifact... \n\n"
-	@gsutil cp $(DIST_DIR)/relay_backend.dev.tar.gz $(ARTIFACT_BUCKET)/relay_backend.dev.tar.gz
-	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" -h "x-goog-meta-commitMessage:$(COMMITMESSAGE)" $(ARTIFACT_BUCKET)/relay_backend.dev.tar.gz
-	@printf "done\n"
-
-.PHONY: publish-relay-backend-prod-artifact
-publish-relay-backend-prod-artifact: ## publishes the relay backend prod artifact
-	@printf "Publishing relay backend prod artifact... \n\n"
-	@gsutil cp $(DIST_DIR)/relay_backend.prod.tar.gz $(ARTIFACT_BUCKET_PROD)/relay_backend.prod.tar.gz
-	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" -h "x-goog-meta-commitMessage:$(COMMITMESSAGE)" $(ARTIFACT_BUCKET_PROD)/relay_backend.prod.tar.gz
 	@printf "done\n"
 
 .PHONY: deploy-relay-backend
@@ -425,128 +377,165 @@ build-billing: ## builds the billing binary
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/billing ./cmd/billing/billing.go
 	@printf "done\n"
 
-.PHONY: build-billing-artifact
-build-billing-artifact: build-billing ## builds the billing service and creates the dev artifact
-	@printf "Building billing dev artifact..."
-	@mkdir -p $(DIST_DIR)/artifact/billing
-	@cp $(DIST_DIR)/billing $(DIST_DIR)/artifact/billing/app
-	@cp ./cmd/billing/dev.env $(DIST_DIR)/artifact/billing/app.env
-	@cp $(DEPLOY_DIR)/$(SYSTEMD_SERVICE_FILE) $(DIST_DIR)/artifact/billing/$(SYSTEMD_SERVICE_FILE)
-	@cd $(DIST_DIR)/artifact/billing && tar -zcf ../../billing.dev.tar.gz app app.env $(SYSTEMD_SERVICE_FILE) && cd ../..
-	@printf "$(DIST_DIR)/billing.dev.tar.gz\n"
-
-.PHONY: build-billing-prod-artifact
-build-billing-prod-artifact: build-billing ## builds the belling service and creates the prod artifact
-	@printf "Building billing prod artifact... "
-	@mkdir -p $(DIST_DIR)/artifact/billing
-	@cp $(DIST_DIR)/billing $(DIST_DIR)/artifact/billing/app
-	@cp ./cmd/billing/prod.env $(DIST_DIR)/artifact/billing/app.env
-	@cp $(DEPLOY_DIR)/$(SYSTEMD_SERVICE_FILE) $(DIST_DIR)/artifact/billing/$(SYSTEMD_SERVICE_FILE)
-	@cd $(DIST_DIR)/artifact/billing && tar -zcf ../../billing.prod.tar.gz app app.env $(SYSTEMD_SERVICE_FILE) && cd ../..
-	@printf "$(DIST_DIR)/billing.prod.tar.gz\n"
-
-.PHONY: publish-billing-artifact
-publish-billing-artifact: ## publishes the billing dev artifact
-	@printf "Publishing billing dev artifact... \n\n"
-	@gsutil cp $(DIST_DIR)/billing.dev.tar.gz $(ARTIFACT_BUCKET)/billing.dev.tar.gz
-	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" -h "x-goog-meta-commitMessage:$(COMMITMESSAGE)" $(ARTIFACT_BUCKET)/billing.dev.tar.gz
-	@printf "done\n"
-
-.PHONY: publish-billing-prod-artifact
-publish-billing-prod-artifact: ## publishes the billing prod artifact
-	@printf "Publishing billing prod artifact... \n\n"
-	@gsutil cp $(DIST_DIR)/billing.prod.tar.gz $(ARTIFACT_BUCKET_PROD)/billing.prod.tar.gz
-	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" -h "x-goog-meta-commitMessage:$(COMMITMESSAGE)" $(ARTIFACT_BUCKET_PROD)/billing.prod.tar.gz
-	@printf "done\n"
-
-.PHONY: build-server-backend-artifact
-build-server-backend-artifact: build-server-backend ## builds the server backend and creates the dev artifact
-	@printf "Building server backend dev artifact..."
-	@mkdir -p $(DIST_DIR)/artifact/server_backend
-	@cp $(DIST_DIR)/server_backend $(DIST_DIR)/artifact/server_backend/app
-	@cp ./cmd/server_backend/dev.env $(DIST_DIR)/artifact/server_backend/app.env
-	@cp $(DEPLOY_DIR)/$(SYSTEMD_SERVICE_FILE) $(DIST_DIR)/artifact/server_backend/$(SYSTEMD_SERVICE_FILE)
-	@cd $(DIST_DIR)/artifact/server_backend && tar -zcf ../../server_backend.dev.tar.gz app app.env $(SYSTEMD_SERVICE_FILE) && cd ../..
-	@printf "$(DIST_DIR)/server_backend.dev.tar.gz\n"
-
-.PHONY: build-server-backend-prod-artifact
-build-server-backend-prod-artifact: build-server-backend ## builds the server backend and creates the prod artifact
-	@printf "Building server backend prod artifact... "
-	@mkdir -p $(DIST_DIR)/artifact/server_backend
-	@cp $(DIST_DIR)/server_backend $(DIST_DIR)/artifact/server_backend/app
-	@cp ./cmd/server_backend/prod.env $(DIST_DIR)/artifact/server_backend/app.env
-	@cp $(DEPLOY_DIR)/$(SYSTEMD_SERVICE_FILE) $(DIST_DIR)/artifact/server_backend/$(SYSTEMD_SERVICE_FILE)
-	@cd $(DIST_DIR)/artifact/server_backend && tar -zcf ../../server_backend.prod.tar.gz app app.env $(SYSTEMD_SERVICE_FILE) && cd ../..
-	@printf "$(DIST_DIR)/server_backend.prod.tar.gz\n"
-
-.PHONY: publish-server-backend-artifact
-publish-server-backend-artifact: ## publishes the server backend dev artifact
-	@printf "Publishing server backend dev artifact... \n\n"
-	@gsutil cp $(DIST_DIR)/server_backend.dev.tar.gz $(ARTIFACT_BUCKET)/server_backend.dev.tar.gz
-	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" -h "x-goog-meta-commitMessage:$(COMMITMESSAGE)" $(ARTIFACT_BUCKET)/server_backend.dev.tar.gz
-	@printf "done\n"
-
-.PHONY: publish-server-backend-prod-artifact
-publish-server-backend-prod-artifact: ## publishes the server backend prod artifact
-	@printf "Publishing server backend prod artifact... \n\n"
-	@gsutil cp $(DIST_DIR)/server_backend.prod.tar.gz $(ARTIFACT_BUCKET_PROD)/server_backend.prod.tar.gz
-	@gsutil setmeta -h "x-goog-meta-build-time:$(TIMESTAMP)" -h "x-goog-meta-sha:$(SHA)" -h "x-goog-meta-release:$(RELEASE)" -h "x-goog-meta-commitMessage:$(COMMITMESSAGE)" $(ARTIFACT_BUCKET_PROD)/server_backend.prod.tar.gz
-	@printf "done\n"
-
 .PHONY: deploy-server-backend
 deploy-server-backend: ## builds and deploys the server backend to dev
 	@printf "Deploying server backend to dev... \n\n"
 	gcloud compute --project "network-next-v3-dev" ssh server-backend-dev-1 -- 'cd /app && sudo ./bootstrap.sh -b $(ARTIFACT_BUCKET) -a server_backend.dev.tar.gz'
 
-.PHONY: build-backend-artifacts
-build-backend-artifacts: build-portal-artifact build-relay-backend-artifact build-server-backend-artifact ## builds the backend artifacts
+.PHONY: build-billing-artifacts-dev
+build-billing-artifacts-dev: build-billing ## builds the billing artifacts dev
+	./deploy/build-artifacts.sh -e dev -s billing
 
-.PHONY: build-relay-artifact
-build-relay-artifact: build-relay ## builds the relay and creates the dev artifact
-	@printf "Building relay artifact..."
-	@mkdir -p $(DIST_DIR)/artifact/relay
-	@cp $(DIST_DIR)/relay $(DIST_DIR)/artifact/relay/relay
-	@cp $(DEPLOY_DIR)/relay/relay.service $(DIST_DIR)/artifact/relay/relay.service
-	@cp $(DEPLOY_DIR)/relay/install.sh $(DIST_DIR)/artifact/relay/install.sh
-	@cd $(DIST_DIR)/artifact/relay && tar -zcf ../../relay.dev.tar.gz relay relay.service install.sh && cd ../..
-	@printf "$(DIST_DIR)/relay.dev.tar.gz\n"
+.PHONY: build-relay-artifacts-dev
+build-relay-artifacts-dev: build-relay ## builds the relay artifacts dev
+	./deploy/build-artifacts.sh -e dev -s relay
 
-.PHONY: build-relay-prod-artifact
-build-relay-prod-artifact: build-relay ## builds the relay and creates the prod artifact
-	@printf "Building relay artifact..."
-	@mkdir -p $(DIST_DIR)/artifact/relay
-	@cp $(DIST_DIR)/relay $(DIST_DIR)/artifact/relay/relay
-	@cp $(DEPLOY_DIR)/relay/relay.service $(DIST_DIR)/artifact/relay/relay.service
-	@cp $(DEPLOY_DIR)/relay/install.sh $(DIST_DIR)/artifact/relay/install.sh
-	@cd $(DIST_DIR)/artifact/relay && tar -zcf ../../relay.prod.tar.gz relay relay.service install.sh && cd ../..
-	@printf "$(DIST_DIR)/relay.prod.tar.gz\n"
+.PHONY: build-portal-artifacts-dev
+build-portal-artifacts-dev: build-portal ## builds the portal artifacts dev
+	./deploy/build-artifacts.sh -e dev -s portal
 
-.PHONY: publish-relay-artifact
-publish-relay-artifact: ## publishes the dev relay artifact
-	@printf "Publishing relay artifact... \n\n"
-	@gsutil cp $(DIST_DIR)/relay.dev.tar.gz $(ARTIFACT_BUCKET)/relay.dev.tar.gz
-	@gsutil acl set public-read $(ARTIFACT_BUCKET)/relay.dev.tar.gz
-	@gsutil setmeta \
-	-h 'Content-Type:application/xtar' \
-	-h 'Cache-Control:no-cache, max-age=0' \
-	$(ARTIFACT_BUCKET)/relay.dev.tar.gz
-	@printf "done\n"
+.PHONY: build-portal-cruncher-artifacts-dev
+build-portal-cruncher-artifacts-dev: build-portal-cruncher ## builds the portal cruncher artifacts dev
+	./deploy/build-artifacts.sh -e dev -s portal_cruncher
 
-.PHONY: publish-relay-prod-artifact
-publish-relay-prod-artifact: ## publishes the prod relay artifact
-	@printf "Publishing relay artifact... \n\n"
-	@gsutil cp $(DIST_DIR)/relay.prod.tar.gz $(ARTIFACT_BUCKET_PROD)/relay.prod.tar.gz
-	@gsutil acl set public-read $(ARTIFACT_BUCKET_PROD)/relay.prod.tar.gz
-	@gsutil setmeta \
-	-h 'Content-Type:application/xtar' \
-	-h 'Cache-Control:no-cache, max-age=0' \
-	$(ARTIFACT_BUCKET_PROD)/relay.prod.tar.gz
-	@printf "done\n"
+.PHONY: build-relay-backend-artifacts-dev
+build-relay-backend-artifacts-dev: build-relay-backend ## builds the relay backend artifacts dev
+	./deploy/build-artifacts.sh -e dev -s relay_backend
 
-.PHONY: publish-bootstrap-script
-publish-bootstrap-script:
+.PHONY: build-server-backend-artifacts-dev
+build-server-backend-artifacts-dev: build-server-backend ## builds the server backend artifacts dev
+	./deploy/build-artifacts.sh -e dev -s server_backend
+
+.PHONY: build-billing-artifacts-staging
+build-billing-artifacts-staging: build-billing ## builds the billing artifacts staging
+	./deploy/build-artifacts.sh -e staging -s billing
+
+.PHONY: build-relay-artifacts-staging
+build-relay-artifacts-staging: build-relay ## builds the relay artifacts staging
+	./deploy/build-artifacts.sh -e staging -s relay
+
+.PHONY: build-portal-artifacts-staging
+build-portal-artifacts-staging: build-portal ## builds the portal artifacts staging
+	./deploy/build-artifacts.sh -e staging -s portal
+
+.PHONY: build-relay-backend-artifacts-staging
+build-relay-backend-artifacts-staging: build-relay-backend ## builds the relay backend artifacts staging
+	./deploy/build-artifacts.sh -e staging -s relay_backend
+
+.PHONY: build-portal-cruncher-artifacts-staging
+build-portal-cruncher-artifacts-staging: build-portal-cruncher ## builds the portal cruncher artifacts staging
+	./deploy/build-artifacts.sh -e staging -s portal_cruncher
+
+.PHONY: build-server-backend-artifacts-staging
+build-server-backend-artifacts-staging: build-server-backend ## builds the server backend artifacts staging
+	./deploy/build-artifacts.sh -e staging -s server_backend
+
+.PHONY: build-billing-artifacts-prod
+build-billing-artifacts-prod: build-billing ## builds the billing artifacts prod
+	./deploy/build-artifacts.sh -e prod -s billing
+
+.PHONY: build-relay-artifacts-prod
+build-relay-artifacts-prod: build-relay ## builds the relay artifacts prod
+	./deploy/build-artifacts.sh -e prod -s relay
+
+.PHONY: build-portal-artifacts-prod
+build-portal-artifacts-prod: build-portal ## builds the portal artifacts prod
+	./deploy/build-artifacts.sh -e prod -s portal
+
+.PHONY: build-portal-cruncher-artifacts-prod
+build-portal-cruncher-artifacts-prod: build-portal-cruncher ## builds the portal cruncher artifacts prod
+	./deploy/build-artifacts.sh -e prod -s portal_cruncher
+
+.PHONY: build-relay-backend-artifacts-prod
+build-relay-backend-artifacts-prod: build-relay-backend ## builds the relay backend artifacts prod
+	./deploy/build-artifacts.sh -e prod -s relay_backend
+
+.PHONY: build-server-backend-artifacts-prod
+build-server-backend-artifacts-prod: build-server-backend ## builds the server backend artifacts prod
+	./deploy/build-artifacts.sh -e prod -s server_backend
+
+.PHONY: publish-billing-artifacts-dev
+publish-billing-artifacts-dev: ## publishes the billing artifacts to GCP Storage with gsutil dev
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s billing
+
+.PHONY: publish-relay-artifacts-dev
+publish-relay-artifacts-dev: ## publishes the relay artifacts to GCP Storage with gsutil dev
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay
+
+.PHONY: publish-portal-artifacts-dev
+publish-portal-artifacts-dev: ## publishes the portal artifacts to GCP Storage with gsutil dev
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s portal
+
+.PHONY: publish-portal-cruncher-artifacts-dev
+publish-portal-cruncher-artifacts-dev: ## publishes the portal cruncher artifacts to GCP Storage with gsutil dev
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s portal_cruncher
+
+.PHONY: publish-relay-backend-artifacts-dev
+publish-relay-backend-artifacts-dev: ## publishes the relay backend artifacts to GCP Storage with gsutil dev
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay_backend
+
+.PHONY: publish-server-backend-artifacts-dev
+publish-server-backend-artifacts-dev: ## publishes the server backend artifacts to GCP Storage with gsutil dev
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s server_backend
+
+.PHONY: publish-billing-artifacts-staging
+publish-billing-artifacts-staging: ## publishes the billing artifacts to GCP Storage with gsutil staging
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s billing
+
+.PHONY: publish-relay-artifacts-staging
+publish-relay-artifacts-staging: ## publishes the relay artifacts to GCP Storage with gsutil staging
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay
+
+.PHONY: publish-portal-artifacts-staging
+publish-portal-artifacts-staging: ## publishes the portal artifacts to GCP Storage with gsutil staging
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s portal
+
+.PHONY: publish-portal-cruncher-artifacts-staging
+publish-portal-cruncher-artifacts-staging: ## publishes the portal cruncher artifacts to GCP Storage with gsutil staging
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s portal_cruncher
+
+.PHONY: publish-relay-backend-artifacts-staging
+publish-relay-backend-artifacts-staging: ## publishes the relay backend artifacts to GCP Storage with gsutil staging
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay_backend
+
+.PHONY: publish-server-backend-artifacts-staging
+publish-server-backend-artifacts-staging: ## publishes the server backend artifacts to GCP Storage with gsutil staging
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s server_backend
+
+.PHONY: publish-billing-artifacts-prod
+publish-billing-artifacts-prod: ## publishes the billing artifacts to GCP Storage with gsutil prod
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s billing
+
+.PHONY: publish-relay-artifacts-prod
+publish-relay-artifacts-prod: ## publishes the relay artifacts to GCP Storage with gsutil prod
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s relay
+
+.PHONY: publish-portal-artifacts-prod
+publish-portal-artifacts-prod: ## publishes the portal artifacts to GCP Storage with gsutil prod
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s portal
+
+.PHONY: publish-portal-cruncher-artifacts-prod
+publish-portal-cruncher-artifacts-prod: ## publishes the portal cruncher artifacts to GCP Storage with gsutil prod
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s portal_cruncher
+
+.PHONY: publish-relay-backend-artifacts-prod
+publish-relay-backend-artifacts-prod: ## publishes the relay backend artifacts to GCP Storage with gsutil prod
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s relay_backend
+
+.PHONY: publish-server-backend-artifacts-prod
+publish-server-backend-artifacts-prod: ## publishes the server backend artifacts to GCP Storage with gsutil prod
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s server_backend
+
+.PHONY: publish-bootstrap-script-dev
+publish-bootstrap-script-dev:
 	@printf "Publishing bootstrap script... \n\n"
 	@gsutil cp $(DEPLOY_DIR)/bootstrap.sh $(ARTIFACT_BUCKET)/bootstrap.sh
+	@printf "done\n"
+
+.PHONY: publish-bootstrap-script-staging
+publish-bootstrap-script-staging:
+	@printf "Publishing bootstrap script... \n\n"
+	@gsutil cp $(DEPLOY_DIR)/bootstrap.sh $(ARTIFACT_BUCKET_STAGING)/bootstrap.sh
 	@printf "done\n"
 
 .PHONY: publish-bootstrap-script-prod
@@ -554,18 +543,6 @@ publish-bootstrap-script-prod:
 	@printf "Publishing bootstrap script... \n\n"
 	@gsutil cp $(DEPLOY_DIR)/bootstrap.sh $(ARTIFACT_BUCKET_PROD)/bootstrap.sh
 	@printf "done\n"
-
-.PHONY: build-backend-prod-artifacts
-build-backend-prod-artifacts: build-portal-prod-artifact build-relay-backend-prod-artifact build-server-backend-prod-artifact ## builds the backend artifacts
-
-.PHONY: publish-backend-artifacts
-publish-backend-artifacts: publish-portal-artifact publish-relay-backend-artifact publish-server-backend-artifact ## publishes the backend artifacts to GCP Storage with gsutil
-
-.PHONY: publish-backend-prod-artifacts
-publish-backend-prod-artifacts: publish-portal-prod-artifact publish-relay-backend-prod-artifact publish-server-backend-prod-artifact ## publishes the backend artifacts to GCP Storage with gsutil
-
-.PHONY: deploy-backend
-deploy-backend: deploy-portal deploy-relay-backend deploy-server-backend
 
 .PHONY: build-server
 build-server: build-sdk ## builds the server
@@ -601,7 +578,7 @@ build-next: ## builds the operator tool
 	@printf "done\n"
 
 .PHONY: build-all
-build-all: build-billing build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
+build-all: build-portal-cruncher build-billing build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all

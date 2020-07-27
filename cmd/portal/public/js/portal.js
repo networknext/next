@@ -47,7 +47,8 @@ AuthHandler = {
 		const domain = 'networknext.auth0.com';
 
 		// HACK THESE NEED TO BE ENV VARIABLES SOME HOW
-		const clientID = window.location.hostname == 'portal.networknext.com' ? 'MaSx99ma3AwYOwWMLm3XWNvQ5WyJWG2Y' : 'oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n';
+		const hostname = window.location.hostname
+		const clientID = hostname == 'portal.networknext.com' || hostname == 'portal-staging.networknext.com' ? 'MaSx99ma3AwYOwWMLm3XWNvQ5WyJWG2Y' : 'oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n';
 
 		this.auth0Client = await createAuth0Client({
 			client_id: clientID,
@@ -288,6 +289,8 @@ MapHandler = {
 				let direct = sessions.filter((point) => {
 					return (point[2] == 0);
 				});
+				/* let onNN = response.map_points.green_points || [];
+				let direct = response.map_points.blue_points || []; */
 
 				let maintenanceMode = rootComponent.$data.maintenanceMode
 
@@ -1060,7 +1063,7 @@ function createVueComponents() {
 	rootComponent = new Vue({
 		el: '#root',
 		data: {
-			maintenanceMode: true,
+			maintenanceMode: false,
 			showCount: false,
 			mapSessions: 0,
 			onNN: 0,

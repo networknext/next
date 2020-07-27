@@ -7,7 +7,7 @@ agent:
 global_job_config:
   prologue:
     commands:
-      - sudo apt-get update && sudo apt-get -y install libsodium-dev google-cloud-sdk-firestore-emulator google-cloud-sdk-pubsub-emulator
+      - sudo apt-get update && sudo apt-get -y install libsodium-dev google-cloud-sdk-firestore-emulator google-cloud-sdk-pubsub-emulator libzmq3-dev
       - checkout
       - sem-version go 1.13
       - make clean
@@ -28,6 +28,10 @@ promotions:
     pipeline_file: development-deploy.yml
     auto_promote:
       when: branch = 'dev' AND result = 'passed'
+  - name: Staging Deployment
+    pipeline_file: staging-deploy.yml
+    auto_promote:
+      when: branch = 'staging' AND result = 'passed'
   - name: Production Deployment
     pipeline_file: production-deploy.yml
     auto_promote:

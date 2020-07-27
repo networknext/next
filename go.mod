@@ -32,6 +32,7 @@ require (
 	github.com/modood/table v0.0.0-20200225102042-88de94bb9876
 	github.com/olekukonko/tablewriter v0.0.4
 	github.com/oschwald/geoip2-golang v1.4.0
+	github.com/pebbe/zmq4 v1.2.1
 	github.com/peterbourgon/ff/v3 v3.0.0
 	github.com/stretchr/testify v1.4.0
 	github.com/tidwall/gjson v1.6.0
@@ -39,6 +40,8 @@ require (
 	github.com/urfave/cli v1.22.4
 	github.com/ybbus/jsonrpc v2.1.2+incompatible
 	golang.org/x/crypto v0.0.0-20200510223506-06a226fb4e37
+	golang.org/x/net v0.0.0-20200513185701-a91f0712d120
+	golang.org/x/sys v0.0.0-20200515095857-1151b9dac4a9
 	google.golang.org/api v0.24.0
 	google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013
 	google.golang.org/grpc v1.29.1
