@@ -365,8 +365,7 @@ build-relay-backend: ## builds the relay backend binary
 
 .PHONY: deploy-relay-backend
 deploy-relay-backend: ## builds and deploys the relay backend to dev
-	@printf "Deploying relay backend to dev... \n\n"
-	gcloud compute --project "network-next-v3-dev" ssh relay-backend-dev-1 -- 'cd /app && sudo ./bootstrap.sh -b $(ARTIFACT_BUCKET) -a relay_backend.dev.tar.gz'
+	./deploy/deploy.sh -e dev -c dev-1 -t relay -b gs://development_artifacts
 
 .PHONY: build-server-backend
 build-server-backend: ## builds the server backend binary
@@ -385,6 +384,10 @@ build-billing: ## builds the billing binary
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/billing ./cmd/billing/billing.go
 	@printf "done\n"
 
+.PHONY: deploy-server-backend
+deploy-server-backend: ## builds and deploys the server backend to dev
+	./deploy/deploy.sh -e dev -c dev-1 -t server -b gs://development_artifacts
+
 .PHONY: build-analytics
 build-analytics: ## builds the analytics binary
 	@printf "Building analytics... "
@@ -393,8 +396,27 @@ build-analytics: ## builds the analytics binary
 
 .PHONY: deploy-server-backend-psyonix
 deploy-server-backend-psyonix: ## builds and deploys the server backend to psyonix
-	@printf "Deploying server backend to Psyonix... \n\n"
-	gcloud compute --project "network-next-v3-prod" ssh server-backend-psyonix -- 'cd /app && sudo ./bootstrap.sh -b $(ARTIFACT_BUCKET_PROD) -a server_backend.prod.tar.gz'
+	./deploy/deploy.sh -e prod -c psyonix -t server -b gs://prod_artifacts
+
+.PHONY: deploy-server-backend-liquidbit
+deploy-server-backend-liquidbit: ## builds and deploys the server backend to liquidbit
+	./deploy/deploy.sh -e prod -c liquidbit -t server -b gs://prod_artifacts
+
+.PHONY: deploy-server-backend-turtlerock
+deploy-server-backend-turtlerock: ## builds and deploys the server backend to turtlerock
+	./deploy/deploy.sh -e prod -c turtlerock -t server -b gs://prod_artifacts
+
+.PHONY: deploy-server-backend-valve
+deploy-server-backend-valve: ## builds and deploys the server backend to valve
+	./deploy/deploy.sh -e prod -c valve -t server -b gs://prod_artifacts
+
+.PHONY: deploy-server-backend-velan
+deploy-server-backend-velan: ## builds and deploys the server backend to velan
+	./deploy/deploy.sh -e prod -c velan -t server -b gs://prod_artifacts
+
+.PHONY: deploy-server-backend-esl
+deploy-server-backend-esl: ## builds and deploys the server backend to esl
+	./deploy/deploy.sh -e prod -c esl -t server -b gs://prod_artifacts
 
 .PHONY: build-billing-artifacts-dev
 build-billing-artifacts-dev: build-billing ## builds the billing artifacts dev
