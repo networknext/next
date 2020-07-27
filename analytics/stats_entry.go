@@ -101,7 +101,7 @@ type RelayStatsEntry struct {
 	ID          uint64
 	NumSessions uint64
 	CPUUsage    float32
-	RAMUsage    float32
+	MemUsage    float32
 	Tx          uint64
 	Rx          uint64
 }
@@ -119,7 +119,7 @@ func WriteRelayStatsEntries(entries []RelayStatsEntry) []byte {
 		encoding.WriteUint64(data, &index, entry.ID)
 		encoding.WriteUint64(data, &index, entry.NumSessions)
 		encoding.WriteFloat32(data, &index, entry.CPUUsage)
-		encoding.WriteFloat32(data, &index, entry.RAMUsage)
+		encoding.WriteFloat32(data, &index, entry.MemUsage)
 		encoding.WriteUint64(data, &index, entry.Tx)
 		encoding.WriteUint64(data, &index, entry.Rx)
 	}
@@ -157,7 +157,7 @@ func ReadRelayStatsEntries(data []byte) ([]RelayStatsEntry, bool) {
 			return nil, false
 		}
 
-		if !encoding.ReadFloat32(data, &index, &entry.RAMUsage) {
+		if !encoding.ReadFloat32(data, &index, &entry.MemUsage) {
 			return nil, false
 		}
 
@@ -181,10 +181,10 @@ func (e *RelayStatsEntry) Save() (map[string]bigquery.Value, string, error) {
 	bqEntry["timestamp"] = int(e.Timestamp)
 	bqEntry["realyID"] = int(e.ID)
 	bqEntry["numSessions"] = int(e.NumSessions)
-	bqEntry["cpuUsage"] = e.CPUUsage
-	bqEntry["ramUsage"] = e.RAMUsage
-	bqEntry["Tx"] = e.Tx
-	bqEntry["Rx"] = e.Rx
+	bqEntry["cpu"] = e.CPUUsage
+	bqEntry["mem"] = e.MemUsage
+	bqEntry["tx"] = e.Tx
+	bqEntry["rx"] = e.Rx
 
 	return bqEntry, "", nil
 }

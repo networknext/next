@@ -594,7 +594,7 @@ func main() {
 						ID:          relay.ID,
 						NumSessions: relay.TrafficStats.SessionCount,
 						CPUUsage:    relay.CPUUsage,
-						RAMUsage:    relay.RAMUsage,
+						MemUsage:    relay.RAMUsage,
 						Tx:          relay.TrafficStats.BytesSent,
 						Rx:          relay.TrafficStats.BytesReceived,
 					}
