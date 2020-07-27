@@ -888,6 +888,10 @@ func (fs *Firestore) AddRelay(ctx context.Context, r routing.Relay) error {
 		LastUpdateTime:     r.LastUpdateTime,
 		MRC:                int64(r.MRC),
 		Overage:            int64(r.Overage),
+		BWRule:             int32(r.BWRule),
+		ContractTerm:       r.ContractTerm,
+		StartDate:          r.StartDate.UTC(),
+		EndDate:            r.EndDate.UTC(),
 		Type:               serverType,
 	}
 
@@ -1499,9 +1503,9 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 		var serverType routing.MachineType
 		switch r.Type {
 		case "vm":
-			serverType = routing.BareMetal
-		case "bare-metal":
 			serverType = routing.VirtualMachine
+		case "bare-metal":
+			serverType = routing.BareMetal
 		case "n/a":
 			serverType = routing.NoneSpecified
 		default:
@@ -1530,8 +1534,8 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 			Overage:             routing.Nibblin(r.Overage),
 			BWRule:              bwRule,
 			ContractTerm:        r.ContractTerm,
-			StartDate:           r.StartDate,
-			EndDate:             r.EndDate,
+			StartDate:           r.StartDate.UTC(),
+			EndDate:             r.EndDate.UTC(),
 			Type:                serverType,
 		}
 
