@@ -167,16 +167,15 @@ func main() {
 
 	var pingStatsWriter analytics.PingStatsWriter = &analytics.NoOpPingStatsWriter{}
 	{
-
 		// BigQuery
 		if gcpOK {
-			if analyticsDataset, ok := os.LookupEnv("GOOGLE_BIGQUERY_DATASET_ANALYTICS"); ok {
+			if analyticsDataset, ok := os.LookupEnv("GOOGLE_BIGQUERY_DATASET_PING_STATS"); ok {
 				bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
 				if err != nil {
 					level.Error(logger).Log("err", err)
 					os.Exit(1)
 				}
-				b := analytics.NewGoogleBigQueryPingStatsWriter(bqClient, logger, &analyticsMetrics.PingStatsMetrics, analyticsDataset, os.Getenv("GOOGLE_BIGQUERY_TABLE_ANALYTICS"))
+				b := analytics.NewGoogleBigQueryPingStatsWriter(bqClient, logger, &analyticsMetrics.PingStatsMetrics, analyticsDataset, os.Getenv("GOOGLE_BIGQUERY_TABLE_PING_STATS"))
 				pingStatsWriter = &b
 
 				go b.WriteLoop(ctx)
@@ -216,13 +215,13 @@ func main() {
 	{
 		// BigQuery
 		if gcpOK {
-			if analyticsDataset, ok := os.LookupEnv("GOOGLE_BIGQUERY_DATASET_ANALYTICS"); ok {
+			if analyticsDataset, ok := os.LookupEnv("GOOGLE_BIGQUERY_DATASET_RELAY_STATS"); ok {
 				bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
 				if err != nil {
 					level.Error(logger).Log("err", err)
 					os.Exit(1)
 				}
-				b := analytics.NewGoogleBigQueryRelayStatsWriter(bqClient, logger, &analyticsMetrics.RelayStatsMetrics, analyticsDataset, os.Getenv("GOOGLE_BIGQUERY_TABLE_ANALYTICS"))
+				b := analytics.NewGoogleBigQueryRelayStatsWriter(bqClient, logger, &analyticsMetrics.RelayStatsMetrics, analyticsDataset, os.Getenv("GOOGLE_BIGQUERY_TABLE_RELAY_STATS"))
 				relayStatsWriter = &b
 
 				go b.WriteLoop(ctx)
