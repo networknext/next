@@ -45,7 +45,7 @@ func NewPubSubForwarder(ctx context.Context, biller Biller, logger log.Logger, m
 // Forward reads the billing entry from pubsub and writes it to BigQuery
 func (psf *PubSubForwarder) Forward(ctx context.Context) {
 	err := psf.pubsubSubscription.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
-		psf.Metrics.BillingEntriesReceived.Add(1)
+		psf.Metrics.EntriesReceived.Add(1)
 		billingEntry := BillingEntry{}
 		if ReadBillingEntry(&billingEntry, m.Data) {
 			m.Ack()
