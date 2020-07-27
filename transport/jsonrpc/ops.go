@@ -562,6 +562,32 @@ func (s *OpsService) RemoveRelay(r *http.Request, args *RemoveRelayArgs, reply *
 	return nil
 }
 
+type RelayNameUpdateArgs struct {
+	RelayID   uint64 `json:"relay_id"`
+	RelayName string `json:"relay_name"`
+}
+
+type RelayNameUpdateReply struct {
+}
+
+func (s *OpsService) RelayNameUpdate(r *http.Request, args *RelayNameUpdateArgs, reply *RelayNameUpdateReply) error {
+
+	relay, err := s.Storage.Relay(args.RelayID)
+	if err != nil {
+		err = fmt.Errorf("RelayStateUpdate() Storage.Relay error: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	relay.Name = args.RelayName
+	if err = s.Storage.SetRelay(context.Background(), relay); err != nil {
+		err = fmt.Errorf("Storage.SetRelay error: %w", err)
+		return err
+	}
+
+	return nil
+}
+
 type RelayStateUpdateArgs struct {
 	RelayID    uint64             `json:"relay_id"`
 	RelayState routing.RelayState `json:"relay_state"`
