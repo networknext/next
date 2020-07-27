@@ -1850,7 +1850,7 @@ func NewRelayBackendMetrics(ctx context.Context, metricsHandler Handler) (*Relay
 	}
 
 	relayBackendMetrics.PingStatsMetrics.ErrorMetrics.PublishFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Relay Backend Relay Stats Publish Failure",
+		DisplayName: "Relay Backend Ping Stats Publish Failure",
 		ServiceName: "relay_backend",
 		ID:          "relay_backend.ping_stats.error.publish_failure",
 		Unit:        "entries",
@@ -1900,7 +1900,7 @@ func NewRelayBackendMetrics(ctx context.Context, metricsHandler Handler) (*Relay
 	}
 
 	relayBackendMetrics.RelayStatsMetrics.ErrorMetrics.PublishFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Relay Stats Publish Failure",
+		DisplayName: "Relay Backend Relay Stats Publish Failure",
 		ServiceName: "relay_backend",
 		ID:          "relay_backend.relay_stats.error.publish_failure",
 		Unit:        "entries",
@@ -2065,7 +2065,7 @@ func NewAnalyticsServiceMetrics(ctx context.Context, metricsHandler Handler) (*A
 		ServiceName: "analytics",
 		ID:          "analytics.relay_stats.entries",
 		Unit:        "entries",
-		Description: "The total number of ping stats entries received through Google Pub/Sub",
+		Description: "The total number of relay stats entries received through Google Pub/Sub",
 	})
 	if err != nil {
 		return nil, err
@@ -2076,7 +2076,7 @@ func NewAnalyticsServiceMetrics(ctx context.Context, metricsHandler Handler) (*A
 		ServiceName: "analytics",
 		ID:          "analytics.relay_stats.entries.submitted",
 		Unit:        "entries",
-		Description: "The total number of ping stats entries submitted to BigQuery",
+		Description: "The total number of relay stats entries submitted to BigQuery",
 	})
 	if err != nil {
 		return nil, err
@@ -2117,7 +2117,7 @@ func NewAnalyticsServiceMetrics(ctx context.Context, metricsHandler Handler) (*A
 	}
 
 	analyticsMetrics.RelayStatsMetrics.ErrorMetrics.WriteFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Analytics Write Failure",
+		DisplayName: "Relay Stats Write Failure",
 		ServiceName: "analytics",
 		ID:          "analytics.relay_stats.error.write_failure",
 		Unit:        "errors",
