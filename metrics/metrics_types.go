@@ -1850,7 +1850,7 @@ func NewRelayBackendMetrics(ctx context.Context, metricsHandler Handler) (*Relay
 	}
 
 	relayBackendMetrics.PingStatsMetrics.ErrorMetrics.PublishFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Relay Stats Publish Failure",
+		DisplayName: "Relay Backend Relay Stats Publish Failure",
 		ServiceName: "relay_backend",
 		ID:          "relay_backend.ping_stats.error.publish_failure",
 		Unit:        "entries",
@@ -1902,9 +1902,9 @@ func NewRelayBackendMetrics(ctx context.Context, metricsHandler Handler) (*Relay
 	relayBackendMetrics.RelayStatsMetrics.ErrorMetrics.PublishFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Relay Stats Publish Failure",
 		ServiceName: "relay_backend",
-		ID:          "relay_backend.Relay_stats.error.publish_failure",
+		ID:          "relay_backend.relay_stats.error.publish_failure",
 		Unit:        "entries",
-		Description: "The number of ping stats entries the relay backend has failed to publish",
+		Description: "The number of relay stats entries the relay backend has failed to publish",
 	})
 	if err != nil {
 		return nil, err

@@ -176,7 +176,7 @@ func main() {
 					level.Error(logger).Log("err", err)
 					os.Exit(1)
 				}
-				b := analytics.NewGoogleBigQueryPingStatsWriter(bqClient, logger, analyticsMetrics, analyticsDataset, os.Getenv("GOOGLE_BIGQUERY_TABLE_ANALYTICS"))
+				b := analytics.NewGoogleBigQueryPingStatsWriter(bqClient, logger, &analyticsMetrics.PingStatsMetrics, analyticsDataset, os.Getenv("GOOGLE_BIGQUERY_TABLE_ANALYTICS"))
 				pingStatsWriter = &b
 
 				go b.WriteLoop(ctx)
@@ -202,7 +202,7 @@ func main() {
 			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
 			defer cancelFunc()
 
-			pubsubForwarder, err := analytics.NewPingStatsPubSubForwarder(pubsubCtx, pingStatsWriter, logger, analyticsMetrics, gcpProjectID, topicName, subscriptionName)
+			pubsubForwarder, err := analytics.NewPingStatsPubSubForwarder(pubsubCtx, pingStatsWriter, logger, &analyticsMetrics.PingStatsMetrics, gcpProjectID, topicName, subscriptionName)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				os.Exit(1)
@@ -222,7 +222,7 @@ func main() {
 					level.Error(logger).Log("err", err)
 					os.Exit(1)
 				}
-				b := analytics.NewGoogleBigQueryRelayStatsWriter(bqClient, logger, analyticsMetrics, analyticsDataset, os.Getenv("GOOGLE_BIGQUERY_TABLE_ANALYTICS"))
+				b := analytics.NewGoogleBigQueryRelayStatsWriter(bqClient, logger, &analyticsMetrics.RelayStatsMetrics, analyticsDataset, os.Getenv("GOOGLE_BIGQUERY_TABLE_ANALYTICS"))
 				relayStatsWriter = &b
 
 				go b.WriteLoop(ctx)
@@ -248,7 +248,7 @@ func main() {
 			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
 			defer cancelFunc()
 
-			pubsubForwarder, err := analytics.NewRelayStatsPubSubForwarder(pubsubCtx, relayStatsWriter, logger, analyticsMetrics, gcpProjectID, topicName, subscriptionName)
+			pubsubForwarder, err := analytics.NewRelayStatsPubSubForwarder(pubsubCtx, relayStatsWriter, logger, &analyticsMetrics.RelayStatsMetrics, gcpProjectID, topicName, subscriptionName)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				os.Exit(1)
@@ -274,10 +274,14 @@ func main() {
 				fmt.Printf("-----------------------------\n")
 				fmt.Printf("%d goroutines\n", int(analyticsMetrics.Goroutines.Value()))
 				fmt.Printf("%.2f mb allocated\n", analyticsMetrics.MemoryAllocated.Value())
-				fmt.Printf("%d analytics entries received\n", int(analyticsMetrics.AnalyticsMetrics.EntriesReceived.Value()))
-				fmt.Printf("%d analytics entries submitted\n", int(analyticsMetrics.AnalyticsMetrics.EntriesSubmitted.Value()))
-				fmt.Printf("%d analytics entries queued\n", int(analyticsMetrics.AnalyticsMetrics.EntriesQueued.Value()))
-				fmt.Printf("%d analytics entries flushed\n", int(analyticsMetrics.AnalyticsMetrics.EntriesFlushed.Value()))
+				fmt.Printf("%d ping stats entries received\n", int(analyticsMetrics.PingStatsMetrics.EntriesReceived.Value()))
+				fmt.Printf("%d ping stats entries submitted\n", int(analyticsMetrics.PingStatsMetrics.EntriesSubmitted.Value()))
+				fmt.Printf("%d ping stats entries queued\n", int(analyticsMetrics.PingStatsMetrics.EntriesQueued.Value()))
+				fmt.Printf("%d ping stats entries flushed\n", int(analyticsMetrics.PingStatsMetrics.EntriesFlushed.Value()))
+				fmt.Printf("%d relay stats entries received\n", int(analyticsMetrics.RelayStatsMetrics.EntriesReceived.Value()))
+				fmt.Printf("%d relay stats entries submitted\n", int(analyticsMetrics.RelayStatsMetrics.EntriesSubmitted.Value()))
+				fmt.Printf("%d relay stats entries queued\n", int(analyticsMetrics.RelayStatsMetrics.EntriesQueued.Value()))
+				fmt.Printf("%d relay stats entries flushed\n", int(analyticsMetrics.RelayStatsMetrics.EntriesFlushed.Value()))
 				fmt.Printf("-----------------------------\n")
 
 				time.Sleep(time.Second * 10)

@@ -32,7 +32,7 @@ type GoogleBigQueryPingStatsWriter struct {
 	Logger        log.Logger
 	TableInserter *bigquery.Inserter
 
-	entries chan *StatsEntry
+	entries chan *PingStatsEntry
 }
 
 func NewGoogleBigQueryPingStatsWriter(client *bigquery.Client, logger log.Logger, metrics *metrics.AnalyticsMetrics, dataset, table string) GoogleBigQueryPingStatsWriter {
@@ -62,9 +62,6 @@ func (bq *GoogleBigQueryPingStatsWriter) WriteLoop(ctx context.Context) {
 
 type RelayStatsWriter interface {
 	Write(ctx context.Context, entry *RelayStatsEntry) error
-	NumSubmitted() uint64
-	NumQueued() uint64
-	NumFlushed() uint64
 }
 
 type NoOpRelayStatsWriter struct {
@@ -82,9 +79,6 @@ type GoogleBigQueryRelayStatsWriter struct {
 	TableInserter *bigquery.Inserter
 
 	entries chan *RelayStatsEntry
-
-	submitted uint64
-	flushed   uint64
 }
 
 func NewGoogleBigQueryRelayStatsWriter(client *bigquery.Client, logger log.Logger, metrics *metrics.AnalyticsMetrics, dataset, table string) GoogleBigQueryRelayStatsWriter {
@@ -97,7 +91,7 @@ func NewGoogleBigQueryRelayStatsWriter(client *bigquery.Client, logger log.Logge
 }
 
 func (bq *GoogleBigQueryRelayStatsWriter) Write(ctx context.Context, entry *RelayStatsEntry) error {
-	atomic.AddUint64(&bq.submitted, 1)
+	bq.Metrics.EntriesSubmitted.Add(1)
 	bq.entries <- entry
 	return nil
 }
@@ -106,21 +100,8 @@ func (bq *GoogleBigQueryRelayStatsWriter) WriteLoop(ctx context.Context) {
 	for entry := range bq.entries {
 		if err := bq.TableInserter.Put(ctx, entry); err != nil {
 			level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)
-			bq.Metrics.RelayStatsErrorMetrics.AnalyticsWriteFailure.Add(1)
+			bq.Metrics.ErrorMetrics.WriteFailure.Add(1)
 		}
-		atomic.AddUint64(&bq.flushed, 1)
-		bq.Metrics.RelayStatsEntriesWritten.Add(1)
+		bq.Metrics.EntriesFlushed.Add(1)
 	}
-}
-
-func (bq *GoogleBigQueryRelayStatsWriter) NumSubmitted() uint64 {
-	return atomic.LoadUint64(&bq.submitted)
-}
-
-func (bq *GoogleBigQueryRelayStatsWriter) NumQueued() uint64 {
-	return uint64(len(bq.entries))
-}
-
-func (bq *GoogleBigQueryRelayStatsWriter) NumFlushed() uint64 {
-	return atomic.LoadUint64(&bq.flushed)
 }

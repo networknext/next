@@ -438,13 +438,6 @@ func main() {
 		}
 	}
 
-	// analytics
-
-	analyticsMetrics, err := metrics.NewAnalyticsMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create analytics metrics", "err", err)
-	}
-
 	// ping stats
 	var pingStatsPublisher analytics.PingStatsPublisher = &analytics.NoOpPingStatsPublisher{}
 	{
@@ -473,7 +466,7 @@ func main() {
 					Timeout:        time.Minute,
 				}
 
-				pubsub, err := analytics.NewGooglePubSubPingStatsPublisher(pubsubCtx, analyticsMetrics, logger, gcpProjectID, "ping_stats", settings)
+				pubsub, err := analytics.NewGooglePubSubPingStatsPublisher(pubsubCtx, &relayBackendMetrics.PingStatsMetrics, logger, gcpProjectID, "ping_stats", settings)
 				if err != nil {
 					level.Error(logger).Log("msg", "could not create analytics pubsub publisher", "err", err)
 					os.Exit(1)
@@ -559,7 +552,7 @@ func main() {
 					Timeout:        time.Minute,
 				}
 
-				pubsub, err := analytics.NewGooglePubSubRelayStatsPublisher(pubsubCtx, analyticsMetrics, logger, gcpProjectID, "relay_stats", settings)
+				pubsub, err := analytics.NewGooglePubSubRelayStatsPublisher(pubsubCtx, &relayBackendMetrics.RelayStatsMetrics, logger, gcpProjectID, "relay_stats", settings)
 				if err != nil {
 					level.Error(logger).Log("msg", "could not create analytics pubsub publisher", "err", err)
 					os.Exit(1)
@@ -732,12 +725,12 @@ func main() {
 			fmt.Printf("route matrix update: %.2f milliseconds\n", optimizeMetrics.DurationGauge.Value())
 			fmt.Printf("cost matrix bytes: %d\n", int(costMatrixMetrics.Bytes.Value()))
 			fmt.Printf("route matrix bytes: %d\n", int(routeMatrixMetrics.Bytes.Value()))
-			fmt.Printf("%d analytics entries submitted\n", int(relayBackendMetrics.AnalyticsMetrics.EntriesSubmitted.Value()))
-			fmt.Printf("%d analytics entries queued\n", int(relayBackendMetrics.AnalyticsMetrics.EntriesQueued.Value()))
-			fmt.Printf("%d analytics entries flushed\n", int(relayBackendMetrics.AnalyticsMetrics.EntriesFlushed.Value()))
-			fmt.Printf("%d analytics rs entries submitted\n", relayStatsPublisher.NumSubmitted())
-			fmt.Printf("%d analytics rs entries queued\n", relayStatsPublisher.NumQueued())
-			fmt.Printf("%d analytics rs entries flushed\n", relayStatsPublisher.NumFlushed())
+			fmt.Printf("%d ping stats entries submitted\n", int(relayBackendMetrics.PingStatsMetrics.EntriesSubmitted.Value()))
+			fmt.Printf("%d ping stats entries queued\n", int(relayBackendMetrics.PingStatsMetrics.EntriesQueued.Value()))
+			fmt.Printf("%d ping stats entries flushed\n", int(relayBackendMetrics.PingStatsMetrics.EntriesFlushed.Value()))
+			fmt.Printf("%d relay stats entries submitted\n", int(relayBackendMetrics.RelayStatsMetrics.EntriesSubmitted.Value()))
+			fmt.Printf("%d relay stats entries queued\n", int(relayBackendMetrics.RelayStatsMetrics.EntriesQueued.Value()))
+			fmt.Printf("%d relay stats entries flushed\n", int(relayBackendMetrics.RelayStatsMetrics.EntriesFlushed.Value()))
 			fmt.Printf("-----------------------------\n")
 
 			time.Sleep(syncInterval)
