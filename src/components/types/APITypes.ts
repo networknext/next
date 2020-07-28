@@ -38,8 +38,8 @@ export interface SessionMeta {
 
 export interface Slice {
 	timestamp: number;
-	next: Array<Stat>;
-	direct: Array<Stat>;
+	next: Stat;
+	direct: Stat;
 	envelope: Envelope;
 	onNetworkNext: boolean
 	isMultiPath: boolean
@@ -47,9 +47,9 @@ export interface Slice {
 }
 
 export interface Stat {
-  rtt: number;
-  jitter: number;
-  packetLoss: number;
+  rtt: string;
+  jitter: string;
+  packetLoss: string;
 }
 
 export interface Envelope {

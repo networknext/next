@@ -273,15 +273,20 @@ export default class SessionDetails extends Vue {
   private meta: any = null
   private slices: Array<Slice> = []
 
-  private latencyComparisonChart: HTMLElement = document.createElement('div')
-  private jitterComparisonChart: HTMLElement = document.createElement('div')
-  private packetLossComparisonChart: HTMLElement = document.createElement('div')
-  private bandwidthChart: HTMLElement = document.createElement('div')
+  // TODO: Replace these with a null uPlot instance some how
+  private latencyComparisonChart: any
+  private jitterComparisonChart: any
+  private packetLossComparisonChart: any
+  private bandwidthChart: any
 
+  // TODO: Replace these with a null Deck/Mapbox instance some how
   private deckGlInstance: any = null
   private mapInstance: any = null
 
+  // TODO: Make ENV Var
   private accessToken = 'pk.eyJ1Ijoibm5zZWN1cml0eSIsImEiOiJja2FmaXE1Y2cwZGRiMzBub2p3cnE4c3czIn0.3QIueg8fpEy5cBtqRuXMxw'
+
+  private detailsLoop = 0
 
   private viewState = {
     latitude: 0,
@@ -299,13 +304,13 @@ export default class SessionDetails extends Vue {
 
   private mounted () {
     this.fetchSessionDetails()
-    /* this.detailsLoop = setInterval(() => {
+    this.detailsLoop = setInterval(() => {
       this.fetchSessionDetails()
-    }, 1000) */
+    }, 1000)
   }
 
   private beforeDestroy () {
-    // clearInterval(this.detailsLoop)
+    clearInterval(this.detailsLoop)
   }
 
   private fetchSessionDetails () {
@@ -348,7 +353,7 @@ export default class SessionDetails extends Vue {
             data: [this.meta],
             opacity: 0.8,
             getPosition: (d: any) => [d.location.longitude, d.location.latitude],
-            getWeight: (d: any) => 1,
+            getWeight: () => 1,
             cellSizePixels: cellSize,
             colorRange: this.meta.on_network_next ? [NNCOLOR] : [DIRECTCOLOR],
             gpuAggregation,
@@ -411,31 +416,34 @@ export default class SessionDetails extends Vue {
       []
     ]
 
-    const latencyChartElement = document.getElementById('latency-chart-1')
-    const jitterChartElement = document.getElementById('jitter-chart-1')
-    const packetLossChartElement = document.getElementById('packet-loss-chart-1')
-    const bandwidthChartElement = document.getElementById('bandwidth-chart-1')
+    const latencyChartElement: HTMLElement | null = document.getElementById('latency-chart-1')
+
+    const jitterChartElement: HTMLElement | null = document.getElementById('jitter-chart-1')
+
+    const packetLossChartElement: HTMLElement | null = document.getElementById('packet-loss-chart-1')
+
+    const bandwidthChartElement: HTMLElement | null = document.getElementById('bandwidth-chart-1')
 
     let lastEntryNN = false
     let countNN = 0
     let directOnly = true
 
-    this.slices.map((entry: any) => {
-      const timestamp = new Date(entry.timestamp).getTime() / 1000
-      const onNN = entry.on_network_next
+    this.slices.map((slice: any) => {
+      const timestamp = new Date(slice.timestamp).getTime() / 1000
+      const onNN = slice.onNetworkNext
 
       if (directOnly && onNN) {
         directOnly = false
       }
 
-      let nextRTT = parseFloat(entry.next.rtt)
-      const directRTT = parseFloat(entry.direct.rtt)
+      let nextRTT = parseFloat(slice.next.rtt)
+      const directRTT = parseFloat(slice.direct.rtt)
 
-      let nextJitter = parseFloat(entry.next.jitter)
-      const directJitter = parseFloat(entry.direct.jitter)
+      let nextJitter = parseFloat(slice.next.jitter)
+      const directJitter = parseFloat(slice.direct.jitter)
 
-      let nextPL = parseFloat(entry.next.packet_loss)
-      const directPL = parseFloat(entry.direct.packet_loss)
+      let nextPL = parseFloat(slice.next.packet_loss)
+      const directPL = parseFloat(slice.direct.packet_loss)
 
       if (lastEntryNN && !onNN) {
         countNN = 0
@@ -449,21 +457,21 @@ export default class SessionDetails extends Vue {
       }
 
       // Latency
-      let next = (entry.is_multipath && nextRTT >= directRTT) ? directRTT : nextRTT
+      let next = (slice.is_multipath && nextRTT >= directRTT) ? directRTT : nextRTT
       let direct = directRTT
       latencyData[0].push(timestamp)
       latencyData[1].push(next)
       latencyData[2].push(direct)
 
       // Jitter
-      next = (entry.is_multipath && nextJitter >= directJitter) ? directJitter : nextJitter
+      next = (slice.is_multipath && nextJitter >= directJitter) ? directJitter : nextJitter
       direct = directJitter
       jitterData[0].push(timestamp)
       jitterData[1].push(next)
       jitterData[2].push(direct)
 
       // Packetloss
-      next = (entry.is_multipath && nextPL >= directPL) ? directPL : nextPL
+      next = (slice.is_multipath && nextPL >= directPL) ? directPL : nextPL
       direct = directPL
       packetLossData[0].push(timestamp)
       packetLossData[1].push(next)
@@ -471,8 +479,8 @@ export default class SessionDetails extends Vue {
 
       // Bandwidth
       bandwidthData[0].push(timestamp)
-      bandwidthData[1].push(entry.envelope.up)
-      bandwidthData[2].push(entry.envelope.down)
+      bandwidthData[1].push(slice.envelope.up)
+      bandwidthData[2].push(slice.envelope.down)
 
       lastEntryNN = onNN
     })
@@ -505,7 +513,7 @@ export default class SessionDetails extends Vue {
 
     let chartWidth = 0
 
-    if (latencyChartElement !== null) {
+    if (latencyChartElement) {
       chartWidth = latencyChartElement.clientWidth
     }
 
@@ -643,35 +651,35 @@ export default class SessionDetails extends Vue {
       ]
     }
 
-    if (this.latencyComparisonChart !== null) {
+    if (this.latencyComparisonChart) {
       this.latencyComparisonChart.destroy()
     }
 
-    if (latencyChartElement !== null) {
-      this.bandwidthChart = new uPlot(latencyComparisonOpts, bandwidthData, latencyChartElement)
+    if (latencyChartElement) {
+      this.latencyComparisonChart = new uPlot(latencyComparisonOpts, bandwidthData, latencyChartElement)
     }
 
-    if (this.jitterComparisonChart !== null) {
+    if (this.jitterComparisonChart) {
       this.jitterComparisonChart.destroy()
     }
 
-    if (jitterChartElement !== null) {
-      this.bandwidthChart = new uPlot(latencyComparisonOpts, bandwidthData, jitterChartElement)
+    if (jitterChartElement) {
+      this.jitterComparisonChart = new uPlot(latencyComparisonOpts, bandwidthData, jitterChartElement)
     }
 
-    if (this.packetLossComparisonChart !== null) {
+    if (this.packetLossComparisonChart) {
       this.packetLossComparisonChart.destroy()
     }
 
-    if (packetLossChartElement !== null) {
-      this.bandwidthChart = new uPlot(packetLossComparisonOpts, bandwidthData, packetLossChartElement)
+    if (packetLossChartElement) {
+      this.packetLossComparisonChart = new uPlot(packetLossComparisonOpts, bandwidthData, packetLossChartElement)
     }
 
-    if (this.bandwidthChart !== null) {
+    if (this.bandwidthChart) {
       this.bandwidthChart.destroy()
     }
 
-    if (bandwidthChartElement !== null) {
+    if (bandwidthChartElement) {
       this.bandwidthChart = new uPlot(bandwidthOpts, bandwidthData, bandwidthChartElement)
     }
   }

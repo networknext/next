@@ -95,8 +95,8 @@ export default class SessionMap extends Vue {
           id: 'nn-layer',
           data: onNN,
           opacity: 0.8,
-          getPosition: (d: any) => [d[0], d[1]],
-          getWeight: (d: any) => 1,
+          getPosition: (d: Array<number>) => [d[0], d[1]],
+          getWeight: () => 1,
           cellSizePixels: cellSize,
           colorRange: [
             [
@@ -113,8 +113,8 @@ export default class SessionMap extends Vue {
           id: 'direct-layer',
           data: direct,
           opacity: 0.8,
-          getPosition: (d: any) => [d[0], d[1]],
-          getWeight: (d: any) => 1,
+          getPosition: (d: Array<number>) => [d[0], d[1]],
+          getWeight: () => 1,
           cellSizePixels: cellSize,
           colorRange: [
             [
