@@ -35,3 +35,24 @@ export interface SessionMeta {
   platform: string;
   buyerID: string;
 }
+
+export interface Slice {
+	timestamp: number;
+	next: Array<Stat>;
+	direct: Array<Stat>;
+	envelope: Envelope;
+	onNetworkNext: boolean
+	isMultiPath: boolean
+	isTryBeforeYouBuy: boolean
+}
+
+export interface Stat {
+  rtt: number;
+  jitter: number;
+  packetLoss: number;
+}
+
+export interface Envelope {
+  up: number;
+  down: number;
+}

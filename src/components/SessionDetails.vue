@@ -254,6 +254,7 @@ import { ScreenGridLayer } from '@deck.gl/aggregation-layers'
 
 import uPlot from 'uplot'
 import 'uplot/dist/uPlot.min.css'
+import { Slice } from './types/APITypes'
 
 /**
  * TODO: Cleanup template
@@ -270,12 +271,12 @@ export default class SessionDetails extends Vue {
   private apiService: APIService
 
   private meta: any = null
-  private slices: Array<any> = []
+  private slices: Array<Slice> = []
 
-  private latencyComparisonChart: any = null
-  private jitterComparisonChart: any = null
-  private packetLossComparisonChart: any = null
-  private bandwidthChart: any = null
+  private latencyComparisonChart: HTMLElement = document.createElement('div')
+  private jitterComparisonChart: HTMLElement = document.createElement('div')
+  private packetLossComparisonChart: HTMLElement = document.createElement('div')
+  private bandwidthChart: HTMLElement = document.createElement('div')
 
   private deckGlInstance: any = null
   private mapInstance: any = null
@@ -382,9 +383,6 @@ export default class SessionDetails extends Vue {
             this.deckGlInstance.setProps({ layers: [sessionLocationLayer] })
           }
         })
-
-        console.log(this.meta)
-        console.log(this.slices)
       })
       .catch((error: any) => {
         console.log(error)
@@ -412,6 +410,11 @@ export default class SessionDetails extends Vue {
       [],
       []
     ]
+
+    const latencyChartElement = document.getElementById('latency-chart-1')
+    const jitterChartElement = document.getElementById('jitter-chart-1')
+    const packetLossChartElement = document.getElementById('packet-loss-chart-1')
+    const bandwidthChartElement = document.getElementById('bandwidth-chart-1')
 
     let lastEntryNN = false
     let countNN = 0
@@ -489,7 +492,7 @@ export default class SessionDetails extends Vue {
         stroke: 'rgb(0, 109, 44)',
         fill: 'rgba(0, 109, 44, 0.1)',
         label: 'Network Next',
-        value: (self: any, rawValue: any) => rawValue.toFixed(2)
+        value: (self: uPlot, rawValue: number) => rawValue.toFixed(2)
       })
     }
 
@@ -497,11 +500,17 @@ export default class SessionDetails extends Vue {
       stroke: 'rgb(49, 130, 189)',
       fill: 'rgba(49, 130, 189, 0.1)',
       label: 'Direct',
-      value: (self: any, rawValue: any) => rawValue.toFixed(2)
+      value: (self: uPlot, rawValue: number) => rawValue.toFixed(2)
     })
 
+    let chartWidth = 0
+
+    if (latencyChartElement !== null) {
+      chartWidth = latencyChartElement.clientWidth
+    }
+
     const latencyComparisonOpts: uPlot.Options = {
-      width: document.getElementById('latency-chart-1')!.clientWidth,
+      width: chartWidth,
       height: 260,
       cursor: {
         drag: {
@@ -510,10 +519,10 @@ export default class SessionDetails extends Vue {
         }
       },
       scales: {
-        'ms': {
+        ms: {
           from: 'y',
           auto: false,
-          range: (self: any, min: any, max: any) => [
+          range: (self: uPlot, min: number, max: number): uPlot.MinMax => [
             0,
             max
           ]
@@ -529,7 +538,7 @@ export default class SessionDetails extends Vue {
           show: true,
           gap: 5,
           size: 70,
-          values: (self: any, ticks: any) => ticks.map((rawValue: any) => rawValue + 'ms')
+          values: (self: uPlot, ticks: Array<number>) => ticks.map((rawValue: number) => rawValue + 'ms')
         }
       ]
     }
@@ -543,7 +552,7 @@ export default class SessionDetails extends Vue {
         stroke: 'rgb(0, 109, 44)',
         fill: 'rgba(0, 109, 44, 0.1)',
         label: 'Network Next',
-        value: (self: any, rawValue: any) => rawValue.toFixed(2)
+        value: (self: uPlot, rawValue: number) => rawValue.toFixed(2)
       })
     }
 
@@ -551,11 +560,13 @@ export default class SessionDetails extends Vue {
       stroke: 'rgba(49, 130, 189)',
       fill: 'rgba(49, 130, 189, 0.1)',
       label: 'Direct',
-      value: (self: any, rawValue: any) => rawValue.toFixed(2)
+      value: (self: uPlot, rawValue: number) => rawValue.toFixed(2)
     })
 
+    const minMax: uPlot.MinMax = [0, 100]
+
     const packetLossComparisonOpts = {
-      width: document.getElementById('latency-chart-1')!.clientWidth,
+      width: chartWidth,
       height: 260,
       cursor: {
         drag: {
@@ -564,9 +575,9 @@ export default class SessionDetails extends Vue {
         }
       },
       scales: {
-        'y': {
+        y: {
           auto: false,
-          range: [0, 100]
+          range: minMax
         }
       },
       series: series,
@@ -578,13 +589,13 @@ export default class SessionDetails extends Vue {
           show: true,
           gap: 5,
           size: 50,
-          values: (self: any, ticks: any) => ticks.map((rawValue: any) => rawValue + '%')
+          values: (self: uPlot, ticks: Array<number>) => ticks.map((rawValue: number) => rawValue + '%')
         }
       ]
     }
 
     const bandwidthOpts = {
-      width: document.getElementById('latency-chart-1')!.clientWidth,
+      width: chartWidth,
       height: 260,
       cursor: {
         drag: {
@@ -596,7 +607,7 @@ export default class SessionDetails extends Vue {
         kbps: {
           from: 'y',
           auto: false,
-          range: (self: any, min: any, max: any) => [
+          range: (self: uPlot, min: number, max: number): uPlot.MinMax => [
             0,
             max
           ]
@@ -624,7 +635,7 @@ export default class SessionDetails extends Vue {
           show: true,
           gap: 5,
           size: 70,
-          values: (self: any, ticks: any) => ticks.map((rawValue: any) => rawValue + 'kbps')
+          values: (self: uPlot, ticks: Array<number>) => ticks.map((rawValue: number) => rawValue + 'kbps')
         },
         {
           show: false
@@ -636,25 +647,33 @@ export default class SessionDetails extends Vue {
       this.latencyComparisonChart.destroy()
     }
 
-    this.latencyComparisonChart = new uPlot(latencyComparisonOpts, latencyData, document.getElementById('latency-chart-1')!)
+    if (latencyChartElement !== null) {
+      this.bandwidthChart = new uPlot(latencyComparisonOpts, bandwidthData, latencyChartElement)
+    }
 
     if (this.jitterComparisonChart !== null) {
       this.jitterComparisonChart.destroy()
     }
 
-    this.jitterComparisonChart = new uPlot(latencyComparisonOpts, jitterData, document.getElementById('jitter-chart-1')!)
+    if (jitterChartElement !== null) {
+      this.bandwidthChart = new uPlot(latencyComparisonOpts, bandwidthData, jitterChartElement)
+    }
 
     if (this.packetLossComparisonChart !== null) {
       this.packetLossComparisonChart.destroy()
     }
 
-    this.packetLossComparisonChart = new uPlot(packetLossComparisonOpts, packetLossData, document.getElementById('packet-loss-chart-1')!)
+    if (packetLossChartElement !== null) {
+      this.bandwidthChart = new uPlot(packetLossComparisonOpts, bandwidthData, packetLossChartElement)
+    }
 
     if (this.bandwidthChart !== null) {
       this.bandwidthChart.destroy()
     }
 
-    this.bandwidthChart = new uPlot(bandwidthOpts, bandwidthData, document.getElementById('bandwidth-chart-1')!)
+    if (bandwidthChartElement !== null) {
+      this.bandwidthChart = new uPlot(bandwidthOpts, bandwidthData, bandwidthChartElement)
+    }
   }
 }
 
