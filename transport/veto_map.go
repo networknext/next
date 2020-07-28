@@ -10,7 +10,7 @@ import (
 	"github.com/networknext/backend/routing"
 )
 
-const NumVetoMapShards = 10000
+const NumVetoMapShards = 1000
 
 type VetoData struct {
 	timestamp int64
@@ -20,10 +20,10 @@ type VetoData struct {
 type VetoMapShard struct {
 	mutex     sync.RWMutex
 	vetoes    map[uint64]VetoData
-	numVetoes uint64
 }
 
 type VetoMap struct {
+	numVetoes uint64
 	shard [NumVetoMapShards]VetoMapShard
 }
 
@@ -36,13 +36,8 @@ func NewVetoMap() *VetoMap {
 	return vetoMap
 }
 
-func (vetoMap *VetoMap) NumVetoes() uint64 {
-	var total uint64
-	for i := 0; i < NumVetoMapShards; i++ {
-		numVetoesInShard := atomic.LoadUint64(&vetoMap.shard[i].numVetoes)
-		total += numVetoesInShard
-	}
-	return total
+func (vetoMap *VetoMap) GetVetoCount() uint64 {
+	return atomic.LoadUint64(&vetoMap.numVetoes)
 }
 
 func (vetoMap *VetoMap) RLock(vetoId uint64) {
@@ -74,6 +69,7 @@ func (vetoMap *VetoMap) SetVeto(vetoId uint64, reason routing.DecisionReason) {
 	_, exists := vetoMap.shard[index].vetoes[vetoId]
 	vetoMap.shard[index].vetoes[vetoId] = vetoData
 	if !exists {
+		atomic.AddUint64(&vetoMap.numVetoes, uint64(1))
 	}
 }
 
@@ -104,7 +100,6 @@ func (vetoMap *VetoMap) TimeoutLoop(ctx context.Context, timeoutSeconds int64, c
 						break
 					}
 					if v.timestamp < timeoutTimestamp {
-						atomic.AddUint64(&vetoMap.shard[index].numVetoes, ^uint64(0))
 						deleteList = append(deleteList, k)
 					}
 					numIterations++
@@ -114,6 +109,7 @@ func (vetoMap *VetoMap) TimeoutLoop(ctx context.Context, timeoutSeconds int64, c
 				for i := range deleteList {
 					// fmt.Printf("timeout veto %x\n", deleteList[i])
 					delete(vetoMap.shard[index].vetoes, deleteList[i])
+					atomic.AddUint64(&vetoMap.numVetoes, ^uint64(0))
 				}
 				vetoMap.shard[index].mutex.Unlock()
 			}
