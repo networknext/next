@@ -21,6 +21,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-redis/redis"
 	"github.com/gorilla/mux"
 	"github.com/networknext/backend/analytics"
 	"github.com/networknext/backend/logging"
@@ -437,86 +438,176 @@ func main() {
 		}
 	}
 
-	// Create a no-op publisher
-	var publisher analytics.PubSubPublisher = &analytics.NoOpPubSubPublisher{}
-	_, emulatorOK = os.LookupEnv("PUBSUB_EMULATOR_HOST")
-	if gcpOK || emulatorOK {
+	// ping stats
+	var pingStatsPublisher analytics.PingStatsPublisher = &analytics.NoOpPingStatsPublisher{}
+	{
+		// Create a no-op publisher
+		_, emulatorOK = os.LookupEnv("PUBSUB_EMULATOR_HOST")
+		if gcpOK || emulatorOK {
 
-		pubsubCtx := ctx
-		if emulatorOK {
-			gcpProjectID = "local"
+			pubsubCtx := ctx
+			if emulatorOK {
+				gcpProjectID = "local"
 
-			var cancelFunc context.CancelFunc
-			pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(5*time.Minute))
-			defer cancelFunc()
+				var cancelFunc context.CancelFunc
+				pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(5*time.Minute))
+				defer cancelFunc()
 
-			level.Info(logger).Log("msg", "Detected pubsub emulator")
-		}
-
-		// Google Pubsub
-		{
-			settings := pubsub.PublishSettings{
-				DelayThreshold: time.Second,
-				CountThreshold: 1,
-				ByteThreshold:  1 << 14,
-				NumGoroutines:  runtime.GOMAXPROCS(0),
-				Timeout:        time.Minute,
+				level.Info(logger).Log("msg", "Detected pubsub emulator")
 			}
 
-			pubsub, err := analytics.NewGooglePubSubPublisher(pubsubCtx, &relayBackendMetrics.AnalyticsMetrics, logger, gcpProjectID, "ping_stats", settings)
-			if err != nil {
-				level.Error(logger).Log("msg", "could not create analytics pubsub publisher", "err", err)
-				os.Exit(1)
-			}
+			// Google Pubsub
+			{
+				settings := pubsub.PublishSettings{
+					DelayThreshold: time.Second,
+					CountThreshold: 1,
+					ByteThreshold:  1 << 14,
+					NumGoroutines:  runtime.GOMAXPROCS(0),
+					Timeout:        time.Minute,
+				}
 
-			publisher = pubsub
-		}
-	}
+				pubsub, err := analytics.NewGooglePubSubPingStatsPublisher(pubsubCtx, &relayBackendMetrics.PingStatsMetrics, logger, gcpProjectID, "ping_stats", settings)
+				if err != nil {
+					level.Error(logger).Log("msg", "could not create analytics pubsub publisher", "err", err)
+					os.Exit(1)
+				}
 
-	go func() {
-		sleepTime := time.Minute
-		if publishInterval, ok := os.LookupEnv("PING_STATS_PUBLISH_INTERVAL"); ok {
-			if duration, err := time.ParseDuration(publishInterval); err == nil {
-				sleepTime = duration
-			} else {
-				level.Error(logger).Log("msg", "could not parse publish interval", "err", err)
+				pingStatsPublisher = pubsub
 			}
 		}
 
-		for {
-			time.Sleep(sleepTime)
-			cpy := statsdb.MakeCopy()
-			length := routing.TriMatrixLength(len(cpy.Entries))
-
-			entries := make([]analytics.StatsEntry, length)
-			ids := make([]uint64, length)
-
-			idx := 0
-			for k := range cpy.Entries {
-				ids[idx] = k
-				idx++
-			}
-
-			for i := 1; i < len(cpy.Entries); i++ {
-				for j := 0; j < i; j++ {
-					idA := ids[i]
-					idB := ids[j]
-
-					rtt, jitter, pl := cpy.GetSample(idA, idB)
-
-					entries[routing.TriMatrixIndex(i, j)] = analytics.StatsEntry{
-						RelayA:     idA,
-						RelayB:     idB,
-						RTT:        rtt,
-						Jitter:     jitter,
-						PacketLoss: pl,
-					}
+		go func() {
+			sleepTime := time.Minute
+			if publishInterval, ok := os.LookupEnv("PING_STATS_PUBLISH_INTERVAL"); ok {
+				if duration, err := time.ParseDuration(publishInterval); err == nil {
+					sleepTime = duration
+				} else {
+					level.Error(logger).Log("msg", "could not parse publish interval", "err", err)
 				}
 			}
 
-			publisher.Publish(ctx, entries)
+			for {
+				time.Sleep(sleepTime)
+				cpy := statsdb.MakeCopy()
+				length := routing.TriMatrixLength(len(cpy.Entries))
+
+				entries := make([]analytics.PingStatsEntry, length)
+				ids := make([]uint64, length)
+
+				idx := 0
+				for k := range cpy.Entries {
+					ids[idx] = k
+					idx++
+				}
+
+				for i := 1; i < len(cpy.Entries); i++ {
+					for j := 0; j < i; j++ {
+						idA := ids[i]
+						idB := ids[j]
+
+						rtt, jitter, pl := cpy.GetSample(idA, idB)
+
+						entries[routing.TriMatrixIndex(i, j)] = analytics.PingStatsEntry{
+							RelayA:     idA,
+							RelayB:     idB,
+							RTT:        rtt,
+							Jitter:     jitter,
+							PacketLoss: pl,
+						}
+					}
+				}
+
+				if err := pingStatsPublisher.Publish(ctx, entries); err != nil {
+					level.Error(logger).Log("err", err)
+					os.Exit(1)
+				}
+			}
+		}()
+	}
+
+	// relay stats
+	var relayStatsPublisher analytics.RelayStatsPublisher = &analytics.NoOpRelayStatsPublisher{}
+	{
+		_, emulatorOK = os.LookupEnv("PUBSUB_EMULATOR_HOST")
+		if gcpOK || emulatorOK {
+
+			pubsubCtx := ctx
+			if emulatorOK {
+				gcpProjectID = "local"
+
+				var cancelFunc context.CancelFunc
+				pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(5*time.Minute))
+				defer cancelFunc()
+
+				level.Info(logger).Log("msg", "Detected pubsub emulator")
+			}
+
+			// Google Pubsub
+			{
+				settings := pubsub.PublishSettings{
+					DelayThreshold: time.Second,
+					CountThreshold: 1,
+					ByteThreshold:  1 << 14,
+					NumGoroutines:  runtime.GOMAXPROCS(0),
+					Timeout:        time.Minute,
+				}
+
+				pubsub, err := analytics.NewGooglePubSubRelayStatsPublisher(pubsubCtx, &relayBackendMetrics.RelayStatsMetrics, logger, gcpProjectID, "relay_stats", settings)
+				if err != nil {
+					level.Error(logger).Log("msg", "could not create analytics pubsub publisher", "err", err)
+					os.Exit(1)
+				}
+
+				relayStatsPublisher = pubsub
+			}
 		}
-	}()
+
+		go func() {
+			sleepTime := time.Second * 10
+			if publishInterval, ok := os.LookupEnv("RELAY_STATS_PUBLISH_INTERVAL"); ok {
+				if duration, err := time.ParseDuration(publishInterval); err == nil {
+					sleepTime = duration
+				} else {
+					level.Error(logger).Log("msg", "could not parse publish interval", "err", err)
+				}
+			}
+
+			for {
+				time.Sleep(sleepTime)
+
+				hgetallResult := redisClientRelays.HGetAll(routing.HashKeyAllRelays)
+				if hgetallResult.Err() != nil && hgetallResult.Err() != redis.Nil {
+					level.Error(logger).Log("msg", "failed to get other relays", "err", hgetallResult.Err())
+				}
+
+				entries := make([]analytics.RelayStatsEntry, len(hgetallResult.Val()))
+
+				idx := 0
+				for _, v := range hgetallResult.Val() {
+					var relay routing.RelayCacheEntry
+					if err := relay.UnmarshalBinary([]byte(v)); err != nil {
+						level.Error(logger).Log("msg", "failed to get relay from redis", "err", err)
+						continue
+					}
+
+					entries[idx] = analytics.RelayStatsEntry{
+						ID:          relay.ID,
+						NumSessions: relay.TrafficStats.SessionCount,
+						CPUUsage:    relay.CPUUsage,
+						MemUsage:    relay.MemUsage,
+						Tx:          relay.TrafficStats.BytesSent,
+						Rx:          relay.TrafficStats.BytesReceived,
+					}
+				}
+
+				if err := relayStatsPublisher.Publish(ctx, entries); err != nil {
+					level.Error(logger).Log("err", err)
+					os.Exit(1)
+				}
+			}
+		}()
+
+	}
 
 	// Periodically generate cost matrix from stats db
 	cmsyncinterval := os.Getenv("COST_MATRIX_INTERVAL")
@@ -634,9 +725,12 @@ func main() {
 			fmt.Printf("route matrix update: %.2f milliseconds\n", optimizeMetrics.DurationGauge.Value())
 			fmt.Printf("cost matrix bytes: %d\n", int(costMatrixMetrics.Bytes.Value()))
 			fmt.Printf("route matrix bytes: %d\n", int(routeMatrixMetrics.Bytes.Value()))
-			fmt.Printf("%d analytics entries submitted\n", int(relayBackendMetrics.AnalyticsMetrics.EntriesSubmitted.Value()))
-			fmt.Printf("%d analytics entries queued\n", int(relayBackendMetrics.AnalyticsMetrics.EntriesQueued.Value()))
-			fmt.Printf("%d analytics entries flushed\n", int(relayBackendMetrics.AnalyticsMetrics.EntriesFlushed.Value()))
+			fmt.Printf("%d ping stats entries submitted\n", int(relayBackendMetrics.PingStatsMetrics.EntriesSubmitted.Value()))
+			fmt.Printf("%d ping stats entries queued\n", int(relayBackendMetrics.PingStatsMetrics.EntriesQueued.Value()))
+			fmt.Printf("%d ping stats entries flushed\n", int(relayBackendMetrics.PingStatsMetrics.EntriesFlushed.Value()))
+			fmt.Printf("%d relay stats entries submitted\n", int(relayBackendMetrics.RelayStatsMetrics.EntriesSubmitted.Value()))
+			fmt.Printf("%d relay stats entries queued\n", int(relayBackendMetrics.RelayStatsMetrics.EntriesQueued.Value()))
+			fmt.Printf("%d relay stats entries flushed\n", int(relayBackendMetrics.RelayStatsMetrics.EntriesFlushed.Value()))
 			fmt.Printf("-----------------------------\n")
 
 			time.Sleep(syncInterval)
