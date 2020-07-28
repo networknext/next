@@ -439,6 +439,9 @@ func main() {
 		return rm
 	}
 
+	var routeMatrixBytes int64
+	var routeMatrixBytesMutex sync.RWMutex
+
 	// Sync route matrix
 	{
 		if uri, ok := os.LookupEnv("ROUTE_MATRIX_URI"); ok {
@@ -467,7 +470,11 @@ func main() {
 					start := time.Now()
 
 					// Don't swap route matrix if we fail to read
-					routeMatrixBytes, err := newRouteMatrix.ReadFrom(matrixReader)
+					bytes, err := newRouteMatrix.ReadFrom(matrixReader)
+					routeMatrixBytesMutex.Lock()
+					routeMatrixBytes = bytes
+					routeMatrixBytesMutex.Unlock()
+
 					if err != nil {
 						if env != "local" {
 							level.Warn(logger).Log("envvar", "ROUTE_MATRIX_URI", "value", uri, "msg", "could not read route matrix", "err", err)
@@ -490,7 +497,7 @@ func main() {
 					routeMatrix = &newRouteMatrix
 					routeMatrixMutex.Unlock()
 
-					serverBackendMetrics.RouteMatrixBytes.Set(float64(routeMatrixBytes))
+					serverBackendMetrics.RouteMatrixBytes.Set(float64(bytes))
 
 					time.Sleep(syncInterval)
 				}
@@ -557,6 +564,16 @@ func main() {
 		}
 
 		go func() {
+			// Write critical metrics to a stats.txt file
+			statsFile, err := os.OpenFile("stats.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+			if err != nil {
+				level.Error(logger).Log("msg", "could not open stats file", "err", err)
+				os.Exit(1)
+			}
+			defer statsFile.Close()
+
+			statsLogger := log.NewLogfmtLogger(statsFile)
+
 			for {
 				serverBackendMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
 				serverBackendMetrics.MemoryAllocated.Set(memoryUsed())
@@ -604,6 +621,13 @@ func main() {
 				}
 
 				fmt.Printf("-----------------------------\n")
+
+				statsLogger.Log("num_servers", numServers)
+				statsLogger.Log("num_sessions", numSessions)
+
+				routeMatrixBytesMutex.RLock()
+				statsLogger.Log("route_matrix_bytes", routeMatrixBytes)
+				routeMatrixBytesMutex.RUnlock()
 
 				time.Sleep(time.Second)
 			}
