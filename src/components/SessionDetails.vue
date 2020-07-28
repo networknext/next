@@ -253,6 +253,7 @@ import { Deck } from '@deck.gl/core'
 import { ScreenGridLayer } from '@deck.gl/aggregation-layers'
 
 import uPlot from 'uplot'
+import 'uplot/dist/uPlot.min.css'
 
 /**
  * TODO: Cleanup template
@@ -479,17 +480,6 @@ export default class SessionDetails extends Vue {
       packetLossData.splice(1, 1)
     }
 
-    const defaultOpts = {
-      width: document.getElementById('latency-chart-1')!.clientWidth,
-      height: 260,
-      cursor: {
-        drag: {
-          x: false,
-          y: false
-        }
-      }
-    }
-
     let series = [
       {}
     ]
@@ -510,7 +500,7 @@ export default class SessionDetails extends Vue {
       value: (self: any, rawValue: any) => rawValue.toFixed(2)
     })
 
-    const latencyComparisonOpts = {
+    const latencyComparisonOpts: uPlot.Options = {
       width: document.getElementById('latency-chart-1')!.clientWidth,
       height: 260,
       cursor: {
@@ -519,8 +509,8 @@ export default class SessionDetails extends Vue {
           y: false
         }
       },
-      /* scales: {
-        ms: {
+      scales: {
+        'ms': {
           from: 'y',
           auto: false,
           range: (self: any, min: any, max: any) => [
@@ -528,7 +518,7 @@ export default class SessionDetails extends Vue {
             max
           ]
         }
-      }, */
+      },
       series: series,
       axes: [
         {
@@ -573,12 +563,12 @@ export default class SessionDetails extends Vue {
           y: false
         }
       },
-      /* scales: {
-        y: {
+      scales: {
+        'y': {
           auto: false,
           range: [0, 100]
         }
-      }, */
+      },
       series: series,
       axes: [
         {
@@ -602,7 +592,7 @@ export default class SessionDetails extends Vue {
           y: false
         }
       },
-      /* scales: {
+      scales: {
         kbps: {
           from: 'y',
           auto: false,
@@ -611,7 +601,7 @@ export default class SessionDetails extends Vue {
             max
           ]
         }
-      }, */
+      },
       series: [
         {},
         {
