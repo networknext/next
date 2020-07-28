@@ -5,7 +5,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-	"fmt"
+	// "fmt"
 
 	"github.com/networknext/backend/routing"
 )
@@ -124,7 +124,7 @@ func (sessionMap *SessionMap) TimeoutLoop(ctx context.Context, timeoutSeconds in
 				sessionMap.shard[index].mutex.RUnlock()
 				sessionMap.shard[index].mutex.Lock()
 				for i := range deleteList {
-					fmt.Printf("timeout session %x\n", deleteList[i])
+					// fmt.Printf("timeout session %x\n", deleteList[i])
 					delete(sessionMap.shard[index].sessions, deleteList[i])
 					atomic.AddUint64(&sessionMap.NumSessions, ^uint64(0))
 				}
