@@ -12097,7 +12097,7 @@ void next_server_tag_session( next_server_t * server, const next_address_t * add
         next_printf( NEXT_LOG_LEVEL_INFO, "server tagged session %" PRIx64 " as '%s' [%" PRIx64 "]", session_id, tag, tag_id );
     }
 
-    command->type = NEXT_SERVER_COMMAND_UPGRADE_SESSION;
+    command->type = NEXT_SERVER_COMMAND_TAG_SESSION;
     command->address = *address;
     command->tag = tag_id;
 
