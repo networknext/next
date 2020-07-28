@@ -300,6 +300,10 @@ dev-server-backend: build-server-backend ## runs a local server backend
 dev-billing: build-billing ## runs a local billing service
 	@PORT=41000 ./dist/billing
 
+.PHONY: dev-analytics
+dev-analytics: build-analytics ## runs a local analytics service
+	@PORT=41001 ./dist/analytics
+
 .PHONY: dev-portal-cruncher
 dev-portal-cruncher: build-portal-cruncher ## runs a local portal cruncher
 	@HTTP_PORT=42000 CRUNCHER_PORT=5555 ./dist/portal_cruncher
@@ -332,7 +336,6 @@ $(DIST_DIR)/$(SDKNAME).so:
 .PHONY: build-sdk
 build-sdk: $(DIST_DIR)/$(SDKNAME).so ## builds the sdk
 
-
 PHONY: build-portal-cruncher
 build-portal-cruncher: ## builds the portal_cruncher binary
 	@printf "Building portal_cruncher... "
@@ -362,14 +365,18 @@ build-relay-backend: ## builds the relay backend binary
 
 .PHONY: deploy-relay-backend
 deploy-relay-backend: ## builds and deploys the relay backend to dev
-	@printf "Deploying relay backend to dev... \n\n"
-	gcloud compute --project "network-next-v3-dev" ssh relay-backend-dev-1 -- 'cd /app && sudo ./bootstrap.sh -b $(ARTIFACT_BUCKET) -a relay_backend.dev.tar.gz'
+	./deploy/deploy.sh -e dev -c dev-1 -t relay -b gs://development_artifacts
 
 .PHONY: build-server-backend
 build-server-backend: ## builds the server backend binary
 	@printf "Building server backend... "
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/server_backend ./cmd/server_backend/server_backend.go
 	@printf "done\n"
+
+.PHONY: deploy-server-backend
+deploy-server-backend: ## builds and deploys the server backend to dev
+	@printf "Deploying server backend to dev... \n\n"
+	gcloud compute --project "network-next-v3-dev" ssh server-backend-dev-1 -- 'cd /app && sudo ./bootstrap.sh -b $(ARTIFACT_BUCKET) -a server_backend.dev.tar.gz'
 
 .PHONY: build-billing
 build-billing: ## builds the billing binary
@@ -379,12 +386,45 @@ build-billing: ## builds the billing binary
 
 .PHONY: deploy-server-backend
 deploy-server-backend: ## builds and deploys the server backend to dev
-	@printf "Deploying server backend to dev... \n\n"
-	gcloud compute --project "network-next-v3-dev" ssh server-backend-dev-1 -- 'cd /app && sudo ./bootstrap.sh -b $(ARTIFACT_BUCKET) -a server_backend.dev.tar.gz'
+	./deploy/deploy.sh -e dev -c dev-1 -t server -b gs://development_artifacts
+
+.PHONY: build-analytics
+build-analytics: ## builds the analytics binary
+	@printf "Building analytics... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/analytics ./cmd/analytics/analytics.go
+	@printf "done\n"
+
+.PHONY: deploy-server-backend-psyonix
+deploy-server-backend-psyonix: ## builds and deploys the server backend to psyonix
+	./deploy/deploy.sh -e prod -c psyonix -t server -b gs://prod_artifacts
+
+.PHONY: deploy-server-backend-liquidbit
+deploy-server-backend-liquidbit: ## builds and deploys the server backend to liquidbit
+	./deploy/deploy.sh -e prod -c prod-42rz -t server -b gs://prod_artifacts
+
+.PHONY: deploy-server-backend-turtlerock
+deploy-server-backend-turtlerock: ## builds and deploys the server backend to turtlerock
+	./deploy/deploy.sh -e prod -c turtlerock-xkgp -t server -b gs://prod_artifacts
+
+.PHONY: deploy-server-backend-valve
+deploy-server-backend-valve: ## builds and deploys the server backend to valve
+	./deploy/deploy.sh -e prod -c valve-r57d -t server -b gs://prod_artifacts
+
+.PHONY: deploy-server-backend-velan
+deploy-server-backend-velan: ## builds and deploys the server backend to velan
+	./deploy/deploy.sh -e prod -c velan-730n -t server -b gs://prod_artifacts
+
+.PHONY: deploy-server-backend-esl
+deploy-server-backend-esl: ## builds and deploys the server backend to esl
+	./deploy/deploy.sh -e prod -c esl-22dr -t server -b gs://prod_artifacts
 
 .PHONY: build-billing-artifacts-dev
 build-billing-artifacts-dev: build-billing ## builds the billing artifacts dev
 	./deploy/build-artifacts.sh -e dev -s billing
+
+.PHONY: build-analytics-artifacts-dev
+build-analytics-artifacts-dev: build-analytics ## builds the analytics service and creates the dev artifact
+	./deploy/build-artifacts.sh -e dev -s analytics
 
 .PHONY: build-relay-artifacts-dev
 build-relay-artifacts-dev: build-relay ## builds the relay artifacts dev
@@ -410,6 +450,10 @@ build-server-backend-artifacts-dev: build-server-backend ## builds the server ba
 build-billing-artifacts-staging: build-billing ## builds the billing artifacts staging
 	./deploy/build-artifacts.sh -e staging -s billing
 
+.PHONY: build-analytics-artifacts-staging
+build-analytics-artifacts-staging: build-analytics ## builds the analyitcs service and creates the prod artifact
+	./deploy/build-artifacts.sh -e staging -s analytics
+
 .PHONY: build-relay-artifacts-staging
 build-relay-artifacts-staging: build-relay ## builds the relay artifacts staging
 	./deploy/build-artifacts.sh -e staging -s relay
@@ -433,6 +477,10 @@ build-server-backend-artifacts-staging: build-server-backend ## builds the serve
 .PHONY: build-billing-artifacts-prod
 build-billing-artifacts-prod: build-billing ## builds the billing artifacts prod
 	./deploy/build-artifacts.sh -e prod -s billing
+
+.PHONY: build-analytics-artifacts-prod
+build-analytics-artifacts-prod: build-analytics ## builds the analyitcs service and creates the prod artifact
+	./deploy/build-artifacts.sh -e prod -s analytics
 
 .PHONY: build-relay-artifacts-prod
 build-relay-artifacts-prod: build-relay ## builds the relay artifacts prod
@@ -458,6 +506,10 @@ build-server-backend-artifacts-prod: build-server-backend ## builds the server b
 publish-billing-artifacts-dev: ## publishes the billing artifacts to GCP Storage with gsutil dev
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s billing
 
+.PHONY: publish-analytics-artifacts-dev
+publish-analytics-artifacts-dev: ## publishes the analytics dev artifact
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s analytics
+
 .PHONY: publish-relay-artifacts-dev
 publish-relay-artifacts-dev: ## publishes the relay artifacts to GCP Storage with gsutil dev
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay
@@ -482,6 +534,10 @@ publish-server-backend-artifacts-dev: ## publishes the server backend artifacts 
 publish-billing-artifacts-staging: ## publishes the billing artifacts to GCP Storage with gsutil staging
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s billing
 
+.PHONY: publish-analyitcs-artifacts-staging
+publish-analyitcs-artifacts-staging: ## publishes the analytics prod artifact
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s analytics
+
 .PHONY: publish-relay-artifacts-staging
 publish-relay-artifacts-staging: ## publishes the relay artifacts to GCP Storage with gsutil staging
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay
@@ -505,6 +561,10 @@ publish-server-backend-artifacts-staging: ## publishes the server backend artifa
 .PHONY: publish-billing-artifacts-prod
 publish-billing-artifacts-prod: ## publishes the billing artifacts to GCP Storage with gsutil prod
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s billing
+
+.PHONY: publish-analyitcs-artifacts-prod
+publish-analyitcs-artifacts-prod: ## publishes the analytics prod artifact
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s analytics
 
 .PHONY: publish-relay-artifacts-prod
 publish-relay-artifacts-prod: ## publishes the relay artifacts to GCP Storage with gsutil prod
@@ -578,7 +638,7 @@ build-next: ## builds the operator tool
 	@printf "done\n"
 
 .PHONY: build-all
-build-all: build-portal-cruncher build-billing build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
+build-all: build-portal-cruncher build-analytics build-billing build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all

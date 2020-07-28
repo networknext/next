@@ -45,7 +45,7 @@ func test_server_map() {
 			for {
 
 				serverId ++
-				serverId := ( serverId % 100000 )
+				serverId := ( serverId % 100001 )
 
 				serverAddress := fmt.Sprintf("%x", serverId)
 
@@ -54,7 +54,7 @@ func test_server_map() {
 				serverDataReadOnly := serverMap.GetServerData(buyerId, serverAddress)
 				if serverDataReadOnly == nil {
 					serverDataReadOnly = &transport.ServerData{}
-					fmt.Printf("new server %x\n", serverId)
+					fmt.Printf("new server %x (%d/100000)\n", serverId, serverMap.GetServerCount())
 				}
 
 				serverCopy := *serverDataReadOnly
@@ -101,14 +101,14 @@ func test_session_map() {
 			for {
 
 				sessionId ++
-				sessionId := ( sessionId % 100000 )
+				sessionId := ( sessionId % 100001 )
 
 				sessionMap.Lock(sessionId)
 
 				sessionDataReadOnly := sessionMap.GetSessionData(sessionId)
 				if sessionDataReadOnly == nil {
 					sessionDataReadOnly = transport.NewSessionData()
-					fmt.Printf("new session %x\n", sessionId)
+					fmt.Printf("new session %x (%d/100000)\n", sessionId, sessionMap.GetSessionCount())
 				}
 
 				session := transport.SessionData{
@@ -170,14 +170,14 @@ func test_veto_map() {
 			for {
 
 				sessionId ++
-				sessionId := ( sessionId % 100000 )
+				sessionId := ( sessionId % 100001 )
 
 				vetoMap.Lock(sessionId)
 
 				vetoReason := vetoMap.GetVeto(sessionId)
 
 				if vetoReason == 0 {
-					fmt.Printf("new veto %x\n", sessionId)
+					fmt.Printf("new veto %x (%d/100000)\n", sessionId, vetoMap.GetVetoCount())
 					vetoReason = 1
 				}
 
@@ -200,7 +200,7 @@ type test_function func()
 func main() {
 	allTests := []test_function{
 		// test_server_map,
-		//test_session_map,
+		// test_session_map,
 		test_veto_map,
 	}
 
