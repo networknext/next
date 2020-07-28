@@ -203,7 +203,7 @@ func opsRelays(
 	}
 
 	if csvOutputFlag {
-		if relaysCount > 0 {
+		if relaysCount > 0 && int(relaysCount) < len(relaysCSV) {
 			relaysCSV = relaysCSV[:relaysCount]
 		}
 
@@ -225,7 +225,7 @@ func opsRelays(
 		return
 	}
 
-	if relaysCount > 0 {
+	if relaysCount > 0 && int(relaysCount) < len(relays) {
 		relays = relays[:relaysCount]
 	}
 
@@ -390,7 +390,7 @@ func relays(
 	}
 
 	if csvOutputFlag {
-		if relaysCount > 0 {
+		if relaysCount > 0 && int(relaysCount) < len(relaysCSV) {
 			relaysCSV = relaysCSV[:relaysCount]
 		}
 
@@ -412,7 +412,7 @@ func relays(
 		return
 	}
 
-	if relaysCount > 0 {
+	if relaysCount > 0 && int(relaysCount) < len(relays) {
 		relays = relays[:relaysCount]
 	}
 
