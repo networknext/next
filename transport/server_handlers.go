@@ -808,6 +808,8 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 				for j, clientNearRelayID := range packet.NearRelayIDs {
 					if nearRelay.ID == clientNearRelayID {
 						nearRelays[i].ClientStats.RTT = float64(packet.NearRelayMinRTT[j])
+						nearRelays[i].ClientStats.Jitter = float64(packet.NearRelayJitter[j])
+						nearRelays[i].ClientStats.PacketLoss = float64(packet.NearRelayPacketLoss[j])
 					}
 				}
 			}
