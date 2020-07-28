@@ -218,7 +218,6 @@ func setRoutingRulesSettings(rpcClient jsonrpc.RPCClient, env Environment, buyer
 func datacenterMapsForBuyer(rpcClient jsonrpc.RPCClient, env Environment, buyer string) {
 
 	if buyer == "" {
-		fmt.Println("datacenterMapsForBuyer")
 		var reply localjsonrpc.ListDatacenterMapsReply
 		var arg = localjsonrpc.ListDatacenterMapsArgs{
 			DatacenterID: 0,
@@ -229,8 +228,6 @@ func datacenterMapsForBuyer(rpcClient jsonrpc.RPCClient, env Environment, buyer 
 			handleJSONRPCError(env, err)
 			return
 		}
-
-		fmt.Printf("reply: %v\n", reply.DatacenterMaps)
 
 		table.Output(reply.DatacenterMaps)
 		return
