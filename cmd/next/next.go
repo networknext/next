@@ -1409,12 +1409,11 @@ func main() {
 						LongHelp:   "A buyer ID or name must be supplied. If the name includes spaces it must be enclosed in quotations marks.",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) != 1 {
-								fmt.Printf("A buyer ID or name must be supplied. If the name includes spaces it must be enclosed in quotation marks.")
+								datacenterMapsForBuyer(rpcClient, env, "")
 								return nil
 							}
 
 							datacenterMapsForBuyer(rpcClient, env, args[0])
-
 							return nil
 						},
 					},
