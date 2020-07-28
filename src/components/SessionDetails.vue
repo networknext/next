@@ -1,250 +1,243 @@
 <template>
-  <div>
-    <div v-if="!showDetails">
-        <div class="spinner-border" role="status">
-            <span class="sr-only">Loading...</span>
-        </div>
-    </div>
-    <div class="row" v-if="showDetails">
-      <div class="col-12 col-lg-8">
-        <div class="card mb-2">
-          <div class="card-header">
-            <strong>
-              Latency
-            </strong>
-            <div class="float-right">
-              <span class="mr-2"
-                    style="border-right: 2px dotted rgb(51, 51, 51); display: none;"
-              ></span>
-              <span style="color: rgb(0, 109, 44);">
-                — Network Next
-              </span>
-              <span style="color: rgb(49, 130, 189);">
-                — Direct
-              </span>
-              <span></span>
-            </div>
-          </div>
-          <div class="card-body">
-            <div id="latency-chart-1"></div>
+  <div class="row" v-if="showDetails">
+    <div class="col-12 col-lg-8">
+      <div class="card mb-2">
+        <div class="card-header">
+          <strong>
+            Latency
+          </strong>
+          <div class="float-right">
+            <span class="mr-2"
+                  style="border-right: 2px dotted rgb(51, 51, 51); display: none;"
+            ></span>
+            <span style="color: rgb(0, 109, 44);">
+              — Network Next
+            </span>
+            <span style="color: rgb(49, 130, 189);">
+              — Direct
+            </span>
+            <span></span>
           </div>
         </div>
-        <div class="card mb-2">
-          <div class="card-header">
-            <strong>
-              Jitter
-            </strong>
-            <div class="float-right">
-              <span class="mr-2"
-                    style="border-right: 2px dotted rgb(51, 51, 51); display: none;"
-              ></span>
-              <span style="color: rgb(0, 109, 44);">
-                — Network Next
-              </span>
-              <span style="color: rgb(49, 130, 189);">
-                — Direct
-              </span>
-              <span></span>
-            </div>
-          </div>
-          <div class="card-body">
-            <div id="jitter-chart-1"></div>
-          </div>
-        </div>
-        <div class="card mb-2">
-          <div class="card-header">
-            <strong>
-              Packet Loss
-            </strong>
-            <div class="float-right">
-              <span class="mr-2"
-                    style="border-right: 2px dotted rgb(51, 51, 51); display: none;"
-              ></span>
-              <span style="color: rgb(0, 109, 44);">
-                  — Network Next
-              </span>
-              <span style="color: rgb(49, 130, 189);">
-                  — Direct
-              </span>
-              <span></span>
-            </div>
-          </div>
-          <div class="card-body">
-            <div id="packet-loss-chart-1"></div>
-          </div>
-        </div>
-        <div class="card mb-2">
-          <div class="card-header">
-            <strong>
-              Bandwidth
-            </strong>
-            <div class="float-right">
-              <span class="mr-2"
-                    style="border-right: 2px dotted rgb(51, 51, 51); display: none;"
-              ></span>
-              <span style="color: orange;">
-                — Up
-              </span>
-              <span style="color: blue;">
-                — Down
-              </span>
-              <span></span>
-            </div>
-            <div class="float-right">
-              <span id="traffic-up-legend"></span>
-              <span id="traffic-down-legend"></span>
-            </div>
-          </div>
-          <div class="card-body">
-            <div id="bandwidth-chart-1"></div>
-          </div>
+        <div class="card-body">
+          <div id="latency-chart-1"></div>
         </div>
       </div>
-      <div class="col-12 col-lg-4">
-        <div class="card">
-          <div class="card-img-top">
-            <div  style="width: 100%; height: 40vh; margin: 0px; padding: 0px; position: relative;">
-              <div id="session-tool-map"></div>
-              <canvas id="session-tool-deck-canvas"></canvas>
-            </div>
+      <div class="card mb-2">
+        <div class="card-header">
+          <strong>
+            Jitter
+          </strong>
+          <div class="float-right">
+            <span class="mr-2"
+                  style="border-right: 2px dotted rgb(51, 51, 51); display: none;"
+            ></span>
+            <span style="color: rgb(0, 109, 44);">
+              — Network Next
+            </span>
+            <span style="color: rgb(49, 130, 189);">
+              — Direct
+            </span>
+            <span></span>
           </div>
-          <div class="card-body">
-            <div class="card-text">
-              <dl>
+        </div>
+        <div class="card-body">
+          <div id="jitter-chart-1"></div>
+        </div>
+      </div>
+      <div class="card mb-2">
+        <div class="card-header">
+          <strong>
+            Packet Loss
+          </strong>
+          <div class="float-right">
+            <span class="mr-2"
+                  style="border-right: 2px dotted rgb(51, 51, 51); display: none;"
+            ></span>
+            <span style="color: rgb(0, 109, 44);">
+                — Network Next
+            </span>
+            <span style="color: rgb(49, 130, 189);">
+                — Direct
+            </span>
+            <span></span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div id="packet-loss-chart-1"></div>
+        </div>
+      </div>
+      <div class="card mb-2">
+        <div class="card-header">
+          <strong>
+            Bandwidth
+          </strong>
+          <div class="float-right">
+            <span class="mr-2"
+                  style="border-right: 2px dotted rgb(51, 51, 51); display: none;"
+            ></span>
+            <span style="color: orange;">
+              — Up
+            </span>
+            <span style="color: blue;">
+              — Down
+            </span>
+            <span></span>
+          </div>
+          <div class="float-right">
+            <span id="traffic-up-legend"></span>
+            <span id="traffic-down-legend"></span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div id="bandwidth-chart-1"></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-4">
+      <div class="card">
+        <div class="card-img-top">
+          <div  style="width: 100%; height: 40vh; margin: 0px; padding: 0px; position: relative;">
+            <div id="session-tool-map"></div>
+            <canvas id="session-tool-deck-canvas"></canvas>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="card-text">
+            <dl>
+              <dt>
+                ISP
+              </dt>
+              <dd>
+                <em>
+                  {{ this.meta.location.isp != "" ? this.meta.location.isp : "Unknown" }}
+                </em>
+              </dd>
+              <div v-if="!$store.getters.isAnonymous">
                 <dt>
-                  ISP
+                  User Hash
                 </dt>
                 <dd>
-                  <em>
-                    {{ this.meta.location.isp != "" ? this.meta.location.isp : "Unknown" }}
-                  </em>
+                  <a class="text-dark">
+                    {{ this.meta.user_hash }}
+                  </a>
                 </dd>
-                <div v-if="!$store.getters.isAnonymous">
-                  <dt>
-                    User Hash
-                  </dt>
-                  <dd>
-                    <a class="text-dark">
-                      {{ this.meta.user_hash }}
-                    </a>
-                  </dd>
-                </div>
-                <dt>
-                    User IP Address
-                </dt>
-                <dd>
-                    {{ this.meta.client_addr }}
-                </dd>
-                <dt>
-                    Platform
-                </dt>
-                <dd>
-                    {{ this.meta.platform }}
-                </dd>
-                <dt v-if="false">
-                    Customer
-                </dt>
-                <dd v-if="false">
-                    BUYER NAME
-                </dd>
-                <dt>
-                  SDK Version
-                </dt>
-                <dd>
-                  {{ this.meta.sdk }}
-                </dd>
-                <dt>
-                  Connection Type
-                </dt>
-                <dd>
-                  {{ this.meta.connection }}
-                </dd>
-                <!-- TODO: Combine this so that we only check is Admin once -->
-                <dt v-if="$store.getters.isAdmin && meta.nearby_relays.length > 0">
-                    Nearby Relays
-                </dt>
-                <dd v-if="$store.getters.isAdmin && meta.nearby_relays.length == 0">
-                    No Nearby Relays
-                </dd>
-                <table class="table table-sm mt-1" v-if="$store.getters.isAdmin && meta.nearby_relays.length > 0">
-                  <thead>
-                    <tr>
-                      <th style="width: 50%;">
-                        Name
-                      </th>
-                      <th style="width: 16.66%;">
-                        RTT
-                      </th>
-                      <th style="width: 16.66%;">
-                        Jitter
-                      </th>
-                      <th style="width: 16.66%;">
-                        Packet Loss
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                      <tr v-for="(relay, index) in this.meta.nearby_relays" :key="index">
-                        <td>
-                          <a class="text-dark">{{relay.name}}</a>&nbsp;
-                        </td>
-                        <td>
-                          {{ parseFloat(relay.client_stats.rtt).toFixed(2) }}
-                        </td>
-                        <td>
-                          {{ parseFloat(relay.client_stats.jitter).toFixed(2) }}
-                        </td>
-                        <td>
-                          {{ parseFloat(relay.client_stats.packet_loss).toFixed(2) }}%
-                        </td>
-                      </tr>
-                  </tbody>
-                </table>
-                <dt  v-if="$store.getters.isAdmin">
-                    Route
-                </dt>
-                <table class="table table-sm mt-1" v-if="$store.getters.isAdmin">
-                  <thead>
-                    <tr>
-                      <th style="width: 50%;">
-                        Name
-                      </th>
-                      <th style="width: 50%;">
-                        Role
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                        <td>
-                            {{ meta.client_addr }}
-                        </td>
-                        <td>
-                            <em>
-                                User (Player)
-                            </em>
-                        </td>
-                    </tr>
-                    <tr v-for="(hop, index) in pages.sessionTool.meta.hops" :key="index" scope="row">
+              </div>
+              <dt>
+                  User IP Address
+              </dt>
+              <dd>
+                  {{ this.meta.client_addr }}
+              </dd>
+              <dt>
+                  Platform
+              </dt>
+              <dd>
+                  {{ this.meta.platform }}
+              </dd>
+              <dt v-if="false">
+                  Customer
+              </dt>
+              <dd v-if="false">
+                  BUYER NAME
+              </dd>
+              <dt>
+                SDK Version
+              </dt>
+              <dd>
+                {{ this.meta.sdk }}
+              </dd>
+              <dt>
+                Connection Type
+              </dt>
+              <dd>
+                {{ this.meta.connection }}
+              </dd>
+              <!-- TODO: Combine this so that we only check is Admin once -->
+              <dt v-if="$store.getters.isAdmin && meta.nearby_relays.length > 0">
+                  Nearby Relays
+              </dt>
+              <dd v-if="$store.getters.isAdmin && meta.nearby_relays.length == 0">
+                  No Nearby Relays
+              </dd>
+              <table class="table table-sm mt-1" v-if="$store.getters.isAdmin && meta.nearby_relays.length > 0">
+                <thead>
+                  <tr>
+                    <th style="width: 50%;">
+                      Name
+                    </th>
+                    <th style="width: 16.66%;">
+                      RTT
+                    </th>
+                    <th style="width: 16.66%;">
+                      Jitter
+                    </th>
+                    <th style="width: 16.66%;">
+                      Packet Loss
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="(relay, index) in this.meta.nearby_relays" :key="index">
                       <td>
-                          {{ hop.name }}
+                        <a class="text-dark">{{relay.name}}</a>&nbsp;
                       </td>
                       <td>
-                          Hop {{ index + 1 }}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td>
-                        {{ meta.server_addr }}
+                        {{ parseFloat(relay.client_stats.rtt).toFixed(2) }}
                       </td>
                       <td>
-                          <em>Destination Server</em>
+                        {{ parseFloat(relay.client_stats.jitter).toFixed(2) }}
+                      </td>
+                      <td>
+                        {{ parseFloat(relay.client_stats.packet_loss).toFixed(2) }}%
                       </td>
                     </tr>
-                  </tbody>
-                </table>
-              </dl>
-            </div>
+                </tbody>
+              </table>
+              <dt  v-if="$store.getters.isAdmin">
+                  Route
+              </dt>
+              <table class="table table-sm mt-1" v-if="$store.getters.isAdmin">
+                <thead>
+                  <tr>
+                    <th style="width: 50%;">
+                      Name
+                    </th>
+                    <th style="width: 50%;">
+                      Role
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                      <td>
+                          {{ meta.client_addr }}
+                      </td>
+                      <td>
+                          <em>
+                              User (Player)
+                          </em>
+                      </td>
+                  </tr>
+                  <tr v-for="(hop, index) in pages.sessionTool.meta.hops" :key="index" scope="row">
+                    <td>
+                        {{ hop.name }}
+                    </td>
+                    <td>
+                        Hop {{ index + 1 }}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>
+                      {{ meta.server_addr }}
+                    </td>
+                    <td>
+                        <em>Destination Server</em>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </dl>
           </div>
         </div>
       </div>
@@ -260,6 +253,7 @@ import { Deck } from '@deck.gl/core'
 import { ScreenGridLayer } from '@deck.gl/aggregation-layers'
 
 import uPlot from 'uplot'
+
 /**
  * TODO: Cleanup template
  * TODO: Figure out what sessionMeta fields need to be required
@@ -325,69 +319,66 @@ export default class SessionDetails extends Vue {
         }
 
         setTimeout(() => {
-          // this.generateCharts()
-          // if (!this.detailsLoop) {
-          if (true) {
-            const NNCOLOR = [0, 109, 44]
-            const DIRECTCOLOR = [49, 130, 189]
+          this.generateCharts()
+          const NNCOLOR = [0, 109, 44]
+          const DIRECTCOLOR = [49, 130, 189]
 
-            const cellSize = 10
-            const aggregation = 'MEAN'
-            const gpuAggregation = navigator.appVersion.indexOf('Win') === -1
+          const cellSize = 10
+          const aggregation = 'MEAN'
+          const gpuAggregation = navigator.appVersion.indexOf('Win') === -1
 
-            if (!this.mapInstance) {
-              this.mapInstance = new mapboxgl.Map({
-                accessToken: this.accessToken,
-                style: 'mapbox://styles/mapbox/dark-v10',
-                center: [
-                  0,
-                  0
-                ],
-                zoom: 2,
-                pitch: 0,
-                bearing: 0,
-                container: 'session-tool-map'
-              })
-            }
-            const sessionLocationLayer = new ScreenGridLayer({
-              id: 'session-location-layer',
-              data: [this.meta],
-              opacity: 0.8,
-              getPosition: (d: any) => [d.location.longitude, d.location.latitude],
-              getWeight: (d: any) => 1,
-              cellSizePixels: cellSize,
-              colorRange: this.meta.on_network_next ? [NNCOLOR] : [DIRECTCOLOR],
-              gpuAggregation,
-              aggregation
+          if (!this.mapInstance) {
+            this.mapInstance = new mapboxgl.Map({
+              accessToken: this.accessToken,
+              style: 'mapbox://styles/mapbox/dark-v10',
+              center: [
+                0,
+                0
+              ],
+              zoom: 2,
+              pitch: 0,
+              bearing: 0,
+              container: 'session-tool-map'
             })
+          }
+          const sessionLocationLayer = new ScreenGridLayer({
+            id: 'session-location-layer',
+            data: [this.meta],
+            opacity: 0.8,
+            getPosition: (d: any) => [d.location.longitude, d.location.latitude],
+            getWeight: (d: any) => 1,
+            cellSizePixels: cellSize,
+            colorRange: this.meta.on_network_next ? [NNCOLOR] : [DIRECTCOLOR],
+            gpuAggregation,
+            aggregation
+          })
 
-            if (!this.deckGlInstance) {
-              // creating the deck.gl instance
-              this.deckGlInstance = new Deck({
-                canvas: document.getElementById('session-tool-deck-canvas'),
-                width: '100%',
-                height: '100%',
-                initialViewState: this.viewState,
-                controller: {
-                  dragRotate: false,
-                  dragTilt: false
-                },
-                // change the map's viewstate whenever the view state of deck.gl changes
-                onViewStateChange: ({ viewState }: any) => {
-                  this.mapInstance.jumpTo({
-                    center: [viewState.longitude, viewState.latitude],
-                    zoom: viewState.zoom,
-                    bearing: viewState.bearing,
-                    pitch: viewState.pitch,
-                    minZoom: 2
-                  })
-                },
-                layers: [sessionLocationLayer]
-              })
-            } else {
-              this.deckGlInstance.setProps({ layers: [] })
-              this.deckGlInstance.setProps({ layers: [sessionLocationLayer] })
-            }
+          if (!this.deckGlInstance) {
+            // creating the deck.gl instance
+            this.deckGlInstance = new Deck({
+              canvas: document.getElementById('session-tool-deck-canvas'),
+              width: '100%',
+              height: '100%',
+              initialViewState: this.viewState,
+              controller: {
+                dragRotate: false,
+                dragTilt: false
+              },
+              // change the map's viewstate whenever the view state of deck.gl changes
+              onViewStateChange: ({ viewState }: any) => {
+                this.mapInstance.jumpTo({
+                  center: [viewState.longitude, viewState.latitude],
+                  zoom: viewState.zoom,
+                  bearing: viewState.bearing,
+                  pitch: viewState.pitch,
+                  minZoom: 2
+                })
+              },
+              layers: [sessionLocationLayer]
+            })
+          } else {
+            this.deckGlInstance.setProps({ layers: [] })
+            this.deckGlInstance.setProps({ layers: [sessionLocationLayer] })
           }
         })
 
@@ -400,21 +391,26 @@ export default class SessionDetails extends Vue {
   }
 
   private generateCharts () {
-    const improvement: Array<any> = [[], []]
-    const comparison: Array<any> = [[], [], []]
-    const latencyData = {
-      improvement: improvement,
-      comparison: comparison
-    }
-    const jitterData = {
-      improvement: improvement,
-      comparison: comparison
-    }
-    const packetLossData = {
-      improvement: improvement,
-      comparison: comparison
-    }
-    const bandwidthData = comparison
+    const latencyData: Array<Array<number>> = [
+      [],
+      [],
+      []
+    ]
+    const jitterData: Array<Array<number>> = [
+      [],
+      [],
+      []
+    ]
+    const packetLossData: Array<Array<number>> = [
+      [],
+      [],
+      []
+    ]
+    const bandwidthData: Array<Array<number>> = [
+      [],
+      [],
+      []
+    ]
 
     let lastEntryNN = false
     let countNN = 0
@@ -451,23 +447,23 @@ export default class SessionDetails extends Vue {
       // Latency
       let next = (entry.is_multipath && nextRTT >= directRTT) ? directRTT : nextRTT
       let direct = directRTT
-      latencyData.comparison[0].push(timestamp)
-      latencyData.comparison[1].push(next)
-      latencyData.comparison[2].push(direct)
+      latencyData[0].push(timestamp)
+      latencyData[1].push(next)
+      latencyData[2].push(direct)
 
       // Jitter
       next = (entry.is_multipath && nextJitter >= directJitter) ? directJitter : nextJitter
       direct = directJitter
-      jitterData.comparison[0].push(timestamp)
-      jitterData.comparison[1].push(next)
-      jitterData.comparison[2].push(direct)
+      jitterData[0].push(timestamp)
+      jitterData[1].push(next)
+      jitterData[2].push(direct)
 
       // Packetloss
       next = (entry.is_multipath && nextPL >= directPL) ? directPL : nextPL
       direct = directPL
-      packetLossData.comparison[0].push(timestamp)
-      packetLossData.comparison[1].push(next)
-      packetLossData.comparison[2].push(direct)
+      packetLossData[0].push(timestamp)
+      packetLossData[1].push(next)
+      packetLossData[2].push(direct)
 
       // Bandwidth
       bandwidthData[0].push(timestamp)
@@ -478,18 +474,13 @@ export default class SessionDetails extends Vue {
     })
 
     if (directOnly) {
-      latencyData.comparison.splice(1, 1)
-      jitterData.comparison.splice(1, 1)
-      packetLossData.comparison.splice(1, 1)
+      latencyData.splice(1, 1)
+      jitterData.splice(1, 1)
+      packetLossData.splice(1, 1)
     }
 
-    const latencyChartElement = document.getElementById('latency-chart-1')!
-    const jitterChartElement = document.getElementById('jitter-chart-1')!
-    const packetLossChartElement = document.getElementById('packet-loss-chart-1')!
-    const bandwidthChartElement = document.getElementById('bandwidth-chart-1')!
-
     const defaultOpts = {
-      width: latencyChartElement.clientWidth,
+      width: document.getElementById('latency-chart-1')!.clientWidth,
       height: 260,
       cursor: {
         drag: {
@@ -519,9 +510,16 @@ export default class SessionDetails extends Vue {
       value: (self: any, rawValue: any) => rawValue.toFixed(2)
     })
 
-    const latencycomparisonOpts: uPlot.Options = {
-      ...defaultOpts,
-      scales: {
+    const latencyComparisonOpts = {
+      width: document.getElementById('latency-chart-1')!.clientWidth,
+      height: 260,
+      cursor: {
+        drag: {
+          x: false,
+          y: false
+        }
+      },
+      /* scales: {
         ms: {
           from: 'y',
           auto: false,
@@ -530,7 +528,7 @@ export default class SessionDetails extends Vue {
             max
           ]
         }
-      },
+      }, */
       series: series,
       axes: [
         {
@@ -566,14 +564,21 @@ export default class SessionDetails extends Vue {
       value: (self: any, rawValue: any) => rawValue.toFixed(2)
     })
 
-    const packetLossComparisonOpts: uPlot.Options = {
-      ...defaultOpts,
-      scales: {
+    const packetLossComparisonOpts = {
+      width: document.getElementById('latency-chart-1')!.clientWidth,
+      height: 260,
+      cursor: {
+        drag: {
+          x: false,
+          y: false
+        }
+      },
+      /* scales: {
         y: {
           auto: false,
           range: [0, 100]
         }
-      },
+      }, */
       series: series,
       axes: [
         {
@@ -588,9 +593,16 @@ export default class SessionDetails extends Vue {
       ]
     }
 
-    const bandwidthOpts: uPlot.Options = {
-      ...defaultOpts,
-      scales: {
+    const bandwidthOpts = {
+      width: document.getElementById('latency-chart-1')!.clientWidth,
+      height: 260,
+      cursor: {
+        drag: {
+          x: false,
+          y: false
+        }
+      },
+      /* scales: {
         kbps: {
           from: 'y',
           auto: false,
@@ -599,7 +611,7 @@ export default class SessionDetails extends Vue {
             max
           ]
         }
-      },
+      }, */
       series: [
         {},
         {
@@ -634,25 +646,25 @@ export default class SessionDetails extends Vue {
       this.latencyComparisonChart.destroy()
     }
 
-    this.latencyComparisonChart = new uPlot(latencycomparisonOpts, latencyData.comparison, latencyChartElement)
+    this.latencyComparisonChart = new uPlot(latencyComparisonOpts, latencyData, document.getElementById('latency-chart-1')!)
 
     if (this.jitterComparisonChart !== null) {
       this.jitterComparisonChart.destroy()
     }
 
-    this.jitterComparisonChart = new uPlot(latencycomparisonOpts, jitterData.comparison, jitterChartElement)
+    this.jitterComparisonChart = new uPlot(latencyComparisonOpts, jitterData, document.getElementById('jitter-chart-1')!)
 
     if (this.packetLossComparisonChart !== null) {
       this.packetLossComparisonChart.destroy()
     }
 
-    this.packetLossComparisonChart = new uPlot(packetLossComparisonOpts, packetLossData.comparison, packetLossChartElement)
+    this.packetLossComparisonChart = new uPlot(packetLossComparisonOpts, packetLossData, document.getElementById('packet-loss-chart-1')!)
 
     if (this.bandwidthChart !== null) {
       this.bandwidthChart.destroy()
     }
 
-    this.bandwidthChart = new uPlot(bandwidthOpts, bandwidthData, bandwidthChartElement)
+    this.bandwidthChart = new uPlot(bandwidthOpts, bandwidthData, document.getElementById('bandwidth-chart-1')!)
   }
 }
 
