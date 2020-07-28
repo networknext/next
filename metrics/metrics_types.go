@@ -406,15 +406,17 @@ var EmptyBillingMetrics BillingMetrics = BillingMetrics{
 }
 
 type BillingErrorMetrics struct {
-	BillingPublishFailure Counter
-	BillingReadFailure    Counter
-	BillingWriteFailure   Counter
+	BillingPublishFailure     Counter
+	BillingReadFailure        Counter
+	BillingBatchedReadFailure Counter
+	BillingWriteFailure       Counter
 }
 
 var EmptyBillingErrorMetrics BillingErrorMetrics = BillingErrorMetrics{
-	BillingPublishFailure: &EmptyCounter{},
-	BillingReadFailure:    &EmptyCounter{},
-	BillingWriteFailure:   &EmptyCounter{},
+	BillingPublishFailure:     &EmptyCounter{},
+	BillingReadFailure:        &EmptyCounter{},
+	BillingBatchedReadFailure: &EmptyCounter{},
+	BillingWriteFailure:       &EmptyCounter{},
 }
 
 type AnalyticsMetrics struct {
@@ -616,6 +618,7 @@ func NewServerBackendMetrics(ctx context.Context, metricsHandler Handler) (*Serv
 		return nil, err
 	}
 
+	serverBackendMetrics.BillingMetrics.ErrorMetrics.BillingBatchedReadFailure = &EmptyCounter{}
 	serverBackendMetrics.BillingMetrics.ErrorMetrics.BillingReadFailure = &EmptyCounter{}
 	serverBackendMetrics.BillingMetrics.ErrorMetrics.BillingWriteFailure = &EmptyCounter{}
 
@@ -1762,6 +1765,16 @@ func NewBillingServiceMetrics(ctx context.Context, metricsHandler Handler) (*Bil
 
 	billingServiceMetrics.BillingMetrics.ErrorMetrics.BillingReadFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Billing Read Failure",
+		ServiceName: "billing",
+		ID:          "billing.error.read_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	billingServiceMetrics.BillingMetrics.ErrorMetrics.BillingBatchedReadFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Billing Batched Read Failure",
 		ServiceName: "billing",
 		ID:          "billing.error.read_failure",
 		Unit:        "errors",
