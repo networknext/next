@@ -11,7 +11,7 @@ import (
 	"github.com/networknext/backend/routing"
 )
 
-const NumServerMapShards = 1000
+const NumServerMapShards = 100000
 
 type ServerData struct {
 	Timestamp      int64
@@ -27,8 +27,9 @@ type ServerMapShard struct {
 }
 
 type ServerMap struct {
-	NumServers uint64
-	shard [NumServerMapShards]*ServerMapShard
+	numServers 		uint64
+	timeoutShard 	int
+	shard 			[NumServerMapShards]*ServerMapShard
 }
 
 func NewServerMap() *ServerMap {
@@ -41,7 +42,7 @@ func NewServerMap() *ServerMap {
 }
 
 func (serverMap *ServerMap) GetServerCount() uint64 {
-	return atomic.LoadUint64(&serverMap.NumServers)
+	return atomic.LoadUint64(&serverMap.numServers)
 }
 
 func (serverMap *ServerMap) RLock(buyerID uint64, serverAddress string) {
@@ -74,7 +75,7 @@ func (serverMap *ServerMap) UpdateServerData(buyerID uint64, serverAddress strin
 	_, exists := serverMap.shard[index].servers[serverAddress]
 	serverMap.shard[index].servers[serverAddress] = serverData
 	if !exists {
-		atomic.AddUint64(&serverMap.NumServers, 1)
+		atomic.AddUint64(&serverMap.numServers, 1)
 	}
 }
 
@@ -86,14 +87,15 @@ func (serverMap *ServerMap) GetServerData(buyerID uint64, serverAddress string) 
 }
 
 func (serverMap *ServerMap) TimeoutLoop(ctx context.Context, timeoutSeconds int64, c <-chan time.Time) {
+	maxShards := 100
 	maxIterations := 10
 	deleteList := make([]string, maxIterations)
 	for {
 		select {
 		case <-c:
 			timeoutTimestamp := time.Now().Unix() - timeoutSeconds
-
-			for index := 0; index < NumServerMapShards; index++ {
+			for i := 0; i < maxShards; i++ {
+				index := ( serverMap.timeoutShard + i ) % NumServerMapShards
 				deleteList = deleteList[:0]
 				serverMap.shard[index].mutex.RLock()
 				numIterations := 0
@@ -111,10 +113,11 @@ func (serverMap *ServerMap) TimeoutLoop(ctx context.Context, timeoutSeconds int6
 				for i := range deleteList {
 					// fmt.Printf("timeout server %x\n", deleteList[i])
 					delete(serverMap.shard[index].servers, deleteList[i])
-					atomic.AddUint64(&serverMap.NumServers, ^uint64(0))
+					atomic.AddUint64(&serverMap.numServers, ^uint64(0))
 				}
 				serverMap.shard[index].mutex.Unlock()
 			}
+			serverMap.timeoutShard = ( serverMap.timeoutShard + maxShards ) % NumServerMapShards
 		case <-ctx.Done():
 			return
 		}
