@@ -623,7 +623,7 @@ func NewServerBackendMetrics(ctx context.Context, metricsHandler Handler) (*Serv
 		DisplayName: "Server Backend Route Matrix Bytes",
 		ServiceName: "server_backend",
 		ID:          "server_backend.route_matrix.bytes",
-		Unit:        "ms",
+		Unit:        "bytes",
 		Description: "The size of the route matrix in bytes",
 	})
 	if err != nil {
