@@ -15,10 +15,9 @@ ARTIFACT_BUCKET=
 TYPE=
 
 deploy-backend() {
+  COMMAND="cd /app && sudo gsutil cp ${ARTIFACT_BUCKET}/bootstrap.sh . && sudo chmod +x ./bootstrap.sh && sudo ./bootstrap.sh -b ${ARTIFACT_BUCKET} -a ${TYPE}_backend.${ENV}.tar.gz"
   printf "Deploying ${CUSTOMER} ${TYPE} backend... \n"
-  gsutil cp ${ARTIFACT_BUCKET}/bootstrap.sh .
-  chmod \+x bootstrap.sh
-  gcloud compute --project "network-next-v3-${ENV}" ssh ${TYPE}-backend-${CUSTOMER} -- 'cd /app && sudo ./bootstrap.sh -b ${ARTIFACT_BUCKET} -a ${TYPE}_backend.${ENV}.tar.gz'
+  gcloud compute --project "network-next-v3-${ENV}" ssh ${TYPE}-backend-${CUSTOMER} -- ${COMMAND}
 	printf "done\n"
 }
 
