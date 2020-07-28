@@ -957,6 +957,8 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
 
 		if routeDecision.OnNetworkNext {
 			nextSliceCounter++
+		} else {
+			nextSliceCounter = 0
 		}
 
 		// Send a session update response back to the SDK.

@@ -5,7 +5,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-	// "fmt"
 
 	"github.com/networknext/backend/routing"
 )
@@ -37,14 +36,16 @@ type SessionData struct {
 }
 
 type SessionMapShard struct {
-	mutex       sync.RWMutex
-	sessions    map[uint64]*SessionData
+	mutex    sync.RWMutex
+	sessions map[uint64]*SessionData
 }
 
 type SessionMap struct {
-	numSessions 	uint64
-	timeoutShard 	int
-	shard 			[NumSessionMapShards]*SessionMapShard
+	numSessions       uint64
+	numNextSessions   uint64
+	numDirectSessions uint64
+	timeoutShard      int
+	shard             [NumSessionMapShards]*SessionMapShard
 }
 
 func NewSessionMap() *SessionMap {
@@ -58,6 +59,14 @@ func NewSessionMap() *SessionMap {
 
 func (sessionMap *SessionMap) GetSessionCount() uint64 {
 	return atomic.LoadUint64(&sessionMap.numSessions)
+}
+
+func (sessionMap *SessionMap) GetDirectSessionCount() uint64 {
+	return atomic.LoadUint64(&sessionMap.numDirectSessions)
+}
+
+func (sessionMap *SessionMap) GetNextSessionCount() uint64 {
+	return atomic.LoadUint64(&sessionMap.numNextSessions)
 }
 
 func NewSessionData() *SessionData {
@@ -90,10 +99,34 @@ func (sessionMap *SessionMap) RUnlock(sessionId uint64) {
 func (sessionMap *SessionMap) UpdateSessionData(sessionId uint64, sessionData *SessionData) {
 	index := sessionId % NumSessionMapShards
 	_, exists := sessionMap.shard[index].sessions[sessionId]
-	sessionMap.shard[index].sessions[sessionId] = sessionData
+
+	next := sessionData.NextSliceCounter > 0
+
 	if !exists {
 		atomic.AddUint64(&sessionMap.numSessions, 1)
+
+		if next {
+			atomic.AddUint64(&sessionMap.numNextSessions, 1)
+		} else {
+			atomic.AddUint64(&sessionMap.numDirectSessions, 1)
+		}
+	} else {
+		prevNext := sessionMap.shard[index].sessions[sessionId].NextSliceCounter > 0
+
+		// detect next -> direct
+		if prevNext && !next {
+			atomic.AddUint64(&sessionMap.numNextSessions, ^uint64(0))
+			atomic.AddUint64(&sessionMap.numDirectSessions, 1)
+		}
+
+		// detect direct -> next
+		if !prevNext && next {
+			atomic.AddUint64(&sessionMap.numDirectSessions, ^uint64(0))
+			atomic.AddUint64(&sessionMap.numNextSessions, 1)
+		}
 	}
+
+	sessionMap.shard[index].sessions[sessionId] = sessionData
 }
 
 func (sessionMap *SessionMap) GetSessionData(sessionId uint64) *SessionData {
@@ -111,7 +144,7 @@ func (sessionMap *SessionMap) TimeoutLoop(ctx context.Context, timeoutSeconds in
 		case <-c:
 			timeoutTimestamp := time.Now().Unix() - timeoutSeconds
 			for i := 0; i < maxShards; i++ {
-				index := ( sessionMap.timeoutShard + i ) % NumSessionMapShards
+				index := (sessionMap.timeoutShard + i) % NumSessionMapShards
 				deleteList = deleteList[:0]
 				sessionMap.shard[index].mutex.RLock()
 				numIterations := 0
@@ -121,6 +154,13 @@ func (sessionMap *SessionMap) TimeoutLoop(ctx context.Context, timeoutSeconds in
 					}
 					if v.Timestamp < timeoutTimestamp {
 						deleteList = append(deleteList, k)
+
+						atomic.AddUint64(&sessionMap.numSessions, ^uint64(0))
+						if next := v.NextSliceCounter > 0; next {
+							atomic.AddUint64(&sessionMap.numNextSessions, ^uint64(0))
+						} else {
+							atomic.AddUint64(&sessionMap.numDirectSessions, ^uint64(0))
+						}
 					}
 					numIterations++
 				}
@@ -129,11 +169,10 @@ func (sessionMap *SessionMap) TimeoutLoop(ctx context.Context, timeoutSeconds in
 				for i := range deleteList {
 					// fmt.Printf("timeout session %x\n", deleteList[i])
 					delete(sessionMap.shard[index].sessions, deleteList[i])
-					atomic.AddUint64(&sessionMap.numSessions, ^uint64(0))
 				}
 				sessionMap.shard[index].mutex.Unlock()
 			}
-			sessionMap.timeoutShard = ( sessionMap.timeoutShard + maxShards ) % NumSessionMapShards
+			sessionMap.timeoutShard = (sessionMap.timeoutShard + maxShards) % NumSessionMapShards
 		case <-ctx.Done():
 			return
 		}
