@@ -561,13 +561,13 @@ func main() {
 				serverBackendMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
 				serverBackendMetrics.MemoryAllocated.Set(memoryUsed())
 
-				numVetoes := vetoMap.NumVetoes()
+				numVetoes := vetoMap.GetVetoCount()
 				serverBackendMetrics.VetoCount.Set(float64(numVetoes))
 
-				numServers := serverMap.NumServers()
+				numServers := serverMap.GetServerCount()
 				serverBackendMetrics.ServerCount.Set(float64(numServers))
 
-				numSessions := sessionMap.NumSessions()
+				numSessions := sessionMap.GetSessionCount()
 				serverBackendMetrics.SessionCount.Set(float64(numSessions))
 
 				numEntriesQueued := serverBackendMetrics.BillingMetrics.EntriesSubmitted.Value() - serverBackendMetrics.BillingMetrics.EntriesFlushed.Value()

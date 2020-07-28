@@ -11,7 +11,7 @@ import (
 	"github.com/networknext/backend/routing"
 )
 
-const NumServerMapShards = 1000000
+const NumServerMapShards = 1000
 
 type ServerData struct {
 	Timestamp      int64
@@ -24,10 +24,10 @@ type ServerData struct {
 type ServerMapShard struct {
 	mutex      sync.RWMutex
 	servers    map[string]*ServerData
-	numServers uint64
 }
 
 type ServerMap struct {
+	NumServers uint64
 	shard [NumServerMapShards]*ServerMapShard
 }
 
@@ -40,13 +40,8 @@ func NewServerMap() *ServerMap {
 	return serverMap
 }
 
-func (serverMap *ServerMap) NumServers() uint64 {
-	var total uint64
-	for i := 0; i < NumServerMapShards; i++ {
-		numServersInShard := atomic.LoadUint64(&serverMap.shard[i].numServers)
-		total += numServersInShard
-	}
-	return total
+func (serverMap *ServerMap) GetServerCount() uint64 {
+	return atomic.LoadUint64(&serverMap.NumServers)
 }
 
 func (serverMap *ServerMap) RLock(buyerID uint64, serverAddress string) {
@@ -79,7 +74,7 @@ func (serverMap *ServerMap) UpdateServerData(buyerID uint64, serverAddress strin
 	_, exists := serverMap.shard[index].servers[serverAddress]
 	serverMap.shard[index].servers[serverAddress] = serverData
 	if !exists {
-		atomic.AddUint64(&serverMap.shard[index].numServers, 1)
+		atomic.AddUint64(&serverMap.NumServers, 1)
 	}
 }
 
@@ -91,7 +86,7 @@ func (serverMap *ServerMap) GetServerData(buyerID uint64, serverAddress string) 
 }
 
 func (serverMap *ServerMap) TimeoutLoop(ctx context.Context, timeoutSeconds int64, c <-chan time.Time) {
-	maxIterations := 100
+	maxIterations := 10
 	deleteList := make([]string, maxIterations)
 	for {
 		select {
@@ -107,7 +102,6 @@ func (serverMap *ServerMap) TimeoutLoop(ctx context.Context, timeoutSeconds int6
 						break
 					}
 					if v.Timestamp < timeoutTimestamp {
-						atomic.AddUint64(&serverMap.shard[index].numServers, ^uint64(0))
 						deleteList = append(deleteList, k)
 					}
 					numIterations++
@@ -117,6 +111,7 @@ func (serverMap *ServerMap) TimeoutLoop(ctx context.Context, timeoutSeconds int6
 				for i := range deleteList {
 					// fmt.Printf("timeout server %x\n", deleteList[i])
 					delete(serverMap.shard[index].servers, deleteList[i])
+					atomic.AddUint64(&serverMap.NumServers, ^uint64(0))
 				}
 				serverMap.shard[index].mutex.Unlock()
 			}
