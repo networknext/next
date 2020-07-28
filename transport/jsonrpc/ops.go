@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"regexp"
 	"sort"
 	"strconv"
@@ -767,7 +768,7 @@ type ListDatacenterMapsReply struct {
 	DatacenterMaps []DatacenterMapsFull
 }
 
-// An empty DatacenterID returns a list of all maps.
+// A zero DatacenterID returns a list of all maps.
 func (s *OpsService) ListDatacenterMaps(r *http.Request, args *ListDatacenterMapsArgs, reply *ListDatacenterMapsReply) error {
 
 	var dcm map[uint64]routing.DatacenterMap
@@ -777,15 +778,13 @@ func (s *OpsService) ListDatacenterMaps(r *http.Request, args *ListDatacenterMap
 	for _, dcMap := range dcm {
 		buyer, err := s.Storage.Buyer(dcMap.BuyerID)
 		if err != nil {
-			err = fmt.Errorf("DatacenterMapsForBuyer() could not parse buyer")
-			s.Logger.Log("err", err)
-			return err
+			fmt.Println("ListDatacenterMaps() could not parse buyer")
+			os.Exit(0)
 		}
 		datacenter, err := s.Storage.Datacenter(dcMap.Datacenter)
 		if err != nil {
-			err = fmt.Errorf("DatacenterMapsForBuyer() could not parse datacenter")
-			s.Logger.Log("err", err)
-			return err
+			fmt.Printf("ListDatacenterMaps() could not parse datacenter")
+			os.Exit(0)
 		}
 
 		dcmFull := DatacenterMapsFull{
