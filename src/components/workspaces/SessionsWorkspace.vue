@@ -55,8 +55,8 @@
               <font-awesome-icon icon="circle"
                                  class="fa-w-16 fa-fw"
                                  v-bind:class="{
-                                  'text-success': session.onNetworkNext,
-                                  'text-primary': !session.onNetworkNext
+                                  'text-success': session.on_network_next,
+                                  'text-primary': !session.on_network_next
                                  }"
               />
             </td>
@@ -130,7 +130,7 @@ import { Route, NavigationGuardNext } from 'vue-router'
   }
 })
 export default class SessionsWorkspace extends Vue {
-  private sessions: Array<SessionMeta>
+  private sessions: Array<any>
   private apiService: APIService
   private showTable = false
   private sessionsLoop = -1

@@ -76,7 +76,8 @@
       "ecmaVersion": 2020
     },
     "rules": {
-      "@typescript-eslint/camelcase": "off"
+      "@typescript-eslint/camelcase": "off",
+      "new-cap": "off"
     },
     "overrides": [
       {

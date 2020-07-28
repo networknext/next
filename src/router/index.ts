@@ -28,7 +28,7 @@ const routes: Array<RouteConfig> = [
   {
     path: '/session-tool/:id?',
     name: 'session-tool',
-    component: SessionToolWorkspace,
+    component: SessionToolWorkspace
   },
   {
     path: '/user-tool',

@@ -7,6 +7,6 @@ describe('SessionMap.vue', () => {
   it('Loads session map component', () => {
     Vue.prototype.$apiService = new APIService()
     const wrapper = shallowMount(SessionMap, {})
-    expect(wrapper.attributes().id.match("map-container"))
+    expect(wrapper.attributes().id.match('map-container'))
   })
 })

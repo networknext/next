@@ -37,13 +37,13 @@ export interface SessionMeta {
 }
 
 export interface Slice {
-	timestamp: number;
-	next: Stat;
-	direct: Stat;
-	envelope: Envelope;
-	onNetworkNext: boolean
-	isMultiPath: boolean
-	isTryBeforeYouBuy: boolean
+  timestamp: number;
+  next: Stat;
+  direct: Stat;
+  envelope: Envelope;
+  onNetworkNext: boolean;
+  isMultiPath: boolean;
+  isTryBeforeYouBuy: boolean;
 }
 
 export interface Stat {
