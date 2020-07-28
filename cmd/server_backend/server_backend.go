@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"runtime"
 	"sync"
-	"sync/atomic"
 
 	"io"
 	"net/http"
@@ -440,7 +439,8 @@ func main() {
 		return rm
 	}
 
-	var atomicRouteMatrixBytes int64
+	var routeMatrixBytes int64
+	var routeMatrixBytesMutex sync.RWMutex
 
 	// Sync route matrix
 	{
@@ -470,8 +470,11 @@ func main() {
 					start := time.Now()
 
 					// Don't swap route matrix if we fail to read
-					routeMatrixBytes, err := newRouteMatrix.ReadFrom(matrixReader)
-					atomic.StoreInt64(&atomicRouteMatrixBytes, routeMatrixBytes)
+					bytes, err := newRouteMatrix.ReadFrom(matrixReader)
+					routeMatrixBytesMutex.Lock()
+					routeMatrixBytes = bytes
+					routeMatrixBytesMutex.Unlock()
+
 					if err != nil {
 						if env != "local" {
 							level.Warn(logger).Log("envvar", "ROUTE_MATRIX_URI", "value", uri, "msg", "could not read route matrix", "err", err)
@@ -494,7 +497,7 @@ func main() {
 					routeMatrix = &newRouteMatrix
 					routeMatrixMutex.Unlock()
 
-					serverBackendMetrics.RouteMatrixBytes.Set(float64(routeMatrixBytes))
+					serverBackendMetrics.RouteMatrixBytes.Set(float64(bytes))
 
 					time.Sleep(syncInterval)
 				}
@@ -621,7 +624,10 @@ func main() {
 
 				statsLogger.Log("num_servers", numServers)
 				statsLogger.Log("num_sessions", numSessions)
-				statsLogger.Log("route_matrix_bytes", atomic.LoadInt64(&atomicRouteMatrixBytes))
+
+				routeMatrixBytesMutex.RLock()
+				statsLogger.Log("route_matrix_bytes", routeMatrixBytes)
+				routeMatrixBytesMutex.RUnlock()
 
 				time.Sleep(time.Second)
 			}
