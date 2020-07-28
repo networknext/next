@@ -5,7 +5,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-	// "fmt"
+	"fmt"
 
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
@@ -109,7 +109,7 @@ func (serverMap *ServerMap) TimeoutLoop(ctx context.Context, timeoutSeconds int6
 				serverMap.shard[index].mutex.RUnlock()
 				serverMap.shard[index].mutex.Lock()
 				for i := range deleteList {
-					// fmt.Printf("timeout server %x\n", deleteList[i])
+					fmt.Printf("timeout server %x\n", deleteList[i])
 					delete(serverMap.shard[index].servers, deleteList[i])
 					atomic.AddUint64(&serverMap.NumServers, ^uint64(0))
 				}
