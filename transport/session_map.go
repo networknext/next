@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	NumSessionMapShards = 1000
+	NumSessionMapShards = 100000
 
 	// todo: disable session locks for the moment
 	/*
@@ -42,8 +42,9 @@ type SessionMapShard struct {
 }
 
 type SessionMap struct {
-	NumSessions uint64
-	shard 		[NumSessionMapShards]*SessionMapShard
+	numSessions 	uint64
+	timeoutShard 	int
+	shard 			[NumSessionMapShards]*SessionMapShard
 }
 
 func NewSessionMap() *SessionMap {
@@ -56,7 +57,7 @@ func NewSessionMap() *SessionMap {
 }
 
 func (sessionMap *SessionMap) GetSessionCount() uint64 {
-	return atomic.LoadUint64(&sessionMap.NumSessions)
+	return atomic.LoadUint64(&sessionMap.numSessions)
 }
 
 func NewSessionData() *SessionData {
@@ -91,7 +92,7 @@ func (sessionMap *SessionMap) UpdateSessionData(sessionId uint64, sessionData *S
 	_, exists := sessionMap.shard[index].sessions[sessionId]
 	sessionMap.shard[index].sessions[sessionId] = sessionData
 	if !exists {
-		atomic.AddUint64(&sessionMap.NumSessions, 1)
+		atomic.AddUint64(&sessionMap.numSessions, 1)
 	}
 }
 
@@ -102,13 +103,15 @@ func (sessionMap *SessionMap) GetSessionData(sessionId uint64) *SessionData {
 }
 
 func (sessionMap *SessionMap) TimeoutLoop(ctx context.Context, timeoutSeconds int64, c <-chan time.Time) {
-	maxIterations := 100
+	maxShards := 100
+	maxIterations := 10
 	deleteList := make([]uint64, maxIterations)
 	for {
 		select {
 		case <-c:
 			timeoutTimestamp := time.Now().Unix() - timeoutSeconds
-			for index := 0; index < NumSessionMapShards; index++ {
+			for i := 0; i < maxShards; i++ {
+				index := ( sessionMap.timeoutShard + i ) % NumSessionMapShards
 				deleteList = deleteList[:0]
 				sessionMap.shard[index].mutex.RLock()
 				numIterations := 0
@@ -126,11 +129,11 @@ func (sessionMap *SessionMap) TimeoutLoop(ctx context.Context, timeoutSeconds in
 				for i := range deleteList {
 					// fmt.Printf("timeout session %x\n", deleteList[i])
 					delete(sessionMap.shard[index].sessions, deleteList[i])
-					atomic.AddUint64(&sessionMap.NumSessions, ^uint64(0))
+					atomic.AddUint64(&sessionMap.numSessions, ^uint64(0))
 				}
 				sessionMap.shard[index].mutex.Unlock()
 			}
-
+			sessionMap.timeoutShard = ( sessionMap.timeoutShard + maxShards ) % NumSessionMapShards
 		case <-ctx.Done():
 			return
 		}

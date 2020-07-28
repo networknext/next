@@ -10,7 +10,7 @@ import (
 	"github.com/networknext/backend/routing"
 )
 
-const NumVetoMapShards = 1000
+const NumVetoMapShards = 100000
 
 type VetoData struct {
 	timestamp int64
@@ -23,8 +23,9 @@ type VetoMapShard struct {
 }
 
 type VetoMap struct {
-	numVetoes uint64
-	shard [NumVetoMapShards]VetoMapShard
+	numVetoes 		uint64
+	timeoutShard 	int
+	shard 			[NumVetoMapShards]VetoMapShard
 }
 
 func NewVetoMap() *VetoMap {
@@ -85,13 +86,15 @@ func (vetoMap *VetoMap) GetVeto(vetoId uint64) routing.DecisionReason {
 }
 
 func (vetoMap *VetoMap) TimeoutLoop(ctx context.Context, timeoutSeconds int64, c <-chan time.Time) {
-	maxIterations := 100
+	maxShards := 100
+	maxIterations := 10
 	deleteList := make([]uint64, maxIterations)
 	for {
 		select {
 		case <-c:
 			timeoutTimestamp := time.Now().Unix() - timeoutSeconds
-			for index := 0; index < NumVetoMapShards; index++ {
+			for i := 0; i < maxShards; i++ {
+				index := ( vetoMap.timeoutShard + i ) % NumVetoMapShards
 				deleteList = deleteList[:0]
 				vetoMap.shard[index].mutex.RLock()
 				numIterations := 0
@@ -112,6 +115,7 @@ func (vetoMap *VetoMap) TimeoutLoop(ctx context.Context, timeoutSeconds int64, c
 					atomic.AddUint64(&vetoMap.numVetoes, ^uint64(0))
 				}
 				vetoMap.shard[index].mutex.Unlock()
+				vetoMap.timeoutShard = ( vetoMap.timeoutShard + maxShards ) % NumVetoMapShards
 			}
 		case <-ctx.Done():
 			return
