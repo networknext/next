@@ -249,6 +249,10 @@ func datacenterMapsForBuyer(rpcClient jsonrpc.RPCClient, env Environment, buyer 
 		return
 	}
 
+	sort.Slice(reply.DatacenterMaps, func(i int, j int) bool {
+		return reply.DatacenterMaps[i].DatacenterName < reply.DatacenterMaps[j].DatacenterName
+	})
+
 	table.Output(reply.DatacenterMaps)
 
 }
