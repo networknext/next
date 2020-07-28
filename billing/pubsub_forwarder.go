@@ -55,7 +55,7 @@ func (psf *PubSubForwarder) Forward(ctx context.Context) {
 		}
 
 		var entries [][]byte
-		if messageLength > uint32(len(m.Data)) {
+		if messageLength <= uint32(len(m.Data)) {
 			// This is a new, batched message
 			var err error
 			entries, err = psf.unbatchMessages(m)
