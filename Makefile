@@ -558,7 +558,7 @@ publish-billing-artifacts-prod: ## publishes the billing artifacts to GCP Storag
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s billing
 
 .PHONY: publish-analytics-artifacts-prod
-publish-analyitcs-artifacts-prod: ## publishes the analytics prod artifact
+publish-analytics-artifacts-prod: ## publishes the analytics prod artifact
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s analytics
 
 .PHONY: publish-relay-artifacts-prod
