@@ -1776,7 +1776,7 @@ func NewBillingServiceMetrics(ctx context.Context, metricsHandler Handler) (*Bil
 	billingServiceMetrics.BillingMetrics.ErrorMetrics.BillingBatchedReadFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Billing Batched Read Failure",
 		ServiceName: "billing",
-		ID:          "billing.error.read_failure",
+		ID:          "billing.error.batched_read_failure",
 		Unit:        "errors",
 	})
 	if err != nil {
