@@ -6,21 +6,26 @@
 package main
 
 import (
-	"fmt"
 	"context"
-	"time"
-	"sync"
+	"fmt"
 	"math/rand"
+	"sync"
+	"time"
 
 	"github.com/networknext/backend/transport"
+)
+
+const (
+	LoadTestDuration = time.Minute * 5
+	NumServers       = 50000
+	NumSessions      = 300000
 )
 
 func load_test() {
 
 	fmt.Printf("load_test\n")
 
-	numServers := 50000
-	numSessions := 300000
+	runTime := time.Now()
 
 	vetoMap := transport.NewVetoMap()
 	serverMap := transport.NewServerMap()
@@ -29,7 +34,7 @@ func load_test() {
 	ctx := context.Background()
 	{
 		go func() {
-			timeout := int64(60*5)
+			timeout := int64(60 * 5)
 			frequency := time.Millisecond * 100
 			ticker := time.NewTicker(frequency)
 			vetoMap.TimeoutLoop(ctx, timeout, ticker.C)
@@ -53,12 +58,16 @@ func load_test() {
 	maxServerDuration := 0.0
 	averageServerDuration := 0.0
 	var serverDurationMutex sync.Mutex
-	for i := 0; i < numServers; i++ {
+	for i := 0; i < NumServers; i++ {
 		go func(serverId int) {
-			time.Sleep(time.Duration(float64(time.Second)*10.0*rand.Float64()))
+			time.Sleep(time.Duration(float64(time.Second) * 10.0 * rand.Float64()))
 			serverAddress := fmt.Sprintf("%x", serverId)
 			buyerId := uint64(0)
 			for {
+				if time.Since(runTime) >= LoadTestDuration {
+					break
+				}
+
 				start := time.Now()
 				serverMap.Lock(buyerId, serverAddress)
 				serverDataReadOnly := serverMap.GetServerData(buyerId, serverAddress)
@@ -72,12 +81,12 @@ func load_test() {
 				serverMap.Unlock(buyerId, serverAddress)
 				duration := time.Since(start).Seconds()
 				serverDurationMutex.Lock()
-				averageServerDuration += ( duration - averageServerDuration ) * 0.01
+				averageServerDuration += (duration - averageServerDuration) * 0.01
 				if duration > maxServerDuration {
 					maxServerDuration = duration
 				}
 				serverDurationMutex.Unlock()
-				time.Sleep(time.Second*10)
+				time.Sleep(time.Second * 10)
 			}
 		}(i)
 	}
@@ -85,10 +94,14 @@ func load_test() {
 	maxSessionDuration := 0.0
 	averageSessionDuration := 0.0
 	var sessionDurationMutex sync.Mutex
-	for i := 0; i < numSessions; i++ {
+	for i := 0; i < NumSessions; i++ {
 		go func(sessionId uint64) {
-			time.Sleep(time.Duration(float64(time.Second)*10.0*rand.Float64()))
+			time.Sleep(time.Duration(float64(time.Second) * 10.0 * rand.Float64()))
 			for {
+				if time.Since(runTime) >= LoadTestDuration {
+					break
+				}
+
 				start := time.Now()
 				vetoMap.Lock(sessionId)
 				vetoReason := vetoMap.GetVeto(sessionId)
@@ -98,6 +111,16 @@ func load_test() {
 					sessionDataReadOnly = transport.NewSessionData()
 					// fmt.Printf("new session %05x (%d/%d)\n", sessionId, sessionMap.GetSessionCount()+1, numSessions)
 				}
+
+				if time.Since(runTime) >= LoadTestDuration/5 {
+
+				}
+
+				var nextSliceCounter uint64
+				if sessionId%2 == 0 {
+					nextSliceCounter = 1
+				}
+
 				session := transport.SessionData{
 					Timestamp:            time.Now().Unix(),
 					Location:             sessionDataReadOnly.Location,
@@ -106,7 +129,7 @@ func load_test() {
 					RouteHash:            0,
 					Initial:              sessionDataReadOnly.Initial,
 					RouteDecision:        sessionDataReadOnly.RouteDecision,
-					NextSliceCounter:     sessionDataReadOnly.NextSliceCounter,
+					NextSliceCounter:     nextSliceCounter,
 					CommittedData:        sessionDataReadOnly.CommittedData,
 					RouteExpireTimestamp: sessionDataReadOnly.RouteExpireTimestamp,
 					TokenVersion:         sessionDataReadOnly.TokenVersion,
@@ -119,17 +142,21 @@ func load_test() {
 				vetoMap.Unlock(sessionId)
 				duration := time.Since(start).Seconds()
 				sessionDurationMutex.Lock()
-				averageSessionDuration += ( duration - averageSessionDuration ) * 0.01
+				averageSessionDuration += (duration - averageSessionDuration) * 0.01
 				if duration > maxSessionDuration {
 					maxSessionDuration = duration
 				}
 				sessionDurationMutex.Unlock()
-				time.Sleep(time.Second*10)
+				time.Sleep(time.Second * 10)
 			}
 		}(uint64(i))
 	}
 
 	for {
+		if time.Since(runTime) >= LoadTestDuration {
+			break
+		}
+
 		fmt.Printf("========================================================\n")
 		serverDurationMutex.Lock()
 		serverDuration_max := maxServerDuration
@@ -143,6 +170,9 @@ func load_test() {
 		fmt.Printf("max server duration = %f seconds\n", serverDuration_max)
 		fmt.Printf("avg session duration = %f seconds\n", sessionDuration_avg)
 		fmt.Printf("max session duration = %f seconds\n", sessionDuration_max)
+		fmt.Printf("total session count = %d sessions\n", sessionMap.GetSessionCount())
+		fmt.Printf("direct session count = %d sessions\n", sessionMap.GetDirectSessionCount())
+		fmt.Printf("next session count = %d sessions\n", sessionMap.GetNextSessionCount())
 		fmt.Printf("========================================================\n")
 		time.Sleep(time.Second)
 	}
