@@ -105,6 +105,10 @@
     display: none;
   }
 
+  .below-nav-bar {
+    padding-top: 48px;
+  }
+
   /*
   * Sidebar
   */

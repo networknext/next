@@ -103,17 +103,10 @@
       <div class="col-12 col-lg-4">
         <div class="card">
           <div class="card-img-top">
-            <div class="map-container-no-offset" style="
-                      width: 100%;
-                      height: 40vh;
-                      margin: 0px;
-                      padding: 0px;
-                      position: relative;
-            ">
-              <div id="map" ref="map"></div>
-              <canvas id="deck-canvas" ref="canvas"></canvas>
+            <div style="position: absolute; top: 0; bottom: 0; width: 100%;">
+              <div id="session-tool-map"></div>
+              <canvas id="session-tool-deck-canvas"></canvas>
             </div>
-
           </div>
           <div class="card-body">
             <div class="card-text">
@@ -261,7 +254,6 @@
 
 <script lang="ts">
 import { Component, Vue, Prop } from 'vue-property-decorator'
-import { Route, NavigationGuardNext } from 'vue-router'
 import APIService from '@/services/api.service'
 import mapboxgl from 'mapbox-gl'
 import { Deck } from '@deck.gl/core'
@@ -276,7 +268,7 @@ import uPlot from 'uplot'
 
 @Component
 export default class SessionDetails extends Vue {
-  @Prop({required: false, type: String, default: ''}) searchID!: string
+  @Prop({ required: false, type: String, default: '' }) searchID!: string
 
   // TODO: Refactor out the alert/error into its own component.
   private showDetails = false
@@ -284,8 +276,6 @@ export default class SessionDetails extends Vue {
 
   private meta: any = null
   private slices: Array<any> = []
-
-  private detailsLoop = -1
 
   private latencyComparisonChart: any = null
   private jitterComparisonChart: any = null
@@ -312,7 +302,6 @@ export default class SessionDetails extends Vue {
   }
 
   private mounted () {
-    console.log(this.$refs)
     this.fetchSessionDetails()
     /* this.detailsLoop = setInterval(() => {
       this.fetchSessionDetails()
@@ -320,16 +309,16 @@ export default class SessionDetails extends Vue {
   }
 
   private beforeDestroy () {
-    clearInterval(this.detailsLoop)
+    // clearInterval(this.detailsLoop)
   }
 
   private fetchSessionDetails () {
-    this.apiService.call('BuyersService.SessionDetails', {session_id: this.searchID})
+    this.apiService.call('BuyersService.SessionDetails', { session_id: this.searchID })
       .then((response: any) => {
         this.meta = response.result.meta
         this.slices = response.result.slices
-        
-        this.meta.connection = this.meta.connection == "wifi" ? "Wifi" : this.meta.connection.charAt(0).toUpperCase() + this.meta.connection.slice(1)
+
+        this.meta.connection = this.meta.connection === 'wifi' ? 'Wifi' : this.meta.connection.charAt(0).toUpperCase() + this.meta.connection.slice(1)
 
         if (!this.showDetails) {
           this.showDetails = true
@@ -337,14 +326,14 @@ export default class SessionDetails extends Vue {
 
         setTimeout(() => {
           // this.generateCharts()
-					if(!this.detailsLoop) {
-
-            const NNCOLOR = [0,109,44];
-            const DIRECTCOLOR = [49,130,189];
+          // if (!this.detailsLoop) {
+          if (true) {
+            const NNCOLOR = [0, 109, 44]
+            const DIRECTCOLOR = [49, 130, 189]
 
             const cellSize = 10
             const aggregation = 'MEAN'
-            const gpuAggregation = navigator.appVersion.indexOf("Win") == -1;
+            const gpuAggregation = navigator.appVersion.indexOf('Win') === -1
 
             if (!this.mapInstance) {
               this.mapInstance = new mapboxgl.Map({
@@ -357,26 +346,25 @@ export default class SessionDetails extends Vue {
                 zoom: 2,
                 pitch: 0,
                 bearing: 0,
-                container: 'map'
+                container: 'session-tool-map'
               })
             }
-
-            let sessionLocationLayer = new ScreenGridLayer({
-                id: 'session-location-layer',
-                data: [this.meta],
-                opacity: 0.8,
-                getPosition: (d: any) => [d.location.longitude, d.location.latitude],
-                getWeight: (d: any) => 1,
-                cellSizePixels: cellSize,
-                colorRange: this.meta.on_network_next ? [NNCOLOR] : [DIRECTCOLOR],
-                gpuAggregation,
-                aggregation
-              })
+            const sessionLocationLayer = new ScreenGridLayer({
+              id: 'session-location-layer',
+              data: [this.meta],
+              opacity: 0.8,
+              getPosition: (d: any) => [d.location.longitude, d.location.latitude],
+              getWeight: (d: any) => 1,
+              cellSizePixels: cellSize,
+              colorRange: this.meta.on_network_next ? [NNCOLOR] : [DIRECTCOLOR],
+              gpuAggregation,
+              aggregation
+            })
 
             if (!this.deckGlInstance) {
               // creating the deck.gl instance
               this.deckGlInstance = new Deck({
-                canvas: document.getElementById('deck-canvas'),
+                canvas: document.getElementById('session-tool-deck-canvas'),
                 width: '100%',
                 height: '100%',
                 initialViewState: this.viewState,
@@ -411,43 +399,43 @@ export default class SessionDetails extends Vue {
       })
   }
 
-  private generateCharts() {
-    let improvement: Array<any> = [[], []]
-    let comparison: Array<any> = [[], [], []]
-    let latencyData = {
+  private generateCharts () {
+    const improvement: Array<any> = [[], []]
+    const comparison: Array<any> = [[], [], []]
+    const latencyData = {
       improvement: improvement,
       comparison: comparison
     }
-    let jitterData = {
+    const jitterData = {
       improvement: improvement,
       comparison: comparison
     }
-    let packetLossData = {
+    const packetLossData = {
       improvement: improvement,
       comparison: comparison
     }
-    let bandwidthData = comparison
+    const bandwidthData = comparison
 
     let lastEntryNN = false
     let countNN = 0
     let directOnly = true
 
     this.slices.map((entry: any) => {
-      let timestamp = new Date(entry.timestamp).getTime() / 1000
-      let onNN = entry.on_network_next
+      const timestamp = new Date(entry.timestamp).getTime() / 1000
+      const onNN = entry.on_network_next
 
       if (directOnly && onNN) {
         directOnly = false
       }
 
       let nextRTT = parseFloat(entry.next.rtt)
-      let directRTT = parseFloat(entry.direct.rtt)
+      const directRTT = parseFloat(entry.direct.rtt)
 
       let nextJitter = parseFloat(entry.next.jitter)
-      let directJitter = parseFloat(entry.direct.jitter)
+      const directJitter = parseFloat(entry.direct.jitter)
 
       let nextPL = parseFloat(entry.next.packet_loss)
-      let directPL = parseFloat(entry.direct.packet_loss)
+      const directPL = parseFloat(entry.direct.packet_loss)
 
       if (lastEntryNN && !onNN) {
         countNN = 0
@@ -517,30 +505,30 @@ export default class SessionDetails extends Vue {
 
     if (!directOnly) {
       series.push({
-        stroke: "rgb(0, 109, 44)",
-        fill: "rgba(0, 109, 44, 0.1)",
-        label: "Network Next",
+        stroke: 'rgb(0, 109, 44)',
+        fill: 'rgba(0, 109, 44, 0.1)',
+        label: 'Network Next',
         value: (self: any, rawValue: any) => rawValue.toFixed(2)
       })
     }
 
     series.push({
-      stroke: "rgb(49, 130, 189)",
-      fill: "rgba(49, 130, 189, 0.1)",
-      label: "Direct",
+      stroke: 'rgb(49, 130, 189)',
+      fill: 'rgba(49, 130, 189, 0.1)',
+      label: 'Direct',
       value: (self: any, rawValue: any) => rawValue.toFixed(2)
     })
 
     const latencycomparisonOpts: uPlot.Options = {
       ...defaultOpts,
       scales: {
-        "ms": {
-          from: "y",
+        ms: {
+          from: 'y',
           auto: false,
           range: (self: any, min: any, max: any) => [
             0,
-            max,
-          ],
+            max
+          ]
         }
       },
       series: series,
@@ -549,13 +537,13 @@ export default class SessionDetails extends Vue {
           show: false
         },
         {
-          scale: "ms",
+          scale: 'ms',
           show: true,
           gap: 5,
           size: 70,
-          values: (self: any, ticks: any) => ticks.map((rawValue: any) => rawValue + "ms"),
+          values: (self: any, ticks: any) => ticks.map((rawValue: any) => rawValue + 'ms')
         }
-      ],
+      ]
     }
 
     series = [
@@ -564,17 +552,17 @@ export default class SessionDetails extends Vue {
 
     if (!directOnly) {
       series.push({
-        stroke: "rgb(0, 109, 44)",
-        fill: "rgba(0, 109, 44, 0.1)",
-        label: "Network Next",
+        stroke: 'rgb(0, 109, 44)',
+        fill: 'rgba(0, 109, 44, 0.1)',
+        label: 'Network Next',
         value: (self: any, rawValue: any) => rawValue.toFixed(2)
       })
     }
 
     series.push({
-      stroke: "rgba(49, 130, 189)",
-      fill: "rgba(49, 130, 189, 0.1)",
-      label: "Direct",
+      stroke: 'rgba(49, 130, 189)',
+      fill: 'rgba(49, 130, 189, 0.1)',
+      label: 'Direct',
       value: (self: any, rawValue: any) => rawValue.toFixed(2)
     })
 
@@ -583,7 +571,7 @@ export default class SessionDetails extends Vue {
       scales: {
         y: {
           auto: false,
-          range: [0, 100],
+          range: [0, 100]
         }
       },
       series: series,
@@ -595,46 +583,46 @@ export default class SessionDetails extends Vue {
           show: true,
           gap: 5,
           size: 50,
-          values: (self: any, ticks: any) => ticks.map((rawValue: any) => rawValue + "%"),
+          values: (self: any, ticks: any) => ticks.map((rawValue: any) => rawValue + '%')
         }
-      ],
+      ]
     }
 
     const bandwidthOpts: uPlot.Options = {
       ...defaultOpts,
       scales: {
-        "kbps": {
-          from: "y",
+        kbps: {
+          from: 'y',
           auto: false,
           range: (self: any, min: any, max: any) => [
             0,
-            max,
-          ],
+            max
+          ]
         }
       },
       series: [
         {},
         {
-          stroke: "blue",
-          fill: "rgba(0,0,255,0.1)",
-          label: "Up",
+          stroke: 'blue',
+          fill: 'rgba(0,0,255,0.1)',
+          label: 'Up'
         },
         {
-          stroke: "orange",
-          fill: "rgba(255,165,0,0.1)",
-          label: "Down"
-        },
+          stroke: 'orange',
+          fill: 'rgba(255,165,0,0.1)',
+          label: 'Down'
+        }
       ],
       axes: [
         {
           show: false
         },
         {
-          scale: "kbps",
+          scale: 'kbps',
           show: true,
           gap: 5,
           size: 70,
-          values: (self: any, ticks: any) => ticks.map((rawValue: any) => rawValue + "kbps"),
+          values: (self: any, ticks: any) => ticks.map((rawValue: any) => rawValue + 'kbps')
         },
         {
           show: false
@@ -672,27 +660,4 @@ export default class SessionDetails extends Vue {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
-  .map-container-no-offset {
-    width: 100%;
-    height: calc(-160px + 100vh);
-    position: relative;
-    overflow: hidden;
-  }
-  #map {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    border: 1px solid rgb(136, 136, 136);
-    background-color: rgb(27, 27, 27);
-    overflow: hidden;
-  }
-  #deck-canvas {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-  }
 </style>

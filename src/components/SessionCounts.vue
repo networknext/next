@@ -1,10 +1,5 @@
 <template>
-  <div>
-    <div v-if="!showCount">
-        <div class="spinner-border" role="status">
-            <span class="sr-only">Loading...</span>
-        </div>
-    </div>
+  <div style="padding-top: 30px; padding-left: 15px; padding-bottom: 10px;">
     <h1 class="count-header" v-if="showCount">
       {{ $store.getters.currentPage[0].toUpperCase() + $store.getters.currentPage.slice(1) }}&nbsp;
       <span class="badge badge-dark">
@@ -67,6 +62,9 @@ export default class SessionCounts extends Vue {
         this.totalSessionsReply.onNN = response.result.next
         if (!this.showCount) {
           this.showCount = true
+        }
+        if (!this.$store.getters.isReady) {
+          this.$store.dispatch('toggleReady', true)
         }
       })
       .catch((error: any) => {

@@ -1,53 +1,5 @@
 <template>
   <main role="main" class="col-md-12 col-lg-12 px-4">
-    <div class="
-            d-flex
-            justify-content-between
-            flex-wrap flex-md-nowrap
-            align-items-center
-            pt-3
-            pb-2
-            mb-3
-            border-bottom"
-    >
-      <SessionCounts />
-      <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1">
-        <div class="mr-auto"></div>
-        <div class="px-2 hidden">
-          <select class="form-control">
-            <option value="rtt">
-              Sort by RTT
-            </option>
-          </select>
-        </div>
-        <div class="px-2 hidden">
-          <select class="form-control">
-            <option value="everything">
-              Everything
-            </option>
-            <option value="direct">
-              Direct Only
-            </option>
-            <option value="next">
-              Network Next Only
-            </option>
-          </select>
-        </div>
-        <div class="px-2 hidden">
-          <select class="form-control">
-            <option value="all">
-              All
-            </option>
-            <option>
-              BUYERNAME ADMIN LOOP
-            </option>
-            <option>
-              BUYERNAME SINGLE BUYER
-            </option>
-          </select>
-        </div>
-      </div>
-    </div>
     <div class="spinner-border" role="status" id="sessions-spinner" v-show="!$store.getters.showTable">
       <span class="sr-only">Loading...</span>
     </div>
@@ -214,7 +166,7 @@ export default class SessionsWorkspace extends Vue {
       })
   }
 
-  private beforeRouteUpdate(to: Route, from: Route, next: NavigationGuardNext<Vue>) {
+  private beforeRouteUpdate (to: Route, from: Route, next: NavigationGuardNext<Vue>) {
     console.log('Before Route Update')
     console.log(to)
     console.log(from)

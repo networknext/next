@@ -3,8 +3,8 @@
          'map-container-no-offset': true,
          'map-container-offset': false,
        }">
-    <div id="map" ref="map"></div>
-    <canvas id="deck-canvas" ref="canvas"></canvas>
+    <div id="map"></div>
+    <canvas id="deck-canvas"></canvas>
   </div>
 </template>
 
@@ -51,10 +51,11 @@ export default class SessionMap extends Vue {
 
   private mounted () {
     this.refreshMapSessions()
-    this. mapLoop = setInterval(() => {
+    this.mapLoop = setInterval(() => {
       this.refreshMapSessions()
     }, 10000)
   }
+
   private beforeDestroy () {
     clearInterval(this.mapLoop)
   }
