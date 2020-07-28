@@ -373,11 +373,6 @@ build-server-backend: ## builds the server backend binary
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/server_backend ./cmd/server_backend/server_backend.go
 	@printf "done\n"
 
-.PHONY: deploy-server-backend
-deploy-server-backend: ## builds and deploys the server backend to dev
-	@printf "Deploying server backend to dev... \n\n"
-	gcloud compute --project "network-next-v3-dev" ssh server-backend-dev-1 -- 'cd /app && sudo ./bootstrap.sh -b $(ARTIFACT_BUCKET) -a server_backend.dev.tar.gz'
-
 .PHONY: build-billing
 build-billing: ## builds the billing binary
 	@printf "Building billing... "
