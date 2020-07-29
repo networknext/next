@@ -587,6 +587,12 @@ func main() {
 				numSessions := sessionMap.GetSessionCount()
 				serverBackendMetrics.SessionCount.Set(float64(numSessions))
 
+				numDirectSessions := sessionMap.GetDirectSessionCount()
+				serverBackendMetrics.SessionDirectCount.Set(float64(numDirectSessions))
+
+				numNextSessions := sessionMap.GetNextSessionCount()
+				serverBackendMetrics.SessionNextCount.Set(float64(numNextSessions))
+
 				numEntriesQueued := serverBackendMetrics.BillingMetrics.EntriesSubmitted.Value() - serverBackendMetrics.BillingMetrics.EntriesFlushed.Value()
 				serverBackendMetrics.BillingMetrics.EntriesQueued.Set(numEntriesQueued)
 
@@ -596,6 +602,8 @@ func main() {
 				fmt.Printf("%d vetoes\n", numVetoes)
 				fmt.Printf("%d servers\n", numServers)
 				fmt.Printf("%d sessions\n", numSessions)
+				fmt.Printf("%d direct sessions\n", numDirectSessions)
+				fmt.Printf("%d next sessions\n", numNextSessions)
 				fmt.Printf("%d billing entries submitted\n", int(serverBackendMetrics.BillingMetrics.EntriesSubmitted.Value()))
 				fmt.Printf("%d billing entries queued\n", int(serverBackendMetrics.BillingMetrics.EntriesQueued.Value()))
 				fmt.Printf("%d billing entries flushed\n", int(serverBackendMetrics.BillingMetrics.EntriesFlushed.Value()))

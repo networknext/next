@@ -255,10 +255,8 @@ func TestTotalSessions(t *testing.T) {
 	redisServer, _ := miniredis.Run()
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
-	redisServer.ZAdd("total-next", 10, "session-1")
-	redisServer.ZAdd("total-next", 20, "session-2")
-	redisServer.ZAdd("total-next", 30, "session-5")
-	redisServer.ZAdd("total-direct", 5, "session-2")
+	redisServer.Set("total-next-count", "3")
+	redisServer.Set("total-direct-count", "1")
 
 	logger := log.NewNopLogger()
 	svc := jsonrpc.BuyersService{
