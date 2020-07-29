@@ -169,38 +169,47 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 	// get the top session IDs globally or for a buyer from the sorted set
 	switch args.BuyerID {
 	case "":
-		// Get top Next sessions
-		nextString, err := s.RedisClient.Get("total-next-count").Result()
-		if err != nil {
-			err = fmt.Errorf("TotalSessions() failed getting total-next-count session count: %v", err)
-			s.Logger.Log("err", err)
-			return err
-		}
-
 		// Get top Direct sessions sorted by least to greatest direct RTT
-		directString, err := s.RedisClient.Get("total-direct-count").Result()
+		directTotals, err := s.RedisClient.HGetAll("session-count-total-direct").Result()
 		if err != nil {
-			err = fmt.Errorf("TotalSessions() failed getting total-direct-count session count: %v", err)
+			err = fmt.Errorf("TotalSessions() failed getting session-count-total-direct: %v", err)
 			s.Logger.Log("err", err)
 			return err
 		}
 
-		direct, err := strconv.Atoi(directString)
+		// Get top Next sessions
+		nextTotals, err := s.RedisClient.HGetAll("session-count-total-next").Result()
 		if err != nil {
-			err = fmt.Errorf("TotalSessions() failed to parse direct session count (%s): %v", directString, err)
+			err = fmt.Errorf("TotalSessions() failed getting session-count-total-next: %v", err)
 			s.Logger.Log("err", err)
 			return err
 		}
 
-		next, err := strconv.Atoi(nextString)
-		if err != nil {
-			err = fmt.Errorf("TotalSessions() failed to parse next session count (%s): %v", nextString, err)
-			s.Logger.Log("err", err)
-			return err
+		var totalDirect int
+		for _, directString := range directTotals {
+			direct, err := strconv.Atoi(directString)
+			if err != nil {
+				err = fmt.Errorf("TotalSessions() failed to parse direct session count (%s): %v", directString, err)
+				s.Logger.Log("err", err)
+				return err
+			}
+
+			totalDirect += direct
 		}
 
-		reply.Direct = direct
-		reply.Next = next
+		var totalNext int
+		for _, nextString := range nextTotals {
+			next, err := strconv.Atoi(nextString)
+			if err != nil {
+				err = fmt.Errorf("TotalSessions() failed to parse next session count (%s): %v", nextString, err)
+				s.Logger.Log("err", err)
+				return err
+			}
+			totalNext += next
+		}
+
+		reply.Direct = totalDirect
+		reply.Next = totalNext
 	default:
 		if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
 			err := fmt.Errorf("TotalSessions(): %v", ErrInsufficientPrivileges)
@@ -208,36 +217,46 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			return err
 		}
 
-		nextString, err := s.RedisClient.Get(fmt.Sprintf("next-count-buyer-%s", args.BuyerID)).Result()
+		buyerDirectTotals, err := s.RedisClient.HGetAll(fmt.Sprintf("session-count-direct-buyer-%s", args.BuyerID)).Result()
 		if err != nil {
-			err = fmt.Errorf("TotalSessions() failed getting next-count-buyer-%s session count: %v", args.BuyerID, err)
+			err = fmt.Errorf("TotalSessions() failed getting session-count-direct-buyer-%s: %v", args.BuyerID, err)
 			s.Logger.Log("err", err)
 			return err
 		}
 
-		directString, err := s.RedisClient.Get(fmt.Sprintf("direct-count-buyer-%s", args.BuyerID)).Result()
+		buyerNextTotals, err := s.RedisClient.HGetAll(fmt.Sprintf("session-count-next-buyer-%s", args.BuyerID)).Result()
 		if err != nil {
-			err = fmt.Errorf("TotalSessions() failed getting direct-count-buyer-%s session count: %v", args.BuyerID, err)
+			err = fmt.Errorf("TotalSessions() failed getting session-count-next-buyer-%s: %v", args.BuyerID, err)
 			s.Logger.Log("err", err)
 			return err
 		}
 
-		direct, err := strconv.Atoi(directString)
-		if err != nil {
-			err = fmt.Errorf("TotalSessions() failed to parse buyer direct session count (%s): %v", directString, err)
-			s.Logger.Log("err", err)
-			return err
+		var buyerDirectTotal int
+		for _, directString := range buyerDirectTotals {
+			direct, err := strconv.Atoi(directString)
+			if err != nil {
+				err = fmt.Errorf("TotalSessions() failed to parse buyer direct session count (%s): %v", directString, err)
+				s.Logger.Log("err", err)
+				return err
+			}
+
+			buyerDirectTotal += direct
 		}
 
-		next, err := strconv.Atoi(nextString)
-		if err != nil {
-			err = fmt.Errorf("TotalSessions() failed to parse buyer next session count (%s): %v", nextString, err)
-			s.Logger.Log("err", err)
-			return err
+		var buyerNextTotal int
+		for _, nextString := range buyerNextTotals {
+			next, err := strconv.Atoi(nextString)
+			if err != nil {
+				err = fmt.Errorf("TotalSessions() failed to parse buyer next session count (%s): %v", nextString, err)
+				s.Logger.Log("err", err)
+				return err
+			}
+
+			buyerNextTotal += next
 		}
 
-		reply.Direct = direct
-		reply.Next = next
+		reply.Direct = buyerDirectTotal
+		reply.Next = buyerNextTotal
 	}
 
 	return nil
