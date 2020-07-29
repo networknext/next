@@ -347,15 +347,32 @@ func main() {
 		{
 			fmt.Printf("setting up pubsub\n")
 
-			settings := googlepubsub.PublishSettings{
-				DelayThreshold: time.Hour,
-				CountThreshold: 100,
-				ByteThreshold:  60 * 1024,
-				NumGoroutines:  runtime.GOMAXPROCS(0),
-				Timeout:        time.Minute,
+			clientCount, err := strconv.Atoi(os.Getenv("BILLING_CLIENT_COUNT"))
+			if err != nil {
+				level.Error(logger).Log("envvar", "BILLING_CLIENT_COUNT", "msg", "could not parse", "err", err)
+				os.Exit(1)
 			}
 
-			pubsub, err := billing.NewGooglePubSubBiller(pubsubCtx, &serverBackendMetrics.BillingMetrics, logger, gcpProjectID, "billing", 1, 100, 1024, &settings)
+			countThreshold, err := strconv.Atoi(os.Getenv("BILLING_BATCHED_MESSAGE_COUNT"))
+			if err != nil {
+				level.Error(logger).Log("envvar", "BILLING_BATCHED_MESSAGE_COUNT", "msg", "could not parse", "err", err)
+				os.Exit(1)
+			}
+
+			byteThreshold, err := strconv.Atoi(os.Getenv("BILLING_BATCHED_MESSAGE_MIN_BYTES"))
+			if err != nil {
+				level.Error(logger).Log("envvar", "BILLING_BATCHED_MESSAGE_MIN_BYTES", "msg", "could not parse", "err", err)
+				os.Exit(1)
+			}
+
+			// We do our own batching so don't stack the library's batching on top of ours
+			// Specifically, don't stack the message count thresholds
+			settings := googlepubsub.DefaultPublishSettings
+			settings.CountThreshold = 1
+			settings.ByteThreshold = byteThreshold
+			settings.NumGoroutines = runtime.GOMAXPROCS(0)
+
+			pubsub, err := billing.NewGooglePubSubBiller(pubsubCtx, &serverBackendMetrics.BillingMetrics, logger, gcpProjectID, "billing", clientCount, countThreshold, byteThreshold, &settings)
 			if err != nil {
 				level.Error(logger).Log("msg", "could not create pubsub biller", "err", err)
 				os.Exit(1)
