@@ -5,10 +5,9 @@ export default class APIService {
 
   constructor () {
     this.headers = {
-      Accept: 'application/jsosn',
+      Accept: 'application/json',
       'Accept-Encoding': 'gzip',
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*'
+      'Content-Type': 'application/json'
     }
   }
 
@@ -19,7 +18,7 @@ export default class APIService {
     return new Promise((resolve, reject) => {
       const options = params || {}
       const id = 'id'
-      fetch('/rpc', {
+      fetch(`${process.env.VUE_APP_BASE_URL}/rpc`, {
         method: 'POST',
         headers: this.headers,
         body: JSON.stringify({
@@ -33,6 +32,7 @@ export default class APIService {
           resolve(response.json())
         })
         .catch((error: Error) => {
+          console.log(error.message)
           reject(error)
         })
     })

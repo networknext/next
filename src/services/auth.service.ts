@@ -54,7 +54,7 @@ export default class AuthService {
   public logOut () {
     // TODO: Make a env var for baseURL
     this.lockClient.logout({
-      returnTo: 'http://127.0.0.1:8080'
+      returnTo: process.env.VUE_APP_BASE_URL
     })
   }
 

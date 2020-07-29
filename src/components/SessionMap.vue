@@ -26,8 +26,6 @@ import APIService from '@/services/api.service'
 })
 export default class SessionMap extends Vue {
   // TODO: Add in types for all of the any declarations
-  private accessToken = 'pk.eyJ1Ijoibm5zZWN1cml0eSIsImEiOiJja2FmaXE1Y2cwZGRiMzBub2p3cnE4c3czIn0.3QIueg8fpEy5cBtqRuXMxw'
-
   private mapInstance: any = null
   private deckGlInstance: any = null
 
@@ -66,7 +64,7 @@ export default class SessionMap extends Vue {
       .then((response: any) => {
         if (!this.mapInstance) {
           this.mapInstance = new mapboxgl.Map({
-            accessToken: this.accessToken,
+            accessToken: process.env.VUE_APP_MAPBOX_TOKEN,
             style: 'mapbox://styles/mapbox/dark-v10',
             center: [
               0,

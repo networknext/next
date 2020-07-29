@@ -10,11 +10,13 @@
 // const webpack = require('@cypress/webpack-preprocessor')
 
 module.exports = (on, config) => {
-  // on('file:preprocessor', webpack({
-  //  webpackOptions: require('@vue/cli-service/webpack.config'),
-  //  watchOptions: {}
-  // }))
-
+  on('before:browser:launch', (browser = {}, args) => {
+    if (browser.name === 'chromium') {
+      const newArgs = args.filter((arg) => arg !== '--disable-gpu')
+      newArgs.push('--ignore-gpu-blacklist')
+      return newArgs
+    }
+  })
   return {
     ...config,
     fixturesFolder: 'tests/e2e/fixtures',

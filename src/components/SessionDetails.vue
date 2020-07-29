@@ -283,9 +283,6 @@ export default class SessionDetails extends Vue {
   private deckGlInstance: any = null
   private mapInstance: any = null
 
-  // TODO: Make ENV Var
-  private accessToken = 'pk.eyJ1Ijoibm5zZWN1cml0eSIsImEiOiJja2FmaXE1Y2cwZGRiMzBub2p3cnE4c3czIn0.3QIueg8fpEy5cBtqRuXMxw'
-
   private detailsLoop = 0
 
   private viewState = {
@@ -336,7 +333,7 @@ export default class SessionDetails extends Vue {
 
           if (!this.mapInstance) {
             this.mapInstance = new mapboxgl.Map({
-              accessToken: this.accessToken,
+              accessToken: process.env.VUE_APP_MAPBOX_TOKEN,
               style: 'mapbox://styles/mapbox/dark-v10',
               center: [
                 0,
