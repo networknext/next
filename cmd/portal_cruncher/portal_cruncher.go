@@ -21,6 +21,7 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
+	"github.com/go-redis/redis/v7"
 	"github.com/gorilla/mux"
 	"github.com/networknext/backend/logging"
 	"github.com/networknext/backend/metrics"
@@ -262,6 +263,28 @@ func main() {
 				fmt.Printf("%#v\n", sessionData)
 
 				tx := redisClientPortal.TxPipeline()
+
+				// set total session counts with expiration on the entire key set for safety
+				switch sessionData.Meta.OnNetworkNext {
+				case true:
+					// Remove the session from the direct set if it exists
+					tx.ZRem("total-direct", sessionData.Meta.ID)
+					tx.ZRem(fmt.Sprintf("total-direct-buyer-%s", sessionData.Meta.BuyerID), sessionData.Meta.ID)
+
+					tx.ZAdd("total-next", &redis.Z{Score: sessionData.Meta.DeltaRTT, Member: sessionData.Meta.ID})
+					tx.Expire("total-next", redisPortalHostExp)
+					tx.ZAdd(fmt.Sprintf("total-next-buyer-%s", sessionData.Meta.BuyerID), &redis.Z{Score: sessionData.Meta.DeltaRTT, Member: sessionData.Meta.ID})
+					tx.Expire(fmt.Sprintf("total-next-buyer-%s", sessionData.Meta.BuyerID), redisPortalHostExp)
+				case false:
+					// Remove the session from the next set if it exists
+					tx.ZRem("total-next", sessionData.Meta.ID)
+					tx.ZRem(fmt.Sprintf("total-next-buyer-%s", sessionData.Meta.BuyerID), sessionData.Meta.ID)
+
+					tx.ZAdd("total-direct", &redis.Z{Score: -sessionData.Meta.DirectRTT, Member: sessionData.Meta.ID})
+					tx.Expire("total-direct", redisPortalHostExp)
+					tx.ZAdd(fmt.Sprintf("total-direct-buyer-%s", sessionData.Meta.BuyerID), &redis.Z{Score: -sessionData.Meta.DirectRTT, Member: sessionData.Meta.ID})
+					tx.Expire(fmt.Sprintf("total-direct-buyer-%s", sessionData.Meta.BuyerID), redisPortalHostExp)
+				}
 
 				// set session and slice information with expiration on the entire key set for safety
 				tx.Set(fmt.Sprintf("session-%s-meta", sessionData.Meta.ID), sessionData.Meta, redisPortalHostExp)
