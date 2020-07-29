@@ -21,6 +21,7 @@ const (
 
 type SessionData struct {
 	Timestamp            int64
+	BuyerID              uint64
 	Location             routing.Location
 	Sequence             uint64
 	NearRelays           []routing.Relay
@@ -41,15 +42,22 @@ type SessionMapShard struct {
 }
 
 type SessionMap struct {
-	numSessions       uint64
-	numNextSessions   uint64
-	numDirectSessions uint64
-	timeoutShard      int
-	shard             [NumSessionMapShards]*SessionMapShard
+	numSessions                    uint64
+	numNextSessions                uint64
+	numDirectSessions              uint64
+	numNextSessionsPerBuyer        map[uint64]uint64
+	numNextSessionsPerBuyerMutex   sync.RWMutex
+	numDirectSessionsPerBuyer      map[uint64]uint64
+	numDirectSessionsPerBuyerMutex sync.RWMutex
+	timeoutShard                   int
+	shard                          [NumSessionMapShards]*SessionMapShard
 }
 
 func NewSessionMap() *SessionMap {
-	sessionMap := &SessionMap{}
+	sessionMap := &SessionMap{
+		numNextSessionsPerBuyer:   make(map[uint64]uint64),
+		numDirectSessionsPerBuyer: make(map[uint64]uint64),
+	}
 	for i := 0; i < NumSessionMapShards; i++ {
 		sessionMap.shard[i] = &SessionMapShard{}
 		sessionMap.shard[i].sessions = make(map[uint64]*SessionData)
@@ -67,6 +75,32 @@ func (sessionMap *SessionMap) GetDirectSessionCount() uint64 {
 
 func (sessionMap *SessionMap) GetNextSessionCount() uint64 {
 	return atomic.LoadUint64(&sessionMap.numNextSessions)
+}
+
+func (sessionMap *SessionMap) GetDirectSessionCountPerBuyer() map[uint64]uint64 {
+	sessionMap.numDirectSessionsPerBuyerMutex.RLock()
+	defer sessionMap.numDirectSessionsPerBuyerMutex.RUnlock()
+
+	// make a copy of the map for thread safety
+	copy := make(map[uint64]uint64)
+	for k, v := range sessionMap.numDirectSessionsPerBuyer {
+		copy[k] = v
+	}
+
+	return copy
+}
+
+func (sessionMap *SessionMap) GetNextSessionCountPerBuyer() map[uint64]uint64 {
+	sessionMap.numNextSessionsPerBuyerMutex.RLock()
+	defer sessionMap.numNextSessionsPerBuyerMutex.RUnlock()
+
+	// make a copy of the map for thread safety
+	copy := make(map[uint64]uint64)
+	for k, v := range sessionMap.numNextSessionsPerBuyer {
+		copy[k] = v
+	}
+
+	return copy
 }
 
 func NewSessionData() *SessionData {
@@ -107,8 +141,14 @@ func (sessionMap *SessionMap) UpdateSessionData(sessionId uint64, sessionData *S
 
 		if next {
 			atomic.AddUint64(&sessionMap.numNextSessions, 1)
+			sessionMap.numNextSessionsPerBuyerMutex.Lock()
+			sessionMap.numNextSessionsPerBuyer[sessionData.BuyerID]++
+			sessionMap.numNextSessionsPerBuyerMutex.Unlock()
 		} else {
 			atomic.AddUint64(&sessionMap.numDirectSessions, 1)
+			sessionMap.numDirectSessionsPerBuyerMutex.Lock()
+			sessionMap.numDirectSessionsPerBuyer[sessionData.BuyerID]++
+			sessionMap.numDirectSessionsPerBuyerMutex.Unlock()
 		}
 	} else {
 		prevNext := sessionMap.shard[index].sessions[sessionId].NextSliceCounter > 0
@@ -116,12 +156,20 @@ func (sessionMap *SessionMap) UpdateSessionData(sessionId uint64, sessionData *S
 		// detect next -> direct
 		if prevNext && !next {
 			atomic.AddUint64(&sessionMap.numNextSessions, ^uint64(0))
+			sessionMap.numNextSessionsPerBuyerMutex.Lock()
+			sessionMap.numNextSessionsPerBuyer[sessionData.BuyerID]--
+			sessionMap.numNextSessionsPerBuyerMutex.Unlock()
+
 			atomic.AddUint64(&sessionMap.numDirectSessions, 1)
 		}
 
 		// detect direct -> next
 		if !prevNext && next {
 			atomic.AddUint64(&sessionMap.numDirectSessions, ^uint64(0))
+			sessionMap.numDirectSessionsPerBuyerMutex.Lock()
+			sessionMap.numDirectSessionsPerBuyer[sessionData.BuyerID]--
+			sessionMap.numDirectSessionsPerBuyerMutex.Unlock()
+
 			atomic.AddUint64(&sessionMap.numNextSessions, 1)
 		}
 	}
