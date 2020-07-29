@@ -9,6 +9,7 @@ import (
 )
 
 type SessionCountData struct {
+	InstanceID                uint64
 	TotalNumDirectSessions    uint64
 	TotalNumNextSessions      uint64
 	NumDirectSessionsPerBuyer map[uint64]uint64
