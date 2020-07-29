@@ -1171,6 +1171,7 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 
 	billingEntry := billing.BillingEntry{
 		BuyerID:                   packet.CustomerID,
+		UserHash:                  packet.UserHash,
 		SessionID:                 packet.SessionID,
 		SliceNumber:               uint32(packet.Sequence),
 		DirectRTT:                 float32(lastDirectStats.RTT),
