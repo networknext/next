@@ -179,7 +179,7 @@ func (e *RelayStatsEntry) Save() (map[string]bigquery.Value, string, error) {
 	bqEntry := make(map[string]bigquery.Value)
 
 	bqEntry["timestamp"] = int(e.Timestamp)
-	bqEntry["realyID"] = int(e.ID)
+	bqEntry["relayID"] = int(e.ID)
 	bqEntry["numSessions"] = int(e.NumSessions)
 	bqEntry["cpu"] = e.CPUUsage
 	bqEntry["mem"] = e.MemUsage
