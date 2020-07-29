@@ -109,13 +109,15 @@ func (serverMap *ServerMap) TimeoutLoop(ctx context.Context, timeoutSeconds int6
 					numIterations++
 				}
 				serverMap.shard[index].mutex.RUnlock()
-				serverMap.shard[index].mutex.Lock()
-				for i := range deleteList {
-					// fmt.Printf("timeout server %x\n", deleteList[i])
-					delete(serverMap.shard[index].servers, deleteList[i])
-					atomic.AddUint64(&serverMap.numServers, ^uint64(0))
+				if len(deleteList) > 0 {
+					serverMap.shard[index].mutex.Lock()
+					for i := range deleteList {
+						// fmt.Printf("timeout server %x\n", deleteList[i])
+						delete(serverMap.shard[index].servers, deleteList[i])
+						atomic.AddUint64(&serverMap.numServers, ^uint64(0))
+					}
+					serverMap.shard[index].mutex.Unlock()
 				}
-				serverMap.shard[index].mutex.Unlock()
 			}
 			serverMap.timeoutShard = ( serverMap.timeoutShard + maxShards ) % NumServerMapShards
 		case <-ctx.Done():
