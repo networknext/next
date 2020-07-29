@@ -259,9 +259,6 @@ func main() {
 					continue
 				}
 
-				fmt.Println("received session data")
-				fmt.Printf("%#v\n", sessionData)
-
 				tx := redisClientPortal.TxPipeline()
 
 				// set total session counts with expiration on the entire key set for safety
@@ -311,9 +308,6 @@ func main() {
 					level.Error(logger).Log("msg", "error unmarshaling session count message", "err", err)
 					continue
 				}
-
-				fmt.Println("received count data")
-				fmt.Printf("%#v\n", countData)
 
 				tx := redisClientPortal.TxPipeline()
 
