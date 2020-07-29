@@ -11349,6 +11349,9 @@ void next_server_internal_tag_session( next_server_internal_t * server, const ne
         entry->tag = tag;
         return;
     }
+
+    char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "server could not find any session to tag for address %s. please call next_upgrade_session before next_tag_session", next_address_to_string( address, buffer ) );    
 }
 
 bool next_server_internal_pump_commands( next_server_internal_t * server, bool quit )
