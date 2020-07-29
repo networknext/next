@@ -34,6 +34,7 @@ require (
 	github.com/oschwald/geoip2-golang v1.4.0
 	github.com/pebbe/zmq4 v1.2.1
 	github.com/peterbourgon/ff/v3 v3.0.0
+	github.com/rs/cors v1.7.0 // indirect
 	github.com/stretchr/testify v1.4.0
 	github.com/tidwall/gjson v1.6.0
 	github.com/tidwall/pretty v1.0.1 // indirect

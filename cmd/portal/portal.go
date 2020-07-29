@@ -18,6 +18,7 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/rpc/v2"
 	"github.com/gorilla/rpc/v2/json2"
+	"github.com/rs/cors"
 	"gopkg.in/auth0.v4/management"
 
 	gcplogging "cloud.google.com/go/logging"
@@ -432,7 +433,16 @@ func main() {
 			Storage: db,
 		}, "")
 
-		http.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s)))
+		allowCORS := os.Getenv("CORS")
+
+		if allowCORS == "false" {
+			fmt.Println("Setting headers")
+			http.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), cors.Default().Handler(handlers.CompressHandler(s))))
+			fmt.Println("done")
+		} else {
+			http.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s)))
+		}
+
 		http.HandleFunc("/health", transport.HealthHandlerFunc())
 		http.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage))
 
