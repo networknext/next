@@ -12088,13 +12088,12 @@ void next_server_tag_session( next_server_t * server, const next_address_t * add
         return;
     }
 
-    uint64_t session_id = next_generate_session_id();
-
     uint64_t tag_id = next_tag_id( tag );
     
     if ( tag_id != 0 )
     {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server tagged session %" PRIx64 " as '%s' [%" PRIx64 "]", session_id, tag, tag_id );
+        char address_string[NEXT_MAX_ADDRESS_STRING_LENGTH];
+        next_printf( NEXT_LOG_LEVEL_INFO, "server tagged %s as '%s' [%" PRIx64 "]", next_address_to_string( address, address_string ), tag, tag_id );
     }
 
     command->type = NEXT_SERVER_COMMAND_TAG_SESSION;
