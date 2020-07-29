@@ -809,6 +809,22 @@ func main() {
 				},
 			},
 			{
+				Name:       "maintenance",
+				ShortUsage: "next relay maintenance [regex...]",
+				ShortHelp:  "Move the specified relay(s) to maintenance mode",
+				FlagSet:    relaydisablefs,
+				Exec: func(_ context.Context, args []string) error {
+					regexes := []string{".*"}
+					if len(args) > 0 {
+						regexes = args
+					}
+
+					setRelaysMaintMode(env, rpcClient, regexes, hardDisable)
+
+					return nil
+				},
+			},
+			{
 				Name:       "speed",
 				ShortUsage: "next relay speed <relay name> <value (Mbps)>",
 				ShortHelp:  "sets the speed value of a relay",
