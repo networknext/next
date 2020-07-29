@@ -116,7 +116,7 @@ func (sessionMap *SessionMap) TimeoutLoop(ctx context.Context, timeoutSeconds in
 				sessionMap.shard[index].mutex.RLock()
 				numIterations := 0
 				for k, v := range sessionMap.shard[index].sessions {
-					if numIterations > maxIterations || numIterations > len(sessionMap.shard[index].sessions) {
+					if numIterations >= maxIterations || numIterations >= len(sessionMap.shard[index].sessions) {
 						break
 					}
 					if v.Timestamp < timeoutTimestamp {
@@ -125,13 +125,15 @@ func (sessionMap *SessionMap) TimeoutLoop(ctx context.Context, timeoutSeconds in
 					numIterations++
 				}
 				sessionMap.shard[index].mutex.RUnlock()
-				sessionMap.shard[index].mutex.Lock()
-				for i := range deleteList {
-					// fmt.Printf("timeout session %x\n", deleteList[i])
-					delete(sessionMap.shard[index].sessions, deleteList[i])
-					atomic.AddUint64(&sessionMap.numSessions, ^uint64(0))
+				if len(deleteList) > 0 {
+					sessionMap.shard[index].mutex.Lock()
+					for i := range deleteList {
+						// fmt.Printf("timeout session %x\n", deleteList[i])
+						delete(sessionMap.shard[index].sessions, deleteList[i])
+						atomic.AddUint64(&sessionMap.numSessions, ^uint64(0))
+					}
+					sessionMap.shard[index].mutex.Unlock()
 				}
-				sessionMap.shard[index].mutex.Unlock()
 			}
 			sessionMap.timeoutShard = ( sessionMap.timeoutShard + maxShards ) % NumSessionMapShards
 		case <-ctx.Done():

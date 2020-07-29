@@ -46,9 +46,27 @@ func NewPubSubForwarder(ctx context.Context, biller Biller, logger log.Logger, m
 // Forward reads the billing entry from pubsub and writes it to BigQuery
 func (psf *PubSubForwarder) Forward(ctx context.Context) {
 	err := psf.pubsubSubscription.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
-		entries, err := psf.unbatchMessages(m)
-		if err != nil {
-			level.Error(psf.Logger).Log("err", err)
+		// Check if the message is batched or unbatched (for compatibility with old data)
+		var messageLength uint32
+		var offset int
+		if !encoding.ReadUint32(m.Data, &offset, &messageLength) {
+			level.Error(psf.Logger).Log("msg", "failed to detect if message is batched or unbatched", "offset", offset, "length", len(m.Data))
+			psf.Metrics.ErrorMetrics.BillingBatchedReadFailure.Add(1)
+		}
+
+		var entries [][]byte
+		if messageLength <= uint32(len(m.Data)) {
+			// This is a new, batched message
+			var err error
+			entries, err = psf.unbatchMessages(m)
+			if err != nil {
+				level.Error(psf.Logger).Log("err", err)
+				psf.Metrics.ErrorMetrics.BillingBatchedReadFailure.Add(1)
+			}
+		} else {
+			// This is an old, unbatched message. ignore it and ack
+			m.Ack()
+			return
 		}
 
 		psf.Metrics.EntriesReceived.Add(float64(len(entries)))

@@ -406,15 +406,17 @@ var EmptyBillingMetrics BillingMetrics = BillingMetrics{
 }
 
 type BillingErrorMetrics struct {
-	BillingPublishFailure Counter
-	BillingReadFailure    Counter
-	BillingWriteFailure   Counter
+	BillingPublishFailure     Counter
+	BillingReadFailure        Counter
+	BillingBatchedReadFailure Counter
+	BillingWriteFailure       Counter
 }
 
 var EmptyBillingErrorMetrics BillingErrorMetrics = BillingErrorMetrics{
-	BillingPublishFailure: &EmptyCounter{},
-	BillingReadFailure:    &EmptyCounter{},
-	BillingWriteFailure:   &EmptyCounter{},
+	BillingPublishFailure:     &EmptyCounter{},
+	BillingReadFailure:        &EmptyCounter{},
+	BillingBatchedReadFailure: &EmptyCounter{},
+	BillingWriteFailure:       &EmptyCounter{},
 }
 
 type AnalyticsMetrics struct {
@@ -621,6 +623,7 @@ func NewServerBackendMetrics(ctx context.Context, metricsHandler Handler) (*Serv
 		return nil, err
 	}
 
+	serverBackendMetrics.BillingMetrics.ErrorMetrics.BillingBatchedReadFailure = &EmptyCounter{}
 	serverBackendMetrics.BillingMetrics.ErrorMetrics.BillingReadFailure = &EmptyCounter{}
 	serverBackendMetrics.BillingMetrics.ErrorMetrics.BillingWriteFailure = &EmptyCounter{}
 
@@ -628,7 +631,7 @@ func NewServerBackendMetrics(ctx context.Context, metricsHandler Handler) (*Serv
 		DisplayName: "Server Backend Route Matrix Bytes",
 		ServiceName: "server_backend",
 		ID:          "server_backend.route_matrix.bytes",
-		Unit:        "ms",
+		Unit:        "bytes",
 		Description: "The size of the route matrix in bytes",
 	})
 	if err != nil {
@@ -1769,6 +1772,16 @@ func NewBillingServiceMetrics(ctx context.Context, metricsHandler Handler) (*Bil
 		DisplayName: "Billing Read Failure",
 		ServiceName: "billing",
 		ID:          "billing.error.read_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	billingServiceMetrics.BillingMetrics.ErrorMetrics.BillingBatchedReadFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Billing Batched Read Failure",
+		ServiceName: "billing",
+		ID:          "billing.error.batched_read_failure",
 		Unit:        "errors",
 	})
 	if err != nil {
