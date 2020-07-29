@@ -99,7 +99,7 @@ func (vetoMap *VetoMap) TimeoutLoop(ctx context.Context, timeoutSeconds int64, c
 				vetoMap.shard[index].mutex.RLock()
 				numIterations := 0
 				for k, v := range vetoMap.shard[index].vetoes {
-					if numIterations > maxIterations || numIterations > len(vetoMap.shard[index].vetoes) {
+					if numIterations >= maxIterations || numIterations >= len(vetoMap.shard[index].vetoes) {
 						break
 					}
 					if v.timestamp < timeoutTimestamp {
