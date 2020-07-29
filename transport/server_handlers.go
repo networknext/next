@@ -27,6 +27,8 @@ import (
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport/pubsub"
 	"golang.org/x/sys/unix"
+
+	"github.com/panjf2000/ants/v2"
 )
 
 type UDPPacket struct {
@@ -87,11 +89,24 @@ func (m *UDPServerMux2) Start(ctx context.Context) error {
 		}
 	}
 
-	for i := 0; i < numThreads; i++ {
-		go m.handler(ctx, i)
+	if b, err := strconv.ParseBool(os.Getenv("USE_THREAD_POOL")); err != nil && b {
+		pool, err := ants.NewPoolWithFunc(numThreads, func(_ interface{}) {
+			m.tpHandler(ctx)
+		})
+		defer pool.Release()
+		level.Debug(m.Logger).Log("msg", "tp create")
+		if err != nil {
+			level.Error(m.Logger).Log("err", err)
+			os.Exit(1)
+		}
+		<-ctx.Done()
+	} else {
+		level.Debug(m.Logger).Log("msg", "tp no create")
+		for i := 0; i < numThreads; i++ {
+			go m.handler(ctx, i)
+		}
+		<-ctx.Done()
 	}
-
-	<-ctx.Done()
 
 	return nil
 }
@@ -245,6 +260,103 @@ func (m *UDPServerMux2) handler(ctx context.Context, id int) {
 			}
 
 		}(data, size, addr)
+	}
+}
+
+// thread pool handler
+func (m *UDPServerMux2) tpHandler(ctx context.Context) {
+	var conn *net.UDPConn
+	// Initialize UDP connection
+	{
+		lc := net.ListenConfig{
+			Control: func(network, address string, c syscall.RawConn) error {
+				var opErr error
+				err := c.Control(func(fd uintptr) {
+					opErr = unix.SetsockoptInt(int(fd), unix.SOL_SOCKET, unix.SO_REUSEPORT, 1)
+				})
+				if err != nil {
+					return err
+				}
+				return opErr
+			},
+		}
+
+		lp, err := lc.ListenPacket(context.Background(), "udp", fmt.Sprintf("0.0.0.0:%d", m.Port))
+		if err != nil {
+			level.Error(m.Logger).Log("udp", "listenPacket", "msg", "could not bind", "err", err)
+			os.Exit(1)
+		}
+
+		conn = lp.(*net.UDPConn)
+
+		readBufferString, ok := os.LookupEnv("READ_BUFFER")
+		if ok {
+			readBuffer, err := strconv.ParseInt(readBufferString, 10, 64)
+			if err != nil {
+				level.Error(m.Logger).Log("envvar", "READ_BUFFER", "msg", "could not parse", "err", err)
+				os.Exit(1)
+			}
+			conn.SetReadBuffer(int(readBuffer))
+		}
+
+		writeBufferString, ok := os.LookupEnv("WRITE_BUFFER")
+		if ok {
+			writeBuffer, err := strconv.ParseInt(writeBufferString, 10, 64)
+			if err != nil {
+				level.Error(m.Logger).Log("envvar", "WRITE_BUFFER", "msg", "could not parse", "err", err)
+				os.Exit(1)
+			}
+			conn.SetWriteBuffer(int(writeBuffer))
+		}
+	}
+
+	for {
+		packetData := make([]byte, m.MaxPacketSize)
+
+		packetSize, from, _ := conn.ReadFromUDP(packetData)
+		if packetSize <= 0 {
+			continue
+		}
+
+		packetData = packetData[:packetSize]
+
+		// process the packet
+		{
+			// Check the packet hash is legit and remove the hash from the beginning of the packet
+			// to continue processing the packet as normal
+			hashedPacket := crypto.Check(crypto.PacketHashKey, packetData)
+			switch hashedPacket {
+			case true:
+				packetData = packetData[crypto.PacketHashSize:packetSize]
+			default:
+				// todo: once everybody has upgraded to SDK 3.4.5 or greater, this is an error. ignore packet.
+				packetData = packetData[:packetSize]
+			}
+
+			packet := UDPPacket{SourceAddr: *from, Data: packetData}
+
+			var buf bytes.Buffer
+
+			switch packet.Data[0] {
+			case PacketTypeServerInitRequest:
+				m.ServerInitHandlerFunc(&buf, &packet)
+			case PacketTypeServerUpdate:
+				m.ServerUpdateHandlerFunc(&buf, &packet)
+			case PacketTypeSessionUpdate:
+				m.SessionUpdateHandlerFunc(&buf, &packet)
+			}
+
+			if buf.Len() > 0 {
+				res := buf.Bytes()
+
+				// If the hash checks out above then hash the response to the sender
+				if hashedPacket {
+					res = crypto.Hash(crypto.PacketHashKey, res)
+				}
+
+				conn.WriteToUDP(res, from)
+			}
+		}
 	}
 }
 
