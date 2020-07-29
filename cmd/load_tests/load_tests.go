@@ -17,7 +17,9 @@ import (
 
 const (
 	LoadTestDuration           = time.Minute * 5
-	SessionNextSwitchFrequency = time.Second * 5
+	SessionNextSwitchFrequency = time.Second * 30
+	SessionLengthMin           = time.Second * 10
+	SessionLengthMax           = time.Minute
 	NumServers                 = 50000
 	NumSessions                = 300000
 )
@@ -92,8 +94,6 @@ func load_test() {
 		}(i)
 	}
 
-	ticker := time.NewTicker(SessionNextSwitchFrequency)
-
 	maxSessionDuration := 0.0
 	averageSessionDuration := 0.0
 	var sessionDurationMutex sync.Mutex
@@ -101,9 +101,16 @@ func load_test() {
 		go func(sessionId uint64) {
 			time.Sleep(time.Duration(float64(time.Second) * 10.0 * rand.Float64()))
 
+			sessionStartTime := time.Now()
+
+			sessionLength := rand.Float64()
+
+			sessionTimeout := time.Duration(float64(SessionLengthMin) + sessionLength*float64(SessionLengthMax-SessionLengthMin))
+
+			var nextSwitchCount uint64
 			var nextSliceCounter uint64
 			for {
-				if time.Since(runTime) >= LoadTestDuration {
+				if time.Since(sessionStartTime) >= sessionTimeout || time.Since(runTime) >= LoadTestDuration {
 					break
 				}
 
@@ -117,15 +124,10 @@ func load_test() {
 					// fmt.Printf("new session %05x (%d/%d)\n", sessionId, sessionMap.GetSessionCount()+1, numSessions)
 				}
 
-				go func() {
-					for {
-						select {
-						case <-ticker.C:
-							nextSliceCounter = uint64(rand.Intn(2))
-							fmt.Println(nextSliceCounter)
-						}
-					}
-				}()
+				if time.Since(sessionStartTime) >= SessionNextSwitchFrequency*time.Duration(nextSwitchCount) {
+					nextSliceCounter = uint64(rand.Intn(2))
+					nextSwitchCount++
+				}
 
 				session := transport.SessionData{
 					Timestamp:            time.Now().Unix(),
