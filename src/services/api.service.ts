@@ -18,7 +18,7 @@ export default class APIService {
     return new Promise((resolve, reject) => {
       const options = params || {}
       const id = 'id'
-      fetch(`${process.env.VUE_APP_BASE_URL}/rpc`, {
+      const test = window.fetch(`${process.env.VUE_APP_BASE_URL}/rpc`, {
         method: 'POST',
         headers: this.headers,
         body: JSON.stringify({
@@ -28,9 +28,10 @@ export default class APIService {
           id
         })
       })
-        .then((response: Response) => {
-          resolve(response.json())
-        })
+      console.log(test)
+      test.then((response: Response) => {
+        resolve(response.json())
+      })
         .catch((error: Error) => {
           console.log(error.message)
           reject(error)

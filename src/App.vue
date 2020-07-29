@@ -178,8 +178,6 @@ import { library } from '@fortawesome/fontawesome-svg-core'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import NavBar from './components/NavBar.vue'
 import Workspace from './components/workspaces/Workspace.vue'
-import { NavigationGuardNext, Route } from 'vue-router'
-import { UserProfile, NNAuth0Profile } from '@/services/auth.service'
 
 const ICONS = [
   faCheck,
