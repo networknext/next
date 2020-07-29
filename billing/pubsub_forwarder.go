@@ -64,7 +64,8 @@ func (psf *PubSubForwarder) Forward(ctx context.Context) {
 				psf.Metrics.ErrorMetrics.BillingBatchedReadFailure.Add(1)
 			}
 		} else {
-			// This is an old, unbatched message. ignore it
+			// This is an old, unbatched message. ignore it and ack
+			m.Ack()
 			return
 		}
 
