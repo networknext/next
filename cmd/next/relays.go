@@ -204,7 +204,7 @@ func opsRelays(
 
 	if csvOutputFlag {
 		if relaysCount > 0 && int(relaysCount) < len(relaysCSV) {
-			relaysCSV = relaysCSV[:relaysCount]
+			relaysCSV = relaysCSV[:relaysCount+2] // +2 for heading lines
 		}
 
 		// return csv file of structs
@@ -259,10 +259,6 @@ func relays(
 		return reply.Relays[i].SessionCount > reply.Relays[j].SessionCount
 	})
 
-	if relaysCount > 0 && int(relaysCount) < len(reply.Relays) {
-		reply.Relays = reply.Relays[:relaysCount]
-	}
-
 	relays := []struct {
 		Name        string
 		ID          string
@@ -312,8 +308,6 @@ func relays(
 
 		var rx string
 		bitsReceived := relay.BytesReceived * 8
-		fmt.Printf("bitsReceived : %d\n", bitsReceived)
-		fmt.Printf("BytesReceived: %d\n", relay.BytesReceived)
 		if bitsReceived > 1000000000 {
 			rx = fmt.Sprintf("%.02fGbps", float64(bitsReceived)/float64(1000000000))
 		} else {
@@ -322,8 +316,6 @@ func relays(
 
 		var tx string
 		bitsTransmitted := relay.BytesSent * 8
-		fmt.Printf("bitsTransmitted: %d\n", bitsTransmitted)
-		fmt.Printf("BytesSent      : %d\n", relay.BytesSent)
 		if bitsTransmitted > 1000000000 {
 			tx = fmt.Sprintf("%.02fGbps", float64(bitsTransmitted)/float64(1000000000))
 		} else {
@@ -406,6 +398,11 @@ func relays(
 	}
 
 	if csvOutputFlag {
+
+		if relaysCount > 0 && int(relaysCount) < len(relaysCSV) {
+			relaysCSV = relaysCSV[:relaysCount+2] // +2 for heading lines
+		}
+
 		// return csv file of structs
 		// fileName := "./relays-" + strconv.FormatInt(time.Now().Unix(), 10) + ".csv"
 		fileName := "./relays.csv"
@@ -432,6 +429,10 @@ func relays(
 		}
 		fmt.Println(strings.Join(relayNames, " "))
 		return
+	}
+
+	if relaysCount > 0 && int(relaysCount) < len(relays) {
+		relays = relays[:relaysCount]
 	}
 
 	table.Output(relays)

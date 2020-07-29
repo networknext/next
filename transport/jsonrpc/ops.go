@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
 	"regexp"
 	"sort"
 	"strconv"
@@ -778,13 +777,15 @@ func (s *OpsService) ListDatacenterMaps(r *http.Request, args *ListDatacenterMap
 	for _, dcMap := range dcm {
 		buyer, err := s.Storage.Buyer(dcMap.BuyerID)
 		if err != nil {
-			fmt.Println("ListDatacenterMaps() could not parse buyer")
-			os.Exit(0)
+			err = fmt.Errorf("ListDatacenterMaps() could not parse buyer: %w", err)
+			s.Logger.Log("err", err)
+			return err
 		}
 		datacenter, err := s.Storage.Datacenter(dcMap.Datacenter)
 		if err != nil {
-			fmt.Printf("ListDatacenterMaps() could not parse datacenter")
-			os.Exit(0)
+			err = fmt.Errorf("ListDatacenterMaps() could not parse datacenter: %w", err)
+			s.Logger.Log("err", err)
+			return err
 		}
 
 		dcmFull := DatacenterMapsFull{
