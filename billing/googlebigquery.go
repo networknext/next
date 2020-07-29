@@ -71,7 +71,7 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 	e["directRTT"] = entry.DirectRTT
 	e["directJitter"] = entry.DirectJitter
 	e["directPacketLoss"] = entry.DirectPacketLoss
-	e["userHash"] = entry.UserHash
+	e["userHash"] = int(entry.UserHash)
 
 	if entry.Next {
 		e["next"] = entry.Next
