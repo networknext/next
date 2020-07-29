@@ -14,6 +14,7 @@ type BillingEntry struct {
 	Timestamp                 uint64 // IMPORTANT: Timestamp is not serialized. Pubsub already has the timestamp so we use that instead.
 	Version                   uint8
 	BuyerID                   uint64
+	UserHash                  uint64
 	SessionID                 uint64
 	SliceNumber               uint32
 	DirectRTT                 float32
