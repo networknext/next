@@ -131,6 +131,9 @@ type Relay struct {
 
 	MaxSessions uint32 `json:"max_sessions"`
 
+	CPUUsage float32 `json:"cpu_usage"`
+	MemUsage float32 `json:"mem_usage"`
+
 	UpdateKey   []byte `json:"update_key"`
 	FirestoreID string `json:"firestore_id"`
 
@@ -183,7 +186,9 @@ func (r *Relay) Size() uint64 {
 		8 + // Overage (Nibblin, uint64)
 		8 + // MRC (Nibblin, uint64)
 		4 + // MachineType
-		4, // Max Sessions
+		4 + // Max Sessions
+		4 + // CPU usage
+		4, // Mem usage
 	)
 }
 
@@ -197,6 +202,8 @@ type RelayCacheEntry struct {
 	LastUpdateTime time.Time
 	TrafficStats   RelayTrafficStats
 	MaxSessions    uint32
+	CPUUsage       float32
+	MemUsage       float32
 	Version        string
 }
 

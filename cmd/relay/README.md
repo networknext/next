@@ -11,12 +11,13 @@ Whenever changes are made to the relay, update the `RELAY_VERSION` define in con
 
 ## Dependencies
 
-`sudo apt install g++-8 rapidjson-dev libcurl4 libcurl4-openssl-dev libsodium23 libsodium-dev`
+`sudo apt install g++-8 rapidjson-dev libcurl4 libcurl4-openssl-dev libsodium23 libsodium-dev libgtop2-dev`
 
 - `g++-8`: Specifically version 8. This is because newer versions of Ubuntu come with g++-9 as a default and compiling with that doesn't let the Ubuntu 18.04 servers run the relay.
 - `RapidJSON`: Fast JSON parsing header only library.
 - `cURL`: For HTTP communication.
 - `libsodium`: Encryption/decryption/signature/etc... library.
+- `libgtop2`: For gathering system usage, notably cpu & memory usage
 
 ## Environment Variables
 
