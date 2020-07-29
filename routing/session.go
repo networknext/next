@@ -8,6 +8,21 @@ import (
 	jsoniter "github.com/json-iterator/go"
 )
 
+type SessionCountData struct {
+	TotalNumDirectSessions    uint64
+	TotalNumNextSessions      uint64
+	NumDirectSessionsPerBuyer map[uint64]uint64
+	NumNextSessionsPerBuyer   map[uint64]uint64
+}
+
+func (s *SessionCountData) UnmarshalBinary(data []byte) error {
+	return jsoniter.Unmarshal(data, s)
+}
+
+func (s SessionCountData) MarshalBinary() ([]byte, error) {
+	return jsoniter.Marshal(s)
+}
+
 type SessionData struct {
 	Meta  SessionMeta     `json:"meta"`
 	Slice SessionSlice    `json:"slice"`
