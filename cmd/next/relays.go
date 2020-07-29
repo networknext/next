@@ -459,13 +459,9 @@ func removeRelay(rpcClient jsonrpc.RPCClient, env Environment, name string) {
 		os.Exit(0)
 	}
 
-	nameSlice := []string{name}
-
 	if info.state != routing.RelayStateDisabled.String() {
-		if success := disableRelays(env, rpcClient, nameSlice, true); !success {
-			fmt.Printf("Unable to disable relay %s (relay must be disabled prior to removal).", name)
-			os.Exit(0)
-		}
+		fmt.Printf("Relay %s must be disabled prior to removal.", info.name)
+		os.Exit(0)
 	}
 
 	args := localjsonrpc.RemoveRelayArgs{
