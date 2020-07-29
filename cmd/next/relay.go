@@ -498,6 +498,48 @@ func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []strin
 	return success
 }
 
+func setRelaysMaintMode(env Environment, rpcClient jsonrpc.RPCClient, regexes []string, hard bool) bool {
+	success := true
+	relaysInMaintenanceMode := 0
+	testForSSHKey(env)
+	script := DisableRelayScript
+	if hard {
+		script = DisableRelayScriptHard
+	}
+
+	for _, regex := range regexes {
+		relays := getRelayInfo(rpcClient, env, regex)
+		if len(relays) == 0 {
+			log.Printf("no relays matched the regex '%s'\n", regex)
+			continue
+		}
+		for _, relay := range relays {
+			fmt.Printf("Setting maintenance mode for relay '%s' (id = %016x)\n", relay.name, relay.id)
+			con := NewSSHConn(relay.user, relay.sshAddr, relay.sshPort, env.SSHKeyFilePath)
+			if !con.ConnectAndIssueCmd(script) || !updateRelayState(rpcClient, relay, routing.RelayStateMaintenance) {
+				success = false
+				continue
+			}
+			relaysInMaintenanceMode++
+		}
+	}
+
+	if relaysInMaintenanceMode > 0 {
+		// Give the portal enough time to pull down the new state so that
+		// the relay state doesn't appear incorrectly
+		fmt.Println("Waiting for portal to sync changes...")
+		time.Sleep(11 * time.Second)
+
+		str := "Relays"
+		if relaysInMaintenanceMode == 1 {
+			str = "Relay"
+		}
+		fmt.Printf("%s put in maintenance mode\n", str)
+	}
+
+	return success
+}
+
 func setRelayNIC(rpcClient jsonrpc.RPCClient, env Environment, relayName string, nicSpeed uint64) {
 	relays := getRelayInfo(rpcClient, env, relayName)
 
