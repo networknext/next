@@ -11337,6 +11337,7 @@ void next_server_internal_tag_session( next_server_internal_t * server, const ne
     next_pending_session_entry_t * pending_entry = next_pending_session_manager_find( server->pending_session_manager, address );
     if ( pending_entry )
     {
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server tags pending session entry %" PRIx64 " as %x (internal)", pending_entry->session_id, tag );
         pending_entry->tag = tag;
         return;
     }
@@ -11344,6 +11345,7 @@ void next_server_internal_tag_session( next_server_internal_t * server, const ne
     next_session_entry_t * entry = next_session_manager_find_by_address( server->session_manager, address );    
     if ( entry )
     {
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server tags session entry %" PRIx64 " as %x (internal)", pending_entry->session_id, tag );
         entry->tag = tag;
         return;
     }
