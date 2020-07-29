@@ -7,7 +7,8 @@ import (
 )
 
 const (
-	TopicPortalCruncherSessionData Topic = 1
+	TopicPortalCruncherSessionData   Topic = 1
+	TopicPortalCruncherSessionCounts Topic = 2
 )
 
 type PortalCruncherPublisher struct {
