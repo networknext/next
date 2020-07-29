@@ -481,6 +481,8 @@ type ServerBackendMetrics struct {
 	VetoCount                  Gauge
 	ServerCount                Gauge
 	SessionCount               Gauge
+	SessionDirectCount         Gauge
+	SessionNextCount           Gauge
 	BillingMetrics             BillingMetrics
 	RouteMatrixBytes           Gauge
 	RouteMatrixUpdateDuration  Gauge
@@ -495,6 +497,8 @@ var EmptyServerBackendMetrics ServerBackendMetrics = ServerBackendMetrics{
 	VetoCount:                  &EmptyGauge{},
 	ServerCount:                &EmptyGauge{},
 	SessionCount:               &EmptyGauge{},
+	SessionDirectCount:         &EmptyGauge{},
+	SessionNextCount:           &EmptyGauge{},
 	BillingMetrics:             EmptyBillingMetrics,
 	RouteMatrixBytes:           &EmptyGauge{},
 	RouteMatrixUpdateDuration:  &EmptyGauge{},
@@ -572,6 +576,28 @@ func NewServerBackendMetrics(ctx context.Context, metricsHandler Handler) (*Serv
 		ID:          "server_backend.sessions",
 		Unit:        "sessions",
 		Description: "The total number of concurrent sessions",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	serverBackendMetrics.SessionDirectCount, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Direct session count",
+		ServiceName: "server_backend",
+		ID:          "server_backend.sessions.direct",
+		Unit:        "sessions",
+		Description: "The number of concurrent sessions taking direct routes",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	serverBackendMetrics.SessionNextCount, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Next session count",
+		ServiceName: "server_backend",
+		ID:          "server_backend.sessions.next",
+		Unit:        "sessions",
+		Description: "The number of concurrent sessions taking next routes",
 	})
 	if err != nil {
 		return nil, err
