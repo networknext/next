@@ -161,6 +161,9 @@ func (sessionMap *SessionMap) UpdateSessionData(sessionId uint64, sessionData *S
 			sessionMap.numNextSessionsPerBuyerMutex.Unlock()
 
 			atomic.AddUint64(&sessionMap.numDirectSessions, 1)
+			sessionMap.numDirectSessionsPerBuyerMutex.Lock()
+			sessionMap.numDirectSessionsPerBuyer[sessionData.BuyerID]++
+			sessionMap.numDirectSessionsPerBuyerMutex.Unlock()
 		}
 
 		// detect direct -> next
@@ -171,6 +174,9 @@ func (sessionMap *SessionMap) UpdateSessionData(sessionId uint64, sessionData *S
 			sessionMap.numDirectSessionsPerBuyerMutex.Unlock()
 
 			atomic.AddUint64(&sessionMap.numNextSessions, 1)
+			sessionMap.numNextSessionsPerBuyerMutex.Lock()
+			sessionMap.numNextSessionsPerBuyer[sessionData.BuyerID]++
+			sessionMap.numNextSessionsPerBuyerMutex.Unlock()
 		}
 	}
 
@@ -206,8 +212,14 @@ func (sessionMap *SessionMap) TimeoutLoop(ctx context.Context, timeoutSeconds in
 						atomic.AddUint64(&sessionMap.numSessions, ^uint64(0))
 						if next := v.NextSliceCounter > 0; next {
 							atomic.AddUint64(&sessionMap.numNextSessions, ^uint64(0))
+							sessionMap.numNextSessionsPerBuyerMutex.Lock()
+							sessionMap.numNextSessionsPerBuyer[v.BuyerID]--
+							sessionMap.numNextSessionsPerBuyerMutex.Unlock()
 						} else {
 							atomic.AddUint64(&sessionMap.numDirectSessions, ^uint64(0))
+							sessionMap.numDirectSessionsPerBuyerMutex.Lock()
+							sessionMap.numDirectSessionsPerBuyer[v.BuyerID]--
+							sessionMap.numDirectSessionsPerBuyerMutex.Unlock()
 						}
 					}
 					numIterations++
