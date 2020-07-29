@@ -19,8 +19,8 @@ func load_test() {
 
 	fmt.Printf("load_test\n")
 
-	numServers := 50000
-	numSessions := 300000
+	numServers := 250000
+	numSessions := 500000
 
 	vetoMap := transport.NewVetoMap()
 	serverMap := transport.NewServerMap()
