@@ -732,7 +732,7 @@
                                                                 </a>
                                                             </dd>
                                                         </div>
-                                                        <div v-if="!handlers.userHandler.isAnonymous() && !handlers.userHandler.isAnonymousPlus()">
+                                                        <div v-if="!handlers.userHandler.isAnonymous() && pages.sessionTool.meta.buyer_id == handlers.userHandler.userInfo.id || handlers.userHandler.isAdmin()">
                                                             <dt>
                                                                 User IP Address
                                                             </dt>
