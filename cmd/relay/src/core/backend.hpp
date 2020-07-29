@@ -444,10 +444,14 @@ namespace core
     {
       util::JSON sysStats;
 
-      auto stats = os::GetUsage();
+      auto [cpu, ok] = os::GetUsageAlt();
 
-      sysStats.set(stats.CPU, "cpu_usage");
-      sysStats.set(stats.Mem, "mem_usage");
+      if (!ok) {
+        LogError("failed to get cpu usage");
+      }
+
+      sysStats.set(cpu, "cpu_usage");
+      sysStats.set(0, "mem_usage");
 
       doc.set(sysStats, "sys_stats");
     }
