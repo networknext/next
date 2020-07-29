@@ -161,6 +161,18 @@ ifndef PORTAL_CRUNCHER_HOST
 export PORTAL_CRUNCHER_HOST = tcp://127.0.0.1:5555
 endif
 
+ifndef BILLING_CLIENT_COUNT
+export BILLING_CLIENT_COUNT = 1
+endif
+
+ifndef BILLING_BATCHED_MESSAGE_COUNT
+export BILLING_BATCHED_MESSAGE_COUNT = 20
+endif
+
+ifndef BILLING_BATCHED_MESSAGE_MIN_BYTES
+export BILLING_BATCHED_MESSAGE_MIN_BYTES = 1024
+endif
+
 .PHONY: help
 help: ## this list
 	@echo "$$(grep -hE '^\S+:.*##' $(MAKEFILE_LIST) | sed -e 's/:.*##\s*/:/' -e 's/^\(.\+\):\(.*\)/\\033[36m\1\\033[m:\2/' | column -c2 -t -s :)"
