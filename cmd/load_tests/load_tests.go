@@ -107,6 +107,8 @@ func load_test() {
 
 			sessionTimeout := time.Duration(float64(SessionLengthMin) + sessionLength*float64(SessionLengthMax-SessionLengthMin))
 
+			buyerID := rand.Uint64()
+
 			var nextSwitchCount uint64
 			var nextSliceCounter uint64
 			for {
@@ -131,6 +133,7 @@ func load_test() {
 
 				session := transport.SessionData{
 					Timestamp:            time.Now().Unix(),
+					BuyerID:              buyerID,
 					Location:             sessionDataReadOnly.Location,
 					Sequence:             sessionDataReadOnly.Sequence + 1,
 					NearRelays:           sessionDataReadOnly.NearRelays,

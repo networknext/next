@@ -1145,9 +1145,16 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 
 	isMultipath := routing.IsMultipath(prevRouteDecision)
 
+	sessionCountData := routing.SessionCountData{
+		TotalNumDirectSessions:    params.SessionMap.GetDirectSessionCount(),
+		TotalNumNextSessions:      params.SessionMap.GetNextSessionCount(),
+		NumDirectSessionsPerBuyer: params.SessionMap.GetDirectSessionCountPerBuyer(),
+		NumNextSessionsPerBuyer:   params.SessionMap.GetNextSessionCountPerBuyer(),
+	}
+
 	// todo: commented out until we can figure out what's going on with zeromq
 	portalDataBytes, err := updatePortalData(params.PortalPublisher, packet, lastNextStats, lastDirectStats, routeRelays,
-		packet.OnNetworkNext, datacenterName, location, nearRelays, timeNow, isMultipath, datacenterAlias)
+		packet.OnNetworkNext, datacenterName, location, nearRelays, timeNow, isMultipath, datacenterAlias, &sessionCountData)
 	if err != nil {
 		level.Error(params.Logger).Log("msg", "could not update portal data", "err", err)
 		params.Metrics.ErrorMetrics.UpdatePortalFailure.Add(1)
@@ -1206,7 +1213,7 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 }
 
 func updatePortalData(portalPublisher pubsub.Publisher, packet *SessionUpdatePacket, lastNNStats *routing.Stats, lastDirectStats *routing.Stats, relayHops []routing.Relay,
-	onNetworkNext bool, datacenterName string, location *routing.Location, nearRelays []routing.Relay, sessionTime time.Time, isMultiPath bool, datacenterAlias string) (int, error) {
+	onNetworkNext bool, datacenterName string, location *routing.Location, nearRelays []routing.Relay, sessionTime time.Time, isMultiPath bool, datacenterAlias string, sessionCountData *routing.SessionCountData) (int, error) {
 
 	if (lastNNStats.RTT == 0 && lastDirectStats.RTT == 0) || (onNetworkNext && lastNNStats.RTT == 0) {
 		return 0, nil
@@ -1230,7 +1237,7 @@ func updatePortalData(portalPublisher pubsub.Publisher, packet *SessionUpdatePac
 		deltaRTT = lastDirectStats.RTT - lastNNStats.RTT
 	}
 
-	data := routing.SessionData{
+	sessionData := routing.SessionData{
 		Meta: routing.SessionMeta{
 			ID:              fmt.Sprintf("%016x", packet.SessionID),
 			UserHash:        hashedID,
@@ -1269,12 +1276,22 @@ func updatePortalData(portalPublisher pubsub.Publisher, packet *SessionUpdatePac
 		},
 	}
 
-	bytes, err := data.MarshalBinary()
+	sessionBytes, err := sessionData.MarshalBinary()
 	if err != nil {
 		return 0, err
 	}
 
-	byteCount, err := portalPublisher.Publish(pubsub.TopicPortalCruncherSessionData, bytes)
+	countBytes, err := sessionCountData.MarshalBinary()
+	if err != nil {
+		return 0, err
+	}
+
+	var byteCount int
+	singleByteCount, err := portalPublisher.Publish(pubsub.TopicPortalCruncherSessionData, sessionBytes)
+	byteCount += singleByteCount
+	singleByteCount, err = portalPublisher.Publish(pubsub.TopicPortalCruncherSessionCounts, countBytes)
+	byteCount += singleByteCount
+
 	return byteCount, err
 }
 
@@ -1447,6 +1464,7 @@ func sendRouteResponse(w io.Writer, chosenRoute *routing.Route, params *SessionU
 	// Update the session data
 	session := SessionData{
 		Timestamp:            timeNow.Unix(),
+		BuyerID:              buyer.ID,
 		Location:             *location,
 		Sequence:             packet.Sequence,
 		NearRelays:           nearRelays,
