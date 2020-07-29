@@ -13,6 +13,7 @@
 #include "util/json.hpp"
 #include "util/logger.hpp"
 #include "util/throughput_recorder.hpp"
+#include "os/platform.hpp"
 
 // forward declare test names to allow private functions to be visible them
 namespace testing
@@ -437,6 +438,22 @@ namespace core
       }
 
       doc.set(pingStats, "PingStats");
+    }
+
+    // sys
+    {
+      util::JSON sysStats;
+
+      auto [cpu, ok] = os::GetUsageAlt();
+
+      if (!ok) {
+        LogError("failed to get cpu usage");
+      }
+
+      sysStats.set(cpu, "cpu_usage");
+      sysStats.set(0, "mem_usage");
+
+      doc.set(sysStats, "sys_stats");
     }
 
     return {true, nullptr};
