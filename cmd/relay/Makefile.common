@@ -15,7 +15,7 @@ DEBUG_MAKEFILE 				:= Makefile.debug
 TEST_MAKEFILE 				:= Makefile.test
 BENCHMARK_MAKEFILE 		:= Makefile.benchmark
 
-STATIC_LIBS           := libsodium glib-2.0 libgtop-2.0 libcurl
+STATIC_LIBS           := libsodium glib-2.0 libgtop-2.0
 
 SRC										:= src
 LIB 									:= lib
@@ -26,7 +26,7 @@ OBJ										:= obj
 INCLUDE								:= $(SRC)
 INCLUDE_DIRS					:= -I$(INCLUDE) -I$(LIB) $(shell pkg-config --cflags-only-I $(STATIC_LIBS))
 
-LIBRARIES							:= -Bstatic $(shell pkg-config --static --libs-only-l $(STATIC_LIBS)) -Bdynamic -lpthread
+LIBRARIES							:= -Wl,-Bstatic $(shell pkg-config --static --libs-only-l $(STATIC_LIBS)) -Wl,-Bdynamic -lpthread -lcurl -lXau
 LIBRARY_DIRS          := $(shell pkg-config --static --libs-only-L $(STATIC_LIBS))
 
 LIB_SUB_DIRS					:= $(shell find lib/* -type d -print)
