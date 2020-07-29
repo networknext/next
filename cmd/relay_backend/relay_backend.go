@@ -598,6 +598,8 @@ func main() {
 						Tx:          relay.TrafficStats.BytesSent,
 						Rx:          relay.TrafficStats.BytesReceived,
 					}
+
+					idx++
 				}
 
 				if err := relayStatsPublisher.Publish(ctx, entries); err != nil {
