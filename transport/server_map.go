@@ -47,31 +47,31 @@ func (serverMap *ServerMap) GetServerCount() uint64 {
 
 func (serverMap *ServerMap) RLock(buyerID uint64, serverAddress string) {
 	serverHash := crypto.HashID(serverAddress)
-	index := (buyerID + serverHash) % NumServerMapShards
+	index := serverHash % NumServerMapShards
 	serverMap.shard[index].mutex.RLock()
 }
 
 func (serverMap *ServerMap) RUnlock(buyerID uint64, serverAddress string) {
 	serverHash := crypto.HashID(serverAddress)
-	index := (buyerID + serverHash) % NumServerMapShards
+	index := serverHash % NumServerMapShards
 	serverMap.shard[index].mutex.RUnlock()
 }
 
 func (serverMap *ServerMap) Lock(buyerID uint64, serverAddress string) {
 	serverHash := crypto.HashID(serverAddress)
-	index := (buyerID + serverHash) % NumServerMapShards
+	index := serverHash % NumServerMapShards
 	serverMap.shard[index].mutex.Lock()
 }
 
 func (serverMap *ServerMap) Unlock(buyerID uint64, serverAddress string) {
 	serverHash := crypto.HashID(serverAddress)
-	index := (buyerID + serverHash) % NumServerMapShards
+	index := serverHash % NumServerMapShards
 	serverMap.shard[index].mutex.Unlock()
 }
 
 func (serverMap *ServerMap) UpdateServerData(buyerID uint64, serverAddress string, serverData *ServerData) {
 	serverHash := crypto.HashID(serverAddress)
-	index := (buyerID + serverHash) % NumServerMapShards
+	index := serverHash % NumServerMapShards
 	_, exists := serverMap.shard[index].servers[serverAddress]
 	serverMap.shard[index].servers[serverAddress] = serverData
 	if !exists {
@@ -81,7 +81,7 @@ func (serverMap *ServerMap) UpdateServerData(buyerID uint64, serverAddress strin
 
 func (serverMap *ServerMap) GetServerData(buyerID uint64, serverAddress string) *ServerData {
 	serverHash := crypto.HashID(serverAddress)
-	index := (buyerID + serverHash) % NumServerMapShards
+	index := serverHash % NumServerMapShards
 	serverData, _ := serverMap.shard[index].servers[serverAddress]
 	return serverData
 }
@@ -100,7 +100,7 @@ func (serverMap *ServerMap) TimeoutLoop(ctx context.Context, timeoutSeconds int6
 				serverMap.shard[index].mutex.RLock()
 				numIterations := 0
 				for k, v := range serverMap.shard[index].servers {
-					if numIterations > maxIterations || numIterations > len(serverMap.shard[index].servers) {
+					if numIterations >= maxIterations || numIterations >= len(serverMap.shard[index].servers) {
 						break
 					}
 					if v.Timestamp < timeoutTimestamp {
@@ -109,13 +109,15 @@ func (serverMap *ServerMap) TimeoutLoop(ctx context.Context, timeoutSeconds int6
 					numIterations++
 				}
 				serverMap.shard[index].mutex.RUnlock()
-				serverMap.shard[index].mutex.Lock()
-				for i := range deleteList {
-					// fmt.Printf("timeout server %x\n", deleteList[i])
-					delete(serverMap.shard[index].servers, deleteList[i])
-					atomic.AddUint64(&serverMap.numServers, ^uint64(0))
+				if len(deleteList) > 0 {
+					serverMap.shard[index].mutex.Lock()
+					for i := range deleteList {
+						// fmt.Printf("timeout server %x\n", deleteList[i])
+						delete(serverMap.shard[index].servers, deleteList[i])
+						atomic.AddUint64(&serverMap.numServers, ^uint64(0))
+					}
+					serverMap.shard[index].mutex.Unlock()
 				}
-				serverMap.shard[index].mutex.Unlock()
 			}
 			serverMap.timeoutShard = ( serverMap.timeoutShard + maxShards ) % NumServerMapShards
 		case <-ctx.Done():

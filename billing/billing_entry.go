@@ -8,12 +8,13 @@ const BillingEntryVersion = uint8(5)
 
 const BillingEntryMaxRelays = 5
 
-const MaxBillingEntryBytes = 8 + 1 + 8 + 8 + (4 * 4) + 1 + (3 * 4) + 1 + (BillingEntryMaxRelays * 8) + (3 * 8) + (4 * 1) + 8 + 8 + 8 + 1 + 1 + (BillingEntryMaxRelays * 8)
+const MaxBillingEntryBytes = 8 + 1 + 8 + 8 + 8 + (4 * 4) + 1 + (3 * 4) + 1 + (BillingEntryMaxRelays * 8) + (3 * 8) + (4 * 1) + 8 + 8 + 8 + 1 + 1 + (BillingEntryMaxRelays * 8)
 
 type BillingEntry struct {
 	Timestamp                 uint64 // IMPORTANT: Timestamp is not serialized. Pubsub already has the timestamp so we use that instead.
 	Version                   uint8
 	BuyerID                   uint64
+	UserHash                  uint64
 	SessionID                 uint64
 	SliceNumber               uint32
 	DirectRTT                 float32
@@ -45,6 +46,7 @@ func WriteBillingEntry(entry *BillingEntry) []byte {
 	index := 0
 	encoding.WriteUint8(data, &index, BillingEntryVersion)
 	encoding.WriteUint64(data, &index, entry.BuyerID)
+	encoding.WriteUint64(data, &index, entry.UserHash)
 	encoding.WriteUint64(data, &index, entry.SessionID)
 	encoding.WriteUint32(data, &index, entry.SliceNumber)
 	encoding.WriteFloat32(data, &index, entry.DirectRTT)
@@ -101,6 +103,9 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 		return false
 	}
 	if !encoding.ReadUint64(data, &index, &entry.BuyerID) {
+		return false
+	}
+	if !encoding.ReadUint64(data, &index, &entry.UserHash) {
 		return false
 	}
 	if !encoding.ReadUint64(data, &index, &entry.SessionID) {
