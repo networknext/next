@@ -16,12 +16,13 @@ import (
 )
 
 const (
-	LoadTestDuration           = time.Minute * 5
-	SessionNextSwitchFrequency = time.Second * 30
-	SessionLengthMin           = time.Second * 10
-	SessionLengthMax           = time.Minute
-	NumServers                 = 50000
-	NumSessions                = 300000
+	LoadTestDuration           = time.Minute * 5  // How long to run the load test
+	SessionNextSwitchFrequency = time.Second * 30 // How often a session will randomly switch between direct and next
+	SessionNextChance          = 0.25             // How likely the session is to pick next
+	SessionLengthMin           = time.Minute      // The minimum playtime for the session
+	SessionLengthMax           = time.Minute * 5  // The maximum playtime for the session
+	NumServers                 = 250000
+	NumSessions                = 500000
 )
 
 func load_test() {
@@ -127,7 +128,11 @@ func load_test() {
 				}
 
 				if time.Since(sessionStartTime) >= SessionNextSwitchFrequency*time.Duration(nextSwitchCount) {
-					nextSliceCounter = uint64(rand.Intn(2))
+					if rand.Float32() < SessionNextChance {
+						nextSliceCounter = 1
+					} else {
+						nextSliceCounter = 0
+					}
 					nextSwitchCount++
 				}
 
