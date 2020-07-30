@@ -4,11 +4,9 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net"
-	"strconv"
 	"strings"
 	"time"
 
-	jsoniter "github.com/json-iterator/go"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
 )
@@ -190,34 +188,6 @@ func (r *Relay) Size() uint64 {
 		4 + // CPU usage
 		4, // Mem usage
 	)
-}
-
-type RelayCacheEntry struct {
-	ID             uint64
-	Name           string
-	Addr           net.UDPAddr
-	PublicKey      []byte
-	Seller         Seller
-	Datacenter     Datacenter
-	LastUpdateTime time.Time
-	TrafficStats   RelayTrafficStats
-	MaxSessions    uint32
-	CPUUsage       float32
-	MemUsage       float32
-	Version        string
-}
-
-func (e *RelayCacheEntry) UnmarshalBinary(data []byte) error {
-	return jsoniter.Unmarshal(data, e)
-}
-
-func (e RelayCacheEntry) MarshalBinary() ([]byte, error) {
-	return jsoniter.Marshal(e)
-}
-
-// Key returns the key used for Redis
-func (r *RelayCacheEntry) Key() string {
-	return HashKeyPrefixRelay + strconv.FormatUint(r.ID, 10)
 }
 
 // RelayTrafficStats describes the measured relay traffic statistics reported from the relay

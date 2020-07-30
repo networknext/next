@@ -5,7 +5,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-	// "fmt"
 
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
@@ -22,14 +21,14 @@ type ServerData struct {
 }
 
 type ServerMapShard struct {
-	mutex      sync.RWMutex
-	servers    map[string]*ServerData
+	mutex   sync.RWMutex
+	servers map[string]*ServerData
 }
 
 type ServerMap struct {
-	numServers 		uint64
-	timeoutShard 	int
-	shard 			[NumServerMapShards]*ServerMapShard
+	numServers   uint64
+	timeoutShard int
+	shard        [NumServerMapShards]*ServerMapShard
 }
 
 func NewServerMap() *ServerMap {
@@ -95,7 +94,7 @@ func (serverMap *ServerMap) TimeoutLoop(ctx context.Context, timeoutSeconds int6
 		case <-c:
 			timeoutTimestamp := time.Now().Unix() - timeoutSeconds
 			for i := 0; i < maxShards; i++ {
-				index := ( serverMap.timeoutShard + i ) % NumServerMapShards
+				index := (serverMap.timeoutShard + i) % NumServerMapShards
 				deleteList = deleteList[:0]
 				serverMap.shard[index].mutex.RLock()
 				numIterations := 0
@@ -119,7 +118,7 @@ func (serverMap *ServerMap) TimeoutLoop(ctx context.Context, timeoutSeconds int6
 					serverMap.shard[index].mutex.Unlock()
 				}
 			}
-			serverMap.timeoutShard = ( serverMap.timeoutShard + maxShards ) % NumServerMapShards
+			serverMap.timeoutShard = (serverMap.timeoutShard + maxShards) % NumServerMapShards
 		case <-ctx.Done():
 			return
 		}
