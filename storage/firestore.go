@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
 	"sort"
@@ -193,9 +192,11 @@ func (fs *Firestore) IncrementSequenceNumber(ctx context.Context, field string) 
 
 	fs.sequenceNumberMutex.RLock()
 	if fs.syncSequenceNumbers[field] != num.Sequence {
-		// ToDo: need custom error metric
-		err := fmt.Sprintf("%s sequence number out of sync: remote %d != local %d", field, num.Sequence, fs.syncSequenceNumbers[field])
-		return errors.New(err)
+		return &SequenceNumbersOutOfSync{
+			document:             field,
+			localSequenceNumber:  fs.syncSequenceNumbers[field],
+			remoteSequenceNumber: num.Sequence,
+		}
 	}
 	fs.sequenceNumberMutex.RUnlock()
 
