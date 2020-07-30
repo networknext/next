@@ -11,14 +11,14 @@ export default class APIService {
     }
   }
 
-  public call (method: string, params: any): Promise<any> {
+  private call (method: string, params: any): Promise<any> {
     if (!store.getters.isAnonymous) {
       this.headers.Authorization = `Bearer ${store.getters.idToken}`
     }
     return new Promise((resolve, reject) => {
       const options = params || {}
       const id = 'id'
-      const test = window.fetch(`${process.env.VUE_APP_BASE_URL}/rpc`, {
+      window.fetch(`${process.env.VUE_APP_BASE_URL}/rpc`, {
         method: 'POST',
         headers: this.headers,
         body: JSON.stringify({
@@ -27,9 +27,7 @@ export default class APIService {
           params: options,
           id
         })
-      })
-      console.log(test)
-      test.then((response: Response) => {
+      }).then((response: Response) => {
         resolve(response.json())
       })
         .catch((error: Error) => {
@@ -37,5 +35,21 @@ export default class APIService {
           reject(error)
         })
     })
+  }
+
+  public fetchTotalSessionCounts (args: any) {
+    return this.call('BuyersService.TotalSessions', args)
+  }
+
+  public fetchMapSessions (args: any) {
+    return this.call('BuyersService.SessionMap', args)
+  }
+
+  public fetchSessionDetails (args: any) {
+    return this.call('BuyersService.SessionDetails', args)
+  }
+
+  public fetchTopSessions (args: any) {
+    return this.call('BuyersService.TopSessions', args)
   }
 }

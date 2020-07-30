@@ -311,7 +311,7 @@ export default class SessionDetails extends Vue {
   }
 
   private fetchSessionDetails () {
-    this.apiService.call('BuyersService.SessionDetails', { session_id: this.searchID })
+    this.apiService.fetchSessionDetails({ session_id: this.searchID })
       .then((response: any) => {
         this.meta = response.result.meta
         this.slices = response.result.slices

@@ -9,6 +9,11 @@ import APIService from './services/api.service'
 import AuthService, { UserProfile, NNAuth0Profile } from './services/auth.service'
 import { Route, NavigationGuardNext } from 'vue-router'
 
+function mountCypress (win: any, app: any) {
+  console.log('Mounting Cypress')
+  win.app = app
+}
+
 Vue.config.productionTip = false
 
 // Add api service as a Vue property so it can be used in all Vue components
@@ -17,6 +22,9 @@ Vue.prototype.$apiService = new APIService()
 // Add auth service as a Vue property so it can be used in all Vue components
 const authService = new AuthService()
 Vue.prototype.$authService = authService
+
+let app: any = null
+const win: any = window
 
 store.dispatch('updateCurrentPage', router.currentRoute.name)
 router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
@@ -41,11 +49,14 @@ authService.lockClient.checkSession({
           verified: profile.email_verified || false
         }
         store.commit('UPDATE_USER_PROFILE', userProfile)
-        new Vue({
+        app = new Vue({
           router,
           store,
           render: (h) => h(App)
         }).$mount('#app')
+        if (win.Cypress) {
+          mountCypress(win, app)
+        }
       }
     })
   } else {
@@ -53,10 +64,13 @@ authService.lockClient.checkSession({
     if (error.error !== 'login_required') {
       console.log(error)
     }
-    new Vue({
+    app = new Vue({
       router,
       store,
       render: (h) => h(App)
     }).$mount('#app')
+    if (win.Cypress) {
+      mountCypress(win, app)
+    }
   }
 })

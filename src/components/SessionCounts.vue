@@ -1,11 +1,11 @@
 <template>
   <div style="padding-top: 30px; padding-left: 15px; padding-bottom: 10px;">
-    <h1 class="count-header" v-if="showCount">
+    <h1 class="count-header" v-if="showCount" data-test="currentPage">
       {{ $store.getters.currentPage[0].toUpperCase() + $store.getters.currentPage.slice(1) }}&nbsp;
-      <span class="badge badge-dark">
+      <span class="badge badge-dark" data-test="totalSessions">
         {{ this.totalSessions }} Total Sessions
       </span>&nbsp;
-      <span class="badge badge-success">
+      <span class="badge badge-success" data-test="nnSessions">
         {{ this.totalSessionsReply.onNN }} on Network Next
       </span>
     </h1>
@@ -56,7 +56,7 @@ export default class SessionCounts extends Vue {
   }
 
   private fetchSessionCounts () {
-    this.apiService.call('BuyersService.TotalSessions', {})
+    this.apiService.fetchTotalSessionCounts({})
       .then((response: any) => {
         this.totalSessionsReply.direct = response.result.direct
         this.totalSessionsReply.onNN = response.result.next
