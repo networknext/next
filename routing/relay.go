@@ -21,8 +21,7 @@ const (
 	// HashKeyAllRelays ...
 	HashKeyAllRelays = "ALL_RELAYS"
 
-	// Relax
-	RelayTimeout = 60 * time.Second
+	RelayTimeout = 10 * time.Second
 
 	// MaxRelayAddressLength ...
 	MaxRelayAddressLength = 256
