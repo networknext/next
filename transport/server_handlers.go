@@ -106,6 +106,7 @@ func (m *UDPServerMux2) Start(ctx context.Context) error {
 		for i := 0; i < numThreads; i++ {
 			go m.handler(ctx, i)
 		}
+
 		<-ctx.Done()
 	}
 
