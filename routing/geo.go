@@ -12,10 +12,8 @@ import (
 	"net/http"
 	"os"
 	"regexp"
-	"strconv"
 	"strings"
 
-	"github.com/go-redis/redis/v7"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/networknext/backend/metrics"
 	"github.com/oschwald/geoip2-golang"
@@ -316,59 +314,3 @@ var LocationNullIsland = Location{
 var NullIsland = LocateIPFunc(func(ip net.IP) (Location, error) {
 	return LocationNullIsland, nil
 })
-
-type GeoClient struct {
-	RedisClient redis.Cmdable
-	Namespace   string
-}
-
-func (c *GeoClient) Add(relayID uint64, latitude float64, longitude float64) error {
-	geoloc := redis.GeoLocation{
-		Name:      strconv.FormatUint(relayID, 10),
-		Latitude:  latitude,
-		Longitude: longitude,
-	}
-
-	return c.RedisClient.GeoAdd(c.Namespace, &geoloc).Err()
-}
-
-func (c *GeoClient) Remove(relayID uint64) error {
-	return c.RedisClient.ZRem(c.Namespace, strconv.FormatUint(relayID, 10)).Err()
-}
-
-// uom can be one of the following: "m", "km", "mi", "ft"
-func (c *GeoClient) RelaysWithin(lat float64, long float64, radius float64, uom string) ([]Relay, error) {
-	geoquery := redis.GeoRadiusQuery{
-		Radius:    radius,
-		Unit:      uom,
-		WithCoord: true,
-		Sort:      "ASC",
-	}
-
-	res := c.RedisClient.GeoRadius(c.Namespace, long, lat, &geoquery)
-
-	geolocs, err := res.Result()
-	if err != nil {
-		return nil, err
-	}
-
-	relays := make([]Relay, len(geolocs))
-	for idx, geoloc := range geolocs {
-		id, err := strconv.ParseUint(geoloc.Name, 10, 64)
-		if err != nil {
-			return nil, err
-		}
-
-		relays[idx] = Relay{
-			ID: id,
-			Datacenter: Datacenter{
-				Location: Location{
-					Latitude:  geoloc.Latitude,
-					Longitude: geoloc.Longitude,
-				},
-			},
-		}
-	}
-
-	return relays, nil
-}
