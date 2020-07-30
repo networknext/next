@@ -69,7 +69,7 @@ func (m *UDPServerMux) Start(ctx context.Context) error {
 	numThreads := 8
 
 	for i := 0; i < numThreads; i++ {
-		go m.handler(ctx, i)
+		go m.handler(ctx)
 	}
 
 	<-ctx.Done()
@@ -91,11 +91,8 @@ func (m *UDPServerMux2) Start(ctx context.Context) error {
 
 	var pool *ants.Pool
 	shouldRelease := false
-	handlerSpawnFunc := func() {
-		for i := 0; i < numThreads; i++ {
-			go m.handler(ctx, i)
-		}
-	}
+
+	handleFunc := goroutineHandlerFunc(m)
 
 	if b, err := strconv.ParseBool(os.Getenv("USE_THREAD_POOL")); err == nil && b {
 		numPktThreads := 8
@@ -110,14 +107,12 @@ func (m *UDPServerMux2) Start(ctx context.Context) error {
 		}
 		shouldRelease = true
 
-		handlerSpawnFunc = func() {
-			for i := 0; i < numThreads; i++ {
-				go m.tpHandler(ctx, pool)
-			}
-		}
+		handleFunc = threadPoolHandlerFunc(m, pool)
 	}
 
-	handlerSpawnFunc()
+	for i := 0; i < numThreads; i++ {
+		go m.handler(ctx, handleFunc)
+	}
 
 	<-ctx.Done()
 
@@ -128,10 +123,8 @@ func (m *UDPServerMux2) Start(ctx context.Context) error {
 	return nil
 }
 
-func (m *UDPServerMux) handler(ctx context.Context, id int) {
-
+func (m *UDPServerMux) handler(ctx context.Context) {
 	for {
-
 		data := make([]byte, m.MaxPacketSize)
 
 		size, addr, _ := m.Conn.ReadFromUDP(data)
@@ -182,7 +175,27 @@ func (m *UDPServerMux) handler(ctx context.Context, id int) {
 	}
 }
 
-func (m *UDPServerMux2) handler(ctx context.Context, id int) {
+type packetHandlerFunc = func(conn *net.UDPConn, packet_data []byte, packet_size int, from *net.UDPAddr)
+
+// returns a function that handles udp packets through normal goroutines
+func goroutineHandlerFunc(m *UDPServerMux2) packetHandlerFunc {
+	return func(conn *net.UDPConn, packetData []byte, packetSize int, from *net.UDPAddr) {
+		go func() {
+			m.handlePacket(conn, packetData, packetSize, from)
+		}()
+	}
+}
+
+// returns a function that handles udp packets through a thread pool
+func threadPoolHandlerFunc(m *UDPServerMux2, pool *ants.Pool) packetHandlerFunc {
+	return func(conn *net.UDPConn, packetData []byte, packetSize int, from *net.UDPAddr) {
+		pool.Submit(func() {
+			m.handlePacket(conn, packetData, packetSize, from)
+		})
+	}
+}
+
+func (m *UDPServerMux2) handler(ctx context.Context, handleFunc packetHandlerFunc) {
 	var conn *net.UDPConn
 	// Initialize UDP connection
 	{
@@ -229,7 +242,6 @@ func (m *UDPServerMux2) handler(ctx context.Context, id int) {
 	}
 
 	for {
-
 		data := make([]byte, m.MaxPacketSize)
 
 		size, addr, _ := conn.ReadFromUDP(data)
@@ -239,141 +251,44 @@ func (m *UDPServerMux2) handler(ctx context.Context, id int) {
 
 		data = data[:size]
 
-		go func(packet_data []byte, packet_size int, from *net.UDPAddr) {
-
-			// Check the packet hash is legit and remove the hash from the beginning of the packet
-			// to continue processing the packet as normal
-			hashedPacket := crypto.Check(crypto.PacketHashKey, packet_data)
-			switch hashedPacket {
-			case true:
-				packet_data = packet_data[crypto.PacketHashSize:packet_size]
-			default:
-				// todo: once everybody has upgraded to SDK 3.4.5 or greater, this is an error. ignore packet.
-				packet_data = packet_data[:packet_size]
-			}
-
-			packet := UDPPacket{SourceAddr: *from, Data: packet_data}
-
-			var buf bytes.Buffer
-
-			switch packet.Data[0] {
-			case PacketTypeServerInitRequest:
-				m.ServerInitHandlerFunc(&buf, &packet)
-			case PacketTypeServerUpdate:
-				m.ServerUpdateHandlerFunc(&buf, &packet)
-			case PacketTypeSessionUpdate:
-				m.SessionUpdateHandlerFunc(&buf, &packet)
-			}
-
-			if buf.Len() > 0 {
-				res := buf.Bytes()
-
-				// If the hash checks out above then hash the response to the sender
-				if hashedPacket {
-					res = crypto.Hash(crypto.PacketHashKey, res)
-				}
-
-				conn.WriteToUDP(res, from)
-			}
-
-		}(data, size, addr)
+		handleFunc(conn, data, size, addr)
 	}
 }
 
-// thread pool handler
-func (m *UDPServerMux2) tpHandler(ctx context.Context, pool *ants.Pool) {
-	var conn *net.UDPConn
-	// Initialize UDP connection
-	{
-		lc := net.ListenConfig{
-			Control: func(network, address string, c syscall.RawConn) error {
-				var opErr error
-				err := c.Control(func(fd uintptr) {
-					opErr = unix.SetsockoptInt(int(fd), unix.SOL_SOCKET, unix.SO_REUSEPORT, 1)
-				})
-				if err != nil {
-					return err
-				}
-				return opErr
-			},
-		}
-
-		lp, err := lc.ListenPacket(context.Background(), "udp", fmt.Sprintf("0.0.0.0:%d", m.Port))
-		if err != nil {
-			level.Error(m.Logger).Log("udp", "listenPacket", "msg", "could not bind", "err", err)
-			os.Exit(1)
-		}
-
-		conn = lp.(*net.UDPConn)
-
-		readBufferString, ok := os.LookupEnv("READ_BUFFER")
-		if ok {
-			readBuffer, err := strconv.ParseInt(readBufferString, 10, 64)
-			if err != nil {
-				level.Error(m.Logger).Log("envvar", "READ_BUFFER", "msg", "could not parse", "err", err)
-				os.Exit(1)
-			}
-			conn.SetReadBuffer(int(readBuffer))
-		}
-
-		writeBufferString, ok := os.LookupEnv("WRITE_BUFFER")
-		if ok {
-			writeBuffer, err := strconv.ParseInt(writeBufferString, 10, 64)
-			if err != nil {
-				level.Error(m.Logger).Log("envvar", "WRITE_BUFFER", "msg", "could not parse", "err", err)
-				os.Exit(1)
-			}
-			conn.SetWriteBuffer(int(writeBuffer))
-		}
+func (m *UDPServerMux2) handlePacket(conn *net.UDPConn, packetData []byte, packetSize int, from *net.UDPAddr) {
+	// Check the packet hash is legit and remove the hash from the beginning of the packet
+	// to continue processing the packet as normal
+	hashedPacket := crypto.Check(crypto.PacketHashKey, packetData)
+	switch hashedPacket {
+	case true:
+		packetData = packetData[crypto.PacketHashSize:packetSize]
+	default:
+		// todo: once everybody has upgraded to SDK 3.4.5 or greater, this is an error. ignore packet.
+		packetData = packetData[:packetSize]
 	}
 
-	for {
-		packetData := make([]byte, m.MaxPacketSize)
+	packet := UDPPacket{SourceAddr: *from, Data: packetData}
 
-		packetSize, from, _ := conn.ReadFromUDP(packetData)
-		if packetSize <= 0 {
-			continue
+	var buf bytes.Buffer
+
+	switch packet.Data[0] {
+	case PacketTypeServerInitRequest:
+		m.ServerInitHandlerFunc(&buf, &packet)
+	case PacketTypeServerUpdate:
+		m.ServerUpdateHandlerFunc(&buf, &packet)
+	case PacketTypeSessionUpdate:
+		m.SessionUpdateHandlerFunc(&buf, &packet)
+	}
+
+	if buf.Len() > 0 {
+		res := buf.Bytes()
+
+		// If the hash checks out above then hash the response to the sender
+		if hashedPacket {
+			res = crypto.Hash(crypto.PacketHashKey, res)
 		}
 
-		packetData = packetData[:packetSize]
-
-		pool.Submit(func() {
-
-			// Check the packet hash is legit and remove the hash from the beginning of the packet
-			// to continue processing the packet as normal
-			hashedPacket := crypto.Check(crypto.PacketHashKey, packetData)
-			switch hashedPacket {
-			case true:
-				packetData = packetData[crypto.PacketHashSize:packetSize]
-			default:
-				// todo: once everybody has upgraded to SDK 3.4.5 or greater, this is an error. ignore packet.
-				packetData = packetData[:packetSize]
-			}
-
-			packet := UDPPacket{SourceAddr: *from, Data: packetData}
-
-			var buf bytes.Buffer
-
-			switch packet.Data[0] {
-			case PacketTypeServerInitRequest:
-				m.ServerInitHandlerFunc(&buf, &packet)
-			case PacketTypeServerUpdate:
-				m.ServerUpdateHandlerFunc(&buf, &packet)
-			case PacketTypeSessionUpdate:
-				m.SessionUpdateHandlerFunc(&buf, &packet)
-			}
-
-			if buf.Len() > 0 {
-				res := buf.Bytes()
-
-				// If the hash checks out above then hash the response to the sender
-				if hashedPacket {
-					res = crypto.Hash(crypto.PacketHashKey, res)
-				}
-
-				conn.WriteToUDP(res, from)
-			}
-		})
+		conn.WriteToUDP(res, from)
 	}
 }
 
