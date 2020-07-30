@@ -132,30 +132,49 @@ namespace net
     static BeastWrapper wrapper;
 
     try {
-      std::string name = hostname;
-      std::string port = "80";
-      auto portpos = hostname.find_first_of(':');
+      std::string proto;
+      std::string name;
+
+      auto protopos = hostname.find_first_of(':');
+      proto = hostname.substr(0, protopos);
+
+      LogDebug("proto: ", proto);
+
+      auto namepos = hostname.find_last_of('/');
+      name = hostname.substr(namepos + 1);
+
+      LogDebug("name: ", name);
+
+      auto portpos = name.find_first_of(':');
       if (portpos != std::string::npos) {
-        name = hostname.substr(0, portpos);
-        port = hostname.substr(portpos);
+        name = name.substr(0, portpos);
+        proto = name.substr(portpos + 1);
+        LogDebug("port: ", proto);
       }
 
       // Look up the domain name
-      auto const results = wrapper.resolver.resolve("localhost", "30000");
+      auto const results = wrapper.resolver.resolve(name, proto);
+      LogDebug("resolved host");
 
       // Make the connection on the IP address we get from a lookup
       wrapper.stream.connect(results);
+      LogDebug("connected");
 
       // Set up an HTTP PUT request message
-      http::request<http::string_body> req{http::verb::put, endpoint, 11};
-      req.set(http::field::host, name);
+      http::request<http::string_body> req;
+      req.method(http::verb::post);
+      req.target(endpoint);
+      req.version(11);
+      req.content_length(request.size());
+      req.set(http::field::host, "localhost");
       req.set(http::field::user_agent, "network next relay");
       req.set(http::field::body, request);
       req.set(http::field::content_type, "application/json");
-      req.set(http::field::timeout, "10000");
+      req.set(http::field::timeout, "10");
 
       // Send the HTTP request to the remote host
       http::write(wrapper.stream, req);
+      LogDebug("sent request: \n", req);
 
       // This buffer is used for reading and must be persisted
       beast::flat_buffer buffer;
@@ -163,15 +182,18 @@ namespace net
       // Declare a container to hold the response
       http::response<http::dynamic_body> res;
 
+      // Receive the HTTP response
+      http::read(wrapper.stream, buffer, res);
+
       // Check the status code
       auto code = res.result_int();
       if (code < 200 || code >= 300) {
         Log("http call to '", hostname, endpoint, "' did not return a success, code: ", code);
         return false;
       }
+      LogDebug("resp code is ", code);
 
-      // Receive the HTTP response
-      http::read(wrapper.stream, buffer, res);
+      LogDebug("resp is ", res);
 
       // Copy the response
       response = beast::buffers_to_string(res.body().data());
