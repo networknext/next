@@ -77,6 +77,33 @@ func cleanFireStore(ctx context.Context, client *firestore.Client) error {
 	return nil
 }
 
+func TestSequenceNumbers(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("Sync", func(t *testing.T) {
+		t.Skip()
+		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+		assert.NoError(t, err)
+
+		err = fs.ZeroSequenceNumbers(ctx)
+		assert.NoError(t, err)
+
+		defer func() {
+			err = cleanFireStore(ctx, fs.Client)
+			assert.NoError(t, err)
+		}()
+
+		err = fs.IncrementSequenceNumber(ctx, "Buyer")
+		assert.NoError(t, err)
+
+		same, err := fs.CheckSequenceNumber(ctx, "Buyer")
+		assert.Equal(t, true, same)
+		assert.NoError(t, err)
+
+	})
+
+}
+
 func TestFirestore(t *testing.T) {
 	t.Parallel()
 
@@ -1885,6 +1912,10 @@ func TestFirestore(t *testing.T) {
 			MaxSessions: 3000,
 			UpdateKey:   make([]byte, 32),
 		}
+
+		// required to setup sequence number doc references
+		err = fs.ZeroSequenceNumbers(ctx)
+		assert.NoError(t, err)
 
 		err = fs.AddBuyer(ctx, expectedBuyer)
 		assert.NoError(t, err)
