@@ -27,6 +27,8 @@ import (
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport/pubsub"
 	"golang.org/x/sys/unix"
+
+	"github.com/panjf2000/ants/v2"
 )
 
 type UDPPacket struct {
@@ -67,7 +69,7 @@ func (m *UDPServerMux) Start(ctx context.Context) error {
 	numThreads := 8
 
 	for i := 0; i < numThreads; i++ {
-		go m.handler(ctx, i)
+		go m.handler(ctx)
 	}
 
 	<-ctx.Done()
@@ -87,19 +89,42 @@ func (m *UDPServerMux2) Start(ctx context.Context) error {
 		}
 	}
 
+	var pool *ants.Pool
+	shouldRelease := false
+
+	handleFunc := goroutineHandlerFunc(m)
+
+	if b, err := strconv.ParseBool(os.Getenv("USE_THREAD_POOL")); err == nil && b {
+		numPktThreads := 8
+		if t, err := strconv.ParseUint(os.Getenv("NUM_PKT_RECV_THREADS"), 10, 64); err == nil && t > 0 {
+			numPktThreads = int(t)
+		}
+
+		pool, err := ants.NewPool(numPktThreads)
+		if err != nil {
+			level.Error(m.Logger).Log("msg", "could not create pkt recv thread pool", "err", err)
+			os.Exit(1)
+		}
+		shouldRelease = true
+
+		handleFunc = threadPoolHandlerFunc(m, pool)
+	}
+
 	for i := 0; i < numThreads; i++ {
-		go m.handler(ctx, i)
+		go m.handler(ctx, handleFunc)
 	}
 
 	<-ctx.Done()
 
+	if shouldRelease {
+		pool.Release()
+	}
+
 	return nil
 }
 
-func (m *UDPServerMux) handler(ctx context.Context, id int) {
-
+func (m *UDPServerMux) handler(ctx context.Context) {
 	for {
-
 		data := make([]byte, m.MaxPacketSize)
 
 		size, addr, _ := m.Conn.ReadFromUDP(data)
@@ -150,7 +175,27 @@ func (m *UDPServerMux) handler(ctx context.Context, id int) {
 	}
 }
 
-func (m *UDPServerMux2) handler(ctx context.Context, id int) {
+type packetHandlerFunc = func(conn *net.UDPConn, packet_data []byte, packet_size int, from *net.UDPAddr)
+
+// returns a function that handles udp packets through normal goroutines
+func goroutineHandlerFunc(m *UDPServerMux2) packetHandlerFunc {
+	return func(conn *net.UDPConn, packetData []byte, packetSize int, from *net.UDPAddr) {
+		go func() {
+			m.handlePacket(conn, packetData, packetSize, from)
+		}()
+	}
+}
+
+// returns a function that handles udp packets through a thread pool
+func threadPoolHandlerFunc(m *UDPServerMux2, pool *ants.Pool) packetHandlerFunc {
+	return func(conn *net.UDPConn, packetData []byte, packetSize int, from *net.UDPAddr) {
+		pool.Submit(func() {
+			m.handlePacket(conn, packetData, packetSize, from)
+		})
+	}
+}
+
+func (m *UDPServerMux2) handler(ctx context.Context, handleFunc packetHandlerFunc) {
 	var conn *net.UDPConn
 	// Initialize UDP connection
 	{
@@ -197,7 +242,6 @@ func (m *UDPServerMux2) handler(ctx context.Context, id int) {
 	}
 
 	for {
-
 		data := make([]byte, m.MaxPacketSize)
 
 		size, addr, _ := conn.ReadFromUDP(data)
@@ -207,44 +251,44 @@ func (m *UDPServerMux2) handler(ctx context.Context, id int) {
 
 		data = data[:size]
 
-		go func(packet_data []byte, packet_size int, from *net.UDPAddr) {
+		handleFunc(conn, data, size, addr)
+	}
+}
 
-			// Check the packet hash is legit and remove the hash from the beginning of the packet
-			// to continue processing the packet as normal
-			hashedPacket := crypto.Check(crypto.PacketHashKey, packet_data)
-			switch hashedPacket {
-			case true:
-				packet_data = packet_data[crypto.PacketHashSize:packet_size]
-			default:
-				// todo: once everybody has upgraded to SDK 3.4.5 or greater, this is an error. ignore packet.
-				packet_data = packet_data[:packet_size]
-			}
+func (m *UDPServerMux2) handlePacket(conn *net.UDPConn, packetData []byte, packetSize int, from *net.UDPAddr) {
+	// Check the packet hash is legit and remove the hash from the beginning of the packet
+	// to continue processing the packet as normal
+	hashedPacket := crypto.Check(crypto.PacketHashKey, packetData)
+	switch hashedPacket {
+	case true:
+		packetData = packetData[crypto.PacketHashSize:packetSize]
+	default:
+		// todo: once everybody has upgraded to SDK 3.4.5 or greater, this is an error. ignore packet.
+		packetData = packetData[:packetSize]
+	}
 
-			packet := UDPPacket{SourceAddr: *from, Data: packet_data}
+	packet := UDPPacket{SourceAddr: *from, Data: packetData}
 
-			var buf bytes.Buffer
+	var buf bytes.Buffer
 
-			switch packet.Data[0] {
-			case PacketTypeServerInitRequest:
-				m.ServerInitHandlerFunc(&buf, &packet)
-			case PacketTypeServerUpdate:
-				m.ServerUpdateHandlerFunc(&buf, &packet)
-			case PacketTypeSessionUpdate:
-				m.SessionUpdateHandlerFunc(&buf, &packet)
-			}
+	switch packet.Data[0] {
+	case PacketTypeServerInitRequest:
+		m.ServerInitHandlerFunc(&buf, &packet)
+	case PacketTypeServerUpdate:
+		m.ServerUpdateHandlerFunc(&buf, &packet)
+	case PacketTypeSessionUpdate:
+		m.SessionUpdateHandlerFunc(&buf, &packet)
+	}
 
-			if buf.Len() > 0 {
-				res := buf.Bytes()
+	if buf.Len() > 0 {
+		res := buf.Bytes()
 
-				// If the hash checks out above then hash the response to the sender
-				if hashedPacket {
-					res = crypto.Hash(crypto.PacketHashKey, res)
-				}
+		// If the hash checks out above then hash the response to the sender
+		if hashedPacket {
+			res = crypto.Hash(crypto.PacketHashKey, res)
+		}
 
-				conn.WriteToUDP(res, from)
-			}
-
-		}(data, size, addr)
+		conn.WriteToUDP(res, from)
 	}
 }
 
@@ -534,20 +578,21 @@ type RouteProvider interface {
 }
 
 type SessionUpdateParams struct {
-	ServerPrivateKey  []byte
-	RouterPrivateKey  []byte
-	GetRouteProvider  func() RouteProvider
-	GetIPLocator      func() routing.IPLocator
-	Storer            storage.Storer
-	Biller            billing.Biller
-	Metrics           *metrics.SessionMetrics
-	Logger            log.Logger
-	VetoMap           *VetoMap
-	ServerMap         *ServerMap
-	SessionMap        *SessionMap
-	DatacenterTracker *DatacenterTracker
-	PortalPublisher   pubsub.Publisher
-	InstanceID        uint64
+	ServerPrivateKey      []byte
+	RouterPrivateKey      []byte
+	GetRouteProvider      func() RouteProvider
+	GetIPLocator          func() routing.IPLocator
+	Storer                storage.Storer
+	Biller                billing.Biller
+	Metrics               *metrics.SessionMetrics
+	Logger                log.Logger
+	VetoMap               *VetoMap
+	ServerMap             *ServerMap
+	SessionMap            *SessionMap
+	DatacenterTracker     *DatacenterTracker
+	PortalPublisher       pubsub.Publisher
+	InstanceID            uint64
+	PostSessionUpdateFunc PostSessionUpdateFunc
 }
 
 func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
@@ -1128,41 +1173,61 @@ func CalculateRouteRelaysPrice(chosenRoute *routing.Route, envelopeBytesUp uint6
 	return relayPrices
 }
 
-func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket, response *SessionResponsePacket, serverDataReadOnly *ServerData,
-	routeRelays []routing.Relay, lastNextStats *routing.Stats, lastDirectStats *routing.Stats, prevRouteDecision routing.Decision, location *routing.Location, nearRelays []routing.Relay,
-	routeDecision routing.Decision, timeNow time.Time, totalPriceNibblins routing.Nibblin, nextRelaysPrice []routing.Nibblin, nextBytesUp uint64, nextBytesDown uint64, prevInitial bool) {
+type PostSessionUpdateParams struct {
+	sessionUpdateParams *SessionUpdateParams
+	packet              *SessionUpdatePacket
+	response            *SessionResponsePacket
+	serverDataReadOnly  *ServerData
+	routeRelays         []routing.Relay
+	lastNextStats       *routing.Stats
+	lastDirectStats     *routing.Stats
+	prevRouteDecision   routing.Decision
+	location            *routing.Location
+	nearRelays          []routing.Relay
+	routeDecision       routing.Decision
+	timeNow             time.Time
+	totalPriceNibblins  routing.Nibblin
+	nextRelaysPrice     []routing.Nibblin
+	nextBytesUp         uint64
+	nextBytesDown       uint64
+	prevInitial         bool
+}
+
+type PostSessionUpdateFunc = func(params PostSessionUpdateParams)
+
+func PostSessionUpdate(params PostSessionUpdateParams) {
 
 	// IMPORTANT: we actually need to display the true datacenter name in the demo and demo plus views,
 	// while in the customer view of the portal, we need to display the alias. this is because aliases will
 	// shortly become per-customer, thus there is really no global concept of "multiplay.losangeles", for example.
 
 	// todo: temporary
-	datacenterName := serverDataReadOnly.Datacenter.Name
-	datacenterAlias := serverDataReadOnly.Datacenter.AliasName
+	datacenterName := params.serverDataReadOnly.Datacenter.Name
+	datacenterAlias := params.serverDataReadOnly.Datacenter.AliasName
 
 	// Send a massive amount of data to the portal via redis.
 	// This drives all the stuff you see in the portal, including the map and top sessions list.
 	// We send it via redis because google pubsub is not able to deliver data quickly enough.
 
-	isMultipath := routing.IsMultipath(prevRouteDecision)
+	isMultipath := routing.IsMultipath(params.prevRouteDecision)
 
 	sessionCountData := routing.SessionCountData{
-		InstanceID:                params.InstanceID,
-		TotalNumDirectSessions:    params.SessionMap.GetDirectSessionCount(),
-		TotalNumNextSessions:      params.SessionMap.GetNextSessionCount(),
-		NumDirectSessionsPerBuyer: params.SessionMap.GetDirectSessionCountPerBuyer(),
-		NumNextSessionsPerBuyer:   params.SessionMap.GetNextSessionCountPerBuyer(),
+		InstanceID:                params.sessionUpdateParams.InstanceID,
+		TotalNumDirectSessions:    params.sessionUpdateParams.SessionMap.GetDirectSessionCount(),
+		TotalNumNextSessions:      params.sessionUpdateParams.SessionMap.GetNextSessionCount(),
+		NumDirectSessionsPerBuyer: params.sessionUpdateParams.SessionMap.GetDirectSessionCountPerBuyer(),
+		NumNextSessionsPerBuyer:   params.sessionUpdateParams.SessionMap.GetNextSessionCountPerBuyer(),
 	}
 
 	// todo: commented out until we can figure out what's going on with zeromq
-	portalDataBytes, err := updatePortalData(params.PortalPublisher, packet, lastNextStats, lastDirectStats, routeRelays,
-		packet.OnNetworkNext, datacenterName, location, nearRelays, timeNow, isMultipath, datacenterAlias, &sessionCountData)
+	portalDataBytes, err := updatePortalData(params.sessionUpdateParams.PortalPublisher, params.packet, params.lastNextStats, params.lastDirectStats, params.routeRelays,
+		params.packet.OnNetworkNext, datacenterName, params.location, params.nearRelays, params.timeNow, isMultipath, datacenterAlias, &sessionCountData)
 	if err != nil {
-		level.Error(params.Logger).Log("msg", "could not update portal data", "err", err)
-		params.Metrics.ErrorMetrics.UpdatePortalFailure.Add(1)
+		level.Error(params.sessionUpdateParams.Logger).Log("msg", "could not update portal data", "err", err)
+		params.sessionUpdateParams.Metrics.ErrorMetrics.UpdatePortalFailure.Add(1)
 	}
 
-	level.Debug(params.Logger).Log("msg", fmt.Sprintf("published %d bytes to portal cruncher", portalDataBytes))
+	level.Debug(params.sessionUpdateParams.Logger).Log("msg", fmt.Sprintf("published %d bytes to portal cruncher", portalDataBytes))
 
 	// Send billing specific data to the billing service via google pubsub
 	// The billing service subscribes to this topic, and writes the billing data to bigquery.
@@ -1171,47 +1236,47 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 	// pubsub to act as a queue to smooth that out. Pubsub can buffer billing data for up to 7 days.
 
 	nextRelays := [billing.BillingEntryMaxRelays]uint64{}
-	for i := 0; i < len(routeRelays) && i < len(nextRelays); i++ {
-		nextRelays[i] = routeRelays[i].ID
+	for i := 0; i < len(params.routeRelays) && i < len(nextRelays); i++ {
+		nextRelays[i] = params.routeRelays[i].ID
 	}
 
 	nextRelaysPriceArray := [billing.BillingEntryMaxRelays]uint64{}
-	for i := 0; i < len(nextRelaysPriceArray) && i < len(nextRelaysPrice); i++ {
-		nextRelaysPriceArray[i] = uint64(nextRelaysPrice[i])
+	for i := 0; i < len(nextRelaysPriceArray) && i < len(params.nextRelaysPrice); i++ {
+		nextRelaysPriceArray[i] = uint64(params.nextRelaysPrice[i])
 	}
 
 	billingEntry := billing.BillingEntry{
-		BuyerID:                   packet.CustomerID,
-		UserHash:                  packet.UserHash,
-		SessionID:                 packet.SessionID,
-		SliceNumber:               uint32(packet.Sequence),
-		DirectRTT:                 float32(lastDirectStats.RTT),
-		DirectJitter:              float32(lastDirectStats.Jitter),
-		DirectPacketLoss:          float32(lastDirectStats.PacketLoss),
-		Next:                      packet.OnNetworkNext,
-		NextRTT:                   float32(lastNextStats.RTT),
-		NextJitter:                float32(lastNextStats.Jitter),
-		NextPacketLoss:            float32(lastNextStats.PacketLoss),
-		NumNextRelays:             uint8(len(routeRelays)),
+		BuyerID:                   params.packet.CustomerID,
+		UserHash:                  params.packet.UserHash,
+		SessionID:                 params.packet.SessionID,
+		SliceNumber:               uint32(params.packet.Sequence),
+		DirectRTT:                 float32(params.lastDirectStats.RTT),
+		DirectJitter:              float32(params.lastDirectStats.Jitter),
+		DirectPacketLoss:          float32(params.lastDirectStats.PacketLoss),
+		Next:                      params.packet.OnNetworkNext,
+		NextRTT:                   float32(params.lastNextStats.RTT),
+		NextJitter:                float32(params.lastNextStats.Jitter),
+		NextPacketLoss:            float32(params.lastNextStats.PacketLoss),
+		NumNextRelays:             uint8(len(params.routeRelays)),
 		NextRelays:                nextRelays,
-		TotalPrice:                uint64(totalPriceNibblins),
-		ClientToServerPacketsLost: packet.PacketsLostClientToServer,
-		ServerToClientPacketsLost: packet.PacketsLostServerToClient,
-		Committed:                 packet.Committed,
-		Flagged:                   packet.Flagged,
+		TotalPrice:                uint64(params.totalPriceNibblins),
+		ClientToServerPacketsLost: params.packet.PacketsLostClientToServer,
+		ServerToClientPacketsLost: params.packet.PacketsLostServerToClient,
+		Committed:                 params.packet.Committed,
+		Flagged:                   params.packet.Flagged,
 		Multipath:                 isMultipath,
-		Initial:                   prevInitial,
-		NextBytesUp:               nextBytesUp,
-		NextBytesDown:             nextBytesDown,
-		DatacenterID:              serverDataReadOnly.Datacenter.ID,
-		RTTReduction:              prevRouteDecision.Reason&routing.DecisionRTTReduction != 0 || prevRouteDecision.Reason&routing.DecisionRTTReductionMultipath != 0,
-		PacketLossReduction:       prevRouteDecision.Reason&routing.DecisionHighPacketLossMultipath != 0,
+		Initial:                   params.prevInitial,
+		NextBytesUp:               params.nextBytesUp,
+		NextBytesDown:             params.nextBytesDown,
+		DatacenterID:              params.serverDataReadOnly.Datacenter.ID,
+		RTTReduction:              params.prevRouteDecision.Reason&routing.DecisionRTTReduction != 0 || params.prevRouteDecision.Reason&routing.DecisionRTTReductionMultipath != 0,
+		PacketLossReduction:       params.prevRouteDecision.Reason&routing.DecisionHighPacketLossMultipath != 0,
 		NextRelaysPrice:           nextRelaysPriceArray,
 	}
 
-	if err := params.Biller.Bill(context.Background(), &billingEntry); err != nil {
-		level.Error(params.Logger).Log("msg", "could not submit billing entry", "err", err)
-		params.Metrics.ErrorMetrics.BillingFailure.Add(1)
+	if err := params.sessionUpdateParams.Biller.Bill(context.Background(), &billingEntry); err != nil {
+		level.Error(params.sessionUpdateParams.Logger).Log("msg", "could not submit billing entry", "err", err)
+		params.sessionUpdateParams.Metrics.ErrorMetrics.BillingFailure.Add(1)
 	}
 }
 
@@ -1512,7 +1577,25 @@ func sendRouteResponse(w io.Writer, chosenRoute *routing.Route, params *SessionU
 	nextRelaysPrice := CalculateRouteRelaysPrice(chosenRoute, envelopeBytesUp, envelopeBytesDown)
 
 	// IMPORTANT: run post in parallel so it doesn't block the response
-	go PostSessionUpdate(params, packet, response, serverDataReadOnly, chosenRoute.Relays, lastNextStats, lastDirectStats, prevRouteDecision, location, nearRelays, routeDecision, timeNow, totalPriceNibblins, nextRelaysPrice, usageBytesUp, usageBytesDown, prevInitial)
+	params.PostSessionUpdateFunc(PostSessionUpdateParams{
+		sessionUpdateParams: params,
+		packet:              packet,
+		response:            response,
+		serverDataReadOnly:  serverDataReadOnly,
+		routeRelays:         chosenRoute.Relays,
+		lastNextStats:       lastNextStats,
+		lastDirectStats:     lastDirectStats,
+		prevRouteDecision:   prevRouteDecision,
+		location:            location,
+		nearRelays:          nearRelays,
+		routeDecision:       routeDecision,
+		timeNow:             timeNow,
+		totalPriceNibblins:  totalPriceNibblins,
+		nextRelaysPrice:     nextRelaysPrice,
+		nextBytesUp:         usageBytesUp,
+		nextBytesDown:       usageBytesDown,
+		prevInitial:         prevInitial,
+	})
 
 	// Send the Session Response back to the server
 	if _, err := w.Write(responseData); err != nil {

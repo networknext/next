@@ -32,6 +32,7 @@ import (
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
 	"github.com/networknext/backend/transport/pubsub"
+	"github.com/panjf2000/ants"
 
 	gcplogging "cloud.google.com/go/logging"
 	"cloud.google.com/go/profiler"
@@ -695,6 +696,32 @@ func main() {
 		portalPublisher = portalCruncherPublisher
 	}
 
+	var postSessionUpdateFunc transport.PostSessionUpdateFunc = func(params transport.PostSessionUpdateParams) {
+		go transport.PostSessionUpdate(params)
+	}
+
+	var pool *ants.Pool
+	shouldRelease := false
+	if b, err := strconv.ParseBool(os.Getenv("USE_THREAD_POOL")); err == nil && b {
+		var numThreads = 8
+		if t, err := strconv.ParseUint(os.Getenv("NUM_POST_UPDATE_THREADS"), 10, 64); err == nil && t > 0 {
+			numThreads = int(t)
+		}
+
+		pool, err = ants.NewPool(numThreads)
+		if err != nil {
+			level.Error(logger).Log("msg", "could not create post update thread pool", "err", err)
+			os.Exit(1)
+		}
+		shouldRelease = true
+
+		postSessionUpdateFunc = func(params transport.PostSessionUpdateParams) {
+			pool.Submit(func() {
+				transport.PostSessionUpdate(params)
+			})
+		}
+	}
+
 	// Start UDP server
 	{
 		fmt.Printf("starting udp server\n")
@@ -716,20 +743,21 @@ func main() {
 		}
 
 		sessionUpdateConfig := &transport.SessionUpdateParams{
-			ServerPrivateKey:  serverPrivateKey,
-			RouterPrivateKey:  routerPrivateKey,
-			GetRouteProvider:  getRouteMatrixFunc,
-			GetIPLocator:      getIPLocatorFunc,
-			Storer:            db,
-			Biller:            biller,
-			Metrics:           sessionUpdateMetrics,
-			Logger:            logger,
-			VetoMap:           vetoMap,
-			ServerMap:         serverMap,
-			SessionMap:        sessionMap,
-			DatacenterTracker: datacenterTracker,
-			PortalPublisher:   portalPublisher,
-			InstanceID:        instanceID,
+			ServerPrivateKey:      serverPrivateKey,
+			RouterPrivateKey:      routerPrivateKey,
+			GetRouteProvider:      getRouteMatrixFunc,
+			GetIPLocator:          getIPLocatorFunc,
+			Storer:                db,
+			Biller:                biller,
+			Metrics:               sessionUpdateMetrics,
+			Logger:                logger,
+			VetoMap:               vetoMap,
+			ServerMap:             serverMap,
+			SessionMap:            sessionMap,
+			DatacenterTracker:     datacenterTracker,
+			PortalPublisher:       portalPublisher,
+			InstanceID:            instanceID,
+			PostSessionUpdateFunc: postSessionUpdateFunc,
 		}
 
 		mux := transport.UDPServerMux2{
@@ -779,4 +807,8 @@ func main() {
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)
 	<-sigint
+
+	if shouldRelease {
+		pool.Release()
+	}
 }
