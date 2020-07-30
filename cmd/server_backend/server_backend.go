@@ -36,6 +36,8 @@ import (
 	gcplogging "cloud.google.com/go/logging"
 	"cloud.google.com/go/profiler"
 	googlepubsub "cloud.google.com/go/pubsub"
+
+	metadataapi "cloud.google.com/go/compute/metadata"
 )
 
 var (
@@ -145,13 +147,6 @@ func main() {
 		}
 	}
 
-	redisHost := os.Getenv("REDIS_HOST_RELAYS")
-	redisClientRelays := storage.NewRedisClient(redisHost)
-	if err := redisClientRelays.Ping().Err(); err != nil {
-		level.Error(logger).Log("envvar", "REDIS_HOST_RELAYS", "value", redisHost, "msg", "could not ping", "err", err)
-		os.Exit(1)
-	}
-
 	// Create an in-memory db
 	var db storage.Storer = &storage.InMemory{
 		LocalMode: true,
@@ -226,7 +221,25 @@ func main() {
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
 	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
 	// on creation so we can use that for the default then
+	var instanceID uint64
 	if gcpOK {
+		// Get the instance number of this server_backend instance
+		{
+			instanceIDString, err := metadataapi.InstanceID()
+			if err != nil {
+				level.Error(logger).Log("msg", "could not read instance id from GCP", "err", err)
+				os.Exit(1)
+			}
+
+			instanceIDInt, err := strconv.Atoi(instanceIDString)
+			if err != nil {
+				level.Error(logger).Log("msg", "could not parse instance id", "id", instanceIDString, "err", err)
+				os.Exit(1)
+			}
+
+			instanceID = uint64(instanceIDInt)
+		}
+
 		// StackDriver Metrics
 		{
 			fmt.Printf("setting up stackdriver metrics\n")
@@ -470,6 +483,9 @@ func main() {
 			}
 
 			go func() {
+				httpClient := &http.Client{
+					Timeout: time.Second * 2,
+				}
 				for {
 					newRouteMatrix := routing.RouteMatrix{}
 					var matrixReader io.Reader
@@ -480,7 +496,7 @@ func main() {
 					}
 
 					// Prefer to get it remotely if possible
-					if r, err := http.Get(uri); err == nil {
+					if r, err := httpClient.Get(uri); err == nil {
 						matrixReader = r.Body
 					}
 
@@ -713,6 +729,7 @@ func main() {
 			SessionMap:        sessionMap,
 			DatacenterTracker: datacenterTracker,
 			PortalPublisher:   portalPublisher,
+			InstanceID:        instanceID,
 		}
 
 		mux := transport.UDPServerMux2{

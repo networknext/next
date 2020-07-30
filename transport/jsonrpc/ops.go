@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/go-kit/kit/log"
-	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
@@ -23,8 +22,7 @@ type OpsService struct {
 	Release   string
 	BuildTime string
 
-	RedisClient redis.Cmdable
-	Storage     storage.Storer
+	Storage storage.Storer
 	// RouteMatrix *routing.RouteMatrix
 
 	Logger log.Logger
@@ -416,15 +414,6 @@ type relay struct {
 }
 
 func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysReply) error {
-	hgetallResult := s.RedisClient.HGetAll(routing.HashKeyAllRelays)
-	if hgetallResult.Err() != nil && hgetallResult.Err() != redis.Nil {
-		err := fmt.Errorf("failed to get all relays: %v", hgetallResult.Err())
-		s.Logger.Log("err", err)
-		return err
-	}
-
-	relayCacheEntries := hgetallResult.Val()
-
 	for _, r := range s.Storage.Relays() {
 		relay := relay{
 			ID:                  r.ID,
@@ -453,21 +442,18 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			Type:                r.Type,
 		}
 
-		relayCacheEntry := routing.RelayCacheEntry{
-			ID: r.ID,
-		}
+		// We don't have a good way of getting the live relay stats now until we make some kind of endpoint on the relay backend for the portal to hit
 
-		// If the relay is in redis, get its traffic stats and last update time
-		if relayCacheEntryString, ok := relayCacheEntries[relayCacheEntry.Key()]; ok {
-			if err := relayCacheEntry.UnmarshalBinary([]byte(relayCacheEntryString)); err == nil {
-				relay.SessionCount = relayCacheEntry.TrafficStats.SessionCount
-				relay.BytesSent = relayCacheEntry.TrafficStats.BytesSent
-				relay.BytesReceived = relayCacheEntry.TrafficStats.BytesReceived
+		// // If the relay is in memory, get its traffic stats and last update time
+		// relayData := s.RelayMap.GetRelayData(r.Addr.String())
+		// if relayData != nil {
+		// 	relay.SessionCount = relayData.TrafficStats.SessionCount
+		// 	relay.BytesSent = relayData.TrafficStats.BytesSent
+		// 	relay.BytesReceived = relayData.TrafficStats.BytesReceived
 
-				relay.LastUpdateTime = relayCacheEntry.LastUpdateTime
-				relay.Version = relayCacheEntry.Version
-			}
-		}
+		// 	relay.LastUpdateTime = relayData.LastUpdateTime
+		// 	relay.Version = relayData.Version
+		// }
 
 		reply.Relays = append(reply.Relays, relay)
 	}
@@ -801,40 +787,6 @@ func (s *OpsService) ListDatacenterMaps(r *http.Request, args *ListDatacenterMap
 
 	reply.DatacenterMaps = replySlice
 
-	return nil
-}
-
-type ServerArgs struct {
-	BuyerID string `json:"buyer_id"`
-}
-
-type ServerReply struct {
-	ServerAddresses []string `json:"server_addrs"`
-}
-
-func (s *OpsService) Servers(r *http.Request, args *ServerArgs, reply *ServerReply) error {
-	var err error
-	var serverAddresses []string
-
-	// get the top session IDs globally or for a buyer from the sorted set
-	switch args.BuyerID {
-	case "":
-		err = s.RedisClient.SMembers("servers").ScanSlice(&serverAddresses)
-		if err != nil {
-			err = fmt.Errorf("Servers() failed getting servers: %v", err)
-			s.Logger.Log("err", err)
-			return err
-		}
-	default:
-		err = s.RedisClient.SMembers(fmt.Sprintf("buyer-%s-servers", args.BuyerID)).ScanSlice(&serverAddresses)
-		if err != nil {
-			err = fmt.Errorf("Servers() failed getting servers: %v", err)
-			s.Logger.Log("err", err)
-			return err
-		}
-	}
-
-	reply.ServerAddresses = serverAddresses
 	return nil
 }
 

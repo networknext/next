@@ -1,12 +1,9 @@
 package routing
 
 import (
-	"fmt"
 	"math"
 	"sort"
 	"sync"
-
-	"github.com/go-redis/redis/v7"
 )
 
 // HistorySize is the limit to how big the history of the relay entries should be
@@ -237,22 +234,14 @@ func (database *StatsDatabase) GetSample(relay1, relay2 uint64) (float32, float3
 // GetCostMatrix returns the cost matrix composed of all current information
 func (database *StatsDatabase) GetCostMatrix(
 	costMatrix *CostMatrix,
-	redisClient redis.Cmdable,
+	allRelayData []*RelayData,
 	maxJitter float32,
 	maxPacketLoss float32) error {
 
-	hgetallResult := redisClient.HGetAll(HashKeyAllRelays)
-	if hgetallResult.Err() != nil && hgetallResult.Err() != redis.Nil {
-		return fmt.Errorf("failed to get all relays from redis: %v", hgetallResult.Err())
-	}
-	numRelays := len(hgetallResult.Val())
+	numRelays := len(allRelayData)
 
-	var stableRelays []RelayCacheEntry
-	for _, rawRelay := range hgetallResult.Val() {
-		var relay RelayCacheEntry
-		if err := relay.UnmarshalBinary([]byte(rawRelay)); err != nil {
-			return fmt.Errorf("failed to unmarshal relay when creating cost matrix: %v", err)
-		}
+	var stableRelays []*RelayData
+	for _, relay := range allRelayData {
 		stableRelays = append(stableRelays, relay)
 	}
 
