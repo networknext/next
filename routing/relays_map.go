@@ -98,7 +98,7 @@ func (relayMap *RelayMap) GetRelayData(relayAddress string) *RelayData {
 }
 
 func (relayMap *RelayMap) GetAllRelayData() []*RelayData {
-	relays := make([]*RelayData, relayMap.numRelays)
+	relays := make([]*RelayData, atomic.LoadUint64(&relayMap.numRelays))
 	var index int
 
 	for _, shard := range relayMap.shard {
