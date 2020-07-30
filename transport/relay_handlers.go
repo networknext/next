@@ -421,6 +421,8 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			return
 		}
 
+		params.RelayMap.UpdateRelayData(relayData.Addr.String(), relayData)
+
 		level.Debug(locallogger).Log("msg", "relay initialized")
 
 		var responseData []byte
