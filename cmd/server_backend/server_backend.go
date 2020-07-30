@@ -470,6 +470,9 @@ func main() {
 			}
 
 			go func() {
+				httpClient := &http.Client{
+					Timeout: time.Second * 2,
+				}
 				for {
 					newRouteMatrix := routing.RouteMatrix{}
 					var matrixReader io.Reader
@@ -480,7 +483,7 @@ func main() {
 					}
 
 					// Prefer to get it remotely if possible
-					if r, err := http.Get(uri); err == nil {
+					if r, err := httpClient.Get(uri); err == nil {
 						matrixReader = r.Body
 					}
 
