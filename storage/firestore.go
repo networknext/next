@@ -172,7 +172,10 @@ func (fs *Firestore) ZeroSequenceNumbers(ctx context.Context) error {
 	return nil
 }
 
-// IncrementSequenceNumber is called by all CRUD operations defined in the Storage interface
+// IncrementSequenceNumber is called by all CRUD operations defined in the Storage interface. It only
+// increments the remote seq number. When the sync() functions call CheckSequenceNumber(), if the
+// local and remote numbers are not the same, the data will be sync'd from Firestore, and the local
+// sequence numbers updated.
 func (fs *Firestore) IncrementSequenceNumber(ctx context.Context, field string) error {
 
 	seqDocs := fs.Client.Collection("SequenceNumbers")
@@ -190,32 +193,18 @@ func (fs *Firestore) IncrementSequenceNumber(ctx context.Context, field string) 
 		return &UnmarshalError{err: err}
 	}
 
-	fs.sequenceNumberMutex.RLock()
-	if fs.syncSequenceNumbers[field] != num.Sequence {
-		return &SequenceNumbersOutOfSync{
-			document:             field,
-			localSequenceNumber:  fs.syncSequenceNumbers[field],
-			remoteSequenceNumber: num.Sequence,
-		}
-	}
-	fs.sequenceNumberMutex.RUnlock()
-
 	num.Sequence++
 	if _, err = seq.Ref.Set(ctx, num); err != nil {
 		return &FirestoreError{err: err}
 	}
 
-	fs.sequenceNumberMutex.Lock()
-	fs.syncSequenceNumbers[field] = num.Sequence
-	fs.sequenceNumberMutex.Unlock()
-
-	// fmt.Printf("fs.syncSequenceNumbers[%s]: %d\n", field, fs.syncSequenceNumbers[field])
-
 	return nil
 }
 
 // CheckSequenceNumber is called in the Firestore sync*() operations to see if a sync is required.
-// Returns true if the remote number > the local number (sync required)
+// Returns true if the remote number != the local number which forces the caller to sync from
+// Firestore and updates the local sequence number. Returns false (no need to sync) and does
+// not modify the local number, otherwise.
 func (fs *Firestore) CheckSequenceNumber(ctx context.Context, field string) (bool, error) {
 
 	var num struct {
@@ -234,12 +223,16 @@ func (fs *Firestore) CheckSequenceNumber(ctx context.Context, field string) (boo
 	}
 
 	fs.sequenceNumberMutex.RLock()
-	if fs.syncSequenceNumbers[field] != num.Sequence {
-		return false, nil
-	}
+	localSeqNum := fs.syncSequenceNumbers[field]
 	fs.sequenceNumberMutex.RUnlock()
+	if localSeqNum != num.Sequence {
+		fs.sequenceNumberMutex.Lock()
+		fs.syncSequenceNumbers[field] = num.Sequence
+		fs.sequenceNumberMutex.Unlock()
+		return true, nil
+	}
 
-	return true, nil
+	return false, nil
 }
 
 func (fs *Firestore) Buyer(id uint64) (routing.Buyer, error) {
@@ -1500,7 +1493,6 @@ func (fs *Firestore) Sync(ctx context.Context) error {
 	var wg sync.WaitGroup
 	wg.Add(5)
 
-	// ToDo: make one CheckSequenceNumbers call and return all checks
 	go func() {
 		sync, err := fs.CheckSequenceNumber(ctx, "Relay")
 		if err != nil {

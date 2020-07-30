@@ -81,7 +81,6 @@ func TestSequenceNumbers(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("Sync", func(t *testing.T) {
-		t.Skip()
 		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 		assert.NoError(t, err)
 
@@ -96,6 +95,9 @@ func TestSequenceNumbers(t *testing.T) {
 		err = fs.IncrementSequenceNumber(ctx, "Buyer")
 		assert.NoError(t, err)
 
+		// CheckSequenceNumber() should return false as the remote seq value
+		// has been incremented, but the local value is still zero from above
+		// (true -> sync from Firestore)
 		same, err := fs.CheckSequenceNumber(ctx, "Buyer")
 		assert.Equal(t, true, same)
 		assert.NoError(t, err)
