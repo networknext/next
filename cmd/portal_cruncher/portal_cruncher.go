@@ -242,6 +242,72 @@ func main() {
 		portalSubscriber = portalCruncherSubscriber
 	}
 
+	// Sub to expiry events for cleanup
+	{
+		redisClientPortal.ConfigSet("notify-keyspace-events", "Ex")
+		go func() {
+			ps := redisClientPortal.Subscribe("__keyevent@0__:expired")
+			for {
+				// Receive expiry event message
+				msg, err := ps.ReceiveMessage()
+				if err != nil {
+					level.Error(logger).Log("msg", "Error receiving expired message from redis pubsub", "err", err)
+					os.Exit(1)
+				}
+
+				// If it is a total direct session count that is expiring...
+				if strings.HasPrefix(msg.Payload, "session-count-total-direct-") {
+					// Remove the total direct session count from the hash
+					if err := redisClientPortal.HDel("session-count-total-direct", msg.Payload).Err(); err != nil {
+						level.Error(logger).Log("msg", "failed to remove hashmap entry for total direct session count", "err", err)
+						os.Exit(1)
+					}
+				}
+
+				// If it is a total next session count that is expiring...
+				if strings.HasPrefix(msg.Payload, "session-count-total-next-") {
+					// Remove the total next session count from the hash
+					if err := redisClientPortal.HDel("session-count-total-next", msg.Payload).Err(); err != nil {
+						level.Error(logger).Log("msg", "failed to remove hashmap entry for total next session count", "err", err)
+						os.Exit(1)
+					}
+				}
+
+				// If it is a buyer direct session count that is expiring...
+				if strings.HasPrefix(msg.Payload, "session-count-direct-buyer-") {
+					// Get the buyer ID
+					buyerID, err := strconv.ParseUint(strings.TrimPrefix(msg.Payload, "session-count-direct-buyer-")[:16], 16, 64)
+					if err != nil {
+						level.Error(logger).Log("msg", "failed to parse buyer ID from expired direct buyer session count", "payload", msg.Payload, "err", err)
+						os.Exit(1)
+					}
+
+					// Remove the buyer direct session count from the hash
+					if err := redisClientPortal.HDel(fmt.Sprintf("session-count-direct-buyer-%016x", buyerID), msg.Payload).Err(); err != nil {
+						level.Error(logger).Log("msg", "failed to remove hashmap entry for direct buyer session count", "err", err)
+						os.Exit(1)
+					}
+				}
+
+				// If it is a buyer next session count that is expiring...
+				if strings.HasPrefix(msg.Payload, "session-count-next-buyer-") {
+					// Get the buyer ID
+					buyerID, err := strconv.ParseUint(strings.TrimPrefix(msg.Payload, "session-count-next-buyer-")[:16], 16, 64)
+					if err != nil {
+						level.Error(logger).Log("msg", "failed to parse buyer ID from expired next buyer session count", "payload", msg.Payload, "err", err)
+						os.Exit(1)
+					}
+
+					// Remove the buyer next session count from the hash
+					if err := redisClientPortal.HDel(fmt.Sprintf("session-count-next-buyer-%016x", buyerID), msg.Payload).Err(); err != nil {
+						level.Error(logger).Log("msg", "failed to remove hashmap entry for next buyer session count", "err", err)
+						os.Exit(1)
+					}
+				}
+			}
+		}()
+	}
+
 	// Start receive loop
 	go func() {
 		for {
@@ -311,15 +377,34 @@ func main() {
 
 				tx := redisClientPortal.TxPipeline()
 
-				tx.Set("total-direct-count", countData.TotalNumDirectSessions, redisPortalHostExp)
-				tx.Set("total-next-count", countData.TotalNumNextSessions, redisPortalHostExp)
+				// Regular set for expiry
+				tx.Set(fmt.Sprintf("session-count-total-direct-instance-%016x", countData.InstanceID), countData.TotalNumDirectSessions, redisPortalHostExp)
+
+				// HSet for quick summing in the portal
+				tx.HSet("session-count-total-direct", fmt.Sprintf("session-count-total-direct-instance-%016x", countData.InstanceID), countData.TotalNumDirectSessions)
+
+				// Regular set for expiry
+				tx.Set(fmt.Sprintf("session-count-total-next-instance-%016x", countData.InstanceID), countData.TotalNumNextSessions, redisPortalHostExp)
+
+				// HSet for quick summing in the portal
+				tx.HSet("session-count-total-next", fmt.Sprintf("session-count-total-next-instance-%016x", countData.InstanceID), countData.TotalNumNextSessions)
 
 				for buyerID, count := range countData.NumDirectSessionsPerBuyer {
-					tx.Set(fmt.Sprintf("direct-count-buyer-%016x", buyerID), count, redisPortalHostExp)
+					// Regular set for expiry
+					tx.Set(fmt.Sprintf("session-count-direct-buyer-%016x-instance-%016x", buyerID, countData.InstanceID), count, redisPortalHostExp)
+
+					// HSet for quick summing in the portal
+					tx.HSet(fmt.Sprintf("session-count-direct-buyer-%016x", buyerID), fmt.Sprintf("session-count-direct-buyer-%016x-instance-%016x", buyerID, countData.InstanceID), count)
+					tx.Expire(fmt.Sprintf("session-count-direct-buyer-%016x", buyerID), redisPortalHostExp)
 				}
 
 				for buyerID, count := range countData.NumNextSessionsPerBuyer {
-					tx.Set(fmt.Sprintf("next-count-buyer-%016x", buyerID), count, redisPortalHostExp)
+					// Regular set for expiry
+					tx.Set(fmt.Sprintf("session-count-next-buyer-%016x-instance-%016x", buyerID, countData.InstanceID), count, redisPortalHostExp)
+
+					// HSet for quick summing in the portal
+					tx.HSet(fmt.Sprintf("session-count-next-buyer-%016x", buyerID), fmt.Sprintf("session-count-next-buyer-%016x-instance-%016x", buyerID, countData.InstanceID), count)
+					tx.Expire(fmt.Sprintf("session-count-next-buyer-%016x", buyerID), redisPortalHostExp)
 				}
 
 				if _, err := tx.Exec(); err != nil {
