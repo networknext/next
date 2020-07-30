@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/alicebob/miniredis/v2"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
@@ -133,26 +132,6 @@ var NoopHTTPClient = NewTestHTTPClient(func(req *http.Request) *http.Response {
 		Body:       ioutil.NopCloser(bytes.NewBufferString(`{}`)),
 	}
 })
-
-func seedRedis(t *testing.T, redisServer *miniredis.Miniredis, addressesToAdd []string) {
-	addEntry := func(addr string) {
-		relay := routing.RelayCacheEntry{
-			PublicKey: make([]byte, crypto.KeySize),
-		}
-		udpAddr, err := net.ResolveUDPAddr("udp", addr)
-		assert.NoError(t, err)
-		relay.Addr = *udpAddr
-		relay.ID = crypto.HashID(addr)
-		bin, err := relay.MarshalBinary()
-		assert.NoError(t, err)
-		redisServer.Set(relay.Key(), "0")
-		redisServer.HSet(routing.HashKeyAllRelays, relay.Key(), string(bin))
-	}
-
-	for _, addr := range addressesToAdd {
-		addEntry(addr)
-	}
-}
 
 func seedStorage(t *testing.T, inMemory *storage.InMemory, addressesToAdd []string) {
 	for i, addrString := range addressesToAdd {
