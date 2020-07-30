@@ -1,10 +1,8 @@
-package transport
+package routing
 
 import (
 	"sync"
 	"sync/atomic"
-
-	"github.com/networknext/backend/routing"
 )
 
 const (
@@ -13,7 +11,7 @@ const (
 
 type RelayMapShard struct {
 	mutex  sync.RWMutex
-	relays map[uint64]*routing.Relay
+	relays map[uint64]*Relay
 }
 
 type RelayMap struct {
@@ -21,14 +19,15 @@ type RelayMap struct {
 	shard     [NumRelayMapShards]*RelayMapShard
 }
 
+// ToDo: load relay information from storage?
 func NewRelayMap() *RelayMap {
 	relayMap := &RelayMap{
-		numNextRelaysPerBuyer:   make(map[uint64]uint64),
-		numDirectRelaysPerBuyer: make(map[uint64]uint64),
+		// numNextRelaysPerBuyer:   make(map[uint64]uint64),
+		// numDirectRelaysPerBuyer: make(map[uint64]uint64),
 	}
 	for i := 0; i < NumRelayMapShards; i++ {
 		relayMap.shard[i] = &RelayMapShard{}
-		relayMap.shard[i].relays = make(map[uint64]*routing.Relay)
+		relayMap.shard[i].relays = make(map[uint64]*Relay)
 	}
 	return relayMap
 }
@@ -69,22 +68,23 @@ func (relayMap *RelayMap) GetRelayIndices() []uint64 {
 	return indices
 }
 
-func (relayMap *RelayMap) SetRelayData(relay *routing.Relay) error {
-	index := relayId % NumRelayMapShards
+func (relayMap *RelayMap) SetRelayData(relay *Relay) error {
+	index := relay.ID % NumRelayMapShards
 
 	relayMap.Lock(index)
-	relayMap.shard[index].relays[relayId] = relay
-	relayMap.UnLock(index)
+	relayMap.shard[index].relays[relay.ID] = relay
+	relayMap.Unlock(index)
 
-	return relayData
+	// ToDo: needs error check for map update
+	return nil
 }
 
-func (relayMap *RelayMap) GetRelayData(relayId uint64) *routing.Relay {
+func (relayMap *RelayMap) GetRelayData(relayId uint64) *Relay {
 	index := relayId % NumRelayMapShards
 
 	relayMap.RLock(index)
 	relayData, _ := relayMap.shard[index].relays[relayId]
-	relayMap.RUnLock(index)
+	relayMap.RUnlock(index)
 
 	return relayData
 }

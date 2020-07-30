@@ -17,7 +17,6 @@ import (
 	"os/signal"
 	"runtime"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -152,7 +151,7 @@ func main() {
 		}
 	}
 
-	relayMap := transport.NewRelayMap()
+	relayMap := NewRelayMap()
 
 	// redisHost := os.Getenv("REDIS_HOST_RELAYS")
 	// redisClientRelays := storage.NewRedisClient(redisHost)
@@ -742,63 +741,63 @@ func main() {
 	}()
 
 	// Sub to expiry events for cleanup
-	redisClientRelays.ConfigSet("notify-keyspace-events", "Ex")
-	go func() {
-		ps := redisClientRelays.Subscribe("__keyevent@0__:expired")
-		for {
-			// Receive expiry event message
-			msg, err := ps.ReceiveMessage()
-			if err != nil {
-				level.Error(logger).Log("msg", "Error receiving expired message from pubsub", "err", err)
-				os.Exit(1)
-			}
+	// redisClientRelays.ConfigSet("notify-keyspace-events", "Ex")
+	// go func() {
+	// 	ps := redisClientRelays.Subscribe("__keyevent@0__:expired")
+	// 	for {
+	// 		// Receive expiry event message
+	// 		msg, err := ps.ReceiveMessage()
+	// 		if err != nil {
+	// 			level.Error(logger).Log("msg", "Error receiving expired message from pubsub", "err", err)
+	// 			os.Exit(1)
+	// 		}
 
-			// If it is a relay that is expiring...
-			if strings.HasPrefix(msg.Payload, routing.HashKeyPrefixRelay) {
+	// 		// If it is a relay that is expiring...
+	// 		if strings.HasPrefix(msg.Payload, routing.HashKeyPrefixRelay) {
 
-				// Retrieve the ID of the relay that has expired
-				rawID, err := strconv.ParseUint(strings.TrimPrefix(msg.Payload, routing.HashKeyPrefixRelay), 10, 64)
-				if err != nil {
-					level.Error(logger).Log("msg", "Failed to parse expired Relay ID from payload", "payload", msg.Payload, "err", err)
-					os.Exit(1)
-				}
+	// 			// Retrieve the ID of the relay that has expired
+	// 			rawID, err := strconv.ParseUint(strings.TrimPrefix(msg.Payload, routing.HashKeyPrefixRelay), 10, 64)
+	// 			if err != nil {
+	// 				level.Error(logger).Log("msg", "Failed to parse expired Relay ID from payload", "payload", msg.Payload, "err", err)
+	// 				os.Exit(1)
+	// 			}
 
-				// Log the ID
-				level.Warn(logger).Log("msg", fmt.Sprintf("relay with id %v has disconnected.", rawID))
+	// 			// Log the ID
+	// 			level.Warn(logger).Log("msg", fmt.Sprintf("relay with id %v has disconnected.", rawID))
 
-				// Remove the relay cache entry
-				if err := transport.RemoveRelayCacheEntry(ctx, rawID, msg.Payload, redisClientRelays, &geoClient, statsdb); err != nil {
-					level.Error(logger).Log("err", err)
-					os.Exit(1)
-				}
-			}
-		}
-	}()
+	// 			// Remove the relay cache entry
+	// 			if err := transport.RemoveRelayCacheEntry(ctx, rawID, msg.Payload, redisClientRelays, &geoClient, statsdb); err != nil {
+	// 				level.Error(logger).Log("err", err)
+	// 				os.Exit(1)
+	// 			}
+	// 		}
+	// 	}
+	// }()
 
-	commonInitParams := transport.RelayInitHandlerConfig{
-		RedisClient:      redisClientRelays,
-		GeoClient:        &geoClient,
-		Storer:           db,
-		Metrics:          relayInitMetrics,
-		RouterPrivateKey: routerPrivateKey,
-	}
+	// commonInitParams := transport.RelayInitHandlerConfig{
+	// 	RedisClient:      redisClientRelays,
+	// 	GeoClient:        &geoClient,
+	// 	Storer:           db,
+	// 	Metrics:          relayInitMetrics,
+	// 	RouterPrivateKey: routerPrivateKey,
+	// }
 
-	commonUpdateParams := transport.RelayUpdateHandlerConfig{
-		RedisClient: redisClientRelays,
-		GeoClient:   &geoClient,
-		StatsDb:     statsdb,
-		Metrics:     relayUpdateMetrics,
-		Storer:      db,
-	}
+	// commonUpdateParams := transport.RelayUpdateHandlerConfig{
+	// 	RedisClient: redisClientRelays,
+	// 	GeoClient:   &geoClient,
+	// 	StatsDb:     statsdb,
+	// 	Metrics:     relayUpdateMetrics,
+	// 	Storer:      db,
+	// }
 
-	commonHandlerParams := transport.RelayHandlerConfig{
-		RedisClient:      redisClientRelays,
-		GeoClient:        &geoClient,
-		Storer:           db,
-		StatsDb:          statsdb,
-		Metrics:          relayHandlerMetrics,
-		RouterPrivateKey: routerPrivateKey,
-	}
+	// commonHandlerParams := transport.RelayHandlerConfig{
+	// 	RedisClient:      redisClientRelays,
+	// 	GeoClient:        &geoClient,
+	// 	Storer:           db,
+	// 	StatsDb:          statsdb,
+	// 	Metrics:          relayHandlerMetrics,
+	// 	RouterPrivateKey: routerPrivateKey,
+	// }
 
 	// todo: ryan, relay backend health check should only become healthy once it is ready to serve up a quality route matrix in prod.
 	// in the current production environment, this probably means that it has generated route matrices for 6 minutes. the reason for this

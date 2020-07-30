@@ -4,8 +4,6 @@ import (
 	"math"
 	"sort"
 	"sync"
-
-	"github.com/networknext/backend/transport"
 )
 
 // HistorySize is the limit to how big the history of the relay entries should be
@@ -237,25 +235,16 @@ func (database *StatsDatabase) GetSample(relay1, relay2 uint64) (float32, float3
 func (database *StatsDatabase) GetCostMatrix(
 	costMatrix *CostMatrix,
 	// redisClient redis.Cmdable,
-	relayMap *transport.RelayMap,
+	relayMap *RelayMap,
 	maxJitter float32,
 	maxPacketLoss float32) error {
 
-	// hgetallResult := redisClient.HGetAll(HashKeyAllRelays)
-	// if hgetallResult.Err() != nil && hgetallResult.Err() != redis.Nil {
-	// 	return fmt.Errorf("failed to get all relays from redis: %v", hgetallResult.Err())
-	// }
-	// numRelays := len(hgetallResult.Val())
-
-	numRelays := relayMap.GetRelayCount()
+	numRelays := int(relayMap.GetRelayCount())
 
 	var stableRelays []Relay
 	for _, index := range relayMap.GetRelayIndices() {
 		var relay Relay
-		// if err := relay.UnmarshalBinary([]byte(rawRelay)); err != nil {
-		// 	return fmt.Errorf("failed to unmarshal relay when creating cost matrix: %v", err)
-		// }
-		relay = relayMap.GetRelayData(index)
+		relay = *relayMap.GetRelayData(index)
 		stableRelays = append(stableRelays, relay)
 	}
 
