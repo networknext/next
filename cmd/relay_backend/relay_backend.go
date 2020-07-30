@@ -21,7 +21,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-redis/redis"
 	"github.com/gorilla/mux"
 	"github.com/networknext/backend/analytics"
 	"github.com/networknext/backend/logging"
@@ -153,17 +152,19 @@ func main() {
 		}
 	}
 
-	redisHost := os.Getenv("REDIS_HOST_RELAYS")
-	redisClientRelays := storage.NewRedisClient(redisHost)
-	if err := redisClientRelays.Ping().Err(); err != nil {
-		level.Error(logger).Log("envvar", "REDIS_HOST_RELAYS", "value", redisHost, "err", err)
-		os.Exit(1)
-	}
+	relayMap := transport.NewRelayMap()
 
-	geoClient := routing.GeoClient{
-		RedisClient: redisClientRelays,
-		Namespace:   "RELAY_LOCATIONS",
-	}
+	// redisHost := os.Getenv("REDIS_HOST_RELAYS")
+	// redisClientRelays := storage.NewRedisClient(redisHost)
+	// if err := redisClientRelays.Ping().Err(); err != nil {
+	// 	level.Error(logger).Log("envvar", "REDIS_HOST_RELAYS", "value", redisHost, "err", err)
+	// 	os.Exit(1)
+	// }
+
+	// geoClient := routing.GeoClient{
+	// 	RedisClient: redisClientRelays,
+	// 	Namespace:   "RELAY_LOCATIONS",
+	// }
 
 	var db storage.Storer = &storage.InMemory{
 		LocalMode: true,
@@ -386,28 +387,28 @@ func main() {
 	}
 
 	// Clean up any relays that may have expired while the relay_backend was down (due to a deploy, maintenance, etc.)
-	hgetallResult := redisClientRelays.HGetAll(routing.HashKeyAllRelays)
-	for key, raw := range hgetallResult.Val() {
-		// Check if the key has expired and if it should be removed from the hash set
-		getCmd := redisClientRelays.Get(key)
-		if getCmd.Val() == "" {
+	// hgetallResult := redisClientRelays.HGetAll(routing.HashKeyAllRelays)
+	// for key, raw := range hgetallResult.Val() {
+	// 	// Check if the key has expired and if it should be removed from the hash set
+	// 	getCmd := redisClientRelays.Get(key)
+	// 	if getCmd.Val() == "" {
 
-			level.Debug(logger).Log("msg", "Found lingering relay", "key", key)
+	// 		level.Debug(logger).Log("msg", "Found lingering relay", "key", key)
 
-			var relay routing.RelayCacheEntry
-			if err := relay.UnmarshalBinary([]byte(raw)); err != nil {
-				level.Error(logger).Log("msg", "detected lingering relay but failed to unmarshal relay from redis hash set", "err", err)
-				os.Exit(1)
-			}
+	// 		var relay routing.RelayCacheEntry
+	// 		if err := relay.UnmarshalBinary([]byte(raw)); err != nil {
+	// 			level.Error(logger).Log("msg", "detected lingering relay but failed to unmarshal relay from redis hash set", "err", err)
+	// 			os.Exit(1)
+	// 		}
 
-			if err := transport.RemoveRelayCacheEntry(ctx, relay.ID, key, redisClientRelays, &geoClient, statsdb); err != nil {
-				level.Error(logger).Log("msg", "detected lingering relay but failed to remove relay from redis hash set", "err", err)
-				os.Exit(1)
-			}
+	// 		if err := transport.RemoveRelayCacheEntry(ctx, relay.ID, key, redisClientRelays, &geoClient, statsdb); err != nil {
+	// 			level.Error(logger).Log("msg", "detected lingering relay but failed to remove relay from redis hash set", "err", err)
+	// 			os.Exit(1)
+	// 		}
 
-			level.Debug(logger).Log("msg", "Lingering relay removed", "relay_id", relay.ID)
-		}
-	}
+	// 		level.Debug(logger).Log("msg", "Lingering relay removed", "relay_id", relay.ID)
+	// 	}
+	// }
 
 	// Get the max jitter and max packet loss env vars
 	var maxJitter float64
@@ -575,21 +576,22 @@ func main() {
 			for {
 				time.Sleep(sleepTime)
 
-				hgetallResult := redisClientRelays.HGetAll(routing.HashKeyAllRelays)
-				if hgetallResult.Err() != nil && hgetallResult.Err() != redis.Nil {
-					level.Error(logger).Log("msg", "failed to get other relays", "err", hgetallResult.Err())
-				}
+				// hgetallResult := redisClientRelays.HGetAll(routing.HashKeyAllRelays)
+				getAllRelaysResult := relayMap.GetRelayCount()
+				// if hgetallResult.Err() != nil && hgetallResult.Err() != redis.Nil {
+				// 	level.Error(logger).Log("msg", "failed to get other relays", "err", hgetallResult.Err())
+				// }
 
-				entries := make([]analytics.RelayStatsEntry, len(hgetallResult.Val()))
+				entries := make([]analytics.RelayStatsEntry, getAllRelaysResult)
 
 				idx := 0
-				for _, v := range hgetallResult.Val() {
-					var relay routing.RelayCacheEntry
-					if err := relay.UnmarshalBinary([]byte(v)); err != nil {
-						level.Error(logger).Log("msg", "failed to get relay from redis", "err", err)
-						continue
-					}
-
+				for _, i := range relayMap.GetRelayIndices() {
+					var relay *routing.Relay
+					// if err := relay.UnmarshalBinary([]byte(v)); err != nil {
+					// 	level.Error(logger).Log("msg", "failed to get relay from redis", "err", err)
+					// 	continue
+					// }
+					relay = relayMap.GetRelayData(i)
 					entries[idx] = analytics.RelayStatsEntry{
 						ID:          relay.ID,
 						NumSessions: relay.TrafficStats.SessionCount,
@@ -626,7 +628,7 @@ func main() {
 
 			costMatrixDurationStart := time.Now()
 
-			err := statsdb.GetCostMatrix(&costMatrixNew, redisClientRelays, float32(maxJitter), float32(maxPacketLoss))
+			err := statsdb.GetCostMatrix(&costMatrixNew, relayMap, float32(maxJitter), float32(maxPacketLoss))
 
 			costMatrixDurationSince := time.Since(costMatrixDurationStart)
 			costMatrixMetrics.DurationGauge.Set(float64(costMatrixDurationSince.Milliseconds()))

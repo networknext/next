@@ -1,12 +1,11 @@
 package routing
 
 import (
-	"fmt"
 	"math"
 	"sort"
 	"sync"
 
-	"github.com/go-redis/redis/v7"
+	"github.com/networknext/backend/transport"
 )
 
 // HistorySize is the limit to how big the history of the relay entries should be
@@ -237,22 +236,26 @@ func (database *StatsDatabase) GetSample(relay1, relay2 uint64) (float32, float3
 // GetCostMatrix returns the cost matrix composed of all current information
 func (database *StatsDatabase) GetCostMatrix(
 	costMatrix *CostMatrix,
-	redisClient redis.Cmdable,
+	// redisClient redis.Cmdable,
+	relayMap *transport.RelayMap,
 	maxJitter float32,
 	maxPacketLoss float32) error {
 
-	hgetallResult := redisClient.HGetAll(HashKeyAllRelays)
-	if hgetallResult.Err() != nil && hgetallResult.Err() != redis.Nil {
-		return fmt.Errorf("failed to get all relays from redis: %v", hgetallResult.Err())
-	}
-	numRelays := len(hgetallResult.Val())
+	// hgetallResult := redisClient.HGetAll(HashKeyAllRelays)
+	// if hgetallResult.Err() != nil && hgetallResult.Err() != redis.Nil {
+	// 	return fmt.Errorf("failed to get all relays from redis: %v", hgetallResult.Err())
+	// }
+	// numRelays := len(hgetallResult.Val())
 
-	var stableRelays []RelayCacheEntry
-	for _, rawRelay := range hgetallResult.Val() {
-		var relay RelayCacheEntry
-		if err := relay.UnmarshalBinary([]byte(rawRelay)); err != nil {
-			return fmt.Errorf("failed to unmarshal relay when creating cost matrix: %v", err)
-		}
+	numRelays := relayMap.GetRelayCount()
+
+	var stableRelays []Relay
+	for _, index := range relayMap.GetRelayIndices() {
+		var relay Relay
+		// if err := relay.UnmarshalBinary([]byte(rawRelay)); err != nil {
+		// 	return fmt.Errorf("failed to unmarshal relay when creating cost matrix: %v", err)
+		// }
+		relay = relayMap.GetRelayData(index)
 		stableRelays = append(stableRelays, relay)
 	}
 
