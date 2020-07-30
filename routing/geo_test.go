@@ -11,8 +11,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/alicebob/miniredis/v2"
-	"github.com/go-redis/redis/v7"
 	"github.com/oschwald/geoip2-golang"
 	"github.com/stretchr/testify/assert"
 
@@ -340,57 +338,5 @@ func TestIPLocator(t *testing.T) {
 			assert.EqualError(t, err, "not configured with a Maxmind City DB")
 
 		}
-	})
-}
-
-func TestGeoClient(t *testing.T) {
-	t.Parallel()
-
-	redisServer, _ := miniredis.Run()
-	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
-
-	geoclient := routing.GeoClient{
-		RedisClient: redisClient,
-		Namespace:   "TESTING",
-	}
-
-	t.Run("Add", func(t *testing.T) {
-		err := geoclient.Add(1, 38.115556, 13.361389)
-		assert.NoError(t, err)
-
-		err = geoclient.Add(2, 37.502669, 15.087269)
-		assert.NoError(t, err)
-	})
-
-	t.Run("RelaysWithin", func(t *testing.T) {
-		err := geoclient.Add(1, 38.115556, 13.361389)
-		assert.NoError(t, err)
-
-		err = geoclient.Add(2, 37.502669, 15.087269)
-		assert.NoError(t, err)
-
-		relays, err := geoclient.RelaysWithin(37, 15, 200, "km")
-		assert.NoError(t, err)
-
-		assert.Equal(t, 2, len(relays))
-		assert.Equal(t, uint64(2), relays[0].ID)
-		assert.Equal(t, uint64(1), relays[1].ID)
-
-		// Bad georadius call to redis
-		_, err = geoclient.RelaysWithin(37, 15, 200, "invalid")
-		assert.Error(t, err)
-
-		// Unable to parse name from redis
-		geoloc := redis.GeoLocation{
-			Name:      "bad data",
-			Latitude:  37.502669,
-			Longitude: 15.087269,
-		}
-
-		err = geoclient.RedisClient.GeoAdd(geoclient.Namespace, &geoloc).Err()
-		assert.NoError(t, err)
-
-		_, err = geoclient.RelaysWithin(37, 15, 200, "km")
-		assert.Error(t, err)
 	})
 }
