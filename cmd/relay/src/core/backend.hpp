@@ -5,7 +5,7 @@
 #include "crypto/keychain.hpp"
 #include "encoding/base64.hpp"
 #include "legacy/v3/traffic_stats.hpp"
-#include "net/curl.hpp"
+#include "net/http.hpp"
 #include "relay_manager.hpp"
 #include "router_info.hpp"
 #include "session_map.hpp"
@@ -115,10 +115,9 @@ namespace core
       return false;
     }
     std::string request = doc.toString();
-    std::vector<char> response;
+    std::string response;
 
-    size_t bytesSent = 0;
-    if (!T::SendTo(mHostname, "/relay_init", request, response, bytesSent)) {
+    if (!T::SendTo(mHostname, "/relay_init", request, response)) {
       Log("curl request failed in init");
       return false;
     }
@@ -224,12 +223,11 @@ namespace core
       return false;
     }
     std::string request = doc.toString();
-    std::vector<char> response;
-    size_t bytesSent = 0;
+    std::string response;
 
     LogDebug("Sending new: ", doc.toPrettyString());
 
-    if (!T::SendTo(mHostname, "/relay_update", request, response, bytesSent)) {
+    if (!T::SendTo(mHostname, "/relay_update", request, response)) {
       Log("curl request failed in update");
       return false;
     }
@@ -238,9 +236,6 @@ namespace core
     if (shutdown) {
       return true;
     }
-
-    recorder.addToSent(bytesSent);
-    mStats.BytesPerSecManagementTx += bytesSent;
 
     if (!doc.parse(response)) {
       Log("could not parse json response in update: ", doc.err(), "\nReponse: ", std::string(response.begin(), response.end()));

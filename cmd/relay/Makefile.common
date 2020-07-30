@@ -15,7 +15,6 @@ DEBUG_MAKEFILE 				:= Makefile.debug
 TEST_MAKEFILE 				:= Makefile.test
 BENCHMARK_MAKEFILE 		:= Makefile.benchmark
 
-STATIC_LIBS           := libsodium glib-2.0 libgtop-2.0 libcurl
 LIBS                  := libsodium glib-2.0 libgtop-2.0
 
 SRC										:= src
@@ -25,10 +24,9 @@ OBJ										:= obj
 
 # include path is the same as the src dir
 INCLUDE								:= $(SRC)
-INCLUDE_DIRS					:= -I$(INCLUDE) -I$(LIB) $(shell pkg-config --cflags-only-I $(STATIC_LIBS))
+INCLUDE_DIRS					:= -I$(INCLUDE) -I$(LIB) $(shell pkg-config --cflags-only-I $(LIBS))
 
-LIBRARIES							:= -Wl,-Bstatic -lcurl -lssl -lcrypto -lssl -lcrypto -lz $(shell pkg-config --static --libs-only-l $(LIBS)) -Wl,-Bdynamic -lpthread -lXau -ldl
-LIBRARY_DIRS          := $(shell pkg-config --static --libs-only-L $(STATIC_LIBS))
+LIBRARIES							:= -Wl,-Bstatic $(shell pkg-config --static --libs $(LIBS)) -lXau -Wl,-Bdynamic
 
 LIB_SUB_DIRS					:= $(shell find lib/* -type d -print)
 LIB_OBJ_DIRS					:= $(patsubst $(LIB)/%, $(OBJ)/$(LIB)/%, $(LIB_SUB_DIRS))
@@ -39,7 +37,7 @@ SRC_OBJ_DIRS					:= $(patsubst $(SRC)/%, $(OBJ)/$(SRC)/%, $(SRC_SUB_DIRS))
 SRC_FILES							:= $(call rwildcard,$(SRC),*.cpp)
 
 CXX										:= g++-8
-CXX_FLAGS 						:= -Wall -Wextra -std=c++17 $(shell pkg-config --cflags-only-other $(STATIC_LIBS)) $(LIBRARY_DIRS)
+CXX_FLAGS 						:= -Wall -Wextra -std=c++17 $(shell pkg-config --cflags-only-other $(LIBS))
 CXX_DBG_FLAGS					:= -g -O0
 CXX_PERF_FLAGS				:= -O3
 

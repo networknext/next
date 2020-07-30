@@ -1,3 +1,4 @@
+
 #include "config.hpp"
 #include "sysinfo.hpp"
 #include <algorithm>
@@ -5,6 +6,7 @@
 #include <arpa/inet.h>
 #include <array>
 #include <atomic>
+#include <boost/beast.hpp>
 #include <cassert>
 #include <cerrno>
 #include <cfloat>
@@ -26,11 +28,11 @@
 #include <fstream>
 #include <functional>
 #include <future>
-#include <ifaddrs.h>
-#include <iostream>
 #include <glibtop.h>
 #include <glibtop/cpu.h>
 #include <glibtop/mem.h>
+#include <ifaddrs.h>
+#include <iostream>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 #include <linux/wireless.h>
