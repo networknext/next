@@ -229,7 +229,6 @@ type RelayInitErrorMetrics struct {
 	RelayNotFound      Counter
 	RelayQuarantined   Counter
 	DecryptionFailure  Counter
-	RedisFailure       Counter
 	RelayAlreadyExists Counter
 	IPLookupFailure    Counter
 }
@@ -241,7 +240,6 @@ var EmptyRelayInitErrorMetrics RelayInitErrorMetrics = RelayInitErrorMetrics{
 	RelayNotFound:      &EmptyCounter{},
 	RelayQuarantined:   &EmptyCounter{},
 	DecryptionFailure:  &EmptyCounter{},
-	RedisFailure:       &EmptyCounter{},
 	RelayAlreadyExists: &EmptyCounter{},
 	IPLookupFailure:    &EmptyCounter{},
 }
@@ -259,25 +257,21 @@ var EmptyRelayUpdateMetrics RelayUpdateMetrics = RelayUpdateMetrics{
 }
 
 type RelayUpdateErrorMetrics struct {
-	UnmarshalFailure      Counter
-	InvalidVersion        Counter
-	ExceedMaxRelays       Counter
-	RedisFailure          Counter
-	RelayNotFound         Counter
-	RelayUnmarshalFailure Counter
-	InvalidToken          Counter
-	RelayNotEnabled       Counter
+	UnmarshalFailure Counter
+	InvalidVersion   Counter
+	ExceedMaxRelays  Counter
+	RelayNotFound    Counter
+	InvalidToken     Counter
+	RelayNotEnabled  Counter
 }
 
 var EmptyRelayUpdateErrorMetrics RelayUpdateErrorMetrics = RelayUpdateErrorMetrics{
-	UnmarshalFailure:      &EmptyCounter{},
-	InvalidVersion:        &EmptyCounter{},
-	ExceedMaxRelays:       &EmptyCounter{},
-	RedisFailure:          &EmptyCounter{},
-	RelayNotFound:         &EmptyCounter{},
-	RelayUnmarshalFailure: &EmptyCounter{},
-	InvalidToken:          &EmptyCounter{},
-	RelayNotEnabled:       &EmptyCounter{},
+	UnmarshalFailure: &EmptyCounter{},
+	InvalidVersion:   &EmptyCounter{},
+	ExceedMaxRelays:  &EmptyCounter{},
+	RelayNotFound:    &EmptyCounter{},
+	InvalidToken:     &EmptyCounter{},
+	RelayNotEnabled:  &EmptyCounter{},
 }
 
 type RelayHandlerMetrics struct {
@@ -293,33 +287,29 @@ var EmptyRelayHandlerMetrics RelayHandlerMetrics = RelayHandlerMetrics{
 }
 
 type RelayHandlerErrorMetrics struct {
-	UnmarshalFailure      Counter
-	ExceedMaxRelays       Counter
-	RelayNotFound         Counter
-	RelayQuarantined      Counter
-	NoAuthHeader          Counter
-	BadAuthHeaderLength   Counter
-	BadAuthHeaderToken    Counter
-	BadNonce              Counter
-	BadEncryptedAddress   Counter
-	DecryptFailure        Counter
-	RedisFailure          Counter
-	RelayUnmarshalFailure Counter
+	UnmarshalFailure    Counter
+	ExceedMaxRelays     Counter
+	RelayNotFound       Counter
+	RelayQuarantined    Counter
+	NoAuthHeader        Counter
+	BadAuthHeaderLength Counter
+	BadAuthHeaderToken  Counter
+	BadNonce            Counter
+	BadEncryptedAddress Counter
+	DecryptFailure      Counter
 }
 
 var EmptyRelayHandlerErrorMetrics RelayHandlerErrorMetrics = RelayHandlerErrorMetrics{
-	UnmarshalFailure:      &EmptyCounter{},
-	ExceedMaxRelays:       &EmptyCounter{},
-	RelayNotFound:         &EmptyCounter{},
-	RelayQuarantined:      &EmptyCounter{},
-	NoAuthHeader:          &EmptyCounter{},
-	BadAuthHeaderLength:   &EmptyCounter{},
-	BadAuthHeaderToken:    &EmptyCounter{},
-	BadNonce:              &EmptyCounter{},
-	BadEncryptedAddress:   &EmptyCounter{},
-	DecryptFailure:        &EmptyCounter{},
-	RedisFailure:          &EmptyCounter{},
-	RelayUnmarshalFailure: &EmptyCounter{},
+	UnmarshalFailure:    &EmptyCounter{},
+	ExceedMaxRelays:     &EmptyCounter{},
+	RelayNotFound:       &EmptyCounter{},
+	RelayQuarantined:    &EmptyCounter{},
+	NoAuthHeader:        &EmptyCounter{},
+	BadAuthHeaderLength: &EmptyCounter{},
+	BadAuthHeaderToken:  &EmptyCounter{},
+	BadNonce:            &EmptyCounter{},
+	BadEncryptedAddress: &EmptyCounter{},
+	DecryptFailure:      &EmptyCounter{},
 }
 
 type RelayStatMetrics struct {
@@ -481,6 +471,8 @@ type ServerBackendMetrics struct {
 	VetoCount                  Gauge
 	ServerCount                Gauge
 	SessionCount               Gauge
+	SessionDirectCount         Gauge
+	SessionNextCount           Gauge
 	BillingMetrics             BillingMetrics
 	RouteMatrixBytes           Gauge
 	RouteMatrixUpdateDuration  Gauge
@@ -495,6 +487,8 @@ var EmptyServerBackendMetrics ServerBackendMetrics = ServerBackendMetrics{
 	VetoCount:                  &EmptyGauge{},
 	ServerCount:                &EmptyGauge{},
 	SessionCount:               &EmptyGauge{},
+	SessionDirectCount:         &EmptyGauge{},
+	SessionNextCount:           &EmptyGauge{},
 	BillingMetrics:             EmptyBillingMetrics,
 	RouteMatrixBytes:           &EmptyGauge{},
 	RouteMatrixUpdateDuration:  &EmptyGauge{},
@@ -572,6 +566,28 @@ func NewServerBackendMetrics(ctx context.Context, metricsHandler Handler) (*Serv
 		ID:          "server_backend.sessions",
 		Unit:        "sessions",
 		Description: "The total number of concurrent sessions",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	serverBackendMetrics.SessionDirectCount, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Direct session count",
+		ServiceName: "server_backend",
+		ID:          "server_backend.sessions.direct",
+		Unit:        "sessions",
+		Description: "The number of concurrent sessions taking direct routes",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	serverBackendMetrics.SessionNextCount, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Next session count",
+		ServiceName: "server_backend",
+		ID:          "server_backend.sessions.next",
+		Unit:        "sessions",
+		Description: "The number of concurrent sessions taking next routes",
 	})
 	if err != nil {
 		return nil, err

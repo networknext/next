@@ -732,14 +732,16 @@
                                                                 </a>
                                                             </dd>
                                                         </div>
-                                                        <dt>
-                                                            User IP Address
-                                                        </dt>
-                                                        <dd>
-                                                            {{
-                                                                pages.sessionTool.meta.client_addr.split(":")[0]
-                                                            }}
-                                                        </dd>
+                                                        <div v-if="!handlers.userHandler.isAnonymous() && pages.sessionTool.meta.buyer_id == handlers.userHandler.userInfo.id || handlers.userHandler.isAdmin()">
+                                                            <dt>
+                                                                User IP Address
+                                                            </dt>
+                                                            <dd>
+                                                                {{
+                                                                    pages.sessionTool.meta.client_addr.split(":")[0]
+                                                                }}
+                                                            </dd>
+                                                        </div>
                                                         <dt>
                                                             Platform
                                                         </dt>
@@ -824,7 +826,7 @@
                                                                 <tr>
                                                                     <td>
                                                                         {{
-                                                                            !handlers.userHandler.isAnonymous() && handlers.userHandler.allBuyers.findIndex((buyer) => {
+                                                                            handlers.userHandler.allBuyers.findIndex((buyer) => {
                                                                                 return buyer.id == pages.sessionTool.meta.customer_id
                                                                             }) !== -1 ? pages.sessionTool.meta.client_addr : "Player"
                                                                         }}
@@ -846,7 +848,7 @@
                                                                 <tr>
                                                                     <td>
                                                                         {{
-                                                                            !handlers.userHandler.isAnonymous() && handlers.userHandler.allBuyers.findIndex((buyer) => {
+                                                                            handlers.userHandler.allBuyers.findIndex((buyer) => {
                                                                                 return buyer.id == pages.sessionTool.meta.customer_id
                                                                             }) !== -1 ? pages.sessionTool.meta.server_addr : "Game Server"
                                                                         }}
