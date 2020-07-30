@@ -409,6 +409,12 @@ func main() {
 	}
 
 	relayMap := routing.NewRelayMap(cleanupCallback)
+	go func() {
+		timeout := int64(routing.RelayTimeout.Seconds())
+		frequency := time.Millisecond * 100
+		ticker := time.NewTicker(frequency)
+		relayMap.TimeoutLoop(ctx, timeout, ticker.C)
+	}()
 
 	// ping stats
 	var pingStatsPublisher analytics.PingStatsPublisher = &analytics.NoOpPingStatsPublisher{}
