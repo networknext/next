@@ -10,7 +10,6 @@ import AuthService, { UserProfile, NNAuth0Profile } from './services/auth.servic
 import { Route, NavigationGuardNext } from 'vue-router'
 
 function mountCypress (win: any, app: any) {
-  console.log('Mounting Cypress')
   win.app = app
 }
 
