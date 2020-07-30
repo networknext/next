@@ -89,19 +89,20 @@ func (m *UDPServerMux2) Start(ctx context.Context) error {
 		}
 	}
 
-	if b, err := strconv.ParseBool(os.Getenv("USE_THREAD_POOL")); err != nil && b {
-		pool, err := ants.NewPoolWithFunc(numThreads, func(_ interface{}) {
-			m.tpHandler(ctx)
-		})
-		defer pool.Release()
-		level.Debug(m.Logger).Log("msg", "tp create")
+	if b, err := strconv.ParseBool(os.Getenv("USE_THREAD_POOL")); err == nil && b {
+		pool, err := ants.NewPool(numThreads)
 		if err != nil {
 			level.Error(m.Logger).Log("err", err)
 			os.Exit(1)
 		}
+		defer pool.Release()
+
+		for i := 0; i < numThreads; i++ {
+			go m.tpHandler(ctx, pool)
+		}
+
 		<-ctx.Done()
 	} else {
-		level.Debug(m.Logger).Log("msg", "tp no create")
 		for i := 0; i < numThreads; i++ {
 			go m.handler(ctx, i)
 		}
@@ -264,7 +265,7 @@ func (m *UDPServerMux2) handler(ctx context.Context, id int) {
 }
 
 // thread pool handler
-func (m *UDPServerMux2) tpHandler(ctx context.Context) {
+func (m *UDPServerMux2) tpHandler(ctx context.Context, pool *ants.Pool) {
 	var conn *net.UDPConn
 	// Initialize UDP connection
 	{
@@ -320,8 +321,8 @@ func (m *UDPServerMux2) tpHandler(ctx context.Context) {
 
 		packetData = packetData[:packetSize]
 
-		// process the packet
-		{
+		pool.Submit(func() {
+
 			// Check the packet hash is legit and remove the hash from the beginning of the packet
 			// to continue processing the packet as normal
 			hashedPacket := crypto.Check(crypto.PacketHashKey, packetData)
@@ -356,7 +357,7 @@ func (m *UDPServerMux2) tpHandler(ctx context.Context) {
 
 				conn.WriteToUDP(res, from)
 			}
-		}
+		})
 	}
 }
 
@@ -646,19 +647,20 @@ type RouteProvider interface {
 }
 
 type SessionUpdateParams struct {
-	ServerPrivateKey  []byte
-	RouterPrivateKey  []byte
-	GetRouteProvider  func() RouteProvider
-	GetIPLocator      func() routing.IPLocator
-	Storer            storage.Storer
-	Biller            billing.Biller
-	Metrics           *metrics.SessionMetrics
-	Logger            log.Logger
-	VetoMap           *VetoMap
-	ServerMap         *ServerMap
-	SessionMap        *SessionMap
-	DatacenterTracker *DatacenterTracker
-	PortalPublisher   pubsub.Publisher
+	ServerPrivateKey      []byte
+	RouterPrivateKey      []byte
+	GetRouteProvider      func() RouteProvider
+	GetIPLocator          func() routing.IPLocator
+	Storer                storage.Storer
+	Biller                billing.Biller
+	Metrics               *metrics.SessionMetrics
+	Logger                log.Logger
+	VetoMap               *VetoMap
+	ServerMap             *ServerMap
+	SessionMap            *SessionMap
+	DatacenterTracker     *DatacenterTracker
+	PortalPublisher       pubsub.Publisher
+	PostSessionUpdateFunc PostSessionUpdateFunc
 }
 
 func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
@@ -1239,6 +1241,10 @@ func CalculateRouteRelaysPrice(chosenRoute *routing.Route, envelopeBytesUp uint6
 	return relayPrices
 }
 
+type PostSessionUpdateFunc = func(params *SessionUpdateParams, packet *SessionUpdatePacket, response *SessionResponsePacket, serverDataReadOnly *ServerData,
+	routeRelays []routing.Relay, lastNextStats *routing.Stats, lastDirectStats *routing.Stats, prevRouteDecision routing.Decision, location *routing.Location, nearRelays []routing.Relay,
+	routeDecision routing.Decision, timeNow time.Time, totalPriceNibblins routing.Nibblin, nextRelaysPrice []routing.Nibblin, nextBytesUp uint64, nextBytesDown uint64, prevInitial bool)
+
 func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket, response *SessionResponsePacket, serverDataReadOnly *ServerData,
 	routeRelays []routing.Relay, lastNextStats *routing.Stats, lastDirectStats *routing.Stats, prevRouteDecision routing.Decision, location *routing.Location, nearRelays []routing.Relay,
 	routeDecision routing.Decision, timeNow time.Time, totalPriceNibblins routing.Nibblin, nextRelaysPrice []routing.Nibblin, nextBytesUp uint64, nextBytesDown uint64, prevInitial bool) {
@@ -1622,7 +1628,7 @@ func sendRouteResponse(w io.Writer, chosenRoute *routing.Route, params *SessionU
 	nextRelaysPrice := CalculateRouteRelaysPrice(chosenRoute, envelopeBytesUp, envelopeBytesDown)
 
 	// IMPORTANT: run post in parallel so it doesn't block the response
-	go PostSessionUpdate(params, packet, response, serverDataReadOnly, chosenRoute.Relays, lastNextStats, lastDirectStats, prevRouteDecision, location, nearRelays, routeDecision, timeNow, totalPriceNibblins, nextRelaysPrice, usageBytesUp, usageBytesDown, prevInitial)
+	params.PostSessionUpdateFunc(params, packet, response, serverDataReadOnly, chosenRoute.Relays, lastNextStats, lastDirectStats, prevRouteDecision, location, nearRelays, routeDecision, timeNow, totalPriceNibblins, nextRelaysPrice, usageBytesUp, usageBytesDown, prevInitial)
 
 	// Send the Session Response back to the server
 	if _, err := w.Write(responseData); err != nil {
