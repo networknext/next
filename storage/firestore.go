@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"sort"
@@ -21,17 +22,19 @@ type Firestore struct {
 	Client *firestore.Client
 	Logger log.Logger
 
-	datacenters    map[uint64]routing.Datacenter
-	relays         map[uint64]routing.Relay
-	buyers         map[uint64]routing.Buyer
-	sellers        map[string]routing.Seller
-	datacenterMaps map[uint64]routing.DatacenterMap
+	datacenters         map[uint64]routing.Datacenter
+	relays              map[uint64]routing.Relay
+	buyers              map[uint64]routing.Buyer
+	sellers             map[string]routing.Seller
+	datacenterMaps      map[uint64]routing.DatacenterMap
+	syncSequenceNumbers map[string]uint64
 
-	datacenterMutex    sync.RWMutex
-	relayMutex         sync.RWMutex
-	buyerMutex         sync.RWMutex
-	sellerMutex        sync.RWMutex
-	datacenterMapMutex sync.RWMutex
+	datacenterMutex     sync.RWMutex
+	relayMutex          sync.RWMutex
+	buyerMutex          sync.RWMutex
+	sellerMutex         sync.RWMutex
+	datacenterMapMutex  sync.RWMutex
+	sequenceNumberMutex sync.RWMutex
 }
 
 type customer struct {
@@ -131,15 +134,63 @@ func NewFirestore(ctx context.Context, gcpProjectID string, logger log.Logger) (
 		return nil, err
 	}
 
+	// zero out sequence numbers
+	var sequenceNumbers map[string]uint64
+	sequenceNumbers["Buyer"] = 0
+	sequenceNumbers["Customer"] = 0
+	sequenceNumbers["Datacenter"] = 0
+	sequenceNumbers["DatacenterMaps"] = 0
+	sequenceNumbers["Relay"] = 0
+	sequenceNumbers["RouteShader"] = 0 // not necessary?
+	sequenceNumbers["Seller"] = 0
+
 	return &Firestore{
-		Client:         client,
-		Logger:         logger,
-		datacenters:    make(map[uint64]routing.Datacenter),
-		datacenterMaps: make(map[uint64]routing.DatacenterMap),
-		relays:         make(map[uint64]routing.Relay),
-		buyers:         make(map[uint64]routing.Buyer),
-		sellers:        make(map[string]routing.Seller),
+		Client:              client,
+		Logger:              logger,
+		datacenters:         make(map[uint64]routing.Datacenter),
+		datacenterMaps:      make(map[uint64]routing.DatacenterMap),
+		relays:              make(map[uint64]routing.Relay),
+		buyers:              make(map[uint64]routing.Buyer),
+		sellers:             make(map[string]routing.Seller),
+		syncSequenceNumbers: sequenceNumbers,
 	}, nil
+}
+
+func (fs *Firestore) IncrementSequenceNumber(ctx context.Context, field string, value uint64) error {
+
+	seqDocs := fs.Client.Collection("SequenceNumbers")
+	seq, err := seqDocs.Doc(field).Get(ctx)
+	if err != nil {
+		return &DoesNotExistError{resourceType: "sequence number", resourceRef: fmt.Sprintf("%s", field)}
+	}
+
+	var num struct {
+		Sequence uint64 `firestore:"sequence"`
+	}
+
+	err = seq.DataTo(&num)
+	if err != nil {
+		return &UnmarshalError{err: err}
+	}
+
+	fs.sequenceNumberMutex.RLock()
+	if fs.syncSequenceNumbers[field] != num.Sequence {
+		// ToDo: need custom error metric
+		err := fmt.Sprintf("%s sequence number out of sync: remote %d != local %d", field, num.Sequence, fs.syncSequenceNumbers[field])
+		return errors.New(err)
+	}
+	fs.sequenceNumberMutex.RUnlock()
+
+	num.Sequence++
+	if _, err = seq.Ref.Set(ctx, num, firestore.MergeAll); err != nil {
+		return &FirestoreError{err: err}
+	}
+
+	fs.sequenceNumberMutex.Lock()
+	fs.syncSequenceNumbers[field] = num.Sequence
+	fs.sequenceNumberMutex.Unlock()
+
+	return nil
 }
 
 func (fs *Firestore) Buyer(id uint64) (routing.Buyer, error) {
@@ -1337,6 +1388,7 @@ func (fs *Firestore) SetDatacenter(ctx context.Context, d routing.Datacenter) er
 }
 
 // SyncLoop is a helper method that calls Sync
+// func (fs *Firestore) SyncLoop(ctx context.Context, c <-chan time.Time) {
 func (fs *Firestore) SyncLoop(ctx context.Context, c <-chan time.Time) {
 	if err := fs.Sync(ctx); err != nil {
 		level.Error(fs.Logger).Log("during", "SyncLoop", "err", err)

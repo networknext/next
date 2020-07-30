@@ -201,6 +201,8 @@ func main() {
 			}
 			// Start a goroutine to sync from Firestore
 			go func() {
+				// ToDo: check firestore modification flag
+
 				ticker := time.NewTicker(syncInterval)
 				fs.SyncLoop(ctx, ticker.C)
 			}()
