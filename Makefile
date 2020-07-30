@@ -177,10 +177,6 @@ ifndef USE_THREAD_POOL
 export USE_THREAD_POOL = true
 endif
 
-ifndef NUM_POST_UPDATE_THREADS
-export NUM_POST_UPDATE_THREADS = 8
-endif
-
 .PHONY: help
 help: ## this list
 	@echo "$$(grep -hE '^\S+:.*##' $(MAKEFILE_LIST) | sed -e 's/:.*##\s*/:/' -e 's/^\(.\+\):\(.*\)/\\033[36m\1\\033[m:\2/' | column -c2 -t -s :)"
