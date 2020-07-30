@@ -146,8 +146,9 @@ func NewFirestore(ctx context.Context, gcpProjectID string, logger log.Logger) (
 
 }
 
-// ToDo: figure out where, when and if we should zero them out
-// This function is required for tests with the FS emulator
+// ZeroSequenceNumbers sets the remote and local sequence numbers to zero.This function is
+// required for tests with the FS emulator
+// ToDo: figure out where, when and if we should zero them out in actual service
 func (fs *Firestore) ZeroSequenceNumbers(ctx context.Context) error {
 
 	zero := struct {
