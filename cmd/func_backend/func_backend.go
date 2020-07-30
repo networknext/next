@@ -21,8 +21,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/alicebob/miniredis/v2"
-	"github.com/go-redis/redis/v7"
 	"github.com/gorilla/mux"
 
 	"github.com/networknext/backend/billing"
@@ -56,7 +54,7 @@ type Backend struct {
 	routeMatrix     *routing.RouteMatrix
 	nearData        []byte
 
-	redisClient *redis.Client
+	relayMap *routing.RelayMap
 }
 
 var backend Backend
@@ -96,7 +94,7 @@ func OptimizeThread() {
 	for {
 		backend.mutex.Lock()
 
-		if err := backend.statsDatabase.GetCostMatrix(backend.costMatrix, backend.redisClient, MaxJitter, MaxPacketLoss); err != nil {
+		if err := backend.statsDatabase.GetCostMatrix(backend.costMatrix, backend.relayMap.GetAllRelayData(), MaxJitter, MaxPacketLoss); err != nil {
 			fmt.Printf("error generating cost matrix: %v\n", err)
 		}
 
@@ -131,23 +129,20 @@ func TimeoutThread() {
 				continue
 			}
 		}
-		hgetallResult := backend.redisClient.HGetAll(routing.HashKeyAllRelays)
-		for _, raw := range hgetallResult.Val() {
-			var r routing.RelayCacheEntry
-			r.UnmarshalBinary([]byte(raw))
-			if currentTimestamp-r.LastUpdateTime.Unix() > unixTimeout {
-				backend.redisClient.HDel(routing.HashKeyAllRelays, r.Key())
+
+		allRelayData := backend.relayMap.GetAllRelayData()
+		for _, relayData := range allRelayData {
+			if currentTimestamp-relayData.LastUpdateTime.Unix() > unixTimeout {
+				backend.relayMap.RemoveRelayData(relayData.Addr.String())
 				backend.dirty = true
 				continue
 			}
 		}
 		if backend.dirty {
 			fmt.Printf("-----------------------------\n")
-			hgetallResult := backend.redisClient.HGetAll(routing.HashKeyAllRelays)
-			for _, raw := range hgetallResult.Val() {
-				var r routing.RelayCacheEntry
-				r.UnmarshalBinary([]byte(raw))
-				fmt.Printf("relay: %v\n", &r.Addr)
+			allRelayData := backend.relayMap.GetAllRelayData()
+			for _, relayData := range allRelayData {
+				fmt.Printf("relay: %v\n", &relayData.Addr)
 			}
 
 			for _, v := range backend.serverDatabase {
@@ -164,15 +159,13 @@ func TimeoutThread() {
 
 func (backend *Backend) GetNearRelays() []routing.Relay {
 	var nearRelays = make([]routing.Relay, 0)
-	hgetallResult := backend.redisClient.HGetAll(routing.HashKeyAllRelays)
-	for _, raw := range hgetallResult.Val() {
-		var r routing.RelayCacheEntry
-		r.UnmarshalBinary([]byte(raw))
+	allRelayData := backend.relayMap.GetAllRelayData()
+	for _, relayData := range allRelayData {
 		nearRelays = append(nearRelays, routing.Relay{
-			ID:         r.ID,
-			Addr:       r.Addr,
-			Datacenter: r.Datacenter,
-			PublicKey:  r.PublicKey,
+			ID:         relayData.ID,
+			Addr:       relayData.Addr,
+			Datacenter: relayData.Datacenter,
+			PublicKey:  relayData.PublicKey,
 		})
 	}
 	sort.SliceStable(nearRelays[:], func(i, j int) bool { return nearRelays[i].ID < nearRelays[j].ID })
@@ -192,12 +185,10 @@ func main() {
 	backend.costMatrix = &routing.CostMatrix{}
 	backend.routeMatrix = &routing.RouteMatrix{}
 
-	redisServer, err := miniredis.Run()
-	if err != nil {
-		fmt.Printf("failed to run redis, err: %v", err)
-		return
-	}
-	backend.redisClient = redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+	backend.relayMap = routing.NewRelayMap(func(relayID uint64) error {
+		backend.statsDatabase.DeleteEntry(relayID)
+		return nil
+	})
 
 	if os.Getenv("BACKEND_MODE") == "FORCE_DIRECT" {
 		backend.mode = BACKEND_MODE_FORCE_DIRECT
@@ -722,19 +713,20 @@ func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	relay := routing.RelayCacheEntry{
+	relay := &routing.RelayData{
 		ID:             crypto.HashID(relay_address),
 		Addr:           *udpAddr,
 		PublicKey:      crypto.RelayPublicKey[:],
 		LastUpdateTime: time.Now(),
 	}
 
-	if backend.redisClient.HExists(routing.HashKeyAllRelays, relay.Key()).Val() {
+	relayData := backend.relayMap.GetRelayData(relay.Addr.String())
+	if relayData != nil {
 		writer.WriteHeader(http.StatusConflict)
 		return
 	}
 
-	backend.redisClient.HSet(routing.HashKeyAllRelays, relay.Key(), relay)
+	backend.relayMap.UpdateRelayData(relay.Addr.String(), relay)
 	backend.dirty = true
 
 	writer.Header().Set("Content-Type", "application/octet-stream")
@@ -777,7 +769,7 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	relay := routing.RelayCacheEntry{
+	relay := &routing.RelayData{
 		ID:             crypto.HashID(relay_address),
 		Addr:           *udpAddr,
 		PublicKey:      token,
@@ -825,21 +817,20 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
 	relaysToPing := make([]routing.RelayPingData, 0)
 
-	hgetallResult := backend.redisClient.HGetAll(routing.HashKeyAllRelays)
-	for k, v := range hgetallResult.Val() {
-		if k != relay.Key() {
-			var unmarshaledValue routing.RelayCacheEntry
-			unmarshaledValue.UnmarshalBinary([]byte(v))
-			relaysToPing = append(relaysToPing, routing.RelayPingData{ID: uint64(unmarshaledValue.ID), Address: unmarshaledValue.Addr.String()})
+	allRelayData := backend.relayMap.GetAllRelayData()
+	for _, v := range allRelayData {
+		if v.Addr.String() != relay.Addr.String() {
+			relaysToPing = append(relaysToPing, routing.RelayPingData{ID: uint64(v.ID), Address: v.Addr.String()})
 		}
 	}
 
-	if !backend.redisClient.HExists(routing.HashKeyAllRelays, relay.Key()).Val() {
+	relayData := backend.relayMap.GetRelayData(relay.Addr.String())
+	if relayData == nil {
 		writer.WriteHeader(http.StatusNotFound)
 		return
 	}
 
-	backend.redisClient.HSet(routing.HashKeyAllRelays, relay.Key(), relay)
+	backend.relayMap.UpdateRelayData(relay.Addr.String(), relay)
 
 	responseData := make([]byte, 10*1024)
 
