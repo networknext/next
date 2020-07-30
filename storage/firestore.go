@@ -156,7 +156,8 @@ func NewFirestore(ctx context.Context, gcpProjectID string, logger log.Logger) (
 	}, nil
 }
 
-func (fs *Firestore) IncrementSequenceNumber(ctx context.Context, field string, value uint64) error {
+// IncrementSequenceNumber is called by all CRUD operations defined in the Storage interface
+func (fs *Firestore) IncrementSequenceNumber(ctx context.Context, field string) error {
 
 	seqDocs := fs.Client.Collection("SequenceNumbers")
 	seq, err := seqDocs.Doc(field).Get(ctx)
@@ -174,12 +175,12 @@ func (fs *Firestore) IncrementSequenceNumber(ctx context.Context, field string, 
 	}
 
 	fs.sequenceNumberMutex.RLock()
+	defer fs.sequenceNumberMutex.RUnlock()
 	if fs.syncSequenceNumbers[field] != num.Sequence {
 		// ToDo: need custom error metric
 		err := fmt.Sprintf("%s sequence number out of sync: remote %d != local %d", field, num.Sequence, fs.syncSequenceNumbers[field])
 		return errors.New(err)
 	}
-	fs.sequenceNumberMutex.RUnlock()
 
 	num.Sequence++
 	if _, err = seq.Ref.Set(ctx, num, firestore.MergeAll); err != nil {
@@ -191,6 +192,27 @@ func (fs *Firestore) IncrementSequenceNumber(ctx context.Context, field string, 
 	fs.sequenceNumberMutex.Unlock()
 
 	return nil
+}
+
+// GetSequenceNumber is called in the Firestore sync*() operations to see if a sync is required
+func (fs *Firestore) GetSequenceNumber(ctx context.Context, field string) (uint64, error) {
+
+	seqDocs := fs.Client.Collection("SequenceNumbers")
+	seq, err := seqDocs.Doc(field).Get(ctx)
+	if err != nil {
+		return 0, &DoesNotExistError{resourceType: "sequence number", resourceRef: fmt.Sprintf("%s", field)}
+	}
+
+	var num struct {
+		Sequence uint64 `firestore:"sequence"`
+	}
+
+	err = seq.DataTo(&num)
+	if err != nil {
+		return 0, &UnmarshalError{err: err}
+	}
+
+	return num.Sequence, nil
 }
 
 func (fs *Firestore) Buyer(id uint64) (routing.Buyer, error) {
