@@ -593,7 +593,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 
 		relaysToPing := make([]routing.RelayPingData, 0)
 		for _, v := range allRelayData {
-			if v.Addr.String() == relayData.Addr.String() {
+			if v.Addr.String() != relayData.Addr.String() {
 				// Get the relay's state so that we only ping across enabled relays
 				// Even though it's cached, maybe find a better way to do this than hitting storage for every other relay every update
 				relay, err := params.Storer.Relay(v.ID)
