@@ -68,6 +68,14 @@ func (relayMap *RelayMap) GetRelayIndices() []uint64 {
 	return indices
 }
 
+func (relayMap *RelayMap) Exists(relayId uint64) bool {
+	index := relayId % NumRelayMapShards
+	if _, ok := relayMap.shard[index].relays[relayId]; ok {
+		return true
+	}
+	return false
+}
+
 func (relayMap *RelayMap) SetRelayData(relay *Relay) error {
 	index := relay.ID % NumRelayMapShards
 

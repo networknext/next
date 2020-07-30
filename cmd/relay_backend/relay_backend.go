@@ -774,30 +774,30 @@ func main() {
 	// 	}
 	// }()
 
-	// commonInitParams := transport.RelayInitHandlerConfig{
-	// 	RedisClient:      redisClientRelays,
-	// 	GeoClient:        &geoClient,
-	// 	Storer:           db,
-	// 	Metrics:          relayInitMetrics,
-	// 	RouterPrivateKey: routerPrivateKey,
-	// }
+	commonInitParams := transport.RelayInitHandlerConfig{
+		RedisClient:      redisClientRelays,
+		GeoClient:        &geoClient,
+		Storer:           db,
+		Metrics:          relayInitMetrics,
+		RouterPrivateKey: routerPrivateKey,
+	}
 
-	// commonUpdateParams := transport.RelayUpdateHandlerConfig{
-	// 	RedisClient: redisClientRelays,
-	// 	GeoClient:   &geoClient,
-	// 	StatsDb:     statsdb,
-	// 	Metrics:     relayUpdateMetrics,
-	// 	Storer:      db,
-	// }
+	commonUpdateParams := transport.RelayUpdateHandlerConfig{
+		RedisClient: redisClientRelays,
+		GeoClient:   &geoClient,
+		StatsDb:     statsdb,
+		Metrics:     relayUpdateMetrics,
+		Storer:      db,
+	}
 
-	// commonHandlerParams := transport.RelayHandlerConfig{
-	// 	RedisClient:      redisClientRelays,
-	// 	GeoClient:        &geoClient,
-	// 	Storer:           db,
-	// 	StatsDb:          statsdb,
-	// 	Metrics:          relayHandlerMetrics,
-	// 	RouterPrivateKey: routerPrivateKey,
-	// }
+	commonHandlerParams := transport.RelayHandlerConfig{
+		RedisClient:      redisClientRelays,
+		GeoClient:        &geoClient,
+		Storer:           db,
+		StatsDb:          statsdb,
+		Metrics:          relayHandlerMetrics,
+		RouterPrivateKey: routerPrivateKey,
+	}
 
 	// todo: ryan, relay backend health check should only become healthy once it is ready to serve up a quality route matrix in prod.
 	// in the current production environment, this probably means that it has generated route matrices for 6 minutes. the reason for this

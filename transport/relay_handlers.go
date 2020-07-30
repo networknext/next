@@ -35,8 +35,9 @@ var (
 )
 
 type RelayHandlerConfig struct {
-	RedisClient      redis.Cmdable
-	GeoClient        *routing.GeoClient
+	// RedisClient      redis.Cmdable
+	// GeoClient        *routing.GeoClient
+	RelayDB          *routing.RelayMap
 	Storer           storage.Storer
 	StatsDb          *routing.StatsDatabase
 	Metrics          *metrics.RelayHandlerMetrics
@@ -44,19 +45,21 @@ type RelayHandlerConfig struct {
 }
 
 type RelayInitHandlerConfig struct {
-	RedisClient      redis.Cmdable
-	GeoClient        *routing.GeoClient
+	// RedisClient      redis.Cmdable
+	// GeoClient        *routing.GeoClient
+	RelayDB          *routing.RelayMap
 	Storer           storage.Storer
 	Metrics          *metrics.RelayInitMetrics
 	RouterPrivateKey []byte
 }
 
 type RelayUpdateHandlerConfig struct {
-	RedisClient redis.Cmdable
-	GeoClient   *routing.GeoClient
-	StatsDb     *routing.StatsDatabase
-	Metrics     *metrics.RelayUpdateMetrics
-	Storer      storage.Storer
+	// RedisClient redis.Cmdable
+	// GeoClient   *routing.GeoClient
+	RelayDB *routing.RelayMap
+	StatsDb *routing.StatsDatabase
+	Metrics *metrics.RelayUpdateMetrics
+	Storer  storage.Storer
 }
 
 // RemoveRelayCacheEntry cleans up a relay cache entry and all its associated data
@@ -208,7 +211,8 @@ func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayH
 		}
 
 		// Check if the relay exists in redis
-		exists := params.RedisClient.Exists(relayCacheEntry.Key())
+		// exists := params.RedisClient.Exists(relayCacheEntry.Key())
+		exists := params.RelayDB.Exists(relayCacheEntry.ID)
 
 		if exists.Err() != nil && exists.Err() != redis.Nil {
 			level.Error(locallogger).Log("msg", "failed to check if relay is registered", "err", exists.Err())
