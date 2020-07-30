@@ -710,17 +710,22 @@ func main() {
 	var pool *ants.Pool
 	shouldRelease := false
 	if b, err := strconv.ParseBool(os.Getenv("USE_THREAD_POOL")); err == nil && b {
+		var numThreads = 8
 		if t, err := strconv.ParseUint(os.Getenv("NUM_POST_UPDATE_THREADS"), 10, 64); err == nil && t > 0 {
-			if pool, err = ants.NewPool(int(t)); err == nil {
-				shouldRelease = true
-				postSessionUpdateFunc = func(params transport.PostSessionUpdateParams) {
-					pool.Submit(func() {
-						transport.PostSessionUpdate(params)
-					})
-				}
-			} else {
-				level.Error(logger).Log("msg", "could not create post update thread pool", "err", err)
-			}
+			numThreads = int(t)
+		}
+
+		pool, err = ants.NewPool(numThreads)
+		if err != nil {
+			level.Error(logger).Log("msg", "could not create post update thread pool", "err", err)
+			os.Exit(1)
+		}
+		shouldRelease = true
+
+		postSessionUpdateFunc = func(params transport.PostSessionUpdateParams) {
+			pool.Submit(func() {
+				transport.PostSessionUpdate(params)
+			})
 		}
 	}
 

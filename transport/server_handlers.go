@@ -89,25 +89,40 @@ func (m *UDPServerMux2) Start(ctx context.Context) error {
 		}
 	}
 
-	if b, err := strconv.ParseBool(os.Getenv("USE_THREAD_POOL")); err == nil && b {
-		pool, err := ants.NewPool(numThreads)
-		if err != nil {
-			level.Error(m.Logger).Log("err", err)
-			os.Exit(1)
-		}
-		defer pool.Release()
-
-		for i := 0; i < numThreads; i++ {
-			go m.tpHandler(ctx, pool)
-		}
-
-		<-ctx.Done()
-	} else {
+	var pool *ants.Pool
+	shouldRelease := false
+	handlerSpawnFunc := func() {
 		for i := 0; i < numThreads; i++ {
 			go m.handler(ctx, i)
 		}
+	}
 
-		<-ctx.Done()
+	if b, err := strconv.ParseBool(os.Getenv("USE_THREAD_POOL")); err == nil && b {
+		numPktThreads := 8
+		if t, err := strconv.ParseUint(os.Getenv("NUM_PKT_RECV_THREADS"), 10, 64); err == nil && t > 0 {
+			numPktThreads = int(t)
+		}
+
+		pool, err := ants.NewPool(numPktThreads)
+		if err != nil {
+			level.Error(m.Logger).Log("msg", "could not create pkt recv thread pool", "err", err)
+			os.Exit(1)
+		}
+		shouldRelease = true
+
+		handlerSpawnFunc = func() {
+			for i := 0; i < numThreads; i++ {
+				go m.tpHandler(ctx, pool)
+			}
+		}
+	}
+
+	handlerSpawnFunc()
+
+	<-ctx.Done()
+
+	if shouldRelease {
+		pool.Release()
 	}
 
 	return nil
