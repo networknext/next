@@ -13,7 +13,6 @@ import (
 const NumRelayMapShards = 10
 
 type RelayData struct {
-	Timestamp      int64
 	ID             uint64
 	Name           string
 	Addr           net.UDPAddr
@@ -117,7 +116,9 @@ func (relayMap *RelayMap) GetAllRelayData() []*RelayData {
 func (relayMap *RelayMap) RemoveRelayData(relayAddress string) {
 	relayHash := crypto.HashID(relayAddress)
 	index := relayHash % NumRelayMapShards
+	relayMap.shard[index].mutex.Lock()
 	delete(relayMap.shard[index].relays, relayAddress)
+	relayMap.shard[index].mutex.Unlock()
 }
 
 func (relayMap *RelayMap) TimeoutLoop(ctx context.Context, timeoutSeconds int64, c <-chan time.Time) {
@@ -137,7 +138,7 @@ func (relayMap *RelayMap) TimeoutLoop(ctx context.Context, timeoutSeconds int64,
 					if numIterations >= maxIterations || numIterations >= len(relayMap.shard[index].relays) {
 						break
 					}
-					if v.Timestamp < timeoutTimestamp {
+					if v.LastUpdateTime.Unix() < timeoutTimestamp {
 						deleteList = append(deleteList, k)
 					}
 					numIterations++

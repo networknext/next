@@ -172,7 +172,6 @@ func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayH
 			// Ideally the ID and address should be the same as firestore,
 			// but when running locally they're not, so take them from the request packet
 			relayData = &routing.RelayData{
-				Timestamp:      time.Now().Unix(),
 				ID:             id,
 				Name:           relay.Name,
 				Addr:           relayRequest.Address,
@@ -382,6 +381,8 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			return
 		}
 
+		params.RelayMap.Lock(relayInitRequest.Address.String())
+		defer params.RelayMap.Unlock(relayInitRequest.Address.String())
 		relayData := params.RelayMap.GetRelayData(relayInitRequest.Address.String())
 		if relayData != nil {
 			level.Warn(locallogger).Log("msg", "relay already initialized")
@@ -506,8 +507,11 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			return
 		}
 
-		relayData := params.RelayMap.GetRelayData(relayUpdateRequest.Address.String())
-		if relayData == nil {
+		params.RelayMap.RLock(relayUpdateRequest.Address.String())
+		relayDataReadOnly := params.RelayMap.GetRelayData(relayUpdateRequest.Address.String())
+		params.RelayMap.RUnlock(relayUpdateRequest.Address.String())
+
+		if relayDataReadOnly == nil {
 			level.Warn(locallogger).Log("msg", "relay not initialized")
 			http.Error(writer, "relay not initialized", http.StatusNotFound)
 			params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
@@ -515,7 +519,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 		}
 
 		// If the relay does not exist in Firestore it's a ghost, ignore it
-		relay, err := params.Storer.Relay(relayData.ID)
+		relay, err := params.Storer.Relay(relayDataReadOnly.ID)
 		if err != nil {
 			level.Error(locallogger).Log("msg", "relay does not exist in Firestore (ghost)", "err", err)
 			http.Error(writer, "relay does not exist in Firestore (ghost)", http.StatusNotFound)
@@ -525,7 +529,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 
 		// If the relay is shutting down, set the state to maintenance if it was previously operating correctly
 		if relayUpdateRequest.ShuttingDown {
-			relay, err := params.Storer.Relay(relayData.ID)
+			relay, err := params.Storer.Relay(relayDataReadOnly.ID)
 			if err != nil {
 				level.Error(locallogger).Log("msg", "failed to get relay from storage while shutting down", "err", err)
 				http.Error(writer, "failed to get relay from storage while shutting down", http.StatusInternalServerError)
@@ -544,13 +548,11 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 				return
 			}
 
-			params.RelayMap.Lock(relayUpdateRequest.Address.String())
 			params.RelayMap.RemoveRelayData(relayUpdateRequest.Address.String())
-			params.RelayMap.Unlock(relayUpdateRequest.Address.String())
 			return
 		}
 
-		if !bytes.Equal(relayUpdateRequest.Token, relayData.PublicKey) {
+		if !bytes.Equal(relayUpdateRequest.Token, relayDataReadOnly.PublicKey) {
 			level.Error(locallogger).Log("msg", "relay public key doesn't match")
 			http.Error(writer, "relay public key doesn't match", http.StatusBadRequest)
 			params.Metrics.ErrorMetrics.InvalidToken.Add(1)
@@ -566,34 +568,36 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 		}
 
 		statsUpdate := &routing.RelayStatsUpdate{}
-		statsUpdate.ID = relayData.ID
+		statsUpdate.ID = relayDataReadOnly.ID
 		statsUpdate.PingStats = append(statsUpdate.PingStats, relayUpdateRequest.PingStats...)
 
 		params.StatsDb.ProcessStats(statsUpdate)
 
-		relayData.LastUpdateTime = time.Now()
-
-		relayData.TrafficStats = relayUpdateRequest.TrafficStats
-
-		relayData.Version = relayUpdateRequest.RelayVersion
-
-		// Update these fields in case they change in Firestore
-		relayData.Seller = relay.Seller
-		relayData.Datacenter = relay.Datacenter
-		relayData.MaxSessions = relay.MaxSessions
-
-		relayData.CPUUsage = float32(relayUpdateRequest.CPUUsage) * 100.0
-		relayData.MemUsage = float32(relayUpdateRequest.MemUsage) * 100.0
+		relayData := &routing.RelayData{
+			ID:             relay.ID,
+			Name:           relay.Name,
+			Addr:           relay.Addr,
+			PublicKey:      relay.PublicKey,
+			Seller:         relay.Seller,
+			Datacenter:     relay.Datacenter,
+			LastUpdateTime: time.Now(),
+			TrafficStats:   relayUpdateRequest.TrafficStats,
+			MaxSessions:    relay.MaxSessions,
+			CPUUsage:       float32(relayUpdateRequest.CPUUsage) * 100.0,
+			MemUsage:       float32(relayUpdateRequest.MemUsage) * 100.0,
+			Version:        relayUpdateRequest.RelayVersion,
+		}
 
 		// Update the relay data
-		relayDataCopy := *relayData
-		params.RelayMap.UpdateRelayData(relayUpdateRequest.Address.String(), &relayDataCopy)
+		params.RelayMap.Lock(relayUpdateRequest.Address.String())
+		params.RelayMap.UpdateRelayData(relayUpdateRequest.Address.String(), relayData)
+		params.RelayMap.Unlock(relayUpdateRequest.Address.String())
 
 		allRelayData := params.RelayMap.GetAllRelayData()
 
 		relaysToPing := make([]routing.RelayPingData, 0)
 		for _, v := range allRelayData {
-			if v.Addr.String() != relayData.Addr.String() {
+			if v.Addr.String() != relayDataReadOnly.Addr.String() {
 				// Get the relay's state so that we only ping across enabled relays
 				// Even though it's cached, maybe find a better way to do this than hitting storage for every other relay every update
 				relay, err := params.Storer.Relay(v.ID)
@@ -609,10 +613,10 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 		}
 
 		level.Info(relayslogger).Log(
-			"id", relayData.ID,
-			"name", relayData.Name,
-			"addr", relayData.Addr.String(),
-			"datacenter", relayData.Datacenter.Name,
+			"id", relayDataReadOnly.ID,
+			"name", relayDataReadOnly.Name,
+			"addr", relayDataReadOnly.Addr.String(),
+			"datacenter", relayDataReadOnly.Datacenter.Name,
 			"session_count", relayUpdateRequest.TrafficStats.SessionCount,
 			"bytes_received", relayUpdateRequest.TrafficStats.BytesReceived,
 			"bytes_send", relayUpdateRequest.TrafficStats.BytesSent,
