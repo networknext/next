@@ -547,6 +547,7 @@ type SessionUpdateParams struct {
 	SessionMap        *SessionMap
 	DatacenterTracker *DatacenterTracker
 	PortalPublisher   pubsub.Publisher
+	InstanceID        uint64
 }
 
 func SessionUpdateHandlerFunc(params *SessionUpdateParams) UDPHandlerFunc {
@@ -1146,6 +1147,7 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 	isMultipath := routing.IsMultipath(prevRouteDecision)
 
 	sessionCountData := routing.SessionCountData{
+		InstanceID:                params.InstanceID,
 		TotalNumDirectSessions:    params.SessionMap.GetDirectSessionCount(),
 		TotalNumNextSessions:      params.SessionMap.GetNextSessionCount(),
 		NumDirectSessionsPerBuyer: params.SessionMap.GetDirectSessionCountPerBuyer(),

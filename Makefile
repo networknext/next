@@ -135,10 +135,6 @@ ifndef REDIS_HOST_PORTAL_EXPIRATION
 export REDIS_HOST_PORTAL_EXPIRATION = 30s
 endif
 
-ifndef REDIS_HOST_RELAYS
-export REDIS_HOST_RELAYS = 127.0.0.1:6379
-endif
-
 ifndef REDIS_HOST_CACHE
 export REDIS_HOST_CACHE = 127.0.0.1:6379
 endif
@@ -391,9 +387,13 @@ build-billing: ## builds the billing binary
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/billing ./cmd/billing/billing.go
 	@printf "done\n"
 
-.PHONY: deploy-server-backend
-deploy-server-backend: ## builds and deploys the server backend to dev
+.PHONY: deploy-server-backend-dev-1
+deploy-server-backend-dev-1: ## builds and deploys the server backend to dev
 	./deploy/deploy.sh -e dev -c dev-1 -t server -b gs://development_artifacts
+
+.PHONY: deploy-server-backend-dev-2
+deploy-server-backend-dev-2: ## builds and deploys the server backend to dev
+	./deploy/deploy.sh -e dev -c dev-2 -t server -b gs://development_artifacts
 
 .PHONY: build-analytics
 build-analytics: ## builds the analytics binary
