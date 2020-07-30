@@ -1243,45 +1243,61 @@ func CalculateRouteRelaysPrice(chosenRoute *routing.Route, envelopeBytesUp uint6
 	return relayPrices
 }
 
-type PostSessionUpdateFunc = func(params *SessionUpdateParams, packet *SessionUpdatePacket, response *SessionResponsePacket, serverDataReadOnly *ServerData,
-	routeRelays []routing.Relay, lastNextStats *routing.Stats, lastDirectStats *routing.Stats, prevRouteDecision routing.Decision, location *routing.Location, nearRelays []routing.Relay,
-	routeDecision routing.Decision, timeNow time.Time, totalPriceNibblins routing.Nibblin, nextRelaysPrice []routing.Nibblin, nextBytesUp uint64, nextBytesDown uint64, prevInitial bool)
+type PostSessionUpdateParams struct {
+	sessionUpdateParams *SessionUpdateParams
+	packet              *SessionUpdatePacket
+	response            *SessionResponsePacket
+	serverDataReadOnly  *ServerData
+	routeRelays         []routing.Relay
+	lastNextStats       *routing.Stats
+	lastDirectStats     *routing.Stats
+	prevRouteDecision   routing.Decision
+	location            *routing.Location
+	nearRelays          []routing.Relay
+	routeDecision       routing.Decision
+	timeNow             time.Time
+	totalPriceNibblins  routing.Nibblin
+	nextRelaysPrice     []routing.Nibblin
+	nextBytesUp         uint64
+	nextBytesDown       uint64
+	prevInitial         bool
+}
 
-func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket, response *SessionResponsePacket, serverDataReadOnly *ServerData,
-	routeRelays []routing.Relay, lastNextStats *routing.Stats, lastDirectStats *routing.Stats, prevRouteDecision routing.Decision, location *routing.Location, nearRelays []routing.Relay,
-	routeDecision routing.Decision, timeNow time.Time, totalPriceNibblins routing.Nibblin, nextRelaysPrice []routing.Nibblin, nextBytesUp uint64, nextBytesDown uint64, prevInitial bool) {
+type PostSessionUpdateFunc = func(params PostSessionUpdateParams)
+
+func PostSessionUpdate(params PostSessionUpdateParams) {
 
 	// IMPORTANT: we actually need to display the true datacenter name in the demo and demo plus views,
 	// while in the customer view of the portal, we need to display the alias. this is because aliases will
 	// shortly become per-customer, thus there is really no global concept of "multiplay.losangeles", for example.
 
 	// todo: temporary
-	datacenterName := serverDataReadOnly.Datacenter.Name
-	datacenterAlias := serverDataReadOnly.Datacenter.AliasName
+	datacenterName := params.serverDataReadOnly.Datacenter.Name
+	datacenterAlias := params.serverDataReadOnly.Datacenter.AliasName
 
 	// Send a massive amount of data to the portal via redis.
 	// This drives all the stuff you see in the portal, including the map and top sessions list.
 	// We send it via redis because google pubsub is not able to deliver data quickly enough.
 
-	isMultipath := routing.IsMultipath(prevRouteDecision)
+	isMultipath := routing.IsMultipath(params.prevRouteDecision)
 
 	sessionCountData := routing.SessionCountData{
-		InstanceID:                params.InstanceID,
-		TotalNumDirectSessions:    params.SessionMap.GetDirectSessionCount(),
-		TotalNumNextSessions:      params.SessionMap.GetNextSessionCount(),
-		NumDirectSessionsPerBuyer: params.SessionMap.GetDirectSessionCountPerBuyer(),
-		NumNextSessionsPerBuyer:   params.SessionMap.GetNextSessionCountPerBuyer(),
+		InstanceID:                params.sessionUpdateParams.InstanceID,
+		TotalNumDirectSessions:    params.sessionUpdateParams.SessionMap.GetDirectSessionCount(),
+		TotalNumNextSessions:      params.sessionUpdateParams.SessionMap.GetNextSessionCount(),
+		NumDirectSessionsPerBuyer: params.sessionUpdateParams.SessionMap.GetDirectSessionCountPerBuyer(),
+		NumNextSessionsPerBuyer:   params.sessionUpdateParams.SessionMap.GetNextSessionCountPerBuyer(),
 	}
 
 	// todo: commented out until we can figure out what's going on with zeromq
-	portalDataBytes, err := updatePortalData(params.PortalPublisher, packet, lastNextStats, lastDirectStats, routeRelays,
-		packet.OnNetworkNext, datacenterName, location, nearRelays, timeNow, isMultipath, datacenterAlias, &sessionCountData)
+	portalDataBytes, err := updatePortalData(params.sessionUpdateParams.PortalPublisher, params.packet, params.lastNextStats, params.lastDirectStats, params.routeRelays,
+		params.packet.OnNetworkNext, datacenterName, params.location, params.nearRelays, params.timeNow, isMultipath, datacenterAlias, &sessionCountData)
 	if err != nil {
-		level.Error(params.Logger).Log("msg", "could not update portal data", "err", err)
-		params.Metrics.ErrorMetrics.UpdatePortalFailure.Add(1)
+		level.Error(params.sessionUpdateParams.Logger).Log("msg", "could not update portal data", "err", err)
+		params.sessionUpdateParams.Metrics.ErrorMetrics.UpdatePortalFailure.Add(1)
 	}
 
-	level.Debug(params.Logger).Log("msg", fmt.Sprintf("published %d bytes to portal cruncher", portalDataBytes))
+	level.Debug(params.sessionUpdateParams.Logger).Log("msg", fmt.Sprintf("published %d bytes to portal cruncher", portalDataBytes))
 
 	// Send billing specific data to the billing service via google pubsub
 	// The billing service subscribes to this topic, and writes the billing data to bigquery.
@@ -1290,47 +1306,47 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 	// pubsub to act as a queue to smooth that out. Pubsub can buffer billing data for up to 7 days.
 
 	nextRelays := [billing.BillingEntryMaxRelays]uint64{}
-	for i := 0; i < len(routeRelays) && i < len(nextRelays); i++ {
-		nextRelays[i] = routeRelays[i].ID
+	for i := 0; i < len(params.routeRelays) && i < len(nextRelays); i++ {
+		nextRelays[i] = params.routeRelays[i].ID
 	}
 
 	nextRelaysPriceArray := [billing.BillingEntryMaxRelays]uint64{}
-	for i := 0; i < len(nextRelaysPriceArray) && i < len(nextRelaysPrice); i++ {
-		nextRelaysPriceArray[i] = uint64(nextRelaysPrice[i])
+	for i := 0; i < len(nextRelaysPriceArray) && i < len(params.nextRelaysPrice); i++ {
+		nextRelaysPriceArray[i] = uint64(params.nextRelaysPrice[i])
 	}
 
 	billingEntry := billing.BillingEntry{
-		BuyerID:                   packet.CustomerID,
-		UserHash:                  packet.UserHash,
-		SessionID:                 packet.SessionID,
-		SliceNumber:               uint32(packet.Sequence),
-		DirectRTT:                 float32(lastDirectStats.RTT),
-		DirectJitter:              float32(lastDirectStats.Jitter),
-		DirectPacketLoss:          float32(lastDirectStats.PacketLoss),
-		Next:                      packet.OnNetworkNext,
-		NextRTT:                   float32(lastNextStats.RTT),
-		NextJitter:                float32(lastNextStats.Jitter),
-		NextPacketLoss:            float32(lastNextStats.PacketLoss),
-		NumNextRelays:             uint8(len(routeRelays)),
+		BuyerID:                   params.packet.CustomerID,
+		UserHash:                  params.packet.UserHash,
+		SessionID:                 params.packet.SessionID,
+		SliceNumber:               uint32(params.packet.Sequence),
+		DirectRTT:                 float32(params.lastDirectStats.RTT),
+		DirectJitter:              float32(params.lastDirectStats.Jitter),
+		DirectPacketLoss:          float32(params.lastDirectStats.PacketLoss),
+		Next:                      params.packet.OnNetworkNext,
+		NextRTT:                   float32(params.lastNextStats.RTT),
+		NextJitter:                float32(params.lastNextStats.Jitter),
+		NextPacketLoss:            float32(params.lastNextStats.PacketLoss),
+		NumNextRelays:             uint8(len(params.routeRelays)),
 		NextRelays:                nextRelays,
-		TotalPrice:                uint64(totalPriceNibblins),
-		ClientToServerPacketsLost: packet.PacketsLostClientToServer,
-		ServerToClientPacketsLost: packet.PacketsLostServerToClient,
-		Committed:                 packet.Committed,
-		Flagged:                   packet.Flagged,
+		TotalPrice:                uint64(params.totalPriceNibblins),
+		ClientToServerPacketsLost: params.packet.PacketsLostClientToServer,
+		ServerToClientPacketsLost: params.packet.PacketsLostServerToClient,
+		Committed:                 params.packet.Committed,
+		Flagged:                   params.packet.Flagged,
 		Multipath:                 isMultipath,
-		Initial:                   prevInitial,
-		NextBytesUp:               nextBytesUp,
-		NextBytesDown:             nextBytesDown,
-		DatacenterID:              serverDataReadOnly.Datacenter.ID,
-		RTTReduction:              prevRouteDecision.Reason&routing.DecisionRTTReduction != 0 || prevRouteDecision.Reason&routing.DecisionRTTReductionMultipath != 0,
-		PacketLossReduction:       prevRouteDecision.Reason&routing.DecisionHighPacketLossMultipath != 0,
+		Initial:                   params.prevInitial,
+		NextBytesUp:               params.nextBytesUp,
+		NextBytesDown:             params.nextBytesDown,
+		DatacenterID:              params.serverDataReadOnly.Datacenter.ID,
+		RTTReduction:              params.prevRouteDecision.Reason&routing.DecisionRTTReduction != 0 || params.prevRouteDecision.Reason&routing.DecisionRTTReductionMultipath != 0,
+		PacketLossReduction:       params.prevRouteDecision.Reason&routing.DecisionHighPacketLossMultipath != 0,
 		NextRelaysPrice:           nextRelaysPriceArray,
 	}
 
-	if err := params.Biller.Bill(context.Background(), &billingEntry); err != nil {
-		level.Error(params.Logger).Log("msg", "could not submit billing entry", "err", err)
-		params.Metrics.ErrorMetrics.BillingFailure.Add(1)
+	if err := params.sessionUpdateParams.Biller.Bill(context.Background(), &billingEntry); err != nil {
+		level.Error(params.sessionUpdateParams.Logger).Log("msg", "could not submit billing entry", "err", err)
+		params.sessionUpdateParams.Metrics.ErrorMetrics.BillingFailure.Add(1)
 	}
 }
 
@@ -1631,7 +1647,25 @@ func sendRouteResponse(w io.Writer, chosenRoute *routing.Route, params *SessionU
 	nextRelaysPrice := CalculateRouteRelaysPrice(chosenRoute, envelopeBytesUp, envelopeBytesDown)
 
 	// IMPORTANT: run post in parallel so it doesn't block the response
-	params.PostSessionUpdateFunc(params, packet, response, serverDataReadOnly, chosenRoute.Relays, lastNextStats, lastDirectStats, prevRouteDecision, location, nearRelays, routeDecision, timeNow, totalPriceNibblins, nextRelaysPrice, usageBytesUp, usageBytesDown, prevInitial)
+	params.PostSessionUpdateFunc(PostSessionUpdateParams{
+		sessionUpdateParams: params,
+		packet:              packet,
+		response:            response,
+		serverDataReadOnly:  serverDataReadOnly,
+		routeRelays:         chosenRoute.Relays,
+		lastNextStats:       lastNextStats,
+		lastDirectStats:     lastDirectStats,
+		prevRouteDecision:   prevRouteDecision,
+		location:            location,
+		nearRelays:          nearRelays,
+		routeDecision:       routeDecision,
+		timeNow:             timeNow,
+		totalPriceNibblins:  totalPriceNibblins,
+		nextRelaysPrice:     nextRelaysPrice,
+		nextBytesUp:         usageBytesUp,
+		nextBytesDown:       usageBytesDown,
+		prevInitial:         prevInitial,
+	})
 
 	// Send the Session Response back to the server
 	if _, err := w.Write(responseData); err != nil {

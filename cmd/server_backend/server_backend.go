@@ -703,10 +703,8 @@ func main() {
 		portalPublisher = portalCruncherPublisher
 	}
 
-	var postSessionUpdateFunc transport.PostSessionUpdateFunc = func(params *transport.SessionUpdateParams, packet *transport.SessionUpdatePacket, response *transport.SessionResponsePacket, serverDataReadOnly *transport.ServerData,
-		routeRelays []routing.Relay, lastNextStats *routing.Stats, lastDirectStats *routing.Stats, prevRouteDecision routing.Decision, location *routing.Location, nearRelays []routing.Relay,
-		routeDecision routing.Decision, timeNow time.Time, totalPriceNibblins routing.Nibblin, nextRelaysPrice []routing.Nibblin, nextBytesUp uint64, nextBytesDown uint64, prevInitial bool) {
-		go transport.PostSessionUpdate(params, packet, response, serverDataReadOnly, routeRelays, lastNextStats, lastDirectStats, prevRouteDecision, location, nearRelays, routeDecision, timeNow, totalPriceNibblins, nextRelaysPrice, nextBytesUp, nextBytesDown, prevInitial)
+	var postSessionUpdateFunc transport.PostSessionUpdateFunc = func(params transport.PostSessionUpdateParams) {
+		go transport.PostSessionUpdate(params)
 	}
 
 	var pool *ants.Pool
@@ -715,11 +713,9 @@ func main() {
 		if t, err := strconv.ParseUint(os.Getenv("NUM_POST_UPDATE_THREADS"), 10, 64); err == nil && t > 0 {
 			if pool, err = ants.NewPool(int(t)); err == nil {
 				shouldRelease = true
-				postSessionUpdateFunc = func(params *transport.SessionUpdateParams, packet *transport.SessionUpdatePacket, response *transport.SessionResponsePacket, serverDataReadOnly *transport.ServerData,
-					routeRelays []routing.Relay, lastNextStats *routing.Stats, lastDirectStats *routing.Stats, prevRouteDecision routing.Decision, location *routing.Location, nearRelays []routing.Relay,
-					routeDecision routing.Decision, timeNow time.Time, totalPriceNibblins routing.Nibblin, nextRelaysPrice []routing.Nibblin, nextBytesUp uint64, nextBytesDown uint64, prevInitial bool) {
+				postSessionUpdateFunc = func(params transport.PostSessionUpdateParams) {
 					pool.Submit(func() {
-						transport.PostSessionUpdate(params, packet, response, serverDataReadOnly, routeRelays, lastNextStats, lastDirectStats, prevRouteDecision, location, nearRelays, routeDecision, timeNow, totalPriceNibblins, nextRelaysPrice, nextBytesUp, nextBytesDown, prevInitial)
+						transport.PostSessionUpdate(params)
 					})
 				}
 			} else {
