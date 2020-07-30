@@ -122,7 +122,7 @@ func (relayMap *RelayMap) RemoveRelayData(relayAddress string) {
 }
 
 func (relayMap *RelayMap) TimeoutLoop(ctx context.Context, timeoutSeconds int64, c <-chan time.Time) {
-	maxShards := 10
+	maxShards := 1
 	maxIterations := 10
 	deleteList := make([]string, maxIterations)
 	for {
