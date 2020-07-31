@@ -637,8 +637,6 @@ func AuthMiddleware(audience string, next http.Handler) http.Handler {
 		return next
 	}
 
-	fmt.Println(audience)
-
 	mw := jwtmiddleware.New(jwtmiddleware.Options{
 		ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
 			// Check if OpsService token
@@ -670,7 +668,6 @@ func AuthMiddleware(audience string, next http.Handler) http.Handler {
 	return cors.New(cors.Options{
 		AllowedOrigins:   []string{"http://127.0.0.1:8080"},
 		AllowCredentials: true,
-		Debug:            true,
 		AllowedHeaders:   []string{"Authorization", "Content-Type"},
 		AllowedMethods:   []string{"POST", "GET", "OPTION"},
 	}).Handler(mw.Handler(next))
