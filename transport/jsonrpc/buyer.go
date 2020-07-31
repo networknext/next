@@ -87,7 +87,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 			s.Logger.Log("err", err)
 			return err
 		}
-		hashedID := fmt.Sprintf("%x", hash.Sum64())
+		hashedID := fmt.Sprintf("%016x", hash.Sum64())
 
 		err = s.RedisClient.SMembers(fmt.Sprintf("user-%s-sessions", hashedID)).ScanSlice(&sessionIDs)
 		if err != nil {
@@ -532,8 +532,6 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		return reply.Slices[i].Timestamp.Before(reply.Slices[j].Timestamp)
 	})
 
-	fmt.Println(reply.Slices)
-
 	return nil
 }
 
@@ -579,7 +577,7 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 	s.mapPointsBuyerCache = make(map[string]json.RawMessage, 0)
 	s.mapPointsCompactBuyerCache = make(map[string]json.RawMessage, 0)
 
-	for _, buyer := range buyers { // get all the session IDs from the map-points-global key set
+	for _, buyer := range buyers {
 		stringID := fmt.Sprintf("%016x", buyer.ID)
 		sessionIDs, err = s.RedisClient.SMembers(fmt.Sprintf("map-points-%016x-buyer", buyer.ID)).Result()
 		if err != nil {
@@ -604,7 +602,7 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 		}
 
 		// build a single transaction for any missing session-*-point keys to be
-		// removed from map-points-global, total-next, and total-direct key sets
+		// removed from map-points-buyer, total-next, and total-direct key sets
 		sremtx := s.RedisClient.TxPipeline()
 		{
 			var point transport.SessionMapPoint
@@ -617,7 +615,6 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 				if err != nil {
 					key := cmd.Args()[1].(string)
 					keyparts := strings.Split(key, "-")
-					sremtx.SRem("map-points-global", keyparts[1])
 					sremtx.SRem(fmt.Sprintf("map-points-%016x-buyer", buyer.ID), keyparts[1])
 					sremtx.ZRem("total-next", keyparts[1])
 					sremtx.ZRem(fmt.Sprintf("total-next-buyer-%016x", buyer.ID), keyparts[1])
@@ -642,12 +639,10 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 		}
 
 		// execute the transaction to remove the sessions IDs from the key sets
-		sremcmds, err := sremtx.Exec()
+		_, err := sremtx.Exec()
 		if err != nil {
 			return err
 		}
-
-		level.Info(s.Logger).Log("key", "map-points-global", "removed", len(sremcmds))
 
 		s.mapPointsBuyerCache[stringID], err = json.Marshal(mapPointsBuyers[stringID])
 		if err != nil {
@@ -688,7 +683,7 @@ func (s *BuyersService) GenerateMapPointsPerBuyerBytes() error {
 
 	buyers := s.Storage.Buyers()
 
-	for _, buyer := range buyers { // get all the session IDs from the map-points-global key set
+	for _, buyer := range buyers {
 		mapPointsBuyer.GreenPoints = make([]point, 0)
 		mapPointsBuyer.BluePoints = make([]point, 0)
 
@@ -716,7 +711,7 @@ func (s *BuyersService) GenerateMapPointsPerBuyerBytes() error {
 		}
 
 		// build a single transaction for any missing session-*-point keys to be
-		// removed from map-points-global, total-next, and total-direct key sets
+		// removed from map-points-buyer, total-next, and total-direct key sets
 		sremtx := s.RedisClient.TxPipeline()
 		{
 			var currentPoint transport.SessionMapPoint
@@ -729,7 +724,6 @@ func (s *BuyersService) GenerateMapPointsPerBuyerBytes() error {
 				if err != nil {
 					key := cmd.Args()[1].(string)
 					keyparts := strings.Split(key, "-")
-					sremtx.SRem("map-points-global", keyparts[1])
 					sremtx.SRem(fmt.Sprintf("map-points-%016x-buyer", buyer.ID), keyparts[1])
 					sremtx.ZRem("total-next", keyparts[1])
 					sremtx.ZRem(fmt.Sprintf("total-next-buyer-%016x", buyer.ID), keyparts[1])
@@ -759,12 +753,10 @@ func (s *BuyersService) GenerateMapPointsPerBuyerBytes() error {
 		}
 
 		// execute the transaction to remove the sessions IDs from the key sets
-		sremcmds, err := sremtx.Exec()
+		_, err := sremtx.Exec()
 		if err != nil {
 			return err
 		}
-
-		level.Info(s.Logger).Log("key", "map-points-global", "removed", len(sremcmds))
 
 		// Write entries to byte cache
 		s.mapPointsBuyerByteCache[stringID] = WriteMapPointCache(&mapPointsBuyer)

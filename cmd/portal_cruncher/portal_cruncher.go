@@ -354,12 +354,12 @@ func main() {
 				tx.Expire(fmt.Sprintf("session-%016x-slices", sessionPortalData.Meta.ID), redisPortalHostExp)
 
 				// set the user session reverse lookup sets with expiration on the entire key set for safety
-				tx.SAdd(fmt.Sprintf("user-%016x-sessions", sessionPortalData.Meta.UserHash), sessionPortalData.Meta.ID)
+				tx.SAdd(fmt.Sprintf("user-%016x-sessions", sessionPortalData.Meta.UserHash), fmt.Sprintf("%016x", sessionPortalData.Meta.ID))
 				tx.Expire(fmt.Sprintf("user-%016x-sessions", sessionPortalData.Meta.UserHash), redisPortalHostExp)
 
 				// set the map point key and buyer sessions with expiration on the entire key set for safety
 				tx.Set(fmt.Sprintf("session-%016x-point", sessionPortalData.Meta.ID), sessionPortalData.Point, redisPortalHostExp)
-				tx.SAdd(fmt.Sprintf("map-points-%016x-buyer", sessionPortalData.Meta.BuyerID), sessionPortalData.Meta.ID)
+				tx.SAdd(fmt.Sprintf("map-points-%016x-buyer", sessionPortalData.Meta.BuyerID), fmt.Sprintf("%016x", sessionPortalData.Meta.ID))
 				tx.Expire(fmt.Sprintf("map-points-%016x-buyer", sessionPortalData.Meta.BuyerID), redisPortalHostExp)
 
 				if _, err := tx.Exec(); err != nil {
