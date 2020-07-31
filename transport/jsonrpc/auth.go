@@ -632,7 +632,7 @@ type jwks struct {
 	} `json:"keys"`
 }
 
-func AuthMiddleware(audience string, next http.Handler) http.Handler {
+func AuthMiddleware(audience string, next http.Handler, allowCORS bool) http.Handler {
 	if audience == "" {
 		return next
 	}
@@ -665,12 +665,16 @@ func AuthMiddleware(audience string, next http.Handler) http.Handler {
 		CredentialsOptional: true,
 	})
 
-	return cors.New(cors.Options{
-		AllowedOrigins:   []string{"http://127.0.0.1:8080"},
-		AllowCredentials: true,
-		AllowedHeaders:   []string{"Authorization", "Content-Type"},
-		AllowedMethods:   []string{"POST", "GET", "OPTION"},
-	}).Handler(mw.Handler(next))
+	if !allowCORS {
+		return cors.New(cors.Options{
+			AllowedOrigins:   []string{"http://127.0.0.1:8080"},
+			AllowCredentials: true,
+			AllowedHeaders:   []string{"Authorization", "Content-Type"},
+			AllowedMethods:   []string{"POST", "GET", "OPTION"},
+		}).Handler(mw.Handler(next))
+	} else {
+		return mw.Handler(next)
+	}
 }
 
 func getPemCert(token *jwt.Token) (string, error) {

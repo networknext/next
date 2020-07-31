@@ -432,12 +432,15 @@ func main() {
 			Storage: db,
 		}, "")
 
-		allowCORS := os.Getenv("CORS")
+		allowCORSStr := os.Getenv("CORS")
+		allowCORS := true
+		if allowCORSStr != "" {
+			allowCORS = false
+		}
 
-		if allowCORS == "false" {
-			http.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s)))
-		} else {
-			http.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s)))
+		http.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s), allowCORS))
+
+		if allowCORS {
 			http.Handle("/", middleware.CacheControl(os.Getenv("HTTP_CACHE_CONTROL"), http.FileServer(http.Dir(uiDir))))
 		}
 
