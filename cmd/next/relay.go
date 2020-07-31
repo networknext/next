@@ -275,7 +275,7 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 				}
 			}
 
-			if !disableRelays(env, rpcClient, []string{relay.name}, opts.hard) {
+			if !disableRelays(env, rpcClient, []string{relay.name}, opts.hard, false) {
 				continue
 			}
 
@@ -457,7 +457,7 @@ func enableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 	fmt.Printf("%s complete\n", str)
 }
 
-func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string, hard bool) bool {
+func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string, hard bool, maintenance bool) bool {
 	success := true
 	relaysDisabled := 0
 	testForSSHKey(env)
@@ -465,6 +465,12 @@ func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []strin
 	if hard {
 		script = DisableRelayScriptHard
 	}
+
+	relayState := routing.RelayStateDisabled
+	if maintenance {
+		relayState = routing.RelayStateMaintenance
+	}
+
 	for _, regex := range regexes {
 		relays := getRelayInfo(rpcClient, env, regex)
 		if len(relays) == 0 {
@@ -474,7 +480,7 @@ func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []strin
 		for _, relay := range relays {
 			fmt.Printf("Disabling relay '%s' (id = %016x)\n", relay.name, relay.id)
 			con := NewSSHConn(relay.user, relay.sshAddr, relay.sshPort, env.SSHKeyFilePath)
-			if !con.ConnectAndIssueCmd(script) || !updateRelayState(rpcClient, relay, routing.RelayStateDisabled) {
+			if !con.ConnectAndIssueCmd(script) || !updateRelayState(rpcClient, relay, relayState) {
 				success = false
 				continue
 			}
