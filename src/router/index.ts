@@ -1,15 +1,14 @@
 import Vue from 'vue'
-import VueRouter, { RouteConfig } from 'vue-router'
+import VueRouter, { RouteConfig, Route, NavigationGuardNext } from 'vue-router'
+import store from '@/store'
 
 import DownloadsWorkspace from '@/components/workspaces/DownloadsWorkspace.vue'
 import GameConfiguration from '@/components/GameConfiguration.vue'
 import MapWorkspace from '@/components/workspaces/MapWorkspace.vue'
-import SessionDetails from '@/components/SessionDetails.vue'
 import SessionsWorkspace from '@/components/workspaces/SessionsWorkspace.vue'
 import SessionToolWorkspace from '@/components/workspaces/SessionToolWorkspace.vue'
 import SettingsWorkspace from '@/components/workspaces/SettingsWorkspace.vue'
 import UserManagement from '@/components/UserManagement.vue'
-import UserSessions from '@/components/UserSessions.vue'
 import UserToolWorkspace from '@/components/workspaces/UserToolWorkspace.vue'
 
 Vue.use(VueRouter)
@@ -65,6 +64,15 @@ const routes: Array<RouteConfig> = [
 
 const router = new VueRouter({
   routes
+})
+
+router.beforeEach(async (to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
+  if (to.name === 'settings') {
+    store.commit('UPDATE_CURRENT_PAGE', 'users')
+    next('/settings/users')
+  }
+  await store.dispatch('UPDATE_CURRENT_PAGE', to.name)
+  next()
 })
 
 export default router

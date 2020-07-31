@@ -152,8 +152,6 @@
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
 import Multiselect from 'vue-multiselect'
-import { Role } from './types/APITypes'
-import { UserProfile } from '../services/auth.service'
 import APIService from '../services/api.service'
 
 @Component({
@@ -162,6 +160,7 @@ import APIService from '../services/api.service'
   }
 })
 export default class UserManagement extends Vue {
+  // TODO: Fix weird issue with dropdown library change events (select/delete) handler
   private apiService: APIService
   private allRoles: Array<any> = []
   private companyUsers: Array<any> = []
