@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -450,6 +451,78 @@ func (s SessionMeta) Size() uint64 {
 		4 + uint64(len(s.ClientAddr)) + 4 + uint64(len(s.ServerAddr)) + (4 + relayHopsSize) + 4 + uint64(len(s.SDK)) + 1 + (4 + nearbyRelaysSize) + 1 + 8
 }
 
+func (s *SessionMeta) UnmarshalJSON(data []byte) error {
+	fields := map[string]interface{}{}
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return err
+	}
+
+	id, err := strconv.ParseUint(fields["id"].(string), 16, 64)
+	if err != nil {
+		return err
+	}
+	s.ID = id
+
+	userHash, err := strconv.ParseUint(fields["user_hash"].(string), 16, 64)
+	if err != nil {
+		return err
+	}
+	s.UserHash = userHash
+
+	s.DatacenterName = fields["datacenter_name"].(string)
+	s.DatacenterAlias = fields["datacenter_alias"].(string)
+	s.OnNetworkNext = fields["on_network_next"].(bool)
+	s.NextRTT = fields["next_rtt"].(float64)
+	s.DirectRTT = fields["direct_rtt"].(float64)
+	s.DeltaRTT = fields["delta_rtt"].(float64)
+
+	// Have to grossly remarshal and unmarshal since you can only unmarshal from a []byte and not a map[string]interface{}
+	locationMap := fields["location"].(map[string]interface{})
+	locationData, err := json.Marshal(locationMap)
+	if err != nil {
+		return err
+	}
+	if err := json.Unmarshal(locationData, &s.Location); err != nil {
+		return err
+	}
+
+	s.ClientAddr = fields["client_addr"].(string)
+	s.ServerAddr = fields["server_addr"].(string)
+
+	// Have to grossly remarshal and unmarshal since you can only unmarshal from a []byte and not a []interface{}
+	hopsArray := fields["hops"].([]interface{})
+	hopsData, err := json.Marshal(hopsArray)
+	if err != nil {
+		return err
+	}
+	if err := json.Unmarshal(hopsData, &s.Hops); err != nil {
+		return err
+	}
+
+	s.SDK = fields["sdk"].(string)
+	s.Connection = ParseConnectionType(fields["connection"].(string))
+
+	// Have to grossly remarshal and unmarshal since you can only unmarshal from a []byte and not a []interface{}
+	nearbyRelaysArray := fields["nearby_relays"].([]interface{})
+	nearbyRelaysData, err := json.Marshal(nearbyRelaysArray)
+	if err != nil {
+		return err
+	}
+	if err := json.Unmarshal(nearbyRelaysData, &s.NearbyRelays); err != nil {
+		return err
+	}
+
+	s.Platform = ParsePlatformType(fields["platform"].(string))
+
+	customerID, err := strconv.ParseUint(fields["customer_id"].(string), 16, 64)
+	if err != nil {
+		return err
+	}
+	s.BuyerID = customerID
+
+	return nil
+}
+
 func (s SessionMeta) MarshalJSON() ([]byte, error) {
 	fields := map[string]interface{}{}
 
@@ -466,9 +539,9 @@ func (s SessionMeta) MarshalJSON() ([]byte, error) {
 	fields["server_addr"] = s.ServerAddr
 	fields["hops"] = s.Hops
 	fields["sdk"] = s.SDK
-	fields["connection"] = ConnectionTypeText(int32(s.Connection))
+	fields["connection"] = ConnectionTypeText(s.Connection)
 	fields["nearby_relays"] = s.NearbyRelays
-	fields["platform"] = PlatformTypeText(uint64(s.Platform))
+	fields["platform"] = PlatformTypeText(s.Platform)
 	fields["customer_id"] = fmt.Sprintf("%016x", s.BuyerID)
 
 	return json.Marshal(fields)

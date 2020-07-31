@@ -63,9 +63,9 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string, se
 			PacketLoss string
 		}{
 			Name:       "Direct",
-			RTT:        fmt.Sprintf("%.01f", lastSlice.Direct.RTT),
-			Jitter:     fmt.Sprintf("%.01f", lastSlice.Direct.Jitter),
-			PacketLoss: fmt.Sprintf("%.01f", lastSlice.Direct.PacketLoss),
+			RTT:        fmt.Sprintf("%.02f", lastSlice.Direct.RTT),
+			Jitter:     fmt.Sprintf("%.02f", lastSlice.Direct.Jitter),
+			PacketLoss: fmt.Sprintf("%.02f", lastSlice.Direct.PacketLoss),
 		})
 
 		if reply.Meta.OnNetworkNext {
@@ -76,9 +76,9 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string, se
 				PacketLoss string
 			}{
 				Name:       "Next",
-				RTT:        fmt.Sprintf("%.01f", lastSlice.Next.RTT),
-				Jitter:     fmt.Sprintf("%.01f", lastSlice.Next.Jitter),
-				PacketLoss: fmt.Sprintf("%.01f", lastSlice.Next.PacketLoss),
+				RTT:        fmt.Sprintf("%.02f", lastSlice.Next.RTT),
+				Jitter:     fmt.Sprintf("%.02f", lastSlice.Next.Jitter),
+				PacketLoss: fmt.Sprintf("%.02f", lastSlice.Next.PacketLoss),
 			})
 		}
 
@@ -103,9 +103,9 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string, se
 					PacketLoss string
 				}{
 					Name:       relay.Name,
-					RTT:        fmt.Sprintf("%.1f", relay.ClientStats.RTT),
-					Jitter:     fmt.Sprintf("%.1f", relay.ClientStats.Jitter),
-					PacketLoss: fmt.Sprintf("%.1f", relay.ClientStats.PacketLoss),
+					RTT:        fmt.Sprintf("%.2f", relay.ClientStats.RTT),
+					Jitter:     fmt.Sprintf("%.2f", relay.ClientStats.Jitter),
+					PacketLoss: fmt.Sprintf("%.2f", relay.ClientStats.PacketLoss),
 				})
 			}
 
