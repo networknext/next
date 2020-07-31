@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/go-kit/kit/log"
-	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
@@ -23,8 +22,7 @@ type OpsService struct {
 	Release   string
 	BuildTime string
 
-	RedisClient redis.Cmdable
-	Storage     storage.Storer
+	Storage storage.Storer
 	// RouteMatrix *routing.RouteMatrix
 
 	Logger log.Logger
@@ -50,14 +48,14 @@ type BuyersReply struct {
 }
 
 type buyer struct {
-	ID   string `json:"id"`
+	ID   uint64 `json:"id"`
 	Name string `json:"name"`
 }
 
 func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersReply) error {
 	for _, b := range s.Storage.Buyers() {
 		reply.Buyers = append(reply.Buyers, buyer{
-			ID:   fmt.Sprintf("%x", b.ID),
+			ID:   b.ID,
 			Name: b.Name,
 		})
 	}
@@ -385,39 +383,37 @@ type RelaysReply struct {
 }
 
 type relay struct {
-	ID                  uint64    `json:"id"`
-	Name                string    `json:"name"`
-	Addr                string    `json:"addr"`
-	Latitude            float64   `json:"latitude"`
-	Longitude           float64   `json:"longitude"`
-	NICSpeedMbps        uint64    `json:"nic_speed_mpbs"`
-	IncludedBandwidthGB uint64    `json:"included_bandwidth_gb"`
-	State               string    `json:"state"`
-	LastUpdateTime      time.Time `json:"lastUpdateTime"`
-	ManagementAddr      string    `json:"management_addr"`
-	SSHUser             string    `json:"ssh_user"`
-	SSHPort             int64     `json:"ssh_port"`
-	MaxSessionCount     uint32    `json:"maxSessionCount"`
-	SessionCount        uint64    `json:"sessionCount"`
-	BytesSent           uint64    `json:"bytesTx"`
-	BytesReceived       uint64    `json:"bytesRx"`
-	PublicKey           string    `json:"public_key"`
-	UpdateKey           string    `json:"update_key"`
-	FirestoreID         string    `json:"firestore_id"`
-	Version             string    `json:"relay_version"`
-	SellerName          string    `json:"seller_name"`
+	ID                  uint64                `json:"id"`
+	Name                string                `json:"name"`
+	Addr                string                `json:"addr"`
+	Latitude            float64               `json:"latitude"`
+	Longitude           float64               `json:"longitude"`
+	NICSpeedMbps        int32                 `json:"nic_speed_mpbs"`
+	IncludedBandwidthGB int32                 `json:"included_bandwidth_gb"`
+	State               string                `json:"state"`
+	LastUpdateTime      time.Time             `json:"lastUpdateTime"`
+	ManagementAddr      string                `json:"management_addr"`
+	SSHUser             string                `json:"ssh_user"`
+	SSHPort             int64                 `json:"ssh_port"`
+	MaxSessionCount     uint32                `json:"maxSessionCount"`
+	SessionCount        uint64                `json:"sessionCount"`
+	BytesSent           uint64                `json:"bytesTx"`
+	BytesReceived       uint64                `json:"bytesRx"`
+	PublicKey           string                `json:"public_key"`
+	UpdateKey           string                `json:"update_key"`
+	FirestoreID         string                `json:"firestore_id"`
+	Version             string                `json:"relay_version"`
+	SellerName          string                `json:"seller_name"`
+	MRC                 routing.Nibblin       `json:"monthly_recurring_charge_nibblins"`
+	Overage             routing.Nibblin       `json:"overage"`
+	BWRule              routing.BandWidthRule `json:"bandwidth_rule"`
+	ContractTerm        int32                 `json:"contract_term"`
+	StartDate           time.Time             `json:"start_date"`
+	EndDate             time.Time             `json:"end_date"`
+	Type                routing.MachineType   `json:"machine_type"`
 }
 
 func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysReply) error {
-	hgetallResult := s.RedisClient.HGetAll(routing.HashKeyAllRelays)
-	if hgetallResult.Err() != nil && hgetallResult.Err() != redis.Nil {
-		err := fmt.Errorf("failed to get all relays: %v", hgetallResult.Err())
-		s.Logger.Log("err", err)
-		return err
-	}
-
-	relayCacheEntries := hgetallResult.Val()
-
 	for _, r := range s.Storage.Relays() {
 		relay := relay{
 			ID:                  r.ID,
@@ -437,23 +433,27 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			FirestoreID:         r.FirestoreID,
 			MaxSessionCount:     r.MaxSessions,
 			SellerName:          r.Seller.Name,
+			MRC:                 r.MRC,
+			Overage:             r.Overage,
+			BWRule:              r.BWRule,
+			ContractTerm:        r.ContractTerm,
+			StartDate:           r.StartDate,
+			EndDate:             r.EndDate,
+			Type:                r.Type,
 		}
 
-		relayCacheEntry := routing.RelayCacheEntry{
-			ID: r.ID,
-		}
+		// We don't have a good way of getting the live relay stats now until we make some kind of endpoint on the relay backend for the portal to hit
 
-		// If the relay is in redis, get its traffic stats and last update time
-		if relayCacheEntryString, ok := relayCacheEntries[relayCacheEntry.Key()]; ok {
-			if err := relayCacheEntry.UnmarshalBinary([]byte(relayCacheEntryString)); err == nil {
-				relay.SessionCount = relayCacheEntry.TrafficStats.SessionCount
-				relay.BytesSent = relayCacheEntry.TrafficStats.BytesSent
-				relay.BytesReceived = relayCacheEntry.TrafficStats.BytesReceived
+		// // If the relay is in memory, get its traffic stats and last update time
+		// relayData := s.RelayMap.GetRelayData(r.Addr.String())
+		// if relayData != nil {
+		// 	relay.SessionCount = relayData.TrafficStats.SessionCount
+		// 	relay.BytesSent = relayData.TrafficStats.BytesSent
+		// 	relay.BytesReceived = relayData.TrafficStats.BytesReceived
 
-				relay.LastUpdateTime = relayCacheEntry.LastUpdateTime
-				relay.Version = relayCacheEntry.Version
-			}
-		}
+		// 	relay.LastUpdateTime = relayData.LastUpdateTime
+		// 	relay.Version = relayData.Version
+		// }
 
 		reply.Relays = append(reply.Relays, relay)
 	}
@@ -616,6 +616,7 @@ type RelayNICSpeedUpdateArgs struct {
 type RelayNICSpeedUpdateReply struct {
 }
 
+// TODO This endpoint has been deprecated by SetRelayMetadata()?
 func (s *OpsService) RelayNICSpeedUpdate(r *http.Request, args *RelayNICSpeedUpdateArgs, reply *RelayNICSpeedUpdateReply) error {
 
 	relay, err := s.Storage.Relay(args.RelayID)
@@ -625,7 +626,7 @@ func (s *OpsService) RelayNICSpeedUpdate(r *http.Request, args *RelayNICSpeedUpd
 		return err
 	}
 
-	relay.NICSpeedMbps = args.RelayNICSpeed
+	relay.NICSpeedMbps = int32(args.RelayNICSpeed)
 	if err = s.Storage.SetRelay(context.Background(), relay); err != nil {
 		err = fmt.Errorf("RelayNICSpeedUpdate() SetRelay error: %w", err)
 		s.Logger.Log("err", err)
@@ -668,7 +669,7 @@ type DatacentersReply struct {
 
 type datacenter struct {
 	Name         string  `json:"name"`
-	ID           string  `json:"id"`
+	ID           uint64  `json:"id"`
 	Latitude     float64 `json:"latitude"`
 	Longitude    float64 `json:"longitude"`
 	Enabled      bool    `json:"enabled"`
@@ -679,7 +680,7 @@ func (s *OpsService) Datacenters(r *http.Request, args *DatacentersArgs, reply *
 	for _, d := range s.Storage.Datacenters() {
 		reply.Datacenters = append(reply.Datacenters, datacenter{
 			Name:         d.Name,
-			ID:           fmt.Sprintf("%x", d.ID),
+			ID:           d.ID,
 			Enabled:      d.Enabled,
 			Latitude:     d.Location.Latitude,
 			Longitude:    d.Location.Longitude,
@@ -788,6 +789,27 @@ func (s *OpsService) ListDatacenterMaps(r *http.Request, args *ListDatacenterMap
 
 	return nil
 }
+
+type RelayMetadataArgs struct {
+	Relay routing.Relay
+}
+
+type RelayMetadataReply struct {
+	Ok           bool
+	ErrorMessage string
+}
+
+func (s *OpsService) RelayMetadata(r *http.Request, args *RelayMetadataArgs, reply *RelayMetadataReply) error {
+
+	err := s.Storage.SetRelayMetadata(context.Background(), args.Relay)
+	if err != nil {
+		return err // TODO detail
+	}
+
+	return nil
+}
+
+// used in routes.go
 
 type RouteSelectionArgs struct {
 	SourceRelays      []string `json:"src_relays"`

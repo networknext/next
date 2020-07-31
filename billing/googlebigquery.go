@@ -2,7 +2,6 @@ package billing
 
 import (
 	"context"
-	"sync/atomic"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/go-kit/kit/log"
@@ -23,31 +22,16 @@ type GoogleBigQueryClient struct {
 
 	buffer  []*BillingEntry
 	entries chan *BillingEntry
-
-	submitted uint64
-	flushed   uint64
 }
 
 // Bill pushes an Entry to the channel
 func (bq *GoogleBigQueryClient) Bill(ctx context.Context, entry *BillingEntry) error {
-	atomic.AddUint64(&bq.submitted, 1)
+	bq.Metrics.EntriesSubmitted.Add(1)
 	if bq.entries == nil {
 		bq.entries = make(chan *BillingEntry, DefaultBigQueryChannelSize)
 	}
 	bq.entries <- entry
 	return nil
-}
-
-func (bq *GoogleBigQueryClient) NumSubmitted() uint64 {
-	return atomic.LoadUint64(&bq.submitted)
-}
-
-func (bq *GoogleBigQueryClient) NumQueued() uint64 {
-	return uint64(len(bq.entries))
-}
-
-func (bq *GoogleBigQueryClient) NumFlushed() uint64 {
-	return atomic.LoadUint64(&bq.flushed)
 }
 
 // WriteLoop ranges over the incoming channel of Entry types and fills an internal buffer.
@@ -58,14 +42,15 @@ func (bq *GoogleBigQueryClient) WriteLoop(ctx context.Context) error {
 		bq.entries = make(chan *BillingEntry, DefaultBigQueryChannelSize)
 	}
 	for entry := range bq.entries {
+		bq.Metrics.EntriesQueued.Set(float64(len(bq.entries)))
+
 		if len(bq.buffer) >= bq.BatchSize {
 			if err := bq.TableInserter.Put(ctx, bq.buffer); err != nil {
 				level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)
 				bq.Metrics.ErrorMetrics.BillingWriteFailure.Add(float64(len(bq.buffer)))
 			}
 			level.Info(bq.Logger).Log("msg", "flushed entries to BigQuery", "size", bq.BatchSize, "total", len(bq.buffer))
-			atomic.AddUint64(&bq.flushed, uint64(len(bq.buffer)))
-			bq.Metrics.BillingEntriesWritten.Add(float64(len(bq.buffer)))
+			bq.Metrics.EntriesFlushed.Add(float64(len(bq.buffer)))
 			bq.buffer = bq.buffer[:0]
 		}
 		bq.buffer = append(bq.buffer, entry)
@@ -86,6 +71,7 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 	e["directRTT"] = entry.DirectRTT
 	e["directJitter"] = entry.DirectJitter
 	e["directPacketLoss"] = entry.DirectPacketLoss
+	e["userHash"] = int(entry.UserHash)
 
 	if entry.Next {
 		e["next"] = entry.Next

@@ -10,24 +10,25 @@ import (
 	"github.com/networknext/backend/routing"
 )
 
-const NumServerMapShards = 4096
+const NumServerMapShards = 100000
 
 type ServerData struct {
-	timestamp      int64
-	routePublicKey []byte
-	version        SDKVersion
-	datacenter     routing.Datacenter
-	sequence       uint64
+	Timestamp      int64
+	RoutePublicKey []byte
+	Version        SDKVersion
+	Datacenter     routing.Datacenter
+	Sequence       uint64
 }
 
 type ServerMapShard struct {
-	mutex      sync.Mutex
-	servers    map[string]*ServerData
-	numServers uint64
+	mutex   sync.RWMutex
+	servers map[string]*ServerData
 }
 
 type ServerMap struct {
-	shard [NumServerMapShards]*ServerMapShard
+	numServers   uint64
+	timeoutShard int
+	shard        [NumServerMapShards]*ServerMapShard
 }
 
 func NewServerMap() *ServerMap {
@@ -39,62 +40,85 @@ func NewServerMap() *ServerMap {
 	return serverMap
 }
 
-func (serverMap *ServerMap) NumServers() uint64 {
-	var total uint64
-	for i := 0; i < NumServerMapShards; i++ {
-		numServersInShard := atomic.LoadUint64(&serverMap.shard[i].numServers)
-		total += numServersInShard
-	}
-	return total
+func (serverMap *ServerMap) GetServerCount() uint64 {
+	return atomic.LoadUint64(&serverMap.numServers)
+}
+
+func (serverMap *ServerMap) RLock(buyerID uint64, serverAddress string) {
+	serverHash := crypto.HashID(serverAddress)
+	index := serverHash % NumServerMapShards
+	serverMap.shard[index].mutex.RLock()
+}
+
+func (serverMap *ServerMap) RUnlock(buyerID uint64, serverAddress string) {
+	serverHash := crypto.HashID(serverAddress)
+	index := serverHash % NumServerMapShards
+	serverMap.shard[index].mutex.RUnlock()
+}
+
+func (serverMap *ServerMap) Lock(buyerID uint64, serverAddress string) {
+	serverHash := crypto.HashID(serverAddress)
+	index := serverHash % NumServerMapShards
+	serverMap.shard[index].mutex.Lock()
+}
+
+func (serverMap *ServerMap) Unlock(buyerID uint64, serverAddress string) {
+	serverHash := crypto.HashID(serverAddress)
+	index := serverHash % NumServerMapShards
+	serverMap.shard[index].mutex.Unlock()
 }
 
 func (serverMap *ServerMap) UpdateServerData(buyerID uint64, serverAddress string, serverData *ServerData) {
 	serverHash := crypto.HashID(serverAddress)
-	index := (buyerID + serverHash) % NumServerMapShards
-	serverMap.shard[index].mutex.Lock()
+	index := serverHash % NumServerMapShards
 	_, exists := serverMap.shard[index].servers[serverAddress]
 	serverMap.shard[index].servers[serverAddress] = serverData
-	serverMap.shard[index].mutex.Unlock()
 	if !exists {
-		atomic.AddUint64(&serverMap.shard[index].numServers, 1)
+		atomic.AddUint64(&serverMap.numServers, 1)
 	}
 }
 
 func (serverMap *ServerMap) GetServerData(buyerID uint64, serverAddress string) *ServerData {
 	serverHash := crypto.HashID(serverAddress)
-	index := (buyerID + serverHash) % NumServerMapShards
-	serverMap.shard[index].mutex.Lock()
+	index := serverHash % NumServerMapShards
 	serverData, _ := serverMap.shard[index].servers[serverAddress]
-	serverMap.shard[index].mutex.Unlock()
 	return serverData
 }
 
-func (serverMap *ServerMap) TimeoutLoop(ctx context.Context, timeout time.Duration, c <-chan time.Time) {
+func (serverMap *ServerMap) TimeoutLoop(ctx context.Context, timeoutSeconds int64, c <-chan time.Time) {
+	maxShards := 100
+	maxIterations := 10
+	deleteList := make([]string, maxIterations)
 	for {
 		select {
 		case <-c:
-			timeoutTimestamp := time.Now().Add(-timeout).Unix()
-
-			for index := 0; index < NumServerMapShards; index++ {
-				serverTimeoutStart := time.Now()
-				serverMap.shard[index].mutex.Lock()
-				numServerIterations := 0
+			timeoutTimestamp := time.Now().Unix() - timeoutSeconds
+			for i := 0; i < maxShards; i++ {
+				index := (serverMap.timeoutShard + i) % NumServerMapShards
+				deleteList = deleteList[:0]
+				serverMap.shard[index].mutex.RLock()
+				numIterations := 0
 				for k, v := range serverMap.shard[index].servers {
-					if numServerIterations > 3 {
+					if numIterations >= maxIterations || numIterations >= len(serverMap.shard[index].servers) {
 						break
 					}
-					if v.timestamp < timeoutTimestamp {
-						// fmt.Printf("timed out server: %x\n", k)
-						delete(serverMap.shard[index].servers, k)
-						atomic.AddUint64(&serverMap.shard[index].numServers, ^uint64(0))
+					if v.Timestamp < timeoutTimestamp {
+						deleteList = append(deleteList, k)
 					}
-					numServerIterations++
+					numIterations++
 				}
-				serverMap.shard[index].mutex.Unlock()
-				if time.Since(serverTimeoutStart).Seconds() > 0.1 {
-					// fmt.Printf("long server timeout check [%d]\n", index)
+				serverMap.shard[index].mutex.RUnlock()
+				if len(deleteList) > 0 {
+					serverMap.shard[index].mutex.Lock()
+					for i := range deleteList {
+						// fmt.Printf("timeout server %x\n", deleteList[i])
+						delete(serverMap.shard[index].servers, deleteList[i])
+						atomic.AddUint64(&serverMap.numServers, ^uint64(0))
+					}
+					serverMap.shard[index].mutex.Unlock()
 				}
 			}
+			serverMap.timeoutShard = (serverMap.timeoutShard + maxShards) % NumServerMapShards
 		case <-ctx.Done():
 			return
 		}

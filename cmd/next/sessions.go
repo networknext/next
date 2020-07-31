@@ -281,7 +281,7 @@ func sessionsByBuyer(rpcClient jsonrpc.RPCClient, env Environment, buyerName str
 		r := regexp.MustCompile("(?i)" + buyerName) // case-insensitive regex
 		for _, buyer := range buyers {
 			if r.MatchString(buyer.Name) {
-				topSessionArgs.BuyerID = buyer.ID
+				topSessionArgs.BuyerID = fmt.Sprintf("%016x", buyer.ID)
 				break
 			}
 		}

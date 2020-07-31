@@ -20,24 +20,28 @@ blocks:
       jobs:
         - name: Billing
           commands:
-            - make build-billing-prod-artifact
-            - make publish-billing-prod-artifact
+            - make build-billing-artifacts-prod
+            - make publish-billing-artifacts-prod
+        - name: Analytics
+          commands:
+            - make build-analytics-artifacts-prod
+            - make publish-analytics-artifacts-prod
         - name: Portal
           commands:
-            - make build-portal-prod-artifact
-            - make publish-portal-prod-artifact
+            - make build-portal-artifacts-prod
+            - make publish-portal-artifacts-prod
         - name: Portal Cruncher
           commands:
-            - make build-portal-cruncher-prod-artifact
-            - make publish-portal-cruncher-prod-artifact
+            - make build-portal-cruncher-artifacts-prod
+            - make publish-portal-cruncher-artifacts-prod
         - name: Relay Backend
           commands:
-            - make build-relay-backend-prod-artifact
-            - make publish-relay-backend-prod-artifact
+            - make build-relay-backend-artifacts-prod
+            - make publish-relay-backend-artifacts-prod
         - name: Server Backend
           commands:
-            - make build-server-backend-prod-artifact
-            - make publish-server-backend-prod-artifact
+            - make build-server-backend-artifacts-prod
+            - make publish-server-backend-artifacts-prod
         - name: Bootstrap Script
           commands:
             - make publish-bootstrap-script-prod

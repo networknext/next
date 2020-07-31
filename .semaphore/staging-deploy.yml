@@ -1,0 +1,45 @@
+version: v1.0
+name: Staging Deploy
+agent:
+  machine:
+    type: e1-standard-8
+    os_image: ubuntu1804
+global_job_config:
+  prologue:
+    commands:
+      - sudo apt-get update && sudo apt-get -y install libsodium-dev libzmq3-dev
+      - gcloud auth activate-service-account --key-file=/home/semaphore/gcp-service-account.json
+      - gcloud auth configure-docker -q
+      - checkout
+      - sem-version go 1.13
+      - make clean
+blocks:
+  - name: Build & Publish Artifacts
+    dependencies: []
+    task:
+      jobs:
+        - name: Billing
+          commands:
+            - make build-billing-artifacts-staging
+            - make publish-billing-artifacts-staging
+        - name: Portal
+          commands:
+            - make build-portal-artifacts-staging
+            - make publish-portal-artifacts-staging
+        - name: Portal Cruncher
+          commands:
+            - make build-portal-cruncher-artifacts-staging
+            - make publish-portal-cruncher-artifacts-staging
+        - name: Relay Backend
+          commands:
+            - make build-relay-backend-artifacts-staging
+            - make publish-relay-backend-artifacts-staging
+        - name: Server Backend
+          commands:
+            - make build-server-backend-artifacts-staging
+            - make publish-server-backend-artifacts-staging
+        - name: Bootstrap Script
+          commands:
+            - make publish-bootstrap-script-staging
+      secrets:
+        - name: google-cloud-platform-prod

@@ -124,13 +124,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	redisRelayHost := os.Getenv("REDIS_HOST_RELAYS")
-	redisClientRelays := storage.NewRedisClient(redisRelayHost)
-	if err := redisClientRelays.Ping().Err(); err != nil {
-		level.Error(logger).Log("envvar", "REDIS_HOST_RELAYS", "value", redisRelayHost, "err", err)
-		os.Exit(1)
-	}
-
 	var db storage.Storer = &storage.InMemory{
 		LocalMode: true,
 	}
@@ -180,6 +173,13 @@ func main() {
 			ManagementAddr: "127.0.0.1",
 			SSHUser:        "root",
 			SSHPort:        22,
+			MRC:            19700000000000,
+			Overage:        26000000000000,
+			BWRule:         routing.BWRuleBurst,
+			ContractTerm:   12,
+			StartDate:      time.Now(),
+			EndDate:        time.Now(),
+			Type:           routing.BareMetal,
 		}); err != nil {
 			level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
 			os.Exit(1)
@@ -411,11 +411,10 @@ func main() {
 		})
 		s.RegisterCodec(json2.NewCodec(), "application/json")
 		s.RegisterService(&jsonrpc.OpsService{
-			Logger:      logger,
-			Release:     tag,
-			BuildTime:   buildtime,
-			RedisClient: redisClientRelays,
-			Storage:     db,
+			Logger:    logger,
+			Release:   tag,
+			BuildTime: buildtime,
+			Storage:   db,
 			// RouteMatrix: &routeMatrix,
 		}, "")
 		s.RegisterService(&buyerService, "")

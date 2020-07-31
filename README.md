@@ -30,7 +30,11 @@ This is a monorepo that contains the Network Next backend.
 1. Ensure tests pass locally as a sanity check
 2. Create a PR to push your changes to the "prod" branch
 5. Semaphore will build your PR and copy artifacts to the google cloud gs://prod_artifacts bucket automatically.
-5. Manually trigger a rolling update in google cloud on each managed instance group you want to update to latest code.
+5. Manually trigger a rolling update in google cloud on each managed instance group you want to update to latest code, in this order: 
+	1. relay backend
+	2. portal backend
+	3. billing backend
+	4. server backend
 
 ## Development
 

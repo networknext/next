@@ -23,12 +23,12 @@ func TestNewGooglePubSubBiller(t *testing.T) {
 	checkGooglePubsubEmulator(t)
 
 	t.Run("no publish settings", func(t *testing.T) {
-		_, err := billing.NewGooglePubSubBiller(context.Background(), &metrics.EmptyBillingMetrics, log.NewNopLogger(), "", "", 0, 0, nil)
+		_, err := billing.NewGooglePubSubBiller(context.Background(), &metrics.EmptyBillingMetrics, log.NewNopLogger(), "", "", 0, 0, 0, nil)
 		assert.EqualError(t, err, "nil google pubsub publish settings")
 	})
 
 	t.Run("success", func(t *testing.T) {
-		_, err := billing.NewGooglePubSubBiller(context.Background(), &metrics.EmptyBillingMetrics, log.NewNopLogger(), "default", "billing", 1, 0, &pubsub.DefaultPublishSettings)
+		_, err := billing.NewGooglePubSubBiller(context.Background(), &metrics.EmptyBillingMetrics, log.NewNopLogger(), "default", "billing", 1, 0, 0, &pubsub.DefaultPublishSettings)
 		assert.NoError(t, err)
 	})
 }
@@ -44,7 +44,7 @@ func TestGooglePubSubBill(t *testing.T) {
 	})
 
 	t.Run("success", func(t *testing.T) {
-		biller, err := billing.NewGooglePubSubBiller(context.Background(), &metrics.EmptyBillingMetrics, log.NewNopLogger(), "default", "billing", 1, 0, &pubsub.DefaultPublishSettings)
+		biller, err := billing.NewGooglePubSubBiller(context.Background(), &metrics.EmptyBillingMetrics, log.NewNopLogger(), "default", "billing", 1, 0, 0, &pubsub.DefaultPublishSettings)
 		assert.NoError(t, err)
 
 		biller.Bill(ctx, &billing.BillingEntry{})
@@ -53,14 +53,17 @@ func TestGooglePubSubBill(t *testing.T) {
 
 func TestLocalBill(t *testing.T) {
 	t.Run("no logger", func(t *testing.T) {
-		biller := billing.LocalBiller{}
+		biller := billing.LocalBiller{
+			Metrics: &metrics.EmptyBillingMetrics,
+		}
 		err := biller.Bill(context.Background(), &billing.BillingEntry{})
 		assert.EqualError(t, err, "no logger for local biller, can't display entry")
 	})
 
 	t.Run("success", func(t *testing.T) {
 		biller := billing.LocalBiller{
-			Logger: log.NewNopLogger(),
+			Logger:  log.NewNopLogger(),
+			Metrics: &metrics.EmptyBillingMetrics,
 		}
 
 		err := biller.Bill(context.Background(), &billing.BillingEntry{})
