@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 
 	jwtmiddleware "github.com/auth0/go-jwt-middleware"
@@ -666,8 +667,9 @@ func AuthMiddleware(audience string, next http.Handler, allowCORS bool) http.Han
 	})
 
 	if !allowCORS {
+		allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
 		return cors.New(cors.Options{
-			AllowedOrigins:   []string{"http://127.0.0.1:8080"},
+			AllowedOrigins:   strings.Split(allowedOrigins, ","),
 			AllowCredentials: true,
 			AllowedHeaders:   []string{"Authorization", "Content-Type"},
 			AllowedMethods:   []string{"POST", "GET", "OPTION"},

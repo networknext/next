@@ -161,6 +161,10 @@ ifndef PORTAL_CRUNCHER_HOST
 export PORTAL_CRUNCHER_HOST = tcp://127.0.0.1:5555
 endif
 
+ifndef ALLOWED_ORIGINS
+export ALLOWED_ORIGINS = http://127.0.0.1:8080
+endif
+
 .PHONY: help
 help: ## this list
 	@echo "$$(grep -hE '^\S+:.*##' $(MAKEFILE_LIST) | sed -e 's/:.*##\s*/:/' -e 's/^\(.\+\):\(.*\)/\\033[36m\1\\033[m:\2/' | column -c2 -t -s :)"
