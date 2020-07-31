@@ -1168,8 +1168,6 @@ func (s *BuyersService) DatacenterMapsForBuyer(r *http.Request, args *Datacenter
 			return err
 		}
 
-		fmt.Printf("SupplierName: %s\n", datacenter.SupplierName)
-
 		dcmFull := DatacenterMapsFull{
 			Alias:          dcMap.Alias,
 			DatacenterName: datacenter.Name,
