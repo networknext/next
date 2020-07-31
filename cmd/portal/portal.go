@@ -434,8 +434,8 @@ func main() {
 
 		allowCORSStr := os.Getenv("CORS")
 		allowCORS := true
-		if allowCORSStr != "" {
-			allowCORS = false
+		if ok, err := strconv.ParseBool(allowCORSStr); err != nil {
+			allowCORS = ok
 		}
 
 		http.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s), allowCORS))
