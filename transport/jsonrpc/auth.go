@@ -14,6 +14,7 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
+	"github.com/rs/cors"
 	"gopkg.in/auth0.v4/management"
 )
 
@@ -636,6 +637,8 @@ func AuthMiddleware(audience string, next http.Handler) http.Handler {
 		return next
 	}
 
+	fmt.Println(audience)
+
 	mw := jwtmiddleware.New(jwtmiddleware.Options{
 		ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
 			// Check if OpsService token
@@ -664,7 +667,13 @@ func AuthMiddleware(audience string, next http.Handler) http.Handler {
 		CredentialsOptional: true,
 	})
 
-	return mw.Handler(next)
+	return cors.New(cors.Options{
+		AllowedOrigins:   []string{"http://127.0.0.1:8080"},
+		AllowCredentials: true,
+		Debug:            true,
+		AllowedHeaders:   []string{"Authorization", "Content-Type"},
+		AllowedMethods:   []string{"POST", "GET", "OPTION"},
+	}).Handler(mw.Handler(next))
 }
 
 func getPemCert(token *jwt.Token) (string, error) {
