@@ -275,7 +275,7 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 				}
 			}
 
-			if !disableRelays(env, rpcClient, []string{relay.name}, opts.hard) {
+			if !disableRelays(env, rpcClient, []string{relay.name}, opts.hard, false) {
 				continue
 			}
 
@@ -457,7 +457,7 @@ func enableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 	fmt.Printf("%s complete\n", str)
 }
 
-func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string, hard bool) bool {
+func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string, hard bool, maintenance bool) bool {
 	success := true
 	relaysDisabled := 0
 	testForSSHKey(env)
@@ -465,6 +465,12 @@ func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []strin
 	if hard {
 		script = DisableRelayScriptHard
 	}
+
+	relayState := routing.RelayStateDisabled
+	if maintenance {
+		relayState = routing.RelayStateMaintenance
+	}
+
 	for _, regex := range regexes {
 		relays := getRelayInfo(rpcClient, env, regex)
 		if len(relays) == 0 {
@@ -474,7 +480,7 @@ func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []strin
 		for _, relay := range relays {
 			fmt.Printf("Disabling relay '%s' (id = %016x)\n", relay.name, relay.id)
 			con := NewSSHConn(relay.user, relay.sshAddr, relay.sshPort, env.SSHKeyFilePath)
-			if !con.ConnectAndIssueCmd(script) || !updateRelayState(rpcClient, relay, routing.RelayStateDisabled) {
+			if !con.ConnectAndIssueCmd(script) || !updateRelayState(rpcClient, relay, relayState) {
 				success = false
 				continue
 			}
@@ -493,48 +499,6 @@ func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []strin
 			str = "Relay"
 		}
 		fmt.Printf("%s disabled\n", str)
-	}
-
-	return success
-}
-
-func setRelaysMaintMode(env Environment, rpcClient jsonrpc.RPCClient, regexes []string, hard bool) bool {
-	success := true
-	relaysInMaintenanceMode := 0
-	testForSSHKey(env)
-	script := DisableRelayScript
-	if hard {
-		script = DisableRelayScriptHard
-	}
-
-	for _, regex := range regexes {
-		relays := getRelayInfo(rpcClient, env, regex)
-		if len(relays) == 0 {
-			log.Printf("no relays matched the regex '%s'\n", regex)
-			continue
-		}
-		for _, relay := range relays {
-			fmt.Printf("Setting maintenance mode for relay '%s' (id = %016x)\n", relay.name, relay.id)
-			con := NewSSHConn(relay.user, relay.sshAddr, relay.sshPort, env.SSHKeyFilePath)
-			if !con.ConnectAndIssueCmd(script) || !updateRelayState(rpcClient, relay, routing.RelayStateMaintenance) {
-				success = false
-				continue
-			}
-			relaysInMaintenanceMode++
-		}
-	}
-
-	if relaysInMaintenanceMode > 0 {
-		// Give the portal enough time to pull down the new state so that
-		// the relay state doesn't appear incorrectly
-		fmt.Println("Waiting for portal to sync changes...")
-		time.Sleep(11 * time.Second)
-
-		str := "Relays"
-		if relaysInMaintenanceMode == 1 {
-			str = "Relay"
-		}
-		fmt.Printf("%s put in maintenance mode\n", str)
 	}
 
 	return success

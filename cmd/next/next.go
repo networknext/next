@@ -803,7 +803,7 @@ func main() {
 						regexes = args
 					}
 
-					disableRelays(env, rpcClient, regexes, hardDisable)
+					disableRelays(env, rpcClient, regexes, hardDisable, false)
 
 					return nil
 				},
@@ -819,7 +819,7 @@ func main() {
 						regexes = args
 					}
 
-					setRelaysMaintMode(env, rpcClient, regexes, hardDisable)
+					disableRelays(env, rpcClient, regexes, hardDisable, true)
 
 					return nil
 				},
