@@ -9,6 +9,7 @@ import (
 	fnv "hash/fnv"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -168,44 +169,94 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 	// get the top session IDs globally or for a buyer from the sorted set
 	switch args.BuyerID {
 	case "":
-		// Get top Next sessions sorted by greatest to least improved RTT
-		next, err := s.RedisClient.ZCard("total-next").Result()
+		// Get top Direct sessions sorted by least to greatest direct RTT
+		directTotals, err := s.RedisClient.HGetAll("session-count-total-direct").Result()
 		if err != nil {
-			err = fmt.Errorf("TotalSessions() failed getting total-next sessions: %v", err)
+			err = fmt.Errorf("TotalSessions() failed getting session-count-total-direct: %v", err)
 			s.Logger.Log("err", err)
 			return err
 		}
 
-		// Get top Direct sessions sorted by least to greatest direct RTT
-		direct, err := s.RedisClient.ZCard("total-direct").Result()
+		// Get top Next sessions
+		nextTotals, err := s.RedisClient.HGetAll("session-count-total-next").Result()
 		if err != nil {
-			err = fmt.Errorf("TotalSessions() failed getting total-direct sessions: %v", err)
+			err = fmt.Errorf("TotalSessions() failed getting session-count-total-next: %v", err)
 			s.Logger.Log("err", err)
 			return err
 		}
-		reply.Direct = int(direct)
-		reply.Next = int(next)
+
+		var totalDirect int
+		for _, directString := range directTotals {
+			direct, err := strconv.Atoi(directString)
+			if err != nil {
+				err = fmt.Errorf("TotalSessions() failed to parse direct session count (%s): %v", directString, err)
+				s.Logger.Log("err", err)
+				return err
+			}
+
+			totalDirect += direct
+		}
+
+		var totalNext int
+		for _, nextString := range nextTotals {
+			next, err := strconv.Atoi(nextString)
+			if err != nil {
+				err = fmt.Errorf("TotalSessions() failed to parse next session count (%s): %v", nextString, err)
+				s.Logger.Log("err", err)
+				return err
+			}
+			totalNext += next
+		}
+
+		reply.Direct = totalDirect
+		reply.Next = totalNext
 	default:
 		if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
 			err := fmt.Errorf("TotalSessions(): %v", ErrInsufficientPrivileges)
 			s.Logger.Log("err", err)
 			return err
 		}
-		next, err := s.RedisClient.ZCard(fmt.Sprintf("total-next-buyer-%s", args.BuyerID)).Result()
+
+		buyerDirectTotals, err := s.RedisClient.HGetAll(fmt.Sprintf("session-count-direct-buyer-%s", args.BuyerID)).Result()
 		if err != nil {
-			err = fmt.Errorf("TotalSessions() failed getting total-next sessions: %v", err)
-			s.Logger.Log("err", err)
-			return err
-		}
-		direct, err := s.RedisClient.ZCard(fmt.Sprintf("total-direct-buyer-%s", args.BuyerID)).Result()
-		if err != nil {
-			err = fmt.Errorf("TotalSessions() failed getting total-next sessions: %v", err)
+			err = fmt.Errorf("TotalSessions() failed getting session-count-direct-buyer-%s: %v", args.BuyerID, err)
 			s.Logger.Log("err", err)
 			return err
 		}
 
-		reply.Direct = int(direct)
-		reply.Next = int(next)
+		buyerNextTotals, err := s.RedisClient.HGetAll(fmt.Sprintf("session-count-next-buyer-%s", args.BuyerID)).Result()
+		if err != nil {
+			err = fmt.Errorf("TotalSessions() failed getting session-count-next-buyer-%s: %v", args.BuyerID, err)
+			s.Logger.Log("err", err)
+			return err
+		}
+
+		var buyerDirectTotal int
+		for _, directString := range buyerDirectTotals {
+			direct, err := strconv.Atoi(directString)
+			if err != nil {
+				err = fmt.Errorf("TotalSessions() failed to parse buyer direct session count (%s): %v", directString, err)
+				s.Logger.Log("err", err)
+				return err
+			}
+
+			buyerDirectTotal += direct
+		}
+
+		var buyerNextTotal int
+		for _, nextString := range buyerNextTotals {
+			next, err := strconv.Atoi(nextString)
+			if err != nil {
+				err = fmt.Errorf("TotalSessions() failed to parse buyer next session count (%s): %v", nextString, err)
+				s.Logger.Log("err", err)
+				return err
+			}
+
+			buyerNextTotal += next
+		}
+
+		reply.Direct = buyerDirectTotal
+		reply.Next = buyerNextTotal
 	}
 
 	return nil
