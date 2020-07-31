@@ -147,8 +147,8 @@ namespace net
 
       auto portpos = name.find_first_of(':');
       if (portpos != std::string::npos) {
-        name = name.substr(0, portpos);
         proto = name.substr(portpos + 1);
+        name = name.substr(0, portpos);
         LogDebug("port: ", proto);
       }
 
@@ -166,21 +166,28 @@ namespace net
       req.target(endpoint);
       req.version(11);
       req.content_length(request.size());
+      req.body() = request;
       req.set(http::field::host, "localhost");
       req.set(http::field::user_agent, "network next relay");
-      req.set(http::field::body, request);
       req.set(http::field::content_type, "application/json");
       req.set(http::field::timeout, "10");
 
       // Send the HTTP request to the remote host
-      http::write(wrapper.stream, req);
+      beast::error_code ec;
+      http::write(wrapper.stream, req, ec);
+
+      if (ec) {
+        Log("failed to send http request: ", ec);
+      }
       LogDebug("sent request: \n", req);
 
       // This buffer is used for reading and must be persisted
       beast::flat_buffer buffer;
 
       // Declare a container to hold the response
-      http::response<http::dynamic_body> res;
+      http::response<http::string_body> res;
+
+      LogDebug("reading response");
 
       // Receive the HTTP response
       http::read(wrapper.stream, buffer, res);
@@ -196,7 +203,7 @@ namespace net
       LogDebug("resp is ", res);
 
       // Copy the response
-      response = beast::buffers_to_string(res.body().data());
+      response = res.body().data();
 
       return true;
     } catch (std::exception& e) {

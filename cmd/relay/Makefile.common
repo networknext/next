@@ -26,7 +26,7 @@ OBJ										:= obj
 INCLUDE								:= $(SRC)
 INCLUDE_DIRS					:= -I$(INCLUDE) -I$(LIB) $(shell pkg-config --cflags-only-I $(LIBS))
 
-LIBRARIES							:= -Wl,-Bstatic $(shell pkg-config --static --libs $(LIBS)) -lXau -Wl,-Bdynamic
+LIBRARIES							:= -Wl,-Bstatic $(shell pkg-config --static --libs $(LIBS)) -lXau -Wl,-Bdynamic -lcurl
 
 LIB_SUB_DIRS					:= $(shell find lib/* -type d -print)
 LIB_OBJ_DIRS					:= $(patsubst $(LIB)/%, $(OBJ)/$(LIB)/%, $(LIB_SUB_DIRS))
