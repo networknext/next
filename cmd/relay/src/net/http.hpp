@@ -54,27 +54,20 @@ namespace net
       auto protopos = hostname.find_first_of(':');
       proto = hostname.substr(0, protopos);
 
-      LogDebug("proto: ", proto);
-
       auto namepos = hostname.find_last_of('/');
       name = hostname.substr(namepos + 1);
-
-      LogDebug("name: ", name);
 
       auto portpos = name.find_first_of(':');
       if (portpos != std::string::npos) {
         proto = name.substr(portpos + 1);
         name = name.substr(0, portpos);
-        LogDebug("port: ", proto);
       }
 
       // Look up the domain name
       auto const results = wrapper.resolver.resolve(name, proto);
-      LogDebug("resolved host");
 
       // Make the connection on the IP address we get from a lookup
       wrapper.stream.connect(results);
-      LogDebug("connected");
 
       // Set up an HTTP PUT request message
       http::request<http::string_body> req;
@@ -96,15 +89,12 @@ namespace net
         Log("failed to send http request: ", ec);
         return false;
       }
-      LogDebug("sent request: \n", req);
 
       // This buffer is used for reading and must be persisted
       beast::flat_buffer buffer;
 
       // Declare a container to hold the response
       http::response<http::string_body> res;
-
-      LogDebug("reading response");
 
       // Receive the HTTP response
       http::read(wrapper.stream, buffer, res, ec);
@@ -118,7 +108,6 @@ namespace net
         Log("http call to '", hostname, endpoint, "' did not return a success, code: ", res.result_int());
         return false;
       }
-      LogDebug("resp is ", res);
 
       // Copy the response
       response = res.body().data();
