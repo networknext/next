@@ -114,7 +114,7 @@ func (m *UDPServerMux2) Start(ctx context.Context) error {
 				os.Exit(1)
 			}
 
-			go m.handler(ctx, threadPoolHandlerFunc(m, procPool, threadPoolPostSessionUpdateFunc(updatePool)))
+			go m.handler(ctx, threadPoolHandlerFunc(m, procPool, updatePool))
 
 			pools = append(pools, procPool, updatePool)
 		}
@@ -126,7 +126,7 @@ func (m *UDPServerMux2) Start(ctx context.Context) error {
 		}
 	} else {
 		for i := 0; i < numThreads; i++ {
-			go m.handler(ctx, goroutineHandlerFunc(m, goroutinePostSessionUpdateFunc()))
+			go m.handler(ctx, goroutineHandlerFunc(m))
 		}
 		<-ctx.Done()
 	}
@@ -189,19 +189,19 @@ func (m *UDPServerMux) handler(ctx context.Context) {
 type packetHandlerFunc = func(conn *net.UDPConn, packet_data []byte, packet_size int, from *net.UDPAddr)
 
 // returns a function that handles udp packets through normal goroutines
-func goroutineHandlerFunc(m *UDPServerMux2, postSessionUpdateFunc PostSessionUpdateFunc) packetHandlerFunc {
+func goroutineHandlerFunc(m *UDPServerMux2) packetHandlerFunc {
 	return func(conn *net.UDPConn, packetData []byte, packetSize int, from *net.UDPAddr) {
 		go func() {
-			m.handlePacket(conn, packetData, packetSize, from, postSessionUpdateFunc)
+			m.handlePacket(conn, packetData, packetSize, from, goroutinePostSessionUpdateFunc())
 		}()
 	}
 }
 
 // returns a function that handles udp packets through a thread pool
-func threadPoolHandlerFunc(m *UDPServerMux2, pool *ants.Pool, postSessionUpdateFunc PostSessionUpdateFunc) packetHandlerFunc {
+func threadPoolHandlerFunc(m *UDPServerMux2, procPool, updatePool *ants.Pool) packetHandlerFunc {
 	return func(conn *net.UDPConn, packetData []byte, packetSize int, from *net.UDPAddr) {
-		pool.Submit(func() {
-			m.handlePacket(conn, packetData, packetSize, from, postSessionUpdateFunc)
+		procPool.Submit(func() {
+			m.handlePacket(conn, packetData, packetSize, from, threadPoolPostSessionUpdateFunc(updatePool))
 		})
 	}
 }
@@ -1205,17 +1205,17 @@ type PostSessionUpdateParams struct {
 
 type PostSessionUpdateFunc = func(params PostSessionUpdateParams)
 
+func goroutinePostSessionUpdateFunc() PostSessionUpdateFunc {
+	return func(params PostSessionUpdateParams) {
+		go PostSessionUpdate(params)
+	}
+}
+
 func threadPoolPostSessionUpdateFunc(pool *ants.Pool) PostSessionUpdateFunc {
 	return func(params PostSessionUpdateParams) {
 		pool.Submit(func() {
 			PostSessionUpdate(params)
 		})
-	}
-}
-
-func goroutinePostSessionUpdateFunc() PostSessionUpdateFunc {
-	return func(params PostSessionUpdateParams) {
-		go PostSessionUpdate(params)
 	}
 }
 
