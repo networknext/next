@@ -30,6 +30,7 @@
                    type="text"
                    placeholder="Enter a Session ID to view statistics"
                    v-model="searchInput"
+                   data-test="searchInput"
             >
           </div>
           <div class="col-auto">

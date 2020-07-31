@@ -19,7 +19,7 @@
         <div class="mr-auto"></div>
       </div>
     </div>
-    <form class="flow-stats-form" @submit.prevent="loadUserSessions()">
+    <form class="flow-stats-form" @submit.prevent="fetchUserSessions()">
       <div class="form-group">
         <label for="user-hash-input">
             User Hash
@@ -29,7 +29,7 @@
             <input class="form-control"
                     type="text"
                     placeholder="Enter a User Hash to view statistics"
-                    v-model="searchID"
+                    v-model="searchInput"
             >
           </div>
           <div class="col-auto">
@@ -47,14 +47,20 @@
     <div class="alert alert-danger" role="alert" id="user-tool-danger" v-if="showError">
         Failed to fetch user sessions
     </div>
-    <router-view/>
+    <UserSessions v-if="searchID != ''" v-bind:searchID="searchID"/>
   </main>
 </template>
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
+import { Route, NavigationGuardNext } from 'vue-router'
+import UserSessions from '@/components/UserSessions.vue'
 
-@Component
+@Component({
+  components: {
+    UserSessions
+  }
+})
 export default class UserToolWorkspace extends Vue {
   // TODO: Refactor out the alert/error into its own component.
   private showAlert = false
@@ -63,22 +69,24 @@ export default class UserToolWorkspace extends Vue {
   private searchID = ''
   private showDetails = false
 
+  private searchInput = ''
+
   private created () {
     // Empty for now
+    this.searchID = this.$route.params.id || ''
+    this.searchInput = this.searchID
   }
 
-  private loadUserSessions () {
-    // API Call to fetch the details associated to ID
-    this.$router.push(`/user-tool/${this.searchID}`)
-  }
-
-  private beforeRouteUpdate (to: any, from: any, next: any) {
-    if (to.params.pathMatch) {
-      this.searchID = to.params.pathMatch
-    } else {
+  private beforeRouteUpdate (to: Route, from: Route, next: NavigationGuardNext<Vue>) {
+    if (!to.params.id) {
+      this.searchInput = ''
       this.searchID = ''
     }
     next()
+  }
+
+  private fetchUserSessions () {
+    this.searchID = this.searchInput
   }
 }
 </script>

@@ -46,3 +46,14 @@ This breaks all API calls because of CORS
 ```
 npm run serve
 ```
+
+### Tests
+E2E
+
+I know a lot of us are not GUI people but I highly recommend using ```vue ui```. Within it you can setup a dashboard with tasks for running the dev server, builds for dev/prod, or tests
+
+The easiest way I have found to run the E2E tests is to launch Vue UI, serve the development server using the 'Serve' task and then launch Cypress using the 'test:e2e' task
+
+This will start the dev server on 127.0.0.1:8080 and then attach the e2e tests.
+
+The other option is to run ```npm run serve``` in a terminal window and ```npm run test:e2e``` in another. Doing it this way will also require params to be passed in that I need to find...

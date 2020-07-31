@@ -31,15 +31,9 @@ const routes: Array<RouteConfig> = [
     component: SessionToolWorkspace
   },
   {
-    path: '/user-tool',
+    path: '/user-tool/:id?',
     name: 'user-tool',
-    component: UserToolWorkspace,
-    children: [
-      {
-        path: '*',
-        component: UserSessions
-      }
-    ]
+    component: UserToolWorkspace
   },
   {
     path: '/downloads',

@@ -110,7 +110,7 @@
               </dt>
               <dd>
                 <em>
-                  {{ this.meta.location.isp != "" ? this.meta.location.isp : "Unknown" }}
+                  {{ this.meta.location.isp != '' ? this.meta.location.isp : 'Unknown' }}
                 </em>
               </dd>
               <div v-if="!$store.getters.isAnonymous">
@@ -118,9 +118,7 @@
                   User Hash
                 </dt>
                 <dd>
-                  <a class="text-dark">
-                    {{ this.meta.user_hash }}
-                  </a>
+                  <router-link v-bind:to="`/user-tool/${this.meta.user_hash}`" class="text-dark">{{ this.meta.user_hash }}</router-link>
                 </dd>
               </div>
               <dt>
@@ -135,11 +133,13 @@
               <dd>
                   {{ this.meta.platform }}
               </dd>
-              <dt v-if="false">
+              <dt v-if="!$store.getters.isAnonymous">
                   Customer
               </dt>
-              <dd v-if="false">
-                  BUYER NAME
+              <dd v-if="!$store.getters.isAnonymous">
+                  {{
+                      getCustomerName(this.meta.customer_id)
+                  }}
               </dd>
               <dt>
                 SDK Version
@@ -219,7 +219,7 @@
                           </em>
                       </td>
                   </tr>
-                  <tr v-for="(hop, index) in pages.sessionTool.meta.hops" :key="index" scope="row">
+                  <tr v-for="(hop, index) in meta.hops" :key="index" scope="row">
                     <td>
                         {{ hop.name }}
                     </td>
@@ -310,8 +310,19 @@ export default class SessionDetails extends Vue {
     clearInterval(this.detailsLoop)
   }
 
+  private getCustomerName (buyerId: string) {
+    const allBuyers = this.$store.getters.allBuyers
+    let i = 0
+    for (i; i < allBuyers.length; i++) {
+      if (allBuyers[i].id === buyerId) {
+        return allBuyers[i].name
+      }
+    }
+    return 'Private'
+  }
+
   private fetchSessionDetails () {
-    this.apiService.call('BuyersService.SessionDetails', { session_id: this.searchID })
+    this.apiService.fetchSessionDetails({ session_id: this.searchID })
       .then((response: any) => {
         this.meta = response.result.meta
         this.slices = response.result.slices

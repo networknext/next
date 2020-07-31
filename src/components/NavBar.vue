@@ -7,13 +7,13 @@
     </a>
     <ul class="navbar-nav px-3 w-100 mr-auto">
         <li class="nav-item text-nowrap">
-            <router-link to="/" class="nav-link" v-bind:class="{ active: $store.getters.currentPage == 'map' }">Map</router-link>
+            <router-link to="/" class="nav-link" v-bind:class="{ active: $store.getters.currentPage == 'map' }" data-test="mapLink">Map</router-link>
         </li>
         <li class="nav-item text-nowrap">
-            <router-link to="/sessions" class="nav-link" v-bind:class="{ active: $store.getters.currentPage == 'sessions' }">Sessions</router-link>
+            <router-link to="/sessions" class="nav-link" v-bind:class="{ active: $store.getters.currentPage == 'sessions' }" data-test="sessionsLink">Sessions</router-link>
         </li>
         <li class="nav-item text-nowrap">
-            <router-link to="/session-tool" class="nav-link" v-bind:class="{ active: $store.getters.currentPage == 'session-tool' }">Session Tool</router-link>
+            <router-link to="/session-tool" class="nav-link" v-bind:class="{ active: $store.getters.currentPage == 'session-tool' }" data-test="sessionToolLink">Session Tool</router-link>
         </li>
         <li class="nav-item text-nowrap">
             <router-link to="/user-tool" class="nav-link" v-bind:class="{ active: $store.getters.currentPage == 'user-tool' }" v-if="!$store.getters.isAnonymous">User Tool</router-link>
@@ -27,14 +27,14 @@
     </ul>
     <ul class="navbar-nav px-3" v-if="$store.getters.isAnonymous">
         <li class="nav-item text-nowrap">
-            <a class="login btn-sm btn-primary" href="#" @click="authService.logIn()">
+            <a data-test="loginButton" class="login btn-sm btn-primary" href="#" @click="authService.logIn()">
                 Log in
             </a>
         </li>
     </ul>
     <ul class="navbar-nav px-3" v-if="$store.getters.isAnonymous">
         <li class="nav-item text-nowrap">
-            <a class="signup btn-sm btn-primary" href="#" @click="authService.signUp()">
+            <a data-test="signUpButton" class="signup btn-sm btn-primary" href="#" @click="authService.signUp()">
                 Sign up
             </a>
         </li>

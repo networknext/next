@@ -3,8 +3,7 @@ import store from '@/store'
 
 export default class AuthService {
   // TODO: Make these env vars
-  private baseURL: string = window.location.hostname
-  private clientID: string = this.baseURL === 'portal.networknext.com' ? 'MaSx99ma3AwYOwWMLm3XWNvQ5WyJWG2Y' : 'oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n'
+  private clientID = 'Kx0mbNIMZtMNA71vf9iatCp3N6qi1GfL'
   private domain = 'networknext.auth0.com'
 
   public lockClient: Auth0LockStatic
@@ -59,7 +58,7 @@ export default class AuthService {
   }
 
   private processAuthentification (authResult: AuthResult) {
-    this.lockClient.getUserInfo(authResult.accessToken, (error: auth0.Auth0Error, profile: NNAuth0Profile) => {
+    this.getUserInfo(authResult.accessToken, (error: auth0.Auth0Error, profile: NNAuth0Profile) => {
       if (!error) {
         const userRoles = profile['https://networknext.com/userRoles'] || { roles: [] }
         const userProfile: UserProfile = {

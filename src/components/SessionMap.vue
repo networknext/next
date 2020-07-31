@@ -60,7 +60,7 @@ export default class SessionMap extends Vue {
 
   private refreshMapSessions () {
     // creating the map
-    this.apiService.call('BuyersService.SessionMap', {})
+    this.apiService.fetchMapSessions({})
       .then((response: any) => {
         if (!this.mapInstance) {
           this.mapInstance = new mapboxgl.Map({

@@ -171,8 +171,6 @@ export default class UserManagement extends Vue {
   ]
 
   private created () {
-    console.log('User Management Created')
-
     // TODO: API call to get all role options
     this.allRoles = [
       {
@@ -181,7 +179,6 @@ export default class UserManagement extends Vue {
         description: 'With great power comes great responsibility'
       }
     ]
-    console.log(this.allRoles)
   }
 }
 

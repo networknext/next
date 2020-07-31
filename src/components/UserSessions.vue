@@ -35,32 +35,29 @@
           </th>
         </tr>
       </thead>
-      <tbody v-if="true">
-        <!-- <tr v-for="session in pages.userTool.sessions"> -->
-        <tr>
+      <tbody v-if="sessions.length > 0">
+        <tr v-for="(session, index) in sessions" v-bind:key="index">
           <td>
-            <a class="text-dark fixed-width" href="#">
-                SESSION ID
-            </a>
+              <router-link v-bind:to="`/session-tool/${session.id}`" class="text-dark fixed-width">{{ session.id }}</router-link>
           </td>
           <td>
-            SESSION PLATFORM
+            {{ session.platform }}
           </td>
           <td>
-            SESSION CONNECTION
+            {{ session.connection }}
           </td>
           <td>
-            SESSION LOCATION ISP
+            {{ session.location.isp }}
           </td>
           <td>
-            SESSION DATACENTER
+            {{ session.datacenter }}
           </td>
           <td>
-            SESSION SERVER ADDR
+            {{ session.server_addr }}
           </td>
         </tr>
       </tbody>
-      <tbody v-if="false">
+      <tbody v-if="sessions.length === 0">
         <tr>
           <td colspan="7" class="text-muted">
               There are no sessions belonging to this user.
@@ -72,7 +69,8 @@
 </template>
 
 <script lang="ts">
-import { Component, Vue } from 'vue-property-decorator'
+import { Component, Vue, Prop } from 'vue-property-decorator'
+import APIService from '../services/api.service'
 
 /**
  * TODO: Cleanup template
@@ -83,21 +81,35 @@ import { Component, Vue } from 'vue-property-decorator'
 
 @Component
 export default class UserSessions extends Vue {
-  // TODO: Refactor out the alert/error into its own component.
-  private searchID = ''
-  private showSessions = false
+  @Prop({ required: false, type: String, default: '' }) searchID!: string
 
-  private created () {
-    console.log('Creating User Sessions')
-    if (this.searchID === '' && this.$route.params.pathMatch) {
-      this.searchID = this.$route.params.pathMath
-    }
+  // TODO: Refactor out the alert/error into its own component.
+  private apiService: APIService
+  private showSessions = false
+  private sessions = []
+
+  constructor () {
+    super()
+    this.apiService = Vue.prototype.$apiService
+  }
+
+  private mounted () {
     this.fetchUserSessions()
   }
 
   private fetchUserSessions () {
-    // API Call to fetch the details associated to ID
-    this.showSessions = true
+    if (this.searchID === '') {
+      return
+    }
+
+    this.apiService.fetchUserSessions({ user_hash: this.searchID })
+      .then((response: any) => {
+        this.sessions = response.result.sessions || []
+        this.showSessions = true
+      })
+      .catch((error: Error) => {
+        console.log(error)
+      })
   }
 }
 
