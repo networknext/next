@@ -11,7 +11,17 @@ Whenever changes are made to the relay, update the `RELAY_VERSION` define in con
 
 ## Dependencies
 
-`sudo apt install g++-8 rapidjson-dev libsodium23 libsodium-dev libgtop2-dev libboost-all-dev`
+`sudo apt install g++-8 rapidjson-dev libsodium23 libsodium-dev libgtop2-dev`
+
+### If on Ubuntu 18.04
+
+`sudo add-apt-repository ppa:mhier/libboost-latest`
+`sudo apt update`
+`sudo apt install libboost1.70-dev`
+
+### If on Ubuntu 20.04
+
+`sudo apt install libboost-all-dev`
 
 - `g++-8`: Specifically version 8. This is because newer versions of Ubuntu come with g++-9 as a default and compiling with that doesn't let the Ubuntu 18.04 servers run the relay.
 - `RapidJSON`: Fast JSON parsing header only library.
