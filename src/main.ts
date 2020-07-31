@@ -16,7 +16,8 @@ function mountCypress (win: any, app: any) {
 Vue.config.productionTip = false
 
 // Add api service as a Vue property so it can be used in all Vue components
-Vue.prototype.$apiService = new APIService()
+const apiService = new APIService()
+Vue.prototype.$apiService = apiService
 
 // Add auth service as a Vue property so it can be used in all Vue components
 const authService = new AuthService()
@@ -27,7 +28,6 @@ const win: any = window
 
 store.dispatch('updateCurrentPage', router.currentRoute.name)
 router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
-  console.log(to.name)
   store.dispatch('updateCurrentPage', to.name)
   next()
 })
@@ -48,6 +48,10 @@ authService.lockClient.checkSession({
           verified: profile.email_verified || false
         }
         store.commit('UPDATE_USER_PROFILE', userProfile)
+        apiService.fetchAllBuyers().then((response: any) => {
+          const allBuyers = response.result.buyers || []
+          store.commit('UPDATE_ALL_BUYERS', allBuyers)
+        })
         app = new Vue({
           router,
           store,

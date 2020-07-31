@@ -61,12 +61,10 @@
               />
             </td>
             <td>
-              <router-link v-bind:to="`/session-tool/${session.id}`" class="nav-link">{{ session.id }}</router-link>
+              <router-link v-bind:to="`/session-tool/${session.id}`" class="text-dark fixed-width">{{ session.id }}</router-link>
             </td>
-            <td v-if="false">
-              <a class="text-dark fixed-width" href="#">
-                {{ session.user_hash }}
-              </a>
+            <td v-if="!$store.getters.isAnonymous">
+              <router-link v-bind:to="`/user-tool/${session.user_hash}`" class="text-dark fixed-width">{{ session.user_hash }}</router-link>
             </td>
             <td>
               {{ session.location.isp != "" ? session.location.isp : "Unknown" }}

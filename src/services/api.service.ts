@@ -52,4 +52,12 @@ export default class APIService {
   public fetchTopSessions (args: any) {
     return this.call('BuyersService.TopSessions', args)
   }
+
+  public fetchAllBuyers () {
+    return this.call('BuyersService.Buyers', {})
+  }
+
+  public fetchUserSessions (args: any) {
+    return this.call('BuyersService.UserSessions', args)
+  }
 }
