@@ -26,14 +26,6 @@ func flushsessions(rpcClient jsonrpc.RPCClient, env Environment) {
 
 func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string, sessionCount int64) {
 	if sessionID != "" {
-		relaysargs := localjsonrpc.RelaysArgs{}
-
-		var relaysreply localjsonrpc.RelaysReply
-		if err := rpcClient.CallFor(&relaysreply, "OpsService.Relays", relaysargs); err != nil {
-			handleJSONRPCError(env, err)
-			return
-		}
-
 		args := localjsonrpc.SessionDetailsArgs{
 			SessionID: sessionID,
 		}
@@ -92,8 +84,6 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string, se
 
 		table.Output(stats)
 
-		// todo: why are near relays not sent down for direct sessions? they should be...
-
 		if len(reply.Meta.NearbyRelays) != 0 {
 
 			fmt.Printf("\nNear Relays:\n")
@@ -106,11 +96,6 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string, se
 			}{}
 
 			for _, relay := range reply.Meta.NearbyRelays {
-				for _, r := range relaysreply.Relays {
-					if relay.ID == r.ID {
-						relay.Name = r.Name
-					}
-				}
 				near = append(near, struct {
 					Name       string
 					RTT        string
@@ -138,11 +123,6 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string, se
 
 		if reply.Meta.OnNetworkNext {
 			for index, hop := range reply.Meta.Hops {
-				for _, relay := range relaysreply.Relays {
-					if hop.ID == relay.ID {
-						hop.Name = relay.Name
-					}
-				}
 				if index != 0 {
 					fmt.Printf(" - %s", hop.Name)
 				} else {
@@ -330,8 +310,8 @@ func sessionsByBuyer(rpcClient jsonrpc.RPCClient, env Environment, buyerName str
 			NextRTT     string
 			Improvement string
 		}{
-			ID:          session.ID,
-			UserHash:    session.UserHash,
+			ID:          fmt.Sprintf("%016x", session.ID),
+			UserHash:    fmt.Sprintf("%016x", session.UserHash),
 			ISP:         fmt.Sprintf("%.32s", session.Location.ISP),
 			Datacenter:  session.DatacenterName,
 			DirectRTT:   directRTT,

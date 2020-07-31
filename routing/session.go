@@ -225,9 +225,15 @@ func (s *SessionData) Size() uint64 {
 	return 4 + s.Meta.Size() + s.Slice.Size() + s.Point.Size()
 }
 
+type RelayHop struct {
+	ID   uint64
+	Name string
+}
+
 type NearRelayPortalData struct {
-	Name  string `json:"name"`
-	Stats Stats  `json:"client_stats"`
+	ID          uint64 `json:"id"`
+	Name        string `json:"name"`
+	ClientStats Stats  `json:"client_stats"`
 }
 
 type SessionMeta struct {
@@ -242,7 +248,7 @@ type SessionMeta struct {
 	Location        Location              `json:"location"`
 	ClientAddr      string                `json:"client_addr"`
 	ServerAddr      string                `json:"server_addr"`
-	Hops            []string              `json:"hops"`
+	Hops            []RelayHop            `json:"hops"`
 	SDK             string                `json:"sdk"`
 	Connection      uint8                 `json:"connection"`
 	NearbyRelays    []NearRelayPortalData `json:"nearby_relays"`
@@ -321,9 +327,13 @@ func (s *SessionMeta) UnmarshalBinary(data []byte) error {
 		return errors.New("[SessionMeta] invalid read at relay hops count")
 	}
 
-	s.Hops = make([]string, hopsCount)
+	s.Hops = make([]RelayHop, hopsCount)
 	for i := uint32(0); i < hopsCount; i++ {
-		if !encoding.ReadString(data, &index, &s.Hops[i], math.MaxInt32) {
+		if !encoding.ReadUint64(data, &index, &s.Hops[i].ID) {
+			return errors.New("[SessionMeta] invalid read at relay hops relay ID")
+		}
+
+		if !encoding.ReadString(data, &index, &s.Hops[i].Name, math.MaxInt32) {
 			return errors.New("[SessionMeta] invalid read at relay hops relay name")
 		}
 	}
@@ -343,20 +353,24 @@ func (s *SessionMeta) UnmarshalBinary(data []byte) error {
 
 	s.NearbyRelays = make([]NearRelayPortalData, nearbyRelaysCount)
 	for i := uint32(0); i < nearbyRelaysCount; i++ {
+		if !encoding.ReadUint64(data, &index, &s.NearbyRelays[i].ID) {
+			return errors.New("[SessionMeta] invalid read at nearby relays relay ID")
+		}
+
 		if !encoding.ReadString(data, &index, &s.NearbyRelays[i].Name, math.MaxInt32) {
-			return errors.New("[SessionMeta] invalid read at relay hops relay name")
+			return errors.New("[SessionMeta] invalid read at nearby relays relay name")
 		}
 
-		if !encoding.ReadFloat64(data, &index, &s.NearbyRelays[i].Stats.RTT) {
-			return errors.New("[SessionMeta] invalid read at relay hops relay RTT")
+		if !encoding.ReadFloat64(data, &index, &s.NearbyRelays[i].ClientStats.RTT) {
+			return errors.New("[SessionMeta] invalid read at nearby relays relay RTT")
 		}
 
-		if !encoding.ReadFloat64(data, &index, &s.NearbyRelays[i].Stats.Jitter) {
-			return errors.New("[SessionMeta] invalid read at relay hops relay jitter")
+		if !encoding.ReadFloat64(data, &index, &s.NearbyRelays[i].ClientStats.Jitter) {
+			return errors.New("[SessionMeta] invalid read at nearby relays relay jitter")
 		}
 
-		if !encoding.ReadFloat64(data, &index, &s.NearbyRelays[i].Stats.PacketLoss) {
-			return errors.New("[SessionMeta] invalid read at relay hops relay packet loss")
+		if !encoding.ReadFloat64(data, &index, &s.NearbyRelays[i].ClientStats.PacketLoss) {
+			return errors.New("[SessionMeta] invalid read at nearby relays relay packet loss")
 		}
 	}
 
@@ -396,8 +410,9 @@ func (s SessionMeta) MarshalBinary() ([]byte, error) {
 	encoding.WriteString(data, &index, s.ServerAddr, uint32(len(s.ServerAddr)))
 
 	encoding.WriteUint32(data, &index, uint32(len(s.Hops)))
-	for _, relayName := range s.Hops {
-		encoding.WriteString(data, &index, relayName, uint32(len(relayName)))
+	for _, hop := range s.Hops {
+		encoding.WriteUint64(data, &index, hop.ID)
+		encoding.WriteString(data, &index, hop.Name, uint32(len(hop.Name)))
 	}
 
 	encoding.WriteString(data, &index, s.SDK, uint32(len(s.SDK)))
@@ -405,10 +420,11 @@ func (s SessionMeta) MarshalBinary() ([]byte, error) {
 
 	encoding.WriteUint32(data, &index, uint32(len(s.NearbyRelays)))
 	for _, nearRelayData := range s.NearbyRelays {
+		encoding.WriteUint64(data, &index, nearRelayData.ID)
 		encoding.WriteString(data, &index, nearRelayData.Name, uint32(len(nearRelayData.Name)))
-		encoding.WriteFloat64(data, &index, nearRelayData.Stats.RTT)
-		encoding.WriteFloat64(data, &index, nearRelayData.Stats.Jitter)
-		encoding.WriteFloat64(data, &index, nearRelayData.Stats.PacketLoss)
+		encoding.WriteFloat64(data, &index, nearRelayData.ClientStats.RTT)
+		encoding.WriteFloat64(data, &index, nearRelayData.ClientStats.Jitter)
+		encoding.WriteFloat64(data, &index, nearRelayData.ClientStats.PacketLoss)
 	}
 
 	encoding.WriteUint8(data, &index, s.Platform)
@@ -419,13 +435,13 @@ func (s SessionMeta) MarshalBinary() ([]byte, error) {
 
 func (s SessionMeta) Size() uint64 {
 	var relayHopsSize uint64
-	for _, relayName := range s.Hops {
-		relayHopsSize += 4 + uint64(len(relayName))
+	for _, hop := range s.Hops {
+		relayHopsSize += 8 + 4 + uint64(len(hop.Name))
 	}
 
 	var nearbyRelaysSize uint64
 	for _, nearRelayData := range s.NearbyRelays {
-		nearbyRelaysSize += uint64(len(nearRelayData.Name)) + 8 + 8 + 8
+		nearbyRelaysSize += 8 + 4 + uint64(len(nearRelayData.Name)) + 8 + 8 + 8
 	}
 
 	return 4 + 8 + 8 + uint64(4*len(s.DatacenterName)) + uint64(4*len(s.DatacenterAlias)) + 1 + 8 + 8 + 8 + s.Location.Size() +
@@ -436,7 +452,7 @@ func (s *SessionMeta) Anonymise() {
 	s.ServerAddr = ObscureString(s.ServerAddr, ".", -1)
 	s.BuyerID = 0
 	s.NearbyRelays = []NearRelayPortalData{}
-	s.Hops = []string{}
+	s.Hops = []RelayHop{}
 	s.DatacenterAlias = ""
 }
 

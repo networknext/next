@@ -1153,20 +1153,24 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 		NumNextSessionsPerBuyer:   params.SessionMap.GetNextSessionCountPerBuyer(),
 	}
 
-	hopNames := make([]string, len(routeRelays))
-	for i := range hopNames {
-		hopNames[i] = routeRelays[i].Name
+	hops := make([]routing.RelayHop, len(routeRelays))
+	for i := range hops {
+		hops[i] = routing.RelayHop{
+			ID:   routeRelays[i].ID,
+			Name: routeRelays[i].Name,
+		}
 	}
 
 	nearRelayData := make([]routing.NearRelayPortalData, len(nearRelays))
 	for i := range nearRelayData {
 		nearRelayData[i] = routing.NearRelayPortalData{
-			Name:  nearRelays[i].Name,
-			Stats: nearRelays[i].ClientStats,
+			ID:          nearRelays[i].ID,
+			Name:        nearRelays[i].Name,
+			ClientStats: nearRelays[i].ClientStats,
 		}
 	}
 
-	portalDataBytes, err := updatePortalData(params.PortalPublisher, packet, lastNextStats, lastDirectStats, hopNames,
+	portalDataBytes, err := updatePortalData(params.PortalPublisher, packet, lastNextStats, lastDirectStats, hops,
 		packet.OnNetworkNext, datacenterName, location, nearRelayData, timeNow, isMultipath, datacenterAlias, &sessionCountData)
 	if err != nil {
 		level.Error(params.Logger).Log("msg", "could not update portal data", "err", err)
@@ -1226,7 +1230,7 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 	}
 }
 
-func updatePortalData(portalPublisher pubsub.Publisher, packet *SessionUpdatePacket, lastNNStats *routing.Stats, lastDirectStats *routing.Stats, relayHops []string,
+func updatePortalData(portalPublisher pubsub.Publisher, packet *SessionUpdatePacket, lastNNStats *routing.Stats, lastDirectStats *routing.Stats, relayHops []routing.RelayHop,
 	onNetworkNext bool, datacenterName string, location *routing.Location, nearRelays []routing.NearRelayPortalData, sessionTime time.Time, isMultiPath bool, datacenterAlias string, sessionCountData *routing.SessionCountData) (int, error) {
 
 	if (lastNNStats.RTT == 0 && lastDirectStats.RTT == 0) || (onNetworkNext && lastNNStats.RTT == 0) {

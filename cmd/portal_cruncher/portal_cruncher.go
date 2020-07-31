@@ -332,36 +332,36 @@ func main() {
 				case true:
 					// Remove the session from the direct set if it exists
 					tx.ZRem("total-direct", sessionData.Meta.ID)
-					tx.ZRem(fmt.Sprintf("total-direct-buyer-%s", sessionData.Meta.BuyerID), sessionData.Meta.ID)
+					tx.ZRem(fmt.Sprintf("total-direct-buyer-%016x", sessionData.Meta.BuyerID), sessionData.Meta.ID)
 
 					tx.ZAdd("total-next", &redis.Z{Score: sessionData.Meta.DeltaRTT, Member: sessionData.Meta.ID})
 					tx.Expire("total-next", redisPortalHostExp)
-					tx.ZAdd(fmt.Sprintf("total-next-buyer-%s", sessionData.Meta.BuyerID), &redis.Z{Score: sessionData.Meta.DeltaRTT, Member: sessionData.Meta.ID})
-					tx.Expire(fmt.Sprintf("total-next-buyer-%s", sessionData.Meta.BuyerID), redisPortalHostExp)
+					tx.ZAdd(fmt.Sprintf("total-next-buyer-%016x", sessionData.Meta.BuyerID), &redis.Z{Score: sessionData.Meta.DeltaRTT, Member: sessionData.Meta.ID})
+					tx.Expire(fmt.Sprintf("total-next-buyer-%016x", sessionData.Meta.BuyerID), redisPortalHostExp)
 				case false:
 					// Remove the session from the next set if it exists
 					tx.ZRem("total-next", sessionData.Meta.ID)
-					tx.ZRem(fmt.Sprintf("total-next-buyer-%s", sessionData.Meta.BuyerID), sessionData.Meta.ID)
+					tx.ZRem(fmt.Sprintf("total-next-buyer-%016x", sessionData.Meta.BuyerID), sessionData.Meta.ID)
 
 					tx.ZAdd("total-direct", &redis.Z{Score: -sessionData.Meta.DirectRTT, Member: sessionData.Meta.ID})
 					tx.Expire("total-direct", redisPortalHostExp)
-					tx.ZAdd(fmt.Sprintf("total-direct-buyer-%s", sessionData.Meta.BuyerID), &redis.Z{Score: -sessionData.Meta.DirectRTT, Member: sessionData.Meta.ID})
-					tx.Expire(fmt.Sprintf("total-direct-buyer-%s", sessionData.Meta.BuyerID), redisPortalHostExp)
+					tx.ZAdd(fmt.Sprintf("total-direct-buyer-%016x", sessionData.Meta.BuyerID), &redis.Z{Score: -sessionData.Meta.DirectRTT, Member: sessionData.Meta.ID})
+					tx.Expire(fmt.Sprintf("total-direct-buyer-%016x", sessionData.Meta.BuyerID), redisPortalHostExp)
 				}
 
 				// set session and slice information with expiration on the entire key set for safety
-				tx.Set(fmt.Sprintf("session-%s-meta", sessionData.Meta.ID), sessionData.Meta, redisPortalHostExp)
-				tx.SAdd(fmt.Sprintf("session-%s-slices", sessionData.Meta.ID), sessionData.Slice)
-				tx.Expire(fmt.Sprintf("session-%s-slices", sessionData.Meta.ID), redisPortalHostExp)
+				tx.Set(fmt.Sprintf("session-%016x-meta", sessionData.Meta.ID), sessionData.Meta, redisPortalHostExp)
+				tx.SAdd(fmt.Sprintf("session-%016x-slices", sessionData.Meta.ID), sessionData.Slice)
+				tx.Expire(fmt.Sprintf("session-%016x-slices", sessionData.Meta.ID), redisPortalHostExp)
 
 				// set the user session reverse lookup sets with expiration on the entire key set for safety
-				tx.SAdd(fmt.Sprintf("user-%s-sessions", sessionData.Meta.UserHash), sessionData.Meta.ID)
-				tx.Expire(fmt.Sprintf("user-%s-sessions", sessionData.Meta.UserHash), redisPortalHostExp)
+				tx.SAdd(fmt.Sprintf("user-%016x-sessions", sessionData.Meta.UserHash), sessionData.Meta.ID)
+				tx.Expire(fmt.Sprintf("user-%016x-sessions", sessionData.Meta.UserHash), redisPortalHostExp)
 
 				// set the map point key and buyer sessions with expiration on the entire key set for safety
-				tx.Set(fmt.Sprintf("session-%s-point", sessionData.Meta.ID), sessionData.Point, redisPortalHostExp)
-				tx.SAdd(fmt.Sprintf("map-points-%s-buyer", sessionData.Meta.BuyerID), sessionData.Meta.ID)
-				tx.Expire(fmt.Sprintf("map-points-%s-buyer", sessionData.Meta.BuyerID), redisPortalHostExp)
+				tx.Set(fmt.Sprintf("session-%016x-point", sessionData.Meta.ID), sessionData.Point, redisPortalHostExp)
+				tx.SAdd(fmt.Sprintf("map-points-%016x-buyer", sessionData.Meta.BuyerID), sessionData.Meta.ID)
+				tx.Expire(fmt.Sprintf("map-points-%016x-buyer", sessionData.Meta.BuyerID), redisPortalHostExp)
 
 				if _, err := tx.Exec(); err != nil {
 					level.Error(logger).Log("msg", "error sending session data to redis", "err", err)
