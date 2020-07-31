@@ -1,4 +1,4 @@
-package routing
+package transport
 
 import (
 	"encoding/json"
@@ -10,6 +10,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/networknext/backend/encoding"
+	"github.com/networknext/backend/routing"
 )
 
 const (
@@ -126,18 +127,18 @@ func (s SessionCountData) Size() uint64 {
 	return 4 + 8 + 8 + 8 + 4 + 2*8*uint64(len(s.NumDirectSessionsPerBuyer)) + 4 + 2*8*uint64(len(s.NumNextSessionsPerBuyer))
 }
 
-type SessionData struct {
+type SessionPortalData struct {
 	Meta  SessionMeta     `json:"meta"`
 	Slice SessionSlice    `json:"slice"`
 	Point SessionMapPoint `json:"point"`
 }
 
-func (s *SessionData) UnmarshalBinary(data []byte) error {
+func (s *SessionPortalData) UnmarshalBinary(data []byte) error {
 	index := 0
 
 	var version uint32
 	if !encoding.ReadUint32(data, &index, &version) {
-		return errors.New("[SessionData] invalid read at version number")
+		return errors.New("[SessionPortalData] invalid read at version number")
 	}
 
 	if version > SessionDataVersion {
@@ -146,12 +147,12 @@ func (s *SessionData) UnmarshalBinary(data []byte) error {
 
 	var metaSize uint32
 	if !encoding.ReadUint32(data, &index, &metaSize) {
-		return errors.New("[SessionData] invalid read at meta size")
+		return errors.New("[SessionPortalData] invalid read at meta size")
 	}
 
 	var metaBytes []byte
 	if !encoding.ReadBytes(data, &index, &metaBytes, metaSize) {
-		return errors.New("[SessionData] invalid read at meta bytes")
+		return errors.New("[SessionPortalData] invalid read at meta bytes")
 	}
 
 	if err := s.Meta.UnmarshalBinary(metaBytes); err != nil {
@@ -160,12 +161,12 @@ func (s *SessionData) UnmarshalBinary(data []byte) error {
 
 	var sliceSize uint32
 	if !encoding.ReadUint32(data, &index, &sliceSize) {
-		return errors.New("[SessionData] invalid read at slice size")
+		return errors.New("[SessionPortalData] invalid read at slice size")
 	}
 
 	var sliceBytes []byte
 	if !encoding.ReadBytes(data, &index, &sliceBytes, sliceSize) {
-		return errors.New("[SessionData] invalid read at slice bytes")
+		return errors.New("[SessionPortalData] invalid read at slice bytes")
 	}
 
 	if err := s.Slice.UnmarshalBinary(sliceBytes); err != nil {
@@ -174,12 +175,12 @@ func (s *SessionData) UnmarshalBinary(data []byte) error {
 
 	var pointSize uint32
 	if !encoding.ReadUint32(data, &index, &pointSize) {
-		return errors.New("[SessionData] invalid read at map point size")
+		return errors.New("[SessionPortalData] invalid read at map point size")
 	}
 
 	var pointBytes []byte
 	if !encoding.ReadBytes(data, &index, &pointBytes, pointSize) {
-		return errors.New("[SessionData] invalid read at map point bytes")
+		return errors.New("[SessionPortalData] invalid read at map point bytes")
 	}
 
 	if err := s.Point.UnmarshalBinary(pointBytes); err != nil {
@@ -189,7 +190,7 @@ func (s *SessionData) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
-func (s SessionData) MarshalBinary() ([]byte, error) {
+func (s SessionPortalData) MarshalBinary() ([]byte, error) {
 	data := make([]byte, s.Size())
 	index := 0
 
@@ -222,7 +223,7 @@ func (s SessionData) MarshalBinary() ([]byte, error) {
 	return data, nil
 }
 
-func (s *SessionData) Size() uint64 {
+func (s *SessionPortalData) Size() uint64 {
 	return 4 + 4 + s.Meta.Size() + 4 + s.Slice.Size() + 4 + s.Point.Size()
 }
 
@@ -232,9 +233,9 @@ type RelayHop struct {
 }
 
 type NearRelayPortalData struct {
-	ID          uint64 `json:"id"`
-	Name        string `json:"name"`
-	ClientStats Stats  `json:"client_stats"`
+	ID          uint64        `json:"id"`
+	Name        string        `json:"name"`
+	ClientStats routing.Stats `json:"client_stats"`
 }
 
 type SessionMeta struct {
@@ -246,7 +247,7 @@ type SessionMeta struct {
 	NextRTT         float64               `json:"next_rtt"`
 	DirectRTT       float64               `json:"direct_rtt"`
 	DeltaRTT        float64               `json:"delta_rtt"`
-	Location        Location              `json:"location"`
+	Location        routing.Location      `json:"location"`
 	ClientAddr      string                `json:"client_addr"`
 	ServerAddr      string                `json:"server_addr"`
 	Hops            []RelayHop            `json:"hops"`
@@ -496,13 +497,13 @@ func ObscureString(source string, delim string, count int) string {
 }
 
 type SessionSlice struct {
-	Timestamp         time.Time `json:"timestamp"`
-	Next              Stats     `json:"next"`
-	Direct            Stats     `json:"direct"`
-	Envelope          Envelope  `json:"envelope"`
-	OnNetworkNext     bool      `json:"on_network_next"`
-	IsMultiPath       bool      `json:"is_multipath"`
-	IsTryBeforeYouBuy bool      `json:"is_try_before_you_buy"`
+	Timestamp         time.Time        `json:"timestamp"`
+	Next              routing.Stats    `json:"next"`
+	Direct            routing.Stats    `json:"direct"`
+	Envelope          routing.Envelope `json:"envelope"`
+	OnNetworkNext     bool             `json:"on_network_next"`
+	IsMultiPath       bool             `json:"is_multipath"`
+	IsTryBeforeYouBuy bool             `json:"is_try_before_you_buy"`
 }
 
 func (s *SessionSlice) UnmarshalBinary(data []byte) error {
@@ -523,25 +524,23 @@ func (s *SessionSlice) UnmarshalBinary(data []byte) error {
 	}
 	s.Timestamp = time.Unix(0, int64(timestamp))
 
-	var next Stats
-	if !encoding.ReadFloat64(data, &index, &next.RTT) {
+	if !encoding.ReadFloat64(data, &index, &s.Next.RTT) {
 		return errors.New("[SessionSlice] invalid read at next RTT")
 	}
-	if !encoding.ReadFloat64(data, &index, &next.Jitter) {
+	if !encoding.ReadFloat64(data, &index, &s.Next.Jitter) {
 		return errors.New("[SessionSlice] invalid read at next jitter")
 	}
-	if !encoding.ReadFloat64(data, &index, &next.PacketLoss) {
+	if !encoding.ReadFloat64(data, &index, &s.Next.PacketLoss) {
 		return errors.New("[SessionSlice] invalid read at next packet loss")
 	}
 
-	var direct Stats
-	if !encoding.ReadFloat64(data, &index, &direct.RTT) {
+	if !encoding.ReadFloat64(data, &index, &s.Direct.RTT) {
 		return errors.New("[SessionSlice] invalid read at direct RTT")
 	}
-	if !encoding.ReadFloat64(data, &index, &direct.Jitter) {
+	if !encoding.ReadFloat64(data, &index, &s.Direct.Jitter) {
 		return errors.New("[SessionSlice] invalid read at direct jitter")
 	}
-	if !encoding.ReadFloat64(data, &index, &direct.PacketLoss) {
+	if !encoding.ReadFloat64(data, &index, &s.Direct.PacketLoss) {
 		return errors.New("[SessionSlice] invalid read at direct packet loss")
 	}
 
@@ -555,7 +554,7 @@ func (s *SessionSlice) UnmarshalBinary(data []byte) error {
 		return errors.New("[SessionSlice] invalid read at envelope down")
 	}
 
-	s.Envelope = Envelope{Up: int64(up), Down: int64(down)}
+	s.Envelope = routing.Envelope{Up: int64(up), Down: int64(down)}
 
 	if !encoding.ReadBool(data, &index, &s.OnNetworkNext) {
 		return errors.New("[SessionSlice] invalid read at on network next")

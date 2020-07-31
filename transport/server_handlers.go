@@ -1145,7 +1145,7 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 
 	isMultipath := routing.IsMultipath(prevRouteDecision)
 
-	sessionCountData := routing.SessionCountData{
+	sessionCountData := SessionCountData{
 		InstanceID:                params.InstanceID,
 		TotalNumDirectSessions:    params.SessionMap.GetDirectSessionCount(),
 		TotalNumNextSessions:      params.SessionMap.GetNextSessionCount(),
@@ -1153,17 +1153,17 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 		NumNextSessionsPerBuyer:   params.SessionMap.GetNextSessionCountPerBuyer(),
 	}
 
-	hops := make([]routing.RelayHop, len(routeRelays))
+	hops := make([]RelayHop, len(routeRelays))
 	for i := range hops {
-		hops[i] = routing.RelayHop{
+		hops[i] = RelayHop{
 			ID:   routeRelays[i].ID,
 			Name: routeRelays[i].Name,
 		}
 	}
 
-	nearRelayData := make([]routing.NearRelayPortalData, len(nearRelays))
+	nearRelayData := make([]NearRelayPortalData, len(nearRelays))
 	for i := range nearRelayData {
-		nearRelayData[i] = routing.NearRelayPortalData{
+		nearRelayData[i] = NearRelayPortalData{
 			ID:          nearRelays[i].ID,
 			Name:        nearRelays[i].Name,
 			ClientStats: nearRelays[i].ClientStats,
@@ -1230,8 +1230,8 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 	}
 }
 
-func updatePortalData(portalPublisher pubsub.Publisher, packet *SessionUpdatePacket, lastNNStats *routing.Stats, lastDirectStats *routing.Stats, relayHops []routing.RelayHop,
-	onNetworkNext bool, datacenterName string, location *routing.Location, nearRelays []routing.NearRelayPortalData, sessionTime time.Time, isMultiPath bool, datacenterAlias string, sessionCountData *routing.SessionCountData) (int, error) {
+func updatePortalData(portalPublisher pubsub.Publisher, packet *SessionUpdatePacket, lastNNStats *routing.Stats, lastDirectStats *routing.Stats, relayHops []RelayHop,
+	onNetworkNext bool, datacenterName string, location *routing.Location, nearRelays []NearRelayPortalData, sessionTime time.Time, isMultiPath bool, datacenterAlias string, sessionCountData *SessionCountData) (int, error) {
 
 	if (lastNNStats.RTT == 0 && lastDirectStats.RTT == 0) || (onNetworkNext && lastNNStats.RTT == 0) {
 		return 0, nil
@@ -1255,8 +1255,8 @@ func updatePortalData(portalPublisher pubsub.Publisher, packet *SessionUpdatePac
 		deltaRTT = lastDirectStats.RTT - lastNNStats.RTT
 	}
 
-	sessionData := routing.SessionData{
-		Meta: routing.SessionMeta{
+	sessionPortalData := SessionPortalData{
+		Meta: SessionMeta{
 			ID:              packet.SessionID,
 			UserHash:        hashedID,
 			DatacenterName:  datacenterName,
@@ -1275,7 +1275,7 @@ func updatePortalData(portalPublisher pubsub.Publisher, packet *SessionUpdatePac
 			Platform:        uint8(packet.PlatformID),
 			BuyerID:         packet.CustomerID,
 		},
-		Slice: routing.SessionSlice{
+		Slice: SessionSlice{
 			Timestamp: sessionTime,
 			Next:      *lastNNStats,
 			Direct:    *lastDirectStats,
@@ -1287,14 +1287,14 @@ func updatePortalData(portalPublisher pubsub.Publisher, packet *SessionUpdatePac
 			IsTryBeforeYouBuy: packet.TryBeforeYouBuy || !packet.Committed,
 			OnNetworkNext:     onNetworkNext,
 		},
-		Point: routing.SessionMapPoint{
+		Point: SessionMapPoint{
 			Latitude:      location.Latitude,
 			Longitude:     location.Longitude,
 			OnNetworkNext: onNetworkNext,
 		},
 	}
 
-	sessionBytes, err := sessionData.MarshalBinary()
+	sessionBytes, err := sessionPortalData.MarshalBinary()
 	if err != nil {
 		return 0, err
 	}

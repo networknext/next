@@ -21,6 +21,7 @@ import (
 	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
+	"github.com/networknext/backend/transport"
 )
 
 const (
@@ -62,14 +63,14 @@ type UserSessionsArgs struct {
 }
 
 type UserSessionsReply struct {
-	Sessions []routing.SessionMeta `json:"sessions"`
+	Sessions []transport.SessionMeta `json:"sessions"`
 }
 
 func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, reply *UserSessionsReply) error {
 	var sessionIDs []string
 
 	userhash := args.UserHash
-	reply.Sessions = make([]routing.SessionMeta, 0)
+	reply.Sessions = make([]transport.SessionMeta, 0)
 
 	err := s.RedisClient.SMembers(fmt.Sprintf("user-%s-sessions", userhash)).ScanSlice(&sessionIDs)
 	if err != nil {
@@ -116,7 +117,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 
 	sremtx := s.RedisClient.TxPipeline()
 	{
-		var meta routing.SessionMeta
+		var meta transport.SessionMeta
 		for _, cmd := range getCmds {
 			err = cmd.Scan(&meta)
 			if err != nil {
@@ -267,7 +268,7 @@ type TopSessionsArgs struct {
 }
 
 type TopSessionsReply struct {
-	Sessions []routing.SessionMeta `json:"sessions"`
+	Sessions []transport.SessionMeta `json:"sessions"`
 }
 
 // TopSessions generates the top sessions sorted by improved RTT
@@ -276,7 +277,7 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 	var topnext []string
 	var topdirect []string
 
-	reply.Sessions = make([]routing.SessionMeta, 0)
+	reply.Sessions = make([]transport.SessionMeta, 0)
 
 	buyers := s.Storage.Buyers()
 
@@ -335,10 +336,10 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 
 	// build a single transaction to remove any session ID from the sorted set if the
 	// session-*-meta key is missing or expired
-	var nextSessions []routing.SessionMeta
+	var nextSessions []transport.SessionMeta
 	zremtx := s.RedisClient.TxPipeline()
 	{
-		var meta routing.SessionMeta
+		var meta transport.SessionMeta
 		for _, cmd := range getNextCmds {
 			// scan the data from Redis into its SessionMeta struct
 			err = cmd.Scan(&meta)
@@ -401,10 +402,10 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 		}
 	}
 
-	var directSessions []routing.SessionMeta
+	var directSessions []transport.SessionMeta
 	zremtx = s.RedisClient.TxPipeline()
 	{
-		var meta routing.SessionMeta
+		var meta transport.SessionMeta
 		for _, cmd := range getDirectCmds {
 			// scan the data from Redis into its SessionMeta struct
 			err = cmd.Scan(&meta)
@@ -441,14 +442,14 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 	}
 
 	// IMPORTANT: Clean direct sessions to remove any that are also in the next set
-	directMap := make(map[uint64]*routing.SessionMeta)
+	directMap := make(map[uint64]*transport.SessionMeta)
 	for i := range directSessions {
 		directMap[directSessions[i].ID] = &directSessions[i]
 	}
 	for i := range nextSessions {
 		delete(directMap, nextSessions[i].ID)
 	}
-	cleanDirectSessions := make([]routing.SessionMeta, 0)
+	cleanDirectSessions := make([]transport.SessionMeta, 0)
 	for _, v := range directMap {
 		cleanDirectSessions = append(cleanDirectSessions, *v)
 	}
@@ -494,8 +495,8 @@ type SessionDetailsArgs struct {
 }
 
 type SessionDetailsReply struct {
-	Meta   routing.SessionMeta    `json:"meta"`
-	Slices []routing.SessionSlice `json:"slices"`
+	Meta   transport.SessionMeta    `json:"meta"`
+	Slices []transport.SessionSlice `json:"slices"`
 }
 
 func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs, reply *SessionDetailsReply) error {
@@ -518,7 +519,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		reply.Meta.Anonymise()
 	}
 
-	reply.Slices = make([]routing.SessionSlice, 0)
+	reply.Slices = make([]transport.SessionSlice, 0)
 
 	err = s.RedisClient.SMembers(fmt.Sprintf("session-%s-slices", args.SessionID)).ScanSlice(&reply.Slices)
 	if err != nil {
@@ -530,6 +531,8 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 	sort.Slice(reply.Slices, func(i int, j int) bool {
 		return reply.Slices[i].Timestamp.Before(reply.Slices[j].Timestamp)
 	})
+
+	fmt.Println(reply.Slices)
 
 	return nil
 }
@@ -568,9 +571,9 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 	buyers := s.Storage.Buyers()
 
 	// slice to hold all the final map points
-	mapPointsBuyers := make(map[string][]routing.SessionMapPoint, 0)
+	mapPointsBuyers := make(map[string][]transport.SessionMapPoint, 0)
 	mapPointsBuyersCompact := make(map[string][][]interface{}, 0)
-	mapPointsGlobal := make([]routing.SessionMapPoint, 0)
+	mapPointsGlobal := make([]transport.SessionMapPoint, 0)
 	mapPointsGlobalCompact := make([][]interface{}, 0)
 
 	s.mapPointsBuyerCache = make(map[string]json.RawMessage, 0)
@@ -604,7 +607,7 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 		// removed from map-points-global, total-next, and total-direct key sets
 		sremtx := s.RedisClient.TxPipeline()
 		{
-			var point routing.SessionMapPoint
+			var point transport.SessionMapPoint
 			for _, cmd := range getCmds {
 				// scan the data from Redis into its SessionMapPoint struct
 				err = cmd.Scan(&point)
@@ -716,7 +719,7 @@ func (s *BuyersService) GenerateMapPointsPerBuyerBytes() error {
 		// removed from map-points-global, total-next, and total-direct key sets
 		sremtx := s.RedisClient.TxPipeline()
 		{
-			var currentPoint routing.SessionMapPoint
+			var currentPoint transport.SessionMapPoint
 			for _, cmd := range getCmds {
 				// scan the data from Redis into its SessionMapPoint struct
 				err = cmd.Scan(&currentPoint)

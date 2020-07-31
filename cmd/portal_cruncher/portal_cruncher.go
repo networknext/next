@@ -25,7 +25,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/networknext/backend/logging"
 	"github.com/networknext/backend/metrics"
-	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
 	"github.com/networknext/backend/transport/pubsub"
@@ -319,8 +318,8 @@ func main() {
 
 			switch topic {
 			case pubsub.TopicPortalCruncherSessionData:
-				var sessionData routing.SessionData
-				if err := sessionData.UnmarshalBinary(message); err != nil {
+				var sessionPortalData transport.SessionPortalData
+				if err := sessionPortalData.UnmarshalBinary(message); err != nil {
 					level.Error(logger).Log("msg", "error unmarshaling session data message", "err", err)
 					continue
 				}
@@ -328,40 +327,40 @@ func main() {
 				tx := redisClientPortal.TxPipeline()
 
 				// set total session counts with expiration on the entire key set for safety
-				switch sessionData.Meta.OnNetworkNext {
+				switch sessionPortalData.Meta.OnNetworkNext {
 				case true:
 					// Remove the session from the direct set if it exists
-					tx.ZRem("total-direct", sessionData.Meta.ID)
-					tx.ZRem(fmt.Sprintf("total-direct-buyer-%016x", sessionData.Meta.BuyerID), sessionData.Meta.ID)
+					tx.ZRem("total-direct", sessionPortalData.Meta.ID)
+					tx.ZRem(fmt.Sprintf("total-direct-buyer-%016x", sessionPortalData.Meta.BuyerID), sessionPortalData.Meta.ID)
 
-					tx.ZAdd("total-next", &redis.Z{Score: sessionData.Meta.DeltaRTT, Member: fmt.Sprintf("%016x", sessionData.Meta.ID)})
+					tx.ZAdd("total-next", &redis.Z{Score: sessionPortalData.Meta.DeltaRTT, Member: fmt.Sprintf("%016x", sessionPortalData.Meta.ID)})
 					tx.Expire("total-next", redisPortalHostExp)
-					tx.ZAdd(fmt.Sprintf("total-next-buyer-%016x", sessionData.Meta.BuyerID), &redis.Z{Score: sessionData.Meta.DeltaRTT, Member: fmt.Sprintf("%016x", sessionData.Meta.ID)})
-					tx.Expire(fmt.Sprintf("total-next-buyer-%016x", sessionData.Meta.BuyerID), redisPortalHostExp)
+					tx.ZAdd(fmt.Sprintf("total-next-buyer-%016x", sessionPortalData.Meta.BuyerID), &redis.Z{Score: sessionPortalData.Meta.DeltaRTT, Member: fmt.Sprintf("%016x", sessionPortalData.Meta.ID)})
+					tx.Expire(fmt.Sprintf("total-next-buyer-%016x", sessionPortalData.Meta.BuyerID), redisPortalHostExp)
 				case false:
 					// Remove the session from the next set if it exists
-					tx.ZRem("total-next", sessionData.Meta.ID)
-					tx.ZRem(fmt.Sprintf("total-next-buyer-%016x", sessionData.Meta.BuyerID), sessionData.Meta.ID)
+					tx.ZRem("total-next", sessionPortalData.Meta.ID)
+					tx.ZRem(fmt.Sprintf("total-next-buyer-%016x", sessionPortalData.Meta.BuyerID), sessionPortalData.Meta.ID)
 
-					tx.ZAdd("total-direct", &redis.Z{Score: -sessionData.Meta.DirectRTT, Member: fmt.Sprintf("%016x", sessionData.Meta.ID)})
+					tx.ZAdd("total-direct", &redis.Z{Score: -sessionPortalData.Meta.DirectRTT, Member: fmt.Sprintf("%016x", sessionPortalData.Meta.ID)})
 					tx.Expire("total-direct", redisPortalHostExp)
-					tx.ZAdd(fmt.Sprintf("total-direct-buyer-%016x", sessionData.Meta.BuyerID), &redis.Z{Score: -sessionData.Meta.DirectRTT, Member: fmt.Sprintf("%016x", sessionData.Meta.ID)})
-					tx.Expire(fmt.Sprintf("total-direct-buyer-%016x", sessionData.Meta.BuyerID), redisPortalHostExp)
+					tx.ZAdd(fmt.Sprintf("total-direct-buyer-%016x", sessionPortalData.Meta.BuyerID), &redis.Z{Score: -sessionPortalData.Meta.DirectRTT, Member: fmt.Sprintf("%016x", sessionPortalData.Meta.ID)})
+					tx.Expire(fmt.Sprintf("total-direct-buyer-%016x", sessionPortalData.Meta.BuyerID), redisPortalHostExp)
 				}
 
 				// set session and slice information with expiration on the entire key set for safety
-				tx.Set(fmt.Sprintf("session-%016x-meta", sessionData.Meta.ID), sessionData.Meta, redisPortalHostExp)
-				tx.SAdd(fmt.Sprintf("session-%016x-slices", sessionData.Meta.ID), sessionData.Slice)
-				tx.Expire(fmt.Sprintf("session-%016x-slices", sessionData.Meta.ID), redisPortalHostExp)
+				tx.Set(fmt.Sprintf("session-%016x-meta", sessionPortalData.Meta.ID), sessionPortalData.Meta, redisPortalHostExp)
+				tx.SAdd(fmt.Sprintf("session-%016x-slices", sessionPortalData.Meta.ID), sessionPortalData.Slice)
+				tx.Expire(fmt.Sprintf("session-%016x-slices", sessionPortalData.Meta.ID), redisPortalHostExp)
 
 				// set the user session reverse lookup sets with expiration on the entire key set for safety
-				tx.SAdd(fmt.Sprintf("user-%016x-sessions", sessionData.Meta.UserHash), sessionData.Meta.ID)
-				tx.Expire(fmt.Sprintf("user-%016x-sessions", sessionData.Meta.UserHash), redisPortalHostExp)
+				tx.SAdd(fmt.Sprintf("user-%016x-sessions", sessionPortalData.Meta.UserHash), sessionPortalData.Meta.ID)
+				tx.Expire(fmt.Sprintf("user-%016x-sessions", sessionPortalData.Meta.UserHash), redisPortalHostExp)
 
 				// set the map point key and buyer sessions with expiration on the entire key set for safety
-				tx.Set(fmt.Sprintf("session-%016x-point", sessionData.Meta.ID), sessionData.Point, redisPortalHostExp)
-				tx.SAdd(fmt.Sprintf("map-points-%016x-buyer", sessionData.Meta.BuyerID), sessionData.Meta.ID)
-				tx.Expire(fmt.Sprintf("map-points-%016x-buyer", sessionData.Meta.BuyerID), redisPortalHostExp)
+				tx.Set(fmt.Sprintf("session-%016x-point", sessionPortalData.Meta.ID), sessionPortalData.Point, redisPortalHostExp)
+				tx.SAdd(fmt.Sprintf("map-points-%016x-buyer", sessionPortalData.Meta.BuyerID), sessionPortalData.Meta.ID)
+				tx.Expire(fmt.Sprintf("map-points-%016x-buyer", sessionPortalData.Meta.BuyerID), redisPortalHostExp)
 
 				if _, err := tx.Exec(); err != nil {
 					level.Error(logger).Log("msg", "error sending session data to redis", "err", err)
@@ -369,7 +368,7 @@ func main() {
 				}
 
 			case pubsub.TopicPortalCruncherSessionCounts:
-				var countData routing.SessionCountData
+				var countData transport.SessionCountData
 				if err := countData.UnmarshalBinary(message); err != nil {
 					level.Error(logger).Log("msg", "error unmarshaling session count message", "err", err)
 					continue
