@@ -1222,15 +1222,15 @@ func updatePortalData(portalPublisher pubsub.Publisher, packet *SessionUpdatePac
 		return 0, nil
 	}
 
-	var hashedID string
+	var hashedID uint64
 	if !packet.Version.IsInternal() && packet.Version.Compare(SDKVersion{3, 4, 5}) == SDKVersionOlder {
 		hash := fnv.New64a()
 		byteArray := make([]byte, 8)
 		binary.LittleEndian.PutUint64(byteArray, packet.UserHash)
 		hash.Write(byteArray)
-		hashedID = fmt.Sprintf("%016x", hash.Sum64())
+		hashedID = hash.Sum64()
 	} else {
-		hashedID = fmt.Sprintf("%016x", packet.UserHash)
+		hashedID = packet.UserHash
 	}
 
 	var deltaRTT float64
@@ -1242,7 +1242,7 @@ func updatePortalData(portalPublisher pubsub.Publisher, packet *SessionUpdatePac
 
 	sessionData := routing.SessionData{
 		Meta: routing.SessionMeta{
-			ID:              fmt.Sprintf("%016x", packet.SessionID),
+			ID:              packet.SessionID,
 			UserHash:        hashedID,
 			DatacenterName:  datacenterName,
 			DatacenterAlias: datacenterAlias,
@@ -1255,10 +1255,10 @@ func updatePortalData(portalPublisher pubsub.Publisher, packet *SessionUpdatePac
 			ServerAddr:      packet.ServerAddress.String(),
 			Hops:            relayHops,
 			SDK:             packet.Version.String(),
-			Connection:      ConnectionTypeText(packet.ConnectionType),
+			Connection:      uint8(packet.ConnectionType),
 			NearbyRelays:    nearRelays,
-			Platform:        PlatformTypeText(packet.PlatformID),
-			BuyerID:         fmt.Sprintf("%016x", packet.CustomerID),
+			Platform:        uint8(packet.PlatformID),
+			BuyerID:         packet.CustomerID,
 		},
 		Slice: routing.SessionSlice{
 			Timestamp: sessionTime,
