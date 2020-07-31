@@ -128,7 +128,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 				continue
 			}
 
-			if VerifyAnyRole(r, AnonymousRole, UnverifiedRole) || !VerifyAllRoles(r, s.SameBuyerRole(meta.BuyerID)) {
+			if VerifyAnyRole(r, AnonymousRole, UnverifiedRole) || !VerifyAllRoles(r, s.SameBuyerRole(fmt.Sprintf("%016x", meta.BuyerID))) {
 				meta.Anonymise()
 			}
 
@@ -441,7 +441,7 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 	}
 
 	// IMPORTANT: Clean direct sessions to remove any that are also in the next set
-	directMap := make(map[string]*routing.SessionMeta)
+	directMap := make(map[uint64]*routing.SessionMeta)
 	for i := range directSessions {
 		directMap[directSessions[i].ID] = &directSessions[i]
 	}
@@ -514,7 +514,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		return err
 	}
 
-	if !VerifyAllRoles(r, s.SameBuyerRole(reply.Meta.BuyerID)) {
+	if !VerifyAllRoles(r, s.SameBuyerRole(fmt.Sprintf("%016x", reply.Meta.BuyerID))) {
 		reply.Meta.Anonymise()
 	}
 
