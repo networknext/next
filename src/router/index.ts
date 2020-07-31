@@ -67,7 +67,7 @@ const router = new VueRouter({
 })
 
 router.beforeEach(async (to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
-  if (!store.getters.isAdmin && !store.getters.isOwner && to.name === 'settings') {
+  if ((!store.getters.isAdmin && !store.getters.isOwner && to.name === 'settings') || to.name === 'undefined') {
     next('/')
     store.commit('UPDATE_CURRENT_PAGE', 'map')
     return
