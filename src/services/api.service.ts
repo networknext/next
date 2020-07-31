@@ -18,7 +18,7 @@ export default class APIService {
     return new Promise((resolve, reject) => {
       const options = params || {}
       const id = 'id'
-      fetch(`${process.env.VUE_APP_BASE_URL}/rpc`, {
+      fetch(`${process.env.VUE_APP_API_URL}/rpc`, {
         method: 'POST',
         headers: this.headers,
         body: JSON.stringify({
