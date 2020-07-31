@@ -460,7 +460,7 @@ func removeRelay(rpcClient jsonrpc.RPCClient, env Environment, name string) {
 	}
 
 	if info.state != routing.RelayStateDisabled.String() {
-		fmt.Printf("Relay %s must be disabled prior to removal.", info.name)
+		fmt.Printf("Relay %s must be disabled prior to removal.\n\n", info.name)
 		os.Exit(0)
 	}
 
