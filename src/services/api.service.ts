@@ -68,4 +68,12 @@ export default class APIService {
   public fetchAllAccounts (args: any) {
     return this.call('AuthService.AllAccounts', args)
   }
+
+  public updateUserRoles (args: any) {
+    return this.call('AuthService.UpdateUserRoles', args)
+  }
+
+  public deleteUserAccount (args: any) {
+    return this.call('AuthService.DeleteUserAccount', args)
+  }
 }

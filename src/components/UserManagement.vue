@@ -94,14 +94,15 @@
             {{ account.email }}
           </td>
           <td>
-            <multiselect track-by="name" label="name" v-model="selectedRoles[account.id]" :options="allRoles" multiple v-bind:disabled="!account.edit"></multiselect>
+            <multiselect track-by="name" label="name" v-model="selectedRoles[account.user_id]" :options="allRoles" multiple :disabled="!account.edit"></multiselect>
           </td>
-          <td class="td-btn" v-show="true">
+          <td class="td-btn" v-show="!account.edit && !account.delete">
             <button
               class="btn btn-xs btn-primary"
               data-toggle="tooltip"
               data-placement="bottom"
               title="Change this user's permissions"
+              @click="editUser(account, index)"
             >
               <font-awesome-icon icon="pen"
                                   class="fa-w-16 fa-fw"
@@ -118,12 +119,13 @@
               />
             </button>&nbsp;
           </td>
-          <td class="td-btn" v-show="false">
+          <td class="td-btn" v-show="account.edit || account.delete">
             <button
               class="btn btn-xs btn-success"
               data-toggle="tooltip"
               data-placement="bottom"
               title="Save Changes"
+              @click="saveUser(account, index)"
             >
               <font-awesome-icon icon="check"
                                   class="fa-w-16 fa-fw"
@@ -134,6 +136,7 @@
               data-toggle="tooltip"
               data-placement="bottom"
               title="Cancel Changes"
+              @click="cancel(account, index)"
             >
               <font-awesome-icon icon="times"
                                   class="fa-w-16 fa-fw"
@@ -191,10 +194,61 @@ export default class UserManagement extends Vue {
         })
 
         this.companyUsers.forEach((user: any) => {
-          this.selectedRoles[user.id] = user.roles
+          this.selectedRoles[user.user_id] = user.roles
         })
         this.showTable = true
       })
+  }
+
+  private editUser (account: any, index: number) {
+    setTimeout(() => {
+      account.delete = false
+      account.edit = true
+      this.companyUsers.splice(index, 1, account)
+    })
+  }
+
+  private saveUser (account: any, index: number) {
+    if (account.edit) {
+      const roles = this.selectedRoles[account.user_id]
+      this.apiService
+        .updateUserRoles({ user_id: `auth0|${account.user_id}`, roles: roles })
+        .then((response: any) => {
+          account.roles = response.roles
+        })
+        .catch((error: Error) => {
+          console.log('Something went wrong updating the users permissions')
+          console.log(error)
+        })
+        .finally(() => {
+          this.cancel(account, index)
+        })
+      return
+    }
+    if (account.delete) {
+      this.apiService
+        .deleteUserAccount({ user_id: `auth0|${account.user_id}` })
+        .then((response) => {
+          this.companyUsers.splice(index, 1)
+          this.selectedRoles[account.user_id] = null
+        })
+        .catch((e) => {
+          console.log('Something went wrong updating the users permissions')
+          console.log(e)
+        })
+    }
+  }
+
+  private deleteUser (account: any, index: number) {
+    account.delete = true
+    account.edit = false
+    this.companyUsers.splice(index, 1, account)
+  }
+
+  private cancel (account: any, index: number) {
+    account.delete = false
+    account.edit = false
+    this.companyUsers.splice(index, 1, account)
   }
 }
 
