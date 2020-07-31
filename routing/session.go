@@ -8,14 +8,15 @@ import (
 	"time"
 	"unicode/utf8"
 
-	jsoniter "github.com/json-iterator/go"
 	"github.com/networknext/backend/encoding"
 )
 
 const (
-	SessionMetaVersion     = 0
-	SessionSliceVersion    = 0
-	SessionMapPointVersion = 0
+	SessionCountDataVersion = 0
+	SessionDataVersion      = 0
+	SessionMetaVersion      = 0
+	SessionSliceVersion     = 0
+	SessionMapPointVersion  = 0
 )
 
 type SessionCountData struct {
@@ -27,11 +28,101 @@ type SessionCountData struct {
 }
 
 func (s *SessionCountData) UnmarshalBinary(data []byte) error {
-	return jsoniter.Unmarshal(data, s)
+	index := 0
+
+	var version uint32
+	if !encoding.ReadUint32(data, &index, &version) {
+		return errors.New("[SessionCountData] invalid read at version number")
+	}
+
+	if version > SessionCountDataVersion {
+		return fmt.Errorf("unknown session count data version: %d", version)
+	}
+
+	if !encoding.ReadUint64(data, &index, &s.InstanceID) {
+		return errors.New("[SessionCountData] invalid read at instance ID")
+	}
+
+	if !encoding.ReadUint64(data, &index, &s.TotalNumDirectSessions) {
+		return errors.New("[SessionCountData] invalid read at total number of direct sessions")
+	}
+
+	if !encoding.ReadUint64(data, &index, &s.TotalNumNextSessions) {
+		return errors.New("[SessionCountData] invalid read at total number of next sessions")
+	}
+
+	var directPerBuyerSize uint32
+	if !encoding.ReadUint32(data, &index, &directPerBuyerSize) {
+		return errors.New("[SessionCountData] invalid read at direct per buyer size")
+	}
+
+	directSessionPerBuyer := make(map[uint64]uint64)
+	for i := uint32(0); i < directPerBuyerSize; i++ {
+		var buyerID uint64
+		if !encoding.ReadUint64(data, &index, &buyerID) {
+			return errors.New("[SessionCountData] invalid read at direct buyer ID")
+		}
+
+		var count uint64
+		if !encoding.ReadUint64(data, &index, &count) {
+			return errors.New("[SessionCountData] invalid read at direct count")
+		}
+
+		directSessionPerBuyer[buyerID] = count
+	}
+	s.NumDirectSessionsPerBuyer = directSessionPerBuyer
+
+	var nextPerBuyerSize uint32
+	if !encoding.ReadUint32(data, &index, &nextPerBuyerSize) {
+		return errors.New("[SessionCountData] invalid read at next per buyer size")
+	}
+
+	nextSessionPerBuyer := make(map[uint64]uint64)
+	for i := uint32(0); i < nextPerBuyerSize; i++ {
+		var buyerID uint64
+		if !encoding.ReadUint64(data, &index, &buyerID) {
+			return errors.New("[SessionCountData] invalid read at next buyer ID")
+		}
+
+		var count uint64
+		if !encoding.ReadUint64(data, &index, &count) {
+			return errors.New("[SessionCountData] invalid read at next count")
+		}
+
+		nextSessionPerBuyer[buyerID] = count
+	}
+	s.NumNextSessionsPerBuyer = nextSessionPerBuyer
+
+	return nil
 }
 
 func (s SessionCountData) MarshalBinary() ([]byte, error) {
-	return jsoniter.Marshal(s)
+	data := make([]byte, s.Size())
+	index := 0
+
+	encoding.WriteUint32(data, &index, SessionCountDataVersion)
+
+	encoding.WriteUint64(data, &index, s.InstanceID)
+	encoding.WriteUint64(data, &index, s.TotalNumDirectSessions)
+	encoding.WriteUint64(data, &index, s.TotalNumNextSessions)
+
+	encoding.WriteUint32(data, &index, uint32(len(s.NumDirectSessionsPerBuyer)))
+	for buyerID, count := range s.NumDirectSessionsPerBuyer {
+		encoding.WriteUint64(data, &index, buyerID)
+		encoding.WriteUint64(data, &index, count)
+	}
+
+	encoding.WriteUint32(data, &index, uint32(len(s.NumNextSessionsPerBuyer)))
+	for buyerID, count := range s.NumNextSessionsPerBuyer {
+		encoding.WriteUint64(data, &index, buyerID)
+		encoding.WriteUint64(data, &index, count)
+	}
+
+	return data, nil
+}
+
+func (s SessionCountData) Size() uint64 {
+	return 4 + 8 + 8 + 8 + 4 + 2*8*uint64(len(s.NumDirectSessionsPerBuyer)) + 4 + 2*8*uint64(len(s.NumNextSessionsPerBuyer))
 }
 
 type SessionData struct {
@@ -41,11 +132,97 @@ type SessionData struct {
 }
 
 func (s *SessionData) UnmarshalBinary(data []byte) error {
-	return jsoniter.Unmarshal(data, s)
+	index := 0
+
+	var version uint32
+	if !encoding.ReadUint32(data, &index, &version) {
+		return errors.New("[SessionData] invalid read at version number")
+	}
+
+	if version > SessionDataVersion {
+		return fmt.Errorf("unknown session data version: %d", version)
+	}
+
+	var metaSize uint32
+	if !encoding.ReadUint32(data, &index, &metaSize) {
+		return errors.New("[SessionData] invalid read at meta size")
+	}
+
+	var metaBytes []byte
+	if !encoding.ReadBytes(data, &index, &metaBytes, metaSize) {
+		return errors.New("[SessionData] invalid read at meta bytes")
+	}
+
+	if err := s.Meta.UnmarshalBinary(metaBytes); err != nil {
+		return err
+	}
+
+	var sliceSize uint32
+	if !encoding.ReadUint32(data, &index, &sliceSize) {
+		return errors.New("[SessionData] invalid read at slice size")
+	}
+
+	var sliceBytes []byte
+	if !encoding.ReadBytes(data, &index, &sliceBytes, sliceSize) {
+		return errors.New("[SessionData] invalid read at slice bytes")
+	}
+
+	if err := s.Slice.UnmarshalBinary(sliceBytes); err != nil {
+		return err
+	}
+
+	var pointSize uint32
+	if !encoding.ReadUint32(data, &index, &pointSize) {
+		return errors.New("[SessionData] invalid read at map point size")
+	}
+
+	var pointBytes []byte
+	if !encoding.ReadBytes(data, &index, &pointBytes, pointSize) {
+		return errors.New("[SessionData] invalid read at map point bytes")
+	}
+
+	if err := s.Point.UnmarshalBinary(pointBytes); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s SessionData) MarshalBinary() ([]byte, error) {
-	return jsoniter.Marshal(s)
+	data := make([]byte, s.Size())
+	index := 0
+
+	encoding.WriteUint32(data, &index, SessionDataVersion)
+
+	metaBytes, err := s.Meta.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+
+	encoding.WriteUint32(data, &index, uint32(len(metaBytes)))
+	encoding.WriteBytes(data, &index, metaBytes, len(metaBytes))
+
+	sliceBytes, err := s.Slice.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+
+	encoding.WriteUint32(data, &index, uint32(len(sliceBytes)))
+	encoding.WriteBytes(data, &index, sliceBytes, len(sliceBytes))
+
+	pointBytes, err := s.Point.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+
+	encoding.WriteUint32(data, &index, uint32(len(pointBytes)))
+	encoding.WriteBytes(data, &index, pointBytes, len(pointBytes))
+
+	return data, nil
+}
+
+func (s *SessionData) Size() uint64 {
+	return 4 + s.Meta.Size() + s.Slice.Size() + s.Point.Size()
 }
 
 type SessionMeta struct {
