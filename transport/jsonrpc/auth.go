@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 
 	jwtmiddleware "github.com/auth0/go-jwt-middleware"
@@ -14,6 +15,7 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
+	"github.com/rs/cors"
 	"gopkg.in/auth0.v4/management"
 )
 
@@ -631,7 +633,7 @@ type jwks struct {
 	} `json:"keys"`
 }
 
-func AuthMiddleware(audience string, next http.Handler) http.Handler {
+func AuthMiddleware(audience string, next http.Handler, allowCORS bool) http.Handler {
 	if audience == "" {
 		return next
 	}
@@ -664,7 +666,17 @@ func AuthMiddleware(audience string, next http.Handler) http.Handler {
 		CredentialsOptional: true,
 	})
 
-	return mw.Handler(next)
+	if !allowCORS {
+		allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
+		return cors.New(cors.Options{
+			AllowedOrigins:   strings.Split(allowedOrigins, ","),
+			AllowCredentials: true,
+			AllowedHeaders:   []string{"Authorization", "Content-Type"},
+			AllowedMethods:   []string{"POST", "GET", "OPTION"},
+		}).Handler(mw.Handler(next))
+	} else {
+		return mw.Handler(next)
+	}
 }
 
 func getPemCert(token *jwt.Token) (string, error) {
