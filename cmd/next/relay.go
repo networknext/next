@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	LatestRelayVersion   = "1.0.2"
+	LatestRelayVersion   = "1.0.4"
 	MinimumUbuntuVersion = 18
 
 	// DisableRelayScript is the bash script used to disable relays
