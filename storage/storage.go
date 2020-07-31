@@ -141,9 +141,8 @@ func (e *HexStringConversionError) Error() string {
 type SequenceNumbersOutOfSync struct {
 	localSequenceNumber  int64
 	remoteSequenceNumber int64
-	document             string
 }
 
 func (e *SequenceNumbersOutOfSync) Error() string {
-	return fmt.Sprintf("%s sequence number out of sync: remote %d != local %d", e.document, e.remoteSequenceNumber, e.localSequenceNumber)
+	return fmt.Sprintf("sequence number out of sync: remote %d != local %d", e.remoteSequenceNumber, e.localSequenceNumber)
 }
