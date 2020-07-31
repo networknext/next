@@ -21,7 +21,6 @@
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
-#include <curl/curl.h>
 #include <deque>
 #include <execinfo.h>
 #include <fcntl.h>
@@ -67,3 +66,4 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+// #include <curl/curl.h>
