@@ -225,24 +225,29 @@ func (s *SessionData) Size() uint64 {
 	return 4 + s.Meta.Size() + s.Slice.Size() + s.Point.Size()
 }
 
+type NearRelayPortalData struct {
+	Name  string `json:"name"`
+	Stats Stats  `json:"client_stats"`
+}
+
 type SessionMeta struct {
-	ID              uint64   `json:"id"`
-	UserHash        uint64   `json:"user_hash"`
-	DatacenterName  string   `json:"datacenter_name"`
-	DatacenterAlias string   `json:"datacenter_alias"`
-	OnNetworkNext   bool     `json:"on_network_next"`
-	NextRTT         float64  `json:"next_rtt"`
-	DirectRTT       float64  `json:"direct_rtt"`
-	DeltaRTT        float64  `json:"delta_rtt"`
-	Location        Location `json:"location"`
-	ClientAddr      string   `json:"client_addr"`
-	ServerAddr      string   `json:"server_addr"`
-	Hops            []Relay  `json:"hops"`
-	SDK             string   `json:"sdk"`
-	Connection      uint8    `json:"connection"`
-	NearbyRelays    []Relay  `json:"nearby_relays"`
-	Platform        uint8    `json:"platform"`
-	BuyerID         uint64   `json:"customer_id"`
+	ID              uint64                `json:"id"`
+	UserHash        uint64                `json:"user_hash"`
+	DatacenterName  string                `json:"datacenter_name"`
+	DatacenterAlias string                `json:"datacenter_alias"`
+	OnNetworkNext   bool                  `json:"on_network_next"`
+	NextRTT         float64               `json:"next_rtt"`
+	DirectRTT       float64               `json:"direct_rtt"`
+	DeltaRTT        float64               `json:"delta_rtt"`
+	Location        Location              `json:"location"`
+	ClientAddr      string                `json:"client_addr"`
+	ServerAddr      string                `json:"server_addr"`
+	Hops            []string              `json:"hops"`
+	SDK             string                `json:"sdk"`
+	Connection      uint8                 `json:"connection"`
+	NearbyRelays    []NearRelayPortalData `json:"nearby_relays"`
+	Platform        uint8                 `json:"platform"`
+	BuyerID         uint64                `json:"customer_id"`
 }
 
 func (s *SessionMeta) UnmarshalBinary(data []byte) error {
@@ -316,26 +321,12 @@ func (s *SessionMeta) UnmarshalBinary(data []byte) error {
 		return errors.New("[SessionMeta] invalid read at relay hops count")
 	}
 
-	hops := make([]Relay, hopsCount)
+	s.Hops = make([]string, hopsCount)
 	for i := uint32(0); i < hopsCount; i++ {
-		var size uint32
-		if !encoding.ReadUint32(data, &index, &size) {
-			return errors.New("[SessionMeta] invalid read at relay hops relay size")
+		if !encoding.ReadString(data, &index, &s.Hops[i], math.MaxInt32) {
+			return errors.New("[SessionMeta] invalid read at relay hops relay name")
 		}
-
-		var relayBytes []byte
-		if !encoding.ReadBytes(data, &index, &relayBytes, size) {
-			return errors.New("[SessionMeta] invalid read at relay hops relay bytes")
-		}
-
-		var relay Relay
-		if err := relay.UnmarshalBinary(relayBytes); err != nil {
-			return err
-		}
-
-		hops[i] = relay
 	}
-	s.Hops = hops
 
 	if !encoding.ReadString(data, &index, &s.SDK, math.MaxInt32) {
 		return errors.New("[SessionMeta] invalid read at SDK version")
@@ -350,26 +341,24 @@ func (s *SessionMeta) UnmarshalBinary(data []byte) error {
 		return errors.New("[SessionMeta] invalid read at nearby relays count")
 	}
 
-	nearbyRelays := make([]Relay, nearbyRelaysCount)
+	s.NearbyRelays = make([]NearRelayPortalData, nearbyRelaysCount)
 	for i := uint32(0); i < nearbyRelaysCount; i++ {
-		var size uint32
-		if !encoding.ReadUint32(data, &index, &size) {
-			return errors.New("[SessionMeta] invalid read at nearby relays relay size")
+		if !encoding.ReadString(data, &index, &s.NearbyRelays[i].Name, math.MaxInt32) {
+			return errors.New("[SessionMeta] invalid read at relay hops relay name")
 		}
 
-		var relayBytes []byte
-		if !encoding.ReadBytes(data, &index, &relayBytes, size) {
-			return errors.New("[SessionMeta] invalid read at nearby relays relay bytes")
+		if !encoding.ReadFloat64(data, &index, &s.NearbyRelays[i].Stats.RTT) {
+			return errors.New("[SessionMeta] invalid read at relay hops relay RTT")
 		}
 
-		var relay Relay
-		if err := relay.UnmarshalBinary(relayBytes); err != nil {
-			return err
+		if !encoding.ReadFloat64(data, &index, &s.NearbyRelays[i].Stats.Jitter) {
+			return errors.New("[SessionMeta] invalid read at relay hops relay jitter")
 		}
 
-		nearbyRelays[i] = relay
+		if !encoding.ReadFloat64(data, &index, &s.NearbyRelays[i].Stats.PacketLoss) {
+			return errors.New("[SessionMeta] invalid read at relay hops relay packet loss")
+		}
 	}
-	s.NearbyRelays = nearbyRelays
 
 	if !encoding.ReadUint8(data, &index, &s.Platform) {
 		return errors.New("[SessionMeta] invalid read at platform type")
@@ -407,26 +396,19 @@ func (s SessionMeta) MarshalBinary() ([]byte, error) {
 	encoding.WriteString(data, &index, s.ServerAddr, uint32(len(s.ServerAddr)))
 
 	encoding.WriteUint32(data, &index, uint32(len(s.Hops)))
-	for _, relay := range s.Hops {
-		relayBytes, err := relay.MarshalBinary()
-		if err != nil {
-			return nil, err
-		}
-		encoding.WriteUint32(data, &index, uint32(relay.Size()))
-		encoding.WriteBytes(data, &index, relayBytes, len(relayBytes))
+	for _, relayName := range s.Hops {
+		encoding.WriteString(data, &index, relayName, uint32(len(relayName)))
 	}
 
 	encoding.WriteString(data, &index, s.SDK, uint32(len(s.SDK)))
 	encoding.WriteUint8(data, &index, s.Connection)
 
 	encoding.WriteUint32(data, &index, uint32(len(s.NearbyRelays)))
-	for _, relay := range s.NearbyRelays {
-		nearbyRelaysBytes, err := relay.MarshalBinary()
-		if err != nil {
-			return nil, err
-		}
-		encoding.WriteUint32(data, &index, uint32(relay.Size()))
-		encoding.WriteBytes(data, &index, nearbyRelaysBytes, len(nearbyRelaysBytes))
+	for _, nearRelayData := range s.NearbyRelays {
+		encoding.WriteString(data, &index, nearRelayData.Name, uint32(len(nearRelayData.Name)))
+		encoding.WriteFloat64(data, &index, nearRelayData.Stats.RTT)
+		encoding.WriteFloat64(data, &index, nearRelayData.Stats.Jitter)
+		encoding.WriteFloat64(data, &index, nearRelayData.Stats.PacketLoss)
 	}
 
 	encoding.WriteUint8(data, &index, s.Platform)
@@ -437,13 +419,13 @@ func (s SessionMeta) MarshalBinary() ([]byte, error) {
 
 func (s SessionMeta) Size() uint64 {
 	var relayHopsSize uint64
-	for _, relay := range s.Hops {
-		relayHopsSize += relay.Size()
+	for _, relayName := range s.Hops {
+		relayHopsSize += 4 + uint64(len(relayName))
 	}
 
 	var nearbyRelaysSize uint64
-	for _, relay := range s.NearbyRelays {
-		nearbyRelaysSize += relay.Size()
+	for _, nearRelayData := range s.NearbyRelays {
+		nearbyRelaysSize += uint64(len(nearRelayData.Name)) + 8 + 8 + 8
 	}
 
 	return 4 + 8 + 8 + uint64(4*len(s.DatacenterName)) + uint64(4*len(s.DatacenterAlias)) + 1 + 8 + 8 + 8 + s.Location.Size() +
@@ -453,8 +435,8 @@ func (s SessionMeta) Size() uint64 {
 func (s *SessionMeta) Anonymise() {
 	s.ServerAddr = ObscureString(s.ServerAddr, ".", -1)
 	s.BuyerID = 0
-	s.NearbyRelays = []Relay{}
-	s.Hops = []Relay{}
+	s.NearbyRelays = []NearRelayPortalData{}
+	s.Hops = []string{}
 	s.DatacenterAlias = ""
 }
 
