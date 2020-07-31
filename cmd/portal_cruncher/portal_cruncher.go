@@ -334,18 +334,18 @@ func main() {
 					tx.ZRem("total-direct", sessionData.Meta.ID)
 					tx.ZRem(fmt.Sprintf("total-direct-buyer-%016x", sessionData.Meta.BuyerID), sessionData.Meta.ID)
 
-					tx.ZAdd("total-next", &redis.Z{Score: sessionData.Meta.DeltaRTT, Member: sessionData.Meta.ID})
+					tx.ZAdd("total-next", &redis.Z{Score: sessionData.Meta.DeltaRTT, Member: fmt.Sprintf("%016x", sessionData.Meta.ID)})
 					tx.Expire("total-next", redisPortalHostExp)
-					tx.ZAdd(fmt.Sprintf("total-next-buyer-%016x", sessionData.Meta.BuyerID), &redis.Z{Score: sessionData.Meta.DeltaRTT, Member: sessionData.Meta.ID})
+					tx.ZAdd(fmt.Sprintf("total-next-buyer-%016x", sessionData.Meta.BuyerID), &redis.Z{Score: sessionData.Meta.DeltaRTT, Member: fmt.Sprintf("%016x", sessionData.Meta.ID)})
 					tx.Expire(fmt.Sprintf("total-next-buyer-%016x", sessionData.Meta.BuyerID), redisPortalHostExp)
 				case false:
 					// Remove the session from the next set if it exists
 					tx.ZRem("total-next", sessionData.Meta.ID)
 					tx.ZRem(fmt.Sprintf("total-next-buyer-%016x", sessionData.Meta.BuyerID), sessionData.Meta.ID)
 
-					tx.ZAdd("total-direct", &redis.Z{Score: -sessionData.Meta.DirectRTT, Member: sessionData.Meta.ID})
+					tx.ZAdd("total-direct", &redis.Z{Score: -sessionData.Meta.DirectRTT, Member: fmt.Sprintf("%016x", sessionData.Meta.ID)})
 					tx.Expire("total-direct", redisPortalHostExp)
-					tx.ZAdd(fmt.Sprintf("total-direct-buyer-%016x", sessionData.Meta.BuyerID), &redis.Z{Score: -sessionData.Meta.DirectRTT, Member: sessionData.Meta.ID})
+					tx.ZAdd(fmt.Sprintf("total-direct-buyer-%016x", sessionData.Meta.BuyerID), &redis.Z{Score: -sessionData.Meta.DirectRTT, Member: fmt.Sprintf("%016x", sessionData.Meta.ID)})
 					tx.Expire(fmt.Sprintf("total-direct-buyer-%016x", sessionData.Meta.BuyerID), redisPortalHostExp)
 				}
 

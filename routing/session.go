@@ -222,7 +222,7 @@ func (s SessionData) MarshalBinary() ([]byte, error) {
 }
 
 func (s *SessionData) Size() uint64 {
-	return 4 + s.Meta.Size() + s.Slice.Size() + s.Point.Size()
+	return 4 + 4 + s.Meta.Size() + 4 + s.Slice.Size() + 4 + s.Point.Size()
 }
 
 type RelayHop struct {
@@ -444,8 +444,8 @@ func (s SessionMeta) Size() uint64 {
 		nearbyRelaysSize += 8 + 4 + uint64(len(nearRelayData.Name)) + 8 + 8 + 8
 	}
 
-	return 4 + 8 + 8 + uint64(4*len(s.DatacenterName)) + uint64(4*len(s.DatacenterAlias)) + 1 + 8 + 8 + 8 + s.Location.Size() +
-		uint64(4*len(s.ClientAddr)) + uint64(4*len(s.ServerAddr)) + (4 + relayHopsSize) + uint64(4*len(s.SDK)) + 1 + (4 + nearbyRelaysSize) + 1 + 8
+	return 4 + 8 + 8 + 4 + uint64(len(s.DatacenterName)) + 4 + uint64(len(s.DatacenterAlias)) + 1 + 8 + 8 + 8 + 4 + s.Location.Size() +
+		4 + uint64(len(s.ClientAddr)) + 4 + uint64(len(s.ServerAddr)) + (4 + relayHopsSize) + 4 + uint64(len(s.SDK)) + 1 + (4 + nearbyRelaysSize) + 1 + 8
 }
 
 func (s *SessionMeta) Anonymise() {

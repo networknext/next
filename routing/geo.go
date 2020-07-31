@@ -125,7 +125,7 @@ func (l Location) MarshalBinary() ([]byte, error) {
 }
 
 func (l Location) Size() uint64 {
-	return uint64(4 + 4*len(l.Continent) + 4*len(l.Country) + 4*len(l.CountryCode) + 4*len(l.Region) + 4*len(l.City) + 8 + 8 + 4*len(l.ISP) + 4)
+	return uint64(4 + 4 + len(l.Continent) + 4 + len(l.Country) + 4 + len(l.CountryCode) + 4 + len(l.Region) + 4 + len(l.City) + 8 + 8 + 4 + len(l.ISP) + 4)
 }
 
 // IsZero reports whether l represents the zero location lat/long 0,0 similar to how Time.IsZero works.
