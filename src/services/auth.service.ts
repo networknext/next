@@ -8,6 +8,8 @@ export default class AuthService {
 
   public lockClient: Auth0LockStatic
 
+  private getUserInfo: any
+
   constructor () {
     this.lockClient = new Auth0Lock(
       this.clientID,
@@ -35,6 +37,9 @@ export default class AuthService {
         }
       }
     )
+    // HACK - weird build issue is complaining about this on further down so I am doing this for now
+    this.getUserInfo = this.lockClient.getUserInfo
+
     this.lockClient.on('authenticated', this.processAuthentication)
   }
 

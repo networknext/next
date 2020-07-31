@@ -11,18 +11,6 @@
         <span class="sr-only">Loading...</span>
       </div>
     </div>
-    <div class="alert alert-success"
-          role="alert"
-          id="session-tool-alert"
-          v-show="false">
-      NEWUSER SUCCESS
-    </div>
-    <div class="alert alert-danger"
-          role="alert"
-          id="session-tool-alert"
-          v-show="false">
-      NEWUSER FAILURE
-    </div>
     <form v-show="true">
       <div class="form-group">
         <label for="customerId">
@@ -76,20 +64,6 @@
       </thead>
       <tbody>
         <tr v-for="(account, index) in companyUsers" :key="index">
-          <div
-            class="alert alert-success"
-            role="alert"
-            v-show="false"
-          >
-            UPDATEUSER SUCCESS
-          </div>
-          <div
-              class="alert alert-danger"
-              role="alert"
-              v-show="false"
-          >
-            UPDATEUSER FAILURE
-          </div>
           <td>
             {{ account.email }}
           </td>
@@ -227,13 +201,13 @@ export default class UserManagement extends Vue {
     if (account.delete) {
       this.apiService
         .deleteUserAccount({ user_id: `auth0|${account.user_id}` })
-        .then((response) => {
+        .then((response: any) => {
           this.companyUsers.splice(index, 1)
           this.selectedRoles[account.user_id] = null
         })
-        .catch((e) => {
+        .catch((error: Error) => {
           console.log('Something went wrong updating the users permissions')
-          console.log(e)
+          console.log(error)
         })
     }
   }
