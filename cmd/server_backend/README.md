@@ -47,7 +47,7 @@ The default setting is `warn` when running `make dev-relay-backend` and `make de
 - `GOOGLE_PROJECT_ID`: The Google project ID
 - `GOOGLE_PUBSUB_TOPIC_BILLING`: The topic ID to use for billing in Google Pub/Sub
 - `NUM_UDP_SOCKETS`: Number of udp sockets to create for packet receiving. All on the same port using the SO_REUSEPORT socket opt, defaults to 8
-- `USE_THREAD_POOL`: Whether the server backend should use a thread pool over an unrestricted number of goroutines for processing packets and handling post session updates. If true, two pools will be created, one for each of those functions
+- `USE_THREAD_POOL`: Whether the server backend should use a thread pool over an unrestricted number of goroutines for processing packets and handling post session updates. If true, two pools will be created per udp socket, one for each of those functions
 - `NUM_PACKET_PROCESSING_THREADS`: The number of threads to assign to the packet processing thread pool, defaults to 8
 - `NUM_POST_UPDATE_THREADS`: The number of threads to assign to the post session update thread pool, defaults to 8
 
