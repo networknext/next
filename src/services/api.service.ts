@@ -60,4 +60,12 @@ export default class APIService {
   public fetchUserSessions (args: any) {
     return this.call('BuyersService.UserSessions', args)
   }
+
+  public fetchAllRoles () {
+    return this.call('AuthService.AllRoles', {})
+  }
+
+  public fetchAllAccounts (args: any) {
+    return this.call('AuthService.AllAccounts', args)
+  }
 }

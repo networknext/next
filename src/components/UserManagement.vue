@@ -38,7 +38,7 @@
         <label for="customerId">
           Permission Level
         </label>
-        <multiselect track-by="name" label="name" v-model="value" :options="options" multiple></multiselect>
+        <multiselect track-by="name" label="name" v-model="newUserRoles" :options="allRoles" multiple></multiselect>
         <small class="form-text text-muted">
           The permission level to grant the added user accounts.
         </small>
@@ -55,12 +55,12 @@
     <p class="card-text">
       Manage the list of users that currently have access to your Network Next account.
     </p>
-    <div id="account-table-spinner" v-show="false">
+    <div id="account-table-spinner" v-show="!showTable">
       <div class="spinner-border" role="status">
         <span class="sr-only">Loading...</span>
       </div>
     </div>
-    <table class="table table-sm mt-4" v-show="true">
+    <table class="table table-sm mt-4" v-show="showTable">
       <thead class="thead-light">
         <tr>
           <th style="width: 20%;">
@@ -91,10 +91,10 @@
             UPDATEUSER FAILURE
           </div>
           <td>
-            EMAIL
+            {{ account.email }}
           </td>
           <td>
-            <multiselect track-by="name" label="name" v-model="value" :options="options" multiple></multiselect>
+            <multiselect track-by="name" label="name" v-model="selectedRoles[account.id]" :options="allRoles" multiple v-bind:disabled="!account.edit"></multiselect>
           </td>
           <td class="td-btn" v-show="true">
             <button
@@ -151,6 +151,7 @@ import { Component, Vue } from 'vue-property-decorator'
 import Multiselect from 'vue-multiselect'
 import { Role } from './types/APITypes'
 import { UserProfile } from '../services/auth.service'
+import APIService from '../services/api.service'
 
 @Component({
   components: {
@@ -158,27 +159,42 @@ import { UserProfile } from '../services/auth.service'
   }
 })
 export default class UserManagement extends Vue {
-  private allRoles: Array<Role> = []
-  private companyUsers: Array<UserProfile> = []
+  private apiService: APIService
+  private allRoles: Array<any> = []
+  private companyUsers: Array<any> = []
 
-  private value = [
-  ]
+  private selectedRoles: any = {}
+  private newUserRoles = []
 
-  private options = [
-    { name: 'Vue.js', code: 'vu' },
-    { name: 'Javascript', code: 'js' },
-    { name: 'Open Source', code: 'os' }
-  ]
+  private showTable = false
 
-  private created () {
-    // TODO: API call to get all role options
-    this.allRoles = [
-      {
-        ID: '1234',
-        name: 'Admin',
-        description: 'With great power comes great responsibility'
-      }
+  constructor () {
+    super()
+    this.apiService = Vue.prototype.$apiService
+  }
+
+  private mounted () {
+    const promises = [
+      this.apiService.fetchAllAccounts({}),
+      this.apiService.fetchAllRoles()
     ]
+    Promise.all(promises)
+      .then((responses: any) => {
+        const companyUsers: Array<any> = responses[0].result.accounts
+        const allRoles = responses[1].result.roles
+
+        this.allRoles = allRoles
+        this.companyUsers = companyUsers
+        this.companyUsers.forEach((user: any) => {
+          user.edit = false
+          user.delete = false
+        })
+
+        this.companyUsers.forEach((user: any) => {
+          this.selectedRoles[user.id] = user.roles
+        })
+        this.showTable = true
+      })
   }
 }
 
