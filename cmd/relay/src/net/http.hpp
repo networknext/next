@@ -76,7 +76,7 @@ namespace net
       req.version(11);
       req.content_length(request.size());
       req.body() = request;
-      req.set(http::field::host, "localhost");
+      req.set(http::field::host, name);
       req.set(http::field::user_agent, "network next relay");
       req.set(http::field::content_type, "application/json");
       req.set(http::field::timeout, "10");
