@@ -1,6 +1,7 @@
 package routing
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -226,8 +227,8 @@ func (s *SessionData) Size() uint64 {
 }
 
 type RelayHop struct {
-	ID   uint64
-	Name string
+	ID   uint64 `json:"id"`
+	Name string `json:"name"`
 }
 
 type NearRelayPortalData struct {
@@ -446,6 +447,30 @@ func (s SessionMeta) Size() uint64 {
 
 	return 4 + 8 + 8 + 4 + uint64(len(s.DatacenterName)) + 4 + uint64(len(s.DatacenterAlias)) + 1 + 8 + 8 + 8 + 4 + s.Location.Size() +
 		4 + uint64(len(s.ClientAddr)) + 4 + uint64(len(s.ServerAddr)) + (4 + relayHopsSize) + 4 + uint64(len(s.SDK)) + 1 + (4 + nearbyRelaysSize) + 1 + 8
+}
+
+func (s SessionMeta) MarshalJSON() ([]byte, error) {
+	fields := map[string]interface{}{}
+
+	fields["id"] = fmt.Sprintf("%016x", s.ID)
+	fields["user_hash"] = fmt.Sprintf("%016x", s.UserHash)
+	fields["datacenter_name"] = s.DatacenterName
+	fields["datacenter_alias"] = s.DatacenterAlias
+	fields["on_network_next"] = s.OnNetworkNext
+	fields["next_rtt"] = s.NextRTT
+	fields["direct_rtt"] = s.DirectRTT
+	fields["delta_rtt"] = s.DeltaRTT
+	fields["location"] = s.Location
+	fields["client_addr"] = s.ClientAddr
+	fields["server_addr"] = s.ServerAddr
+	fields["hops"] = s.Hops
+	fields["sdk"] = s.SDK
+	fields["connection"] = ConnectionTypeText(int32(s.Connection))
+	fields["nearby_relays"] = s.NearbyRelays
+	fields["platform"] = PlatformTypeText(uint64(s.Platform))
+	fields["customer_id"] = fmt.Sprintf("%016x", s.BuyerID)
+
+	return json.Marshal(fields)
 }
 
 func (s *SessionMeta) Anonymise() {

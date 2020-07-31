@@ -178,7 +178,7 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string, se
 
 		destRelayIndex, ok := routeMatrix.RelayIndices[destRelayId]
 		if !ok {
-			log.Fatalln(fmt.Errorf("dest relay %x not in matrix", destRelayId))
+			log.Fatalln(fmt.Errorf("dest relay %016x not in matrix", destRelayId))
 		}
 
 		for _, relay := range reply.Meta.NearbyRelays {
@@ -191,7 +191,7 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string, se
 
 			sourceRelayIndex, ok := routeMatrix.RelayIndices[sourceRelayId]
 			if !ok {
-				log.Fatalln(fmt.Errorf("source relay %x not in matrix", sourceRelayId))
+				log.Fatalln(fmt.Errorf("source relay %016x not in matrix", sourceRelayId))
 			}
 
 			nearRelayRTT := relay.ClientStats.RTT
