@@ -944,10 +944,12 @@ type GameConfigurationArgs struct {
 }
 
 type GameConfigurationReply struct {
-	GameConfiguration gameConfiguration `json:"game_config"`
+	GameConfiguration   gameConfiguration                    `json:"game_config"`
+	CustomerRouteShader routing.CustomerRoutingRulesSettings `json:"customer_route_shader"`
 }
 
 type gameConfiguration struct {
+	BuyerID   string `json:"buyer_id"`
 	Company   string `json:"company"`
 	PublicKey string `json:"public_key"`
 }
@@ -968,11 +970,13 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 	buyer, err = s.Storage.BuyerWithDomain(args.Domain)
 	// Buyer not found
 	if err != nil {
+		reply.CustomerRouteShader = routing.DefaultCustomerRoutingRulesSettings
 		return nil
 	}
 
 	reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
 	reply.GameConfiguration.Company = buyer.Name
+	reply.CustomerRouteShader = buyer.CustomerRoutingRulesSettings
 
 	return nil
 }
@@ -1024,12 +1028,13 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 
 		// Create new buyer
 		err = s.Storage.AddBuyer(ctx, routing.Buyer{
-			ID:        buyerID,
-			Name:      args.Name,
-			Domain:    args.Domain,
-			Active:    true,
-			Live:      false,
-			PublicKey: byteKey[8:],
+			ID:                           buyerID,
+			Name:                         args.Name,
+			Domain:                       args.Domain,
+			Active:                       true,
+			Live:                         false,
+			PublicKey:                    byteKey[8:],
+			CustomerRoutingRulesSettings: routing.DefaultCustomerRoutingRulesSettings,
 		})
 
 		if err != nil {
@@ -1046,6 +1051,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		}
 
 		// Setup reply
+		reply.GameConfiguration.BuyerID = fmt.Sprintf("%016x", buyer.ID)
 		reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
 		reply.GameConfiguration.Company = buyer.Name
 
@@ -1086,6 +1092,64 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 	// Set reply
 	reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
 	reply.GameConfiguration.Company = buyer.Name
+
+	return nil
+}
+
+type RouteShaderUpdateArgs struct {
+	EnableNN          bool   `json:"enable_nn"`
+	EnableRTT         bool   `json:"enable_rtt"`
+	EnablePL          bool   `json:"enable_pl"`
+	EnableAB          bool   `json:"enable_ab"`
+	EnableMP          bool   `json:"enable_mp"`
+	AcceptableLatency string `json:"acceptable_latency"`
+	PLThreshold       string `json:"pl_threshold"`
+}
+
+type RouteShaderUpdateReply struct {
+	CustomerRouteShader routing.CustomerRoutingRulesSettings `json:"customer_route_shader"`
+}
+
+func (s *BuyersService) UpdateRouteShader(req *http.Request, args *RouteShaderUpdateArgs, reply *RouteShaderUpdateReply) error {
+	if !VerifyAnyRole(req, AdminRole, OwnerRole) {
+		err := fmt.Errorf("UpadteRouteShader(): %v", ErrInsufficientPrivileges)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	ctx := context.Background()
+
+	requestUser := req.Context().Value("user")
+	if requestUser == nil {
+		return fmt.Errorf("UpdateRouteShader(): unable to parse user from token")
+	}
+
+	requestEmail, ok := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["email"].(string)
+	if !ok {
+		return fmt.Errorf("UpdateRouteShader(): unable to parse email from token")
+	}
+	requestEmailParts := strings.Split(requestEmail, "@")
+	requestDomain := requestEmailParts[len(requestEmailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
+	buyer, err := s.Storage.BuyerWithDomain(requestDomain)
+	if err != nil {
+		return fmt.Errorf("UpdateRouteShader(): BuyerWithDomain error: %v", err)
+	}
+
+	buyer.CustomerRoutingRulesSettings = routing.CustomerRoutingRulesSettings{
+		EnableNN:          args.EnableNN,
+		EnableRTT:         args.EnableRTT,
+		EnablePL:          args.EnablePL,
+		EnableMP:          args.EnableMP,
+		EnableAB:          args.EnableAB,
+		AcceptableLatency: args.AcceptableLatency,
+		PLThreshold:       args.PLThreshold,
+	}
+
+	if err := s.Storage.SetBuyer(ctx, buyer); err != nil {
+		return fmt.Errorf("UpdateRouteShader(): Failed to update buyer: %v", err)
+	}
+
+	reply.CustomerRouteShader = buyer.CustomerRoutingRulesSettings
 
 	return nil
 }
