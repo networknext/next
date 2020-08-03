@@ -1,7 +1,7 @@
 #ifndef CONFIG_HPP
 #define CONFIG_HPP
 
-#define RELAY_VERSION "1.0.3"
+#define RELAY_VERSION "1.0.4"
 
 // Legacy, use bools instead, eventually delete and replace these
 #define RELAY_OK 0

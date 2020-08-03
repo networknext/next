@@ -375,9 +375,13 @@ build-relay-backend: ## builds the relay backend binary
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/relay_backend ./cmd/relay_backend/relay_backend.go
 	@printf "done\n"
 
-.PHONY: deploy-relay-backend
-deploy-relay-backend: ## builds and deploys the relay backend to dev
+.PHONY: deploy-relay-backend-dev
+deploy-relay-backend-dev: ## builds and deploys the relay backend to dev
 	./deploy/deploy.sh -e dev -c dev-1 -t relay -b gs://development_artifacts
+
+.PHONY: deploy-relay-backend-prod
+deploy-relay-backend-prod: ## builds and deploys the relay backend to prod
+	./deploy/deploy.sh -e prod -c mig-jcr6 -t relay -b gs://prod_artifacts
 
 .PHONY: build-server-backend
 build-server-backend: ## builds the server backend binary
