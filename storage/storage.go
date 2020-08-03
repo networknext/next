@@ -137,3 +137,12 @@ type HexStringConversionError struct {
 func (e *HexStringConversionError) Error() string {
 	return fmt.Sprintf("error converting hex string %s to uint64", e.hexString)
 }
+
+type SequenceNumbersOutOfSync struct {
+	localSequenceNumber  int64
+	remoteSequenceNumber int64
+}
+
+func (e *SequenceNumbersOutOfSync) Error() string {
+	return fmt.Sprintf("sequence number out of sync: remote %d != local %d", e.remoteSequenceNumber, e.localSequenceNumber)
+}

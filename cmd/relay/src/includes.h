@@ -1,3 +1,4 @@
+
 #include "config.hpp"
 #include "sysinfo.hpp"
 #include <algorithm>
@@ -5,6 +6,7 @@
 #include <arpa/inet.h>
 #include <array>
 #include <atomic>
+#include <boost/beast.hpp>
 #include <cassert>
 #include <cerrno>
 #include <cfloat>
@@ -19,13 +21,15 @@
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
-#include <curl/curl.h>
 #include <deque>
 #include <execinfo.h>
 #include <fcntl.h>
 #include <fstream>
 #include <functional>
 #include <future>
+#include <glibtop.h>
+#include <glibtop/cpu.h>
+#include <glibtop/mem.h>
 #include <ifaddrs.h>
 #include <iostream>
 #include <linux/netlink.h>
@@ -62,3 +66,4 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+// #include <curl/curl.h>

@@ -17,16 +17,17 @@ import (
 	"os/signal"
 	"runtime"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/networknext/backend/analytics"
 	"github.com/networknext/backend/logging"
 	"github.com/networknext/backend/transport"
 
 	gcplogging "cloud.google.com/go/logging"
 	"cloud.google.com/go/profiler"
+	"cloud.google.com/go/pubsub"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -123,6 +124,8 @@ func main() {
 		os.Exit(1)
 	}
 
+	fmt.Printf("env is %s\n", env)
+
 	var customerPublicKey []byte
 	{
 		if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
@@ -148,18 +151,6 @@ func main() {
 		}
 	}
 
-	redisHost := os.Getenv("REDIS_HOST_RELAYS")
-	redisClientRelays := storage.NewRedisClient(redisHost)
-	if err := redisClientRelays.Ping().Err(); err != nil {
-		level.Error(logger).Log("envvar", "REDIS_HOST_RELAYS", "value", redisHost, "err", err)
-		os.Exit(1)
-	}
-
-	geoClient := routing.GeoClient{
-		RedisClient: redisClientRelays,
-		Namespace:   "RELAY_LOCATIONS",
-	}
-
 	var db storage.Storer = &storage.InMemory{
 		LocalMode: true,
 	}
@@ -167,8 +158,8 @@ func main() {
 	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
 	_, emulatorOK := os.LookupEnv("FIRESTORE_EMULATOR_HOST")
 	if emulatorOK {
+		fmt.Printf("using firestore emulator\n")
 		gcpProjectID = "local"
-
 		level.Info(logger).Log("msg", "Detected firestore emulator")
 	}
 
@@ -179,6 +170,8 @@ func main() {
 
 		// Firestore
 		{
+			fmt.Printf("initializing firestore\n")
+
 			// Create a Firestore Storer
 			fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
 			if err != nil {
@@ -194,6 +187,7 @@ func main() {
 			}
 			// Start a goroutine to sync from Firestore
 			go func() {
+
 				ticker := time.NewTicker(syncInterval)
 				fs.SyncLoop(ctx, ticker.C)
 			}()
@@ -204,6 +198,9 @@ func main() {
 	}
 
 	if env == "local" {
+
+		fmt.Printf("creating dummy local seller\n")
+
 		seller := routing.Seller{
 			ID:                        "sellerID",
 			Name:                      "local",
@@ -255,6 +252,8 @@ func main() {
 	if gcpOK {
 		// Stackdriver Metrics
 		{
+			fmt.Printf("initializing stackdriver metrics\n")
+
 			var enableSDMetrics bool
 			var err error
 			enableSDMetricsString, ok := os.LookupEnv("ENABLE_STACKDRIVER_METRICS")
@@ -295,6 +294,8 @@ func main() {
 
 		// Stackdriver Profiler
 		{
+			fmt.Printf("initializing stackdriver profiler\n")
+
 			var enableSDProfiler bool
 			var err error
 			enableSDProfilerString, ok := os.LookupEnv("ENABLE_STACKDRIVER_PROFILER")
@@ -314,7 +315,7 @@ func main() {
 					ProjectID:      gcpProjectID,
 					MutexProfiling: true,
 				}); err != nil {
-					level.Error(logger).Log("msg", "Failed to initialze StackDriver profiler", "err", err)
+					level.Error(logger).Log("msg", "Failed to initialize StackDriver profiler", "err", err)
 					os.Exit(1)
 				}
 			}
@@ -371,30 +372,6 @@ func main() {
 		return rm
 	}
 
-	// Clean up any relays that may have expired while the relay_backend was down (due to a deploy, maintenance, etc.)
-	hgetallResult := redisClientRelays.HGetAll(routing.HashKeyAllRelays)
-	for key, raw := range hgetallResult.Val() {
-		// Check if the key has expired and if it should be removed from the hash set
-		getCmd := redisClientRelays.Get(key)
-		if getCmd.Val() == "" {
-
-			level.Debug(logger).Log("msg", "Found lingering relay", "key", key)
-
-			var relay routing.RelayCacheEntry
-			if err := relay.UnmarshalBinary([]byte(raw)); err != nil {
-				level.Error(logger).Log("msg", "detected lingering relay but failed to unmarshal relay from redis hash set", "err", err)
-				os.Exit(1)
-			}
-
-			if err := transport.RemoveRelayCacheEntry(ctx, relay.ID, key, redisClientRelays, &geoClient, statsdb); err != nil {
-				level.Error(logger).Log("msg", "detected lingering relay but failed to remove relay from redis hash set", "err", err)
-				os.Exit(1)
-			}
-
-			level.Debug(logger).Log("msg", "Lingering relay removed", "relay_id", relay.ID)
-		}
-	}
-
 	// Get the max jitter and max packet loss env vars
 	var maxJitter float64
 	var maxPacketLoss float64
@@ -424,6 +401,184 @@ func main() {
 		}
 	}
 
+	// Create the relay map
+	cleanupCallback := func(relayID uint64) error {
+		// Remove relay entry from statsDB (which in turn means it won't appear in cost matrix)
+		statsdb.DeleteEntry(relayID)
+
+		return nil
+	}
+
+	relayMap := routing.NewRelayMap(cleanupCallback)
+	go func() {
+		timeout := int64(routing.RelayTimeout.Seconds())
+		frequency := time.Millisecond * 100
+		ticker := time.NewTicker(frequency)
+		relayMap.TimeoutLoop(ctx, timeout, ticker.C)
+	}()
+
+	// ping stats
+	var pingStatsPublisher analytics.PingStatsPublisher = &analytics.NoOpPingStatsPublisher{}
+	{
+		// Create a no-op publisher
+		_, emulatorOK = os.LookupEnv("PUBSUB_EMULATOR_HOST")
+		if gcpOK || emulatorOK {
+
+			pubsubCtx := ctx
+			if emulatorOK {
+				gcpProjectID = "local"
+
+				var cancelFunc context.CancelFunc
+				pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(5*time.Minute))
+				defer cancelFunc()
+
+				level.Info(logger).Log("msg", "Detected pubsub emulator")
+			}
+
+			// Google Pubsub
+			{
+				settings := pubsub.PublishSettings{
+					DelayThreshold: time.Second,
+					CountThreshold: 1,
+					ByteThreshold:  1 << 14,
+					NumGoroutines:  runtime.GOMAXPROCS(0),
+					Timeout:        time.Minute,
+				}
+
+				pubsub, err := analytics.NewGooglePubSubPingStatsPublisher(pubsubCtx, &relayBackendMetrics.PingStatsMetrics, logger, gcpProjectID, "ping_stats", settings)
+				if err != nil {
+					level.Error(logger).Log("msg", "could not create analytics pubsub publisher", "err", err)
+					os.Exit(1)
+				}
+
+				pingStatsPublisher = pubsub
+			}
+		}
+
+		go func() {
+			sleepTime := time.Minute
+			if publishInterval, ok := os.LookupEnv("PING_STATS_PUBLISH_INTERVAL"); ok {
+				if duration, err := time.ParseDuration(publishInterval); err == nil {
+					sleepTime = duration
+				} else {
+					level.Error(logger).Log("msg", "could not parse publish interval", "err", err)
+				}
+			}
+
+			for {
+				time.Sleep(sleepTime)
+				cpy := statsdb.MakeCopy()
+				length := routing.TriMatrixLength(len(cpy.Entries))
+				if length > 0 { // prevent crash with only 1 relay
+					entries := make([]analytics.PingStatsEntry, length)
+					ids := make([]uint64, length)
+
+					idx := 0
+					for k := range cpy.Entries {
+						ids[idx] = k
+						idx++
+					}
+
+					for i := 1; i < len(cpy.Entries); i++ {
+						for j := 0; j < i; j++ {
+							idA := ids[i]
+							idB := ids[j]
+
+							rtt, jitter, pl := cpy.GetSample(idA, idB)
+
+							entries[routing.TriMatrixIndex(i, j)] = analytics.PingStatsEntry{
+								RelayA:     idA,
+								RelayB:     idB,
+								RTT:        rtt,
+								Jitter:     jitter,
+								PacketLoss: pl,
+							}
+						}
+					}
+
+					if err := pingStatsPublisher.Publish(ctx, entries); err != nil {
+						level.Error(logger).Log("err", err)
+						os.Exit(1)
+					}
+				}
+			}
+		}()
+	}
+
+	// relay stats
+	var relayStatsPublisher analytics.RelayStatsPublisher = &analytics.NoOpRelayStatsPublisher{}
+	{
+		_, emulatorOK = os.LookupEnv("PUBSUB_EMULATOR_HOST")
+		if gcpOK || emulatorOK {
+
+			pubsubCtx := ctx
+			if emulatorOK {
+				gcpProjectID = "local"
+
+				var cancelFunc context.CancelFunc
+				pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(5*time.Minute))
+				defer cancelFunc()
+
+				level.Info(logger).Log("msg", "Detected pubsub emulator")
+			}
+
+			// Google Pubsub
+			{
+				settings := pubsub.PublishSettings{
+					DelayThreshold: time.Second,
+					CountThreshold: 1,
+					ByteThreshold:  1 << 14,
+					NumGoroutines:  runtime.GOMAXPROCS(0),
+					Timeout:        time.Minute,
+				}
+
+				pubsub, err := analytics.NewGooglePubSubRelayStatsPublisher(pubsubCtx, &relayBackendMetrics.RelayStatsMetrics, logger, gcpProjectID, "relay_stats", settings)
+				if err != nil {
+					level.Error(logger).Log("msg", "could not create analytics pubsub publisher", "err", err)
+					os.Exit(1)
+				}
+
+				relayStatsPublisher = pubsub
+			}
+		}
+
+		go func() {
+			sleepTime := time.Second * 10
+			if publishInterval, ok := os.LookupEnv("RELAY_STATS_PUBLISH_INTERVAL"); ok {
+				if duration, err := time.ParseDuration(publishInterval); err == nil {
+					sleepTime = duration
+				} else {
+					level.Error(logger).Log("msg", "could not parse publish interval", "err", err)
+				}
+			}
+
+			for {
+				time.Sleep(sleepTime)
+
+				allRelayData := relayMap.GetAllRelayData()
+
+				entries := make([]analytics.RelayStatsEntry, len(allRelayData))
+
+				for i, relay := range allRelayData {
+					entries[i] = analytics.RelayStatsEntry{
+						ID:          relay.ID,
+						NumSessions: relay.TrafficStats.SessionCount,
+						CPUUsage:    relay.CPUUsage,
+						MemUsage:    relay.MemUsage,
+						Tx:          relay.TrafficStats.BytesSent,
+						Rx:          relay.TrafficStats.BytesReceived,
+					}
+				}
+
+				if err := relayStatsPublisher.Publish(ctx, entries); err != nil {
+					level.Error(logger).Log("err", err)
+					os.Exit(1)
+				}
+			}
+		}()
+
+	}
+
 	// Periodically generate cost matrix from stats db
 	cmsyncinterval := os.Getenv("COST_MATRIX_INTERVAL")
 	syncInterval, err := time.ParseDuration(cmsyncinterval)
@@ -439,7 +594,7 @@ func main() {
 
 			costMatrixDurationStart := time.Now()
 
-			err := statsdb.GetCostMatrix(&costMatrixNew, redisClientRelays, float32(maxJitter), float32(maxPacketLoss))
+			err := statsdb.GetCostMatrix(&costMatrixNew, relayMap.GetAllRelayData(), float32(maxJitter), float32(maxPacketLoss))
 
 			costMatrixDurationSince := time.Since(costMatrixDurationStart)
 			costMatrixMetrics.DurationGauge.Set(float64(costMatrixDurationSince.Milliseconds()))
@@ -540,65 +695,34 @@ func main() {
 			fmt.Printf("route matrix update: %.2f milliseconds\n", optimizeMetrics.DurationGauge.Value())
 			fmt.Printf("cost matrix bytes: %d\n", int(costMatrixMetrics.Bytes.Value()))
 			fmt.Printf("route matrix bytes: %d\n", int(routeMatrixMetrics.Bytes.Value()))
+			fmt.Printf("%d ping stats entries submitted\n", int(relayBackendMetrics.PingStatsMetrics.EntriesSubmitted.Value()))
+			fmt.Printf("%d ping stats entries queued\n", int(relayBackendMetrics.PingStatsMetrics.EntriesQueued.Value()))
+			fmt.Printf("%d ping stats entries flushed\n", int(relayBackendMetrics.PingStatsMetrics.EntriesFlushed.Value()))
+			fmt.Printf("%d relay stats entries submitted\n", int(relayBackendMetrics.RelayStatsMetrics.EntriesSubmitted.Value()))
+			fmt.Printf("%d relay stats entries queued\n", int(relayBackendMetrics.RelayStatsMetrics.EntriesQueued.Value()))
+			fmt.Printf("%d relay stats entries flushed\n", int(relayBackendMetrics.RelayStatsMetrics.EntriesFlushed.Value()))
 			fmt.Printf("-----------------------------\n")
 
 			time.Sleep(syncInterval)
 		}
 	}()
 
-	// Sub to expiry events for cleanup
-	redisClientRelays.ConfigSet("notify-keyspace-events", "Ex")
-	go func() {
-		ps := redisClientRelays.Subscribe("__keyevent@0__:expired")
-		for {
-			// Recieve expiry event message
-			msg, err := ps.ReceiveMessage()
-			if err != nil {
-				level.Error(logger).Log("msg", "Error recieving expired message from pubsub", "err", err)
-				os.Exit(1)
-			}
-
-			// If it is a relay that is expiring...
-			if strings.HasPrefix(msg.Payload, routing.HashKeyPrefixRelay) {
-
-				// Retrieve the ID of the relay that has expired
-				rawID, err := strconv.ParseUint(strings.TrimPrefix(msg.Payload, routing.HashKeyPrefixRelay), 10, 64)
-				if err != nil {
-					level.Error(logger).Log("msg", "Failed to parse expired Relay ID from payload", "payload", msg.Payload, "err", err)
-					os.Exit(1)
-				}
-
-				// Log the ID
-				level.Warn(logger).Log("msg", fmt.Sprintf("relay with id %v has disconnected.", rawID))
-
-				// Remove the relay cache entry
-				if err := transport.RemoveRelayCacheEntry(ctx, rawID, msg.Payload, redisClientRelays, &geoClient, statsdb); err != nil {
-					level.Error(logger).Log("err", err)
-					os.Exit(1)
-				}
-			}
-		}
-	}()
-
 	commonInitParams := transport.RelayInitHandlerConfig{
-		RedisClient:      redisClientRelays,
-		GeoClient:        &geoClient,
+		RelayMap:         relayMap,
 		Storer:           db,
 		Metrics:          relayInitMetrics,
 		RouterPrivateKey: routerPrivateKey,
 	}
 
 	commonUpdateParams := transport.RelayUpdateHandlerConfig{
-		RedisClient: redisClientRelays,
-		GeoClient:   &geoClient,
-		StatsDb:     statsdb,
-		Metrics:     relayUpdateMetrics,
-		Storer:      db,
+		RelayMap: relayMap,
+		StatsDb:  statsdb,
+		Metrics:  relayUpdateMetrics,
+		Storer:   db,
 	}
 
 	commonHandlerParams := transport.RelayHandlerConfig{
-		RedisClient:      redisClientRelays,
-		GeoClient:        &geoClient,
+		RelayMap:         relayMap,
 		Storer:           db,
 		StatsDb:          statsdb,
 		Metrics:          relayHandlerMetrics,
@@ -625,6 +749,8 @@ func main() {
 		}
 	}
 
+	fmt.Printf("starting http server\n")
+
 	router := mux.NewRouter()
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage))
@@ -634,8 +760,8 @@ func main() {
 	router.Handle("/cost_matrix", costMatrix).Methods("GET")
 	router.HandleFunc("/route_matrix", serveRouteMatrixFunc).Methods("GET")
 	router.Handle("/debug/vars", expvar.Handler())
-	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(redisClientRelays, getRouteMatrixFunc, statsdb, "local", "local", maxJitter))
-	router.HandleFunc("/routes", transport.RoutesHandlerFunc(redisClientRelays, getRouteMatrixFunc, statsdb, "local", "local"))
+	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(relayMap, getRouteMatrixFunc, statsdb, "local", "local", maxJitter))
+	router.HandleFunc("/routes", transport.RoutesHandlerFunc(getRouteMatrixFunc, statsdb, "local", "local"))
 
 	go func() {
 		port, ok := os.LookupEnv("PORT")
