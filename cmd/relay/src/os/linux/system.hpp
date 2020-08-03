@@ -4,48 +4,48 @@
 
 namespace os
 {
-  // class LibTopWrapper
-  // {
-  //  public:
-  //   LibTopWrapper();
+  class LibTopWrapper
+  {
+   public:
+    LibTopWrapper();
 
-  //   auto getCPU() -> double;
-  //   auto getMem() -> double;
-  // };
+    auto getCPU() -> double;
+    auto getMem() -> double;
+  };
 
-  // inline LibTopWrapper::LibTopWrapper()
-  // {
-  //   glibtop_init();
-  // }
+  inline LibTopWrapper::LibTopWrapper()
+  {
+    glibtop_init();
+  }
 
-  // inline auto LibTopWrapper::getCPU() -> double
-  // {
-  //   glibtop_cpu cpu;
-  //   glibtop_get_cpu(&cpu);
-  //   return static_cast<double>(cpu.total - cpu.idle) / static_cast<double>(cpu.total);
-  // }
+  inline auto LibTopWrapper::getCPU() -> double
+  {
+    glibtop_cpu cpu;
+    glibtop_get_cpu(&cpu);
+    return static_cast<double>(cpu.total - cpu.idle) / static_cast<double>(cpu.total);
+  }
 
-  // inline auto LibTopWrapper::getMem() -> double
-  // {
-  //   glibtop_mem mem;
-  //   glibtop_get_mem(&mem);
-  //   return static_cast<double>(mem.user) / static_cast<double>(mem.total);
-  // }
+  inline auto LibTopWrapper::getMem() -> double
+  {
+    glibtop_mem mem;
+    glibtop_get_mem(&mem);
+    return static_cast<double>(mem.user) / static_cast<double>(mem.total);
+  }
 
-  //struct SysUsage
-  //{
-  //  double CPU;
-  //  double Mem;
-  //};
+  struct SysUsage
+  {
+    double CPU;
+    double Mem;
+  };
 
-  //inline auto GetUsage() -> SysUsage
-  //{
-  //  static LibTopWrapper wrapper;
-  //  return SysUsage{
-  //   .CPU = wrapper.getCPU(),
-  //   .Mem = wrapper.getMem(),
-  //  };
-  //}
+  inline auto GetUsage() -> SysUsage
+  {
+    static LibTopWrapper wrapper;
+    return SysUsage{
+     .CPU = wrapper.getCPU(),
+     .Mem = wrapper.getMem(),
+    };
+  }
 
   struct CPUUsageCache
   {
@@ -113,8 +113,10 @@ namespace os
        &guest,
        &guestNice);
 
-      curr.Idle = idle + iowait;
-      int nonIdle = user + nice + system + irq + softirq + steal + guest + guestNice;
+      // iowait is added to non-idle because the relay is basically the only thing running on the servers
+      // thus waiting is consumed cpu time since threads are locked to cores
+      curr.Idle = idle;
+      int nonIdle = user + nice + system + irq + softirq + steal + guest + guestNice + iowait;
       curr.Total = curr.Idle + nonIdle;
 
       int total = curr.Total - prev.Total;
