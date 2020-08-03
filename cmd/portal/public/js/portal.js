@@ -408,6 +408,15 @@ MapHandler = {
 UserHandler = {
 	allBuyers: [],
 	userInfo: null,
+	routeShader: {
+		enable_nn: true,
+		enable_rtt: true,
+		enable_pl: false,
+		enable_mp: false,
+		enable_ab: false,
+		acceptable_latency: 20,
+		pl_threshold: 1
+	},
 	async fetchCurrentUserInfo() {
 		return AuthHandler.auth0Client.getIdTokenClaims()
 			.then((response) => {
@@ -531,8 +540,9 @@ WorkspaceHandler = {
 	changePage(page, options) {
 		// Clear all polling loops
 		clearInterval(this.sessionLoop);
-		clearInterval(this.mapLoop);
+		clearInterval(MapHandler.mapLoop);
 		clearInterval(this.sessionToolLoop);
+		clearInterval(MapHandler.mapCountLoop);
 
 		this.sessionLoop = null;
 		this.mapLoop = null;
@@ -694,6 +704,7 @@ WorkspaceHandler = {
 			.then((response) => {
 				UserHandler.userInfo.pubKey = response.game_config.public_key;
 				UserHandler.userInfo.company = response.game_config.company;
+				UserHandler.routeShader = response.customer_route_shader
 			})
 			.catch((e) => {
 				console.log("Something went wrong fetching public key");
@@ -1179,6 +1190,7 @@ function createVueComponents() {
 			addUsers: addUsers,
 			saveAutoSignIn: saveAutoSignIn,
 			updatePubKey: updatePubKey,
+			updateRouteShader: updateRouteShader
 		}
 	});
 }
@@ -1192,6 +1204,7 @@ function updatePubKey() {
 		.call("BuyersService.UpdateGameConfiguration", {name: company, domain: domain, new_public_key: newPubKey})
 		.then((response) => {
 			UserHandler.userInfo.pubKey = response.game_config.public_key;
+			UserHandler.userInfo.id = response.game_config.buyer_id
 			Object.assign(rootComponent.$data.pages.settings.updateKey, {
 				success: 'Updated public key successfully',
 			});
@@ -1213,6 +1226,17 @@ function updatePubKey() {
 				});
 			}, 5000);
 		});
+}
+
+function updateRouteShader () {
+	JSONRPCClient.call('BuyersService.UpdateRouteShader', UserHandler.routeShader)
+		.then((response) => {
+			UserHandler.routeShader = response.customer_route_shader
+		})
+		.catch((error) => {
+			console.log('Something went wrong updating the route shader')
+			console.log(error)
+		})
 }
 
 function addUsers() {
