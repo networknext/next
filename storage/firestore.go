@@ -218,6 +218,7 @@ func (fs *Firestore) CheckSequenceNumber(ctx context.Context) (bool, error) {
 	fs.sequenceNumberMutex.RLock()
 	localSeqNum := fs.syncSequenceNumber
 	fs.sequenceNumberMutex.RUnlock()
+
 	if localSeqNum != num.Value {
 		fs.sequenceNumberMutex.Lock()
 		fs.syncSequenceNumber = num.Value
