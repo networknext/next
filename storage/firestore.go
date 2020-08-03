@@ -254,6 +254,20 @@ func (fs *Firestore) BuyerWithDomain(domain string) (routing.Buyer, error) {
 	return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer", resourceRef: domain}
 }
 
+func (fs *Firestore) BuyerCustomerRouteSettingsWithDomain(domain string) (routing.CustomerRoutingRulesSettings, error) {
+	fs.buyerMutex.RLock()
+	defer fs.buyerMutex.RUnlock()
+
+	var buyer routing.Buyer
+	for _, b := range fs.buyers {
+		if buyer.Domain == domain {
+			return b.CustomerRoutingRulesSettings, nil
+		}
+	}
+
+	return routing.DefaultCustomerRoutingRulesSettings, &DoesNotExistError{resourceType: "buyer", resourceRef: domain}
+}
+
 func (fs *Firestore) Buyers() []routing.Buyer {
 	fs.buyerMutex.RLock()
 	defer fs.buyerMutex.RUnlock()
@@ -285,6 +299,10 @@ func (fs *Firestore) AddBuyer(ctx context.Context, b routing.Buyer) error {
 	// Add the buyer's routing rules settings to remote storage
 	if err := fs.setRoutingRulesSettingsForBuyerID(ctx, ref.ID, b.Name, b.RoutingRulesSettings); err != nil {
 		return &FirestoreError{err: err}
+	}
+
+	if err := fs.setCustomerRoutingRulesSettingsForBuyerID(ctx, ref.ID, b.Name, b.CustomerRoutingRulesSettings); err != nil {
+		return err
 	}
 
 	// Check if a customer already exists for this buyer
@@ -489,6 +507,11 @@ func (fs *Firestore) SetBuyer(ctx context.Context, b routing.Buyer) error {
 
 			// Update the buyer's routing rules settings in firestore
 			if err := fs.setRoutingRulesSettingsForBuyerID(ctx, bdoc.Ref.ID, b.Name, b.RoutingRulesSettings); err != nil {
+				return &FirestoreError{err: err}
+			}
+
+			// Update the buyer's routing rules settings in firestore
+			if err := fs.setCustomerRoutingRulesSettingsForBuyerID(ctx, bdoc.Ref.ID, b.Name, b.CustomerRoutingRulesSettings); err != nil {
 				return &FirestoreError{err: err}
 			}
 
@@ -2005,4 +2028,56 @@ func (fs *Firestore) setRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 	// Attempt to set route shader for buyer
 	_, err := fs.Client.Collection("RouteShader").Doc(routeShaderID).Set(ctx, rrsFirestore, firestore.MergeAll)
 	return err
+}
+
+func (fs *Firestore) setCustomerRoutingRulesSettingsForBuyerID(ctx context.Context, name string, ID string, crs routing.CustomerRoutingRulesSettings) error {
+	routeShaderID := ID + "_0"
+
+	// Create customer route shader
+	crsFirestore := map[string]interface{}{
+		"displayName":               name,
+		"enableNetworkNext":         crs.EnableNN,
+		"enableLatencyReduction":    crs.EnableRTT,
+		"enablePacketLossReduction": crs.EnablePL,
+		"enableMultipath":           crs.EnableMP,
+		"enableABTest":              crs.EnableAB,
+		"acceptableLatency":         crs.AcceptableLatency,
+		"packetLossThreshold":       crs.PLThreshold,
+	}
+
+	_, err := fs.Client.Collection("CustomerRouteShader").Doc(routeShaderID).Set(ctx, crsFirestore, firestore.MergeAll)
+	return err
+}
+
+func (fs *Firestore) getCustomerRoutingRulesSettingsForBuyerID(ctx context.Context, ID string) (routing.CustomerRoutingRulesSettings, error) {
+	// Comment below taken from old backend, at least attempting to explain why we need to append _0 (no existing entries have suffixes other than _0)
+	// "Must be of the form '<buyer key>_<tag id>'. The buyer key can be found by looking at the ID under Buyer; it should be something like 763IMDH693HLsr2LGTJY. The tag ID should be 0 (for default) or the fnv64a hash of the tag the customer is using. Therefore this value should look something like: 763IMDH693HLsr2LGTJY_0. This value can not be changed after the entity is created."
+	routeShaderID := ID + "_0"
+
+	// Set up our return value with default settings, which will be used if no settings found for buyer or other errors are encountered
+	crs := routing.DefaultCustomerRoutingRulesSettings
+
+	// Attempt to get route shader for buyer (sadly not linked by actual reference in prod so have to fetch it ourselves using buyer ID + "_0" which happens to match)
+	crsDoc, err := fs.Client.Collection("CustomerRouteShader").Doc(routeShaderID).Get(ctx)
+	if err != nil {
+		return crs, err
+	}
+
+	// Unmarshal into our firestore struct
+	var tempCRS routing.CustomerRoutingRulesSettings
+	err = crsDoc.DataTo(&tempCRS)
+	if err != nil {
+		return crs, err
+	}
+
+	// If successful, convert into routing.Buyer version and return it
+	crs.AcceptableLatency = tempCRS.AcceptableLatency
+	crs.PLThreshold = tempCRS.PLThreshold
+	crs.EnableNN = tempCRS.EnableNN
+	crs.EnableRTT = tempCRS.EnableRTT
+	crs.EnablePL = tempCRS.EnablePL
+	crs.EnableMP = tempCRS.EnableMP
+	crs.EnableAB = tempCRS.EnableAB
+
+	return crs, nil
 }

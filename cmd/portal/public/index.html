@@ -21,6 +21,56 @@
         <!-- Include Choices CSS -->
         <link rel="stylesheet" href="./js/choices/styles/choices.min.css" />
         <style>
+            .switch {
+                position: relative;
+                display: inline-block;
+                width: 60px;
+                height: 24px;
+            }
+            .switch input {
+                opacity: 0;
+                width: 0;
+                height: 0;
+            }
+            .slider {
+                position: absolute;
+                cursor: pointer;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background-color: #ccc;
+                -webkit-transition: .4s;
+                transition: .4s;
+            }
+            .slider:before {
+                position: absolute;
+                content: "";
+                height: 16px;
+                width: 16px;
+                left: 4px;
+                bottom: 4px;
+                background-color: white;
+                -webkit-transition: .4s;
+                transition: .4s;
+            }
+            input:checked + .slider {
+                background-color: #007bff;
+            }
+            input:focus + .slider {
+                box-shadow: 0 0 1px #007bff;
+            }
+            input:checked + .slider:before {
+                -webkit-transform: translateX(36px);
+                -ms-transform: translateX(36px);
+                transform: translateX(36px);
+            }
+            .slider.round {
+                border-radius: 34px;
+            }
+            .slider.round:before {
+                border-radius: 50%;
+            }
             .map-container-offset {
                 width: 100%;
                 height: calc(-160px + 90vh);
@@ -1278,6 +1328,89 @@
                                         </button>
                                         <p class="text-muted text-small mt-2"></p>
                                     </form>
+                                    <div v-if="handlers.userHandler.isBuyer()">
+                                        <hr/>
+                                        <h5 class="card-title">
+                                            Route Shader
+                                        </h5>
+                                        <p class="card-text">
+                                            Manage when your game connects to Network Next.
+                                        </p>
+                                        <form v-on:submit.prevent="updateRouteShader()">
+                                            <div class="form-group row">
+                                                <div class="col-sm-2">Enable Network Next</div>
+                                                <div class="col-sm-10">
+                                                    <div class="form-check">
+                                                        <label class="switch">
+                                                            <input type="checkbox" checked v-model="handlers.userHandler.routeShader.enable_nn">
+                                                            <span class="slider round"></span>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div v-if="handlers.userHandler.routeShader.enable_nn">
+                                                <div class="form-group row">
+                                                    <div class="col-sm-2">Reduce Latency</div>
+                                                    <div class="col-sm-10">
+                                                        <div class="form-check">
+                                                            <label class="switch">
+                                                                <input type="checkbox" checked v-model="handlers.userHandler.routeShader.enable_rtt">
+                                                                <span class="slider round"></span>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="form-group row" style="padding-left: 2rem;" v-if="handlers.userHandler.routeShader.enable_rtt">
+                                                    <div class="col-sm-2">Acceptable Latency:</div>
+                                                    <div class="col-sm-10">
+                                                        <input type="text" v-model="handlers.userHandler.routeShader.acceptable_latency"> ms
+                                                    </div>
+                                                </div>
+                                                <div class="form-group row">
+                                                    <div class="col-sm-2">Reduce Packet Loss</div>
+                                                    <div class="col-sm-10">
+                                                        <div class="form-check">
+                                                            <label class="switch">
+                                                                <input type="checkbox" v-model="handlers.userHandler.routeShader.enable_pl">
+                                                                <span class="slider round"></span>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="form-group row" style="padding-left: 2rem;" v-if="handlers.userHandler.routeShader.enable_pl">
+                                                    <div class="col-sm-2">Packet Loss Threshold:</div>
+                                                    <div class="col-sm-10">
+                                                        <input type="text" v-model="handlers.userHandler.routeShader.pl_threshold"> %
+                                                    </div>
+                                                </div>
+                                                <div class="form-group row">
+                                                    <div class="col-sm-2">Enable Multipath</div>
+                                                    <div class="col-sm-10">
+                                                        <div class="form-check">
+                                                            <label class="switch">
+                                                                <input type="checkbox" v-model="handlers.userHandler.routeShader.enable_mp">
+                                                                <span class="slider round"></span>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="form-group row">
+                                                    <div class="col-sm-2">Enable A/B Test</div>
+                                                    <div class="col-sm-10">
+                                                        <div class="form-check">
+                                                            <label class="switch">
+                                                                <input type="checkbox" v-model="handlers.userHandler.routeShader.enable_ab">
+                                                                <span class="slider round"></span>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <button type="submit" class="btn btn-primary btn-sm" v-if="handlers.userHandler.isOwner() || handlers.userHandler.isAdmin()">
+                                                    Save route shader
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1307,16 +1440,15 @@
                 </div>
             </div>
         </div>
-        <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+        <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js"
+                integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n"
+                crossorigin="anonymous">
+        </script>
         <script src="https://cdn.auth0.com/js/auth0/9.11/auth0.min.js"></script>
         <script src="https://unpkg.com/deck.gl@latest/dist.min.js"></script>
         <script src="https://api.mapbox.com/mapbox-gl-js/v1.10.0/mapbox-gl.js"></script>
         <script src="https://cdn.auth0.com/js/auth0-spa-js/1.7/auth0-spa-js.production.js"></script>
         <script src="https://unpkg.com/vue"></script>
-        <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js"
-                integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n"
-                crossorigin="anonymous">
-        </script>
         <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"
                 integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo"
                 crossorigin="anonymous">
@@ -1324,10 +1456,6 @@
         <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"
                 integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6"
                 crossorigin="anonymous">
-        </script>
-        <script src="https://browser.sentry-cdn.com/5.15.5/bundle.min.js"
-            integrity="sha384-wF7Jc4ZlWVxe/L8Ji3hOIBeTgo/HwFuaeEfjGmS3EXAG7Y+7Kjjr91gJpJtr+PAT"
-            crossorigin="anonymous">
         </script>
         <script src="./js/uPlot/uPlot.iife.min.js"></script>
         <script src="./js/choices/scripts/choices.js"></script>
