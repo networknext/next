@@ -28,6 +28,7 @@ type Firestore struct {
 	datacenterMaps map[uint64]routing.DatacenterMap
 
 	syncSequenceNumber int64
+	callingService     string
 
 	datacenterMutex     sync.RWMutex
 	relayMutex          sync.RWMutex
@@ -128,7 +129,7 @@ func (e *FirestoreError) Error() string {
 	return fmt.Sprintf("unknown Firestore error: %v", e.err)
 }
 
-func NewFirestore(ctx context.Context, gcpProjectID string, logger log.Logger) (*Firestore, error) {
+func NewFirestore(ctx context.Context, gcpProjectID string, logger log.Logger, caller string) (*Firestore, error) {
 	client, err := firestore.NewClient(ctx, gcpProjectID)
 	if err != nil {
 		return nil, err
@@ -143,6 +144,7 @@ func NewFirestore(ctx context.Context, gcpProjectID string, logger log.Logger) (
 		buyers:             make(map[uint64]routing.Buyer),
 		sellers:            make(map[string]routing.Seller),
 		syncSequenceNumber: -1,
+		callingService:     caller,
 	}, nil
 
 }

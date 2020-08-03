@@ -245,7 +245,7 @@ func main() {
 		// Firestore
 		{
 			// Create a Firestore Storer
-			fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
+			fs, err := storage.NewFirestore(ctx, gcpProjectID, logger, "portal")
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				os.Exit(1)

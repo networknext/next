@@ -172,7 +172,7 @@ func main() {
 			fmt.Printf("setting up firestore\n")
 
 			// Create a Firestore Storer
-			fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
+			fs, err := storage.NewFirestore(ctx, gcpProjectID, logger, "server_backend")
 			if err != nil {
 				level.Error(logger).Log("msg", "could not create firestore", "err", err)
 				os.Exit(1)
