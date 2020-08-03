@@ -425,38 +425,40 @@ func main() {
 			os.Exit(1)
 		}
 
-		if mmsyncinterval, ok := os.LookupEnv("MAXMIND_SYNC_DB_INTERVAL"); ok {
-			syncInterval, err := time.ParseDuration(mmsyncinterval)
-			if err != nil {
-				level.Error(logger).Log("envvar", "MAXMIND_SYNC_DB_INTERVAL", "value", mmsyncinterval, "msg", "could not parse", "err", err)
-				os.Exit(1)
-			}
+		// todo: disable the sync for now until we can find out why it's causing session drops
 
-			// Start a goroutine to sync from Maxmind.com
-			go func() {
-				ticker := time.NewTicker(syncInterval)
-				for {
-					newMMDB := &routing.MaxmindDB{}
+		// if mmsyncinterval, ok := os.LookupEnv("MAXMIND_SYNC_DB_INTERVAL"); ok {
+		// 	syncInterval, err := time.ParseDuration(mmsyncinterval)
+		// 	if err != nil {
+		// 		level.Error(logger).Log("envvar", "MAXMIND_SYNC_DB_INTERVAL", "value", mmsyncinterval, "msg", "could not parse", "err", err)
+		// 		os.Exit(1)
+		// 	}
 
-					select {
-					case <-ticker.C:
-						if err := newMMDB.Sync(ctx, maxmindSyncMetrics); err != nil {
-							level.Error(logger).Log("err", err)
-							continue
-						}
+		// 	// Start a goroutine to sync from Maxmind.com
+		// 	go func() {
+		// 		ticker := time.NewTicker(syncInterval)
+		// 		for {
+		// 			newMMDB := &routing.MaxmindDB{}
 
-						// Pointer swap the mmdb so we can sync from Maxmind.com lock free
-						mmdbMutex.Lock()
-						mmdb = newMMDB
-						mmdbMutex.Unlock()
-					case <-ctx.Done():
-						return
-					}
+		// 			select {
+		// 			case <-ticker.C:
+		// 				if err := newMMDB.Sync(ctx, maxmindSyncMetrics); err != nil {
+		// 					level.Error(logger).Log("err", err)
+		// 					continue
+		// 				}
 
-					time.Sleep(syncInterval)
-				}
-			}()
-		}
+		// 				// Pointer swap the mmdb so we can sync from Maxmind.com lock free
+		// 				mmdbMutex.Lock()
+		// 				mmdb = newMMDB
+		// 				mmdbMutex.Unlock()
+		// 			case <-ctx.Done():
+		// 				return
+		// 			}
+
+		// 			time.Sleep(syncInterval)
+		// 		}
+		// 	}()
+		// }
 	}
 
 	routeMatrix := &routing.RouteMatrix{}
