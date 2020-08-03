@@ -13,6 +13,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"time"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/networknext/backend/metrics"
@@ -157,6 +158,9 @@ type MaxmindDB struct {
 }
 
 func (mmdb *MaxmindDB) Sync(ctx context.Context, metrics *metrics.MaxmindSyncMetrics) error {
+	metrics.Invocations.Add(1)
+	durationStart := time.Now()
+
 	if err := mmdb.OpenCity(ctx, mmdb.HTTPClient, mmdb.CityURI); err != nil {
 		metrics.ErrorMetrics.FailedToSync.Add(1)
 		return fmt.Errorf("could not open maxmind db uri: %v", err)
@@ -165,6 +169,9 @@ func (mmdb *MaxmindDB) Sync(ctx context.Context, metrics *metrics.MaxmindSyncMet
 		metrics.ErrorMetrics.FailedToSyncISP.Add(1)
 		return fmt.Errorf("could not open maxmind db isp uri: %v", err)
 	}
+
+	duration := time.Since(durationStart)
+	metrics.DurationGauge.Set(float64(duration.Milliseconds()))
 
 	return nil
 }
