@@ -84,9 +84,6 @@ func TestSequenceNumbers(t *testing.T) {
 		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 		assert.NoError(t, err)
 
-		// err = fs.ZeroSequenceNumbers(ctx)
-		// assert.NoError(t, err)
-
 		defer func() {
 			err = cleanFireStore(ctx, fs.Client)
 			assert.NoError(t, err)
@@ -98,11 +95,31 @@ func TestSequenceNumbers(t *testing.T) {
 		err = fs.IncrementSequenceNumber(ctx)
 		assert.NoError(t, err)
 
-		// CheckSequenceNumber() should return false as the remote seq value
+		// CheckSequenceNumber() should return true as the remote seq value
 		// has been incremented, but the local value is still zero from above
 		// (true -> sync from Firestore)
 		same, err := fs.CheckSequenceNumber(ctx)
 		assert.Equal(t, true, same)
+		assert.NoError(t, err)
+
+	})
+
+	t.Run("Do Not Sync", func(t *testing.T) {
+		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+		assert.NoError(t, err)
+
+		defer func() {
+			err = cleanFireStore(ctx, fs.Client)
+			assert.NoError(t, err)
+		}()
+
+		err = fs.SetSequenceNumber(ctx, -1)
+		assert.NoError(t, err)
+
+		// CheckSequenceNumber() should return false as the remote seq value
+		// has not been incremented and the local value is the initial defautl (-1)
+		same, err := fs.CheckSequenceNumber(ctx)
+		assert.Equal(t, false, same)
 		assert.NoError(t, err)
 
 	})
