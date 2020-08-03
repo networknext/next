@@ -84,6 +84,16 @@ type RoutingRulesSettings struct {
 	SelectionPercentage int64
 }
 
+type CustomerRoutingRulesSettings struct {
+	EnableNN          bool   `json:"enable_nn"`
+	EnableRTT         bool   `json:"enable_rtt"`
+	EnablePL          bool   `json:"enable_pl"`
+	EnableAB          bool   `json:"enable_ab"`
+	EnableMP          bool   `json:"enable_mp"`
+	AcceptableLatency string `json:"acceptable_latency"`
+	PLThreshold       string `json:"pl_threshold"`
+}
+
 var DefaultRoutingRulesSettings = RoutingRulesSettings{
 	MaxNibblinsPerGB:             250000000,
 	EnvelopeKbpsUp:               256,
@@ -113,4 +123,24 @@ var LocalRoutingRulesSettings = RoutingRulesSettings{
 	RTTVeto:                      -20,
 	SelectionPercentage:          100,
 	MultipathPacketLossThreshold: 1.0,
+}
+
+var DefaultCustomerRoutingRulesSettings = CustomerRoutingRulesSettings{
+	EnableNN:          true,
+	EnableRTT:         true,
+	EnablePL:          false,
+	EnableAB:          false,
+	EnableMP:          false,
+	AcceptableLatency: "20",
+	PLThreshold:       "1",
+}
+
+var LocalCustomerRoutingRulesSettings = CustomerRoutingRulesSettings{
+	EnableNN:          true,
+	EnableRTT:         true,
+	EnablePL:          false,
+	EnableAB:          false,
+	EnableMP:          false,
+	AcceptableLatency: "20",
+	PLThreshold:       "1",
 }

@@ -130,10 +130,11 @@ func main() {
 
 	{
 		if err := db.AddBuyer(ctx, routing.Buyer{
-			ID:                   customerID,
-			Name:                 "local",
-			PublicKey:            customerPublicKey,
-			RoutingRulesSettings: routing.LocalRoutingRulesSettings,
+			ID:                           customerID,
+			Name:                         "local",
+			PublicKey:                    customerPublicKey,
+			RoutingRulesSettings:         routing.LocalRoutingRulesSettings,
+			CustomerRoutingRulesSettings: routing.DefaultCustomerRoutingRulesSettings,
 		}); err != nil {
 			level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
 			os.Exit(1)
