@@ -16,5 +16,6 @@ type Publisher interface {
 
 type Subscriber interface {
 	Subscribe(topic Topic) error
-	ReceiveMessage() ([]byte, error)
+	Unsubscribe(topic Topic) error
+	ReceiveMessage() (Topic, []byte, error)
 }

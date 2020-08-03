@@ -5,7 +5,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-	// "fmt"
 
 	"github.com/networknext/backend/routing"
 )
@@ -22,6 +21,7 @@ const (
 
 type SessionData struct {
 	Timestamp            int64
+	BuyerID              uint64
 	Location             routing.Location
 	Sequence             uint64
 	NearRelays           []routing.Relay
@@ -37,17 +37,27 @@ type SessionData struct {
 }
 
 type SessionMapShard struct {
-	mutex       sync.RWMutex
-	sessions    map[uint64]*SessionData
-	numSessions uint64
+	mutex    sync.RWMutex
+	sessions map[uint64]*SessionData
 }
 
 type SessionMap struct {
-	shard [NumSessionMapShards]*SessionMapShard
+	numSessions                    uint64
+	numNextSessions                uint64
+	numDirectSessions              uint64
+	numNextSessionsPerBuyer        map[uint64]uint64
+	numNextSessionsPerBuyerMutex   sync.RWMutex
+	numDirectSessionsPerBuyer      map[uint64]uint64
+	numDirectSessionsPerBuyerMutex sync.RWMutex
+	timeoutShard                   int
+	shard                          [NumSessionMapShards]*SessionMapShard
 }
 
 func NewSessionMap() *SessionMap {
-	sessionMap := &SessionMap{}
+	sessionMap := &SessionMap{
+		numNextSessionsPerBuyer:   make(map[uint64]uint64),
+		numDirectSessionsPerBuyer: make(map[uint64]uint64),
+	}
 	for i := 0; i < NumSessionMapShards; i++ {
 		sessionMap.shard[i] = &SessionMapShard{}
 		sessionMap.shard[i].sessions = make(map[uint64]*SessionData)
@@ -55,13 +65,42 @@ func NewSessionMap() *SessionMap {
 	return sessionMap
 }
 
-func (sessionMap *SessionMap) NumSessions() uint64 {
-	var total uint64
-	for i := 0; i < NumSessionMapShards; i++ {
-		numSessionsInShard := atomic.LoadUint64(&sessionMap.shard[i].numSessions)
-		total += numSessionsInShard
+func (sessionMap *SessionMap) GetSessionCount() uint64 {
+	return atomic.LoadUint64(&sessionMap.numSessions)
+}
+
+func (sessionMap *SessionMap) GetDirectSessionCount() uint64 {
+	return atomic.LoadUint64(&sessionMap.numDirectSessions)
+}
+
+func (sessionMap *SessionMap) GetNextSessionCount() uint64 {
+	return atomic.LoadUint64(&sessionMap.numNextSessions)
+}
+
+func (sessionMap *SessionMap) GetDirectSessionCountPerBuyer() map[uint64]uint64 {
+	sessionMap.numDirectSessionsPerBuyerMutex.RLock()
+	defer sessionMap.numDirectSessionsPerBuyerMutex.RUnlock()
+
+	// make a copy of the map for thread safety
+	copy := make(map[uint64]uint64)
+	for k, v := range sessionMap.numDirectSessionsPerBuyer {
+		copy[k] = v
 	}
-	return total
+
+	return copy
+}
+
+func (sessionMap *SessionMap) GetNextSessionCountPerBuyer() map[uint64]uint64 {
+	sessionMap.numNextSessionsPerBuyerMutex.RLock()
+	defer sessionMap.numNextSessionsPerBuyerMutex.RUnlock()
+
+	// make a copy of the map for thread safety
+	copy := make(map[uint64]uint64)
+	for k, v := range sessionMap.numNextSessionsPerBuyer {
+		copy[k] = v
+	}
+
+	return copy
 }
 
 func NewSessionData() *SessionData {
@@ -81,13 +120,67 @@ func (sessionMap *SessionMap) Unlock(sessionId uint64) {
 	sessionMap.shard[index].mutex.Unlock()
 }
 
+func (sessionMap *SessionMap) RLock(sessionId uint64) {
+	index := sessionId % NumSessionMapShards
+	sessionMap.shard[index].mutex.RLock()
+}
+
+func (sessionMap *SessionMap) RUnlock(sessionId uint64) {
+	index := sessionId % NumSessionMapShards
+	sessionMap.shard[index].mutex.RUnlock()
+}
+
 func (sessionMap *SessionMap) UpdateSessionData(sessionId uint64, sessionData *SessionData) {
 	index := sessionId % NumSessionMapShards
 	_, exists := sessionMap.shard[index].sessions[sessionId]
-	sessionMap.shard[index].sessions[sessionId] = sessionData
+
+	next := sessionData.NextSliceCounter > 0
+
 	if !exists {
-		atomic.AddUint64(&sessionMap.shard[index].numSessions, 1)
+		atomic.AddUint64(&sessionMap.numSessions, 1)
+
+		if next {
+			atomic.AddUint64(&sessionMap.numNextSessions, 1)
+			sessionMap.numNextSessionsPerBuyerMutex.Lock()
+			sessionMap.numNextSessionsPerBuyer[sessionData.BuyerID]++
+			sessionMap.numNextSessionsPerBuyerMutex.Unlock()
+		} else {
+			atomic.AddUint64(&sessionMap.numDirectSessions, 1)
+			sessionMap.numDirectSessionsPerBuyerMutex.Lock()
+			sessionMap.numDirectSessionsPerBuyer[sessionData.BuyerID]++
+			sessionMap.numDirectSessionsPerBuyerMutex.Unlock()
+		}
+	} else {
+		prevNext := sessionMap.shard[index].sessions[sessionId].NextSliceCounter > 0
+
+		// detect next -> direct
+		if prevNext && !next {
+			atomic.AddUint64(&sessionMap.numNextSessions, ^uint64(0))
+			sessionMap.numNextSessionsPerBuyerMutex.Lock()
+			sessionMap.numNextSessionsPerBuyer[sessionData.BuyerID]--
+			sessionMap.numNextSessionsPerBuyerMutex.Unlock()
+
+			atomic.AddUint64(&sessionMap.numDirectSessions, 1)
+			sessionMap.numDirectSessionsPerBuyerMutex.Lock()
+			sessionMap.numDirectSessionsPerBuyer[sessionData.BuyerID]++
+			sessionMap.numDirectSessionsPerBuyerMutex.Unlock()
+		}
+
+		// detect direct -> next
+		if !prevNext && next {
+			atomic.AddUint64(&sessionMap.numDirectSessions, ^uint64(0))
+			sessionMap.numDirectSessionsPerBuyerMutex.Lock()
+			sessionMap.numDirectSessionsPerBuyer[sessionData.BuyerID]--
+			sessionMap.numDirectSessionsPerBuyerMutex.Unlock()
+
+			atomic.AddUint64(&sessionMap.numNextSessions, 1)
+			sessionMap.numNextSessionsPerBuyerMutex.Lock()
+			sessionMap.numNextSessionsPerBuyer[sessionData.BuyerID]++
+			sessionMap.numNextSessionsPerBuyerMutex.Unlock()
+		}
 	}
+
+	sessionMap.shard[index].sessions[sessionId] = sessionData
 }
 
 func (sessionMap *SessionMap) GetSessionData(sessionId uint64) *SessionData {
@@ -97,35 +190,51 @@ func (sessionMap *SessionMap) GetSessionData(sessionId uint64) *SessionData {
 }
 
 func (sessionMap *SessionMap) TimeoutLoop(ctx context.Context, timeoutSeconds int64, c <-chan time.Time) {
-	maxIterations := 100
+	maxShards := 100
+	maxIterations := 10
 	deleteList := make([]uint64, maxIterations)
 	for {
 		select {
 		case <-c:
 			timeoutTimestamp := time.Now().Unix() - timeoutSeconds
-			for index := 0; index < NumSessionMapShards; index++ {
+			for i := 0; i < maxShards; i++ {
+				index := (sessionMap.timeoutShard + i) % NumSessionMapShards
 				deleteList = deleteList[:0]
 				sessionMap.shard[index].mutex.RLock()
 				numIterations := 0
 				for k, v := range sessionMap.shard[index].sessions {
-					if numIterations > maxIterations || numIterations > len(sessionMap.shard[index].sessions) {
+					if numIterations >= maxIterations || numIterations >= len(sessionMap.shard[index].sessions) {
 						break
 					}
 					if v.Timestamp < timeoutTimestamp {
-						atomic.AddUint64(&sessionMap.shard[index].numSessions, ^uint64(0))
 						deleteList = append(deleteList, k)
+
+						atomic.AddUint64(&sessionMap.numSessions, ^uint64(0))
+						if next := v.NextSliceCounter > 0; next {
+							atomic.AddUint64(&sessionMap.numNextSessions, ^uint64(0))
+							sessionMap.numNextSessionsPerBuyerMutex.Lock()
+							sessionMap.numNextSessionsPerBuyer[v.BuyerID]--
+							sessionMap.numNextSessionsPerBuyerMutex.Unlock()
+						} else {
+							atomic.AddUint64(&sessionMap.numDirectSessions, ^uint64(0))
+							sessionMap.numDirectSessionsPerBuyerMutex.Lock()
+							sessionMap.numDirectSessionsPerBuyer[v.BuyerID]--
+							sessionMap.numDirectSessionsPerBuyerMutex.Unlock()
+						}
 					}
 					numIterations++
 				}
 				sessionMap.shard[index].mutex.RUnlock()
-				sessionMap.shard[index].mutex.Lock()
-				for i := range deleteList {
-					// fmt.Printf("timeout session %x\n", deleteList[i])
-					delete(sessionMap.shard[index].sessions, deleteList[i])
+				if len(deleteList) > 0 {
+					sessionMap.shard[index].mutex.Lock()
+					for i := range deleteList {
+						// fmt.Printf("timeout session %x\n", deleteList[i])
+						delete(sessionMap.shard[index].sessions, deleteList[i])
+					}
+					sessionMap.shard[index].mutex.Unlock()
 				}
-				sessionMap.shard[index].mutex.Unlock()
 			}
-
+			sessionMap.timeoutShard = (sessionMap.timeoutShard + maxShards) % NumSessionMapShards
 		case <-ctx.Done():
 			return
 		}

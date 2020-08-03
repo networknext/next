@@ -180,7 +180,7 @@ func TestDatacenterMaps(t *testing.T) {
 	noopHandler := func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}
-	authMiddleware := jsonrpc.AuthMiddleware("oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n", http.HandlerFunc(noopHandler))
+	authMiddleware := jsonrpc.AuthMiddleware("oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n", http.HandlerFunc(noopHandler), false)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Add("Authorization", "Bearer "+jwtSideload)
@@ -255,10 +255,10 @@ func TestTotalSessions(t *testing.T) {
 	redisServer, _ := miniredis.Run()
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
-	redisServer.ZAdd("total-next", 10, "session-1")
-	redisServer.ZAdd("total-next", 20, "session-2")
-	redisServer.ZAdd("total-next", 30, "session-5")
-	redisServer.ZAdd("total-direct", 5, "session-2")
+	redisServer.Set("session-count-total-next-instance-0", "3")
+	redisServer.HSet("session-count-total-next", "session-count-total-next-instance-0", "3")
+	redisServer.Set("session-count-total-direct-instance-0", "1")
+	redisServer.HSet("session-count-total-direct", "session-count-total-direct-instance-0", "1")
 
 	logger := log.NewNopLogger()
 	svc := jsonrpc.BuyersService{
@@ -270,7 +270,7 @@ func TestTotalSessions(t *testing.T) {
 	noopHandler := func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}
-	authMiddleware := jsonrpc.AuthMiddleware("oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n", http.HandlerFunc(noopHandler))
+	authMiddleware := jsonrpc.AuthMiddleware("oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n", http.HandlerFunc(noopHandler), false)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Add("Authorization", "Bearer "+jwtSideload)
@@ -755,7 +755,7 @@ func TestGameConfiguration(t *testing.T) {
 	noopHandler := func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}
-	authMiddleware := jsonrpc.AuthMiddleware("oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n", http.HandlerFunc(noopHandler))
+	authMiddleware := jsonrpc.AuthMiddleware("oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n", http.HandlerFunc(noopHandler), false)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Add("Authorization", "Bearer "+jwtSideload)

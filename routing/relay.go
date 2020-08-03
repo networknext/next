@@ -4,11 +4,9 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net"
-	"strconv"
 	"strings"
 	"time"
 
-	jsoniter "github.com/json-iterator/go"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
 )
@@ -23,8 +21,7 @@ const (
 	// HashKeyAllRelays ...
 	HashKeyAllRelays = "ALL_RELAYS"
 
-	// Relax
-	RelayTimeout = 60 * time.Second
+	RelayTimeout = 30 * time.Second
 
 	// MaxRelayAddressLength ...
 	MaxRelayAddressLength = 256
@@ -131,6 +128,9 @@ type Relay struct {
 
 	MaxSessions uint32 `json:"max_sessions"`
 
+	CPUUsage float32 `json:"cpu_usage"`
+	MemUsage float32 `json:"mem_usage"`
+
 	UpdateKey   []byte `json:"update_key"`
 	FirestoreID string `json:"firestore_id"`
 
@@ -183,34 +183,10 @@ func (r *Relay) Size() uint64 {
 		8 + // Overage (Nibblin, uint64)
 		8 + // MRC (Nibblin, uint64)
 		4 + // MachineType
-		4, // Max Sessions
+		4 + // Max Sessions
+		4 + // CPU usage
+		4, // Mem usage
 	)
-}
-
-type RelayCacheEntry struct {
-	ID             uint64
-	Name           string
-	Addr           net.UDPAddr
-	PublicKey      []byte
-	Seller         Seller
-	Datacenter     Datacenter
-	LastUpdateTime time.Time
-	TrafficStats   RelayTrafficStats
-	MaxSessions    uint32
-	Version        string
-}
-
-func (e *RelayCacheEntry) UnmarshalBinary(data []byte) error {
-	return jsoniter.Unmarshal(data, e)
-}
-
-func (e RelayCacheEntry) MarshalBinary() ([]byte, error) {
-	return jsoniter.Marshal(e)
-}
-
-// Key returns the key used for Redis
-func (r *RelayCacheEntry) Key() string {
-	return HashKeyPrefixRelay + strconv.FormatUint(r.ID, 10)
 }
 
 // RelayTrafficStats describes the measured relay traffic statistics reported from the relay

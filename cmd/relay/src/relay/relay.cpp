@@ -6,7 +6,7 @@
 #include "encoding/binary.hpp"
 #include "encoding/read.hpp"
 #include "encoding/write.hpp"
-#include "net/curl.hpp"
+#include "net/http.hpp"
 #include "util/logger.hpp"
 
 namespace relay

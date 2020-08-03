@@ -229,7 +229,6 @@ type RelayInitErrorMetrics struct {
 	RelayNotFound      Counter
 	RelayQuarantined   Counter
 	DecryptionFailure  Counter
-	RedisFailure       Counter
 	RelayAlreadyExists Counter
 	IPLookupFailure    Counter
 }
@@ -241,7 +240,6 @@ var EmptyRelayInitErrorMetrics RelayInitErrorMetrics = RelayInitErrorMetrics{
 	RelayNotFound:      &EmptyCounter{},
 	RelayQuarantined:   &EmptyCounter{},
 	DecryptionFailure:  &EmptyCounter{},
-	RedisFailure:       &EmptyCounter{},
 	RelayAlreadyExists: &EmptyCounter{},
 	IPLookupFailure:    &EmptyCounter{},
 }
@@ -259,25 +257,21 @@ var EmptyRelayUpdateMetrics RelayUpdateMetrics = RelayUpdateMetrics{
 }
 
 type RelayUpdateErrorMetrics struct {
-	UnmarshalFailure      Counter
-	InvalidVersion        Counter
-	ExceedMaxRelays       Counter
-	RedisFailure          Counter
-	RelayNotFound         Counter
-	RelayUnmarshalFailure Counter
-	InvalidToken          Counter
-	RelayNotEnabled       Counter
+	UnmarshalFailure Counter
+	InvalidVersion   Counter
+	ExceedMaxRelays  Counter
+	RelayNotFound    Counter
+	InvalidToken     Counter
+	RelayNotEnabled  Counter
 }
 
 var EmptyRelayUpdateErrorMetrics RelayUpdateErrorMetrics = RelayUpdateErrorMetrics{
-	UnmarshalFailure:      &EmptyCounter{},
-	InvalidVersion:        &EmptyCounter{},
-	ExceedMaxRelays:       &EmptyCounter{},
-	RedisFailure:          &EmptyCounter{},
-	RelayNotFound:         &EmptyCounter{},
-	RelayUnmarshalFailure: &EmptyCounter{},
-	InvalidToken:          &EmptyCounter{},
-	RelayNotEnabled:       &EmptyCounter{},
+	UnmarshalFailure: &EmptyCounter{},
+	InvalidVersion:   &EmptyCounter{},
+	ExceedMaxRelays:  &EmptyCounter{},
+	RelayNotFound:    &EmptyCounter{},
+	InvalidToken:     &EmptyCounter{},
+	RelayNotEnabled:  &EmptyCounter{},
 }
 
 type RelayHandlerMetrics struct {
@@ -293,33 +287,29 @@ var EmptyRelayHandlerMetrics RelayHandlerMetrics = RelayHandlerMetrics{
 }
 
 type RelayHandlerErrorMetrics struct {
-	UnmarshalFailure      Counter
-	ExceedMaxRelays       Counter
-	RelayNotFound         Counter
-	RelayQuarantined      Counter
-	NoAuthHeader          Counter
-	BadAuthHeaderLength   Counter
-	BadAuthHeaderToken    Counter
-	BadNonce              Counter
-	BadEncryptedAddress   Counter
-	DecryptFailure        Counter
-	RedisFailure          Counter
-	RelayUnmarshalFailure Counter
+	UnmarshalFailure    Counter
+	ExceedMaxRelays     Counter
+	RelayNotFound       Counter
+	RelayQuarantined    Counter
+	NoAuthHeader        Counter
+	BadAuthHeaderLength Counter
+	BadAuthHeaderToken  Counter
+	BadNonce            Counter
+	BadEncryptedAddress Counter
+	DecryptFailure      Counter
 }
 
 var EmptyRelayHandlerErrorMetrics RelayHandlerErrorMetrics = RelayHandlerErrorMetrics{
-	UnmarshalFailure:      &EmptyCounter{},
-	ExceedMaxRelays:       &EmptyCounter{},
-	RelayNotFound:         &EmptyCounter{},
-	RelayQuarantined:      &EmptyCounter{},
-	NoAuthHeader:          &EmptyCounter{},
-	BadAuthHeaderLength:   &EmptyCounter{},
-	BadAuthHeaderToken:    &EmptyCounter{},
-	BadNonce:              &EmptyCounter{},
-	BadEncryptedAddress:   &EmptyCounter{},
-	DecryptFailure:        &EmptyCounter{},
-	RedisFailure:          &EmptyCounter{},
-	RelayUnmarshalFailure: &EmptyCounter{},
+	UnmarshalFailure:    &EmptyCounter{},
+	ExceedMaxRelays:     &EmptyCounter{},
+	RelayNotFound:       &EmptyCounter{},
+	RelayQuarantined:    &EmptyCounter{},
+	NoAuthHeader:        &EmptyCounter{},
+	BadAuthHeaderLength: &EmptyCounter{},
+	BadAuthHeaderToken:  &EmptyCounter{},
+	BadNonce:            &EmptyCounter{},
+	BadEncryptedAddress: &EmptyCounter{},
+	DecryptFailure:      &EmptyCounter{},
 }
 
 type RelayStatMetrics struct {
@@ -406,25 +396,59 @@ var EmptyBillingMetrics BillingMetrics = BillingMetrics{
 }
 
 type BillingErrorMetrics struct {
-	BillingPublishFailure Counter
-	BillingReadFailure    Counter
-	BillingWriteFailure   Counter
+	BillingPublishFailure     Counter
+	BillingReadFailure        Counter
+	BillingBatchedReadFailure Counter
+	BillingWriteFailure       Counter
 }
 
 var EmptyBillingErrorMetrics BillingErrorMetrics = BillingErrorMetrics{
-	BillingPublishFailure: &EmptyCounter{},
-	BillingReadFailure:    &EmptyCounter{},
-	BillingWriteFailure:   &EmptyCounter{},
+	BillingPublishFailure:     &EmptyCounter{},
+	BillingReadFailure:        &EmptyCounter{},
+	BillingBatchedReadFailure: &EmptyCounter{},
+	BillingWriteFailure:       &EmptyCounter{},
+}
+
+type AnalyticsMetrics struct {
+	EntriesReceived  Counter
+	EntriesSubmitted Counter
+	EntriesQueued    Counter
+	EntriesFlushed   Counter
+	ErrorMetrics     AnalyticsErrorMetrics
+}
+
+type AnalyticsErrorMetrics struct {
+	PublishFailure Counter
+	ReadFailure    Counter
+	WriteFailure   Counter
+}
+
+var EmptyAnalyticsErrorMetrics AnalyticsErrorMetrics = AnalyticsErrorMetrics{
+	PublishFailure: &EmptyCounter{},
+	ReadFailure:    &EmptyCounter{},
+	WriteFailure:   &EmptyCounter{},
+}
+
+var EmptyAnalyticsMetrics AnalyticsMetrics = AnalyticsMetrics{
+	EntriesReceived:  &EmptyCounter{},
+	EntriesSubmitted: &EmptyCounter{},
+	EntriesQueued:    &EmptyCounter{},
+	EntriesFlushed:   &EmptyCounter{},
+	ErrorMetrics:     EmptyAnalyticsErrorMetrics,
 }
 
 type RelayBackendMetrics struct {
-	Goroutines      Gauge
-	MemoryAllocated Gauge
+	Goroutines        Gauge
+	MemoryAllocated   Gauge
+	PingStatsMetrics  AnalyticsMetrics
+	RelayStatsMetrics AnalyticsMetrics
 }
 
 var EmptyRelayBackendMetrics RelayBackendMetrics = RelayBackendMetrics{
-	Goroutines:      &EmptyGauge{},
-	MemoryAllocated: &EmptyGauge{},
+	Goroutines:        &EmptyGauge{},
+	MemoryAllocated:   &EmptyGauge{},
+	PingStatsMetrics:  EmptyAnalyticsMetrics,
+	RelayStatsMetrics: EmptyAnalyticsMetrics,
 }
 
 type RouteMatrixMetrics struct {
@@ -447,6 +471,8 @@ type ServerBackendMetrics struct {
 	VetoCount                  Gauge
 	ServerCount                Gauge
 	SessionCount               Gauge
+	SessionDirectCount         Gauge
+	SessionNextCount           Gauge
 	BillingMetrics             BillingMetrics
 	RouteMatrixBytes           Gauge
 	RouteMatrixUpdateDuration  Gauge
@@ -461,12 +487,28 @@ var EmptyServerBackendMetrics ServerBackendMetrics = ServerBackendMetrics{
 	VetoCount:                  &EmptyGauge{},
 	ServerCount:                &EmptyGauge{},
 	SessionCount:               &EmptyGauge{},
+	SessionDirectCount:         &EmptyGauge{},
+	SessionNextCount:           &EmptyGauge{},
 	BillingMetrics:             EmptyBillingMetrics,
 	RouteMatrixBytes:           &EmptyGauge{},
 	RouteMatrixUpdateDuration:  &EmptyGauge{},
 	LongRouteMatrixUpdateCount: &EmptyCounter{},
 	UnknownDatacenterCount:     &EmptyGauge{},
 	EmptyDatacenterCount:       &EmptyGauge{},
+}
+
+type AnalyticsServiceMetrics struct {
+	Goroutines        Gauge
+	MemoryAllocated   Gauge
+	PingStatsMetrics  AnalyticsMetrics
+	RelayStatsMetrics AnalyticsMetrics
+}
+
+var EmptyAnalyticsServiceMetrics = AnalyticsServiceMetrics{
+	Goroutines:        &EmptyGauge{},
+	MemoryAllocated:   &EmptyGauge{},
+	PingStatsMetrics:  EmptyAnalyticsMetrics,
+	RelayStatsMetrics: EmptyAnalyticsMetrics,
 }
 
 func NewServerBackendMetrics(ctx context.Context, metricsHandler Handler) (*ServerBackendMetrics, error) {
@@ -529,6 +571,28 @@ func NewServerBackendMetrics(ctx context.Context, metricsHandler Handler) (*Serv
 		return nil, err
 	}
 
+	serverBackendMetrics.SessionDirectCount, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Direct session count",
+		ServiceName: "server_backend",
+		ID:          "server_backend.sessions.direct",
+		Unit:        "sessions",
+		Description: "The number of concurrent sessions taking direct routes",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	serverBackendMetrics.SessionNextCount, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Next session count",
+		ServiceName: "server_backend",
+		ID:          "server_backend.sessions.next",
+		Unit:        "sessions",
+		Description: "The number of concurrent sessions taking next routes",
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	serverBackendMetrics.BillingMetrics.EntriesReceived = &EmptyCounter{}
 
 	serverBackendMetrics.BillingMetrics.EntriesSubmitted, err = metricsHandler.NewCounter(ctx, &Descriptor{
@@ -575,6 +639,7 @@ func NewServerBackendMetrics(ctx context.Context, metricsHandler Handler) (*Serv
 		return nil, err
 	}
 
+	serverBackendMetrics.BillingMetrics.ErrorMetrics.BillingBatchedReadFailure = &EmptyCounter{}
 	serverBackendMetrics.BillingMetrics.ErrorMetrics.BillingReadFailure = &EmptyCounter{}
 	serverBackendMetrics.BillingMetrics.ErrorMetrics.BillingWriteFailure = &EmptyCounter{}
 
@@ -582,7 +647,7 @@ func NewServerBackendMetrics(ctx context.Context, metricsHandler Handler) (*Serv
 		DisplayName: "Server Backend Route Matrix Bytes",
 		ServiceName: "server_backend",
 		ID:          "server_backend.route_matrix.bytes",
-		Unit:        "ms",
+		Unit:        "bytes",
 		Description: "The size of the route matrix in bytes",
 	})
 	if err != nil {
@@ -1729,6 +1794,16 @@ func NewBillingServiceMetrics(ctx context.Context, metricsHandler Handler) (*Bil
 		return nil, err
 	}
 
+	billingServiceMetrics.BillingMetrics.ErrorMetrics.BillingBatchedReadFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Billing Batched Read Failure",
+		ServiceName: "billing",
+		ID:          "billing.error.batched_read_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	billingServiceMetrics.BillingMetrics.ErrorMetrics.BillingWriteFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Billing Write Failure",
 		ServiceName: "billing",
@@ -1767,6 +1842,106 @@ func NewRelayBackendMetrics(ctx context.Context, metricsHandler Handler) (*Relay
 	if err != nil {
 		return nil, err
 	}
+
+	relayBackendMetrics.PingStatsMetrics.EntriesReceived = &EmptyCounter{}
+
+	relayBackendMetrics.PingStatsMetrics.EntriesSubmitted, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Backend Ping Stats Entries Written",
+		ServiceName: "relay_backend",
+		ID:          "relay_backend.ping_stats.entries.submitted",
+		Unit:        "entries",
+		Description: "The number of ping stats entries the relay backend submitted to be published",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	relayBackendMetrics.PingStatsMetrics.EntriesQueued, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Backend Ping Stats Entries Queued",
+		ServiceName: "relay_backend",
+		ID:          "relay_backend.ping_stats.entries.queued",
+		Unit:        "entries",
+		Description: "The number of ping stats entries the relay backend has queued. This should always be 0",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	relayBackendMetrics.PingStatsMetrics.EntriesFlushed, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Backend Ping Stats Entries Flushed",
+		ServiceName: "relay_backend",
+		ID:          "relay_backend.ping_stats.entries.flushed",
+		Unit:        "entries",
+		Description: "The number of ping stats entries the relay backend has flushed",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	relayBackendMetrics.PingStatsMetrics.ErrorMetrics.PublishFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Backend Ping Stats Publish Failure",
+		ServiceName: "relay_backend",
+		ID:          "relay_backend.ping_stats.error.publish_failure",
+		Unit:        "entries",
+		Description: "The number of ping stats entries the relay backend has failed to publish",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	relayBackendMetrics.PingStatsMetrics.ErrorMetrics.ReadFailure = &EmptyCounter{}
+
+	relayBackendMetrics.PingStatsMetrics.ErrorMetrics.WriteFailure = &EmptyCounter{}
+
+	relayBackendMetrics.RelayStatsMetrics.EntriesReceived = &EmptyCounter{}
+
+	relayBackendMetrics.RelayStatsMetrics.EntriesSubmitted, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Backend Relay Stats Entries Written",
+		ServiceName: "relay_backend",
+		ID:          "relay_backend.relay_stats.entries.submitted",
+		Unit:        "entries",
+		Description: "The number of relay stats entries the relay backend submitted to be published",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	relayBackendMetrics.RelayStatsMetrics.EntriesQueued, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Backend Relay Stats Entries Queued",
+		ServiceName: "relay_backend",
+		ID:          "relay_backend.relay_stats.entries.queued",
+		Unit:        "entries",
+		Description: "The number of relay stats entries the relay backend has queued. This should always be 0",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	relayBackendMetrics.RelayStatsMetrics.EntriesFlushed, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Backend Relay Stats Entries Flushed",
+		ServiceName: "relay_backend",
+		ID:          "relay_backend.relay_stats.entries.flushed",
+		Unit:        "entries",
+		Description: "The number of relay stats entries the relay backend has flushed",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	relayBackendMetrics.RelayStatsMetrics.ErrorMetrics.PublishFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Backend Relay Stats Publish Failure",
+		ServiceName: "relay_backend",
+		ID:          "relay_backend.relay_stats.error.publish_failure",
+		Unit:        "entries",
+		Description: "The number of relay stats entries the relay backend has failed to publish",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	relayBackendMetrics.RelayStatsMetrics.ErrorMetrics.ReadFailure = &EmptyCounter{}
+
+	relayBackendMetrics.RelayStatsMetrics.ErrorMetrics.WriteFailure = &EmptyCounter{}
 
 	return &relayBackendMetrics, nil
 }
@@ -1820,4 +1995,165 @@ func NewRouteMatrixMetrics(ctx context.Context, metricsHandler Handler) (*RouteM
 	}
 
 	return &routeMatrixMetrics, nil
+}
+
+func NewAnalyticsServiceMetrics(ctx context.Context, metricsHandler Handler) (*AnalyticsServiceMetrics, error) {
+	analyticsMetrics := AnalyticsServiceMetrics{}
+	var err error
+
+	analyticsMetrics.Goroutines, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Analytics Goroutine Count",
+		ServiceName: "analytics",
+		ID:          "analytics.goroutines",
+		Unit:        "goroutines",
+		Description: "The number of goroutines the analytics service is using",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	analyticsMetrics.MemoryAllocated, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Analytics Memory Allocated",
+		ServiceName: "analytics",
+		ID:          "analytics.memory",
+		Unit:        "MB",
+		Description: "The amount of memory the analytics service has allocated in MB",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	analyticsMetrics.PingStatsMetrics.EntriesReceived, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Ping Stats Entries Received",
+		ServiceName: "analytics",
+		ID:          "analytics.ping_stats.entries",
+		Unit:        "entries",
+		Description: "The total number of ping stats entries received through Google Pub/Sub",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	analyticsMetrics.PingStatsMetrics.EntriesSubmitted, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Ping Stats Entries Submitted",
+		ServiceName: "analytics",
+		ID:          "analytics.ping_stats.entries.submitted",
+		Unit:        "entries",
+		Description: "The total number of ping stats entries submitted to BigQuery",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	analyticsMetrics.PingStatsMetrics.EntriesQueued, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Ping Stats Entries Queued",
+		ServiceName: "analytics",
+		ID:          "analytics.ping_stats.entries.queued",
+		Unit:        "entries",
+		Description: "The total number of ping stats entries waiting to be sent to BigQuery",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	analyticsMetrics.PingStatsMetrics.EntriesFlushed, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Ping Stats Entries Flushed",
+		ServiceName: "analytics",
+		ID:          "analytics.ping_stats.entries.flushed",
+		Unit:        "entries",
+		Description: "The total number of ping stats entries written to BigQuery",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	analyticsMetrics.PingStatsMetrics.ErrorMetrics.PublishFailure = &EmptyCounter{}
+
+	analyticsMetrics.PingStatsMetrics.ErrorMetrics.ReadFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Ping Stats Read Failure",
+		ServiceName: "analytics",
+		ID:          "analytics.ping_stats.error.read_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	analyticsMetrics.PingStatsMetrics.ErrorMetrics.WriteFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Ping Stats Write Failure",
+		ServiceName: "analytics",
+		ID:          "analytics.ping_stats.error.write_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	analyticsMetrics.RelayStatsMetrics.EntriesReceived, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Stats Entries Received",
+		ServiceName: "analytics",
+		ID:          "analytics.relay_stats.entries",
+		Unit:        "entries",
+		Description: "The total number of relay stats entries received through Google Pub/Sub",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	analyticsMetrics.RelayStatsMetrics.EntriesSubmitted, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Stats Entries Submitted",
+		ServiceName: "analytics",
+		ID:          "analytics.relay_stats.entries.submitted",
+		Unit:        "entries",
+		Description: "The total number of relay stats entries submitted to BigQuery",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	analyticsMetrics.RelayStatsMetrics.EntriesQueued, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Stats Entries Queued",
+		ServiceName: "analytics",
+		ID:          "analytics.relay_stats.entries.queued",
+		Unit:        "entries",
+		Description: "The total number of relay stats entries waiting to be sent to BigQuery",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	analyticsMetrics.RelayStatsMetrics.EntriesFlushed, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Stats Entries Flushed",
+		ServiceName: "analytics",
+		ID:          "analytics.relay_stats.entries.flushed",
+		Unit:        "entries",
+		Description: "The total number of relay stats entries written to BigQuery",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	analyticsMetrics.RelayStatsMetrics.ErrorMetrics.PublishFailure = &EmptyCounter{}
+
+	analyticsMetrics.RelayStatsMetrics.ErrorMetrics.ReadFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Stats Read Failure",
+		ServiceName: "analytics",
+		ID:          "analytics.relay_stats.error.read_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	analyticsMetrics.RelayStatsMetrics.ErrorMetrics.WriteFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Relay Stats Write Failure",
+		ServiceName: "analytics",
+		ID:          "analytics.relay_stats.error.write_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &analyticsMetrics, nil
 }

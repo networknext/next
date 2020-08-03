@@ -8,7 +8,6 @@ import (
 	"net"
 	"time"
 
-	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 )
@@ -27,11 +26,11 @@ func randomString(length int) string {
 	return string(arr)
 }
 
-func fillRelayDatabase(redisClient *redis.Client) {
+func fillRelayDatabase(relayMap *routing.RelayMap) {
 	fillData := func(addr string, updateTime time.Time) {
 		id := crypto.HashID(addr)
 		udp, _ := net.ResolveUDPAddr("udp", addr)
-		data := routing.RelayCacheEntry{
+		data := &routing.RelayData{
 			ID:   id,
 			Name: addr,
 			Addr: *udp,
@@ -42,7 +41,7 @@ func fillRelayDatabase(redisClient *redis.Client) {
 			PublicKey:      randomPublicKey(),
 			LastUpdateTime: updateTime,
 		}
-		redisClient.HSet(routing.HashKeyAllRelays, data.Key(), data)
+		relayMap.UpdateRelayData(data.Addr.String(), data)
 	}
 
 	fillData("127.0.0.1:40000", time.Now().Add(time.Second*-1))

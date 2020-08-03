@@ -124,13 +124,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	redisRelayHost := os.Getenv("REDIS_HOST_RELAYS")
-	redisClientRelays := storage.NewRedisClient(redisRelayHost)
-	if err := redisClientRelays.Ping().Err(); err != nil {
-		level.Error(logger).Log("envvar", "REDIS_HOST_RELAYS", "value", redisRelayHost, "err", err)
-		os.Exit(1)
-	}
-
 	var db storage.Storer = &storage.InMemory{
 		LocalMode: true,
 	}
@@ -418,11 +411,10 @@ func main() {
 		})
 		s.RegisterCodec(json2.NewCodec(), "application/json")
 		s.RegisterService(&jsonrpc.OpsService{
-			Logger:      logger,
-			Release:     tag,
-			BuildTime:   buildtime,
-			RedisClient: redisClientRelays,
-			Storage:     db,
+			Logger:    logger,
+			Release:   tag,
+			BuildTime: buildtime,
+			Storage:   db,
 			// RouteMatrix: &routeMatrix,
 		}, "")
 		s.RegisterService(&buyerService, "")
@@ -432,11 +424,20 @@ func main() {
 			Storage: db,
 		}, "")
 
-		http.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s)))
+		allowCORSStr := os.Getenv("CORS")
+		allowCORS := true
+		if ok, err := strconv.ParseBool(allowCORSStr); err == nil {
+			allowCORS = ok
+		}
+
+		http.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s), allowCORS))
+
+		if allowCORS {
+			http.Handle("/", middleware.CacheControl(os.Getenv("HTTP_CACHE_CONTROL"), http.FileServer(http.Dir(uiDir))))
+		}
+
 		http.HandleFunc("/health", transport.HealthHandlerFunc())
 		http.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage))
-
-		http.Handle("/", middleware.CacheControl(os.Getenv("HTTP_CACHE_CONTROL"), http.FileServer(http.Dir(uiDir))))
 
 		level.Info(logger).Log("addr", ":"+port)
 
