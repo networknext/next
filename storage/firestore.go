@@ -27,11 +27,14 @@ type Firestore struct {
 	sellers        map[string]routing.Seller
 	datacenterMaps map[uint64]routing.DatacenterMap
 
-	datacenterMutex    sync.RWMutex
-	relayMutex         sync.RWMutex
-	buyerMutex         sync.RWMutex
-	sellerMutex        sync.RWMutex
-	datacenterMapMutex sync.RWMutex
+	syncSequenceNumber int64
+
+	datacenterMutex     sync.RWMutex
+	relayMutex          sync.RWMutex
+	buyerMutex          sync.RWMutex
+	sellerMutex         sync.RWMutex
+	datacenterMapMutex  sync.RWMutex
+	sequenceNumberMutex sync.RWMutex
 }
 
 type customer struct {
@@ -132,14 +135,98 @@ func NewFirestore(ctx context.Context, gcpProjectID string, logger log.Logger) (
 	}
 
 	return &Firestore{
-		Client:         client,
-		Logger:         logger,
-		datacenters:    make(map[uint64]routing.Datacenter),
-		datacenterMaps: make(map[uint64]routing.DatacenterMap),
-		relays:         make(map[uint64]routing.Relay),
-		buyers:         make(map[uint64]routing.Buyer),
-		sellers:        make(map[string]routing.Seller),
+		Client:             client,
+		Logger:             logger,
+		datacenters:        make(map[uint64]routing.Datacenter),
+		datacenterMaps:     make(map[uint64]routing.DatacenterMap),
+		relays:             make(map[uint64]routing.Relay),
+		buyers:             make(map[uint64]routing.Buyer),
+		sellers:            make(map[string]routing.Seller),
+		syncSequenceNumber: -1,
 	}, nil
+
+}
+
+// SetSequenceNumber is required for testing with the Firestore emulator
+func (fs *Firestore) SetSequenceNumber(ctx context.Context, value int64) error {
+	seqDocs := fs.Client.Collection("MetaData")
+	seq := seqDocs.Doc("SyncSequenceNumber")
+
+	var num struct {
+		Value int64 `firestore:"value"`
+	}
+	num.Value = value
+
+	if _, err := seq.Set(ctx, num); err != nil {
+		return &FirestoreError{err: err}
+	}
+
+	return nil
+
+}
+
+// IncrementSequenceNumber is called by all CRUD operations defined in the Storage interface. It only
+// increments the remote seq number. When the sync() functions call CheckSequenceNumber(), if the
+// local and remote numbers are not the same, the data will be sync'd from Firestore, and the local
+// sequence numbers updated.
+func (fs *Firestore) IncrementSequenceNumber(ctx context.Context) error {
+
+	seqDocs := fs.Client.Collection("MetaData")
+	seq, err := seqDocs.Doc("SyncSequenceNumber").Get(ctx)
+	if err != nil {
+		return &DoesNotExistError{resourceType: "sequence number", resourceRef: ""}
+	}
+
+	var num struct {
+		Value int64 `firestore:"value"`
+	}
+
+	err = seq.DataTo(&num)
+	if err != nil {
+		return &UnmarshalError{err: err}
+	}
+
+	num.Value++
+	if _, err = seq.Ref.Set(ctx, num); err != nil {
+		return &FirestoreError{err: err}
+	}
+
+	return nil
+}
+
+// CheckSequenceNumber is called in the Firestore sync*() operations to see if a sync is required.
+// Returns true if the remote number != the local number which forces the caller to sync from
+// Firestore and updates the local sequence number. Returns false (no need to sync) and does
+// not modify the local number, otherwise.
+func (fs *Firestore) CheckSequenceNumber(ctx context.Context) (bool, error) {
+
+	var num struct {
+		Value int64 `firestore:"value"`
+	}
+
+	seqDocs := fs.Client.Collection("MetaData")
+	seq, err := seqDocs.Doc("SyncSequenceNumber").Get(ctx)
+	if err != nil {
+		return false, &DoesNotExistError{resourceType: "sequence number", resourceRef: ""}
+	}
+
+	err = seq.DataTo(&num)
+	if err != nil {
+		return false, &UnmarshalError{err: err}
+	}
+
+	fs.sequenceNumberMutex.RLock()
+	localSeqNum := fs.syncSequenceNumber
+	fs.sequenceNumberMutex.RUnlock()
+
+	if localSeqNum != num.Value {
+		fs.sequenceNumberMutex.Lock()
+		fs.syncSequenceNumber = num.Value
+		fs.sequenceNumberMutex.Unlock()
+		return true, nil
+	}
+
+	return false, nil
 }
 
 func (fs *Firestore) Buyer(id uint64) (routing.Buyer, error) {
@@ -256,6 +343,8 @@ func (fs *Firestore) AddBuyer(ctx context.Context, b routing.Buyer) error {
 	fs.buyers[b.ID] = b
 	fs.buyerMutex.Unlock()
 
+	fs.IncrementSequenceNumber(ctx)
+
 	return nil
 }
 
@@ -344,6 +433,9 @@ func (fs *Firestore) RemoveBuyer(ctx context.Context, id uint64) error {
 			fs.buyerMutex.Lock()
 			delete(fs.buyers, id)
 			fs.buyerMutex.Unlock()
+
+			fs.IncrementSequenceNumber(ctx)
+
 			return nil
 		}
 	}
@@ -406,6 +498,8 @@ func (fs *Firestore) SetBuyer(ctx context.Context, b routing.Buyer) error {
 			fs.buyerMutex.Lock()
 			fs.buyers[b.ID] = buyerInCachedStorage
 			fs.buyerMutex.Unlock()
+
+			fs.IncrementSequenceNumber(ctx)
 
 			return nil
 		}
@@ -517,6 +611,8 @@ func (fs *Firestore) AddSeller(ctx context.Context, s routing.Seller) error {
 	fs.sellers[s.ID] = s
 	fs.sellerMutex.Unlock()
 
+	fs.IncrementSequenceNumber(ctx)
+
 	return nil
 }
 
@@ -581,6 +677,9 @@ func (fs *Firestore) RemoveSeller(ctx context.Context, id string) error {
 	fs.sellerMutex.Lock()
 	delete(fs.sellers, id)
 	fs.sellerMutex.Unlock()
+
+	fs.IncrementSequenceNumber(ctx)
+
 	return nil
 }
 
@@ -611,6 +710,8 @@ func (fs *Firestore) SetSeller(ctx context.Context, seller routing.Seller) error
 	fs.sellerMutex.Lock()
 	fs.sellers[seller.ID] = sellerInCachedStorage
 	fs.sellerMutex.Unlock()
+
+	fs.IncrementSequenceNumber(ctx)
 
 	return nil
 }
@@ -693,6 +794,8 @@ func (fs *Firestore) SetCustomerLink(ctx context.Context, customerName string, b
 			if _, err := cdoc.Ref.Set(ctx, c); err != nil {
 				return &FirestoreError{err: err}
 			}
+
+			fs.IncrementSequenceNumber(ctx)
 
 			return nil
 		}
@@ -901,6 +1004,8 @@ func (fs *Firestore) AddRelay(ctx context.Context, r routing.Relay) error {
 	fs.relays[r.ID] = r
 	fs.relayMutex.Unlock()
 
+	fs.IncrementSequenceNumber(ctx)
+
 	return nil
 }
 
@@ -944,6 +1049,9 @@ func (fs *Firestore) RemoveRelay(ctx context.Context, id uint64) error {
 			fs.relayMutex.Lock()
 			delete(fs.relays, id)
 			fs.relayMutex.Unlock()
+
+			fs.IncrementSequenceNumber(ctx)
+
 			return nil
 		}
 	}
@@ -1006,6 +1114,8 @@ func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 			fs.relayMutex.Lock()
 			fs.relays[r.ID] = relayInCachedStorage
 			fs.relayMutex.Unlock()
+
+			fs.IncrementSequenceNumber(ctx)
 
 			return nil
 		}
@@ -1070,6 +1180,8 @@ func (fs *Firestore) AddDatacenterMap(ctx context.Context, dcMap routing.Datacen
 	fs.datacenterMaps[id] = dcMap
 	fs.datacenterMapMutex.Unlock()
 
+	fs.IncrementSequenceNumber(ctx)
+
 	return nil
 
 }
@@ -1133,6 +1245,8 @@ func (fs *Firestore) RemoveDatacenterMap(ctx context.Context, dcMap routing.Data
 			delete(fs.datacenterMaps, id)
 			fs.datacenterMapMutex.Unlock()
 
+			fs.IncrementSequenceNumber(ctx)
+
 			return nil
 		}
 	}
@@ -1173,6 +1287,8 @@ func (fs *Firestore) SetRelayMetadata(ctx context.Context, modifiedRelay routing
 			fs.relayMutex.Lock()
 			fs.relays[modifiedRelay.ID] = modifiedRelay
 			fs.relayMutex.Unlock()
+
+			fs.IncrementSequenceNumber(ctx)
 
 			return nil
 		}
@@ -1227,6 +1343,8 @@ func (fs *Firestore) AddDatacenter(ctx context.Context, d routing.Datacenter) er
 	fs.datacenters[d.ID] = d
 	fs.datacenterMutex.Unlock()
 
+	fs.IncrementSequenceNumber(ctx)
+
 	return nil
 }
 
@@ -1269,6 +1387,9 @@ func (fs *Firestore) RemoveDatacenter(ctx context.Context, id uint64) error {
 			fs.datacenterMutex.Lock()
 			delete(fs.datacenters, id)
 			fs.datacenterMutex.Unlock()
+
+			fs.IncrementSequenceNumber(ctx)
+
 			return nil
 		}
 	}
@@ -1329,6 +1450,8 @@ func (fs *Firestore) SetDatacenter(ctx context.Context, d routing.Datacenter) er
 			fs.datacenters[d.ID] = datacenterInCachedStorage
 			fs.datacenterMutex.Unlock()
 
+			fs.IncrementSequenceNumber(ctx)
+
 			return nil
 		}
 	}
@@ -1337,6 +1460,7 @@ func (fs *Firestore) SetDatacenter(ctx context.Context, d routing.Datacenter) er
 }
 
 // SyncLoop is a helper method that calls Sync
+// func (fs *Firestore) SyncLoop(ctx context.Context, c <-chan time.Time) {
 func (fs *Firestore) SyncLoop(ctx context.Context, c <-chan time.Time) {
 	if err := fs.Sync(ctx); err != nil {
 		level.Error(fs.Logger).Log("during", "SyncLoop", "err", err)
@@ -1356,11 +1480,21 @@ func (fs *Firestore) SyncLoop(ctx context.Context, c <-chan time.Time) {
 
 // Sync fetches relays and buyers from Firestore and places copies into local caches
 func (fs *Firestore) Sync(ctx context.Context) error {
+
+	seqNumberNotInSync, err := fs.CheckSequenceNumber(ctx)
+	if err != nil {
+		return err
+	}
+	if !seqNumberNotInSync {
+		return nil
+	}
+
 	var outerErr error
 	var wg sync.WaitGroup
 	wg.Add(5)
 
 	go func() {
+
 		if err := fs.syncRelays(ctx); err != nil {
 			outerErr = fmt.Errorf("failed to sync relays: %v", err)
 		}

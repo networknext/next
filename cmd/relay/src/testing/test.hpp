@@ -160,15 +160,14 @@ namespace testing
     static std::string Endpoint;  // The endpoint to hit
 
     template <typename ReqType, typename RespType>
-    static bool SendTo(const std::string hostname, const std::string endpoint, const ReqType& request, RespType& response, size_t& bytesSent);
+    static bool SendTo(const std::string hostname, const std::string endpoint, const ReqType& request, RespType& response);
   };
 
   template <typename ReqType, typename RespType>
   bool StubbedCurlWrapper::SendTo(
-   const std::string hostname, const std::string endpoint, const ReqType& request, RespType& response, size_t& bytesSent)
+   const std::string hostname, const std::string endpoint, const ReqType& request, RespType& response)
   {
     Request.assign(request.begin(), request.end());
-    bytesSent = Request.size();
     response.assign(Response.begin(), Response.end());
     Hostname = hostname;
     Endpoint = endpoint;
