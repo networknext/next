@@ -2180,7 +2180,7 @@ func NewFirestoreSyncMetrics(ctx context.Context, metricsHandler Handler, callin
 
 	firestoreSyncMetricsInvocationsCounter, err := metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Total Firestore SyncLoop invocations",
-		ServiceName: "relay_backend",
+		ServiceName: callingService,
 		ID:          "firestore_sync.count",
 		Unit:        "invocations",
 		Description: "Total Firestore SyncLoop invocations",
@@ -2191,7 +2191,7 @@ func NewFirestoreSyncMetrics(ctx context.Context, metricsHandler Handler, callin
 
 	firestoreSyncMetricsFailure, err := metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Firestore Sync Sequence Number Get Failure",
-		ServiceName: "relay_backend",
+		ServiceName: callingService,
 		ID:          "firestore_sequence_number.failure",
 		Unit:        "errors",
 	})
