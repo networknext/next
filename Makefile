@@ -284,7 +284,7 @@ dev-relay: build-relay ## runs a local relay
 
 .PHONY: dev-multi-relays
 dev-multi-relays: build-relay ## runs 10 local relays
-	./scripts/relay-spawner.sh -n 10 -p 10000
+	./scripts/relay-spawner.sh -n 20 -p 10000
 
 #######################
 
@@ -303,6 +303,10 @@ dev-relay-backend: build-relay-backend ## runs a local relay backend
 .PHONY: dev-server-backend
 dev-server-backend: build-server-backend ## runs a local server backend
 	@HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend
+
+.PHONY: dev-server-backend-valve
+dev-server-backend-valve: build-server-backend ## runs a local valve server backend
+	@HTTP_PORT=40001 UDP_PORT=40001 ROUTE_MATRIX_URI=http://127.0.0.1:30000/route_matrix_valve ./dist/server_backend
 
 .PHONY: dev-billing
 dev-billing: build-billing ## runs a local billing service
@@ -408,10 +412,6 @@ deploy-server-backend-psyonix: ## builds and deploys the server backend to psyon
 .PHONY: deploy-server-backend-liquidbit
 deploy-server-backend-liquidbit: ## builds and deploys the server backend to liquidbit
 	./deploy/deploy.sh -e prod -c prod-42rz -t server -b gs://prod_artifacts
-
-.PHONY: deploy-server-backend-turtlerock
-deploy-server-backend-turtlerock: ## builds and deploys the server backend to turtlerock
-	./deploy/deploy.sh -e prod -c turtlerock-xkgp -t server -b gs://prod_artifacts
 
 .PHONY: deploy-server-backend-valve
 deploy-server-backend-valve: ## builds and deploys the server backend to valve
