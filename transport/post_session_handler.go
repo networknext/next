@@ -38,7 +38,6 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 				select {
 				case postSessionData := <-post.postSessionChannel:
 					go func() {
-						fmt.Println("calling process portal")
 						if portalDataBytes, err := postSessionData.ProcessPortalData(post.portalPublisher); err != nil {
 							level.Error(post.logger).Log("msg", "could not update portal data", "err", err)
 							post.metrics.UpdatePortalFailure.Add(1)
@@ -47,8 +46,6 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 						}
 					}()
 					go func() {
-
-						fmt.Println("calling process billing")
 						if err := postSessionData.ProcessBillingEntry(post.biller); err != nil {
 							level.Error(post.logger).Log("msg", "could not submit billing entry", "err", err)
 							post.metrics.BillingFailure.Add(1)
