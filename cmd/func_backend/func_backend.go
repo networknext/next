@@ -185,8 +185,8 @@ func main() {
 	backend.costMatrix = &routing.CostMatrix{}
 	backend.routeMatrix = &routing.RouteMatrix{}
 
-	backend.relayMap = routing.NewRelayMap(func(relayID uint64) error {
-		backend.statsDatabase.DeleteEntry(relayID)
+	backend.relayMap = routing.NewRelayMap(func(relayData *routing.RelayData) error {
+		backend.statsDatabase.DeleteEntry(relayData.ID)
 		return nil
 	})
 
