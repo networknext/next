@@ -1081,7 +1081,15 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		reply.GameConfiguration.BuyerID = fmt.Sprintf("%016x", buyer.ID)
 		reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
 		reply.GameConfiguration.Company = buyer.Name
-
+		reply.CustomerRouteShader = CustomerRouteShader{
+			EnableNetworkNext:   buyer.CustomerRoutingRulesSettings.EnableNetworkNext,
+			EnableRoundTripTime: buyer.CustomerRoutingRulesSettings.EnableRoundTripTime,
+			EnableABTest:        buyer.CustomerRoutingRulesSettings.EnableABTest,
+			EnableMultiPath:     buyer.CustomerRoutingRulesSettings.EnableMultiPath,
+			EnablePacketLoss:    buyer.CustomerRoutingRulesSettings.EnablePacketLoss,
+			AcceptableLatency:   fmt.Sprintf("%v", buyer.CustomerRoutingRulesSettings.AcceptableLatency),
+			PacketLossThreshold: fmt.Sprintf("%v", buyer.CustomerRoutingRulesSettings.PacketLossThreshold),
+		}
 		return nil
 	}
 
@@ -1095,12 +1103,14 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 	}
 
 	err = s.Storage.AddBuyer(ctx, routing.Buyer{
-		ID:        buyerID,
-		Name:      args.Name,
-		Domain:    args.Domain,
-		Active:    active,
-		Live:      live,
-		PublicKey: byteKey[8:],
+		ID:                           buyerID,
+		Name:                         args.Name,
+		Domain:                       args.Domain,
+		Active:                       active,
+		Live:                         live,
+		PublicKey:                    byteKey[8:],
+		CustomerRoutingRulesSettings: buyer.CustomerRoutingRulesSettings,
+		RoutingRulesSettings:         buyer.RoutingRulesSettings,
 	})
 
 	if err != nil {
@@ -1119,7 +1129,15 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 	// Set reply
 	reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
 	reply.GameConfiguration.Company = buyer.Name
-
+	reply.CustomerRouteShader = CustomerRouteShader{
+		EnableNetworkNext:   buyer.CustomerRoutingRulesSettings.EnableNetworkNext,
+		EnableRoundTripTime: buyer.CustomerRoutingRulesSettings.EnableRoundTripTime,
+		EnableABTest:        buyer.CustomerRoutingRulesSettings.EnableABTest,
+		EnableMultiPath:     buyer.CustomerRoutingRulesSettings.EnableMultiPath,
+		EnablePacketLoss:    buyer.CustomerRoutingRulesSettings.EnablePacketLoss,
+		AcceptableLatency:   fmt.Sprintf("%v", buyer.CustomerRoutingRulesSettings.AcceptableLatency),
+		PacketLossThreshold: fmt.Sprintf("%v", buyer.CustomerRoutingRulesSettings.PacketLossThreshold),
+	}
 	return nil
 }
 
@@ -1134,7 +1152,7 @@ type RouteShaderUpdateArgs struct {
 }
 
 type RouteShaderUpdateReply struct {
-	CustomerRouteShader routing.CustomerRoutingRulesSettings `json:"customer_route_shader"`
+	CustomerRouteShader CustomerRouteShader `json:"customer_route_shader"`
 }
 
 func (s *BuyersService) UpdateRouteShader(req *http.Request, args *RouteShaderUpdateArgs, reply *RouteShaderUpdateReply) error {
@@ -1186,7 +1204,15 @@ func (s *BuyersService) UpdateRouteShader(req *http.Request, args *RouteShaderUp
 		return fmt.Errorf("UpdateRouteShader(): Failed to update buyer: %v", err)
 	}
 
-	reply.CustomerRouteShader = buyer.CustomerRoutingRulesSettings
+	reply.CustomerRouteShader = CustomerRouteShader{
+		EnableNetworkNext:   buyer.CustomerRoutingRulesSettings.EnableNetworkNext,
+		EnableRoundTripTime: buyer.CustomerRoutingRulesSettings.EnableRoundTripTime,
+		EnableABTest:        buyer.CustomerRoutingRulesSettings.EnableABTest,
+		EnableMultiPath:     buyer.CustomerRoutingRulesSettings.EnableMultiPath,
+		EnablePacketLoss:    buyer.CustomerRoutingRulesSettings.EnablePacketLoss,
+		AcceptableLatency:   fmt.Sprintf("%v", buyer.CustomerRoutingRulesSettings.AcceptableLatency),
+		PacketLossThreshold: fmt.Sprintf("%v", buyer.CustomerRoutingRulesSettings.PacketLossThreshold),
+	}
 
 	return nil
 }
