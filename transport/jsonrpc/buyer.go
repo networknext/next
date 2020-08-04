@@ -1061,6 +1061,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 			Live:                         false,
 			PublicKey:                    byteKey[8:],
 			CustomerRoutingRulesSettings: routing.DefaultCustomerRoutingRulesSettings,
+			RoutingRulesSettings:         routing.DefaultRoutingRulesSettings,
 		})
 
 		if err != nil {
