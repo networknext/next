@@ -4,8 +4,11 @@
 #include "crypto/bytes.hpp"
 #include "crypto/keychain.hpp"
 #include "encoding/base64.hpp"
+#include "encoding/read.hpp"
+#include "encoding/write.hpp"
 #include "legacy/v3/traffic_stats.hpp"
 #include "net/http.hpp"
+#include "os/platform.hpp"
 #include "relay_manager.hpp"
 #include "router_info.hpp"
 #include "session_map.hpp"
@@ -13,7 +16,6 @@
 #include "util/json.hpp"
 #include "util/logger.hpp"
 #include "util/throughput_recorder.hpp"
-#include "os/platform.hpp"
 
 // forward declare test names to allow private functions to be visible them
 namespace testing
@@ -29,7 +31,7 @@ namespace core
   const uint32_t InitRequestVersion = 0;
   const uint32_t InitResponseVersion = 0;
 
-  const uint32_t UpdateRequestVersion = 0;
+  const uint32_t UpdateRequestVersion = 1;
   const uint32_t UpdateResponseVersion = 0;
 
   const uint8_t MaxUpdateAttempts = 11;  // 1 initial + 10 more for failures
@@ -37,9 +39,8 @@ namespace core
   /*
    * A class that's responsible for backend related tasks
    * where T should be anything that defines a static SendTo function
-   * with the same signature as net::CurlWrapper
+   * with the same signature as net::BeastWrapper
    */
-  template <typename T>
   class Backend
   {
     friend testing::_test_core_Backend_update_valid_;
@@ -54,7 +55,8 @@ namespace core
      RelayManager<Relay>& relayManager,
      std::string base64RelayPublicKey,
      const core::SessionMap& sessions,
-     legacy::v3::TrafficStats& stats);
+     legacy::v3::TrafficStats& stats,
+     net::IHttpRequester& requester);
     ~Backend() = default;
 
     auto init() -> bool;
@@ -78,15 +80,15 @@ namespace core
     const std::string mBase64RelayPublicKey;
     const core::SessionMap& mSessionMap;
     legacy::v3::TrafficStats& mStats;
+    net::IHttpRequester& mRequester;
 
     auto update(util::ThroughputRecorder& recorder, bool shutdown) -> bool;
-    auto buildInitRequest(util::JSON& doc) -> std::tuple<bool, const char*>;
-    auto buildUpdateRequest(util::JSON& doc, util::ThroughputRecorder& recorder, bool shutdown)
+    auto buildInitRequest(std::vector<uint8_t>& req) -> std::tuple<bool, const char*>;
+    auto buildUpdateRequest(std::vector<uint8_t>& doc, util::ThroughputRecorder& recorder, bool shutdown)
      -> std::tuple<bool, const char*>;
   };
 
-  template <typename T>
-  Backend<T>::Backend(
+  Backend::Backend(
    std::string hostname,
    std::string address,
    const crypto::Keychain& keychain,
@@ -94,7 +96,8 @@ namespace core
    RelayManager<Relay>& relayManager,
    std::string base64RelayPublicKey,
    const core::SessionMap& sessions,
-   legacy::v3::TrafficStats& stats)
+   legacy::v3::TrafficStats& stats,
+   net::IHttpRequester& requester)
    : mHostname(hostname),
      mAddressStr(address),
      mKeychain(keychain),
@@ -102,63 +105,96 @@ namespace core
      mRelayManager(relayManager),
      mBase64RelayPublicKey(base64RelayPublicKey),
      mSessionMap(sessions),
-     mStats(stats)
+     mStats(stats),
+     mRequester(requester)
   {}
 
-  template <typename T>
-  auto Backend<T>::init() -> bool
+  auto Backend::init() -> bool
   {
-    util::JSON doc;
-    auto [ok, err] = buildInitRequest(doc);
-    if (!ok) {
-      Log("error building init request: ", err);
-      return false;
-    }
-    std::string request = doc.toString();
-    std::string response;
+    std::vector<uint8_t> req, res;
 
-    if (!T::SendTo(mHostname, "/relay_init", request, response)) {
+    // serialize request
+    {
+      std::array<uint8_t, crypto_box_NONCEBYTES> nonce = {};
+      crypto::CreateNonceBytes(nonce);
+
+      // just has to be something the backend can decrypt
+      std::array<uint8_t, RELAY_TOKEN_BYTES> token = {};
+      crypto::RandomBytes(token, token.size());
+
+      std::array<uint8_t, RELAY_TOKEN_BYTES + crypto_box_MACBYTES> encryptedToken = {};
+
+      if (
+       crypto_box_easy(
+        encryptedToken.data(),
+        token.data(),
+        token.size(),
+        nonce.data(),
+        mKeychain.RouterPublicKey.data(),
+        mKeychain.RelayPrivateKey.data()) != 0) {
+        return {false, "failed to encrypt init token"};
+      }
+
+      // | magic | version | nonce | address | encrypted token |
+      constexpr size_t RequestSize = 4 + 4 + nonce.size() + net::Address::MaxStrLen + token.size();
+      req.resize(RequestSize);
+
+      size_t index = 0;
+
+      if (!encoding::WriteUint32(req, index, InitRequestMagic)) {
+        Log("could not write init request magic");
+        return false;
+      }
+
+      if (!encoding::WriteUint32(req, index, InitRequestVersion)) {
+        Log("could not write init request version");
+        return false;
+      }
+
+      if (!encoding::WriteBytes(req, index, nonce, nonce.size())) {
+        Log("could not write nonce bytes");
+        return false;
+      }
+
+      if (!encoding::WriteString(req, index, mAddressStr)) {
+        Log("could not write address");
+        return false;
+      }
+
+      if (!encoding::WriteBytes(req, index, token, token.size())) {
+        Log("could not write token");
+        return false;
+      }
+    }
+
+    // send request
+
+    if (!mRequester.sendRequest(mHostname, "/relay_init", req, res)) {
       Log("curl request failed in init");
       return false;
     }
 
-    if (!doc.parse(response)) {
-      Log("could not parse json response in init: ", doc.err(), "\nResponse: ", std::string(response.begin(), response.end()));
-      return false;
-    }
+    // deserialize response
+    {
+      size_t index = 0;
 
-    if (doc.memberExists("version")) {
-      if (doc.memberIs(util::JSON::Type::Number, "version")) {
-        auto version = doc.get<uint32_t>("version");
-        if (version != InitResponseVersion) {
-          Log("error: bad relay init response version. expected ", InitResponseVersion, ", got ", version);
-          return false;
-        }
-      } else {
-        Log("warning, init version response not a number");
-      }
-    } else {
-      Log("warning, version number missing in init response");
-    }
+      uint32_t version = encoding::ReadUint32(res, index);
 
-    if (doc.memberExists("Timestamp")) {
-      if (doc.memberIs(util::JSON::Type::Number, "Timestamp")) {
-        // for old relay compat the router sends this back in millis, so convert back to seconds
-        mRouterInfo.setTimestamp(doc.get<uint64_t>("Timestamp") / 1000);
-      } else {
-        Log("init timestamp not a number");
+      if (version != InitResponseVersion) {
+        Log("error: bad relay init response version. expected ", InitResponseVersion, ", got ", version);
         return false;
       }
-    } else {
-      Log("response json missing member 'Timestamp'");
-      return false;
+
+      uint64_t timestamp = encoding::ReadUint64(res, index);
+
+      // for old relay compat the router sends this back in millis, so convert back to seconds
+      mRouterInfo.setTimestamp(timestamp / 1000);
     }
 
     return true;
   }
 
-  template <typename T>
-  bool Backend<T>::updateCycle(
+  bool Backend::updateCycle(
    const volatile bool& loopHandle,
    const volatile bool& shouldCleanShutdown,
    util::ThroughputRecorder& recorder,
@@ -213,8 +249,7 @@ namespace core
     return successfulRoutine;
   }
 
-  template <typename T>
-  auto Backend<T>::update(util::ThroughputRecorder& recorder, bool shutdown) -> bool
+  auto Backend::update(util::ThroughputRecorder& recorder, bool shutdown) -> bool
   {
     util::JSON doc;
     auto [ok, err] = buildUpdateRequest(doc, recorder, shutdown);
@@ -227,7 +262,7 @@ namespace core
 
     LogDebug("Sending new: ", doc.toPrettyString());
 
-    if (!T::SendTo(mHostname, "/relay_update", request, response)) {
+    if (!mRequester.sendRequest(mHostname, "/relay_update", request, response)) {
       Log("curl request failed in update");
       return false;
     }
@@ -338,63 +373,14 @@ namespace core
     return true;
   }
 
-  template <typename T>
-  auto Backend<T>::buildInitRequest(util::JSON& doc) -> std::tuple<bool, const char*>
+  auto Backend::buildInitRequest(std::vector<uint8_t>& req) -> std::tuple<bool, const char*>
   {
-    std::string base64NonceStr;
-    std::array<uint8_t, crypto_box_NONCEBYTES> nonce = {};
-    crypto::CreateNonceBytes(nonce);
-    std::vector<char> b64Nonce(nonce.size() * 2);
-
-    auto len = encoding::base64::Encode(nonce, b64Nonce);
-    if (len < nonce.size()) {
-      return {false, "failed to encode base64 nonce for init"};
-    }
-
-    // greedy method but gets the job done, plus init is done once so who cares if it's a few nanos slower
-    base64NonceStr = std::string(b64Nonce.begin(), b64Nonce.begin() + len);
-
-    std::string base64TokenStr;
-    // just has to be something the backend can decrypt
-    std::array<uint8_t, RELAY_TOKEN_BYTES> token = {};
-    crypto::RandomBytes(token, token.size());
-
-    std::array<uint8_t, RELAY_TOKEN_BYTES + crypto_box_MACBYTES> encryptedToken = {};
-    std::vector<char> b64EncryptedToken(encryptedToken.size() * 2);
-
-    if (
-     crypto_box_easy(
-      encryptedToken.data(),
-      token.data(),
-      token.size(),
-      nonce.data(),
-      mKeychain.RouterPublicKey.data(),
-      mKeychain.RelayPrivateKey.data()) != 0) {
-      return {false, "failed to encrypt init token"};
-    }
-
-    len = encoding::base64::Encode(encryptedToken, b64EncryptedToken);
-    if (len < encryptedToken.size()) {
-      return {false, "failed to encode base64 token for init"};
-    }
-
-    base64TokenStr = std::string(b64EncryptedToken.begin(), b64EncryptedToken.begin() + len);
-
-    doc.set(InitRequestMagic, "magic_request_protection");
-    doc.set(InitRequestVersion, "version");
-    doc.set(mAddressStr, "relay_address");
-    doc.set(base64NonceStr, "nonce");
-    doc.set(base64TokenStr, "encrypted_token");
-
     return {true, nullptr};
   }
 
-  template <typename T>
-  auto Backend<T>::buildUpdateRequest(util::JSON& doc, util::ThroughputRecorder& recorder, bool shutdown)
+  auto Backend::buildUpdateRequest(std::vector<uint8_t>& req, util::ThroughputRecorder& recorder, bool shutdown)
    -> std::tuple<bool, const char*>
   {
-    // TODO once the other stats are finally added, pull out the json parts that are always the same, no sense rebuilding those
-    // parts of the document
     doc.set(shutdown, "shutting_down");
     doc.set(UpdateRequestVersion, "version");
     doc.set(mAddressStr, "relay_address");

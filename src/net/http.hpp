@@ -4,26 +4,45 @@
 
 namespace net
 {
+  // Interface for sending http requests
+  class IHttpRequester
+  {
+   public:
+    virtual ~IHttpRequester() = default;
+    virtual auto sendRequest(
+     const std::string hostname,
+     const std::string endpoint,
+     const std::vector<uint8_t>& request,
+     std::vector<uint8_t>& response) -> bool = 0;
+
+   protected:
+    IHttpRequester() = default;
+  };
+
   namespace beast = boost::beast;
   namespace http = beast::http;
   namespace network = boost::asio;
   using tcp = network::ip::tcp;
 
-  class BeastWrapper
+  class BeastWrapper: public IHttpRequester
   {
+   public:
     BeastWrapper();
     ~BeastWrapper();
 
+    auto sendRequest(
+     const std::string hostname,
+     const std::string endpoint,
+     const std::vector<uint8_t>& request,
+     std::vector<uint8_t>& response) -> bool override;
+
+   private:
     // The io_context is required for all I/O
     network::io_context ioc;
 
-    // These objects perform our I/O
+    // These objects perform I/O
     tcp::resolver resolver;
     beast::tcp_stream stream;
-
-   public:
-    static auto SendTo(
-     const std::string hostname, const std::string endpoint, const std::string& request, std::string& response) -> bool;
   };
 
   inline BeastWrapper::BeastWrapper(): resolver(ioc), stream(ioc) {}
@@ -42,8 +61,9 @@ namespace net
     }
   }
 
-  inline auto BeastWrapper::SendTo(
-   const std::string hostname, const std::string endpoint, const std::string& request, std::string& response) -> bool
+  inline auto BeastWrapper::sendRequest(
+   const std::string hostname, const std::string endpoint, const std::vector<uint8_t>& request, std::vector<uint8_t>& response)
+   -> bool
   {
     static BeastWrapper wrapper;
 
@@ -70,7 +90,7 @@ namespace net
       wrapper.stream.connect(results);
 
       // Set up an HTTP PUT request message
-      http::request<http::string_body> req;
+      http::request<http::vector_body<uint8_t>> req;
       req.method(http::verb::post);
       req.target(endpoint);
       req.version(11);
@@ -78,7 +98,7 @@ namespace net
       req.body() = request;
       req.set(http::field::host, name);
       req.set(http::field::user_agent, "network next relay");
-      req.set(http::field::content_type, "application/json");
+      req.set(http::field::content_type, "application/octet-stream");
       req.set(http::field::timeout, "10");
 
       // Send the HTTP request to the remote host
@@ -94,7 +114,7 @@ namespace net
       beast::flat_buffer buffer;
 
       // Declare a container to hold the response
-      http::response<http::string_body> res;
+      http::response<http::vector_body<uint8_t>> res;
 
       // Receive the HTTP response
       http::read(wrapper.stream, buffer, res, ec);
@@ -110,7 +130,7 @@ namespace net
       }
 
       // Copy the response
-      response = res.body().data();
+      response = res.body();
 
       return true;
     } catch (std::exception& e) {

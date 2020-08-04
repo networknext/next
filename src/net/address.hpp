@@ -25,6 +25,9 @@ namespace net
     // IP (16) =
     static const size_t ByteSize = 19;
 
+    // max length when represented as a string
+    static const size_t MaxStrLen = 256;
+
     Address();
     Address(const Address& other);
     Address(Address&& other);
