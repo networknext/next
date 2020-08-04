@@ -38,6 +38,17 @@ func (m *InMemory) BuyerWithDomain(domain string) (routing.Buyer, error) {
 	return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer", resourceRef: domain}
 }
 
+func (m *InMemory) BuyerCustomerRouteSettingsWithDomain(domain string) (routing.CustomerRouteShader, error) {
+	var buyer routing.Buyer
+	for _, b := range m.localBuyers {
+		if buyer.Domain == domain {
+			return b.CustomerRouteShader, nil
+		}
+	}
+
+	return routing.DefaultCustomerRouteShader, &DoesNotExistError{resourceType: "buyer", resourceRef: domain}
+}
+
 func (m *InMemory) Buyers() []routing.Buyer {
 	buyers := make([]routing.Buyer, len(m.localBuyers))
 	for i := range buyers {
