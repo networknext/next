@@ -1,0 +1,52 @@
+MAKEFILE_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
+
+include $(MAKEFILE_DIR)/Makefile.common
+
+############
+### Vars ###
+############
+
+EXE										:= relay.test
+
+LIB_OBJ_FILES					:= $(patsubst $(LIB)/%.cpp, $(OBJ)/$(LIB)/%.test.o, $(LIB_FILES))
+LIB_DEP_FILES					:= $(patsubst $(LIB)/%.cpp, $(OBJ)/$(LIB)/%.test.d, $(LIB_FILES))
+
+SRC_OBJ_FILES					:= $(patsubst $(SRC)/%.cpp, $(OBJ)/$(SRC)/%.test.o, $(SRC_FILES))
+SRC_DEP_FILES					:= $(patsubst $(SRC)/%.cpp, $(OBJ)/$(SRC)/%.test.d, $(SRC_FILES))
+
+COMMON_FLAGS 					:= $(CXX) $(CXX_FLAGS) $(CXX_DBG_FLAGS)
+COMMON_COMPILE_FLAGS 	:= $(COMMON_FLAGS) -c -DTEST_BUILD
+
+################
+### Targets  ###
+################
+
+.PHONY: all
+all:  $(BIN)/$(EXE)
+
+.PHONY: run
+run: $(BIN)/$(EXE)
+	@$< $(TESTS)
+
+.PHONY: clean
+clean: 
+	@rm -f $(BIN)/$(EXE) $(SRC_OBJ_FILES) $(SRC_DEP_FILES) $(LIB_OBJ_FILES) $(LIB_DEP_FILES) $(GCH)
+
+##############
+### Builds ###
+##############
+
+# precompiled header
+$(GCH): $(PCH) Makefile
+	$(COMMON_COMPILE_FLAGS) -o $@ $(INCLUDE_DIRS) -x c++-header $<
+
+# all object files
+$(OBJ)/%.test.o: %.cpp $(GCH)
+	$(COMMON_COMPILE_FLAGS) -o $@ $(INCLUDE_DIRS) -MMD -MP $<
+
+# the executable
+$(BIN)/$(EXE): $(SRC_OBJ_FILES) $(LIB_OBJ_FILES)
+	$(COMMON_FLAGS) -o $@ $^ $(LIBRARIES)
+
+-include $(SRC_DEP_FILES) $(LIB_DEP_FILES)
+

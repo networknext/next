@@ -30,7 +30,7 @@ func TestServerUpdatePacket(t *testing.T) {
 			ServerPrivateAddress: net.UDPAddr{IP: net.ParseIP("10.0.0.1"), Port: 2323},
 			ServerRoutePublicKey: make([]byte, crypto.KeySize),
 
-			Version: transport.SDKVersion{1, 2, 3},
+			Version: routing.SDKVersion{1, 2, 3},
 		}
 
 		// Sign the packet and set it to the signature
@@ -67,7 +67,7 @@ func TestServerUpdatePacket(t *testing.T) {
 			ServerPrivateAddress: net.UDPAddr{IP: net.ParseIP("10.0.0.1"), Port: 2323},
 			ServerRoutePublicKey: make([]byte, crypto.KeySize),
 
-			Version: transport.SDKVersion{1, 2, 3},
+			Version: routing.SDKVersion{1, 2, 3},
 		}
 
 		// Sign the packet and set it to the signature
@@ -105,7 +105,7 @@ func TestServerUpdatePacket(t *testing.T) {
 			ServerPrivateAddress: net.UDPAddr{IP: net.ParseIP("10.0.0.1"), Port: 2323},
 			ServerRoutePublicKey: make([]byte, crypto.KeySize),
 
-			Version: transport.SDKVersion{1, 2, 3},
+			Version: routing.SDKVersion{1, 2, 3},
 		}
 
 		// Sign the packet and set it to the signature
@@ -137,7 +137,7 @@ func TestSessionUpdatePacket(t *testing.T) {
 
 	SessionUpdatePackets := []transport.SessionUpdatePacket{
 		{
-			Version: transport.SDKVersion{3, 3, 2},
+			Version: routing.SDKVersion{3, 3, 2},
 
 			Sequence:                  1,
 			CustomerID:                2,
@@ -176,7 +176,7 @@ func TestSessionUpdatePacket(t *testing.T) {
 			PacketsLostServerToClient: 13,
 		},
 		{
-			Version: transport.SDKVersion{3, 3, 3},
+			Version: routing.SDKVersion{3, 3, 3},
 
 			Sequence:                  1,
 			CustomerID:                2,
@@ -215,7 +215,7 @@ func TestSessionUpdatePacket(t *testing.T) {
 			PacketsLostServerToClient: 13,
 		},
 		{
-			Version: transport.SDKVersion{3, 3, 4},
+			Version: routing.SDKVersion{3, 3, 4},
 
 			Sequence:                  1,
 			CustomerID:                2,
@@ -255,7 +255,7 @@ func TestSessionUpdatePacket(t *testing.T) {
 			PacketsLostServerToClient: 13,
 		},
 		{
-			Version: transport.SDKVersion{3, 4, 0},
+			Version: routing.SDKVersion{3, 4, 0},
 
 			Sequence:                  1,
 			CustomerID:                2,
@@ -296,7 +296,7 @@ func TestSessionUpdatePacket(t *testing.T) {
 			UserFlags:                 14,
 		},
 		{
-			Version: transport.SDKVersion{3, 4, 5},
+			Version: routing.SDKVersion{3, 4, 5},
 
 			Sequence:                  1,
 			CustomerID:                2,
@@ -376,7 +376,7 @@ func TestSessionResponsePacket(t *testing.T) {
 	SessionResponsePackets := []transport.SessionResponsePacket{
 		// 3.3.2 Packets
 		{
-			Version:       transport.SDKVersion{3, 3, 2},
+			Version:       routing.SDKVersion{3, 3, 2},
 			Sequence:      1,
 			SessionID:     2,
 			NumNearRelays: 3,
@@ -393,7 +393,7 @@ func TestSessionResponsePacket(t *testing.T) {
 			ServerRoutePublicKey: make([]byte, ed25519.PublicKeySize),
 		},
 		{
-			Version:       transport.SDKVersion{3, 3, 2},
+			Version:       routing.SDKVersion{3, 3, 2},
 			Sequence:      1,
 			SessionID:     2,
 			NumNearRelays: 3,
@@ -410,7 +410,7 @@ func TestSessionResponsePacket(t *testing.T) {
 			ServerRoutePublicKey: make([]byte, ed25519.PublicKeySize),
 		},
 		{
-			Version:       transport.SDKVersion{3, 3, 2},
+			Version:       routing.SDKVersion{3, 3, 2},
 			Sequence:      1,
 			SessionID:     2,
 			NumNearRelays: 3,
@@ -428,7 +428,7 @@ func TestSessionResponsePacket(t *testing.T) {
 		},
 		// 3.3.3 Packets
 		{
-			Version:       transport.SDKVersion{3, 3, 3},
+			Version:       routing.SDKVersion{3, 3, 3},
 			Sequence:      1,
 			SessionID:     2,
 			NumNearRelays: 3,
@@ -445,7 +445,7 @@ func TestSessionResponsePacket(t *testing.T) {
 			ServerRoutePublicKey: make([]byte, ed25519.PublicKeySize),
 		},
 		{
-			Version:       transport.SDKVersion{3, 3, 3},
+			Version:       routing.SDKVersion{3, 3, 3},
 			Sequence:      1,
 			SessionID:     2,
 			NumNearRelays: 3,
@@ -462,7 +462,7 @@ func TestSessionResponsePacket(t *testing.T) {
 			ServerRoutePublicKey: make([]byte, ed25519.PublicKeySize),
 		},
 		{
-			Version:       transport.SDKVersion{3, 3, 3},
+			Version:       routing.SDKVersion{3, 3, 3},
 			Sequence:      1,
 			SessionID:     2,
 			NumNearRelays: 3,
@@ -480,7 +480,7 @@ func TestSessionResponsePacket(t *testing.T) {
 		},
 		// 3.3.4 Packets
 		{
-			Version:       transport.SDKVersion{3, 3, 4},
+			Version:       routing.SDKVersion{3, 3, 4},
 			Sequence:      1,
 			SessionID:     2,
 			NumNearRelays: 3,
@@ -497,7 +497,7 @@ func TestSessionResponsePacket(t *testing.T) {
 			ServerRoutePublicKey: make([]byte, ed25519.PublicKeySize),
 		},
 		{
-			Version:       transport.SDKVersion{3, 3, 4},
+			Version:       routing.SDKVersion{3, 3, 4},
 			Sequence:      1,
 			SessionID:     2,
 			NumNearRelays: 3,
@@ -514,7 +514,7 @@ func TestSessionResponsePacket(t *testing.T) {
 			ServerRoutePublicKey: make([]byte, ed25519.PublicKeySize),
 		},
 		{
-			Version:       transport.SDKVersion{3, 3, 4},
+			Version:       routing.SDKVersion{3, 3, 4},
 			Sequence:      1,
 			SessionID:     2,
 			NumNearRelays: 3,
@@ -532,7 +532,7 @@ func TestSessionResponsePacket(t *testing.T) {
 		},
 		// 3.4.0 Packets
 		{
-			Version:       transport.SDKVersion{3, 4, 0},
+			Version:       routing.SDKVersion{3, 4, 0},
 			Sequence:      1,
 			SessionID:     2,
 			NumNearRelays: 3,
@@ -550,7 +550,7 @@ func TestSessionResponsePacket(t *testing.T) {
 			ServerRoutePublicKey: make([]byte, ed25519.PublicKeySize),
 		},
 		{
-			Version:       transport.SDKVersion{3, 4, 0},
+			Version:       routing.SDKVersion{3, 4, 0},
 			Sequence:      1,
 			SessionID:     2,
 			NumNearRelays: 3,
@@ -568,7 +568,7 @@ func TestSessionResponsePacket(t *testing.T) {
 			ServerRoutePublicKey: make([]byte, ed25519.PublicKeySize),
 		},
 		{
-			Version:       transport.SDKVersion{3, 4, 0},
+			Version:       routing.SDKVersion{3, 4, 0},
 			Sequence:      1,
 			SessionID:     2,
 			NumNearRelays: 3,

@@ -68,7 +68,7 @@ func TestServerInitDatacenterMaps(t *testing.T) {
 
 			DatacenterID: 13,
 
-			Version: transport.SDKVersionMin,
+			Version: routing.SDKVersionMin,
 		}
 		packet.Signature = crypto.Sign(buyersServerPrivKey, packet.GetSignData())
 
@@ -134,7 +134,7 @@ func TestServerInitDatacenterMaps(t *testing.T) {
 
 			DatacenterID: crypto.HashID("local.alias"),
 
-			Version: transport.SDKVersionMin,
+			Version: routing.SDKVersionMin,
 		}
 		packet.Signature = crypto.Sign(buyersServerPrivKey, packet.GetSignData())
 
@@ -200,7 +200,7 @@ func TestServerInitDatacenterMaps(t *testing.T) {
 
 			DatacenterID: crypto.HashID("local.alias"),
 
-			Version: transport.SDKVersionMin,
+			Version: routing.SDKVersionMin,
 		}
 		packet.Signature = crypto.Sign(buyersServerPrivKey, packet.GetSignData())
 
@@ -272,7 +272,7 @@ func TestServerInitHandlerFunc(t *testing.T) {
 			CustomerID:   15,
 			DatacenterID: 13,
 
-			Version: transport.SDKVersionMin,
+			Version: routing.SDKVersionMin,
 		}
 		packet.Signature = crypto.Sign(buyersServerPrivKey, packet.GetSignData())
 
