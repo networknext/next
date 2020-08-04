@@ -88,8 +88,7 @@ func (post *PostSessionData) ProcessPortalData(publisher pubsub.Publisher) (int,
 	byteCount += singleByteCount
 
 	if err != nil {
-		return 0, fmt.Errorf("could not update portal data: %v", err)
-
+		return 0, err
 	}
 
 	return byteCount, nil
