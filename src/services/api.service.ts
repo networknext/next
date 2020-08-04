@@ -86,6 +86,6 @@ export default class APIService {
   }
 
   public updateRouteShader (args: any) {
-			return this.call('BuyersService.GameConfiguration', args)
+    return this.call('BuyersService.UpdateRouteShader', args)
   }
 }

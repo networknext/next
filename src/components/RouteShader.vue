@@ -118,6 +118,20 @@ export default class UserManagement extends Vue {
   private mounted () {
     this.routeShader = this.$store.getters.userProfile.routeShader
   }
+
+  public updateRouteShader () {
+    this.apiService
+      .updateRouteShader(this.routeShader)
+      .then((response: any) => {
+        const userProfile = this.$store.getters.userProfile
+        userProfile.routeShader = this.routeShader
+        this.$store.commit('UPDATE_USER_PROFILE', userProfile)
+      })
+      .catch((error: Error) => {
+        console.log('Something went wrong updating the route shader')
+        console.log(error)
+      })
+  }
 }
 
 </script>
