@@ -50,12 +50,10 @@ type UDPServerMux struct {
 }
 
 type UDPServerMux2 struct {
-	Logger              log.Logger
-	SessionErrorMetrics *metrics.SessionErrorMetrics
-	PortalPublisher     pubsub.Publisher
-	Biller              billing.Biller
-	MaxPacketSize       int
-	Port                int64
+	Logger             log.Logger
+	PostSessionHandler *PostSessionHandler
+	MaxPacketSize      int
+	Port               int64
 
 	ServerInitHandlerFunc    UDPHandlerFunc
 	ServerUpdateHandlerFunc  UDPHandlerFunc
@@ -82,12 +80,6 @@ func (m *UDPServerMux) Start(ctx context.Context) error {
 
 // Start begins accepting UDP packets from the UDP connection and will block
 func (m *UDPServerMux2) Start(ctx context.Context, numPostSessionGoroutines int, postSessionBufferSize int) error {
-	// Create a post session handler to handle the post process of session updates.
-	// This way, we can quickly return from the session update handler and not spawn a
-	// ton of goroutines if things get backed up.
-	postSessionHandler := NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, m.PortalPublisher, m.Biller, m.Logger, m.SessionErrorMetrics)
-	postSessionHandler.StartProcessing(ctx)
-
 	numThreads := 8
 	numSockets, ok := os.LookupEnv("NUM_UDP_SOCKETS")
 	if ok {
@@ -111,7 +103,7 @@ func (m *UDPServerMux2) Start(ctx context.Context, numPostSessionGoroutines int,
 				os.Exit(1)
 			}
 
-			go m.handler(ctx, threadPoolHandlerFunc(m, postSessionHandler, procPool))
+			go m.handler(ctx, threadPoolHandlerFunc(m, m.PostSessionHandler, procPool))
 
 			pools = append(pools, procPool)
 		}
@@ -123,7 +115,7 @@ func (m *UDPServerMux2) Start(ctx context.Context, numPostSessionGoroutines int,
 		}
 	} else {
 		for i := 0; i < numThreads; i++ {
-			go m.handler(ctx, goroutineHandlerFunc(m, postSessionHandler))
+			go m.handler(ctx, goroutineHandlerFunc(m, m.PostSessionHandler))
 		}
 		<-ctx.Done()
 	}

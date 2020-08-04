@@ -712,6 +712,12 @@ func main() {
 			os.Exit(1)
 		}
 
+		// Create a post session handler to handle the post process of session updates.
+		// This way, we can quickly return from the session update handler and not spawn a
+		// ton of goroutines if things get backed up.
+		postSessionHandler := transport.NewPostSessionHandler(int(numPostSessionGoroutines), int(postSessionBufferSize), portalPublisher, biller, logger, &sessionUpdateMetrics.ErrorMetrics)
+		postSessionHandler.StartProcessing(ctx)
+
 		serverInitConfig := &transport.ServerInitParams{
 			ServerPrivateKey:  serverPrivateKey,
 			Storer:            db,
@@ -747,9 +753,7 @@ func main() {
 
 		mux := transport.UDPServerMux2{
 			Logger:                   logger,
-			SessionErrorMetrics:      &sessionUpdateMetrics.ErrorMetrics,
-			PortalPublisher:          portalPublisher,
-			Biller:                   biller,
+			PostSessionHandler:       postSessionHandler,
 			Port:                     udpPort,
 			MaxPacketSize:            transport.DefaultMaxPacketSize,
 			ServerInitHandlerFunc:    transport.ServerInitHandlerFunc(serverInitConfig),
