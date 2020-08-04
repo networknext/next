@@ -1136,7 +1136,6 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 	// while in the customer view of the portal, we need to display the alias. this is because aliases will
 	// shortly become per-customer, thus there is really no global concept of "multiplay.losangeles", for example.
 
-	// todo: temporary
 	datacenterName := serverDataReadOnly.Datacenter.Name
 	datacenterAlias := serverDataReadOnly.Datacenter.AliasName
 
@@ -1146,7 +1145,7 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 
 	isMultipath := routing.IsMultipath(prevRouteDecision)
 
-	sessionCountData := routing.SessionCountData{
+	sessionCountData := SessionCountData{
 		InstanceID:                params.InstanceID,
 		TotalNumDirectSessions:    params.SessionMap.GetDirectSessionCount(),
 		TotalNumNextSessions:      params.SessionMap.GetNextSessionCount(),
@@ -1154,9 +1153,25 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 		NumNextSessionsPerBuyer:   params.SessionMap.GetNextSessionCountPerBuyer(),
 	}
 
-	// todo: commented out until we can figure out what's going on with zeromq
-	portalDataBytes, err := updatePortalData(params.PortalPublisher, packet, lastNextStats, lastDirectStats, routeRelays,
-		packet.OnNetworkNext, datacenterName, location, nearRelays, timeNow, isMultipath, datacenterAlias, &sessionCountData)
+	hops := make([]RelayHop, len(routeRelays))
+	for i := range hops {
+		hops[i] = RelayHop{
+			ID:   routeRelays[i].ID,
+			Name: routeRelays[i].Name,
+		}
+	}
+
+	nearRelayData := make([]NearRelayPortalData, len(nearRelays))
+	for i := range nearRelayData {
+		nearRelayData[i] = NearRelayPortalData{
+			ID:          nearRelays[i].ID,
+			Name:        nearRelays[i].Name,
+			ClientStats: nearRelays[i].ClientStats,
+		}
+	}
+
+	portalDataBytes, err := updatePortalData(params.PortalPublisher, packet, lastNextStats, lastDirectStats, hops,
+		packet.OnNetworkNext, datacenterName, location, nearRelayData, timeNow, isMultipath, datacenterAlias, &sessionCountData)
 	if err != nil {
 		level.Error(params.Logger).Log("msg", "could not update portal data", "err", err)
 		params.Metrics.ErrorMetrics.UpdatePortalFailure.Add(1)
@@ -1215,22 +1230,22 @@ func PostSessionUpdate(params *SessionUpdateParams, packet *SessionUpdatePacket,
 	}
 }
 
-func updatePortalData(portalPublisher pubsub.Publisher, packet *SessionUpdatePacket, lastNNStats *routing.Stats, lastDirectStats *routing.Stats, relayHops []routing.Relay,
-	onNetworkNext bool, datacenterName string, location *routing.Location, nearRelays []routing.Relay, sessionTime time.Time, isMultiPath bool, datacenterAlias string, sessionCountData *routing.SessionCountData) (int, error) {
+func updatePortalData(portalPublisher pubsub.Publisher, packet *SessionUpdatePacket, lastNNStats *routing.Stats, lastDirectStats *routing.Stats, relayHops []RelayHop,
+	onNetworkNext bool, datacenterName string, location *routing.Location, nearRelays []NearRelayPortalData, sessionTime time.Time, isMultiPath bool, datacenterAlias string, sessionCountData *SessionCountData) (int, error) {
 
 	if (lastNNStats.RTT == 0 && lastDirectStats.RTT == 0) || (onNetworkNext && lastNNStats.RTT == 0) {
 		return 0, nil
 	}
 
-	var hashedID string
+	var hashedID uint64
 	if !packet.Version.IsInternal() && packet.Version.Compare(routing.SDKVersion{3, 4, 5}) == routing.SDKVersionOlder {
 		hash := fnv.New64a()
 		byteArray := make([]byte, 8)
 		binary.LittleEndian.PutUint64(byteArray, packet.UserHash)
 		hash.Write(byteArray)
-		hashedID = fmt.Sprintf("%016x", hash.Sum64())
+		hashedID = hash.Sum64()
 	} else {
-		hashedID = fmt.Sprintf("%016x", packet.UserHash)
+		hashedID = packet.UserHash
 	}
 
 	var deltaRTT float64
@@ -1240,9 +1255,9 @@ func updatePortalData(portalPublisher pubsub.Publisher, packet *SessionUpdatePac
 		deltaRTT = lastDirectStats.RTT - lastNNStats.RTT
 	}
 
-	sessionData := routing.SessionData{
-		Meta: routing.SessionMeta{
-			ID:              fmt.Sprintf("%016x", packet.SessionID),
+	sessionPortalData := SessionPortalData{
+		Meta: SessionMeta{
+			ID:              packet.SessionID,
 			UserHash:        hashedID,
 			DatacenterName:  datacenterName,
 			DatacenterAlias: datacenterAlias,
@@ -1255,12 +1270,12 @@ func updatePortalData(portalPublisher pubsub.Publisher, packet *SessionUpdatePac
 			ServerAddr:      packet.ServerAddress.String(),
 			Hops:            relayHops,
 			SDK:             packet.Version.String(),
-			Connection:      ConnectionTypeText(packet.ConnectionType),
+			Connection:      uint8(packet.ConnectionType),
 			NearbyRelays:    nearRelays,
-			Platform:        PlatformTypeText(packet.PlatformID),
-			BuyerID:         fmt.Sprintf("%016x", packet.CustomerID),
+			Platform:        uint8(packet.PlatformID),
+			BuyerID:         packet.CustomerID,
 		},
-		Slice: routing.SessionSlice{
+		Slice: SessionSlice{
 			Timestamp: sessionTime,
 			Next:      *lastNNStats,
 			Direct:    *lastDirectStats,
@@ -1272,14 +1287,14 @@ func updatePortalData(portalPublisher pubsub.Publisher, packet *SessionUpdatePac
 			IsTryBeforeYouBuy: packet.TryBeforeYouBuy || !packet.Committed,
 			OnNetworkNext:     onNetworkNext,
 		},
-		Point: routing.SessionMapPoint{
+		Point: SessionMapPoint{
 			Latitude:      location.Latitude,
 			Longitude:     location.Longitude,
 			OnNetworkNext: onNetworkNext,
 		},
 	}
 
-	sessionBytes, err := sessionData.MarshalBinary()
+	sessionBytes, err := sessionPortalData.MarshalBinary()
 	if err != nil {
 		return 0, err
 	}

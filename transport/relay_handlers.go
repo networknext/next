@@ -32,14 +32,6 @@ var (
 	MaxJitter float64
 )
 
-type RelayHandlerConfig struct {
-	RelayMap         *routing.RelayMap
-	Storer           storage.Storer
-	StatsDb          *routing.StatsDatabase
-	Metrics          *metrics.RelayHandlerMetrics
-	RouterPrivateKey []byte
-}
-
 type RelayInitHandlerConfig struct {
 	RelayMap         *routing.RelayMap
 	Storer           storage.Storer
@@ -49,265 +41,9 @@ type RelayInitHandlerConfig struct {
 
 type RelayUpdateHandlerConfig struct {
 	RelayMap *routing.RelayMap
-	StatsDb  *routing.StatsDatabase
+	StatsDB  *routing.StatsDatabase
 	Metrics  *metrics.RelayUpdateMetrics
 	Storer   storage.Storer
-}
-
-// RelayHandlerFunc returns the function for the relays endpoint
-func RelayHandlerFunc(logger log.Logger, relayslogger log.Logger, params *RelayHandlerConfig) func(writer http.ResponseWriter, request *http.Request) {
-	handlerLogger := log.With(logger, "handler", "relay")
-
-	return func(writer http.ResponseWriter, request *http.Request) {
-		// Set up metrics
-		durationStart := time.Now()
-		defer func() {
-			durationSince := time.Since(durationStart)
-			params.Metrics.DurationGauge.Set(float64(durationSince.Milliseconds()))
-			params.Metrics.Invocations.Add(1)
-		}()
-
-		locallogger := log.With(handlerLogger, "req_addr", request.RemoteAddr)
-
-		// Read in the request
-		body, err := ioutil.ReadAll(request.Body)
-		if err != nil {
-			level.Error(locallogger).Log("msg", "could not read packet", "err", err)
-			writer.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		defer request.Body.Close()
-
-		// Unmarshal the request packet
-		var relayRequest RelayRequest
-		if err := relayRequest.UnmarshalJSON(body); err != nil {
-			http.Error(writer, err.Error(), http.StatusBadRequest)
-			params.Metrics.ErrorMetrics.UnmarshalFailure.Add(1)
-			return
-		}
-
-		// Check that the request doesn't exceed the maximum number of relays that a relay can ping
-		if len(relayRequest.PingStats) > MaxRelays {
-			level.Error(locallogger).Log("msg", "max relays exceeded", "relay count", len(relayRequest.PingStats))
-			http.Error(writer, "max relays exceeded", http.StatusBadRequest)
-			params.Metrics.ErrorMetrics.ExceedMaxRelays.Add(1)
-			return
-		}
-
-		locallogger = log.With(logger, "relay_addr", relayRequest.Address.String())
-
-		// Gets the relay ID as a hash of its address
-		id := crypto.HashID(relayRequest.Address.String())
-
-		// Check if the relay is registered in firestore
-		relay, err := params.Storer.Relay(id)
-		if err != nil {
-			level.Error(locallogger).Log("msg", "failed to get relay from storage", "err", err)
-			http.Error(writer, "failed to get relay from storage", http.StatusNotFound)
-			params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
-			return
-		}
-
-		// Don't allow quarantined relays back in
-		if relay.State == routing.RelayStateQuarantine {
-			level.Error(locallogger).Log("msg", "quaratined relay attempted to reconnect", "relay", relay.Name)
-			params.Metrics.ErrorMetrics.RelayQuarantined.Add(1)
-			http.Error(writer, "cannot permit quarantined relay", http.StatusUnauthorized)
-			return
-		}
-
-		// Get the relay's HTTP authorization header
-		authorizationHeader := request.Header.Get("Authorization")
-		if authorizationHeader == "" {
-			level.Error(locallogger).Log("msg", "no authorization header")
-			http.Error(writer, "no authorization header", http.StatusUnauthorized)
-			params.Metrics.ErrorMetrics.NoAuthHeader.Add(1)
-			return
-		}
-
-		// Get the token from the authorization header
-		tokenIndex := len("Bearer ")
-		if tokenIndex >= len(authorizationHeader) {
-			level.Error(locallogger).Log("msg", "bad authorization header length")
-			http.Error(writer, "bad authorization header length", http.StatusBadRequest)
-			params.Metrics.ErrorMetrics.BadAuthHeaderLength.Add(1)
-			return
-		}
-		token := authorizationHeader[tokenIndex:]
-
-		// Split the token into the base64 encoded nonce and address
-		splitResult := strings.Split(token, ":")
-		if splitResult == nil || len(splitResult) != 2 {
-			level.Error(locallogger).Log("msg", "bad authorization token")
-			http.Error(writer, "bad authorization token", http.StatusBadRequest)
-			params.Metrics.ErrorMetrics.BadAuthHeaderToken.Add(1)
-			return
-		}
-
-		nonceString := splitResult[0]
-		encryptedAddressString := splitResult[1]
-
-		// Decode the base64
-		nonce, err := base64.StdEncoding.DecodeString(nonceString)
-		if err != nil {
-			level.Error(locallogger).Log("msg", "bad nonce")
-			http.Error(writer, "bad nonce", http.StatusBadRequest)
-			params.Metrics.ErrorMetrics.BadNonce.Add(1)
-			return
-		}
-
-		encryptedAddress, err := base64.StdEncoding.DecodeString(encryptedAddressString)
-		if err != nil {
-			level.Error(locallogger).Log("msg", "bad encrypted address")
-			http.Error(writer, "bad encrypted address", http.StatusBadRequest)
-			params.Metrics.ErrorMetrics.BadEncryptedAddress.Add(1)
-			return
-		}
-
-		// Get the relay data if it exists
-		relayData := params.RelayMap.GetRelayData(relayRequest.Address.String())
-
-		exists := true
-		if relayData == nil {
-			// Ideally the ID and address should be the same as firestore,
-			// but when running locally they're not, so take them from the request packet
-			relayData = &routing.RelayData{
-				ID:             id,
-				Name:           relay.Name,
-				Addr:           relayRequest.Address,
-				PublicKey:      relay.PublicKey,
-				Datacenter:     relay.Datacenter,
-				LastUpdateTime: time.Now(),
-				MaxSessions:    relay.MaxSessions,
-			}
-
-			exists = false
-		}
-
-		// Decrypt the address
-		if _, ok := crypto.Open(encryptedAddress, nonce, relayData.PublicKey, params.RouterPrivateKey); !ok {
-			level.Error(locallogger).Log("msg", "crypto open failed")
-			http.Error(writer, "crypto open failed", http.StatusUnauthorized)
-			params.Metrics.ErrorMetrics.DecryptFailure.Add(1)
-			return
-		}
-
-		// If the relay is shutting down, set the state to maintenance if it was previously operating correctly
-		if relayRequest.ShuttingDown {
-			if relay.State == routing.RelayStateEnabled {
-				relay.State = routing.RelayStateMaintenance
-			}
-
-			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-			defer cancel()
-			if err := params.Storer.SetRelay(ctx, relay); err != nil {
-				level.Error(locallogger).Log("msg", "failed to set relay state in storage while shutting down", "err", err)
-				http.Error(writer, "failed to set relay state in storage while shutting down", http.StatusInternalServerError)
-				return
-			}
-
-			// Remove the relay data since it's shutting down
-			params.RelayMap.Lock(relayRequest.Address.String())
-			params.RelayMap.RemoveRelayData(relayRequest.Address.String())
-			params.RelayMap.Unlock(relayRequest.Address.String())
-			return
-		}
-
-		// If the relay didn't exist, it does now, so set the state to enabled
-		if !exists {
-			// Set the relay's state to enabled
-			relay.State = routing.RelayStateEnabled
-
-			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-			defer cancel()
-			if err := params.Storer.SetRelay(ctx, relay); err != nil {
-				level.Error(locallogger).Log("msg", "failed to set relay state in storage", "err", err)
-				http.Error(writer, "failed to set relay state in storage", http.StatusInternalServerError)
-				return
-			}
-
-			level.Debug(locallogger).Log("msg", "relay initialized")
-		}
-
-		level.Info(relayslogger).Log(
-			"id", relayData.ID,
-			"name", relayData.Name,
-			"addr", relayData.Addr.String(),
-			"datacenter", relayData.Datacenter.Name,
-			"session_count", relayRequest.TrafficStats.SessionCount,
-			"bytes_received", relayRequest.TrafficStats.BytesReceived,
-			"bytes_send", relayRequest.TrafficStats.BytesSent,
-		)
-
-		// Update the relay's last update time
-		relayData.LastUpdateTime = time.Now()
-
-		// Update the relay's ping stats in statsdb
-		statsUpdate := &routing.RelayStatsUpdate{}
-		statsUpdate.ID = relayData.ID
-
-		// For compatibility, convert the ping stats to the old struct for now
-		relayStatsPing := make([]routing.RelayStatsPing, len(relayRequest.PingStats))
-		for i := 0; i < len(relayStatsPing); i++ {
-			relayStatsPing[i] = routing.RelayStatsPing{
-				RelayID:    relayRequest.PingStats[i].ID,
-				RTT:        relayRequest.PingStats[i].RTT,
-				Jitter:     relayRequest.PingStats[i].Jitter,
-				PacketLoss: relayRequest.PingStats[i].PacketLoss,
-			}
-		}
-		statsUpdate.PingStats = relayStatsPing
-
-		params.StatsDb.ProcessStats(statsUpdate)
-
-		// Update the relay's traffic stats
-		relayData.TrafficStats = relayRequest.TrafficStats
-
-		// Update the relay data
-		relayDataCopy := *relayData
-		params.RelayMap.UpdateRelayData(relayRequest.Address.String(), &relayDataCopy)
-
-		level.Debug(locallogger).Log("msg", "relay updated")
-
-		allRelayData := params.RelayMap.GetAllRelayData()
-
-		// Create the list of relays to ping
-		relaysToPing := make([]RelayPingStats, 0)
-		for _, v := range allRelayData {
-			if v.Addr.String() != relayData.Addr.String() {
-				// Get the relay's state so that we only ping across enabled relays
-				// Even though it's cached, maybe find a better way to do this than hitting storage for every other relay every update
-				relay, err := params.Storer.Relay(v.ID)
-				if err != nil {
-					level.Error(locallogger).Log("msg", "failed to get other relay from storage", "err", err)
-					continue
-				}
-
-				if relay.State == routing.RelayStateEnabled {
-					relaysToPing = append(relaysToPing, RelayPingStats{
-						ID:      v.ID,
-						Address: v.Addr.String(),
-					})
-				}
-			}
-		}
-
-		// Send back the response
-		var responseData []byte
-		response := RelayRequest{}
-		response.Address = relayData.Addr
-		response.PingStats = relaysToPing
-
-		responseData, err = response.MarshalJSON()
-		if err != nil {
-			level.Error(locallogger).Log("msg", "failed to marshal response JSON", "err", err)
-			http.Error(writer, "failed to marshal response JSON", http.StatusInternalServerError)
-			return
-		}
-
-		writer.Header().Set("Content-Type", "application/json")
-		writer.Write(responseData)
-	}
 }
 
 // RelayInitHandlerFunc returns the function for the relay init endpoint
@@ -570,8 +306,23 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 		statsUpdate := &routing.RelayStatsUpdate{}
 		statsUpdate.ID = relayDataReadOnly.ID
 		statsUpdate.PingStats = append(statsUpdate.PingStats, relayUpdateRequest.PingStats...)
+		params.StatsDB.ProcessStats(statsUpdate)
 
-		params.StatsDb.ProcessStats(statsUpdate)
+		relaysToPing := make([]routing.RelayPingData, 0)
+		allRelayData := params.RelayMap.GetAllRelayData()
+		for _, v := range allRelayData {
+			if v.Addr.String() != relayDataReadOnly.Addr.String() {
+				relay, err := params.Storer.Relay(v.ID)
+				if err != nil {
+					level.Error(locallogger).Log("msg", "failed to get other relay from storage", "err", err)
+					continue
+				}
+
+				if relay.State == routing.RelayStateEnabled {
+					relaysToPing = append(relaysToPing, routing.RelayPingData{ID: uint64(v.ID), Address: v.Addr.String()})
+				}
+			}
+		}
 
 		relayData := &routing.RelayData{
 			ID:             relay.ID,
@@ -593,26 +344,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 		params.RelayMap.UpdateRelayData(relayUpdateRequest.Address.String(), relayData)
 		params.RelayMap.Unlock(relayUpdateRequest.Address.String())
 
-		allRelayData := params.RelayMap.GetAllRelayData()
-
-		relaysToPing := make([]routing.RelayPingData, 0)
-		for _, v := range allRelayData {
-			if v.Addr.String() != relayDataReadOnly.Addr.String() {
-				// Get the relay's state so that we only ping across enabled relays
-				// Even though it's cached, maybe find a better way to do this than hitting storage for every other relay every update
-				relay, err := params.Storer.Relay(v.ID)
-				if err != nil {
-					level.Error(locallogger).Log("msg", "failed to get other relay from storage", "err", err)
-					continue
-				}
-
-				if relay.State == routing.RelayStateEnabled {
-					relaysToPing = append(relaysToPing, routing.RelayPingData{ID: uint64(v.ID), Address: v.Addr.String()})
-				}
-			}
-		}
-
-		level.Info(relayslogger).Log(
+		level.Debug(relayslogger).Log(
 			"id", relayDataReadOnly.ID,
 			"name", relayDataReadOnly.Name,
 			"addr", relayDataReadOnly.Addr.String(),
