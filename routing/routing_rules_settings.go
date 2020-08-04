@@ -7,7 +7,7 @@ const (
 )
 
 // Various settings a buyer can tweak to adjust the behaviour of Network Next route selection to their liking
-type RoutingRulesSettings struct {
+type RouteShader struct {
 	// The maximum upstream bandwidth a customer is willing to pay for per slice
 	EnvelopeKbpsUp int64
 
@@ -84,7 +84,17 @@ type RoutingRulesSettings struct {
 	SelectionPercentage int64
 }
 
-var DefaultRoutingRulesSettings = RoutingRulesSettings{
+type CustomerRouteShader struct {
+	EnableNetworkNext   bool  `json:"enable_nn"`
+	EnableRoundTripTime bool  `json:"enable_rtt"`
+	EnablePacketLoss    bool  `json:"enable_pl"`
+	EnableABTest        bool  `json:"enable_ab"`
+	EnableMultiPath     bool  `json:"enable_mp"`
+	AcceptableLatency   int64 `json:"acceptable_latency"`
+	PacketLossThreshold int64 `json:"pl_threshold"`
+}
+
+var DefaultRouteShader = RouteShader{
 	MaxNibblinsPerGB:             250000000,
 	EnvelopeKbpsUp:               256,
 	EnvelopeKbpsDown:             256,
@@ -102,7 +112,7 @@ var DefaultRoutingRulesSettings = RoutingRulesSettings{
 // RTTThreshold set to -5 to passively force the NN route, even if it's 5 ms
 // slower than direct. Ditto for hysterisis and veto (more "real" than
 // forcing with 'Mode: ModeForceNext`).
-var LocalRoutingRulesSettings = RoutingRulesSettings{
+var LocalRouteShader = RouteShader{
 	MaxNibblinsPerGB:             250000000,
 	EnvelopeKbpsUp:               100,
 	EnvelopeKbpsDown:             100,
@@ -113,4 +123,24 @@ var LocalRoutingRulesSettings = RoutingRulesSettings{
 	RTTVeto:                      -20,
 	SelectionPercentage:          100,
 	MultipathPacketLossThreshold: 1.0,
+}
+
+var DefaultCustomerRouteShader = CustomerRouteShader{
+	EnableNetworkNext:   true,
+	EnableRoundTripTime: true,
+	EnablePacketLoss:    false,
+	EnableABTest:        false,
+	EnableMultiPath:     false,
+	AcceptableLatency:   20,
+	PacketLossThreshold: 1,
+}
+
+var LocalCustomerRouteShader = CustomerRouteShader{
+	EnableNetworkNext:   true,
+	EnableRoundTripTime: true,
+	EnablePacketLoss:    false,
+	EnableABTest:        false,
+	EnableMultiPath:     false,
+	AcceptableLatency:   20,
+	PacketLossThreshold: 1,
 }

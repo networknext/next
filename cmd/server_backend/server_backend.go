@@ -199,11 +199,11 @@ func main() {
 	if env == "local" {
 		fmt.Printf("adding dummy local buyer and datacenter\n")
 		if err := db.AddBuyer(ctx, routing.Buyer{
-			ID:                   13672574147039585173,
-			Name:                 "local",
-			Live:                 true,
-			PublicKey:            customerPublicKey,
-			RoutingRulesSettings: routing.LocalRoutingRulesSettings,
+			ID:          13672574147039585173,
+			Name:        "local",
+			Live:        true,
+			PublicKey:   customerPublicKey,
+			RouteShader: routing.LocalRouteShader,
 		}); err != nil {
 			level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
 			os.Exit(1)
