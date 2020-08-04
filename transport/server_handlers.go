@@ -1242,24 +1242,25 @@ func PostSessionUpdate(params PostSessionUpdateParams) {
 		NumNextSessionsPerBuyer:   params.sessionUpdateParams.SessionMap.GetNextSessionCountPerBuyer(),
 	}
 
-	hops := make([]RelayHop, len(routeRelays))
+	hops := make([]RelayHop, len(params.routeRelays))
 	for i := range hops {
 		hops[i] = RelayHop{
-			ID:   routeRelays[i].ID,
-			Name: routeRelays[i].Name,
+			ID:   params.routeRelays[i].ID,
+			Name: params.routeRelays[i].Name,
 		}
 	}
 
-	nearRelayData := make([]NearRelayPortalData, len(nearRelays))
+	nearRelayData := make([]NearRelayPortalData, len(params.nearRelays))
 	for i := range nearRelayData {
 		nearRelayData[i] = NearRelayPortalData{
-			ID:          nearRelays[i].ID,
-			Name:        nearRelays[i].Name,
-			ClientStats: nearRelays[i].ClientStats,
+			ID:          params.nearRelays[i].ID,
+			Name:        params.nearRelays[i].Name,
+			ClientStats: params.nearRelays[i].ClientStats,
 		}
 	}
-	portalDataBytes, err := updatePortalData(params.sessionUpdateParams.PortalPublisher, params.packet, params.lastNextStats, params.lastDirectStats, params.routeRelays,
-		params.packet.OnNetworkNext, datacenterName, params.location, params.nearRelays, params.timeNow, isMultipath, datacenterAlias, &sessionCountData)
+
+	portalDataBytes, err := updatePortalData(params.sessionUpdateParams.PortalPublisher, params.packet, params.lastNextStats, params.lastDirectStats, hops,
+		params.packet.OnNetworkNext, datacenterName, params.location, nearRelayData, params.timeNow, isMultipath, datacenterAlias, &sessionCountData)
 	if err != nil {
 		level.Error(params.sessionUpdateParams.Logger).Log("msg", "could not update portal data", "err", err)
 		params.sessionUpdateParams.Metrics.ErrorMetrics.UpdatePortalFailure.Add(1)
