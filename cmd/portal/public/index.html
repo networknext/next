@@ -184,7 +184,7 @@
                 display: none;
             }
             .h2 {
-	            font-size: 2rem;
+                font-size: 2rem;
             }
 
             /*
@@ -1328,7 +1328,7 @@
                                         </button>
                                         <p class="text-muted text-small mt-2"></p>
                                     </form>
-                                    <div v-if="handlers.userHandler.isBuyer()">
+                                    <div v-if="handlers.userHandler.isABTester()">
                                         <hr/>
                                         <h5 class="card-title">
                                             Route Shader
@@ -1348,7 +1348,7 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div v-if="handlers.userHandler.routeShader.enable_nn">
+                                            <div v-show="handlers.userHandler.routeShader.enable_nn">
                                                 <div class="form-group row">
                                                     <div class="col-sm-2">Reduce Latency</div>
                                                     <div class="col-sm-10">
@@ -1360,7 +1360,7 @@
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <div class="form-group row" style="padding-left: 2rem;" v-if="handlers.userHandler.routeShader.enable_rtt">
+                                                <div class="form-group row" style="padding-left: 2rem;" v-show="handlers.userHandler.routeShader.enable_rtt">
                                                     <div class="col-sm-2">Acceptable Latency:</div>
                                                     <div class="col-sm-10">
                                                         <input type="text" v-model="handlers.userHandler.routeShader.acceptable_latency"> ms
@@ -1377,7 +1377,7 @@
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <div class="form-group row" style="padding-left: 2rem;" v-if="handlers.userHandler.routeShader.enable_pl">
+                                                <div class="form-group row" style="padding-left: 2rem;" v-show="handlers.userHandler.routeShader.enable_pl">
                                                     <div class="col-sm-2">Packet Loss Threshold:</div>
                                                     <div class="col-sm-10">
                                                         <input type="text" v-model="handlers.userHandler.routeShader.pl_threshold"> %

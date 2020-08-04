@@ -944,14 +944,24 @@ type GameConfigurationArgs struct {
 }
 
 type GameConfigurationReply struct {
-	GameConfiguration   gameConfiguration                    `json:"game_config"`
-	CustomerRouteShader routing.CustomerRoutingRulesSettings `json:"customer_route_shader"`
+	GameConfiguration   gameConfiguration   `json:"game_config"`
+	CustomerRouteShader CustomerRouteShader `json:"customer_route_shader"`
 }
 
 type gameConfiguration struct {
 	BuyerID   string `json:"buyer_id"`
 	Company   string `json:"company"`
 	PublicKey string `json:"public_key"`
+}
+
+type CustomerRouteShader struct {
+	EnableNetworkNext   bool   `json:"enable_nn"`
+	EnableRoundTripTime bool   `json:"enable_rtt"`
+	EnablePacketLoss    bool   `json:"enable_pl"`
+	EnableABTest        bool   `json:"enable_ab"`
+	EnableMultiPath     bool   `json:"enable_mp"`
+	AcceptableLatency   string `json:"acceptable_latency"`
+	PacketLossThreshold string `json:"pl_threshold"`
 }
 
 func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurationArgs, reply *GameConfigurationReply) error {
@@ -970,13 +980,29 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 	buyer, err = s.Storage.BuyerWithDomain(args.Domain)
 	// Buyer not found
 	if err != nil {
-		reply.CustomerRouteShader = routing.DefaultCustomerRoutingRulesSettings
+		reply.CustomerRouteShader = CustomerRouteShader{
+			EnableNetworkNext:   true,
+			EnableRoundTripTime: true,
+			EnableMultiPath:     false,
+			EnableABTest:        false,
+			EnablePacketLoss:    false,
+			AcceptableLatency:   "20",
+			PacketLossThreshold: "1",
+		}
 		return nil
 	}
 
 	reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
 	reply.GameConfiguration.Company = buyer.Name
-	reply.CustomerRouteShader = buyer.CustomerRoutingRulesSettings
+	reply.CustomerRouteShader = CustomerRouteShader{
+		EnableNetworkNext:   buyer.CustomerRoutingRulesSettings.EnableNetworkNext,
+		EnableRoundTripTime: buyer.CustomerRoutingRulesSettings.EnableRoundTripTime,
+		EnableABTest:        buyer.CustomerRoutingRulesSettings.EnableABTest,
+		EnableMultiPath:     buyer.CustomerRoutingRulesSettings.EnableMultiPath,
+		EnablePacketLoss:    buyer.CustomerRoutingRulesSettings.EnablePacketLoss,
+		AcceptableLatency:   fmt.Sprintf("%v", buyer.CustomerRoutingRulesSettings.AcceptableLatency),
+		PacketLossThreshold: fmt.Sprintf("%v", buyer.CustomerRoutingRulesSettings.PacketLossThreshold),
+	}
 
 	return nil
 }
@@ -1112,7 +1138,7 @@ type RouteShaderUpdateReply struct {
 
 func (s *BuyersService) UpdateRouteShader(req *http.Request, args *RouteShaderUpdateArgs, reply *RouteShaderUpdateReply) error {
 	if !VerifyAnyRole(req, AdminRole, OwnerRole) {
-		err := fmt.Errorf("UpadteRouteShader(): %v", ErrInsufficientPrivileges)
+		err := fmt.Errorf("UpdateRouteShader(): %v", ErrInsufficientPrivileges)
 		s.Logger.Log("err", err)
 		return err
 	}
@@ -1135,14 +1161,24 @@ func (s *BuyersService) UpdateRouteShader(req *http.Request, args *RouteShaderUp
 		return fmt.Errorf("UpdateRouteShader(): BuyerWithDomain error: %v", err)
 	}
 
+	acceptableLatency, err := strconv.Atoi(args.AcceptableLatency)
+	if err != nil {
+		return fmt.Errorf("UpdateRouteShader(): Failed to parse acceptable latency value: %v", err)
+	}
+
+	packetLossThreshold, err := strconv.Atoi(args.PLThreshold)
+	if err != nil {
+		return fmt.Errorf("UpdateRouteShader(): Failed to parse packet loss threshold value: %v", err)
+	}
+
 	buyer.CustomerRoutingRulesSettings = routing.CustomerRoutingRulesSettings{
-		EnableNN:          args.EnableNN,
-		EnableRTT:         args.EnableRTT,
-		EnablePL:          args.EnablePL,
-		EnableMP:          args.EnableMP,
-		EnableAB:          args.EnableAB,
-		AcceptableLatency: args.AcceptableLatency,
-		PLThreshold:       args.PLThreshold,
+		EnableNetworkNext:   args.EnableNN,
+		EnableRoundTripTime: args.EnableRTT,
+		EnablePacketLoss:    args.EnablePL,
+		EnableMultiPath:     args.EnableMP,
+		EnableABTest:        args.EnableAB,
+		AcceptableLatency:   int64(acceptableLatency),
+		PacketLossThreshold: int64(packetLossThreshold),
 	}
 
 	if err := s.Storage.SetBuyer(ctx, buyer); err != nil {

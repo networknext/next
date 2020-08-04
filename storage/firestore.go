@@ -2036,13 +2036,13 @@ func (fs *Firestore) setCustomerRoutingRulesSettingsForBuyerID(ctx context.Conte
 	// Create customer route shader
 	crsFirestore := map[string]interface{}{
 		"displayName":               name,
-		"enableNetworkNext":         crs.EnableNN,
-		"enableLatencyReduction":    crs.EnableRTT,
-		"enablePacketLossReduction": crs.EnablePL,
-		"enableMultipath":           crs.EnableMP,
-		"enableABTest":              crs.EnableAB,
+		"enableNetworkNext":         crs.EnableNetworkNext,
+		"enableLatencyReduction":    crs.EnableRoundTripTime,
+		"enablePacketLossReduction": crs.EnablePacketLoss,
+		"enableMultipath":           crs.EnableMultiPath,
+		"enableABTest":              crs.EnableMultiPath,
 		"acceptableLatency":         crs.AcceptableLatency,
-		"packetLossThreshold":       crs.PLThreshold,
+		"packetLossThreshold":       crs.PacketLossThreshold,
 	}
 
 	_, err := fs.Client.Collection("CustomerRouteShader").Doc(routeShaderID).Set(ctx, crsFirestore, firestore.MergeAll)
@@ -2072,12 +2072,12 @@ func (fs *Firestore) getCustomerRoutingRulesSettingsForBuyerID(ctx context.Conte
 
 	// If successful, convert into routing.Buyer version and return it
 	crs.AcceptableLatency = tempCRS.AcceptableLatency
-	crs.PLThreshold = tempCRS.PLThreshold
-	crs.EnableNN = tempCRS.EnableNN
-	crs.EnableRTT = tempCRS.EnableRTT
-	crs.EnablePL = tempCRS.EnablePL
-	crs.EnableMP = tempCRS.EnableMP
-	crs.EnableAB = tempCRS.EnableAB
+	crs.PacketLossThreshold = tempCRS.PacketLossThreshold
+	crs.EnableNetworkNext = tempCRS.EnableNetworkNext
+	crs.EnableRoundTripTime = tempCRS.EnableRoundTripTime
+	crs.EnablePacketLoss = tempCRS.EnablePacketLoss
+	crs.EnableMultiPath = tempCRS.EnableMultiPath
+	crs.EnableABTest = tempCRS.EnableABTest
 
 	return crs, nil
 }

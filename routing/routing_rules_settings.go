@@ -85,13 +85,13 @@ type RoutingRulesSettings struct {
 }
 
 type CustomerRoutingRulesSettings struct {
-	EnableNN          bool   `json:"enable_nn"`
-	EnableRTT         bool   `json:"enable_rtt"`
-	EnablePL          bool   `json:"enable_pl"`
-	EnableAB          bool   `json:"enable_ab"`
-	EnableMP          bool   `json:"enable_mp"`
-	AcceptableLatency string `json:"acceptable_latency"`
-	PLThreshold       string `json:"pl_threshold"`
+	EnableNetworkNext   bool  `json:"enable_nn"`
+	EnableRoundTripTime bool  `json:"enable_rtt"`
+	EnablePacketLoss    bool  `json:"enable_pl"`
+	EnableABTest        bool  `json:"enable_ab"`
+	EnableMultiPath     bool  `json:"enable_mp"`
+	AcceptableLatency   int64 `json:"acceptable_latency"`
+	PacketLossThreshold int64 `json:"pl_threshold"`
 }
 
 var DefaultRoutingRulesSettings = RoutingRulesSettings{
@@ -126,21 +126,21 @@ var LocalRoutingRulesSettings = RoutingRulesSettings{
 }
 
 var DefaultCustomerRoutingRulesSettings = CustomerRoutingRulesSettings{
-	EnableNN:          true,
-	EnableRTT:         true,
-	EnablePL:          false,
-	EnableAB:          false,
-	EnableMP:          false,
-	AcceptableLatency: "20",
-	PLThreshold:       "1",
+	EnableNetworkNext:   true,
+	EnableRoundTripTime: true,
+	EnablePacketLoss:    false,
+	EnableABTest:        false,
+	EnableMultiPath:     false,
+	AcceptableLatency:   20,
+	PacketLossThreshold: 1,
 }
 
 var LocalCustomerRoutingRulesSettings = CustomerRoutingRulesSettings{
-	EnableNN:          true,
-	EnableRTT:         true,
-	EnablePL:          false,
-	EnableAB:          false,
-	EnableMP:          false,
-	AcceptableLatency: "20",
-	PLThreshold:       "1",
+	EnableNetworkNext:   true,
+	EnableRoundTripTime: true,
+	EnablePacketLoss:    false,
+	EnableABTest:        false,
+	EnableMultiPath:     false,
+	AcceptableLatency:   20,
+	PacketLossThreshold: 1,
 }
