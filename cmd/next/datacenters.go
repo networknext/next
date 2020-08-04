@@ -106,8 +106,7 @@ func listDatacenterMaps(rpcClient jsonrpc.RPCClient, env Environment, datacenter
 	}
 
 	if dcID == 0 {
-		fmt.Printf("No match for provided datacenter ID: %v\n", datacenter)
-		return
+		handleRunTimeError(fmt.Sprintf("No match for provided datacenter ID: %v\n", datacenter), 0)
 	}
 
 	var reply localjsonrpc.ListDatacenterMapsReply
@@ -116,7 +115,6 @@ func listDatacenterMaps(rpcClient jsonrpc.RPCClient, env Environment, datacenter
 	}
 
 	if err := rpcClient.CallFor(&reply, "OpsService.ListDatacenterMaps", arg); err != nil {
-		fmt.Printf("rpc error: %v\n", err)
 		handleJSONRPCError(env, err)
 		return
 	}
