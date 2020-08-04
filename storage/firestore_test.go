@@ -78,6 +78,8 @@ func cleanFireStore(ctx context.Context, client *firestore.Client) error {
 }
 
 func TestSequenceNumbers(t *testing.T) {
+
+	checkFirestoreEmulator(t)
 	ctx := context.Background()
 
 	t.Run("Sync", func(t *testing.T) {
