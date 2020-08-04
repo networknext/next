@@ -9,7 +9,7 @@ import (
 
 // Test case where we should upgrade to a nextwork next route
 func TestDecideUpgradeRoute(t *testing.T) {
-	rrs := routing.DefaultRoutingRulesSettings
+	rrs := routing.DefaultRouteShader
 
 	onNNSliceCounter := uint64(0)
 
@@ -59,7 +59,7 @@ func TestDecideUpgradeRoute(t *testing.T) {
 
 // Test case where we should get off a nextwork next route due to hysteresis
 func TestDecideDowngradeRTTHysteresis(t *testing.T) {
-	rrs := routing.DefaultRoutingRulesSettings
+	rrs := routing.DefaultRouteShader
 
 	onNNSliceCounter := uint64(0)
 
@@ -112,7 +112,7 @@ func TestDecideDowngradeRTTHysteresis(t *testing.T) {
 
 // Test case where we should get off a nextwork next route due to hysteresis and YOLO is enabled, vetoing the session
 func TestDecideDowngradeRTTHysteresisYOLO(t *testing.T) {
-	rrs := routing.DefaultRoutingRulesSettings
+	rrs := routing.DefaultRouteShader
 	rrs.EnableYouOnlyLiveOnce = true
 
 	onNNSliceCounter := uint64(0)
@@ -171,13 +171,13 @@ func TestDecideDowngradeRTTHysteresisYOLO(t *testing.T) {
 
 // Test case where we should get off a network next route due to RTT veto
 func TestDecideRTTVeto(t *testing.T) {
-	rrs := routing.DefaultRoutingRulesSettings
+	rrs := routing.DefaultRouteShader
 
 	onNNSliceCounter := uint64(0)
 
 	decisionFuncs := []routing.DecisionFunc{
 		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
-		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
+		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), routing.DefaultRouteShader.EnableYouOnlyLiveOnce),
 		routing.DecideVeto(onNNSliceCounter, float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
 		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.MultipathPacketLossThreshold)),
 	}
@@ -229,14 +229,14 @@ func TestDecideRTTVeto(t *testing.T) {
 
 // Test case where we should downgrade to a direct route due to RTT veto and YOLO is enabled
 func TestDecideRTTVetoYOLO(t *testing.T) {
-	rrs := routing.DefaultRoutingRulesSettings
+	rrs := routing.DefaultRouteShader
 	rrs.EnableYouOnlyLiveOnce = true
 
 	onNNSliceCounter := uint64(0)
 
 	decisionFuncs := []routing.DecisionFunc{
 		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
-		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
+		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), routing.DefaultRouteShader.EnableYouOnlyLiveOnce),
 		routing.DecideVeto(onNNSliceCounter, float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
 		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.MultipathPacketLossThreshold)),
 	}
@@ -288,14 +288,14 @@ func TestDecideRTTVetoYOLO(t *testing.T) {
 
 // Test case where we shouldn't downgrade to a direct route due to packet loss veto yet since it's within the first 3 slices
 func TestDecidePacketLossVetoEarlySlice(t *testing.T) {
-	rrs := routing.DefaultRoutingRulesSettings
+	rrs := routing.DefaultRouteShader
 	rrs.EnablePacketLossSafety = true
 
 	onNNSliceCounter := uint64(2)
 
 	decisionFuncs := []routing.DecisionFunc{
 		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
-		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
+		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), routing.DefaultRouteShader.EnableYouOnlyLiveOnce),
 		routing.DecideVeto(onNNSliceCounter, float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
 		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.MultipathPacketLossThreshold)),
 	}
@@ -347,14 +347,14 @@ func TestDecidePacketLossVetoEarlySlice(t *testing.T) {
 
 // Test case where we should downgrade to a direct route due to packet loss veto
 func TestDecidePacketLossVeto(t *testing.T) {
-	rrs := routing.DefaultRoutingRulesSettings
+	rrs := routing.DefaultRouteShader
 	rrs.EnablePacketLossSafety = true
 
 	onNNSliceCounter := uint64(3)
 
 	decisionFuncs := []routing.DecisionFunc{
 		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
-		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
+		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), routing.DefaultRouteShader.EnableYouOnlyLiveOnce),
 		routing.DecideVeto(onNNSliceCounter, float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
 		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.MultipathPacketLossThreshold)),
 	}
@@ -406,7 +406,7 @@ func TestDecidePacketLossVeto(t *testing.T) {
 
 // Test case where we should downgrade to a direct route due to packet loss veto and YOLO is enabled
 func TestDecidePacketLossVetoYOLO(t *testing.T) {
-	rrs := routing.DefaultRoutingRulesSettings
+	rrs := routing.DefaultRouteShader
 	rrs.EnablePacketLossSafety = true
 	rrs.EnableYouOnlyLiveOnce = true
 
@@ -414,7 +414,7 @@ func TestDecidePacketLossVetoYOLO(t *testing.T) {
 
 	decisionFuncs := []routing.DecisionFunc{
 		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
-		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
+		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), routing.DefaultRouteShader.EnableYouOnlyLiveOnce),
 		routing.DecideVeto(onNNSliceCounter, float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
 		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.MultipathPacketLossThreshold)),
 	}
@@ -466,7 +466,7 @@ func TestDecidePacketLossVetoYOLO(t *testing.T) {
 
 // Test case where we stay on direct with no change
 func TestDecideStayOnDirectRoute(t *testing.T) {
-	rrs := routing.DefaultRoutingRulesSettings
+	rrs := routing.DefaultRouteShader
 
 	onNNSliceCounter := uint64(0)
 
@@ -517,7 +517,7 @@ func TestDecideStayOnDirectRoute(t *testing.T) {
 
 // Test case where we stay on nextwork next with no change
 func TestDecideStayOnNNRoute(t *testing.T) {
-	rrs := routing.DefaultRoutingRulesSettings
+	rrs := routing.DefaultRouteShader
 
 	onNNSliceCounter := uint64(0)
 
@@ -574,7 +574,7 @@ func TestDecideStayOnNNRoute(t *testing.T) {
 
 // Test case to check that DecisionInitialSlice is never the reason twice in a row
 func TestValidateInitialSlice(t *testing.T) {
-	rrs := routing.DefaultRoutingRulesSettings
+	rrs := routing.DefaultRouteShader
 
 	onNNSliceCounter := uint64(0)
 
@@ -628,7 +628,7 @@ func TestValidateInitialSlice(t *testing.T) {
 
 // Test case where we should get off a network next route due to commit veto
 func TestDecideCommitVeto(t *testing.T) {
-	rrs := routing.DefaultRoutingRulesSettings
+	rrs := routing.DefaultRouteShader
 	rrs.EnableTryBeforeYouBuy = true
 
 	onNNSliceCounter := uint64(0)
@@ -697,7 +697,7 @@ func TestDecideCommitVeto(t *testing.T) {
 
 // Test case to check that the committed flag from the decision function is being set correctly
 func TestValidateCommitted(t *testing.T) {
-	rrs := routing.DefaultRoutingRulesSettings
+	rrs := routing.DefaultRouteShader
 	rrs.EnableTryBeforeYouBuy = true
 
 	onNNSliceCounter := uint64(0)
@@ -766,7 +766,7 @@ func TestValidateCommitted(t *testing.T) {
 
 // Test case to check that direct routes are still served if the initial next route isn't good enough for multipath
 func TestDecideMultipathDirect(t *testing.T) {
-	rrs := routing.DefaultRoutingRulesSettings
+	rrs := routing.DefaultRouteShader
 	rrs.EnableMultipathForRTT = true
 	rrs.EnableMultipathForJitter = true
 	rrs.EnableMultipathForPacketLoss = true
@@ -820,7 +820,7 @@ func TestDecideMultipathDirect(t *testing.T) {
 
 // Test case to check that direct routes are never served if multipath is already active
 func TestDecideMultipathStayActive(t *testing.T) {
-	rrs := routing.DefaultRoutingRulesSettings
+	rrs := routing.DefaultRouteShader
 	rrs.EnableMultipathForRTT = true
 	rrs.EnableMultipathForJitter = true
 	rrs.EnableMultipathForPacketLoss = true
@@ -874,7 +874,7 @@ func TestDecideMultipathStayActive(t *testing.T) {
 
 // Test case to check that when multipath is enabled for RTT that the session is upgraded and the decision reason is always the multipath version
 func TestValidateMultipathRTT(t *testing.T) {
-	rrs := routing.DefaultRoutingRulesSettings
+	rrs := routing.DefaultRouteShader
 	rrs.EnableMultipathForRTT = true
 
 	onNNSliceCounter := uint64(0)
@@ -930,7 +930,7 @@ func TestValidateMultipathRTT(t *testing.T) {
 
 // Test case to check that when multipath is enabled for jitter that the session is upgraded and the decision reason is always the multipath version
 func TestValidateMultipathJitter(t *testing.T) {
-	rrs := routing.DefaultRoutingRulesSettings
+	rrs := routing.DefaultRouteShader
 	rrs.EnableMultipathForJitter = true
 
 	onNNSliceCounter := uint64(0)
@@ -986,7 +986,7 @@ func TestValidateMultipathJitter(t *testing.T) {
 
 // Test case to check that when multipath is enabled for packet loss that the session is upgraded and the decision reason is always the multipath version
 func TestValidateMultipathPacketLoss(t *testing.T) {
-	rrs := routing.DefaultRoutingRulesSettings
+	rrs := routing.DefaultRouteShader
 	rrs.EnableMultipathForPacketLoss = true
 
 	onNNSliceCounter := uint64(0)

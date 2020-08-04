@@ -138,12 +138,12 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			expected := routing.Buyer{
-				ID:                   1,
-				Name:                 "local",
-				Active:               true,
-				Live:                 false,
-				PublicKey:            make([]byte, crypto.KeySize),
-				RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
+				ID:          1,
+				Name:        "local",
+				Active:      true,
+				Live:        false,
+				PublicKey:   make([]byte, crypto.KeySize),
+				RouteShader: routing.DefaultRouteShader,
 			}
 
 			err = fs.AddBuyer(ctx, expected)
@@ -167,20 +167,20 @@ func TestFirestore(t *testing.T) {
 
 		expected := []routing.Buyer{
 			{
-				ID:                   1,
-				Name:                 "local",
-				Active:               true,
-				Live:                 false,
-				PublicKey:            make([]byte, crypto.KeySize),
-				RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
+				ID:          1,
+				Name:        "local",
+				Active:      true,
+				Live:        false,
+				PublicKey:   make([]byte, crypto.KeySize),
+				RouteShader: routing.DefaultRouteShader,
 			},
 			{
-				ID:                   2,
-				Name:                 "local",
-				Active:               false,
-				Live:                 true,
-				PublicKey:            make([]byte, crypto.KeySize),
-				RoutingRulesSettings: routing.LocalRoutingRulesSettings,
+				ID:          2,
+				Name:        "local",
+				Active:      false,
+				Live:        true,
+				PublicKey:   make([]byte, crypto.KeySize),
+				RouteShader: routing.LocalRouteShader,
 			},
 		}
 
@@ -204,13 +204,13 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			expected := routing.Buyer{
-				ID:                   1,
-				Name:                 "local",
-				Domain:               "example.com",
-				Active:               true,
-				Live:                 false,
-				PublicKey:            make([]byte, crypto.KeySize),
-				RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
+				ID:          1,
+				Name:        "local",
+				Domain:      "example.com",
+				Active:      true,
+				Live:        false,
+				PublicKey:   make([]byte, crypto.KeySize),
+				RouteShader: routing.DefaultRouteShader,
 			}
 
 			expectedCustomer := customer{
@@ -264,13 +264,13 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			expected := routing.Buyer{
-				ID:                   1,
-				Name:                 "local",
-				Domain:               "example.com",
-				Active:               true,
-				Live:                 false,
-				PublicKey:            make([]byte, crypto.KeySize),
-				RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
+				ID:          1,
+				Name:        "local",
+				Domain:      "example.com",
+				Active:      true,
+				Live:        false,
+				PublicKey:   make([]byte, crypto.KeySize),
+				RouteShader: routing.DefaultRouteShader,
 			}
 
 			expectedCustomer := customer{
@@ -332,13 +332,13 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			expected := routing.Buyer{
-				ID:                   1,
-				Name:                 "local",
-				Domain:               "example.com",
-				Active:               true,
-				Live:                 false,
-				PublicKey:            make([]byte, crypto.KeySize),
-				RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
+				ID:          1,
+				Name:        "local",
+				Domain:      "example.com",
+				Active:      true,
+				Live:        false,
+				PublicKey:   make([]byte, crypto.KeySize),
+				RouteShader: routing.DefaultRouteShader,
 			}
 
 			err = fs.AddBuyer(ctx, expected)
@@ -381,12 +381,12 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			buyer := routing.Buyer{
-				ID:                   1,
-				Name:                 "local",
-				Active:               true,
-				Live:                 false,
-				PublicKey:            make([]byte, crypto.KeySize),
-				RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
+				ID:          1,
+				Name:        "local",
+				Active:      true,
+				Live:        false,
+				PublicKey:   make([]byte, crypto.KeySize),
+				RouteShader: routing.DefaultRouteShader,
 			}
 
 			err = fs.AddBuyer(ctx, buyer)
@@ -427,12 +427,12 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			buyer := routing.Buyer{
-				ID:                   1,
-				Name:                 "local",
-				Active:               true,
-				Live:                 false,
-				PublicKey:            make([]byte, crypto.KeySize),
-				RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
+				ID:          1,
+				Name:        "local",
+				Active:      true,
+				Live:        false,
+				PublicKey:   make([]byte, crypto.KeySize),
+				RouteShader: routing.DefaultRouteShader,
 			}
 
 			err = fs.AddBuyer(ctx, buyer)
@@ -460,12 +460,12 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			buyer := routing.Buyer{
-				ID:                   1,
-				Name:                 "local",
-				Active:               true,
-				Live:                 false,
-				PublicKey:            make([]byte, crypto.KeySize),
-				RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
+				ID:          1,
+				Name:        "local",
+				Active:      true,
+				Live:        false,
+				PublicKey:   make([]byte, crypto.KeySize),
+				RouteShader: routing.DefaultRouteShader,
 			}
 
 			err = fs.SetBuyer(ctx, buyer)
@@ -482,12 +482,12 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			expected := routing.Buyer{
-				ID:                   1,
-				Name:                 "local",
-				Active:               true,
-				Live:                 false,
-				PublicKey:            make([]byte, crypto.KeySize),
-				RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
+				ID:          1,
+				Name:        "local",
+				Active:      true,
+				Live:        false,
+				PublicKey:   make([]byte, crypto.KeySize),
+				RouteShader: routing.DefaultRouteShader,
 			}
 
 			err = fs.AddBuyer(ctx, expected)
@@ -1846,13 +1846,13 @@ func TestFirestore(t *testing.T) {
 		}()
 
 		expectedBuyer := routing.Buyer{
-			ID:                   1,
-			Name:                 "local",
-			Domain:               "example.com",
-			Active:               true,
-			Live:                 false,
-			PublicKey:            make([]byte, crypto.KeySize),
-			RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
+			ID:          1,
+			Name:        "local",
+			Domain:      "example.com",
+			Active:      true,
+			Live:        false,
+			PublicKey:   make([]byte, crypto.KeySize),
+			RouteShader: routing.DefaultRouteShader,
 		}
 
 		expectedSeller := routing.Seller{

@@ -84,7 +84,7 @@ func removeBuyer(rpcClient jsonrpc.RPCClient, env Environment, id string) {
 	fmt.Printf("Buyer with ID \"%s\" removed from storage.\n", id)
 }
 
-func routingRulesSettingsByID(rpcClient jsonrpc.RPCClient, env Environment, buyerID string) {
+func RouteShaderByID(rpcClient jsonrpc.RPCClient, env Environment, buyerID string) {
 
 	buyerArgs := localjsonrpc.BuyersArgs{}
 	var buyers localjsonrpc.BuyersReply
@@ -103,12 +103,12 @@ func routingRulesSettingsByID(rpcClient jsonrpc.RPCClient, env Environment, buye
 				Value              string
 			}{}
 
-			args := localjsonrpc.RoutingRulesSettingsArgs{
+			args := localjsonrpc.RouteShaderArgs{
 				BuyerID: buyerID,
 			}
 
-			var reply localjsonrpc.RoutingRulesSettingsReply
-			if err := rpcClient.CallFor(&reply, "OpsService.RoutingRulesSettings", args); err != nil {
+			var reply localjsonrpc.RouteShaderReply
+			if err := rpcClient.CallFor(&reply, "OpsService.RouteShader", args); err != nil {
 				handleJSONRPCError(env, err)
 				return
 			}
@@ -135,7 +135,7 @@ func routingRulesSettingsByID(rpcClient jsonrpc.RPCClient, env Environment, buye
 
 }
 
-func routingRulesSettings(rpcClient jsonrpc.RPCClient, env Environment, buyerName string) {
+func RouteShader(rpcClient jsonrpc.RPCClient, env Environment, buyerName string) {
 
 	buyerArgs := localjsonrpc.BuyersArgs{}
 	var buyers localjsonrpc.BuyersReply
@@ -173,12 +173,12 @@ func routingRulesSettings(rpcClient jsonrpc.RPCClient, env Environment, buyerNam
 		Value              string
 	}{}
 
-	args := localjsonrpc.RoutingRulesSettingsArgs{
+	args := localjsonrpc.RouteShaderArgs{
 		BuyerID: filtered[0][1],
 	}
 
-	var reply localjsonrpc.RoutingRulesSettingsReply
-	if err := rpcClient.CallFor(&reply, "OpsService.RoutingRulesSettings", args); err != nil {
+	var reply localjsonrpc.RouteShaderReply
+	if err := rpcClient.CallFor(&reply, "OpsService.RouteShader", args); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}
@@ -200,14 +200,14 @@ func routingRulesSettings(rpcClient jsonrpc.RPCClient, env Environment, buyerNam
 	return
 }
 
-func setRoutingRulesSettings(rpcClient jsonrpc.RPCClient, env Environment, buyerID string, rrs routing.RoutingRulesSettings) {
-	args := localjsonrpc.SetRoutingRulesSettingsArgs{
-		BuyerID:              buyerID,
-		RoutingRulesSettings: rrs,
+func setRouteShader(rpcClient jsonrpc.RPCClient, env Environment, buyerID string, rrs routing.RouteShader) {
+	args := localjsonrpc.SetRouteShaderArgs{
+		BuyerID:     buyerID,
+		RouteShader: rrs,
 	}
 
-	var reply localjsonrpc.SetRoutingRulesSettingsReply
-	if err := rpcClient.CallFor(&reply, "OpsService.SetRoutingRulesSettings", args); err != nil {
+	var reply localjsonrpc.SetRouteShaderReply
+	if err := rpcClient.CallFor(&reply, "OpsService.SetRouteShader", args); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}
