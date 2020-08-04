@@ -19,7 +19,7 @@ Buyer : - Domain
 Buyer : - Active
 Buyer : - Live
 Buyer : - PublicKey
-Buyer : - RouteShader (RoutingRulesSettings)
+Buyer : - RouteShader (RouteShader)
 
 Seller : - ID
 Seller : - Name

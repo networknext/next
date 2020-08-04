@@ -108,7 +108,7 @@ var DefaultRouteShader = RouteShader{
 	MultipathPacketLossThreshold: 2.0,
 }
 
-// LocalRoutingRulesSettings sets the rules for localhost:20000 Happy Path
+// LocalRouteShader sets the rules for localhost:20000 Happy Path
 // RTTThreshold set to -5 to passively force the NN route, even if it's 5 ms
 // slower than direct. Ditto for hysterisis and veto (more "real" than
 // forcing with 'Mode: ModeForceNext`).

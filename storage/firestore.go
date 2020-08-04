@@ -94,7 +94,7 @@ type datacenterMap struct {
 	Buyer      string `firestore:"Buyer"`
 }
 
-type routingRulesSettings struct {
+type RouteShader struct {
 	DisplayName                  string  `firestore:"displayName"`
 	EnvelopeKbpsUp               int64   `firestore:"envelopeKbpsUp"`
 	EnvelopeKbpsDown             int64   `firestore:"envelopeKbpsDown"`
@@ -308,7 +308,7 @@ func (fs *Firestore) RemoveBuyer(ctx context.Context, id uint64) error {
 
 		if uint64(buyerInRemoteStorage.ID) == id {
 			// Delete the buyer's routing rules settings in remote storage
-			if err := fs.deleteRouteRulesSettingsForBuyerID(ctx, bdoc.Ref.ID); err != nil {
+			if err := fs.deleteRouteShaderForBuyerID(ctx, bdoc.Ref.ID); err != nil {
 				return &FirestoreError{err: err}
 			}
 
@@ -1807,7 +1807,7 @@ func (fs *Firestore) syncCustomers(ctx context.Context) error {
 	return nil
 }
 
-func (fs *Firestore) deleteRouteRulesSettingsForBuyerID(ctx context.Context, ID string) error {
+func (fs *Firestore) deleteRouteShaderForBuyerID(ctx context.Context, ID string) error {
 	// Comment below taken from old backend, at least attempting to explain why we need to append _0 (no existing entries have suffixes other than _0)
 	// "Must be of the form '<buyer key>_<tag id>'. The buyer key can be found by looking at the ID under Buyer; it should be something like 763IMDH693HLsr2LGTJY. The tag ID should be 0 (for default) or the fnv64a hash of the tag the customer is using. Therefore this value should look something like: 763IMDH693HLsr2LGTJY_0. This value can not be changed after the entity is created."
 	routeShaderID := ID + "_0"
@@ -1832,7 +1832,7 @@ func (fs *Firestore) getRouteShaderForBuyerID(ctx context.Context, ID string) (r
 	}
 
 	// Unmarshal into our firestore struct
-	var tempRRS routingRulesSettings
+	var tempRRS RouteShader
 	err = rsDoc.DataTo(&tempRRS)
 	if err != nil {
 		return rrs, err
@@ -1867,7 +1867,7 @@ func (fs *Firestore) setRouteShaderForBuyerID(ctx context.Context, ID string, na
 	// "Must be of the form '<buyer key>_<tag id>'. The buyer key can be found by looking at the ID under Buyer; it should be something like 763IMDH693HLsr2LGTJY. The tag ID should be 0 (for default) or the fnv64a hash of the tag the customer is using. Therefore this value should look something like: 763IMDH693HLsr2LGTJY_0. This value can not be changed after the entity is created."
 	routeShaderID := ID + "_0"
 
-	// Convert RoutingRulesSettings struct to firestore map
+	// Convert RouteShader struct to firestore map
 	rrsFirestore := map[string]interface{}{
 		"displayName":                  name,
 		"envelopeKbpsUp":               rrs.EnvelopeKbpsUp,
