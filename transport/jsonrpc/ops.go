@@ -100,11 +100,11 @@ func (s *OpsService) RemoveBuyer(r *http.Request, args *RemoveBuyerArgs, reply *
 	return s.Storage.RemoveBuyer(ctx, buyerID)
 }
 
-type RoutingRulesSettingsArgs struct {
+type RouteShaderArgs struct {
 	BuyerID string
 }
 
-type RoutingRulesSettingsReply struct {
+type RouteShaderReply struct {
 	RoutingRuleSettings []routingRuleSettings
 }
 
@@ -128,10 +128,10 @@ type routingRuleSettings struct {
 	SelectionPercentage          int64           `json:"selectionPercentage"`
 }
 
-func (s *OpsService) RoutingRulesSettings(r *http.Request, args *RoutingRulesSettingsArgs, reply *RoutingRulesSettingsReply) error {
+func (s *OpsService) RouteShader(r *http.Request, args *RouteShaderArgs, reply *RouteShaderReply) error {
 	buyerID, err := strconv.ParseUint(args.BuyerID, 16, 64)
 	if err != nil {
-		err = fmt.Errorf("RoutingRulesSettings() could not convert buyer ID %s to uint64: %v", args.BuyerID, err)
+		err = fmt.Errorf("RouteShader() could not convert buyer ID %s to uint64: %v", args.BuyerID, err)
 		s.Logger.Log("err", err)
 		return err
 	}
@@ -143,58 +143,58 @@ func (s *OpsService) RoutingRulesSettings(r *http.Request, args *RoutingRulesSet
 
 	reply.RoutingRuleSettings = []routingRuleSettings{
 		{
-			EnvelopeKbpsUp:               buyer.RoutingRulesSettings.EnvelopeKbpsUp,
-			EnvelopeKbpsDown:             buyer.RoutingRulesSettings.EnvelopeKbpsDown,
-			Mode:                         buyer.RoutingRulesSettings.Mode,
-			MaxNibblinsPerGB:             buyer.RoutingRulesSettings.MaxNibblinsPerGB,
-			RTTEpsilon:                   buyer.RoutingRulesSettings.RTTEpsilon,
-			RTTThreshold:                 buyer.RoutingRulesSettings.RTTThreshold,
-			RTTHysteresis:                buyer.RoutingRulesSettings.RTTHysteresis,
-			RTTVeto:                      buyer.RoutingRulesSettings.RTTVeto,
-			EnableYouOnlyLiveOnce:        buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce,
-			EnablePacketLossSafety:       buyer.RoutingRulesSettings.EnablePacketLossSafety,
-			EnableMultipathForPacketLoss: buyer.RoutingRulesSettings.EnableMultipathForPacketLoss,
-			EnableMultipathForJitter:     buyer.RoutingRulesSettings.EnableMultipathForJitter,
-			EnableMultipathForRTT:        buyer.RoutingRulesSettings.EnableMultipathForRTT,
-			EnableABTest:                 buyer.RoutingRulesSettings.EnableABTest,
-			EnableTryBeforeYouBuy:        buyer.RoutingRulesSettings.EnableTryBeforeYouBuy,
-			TryBeforeYouBuyMaxSlices:     buyer.RoutingRulesSettings.TryBeforeYouBuyMaxSlices,
-			SelectionPercentage:          buyer.RoutingRulesSettings.SelectionPercentage,
+			EnvelopeKbpsUp:               buyer.RouteShader.EnvelopeKbpsUp,
+			EnvelopeKbpsDown:             buyer.RouteShader.EnvelopeKbpsDown,
+			Mode:                         buyer.RouteShader.Mode,
+			MaxNibblinsPerGB:             buyer.RouteShader.MaxNibblinsPerGB,
+			RTTEpsilon:                   buyer.RouteShader.RTTEpsilon,
+			RTTThreshold:                 buyer.RouteShader.RTTThreshold,
+			RTTHysteresis:                buyer.RouteShader.RTTHysteresis,
+			RTTVeto:                      buyer.RouteShader.RTTVeto,
+			EnableYouOnlyLiveOnce:        buyer.RouteShader.EnableYouOnlyLiveOnce,
+			EnablePacketLossSafety:       buyer.RouteShader.EnablePacketLossSafety,
+			EnableMultipathForPacketLoss: buyer.RouteShader.EnableMultipathForPacketLoss,
+			EnableMultipathForJitter:     buyer.RouteShader.EnableMultipathForJitter,
+			EnableMultipathForRTT:        buyer.RouteShader.EnableMultipathForRTT,
+			EnableABTest:                 buyer.RouteShader.EnableABTest,
+			EnableTryBeforeYouBuy:        buyer.RouteShader.EnableTryBeforeYouBuy,
+			TryBeforeYouBuyMaxSlices:     buyer.RouteShader.TryBeforeYouBuyMaxSlices,
+			SelectionPercentage:          buyer.RouteShader.SelectionPercentage,
 		},
 	}
 
 	return nil
 }
 
-type SetRoutingRulesSettingsArgs struct {
-	BuyerID              string
-	RoutingRulesSettings routing.RoutingRulesSettings
+type SetRouteShaderArgs struct {
+	BuyerID     string
+	RouteShader routing.RouteShader
 }
 
-func (s *OpsService) SetRoutingRulesSettings(r *http.Request, args *SetRoutingRulesSettingsArgs, reply *SetRoutingRulesSettingsReply) error {
+func (s *OpsService) SetRouteShader(r *http.Request, args *SetRouteShaderArgs, reply *SetRouteShaderReply) error {
 	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
 	buyerID, err := strconv.ParseUint(args.BuyerID, 16, 64)
 	if err != nil {
-		err = fmt.Errorf("SetRoutingRulesSettings() could not convert buyer ID %s to uint64: %v", args.BuyerID, err)
+		err = fmt.Errorf("SetRouteShader() could not convert buyer ID %s to uint64: %v", args.BuyerID, err)
 		s.Logger.Log("err", err)
 		return err
 	}
 
 	buyer, err := s.Storage.Buyer(buyerID)
 	if err != nil {
-		err = fmt.Errorf("SetRoutingRulesSettings() Storage.Buyer error: %w", err)
+		err = fmt.Errorf("SetRouteShader() Storage.Buyer error: %w", err)
 		s.Logger.Log("err", err)
 		return err
 	}
 
-	buyer.RoutingRulesSettings = args.RoutingRulesSettings
+	buyer.RouteShader = args.RouteShader
 
 	return s.Storage.SetBuyer(ctx, buyer)
 }
 
-type SetRoutingRulesSettingsReply struct{}
+type SetRouteShaderReply struct{}
 
 type SellersArgs struct{}
 

@@ -7,7 +7,7 @@ const (
 )
 
 // Various settings a buyer can tweak to adjust the behaviour of Network Next route selection to their liking
-type RoutingRulesSettings struct {
+type RouteShader struct {
 	// The maximum upstream bandwidth a customer is willing to pay for per slice
 	EnvelopeKbpsUp int64
 
@@ -84,7 +84,7 @@ type RoutingRulesSettings struct {
 	SelectionPercentage int64
 }
 
-type CustomerRoutingRulesSettings struct {
+type CustomerRouteShader struct {
 	EnableNetworkNext   bool  `json:"enable_nn"`
 	EnableRoundTripTime bool  `json:"enable_rtt"`
 	EnablePacketLoss    bool  `json:"enable_pl"`
@@ -94,7 +94,7 @@ type CustomerRoutingRulesSettings struct {
 	PacketLossThreshold int64 `json:"pl_threshold"`
 }
 
-var DefaultRoutingRulesSettings = RoutingRulesSettings{
+var DefaultRouteShader = RouteShader{
 	MaxNibblinsPerGB:             250000000,
 	EnvelopeKbpsUp:               256,
 	EnvelopeKbpsDown:             256,
@@ -112,7 +112,7 @@ var DefaultRoutingRulesSettings = RoutingRulesSettings{
 // RTTThreshold set to -5 to passively force the NN route, even if it's 5 ms
 // slower than direct. Ditto for hysterisis and veto (more "real" than
 // forcing with 'Mode: ModeForceNext`).
-var LocalRoutingRulesSettings = RoutingRulesSettings{
+var LocalRouteShader = RouteShader{
 	MaxNibblinsPerGB:             250000000,
 	EnvelopeKbpsUp:               100,
 	EnvelopeKbpsDown:             100,
@@ -125,7 +125,7 @@ var LocalRoutingRulesSettings = RoutingRulesSettings{
 	MultipathPacketLossThreshold: 1.0,
 }
 
-var DefaultCustomerRoutingRulesSettings = CustomerRoutingRulesSettings{
+var DefaultCustomerRouteShader = CustomerRouteShader{
 	EnableNetworkNext:   true,
 	EnableRoundTripTime: true,
 	EnablePacketLoss:    false,
@@ -135,7 +135,7 @@ var DefaultCustomerRoutingRulesSettings = CustomerRoutingRulesSettings{
 	PacketLossThreshold: 1,
 }
 
-var LocalCustomerRoutingRulesSettings = CustomerRoutingRulesSettings{
+var LocalCustomerRouteShader = CustomerRouteShader{
 	EnableNetworkNext:   true,
 	EnableRoundTripTime: true,
 	EnablePacketLoss:    false,

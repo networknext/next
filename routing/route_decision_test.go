@@ -20,7 +20,7 @@ func TestDecideUpgradeRTT(t *testing.T) {
 		PacketLoss: 0,
 	}
 
-	rttThreshold := float64(routing.DefaultRoutingRulesSettings.RTTThreshold)
+	rttThreshold := float64(routing.DefaultRouteShader.RTTThreshold)
 	routeDecisionFunc := routing.DecideUpgradeRTT(rttThreshold)
 
 	// Test if multipath is enabled
@@ -60,7 +60,7 @@ func TestDecideDowngradeRTT(t *testing.T) {
 		PacketLoss: 0,
 	}
 
-	rttHyteresis := float64(routing.DefaultRoutingRulesSettings.RTTHysteresis)
+	rttHyteresis := float64(routing.DefaultRouteShader.RTTHysteresis)
 	routeDecisionFunc := routing.DecideDowngradeRTT(rttHyteresis, false)
 
 	// Test if multipath is enabled
@@ -108,7 +108,7 @@ func TestDecideVeto(t *testing.T) {
 
 	onNNSliceCounter := uint64(0)
 
-	rttVeto := float64(routing.DefaultRoutingRulesSettings.RTTVeto)
+	rttVeto := float64(routing.DefaultRouteShader.RTTVeto)
 	routeDecisionFunc := routing.DecideVeto(onNNSliceCounter, rttVeto, false, false)
 
 	// Test if multipath is enabled
@@ -194,7 +194,7 @@ func TestDecideCommitted(t *testing.T) {
 		PacketLoss: 0,
 	}
 
-	maxSlices := uint8(routing.DefaultRoutingRulesSettings.TryBeforeYouBuyMaxSlices)
+	maxSlices := uint8(routing.DefaultRouteShader.TryBeforeYouBuyMaxSlices)
 
 	committedData := &routing.CommittedData{}
 
@@ -264,8 +264,8 @@ func TestDecideCommitted(t *testing.T) {
 }
 
 func TestDecideMultipath(t *testing.T) {
-	rttThreshold := float64(routing.LocalRoutingRulesSettings.RTTThreshold)
-	packetLossThreshold := float64(routing.LocalRoutingRulesSettings.MultipathPacketLossThreshold)
+	rttThreshold := float64(routing.LocalRouteShader.RTTThreshold)
+	packetLossThreshold := float64(routing.LocalRouteShader.MultipathPacketLossThreshold)
 
 	// Test if multipath isn't enabled
 	routeDecisionFunc := routing.DecideMultipath(false, false, false, rttThreshold, packetLossThreshold)
@@ -287,7 +287,7 @@ func TestDecideMultipath(t *testing.T) {
 	assert.Equal(t, routing.Decision{true, routing.DecisionRTTReductionMultipath}, decision)
 
 	// Test when multipath reason is high jitter
-	// directStats.RTT set to -6.0 as it must be less than LocalROutingRulesSettings.RTTTHreshold
+	// directStats.RTT set to -6.0 as it must be less than LocalRouteShader.RTTTHreshold
 	// if predictedNNStats.RTT = 0 (default) for happy path to run and force NN.
 	routeDecisionFunc = routing.DecideMultipath(true, true, true, rttThreshold, packetLossThreshold)
 	decision = routing.Decision{}
@@ -297,7 +297,7 @@ func TestDecideMultipath(t *testing.T) {
 	assert.Equal(t, routing.Decision{true, routing.DecisionHighJitterMultipath}, decision)
 
 	// Test when multipath reason is high packet loss
-	// directStats.RTT set to -5 as it must be less than LocalROutingRulesSettings.RTTTHreshold
+	// directStats.RTT set to -5 as it must be less than LocalRouteShader.RTTTHreshold
 	// if predictedNNStats.RTT = 0 (default) for happy path to run and force NN.
 	routeDecisionFunc = routing.DecideMultipath(true, true, true, rttThreshold, packetLossThreshold)
 	decision = routing.Decision{}
