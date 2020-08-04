@@ -10,6 +10,12 @@ var autoSigninPermissions = null;
 var addUserPermissions = null;
 var editUserPermissions = [];
 
+var ABTesters = [
+	'2b9c891211588152',
+	'b8e4f84ca63b2021',
+	'02a337e6ec5b60b5'
+]
+
 JSONRPCClient = {
 	async call(method, params) {
 		let headers = {
@@ -414,8 +420,8 @@ UserHandler = {
 		enable_pl: false,
 		enable_mp: false,
 		enable_ab: false,
-		acceptable_latency: 20,
-		pl_threshold: 1
+		acceptable_latency: "20",
+		pl_threshold: "1"
 	},
 	async fetchCurrentUserInfo() {
 		return AuthHandler.auth0Client.getIdTokenClaims()
@@ -513,6 +519,9 @@ UserHandler = {
 	},
 	isViewer() {
 		return !this.isAnonymous() ? this.userInfo.roles.findIndex((role) => role.name == "Viewer") !== -1 : false;
+	},
+	isABTester() {
+		return (this.isBuyer() && ABTesters.includes(this.userInfo.id)) || this.isAdmin()
 	}
 }
 
@@ -705,6 +714,7 @@ WorkspaceHandler = {
 				UserHandler.userInfo.pubKey = response.game_config.public_key;
 				UserHandler.userInfo.company = response.game_config.company;
 				UserHandler.routeShader = response.customer_route_shader
+				console.log(UserHandler.routeShader)
 			})
 			.catch((e) => {
 				console.log("Something went wrong fetching public key");
@@ -1229,8 +1239,10 @@ function updatePubKey() {
 }
 
 function updateRouteShader () {
+	console.log(UserHandler.routeShader)
 	JSONRPCClient.call('BuyersService.UpdateRouteShader', UserHandler.routeShader)
 		.then((response) => {
+			console.log(response)
 			UserHandler.routeShader = response.customer_route_shader
 		})
 		.catch((error) => {
