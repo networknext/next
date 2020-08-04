@@ -73,7 +73,8 @@ export default class AuthService {
           idToken: authResult.idToken,
           name: profile.name,
           roles: userRoles.roles,
-          verified: profile.email_verified || false
+          verified: profile.email_verified || false,
+          routeShader: null
         }
         store.commit('UPDATE_USER_PROFILE', userProfile)
       }
@@ -95,4 +96,5 @@ export interface UserProfile {
   name: string;
   roles: Array<string>;
   verified: boolean;
+  routeShader: any;
 }

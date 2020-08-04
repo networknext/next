@@ -6,36 +6,6 @@
     <p class="card-text">
       Manage how your game connects to Network Next.
     </p>
-    <div
-      class="alert alert-success"
-      role="alert"
-      v-show="false"
-    >
-      UPDATEKEY SUCCESS
-    </div>
-    <div
-      class="alert alert-danger"
-      role="alert"
-      v-show="false"
-    >
-      UPDATEKEY FAILURE
-    </div>
-    <!-- NOT SURE THESE ARE USED -->
-    <div
-      class="alert alert-success"
-      role="alert"
-      v-show="false"
-    >
-      UPGRADE SUCCESS
-    </div>
-    <div
-      class="alert alert-danger"
-      role="alert"
-      v-show="false"
-    >
-      UPGRADE FAILURE
-    </div>
-    <!-- NOT SURE THESE ARE USED -->
     <form v-on:submit.prevent="updatePubKey()">
       <div class="form-group" id="pubKey">
         <label>

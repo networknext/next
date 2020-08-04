@@ -63,9 +63,6 @@ export default class SessionCounts extends Vue {
         if (!this.showCount) {
           this.showCount = true
         }
-        if (!this.$store.getters.isReady) {
-          this.$store.dispatch('toggleReady', true)
-        }
       })
       .catch((error: any) => {
         console.log(error)

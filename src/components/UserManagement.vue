@@ -11,12 +11,12 @@
         <span class="sr-only">Loading...</span>
       </div>
     </div>
-    <form v-show="true">
+    <form v-show="true" @submit.prevent="addNewUsers()">
       <div class="form-group">
         <label for="customerId">
           Add users by email address
         </label>
-        <textarea class="form-control form-control-sm" id="new-user-emails"></textarea>
+        <textarea class="form-control form-control-sm" id="new-user-emails" v-model="newUserEmails"></textarea>
         <small class="form-text text-muted">
           Enter a newline or comma-delimited list of email
           addresses to add users to your account.
@@ -140,7 +140,9 @@ export default class UserManagement extends Vue {
   private companyUsers: Array<any> = []
 
   private selectedRoles: any = {}
-  private newUserRoles = []
+  private newUserRoles: any = []
+
+  private newUserEmails = ''
 
   private showTable = false
 
@@ -222,6 +224,41 @@ export default class UserManagement extends Vue {
     account.delete = false
     account.edit = false
     this.companyUsers.splice(index, 1, account)
+  }
+
+  private addNewUsers () {
+    let roles = this.newUserRoles
+    const emails = this.newUserEmails
+      .split(/(,|\n)/g)
+      .map((x) => x.trim())
+      .filter((x) => x !== '' && x !== ',')
+
+    if (this.newUserRoles.length === 0) {
+      roles = [{
+        description: 'Can see current sessions and the map.',
+        id: 'rol_ScQpWhLvmTKRlqLU',
+        name: 'Viewer'
+      }]
+    }
+    this.apiService
+      .addNewUserAccounts({ emails: emails, roles: roles })
+      .then((response: any) => {
+        const newAccounts: Array<any> = response.result.accounts
+
+        newAccounts.forEach((account: any) => {
+          account.edit = false
+          account.delete = false
+          this.selectedRoles[account.user_id] = account.roles
+        })
+
+        this.companyUsers.concat(newAccounts)
+      })
+      .catch((error: Error) => {
+        console.log('Something went wrong creating new users')
+        console.log(error)
+      })
+    this.newUserRoles = []
+    this.newUserEmails = ''
   }
 }
 

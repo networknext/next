@@ -1,52 +1,52 @@
 <template>
-  <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark p-0 shadow">
-    <a class="navbar-brand col-sm-3 col-md-2 mr-0" href="#">
-        <div class="logo-container">
-            <img class="logo-fit" src="../assets/logo.png">
-        </div>
-    </a>
-    <ul class="navbar-nav px-3 w-100 mr-auto">
-        <li class="nav-item text-nowrap">
-            <router-link to="/" class="nav-link" v-bind:class="{ active: $store.getters.currentPage == 'map' }" data-test="mapLink">Map</router-link>
-        </li>
-        <li class="nav-item text-nowrap">
-            <router-link to="/sessions" class="nav-link" v-bind:class="{ active: $store.getters.currentPage == 'sessions' }" data-test="sessionsLink">Sessions</router-link>
-        </li>
-        <li class="nav-item text-nowrap">
-            <router-link to="/session-tool" class="nav-link" v-bind:class="{ active: $store.getters.currentPage == 'session-tool' }" data-test="sessionToolLink">Session Tool</router-link>
-        </li>
-        <li class="nav-item text-nowrap">
-            <router-link to="/user-tool" class="nav-link" v-bind:class="{ active: $store.getters.currentPage == 'user-tool' }" v-if="!$store.getters.isAnonymous">User Tool</router-link>
-        </li>
-        <li class="nav-item text-nowrap">
-            <router-link to="/downloads" class="nav-link" v-bind:class="{ active: $store.getters.currentPage == 'downloads' }" v-if="!$store.getters.isAnonymous">Downloads</router-link>
-        </li>
-        <li class="nav-item text-nowrap">
-            <router-link to="/settings" class="nav-link" v-bind:class="{ active: $store.getters.currentPage == 'config' || $store.getters.currentPage == 'users' }" v-if="!$store.getters.isAnonymous">Settings</router-link>
-        </li>
-    </ul>
-    <ul class="navbar-nav px-3" v-if="$store.getters.isAnonymous">
-        <li class="nav-item text-nowrap">
-            <a data-test="loginButton" class="login btn-sm btn-primary" href="#" @click="authService.logIn()">
-                Log in
-            </a>
-        </li>
-    </ul>
-    <ul class="navbar-nav px-3" v-if="$store.getters.isAnonymous">
-        <li class="nav-item text-nowrap">
-            <a data-test="signUpButton" class="signup btn-sm btn-primary" href="#" @click="authService.signUp()">
-                Sign up
-            </a>
-        </li>
-    </ul>
-    <ul class="navbar-nav px-3" v-if="!$store.getters.isAnonymous">
-        <li class="nav-item text-nowrap">
-            <a class="logout btn-sm btn-primary" href="#" @click="authService.logOut()">
-                Logout
-            </a>
-        </li>
-    </ul>
-  </nav>
+    <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark p-0 shadow">
+        <a class="navbar-brand col-sm-3 col-md-2 mr-0" href="https://networknext.com">
+            <div class="logo-container">
+                <img class="logo-fit" src="../assets/logo.png">
+            </div>
+        </a>
+        <ul class="navbar-nav px-3 w-100 mr-auto">
+            <li class="nav-item text-nowrap">
+                <router-link to="/" class="nav-link" v-bind:class="{ active: $store.getters.currentPage == 'map' }" data-test="mapLink">Map</router-link>
+            </li>
+            <li class="nav-item text-nowrap">
+                <router-link to="/sessions" class="nav-link" v-bind:class="{ active: $store.getters.currentPage == 'sessions' }" data-test="sessionsLink">Sessions</router-link>
+            </li>
+            <li class="nav-item text-nowrap">
+                <router-link to="/session-tool" class="nav-link" v-bind:class="{ active: $store.getters.currentPage == 'session-tool' }" data-test="sessionToolLink">Session Tool</router-link>
+            </li>
+            <li class="nav-item text-nowrap">
+                <router-link to="/user-tool" class="nav-link" v-bind:class="{ active: $store.getters.currentPage == 'user-tool' }" v-if="!$store.getters.isAnonymous">User Tool</router-link>
+            </li>
+            <li class="nav-item text-nowrap">
+                <router-link to="/downloads" class="nav-link" v-bind:class="{ active: $store.getters.currentPage == 'downloads' }" v-if="!$store.getters.isAnonymous">Downloads</router-link>
+            </li>
+            <li class="nav-item text-nowrap">
+                <router-link to="/settings" class="nav-link" v-bind:class="{ active: $store.getters.currentPage == 'config' || $store.getters.currentPage == 'users' }" v-if="!$store.getters.isAnonymous">Settings</router-link>
+            </li>
+        </ul>
+        <ul class="navbar-nav px-3" v-if="$store.getters.isAnonymous">
+            <li class="nav-item text-nowrap">
+                <a data-test="loginButton" class="login btn-sm btn-primary" href="#" @click="authService.logIn()">
+                    Log in
+                </a>
+            </li>
+        </ul>
+        <ul class="navbar-nav px-3" v-if="$store.getters.isAnonymous">
+            <li class="nav-item text-nowrap">
+                <a data-test="signUpButton" class="signup btn-sm btn-primary" href="#" @click="authService.signUp()">
+                    Sign up
+                </a>
+            </li>
+        </ul>
+        <ul class="navbar-nav px-3" v-if="!$store.getters.isAnonymous">
+            <li class="nav-item text-nowrap">
+                <a class="logout btn-sm btn-primary" href="#" @click="authService.logOut()">
+                    Logout
+                </a>
+            </li>
+        </ul>
+    </nav>
 </template>
 
 <script lang="ts">

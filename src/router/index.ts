@@ -10,6 +10,7 @@ import SessionToolWorkspace from '@/components/workspaces/SessionToolWorkspace.v
 import SettingsWorkspace from '@/components/workspaces/SettingsWorkspace.vue'
 import UserManagement from '@/components/UserManagement.vue'
 import UserToolWorkspace from '@/components/workspaces/UserToolWorkspace.vue'
+import RouteShader from '@/components/RouteShader.vue'
 
 Vue.use(VueRouter)
 
@@ -53,6 +54,11 @@ const routes: Array<RouteConfig> = [
         path: 'users',
         name: 'users',
         component: UserManagement
+      },
+      {
+        path: 'route-shader',
+        name: 'shader',
+        component: RouteShader
       }
     ]
   },

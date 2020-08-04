@@ -1,13 +1,8 @@
 <template>
   <div class="container-fluid below-nav-bar">
-    <div class="d-flex below-nav-bar" style="justify-content: center; padding-top: 15%;" v-if="!$store.getters.isReady">
-      <div class="spinner-border" role="status">
-        <span class="sr-only">Loading...</span>
-      </div>
-    </div>
-    <SessionCounts v-show="$store.getters.isReady && ($store.getters.currentPage == 'map' || $store.getters.currentPage == 'sessions')"/>
+    <SessionCounts v-if="$store.getters.currentPage == 'map' || $store.getters.currentPage == 'sessions'"/>
     <div class="row">
-      <router-view v-if="$store.getters.isReady"/>
+      <router-view/>
     </div>
   </div>
 </template>

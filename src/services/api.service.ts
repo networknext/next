@@ -76,4 +76,16 @@ export default class APIService {
   public deleteUserAccount (args: any) {
     return this.call('AuthService.DeleteUserAccount', args)
   }
+
+  public addNewUserAccounts (args: any) {
+    return this.call('AuthService.AddUserAccount', args)
+  }
+
+  public fetchGameConfiguration (args: any) {
+    return this.call('BuyersService.GameConfiguration', args)
+  }
+
+  public updateRouteShader (args: any) {
+			return this.call('BuyersService.GameConfiguration', args)
+  }
 }
