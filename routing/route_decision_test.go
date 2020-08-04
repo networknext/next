@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestDecideUpgradeRTT(t *testing.T) {
+func TestDecideUpgrade(t *testing.T) {
 	predictedStats := &routing.Stats{
 		RTT:        30,
 		Jitter:     0,
@@ -21,7 +21,9 @@ func TestDecideUpgradeRTT(t *testing.T) {
 	}
 
 	rttThreshold := float64(routing.DefaultRoutingRulesSettings.RTTThreshold)
-	routeDecisionFunc := routing.DecideUpgradeRTT(rttThreshold)
+	packetLossThreshold := float64(routing.DefaultRoutingRulesSettings.PacketLossThreshold)
+	sdkVersion := routing.SDKVersion{0, 0, 0}
+	routeDecisionFunc := routing.DecideUpgrade(rttThreshold, packetLossThreshold, sdkVersion)
 
 	// Test if multipath is enabled
 	assert.Equal(
@@ -30,15 +32,53 @@ func TestDecideUpgradeRTT(t *testing.T) {
 		routeDecisionFunc(routing.Decision{true, routing.DecisionRTTReductionMultipath}, predictedStats, &routing.Stats{}, directStats),
 	)
 
-	// Now test if a route gets upgraded to network next
+	// Now test if a route gets upgraded to network next due to RTT reduction
 	assert.Equal(
 		t,
 		routing.Decision{true, routing.DecisionRTTReduction},
 		routeDecisionFunc(routing.Decision{}, predictedStats, &routing.Stats{}, directStats),
 	)
 
-	// Now test if the route is left alone
+	// Now test if a route gets upgraded to network next due to packet loss reduction
+	predictedStats.RTT = directStats.RTT
+	directStats.PacketLoss = 2
+	assert.Equal(
+		t,
+		routing.Decision{true, routing.DecisionPacketLossReduction},
+		routeDecisionFunc(routing.Decision{}, predictedStats, &routing.Stats{}, directStats),
+	)
 
+	// Now test if a route gets upgraded to network next due to both RTT reduction and packet loss reduction
+	predictedStats.RTT = 30
+	assert.Equal(
+		t,
+		routing.Decision{true, routing.DecisionRTTReduction | routing.DecisionPacketLossReduction},
+		routeDecisionFunc(routing.Decision{}, predictedStats, &routing.Stats{}, directStats),
+	)
+
+	// Now test that we can get a packet loss reduction for older SDK versions if we also have a 5ms or more RTT reduction
+	// older SDK versions that won't take routes with next RTT > direct RTT
+	rttThreshold = 20
+	predictedStats.RTT = directStats.RTT - 5
+	sdkVersion = routing.SDKVersionMin
+	routeDecisionFunc = routing.DecideUpgrade(rttThreshold, packetLossThreshold, sdkVersion)
+	assert.Equal(
+		t,
+		routing.Decision{true, routing.DecisionPacketLossReduction},
+		routeDecisionFunc(routing.Decision{}, predictedStats, &routing.Stats{}, directStats),
+	)
+
+	// Now test that we can get a packet loss reduction and an RTT reduction for older SDK versions
+	predictedStats.RTT = 30
+	rttThreshold = float64(routing.DefaultRoutingRulesSettings.RTTThreshold)
+	routeDecisionFunc = routing.DecideUpgrade(rttThreshold, packetLossThreshold, sdkVersion)
+	assert.Equal(
+		t,
+		routing.Decision{true, routing.DecisionRTTReduction | routing.DecisionPacketLossReduction},
+		routeDecisionFunc(routing.Decision{}, predictedStats, &routing.Stats{}, directStats),
+	)
+
+	// Now test if the route is left alone
 	predictedStats.RTT = directStats.RTT
 	assert.Equal(
 		t,
@@ -264,8 +304,8 @@ func TestDecideCommitted(t *testing.T) {
 }
 
 func TestDecideMultipath(t *testing.T) {
-	rttThreshold := float64(routing.LocalRoutingRulesSettings.RTTThreshold)
-	packetLossThreshold := float64(routing.LocalRoutingRulesSettings.MultipathPacketLossThreshold)
+	rttThreshold := float64(routing.DefaultRoutingRulesSettings.RTTThreshold)
+	packetLossThreshold := float64(routing.DefaultRoutingRulesSettings.PacketLossThreshold)
 
 	// Test if multipath isn't enabled
 	routeDecisionFunc := routing.DecideMultipath(false, false, false, rttThreshold, packetLossThreshold)
@@ -287,22 +327,20 @@ func TestDecideMultipath(t *testing.T) {
 	assert.Equal(t, routing.Decision{true, routing.DecisionRTTReductionMultipath}, decision)
 
 	// Test when multipath reason is high jitter
-	// directStats.RTT set to -6.0 as it must be less than LocalROutingRulesSettings.RTTTHreshold
-	// if predictedNNStats.RTT = 0 (default) for happy path to run and force NN.
 	routeDecisionFunc = routing.DecideMultipath(true, true, true, rttThreshold, packetLossThreshold)
 	decision = routing.Decision{}
 	predictedNNStats = &routing.Stats{}
-	directStats = &routing.Stats{Jitter: 50, RTT: -6.0}
+	directStats = &routing.Stats{Jitter: 50}
 	decision = routeDecisionFunc(decision, predictedNNStats, &routing.Stats{}, directStats)
 	assert.Equal(t, routing.Decision{true, routing.DecisionHighJitterMultipath}, decision)
 
 	// Test when multipath reason is high packet loss
-	// directStats.RTT set to -5 as it must be less than LocalROutingRulesSettings.RTTTHreshold
+	// directStats.RTT set to -5 as it must be less than LocalRoutingRulesSettings.RTTThreshold
 	// if predictedNNStats.RTT = 0 (default) for happy path to run and force NN.
 	routeDecisionFunc = routing.DecideMultipath(true, true, true, rttThreshold, packetLossThreshold)
 	decision = routing.Decision{}
 	predictedNNStats = &routing.Stats{}
-	directStats = &routing.Stats{PacketLoss: 1, RTT: -6.0}
+	directStats = &routing.Stats{PacketLoss: 2}
 	decision = routeDecisionFunc(decision, predictedNNStats, &routing.Stats{}, directStats)
 	assert.Equal(t, routing.Decision{true, routing.DecisionHighPacketLossMultipath}, decision)
 }
