@@ -17,10 +17,10 @@ type PostSessionHandler struct {
 	portalPublisher    pubsub.Publisher
 	biller             billing.Biller
 	logger             log.Logger
-	metrics            *metrics.SessionErrorMetrics
+	metrics            *metrics.SessionMetrics
 }
 
-func NewPostSessionHandler(numGoroutines int, chanBufferSize int, portalPublisher pubsub.Publisher, biller billing.Biller, logger log.Logger, metrics *metrics.SessionErrorMetrics) *PostSessionHandler {
+func NewPostSessionHandler(numGoroutines int, chanBufferSize int, portalPublisher pubsub.Publisher, biller billing.Biller, logger log.Logger, metrics *metrics.SessionMetrics) *PostSessionHandler {
 	return &PostSessionHandler{
 		numGoroutines:      numGoroutines,
 		postSessionChannel: make(chan *PostSessionData, chanBufferSize),
@@ -39,15 +39,17 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 				case postSessionData := <-post.postSessionChannel:
 					if portalDataBytes, err := postSessionData.ProcessPortalData(post.portalPublisher); err != nil {
 						level.Error(post.logger).Log("msg", "could not update portal data", "err", err)
-						post.metrics.UpdatePortalFailure.Add(1)
+						post.metrics.ErrorMetrics.UpdatePortalFailure.Add(1)
 					} else {
 						level.Debug(post.logger).Log("msg", fmt.Sprintf("published %d bytes to portal cruncher", portalDataBytes))
 					}
 
 					if err := postSessionData.ProcessBillingEntry(post.biller); err != nil {
 						level.Error(post.logger).Log("msg", "could not submit billing entry", "err", err)
-						post.metrics.BillingFailure.Add(1)
+						post.metrics.ErrorMetrics.BillingFailure.Add(1)
 					}
+
+					post.metrics.PostSessionEntriesFinished.Add(1)
 				case <-ctx.Done():
 					return
 				}
@@ -58,6 +60,10 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 
 func (post *PostSessionHandler) Send(postSessionData *PostSessionData) {
 	post.postSessionChannel <- postSessionData
+}
+
+func (post *PostSessionHandler) QueueSize() uint64 {
+	return uint64(len(post.postSessionChannel))
 }
 
 type PostSessionData struct {

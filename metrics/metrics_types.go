@@ -5,23 +5,29 @@ import (
 )
 
 type SessionMetrics struct {
-	Invocations     Counter
-	DirectSessions  Counter
-	NextSessions    Counter
-	DurationGauge   Gauge
-	LongDuration    Counter
-	DecisionMetrics DecisionMetrics
-	ErrorMetrics    SessionErrorMetrics
+	Invocations                Counter
+	DirectSessions             Counter
+	NextSessions               Counter
+	DurationGauge              Gauge
+	LongDuration               Counter
+	PostSessionEntriesSent     Counter
+	PostSessionEntriesFinished Counter
+	PostSessionBufferLength    Gauge
+	DecisionMetrics            DecisionMetrics
+	ErrorMetrics               SessionErrorMetrics
 }
 
 var EmptySessionMetrics SessionMetrics = SessionMetrics{
-	Invocations:     &EmptyCounter{},
-	DirectSessions:  &EmptyCounter{},
-	NextSessions:    &EmptyCounter{},
-	DurationGauge:   &EmptyGauge{},
-	LongDuration:    &EmptyCounter{},
-	DecisionMetrics: EmptyDecisionMetrics,
-	ErrorMetrics:    EmptySessionErrorMetrics,
+	Invocations:                &EmptyCounter{},
+	DirectSessions:             &EmptyCounter{},
+	NextSessions:               &EmptyCounter{},
+	DurationGauge:              &EmptyGauge{},
+	LongDuration:               &EmptyCounter{},
+	PostSessionEntriesSent:     &EmptyCounter{},
+	PostSessionEntriesFinished: &EmptyCounter{},
+	PostSessionBufferLength:    &EmptyGauge{},
+	DecisionMetrics:            EmptyDecisionMetrics,
+	ErrorMetrics:               EmptySessionErrorMetrics,
 }
 
 type SessionErrorMetrics struct {
@@ -791,6 +797,39 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		ID:          "session.long_durations",
 		Unit:        "durations",
 		Description: "The number of session update calls that took longer than 100ms to complete",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.PostSessionEntriesSent, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Post Session Entries Sent",
+		ServiceName: "server_backend",
+		ID:          "session.post_session.entries.sent",
+		Unit:        "entries",
+		Description: "The number of post session entries sent to the channel",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.PostSessionEntriesFinished, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Post Session Entries Sent",
+		ServiceName: "server_backend",
+		ID:          "session.post_session.entries.finished",
+		Unit:        "entries",
+		Description: "The number of post session entries that have completed processing",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.PostSessionBufferLength, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Post Session Buffer Length",
+		ServiceName: "server_backend",
+		ID:          "session.post_session.buffer.size",
+		Unit:        "entries",
+		Description: "The number of queued post session entries waiting to be processed",
 	})
 	if err != nil {
 		return nil, err
