@@ -43,6 +43,9 @@ type RoutingRulesSettings struct {
 	// Not used when multipath enabled!
 	RTTVeto float32
 
+	// The amount of allowed packet loss on the direct route before a network next route will be sent.
+	PacketLossThreshold float32
+
 	// If true, the session will be vetoed after switching from a network next route to a direct route regardless of the RTTVeto value
 	// Not used when multipath enabled!
 	EnableYouOnlyLiveOnce bool
@@ -57,10 +60,6 @@ type RoutingRulesSettings struct {
 
 	// If true, enables multipath when there is MultipathPacketLossThreshold% or more packet loss on the direct route
 	EnableMultipathForPacketLoss bool
-
-	// The amount of allowed packet loss on the direct route before a multipath route will be sent.
-	// This is only used if EnableMultipathForPacketLoss is true.
-	MultipathPacketLossThreshold float32
 
 	// If true, enables multipath when there is 50ms or more jitter on the direct route
 	EnableMultipathForJitter bool
@@ -85,17 +84,17 @@ type RoutingRulesSettings struct {
 }
 
 var DefaultRoutingRulesSettings = RoutingRulesSettings{
-	MaxNibblinsPerGB:             250000000,
-	EnvelopeKbpsUp:               256,
-	EnvelopeKbpsDown:             256,
-	AcceptableLatency:            -1.0,
-	RTTThreshold:                 5.0,
-	RTTEpsilon:                   2.0,
-	RTTHysteresis:                -5.0,
-	RTTVeto:                      -20.0,
-	TryBeforeYouBuyMaxSlices:     3,
-	SelectionPercentage:          0,
-	MultipathPacketLossThreshold: 2.0,
+	MaxNibblinsPerGB:         250000000,
+	EnvelopeKbpsUp:           256,
+	EnvelopeKbpsDown:         256,
+	AcceptableLatency:        -1.0,
+	RTTThreshold:             5.0,
+	RTTEpsilon:               2.0,
+	RTTHysteresis:            -5.0,
+	RTTVeto:                  -20.0,
+	PacketLossThreshold:      2.0,
+	TryBeforeYouBuyMaxSlices: 3,
+	SelectionPercentage:      0,
 }
 
 // LocalRoutingRulesSettings sets the rules for localhost:20000 Happy Path
@@ -103,14 +102,14 @@ var DefaultRoutingRulesSettings = RoutingRulesSettings{
 // slower than direct. Ditto for hysterisis and veto (more "real" than
 // forcing with 'Mode: ModeForceNext`).
 var LocalRoutingRulesSettings = RoutingRulesSettings{
-	MaxNibblinsPerGB:             250000000,
-	EnvelopeKbpsUp:               100,
-	EnvelopeKbpsDown:             100,
-	AcceptableLatency:            -1.0,
-	RTTThreshold:                 -5,
-	RTTEpsilon:                   0.1,
-	RTTHysteresis:                -10,
-	RTTVeto:                      -20,
-	SelectionPercentage:          100,
-	MultipathPacketLossThreshold: 1.0,
+	MaxNibblinsPerGB:    250000000,
+	EnvelopeKbpsUp:      100,
+	EnvelopeKbpsDown:    100,
+	AcceptableLatency:   -1.0,
+	RTTThreshold:        -5,
+	RTTEpsilon:          0.1,
+	RTTHysteresis:       -10,
+	RTTVeto:             -20,
+	PacketLossThreshold: 1.0,
+	SelectionPercentage: 100,
 }
