@@ -81,11 +81,11 @@ func (m *UDPServerMux) Start(ctx context.Context) error {
 }
 
 // Start begins accepting UDP packets from the UDP connection and will block
-func (m *UDPServerMux2) Start(ctx context.Context) error {
+func (m *UDPServerMux2) Start(ctx context.Context, numPostSessionGoroutines int, postSessionBufferSize int) error {
 	// Create a post session handler to handle the post process of session updates.
 	// This way, we can quickly return from the session update handler and not spawn a
 	// ton of goroutines if things get backed up.
-	postSessionHandler := NewPostSessionHandler(100, 1000000, m.PortalPublisher, m.Biller, m.Logger, m.SessionErrorMetrics)
+	postSessionHandler := NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, m.PortalPublisher, m.Biller, m.Logger, m.SessionErrorMetrics)
 	postSessionHandler.StartProcessing(ctx)
 
 	numThreads := 8

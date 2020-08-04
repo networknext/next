@@ -688,6 +688,30 @@ func main() {
 	{
 		fmt.Printf("starting udp server\n")
 
+		numPostSessionGoroutinesString, ok := os.LookupEnv("POST_SESSION_THREAD_COUNT")
+		if !ok {
+			level.Error(logger).Log("err", "env var POST_SESSION_THREAD_COUNT must be set")
+			os.Exit(1)
+		}
+
+		numPostSessionGoroutines, err := strconv.ParseInt(numPostSessionGoroutinesString, 10, 64)
+		if err != nil {
+			level.Error(logger).Log("envvar", "POST_SESSION_THREAD_COUNT", "msg", "could not parse", "err", err)
+			os.Exit(1)
+		}
+
+		postSessionBufferSizeString, ok := os.LookupEnv("POST_SESSION_BUFFER_SIZE")
+		if !ok {
+			level.Error(logger).Log("err", "env var POST_SESSION_BUFFER_SIZE must be set")
+			os.Exit(1)
+		}
+
+		postSessionBufferSize, err := strconv.ParseInt(postSessionBufferSizeString, 10, 64)
+		if err != nil {
+			level.Error(logger).Log("envvar", "POST_SESSION_BUFFER_SIZE", "msg", "could not parse", "err", err)
+			os.Exit(1)
+		}
+
 		serverInitConfig := &transport.ServerInitParams{
 			ServerPrivateKey:  serverPrivateKey,
 			Storer:            db,
@@ -734,7 +758,7 @@ func main() {
 		}
 
 		go func() {
-			if err := mux.Start(ctx); err != nil {
+			if err := mux.Start(ctx, int(numPostSessionGoroutines), int(postSessionBufferSize)); err != nil {
 				fmt.Println(err)
 				os.Exit(1)
 			}

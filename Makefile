@@ -177,6 +177,14 @@ ifndef USE_THREAD_POOL
 export USE_THREAD_POOL = true
 endif
 
+ifndef POST_SESSION_THREAD_COUNT
+export POST_SESSION_THREAD_COUNT = 100
+endif
+
+ifndef POST_SESSION_BUFFER_SIZE
+export POST_SESSION_BUFFER_SIZE = 1000
+endif
+
 .PHONY: help
 help: ## this list
 	@echo "$$(grep -hE '^\S+:.*##' $(MAKEFILE_LIST) | sed -e 's/:.*##\s*/:/' -e 's/^\(.\+\):\(.*\)/\\033[36m\1\\033[m:\2/' | column -c2 -t -s :)"
