@@ -533,17 +533,22 @@ WorkspaceHandler = {
 	changeSettingsPage(page) {
 		let showSettings = false;
 		let showConfig = false;
+		let showShader = false;
 		switch (page) {
+			case 'config':
+				showConfig = true;
+				break;
 			case 'users':
 				showSettings = true;
 				break;
-			case 'config':
-				showConfig = true;
+			case 'shader':
+				showShader = true;
 				break;
 		}
 		Object.assign(rootComponent.$data.pages.settings, {
 			showConfig: showConfig,
 			showSettings: showSettings,
+			showShader: showShader
 		});
 	},
 	changePage(page, options) {
@@ -593,6 +598,10 @@ WorkspaceHandler = {
 					showConfig: false,
 					showSettings: false,
 					updateKey: {
+						failure: '',
+						success: '',
+					},
+					updateShader: {
 						failure: '',
 						success: '',
 					},
@@ -714,7 +723,6 @@ WorkspaceHandler = {
 				UserHandler.userInfo.pubKey = response.game_config.public_key;
 				UserHandler.userInfo.company = response.game_config.company;
 				UserHandler.routeShader = response.customer_route_shader
-				console.log(UserHandler.routeShader)
 			})
 			.catch((e) => {
 				console.log("Something went wrong fetching public key");
@@ -1023,7 +1031,7 @@ function startApp() {
 	UserHandler
 		.fetchCurrentUserInfo()
 		.then(() => {
-			createVueComponents();
+			createVueComponent();
 			const isDev = window.location.hostname == 'portal-dev.networknext.com';
 			if (UserHandler.isAdmin() || isDev) {
 				fetch("/version", {
@@ -1080,7 +1088,7 @@ function startApp() {
 		});
 }
 
-function createVueComponents() {
+function createVueComponent() {
 	rootComponent = new Vue({
 		el: '#root',
 		data: {
@@ -1172,7 +1180,12 @@ function createVueComponents() {
 					showAccounts: false,
 					showConfig: false,
 					showSettings: false,
+					showShader: false,
 					updateKey: {
+						failure: '',
+						success: '',
+					},
+					updateShader: {
 						failure: '',
 						success: '',
 					},
@@ -1239,15 +1252,29 @@ function updatePubKey() {
 }
 
 function updateRouteShader () {
-	console.log(UserHandler.routeShader)
 	JSONRPCClient.call('BuyersService.UpdateRouteShader', UserHandler.routeShader)
 		.then((response) => {
-			console.log(response)
 			UserHandler.routeShader = response.customer_route_shader
+			Object.assign(rootComponent.$data.pages.settings.updateShader, {
+				success: 'Updated route shader successfully',
+			});
+			setTimeout(() => {
+				Object.assign(rootComponent.$data.pages.settings.updateShader, {
+					success: '',
+				});
+			}, 5000);
 		})
 		.catch((error) => {
 			console.log('Something went wrong updating the route shader')
 			console.log(error)
+			Object.assign(rootComponent.$data.pages.settings.updateShader, {
+				failure: 'Failed to update route shader',
+			});
+			setTimeout(() => {
+				Object.assign(rootComponent.$data.pages.settings.updateShader, {
+					failure: '',
+				});
+			}, 5000);
 		})
 }
 
