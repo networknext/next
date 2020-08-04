@@ -37,20 +37,17 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 			for {
 				select {
 				case postSessionData := <-post.postSessionChannel:
-					go func() {
-						if portalDataBytes, err := postSessionData.ProcessPortalData(post.portalPublisher); err != nil {
-							level.Error(post.logger).Log("msg", "could not update portal data", "err", err)
-							post.metrics.UpdatePortalFailure.Add(1)
-						} else {
-							level.Debug(post.logger).Log("msg", fmt.Sprintf("published %d bytes to portal cruncher", portalDataBytes))
-						}
-					}()
-					go func() {
-						if err := postSessionData.ProcessBillingEntry(post.biller); err != nil {
-							level.Error(post.logger).Log("msg", "could not submit billing entry", "err", err)
-							post.metrics.BillingFailure.Add(1)
-						}
-					}()
+					if portalDataBytes, err := postSessionData.ProcessPortalData(post.portalPublisher); err != nil {
+						level.Error(post.logger).Log("msg", "could not update portal data", "err", err)
+						post.metrics.UpdatePortalFailure.Add(1)
+					} else {
+						level.Debug(post.logger).Log("msg", fmt.Sprintf("published %d bytes to portal cruncher", portalDataBytes))
+					}
+
+					if err := postSessionData.ProcessBillingEntry(post.biller); err != nil {
+						level.Error(post.logger).Log("msg", "could not submit billing entry", "err", err)
+						post.metrics.BillingFailure.Add(1)
+					}
 				case <-ctx.Done():
 					return
 				}
