@@ -77,6 +77,8 @@ func (dr DecisionReason) String() string {
 		reason = "No Location"
 	case DecisionBuyerNotLive:
 		reason = "Buyer Not Live"
+	case DecisionPacketLossReduction:
+		reason = "Packet Loss Reduction"
 	default:
 		reason = "Unknown"
 	}
@@ -108,26 +110,52 @@ const (
 	DecisionVetoNoRoute             DecisionReason = 1 << 21
 	DecisionNoLocation              DecisionReason = 1 << 22
 	DecisionBuyerNotLive            DecisionReason = 1 << 23
+	DecisionPacketLossReduction     DecisionReason = 1 << 24
 )
 
-// DecideUpgradeRTT will decide if the client should use the network next route if the RTT reduction is greater than the given threshold.
+// DecideUpgrade will decide if the client should use the network next route if the RTT reduction is greater than the given threshold
+// or the packet loss reduction is greater than the given threshold.
 // This decision only upgrades direct routes, so network next routes aren't considered.
 // Multipath sessions aren't considered.
-func DecideUpgradeRTT(rttThreshold float64) DecisionFunc {
+func DecideUpgrade(rttThreshold float64, packetLossThreshold float64, sdkVersion SDKVersion) DecisionFunc {
 	return func(prevDecision Decision, predictedNextStats, lastNextStats, lastDirectStats *Stats) Decision {
 		// If we've already decided on multipath, then don't change the reason
 		if IsMultipath(prevDecision) {
 			return prevDecision
 		}
 
-		predictedImprovement := lastDirectStats.RTT - predictedNextStats.RTT
+		predictedImprovementRTT := lastDirectStats.RTT - predictedNextStats.RTT
+		predictedImprovementPacketLoss := lastDirectStats.PacketLoss - predictedNextStats.PacketLoss
 
-		// If upgrading to a nextwork next route would reduce RTT by at least the given threshold, upgrade
-		if !prevDecision.OnNetworkNext && !IsVetoed(prevDecision) && predictedImprovement >= rttThreshold {
-			return Decision{true, DecisionRTTReduction}
+		if !prevDecision.OnNetworkNext && !IsVetoed(prevDecision) {
+			decision := prevDecision
+
+			// If upgrading to a nextwork next route would reduce RTT by at least the given threshold, upgrade
+			if predictedImprovementRTT >= rttThreshold {
+				decision.OnNetworkNext = true
+				decision.Reason = DecisionRTTReduction
+			}
+
+			// If upgrading to a nextwork next route would reduce packet loss by at least the given threshold, upgrade
+			if predictedImprovementPacketLoss >= packetLossThreshold {
+				if sdkVersion.Compare(SDKVersion{3, 4, 0}) == SDKVersionOlder {
+					// For older SDK versions, it's not possible to reduce packet loss if multipath isn't enabled and the route has higher RTT than direct.
+					// So see if we can get an RTT reduction of at least 5ms before checking if we can reduce packet loss
+					if predictedImprovementRTT >= 5 {
+						decision.OnNetworkNext = true
+						decision.Reason |= DecisionPacketLossReduction
+					}
+				} else {
+					// Newer SDK versions don't have this limitation, so just set packet loss reduction normally
+					decision.OnNetworkNext = true
+					decision.Reason |= DecisionPacketLossReduction
+				}
+			}
+
+			return decision
 		}
 
-		// If the RTT isn't reduced, return the original route consideration
+		// If the we can't upgrade, return the original route consideration
 		return prevDecision
 	}
 }
@@ -319,6 +347,9 @@ func DecideMultipath(rttMultipath bool, jitterMultipath bool, packetLossMultipat
 			return prevDecision
 		}
 
+		predictedImprovementRTT := lastDirectStats.RTT - predictedNextStats.RTT
+		predictedImprovementPacketLoss := lastDirectStats.PacketLoss - predictedNextStats.PacketLoss
+
 		decision := prevDecision
 
 		// Reset the decision reason if multipath is enabled
@@ -328,7 +359,7 @@ func DecideMultipath(rttMultipath bool, jitterMultipath bool, packetLossMultipat
 		}
 
 		// If the RTT reduction would result in direct -> next, then use the RTT multipath decision reason
-		if rttMultipath && lastDirectStats.RTT-predictedNextStats.RTT >= rttThreshold {
+		if rttMultipath && predictedImprovementRTT >= rttThreshold {
 			decision.OnNetworkNext = true
 			decision.Reason |= DecisionRTTReductionMultipath
 		}
@@ -339,8 +370,8 @@ func DecideMultipath(rttMultipath bool, jitterMultipath bool, packetLossMultipat
 			decision.Reason |= DecisionHighJitterMultipath
 		}
 
-		// If the direct packet loss is more than 1%, then use multipath for packet loss
-		if packetLossMultipath && lastDirectStats.PacketLoss >= packetLossThreshold {
+		// If the packet loss improvement is more than the packet loss threshold, then use multipath for packet loss
+		if packetLossMultipath && predictedImprovementPacketLoss >= packetLossThreshold {
 			decision.OnNetworkNext = true
 			decision.Reason |= DecisionHighPacketLossMultipath
 		}

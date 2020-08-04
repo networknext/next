@@ -350,7 +350,7 @@ func ServerInitHandlerFunc(params *ServerInitParams) UDPHandlerFunc {
 
 		// todo: ryan. in the old code we checked if this buyer had the "internal" flag set, and then only in that case we
 		// allowed 0.0.0 version. this is a MUCH better approach than checking source ip address for loopback. please fix.
-		if !incoming.SourceAddr.IP.IsLoopback() && !packet.Version.AtLeast(SDKVersionMin) {
+		if !incoming.SourceAddr.IP.IsLoopback() && !packet.Version.AtLeast(routing.SDKVersionMin) {
 			// fmt.Printf("sdk too old: %s\n", packet.Version.String())
 			params.Metrics.ErrorMetrics.SDKTooOld.Add(1)
 			writeServerInitResponse(params, w, &packet, InitResponseOldSDKVersion)
@@ -460,7 +460,7 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 
 		// todo: in the old code we checked if we were running on a buyer account with "internal" set, and allowed 0.0.0 there only.
 		// this is much better than checking the loopback address here. please fix ryan
-		if !incoming.SourceAddr.IP.IsLoopback() && !packet.Version.AtLeast(SDKVersionMin) {
+		if !incoming.SourceAddr.IP.IsLoopback() && !packet.Version.AtLeast(routing.SDKVersionMin) {
 			level.Error(params.Logger).Log("msg", "ignoring old sdk version", "version", packet.Version.String())
 			params.Metrics.ErrorMetrics.UnserviceableUpdate.Add(1)
 			params.Metrics.ErrorMetrics.SDKTooOld.Add(1)
@@ -1008,7 +1008,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 		// Get the best route. This can be a network next route or a direct route.
 
 		var bestRoute *routing.Route
-		bestRoute, routeDecision = GetBestRoute(routeMatrix, nearRelays, datacenterRelays, &params.Metrics.ErrorMetrics, &buyer,
+		bestRoute, routeDecision = GetBestRoute(routeMatrix, nearRelays, datacenterRelays, &params.Metrics.ErrorMetrics, &buyer, packet.Version,
 			sessionDataReadOnly.RouteHash, sessionDataReadOnly.RouteDecision, &lastNextStats, &lastDirectStats, nextSliceCounter, &committedData, &directRoute)
 
 		if routeDecision.OnNetworkNext {
@@ -1027,7 +1027,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 // GetBestRoute returns the best route that a session can take for this slice. If we can't serve a network next route, the returned route will be the passed in direct route.
 // This function can either return a network next route or a direct route, and it also returns a reason as to why the route was chosen.
 func GetBestRoute(routeMatrix RouteProvider, nearRelays []routing.Relay, datacenterRelays []routing.Relay, errorMetrics *metrics.SessionErrorMetrics,
-	buyer *routing.Buyer, prevRouteHash uint64, prevRouteDecision routing.Decision, lastNextStats *routing.Stats, lastDirectStats *routing.Stats,
+	buyer *routing.Buyer, sdkVersion routing.SDKVersion, prevRouteHash uint64, prevRouteDecision routing.Decision, lastNextStats *routing.Stats, lastDirectStats *routing.Stats,
 	onNNSliceCounter uint64, committedData *routing.CommittedData, directRoute *routing.Route) (*routing.Route, routing.Decision) {
 
 	// We need to get a next route to compare against direct
@@ -1065,10 +1065,10 @@ func GetBestRoute(routeMatrix RouteProvider, nearRelays []routing.Relay, datacen
 	//	5. Decide if we should run the committed logic. This is only run if the buyer has "try before you buy" enabled in the route shader.
 	// More information on how each decision is made can be found in their respective decision functions.
 	deciderFuncs := []routing.DecisionFunc{
-		routing.DecideUpgradeRTT(float64(buyer.RoutingRulesSettings.RTTThreshold)),
+		routing.DecideUpgrade(float64(buyer.RoutingRulesSettings.RTTThreshold), float64(buyer.RoutingRulesSettings.PacketLossThreshold), sdkVersion),
 		routing.DecideDowngradeRTT(float64(buyer.RoutingRulesSettings.RTTHysteresis), buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
 		routing.DecideVeto(onNNSliceCounter, float64(buyer.RoutingRulesSettings.RTTVeto), buyer.RoutingRulesSettings.EnablePacketLossSafety, buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
-		routing.DecideMultipath(buyer.RoutingRulesSettings.EnableMultipathForRTT, buyer.RoutingRulesSettings.EnableMultipathForJitter, buyer.RoutingRulesSettings.EnableMultipathForPacketLoss, float64(buyer.RoutingRulesSettings.RTTThreshold), float64(buyer.RoutingRulesSettings.MultipathPacketLossThreshold)),
+		routing.DecideMultipath(buyer.RoutingRulesSettings.EnableMultipathForRTT, buyer.RoutingRulesSettings.EnableMultipathForJitter, buyer.RoutingRulesSettings.EnableMultipathForPacketLoss, float64(buyer.RoutingRulesSettings.RTTThreshold), float64(buyer.RoutingRulesSettings.PacketLossThreshold)),
 	}
 
 	if buyer.RoutingRulesSettings.EnableTryBeforeYouBuy {
@@ -1309,7 +1309,7 @@ func PostSessionUpdate(params PostSessionUpdateParams) {
 		NextBytesDown:             params.nextBytesDown,
 		DatacenterID:              params.serverDataReadOnly.Datacenter.ID,
 		RTTReduction:              params.prevRouteDecision.Reason&routing.DecisionRTTReduction != 0 || params.prevRouteDecision.Reason&routing.DecisionRTTReductionMultipath != 0,
-		PacketLossReduction:       params.prevRouteDecision.Reason&routing.DecisionHighPacketLossMultipath != 0,
+		PacketLossReduction:       params.prevRouteDecision.Reason&routing.DecisionPacketLossReduction != 0 || params.prevRouteDecision.Reason&routing.DecisionHighPacketLossMultipath != 0,
 		NextRelaysPrice:           nextRelaysPriceArray,
 	}
 
@@ -1327,7 +1327,7 @@ func updatePortalData(portalPublisher pubsub.Publisher, packet *SessionUpdatePac
 	}
 
 	var hashedID uint64
-	if !packet.Version.IsInternal() && packet.Version.Compare(SDKVersion{3, 4, 5}) == SDKVersionOlder {
+	if !packet.Version.IsInternal() && packet.Version.Compare(routing.SDKVersion{3, 4, 5}) == routing.SDKVersionOlder {
 		hash := fnv.New64a()
 		byteArray := make([]byte, 8)
 		binary.LittleEndian.PutUint64(byteArray, packet.UserHash)
@@ -1442,6 +1442,10 @@ func addRouteDecisionMetric(d routing.Decision, m *metrics.SessionMetrics) {
 		m.DecisionMetrics.VetoCommit.Add(1)
 	case routing.DecisionBuyerNotLive:
 		m.DecisionMetrics.BuyerNotLive.Add(1)
+	case routing.DecisionPacketLossReduction:
+		m.DecisionMetrics.PacketLossReduction.Add(1)
+	case routing.DecisionRTTReduction | routing.DecisionPacketLossReduction:
+		m.DecisionMetrics.RTTAndPacketLossReduction.Add(1)
 	}
 }
 

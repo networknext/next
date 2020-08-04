@@ -7,17 +7,17 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// Test case where we should upgrade to a nextwork next route
-func TestDecideUpgradeRoute(t *testing.T) {
+// Test case where we should upgrade to a nextwork next route due to RTT reduction
+func TestDecideUpgradeRouteRTT(t *testing.T) {
 	rrs := routing.DefaultRoutingRulesSettings
 
 	onNNSliceCounter := uint64(0)
 
 	decisionFuncs := []routing.DecisionFunc{
-		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
+		routing.DecideUpgrade(float64(rrs.RTTThreshold), float64(rrs.PacketLossThreshold), routing.SDKVersion{0, 0, 0}),
 		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), rrs.EnableYouOnlyLiveOnce),
 		routing.DecideVeto(onNNSliceCounter, float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
-		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.MultipathPacketLossThreshold)),
+		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.PacketLossThreshold)),
 	}
 
 	lastNNStats := &routing.Stats{
@@ -57,6 +57,107 @@ func TestDecideUpgradeRoute(t *testing.T) {
 	}
 }
 
+// Test case where we should upgrade to a nextwork next route due to packet loss reduction
+func TestDecideUpgradeRoutePacketLoss(t *testing.T) {
+	rrs := routing.DefaultRoutingRulesSettings
+
+	onNNSliceCounter := uint64(0)
+
+	decisionFuncs := []routing.DecisionFunc{
+		routing.DecideUpgrade(float64(rrs.RTTThreshold), float64(rrs.PacketLossThreshold), routing.SDKVersion{0, 0, 0}),
+		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), rrs.EnableYouOnlyLiveOnce),
+		routing.DecideVeto(onNNSliceCounter, float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
+		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.PacketLossThreshold)),
+	}
+
+	lastNNStats := &routing.Stats{
+		RTT:        0,
+		Jitter:     0,
+		PacketLoss: 0,
+	}
+
+	lastDirectStats := &routing.Stats{
+		RTT:        50,
+		Jitter:     0,
+		PacketLoss: 5,
+	}
+
+	route := routing.Route{
+		Stats: routing.Stats{
+			RTT:        50,
+			Jitter:     0,
+			PacketLoss: 0,
+		},
+	}
+
+	startingDecision := routing.Decision{}
+
+	expected := routing.Decision{
+		OnNetworkNext: true,
+		Reason:        routing.DecisionPacketLossReduction,
+	}
+
+	// Loop through all permutations of the decision functions and test that the result is the same
+	decisionFuncIndices := createIndexSlice(decisionFuncs)
+	perms := permutations(decisionFuncIndices)
+	funcs := replaceIndicesWithDecisionFuncs(perms, decisionFuncs)
+	for i := 0; i < len(funcs); i++ {
+		decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, funcs[i]...)
+		assert.Equal(t, expected, decision)
+	}
+}
+
+// Test case where we should upgrade to a nextwork next route due to packet loss reduction with an older SDK
+func TestDecideUpgradeRoutePacketLossOldSDK(t *testing.T) {
+	rrs := routing.DefaultRoutingRulesSettings
+	rrs.RTTThreshold = 10.0 // increase the threshold since for older SDK versions we need at least 5ms RTT reduction to consider packet loss reduction
+
+	onNNSliceCounter := uint64(0)
+
+	decisionFuncs := []routing.DecisionFunc{
+		routing.DecideUpgrade(float64(rrs.RTTThreshold), float64(rrs.PacketLossThreshold), routing.SDKVersionMin),
+		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), rrs.EnableYouOnlyLiveOnce),
+		routing.DecideVeto(onNNSliceCounter, float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
+		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.PacketLossThreshold)),
+	}
+
+	lastNNStats := &routing.Stats{
+		RTT:        0,
+		Jitter:     0,
+		PacketLoss: 0,
+	}
+
+	lastDirectStats := &routing.Stats{
+		RTT:        50,
+		Jitter:     0,
+		PacketLoss: 5,
+	}
+
+	route := routing.Route{
+		Stats: routing.Stats{
+			RTT:        45,
+			Jitter:     0,
+			PacketLoss: 0,
+		},
+	}
+
+	startingDecision := routing.Decision{}
+
+	expected := routing.Decision{
+		OnNetworkNext: true,
+		Reason:        routing.DecisionPacketLossReduction,
+	}
+
+	// Loop through all permutations of the decision functions and test that the result is the same
+	decisionFuncIndices := createIndexSlice(decisionFuncs)
+	perms := permutations(decisionFuncIndices)
+	funcs := replaceIndicesWithDecisionFuncs(perms, decisionFuncs)
+	for i := 0; i < len(funcs); i++ {
+		decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, funcs[i]...)
+		assert.Equal(t, expected, decision)
+	}
+}
+
 // Test case where we should get off a nextwork next route due to hysteresis
 func TestDecideDowngradeRTTHysteresis(t *testing.T) {
 	rrs := routing.DefaultRoutingRulesSettings
@@ -64,10 +165,10 @@ func TestDecideDowngradeRTTHysteresis(t *testing.T) {
 	onNNSliceCounter := uint64(0)
 
 	decisionFuncs := []routing.DecisionFunc{
-		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
+		routing.DecideUpgrade(float64(rrs.RTTThreshold), float64(rrs.PacketLossThreshold), routing.SDKVersion{0, 0, 0}),
 		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), rrs.EnableYouOnlyLiveOnce),
 		routing.DecideVeto(onNNSliceCounter, float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
-		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.MultipathPacketLossThreshold)),
+		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.PacketLossThreshold)),
 	}
 
 	lastNNStats := &routing.Stats{
@@ -118,10 +219,10 @@ func TestDecideDowngradeRTTHysteresisYOLO(t *testing.T) {
 	onNNSliceCounter := uint64(0)
 
 	decisionFuncs := []routing.DecisionFunc{
-		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
+		routing.DecideUpgrade(float64(rrs.RTTThreshold), float64(rrs.PacketLossThreshold), routing.SDKVersion{0, 0, 0}),
 		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), rrs.EnableYouOnlyLiveOnce),
 		routing.DecideVeto(onNNSliceCounter, float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
-		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.MultipathPacketLossThreshold)),
+		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.PacketLossThreshold)),
 	}
 
 	lastNNStats := &routing.Stats{
@@ -176,10 +277,10 @@ func TestDecideRTTVeto(t *testing.T) {
 	onNNSliceCounter := uint64(0)
 
 	decisionFuncs := []routing.DecisionFunc{
-		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
+		routing.DecideUpgrade(float64(rrs.RTTThreshold), float64(rrs.PacketLossThreshold), routing.SDKVersion{0, 0, 0}),
 		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
 		routing.DecideVeto(onNNSliceCounter, float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
-		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.MultipathPacketLossThreshold)),
+		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.PacketLossThreshold)),
 	}
 
 	lastNNStats := &routing.Stats{
@@ -235,10 +336,10 @@ func TestDecideRTTVetoYOLO(t *testing.T) {
 	onNNSliceCounter := uint64(0)
 
 	decisionFuncs := []routing.DecisionFunc{
-		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
+		routing.DecideUpgrade(float64(rrs.RTTThreshold), float64(rrs.PacketLossThreshold), routing.SDKVersion{0, 0, 0}),
 		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
 		routing.DecideVeto(onNNSliceCounter, float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
-		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.MultipathPacketLossThreshold)),
+		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.PacketLossThreshold)),
 	}
 
 	lastNNStats := &routing.Stats{
@@ -294,10 +395,10 @@ func TestDecidePacketLossVetoEarlySlice(t *testing.T) {
 	onNNSliceCounter := uint64(2)
 
 	decisionFuncs := []routing.DecisionFunc{
-		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
+		routing.DecideUpgrade(float64(rrs.RTTThreshold), float64(rrs.PacketLossThreshold), routing.SDKVersion{0, 0, 0}),
 		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
 		routing.DecideVeto(onNNSliceCounter, float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
-		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.MultipathPacketLossThreshold)),
+		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.PacketLossThreshold)),
 	}
 
 	lastNNStats := &routing.Stats{
@@ -353,10 +454,10 @@ func TestDecidePacketLossVeto(t *testing.T) {
 	onNNSliceCounter := uint64(3)
 
 	decisionFuncs := []routing.DecisionFunc{
-		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
+		routing.DecideUpgrade(float64(rrs.RTTThreshold), float64(rrs.PacketLossThreshold), routing.SDKVersion{0, 0, 0}),
 		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
 		routing.DecideVeto(onNNSliceCounter, float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
-		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.MultipathPacketLossThreshold)),
+		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.PacketLossThreshold)),
 	}
 
 	lastNNStats := &routing.Stats{
@@ -413,10 +514,10 @@ func TestDecidePacketLossVetoYOLO(t *testing.T) {
 	onNNSliceCounter := uint64(3)
 
 	decisionFuncs := []routing.DecisionFunc{
-		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
+		routing.DecideUpgrade(float64(rrs.RTTThreshold), float64(rrs.PacketLossThreshold), routing.SDKVersion{0, 0, 0}),
 		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce),
 		routing.DecideVeto(onNNSliceCounter, float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
-		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.MultipathPacketLossThreshold)),
+		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.PacketLossThreshold)),
 	}
 
 	lastNNStats := &routing.Stats{
@@ -471,10 +572,10 @@ func TestDecideStayOnDirectRoute(t *testing.T) {
 	onNNSliceCounter := uint64(0)
 
 	decisionFuncs := []routing.DecisionFunc{
-		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
+		routing.DecideUpgrade(float64(rrs.RTTThreshold), float64(rrs.PacketLossThreshold), routing.SDKVersion{0, 0, 0}),
 		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), rrs.EnableYouOnlyLiveOnce),
 		routing.DecideVeto(onNNSliceCounter, float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
-		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.MultipathPacketLossThreshold)),
+		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.PacketLossThreshold)),
 	}
 
 	lastNNStats := &routing.Stats{
@@ -522,10 +623,10 @@ func TestDecideStayOnNNRoute(t *testing.T) {
 	onNNSliceCounter := uint64(0)
 
 	decisionFuncs := []routing.DecisionFunc{
-		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
+		routing.DecideUpgrade(float64(rrs.RTTThreshold), float64(rrs.PacketLossThreshold), routing.SDKVersion{0, 0, 0}),
 		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), rrs.EnableYouOnlyLiveOnce),
 		routing.DecideVeto(onNNSliceCounter, float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
-		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.MultipathPacketLossThreshold)),
+		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.PacketLossThreshold)),
 	}
 
 	lastNNStats := &routing.Stats{
@@ -579,10 +680,10 @@ func TestValidateInitialSlice(t *testing.T) {
 	onNNSliceCounter := uint64(0)
 
 	decisionFuncs := []routing.DecisionFunc{
-		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
+		routing.DecideUpgrade(float64(rrs.RTTThreshold), float64(rrs.PacketLossThreshold), routing.SDKVersion{0, 0, 0}),
 		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), rrs.EnableYouOnlyLiveOnce),
 		routing.DecideVeto(onNNSliceCounter, float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
-		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.MultipathPacketLossThreshold)),
+		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.PacketLossThreshold)),
 	}
 
 	lastNNStats := &routing.Stats{
@@ -636,10 +737,10 @@ func TestDecideCommitVeto(t *testing.T) {
 	committedData := &routing.CommittedData{}
 
 	decisionFuncs := []routing.DecisionFunc{
-		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
+		routing.DecideUpgrade(float64(rrs.RTTThreshold), float64(rrs.PacketLossThreshold), routing.SDKVersion{0, 0, 0}),
 		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), rrs.EnableYouOnlyLiveOnce),
 		routing.DecideVeto(onNNSliceCounter, float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
-		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.MultipathPacketLossThreshold)),
+		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.PacketLossThreshold)),
 		routing.DecideCommitted(true, uint8(rrs.TryBeforeYouBuyMaxSlices), rrs.EnableYouOnlyLiveOnce, committedData),
 	}
 
@@ -705,10 +806,10 @@ func TestValidateCommitted(t *testing.T) {
 	committedData := &routing.CommittedData{}
 
 	decisionFuncs := []routing.DecisionFunc{
-		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
+		routing.DecideUpgrade(float64(rrs.RTTThreshold), float64(rrs.PacketLossThreshold), routing.SDKVersion{0, 0, 0}),
 		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), rrs.EnableYouOnlyLiveOnce),
 		routing.DecideVeto(onNNSliceCounter, float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
-		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.MultipathPacketLossThreshold)),
+		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.PacketLossThreshold)),
 		routing.DecideCommitted(true, uint8(rrs.TryBeforeYouBuyMaxSlices), rrs.EnableYouOnlyLiveOnce, committedData),
 	}
 
@@ -774,10 +875,10 @@ func TestDecideMultipathDirect(t *testing.T) {
 	onNNSliceCounter := uint64(0)
 
 	decisionFuncs := []routing.DecisionFunc{
-		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
+		routing.DecideUpgrade(float64(rrs.RTTThreshold), float64(rrs.PacketLossThreshold), routing.SDKVersion{0, 0, 0}),
 		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), rrs.EnableYouOnlyLiveOnce),
 		routing.DecideVeto(onNNSliceCounter, float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
-		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.MultipathPacketLossThreshold)),
+		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.PacketLossThreshold)),
 	}
 
 	lastNNStats := &routing.Stats{
@@ -828,10 +929,10 @@ func TestDecideMultipathStayActive(t *testing.T) {
 	onNNSliceCounter := uint64(0)
 
 	decisionFuncs := []routing.DecisionFunc{
-		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
+		routing.DecideUpgrade(float64(rrs.RTTThreshold), float64(rrs.PacketLossThreshold), routing.SDKVersion{0, 0, 0}),
 		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), rrs.EnableYouOnlyLiveOnce),
 		routing.DecideVeto(onNNSliceCounter, float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
-		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.MultipathPacketLossThreshold)),
+		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.PacketLossThreshold)),
 	}
 
 	lastNNStats := &routing.Stats{
@@ -880,10 +981,10 @@ func TestValidateMultipathRTT(t *testing.T) {
 	onNNSliceCounter := uint64(0)
 
 	decisionFuncs := []routing.DecisionFunc{
-		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
+		routing.DecideUpgrade(float64(rrs.RTTThreshold), float64(rrs.PacketLossThreshold), routing.SDKVersion{0, 0, 0}),
 		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), rrs.EnableYouOnlyLiveOnce),
 		routing.DecideVeto(onNNSliceCounter, float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
-		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.MultipathPacketLossThreshold)),
+		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.PacketLossThreshold)),
 	}
 
 	lastNNStats := &routing.Stats{
@@ -936,10 +1037,10 @@ func TestValidateMultipathJitter(t *testing.T) {
 	onNNSliceCounter := uint64(0)
 
 	decisionFuncs := []routing.DecisionFunc{
-		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
+		routing.DecideUpgrade(float64(rrs.RTTThreshold), float64(rrs.PacketLossThreshold), routing.SDKVersion{0, 0, 0}),
 		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), rrs.EnableYouOnlyLiveOnce),
 		routing.DecideVeto(onNNSliceCounter, float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
-		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.MultipathPacketLossThreshold)),
+		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.PacketLossThreshold)),
 	}
 
 	lastNNStats := &routing.Stats{
@@ -992,10 +1093,10 @@ func TestValidateMultipathPacketLoss(t *testing.T) {
 	onNNSliceCounter := uint64(0)
 
 	decisionFuncs := []routing.DecisionFunc{
-		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
+		routing.DecideUpgrade(float64(rrs.RTTThreshold), float64(rrs.PacketLossThreshold), routing.SDKVersion{0, 0, 0}),
 		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), rrs.EnableYouOnlyLiveOnce),
 		routing.DecideVeto(onNNSliceCounter, float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
-		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.MultipathPacketLossThreshold)),
+		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.PacketLossThreshold)),
 	}
 
 	lastNNStats := &routing.Stats{

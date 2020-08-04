@@ -162,15 +162,15 @@ type ServerInitRequestPacket struct {
 	DatacenterID uint64
 	Signature    []byte
 
-	Version SDKVersion
+	Version routing.SDKVersion
 }
 
 func (packet *ServerInitRequestPacket) Serialize(stream encoding.Stream) error {
 	packetType := uint32(PacketTypeServerInitRequest)
 	stream.SerializeBits(&packetType, 8)
-	stream.SerializeInteger(&packet.Version.Major, 0, SDKVersionMax.Major)
-	stream.SerializeInteger(&packet.Version.Minor, 0, SDKVersionMax.Minor)
-	stream.SerializeInteger(&packet.Version.Patch, 0, SDKVersionMax.Patch)
+	stream.SerializeInteger(&packet.Version.Major, 0, routing.SDKVersionMax.Major)
+	stream.SerializeInteger(&packet.Version.Minor, 0, routing.SDKVersionMax.Minor)
+	stream.SerializeInteger(&packet.Version.Patch, 0, routing.SDKVersionMax.Patch)
 	stream.SerializeUint64(&packet.RequestID)
 	stream.SerializeUint64(&packet.CustomerID)
 	stream.SerializeUint64(&packet.DatacenterID)
@@ -218,7 +218,7 @@ type ServerInitResponsePacket struct {
 	Response  uint32
 	Signature []byte
 
-	Version SDKVersion
+	Version routing.SDKVersion
 }
 
 func (packet *ServerInitResponsePacket) Serialize(stream encoding.Stream) error {
@@ -272,7 +272,7 @@ type ServerUpdatePacket struct {
 	ServerRoutePublicKey []byte
 	Signature            []byte
 
-	Version SDKVersion
+	Version routing.SDKVersion
 }
 
 func (packet *ServerUpdatePacket) Serialize(stream encoding.Stream) error {
@@ -280,15 +280,15 @@ func (packet *ServerUpdatePacket) Serialize(stream encoding.Stream) error {
 	stream.SerializeBits(&packetType, 8)
 
 	stream.SerializeUint64(&packet.Sequence)
-	stream.SerializeInteger(&packet.Version.Major, 0, SDKVersionMax.Major)
-	stream.SerializeInteger(&packet.Version.Minor, 0, SDKVersionMax.Minor)
-	stream.SerializeInteger(&packet.Version.Patch, 0, SDKVersionMax.Patch)
+	stream.SerializeInteger(&packet.Version.Major, 0, routing.SDKVersionMax.Major)
+	stream.SerializeInteger(&packet.Version.Minor, 0, routing.SDKVersionMax.Minor)
+	stream.SerializeInteger(&packet.Version.Patch, 0, routing.SDKVersionMax.Patch)
 	stream.SerializeUint64(&packet.CustomerID)
 	stream.SerializeUint64(&packet.DatacenterID)
 	stream.SerializeUint32(&packet.NumSessionsPending)
 	stream.SerializeUint32(&packet.NumSessionsUpgraded)
 	stream.SerializeAddress(&packet.ServerAddress)
-	if !packet.Version.AtLeast(SDKVersion{3, 4, 4}) {
+	if !packet.Version.AtLeast(routing.SDKVersion{3, 4, 4}) {
 		stream.SerializeAddress(&packet.ServerPrivateAddress)
 	}
 	if stream.IsReading() {
@@ -315,7 +315,7 @@ func (packet *ServerUpdatePacket) GetSignData() []byte {
 	encoding.WriteAddress(address, &packet.ServerAddress)
 	binary.Write(buf, binary.LittleEndian, address)
 
-	if !packet.Version.AtLeast(SDKVersion{3, 4, 4}) {
+	if !packet.Version.AtLeast(routing.SDKVersion{3, 4, 4}) {
 		privateAddress := make([]byte, encoding.AddressSize)
 		encoding.WriteAddress(privateAddress, &packet.ServerPrivateAddress)
 		binary.Write(buf, binary.LittleEndian, privateAddress)
@@ -415,7 +415,7 @@ type SessionUpdatePacket struct {
 	UserFlags                 uint64
 	Signature                 []byte
 
-	Version SDKVersion
+	Version routing.SDKVersion
 }
 
 func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
@@ -430,8 +430,8 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
 	stream.SerializeUint64(&packet.PlatformID)
 	stream.SerializeUint64(&packet.Tag)
 
-	if packet.Version.AtLeast(SDKVersion{3, 3, 4}) {
-		if packet.Version.AtLeast(SDKVersion{3, 4, 0}) {
+	if packet.Version.AtLeast(routing.SDKVersion{3, 3, 4}) {
+		if packet.Version.AtLeast(routing.SDKVersion{3, 4, 0}) {
 			stream.SerializeBits(&packet.Flags, 11)
 		} else {
 			stream.SerializeBits(&packet.Flags, 10)
@@ -441,7 +441,7 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
 	stream.SerializeBool(&packet.Flagged)
 	stream.SerializeBool(&packet.FallbackToDirect)
 
-	if !packet.Version.AtLeast(SDKVersion{3, 4, 0}) {
+	if !packet.Version.AtLeast(routing.SDKVersion{3, 4, 0}) {
 		stream.SerializeBool(&packet.TryBeforeYouBuy)
 	}
 
@@ -452,7 +452,7 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
 	stream.SerializeFloat32(&packet.DirectJitter)
 	stream.SerializeFloat32(&packet.DirectPacketLoss)
 	stream.SerializeBool(&packet.OnNetworkNext)
-	if packet.Version.AtLeast(SDKVersion{3, 4, 0}) {
+	if packet.Version.AtLeast(routing.SDKVersion{3, 4, 0}) {
 		stream.SerializeBool(&packet.Committed)
 	}
 	if packet.OnNetworkNext {
@@ -488,8 +488,8 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
 	stream.SerializeBytes(packet.ClientRoutePublicKey)
 	stream.SerializeUint32(&packet.KbpsUp)
 	stream.SerializeUint32(&packet.KbpsDown)
-	if packet.Version.AtLeast(SDKVersion{3, 3, 2}) {
-		if packet.Version.AtLeast(SDKVersion{3, 4, 5}) {
+	if packet.Version.AtLeast(routing.SDKVersion{3, 3, 2}) {
+		if packet.Version.AtLeast(routing.SDKVersion{3, 4, 5}) {
 			stream.SerializeUint64(&packet.PacketsSentClientToServer)
 			stream.SerializeUint64(&packet.PacketsSentServerToClient)
 		}
@@ -497,7 +497,7 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
 		stream.SerializeUint64(&packet.PacketsLostServerToClient)
 	}
 
-	if packet.Version.AtLeast(SDKVersion{3, 4, 0}) {
+	if packet.Version.AtLeast(routing.SDKVersion{3, 4, 0}) {
 		stream.SerializeUint64(&packet.UserFlags)
 	}
 
@@ -516,13 +516,13 @@ func (packet *SessionUpdatePacket) GetSignData() []byte {
 	binary.Write(buf, binary.LittleEndian, packet.PlatformID)
 	binary.Write(buf, binary.LittleEndian, packet.Tag)
 
-	if packet.Version.AtLeast(SDKVersion{3, 3, 4}) {
+	if packet.Version.AtLeast(routing.SDKVersion{3, 3, 4}) {
 		binary.Write(buf, binary.LittleEndian, packet.Flags)
 	}
 
 	binary.Write(buf, binary.LittleEndian, packet.Flagged)
 	binary.Write(buf, binary.LittleEndian, packet.FallbackToDirect)
-	if !packet.Version.AtLeast(SDKVersion{3, 4, 0}) {
+	if !packet.Version.AtLeast(routing.SDKVersion{3, 4, 0}) {
 		binary.Write(buf, binary.LittleEndian, packet.TryBeforeYouBuy)
 	}
 	binary.Write(buf, binary.LittleEndian, uint8(packet.ConnectionType))
@@ -533,7 +533,7 @@ func (packet *SessionUpdatePacket) GetSignData() []byte {
 	}
 	binary.Write(buf, binary.LittleEndian, onNetworkNext)
 
-	if packet.Version.AtLeast(SDKVersion{3, 4, 0}) {
+	if packet.Version.AtLeast(routing.SDKVersion{3, 4, 0}) {
 		var committed uint8
 		if packet.Committed {
 			committed = 1
@@ -575,8 +575,8 @@ func (packet *SessionUpdatePacket) GetSignData() []byte {
 	binary.Write(buf, binary.LittleEndian, packet.KbpsUp)
 	binary.Write(buf, binary.LittleEndian, packet.KbpsDown)
 
-	if packet.Version.AtLeast(SDKVersion{3, 3, 2}) {
-		if packet.Version.AtLeast(SDKVersion{3, 4, 5}) {
+	if packet.Version.AtLeast(routing.SDKVersion{3, 3, 2}) {
+		if packet.Version.AtLeast(routing.SDKVersion{3, 4, 5}) {
 			binary.Write(buf, binary.LittleEndian, packet.PacketsSentClientToServer)
 			binary.Write(buf, binary.LittleEndian, packet.PacketsSentServerToClient)
 		}
@@ -584,7 +584,7 @@ func (packet *SessionUpdatePacket) GetSignData() []byte {
 		binary.Write(buf, binary.LittleEndian, packet.PacketsLostServerToClient)
 	}
 
-	if packet.Version.AtLeast(SDKVersion{3, 4, 0}) {
+	if packet.Version.AtLeast(routing.SDKVersion{3, 4, 0}) {
 		binary.Write(buf, binary.LittleEndian, packet.UserFlags)
 	}
 
@@ -628,7 +628,7 @@ type SessionResponsePacket struct {
 	ServerRoutePublicKey []byte
 	Signature            []byte
 
-	Version SDKVersion
+	Version routing.SDKVersion
 }
 
 func (packet *SessionResponsePacket) Serialize(stream encoding.Stream) error {
@@ -650,7 +650,7 @@ func (packet *SessionResponsePacket) Serialize(stream encoding.Stream) error {
 	stream.SerializeInteger(&packet.RouteType, 0, routing.RouteTypeContinue)
 	if packet.RouteType != routing.RouteTypeDirect {
 		stream.SerializeBool(&packet.Multipath)
-		if packet.Version.AtLeast(SDKVersion{3, 4, 0}) {
+		if packet.Version.AtLeast(routing.SDKVersion{3, 4, 0}) {
 			stream.SerializeBool(&packet.Committed)
 		}
 		stream.SerializeInteger(&packet.NumTokens, 0, MaxTokens)
@@ -697,7 +697,7 @@ func (packet *SessionResponsePacket) GetSignData() []byte {
 			binary.Write(buf, binary.LittleEndian, uint8(0))
 		}
 
-		if packet.Version.AtLeast(SDKVersion{3, 4, 0}) {
+		if packet.Version.AtLeast(routing.SDKVersion{3, 4, 0}) {
 			if packet.Committed {
 				binary.Write(buf, binary.LittleEndian, uint8(1))
 			} else {

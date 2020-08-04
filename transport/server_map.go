@@ -15,7 +15,7 @@ const NumServerMapShards = 100000
 type ServerData struct {
 	Timestamp      int64
 	RoutePublicKey []byte
-	Version        SDKVersion
+	Version        routing.SDKVersion
 	Datacenter     routing.Datacenter
 	Sequence       uint64
 }
