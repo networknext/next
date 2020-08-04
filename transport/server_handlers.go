@@ -1253,6 +1253,7 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, params *PostSessi
 	}
 
 	postSessionHandler.Send(&postSessionData)
+	params.sessionUpdateParams.Metrics.PostSessionEntriesSent.Add(1)
 }
 
 func buildPortalData(packet *SessionUpdatePacket, lastNNStats *routing.Stats, lastDirectStats *routing.Stats, relayHops []RelayHop,

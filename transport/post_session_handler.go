@@ -48,6 +48,8 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 						level.Error(post.logger).Log("msg", "could not submit billing entry", "err", err)
 						post.metrics.ErrorMetrics.BillingFailure.Add(1)
 					}
+
+					post.metrics.PostSessionEntriesFinished.Add(1)
 				case <-ctx.Done():
 					return
 				}
@@ -58,6 +60,10 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 
 func (post *PostSessionHandler) Send(postSessionData *PostSessionData) {
 	post.postSessionChannel <- postSessionData
+}
+
+func (post *PostSessionHandler) QueueSize() uint64 {
+	return uint64(len(post.postSessionChannel))
 }
 
 type PostSessionData struct {

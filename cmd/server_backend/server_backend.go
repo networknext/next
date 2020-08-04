@@ -591,6 +591,56 @@ func main() {
 		datacenterTracker.TimeoutLoop(ctx, timeout, ticker.C)
 	}()
 
+	// Start portal cruncher publisher
+	var portalPublisher pubsub.Publisher
+	{
+		fmt.Printf("setting up portal cruncher\n")
+
+		portalCruncherHost, ok := os.LookupEnv("PORTAL_CRUNCHER_HOST")
+		if !ok {
+			level.Error(logger).Log("err", "env var PORTAL_CRUNCHER_HOST must be set")
+			os.Exit(1)
+		}
+
+		portalCruncherPublisher, err := pubsub.NewPortalCruncherPublisher(portalCruncherHost)
+		if err != nil {
+			level.Error(logger).Log("msg", "could not create portal cruncher publisher", "err", err)
+			os.Exit(1)
+		}
+
+		portalPublisher = portalCruncherPublisher
+	}
+
+	numPostSessionGoroutinesString, ok := os.LookupEnv("POST_SESSION_THREAD_COUNT")
+	if !ok {
+		level.Error(logger).Log("err", "env var POST_SESSION_THREAD_COUNT must be set")
+		os.Exit(1)
+	}
+
+	numPostSessionGoroutines, err := strconv.ParseInt(numPostSessionGoroutinesString, 10, 64)
+	if err != nil {
+		level.Error(logger).Log("envvar", "POST_SESSION_THREAD_COUNT", "msg", "could not parse", "err", err)
+		os.Exit(1)
+	}
+
+	postSessionBufferSizeString, ok := os.LookupEnv("POST_SESSION_BUFFER_SIZE")
+	if !ok {
+		level.Error(logger).Log("err", "env var POST_SESSION_BUFFER_SIZE must be set")
+		os.Exit(1)
+	}
+
+	postSessionBufferSize, err := strconv.ParseInt(postSessionBufferSizeString, 10, 64)
+	if err != nil {
+		level.Error(logger).Log("envvar", "POST_SESSION_BUFFER_SIZE", "msg", "could not parse", "err", err)
+		os.Exit(1)
+	}
+
+	// Create a post session handler to handle the post process of session updates.
+	// This way, we can quickly return from the session update handler and not spawn a
+	// ton of goroutines if things get backed up.
+	postSessionHandler := transport.NewPostSessionHandler(int(numPostSessionGoroutines), int(postSessionBufferSize), portalPublisher, biller, logger, sessionUpdateMetrics)
+	postSessionHandler.StartProcessing(ctx)
+
 	// Setup the stats print routine
 	{
 		memoryUsed := func() float64 {
@@ -622,6 +672,8 @@ func main() {
 				numEntriesQueued := serverBackendMetrics.BillingMetrics.EntriesSubmitted.Value() - serverBackendMetrics.BillingMetrics.EntriesFlushed.Value()
 				serverBackendMetrics.BillingMetrics.EntriesQueued.Set(numEntriesQueued)
 
+				sessionUpdateMetrics.PostSessionBufferLength.Set(float64(postSessionHandler.QueueSize()))
+
 				fmt.Printf("-----------------------------\n")
 				fmt.Printf("%.2f mb allocated\n", serverBackendMetrics.MemoryAllocated.Value())
 				fmt.Printf("%d goroutines\n", int(serverBackendMetrics.Goroutines.Value()))
@@ -636,6 +688,9 @@ func main() {
 				fmt.Printf("%d server init packets processed\n", int(serverInitMetrics.Invocations.Value()))
 				fmt.Printf("%d server update packets processed\n", int(serverUpdateMetrics.Invocations.Value()))
 				fmt.Printf("%d session update packets processed\n", int(sessionUpdateMetrics.Invocations.Value()))
+				fmt.Printf("%d post session entries sent\n", int(sessionUpdateMetrics.PostSessionEntriesSent.Value()))
+				fmt.Printf("%d post session entries queued\n", int(sessionUpdateMetrics.PostSessionBufferLength.Value()))
+				fmt.Printf("%d post session entries finished\n", int(sessionUpdateMetrics.PostSessionEntriesFinished.Value()))
 				fmt.Printf("%d datacenters\n", int(serverBackendMetrics.RouteMatrix.DatacenterCount.Value()))
 				fmt.Printf("%d relays\n", int(serverBackendMetrics.RouteMatrix.RelayCount.Value()))
 				fmt.Printf("%d routes\n", int(serverBackendMetrics.RouteMatrix.RouteCount.Value()))
@@ -664,59 +719,9 @@ func main() {
 		}()
 	}
 
-	// Start portal cruncher publisher
-	var portalPublisher pubsub.Publisher
-	{
-		fmt.Printf("setting up portal cruncher\n")
-
-		portalCruncherHost, ok := os.LookupEnv("PORTAL_CRUNCHER_HOST")
-		if !ok {
-			level.Error(logger).Log("err", "env var PORTAL_CRUNCHER_HOST must be set")
-			os.Exit(1)
-		}
-
-		portalCruncherPublisher, err := pubsub.NewPortalCruncherPublisher(portalCruncherHost)
-		if err != nil {
-			level.Error(logger).Log("msg", "could not create portal cruncher publisher", "err", err)
-			os.Exit(1)
-		}
-
-		portalPublisher = portalCruncherPublisher
-	}
-
 	// Start UDP server
 	{
 		fmt.Printf("starting udp server\n")
-
-		numPostSessionGoroutinesString, ok := os.LookupEnv("POST_SESSION_THREAD_COUNT")
-		if !ok {
-			level.Error(logger).Log("err", "env var POST_SESSION_THREAD_COUNT must be set")
-			os.Exit(1)
-		}
-
-		numPostSessionGoroutines, err := strconv.ParseInt(numPostSessionGoroutinesString, 10, 64)
-		if err != nil {
-			level.Error(logger).Log("envvar", "POST_SESSION_THREAD_COUNT", "msg", "could not parse", "err", err)
-			os.Exit(1)
-		}
-
-		postSessionBufferSizeString, ok := os.LookupEnv("POST_SESSION_BUFFER_SIZE")
-		if !ok {
-			level.Error(logger).Log("err", "env var POST_SESSION_BUFFER_SIZE must be set")
-			os.Exit(1)
-		}
-
-		postSessionBufferSize, err := strconv.ParseInt(postSessionBufferSizeString, 10, 64)
-		if err != nil {
-			level.Error(logger).Log("envvar", "POST_SESSION_BUFFER_SIZE", "msg", "could not parse", "err", err)
-			os.Exit(1)
-		}
-
-		// Create a post session handler to handle the post process of session updates.
-		// This way, we can quickly return from the session update handler and not spawn a
-		// ton of goroutines if things get backed up.
-		postSessionHandler := transport.NewPostSessionHandler(int(numPostSessionGoroutines), int(postSessionBufferSize), portalPublisher, biller, logger, &sessionUpdateMetrics.ErrorMetrics)
-		postSessionHandler.StartProcessing(ctx)
 
 		serverInitConfig := &transport.ServerInitParams{
 			ServerPrivateKey:  serverPrivateKey,
