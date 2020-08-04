@@ -16,7 +16,7 @@ func analyzeRouteMatrix(inputFile string) {
 
 	var routeMatrix routing.RouteMatrix
 	if _, err := routeMatrix.ReadFrom(file); err != nil {
-		handleRunTimeError(fmt.Sprintf("error reading route matrix: %w", err), 1)
+		handleRunTimeError(fmt.Sprintf("error reading route matrix: %v\n", err), 1)
 	}
 
 	routeMatrix.WriteAnalysisTo(os.Stdout)

@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"math"
 	"os"
 	"regexp"
@@ -52,7 +51,7 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string, se
 		}{}
 
 		if len(reply.Slices) == 0 {
-			log.Fatalln(fmt.Errorf("session has no slices yet"))
+			handleRunTimeError(fmt.Sprintln("session has no slices yet"), 0)
 		}
 
 		lastSlice := reply.Slices[len(reply.Slices)-1]
@@ -185,7 +184,7 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string, se
 
 		var routeMatrix routing.RouteMatrix
 		if _, err := routeMatrix.ReadFrom(file); err != nil {
-			log.Fatalln(fmt.Errorf("error reading route matrix: %w", err))
+			handleRunTimeError(fmt.Sprintf("error reading route matrix: %v\n", err), 1)
 		}
 
 		numRelays := len(routeMatrix.RelayIDs)
@@ -198,7 +197,7 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string, se
 
 		destRelayIndex, ok := routeMatrix.RelayIndices[destRelayId]
 		if !ok {
-			log.Fatalln(fmt.Errorf("dest relay %x not in matrix", destRelayId))
+			handleRunTimeError(fmt.Sprintf("dest relay %x not in matrix\n", destRelayId), 1)
 		}
 
 		for _, relay := range reply.Meta.NearbyRelays {
@@ -211,7 +210,7 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string, se
 
 			sourceRelayIndex, ok := routeMatrix.RelayIndices[sourceRelayId]
 			if !ok {
-				log.Fatalln(fmt.Errorf("source relay %x not in matrix", sourceRelayId))
+				handleRunTimeError(fmt.Sprintf("source relay %x not in matrix\n", sourceRelayId), 1)
 			}
 
 			nearRelayRTT := relay.ClientStats.RTT
@@ -294,8 +293,7 @@ func sessionsByBuyer(rpcClient jsonrpc.RPCClient, env Environment, buyerName str
 	}
 
 	if len(topSessionsReply.Sessions) == 0 {
-		fmt.Printf("No sessions found for buyer ID: %v\n", topSessionArgs.BuyerID)
-		return
+		handleRunTimeError(fmt.Sprintf("No sessions found for buyer ID: %v\n", topSessionArgs.BuyerID), 0)
 	}
 
 	sessions := []struct {

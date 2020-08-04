@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"path"
 	"strings"
@@ -64,7 +63,7 @@ func (e *Environment) String() string {
 func (e *Environment) Exists() bool {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		log.Fatal("failed to read environment", err)
+		handleRunTimeError(fmt.Sprintf("failed to read environment %v\n", err), 1)
 	}
 
 	envFilePath := path.Join(homeDir, ".nextenv")
@@ -79,52 +78,53 @@ func (e *Environment) Exists() bool {
 func (e *Environment) Read() {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		log.Fatal("failed to read environment", err)
+		handleRunTimeError(fmt.Sprintf("failed to read environment %v\n", err), 1)
 	}
 
 	envFilePath := path.Join(homeDir, ".nextenv")
 
 	f, err := os.Open(envFilePath)
 	if err != nil {
-		log.Fatal("failed to read environment", err)
+		handleRunTimeError(fmt.Sprintf("failed to read environment %v\n", err), 1)
 	}
 	defer f.Close()
 
 	if err := json.NewDecoder(f).Decode(e); err != nil {
-		log.Fatal("failed to read environment", err)
+		handleRunTimeError(fmt.Sprintf("failed to read environment %v\n", err), 1)
 	}
 }
 
 func (e *Environment) Write() {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		log.Fatal("failed to write environment", err)
+		handleRunTimeError(fmt.Sprintf("failed to read environment %v\n", err), 1)
 	}
 
 	envFilePath := path.Join(homeDir, ".nextenv")
 
 	f, err := os.Create(envFilePath)
 	if err != nil {
-		log.Fatal("failed to write environment", err)
+		handleRunTimeError(fmt.Sprintf("failed to read environment %v\n", err), 1)
 	}
 	defer f.Close()
 
 	if err := json.NewEncoder(f).Encode(e); err != nil {
-		log.Fatal("failed to write environment", err)
+		handleRunTimeError(fmt.Sprintf("failed to read environment %v\n", err), 1)
 	}
 }
 
 func (e *Environment) Clean() {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		log.Fatal("failed to clean environment", err)
+		handleRunTimeError(fmt.Sprintf("failed to clean environment %v\n", err), 1)
 	}
 
 	envFilePath := path.Join(homeDir, ".nextenv")
 
 	err = os.RemoveAll(envFilePath)
 	if err != nil {
-		log.Fatal("failed to clean environment", err)
+		handleRunTimeError(fmt.Sprintf("failed to clean environment %v\n", err), 1)
+
 	}
 }
 

@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/networknext/backend/routing"
@@ -26,19 +25,19 @@ func debug(relayName string, inputFile string) {
 
 	file, err := os.Open(inputFile)
 	if err != nil {
-		log.Fatalln(fmt.Errorf("could not open the route matrix file for reading: %w", err))
+		handleRunTimeError(fmt.Sprintf("could not open the route matrix file for reading: %v\n", err), 1)
 	}
 	defer file.Close()
 
 	var routeMatrix routing.RouteMatrix
 	if _, err := routeMatrix.ReadFrom(file); err != nil {
-		log.Fatalln(fmt.Errorf("error reading route matrix: %w", err))
+		handleRunTimeError(fmt.Sprintf("error reading route matrix: %v\n", err), 1)
 	}
 
 	relayIndex := GetRelayIndex(&routeMatrix, relayName)
 
 	if relayIndex == -1 {
-		log.Fatalf("error: can't find relay called '%s'\n", relayName)
+		handleRunTimeError(fmt.Sprintf("error: can't find relay called '%s'\n", relayName), 0)
 	}
 
 	fmt.Printf("Routes to '%s':\n\n", relayName)
