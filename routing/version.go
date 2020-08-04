@@ -1,4 +1,4 @@
-package transport
+package routing
 
 import "fmt"
 
@@ -20,6 +20,18 @@ var (
 )
 
 func (a SDKVersion) Compare(b SDKVersion) int {
+	if a.IsInternal() && b.IsInternal() {
+		return SDKVersionEqual
+	}
+
+	if a.IsInternal() {
+		return SDKVersionNewer
+	}
+
+	if b.IsInternal() {
+		return SDKVersionOlder
+	}
+
 	if a.Major > b.Major {
 		return SDKVersionNewer
 	}
