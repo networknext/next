@@ -417,7 +417,7 @@ UserHandler = {
 	routeShader: {
 		enable_nn: true,
 		enable_rtt: true,
-		enable_pl: false,
+		enable_pl: true,
 		enable_mp: false,
 		enable_ab: false,
 		acceptable_latency: "20",

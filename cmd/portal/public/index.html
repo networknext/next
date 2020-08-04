@@ -1338,9 +1338,6 @@
                                     <h5 class="card-title">
                                         Route Shader
                                     </h5>
-                                    <p class="card-text">
-                                        Configure how Network Next accelerates your players
-                                    </p>
                                     <div
                                         class="alert alert-success"
                                         role="alert"
@@ -1380,7 +1377,7 @@
                                                             <span class="slider round"></span>
                                                         </label>
                                                         <span style="padding-left: 2rem;">
-                                                            Turn on acceleration for sessions with latency higher than an acceptable amount
+                                                            Reduce latency when it's higher than an acceptable amount
                                                         </span>
                                                     </div>
                                                 </div>
@@ -1388,7 +1385,7 @@
                                             <div class="form-group row" style="padding-left: 2rem;" v-show="handlers.userHandler.routeShader.enable_rtt">
                                                 <div class="col-sm-2">Acceptable Latency:</div>
                                                 <div class="col-sm-10">
-                                                    <input type="text" v-model="handlers.userHandler.routeShader.acceptable_latency"> ms
+                                                    <input type="text" v-model="handlers.userHandler.routeShader.acceptable_latency" style="width: 3.1rem;"> ms
                                                 </div>
                                             </div>
                                             <div class="form-group row">
@@ -1400,15 +1397,15 @@
                                                             <span class="slider round"></span>
                                                         </label>
                                                         <span style="padding-left: 2rem;">
-                                                            Turn on acceleration for sessions with packet loss higher than an acceptable threshold
+                                                            Reduce packet loss when it's higher than an acceptable amount
                                                         </span>
                                                     </div>
                                                 </div>
                                             </div>
                                             <div class="form-group row" style="padding-left: 2rem;" v-show="handlers.userHandler.routeShader.enable_pl">
-                                                <div class="col-sm-2">Packet Loss Threshold:</div>
+                                                <div class="col-sm-2">Acceptable Packet Loss:</div>
                                                 <div class="col-sm-10">
-                                                    <input type="text" v-model="handlers.userHandler.routeShader.pl_threshold"> %
+                                                    <input type="text" v-model="handlers.userHandler.routeShader.pl_threshold" style="width: 3.1rem;"> %
                                                 </div>
                                             </div>
                                             <div class="form-group row">
@@ -1420,13 +1417,13 @@
                                                             <span class="slider round"></span>
                                                         </label>
                                                         <span style="padding-left: 2rem;">
-                                                            Send both Network Next and direct packets together
+                                                            Send packets across Network Next <u>and</u> the public internet at the same time
                                                         </span>
                                                     </div>
                                                 </div>
                                             </div>
                                             <div class="form-group row">
-                                                <div class="col-sm-2">Enable A/B Test</div>
+                                                <div class="col-sm-2">A/B Test</div>
                                                 <div class="col-sm-10">
                                                     <div class="form-check">
                                                         <label class="switch">
@@ -1434,7 +1431,7 @@
                                                             <span class="slider round"></span>
                                                         </label>
                                                         <span style="padding-left: 2rem;">
-                                                            Enable Network Next for even session IDs only
+                                                            Even session ids have Network Next enabled, odd do not
                                                         </span>
                                                     </div>
                                                 </div>
