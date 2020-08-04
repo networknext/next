@@ -1,0 +1,8 @@
+{
+  "files.associations": {
+    "*.makefile": "makefile",
+    "*.tcc": "cpp",
+    "istream": "cpp",
+    "*.ipp": "cpp"
+  }
+}

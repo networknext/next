@@ -1,0 +1,20 @@
+{
+  "configurations": [
+    {
+      "name": "Linux",
+      "includePath": [
+        "${workspaceFolder}/src",
+        "${workspaceFolder}/lib",
+        "/usr/include/libgtop-2.0",
+        "/usr/include/glib-2.0",
+        "/lib/x86_64-linux-gnu/glib-2.0/include/"
+      ],
+      "defines": [],
+      "compilerPath": "/usr/bin/gcc-8",
+      "cStandard": "c11",
+      "cppStandard": "c++17",
+      "intelliSenseMode": "gcc-x64"
+    }
+  ],
+  "version": 4
+}
