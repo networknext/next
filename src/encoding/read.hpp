@@ -32,6 +32,9 @@ namespace encoding
   void ReadAddress(const T& buff, size_t& index, net::Address& addr);
 
   template <typename T>
+  auto ReadString(const T& buff, size_t& index, std::string& str) -> std::string;
+
+  template <typename T>
   [[gnu::always_inline]] inline uint8_t ReadUint8(const T& buff, size_t& index)
   {
     return buff[index++];
@@ -145,6 +148,17 @@ namespace encoding
     }
 
     assert(index - start == net::Address::ByteSize);
+  }
+
+  template <typename T>
+  auto ReadString(const T& buff, size_t& index) -> std::string
+  {
+    size_t len = ReadUint32(buff, index);
+    std::string str(len, '\0');
+    for (size_t i = 0; i < len; i++) {
+      str[i] = buff[index++ + i];
+    }
+    return str;
   }
 }  // namespace encoding
 

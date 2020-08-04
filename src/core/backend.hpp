@@ -83,9 +83,6 @@ namespace core
     net::IHttpRequester& mRequester;
 
     auto update(util::ThroughputRecorder& recorder, bool shutdown) -> bool;
-    auto buildInitRequest(std::vector<uint8_t>& req) -> std::tuple<bool, const char*>;
-    auto buildUpdateRequest(std::vector<uint8_t>& doc, util::ThroughputRecorder& recorder, bool shutdown)
-     -> std::tuple<bool, const char*>;
   };
 
   Backend::Backend(
@@ -132,12 +129,13 @@ namespace core
         nonce.data(),
         mKeychain.RouterPublicKey.data(),
         mKeychain.RelayPrivateKey.data()) != 0) {
-        return {false, "failed to encrypt init token"};
+        Log("failed to encrypt init token");
+        return false;
       }
 
-      // | magic | version | nonce | address | encrypted token |
-      constexpr size_t RequestSize = 4 + 4 + nonce.size() + net::Address::MaxStrLen + token.size();
-      req.resize(RequestSize);
+      // | magic | version | nonce | address | encrypted token | relay version |
+      const size_t requestSize = 4 + 4 + nonce.size() + 4 + mAddressStr.length() + token.size();
+      req.resize(requestSize);
 
       size_t index = 0;
 
@@ -163,6 +161,11 @@ namespace core
 
       if (!encoding::WriteBytes(req, index, token, token.size())) {
         Log("could not write token");
+        return false;
+      }
+
+      if (!encoding::WriteUint8(req, index, RELAY_VERSION)) {
+        Log("could not write relay version");
         return false;
       }
     }
@@ -251,18 +254,46 @@ namespace core
 
   auto Backend::update(util::ThroughputRecorder& recorder, bool shutdown) -> bool
   {
-    util::JSON doc;
-    auto [ok, err] = buildUpdateRequest(doc, recorder, shutdown);
-    if (!ok) {
-      Log("error building update request: ", err);
-      return false;
+    std::vector<uint8_t> req, res;
+
+    // serialize request
+    {
+      core::RelayStats stats;
+      mRelayManager.getStats(stats);
+
+      // | version | address length | address | public key | num stats | ping stats | session count | bytes sent | bytes
+      // received | shutting down | cpu usage | memory usage |
+      const size_t requestSize =
+       4 + 4 + mAddressStr.length() + crypto::KeySize + 4 + 20 * stats.NumRelays + 8 + 8 + 8 + 1 + 8 + 8;
+      req.resize(requestSize);
+
+      size_t index = 0;
+
+      encoding::WriteUint32(req, index, UpdateRequestVersion);
+      encoding::WriteString(req, index, mAddressStr);
+      encoding::WriteBytes(req, index, mKeychain.RelayPublicKey, mKeychain.RelayPublicKey.size());
+      encoding::WriteUint32(req, index, stats.NumRelays);
+
+      for (unsigned int i = 0; i < stats.NumRelays; ++i) {
+        encoding::WriteUint64(req, index, stats.IDs[i]);
+        encoding::WriteBytes(req.data(), req.size(), index, reinterpret_cast<uint8_t*>(&stats.RTT[i]), sizeof(uint32_t));
+        encoding::WriteBytes(req.data(), req.size(), index, reinterpret_cast<uint8_t*>(&stats.Jitter[i]), sizeof(uint32_t));
+        encoding::WriteBytes(req.data(), req.size(), index, reinterpret_cast<uint8_t*>(&stats.PacketLoss[i]), sizeof(uint32_t));
+      }
+
+      encoding::WriteUint64(req, index, mSessionMap.size());
+
+      util::ThroughputStatsCollection trafficStats(std::move(recorder.get()));
+
+      encoding::WriteUint64(req, index, trafficStats.Sent.ByteCount.load());
+      encoding::WriteUint64(req, index, trafficStats.Received.ByteCount.load());
+
+      auto sysStats = os::GetUsage();
+      encoding::WriteBytes(req.data(), req.size(), index, reinterpret_cast<uint8_t*>(&sysStats.CPU), sizeof(uint64_t));
+      encoding::WriteBytes(req.data(), req.size(), index, reinterpret_cast<uint8_t*>(&sysStats.Mem), sizeof(uint64_t));
     }
-    std::string request = doc.toString();
-    std::string response;
 
-    LogDebug("Sending new: ", doc.toPrettyString());
-
-    if (!mRequester.sendRequest(mHostname, "/relay_update", request, response)) {
+    if (!mRequester.sendRequest(mHostname, "/relay_update", req, res)) {
       Log("curl request failed in update");
       return false;
     }
@@ -272,168 +303,50 @@ namespace core
       return true;
     }
 
-    if (!doc.parse(response)) {
-      Log("could not parse json response in update: ", doc.err(), "\nReponse: ", std::string(response.begin(), response.end()));
-      return false;
-    }
+    // parse response
+    {
+      size_t index = 0;
 
-    LogDebug("Received new: ", doc.toPrettyString());
-
-    if (doc.memberExists("version")) {
-      if (doc.memberIs(util::JSON::Type::Number, "version")) {
-        auto version = doc.get<uint32_t>("version");
-        if (version != UpdateResponseVersion) {
-          Log("error: bad relay version response version. expected ", UpdateResponseVersion, ", got ", version);
-          return false;
-        }
-      } else {
-        Log("warning, update version not number");
-      }
-    } else {
-      Log("warning, version number missing in update response");
-    }
-
-    if (doc.memberExists("timestamp")) {
-      if (doc.memberIs(util::JSON::Type::Number, "timestamp")) {
-        mRouterInfo.setTimestamp(doc.get<int64_t>("timestamp"));
-      } else {
-        Log("init timestamp not a number");
+      uint32_t version = encoding::ReadUint32(res, index);
+      if (version != UpdateResponseVersion) {
+        Log("error: bad relay version response version. expected ", UpdateResponseVersion, ", got ", version);
         return false;
       }
-    } else {
-      Log("response json missing member 'timestamp'");
-      return false;
-    }
 
-    size_t count = 0;
-    std::array<Relay, MAX_RELAYS> incoming{};
+      uint64_t timestamp = encoding::ReadUint64(res, index);
+      mRouterInfo.setTimestamp(timestamp);
 
-    bool allValid = true;
-    auto relays = doc.get<util::JSON>("ping_data");
-    if (relays.isArray()) {
-      // 'return' functions like 'continue' within the lambda
-      relays.foreach([&allValid, &count, &incoming](rapidjson::Value& relayData) {
-        if (!relayData.HasMember("relay_id")) {
-          Log("ping data missing 'relay_id'");
-          allValid = false;
-          return;
-        }
-
-        auto idMember = std::move(relayData["relay_id"]);
-        if (idMember.GetType() != rapidjson::Type::kNumberType) {
-          Log("id from ping not number type");
-          allValid = false;
-          return;
-        }
-
-        auto id = idMember.GetUint64();
-
-        if (!relayData.HasMember("relay_address")) {
-          Log("ping data missing member 'relay_address' for relay id: ", id);
-          allValid = false;
-          return;
-        }
-
-        auto addrMember = std::move(relayData["relay_address"]);
-        if (addrMember.GetType() != rapidjson::Type::kStringType) {
-          Log("relay address is not a string in ping data for relay with id: ", id);
-          allValid = false;
-          return;
-        }
-
-        std::string address = addrMember.GetString();
-
-        incoming[count].ID = id;
-        if (!incoming[count].Addr.parse(address)) {
-          Log("failed to parse address for relay '", id, "': ", address);
-          allValid = false;
-          return;
-        }
-
-        count++;
-      });
-
-      if (count > MAX_RELAYS) {
-        Log("error: too many relays to ping. max is ", MAX_RELAYS, ", got ", count, '\n');
+      size_t numRelays = encoding::ReadUint32(res, index);
+      if (numRelays > MAX_RELAYS) {
+        Log("error: too many relays to ping. max is ", MAX_RELAYS, ", got ", numRelays, '\n');
         return false;
       }
-    } else if (relays.memberIs(util::JSON::Type::Null)) {
-      LogDebug("no relays received from new backend, ping data is null");
-    } else {
-      Log("update ping data not array");
-      // TODO how to handle
-    }
 
-    if (!allValid) {
-      Log("some or all of the update ping data was invalid");
-    }
+      std::array<Relay, MAX_RELAYS> incoming{};
 
-    mRelayManager.update(count, incoming);
+      bool allValid = true;
+      for (size_t i = 0; i < numRelays; i++) {
+        auto& relay = incoming[i];
+
+        uint64_t id = encoding::ReadUint64(res, index);
+        std::string addr = encoding::ReadString(res, index);
+
+        relay.ID = id;
+        if (!relay.Addr.parse(addr)) {
+          Log("failed to parse address for relay '", id, "': ", addr);
+          allValid = false;
+          return;
+        }
+      }
+
+      if (!allValid) {
+        Log("some or all of the update ping data was invalid");
+      }
+
+      mRelayManager.update(numRelays, incoming);
+    }
 
     return true;
-  }
-
-  auto Backend::buildInitRequest(std::vector<uint8_t>& req) -> std::tuple<bool, const char*>
-  {
-    return {true, nullptr};
-  }
-
-  auto Backend::buildUpdateRequest(std::vector<uint8_t>& req, util::ThroughputRecorder& recorder, bool shutdown)
-   -> std::tuple<bool, const char*>
-  {
-    doc.set(shutdown, "shutting_down");
-    doc.set(UpdateRequestVersion, "version");
-    doc.set(mAddressStr, "relay_address");
-    doc.set(mBase64RelayPublicKey, "Metadata", "PublicKey");
-    doc.set(RELAY_VERSION, "relay_version");
-
-    // traffic stats
-    {
-      util::JSON trafficStats;
-
-      util::ThroughputStatsCollection stats(std::move(recorder.get()));
-      trafficStats.set(stats.Sent.ByteCount.load(), "BytesMeasurementTx");
-      trafficStats.set(stats.Received.ByteCount.load(), "BytesMeasurementRx");
-      trafficStats.set(mSessionMap.size(), "SessionCount");
-      doc.set(trafficStats, "TrafficStats");
-    }
-
-    // ping stats
-    {
-      util::JSON pingStats;
-
-      core::RelayStats stats;
-      mRelayManager.getStats(stats);
-      pingStats.setArray();
-
-      for (unsigned int i = 0; i < stats.NumRelays; ++i) {
-        util::JSON pingStat;
-        pingStat.set(stats.IDs[i], "RelayId");
-        pingStat.set(stats.RTT[i], "RTT");
-        pingStat.set(stats.Jitter[i], "Jitter");
-        pingStat.set(stats.PacketLoss[i], "PacketLoss");
-
-        if (!pingStats.push(pingStat)) {
-          return {false, "ping stats not array! can't update!"};
-        }
-      }
-
-      doc.set(pingStats, "PingStats");
-    }
-
-    // sys
-    {
-      util::JSON sysStats;
-
-      auto stats = os::GetUsage();
-
-      sysStats.set(stats.CPU, "cpu_usage");
-      sysStats.set(stats.Mem, "mem_usage");
-
-      doc.set(sysStats, "sys_stats");
-    }
-
-    return {true, nullptr};
   }
 }  // namespace core
 #endif
