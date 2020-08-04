@@ -89,47 +89,51 @@ var EmptySessionErrorMetrics SessionErrorMetrics = SessionErrorMetrics{
 }
 
 type DecisionMetrics struct {
-	NoReason            Counter
-	ForceDirect         Counter
-	ForceNext           Counter
-	NoNextRoute         Counter
-	ABTestDirect        Counter
-	RTTReduction        Counter
-	PacketLossMultipath Counter
-	JitterMultipath     Counter
-	VetoRTT             Counter
-	RTTMultipath        Counter
-	VetoPacketLoss      Counter
-	FallbackToDirect    Counter
-	VetoYOLO            Counter
-	InitialSlice        Counter
-	VetoRTTYOLO         Counter
-	VetoPacketLossYOLO  Counter
-	RTTHysteresis       Counter
-	VetoCommit          Counter
-	BuyerNotLive        Counter
+	NoReason                  Counter
+	ForceDirect               Counter
+	ForceNext                 Counter
+	NoNextRoute               Counter
+	ABTestDirect              Counter
+	RTTReduction              Counter
+	PacketLossMultipath       Counter
+	JitterMultipath           Counter
+	VetoRTT                   Counter
+	RTTMultipath              Counter
+	VetoPacketLoss            Counter
+	FallbackToDirect          Counter
+	VetoYOLO                  Counter
+	InitialSlice              Counter
+	VetoRTTYOLO               Counter
+	VetoPacketLossYOLO        Counter
+	RTTHysteresis             Counter
+	VetoCommit                Counter
+	BuyerNotLive              Counter
+	PacketLossReduction       Counter
+	RTTAndPacketLossReduction Counter
 }
 
 var EmptyDecisionMetrics DecisionMetrics = DecisionMetrics{
-	NoReason:            &EmptyCounter{},
-	ForceDirect:         &EmptyCounter{},
-	ForceNext:           &EmptyCounter{},
-	NoNextRoute:         &EmptyCounter{},
-	ABTestDirect:        &EmptyCounter{},
-	RTTReduction:        &EmptyCounter{},
-	PacketLossMultipath: &EmptyCounter{},
-	JitterMultipath:     &EmptyCounter{},
-	VetoRTT:             &EmptyCounter{},
-	RTTMultipath:        &EmptyCounter{},
-	VetoPacketLoss:      &EmptyCounter{},
-	FallbackToDirect:    &EmptyCounter{},
-	VetoYOLO:            &EmptyCounter{},
-	InitialSlice:        &EmptyCounter{},
-	VetoRTTYOLO:         &EmptyCounter{},
-	VetoPacketLossYOLO:  &EmptyCounter{},
-	RTTHysteresis:       &EmptyCounter{},
-	VetoCommit:          &EmptyCounter{},
-	BuyerNotLive:        &EmptyCounter{},
+	NoReason:                  &EmptyCounter{},
+	ForceDirect:               &EmptyCounter{},
+	ForceNext:                 &EmptyCounter{},
+	NoNextRoute:               &EmptyCounter{},
+	ABTestDirect:              &EmptyCounter{},
+	RTTReduction:              &EmptyCounter{},
+	PacketLossMultipath:       &EmptyCounter{},
+	JitterMultipath:           &EmptyCounter{},
+	VetoRTT:                   &EmptyCounter{},
+	RTTMultipath:              &EmptyCounter{},
+	VetoPacketLoss:            &EmptyCounter{},
+	FallbackToDirect:          &EmptyCounter{},
+	VetoYOLO:                  &EmptyCounter{},
+	InitialSlice:              &EmptyCounter{},
+	VetoRTTYOLO:               &EmptyCounter{},
+	VetoPacketLossYOLO:        &EmptyCounter{},
+	RTTHysteresis:             &EmptyCounter{},
+	VetoCommit:                &EmptyCounter{},
+	BuyerNotLive:              &EmptyCounter{},
+	PacketLossReduction:       &EmptyCounter{},
+	RTTAndPacketLossReduction: &EmptyCounter{},
 }
 
 type OptimizeMetrics struct {
@@ -942,10 +946,30 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 	}
 
 	sessionMetrics.DecisionMetrics.BuyerNotLive, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Session Buyer Not Live",
+		DisplayName: "Decision Buyer Not Live",
 		ServiceName: "server_backend",
 		ID:          "session.route_decision.buyer_not_live",
-		Unit:        "errors",
+		Unit:        "decisions",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.DecisionMetrics.PacketLossReduction, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Decision Packet Loss Reduction",
+		ServiceName: "server_backend",
+		ID:          "session.route_decision.packet_loss_reduction",
+		Unit:        "decisions",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.DecisionMetrics.RTTAndPacketLossReduction, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Decision RTT and Packet Loss Reduction",
+		ServiceName: "server_backend",
+		ID:          "session.route_decision.rtt_and_packet_loss_reduction",
+		Unit:        "decisions",
 	})
 	if err != nil {
 		return nil, err
