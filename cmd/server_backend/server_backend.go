@@ -147,13 +147,6 @@ func main() {
 		}
 	}
 
-	redisHost := os.Getenv("REDIS_HOST_RELAYS")
-	redisClientRelays := storage.NewRedisClient(redisHost)
-	if err := redisClientRelays.Ping().Err(); err != nil {
-		level.Error(logger).Log("envvar", "REDIS_HOST_RELAYS", "value", redisHost, "msg", "could not ping", "err", err)
-		os.Exit(1)
-	}
-
 	// Create an in-memory db
 	var db storage.Storer = &storage.InMemory{
 		LocalMode: true,
@@ -432,38 +425,40 @@ func main() {
 			os.Exit(1)
 		}
 
-		if mmsyncinterval, ok := os.LookupEnv("MAXMIND_SYNC_DB_INTERVAL"); ok {
-			syncInterval, err := time.ParseDuration(mmsyncinterval)
-			if err != nil {
-				level.Error(logger).Log("envvar", "MAXMIND_SYNC_DB_INTERVAL", "value", mmsyncinterval, "msg", "could not parse", "err", err)
-				os.Exit(1)
-			}
+		// todo: disable the sync for now until we can find out why it's causing session drops
 
-			// Start a goroutine to sync from Maxmind.com
-			go func() {
-				ticker := time.NewTicker(syncInterval)
-				for {
-					newMMDB := &routing.MaxmindDB{}
+		// if mmsyncinterval, ok := os.LookupEnv("MAXMIND_SYNC_DB_INTERVAL"); ok {
+		// 	syncInterval, err := time.ParseDuration(mmsyncinterval)
+		// 	if err != nil {
+		// 		level.Error(logger).Log("envvar", "MAXMIND_SYNC_DB_INTERVAL", "value", mmsyncinterval, "msg", "could not parse", "err", err)
+		// 		os.Exit(1)
+		// 	}
 
-					select {
-					case <-ticker.C:
-						if err := newMMDB.Sync(ctx, maxmindSyncMetrics); err != nil {
-							level.Error(logger).Log("err", err)
-							continue
-						}
+		// 	// Start a goroutine to sync from Maxmind.com
+		// 	go func() {
+		// 		ticker := time.NewTicker(syncInterval)
+		// 		for {
+		// 			newMMDB := &routing.MaxmindDB{}
 
-						// Pointer swap the mmdb so we can sync from Maxmind.com lock free
-						mmdbMutex.Lock()
-						mmdb = newMMDB
-						mmdbMutex.Unlock()
-					case <-ctx.Done():
-						return
-					}
+		// 			select {
+		// 			case <-ticker.C:
+		// 				if err := newMMDB.Sync(ctx, maxmindSyncMetrics); err != nil {
+		// 					level.Error(logger).Log("err", err)
+		// 					continue
+		// 				}
 
-					time.Sleep(syncInterval)
-				}
-			}()
-		}
+		// 				// Pointer swap the mmdb so we can sync from Maxmind.com lock free
+		// 				mmdbMutex.Lock()
+		// 				mmdb = newMMDB
+		// 				mmdbMutex.Unlock()
+		// 			case <-ctx.Done():
+		// 				return
+		// 			}
+
+		// 			time.Sleep(syncInterval)
+		// 		}
+		// 	}()
+		// }
 	}
 
 	routeMatrix := &routing.RouteMatrix{}
@@ -475,9 +470,6 @@ func main() {
 		routeMatrixMutex.RUnlock()
 		return rm
 	}
-
-	var routeMatrixBytes int64
-	var routeMatrixBytesMutex sync.RWMutex
 
 	// Sync route matrix
 	{
@@ -509,18 +501,13 @@ func main() {
 
 					start := time.Now()
 
-					// Don't swap route matrix if we fail to read
 					bytes, err := newRouteMatrix.ReadFrom(matrixReader)
-					routeMatrixBytesMutex.Lock()
-					routeMatrixBytes = bytes
-					routeMatrixBytesMutex.Unlock()
-
 					if err != nil {
 						if env != "local" {
 							level.Warn(logger).Log("envvar", "ROUTE_MATRIX_URI", "value", uri, "msg", "could not read route matrix", "err", err)
 						}
 						time.Sleep(syncInterval)
-						continue
+						continue // Don't swap route matrix if we fail to read
 					}
 
 					routeMatrixTime := time.Since(start)
@@ -531,13 +518,22 @@ func main() {
 						serverBackendMetrics.LongRouteMatrixUpdateCount.Add(1)
 					}
 
+					serverBackendMetrics.RouteMatrix.RelayCount.Set(float64(len(newRouteMatrix.RelayIDs)))
+					serverBackendMetrics.RouteMatrix.DatacenterCount.Set(float64(len(newRouteMatrix.DatacenterIDs)))
+
+					// todo: calculate this in optimize and store in route matrix so we don't have to calc this here
+					numRoutes := int32(0)
+					for i := range newRouteMatrix.Entries {
+						numRoutes += newRouteMatrix.Entries[i].NumRoutes
+					}
+					serverBackendMetrics.RouteMatrix.RouteCount.Set(float64(numRoutes))
+					serverBackendMetrics.RouteMatrix.Bytes.Set(float64(bytes))
+
 					// Swap the route matrix pointer to the new one
 					// This double buffered route matrix approach makes the route matrix lockless
 					routeMatrixMutex.Lock()
 					routeMatrix = &newRouteMatrix
 					routeMatrixMutex.Unlock()
-
-					serverBackendMetrics.RouteMatrixBytes.Set(float64(bytes))
 
 					time.Sleep(syncInterval)
 				}
@@ -604,16 +600,6 @@ func main() {
 		}
 
 		go func() {
-			// Write critical metrics to a stats.txt file
-			statsFile, err := os.OpenFile("stats.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-			if err != nil {
-				level.Error(logger).Log("msg", "could not open stats file", "err", err)
-				os.Exit(1)
-			}
-			defer statsFile.Close()
-
-			statsLogger := log.NewLogfmtLogger(statsFile)
-
 			for {
 				serverBackendMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
 				serverBackendMetrics.MemoryAllocated.Set(memoryUsed())
@@ -650,9 +636,12 @@ func main() {
 				fmt.Printf("%d server init packets processed\n", int(serverInitMetrics.Invocations.Value()))
 				fmt.Printf("%d server update packets processed\n", int(serverUpdateMetrics.Invocations.Value()))
 				fmt.Printf("%d session update packets processed\n", int(sessionUpdateMetrics.Invocations.Value()))
+				fmt.Printf("%d datacenters\n", int(serverBackendMetrics.RouteMatrix.DatacenterCount.Value()))
+				fmt.Printf("%d relays\n", int(serverBackendMetrics.RouteMatrix.RelayCount.Value()))
+				fmt.Printf("%d routes\n", int(serverBackendMetrics.RouteMatrix.RouteCount.Value()))
 				fmt.Printf("%d long route matrix updates\n", int(serverBackendMetrics.LongRouteMatrixUpdateCount.Value()))
 				fmt.Printf("route matrix update: %.2f milliseconds\n", serverBackendMetrics.RouteMatrixUpdateDuration.Value())
-				fmt.Printf("route matrix bytes: %d\n", int(serverBackendMetrics.RouteMatrixBytes.Value()))
+				fmt.Printf("route matrix bytes: %d\n", int(serverBackendMetrics.RouteMatrix.Bytes.Value()))
 
 				if env != "local" {
 					unknownDatacentersLength := datacenterTracker.UnknownDatacenterLength()
@@ -669,13 +658,6 @@ func main() {
 				}
 
 				fmt.Printf("-----------------------------\n")
-
-				statsLogger.Log("num_servers", numServers)
-				statsLogger.Log("num_sessions", numSessions)
-
-				routeMatrixBytesMutex.RLock()
-				statsLogger.Log("route_matrix_bytes", routeMatrixBytes)
-				routeMatrixBytesMutex.RUnlock()
 
 				time.Sleep(time.Second)
 			}

@@ -8,20 +8,23 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"net/http"
 	"os"
 	"regexp"
-	"strconv"
 	"strings"
+	"time"
 
-	"github.com/go-redis/redis/v7"
 	jsoniter "github.com/json-iterator/go"
+	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/metrics"
 	"github.com/oschwald/geoip2-golang"
 )
 
 const (
+	LocationVersion = 0
+
 	regexLocalhostIPs = `0\.0\.0\.0|127\.0\.0\.1|localhost`
 )
 
@@ -52,11 +55,78 @@ type Location struct {
 }
 
 func (l *Location) UnmarshalBinary(data []byte) error {
-	return jsoniter.Unmarshal(data, l)
+	index := 0
+
+	var version uint32
+	if !encoding.ReadUint32(data, &index, &version) {
+		return errors.New("[Location] invalid read at version number")
+	}
+
+	if version > LocationVersion {
+		return fmt.Errorf("unknown location version: %d", version)
+	}
+
+	if !encoding.ReadString(data, &index, &l.Continent, math.MaxInt32) {
+		return errors.New("[Location] invalid read at continent")
+	}
+
+	if !encoding.ReadString(data, &index, &l.Country, math.MaxInt32) {
+		return errors.New("[Location] invalid read at country")
+	}
+
+	if !encoding.ReadString(data, &index, &l.CountryCode, math.MaxInt32) {
+		return errors.New("[Location] invalid read at country code")
+	}
+
+	if !encoding.ReadString(data, &index, &l.Region, math.MaxInt32) {
+		return errors.New("[Location] invalid read at region")
+	}
+
+	if !encoding.ReadString(data, &index, &l.City, math.MaxInt32) {
+		return errors.New("[Location] invalid read at city")
+	}
+
+	if !encoding.ReadFloat64(data, &index, &l.Latitude) {
+		return errors.New("[Location] invalid read at latitude")
+	}
+
+	if !encoding.ReadFloat64(data, &index, &l.Longitude) {
+		return errors.New("[Location] invalid read at longitude")
+	}
+
+	if !encoding.ReadString(data, &index, &l.ISP, math.MaxInt32) {
+		return errors.New("[Location] invalid read at ISP")
+	}
+
+	var asn uint32
+	if !encoding.ReadUint32(data, &index, &asn) {
+		return errors.New("[Location] invalid read at ASN")
+	}
+	l.ASN = int(asn)
+
+	return nil
 }
 
 func (l Location) MarshalBinary() ([]byte, error) {
-	return jsoniter.Marshal(l)
+	data := make([]byte, l.Size())
+	index := 0
+
+	encoding.WriteUint32(data, &index, LocationVersion)
+	encoding.WriteString(data, &index, l.Continent, uint32(len(l.Continent)))
+	encoding.WriteString(data, &index, l.Country, uint32(len(l.Country)))
+	encoding.WriteString(data, &index, l.CountryCode, uint32(len(l.CountryCode)))
+	encoding.WriteString(data, &index, l.Region, uint32(len(l.Region)))
+	encoding.WriteString(data, &index, l.City, uint32(len(l.City)))
+	encoding.WriteFloat64(data, &index, l.Latitude)
+	encoding.WriteFloat64(data, &index, l.Longitude)
+	encoding.WriteString(data, &index, l.ISP, uint32(len(l.ISP)))
+	encoding.WriteUint32(data, &index, uint32(l.ASN))
+
+	return data, nil
+}
+
+func (l Location) Size() uint64 {
+	return uint64(4 + 4 + len(l.Continent) + 4 + len(l.Country) + 4 + len(l.CountryCode) + 4 + len(l.Region) + 4 + len(l.City) + 8 + 8 + 4 + len(l.ISP) + 4)
 }
 
 // IsZero reports whether l represents the zero location lat/long 0,0 similar to how Time.IsZero works.
@@ -159,6 +229,9 @@ type MaxmindDB struct {
 }
 
 func (mmdb *MaxmindDB) Sync(ctx context.Context, metrics *metrics.MaxmindSyncMetrics) error {
+	metrics.Invocations.Add(1)
+	durationStart := time.Now()
+
 	if err := mmdb.OpenCity(ctx, mmdb.HTTPClient, mmdb.CityURI); err != nil {
 		metrics.ErrorMetrics.FailedToSync.Add(1)
 		return fmt.Errorf("could not open maxmind db uri: %v", err)
@@ -167,6 +240,9 @@ func (mmdb *MaxmindDB) Sync(ctx context.Context, metrics *metrics.MaxmindSyncMet
 		metrics.ErrorMetrics.FailedToSyncISP.Add(1)
 		return fmt.Errorf("could not open maxmind db isp uri: %v", err)
 	}
+
+	duration := time.Since(durationStart)
+	metrics.DurationGauge.Set(float64(duration.Milliseconds()))
 
 	return nil
 }
@@ -316,59 +392,3 @@ var LocationNullIsland = Location{
 var NullIsland = LocateIPFunc(func(ip net.IP) (Location, error) {
 	return LocationNullIsland, nil
 })
-
-type GeoClient struct {
-	RedisClient redis.Cmdable
-	Namespace   string
-}
-
-func (c *GeoClient) Add(relayID uint64, latitude float64, longitude float64) error {
-	geoloc := redis.GeoLocation{
-		Name:      strconv.FormatUint(relayID, 10),
-		Latitude:  latitude,
-		Longitude: longitude,
-	}
-
-	return c.RedisClient.GeoAdd(c.Namespace, &geoloc).Err()
-}
-
-func (c *GeoClient) Remove(relayID uint64) error {
-	return c.RedisClient.ZRem(c.Namespace, strconv.FormatUint(relayID, 10)).Err()
-}
-
-// uom can be one of the following: "m", "km", "mi", "ft"
-func (c *GeoClient) RelaysWithin(lat float64, long float64, radius float64, uom string) ([]Relay, error) {
-	geoquery := redis.GeoRadiusQuery{
-		Radius:    radius,
-		Unit:      uom,
-		WithCoord: true,
-		Sort:      "ASC",
-	}
-
-	res := c.RedisClient.GeoRadius(c.Namespace, long, lat, &geoquery)
-
-	geolocs, err := res.Result()
-	if err != nil {
-		return nil, err
-	}
-
-	relays := make([]Relay, len(geolocs))
-	for idx, geoloc := range geolocs {
-		id, err := strconv.ParseUint(geoloc.Name, 10, 64)
-		if err != nil {
-			return nil, err
-		}
-
-		relays[idx] = Relay{
-			ID: id,
-			Datacenter: Datacenter{
-				Location: Location{
-					Latitude:  geoloc.Latitude,
-					Longitude: geoloc.Longitude,
-				},
-			},
-		}
-	}
-
-	return relays, nil
-}

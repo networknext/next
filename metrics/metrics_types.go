@@ -229,7 +229,6 @@ type RelayInitErrorMetrics struct {
 	RelayNotFound      Counter
 	RelayQuarantined   Counter
 	DecryptionFailure  Counter
-	RedisFailure       Counter
 	RelayAlreadyExists Counter
 	IPLookupFailure    Counter
 }
@@ -241,7 +240,6 @@ var EmptyRelayInitErrorMetrics RelayInitErrorMetrics = RelayInitErrorMetrics{
 	RelayNotFound:      &EmptyCounter{},
 	RelayQuarantined:   &EmptyCounter{},
 	DecryptionFailure:  &EmptyCounter{},
-	RedisFailure:       &EmptyCounter{},
 	RelayAlreadyExists: &EmptyCounter{},
 	IPLookupFailure:    &EmptyCounter{},
 }
@@ -259,25 +257,21 @@ var EmptyRelayUpdateMetrics RelayUpdateMetrics = RelayUpdateMetrics{
 }
 
 type RelayUpdateErrorMetrics struct {
-	UnmarshalFailure      Counter
-	InvalidVersion        Counter
-	ExceedMaxRelays       Counter
-	RedisFailure          Counter
-	RelayNotFound         Counter
-	RelayUnmarshalFailure Counter
-	InvalidToken          Counter
-	RelayNotEnabled       Counter
+	UnmarshalFailure Counter
+	InvalidVersion   Counter
+	ExceedMaxRelays  Counter
+	RelayNotFound    Counter
+	InvalidToken     Counter
+	RelayNotEnabled  Counter
 }
 
 var EmptyRelayUpdateErrorMetrics RelayUpdateErrorMetrics = RelayUpdateErrorMetrics{
-	UnmarshalFailure:      &EmptyCounter{},
-	InvalidVersion:        &EmptyCounter{},
-	ExceedMaxRelays:       &EmptyCounter{},
-	RedisFailure:          &EmptyCounter{},
-	RelayNotFound:         &EmptyCounter{},
-	RelayUnmarshalFailure: &EmptyCounter{},
-	InvalidToken:          &EmptyCounter{},
-	RelayNotEnabled:       &EmptyCounter{},
+	UnmarshalFailure: &EmptyCounter{},
+	InvalidVersion:   &EmptyCounter{},
+	ExceedMaxRelays:  &EmptyCounter{},
+	RelayNotFound:    &EmptyCounter{},
+	InvalidToken:     &EmptyCounter{},
+	RelayNotEnabled:  &EmptyCounter{},
 }
 
 type RelayHandlerMetrics struct {
@@ -293,33 +287,29 @@ var EmptyRelayHandlerMetrics RelayHandlerMetrics = RelayHandlerMetrics{
 }
 
 type RelayHandlerErrorMetrics struct {
-	UnmarshalFailure      Counter
-	ExceedMaxRelays       Counter
-	RelayNotFound         Counter
-	RelayQuarantined      Counter
-	NoAuthHeader          Counter
-	BadAuthHeaderLength   Counter
-	BadAuthHeaderToken    Counter
-	BadNonce              Counter
-	BadEncryptedAddress   Counter
-	DecryptFailure        Counter
-	RedisFailure          Counter
-	RelayUnmarshalFailure Counter
+	UnmarshalFailure    Counter
+	ExceedMaxRelays     Counter
+	RelayNotFound       Counter
+	RelayQuarantined    Counter
+	NoAuthHeader        Counter
+	BadAuthHeaderLength Counter
+	BadAuthHeaderToken  Counter
+	BadNonce            Counter
+	BadEncryptedAddress Counter
+	DecryptFailure      Counter
 }
 
 var EmptyRelayHandlerErrorMetrics RelayHandlerErrorMetrics = RelayHandlerErrorMetrics{
-	UnmarshalFailure:      &EmptyCounter{},
-	ExceedMaxRelays:       &EmptyCounter{},
-	RelayNotFound:         &EmptyCounter{},
-	RelayQuarantined:      &EmptyCounter{},
-	NoAuthHeader:          &EmptyCounter{},
-	BadAuthHeaderLength:   &EmptyCounter{},
-	BadAuthHeaderToken:    &EmptyCounter{},
-	BadNonce:              &EmptyCounter{},
-	BadEncryptedAddress:   &EmptyCounter{},
-	DecryptFailure:        &EmptyCounter{},
-	RedisFailure:          &EmptyCounter{},
-	RelayUnmarshalFailure: &EmptyCounter{},
+	UnmarshalFailure:    &EmptyCounter{},
+	ExceedMaxRelays:     &EmptyCounter{},
+	RelayNotFound:       &EmptyCounter{},
+	RelayQuarantined:    &EmptyCounter{},
+	NoAuthHeader:        &EmptyCounter{},
+	BadAuthHeaderLength: &EmptyCounter{},
+	BadAuthHeaderToken:  &EmptyCounter{},
+	BadNonce:            &EmptyCounter{},
+	BadEncryptedAddress: &EmptyCounter{},
+	DecryptFailure:      &EmptyCounter{},
 }
 
 type RelayStatMetrics struct {
@@ -450,6 +440,7 @@ var EmptyAnalyticsMetrics AnalyticsMetrics = AnalyticsMetrics{
 type RelayBackendMetrics struct {
 	Goroutines        Gauge
 	MemoryAllocated   Gauge
+	RouteMatrix       RouteMatrixMetrics
 	PingStatsMetrics  AnalyticsMetrics
 	RelayStatsMetrics AnalyticsMetrics
 }
@@ -457,6 +448,7 @@ type RelayBackendMetrics struct {
 var EmptyRelayBackendMetrics RelayBackendMetrics = RelayBackendMetrics{
 	Goroutines:        &EmptyGauge{},
 	MemoryAllocated:   &EmptyGauge{},
+	RouteMatrix:       EmptyRouteMatrixMetrics,
 	PingStatsMetrics:  EmptyAnalyticsMetrics,
 	RelayStatsMetrics: EmptyAnalyticsMetrics,
 }
@@ -484,7 +476,7 @@ type ServerBackendMetrics struct {
 	SessionDirectCount         Gauge
 	SessionNextCount           Gauge
 	BillingMetrics             BillingMetrics
-	RouteMatrixBytes           Gauge
+	RouteMatrix                RouteMatrixMetrics
 	RouteMatrixUpdateDuration  Gauge
 	LongRouteMatrixUpdateCount Counter
 	UnknownDatacenterCount     Gauge
@@ -500,7 +492,7 @@ var EmptyServerBackendMetrics ServerBackendMetrics = ServerBackendMetrics{
 	SessionDirectCount:         &EmptyGauge{},
 	SessionNextCount:           &EmptyGauge{},
 	BillingMetrics:             EmptyBillingMetrics,
-	RouteMatrixBytes:           &EmptyGauge{},
+	RouteMatrix:                EmptyRouteMatrixMetrics,
 	RouteMatrixUpdateDuration:  &EmptyGauge{},
 	LongRouteMatrixUpdateCount: &EmptyCounter{},
 	UnknownDatacenterCount:     &EmptyGauge{},
@@ -653,7 +645,40 @@ func NewServerBackendMetrics(ctx context.Context, metricsHandler Handler) (*Serv
 	serverBackendMetrics.BillingMetrics.ErrorMetrics.BillingReadFailure = &EmptyCounter{}
 	serverBackendMetrics.BillingMetrics.ErrorMetrics.BillingWriteFailure = &EmptyCounter{}
 
-	serverBackendMetrics.RouteMatrixBytes, err = metricsHandler.NewGauge(ctx, &Descriptor{
+	serverBackendMetrics.RouteMatrix.DatacenterCount, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Server Backend Route Matrix Datacenter Count",
+		ServiceName: "server_backend",
+		ID:          "server_backend.route_matrix.datacenter.count",
+		Unit:        "datacenters",
+		Description: "The number of datacenters in the server backend's route matrix",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	serverBackendMetrics.RouteMatrix.RelayCount, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Server Backend Route Matrix Relay Count",
+		ServiceName: "server_backend",
+		ID:          "server_backend.route_matrix.relay.count",
+		Unit:        "relays",
+		Description: "The number of relays in the server backend's route matrix",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	serverBackendMetrics.RouteMatrix.RouteCount, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Server Backend Route Matrix Route Count",
+		ServiceName: "server_backend",
+		ID:          "server_backend.route_matrix.route.count",
+		Unit:        "routes",
+		Description: "The number of routes in the server backend's route matrix",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	serverBackendMetrics.RouteMatrix.Bytes, err = metricsHandler.NewGauge(ctx, &Descriptor{
 		DisplayName: "Server Backend Route Matrix Bytes",
 		ServiceName: "server_backend",
 		ID:          "server_backend.route_matrix.bytes",
@@ -1646,7 +1671,7 @@ func NewOptimizeMetrics(ctx context.Context, metricsHandler Handler) (*OptimizeM
 		ServiceName: "relay_backend",
 		ID:          "optimize.count",
 		Unit:        "invocations",
-		Description: "The total number of cost matrix optimizers",
+		Description: "The total number of cost matrix optimize calls",
 	})
 	if err != nil {
 		return nil, err
@@ -1663,6 +1688,116 @@ func NewOptimizeMetrics(ctx context.Context, metricsHandler Handler) (*OptimizeM
 		ID:          "optimize.long.updates",
 		Unit:        "updates",
 		Description: "The number of optimize calls that took longer than 1 second",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &optimizeMetrics, nil
+}
+
+func NewValveCostMatrixMetrics(ctx context.Context, metricsHandler Handler) (*CostMatrixMetrics, error) {
+	costMatrixDurationGauge, err := metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Valve StatsDB -> GetCostMatrix duration",
+		ServiceName: "relay_backend",
+		ID:          "cost_matrix.valve.duration",
+		Unit:        "milliseconds",
+		Description: "How long it takes to generate a valve cost matrix from the stats database.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	costMatrixInvocationsCounter, err := metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Valve Total StatsDB -> CostMatrix invocations",
+		ServiceName: "relay_backend",
+		ID:          "cost_matrix.valve.count",
+		Unit:        "invocations",
+		Description: "The total number of valve StatsDB -> CostMatrix invocations",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	costMatrixLongUpdateCounter, err := metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Valve Cost Matrix Long Updates",
+		ServiceName: "relay_backend",
+		ID:          "cost_matrix.valve.long.updates",
+		Unit:        "updates",
+		Description: "The number of valve cost matrix gen calls that took longer than 1 second",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	costMatrixBytes, err := metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Valve Cost Matrix Size",
+		ServiceName: "relay_backend",
+		ID:          "cost_matrix.valve.bytes",
+		Unit:        "bytes",
+		Description: "How large the valve cost matrix is in bytes",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	costMatrixGenFailure, err := metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Valve Cost Matrix Gen Failure",
+		ServiceName: "relay_backend",
+		ID:          "cost_matrix.valve.failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	costMatrixMetrics := CostMatrixMetrics{
+		Invocations:     costMatrixInvocationsCounter,
+		DurationGauge:   costMatrixDurationGauge,
+		LongUpdateCount: costMatrixLongUpdateCounter,
+		Bytes:           costMatrixBytes,
+		ErrorMetrics: CostMatrixErrorMetrics{
+			GenFailure: costMatrixGenFailure,
+		},
+	}
+
+	return &costMatrixMetrics, nil
+}
+
+func NewValveOptimizeMetrics(ctx context.Context, metricsHandler Handler) (*OptimizeMetrics, error) {
+	optimizeDurationGauge, err := metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Valve optimize duration",
+		ServiceName: "relay_backend",
+		ID:          "optimize.valve.duration",
+		Unit:        "milliseconds",
+		Description: "How long it takes to optimize a valve cost matrix.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	optimizeInvocationsCounter, err := metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Valve total cost matrix optimize invocations",
+		ServiceName: "relay_backend",
+		ID:          "optimize.valve.count",
+		Unit:        "invocations",
+		Description: "The total number of valve cost matrix optimize calls",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	optimizeMetrics := OptimizeMetrics{
+		Invocations:   optimizeInvocationsCounter,
+		DurationGauge: optimizeDurationGauge,
+	}
+
+	optimizeMetrics.LongUpdateCount, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Valve Optimize Long Updates",
+		ServiceName: "relay_backend",
+		ID:          "optimize.valve.long.updates",
+		Unit:        "updates",
+		Description: "The number of valve optimize calls that took longer than 1 second",
 	})
 	if err != nil {
 		return nil, err
@@ -1853,6 +1988,50 @@ func NewRelayBackendMetrics(ctx context.Context, metricsHandler Handler) (*Relay
 		return nil, err
 	}
 
+	relayBackendMetrics.RouteMatrix.DatacenterCount, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Route Matrix Datacenter Count",
+		ServiceName: "relay_backend",
+		ID:          "route_matrix.datacenter.count",
+		Unit:        "datacenters",
+		Description: "The number of datacenters the route matrix contains",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	relayBackendMetrics.RouteMatrix.RelayCount, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Route Matrix Relay Count",
+		ServiceName: "relay_backend",
+		ID:          "route_matrix.relay.count",
+		Unit:        "relays",
+		Description: "The number of relays the route matrix contains",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	relayBackendMetrics.RouteMatrix.RouteCount, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Route Matrix Route Count",
+		ServiceName: "relay_backend",
+		ID:          "route_matrix.route.count",
+		Unit:        "routes",
+		Description: "The number of routes the route matrix contains",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	relayBackendMetrics.RouteMatrix.Bytes, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Route Matrix Size",
+		ServiceName: "relay_backend",
+		ID:          "route_matrix.bytes",
+		Unit:        "bytes",
+		Description: "How large the route matrix is in bytes",
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	relayBackendMetrics.PingStatsMetrics.EntriesReceived = &EmptyCounter{}
 
 	relayBackendMetrics.PingStatsMetrics.EntriesSubmitted, err = metricsHandler.NewCounter(ctx, &Descriptor{
@@ -1956,49 +2135,49 @@ func NewRelayBackendMetrics(ctx context.Context, metricsHandler Handler) (*Relay
 	return &relayBackendMetrics, nil
 }
 
-func NewRouteMatrixMetrics(ctx context.Context, metricsHandler Handler) (*RouteMatrixMetrics, error) {
+func NewValveRouteMatrixMetrics(ctx context.Context, metricsHandler Handler) (*RouteMatrixMetrics, error) {
 	routeMatrixMetrics := RouteMatrixMetrics{}
 	var err error
 
 	routeMatrixMetrics.DatacenterCount, err = metricsHandler.NewGauge(ctx, &Descriptor{
-		DisplayName: "Route Matrix Datacenter Count",
+		DisplayName: "Valve Route Matrix Datacenter Count",
 		ServiceName: "relay_backend",
-		ID:          "route_matrix.datacenter.count",
+		ID:          "route_matrix.valve.datacenter.count",
 		Unit:        "datacenters",
-		Description: "The number of datacenters the route matrix contains",
+		Description: "The number of datacenters the valve route matrix contains",
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	routeMatrixMetrics.RelayCount, err = metricsHandler.NewGauge(ctx, &Descriptor{
-		DisplayName: "Route Matrix Relay Count",
+		DisplayName: "Valve Route Matrix Relay Count",
 		ServiceName: "relay_backend",
-		ID:          "route_matrix.relay.count",
+		ID:          "route_matrix.valve.relay.count",
 		Unit:        "relays",
-		Description: "The number of relays the route matrix contains",
+		Description: "The number of relays the valve route matrix contains",
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	routeMatrixMetrics.RouteCount, err = metricsHandler.NewGauge(ctx, &Descriptor{
-		DisplayName: "Route Matrix Route Count",
+		DisplayName: "Valve Route Matrix Route Count",
 		ServiceName: "relay_backend",
-		ID:          "route_matrix.route.count",
+		ID:          "route_matrix.valve.route.count",
 		Unit:        "routes",
-		Description: "The number of routes the route matrix contains",
+		Description: "The number of routes the valve route matrix contains",
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	routeMatrixMetrics.Bytes, err = metricsHandler.NewGauge(ctx, &Descriptor{
-		DisplayName: "Route Matrix Size",
+		DisplayName: "Valve Route Matrix Size",
 		ServiceName: "relay_backend",
-		ID:          "route_matrix.bytes",
+		ID:          "route_matrix.valve.bytes",
 		Unit:        "bytes",
-		Description: "How large the route matrix is in bytes",
+		Description: "How large the valve route matrix is in bytes",
 	})
 	if err != nil {
 		return nil, err

@@ -42,7 +42,7 @@ while getopts 'e:c:t:b:h' flag; do
   case "${flag}" in
     b) ARTIFACT_BUCKET="${OPTARG}" ;;
     t) TYPE="${OPTARG}" ;;
-    c) CUSTOMER="${OPTARG,,}" ;;
+    c) CUSTOMER="${OPTARG}" ;;
     e) ENV="${OPTARG}" ;;
     h) print_usage
        exit 1 ;;

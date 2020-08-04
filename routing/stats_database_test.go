@@ -1,15 +1,8 @@
 package routing_test
 
 import (
-	"fmt"
-	"math"
-	"math/rand"
-	"net"
 	"testing"
-	"time"
 
-	"github.com/alicebob/miniredis/v2"
-	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/stretchr/testify/assert"
@@ -273,14 +266,14 @@ func TestStatsDatabase(t *testing.T) {
 
 	t.Run("GetCostMatrix()", func(t *testing.T) {
 		t.Run("returns the cost matrix", func(t *testing.T) {
-			redisServer, _ := miniredis.Run()
-			redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
-
 			statsdb := routing.NewStatsDatabase()
-
+			relayMap := routing.NewRelayMap(func(relayData *routing.RelayData) error {
+				statsdb.DeleteEntry(relayData.ID)
+				return nil
+			})
 			// Setup
 
-			fillRelayDatabase(redisClient)
+			fillRelayDatabase(relayMap)
 			fillStatsDatabase(statsdb)
 
 			// make the datacenter of the first relay 0
@@ -289,18 +282,16 @@ func TestStatsDatabase(t *testing.T) {
 			validDcIDs := make([]uint64, 0)
 			validDcNames := make([]string, 0)
 
-			hgetallResult := redisClient.HGetAll(routing.HashKeyAllRelays)
+			allRelayData := relayMap.GetAllRelayData()
 
 			i := 0
-			for _, raw := range hgetallResult.Val() {
-				var r routing.RelayCacheEntry
-				r.UnmarshalBinary([]byte(raw))
+			for _, r := range allRelayData {
 				if i == 0 {
 					r.Datacenter.ID = 0
-					redisClient.HSet(routing.HashKeyAllRelays, r.Key(), r)
+					relayMap.UpdateRelayData(r.Addr.String(), r)
 				} else {
 					r.Datacenter.ID = uint64(i)
-					redisClient.HSet(routing.HashKeyAllRelays, r.Key(), r)
+					relayMap.UpdateRelayData(r.Addr.String(), r)
 					validDcIDs = append(validDcIDs, r.Datacenter.ID)
 					validDcNames = append(validDcNames, r.Datacenter.Name)
 				}
@@ -331,18 +322,14 @@ func TestStatsDatabase(t *testing.T) {
 
 			var costMatrix routing.CostMatrix
 
-			assert.NoError(t, statsdb.GetCostMatrix(&costMatrix, redisClient, maxJitter, maxPacketLoss))
+			assert.NoError(t, statsdb.GetCostMatrix(&costMatrix, allRelayData, maxJitter, maxPacketLoss))
 
 			// Testing
-			hgetallResult = redisClient.HGetAll(routing.HashKeyAllRelays)
-
 			// assert each entry in the relay db is present in the cost matrix
-			for _, raw := range hgetallResult.Val() {
-				var relayCacheEntry routing.RelayCacheEntry
-				relayCacheEntry.UnmarshalBinary([]byte(raw))
-				assert.Contains(t, costMatrix.RelayIDs, relayCacheEntry.ID)
-				assert.Contains(t, costMatrix.RelayNames, relayCacheEntry.Name)
-				assert.Contains(t, costMatrix.RelayPublicKeys, relayCacheEntry.PublicKey)
+			for _, relayData := range allRelayData {
+				assert.Contains(t, costMatrix.RelayIDs, relayData.ID)
+				assert.Contains(t, costMatrix.RelayNames, relayData.Name)
+				assert.Contains(t, costMatrix.RelayPublicKeys, relayData.PublicKey)
 			}
 
 			// assert the length of the valid ids equals the length of all the datacenter ids in the matrix
@@ -354,11 +341,9 @@ func TestStatsDatabase(t *testing.T) {
 
 				// find the relays whose datacenter id matches this one
 				validRelayIDs := make([]uint64, 0)
-				for _, raw := range hgetallResult.Val() {
-					var relayCacheEntry routing.RelayCacheEntry
-					relayCacheEntry.UnmarshalBinary([]byte(raw))
-					if relayCacheEntry.Datacenter.ID == id {
-						validRelayIDs = append(validRelayIDs, relayCacheEntry.ID)
+				for _, relayData := range allRelayData {
+					if relayData.Datacenter.ID == id {
+						validRelayIDs = append(validRelayIDs, relayData.ID)
 						break
 					}
 				}
@@ -401,51 +386,6 @@ func TestStatsDatabase(t *testing.T) {
 			assert.Equal(t, int32(-1), costMatrix.RTT[getAddressIndex("127.0.0.1:40000", "127.0.0.3:40000")])
 			assert.Equal(t, int32(-1), costMatrix.RTT[getAddressIndex("127.0.0.1:40000", "654.0.0.4:40000")])
 			assert.Equal(t, int32(-1), costMatrix.RTT[getAddressIndex("127.0.0.1:40000", "000.0.0.5:40000")])
-		})
-
-		t.Run("Failed to get relays from redis", func(t *testing.T) {
-			// Do not establish a redis server to simulate a failed relay request
-			redisClient := redis.NewClient(&redis.Options{Addr: "0.0.0.0:9999"})
-
-			var costMatrix routing.CostMatrix
-			statsdb := routing.NewStatsDatabase()
-			err := statsdb.GetCostMatrix(&costMatrix, redisClient, 10.0, 0.1)
-			assert.EqualError(t, err, fmt.Sprintf("failed to get all relays from redis: dial tcp %v: connect: connection refused", redisClient.Options().Addr))
-		})
-
-		t.Run("Failed to unmarshal cost matrix", func(t *testing.T) {
-			redisServer, _ := miniredis.Run()
-			redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
-
-			// Relay data
-			addr := "127.0.0.1:40000"
-			id := crypto.HashID(addr)
-			udp, _ := net.ResolveUDPAddr("udp", addr)
-			relayCacheEntry := routing.RelayCacheEntry{
-				ID:   id,
-				Name: addr,
-				Addr: *udp,
-				Datacenter: routing.Datacenter{
-					ID:   uint64(rand.Uint64()%(math.MaxUint64-1) + 1), // non-zero random number
-					Name: randomString(5),
-				},
-				PublicKey:      randomPublicKey(),
-				LastUpdateTime: time.Now(),
-			}
-
-			buff, err := relayCacheEntry.MarshalBinary()
-			assert.NoError(t, err)
-
-			// Malform the relay data
-			buff = buff[:len(buff)-1]
-
-			redisClient.HSet(routing.HashKeyAllRelays, relayCacheEntry.Key(), buff)
-
-			statsdb := routing.NewStatsDatabase()
-
-			var costMatrix routing.CostMatrix
-			err = statsdb.GetCostMatrix(&costMatrix, redisClient, 10.0, 0.1)
-			assert.Contains(t, err.Error(), "failed to unmarshal relay when creating cost matrix:")
 		})
 	})
 }

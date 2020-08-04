@@ -17,5 +17,3 @@ relay.env
 # next tool output
 cost.bin
 optimize.bin
-
-stats.txt

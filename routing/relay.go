@@ -4,11 +4,9 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net"
-	"strconv"
 	"strings"
 	"time"
 
-	jsoniter "github.com/json-iterator/go"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
 )
@@ -17,14 +15,7 @@ const (
 	// EncryptedRelayTokenSize ...
 	EncryptedRelayTokenSize = crypto.KeySize + crypto.MACSize
 
-	// HashKeyPrefixRelay ...
-	HashKeyPrefixRelay = "RELAY-"
-
-	// HashKeyAllRelays ...
-	HashKeyAllRelays = "ALL_RELAYS"
-
-	// Relax
-	RelayTimeout = 60 * time.Second
+	RelayTimeout = 30 * time.Second
 
 	// MaxRelayAddressLength ...
 	MaxRelayAddressLength = 256
@@ -153,71 +144,6 @@ type Relay struct {
 
 func (r *Relay) EncodedPublicKey() string {
 	return base64.StdEncoding.EncodeToString(r.PublicKey)
-}
-
-func (r *Relay) Size() uint64 {
-	return uint64(8 + // ID
-		4 + len(r.Name) + // Name
-		4 + len(r.Addr.String()) + // Address
-		len(r.PublicKey) + // Public Key
-		4 + len(r.Seller.ID) + // Seller ID
-		4 + len(r.Seller.Name) + // Seller Name
-		8 + // Seller Ingress Price
-		8 + // Seller Egress Price
-		8 + // Datacenter ID
-		4 + len(r.Datacenter.Name) + // Datacenter Name
-		1 + // Datacenter Enabled
-		8 + // Datacenter Location Latitude
-		8 + // Datacenter Location Longitude
-		8 + // NIC Speed Mbps
-		8 + // Included Bandwidth GB
-		8 + // Last Update Time
-		4 + // Relay State
-		4 + len(r.ManagementAddr) + // Management Address
-		4 + len(r.SSHUser) + // SSH Username
-		8 + // SSH Port
-		8 + // Traffic Stats Session Count
-		8 + // Traffic Stats Bytes Sent
-		8 + // Traffic Stats Bytes Received
-		4 + // BWRule
-		4 + // Contract Term
-		8 + // contract EndDate
-		8 + // contract StartDate
-		8 + // Overage (Nibblin, uint64)
-		8 + // MRC (Nibblin, uint64)
-		4 + // MachineType
-		4 + // Max Sessions
-		4 + // CPU usage
-		4, // Mem usage
-	)
-}
-
-type RelayCacheEntry struct {
-	ID             uint64
-	Name           string
-	Addr           net.UDPAddr
-	PublicKey      []byte
-	Seller         Seller
-	Datacenter     Datacenter
-	LastUpdateTime time.Time
-	TrafficStats   RelayTrafficStats
-	MaxSessions    uint32
-	CPUUsage       float32
-	MemUsage       float32
-	Version        string
-}
-
-func (e *RelayCacheEntry) UnmarshalBinary(data []byte) error {
-	return jsoniter.Unmarshal(data, e)
-}
-
-func (e RelayCacheEntry) MarshalBinary() ([]byte, error) {
-	return jsoniter.Marshal(e)
-}
-
-// Key returns the key used for Redis
-func (r *RelayCacheEntry) Key() string {
-	return HashKeyPrefixRelay + strconv.FormatUint(r.ID, 10)
 }
 
 // RelayTrafficStats describes the measured relay traffic statistics reported from the relay
