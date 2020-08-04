@@ -723,6 +723,9 @@ func main() {
 
 		mux := transport.UDPServerMux2{
 			Logger:                   logger,
+			SessionErrorMetrics:      &sessionUpdateMetrics.ErrorMetrics,
+			PortalPublisher:          portalPublisher,
+			Biller:                   biller,
 			Port:                     udpPort,
 			MaxPacketSize:            transport.DefaultMaxPacketSize,
 			ServerInitHandlerFunc:    transport.ServerInitHandlerFunc(serverInitConfig),
