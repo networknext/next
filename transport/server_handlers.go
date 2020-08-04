@@ -90,14 +90,9 @@ func (m *UDPServerMux2) Start(ctx context.Context) error {
 	}
 
 	if b, err := strconv.ParseBool(os.Getenv("USE_THREAD_POOL")); err == nil && b {
-		numPktThreads := 8
+		numPktThreads := 256
 		if t, err := strconv.ParseUint(os.Getenv("NUM_PACKET_PROCESSING_THREADS"), 10, 64); err == nil && t > 0 {
 			numPktThreads = int(t)
-		}
-
-		numUpdateThreads := 8
-		if t, err := strconv.ParseUint(os.Getenv("NUM_POST_UPDATE_THREADS"), 10, 64); err == nil && t > 0 {
-			numUpdateThreads = int(t)
 		}
 
 		pools := make([]*ants.Pool, 0)
@@ -108,15 +103,9 @@ func (m *UDPServerMux2) Start(ctx context.Context) error {
 				os.Exit(1)
 			}
 
-			updatePool, err := ants.NewPool(numUpdateThreads)
-			if err != nil {
-				level.Error(m.Logger).Log("msg", "could not create pkt recv thread pool", "err", err)
-				os.Exit(1)
-			}
+			go m.handler(ctx, threadPoolHandlerFunc(m, procPool))
 
-			go m.handler(ctx, threadPoolHandlerFunc(m, procPool, updatePool))
-
-			pools = append(pools, procPool, updatePool)
+			pools = append(pools, procPool)
 		}
 
 		<-ctx.Done()
@@ -198,10 +187,10 @@ func goroutineHandlerFunc(m *UDPServerMux2) packetHandlerFunc {
 }
 
 // returns a function that handles udp packets through a thread pool
-func threadPoolHandlerFunc(m *UDPServerMux2, procPool, updatePool *ants.Pool) packetHandlerFunc {
+func threadPoolHandlerFunc(m *UDPServerMux2, procPool *ants.Pool) packetHandlerFunc {
 	return func(conn *net.UDPConn, packetData []byte, packetSize int, from *net.UDPAddr) {
 		procPool.Submit(func() {
-			m.handlePacket(conn, packetData, packetSize, from, threadPoolPostSessionUpdateFunc(updatePool))
+			m.handlePacket(conn, packetData, packetSize, from, goroutinePostSessionUpdateFunc())
 		})
 	}
 }
