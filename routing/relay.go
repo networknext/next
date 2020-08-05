@@ -15,12 +15,6 @@ const (
 	// EncryptedRelayTokenSize ...
 	EncryptedRelayTokenSize = crypto.KeySize + crypto.MACSize
 
-	// HashKeyPrefixRelay ...
-	HashKeyPrefixRelay = "RELAY-"
-
-	// HashKeyAllRelays ...
-	HashKeyAllRelays = "ALL_RELAYS"
-
 	RelayTimeout = 30 * time.Second
 
 	// MaxRelayAddressLength ...
@@ -150,43 +144,6 @@ type Relay struct {
 
 func (r *Relay) EncodedPublicKey() string {
 	return base64.StdEncoding.EncodeToString(r.PublicKey)
-}
-
-func (r *Relay) Size() uint64 {
-	return uint64(8 + // ID
-		4 + len(r.Name) + // Name
-		4 + len(r.Addr.String()) + // Address
-		len(r.PublicKey) + // Public Key
-		4 + len(r.Seller.ID) + // Seller ID
-		4 + len(r.Seller.Name) + // Seller Name
-		8 + // Seller Ingress Price
-		8 + // Seller Egress Price
-		8 + // Datacenter ID
-		4 + len(r.Datacenter.Name) + // Datacenter Name
-		1 + // Datacenter Enabled
-		8 + // Datacenter Location Latitude
-		8 + // Datacenter Location Longitude
-		8 + // NIC Speed Mbps
-		8 + // Included Bandwidth GB
-		8 + // Last Update Time
-		4 + // Relay State
-		4 + len(r.ManagementAddr) + // Management Address
-		4 + len(r.SSHUser) + // SSH Username
-		8 + // SSH Port
-		8 + // Traffic Stats Session Count
-		8 + // Traffic Stats Bytes Sent
-		8 + // Traffic Stats Bytes Received
-		4 + // BWRule
-		4 + // Contract Term
-		8 + // contract EndDate
-		8 + // contract StartDate
-		8 + // Overage (Nibblin, uint64)
-		8 + // MRC (Nibblin, uint64)
-		4 + // MachineType
-		4 + // Max Sessions
-		4 + // CPU usage
-		4, // Mem usage
-	)
 }
 
 // RelayTrafficStats describes the measured relay traffic statistics reported from the relay
