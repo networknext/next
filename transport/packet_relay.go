@@ -16,12 +16,14 @@ import (
 )
 
 const (
-	VersionNumberInitRequest    = 0
+	VersionNumberInitRequest    = 1
 	VersionNumberInitResponse   = 0
-	VersionNumberUpdateRequest  = 0
+	VersionNumberUpdateRequest  = 1
 	VersionNumberUpdateResponse = 0
 
 	PacketSizeRelayInitResponse = 4 + 8 + crypto.KeySize
+
+	MaxRelayVersionLength = 10
 )
 
 // RelayPingStats describes the measured relay ping statistics to another relay
@@ -165,6 +167,7 @@ type RelayInitRequest struct {
 	Nonce          []byte
 	Address        net.UDPAddr
 	EncryptedToken []byte
+	RelayVersion   string
 }
 
 func (r *RelayInitRequest) UnmarshalJSON(buf []byte) error {
@@ -232,6 +235,12 @@ func (r *RelayInitRequest) UnmarshalBinary(buf []byte) error {
 		return errors.New("invalid packet")
 	}
 
+	if r.Version >= 1 {
+		if !encoding.ReadString(buf, &index, &r.RelayVersion, MaxRelayVersionLength) {
+			return errors.New("invalid packet, could not read relay version")
+		}
+	}
+
 	if udp, err := net.ResolveUDPAddr("udp", addr); udp != nil && err == nil {
 		r.Address = *udp
 	} else {
@@ -243,13 +252,14 @@ func (r *RelayInitRequest) UnmarshalBinary(buf []byte) error {
 
 // MarshalBinary ...
 func (r RelayInitRequest) MarshalBinary() ([]byte, error) {
-	data := make([]byte, 4+4+crypto.NonceSize+4+len(r.Address.String())+routing.EncryptedRelayTokenSize)
+	data := make([]byte, 4+4+crypto.NonceSize+4+len(r.Address.String())+routing.EncryptedRelayTokenSize+1)
 	index := 0
 	encoding.WriteUint32(data, &index, r.Magic)
 	encoding.WriteUint32(data, &index, r.Version)
 	encoding.WriteBytes(data, &index, r.Nonce, crypto.NonceSize)
 	encoding.WriteString(data, &index, r.Address.String(), uint32(len(r.Address.String())))
 	encoding.WriteBytes(data, &index, r.EncryptedToken, routing.EncryptedRelayTokenSize)
+	encoding.WriteString(data, &index, r.RelayVersion, MaxRelayVersionLength)
 
 	return data, nil
 }
@@ -316,10 +326,10 @@ type RelayUpdateRequest struct {
 	PingStats    []routing.RelayStatsPing
 	TrafficStats routing.RelayTrafficStats
 
+	ShuttingDown bool
+
 	CPUUsage float64
 	MemUsage float64
-
-	ShuttingDown bool
 }
 
 func (r *RelayUpdateRequest) UnmarshalJSON(buff []byte) error {
@@ -413,11 +423,20 @@ func (r *RelayUpdateRequest) UnmarshalBinary(buff []byte) error {
 		return errors.New("invalid packet, could not read bytes received")
 	}
 
-	if index+1 > len(buff) {
-		return errors.New("invalid packet, could not read shutdown flag")
+	var shuttingDown uint8
+	if !encoding.ReadUint8(buff, &index, &shuttingDown) {
+		return errors.New("invalid packet, could not read shut down flag")
 	}
 
-	r.ShuttingDown = buff[index] != 0
+	r.ShuttingDown = shuttingDown != 0
+
+	if !encoding.ReadFloat64(buff, &index, &r.CPUUsage) {
+		return errors.New("invalid packet, could not read cpu usage")
+	}
+
+	if !encoding.ReadFloat64(buff, &index, &r.MemUsage) {
+		return errors.New("invalid packet, could not read memory usage")
+	}
 
 	return nil
 }
