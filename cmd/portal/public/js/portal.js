@@ -215,9 +215,9 @@ MapHandler = {
 		}, 1000);
 
 		this.refreshMapSessions();
-		this.mapLoop = setInterval(() => {
+		/* this.mapLoop = setInterval(() => {
 			this.refreshMapSessions();
-		}, 10000);
+		}, 10000); */
 	},
 	updateMap(mapType) {
 		/*
@@ -282,7 +282,8 @@ MapHandler = {
 		JSONRPCClient
 			.call('BuyersService.SessionMap', {buyer_id: filter.buyerId || ""})
 			.then((response) => {
-				let sessions = response.map_points || [];
+				// let sessions = response.map_points || [];
+				let sessions = [];
 				let onNN = sessions.filter((point) => {
 					return (point[2] == 1);
 				});
