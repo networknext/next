@@ -4,7 +4,7 @@ import (
 	"github.com/networknext/backend/encoding"
 )
 
-const BillingEntryVersion = uint8(5)
+const BillingEntryVersion = uint8(6)
 
 const BillingEntryMaxRelays = 5
 
