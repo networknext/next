@@ -105,9 +105,6 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 	if !encoding.ReadUint64(data, &index, &entry.BuyerID) {
 		return false
 	}
-	if !encoding.ReadUint64(data, &index, &entry.UserHash) {
-		return false
-	}
 	if !encoding.ReadUint64(data, &index, &entry.SessionID) {
 		return false
 	}
@@ -216,6 +213,12 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 					return false
 				}
 			}
+		}
+	}
+
+	if entry.Version >= 6 {
+		if !encoding.ReadUint64(data, &index, &entry.UserHash) {
+			return false
 		}
 	}
 
