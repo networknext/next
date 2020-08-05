@@ -766,8 +766,17 @@ func main() {
 			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(sessionUpdateConfig),
 		}
 
+		var selectionPercent uint64 = 100
+		if valueStr, ok := os.LookupEnv("PACKET_SELECTION_PERCENT"); ok {
+			if valueUint, err := strconv.ParseUint(valueStr, 10, 64); err == nil {
+				selectionPercent = valueUint
+			} else {
+				level.Error(logger).Log("msg", "cannot parse value of 'PACKET_SELECTION_PERCENT' env var", "err", err)
+			}
+		}
+
 		go func() {
-			if err := mux.Start(ctx, int(numPostSessionGoroutines), int(postSessionBufferSize)); err != nil {
+			if err := mux.Start(ctx, int(numPostSessionGoroutines), int(postSessionBufferSize), selectionPercent); err != nil {
 				fmt.Println(err)
 				os.Exit(1)
 			}
