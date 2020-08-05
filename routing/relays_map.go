@@ -8,9 +8,12 @@ import (
 	"time"
 
 	"github.com/networknext/backend/crypto"
+	"github.com/networknext/backend/encoding"
 )
 
-const NumRelayMapShards = 10
+const (
+	NumRelayMapShards = 10
+)
 
 type RelayData struct {
 	ID             uint64
@@ -27,9 +30,41 @@ type RelayData struct {
 	Version        string
 }
 
+func (r *RelayData) MarshalBinary() ([]byte, error) {
+	// | id (8) | tx (8) | rx (8) | sessions (8) | cpu usage (4) | mem usage (4) | version strlen |
+	data := make([]byte, 8+8+8+8+4+4+len(r.Version))
+
+	index := 0
+	encoding.WriteUint64(data, &index, r.ID)
+	encoding.WriteUint64(data, &index, r.TrafficStats.BytesSent)
+	encoding.WriteUint64(data, &index, r.TrafficStats.BytesReceived)
+	encoding.WriteUint64(data, &index, r.TrafficStats.SessionCount)
+	encoding.WriteFloat32(data, &index, r.CPUUsage)
+	encoding.WriteFloat32(data, &index, r.MemUsage)
+	encoding.WriteString(data, &index, r.Version, uint32(len(r.Version)))
+
+	return data, nil
+}
+
 type RelayMapShard struct {
 	mutex  sync.RWMutex
 	relays map[string]*RelayData
+}
+
+func (r *RelayMapShard) MarshalBinary() ([]byte, error) {
+	r.mutex.RLock()
+	defer r.mutex.RUnlock()
+
+	data := make([]byte, 0)
+	for _, relay := range r.relays {
+		if bin, err := relay.MarshalBinary(); err == nil {
+			data = append(data, bin...)
+		} else {
+			return nil, err
+		}
+	}
+
+	return data, nil
 }
 
 // RelayCleanupCallback is a callback function that will be called
@@ -157,5 +192,15 @@ func (relayMap *RelayMap) TimeoutLoop(ctx context.Context, timeoutSeconds int64,
 		case <-ctx.Done():
 			return
 		}
+	}
+}
+
+func (r *RelayMap) MarshalBinary() ([]byte, error) {
+	data := make([]byte, 0)
+	for i := range r.shard {
+		shard := r.shard[i]
+		shard.mutex.RLock()
+		defer shard.mutex.RUnlock()
+
 	}
 }

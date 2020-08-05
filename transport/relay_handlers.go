@@ -652,3 +652,10 @@ func RoutesHandlerFunc(GetRouteMatrix func() *routing.RouteMatrix, statsdb *rout
 		writer.Write(buf.Bytes())
 	}
 }
+
+func RelayStatsFunc(rmap *routing.RelayMap) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, request *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write(rmap.MarshalBinary())
+	}
+}
