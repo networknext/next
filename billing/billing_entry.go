@@ -4,7 +4,7 @@ import (
 	"github.com/networknext/backend/encoding"
 )
 
-const BillingEntryVersion = uint8(5)
+const BillingEntryVersion = uint8(6)
 
 const BillingEntryMaxRelays = 5
 
@@ -103,9 +103,6 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 		return false
 	}
 	if !encoding.ReadUint64(data, &index, &entry.BuyerID) {
-		return false
-	}
-	if !encoding.ReadUint64(data, &index, &entry.UserHash) {
 		return false
 	}
 	if !encoding.ReadUint64(data, &index, &entry.SessionID) {
@@ -216,6 +213,12 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 					return false
 				}
 			}
+		}
+	}
+
+	if entry.Version >= 6 {
+		if !encoding.ReadUint64(data, &index, &entry.UserHash) {
+			return false
 		}
 	}
 
