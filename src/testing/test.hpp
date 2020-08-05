@@ -154,8 +154,8 @@ namespace testing
   {
    public:
     bool Success;          // The request was a success
-    std::string Request;   // The request that was sent
-    std::string Response;  // The Response that should be received
+    std::vector<uint8_t> Request;   // The request that was sent
+    std::vector<uint8_t> Response;  // The Response that should be received
     std::string Hostname;  // The hostname used
     std::string Endpoint;  // The endpoint to hit
 
