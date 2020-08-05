@@ -873,8 +873,10 @@ func main() {
 					}
 
 					// Build the actual Relay struct from the input relay struct
+					rid := crypto.HashID(relay.Addr)
 					realRelay := routing.Relay{
-						ID:        crypto.HashID(relay.Addr),
+						ID:        rid,
+						SignedID:  int64(rid),
 						Name:      relay.Name,
 						Addr:      *addr,
 						PublicKey: publicKey,
