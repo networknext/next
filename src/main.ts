@@ -38,7 +38,8 @@ authService.lockClient.checkSession({
     authService.lockClient.getUserInfo(authResult.accessToken, (error: auth0.Auth0Error, profile: NNAuth0Profile) => {
       if (!error) {
         const roles = profile['https://networknext.com/userRoles'] || { roles: [] }
-        const userProfile: UserProfile = {
+        const email = profile.email || ''
+        let userProfile: UserProfile = {
           auth0ID: profile.sub,
           company: '',
           email: profile.email || '',
@@ -46,13 +47,34 @@ authService.lockClient.checkSession({
           name: profile.name,
           roles: roles.roles,
           verified: profile.email_verified || false,
-          routeShader: null
+          routeShader: null,
+          domain: email.split('@')[1],
+          pubKey: '',
+          buyerID: ''
         }
         store.commit('UPDATE_USER_PROFILE', userProfile)
-        apiService.fetchAllBuyers().then((response: any) => {
-          const allBuyers = response.buyers || []
-          store.commit('UPDATE_ALL_BUYERS', allBuyers)
-        })
+        userProfile = JSON.parse(JSON.stringify(store.getters.userProfile))
+        if (!store.getters.isAnonymous || !store.getters.isAnonymousPlus) {
+          apiService
+            .fetchGameConfiguration({ domain: store.getters.userProfile.domain })
+            .then((response: any) => {
+              userProfile.pubKey = response.game_config.public_key
+              userProfile.company = response.game_config.company
+              userProfile.buyerID = response.game_config.buyer_id
+              userProfile.routeShader = response.customer_route_shader
+            })
+            .catch((e) => {
+              console.log('Something went wrong fetching public key')
+              console.log(e)
+            })
+            .finally(() => {
+              store.commit('UPDATE_USER_PROFILE', userProfile)
+            })
+          apiService.fetchAllBuyers().then((response: any) => {
+            const allBuyers = response.buyers || []
+            store.commit('UPDATE_ALL_BUYERS', allBuyers)
+          })
+        }
         app = new Vue({
           router,
           store,

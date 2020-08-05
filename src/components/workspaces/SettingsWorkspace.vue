@@ -39,39 +39,9 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
-import APIService from '../../services/api.service'
 
 @Component
-export default class SettingsWorkspace extends Vue {
-  private apiService: APIService
-
-  constructor () {
-    super()
-    this.apiService = Vue.prototype.$apiService
-  }
-
-  private mounted () {
-    if (this.$store.getters.isAnonymous || this.$store.getters.isAnonymousPlus) {
-      return
-    }
-    const userProfile = JSON.parse(JSON.stringify(this.$store.getters.userProfile))
-    this.apiService
-      .fetchGameConfiguration({ domain: this.$store.getters.userProfile.domain })
-      .then((response: any) => {
-        userProfile.pubKey = response.game_config.public_key
-        userProfile.company = response.game_config.company
-        userProfile.routeShader = response.customer_route_shader
-        this.$store.commit('UPDATE_USER_PROFILE', userProfile)
-      })
-      .catch((e) => {
-        console.log('Something went wrong fetching public key')
-        console.log(e)
-        this.$store.commit('UPDATE_USER_PROFILE', userProfile)
-        userProfile.userProfile.pubKey = ''
-        userProfile.userProfile.company = ''
-      })
-  }
-}
+export default class SettingsWorkspace extends Vue {}
 </script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->

@@ -60,10 +60,11 @@ export default class AuthService {
     this.getUserInfo(authResult.accessToken, (error: auth0.Auth0Error, profile: NNAuth0Profile) => {
       if (!error) {
         const userRoles = profile['https://networknext.com/userRoles'] || { roles: [] }
+        const email = profile.email || ''
         const userProfile: UserProfile = {
           auth0ID: profile.sub,
           company: '',
-          email: profile.email || '',
+          email: email,
           idToken: authResult.idToken,
           name: profile.name,
           roles: userRoles.roles,
@@ -76,7 +77,10 @@ export default class AuthService {
             enable_ab: false,
             acceptable_latency: '20',
             pl_threshold: '1'
-          }
+          },
+          domain: email.split('@')[1],
+          pubKey: '',
+          buyerID: ''
         }
         store.commit('UPDATE_USER_PROFILE', userProfile)
       }
@@ -99,4 +103,7 @@ export interface UserProfile {
   roles: Array<string>;
   verified: boolean;
   routeShader: any;
+  domain: string;
+  pubKey: string;
+  buyerID: string;
 }
