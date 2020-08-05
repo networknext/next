@@ -58,7 +58,6 @@ export default class SettingsWorkspace extends Vue {
     this.apiService
       .fetchGameConfiguration({ domain: this.$store.getters.userProfile.domain })
       .then((response: any) => {
-        console.log(response)
         userProfile.pubKey = response.game_config.public_key
         userProfile.company = response.game_config.company
         userProfile.routeShader = response.customer_route_shader

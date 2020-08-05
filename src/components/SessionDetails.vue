@@ -1,243 +1,246 @@
 <template>
-  <div class="row" v-if="showDetails">
-    <div class="col-12 col-lg-8">
-      <div class="card mb-2">
-        <div class="card-header">
-          <strong>
-            Latency
-          </strong>
-          <div class="float-right">
-            <span class="mr-2"
-                  style="border-right: 2px dotted rgb(51, 51, 51); display: none;"
-            ></span>
-            <span style="color: rgb(0, 109, 44);">
-              — Network Next
-            </span>
-            <span style="color: rgb(49, 130, 189);">
-              — Direct
-            </span>
-            <span></span>
-          </div>
-        </div>
-        <div class="card-body">
-          <div id="latency-chart-1"></div>
-        </div>
-      </div>
-      <div class="card mb-2">
-        <div class="card-header">
-          <strong>
-            Jitter
-          </strong>
-          <div class="float-right">
-            <span class="mr-2"
-                  style="border-right: 2px dotted rgb(51, 51, 51); display: none;"
-            ></span>
-            <span style="color: rgb(0, 109, 44);">
-              — Network Next
-            </span>
-            <span style="color: rgb(49, 130, 189);">
-              — Direct
-            </span>
-            <span></span>
-          </div>
-        </div>
-        <div class="card-body">
-          <div id="jitter-chart-1"></div>
-        </div>
-      </div>
-      <div class="card mb-2">
-        <div class="card-header">
-          <strong>
-            Packet Loss
-          </strong>
-          <div class="float-right">
-            <span class="mr-2"
-                  style="border-right: 2px dotted rgb(51, 51, 51); display: none;"
-            ></span>
-            <span style="color: rgb(0, 109, 44);">
+  <div>
+    <Alert :message="message" :alertType="alertType" v-if="message !== ''"/>
+    <div class="row" v-if="showDetails">
+      <div class="col-12 col-lg-8">
+        <div class="card mb-2">
+          <div class="card-header">
+            <strong>
+              Latency
+            </strong>
+            <div class="float-right">
+              <span class="mr-2"
+                    style="border-right: 2px dotted rgb(51, 51, 51); display: none;"
+              ></span>
+              <span style="color: rgb(0, 109, 44);">
                 — Network Next
-            </span>
-            <span style="color: rgb(49, 130, 189);">
+              </span>
+              <span style="color: rgb(49, 130, 189);">
                 — Direct
-            </span>
-            <span></span>
+              </span>
+              <span></span>
+            </div>
+          </div>
+          <div class="card-body">
+            <div id="latency-chart-1"></div>
           </div>
         </div>
-        <div class="card-body">
-          <div id="packet-loss-chart-1"></div>
+        <div class="card mb-2">
+          <div class="card-header">
+            <strong>
+              Jitter
+            </strong>
+            <div class="float-right">
+              <span class="mr-2"
+                    style="border-right: 2px dotted rgb(51, 51, 51); display: none;"
+              ></span>
+              <span style="color: rgb(0, 109, 44);">
+                — Network Next
+              </span>
+              <span style="color: rgb(49, 130, 189);">
+                — Direct
+              </span>
+              <span></span>
+            </div>
+          </div>
+          <div class="card-body">
+            <div id="jitter-chart-1"></div>
+          </div>
+        </div>
+        <div class="card mb-2">
+          <div class="card-header">
+            <strong>
+              Packet Loss
+            </strong>
+            <div class="float-right">
+              <span class="mr-2"
+                    style="border-right: 2px dotted rgb(51, 51, 51); display: none;"
+              ></span>
+              <span style="color: rgb(0, 109, 44);">
+                  — Network Next
+              </span>
+              <span style="color: rgb(49, 130, 189);">
+                  — Direct
+              </span>
+              <span></span>
+            </div>
+          </div>
+          <div class="card-body">
+            <div id="packet-loss-chart-1"></div>
+          </div>
+        </div>
+        <div class="card mb-2">
+          <div class="card-header">
+            <strong>
+              Bandwidth
+            </strong>
+            <div class="float-right">
+              <span class="mr-2"
+                    style="border-right: 2px dotted rgb(51, 51, 51); display: none;"
+              ></span>
+              <span style="color: orange;">
+                — Up
+              </span>
+              <span style="color: blue;">
+                — Down
+              </span>
+              <span></span>
+            </div>
+            <div class="float-right">
+              <span id="traffic-up-legend"></span>
+              <span id="traffic-down-legend"></span>
+            </div>
+          </div>
+          <div class="card-body">
+            <div id="bandwidth-chart-1"></div>
+          </div>
         </div>
       </div>
-      <div class="card mb-2">
-        <div class="card-header">
-          <strong>
-            Bandwidth
-          </strong>
-          <div class="float-right">
-            <span class="mr-2"
-                  style="border-right: 2px dotted rgb(51, 51, 51); display: none;"
-            ></span>
-            <span style="color: orange;">
-              — Up
-            </span>
-            <span style="color: blue;">
-              — Down
-            </span>
-            <span></span>
+      <div class="col-12 col-lg-4">
+        <div class="card">
+          <div class="card-img-top">
+            <div  style="width: 100%; height: 40vh; margin: 0px; padding: 0px; position: relative;">
+              <div id="session-tool-map"></div>
+              <canvas id="session-tool-deck-canvas"></canvas>
+            </div>
           </div>
-          <div class="float-right">
-            <span id="traffic-up-legend"></span>
-            <span id="traffic-down-legend"></span>
-          </div>
-        </div>
-        <div class="card-body">
-          <div id="bandwidth-chart-1"></div>
-        </div>
-      </div>
-    </div>
-    <div class="col-12 col-lg-4">
-      <div class="card">
-        <div class="card-img-top">
-          <div  style="width: 100%; height: 40vh; margin: 0px; padding: 0px; position: relative;">
-            <div id="session-tool-map"></div>
-            <canvas id="session-tool-deck-canvas"></canvas>
-          </div>
-        </div>
-        <div class="card-body">
-          <div class="card-text">
-            <dl>
-              <dt>
-                ISP
-              </dt>
-              <dd>
-                <em>
-                  {{ this.meta.location.isp != '' ? this.meta.location.isp : 'Unknown' }}
-                </em>
-              </dd>
-              <div v-if="!$store.getters.isAnonymous">
+          <div class="card-body">
+            <div class="card-text">
+              <dl>
                 <dt>
-                  User Hash
+                  ISP
                 </dt>
                 <dd>
-                  <router-link v-bind:to="`/user-tool/${this.meta.user_hash}`" class="text-dark">{{ this.meta.user_hash }}</router-link>
+                  <em>
+                    {{ this.meta.location.isp != '' ? this.meta.location.isp : 'Unknown' }}
+                  </em>
                 </dd>
-              </div>
-              <dt>
-                  User IP Address
-              </dt>
-              <dd>
-                  {{ this.meta.client_addr }}
-              </dd>
-              <dt>
-                  Platform
-              </dt>
-              <dd>
-                  {{ this.meta.platform }}
-              </dd>
-              <dt v-if="!$store.getters.isAnonymous">
-                  Customer
-              </dt>
-              <dd v-if="!$store.getters.isAnonymous">
-                  {{
-                      getCustomerName(this.meta.customer_id)
-                  }}
-              </dd>
-              <dt>
-                SDK Version
-              </dt>
-              <dd>
-                {{ this.meta.sdk }}
-              </dd>
-              <dt>
-                Connection Type
-              </dt>
-              <dd>
-                {{ this.meta.connection }}
-              </dd>
-              <!-- TODO: Combine this so that we only check is Admin once -->
-              <dt v-if="$store.getters.isAdmin && meta.nearby_relays.length > 0">
-                  Nearby Relays
-              </dt>
-              <dd v-if="$store.getters.isAdmin && meta.nearby_relays.length == 0">
-                  No Nearby Relays
-              </dd>
-              <table class="table table-sm mt-1" v-if="$store.getters.isAdmin && meta.nearby_relays.length > 0">
-                <thead>
-                  <tr>
-                    <th style="width: 50%;">
-                      Name
-                    </th>
-                    <th style="width: 16.66%;">
-                      RTT
-                    </th>
-                    <th style="width: 16.66%;">
-                      Jitter
-                    </th>
-                    <th style="width: 16.66%;">
-                      Packet Loss
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="(relay, index) in this.meta.nearby_relays" :key="index">
+                <div v-if="!$store.getters.isAnonymous">
+                  <dt>
+                    User Hash
+                  </dt>
+                  <dd>
+                    <router-link v-bind:to="`/user-tool/${this.meta.user_hash}`" class="text-dark">{{ this.meta.user_hash }}</router-link>
+                  </dd>
+                </div>
+                <dt>
+                    User IP Address
+                </dt>
+                <dd>
+                    {{ this.meta.client_addr }}
+                </dd>
+                <dt>
+                    Platform
+                </dt>
+                <dd>
+                    {{ this.meta.platform }}
+                </dd>
+                <dt v-if="!$store.getters.isAnonymous">
+                    Customer
+                </dt>
+                <dd v-if="!$store.getters.isAnonymous">
+                    {{
+                        getCustomerName(this.meta.customer_id)
+                    }}
+                </dd>
+                <dt>
+                  SDK Version
+                </dt>
+                <dd>
+                  {{ this.meta.sdk }}
+                </dd>
+                <dt>
+                  Connection Type
+                </dt>
+                <dd>
+                  {{ this.meta.connection }}
+                </dd>
+                <!-- TODO: Combine this so that we only check is Admin once -->
+                <dt v-if="$store.getters.isAdmin && meta.nearby_relays.length > 0">
+                    Nearby Relays
+                </dt>
+                <dd v-if="$store.getters.isAdmin && meta.nearby_relays.length == 0">
+                    No Nearby Relays
+                </dd>
+                <table class="table table-sm mt-1" v-if="$store.getters.isAdmin && meta.nearby_relays.length > 0">
+                  <thead>
+                    <tr>
+                      <th style="width: 50%;">
+                        Name
+                      </th>
+                      <th style="width: 16.66%;">
+                        RTT
+                      </th>
+                      <th style="width: 16.66%;">
+                        Jitter
+                      </th>
+                      <th style="width: 16.66%;">
+                        Packet Loss
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                      <tr v-for="(relay, index) in this.meta.nearby_relays" :key="index">
+                        <td>
+                          <a class="text-dark">{{relay.name}}</a>&nbsp;
+                        </td>
+                        <td>
+                          {{ parseFloat(relay.client_stats.rtt).toFixed(2) }}
+                        </td>
+                        <td>
+                          {{ parseFloat(relay.client_stats.jitter).toFixed(2) }}
+                        </td>
+                        <td>
+                          {{ parseFloat(relay.client_stats.packet_loss).toFixed(2) }}%
+                        </td>
+                      </tr>
+                  </tbody>
+                </table>
+                <dt  v-if="$store.getters.isAdmin">
+                    Route
+                </dt>
+                <table class="table table-sm mt-1" v-if="$store.getters.isAdmin">
+                  <thead>
+                    <tr>
+                      <th style="width: 50%;">
+                        Name
+                      </th>
+                      <th style="width: 50%;">
+                        Role
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                        <td>
+                            {{ meta.client_addr }}
+                        </td>
+                        <td>
+                            <em>
+                                User (Player)
+                            </em>
+                        </td>
+                    </tr>
+                    <tr v-for="(hop, index) in meta.hops" :key="index" scope="row">
                       <td>
-                        <a class="text-dark">{{relay.name}}</a>&nbsp;
+                          {{ hop.name }}
                       </td>
                       <td>
-                        {{ parseFloat(relay.client_stats.rtt).toFixed(2) }}
-                      </td>
-                      <td>
-                        {{ parseFloat(relay.client_stats.jitter).toFixed(2) }}
-                      </td>
-                      <td>
-                        {{ parseFloat(relay.client_stats.packet_loss).toFixed(2) }}%
+                          Hop {{ index + 1 }}
                       </td>
                     </tr>
-                </tbody>
-              </table>
-              <dt  v-if="$store.getters.isAdmin">
-                  Route
-              </dt>
-              <table class="table table-sm mt-1" v-if="$store.getters.isAdmin">
-                <thead>
-                  <tr>
-                    <th style="width: 50%;">
-                      Name
-                    </th>
-                    <th style="width: 50%;">
-                      Role
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
+                    <tr>
                       <td>
-                          {{ meta.client_addr }}
+                        {{ meta.server_addr }}
                       </td>
                       <td>
-                          <em>
-                              User (Player)
-                          </em>
+                          <em>Destination Server</em>
                       </td>
-                  </tr>
-                  <tr v-for="(hop, index) in meta.hops" :key="index" scope="row">
-                    <td>
-                        {{ hop.name }}
-                    </td>
-                    <td>
-                        Hop {{ index + 1 }}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>
-                      {{ meta.server_addr }}
-                    </td>
-                    <td>
-                        <em>Destination Server</em>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </dl>
+                    </tr>
+                  </tbody>
+                </table>
+              </dl>
+            </div>
           </div>
         </div>
       </div>
@@ -246,33 +249,39 @@
 </template>
 
 <script lang="ts">
-import { Component, Vue, Prop } from 'vue-property-decorator'
-import APIService from '@/services/api.service'
+
 import mapboxgl from 'mapbox-gl'
+import uPlot from 'uplot'
+
 import { Deck } from '@deck.gl/core'
 import { ScreenGridLayer } from '@deck.gl/aggregation-layers'
-
-import uPlot from 'uplot'
-import 'uplot/dist/uPlot.min.css'
-import { Slice } from './types/APITypes'
 import { Route, NavigationGuardNext } from 'vue-router'
+import { Component, Vue } from 'vue-property-decorator'
+
+import 'uplot/dist/uPlot.min.css'
+
+import Alert from '@/components/Alert.vue'
+import APIService from '@/services/api.service'
+import { AlertTypes } from './types/AlertTypes'
 
 /**
  * TODO: Cleanup template
  * TODO: Figure out what sessionMeta fields need to be required
- * TODO: Hookup API call
  */
 
-@Component
+@Component({
+  components: {
+    Alert
+  }
+})
 export default class SessionDetails extends Vue {
-  // TODO: Refactor out the alert/error into its own component.
   private showDetails = false
   private apiService: APIService
 
   private searchID: string
 
   private meta: any = null
-  private slices: Array<Slice> = []
+  private slices: Array<any> = []
 
   // TODO: Replace these with a null uPlot instance some how
   private latencyComparisonChart: any
@@ -284,7 +293,7 @@ export default class SessionDetails extends Vue {
   private deckGlInstance: any = null
   private mapInstance: any = null
 
-  private detailsLoop = 0
+  private detailsLoop: any = null
 
   private viewState = {
     latitude: 0,
@@ -295,10 +304,15 @@ export default class SessionDetails extends Vue {
     minZoom: 0
   }
 
+  private message: string
+  private alertType: string
+
   constructor () {
     super()
     this.apiService = Vue.prototype.$apiService
     this.searchID = ''
+    this.message = ''
+    this.alertType = AlertTypes.ERROR
   }
 
   private mounted () {
@@ -411,8 +425,14 @@ export default class SessionDetails extends Vue {
         })
       })
       .catch((error: any) => {
-        console.log(`Something went wrong fetching sessions details for: ${this.searchID}`)
-        console.log(error)
+        if (this.detailsLoop) {
+          clearInterval(this.detailsLoop)
+        }
+        if (this.slices.length === 0) {
+          this.message = 'Failed to fetch session details'
+          console.log(`Something went wrong fetching sessions details for: ${this.searchID}`)
+          console.log(error)
+        }
       })
   }
 

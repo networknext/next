@@ -10,14 +10,14 @@ import { Component, Vue, Prop } from 'vue-property-decorator'
 @Component
 export default class Alert extends Vue {
   @Prop({ required: false, type: String, default: '' }) message!: string
-  @Prop({ required: false, type: String, default: '' }) classType!: string
+  @Prop({ required: false, type: String, default: '' }) alertType!: string
 
   get alertMessage (): string {
     return this.message
   }
 
   get className (): string {
-    return this.classType
+    return this.alertType
   }
 }
 

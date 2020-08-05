@@ -40,6 +40,7 @@
         </div>
       </div>
     </form>
+    <Alert :message="message" :alertType="alertType" v-if="message !== '' && $route.path === '/user-tool'"/>
     <router-view />
   </main>
 </template>
@@ -48,22 +49,28 @@
 import { Component, Vue } from 'vue-property-decorator'
 import { Route, NavigationGuardNext } from 'vue-router'
 import UserSessions from '@/components/UserSessions.vue'
+import { AlertTypes } from '../types/AlertTypes'
+import Alert from '@/components/Alert.vue'
 
 @Component({
   components: {
+    Alert,
     UserSessions
   }
 })
 export default class UserToolWorkspace extends Vue {
-  // TODO: Refactor out the alert/error into its own component.
-  private showAlert = false
-  private showError = false
+  private searchID: string
 
-  private searchID = ''
-  private showDetails = false
+  private message: string
+  private alertType: string
 
-  private message = ''
-  private alertType = ''
+  constructor () {
+    super()
+    this.alertType = ''
+    this.searchID = ''
+    this.message = 'Please enter a User ID or Hash to view their sessions.'
+    this.alertType = AlertTypes.INFO
+  }
 
   private created () {
     // Empty for now
@@ -72,12 +79,13 @@ export default class UserToolWorkspace extends Vue {
 
   private beforeRouteUpdate (to: Route, from: Route, next: NavigationGuardNext<Vue>) {
     this.searchID = ''
+    this.message = 'Please enter a User ID or Hash to view their sessions.'
+    this.alertType = AlertTypes.INFO
     next()
   }
 
   private fetchUserSessions () {
     this.message = ''
-    this.alertType = ''
     if (this.searchID === '') {
       this.$router.push({ path: '/user-tool' })
       return

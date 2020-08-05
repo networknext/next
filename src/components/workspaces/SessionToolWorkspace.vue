@@ -41,6 +41,7 @@
         </div>
       </div>
     </form>
+    <Alert :message="message" :alertType="alertType" v-if="message !== '' && $route.path === '/session-tool'"/>
     <router-view />
   </main>
 </template>
@@ -49,41 +50,45 @@
 import { Component, Vue } from 'vue-property-decorator'
 import { Route, NavigationGuardNext } from 'vue-router'
 
+import Alert from '@/components/Alert.vue'
+import { AlertTypes } from '@/components/types/AlertTypes'
 /**
  * TODO: Cleanup template
  * TODO: Figure out what sessionMeta fields need to be required
  */
 
-@Component
+@Component({
+  components: {
+    Alert
+  }
+})
 export default class SessionToolWorkspace extends Vue {
-  // TODO: Refactor out the alert/error into its own component.
-
   private searchID: string
   private message: string
   private alertType: string
 
-  private constructor () {
+  constructor () {
     super()
-    this.message = ''
     this.alertType = ''
     this.searchID = ''
+    this.message = 'Please enter a valid Session ID to view its statistics. It should be a hexadecimal number (with leading zeros), or a decimal number.'
+    this.alertType = AlertTypes.INFO
   }
 
   private created () {
     // Empty for now
     this.searchID = this.$route.params.pathMatch || ''
-    this.message = this.searchID === '' ? '' : 'Please enter a valid Session ID to view its statistics. It should be a hexadecimal number (with leading zeros), or a decimal number.'
-    this.alertType = this.searchID === '' ? '' : 'alert-info'
   }
 
   private beforeRouteUpdate (to: Route, from: Route, next: NavigationGuardNext<Vue>) {
     this.searchID = ''
+    this.message = 'Please enter a valid Session ID to view its statistics. It should be a hexadecimal number (with leading zeros), or a decimal number.'
+    this.alertType = AlertTypes.INFO
     next()
   }
 
   private fetchSessionDetails () {
     this.message = ''
-    this.alertType = ''
     if (this.searchID === '') {
       this.$router.push({ path: '/session-tool' })
       return
@@ -94,7 +99,6 @@ export default class SessionToolWorkspace extends Vue {
     }
   }
 }
-
 </script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->

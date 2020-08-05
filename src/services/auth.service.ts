@@ -15,12 +15,6 @@ export default class AuthService {
       this.clientID,
       this.domain,
       {
-        additionalSignUpFields: [
-          {
-            name: 'company',
-            placeholder: 'Please enter your company name'
-          }
-        ],
         auth: {
           autoParseHash: true,
           params: {

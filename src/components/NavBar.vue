@@ -13,10 +13,24 @@
                 <router-link to="/sessions" class="nav-link" v-bind:class="{ active: $store.getters.currentPage == 'sessions' }" data-test="sessionsLink">Sessions</router-link>
             </li>
             <li class="nav-item text-nowrap">
-                <router-link to="/session-tool" class="nav-link" v-bind:class="{ active: $store.getters.currentPage == 'session-tool' }" data-test="sessionToolLink">Session Tool</router-link>
+                <router-link to="/session-tool"
+                             class="nav-link"
+                             v-bind:class="{
+                                 active: $store.getters.currentPage == 'session-tool' || $store.getters.currentPage == 'session-details'
+                             }"
+                             data-test="sessionToolLink">
+                                Session Tool
+                </router-link>
             </li>
             <li class="nav-item text-nowrap">
-                <router-link to="/user-tool" class="nav-link" v-bind:class="{ active: $store.getters.currentPage == 'user-tool' }" v-if="!$store.getters.isAnonymous">User Tool</router-link>
+                <router-link to="/user-tool"
+                             class="nav-link"
+                             v-bind:class="{
+                                 active: $store.getters.currentPage == 'user-tool' || $store.getters.currentPage == 'user-sessions'
+                             }"
+                             v-if="!$store.getters.isAnonymous">
+                                User Tool
+                </router-link>
             </li>
             <li class="nav-item text-nowrap">
                 <router-link to="/downloads" class="nav-link" v-bind:class="{ active: $store.getters.currentPage == 'downloads' }" v-if="!$store.getters.isAnonymous">Downloads</router-link>

@@ -26,7 +26,7 @@
         <label for="customerId">
           Permission Level
         </label>
-        <multiselect track-by="name" label="name" v-model="newUserRoles" :options="allRoles" multiple></multiselect>
+        <multiselect placeholder="" track-by="name" label="name" v-model="newUserRoles" :options="allRoles" multiple></multiselect>
         <small class="form-text text-muted">
           The permission level to grant the added user accounts.
         </small>
@@ -68,7 +68,7 @@
             {{ account.email }}
           </td>
           <td>
-            <multiselect track-by="name" label="name" v-model="selectedRoles[account.user_id]" :options="allRoles" multiple :disabled="!account.edit"></multiselect>
+            <multiselect placeholder="" track-by="name" label="name" v-model="selectedRoles[account.user_id]" :options="allRoles" multiple :disabled="!account.edit"></multiselect>
           </td>
           <td class="td-btn" v-show="!account.edit && !account.delete">
             <button
@@ -87,6 +87,7 @@
               data-toggle="tooltip"
               data-placement="bottom"
               title="Remove this user"
+              @click="deleteUser(account, index)"
             >
               <font-awesome-icon icon="trash"
                                   class="fa-w-16 fa-fw"
@@ -158,8 +159,8 @@ export default class UserManagement extends Vue {
     ]
     Promise.all(promises)
       .then((responses: any) => {
-        const companyUsers: Array<any> = responses[0].result.accounts
-        const allRoles = responses[1].result.roles
+        const companyUsers: Array<any> = responses[0].accounts
+        const allRoles = responses[1].roles
 
         this.allRoles = allRoles
         this.companyUsers = companyUsers
