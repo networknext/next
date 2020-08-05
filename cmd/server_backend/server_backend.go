@@ -635,10 +635,22 @@ func main() {
 		os.Exit(1)
 	}
 
+	postSessionPortalMaxRetriesString, ok := os.LookupEnv("POST_SESSION_PORTAL_MAX_RETRIES")
+	if !ok {
+		level.Error(logger).Log("err", "env var POST_SESSION_PORTAL_MAX_RETRIES must be set")
+		os.Exit(1)
+	}
+
+	postSessionPortalMaxRetries, err := strconv.ParseInt(postSessionPortalMaxRetriesString, 10, 64)
+	if err != nil {
+		level.Error(logger).Log("envvar", "POST_SESSION_PORTAL_MAX_RETRIES", "msg", "could not parse", "err", err)
+		os.Exit(1)
+	}
+
 	// Create a post session handler to handle the post process of session updates.
 	// This way, we can quickly return from the session update handler and not spawn a
 	// ton of goroutines if things get backed up.
-	postSessionHandler := transport.NewPostSessionHandler(int(numPostSessionGoroutines), int(postSessionBufferSize), portalPublisher, biller, logger, sessionUpdateMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(int(numPostSessionGoroutines), int(postSessionBufferSize), portalPublisher, int(postSessionPortalMaxRetries), biller, logger, sessionUpdateMetrics)
 	postSessionHandler.StartProcessing(ctx)
 
 	// Setup the stats print routine
