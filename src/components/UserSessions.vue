@@ -81,12 +81,12 @@ import APIService from '../services/api.service'
 
 @Component
 export default class UserSessions extends Vue {
-  @Prop({ required: false, type: String, default: '' }) searchID!: string
-
   // TODO: Refactor out the alert/error into its own component.
   private apiService: APIService
   private showSessions = false
   private sessions = []
+
+  private searchID = ''
 
   constructor () {
     super()
@@ -94,6 +94,7 @@ export default class UserSessions extends Vue {
   }
 
   private mounted () {
+    this.searchID = this.$route.params.pathMatch || ''
     this.fetchUserSessions()
   }
 

@@ -50,7 +50,7 @@ authService.lockClient.checkSession({
         }
         store.commit('UPDATE_USER_PROFILE', userProfile)
         apiService.fetchAllBuyers().then((response: any) => {
-          const allBuyers = response.result.buyers || []
+          const allBuyers = response.buyers || []
           store.commit('UPDATE_ALL_BUYERS', allBuyers)
         })
         app = new Vue({

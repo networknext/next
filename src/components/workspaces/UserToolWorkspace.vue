@@ -29,7 +29,7 @@
             <input class="form-control"
                     type="text"
                     placeholder="Enter a User Hash to view statistics"
-                    v-model="searchInput"
+                    v-model="searchID"
             >
           </div>
           <div class="col-auto">
@@ -40,14 +40,7 @@
         </div>
       </div>
     </form>
-    <!-- TODO: Refactor these alerts to their own component -->
-    <div class="alert alert-info" role="alert" id="user-tool-alert" v-if="showAlert">
-        Please enter a User ID or Hash to view their sessions.
-    </div>
-    <div class="alert alert-danger" role="alert" id="user-tool-danger" v-if="showError">
-        Failed to fetch user sessions
-    </div>
-    <UserSessions v-if="searchID != ''" v-bind:searchID="searchID"/>
+    <router-view />
   </main>
 </template>
 
@@ -69,24 +62,30 @@ export default class UserToolWorkspace extends Vue {
   private searchID = ''
   private showDetails = false
 
-  private searchInput = ''
+  private message = ''
+  private alertType = ''
 
   private created () {
     // Empty for now
-    this.searchID = this.$route.params.id || ''
-    this.searchInput = this.searchID
+    this.searchID = this.$route.params.pathMatch || ''
   }
 
   private beforeRouteUpdate (to: Route, from: Route, next: NavigationGuardNext<Vue>) {
-    if (!to.params.id) {
-      this.searchInput = ''
-      this.searchID = ''
-    }
+    this.searchID = ''
     next()
   }
 
   private fetchUserSessions () {
-    this.searchID = this.searchInput
+    this.message = ''
+    this.alertType = ''
+    if (this.searchID === '') {
+      this.$router.push({ path: '/user-tool' })
+      return
+    }
+    const newRoute = `/user-tool/${this.searchID}`
+    if (this.$route.path !== newRoute) {
+      this.$router.push({ path: newRoute })
+    }
   }
 }
 </script>

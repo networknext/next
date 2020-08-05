@@ -12,6 +12,7 @@ import UserManagement from '@/components/UserManagement.vue'
 import UserToolWorkspace from '@/components/workspaces/UserToolWorkspace.vue'
 import RouteShader from '@/components/RouteShader.vue'
 import SessionDetails from '@/components/SessionDetails.vue'
+import UserSessions from '@/components/UserSessions.vue'
 
 Vue.use(VueRouter)
 
@@ -39,9 +40,16 @@ const routes: Array<RouteConfig> = [
     ]
   },
   {
-    path: '/user-tool/:id?',
+    path: '/user-tool',
     name: 'user-tool',
-    component: UserToolWorkspace
+    component: UserToolWorkspace,
+    children: [
+      {
+        path: '*',
+        name: 'user-sessions',
+        component: UserSessions
+      }
+    ]
   },
   {
     path: '/downloads',
