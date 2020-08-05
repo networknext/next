@@ -79,6 +79,8 @@ func (psf *PubSubForwarder) Forward(ctx context.Context) {
 				if err := psf.Biller.Bill(context.Background(), &billingEntries[i]); err != nil {
 					level.Error(psf.Logger).Log("msg", "could not submit billing entry", "err", err)
 				}
+			} else if billingEntries[i].Version < BillingEntryVersion {
+				m.Ack()
 			} else {
 				psf.Metrics.ErrorMetrics.BillingReadFailure.Add(1)
 			}
