@@ -12,7 +12,8 @@ import (
 )
 
 const (
-	NumRelayMapShards = 10
+	NumRelayMapShards     = 10
+	VersionNumberRelayMap = 0
 )
 
 type RelayData struct {
@@ -31,17 +32,18 @@ type RelayData struct {
 }
 
 func (r *RelayData) MarshalBinary() ([]byte, error) {
-	// | id (8) | tx (8) | rx (8) | sessions (8) | cpu usage (4) | mem usage (4) | version strlen |
-	data := make([]byte, 8+8+8+8+4+4+len(r.Version))
+	// | id (8) | sessions (8) | tx (8) | rx (8) | version strlen | last update time (8) | cpu usage (4) | mem usage (4) |
+	data := make([]byte, 8+8+8+8+4+len(r.Version)+8+4+4)
 
 	index := 0
 	encoding.WriteUint64(data, &index, r.ID)
+	encoding.WriteUint64(data, &index, r.TrafficStats.SessionCount)
 	encoding.WriteUint64(data, &index, r.TrafficStats.BytesSent)
 	encoding.WriteUint64(data, &index, r.TrafficStats.BytesReceived)
-	encoding.WriteUint64(data, &index, r.TrafficStats.SessionCount)
+	encoding.WriteString(data, &index, r.Version, uint32(len(r.Version)))
+	encoding.WriteUint64(data, &index, uint64(r.LastUpdateTime.Unix()))
 	encoding.WriteFloat32(data, &index, r.CPUUsage)
 	encoding.WriteFloat32(data, &index, r.MemUsage)
-	encoding.WriteString(data, &index, r.Version, uint32(len(r.Version)))
 
 	return data, nil
 }
@@ -52,9 +54,6 @@ type RelayMapShard struct {
 }
 
 func (r *RelayMapShard) MarshalBinary() ([]byte, error) {
-	r.mutex.RLock()
-	defer r.mutex.RUnlock()
-
 	data := make([]byte, 0)
 	for _, relay := range r.relays {
 		if bin, err := relay.MarshalBinary(); err == nil {
@@ -195,12 +194,28 @@ func (relayMap *RelayMap) TimeoutLoop(ctx context.Context, timeoutSeconds int64,
 	}
 }
 
+// | version | count | relay stats ... |
 func (r *RelayMap) MarshalBinary() ([]byte, error) {
-	data := make([]byte, 0)
+	relayData := make([]byte, 0)
+
+	var size uint64 = 0
 	for i := range r.shard {
 		shard := r.shard[i]
 		shard.mutex.RLock()
 		defer shard.mutex.RUnlock()
-
+		if bin, err := shard.MarshalBinary(); err == nil {
+			size += uint64(len(r.shard[i].relays))
+			relayData = append(relayData, bin...)
+		} else {
+			return nil, err
+		}
 	}
+
+	data := make([]byte, 9)
+
+	index := 0
+	encoding.WriteUint8(data, &index, VersionNumberRelayMap)
+	encoding.WriteUint64(data, &index, size)
+
+	return append(data, relayData...), nil
 }

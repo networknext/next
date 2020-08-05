@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-kit/kit/log"
@@ -17,6 +18,27 @@ import (
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 )
+
+type OpsRelay struct {
+	SessionCount   uint64
+	Tx             uint64
+	Rx             uint64
+	Version        string
+	LastUpdateTime time.Time
+	CPU            float32
+	Mem            float32
+}
+
+type RelayMap struct {
+	Internal *map[uint64]OpsRelay
+	Lock     sync.RWMutex
+}
+
+func (r *RelayMap) Swap(m *map[uint64]OpsRelay) {
+	r.Lock.Lock()
+	defer r.Lock.Unlock()
+	r.Internal = m
+}
 
 type OpsService struct {
 	Release   string
@@ -26,6 +48,8 @@ type OpsService struct {
 	// RouteMatrix *routing.RouteMatrix
 
 	Logger log.Logger
+
+	RelayMap *RelayMap
 }
 
 type CurrentReleaseArgs struct{}
@@ -442,18 +466,19 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			Type:                r.Type,
 		}
 
-		// We don't have a good way of getting the live relay stats now until we make some kind of endpoint on the relay backend for the portal to hit
+		// If the relay is in memory, get its traffic stats and last update time
 
-		// // If the relay is in memory, get its traffic stats and last update time
-		// relayData := s.RelayMap.GetRelayData(r.Addr.String())
-		// if relayData != nil {
-		// 	relay.SessionCount = relayData.TrafficStats.SessionCount
-		// 	relay.BytesSent = relayData.TrafficStats.BytesSent
-		// 	relay.BytesReceived = relayData.TrafficStats.BytesReceived
+		id := crypto.HashID(relay.Addr)
 
-		// 	relay.LastUpdateTime = relayData.LastUpdateTime
-		// 	relay.Version = relayData.Version
-		// }
+		s.RelayMap.Lock.RLock()
+		if relayData, ok := (*s.RelayMap.Internal)[id]; ok {
+			relay.SessionCount = relayData.SessionCount
+			relay.BytesSent = relayData.Tx
+			relay.BytesReceived = relayData.Rx
+			relay.Version = relayData.Version
+			relay.LastUpdateTime = relayData.LastUpdateTime
+		}
+		s.RelayMap.Lock.RUnlock()
 
 		reply.Relays = append(reply.Relays, relay)
 	}

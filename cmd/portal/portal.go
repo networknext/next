@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"fmt"
+	"math"
 	"net"
 	"net/http"
 	"os"
@@ -26,6 +27,7 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/crypto"
+	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/logging"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
@@ -379,6 +381,66 @@ func main() {
 		os.Exit(1)
 	}
 
+	m := make(map[uint64]jsonrpc.OpsRelay)
+	relayMap := jsonrpc.RelayMap{
+		Internal: &m,
+	}
+
+	go func() {
+		relayStatsURL := os.Getenv("RELAY_STATS_URL")
+
+		for {
+			time.Sleep(time.Second)
+
+			res, err := http.Get(relayStatsURL)
+			if err != nil {
+				level.Error(logger).Log("msg", "unable to get relay stats", "err", err)
+				continue
+			}
+			defer res.Body.Close()
+
+			data := make([]byte, res.ContentLength)
+			res.Body.Read(data)
+
+			index := 0
+
+			var version uint8
+			encoding.ReadUint8(data, &index, &version)
+
+			var count uint64
+			encoding.ReadUint64(data, &index, &count)
+
+			m := make(map[uint64]jsonrpc.OpsRelay)
+			for i := uint64(0); i < count; i++ {
+				// | id (8) | sessions (8) | tx (8) | rx (8) | version strlen | cpu usage (4) | mem usage (4) |
+				var id uint64
+				encoding.ReadUint64(data, &index, &id)
+
+				var relay jsonrpc.OpsRelay
+
+				encoding.ReadUint64(data, &index, &relay.SessionCount)
+				encoding.ReadUint64(data, &index, &relay.Tx)
+				encoding.ReadUint64(data, &index, &relay.Rx)
+				encoding.ReadString(data, &index, &relay.Version, math.MaxUint32)
+
+				var unixTime uint64
+				encoding.ReadUint64(data, &index, &unixTime)
+				relay.LastUpdateTime = time.Unix(int64(unixTime), 0)
+
+				encoding.ReadFloat32(data, &index, &relay.CPU)
+				encoding.ReadFloat32(data, &index, &relay.Mem)
+
+				m[id] = relay
+			}
+
+			for k := range m {
+				level.Debug(logger).Log("id", k)
+			}
+
+			relayMap.Swap(&m)
+		}
+	}()
+
 	go func() {
 		port, ok := os.LookupEnv("PORT")
 		if !ok {
@@ -415,6 +477,7 @@ func main() {
 			Release:   tag,
 			BuildTime: buildtime,
 			Storage:   db,
+			RelayMap:  &relayMap,
 			// RouteMatrix: &routeMatrix,
 		}, "")
 		s.RegisterService(&buyerService, "")

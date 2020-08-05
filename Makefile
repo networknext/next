@@ -185,6 +185,10 @@ ifndef POST_SESSION_BUFFER_SIZE
 export POST_SESSION_BUFFER_SIZE = 1000
 endif
 
+ifndef RELAY_STATS_URL
+export RELAY_STATS_URL = $(RELAY_BACKEND_HOSTNAME)/relay_stats
+endif
+
 .PHONY: help
 help: ## this list
 	@echo "$$(grep -hE '^\S+:.*##' $(MAKEFILE_LIST) | sed -e 's/:.*##\s*/:/' -e 's/^\(.\+\):\(.*\)/\\033[36m\1\\033[m:\2/' | column -c2 -t -s :)"
