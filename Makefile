@@ -170,7 +170,7 @@ export BILLING_BATCHED_MESSAGE_MIN_BYTES = 1024
 endif
 
 ifndef BILLING_ENTRY_VETO
-export BILLING_ENTRY_VETO = false
+export BILLING_ENTRY_VETO = true
 endif
 
 ifndef USE_THREAD_POOL
