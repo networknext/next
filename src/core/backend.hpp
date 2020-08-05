@@ -28,7 +28,7 @@ namespace core
 {
   const uint32_t InitRequestMagic = 0x9083708f;
 
-  const uint32_t InitRequestVersion = 0;
+  const uint32_t InitRequestVersion = 1;
   const uint32_t InitResponseVersion = 0;
 
   const uint32_t UpdateRequestVersion = 1;
@@ -164,7 +164,7 @@ namespace core
         return false;
       }
 
-      if (!encoding::WriteUint8(req, index, RELAY_VERSION)) {
+      if (!encoding::WriteString(req, index, std::string(RELAY_VERSION))) {
         Log("could not write relay version");
         return false;
       }
@@ -335,7 +335,6 @@ namespace core
         if (!relay.Addr.parse(addr)) {
           Log("failed to parse address for relay '", id, "': ", addr);
           allValid = false;
-          return;
         }
       }
 

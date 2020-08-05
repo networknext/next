@@ -22,16 +22,15 @@ namespace
      "ping_data": []
    })";
 
-  core::Backend<testing::StubbedCurlWrapper> makeBackend(
-   core::RouterInfo& info, core::RelayManager<core::Relay>& manager, core::SessionMap& sessions)
+  core::Backend makeBackend(
+   core::RouterInfo& info, core::RelayManager<core::Relay>& manager, core::SessionMap& sessions, net::IHttpRequester& requester)
   {
     static crypto::Keychain keychain;
     static legacy::v3::TrafficStats ts;
 
     check(keychain.parse(Base64RelayPublicKey, Base64RelayPrivateKey, Base64RouterPublicKey, Base64UpdateKey));
 
-    return core::Backend<testing::StubbedCurlWrapper>(
-     BackendHostname, RelayAddr, keychain, info, manager, Base64RelayPublicKey, sessions, ts);
+    return core::Backend(BackendHostname, RelayAddr, keychain, info, manager, Base64RelayPublicKey, sessions, ts, requester);
   }
 }  // namespace
 
@@ -40,20 +39,18 @@ Test(core_backend_init_valid)
   core::RouterInfo routerInfo;
   core::RelayManager<core::Relay> manager;
   core::SessionMap sessions;
-  auto backend = std::move(makeBackend(routerInfo, manager, sessions));
-
-  testing::StubbedCurlWrapper::Response = R"({
+  testing::MockHttpRequester requester;
+  requester.Response = R"({
     "version": 0,
     "Timestamp": 123456789
   })";
+  auto backend = std::move(makeBackend(routerInfo, manager, sessions, requester));
 
   check(backend.init());
 
-  check(testing::StubbedCurlWrapper::Hostname == BackendHostname);
-  check(testing::StubbedCurlWrapper::Endpoint == "/relay_init");
+  check(requester.Hostname == BackendHostname);
+  check(requester.Endpoint == "/relay_init");
   check(routerInfo.currentTime() >= 123456789 / 1000);
-
-  util::JSON doc;
 
   check(doc.parse(testing::StubbedCurlWrapper::Request));
 
@@ -77,18 +74,20 @@ Test(core_Backend_updateCycle_shutdown_60s)
   core::RouterInfo info;
   core::RelayManager<core::Relay> manager;
   core::SessionMap sessions;
-  auto backend = std::move(makeBackend(info, manager, sessions));
   volatile bool handle = true;
   volatile bool shouldCleanShutdown = false;
   util::ThroughputRecorder logger;
+  testing::MockHttpRequester requester;
 
-  testing::StubbedCurlWrapper::Success = true;
-  testing::StubbedCurlWrapper::Response = BasicValidUpdateResponse;
+  auto backend = std::move(makeBackend(info, manager, sessions, requester));
+
+  requester.Success = true;
+  requester.Response = BasicValidUpdateResponse;
 
   testClock.reset();
   auto fut = std::async(std::launch::async, [&] {
     std::this_thread::sleep_for(2s);
-    testing::StubbedCurlWrapper::Success = false;
+    requester.Success = false;
     shouldCleanShutdown = true;  // just to mimic actual behavior
     handle = false;
   });
@@ -109,10 +108,12 @@ Test(core_Backend_updateCycle_ack_and_30s)
   core::RouterInfo info;
   core::RelayManager<core::Relay> manager;
   core::SessionMap sessions;
-  auto backend = std::move(makeBackend(info, manager, sessions));
   volatile bool handle = true;
   volatile bool shouldCleanShutdown = false;
   util::ThroughputRecorder logger;
+  testing::MockHttpRequester requester;
+
+  auto backend = std::move(makeBackend(info, manager, sessions));
 
   testing::StubbedCurlWrapper::Success = true;
   testing::StubbedCurlWrapper::Response = BasicValidUpdateResponse;

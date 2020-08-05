@@ -150,22 +150,25 @@ namespace testing
     return retval;
   }
 
-  class StubbedCurlWrapper
+  class MockHttpRequester: net::IHttpRequester
   {
    public:
-    static bool Success;          // The request was a success
-    static std::string Request;   // The request that was sent
-    static std::string Response;  // The Response that should be received
-    static std::string Hostname;  // The hostname used
-    static std::string Endpoint;  // The endpoint to hit
+    bool Success;          // The request was a success
+    std::string Request;   // The request that was sent
+    std::string Response;  // The Response that should be received
+    std::string Hostname;  // The hostname used
+    std::string Endpoint;  // The endpoint to hit
 
-    template <typename ReqType, typename RespType>
-    static bool SendTo(const std::string hostname, const std::string endpoint, const ReqType& request, RespType& response);
+    auto sendRequest(
+     const std::string hostname,
+     const std::string endpoint,
+     const std::vector<uint8_t>& request,
+     std::vector<uint8_t>& response) -> bool override;
   };
 
-  template <typename ReqType, typename RespType>
-  bool StubbedCurlWrapper::SendTo(
-   const std::string hostname, const std::string endpoint, const ReqType& request, RespType& response)
+  auto MockHttpRequester::sendRequest(
+   const std::string hostname, const std::string endpoint, const std::vector<uint8_t>& request, std::vector<uint8_t>& response)
+   -> bool
   {
     Request.assign(request.begin(), request.end());
     response.assign(Response.begin(), Response.end());
