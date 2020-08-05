@@ -38,7 +38,7 @@ const (
 
 // zeromq load test
 const (
-	ZeroMQPublishDelay = 20000 // How long to wait before sending another message (in loop cycles). This number is CPU dependent.
+	ZeroMQPublishDelay = 15000 // How long to wait before sending another message (in loop cycles). This number is CPU dependent.
 )
 
 func in_memory_map_load_test() {
@@ -397,9 +397,9 @@ func zeromq_load_test() {
 					switch errno {
 					case zmq4.AsErrno(syscall.EAGAIN):
 						fmt.Printf("retrying index %d\n", publishIndex)
-
 						sendRate := float64(publishIndex) / errorTime.Seconds()
 						fmt.Printf("upper bound average send rate: %.0f msg/sec\n", sendRate)
+						time.Sleep(time.Millisecond * 100)
 					default:
 						fmt.Println(err)
 						os.Exit(1)
@@ -430,9 +430,9 @@ func zeromq_load_test() {
 					switch errno {
 					case zmq4.AsErrno(syscall.EAGAIN):
 						fmt.Printf("retrying index %d\n", publishIndex)
-						errorTime := time.Since(runTime)
 						sendRate := float64(publishIndex) / errorTime.Seconds()
 						fmt.Printf("upper bound average send rate: %.0f msg/sec\n", sendRate)
+						time.Sleep(time.Millisecond * 100)
 					default:
 						fmt.Println(err)
 						os.Exit(1)

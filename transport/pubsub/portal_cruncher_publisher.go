@@ -26,7 +26,7 @@ func NewPortalCruncherPublisher(host string) (*PortalCruncherPublisher, error) {
 		return nil, err
 	}
 
-	if err := socket.SetSndhwm(10000000); err != nil {
+	if err := socket.SetSndhwm(1000000); err != nil {
 		return nil, err
 	}
 
