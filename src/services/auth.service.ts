@@ -74,7 +74,15 @@ export default class AuthService {
           name: profile.name,
           roles: userRoles.roles,
           verified: profile.email_verified || false,
-          routeShader: null
+          routeShader: {
+            enable_nn: true,
+            enable_rtt: true,
+            enable_pl: true,
+            enable_mp: false,
+            enable_ab: false,
+            acceptable_latency: '20',
+            pl_threshold: '1'
+          }
         }
         store.commit('UPDATE_USER_PROFILE', userProfile)
       }

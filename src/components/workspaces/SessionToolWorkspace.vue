@@ -29,7 +29,7 @@
             <input class="form-control"
                    type="text"
                    placeholder="Enter a Session ID to view statistics"
-                   v-model="searchInput"
+                   v-model="searchID"
                    data-test="searchInput"
             >
           </div>
@@ -41,60 +41,57 @@
         </div>
       </div>
     </form>
-    <!-- TODO: Refactor these into a seperate component -->
-    <div class="alert alert-info" role="alert" id="session-tool-alert" v-if="showAlert">
-      Please enter a valid Session ID to view its statistics.
-      It should be a hexadecimal number (with leading zeros), or a decimal number.
-    </div>
-    <div class="alert alert-danger" role="alert" id="session-tool-danger" v-if="showError">
-      Failed to fetch session details
-    </div>
-    <SessionDetails v-if="searchID != ''" v-bind:searchID="searchID"/>
+    <router-view />
   </main>
 </template>
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
 import { Route, NavigationGuardNext } from 'vue-router'
-import SessionDetails from '@/components/SessionDetails.vue'
 
 /**
  * TODO: Cleanup template
  * TODO: Figure out what sessionMeta fields need to be required
  */
 
-@Component({
-  components: {
-    SessionDetails
-  }
-})
+@Component
 export default class SessionToolWorkspace extends Vue {
   // TODO: Refactor out the alert/error into its own component.
-  // TODO: Figure out how to make searchID and searchInput the same
 
-  private showAlert = false
-  private showError = false
+  private searchID: string
+  private message: string
+  private alertType: string
 
-  private searchID = ''
-  private searchInput = ''
-  private showDetails = false
+  private constructor () {
+    super()
+    this.message = ''
+    this.alertType = ''
+    this.searchID = ''
+  }
 
   private created () {
     // Empty for now
-    this.searchID = this.$route.params.id || ''
-    this.searchInput = this.searchID
+    this.searchID = this.$route.params.pathMatch || ''
+    this.message = this.searchID === '' ? '' : 'Please enter a valid Session ID to view its statistics. It should be a hexadecimal number (with leading zeros), or a decimal number.'
+    this.alertType = this.searchID === '' ? '' : 'alert-info'
   }
 
   private beforeRouteUpdate (to: Route, from: Route, next: NavigationGuardNext<Vue>) {
-    if (!to.params.id) {
-      this.searchInput = ''
-      this.searchID = ''
-    }
+    this.searchID = ''
     next()
   }
 
   private fetchSessionDetails () {
-    this.searchID = this.searchInput
+    this.message = ''
+    this.alertType = ''
+    if (this.searchID === '') {
+      this.$router.push({ path: '/session-tool' })
+      return
+    }
+    const newRoute = `/session-tool/${this.searchID}`
+    if (this.$route.path !== newRoute) {
+      this.$router.push({ path: newRoute })
+    }
   }
 }
 

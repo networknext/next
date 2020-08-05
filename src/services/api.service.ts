@@ -15,7 +15,7 @@ export default class APIService {
     if (!store.getters.isAnonymous) {
       this.headers.Authorization = `Bearer ${store.getters.idToken}`
     }
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve: any, reject: any) => {
       const options = params || {}
       const id = 'id'
       fetch(`${process.env.VUE_APP_API_URL}/rpc`, {
@@ -27,13 +27,14 @@ export default class APIService {
           params: options,
           id
         })
-      }).then((response: Response) => {
-        resolve(response.json())
-      })
-        .catch((error: Error) => {
-          console.log(error.message)
-          reject(error)
+      }).then((response: any) => {
+        response.json().then((json: any) => {
+          if (json.error) {
+            reject(new Error(json.error))
+          }
+          resolve(json.result)
         })
+      })
     })
   }
 

@@ -243,7 +243,7 @@ export default class UserManagement extends Vue {
     this.apiService
       .addNewUserAccounts({ emails: emails, roles: roles })
       .then((response: any) => {
-        const newAccounts: Array<any> = response.result.accounts
+        const newAccounts: Array<any> = response.accounts
 
         newAccounts.forEach((account: any) => {
           account.edit = false

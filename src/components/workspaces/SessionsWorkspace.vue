@@ -154,9 +154,9 @@ export default class SessionsWorkspace extends Vue {
   }
 
   private fetchSessions () {
-    this.apiService.fetchTopSessions({})
+    this.apiService.fetchTopSessions({ buyer_id: '' })
       .then((response: any) => {
-        this.sessions = response.result.sessions
+        this.sessions = response.sessions
         this.$store.commit('TOGGLE_SESSION_TABLE', true)
       })
       .catch((error: any) => {

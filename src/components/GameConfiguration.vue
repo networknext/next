@@ -15,7 +15,7 @@
                 class="form-control"
                 placeholder="Enter your company name"
                 id="company-input"
-                :disabled="true"
+                :disabled="!$store.getters.isOwner && !$store.getters.isAdmin"
         >
         <br>
         <label>
@@ -24,7 +24,8 @@
         <textarea class="form-control"
                   placeholder="Enter your base64-encoded public key"
                   id="pubkey-input"
-                  :disabled="true">
+                  :disabled="!$store.getters.isOwner && !$store.getters.isAdmin"
+        >
         </textarea>
       </div>
       <button type="submit"

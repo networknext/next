@@ -104,7 +104,7 @@ export default class UserSessions extends Vue {
 
     this.apiService.fetchUserSessions({ user_hash: this.searchID })
       .then((response: any) => {
-        this.sessions = response.result.sessions || []
+        this.sessions = response.sessions || []
         this.showSessions = true
       })
       .catch((error: Error) => {

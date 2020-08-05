@@ -11,6 +11,7 @@ import SettingsWorkspace from '@/components/workspaces/SettingsWorkspace.vue'
 import UserManagement from '@/components/UserManagement.vue'
 import UserToolWorkspace from '@/components/workspaces/UserToolWorkspace.vue'
 import RouteShader from '@/components/RouteShader.vue'
+import SessionDetails from '@/components/SessionDetails.vue'
 
 Vue.use(VueRouter)
 
@@ -26,9 +27,16 @@ const routes: Array<RouteConfig> = [
     component: SessionsWorkspace
   },
   {
-    path: '/session-tool/:id?',
+    path: '/session-tool',
     name: 'session-tool',
-    component: SessionToolWorkspace
+    component: SessionToolWorkspace,
+    children: [
+      {
+        path: '*',
+        name: 'session-details',
+        component: SessionDetails
+      }
+    ]
   },
   {
     path: '/user-tool/:id?',

@@ -255,6 +255,7 @@ import { ScreenGridLayer } from '@deck.gl/aggregation-layers'
 import uPlot from 'uplot'
 import 'uplot/dist/uPlot.min.css'
 import { Slice } from './types/APITypes'
+import { Route, NavigationGuardNext } from 'vue-router'
 
 /**
  * TODO: Cleanup template
@@ -264,11 +265,11 @@ import { Slice } from './types/APITypes'
 
 @Component
 export default class SessionDetails extends Vue {
-  @Prop({ required: false, type: String, default: '' }) searchID!: string
-
   // TODO: Refactor out the alert/error into its own component.
   private showDetails = false
   private apiService: APIService
+
+  private searchID: string
 
   private meta: any = null
   private slices: Array<Slice> = []
@@ -297,17 +298,29 @@ export default class SessionDetails extends Vue {
   constructor () {
     super()
     this.apiService = Vue.prototype.$apiService
+    this.searchID = ''
   }
 
   private mounted () {
-    this.fetchSessionDetails()
-    this.detailsLoop = setInterval(() => {
+    this.searchID = this.$route.params.pathMatch || ''
+    if (this.searchID !== '') {
       this.fetchSessionDetails()
-    }, 1000)
+      this.detailsLoop = setInterval(() => {
+        this.fetchSessionDetails()
+      }, 1000)
+    }
   }
 
   private beforeDestroy () {
     clearInterval(this.detailsLoop)
+  }
+
+  private beforeRouteEnter (to: Route, from: Route, next: NavigationGuardNext<Vue>) {
+    if (to.params.pathMatch === '') {
+      next({ name: 'session-tool' })
+      return
+    }
+    next()
   }
 
   private getCustomerName (buyerId: string) {
@@ -324,8 +337,8 @@ export default class SessionDetails extends Vue {
   private fetchSessionDetails () {
     this.apiService.fetchSessionDetails({ session_id: this.searchID })
       .then((response: any) => {
-        this.meta = response.result.meta
-        this.slices = response.result.slices
+        this.meta = response.meta
+        this.slices = response.slices
 
         this.meta.connection = this.meta.connection === 'wifi' ? 'Wifi' : this.meta.connection.charAt(0).toUpperCase() + this.meta.connection.slice(1)
 
@@ -398,6 +411,7 @@ export default class SessionDetails extends Vue {
         })
       })
       .catch((error: any) => {
+        console.log(`Something went wrong fetching sessions details for: ${this.searchID}`)
         console.log(error)
       })
   }

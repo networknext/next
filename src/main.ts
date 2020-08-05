@@ -45,7 +45,8 @@ authService.lockClient.checkSession({
           idToken: authResult.idToken,
           name: profile.name,
           roles: roles.roles,
-          verified: profile.email_verified || false
+          verified: profile.email_verified || false,
+          routeShader: null
         }
         store.commit('UPDATE_USER_PROFILE', userProfile)
         apiService.fetchAllBuyers().then((response: any) => {

@@ -77,7 +77,7 @@ export default class SessionMap extends Vue {
           })
         }
 
-        const sessions = response.result.map_points || []
+        const sessions = response.map_points || []
         const onNN = sessions.filter((point: any) => {
           return (point[2] === 1)
         })
