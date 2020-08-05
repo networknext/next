@@ -28,7 +28,6 @@ The default setting is `warn` when running `make JWT_AUDIENCE="oQJH3YPHdvZJnxCPo
 #### Required
 
 - `PORT`: the port to run the web server on.
-- `REDIS_HOST_RELAYS`: address of the Redis server you want to connect to retrieve relay information.
 - `ROUTE_MATRIX_URI`: URI to the route matrix, either the URL to the relay backend's route matrix endpoint or a local route matrix file.
 - `BASIC_AUTH_USERNAME`: the username needed to login to the web portal.
 - `BASIC_AUTH_PASSWORD`: the password needed to login to the web portal.
