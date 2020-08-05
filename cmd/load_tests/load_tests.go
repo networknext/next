@@ -391,7 +391,6 @@ func zeromq_load_test() {
 				_, err = publisher.Publish(pubsub.TopicPortalCruncherSessionData, sessionBytes)
 				if err != nil {
 					fmt.Printf("error publishing session data: %v\n", err)
-					fmt.Println(publishIndex)
 
 					errno := zmq4.AsErrno(err)
 					switch errno {
