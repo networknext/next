@@ -77,8 +77,7 @@
     },
     "rules": {
       "@typescript-eslint/camelcase": "off",
-      "new-cap": "off",
-      "no-useless-escape": "off"
+      "new-cap": "off"
     },
     "overrides": [
       {
