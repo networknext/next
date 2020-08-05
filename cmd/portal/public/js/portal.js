@@ -215,9 +215,9 @@ MapHandler = {
 		}, 1000);
 
 		this.refreshMapSessions();
-		this.mapLoop = setInterval(() => {
+		/* this.mapLoop = setInterval(() => {
 			this.refreshMapSessions();
-		}, 10000);
+		}, 10000); */
 	},
 	updateMap(mapType) {
 		/*
@@ -282,7 +282,8 @@ MapHandler = {
 		JSONRPCClient
 			.call('BuyersService.SessionMap', {buyer_id: filter.buyerId || ""})
 			.then((response) => {
-				let sessions = response.map_points || [];
+				// let sessions = response.map_points || [];
+				let sessions = [];
 				let onNN = sessions.filter((point) => {
 					return (point[2] == 1);
 				});
@@ -853,9 +854,9 @@ WorkspaceHandler = {
 		Object.assign(rootComponent.$data.pages.map.filter, {buyerId: id});
 		this.sessionLoop ? clearInterval(this.sessionLoop) : null;
 		this.refreshSessionTable();
-		this.sessionLoop = setInterval(() => {
+		/* this.sessionLoop = setInterval(() => {
 			this.refreshSessionTable();
-		}, 10000);
+		}, 10000); */
 	},
 	refreshSessionTable() {
 		setTimeout(() => {
@@ -864,7 +865,8 @@ WorkspaceHandler = {
 			JSONRPCClient
 				.call('BuyersService.TopSessions', {buyer_id: filter.buyerId})
 				.then((response) => {
-					let sessions = response.sessions || [];
+					// let sessions = response.sessions || [];
+					let sessions = [];
 
 					/**
 					 * I really dislike this but it is apparently the way to reload/update the data within a vue
