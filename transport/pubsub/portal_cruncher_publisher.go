@@ -16,7 +16,7 @@ type PortalCruncherPublisher struct {
 	mutex  sync.Mutex
 }
 
-func NewPortalCruncherPublisher(host string) (*PortalCruncherPublisher, error) {
+func NewPortalCruncherPublisher(host string, sendBufferSize int) (*PortalCruncherPublisher, error) {
 	socket, err := zmq4.NewSocket(zmq4.PUB)
 	if err != nil {
 		return nil, err
@@ -26,7 +26,7 @@ func NewPortalCruncherPublisher(host string) (*PortalCruncherPublisher, error) {
 		return nil, err
 	}
 
-	if err := socket.SetSndhwm(1000000); err != nil {
+	if err := socket.SetSndhwm(sendBufferSize); err != nil {
 		return nil, err
 	}
 

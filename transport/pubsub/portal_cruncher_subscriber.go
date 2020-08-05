@@ -15,13 +15,13 @@ type PortalCruncherSubscriber struct {
 	topics []Topic
 }
 
-func NewPortalCruncherSubscriber(port string) (*PortalCruncherSubscriber, error) {
+func NewPortalCruncherSubscriber(port string, receiveBufferSize int) (*PortalCruncherSubscriber, error) {
 	socket, err := zmq4.NewSocket(zmq4.SUB)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := socket.SetRcvhwm(1000000); err != nil {
+	if err := socket.SetRcvhwm(receiveBufferSize); err != nil {
 		return nil, err
 	}
 

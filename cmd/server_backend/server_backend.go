@@ -602,7 +602,19 @@ func main() {
 			os.Exit(1)
 		}
 
-		portalCruncherPublisher, err := pubsub.NewPortalCruncherPublisher(portalCruncherHost)
+		postSessionPortalSendBufferSizeString, ok := os.LookupEnv("POST_SESSION_PORTAL_SEND_BUFFER_SIZE")
+		if !ok {
+			level.Error(logger).Log("err", "env var POST_SESSION_PORTAL_SEND_BUFFER_SIZE must be set")
+			os.Exit(1)
+		}
+
+		postSessionPortalSendBufferSize, err := strconv.ParseInt(postSessionPortalSendBufferSizeString, 10, 64)
+		if err != nil {
+			level.Error(logger).Log("envvar", "POST_SESSION_PORTAL_SEND_BUFFER_SIZE", "msg", "could not parse", "err", err)
+			os.Exit(1)
+		}
+
+		portalCruncherPublisher, err := pubsub.NewPortalCruncherPublisher(portalCruncherHost, int(postSessionPortalSendBufferSize))
 		if err != nil {
 			level.Error(logger).Log("msg", "could not create portal cruncher publisher", "err", err)
 			os.Exit(1)

@@ -219,13 +219,13 @@ func zeromq_load_test() {
 
 	recvstderr := make([]string, 0)
 
-	subscriber, err := pubsub.NewPortalCruncherSubscriber("40000")
+	subscriber, err := pubsub.NewPortalCruncherSubscriber("40000", 1000000)
 	if err != nil {
 		fmt.Printf("couldn't connect subscriber over zeromq socket: %v\n", err)
 		return
 	}
 
-	publisher, err := pubsub.NewPortalCruncherPublisher("tcp://127.0.0.1:40000")
+	publisher, err := pubsub.NewPortalCruncherPublisher("tcp://127.0.0.1:40000", 1000000)
 	if err != nil {
 		fmt.Printf("couldn't connect publisher over zeromq socket: %v\n", err)
 		return
