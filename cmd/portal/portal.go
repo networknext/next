@@ -381,7 +381,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	m := make(map[uint64]jsonrpc.OpsRelay)
+	m := make(map[uint64]jsonrpc.Relay)
 	relayMap := jsonrpc.RelayMap{
 		Internal: &m,
 	}
@@ -410,31 +410,46 @@ func main() {
 			var count uint64
 			encoding.ReadUint64(data, &index, &count)
 
-			m := make(map[uint64]jsonrpc.OpsRelay)
+			m := make(map[uint64]jsonrpc.Relay)
 			for i := uint64(0); i < count; i++ {
-				// | id (8) | sessions (8) | tx (8) | rx (8) | version strlen | cpu usage (4) | mem usage (4) |
 				var id uint64
-				encoding.ReadUint64(data, &index, &id)
+				if !encoding.ReadUint64(data, &index, &id) {
+					break
+				}
 
-				var relay jsonrpc.OpsRelay
+				var relay jsonrpc.Relay
 
-				encoding.ReadUint64(data, &index, &relay.SessionCount)
-				encoding.ReadUint64(data, &index, &relay.Tx)
-				encoding.ReadUint64(data, &index, &relay.Rx)
-				encoding.ReadString(data, &index, &relay.Version, math.MaxUint32)
+				if !encoding.ReadUint64(data, &index, &relay.SessionCount) {
+					break
+				}
+
+				if !encoding.ReadUint64(data, &index, &relay.Tx) {
+					break
+				}
+
+				if !encoding.ReadUint64(data, &index, &relay.Rx) {
+					break
+				}
+
+				if !encoding.ReadString(data, &index, &relay.Version, math.MaxUint32) {
+					break
+				}
 
 				var unixTime uint64
-				encoding.ReadUint64(data, &index, &unixTime)
+				if !encoding.ReadUint64(data, &index, &unixTime) {
+					break
+				}
 				relay.LastUpdateTime = time.Unix(int64(unixTime), 0)
 
-				encoding.ReadFloat32(data, &index, &relay.CPU)
-				encoding.ReadFloat32(data, &index, &relay.Mem)
+				if !encoding.ReadFloat32(data, &index, &relay.CPU) {
+					break
+				}
+
+				if !encoding.ReadFloat32(data, &index, &relay.Mem) {
+					break
+				}
 
 				m[id] = relay
-			}
-
-			for k := range m {
-				level.Debug(logger).Log("id", k)
 			}
 
 			relayMap.Swap(&m)

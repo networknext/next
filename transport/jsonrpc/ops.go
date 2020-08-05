@@ -19,7 +19,7 @@ import (
 	"github.com/networknext/backend/storage"
 )
 
-type OpsRelay struct {
+type Relay struct {
 	SessionCount   uint64
 	Tx             uint64
 	Rx             uint64
@@ -30,14 +30,21 @@ type OpsRelay struct {
 }
 
 type RelayMap struct {
-	Internal *map[uint64]OpsRelay
-	Lock     sync.RWMutex
+	Internal *map[uint64]Relay
+	mu       sync.RWMutex
 }
 
-func (r *RelayMap) Swap(m *map[uint64]OpsRelay) {
-	r.Lock.Lock()
-	defer r.Lock.Unlock()
+func (r *RelayMap) Get(id uint64) (Relay, bool) {
+	r.mu.RLock()
+	relay, ok := (*r.Internal)[id]
+	r.mu.Unlock()
+	return relay, ok
+}
+
+func (r *RelayMap) Swap(m *map[uint64]Relay) {
+	r.mu.Lock()
 	r.Internal = m
+	r.mu.Unlock()
 }
 
 type OpsService struct {
@@ -470,15 +477,15 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 
 		id := crypto.HashID(relay.Addr)
 
-		s.RelayMap.Lock.RLock()
-		if relayData, ok := (*s.RelayMap.Internal)[id]; ok {
+		s.RelayMap.mu.RLock()
+		if relayData, ok := s.RelayMap.Get(id); ok {
 			relay.SessionCount = relayData.SessionCount
 			relay.BytesSent = relayData.Tx
 			relay.BytesReceived = relayData.Rx
 			relay.Version = relayData.Version
 			relay.LastUpdateTime = relayData.LastUpdateTime
 		}
-		s.RelayMap.Lock.RUnlock()
+		s.RelayMap.mu.RUnlock()
 
 		reply.Relays = append(reply.Relays, relay)
 	}
