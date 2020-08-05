@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 
 	"cloud.google.com/go/pubsub"
 	"github.com/go-kit/kit/log"
@@ -79,9 +80,20 @@ func (psf *PubSubForwarder) Forward(ctx context.Context) {
 				if err := psf.Biller.Bill(context.Background(), &billingEntries[i]); err != nil {
 					level.Error(psf.Logger).Log("msg", "could not submit billing entry", "err", err)
 				}
-			} else if billingEntries[i].Version < BillingEntryVersion {
-				m.Ack()
 			} else {
+				entryVetoStr := os.Getenv("BILLING_ENTRY_VETO")
+				entryVeto, err := strconv.ParseBool(entryVetoStr)
+
+				if err != nil {
+					level.Error(psf.Logger).Log("msg", "failed to parse veto env var", "err", err)
+					psf.Metrics.ErrorMetrics.BillingReadFailure.Add(1)
+					return
+				}
+
+				if entryVeto {
+					m.Ack()
+					return
+				}
 				psf.Metrics.ErrorMetrics.BillingReadFailure.Add(1)
 			}
 		}
