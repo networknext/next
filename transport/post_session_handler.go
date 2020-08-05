@@ -3,12 +3,15 @@ package transport
 import (
 	"context"
 	"fmt"
+	"syscall"
+	"time"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/transport/pubsub"
+	"github.com/pebbe/zmq4"
 )
 
 type PostSessionHandler struct {
@@ -37,16 +40,16 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 			for {
 				select {
 				case postSessionData := <-post.postSessionChannel:
+					if err := postSessionData.ProcessBillingEntry(post.biller); err != nil {
+						level.Error(post.logger).Log("msg", "could not submit billing entry", "err", err)
+						post.metrics.ErrorMetrics.BillingFailure.Add(1)
+					}
+
 					if portalDataBytes, err := postSessionData.ProcessPortalData(post.portalPublisher); err != nil {
 						level.Error(post.logger).Log("msg", "could not update portal data", "err", err)
 						post.metrics.ErrorMetrics.UpdatePortalFailure.Add(1)
 					} else {
 						level.Debug(post.logger).Log("msg", fmt.Sprintf("published %d bytes to portal cruncher", portalDataBytes))
-					}
-
-					if err := postSessionData.ProcessBillingEntry(post.biller); err != nil {
-						level.Error(post.logger).Log("msg", "could not submit billing entry", "err", err)
-						post.metrics.ErrorMetrics.BillingFailure.Add(1)
 					}
 
 					post.metrics.PostSessionEntriesFinished.Add(1)
@@ -88,13 +91,38 @@ func (post *PostSessionData) ProcessPortalData(publisher pubsub.Publisher) (int,
 	}
 
 	var byteCount int
-	singleByteCount, err := publisher.Publish(pubsub.TopicPortalCruncherSessionData, sessionBytes)
-	byteCount += singleByteCount
-	singleByteCount, err = publisher.Publish(pubsub.TopicPortalCruncherSessionCounts, countBytes)
-	byteCount += singleByteCount
+	retry := true
+	for retry {
+		singleByteCount, err := publisher.Publish(pubsub.TopicPortalCruncherSessionData, sessionBytes)
+		if err != nil {
+			errno := zmq4.AsErrno(err)
+			switch errno {
+			case zmq4.AsErrno(syscall.EAGAIN):
+				time.Sleep(time.Millisecond * 100) // If the send queue is backed up, wait a little bit and try again
+			default:
+				return 0, err
+			}
+		} else {
+			retry = false
+			byteCount += singleByteCount
+		}
+	}
 
-	if err != nil {
-		return 0, err
+	retry = true
+	for retry {
+		singleByteCount, err := publisher.Publish(pubsub.TopicPortalCruncherSessionCounts, countBytes)
+		if err != nil {
+			errno := zmq4.AsErrno(err)
+			switch errno {
+			case zmq4.AsErrno(syscall.EAGAIN):
+				time.Sleep(time.Millisecond * 100) // If the send queue is backed up, wait a little bit and try again
+			default:
+				return 0, err
+			}
+		} else {
+			retry = false
+			byteCount += singleByteCount
+		}
 	}
 
 	return byteCount, nil

@@ -21,6 +21,10 @@ func NewPortalCruncherSubscriber(port string) (*PortalCruncherSubscriber, error)
 		return nil, err
 	}
 
+	if err := socket.SetRcvhwm(1000000); err != nil {
+		return nil, err
+	}
+
 	if err = socket.Bind("tcp://*:" + port); err != nil {
 		return nil, err
 	}

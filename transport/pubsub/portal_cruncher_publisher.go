@@ -22,6 +22,14 @@ func NewPortalCruncherPublisher(host string) (*PortalCruncherPublisher, error) {
 		return nil, err
 	}
 
+	if err := socket.SetXpubNodrop(true); err != nil {
+		return nil, err
+	}
+
+	if err := socket.SetSndhwm(1000000); err != nil {
+		return nil, err
+	}
+
 	if err = socket.Connect(host); err != nil {
 		return nil, err
 	}
