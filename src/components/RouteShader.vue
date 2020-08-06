@@ -131,7 +131,7 @@ export default class RouteShader extends Vue {
       .then((response: any) => {
         this.userProfile.routeShader = this.routeShader
         this.$store.commit('UPDATE_USER_PROFILE', this.userProfile)
-        this.alertType = AlertTypes.INFO
+        this.alertType = AlertTypes.SUCCESS
         this.message = 'Updated route shader successfully'
         setTimeout(() => {
           this.message = ''

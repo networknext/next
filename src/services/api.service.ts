@@ -97,4 +97,8 @@ export default class APIService {
   public updateGameConfiguration (args: any) {
     return this.call('BuyersService.UpdateGameConfiguration', args, '')
   }
+
+  public resendVerificationEmail (args: any) {
+    return this.call('AuthService.ResendVerificationEmail', args, '')
+  }
 }

@@ -86,7 +86,7 @@ export default class GameConfiguration extends Vue {
         this.userProfile.company = response.game_config.company
         this.userProfile.buyerID = response.game_config.buyer_id
         this.$store.commit('UPDATE_USER_PROFILE', this.userProfile)
-        this.alertType = AlertTypes.INFO
+        this.alertType = AlertTypes.SUCCESS
         this.message = 'Updated public key successfully'
         setTimeout(() => {
           this.message = ''

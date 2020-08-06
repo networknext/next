@@ -11,6 +11,7 @@
         <span class="sr-only">Loading...</span>
       </div>
     </div>
+    <Alert :message="message" :alertType="alertTypes.newUser" v-if="messages.newUser !== ''"/>
     <form v-show="true" @submit.prevent="addNewUsers()">
       <div class="form-group">
         <label for="customerId">
@@ -64,6 +65,7 @@
       </thead>
       <tbody>
         <tr v-for="(account, index) in companyUsers" :key="index">
+          <Alert :message="message" :alertType="alertTypes.editUser" v-if="messages.editUser !== ''"/>
           <td>
             {{ account.email }}
           </td>
@@ -128,6 +130,8 @@
 import { Component, Vue } from 'vue-property-decorator'
 import Multiselect from 'vue-multiselect'
 import APIService from '../services/api.service'
+import Alert from './Alert.vue'
+import { AlertTypes } from './types/AlertTypes'
 
 @Component({
   components: {
@@ -143,13 +147,26 @@ export default class UserManagement extends Vue {
   private selectedRoles: any = {}
   private newUserRoles: any = []
 
-  private newUserEmails = ''
+  private newUserEmails: string
 
-  private showTable = false
+  private showTable: boolean
+
+  private messages: any
+  private alertTypes: any
 
   constructor () {
     super()
     this.apiService = Vue.prototype.$apiService
+    this.newUserEmails = ''
+    this.showTable = false
+    this.messages = {
+      newUsers: '',
+      editUser: ''
+    }
+    this.alertTypes = {
+      newUsers: '',
+      editUser: ''
+    }
   }
 
   private mounted () {
@@ -191,10 +208,20 @@ export default class UserManagement extends Vue {
         .updateUserRoles({ user_id: `auth0|${account.user_id}`, roles: roles })
         .then((response: any) => {
           account.roles = response.roles
+          this.alertTypes.editUser = AlertTypes.SUCCESS
+          this.messages.editUser = 'User account edited successfully'
+          setTimeout(() => {
+            this.messages.editUser = ''
+          }, 5000)
         })
         .catch((error: Error) => {
           console.log('Something went wrong updating the users permissions')
           console.log(error)
+          this.alertTypes.editUser = AlertTypes.ERROR
+          this.messages.editUser = 'Failed to edit user account'
+          setTimeout(() => {
+            this.messages.editUser = ''
+          }, 5000)
         })
         .finally(() => {
           this.cancel(account, index)
@@ -207,10 +234,20 @@ export default class UserManagement extends Vue {
         .then((response: any) => {
           this.companyUsers.splice(index, 1)
           this.selectedRoles[account.user_id] = null
+          this.alertTypes.editUser = AlertTypes.SUCCESS
+          this.messages.editUser = 'User account deleted successfully'
+          setTimeout(() => {
+            this.messages.editUser = ''
+          }, 5000)
         })
         .catch((error: Error) => {
           console.log('Something went wrong updating the users permissions')
           console.log(error)
+          this.alertTypes.newUser = AlertTypes.ERROR
+          this.messages.newUser = 'Failed to delete user account'
+          setTimeout(() => {
+            this.messages.newUser = ''
+          }, 5000)
         })
     }
   }
@@ -253,10 +290,20 @@ export default class UserManagement extends Vue {
         })
 
         this.companyUsers.concat(newAccounts)
+        this.alertTypes.newUser = AlertTypes.SUCCESS
+        this.messages.newUser = 'User account(s) added successfully'
+        setTimeout(() => {
+          this.messages.newUser = ''
+        }, 5000)
       })
       .catch((error: Error) => {
         console.log('Something went wrong creating new users')
         console.log(error)
+        this.alertTypes.newUser = AlertTypes.ERROR
+        this.messages.newUser = 'Failed to add user account(s)'
+        setTimeout(() => {
+          this.messages.newUser = ''
+        }, 5000)
       })
     this.newUserRoles = []
     this.newUserEmails = ''
@@ -266,5 +313,5 @@ export default class UserManagement extends Vue {
 </script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
-<style scoped lang="scss">
+<style scoped>
 </style>
