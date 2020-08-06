@@ -10,6 +10,12 @@ var autoSigninPermissions = null;
 var addUserPermissions = null;
 var editUserPermissions = [];
 
+var ABTesters = [
+	'2b9c891211588152',
+	'b8e4f84ca63b2021',
+	'02a337e6ec5b60b5'
+]
+
 JSONRPCClient = {
 	async call(method, params) {
 		let headers = {
@@ -409,6 +415,15 @@ MapHandler = {
 UserHandler = {
 	allBuyers: [],
 	userInfo: null,
+	routeShader: {
+		enable_nn: true,
+		enable_rtt: true,
+		enable_pl: true,
+		enable_mp: false,
+		enable_ab: false,
+		acceptable_latency: "20",
+		pl_threshold: "1"
+	},
 	async fetchCurrentUserInfo() {
 		return AuthHandler.auth0Client.getIdTokenClaims()
 			.then((response) => {
@@ -505,6 +520,9 @@ UserHandler = {
 	},
 	isViewer() {
 		return !this.isAnonymous() ? this.userInfo.roles.findIndex((role) => role.name == "Viewer") !== -1 : false;
+	},
+	isABTester() {
+		return (this.isBuyer() && ABTesters.includes(this.userInfo.id)) || this.isAdmin()
 	}
 }
 
@@ -516,24 +534,30 @@ WorkspaceHandler = {
 	changeSettingsPage(page) {
 		let showSettings = false;
 		let showConfig = false;
+		let showShader = false;
 		switch (page) {
+			case 'config':
+				showConfig = true;
+				break;
 			case 'users':
 				showSettings = true;
 				break;
-			case 'config':
-				showConfig = true;
+			case 'shader':
+				showShader = true;
 				break;
 		}
 		Object.assign(rootComponent.$data.pages.settings, {
 			showConfig: showConfig,
 			showSettings: showSettings,
+			showShader: showShader
 		});
 	},
 	changePage(page, options) {
 		// Clear all polling loops
 		clearInterval(this.sessionLoop);
-		clearInterval(this.mapLoop);
+		clearInterval(MapHandler.mapLoop);
 		clearInterval(this.sessionToolLoop);
+		clearInterval(MapHandler.mapCountLoop);
 
 		this.sessionLoop = null;
 		this.mapLoop = null;
@@ -575,6 +599,10 @@ WorkspaceHandler = {
 					showConfig: false,
 					showSettings: false,
 					updateKey: {
+						failure: '',
+						success: '',
+					},
+					updateShader: {
 						failure: '',
 						success: '',
 					},
@@ -695,6 +723,7 @@ WorkspaceHandler = {
 			.then((response) => {
 				UserHandler.userInfo.pubKey = response.game_config.public_key;
 				UserHandler.userInfo.company = response.game_config.company;
+				UserHandler.routeShader = response.customer_route_shader
 			})
 			.catch((e) => {
 				console.log("Something went wrong fetching public key");
@@ -1004,7 +1033,7 @@ function startApp() {
 	UserHandler
 		.fetchCurrentUserInfo()
 		.then(() => {
-			createVueComponents();
+			createVueComponent();
 			const isDev = window.location.hostname == 'portal-dev.networknext.com';
 			if (UserHandler.isAdmin() || isDev) {
 				fetch("/version", {
@@ -1061,7 +1090,7 @@ function startApp() {
 		});
 }
 
-function createVueComponents() {
+function createVueComponent() {
 	rootComponent = new Vue({
 		el: '#root',
 		data: {
@@ -1153,7 +1182,12 @@ function createVueComponents() {
 					showAccounts: false,
 					showConfig: false,
 					showSettings: false,
+					showShader: false,
 					updateKey: {
+						failure: '',
+						success: '',
+					},
+					updateShader: {
 						failure: '',
 						success: '',
 					},
@@ -1181,6 +1215,7 @@ function createVueComponents() {
 			addUsers: addUsers,
 			saveAutoSignIn: saveAutoSignIn,
 			updatePubKey: updatePubKey,
+			updateRouteShader: updateRouteShader
 		}
 	});
 }
@@ -1194,6 +1229,7 @@ function updatePubKey() {
 		.call("BuyersService.UpdateGameConfiguration", {name: company, domain: domain, new_public_key: newPubKey})
 		.then((response) => {
 			UserHandler.userInfo.pubKey = response.game_config.public_key;
+			UserHandler.userInfo.id = response.game_config.buyer_id
 			Object.assign(rootComponent.$data.pages.settings.updateKey, {
 				success: 'Updated public key successfully',
 			});
@@ -1215,6 +1251,33 @@ function updatePubKey() {
 				});
 			}, 5000);
 		});
+}
+
+function updateRouteShader () {
+	JSONRPCClient.call('BuyersService.UpdateRouteShader', UserHandler.routeShader)
+		.then((response) => {
+			UserHandler.routeShader = response.customer_route_shader
+			Object.assign(rootComponent.$data.pages.settings.updateShader, {
+				success: 'Updated route shader successfully',
+			});
+			setTimeout(() => {
+				Object.assign(rootComponent.$data.pages.settings.updateShader, {
+					success: '',
+				});
+			}, 5000);
+		})
+		.catch((error) => {
+			console.log('Something went wrong updating the route shader')
+			console.log(error)
+			Object.assign(rootComponent.$data.pages.settings.updateShader, {
+				failure: 'Failed to update route shader',
+			});
+			setTimeout(() => {
+				Object.assign(rootComponent.$data.pages.settings.updateShader, {
+					failure: '',
+				});
+			}, 5000);
+		})
 }
 
 function addUsers() {

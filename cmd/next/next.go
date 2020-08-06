@@ -1599,7 +1599,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 			}
 
 			// Get the buyer's route shader
-			routingRulesSettings(rpcClient, env, args[0])
+			RouteShader(rpcClient, env, args[0])
 			return nil
 		},
 		Subcommands: []*ffcli.Command{
@@ -1615,13 +1615,13 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 					jsonData := readJSONData("buyers", args[1:])
 
 					// Unmarshal the JSON and create the RoutingRuleSettings struct
-					var rrs routing.RoutingRulesSettings
+					var rrs routing.RouteShader
 					if err := json.Unmarshal(jsonData, &rrs); err != nil {
 						log.Fatalf("Could not unmarshal route shader: %v", err)
 					}
 
 					// Set the route shader in storage
-					setRoutingRulesSettings(rpcClient, env, args[0], rrs)
+					setRouteShader(rpcClient, env, args[0], rrs)
 					return nil
 				},
 				Subcommands: []*ffcli.Command{
@@ -1630,7 +1630,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						ShortUsage: "next shader set example",
 						ShortHelp:  "Displays an example route shader for the correct JSON schema",
 						Exec: func(_ context.Context, args []string) error {
-							jsonBytes, err := json.MarshalIndent(routing.DefaultRoutingRulesSettings, "", "\t")
+							jsonBytes, err := json.MarshalIndent(routing.DefaultRouteShader, "", "\t")
 							if err != nil {
 								log.Fatal("Failed to marshal route shader struct")
 							}
@@ -1652,7 +1652,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 					}
 
 					// Get the buyer's route shader
-					routingRulesSettingsByID(rpcClient, env, args[0])
+					RouteShaderByID(rpcClient, env, args[0])
 					return nil
 				},
 			},

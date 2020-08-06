@@ -55,7 +55,7 @@ type AccountReply struct {
 
 type account struct {
 	UserID      string             `json:"user_id"`
-	ID          string             `json:"id"`
+	BuyerID     string             `json:"buyer_id"`
 	CompanyName string             `json:"company_name"`
 	Name        string             `json:"name"`
 	Email       string             `json:"email"`
@@ -311,7 +311,7 @@ func newAccount(u *management.User, r []*management.Role, buyer routing.Buyer) a
 	}
 	account := account{
 		UserID:      *u.Identities[0].UserID,
-		ID:          buyerID,
+		BuyerID:     buyerID,
 		CompanyName: buyer.Name,
 		Name:        *u.Name,
 		Email:       *u.Email,

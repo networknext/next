@@ -98,7 +98,7 @@ func TestAddBuyer(t *testing.T) {
 		Active:               true,
 		Live:                 false,
 		PublicKey:            publicKey,
-		RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
+		RouteShader: routing.DefaultRouteShader,
 	}
 
 	t.Run("add", func(t *testing.T) {
@@ -144,7 +144,7 @@ func TestRemoveBuyer(t *testing.T) {
 		Active:               true,
 		Live:                 false,
 		PublicKey:            publicKey,
-		RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
+		RouteShader: routing.DefaultRouteShader,
 	}
 
 	t.Run("doesn't exist", func(t *testing.T) {
@@ -171,7 +171,7 @@ func TestRemoveBuyer(t *testing.T) {
 	})
 }
 
-func TestRoutingRulesSettings(t *testing.T) {
+func TestRouteShader(t *testing.T) {
 	t.Parallel()
 
 	storer := storage.InMemory{}
@@ -183,39 +183,39 @@ func TestRoutingRulesSettings(t *testing.T) {
 	}
 
 	t.Run("doesn't exist", func(t *testing.T) {
-		var reply jsonrpc.RoutingRulesSettingsReply
+		var reply jsonrpc.RouteShaderReply
 
-		err := svc.RoutingRulesSettings(nil, &jsonrpc.RoutingRulesSettingsArgs{BuyerID: "0"}, &reply)
+		err := svc.RouteShader(nil, &jsonrpc.RouteShaderArgs{BuyerID: "0"}, &reply)
 		assert.EqualError(t, err, "buyer with reference 0 not found")
 	})
 
 	t.Run("list", func(t *testing.T) {
-		storer.AddBuyer(context.Background(), routing.Buyer{ID: 0, Name: "local.local.1", RoutingRulesSettings: routing.DefaultRoutingRulesSettings})
+		storer.AddBuyer(context.Background(), routing.Buyer{ID: 0, Name: "local.local.1", RouteShader: routing.DefaultRouteShader})
 
-		var reply jsonrpc.RoutingRulesSettingsReply
-		err := svc.RoutingRulesSettings(nil, &jsonrpc.RoutingRulesSettingsArgs{BuyerID: "0"}, &reply)
+		var reply jsonrpc.RouteShaderReply
+		err := svc.RouteShader(nil, &jsonrpc.RouteShaderArgs{BuyerID: "0"}, &reply)
 		assert.NoError(t, err)
 
-		assert.Equal(t, reply.RoutingRuleSettings[0].EnvelopeKbpsUp, routing.DefaultRoutingRulesSettings.EnvelopeKbpsUp)
-		assert.Equal(t, reply.RoutingRuleSettings[0].EnvelopeKbpsDown, routing.DefaultRoutingRulesSettings.EnvelopeKbpsDown)
-		assert.Equal(t, reply.RoutingRuleSettings[0].Mode, routing.DefaultRoutingRulesSettings.Mode)
-		assert.Equal(t, reply.RoutingRuleSettings[0].MaxCentsPerGB, routing.DefaultRoutingRulesSettings.MaxCentsPerGB)
-		assert.Equal(t, reply.RoutingRuleSettings[0].RTTEpsilon, routing.DefaultRoutingRulesSettings.RTTEpsilon)
-		assert.Equal(t, reply.RoutingRuleSettings[0].RTTThreshold, routing.DefaultRoutingRulesSettings.RTTThreshold)
-		assert.Equal(t, reply.RoutingRuleSettings[0].RTTHysteresis, routing.DefaultRoutingRulesSettings.RTTHysteresis)
-		assert.Equal(t, reply.RoutingRuleSettings[0].RTTVeto, routing.DefaultRoutingRulesSettings.RTTVeto)
-		assert.Equal(t, reply.RoutingRuleSettings[0].EnableYouOnlyLiveOnce, routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce)
-		assert.Equal(t, reply.RoutingRuleSettings[0].EnablePacketLossSafety, routing.DefaultRoutingRulesSettings.EnablePacketLossSafety)
-		assert.Equal(t, reply.RoutingRuleSettings[0].EnableMultipathForPacketLoss, routing.DefaultRoutingRulesSettings.EnableMultipathForPacketLoss)
-		assert.Equal(t, reply.RoutingRuleSettings[0].EnableMultipathForJitter, routing.DefaultRoutingRulesSettings.EnableMultipathForJitter)
-		assert.Equal(t, reply.RoutingRuleSettings[0].EnableMultipathForRTT, routing.DefaultRoutingRulesSettings.EnableMultipathForRTT)
-		assert.Equal(t, reply.RoutingRuleSettings[0].EnableABTest, routing.DefaultRoutingRulesSettings.EnableABTest)
-		assert.Equal(t, reply.RoutingRuleSettings[0].EnableTryBeforeYouBuy, routing.DefaultRoutingRulesSettings.EnableTryBeforeYouBuy)
-		assert.Equal(t, reply.RoutingRuleSettings[0].TryBeforeYouBuyMaxSlices, routing.DefaultRoutingRulesSettings.TryBeforeYouBuyMaxSlices)
+		assert.Equal(t, reply.RoutingRuleSettings[0].EnvelopeKbpsUp, routing.DefaultRouteShader.EnvelopeKbpsUp)
+		assert.Equal(t, reply.RoutingRuleSettings[0].EnvelopeKbpsDown, routing.DefaultRouteShader.EnvelopeKbpsDown)
+		assert.Equal(t, reply.RoutingRuleSettings[0].Mode, routing.DefaultRouteShader.Mode)
+		assert.Equal(t, reply.RoutingRuleSettings[0].MaxCentsPerGB, routing.DefaultRouteShader.MaxCentsPerGB)
+		assert.Equal(t, reply.RoutingRuleSettings[0].RTTEpsilon, routing.DefaultRouteShader.RTTEpsilon)
+		assert.Equal(t, reply.RoutingRuleSettings[0].RTTThreshold, routing.DefaultRouteShader.RTTThreshold)
+		assert.Equal(t, reply.RoutingRuleSettings[0].RTTHysteresis, routing.DefaultRouteShader.RTTHysteresis)
+		assert.Equal(t, reply.RoutingRuleSettings[0].RTTVeto, routing.DefaultRouteShader.RTTVeto)
+		assert.Equal(t, reply.RoutingRuleSettings[0].EnableYouOnlyLiveOnce, routing.DefaultRouteShader.EnableYouOnlyLiveOnce)
+		assert.Equal(t, reply.RoutingRuleSettings[0].EnablePacketLossSafety, routing.DefaultRouteShader.EnablePacketLossSafety)
+		assert.Equal(t, reply.RoutingRuleSettings[0].EnableMultipathForPacketLoss, routing.DefaultRouteShader.EnableMultipathForPacketLoss)
+		assert.Equal(t, reply.RoutingRuleSettings[0].EnableMultipathForJitter, routing.DefaultRouteShader.EnableMultipathForJitter)
+		assert.Equal(t, reply.RoutingRuleSettings[0].EnableMultipathForRTT, routing.DefaultRouteShader.EnableMultipathForRTT)
+		assert.Equal(t, reply.RoutingRuleSettings[0].EnableABTest, routing.DefaultRouteShader.EnableABTest)
+		assert.Equal(t, reply.RoutingRuleSettings[0].EnableTryBeforeYouBuy, routing.DefaultRouteShader.EnableTryBeforeYouBuy)
+		assert.Equal(t, reply.RoutingRuleSettings[0].TryBeforeYouBuyMaxSlices, routing.DefaultRouteShader.TryBeforeYouBuyMaxSlices)
 	})
 }
 
-func TestSetRoutingRulesSettings(t *testing.T) {
+func TestSetRouteShader(t *testing.T) {
 	t.Parallel()
 
 	storer := storage.InMemory{}
@@ -227,38 +227,38 @@ func TestSetRoutingRulesSettings(t *testing.T) {
 	}
 
 	t.Run("doesn't exist", func(t *testing.T) {
-		var reply jsonrpc.SetRoutingRulesSettingsReply
+		var reply jsonrpc.SetRouteShaderReply
 
-		err := svc.SetRoutingRulesSettings(nil, &jsonrpc.SetRoutingRulesSettingsArgs{BuyerID: "0", RoutingRulesSettings: routing.LocalRoutingRulesSettings}, &reply)
-		assert.EqualError(t, err, "SetRoutingRulesSettings() Storage.Buyer error: buyer with reference 0 not found")
+		err := svc.SetRouteShader(nil, &jsonrpc.SetRouteShaderArgs{BuyerID: "0", RouteShader: routing.LocalRouteShader}, &reply)
+		assert.EqualError(t, err, "SetRouteShader() Storage.Buyer error: buyer with reference 0 not found")
 	})
 
 	t.Run("set", func(t *testing.T) {
-		storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, Name: "local.local.1", RoutingRulesSettings: routing.DefaultRoutingRulesSettings})
+		storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, Name: "local.local.1", RouteShader: routing.DefaultRouteShader})
 
-		var reply jsonrpc.SetRoutingRulesSettingsReply
-		err := svc.SetRoutingRulesSettings(nil, &jsonrpc.SetRoutingRulesSettingsArgs{BuyerID: "1", RoutingRulesSettings: routing.LocalRoutingRulesSettings}, &reply)
+		var reply jsonrpc.SetRouteShaderReply
+		err := svc.SetRouteShader(nil, &jsonrpc.SetRouteShaderArgs{BuyerID: "1", RouteShader: routing.LocalRouteShader}, &reply)
 		assert.NoError(t, err)
 
-		var rrsReply jsonrpc.RoutingRulesSettingsReply
-		err = svc.RoutingRulesSettings(nil, &jsonrpc.RoutingRulesSettingsArgs{BuyerID: "1"}, &rrsReply)
+		var rrsReply jsonrpc.RouteShaderReply
+		err = svc.RouteShader(nil, &jsonrpc.RouteShaderArgs{BuyerID: "1"}, &rrsReply)
 		assert.NoError(t, err)
 
-		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnvelopeKbpsUp, routing.LocalRoutingRulesSettings.EnvelopeKbpsUp)
-		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnvelopeKbpsDown, routing.LocalRoutingRulesSettings.EnvelopeKbpsDown)
-		assert.Equal(t, rrsReply.RoutingRuleSettings[0].Mode, routing.LocalRoutingRulesSettings.Mode)
-		assert.Equal(t, rrsReply.RoutingRuleSettings[0].MaxCentsPerGB, routing.LocalRoutingRulesSettings.MaxCentsPerGB)
-		assert.Equal(t, rrsReply.RoutingRuleSettings[0].RTTEpsilon, routing.LocalRoutingRulesSettings.RTTEpsilon)
-		assert.Equal(t, rrsReply.RoutingRuleSettings[0].RTTThreshold, routing.LocalRoutingRulesSettings.RTTThreshold)
-		assert.Equal(t, rrsReply.RoutingRuleSettings[0].RTTHysteresis, routing.LocalRoutingRulesSettings.RTTHysteresis)
-		assert.Equal(t, rrsReply.RoutingRuleSettings[0].RTTVeto, routing.LocalRoutingRulesSettings.RTTVeto)
-		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnableYouOnlyLiveOnce, routing.LocalRoutingRulesSettings.EnableYouOnlyLiveOnce)
-		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnablePacketLossSafety, routing.LocalRoutingRulesSettings.EnablePacketLossSafety)
-		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnableMultipathForPacketLoss, routing.LocalRoutingRulesSettings.EnableMultipathForPacketLoss)
-		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnableMultipathForJitter, routing.LocalRoutingRulesSettings.EnableMultipathForJitter)
-		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnableMultipathForRTT, routing.LocalRoutingRulesSettings.EnableMultipathForRTT)
-		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnableABTest, routing.LocalRoutingRulesSettings.EnableABTest)
-		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnableTryBeforeYouBuy, routing.DefaultRoutingRulesSettings.EnableTryBeforeYouBuy)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnvelopeKbpsUp, routing.LocalRouteShader.EnvelopeKbpsUp)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnvelopeKbpsDown, routing.LocalRouteShader.EnvelopeKbpsDown)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].Mode, routing.LocalRouteShader.Mode)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].MaxCentsPerGB, routing.LocalRouteShader.MaxCentsPerGB)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].RTTEpsilon, routing.LocalRouteShader.RTTEpsilon)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].RTTThreshold, routing.LocalRouteShader.RTTThreshold)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].RTTHysteresis, routing.LocalRouteShader.RTTHysteresis)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].RTTVeto, routing.LocalRouteShader.RTTVeto)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnableYouOnlyLiveOnce, routing.LocalRouteShader.EnableYouOnlyLiveOnce)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnablePacketLossSafety, routing.LocalRouteShader.EnablePacketLossSafety)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnableMultipathForPacketLoss, routing.LocalRouteShader.EnableMultipathForPacketLoss)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnableMultipathForJitter, routing.LocalRouteShader.EnableMultipathForJitter)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnableMultipathForRTT, routing.LocalRouteShader.EnableMultipathForRTT)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnableABTest, routing.LocalRouteShader.EnableABTest)
+		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnableTryBeforeYouBuy, routing.DefaultRouteShader.EnableTryBeforeYouBuy)
 	})
 }
 
