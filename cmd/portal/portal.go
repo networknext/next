@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"fmt"
-	"math"
 	"net"
 	"net/http"
 	"os"
@@ -447,10 +446,22 @@ func main() {
 					break
 				}
 
-				if !encoding.ReadString(data, &index, &relay.Version, math.MaxUint32) {
-					level.Error(logger).Log("unable to read relay stats relay version")
-					break
+				var major uint8
+				if !encoding.ReadUint8(data, &index, &major) {
+					level.Error(logger).Log("msg", "unable to relay stats major version")
 				}
+
+				var minor uint8
+				if !encoding.ReadUint8(data, &index, &minor) {
+					level.Error(logger).Log("msg", "unable to relay stats minor version")
+				}
+
+				var patch uint8
+				if !encoding.ReadUint8(data, &index, &patch) {
+					level.Error(logger).Log("msg", "unable to relay stats patch version")
+				}
+
+				relay.Version = fmt.Sprintf("%d.%d.%d", major, minor, patch)
 
 				var unixTime uint64
 				if !encoding.ReadUint64(data, &index, &unixTime) {

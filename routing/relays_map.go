@@ -2,7 +2,10 @@ package routing
 
 import (
 	"context"
+	"fmt"
 	"net"
+	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -15,8 +18,8 @@ const (
 	NumRelayMapShards     = 10
 	VersionNumberRelayMap = 0
 
-	// | id (8) | sessions (8) | tx (8) | rx (8) | version strlen (uint32 for size + 5 for the 1.0.x) | last update time (8) | cpu usage (4) | mem usage (4) |
-	RelayDataBytes = 8 + 8 + 8 + 8 + 4 + 5 + 8 + 4 + 4
+	// | id (8) | sessions (8) | tx (8) | rx (8) | version major (1), minor (1), patch (1) | last update time (8) | cpu usage (4) | mem usage (4) |
+	RelayDataBytes = 8 + 8 + 8 + 8 + 1 + 1 + 1 + 8 + 4 + 4
 )
 
 type RelayData struct {
@@ -180,11 +183,39 @@ func (r *RelayMap) MarshalBinary() ([]byte, error) {
 		shard.mutex.RLock()
 		defer shard.mutex.RUnlock()
 		for _, relay := range shard.relays {
+			s := strings.Split(relay.Version, ".")
+			if len(s) != 3 {
+				return nil, fmt.Errorf("invalid relay version for relay %s: %s", relay.Addr.String(), relay.Version)
+			}
+
+			var major uint8
+			if v, err := strconv.ParseUint(s[0], 10, 32); err == nil {
+				major = uint8(v)
+			} else {
+				return nil, fmt.Errorf("invalid relay major version for relay %s: %s", relay.Addr.String(), s[0])
+			}
+
+			var minor uint8
+			if v, err := strconv.ParseUint(s[1], 10, 32); err == nil {
+				minor = uint8(v)
+			} else {
+				return nil, fmt.Errorf("invalid relay minor version for relay %s: %s", relay.Addr.String(), s[1])
+			}
+
+			var patch uint8
+			if v, err := strconv.ParseUint(s[2], 10, 32); err == nil {
+				patch = uint8(v)
+			} else {
+				return nil, fmt.Errorf("invalid relay patch version for relay %s: %s", relay.Addr.String(), s[2])
+			}
+
 			encoding.WriteUint64(data, &index, relay.ID)
 			encoding.WriteUint64(data, &index, relay.TrafficStats.SessionCount)
 			encoding.WriteUint64(data, &index, relay.TrafficStats.BytesSent)
 			encoding.WriteUint64(data, &index, relay.TrafficStats.BytesReceived)
-			encoding.WriteString(data, &index, relay.Version, uint32(len(relay.Version)))
+			encoding.WriteUint8(data, &index, major)
+			encoding.WriteUint8(data, &index, minor)
+			encoding.WriteUint8(data, &index, patch)
 			encoding.WriteUint64(data, &index, uint64(relay.LastUpdateTime.Unix()))
 			encoding.WriteFloat32(data, &index, relay.CPUUsage)
 			encoding.WriteFloat32(data, &index, relay.MemUsage)
