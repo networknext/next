@@ -384,6 +384,7 @@ type RelaysReply struct {
 
 type relay struct {
 	ID                  uint64                `json:"id"`
+	SignedID            int64                 `json:"signed_id"`
 	Name                string                `json:"name"`
 	Addr                string                `json:"addr"`
 	Latitude            float64               `json:"latitude"`
@@ -417,6 +418,7 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 	for _, r := range s.Storage.Relays() {
 		relay := relay{
 			ID:                  r.ID,
+			SignedID:            r.SignedID,
 			Name:                r.Name,
 			Addr:                r.Addr.String(),
 			Latitude:            r.Datacenter.Location.Latitude,
@@ -441,19 +443,6 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			EndDate:             r.EndDate,
 			Type:                r.Type,
 		}
-
-		// We don't have a good way of getting the live relay stats now until we make some kind of endpoint on the relay backend for the portal to hit
-
-		// // If the relay is in memory, get its traffic stats and last update time
-		// relayData := s.RelayMap.GetRelayData(r.Addr.String())
-		// if relayData != nil {
-		// 	relay.SessionCount = relayData.TrafficStats.SessionCount
-		// 	relay.BytesSent = relayData.TrafficStats.BytesSent
-		// 	relay.BytesReceived = relayData.TrafficStats.BytesReceived
-
-		// 	relay.LastUpdateTime = relayData.LastUpdateTime
-		// 	relay.Version = relayData.Version
-		// }
 
 		reply.Relays = append(reply.Relays, relay)
 	}
@@ -670,6 +659,7 @@ type DatacentersReply struct {
 type datacenter struct {
 	Name         string  `json:"name"`
 	ID           uint64  `json:"id"`
+	SignedID     int64   `json:"signed_id"`
 	Latitude     float64 `json:"latitude"`
 	Longitude    float64 `json:"longitude"`
 	Enabled      bool    `json:"enabled"`
@@ -681,6 +671,7 @@ func (s *OpsService) Datacenters(r *http.Request, args *DatacentersArgs, reply *
 		reply.Datacenters = append(reply.Datacenters, datacenter{
 			Name:         d.Name,
 			ID:           d.ID,
+			SignedID:     d.SignedID,
 			Enabled:      d.Enabled,
 			Latitude:     d.Location.Latitude,
 			Longitude:    d.Location.Longitude,

@@ -146,8 +146,10 @@ func main() {
 			EgressPriceNibblinsPerGB:  0.2 * 1e9,
 		}
 
+		did := crypto.HashID("local")
 		datacenter := routing.Datacenter{
-			ID:           crypto.HashID("local"),
+			ID:           did,
+			SignedID:     int64(did),
 			Name:         "local",
 			SupplierName: "usw2-az4",
 		}
@@ -163,9 +165,11 @@ func main() {
 		}
 
 		addr1 := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10000}
+		rid1 := crypto.HashID(addr1.String())
 		if err := db.AddRelay(ctx, routing.Relay{
 			Name:           "local.test_relay.a",
-			ID:             crypto.HashID(addr1.String()),
+			ID:             rid1,
+			SignedID:       int64(rid1),
 			Addr:           addr1,
 			PublicKey:      relayPublicKey,
 			Seller:         seller,
@@ -186,9 +190,11 @@ func main() {
 		}
 
 		addr2 := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10001}
+		rid2 := crypto.HashID(addr2.String())
 		if err := db.AddRelay(ctx, routing.Relay{
 			Name:           "local.test_relay.b",
-			ID:             crypto.HashID(addr2.String()),
+			ID:             rid2,
+			SignedID:       int64(rid2),
 			Addr:           addr2,
 			PublicKey:      relayPublicKey,
 			Seller:         seller,
@@ -202,9 +208,11 @@ func main() {
 		}
 
 		addr3 := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10002}
+		rid3 := crypto.HashID(addr3.String())
 		if err := db.AddRelay(ctx, routing.Relay{
 			Name:           "abc.xyz",
-			ID:             crypto.HashID(addr3.String()),
+			ID:             rid3,
+			SignedID:       int64(rid3),
 			Addr:           addr3,
 			PublicKey:      relayPublicKey,
 			Seller:         seller,
