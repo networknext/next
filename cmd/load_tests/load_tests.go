@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/signal"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -575,12 +576,31 @@ func portal_cruncher_redis_load_test() {
 	redisClient := storage.NewRedisClient("127.0.0.1:6379")
 	expireTime := 30 * time.Second
 
+	dataExecutionTimeChan := make(chan time.Duration)
+	countExecutionTimeChan := make(chan time.Duration)
+	var quit bool
+
+	var runningDataGoroutines int64
+	if PortalCruncherGoroutineCount%2 == 0 {
+		atomic.StoreInt64(&runningDataGoroutines, int64(PortalCruncherGoroutineCount/2))
+	} else {
+		atomic.StoreInt64(&runningDataGoroutines, int64(PortalCruncherGoroutineCount/2)+1)
+	}
+
+	var runningCountGoroutines int64
+	atomic.StoreInt64(&runningCountGoroutines, int64(PortalCruncherGoroutineCount/2))
+
 	for i := 0; i < PortalCruncherGoroutineCount; i++ {
 		switch i % 2 {
 		case 0:
 			go func() {
 				for {
-					if time.Since(runTime) >= LoadTestDuration {
+					if time.Since(runTime) >= LoadTestDuration || quit {
+						atomic.AddInt64(&runningDataGoroutines, -1)
+						if atomic.LoadInt64(&runningDataGoroutines) <= 0 {
+							close(dataExecutionTimeChan)
+						}
+
 						break
 					}
 
@@ -622,16 +642,23 @@ func portal_cruncher_redis_load_test() {
 					tx.SAdd(fmt.Sprintf("map-points-%016x-buyer", mockSessionData.Meta.BuyerID), fmt.Sprintf("%016x", mockSessionData.Meta.ID))
 					tx.Expire(fmt.Sprintf("map-points-%016x-buyer", mockSessionData.Meta.BuyerID), expireTime)
 
+					execStart := time.Now()
 					if _, err := tx.Exec(); err != nil {
 						fmt.Printf("error sending session data to redis: %v\n", err)
 						os.Exit(1)
 					}
+					execTime := time.Since(execStart)
+					dataExecutionTimeChan <- execTime
 				}
 			}()
 		case 1:
 			go func() {
 				for {
-					if time.Since(runTime) >= LoadTestDuration {
+					if time.Since(runTime) >= LoadTestDuration || quit {
+						atomic.AddInt64(&runningCountGoroutines, -1)
+						if atomic.LoadInt64(&runningCountGoroutines) <= 0 {
+							close(countExecutionTimeChan)
+						}
 						break
 					}
 
@@ -667,20 +694,61 @@ func portal_cruncher_redis_load_test() {
 						tx.Expire(fmt.Sprintf("session-count-next-buyer-%016x", buyerID), expireTime)
 					}
 
+					execStart := time.Now()
 					if _, err := tx.Exec(); err != nil {
 						fmt.Printf("error sending session data to redis: %v\n", err)
 						os.Exit(1)
 					}
+					execTime := time.Since(execStart)
+					countExecutionTimeChan <- execTime
 				}
 			}()
 		}
 	}
 
-	for {
-		if time.Since(runTime) >= LoadTestDuration {
-			break
+	go func() {
+		// Wait for interrupt signal
+		sigint := make(chan os.Signal, 1)
+		signal.Notify(sigint, os.Interrupt)
+		<-sigint
+
+		quit = true
+	}()
+
+	var dataExecutionTimeTotal time.Duration
+	var countExecutionTimeTotal time.Duration
+
+	var dataExecutionCount uint64
+	var countsExecutionCount uint64
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		for dataExecutionTime := range dataExecutionTimeChan {
+			dataExecutionTimeTotal += dataExecutionTime
+			dataExecutionCount++
 		}
-	}
+
+		wg.Done()
+	}()
+
+	wg.Add(1)
+	go func() {
+		for countExecutionTime := range countExecutionTimeChan {
+			countExecutionTimeTotal += countExecutionTime
+			countsExecutionCount++
+		}
+
+		wg.Done()
+	}()
+
+	wg.Wait()
+
+	avgDataExecutionTime := dataExecutionTimeTotal.Seconds() / float64(dataExecutionCount)
+	avgCountExecutionTime := countExecutionTimeTotal.Seconds() / float64(countsExecutionCount)
+
+	fmt.Printf("\naverage data execution time: %.2f seconds\n", avgDataExecutionTime)
+	fmt.Printf("average count execution time: %.2f seconds\n", avgCountExecutionTime)
 }
 
 func main() {
