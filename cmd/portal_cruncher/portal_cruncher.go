@@ -319,112 +319,124 @@ func main() {
 		}()
 	}
 
-	// Start receive loop
-	go func() {
-		for {
-			topic, message, err := portalSubscriber.ReceiveMessage()
-			if err != nil {
-				level.Error(logger).Log("msg", "error receiving message", "err", err)
-				continue
-			}
-
-			switch topic {
-			case pubsub.TopicPortalCruncherSessionData:
-				var sessionPortalData transport.SessionPortalData
-				if err := sessionPortalData.UnmarshalBinary(message); err != nil {
-					level.Error(logger).Log("msg", "error unmarshaling session data message", "err", err)
-					continue
-				}
-
-				tx := redisClientPortal.TxPipeline()
-
-				// set total session counts with expiration on the entire key set for safety
-				switch sessionPortalData.Meta.OnNetworkNext {
-				case true:
-					// Remove the session from the direct set if it exists
-					tx.ZRem("total-direct", sessionPortalData.Meta.ID)
-					tx.ZRem(fmt.Sprintf("total-direct-buyer-%016x", sessionPortalData.Meta.BuyerID), sessionPortalData.Meta.ID)
-
-					tx.ZAdd("total-next", &redis.Z{Score: sessionPortalData.Meta.DeltaRTT, Member: fmt.Sprintf("%016x", sessionPortalData.Meta.ID)})
-					tx.Expire("total-next", redisPortalHostExp)
-					tx.ZAdd(fmt.Sprintf("total-next-buyer-%016x", sessionPortalData.Meta.BuyerID), &redis.Z{Score: sessionPortalData.Meta.DeltaRTT, Member: fmt.Sprintf("%016x", sessionPortalData.Meta.ID)})
-					tx.Expire(fmt.Sprintf("total-next-buyer-%016x", sessionPortalData.Meta.BuyerID), redisPortalHostExp)
-				case false:
-					// Remove the session from the next set if it exists
-					tx.ZRem("total-next", sessionPortalData.Meta.ID)
-					tx.ZRem(fmt.Sprintf("total-next-buyer-%016x", sessionPortalData.Meta.BuyerID), sessionPortalData.Meta.ID)
-
-					tx.ZAdd("total-direct", &redis.Z{Score: -sessionPortalData.Meta.DirectRTT, Member: fmt.Sprintf("%016x", sessionPortalData.Meta.ID)})
-					tx.Expire("total-direct", redisPortalHostExp)
-					tx.ZAdd(fmt.Sprintf("total-direct-buyer-%016x", sessionPortalData.Meta.BuyerID), &redis.Z{Score: -sessionPortalData.Meta.DirectRTT, Member: fmt.Sprintf("%016x", sessionPortalData.Meta.ID)})
-					tx.Expire(fmt.Sprintf("total-direct-buyer-%016x", sessionPortalData.Meta.BuyerID), redisPortalHostExp)
-				}
-
-				// set session and slice information with expiration on the entire key set for safety
-				tx.Set(fmt.Sprintf("session-%016x-meta", sessionPortalData.Meta.ID), sessionPortalData.Meta, redisPortalHostExp)
-				tx.SAdd(fmt.Sprintf("session-%016x-slices", sessionPortalData.Meta.ID), sessionPortalData.Slice)
-				tx.Expire(fmt.Sprintf("session-%016x-slices", sessionPortalData.Meta.ID), redisPortalHostExp)
-
-				// set the user session reverse lookup sets with expiration on the entire key set for safety
-				tx.SAdd(fmt.Sprintf("user-%016x-sessions", sessionPortalData.Meta.UserHash), fmt.Sprintf("%016x", sessionPortalData.Meta.ID))
-				tx.Expire(fmt.Sprintf("user-%016x-sessions", sessionPortalData.Meta.UserHash), redisPortalHostExp)
-
-				// set the map point key and buyer sessions with expiration on the entire key set for safety
-				tx.Set(fmt.Sprintf("session-%016x-point", sessionPortalData.Meta.ID), sessionPortalData.Point, redisPortalHostExp)
-				tx.SAdd(fmt.Sprintf("map-points-%016x-buyer", sessionPortalData.Meta.BuyerID), fmt.Sprintf("%016x", sessionPortalData.Meta.ID))
-				tx.Expire(fmt.Sprintf("map-points-%016x-buyer", sessionPortalData.Meta.BuyerID), redisPortalHostExp)
-
-				if _, err := tx.Exec(); err != nil {
-					level.Error(logger).Log("msg", "error sending session data to redis", "err", err)
-					continue
-				}
-
-			case pubsub.TopicPortalCruncherSessionCounts:
-				var countData transport.SessionCountData
-				if err := countData.UnmarshalBinary(message); err != nil {
-					level.Error(logger).Log("msg", "error unmarshaling session count message", "err", err)
-					continue
-				}
-
-				tx := redisClientPortal.TxPipeline()
-
-				// Regular set for expiry
-				tx.Set(fmt.Sprintf("session-count-total-direct-instance-%016x", countData.InstanceID), countData.TotalNumDirectSessions, redisPortalHostExp)
-
-				// HSet for quick summing in the portal
-				tx.HSet("session-count-total-direct", fmt.Sprintf("session-count-total-direct-instance-%016x", countData.InstanceID), countData.TotalNumDirectSessions)
-
-				// Regular set for expiry
-				tx.Set(fmt.Sprintf("session-count-total-next-instance-%016x", countData.InstanceID), countData.TotalNumNextSessions, redisPortalHostExp)
-
-				// HSet for quick summing in the portal
-				tx.HSet("session-count-total-next", fmt.Sprintf("session-count-total-next-instance-%016x", countData.InstanceID), countData.TotalNumNextSessions)
-
-				for buyerID, count := range countData.NumDirectSessionsPerBuyer {
-					// Regular set for expiry
-					tx.Set(fmt.Sprintf("session-count-direct-buyer-%016x-instance-%016x", buyerID, countData.InstanceID), count, redisPortalHostExp)
-
-					// HSet for quick summing in the portal
-					tx.HSet(fmt.Sprintf("session-count-direct-buyer-%016x", buyerID), fmt.Sprintf("session-count-direct-buyer-%016x-instance-%016x", buyerID, countData.InstanceID), count)
-					tx.Expire(fmt.Sprintf("session-count-direct-buyer-%016x", buyerID), redisPortalHostExp)
-				}
-
-				for buyerID, count := range countData.NumNextSessionsPerBuyer {
-					// Regular set for expiry
-					tx.Set(fmt.Sprintf("session-count-next-buyer-%016x-instance-%016x", buyerID, countData.InstanceID), count, redisPortalHostExp)
-
-					// HSet for quick summing in the portal
-					tx.HSet(fmt.Sprintf("session-count-next-buyer-%016x", buyerID), fmt.Sprintf("session-count-next-buyer-%016x-instance-%016x", buyerID, countData.InstanceID), count)
-					tx.Expire(fmt.Sprintf("session-count-next-buyer-%016x", buyerID), redisPortalHostExp)
-				}
-
-				if _, err := tx.Exec(); err != nil {
-					level.Error(logger).Log("msg", "error sending session count data to redis", "err", err)
-					continue
-				}
-			}
+	receiveGoroutineCount := int64(1)
+	receiveGoroutineCountString, ok := os.LookupEnv("CRUNCHER_RECEIVE_GOROUTINE_COUNT")
+	if ok {
+		receiveGoroutineCount, err = strconv.ParseInt(receiveGoroutineCountString, 10, 64)
+		if err != nil {
+			level.Error(logger).Log("envvar", "CRUNCHER_RECEIVE_GOROUTINE_COUNT", "msg", "could not parse", "err", err)
+			os.Exit(1)
 		}
-	}()
+	}
+
+	// Start receive loops
+	for i := int64(0); i < receiveGoroutineCount; i++ {
+		go func() {
+			for {
+				topic, message, err := portalSubscriber.ReceiveMessage()
+				if err != nil {
+					level.Error(logger).Log("msg", "error receiving message", "err", err)
+					continue
+				}
+
+				switch topic {
+				case pubsub.TopicPortalCruncherSessionData:
+					var sessionPortalData transport.SessionPortalData
+					if err := sessionPortalData.UnmarshalBinary(message); err != nil {
+						level.Error(logger).Log("msg", "error unmarshaling session data message", "err", err)
+						continue
+					}
+
+					tx := redisClientPortal.TxPipeline()
+
+					// set total session counts with expiration on the entire key set for safety
+					switch sessionPortalData.Meta.OnNetworkNext {
+					case true:
+						// Remove the session from the direct set if it exists
+						tx.ZRem("total-direct", sessionPortalData.Meta.ID)
+						tx.ZRem(fmt.Sprintf("total-direct-buyer-%016x", sessionPortalData.Meta.BuyerID), sessionPortalData.Meta.ID)
+
+						tx.ZAdd("total-next", &redis.Z{Score: sessionPortalData.Meta.DeltaRTT, Member: fmt.Sprintf("%016x", sessionPortalData.Meta.ID)})
+						tx.Expire("total-next", redisPortalHostExp)
+						tx.ZAdd(fmt.Sprintf("total-next-buyer-%016x", sessionPortalData.Meta.BuyerID), &redis.Z{Score: sessionPortalData.Meta.DeltaRTT, Member: fmt.Sprintf("%016x", sessionPortalData.Meta.ID)})
+						tx.Expire(fmt.Sprintf("total-next-buyer-%016x", sessionPortalData.Meta.BuyerID), redisPortalHostExp)
+					case false:
+						// Remove the session from the next set if it exists
+						tx.ZRem("total-next", sessionPortalData.Meta.ID)
+						tx.ZRem(fmt.Sprintf("total-next-buyer-%016x", sessionPortalData.Meta.BuyerID), sessionPortalData.Meta.ID)
+
+						tx.ZAdd("total-direct", &redis.Z{Score: -sessionPortalData.Meta.DirectRTT, Member: fmt.Sprintf("%016x", sessionPortalData.Meta.ID)})
+						tx.Expire("total-direct", redisPortalHostExp)
+						tx.ZAdd(fmt.Sprintf("total-direct-buyer-%016x", sessionPortalData.Meta.BuyerID), &redis.Z{Score: -sessionPortalData.Meta.DirectRTT, Member: fmt.Sprintf("%016x", sessionPortalData.Meta.ID)})
+						tx.Expire(fmt.Sprintf("total-direct-buyer-%016x", sessionPortalData.Meta.BuyerID), redisPortalHostExp)
+					}
+
+					// set session and slice information with expiration on the entire key set for safety
+					tx.Set(fmt.Sprintf("session-%016x-meta", sessionPortalData.Meta.ID), sessionPortalData.Meta, redisPortalHostExp)
+					tx.SAdd(fmt.Sprintf("session-%016x-slices", sessionPortalData.Meta.ID), sessionPortalData.Slice)
+					tx.Expire(fmt.Sprintf("session-%016x-slices", sessionPortalData.Meta.ID), redisPortalHostExp)
+
+					// set the user session reverse lookup sets with expiration on the entire key set for safety
+					tx.SAdd(fmt.Sprintf("user-%016x-sessions", sessionPortalData.Meta.UserHash), fmt.Sprintf("%016x", sessionPortalData.Meta.ID))
+					tx.Expire(fmt.Sprintf("user-%016x-sessions", sessionPortalData.Meta.UserHash), redisPortalHostExp)
+
+					// set the map point key and buyer sessions with expiration on the entire key set for safety
+					tx.Set(fmt.Sprintf("session-%016x-point", sessionPortalData.Meta.ID), sessionPortalData.Point, redisPortalHostExp)
+					tx.SAdd(fmt.Sprintf("map-points-%016x-buyer", sessionPortalData.Meta.BuyerID), fmt.Sprintf("%016x", sessionPortalData.Meta.ID))
+					tx.Expire(fmt.Sprintf("map-points-%016x-buyer", sessionPortalData.Meta.BuyerID), redisPortalHostExp)
+
+					if _, err := tx.Exec(); err != nil {
+						level.Error(logger).Log("msg", "error sending session data to redis", "err", err)
+						continue
+					}
+
+				case pubsub.TopicPortalCruncherSessionCounts:
+					var countData transport.SessionCountData
+					if err := countData.UnmarshalBinary(message); err != nil {
+						level.Error(logger).Log("msg", "error unmarshaling session count message", "err", err)
+						continue
+					}
+
+					tx := redisClientPortal.TxPipeline()
+
+					// Regular set for expiry
+					tx.Set(fmt.Sprintf("session-count-total-direct-instance-%016x", countData.InstanceID), countData.TotalNumDirectSessions, redisPortalHostExp)
+
+					// HSet for quick summing in the portal
+					tx.HSet("session-count-total-direct", fmt.Sprintf("session-count-total-direct-instance-%016x", countData.InstanceID), countData.TotalNumDirectSessions)
+
+					// Regular set for expiry
+					tx.Set(fmt.Sprintf("session-count-total-next-instance-%016x", countData.InstanceID), countData.TotalNumNextSessions, redisPortalHostExp)
+
+					// HSet for quick summing in the portal
+					tx.HSet("session-count-total-next", fmt.Sprintf("session-count-total-next-instance-%016x", countData.InstanceID), countData.TotalNumNextSessions)
+
+					for buyerID, count := range countData.NumDirectSessionsPerBuyer {
+						// Regular set for expiry
+						tx.Set(fmt.Sprintf("session-count-direct-buyer-%016x-instance-%016x", buyerID, countData.InstanceID), count, redisPortalHostExp)
+
+						// HSet for quick summing in the portal
+						tx.HSet(fmt.Sprintf("session-count-direct-buyer-%016x", buyerID), fmt.Sprintf("session-count-direct-buyer-%016x-instance-%016x", buyerID, countData.InstanceID), count)
+						tx.Expire(fmt.Sprintf("session-count-direct-buyer-%016x", buyerID), redisPortalHostExp)
+					}
+
+					for buyerID, count := range countData.NumNextSessionsPerBuyer {
+						// Regular set for expiry
+						tx.Set(fmt.Sprintf("session-count-next-buyer-%016x-instance-%016x", buyerID, countData.InstanceID), count, redisPortalHostExp)
+
+						// HSet for quick summing in the portal
+						tx.HSet(fmt.Sprintf("session-count-next-buyer-%016x", buyerID), fmt.Sprintf("session-count-next-buyer-%016x-instance-%016x", buyerID, countData.InstanceID), count)
+						tx.Expire(fmt.Sprintf("session-count-next-buyer-%016x", buyerID), redisPortalHostExp)
+					}
+
+					if _, err := tx.Exec(); err != nil {
+						level.Error(logger).Log("msg", "error sending session count data to redis", "err", err)
+						continue
+					}
+				}
+			}
+		}()
+	}
 
 	// Start HTTP server
 	{
