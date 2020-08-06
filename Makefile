@@ -185,6 +185,18 @@ ifndef POST_SESSION_BUFFER_SIZE
 export POST_SESSION_BUFFER_SIZE = 1000
 endif
 
+ifndef POST_SESSION_PORTAL_MAX_RETRIES
+export POST_SESSION_PORTAL_MAX_RETRIES = 10
+endif
+
+ifndef POST_SESSION_PORTAL_SEND_BUFFER_SIZE
+export POST_SESSION_PORTAL_SEND_BUFFER_SIZE = 100
+endif
+
+ifndef CRUNCHER_RECEIVE_BUFFER_SIZE
+export CRUNCHER_RECEIVE_BUFFER_SIZE = 100
+endif
+
 .PHONY: help
 help: ## this list
 	@echo "$$(grep -hE '^\S+:.*##' $(MAKEFILE_LIST) | sed -e 's/:.*##\s*/:/' -e 's/^\(.\+\):\(.*\)/\\033[36m\1\\033[m:\2/' | column -c2 -t -s :)"

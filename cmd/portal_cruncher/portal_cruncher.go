@@ -222,7 +222,19 @@ func main() {
 			os.Exit(1)
 		}
 
-		portalCruncherSubscriber, err := pubsub.NewPortalCruncherSubscriber(cruncherPort)
+		receiveBufferSizeString, ok := os.LookupEnv("CRUNCHER_RECEIVE_BUFFER_SIZE")
+		if !ok {
+			level.Error(logger).Log("err", "env var CRUNCHER_RECEIVE_BUFFER_SIZE must be set")
+			os.Exit(1)
+		}
+
+		receiveBufferSize, err := strconv.ParseInt(receiveBufferSizeString, 10, 64)
+		if err != nil {
+			level.Error(logger).Log("envvar", "CRUNCHER_RECEIVE_BUFFER_SIZE", "msg", "could not parse", "err", err)
+			os.Exit(1)
+		}
+
+		portalCruncherSubscriber, err := pubsub.NewPortalCruncherSubscriber(cruncherPort, int(receiveBufferSize))
 		if err != nil {
 			level.Error(logger).Log("msg", "could not create portal cruncher subscriber", "err", err)
 			os.Exit(1)
