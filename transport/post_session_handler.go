@@ -88,9 +88,15 @@ func (post *PostSessionData) ProcessPortalData(publisher pubsub.Publisher) (int,
 	}
 
 	var byteCount int
-	singleByteCount, err := publisher.Publish(pubsub.TopicPortalCruncherSessionData, sessionBytes)
-	byteCount += singleByteCount
-	singleByteCount, err = publisher.Publish(pubsub.TopicPortalCruncherSessionCounts, countBytes)
+	if post.PortalData.Meta.BuyerID != 0xb8e4f84ca63b2021 {
+		singleByteCount, err := publisher.Publish(pubsub.TopicPortalCruncherSessionData, sessionBytes)
+		byteCount += singleByteCount
+		if err != nil {
+			return 0, err
+		}
+	}
+
+	singleByteCount, err := publisher.Publish(pubsub.TopicPortalCruncherSessionCounts, countBytes)
 	byteCount += singleByteCount
 
 	if err != nil {
