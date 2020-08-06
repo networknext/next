@@ -88,7 +88,7 @@ func (post *PostSessionData) ProcessPortalData(publisher pubsub.Publisher) (int,
 	}
 
 	var byteCount int
-	if post.PortalData.Meta.BuyerID != 0xb8e4f84ca63b2021 {
+	if post.PortalCountData.InstanceID != 5128824641664751290 {
 		singleByteCount, err := publisher.Publish(pubsub.TopicPortalCruncherSessionData, sessionBytes)
 		byteCount += singleByteCount
 		if err != nil {
