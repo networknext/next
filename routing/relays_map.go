@@ -172,12 +172,20 @@ func (relayMap *RelayMap) TimeoutLoop(ctx context.Context, timeoutSeconds int64,
 
 // | version | count | relay stats ... |
 func (r *RelayMap) MarshalBinary() ([]byte, error) {
-	data := make([]byte, 1+8+r.numRelays*RelayDataBytes)
+	numRelaysRightNow := r.GetRelayCount()
+
+	// preallocate the entire buffer size
+	data := make([]byte, 1+8+numRelaysRightNow*RelayDataBytes)
 
 	index := 0
 	encoding.WriteUint8(data, &index, VersionNumberRelayMap)
-	encoding.WriteUint64(data, &index, r.numRelays)
+	index += 8 // skip the relay count for now
 
+	// since this loops using a range, if one or more relays expire
+	// after the number of relays in the map is queried it'll be less
+	// than the expected amount which will cause the portal to read
+	// garbage data. Manually counting and compareing accounts for that edge case
+	var count uint64 = 0
 	for i := range r.shard {
 		shard := r.shard[i]
 		shard.mutex.RLock()
@@ -219,8 +227,28 @@ func (r *RelayMap) MarshalBinary() ([]byte, error) {
 			encoding.WriteUint64(data, &index, uint64(relay.LastUpdateTime.Unix()))
 			encoding.WriteFloat32(data, &index, relay.CPUUsage)
 			encoding.WriteFloat32(data, &index, relay.MemUsage)
+
+			count++
+
+			// if a relay inits into a shard after the current one
+			// the number will be greater than the amount of space
+			// preallocated so break early and the next update can
+			// get the missing relay(s)
+			if count > numRelaysRightNow {
+				break
+			}
+		}
+
+		// same reason as above
+		if count > numRelaysRightNow {
+			break
 		}
 	}
 
-	return data, nil
+	// write the count now for accuracy
+	index = 1
+	encoding.WriteUint64(data, &index, count)
+
+	// truncate the data in case the expire edge case ocurred
+	return data[:1+8+count*RelayDataBytes], nil
 }
