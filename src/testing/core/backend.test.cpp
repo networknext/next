@@ -16,12 +16,6 @@ namespace
   const auto Base64RouterPublicKey = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=";
   const auto Base64UpdateKey = "ycOUBHcxeThec42twkVJkO7QaVqlZUk3pApu7Ki58SrvELV+iIfiMpgxuJcTASVaCs1XD2BNDoGcEu9JkHv/sQ==";
 
-  const auto BasicValidUpdateResponse = R"({
-     "version": 0,
-     "timestamp": 0,
-     "ping_data": []
-   })";
-
   core::Backend makeBackend(
    core::RouterInfo& info, core::RelayManager<core::Relay>& manager, core::SessionMap& sessions, net::IHttpRequester& requester)
   {
@@ -35,12 +29,16 @@ namespace
 
   auto makeInitResponse(uint32_t version, uint64_t timestamp, std::array<uint8_t, crypto::KeySize>& pk) -> std::vector<uint8_t>
   {
-    std::vector<uint8_t> buff(sizeof(version) + sizeof(timestamp) + sizeof(pk));
+    std::vector<uint8_t> buff(core::InitResponse::ByteSize);
+    core::InitResponse resp{
+     .Version = version,
+     .Timestamp = timestamp,
+     .PublicKey = pk,
+    };
 
-    size_t index = 0;
-    encoding::WriteUint32(buff, index, version);
-    encoding::WriteUint64(buff, index, timestamp);
-    encoding::WriteBytes(buff, index, pk, pk.size());
+    resp.into(buff);
+
+    return buff;
   }
 }  // namespace
 
@@ -51,10 +49,7 @@ Test(core_backend_init_valid)
   core::SessionMap sessions;
   std::array<uint8_t, crypto::KeySize> pk{};
   testing::MockHttpRequester requester;
-  requester.Response = makeInitResponse(0, 123456789, pk) R"({
-    "version": 0,
-    "Timestamp": 123456789
-  })";
+  requester.Response = makeInitResponse(0, 123456789, pk);
   auto backend = std::move(makeBackend(routerInfo, manager, sessions, requester));
 
   check(backend.init());

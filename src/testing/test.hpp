@@ -150,7 +150,7 @@ namespace testing
     return retval;
   }
 
-  class MockHttpRequester: net::IHttpRequester
+  class MockHttpRequester: public net::IHttpRequester
   {
    public:
     bool Success;          // The request was a success

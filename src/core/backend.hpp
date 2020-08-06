@@ -36,6 +36,113 @@ namespace core
 
   const uint8_t MaxUpdateAttempts = 11;  // 1 initial + 10 more for failures
 
+  // | magic | version | nonce | address | encrypted token | relay version |
+  struct InitRequest
+  {
+    uint32_t Magic = InitRequestMagic;
+    uint32_t Version = InitRequestVersion;
+    std::array<uint8_t, crypto_box_NONCEBYTES> Nonce;
+    std::string Address;
+    std::array<uint8_t, RELAY_TOKEN_BYTES + crypto_box_MACBYTES> EncryptedToken;
+    std::string RelayVersion = RELAY_VERSION;
+
+    auto size() -> size_t;
+    auto into(std::vector<uint8_t>& v) -> bool;
+    auto from(const std::vector<uint8_t>& v) -> bool;
+  };
+
+  auto InitRequest::size() -> size_t
+  {
+    return 4 + 4 + Nonce.size() + 4 + Address.length() + EncryptedToken.size() + 4 + RelayVersion.length();
+  }
+
+  auto InitRequest::into(std::vector<uint8_t>& v) -> bool
+  {
+    size_t index = 0;
+
+    if (!encoding::WriteUint32(v, index, Magic)) {
+      Log("could not write init request magic");
+      return false;
+    }
+
+    if (!encoding::WriteUint32(v, index, Version)) {
+      Log("could not write init request version");
+      return false;
+    }
+
+    if (!encoding::WriteBytes(v, index, Nonce, Nonce.size())) {
+      Log("could not write init request nonce bytes");
+      return false;
+    }
+
+    if (!encoding::WriteString(v, index, Address)) {
+      Log("could not write init request address");
+      return false;
+    }
+
+    if (!encoding::WriteBytes(v, index, EncryptedToken, EncryptedToken.size())) {
+      Log("could not write init request token");
+      return false;
+    }
+
+    if (!encoding::WriteString(v, index, RelayVersion)) {
+      Log("could not write init request relay version");
+      return false;
+    }
+
+    return true;
+  }
+
+  auto InitRequest::from(const std::vector<uint8_t>& v) -> bool
+  {
+    size_t index = 0;
+    Magic = encoding::ReadUint32(v, index);
+    Version = encoding::ReadUint32(v, index);
+    encoding::ReadBytes(v, index, Nonce, Nonce.size());
+    Address = encoding::ReadString(v, index);
+    encoding::ReadBytes(v, index, EncryptedToken, EncryptedToken.size());
+    RelayVersion = encoding::ReadString(v, index);
+    return true;
+  }
+
+  struct InitResponse
+  {
+    static const size_t ByteSize = 4 + 8 + crypto::KeySize;
+    uint32_t Version;
+    uint64_t Timestamp;
+    crypto::GenericKey PublicKey;
+
+    auto into(std::vector<uint8_t>& v) -> bool;
+    auto from(const std::vector<uint8_t>& v) -> bool;
+  };
+
+  auto InitResponse::into(std::vector<uint8_t>& v) -> bool
+  {
+    size_t index = 0;
+    if (!encoding::WriteUint32(v, index, Version)) {
+      return false;
+    }
+
+    if (!encoding::WriteUint64(v, index, Timestamp)) {
+      return false;
+    }
+
+    if (!encoding::WriteBytes(v, index, PublicKey, PublicKey.size())) {
+      return false;
+    }
+
+    return true;
+  }
+
+  auto InitResponse::from(const std::vector<uint8_t>& v) -> bool
+  {
+    size_t index = 0;
+    Version = encoding::ReadUint32(v, index);
+    Timestamp = encoding::ReadUint64(v, index);
+    encoding::ReadBytes(v, index, PublicKey, PublicKey.size());
+    return true;
+  }
+
   /*
    * A class that's responsible for backend related tasks
    * where T should be anything that defines a static SendTo function
@@ -108,90 +215,58 @@ namespace core
 
   auto Backend::init() -> bool
   {
-    std::vector<uint8_t> req, res;
+    std::vector<uint8_t> requestData, responseData;
 
     // serialize request
     {
-      std::array<uint8_t, crypto_box_NONCEBYTES> nonce = {};
-      crypto::CreateNonceBytes(nonce);
+      InitRequest request;
+      request.Address = mAddressStr;
+
+      crypto::CreateNonceBytes(request.Nonce);
 
       // just has to be something the backend can decrypt
       std::array<uint8_t, RELAY_TOKEN_BYTES> token = {};
       crypto::RandomBytes(token, token.size());
 
-      std::array<uint8_t, RELAY_TOKEN_BYTES + crypto_box_MACBYTES> encryptedToken = {};
-
       if (
        crypto_box_easy(
-        encryptedToken.data(),
+        request.EncryptedToken.data(),
         token.data(),
         token.size(),
-        nonce.data(),
+        request.Nonce.data(),
         mKeychain.RouterPublicKey.data(),
         mKeychain.RelayPrivateKey.data()) != 0) {
         Log("failed to encrypt init token");
         return false;
       }
 
-      // | magic | version | nonce | address | encrypted token | relay version |
-      const size_t requestSize = 4 + 4 + nonce.size() + 4 + mAddressStr.length() + token.size();
-      req.resize(requestSize);
-
-      size_t index = 0;
-
-      if (!encoding::WriteUint32(req, index, InitRequestMagic)) {
-        Log("could not write init request magic");
-        return false;
-      }
-
-      if (!encoding::WriteUint32(req, index, InitRequestVersion)) {
-        Log("could not write init request version");
-        return false;
-      }
-
-      if (!encoding::WriteBytes(req, index, nonce, nonce.size())) {
-        Log("could not write nonce bytes");
-        return false;
-      }
-
-      if (!encoding::WriteString(req, index, mAddressStr)) {
-        Log("could not write address");
-        return false;
-      }
-
-      if (!encoding::WriteBytes(req, index, token, token.size())) {
-        Log("could not write token");
-        return false;
-      }
-
-      if (!encoding::WriteString(req, index, std::string(RELAY_VERSION))) {
-        Log("could not write relay version");
+      requestData.resize(request.size());
+      if (!request.into(requestData)) {
         return false;
       }
     }
 
     // send request
 
-    if (!mRequester.sendRequest(mHostname, "/relay_init", req, res)) {
+    if (!mRequester.sendRequest(mHostname, "/relay_init", requestData, responseData)) {
       Log("curl request failed in init");
       return false;
     }
 
     // deserialize response
     {
-      size_t index = 0;
-
-      uint32_t version = encoding::ReadUint32(res, index);
-
-      if (version != InitResponseVersion) {
-        Log("error: bad relay init response version. expected ", InitResponseVersion, ", got ", version);
+      InitResponse response;
+      if (!response.from(responseData)) {
         return false;
       }
 
-      uint64_t timestamp = encoding::ReadUint64(res, index);
+      if (response.Version != InitResponseVersion) {
+        Log("error: bad relay init response version. expected ", InitResponseVersion, ", got ", response.Version);
+        return false;
+      }
 
       // for old relay compat the router sends this back in millis, so convert back to seconds
-      mRouterInfo.setTimestamp(timestamp / 1000);
+      mRouterInfo.setTimestamp(response.Timestamp / 1000);
     }
 
     return true;
