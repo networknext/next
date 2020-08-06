@@ -1220,8 +1220,10 @@ func main() {
 					}
 
 					// Build the actual Datacenter struct from the input datacenter struct
+					did := crypto.HashID(datacenter.Name)
 					realDatacenter := routing.Datacenter{
-						ID:       crypto.HashID(datacenter.Name),
+						ID:       did,
+						SignedID: int64(did),
 						Name:     datacenter.Name,
 						Enabled:  datacenter.Enabled,
 						Location: datacenter.Location,
