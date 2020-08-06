@@ -9,7 +9,7 @@ The Relay Backend is responsible for:
 
 ### Load & Scalability
 
-Status: **LOW-MEDIUM**  
+Status: **LOW-MEDIUM**
 Scalability: **Vertically**
 
 1. Relays send HTTP requests every 1 second
@@ -68,3 +68,4 @@ When using the default json file, only spawn relays with addresses & ports betwe
   - Stores the relay in redis in binary format
 - `/relay_update`: After a relay has confirmation of successful initialization, it will keep sending this endpoint stats about its network timings
   - Within the response body will be a list of all other relays to ping and gather stats on
+- `/relay_stats`: Takes the backend's relay map and turns it into a binary format for the portal to unmarshal so we can query relay stats using the operator tool
