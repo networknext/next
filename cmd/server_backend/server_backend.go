@@ -602,7 +602,19 @@ func main() {
 			os.Exit(1)
 		}
 
-		portalCruncherPublisher, err := pubsub.NewPortalCruncherPublisher(portalCruncherHost)
+		postSessionPortalSendBufferSizeString, ok := os.LookupEnv("POST_SESSION_PORTAL_SEND_BUFFER_SIZE")
+		if !ok {
+			level.Error(logger).Log("err", "env var POST_SESSION_PORTAL_SEND_BUFFER_SIZE must be set")
+			os.Exit(1)
+		}
+
+		postSessionPortalSendBufferSize, err := strconv.ParseInt(postSessionPortalSendBufferSizeString, 10, 64)
+		if err != nil {
+			level.Error(logger).Log("envvar", "POST_SESSION_PORTAL_SEND_BUFFER_SIZE", "msg", "could not parse", "err", err)
+			os.Exit(1)
+		}
+
+		portalCruncherPublisher, err := pubsub.NewPortalCruncherPublisher(portalCruncherHost, int(postSessionPortalSendBufferSize))
 		if err != nil {
 			level.Error(logger).Log("msg", "could not create portal cruncher publisher", "err", err)
 			os.Exit(1)
@@ -635,10 +647,22 @@ func main() {
 		os.Exit(1)
 	}
 
+	postSessionPortalMaxRetriesString, ok := os.LookupEnv("POST_SESSION_PORTAL_MAX_RETRIES")
+	if !ok {
+		level.Error(logger).Log("err", "env var POST_SESSION_PORTAL_MAX_RETRIES must be set")
+		os.Exit(1)
+	}
+
+	postSessionPortalMaxRetries, err := strconv.ParseInt(postSessionPortalMaxRetriesString, 10, 64)
+	if err != nil {
+		level.Error(logger).Log("envvar", "POST_SESSION_PORTAL_MAX_RETRIES", "msg", "could not parse", "err", err)
+		os.Exit(1)
+	}
+
 	// Create a post session handler to handle the post process of session updates.
 	// This way, we can quickly return from the session update handler and not spawn a
 	// ton of goroutines if things get backed up.
-	postSessionHandler := transport.NewPostSessionHandler(int(numPostSessionGoroutines), int(postSessionBufferSize), portalPublisher, biller, logger, sessionUpdateMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(int(numPostSessionGoroutines), int(postSessionBufferSize), portalPublisher, int(postSessionPortalMaxRetries), biller, logger, sessionUpdateMetrics)
 	postSessionHandler.StartProcessing(ctx)
 
 	// Setup the stats print routine
@@ -766,8 +790,17 @@ func main() {
 			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(sessionUpdateConfig),
 		}
 
+		var selectionPercent uint64 = 100
+		if valueStr, ok := os.LookupEnv("PACKET_SELECTION_PERCENT"); ok {
+			if valueUint, err := strconv.ParseUint(valueStr, 10, 64); err == nil {
+				selectionPercent = valueUint
+			} else {
+				level.Error(logger).Log("msg", "cannot parse value of 'PACKET_SELECTION_PERCENT' env var", "err", err)
+			}
+		}
+
 		go func() {
-			if err := mux.Start(ctx, int(numPostSessionGoroutines), int(postSessionBufferSize)); err != nil {
+			if err := mux.Start(ctx, int(numPostSessionGoroutines), int(postSessionBufferSize), selectionPercent); err != nil {
 				fmt.Println(err)
 				os.Exit(1)
 			}
