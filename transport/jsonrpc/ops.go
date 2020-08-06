@@ -484,10 +484,7 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 
 		// If the relay is in memory, get its traffic stats and last update time
 
-		id := crypto.HashID(relay.Addr)
-
-		s.RelayMap.mu.RLock()
-		if relayData, ok := s.RelayMap.Get(id); ok {
+		if relayData, ok := s.RelayMap.Get(r.ID); ok {
 			relay.SessionCount = relayData.SessionCount
 			relay.BytesSent = relayData.Tx
 			relay.BytesReceived = relayData.Rx
@@ -496,7 +493,6 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			relay.CPUUsage = relayData.CPU
 			relay.MemUsage = relayData.Mem
 		}
-		s.RelayMap.mu.RUnlock()
 
 		reply.Relays = append(reply.Relays, relay)
 	}
