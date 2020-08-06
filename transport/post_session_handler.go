@@ -88,13 +88,54 @@ func (post *PostSessionData) ProcessPortalData(publisher pubsub.Publisher) (int,
 	}
 
 	var byteCount int
-	singleByteCount, err := publisher.Publish(pubsub.TopicPortalCruncherSessionData, sessionBytes)
-	byteCount += singleByteCount
-	singleByteCount, err = publisher.Publish(pubsub.TopicPortalCruncherSessionCounts, countBytes)
-	byteCount += singleByteCount
 
-	if err != nil {
-		return 0, err
+	var retryCount int
+
+	if fmt.Sprintf("%016x", post.PortalData.Meta.BuyerID) != "b8e4f84ca63b2021" {
+		for retryCount < maxRetries { // only retry so many times, then error out after that
+			singleByteCount, err := publisher.Publish(pubsub.TopicPortalCruncherSessionData, sessionBytes)
+			if err != nil {
+				errno := zmq4.AsErrno(err)
+				switch errno {
+				case zmq4.AsErrno(syscall.EAGAIN):
+					retryCount++
+					time.Sleep(time.Millisecond * 100) // If the send queue is backed up, wait a little bit and try again
+				default:
+					return 0, err
+				}
+			} else {
+				retryCount = -1
+				byteCount += singleByteCount
+				break
+			}
+		}
+
+		if retryCount >= maxRetries {
+			return byteCount, errors.New("exceeded retry count on portal data")
+		}
+	}
+
+	retryCount = 0
+	for retryCount < maxRetries { // only retry so many times, then error out after that
+		singleByteCount, err := publisher.Publish(pubsub.TopicPortalCruncherSessionCounts, countBytes)
+		if err != nil {
+			errno := zmq4.AsErrno(err)
+			switch errno {
+			case zmq4.AsErrno(syscall.EAGAIN):
+				retryCount++
+				time.Sleep(time.Millisecond * 100) // If the send queue is backed up, wait a little bit and try again
+			default:
+				return 0, err
+			}
+		} else {
+			retryCount = -1
+			byteCount += singleByteCount
+			break
+		}
+	}
+
+	if retryCount >= maxRetries {
+		return byteCount, errors.New("exceeded retry count on session counts")
 	}
 
 	return byteCount, nil
