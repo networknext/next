@@ -916,7 +916,7 @@ func main() {
 	router.Handle("/debug/vars", expvar.Handler())
 	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(relayMap, getRouteMatrixFunc, statsdb, "local", "local", maxJitter))
 	router.HandleFunc("/routes", transport.RoutesHandlerFunc(getRouteMatrixFunc, statsdb, "local", "local"))
-	router.HandleFunc("/relay_stats", transport.RelayStatsFunc(relayMap))
+	router.HandleFunc("/relay_stats", transport.RelayStatsFunc(logger, relayMap))
 
 	go func() {
 		port, ok := os.LookupEnv("PORT")
