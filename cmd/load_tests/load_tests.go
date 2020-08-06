@@ -27,7 +27,7 @@ import (
 
 // Shared
 const (
-	LoadTestDuration = time.Second * 20 // How long to run the load test
+	LoadTestDuration = time.Minute * 5 // How long to run the load test
 )
 
 // in memory map load test
