@@ -10,12 +10,16 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"os/exec"
 	"os/signal"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
+	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/routing"
+	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
 	"github.com/networknext/backend/transport/pubsub"
 	"github.com/pebbe/zmq4"
@@ -39,6 +43,12 @@ const (
 // zeromq load test
 const (
 	ZeroMQPublishDelay = 15000 // How long to wait before sending another message (in loop cycles). This number is CPU dependent.
+)
+
+// portal cruncher redis load test
+const (
+	PortalCruncherGoroutineCount = 100000 // How many goroutines to spawn to fill redis with mock portal data
+	UseTransactions              = true   // Whether or not to use transaction in the insertion pipeline
 )
 
 func in_memory_map_load_test() {
@@ -476,7 +486,388 @@ func zeromq_load_test() {
 	fmt.Printf("\naverage send rate: %.0f msg/sec\n", sendRate)
 }
 
+func portal_cruncher_redis_load_test() {
+	fmt.Printf("portal_cruncher_redis_load_test\n")
+
+	runTime := time.Now()
+
+	mockSessionCountData := transport.SessionCountData{
+		InstanceID:             0,
+		TotalNumDirectSessions: 50000,
+		TotalNumNextSessions:   1000,
+		NumDirectSessionsPerBuyer: map[uint64]uint64{
+			0: 10000,
+			1: 10000,
+			2: 10000,
+			3: 10000,
+			4: 10000,
+		},
+		NumNextSessionsPerBuyer: map[uint64]uint64{
+			0: 200,
+			1: 200,
+			2: 200,
+			3: 200,
+			4: 200,
+		},
+	}
+
+	nearRelays := make([]transport.NearRelayPortalData, 0)
+	for i := 0; i < transport.MaxNearRelays; i++ {
+		nearRelays = append(nearRelays, transport.NearRelayPortalData{
+			ID:   uint64(i),
+			Name: "relay" + fmt.Sprintf("%d", i),
+		})
+	}
+
+	mockSessionData := transport.SessionPortalData{
+		Meta: transport.SessionMeta{
+			ID:              0,
+			UserHash:        0,
+			DatacenterName:  "local",
+			DatacenterAlias: "local",
+			OnNetworkNext:   true,
+			NextRTT:         30,
+			DirectRTT:       50,
+			DeltaRTT:        20,
+			Location:        routing.LocationNullIsland,
+			ClientAddr:      "127.0.0.1:40000",
+			ServerAddr:      "127.0.0.1:40000",
+			Hops: []transport.RelayHop{
+				{
+					ID:   1,
+					Name: "relay1",
+				},
+				{
+					ID:   2,
+					Name: "relay2",
+				},
+				{
+					ID:   3,
+					Name: "relay3",
+				},
+				{
+					ID:   4,
+					Name: "relay4",
+				},
+			},
+			SDK:          "3.3.3",
+			Connection:   0,
+			NearbyRelays: nearRelays,
+			Platform:     0,
+			BuyerID:      0,
+		},
+		Slice: transport.SessionSlice{
+			Timestamp: time.Now(),
+			Next:      routing.Stats{},
+			Direct:    routing.Stats{},
+			Envelope: routing.Envelope{
+				Up:   int64(0),
+				Down: int64(0),
+			},
+			IsMultiPath:       true,
+			IsTryBeforeYouBuy: true,
+			OnNetworkNext:     true,
+		},
+		Point: transport.SessionMapPoint{
+			Latitude:      0,
+			Longitude:     0,
+			OnNetworkNext: true,
+		},
+	}
+
+	cmd := exec.Command("redis-server")
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Setpgid: true,
+		Pgid:    0,
+	}
+	if err := cmd.Start(); err != nil {
+		fmt.Printf("failed to start redis server: %v\n", err)
+		return
+	}
+
+	defer func() {
+		if err := cmd.Process.Kill(); err != nil {
+			fmt.Printf("failed to kill redis server process: %v", err)
+		}
+	}()
+
+	// Wait a couple of seconds for redis to initialize
+	time.Sleep(time.Second * 2)
+
+	redisClient := storage.NewRedisClient("127.0.0.1:6379")
+	expireTime := 30 * time.Second
+
+	dataExecutionTimeChan := make(chan time.Duration)
+	countExecutionTimeChan := make(chan time.Duration)
+	var quit bool
+
+	var runningDataGoroutines int64
+	if PortalCruncherGoroutineCount%2 == 0 {
+		atomic.StoreInt64(&runningDataGoroutines, int64(PortalCruncherGoroutineCount/2))
+	} else {
+		atomic.StoreInt64(&runningDataGoroutines, int64(PortalCruncherGoroutineCount/2)+1)
+	}
+
+	var runningCountGoroutines int64
+	atomic.StoreInt64(&runningCountGoroutines, int64(PortalCruncherGoroutineCount/2))
+
+	for i := 0; i < PortalCruncherGoroutineCount; i++ {
+		switch i % 2 {
+		case 0:
+			go func() {
+				for {
+					if time.Since(runTime) >= LoadTestDuration || quit {
+						atomic.AddInt64(&runningDataGoroutines, -1)
+						if atomic.LoadInt64(&runningDataGoroutines) <= 0 {
+							close(dataExecutionTimeChan)
+						}
+
+						break
+					}
+
+					if UseTransactions {
+						tx := redisClient.TxPipeline()
+
+						// set total session counts with expiration on the entire key set for safety
+						switch mockSessionData.Meta.OnNetworkNext {
+						case true:
+							// Remove the session from the direct set if it exists
+							tx.ZRem("total-direct", mockSessionData.Meta.ID)
+							tx.ZRem(fmt.Sprintf("total-direct-buyer-%016x", mockSessionData.Meta.BuyerID), mockSessionData.Meta.ID)
+
+							tx.ZAdd("total-next", &redis.Z{Score: mockSessionData.Meta.DeltaRTT, Member: fmt.Sprintf("%016x", mockSessionData.Meta.ID)})
+							tx.Expire("total-next", expireTime)
+							tx.ZAdd(fmt.Sprintf("total-next-buyer-%016x", mockSessionData.Meta.BuyerID), &redis.Z{Score: mockSessionData.Meta.DeltaRTT, Member: fmt.Sprintf("%016x", mockSessionData.Meta.ID)})
+							tx.Expire(fmt.Sprintf("total-next-buyer-%016x", mockSessionData.Meta.BuyerID), expireTime)
+						case false:
+							// Remove the session from the next set if it exists
+							tx.ZRem("total-next", mockSessionData.Meta.ID)
+							tx.ZRem(fmt.Sprintf("total-next-buyer-%016x", mockSessionData.Meta.BuyerID), mockSessionData.Meta.ID)
+
+							tx.ZAdd("total-direct", &redis.Z{Score: -mockSessionData.Meta.DirectRTT, Member: fmt.Sprintf("%016x", mockSessionData.Meta.ID)})
+							tx.Expire("total-direct", expireTime)
+							tx.ZAdd(fmt.Sprintf("total-direct-buyer-%016x", mockSessionData.Meta.BuyerID), &redis.Z{Score: -mockSessionData.Meta.DirectRTT, Member: fmt.Sprintf("%016x", mockSessionData.Meta.ID)})
+							tx.Expire(fmt.Sprintf("total-direct-buyer-%016x", mockSessionData.Meta.BuyerID), expireTime)
+						}
+
+						// set session and slice information with expiration on the entire key set for safety
+						tx.Set(fmt.Sprintf("session-%016x-meta", mockSessionData.Meta.ID), mockSessionData.Meta, expireTime)
+						tx.SAdd(fmt.Sprintf("session-%016x-slices", mockSessionData.Meta.ID), mockSessionData.Slice)
+						tx.Expire(fmt.Sprintf("session-%016x-slices", mockSessionData.Meta.ID), expireTime)
+
+						// set the user session reverse lookup sets with expiration on the entire key set for safety
+						tx.SAdd(fmt.Sprintf("user-%016x-sessions", mockSessionData.Meta.UserHash), fmt.Sprintf("%016x", mockSessionData.Meta.ID))
+						tx.Expire(fmt.Sprintf("user-%016x-sessions", mockSessionData.Meta.UserHash), expireTime)
+
+						// set the map point key and buyer sessions with expiration on the entire key set for safety
+						tx.Set(fmt.Sprintf("session-%016x-point", mockSessionData.Meta.ID), mockSessionData.Point, expireTime)
+						tx.SAdd(fmt.Sprintf("map-points-%016x-buyer", mockSessionData.Meta.BuyerID), fmt.Sprintf("%016x", mockSessionData.Meta.ID))
+						tx.Expire(fmt.Sprintf("map-points-%016x-buyer", mockSessionData.Meta.BuyerID), expireTime)
+
+						execStart := time.Now()
+						if _, err := tx.Exec(); err != nil {
+							fmt.Printf("error sending session data to redis: %v\n", err)
+							quit = true
+							continue
+						}
+						execTime := time.Since(execStart)
+						dataExecutionTimeChan <- execTime
+					} else {
+						pipe := redisClient.Pipeline()
+
+						// set total session counts with expiration on the entire key set for safety
+						switch mockSessionData.Meta.OnNetworkNext {
+						case true:
+							// Remove the session from the direct set if it exists
+							pipe.ZRem("total-direct", mockSessionData.Meta.ID)
+							pipe.ZRem(fmt.Sprintf("total-direct-buyer-%016x", mockSessionData.Meta.BuyerID), mockSessionData.Meta.ID)
+
+							pipe.ZAdd("total-next", &redis.Z{Score: mockSessionData.Meta.DeltaRTT, Member: fmt.Sprintf("%016x", mockSessionData.Meta.ID)})
+							pipe.Expire("total-next", expireTime)
+							pipe.ZAdd(fmt.Sprintf("total-next-buyer-%016x", mockSessionData.Meta.BuyerID), &redis.Z{Score: mockSessionData.Meta.DeltaRTT, Member: fmt.Sprintf("%016x", mockSessionData.Meta.ID)})
+							pipe.Expire(fmt.Sprintf("total-next-buyer-%016x", mockSessionData.Meta.BuyerID), expireTime)
+						case false:
+							// Remove the session from the next set if it exists
+							pipe.ZRem("total-next", mockSessionData.Meta.ID)
+							pipe.ZRem(fmt.Sprintf("total-next-buyer-%016x", mockSessionData.Meta.BuyerID), mockSessionData.Meta.ID)
+
+							pipe.ZAdd("total-direct", &redis.Z{Score: -mockSessionData.Meta.DirectRTT, Member: fmt.Sprintf("%016x", mockSessionData.Meta.ID)})
+							pipe.Expire("total-direct", expireTime)
+							pipe.ZAdd(fmt.Sprintf("total-direct-buyer-%016x", mockSessionData.Meta.BuyerID), &redis.Z{Score: -mockSessionData.Meta.DirectRTT, Member: fmt.Sprintf("%016x", mockSessionData.Meta.ID)})
+							pipe.Expire(fmt.Sprintf("total-direct-buyer-%016x", mockSessionData.Meta.BuyerID), expireTime)
+						}
+
+						// set session and slice information with expiration on the entire key set for safety
+						pipe.Set(fmt.Sprintf("session-%016x-meta", mockSessionData.Meta.ID), mockSessionData.Meta, expireTime)
+						pipe.SAdd(fmt.Sprintf("session-%016x-slices", mockSessionData.Meta.ID), mockSessionData.Slice)
+						pipe.Expire(fmt.Sprintf("session-%016x-slices", mockSessionData.Meta.ID), expireTime)
+
+						// set the user session reverse lookup sets with expiration on the entire key set for safety
+						pipe.SAdd(fmt.Sprintf("user-%016x-sessions", mockSessionData.Meta.UserHash), fmt.Sprintf("%016x", mockSessionData.Meta.ID))
+						pipe.Expire(fmt.Sprintf("user-%016x-sessions", mockSessionData.Meta.UserHash), expireTime)
+
+						// set the map point key and buyer sessions with expiration on the entire key set for safety
+						pipe.Set(fmt.Sprintf("session-%016x-point", mockSessionData.Meta.ID), mockSessionData.Point, expireTime)
+						pipe.SAdd(fmt.Sprintf("map-points-%016x-buyer", mockSessionData.Meta.BuyerID), fmt.Sprintf("%016x", mockSessionData.Meta.ID))
+						pipe.Expire(fmt.Sprintf("map-points-%016x-buyer", mockSessionData.Meta.BuyerID), expireTime)
+
+						execStart := time.Now()
+						if _, err := pipe.Exec(); err != nil {
+							fmt.Printf("error sending session data to redis: %v\n", err)
+							quit = true
+							continue
+						}
+						execTime := time.Since(execStart)
+						dataExecutionTimeChan <- execTime
+					}
+				}
+			}()
+		case 1:
+			go func() {
+				for {
+					if time.Since(runTime) >= LoadTestDuration || quit {
+						atomic.AddInt64(&runningCountGoroutines, -1)
+						if atomic.LoadInt64(&runningCountGoroutines) <= 0 {
+							close(countExecutionTimeChan)
+						}
+						break
+					}
+
+					if UseTransactions {
+						tx := redisClient.TxPipeline()
+
+						// Regular set for expiry
+						tx.Set(fmt.Sprintf("session-count-total-direct-instance-%016x", mockSessionCountData.InstanceID), mockSessionCountData.TotalNumDirectSessions, expireTime)
+
+						// HSet for quick summing in the portal
+						tx.HSet("session-count-total-direct", fmt.Sprintf("session-count-total-direct-instance-%016x", mockSessionCountData.InstanceID), mockSessionCountData.TotalNumDirectSessions)
+
+						// Regular set for expiry
+						tx.Set(fmt.Sprintf("session-count-total-next-instance-%016x", mockSessionCountData.InstanceID), mockSessionCountData.TotalNumNextSessions, expireTime)
+
+						// HSet for quick summing in the portal
+						tx.HSet("session-count-total-next", fmt.Sprintf("session-count-total-next-instance-%016x", mockSessionCountData.InstanceID), mockSessionCountData.TotalNumNextSessions)
+
+						for buyerID, count := range mockSessionCountData.NumDirectSessionsPerBuyer {
+							// Regular set for expiry
+							tx.Set(fmt.Sprintf("session-count-direct-buyer-%016x-instance-%016x", buyerID, mockSessionCountData.InstanceID), count, expireTime)
+
+							// HSet for quick summing in the portal
+							tx.HSet(fmt.Sprintf("session-count-direct-buyer-%016x", buyerID), fmt.Sprintf("session-count-direct-buyer-%016x-instance-%016x", buyerID, mockSessionCountData.InstanceID), count)
+							tx.Expire(fmt.Sprintf("session-count-direct-buyer-%016x", buyerID), expireTime)
+						}
+
+						for buyerID, count := range mockSessionCountData.NumNextSessionsPerBuyer {
+							// Regular set for expiry
+							tx.Set(fmt.Sprintf("session-count-next-buyer-%016x-instance-%016x", buyerID, mockSessionCountData.InstanceID), count, expireTime)
+
+							// HSet for quick summing in the portal
+							tx.HSet(fmt.Sprintf("session-count-next-buyer-%016x", buyerID), fmt.Sprintf("session-count-next-buyer-%016x-instance-%016x", buyerID, mockSessionCountData.InstanceID), count)
+							tx.Expire(fmt.Sprintf("session-count-next-buyer-%016x", buyerID), expireTime)
+						}
+
+						execStart := time.Now()
+						if _, err := tx.Exec(); err != nil {
+							fmt.Printf("error sending session data to redis: %v\n", err)
+							quit = true
+							continue
+						}
+						execTime := time.Since(execStart)
+						countExecutionTimeChan <- execTime
+					} else {
+						pipe := redisClient.Pipeline()
+
+						// Regular set for expiry
+						pipe.Set(fmt.Sprintf("session-count-total-direct-instance-%016x", mockSessionCountData.InstanceID), mockSessionCountData.TotalNumDirectSessions, expireTime)
+
+						// HSet for quick summing in the portal
+						pipe.HSet("session-count-total-direct", fmt.Sprintf("session-count-total-direct-instance-%016x", mockSessionCountData.InstanceID), mockSessionCountData.TotalNumDirectSessions)
+
+						// Regular set for expiry
+						pipe.Set(fmt.Sprintf("session-count-total-next-instance-%016x", mockSessionCountData.InstanceID), mockSessionCountData.TotalNumNextSessions, expireTime)
+
+						// HSet for quick summing in the portal
+						pipe.HSet("session-count-total-next", fmt.Sprintf("session-count-total-next-instance-%016x", mockSessionCountData.InstanceID), mockSessionCountData.TotalNumNextSessions)
+
+						for buyerID, count := range mockSessionCountData.NumDirectSessionsPerBuyer {
+							// Regular set for expiry
+							pipe.Set(fmt.Sprintf("session-count-direct-buyer-%016x-instance-%016x", buyerID, mockSessionCountData.InstanceID), count, expireTime)
+
+							// HSet for quick summing in the portal
+							pipe.HSet(fmt.Sprintf("session-count-direct-buyer-%016x", buyerID), fmt.Sprintf("session-count-direct-buyer-%016x-instance-%016x", buyerID, mockSessionCountData.InstanceID), count)
+							pipe.Expire(fmt.Sprintf("session-count-direct-buyer-%016x", buyerID), expireTime)
+						}
+
+						for buyerID, count := range mockSessionCountData.NumNextSessionsPerBuyer {
+							// Regular set for expiry
+							pipe.Set(fmt.Sprintf("session-count-next-buyer-%016x-instance-%016x", buyerID, mockSessionCountData.InstanceID), count, expireTime)
+
+							// HSet for quick summing in the portal
+							pipe.HSet(fmt.Sprintf("session-count-next-buyer-%016x", buyerID), fmt.Sprintf("session-count-next-buyer-%016x-instance-%016x", buyerID, mockSessionCountData.InstanceID), count)
+							pipe.Expire(fmt.Sprintf("session-count-next-buyer-%016x", buyerID), expireTime)
+						}
+
+						execStart := time.Now()
+						if _, err := pipe.Exec(); err != nil {
+							fmt.Printf("error sending session data to redis: %v\n", err)
+							quit = true
+							continue
+						}
+						execTime := time.Since(execStart)
+						countExecutionTimeChan <- execTime
+					}
+				}
+			}()
+		}
+	}
+
+	go func() {
+		// Wait for interrupt signal
+		sigint := make(chan os.Signal, 1)
+		signal.Notify(sigint, os.Interrupt)
+		<-sigint
+
+		quit = true
+	}()
+
+	var dataExecutionTimeTotal time.Duration
+	var countExecutionTimeTotal time.Duration
+
+	var dataExecutionCount uint64
+	var countsExecutionCount uint64
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		for dataExecutionTime := range dataExecutionTimeChan {
+			dataExecutionTimeTotal += dataExecutionTime
+			dataExecutionCount++
+		}
+
+		wg.Done()
+	}()
+
+	wg.Add(1)
+	go func() {
+		for countExecutionTime := range countExecutionTimeChan {
+			countExecutionTimeTotal += countExecutionTime
+			countsExecutionCount++
+		}
+
+		wg.Done()
+	}()
+
+	wg.Wait()
+
+	avgDataExecutionTime := dataExecutionTimeTotal.Seconds() / float64(dataExecutionCount)
+	avgCountExecutionTime := countExecutionTimeTotal.Seconds() / float64(countsExecutionCount)
+
+	fmt.Printf("\naverage data execution time: %.2f seconds\n", avgDataExecutionTime)
+	fmt.Printf("average count execution time: %.2f seconds\n", avgCountExecutionTime)
+}
+
 func main() {
 	// in_memory_map_load_test()
-	zeromq_load_test()
+	// zeromq_load_test()
+	portal_cruncher_redis_load_test()
 }
