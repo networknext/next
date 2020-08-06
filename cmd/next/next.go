@@ -873,8 +873,10 @@ func main() {
 					}
 
 					// Build the actual Relay struct from the input relay struct
+					rid := crypto.HashID(relay.Addr)
 					realRelay := routing.Relay{
-						ID:        crypto.HashID(relay.Addr),
+						ID:        rid,
+						SignedID:  int64(rid),
 						Name:      relay.Name,
 						Addr:      *addr,
 						PublicKey: publicKey,
@@ -1218,8 +1220,10 @@ func main() {
 					}
 
 					// Build the actual Datacenter struct from the input datacenter struct
+					did := crypto.HashID(datacenter.Name)
 					realDatacenter := routing.Datacenter{
-						ID:       crypto.HashID(datacenter.Name),
+						ID:       did,
+						SignedID: int64(did),
 						Name:     datacenter.Name,
 						Enabled:  datacenter.Enabled,
 						Location: datacenter.Location,
