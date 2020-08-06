@@ -48,7 +48,7 @@ const (
 // portal cruncher redis load test
 const (
 	PortalCruncherGoroutineCount = 100000 // How many goroutines to spawn to fill redis with mock portal data
-	UseTransactions              = false  // Whether or not to use transaction in the insertion pipeline
+	UseTransactions              = true   // Whether or not to use transaction in the insertion pipeline
 )
 
 func in_memory_map_load_test() {
