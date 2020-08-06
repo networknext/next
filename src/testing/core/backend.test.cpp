@@ -1,6 +1,7 @@
 #include "includes.h"
 #include "testing/test.hpp"
 #include "core/backend.hpp"
+#include "testing/mocks.hpp"
 
 using namespace std::chrono_literals;
 
@@ -9,23 +10,22 @@ namespace
   const unsigned int Base64NonceLength = 32;
   const unsigned int Base64EncryptedTokenLength = 64;
 
-  const auto BackendHostname = "http://totally-real-backend.com";
+  const std::string BackendHostname = "http://totally-real-backend.com";
   const auto RelayAddr = "127.0.0.1:12345";
   const auto Base64RelayPublicKey = "9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=";
   const auto Base64RelayPrivateKey = "lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=";
   const auto Base64RouterPublicKey = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=";
   const auto Base64UpdateKey = "ycOUBHcxeThec42twkVJkO7QaVqlZUk3pApu7Ki58SrvELV+iIfiMpgxuJcTASVaCs1XD2BNDoGcEu9JkHv/sQ==";
-
-  core::Backend makeBackend(
-   core::RouterInfo& info, core::RelayManager<core::Relay>& manager, core::SessionMap& sessions, net::IHttpRequester& requester)
-  {
-    static crypto::Keychain keychain;
-    static legacy::v3::TrafficStats ts;
-
+  legacy::v3::TrafficStats TrafficStats;
+  crypto::Keychain Keychain = [] {
+    crypto::Keychain keychain;
     check(keychain.parse(Base64RelayPublicKey, Base64RelayPrivateKey, Base64RouterPublicKey, Base64UpdateKey));
+    return keychain;
+  }();
 
-    return core::Backend(BackendHostname, RelayAddr, keychain, info, manager, Base64RelayPublicKey, sessions, ts, requester);
-  }
+  std::vector<uint8_t> BasicValidUpdateResponse = [] {
+
+  }();
 
   auto makeInitResponse(uint32_t version, uint64_t timestamp, std::array<uint8_t, crypto::KeySize>& pk) -> std::vector<uint8_t>
   {
@@ -50,7 +50,7 @@ Test(core_backend_init_valid)
   std::array<uint8_t, crypto::KeySize> pk{};
   testing::MockHttpRequester requester;
   requester.Response = makeInitResponse(0, 123456789, pk);
-  auto backend = std::move(makeBackend(routerInfo, manager, sessions, requester));
+  core::Backend backend(BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, TrafficStats, requester);
 
   check(backend.init());
 
@@ -58,15 +58,14 @@ Test(core_backend_init_valid)
   check(requester.Endpoint == "/relay_init");
   check(routerInfo.currentTime() >= 123456789 / 1000);
 
-  check(doc.parse(testing::StubbedCurlWrapper::Request));
+  core::InitRequest request;
+  check(request.from(requester.Request));
 
-  check(doc.get<uint32_t>("magic_request_protection") == core::InitRequestMagic);
-  check(doc.get<uint32_t>("version") == core::InitRequestVersion);
-  check(doc.get<std::string>("relay_address") == RelayAddr);
+  check(request.Magic == core::InitRequestMagic);
+  check(request.Version == core::InitRequestVersion);
+  check(request.Address == RelayAddr);
 
-  // gonna be random, so all that can be done is asserting the length
-  check(doc.get<std::string>("nonce").length() == Base64NonceLength);
-  check(doc.get<std::string>("encrypted_token").length() == Base64EncryptedTokenLength);
+  // can't check nonce or enctypred token since they're random
 }
 
 // Update the backend for 2 seconds, then proceed to switch the handle to false.
@@ -77,7 +76,7 @@ Test(core_Backend_updateCycle_shutdown_60s)
 {
   util::Clock testClock;
 
-  core::RouterInfo info;
+  core::RouterInfo routerInfo;
   core::RelayManager<core::Relay> manager;
   core::SessionMap sessions;
   volatile bool handle = true;
@@ -85,7 +84,7 @@ Test(core_Backend_updateCycle_shutdown_60s)
   util::ThroughputRecorder logger;
   testing::MockHttpRequester requester;
 
-  auto backend = std::move(makeBackend(info, manager, sessions, requester));
+  core::Backend backend(BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, TrafficStats, requester);
 
   requester.Success = true;
   requester.Response = BasicValidUpdateResponse;
@@ -111,7 +110,7 @@ Test(core_Backend_updateCycle_ack_and_30s)
 {
   util::Clock testClock;
 
-  core::RouterInfo info;
+  core::RouterInfo routerInfo;
   core::RelayManager<core::Relay> manager;
   core::SessionMap sessions;
   volatile bool handle = true;
@@ -119,7 +118,7 @@ Test(core_Backend_updateCycle_ack_and_30s)
   util::ThroughputRecorder logger;
   testing::MockHttpRequester requester;
 
-  auto backend = std::move(makeBackend(info, manager, sessions, requester));
+  core::Backend backend(BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, TrafficStats, requester);
 
   requester.Success = true;
   requester.Response = BasicValidUpdateResponse;
@@ -145,7 +144,7 @@ Test(core_Backend_updateCycle_no_ack_for_40s_then_ack_then_wait)
 {
   util::Clock testClock;
 
-  core::RouterInfo info;
+  core::RouterInfo routerInfo;
   core::RelayManager<core::Relay> manager;
   core::SessionMap sessions;
   volatile bool handle = true;
@@ -153,7 +152,7 @@ Test(core_Backend_updateCycle_no_ack_for_40s_then_ack_then_wait)
   util::ThroughputRecorder recorder;
   testing::MockHttpRequester requster;
 
-  auto backend = std::move(makeBackend(info, manager, sessions, requester));
+  core::Backend backend(BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, TrafficStats, requester);
 
   requester.Success = true;
   requester.Response = BasicValidUpdateResponse;
@@ -182,7 +181,7 @@ Test(core_Backend_updateCycle_update_fails_for_max_number_of_attempts)
 {
   util::Clock testClock;
 
-  core::RouterInfo info;
+  core::RouterInfo routerInfo;
   core::RelayManager<core::Relay> manager;
   core::SessionMap sessions;
   volatile bool handle = true;
@@ -190,7 +189,7 @@ Test(core_Backend_updateCycle_update_fails_for_max_number_of_attempts)
   util::ThroughputRecorder recorder;
   testing::MockHttpRequester requester;
 
-  auto backend = std::move(makeBackend(info, manager, sessions, requester));
+  core::Backend backend(BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, TrafficStats, requester);
 
   requester.Success = true;
   requester.Response = BasicValidUpdateResponse;
@@ -216,7 +215,7 @@ Test(core_Backend_updateCycle_no_clean_shutdown)
 {
   util::Clock testClock;
 
-  core::RouterInfo info;
+  core::RouterInfo routerInfo;
   core::RelayManager<core::Relay> manager;
   core::SessionMap sessions;
   volatile bool handle = true;
@@ -224,7 +223,7 @@ Test(core_Backend_updateCycle_no_clean_shutdown)
   util::ThroughputRecorder recorder;
   testing::MockHttpRequester requester;
 
-  auto backend = std::move(makeBackend(info, manager, sessions, requester));
+  core::Backend backend(BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, TrafficStats, requester);
 
   requester.Success = true;
   requester.Response = BasicValidUpdateResponse;
@@ -250,7 +249,7 @@ Test(core_Backend_update_valid)
   util::ThroughputRecorder recorder;
   testing::MockHttpRequester requester;
 
-  auto backend = std::move(makeBackend(routerInfo, manager, sessions, requester));
+  core::Backend backend(BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, TrafficStats, requester);
 
   sessions.set(1234, std::make_shared<core::Session>(routerInfo));  // just add one thing to the map to make it non-zero
 
@@ -348,7 +347,7 @@ Test(core_Backend_update_shutting_down_true)
   util::ThroughputRecorder recorder;
   testing::MockHttpRequester requester;
 
-  auto backend = std::move(makeBackend(routerInfo, manager, sessions, requester));
+  core::Backend backend(BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, TrafficStats, requester);
 
   requester.Response = ::BasicValidUpdateResponse;
 

@@ -143,6 +143,24 @@ namespace core
     return true;
   }
 
+  struct UpdateRequest
+  {
+    UpdateRequest(const crypto::GenericKey& publicKey, const SessionMap& sessions);
+    uint32_t Version;
+    std::string Address;
+    const crypto::GenericKey& PublicKey;
+    RelayStats Stats;
+    uint64_t SessionCount;
+    uint64_t Tx;
+    uint64_t Rx;
+    float CPUUsage;
+    float MemUsage;
+  };
+
+  UpdateRequest::UpdateRequest(const crypto::GenericKey& publicKey, const SessionMap& sessions)
+   : PublicKey(publicKey), Sessions(sessions)
+  {}
+
   /*
    * A class that's responsible for backend related tasks
    * where T should be anything that defines a static SendTo function
