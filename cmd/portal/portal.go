@@ -383,7 +383,7 @@ func main() {
 	relayMap := jsonrpc.NewRelayStatsMap()
 
 	go func() {
-		relayStatsURL := os.Getenv("RELAY_STATS_URL")
+		relayStatsURL := os.Getenv("RELAY_STATS_URI")
 
 		sleepInterval := time.Second
 		if siStr, ok := os.LookupEnv("RELAY_STATS_SYNC_SLEEP_INTERVAL"); ok {
