@@ -146,8 +146,10 @@ func main() {
 			EgressPriceNibblinsPerGB:  0.2 * 1e9,
 		}
 
+		did := crypto.HashID("local")
 		datacenter := routing.Datacenter{
-			ID:           crypto.HashID("local"),
+			ID:           did,
+			SignedID:     int64(did),
 			Name:         "local",
 			SupplierName: "usw2-az4",
 		}

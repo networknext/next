@@ -13,7 +13,6 @@ import (
 type datacenterReply struct {
 	Name         string
 	ID           string
-	SignedID     int64
 	Latitude     float64
 	Longitude    float64
 	Enabled      bool
@@ -37,7 +36,7 @@ func datacenters(rpcClient jsonrpc.RPCClient, env Environment, filter string, si
 		for _, dc := range reply.Datacenters {
 			dcs = append(dcs, datacenterReply{
 				Name:         dc.Name,
-				SignedID:     dc.SignedID,
+				ID:           fmt.Sprintf("%d", dc.SignedID),
 				Latitude:     dc.Latitude,
 				Longitude:    dc.Longitude,
 				Enabled:      dc.Enabled,
