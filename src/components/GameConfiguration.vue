@@ -65,7 +65,6 @@ export default class GameConfiguration extends Vue {
   constructor () {
     super()
     this.userProfile = JSON.parse(JSON.stringify(this.$store.getters.userProfile))
-    console.log(this.userProfile)
     this.apiService = Vue.prototype.$apiService
     this.company = this.userProfile.company || ''
     this.pubKey = this.userProfile.pubKey || ''

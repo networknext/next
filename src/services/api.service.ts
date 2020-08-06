@@ -11,9 +11,9 @@ export default class APIService {
     }
   }
 
-  private call (method: string, params: any): Promise<any> {
-    if (!store.getters.isAnonymous) {
-      this.headers.Authorization = `Bearer ${store.getters.idToken}`
+  private call (method: string, params: any, token: string): Promise<any> {
+    if (!store.getters.isAnonymous || token) {
+      this.headers.Authorization = `Bearer ${store.getters.idToken || token}`
     }
     return new Promise((resolve: any, reject: any) => {
       const options = params || {}
@@ -39,58 +39,62 @@ export default class APIService {
   }
 
   public fetchTotalSessionCounts (args: any) {
-    return this.call('BuyersService.TotalSessions', args)
+    return this.call('BuyersService.TotalSessions', args, '')
   }
 
   public fetchMapSessions (args: any) {
-    return this.call('BuyersService.SessionMap', args)
+    return this.call('BuyersService.SessionMap', args, '')
   }
 
   public fetchSessionDetails (args: any) {
-    return this.call('BuyersService.SessionDetails', args)
+    return this.call('BuyersService.SessionDetails', args, '')
   }
 
   public fetchTopSessions (args: any) {
-    return this.call('BuyersService.TopSessions', args)
+    return this.call('BuyersService.TopSessions', args, '')
   }
 
-  public fetchAllBuyers () {
-    return this.call('BuyersService.Buyers', {})
+  public fetchAllBuyers (token: string) {
+    return this.call('BuyersService.Buyers', {}, token)
   }
 
   public fetchUserSessions (args: any) {
-    return this.call('BuyersService.UserSessions', args)
+    return this.call('BuyersService.UserSessions', args, '')
   }
 
   public fetchAllRoles () {
-    return this.call('AuthService.AllRoles', {})
+    return this.call('AuthService.AllRoles', {}, '')
   }
 
   public fetchAllAccounts (args: any) {
-    return this.call('AuthService.AllAccounts', args)
+    return this.call('AuthService.AllAccounts', args, '')
   }
 
   public updateUserRoles (args: any) {
-    return this.call('AuthService.UpdateUserRoles', args)
+    return this.call('AuthService.UpdateUserRoles', args, '')
   }
 
   public deleteUserAccount (args: any) {
-    return this.call('AuthService.DeleteUserAccount', args)
+    return this.call('AuthService.DeleteUserAccount', args, '')
   }
 
   public addNewUserAccounts (args: any) {
-    return this.call('AuthService.AddUserAccount', args)
+    return this.call('AuthService.AddUserAccount', args, '')
   }
 
-  public fetchGameConfiguration (args: any) {
-    return this.call('BuyersService.GameConfiguration', args)
+  public fetchUserAccount (args: any, token: string) {
+    return this.call('AuthService.UserAccount', args, token)
+  }
+
+  public fetchGameConfiguration (args: any, token: string) {
+    return this.call('BuyersService.GameConfiguration', args, token)
   }
 
   public updateRouteShader (args: any) {
-    return this.call('BuyersService.UpdateRouteShader', args)
+    return this.call('BuyersService.UpdateRouteShader', args, '')
   }
 
   public updateGameConfiguration (args: any) {
-    return this.call('BuyersService.UpdateGameConfiguration', args)
+    return this.call('BuyersService.UpdateGameConfiguration', args, '')
   }
 }

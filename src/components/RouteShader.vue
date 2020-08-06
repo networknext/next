@@ -3,7 +3,7 @@
     <h5 class="card-title">
         Route Shader
     </h5>
-    <Alert classType="alertType" message="message" v-if="message !== ''"/>
+    <Alert :alertType="alertType" :message="message" v-if="message !== ''"/>
     <form v-on:submit.prevent="updateRouteShader()">
         <div class="form-group row">
             <div class="col-sm-2">Enable Network Next</div>
@@ -100,6 +100,8 @@
 import { Component, Vue } from 'vue-property-decorator'
 import APIService from '../services/api.service'
 import Alert from '@/components/Alert.vue'
+import { AlertTypes } from './types/AlertTypes'
+import { UserProfile } from '@/services/auth.service'
 
 @Component({
   components: {
@@ -111,38 +113,37 @@ export default class RouteShader extends Vue {
   private apiService: APIService
   private routeShader: any
   private message: string
-  private classType: string
+  private alertType: string
+  private userProfile: UserProfile
 
   constructor () {
     super()
     this.apiService = Vue.prototype.$apiService
-    this.routeShader = this.$store.getters.userProfile.routeShader
+    this.userProfile = JSON.parse(JSON.stringify(this.$store.getters.userProfile))
+    this.routeShader = this.userProfile.routeShader
     this.message = ''
-    this.classType = ''
+    this.alertType = ''
   }
 
   public updateRouteShader () {
     this.apiService
       .updateRouteShader(this.routeShader)
       .then((response: any) => {
-        const userProfile = this.$store.getters.userProfile
-        userProfile.routeShader = this.routeShader
-        this.$store.commit('UPDATE_USER_PROFILE', userProfile)
-        this.classType = 'alert-success'
+        this.userProfile.routeShader = this.routeShader
+        this.$store.commit('UPDATE_USER_PROFILE', this.userProfile)
+        this.alertType = AlertTypes.INFO
         this.message = 'Updated route shader successfully'
         setTimeout(() => {
           this.message = ''
-          this.classType = ''
         }, 5000)
       })
       .catch((error: Error) => {
         console.log('Something went wrong updating the route shader')
         console.log(error)
-        this.classType = 'alert-danger'
-        this.message = 'Updating route shader failed'
+        this.alertType = AlertTypes.ERROR
+        this.message = 'Failed to update router shader'
         setTimeout(() => {
           this.message = ''
-          this.classType = ''
         }, 5000)
       })
   }

@@ -8,6 +8,7 @@ import 'bootstrap/dist/css/bootstrap.min.css'
 import APIService from './services/api.service'
 import AuthService, { UserProfile, NNAuth0Profile } from './services/auth.service'
 import { Route, NavigationGuardNext } from 'vue-router'
+import { CreateElement } from 'vue/types/umd'
 
 function mountCypress (win: any, app: any) {
   win.app = app
@@ -39,50 +40,48 @@ authService.lockClient.checkSession({
       if (!error) {
         const roles = profile['https://networknext.com/userRoles'] || { roles: [] }
         const email = profile.email || ''
-        let userProfile: UserProfile = {
+        const domain = email.split('@')[1]
+        const token = authResult.idToken
+        const userProfile: UserProfile = {
           auth0ID: profile.sub,
           company: '',
           email: profile.email || '',
-          idToken: authResult.idToken,
+          idToken: token,
           name: profile.name,
           roles: roles.roles,
           verified: profile.email_verified || false,
           routeShader: null,
-          domain: email.split('@')[1],
+          domain: domain,
           pubKey: '',
           buyerID: ''
         }
-        store.commit('UPDATE_USER_PROFILE', userProfile)
-        userProfile = JSON.parse(JSON.stringify(store.getters.userProfile))
-        if (!store.getters.isAnonymous || !store.getters.isAnonymousPlus) {
-          apiService
-            .fetchGameConfiguration({ domain: store.getters.userProfile.domain })
-            .then((response: any) => {
-              userProfile.pubKey = response.game_config.public_key
-              userProfile.company = response.game_config.company
-              userProfile.buyerID = response.game_config.buyer_id
-              userProfile.routeShader = response.customer_route_shader
-            })
-            .catch((e) => {
-              console.log('Something went wrong fetching public key')
-              console.log(e)
-            })
-            .finally(() => {
-              store.commit('UPDATE_USER_PROFILE', userProfile)
-            })
-          apiService.fetchAllBuyers().then((response: any) => {
-            const allBuyers = response.buyers || []
+        const promises = [
+          apiService.fetchUserAccount({ user_id: userProfile.auth0ID }, token),
+          apiService.fetchGameConfiguration({ domain: domain }, token),
+          apiService.fetchAllBuyers(token)
+        ]
+        Promise.all(promises)
+          .then((responses: any) => {
+            userProfile.buyerID = responses[0].account.buyer_id
+            userProfile.company = responses[1].game_config.company
+            userProfile.pubKey = responses[1].game_config.public_key
+            userProfile.routeShader = responses[1].customer_route_shader
+            const allBuyers = responses[2].buyers || []
+            store.commit('UPDATE_USER_PROFILE', userProfile)
             store.commit('UPDATE_ALL_BUYERS', allBuyers)
+            app = new Vue({
+              router,
+              store,
+              render: (h: CreateElement) => h(App)
+            }).$mount('#app')
+            if (win.Cypress) {
+              mountCypress(win, app)
+            }
           })
-        }
-        app = new Vue({
-          router,
-          store,
-          render: (h) => h(App)
-        }).$mount('#app')
-        if (win.Cypress) {
-          mountCypress(win, app)
-        }
+          .catch((error: Error) => {
+            console.log('Something went wrong fetching init data')
+            console.log(error)
+          })
       }
     })
   } else {
@@ -93,7 +92,7 @@ authService.lockClient.checkSession({
     app = new Vue({
       router,
       store,
-      render: (h) => h(App)
+      render: (h: CreateElement) => h(App)
     }).$mount('#app')
     if (win.Cypress) {
       mountCypress(win, app)
