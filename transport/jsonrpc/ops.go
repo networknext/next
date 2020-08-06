@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-kit/kit/log"
@@ -17,6 +18,41 @@ import (
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 )
+
+type RelayData struct {
+	SessionCount   uint64
+	Tx             uint64
+	Rx             uint64
+	Version        string
+	LastUpdateTime time.Time
+	CPU            float32
+	Mem            float32
+}
+
+type RelayStatsMap struct {
+	Internal *map[uint64]RelayData
+	mu       sync.RWMutex
+}
+
+func NewRelayStatsMap() RelayStatsMap {
+	m := make(map[uint64]RelayData)
+	return RelayStatsMap{
+		Internal: &m,
+	}
+}
+
+func (r *RelayStatsMap) Get(id uint64) (RelayData, bool) {
+	r.mu.RLock()
+	relay, ok := (*r.Internal)[id]
+	r.mu.RUnlock()
+	return relay, ok
+}
+
+func (r *RelayStatsMap) Swap(m *map[uint64]RelayData) {
+	r.mu.Lock()
+	r.Internal = m
+	r.mu.Unlock()
+}
 
 type OpsService struct {
 	Release   string
@@ -26,6 +62,8 @@ type OpsService struct {
 	// RouteMatrix *routing.RouteMatrix
 
 	Logger log.Logger
+
+	RelayMap *RelayStatsMap
 }
 
 type CurrentReleaseArgs struct{}
@@ -411,6 +449,8 @@ type relay struct {
 	StartDate           time.Time             `json:"start_date"`
 	EndDate             time.Time             `json:"end_date"`
 	Type                routing.MachineType   `json:"machine_type"`
+	CPUUsage            float32               `json:"cpu_usage"`
+	MemUsage            float32               `json:"mem_usage"`
 }
 
 func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysReply) error {
@@ -442,18 +482,17 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			Type:                r.Type,
 		}
 
-		// We don't have a good way of getting the live relay stats now until we make some kind of endpoint on the relay backend for the portal to hit
+		// If the relay is in memory, get its traffic stats and last update time
 
-		// // If the relay is in memory, get its traffic stats and last update time
-		// relayData := s.RelayMap.GetRelayData(r.Addr.String())
-		// if relayData != nil {
-		// 	relay.SessionCount = relayData.TrafficStats.SessionCount
-		// 	relay.BytesSent = relayData.TrafficStats.BytesSent
-		// 	relay.BytesReceived = relayData.TrafficStats.BytesReceived
-
-		// 	relay.LastUpdateTime = relayData.LastUpdateTime
-		// 	relay.Version = relayData.Version
-		// }
+		if relayData, ok := s.RelayMap.Get(r.ID); ok {
+			relay.SessionCount = relayData.SessionCount
+			relay.BytesSent = relayData.Tx
+			relay.BytesReceived = relayData.Rx
+			relay.Version = relayData.Version
+			relay.LastUpdateTime = relayData.LastUpdateTime
+			relay.CPUUsage = relayData.CPU
+			relay.MemUsage = relayData.Mem
+		}
 
 		reply.Relays = append(reply.Relays, relay)
 	}
