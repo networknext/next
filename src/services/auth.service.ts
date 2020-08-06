@@ -64,6 +64,7 @@ export default class AuthService {
   private processAuthentication (authResult: AuthResult) {
     this.getUserInfo(authResult.accessToken, (error: auth0.Auth0Error, profile: NNAuth0Profile) => {
       if (!error) {
+        this.apiService = new APIService()
         const roles = profile['https://networknext.com/userRoles'] || { roles: [] }
         const email = profile.email || ''
         const domain = email.split('@')[1]
