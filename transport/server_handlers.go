@@ -79,7 +79,7 @@ func (m *UDPServerMux) Start(ctx context.Context) error {
 }
 
 // Start begins accepting UDP packets from the UDP connection and will block
-func (m *UDPServerMux2) Start(ctx context.Context, numPostSessionGoroutines int, postSessionBufferSize int, selectionPercent uint64) error {
+func (m *UDPServerMux2) Start(ctx context.Context, numPostSessionGoroutines int, postSessionBufferSize int) error {
 	numThreads := 8
 	numSockets, ok := os.LookupEnv("NUM_UDP_SOCKETS")
 	if ok {
@@ -103,7 +103,7 @@ func (m *UDPServerMux2) Start(ctx context.Context, numPostSessionGoroutines int,
 				os.Exit(1)
 			}
 
-			go m.handler(ctx, selectionPercent, threadPoolHandlerFunc(m, m.PostSessionHandler, procPool))
+			go m.handler(ctx, threadPoolHandlerFunc(m, m.PostSessionHandler, procPool))
 
 			pools = append(pools, procPool)
 		}
@@ -115,7 +115,7 @@ func (m *UDPServerMux2) Start(ctx context.Context, numPostSessionGoroutines int,
 		}
 	} else {
 		for i := 0; i < numThreads; i++ {
-			go m.handler(ctx, selectionPercent, goroutineHandlerFunc(m, m.PostSessionHandler))
+			go m.handler(ctx, goroutineHandlerFunc(m, m.PostSessionHandler))
 		}
 		<-ctx.Done()
 	}
@@ -195,7 +195,7 @@ func threadPoolHandlerFunc(m *UDPServerMux2, postSessionHandler *PostSessionHand
 	}
 }
 
-func (m *UDPServerMux2) handler(ctx context.Context, selectionPercent uint64, handleFunc packetHandlerFunc) {
+func (m *UDPServerMux2) handler(ctx context.Context, handleFunc packetHandlerFunc) {
 	var conn *net.UDPConn
 	// Initialize UDP connection
 	{
@@ -246,12 +246,6 @@ func (m *UDPServerMux2) handler(ctx context.Context, selectionPercent uint64, ha
 
 		size, addr, _ := conn.ReadFromUDP(data)
 		if size <= 0 {
-			continue
-		}
-
-		hash := crypto.FastHash(addr.String())
-
-		if hash%100 >= selectionPercent {
 			continue
 		}
 
