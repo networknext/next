@@ -19,7 +19,7 @@ import (
 	"github.com/networknext/backend/storage"
 )
 
-type Relay struct {
+type RelayData struct {
 	SessionCount   uint64
 	Tx             uint64
 	Rx             uint64
@@ -29,19 +29,26 @@ type Relay struct {
 	Mem            float32
 }
 
-type RelayMap struct {
-	Internal *map[uint64]Relay
+type RelayStatsMap struct {
+	Internal *map[uint64]RelayData
 	mu       sync.RWMutex
 }
 
-func (r *RelayMap) Get(id uint64) (Relay, bool) {
+func NewRelayStatsMap() RelayStatsMap {
+	m := make(map[uint64]RelayData)
+	return RelayStatsMap{
+		Internal: &m,
+	}
+}
+
+func (r *RelayStatsMap) Get(id uint64) (RelayData, bool) {
 	r.mu.RLock()
 	relay, ok := (*r.Internal)[id]
-	r.mu.Unlock()
+	r.mu.RUnlock()
 	return relay, ok
 }
 
-func (r *RelayMap) Swap(m *map[uint64]Relay) {
+func (r *RelayStatsMap) Swap(m *map[uint64]RelayData) {
 	r.mu.Lock()
 	r.Internal = m
 	r.mu.Unlock()
@@ -56,7 +63,7 @@ type OpsService struct {
 
 	Logger log.Logger
 
-	RelayMap *RelayMap
+	RelayMap *RelayStatsMap
 }
 
 type CurrentReleaseArgs struct{}
@@ -442,6 +449,8 @@ type relay struct {
 	StartDate           time.Time             `json:"start_date"`
 	EndDate             time.Time             `json:"end_date"`
 	Type                routing.MachineType   `json:"machine_type"`
+	CPUUsage            float32               `json:"cpu_usage"`
+	MemUsage            float32               `json:"mem_usage"`
 }
 
 func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysReply) error {
@@ -484,6 +493,8 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			relay.BytesReceived = relayData.Rx
 			relay.Version = relayData.Version
 			relay.LastUpdateTime = relayData.LastUpdateTime
+			relay.CPUUsage = relayData.CPU
+			relay.MemUsage = relayData.Mem
 		}
 		s.RelayMap.mu.RUnlock()
 

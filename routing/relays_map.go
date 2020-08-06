@@ -14,6 +14,9 @@ import (
 const (
 	NumRelayMapShards     = 10
 	VersionNumberRelayMap = 0
+
+	// | id (8) | sessions (8) | tx (8) | rx (8) | version strlen (uint32 for size + 5 for the 1.0.x) | last update time (8) | cpu usage (4) | mem usage (4) |
+	RelayDataBytes = 8 + 8 + 8 + 8 + 4 + 5 + 8 + 4 + 4
 )
 
 type RelayData struct {
@@ -31,39 +34,9 @@ type RelayData struct {
 	Version        string
 }
 
-func (r *RelayData) MarshalBinary() ([]byte, error) {
-	// | id (8) | sessions (8) | tx (8) | rx (8) | version strlen | last update time (8) | cpu usage (4) | mem usage (4) |
-	data := make([]byte, 8+8+8+8+4+len(r.Version)+8+4+4)
-
-	index := 0
-	encoding.WriteUint64(data, &index, r.ID)
-	encoding.WriteUint64(data, &index, r.TrafficStats.SessionCount)
-	encoding.WriteUint64(data, &index, r.TrafficStats.BytesSent)
-	encoding.WriteUint64(data, &index, r.TrafficStats.BytesReceived)
-	encoding.WriteString(data, &index, r.Version, uint32(len(r.Version)))
-	encoding.WriteUint64(data, &index, uint64(r.LastUpdateTime.Unix()))
-	encoding.WriteFloat32(data, &index, r.CPUUsage)
-	encoding.WriteFloat32(data, &index, r.MemUsage)
-
-	return data, nil
-}
-
 type RelayMapShard struct {
 	mutex  sync.RWMutex
 	relays map[string]*RelayData
-}
-
-func (r *RelayMapShard) MarshalBinary() ([]byte, error) {
-	data := make([]byte, 0)
-	for _, relay := range r.relays {
-		if bin, err := relay.MarshalBinary(); err == nil {
-			data = append(data, bin...)
-		} else {
-			return nil, err
-		}
-	}
-
-	return data, nil
 }
 
 // RelayCleanupCallback is a callback function that will be called
@@ -196,26 +169,27 @@ func (relayMap *RelayMap) TimeoutLoop(ctx context.Context, timeoutSeconds int64,
 
 // | version | count | relay stats ... |
 func (r *RelayMap) MarshalBinary() ([]byte, error) {
-	relayData := make([]byte, 0)
+	data := make([]byte, 1+8+r.numRelays*RelayDataBytes)
 
-	var size uint64 = 0
+	index := 0
+	encoding.WriteUint8(data, &index, VersionNumberRelayMap)
+	encoding.WriteUint64(data, &index, r.numRelays)
+
 	for i := range r.shard {
 		shard := r.shard[i]
 		shard.mutex.RLock()
 		defer shard.mutex.RUnlock()
-		if bin, err := shard.MarshalBinary(); err == nil {
-			size += uint64(len(r.shard[i].relays))
-			relayData = append(relayData, bin...)
-		} else {
-			return nil, err
+		for _, relay := range shard.relays {
+			encoding.WriteUint64(data, &index, relay.ID)
+			encoding.WriteUint64(data, &index, relay.TrafficStats.SessionCount)
+			encoding.WriteUint64(data, &index, relay.TrafficStats.BytesSent)
+			encoding.WriteUint64(data, &index, relay.TrafficStats.BytesReceived)
+			encoding.WriteString(data, &index, relay.Version, uint32(len(relay.Version)))
+			encoding.WriteUint64(data, &index, uint64(relay.LastUpdateTime.Unix()))
+			encoding.WriteFloat32(data, &index, relay.CPUUsage)
+			encoding.WriteFloat32(data, &index, relay.MemUsage)
 		}
 	}
 
-	data := make([]byte, 9)
-
-	index := 0
-	encoding.WriteUint8(data, &index, VersionNumberRelayMap)
-	encoding.WriteUint64(data, &index, size)
-
-	return append(data, relayData...), nil
+	return data, nil
 }

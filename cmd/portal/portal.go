@@ -381,16 +381,22 @@ func main() {
 		os.Exit(1)
 	}
 
-	m := make(map[uint64]jsonrpc.Relay)
-	relayMap := jsonrpc.RelayMap{
-		Internal: &m,
-	}
+	relayMap := jsonrpc.NewRelayStatsMap()
 
 	go func() {
 		relayStatsURL := os.Getenv("RELAY_STATS_URL")
 
+		sleepInterval := time.Second
+		if siStr, ok := os.LookupEnv("RELAY_STATS_SYNC_SLEEP_INTERVAL"); ok {
+			if si, err := time.ParseDuration(siStr); err == nil {
+				sleepInterval = si
+			} else {
+				level.Error(logger).Log("msg", "could not parse stats sync sleep interval", "err", err)
+			}
+		}
+
 		for {
-			time.Sleep(time.Second)
+			time.Sleep(sleepInterval)
 
 			res, err := http.Get(relayStatsURL)
 			if err != nil {
@@ -405,47 +411,61 @@ func main() {
 			index := 0
 
 			var version uint8
-			encoding.ReadUint8(data, &index, &version)
+			if !encoding.ReadUint8(data, &index, &version) {
+				level.Error(logger).Log("unable to read relay stats version")
+				continue
+			}
 
 			var count uint64
-			encoding.ReadUint64(data, &index, &count)
+			if !encoding.ReadUint64(data, &index, &count) {
+				level.Error(logger).Log("unable to read relay stats count")
+				continue
+			}
 
-			m := make(map[uint64]jsonrpc.Relay)
+			m := make(map[uint64]jsonrpc.RelayData)
 			for i := uint64(0); i < count; i++ {
 				var id uint64
 				if !encoding.ReadUint64(data, &index, &id) {
+					level.Error(logger).Log("unable to read relay stats id")
 					break
 				}
 
-				var relay jsonrpc.Relay
+				var relay jsonrpc.RelayData
 
 				if !encoding.ReadUint64(data, &index, &relay.SessionCount) {
+					level.Error(logger).Log("unable to read relay stats session count")
 					break
 				}
 
 				if !encoding.ReadUint64(data, &index, &relay.Tx) {
+					level.Error(logger).Log("unable to read relay stats tx")
 					break
 				}
 
 				if !encoding.ReadUint64(data, &index, &relay.Rx) {
+					level.Error(logger).Log("unable to read relay stats rx")
 					break
 				}
 
 				if !encoding.ReadString(data, &index, &relay.Version, math.MaxUint32) {
+					level.Error(logger).Log("unable to read relay stats relay version")
 					break
 				}
 
 				var unixTime uint64
 				if !encoding.ReadUint64(data, &index, &unixTime) {
+					level.Error(logger).Log("unable to read relay stats last update time")
 					break
 				}
 				relay.LastUpdateTime = time.Unix(int64(unixTime), 0)
 
 				if !encoding.ReadFloat32(data, &index, &relay.CPU) {
+					level.Error(logger).Log("unable to read relay stats cpu usage")
 					break
 				}
 
 				if !encoding.ReadFloat32(data, &index, &relay.Mem) {
+					level.Error(logger).Log("unable to read relay stats memory usage")
 					break
 				}
 
