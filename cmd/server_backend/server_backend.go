@@ -800,7 +800,7 @@ func main() {
 		}
 
 		go func() {
-			if err := mux.Start(ctx, int(numPostSessionGoroutines), int(postSessionBufferSize), selectionPercent); err != nil {
+			if err := mux.Start(ctx, selectionPercent); err != nil {
 				fmt.Println(err)
 				os.Exit(1)
 			}

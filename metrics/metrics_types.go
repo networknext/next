@@ -814,7 +814,7 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 	}
 
 	sessionMetrics.PostSessionEntriesFinished, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Post Session Entries Sent",
+		DisplayName: "Post Session Entries Finished",
 		ServiceName: "server_backend",
 		ID:          "session.post_session.entries.finished",
 		Unit:        "entries",

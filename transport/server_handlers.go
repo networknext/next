@@ -79,7 +79,7 @@ func (m *UDPServerMux) Start(ctx context.Context) error {
 }
 
 // Start begins accepting UDP packets from the UDP connection and will block
-func (m *UDPServerMux2) Start(ctx context.Context, numPostSessionGoroutines int, postSessionBufferSize int, selectionPercent uint64) error {
+func (m *UDPServerMux2) Start(ctx context.Context, selectionPercent uint64) error {
 	numThreads := 8
 	numSockets, ok := os.LookupEnv("NUM_UDP_SOCKETS")
 	if ok {
