@@ -15,6 +15,8 @@ type Storer interface {
 	// BuyerWithDomain gets the Buyer with the matching domain name
 	BuyerWithDomain(domain string) (routing.Buyer, error)
 
+	BuyerCustomerRouteSettingsWithDomain(domain string) (routing.CustomerRouteShader, error)
+
 	// Buyers returns a copy of all stored buyers.
 	Buyers() []routing.Buyer
 

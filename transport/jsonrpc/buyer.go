@@ -21,6 +21,7 @@ import (
 	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
+	"github.com/networknext/backend/transport"
 )
 
 const (
@@ -62,14 +63,14 @@ type UserSessionsArgs struct {
 }
 
 type UserSessionsReply struct {
-	Sessions []routing.SessionMeta `json:"sessions"`
+	Sessions []transport.SessionMeta `json:"sessions"`
 }
 
 func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, reply *UserSessionsReply) error {
 	var sessionIDs []string
 
 	userhash := args.UserHash
-	reply.Sessions = make([]routing.SessionMeta, 0)
+	reply.Sessions = make([]transport.SessionMeta, 0)
 
 	err := s.RedisClient.SMembers(fmt.Sprintf("user-%s-sessions", userhash)).ScanSlice(&sessionIDs)
 	if err != nil {
@@ -86,7 +87,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 			s.Logger.Log("err", err)
 			return err
 		}
-		hashedID := fmt.Sprintf("%x", hash.Sum64())
+		hashedID := fmt.Sprintf("%016x", hash.Sum64())
 
 		err = s.RedisClient.SMembers(fmt.Sprintf("user-%s-sessions", hashedID)).ScanSlice(&sessionIDs)
 		if err != nil {
@@ -116,7 +117,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 
 	sremtx := s.RedisClient.TxPipeline()
 	{
-		var meta routing.SessionMeta
+		var meta transport.SessionMeta
 		for _, cmd := range getCmds {
 			err = cmd.Scan(&meta)
 			if err != nil {
@@ -128,7 +129,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 				continue
 			}
 
-			if VerifyAnyRole(r, AnonymousRole, UnverifiedRole) || !VerifyAllRoles(r, s.SameBuyerRole(meta.BuyerID)) {
+			if VerifyAnyRole(r, AnonymousRole, UnverifiedRole) || !VerifyAllRoles(r, s.SameBuyerRole(fmt.Sprintf("%016x", meta.BuyerID))) {
 				meta.Anonymise()
 			}
 
@@ -267,7 +268,7 @@ type TopSessionsArgs struct {
 }
 
 type TopSessionsReply struct {
-	Sessions []routing.SessionMeta `json:"sessions"`
+	Sessions []transport.SessionMeta `json:"sessions"`
 }
 
 // TopSessions generates the top sessions sorted by improved RTT
@@ -276,7 +277,7 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 	var topnext []string
 	var topdirect []string
 
-	reply.Sessions = make([]routing.SessionMeta, 0)
+	reply.Sessions = make([]transport.SessionMeta, 0)
 
 	buyers := s.Storage.Buyers()
 
@@ -335,10 +336,10 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 
 	// build a single transaction to remove any session ID from the sorted set if the
 	// session-*-meta key is missing or expired
-	var nextSessions []routing.SessionMeta
+	var nextSessions []transport.SessionMeta
 	zremtx := s.RedisClient.TxPipeline()
 	{
-		var meta routing.SessionMeta
+		var meta transport.SessionMeta
 		for _, cmd := range getNextCmds {
 			// scan the data from Redis into its SessionMeta struct
 			err = cmd.Scan(&meta)
@@ -401,10 +402,10 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 		}
 	}
 
-	var directSessions []routing.SessionMeta
+	var directSessions []transport.SessionMeta
 	zremtx = s.RedisClient.TxPipeline()
 	{
-		var meta routing.SessionMeta
+		var meta transport.SessionMeta
 		for _, cmd := range getDirectCmds {
 			// scan the data from Redis into its SessionMeta struct
 			err = cmd.Scan(&meta)
@@ -441,14 +442,14 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 	}
 
 	// IMPORTANT: Clean direct sessions to remove any that are also in the next set
-	directMap := make(map[string]*routing.SessionMeta)
+	directMap := make(map[uint64]*transport.SessionMeta)
 	for i := range directSessions {
 		directMap[directSessions[i].ID] = &directSessions[i]
 	}
 	for i := range nextSessions {
 		delete(directMap, nextSessions[i].ID)
 	}
-	cleanDirectSessions := make([]routing.SessionMeta, 0)
+	cleanDirectSessions := make([]transport.SessionMeta, 0)
 	for _, v := range directMap {
 		cleanDirectSessions = append(cleanDirectSessions, *v)
 	}
@@ -494,8 +495,8 @@ type SessionDetailsArgs struct {
 }
 
 type SessionDetailsReply struct {
-	Meta   routing.SessionMeta    `json:"meta"`
-	Slices []routing.SessionSlice `json:"slices"`
+	Meta   transport.SessionMeta    `json:"meta"`
+	Slices []transport.SessionSlice `json:"slices"`
 }
 
 func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs, reply *SessionDetailsReply) error {
@@ -514,11 +515,11 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		return err
 	}
 
-	if !VerifyAllRoles(r, s.SameBuyerRole(reply.Meta.BuyerID)) {
+	if !VerifyAllRoles(r, s.SameBuyerRole(fmt.Sprintf("%016x", reply.Meta.BuyerID))) {
 		reply.Meta.Anonymise()
 	}
 
-	reply.Slices = make([]routing.SessionSlice, 0)
+	reply.Slices = make([]transport.SessionSlice, 0)
 
 	err = s.RedisClient.SMembers(fmt.Sprintf("session-%s-slices", args.SessionID)).ScanSlice(&reply.Slices)
 	if err != nil {
@@ -568,15 +569,15 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 	buyers := s.Storage.Buyers()
 
 	// slice to hold all the final map points
-	mapPointsBuyers := make(map[string][]routing.SessionMapPoint, 0)
+	mapPointsBuyers := make(map[string][]transport.SessionMapPoint, 0)
 	mapPointsBuyersCompact := make(map[string][][]interface{}, 0)
-	mapPointsGlobal := make([]routing.SessionMapPoint, 0)
+	mapPointsGlobal := make([]transport.SessionMapPoint, 0)
 	mapPointsGlobalCompact := make([][]interface{}, 0)
 
 	s.mapPointsBuyerCache = make(map[string]json.RawMessage, 0)
 	s.mapPointsCompactBuyerCache = make(map[string]json.RawMessage, 0)
 
-	for _, buyer := range buyers { // get all the session IDs from the map-points-global key set
+	for _, buyer := range buyers {
 		stringID := fmt.Sprintf("%016x", buyer.ID)
 		sessionIDs, err = s.RedisClient.SMembers(fmt.Sprintf("map-points-%016x-buyer", buyer.ID)).Result()
 		if err != nil {
@@ -601,10 +602,10 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 		}
 
 		// build a single transaction for any missing session-*-point keys to be
-		// removed from map-points-global, total-next, and total-direct key sets
+		// removed from map-points-buyer, total-next, and total-direct key sets
 		sremtx := s.RedisClient.TxPipeline()
 		{
-			var point routing.SessionMapPoint
+			var point transport.SessionMapPoint
 			for _, cmd := range getCmds {
 				// scan the data from Redis into its SessionMapPoint struct
 				err = cmd.Scan(&point)
@@ -614,7 +615,6 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 				if err != nil {
 					key := cmd.Args()[1].(string)
 					keyparts := strings.Split(key, "-")
-					sremtx.SRem("map-points-global", keyparts[1])
 					sremtx.SRem(fmt.Sprintf("map-points-%016x-buyer", buyer.ID), keyparts[1])
 					sremtx.ZRem("total-next", keyparts[1])
 					sremtx.ZRem(fmt.Sprintf("total-next-buyer-%016x", buyer.ID), keyparts[1])
@@ -639,12 +639,10 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 		}
 
 		// execute the transaction to remove the sessions IDs from the key sets
-		sremcmds, err := sremtx.Exec()
+		_, err := sremtx.Exec()
 		if err != nil {
 			return err
 		}
-
-		level.Info(s.Logger).Log("key", "map-points-global", "removed", len(sremcmds))
 
 		s.mapPointsBuyerCache[stringID], err = json.Marshal(mapPointsBuyers[stringID])
 		if err != nil {
@@ -685,7 +683,7 @@ func (s *BuyersService) GenerateMapPointsPerBuyerBytes() error {
 
 	buyers := s.Storage.Buyers()
 
-	for _, buyer := range buyers { // get all the session IDs from the map-points-global key set
+	for _, buyer := range buyers {
 		mapPointsBuyer.GreenPoints = make([]point, 0)
 		mapPointsBuyer.BluePoints = make([]point, 0)
 
@@ -713,10 +711,10 @@ func (s *BuyersService) GenerateMapPointsPerBuyerBytes() error {
 		}
 
 		// build a single transaction for any missing session-*-point keys to be
-		// removed from map-points-global, total-next, and total-direct key sets
+		// removed from map-points-buyer, total-next, and total-direct key sets
 		sremtx := s.RedisClient.TxPipeline()
 		{
-			var currentPoint routing.SessionMapPoint
+			var currentPoint transport.SessionMapPoint
 			for _, cmd := range getCmds {
 				// scan the data from Redis into its SessionMapPoint struct
 				err = cmd.Scan(&currentPoint)
@@ -726,7 +724,6 @@ func (s *BuyersService) GenerateMapPointsPerBuyerBytes() error {
 				if err != nil {
 					key := cmd.Args()[1].(string)
 					keyparts := strings.Split(key, "-")
-					sremtx.SRem("map-points-global", keyparts[1])
 					sremtx.SRem(fmt.Sprintf("map-points-%016x-buyer", buyer.ID), keyparts[1])
 					sremtx.ZRem("total-next", keyparts[1])
 					sremtx.ZRem(fmt.Sprintf("total-next-buyer-%016x", buyer.ID), keyparts[1])
@@ -756,12 +753,10 @@ func (s *BuyersService) GenerateMapPointsPerBuyerBytes() error {
 		}
 
 		// execute the transaction to remove the sessions IDs from the key sets
-		sremcmds, err := sremtx.Exec()
+		_, err := sremtx.Exec()
 		if err != nil {
 			return err
 		}
-
-		level.Info(s.Logger).Log("key", "map-points-global", "removed", len(sremcmds))
 
 		// Write entries to byte cache
 		s.mapPointsBuyerByteCache[stringID] = WriteMapPointCache(&mapPointsBuyer)
@@ -949,12 +944,24 @@ type GameConfigurationArgs struct {
 }
 
 type GameConfigurationReply struct {
-	GameConfiguration gameConfiguration `json:"game_config"`
+	GameConfiguration   gameConfiguration   `json:"game_config"`
+	CustomerRouteShader CustomerRouteShader `json:"customer_route_shader"`
 }
 
 type gameConfiguration struct {
+	BuyerID   string `json:"buyer_id"`
 	Company   string `json:"company"`
 	PublicKey string `json:"public_key"`
+}
+
+type CustomerRouteShader struct {
+	EnableNetworkNext   bool   `json:"enable_nn"`
+	EnableRoundTripTime bool   `json:"enable_rtt"`
+	EnablePacketLoss    bool   `json:"enable_pl"`
+	EnableABTest        bool   `json:"enable_ab"`
+	EnableMultiPath     bool   `json:"enable_mp"`
+	AcceptableLatency   string `json:"acceptable_latency"`
+	PacketLossThreshold string `json:"pl_threshold"`
 }
 
 func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurationArgs, reply *GameConfigurationReply) error {
@@ -973,11 +980,29 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 	buyer, err = s.Storage.BuyerWithDomain(args.Domain)
 	// Buyer not found
 	if err != nil {
+		reply.CustomerRouteShader = CustomerRouteShader{
+			EnableNetworkNext:   true,
+			EnableRoundTripTime: true,
+			EnableMultiPath:     false,
+			EnableABTest:        false,
+			EnablePacketLoss:    false,
+			AcceptableLatency:   "20",
+			PacketLossThreshold: "1",
+		}
 		return nil
 	}
 
 	reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
 	reply.GameConfiguration.Company = buyer.Name
+	reply.CustomerRouteShader = CustomerRouteShader{
+		EnableNetworkNext:   buyer.CustomerRouteShader.EnableNetworkNext,
+		EnableRoundTripTime: buyer.CustomerRouteShader.EnableRoundTripTime,
+		EnableABTest:        buyer.CustomerRouteShader.EnableABTest,
+		EnableMultiPath:     buyer.CustomerRouteShader.EnableMultiPath,
+		EnablePacketLoss:    buyer.CustomerRouteShader.EnablePacketLoss,
+		AcceptableLatency:   fmt.Sprintf("%v", buyer.CustomerRouteShader.AcceptableLatency),
+		PacketLossThreshold: fmt.Sprintf("%v", buyer.CustomerRouteShader.PacketLossThreshold),
+	}
 
 	return nil
 }
@@ -1029,12 +1054,14 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 
 		// Create new buyer
 		err = s.Storage.AddBuyer(ctx, routing.Buyer{
-			ID:        buyerID,
-			Name:      args.Name,
-			Domain:    args.Domain,
-			Active:    true,
-			Live:      false,
-			PublicKey: byteKey[8:],
+			ID:                  buyerID,
+			Name:                args.Name,
+			Domain:              args.Domain,
+			Active:              true,
+			Live:                false,
+			PublicKey:           byteKey[8:],
+			CustomerRouteShader: routing.DefaultCustomerRouteShader,
+			RouteShader:         routing.DefaultRouteShader,
 		})
 
 		if err != nil {
@@ -1051,9 +1078,18 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		}
 
 		// Setup reply
+		reply.GameConfiguration.BuyerID = fmt.Sprintf("%016x", buyer.ID)
 		reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
 		reply.GameConfiguration.Company = buyer.Name
-
+		reply.CustomerRouteShader = CustomerRouteShader{
+			EnableNetworkNext:   buyer.CustomerRouteShader.EnableNetworkNext,
+			EnableRoundTripTime: buyer.CustomerRouteShader.EnableRoundTripTime,
+			EnableABTest:        buyer.CustomerRouteShader.EnableABTest,
+			EnableMultiPath:     buyer.CustomerRouteShader.EnableMultiPath,
+			EnablePacketLoss:    buyer.CustomerRouteShader.EnablePacketLoss,
+			AcceptableLatency:   fmt.Sprintf("%v", buyer.CustomerRouteShader.AcceptableLatency),
+			PacketLossThreshold: fmt.Sprintf("%v", buyer.CustomerRouteShader.PacketLossThreshold),
+		}
 		return nil
 	}
 
@@ -1067,12 +1103,14 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 	}
 
 	err = s.Storage.AddBuyer(ctx, routing.Buyer{
-		ID:        buyerID,
-		Name:      args.Name,
-		Domain:    args.Domain,
-		Active:    active,
-		Live:      live,
-		PublicKey: byteKey[8:],
+		ID:                  buyerID,
+		Name:                args.Name,
+		Domain:              args.Domain,
+		Active:              active,
+		Live:                live,
+		PublicKey:           byteKey[8:],
+		CustomerRouteShader: buyer.CustomerRouteShader,
+		RouteShader:         buyer.RouteShader,
 	})
 
 	if err != nil {
@@ -1091,6 +1129,90 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 	// Set reply
 	reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
 	reply.GameConfiguration.Company = buyer.Name
+	reply.CustomerRouteShader = CustomerRouteShader{
+		EnableNetworkNext:   buyer.CustomerRouteShader.EnableNetworkNext,
+		EnableRoundTripTime: buyer.CustomerRouteShader.EnableRoundTripTime,
+		EnableABTest:        buyer.CustomerRouteShader.EnableABTest,
+		EnableMultiPath:     buyer.CustomerRouteShader.EnableMultiPath,
+		EnablePacketLoss:    buyer.CustomerRouteShader.EnablePacketLoss,
+		AcceptableLatency:   fmt.Sprintf("%v", buyer.CustomerRouteShader.AcceptableLatency),
+		PacketLossThreshold: fmt.Sprintf("%v", buyer.CustomerRouteShader.PacketLossThreshold),
+	}
+	return nil
+}
+
+type RouteShaderUpdateArgs struct {
+	EnableNN          bool   `json:"enable_nn"`
+	EnableRTT         bool   `json:"enable_rtt"`
+	EnablePL          bool   `json:"enable_pl"`
+	EnableAB          bool   `json:"enable_ab"`
+	EnableMP          bool   `json:"enable_mp"`
+	AcceptableLatency string `json:"acceptable_latency"`
+	PLThreshold       string `json:"pl_threshold"`
+}
+
+type RouteShaderUpdateReply struct {
+	CustomerRouteShader CustomerRouteShader `json:"customer_route_shader"`
+}
+
+func (s *BuyersService) UpdateRouteShader(req *http.Request, args *RouteShaderUpdateArgs, reply *RouteShaderUpdateReply) error {
+	if !VerifyAnyRole(req, AdminRole, OwnerRole) {
+		err := fmt.Errorf("UpdateRouteShader(): %v", ErrInsufficientPrivileges)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	ctx := context.Background()
+
+	requestUser := req.Context().Value("user")
+	if requestUser == nil {
+		return fmt.Errorf("UpdateRouteShader(): unable to parse user from token")
+	}
+
+	requestEmail, ok := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["email"].(string)
+	if !ok {
+		return fmt.Errorf("UpdateRouteShader(): unable to parse email from token")
+	}
+	requestEmailParts := strings.Split(requestEmail, "@")
+	requestDomain := requestEmailParts[len(requestEmailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
+	buyer, err := s.Storage.BuyerWithDomain(requestDomain)
+	if err != nil {
+		return fmt.Errorf("UpdateRouteShader(): BuyerWithDomain error: %v", err)
+	}
+
+	acceptableLatency, err := strconv.Atoi(args.AcceptableLatency)
+	if err != nil {
+		return fmt.Errorf("UpdateRouteShader(): Failed to parse acceptable latency value: %v", err)
+	}
+
+	packetLossThreshold, err := strconv.Atoi(args.PLThreshold)
+	if err != nil {
+		return fmt.Errorf("UpdateRouteShader(): Failed to parse packet loss threshold value: %v", err)
+	}
+
+	buyer.CustomerRouteShader = routing.CustomerRouteShader{
+		EnableNetworkNext:   args.EnableNN,
+		EnableRoundTripTime: args.EnableRTT,
+		EnablePacketLoss:    args.EnablePL,
+		EnableMultiPath:     args.EnableMP,
+		EnableABTest:        args.EnableAB,
+		AcceptableLatency:   int64(acceptableLatency),
+		PacketLossThreshold: int64(packetLossThreshold),
+	}
+
+	if err := s.Storage.SetBuyer(ctx, buyer); err != nil {
+		return fmt.Errorf("UpdateRouteShader(): Failed to update buyer: %v", err)
+	}
+
+	reply.CustomerRouteShader = CustomerRouteShader{
+		EnableNetworkNext:   buyer.CustomerRouteShader.EnableNetworkNext,
+		EnableRoundTripTime: buyer.CustomerRouteShader.EnableRoundTripTime,
+		EnableABTest:        buyer.CustomerRouteShader.EnableABTest,
+		EnableMultiPath:     buyer.CustomerRouteShader.EnableMultiPath,
+		EnablePacketLoss:    buyer.CustomerRouteShader.EnablePacketLoss,
+		AcceptableLatency:   fmt.Sprintf("%v", buyer.CustomerRouteShader.AcceptableLatency),
+		PacketLossThreshold: fmt.Sprintf("%v", buyer.CustomerRouteShader.PacketLossThreshold),
+	}
 
 	return nil
 }
@@ -1172,8 +1294,6 @@ func (s *BuyersService) DatacenterMapsForBuyer(r *http.Request, args *Datacenter
 			s.Logger.Log("err", err)
 			return err
 		}
-
-		fmt.Printf("SupplierName: %s\n", datacenter.SupplierName)
 
 		dcmFull := DatacenterMapsFull{
 			Alias:          dcMap.Alias,

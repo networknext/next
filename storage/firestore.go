@@ -97,7 +97,7 @@ type datacenterMap struct {
 	Buyer      string `firestore:"Buyer"`
 }
 
-type routingRulesSettings struct {
+type RouteShader struct {
 	DisplayName                  string  `firestore:"displayName"`
 	EnvelopeKbpsUp               int64   `firestore:"envelopeKbpsUp"`
 	EnvelopeKbpsDown             int64   `firestore:"envelopeKbpsDown"`
@@ -254,6 +254,20 @@ func (fs *Firestore) BuyerWithDomain(domain string) (routing.Buyer, error) {
 	return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer", resourceRef: domain}
 }
 
+func (fs *Firestore) BuyerCustomerRouteSettingsWithDomain(domain string) (routing.CustomerRouteShader, error) {
+	fs.buyerMutex.RLock()
+	defer fs.buyerMutex.RUnlock()
+
+	var buyer routing.Buyer
+	for _, b := range fs.buyers {
+		if buyer.Domain == domain {
+			return b.CustomerRouteShader, nil
+		}
+	}
+
+	return routing.DefaultCustomerRouteShader, &DoesNotExistError{resourceType: "buyer", resourceRef: domain}
+}
+
 func (fs *Firestore) Buyers() []routing.Buyer {
 	fs.buyerMutex.RLock()
 	defer fs.buyerMutex.RUnlock()
@@ -283,8 +297,12 @@ func (fs *Firestore) AddBuyer(ctx context.Context, b routing.Buyer) error {
 	}
 
 	// Add the buyer's routing rules settings to remote storage
-	if err := fs.setRoutingRulesSettingsForBuyerID(ctx, ref.ID, b.Name, b.RoutingRulesSettings); err != nil {
+	if err := fs.setRouteShaderForBuyerID(ctx, ref.ID, b.Name, b.RouteShader); err != nil {
 		return &FirestoreError{err: err}
+	}
+
+	if err := fs.setCustomerRouteShaderForBuyerID(ctx, ref.ID, b.Name, b.CustomerRouteShader); err != nil {
+		return err
 	}
 
 	// Check if a customer already exists for this buyer
@@ -379,7 +397,7 @@ func (fs *Firestore) RemoveBuyer(ctx context.Context, id uint64) error {
 
 		if uint64(buyerInRemoteStorage.ID) == id {
 			// Delete the buyer's routing rules settings in remote storage
-			if err := fs.deleteRouteRulesSettingsForBuyerID(ctx, bdoc.Ref.ID); err != nil {
+			if err := fs.deleteRouteShaderForBuyerID(ctx, bdoc.Ref.ID); err != nil {
 				return &FirestoreError{err: err}
 			}
 
@@ -488,7 +506,12 @@ func (fs *Firestore) SetBuyer(ctx context.Context, b routing.Buyer) error {
 			}
 
 			// Update the buyer's routing rules settings in firestore
-			if err := fs.setRoutingRulesSettingsForBuyerID(ctx, bdoc.Ref.ID, b.Name, b.RoutingRulesSettings); err != nil {
+			if err := fs.setRouteShaderForBuyerID(ctx, bdoc.Ref.ID, b.Name, b.RouteShader); err != nil {
+				return &FirestoreError{err: err}
+			}
+
+			// Update the buyer's routing rules settings in firestore
+			if err := fs.setCustomerRouteShaderForBuyerID(ctx, bdoc.Ref.ID, b.Name, b.CustomerRouteShader); err != nil {
 				return &FirestoreError{err: err}
 			}
 
@@ -1865,18 +1888,18 @@ func (fs *Firestore) syncCustomers(ctx context.Context) error {
 				level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to unmarshal seller %v", bdoc.Ref.ID), "err", err)
 				continue
 			}
-			rrs, err := fs.getRoutingRulesSettingsForBuyerID(ctx, bdoc.Ref.ID)
+			rrs, err := fs.getRouteShaderForBuyerID(ctx, bdoc.Ref.ID)
 			if err != nil {
 				level.Warn(fs.Logger).Log("msg", fmt.Sprintf("using default route rules for buyer %v", bdoc.Ref.ID), "err", err)
 			}
 			buyers[uint64(b.ID)] = routing.Buyer{
-				ID:                   uint64(b.ID),
-				Name:                 b.Name,
-				Domain:               c.Domain,
-				Active:               b.Active,
-				Live:                 b.Live,
-				PublicKey:            b.PublicKey,
-				RoutingRulesSettings: rrs,
+				ID:          uint64(b.ID),
+				Name:        b.Name,
+				Domain:      c.Domain,
+				Active:      b.Active,
+				Live:        b.Live,
+				PublicKey:   b.PublicKey,
+				RouteShader: rrs,
 			}
 		}
 
@@ -1918,7 +1941,7 @@ func (fs *Firestore) syncCustomers(ctx context.Context) error {
 	return nil
 }
 
-func (fs *Firestore) deleteRouteRulesSettingsForBuyerID(ctx context.Context, ID string) error {
+func (fs *Firestore) deleteRouteShaderForBuyerID(ctx context.Context, ID string) error {
 	// Comment below taken from old backend, at least attempting to explain why we need to append _0 (no existing entries have suffixes other than _0)
 	// "Must be of the form '<buyer key>_<tag id>'. The buyer key can be found by looking at the ID under Buyer; it should be something like 763IMDH693HLsr2LGTJY. The tag ID should be 0 (for default) or the fnv64a hash of the tag the customer is using. Therefore this value should look something like: 763IMDH693HLsr2LGTJY_0. This value can not be changed after the entity is created."
 	routeShaderID := ID + "_0"
@@ -1928,13 +1951,13 @@ func (fs *Firestore) deleteRouteRulesSettingsForBuyerID(ctx context.Context, ID 
 	return err
 }
 
-func (fs *Firestore) getRoutingRulesSettingsForBuyerID(ctx context.Context, ID string) (routing.RoutingRulesSettings, error) {
+func (fs *Firestore) getRouteShaderForBuyerID(ctx context.Context, ID string) (routing.RouteShader, error) {
 	// Comment below taken from old backend, at least attempting to explain why we need to append _0 (no existing entries have suffixes other than _0)
 	// "Must be of the form '<buyer key>_<tag id>'. The buyer key can be found by looking at the ID under Buyer; it should be something like 763IMDH693HLsr2LGTJY. The tag ID should be 0 (for default) or the fnv64a hash of the tag the customer is using. Therefore this value should look something like: 763IMDH693HLsr2LGTJY_0. This value can not be changed after the entity is created."
 	routeShaderID := ID + "_0"
 
 	// Set up our return value with default settings, which will be used if no settings found for buyer or other errors are encountered
-	rrs := routing.DefaultRoutingRulesSettings
+	rrs := routing.DefaultRouteShader
 
 	// Attempt to get route shader for buyer (sadly not linked by actual reference in prod so have to fetch it ourselves using buyer ID + "_0" which happens to match)
 	rsDoc, err := fs.Client.Collection("RouteShader").Doc(routeShaderID).Get(ctx)
@@ -1943,7 +1966,7 @@ func (fs *Firestore) getRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 	}
 
 	// Unmarshal into our firestore struct
-	var tempRRS routingRulesSettings
+	var tempRRS RouteShader
 	err = rsDoc.DataTo(&tempRRS)
 	if err != nil {
 		return rrs, err
@@ -1973,12 +1996,12 @@ func (fs *Firestore) getRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 	return rrs, nil
 }
 
-func (fs *Firestore) setRoutingRulesSettingsForBuyerID(ctx context.Context, ID string, name string, rrs routing.RoutingRulesSettings) error {
+func (fs *Firestore) setRouteShaderForBuyerID(ctx context.Context, ID string, name string, rrs routing.RouteShader) error {
 	// Comment below taken from old backend, at least attempting to explain why we need to append _0 (no existing entries have suffixes other than _0)
 	// "Must be of the form '<buyer key>_<tag id>'. The buyer key can be found by looking at the ID under Buyer; it should be something like 763IMDH693HLsr2LGTJY. The tag ID should be 0 (for default) or the fnv64a hash of the tag the customer is using. Therefore this value should look something like: 763IMDH693HLsr2LGTJY_0. This value can not be changed after the entity is created."
 	routeShaderID := ID + "_0"
 
-	// Convert RoutingRulesSettings struct to firestore map
+	// Convert RouteShader struct to firestore map
 	rrsFirestore := map[string]interface{}{
 		"displayName":                  name,
 		"envelopeKbpsUp":               rrs.EnvelopeKbpsUp,
@@ -2005,4 +2028,56 @@ func (fs *Firestore) setRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 	// Attempt to set route shader for buyer
 	_, err := fs.Client.Collection("RouteShader").Doc(routeShaderID).Set(ctx, rrsFirestore, firestore.MergeAll)
 	return err
+}
+
+func (fs *Firestore) setCustomerRouteShaderForBuyerID(ctx context.Context, name string, ID string, crs routing.CustomerRouteShader) error {
+	routeShaderID := ID + "_0"
+
+	// Create customer route shader
+	crsFirestore := map[string]interface{}{
+		"displayName":               name,
+		"enableNetworkNext":         crs.EnableNetworkNext,
+		"enableLatencyReduction":    crs.EnableRoundTripTime,
+		"enablePacketLossReduction": crs.EnablePacketLoss,
+		"enableMultipath":           crs.EnableMultiPath,
+		"enableABTest":              crs.EnableMultiPath,
+		"acceptableLatency":         crs.AcceptableLatency,
+		"packetLossThreshold":       crs.PacketLossThreshold,
+	}
+
+	_, err := fs.Client.Collection("CustomerRouteShader").Doc(routeShaderID).Set(ctx, crsFirestore, firestore.MergeAll)
+	return err
+}
+
+func (fs *Firestore) getCustomerRouteShaderForBuyerID(ctx context.Context, ID string) (routing.CustomerRouteShader, error) {
+	// Comment below taken from old backend, at least attempting to explain why we need to append _0 (no existing entries have suffixes other than _0)
+	// "Must be of the form '<buyer key>_<tag id>'. The buyer key can be found by looking at the ID under Buyer; it should be something like 763IMDH693HLsr2LGTJY. The tag ID should be 0 (for default) or the fnv64a hash of the tag the customer is using. Therefore this value should look something like: 763IMDH693HLsr2LGTJY_0. This value can not be changed after the entity is created."
+	routeShaderID := ID + "_0"
+
+	// Set up our return value with default settings, which will be used if no settings found for buyer or other errors are encountered
+	crs := routing.DefaultCustomerRouteShader
+
+	// Attempt to get route shader for buyer (sadly not linked by actual reference in prod so have to fetch it ourselves using buyer ID + "_0" which happens to match)
+	crsDoc, err := fs.Client.Collection("CustomerRouteShader").Doc(routeShaderID).Get(ctx)
+	if err != nil {
+		return crs, err
+	}
+
+	// Unmarshal into our firestore struct
+	var tempCRS routing.CustomerRouteShader
+	err = crsDoc.DataTo(&tempCRS)
+	if err != nil {
+		return crs, err
+	}
+
+	// If successful, convert into routing.Buyer version and return it
+	crs.AcceptableLatency = tempCRS.AcceptableLatency
+	crs.PacketLossThreshold = tempCRS.PacketLossThreshold
+	crs.EnableNetworkNext = tempCRS.EnableNetworkNext
+	crs.EnableRoundTripTime = tempCRS.EnableRoundTripTime
+	crs.EnablePacketLoss = tempCRS.EnablePacketLoss
+	crs.EnableMultiPath = tempCRS.EnableMultiPath
+	crs.EnableABTest = tempCRS.EnableABTest
+
+	return crs, nil
 }
