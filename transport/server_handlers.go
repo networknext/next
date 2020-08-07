@@ -79,7 +79,7 @@ func (m *UDPServerMux) Start(ctx context.Context) error {
 }
 
 // Start begins accepting UDP packets from the UDP connection and will block
-func (m *UDPServerMux2) Start(ctx context.Context, numPostSessionGoroutines int, postSessionBufferSize int, selectionPercent uint64) error {
+func (m *UDPServerMux2) Start(ctx context.Context, selectionPercent uint64) error {
 	numThreads := 8
 	numSockets, ok := os.LookupEnv("NUM_UDP_SOCKETS")
 	if ok {
@@ -1246,7 +1246,7 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, params *PostSessi
 		}
 	}
 
-	postSessionData := PostSessionData{
+	postSessionPortalData := PostSessionPortalData{
 		PortalData: buildPortalData(params.packet, params.lastNextStats, params.lastDirectStats, hops, params.packet.OnNetworkNext, datacenterName, params.location, nearRelayData, params.timeNow, isMultipath, datacenterAlias),
 		PortalCountData: &SessionCountData{
 			InstanceID:                params.sessionUpdateParams.InstanceID,
@@ -1255,11 +1255,21 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, params *PostSessi
 			NumDirectSessionsPerBuyer: params.sessionUpdateParams.SessionMap.GetDirectSessionCountPerBuyer(),
 			NumNextSessionsPerBuyer:   params.sessionUpdateParams.SessionMap.GetNextSessionCountPerBuyer(),
 		},
-		BillingEntry: buildBillingEntry(params),
 	}
 
-	postSessionHandler.Send(&postSessionData)
-	params.sessionUpdateParams.Metrics.PostSessionEntriesSent.Add(1)
+	if !postSessionHandler.IsBillingBufferFull() {
+		postSessionHandler.SendBillingEntry(buildBillingEntry(params))
+		params.sessionUpdateParams.Metrics.PostSessionBillingEntriesSent.Add(1)
+	} else {
+		params.sessionUpdateParams.Metrics.PostSessionBillingBufferFull.Add(1)
+	}
+
+	if !postSessionHandler.IsPortalBufferFull() {
+		postSessionHandler.SendPortalData(&postSessionPortalData)
+		params.sessionUpdateParams.Metrics.PostSessionPortalEntriesSent.Add(1)
+	} else {
+		params.sessionUpdateParams.Metrics.PostSessionPortalBufferFull.Add(1)
+	}
 }
 
 func buildPortalData(packet *SessionUpdatePacket, lastNNStats *routing.Stats, lastDirectStats *routing.Stats, relayHops []RelayHop,
