@@ -49,7 +49,7 @@ func keydb_load_test() {
 
 	windowSize := 1000
 	threadCount := 10000
-	numIterations := 10000
+	numIterations := 100000
 
 	start := time.Now()
 
