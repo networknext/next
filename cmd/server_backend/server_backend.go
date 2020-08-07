@@ -696,7 +696,8 @@ func main() {
 				numEntriesQueued := serverBackendMetrics.BillingMetrics.EntriesSubmitted.Value() - serverBackendMetrics.BillingMetrics.EntriesFlushed.Value()
 				serverBackendMetrics.BillingMetrics.EntriesQueued.Set(numEntriesQueued)
 
-				sessionUpdateMetrics.PostSessionBufferLength.Set(float64(postSessionHandler.QueueSize()))
+				sessionUpdateMetrics.PostSessionBillingBufferLength.Set(float64(postSessionHandler.BillingBufferSize()))
+				sessionUpdateMetrics.PostSessionPortalBufferLength.Set(float64(postSessionHandler.PortalBufferSize()))
 
 				fmt.Printf("-----------------------------\n")
 				fmt.Printf("%.2f mb allocated\n", serverBackendMetrics.MemoryAllocated.Value())
@@ -712,9 +713,12 @@ func main() {
 				fmt.Printf("%d server init packets processed\n", int(serverInitMetrics.Invocations.Value()))
 				fmt.Printf("%d server update packets processed\n", int(serverUpdateMetrics.Invocations.Value()))
 				fmt.Printf("%d session update packets processed\n", int(sessionUpdateMetrics.Invocations.Value()))
-				fmt.Printf("%d post session entries sent\n", int(sessionUpdateMetrics.PostSessionEntriesSent.Value()))
-				fmt.Printf("%d post session entries queued\n", int(sessionUpdateMetrics.PostSessionBufferLength.Value()))
-				fmt.Printf("%d post session entries finished\n", int(sessionUpdateMetrics.PostSessionEntriesFinished.Value()))
+				fmt.Printf("%d post session billing entries sent\n", int(sessionUpdateMetrics.PostSessionBillingEntriesSent.Value()))
+				fmt.Printf("%d post session billing entries queued\n", int(sessionUpdateMetrics.PostSessionBillingBufferLength.Value()))
+				fmt.Printf("%d post session billing entries finished\n", int(sessionUpdateMetrics.PostSessionBillingEntriesFinished.Value()))
+				fmt.Printf("%d post session portal entries sent\n", int(sessionUpdateMetrics.PostSessionPortalEntriesSent.Value()))
+				fmt.Printf("%d post session portal entries queued\n", int(sessionUpdateMetrics.PostSessionPortalBufferLength.Value()))
+				fmt.Printf("%d post session portal entries finished\n", int(sessionUpdateMetrics.PostSessionPortalEntriesFinished.Value()))
 				fmt.Printf("%d datacenters\n", int(serverBackendMetrics.RouteMatrix.DatacenterCount.Value()))
 				fmt.Printf("%d relays\n", int(serverBackendMetrics.RouteMatrix.RelayCount.Value()))
 				fmt.Printf("%d routes\n", int(serverBackendMetrics.RouteMatrix.RouteCount.Value()))
@@ -800,7 +804,7 @@ func main() {
 		}
 
 		go func() {
-			if err := mux.Start(ctx, int(numPostSessionGoroutines), int(postSessionBufferSize), selectionPercent); err != nil {
+			if err := mux.Start(ctx, selectionPercent); err != nil {
 				fmt.Println(err)
 				os.Exit(1)
 			}
