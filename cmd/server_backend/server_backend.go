@@ -471,9 +471,6 @@ func main() {
 		return rm
 	}
 
-	var routeMatrixBytes int64
-	var routeMatrixBytesMutex sync.RWMutex
-
 	// Sync route matrix
 	{
 		if uri, ok := os.LookupEnv("ROUTE_MATRIX_URI"); ok {
@@ -504,18 +501,13 @@ func main() {
 
 					start := time.Now()
 
-					// Don't swap route matrix if we fail to read
 					bytes, err := newRouteMatrix.ReadFrom(matrixReader)
-					routeMatrixBytesMutex.Lock()
-					routeMatrixBytes = bytes
-					routeMatrixBytesMutex.Unlock()
-
 					if err != nil {
 						if env != "local" {
 							level.Warn(logger).Log("envvar", "ROUTE_MATRIX_URI", "value", uri, "msg", "could not read route matrix", "err", err)
 						}
 						time.Sleep(syncInterval)
-						continue
+						continue // Don't swap route matrix if we fail to read
 					}
 
 					routeMatrixTime := time.Since(start)
@@ -526,13 +518,22 @@ func main() {
 						serverBackendMetrics.LongRouteMatrixUpdateCount.Add(1)
 					}
 
+					serverBackendMetrics.RouteMatrix.RelayCount.Set(float64(len(newRouteMatrix.RelayIDs)))
+					serverBackendMetrics.RouteMatrix.DatacenterCount.Set(float64(len(newRouteMatrix.DatacenterIDs)))
+
+					// todo: calculate this in optimize and store in route matrix so we don't have to calc this here
+					numRoutes := int32(0)
+					for i := range newRouteMatrix.Entries {
+						numRoutes += newRouteMatrix.Entries[i].NumRoutes
+					}
+					serverBackendMetrics.RouteMatrix.RouteCount.Set(float64(numRoutes))
+					serverBackendMetrics.RouteMatrix.Bytes.Set(float64(bytes))
+
 					// Swap the route matrix pointer to the new one
 					// This double buffered route matrix approach makes the route matrix lockless
 					routeMatrixMutex.Lock()
 					routeMatrix = &newRouteMatrix
 					routeMatrixMutex.Unlock()
-
-					serverBackendMetrics.RouteMatrixBytes.Set(float64(bytes))
 
 					time.Sleep(syncInterval)
 				}
@@ -590,6 +591,80 @@ func main() {
 		datacenterTracker.TimeoutLoop(ctx, timeout, ticker.C)
 	}()
 
+	// Start portal cruncher publisher
+	var portalPublisher pubsub.Publisher
+	{
+		fmt.Printf("setting up portal cruncher\n")
+
+		portalCruncherHost, ok := os.LookupEnv("PORTAL_CRUNCHER_HOST")
+		if !ok {
+			level.Error(logger).Log("err", "env var PORTAL_CRUNCHER_HOST must be set")
+			os.Exit(1)
+		}
+
+		postSessionPortalSendBufferSizeString, ok := os.LookupEnv("POST_SESSION_PORTAL_SEND_BUFFER_SIZE")
+		if !ok {
+			level.Error(logger).Log("err", "env var POST_SESSION_PORTAL_SEND_BUFFER_SIZE must be set")
+			os.Exit(1)
+		}
+
+		postSessionPortalSendBufferSize, err := strconv.ParseInt(postSessionPortalSendBufferSizeString, 10, 64)
+		if err != nil {
+			level.Error(logger).Log("envvar", "POST_SESSION_PORTAL_SEND_BUFFER_SIZE", "msg", "could not parse", "err", err)
+			os.Exit(1)
+		}
+
+		portalCruncherPublisher, err := pubsub.NewPortalCruncherPublisher(portalCruncherHost, int(postSessionPortalSendBufferSize))
+		if err != nil {
+			level.Error(logger).Log("msg", "could not create portal cruncher publisher", "err", err)
+			os.Exit(1)
+		}
+
+		portalPublisher = portalCruncherPublisher
+	}
+
+	numPostSessionGoroutinesString, ok := os.LookupEnv("POST_SESSION_THREAD_COUNT")
+	if !ok {
+		level.Error(logger).Log("err", "env var POST_SESSION_THREAD_COUNT must be set")
+		os.Exit(1)
+	}
+
+	numPostSessionGoroutines, err := strconv.ParseInt(numPostSessionGoroutinesString, 10, 64)
+	if err != nil {
+		level.Error(logger).Log("envvar", "POST_SESSION_THREAD_COUNT", "msg", "could not parse", "err", err)
+		os.Exit(1)
+	}
+
+	postSessionBufferSizeString, ok := os.LookupEnv("POST_SESSION_BUFFER_SIZE")
+	if !ok {
+		level.Error(logger).Log("err", "env var POST_SESSION_BUFFER_SIZE must be set")
+		os.Exit(1)
+	}
+
+	postSessionBufferSize, err := strconv.ParseInt(postSessionBufferSizeString, 10, 64)
+	if err != nil {
+		level.Error(logger).Log("envvar", "POST_SESSION_BUFFER_SIZE", "msg", "could not parse", "err", err)
+		os.Exit(1)
+	}
+
+	postSessionPortalMaxRetriesString, ok := os.LookupEnv("POST_SESSION_PORTAL_MAX_RETRIES")
+	if !ok {
+		level.Error(logger).Log("err", "env var POST_SESSION_PORTAL_MAX_RETRIES must be set")
+		os.Exit(1)
+	}
+
+	postSessionPortalMaxRetries, err := strconv.ParseInt(postSessionPortalMaxRetriesString, 10, 64)
+	if err != nil {
+		level.Error(logger).Log("envvar", "POST_SESSION_PORTAL_MAX_RETRIES", "msg", "could not parse", "err", err)
+		os.Exit(1)
+	}
+
+	// Create a post session handler to handle the post process of session updates.
+	// This way, we can quickly return from the session update handler and not spawn a
+	// ton of goroutines if things get backed up.
+	postSessionHandler := transport.NewPostSessionHandler(int(numPostSessionGoroutines), int(postSessionBufferSize), portalPublisher, int(postSessionPortalMaxRetries), biller, logger, sessionUpdateMetrics)
+	postSessionHandler.StartProcessing(ctx)
+
 	// Setup the stats print routine
 	{
 		memoryUsed := func() float64 {
@@ -599,16 +674,6 @@ func main() {
 		}
 
 		go func() {
-			// Write critical metrics to a stats.txt file
-			statsFile, err := os.OpenFile("stats.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-			if err != nil {
-				level.Error(logger).Log("msg", "could not open stats file", "err", err)
-				os.Exit(1)
-			}
-			defer statsFile.Close()
-
-			statsLogger := log.NewLogfmtLogger(statsFile)
-
 			for {
 				serverBackendMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
 				serverBackendMetrics.MemoryAllocated.Set(memoryUsed())
@@ -631,6 +696,9 @@ func main() {
 				numEntriesQueued := serverBackendMetrics.BillingMetrics.EntriesSubmitted.Value() - serverBackendMetrics.BillingMetrics.EntriesFlushed.Value()
 				serverBackendMetrics.BillingMetrics.EntriesQueued.Set(numEntriesQueued)
 
+				sessionUpdateMetrics.PostSessionBillingBufferLength.Set(float64(postSessionHandler.BillingBufferSize()))
+				sessionUpdateMetrics.PostSessionPortalBufferLength.Set(float64(postSessionHandler.PortalBufferSize()))
+
 				fmt.Printf("-----------------------------\n")
 				fmt.Printf("%.2f mb allocated\n", serverBackendMetrics.MemoryAllocated.Value())
 				fmt.Printf("%d goroutines\n", int(serverBackendMetrics.Goroutines.Value()))
@@ -645,9 +713,18 @@ func main() {
 				fmt.Printf("%d server init packets processed\n", int(serverInitMetrics.Invocations.Value()))
 				fmt.Printf("%d server update packets processed\n", int(serverUpdateMetrics.Invocations.Value()))
 				fmt.Printf("%d session update packets processed\n", int(sessionUpdateMetrics.Invocations.Value()))
+				fmt.Printf("%d post session billing entries sent\n", int(sessionUpdateMetrics.PostSessionBillingEntriesSent.Value()))
+				fmt.Printf("%d post session billing entries queued\n", int(sessionUpdateMetrics.PostSessionBillingBufferLength.Value()))
+				fmt.Printf("%d post session billing entries finished\n", int(sessionUpdateMetrics.PostSessionBillingEntriesFinished.Value()))
+				fmt.Printf("%d post session portal entries sent\n", int(sessionUpdateMetrics.PostSessionPortalEntriesSent.Value()))
+				fmt.Printf("%d post session portal entries queued\n", int(sessionUpdateMetrics.PostSessionPortalBufferLength.Value()))
+				fmt.Printf("%d post session portal entries finished\n", int(sessionUpdateMetrics.PostSessionPortalEntriesFinished.Value()))
+				fmt.Printf("%d datacenters\n", int(serverBackendMetrics.RouteMatrix.DatacenterCount.Value()))
+				fmt.Printf("%d relays\n", int(serverBackendMetrics.RouteMatrix.RelayCount.Value()))
+				fmt.Printf("%d routes\n", int(serverBackendMetrics.RouteMatrix.RouteCount.Value()))
 				fmt.Printf("%d long route matrix updates\n", int(serverBackendMetrics.LongRouteMatrixUpdateCount.Value()))
 				fmt.Printf("route matrix update: %.2f milliseconds\n", serverBackendMetrics.RouteMatrixUpdateDuration.Value())
-				fmt.Printf("route matrix bytes: %d\n", int(serverBackendMetrics.RouteMatrixBytes.Value()))
+				fmt.Printf("route matrix bytes: %d\n", int(serverBackendMetrics.RouteMatrix.Bytes.Value()))
 
 				if env != "local" {
 					unknownDatacentersLength := datacenterTracker.UnknownDatacenterLength()
@@ -665,36 +742,9 @@ func main() {
 
 				fmt.Printf("-----------------------------\n")
 
-				statsLogger.Log("num_servers", numServers)
-				statsLogger.Log("num_sessions", numSessions)
-
-				routeMatrixBytesMutex.RLock()
-				statsLogger.Log("route_matrix_bytes", routeMatrixBytes)
-				routeMatrixBytesMutex.RUnlock()
-
 				time.Sleep(time.Second)
 			}
 		}()
-	}
-
-	// Start portal cruncher publisher
-	var portalPublisher pubsub.Publisher
-	{
-		fmt.Printf("setting up portal cruncher\n")
-
-		portalCruncherHost, ok := os.LookupEnv("PORTAL_CRUNCHER_HOST")
-		if !ok {
-			level.Error(logger).Log("err", "env var PORTAL_CRUNCHER_HOST must be set")
-			os.Exit(1)
-		}
-
-		portalCruncherPublisher, err := pubsub.NewPortalCruncherPublisher(portalCruncherHost)
-		if err != nil {
-			level.Error(logger).Log("msg", "could not create portal cruncher publisher", "err", err)
-			os.Exit(1)
-		}
-
-		portalPublisher = portalCruncherPublisher
 	}
 
 	// Start UDP server
@@ -736,6 +786,7 @@ func main() {
 
 		mux := transport.UDPServerMux2{
 			Logger:                   logger,
+			PostSessionHandler:       postSessionHandler,
 			Port:                     udpPort,
 			MaxPacketSize:            transport.DefaultMaxPacketSize,
 			ServerInitHandlerFunc:    transport.ServerInitHandlerFunc(serverInitConfig),
@@ -743,8 +794,17 @@ func main() {
 			SessionUpdateHandlerFunc: transport.SessionUpdateHandlerFunc(sessionUpdateConfig),
 		}
 
+		var selectionPercent uint64 = 100
+		if valueStr, ok := os.LookupEnv("PACKET_SELECTION_PERCENT"); ok {
+			if valueUint, err := strconv.ParseUint(valueStr, 10, 64); err == nil {
+				selectionPercent = valueUint
+			} else {
+				level.Error(logger).Log("msg", "cannot parse value of 'PACKET_SELECTION_PERCENT' env var", "err", err)
+			}
+		}
+
 		go func() {
-			if err := mux.Start(ctx); err != nil {
+			if err := mux.Start(ctx, selectionPercent); err != nil {
 				fmt.Println(err)
 				os.Exit(1)
 			}

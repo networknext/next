@@ -30,7 +30,6 @@ The default setting is `warn` when running `make dev-relay-backend` and `make de
 #### Required
 
 - `BACKEND_LOG_LEVEL`: one of `none`, `error`, `warn`, `info`, `debug`
-- `REDIS_HOST_RELAYS`: address of the Redis server you want to connect to store relay information and their lat/long
 - `RELAY_ROUTER_PUBLIC_KEY`: the public key of the router
 - `RELAY_ROUTER_PRIVATE_KEY`: the private key of the router
 - `MAXMIND_DB_URI`: local path to a `.mmdb` file for IP lookups
