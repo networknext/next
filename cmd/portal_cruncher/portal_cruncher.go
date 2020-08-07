@@ -375,12 +375,14 @@ func main() {
 
 				portalCruncherMetrics.ReceivedMessageCount.Add(1)
 
-				messageChan <- struct {
-					topic   pubsub.Topic
-					message []byte
-				}{
-					topic:   topic,
-					message: message,
+				if int64(len(messageChan)) < messageChanSize { // Drop messages if redis insertion is backed up
+					messageChan <- struct {
+						topic   pubsub.Topic
+						message []byte
+					}{
+						topic:   topic,
+						message: message,
+					}
 				}
 			}
 		}()
