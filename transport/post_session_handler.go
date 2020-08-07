@@ -62,7 +62,7 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 
 	for i := 0; i < post.numGoroutines; i++ {
 		go func() {
-			{
+			for {
 				select {
 				case postSessionPortalData := <-post.postSessionPortalChannel:
 					if portalDataBytes, err := postSessionPortalData.ProcessPortalData(post.portalPublisher, post.portalPublishMaxRetries); err != nil {
