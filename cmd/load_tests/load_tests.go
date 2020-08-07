@@ -6,29 +6,75 @@
 package main
 
 import (
+	/*
 	"context"
 	"fmt"
 	"math/rand"
 	"os"
-	"os/exec"
 	"os/signal"
 	"sync"
 	"sync/atomic"
-	"syscall"
 	"time"
+	*/
 
+	"time"
+	"fmt"
+	"math/rand"
+	"github.com/gomodule/redigo/redis"
+
+	/*
 	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
 	"github.com/networknext/backend/transport/pubsub"
 	"github.com/pebbe/zmq4"
+	*/
 )
 
-// Shared
-const (
-	LoadTestDuration = time.Minute * 5 // How long to run the load test
-)
+// ----------------------------------------------------------------------
+
+func keydb_load_test() {
+
+	fmt.Printf("keydb_load_test\n")
+
+	pool := redis.Pool{
+		MaxIdle:     10,
+		IdleTimeout: 240 * time.Second,
+		Dial: func() (redis.Conn, error) {
+			return redis.Dial("tcp", "localhost:6379")
+		},
+	}
+
+	windowSize := 1000
+	numIterations := 10000
+
+	for k := 0; k < windowSize; k++ {
+
+		go func(thread int) {
+			for i := 0; i < numIterations; i++ {
+				fmt.Printf("%d-%d\n", thread, i)
+				redisClient := pool.Get()
+				for j := i; j < i + windowSize; j++ {
+					score := rand.Float64()
+					sessionId := fmt.Sprintf("%016x", j)
+					redisClient.Send("ZADD", "sessions", score, sessionId)
+					redisClient.Send("EXPIREMEMBER", "sessions", sessionId, "1")
+				}
+				redisClient.Flush()
+				redisClient.Close()			
+			}
+		}(k)
+
+	}
+
+	time.Sleep(time.Second * 60)
+}
+
+// ----------------------------------------------------------------------
+
+/*
+const LoadTestDuration = time.Minute * 5
 
 // in memory map load test
 const (
@@ -223,6 +269,7 @@ func in_memory_map_load_test() {
 }
 
 func zeromq_load_test() {
+
 	fmt.Printf("zeromq_load_test\n")
 
 	runTime := time.Now()
@@ -487,6 +534,7 @@ func zeromq_load_test() {
 }
 
 func portal_cruncher_redis_load_test() {
+
 	fmt.Printf("portal_cruncher_redis_load_test\n")
 
 	runTime := time.Now()
@@ -865,9 +913,13 @@ func portal_cruncher_redis_load_test() {
 	fmt.Printf("\naverage data execution time: %.2f seconds\n", avgDataExecutionTime)
 	fmt.Printf("average count execution time: %.2f seconds\n", avgCountExecutionTime)
 }
+*/
 
 func main() {
+
+	keydb_load_test()
+
 	// in_memory_map_load_test()
 	// zeromq_load_test()
-	portal_cruncher_redis_load_test()
+	// portal_cruncher_redis_load_test()
 }
