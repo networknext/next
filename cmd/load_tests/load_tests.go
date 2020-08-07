@@ -49,7 +49,7 @@ func keydb_load_test() {
 
 	windowSize := 1000
 	threadCount := 10000
-	numIterations := 10000
+	numIterations := 100000
 
 	start := time.Now()
 
@@ -61,10 +61,20 @@ func keydb_load_test() {
 			for i := 0; i < numIterations; i++ {
 				redisClient := pool.Get()
 				for j := i; j < i + windowSize; j++ {
+					next := rand.Intn(100) >= 50
 					score := rand.Float64()
 					sessionId := fmt.Sprintf("%016x", j)
-					redisClient.Send("ZADD", "sessions", score, sessionId)
-					redisClient.Send("EXPIREMEMBER", "sessions", sessionId, "30")
+					redisClient.Send("ZADD", "s", score, sessionId)
+					redisClient.Send("EXPIREMEMBER", "s", sessionId, "30")
+					if next {
+						redisClient.Send("SADD", "n", sessionId)
+						redisClient.Send("SREM", "d", sessionId)
+						redisClient.Send("EXPIREMEMBER", "n", sessionId, "30")
+					} else {
+						redisClient.Send("SADD", "d", sessionId)
+						redisClient.Send("SREM", "n", sessionId)
+						redisClient.Send("EXPIREMEMBER", "d", sessionId, "30")
+					}
 				}
 				redisClient.Flush()
 				redisClient.Close()			
@@ -73,6 +83,15 @@ func keydb_load_test() {
 		}(k)
 
 	}
+
+	go func() {
+		fmt.Printf("\n")
+		for {
+			// todo: run same queries portal cruncher will
+			fmt.Printf("crunch\n")
+			time.Sleep(time.Second)
+		}
+	}()
 
 	time.Sleep(time.Minute * 5)
 
