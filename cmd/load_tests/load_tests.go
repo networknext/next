@@ -48,7 +48,7 @@ func keydb_load_test() {
 	}
 
 	windowSize := 1000
-	threadCount := 1000
+	threadCount := 10000
 	numIterations := 10000
 
 	start := time.Now()
@@ -59,13 +59,12 @@ func keydb_load_test() {
 
 		go func(thread int) {
 			for i := 0; i < numIterations; i++ {
-				fmt.Printf("%d-%d\n", thread, i)
 				redisClient := pool.Get()
 				for j := i; j < i + windowSize; j++ {
 					score := rand.Float64()
 					sessionId := fmt.Sprintf("%016x", j)
 					redisClient.Send("ZADD", "sessions", score, sessionId)
-					redisClient.Send("EXPIREMEMBER", "sessions", sessionId, "1")
+					redisClient.Send("EXPIREMEMBER", "sessions", sessionId, "30")
 				}
 				redisClient.Flush()
 				redisClient.Close()			
@@ -75,7 +74,7 @@ func keydb_load_test() {
 
 	}
 
-	time.Sleep(time.Second * 10)
+	time.Sleep(time.Minute * 5)
 
 	numUpdates := atomic.LoadUint64(&totalUpdates)
 
