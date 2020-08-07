@@ -17,6 +17,7 @@ import (
 	"time"
 	*/
 
+	"sync/atomic"
 	"time"
 	"fmt"
 	"math/rand"
@@ -50,6 +51,10 @@ func keydb_load_test() {
 	threadCount := 1000
 	numIterations := 10000
 
+	start := time.Now()
+
+	totalUpdates := uint64(0)
+
 	for k := 0; k < threadCount; k++ {
 
 		go func(thread int) {
@@ -64,12 +69,19 @@ func keydb_load_test() {
 				}
 				redisClient.Flush()
 				redisClient.Close()			
+				atomic.AddUint64(&totalUpdates, uint64(windowSize))
 			}
 		}(k)
 
 	}
 
-	time.Sleep(time.Second * 60)
+	time.Sleep(time.Second * 10)
+
+	numUpdates := atomic.LoadUint64(&totalUpdates)
+
+	duration := time.Since(start).Seconds()
+
+	fmt.Printf("%.1f updates per-second\n", float64(numUpdates) / duration)
 }
 
 // ----------------------------------------------------------------------
