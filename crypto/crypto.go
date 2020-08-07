@@ -9,6 +9,8 @@ import (
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/crypto/nacl/box"
 	"golang.org/x/crypto/poly1305"
+
+	"github.com/spaolacci/murmur3"
 )
 
 const (
@@ -47,6 +49,13 @@ var (
 // HashID hashes a string to a uint64 so it can be used as IDs for Relays, Datacenters, etc.
 func HashID(s string) uint64 {
 	hash := fnv.New64a()
+	hash.Write([]byte(s))
+	return hash.Sum64()
+}
+
+// For hashing when speed is the only thing desired
+func FastHash(s string) uint64 {
+	hash := murmur3.New64()
 	hash.Write([]byte(s))
 	return hash.Sum64()
 }

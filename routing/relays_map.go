@@ -32,7 +32,9 @@ type RelayMapShard struct {
 	relays map[string]*RelayData
 }
 
-type RelayCleanupCallback func(relayID uint64) error
+// RelayCleanupCallback is a callback function that will be called
+// right before a relay is timed out from the RelayMap
+type RelayCleanupCallback func(relayData *RelayData) error
 
 type RelayMap struct {
 	numRelays       uint64
@@ -144,8 +146,7 @@ func (relayMap *RelayMap) TimeoutLoop(ctx context.Context, timeoutSeconds int64,
 				if len(deleteList) > 0 {
 					relayMap.shard[index].mutex.Lock()
 					for i := range deleteList {
-						relayMap.cleanupCallback(relayMap.shard[index].relays[deleteList[i]].ID)
-						// fmt.Printf("timeout relay %x\n", deleteList[i])
+						relayMap.cleanupCallback(relayMap.shard[index].relays[deleteList[i]])
 						delete(relayMap.shard[index].relays, deleteList[i])
 						atomic.AddUint64(&relayMap.numRelays, ^uint64(0))
 					}
