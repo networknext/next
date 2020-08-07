@@ -338,6 +338,16 @@ func main() {
 		}
 	}
 
+	redisGoroutineCount := int64(1)
+	redisGoroutineCountString, ok := os.LookupEnv("CRUNCHER_REDIS_GOROUTINE_COUNT")
+	if ok {
+		redisGoroutineCount, err = strconv.ParseInt(redisGoroutineCountString, 10, 64)
+		if err != nil {
+			level.Error(logger).Log("envvar", "CRUNCHER_REDIS_GOROUTINE_COUNT", "msg", "could not parse", "err", err)
+			os.Exit(1)
+		}
+	}
+
 	messageChanSize := int64(10000000)
 	messageChanSizeString, ok := os.LookupEnv("CRUNCHER_MESSAGE_CHANNEL_SIZE")
 	if ok {
@@ -378,7 +388,7 @@ func main() {
 
 	// Start redis insertion loop
 	{
-		for i := int64(0); i < receiveGoroutineCount; i++ {
+		for i := int64(0); i < redisGoroutineCount; i++ {
 			go func() {
 				for incoming := range messageChan {
 					switch incoming.topic {
