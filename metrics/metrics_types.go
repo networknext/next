@@ -529,6 +529,59 @@ var EmptyAnalyticsServiceMetrics = AnalyticsServiceMetrics{
 	RelayStatsMetrics: EmptyAnalyticsMetrics,
 }
 
+type PortalCruncherMetrics struct {
+	Goroutines           Gauge
+	MemoryAllocated      Gauge
+	ReceivedMessageCount Counter
+}
+
+var EmptyPortalCruncherMetrics = PortalCruncherMetrics{
+	Goroutines:           &EmptyGauge{},
+	MemoryAllocated:      &EmptyGauge{},
+	ReceivedMessageCount: &EmptyCounter{},
+}
+
+func NewPortalCruncherMetrics(ctx context.Context, metricsHandler Handler) (*PortalCruncherMetrics, error) {
+	var err error
+
+	portalCruncherMetrics := PortalCruncherMetrics{}
+
+	portalCruncherMetrics.Goroutines, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Portal Cruncher Goroutine Count",
+		ServiceName: "portal_cruncher",
+		ID:          "portal_cruncher.goroutines",
+		Unit:        "goroutines",
+		Description: "The number of goroutines the portal_cruncher is using",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	portalCruncherMetrics.MemoryAllocated, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Portal Cruncher Memory Allocated",
+		ServiceName: "portal_cruncher",
+		ID:          "portal_cruncher.memory",
+		Unit:        "MB",
+		Description: "The amount of memory the portal_cruncher has allocated in MB",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	portalCruncherMetrics.ReceivedMessageCount, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Portal Cruncher Received Message Count",
+		ServiceName: "portal_cruncher",
+		ID:          "portal_cruncher.received.message.count",
+		Unit:        "messages",
+		Description: "The amount of messages the portal_cruncher has received",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &portalCruncherMetrics, nil
+}
+
 func NewServerBackendMetrics(ctx context.Context, metricsHandler Handler) (*ServerBackendMetrics, error) {
 	var err error
 
