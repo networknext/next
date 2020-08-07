@@ -127,7 +127,7 @@ func (post *PostSessionPortalData) ProcessPortalData(publisher pubsub.Publisher,
 
 	var retryCount int
 
-	if fmt.Sprintf("%016x", post.PortalData.Meta.BuyerID) != "b8e4f84ca63b2021" {
+	if post.PortalCountData.InstanceID == 1822264092253140855 /*Staging*/ || post.PortalCountData.InstanceID == 1014894662482511101 /*ESL*/ {
 		for retryCount < maxRetries { // only retry so many times, then error out after that
 			singleByteCount, err := publisher.Publish(pubsub.TopicPortalCruncherSessionData, sessionBytes)
 			if err != nil {
