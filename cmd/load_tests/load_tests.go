@@ -47,9 +47,10 @@ func keydb_load_test() {
 	}
 
 	windowSize := 1000
+	threadCount := 1000
 	numIterations := 10000
 
-	for k := 0; k < windowSize; k++ {
+	for k := 0; k < threadCount; k++ {
 
 		go func(thread int) {
 			for i := 0; i < numIterations; i++ {
