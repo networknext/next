@@ -17,7 +17,11 @@ TYPE=
 deploy-backend() {
   COMMAND="cd /app && sudo gsutil cp ${ARTIFACT_BUCKET}/bootstrap.sh . && sudo chmod +x ./bootstrap.sh && sudo ./bootstrap.sh -b ${ARTIFACT_BUCKET} -a ${TYPE}_backend.${ENV}.tar.gz"
   printf "Deploying ${CUSTOMER} ${TYPE} backend... \n"
-  gcloud compute --project "network-next-v3-${ENV}" ssh ${TYPE}-backend-${CUSTOMER} -- ${COMMAND}
+  env=${ENV}
+  if [ "$ENV" = 'staging' ]; then
+    env='prod'
+  fi
+  gcloud compute --project "network-next-v3-${env}" ssh ${TYPE}-backend-${CUSTOMER} -- ${COMMAND}
 	printf "done\n"
 }
 

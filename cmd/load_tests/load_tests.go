@@ -6,29 +6,145 @@
 package main
 
 import (
+	/*
 	"context"
 	"fmt"
 	"math/rand"
-	"os"
-	"os/exec"
-	"os/signal"
 	"sync"
 	"sync/atomic"
-	"syscall"
 	"time"
+	*/
 
+	"syscall"
+	"os"
+	"os/signal"
+	"sync/atomic"
+	"time"
+	"fmt"
+	"math/rand"
+	"github.com/gomodule/redigo/redis"
+
+	/*
 	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
 	"github.com/networknext/backend/transport/pubsub"
 	"github.com/pebbe/zmq4"
+	*/
 )
 
-// Shared
-const (
-	LoadTestDuration = time.Minute * 5 // How long to run the load test
-)
+// ----------------------------------------------------------------------
+
+func keydb_load_test() {
+
+	fmt.Printf("keydb_load_test\n")
+
+	pool := redis.Pool{
+		MaxIdle:     1000,
+		IdleTimeout: 240 * time.Second,
+		Dial: func() (redis.Conn, error) {
+			return redis.Dial("tcp", "localhost:6379")
+		},
+	}
+
+	redisClient := pool.Get()
+	redisClient.Send("PING")
+	redisClient.Send("FLUSHDB")
+	redisClient.Flush()
+	pong, err := redisClient.Receive()
+	if err != nil || pong != "PONG" {
+		panic(err)
+	}
+	redisClient.Close()			
+
+	windowSize := 1000
+	threadCount := 100
+	numIterations := 100000
+
+	start := time.Now()
+
+	totalUpdates := uint64(0)
+
+	for k := 0; k < threadCount; k++ {
+
+		go func(thread int) {
+			for i := 0; i < numIterations; i++ {
+				redisClient := pool.Get()
+				for j := i; j < i + windowSize; j++ {
+					next := rand.Intn(100) >= 50
+					score := rand.Float64()
+					sessionId := fmt.Sprintf("%016x", j)
+					redisClient.Send("ZADD", "s", score, sessionId)
+					redisClient.Send("EXPIREMEMBER", "s", sessionId, "30")
+					if next {
+						redisClient.Send("SADD", "n", sessionId)
+						redisClient.Send("SREM", "d", sessionId)
+						redisClient.Send("EXPIREMEMBER", "n", sessionId, "30")
+					} else {
+						redisClient.Send("SADD", "d", sessionId)
+						redisClient.Send("SREM", "n", sessionId)
+						redisClient.Send("EXPIREMEMBER", "d", sessionId, "30")
+					}
+				}
+				redisClient.Flush()
+				redisClient.Close()			
+				atomic.AddUint64(&totalUpdates, uint64(windowSize))
+			}
+		}(k)
+
+	}
+
+	go func() {
+		fmt.Printf("\n")
+		for {
+			redisClient := pool.Get()
+			redisClient.Send("ZCARD", "s")
+			redisClient.Send("SCARD", "n")
+			redisClient.Send("SCARD", "d")
+			redisClient.Flush()
+			totalSessions, err := redisClient.Receive()
+			if err != nil {
+				panic(err)
+			}
+			nextSessions, err := redisClient.Receive()
+			if err != nil {
+				panic(err)
+			}
+			directSessions, err := redisClient.Receive()
+			if err != nil {
+				panic(err)
+			}
+			fmt.Printf("crunch: total sessions = %d, next sessions = %d, direct sessions = %d\n", totalSessions, nextSessions, directSessions)
+			redisClient.Close()
+			time.Sleep(time.Second)
+		}
+	}()
+
+    c := make(chan os.Signal, 1)
+    signal.Notify(c, os.Interrupt)
+    signal.Notify(c, syscall.SIGTERM)
+    signal.Notify(c, syscall.SIGKILL)
+    go func() {
+        <-c
+        fmt.Printf("\n\nshutting down\n")
+        pool.Close()
+        os.Exit(0)
+    }()
+
+	time.Sleep(time.Second * 60)
+
+	numUpdates := atomic.LoadUint64(&totalUpdates)
+
+	duration := time.Since(start).Seconds()
+
+	fmt.Printf("\n%.1f updates per-second\n", float64(numUpdates) / duration)
+}
+
+// ----------------------------------------------------------------------
+
+/*
+const LoadTestDuration = time.Minute * 5
 
 // in memory map load test
 const (
@@ -223,6 +339,7 @@ func in_memory_map_load_test() {
 }
 
 func zeromq_load_test() {
+
 	fmt.Printf("zeromq_load_test\n")
 
 	runTime := time.Now()
@@ -487,6 +604,7 @@ func zeromq_load_test() {
 }
 
 func portal_cruncher_redis_load_test() {
+
 	fmt.Printf("portal_cruncher_redis_load_test\n")
 
 	runTime := time.Now()
@@ -865,9 +983,13 @@ func portal_cruncher_redis_load_test() {
 	fmt.Printf("\naverage data execution time: %.2f seconds\n", avgDataExecutionTime)
 	fmt.Printf("average count execution time: %.2f seconds\n", avgCountExecutionTime)
 }
+*/
 
 func main() {
+
+	keydb_load_test()
+
 	// in_memory_map_load_test()
 	// zeromq_load_test()
-	portal_cruncher_redis_load_test()
+	// portal_cruncher_redis_load_test()
 }
