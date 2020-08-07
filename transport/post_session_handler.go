@@ -53,6 +53,8 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 						level.Error(post.logger).Log("msg", "could not submit billing entry", "err", err)
 						post.metrics.ErrorMetrics.BillingFailure.Add(1)
 					}
+
+					post.metrics.PostSessionBillingEntriesFinished.Add(1)
 				case <-ctx.Done():
 					return
 				}

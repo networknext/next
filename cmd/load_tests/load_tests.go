@@ -10,13 +10,14 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
-	"os"
-	"os/signal"
 	"sync"
 	"sync/atomic"
 	"time"
 	*/
 
+	"syscall"
+	"os"
+	"os/signal"
 	"sync/atomic"
 	"time"
 	"fmt"
@@ -40,15 +41,25 @@ func keydb_load_test() {
 	fmt.Printf("keydb_load_test\n")
 
 	pool := redis.Pool{
-		MaxIdle:     10,
+		MaxIdle:     1000,
 		IdleTimeout: 240 * time.Second,
 		Dial: func() (redis.Conn, error) {
 			return redis.Dial("tcp", "localhost:6379")
 		},
 	}
 
+	redisClient := pool.Get()
+	redisClient.Send("PING")
+	redisClient.Send("FLUSHDB")
+	redisClient.Flush()
+	pong, err := redisClient.Receive()
+	if err != nil || pong != "PONG" {
+		panic(err)
+	}
+	redisClient.Close()			
+
 	windowSize := 1000
-	threadCount := 10000
+	threadCount := 100
 	numIterations := 100000
 
 	start := time.Now()
@@ -87,19 +98,47 @@ func keydb_load_test() {
 	go func() {
 		fmt.Printf("\n")
 		for {
-			// todo: run same queries portal cruncher will
-			fmt.Printf("crunch\n")
+			redisClient := pool.Get()
+			redisClient.Send("ZCARD", "s")
+			redisClient.Send("SCARD", "n")
+			redisClient.Send("SCARD", "d")
+			redisClient.Flush()
+			totalSessions, err := redisClient.Receive()
+			if err != nil {
+				panic(err)
+			}
+			nextSessions, err := redisClient.Receive()
+			if err != nil {
+				panic(err)
+			}
+			directSessions, err := redisClient.Receive()
+			if err != nil {
+				panic(err)
+			}
+			fmt.Printf("crunch: total sessions = %d, next sessions = %d, direct sessions = %d\n", totalSessions, nextSessions, directSessions)
+			redisClient.Close()
 			time.Sleep(time.Second)
 		}
 	}()
 
-	time.Sleep(time.Minute * 5)
+    c := make(chan os.Signal, 1)
+    signal.Notify(c, os.Interrupt)
+    signal.Notify(c, syscall.SIGTERM)
+    signal.Notify(c, syscall.SIGKILL)
+    go func() {
+        <-c
+        fmt.Printf("\n\nshutting down\n")
+        pool.Close()
+        os.Exit(0)
+    }()
+
+	time.Sleep(time.Second * 60)
 
 	numUpdates := atomic.LoadUint64(&totalUpdates)
 
 	duration := time.Since(start).Seconds()
 
-	fmt.Printf("%.1f updates per-second\n", float64(numUpdates) / duration)
+	fmt.Printf("\n%.1f updates per-second\n", float64(numUpdates) / duration)
 }
 
 // ----------------------------------------------------------------------
