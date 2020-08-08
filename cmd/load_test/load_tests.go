@@ -15,6 +15,7 @@ import (
 	"time"
 	*/
 
+	"os"
 	"io"
 	"net"
 	"time"
@@ -34,16 +35,21 @@ import (
 
 // ----------------------------------------------------------------------
 
-func redis_top_sessions() {
+func redis_top_sessions(seconds int) {
 
 	fmt.Printf("redis_top_sessions\n")
+
+	redisPortalHost, ok := os.LookupEnv("REDIS_HOST_PORTAL")
+	if !ok {
+		redisPortalHost = "localhost:6379"
+	}
 
 	pool := redis.Pool{
         MaxIdle: 5,
         MaxActive: 64,
 		IdleTimeout: 60 * time.Second,
 		Dial: func() (redis.Conn, error) {
-			return redis.Dial("tcp", "localhost:6379")
+			return redis.Dial("tcp", redisPortalHost)
 		},
 	}
 
@@ -173,7 +179,15 @@ func redis_top_sessions() {
 		}
 	}()
 
-	time.Sleep(time.Minute * 5)
+	if seconds < 0 {
+		for {
+			time.Sleep(time.Minute)
+		}
+
+	}
+	
+	time.Sleep(time.Second * time.Duration(seconds))
+
 }
 
 // ----------------------------------------------------------------------
@@ -1024,7 +1038,14 @@ func main() {
 
 	fmt.Printf("\n")
 
-	redis_top_sessions()
+	seconds := -1
+
+	env, ok := os.LookupEnv("ENV")
+	if ok && env == "local" {
+		seconds = 5*60
+	}
+
+	redis_top_sessions(seconds)
 
 	// in_memory_map_load_test()
 	// zeromq_load_test()
