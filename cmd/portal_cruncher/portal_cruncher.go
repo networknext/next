@@ -205,11 +205,10 @@ func main() {
 			return float64(m.Alloc) / (1000.0 * 1000.0)
 		}
 
-		portalCruncherMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
-		portalCruncherMetrics.MemoryAllocated.Set(memoryUsed())
-
 		go func() {
 			for {
+				portalCruncherMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
+				portalCruncherMetrics.MemoryAllocated.Set(memoryUsed())
 
 				fmt.Printf("-----------------------------\n")
 				fmt.Printf("%d goroutines\n", int(portalCruncherMetrics.Goroutines.Value()))
