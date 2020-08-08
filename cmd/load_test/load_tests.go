@@ -1022,9 +1022,13 @@ func portal_cruncher_redis_load_test() {
 
 func main() {
 
+	fmt.Printf("\n")
+
 	redis_top_sessions()
 
 	// in_memory_map_load_test()
 	// zeromq_load_test()
 	// portal_cruncher_redis_load_test()
+
+	fmt.Printf("\n")
 }

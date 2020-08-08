@@ -275,9 +275,8 @@ test-func-parallel: build-test-func-parallel run-test-func-parallel ## runs func
 
 .PHONY: test-load
 test-load: ## runs load tests
-	@printf "\nRunning load tests...\n\n" ; \
-	$(GO) run ./cmd/load_tests/load_tests.go ; \
-	printf "\ndone\n\n"
+	@printf "\nRunning load tests...\n" ; \
+	$(GO) run ./cmd/load_test/load_tests.go
 
 #######################
 # Relay Build Process #
@@ -379,7 +378,7 @@ build-sdk: $(DIST_DIR)/$(SDKNAME).so ## builds the sdk
 PHONY: build-load-test
 build-load-test: ## builds the load test binary
 	@printf "Building load test... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/load_tests ./cmd/load_tests/load_tests.go
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/load_test ./cmd/load_test/load_tests.go
 	@printf "done\n"
 
 PHONY: build-portal-cruncher
