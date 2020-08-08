@@ -376,6 +376,12 @@ $(DIST_DIR)/$(SDKNAME).so:
 .PHONY: build-sdk
 build-sdk: $(DIST_DIR)/$(SDKNAME).so ## builds the sdk
 
+PHONY: build-load-test
+build-load-test: ## builds the load test binary
+	@printf "Building load test... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/load_tests ./cmd/load_tests/load_tests.go
+	@printf "done\n"
+
 PHONY: build-portal-cruncher
 build-portal-cruncher: ## builds the portal_cruncher binary
 	@printf "Building portal_cruncher... "
@@ -681,7 +687,7 @@ build-next: ## builds the operator tool
 	@printf "done\n"
 
 .PHONY: build-all
-build-all: build-portal-cruncher build-analytics build-billing build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
+build-all: build-load-test build-portal-cruncher build-analytics build-billing build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all
