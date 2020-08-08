@@ -72,7 +72,7 @@ func redis_top_sessions(seconds int) {
 
 			time.Sleep(time.Duration(rand.Intn(10000))*time.Millisecond)
 			
-	        client, err := net.Dial("tcp", "localhost:6379")
+	        client, err := net.Dial("tcp", redisPortalHost)
 	        if err != nil {
                 panic(err)
 	        }
