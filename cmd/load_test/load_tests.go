@@ -39,10 +39,7 @@ func redis_top_sessions(seconds int) {
 
 	fmt.Printf("redis_top_sessions\n")
 
-	redisPortalHost, ok := os.LookupEnv("REDIS_HOST_PORTAL")
-	if !ok {
-		redisPortalHost = "localhost:6379"
-	}
+	redisPortalHost := os.Getenv("REDIS_HOST_PORTAL")
 
 	pool := redis.Pool{
         MaxIdle: 5,
