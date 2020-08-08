@@ -15,8 +15,8 @@ import (
 	"time"
 	*/
 
+	"bufio"
 	"os"
-	"io"
 	"net"
 	"time"
 	"fmt"
@@ -78,28 +78,20 @@ func redis_top_sessions(seconds int) {
 	        }
 
 			go func() {
+				reader := bufio.NewReader(client)
 				for {
-					buffer := make([]byte, 0, 1024*10)
-				    for {
-				        _, err := client.Read(buffer)
-				        if err != nil {
-				            if err != io.EOF {
-				                fmt.Println("read error:", err)
-				            }
-				            break
-				        }
-				    }
-					time.Sleep(time.Second)
+					message, _ := reader.ReadString('\n')
+				    fmt.Printf("%s", message)
 				}
 			}()
 
 			for {
 
-				now := time.Now()
-				secs := now.Unix()
-				minutes := secs / 60
-
 				for i := 0; i < 10; i++ {
+
+					now := time.Now()
+					secs := now.Unix()
+					minutes := secs / 60
 
 					fmt.Fprintf(client, "EXPIRE s-%d 10\n", minutes)
 
