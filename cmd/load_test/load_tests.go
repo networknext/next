@@ -66,6 +66,12 @@ func redis_top_sessions(seconds int) {
 
 	sliceData := "slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice"
 
+	logfile, err := os.OpenFile("app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		panic(err)
+	}
+	defer logfile.Close()
+
 	for k := 0; k < threadCount; k++ {
 
 		go func(thread int) {
@@ -81,7 +87,7 @@ func redis_top_sessions(seconds int) {
 				reader := bufio.NewReader(client)
 				for {
 					message, _ := reader.ReadString('\n')
-				    fmt.Printf("%s", message)
+					logfile.WriteString(message)
 				}
 			}()
 
