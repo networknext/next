@@ -61,11 +61,13 @@ func redis_top_sessions() {
 
 	sessionMeta := "d6ba813821381|AT&T U-verse|ESL Gaming Online, Inc|colocrossing.chicago|55.72|43.96"
 
+	sliceData := "slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice"
+
 	for k := 0; k < threadCount; k++ {
 
 		go func(thread int) {
 
-			time.Sleep(time.Duration(rand.Intn(1000))*time.Millisecond)
+			time.Sleep(time.Duration(rand.Intn(10000))*time.Millisecond)
 			
 	        client, err := net.Dial("tcp", "localhost:6379")
 	        if err != nil {
@@ -111,9 +113,10 @@ func redis_top_sessions() {
 						sessionId := uint64(thread*100000) + uint64(i*1000) + uint64(j)
 						sessionIdString := fmt.Sprintf("%016x", sessionId)
 						fmt.Fprintf(client, "SET sm-%s \"%s\" EX 120\n", sessionIdString, sessionMeta)
+						fmt.Fprintf(client, "RPUSH ss-%s \"%s\"\n", sessionIdString, sliceData)
 					}
 	
-					time.Sleep(time.Second/10)
+					time.Sleep(time.Second)
 				}
 			}
 		}(k)
@@ -144,15 +147,23 @@ func redis_top_sessions() {
 					keys[i] = fmt.Sprintf("sm-%s", topSessions[i])
 				}
 				redisClient.Send("MGET", keys...)
+				redisClient.Send("LRANGE", fmt.Sprintf("ss-%s", topSessions[0]), "0", "-1")
 				redisClient.Flush()
 				sessionMeta, err := redis.Strings(redisClient.Receive())
 				if err != nil {
 					panic(err)
 				}
-				_ = sessionMeta
+				if len(sessionMeta) != len(topSessions) {
+					panic("failed to get top sessions\n")
+				}
+				sessionSlices, err := redis.Strings(redisClient.Receive())
+				if err != nil {
+					panic(err)
+				}
+				_ = sessionSlices
 				/*
-				for i := range sessionMeta {
-					fmt.Printf("%d: %s\n", i, sessionMeta[i])
+				for i := range sessionSlices {
+					fmt.Printf("%d: %s\n", i, sessionSlices[i])
 				}
 				*/
 			}
