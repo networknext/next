@@ -138,9 +138,26 @@ func redis_top_sessions() {
 			if err != nil {
 				panic(err)
 			}
+			if len(topSessions) > 0 {
+				keys := make([]interface{}, len(topSessions))
+				for i := range keys {
+					keys[i] = fmt.Sprintf("sm-%s", topSessions[i])
+				}
+				redisClient.Send("MGET", keys...)
+				redisClient.Flush()
+				sessionMeta, err := redis.Strings(redisClient.Receive())
+				if err != nil {
+					panic(err)
+				}
+				_ = sessionMeta
+				/*
+				for i := range sessionMeta {
+					fmt.Printf("%d: %s\n", i, sessionMeta[i])
+				}
+				*/
+			}
 			redisClient.Close()			
 			fmt.Printf("crunch: top %d of %d sessions (%.2f seconds)\n", len(topSessions), totalSessions, time.Since(start).Seconds())
-			// fmt.Printf("%v\n", topSessions)
 			time.Sleep(time.Second*10)
 		}
 	}()
