@@ -15,8 +15,8 @@ import (
 	"time"
 	*/
 
+	"io"
 	"net"
-	"sync/atomic"
 	"time"
 	"fmt"
 	"math/rand"
@@ -34,9 +34,9 @@ import (
 
 // ----------------------------------------------------------------------
 
-func redis_load_test() {
+func redis_top_sessions() {
 
-	fmt.Printf("redis_load_test\n")
+	fmt.Printf("redis_top_sessions\n")
 
 	pool := redis.Pool{
         MaxIdle: 5,
@@ -57,20 +57,9 @@ func redis_load_test() {
 	}
 	redisClient.Close()			
 
-	windowSize := 1000
-	threadCount := 10
-	numIterations := 100000
+	threadCount := 25
 
-	start := time.Now()
-
-	totalUpdates := uint64(0)
-
-	/*
-	sessionData := make([]byte, 256)
-	sliceData := make([]byte, 256)
-	*/
-
-	timeout := "10"
+	sessionMeta := "d6ba813821381|AT&T U-verse|ESL Gaming Online, Inc|colocrossing.chicago|55.72|43.96"
 
 	for k := 0; k < threadCount; k++ {
 
@@ -83,55 +72,49 @@ func redis_load_test() {
                 panic(err)
 	        }
 
-			for i := 0; i < numIterations; i++ {
+			go func() {
+				for {
+					buffer := make([]byte, 0, 1024*10)
+				    for {
+				        _, err := client.Read(buffer)
+				        if err != nil {
+				            if err != io.EOF {
+				                fmt.Println("read error:", err)
+				            }
+				            break
+				        }
+				    }
+					time.Sleep(time.Second)
+				}
+			}()
+
+			for {
 
 				now := time.Now()
 				secs := now.Unix()
 				minutes := secs / 60
 
-				fmt.Fprintf(client, "EXPIRE s-%d %s\n", minutes, timeout)
+				for i := 0; i < 10; i++ {
 
-				/*
-				redisClient := pool.Get()
-				for j := 0; j < windowSize; j++ {
-					next := rand.Intn(100) >= 50
-					score := rand.Float64()
-					sessionId := i + j + k*windowSize
-					sessionIdString := fmt.Sprintf("%016x", sessionId)
-					redisClient.Send("ZADD", "s", score, sessionIdString)
-					redisClient.Send("EXPIREMEMBER", "s", sessionIdString, timeout)
-					if next {
-						redisClient.Send("SADD", "n", sessionIdString)
-						redisClient.Send("SREM", "d", sessionIdString)
-						redisClient.Send("EXPIREMEMBER", "n", sessionIdString, timeout)
-					} else {
-						redisClient.Send("SADD", "d", sessionIdString)
-						redisClient.Send("SREM", "n", sessionIdString)
-						redisClient.Send("EXPIREMEMBER", "d", sessionIdString, timeout)
+					fmt.Fprintf(client, "EXPIRE s-%d 10\n", minutes)
+
+					fmt.Fprintf(client, "ZADD s-%d", minutes)
+					for j:= 0; j < 1000; j++ {
+						score := rand.Intn(100000)
+						sessionId := uint64(thread*100000) + uint64(i*1000) + uint64(j)
+						sessionIdString := fmt.Sprintf("%016x", sessionId)
+						fmt.Fprintf(client, " %d \"%s\"", score, sessionIdString)
 					}
-					sdkey := fmt.Sprintf("sd-%s", sessionIdString)
-					sskey := fmt.Sprintf("ss-%s", sessionIdString)
-					redisClient.Send("SET", sdkey, sessionData)
-					redisClient.Send("SADD", sskey, sliceData)
-					redisClient.Send("EXPIRE", sdkey, timeout)
-					redisClient.Send("EXPIRE", sskey, timeout)
+					fmt.Fprintf(client, "\n")
+				
+					for j:= 0; j < 1000; j++ {
+						sessionId := uint64(thread*100000) + uint64(i*1000) + uint64(j)
+						sessionIdString := fmt.Sprintf("%016x", sessionId)
+						fmt.Fprintf(client, "SET sm-%s \"%s\" EX 120\n", sessionIdString, sessionMeta)
+					}
+	
+					time.Sleep(time.Second/10)
 				}
-				redisClient.Flush()
-				redisClient.Close()			
-				*/
-
-				fmt.Fprintf(client, "ZADD s-%d", minutes)
-				for j:= 0; j < windowSize; j++ {
-					score := rand.Float64()
-					sessionId := uint64(thread*1000000) + uint64(j) + uint64(i*100)
-					sessionIdString := fmt.Sprintf("%016x", sessionId)
-					fmt.Fprintf(client, " %.1f %s", score, sessionIdString)
-				}
-				fmt.Fprintf(client, "\n")
-
-				atomic.AddUint64(&totalUpdates, uint64(windowSize))
-
-				time.Sleep(time.Second/10)
 			}
 		}(k)
 
@@ -140,45 +123,29 @@ func redis_load_test() {
 	go func() {
 		fmt.Printf("\n")
 		for {
-			now := time.Now()
-			secs := now.Unix()
+			start := time.Now()
+			secs := start.Unix()
 			minutes := secs / 60
 			redisClient := pool.Get()
 			redisClient.Send("ZUNIONSTORE", "s", "2", fmt.Sprintf("s-%d", minutes-1), fmt.Sprintf("s-%d", minutes))
-			redisClient.Send("ZCARD", "s")
-			/*
-			redisClient.Send("SCARD", "n")
-			redisClient.Send("SCARD", "d")
-			*/
+			redisClient.Send("ZREVRANGE", "s", "0", "999")
 			redisClient.Flush()
 			totalSessions, err := redisClient.Receive()
 			if err != nil {
 				panic(err)
 			}
-			/*
-			nextSessions, err := redisClient.Receive()
+			topSessions, err := redis.Strings(redisClient.Receive())
 			if err != nil {
 				panic(err)
 			}
-			directSessions, err := redisClient.Receive()
-			if err != nil {
-				panic(err)
-			}
-			*/
-			redisClient.Close()
-			fmt.Printf("crunch: total sessions = %d\n", totalSessions)
-			// fmt.Printf("crunch: total sessions = %d, next sessions = %d, direct sessions = %d\n", totalSessions, nextSessions, directSessions)
-			time.Sleep(time.Second*1)
+			redisClient.Close()			
+			fmt.Printf("crunch: top %d of %d sessions (%.2f seconds)\n", len(topSessions), totalSessions, time.Since(start).Seconds())
+			// fmt.Printf("%v\n", topSessions)
+			time.Sleep(time.Second*10)
 		}
 	}()
 
-	time.Sleep(time.Minute)
-
-	numUpdates := atomic.LoadUint64(&totalUpdates)
-
-	duration := time.Since(start).Seconds()
-
-	fmt.Printf("\n%dk sessions max\n", int(float64(numUpdates) / duration * 10 / 1000))
+	time.Sleep(time.Minute * 5)
 }
 
 // ----------------------------------------------------------------------
@@ -1027,7 +994,7 @@ func portal_cruncher_redis_load_test() {
 
 func main() {
 
-	redis_load_test()
+	redis_top_sessions()
 
 	// in_memory_map_load_test()
 	// zeromq_load_test()
