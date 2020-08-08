@@ -37,7 +37,7 @@ import (
 
 func redis_top_sessions(seconds int) {
 
-	fmt.Printf("redis_top_sessions\n")
+	fmt.Printf("redis_top_sessions (1)\n")
 
 	redisPortalHost := os.Getenv("REDIS_HOST_PORTAL")
 
