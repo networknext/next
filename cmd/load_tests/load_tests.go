@@ -15,9 +15,7 @@ import (
 	"time"
 	*/
 
-	"syscall"
-	"os"
-	"os/signal"
+	"net"
 	"sync/atomic"
 	"time"
 	"fmt"
@@ -36,13 +34,14 @@ import (
 
 // ----------------------------------------------------------------------
 
-func keydb_load_test() {
+func redis_load_test() {
 
-	fmt.Printf("keydb_load_test\n")
+	fmt.Printf("redis_load_test\n")
 
 	pool := redis.Pool{
-		MaxIdle:     1000,
-		IdleTimeout: 240 * time.Second,
+        MaxIdle: 5,
+        MaxActive: 64,
+		IdleTimeout: 60 * time.Second,
 		Dial: func() (redis.Conn, error) {
 			return redis.Dial("tcp", "localhost:6379")
 		},
@@ -59,37 +58,80 @@ func keydb_load_test() {
 	redisClient.Close()			
 
 	windowSize := 1000
-	threadCount := 100
+	threadCount := 10
 	numIterations := 100000
 
 	start := time.Now()
 
 	totalUpdates := uint64(0)
 
+	/*
+	sessionData := make([]byte, 256)
+	sliceData := make([]byte, 256)
+	*/
+
+	timeout := "10"
+
 	for k := 0; k < threadCount; k++ {
 
 		go func(thread int) {
+
+			time.Sleep(time.Duration(rand.Intn(1000))*time.Millisecond)
+			
+	        client, err := net.Dial("tcp", "localhost:6379")
+	        if err != nil {
+                panic(err)
+	        }
+
 			for i := 0; i < numIterations; i++ {
+
+				now := time.Now()
+				secs := now.Unix()
+				minutes := secs / 60
+
+				fmt.Fprintf(client, "EXPIRE s-%d %s\n", minutes, timeout)
+
+				/*
 				redisClient := pool.Get()
-				for j := i; j < i + windowSize; j++ {
+				for j := 0; j < windowSize; j++ {
 					next := rand.Intn(100) >= 50
 					score := rand.Float64()
-					sessionId := fmt.Sprintf("%016x", j)
-					redisClient.Send("ZADD", "s", score, sessionId)
-					redisClient.Send("EXPIREMEMBER", "s", sessionId, "30")
+					sessionId := i + j + k*windowSize
+					sessionIdString := fmt.Sprintf("%016x", sessionId)
+					redisClient.Send("ZADD", "s", score, sessionIdString)
+					redisClient.Send("EXPIREMEMBER", "s", sessionIdString, timeout)
 					if next {
-						redisClient.Send("SADD", "n", sessionId)
-						redisClient.Send("SREM", "d", sessionId)
-						redisClient.Send("EXPIREMEMBER", "n", sessionId, "30")
+						redisClient.Send("SADD", "n", sessionIdString)
+						redisClient.Send("SREM", "d", sessionIdString)
+						redisClient.Send("EXPIREMEMBER", "n", sessionIdString, timeout)
 					} else {
-						redisClient.Send("SADD", "d", sessionId)
-						redisClient.Send("SREM", "n", sessionId)
-						redisClient.Send("EXPIREMEMBER", "d", sessionId, "30")
+						redisClient.Send("SADD", "d", sessionIdString)
+						redisClient.Send("SREM", "n", sessionIdString)
+						redisClient.Send("EXPIREMEMBER", "d", sessionIdString, timeout)
 					}
+					sdkey := fmt.Sprintf("sd-%s", sessionIdString)
+					sskey := fmt.Sprintf("ss-%s", sessionIdString)
+					redisClient.Send("SET", sdkey, sessionData)
+					redisClient.Send("SADD", sskey, sliceData)
+					redisClient.Send("EXPIRE", sdkey, timeout)
+					redisClient.Send("EXPIRE", sskey, timeout)
 				}
 				redisClient.Flush()
 				redisClient.Close()			
+				*/
+
+				fmt.Fprintf(client, "ZADD s-%d", minutes)
+				for j:= 0; j < windowSize; j++ {
+					score := rand.Float64()
+					sessionId := uint64(thread*1000000) + uint64(j) + uint64(i*100)
+					sessionIdString := fmt.Sprintf("%016x", sessionId)
+					fmt.Fprintf(client, " %.1f %s", score, sessionIdString)
+				}
+				fmt.Fprintf(client, "\n")
+
 				atomic.AddUint64(&totalUpdates, uint64(windowSize))
+
+				time.Sleep(time.Second/10)
 			}
 		}(k)
 
@@ -98,15 +140,22 @@ func keydb_load_test() {
 	go func() {
 		fmt.Printf("\n")
 		for {
+			now := time.Now()
+			secs := now.Unix()
+			minutes := secs / 60
 			redisClient := pool.Get()
+			redisClient.Send("ZUNIONSTORE", "s", "2", fmt.Sprintf("s-%d", minutes-1), fmt.Sprintf("s-%d", minutes))
 			redisClient.Send("ZCARD", "s")
+			/*
 			redisClient.Send("SCARD", "n")
 			redisClient.Send("SCARD", "d")
+			*/
 			redisClient.Flush()
 			totalSessions, err := redisClient.Receive()
 			if err != nil {
 				panic(err)
 			}
+			/*
 			nextSessions, err := redisClient.Receive()
 			if err != nil {
 				panic(err)
@@ -115,30 +164,21 @@ func keydb_load_test() {
 			if err != nil {
 				panic(err)
 			}
-			fmt.Printf("crunch: total sessions = %d, next sessions = %d, direct sessions = %d\n", totalSessions, nextSessions, directSessions)
+			*/
 			redisClient.Close()
-			time.Sleep(time.Second)
+			fmt.Printf("crunch: total sessions = %d\n", totalSessions)
+			// fmt.Printf("crunch: total sessions = %d, next sessions = %d, direct sessions = %d\n", totalSessions, nextSessions, directSessions)
+			time.Sleep(time.Second*1)
 		}
 	}()
 
-    c := make(chan os.Signal, 1)
-    signal.Notify(c, os.Interrupt)
-    signal.Notify(c, syscall.SIGTERM)
-    signal.Notify(c, syscall.SIGKILL)
-    go func() {
-        <-c
-        fmt.Printf("\n\nshutting down\n")
-        pool.Close()
-        os.Exit(0)
-    }()
-
-	time.Sleep(time.Second * 60)
+	time.Sleep(time.Minute)
 
 	numUpdates := atomic.LoadUint64(&totalUpdates)
 
 	duration := time.Since(start).Seconds()
 
-	fmt.Printf("\n%.1f updates per-second\n", float64(numUpdates) / duration)
+	fmt.Printf("\n%dk sessions max\n", int(float64(numUpdates) / duration * 10 / 1000))
 }
 
 // ----------------------------------------------------------------------
@@ -987,7 +1027,7 @@ func portal_cruncher_redis_load_test() {
 
 func main() {
 
-	keydb_load_test()
+	redis_load_test()
 
 	// in_memory_map_load_test()
 	// zeromq_load_test()
