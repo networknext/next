@@ -37,7 +37,7 @@ import (
 
 func redis_top_sessions(seconds int) {
 
-	fmt.Printf("redis_top_sessions (1)\n")
+	fmt.Printf("redis_top_sessions\n")
 
 	redisPortalHost := os.Getenv("REDIS_HOST_PORTAL")
 
@@ -117,6 +117,8 @@ func redis_top_sessions(seconds int) {
 						sessionIdString := fmt.Sprintf("%016x", sessionId)
 						fmt.Fprintf(client, "SET sm-%s \"%s\" EX 120\n", sessionIdString, sessionMeta)
 						fmt.Fprintf(client, "RPUSH ss-%s \"%s\"\n", sessionIdString, sliceData)
+						fmt.Fprintf(client, "EXPIRE sm-%s 120\n", sessionIdString)
+						fmt.Fprintf(client, "EXPIRE ss-%s 120\n", sessionIdString)
 					}
 	
 					time.Sleep(time.Second)
