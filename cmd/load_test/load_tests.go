@@ -15,6 +15,7 @@ import (
 	"time"
 	*/
 
+	"sort"
 	"strconv"
 	"bufio"
 	"os"
@@ -40,32 +41,105 @@ func redis_portal(seconds int) {
 
 	fmt.Printf("redis_portal\n")
 
+	// top sessions redis
+
+	redisHostTopSessions := os.Getenv("REDIS_HOST_TOP_SESSIONS")
+
+	poolTopSessions := redis.Pool{
+        MaxIdle: 5,
+        MaxActive: 64,
+		IdleTimeout: 60 * time.Second,
+		Dial: func() (redis.Conn, error) {
+			return redis.Dial("tcp", redisHostTopSessions)
+		},
+	}
+
+	redisClientTopSessions := poolTopSessions.Get()
+	redisClientTopSessions.Send("PING")
+	redisClientTopSessions.Send("FLUSHDB")
+	redisClientTopSessions.Flush()
+	pong, err := redisClientTopSessions.Receive()
+	if err != nil || pong != "PONG" {
+		panic(err)
+	}
+	redisClientTopSessions.Close()
+
+	// session map redis
+
+	redisHostSessionMap := os.Getenv("REDIS_HOST_SESSION_MAP")
+
+	poolSessionMap := redis.Pool{
+        MaxIdle: 5,
+        MaxActive: 64,
+		IdleTimeout: 60 * time.Second,
+		Dial: func() (redis.Conn, error) {
+			return redis.Dial("tcp", redisHostSessionMap)
+		},
+	}
+
+	redisClientSessionMap := poolSessionMap.Get()
+	redisClientSessionMap.Send("PING")
+	redisClientSessionMap.Send("FLUSHDB")
+	redisClientSessionMap.Flush()
+	pong, err = redisClientSessionMap.Receive()
+	if err != nil || pong != "PONG" {
+		panic(err)
+	}
+	redisClientSessionMap.Close()
+
+	// session meta redis
+
+	redisHostSessionMeta := os.Getenv("REDIS_HOST_SESSION_META")
+
+	poolSessionMeta := redis.Pool{
+        MaxIdle: 5,
+        MaxActive: 64,
+		IdleTimeout: 60 * time.Second,
+		Dial: func() (redis.Conn, error) {
+			return redis.Dial("tcp", redisHostSessionMeta)
+		},
+	}
+
+	redisClientSessionMeta := poolSessionMeta.Get()
+	redisClientSessionMeta.Send("PING")
+	redisClientSessionMeta.Send("FLUSHDB")
+	redisClientSessionMeta.Flush()
+	pong, err = redisClientSessionMeta.Receive()
+	if err != nil || pong != "PONG" {
+		panic(err)
+	}
+	redisClientSessionMeta.Close()
+
+	// session slices redis
+
+	redisHostSessionSlices := os.Getenv("REDIS_HOST_SESSION_SLICES")
+
+	poolSessionSlices := redis.Pool{
+        MaxIdle: 5,
+        MaxActive: 64,
+		IdleTimeout: 60 * time.Second,
+		Dial: func() (redis.Conn, error) {
+			return redis.Dial("tcp", redisHostSessionSlices)
+		},
+	}
+
+	redisClientSessionSlices := poolSessionSlices.Get()
+	redisClientSessionSlices.Send("PING")
+	redisClientSessionSlices.Send("FLUSHDB")
+	redisClientSessionSlices.Flush()
+	pong, err = redisClientSessionSlices.Receive()
+	if err != nil || pong != "PONG" {
+		panic(err)
+	}
+	redisClientSessionSlices.Close()
+
+	// main loop to insert session entries. ~10k sessions per-thread
+
 	threadCount := 2
 	threadCountString, ok := os.LookupEnv("THREAD_COUNT")
 	if ok {
 		threadCount, _ = strconv.Atoi(threadCountString)
 	}
-
-	redisPortalHost := os.Getenv("REDIS_HOST_PORTAL")
-
-	pool := redis.Pool{
-        MaxIdle: 5,
-        MaxActive: 64,
-		IdleTimeout: 60 * time.Second,
-		Dial: func() (redis.Conn, error) {
-			return redis.Dial("tcp", redisPortalHost)
-		},
-	}
-
-	redisClient := pool.Get()
-	redisClient.Send("PING")
-	redisClient.Send("FLUSHDB")
-	redisClient.Flush()
-	pong, err := redisClient.Receive()
-	if err != nil || pong != "PONG" {
-		panic(err)
-	}
-	redisClient.Close()			
 
 	location := "123|-100"
 
@@ -77,15 +151,54 @@ func redis_portal(seconds int) {
 
 		go func(thread int) {
 
-			time.Sleep(time.Duration(rand.Intn(10000))*time.Millisecond)
+			time.Sleep(time.Duration(rand.Intn(1000))*time.Millisecond)
 			
-	        client, err := net.Dial("tcp", redisPortalHost)
+	        clientTopSessions, err := net.Dial("tcp", redisHostTopSessions)
+	        if err != nil {
+                panic(err)
+	        }
+
+	        clientSessionMap, err := net.Dial("tcp", redisHostSessionMap)
+	        if err != nil {
+                panic(err)
+	        }
+
+	        clientSessionMeta, err := net.Dial("tcp", redisHostSessionMeta)
+	        if err != nil {
+                panic(err)
+	        }
+
+	        clientSessionSlices, err := net.Dial("tcp", redisHostSessionSlices)
 	        if err != nil {
                 panic(err)
 	        }
 
 			go func() {
-				reader := bufio.NewReader(client)
+				reader := bufio.NewReader(clientTopSessions)
+				for {
+					message, _ := reader.ReadString('\n')
+					_ = message
+				}
+			}()
+
+			go func() {
+				reader := bufio.NewReader(clientSessionMap)
+				for {
+					message, _ := reader.ReadString('\n')
+					_ = message
+				}
+			}()
+
+			go func() {
+				reader := bufio.NewReader(clientSessionMeta)
+				for {
+					message, _ := reader.ReadString('\n')
+					_ = message
+				}
+			}()
+
+			go func() {
+				reader := bufio.NewReader(clientSessionSlices)
 				for {
 					message, _ := reader.ReadString('\n')
 					_ = message
@@ -104,18 +217,18 @@ func redis_portal(seconds int) {
 					secs := now.Unix()
 					minutes := secs / 60
 
-					fmt.Fprintf(client, "DEL s-%d\n", minutes-2)
+					fmt.Fprintf(clientTopSessions, "DEL s-%d\n", minutes-2)
 
-					fmt.Fprintf(client, "ZADD s-%d", minutes)
+					fmt.Fprintf(clientTopSessions, "ZADD s-%d", minutes)
 					for j:= 0; j < 1000; j++ {
 						score[i] = rand.Intn(100000)
 						sessionId := base + uint64(thread*100000) + uint64(i*1000) + uint64(j)
 						sessionIdString := fmt.Sprintf("%016x", sessionId)
-						fmt.Fprintf(client, " %d %s", score[i], sessionIdString)
+						fmt.Fprintf(clientTopSessions, " %d %s", score[i], sessionIdString)
 					}
-					fmt.Fprintf(client, "\n")
+					fmt.Fprintf(clientTopSessions, "\n")
 				
-					fmt.Fprintf(client, "EXPIRE s-%d 10\n", minutes)
+					fmt.Fprintf(clientTopSessions, "EXPIRE s-%d 10\n", minutes)
 
 					for j:= 0; j < 1000; j++ {
 
@@ -123,28 +236,28 @@ func redis_portal(seconds int) {
 						customerId := sessionId % 10
 						sessionIdString := fmt.Sprintf("%016x", sessionId)
 
-						fmt.Fprintf(client, "DEL sc-%d-%d\n", customerId, minutes-2)
-						fmt.Fprintf(client, "ZADD sc-%d-%d %d \"%s\"\n", customerId, minutes, score[i], sessionIdString)
-						fmt.Fprintf(client, "EXPIRE sc-%d-%d 10\n", customerId, minutes)
+						fmt.Fprintf(clientTopSessions, "DEL sc-%d-%d\n", customerId, minutes-2)
+						fmt.Fprintf(clientTopSessions, "ZADD sc-%d-%d %d \"%s\"\n", customerId, minutes, score[i], sessionIdString)
+						fmt.Fprintf(clientTopSessions, "EXPIRE sc-%d-%d 10\n", customerId, minutes)
 
 						next := (j%10) == 0
 						if next {
-							fmt.Fprintf(client, "HSET n-%d %s %s\n", minutes, sessionIdString, location)
-							fmt.Fprintf(client, "HDEL d-%d %s\n", minutes, sessionIdString)
+							fmt.Fprintf(clientSessionMap, "HSET n-%d %s %s\n", minutes, sessionIdString, location)
+							fmt.Fprintf(clientSessionMap, "HDEL d-%d %s\n", minutes, sessionIdString)
 						} else {
-							fmt.Fprintf(client, "HSET d-%d %s %s\n", minutes, sessionIdString, location)
-							fmt.Fprintf(client, "HDEL n-%d %s\n", minutes, sessionIdString)
+							fmt.Fprintf(clientSessionMap, "HSET d-%d %s %s\n", minutes, sessionIdString, location)
+							fmt.Fprintf(clientSessionMap, "HDEL n-%d %s\n", minutes, sessionIdString)
 						}
 
-						fmt.Fprintf(client, "SET sm-%s \"%s\" EX 120\n", sessionIdString, sessionMeta)
-						fmt.Fprintf(client, "EXPIRE sm-%s 120\n", sessionIdString)
+						fmt.Fprintf(clientSessionMeta, "SET sm-%s \"%s\" EX 120\n", sessionIdString, sessionMeta)
+						fmt.Fprintf(clientSessionMeta, "EXPIRE sm-%s 120\n", sessionIdString)
 
-						fmt.Fprintf(client, "RPUSH ss-%s \"%s\"\n", sessionIdString, sliceData)
-						fmt.Fprintf(client, "EXPIRE ss-%s 120\n", sessionIdString)
+						fmt.Fprintf(clientSessionSlices, "RPUSH ss-%s \"%s\"\n", sessionIdString, sliceData)
+						fmt.Fprintf(clientSessionSlices, "EXPIRE ss-%s 120\n", sessionIdString)
 					}
 
-					fmt.Fprintf(client, "EXPIRE n-%d 10\n", minutes)
-					fmt.Fprintf(client, "EXPIRE d-%d 10\n", minutes)
+					fmt.Fprintf(clientSessionMap, "EXPIRE n-%d 10\n", minutes)
+					fmt.Fprintf(clientSessionMap, "EXPIRE d-%d 10\n", minutes)
 
 					time.Sleep(time.Second)
 				}
@@ -154,6 +267,8 @@ func redis_portal(seconds int) {
 		}(k)
 
 	}
+
+	// simulated portal cruncher loop. grabs redis data and crunches it as the portal cruncher would
 
 	go func() {
 
@@ -165,46 +280,24 @@ func redis_portal(seconds int) {
 			secs := start.Unix()
 			minutes := secs / 60
 
-			redisClient := pool.Get()
+			// top sessions
 
-			redisClient.Send("ZREVRANGE", fmt.Sprintf("s-%d", minutes-1), "0", "999", "WITHSCORES")
-			redisClient.Send("ZREVRANGE", fmt.Sprintf("s-%d", minutes), "0", "999", "WITHSCORES")
+			redisClientTopSessions := poolTopSessions.Get()
 
-			redisClient.Send("HGETALL", fmt.Sprintf("n-%d", minutes-1))
-			redisClient.Send("HGETALL", fmt.Sprintf("n-%d", minutes))
-			redisClient.Send("HGETALL", fmt.Sprintf("d-%d", minutes-1))
-			redisClient.Send("HGETALL", fmt.Sprintf("d-%d", minutes))
+			redisClientTopSessions.Send("ZREVRANGE", fmt.Sprintf("s-%d", minutes-1), "0", "999", "WITHSCORES")
+			redisClientTopSessions.Send("ZREVRANGE", fmt.Sprintf("s-%d", minutes), "0", "999", "WITHSCORES")
+
+			redisClientTopSessions.Flush()
 			
-			redisClient.Flush()
-			
-			topSessions_a, err := redis.Strings(redisClient.Receive())
+			topSessions_a, err := redis.Strings(redisClientTopSessions.Receive())
 			if err != nil {
 				panic(err)
 			}
-			topSessions_b, err := redis.Strings(redisClient.Receive())
+			topSessions_b, err := redis.Strings(redisClientTopSessions.Receive())
 			if err != nil {
 				panic(err)
 			}
 			
-			next_a, err := redis.Strings(redisClient.Receive())
-			if err != nil {
-				panic(err)
-			}
-			next_b, err := redis.Strings(redisClient.Receive())
-			if err != nil {
-				panic(err)
-			}
-			direct_a, err := redis.Strings(redisClient.Receive())
-			if err != nil {
-				panic(err)
-			}
-			direct_b, err := redis.Strings(redisClient.Receive())
-			if err != nil {
-				panic(err)
-			}
-
-			redisClient.Close()			
-
 			type SessionEntry struct {
 				sessionId string
 				score int
@@ -239,7 +332,39 @@ func redis_portal(seconds int) {
 			if len(topSessions) > 1000 {
 				topSessions = topSessions[:1000]
 			}
-			
+
+			sort.SliceStable(topSessions, func(i, j int) bool { return topSessions[i].score > topSessions[j].score })
+
+			// session map
+
+			redisClientSessionMap := poolSessionMap.Get()
+
+			redisClientSessionMap.Send("HGETALL", fmt.Sprintf("n-%d", minutes-1))
+			redisClientSessionMap.Send("HGETALL", fmt.Sprintf("n-%d", minutes))
+			redisClientSessionMap.Send("HGETALL", fmt.Sprintf("d-%d", minutes-1))
+			redisClientSessionMap.Send("HGETALL", fmt.Sprintf("d-%d", minutes))
+
+			redisClientSessionMap.Flush()
+
+			next_a, err := redis.Strings(redisClientSessionMap.Receive())
+			if err != nil {
+				panic(err)
+			}
+			next_b, err := redis.Strings(redisClientSessionMap.Receive())
+			if err != nil {
+				panic(err)
+			}
+			direct_a, err := redis.Strings(redisClientSessionMap.Receive())
+			if err != nil {
+				panic(err)
+			}
+			direct_b, err := redis.Strings(redisClientSessionMap.Receive())
+			if err != nil {
+				panic(err)
+			}
+
+			redisClientSessionMap.Close()			
+
 			next := make(map[string]string)
 			for i := 0; i < len(next_a); i+=2{
 				next[next_a[i]] = next_a[i+1]
@@ -255,13 +380,13 @@ func redis_portal(seconds int) {
 				direct[direct_b[i]] = direct_b[i+1]
 			}
 
-			// todo: get all session meta for top 1000 sessions
+			// todo: session meta for top 1000 sessions
 
-			// todo: get all slice data for top 1000 sessions
+			// todo: session slices for top 1000 sessions
 
 			fmt.Printf("crunch: top %d sessions, %d next, %d direct (%.2f seconds)\n", len(topSessions), len(next), len(direct), time.Since(start).Seconds())
 
-			time.Sleep(time.Second*10)
+			time.Sleep(time.Second)
 		}
 	}()
 
