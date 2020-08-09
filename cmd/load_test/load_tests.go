@@ -15,6 +15,7 @@ import (
 	"time"
 	*/
 
+	"strings"
 	"sync"
 	"sort"
 	"strconv"
@@ -103,7 +104,7 @@ func getTopSessions(pool *redis.Pool, minutes int64) []TopSessionEntry {
 	
 	for i := 0; i < len(topSessions_a); i+=2 {
 		sessionId := topSessions_a[i]
-		score, _ := strconv.ParseFloat(topSessions_a[i+1], 64)
+		score, _ := strconv.ParseFloat(topSessions_a[i+1], 32)
 		topSessionsMap[sessionId] = TopSessionEntry{
 			sessionId: sessionId,
 			score: float32(score),
@@ -112,7 +113,7 @@ func getTopSessions(pool *redis.Pool, minutes int64) []TopSessionEntry {
 	
 	for i := 0; i < len(topSessions_b); i+=2 {
 		sessionId := topSessions_b[i]
-		score, _ := strconv.ParseFloat(topSessions_b[i+1], 64)
+		score, _ := strconv.ParseFloat(topSessions_b[i+1], 32)
 		topSessionsMap[sessionId] = TopSessionEntry{
 			sessionId: sessionId,
 			score: float32(score),
@@ -172,14 +173,6 @@ func getSessionMapData(pool *redis.Pool, minutes int64) ([]SessionMapEntry, []Se
 
 	redisClient.Close()			
 
-	next := make(map[string]string)
-	for i := 0; i < len(next_a); i+=2{
-		next[next_a[i]] = next_a[i+1]
-	}
-	for i := 0; i < len(next_b); i+=2{
-		next[next_b[i]] = next_b[i+1]
-	}
-
 	direct := make(map[string]string)
 	for i := 0; i < len(direct_a); i+=2{
 		direct[direct_a[i]] = direct_a[i+1]
@@ -188,13 +181,43 @@ func getSessionMapData(pool *redis.Pool, minutes int64) ([]SessionMapEntry, []Se
 		direct[direct_b[i]] = direct_b[i+1]
 	}
 
-	// todo: parse next/direct and transform into session map entries
-	_ = next
-	_ = direct
+	next := make(map[string]string)
+	for i := 0; i < len(next_a); i+=2{
+		next[next_a[i]] = next_a[i+1]
+	}
+	for i := 0; i < len(next_b); i+=2{
+		next[next_b[i]] = next_b[i+1]
+	}
 
 	directSessions := make([]SessionMapEntry, 0)
+	for _, v := range direct {
+		values := strings.Split(v, "|")
+		if len(values) != 2 {
+			continue
+		}
+		lat, _ := strconv.ParseFloat(values[0], 32)
+		long, _ := strconv.ParseFloat(values[1], 32)
+		entry := SessionMapEntry{
+			latitude: float32(lat),
+			longitude: float32(long),
+		}
+		directSessions = append(directSessions, entry)
+	}
 	
 	nextSessions := make([]SessionMapEntry, 0)
+	for _, v := range next {
+		values := strings.Split(v, "|")
+		if len(values) != 2 {
+			continue
+		}
+		lat, _ := strconv.ParseFloat(values[0], 32)
+		long, _ := strconv.ParseFloat(values[1], 32)
+		entry := SessionMapEntry{
+			latitude: float32(lat),
+			longitude: float32(long),
+		}
+		nextSessions = append(nextSessions, entry)
+	}
 
 	return directSessions, nextSessions
 }
@@ -218,7 +241,7 @@ func redis_portal(seconds int)  {
 		threadCount, _ = strconv.Atoi(threadCountString)
 	}
 
-	location := "123|-100"
+	location := "123.13|-100.52"
 
 	sessionMeta := "d6ba813821381|AT&T U-verse|ESL Gaming Online, Inc|colocrossing.chicago|55.72|43.96"
 
@@ -330,7 +353,7 @@ func redis_portal(seconds int)  {
 		    }()
 
 		    go func() {
-		    	nextSessions, directSessions = getSessionMapData(poolSessionMap, minutes)
+		    	directSessions, nextSessions = getSessionMapData(poolSessionMap, minutes)
 		    	wg.Done()
 		    }()
 			
