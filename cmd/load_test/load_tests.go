@@ -36,6 +36,102 @@ import (
 
 // ----------------------------------------------------------------------
 
+func redis_session_slices(seconds int) {
+
+	fmt.Printf("redis_session_slices\n")
+
+	threadCount := 2
+	threadCountString, ok := os.LookupEnv("THREAD_COUNT")
+	if ok {
+		threadCount, _ = strconv.Atoi(threadCountString)
+	}
+
+	redisPortalHost := os.Getenv("REDIS_HOST_SESSION_SLICES")
+
+	pool := redis.Pool{
+        MaxIdle: 5,
+        MaxActive: 64,
+		IdleTimeout: 60 * time.Second,
+		Dial: func() (redis.Conn, error) {
+			return redis.Dial("tcp", redisPortalHost)
+		},
+	}
+
+	redisClient := pool.Get()
+	redisClient.Send("PING")
+	redisClient.Send("FLUSHDB")
+	redisClient.Flush()
+	pong, err := redisClient.Receive()
+	if err != nil || pong != "PONG" {
+		panic(err)
+	}
+	redisClient.Close()			
+
+	sliceData := "slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice"
+
+	for k := 0; k < threadCount; k++ {
+
+		go func(thread int) {
+
+			time.Sleep(time.Duration(rand.Intn(10000))*time.Millisecond)
+			
+	        client, err := net.Dial("tcp", redisPortalHost)
+	        if err != nil {
+                panic(err)
+	        }
+
+			go func() {
+				reader := bufio.NewReader(client)
+				for {
+					message, _ := reader.ReadString('\n')
+					_ = message
+				}
+			}()
+
+			base := uint64(0)
+
+			for {
+
+				for i := 0; i < 10; i++ {
+
+					for j:= 0; j < 1000; j++ {
+						sessionId := base + uint64(thread*100000) + uint64(i*1000) + uint64(j)
+						sessionIdString := fmt.Sprintf("%016x", sessionId)
+						fmt.Fprintf(client, "RPUSH ss-%s \"%s\"\n", sessionIdString, sliceData)
+						fmt.Fprintf(client, "EXPIRE ss-%s 120\n", sessionIdString)
+					}
+
+					time.Sleep(time.Second)
+				}
+
+				base += 100
+			}
+		}(k)
+
+	}
+
+	go func() {
+		fmt.Printf("\n")
+		for {
+			redisClient := pool.Get()
+			// todo: get all slices for a random session
+			redisClient.Close()			
+			fmt.Printf("crunch\n")
+			time.Sleep(time.Second*10)
+		}
+	}()
+
+	if seconds < 0 {
+		for {
+			time.Sleep(time.Minute)
+		}
+
+	}
+	
+	time.Sleep(time.Second * time.Duration(seconds))
+
+}
+
 func redis_session_meta(seconds int) {
 
 	fmt.Printf("redis_session_meta\n")
@@ -69,16 +165,6 @@ func redis_session_meta(seconds int) {
 
 	sessionMeta := "d6ba813821381|AT&T U-verse|ESL Gaming Online, Inc|colocrossing.chicago|55.72|43.96"
 
-	/*
-	sliceData := "slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice"
-	*/
-
-	logfile, err := os.OpenFile("app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		panic(err)
-	}
-	defer logfile.Close()
-
 	for k := 0; k < threadCount; k++ {
 
 		go func(thread int) {
@@ -94,7 +180,7 @@ func redis_session_meta(seconds int) {
 				reader := bufio.NewReader(client)
 				for {
 					message, _ := reader.ReadString('\n')
-					logfile.WriteString(message)
+					_ = message
 				}
 			}()
 
@@ -109,8 +195,6 @@ func redis_session_meta(seconds int) {
 						sessionIdString := fmt.Sprintf("%016x", sessionId)
 						fmt.Fprintf(client, "SET sm-%s \"%s\" EX 120\n", sessionIdString, sessionMeta)
 						fmt.Fprintf(client, "EXPIRE sm-%s 120\n", sessionIdString)
-						// fmt.Fprintf(client, "RPUSH ss-%s \"%s\"\n", sessionIdString, sliceData)
-						// fmt.Fprintf(client, "EXPIRE ss-%s 120\n", sessionIdString)
 					}
 
 					time.Sleep(time.Second)
@@ -175,12 +259,6 @@ func redis_top_sessions(seconds int) {
 	}
 	redisClient.Close()			
 
-	logfile, err := os.OpenFile("app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		panic(err)
-	}
-	defer logfile.Close()
-
 	for k := 0; k < threadCount; k++ {
 
 		go func(thread int) {
@@ -196,7 +274,7 @@ func redis_top_sessions(seconds int) {
 				reader := bufio.NewReader(client)
 				for {
 					message, _ := reader.ReadString('\n')
-					logfile.WriteString(message)
+					_ = message
 				}
 			}()
 
@@ -1131,8 +1209,9 @@ func main() {
 		seconds = 5*60
 	}
 
-	redis_session_meta(seconds)
+	redis_session_slices(seconds)
 
+	// redis_session_meta(seconds)
 	// redis_top_sessions(seconds)
 
 	// in_memory_map_load_test()

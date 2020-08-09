@@ -143,6 +143,10 @@ ifndef REDIS_HOST_SESSION_META
 export REDIS_HOST_SESSION_META = 127.0.0.1:6379
 endif
 
+ifndef REDIS_HOST_SESSION_SLICES
+export REDIS_HOST_SESSION_SLICES = 127.0.0.1:6379
+endif
+
 ifndef AUTH_DOMAIN
 export AUTH_DOMAIN = networknext.auth0.com
 endif
