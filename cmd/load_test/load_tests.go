@@ -36,17 +36,17 @@ import (
 
 // ----------------------------------------------------------------------
 
-func redis_top_sessions(seconds int) {
+func redis_session_meta(seconds int) {
 
-	fmt.Printf("redis_top_sessions\n")
+	fmt.Printf("redis_session_meta\n")
 
-	threadCount := 25
+	threadCount := 2
 	threadCountString, ok := os.LookupEnv("THREAD_COUNT")
 	if ok {
 		threadCount, _ = strconv.Atoi(threadCountString)
 	}
 
-	redisPortalHost := os.Getenv("REDIS_HOST_PORTAL")
+	redisPortalHost := os.Getenv("REDIS_HOST_SESSION_META")
 
 	pool := redis.Pool{
         MaxIdle: 5,
@@ -67,11 +67,113 @@ func redis_top_sessions(seconds int) {
 	}
 	redisClient.Close()			
 
-	// sessionMeta := "d6ba813821381|AT&T U-verse|ESL Gaming Online, Inc|colocrossing.chicago|55.72|43.96"
+	sessionMeta := "d6ba813821381|AT&T U-verse|ESL Gaming Online, Inc|colocrossing.chicago|55.72|43.96"
 
 	/*
 	sliceData := "slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice"
 	*/
+
+	logfile, err := os.OpenFile("app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		panic(err)
+	}
+	defer logfile.Close()
+
+	for k := 0; k < threadCount; k++ {
+
+		go func(thread int) {
+
+			time.Sleep(time.Duration(rand.Intn(10000))*time.Millisecond)
+			
+	        client, err := net.Dial("tcp", redisPortalHost)
+	        if err != nil {
+                panic(err)
+	        }
+
+			go func() {
+				reader := bufio.NewReader(client)
+				for {
+					message, _ := reader.ReadString('\n')
+					logfile.WriteString(message)
+				}
+			}()
+
+			base := uint64(0)
+
+			for {
+
+				for i := 0; i < 10; i++ {
+
+					for j:= 0; j < 1000; j++ {
+						sessionId := base + uint64(thread*100000) + uint64(i*1000) + uint64(j)
+						sessionIdString := fmt.Sprintf("%016x", sessionId)
+						fmt.Fprintf(client, "SET sm-%s \"%s\" EX 120\n", sessionIdString, sessionMeta)
+						fmt.Fprintf(client, "EXPIRE sm-%s 120\n", sessionIdString)
+						// fmt.Fprintf(client, "RPUSH ss-%s \"%s\"\n", sessionIdString, sliceData)
+						// fmt.Fprintf(client, "EXPIRE ss-%s 120\n", sessionIdString)
+					}
+
+					time.Sleep(time.Second)
+				}
+
+				base += 100
+			}
+		}(k)
+
+	}
+
+	go func() {
+		fmt.Printf("\n")
+		for {
+			redisClient := pool.Get()
+			// todo: get 1000 random session meta
+			redisClient.Close()			
+			fmt.Printf("crunch\n")
+			time.Sleep(time.Second*10)
+		}
+	}()
+
+	if seconds < 0 {
+		for {
+			time.Sleep(time.Minute)
+		}
+
+	}
+	
+	time.Sleep(time.Second * time.Duration(seconds))
+
+}
+
+func redis_top_sessions(seconds int) {
+
+	fmt.Printf("redis_top_sessions\n")
+
+	threadCount := 2
+	threadCountString, ok := os.LookupEnv("THREAD_COUNT")
+	if ok {
+		threadCount, _ = strconv.Atoi(threadCountString)
+	}
+
+	redisPortalHost := os.Getenv("REDIS_HOST_TOP_SESSIONS")
+
+	pool := redis.Pool{
+        MaxIdle: 5,
+        MaxActive: 64,
+		IdleTimeout: 60 * time.Second,
+		Dial: func() (redis.Conn, error) {
+			return redis.Dial("tcp", redisPortalHost)
+		},
+	}
+
+	redisClient := pool.Get()
+	redisClient.Send("PING")
+	redisClient.Send("FLUSHDB")
+	redisClient.Flush()
+	pong, err := redisClient.Receive()
+	if err != nil || pong != "PONG" {
+		panic(err)
+	}
+	redisClient.Close()			
 
 	logfile, err := os.OpenFile("app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
@@ -127,10 +229,6 @@ func redis_top_sessions(seconds int) {
 						sessionIdString := fmt.Sprintf("%016x", sessionId)
 						fmt.Fprintf(client, "ZADD sc-%d-%d %d \"%s\"\n", customerId, minutes, score[i], sessionIdString)
 						fmt.Fprintf(client, "EXPIRE sc-%d-%d 10\n", customerId, minutes)
-						// fmt.Fprintf(client, "SET sm-%s \"%s\" EX 120\n", sessionIdString, sessionMeta)
-						// fmt.Fprintf(client, "EXPIRE sm-%s 120\n", sessionIdString)
-						// fmt.Fprintf(client, "RPUSH ss-%s \"%s\"\n", sessionIdString, sliceData)
-						// fmt.Fprintf(client, "EXPIRE ss-%s 120\n", sessionIdString)
 					}
 
 					time.Sleep(time.Second)
@@ -160,34 +258,7 @@ func redis_top_sessions(seconds int) {
 			if err != nil {
 				panic(err)
 			}
-			if len(topSessions) > 0 {
-				/*
-				keys := make([]interface{}, len(topSessions))
-				for i := range keys {
-					keys[i] = fmt.Sprintf("sm-%s", topSessions[i])
-				}
-				redisClient.Send("MGET", keys...)
-				redisClient.Send("LRANGE", fmt.Sprintf("ss-%s", topSessions[0]), "0", "-1")
-				redisClient.Flush()
-				sessionMeta, err := redis.Strings(redisClient.Receive())
-				if err != nil {
-					panic(err)
-				}
-				if len(sessionMeta) != len(topSessions) {
-					panic("failed to get top sessions\n")
-				}
-				sessionSlices, err := redis.Strings(redisClient.Receive())
-				if err != nil {
-					panic(err)
-				}
-				_ = sessionSlices
-				*/
-				/*
-				for i := range sessionSlices {
-					fmt.Printf("%d: %s\n", i, sessionSlices[i])
-				}
-				*/
-			}
+			_ = topSessions
 			redisClient.Close()			
 			fmt.Printf("crunch: top %d of %d sessions (%.2f seconds)\n", len(topSessions), totalSessions, time.Since(start).Seconds())
 			time.Sleep(time.Second*10)
@@ -1060,7 +1131,9 @@ func main() {
 		seconds = 5*60
 	}
 
-	redis_top_sessions(seconds)
+	redis_session_meta(seconds)
+
+	// redis_top_sessions(seconds)
 
 	// in_memory_map_load_test()
 	// zeromq_load_test()
