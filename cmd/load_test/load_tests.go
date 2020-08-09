@@ -235,6 +235,8 @@ func redis_portal(seconds int)  {
 
 			// simulate the portal cruncher inserting session data into redis
 
+			// IMPORTANT: Although we process session data together, we write to different redis clients per-aspect!
+
 			base := uint64(0)
 
 			for {
@@ -324,11 +326,12 @@ func redis_portal(seconds int)  {
 		}
 	}()
 
+	// wait the specified amount of time, or forever, if set to -1...
+
 	if seconds < 0 {
 		for {
 			time.Sleep(time.Minute)
 		}
-
 	}
 	
 	time.Sleep(time.Second * time.Duration(seconds))
