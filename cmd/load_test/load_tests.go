@@ -91,6 +91,8 @@ func redis_top_sessions(seconds int) {
 				}
 			}()
 
+			base := uint64(0)
+
 			for {
 
 				for i := 0; i < 10; i++ {
@@ -104,14 +106,14 @@ func redis_top_sessions(seconds int) {
 					fmt.Fprintf(client, "ZADD s-%d", minutes)
 					for j:= 0; j < 1000; j++ {
 						score := rand.Intn(100000)
-						sessionId := uint64(thread*100000) + uint64(i*1000) + uint64(j)
+						sessionId := base + uint64(thread*100000) + uint64(i*1000) + uint64(j)
 						sessionIdString := fmt.Sprintf("%016x", sessionId)
 						fmt.Fprintf(client, " %d \"%s\"", score, sessionIdString)
 					}
 					fmt.Fprintf(client, "\n")
 				
 					for j:= 0; j < 1000; j++ {
-						sessionId := uint64(thread*100000) + uint64(i*1000) + uint64(j)
+						sessionId := base + uint64(thread*100000) + uint64(i*1000) + uint64(j)
 						sessionIdString := fmt.Sprintf("%016x", sessionId)
 						fmt.Fprintf(client, "SET sm-%s \"%s\" EX 120\n", sessionIdString, sessionMeta)
 						fmt.Fprintf(client, "RPUSH ss-%s \"%s\"\n", sessionIdString, sliceData)
@@ -121,6 +123,8 @@ func redis_top_sessions(seconds int) {
 	
 					time.Sleep(time.Second)
 				}
+
+				base += 100
 			}
 		}(k)
 
