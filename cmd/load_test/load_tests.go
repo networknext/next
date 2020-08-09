@@ -15,6 +15,7 @@ import (
 	"time"
 	*/
 
+	"strconv"
 	"bufio"
 	"os"
 	"net"
@@ -39,6 +40,12 @@ func redis_top_sessions(seconds int) {
 
 	fmt.Printf("redis_top_sessions\n")
 
+	threadCount := 25
+	threadCountString, ok := os.LookupEnv("THREAD_COUNT")
+	if ok {
+		threadCount, _ = strconv.Atoi(threadCountString)
+	}
+
 	redisPortalHost := os.Getenv("REDIS_HOST_PORTAL")
 
 	pool := redis.Pool{
@@ -60,11 +67,11 @@ func redis_top_sessions(seconds int) {
 	}
 	redisClient.Close()			
 
-	threadCount := 25
+	// sessionMeta := "d6ba813821381|AT&T U-verse|ESL Gaming Online, Inc|colocrossing.chicago|55.72|43.96"
 
-	sessionMeta := "d6ba813821381|AT&T U-verse|ESL Gaming Online, Inc|colocrossing.chicago|55.72|43.96"
-
+	/*
 	sliceData := "slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice-slice"
+	*/
 
 	logfile, err := os.OpenFile("app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
@@ -91,7 +98,11 @@ func redis_top_sessions(seconds int) {
 				}
 			}()
 
+			base := uint64(0)
+
 			for {
+
+				score := make([]int, 1000)
 
 				for i := 0; i < 10; i++ {
 
@@ -99,28 +110,33 @@ func redis_top_sessions(seconds int) {
 					secs := now.Unix()
 					minutes := secs / 60
 
-					fmt.Fprintf(client, "EXPIRE s-%d 10\n", minutes)
-
 					fmt.Fprintf(client, "ZADD s-%d", minutes)
 					for j:= 0; j < 1000; j++ {
-						score := rand.Intn(100000)
-						sessionId := uint64(thread*100000) + uint64(i*1000) + uint64(j)
+						score[i] = rand.Intn(100000)
+						sessionId := base + uint64(thread*100000) + uint64(i*1000) + uint64(j)
 						sessionIdString := fmt.Sprintf("%016x", sessionId)
-						fmt.Fprintf(client, " %d \"%s\"", score, sessionIdString)
+						fmt.Fprintf(client, " %d %s", score[i], sessionIdString)
 					}
 					fmt.Fprintf(client, "\n")
 				
+					fmt.Fprintf(client, "EXPIRE s-%d 10\n", minutes)
+
 					for j:= 0; j < 1000; j++ {
-						sessionId := uint64(thread*100000) + uint64(i*1000) + uint64(j)
+						sessionId := base + uint64(thread*100000) + uint64(i*1000) + uint64(j)
+						customerId := sessionId % 10
 						sessionIdString := fmt.Sprintf("%016x", sessionId)
-						fmt.Fprintf(client, "SET sm-%s \"%s\" EX 120\n", sessionIdString, sessionMeta)
-						fmt.Fprintf(client, "RPUSH ss-%s \"%s\"\n", sessionIdString, sliceData)
-						fmt.Fprintf(client, "EXPIRE sm-%s 120\n", sessionIdString)
-						fmt.Fprintf(client, "EXPIRE ss-%s 120\n", sessionIdString)
+						fmt.Fprintf(client, "ZADD sc-%d-%d %d \"%s\"\n", customerId, minutes, score[i], sessionIdString)
+						fmt.Fprintf(client, "EXPIRE sc-%d-%d 10\n", customerId, minutes)
+						// fmt.Fprintf(client, "SET sm-%s \"%s\" EX 120\n", sessionIdString, sessionMeta)
+						// fmt.Fprintf(client, "EXPIRE sm-%s 120\n", sessionIdString)
+						// fmt.Fprintf(client, "RPUSH ss-%s \"%s\"\n", sessionIdString, sliceData)
+						// fmt.Fprintf(client, "EXPIRE ss-%s 120\n", sessionIdString)
 					}
-	
+
 					time.Sleep(time.Second)
 				}
+
+				base += 100
 			}
 		}(k)
 
@@ -145,6 +161,7 @@ func redis_top_sessions(seconds int) {
 				panic(err)
 			}
 			if len(topSessions) > 0 {
+				/*
 				keys := make([]interface{}, len(topSessions))
 				for i := range keys {
 					keys[i] = fmt.Sprintf("sm-%s", topSessions[i])
@@ -164,6 +181,7 @@ func redis_top_sessions(seconds int) {
 					panic(err)
 				}
 				_ = sessionSlices
+				*/
 				/*
 				for i := range sessionSlices {
 					fmt.Printf("%d: %s\n", i, sessionSlices[i])
