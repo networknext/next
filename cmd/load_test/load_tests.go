@@ -36,6 +36,152 @@ import (
 
 // ----------------------------------------------------------------------
 
+func redis_session_map(seconds int) {
+
+	fmt.Printf("redis_session_map\n")
+
+	threadCount := 2
+	threadCountString, ok := os.LookupEnv("THREAD_COUNT")
+	if ok {
+		threadCount, _ = strconv.Atoi(threadCountString)
+	}
+
+	redisPortalHost := os.Getenv("REDIS_HOST_SESSION_MAP")
+
+	pool := redis.Pool{
+        MaxIdle: 5,
+        MaxActive: 64,
+		IdleTimeout: 60 * time.Second,
+		Dial: func() (redis.Conn, error) {
+			return redis.Dial("tcp", redisPortalHost)
+		},
+	}
+
+	redisClient := pool.Get()
+	redisClient.Send("PING")
+	redisClient.Send("FLUSHDB")
+	redisClient.Flush()
+	pong, err := redisClient.Receive()
+	if err != nil || pong != "PONG" {
+		panic(err)
+	}
+	redisClient.Close()			
+
+	location := "123|-100"
+
+	for k := 0; k < threadCount; k++ {
+
+		go func(thread int) {
+
+			time.Sleep(time.Duration(rand.Intn(10000))*time.Millisecond)
+			
+	        client, err := net.Dial("tcp", redisPortalHost)
+	        if err != nil {
+                panic(err)
+	        }
+
+			go func() {
+				reader := bufio.NewReader(client)
+				for {
+					message, _ := reader.ReadString('\n')
+					_ = message
+				}
+			}()
+
+			base := uint64(0)
+
+			for {
+
+				for i := 0; i < 10; i++ {
+
+					now := time.Now()
+					secs := now.Unix()
+					minutes := secs / 60
+
+					for j:= 0; j < 1000; j++ {
+						next := (j%10) == 0
+						sessionId := base + uint64(thread*100000) + uint64(i*1000) + uint64(j)
+						sessionIdString := fmt.Sprintf("%016x", sessionId)
+						if next {
+							fmt.Fprintf(client, "HSET n-%d %s %s\n", minutes, sessionIdString, location)
+							fmt.Fprintf(client, "HDEL d-%d %s\n", minutes, sessionIdString)
+						} else {
+							fmt.Fprintf(client, "HSET d-%d %s %s\n", minutes, sessionIdString, location)
+							fmt.Fprintf(client, "HDEL n-%d %s\n", minutes, sessionIdString)
+						}
+					}
+				
+					fmt.Fprintf(client, "EXPIRE n-%d 10\n", minutes)
+					fmt.Fprintf(client, "EXPIRE d-%d 10\n", minutes)
+
+					time.Sleep(time.Second)
+				}
+
+				base += 100
+			}
+		}(k)
+
+	}
+
+	go func() {
+		fmt.Printf("\n")
+		for {
+			start := time.Now()
+			secs := start.Unix()
+			minutes := secs / 60
+			redisClient := pool.Get()
+			redisClient.Send("HGETALL", fmt.Sprintf("n-%d", minutes-1))
+			redisClient.Send("HGETALL", fmt.Sprintf("n-%d", minutes))
+			redisClient.Send("HGETALL", fmt.Sprintf("d-%d", minutes-1))
+			redisClient.Send("HGETALL", fmt.Sprintf("d-%d", minutes))
+			redisClient.Flush()
+			next_a, err := redis.Strings(redisClient.Receive())
+			if err != nil {
+				panic(err)
+			}
+			next_b, err := redis.Strings(redisClient.Receive())
+			if err != nil {
+				panic(err)
+			}
+			direct_a, err := redis.Strings(redisClient.Receive())
+			if err != nil {
+				panic(err)
+			}
+			direct_b, err := redis.Strings(redisClient.Receive())
+			if err != nil {
+				panic(err)
+			}
+			next := make(map[string]string)
+			for i := 0; i < len(next_a); i+=2{
+				next[next_a[i]] = next_a[i+1]
+			}
+			for i := 0; i < len(next_b); i+=2{
+				next[next_b[i]] = next_b[i+1]
+			}
+			direct := make(map[string]string)
+			for i := 0; i < len(direct_a); i+=2{
+				direct[direct_a[i]] = direct_a[i+1]
+			}
+			for i := 0; i < len(direct_b); i+=2{
+				direct[direct_b[i]] = direct_b[i+1]
+			}
+			redisClient.Close()			
+			fmt.Printf("crunch: %d next, %d direct (%.2f seconds)\n", len(next)/2, len(direct)/2, time.Since(start).Seconds())
+			time.Sleep(time.Second*10)
+		}
+	}()
+
+	if seconds < 0 {
+		for {
+			time.Sleep(time.Minute)
+		}
+
+	}
+	
+	time.Sleep(time.Second * time.Duration(seconds))
+
+}
+
 func redis_session_slices(seconds int) {
 
 	fmt.Printf("redis_session_slices\n")
@@ -325,20 +471,48 @@ func redis_top_sessions(seconds int) {
 			secs := start.Unix()
 			minutes := secs / 60
 			redisClient := pool.Get()
-			redisClient.Send("ZUNIONSTORE", "s", "2", fmt.Sprintf("s-%d", minutes-1), fmt.Sprintf("s-%d", minutes))
-			redisClient.Send("ZREVRANGE", "s", "0", "999")
+			redisClient.Send("ZREVRANGE", fmt.Sprintf("s-%d", minutes-1), "0", "999", "WITHSCORES")
+			redisClient.Send("ZREVRANGE", fmt.Sprintf("s-%d", minutes), "0", "999", "WITHSCORES")
 			redisClient.Flush()
-			totalSessions, err := redisClient.Receive()
+			topSessions_a, err := redis.Strings(redisClient.Receive())
 			if err != nil {
 				panic(err)
 			}
-			topSessions, err := redis.Strings(redisClient.Receive())
+			topSessions_b, err := redis.Strings(redisClient.Receive())
 			if err != nil {
 				panic(err)
 			}
-			_ = topSessions
 			redisClient.Close()			
-			fmt.Printf("crunch: top %d of %d sessions (%.2f seconds)\n", len(topSessions), totalSessions, time.Since(start).Seconds())
+			type SessionEntry struct {
+				sessionId string
+				score int
+			}
+			topSessionsMap := make(map[string]SessionEntry)
+			for i := 0; i < len(topSessions_a); i+=2 {
+				sessionId := topSessions_a[i]
+				score, _ := strconv.Atoi(topSessions_a[i+1])
+				topSessionsMap[sessionId] = SessionEntry{
+					sessionId: sessionId,
+					score: score,
+				}
+			}
+			for i := 0; i < len(topSessions_b); i+=2 {
+				sessionId := topSessions_b[i]
+				score, _ := strconv.Atoi(topSessions_b[i+1])
+				topSessionsMap[sessionId] = SessionEntry{
+					sessionId: sessionId,
+					score: score,
+				}
+			}
+			topSessions := make([]SessionEntry, len(topSessionsMap))
+			topSessions = topSessions[:0]
+			for _,v := range topSessionsMap {
+				topSessions = append(topSessions, v)
+			}
+			if len(topSessions) > 1000 {
+				topSessions = topSessions[:1000]
+			}
+			fmt.Printf("crunch: top %d sessions (%.2f seconds)\n", len(topSessions), time.Since(start).Seconds())
 			time.Sleep(time.Second*10)
 		}
 	}()
@@ -1209,10 +1383,10 @@ func main() {
 		seconds = 5*60
 	}
 
-	redis_session_slices(seconds)
-
+	// redis_session_map(seconds)
+	// redis_session_slices(seconds)
 	// redis_session_meta(seconds)
-	// redis_top_sessions(seconds)
+	redis_top_sessions(seconds)
 
 	// in_memory_map_load_test()
 	// zeromq_load_test()
