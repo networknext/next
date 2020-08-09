@@ -15,7 +15,7 @@ import (
 	"time"
 	*/
 
-	// "sync"
+	"sync"
 	"sort"
 	"strconv"
 	"bufio"
@@ -143,32 +143,34 @@ func getSessionMapData(pool *redis.Pool, minutes int64) ([]SessionMapEntry, []Se
 
 	redisClient := pool.Get()
 
-	/*
-	redisClientSessionMap.Send("HGETALL", fmt.Sprintf("n-%d", minutes-1))
-	redisClientSessionMap.Send("HGETALL", fmt.Sprintf("n-%d", minutes))
-	redisClientSessionMap.Send("HGETALL", fmt.Sprintf("d-%d", minutes-1))
-	redisClientSessionMap.Send("HGETALL", fmt.Sprintf("d-%d", minutes))
+	redisClient.Send("HGETALL", fmt.Sprintf("n-%d", minutes-1))
+	redisClient.Send("HGETALL", fmt.Sprintf("n-%d", minutes))
+	redisClient.Send("HGETALL", fmt.Sprintf("d-%d", minutes-1))
+	redisClient.Send("HGETALL", fmt.Sprintf("d-%d", minutes))
 
-	redisClientSessionMap.Flush()
+	redisClient.Flush()
 
-	next_a, err := redis.Strings(redisClientSessionMap.Receive())
-	if err != nil {
-		panic(err)
-	}
-	next_b, err := redis.Strings(redisClientSessionMap.Receive())
-	if err != nil {
-		panic(err)
-	}
-	direct_a, err := redis.Strings(redisClientSessionMap.Receive())
-	if err != nil {
-		panic(err)
-	}
-	direct_b, err := redis.Strings(redisClientSessionMap.Receive())
+	next_a, err := redis.Strings(redisClient.Receive())
 	if err != nil {
 		panic(err)
 	}
 
-	redisClientSessionMap.Close()			
+	next_b, err := redis.Strings(redisClient.Receive())
+	if err != nil {
+		panic(err)
+	}
+
+	direct_a, err := redis.Strings(redisClient.Receive())
+	if err != nil {
+		panic(err)
+	}
+
+	direct_b, err := redis.Strings(redisClient.Receive())
+	if err != nil {
+		panic(err)
+	}
+
+	redisClient.Close()			
 
 	next := make(map[string]string)
 	for i := 0; i < len(next_a); i+=2{
@@ -177,6 +179,7 @@ func getSessionMapData(pool *redis.Pool, minutes int64) ([]SessionMapEntry, []Se
 	for i := 0; i < len(next_b); i+=2{
 		next[next_b[i]] = next_b[i+1]
 	}
+
 	direct := make(map[string]string)
 	for i := 0; i < len(direct_a); i+=2{
 		direct[direct_a[i]] = direct_a[i+1]
@@ -184,9 +187,10 @@ func getSessionMapData(pool *redis.Pool, minutes int64) ([]SessionMapEntry, []Se
 	for i := 0; i < len(direct_b); i+=2{
 		direct[direct_b[i]] = direct_b[i+1]
 	}
-	*/
 
-	redisClient.Close()
+	// todo: parse next/direct and transform into session map entries
+	_ = next
+	_ = direct
 
 	directSessions := make([]SessionMapEntry, 0)
 	
@@ -312,13 +316,25 @@ func redis_portal(seconds int)  {
 			secs := start.Unix()
 			minutes := secs / 60
 
-			topSessions := getTopSessions(poolTopSessions, minutes)
+			var topSessions []TopSessionEntry
+			var nextSessions []SessionMapEntry
+			var directSessions []SessionMapEntry
 
-			nextSessions, directSessions := getSessionMapData(poolSessionMap, minutes)
+		    var wg sync.WaitGroup
 
-			// todo: session meta for top 1000 sessions
+		    wg.Add(2)
 
-			// todo: session slices for top 1000 sessions
+		    go func() {
+				topSessions = getTopSessions(poolTopSessions, minutes)
+				wg.Done()
+		    }()
+
+		    go func() {
+		    	nextSessions, directSessions = getSessionMapData(poolSessionMap, minutes)
+		    	wg.Done()
+		    }()
+			
+			wg.Wait()
 
 			fmt.Printf("crunch: top %d sessions, %d next, %d direct (%.2f seconds)\n", len(topSessions), len(nextSessions), len(directSessions), time.Since(start).Seconds())
 
