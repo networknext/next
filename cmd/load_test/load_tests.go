@@ -258,7 +258,7 @@ func redis_portal(seconds int) {
 
 			fmt.Printf("crunch: top %d sessions, %d next, %d direct (%.2f seconds)\n", len(topSessions), len(next), len(direct), time.Since(start).Seconds())
 
-			time.Sleep(time.Second)
+			time.Sleep(time.Second*10)
 		}
 	}()
 
