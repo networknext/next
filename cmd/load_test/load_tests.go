@@ -513,7 +513,7 @@ func redis_top_sessions(seconds int) {
 				topSessions = topSessions[:1000]
 			}
 			fmt.Printf("crunch: top %d sessions (%.2f seconds)\n", len(topSessions), time.Since(start).Seconds())
-			time.Sleep(time.Second*10)
+			time.Sleep(time.Second*1)
 		}
 	}()
 
