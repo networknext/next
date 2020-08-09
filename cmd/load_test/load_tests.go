@@ -104,6 +104,8 @@ func redis_portal(seconds int) {
 					secs := now.Unix()
 					minutes := secs / 60
 
+					fmt.Fprintf(client, "DEL s-%d\n", minutes-2)
+
 					fmt.Fprintf(client, "ZADD s-%d", minutes)
 					for j:= 0; j < 1000; j++ {
 						score[i] = rand.Intn(100000)
@@ -121,6 +123,7 @@ func redis_portal(seconds int) {
 						customerId := sessionId % 10
 						sessionIdString := fmt.Sprintf("%016x", sessionId)
 
+						fmt.Fprintf(client, "DEL sc-%d-%d\n", customerId, minutes-2)
 						fmt.Fprintf(client, "ZADD sc-%d-%d %d \"%s\"\n", customerId, minutes, score[i], sessionIdString)
 						fmt.Fprintf(client, "EXPIRE sc-%d-%d 10\n", customerId, minutes)
 
