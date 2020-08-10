@@ -16,149 +16,15 @@ import (
 )
 
 const (
-	VersionNumberInitRequest    = 1
+	VersionNumberInitRequest    = 0
 	VersionNumberInitResponse   = 0
-	VersionNumberUpdateRequest  = 1
+	VersionNumberUpdateRequest  = 0
 	VersionNumberUpdateResponse = 0
 
 	PacketSizeRelayInitResponse = 4 + 8 + crypto.KeySize
 
 	MaxRelayVersionLength = 10
 )
-
-// RelayPingStats describes the measured relay ping statistics to another relay
-type RelayPingStats struct {
-	ID         uint64  `json:"id"`
-	Address    string  `json:"address"`
-	RTT        float32 `json:"rtt"`
-	Jitter     float32 `json:"jitter"`
-	PacketLoss float32 `json:"packet_loss"`
-}
-
-// RelayRequest describes the packets coming into and going out of the relays endpoint
-type RelayRequest struct {
-	Address      net.UDPAddr
-	PingStats    []RelayPingStats
-	TrafficStats routing.RelayTrafficStats
-	ShuttingDown bool
-}
-
-func (r *RelayRequest) UnmarshalJSON(buf []byte) error {
-	data := make(map[string]interface{})
-
-	// Unmarshal the JSON into map
-	if err := json.Unmarshal(buf, &data); err != nil {
-		return err
-	}
-
-	// Get the address from the map
-	if addr, ok := data["address"].(string); ok {
-		if udpAddr, err := net.ResolveUDPAddr("udp", addr); err == nil {
-			r.Address = *udpAddr
-		} else {
-			return err
-		}
-	}
-
-	// Get the ping stats from the map
-	pingStats := make([]RelayPingStats, 0)
-	if pingStatsArray, ok := data["ping_stats"].([]interface{}); ok {
-		for _, v := range pingStatsArray { // Loop through the array of ping stats
-			if mapStats, ok := v.(map[string]interface{}); ok { // If we find one, then parse each field
-				stats := RelayPingStats{}
-
-				if id, ok := mapStats["id"].(string); ok {
-					id, err := strconv.ParseUint(id, 10, 64)
-					if err != nil {
-						return err
-					}
-
-					stats.ID = id
-				}
-
-				if addr, ok := mapStats["address"].(string); ok {
-					stats.Address = addr
-				}
-
-				// Validate the address is correctly formatted
-				if addr, ok := mapStats["address"].(string); ok {
-					if udpAddr, err := net.ResolveUDPAddr("udp", addr); err == nil {
-						stats.Address = udpAddr.String()
-					} else {
-						return err
-					}
-				}
-
-				if rtt, ok := mapStats["rtt"].(float64); ok {
-					stats.RTT = float32(rtt)
-				}
-
-				if jitter, ok := mapStats["jitter"].(float64); ok {
-					stats.Jitter = float32(jitter)
-				}
-
-				if packetLoss, ok := mapStats["packet_loss"].(float64); ok {
-					stats.PacketLoss = float32(packetLoss)
-				}
-
-				// Add the ping stat to the working list of ping stats
-				pingStats = append(pingStats, stats)
-			}
-		}
-
-		// Finally, save the working list of ping stats to the relay request
-		r.PingStats = pingStats
-	}
-
-	// Get the traffic stats from the map
-	if trafficStatsMap, ok := data["traffic_stats"].(map[string]interface{}); ok {
-		if sessionCount, ok := trafficStatsMap["session_count"].(float64); ok {
-			r.TrafficStats.SessionCount = uint64(sessionCount)
-		}
-
-		if bytesTx, ok := trafficStatsMap["bytes_tx"].(float64); ok {
-			r.TrafficStats.BytesSent = uint64(bytesTx)
-		}
-
-		if bytesRx, ok := trafficStatsMap["bytes_rx"].(float64); ok {
-			r.TrafficStats.BytesReceived = uint64(bytesRx)
-		}
-	}
-
-	// Get the shutting down flag from the map
-	if shuttingDown, ok := data["shutting_down"].(bool); ok {
-		r.ShuttingDown = shuttingDown
-	}
-
-	return nil
-}
-
-func (r RelayRequest) MarshalJSON() ([]byte, error) {
-	data := make(map[string]interface{})
-
-	data["address"] = r.Address.String()
-
-	pingStats := make([]map[string]interface{}, 0)
-	for _, stat := range r.PingStats {
-		stats := make(map[string]interface{})
-		stats["id"] = strconv.FormatUint(stat.ID, 10)
-		stats["address"] = stat.Address
-		stats["rtt"] = stat.RTT
-		stats["jitter"] = stat.Jitter
-		stats["packet_loss"] = stat.PacketLoss
-		pingStats = append(pingStats, stats)
-	}
-	data["ping_stats"] = pingStats
-
-	trafficStats := make(map[string]interface{})
-	trafficStats["session_count"] = r.TrafficStats.SessionCount
-	trafficStats["bytes_tx"] = r.TrafficStats.BytesSent
-	trafficStats["bytes_rx"] = r.TrafficStats.BytesReceived
-	data["traffic_stats"] = trafficStats
-	data["shutting_down"] = r.ShuttingDown
-
-	return json.Marshal(data)
-}
 
 // RelayInitRequest is the struct that describes the packets comming into the relay_init endpoint
 type RelayInitRequest struct {
@@ -167,7 +33,6 @@ type RelayInitRequest struct {
 	Nonce          []byte
 	Address        net.UDPAddr
 	EncryptedToken []byte
-	RelayVersion   string
 }
 
 func (r *RelayInitRequest) UnmarshalJSON(buf []byte) error {
@@ -235,12 +100,6 @@ func (r *RelayInitRequest) UnmarshalBinary(buf []byte) error {
 		return errors.New("invalid packet")
 	}
 
-	if r.Version >= 1 {
-		if !encoding.ReadString(buf, &index, &r.RelayVersion, MaxRelayVersionLength) {
-			return errors.New("invalid packet, could not read relay version")
-		}
-	}
-
 	if udp, err := net.ResolveUDPAddr("udp", addr); udp != nil && err == nil {
 		r.Address = *udp
 	} else {
@@ -259,7 +118,6 @@ func (r RelayInitRequest) MarshalBinary() ([]byte, error) {
 	encoding.WriteBytes(data, &index, r.Nonce, crypto.NonceSize)
 	encoding.WriteString(data, &index, r.Address.String(), uint32(len(r.Address.String())))
 	encoding.WriteBytes(data, &index, r.EncryptedToken, routing.EncryptedRelayTokenSize)
-	encoding.WriteString(data, &index, r.RelayVersion, MaxRelayVersionLength)
 
 	return data, nil
 }
@@ -436,6 +294,10 @@ func (r *RelayUpdateRequest) UnmarshalBinary(buff []byte) error {
 
 	if !encoding.ReadFloat64(buff, &index, &r.MemUsage) {
 		return errors.New("invalid packet, could not read memory usage")
+	}
+
+	if !encoding.ReadString(buff, &index, &r.RelayVersion, MaxRelayVersionLength) {
+		return errors.New("invalid packet, could not read relay version")
 	}
 
 	return nil

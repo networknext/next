@@ -140,10 +140,6 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			MaxSessions:    relay.MaxSessions,
 		}
 
-		if relayInitRequest.Version > 0 {
-			relayData.Version = relayInitRequest.RelayVersion
-		}
-
 		if _, ok := crypto.Open(relayInitRequest.EncryptedToken, relayInitRequest.Nonce, relayData.PublicKey, params.RouterPrivateKey); !ok {
 			level.Error(locallogger).Log("msg", "crypto open failed")
 			http.Error(writer, "crypto open failed", http.StatusUnauthorized)
@@ -328,15 +324,6 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			}
 		}
 
-		var version string
-		if relayUpdateRequest.Version == 0 {
-			// relay version is set here on updates with version == 0
-			version = relayUpdateRequest.RelayVersion
-		} else {
-			// relay version is set in init with version > 0, so keep the same
-			version = params.RelayMap.GetRelayData(relay.Addr.String()).Version
-		}
-
 		relayData := &routing.RelayData{
 			ID:             relay.ID,
 			Name:           relay.Name,
@@ -349,7 +336,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			MaxSessions:    relay.MaxSessions,
 			CPUUsage:       float32(relayUpdateRequest.CPUUsage) * 100.0,
 			MemUsage:       float32(relayUpdateRequest.MemUsage) * 100.0,
-			Version:        version,
+			Version:        relayUpdateRequest.RelayVersion,
 		}
 
 		// Update the relay data
