@@ -348,10 +348,10 @@ func redis_portal(seconds int)  {
 							fmt.Fprintf(clientSessionMap, "HDEL n-%d %s\n", minutes, sessionIdString)
 						}
 
-						fmt.Fprintf(clientSessionMeta, "SET sm-%s \"%s\" EX 120\n", sessionIdString, sessionMeta)
+						fmt.Fprintf(clientSessionMeta, "SET sm-%s %s EX 120\n", sessionIdString, sessionMeta)
 						fmt.Fprintf(clientSessionMeta, "EXPIRE sm-%s 120\n", sessionIdString)
 
-						fmt.Fprintf(clientSessionSlices, "RPUSH ss-%s \"%s\"\n", sessionIdString, sliceData)
+						fmt.Fprintf(clientSessionSlices, "RPUSH ss-%s %s\n", sessionIdString, sliceData)
 						fmt.Fprintf(clientSessionSlices, "EXPIRE ss-%s 120\n", sessionIdString)
 					}
 
