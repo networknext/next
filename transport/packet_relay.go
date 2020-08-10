@@ -414,6 +414,7 @@ func (r RelayUpdateResponse) MarshalBinary() ([]byte, error) {
 	responseData := make([]byte, r.size())
 
 	encoding.WriteUint32(responseData, &index, VersionNumberUpdateResponse)
+	encoding.WriteUint64(responseData, &index, uint64(r.Timestamp))
 	encoding.WriteUint32(responseData, &index, uint32(len(r.RelaysToPing)))
 	for i := range r.RelaysToPing {
 		encoding.WriteUint64(responseData, &index, r.RelaysToPing[i].RelayPingData.ID)
@@ -424,5 +425,5 @@ func (r RelayUpdateResponse) MarshalBinary() ([]byte, error) {
 }
 
 func (r *RelayUpdateResponse) size() int {
-	return 4 + 4 + (4+routing.MaxRelayAddressLength)*len(r.RelaysToPing)
+	return 4 + 8 + 4 + (8+routing.MaxRelayAddressLength)*len(r.RelaysToPing)
 }
