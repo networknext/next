@@ -308,11 +308,18 @@ build-relay-ref: ## builds the reference relay
 	@$(CXX) $(CXX_FLAGS) -o $(DIST_DIR)/reference_relay reference/relay/*.cpp $(LDFLAGS)
 	@printf "done\n"
 
+# Copy the binary twice.
+# Both the reference and new build to dist/relay.
+# For publishing to gcp there should be a
+# difference so that it isn't overwritten by accident.
 .PHONY: build-relay
 build-relay: ## builds the relay
 	@printf "Building relay... "
 	@mkdir -p $(DIST_DIR)
 	@cd $(RELAY_DIR) && $(MAKE) release
+	@echo $(shell pwd)
+	@cp $(RELAY_DIR)/bin/relay $(DIST_DIR)/relay
+	@cp $(RELAY_DIR)/bin/relay $(DIST_DIR)/relay_new
 	@echo "done"
 
 .PHONY: build-relay-tests
