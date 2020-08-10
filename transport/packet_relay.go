@@ -283,7 +283,7 @@ func (r *RelayUpdateRequest) UnmarshalBinary(buff []byte) error {
 
 	var shuttingDown uint8
 	if !encoding.ReadUint8(buff, &index, &shuttingDown) {
-		return errors.New("invalid packet, could not read shut down flag")
+		return errors.New("invalid packet, could not read shutdown flag")
 	}
 
 	r.ShuttingDown = shuttingDown != 0
@@ -363,7 +363,7 @@ func (r RelayUpdateRequest) MarshalBinary() ([]byte, error) {
 }
 
 func (r *RelayUpdateRequest) size() uint {
-	return uint(4 + 4 + len(r.Address.String()) + crypto.KeySize + 4 + 20*len(r.PingStats) + 8 + 8 + 8 + 1)
+	return uint(4 + 4 + len(r.Address.String()) + crypto.KeySize + 4 + 20*len(r.PingStats) + 8 + 8 + 8 + 1 + 8 + 8 + 4 + len(r.RelayVersion))
 }
 
 type RelayUpdateResponse struct {
@@ -377,6 +377,12 @@ func (r *RelayUpdateResponse) UnmarshalBinary(buff []byte) error {
 	if !encoding.ReadUint32(buff, &index, &version) {
 		return errors.New("failed to unmarshal relay update response version")
 	}
+
+	var timestamp uint64
+	if !encoding.ReadUint64(buff, &index, &timestamp) {
+		return errors.New("failed to unmarshal relay update response timestamp")
+	}
+	r.Timestamp = int64(timestamp)
 
 	var numRelaysToPing uint32
 	if !encoding.ReadUint32(buff, &index, &numRelaysToPing) {
