@@ -107,7 +107,7 @@ namespace core
      std::string base64RelayPublicKey,
      const core::SessionMap& sessions,
      legacy::v3::TrafficStats& stats,
-     net::IHttpRequester& requester);
+     net::IHttpClient& client);
     ~Backend() = default;
 
     auto init() -> bool;
@@ -131,7 +131,7 @@ namespace core
     const std::string mBase64RelayPublicKey;
     const core::SessionMap& mSessionMap;
     legacy::v3::TrafficStats& mStats;
-    net::IHttpRequester& mRequester;
+    net::IHttpClient& mRequester;
 
     auto update(util::ThroughputRecorder& recorder, bool shutdown) -> bool;
   };

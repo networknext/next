@@ -202,7 +202,7 @@ namespace core
    std::string base64RelayPublicKey,
    const core::SessionMap& sessions,
    legacy::v3::TrafficStats& stats,
-   net::IHttpRequester& requester)
+   net::IHttpClient& client)
    : mHostname(hostname),
      mAddressStr(address),
      mKeychain(keychain),
@@ -211,7 +211,7 @@ namespace core
      mBase64RelayPublicKey(base64RelayPublicKey),
      mSessionMap(sessions),
      mStats(stats),
-     mRequester(requester)
+     mRequester(client)
   {}
 
   auto Backend::init() -> bool

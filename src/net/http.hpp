@@ -5,10 +5,10 @@
 namespace net
 {
   // Interface for sending http requests
-  class IHttpRequester
+  class IHttpClient
   {
    public:
-    virtual ~IHttpRequester() = default;
+    virtual ~IHttpClient() = default;
     virtual auto sendRequest(
      const std::string hostname,
      const std::string endpoint,
@@ -16,7 +16,7 @@ namespace net
      std::vector<uint8_t>& response) -> bool = 0;
 
    protected:
-    IHttpRequester() = default;
+    IHttpClient() = default;
   };
 
   namespace beast = boost::beast;
@@ -24,7 +24,7 @@ namespace net
   namespace network = boost::asio;
   using tcp = network::ip::tcp;
 
-  class BeastWrapper: public IHttpRequester
+  class BeastWrapper: public IHttpClient
   {
    public:
     BeastWrapper();

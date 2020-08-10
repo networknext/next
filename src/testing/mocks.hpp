@@ -2,7 +2,7 @@
 #include "net/http.hpp"
 namespace testing
 {
-  class MockHttpRequester: public net::IHttpRequester
+  class MockHttpRequester: public net::IHttpClient
   {
    public:
     bool Success = true;            // The request was a success
