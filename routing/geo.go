@@ -134,6 +134,10 @@ func (l *Location) IsZero() bool {
 	return l.Latitude == 0 && l.Longitude == 0
 }
 
+func (l Location) RedisString() string {
+	return fmt.Sprintf("%.2f|%.2f|%s", l.Latitude, l.Longitude, l.ISP)
+}
+
 type IPStack struct {
 	*http.Client
 

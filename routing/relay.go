@@ -163,6 +163,10 @@ func (s Stats) String() string {
 	return fmt.Sprintf("RTT(%f) J(%f) PL(%f)", s.RTT, s.Jitter, s.PacketLoss)
 }
 
+func (s Stats) RedisString() string {
+	return fmt.Sprintf("%.2f|%.2f|%.2f", s.RTT, s.Jitter, s.PacketLoss)
+}
+
 type RelayPingData struct {
 	ID      uint64 `json:"relay_id"`
 	Address string `json:"relay_address"`

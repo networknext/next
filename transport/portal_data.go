@@ -233,10 +233,18 @@ type RelayHop struct {
 	Name string `json:"name"`
 }
 
+func (h *RelayHop) RedisString() string {
+	return fmt.Sprintf("%016x|%s", h.ID, h.Name)
+}
+
 type NearRelayPortalData struct {
 	ID          uint64        `json:"id"`
 	Name        string        `json:"name"`
 	ClientStats routing.Stats `json:"client_stats"`
+}
+
+func (n *NearRelayPortalData) RedisString() string {
+	return fmt.Sprintf("%016x|%s|%s", n.ID, n.Name, n.ClientStats.RedisString())
 }
 
 type SessionMeta struct {
@@ -555,6 +563,27 @@ func (s *SessionMeta) Anonymise() {
 	s.DatacenterAlias = ""
 }
 
+func (s SessionMeta) RedisString() string {
+	onNetworkNextString := "0"
+	if s.OnNetworkNext {
+		onNetworkNextString = "1"
+	}
+
+	result := fmt.Sprintf("%016x|%016x|%s|%s|%s|%.2f|%.2f|%.2f|%s|%s|%s|", s.ID, s.UserHash, s.DatacenterName, s.DatacenterAlias, onNetworkNextString,
+		s.NextRTT, s.DirectRTT, s.DeltaRTT, s.Location.RedisString(), s.ClientAddr, s.ServerAddr)
+	result += fmt.Sprintf("%d|", len(s.Hops))
+	for i := 0; i < len(s.Hops); i++ {
+		result += fmt.Sprintf("%s|", s.Hops[i].RedisString())
+	}
+	result += fmt.Sprintf("%s|%d|", s.SDK, s.Connection)
+	result += fmt.Sprintf("%d|", len(s.NearbyRelays))
+	for i := 0; i < len(s.NearbyRelays); i++ {
+		result += fmt.Sprintf("%s|", s.NearbyRelays[i].RedisString())
+	}
+	result += fmt.Sprintf("%d|%016x", s.Platform, s.BuyerID)
+	return result
+}
+
 func ObscureString(source string, delim string, count int) string {
 	numPieces := count
 	pieces := strings.Split(source, delim)
@@ -667,6 +696,25 @@ func (s SessionSlice) MarshalBinary() ([]byte, error) {
 
 func (s SessionSlice) Size() uint64 {
 	return 4 + 8 + (3 * 8) + (3 * 8) + (2 * 8) + 1 + 1 + 1
+}
+
+func (s SessionSlice) RedisString() string {
+	onNetworkNextString := "0"
+	if s.OnNetworkNext {
+		onNetworkNextString = "1"
+	}
+
+	isMultipathString := "0"
+	if s.IsMultiPath {
+		isMultipathString = "1"
+	}
+
+	isTryBeforeYouBuyString := "0"
+	if s.IsTryBeforeYouBuy {
+		isTryBeforeYouBuyString = "1"
+	}
+
+	return fmt.Sprintf("%d|%s|%s|%s|%s|%s|%s", s.Timestamp.Unix(), s.Next.RedisString(), s.Direct.RedisString(), s.Envelope.RedisString(), onNetworkNextString, isMultipathString, isTryBeforeYouBuyString)
 }
 
 type SessionMapPoint struct {

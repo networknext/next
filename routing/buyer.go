@@ -3,6 +3,7 @@ package routing
 import (
 	"encoding/base64"
 	"encoding/binary"
+	"fmt"
 )
 
 type Buyer struct {
@@ -35,4 +36,8 @@ func (b *Buyer) DecodedPublicKey(key string) error {
 type Envelope struct {
 	Up   int64 `json:"up"`
 	Down int64 `json:"down"`
+}
+
+func (e Envelope) RedisString() string {
+	return fmt.Sprintf("%d|%d", e.Up, e.Down)
 }

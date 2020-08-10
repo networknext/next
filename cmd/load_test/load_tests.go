@@ -7,43 +7,42 @@ package main
 
 import (
 	/*
-	"context"
-	"fmt"
-	"math/rand"
-	"sync"
-	"sync/atomic"
-	"time"
+		"context"
+		"fmt"
+		"math/rand"
+		"sync"
+		"sync/atomic"
+		"time"
 	*/
 
-	"strings"
-	"sync"
+	"bufio"
+	"fmt"
+	"math/rand"
+	"net"
+	"os"
 	"sort"
 	"strconv"
-	"bufio"
-	"os"
-	"net"
+	"strings"
+	"sync"
 	"time"
-	"fmt"
-	"math/rand"
-	"github.com/gomodule/redigo/redis"
 
+	"github.com/gomodule/redigo/redis"
 	/*
-	"github.com/go-redis/redis/v7"
-	"github.com/networknext/backend/routing"
-	"github.com/networknext/backend/storage"
-	"github.com/networknext/backend/transport"
-	"github.com/networknext/backend/transport/pubsub"
-	"github.com/pebbe/zmq4"
-	*/
-)
+		"github.com/go-redis/redis/v7"
+		"github.com/networknext/backend/routing"
+		"github.com/networknext/backend/storage"
+		"github.com/networknext/backend/transport"
+		"github.com/networknext/backend/transport/pubsub"
+		"github.com/pebbe/zmq4"
+	*/)
 
 // ----------------------------------------------------------------------
 
 func createRedisPool(hostNameEnv string) *redis.Pool {
 	hostname := os.Getenv(hostNameEnv)
 	pool := redis.Pool{
-        MaxIdle: 5,
-        MaxActive: 64,
+		MaxIdle:     5,
+		MaxActive:   64,
 		IdleTimeout: 60 * time.Second,
 		Dial: func() (redis.Conn, error) {
 			return redis.Dial("tcp", hostname)
@@ -63,10 +62,10 @@ func createRedisPool(hostNameEnv string) *redis.Pool {
 
 func createRedisClient(hostNameEnv string) net.Conn {
 	hostname := os.Getenv(hostNameEnv)
-    client, err := net.Dial("tcp", hostname)
-    if err != nil {
-        panic(err)
-    }
+	client, err := net.Dial("tcp", hostname)
+	if err != nil {
+		panic(err)
+	}
 	go func() {
 		reader := bufio.NewReader(client)
 		for {
@@ -79,7 +78,7 @@ func createRedisClient(hostNameEnv string) net.Conn {
 
 type TopSessionEntry struct {
 	sessionId string
-	score float32
+	score     float32
 }
 
 func getTopSessions(pool *redis.Pool, minutes int64) []TopSessionEntry {
@@ -90,7 +89,7 @@ func getTopSessions(pool *redis.Pool, minutes int64) []TopSessionEntry {
 	redisClient.Send("ZREVRANGE", fmt.Sprintf("s-%d", minutes), "0", "999", "WITHSCORES")
 
 	redisClient.Flush()
-	
+
 	topSessions_a, err := redis.Strings(redisClient.Receive())
 	if err != nil {
 		panic(err)
@@ -99,33 +98,33 @@ func getTopSessions(pool *redis.Pool, minutes int64) []TopSessionEntry {
 	if err != nil {
 		panic(err)
 	}
-				
+
 	topSessionsMap := make(map[string]TopSessionEntry)
-	
-	for i := 0; i < len(topSessions_a); i+=2 {
+
+	for i := 0; i < len(topSessions_a); i += 2 {
 		sessionId := topSessions_a[i]
 		score, _ := strconv.ParseFloat(topSessions_a[i+1], 32)
 		topSessionsMap[sessionId] = TopSessionEntry{
 			sessionId: sessionId,
-			score: float32(score),
+			score:     float32(score),
 		}
 	}
-	
-	for i := 0; i < len(topSessions_b); i+=2 {
+
+	for i := 0; i < len(topSessions_b); i += 2 {
 		sessionId := topSessions_b[i]
 		score, _ := strconv.ParseFloat(topSessions_b[i+1], 32)
 		topSessionsMap[sessionId] = TopSessionEntry{
 			sessionId: sessionId,
-			score: float32(score),
+			score:     float32(score),
 		}
 	}
-	
+
 	topSessions := make([]TopSessionEntry, len(topSessionsMap))
 	topSessions = topSessions[:0]
-	for _,v := range topSessionsMap {
+	for _, v := range topSessionsMap {
 		topSessions = append(topSessions, v)
 	}
-	
+
 	if len(topSessions) > 1000 {
 		topSessions = topSessions[:1000]
 	}
@@ -213,21 +212,21 @@ func getSessionMapData(pool *redis.Pool, minutes int64) ([]SessionMapEntry, []Se
 		panic(err)
 	}
 
-	redisClient.Close()			
+	redisClient.Close()
 
 	direct := make(map[string]string)
-	for i := 0; i < len(direct_a); i+=2{
+	for i := 0; i < len(direct_a); i += 2 {
 		direct[direct_a[i]] = direct_a[i+1]
 	}
-	for i := 0; i < len(direct_b); i+=2{
+	for i := 0; i < len(direct_b); i += 2 {
 		direct[direct_b[i]] = direct_b[i+1]
 	}
 
 	next := make(map[string]string)
-	for i := 0; i < len(next_a); i+=2{
+	for i := 0; i < len(next_a); i += 2 {
 		next[next_a[i]] = next_a[i+1]
 	}
-	for i := 0; i < len(next_b); i+=2{
+	for i := 0; i < len(next_b); i += 2 {
 		next[next_b[i]] = next_b[i+1]
 	}
 
@@ -240,12 +239,12 @@ func getSessionMapData(pool *redis.Pool, minutes int64) ([]SessionMapEntry, []Se
 		lat, _ := strconv.ParseFloat(values[0], 32)
 		long, _ := strconv.ParseFloat(values[1], 32)
 		entry := SessionMapEntry{
-			latitude: float32(lat),
+			latitude:  float32(lat),
 			longitude: float32(long),
 		}
 		directSessions = append(directSessions, entry)
 	}
-	
+
 	nextSessions := make([]SessionMapEntry, 0)
 	for _, v := range next {
 		values := strings.Split(v, "|")
@@ -255,7 +254,7 @@ func getSessionMapData(pool *redis.Pool, minutes int64) ([]SessionMapEntry, []Se
 		lat, _ := strconv.ParseFloat(values[0], 32)
 		long, _ := strconv.ParseFloat(values[1], 32)
 		entry := SessionMapEntry{
-			latitude: float32(lat),
+			latitude:  float32(lat),
 			longitude: float32(long),
 		}
 		nextSessions = append(nextSessions, entry)
@@ -264,7 +263,7 @@ func getSessionMapData(pool *redis.Pool, minutes int64) ([]SessionMapEntry, []Se
 	return directSessions, nextSessions
 }
 
-func redis_portal(seconds int)  {
+func redis_portal(seconds int) {
 
 	fmt.Printf("redis_portal\n")
 
@@ -293,8 +292,8 @@ func redis_portal(seconds int)  {
 
 		go func(thread int) {
 
-			time.Sleep(time.Duration(rand.Intn(1000))*time.Millisecond)
-			
+			time.Sleep(time.Duration(rand.Intn(1000)) * time.Millisecond)
+
 			// create one redis client per-aspect
 
 			clientTopSessions := createRedisClient("REDIS_HOST_TOP_SESSIONS")
@@ -319,17 +318,17 @@ func redis_portal(seconds int)  {
 					fmt.Fprintf(clientTopSessions, "DEL s-%d\r\n", minutes-2)
 
 					fmt.Fprintf(clientTopSessions, "ZADD s-%d", minutes)
-					for j:= 0; j < 1000; j++ {
+					for j := 0; j < 1000; j++ {
 						score[i] = rand.Intn(100000)
 						sessionId := base + uint64(thread*100000) + uint64(i*1000) + uint64(j)
 						sessionIdString := fmt.Sprintf("%016x", sessionId)
 						fmt.Fprintf(clientTopSessions, " %d %s", score[i], sessionIdString)
 					}
 					fmt.Fprintf(clientTopSessions, "\r\n")
-				
+
 					fmt.Fprintf(clientTopSessions, "EXPIRE s-%d 10\r\n", minutes)
 
-					for j:= 0; j < 1000; j++ {
+					for j := 0; j < 1000; j++ {
 
 						sessionId := base + uint64(thread*100000) + uint64(i*1000) + uint64(j)
 						customerId := sessionId % 10
@@ -339,7 +338,7 @@ func redis_portal(seconds int)  {
 						fmt.Fprintf(clientTopSessions, "ZADD sc-%d-%d %d %s\r\n", customerId, minutes, score[i], sessionIdString)
 						fmt.Fprintf(clientTopSessions, "EXPIRE sc-%d-%d 10\r\n", customerId, minutes)
 
-						next := (j%10) == 0
+						next := (j % 10) == 0
 						if next {
 							fmt.Fprintf(clientSessionMap, "HSET n-%d %s %s\r\n", minutes, sessionIdString, location)
 							fmt.Fprintf(clientSessionMap, "HDEL d-%d %s\r\n", minutes, sessionIdString)
@@ -374,7 +373,7 @@ func redis_portal(seconds int)  {
 		fmt.Printf("\n")
 
 		for {
-		
+
 			start := time.Now()
 			secs := start.Unix()
 			minutes := secs / 60
@@ -383,11 +382,11 @@ func redis_portal(seconds int)  {
 			var nextSessions []SessionMapEntry
 			var directSessions []SessionMapEntry
 
-		    var wg sync.WaitGroup
+			var wg sync.WaitGroup
 
-		    wg.Add(2)
+			wg.Add(2)
 
-		    go func() {
+			go func() {
 				topSessions = getTopSessions(poolTopSessions, minutes)
 				if len(topSessions) > 0 {
 					go func() {
@@ -399,13 +398,13 @@ func redis_portal(seconds int)  {
 					}()
 				}
 				wg.Done()
-		    }()
+			}()
 
-		    go func() {
-		    	directSessions, nextSessions = getSessionMapData(poolSessionMap, minutes)
-		    	wg.Done()
-		    }()
-			
+			go func() {
+				directSessions, nextSessions = getSessionMapData(poolSessionMap, minutes)
+				wg.Done()
+			}()
+
 			wg.Wait()
 
 			fmt.Printf("crunch: top %d sessions, %d next, %d direct (%.2f seconds)\n", len(topSessions), len(nextSessions), len(directSessions), time.Since(start).Seconds())
@@ -421,7 +420,7 @@ func redis_portal(seconds int)  {
 			time.Sleep(time.Minute)
 		}
 	}
-	
+
 	time.Sleep(time.Second * time.Duration(seconds))
 
 }
@@ -1278,7 +1277,7 @@ func main() {
 
 	env, ok := os.LookupEnv("ENV")
 	if ok && env == "local" {
-		seconds = 5*60
+		seconds = 5 * 60
 	}
 
 	redis_portal(seconds)
