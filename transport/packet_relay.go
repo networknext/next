@@ -111,7 +111,7 @@ func (r *RelayInitRequest) UnmarshalBinary(buf []byte) error {
 
 // MarshalBinary ...
 func (r RelayInitRequest) MarshalBinary() ([]byte, error) {
-	data := make([]byte, 4+4+crypto.NonceSize+4+len(r.Address.String())+routing.EncryptedRelayTokenSize+1)
+	data := make([]byte, 4+4+crypto.NonceSize+4+len(r.Address.String())+routing.EncryptedRelayTokenSize)
 	index := 0
 	encoding.WriteUint32(data, &index, r.Magic)
 	encoding.WriteUint32(data, &index, r.Version)
@@ -348,12 +348,18 @@ func (r RelayUpdateRequest) MarshalBinary() ([]byte, error) {
 	encoding.WriteUint64(data, &index, r.TrafficStats.SessionCount)
 	encoding.WriteUint64(data, &index, r.TrafficStats.BytesSent)
 	encoding.WriteUint64(data, &index, r.TrafficStats.BytesReceived)
-
+	var shutdownFlag uint8
 	if r.ShuttingDown {
-		data[index] = 1
+		shutdownFlag = 1
+	} else {
+		shutdownFlag = 0
 	}
+	encoding.WriteUint8(data, &index, shutdownFlag)
+	encoding.WriteFloat64(data, &index, r.CPUUsage)
+	encoding.WriteFloat64(data, &index, r.MemUsage)
+	encoding.WriteString(data, &index, r.RelayVersion, uint32(len(r.RelayVersion)))
 
-	return data, nil
+	return data[:index], nil
 }
 
 func (r *RelayUpdateRequest) size() uint {
@@ -421,9 +427,9 @@ func (r RelayUpdateResponse) MarshalBinary() ([]byte, error) {
 		encoding.WriteString(responseData, &index, r.RelaysToPing[i].RelayPingData.Address, routing.MaxRelayAddressLength)
 	}
 
-	return responseData, nil
+	return responseData[:index], nil
 }
 
 func (r *RelayUpdateResponse) size() int {
-	return 4 + 8 + 4 + (8+routing.MaxRelayAddressLength)*len(r.RelaysToPing)
+	return 4 + 8 + 4 + len(r.RelaysToPing)*(8+routing.MaxRelayAddressLength)
 }
