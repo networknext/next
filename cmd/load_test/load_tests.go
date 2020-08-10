@@ -135,6 +135,48 @@ func getTopSessions(pool *redis.Pool, minutes int64) []TopSessionEntry {
 	return topSessions
 }
 
+func getTopSessionsMeta(pool *redis.Pool, topSessions []TopSessionEntry) []string {
+
+	if len(topSessions) == 0 {
+		return make([]string, 0)
+	}
+
+	redisClient := pool.Get()
+
+	var keys []interface{}
+
+	for i := range topSessions {
+		keys = append(keys, fmt.Sprintf("sm-%s", topSessions[i].sessionId))
+	}
+
+	redisClient.Send("MGET", keys...)
+
+	redisClient.Flush()
+
+	sessionsMeta, err := redis.Strings(redisClient.Receive())
+	if err != nil {
+		panic(err)
+	}
+
+	return sessionsMeta
+}
+
+func getSessionSlices(pool *redis.Pool, sessionId string) []string {
+
+	redisClient := pool.Get()
+
+	redisClient.Send("LRANGE", fmt.Sprintf("ss-%s", sessionId), "0", "-1")
+
+	redisClient.Flush()
+
+	sessionSlices, err := redis.Strings(redisClient.Receive())
+	if err != nil {
+		panic(err)
+	}
+
+	return sessionSlices
+}
+
 type SessionMapEntry struct {
 	latitude  float32
 	longitude float32
@@ -230,8 +272,8 @@ func redis_portal(seconds int)  {
 
 	poolTopSessions := createRedisPool("REDIS_HOST_TOP_SESSIONS")
 	poolSessionMap := createRedisPool("REDIS_HOST_SESSION_MAP")
-	// poolSessionMeta := createRedisPool("REDIS_HOST_SESSION_META")
-	// poolSessionSlices := createRedisPool("REDIS_HOST_SESSION_SLICES")
+	poolSessionMeta := createRedisPool("REDIS_HOST_SESSION_META")
+	poolSessionSlices := createRedisPool("REDIS_HOST_SESSION_SLICES")
 
 	// main loop to insert session entries. ~10k sessions per-thread
 
@@ -261,8 +303,6 @@ func redis_portal(seconds int)  {
 			clientSessionSlices := createRedisClient("REDIS_HOST_SESSION_SLICES")
 
 			// simulate the portal cruncher inserting session data into redis
-
-			// IMPORTANT: Although we process session data together, we write to different redis clients per-aspect!
 
 			base := uint64(0)
 
@@ -349,6 +389,15 @@ func redis_portal(seconds int)  {
 
 		    go func() {
 				topSessions = getTopSessions(poolTopSessions, minutes)
+				if len(topSessions) > 0 {
+					go func() {
+						topSessionMeta := getTopSessionsMeta(poolSessionMeta, topSessions)
+						topSessionSlices := getSessionSlices(poolSessionSlices, topSessions[0].sessionId)
+						// fmt.Printf("%v\n", sessionSlices)
+						_ = topSessionMeta
+						_ = topSessionSlices
+					}()
+				}
 				wg.Done()
 		    }()
 
