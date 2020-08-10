@@ -22,8 +22,6 @@ const (
 	VersionNumberUpdateResponse = 0
 
 	PacketSizeRelayInitResponse = 4 + 8 + crypto.KeySize
-
-	MaxRelayVersionLength = 10
 )
 
 // RelayInitRequest is the struct that describes the packets comming into the relay_init endpoint
@@ -296,7 +294,7 @@ func (r *RelayUpdateRequest) UnmarshalBinary(buff []byte) error {
 		return errors.New("invalid packet, could not read memory usage")
 	}
 
-	if !encoding.ReadString(buff, &index, &r.RelayVersion, MaxRelayVersionLength) {
+	if !encoding.ReadString(buff, &index, &r.RelayVersion, math.MaxUint32) {
 		return errors.New("invalid packet, could not read relay version")
 	}
 
