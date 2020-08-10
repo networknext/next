@@ -316,7 +316,7 @@ func redis_portal(seconds int)  {
 					secs := now.Unix()
 					minutes := secs / 60
 
-					fmt.Fprintf(clientTopSessions, "DEL s-%d\n", minutes-2)
+					fmt.Fprintf(clientTopSessions, "DEL s-%d\r\n", minutes-2)
 
 					fmt.Fprintf(clientTopSessions, "ZADD s-%d", minutes)
 					for j:= 0; j < 1000; j++ {
@@ -325,9 +325,9 @@ func redis_portal(seconds int)  {
 						sessionIdString := fmt.Sprintf("%016x", sessionId)
 						fmt.Fprintf(clientTopSessions, " %d %s", score[i], sessionIdString)
 					}
-					fmt.Fprintf(clientTopSessions, "\n")
+					fmt.Fprintf(clientTopSessions, "\r\n")
 				
-					fmt.Fprintf(clientTopSessions, "EXPIRE s-%d 10\n", minutes)
+					fmt.Fprintf(clientTopSessions, "EXPIRE s-%d 10\r\n", minutes)
 
 					for j:= 0; j < 1000; j++ {
 
@@ -335,28 +335,28 @@ func redis_portal(seconds int)  {
 						customerId := sessionId % 10
 						sessionIdString := fmt.Sprintf("%016x", sessionId)
 
-						fmt.Fprintf(clientTopSessions, "DEL sc-%d-%d\n", customerId, minutes-2)
-						fmt.Fprintf(clientTopSessions, "ZADD sc-%d-%d %d \"%s\"\n", customerId, minutes, score[i], sessionIdString)
-						fmt.Fprintf(clientTopSessions, "EXPIRE sc-%d-%d 10\n", customerId, minutes)
+						fmt.Fprintf(clientTopSessions, "DEL sc-%d-%d\r\n", customerId, minutes-2)
+						fmt.Fprintf(clientTopSessions, "ZADD sc-%d-%d %d %s\r\n", customerId, minutes, score[i], sessionIdString)
+						fmt.Fprintf(clientTopSessions, "EXPIRE sc-%d-%d 10\r\n", customerId, minutes)
 
 						next := (j%10) == 0
 						if next {
-							fmt.Fprintf(clientSessionMap, "HSET n-%d %s %s\n", minutes, sessionIdString, location)
-							fmt.Fprintf(clientSessionMap, "HDEL d-%d %s\n", minutes, sessionIdString)
+							fmt.Fprintf(clientSessionMap, "HSET n-%d %s %s\r\n", minutes, sessionIdString, location)
+							fmt.Fprintf(clientSessionMap, "HDEL d-%d %s\r\n", minutes, sessionIdString)
 						} else {
-							fmt.Fprintf(clientSessionMap, "HSET d-%d %s %s\n", minutes, sessionIdString, location)
-							fmt.Fprintf(clientSessionMap, "HDEL n-%d %s\n", minutes, sessionIdString)
+							fmt.Fprintf(clientSessionMap, "HSET d-%d %s %s\r\n", minutes, sessionIdString, location)
+							fmt.Fprintf(clientSessionMap, "HDEL n-%d %s\r\n", minutes, sessionIdString)
 						}
 
-						fmt.Fprintf(clientSessionMeta, "SET sm-%s \"%s\" EX 120\n", sessionIdString, sessionMeta)
-						fmt.Fprintf(clientSessionMeta, "EXPIRE sm-%s 120\n", sessionIdString)
+						fmt.Fprintf(clientSessionMeta, "SET sm-%s %s EX 120\r\n", sessionIdString, sessionMeta)
+						fmt.Fprintf(clientSessionMeta, "EXPIRE sm-%s 120\r\n", sessionIdString)
 
-						fmt.Fprintf(clientSessionSlices, "RPUSH ss-%s \"%s\"\n", sessionIdString, sliceData)
-						fmt.Fprintf(clientSessionSlices, "EXPIRE ss-%s 120\n", sessionIdString)
+						fmt.Fprintf(clientSessionSlices, "RPUSH ss-%s %s\r\n", sessionIdString, sliceData)
+						fmt.Fprintf(clientSessionSlices, "EXPIRE ss-%s 120\r\n", sessionIdString)
 					}
 
-					fmt.Fprintf(clientSessionMap, "EXPIRE n-%d 10\n", minutes)
-					fmt.Fprintf(clientSessionMap, "EXPIRE d-%d 10\n", minutes)
+					fmt.Fprintf(clientSessionMap, "EXPIRE n-%d 10\r\n", minutes)
+					fmt.Fprintf(clientSessionMap, "EXPIRE d-%d 10\r\n", minutes)
 
 					time.Sleep(time.Second)
 				}
