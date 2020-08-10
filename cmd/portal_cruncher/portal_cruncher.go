@@ -47,7 +47,7 @@ func createRedisClient(hostname string) (net.Conn, error) {
 	return client, nil
 }
 
-func createAndValidateRedisClient(logger log.Logger, hostname string) (net.Conn, error) {
+func createAndValidateRedisClient(hostname string) (net.Conn, error) {
 	client, err := createRedisClient(hostname)
 	if err != nil {
 		return nil, fmt.Errorf("could not dial: %v", err)
@@ -358,25 +358,25 @@ func main() {
 		for i := int64(0); i < redisGoroutineCount; i++ {
 			go func() {
 				// Each goroutine should use its own TCP socket
-				clientTopSessions, err := createAndValidateRedisClient(logger, os.Getenv("REDIS_HOST_TOP_SESSIONS"))
+				clientTopSessions, err := createAndValidateRedisClient(os.Getenv("REDIS_HOST_TOP_SESSIONS"))
 				if err != nil {
 					level.Error(logger).Log("envvar", "REDIS_HOST_TOP_SESSIONS", "err", err)
 					os.Exit(1)
 				}
 
-				clientSessionMap, err := createAndValidateRedisClient(logger, os.Getenv("REDIS_HOST_SESSION_MAP"))
+				clientSessionMap, err := createAndValidateRedisClient(os.Getenv("REDIS_HOST_SESSION_MAP"))
 				if err != nil {
 					level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_MAP", "err", err)
 					os.Exit(1)
 				}
 
-				clientSessionMeta, err := createAndValidateRedisClient(logger, os.Getenv("REDIS_HOST_SESSION_META"))
+				clientSessionMeta, err := createAndValidateRedisClient(os.Getenv("REDIS_HOST_SESSION_META"))
 				if err != nil {
 					level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_META", "err", err)
 					os.Exit(1)
 				}
 
-				clientSessionSlices, err := createAndValidateRedisClient(logger, os.Getenv("REDIS_HOST_SESSION_SLICES"))
+				clientSessionSlices, err := createAndValidateRedisClient(os.Getenv("REDIS_HOST_SESSION_SLICES"))
 				if err != nil {
 					level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_SLICES", "err", err)
 					os.Exit(1)

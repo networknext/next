@@ -11,10 +11,10 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/gomodule/redigo/redis"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/rpc/v2"
 	"github.com/gorilla/rpc/v2/json2"
@@ -40,6 +40,29 @@ var (
 	sha           string
 	tag           string
 )
+
+func createAndValidateRedisPool(hostname string) (*redis.Pool, error) {
+	pool := redis.Pool{
+		MaxIdle:     5,
+		MaxActive:   64,
+		IdleTimeout: 60 * time.Second,
+		Dial: func() (redis.Conn, error) {
+			return redis.Dial("tcp", hostname)
+		},
+	}
+	redisClient := pool.Get()
+	defer redisClient.Close()
+
+	redisClient.Send("PING")
+	redisClient.Send("FLUSHDB")
+	redisClient.Flush()
+	pong, err := redisClient.Receive()
+	if err != nil || pong != "PONG" {
+		return nil, fmt.Errorf("could not ping: %v", err)
+	}
+
+	return &pool, nil
+}
 
 func main() {
 	fmt.Printf("portal: Git Hash: %s - Commit: %s\n", sha, commitMessage)
@@ -116,11 +139,27 @@ func main() {
 		}
 	}
 
-	redisPortalHosts := os.Getenv("REDIS_HOST_PORTAL")
-	splitPortalHosts := strings.Split(redisPortalHosts, ",")
-	redisClientPortal := storage.NewRedisClient(splitPortalHosts...)
-	if err := redisClientPortal.Ping().Err(); err != nil {
-		level.Error(logger).Log("envvar", "REDIS_HOST_PORTAL", "value", redisPortalHosts, "err", err)
+	redisPoolTopSessions, err := createAndValidateRedisPool(os.Getenv("REDIS_HOST_TOP_SESSIONS"))
+	if err != nil {
+		level.Error(logger).Log("envvar", "REDIS_HOST_TOP_SESSIONS", "err", err)
+		os.Exit(1)
+	}
+
+	redisPoolSessionMap, err := createAndValidateRedisPool(os.Getenv("REDIS_HOST_SESSION_MAP"))
+	if err != nil {
+		level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_MAP", "err", err)
+		os.Exit(1)
+	}
+
+	redisPoolSessionMeta, err := createAndValidateRedisPool(os.Getenv("REDIS_HOST_SESSION_META"))
+	if err != nil {
+		level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_META", "err", err)
+		os.Exit(1)
+	}
+
+	redisPoolSessionSlices, err := createAndValidateRedisPool(os.Getenv("REDIS_HOST_SESSION_SLICES"))
+	if err != nil {
+		level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_SLICES", "err", err)
 		os.Exit(1)
 	}
 
@@ -351,9 +390,12 @@ func main() {
 
 	// Generate Sessions Map Points periodically
 	buyerService := jsonrpc.BuyersService{
-		Logger:      logger,
-		RedisClient: redisClientPortal,
-		Storage:     db,
+		Logger:                 logger,
+		RedisPoolTopSessions:   redisPoolTopSessions,
+		RedisPoolSessionMeta:   redisPoolSessionMeta,
+		RedisPoolSessionSlices: redisPoolSessionSlices,
+		RedisPoolSessionMap:    redisPoolSessionMap,
+		Storage:                db,
 	}
 
 	go func() {
