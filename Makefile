@@ -135,6 +135,22 @@ ifndef REDIS_HOST_PORTAL_EXPIRATION
 export REDIS_HOST_PORTAL_EXPIRATION = 30s
 endif
 
+ifndef REDIS_HOST_TOP_SESSIONS
+export REDIS_HOST_TOP_SESSIONS = 127.0.0.1:6379
+endif
+
+ifndef REDIS_HOST_SESSION_META
+export REDIS_HOST_SESSION_META = 127.0.0.1:6379
+endif
+
+ifndef REDIS_HOST_SESSION_SLICES
+export REDIS_HOST_SESSION_SLICES = 127.0.0.1:6379
+endif
+
+ifndef REDIS_HOST_SESSION_MAP
+export REDIS_HOST_SESSION_MAP = 127.0.0.1:6379
+endif
+
 ifndef AUTH_DOMAIN
 export AUTH_DOMAIN = networknext.auth0.com
 endif
@@ -275,9 +291,8 @@ test-func-parallel: build-test-func-parallel run-test-func-parallel ## runs func
 
 .PHONY: test-load
 test-load: ## runs load tests
-	@printf "\nRunning load tests...\n\n" ; \
-	$(GO) run ./cmd/load_tests/load_tests.go ; \
-	printf "\ndone\n\n"
+	@printf "\nRunning load tests...\n" ; \
+	$(GO) run ./cmd/load_test/load_tests.go
 
 #######################
 # Relay Build Process #
@@ -348,6 +363,10 @@ dev-analytics: build-analytics ## runs a local analytics service
 dev-portal-cruncher: build-portal-cruncher ## runs a local portal cruncher
 	@HTTP_PORT=42000 CRUNCHER_PORT=5555 ./dist/portal_cruncher
 
+.PHONY: dev-load-test
+dev-load-test: build-load-test ## runs a local load test
+	./dist/load_test
+
 .PHONY: dev-reference-backend
 dev-reference-backend: ## runs a local reference backend
 	$(GO) run reference/backend/*.go
@@ -375,6 +394,12 @@ $(DIST_DIR)/$(SDKNAME).so:
 
 .PHONY: build-sdk
 build-sdk: $(DIST_DIR)/$(SDKNAME).so ## builds the sdk
+
+PHONY: build-load-test
+build-load-test: ## builds the load test binary
+	@printf "Building load test... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/load_test ./cmd/load_test/load_tests.go
+	@printf "done\n"
 
 PHONY: build-portal-cruncher
 build-portal-cruncher: ## builds the portal_cruncher binary
@@ -433,7 +458,7 @@ deploy-server-backend-dev-2: ## builds and deploys the server backend to dev
 
 .PHONY: deploy-server-backend-staging
 deploy-server-backend-staging: ## builds and deploys the server backend to dev
-	./deploy/deploy.sh -e staging -c staging-0ckq -t server -b gs://staging_artifacts
+	./deploy/deploy.sh -e staging -c staging -t server -b gs://staging_artifacts
 
 .PHONY: build-analytics
 build-analytics: ## builds the analytics binary
@@ -512,6 +537,10 @@ build-relay-backend-artifacts-staging: build-relay-backend ## builds the relay b
 .PHONY: build-portal-cruncher-artifacts-staging
 build-portal-cruncher-artifacts-staging: build-portal-cruncher ## builds the portal cruncher artifacts staging
 	./deploy/build-artifacts.sh -e staging -s portal_cruncher
+
+.PHONY: build-load-test-artifacts-staging
+build-load-test-artifacts-staging: build-load-test ## builds the load test artifacts staging
+	./deploy/build-artifacts.sh -e staging -s load_test
 
 .PHONY: build-server-backend-artifacts-staging
 build-server-backend-artifacts-staging: build-server-backend ## builds the server backend artifacts staging
@@ -592,6 +621,10 @@ publish-portal-artifacts-staging: ## publishes the portal artifacts to GCP Stora
 .PHONY: publish-portal-cruncher-artifacts-staging
 publish-portal-cruncher-artifacts-staging: ## publishes the portal cruncher artifacts to GCP Storage with gsutil staging
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s portal_cruncher
+
+.PHONY: publish-load-test-artifacts-staging
+publish-load-test-artifacts-staging: ## publishes the load test artifacts to GCP Storage with gsutil staging
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s load_test
 
 .PHONY: publish-relay-backend-artifacts-staging
 publish-relay-backend-artifacts-staging: ## publishes the relay backend artifacts to GCP Storage with gsutil staging
@@ -681,7 +714,7 @@ build-next: ## builds the operator tool
 	@printf "done\n"
 
 .PHONY: build-all
-build-all: build-portal-cruncher build-analytics build-billing build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
+build-all: build-load-test build-portal-cruncher build-analytics build-billing build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all
