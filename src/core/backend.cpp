@@ -116,8 +116,8 @@ namespace core
     BytesReceived = encoding::ReadUint64(v, index);
     ShuttingDown = static_cast<bool>(encoding::ReadUint8(v, index));
 
-    encoding::ReadBytes(v.data(), v.size(), index, reinterpret_cast<uint8_t*>(&CPUUsage), sizeof(double), sizeof(double));
-    encoding::ReadBytes(v.data(), v.size(), index, reinterpret_cast<uint8_t*>(&MemUsage), sizeof(double), sizeof(double));
+    CPUUsage = encoding::ReadDouble(v, index);
+    MemUsage = encoding::ReadDouble(v, index);
     RelayVersion = encoding::ReadString(v, index);
 
     return true;
@@ -368,9 +368,8 @@ namespace core
       encoding::WriteUint8(req, index, shutdown);
 
       auto sysStats = os::GetUsage();
-      encoding::WriteBytes(req.data(), req.size(), index, reinterpret_cast<uint8_t*>(&sysStats.CPU), sizeof(double));
-      encoding::WriteBytes(req.data(), req.size(), index, reinterpret_cast<uint8_t*>(&sysStats.Mem), sizeof(double));
-
+      encoding::WriteDouble(req, index, sysStats.CPU);
+      encoding::WriteDouble(req, index, sysStats.Mem);
       encoding::WriteString(req, index, RELAY_VERSION);
     }
 

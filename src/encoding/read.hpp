@@ -21,6 +21,9 @@ namespace encoding
   template <typename T>
   uint64_t ReadUint64(const T& buff, size_t& index);
 
+  template <typename T>
+  double ReadDouble(const T& buff, size_t& index);
+
   void ReadBytes(const uint8_t* buff, size_t buffLength, size_t& index, uint8_t* storage, size_t storageLength, size_t len);
 
   template <typename T, typename U>
@@ -73,6 +76,14 @@ namespace encoding
     retval |= (static_cast<uint64_t>(buff[index++]) << 40);
     retval |= (static_cast<uint64_t>(buff[index++]) << 48);
     retval |= (static_cast<uint64_t>(buff[index++]) << 56);
+    return retval;
+  }
+
+  template <typename T>
+  double ReadDouble(const T& buff, size_t& index)
+  {
+    double retval;
+    encoding::ReadBytes(buff.data(), buff.size(), index, reinterpret_cast<uint8_t*>(&retval), sizeof(double), sizeof(double));
     return retval;
   }
 
