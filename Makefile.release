@@ -24,7 +24,7 @@ DIST_DIR							:= ../../dist
 ################
 
 .PHONY: all
-all: $(BIN)/$(EXE) $(DIST_DIR)/$(EXE)
+all: $(BIN)/$(EXE)
 
 .PHONY: run
 run: $(BIN)/$(EXE)

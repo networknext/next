@@ -56,7 +56,7 @@ Test(core_backend_init_valid)
   core::RelayManager<core::Relay> manager;
   core::SessionMap sessions;
   std::array<uint8_t, crypto::KeySize> pk{};
-  testing::MockHttpRequester client;
+  testing::MockHttpClient client;
   client.Response = makeInitResponse(0, 123456789, pk);
   core::Backend backend(
    BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, TrafficStats, client);
@@ -91,7 +91,7 @@ Test(core_Backend_updateCycle_shutdown_60s)
   volatile bool handle = true;
   volatile bool shouldCleanShutdown = false;
   util::ThroughputRecorder logger;
-  testing::MockHttpRequester client;
+  testing::MockHttpClient client;
 
   core::Backend backend(
    BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, TrafficStats, client);
@@ -126,7 +126,7 @@ Test(core_Backend_updateCycle_ack_and_30s)
   volatile bool handle = true;
   volatile bool shouldCleanShutdown = false;
   util::ThroughputRecorder logger;
-  testing::MockHttpRequester client;
+  testing::MockHttpClient client;
 
   core::Backend backend(
    BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, TrafficStats, client);
@@ -161,7 +161,7 @@ Test(core_Backend_updateCycle_no_ack_for_40s_then_ack_then_wait)
   volatile bool handle = true;
   volatile bool shouldCleanShutdown = false;
   util::ThroughputRecorder recorder;
-  testing::MockHttpRequester client;
+  testing::MockHttpClient client;
 
   core::Backend backend(
    BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, TrafficStats, client);
@@ -199,7 +199,7 @@ Test(core_Backend_updateCycle_update_fails_for_max_number_of_attempts)
   volatile bool handle = true;
   volatile bool shouldCleanShutdown = false;
   util::ThroughputRecorder recorder;
-  testing::MockHttpRequester client;
+  testing::MockHttpClient client;
 
   core::Backend backend(
    BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, TrafficStats, client);
@@ -234,7 +234,7 @@ Test(core_Backend_updateCycle_no_clean_shutdown)
   volatile bool handle = true;
   volatile bool shouldCleanShutdown = false;
   util::ThroughputRecorder recorder;
-  testing::MockHttpRequester client;
+  testing::MockHttpClient client;
 
   core::Backend backend(
    BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, TrafficStats, client);
@@ -261,7 +261,7 @@ Test(core_Backend_update_valid)
   core::RelayManager<core::Relay> manager;
   core::SessionMap sessions;
   util::ThroughputRecorder recorder;
-  testing::MockHttpRequester client;
+  testing::MockHttpClient client;
   core::Backend backend(
    BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, TrafficStats, client);
 
@@ -352,7 +352,7 @@ Test(core_Backend_update_shutting_down_true)
   core::RelayManager<core::Relay> manager;
   core::SessionMap sessions;
   util::ThroughputRecorder recorder;
-  testing::MockHttpRequester client;
+  testing::MockHttpClient client;
 
   core::Backend backend(
    BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, TrafficStats, client);

@@ -2,7 +2,7 @@
 #include "net/http.hpp"
 namespace testing
 {
-  class MockHttpRequester: public net::IHttpClient
+  class MockHttpClient: public net::IHttpClient
   {
    public:
     bool Success = true;            // The request was a success
@@ -18,7 +18,7 @@ namespace testing
      std::vector<uint8_t>& response) -> bool override;
   };
 
-  inline auto MockHttpRequester::sendRequest(
+  inline auto MockHttpClient::sendRequest(
    const std::string hostname, const std::string endpoint, const std::vector<uint8_t>& request, std::vector<uint8_t>& response)
    -> bool
   {
