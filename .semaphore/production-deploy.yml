@@ -42,10 +42,6 @@ blocks:
           commands:
             - make build-server-backend-artifacts-prod
             - make publish-server-backend-artifacts-prod
-        - name: Load Test
-          commands:
-            - make build-load-test-artifacts-prod
-            - make publish-load-test-artifacts-prod
         - name: Bootstrap Script
           commands:
             - make publish-bootstrap-script-prod
