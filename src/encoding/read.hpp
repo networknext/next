@@ -154,10 +154,8 @@ namespace encoding
   auto ReadString(const T& buff, size_t& index) -> std::string
   {
     size_t len = ReadUint32(buff, index);
-    std::string str(len, '\0');
-    for (size_t i = 0; i < len; i++) {
-      str[i] = buff[index++ + i];
-    }
+    std::string str(buff.begin() + index, buff.begin() + index + len);
+    index += len;
     return str;
   }
 }  // namespace encoding

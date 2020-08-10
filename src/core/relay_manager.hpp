@@ -1,5 +1,4 @@
-#ifndef CORE_RELAY_MANAGER_HPP
-#define CORE_RELAY_MANAGER_HPP
+#pragma once
 
 #include "core/route_stats.hpp"
 #include "net/address.hpp"
@@ -415,4 +414,3 @@ namespace legacy
   void relay_manager_destroy(relay_manager_t* manager);
 
 }  // namespace legacy
-#endif

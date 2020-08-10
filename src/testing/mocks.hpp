@@ -5,7 +5,7 @@ namespace testing
   class MockHttpRequester: public net::IHttpRequester
   {
    public:
-    bool Success;                   // The request was a success
+    bool Success = true;            // The request was a success
     std::vector<uint8_t> Request;   // The request that was sent
     std::vector<uint8_t> Response;  // The Response that should be received
     std::string Hostname;           // The hostname used
