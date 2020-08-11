@@ -47,10 +47,27 @@ func NewPubSubForwarder(ctx context.Context, biller Biller, logger log.Logger, m
 // Forward reads the billing entry from pubsub and writes it to BigQuery
 func (psf *PubSubForwarder) Forward(ctx context.Context) {
 	err := psf.pubsubSubscription.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
-		entries, err := psf.unbatchMessages(m)
-		if err != nil {
-			level.Error(psf.Logger).Log("err", err)
+		// Check if the message is batched or unbatched (for compatibility with old data)
+		var messageLength uint32
+		var offset int
+		if !encoding.ReadUint32(m.Data, &offset, &messageLength) {
+			level.Error(psf.Logger).Log("msg", "failed to detect if message is batched or unbatched", "offset", offset, "length", len(m.Data))
 			psf.Metrics.ErrorMetrics.BillingBatchedReadFailure.Add(1)
+		}
+
+		var entries [][]byte
+		if messageLength <= uint32(len(m.Data)) {
+			// This is a new, batched message
+			var err error
+			entries, err = psf.unbatchMessages(m)
+			if err != nil {
+				level.Error(psf.Logger).Log("err", err)
+				psf.Metrics.ErrorMetrics.BillingBatchedReadFailure.Add(1)
+			}
+		} else {
+			// This is an old, unbatched message. ignore it and ack
+			m.Ack()
+			return
 		}
 
 		psf.Metrics.EntriesReceived.Add(float64(len(entries)))
@@ -64,38 +81,27 @@ func (psf *PubSubForwarder) Forward(ctx context.Context) {
 					level.Error(psf.Logger).Log("msg", "could not submit billing entry", "err", err)
 				}
 			} else {
-				// This might be an old version of the billing entry, so try and read it with user hash on version 5
-				if ReadBillingEntryUserHashV5(&billingEntries[i], entries[i]) {
-					m.Ack()
-					psf.Metrics.EntriesReadUserHashV5.Add(1)
-					billingEntries[i].Timestamp = uint64(m.PublishTime.Unix())
-					if err := psf.Biller.Bill(context.Background(), &billingEntries[i]); err != nil {
-						level.Error(psf.Logger).Log("msg", "could not submit billing entry", "err", err)
-					}
-				} else {
-					entryVetoStr := os.Getenv("BILLING_ENTRY_VETO")
-					entryVeto, err := strconv.ParseBool(entryVetoStr)
+				entryVetoStr := os.Getenv("BILLING_ENTRY_VETO")
+				entryVeto, err := strconv.ParseBool(entryVetoStr)
 
-					if err != nil {
-						level.Error(psf.Logger).Log("msg", "failed to parse veto env var", "err", err)
-						psf.Metrics.ErrorMetrics.BillingReadFailure.Add(1)
-						return
-					}
-
-					if entryVeto {
-						m.Ack()
-						return
-					}
-
+				if err != nil {
+					level.Error(psf.Logger).Log("msg", "failed to parse veto env var", "err", err)
 					psf.Metrics.ErrorMetrics.BillingReadFailure.Add(1)
+					return
 				}
+
+				if entryVeto {
+					m.Ack()
+					return
+				}
+				psf.Metrics.ErrorMetrics.BillingReadFailure.Add(1)
 			}
 		}
 	})
-
-	// If the Receive function returns for any reason, we want to immediately exit and restart the service
-	level.Error(psf.Logger).Log("msg", "stopped receive loop", "err", err)
-	os.Exit(1)
+	if err != context.Canceled {
+		level.Error(psf.Logger).Log("msg", "could not setup to receive pubsub messages", "err", err)
+		os.Exit(1)
+	}
 }
 
 func (psf *PubSubForwarder) unbatchMessages(m *pubsub.Message) ([][]byte, error) {
