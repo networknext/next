@@ -764,7 +764,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 		routeDecision := sessionDataReadOnly.RouteDecision
 		nextSliceCounter := sessionDataReadOnly.NextSliceCounter
 		committedData := sessionDataReadOnly.CommittedData
-		committedData.Committed = !buyer.RoutingRulesSettings.EnableTryBeforeYouBuy
+		committedData.Committed = !buyer.RouteShader.EnableTryBeforeYouBuy
 
 		// Run IP2Location on the session IP address.
 		// We use the lat/long to find a set of relays near the client,
@@ -782,7 +782,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 					Reason:        routing.DecisionNoLocation,
 				}
 
-				if buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce {
+				if buyer.RouteShader.EnableYouOnlyLiveOnce {
 					// If we can't locate the client then make sure to veto the session when yolo is enabled,
 					// since we can't serve them network next routes anyway
 					routeDecision.Reason |= routing.DecisionVetoYOLO
@@ -813,7 +813,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 				Reason:        routing.DecisionVetoNoRoute,
 			}
 
-			if buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce {
+			if buyer.RouteShader.EnableYouOnlyLiveOnce {
 				routeDecision.Reason |= routing.DecisionVetoYOLO
 			}
 
@@ -841,7 +841,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 					Reason:        routing.DecisionNoNearRelays,
 				}
 
-				if buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce {
+				if buyer.RouteShader.EnableYouOnlyLiveOnce {
 					routeDecision.Reason |= routing.DecisionVetoYOLO
 				}
 
@@ -923,7 +923,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 		// Force direct mode sends all sessions direct.
 		// It's useful for disabling acceleration for a customer when something goes wrong.
 
-		if buyer.RoutingRulesSettings.Mode == routing.ModeForceDirect {
+		if buyer.RouteShader.Mode == routing.ModeForceDirect {
 			routeDecision = routing.Decision{
 				OnNetworkNext: false,
 				Reason:        routing.DecisionForceDirect,
@@ -938,7 +938,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 		// Selection percentage of 100% means all sessions are considered for acceleration.
 		// Selection percentage of 10% means that only 10% of sessions are.
 
-		if buyer.RoutingRulesSettings.Mode == routing.ModeForceDirect || (header.SessionID%100) >= uint64(buyer.RoutingRulesSettings.SelectionPercentage) {
+		if buyer.RouteShader.Mode == routing.ModeForceDirect || (header.SessionID%100) >= uint64(buyer.RouteShader.SelectionPercentage) {
 			routeDecision = routing.Decision{
 				OnNetworkNext: false,
 				Reason:        routing.DecisionForceDirect,
@@ -952,7 +952,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 		// If the buyer's route shader has AB test enabled, send all odd numbered sessions direct.
 		// This lets us show customers the difference between network next enabled and disabled.
 
-		if buyer.RoutingRulesSettings.EnableABTest && header.SessionID%2 == 1 {
+		if buyer.RouteShader.EnableABTest && header.SessionID%2 == 1 {
 			routeDecision = routing.Decision{
 				OnNetworkNext: false,
 				Reason:        routing.DecisionABTestDirect,
@@ -974,7 +974,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 				Reason:        routing.DecisionDatacenterHasNoRelays,
 			}
 
-			if buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce {
+			if buyer.RouteShader.EnableYouOnlyLiveOnce {
 				routeDecision.Reason |= routing.DecisionVetoYOLO
 			}
 
@@ -1031,7 +1031,7 @@ func GetBestRoute(routeMatrix RouteProvider, nearRelays []routing.Relay, datacen
 		// We couldn't find a network next route at all. This may happen if something goes wrong with the route matrix or if relays are flickering.
 		decision := routing.Decision{OnNetworkNext: false, Reason: routing.DecisionNoNextRoute}
 
-		if buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce {
+		if buyer.RouteShader.EnableYouOnlyLiveOnce {
 			decision.Reason = routing.DecisionVetoNoRoute | routing.DecisionVetoYOLO
 		}
 
@@ -1041,7 +1041,7 @@ func GetBestRoute(routeMatrix RouteProvider, nearRelays []routing.Relay, datacen
 	// If the buyer's route shader is set to force next, don't bother running the decision logic,
 	// just send back the route we've selected.
 	// Make sure to set the committed flag to true so the SDK always commits to the route.
-	if buyer.RoutingRulesSettings.Mode == routing.ModeForceNext {
+	if buyer.RouteShader.Mode == routing.ModeForceNext {
 		committedData.Pending = false
 		committedData.ObservedSliceCounter = 0
 		committedData.Committed = true
@@ -1060,15 +1060,15 @@ func GetBestRoute(routeMatrix RouteProvider, nearRelays []routing.Relay, datacen
 	//	5. Decide if we should run the committed logic. This is only run if the buyer has "try before you buy" enabled in the route shader.
 	// More information on how each decision is made can be found in their respective decision functions.
 	deciderFuncs := []routing.DecisionFunc{
-		routing.DecideUpgradeRTT(float64(buyer.RoutingRulesSettings.RTTThreshold)),
-		routing.DecideDowngradeRTT(float64(buyer.RoutingRulesSettings.RTTHysteresis), buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
-		routing.DecideVeto(onNNSliceCounter, float64(buyer.RoutingRulesSettings.RTTVeto), buyer.RoutingRulesSettings.EnablePacketLossSafety, buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce),
-		routing.DecideMultipath(buyer.RoutingRulesSettings.EnableMultipathForRTT, buyer.RoutingRulesSettings.EnableMultipathForJitter, buyer.RoutingRulesSettings.EnableMultipathForPacketLoss, float64(buyer.RoutingRulesSettings.RTTThreshold), float64(buyer.RoutingRulesSettings.MultipathPacketLossThreshold)),
+		routing.DecideUpgradeRTT(float64(buyer.RouteShader.RTTThreshold)),
+		routing.DecideDowngradeRTT(float64(buyer.RouteShader.RTTHysteresis), buyer.RouteShader.EnableYouOnlyLiveOnce),
+		routing.DecideVeto(onNNSliceCounter, float64(buyer.RouteShader.RTTVeto), buyer.RouteShader.EnablePacketLossSafety, buyer.RouteShader.EnableYouOnlyLiveOnce),
+		routing.DecideMultipath(buyer.RouteShader.EnableMultipathForRTT, buyer.RouteShader.EnableMultipathForJitter, buyer.RouteShader.EnableMultipathForPacketLoss, float64(buyer.RouteShader.RTTThreshold), float64(buyer.RouteShader.MultipathPacketLossThreshold)),
 	}
 
-	if buyer.RoutingRulesSettings.EnableTryBeforeYouBuy {
+	if buyer.RouteShader.EnableTryBeforeYouBuy {
 		deciderFuncs = append(deciderFuncs,
-			routing.DecideCommitted(prevRouteDecision.OnNetworkNext, uint8(buyer.RoutingRulesSettings.TryBeforeYouBuyMaxSlices), buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce, committedData))
+			routing.DecideCommitted(prevRouteDecision.OnNetworkNext, uint8(buyer.RouteShader.TryBeforeYouBuyMaxSlices), buyer.RouteShader.EnableYouOnlyLiveOnce, committedData))
 	} else {
 		// If we aren't using the try before you buy logic, then we always want to commit to routes
 		committedData.Pending = false
@@ -1079,7 +1079,7 @@ func GetBestRoute(routeMatrix RouteProvider, nearRelays []routing.Relay, datacen
 	routeDecision := nextRoute.Decide(prevRouteDecision, lastNextStats, lastDirectStats, deciderFuncs...)
 
 	// As a safety measure, if the route decision goes from on network next to direct with yolo enabled for any reason, veto the session with yolo reason
-	if buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce && prevRouteDecision.OnNetworkNext && !routeDecision.OnNetworkNext {
+	if buyer.RouteShader.EnableYouOnlyLiveOnce && prevRouteDecision.OnNetworkNext && !routeDecision.OnNetworkNext {
 		if routeDecision.Reason&routing.DecisionVetoYOLO == 0 {
 			routeDecision.Reason |= routing.DecisionVetoYOLO
 		}
@@ -1113,7 +1113,7 @@ func GetNextRoute(routeMatrix RouteProvider, nearRelays []routing.Relay, datacen
 
 	selectorFuncs := []routing.SelectorFunc{
 		routing.SelectUnencumberedRoutes(0.8),
-		routing.SelectAcceptableRoutesFromBestRTT(float64(buyer.RoutingRulesSettings.RTTEpsilon)),
+		routing.SelectAcceptableRoutesFromBestRTT(float64(buyer.RouteShader.RTTEpsilon)),
 		routing.SelectContainsRouteHash(prevRouteHash),
 		routing.SelectRoutesByRandomDestRelay(rand.NewSource(rand.Int63())),
 		routing.SelectRandomRoute(rand.NewSource(rand.Int63())),
@@ -1505,8 +1505,8 @@ func sendRouteResponse(w io.Writer, chosenRoute *routing.Route, params *SessionU
 
 				SessionVersion: tokenVersion,
 
-				KbpsUp:   uint32(buyer.RoutingRulesSettings.EnvelopeKbpsUp),
-				KbpsDown: uint32(buyer.RoutingRulesSettings.EnvelopeKbpsDown),
+				KbpsUp:   uint32(buyer.RouteShader.EnvelopeKbpsUp),
+				KbpsDown: uint32(buyer.RouteShader.EnvelopeKbpsDown),
 
 				Client: routing.Client{
 					Addr:      packet.ClientAddress,
@@ -1582,7 +1582,7 @@ func sendRouteResponse(w io.Writer, chosenRoute *routing.Route, params *SessionU
 	}
 
 	usageBytesUp, usageBytesDown := CalculateNextBytesUpAndDown(uint64(packet.KbpsUp), uint64(packet.KbpsDown), lastSliceDuration)
-	envelopeBytesUp, envelopeBytesDown := CalculateNextBytesUpAndDown(uint64(buyer.RoutingRulesSettings.EnvelopeKbpsUp), uint64(buyer.RoutingRulesSettings.EnvelopeKbpsDown), lastSliceDuration)
+	envelopeBytesUp, envelopeBytesDown := CalculateNextBytesUpAndDown(uint64(buyer.RouteShader.EnvelopeKbpsUp), uint64(buyer.RouteShader.EnvelopeKbpsDown), lastSliceDuration)
 
 	// Calculate the total price for the billing entry
 	totalPriceNibblins := CalculateTotalPriceNibblins(chosenRoute, envelopeBytesUp, envelopeBytesDown)

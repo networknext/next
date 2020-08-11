@@ -907,7 +907,7 @@ func main() {
 
 	router := mux.NewRouter()
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
-	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage))
+	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, false))
 	router.HandleFunc("/relay_init", transport.RelayInitHandlerFunc(logger, &commonInitParams)).Methods("POST")
 	router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(logger, relayslogger, &commonUpdateParams)).Methods("POST")
 	router.Handle("/cost_matrix", costMatrix).Methods("GET")

@@ -6,13 +6,14 @@ import (
 )
 
 type Buyer struct {
-	ID                   uint64
-	Name                 string
-	Domain               string
-	Active               bool
-	Live                 bool
-	PublicKey            []byte
-	RoutingRulesSettings RoutingRulesSettings
+	ID                  uint64
+	Name                string
+	Domain              string
+	Active              bool
+	Live                bool
+	PublicKey           []byte
+	RouteShader         RouteShader
+	CustomerRouteShader CustomerRouteShader
 }
 
 func (b *Buyer) EncodedPublicKey() string {

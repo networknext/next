@@ -130,10 +130,11 @@ func main() {
 
 	{
 		if err := db.AddBuyer(ctx, routing.Buyer{
-			ID:                   customerID,
-			Name:                 "local",
-			PublicKey:            customerPublicKey,
-			RoutingRulesSettings: routing.LocalRoutingRulesSettings,
+			ID:                  customerID,
+			Name:                "local",
+			PublicKey:           customerPublicKey,
+			RouteShader:         routing.LocalRouteShader,
+			CustomerRouteShader: routing.DefaultCustomerRouteShader,
 		}); err != nil {
 			level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
 			os.Exit(1)
@@ -437,7 +438,7 @@ func main() {
 		}
 
 		http.HandleFunc("/health", transport.HealthHandlerFunc())
-		http.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage))
+		http.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, allowCORS))
 
 		level.Info(logger).Log("addr", ":"+port)
 

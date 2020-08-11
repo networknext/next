@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+
+	"github.com/networknext/backend/transport/middleware"
 )
 
 func HealthHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
@@ -19,7 +21,7 @@ func HealthHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func VersionHandlerFunc(buildtime string, sha string, tag string, commitMessage string) func(w http.ResponseWriter, r *http.Request) {
+func VersionHandlerFunc(buildtime string, sha string, tag string, commitMessage string, allowCORS bool) func(w http.ResponseWriter, r *http.Request) {
 	version := map[string]string{
 		"build_timestamp": buildtime,
 		"commit_message":  commitMessage,
@@ -27,7 +29,8 @@ func VersionHandlerFunc(buildtime string, sha string, tag string, commitMessage 
 		"tag":             tag,
 	}
 
-	return func(w http.ResponseWriter, _ *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		middleware.CORSControlHandlerFunc(allowCORS, w, r)
 		w.WriteHeader(http.StatusOK)
 		if err := json.NewEncoder(w).Encode(version); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)

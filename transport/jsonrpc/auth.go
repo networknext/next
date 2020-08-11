@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
 
 	jwtmiddleware "github.com/auth0/go-jwt-middleware"
@@ -15,7 +14,7 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
-	"github.com/rs/cors"
+	"github.com/networknext/backend/transport/middleware"
 	"gopkg.in/auth0.v4/management"
 )
 
@@ -55,7 +54,7 @@ type AccountReply struct {
 
 type account struct {
 	UserID      string             `json:"user_id"`
-	ID          string             `json:"id"`
+	BuyerID     string             `json:"buyer_id"`
 	CompanyName string             `json:"company_name"`
 	Name        string             `json:"name"`
 	Email       string             `json:"email"`
@@ -311,7 +310,7 @@ func newAccount(u *management.User, r []*management.Role, buyer routing.Buyer) a
 	}
 	account := account{
 		UserID:      *u.Identities[0].UserID,
-		ID:          buyerID,
+		BuyerID:     buyerID,
 		CompanyName: buyer.Name,
 		Name:        *u.Name,
 		Email:       *u.Email,
@@ -666,17 +665,7 @@ func AuthMiddleware(audience string, next http.Handler, allowCORS bool) http.Han
 		CredentialsOptional: true,
 	})
 
-	if !allowCORS {
-		allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
-		return cors.New(cors.Options{
-			AllowedOrigins:   strings.Split(allowedOrigins, ","),
-			AllowCredentials: true,
-			AllowedHeaders:   []string{"Authorization", "Content-Type"},
-			AllowedMethods:   []string{"POST", "GET", "OPTION"},
-		}).Handler(mw.Handler(next))
-	} else {
-		return mw.Handler(next)
-	}
+	return middleware.CORSControlHandler(allowCORS, mw.Handler(next))
 }
 
 func getPemCert(token *jwt.Token) (string, error) {
