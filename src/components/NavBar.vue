@@ -84,7 +84,7 @@ export default class NavBar extends Vue {
     this.fetchPortalVersion()
   }
 
-  private fetchPortalVersion () {
+  private fetchPortalVersion (): void {
     const isDev = window.location.hostname === 'portal-dev.networknext.com'
     if (this.$store.getters.isAdmin || isDev) {
       fetch(`${process.env.VUE_APP_API_URL}/version`, {

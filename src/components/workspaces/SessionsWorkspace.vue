@@ -145,21 +145,21 @@ export default class SessionsWorkspace extends Vue {
     this.sessions = []
   }
 
-  private mounted () {
+  private mounted (): void {
     this.fetchSessions()
     this.sessionsLoop = setInterval(() => {
       this.fetchSessions()
     }, 10000)
   }
 
-  private beforeDestroy () {
+  private beforeDestroy (): void {
     // Stop polling loop
     this.sessions = []
     this.$store.commit('TOGGLE_SESSION_TABLE', false)
     clearInterval(this.sessionsLoop)
   }
 
-  private fetchSessions () {
+  private fetchSessions (): void {
     this.apiService.fetchTopSessions({ buyer_id: '' })
       .then((response: any) => {
         this.sessions = response.sessions
@@ -171,7 +171,7 @@ export default class SessionsWorkspace extends Vue {
   }
 
   // TODO: Move this somewhere with other helper functions
-  private getCustomerName (buyerId: string) {
+  private getCustomerName (buyerId: string): string {
     const allBuyers = this.$store.getters.allBuyers
     let i = 0
     for (i; i < allBuyers.length; i++) {
@@ -180,12 +180,6 @@ export default class SessionsWorkspace extends Vue {
       }
     }
     return 'Private'
-  }
-
-  private beforeRouteUpdate (to: Route, from: Route, next: NavigationGuardNext<Vue>) {
-    console.log('Before Route Update')
-    console.log(to)
-    console.log(from)
   }
 }
 </script>
