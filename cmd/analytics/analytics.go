@@ -293,7 +293,7 @@ func main() {
 		go func() {
 			router := mux.NewRouter()
 			router.HandleFunc("/health", HealthHandlerFunc())
-			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage))
+			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, false))
 
 			port, ok := os.LookupEnv("PORT")
 			if !ok {
