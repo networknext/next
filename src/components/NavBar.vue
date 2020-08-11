@@ -75,10 +75,34 @@ import APIService from '@/services/api.service'
 @Component
 export default class NavBar extends Vue {
   private apiService: APIService
+  private portalVersion: string
 
   constructor () {
     super()
     this.apiService = new APIService()
+    this.portalVersion = ''
+    this.fetchPortalVersion()
+  }
+
+  private fetchPortalVersion () {
+    const isDev = window.location.hostname === 'portal-dev.networknext.com'
+    if (this.$store.getters.isAdmin || isDev) {
+      fetch(`${process.env.VUE_APP_API_URL}/version`, {
+        headers: {
+          Accept: 'application/json',
+          'Accept-Encoding': 'gzip',
+          'Content-Type': 'application/json'
+        },
+        method: 'POST'
+      }).then((response: any) => {
+        response.json().then((json: any) => {
+          if (json.error) {
+            throw new Error(json.error)
+          }
+          this.portalVersion = `Git Hash: ${json.sha} - Commit: ${json.commit_message || 'none'}`
+        })
+      })
+    }
   }
 }
 </script>
