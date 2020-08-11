@@ -15,12 +15,6 @@ import { ScreenGridLayer } from '@deck.gl/aggregation-layers'
 import mapboxgl from 'mapbox-gl'
 import APIService from '@/services/api.service'
 
-/**
- * TODO: Hookup API call
- * TODO: Hookup looping logic
- * TODO: Cleanup template
- */
-
 @Component({
   name: 'SessionMap'
 })
