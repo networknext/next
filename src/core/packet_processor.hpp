@@ -10,8 +10,6 @@
 #include "token.hpp"
 #include "util/channel.hpp"
 #include "util/throughput_recorder.hpp"
-#include "legacy/v3/traffic_stats.hpp"
-#include "legacy/v3/constants.hpp"
 
 namespace core
 {
@@ -29,13 +27,8 @@ namespace core
      const crypto::Keychain& keychain,
      SessionMap& sessions,
      RelayManager<Relay>& relayManager,
-     RelayManager<V3Relay>& v3RelayManager,
      const volatile bool& handle,
      util::ThroughputRecorder& recorder,
-     util::Sender<GenericPacket<>>& sender,
-     legacy::v3::TrafficStats& stats,
-     const uint64_t oldRelayID,
-     const std::atomic<legacy::v3::ResponseState>& state,
      const RouterInfo& routerInfo);
     ~PacketProcessor() = default;
 
@@ -47,13 +40,8 @@ namespace core
     const crypto::Keychain& mKeychain;
     SessionMap& mSessionMap;
     RelayManager<Relay>& mRelayManager;
-    RelayManager<V3Relay>& mV3RelayManager;
     const volatile bool& mShouldProcess;
     util::ThroughputRecorder& mRecorder;
-    util::Sender<GenericPacket<>>& mChannel;
-    legacy::v3::TrafficStats& mStats;
-    const uint64_t mOldRelayID;
-    const std::atomic<legacy::v3::ResponseState>& mState;
     const RouterInfo& mRouterInfo;
 
     void processPacket(GenericPacket<>& packet, GenericPacketBuffer<MaxPacketsToSend>& outputBuff);
