@@ -1,7 +1,5 @@
 <template>
-  <main role="main" class="col-md-12 col-lg-12 px-4">
-    <SessionMap/>
-  </main>
+  <SessionMap/>
 </template>
 
 <script lang="ts">

@@ -1,5 +1,5 @@
 <template>
-  <main role="main" class="col-md-12 col-lg-12 px-4">
+  <div>
     <div class="
               d-flex
               justify-content-between
@@ -52,7 +52,7 @@
       </h5>
       </div>
     </div>
-  </main>
+  </div>
 </template>
 
 <script lang="ts">

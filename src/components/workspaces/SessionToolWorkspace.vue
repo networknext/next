@@ -1,5 +1,5 @@
 <template>
-  <main role="main" class="col-md-12 col-lg-12 px-4">
+  <div>
     <div class="
             d-flex
             justify-content-between
@@ -43,7 +43,7 @@
     </form>
     <Alert :message="message" :alertType="alertType" v-if="message !== '' && $route.path === '/session-tool'"/>
     <router-view />
-  </main>
+  </div>
 </template>
 
 <script lang="ts">

@@ -1,5 +1,5 @@
 <template>
-  <main role="main" class="col-md-12 col-lg-12 px-4">
+  <div>
     <div class="spinner-border" role="status" id="sessions-spinner" v-show="!$store.getters.showTable">
       <span class="sr-only">Loading...</span>
     </div>
@@ -108,7 +108,7 @@
         </tbody>
       </table>
     </div>
-  </main>
+  </div>
 </template>
 
 <script lang="ts">
