@@ -437,7 +437,7 @@ deploy-portal-cruncher-dev: ## builds and deploys the portal cruncher to dev
 	./deploy/deploy.sh -e dev -c dev-1 -t portal-cruncher -b gs://development_artifacts
 
 .PHONY: deploy-relay-backend-staging
-deploy-relay-backend-prod: ## builds and deploys the relay backend to prod
+deploy-relay-backend-staging: ## builds and deploys the relay backend to prod
 	./deploy/deploy.sh -e staging -c staging-1 -t relay-backend -b gs://staging_artifacts
 
 .PHONY: deploy-portal-cruncher-staging
