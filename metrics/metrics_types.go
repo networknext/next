@@ -396,19 +396,23 @@ var EmptyBillingServiceMetrics BillingServiceMetrics = BillingServiceMetrics{
 }
 
 type BillingMetrics struct {
-	EntriesReceived  Counter
-	EntriesSubmitted Counter
-	EntriesQueued    Gauge
-	EntriesFlushed   Counter
-	ErrorMetrics     BillingErrorMetrics
+	EntriesReceived         Counter
+	EntriesSubmitted        Counter
+	EntriesQueued           Gauge
+	EntriesFlushed          Counter
+	EntriesReadUserHashV5   Counter
+	EntriesReadNoUserHashV5 Counter
+	ErrorMetrics            BillingErrorMetrics
 }
 
 var EmptyBillingMetrics BillingMetrics = BillingMetrics{
-	EntriesReceived:  &EmptyCounter{},
-	EntriesSubmitted: &EmptyCounter{},
-	EntriesQueued:    &EmptyGauge{},
-	EntriesFlushed:   &EmptyCounter{},
-	ErrorMetrics:     EmptyBillingErrorMetrics,
+	EntriesReceived:         &EmptyCounter{},
+	EntriesSubmitted:        &EmptyCounter{},
+	EntriesQueued:           &EmptyGauge{},
+	EntriesFlushed:          &EmptyCounter{},
+	EntriesReadUserHashV5:   &EmptyCounter{},
+	EntriesReadNoUserHashV5: &EmptyCounter{},
+	ErrorMetrics:            EmptyBillingErrorMetrics,
 }
 
 type BillingErrorMetrics struct {
@@ -2078,6 +2082,28 @@ func NewBillingServiceMetrics(ctx context.Context, metricsHandler Handler) (*Bil
 		ID:          "billing.entries.written",
 		Unit:        "entries",
 		Description: "The total number of billing entries written to BigQuery",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	billingServiceMetrics.BillingMetrics.EntriesReadUserHashV5, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Billing Entries Read User Hash V5",
+		ServiceName: "billing",
+		ID:          "billing.entries.read.user_hash_v5",
+		Unit:        "entries",
+		Description: "The total number of billing entries read from PubSub with the user hash on version 5",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	billingServiceMetrics.BillingMetrics.EntriesReadNoUserHashV5, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Billing Entries Read No User Hash V5",
+		ServiceName: "billing",
+		ID:          "billing.entries.read.no_user_hash_v5",
+		Unit:        "entries",
+		Description: "The total number of billing entries read from PubSub without a user hash on version 5",
 	})
 	if err != nil {
 		return nil, err
