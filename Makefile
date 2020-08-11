@@ -292,7 +292,7 @@ test-func-parallel: build-test-func-parallel run-test-func-parallel ## runs func
 .PHONY: test-load
 test-load: ## runs load tests
 	@printf "\nRunning load tests...\n" ; \
-	$(GO) run ./cmd/load_test/load_tests.go
+	$(GO) run ./cmd/load-test/load_tests.go
 
 #######################
 # Relay Build Process #
@@ -341,15 +341,15 @@ dev-portal: build-portal ## runs a local portal web server
 
 .PHONY: dev-relay-backend
 dev-relay-backend: build-relay-backend ## runs a local relay backend
-	@PORT=30000 ./dist/relay_backend
+	@PORT=30000 ./dist/relay-backend
 
 .PHONY: dev-server-backend
 dev-server-backend: build-server-backend ## runs a local server backend
-	@HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend
+	@HTTP_PORT=40000 UDP_PORT=40000 ./dist/server-backend
 
 .PHONY: dev-server-backend-valve
 dev-server-backend-valve: build-server-backend ## runs a local valve server backend
-	@HTTP_PORT=40001 UDP_PORT=40001 ROUTE_MATRIX_URI=http://127.0.0.1:30000/route_matrix_valve ./dist/server_backend
+	@HTTP_PORT=40001 UDP_PORT=40001 ROUTE_MATRIX_URI=http://127.0.0.1:30000/route_matrix_valve ./dist/server-backend
 
 .PHONY: dev-billing
 dev-billing: build-billing ## runs a local billing service
@@ -361,11 +361,11 @@ dev-analytics: build-analytics ## runs a local analytics service
 
 .PHONY: dev-portal-cruncher
 dev-portal-cruncher: build-portal-cruncher ## runs a local portal cruncher
-	@HTTP_PORT=42000 CRUNCHER_PORT=5555 ./dist/portal_cruncher
+	@HTTP_PORT=42000 CRUNCHER_PORT=5555 ./dist/portal-cruncher
 
 .PHONY: dev-load-test
 dev-load-test: build-load-test ## runs a local load test
-	./dist/load_test
+	./dist/load-test
 
 .PHONY: dev-reference-backend
 dev-reference-backend: ## runs a local reference backend
@@ -398,13 +398,13 @@ build-sdk: $(DIST_DIR)/$(SDKNAME).so ## builds the sdk
 PHONY: build-load-test
 build-load-test: ## builds the load test binary
 	@printf "Building load test... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/load_test ./cmd/load_test/load_tests.go
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/load-test ./cmd/load-test/load_tests.go
 	@printf "done\n"
 
 PHONY: build-portal-cruncher
 build-portal-cruncher: ## builds the portal_cruncher binary
 	@printf "Building portal_cruncher... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/portal_cruncher ./cmd/portal_cruncher/portal_cruncher.go
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/portal-cruncher ./cmd/portal-cruncher/portal_cruncher.go
 	@printf "done\n"
 
 .PHONY: build-portal
@@ -425,7 +425,7 @@ deploy-portal: ## builds and deploys the portal to dev
 .PHONY: build-relay-backend
 build-relay-backend: ## builds the relay backend binary
 	@printf "Building relay backend... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/relay_backend ./cmd/relay_backend/relay_backend.go
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/relay-backend ./cmd/relay-backend/relay_backend.go
 	@printf "done\n"
 
 .PHONY: deploy-relay-backend-dev
@@ -455,7 +455,7 @@ deploy-portal-cruncher-prod: ## builds and deploys the portal cruncher to prod
 .PHONY: build-server-backend
 build-server-backend: ## builds the server backend binary
 	@printf "Building server backend... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/server_backend ./cmd/server_backend/server_backend.go
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/server-backend ./cmd/server-backend/server_backend.go
 	@printf "done\n"
 
 .PHONY: build-billing
@@ -556,7 +556,7 @@ build-portal-cruncher-artifacts-staging: build-portal-cruncher ## builds the por
 
 .PHONY: build-load-test-artifacts-staging
 build-load-test-artifacts-staging: build-load-test ## builds the load test artifacts staging
-	./deploy/build-artifacts.sh -e staging -s load_test
+	./deploy/build-artifacts.sh -e staging -s load-test
 
 .PHONY: build-server-backend-artifacts-staging
 build-server-backend-artifacts-staging: build-server-backend ## builds the server backend artifacts staging
@@ -640,7 +640,7 @@ publish-portal-cruncher-artifacts-staging: ## publishes the portal cruncher arti
 
 .PHONY: publish-load-test-artifacts-staging
 publish-load-test-artifacts-staging: ## publishes the load test artifacts to GCP Storage with gsutil staging
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s load_test
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s load-test
 
 .PHONY: publish-relay-backend-artifacts-staging
 publish-relay-backend-artifacts-staging: ## publishes the relay backend artifacts to GCP Storage with gsutil staging
