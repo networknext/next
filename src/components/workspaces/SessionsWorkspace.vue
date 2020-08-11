@@ -192,4 +192,11 @@ export default class SessionsWorkspace extends Vue {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
+  .fixed-width {
+    font-family: monospace;
+    font-size: 120%;
+  }
+  div.table-no-top-line th {
+    border-top: none !important;
+  }
 </style>

@@ -8,8 +8,22 @@
   background-color: #007bff !important;
 }
 .multiselect__element {
-  background-color: white;
+  background-color: white !important;
 }
-.multiselect__option .multiselect__option--highlight {
+.multiselect__option--highlight {
+  background-color: #f94a21 !important;
+}
+.multiselect__option::after {
+  background-color: #f94a21 !important;
+  color: white !important;
+}
+.multiselect__option--highlight::after {
+  background-color: #f94a21 !important;
+}
+.multiselect__option--selected {
   background-color: #007bff !important;
+  color: white !important;
+}
+.multiselect__option--selected::after {
+	color: white !important;
 }
