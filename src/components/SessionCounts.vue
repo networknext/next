@@ -58,13 +58,10 @@ export default class SessionCounts extends Vue {
   private fetchSessionCounts () {
     this.apiService.fetchTotalSessionCounts({})
       .then((response: any) => {
-        this.totalSessionsReply.direct = response.result.direct
-        this.totalSessionsReply.onNN = response.result.next
+        this.totalSessionsReply.direct = response.direct
+        this.totalSessionsReply.onNN = response.next
         if (!this.showCount) {
           this.showCount = true
-        }
-        if (!this.$store.getters.isReady) {
-          this.$store.dispatch('toggleReady', true)
         }
       })
       .catch((error: any) => {

@@ -11,24 +11,13 @@
         <span class="sr-only">Loading...</span>
       </div>
     </div>
-    <div class="alert alert-success"
-          role="alert"
-          id="session-tool-alert"
-          v-show="false">
-      NEWUSER SUCCESS
-    </div>
-    <div class="alert alert-danger"
-          role="alert"
-          id="session-tool-alert"
-          v-show="false">
-      NEWUSER FAILURE
-    </div>
-    <form v-show="true">
+    <Alert :message="messages.newUsers" :alertType="alertTypes.newUsers" v-if="messages.newUsers !== ''"/>
+    <form v-show="true" @submit.prevent="addNewUsers()">
       <div class="form-group">
         <label for="customerId">
           Add users by email address
         </label>
-        <textarea class="form-control form-control-sm" id="new-user-emails"></textarea>
+        <textarea class="form-control form-control-sm" id="new-user-emails" v-model="newUserEmails"></textarea>
         <small class="form-text text-muted">
           Enter a newline or comma-delimited list of email
           addresses to add users to your account.
@@ -38,7 +27,7 @@
         <label for="customerId">
           Permission Level
         </label>
-        <multiselect track-by="name" label="name" v-model="value" :options="options" multiple></multiselect>
+        <multiselect placeholder="" track-by="name" label="name" v-model="newUserRoles" :options="allRoles" multiple></multiselect>
         <small class="form-text text-muted">
           The permission level to grant the added user accounts.
         </small>
@@ -55,12 +44,12 @@
     <p class="card-text">
       Manage the list of users that currently have access to your Network Next account.
     </p>
-    <div id="account-table-spinner" v-show="false">
+    <div id="account-table-spinner" v-show="!showTable">
       <div class="spinner-border" role="status">
         <span class="sr-only">Loading...</span>
       </div>
     </div>
-    <table class="table table-sm mt-4" v-show="true">
+    <table class="table table-sm mt-4" v-show="showTable">
       <thead class="thead-light">
         <tr>
           <th style="width: 20%;">
@@ -76,32 +65,20 @@
       </thead>
       <tbody>
         <tr v-for="(account, index) in companyUsers" :key="index">
-          <div
-            class="alert alert-success"
-            role="alert"
-            v-show="false"
-          >
-            UPDATEUSER SUCCESS
-          </div>
-          <div
-              class="alert alert-danger"
-              role="alert"
-              v-show="false"
-          >
-            UPDATEUSER FAILURE
-          </div>
+          <Alert :message="messages.editUser" :alertType="alertTypes.newUser" v-if="messages.editUser !== ''"/>
           <td>
-            EMAIL
+            {{ account.email }}
           </td>
           <td>
-            <multiselect track-by="name" label="name" v-model="value" :options="options" multiple></multiselect>
+            <multiselect placeholder="" track-by="name" label="name" v-model="selectedRoles[account.user_id]" :options="allRoles" multiple :disabled="!account.edit"></multiselect>
           </td>
-          <td class="td-btn" v-show="true">
+          <td class="td-btn" v-show="!account.edit && !account.delete">
             <button
               class="btn btn-xs btn-primary"
               data-toggle="tooltip"
               data-placement="bottom"
               title="Change this user's permissions"
+              @click="editUser(account, index)"
             >
               <font-awesome-icon icon="pen"
                                   class="fa-w-16 fa-fw"
@@ -112,18 +89,20 @@
               data-toggle="tooltip"
               data-placement="bottom"
               title="Remove this user"
+              @click="deleteUser(account, index)"
             >
               <font-awesome-icon icon="trash"
                                   class="fa-w-16 fa-fw"
               />
             </button>&nbsp;
           </td>
-          <td class="td-btn" v-show="false">
+          <td class="td-btn" v-show="account.edit || account.delete">
             <button
               class="btn btn-xs btn-success"
               data-toggle="tooltip"
               data-placement="bottom"
               title="Save Changes"
+              @click="saveUser(account, index)"
             >
               <font-awesome-icon icon="check"
                                   class="fa-w-16 fa-fw"
@@ -134,6 +113,7 @@
               data-toggle="tooltip"
               data-placement="bottom"
               title="Cancel Changes"
+              @click="cancel(account, index)"
             >
               <font-awesome-icon icon="times"
                                   class="fa-w-16 fa-fw"
@@ -149,41 +129,190 @@
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
 import Multiselect from 'vue-multiselect'
-import { Role } from './types/APITypes'
-import { UserProfile } from '../services/auth.service'
+import APIService from '../services/api.service'
+import Alert from './Alert.vue'
+import { AlertTypes } from './types/AlertTypes'
 
 @Component({
   components: {
+    Alert,
     Multiselect
   }
 })
 export default class UserManagement extends Vue {
-  private allRoles: Array<Role> = []
-  private companyUsers: Array<UserProfile> = []
+  // TODO: Fix weird issue with dropdown library change events (select/delete) handler
+  private apiService: APIService
+  private allRoles: Array<any> = []
+  private companyUsers: Array<any> = []
 
-  private value = [
-  ]
+  private selectedRoles: any = {}
+  private newUserRoles: any = []
 
-  private options = [
-    { name: 'Vue.js', code: 'vu' },
-    { name: 'Javascript', code: 'js' },
-    { name: 'Open Source', code: 'os' }
-  ]
+  private newUserEmails: string
 
-  private created () {
-    // TODO: API call to get all role options
-    this.allRoles = [
-      {
-        ID: '1234',
-        name: 'Admin',
-        description: 'With great power comes great responsibility'
-      }
+  private showTable: boolean
+
+  private messages: any
+  private alertTypes: any
+
+  constructor () {
+    super()
+    this.apiService = Vue.prototype.$apiService
+    this.newUserEmails = ''
+    this.showTable = false
+    this.messages = {
+      newUsers: '',
+      editUser: ''
+    }
+    this.alertTypes = {
+      newUsers: '',
+      editUser: ''
+    }
+  }
+
+  private mounted () {
+    const promises = [
+      this.apiService.fetchAllAccounts({}),
+      this.apiService.fetchAllRoles()
     ]
+    Promise.all(promises)
+      .then((responses: any) => {
+        const companyUsers: Array<any> = responses[0].accounts
+        const allRoles = responses[1].roles
+
+        this.allRoles = allRoles
+        this.companyUsers = companyUsers
+        this.companyUsers.forEach((user: any) => {
+          user.edit = false
+          user.delete = false
+        })
+
+        this.companyUsers.forEach((user: any) => {
+          this.selectedRoles[user.user_id] = user.roles
+        })
+        this.showTable = true
+      })
+  }
+
+  private editUser (account: any, index: number) {
+    setTimeout(() => {
+      account.delete = false
+      account.edit = true
+      this.companyUsers.splice(index, 1, account)
+    })
+  }
+
+  private saveUser (account: any, index: number) {
+    if (account.edit) {
+      const roles = this.selectedRoles[account.user_id]
+      this.apiService
+        .updateUserRoles({ user_id: `auth0|${account.user_id}`, roles: roles })
+        .then((response: any) => {
+          account.roles = response.roles
+          this.alertTypes.editUser = AlertTypes.SUCCESS
+          this.messages.editUser = 'User account edited successfully'
+          setTimeout(() => {
+            this.messages.editUser = ''
+          }, 5000)
+        })
+        .catch((error: Error) => {
+          console.log('Something went wrong updating the users permissions')
+          console.log(error)
+          this.alertTypes.editUser = AlertTypes.ERROR
+          this.messages.editUser = 'Failed to edit user account'
+          setTimeout(() => {
+            this.messages.editUser = ''
+          }, 5000)
+        })
+        .finally(() => {
+          this.cancel(account, index)
+        })
+      return
+    }
+    if (account.delete) {
+      this.apiService
+        .deleteUserAccount({ user_id: `auth0|${account.user_id}` })
+        .then((response: any) => {
+          this.companyUsers.splice(index, 1)
+          this.selectedRoles[account.user_id] = null
+          this.alertTypes.editUser = AlertTypes.SUCCESS
+          this.messages.editUser = 'User account deleted successfully'
+          setTimeout(() => {
+            this.messages.editUser = ''
+          }, 5000)
+        })
+        .catch((error: Error) => {
+          console.log('Something went wrong updating the users permissions')
+          console.log(error)
+          this.alertTypes.newUsers = AlertTypes.ERROR
+          this.messages.newUsers = 'Failed to delete user account'
+          setTimeout(() => {
+            this.messages.newUsers = ''
+          }, 5000)
+        })
+    }
+  }
+
+  private deleteUser (account: any, index: number) {
+    account.delete = true
+    account.edit = false
+    this.companyUsers.splice(index, 1, account)
+  }
+
+  private cancel (account: any, index: number) {
+    account.delete = false
+    account.edit = false
+    this.companyUsers.splice(index, 1, account)
+  }
+
+  private addNewUsers () {
+    let roles = this.newUserRoles
+    const emails = this.newUserEmails
+      .split(/(,|\n)/g)
+      .map((x) => x.trim())
+      .filter((x) => x !== '' && x !== ',')
+
+    if (this.newUserRoles.length === 0) {
+      roles = [{
+        description: 'Can see current sessions and the map.',
+        id: 'rol_ScQpWhLvmTKRlqLU',
+        name: 'Viewer'
+      }]
+    }
+    this.apiService
+      .addNewUserAccounts({ emails: emails, roles: roles })
+      .then((response: any) => {
+        const newAccounts: Array<any> = response.accounts
+
+        newAccounts.forEach((account: any) => {
+          account.edit = false
+          account.delete = false
+          this.selectedRoles[account.user_id] = account.roles
+        })
+
+        this.companyUsers.concat(newAccounts)
+        this.alertTypes.newUsers = AlertTypes.SUCCESS
+        this.messages.newUsers = 'User account(s) added successfully'
+        setTimeout(() => {
+          this.messages.newUsers = ''
+        }, 5000)
+      })
+      .catch((error: Error) => {
+        console.log('Something went wrong creating new users')
+        console.log(error)
+        this.alertTypes.newUsers = AlertTypes.ERROR
+        this.messages.newUsers = 'Failed to add user account(s)'
+        setTimeout(() => {
+          this.messages.newUsers = ''
+        }, 5000)
+      })
+    this.newUserRoles = []
+    this.newUserEmails = ''
   }
 }
 
 </script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
-<style scoped lang="scss">
+<style scoped>
 </style>

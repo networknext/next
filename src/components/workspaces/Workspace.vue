@@ -1,13 +1,15 @@
 <template>
   <div class="container-fluid below-nav-bar">
-    <div class="d-flex below-nav-bar" style="justify-content: center; padding-top: 15%;" v-if="!$store.getters.isReady">
-      <div class="spinner-border" role="status">
-        <span class="sr-only">Loading...</span>
-      </div>
+    <div style="padding-top: 20px;" v-if="message !== ''">
+      <Alert :message="message" :alertType="alertType">
+        <a href="#" @click="resendVerificationEmail()">
+          Resend email
+        </a>
+      </Alert>
     </div>
-    <SessionCounts v-show="$store.getters.isReady && ($store.getters.currentPage == 'map' || $store.getters.currentPage == 'sessions')"/>
+    <SessionCounts v-if="$store.getters.currentPage == 'map' || $store.getters.currentPage == 'sessions'"/>
     <div class="row">
-      <router-view v-if="$store.getters.isReady"/>
+      <router-view/>
     </div>
   </div>
 </template>
@@ -19,9 +21,13 @@ import SessionCounts from '../SessionCounts.vue'
 import SessionsWorkspace from './SessionsWorkspace.vue'
 import SessionToolWorkspace from './SessionToolWorkspace.vue'
 import SettingsWorkspace from './SettingsWorkspace.vue'
+import Alert from '@/components/Alert.vue'
+import { AlertTypes } from '../types/AlertTypes'
+import APIService from '@/services/api.service'
 
 @Component({
   components: {
+    Alert,
     MapWorkspace,
     SessionCounts,
     SessionsWorkspace,
@@ -30,6 +36,45 @@ import SettingsWorkspace from './SettingsWorkspace.vue'
   }
 })
 export default class Workspace extends Vue {
+  private apiService: APIService
+  private message: string
+  private alertType: string
+
+  constructor () {
+    super()
+    this.apiService = new APIService()
+    this.message = ''
+    this.alertType = ''
+  }
+
+  mounted () {
+    if (this.$store.getters.isAnonymousPlus) {
+      this.message = `Please confirm your email address: ${this.$store.getters.userProfile.email}`
+      this.alertType = AlertTypes.INFO
+    }
+  }
+
+  private resendVerificationEmail () {
+    const userId = this.$store.getters.userProfile.auth0ID
+    const email = this.$store.getters.userProfile.email
+    this.apiService
+      .resendVerificationEmail({
+        user_id: userId,
+        user_email: email,
+        redirect: window.location.origin,
+        connection: 'Username-Password-Authentication'
+      })
+      .then((response: any) => {
+        this.message = 'Verification email was sent successfully. Please check your email for futher instructions.'
+        this.alertType = AlertTypes.SUCCESS
+      })
+      .catch((error: Error) => {
+        console.log('something went wrong with resending verification email')
+        console.log(error)
+        this.message = 'Something went wrong sending the verification email. Please try again later.'
+        this.alertType = AlertTypes.ERROR
+      })
+  }
 }
 </script>
 

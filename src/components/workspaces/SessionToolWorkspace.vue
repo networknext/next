@@ -29,7 +29,7 @@
             <input class="form-control"
                    type="text"
                    placeholder="Enter a Session ID to view statistics"
-                   v-model="searchInput"
+                   v-model="searchID"
                    data-test="searchInput"
             >
           </div>
@@ -41,23 +41,17 @@
         </div>
       </div>
     </form>
-    <!-- TODO: Refactor these into a seperate component -->
-    <div class="alert alert-info" role="alert" id="session-tool-alert" v-if="showAlert">
-      Please enter a valid Session ID to view its statistics.
-      It should be a hexadecimal number (with leading zeros), or a decimal number.
-    </div>
-    <div class="alert alert-danger" role="alert" id="session-tool-danger" v-if="showError">
-      Failed to fetch session details
-    </div>
-    <SessionDetails v-if="searchID != ''" v-bind:searchID="searchID"/>
+    <Alert :message="message" :alertType="alertType" v-if="message !== '' && $route.path === '/session-tool'"/>
+    <router-view />
   </main>
 </template>
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
 import { Route, NavigationGuardNext } from 'vue-router'
-import SessionDetails from '@/components/SessionDetails.vue'
 
+import Alert from '@/components/Alert.vue'
+import { AlertTypes } from '@/components/types/AlertTypes'
 /**
  * TODO: Cleanup template
  * TODO: Figure out what sessionMeta fields need to be required
@@ -65,39 +59,46 @@ import SessionDetails from '@/components/SessionDetails.vue'
 
 @Component({
   components: {
-    SessionDetails
+    Alert
   }
 })
 export default class SessionToolWorkspace extends Vue {
-  // TODO: Refactor out the alert/error into its own component.
-  // TODO: Figure out how to make searchID and searchInput the same
+  private searchID: string
+  private message: string
+  private alertType: string
 
-  private showAlert = false
-  private showError = false
-
-  private searchID = ''
-  private searchInput = ''
-  private showDetails = false
+  constructor () {
+    super()
+    this.alertType = ''
+    this.searchID = ''
+    this.message = 'Please enter a valid Session ID to view its statistics. It should be a hexadecimal number (with leading zeros), or a decimal number.'
+    this.alertType = AlertTypes.INFO
+  }
 
   private created () {
     // Empty for now
-    this.searchID = this.$route.params.id || ''
-    this.searchInput = this.searchID
+    this.searchID = this.$route.params.pathMatch || ''
   }
 
   private beforeRouteUpdate (to: Route, from: Route, next: NavigationGuardNext<Vue>) {
-    if (!to.params.id) {
-      this.searchInput = ''
-      this.searchID = ''
-    }
+    this.searchID = ''
+    this.message = 'Please enter a valid Session ID to view its statistics. It should be a hexadecimal number (with leading zeros), or a decimal number.'
+    this.alertType = AlertTypes.INFO
     next()
   }
 
   private fetchSessionDetails () {
-    this.searchID = this.searchInput
+    this.message = ''
+    if (this.searchID === '') {
+      this.$router.push({ path: '/session-tool' })
+      return
+    }
+    const newRoute = `/session-tool/${this.searchID}`
+    if (this.$route.path !== newRoute) {
+      this.$router.push({ path: newRoute })
+    }
   }
 }
-
 </script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->

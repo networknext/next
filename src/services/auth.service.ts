@@ -1,5 +1,7 @@
 import Auth0Lock from 'auth0-lock'
 import store from '@/store'
+import APIService from '@/services/api.service'
+import Vue from 'vue'
 
 export default class AuthService {
   // TODO: Make these env vars
@@ -8,17 +10,16 @@ export default class AuthService {
 
   public lockClient: Auth0LockStatic
 
+  private apiService: APIService
+
+  private getUserInfo: any
+
   constructor () {
+    this.apiService = Vue.prototype.$apiService
     this.lockClient = new Auth0Lock(
       this.clientID,
       this.domain,
       {
-        additionalSignUpFields: [
-          {
-            name: 'company',
-            placeholder: 'Please enter your company name'
-          }
-        ],
         auth: {
           autoParseHash: true,
           params: {
@@ -35,7 +36,10 @@ export default class AuthService {
         }
       }
     )
-    this.lockClient.on('authenticated', this.processAuthentification)
+    // HACK - weird build issue is complaining about this on further down so I am doing this for now
+    this.getUserInfo = this.lockClient.getUserInfo
+
+    this.lockClient.on('authenticated', this.processAuthentication)
   }
 
   public signUp () {
@@ -57,20 +61,41 @@ export default class AuthService {
     })
   }
 
-  private processAuthentification (authResult: AuthResult) {
+  private processAuthentication (authResult: AuthResult) {
     this.getUserInfo(authResult.accessToken, (error: auth0.Auth0Error, profile: NNAuth0Profile) => {
       if (!error) {
-        const userRoles = profile['https://networknext.com/userRoles'] || { roles: [] }
+        this.apiService = new APIService()
+        const roles = profile['https://networknext.com/userRoles'] || { roles: [] }
+        const email = profile.email || ''
+        const domain = email.split('@')[1]
+        const token = authResult.idToken
         const userProfile: UserProfile = {
           auth0ID: profile.sub,
           company: '',
           email: profile.email || '',
-          idToken: authResult.idToken,
+          idToken: token,
           name: profile.name,
-          roles: userRoles.roles,
-          verified: profile.email_verified || false
+          roles: roles.roles,
+          verified: profile.email_verified || false,
+          routeShader: null,
+          domain: domain,
+          pubKey: '',
+          buyerID: ''
         }
-        store.commit('UPDATE_USER_PROFILE', userProfile)
+        const promises = [
+          this.apiService.fetchUserAccount({ user_id: userProfile.auth0ID }, token),
+          this.apiService.fetchGameConfiguration({ domain: domain }, token),
+          this.apiService.fetchAllBuyers(token)
+        ]
+        Promise.all(promises).then((responses: any) => {
+          userProfile.buyerID = responses[0].account.buyer_id
+          userProfile.company = responses[1].game_config.company
+          userProfile.pubKey = responses[1].game_config.public_key
+          userProfile.routeShader = responses[1].customer_route_shader
+          const allBuyers = responses[2].buyers || []
+          store.commit('UPDATE_USER_PROFILE', userProfile)
+          store.commit('UPDATE_ALL_BUYERS', allBuyers)
+        })
       }
     })
   }
@@ -90,4 +115,8 @@ export interface UserProfile {
   name: string;
   roles: Array<string>;
   verified: boolean;
+  routeShader: any;
+  domain: string;
+  pubKey: string;
+  buyerID: string;
 }

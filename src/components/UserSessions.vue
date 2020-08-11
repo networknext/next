@@ -71,30 +71,46 @@
 <script lang="ts">
 import { Component, Vue, Prop } from 'vue-property-decorator'
 import APIService from '../services/api.service'
+import { AlertTypes } from './types/AlertTypes'
 
 /**
  * TODO: Cleanup template
  * TODO: Figure out what sessionMeta fields need to be required
- * TODO: Hookup API call
  * TODO: Hookup loop logic
  */
 
 @Component
 export default class UserSessions extends Vue {
-  @Prop({ required: false, type: String, default: '' }) searchID!: string
-
-  // TODO: Refactor out the alert/error into its own component.
   private apiService: APIService
-  private showSessions = false
-  private sessions = []
+  private showSessions: boolean
+  private sessions: Array<any>
+
+  private searchID: string
+
+  private sessionLoop: any
+
+  private message: string
+  private alertType: string
 
   constructor () {
     super()
     this.apiService = Vue.prototype.$apiService
+    this.searchID = ''
+    this.sessions = []
+    this.showSessions = false
+    this.sessionLoop = null
+    this.message = 'Failed to fetch user sessions'
+    this.alertType = AlertTypes.ERROR
   }
 
   private mounted () {
-    this.fetchUserSessions()
+    this.searchID = this.$route.params.pathMatch || ''
+    if (this.searchID !== '') {
+      this.fetchUserSessions()
+      this.sessionLoop = setInterval(() => {
+        this.fetchUserSessions()
+      }, 10000)
+    }
   }
 
   private fetchUserSessions () {
@@ -104,10 +120,18 @@ export default class UserSessions extends Vue {
 
     this.apiService.fetchUserSessions({ user_hash: this.searchID })
       .then((response: any) => {
-        this.sessions = response.result.sessions || []
+        this.sessions = response.sessions || []
         this.showSessions = true
       })
       .catch((error: Error) => {
+        if (this.sessionLoop) {
+          clearInterval(this.sessionLoop)
+        }
+        if (this.sessions.length === 0) {
+          this.message = 'Failed to fetch session details'
+          console.log(`Something went wrong fetching sessions details for: ${this.searchID}`)
+          console.log(error)
+        }
         console.log(error)
       })
   }

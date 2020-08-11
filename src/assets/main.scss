@@ -1,0 +1,15 @@
+.multiselect__tag {
+  background-color: #007bff !important;
+}
+.multiselect__tag-icon::after {
+  color: white !important;
+}
+.multiselect__tag-icon:hover {
+  background-color: #007bff !important;
+}
+.multiselect__element {
+  background-color: white;
+}
+.multiselect__option .multiselect__option--highlight {
+  background-color: #007bff !important;
+}

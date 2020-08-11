@@ -1,7 +1,7 @@
 <template>
   <div v-bind:class="{
-         'map-container-no-offset': true,
-         'map-container-offset': false,
+         'map-container-no-offset': $store.getters.userProfile === null || $store.getters.userProfile.verified,
+         'map-container-offset': $store.getters.userProfile !== null && !$store.getters.userProfile.verified,
        }">
     <div id="map"></div>
     <canvas id="deck-canvas"></canvas>
@@ -77,7 +77,7 @@ export default class SessionMap extends Vue {
           })
         }
 
-        const sessions = response.result.map_points || []
+        const sessions = response.map_points || []
         const onNN = sessions.filter((point: any) => {
           return (point[2] === 1)
         })
