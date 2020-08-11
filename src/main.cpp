@@ -360,57 +360,49 @@ int main(int argc, const char* argv[])
      [&env, &relayAddr, &keychain, &routerInfo, &relayManager, &b64RelayPubKey, &sessions, &cleanup, &recorder, &success] {
        bool relayInitialized = false;
 
-        net::BeastWrapper wrapper;
-        core::Backend backend(
-         env.BackendHostname,
-         relayAddr.toString(),
-         keychain,
-         routerInfo,
-         relayManager,
-         b64RelayPubKey,
-         sessions,
-         v3TrafficStats,
-         wrapper);
+       net::BeastWrapper wrapper;
+       core::Backend backend(
+        env.BackendHostname, relayAddr.toString(), keychain, routerInfo, relayManager, b64RelayPubKey, sessions, wrapper);
 
-        for (int i = 0; i < 60; ++i) {
-          if (backend.init()) {
-            std::cout << '\n';
-            relayInitialized = true;
-            break;
-          }
+       for (int i = 0; i < 60; ++i) {
+         if (backend.init()) {
+           std::cout << '\n';
+           relayInitialized = true;
+           break;
+         }
 
-          std::this_thread::sleep_for(1s);
-        }
+         std::this_thread::sleep_for(1s);
+       }
 
-        if (!relayInitialized) {
-          Log("error: could not initialize relay");
-          cleanup();
-        }
+       if (!relayInitialized) {
+         Log("error: could not initialize relay");
+         cleanup();
+       }
 
-        Log("relay initialized with new backend");
+       Log("relay initialized with new backend");
 
-        if (gAlive) {
-          setupSignalHandlers();
+       if (gAlive) {
+         setupSignalHandlers();
 
-          success = backend.updateCycle(gAlive, gShouldCleanShutdown, recorder, sessions);
-        }
-      });
+         success = backend.updateCycle(gAlive, gShouldCleanShutdown, recorder, sessions);
+       }
+     });
 
-      {
-        auto [ok, err] = os::SetThreadAffinity(updateThread, 0);
-        if (!ok) {
-          Log(err);
-        }
+    {
+      auto [ok, err] = os::SetThreadAffinity(updateThread, 0);
+      if (!ok) {
+        Log(err);
       }
+    }
 
-      {
-        auto [ok, err] = os::SetThreadSchedMax(updateThread);
-        if (!ok) {
-          Log(err);
-        }
+    {
+      auto [ok, err] = os::SetThreadSchedMax(updateThread);
+      if (!ok) {
+        Log(err);
       }
+    }
 
-      updateThread.join();
+    updateThread.join();
   }
 
   Log("cleaning up");
@@ -423,4 +415,4 @@ int main(int argc, const char* argv[])
   LogDebug("Receiving Address: ", relayAddr);
 
   return success ? 0 : 1;
-  }
+}
