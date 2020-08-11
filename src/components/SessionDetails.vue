@@ -337,6 +337,7 @@ export default class SessionDetails extends Vue {
     next()
   }
 
+  // TODO: Move this somewhere with other helper functions
   private getCustomerName (buyerId: string) {
     const allBuyers = this.$store.getters.allBuyers
     let i = 0

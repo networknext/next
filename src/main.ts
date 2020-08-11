@@ -1,4 +1,5 @@
 import './router/ComponentHooks'
+import './assets/main.scss'
 import Vue from 'vue'
 import App from './App.vue'
 import router from './router'

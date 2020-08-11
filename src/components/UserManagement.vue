@@ -11,7 +11,7 @@
         <span class="sr-only">Loading...</span>
       </div>
     </div>
-    <Alert :message="message" :alertType="alertTypes.newUser" v-if="messages.newUser !== ''"/>
+    <Alert :message="messages.newUsers" :alertType="alertTypes.newUsers" v-if="messages.newUsers !== ''"/>
     <form v-show="true" @submit.prevent="addNewUsers()">
       <div class="form-group">
         <label for="customerId">
@@ -65,7 +65,7 @@
       </thead>
       <tbody>
         <tr v-for="(account, index) in companyUsers" :key="index">
-          <Alert :message="message" :alertType="alertTypes.editUser" v-if="messages.editUser !== ''"/>
+          <Alert :message="messages.editUser" :alertType="alertTypes.newUser" v-if="messages.editUser !== ''"/>
           <td>
             {{ account.email }}
           </td>
@@ -135,6 +135,7 @@ import { AlertTypes } from './types/AlertTypes'
 
 @Component({
   components: {
+    Alert,
     Multiselect
   }
 })
@@ -243,10 +244,10 @@ export default class UserManagement extends Vue {
         .catch((error: Error) => {
           console.log('Something went wrong updating the users permissions')
           console.log(error)
-          this.alertTypes.newUser = AlertTypes.ERROR
-          this.messages.newUser = 'Failed to delete user account'
+          this.alertTypes.newUsers = AlertTypes.ERROR
+          this.messages.newUsers = 'Failed to delete user account'
           setTimeout(() => {
-            this.messages.newUser = ''
+            this.messages.newUsers = ''
           }, 5000)
         })
     }
@@ -290,19 +291,19 @@ export default class UserManagement extends Vue {
         })
 
         this.companyUsers.concat(newAccounts)
-        this.alertTypes.newUser = AlertTypes.SUCCESS
-        this.messages.newUser = 'User account(s) added successfully'
+        this.alertTypes.newUsers = AlertTypes.SUCCESS
+        this.messages.newUsers = 'User account(s) added successfully'
         setTimeout(() => {
-          this.messages.newUser = ''
+          this.messages.newUsers = ''
         }, 5000)
       })
       .catch((error: Error) => {
         console.log('Something went wrong creating new users')
         console.log(error)
-        this.alertTypes.newUser = AlertTypes.ERROR
-        this.messages.newUser = 'Failed to add user account(s)'
+        this.alertTypes.newUsers = AlertTypes.ERROR
+        this.messages.newUsers = 'Failed to add user account(s)'
         setTimeout(() => {
-          this.messages.newUser = ''
+          this.messages.newUsers = ''
         }, 5000)
       })
     this.newUserRoles = []

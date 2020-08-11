@@ -27,6 +27,9 @@
                 ISP
               </span>
             </th>
+            <th v-if="$store.getters.isAdmin">
+                Customer
+            </th>
             <th>
               <span>
                 Datacenter
@@ -68,6 +71,9 @@
             </td>
             <td>
               {{ session.location.isp != "" ? session.location.isp : "Unknown" }}
+            </td>
+            <td v-if="$store.getters.isAdmin">
+                {{ getCustomerName(session.customer_id) }}
             </td>
             <td>
               <span class="text-dark">
@@ -162,6 +168,18 @@ export default class SessionsWorkspace extends Vue {
       .catch((error: any) => {
         console.log(error)
       })
+  }
+
+  // TODO: Move this somewhere with other helper functions
+  private getCustomerName (buyerId: string) {
+    const allBuyers = this.$store.getters.allBuyers
+    let i = 0
+    for (i; i < allBuyers.length; i++) {
+      if (allBuyers[i].id === buyerId) {
+        return allBuyers[i].name
+      }
+    }
+    return 'Private'
   }
 
   private beforeRouteUpdate (to: Route, from: Route, next: NavigationGuardNext<Vue>) {
