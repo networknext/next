@@ -434,7 +434,12 @@ func main() {
 
 		spa := spaHandler{staticPath: uiDir, indexPath: "index.html"}
 
+<<<<<<< HEAD
 		r.PathPrefix("/").Handler(middleware.CacheControl(os.Getenv("HTTP_CACHE_CONTROL"), handlers.CompressHandler(spa)))
+=======
+		http.HandleFunc("/health", transport.HealthHandlerFunc())
+		http.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, allowCORS))
+>>>>>>> Added cors middleware to be used elsewhere in the backend. This was needed for portal version endpoint
 
 		level.Info(logger).Log("addr", ":"+port)
 
