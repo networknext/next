@@ -151,6 +151,42 @@ type RelayTrafficStats struct {
 	SessionCount  uint64
 	BytesSent     uint64
 	BytesReceived uint64
+
+	OutboundPingTx uint64
+
+	RouteRequestRx uint64
+	RouteRequestTx uint64
+
+	RouteResponseRx uint64
+	RouteResponseTx uint64
+
+	ClientToServerRx uint64
+	ClientToServerTx uint64
+
+	ServerToClientRx uint64
+	ServerToClientTx uint64
+
+	InboundPingRx uint64
+	InboundPingTx uint64
+
+	PongRx uint64
+
+	SessionPingRx uint64
+	SessionPingTx uint64
+
+	SessionPongRx uint64
+	SessionPongTx uint64
+
+	ContinueRequestRx uint64
+	ContinueRequestTx uint64
+
+	ContinueResponseRx uint64
+	ContinueResponseTx uint64
+
+	NearPingRx uint64
+	NearPingTx uint64
+
+	UnknownRx uint64
 }
 
 type Stats struct {
