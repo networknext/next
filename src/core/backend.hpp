@@ -4,7 +4,6 @@
 #include "crypto/bytes.hpp"
 #include "crypto/keychain.hpp"
 #include "encoding/base64.hpp"
-#include "legacy/v3/traffic_stats.hpp"
 #include "net/http.hpp"
 #include "relay_manager.hpp"
 #include "router_info.hpp"
@@ -53,8 +52,7 @@ namespace core
      RouterInfo& routerInfo,
      RelayManager<Relay>& relayManager,
      std::string base64RelayPublicKey,
-     const core::SessionMap& sessions,
-     legacy::v3::TrafficStats& stats);
+     const core::SessionMap& sessions);
     ~Backend() = default;
 
     auto init() -> bool;
@@ -77,7 +75,6 @@ namespace core
     RelayManager<Relay>& mRelayManager;
     const std::string mBase64RelayPublicKey;
     const core::SessionMap& mSessionMap;
-    legacy::v3::TrafficStats& mStats;
 
     auto update(util::ThroughputRecorder& recorder, bool shutdown) -> bool;
     auto buildInitRequest(util::JSON& doc) -> std::tuple<bool, const char*>;
@@ -93,16 +90,14 @@ namespace core
    RouterInfo& routerInfo,
    RelayManager<Relay>& relayManager,
    std::string base64RelayPublicKey,
-   const core::SessionMap& sessions,
-   legacy::v3::TrafficStats& stats)
+   const core::SessionMap& sessions)
    : mHostname(hostname),
      mAddressStr(address),
      mKeychain(keychain),
      mRouterInfo(routerInfo),
      mRelayManager(relayManager),
      mBase64RelayPublicKey(base64RelayPublicKey),
-     mSessionMap(sessions),
-     mStats(stats)
+     mSessionMap(sessions)
   {}
 
   template <typename T>

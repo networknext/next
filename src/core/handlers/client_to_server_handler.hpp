@@ -7,7 +7,6 @@
 #include "os/platform.hpp"
 #include "relay/relay.hpp"
 #include "util/throughput_recorder.hpp"
-#include "legacy/v3/traffic_stats.hpp"
 
 namespace core
 {
@@ -16,11 +15,7 @@ namespace core
     class ClientToServerHandler: public BaseHandler
     {
      public:
-      ClientToServerHandler(
-       GenericPacket<>& packet,
-       core::SessionMap& sessions,
-       util::ThroughputRecorder& recorder,
-       legacy::v3::TrafficStats& stats);
+      ClientToServerHandler(GenericPacket<>& packet, core::SessionMap& sessions, util::ThroughputRecorder& recorder);
 
       template <size_t Size>
       void handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket, bool isSigned);
@@ -28,12 +23,11 @@ namespace core
      private:
       core::SessionMap& mSessionMap;
       util::ThroughputRecorder& mRecorder;
-      legacy::v3::TrafficStats& mStats;
     };
 
     inline ClientToServerHandler::ClientToServerHandler(
-     GenericPacket<>& packet, core::SessionMap& sessions, util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats)
-     : BaseHandler(packet), mSessionMap(sessions), mRecorder(recorder), mStats(stats)
+     GenericPacket<>& packet, core::SessionMap& sessions, util::ThroughputRecorder& recorder)
+     : BaseHandler(packet), mSessionMap(sessions), mRecorder(recorder)
     {}
 
     template <size_t Size>
@@ -103,7 +97,6 @@ namespace core
       relay_replay_protection_advance_sequence(&session->ClientToServerProtection, clean_sequence);
 
       mRecorder.addToSent(mPacket.Len);
-      mStats.BytesPerSecPaidTx += mPacket.Len;
 
 #ifdef RELAY_MULTISEND
       buff.push(session->NextAddr, mPacket.Buffer.data(), mPacket.Len);

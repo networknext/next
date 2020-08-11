@@ -4,7 +4,6 @@
 #include "base_handler.hpp"
 #include "core/packets/types.hpp"
 #include "core/session_map.hpp"
-#include "legacy/v3/traffic_stats.hpp"
 #include "os/platform.hpp"
 #include "util/throughput_recorder.hpp"
 
@@ -15,19 +14,17 @@ namespace core
     class NearPingHandler: public BaseHandler
     {
      public:
-      NearPingHandler(GenericPacket<>& packet, util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats);
+      NearPingHandler(GenericPacket<>& packet, util::ThroughputRecorder& recorder);
 
       template <size_t Size>
       void handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket, bool isSigned);
 
      private:
       util::ThroughputRecorder& mRecorder;
-      legacy::v3::TrafficStats& mStats;
     };
 
-    inline NearPingHandler::NearPingHandler(
-     GenericPacket<>& packet, util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats)
-     : BaseHandler(packet), mRecorder(recorder), mStats(stats)
+    inline NearPingHandler::NearPingHandler(GenericPacket<>& packet, util::ThroughputRecorder& recorder)
+     : BaseHandler(packet), mRecorder(recorder)
     {}
 
     template <size_t Size>
@@ -59,7 +56,6 @@ namespace core
       }
 
       mRecorder.addToSent(length);
-      mStats.BytesPerSecMeasurementTx += length;
 
 #ifdef RELAY_MULTISEND
       buff.push(mPacket.Addr, mPacket.Buffer.data(), length);

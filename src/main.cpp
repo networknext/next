@@ -14,12 +14,10 @@
 #include "crypto/hash.hpp"
 #include "crypto/keychain.hpp"
 #include "encoding/base64.hpp"
-#include "legacy/v3/backend.hpp"
 #include "relay/relay.hpp"
 #include "relay/relay_platform.hpp"
 #include "testing/test.hpp"
 #include "util/env.hpp"
-#include "legacy/v3/constants.hpp"
 
 using namespace std::chrono_literals;
 
@@ -220,23 +218,13 @@ int main(int argc, const char* argv[])
 
   core::RouterInfo routerInfo;
   core::RelayManager<core::Relay> relayManager;
-  core::RelayManager<core::V3Relay> v3RelayManager;
   util::ThroughputRecorder recorder;
-  legacy::v3::TrafficStats v3TrafficStats;
-  auto chan = util::makeChannel<core::GenericPacket<>>();
-  auto sender = std::get<0>(chan);
-  auto receiver = std::get<1>(chan);
 
   // used to make sockets and threads serially
   std::atomic<bool> socketAndThreadReady(false);
 
   std::vector<os::SocketPtr> sockets;
   std::vector<std::shared_ptr<std::thread>> threads;
-
-  // only used for v3 compatability
-  const auto relayID = crypto::FNV(env.RelayV3Name);
-
-  std::atomic<legacy::v3::ResponseState> state(legacy::v3::ResponseState::Invalid);
 
   // decides if the relay should receive packets
   std::atomic<bool> shouldReceive(true);
@@ -310,35 +298,12 @@ int main(int argc, const char* argv[])
         cleanup();
       }
 
-      auto thread = std::make_shared<std::thread>([&socketAndThreadReady,
-                                                   &shouldReceive,
-                                                   socket,
-                                                   &keychain,
-                                                   &sessions,
-                                                   &relayManager,
-                                                   &v3RelayManager,
-                                                   &recorder,
-                                                   &sender,
-                                                   &v3TrafficStats,
-                                                   relayID,
-                                                   &state,
-                                                   &routerInfo] {
-        core::PacketProcessor processor(
-         shouldReceive,
-         *socket,
-         keychain,
-         sessions,
-         relayManager,
-         v3RelayManager,
-         gAlive,
-         recorder,
-         sender,
-         v3TrafficStats,
-         relayID,
-         state,
-         routerInfo);
-        processor.process(socketAndThreadReady);
-      });
+      auto thread = std::make_shared<std::thread>(
+       [&socketAndThreadReady, &shouldReceive, socket, &keychain, &sessions, &relayManager, &recorder, &routerInfo] {
+         core::PacketProcessor processor(
+          shouldReceive, *socket, keychain, sessions, relayManager, gAlive, recorder, routerInfo);
+         processor.process(socketAndThreadReady);
+       });
 
       wait();  // wait the the packet processor is ready to receive
 
@@ -364,11 +329,10 @@ int main(int argc, const char* argv[])
   // ping processing setup
   if (gAlive) {
     auto socket = nextSocket();
-    auto thread =
-     std::make_shared<std::thread>([&socketAndThreadReady, socket, &relayManager, &recorder, &v3TrafficStats, &relayID] {
-       core::PingProcessor pingProcessor(*socket, relayManager, gAlive, recorder, v3TrafficStats, relayID);
-       pingProcessor.process(socketAndThreadReady);
-     });
+    auto thread = std::make_shared<std::thread>([&socketAndThreadReady, socket, &relayManager, &recorder] {
+      core::PingProcessor pingProcessor(*socket, relayManager, gAlive, recorder);
+      pingProcessor.process(socketAndThreadReady);
+    });
 
     wait();
 
@@ -390,140 +354,38 @@ int main(int argc, const char* argv[])
     }
   }
 
-  bool v3BackendSuccess = true;
-
-  // v3 backend compatability setup
-  if (env.RelayV3Enabled == "1" && gAlive) {
-    v3BackendSuccess = false;
-    // ping proc setup
-    {
-      auto socket = nextSocket();
-      auto thread =
-       std::make_shared<std::thread>([&socketAndThreadReady, socket, &v3RelayManager, &recorder, &v3TrafficStats, &relayID] {
-         core::PingProcessor pingProcessor(*socket, v3RelayManager, gAlive, recorder, v3TrafficStats, relayID);
-         pingProcessor.process(socketAndThreadReady);
-       });
-
-      wait();
-
-      sockets.push_back(socket);
-      threads.push_back(thread);
-
-      {
-        auto [ok, err] = os::SetThreadAffinity(*thread, 0);
-        if (!ok) {
-          Log(err);
-        }
-      }
-
-      {
-        auto [ok, err] = os::SetThreadSchedMax(*thread);
-        if (!ok) {
-          Log(err);
-        }
-      }
-    }
-
-    // backend setup
-    {
-      auto socket = nextSocket();
-      auto thread = std::make_shared<std::thread>([&receiver,
-                                                   &env,
-                                                   socket,
-                                                   &cleanup,
-                                                   &v3BackendSuccess,
-                                                   &v3TrafficStats,
-                                                   &v3RelayManager,
-                                                   &relayID,
-                                                   &state,
-                                                   &keychain,
-                                                   &sessions] {
-        util::Clock clock;
-        size_t speed = std::stoi(env.RelayV3Speed) * 1000000;
-        legacy::v3::Backend backend(
-         gAlive, receiver, env, relayID, *socket, clock, v3TrafficStats, v3RelayManager, speed, state, keychain, sessions);
-
-        if (!backend.init()) {
-          Log("could not initialize relay with old backend");
-          cleanup();
-          return;
-        }
-
-        Log("relay initialized with old backend");
-
-        if (!backend.config()) {
-          Log("could not configure relay with old backend");
-          cleanup();
-          return;
-        }
-
-        Log("relay configured with old backend");
-
-        v3BackendSuccess = backend.updateCycle(gAlive);
-
-        gAlive = false;
-      });
-
-      {
-        auto [ok, err] = os::SetThreadAffinity(*thread, 0);
-        if (!ok) {
-          Log(err);
-        }
-      }
-
-      {
-        auto [ok, err] = os::SetThreadSchedMax(*thread);
-        if (!ok) {
-          Log(err);
-        }
-      }
-
-      sockets.push_back(socket);
-      threads.push_back(thread);
-    }
-  }
-
   // new backend setup
   {
-    std::thread updateThread([&env,
-                              &relayAddr,
-                              &keychain,
-                              &routerInfo,
-                              &relayManager,
-                              &b64RelayPubKey,
-                              &sessions,
-                              &v3TrafficStats,
-                              &cleanup,
-                              &recorder,
-                              &success] {
-      bool relayInitialized = false;
+    std::thread updateThread(
+     [&env, &relayAddr, &keychain, &routerInfo, &relayManager, &b64RelayPubKey, &sessions, &cleanup, &recorder, &success] {
+       bool relayInitialized = false;
 
-      core::Backend<net::BeastWrapper> backend(
-       env.BackendHostname, relayAddr.toString(), keychain, routerInfo, relayManager, b64RelayPubKey, sessions, v3TrafficStats);
+       core::Backend<net::BeastWrapper> backend(
+        env.BackendHostname, relayAddr.toString(), keychain, routerInfo, relayManager, b64RelayPubKey, sessions);
 
-      for (int i = 0; i < 60; ++i) {
-        if (backend.init()) {
-          std::cout << '\n';
-          relayInitialized = true;
-          break;
-        }
+       for (int i = 0; i < 60; ++i) {
+         if (backend.init()) {
+           std::cout << '\n';
+           relayInitialized = true;
+           break;
+         }
 
-        std::this_thread::sleep_for(1s);
-      }
+         std::this_thread::sleep_for(1s);
+       }
 
-      if (!relayInitialized) {
-        Log("error: could not initialize relay");
-        cleanup();
-      }
+       if (!relayInitialized) {
+         Log("error: could not initialize relay");
+         cleanup();
+       }
 
-      Log("relay initialized with new backend");
+       Log("relay initialized with new backend");
 
-      if (gAlive) {
-        setupSignalHandlers();
+       if (gAlive) {
+         setupSignalHandlers();
 
-        success = backend.updateCycle(gAlive, gShouldCleanShutdown, recorder, sessions);
-      }
-    });
+         success = backend.updateCycle(gAlive, gShouldCleanShutdown, recorder, sessions);
+       }
+     });
 
     {
       auto [ok, err] = os::SetThreadAffinity(updateThread, 0);
@@ -544,9 +406,6 @@ int main(int argc, const char* argv[])
 
   Log("cleaning up");
 
-  receiver.close();
-  sender.close();  // redundant
-
   shouldReceive = false;
 
   cleanup();
@@ -554,5 +413,5 @@ int main(int argc, const char* argv[])
 
   LogDebug("Receiving Address: ", relayAddr);
 
-  return (success && v3BackendSuccess) ? 0 : 1;
+  return success ? 0 : 1;
 }

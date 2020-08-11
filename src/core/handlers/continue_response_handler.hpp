@@ -6,7 +6,6 @@
 #include "crypto/keychain.hpp"
 #include "os/platform.hpp"
 #include "util/throughput_recorder.hpp"
-#include "legacy/v3/traffic_stats.hpp"
 
 namespace core
 {
@@ -15,11 +14,7 @@ namespace core
     class ContinueResponseHandler: public BaseHandler
     {
      public:
-      ContinueResponseHandler(
-       GenericPacket<>& packet,
-       core::SessionMap& sessions,
-       util::ThroughputRecorder& recorder,
-       legacy::v3::TrafficStats& stats);
+      ContinueResponseHandler(GenericPacket<>& packet, core::SessionMap& sessions, util::ThroughputRecorder& recorder);
 
       template <size_t Size>
       void handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket, bool isSigned);
@@ -27,12 +22,11 @@ namespace core
      private:
       core::SessionMap& mSessionMap;
       util::ThroughputRecorder& mRecorder;
-      legacy::v3::TrafficStats& mStats;
     };
 
     inline ContinueResponseHandler::ContinueResponseHandler(
-     GenericPacket<>& packet, core::SessionMap& sessions, util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats)
-     : BaseHandler(packet), mSessionMap(sessions), mRecorder(recorder), mStats(stats)
+     GenericPacket<>& packet, core::SessionMap& sessions, util::ThroughputRecorder& recorder)
+     : BaseHandler(packet), mSessionMap(sessions), mRecorder(recorder)
     {}
 
     template <size_t Size>
@@ -110,7 +104,7 @@ namespace core
       session->ServerToClientSeq = clean_sequence;
 
       mRecorder.addToSent(mPacket.Len);
-      mStats.BytesPerSecManagementTx += mPacket.Len;
+
 #ifdef RELAY_MULTISEND
       buff.push(session->PrevAddr, mPacket.Buffer.data(), mPacket.Len);
 #else

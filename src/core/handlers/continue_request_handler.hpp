@@ -5,7 +5,6 @@
 #include "core/packets/types.hpp"
 #include "core/session_map.hpp"
 #include "crypto/keychain.hpp"
-#include "legacy/v3/traffic_stats.hpp"
 #include "os/platform.hpp"
 #include "util/throughput_recorder.hpp"
 #include "core/router_info.hpp"
@@ -22,7 +21,6 @@ namespace core
        core::SessionMap& sessions,
        const crypto::Keychain& keychain,
        util::ThroughputRecorder& recorder,
-       legacy::v3::TrafficStats& stats,
        const RouterInfo& routerInfo);
 
       template <size_t Size>
@@ -32,7 +30,6 @@ namespace core
       core::SessionMap& mSessionMap;
       const crypto::Keychain& mKeychain;
       util::ThroughputRecorder& mRecorder;
-      legacy::v3::TrafficStats& mStats;
       const RouterInfo& mRouterInfo;
     };
 
@@ -41,13 +38,11 @@ namespace core
      core::SessionMap& sessions,
      const crypto::Keychain& keychain,
      util::ThroughputRecorder& recorder,
-     legacy::v3::TrafficStats& stats,
      const RouterInfo& routerInfo)
      : BaseHandler(packet),
        mSessionMap(sessions),
        mKeychain(keychain),
        mRecorder(recorder),
-       mStats(stats),
        mRouterInfo(routerInfo)
     {}
 
@@ -117,7 +112,6 @@ namespace core
       }
 
       mRecorder.addToSent(length);
-      mStats.BytesPerSecManagementTx += length;
 
 #ifdef RELAY_MULTISEND
       buff.push(session->NextAddr, &mPacket.Buffer[ContinueToken::EncryptedByteSize], length);

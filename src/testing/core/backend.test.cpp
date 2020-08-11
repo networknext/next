@@ -26,12 +26,11 @@ namespace
    core::RouterInfo& info, core::RelayManager<core::Relay>& manager, core::SessionMap& sessions)
   {
     static crypto::Keychain keychain;
-    static legacy::v3::TrafficStats ts;
 
     check(keychain.parse(Base64RelayPublicKey, Base64RelayPrivateKey, Base64RouterPublicKey, Base64UpdateKey));
 
     return core::Backend<testing::StubbedCurlWrapper>(
-     BackendHostname, RelayAddr, keychain, info, manager, Base64RelayPublicKey, sessions, ts);
+     BackendHostname, RelayAddr, keychain, info, manager, Base64RelayPublicKey, sessions);
   }
 }  // namespace
 

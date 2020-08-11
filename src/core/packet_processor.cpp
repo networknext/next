@@ -11,8 +11,6 @@
 #include "handlers/near_ping_handler.hpp"
 #include "handlers/new_relay_ping_handler.hpp"
 #include "handlers/new_relay_pong_handler.hpp"
-#include "handlers/old_relay_ping_handler.hpp"
-#include "handlers/old_relay_pong_handler.hpp"
 #include "handlers/route_request_handler.hpp"
 #include "handlers/route_response_handler.hpp"
 #include "handlers/server_to_client_handler.hpp"
@@ -31,26 +29,16 @@ namespace core
    const crypto::Keychain& keychain,
    SessionMap& sessions,
    RelayManager<Relay>& relayManager,
-   RelayManager<V3Relay>& v3RelayManager,
    const volatile bool& handle,
    util::ThroughputRecorder& logger,
-   util::Sender<GenericPacket<>>& sender,
-   legacy::v3::TrafficStats& stats,
-   const uint64_t oldRelayID,
-   const std::atomic<legacy::v3::ResponseState>& state,
    const RouterInfo& routerInfo)
    : mShouldReceive(shouldReceive),
      mSocket(socket),
      mKeychain(keychain),
      mSessionMap(sessions),
      mRelayManager(relayManager),
-     mV3RelayManager(v3RelayManager),
      mShouldProcess(handle),
      mRecorder(logger),
-     mChannel(sender),
-     mStats(stats),
-     mOldRelayID(oldRelayID),
-     mState(state),
      mRouterInfo(routerInfo)
   {}
 
@@ -137,9 +125,7 @@ namespace core
       isSigned = false;
     }
 
-    if (
-     type != packets::Type::NewRelayPing && type != packets::Type::NewRelayPong && type != packets::Type::OldRelayPing &&
-     type != packets::Type::OldRelayPong) {
+    if (type != packets::Type::NewRelayPing && type != packets::Type::NewRelayPong) {
       if (isSigned) {
         LogDebug("packet is from network next");
       } else {
@@ -157,161 +143,90 @@ namespace core
 
         if (packet.Len == packets::NewRelayPingPacket::ByteSize) {
           mRecorder.addToReceived(wholePacketSize);
-          mStats.BytesPerSecMeasurementRx += wholePacketSize;
 
-          handlers::NewRelayPingHandler handler(packet, mRecorder, mStats);
+          handlers::NewRelayPingHandler handler(packet, mRecorder);
 
           handler.handle(outputBuff, mSocket);
         } else {
           mRecorder.addToUnknown(wholePacketSize);
-          mStats.BytesPerSecInvalidRx += wholePacketSize;
         }
       } break;
       case packets::Type::NewRelayPong: {
         if (packet.Len == packets::NewRelayPingPacket::ByteSize) {
           mRecorder.addToReceived(wholePacketSize);
-          mStats.BytesPerSecMeasurementRx += wholePacketSize;
 
           handlers::NewRelayPongHandler handler(packet, mRelayManager);
 
           handler.handle();
         } else {
           mRecorder.addToUnknown(wholePacketSize);
-          mStats.BytesPerSecInvalidRx += wholePacketSize;
-        }
-      } break;
-      case packets::Type::OldRelayPing: {
-        if (packet.Len == packets::OldRelayPingPacket::ByteSize) {
-          mRecorder.addToReceived(wholePacketSize);
-          mStats.BytesPerSecMeasurementRx += wholePacketSize;
-
-          handlers::OldRelayPingHandler handler(packet, mRecorder, mStats, mOldRelayID);
-
-          handler.handle(outputBuff, mSocket);
-        } else {
-          mRecorder.addToUnknown(wholePacketSize);
-          mStats.BytesPerSecInvalidRx += wholePacketSize;
-        }
-      } break;
-      case packets::Type::OldRelayPong: {
-        if (packet.Len == packets::OldRelayPongPacket::ByteSize) {
-          mRecorder.addToReceived(wholePacketSize);
-          mStats.BytesPerSecMeasurementRx += wholePacketSize;
-
-          handlers::OldRelayPongHandler handler(packet, mV3RelayManager);
-
-          handler.handle();
-        } else {
-          mRecorder.addToUnknown(wholePacketSize);
-          mStats.BytesPerSecInvalidRx += wholePacketSize;
         }
       } break;
       case packets::Type::RouteRequest: {
         mRecorder.addToReceived(wholePacketSize);
-        mStats.BytesPerSecManagementRx += wholePacketSize;
 
-        handlers::RouteRequestHandler handler(packet, packet.Addr, mKeychain, mSessionMap, mRecorder, mStats, mRouterInfo);
+        handlers::RouteRequestHandler handler(packet, packet.Addr, mKeychain, mSessionMap, mRecorder, mRouterInfo);
 
         handler.handle(outputBuff, mSocket, isSigned);
       } break;
       case packets::Type::RouteResponse: {
         mRecorder.addToReceived(wholePacketSize);
-        mStats.BytesPerSecManagementRx += wholePacketSize;
 
-        handlers::RouteResponseHandler handler(packet, mSessionMap, mRecorder, mStats);
+        handlers::RouteResponseHandler handler(packet, mSessionMap, mRecorder);
 
         handler.handle(outputBuff, mSocket, isSigned);
       } break;
       case packets::Type::ContinueRequest: {
         mRecorder.addToReceived(wholePacketSize);
-        mStats.BytesPerSecManagementRx += wholePacketSize;
 
-        handlers::ContinueRequestHandler handler(packet, mSessionMap, mKeychain, mRecorder, mStats, mRouterInfo);
+        handlers::ContinueRequestHandler handler(packet, mSessionMap, mKeychain, mRecorder, mRouterInfo);
 
         handler.handle(outputBuff, mSocket, isSigned);
       } break;
       case packets::Type::ContinueResponse: {
         mRecorder.addToReceived(wholePacketSize);
-        mStats.BytesPerSecManagementRx += wholePacketSize;
 
-        handlers::ContinueResponseHandler handler(packet, mSessionMap, mRecorder, mStats);
+        handlers::ContinueResponseHandler handler(packet, mSessionMap, mRecorder);
 
         handler.handle(outputBuff, mSocket, isSigned);
       } break;
       case packets::Type::ClientToServer: {
         mRecorder.addToReceived(wholePacketSize);
-        mStats.BytesPerSecPaidRx += wholePacketSize;
 
-        handlers::ClientToServerHandler handler(packet, mSessionMap, mRecorder, mStats);
+        handlers::ClientToServerHandler handler(packet, mSessionMap, mRecorder);
 
         handler.handle(outputBuff, mSocket, isSigned);
       } break;
       case packets::Type::ServerToClient: {
         mRecorder.addToReceived(wholePacketSize);
-        mStats.BytesPerSecPaidRx += wholePacketSize;
 
-        handlers::ServerToClientHandler handler(packet, mSessionMap, mRecorder, mStats);
+        handlers::ServerToClientHandler handler(packet, mSessionMap, mRecorder);
 
         handler.handle(outputBuff, mSocket, isSigned);
       } break;
       case packets::Type::SessionPing: {
         mRecorder.addToReceived(wholePacketSize);
-        mStats.BytesPerSecMeasurementRx += wholePacketSize;
 
-        handlers::SessionPingHandler handler(packet, mSessionMap, mRecorder, mStats);
+        handlers::SessionPingHandler handler(packet, mSessionMap, mRecorder);
 
         handler.handle(outputBuff, mSocket, isSigned);
       } break;
       case packets::Type::SessionPong: {
         mRecorder.addToReceived(wholePacketSize);
-        mStats.BytesPerSecMeasurementRx += wholePacketSize;
 
-        handlers::SessionPongHandler handler(packet, mSessionMap, mRecorder, mStats);
+        handlers::SessionPongHandler handler(packet, mSessionMap, mRecorder);
 
         handler.handle(outputBuff, mSocket, isSigned);
       } break;
       case packets::Type::NearPing: {
         mRecorder.addToReceived(wholePacketSize);
-        mStats.BytesPerSecMeasurementRx += wholePacketSize;
 
-        handlers::NearPingHandler handler(packet, mRecorder, mStats);
+        handlers::NearPingHandler handler(packet, mRecorder);
 
         handler.handle(outputBuff, mSocket, isSigned);
       } break;
-      // Next three all do the same thing
-      case packets::Type::V3BackendInitResponse: {
-        if (mState == legacy::v3::ResponseState::Init) {
-          mRecorder.addToReceived(wholePacketSize);
-          mStats.BytesPerSecManagementRx += wholePacketSize;
-          mChannel.send(packet);
-        } else {
-          mRecorder.addToUnknown(wholePacketSize);
-          mStats.BytesPerSecInvalidRx += wholePacketSize;
-        }
-      } break;
-      case packets::Type::V3BackendConfigResponse: {
-        if (mState == legacy::v3::ResponseState::Config) {
-          mRecorder.addToReceived(wholePacketSize);
-          mStats.BytesPerSecManagementRx += wholePacketSize;
-          mChannel.send(packet);
-        } else {
-          mRecorder.addToUnknown(wholePacketSize);
-          mStats.BytesPerSecInvalidRx += wholePacketSize;
-        }
-      } break;
-      case packets::Type::V3BackendUpdateResponse: {
-        if (mState == legacy::v3::ResponseState::Update) {
-          mRecorder.addToReceived(wholePacketSize);
-          mStats.BytesPerSecManagementRx += wholePacketSize;
-          mChannel.send(packet);
-        } else {
-          mRecorder.addToUnknown(wholePacketSize);
-          mStats.BytesPerSecInvalidRx += wholePacketSize;
-        }
-      } break;
       default: {
         mRecorder.addToUnknown(wholePacketSize);
-        mStats.BytesPerSecInvalidRx += wholePacketSize;
       } break;
     }
   }
