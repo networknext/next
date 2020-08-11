@@ -103,7 +103,7 @@ namespace core
 
       session->ServerToClientSeq = clean_sequence;
 
-      mRecorder.ContinueResponseTx(mPacket.Len);
+      mRecorder.ContinueResponseTx.add(mPacket.Len);
 
 #ifdef RELAY_MULTISEND
       buff.push(session->PrevAddr, mPacket.Buffer.data(), mPacket.Len);

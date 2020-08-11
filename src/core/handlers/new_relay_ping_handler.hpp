@@ -40,7 +40,7 @@ namespace core
 
       crypto::SignNetworkNextPacket(mPacket.Buffer, mPacket.Len);
 
-      mRecorder.InboundPingTx(mPacket.Len);
+      mRecorder.InboundPingTx.add(mPacket.Len);
 
 #ifdef RELAY_MULTISEND
       buff.push(mPacket);

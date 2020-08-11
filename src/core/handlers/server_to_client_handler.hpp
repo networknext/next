@@ -93,7 +93,7 @@ namespace core
 
       relay_replay_protection_advance_sequence(&session->ServerToClientProtection, clean_sequence);
 
-      mRecorder.ServerToClientTx(mPacket.Len);
+      mRecorder.ServerToClientTx.add(mPacket.Len);
 
 #ifdef RELAY_MULTISEND
       buff.push(session->PrevAddr, mPacket.Buffer.data(), mPacket.Len);

@@ -16,13 +16,13 @@ namespace
   const auto Base64RelayPrivateKey = "lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=";
   const auto Base64RouterPublicKey = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=";
   const auto Base64UpdateKey = "ycOUBHcxeThec42twkVJkO7QaVqlZUk3pApu7Ki58SrvELV+iIfiMpgxuJcTASVaCs1XD2BNDoGcEu9JkHv/sQ==";
-  crypto::Keychain Keychain = [] {
+  const crypto::Keychain Keychain = [] {
     crypto::Keychain keychain;
     check(keychain.parse(Base64RelayPublicKey, Base64RelayPrivateKey, Base64RouterPublicKey, Base64UpdateKey));
     return keychain;
   }();
 
-  std::vector<uint8_t> BasicValidUpdateResponse = [] {
+  const std::vector<uint8_t> BasicValidUpdateResponse = [] {
     core::InitResponse response = {
      .Version = 0,
      .Timestamp = 0,
@@ -72,7 +72,7 @@ Test(core_backend_init_valid)
   check(request.Version == core::InitRequestVersion);
   check(request.Address == RelayAddr);
 
-  // can't check nonce or enctypred token since they're random
+  // can't check nonce or encrypted token since they're random
 }
 
 // Update the backend for 2 seconds, then proceed to switch the handle to false.
@@ -295,11 +295,11 @@ Test(core_Backend_update_valid)
   client.Response.resize(response.size());
   response.into(client.Response);
 
-  const auto bytesSent = 123456789;
-  const auto bytesReceived = 987654321;
+  const auto outboundPing = 123456789;
+  const auto pong = 987654321;
 
-  recorder.addToSent(bytesSent);
-  recorder.addToReceived(bytesReceived);
+  recorder.OutboundPingTx.add(outboundPing);
+  recorder.PongRx.add(pong);
 
   check(backend.update(recorder, false));
 
@@ -308,14 +308,36 @@ Test(core_Backend_update_valid)
     core::UpdateRequest request;
     check(request.from(client.Request));
 
-    check(request.Version == 0);
+    check(request.Version == 1);
     check(request.Address == RelayAddr);
     check(request.PublicKey == Keychain.RelayPublicKey);
-    check(request.BytesSent == bytesSent);
-    check(request.BytesReceived == bytesReceived);
     check(request.SessionCount == sessions.size());
+    check(request.OutboundPingTx == outboundPing);
+    check(request.RouteRequestRx == 0);
+    check(request.RouteRequestTx == 0);
+    check(request.RouteResponseRx == 0);
+    check(request.RouteResponseTx == 0);
+    check(request.ClientToServerRx == 0);
+    check(request.ClientToServerTx == 0);
+    check(request.ServerToClientRx == 0);
+    check(request.ServerToClientTx == 0);
+    check(request.InboundPingRx == 0);
+    check(request.InboundPingTx == 0);
+    check(request.PongRx == pong);
+    check(request.SessionPingRx == 0);
+    check(request.SessionPingTx == 0);
+    check(request.SessionPongRx == 0);
+    check(request.SessionPongTx == 0);
+    check(request.ContinueRequestRx == 0);
+    check(request.ContinueRequestTx == 0);
+    check(request.ContinueResponseRx == 0);
+    check(request.ContinueResponseTx == 0);
+    check(request.NearPingRx == 0);
+    check(request.NearPingTx == 0);
+    check(request.UnknownRx == 0);
     check(request.ShuttingDown == false);
     check(request.PingStats.NumRelays == 1);
+    check(request.RelayVersion == RELAY_VERSION);
   }
 
   // check that the response was processed
@@ -355,12 +377,34 @@ Test(core_Backend_update_shutting_down_true)
   core::UpdateRequest request;
   check(request.from(client.Request));
 
-  check(request.Version == 0);
+  check(request.Version == 1);
   check(request.Address == RelayAddr);
   check(request.PublicKey == Keychain.RelayPublicKey);
-  check(request.BytesSent == 0);
-  check(request.BytesReceived == 0);
   check(request.SessionCount == 0);
+  check(request.OutboundPingTx == 0);
+  check(request.RouteRequestRx == 0);
+  check(request.RouteRequestTx == 0);
+  check(request.RouteResponseRx == 0);
+  check(request.RouteResponseTx == 0);
+  check(request.ClientToServerRx == 0);
+  check(request.ClientToServerTx == 0);
+  check(request.ServerToClientRx == 0);
+  check(request.ServerToClientTx == 0);
+  check(request.InboundPingRx == 0);
+  check(request.InboundPingTx == 0);
+  check(request.PongRx == 0);
+  check(request.SessionPingRx == 0);
+  check(request.SessionPingTx == 0);
+  check(request.SessionPongRx == 0);
+  check(request.SessionPongTx == 0);
+  check(request.ContinueRequestRx == 0);
+  check(request.ContinueRequestTx == 0);
+  check(request.ContinueResponseRx == 0);
+  check(request.ContinueResponseTx == 0);
+  check(request.NearPingRx == 0);
+  check(request.NearPingTx == 0);
+  check(request.UnknownRx == 0);
   check(request.ShuttingDown == true);
   check(request.PingStats.NumRelays == 0);
+  check(request.RelayVersion == RELAY_VERSION);
 }

@@ -55,7 +55,7 @@ namespace core
         mPacket.Buffer[0] = static_cast<uint8_t>(packets::Type::NearPong);
       }
 
-      mRecorder.NearPingTx(length);
+      mRecorder.NearPingTx.add(length);
 
 #ifdef RELAY_MULTISEND
       buff.push(mPacket.Addr, mPacket.Buffer.data(), length);

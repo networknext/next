@@ -122,8 +122,29 @@ namespace core
     }
 
     SessionCount = encoding::ReadUint64(v, index);
-    BytesSent = encoding::ReadUint64(v, index);
-    BytesReceived = encoding::ReadUint64(v, index);
+    OutboundPingTx = encoding::ReadUint64(v, index);
+    RouteRequestRx = encoding::ReadUint64(v, index);
+    RouteRequestTx = encoding::ReadUint64(v, index);
+    RouteResponseRx = encoding::ReadUint64(v, index);
+    RouteResponseTx = encoding::ReadUint64(v, index);
+    ClientToServerRx = encoding::ReadUint64(v, index);
+    ClientToServerTx = encoding::ReadUint64(v, index);
+    ServerToClientRx = encoding::ReadUint64(v, index);
+    ServerToClientTx = encoding::ReadUint64(v, index);
+    InboundPingRx = encoding::ReadUint64(v, index);
+    InboundPingTx = encoding::ReadUint64(v, index);
+    PongRx = encoding::ReadUint64(v, index);
+    SessionPingRx = encoding::ReadUint64(v, index);
+    SessionPingTx = encoding::ReadUint64(v, index);
+    SessionPongRx = encoding::ReadUint64(v, index);
+    SessionPongTx = encoding::ReadUint64(v, index);
+    ContinueRequestRx = encoding::ReadUint64(v, index);
+    ContinueRequestTx = encoding::ReadUint64(v, index);
+    ContinueResponseRx = encoding::ReadUint64(v, index);
+    ContinueResponseTx = encoding::ReadUint64(v, index);
+    NearPingRx = encoding::ReadUint64(v, index);
+    NearPingTx = encoding::ReadUint64(v, index);
+    UnknownRx = encoding::ReadUint64(v, index);
     ShuttingDown = static_cast<bool>(encoding::ReadUint8(v, index));
 
     CPUUsage = encoding::ReadDouble(v, index);
@@ -345,21 +366,41 @@ namespace core
       core::RelayStats stats;
       mRelayManager.getStats(stats);
 
-      // | version | address length | address | public key | num stats | ping stats (id, rtt, jitter, pl) | session count |
-      // | route request rx | route request tx |
-      // | route response rx | route response tx |
-      // | client to server rx | client to server tx |
-      // | server to client rx | server to client tx |
-      // | ping rx | ping tx |
-      // | pong rx |
-      // | session ping rx | session ping tx |
-      // | continue request rx | continue request tx |
-      // | continue response rx | continue response tx |
-      // | Near ping rx | near ping tx |
-      // | unknown rx |
-      // | cpu usage | memory usage | relay version |
-      const size_t requestSize = 4 + 4 + mAddressStr.length() + crypto::KeySize + 4 + stats.NumRelays * 20 + 8 + 8 + 8 + 1 + 8 +
-                                 8 + 4 + strlen(RELAY_VERSION);
+      const size_t requestSize = 4 +                     // request version
+                                 4 +                     // address length
+                                 mAddressStr.length() +  // address
+                                 crypto::KeySize +       // public key
+                                 4 +                     // number of relay ping stats
+                                 stats.NumRelays * 20 +  // relay ping stats
+                                 8 +                     // session count
+                                 8 +                     // outbound ping tx
+                                 8 +                     // route request rx
+                                 8 +                     // route request tx
+                                 8 +                     // route response rx
+                                 8 +                     // route response tx
+                                 8 +                     // client to server rx
+                                 8 +                     // client to server tx
+                                 8 +                     // server to client rx
+                                 8 +                     // server to client tx
+                                 8 +                     // inbound ping rx
+                                 8 +                     // inbound ping tx
+                                 8 +                     // pong rx
+                                 8 +                     // session ping rx
+                                 8 +                     // session ping tx
+                                 8 +                     // session pong rx
+                                 8 +                     // session pong tx
+                                 8 +                     // continue request rx
+                                 8 +                     // continue request tx
+                                 8 +                     // continue response rx
+                                 8 +                     // continue response tx
+                                 8 +                     // near ping rx
+                                 8 +                     // near ping tx
+                                 8 +                     // unknown Rx
+                                 1 +                     // shut down flag
+                                 8 +                     // cpu usage
+                                 8 +                     // memory usage
+                                 4 +                     // relay version length
+                                 strlen(RELAY_VERSION);  // relay version string
       req.resize(requestSize);
 
       size_t index = 0;
