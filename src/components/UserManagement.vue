@@ -113,7 +113,7 @@
               data-toggle="tooltip"
               data-placement="bottom"
               title="Cancel Changes"
-              @click="cancel(account, index)"
+              @click="cancel(index)"
             >
               <font-awesome-icon icon="times"
                                   class="fa-w-16 fa-fw"
@@ -144,6 +144,7 @@ export default class UserManagement extends Vue {
   private apiService: APIService
   private allRoles: Array<any> = []
   private companyUsers: Array<any> = []
+  private companyUsersReadOnly: Array<any> = []
 
   private selectedRoles: any = {}
   private newUserRoles: any = []
@@ -170,7 +171,7 @@ export default class UserManagement extends Vue {
     }
   }
 
-  private mounted () {
+  private mounted (): void {
     const promises = [
       this.apiService.fetchAllAccounts({}),
       this.apiService.fetchAllRoles()
@@ -186,7 +187,7 @@ export default class UserManagement extends Vue {
           user.edit = false
           user.delete = false
         })
-
+        this.companyUsersReadOnly = this.companyUsers
         this.companyUsers.forEach((user: any) => {
           this.selectedRoles[user.user_id] = user.roles
         })
@@ -194,15 +195,13 @@ export default class UserManagement extends Vue {
       })
   }
 
-  private editUser (account: any, index: number) {
+  private editUser (account: any, index: number): void {
     setTimeout(() => {
-      account.delete = false
-      account.edit = true
-      this.companyUsers.splice(index, 1, account)
+      this.setAccountState(true, false, account, index)
     })
   }
 
-  private saveUser (account: any, index: number) {
+  private saveUser (account: any, index: number): void {
     if (account.edit) {
       const roles = this.selectedRoles[account.user_id]
       this.apiService
@@ -225,7 +224,7 @@ export default class UserManagement extends Vue {
           }, 5000)
         })
         .finally(() => {
-          this.cancel(account, index)
+          this.setAccountState(false, false, account, index)
         })
       return
     }
@@ -253,19 +252,21 @@ export default class UserManagement extends Vue {
     }
   }
 
-  private deleteUser (account: any, index: number) {
-    account.delete = true
-    account.edit = false
+  private deleteUser (account: any, index: number): void {
+    this.setAccountState(false, true, account, index)
+  }
+
+  private cancel (index: number): void {
+    this.companyUsers.splice(index, 1, this.companyUsersReadOnly[index])
+  }
+
+  private setAccountState (isEdit: boolean, isDelete: boolean, account: any, index: number) {
+    account.edit = isEdit
+    account.delete = isDelete
     this.companyUsers.splice(index, 1, account)
   }
 
-  private cancel (account: any, index: number) {
-    account.delete = false
-    account.edit = false
-    this.companyUsers.splice(index, 1, account)
-  }
-
-  private addNewUsers () {
+  private addNewUsers (): void {
     let roles = this.newUserRoles
     const emails = this.newUserEmails
       .split(/(,|\n)/g)
