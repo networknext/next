@@ -437,7 +437,7 @@ func main() {
 		}
 
 		http.HandleFunc("/health", transport.HealthHandlerFunc())
-		http.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage))
+		http.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, allowCORS))
 
 		level.Info(logger).Log("addr", ":"+port)
 
