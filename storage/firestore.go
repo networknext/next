@@ -1677,7 +1677,8 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 		// Get datacenter
 		ddoc, err := r.Datacenter.Get(ctx)
 		if err != nil {
-			return &FirestoreError{err: err}
+			level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to get datacenter reference %s on relay %016x", r.Datacenter.ID, rid), "err", err)
+			continue
 		}
 
 		var d datacenter
@@ -1703,7 +1704,8 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 		// Get seller
 		sdoc, err := r.Seller.Get(ctx)
 		if err != nil {
-			return &FirestoreError{err: err}
+			level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to get seller reference %s on relay %016x", r.Datacenter.ID, rid), "err", err)
+			continue
 		}
 
 		var s seller
