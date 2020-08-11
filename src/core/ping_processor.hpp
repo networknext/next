@@ -108,7 +108,7 @@ namespace core
         size_t wholePacketSize = headerSize + pkt.Len;
 
         // could also just do: (1 + 8) * number of relays to ping to make this faster
-        mRecorder.addToSent(wholePacketSize);
+        mRecorder.OutboundPingTx.add(wholePacketSize);
 
         if (mSocket.closed() || !mShouldProcess) {
           break;

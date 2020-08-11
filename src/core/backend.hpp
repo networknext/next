@@ -25,13 +25,8 @@ namespace core
   const uint32_t InitRequestMagic = 0x9083708f;
 
   const uint32_t InitRequestVersion = 0;
-  const uint32_t InitResponseVersion = 0;
-
-  const uint32_t UpdateRequestVersion = 0;
-  const uint32_t UpdateResponseVersion = 0;
 
   const uint8_t MaxUpdateAttempts = 11;  // 1 initial + 10 more for failures
-
   // | magic | version | nonce | address | encrypted token | relay version |
   struct InitRequest
   {

@@ -5,8 +5,18 @@
 #include "encoding/read.hpp"
 #include "encoding/write.hpp"
 
+namespace
+{
+  const uint32_t InitResponseVersion = 0;
+
+  const uint32_t UpdateRequestVersion = 1;
+  const uint32_t UpdateResponseVersion = 0;
+}  // namespace
+
 namespace core
 {
+  using namespace std::chrono_literals;
+
   auto InitRequest::size() -> size_t
   {
     return 4 + 4 + Nonce.size() + 4 + Address.length() + EncryptedToken.size() + 4 + RelayVersion.length();
@@ -193,8 +203,7 @@ namespace core
     return true;
   }
 
-  Backend::Backend
-  (
+  Backend::Backend(
    std::string hostname,
    std::string address,
    const crypto::Keychain& keychain,
@@ -337,32 +346,75 @@ namespace core
       mRelayManager.getStats(stats);
 
       // | version | address length | address | public key | num stats | ping stats (id, rtt, jitter, pl) | session count |
-      // bytes sent | bytes received | shutting down | cpu usage | memory usage | relay version |
+      // | route request rx | route request tx |
+      // | route response rx | route response tx |
+      // | client to server rx | client to server tx |
+      // | server to client rx | server to client tx |
+      // | ping rx | ping tx |
+      // | pong rx |
+      // | session ping rx | session ping tx |
+      // | continue request rx | continue request tx |
+      // | continue response rx | continue response tx |
+      // | Near ping rx | near ping tx |
+      // | unknown rx |
+      // | cpu usage | memory usage | relay version |
       const size_t requestSize = 4 + 4 + mAddressStr.length() + crypto::KeySize + 4 + stats.NumRelays * 20 + 8 + 8 + 8 + 1 + 8 +
                                  8 + 4 + strlen(RELAY_VERSION);
       req.resize(requestSize);
 
       size_t index = 0;
 
-      encoding::WriteUint32(req, index, UpdateRequestVersion);                                      // 4
-      encoding::WriteString(req, index, mAddressStr);                                               // 23
-      encoding::WriteBytes(req, index, mKeychain.RelayPublicKey, mKeychain.RelayPublicKey.size());  // 55
-      encoding::WriteUint32(req, index, stats.NumRelays);                                           // 59
+      encoding::WriteUint32(req, index, UpdateRequestVersion);
+      encoding::WriteString(req, index, mAddressStr);
+      encoding::WriteBytes(req, index, mKeychain.RelayPublicKey, mKeychain.RelayPublicKey.size());
+      encoding::WriteUint32(req, index, stats.NumRelays);
 
       for (unsigned int i = 0; i < stats.NumRelays; ++i) {
-        encoding::WriteUint64(req, index, stats.IDs[i]);                                                                   // 67
-        encoding::WriteBytes(req.data(), req.size(), index, reinterpret_cast<uint8_t*>(&stats.RTT[i]), sizeof(float));     // 71
-        encoding::WriteBytes(req.data(), req.size(), index, reinterpret_cast<uint8_t*>(&stats.Jitter[i]), sizeof(float));  // 75
-        encoding::WriteBytes(
-         req.data(), req.size(), index, reinterpret_cast<uint8_t*>(&stats.PacketLoss[i]), sizeof(float));  // 79
+        encoding::WriteUint64(req, index, stats.IDs[i]);
+        encoding::WriteBytes(req.data(), req.size(), index, reinterpret_cast<uint8_t*>(&stats.RTT[i]), sizeof(float));
+        encoding::WriteBytes(req.data(), req.size(), index, reinterpret_cast<uint8_t*>(&stats.Jitter[i]), sizeof(float));
+        encoding::WriteBytes(req.data(), req.size(), index, reinterpret_cast<uint8_t*>(&stats.PacketLoss[i]), sizeof(float));
       }
 
-      encoding::WriteUint64(req, index, mSessionMap.size());  // 87
+      encoding::WriteUint64(req, index, mSessionMap.size());
 
-      util::ThroughputStatsCollection trafficStats(std::move(recorder.get()));
+      util::ThroughputRecorder trafficStats(std::move(recorder));
 
-      encoding::WriteUint64(req, index, trafficStats.Sent.ByteCount.load());      // 95
-      encoding::WriteUint64(req, index, trafficStats.Received.ByteCount.load());  // 103
+      encoding::WriteUint64(req, index, trafficStats.OutboundPingTx.ByteCount.load());
+
+      encoding::WriteUint64(req, index, trafficStats.RouteRequestRx.ByteCount.load());
+      encoding::WriteUint64(req, index, trafficStats.RouteRequestTx.ByteCount.load());
+
+      encoding::WriteUint64(req, index, trafficStats.RouteResponseRx.ByteCount.load());
+      encoding::WriteUint64(req, index, trafficStats.RouteResponseTx.ByteCount.load());
+
+      encoding::WriteUint64(req, index, trafficStats.ClientToServerRx.ByteCount.load());
+      encoding::WriteUint64(req, index, trafficStats.ClientToServerTx.ByteCount.load());
+
+      encoding::WriteUint64(req, index, trafficStats.ServerToClientRx.ByteCount.load());
+      encoding::WriteUint64(req, index, trafficStats.ServerToClientTx.ByteCount.load());
+
+      encoding::WriteUint64(req, index, trafficStats.InboundPingRx.ByteCount.load());
+      encoding::WriteUint64(req, index, trafficStats.InboundPingTx.ByteCount.load());
+
+      encoding::WriteUint64(req, index, trafficStats.PongRx.ByteCount.load());
+
+      encoding::WriteUint64(req, index, trafficStats.SessionPingRx.ByteCount.load());
+      encoding::WriteUint64(req, index, trafficStats.SessionPingTx.ByteCount.load());
+
+      encoding::WriteUint64(req, index, trafficStats.SessionPongRx.ByteCount.load());
+      encoding::WriteUint64(req, index, trafficStats.SessionPongTx.ByteCount.load());
+
+      encoding::WriteUint64(req, index, trafficStats.ContinueRequestRx.ByteCount.load());
+      encoding::WriteUint64(req, index, trafficStats.ContinueRequestTx.ByteCount.load());
+
+      encoding::WriteUint64(req, index, trafficStats.ContinueResponseRx.ByteCount.load());
+      encoding::WriteUint64(req, index, trafficStats.ContinueResponseTx.ByteCount.load());
+
+      encoding::WriteUint64(req, index, trafficStats.NearPingRx.ByteCount.load());
+      encoding::WriteUint64(req, index, trafficStats.NearPingTx.ByteCount.load());
+
+      encoding::WriteUint64(req, index, trafficStats.UnknownRx.ByteCount.load());
 
       encoding::WriteUint8(req, index, shutdown);
 
