@@ -15,7 +15,10 @@ import (
 	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
+<<<<<<< HEAD
 	"github.com/networknext/backend/transport"
+=======
+>>>>>>> Added cors middleware to be used elsewhere in the backend. This was needed for portal version endpoint
 	"github.com/networknext/backend/transport/middleware"
 	"gopkg.in/auth0.v4/management"
 )
