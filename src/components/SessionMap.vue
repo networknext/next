@@ -39,7 +39,8 @@ export default class SessionMap extends Vue {
     zoom: 2,
     pitch: 0,
     bearing: 0,
-    minZoom: 0
+    minZoom: 2,
+    maxZoom: 16
   }
 
   constructor () {
@@ -145,7 +146,8 @@ export default class SessionMap extends Vue {
                 zoom: viewState.zoom,
                 bearing: viewState.bearing,
                 pitch: viewState.pitch,
-                minZoom: 2
+                minZoom: 2,
+                maxZoom: 16
               })
             },
             layers: layers
