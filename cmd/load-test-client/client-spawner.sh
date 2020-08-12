@@ -1,7 +1,7 @@
 #!/bin/bash
 
-export NEXT_CUSTOMER_PUBLIC_KEY=RBXUB1j4m2ielbODxa+nXivbAfhca69IrpCtRfWH9HAzkawKwnzSqA==
-export NEXT_CUSTOMER_PRIVATE_KEY=RBXUB1j4m2gOwE2SrrbLAsFob6qCUkaIEfiOEkA453a1VgccIvr16Z6Vs4PFr6deK9sB+Fxrr0iukK1F9Yf0cDORrArCfNKo
+export NEXT_CUSTOMER_PUBLIC_KEY=leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==
+export NEXT_CUSTOMER_PRIVATE_KEY=leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn
 
 num_clients=1
 
@@ -35,7 +35,9 @@ done
 trap "kill 0" EXIT
 
 for ((r=0 ; r<${num_clients} ; r++)); do
-./dist/client &
+export SERVER_IP=127.0.0.1
+export CORES=4
+./dist/load_test_client &
 pid="$!"
 printf "PID ${pid}: Client opened\n"
 done
