@@ -73,7 +73,7 @@ int main()
     std::stringstream server_addrs_ss[cores];
 
     for (int i = 0; i < cores; i++) {
-      server_addrs_ss[i] << server_ip << ":" << std::to_string(32202 + i);
+      server_addrs_ss[i] << server_ip << ":" << std::to_string(50000 + i);
     }
 
     next_client_open_session( client, server_addrs_ss[rand() % cores].str().c_str() );
