@@ -646,6 +646,14 @@ publish-relay-backend-artifacts-staging: ## publishes the relay backend artifact
 publish-server-backend-artifacts-staging: ## publishes the server backend artifacts to GCP Storage with gsutil staging
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s server-backend
 
+.PHONY: publish-load-test-server-artifacts-staging
+publish-load-test-server-artifacts-staging: ## publishes the server backend artifacts to GCP Storage with gsutil staging
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s load-test-server
+
+.PHONY: publish-load-test-client-artifacts-staging
+publish-load-test-client-artifacts-staging: ## publishes the server backend artifacts to GCP Storage with gsutil staging
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s load-test-client
+
 .PHONY: publish-billing-artifacts-prod
 publish-billing-artifacts-prod: ## publishes the billing artifacts to GCP Storage with gsutil prod
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s billing
@@ -698,10 +706,22 @@ build-server: build-sdk ## builds the server
 	@$(CXX) -Isdk/include -o $(DIST_DIR)/server ./cmd/server/server.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
 
+.PHONY: build-load-test-server
+build-load-test-server: build-sdk ## builds the load test server binary
+	@printf "Building load test server... "
+	@$(CXX) -Isdk/include -o $(DIST_DIR)/load_test_server ./cmd/load-test-server/server.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
+	@printf "done\n"
+
 .PHONY: build-functional-server
 build-functional-server:
 	@printf "Building functional server... "
 	@$(CXX) -Isdk/include -o $(DIST_DIR)/func_server ./cmd/func_server/func_server.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
+	@printf "done\n"
+
+.PHONY: build-load-test-client
+build-load-test-client: build-sdk ## builds the load test client binary
+	@printf "Building load test client... "
+	@$(CXX) -Isdk/include -o $(DIST_DIR)/load_test_client ./cmd/load-test-client/client.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional-client
