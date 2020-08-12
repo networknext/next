@@ -56,28 +56,24 @@ func (s *BuyersService) FlushSessions(r *http.Request, args *FlushSessionsArgs, 
 
 	topSessions := s.RedisPoolTopSessions.Get()
 	defer topSessions.Close()
-
 	if _, err := topSessions.Do("FLUSHALL", "ASYNC"); err != nil {
 		return err
 	}
 
 	sessionMeta := s.RedisPoolSessionMeta.Get()
 	defer sessionMeta.Close()
-
 	if _, err := sessionMeta.Do("FLUSHALL", "ASYNC"); err != nil {
 		return err
 	}
 
 	sessionSlices := s.RedisPoolSessionSlices.Get()
 	defer sessionSlices.Close()
-
 	if _, err := sessionSlices.Do("FLUSHALL", "ASYNC"); err != nil {
 		return err
 	}
 
 	sessionMap := s.RedisPoolSessionMap.Get()
 	defer sessionMap.Close()
-
 	if _, err := sessionMap.Do("FLUSHALL", "ASYNC"); err != nil {
 		return err
 	}
@@ -198,6 +194,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 	}
 
 	redisClient := s.RedisPoolSessionMap.Get()
+	defer redisClient.Close()
 	minutes := time.Now().Unix() / 60
 
 	// get the top session IDs globally or for a buyer from the sorted set
@@ -333,12 +330,12 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 
 	sessionIDsRetreived := make(map[string]bool)
 	for _, sessionID := range topSessionsA {
-		sessionMetaClient.Send("GET", fmt.Sprintf("session-%s-meta", sessionID))
+		sessionMetaClient.Send("GET", fmt.Sprintf("sm-%s", sessionID))
 		sessionIDsRetreived[sessionID] = true
 	}
 	for _, sessionID := range topSessionsB {
 		if _, ok := sessionIDsRetreived[sessionID]; !ok {
-			sessionMetaClient.Send("GET", fmt.Sprintf("session-%s-meta", sessionID))
+			sessionMetaClient.Send("GET", fmt.Sprintf("sm-%s", sessionID))
 			sessionIDsRetreived[sessionID] = true
 		}
 	}
@@ -346,7 +343,7 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 
 	var sessionMetas []transport.SessionMeta
 	var meta transport.SessionMeta
-	for i := 0; i < len(topSessionsA)+len(topSessionsB); i++ {
+	for i := 0; i < len(sessionIDsRetreived); i++ {
 		metaString, err := redis.String(sessionMetaClient.Receive())
 		if err != nil && err != redis.ErrNil {
 			err = fmt.Errorf("TopSessions() failed getting top sessions meta: %v", err)
@@ -372,7 +369,12 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 		return sessionMetas[i].DeltaRTT > sessionMetas[j].DeltaRTT
 	})
 
-	reply.Sessions = sessionMetas[:TopSessionsSize]
+	if len(sessionMetas) > TopSessionsSize {
+		reply.Sessions = sessionMetas[:TopSessionsSize]
+		return nil
+	}
+
+	reply.Sessions = sessionMetas
 	return nil
 }
 
@@ -391,14 +393,15 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 	sessionMetaClient := s.RedisPoolSessionMeta.Get()
 	defer sessionMetaClient.Close()
 
-	data, err := redis.Bytes(sessionMetaClient.Do("GET", fmt.Sprintf("session-%s-meta", args.SessionID)))
-	if err != nil {
+	metaString, err := redis.String(sessionMetaClient.Do("GET", fmt.Sprintf("sm-%s", args.SessionID)))
+	if err != nil && err != redis.ErrNil {
 		err = fmt.Errorf("SessionDetails() failed getting session meta: %v", err)
 		s.Logger.Log("err", err)
 		return err
 	}
 
-	if err := reply.Meta.UnmarshalBinary(data); err != nil {
+	metaStringsSplit := strings.Split(metaString, "|")
+	if err := reply.Meta.ParseRedisString(metaStringsSplit); err != nil {
 		err = fmt.Errorf("SessionDetails() SessionMeta unmarshaling error: %v", err)
 		s.Logger.Log("err", err)
 		return err
@@ -414,7 +417,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 	defer sessionSlicesClient.Close()
 
 	slices, err := redis.Strings(sessionSlicesClient.Do("LRANGE", fmt.Sprintf("ss-%s", args.SessionID), "0", "-1"))
-	if err != nil {
+	if err != nil && err != redis.ErrNil {
 		err = fmt.Errorf("SessionDetails() failed getting session slices: %v", err)
 		s.Logger.Log("err", err)
 		return err
@@ -485,7 +488,7 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 		stringID := fmt.Sprintf("%016x", buyer.ID)
 
 		directPointStrings, nextPointStrings, err := s.getDirectAndNextMapPointStrings(&buyer)
-		if err != nil {
+		if err != nil && err != redis.ErrNil {
 			err = fmt.Errorf("SessionMapPoints() failed getting map points for buyer %s: %v", stringID, err)
 			s.Logger.Log("err", err)
 			return err
@@ -638,57 +641,49 @@ func (s *BuyersService) getDirectAndNextMapPointStrings(buyer *routing.Buyer) ([
 	redisClient.Send("HGETALL", fmt.Sprintf("n-%s-%d", stringID, minutes))
 	redisClient.Flush()
 
-	direct, err := redis.StringMap(redisClient.Receive())
+	directMap, err := redis.StringMap(redisClient.Receive())
 	if err != nil {
 		return nil, nil, err
 	}
 
-	directB, err := redis.StringMap(redisClient.Receive())
+	directMapB, err := redis.StringMap(redisClient.Receive())
 	if err != nil {
 		return nil, nil, err
 	}
 
-	for k, v := range directB {
-		direct[k] = v
+	for k, v := range directMapB {
+		directMap[k] = v
 	}
 
-	next, err := redis.StringMap(redisClient.Receive())
+	nextMap, err := redis.StringMap(redisClient.Receive())
 	if err != nil {
 		return nil, nil, err
 	}
 
-	nextB, err := redis.StringMap(redisClient.Receive())
+	nextMapB, err := redis.StringMap(redisClient.Receive())
 	if err != nil {
 		return nil, nil, err
 	}
 
-	for k, v := range nextB {
-		next[k] = v
+	for k, v := range nextMapB {
+		nextMap[k] = v
 	}
 
-	for _, directSessionID := range direct {
-		redisClient.Send("HGET", fmt.Sprintf("n-%s-%d", stringID, minutes), fmt.Sprintf("%s", directSessionID))
+	direct := make([]string, len(directMap))
+	var index int
+	for _, v := range directMap {
+		direct[index] = v
+		index++
 	}
 
-	redisClient.Flush()
-
-	directPointStrings := make([]string, len(direct))
-	for i := 0; i < len(direct); i++ {
-		directPointStrings[i], err = redis.String(redisClient.Receive())
+	next := make([]string, len(nextMap))
+	index = 0
+	for _, v := range nextMap {
+		next[index] = v
+		index++
 	}
 
-	for _, nextSessionID := range next {
-		redisClient.Send("HGET", fmt.Sprintf("n-%s-%d", stringID, minutes), fmt.Sprintf("%s", nextSessionID))
-	}
-
-	redisClient.Flush()
-
-	nextPointStrings := make([]string, len(next))
-	for i := 0; i < len(next); i++ {
-		nextPointStrings[i], err = redis.String(redisClient.Receive())
-	}
-
-	return directPointStrings, nextPointStrings, nil
+	return direct, next, nil
 }
 
 func WriteMapPointCache(points *mapPointsByte) []byte {
