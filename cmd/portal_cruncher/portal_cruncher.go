@@ -6,11 +6,9 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"io/ioutil"
-	"net"
 	"runtime"
 
 	"net/http"
@@ -25,6 +23,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/networknext/backend/logging"
 	"github.com/networknext/backend/metrics"
+	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
 	"github.com/networknext/backend/transport/pubsub"
 
@@ -38,34 +37,6 @@ var (
 	sha           string
 	tag           string
 )
-
-func createRedisClient(hostname string) (net.Conn, error) {
-	client, err := net.Dial("tcp", hostname)
-	if err != nil {
-		return nil, err
-	}
-	return client, nil
-}
-
-func createAndValidateRedisClient(hostname string) (net.Conn, error) {
-	client, err := createRedisClient(hostname)
-	if err != nil {
-		return nil, fmt.Errorf("could not dial: %v", err)
-	}
-
-	// Test if the redis client can be pinged
-	fmt.Fprint(client, "PING\r\n")
-	fmt.Fprint(client, "FLUSHDB\r\n")
-
-	redisReplyReader := bufio.NewReader(client)
-	reply, err := redisReplyReader.ReadString('\n')
-	if err != nil || reply != "+PONG\r\n" {
-		client.Close()
-		return nil, fmt.Errorf("could not ping: %v", err)
-	}
-
-	return client, nil
-}
 
 func main() {
 
@@ -357,27 +328,44 @@ func main() {
 	{
 		for i := int64(0); i < redisGoroutineCount; i++ {
 			go func() {
+
 				// Each goroutine should use its own TCP socket
-				clientTopSessions, err := createAndValidateRedisClient(os.Getenv("REDIS_HOST_TOP_SESSIONS"))
+				clientTopSessions, err := storage.NewRawRedisClient(os.Getenv("REDIS_HOST_TOP_SESSIONS"))
 				if err != nil {
 					level.Error(logger).Log("envvar", "REDIS_HOST_TOP_SESSIONS", "err", err)
 					os.Exit(1)
 				}
+				if err := clientTopSessions.Ping(); err != nil {
+					level.Error(logger).Log("envvar", "REDIS_HOST_TOP_SESSIONS", "err", err)
+					os.Exit(1)
+				}
 
-				clientSessionMap, err := createAndValidateRedisClient(os.Getenv("REDIS_HOST_SESSION_MAP"))
+				clientSessionMap, err := storage.NewRawRedisClient(os.Getenv("REDIS_HOST_SESSION_MAP"))
 				if err != nil {
 					level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_MAP", "err", err)
 					os.Exit(1)
 				}
+				if err := clientSessionMap.Ping(); err != nil {
+					level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_MAP", "err", err)
+					os.Exit(1)
+				}
 
-				clientSessionMeta, err := createAndValidateRedisClient(os.Getenv("REDIS_HOST_SESSION_META"))
+				clientSessionMeta, err := storage.NewRawRedisClient(os.Getenv("REDIS_HOST_SESSION_META"))
 				if err != nil {
 					level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_META", "err", err)
 					os.Exit(1)
 				}
+				if err := clientSessionMeta.Ping(); err != nil {
+					level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_META", "err", err)
+					os.Exit(1)
+				}
 
-				clientSessionSlices, err := createAndValidateRedisClient(os.Getenv("REDIS_HOST_SESSION_SLICES"))
+				clientSessionSlices, err := storage.NewRawRedisClient(os.Getenv("REDIS_HOST_SESSION_SLICES"))
 				if err != nil {
+					level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_SLICES", "err", err)
+					os.Exit(1)
+				}
+				if err := clientSessionSlices.Ping(); err != nil {
 					level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_SLICES", "err", err)
 					os.Exit(1)
 				}
@@ -403,58 +391,59 @@ func main() {
 					minutes := secs / 60
 
 					// Remove the old global top sessions minute bucket from 2 minutes ago if it didn't expire
-					fmt.Fprintf(clientTopSessions, "DEL s-%d\r\n", minutes-2)
+					clientTopSessions.Command("DEL", "s-%d", minutes-2)
 
 					// Update the current global top sessions minute bucket
-					fmt.Fprintf(clientTopSessions, "ZADD s-%d", minutes)
+					clientTopSessions.StartCommand("ZADD")
+					clientTopSessions.CommandArgs("s-%d", minutes)
 					for j := range portalDataBuffer {
 						sessionID := fmt.Sprintf("%016x", portalDataBuffer[j].Meta.ID)
 						score := portalDataBuffer[j].Meta.DeltaRTT
-						fmt.Fprintf(clientTopSessions, " %.2f %s", score, sessionID)
+						clientTopSessions.CommandArgs(" %.2f %s", score, sessionID)
 					}
-					fmt.Fprintf(clientTopSessions, "\r\n")
-					fmt.Fprintf(clientTopSessions, "EXPIRE s-%d %d\r\n", minutes, int(redisPortalHostExp.Seconds()))
+					clientTopSessions.EndCommand()
+					clientTopSessions.Command("EXPIRE", "s-%d %d", minutes, int(redisPortalHostExp.Seconds()))
 
 					for j := range portalDataBuffer {
 						meta := &portalDataBuffer[j].Meta
 						slice := &portalDataBuffer[j].Slice
+						point := &portalDataBuffer[j].Point
 						sessionID := fmt.Sprintf("%016x", meta.ID)
 						customerID := fmt.Sprintf("%016x", meta.BuyerID)
 						score := meta.DeltaRTT
 						next := meta.OnNetworkNext
-						location := fmt.Sprintf("%.2f|%.2f", meta.Location.Latitude, meta.Location.Longitude)
 
 						// Remove the old per-buyer top sessions minute bucket from 2 minutes ago if it didnt expire
 						// and update the current per-buyer top sessions list
-						fmt.Fprintf(clientTopSessions, "DEL sc-%s-%d\r\n", customerID, minutes-2)
-						fmt.Fprintf(clientTopSessions, "ZADD sc-%s-%d %.2f %s\r\n", customerID, minutes, score, sessionID)
-						fmt.Fprintf(clientTopSessions, "EXPIRE sc-%s-%d %d\r\n", customerID, minutes, int(redisPortalHostExp.Seconds()))
+						clientTopSessions.Command("DEL", "sc-%s-%d", customerID, minutes-2)
+						clientTopSessions.Command("ZADD", "sc-%s-%d %.2f %s", customerID, minutes, score, sessionID)
+						clientTopSessions.Command("EXPIRE", "sc-%s-%d %d", customerID, minutes, int(redisPortalHostExp.Seconds()))
 
 						// Remove the old map points minute buckets from 2 minutes ago if it didn't expire
-						fmt.Fprintf(clientTopSessions, "HDEL d-%s-%d %s\r\n", customerID, minutes-2, sessionID)
-						fmt.Fprintf(clientTopSessions, "HDEL n-%s-%d %s\r\n", customerID, minutes-2, sessionID)
+						clientSessionMap.Command("HDEL", "d-%s-%d %s", customerID, minutes-2, sessionID)
+						clientSessionMap.Command("HDEL", "n-%s-%d %s", customerID, minutes-2, sessionID)
 
 						// Update the map points for this minute bucket
 						// Make sure to remove the session ID from the opposite bucket in case the session
 						// has switched from direct -> next or next -> direct
 						if next {
-							fmt.Fprintf(clientSessionMap, "HSET n-%s-%d %s %s\r\n", customerID, minutes, sessionID, location)
-							fmt.Fprintf(clientSessionMap, "HDEL d-%s-%d %s\r\n", customerID, minutes, sessionID)
+							clientSessionMap.Command("HSET", "n-%s-%d %s %s", customerID, minutes, sessionID, point.RedisString())
+							clientSessionMap.Command("HDEL", "d-%s-%d %s", customerID, minutes, sessionID)
 						} else {
-							fmt.Fprintf(clientSessionMap, "HSET d-%s-%d %s %s\r\n", customerID, minutes, sessionID, location)
-							fmt.Fprintf(clientSessionMap, "HDEL n-%s-%d %s\r\n", customerID, minutes, sessionID)
+							clientSessionMap.Command("HSET", "d-%s-%d %s %s", customerID, minutes, sessionID, point.RedisString())
+							clientSessionMap.Command("HDEL", "n-%s-%d %s", customerID, minutes, sessionID)
 						}
 
 						// Expire map points
-						fmt.Fprintf(clientSessionMap, "EXPIRE n-%s-%d %d\r\n", customerID, minutes, int(redisPortalHostExp.Seconds()))
-						fmt.Fprintf(clientSessionMap, "EXPIRE d-%s-%d %d\r\n", customerID, minutes, int(redisPortalHostExp.Seconds()))
+						clientSessionMap.Command("EXPIRE", "n-%s-%d %d", customerID, minutes, int(redisPortalHostExp.Seconds()))
+						clientSessionMap.Command("EXPIRE", "d-%s-%d %d", customerID, minutes, int(redisPortalHostExp.Seconds()))
 
 						// Update session meta
-						fmt.Fprintf(clientSessionMeta, "SET sm-%s %v EX %d\r\n", sessionID, meta.RedisString(), int(redisPortalHostExp.Seconds()))
+						clientSessionMeta.Command("SET", "sm-%s %v EX %d", sessionID, meta.RedisString(), int(redisPortalHostExp.Seconds()))
 
 						// Update session slices
-						fmt.Fprintf(clientSessionSlices, "RPUSH ss-%s %s\r\n", sessionID, slice.RedisString())
-						fmt.Fprintf(clientSessionSlices, "EXPIRE ss-%s %d\r\n", sessionID, int(redisPortalHostExp.Seconds()))
+						clientSessionSlices.Command("RPUSH", "ss-%s %s", sessionID, slice.RedisString())
+						clientSessionSlices.Command("EXPIRE", "ss-%s %d", sessionID, int(redisPortalHostExp.Seconds()))
 					}
 
 					portalDataBuffer = portalDataBuffer[:0]
