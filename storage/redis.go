@@ -59,7 +59,6 @@ func (r *RawRedisClient) Ping() error {
 	redisReplyReader := bufio.NewReader(r.conn)
 	reply, err := redisReplyReader.ReadString('\n')
 	if err != nil || reply != "+PONG\r\n" {
-		r.conn.Close()
 		return fmt.Errorf("could not ping: %v", err)
 	}
 
