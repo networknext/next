@@ -25,22 +25,8 @@ type RelayVersion struct {
 	Patch uint8
 }
 
-func (self *RelayVersion) greaterThan(other RelayVersion) bool {
-	if self.Major > other.Major {
-		return true
-	}
-
-	if self.Major == other.Major {
-		if self.Minor > other.Minor {
-			return true
-		}
-
-		if self.Minor == other.Minor && self.Patch > other.Patch {
-			return true
-		}
-	}
-
-	return false
+func (self *RelayVersion) String() string {
+	return fmt.Sprintf("%d.%d.%d", self.Major, self.Minor, self.Patch)
 }
 
 type RelayData struct {
@@ -511,7 +497,7 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			relay.TrafficStats = relayData.TrafficStats
 			relay.CPUUsage = relayData.CPU
 			relay.MemUsage = relayData.Mem
-			relay.Version = relayData.Version
+			relay.Version = relayData.Version.String()
 			relay.LastUpdateTime = relayData.LastUpdateTime
 		}
 

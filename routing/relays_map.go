@@ -260,6 +260,8 @@ func (r *RelayMap) MarshalBinary() ([]byte, error) {
 			encoding.WriteUint64(data, &index, relay.TrafficStats.RouteResponseTx)
 			encoding.WriteUint64(data, &index, relay.TrafficStats.ClientToServerRx)
 			encoding.WriteUint64(data, &index, relay.TrafficStats.ClientToServerTx)
+			encoding.WriteUint64(data, &index, relay.TrafficStats.ServerToClientRx)
+			encoding.WriteUint64(data, &index, relay.TrafficStats.ServerToClientTx)
 			encoding.WriteUint64(data, &index, relay.TrafficStats.InboundPingRx)
 			encoding.WriteUint64(data, &index, relay.TrafficStats.InboundPingTx)
 			encoding.WriteUint64(data, &index, relay.TrafficStats.PongRx)
