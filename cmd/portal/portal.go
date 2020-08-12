@@ -11,7 +11,6 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -117,11 +116,27 @@ func main() {
 		}
 	}
 
-	redisPortalHosts := os.Getenv("REDIS_HOST_PORTAL")
-	splitPortalHosts := strings.Split(redisPortalHosts, ",")
-	redisClientPortal := storage.NewRedisClient(splitPortalHosts...)
-	if err := redisClientPortal.Ping().Err(); err != nil {
-		level.Error(logger).Log("envvar", "REDIS_HOST_PORTAL", "value", redisPortalHosts, "err", err)
+	redisPoolTopSessions := storage.NewRedisPool(os.Getenv("REDIS_HOST_TOP_SESSIONS"))
+	if err := storage.ValidateRedisPool(redisPoolTopSessions); err != nil {
+		level.Error(logger).Log("envvar", "REDIS_HOST_TOP_SESSIONS", "err", err)
+		os.Exit(1)
+	}
+
+	redisPoolSessionMap := storage.NewRedisPool(os.Getenv("REDIS_HOST_SESSION_MAP"))
+	if err := storage.ValidateRedisPool(redisPoolSessionMap); err != nil {
+		level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_MAP", "err", err)
+		os.Exit(1)
+	}
+
+	redisPoolSessionMeta := storage.NewRedisPool(os.Getenv("REDIS_HOST_SESSION_META"))
+	if err := storage.ValidateRedisPool(redisPoolSessionMeta); err != nil {
+		level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_META", "err", err)
+		os.Exit(1)
+	}
+
+	redisPoolSessionSlices := storage.NewRedisPool(os.Getenv("REDIS_HOST_SESSION_SLICES"))
+	if err := storage.ValidateRedisPool(redisPoolSessionSlices); err != nil {
+		level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_SLICES", "err", err)
 		os.Exit(1)
 	}
 
@@ -352,9 +367,12 @@ func main() {
 
 	// Generate Sessions Map Points periodically
 	buyerService := jsonrpc.BuyersService{
-		Logger:      logger,
-		RedisClient: redisClientPortal,
-		Storage:     db,
+		Logger:                 logger,
+		RedisPoolTopSessions:   redisPoolTopSessions,
+		RedisPoolSessionMeta:   redisPoolSessionMeta,
+		RedisPoolSessionSlices: redisPoolSessionSlices,
+		RedisPoolSessionMap:    redisPoolSessionMap,
+		Storage:                db,
 	}
 
 	go func() {
