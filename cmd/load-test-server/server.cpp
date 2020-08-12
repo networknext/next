@@ -25,6 +25,8 @@
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
+#include <string>
+#include <sstream>
 
 static volatile int quit = 0;
 
@@ -60,15 +62,20 @@ int main()
     }
 
     const char* server_port = std::getenv("SERVER_PORT");
-    if (!server_ip) {
+    if (!server_port) {
         printf( "error: server ip env var not defined\n" );
         return 1;
     }
 
-    char * server_address;
-    char * bind_address;
-    sprintf(server_address, "%s:%s", server_ip, server_port);
-    sprintf(bind_address, "0.0.0.0:%s", server_port);
+    std::stringstream server_addr_ss, bind_addr_ss;
+
+    server_addr_ss << server_ip << ':' << server_port;
+    bind_addr_ss << "0.0.0.0:" << server_port;
+    std::string server_addr = server_addr_ss.str();
+    std::string bind_addr = bind_addr_ss.str();
+
+    const char* server_address = server_addr.c_str();
+    const char* bind_address = bind_addr.c_str();
 
     next_server_t * server = next_server_create( NULL, server_address, bind_address, "local", server_packet_received, NULL );
 
