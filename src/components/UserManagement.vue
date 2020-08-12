@@ -142,7 +142,6 @@ import _ from 'lodash'
   }
 })
 export default class UserManagement extends Vue {
-  // TODO: Fix weird issue with dropdown library change events (select/delete) handler
   private apiService: APIService
   private allRoles: Array<any> = []
   private companyUsers: Array<any> = []
