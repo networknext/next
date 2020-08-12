@@ -18,7 +18,7 @@ import (
 const (
 	VersionNumberInitRequest    = 0
 	VersionNumberInitResponse   = 0
-	VersionNumberUpdateRequest  = 0
+	VersionNumberUpdateRequest  = 1
 	VersionNumberUpdateResponse = 0
 
 	PacketSizeRelayInitResponse = 4 + 8 + crypto.KeySize
@@ -292,7 +292,6 @@ func (r *RelayUpdateRequest) unmarshalBinaryV1(buff []byte, index int) error {
 	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.RouteRequestRx) {
 		return errors.New("invalid packet, could not read outbound ping tx")
 	}
-
 	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.RouteRequestTx) {
 		return errors.New("invalid packet, could not read outbound ping tx")
 	}
@@ -300,7 +299,6 @@ func (r *RelayUpdateRequest) unmarshalBinaryV1(buff []byte, index int) error {
 	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.RouteResponseRx) {
 		return errors.New("invalid packet, could not read outbound ping tx")
 	}
-
 	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.RouteResponseTx) {
 		return errors.New("invalid packet, could not read outbound ping tx")
 	}
@@ -308,15 +306,20 @@ func (r *RelayUpdateRequest) unmarshalBinaryV1(buff []byte, index int) error {
 	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.ClientToServerRx) {
 		return errors.New("invalid packet, could not read outbound ping tx")
 	}
-
 	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.ClientToServerTx) {
+		return errors.New("invalid packet, could not read outbound ping tx")
+	}
+
+	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.ServerToClientRx) {
+		return errors.New("invalid packet, could not read outbound ping tx")
+	}
+	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.ServerToClientTx) {
 		return errors.New("invalid packet, could not read outbound ping tx")
 	}
 
 	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.InboundPingRx) {
 		return errors.New("invalid packet, could not read outbound ping tx")
 	}
-
 	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.InboundPingTx) {
 		return errors.New("invalid packet, could not read outbound ping tx")
 	}
@@ -328,7 +331,6 @@ func (r *RelayUpdateRequest) unmarshalBinaryV1(buff []byte, index int) error {
 	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.SessionPingRx) {
 		return errors.New("invalid packet, could not read outbound ping tx")
 	}
-
 	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.SessionPingTx) {
 		return errors.New("invalid packet, could not read outbound ping tx")
 	}
@@ -336,7 +338,6 @@ func (r *RelayUpdateRequest) unmarshalBinaryV1(buff []byte, index int) error {
 	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.SessionPongRx) {
 		return errors.New("invalid packet, could not read outbound ping tx")
 	}
-
 	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.SessionPongTx) {
 		return errors.New("invalid packet, could not read outbound ping tx")
 	}
@@ -344,7 +345,6 @@ func (r *RelayUpdateRequest) unmarshalBinaryV1(buff []byte, index int) error {
 	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.ContinueRequestRx) {
 		return errors.New("invalid packet, could not read outbound ping tx")
 	}
-
 	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.ContinueRequestTx) {
 		return errors.New("invalid packet, could not read outbound ping tx")
 	}
@@ -352,7 +352,6 @@ func (r *RelayUpdateRequest) unmarshalBinaryV1(buff []byte, index int) error {
 	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.ContinueResponseRx) {
 		return errors.New("invalid packet, could not read outbound ping tx")
 	}
-
 	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.ContinueResponseTx) {
 		return errors.New("invalid packet, could not read outbound ping tx")
 	}
@@ -360,7 +359,6 @@ func (r *RelayUpdateRequest) unmarshalBinaryV1(buff []byte, index int) error {
 	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.NearPingRx) {
 		return errors.New("invalid packet, could not read outbound ping tx")
 	}
-
 	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.NearPingTx) {
 		return errors.New("invalid packet, could not read outbound ping tx")
 	}
@@ -387,6 +385,17 @@ func (r *RelayUpdateRequest) unmarshalBinaryV1(buff []byte, index int) error {
 	if !encoding.ReadFloat64(buff, &index, &r.MemUsage) {
 		return errors.New("invalid packet, could not read memory usage")
 	}
+
+	var strlen uint32
+	if !encoding.ReadUint32(buff, &index, &strlen) {
+		return errors.New("invalid packet, could not read strlen")
+	}
+
+	if index+int(strlen) > len(buff) {
+		return fmt.Errorf("invalid packet, string too long: %d\n%v", strlen, r)
+	}
+
+	index -= 4
 
 	if !encoding.ReadString(buff, &index, &r.RelayVersion, math.MaxUint32) {
 		return fmt.Errorf("invalid packet, could not read relay version, bufflen = %d, index = %d", len(buff), index)
