@@ -365,10 +365,6 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 		sessionMetas = append(sessionMetas, meta)
 	}
 
-	sort.Slice(sessionMetas, func(i int, j int) bool {
-		return sessionMetas[i].DeltaRTT > sessionMetas[j].DeltaRTT
-	})
-
 	if len(sessionMetas) > TopSessionsSize {
 		reply.Sessions = sessionMetas[:TopSessionsSize]
 		return nil
@@ -434,11 +430,6 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 
 		reply.Slices = append(reply.Slices, sessionSlice)
 	}
-
-	// Shouldn't be necessary
-	sort.Slice(reply.Slices, func(i int, j int) bool {
-		return reply.Slices[i].Timestamp.Before(reply.Slices[j].Timestamp)
-	})
 
 	return nil
 }

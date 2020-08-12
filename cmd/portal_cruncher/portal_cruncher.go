@@ -307,10 +307,6 @@ func main() {
 
 				portalCruncherMetrics.ReceivedMessageCount.Add(1)
 
-				if topic != pubsub.TopicPortalCruncherSessionData {
-					continue
-				}
-
 				if int64(len(messageChan)) < messageChanSize { // Drop messages if redis insertion is backed up
 					messageChan <- struct {
 						topic   pubsub.Topic
@@ -428,9 +424,11 @@ func main() {
 						// has switched from direct -> next or next -> direct
 						if next {
 							clientSessionMap.Command("HSET", "n-%s-%d %s %s", customerID, minutes, sessionID, point.RedisString())
+							clientSessionMap.Command("HDEL", "d-%s-%d %s", customerID, minutes-1, sessionID)
 							clientSessionMap.Command("HDEL", "d-%s-%d %s", customerID, minutes, sessionID)
 						} else {
 							clientSessionMap.Command("HSET", "d-%s-%d %s %s", customerID, minutes, sessionID, point.RedisString())
+							clientSessionMap.Command("HDEL", "n-%s-%d %s", customerID, minutes-1, sessionID)
 							clientSessionMap.Command("HDEL", "n-%s-%d %s", customerID, minutes, sessionID)
 						}
 
