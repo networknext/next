@@ -6,7 +6,6 @@ TIMESTAMP=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
 SHA=$(git rev-parse --short HEAD)
 RELEASE=$(shell git describe --tags --exact-match 2> /dev/null)
 COMMITMESSAGE=$(git log -1 --pretty=%B | tr '\n' ' ')
-SYSTEMD_SERVICE_FILE="app.service"
 DIST_DIR="${DIR}/../dist"
 
 ENV=
