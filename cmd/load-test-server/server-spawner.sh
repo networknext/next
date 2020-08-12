@@ -4,8 +4,7 @@ export NEXT_CUSTOMER_PUBLIC_KEY=leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZ
 export NEXT_CUSTOMER_PRIVATE_KEY=leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn
 
 num_servers=1
-# server_ip='10.128.0.31'
-server_ip='127.0.0.1'
+server_ip='10.128.0.31'
 
 print_usage() {
     printf "Usage: server-spawner.sh -n number\n\n"
