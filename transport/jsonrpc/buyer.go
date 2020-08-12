@@ -540,36 +540,36 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 
 		var point transport.SessionMapPoint
 		for _, directPointString := range directPointStrings {
-			// scan the data from Redis into its SessionMapPoint struct
-			err := cmd.Scan(&directPointString)
+			directSplitStrings := strings.Split(directPointString, "|")
+			if err := point.ParseRedisString(directSplitStrings); err != nil {
+				err = fmt.Errorf("SessionMapPoints() failed to parse direct map point for buyer %s: %v", stringID, err)
+				s.Logger.Log("err", err)
+				return err
+			}
 
 			if point.Latitude != 0 && point.Longitude != 0 {
 				mapPointsBuyers[stringID] = append(mapPointsBuyers[stringID], point)
 				mapPointsGlobal = append(mapPointsGlobal, point)
 
-				var onNN uint
-				if point.OnNetworkNext {
-					onNN = 1
-				}
-				mapPointsBuyersCompact[stringID] = append(mapPointsBuyersCompact[stringID], []interface{}{point.Longitude, point.Latitude, onNN})
-				mapPointsGlobalCompact = append(mapPointsGlobalCompact, []interface{}{point.Longitude, point.Latitude, onNN})
+				mapPointsBuyersCompact[stringID] = append(mapPointsBuyersCompact[stringID], []interface{}{point.Longitude, point.Latitude, false})
+				mapPointsGlobalCompact = append(mapPointsGlobalCompact, []interface{}{point.Longitude, point.Latitude, false})
 			}
 		}
 
 		for _, nextPointString := range nextPointStrings {
-			// scan the data from Redis into its SessionMapPoint struct
-			err := cmd.Scan(&nextPointString)
+			nextSplitStrings := strings.Split(nextPointString, "|")
+			if err := point.ParseRedisString(nextSplitStrings); err != nil {
+				err = fmt.Errorf("SessionMapPoints() failed to next parse map point for buyer %s: %v", stringID, err)
+				s.Logger.Log("err", err)
+				return err
+			}
 
 			if point.Latitude != 0 && point.Longitude != 0 {
 				mapPointsBuyers[stringID] = append(mapPointsBuyers[stringID], point)
 				mapPointsGlobal = append(mapPointsGlobal, point)
 
-				var onNN uint
-				if point.OnNetworkNext {
-					onNN = 1
-				}
-				mapPointsBuyersCompact[stringID] = append(mapPointsBuyersCompact[stringID], []interface{}{point.Longitude, point.Latitude, onNN})
-				mapPointsGlobalCompact = append(mapPointsGlobalCompact, []interface{}{point.Longitude, point.Latitude, onNN})
+				mapPointsBuyersCompact[stringID] = append(mapPointsBuyersCompact[stringID], []interface{}{point.Longitude, point.Latitude, true})
+				mapPointsGlobalCompact = append(mapPointsGlobalCompact, []interface{}{point.Longitude, point.Latitude, true})
 			}
 		}
 
@@ -624,8 +624,12 @@ func (s *BuyersService) GenerateMapPointsPerBuyerBytes() error {
 
 		var currentPoint transport.SessionMapPoint
 		for _, directPointString := range directPointStrings {
-			// scan the data from Redis into its SessionMapPoint struct
-			err := cmd.Scan(&directPointString)
+			directSplitStrings := strings.Split(directPointString, "|")
+			if err := currentPoint.ParseRedisString(directSplitStrings); err != nil {
+				err = fmt.Errorf("SessionMapPoints() failed to parse direct map point for buyer %s: %v", stringID, err)
+				s.Logger.Log("err", err)
+				return err
+			}
 
 			if currentPoint.Latitude != 0 && currentPoint.Longitude != 0 {
 				bytePoint := point{
@@ -640,8 +644,12 @@ func (s *BuyersService) GenerateMapPointsPerBuyerBytes() error {
 		}
 
 		for _, nextPointString := range nextPointStrings {
-			// scan the data from Redis into its SessionMapPoint struct
-			err := cmd.Scan(&nextPointString)
+			nextSplitStrings := strings.Split(nextPointString, "|")
+			if err := currentPoint.ParseRedisString(nextSplitStrings); err != nil {
+				err = fmt.Errorf("SessionMapPoints() failed to next parse map point for buyer %s: %v", stringID, err)
+				s.Logger.Log("err", err)
+				return err
+			}
 
 			if currentPoint.Latitude != 0 && currentPoint.Longitude != 0 {
 				bytePoint := point{

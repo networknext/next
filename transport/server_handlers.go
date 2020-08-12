@@ -1326,9 +1326,8 @@ func buildPortalData(packet *SessionUpdatePacket, lastNNStats *routing.Stats, la
 			OnNetworkNext:     onNetworkNext,
 		},
 		Point: SessionMapPoint{
-			Latitude:      location.Latitude,
-			Longitude:     location.Longitude,
-			OnNetworkNext: onNetworkNext,
+			Latitude:  location.Latitude,
+			Longitude: location.Longitude,
 		},
 	}
 }
