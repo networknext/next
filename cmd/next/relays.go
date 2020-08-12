@@ -308,13 +308,13 @@ func relays(
 			includeRelay = false
 		}
 
-		tx := fmt.Sprintf("%.02fGB", float64(relay.BytesSent)/float64(1000000000))
-		if relay.BytesSent < 1000000000 {
-			tx = fmt.Sprintf("%.02fMB", float64(relay.BytesSent)/float64(1000000))
+		tx := fmt.Sprintf("%.02fGB", float64(relay.TrafficStats.BytesSent)/float64(1000000000))
+		if relay.TrafficStats.BytesSent < 1000000000 {
+			tx = fmt.Sprintf("%.02fMB", float64(relay.TrafficStats.BytesSent)/float64(1000000))
 		}
-		rx := fmt.Sprintf("%.02fGB", float64(relay.BytesReceived)/float64(1000000000))
-		if relay.BytesReceived < 1000000000 {
-			rx = fmt.Sprintf("%.02fMB", float64(relay.BytesReceived)/float64(1000000))
+		rx := fmt.Sprintf("%.02fGB", float64(relay.TrafficStats.BytesReceived)/float64(1000000000))
+		if relay.TrafficStats.BytesReceived < 1000000000 {
+			rx = fmt.Sprintf("%.02fMB", float64(relay.TrafficStats.BytesReceived)/float64(1000000))
 		}
 		cpuUsage := fmt.Sprintf("%.02f%%", relay.CPUUsage)
 		memUsage := fmt.Sprintf("%.02f%%", relay.MemUsage)
@@ -524,4 +524,47 @@ func countRelays(rpcClient jsonrpc.RPCClient, env Environment, regex string) {
 
 	table.Output(relayList)
 
+}
+
+func relayTraffic(rpcClient jsonrpc.RPCClient, env Environment, regex string) {
+	args := localjsonrpc.RelaysArgs{
+		Regex: regex,
+	}
+
+	var reply localjsonrpc.RelaysReply
+	if err := rpcClient.CallFor(&reply, "OpsService.Relays", args); err != nil {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	statsList := []struct {
+		name       string `table:"Name"`
+		internalTx uint64 `table:"Internal Rx"`
+		internalRx uint64 `table:"Internal Tx"`
+		gameTx     uint64 `table:"Game Rx"`
+		gameRx     uint64 `table:"Game Tx"`
+		UnknownRx  uint64 `table:"Unknown Rx"`
+	}{}
+
+	for i := range reply.Relays {
+		relay := &reply.Relays[i]
+
+		statsList = append(statsList, struct {
+			name       string `table:"Name"`
+			internalTx uint64 `table:"Internal Rx"`
+			internalRx uint64 `table:"Internal Tx"`
+			gameTx     uint64 `table:"Game Rx"`
+			gameRx     uint64 `table:"Game Tx"`
+			UnknownRx  uint64 `table:"Unknown Rx"`
+		}{
+			name:       relay.Name,
+			internalRx: relay.TrafficStats.InternalStatsRx(),
+			internalTx: relay.TrafficStats.InternalStatsTx(),
+			gameRx:     relay.TrafficStats.GameStatsRx(),
+			gameTx:     relay.TrafficStats.GameStatsTx(),
+			UnknownRx:  relay.TrafficStats.UnknownRx,
+		})
+	}
+
+	table.Output(statsList)
 }

@@ -189,6 +189,26 @@ type RelayTrafficStats struct {
 	UnknownRx uint64
 }
 
+// InternalStatsRx returns the relay to relay rx stats
+func (self *RelayTrafficStats) InternalStatsRx() uint64 {
+	return self.PongRx + self.InboundPingRx
+}
+
+// InternalStatsTx returns the relay to relay tx stats
+func (self *RelayTrafficStats) InternalStatsTx() uint64 {
+	return self.OutboundPingTx + self.InboundPingTx
+}
+
+// GameStatsRx returns the game <-> relay rx stats
+func (self *RelayTrafficStats) GameStatsRx() uint64 {
+	return self.RouteRequestRx + self.RouteResponseRx + self.ClientToServerRx + self.ServerToClientRx + self.SessionPingRx + self.SessionPongRx + self.ContinueRequestRx + self.ContinueResponseRx + self.NearPingRx
+}
+
+// GameStatsTx returns the game <-> relay tx stats
+func (self *RelayTrafficStats) GameStatsTx() uint64 {
+	return self.RouteRequestTx + self.RouteResponseTx + self.ClientToServerTx + self.ServerToClientTx + self.SessionPingTx + self.SessionPongTx + self.ContinueRequestTx + self.ContinueResponseTx + self.NearPingTx
+}
+
 type Stats struct {
 	RTT        float64 `json:"rtt"`
 	Jitter     float64 `json:"jitter"`

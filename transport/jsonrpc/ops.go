@@ -19,14 +19,37 @@ import (
 	"github.com/networknext/backend/storage"
 )
 
+type RelayVersion struct {
+	Major uint8
+	Minor uint8
+	Patch uint8
+}
+
+func (self *RelayVersion) greaterThan(other RelayVersion) bool {
+	if self.Major > other.Major {
+		return true
+	}
+
+	if self.Major == other.Major {
+		if self.Minor > other.Minor {
+			return true
+		}
+
+		if self.Minor == other.Minor && self.Patch > other.Patch {
+			return true
+		}
+	}
+
+	return false
+}
+
 type RelayData struct {
 	SessionCount   uint64
-	Tx             uint64
-	Rx             uint64
-	Version        string
+	Version        RelayVersion
 	LastUpdateTime time.Time
 	CPU            float32
 	Mem            float32
+	TrafficStats   routing.RelayTrafficStats
 }
 
 type RelayStatsMap struct {
@@ -421,36 +444,35 @@ type RelaysReply struct {
 }
 
 type relay struct {
-	ID                  uint64                `json:"id"`
-	Name                string                `json:"name"`
-	Addr                string                `json:"addr"`
-	Latitude            float64               `json:"latitude"`
-	Longitude           float64               `json:"longitude"`
-	NICSpeedMbps        int32                 `json:"nic_speed_mpbs"`
-	IncludedBandwidthGB int32                 `json:"included_bandwidth_gb"`
-	State               string                `json:"state"`
-	LastUpdateTime      time.Time             `json:"lastUpdateTime"`
-	ManagementAddr      string                `json:"management_addr"`
-	SSHUser             string                `json:"ssh_user"`
-	SSHPort             int64                 `json:"ssh_port"`
-	MaxSessionCount     uint32                `json:"maxSessionCount"`
-	SessionCount        uint64                `json:"sessionCount"`
-	BytesSent           uint64                `json:"bytesTx"`
-	BytesReceived       uint64                `json:"bytesRx"`
-	PublicKey           string                `json:"public_key"`
-	UpdateKey           string                `json:"update_key"`
-	FirestoreID         string                `json:"firestore_id"`
-	Version             string                `json:"relay_version"`
-	SellerName          string                `json:"seller_name"`
-	MRC                 routing.Nibblin       `json:"monthly_recurring_charge_nibblins"`
-	Overage             routing.Nibblin       `json:"overage"`
-	BWRule              routing.BandWidthRule `json:"bandwidth_rule"`
-	ContractTerm        int32                 `json:"contract_term"`
-	StartDate           time.Time             `json:"start_date"`
-	EndDate             time.Time             `json:"end_date"`
-	Type                routing.MachineType   `json:"machine_type"`
-	CPUUsage            float32               `json:"cpu_usage"`
-	MemUsage            float32               `json:"mem_usage"`
+	ID                  uint64                    `json:"id"`
+	Name                string                    `json:"name"`
+	Addr                string                    `json:"addr"`
+	Latitude            float64                   `json:"latitude"`
+	Longitude           float64                   `json:"longitude"`
+	NICSpeedMbps        int32                     `json:"nic_speed_mpbs"`
+	IncludedBandwidthGB int32                     `json:"included_bandwidth_gb"`
+	State               string                    `json:"state"`
+	LastUpdateTime      time.Time                 `json:"lastUpdateTime"`
+	ManagementAddr      string                    `json:"management_addr"`
+	SSHUser             string                    `json:"ssh_user"`
+	SSHPort             int64                     `json:"ssh_port"`
+	MaxSessionCount     uint32                    `json:"maxSessionCount"`
+	SessionCount        uint64                    `json:"sessionCount"`
+	PublicKey           string                    `json:"public_key"`
+	UpdateKey           string                    `json:"update_key"`
+	FirestoreID         string                    `json:"firestore_id"`
+	Version             string                    `json:"relay_version"`
+	SellerName          string                    `json:"seller_name"`
+	MRC                 routing.Nibblin           `json:"monthly_recurring_charge_nibblins"`
+	Overage             routing.Nibblin           `json:"overage"`
+	BWRule              routing.BandWidthRule     `json:"bandwidth_rule"`
+	ContractTerm        int32                     `json:"contract_term"`
+	StartDate           time.Time                 `json:"start_date"`
+	EndDate             time.Time                 `json:"end_date"`
+	Type                routing.MachineType       `json:"machine_type"`
+	CPUUsage            float32                   `json:"cpu_usage"`
+	MemUsage            float32                   `json:"mem_usage"`
+	TrafficStats        routing.RelayTrafficStats `json:"traffic_stats"`
 }
 
 func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysReply) error {
@@ -486,12 +508,11 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 
 		if relayData, ok := s.RelayMap.Get(r.ID); ok {
 			relay.SessionCount = relayData.SessionCount
-			relay.BytesSent = relayData.Tx
-			relay.BytesReceived = relayData.Rx
-			relay.Version = relayData.Version
-			relay.LastUpdateTime = relayData.LastUpdateTime
+			relay.TrafficStats = relayData.TrafficStats
 			relay.CPUUsage = relayData.CPU
 			relay.MemUsage = relayData.Mem
+			relay.Version = relayData.Version
+			relay.LastUpdateTime = relayData.LastUpdateTime
 		}
 
 		reply.Relays = append(reply.Relays, relay)

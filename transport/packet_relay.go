@@ -290,81 +290,81 @@ func (r *RelayUpdateRequest) unmarshalBinaryV1(buff []byte, index int) error {
 	}
 
 	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.RouteRequestRx) {
-		return errors.New("invalid packet, could not read outbound ping tx")
+		return errors.New("invalid packet, could not read route request rx")
 	}
 	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.RouteRequestTx) {
-		return errors.New("invalid packet, could not read outbound ping tx")
+		return errors.New("invalid packet, could not read route request tx")
 	}
 
 	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.RouteResponseRx) {
-		return errors.New("invalid packet, could not read outbound ping tx")
+		return errors.New("invalid packet, could not read route response rx")
 	}
 	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.RouteResponseTx) {
-		return errors.New("invalid packet, could not read outbound ping tx")
+		return errors.New("invalid packet, could not read route response tx")
 	}
 
 	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.ClientToServerRx) {
-		return errors.New("invalid packet, could not read outbound ping tx")
+		return errors.New("invalid packet, could not read client to server rx")
 	}
 	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.ClientToServerTx) {
-		return errors.New("invalid packet, could not read outbound ping tx")
+		return errors.New("invalid packet, could not read client to server tx")
 	}
 
 	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.ServerToClientRx) {
-		return errors.New("invalid packet, could not read outbound ping tx")
+		return errors.New("invalid packet, could not read server to client rx")
 	}
 	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.ServerToClientTx) {
-		return errors.New("invalid packet, could not read outbound ping tx")
+		return errors.New("invalid packet, could not read server to client tx")
 	}
 
 	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.InboundPingRx) {
-		return errors.New("invalid packet, could not read outbound ping tx")
+		return errors.New("invalid packet, could not read inbound ping rx")
 	}
 	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.InboundPingTx) {
-		return errors.New("invalid packet, could not read outbound ping tx")
+		return errors.New("invalid packet, could not read inbound ping tx")
 	}
 
 	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.PongRx) {
-		return errors.New("invalid packet, could not read outbound ping tx")
+		return errors.New("invalid packet, could not read pong rx")
 	}
 
 	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.SessionPingRx) {
-		return errors.New("invalid packet, could not read outbound ping tx")
+		return errors.New("invalid packet, could not read session ping rx")
 	}
 	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.SessionPingTx) {
-		return errors.New("invalid packet, could not read outbound ping tx")
+		return errors.New("invalid packet, could not read session ping tx")
 	}
 
 	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.SessionPongRx) {
-		return errors.New("invalid packet, could not read outbound ping tx")
+		return errors.New("invalid packet, could not read session pong rx")
 	}
 	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.SessionPongTx) {
-		return errors.New("invalid packet, could not read outbound ping tx")
+		return errors.New("invalid packet, could not read session pong tx")
 	}
 
 	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.ContinueRequestRx) {
-		return errors.New("invalid packet, could not read outbound ping tx")
+		return errors.New("invalid packet, could not read continue request rx")
 	}
 	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.ContinueRequestTx) {
-		return errors.New("invalid packet, could not read outbound ping tx")
+		return errors.New("invalid packet, could not read continue request tx")
 	}
 
 	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.ContinueResponseRx) {
-		return errors.New("invalid packet, could not read outbound ping tx")
+		return errors.New("invalid packet, could not read continue response rx")
 	}
 	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.ContinueResponseTx) {
-		return errors.New("invalid packet, could not read outbound ping tx")
+		return errors.New("invalid packet, could not read continue response tx")
 	}
 
 	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.NearPingRx) {
-		return errors.New("invalid packet, could not read outbound ping tx")
+		return errors.New("invalid packet, could not read near ping rx")
 	}
 	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.NearPingTx) {
-		return errors.New("invalid packet, could not read outbound ping tx")
+		return errors.New("invalid packet, could not read near ping tx")
 	}
 
 	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.UnknownRx) {
-		return errors.New("invalid packet, could not read outbound ping tx")
+		return errors.New("invalid packet, could not read unknown rx")
 	}
 
 	r.TrafficStats.BytesReceived = r.TrafficStats.RouteRequestRx + r.TrafficStats.RouteResponseRx + r.TrafficStats.ClientToServerRx + r.TrafficStats.ServerToClientRx + r.TrafficStats.InboundPingRx + r.TrafficStats.PongRx + r.TrafficStats.SessionPingRx + r.TrafficStats.SessionPongRx + r.TrafficStats.ContinueRequestRx + r.TrafficStats.ContinueResponseRx + r.TrafficStats.NearPingRx + r.TrafficStats.UnknownRx
