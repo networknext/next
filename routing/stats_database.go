@@ -9,7 +9,7 @@ import (
 // HistorySize is the limit to how big the history of the relay entries should be
 const (
 	HistoryInvalidValue = -1
-	HistorySize         = 10 // 5 minutes @ 1 relay update per-second
+	HistorySize         = 300 // 5 minutes @ 1 relay update per-second
 )
 
 // TriMatrixLength returns the length of a triangular shaped matrix

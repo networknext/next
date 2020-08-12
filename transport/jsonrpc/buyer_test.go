@@ -2,9 +2,11 @@ package jsonrpc_test
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/alicebob/miniredis"
 	"github.com/go-kit/kit/log"
@@ -254,10 +256,19 @@ func TestTotalSessions(t *testing.T) {
 	redisServer, _ := miniredis.Run()
 	redisPool := storage.NewRedisPool(redisServer.Addr())
 
-	redisServer.Set("session-count-total-next-instance-0", "3")
-	redisServer.HSet("session-count-total-next", "session-count-total-next-instance-0", "3")
-	redisServer.Set("session-count-total-direct-instance-0", "1")
-	redisServer.HSet("session-count-total-direct", "session-count-total-direct-instance-0", "1")
+	minutes := time.Now().Unix() / 60
+
+	redisServer.HSet(fmt.Sprintf("n-0000000000000000-%d", minutes), "123", "")
+	redisServer.HSet(fmt.Sprintf("n-0000000000000001-%d", minutes), "456", "")
+	redisServer.HSet(fmt.Sprintf("n-0000000000000002-%d", minutes), "789", "")
+
+	redisServer.HSet(fmt.Sprintf("d-0000000000000000-%d", minutes), "789", "")
+
+	storer := storage.InMemory{}
+	pubkey := make([]byte, 4)
+	storer.AddBuyer(context.Background(), routing.Buyer{ID: 0, Name: "local.local.0", PublicKey: pubkey, Domain: "networknext.com"})
+	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, Name: "local.local.1", PublicKey: pubkey, Domain: "networknext.com"})
+	storer.AddBuyer(context.Background(), routing.Buyer{ID: 2, Name: "local.local.2", PublicKey: pubkey, Domain: "networknext.com"})
 
 	logger := log.NewNopLogger()
 	svc := jsonrpc.BuyersService{
@@ -265,6 +276,7 @@ func TestTotalSessions(t *testing.T) {
 		RedisPoolSessionMeta:   redisPool,
 		RedisPoolSessionSlices: redisPool,
 		RedisPoolSessionMap:    redisPool,
+		Storage:                &storer,
 		Logger:                 logger,
 	}
 
@@ -286,6 +298,13 @@ func TestTotalSessions(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, 3, reply.Next)
+	assert.Equal(t, 1, reply.Direct)
+
+	// test per buyer counts
+	err = svc.TotalSessions(req, &jsonrpc.TotalSessionsArgs{BuyerID: "0000000000000000"}, &reply)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 1, reply.Next)
 	assert.Equal(t, 1, reply.Direct)
 }
 

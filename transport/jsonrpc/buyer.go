@@ -57,40 +57,28 @@ func (s *BuyersService) FlushSessions(r *http.Request, args *FlushSessionsArgs, 
 	topSessions := s.RedisPoolTopSessions.Get()
 	defer topSessions.Close()
 
-	topSessions.Send("FLUSHALL", "ASYNC")
-	topSessions.Flush()
-
-	if _, err := topSessions.Receive(); err != nil {
+	if _, err := topSessions.Do("FLUSHALL", "ASYNC"); err != nil {
 		return err
 	}
 
 	sessionMeta := s.RedisPoolSessionMeta.Get()
 	defer sessionMeta.Close()
 
-	sessionMeta.Send("FLUSHALL", "ASYNC")
-	sessionMeta.Flush()
-
-	if _, err := sessionMeta.Receive(); err != nil {
+	if _, err := sessionMeta.Do("FLUSHALL", "ASYNC"); err != nil {
 		return err
 	}
 
 	sessionSlices := s.RedisPoolSessionSlices.Get()
 	defer sessionSlices.Close()
 
-	sessionSlices.Send("FLUSHALL", "ASYNC")
-	sessionSlices.Flush()
-
-	if _, err := sessionSlices.Receive(); err != nil {
+	if _, err := sessionSlices.Do("FLUSHALL", "ASYNC"); err != nil {
 		return err
 	}
 
 	sessionMap := s.RedisPoolSessionMap.Get()
 	defer sessionMap.Close()
 
-	sessionMap.Send("FLUSHALL", "ASYNC")
-	sessionMap.Flush()
-
-	if _, err := sessionMap.Receive(); err != nil {
+	if _, err := sessionMap.Do("FLUSHALL", "ASYNC"); err != nil {
 		return err
 	}
 
@@ -205,107 +193,80 @@ type TotalSessionsReply struct {
 }
 
 func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, reply *TotalSessionsReply) error {
-	// if r.Body != nil {
-	// 	defer r.Body.Close()
-	// }
+	if r.Body != nil {
+		defer r.Body.Close()
+	}
 
-	// // get the top session IDs globally or for a buyer from the sorted set
-	// switch args.BuyerID {
-	// case "":
-	// 	// Get top Direct sessions sorted by least to greatest direct RTT
-	// 	directTotals, err := s.RedisClient.HGetAll("session-count-total-direct").Result()
-	// 	if err != nil {
-	// 		err = fmt.Errorf("TotalSessions() failed getting session-count-total-direct: %v", err)
-	// 		s.Logger.Log("err", err)
-	// 		return err
-	// 	}
+	redisClient := s.RedisPoolSessionMap.Get()
+	minutes := time.Now().Unix() / 60
 
-	// 	// Get top Next sessions
-	// 	nextTotals, err := s.RedisClient.HGetAll("session-count-total-next").Result()
-	// 	if err != nil {
-	// 		err = fmt.Errorf("TotalSessions() failed getting session-count-total-next: %v", err)
-	// 		s.Logger.Log("err", err)
-	// 		return err
-	// 	}
+	// get the top session IDs globally or for a buyer from the sorted set
+	switch args.BuyerID {
+	case "":
+		buyers := s.Storage.Buyers()
 
-	// 	var totalDirect int
-	// 	for _, directString := range directTotals {
-	// 		direct, err := strconv.Atoi(directString)
-	// 		if err != nil {
-	// 			err = fmt.Errorf("TotalSessions() failed to parse direct session count (%s): %v", directString, err)
-	// 			s.Logger.Log("err", err)
-	// 			return err
-	// 		}
+		for _, buyer := range buyers {
+			stringID := fmt.Sprintf("%016x", buyer.ID)
+			redisClient.Send("HLEN", fmt.Sprintf("d-%s-%d", stringID, minutes))
+		}
+		redisClient.Flush()
 
-	// 		totalDirect += direct
-	// 	}
+		for range buyers {
+			count, err := redis.Int(redisClient.Receive())
+			if err != nil {
+				err = fmt.Errorf("TotalSessions() failed getting total session count direct: %v", err)
+				s.Logger.Log("err", err)
+				return err
+			}
 
-	// 	var totalNext int
-	// 	for _, nextString := range nextTotals {
-	// 		next, err := strconv.Atoi(nextString)
-	// 		if err != nil {
-	// 			err = fmt.Errorf("TotalSessions() failed to parse next session count (%s): %v", nextString, err)
-	// 			s.Logger.Log("err", err)
-	// 			return err
-	// 		}
-	// 		totalNext += next
-	// 	}
+			reply.Direct += count
+		}
 
-	// 	reply.Direct = totalDirect
-	// 	reply.Next = totalNext
-	// default:
-	// 	if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
-	// 		err := fmt.Errorf("TotalSessions(): %v", ErrInsufficientPrivileges)
-	// 		s.Logger.Log("err", err)
-	// 		return err
-	// 	}
+		for _, buyer := range buyers {
+			stringID := fmt.Sprintf("%016x", buyer.ID)
+			redisClient.Send("HLEN", fmt.Sprintf("n-%s-%d", stringID, minutes))
+		}
+		redisClient.Flush()
 
-	// 	buyerDirectTotals, err := s.RedisClient.HGetAll(fmt.Sprintf("session-count-direct-buyer-%s", args.BuyerID)).Result()
-	// 	if err != nil {
-	// 		err = fmt.Errorf("TotalSessions() failed getting session-count-direct-buyer-%s: %v", args.BuyerID, err)
-	// 		s.Logger.Log("err", err)
-	// 		return err
-	// 	}
+		for range buyers {
+			count, err := redis.Int(redisClient.Receive())
+			if err != nil {
+				err = fmt.Errorf("TotalSessions() failed getting total session count next: %v", err)
+				s.Logger.Log("err", err)
+				return err
+			}
 
-	// 	buyerNextTotals, err := s.RedisClient.HGetAll(fmt.Sprintf("session-count-next-buyer-%s", args.BuyerID)).Result()
-	// 	if err != nil {
-	// 		err = fmt.Errorf("TotalSessions() failed getting session-count-next-buyer-%s: %v", args.BuyerID, err)
-	// 		s.Logger.Log("err", err)
-	// 		return err
-	// 	}
+			reply.Next += count
+		}
+	default:
+		if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
+			err := fmt.Errorf("TotalSessions(): %v", ErrInsufficientPrivileges)
+			s.Logger.Log("err", err)
+			return err
+		}
 
-	// 	var buyerDirectTotal int
-	// 	for _, directString := range buyerDirectTotals {
-	// 		direct, err := strconv.Atoi(directString)
-	// 		if err != nil {
-	// 			err = fmt.Errorf("TotalSessions() failed to parse buyer direct session count (%s): %v", directString, err)
-	// 			s.Logger.Log("err", err)
-	// 			return err
-	// 		}
+		redisClient.Send("HLEN", fmt.Sprintf("d-%s-%d", args.BuyerID, minutes))
+		redisClient.Send("HLEN", fmt.Sprintf("n-%s-%d", args.BuyerID, minutes))
+		redisClient.Flush()
 
-	// 		buyerDirectTotal += direct
-	// 	}
+		directLength, err := redis.Int(redisClient.Receive())
+		if err != nil {
+			err = fmt.Errorf("TotalSessions() failed getting buyer session direct counts: %v", err)
+			s.Logger.Log("err", err)
+			return err
+		}
 
-	// 	var buyerNextTotal int
-	// 	for _, nextString := range buyerNextTotals {
-	// 		next, err := strconv.Atoi(nextString)
-	// 		if err != nil {
-	// 			err = fmt.Errorf("TotalSessions() failed to parse buyer next session count (%s): %v", nextString, err)
-	// 			s.Logger.Log("err", err)
-	// 			return err
-	// 		}
+		nextLength, err := redis.Int(redisClient.Receive())
+		if err != nil {
+			err = fmt.Errorf("TotalSessions() failed getting buyer session next counts: %v", err)
+			s.Logger.Log("err", err)
+			return err
+		}
 
-	// 		buyerNextTotal += next
-	// 	}
+		reply.Direct = directLength
+		reply.Next = nextLength
+	}
 
-	// 	reply.Direct = buyerDirectTotal
-	// 	reply.Next = buyerNextTotal
-	// }
-
-	// return nil
-
-	reply.Direct = 0
-	reply.Next = 0
 	return nil
 }
 
@@ -353,7 +314,7 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 			return err
 		}
 
-		topSessionsA, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("sc-%s-%d", args.BuyerID, minutes), "0", fmt.Sprintf("%d", TopSessionsSize)))
+		topSessionsA, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("sc-%s-%d", args.BuyerID, minutes-1), "0", fmt.Sprintf("%d", TopSessionsSize)))
 		if err != nil && err != redis.ErrNil {
 			err = fmt.Errorf("TopSessions() failed getting top sessions A for buyer ID %016x: %v", args.BuyerID, err)
 			s.Logger.Log("err", err)
@@ -367,11 +328,9 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 		}
 	}
 
-	// build a single transaction to get the sessions details for the session IDs
 	sessionMetaClient := s.RedisPoolSessionMeta.Get()
 	defer sessionMetaClient.Close()
 
-	sessionMetaClient.Send("MULTI")
 	sessionIDsRetreived := make(map[string]bool)
 	for _, sessionID := range topSessionsA {
 		sessionMetaClient.Send("GET", fmt.Sprintf("session-%s-meta", sessionID))
@@ -383,33 +342,30 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 			sessionIDsRetreived[sessionID] = true
 		}
 	}
-	sessionMetaClient.Send("EXEC")
 	sessionMetaClient.Flush()
 
-	metaStrings, err := redis.Strings(sessionMetaClient.Receive())
-	if err != nil && err != redis.ErrNil {
-		err = fmt.Errorf("TopSessions() failed getting top sessions meta: %v", err)
-		s.Logger.Log("err", err)
-		return err
-	}
-
 	var sessionMetas []transport.SessionMeta
-	{
-		var meta transport.SessionMeta
-		for _, metaString := range metaStrings {
-			splitMetaStrings := strings.Split(metaString, "|")
-			if err := meta.ParseRedisString(splitMetaStrings); err != nil {
-				err = fmt.Errorf("TopSessions() failed to parse redis string into meta: %v", err)
-				s.Logger.Log("err", err, "redisString", metaString)
-				continue
-			}
-
-			if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
-				meta.Anonymise()
-			}
-
-			sessionMetas = append(sessionMetas, meta)
+	var meta transport.SessionMeta
+	for i := 0; i < len(topSessionsA)+len(topSessionsB); i++ {
+		metaString, err := redis.String(sessionMetaClient.Receive())
+		if err != nil && err != redis.ErrNil {
+			err = fmt.Errorf("TopSessions() failed getting top sessions meta: %v", err)
+			s.Logger.Log("err", err)
+			return err
 		}
+
+		splitMetaStrings := strings.Split(metaString, "|")
+		if err := meta.ParseRedisString(splitMetaStrings); err != nil {
+			err = fmt.Errorf("TopSessions() failed to parse redis string into meta: %v", err)
+			s.Logger.Log("err", err, "redisString", metaString)
+			continue
+		}
+
+		if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
+			meta.Anonymise()
+		}
+
+		sessionMetas = append(sessionMetas, meta)
 	}
 
 	sort.Slice(sessionMetas, func(i int, j int) bool {
@@ -457,10 +413,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 	sessionSlicesClient := s.RedisPoolSessionMeta.Get()
 	defer sessionSlicesClient.Close()
 
-	sessionSlicesClient.Send("LRANGE", fmt.Sprintf("ss-%s", args.SessionID), "0", "-1")
-	sessionSlicesClient.Flush()
-
-	slices, err := redis.Strings(sessionSlicesClient.Receive())
+	slices, err := redis.Strings(sessionSlicesClient.Do("LRANGE", fmt.Sprintf("ss-%s", args.SessionID), "0", "-1"))
 	if err != nil {
 		err = fmt.Errorf("SessionDetails() failed getting session slices: %v", err)
 		s.Logger.Log("err", err)
@@ -718,14 +671,22 @@ func (s *BuyersService) getDirectAndNextMapPointStrings(buyer *routing.Buyer) ([
 	}
 
 	redisClient.Flush()
-	directPointStrings, err := redis.Strings(redisClient.Receive())
+
+	directPointStrings := make([]string, len(direct))
+	for i := 0; i < len(direct); i++ {
+		directPointStrings[i], err = redis.String(redisClient.Receive())
+	}
 
 	for _, nextSessionID := range next {
 		redisClient.Send("HGET", fmt.Sprintf("n-%s-%d", stringID, minutes), fmt.Sprintf("%s", nextSessionID))
 	}
 
 	redisClient.Flush()
-	nextPointStrings, err := redis.Strings(redisClient.Receive())
+
+	nextPointStrings := make([]string, len(next))
+	for i := 0; i < len(next); i++ {
+		nextPointStrings[i], err = redis.String(redisClient.Receive())
+	}
 
 	return directPointStrings, nextPointStrings, nil
 }

@@ -27,7 +27,6 @@ func ValidateRedisPool(pool *redis.Pool) error {
 	defer redisConn.Close()
 
 	redisConn.Send("PING")
-	redisConn.Send("FLUSHDB")
 	redisConn.Flush()
 	pong, err := redisConn.Receive()
 	if err != nil || pong != "PONG" {
