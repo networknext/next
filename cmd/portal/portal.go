@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -404,8 +405,10 @@ func main() {
 			}
 			defer res.Body.Close()
 
-			data := make([]byte, res.ContentLength)
-			res.Body.Read(data)
+			data, err := ioutil.ReadAll(res.Body)
+			if err != nil {
+				level.Error(logger).Log("msg", "unable to read response body", "err", err)
+			}
 
 			index := 0
 

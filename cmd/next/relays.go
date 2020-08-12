@@ -538,11 +538,11 @@ func relayTraffic(rpcClient jsonrpc.RPCClient, env Environment, regex string) {
 	}
 
 	statsList := []struct {
-		name       string `table:"Name"`
-		internalTx uint64 `table:"Internal Rx"`
-		internalRx uint64 `table:"Internal Tx"`
-		gameTx     uint64 `table:"Game Rx"`
-		gameRx     uint64 `table:"Game Tx"`
+		Name       string `table:"Name"`
+		InternalTx uint64 `table:"Internal Rx"`
+		InternalRx uint64 `table:"Internal Tx"`
+		GameTx     uint64 `table:"Game Rx"`
+		GameRx     uint64 `table:"Game Tx"`
 		UnknownRx  uint64 `table:"Unknown Rx"`
 	}{}
 
@@ -550,18 +550,18 @@ func relayTraffic(rpcClient jsonrpc.RPCClient, env Environment, regex string) {
 		relay := &reply.Relays[i]
 
 		statsList = append(statsList, struct {
-			name       string `table:"Name"`
-			internalTx uint64 `table:"Internal Rx"`
-			internalRx uint64 `table:"Internal Tx"`
-			gameTx     uint64 `table:"Game Rx"`
-			gameRx     uint64 `table:"Game Tx"`
+			Name       string `table:"Name"`
+			InternalTx uint64 `table:"Internal Rx"`
+			InternalRx uint64 `table:"Internal Tx"`
+			GameTx     uint64 `table:"Game Rx"`
+			GameRx     uint64 `table:"Game Tx"`
 			UnknownRx  uint64 `table:"Unknown Rx"`
 		}{
-			name:       relay.Name,
-			internalRx: relay.TrafficStats.InternalStatsRx(),
-			internalTx: relay.TrafficStats.InternalStatsTx(),
-			gameRx:     relay.TrafficStats.GameStatsRx(),
-			gameTx:     relay.TrafficStats.GameStatsTx(),
+			Name:       relay.Name,
+			InternalRx: relay.TrafficStats.InternalStatsRx(),
+			InternalTx: relay.TrafficStats.InternalStatsTx(),
+			GameRx:     relay.TrafficStats.GameStatsRx(),
+			GameTx:     relay.TrafficStats.GameStatsTx(),
 			UnknownRx:  relay.TrafficStats.UnknownRx,
 		})
 	}
