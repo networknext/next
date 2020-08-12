@@ -102,12 +102,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	redisPortalHostExp, err := time.ParseDuration(os.Getenv("REDIS_HOST_PORTAL_EXPIRATION"))
-	if err != nil {
-		level.Error(logger).Log("envvar", "REDIS_HOST_PORTAL_EXPIRATION", "msg", "could not parse", "err", err)
-		os.Exit(1)
-	}
-
+	var err error
 	redisFlushCount := 1000
 	redisFlushCountString, ok := os.LookupEnv("PORTAL_CRUNCHER_REDIS_FLUSH_COUNT")
 	if ok {
@@ -398,7 +393,7 @@ func main() {
 						clientTopSessions.CommandArgs(" %.2f %s", score, sessionID)
 					}
 					clientTopSessions.EndCommand()
-					clientTopSessions.Command("EXPIRE", "s-%d %d", minutes, int(redisPortalHostExp.Seconds()))
+					clientTopSessions.Command("EXPIRE", "s-%d %d", minutes, 30)
 
 					for j := range portalDataBuffer {
 						meta := &portalDataBuffer[j].Meta
@@ -413,7 +408,7 @@ func main() {
 						// and update the current per-buyer top sessions list
 						clientTopSessions.Command("DEL", "sc-%s-%d", customerID, minutes-2)
 						clientTopSessions.Command("ZADD", "sc-%s-%d %.2f %s", customerID, minutes, score, sessionID)
-						clientTopSessions.Command("EXPIRE", "sc-%s-%d %d", customerID, minutes, int(redisPortalHostExp.Seconds()))
+						clientTopSessions.Command("EXPIRE", "sc-%s-%d %d", customerID, minutes, 30)
 
 						// Remove the old map points minute buckets from 2 minutes ago if it didn't expire
 						clientSessionMap.Command("HDEL", "d-%s-%d %s", customerID, minutes-2, sessionID)
@@ -433,15 +428,15 @@ func main() {
 						}
 
 						// Expire map points
-						clientSessionMap.Command("EXPIRE", "n-%s-%d %d", customerID, minutes, int(redisPortalHostExp.Seconds()))
-						clientSessionMap.Command("EXPIRE", "d-%s-%d %d", customerID, minutes, int(redisPortalHostExp.Seconds()))
+						clientSessionMap.Command("EXPIRE", "n-%s-%d %d", customerID, minutes, 30)
+						clientSessionMap.Command("EXPIRE", "d-%s-%d %d", customerID, minutes, 30)
 
 						// Update session meta
-						clientSessionMeta.Command("SET", "sm-%s %v EX %d", sessionID, meta.RedisString(), int(redisPortalHostExp.Seconds()))
+						clientSessionMeta.Command("SET", "sm-%s %v EX %d", sessionID, meta.RedisString(), 120)
 
 						// Update session slices
 						clientSessionSlices.Command("RPUSH", "ss-%s %s", sessionID, slice.RedisString())
-						clientSessionSlices.Command("EXPIRE", "ss-%s %d", sessionID, int(redisPortalHostExp.Seconds()))
+						clientSessionSlices.Command("EXPIRE", "ss-%s %d", sessionID, 120)
 					}
 
 					portalDataBuffer = portalDataBuffer[:0]
