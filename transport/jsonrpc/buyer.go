@@ -468,9 +468,10 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 	}
 
 	for i := 0; i < len(slices); i++ {
+		sliceStrings := strings.Split(slices[i], "|")
 		var sessionSlice transport.SessionSlice
-		if err := sessionSlice.UnmarshalBinary(slices[i]); err != nil {
-			err = fmt.Errorf("SessionDetails() SessionSlice unmarshaling error: %v", err)
+		if err := sessionSlice.ParseRedisString(sliceStrings); err != nil {
+			err = fmt.Errorf("SessionDetails() SessionSlice parsing error: %v", err)
 			s.Logger.Log("err", err)
 			return err
 		}

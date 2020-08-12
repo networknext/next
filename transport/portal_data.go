@@ -861,6 +861,51 @@ func (s SessionSlice) RedisString() string {
 	return fmt.Sprintf("%d|%s|%s|%s|%s|%s|%s", s.Timestamp.Unix(), s.Next.RedisString(), s.Direct.RedisString(), s.Envelope.RedisString(), onNetworkNextString, isMultipathString, isTryBeforeYouBuyString)
 }
 
+func (s *SessionSlice) ParseRedisString(values []string) error {
+	var index int
+	var err error
+
+	var timestamp int64
+	if timestamp, err = strconv.ParseInt(values[index], 10, 64); err != nil {
+		return fmt.Errorf("[SessionSlice] failed to read timestamp from redis data: %v", err)
+	}
+	index++
+
+	s.Timestamp = time.Unix(timestamp, 0)
+
+	if err := s.Next.ParseRedisString([]string{values[index], values[index+1], values[index+2]}); err != nil {
+		return fmt.Errorf("[SessionSlice] failed to read next stats from redis data: %v", err)
+	}
+	index += 3
+
+	if err := s.Direct.ParseRedisString([]string{values[index], values[index+1], values[index+2]}); err != nil {
+		return fmt.Errorf("[SessionSlice] failed to read direct stats from redis data: %v", err)
+	}
+	index += 3
+
+	if err := s.Envelope.ParseRedisString([]string{values[index], values[index+1]}); err != nil {
+		return fmt.Errorf("[SessionSlice] failed to read envelope from redis data: %v", err)
+	}
+	index += 2
+
+	if s.OnNetworkNext, err = strconv.ParseBool(values[index]); err != nil {
+		return fmt.Errorf("[SessionSlice] failed to read on network next from redis data: %v", err)
+	}
+	index++
+
+	if s.IsMultiPath, err = strconv.ParseBool(values[index]); err != nil {
+		return fmt.Errorf("[SessionSlice] failed to read is multipath from redis data: %v", err)
+	}
+	index++
+
+	if s.IsTryBeforeYouBuy, err = strconv.ParseBool(values[index]); err != nil {
+		return fmt.Errorf("[SessionSlice] failed to read is try before you buy from redis data: %v", err)
+	}
+	index++
+
+	return nil
+}
+
 type SessionMapPoint struct {
 	Latitude      float64 `json:"latitude"`
 	Longitude     float64 `json:"longitude"`

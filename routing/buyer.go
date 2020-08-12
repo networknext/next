@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"fmt"
+	"strconv"
 )
 
 type Buyer struct {
@@ -40,4 +41,21 @@ type Envelope struct {
 
 func (e Envelope) RedisString() string {
 	return fmt.Sprintf("%d|%d", e.Up, e.Down)
+}
+
+func (e *Envelope) ParseRedisString(values []string) error {
+	var index int
+	var err error
+
+	if e.Up, err = strconv.ParseInt(values[index], 10, 64); err != nil {
+		return fmt.Errorf("[Envelope] failed to read up from redis data: %v", err)
+	}
+	index++
+
+	if e.Down, err = strconv.ParseInt(values[index], 10, 64); err != nil {
+		return fmt.Errorf("[Envelope] failed to read down from redis data: %v", err)
+	}
+	index++
+
+	return nil
 }
