@@ -666,19 +666,6 @@ func main() {
 					return nil
 				},
 			},
-			{
-				Name:       "traffic",
-				ShortUsage: "next relays traffic [regex]",
-				ShortHelp:  "Display detailed traffic stats for the specified relays",
-				Exec: func(ctx context.Context, args []string) error {
-					if len(args) > 0 {
-						relayTraffic(rpcClient, env, args[0])
-					} else {
-						relayTraffic(rpcClient, env, "")
-					}
-					return nil
-				},
-			},
 		},
 	}
 
@@ -1140,6 +1127,19 @@ func main() {
 							return nil
 						},
 					},
+				},
+			},
+			{
+				Name:       "traffic",
+				ShortUsage: "next relay traffic [regex]",
+				ShortHelp:  "Display detailed traffic stats for the specified relays",
+				Exec: func(ctx context.Context, args []string) error {
+					if len(args) > 0 {
+						relayTraffic(rpcClient, env, args[0])
+					} else {
+						relayTraffic(rpcClient, env, "")
+					}
+					return nil
 				},
 			},
 		},

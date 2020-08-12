@@ -786,3 +786,63 @@ func relayLogs(rpcClient jsonrpc.RPCClient, env Environment, lines uint, regexes
 		}
 	}
 }
+
+func relayTraffic(rpcClient jsonrpc.RPCClient, env Environment, regex string) {
+	formatFunc := func(bytes uint64) string {
+		const (
+			kilo = 1000
+			mega = 1000000
+			giga = 1000000000
+		)
+
+		if bytes > giga {
+			return fmt.Sprintf("%.02fGB", float64(bytes)/float64(giga))
+		}
+
+		if bytes > mega {
+			return fmt.Sprintf("%.02fMB", float64(bytes)/float64(mega))
+		}
+
+		if bytes > kilo {
+			return fmt.Sprintf("%.02fKB", float64(bytes)/float64(kilo))
+		}
+
+		return fmt.Sprintf("%d", bytes)
+	}
+
+	args := localjsonrpc.RelaysArgs{
+		Regex: regex,
+	}
+
+	var reply localjsonrpc.RelaysReply
+	if err := rpcClient.CallFor(&reply, "OpsService.Relays", args); err != nil {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	type trafficStats struct {
+		Name       string `table:"Name"`
+		InternalTx string `table:"Pings Rx"`
+		InternalRx string `table:"Pings Tx"`
+		GameTx     string `table:"Game Rx"`
+		GameRx     string `table:"Game Tx"`
+		UnknownRx  string `table:"Unknown Rx"`
+	}
+
+	statsList := []trafficStats{}
+
+	for i := range reply.Relays {
+		relay := &reply.Relays[i]
+
+		statsList = append(statsList, trafficStats{
+			Name:       relay.Name,
+			InternalRx: formatFunc(relay.TrafficStats.InternalStatsRx()),
+			InternalTx: formatFunc(relay.TrafficStats.InternalStatsTx()),
+			GameRx:     formatFunc(relay.TrafficStats.GameStatsRx()),
+			GameTx:     formatFunc(relay.TrafficStats.GameStatsTx()),
+			UnknownRx:  formatFunc(relay.TrafficStats.UnknownRx),
+		})
+	}
+
+	table.Output(statsList)
+}
