@@ -63,7 +63,7 @@ int main()
 
     const char* server_port = std::getenv("SERVER_PORT");
     if (!server_port) {
-        printf( "error: server ip env var not defined\n" );
+        printf( "error: server port env var not defined\n" );
         return 1;
     }
 
