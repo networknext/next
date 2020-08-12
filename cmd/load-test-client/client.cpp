@@ -56,7 +56,7 @@ int main()
         return 1;
     }
 
-    const char* server_ip = std::getenv("SERVER_BASE_IP");
+    const char* server_ip = std::getenv("SERVER_IP");
     if (!server_ip) {
         printf( "error: server ip env var not defined\n" );
         return 1;
