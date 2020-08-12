@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
 	"time"
 
@@ -165,6 +166,28 @@ func (s Stats) String() string {
 
 func (s Stats) RedisString() string {
 	return fmt.Sprintf("%.2f|%.2f|%.2f", s.RTT, s.Jitter, s.PacketLoss)
+}
+
+func (s *Stats) ParseRedisString(values []string) error {
+	var index int
+	var err error
+
+	if s.RTT, err = strconv.ParseFloat(values[index], 64); err != nil {
+		return fmt.Errorf("[Stats] failed to read RTT from redis data: %v", err)
+	}
+	index++
+
+	if s.Jitter, err = strconv.ParseFloat(values[index], 64); err != nil {
+		return fmt.Errorf("[Stats] failed to read jitter from redis data: %v", err)
+	}
+	index++
+
+	if s.PacketLoss, err = strconv.ParseFloat(values[index], 64); err != nil {
+		return fmt.Errorf("[Stats] failed to read packet loss from redis data: %v", err)
+	}
+	index++
+
+	return nil
 }
 
 type RelayPingData struct {

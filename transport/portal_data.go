@@ -233,8 +233,23 @@ type RelayHop struct {
 	Name string `json:"name"`
 }
 
-func (h *RelayHop) RedisString() string {
+func (h RelayHop) RedisString() string {
 	return fmt.Sprintf("%016x|%s", h.ID, h.Name)
+}
+
+func (n *RelayHop) ParseRedisString(values []string) error {
+	var index int
+	var err error
+
+	if n.ID, err = strconv.ParseUint(values[index], 16, 64); err != nil {
+		return fmt.Errorf("[RelayHop] failed to read relay ID from redis data: %v", err)
+	}
+	index++
+
+	n.Name = values[index]
+	index++
+
+	return nil
 }
 
 type NearRelayPortalData struct {
@@ -243,8 +258,28 @@ type NearRelayPortalData struct {
 	ClientStats routing.Stats `json:"client_stats"`
 }
 
-func (n *NearRelayPortalData) RedisString() string {
+func (n NearRelayPortalData) RedisString() string {
 	return fmt.Sprintf("%016x|%s|%s", n.ID, n.Name, n.ClientStats.RedisString())
+}
+
+func (n *NearRelayPortalData) ParseRedisString(values []string) error {
+	var index int
+	var err error
+
+	if n.ID, err = strconv.ParseUint(values[index], 16, 64); err != nil {
+		return fmt.Errorf("[NearRelayPortalData] failed to read relay ID from redis data: %v", err)
+	}
+	index++
+
+	n.Name = values[index]
+	index++
+
+	if err := n.ClientStats.ParseRedisString([]string{values[index], values[index+1], values[index+2]}); err != nil {
+		return fmt.Errorf("[NearRelayPortalData] failed to read client stats from redis data: %v", err)
+	}
+	index += 3
+
+	return nil
 }
 
 type SessionMeta struct {
@@ -582,6 +617,115 @@ func (s SessionMeta) RedisString() string {
 	}
 	result += fmt.Sprintf("%d|%016x", s.Platform, s.BuyerID)
 	return result
+}
+
+func (s *SessionMeta) ParseRedisString(values []string) error {
+	var index int
+	var err error
+
+	if s.ID, err = strconv.ParseUint(values[index], 16, 64); err != nil {
+		return fmt.Errorf("[SessionMeta] failed to read session ID from redis data: %v", err)
+	}
+	index++
+
+	if s.UserHash, err = strconv.ParseUint(values[index], 16, 64); err != nil {
+		return fmt.Errorf("[SessionMeta] failed to read user hash from redis data: %v", err)
+	}
+	index++
+
+	s.DatacenterName = values[index]
+	index++
+	s.DatacenterAlias = values[index]
+	index++
+
+	if s.OnNetworkNext, err = strconv.ParseBool(values[index]); err != nil {
+		return fmt.Errorf("[SessionMeta] failed to read on network next from redis data: %v", err)
+	}
+	index++
+
+	if s.NextRTT, err = strconv.ParseFloat(values[index], 64); err != nil {
+		return fmt.Errorf("[SessionMeta] failed to read next RTT from redis data: %v", err)
+	}
+	index++
+
+	if s.DirectRTT, err = strconv.ParseFloat(values[index], 64); err != nil {
+		return fmt.Errorf("[SessionMeta] failed to read direct RTT from redis data: %v", err)
+	}
+	index++
+
+	if s.DeltaRTT, err = strconv.ParseFloat(values[index], 64); err != nil {
+		return fmt.Errorf("[SessionMeta] failed to read delta RTT from redis data: %v", err)
+	}
+	index++
+
+	var location routing.Location
+	if err := location.ParseRedisString([]string{values[index], values[index+1], values[index+2]}); err != nil {
+		return fmt.Errorf("[SessionMeta] failed to read location from redis data: %v", err)
+	}
+	index += 3
+
+	s.ClientAddr = values[index]
+	index++
+	s.ServerAddr = values[index]
+	index++
+
+	var numHops int64
+	if numHops, err = strconv.ParseInt(values[index], 10, 32); err != nil {
+		return fmt.Errorf("[SessionMeta] failed to read number of relay hops from redis data: %v", err)
+	}
+	index++
+
+	s.Hops = make([]RelayHop, numHops)
+	for i := 0; i < int(numHops); i++ {
+		var hop RelayHop
+		if err := hop.ParseRedisString([]string{values[index], values[index+1]}); err != nil {
+			return fmt.Errorf("[SessionMeta] failed to read relay hop from redis data: %v", err)
+		}
+		index += 2
+
+		s.Hops[i] = hop
+	}
+
+	s.SDK = values[index]
+	index++
+
+	var connection uint64
+	if connection, err = strconv.ParseUint(values[index], 10, 8); err != nil {
+		return fmt.Errorf("[SessionMeta] failed to read connection type from redis data: %v", err)
+	}
+	s.Connection = uint8(connection)
+	index++
+
+	var numNearRelays int64
+	if numNearRelays, err = strconv.ParseInt(values[index], 10, 32); err != nil {
+		return fmt.Errorf("[SessionMeta] failed to read number of near relays from redis data: %v", err)
+	}
+	index++
+
+	s.NearbyRelays = make([]NearRelayPortalData, numNearRelays)
+	for i := 0; i < int(numNearRelays); i++ {
+		var nearRelay NearRelayPortalData
+		if err := nearRelay.ParseRedisString([]string{values[index], values[index+1], values[index+2], values[index+3], values[index+4]}); err != nil {
+			return fmt.Errorf("[SessionMeta] failed to read near relay from redis data: %v", err)
+		}
+		index += 5
+
+		s.NearbyRelays[i] = nearRelay
+	}
+
+	var platform uint64
+	if platform, err = strconv.ParseUint(values[index], 10, 8); err != nil {
+		return fmt.Errorf("[SessionMeta] failed to read platform type from redis data: %v", err)
+	}
+	s.Platform = uint8(platform)
+	index++
+
+	if s.BuyerID, err = strconv.ParseUint(values[index], 16, 64); err != nil {
+		return fmt.Errorf("[SessionMeta] failed to read buyer ID from redis data: %v", err)
+	}
+	index++
+
+	return nil
 }
 
 func ObscureString(source string, delim string, count int) string {

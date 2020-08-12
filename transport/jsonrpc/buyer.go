@@ -386,7 +386,7 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 	sessionMetaClient.Send("EXEC")
 	sessionMetaClient.Flush()
 
-	metas, err := redis.Strings(sessionMetaClient.Receive())
+	metaStrings, err := redis.Strings(sessionMetaClient.Receive())
 	if err != nil && err != redis.ErrNil {
 		err = fmt.Errorf("TopSessions() failed getting top sessions meta: %v", err)
 		s.Logger.Log("err", err)
@@ -396,9 +396,13 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 	var sessionMetas []transport.SessionMeta
 	{
 		var meta transport.SessionMeta
-		for _, cmd := range metas {
-			// scan the data from Redis into its SessionMeta struct
-			err = cmd.Scan(&meta)
+		for _, metaString := range metaStrings {
+			splitMetaStrings := strings.Split(metaString, "|")
+			if err := meta.ParseRedisString(splitMetaStrings); err != nil {
+				err = fmt.Errorf("TopSessions() failed to parse redis string into meta: %v", err)
+				s.Logger.Log("err", err, "redisString", metaString)
+				continue
+			}
 
 			if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
 				meta.Anonymise()
