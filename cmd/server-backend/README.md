@@ -37,7 +37,6 @@ The default setting is `warn` when running `make dev-relay-backend` and `make de
 - `ROUTE_MATRIX_URI`: a URL or local file path to a route matrix binary
 - `MAXMIND_DB_URI`: local path to a `.mmdb` file for IP lookups
 - `REDIS_HOST_PORTAL`: redis instance to save map, top sessions, and session details
-- `REDIS_HOST_PORTAL_EXPIRATION`: when portal data expires after a session ends, format is parsed with https://golang.org/pkg/time/#ParseDuration
 
 #### Optional
 
