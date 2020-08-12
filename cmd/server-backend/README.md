@@ -36,10 +36,6 @@ The default setting is `warn` when running `make dev-relay-backend` and `make de
 - `RELAY_ROUTER_PRIVATE_KEY`: the private key of the router used to encrypt routes
 - `ROUTE_MATRIX_URI`: a URL or local file path to a route matrix binary
 - `MAXMIND_DB_URI`: local path to a `.mmdb` file for IP lookups
-- `REDIS_HOST_TOP_SESSIONS`: redis instance to save top sessions
-- `REDIS_HOST_SESSION_MAP`: redis instance to save map points
-- `REDIS_HOST_SESSION_META`: redis instance to save session metadata
-- `REDIS_HOST_SESSION_SLICES`: redis instance to save session slices
 
 #### Optional
 
