@@ -1,6 +1,7 @@
 #!/bin/bash
 
 num_servers=1
+server_ip='10.128.0.31'
 
 print_usage() {
     printf "Usage: server-spawner.sh -n number\n\n"
@@ -25,7 +26,8 @@ done
 trap "kill 0" EXIT
 
 for ((r=0 ; r<${num_servers} ; r++)); do
-./dist/server &
+echo "SERVER_IP=${server_ip}" > 
+./load_test_server
 pid="$!"
 printf "PID ${pid}: Server opened\n"
 done

@@ -26,6 +26,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sstream>
 
 static volatile int quit = 0;
 
@@ -63,18 +64,19 @@ int main()
 
     char * cores_str = std::getenv("CORES");
     if (!cores_str) {
-        printf( "error: server ip env var not defined\n" );
+        printf( "error: cores env var not defined\n" );
         return 1;
     }
 
     int cores = std::atoi(cores_str);
-    char * server_addresses[cores];
 
-    for (int i = 0; i < 96; i++) {
-      sprintf(server_addresses[i], "%d", 50000 + i);
+    std::stringstream server_addrs_ss[cores];
+
+    for (int i = 0; i < cores; i++) {
+      server_addrs_ss[i] << server_ip << ":" << std::to_string(32202 + i);
     }
 
-    next_client_open_session( client, server_addresses[rand() % cores] );
+    next_client_open_session( client, server_addrs_ss[rand() % cores].str().c_str() );
 
     uint8_t packet_data[32];
     memset( packet_data, 0, sizeof( packet_data ) );
