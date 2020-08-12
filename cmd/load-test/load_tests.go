@@ -326,7 +326,7 @@ func redis_portal(seconds int) {
 					}
 					fmt.Fprintf(clientTopSessions, "\r\n")
 
-					fmt.Fprintf(clientTopSessions, "EXPIRE s-%d 10\r\n", minutes)
+					fmt.Fprintf(clientTopSessions, "EXPIRE s-%d 30\r\n", minutes)
 
 					for j := 0; j < 1000; j++ {
 
@@ -336,7 +336,7 @@ func redis_portal(seconds int) {
 
 						fmt.Fprintf(clientTopSessions, "DEL sc-%d-%d\r\n", customerId, minutes-2)
 						fmt.Fprintf(clientTopSessions, "ZADD sc-%d-%d %d %s\r\n", customerId, minutes, score[i], sessionIdString)
-						fmt.Fprintf(clientTopSessions, "EXPIRE sc-%d-%d 10\r\n", customerId, minutes)
+						fmt.Fprintf(clientTopSessions, "EXPIRE sc-%d-%d 30\r\n", customerId, minutes)
 
 						next := (j % 10) == 0
 						if next {
@@ -354,8 +354,8 @@ func redis_portal(seconds int) {
 						fmt.Fprintf(clientSessionSlices, "EXPIRE ss-%s 120\r\n", sessionIdString)
 					}
 
-					fmt.Fprintf(clientSessionMap, "EXPIRE n-%d 10\r\n", minutes)
-					fmt.Fprintf(clientSessionMap, "EXPIRE d-%d 10\r\n", minutes)
+					fmt.Fprintf(clientSessionMap, "EXPIRE n-%d 30\r\n", minutes)
+					fmt.Fprintf(clientSessionMap, "EXPIRE d-%d 30\r\n", minutes)
 
 					time.Sleep(time.Second)
 				}

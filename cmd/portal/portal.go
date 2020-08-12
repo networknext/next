@@ -25,6 +25,7 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/crypto"
+	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/logging"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
@@ -397,6 +398,113 @@ func main() {
 		os.Exit(1)
 	}
 
+	relayMap := jsonrpc.NewRelayStatsMap()
+
+	go func() {
+		relayStatsURL := os.Getenv("RELAY_STATS_URI")
+
+		sleepInterval := time.Second
+		if siStr, ok := os.LookupEnv("RELAY_STATS_SYNC_SLEEP_INTERVAL"); ok {
+			if si, err := time.ParseDuration(siStr); err == nil {
+				sleepInterval = si
+			} else {
+				level.Error(logger).Log("msg", "could not parse stats sync sleep interval", "err", err)
+			}
+		}
+
+		for {
+			time.Sleep(sleepInterval)
+
+			res, err := http.Get(relayStatsURL)
+			if err != nil {
+				level.Error(logger).Log("msg", "unable to get relay stats", "err", err)
+				continue
+			}
+			defer res.Body.Close()
+
+			data := make([]byte, res.ContentLength)
+			res.Body.Read(data)
+
+			index := 0
+
+			var version uint8
+			if !encoding.ReadUint8(data, &index, &version) {
+				level.Error(logger).Log("unable to read relay stats version")
+				continue
+			}
+
+			var count uint64
+			if !encoding.ReadUint64(data, &index, &count) {
+				level.Error(logger).Log("unable to read relay stats count")
+				continue
+			}
+
+			m := make(map[uint64]jsonrpc.RelayData)
+			for i := uint64(0); i < count; i++ {
+				var id uint64
+				if !encoding.ReadUint64(data, &index, &id) {
+					level.Error(logger).Log("unable to read relay stats id")
+					break
+				}
+
+				var relay jsonrpc.RelayData
+
+				if !encoding.ReadUint64(data, &index, &relay.SessionCount) {
+					level.Error(logger).Log("unable to read relay stats session count")
+					break
+				}
+
+				if !encoding.ReadUint64(data, &index, &relay.Tx) {
+					level.Error(logger).Log("unable to read relay stats tx")
+					break
+				}
+
+				if !encoding.ReadUint64(data, &index, &relay.Rx) {
+					level.Error(logger).Log("unable to read relay stats rx")
+					break
+				}
+
+				var major uint8
+				if !encoding.ReadUint8(data, &index, &major) {
+					level.Error(logger).Log("msg", "unable to relay stats major version")
+				}
+
+				var minor uint8
+				if !encoding.ReadUint8(data, &index, &minor) {
+					level.Error(logger).Log("msg", "unable to relay stats minor version")
+				}
+
+				var patch uint8
+				if !encoding.ReadUint8(data, &index, &patch) {
+					level.Error(logger).Log("msg", "unable to relay stats patch version")
+				}
+
+				relay.Version = fmt.Sprintf("%d.%d.%d", major, minor, patch)
+
+				var unixTime uint64
+				if !encoding.ReadUint64(data, &index, &unixTime) {
+					level.Error(logger).Log("unable to read relay stats last update time")
+					break
+				}
+				relay.LastUpdateTime = time.Unix(int64(unixTime), 0)
+
+				if !encoding.ReadFloat32(data, &index, &relay.CPU) {
+					level.Error(logger).Log("unable to read relay stats cpu usage")
+					break
+				}
+
+				if !encoding.ReadFloat32(data, &index, &relay.Mem) {
+					level.Error(logger).Log("unable to read relay stats memory usage")
+					break
+				}
+
+				m[id] = relay
+			}
+
+			relayMap.Swap(&m)
+		}
+	}()
+
 	go func() {
 		port, ok := os.LookupEnv("PORT")
 		if !ok {
@@ -433,6 +541,7 @@ func main() {
 			Release:   tag,
 			BuildTime: buildtime,
 			Storage:   db,
+			RelayMap:  &relayMap,
 			// RouteMatrix: &routeMatrix,
 		}, "")
 		s.RegisterService(&buyerService, "")
