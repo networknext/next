@@ -406,7 +406,6 @@ func main() {
 					fmt.Fprintf(clientTopSessions, "DEL s-%d\r\n", minutes-2)
 
 					// Update the current global top sessions minute bucket
-					fmt.Fprint(clientTopSessions, "MULTI\r\n")
 					fmt.Fprintf(clientTopSessions, "ZADD s-%d", minutes)
 					for j := range portalDataBuffer {
 						sessionID := fmt.Sprintf("%016x", portalDataBuffer[j].Meta.ID)
@@ -415,7 +414,6 @@ func main() {
 					}
 					fmt.Fprintf(clientTopSessions, "\r\n")
 					fmt.Fprintf(clientTopSessions, "EXPIRE s-%d %d\r\n", minutes, int(redisPortalHostExp.Seconds()))
-					fmt.Fprint(clientTopSessions, "EXEC\r\n")
 
 					for j := range portalDataBuffer {
 						meta := &portalDataBuffer[j].Meta
@@ -429,35 +427,35 @@ func main() {
 						// Remove the old per-buyer top sessions minute bucket from 2 minutes ago if it didnt expire
 						// and update the current per-buyer top sessions list
 						fmt.Fprintf(clientTopSessions, "DEL sc-%s-%d\r\n", customerID, minutes-2)
-						fmt.Fprint(clientTopSessions, "MULTI\r\n")
 						fmt.Fprintf(clientTopSessions, "ZADD sc-%s-%d %.2f %s\r\n", customerID, minutes, score, sessionID)
 						fmt.Fprintf(clientTopSessions, "EXPIRE sc-%s-%d %d\r\n", customerID, minutes, int(redisPortalHostExp.Seconds()))
-						fmt.Fprint(clientTopSessions, "EXEC\r\n")
+
+						// Remove the old map points minute buckets from 2 minutes ago if it didn't expire
+						fmt.Fprintf(clientTopSessions, "HDEL d-%s-%d %s\r\n", customerID, minutes-2, sessionID)
+						fmt.Fprintf(clientTopSessions, "HDEL n-%s-%d %s\r\n", customerID, minutes-2, sessionID)
 
 						// Update the map points for this minute bucket
 						// Make sure to remove the session ID from the opposite bucket in case the session
 						// has switched from direct -> next or next -> direct
 						if next {
-							fmt.Fprintf(clientSessionMap, "HSET n-%d %s %s\r\n", minutes, sessionID, location)
-							fmt.Fprintf(clientSessionMap, "HDEL d-%d %s\r\n", minutes, sessionID)
+							fmt.Fprintf(clientSessionMap, "HSET n-%s-%d %s %s\r\n", customerID, minutes, sessionID, location)
+							fmt.Fprintf(clientSessionMap, "HDEL d-%s-%d %s\r\n", customerID, minutes, sessionID)
 						} else {
-							fmt.Fprintf(clientSessionMap, "HSET d-%d %s %s\r\n", minutes, sessionID, location)
-							fmt.Fprintf(clientSessionMap, "HDEL n-%d %s\r\n", minutes, sessionID)
+							fmt.Fprintf(clientSessionMap, "HSET d-%s-%d %s %s\r\n", customerID, minutes, sessionID, location)
+							fmt.Fprintf(clientSessionMap, "HDEL n-%s-%d %s\r\n", customerID, minutes, sessionID)
 						}
+
+						// Expire map points
+						fmt.Fprintf(clientSessionMap, "EXPIRE n-%s-%d %d\r\n", customerID, minutes, int(redisPortalHostExp.Seconds()))
+						fmt.Fprintf(clientSessionMap, "EXPIRE d-%s-%d %d\r\n", customerID, minutes, int(redisPortalHostExp.Seconds()))
 
 						// Update session meta
 						fmt.Fprintf(clientSessionMeta, "SET sm-%s %v EX %d\r\n", sessionID, meta.RedisString(), int(redisPortalHostExp.Seconds()))
 
 						// Update session slices
-						fmt.Fprint(clientSessionSlices, "MULTI\r\n")
 						fmt.Fprintf(clientSessionSlices, "RPUSH ss-%s %s\r\n", sessionID, slice.RedisString())
 						fmt.Fprintf(clientSessionSlices, "EXPIRE ss-%s %d\r\n", sessionID, int(redisPortalHostExp.Seconds()))
-						fmt.Fprint(clientSessionSlices, "EXEC\r\n")
 					}
-
-					// Expire map points
-					fmt.Fprintf(clientSessionMap, "EXPIRE n-%d %d\r\n", minutes, int(redisPortalHostExp.Seconds()))
-					fmt.Fprintf(clientSessionMap, "EXPIRE d-%d %d\r\n", minutes, int(redisPortalHostExp.Seconds()))
 
 					portalDataBuffer = portalDataBuffer[:0]
 				}

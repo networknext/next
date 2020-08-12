@@ -386,7 +386,7 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 	sessionMetaClient.Send("EXEC")
 	sessionMetaClient.Flush()
 
-	getCmds, err := redis.Strings(sessionMetaClient.Receive())
+	metas, err := redis.Strings(sessionMetaClient.Receive())
 	if err != nil && err != redis.ErrNil {
 		err = fmt.Errorf("TopSessions() failed getting top sessions meta: %v", err)
 		s.Logger.Log("err", err)
@@ -396,7 +396,7 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 	var sessionMetas []transport.SessionMeta
 	{
 		var meta transport.SessionMeta
-		for _, cmd := range getCmds {
+		for _, cmd := range metas {
 			// scan the data from Redis into its SessionMeta struct
 			err = cmd.Scan(&meta)
 
@@ -510,12 +510,11 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	var sessionIDs []string
 	var err error
 
 	buyers := s.Storage.Buyers()
 
-	// slice to hold all the final map points
+	// slices to hold all the final map points
 	mapPointsBuyers := make(map[string][]transport.SessionMapPoint, 0)
 	mapPointsBuyersCompact := make(map[string][][]interface{}, 0)
 	mapPointsGlobal := make([]transport.SessionMapPoint, 0)
@@ -526,69 +525,47 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 
 	for _, buyer := range buyers {
 		stringID := fmt.Sprintf("%016x", buyer.ID)
-		sessionIDs, err = s.RedisClient.SMembers(fmt.Sprintf("map-points-%016x-buyer", buyer.ID)).Result()
+
+		directPointStrings, nextPointStrings, err := s.getDirectAndNextMapPointStrings(&buyer)
 		if err != nil {
-			err = fmt.Errorf("SessionMapPoints() failed getting map points for buyer %016x: %v", buyer.ID, err)
+			err = fmt.Errorf("SessionMapPoints() failed getting map points for buyer %s: %v", stringID, err)
 			s.Logger.Log("err", err)
 			return err
 		}
 
-		// build a single transaction of gets for each session ID
-		var getCmds []*redis.StringCmd
-		{
-			gettx := s.RedisClient.TxPipeline()
-			for _, sessionID := range sessionIDs {
-				getCmds = append(getCmds, gettx.Get(fmt.Sprintf("session-%s-point", sessionID)))
-			}
-			_, err = gettx.Exec()
-			if err != nil && err != redis.Nil {
-				err = fmt.Errorf("SessionMapPoints() failed getting session points: %v", err)
-				s.Logger.Log("err", err)
-				return err
+		var point transport.SessionMapPoint
+		for _, directPointString := range directPointStrings {
+			// scan the data from Redis into its SessionMapPoint struct
+			err := cmd.Scan(&directPointString)
+
+			if point.Latitude != 0 && point.Longitude != 0 {
+				mapPointsBuyers[stringID] = append(mapPointsBuyers[stringID], point)
+				mapPointsGlobal = append(mapPointsGlobal, point)
+
+				var onNN uint
+				if point.OnNetworkNext {
+					onNN = 1
+				}
+				mapPointsBuyersCompact[stringID] = append(mapPointsBuyersCompact[stringID], []interface{}{point.Longitude, point.Latitude, onNN})
+				mapPointsGlobalCompact = append(mapPointsGlobalCompact, []interface{}{point.Longitude, point.Latitude, onNN})
 			}
 		}
 
-		// build a single transaction for any missing session-*-point keys to be
-		// removed from map-points-buyer, total-next, and total-direct key sets
-		sremtx := s.RedisClient.TxPipeline()
-		{
-			var point transport.SessionMapPoint
-			for _, cmd := range getCmds {
-				// scan the data from Redis into its SessionMapPoint struct
-				err = cmd.Scan(&point)
+		for _, nextPointString := range nextPointStrings {
+			// scan the data from Redis into its SessionMapPoint struct
+			err := cmd.Scan(&nextPointString)
 
-				// if there was an error then the session-*-point key expired
-				// so add SREM commands to remove it from the key sets
-				if err != nil {
-					key := cmd.Args()[1].(string)
-					keyparts := strings.Split(key, "-")
-					sremtx.SRem(fmt.Sprintf("map-points-%016x-buyer", buyer.ID), keyparts[1])
-					sremtx.ZRem("total-next", keyparts[1])
-					sremtx.ZRem(fmt.Sprintf("total-next-buyer-%016x", buyer.ID), keyparts[1])
-					sremtx.ZRem("total-direct", keyparts[1])
-					sremtx.ZRem(fmt.Sprintf("total-direct-buyer-%016x", buyer.ID), keyparts[1])
-					continue
+			if point.Latitude != 0 && point.Longitude != 0 {
+				mapPointsBuyers[stringID] = append(mapPointsBuyers[stringID], point)
+				mapPointsGlobal = append(mapPointsGlobal, point)
+
+				var onNN uint
+				if point.OnNetworkNext {
+					onNN = 1
 				}
-
-				// if there was no error then add the SessionMapPoint to the slice
-				if point.Latitude != 0 && point.Longitude != 0 {
-					mapPointsBuyers[stringID] = append(mapPointsBuyers[stringID], point)
-					mapPointsGlobal = append(mapPointsGlobal, point)
-
-					var onNN uint
-					if point.OnNetworkNext {
-						onNN = 1
-					}
-					mapPointsBuyersCompact[stringID] = append(mapPointsBuyersCompact[stringID], []interface{}{point.Longitude, point.Latitude, onNN})
-					mapPointsGlobalCompact = append(mapPointsGlobalCompact, []interface{}{point.Longitude, point.Latitude, onNN})
-				}
+				mapPointsBuyersCompact[stringID] = append(mapPointsBuyersCompact[stringID], []interface{}{point.Longitude, point.Latitude, onNN})
+				mapPointsGlobalCompact = append(mapPointsGlobalCompact, []interface{}{point.Longitude, point.Latitude, onNN})
 			}
-		}
-
-		// execute the transaction to remove the sessions IDs from the key sets
-		_, err := sremtx.Exec()
-		if err != nil {
-			return err
 		}
 
 		s.mapPointsBuyerCache[stringID], err = json.Marshal(mapPointsBuyers[stringID])
@@ -619,9 +596,6 @@ func (s *BuyersService) GenerateMapPointsPerBuyerBytes() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	var sessionIDs []string
-	var stringID string
-	var err error
 	var mapPointsGlobal mapPointsByte
 	var mapPointsBuyer mapPointsByte
 
@@ -631,78 +605,50 @@ func (s *BuyersService) GenerateMapPointsPerBuyerBytes() error {
 	buyers := s.Storage.Buyers()
 
 	for _, buyer := range buyers {
+		stringID := fmt.Sprintf("%016x", buyer.ID)
+
 		mapPointsBuyer.GreenPoints = make([]point, 0)
 		mapPointsBuyer.BluePoints = make([]point, 0)
 
-		stringID = fmt.Sprintf("%016x", buyer.ID)
-		sessionIDs, err = s.RedisClient.SMembers(fmt.Sprintf("map-points-%016x-buyer", buyer.ID)).Result()
+		directPointStrings, nextPointStrings, err := s.getDirectAndNextMapPointStrings(&buyer)
 		if err != nil {
-			err = fmt.Errorf("SessionMapPoints() failed getting map points for buyer %016x: %v", buyer.ID, err)
+			err = fmt.Errorf("SessionMapPoints() failed getting map points for buyer %s: %v", stringID, err)
 			s.Logger.Log("err", err)
 			return err
 		}
 
-		// build a single transaction of gets for each session ID
-		var getCmds []*redis.StringCmd
-		{
-			gettx := s.RedisClient.TxPipeline()
-			for _, sessionID := range sessionIDs {
-				getCmds = append(getCmds, gettx.Get(fmt.Sprintf("session-%s-point", sessionID)))
-			}
-			_, err = gettx.Exec()
-			if err != nil && err != redis.Nil {
-				err = fmt.Errorf("SessionMapPoints() failed getting session points: %v", err)
-				s.Logger.Log("err", err)
-				return err
+		var currentPoint transport.SessionMapPoint
+		for _, directPointString := range directPointStrings {
+			// scan the data from Redis into its SessionMapPoint struct
+			err := cmd.Scan(&directPointString)
+
+			if currentPoint.Latitude != 0 && currentPoint.Longitude != 0 {
+				bytePoint := point{
+					Latitude:      float32(currentPoint.Latitude),
+					Longitude:     float32(currentPoint.Longitude),
+					OnNetworkNext: false,
+				}
+
+				mapPointsGlobal.BluePoints = append(mapPointsGlobal.BluePoints, bytePoint)
+				mapPointsBuyer.BluePoints = append(mapPointsGlobal.BluePoints, bytePoint)
 			}
 		}
 
-		// build a single transaction for any missing session-*-point keys to be
-		// removed from map-points-buyer, total-next, and total-direct key sets
-		sremtx := s.RedisClient.TxPipeline()
-		{
-			var currentPoint transport.SessionMapPoint
-			for _, cmd := range getCmds {
-				// scan the data from Redis into its SessionMapPoint struct
-				err = cmd.Scan(&currentPoint)
+		for _, nextPointString := range nextPointStrings {
+			// scan the data from Redis into its SessionMapPoint struct
+			err := cmd.Scan(&nextPointString)
 
-				// if there was an error then the session-*-point key expired
-				// so add SREM commands to remove it from the key sets
-				if err != nil {
-					key := cmd.Args()[1].(string)
-					keyparts := strings.Split(key, "-")
-					sremtx.SRem(fmt.Sprintf("map-points-%016x-buyer", buyer.ID), keyparts[1])
-					sremtx.ZRem("total-next", keyparts[1])
-					sremtx.ZRem(fmt.Sprintf("total-next-buyer-%016x", buyer.ID), keyparts[1])
-					sremtx.ZRem("total-direct", keyparts[1])
-					sremtx.ZRem(fmt.Sprintf("total-direct-buyer-%016x", buyer.ID), keyparts[1])
-					continue
+			if currentPoint.Latitude != 0 && currentPoint.Longitude != 0 {
+				bytePoint := point{
+					Latitude:      float32(currentPoint.Latitude),
+					Longitude:     float32(currentPoint.Longitude),
+					OnNetworkNext: false,
 				}
 
-				// if there was no error then add the SessionMapPoint to the slice
-				if currentPoint.Latitude != 0 && currentPoint.Longitude != 0 {
-					bytePoint := point{
-						Latitude:      float32(currentPoint.Latitude),
-						Longitude:     float32(currentPoint.Longitude),
-						OnNetworkNext: false,
-					}
-
-					if currentPoint.OnNetworkNext {
-						bytePoint.OnNetworkNext = true
-						mapPointsGlobal.GreenPoints = append(mapPointsGlobal.GreenPoints, bytePoint)
-						mapPointsBuyer.GreenPoints = append(mapPointsGlobal.GreenPoints, bytePoint)
-					} else {
-						mapPointsGlobal.BluePoints = append(mapPointsGlobal.BluePoints, bytePoint)
-						mapPointsBuyer.BluePoints = append(mapPointsGlobal.BluePoints, bytePoint)
-					}
-				}
+				bytePoint.OnNetworkNext = true
+				mapPointsGlobal.GreenPoints = append(mapPointsGlobal.GreenPoints, bytePoint)
+				mapPointsBuyer.GreenPoints = append(mapPointsGlobal.GreenPoints, bytePoint)
 			}
-		}
-
-		// execute the transaction to remove the sessions IDs from the key sets
-		_, err := sremtx.Exec()
-		if err != nil {
-			return err
 		}
 
 		// Write entries to byte cache
@@ -711,6 +657,64 @@ func (s *BuyersService) GenerateMapPointsPerBuyerBytes() error {
 	s.mapPointsByteCache = WriteMapPointCache(&mapPointsGlobal)
 
 	return nil
+}
+
+func (s *BuyersService) getDirectAndNextMapPointStrings(buyer *routing.Buyer) ([]string, []string, error) {
+	minutes := time.Now().Unix() / 60
+
+	redisClient := s.RedisPoolSessionMap.Get()
+	defer redisClient.Close()
+
+	stringID := fmt.Sprintf("%016x", buyer.ID)
+	redisClient.Send("HGETALL", fmt.Sprintf("d-%s-%d", stringID, minutes-1))
+	redisClient.Send("HGETALL", fmt.Sprintf("d-%s-%d", stringID, minutes))
+	redisClient.Send("HGETALL", fmt.Sprintf("n-%s-%d", stringID, minutes-1))
+	redisClient.Send("HGETALL", fmt.Sprintf("n-%s-%d", stringID, minutes))
+	redisClient.Flush()
+
+	direct, err := redis.StringMap(redisClient.Receive())
+	if err != nil {
+		return nil, nil, err
+	}
+
+	directB, err := redis.StringMap(redisClient.Receive())
+	if err != nil {
+		return nil, nil, err
+	}
+
+	for k, v := range directB {
+		direct[k] = v
+	}
+
+	next, err := redis.StringMap(redisClient.Receive())
+	if err != nil {
+		return nil, nil, err
+	}
+
+	nextB, err := redis.StringMap(redisClient.Receive())
+	if err != nil {
+		return nil, nil, err
+	}
+
+	for k, v := range nextB {
+		next[k] = v
+	}
+
+	for _, directSessionID := range direct {
+		redisClient.Send("HGET", fmt.Sprintf("n-%s-%d", stringID, minutes), fmt.Sprintf("%s", directSessionID))
+	}
+
+	redisClient.Flush()
+	directPointStrings, err := redis.Strings(redisClient.Receive())
+
+	for _, nextSessionID := range next {
+		redisClient.Send("HGET", fmt.Sprintf("n-%s-%d", stringID, minutes), fmt.Sprintf("%s", nextSessionID))
+	}
+
+	redisClient.Flush()
+	nextPointStrings, err := redis.Strings(redisClient.Receive())
+
+	return directPointStrings, nextPointStrings, nil
 }
 
 func WriteMapPointCache(points *mapPointsByte) []byte {
