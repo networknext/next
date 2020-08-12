@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -132,6 +133,31 @@ func (l Location) Size() uint64 {
 // IsZero reports whether l represents the zero location lat/long 0,0 similar to how Time.IsZero works.
 func (l *Location) IsZero() bool {
 	return l.Latitude == 0 && l.Longitude == 0
+}
+
+func (l Location) RedisString() string {
+	return fmt.Sprintf("%.2f|%.2f|%s", l.Latitude, l.Longitude, l.ISP)
+}
+
+func (l *Location) ParseRedisString(values []string) error {
+	l = &Location{}
+	var index int
+	var err error
+
+	if l.Latitude, err = strconv.ParseFloat(values[index], 64); err != nil {
+		return fmt.Errorf("[Location] failed to read latitude from redis data: %v", err)
+	}
+	index++
+
+	if l.Longitude, err = strconv.ParseFloat(values[index], 64); err != nil {
+		return fmt.Errorf("[Location] failed to read longitude from redis data: %v", err)
+	}
+	index++
+
+	l.ISP = values[index]
+	index++
+
+	return nil
 }
 
 type IPStack struct {

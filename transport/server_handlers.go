@@ -1246,17 +1246,6 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, params *PostSessi
 		}
 	}
 
-	postSessionPortalData := PostSessionPortalData{
-		PortalData: buildPortalData(params.packet, params.lastNextStats, params.lastDirectStats, hops, params.packet.OnNetworkNext, datacenterName, params.location, nearRelayData, params.timeNow, isMultipath, datacenterAlias),
-		PortalCountData: &SessionCountData{
-			InstanceID:                params.sessionUpdateParams.InstanceID,
-			TotalNumDirectSessions:    params.sessionUpdateParams.SessionMap.GetDirectSessionCount(),
-			TotalNumNextSessions:      params.sessionUpdateParams.SessionMap.GetNextSessionCount(),
-			NumDirectSessionsPerBuyer: params.sessionUpdateParams.SessionMap.GetDirectSessionCountPerBuyer(),
-			NumNextSessionsPerBuyer:   params.sessionUpdateParams.SessionMap.GetNextSessionCountPerBuyer(),
-		},
-	}
-
 	if !postSessionHandler.IsBillingBufferFull() {
 		postSessionHandler.SendBillingEntry(buildBillingEntry(params))
 		params.sessionUpdateParams.Metrics.PostSessionBillingEntriesSent.Add(1)
@@ -1265,7 +1254,7 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, params *PostSessi
 	}
 
 	if !postSessionHandler.IsPortalBufferFull() {
-		postSessionHandler.SendPortalData(&postSessionPortalData)
+		postSessionHandler.SendPortalData(buildPortalData(params.packet, params.lastNextStats, params.lastDirectStats, hops, params.packet.OnNetworkNext, datacenterName, params.location, nearRelayData, params.timeNow, isMultipath, datacenterAlias))
 		params.sessionUpdateParams.Metrics.PostSessionPortalEntriesSent.Add(1)
 	} else {
 		params.sessionUpdateParams.Metrics.PostSessionPortalBufferFull.Add(1)
@@ -1326,9 +1315,8 @@ func buildPortalData(packet *SessionUpdatePacket, lastNNStats *routing.Stats, la
 			OnNetworkNext:     onNetworkNext,
 		},
 		Point: SessionMapPoint{
-			Latitude:      location.Latitude,
-			Longitude:     location.Longitude,
-			OnNetworkNext: onNetworkNext,
+			Latitude:  location.Latitude,
+			Longitude: location.Longitude,
 		},
 	}
 }
