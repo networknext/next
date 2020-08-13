@@ -363,7 +363,7 @@ func main() {
 						continue
 					}
 
-					level.Debug(logger).Log("msg", "received portal data in redis insertion loop", "sessionID", sessionPortalData.Meta.ID)
+					level.Debug(logger).Log("msg", "received portal data in redis insertion loop", "sessionID", fmt.Sprintf("%016x", sessionPortalData.Meta.ID))
 
 					portalDataBuffer = append(portalDataBuffer, sessionPortalData)
 
