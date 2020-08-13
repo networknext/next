@@ -709,7 +709,7 @@ build-server: build-sdk ## builds the server
 .PHONY: build-load-test-server
 build-load-test-server: build-sdk ## builds the load test server binary
 	@printf "Building load test server... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/load_test_server ./cmd/load-test-server/server.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
+	@$(CXX) -Isdk/include -o $(DIST_DIR)/load_test_server ./cmd/load_test_server/load_test_server.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional-server
@@ -721,7 +721,7 @@ build-functional-server:
 .PHONY: build-load-test-client
 build-load-test-client: build-sdk ## builds the load test client binary
 	@printf "Building load test client... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/load_test_client ./cmd/load-test-client/client.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
+	@$(CXX) -Isdk/include -o $(DIST_DIR)/load_test_client ./cmd/load_test_client/load_test_client.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional-client
