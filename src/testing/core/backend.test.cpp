@@ -273,6 +273,7 @@ Test(core_Backend_update_valid)
     manager.processPong(pingData[0].Addr, pingData[0].Seq);
   }
 
+  recorder.UnknownRx.add(10);
   core::UpdateResponse response;
   response.Version = 0;
   response.Timestamp = 123456789;
@@ -334,7 +335,7 @@ Test(core_Backend_update_valid)
     check(request.ContinueResponseTx == 0);
     check(request.NearPingRx == 0);
     check(request.NearPingTx == 0);
-    check(request.UnknownRx == 0);
+    check(request.UnknownRx == 10);
     check(request.ShuttingDown == false);
     check(request.PingStats.NumRelays == 1);
     check(request.RelayVersion == RELAY_VERSION);
