@@ -329,33 +329,27 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 	sessionMetaClient := s.RedisPoolSessionMeta.Get()
 	defer sessionMetaClient.Close()
 
-	sessionIDsRetreived := make(map[string]bool)
+	sessionIDsRetreivedMap := make(map[string]bool)
 	for _, sessionID := range topSessionsA {
 		sessionMetaClient.Send("GET", fmt.Sprintf("sm-%s", sessionID))
-		sessionIDsRetreived[sessionID] = true
+		sessionIDsRetreivedMap[sessionID] = true
 	}
 	for _, sessionID := range topSessionsB {
-		if _, ok := sessionIDsRetreived[sessionID]; !ok {
+		if _, ok := sessionIDsRetreivedMap[sessionID]; !ok {
 			sessionMetaClient.Send("GET", fmt.Sprintf("sm-%s", sessionID))
-			sessionIDsRetreived[sessionID] = true
+			sessionIDsRetreivedMap[sessionID] = true
 		}
 	}
 	sessionMetaClient.Flush()
 
 	var sessionMetas []transport.SessionMeta
 	var meta transport.SessionMeta
-	for sessionID := range sessionIDsRetreived {
+	for i := 0; i < len(sessionIDsRetreivedMap); i++ {
 		metaString, err := redis.String(sessionMetaClient.Receive())
-		if err != nil {
-			if err != redis.ErrNil {
-				err = fmt.Errorf("TopSessions() failed getting top sessions meta: %v", err)
-				level.Error(s.Logger).Log("err", err)
-				return err
-			}
-
-			err = fmt.Errorf("TopSessions() session meta not found for session %s: %v", sessionID, err)
-			level.Warn(s.Logger).Log("err", err)
-			continue
+		if err != nil && err != redis.ErrNil {
+			err = fmt.Errorf("TopSessions() failed getting top sessions meta: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return err
 		}
 
 		splitMetaStrings := strings.Split(metaString, "|")
@@ -371,6 +365,16 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 
 		sessionMetas = append(sessionMetas, meta)
 	}
+
+	// Sort the metas by delta RTT first, then by direct RTT. This should always put next sessions first.
+	// This sort is necessary because we are combining two ZREVRANGEs from two separate minute buckets.
+	sort.Slice(sessionMetas, func(i, j int) bool {
+		if sessionMetas[i].DeltaRTT == sessionMetas[j].DeltaRTT {
+			return sessionMetas[i].DirectRTT > sessionMetas[i].DirectRTT
+		}
+
+		return sessionMetas[i].DeltaRTT > sessionMetas[j].DeltaRTT
+	})
 
 	if len(sessionMetas) > TopSessionsSize {
 		reply.Sessions = sessionMetas[:TopSessionsSize]
