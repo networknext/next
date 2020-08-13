@@ -48,7 +48,18 @@ AuthHandler = {
 
 		// HACK THESE NEED TO BE ENV VARIABLES SOME HOW
 		const hostname = window.location.hostname
-		const clientID = hostname == 'portal.networknext.com' || hostname == 'portal-staging.networknext.com' ? 'MaSx99ma3AwYOwWMLm3XWNvQ5WyJWG2Y' : 'oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n';
+    let clientID = '';
+
+    switch (hostname) {
+      case 'portal.networknext.com':
+        clientID = 'MaSx99ma3AwYOwWMLm3XWNvQ5WyJWG2Y';
+        break;
+      case 'portal-staging.networknext.com':
+        clientID = 'BRvkWHQEyQmCqA7i2IBFOpm7XnDdwkpR';
+        break;
+      default:
+      clientID = 'oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n';
+    }
 
 		this.auth0Client = await createAuth0Client({
 			client_id: clientID,
