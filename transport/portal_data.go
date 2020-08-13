@@ -22,112 +22,6 @@ const (
 	SessionMapPointVersion  = 0
 )
 
-type SessionCountData struct {
-	InstanceID                uint64
-	TotalNumDirectSessions    uint64
-	TotalNumNextSessions      uint64
-	NumDirectSessionsPerBuyer map[uint64]uint64
-	NumNextSessionsPerBuyer   map[uint64]uint64
-}
-
-func (s *SessionCountData) UnmarshalBinary(data []byte) error {
-	index := 0
-
-	var version uint32
-	if !encoding.ReadUint32(data, &index, &version) {
-		return errors.New("[SessionCountData] invalid read at version number")
-	}
-
-	if version > SessionCountDataVersion {
-		return fmt.Errorf("unknown session count data version: %d", version)
-	}
-
-	if !encoding.ReadUint64(data, &index, &s.InstanceID) {
-		return errors.New("[SessionCountData] invalid read at instance ID")
-	}
-
-	if !encoding.ReadUint64(data, &index, &s.TotalNumDirectSessions) {
-		return errors.New("[SessionCountData] invalid read at total number of direct sessions")
-	}
-
-	if !encoding.ReadUint64(data, &index, &s.TotalNumNextSessions) {
-		return errors.New("[SessionCountData] invalid read at total number of next sessions")
-	}
-
-	var directPerBuyerSize uint32
-	if !encoding.ReadUint32(data, &index, &directPerBuyerSize) {
-		return errors.New("[SessionCountData] invalid read at direct per buyer size")
-	}
-
-	directSessionPerBuyer := make(map[uint64]uint64)
-	for i := uint32(0); i < directPerBuyerSize; i++ {
-		var buyerID uint64
-		if !encoding.ReadUint64(data, &index, &buyerID) {
-			return errors.New("[SessionCountData] invalid read at direct buyer ID")
-		}
-
-		var count uint64
-		if !encoding.ReadUint64(data, &index, &count) {
-			return errors.New("[SessionCountData] invalid read at direct count")
-		}
-
-		directSessionPerBuyer[buyerID] = count
-	}
-	s.NumDirectSessionsPerBuyer = directSessionPerBuyer
-
-	var nextPerBuyerSize uint32
-	if !encoding.ReadUint32(data, &index, &nextPerBuyerSize) {
-		return errors.New("[SessionCountData] invalid read at next per buyer size")
-	}
-
-	nextSessionPerBuyer := make(map[uint64]uint64)
-	for i := uint32(0); i < nextPerBuyerSize; i++ {
-		var buyerID uint64
-		if !encoding.ReadUint64(data, &index, &buyerID) {
-			return errors.New("[SessionCountData] invalid read at next buyer ID")
-		}
-
-		var count uint64
-		if !encoding.ReadUint64(data, &index, &count) {
-			return errors.New("[SessionCountData] invalid read at next count")
-		}
-
-		nextSessionPerBuyer[buyerID] = count
-	}
-	s.NumNextSessionsPerBuyer = nextSessionPerBuyer
-
-	return nil
-}
-
-func (s SessionCountData) MarshalBinary() ([]byte, error) {
-	data := make([]byte, s.Size())
-	index := 0
-
-	encoding.WriteUint32(data, &index, SessionCountDataVersion)
-
-	encoding.WriteUint64(data, &index, s.InstanceID)
-	encoding.WriteUint64(data, &index, s.TotalNumDirectSessions)
-	encoding.WriteUint64(data, &index, s.TotalNumNextSessions)
-
-	encoding.WriteUint32(data, &index, uint32(len(s.NumDirectSessionsPerBuyer)))
-	for buyerID, count := range s.NumDirectSessionsPerBuyer {
-		encoding.WriteUint64(data, &index, buyerID)
-		encoding.WriteUint64(data, &index, count)
-	}
-
-	encoding.WriteUint32(data, &index, uint32(len(s.NumNextSessionsPerBuyer)))
-	for buyerID, count := range s.NumNextSessionsPerBuyer {
-		encoding.WriteUint64(data, &index, buyerID)
-		encoding.WriteUint64(data, &index, count)
-	}
-
-	return data, nil
-}
-
-func (s SessionCountData) Size() uint64 {
-	return 4 + 8 + 8 + 8 + 4 + 2*8*uint64(len(s.NumDirectSessionsPerBuyer)) + 4 + 2*8*uint64(len(s.NumNextSessionsPerBuyer))
-}
-
 type SessionPortalData struct {
 	Meta  SessionMeta     `json:"meta"`
 	Slice SessionSlice    `json:"slice"`
@@ -233,10 +127,53 @@ type RelayHop struct {
 	Name string `json:"name"`
 }
 
+func (h RelayHop) RedisString() string {
+	return fmt.Sprintf("%016x|%s", h.ID, h.Name)
+}
+
+func (n *RelayHop) ParseRedisString(values []string) error {
+	var index int
+	var err error
+
+	if n.ID, err = strconv.ParseUint(values[index], 16, 64); err != nil {
+		return fmt.Errorf("[RelayHop] failed to read relay ID from redis data: %v", err)
+	}
+	index++
+
+	n.Name = values[index]
+	index++
+
+	return nil
+}
+
 type NearRelayPortalData struct {
 	ID          uint64        `json:"id"`
 	Name        string        `json:"name"`
 	ClientStats routing.Stats `json:"client_stats"`
+}
+
+func (n NearRelayPortalData) RedisString() string {
+	return fmt.Sprintf("%016x|%s|%s", n.ID, n.Name, n.ClientStats.RedisString())
+}
+
+func (n *NearRelayPortalData) ParseRedisString(values []string) error {
+	var index int
+	var err error
+
+	if n.ID, err = strconv.ParseUint(values[index], 16, 64); err != nil {
+		return fmt.Errorf("[NearRelayPortalData] failed to read relay ID from redis data: %v", err)
+	}
+	index++
+
+	n.Name = values[index]
+	index++
+
+	if err := n.ClientStats.ParseRedisString([]string{values[index], values[index+1], values[index+2]}); err != nil {
+		return fmt.Errorf("[NearRelayPortalData] failed to read client stats from redis data: %v", err)
+	}
+	index += 3
+
+	return nil
 }
 
 type SessionMeta struct {
@@ -555,6 +492,135 @@ func (s *SessionMeta) Anonymise() {
 	s.DatacenterAlias = ""
 }
 
+func (s SessionMeta) RedisString() string {
+	onNetworkNextString := "0"
+	if s.OnNetworkNext {
+		onNetworkNextString = "1"
+	}
+
+	result := fmt.Sprintf("%016x|%016x|%s|%s|%s|%.2f|%.2f|%.2f|%s|%s|%s|", s.ID, s.UserHash, s.DatacenterName, s.DatacenterAlias, onNetworkNextString,
+		s.NextRTT, s.DirectRTT, s.DeltaRTT, s.Location.RedisString(), s.ClientAddr, s.ServerAddr)
+	result += fmt.Sprintf("%d|", len(s.Hops))
+	for i := 0; i < len(s.Hops); i++ {
+		result += fmt.Sprintf("%s|", s.Hops[i].RedisString())
+	}
+	result += fmt.Sprintf("%s|%d|", s.SDK, s.Connection)
+	result += fmt.Sprintf("%d|", len(s.NearbyRelays))
+	for i := 0; i < len(s.NearbyRelays); i++ {
+		result += fmt.Sprintf("%s|", s.NearbyRelays[i].RedisString())
+	}
+	result += fmt.Sprintf("%d|%016x", s.Platform, s.BuyerID)
+	return result
+}
+
+func (s *SessionMeta) ParseRedisString(values []string) error {
+	var index int
+	var err error
+
+	if s.ID, err = strconv.ParseUint(values[index], 16, 64); err != nil {
+		return fmt.Errorf("[SessionMeta] failed to read session ID from redis data: %v", err)
+	}
+	index++
+
+	if s.UserHash, err = strconv.ParseUint(values[index], 16, 64); err != nil {
+		return fmt.Errorf("[SessionMeta] failed to read user hash from redis data: %v", err)
+	}
+	index++
+
+	s.DatacenterName = values[index]
+	index++
+	s.DatacenterAlias = values[index]
+	index++
+
+	if s.OnNetworkNext, err = strconv.ParseBool(values[index]); err != nil {
+		return fmt.Errorf("[SessionMeta] failed to read on network next from redis data: %v", err)
+	}
+	index++
+
+	if s.NextRTT, err = strconv.ParseFloat(values[index], 64); err != nil {
+		return fmt.Errorf("[SessionMeta] failed to read next RTT from redis data: %v", err)
+	}
+	index++
+
+	if s.DirectRTT, err = strconv.ParseFloat(values[index], 64); err != nil {
+		return fmt.Errorf("[SessionMeta] failed to read direct RTT from redis data: %v", err)
+	}
+	index++
+
+	if s.DeltaRTT, err = strconv.ParseFloat(values[index], 64); err != nil {
+		return fmt.Errorf("[SessionMeta] failed to read delta RTT from redis data: %v", err)
+	}
+	index++
+
+	if err := s.Location.ParseRedisString([]string{values[index], values[index+1], values[index+2]}); err != nil {
+		return fmt.Errorf("[SessionMeta] failed to read location from redis data: %v", err)
+	}
+	index += 3
+
+	s.ClientAddr = values[index]
+	index++
+	s.ServerAddr = values[index]
+	index++
+
+	var numHops int64
+	if numHops, err = strconv.ParseInt(values[index], 10, 32); err != nil {
+		return fmt.Errorf("[SessionMeta] failed to read number of relay hops from redis data: %v", err)
+	}
+	index++
+
+	s.Hops = make([]RelayHop, numHops)
+	for i := 0; i < int(numHops); i++ {
+		var hop RelayHop
+		if err := hop.ParseRedisString([]string{values[index], values[index+1]}); err != nil {
+			return fmt.Errorf("[SessionMeta] failed to read relay hop from redis data: %v", err)
+		}
+		index += 2
+
+		s.Hops[i] = hop
+	}
+
+	s.SDK = values[index]
+	index++
+
+	var connection uint64
+	if connection, err = strconv.ParseUint(values[index], 10, 8); err != nil {
+		return fmt.Errorf("[SessionMeta] failed to read connection type from redis data: %v", err)
+	}
+	s.Connection = uint8(connection)
+	index++
+
+	var numNearRelays int64
+	if numNearRelays, err = strconv.ParseInt(values[index], 10, 32); err != nil {
+		return fmt.Errorf("[SessionMeta] failed to read number of near relays from redis data: %v", err)
+	}
+	index++
+
+	s.NearbyRelays = make([]NearRelayPortalData, numNearRelays)
+	for i := 0; i < int(numNearRelays); i++ {
+		var nearRelay NearRelayPortalData
+		if err := nearRelay.ParseRedisString([]string{values[index], values[index+1], values[index+2], values[index+3], values[index+4]}); err != nil {
+			return fmt.Errorf("[SessionMeta] failed to read near relay from redis data: %v", err)
+		}
+		index += 5
+
+		s.NearbyRelays[i] = nearRelay
+	}
+
+	var platform uint64
+	if platform, err = strconv.ParseUint(values[index], 10, 8); err != nil {
+		return fmt.Errorf("[SessionMeta] failed to read platform type from redis data: %v", err)
+	}
+	s.Platform = uint8(platform)
+	index++
+
+	if s.BuyerID, err = strconv.ParseUint(values[index], 16, 64); err != nil {
+		return fmt.Errorf("[SessionMeta] failed to read buyer ID from redis data: %v", err)
+	}
+	index++
+
+	return nil
+}
+
 func ObscureString(source string, delim string, count int) string {
 	numPieces := count
 	pieces := strings.Split(source, delim)
@@ -669,10 +735,73 @@ func (s SessionSlice) Size() uint64 {
 	return 4 + 8 + (3 * 8) + (3 * 8) + (2 * 8) + 1 + 1 + 1
 }
 
+func (s SessionSlice) RedisString() string {
+	onNetworkNextString := "0"
+	if s.OnNetworkNext {
+		onNetworkNextString = "1"
+	}
+
+	isMultipathString := "0"
+	if s.IsMultiPath {
+		isMultipathString = "1"
+	}
+
+	isTryBeforeYouBuyString := "0"
+	if s.IsTryBeforeYouBuy {
+		isTryBeforeYouBuyString = "1"
+	}
+
+	return fmt.Sprintf("%d|%s|%s|%s|%s|%s|%s", s.Timestamp.Unix(), s.Next.RedisString(), s.Direct.RedisString(), s.Envelope.RedisString(), onNetworkNextString, isMultipathString, isTryBeforeYouBuyString)
+}
+
+func (s *SessionSlice) ParseRedisString(values []string) error {
+	var index int
+	var err error
+
+	var timestamp int64
+	if timestamp, err = strconv.ParseInt(values[index], 10, 64); err != nil {
+		return fmt.Errorf("[SessionSlice] failed to read timestamp from redis data: %v", err)
+	}
+	index++
+
+	s.Timestamp = time.Unix(timestamp, 0)
+
+	if err := s.Next.ParseRedisString([]string{values[index], values[index+1], values[index+2]}); err != nil {
+		return fmt.Errorf("[SessionSlice] failed to read next stats from redis data: %v", err)
+	}
+	index += 3
+
+	if err := s.Direct.ParseRedisString([]string{values[index], values[index+1], values[index+2]}); err != nil {
+		return fmt.Errorf("[SessionSlice] failed to read direct stats from redis data: %v", err)
+	}
+	index += 3
+
+	if err := s.Envelope.ParseRedisString([]string{values[index], values[index+1]}); err != nil {
+		return fmt.Errorf("[SessionSlice] failed to read envelope from redis data: %v", err)
+	}
+	index += 2
+
+	if s.OnNetworkNext, err = strconv.ParseBool(values[index]); err != nil {
+		return fmt.Errorf("[SessionSlice] failed to read on network next from redis data: %v", err)
+	}
+	index++
+
+	if s.IsMultiPath, err = strconv.ParseBool(values[index]); err != nil {
+		return fmt.Errorf("[SessionSlice] failed to read is multipath from redis data: %v", err)
+	}
+	index++
+
+	if s.IsTryBeforeYouBuy, err = strconv.ParseBool(values[index]); err != nil {
+		return fmt.Errorf("[SessionSlice] failed to read is try before you buy from redis data: %v", err)
+	}
+	index++
+
+	return nil
+}
+
 type SessionMapPoint struct {
-	Latitude      float64 `json:"latitude"`
-	Longitude     float64 `json:"longitude"`
-	OnNetworkNext bool    `json:"on_network_next"`
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
 }
 
 func (s *SessionMapPoint) UnmarshalBinary(data []byte) error {
@@ -695,10 +824,6 @@ func (s *SessionMapPoint) UnmarshalBinary(data []byte) error {
 		return errors.New("[SessionMapPoint] invalid read at longitude")
 	}
 
-	if !encoding.ReadBool(data, &index, &s.OnNetworkNext) {
-		return errors.New("[SessionMapPoint] invalid read at on network next")
-	}
-
 	return nil
 }
 
@@ -709,11 +834,31 @@ func (s SessionMapPoint) MarshalBinary() ([]byte, error) {
 	encoding.WriteUint32(data, &index, SessionMapPointVersion)
 	encoding.WriteFloat64(data, &index, s.Latitude)
 	encoding.WriteFloat64(data, &index, s.Longitude)
-	encoding.WriteBool(data, &index, s.OnNetworkNext)
 
 	return data, nil
 }
 
 func (s SessionMapPoint) Size() uint64 {
 	return 4 + 8 + 8 + 1
+}
+
+func (s SessionMapPoint) RedisString() string {
+	return fmt.Sprintf("%.2f|%.2f", s.Latitude, s.Longitude)
+}
+
+func (s *SessionMapPoint) ParseRedisString(values []string) error {
+	var index int
+	var err error
+
+	if s.Latitude, err = strconv.ParseFloat(values[index], 64); err != nil {
+		return fmt.Errorf("[SessionMapPoint] failed to read latitude from redis data: %v", err)
+	}
+	index++
+
+	if s.Longitude, err = strconv.ParseFloat(values[index], 64); err != nil {
+		return fmt.Errorf("[SessionMapPoint] failed to read longitude from redis data: %v", err)
+	}
+	index++
+
+	return nil
 }
