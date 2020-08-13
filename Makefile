@@ -627,7 +627,11 @@ publish-billing-artifacts-staging: ## publishes the billing artifacts to GCP Sto
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s billing
 
 .PHONY: publish-analytics-artifacts-staging
+<<<<<<< HEAD
 publish-analytics-artifacts-staging: ## publishes the analytics staging artifact
+=======
+publish-analytics-artifacts-staging: ## publishes the analytics prod artifact
+>>>>>>> Switching to master
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s analytics
 
 .PHONY: publish-relay-artifacts-staging
