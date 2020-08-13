@@ -101,6 +101,28 @@ const (
 	PortCheckScript = `echo "$(sudo lsof -i -P -n 2>/dev/null | grep '*:40000' | tr -s ' ' | cut -d ' ' -f 1 | head -1)"`
 )
 
+func unitFormat(bytes uint64) string {
+	const (
+		kilo = 1000
+		mega = 1000000
+		giga = 1000000000
+	)
+
+	if bytes > giga {
+		return fmt.Sprintf("%.02fGB", float64(bytes)/float64(giga))
+	}
+
+	if bytes > mega {
+		return fmt.Sprintf("%.02fMB", float64(bytes)/float64(mega))
+	}
+
+	if bytes > kilo {
+		return fmt.Sprintf("%.02fKB", float64(bytes)/float64(kilo))
+	}
+
+	return fmt.Sprintf("%d", bytes)
+}
+
 type relayInfo struct {
 	id          uint64
 	name        string
@@ -788,28 +810,6 @@ func relayLogs(rpcClient jsonrpc.RPCClient, env Environment, lines uint, regexes
 }
 
 func relayTraffic(rpcClient jsonrpc.RPCClient, env Environment, regex string) {
-	formatFunc := func(bytes uint64) string {
-		const (
-			kilo = 1000
-			mega = 1000000
-			giga = 1000000000
-		)
-
-		if bytes > giga {
-			return fmt.Sprintf("%.02fGB", float64(bytes)/float64(giga))
-		}
-
-		if bytes > mega {
-			return fmt.Sprintf("%.02fMB", float64(bytes)/float64(mega))
-		}
-
-		if bytes > kilo {
-			return fmt.Sprintf("%.02fKB", float64(bytes)/float64(kilo))
-		}
-
-		return fmt.Sprintf("%d", bytes)
-	}
-
 	args := localjsonrpc.RelaysArgs{
 		Regex: regex,
 	}
@@ -836,11 +836,11 @@ func relayTraffic(rpcClient jsonrpc.RPCClient, env Environment, regex string) {
 
 		statsList = append(statsList, trafficStats{
 			Name:       relay.Name,
-			InternalRx: formatFunc(relay.TrafficStats.InternalStatsRx()),
-			InternalTx: formatFunc(relay.TrafficStats.InternalStatsTx()),
-			GameRx:     formatFunc(relay.TrafficStats.GameStatsRx()),
-			GameTx:     formatFunc(relay.TrafficStats.GameStatsTx()),
-			UnknownRx:  formatFunc(relay.TrafficStats.UnknownRx),
+			InternalRx: unitFormat(relay.TrafficStats.InternalStatsRx()),
+			InternalTx: unitFormat(relay.TrafficStats.InternalStatsTx()),
+			GameRx:     unitFormat(relay.TrafficStats.GameStatsRx()),
+			GameTx:     unitFormat(relay.TrafficStats.GameStatsTx()),
+			UnknownRx:  unitFormat(relay.TrafficStats.UnknownRx),
 		})
 	}
 

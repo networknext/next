@@ -308,14 +308,8 @@ func relays(
 			includeRelay = false
 		}
 
-		tx := fmt.Sprintf("%.02fGB", float64(relay.TrafficStats.BytesSent)/float64(1000000000))
-		if relay.TrafficStats.BytesSent < 1000000000 {
-			tx = fmt.Sprintf("%.02fMB", float64(relay.TrafficStats.BytesSent)/float64(1000000))
-		}
-		rx := fmt.Sprintf("%.02fGB", float64(relay.TrafficStats.BytesReceived)/float64(1000000000))
-		if relay.TrafficStats.BytesReceived < 1000000000 {
-			rx = fmt.Sprintf("%.02fMB", float64(relay.TrafficStats.BytesReceived)/float64(1000000))
-		}
+		tx := unitFormat(relay.TrafficStats.BytesSent)
+		rx := unitFormat(relay.TrafficStats.BytesReceived)
 		cpuUsage := fmt.Sprintf("%.02f%%", relay.CPUUsage)
 		memUsage := fmt.Sprintf("%.02f%%", relay.MemUsage)
 		lastUpdateDuration := time.Since(relay.LastUpdateTime).Truncate(time.Second)

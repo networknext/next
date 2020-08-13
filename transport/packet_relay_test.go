@@ -434,7 +434,7 @@ func TestRelayUpdateRequestUnmarshalBinary(t *testing.T) {
 
 	t.Run("missing request version", func(t *testing.T) {
 		var packet transport.RelayUpdateRequest
-		assert.Errorf(t, packet.UnmarshalBinary(make([]byte, 0)), "invalid packet, could not read packet version")
+		assert.Equal(t, errors.New("invalid packet, could not read packet version"), packet.UnmarshalBinary(make([]byte, 0)))
 	})
 
 	t.Run("version 0", func(t *testing.T) {
