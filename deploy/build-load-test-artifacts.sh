@@ -14,14 +14,17 @@ SERVICE=
 build-artifacts() {
   printf "Building ${SERVICE} artifact... \n"
 	mkdir -p ${DIST_DIR}/artifact/${SERVICE}
-	if [ "$SERVICE" = "load-test-server" ]; then
+	if [ "$SERVICE" = "load_test_server" ]; then
 		cp ${DIST_DIR}/${SERVICE} ${DIST_DIR}/artifact/${SERVICE}/app
     cp ${DIR}/server-spawner.service ${DIST_DIR}/artifact/${SERVICE}/${SYSTEMD_SERVICE_FILE}
-  elif [ "$SERVICE" = "load-test-client" ]; then
+    cp ${DIR}/server-spawner.sh ${DIST_DIR}/artifact/${SERVICE}/server-spawner.sh
+    cd ${DIST_DIR}/artifact/${SERVICE} && tar -zcf ../../${SERVICE}.tar.gz app server-spawner.sh ${SYSTEMD_SERVICE_FILE} && cd ../..
+  elif [ "$SERVICE" = "load_test_client" ]; then
 		cp ${DIST_DIR}/${SERVICE} ${DIST_DIR}/artifact/${SERVICE}/app
     cp ${DIR}/client-spawner.service ${DIST_DIR}/artifact/${SERVICE}/${SYSTEMD_SERVICE_FILE}
+    cp ${DIR}/client-spawner.sh ${DIST_DIR}/artifact/${SERVICE}/client-spawner.sh
+    cd ${DIST_DIR}/artifact/${SERVICE} && tar -zcf ../../${SERVICE}.tar.gz app client-spawner.sh ${SYSTEMD_SERVICE_FILE} && cd ../..
 	fi
-  cd ${DIST_DIR}/artifact/${SERVICE} && tar -zcf ../../${SERVICE}.tar.gz app ${SYSTEMD_SERVICE_FILE} && cd ../..
 	printf "${DIST_DIR}/${SERVICE}.tar.gz\n"
 	printf "done\n"
 }

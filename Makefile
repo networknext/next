@@ -654,17 +654,9 @@ publish-relay-backend-artifacts-staging: ## publishes the relay backend artifact
 publish-server-backend-artifacts-staging: ## publishes the server backend artifacts to GCP Storage with gsutil staging
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s server-backend
 
-.PHONY: publish-load-test-server-artifacts-staging
-publish-load-test-server-artifacts-staging: ## publishes the server backend artifacts to GCP Storage with gsutil staging
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s load-test-server
-
-.PHONY: publish-load-test-client-artifacts-staging
-publish-load-test-client-artifacts-staging: ## publishes the server backend artifacts to GCP Storage with gsutil staging
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s load-test-client
-
 .PHONY: publish-load-test-server-artifacts
 publish-load-test-server-artifacts: ## publishes the server backend artifacts to GCP Storage with gsutil prod
-	./deploy/publish.sh -b $(ARTIFACT_BUCKET_STAGING) -s load_test_server
+	./deploy/publish-load-test-artifacts.sh -b $(ARTIFACT_BUCKET_STAGING) -s load_test_server
 
 .PHONY: publish-load-test-client-artifacts
 publish-load-test-client-artifacts: ## publishes the server backend artifacts to GCP Storage with gsutil prod

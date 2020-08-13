@@ -32,7 +32,7 @@ for ((r=0 ; r<${num_servers} ; r++)); do
 port=$((50000 + r))
 export SERVER_IP=127.0.0.1
 export SERVER_PORT="${port}"
-./dist/load_test_server &
+./app &
 pid="$!"
 printf "PID ${pid}: Server opened\n"
 done
