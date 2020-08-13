@@ -482,7 +482,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 
 	reply.Slices = make([]transport.SessionSlice, 0)
 
-	sessionSlicesClient := s.RedisPoolSessionMeta.Get()
+	sessionSlicesClient := s.RedisPoolSessionSlices.Get()
 	defer sessionSlicesClient.Close()
 
 	slices, err := redis.Strings(sessionSlicesClient.Do("LRANGE", fmt.Sprintf("ss-%s", args.SessionID), "0", "-1"))
