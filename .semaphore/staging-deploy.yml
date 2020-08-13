@@ -42,8 +42,16 @@ blocks:
           commands:
             - make build-load-test-artifacts-staging
             - make publish-load-test-artifacts-staging
+        - name: Load Test Server
+          commands:
+            - make build-load-test-server-artifacts
+            - make publish-load-test-server-artifacts
+        - name: Load Test Client
+          commands:
+            - make build-load-test-client-artifacts
+            - make publish-load-test-client-artifacts
         - name: Bootstrap Script
           commands:
             - make publish-bootstrap-script-staging
       secrets:
-        - name: google-cloud-platform-prod
+        - name: google-cloud-platform-staging
