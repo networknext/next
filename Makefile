@@ -470,7 +470,7 @@ deploy-server-backend-dev-2: ## builds and deploys the server backend to dev
 
 .PHONY: deploy-server-backend-staging
 deploy-server-backend-staging: ## builds and deploys the server backend to dev
-	./deploy/deploy.sh -e staging -c staging -t server-backend -b gs://staging_artifacts
+	./deploy/deploy.sh -e staging -c staging-1 -t server-backend -b gs://staging_artifacts
 
 .PHONY: build-analytics
 build-analytics: ## builds the analytics binary
