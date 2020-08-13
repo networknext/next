@@ -198,17 +198,19 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 	defer redisClient.Close()
 	minutes := time.Now().Unix() / 60
 
-	// get the top session IDs globally or for a buyer from the sorted set
 	switch args.BuyerID {
 	case "":
 		buyers := s.Storage.Buyers()
 
 		for _, buyer := range buyers {
 			stringID := fmt.Sprintf("%016x", buyer.ID)
+			redisClient.Send("HLEN", fmt.Sprintf("d-%s-%d", stringID, minutes-1))
 			redisClient.Send("HLEN", fmt.Sprintf("d-%s-%d", stringID, minutes))
 		}
 		redisClient.Flush()
 
+		var oldCount int
+		var newCount int
 		for range buyers {
 			count, err := redis.Int(redisClient.Receive())
 			if err != nil {
@@ -216,12 +218,28 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 				level.Error(s.Logger).Log("err", err)
 				return err
 			}
+			oldCount += count
 
-			reply.Direct += count
+			count, err = redis.Int(redisClient.Receive())
+			if err != nil {
+				err = fmt.Errorf("TotalSessions() failed getting total session count direct: %v", err)
+				level.Error(s.Logger).Log("err", err)
+				return err
+			}
+			newCount += count
 		}
+
+		reply.Direct = oldCount
+		if newCount > oldCount {
+			reply.Direct = newCount
+		}
+
+		oldCount = 0
+		newCount = 0
 
 		for _, buyer := range buyers {
 			stringID := fmt.Sprintf("%016x", buyer.ID)
+			redisClient.Send("HLEN", fmt.Sprintf("n-%s-%d", stringID, minutes-1))
 			redisClient.Send("HLEN", fmt.Sprintf("n-%s-%d", stringID, minutes))
 		}
 		redisClient.Flush()
@@ -233,8 +251,20 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 				level.Error(s.Logger).Log("err", err)
 				return err
 			}
+			oldCount += count
 
-			reply.Next += count
+			count, err = redis.Int(redisClient.Receive())
+			if err != nil {
+				err = fmt.Errorf("TotalSessions() failed getting total session count next: %v", err)
+				level.Error(s.Logger).Log("err", err)
+				return err
+			}
+			newCount += count
+		}
+
+		reply.Next = oldCount
+		if newCount > oldCount {
+			reply.Next = newCount
 		}
 	default:
 		if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
@@ -243,26 +273,49 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			return err
 		}
 
+		redisClient.Send("HLEN", fmt.Sprintf("d-%s-%d", args.BuyerID, minutes-1))
 		redisClient.Send("HLEN", fmt.Sprintf("d-%s-%d", args.BuyerID, minutes))
+		redisClient.Send("HLEN", fmt.Sprintf("n-%s-%d", args.BuyerID, minutes-1))
 		redisClient.Send("HLEN", fmt.Sprintf("n-%s-%d", args.BuyerID, minutes))
 		redisClient.Flush()
 
-		directLength, err := redis.Int(redisClient.Receive())
+		oldDirectCount, err := redis.Int(redisClient.Receive())
 		if err != nil {
 			err = fmt.Errorf("TotalSessions() failed getting buyer session direct counts: %v", err)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 
-		nextLength, err := redis.Int(redisClient.Receive())
+		newDirectCount, err := redis.Int(redisClient.Receive())
+		if err != nil {
+			err = fmt.Errorf("TotalSessions() failed getting buyer session direct counts: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+
+		reply.Direct = oldDirectCount
+		if newDirectCount > oldDirectCount {
+			reply.Direct = newDirectCount
+		}
+
+		oldNextCount, err := redis.Int(redisClient.Receive())
 		if err != nil {
 			err = fmt.Errorf("TotalSessions() failed getting buyer session next counts: %v", err)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 
-		reply.Direct = directLength
-		reply.Next = nextLength
+		newNextCount, err := redis.Int(redisClient.Receive())
+		if err != nil {
+			err = fmt.Errorf("TotalSessions() failed getting buyer session next counts: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+
+		reply.Next = oldNextCount
+		if newNextCount > oldNextCount {
+			reply.Next = newNextCount
+		}
 	}
 
 	return nil
@@ -429,7 +482,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 
 	reply.Slices = make([]transport.SessionSlice, 0)
 
-	sessionSlicesClient := s.RedisPoolSessionMeta.Get()
+	sessionSlicesClient := s.RedisPoolSessionSlices.Get()
 	defer sessionSlicesClient.Close()
 
 	slices, err := redis.Strings(sessionSlicesClient.Do("LRANGE", fmt.Sprintf("ss-%s", args.SessionID), "0", "-1"))
