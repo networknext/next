@@ -412,11 +412,11 @@ func main() {
 						// Make sure to remove the session ID from the opposite bucket in case the session
 						// has switched from direct -> next or next -> direct
 						if next {
-							clientSessionMap.Command("HSET", "n-%s-%d %s %s", customerID, minutes, sessionID, point.RedisString())
+							clientSessionMap.Command("HSET", "n-%s-%d %s \"%s\"", customerID, minutes, sessionID, point.RedisString())
 							clientSessionMap.Command("HDEL", "d-%s-%d %s", customerID, minutes-1, sessionID)
 							clientSessionMap.Command("HDEL", "d-%s-%d %s", customerID, minutes, sessionID)
 						} else {
-							clientSessionMap.Command("HSET", "d-%s-%d %s %s", customerID, minutes, sessionID, point.RedisString())
+							clientSessionMap.Command("HSET", "d-%s-%d %s \"%s\"", customerID, minutes, sessionID, point.RedisString())
 							clientSessionMap.Command("HDEL", "n-%s-%d %s", customerID, minutes-1, sessionID)
 							clientSessionMap.Command("HDEL", "n-%s-%d %s", customerID, minutes, sessionID)
 						}
@@ -426,10 +426,10 @@ func main() {
 						clientSessionMap.Command("EXPIRE", "d-%s-%d %d", customerID, minutes, 30)
 
 						// Update session meta
-						clientSessionMeta.Command("SET", "sm-%s %s EX %d", sessionID, meta.RedisString(), 120)
+						clientSessionMeta.Command("SET", "sm-%s \"%s\" EX %d", sessionID, meta.RedisString(), 120)
 
 						// Update session slices
-						clientSessionSlices.Command("RPUSH", "ss-%s %s", sessionID, slice.RedisString())
+						clientSessionSlices.Command("RPUSH", "ss-%s \"%s\"", sessionID, slice.RedisString())
 						clientSessionSlices.Command("EXPIRE", "ss-%s %d", sessionID, 120)
 					}
 

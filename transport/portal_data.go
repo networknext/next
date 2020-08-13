@@ -552,8 +552,7 @@ func (s *SessionMeta) ParseRedisString(values []string) error {
 	}
 	index++
 
-	var location routing.Location
-	if err := location.ParseRedisString([]string{values[index], values[index+1], values[index+2]}); err != nil {
+	if err := s.Location.ParseRedisString([]string{values[index], values[index+1], values[index+2]}); err != nil {
 		return fmt.Errorf("[SessionMeta] failed to read location from redis data: %v", err)
 	}
 	index += 3
