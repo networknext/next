@@ -140,7 +140,6 @@ func (l Location) RedisString() string {
 }
 
 func (l *Location) ParseRedisString(values []string) error {
-	l = &Location{}
 	var index int
 	var err error
 
