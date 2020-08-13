@@ -285,16 +285,13 @@ func main() {
 		}
 	}
 
-	messageChan := make(chan struct {
-		topic   pubsub.Topic
-		message []byte
-	}, messageChanSize)
+	messageChan := make(chan []byte, messageChanSize)
 
 	// Start receive loops
 	for i := int64(0); i < receiveGoroutineCount; i++ {
 		go func() {
 			for {
-				topic, message, err := portalSubscriber.ReceiveMessage()
+				_, message, err := portalSubscriber.ReceiveMessage()
 				if err != nil {
 					level.Error(logger).Log("msg", "error receiving message", "err", err)
 					continue
@@ -303,13 +300,7 @@ func main() {
 				portalCruncherMetrics.ReceivedMessageCount.Add(1)
 
 				if int64(len(messageChan)) < messageChanSize { // Drop messages if redis insertion is backed up
-					messageChan <- struct {
-						topic   pubsub.Topic
-						message []byte
-					}{
-						topic:   topic,
-						message: message,
-					}
+					messageChan <- message
 				}
 			}
 		}()
@@ -361,16 +352,19 @@ func main() {
 					os.Exit(1)
 				}
 
-				portalDataBuffer := make([]transport.SessionPortalData, redisFlushCount)
+				portalDataBuffer := make([]transport.SessionPortalData, 0)
 
 				now := time.Now()
 
 				for incoming := range messageChan {
 					var sessionPortalData transport.SessionPortalData
-					if err := sessionPortalData.UnmarshalBinary(incoming.message); err != nil {
+					if err := sessionPortalData.UnmarshalBinary(incoming); err != nil {
 						level.Error(logger).Log("msg", "error unmarshaling session data message", "err", err)
 						continue
 					}
+
+					level.Debug(logger).Log("msg", "received portal data in redis insertion loop", "sessionID", sessionPortalData.Meta.ID)
+
 					portalDataBuffer = append(portalDataBuffer, sessionPortalData)
 
 					if time.Since(now) < time.Second && len(portalDataBuffer) < redisFlushCount {
@@ -457,8 +451,6 @@ func main() {
 				level.Error(logger).Log("err", "env var HTTP_PORT must be set")
 				os.Exit(1)
 			}
-
-			level.Info(logger).Log("addr", ":"+port)
 
 			err := http.ListenAndServe(":"+port, router)
 			if err != nil {
