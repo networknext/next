@@ -506,6 +506,14 @@ deploy-server-backend-velan: ## builds and deploys the server backend to velan
 deploy-server-backend-esl: ## builds and deploys the server backend to esl
 	./deploy/deploy.sh -e prod -c esl-22dr -t server-backend -b gs://prod_artifacts
 
+.PHONY: build-load-test-server-artifacts
+build-load-test-server-artifacts: build-load-test-server ## builds the load test artifacts staging
+	./deploy/build-load-test-artifacts.sh -s load_test_server
+
+.PHONY: build-load-test-client-artifacts
+build-load-test-client-artifacts: build-load-test-client ## builds the load test artifacts staging
+	./deploy/build-load-test-artifacts.sh -s load_test_client
+
 .PHONY: build-billing-artifacts-dev
 build-billing-artifacts-dev: build-billing ## builds the billing artifacts dev
 	./deploy/build-artifacts.sh -e dev -s billing
@@ -661,6 +669,14 @@ publish-load-test-server-artifacts-staging: ## publishes the server backend arti
 .PHONY: publish-load-test-client-artifacts-staging
 publish-load-test-client-artifacts-staging: ## publishes the server backend artifacts to GCP Storage with gsutil staging
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s load-test-client
+
+.PHONY: publish-load-test-server-artifacts
+publish-load-test-server-artifacts: ## publishes the server backend artifacts to GCP Storage with gsutil prod
+	./deploy/publish.sh -b $(ARTIFACT_BUCKET_STAGING) -s load_test_server
+
+.PHONY: publish-load-test-client-artifacts
+publish-load-test-client-artifacts: ## publishes the server backend artifacts to GCP Storage with gsutil prod
+	./deploy/publish-load-test-artifacts.sh -b $(ARTIFACT_BUCKET_STAGING) -s load_test_client
 
 .PHONY: publish-billing-artifacts-prod
 publish-billing-artifacts-prod: ## publishes the billing artifacts to GCP Storage with gsutil prod
