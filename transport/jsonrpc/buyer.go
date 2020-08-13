@@ -342,7 +342,8 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 	}
 	sessionMetaClient.Flush()
 
-	var sessionMetas []transport.SessionMeta
+	var sessionMetasNext []transport.SessionMeta
+	var sessionMetasDirect []transport.SessionMeta
 	var meta transport.SessionMeta
 	for i := 0; i < len(sessionIDsRetreivedMap); i++ {
 		metaString, err := redis.String(sessionMetaClient.Receive())
@@ -363,18 +364,26 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 			meta.Anonymise()
 		}
 
-		sessionMetas = append(sessionMetas, meta)
+		// Split the sessions metas into two slices so we can sort them separately.
+		// This is necessary because if we were to force sessions next, then sorting
+		// by improvement won't always put next sessions on top.
+		if meta.OnNetworkNext {
+			sessionMetasNext = append(sessionMetasNext, meta)
+		} else {
+			sessionMetasDirect = append(sessionMetasDirect, meta)
+		}
 	}
 
-	// Sort the metas by delta RTT first, then by direct RTT. This should always put next sessions first.
-	// This sort is necessary because we are combining two ZREVRANGEs from two separate minute buckets.
-	sort.Slice(sessionMetas, func(i, j int) bool {
-		if sessionMetas[i].DeltaRTT == sessionMetas[j].DeltaRTT {
-			return sessionMetas[i].DirectRTT > sessionMetas[i].DirectRTT
-		}
-
-		return sessionMetas[i].DeltaRTT > sessionMetas[j].DeltaRTT
+	// These sorts are necessary because we are combining two ZREVRANGEs from two separate minute buckets.
+	sort.Slice(sessionMetasNext, func(i, j int) bool {
+		return sessionMetasNext[i].DeltaRTT > sessionMetasNext[j].DeltaRTT
 	})
+
+	sort.Slice(sessionMetasDirect, func(i, j int) bool {
+		return sessionMetasDirect[i].DirectRTT > sessionMetasDirect[j].DirectRTT
+	})
+
+	sessionMetas := append(sessionMetasNext, sessionMetasDirect...)
 
 	if len(sessionMetas) > TopSessionsSize {
 		reply.Sessions = sessionMetas[:TopSessionsSize]
