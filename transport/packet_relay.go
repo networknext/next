@@ -367,9 +367,9 @@ func (r *RelayUpdateRequest) unmarshalBinaryV1(buff []byte, index int) error {
 		return errors.New("invalid packet, could not read unknown rx")
 	}
 
-	r.TrafficStats.BytesReceived = r.TrafficStats.RouteRequestRx + r.TrafficStats.RouteResponseRx + r.TrafficStats.ClientToServerRx + r.TrafficStats.ServerToClientRx + r.TrafficStats.InboundPingRx + r.TrafficStats.PongRx + r.TrafficStats.SessionPingRx + r.TrafficStats.SessionPongRx + r.TrafficStats.ContinueRequestRx + r.TrafficStats.ContinueResponseRx + r.TrafficStats.NearPingRx + r.TrafficStats.UnknownRx
+	r.TrafficStats.BytesReceived = r.TrafficStats.InternalStatsRx() + r.TrafficStats.GameStatsRx() + r.TrafficStats.UnknownRx
 
-	r.TrafficStats.BytesSent = r.TrafficStats.OutboundPingTx + r.TrafficStats.RouteRequestTx + r.TrafficStats.RouteResponseTx + r.TrafficStats.ClientToServerTx + r.TrafficStats.ServerToClientTx + r.TrafficStats.InboundPingTx + r.TrafficStats.SessionPingTx + r.TrafficStats.SessionPongTx + r.TrafficStats.ContinueRequestTx + r.TrafficStats.ContinueResponseTx + r.TrafficStats.NearPingTx
+	r.TrafficStats.BytesSent = r.TrafficStats.InternalStatsTx() + r.TrafficStats.GameStatsTx()
 
 	var shuttingDown uint8
 	if !encoding.ReadUint8(buff, &index, &shuttingDown) {
