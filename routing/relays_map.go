@@ -2,15 +2,25 @@ package routing
 
 import (
 	"context"
+	"fmt"
 	"net"
+	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/networknext/backend/crypto"
+	"github.com/networknext/backend/encoding"
 )
 
-const NumRelayMapShards = 10
+const (
+	NumRelayMapShards     = 10
+	VersionNumberRelayMap = 0
+
+	// | id (8) | sessions (8) | tx (8) | rx (8) | version major (1), minor (1), patch (1) | last update time (8) | cpu usage (4) | mem usage (4) |
+	RelayDataBytes = 8 + 8 + 8 + 8 + 1 + 1 + 1 + 8 + 4 + 4
+)
 
 type RelayData struct {
 	ID             uint64
@@ -158,4 +168,87 @@ func (relayMap *RelayMap) TimeoutLoop(ctx context.Context, timeoutSeconds int64,
 			return
 		}
 	}
+}
+
+// | version | count | relay stats ... |
+func (r *RelayMap) MarshalBinary() ([]byte, error) {
+	numRelaysRightNow := r.GetRelayCount()
+
+	// preallocate the entire buffer size
+	data := make([]byte, 1+8+numRelaysRightNow*RelayDataBytes)
+
+	index := 0
+	encoding.WriteUint8(data, &index, VersionNumberRelayMap)
+	index += 8 // skip the relay count for now
+
+	// since this loops using a range, if one or more relays expire
+	// after the number of relays in the map is queried it'll be less
+	// than the expected amount which will cause the portal to read
+	// garbage data. Manually counting and compareing accounts for that edge case
+	var count uint64 = 0
+	for i := range r.shard {
+		shard := r.shard[i]
+		shard.mutex.RLock()
+		defer shard.mutex.RUnlock()
+		for _, relay := range shard.relays {
+			s := strings.Split(relay.Version, ".")
+			if len(s) != 3 {
+				return nil, fmt.Errorf("invalid relay version for relay %s: %s", relay.Addr.String(), relay.Version)
+			}
+
+			var major uint8
+			if v, err := strconv.ParseUint(s[0], 10, 32); err == nil {
+				major = uint8(v)
+			} else {
+				return nil, fmt.Errorf("invalid relay major version for relay %s: %s", relay.Addr.String(), s[0])
+			}
+
+			var minor uint8
+			if v, err := strconv.ParseUint(s[1], 10, 32); err == nil {
+				minor = uint8(v)
+			} else {
+				return nil, fmt.Errorf("invalid relay minor version for relay %s: %s", relay.Addr.String(), s[1])
+			}
+
+			var patch uint8
+			if v, err := strconv.ParseUint(s[2], 10, 32); err == nil {
+				patch = uint8(v)
+			} else {
+				return nil, fmt.Errorf("invalid relay patch version for relay %s: %s", relay.Addr.String(), s[2])
+			}
+
+			encoding.WriteUint64(data, &index, relay.ID)
+			encoding.WriteUint64(data, &index, relay.TrafficStats.SessionCount)
+			encoding.WriteUint64(data, &index, relay.TrafficStats.BytesSent)
+			encoding.WriteUint64(data, &index, relay.TrafficStats.BytesReceived)
+			encoding.WriteUint8(data, &index, major)
+			encoding.WriteUint8(data, &index, minor)
+			encoding.WriteUint8(data, &index, patch)
+			encoding.WriteUint64(data, &index, uint64(relay.LastUpdateTime.Unix()))
+			encoding.WriteFloat32(data, &index, relay.CPUUsage)
+			encoding.WriteFloat32(data, &index, relay.MemUsage)
+
+			count++
+
+			// if a relay inits into a shard after the current one
+			// the number will be greater than the amount of space
+			// preallocated so break early and the next update can
+			// get the missing relay(s)
+			if count > numRelaysRightNow {
+				break
+			}
+		}
+
+		// same reason as above
+		if count > numRelaysRightNow {
+			break
+		}
+	}
+
+	// write the count now for accuracy
+	index = 1
+	encoding.WriteUint64(data, &index, count)
+
+	// truncate the data in case the expire edge case ocurred
+	return data[:1+8+count*RelayDataBytes], nil
 }
