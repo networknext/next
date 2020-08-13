@@ -531,7 +531,7 @@ build-billing-artifacts-staging: build-billing ## builds the billing artifacts s
 	./deploy/build-artifacts.sh -e staging -s billing
 
 .PHONY: build-analytics-artifacts-staging
-build-analytics-artifacts-staging: build-analytics ## builds the analyitcs service and creates the prod artifact
+build-analytics-artifacts-staging: build-analytics ## builds the analytics service and creates the prod artifact
 	./deploy/build-artifacts.sh -e staging -s analytics
 
 .PHONY: build-relay-artifacts-staging
@@ -563,7 +563,7 @@ build-billing-artifacts-prod: build-billing ## builds the billing artifacts prod
 	./deploy/build-artifacts.sh -e prod -s billing
 
 .PHONY: build-analytics-artifacts-prod
-build-analytics-artifacts-prod: build-analytics ## builds the analyitcs service and creates the prod artifact
+build-analytics-artifacts-prod: build-analytics ## builds the analytics service and creates the prod artifact
 	./deploy/build-artifacts.sh -e prod -s analytics
 
 .PHONY: build-relay-artifacts-prod
