@@ -1,0 +1,8 @@
+[Unit]
+Description=Network Next Client Load Test
+
+[Service]
+ExecStart=/app/client-spawner.sh -n 500
+ExecStartPost=/bin/bash -c "prlimit --nofile=200000:200000 --pid $(pidof app)"
+Restart=always
+RestartSec=3
