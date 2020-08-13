@@ -84,16 +84,16 @@ int main()
         printf( "error: failed to create server\n" );
         return 1;
     }
-    
+
     while ( !quit )
     {
         next_server_update( server );
 
         next_sleep( 1.0 / 60.0 );
     }
-    
+
     next_server_destroy( server );
-    
+
     next_term();
 
     return 0;

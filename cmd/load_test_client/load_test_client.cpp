@@ -86,13 +86,13 @@ int main()
         next_client_update( client );
 
         next_client_send_packet( client, packet_data, sizeof( packet_data ) );
-        
-        next_sleep( 1.0f / 60.0f );
+
+        next_sleep( 6.0f / 60.0f );
     }
 
     next_client_destroy( client );
-    
+
     next_term();
-    
+
     return 0;
 }
