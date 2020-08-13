@@ -30,9 +30,9 @@ trap "kill 0" EXIT
 
 for ((r=0 ; r<${num_servers} ; r++)); do
 port=$((50000 + r))
-export SERVER_IP=127.0.0.1
+export SERVER_IP=10.128.0.31
 export SERVER_PORT="${port}"
-./app &
+/app/app &
 pid="$!"
 printf "PID ${pid}: Server opened\n"
 done
