@@ -386,19 +386,8 @@ func (r *RelayUpdateRequest) unmarshalBinaryV1(buff []byte, index int) error {
 		return errors.New("invalid packet, could not read memory usage")
 	}
 
-	var strlen uint32
-	if !encoding.ReadUint32(buff, &index, &strlen) {
-		return errors.New("invalid packet, could not read strlen")
-	}
-
-	if index+int(strlen) > len(buff) {
-		return fmt.Errorf("invalid packet, string too long: %d\n%v", strlen, r)
-	}
-
-	index -= 4
-
 	if !encoding.ReadString(buff, &index, &r.RelayVersion, math.MaxUint32) {
-		return fmt.Errorf("invalid packet, could not read relay version, bufflen = %d, index = %d", len(buff), index)
+		return errors.New("invalid packet, could not read relay version")
 	}
 
 	return nil
