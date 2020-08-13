@@ -14,6 +14,7 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 	"github.com/gomodule/redigo/redis"
 	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/routing"
@@ -98,7 +99,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	// err := s.Sli.SMembers(fmt.Sprintf("user-%s-sessions", userhash)).ScanSlice(&sessionIDs)
 	// if err != nil {
 	// 	err = fmt.Errorf("UserSessions() failed getting user sessions: %v", err)
-	// 	s.Logger.Log("err", err)
+	// 	level.Error(s.Logger).Log("err", err)
 	// 	return err
 	// }
 
@@ -107,7 +108,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	// 	_, err := hash.Write([]byte(userhash))
 	// 	if err != nil {
 	// 		err = fmt.Errorf("UserSessions() error writing 64a hash: %v", err)
-	// 		s.Logger.Log("err", err)
+	// 		level.Error(s.Logger).Log("err", err)
 	// 		return err
 	// 	}
 	// 	hashedID := fmt.Sprintf("%016x", hash.Sum64())
@@ -115,7 +116,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	// 	err = s.RedisClient.SMembers(fmt.Sprintf("user-%s-sessions", hashedID)).ScanSlice(&sessionIDs)
 	// 	if err != nil {
 	// 		err = fmt.Errorf("UserSessions() failed getting user sessions: %v", err)
-	// 		s.Logger.Log("err", err)
+	// 		level.Error(s.Logger).Log("err", err)
 	// 		return err
 	// 	}
 	// }
@@ -133,7 +134,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	// 	_, err = gettx.Exec()
 	// 	if err != nil && err != redis.Nil {
 	// 		err = fmt.Errorf("UserSessions() redis.Pipeliner error: %v", err)
-	// 		s.Logger.Log("err", err)
+	// 		level.Error(s.Logger).Log("err", err)
 	// 		return err
 	// 	}
 	// }
@@ -163,7 +164,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	// sremcmds, err := sremtx.Exec()
 	// if err != nil && err != redis.Nil {
 	// 	err = fmt.Errorf("UserSessions() redis.Pipeliner error: %v", err)
-	// 	s.Logger.Log("err", err)
+	// 	level.Error(s.Logger).Log("err", err)
 	// 	return err
 	// }
 
@@ -212,7 +213,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			count, err := redis.Int(redisClient.Receive())
 			if err != nil {
 				err = fmt.Errorf("TotalSessions() failed getting total session count direct: %v", err)
-				s.Logger.Log("err", err)
+				level.Error(s.Logger).Log("err", err)
 				return err
 			}
 
@@ -229,7 +230,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			count, err := redis.Int(redisClient.Receive())
 			if err != nil {
 				err = fmt.Errorf("TotalSessions() failed getting total session count next: %v", err)
-				s.Logger.Log("err", err)
+				level.Error(s.Logger).Log("err", err)
 				return err
 			}
 
@@ -238,7 +239,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 	default:
 		if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
 			err := fmt.Errorf("TotalSessions(): %v", ErrInsufficientPrivileges)
-			s.Logger.Log("err", err)
+			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 
@@ -249,14 +250,14 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		directLength, err := redis.Int(redisClient.Receive())
 		if err != nil {
 			err = fmt.Errorf("TotalSessions() failed getting buyer session direct counts: %v", err)
-			s.Logger.Log("err", err)
+			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 
 		nextLength, err := redis.Int(redisClient.Receive())
 		if err != nil {
 			err = fmt.Errorf("TotalSessions() failed getting buyer session next counts: %v", err)
-			s.Logger.Log("err", err)
+			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 
@@ -295,32 +296,32 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 		topSessionsA, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("s-%d", minutes-1), "0", fmt.Sprintf("%d", TopSessionsSize)))
 		if err != nil && err != redis.ErrNil {
 			err = fmt.Errorf("TopSessions() failed getting top sessions A: %v", err)
-			s.Logger.Log("err", err)
+			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 		topSessionsB, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("s-%d", minutes), "0", fmt.Sprintf("%d", TopSessionsSize)))
 		if err != nil && err != redis.ErrNil {
 			err = fmt.Errorf("TopSessions() failed getting top sessions B: %v", err)
-			s.Logger.Log("err", err)
+			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 	default:
 		if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
 			err = fmt.Errorf("TopSessions(): %v", ErrInsufficientPrivileges)
-			s.Logger.Log("err", err)
+			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 
 		topSessionsA, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("sc-%s-%d", args.BuyerID, minutes-1), "0", fmt.Sprintf("%d", TopSessionsSize)))
 		if err != nil && err != redis.ErrNil {
 			err = fmt.Errorf("TopSessions() failed getting top sessions A for buyer ID %016x: %v", args.BuyerID, err)
-			s.Logger.Log("err", err)
+			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 		topSessionsB, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("sc-%s-%d", args.BuyerID, minutes), "0", fmt.Sprintf("%d", TopSessionsSize)))
 		if err != nil && err != redis.ErrNil {
 			err = fmt.Errorf("TopSessions() failed getting top sessions B for buyer ID %016x: %v", args.BuyerID, err)
-			s.Logger.Log("err", err)
+			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 	}
@@ -328,33 +329,34 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 	sessionMetaClient := s.RedisPoolSessionMeta.Get()
 	defer sessionMetaClient.Close()
 
-	sessionIDsRetreived := make(map[string]bool)
+	sessionIDsRetreivedMap := make(map[string]bool)
 	for _, sessionID := range topSessionsA {
 		sessionMetaClient.Send("GET", fmt.Sprintf("sm-%s", sessionID))
-		sessionIDsRetreived[sessionID] = true
+		sessionIDsRetreivedMap[sessionID] = true
 	}
 	for _, sessionID := range topSessionsB {
-		if _, ok := sessionIDsRetreived[sessionID]; !ok {
+		if _, ok := sessionIDsRetreivedMap[sessionID]; !ok {
 			sessionMetaClient.Send("GET", fmt.Sprintf("sm-%s", sessionID))
-			sessionIDsRetreived[sessionID] = true
+			sessionIDsRetreivedMap[sessionID] = true
 		}
 	}
 	sessionMetaClient.Flush()
 
-	var sessionMetas []transport.SessionMeta
+	var sessionMetasNext []transport.SessionMeta
+	var sessionMetasDirect []transport.SessionMeta
 	var meta transport.SessionMeta
-	for i := 0; i < len(sessionIDsRetreived); i++ {
+	for i := 0; i < len(sessionIDsRetreivedMap); i++ {
 		metaString, err := redis.String(sessionMetaClient.Receive())
 		if err != nil && err != redis.ErrNil {
 			err = fmt.Errorf("TopSessions() failed getting top sessions meta: %v", err)
-			s.Logger.Log("err", err)
+			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 
 		splitMetaStrings := strings.Split(metaString, "|")
 		if err := meta.ParseRedisString(splitMetaStrings); err != nil {
 			err = fmt.Errorf("TopSessions() failed to parse redis string into meta: %v", err)
-			s.Logger.Log("err", err, "redisString", metaString)
+			level.Error(s.Logger).Log("err", err, "redisString", metaString)
 			continue
 		}
 
@@ -362,8 +364,26 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 			meta.Anonymise()
 		}
 
-		sessionMetas = append(sessionMetas, meta)
+		// Split the sessions metas into two slices so we can sort them separately.
+		// This is necessary because if we were to force sessions next, then sorting
+		// by improvement won't always put next sessions on top.
+		if meta.OnNetworkNext {
+			sessionMetasNext = append(sessionMetasNext, meta)
+		} else {
+			sessionMetasDirect = append(sessionMetasDirect, meta)
+		}
 	}
+
+	// These sorts are necessary because we are combining two ZREVRANGEs from two separate minute buckets.
+	sort.Slice(sessionMetasNext, func(i, j int) bool {
+		return sessionMetasNext[i].DeltaRTT > sessionMetasNext[j].DeltaRTT
+	})
+
+	sort.Slice(sessionMetasDirect, func(i, j int) bool {
+		return sessionMetasDirect[i].DirectRTT > sessionMetasDirect[j].DirectRTT
+	})
+
+	sessionMetas := append(sessionMetasNext, sessionMetasDirect...)
 
 	if len(sessionMetas) > TopSessionsSize {
 		reply.Sessions = sessionMetas[:TopSessionsSize]
@@ -392,14 +412,14 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 	metaString, err := redis.String(sessionMetaClient.Do("GET", fmt.Sprintf("sm-%s", args.SessionID)))
 	if err != nil && err != redis.ErrNil {
 		err = fmt.Errorf("SessionDetails() failed getting session meta: %v", err)
-		s.Logger.Log("err", err)
+		level.Error(s.Logger).Log("err", err)
 		return err
 	}
 
 	metaStringsSplit := strings.Split(metaString, "|")
 	if err := reply.Meta.ParseRedisString(metaStringsSplit); err != nil {
 		err = fmt.Errorf("SessionDetails() SessionMeta unmarshaling error: %v", err)
-		s.Logger.Log("err", err)
+		level.Error(s.Logger).Log("err", err)
 		return err
 	}
 
@@ -415,7 +435,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 	slices, err := redis.Strings(sessionSlicesClient.Do("LRANGE", fmt.Sprintf("ss-%s", args.SessionID), "0", "-1"))
 	if err != nil && err != redis.ErrNil {
 		err = fmt.Errorf("SessionDetails() failed getting session slices: %v", err)
-		s.Logger.Log("err", err)
+		level.Error(s.Logger).Log("err", err)
 		return err
 	}
 
@@ -424,7 +444,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		var sessionSlice transport.SessionSlice
 		if err := sessionSlice.ParseRedisString(sliceStrings); err != nil {
 			err = fmt.Errorf("SessionDetails() SessionSlice parsing error: %v", err)
-			s.Logger.Log("err", err)
+			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 
@@ -481,7 +501,7 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 		directPointStrings, nextPointStrings, err := s.getDirectAndNextMapPointStrings(&buyer)
 		if err != nil && err != redis.ErrNil {
 			err = fmt.Errorf("SessionMapPoints() failed getting map points for buyer %s: %v", stringID, err)
-			s.Logger.Log("err", err)
+			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 
@@ -490,7 +510,7 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 			directSplitStrings := strings.Split(directPointString, "|")
 			if err := point.ParseRedisString(directSplitStrings); err != nil {
 				err = fmt.Errorf("SessionMapPoints() failed to parse direct map point for buyer %s: %v", stringID, err)
-				s.Logger.Log("err", err)
+				level.Error(s.Logger).Log("err", err)
 				return err
 			}
 
@@ -507,7 +527,7 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 			nextSplitStrings := strings.Split(nextPointString, "|")
 			if err := point.ParseRedisString(nextSplitStrings); err != nil {
 				err = fmt.Errorf("SessionMapPoints() failed to next parse map point for buyer %s: %v", stringID, err)
-				s.Logger.Log("err", err)
+				level.Error(s.Logger).Log("err", err)
 				return err
 			}
 
@@ -565,7 +585,7 @@ func (s *BuyersService) GenerateMapPointsPerBuyerBytes() error {
 		directPointStrings, nextPointStrings, err := s.getDirectAndNextMapPointStrings(&buyer)
 		if err != nil {
 			err = fmt.Errorf("SessionMapPoints() failed getting map points for buyer %s: %v", stringID, err)
-			s.Logger.Log("err", err)
+			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 
@@ -574,7 +594,7 @@ func (s *BuyersService) GenerateMapPointsPerBuyerBytes() error {
 			directSplitStrings := strings.Split(directPointString, "|")
 			if err := currentPoint.ParseRedisString(directSplitStrings); err != nil {
 				err = fmt.Errorf("SessionMapPoints() failed to parse direct map point for buyer %s: %v", stringID, err)
-				s.Logger.Log("err", err)
+				level.Error(s.Logger).Log("err", err)
 				return err
 			}
 
@@ -594,7 +614,7 @@ func (s *BuyersService) GenerateMapPointsPerBuyerBytes() error {
 			nextSplitStrings := strings.Split(nextPointString, "|")
 			if err := currentPoint.ParseRedisString(nextSplitStrings); err != nil {
 				err = fmt.Errorf("SessionMapPoints() failed to next parse map point for buyer %s: %v", stringID, err)
-				s.Logger.Log("err", err)
+				level.Error(s.Logger).Log("err", err)
 				return err
 			}
 
@@ -779,7 +799,7 @@ func (s *BuyersService) SessionMap(r *http.Request, args *MapPointsArgs, reply *
 	default:
 		if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
 			err := fmt.Errorf("SessionMap(): %v", ErrInsufficientPrivileges)
-			s.Logger.Log("err", err)
+			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 		reply.Points = s.mapPointsCompactBuyerCache[args.BuyerID]
@@ -798,7 +818,7 @@ func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, r
 	default:
 		if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
 			err := fmt.Errorf("SessionMap(): %v", ErrInsufficientPrivileges)
-			s.Logger.Log("err", err)
+			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 		reply.Points = s.mapPointsBuyerCache[args.BuyerID]
@@ -819,7 +839,7 @@ func (s *BuyersService) SessionMapPointsByte(r *http.Request, args *MapPointsArg
 	default:
 		if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
 			err := fmt.Errorf("SessionMap(): %v", ErrInsufficientPrivileges)
-			s.Logger.Log("err", err)
+			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 		ReadMapPointsCache(&reply.Points, s.mapPointsBuyerCache[args.BuyerID])
@@ -839,7 +859,7 @@ func (s *BuyersService) SessionMapByte(r *http.Request, args *MapPointsArgs, rep
 	default:
 		if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
 			err := fmt.Errorf("SessionMap(): %v", ErrInsufficientPrivileges)
-			s.Logger.Log("err", err)
+			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 		ReadMapPointsCache(&reply.Points, s.mapPointsBuyerByteCache[args.BuyerID])
@@ -869,7 +889,7 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 
 	if VerifyAnyRole(r, AnonymousRole, UnverifiedRole) {
 		err = fmt.Errorf("GameConfiguration(): %v", ErrInsufficientPrivileges)
-		s.Logger.Log("err", err)
+		level.Error(s.Logger).Log("err", err)
 		return err
 	}
 
@@ -895,7 +915,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 
 	if !VerifyAnyRole(r, AdminRole, OwnerRole) {
 		err = fmt.Errorf("UpdateGameConfiguration(): %v", ErrInsufficientPrivileges)
-		s.Logger.Log("err", err)
+		level.Error(s.Logger).Log("err", err)
 		return err
 	}
 
@@ -903,19 +923,19 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 
 	if args.Domain == "" {
 		err = fmt.Errorf("UpdateGameConfiguration() domain is required")
-		s.Logger.Log("err", err)
+		level.Error(s.Logger).Log("err", err)
 		return err
 	}
 
 	if args.Name == "" {
 		err = fmt.Errorf("UpdateGameConfiguration() company name is required")
-		s.Logger.Log("err", err)
+		level.Error(s.Logger).Log("err", err)
 		return err
 	}
 
 	if args.NewPublicKey == "" {
 		err = fmt.Errorf("UpdateGameConfiguration() new public key is required")
-		s.Logger.Log("err", err)
+		level.Error(s.Logger).Log("err", err)
 		return err
 	}
 
@@ -924,7 +944,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 	byteKey, err := base64.StdEncoding.DecodeString(args.NewPublicKey)
 	if err != nil {
 		err = fmt.Errorf("UpdateGameConfiguration() could not decode public key string")
-		s.Logger.Log("err", err)
+		level.Error(s.Logger).Log("err", err)
 		return err
 	}
 
@@ -945,14 +965,14 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 
 		if err != nil {
 			err = fmt.Errorf("UpdateGameConfiguration() failed to add buyer")
-			s.Logger.Log("err", err)
+			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 
 		// Check if buyer is associated with the ID and everything worked
 		if buyer, err = s.Storage.Buyer(buyerID); err != nil {
 			err = fmt.Errorf("UpdateGameConfiguration() buyer creation failed: %v", err)
-			s.Logger.Log("err", err)
+			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 
@@ -968,7 +988,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 
 	if err = s.Storage.RemoveBuyer(ctx, buyer.ID); err != nil {
 		err = fmt.Errorf("UpdateGameConfiguration() failed to remove buyer")
-		s.Logger.Log("err", err)
+		level.Error(s.Logger).Log("err", err)
 		return err
 	}
 
@@ -983,14 +1003,14 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 
 	if err != nil {
 		err = fmt.Errorf("UpdateGameConfiguration() buyer update failed: %v", err)
-		s.Logger.Log("err", err)
+		level.Error(s.Logger).Log("err", err)
 		return err
 	}
 
 	// Check if buyer is associated with the ID and everything worked
 	if buyer, err = s.Storage.Buyer(buyerID); err != nil {
 		err = fmt.Errorf("UpdateGameConfiguration() buyer update check failed: %v", err)
-		s.Logger.Log("err", err)
+		level.Error(s.Logger).Log("err", err)
 		return err
 	}
 
@@ -1069,13 +1089,13 @@ func (s *BuyersService) DatacenterMapsForBuyer(r *http.Request, args *Datacenter
 		buyer, err := s.Storage.Buyer(dcMap.BuyerID)
 		if err != nil {
 			err = fmt.Errorf("DatacenterMapsForBuyer() could not parse buyer")
-			s.Logger.Log("err", err)
+			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 		datacenter, err := s.Storage.Datacenter(dcMap.Datacenter)
 		if err != nil {
 			err = fmt.Errorf("DatacenterMapsForBuyer() could not parse datacenter")
-			s.Logger.Log("err", err)
+			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 
