@@ -478,7 +478,7 @@ deploy-server-backend-dev-2: ## builds and deploys the server backend to dev
 
 .PHONY: deploy-server-backend-staging
 deploy-server-backend-staging: ## builds and deploys the server backend to dev
-	./deploy/deploy.sh -e staging -c staging -t server-backend -b gs://staging_artifacts
+	./deploy/deploy.sh -e staging -c staging-1 -t server-backend -b gs://staging_artifacts
 
 .PHONY: build-analytics
 build-analytics: ## builds the analytics binary
@@ -634,8 +634,8 @@ publish-server-backend-artifacts-dev: ## publishes the server backend artifacts 
 publish-billing-artifacts-staging: ## publishes the billing artifacts to GCP Storage with gsutil staging
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s billing
 
-.PHONY: publish-analyitcs-artifacts-staging
-publish-analyitcs-artifacts-staging: ## publishes the analytics prod artifact
+.PHONY: publish-analytics-artifacts-staging
+publish-analytics-artifacts-staging: ## publishes the analytics prod artifact
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s analytics
 
 .PHONY: publish-relay-artifacts-staging
