@@ -54,7 +54,7 @@ func NewRawRedisClient(hostname string) (*RawRedisClient, error) {
 }
 
 func (r *RawRedisClient) Ping() error {
-	fmt.Fprint(r.conn, "PING\r\n")
+	r.Command("PING", "")
 
 	redisReplyReader := bufio.NewReader(r.conn)
 	reply, err := redisReplyReader.ReadString('\n')
