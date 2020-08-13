@@ -99,7 +99,7 @@
       <div class="col-12 col-lg-4">
         <div class="card">
           <div class="card-img-top">
-            <div  style="width: 100%; height: 40vh; margin: 0px; padding: 0px; position: relative;">
+            <div style="width: 100%; height: 40vh; margin: 0px; padding: 0px; position: relative;">
               <div id="session-tool-map"></div>
               <canvas id="session-tool-deck-canvas"></canvas>
             </div>

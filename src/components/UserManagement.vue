@@ -70,7 +70,7 @@
             {{ account.email }}
           </td>
           <td>
-            <multiselect placeholder="" track-by="name" label="name" v-model="selectedRoles[account.user_id]" :options="allRoles" multiple :disabled="!account.edit"></multiselect>
+            <multiselect placeholder="" track-by="name" label="name" v-model="account.roles" :options="allRoles" multiple :disabled="!account.edit"></multiselect>
           </td>
           <td class="td-btn" v-show="!account.edit && !account.delete">
             <button
@@ -113,7 +113,7 @@
               data-toggle="tooltip"
               data-placement="bottom"
               title="Cancel Changes"
-              @click="cancel(account, index)"
+              @click="cancel(index)"
             >
               <font-awesome-icon icon="times"
                                   class="fa-w-16 fa-fw"
@@ -133,6 +133,8 @@ import APIService from '../services/api.service'
 import Alert from './Alert.vue'
 import { AlertTypes } from './types/AlertTypes'
 
+import _ from 'lodash'
+
 @Component({
   components: {
     Alert,
@@ -140,12 +142,11 @@ import { AlertTypes } from './types/AlertTypes'
   }
 })
 export default class UserManagement extends Vue {
-  // TODO: Fix weird issue with dropdown library change events (select/delete) handler
   private apiService: APIService
   private allRoles: Array<any> = []
   private companyUsers: Array<any> = []
+  private companyUsersReadOnly: Array<any> = []
 
-  private selectedRoles: any = {}
   private newUserRoles: any = []
 
   private newUserEmails: string
@@ -170,41 +171,31 @@ export default class UserManagement extends Vue {
     }
   }
 
-  private mounted () {
+  private mounted (): void {
     const promises = [
       this.apiService.fetchAllAccounts({}),
       this.apiService.fetchAllRoles()
     ]
     Promise.all(promises)
       .then((responses: any) => {
-        const companyUsers: Array<any> = responses[0].accounts
-        const allRoles = responses[1].roles
-
-        this.allRoles = allRoles
-        this.companyUsers = companyUsers
+        this.allRoles = responses[1].roles
+        this.companyUsers = responses[0].accounts
         this.companyUsers.forEach((user: any) => {
           user.edit = false
           user.delete = false
         })
-
-        this.companyUsers.forEach((user: any) => {
-          this.selectedRoles[user.user_id] = user.roles
-        })
+        this.companyUsersReadOnly = _.cloneDeep(this.companyUsers)
         this.showTable = true
       })
   }
 
-  private editUser (account: any, index: number) {
-    setTimeout(() => {
-      account.delete = false
-      account.edit = true
-      this.companyUsers.splice(index, 1, account)
-    })
+  private editUser (account: any, index: number): void {
+    this.setAccountState(true, false, account, index)
   }
 
-  private saveUser (account: any, index: number) {
+  private saveUser (account: any, index: number): void {
     if (account.edit) {
-      const roles = this.selectedRoles[account.user_id]
+      const roles = account.roles
       this.apiService
         .updateUserRoles({ user_id: `auth0|${account.user_id}`, roles: roles })
         .then((response: any) => {
@@ -225,7 +216,7 @@ export default class UserManagement extends Vue {
           }, 5000)
         })
         .finally(() => {
-          this.cancel(account, index)
+          this.setAccountState(false, false, account, index)
         })
       return
     }
@@ -234,7 +225,6 @@ export default class UserManagement extends Vue {
         .deleteUserAccount({ user_id: `auth0|${account.user_id}` })
         .then((response: any) => {
           this.companyUsers.splice(index, 1)
-          this.selectedRoles[account.user_id] = null
           this.alertTypes.editUser = AlertTypes.SUCCESS
           this.messages.editUser = 'User account deleted successfully'
           setTimeout(() => {
@@ -253,19 +243,22 @@ export default class UserManagement extends Vue {
     }
   }
 
-  private deleteUser (account: any, index: number) {
-    account.delete = true
-    account.edit = false
+  private deleteUser (account: any, index: number): void {
+    this.setAccountState(false, true, account, index)
+  }
+
+  private cancel (index: number): void {
+    const defaultUserAccount = _.cloneDeep(this.companyUsersReadOnly[index])
+    this.companyUsers.splice(index, 1, defaultUserAccount)
+  }
+
+  private setAccountState (isEdit: boolean, isDelete: boolean, account: any, index: number) {
+    account.edit = isEdit
+    account.delete = isDelete
     this.companyUsers.splice(index, 1, account)
   }
 
-  private cancel (account: any, index: number) {
-    account.delete = false
-    account.edit = false
-    this.companyUsers.splice(index, 1, account)
-  }
-
-  private addNewUsers () {
+  private addNewUsers (): void {
     let roles = this.newUserRoles
     const emails = this.newUserEmails
       .split(/(,|\n)/g)
@@ -287,7 +280,6 @@ export default class UserManagement extends Vue {
         newAccounts.forEach((account: any) => {
           account.edit = false
           account.delete = false
-          this.selectedRoles[account.user_id] = account.roles
         })
 
         this.companyUsers.concat(newAccounts)

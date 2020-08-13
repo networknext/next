@@ -15,12 +15,6 @@ import { ScreenGridLayer } from '@deck.gl/aggregation-layers'
 import mapboxgl from 'mapbox-gl'
 import APIService from '@/services/api.service'
 
-/**
- * TODO: Hookup API call
- * TODO: Hookup looping logic
- * TODO: Cleanup template
- */
-
 @Component({
   name: 'SessionMap'
 })
@@ -39,7 +33,8 @@ export default class SessionMap extends Vue {
     zoom: 2,
     pitch: 0,
     bearing: 0,
-    minZoom: 0
+    minZoom: 2,
+    maxZoom: 16
   }
 
   constructor () {
@@ -145,7 +140,8 @@ export default class SessionMap extends Vue {
                 zoom: viewState.zoom,
                 bearing: viewState.bearing,
                 pitch: viewState.pitch,
-                minZoom: 2
+                minZoom: 2,
+                maxZoom: 16
               })
             },
             layers: layers

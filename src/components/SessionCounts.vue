@@ -1,15 +1,13 @@
 <template>
-  <div style="padding-top: 30px; padding-left: 15px; padding-bottom: 10px;">
-    <h1 class="count-header" v-if="showCount" data-test="currentPage">
-      {{ $store.getters.currentPage[0].toUpperCase() + $store.getters.currentPage.slice(1) }}&nbsp;
-      <span class="badge badge-dark" data-test="totalSessions">
-        {{ this.totalSessions }} Total Sessions
-      </span>&nbsp;
-      <span class="badge badge-success" data-test="nnSessions">
-        {{ this.totalSessionsReply.onNN }} on Network Next
-      </span>
-    </h1>
-  </div>
+  <h1 class="count-header" v-if="showCount" data-test="currentPage">
+    {{ $store.getters.currentPage[0].toUpperCase() + $store.getters.currentPage.slice(1) }}&nbsp;
+    <span class="badge badge-dark" data-test="totalSessions">
+      {{ this.totalSessions }} Total Sessions
+    </span>&nbsp;
+    <span class="badge badge-success" data-test="nnSessions">
+      {{ this.totalSessionsReply.onNN }} on Network Next
+    </span>
+  </h1>
 </template>
 
 <script lang="ts">
