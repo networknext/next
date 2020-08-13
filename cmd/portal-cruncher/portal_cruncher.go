@@ -426,7 +426,7 @@ func main() {
 						clientSessionMap.Command("EXPIRE", "d-%s-%d %d", customerID, minutes, 30)
 
 						// Update session meta
-						clientSessionMeta.Command("SET", "sm-%s %v EX %d", sessionID, meta.RedisString(), 120)
+						clientSessionMeta.Command("SET", "sm-%s %s EX %d", sessionID, meta.RedisString(), 120)
 
 						// Update session slices
 						clientSessionSlices.Command("RPUSH", "ss-%s %s", sessionID, slice.RedisString())
