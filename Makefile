@@ -618,8 +618,8 @@ publish-server-backend-artifacts-dev: ## publishes the server backend artifacts 
 publish-billing-artifacts-staging: ## publishes the billing artifacts to GCP Storage with gsutil staging
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s billing
 
-.PHONY: publish-analyitcs-artifacts-staging
-publish-analyitcs-artifacts-staging: ## publishes the analytics prod artifact
+.PHONY: publish-analytics-artifacts-staging
+publish-analytics-artifacts-staging: ## publishes the analytics staging artifact
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s analytics
 
 .PHONY: publish-relay-artifacts-staging
