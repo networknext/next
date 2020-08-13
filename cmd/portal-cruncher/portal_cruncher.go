@@ -363,8 +363,6 @@ func main() {
 						continue
 					}
 
-					level.Debug(logger).Log("msg", "received portal data in redis insertion loop", "sessionID", fmt.Sprintf("%016x", sessionPortalData.Meta.ID))
-
 					portalDataBuffer = append(portalDataBuffer, sessionPortalData)
 
 					if time.Since(now) < time.Second && len(portalDataBuffer) < redisFlushCount {
