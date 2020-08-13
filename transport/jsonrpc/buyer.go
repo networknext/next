@@ -504,6 +504,10 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		reply.Slices = append(reply.Slices, sessionSlice)
 	}
 
+	sort.Slice(reply.Slices, func(i, j int) bool {
+		return reply.Slices[i].Timestamp.Before(reply.Slices[j].Timestamp)
+	})
+
 	return nil
 }
 
