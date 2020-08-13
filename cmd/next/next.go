@@ -510,15 +510,15 @@ func main() {
 
 	var selectCommand = &ffcli.Command{
 		Name:       "select",
-		ShortUsage: "next select <local|dev|prod>",
-		ShortHelp:  "Select environment to use (local|dev|prod)",
+		ShortUsage: "next select <local|dev|staging|prod>",
+		ShortHelp:  "Select environment to use (local|dev|staging|prod)",
 		Exec: func(_ context.Context, args []string) error {
 			if len(args) == 0 {
-				log.Fatal("Provide an environment to switch to (local|dev|prod)")
+				log.Fatal("Provide an environment to switch to (local|dev|staging|prod)")
 			}
 
-			if args[0] != "local" && args[0] != "dev" && args[0] != "prod" {
-				log.Fatalf("Invalid environment %s: use (local|dev|prod)", args[0])
+			if args[0] != "local" && args[0] != "dev" && args[0] != "staging" && args[0] != "prod" {
+				log.Fatalf("Invalid environment %s: use (local|dev|staging|prod)", args[0])
 			}
 
 			env.Name = args[0]
@@ -535,8 +535,8 @@ func main() {
 		ShortHelp:  "Display environment",
 		Exec: func(_ context.Context, args []string) error {
 			if len(args) > 0 {
-				if args[0] != "local" && args[0] != "dev" && args[0] != "prod" {
-					log.Fatalf("Invalid environment %s: use (local|dev|prod)", args[0])
+				if args[0] != "local" && args[0] != "dev" && args[0] != "staging" && args[0] != "prod" {
+					log.Fatalf("Invalid environment %s: use (local|dev|staging|prod)", args[0])
 				}
 
 				env.Name = args[0]
