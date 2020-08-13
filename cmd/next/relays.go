@@ -268,6 +268,8 @@ func relays(
 		Tx          string
 		Rx          string
 		Version     string
+		CPUUsage    string `table:"CPU Usage"`
+		MemUsage    string `table:"Memory Usage"`
 		LastUpdated string
 	}{}
 
@@ -314,6 +316,8 @@ func relays(
 		if relay.BytesReceived < 1000000000 {
 			rx = fmt.Sprintf("%.02fMB", float64(relay.BytesReceived)/float64(1000000))
 		}
+		cpuUsage := fmt.Sprintf("%.02f%%", relay.CPUUsage)
+		memUsage := fmt.Sprintf("%.02f%%", relay.MemUsage)
 		lastUpdateDuration := time.Since(relay.LastUpdateTime).Truncate(time.Second)
 		lastUpdated := "n/a"
 		if relay.State == "enabled" {
@@ -373,6 +377,8 @@ func relays(
 				Tx          string
 				Rx          string
 				Version     string
+				CPUUsage    string `table:"CPU Usage"`
+				MemUsage    string `table:"Memory Usage"`
 				LastUpdated string
 			}{
 				Name:        relay.Name,
@@ -383,6 +389,8 @@ func relays(
 				Tx:          tx,
 				Rx:          rx,
 				Version:     relay.Version,
+				CPUUsage:    cpuUsage,
+				MemUsage:    memUsage,
 				LastUpdated: lastUpdated,
 			})
 		}
