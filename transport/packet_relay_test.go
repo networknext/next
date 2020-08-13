@@ -434,246 +434,254 @@ func TestRelayUpdateRequestUnmarshalBinary(t *testing.T) {
 
 	t.Run("missing request version", func(t *testing.T) {
 		var packet transport.RelayUpdateRequest
-		assert.Equal(t, packet.UnmarshalBinary(make([]byte, 0)), errors.New("invalid packet"))
+		assert.Errorf(t, packet.UnmarshalBinary(make([]byte, 0)), "invalid packet, could not read packet version")
 	})
 
-	t.Run("missing relay address", func(t *testing.T) {
-		var packet transport.RelayUpdateRequest
-		buff := make([]byte, 4)
-		binary.LittleEndian.PutUint32(buff, rand.Uint32()) //version
-		assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet"))
-	})
+	t.Run("version 0", func(t *testing.T) {
+		t.Parallel()
 
-	t.Run("missing relay token", func(t *testing.T) {
-		var packet transport.RelayUpdateRequest
-		buff := make([]byte, 4+13)
-		binary.LittleEndian.PutUint32(buff, rand.Uint32())
-		binary.LittleEndian.PutUint32(buff[4:], 13) // address length
-		assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet"))
-	})
-
-	t.Run("missing number of relays", func(t *testing.T) {
-		var packet transport.RelayUpdateRequest
-		buff := make([]byte, 4+4+13+crypto.KeySize)
-		binary.LittleEndian.PutUint32(buff, rand.Uint32())
-		binary.LittleEndian.PutUint32(buff[4:], 13)
-		assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet"))
-	})
-
-	t.Run("address is not formatted correctly", func(t *testing.T) {
-		var packet transport.RelayUpdateRequest
-		addr := "invalid"
-		buff := make([]byte, 4+4+len(addr)+crypto.KeySize+4)
-		binary.LittleEndian.PutUint32(buff, rand.Uint32())
-		binary.LittleEndian.PutUint32(buff[4:], uint32(len(addr)))
-		copy(buff[8:], addr)
-		binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize:], 1) // number of relays
-		assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("could not resolve init packet with address 'invalid' with reason: address invalid: missing port in address"))
-	})
-
-	t.Run("missing various relay ping stats", func(t *testing.T) {
-		t.Run("missing the id", func(t *testing.T) {
+		t.Run("missing relay address", func(t *testing.T) {
 			var packet transport.RelayUpdateRequest
-			addr := "127.0.0.1:40000"
+			buff := make([]byte, 4)
+			binary.LittleEndian.PutUint32(buff, 0) //version
+			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet"))
+		})
+
+		t.Run("missing relay token", func(t *testing.T) {
+			var packet transport.RelayUpdateRequest
+			buff := make([]byte, 4+13)
+			binary.LittleEndian.PutUint32(buff, 0)
+			binary.LittleEndian.PutUint32(buff[4:], 13) // address length
+			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet"))
+		})
+
+		t.Run("missing number of relays", func(t *testing.T) {
+			var packet transport.RelayUpdateRequest
+			buff := make([]byte, 4+4+13+crypto.KeySize)
+			binary.LittleEndian.PutUint32(buff, 0)
+			binary.LittleEndian.PutUint32(buff[4:], 13)
+			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet"))
+		})
+
+		t.Run("address is not formatted correctly", func(t *testing.T) {
+			var packet transport.RelayUpdateRequest
+			addr := "invalid"
 			buff := make([]byte, 4+4+len(addr)+crypto.KeySize+4)
-			binary.LittleEndian.PutUint32(buff, rand.Uint32())
+			binary.LittleEndian.PutUint32(buff, 0)
 			binary.LittleEndian.PutUint32(buff[4:], uint32(len(addr)))
 			copy(buff[8:], addr)
 			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize:], 1) // number of relays
-			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet, could not read a ping stat"))
+			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("could not resolve init packet with address 'invalid' with reason: address invalid: missing port in address"))
 		})
 
-		t.Run("missing the rtt", func(t *testing.T) {
-			var packet transport.RelayUpdateRequest
-			addr := "127.0.0.1:40000"
-			buff := make([]byte, 4+4+len(addr)+crypto.KeySize+4+8)
-			binary.LittleEndian.PutUint32(buff, rand.Uint32())
-			binary.LittleEndian.PutUint32(buff[4:], uint32(len(addr)))
-			copy(buff[8:], addr)
-			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize:], 1)
-			binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+4:], rand.Uint64()) // relay id
-			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet, could not read a ping stat"))
+		t.Run("missing various relay ping stats", func(t *testing.T) {
+			t.Run("missing the id", func(t *testing.T) {
+				var packet transport.RelayUpdateRequest
+				addr := "127.0.0.1:40000"
+				buff := make([]byte, 4+4+len(addr)+crypto.KeySize+4)
+				binary.LittleEndian.PutUint32(buff, 0)
+				binary.LittleEndian.PutUint32(buff[4:], uint32(len(addr)))
+				copy(buff[8:], addr)
+				binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize:], 1) // number of relays
+				assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet, could not read a ping stat"))
+			})
+
+			t.Run("missing the rtt", func(t *testing.T) {
+				var packet transport.RelayUpdateRequest
+				addr := "127.0.0.1:40000"
+				buff := make([]byte, 4+4+len(addr)+crypto.KeySize+4+8)
+				binary.LittleEndian.PutUint32(buff, 0)
+				binary.LittleEndian.PutUint32(buff[4:], uint32(len(addr)))
+				copy(buff[8:], addr)
+				binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize:], 1)
+				binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+4:], rand.Uint64()) // relay id
+				assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet, could not read a ping stat"))
+			})
+
+			t.Run("missing the jitter", func(t *testing.T) {
+				var packet transport.RelayUpdateRequest
+				addr := "127.0.0.1:40000"
+				buff := make([]byte, 4+4+len(addr)+crypto.KeySize+4+8+4)
+				binary.LittleEndian.PutUint32(buff, 0)
+				binary.LittleEndian.PutUint32(buff[4:], uint32(len(addr)))
+				copy(buff[8:], addr)
+				binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize:], 1)
+				binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+4:], rand.Uint64())
+				binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+12:], math.Float32bits(rand.Float32())) // rtt
+				assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet, could not read a ping stat"))
+			})
+
+			t.Run("missing the packet loss", func(t *testing.T) {
+				var packet transport.RelayUpdateRequest
+				addr := "127.0.0.1:40000"
+				buff := make([]byte, 4+4+len(addr)+crypto.KeySize+4+8+4+4)
+				binary.LittleEndian.PutUint32(buff, 0)
+				binary.LittleEndian.PutUint32(buff[4:], uint32(len(addr)))
+				copy(buff[8:], addr)
+				binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize:], 1)
+				binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+4:], rand.Uint64())
+				binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+12:], math.Float32bits(rand.Float32()))
+				binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+16:], math.Float32bits(rand.Float32())) // jitter
+				assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet, could not read a ping stat"))
+			})
 		})
 
-		t.Run("missing the jitter", func(t *testing.T) {
+		t.Run("missing session count", func(t *testing.T) {
 			var packet transport.RelayUpdateRequest
 			addr := "127.0.0.1:40000"
-			buff := make([]byte, 4+4+len(addr)+crypto.KeySize+4+8+4)
-			binary.LittleEndian.PutUint32(buff, rand.Uint32())
-			binary.LittleEndian.PutUint32(buff[4:], uint32(len(addr)))
-			copy(buff[8:], addr)
-			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize:], 1)
-			binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+4:], rand.Uint64())
-			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+12:], math.Float32bits(rand.Float32())) // rtt
-			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet, could not read a ping stat"))
-		})
-
-		t.Run("missing the packet loss", func(t *testing.T) {
-			var packet transport.RelayUpdateRequest
-			addr := "127.0.0.1:40000"
-			buff := make([]byte, 4+4+len(addr)+crypto.KeySize+4+8+4+4)
-			binary.LittleEndian.PutUint32(buff, rand.Uint32())
+			buff := make([]byte, 4+4+len(addr)+crypto.KeySize+4+8+4+4+4)
+			binary.LittleEndian.PutUint32(buff, 0)
 			binary.LittleEndian.PutUint32(buff[4:], uint32(len(addr)))
 			copy(buff[8:], addr)
 			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize:], 1)
 			binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+4:], rand.Uint64())
 			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+12:], math.Float32bits(rand.Float32()))
-			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+16:], math.Float32bits(rand.Float32())) // jitter
-			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet, could not read a ping stat"))
+			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+16:], math.Float32bits(rand.Float32()))
+			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+20:], math.Float32bits(rand.Float32())) // packet loss
+			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet, could not read session count"))
+		})
+
+		t.Run("missing bytes sent", func(t *testing.T) {
+			var packet transport.RelayUpdateRequest
+			addr := "127.0.0.1:40000"
+			buff := make([]byte, 4+4+len(addr)+crypto.KeySize+4+8+4+4+4+8)
+			binary.LittleEndian.PutUint32(buff, 0)
+			binary.LittleEndian.PutUint32(buff[4:], uint32(len(addr)))
+			copy(buff[8:], addr)
+			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize:], 1)
+			binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+4:], rand.Uint64())
+			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+12:], math.Float32bits(rand.Float32()))
+			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+16:], math.Float32bits(rand.Float32()))
+			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+20:], math.Float32bits(rand.Float32()))
+			binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+24:], rand.Uint64()) // session count
+			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet, could not read bytes sent"))
+		})
+
+		t.Run("missing bytes received", func(t *testing.T) {
+			var packet transport.RelayUpdateRequest
+			addr := "127.0.0.1:40000"
+			buff := make([]byte, 4+4+len(addr)+crypto.KeySize+4+8+4+4+4+8+8)
+			binary.LittleEndian.PutUint32(buff, 0)
+			binary.LittleEndian.PutUint32(buff[4:], uint32(len(addr)))
+			copy(buff[8:], addr)
+			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize:], 1)
+			binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+4:], rand.Uint64())
+			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+12:], math.Float32bits(rand.Float32()))
+			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+16:], math.Float32bits(rand.Float32()))
+			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+20:], math.Float32bits(rand.Float32()))
+			binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+24:], rand.Uint64())
+			binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+32:], rand.Uint64()) // bytes sent
+			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet, could not read bytes received"))
+		})
+
+		t.Run("missing shutdown flag", func(t *testing.T) {
+			var packet transport.RelayUpdateRequest
+			addr := "127.0.0.1:40000"
+			buff := make([]byte, 4+4+len(addr)+crypto.KeySize+4+8+4+4+4+8+8+8)
+			binary.LittleEndian.PutUint32(buff, 0)
+			binary.LittleEndian.PutUint32(buff[4:], uint32(len(addr)))
+			copy(buff[8:], addr)
+			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize:], 1)
+			binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+4:], rand.Uint64())
+			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+12:], math.Float32bits(rand.Float32()))
+			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+16:], math.Float32bits(rand.Float32()))
+			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+20:], math.Float32bits(rand.Float32()))
+			binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+24:], rand.Uint64())
+			binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+32:], rand.Uint64())
+			binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+40:], rand.Uint64()) // bytes received
+			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet, could not read shutdown flag"))
+		})
+
+		t.Run("missing cpu usage", func(t *testing.T) {
+			var packet transport.RelayUpdateRequest
+			packet.ShuttingDown = true
+			addr := "127.0.0.1:40000"
+			buff := make([]byte, 4+4+len(addr)+crypto.KeySize+4+8+4+4+4+8+8+8+1)
+			binary.LittleEndian.PutUint32(buff, 0)
+			binary.LittleEndian.PutUint32(buff[4:], uint32(len(addr)))
+			copy(buff[8:], addr)
+			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize:], 1)
+			binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+4:], rand.Uint64())
+			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+12:], math.Float32bits(rand.Float32()))
+			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+16:], math.Float32bits(rand.Float32()))
+			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+20:], math.Float32bits(rand.Float32()))
+			binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+24:], rand.Uint64())
+			binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+32:], rand.Uint64())
+			binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+40:], rand.Uint64())
+			buff[8+len(addr)+crypto.KeySize+48] = 1 // shutdown flag
+			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet, could not read cpu usage"))
+		})
+
+		t.Run("missing memory usage", func(t *testing.T) {
+			var packet transport.RelayUpdateRequest
+			packet.ShuttingDown = true
+			addr := "127.0.0.1:40000"
+			buff := make([]byte, 4+4+len(addr)+crypto.KeySize+4+8+4+4+4+8+8+8+1+8)
+			binary.LittleEndian.PutUint32(buff, 0)
+			binary.LittleEndian.PutUint32(buff[4:], uint32(len(addr)))
+			copy(buff[8:], addr)
+			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize:], 1)
+			binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+4:], rand.Uint64())
+			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+12:], math.Float32bits(rand.Float32()))
+			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+16:], math.Float32bits(rand.Float32()))
+			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+20:], math.Float32bits(rand.Float32()))
+			binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+24:], rand.Uint64())
+			binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+32:], rand.Uint64())
+			binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+40:], rand.Uint64())
+			buff[8+len(addr)+crypto.KeySize+48] = 1
+			binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+49:], math.Float64bits(rand.Float64())) // cpu usage
+			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet, could not read memory usage"))
+		})
+
+		t.Run("missing relay version", func(t *testing.T) {
+			var packet transport.RelayUpdateRequest
+			packet.ShuttingDown = true
+			addr := "127.0.0.1:40000"
+			buff := make([]byte, 4+4+len(addr)+crypto.KeySize+4+8+4+4+4+8+8+8+1+8+8)
+			binary.LittleEndian.PutUint32(buff, 0)
+			binary.LittleEndian.PutUint32(buff[4:], uint32(len(addr)))
+			copy(buff[8:], addr)
+			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize:], 1)
+			binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+4:], rand.Uint64())
+			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+12:], math.Float32bits(rand.Float32()))
+			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+16:], math.Float32bits(rand.Float32()))
+			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+20:], math.Float32bits(rand.Float32()))
+			binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+24:], rand.Uint64())
+			binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+32:], rand.Uint64())
+			binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+40:], rand.Uint64())
+			buff[8+len(addr)+crypto.KeySize+48] = 1
+			binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+49:], math.Float64bits(rand.Float64()))
+			binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+57:], math.Float64bits(rand.Float64())) // memory usage
+			assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet, could not read relay version"))
+		})
+
+		t.Run("valid", func(t *testing.T) {
+			var packet transport.RelayUpdateRequest
+			packet.ShuttingDown = true
+			addr := "127.0.0.1:40000"
+			buff := make([]byte, 4+4+len(addr)+crypto.KeySize+4+8+4+4+4+8+8+8+1+8+8+4+len("1.0.0"))
+			binary.LittleEndian.PutUint32(buff, 0)
+			binary.LittleEndian.PutUint32(buff[4:], uint32(len(addr)))
+			copy(buff[8:], addr)
+			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize:], 1)
+			binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+4:], rand.Uint64())
+			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+12:], math.Float32bits(rand.Float32()))
+			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+16:], math.Float32bits(rand.Float32()))
+			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+20:], math.Float32bits(rand.Float32()))
+			binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+24:], rand.Uint64())
+			binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+32:], rand.Uint64())
+			binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+40:], rand.Uint64())
+			buff[8+len(addr)+crypto.KeySize+48] = 1
+			binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+49:], math.Float64bits(rand.Float64()))
+			binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+57:], math.Float64bits(rand.Float64()))
+			binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+65:], uint32(len("1.0.0"))) // relay version
+			copy(buff[8+len(addr)+crypto.KeySize+69:], "1.0.0")
+			assert.Nil(t, packet.UnmarshalBinary(buff))
 		})
 	})
 
-	t.Run("missing session count", func(t *testing.T) {
-		var packet transport.RelayUpdateRequest
-		addr := "127.0.0.1:40000"
-		buff := make([]byte, 4+4+len(addr)+crypto.KeySize+4+8+4+4+4)
-		binary.LittleEndian.PutUint32(buff, rand.Uint32())
-		binary.LittleEndian.PutUint32(buff[4:], uint32(len(addr)))
-		copy(buff[8:], addr)
-		binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize:], 1)
-		binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+4:], rand.Uint64())
-		binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+12:], math.Float32bits(rand.Float32()))
-		binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+16:], math.Float32bits(rand.Float32()))
-		binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+20:], math.Float32bits(rand.Float32())) // packet loss
-		assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet, could not read session count"))
-	})
-
-	t.Run("missing bytes sent", func(t *testing.T) {
-		var packet transport.RelayUpdateRequest
-		addr := "127.0.0.1:40000"
-		buff := make([]byte, 4+4+len(addr)+crypto.KeySize+4+8+4+4+4+8)
-		binary.LittleEndian.PutUint32(buff, rand.Uint32())
-		binary.LittleEndian.PutUint32(buff[4:], uint32(len(addr)))
-		copy(buff[8:], addr)
-		binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize:], 1)
-		binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+4:], rand.Uint64())
-		binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+12:], math.Float32bits(rand.Float32()))
-		binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+16:], math.Float32bits(rand.Float32()))
-		binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+20:], math.Float32bits(rand.Float32()))
-		binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+24:], rand.Uint64()) // session count
-		assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet, could not read bytes sent"))
-	})
-
-	t.Run("missing bytes received", func(t *testing.T) {
-		var packet transport.RelayUpdateRequest
-		addr := "127.0.0.1:40000"
-		buff := make([]byte, 4+4+len(addr)+crypto.KeySize+4+8+4+4+4+8+8)
-		binary.LittleEndian.PutUint32(buff, rand.Uint32())
-		binary.LittleEndian.PutUint32(buff[4:], uint32(len(addr)))
-		copy(buff[8:], addr)
-		binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize:], 1)
-		binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+4:], rand.Uint64())
-		binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+12:], math.Float32bits(rand.Float32()))
-		binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+16:], math.Float32bits(rand.Float32()))
-		binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+20:], math.Float32bits(rand.Float32()))
-		binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+24:], rand.Uint64())
-		binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+32:], rand.Uint64()) // bytes sent
-		assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet, could not read bytes received"))
-	})
-
-	t.Run("missing shutdown flag", func(t *testing.T) {
-		var packet transport.RelayUpdateRequest
-		addr := "127.0.0.1:40000"
-		buff := make([]byte, 4+4+len(addr)+crypto.KeySize+4+8+4+4+4+8+8+8)
-		binary.LittleEndian.PutUint32(buff, rand.Uint32())
-		binary.LittleEndian.PutUint32(buff[4:], uint32(len(addr)))
-		copy(buff[8:], addr)
-		binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize:], 1)
-		binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+4:], rand.Uint64())
-		binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+12:], math.Float32bits(rand.Float32()))
-		binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+16:], math.Float32bits(rand.Float32()))
-		binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+20:], math.Float32bits(rand.Float32()))
-		binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+24:], rand.Uint64())
-		binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+32:], rand.Uint64())
-		binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+40:], rand.Uint64()) // bytes received
-		assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet, could not read shutdown flag"))
-	})
-
-	t.Run("missing cpu usage", func(t *testing.T) {
-		var packet transport.RelayUpdateRequest
-		packet.ShuttingDown = true
-		addr := "127.0.0.1:40000"
-		buff := make([]byte, 4+4+len(addr)+crypto.KeySize+4+8+4+4+4+8+8+8+1)
-		binary.LittleEndian.PutUint32(buff, rand.Uint32())
-		binary.LittleEndian.PutUint32(buff[4:], uint32(len(addr)))
-		copy(buff[8:], addr)
-		binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize:], 1)
-		binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+4:], rand.Uint64())
-		binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+12:], math.Float32bits(rand.Float32()))
-		binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+16:], math.Float32bits(rand.Float32()))
-		binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+20:], math.Float32bits(rand.Float32()))
-		binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+24:], rand.Uint64())
-		binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+32:], rand.Uint64())
-		binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+40:], rand.Uint64())
-		buff[8+len(addr)+crypto.KeySize+48] = 1 // shutdown flag
-		assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet, could not read cpu usage"))
-	})
-
-	t.Run("missing memory usage", func(t *testing.T) {
-		var packet transport.RelayUpdateRequest
-		packet.ShuttingDown = true
-		addr := "127.0.0.1:40000"
-		buff := make([]byte, 4+4+len(addr)+crypto.KeySize+4+8+4+4+4+8+8+8+1+8)
-		binary.LittleEndian.PutUint32(buff, rand.Uint32())
-		binary.LittleEndian.PutUint32(buff[4:], uint32(len(addr)))
-		copy(buff[8:], addr)
-		binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize:], 1)
-		binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+4:], rand.Uint64())
-		binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+12:], math.Float32bits(rand.Float32()))
-		binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+16:], math.Float32bits(rand.Float32()))
-		binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+20:], math.Float32bits(rand.Float32()))
-		binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+24:], rand.Uint64())
-		binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+32:], rand.Uint64())
-		binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+40:], rand.Uint64())
-		buff[8+len(addr)+crypto.KeySize+48] = 1
-		binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+49:], math.Float64bits(rand.Float64())) // cpu usage
-		assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet, could not read memory usage"))
-	})
-
-	t.Run("missing relay version", func(t *testing.T) {
-		var packet transport.RelayUpdateRequest
-		packet.ShuttingDown = true
-		addr := "127.0.0.1:40000"
-		buff := make([]byte, 4+4+len(addr)+crypto.KeySize+4+8+4+4+4+8+8+8+1+8+8)
-		binary.LittleEndian.PutUint32(buff, rand.Uint32())
-		binary.LittleEndian.PutUint32(buff[4:], uint32(len(addr)))
-		copy(buff[8:], addr)
-		binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize:], 1)
-		binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+4:], rand.Uint64())
-		binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+12:], math.Float32bits(rand.Float32()))
-		binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+16:], math.Float32bits(rand.Float32()))
-		binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+20:], math.Float32bits(rand.Float32()))
-		binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+24:], rand.Uint64())
-		binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+32:], rand.Uint64())
-		binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+40:], rand.Uint64())
-		buff[8+len(addr)+crypto.KeySize+48] = 1
-		binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+49:], math.Float64bits(rand.Float64()))
-		binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+57:], math.Float64bits(rand.Float64())) // memory usage
-		assert.Equal(t, packet.UnmarshalBinary(buff), errors.New("invalid packet, could not read relay version"))
-	})
-
-	t.Run("valid", func(t *testing.T) {
-		var packet transport.RelayUpdateRequest
-		packet.ShuttingDown = true
-		addr := "127.0.0.1:40000"
-		buff := make([]byte, 4+4+len(addr)+crypto.KeySize+4+8+4+4+4+8+8+8+1+8+8+4+len("1.0.0"))
-		binary.LittleEndian.PutUint32(buff, rand.Uint32())
-		binary.LittleEndian.PutUint32(buff[4:], uint32(len(addr)))
-		copy(buff[8:], addr)
-		binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize:], 1)
-		binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+4:], rand.Uint64())
-		binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+12:], math.Float32bits(rand.Float32()))
-		binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+16:], math.Float32bits(rand.Float32()))
-		binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+20:], math.Float32bits(rand.Float32()))
-		binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+24:], rand.Uint64())
-		binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+32:], rand.Uint64())
-		binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+40:], rand.Uint64())
-		buff[8+len(addr)+crypto.KeySize+48] = 1
-		binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+49:], math.Float64bits(rand.Float64()))
-		binary.LittleEndian.PutUint64(buff[8+len(addr)+crypto.KeySize+57:], math.Float64bits(rand.Float64()))
-		binary.LittleEndian.PutUint32(buff[8+len(addr)+crypto.KeySize+65:], uint32(len("1.0.0"))) // relay version
-		copy(buff[8+len(addr)+crypto.KeySize+69:], "1.0.0")
-		assert.Nil(t, packet.UnmarshalBinary(buff))
+	t.Run("version 1", func(t *testing.T) {
+		t.Parallel()
 	})
 }
 
@@ -728,37 +736,118 @@ func TestRelayUpdateRequestMarshalJSON(t *testing.T) {
 }
 
 func TestRelayUpdateRequestMarshalBinary(t *testing.T) {
-	stats := make([]routing.RelayStatsPing, 5)
+	t.Parallel()
 
-	for i := 0; i < 5; i++ {
-		stat := &stats[i]
-		stat.RelayID = rand.Uint64()
-		stat.RTT = rand.Float32()
-		stat.Jitter = rand.Float32()
-		stat.PacketLoss = rand.Float32()
-	}
+	t.Run("version 0", func(t *testing.T) {
+		stats := make([]routing.RelayStatsPing, 5)
 
-	token := make([]byte, crypto.KeySize)
-	rand.Read(token)
+		for i := 0; i < 5; i++ {
+			stat := &stats[i]
+			stat.RelayID = rand.Uint64()
+			stat.RTT = rand.Float32()
+			stat.Jitter = rand.Float32()
+			stat.PacketLoss = rand.Float32()
+		}
 
-	udp, _ := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
-	expected := transport.RelayUpdateRequest{
-		Version:      rand.Uint32(),
-		Address:      *udp,
-		Token:        token,
-		PingStats:    stats,
-		CPUUsage:     10.0,
-		MemUsage:     20.0,
-		RelayVersion: "1.0.0",
-	}
+		token := make([]byte, crypto.KeySize)
+		rand.Read(token)
 
-	data, err := expected.MarshalBinary()
-	assert.NoError(t, err)
+		udp, _ := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+		expected := transport.RelayUpdateRequest{
+			Version:      0,
+			Address:      *udp,
+			Token:        token,
+			PingStats:    stats,
+			CPUUsage:     10.0,
+			MemUsage:     20.0,
+			RelayVersion: "1.0.0",
+			TrafficStats: routing.RelayTrafficStats{
+				SessionCount:  1,
+				BytesSent:     10,
+				BytesReceived: 20,
+			},
+		}
 
-	var actual transport.RelayUpdateRequest
-	err = actual.UnmarshalBinary(data)
-	assert.NoError(t, err)
-	assert.Equal(t, expected, actual)
+		data, err := expected.MarshalBinary()
+		assert.NoError(t, err)
+
+		var actual transport.RelayUpdateRequest
+		err = actual.UnmarshalBinary(data)
+		assert.NoError(t, err)
+		assert.Equal(t, expected, actual)
+	})
+
+	t.Run("version 1", func(t *testing.T) {
+		stats := make([]routing.RelayStatsPing, 5)
+
+		for i := 0; i < 5; i++ {
+			stat := &stats[i]
+			stat.RelayID = rand.Uint64()
+			stat.RTT = rand.Float32()
+			stat.Jitter = rand.Float32()
+			stat.PacketLoss = rand.Float32()
+		}
+
+		token := make([]byte, crypto.KeySize)
+		rand.Read(token)
+
+		udp, _ := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+		expected := transport.RelayUpdateRequest{
+			Version:      1,
+			Address:      *udp,
+			Token:        token,
+			PingStats:    stats,
+			CPUUsage:     10.0,
+			MemUsage:     20.0,
+			RelayVersion: "1.0.0",
+			TrafficStats: routing.RelayTrafficStats{
+				SessionCount:       1,
+				OutboundPingTx:     2,
+				RouteRequestRx:     3,
+				RouteRequestTx:     4,
+				RouteResponseRx:    5,
+				RouteResponseTx:    6,
+				ClientToServerRx:   7,
+				ClientToServerTx:   8,
+				ServerToClientRx:   9,
+				ServerToClientTx:   10,
+				InboundPingRx:      11,
+				InboundPingTx:      12,
+				PongRx:             13,
+				SessionPingRx:      14,
+				SessionPingTx:      15,
+				SessionPongRx:      16,
+				SessionPongTx:      17,
+				ContinueRequestRx:  18,
+				ContinueRequestTx:  19,
+				ContinueResponseRx: 20,
+				ContinueResponseTx: 21,
+				NearPingRx:         22,
+				NearPingTx:         23,
+				UnknownRx:          24,
+				BytesSent:          137,
+				BytesReceived:      162,
+			},
+		}
+
+		data, err := expected.MarshalBinary()
+		assert.NoError(t, err)
+
+		var actual transport.RelayUpdateRequest
+		err = actual.UnmarshalBinary(data)
+		assert.NoError(t, err)
+		assert.Equal(t, expected, actual)
+	})
+
+	t.Run("bad version", func(t *testing.T) {
+		expected := transport.RelayUpdateRequest{
+			Version: transport.VersionNumberUpdateRequest + 1,
+		}
+
+		data, err := expected.MarshalBinary()
+		assert.Nil(t, data)
+		assert.Errorf(t, err, fmt.Sprintf("invalid update request version: %d", transport.VersionNumberUpdateRequest+1))
+	})
 }
 
 func TestRelayUpdateResponseUnmarshalBinary(t *testing.T) {

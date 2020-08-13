@@ -527,6 +527,8 @@ func (r RelayUpdateRequest) marshalBinaryV1() ([]byte, error) {
 	encoding.WriteUint64(data, &index, r.TrafficStats.RouteResponseTx)
 	encoding.WriteUint64(data, &index, r.TrafficStats.ClientToServerRx)
 	encoding.WriteUint64(data, &index, r.TrafficStats.ClientToServerTx)
+	encoding.WriteUint64(data, &index, r.TrafficStats.ServerToClientRx)
+	encoding.WriteUint64(data, &index, r.TrafficStats.ServerToClientTx)
 	encoding.WriteUint64(data, &index, r.TrafficStats.InboundPingRx)
 	encoding.WriteUint64(data, &index, r.TrafficStats.InboundPingTx)
 	encoding.WriteUint64(data, &index, r.TrafficStats.PongRx)
