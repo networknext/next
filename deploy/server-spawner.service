@@ -3,5 +3,6 @@ Description=Network Next Server Load Test
 
 [Service]
 ExecStart=/app/server-spawner.sh -n 96
+ExecStartPost=/bin/bash -c "prlimit --nofile=200000:200000 --pid $(pidof app)"
 Restart=always
 RestartSec=3
