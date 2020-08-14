@@ -57,13 +57,15 @@ int main()
     }
 
     const char* server_ip = std::getenv("SERVER_IP");
-    if (!server_ip) {
+    if (!server_ip)
+    {
         printf( "error: server ip env var not defined\n" );
         return 1;
     }
 
     char * cores_str = std::getenv("CORES");
-    if (!cores_str) {
+    if (!cores_str)
+    {
         printf( "error: cores env var not defined\n" );
         return 1;
     }
@@ -72,7 +74,8 @@ int main()
 
     std::stringstream server_addrs_ss[cores];
 
-    for (int i = 0; i < cores; i++) {
+    for (int i = 0; i < cores; i++)
+    {
         server_addrs_ss[i] << server_ip << ":" << std::to_string(50000 + i);
     }
 
