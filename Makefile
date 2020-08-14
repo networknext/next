@@ -337,15 +337,15 @@ dev-portal: build-portal ## runs a local portal web server
 
 .PHONY: dev-relay-backend
 dev-relay-backend: build-relay-backend ## runs a local relay backend
-	@PORT=30000 ./dist/relay-backend
+	@PORT=30000 ./dist/relay_backend
 
 .PHONY: dev-server-backend
 dev-server-backend: build-server-backend ## runs a local server backend
-	@HTTP_PORT=40000 UDP_PORT=40000 ./dist/server-backend
+	@HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend
 
 .PHONY: dev-server-backend-valve
 dev-server-backend-valve: build-server-backend ## runs a local valve server backend
-	@HTTP_PORT=40001 UDP_PORT=40001 ROUTE_MATRIX_URI=http://127.0.0.1:30000/route_matrix_valve ./dist/server-backend
+	@HTTP_PORT=40001 UDP_PORT=40001 ROUTE_MATRIX_URI=http://127.0.0.1:30000/route_matrix_valve ./dist/server_backend
 
 .PHONY: dev-billing
 dev-billing: build-billing ## runs a local billing service
@@ -357,11 +357,11 @@ dev-analytics: build-analytics ## runs a local analytics service
 
 .PHONY: dev-portal-cruncher
 dev-portal-cruncher: build-portal-cruncher ## runs a local portal cruncher
-	@HTTP_PORT=42000 CRUNCHER_PORT=5555 ./dist/portal-cruncher
+	@HTTP_PORT=42000 CRUNCHER_PORT=5555 ./dist/portal_cruncher
 
 .PHONY: dev-load-test
 dev-load-test: build-load-test ## runs a local load test
-	./dist/load-test
+	./dist/load_test
 
 .PHONY: dev-reference-backend
 dev-reference-backend: ## runs a local reference backend
@@ -394,13 +394,13 @@ build-sdk: $(DIST_DIR)/$(SDKNAME).so ## builds the sdk
 PHONY: build-load-test
 build-load-test: ## builds the load test binary
 	@printf "Building load test... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/load-test ./cmd/load-test/load_tests.go
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/load-test ./cmd/load_test/load_tests.go
 	@printf "done\n"
 
 PHONY: build-portal-cruncher
 build-portal-cruncher: ## builds the portal_cruncher binary
 	@printf "Building portal_cruncher... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/portal-cruncher ./cmd/portal-cruncher/portal_cruncher.go
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/portal_cruncher ./cmd/portal_cruncher/portal_cruncher.go
 	@printf "done\n"
 
 .PHONY: build-portal
@@ -421,7 +421,7 @@ deploy-portal: ## builds and deploys the portal to dev
 .PHONY: build-relay-backend
 build-relay-backend: ## builds the relay backend binary
 	@printf "Building relay backend... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/relay-backend ./cmd/relay-backend/relay_backend.go
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/relay_backend ./cmd/relay_backend/relay_backend.go
 	@printf "done\n"
 
 .PHONY: deploy-relay-backend-dev
@@ -451,7 +451,7 @@ deploy-portal-cruncher-prod: ## builds and deploys the portal cruncher to prod
 .PHONY: build-server-backend
 build-server-backend: ## builds the server backend binary
 	@printf "Building server backend... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/server-backend ./cmd/server-backend/server_backend.go
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/server_backend ./cmd/server_backend/server_backend.go
 	@printf "done\n"
 
 .PHONY: build-billing
