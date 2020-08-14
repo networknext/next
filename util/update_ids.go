@@ -50,7 +50,8 @@ func main() {
 	// export GOOGLE_APPLICATION_CREDENTIALS=../../../dev-credentials.json
 
 	ctx := context.Background()
-	gcpProjectID := "network-next-v3-dev"
+	// gcpProjectID := "network-next-v3-dev"
+	gcpProjectID := "network-next-v3-prod"
 
 	client, err := firestore.NewClient(ctx, gcpProjectID)
 	if err != nil {
@@ -78,13 +79,16 @@ func main() {
 		}
 
 		rid := crypto.HashID(r.Address)
+		// ridHex := fmt.Sprintf("016x", rid)
 		ridSigned := int64(rid)
 
-		fmt.Printf("%s : %016x : %d\n", r.Name, rid, ridSigned)
+		fmt.Printf("Relay %s : %016x : %d\n", r.Name, rid, ridSigned)
 
 		_, err = rdoc.Ref.Update(ctx, []firestore.Update{{Path: "signedID", Value: ridSigned}})
+		_, err = rdoc.Ref.Update(ctx, []firestore.Update{{Path: "hexID", Value: fmt.Sprintf("%016x", rid)}})
 
-		break
+		// only change one record
+		// break
 
 	}
 
@@ -110,11 +114,13 @@ func main() {
 		did := crypto.HashID(d.Name)
 		didSigned := int64(did)
 
-		fmt.Printf("%s : %016x : %d\n", d.Name, did, didSigned)
+		fmt.Printf("Datacenter %s : %016x : %d\n", d.Name, did, didSigned)
 
 		_, err = ddoc.Ref.Update(ctx, []firestore.Update{{Path: "signedID", Value: didSigned}})
+		_, err = ddoc.Ref.Update(ctx, []firestore.Update{{Path: "hexID", Value: fmt.Sprintf("%016x", did)}})
 
-		break
+		// only change one record
+		// break
 
 	}
 
