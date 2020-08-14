@@ -35,6 +35,7 @@
 #include <netinet/in.h>
 #include <sys/ioctl.h>
 #include <sys/syscall.h>
+#include <chrono>
 
 static volatile int quit = 0;
 
@@ -48,66 +49,13 @@ void client_packet_received( next_client_t * client, void * context, const uint8
     (void) client; (void) context; (void) packet_data; (void) packet_bytes;
 }
 
-uint64_t raspberry_user_id()
-{
-#if defined(__linux__)
-
-    struct ifreq ifr;
-    struct ifconf ifc;
-    char buf[1024];
-    int success = 0;
-
-    int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
-    if (sock == -1) { /* handle error*/ };
-
-    ifc.ifc_len = sizeof(buf);
-    ifc.ifc_buf = buf;
-    if (ioctl(sock, SIOCGIFCONF, &ifc) == -1) { /* handle error */ }
-
-    struct ifreq* it = ifc.ifc_req;
-    const struct ifreq* const end = it + (ifc.ifc_len / sizeof(struct ifreq));
-
-    for (; it != end; ++it) {
-        strcpy(ifr.ifr_name, it->ifr_name);
-        if (ioctl(sock, SIOCGIFFLAGS, &ifr) == 0) {
-            if (! (ifr.ifr_flags & IFF_LOOPBACK)) { // don't count loopback
-                if (ioctl(sock, SIOCGIFHWADDR, &ifr) == 0) {
-                    success = 1;
-                    break;
-                }
-            }
-        }
-        else { /* handle error */ }
-    }
-
-    uint64_t user_id = 0;
-    char * mac_address = (char*) &user_id;
-    if ( success )
-    {
-        memcpy( mac_address, ifr.ifr_hwaddr.sa_data, 6 );
-        return user_id;
-    }
-
-#endif // #ifdef __linux__
-
-    return 0ULL;
-}
-
 int main()
 {
     printf( "\nWelcome to Network Next!\n\n" );
 
-    uint64_t user_id = raspberry_user_id();
+    auto now = std::chrono::high_resolution_clock::now();
 
-    if ( user_id != 0 )
-    {
-        printf( "user id is: %" PRIu64 "\n", user_id );
-        srand( user_id );
-    }
-    else
-    {
-        srand( time(NULL) );
-    }
+    srand(std::chrono::duration<uint64_t, std::nano>(std::chrono::high_resolution_clock::now().time_since_epoch()).count());
 
     signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );
 
@@ -146,8 +94,8 @@ int main()
 
     next_client_open_session( client, server_addrs_ss[rand() % cores].str().c_str() );
 
-    uint8_t packet_data[8];
-    memcpy( packet_data, &user_id, 8 );
+    uint8_t packet_data[32];
+    memset( packet_data, 0, sizeof( packet_data ) );
 
     double connect_time = next_time();
     double game_length = (rand() % 300) + 300;
