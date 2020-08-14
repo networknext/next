@@ -150,7 +150,6 @@ int main()
     memcpy( packet_data, &user_id, 8 );
 
     double connect_time = next_time();
-    double game_length = 300;
 
     while ( !quit )
     {
@@ -158,7 +157,7 @@ int main()
 
         next_client_update( client );
 
-        if ( next_time() - connect_time > game_length )
+        if ( next_time() - connect_time > (rand() % 100) + 50 )
         {
             next_client_open_session( client, server_addrs_ss[rand() % cores].str().c_str() );
             connect_time = next_time();
