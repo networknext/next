@@ -2,6 +2,6 @@
 Description=Network Next Server Load Test
 
 [Service]
-ExecStart=/app/server-spawner.sh -n 30
+ExecStart=/app/server-spawner.sh -n 50
 Restart=always
 RestartSec=3
