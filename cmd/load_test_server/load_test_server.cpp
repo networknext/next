@@ -75,7 +75,7 @@ int main()
 
     port_ss >> server_num;
 
-    server_num = server_num - 50000;
+    server_num = server_num - 49999;
 
     datacenter_ss << "datacenter-" << server_num;
     server_addr_ss << server_ip << ':' << server_port;
