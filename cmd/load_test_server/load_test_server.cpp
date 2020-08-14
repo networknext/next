@@ -69,17 +69,26 @@ int main()
         return 1;
     }
 
-    std::stringstream server_addr_ss, bind_addr_ss;
+    std::stringstream server_addr_ss, bind_addr_ss, datacenter_ss, port_ss(server_port);
 
+    int server_num = 0;
+
+    port_ss >> server_num;
+
+    server_num = server_num - 50000;
+
+    datacenter_ss << "datacenter-" << server_num;
     server_addr_ss << server_ip << ':' << server_port;
     bind_addr_ss << "0.0.0.0:" << server_port;
+    std::string datacenter = datacenter_ss.str();
     std::string server_addr = server_addr_ss.str();
     std::string bind_addr = bind_addr_ss.str();
 
+    const char* datacenter_c = datacenter.c_str();
     const char* server_address = server_addr.c_str();
     const char* bind_address = bind_addr.c_str();
 
-    next_server_t * server = next_server_create( NULL, server_address, bind_address, "local", server_packet_received, NULL );
+    next_server_t * server = next_server_create( NULL, server_address, bind_address, datacenter_c, server_packet_received, NULL );
 
     if ( server == NULL )
     {
