@@ -163,7 +163,7 @@ int main()
             connect_time = next_time();
         }
 
-        next_sleep( 6.0f / 60.0f );
+        next_sleep( 1.0f / 10.0f );
     }
 
     next_client_destroy( client );
