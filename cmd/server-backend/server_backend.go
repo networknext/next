@@ -497,6 +497,7 @@ func main() {
 					// Prefer to get it remotely if possible
 					if r, err := httpClient.Get(uri); err == nil {
 						matrixReader = r.Body
+						// todo: need to close the response body!
 					}
 
 					start := time.Now()
