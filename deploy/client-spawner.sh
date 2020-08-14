@@ -35,9 +35,9 @@ done
 trap "kill 0" EXIT
 
 for ((r=0 ; r<${num_clients} ; r++)); do
-export SERVER_IP=10.128.0.31
+export SERVER_IP=127.0.0.1
 export CORES=4
-/app/app &
+/home/baumbachandrew/Projects/Work/backend/dist/load_test_client &
 pid="$!"
 printf "PID ${pid}: Client opened\n"
 done
