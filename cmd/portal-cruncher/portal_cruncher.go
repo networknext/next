@@ -7,9 +7,9 @@ package main
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 	"io/ioutil"
-	"math/rand"
 	"runtime"
 	"strings"
 
@@ -413,8 +413,18 @@ func main() {
 
 						// Check if we should randomize the location (for staging load test)
 						if point.Latitude == 0 && point.Longitude == 0 && strings.Contains(meta.ClientAddr, "10.128.") {
-							point.Latitude = -90.0 + rand.Float64()*180.0
-							point.Longitude = -180.0 + rand.Float64()*360.0
+							// Randomize the location by using 4 bits of the session ID for the lat, and the other 4 for the long
+							sessionIDBytes := make([]byte, 8)
+							binary.LittleEndian.PutUint64(sessionIDBytes, meta.ID)
+
+							latBits := binary.LittleEndian.Uint32(sessionIDBytes[0:4])
+							longBits := binary.LittleEndian.Uint32(sessionIDBytes[4:8])
+
+							lat := (float64(latBits)) / 0xFFFFFFFF
+							long := (float64(longBits)) / 0xFFFFFFFF
+
+							point.Latitude = -90.0 + lat*180.0
+							point.Longitude = -180.0 + long*360.0
 						}
 
 						// Remove the old per-buyer top sessions minute bucket from 2 minutes ago if it didnt expire
