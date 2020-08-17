@@ -1372,8 +1372,8 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 								EgressPriceUSD  string
 							}{
 								Name:            "amazon",
-								IngressPriceUSD: "13",
-								EgressPriceUSD:  "15",
+								IngressPriceUSD: "0.01",
+								EgressPriceUSD:  "0.1",
 							}
 
 							jsonBytes, err := json.MarshalIndent(example, "", "\t")
