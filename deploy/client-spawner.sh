@@ -35,7 +35,6 @@ done
 trap "kill 0" EXIT
 
 for ((r=0 ; r<${num_clients} ; r++)); do
-export SERVER_IP=10.128.0.31
 export NEXT_LOG_LEVEL=0
 export CORES=50
 /app/app &
