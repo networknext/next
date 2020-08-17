@@ -823,7 +823,7 @@ type ListDatacenterMapsReply struct {
 	DatacenterMaps []DatacenterMapsFull
 }
 
-// An empty DatacenterID returns a list of all maps.
+// A zero DatacenterID returns a list of all maps.
 func (s *OpsService) ListDatacenterMaps(r *http.Request, args *ListDatacenterMapsArgs, reply *ListDatacenterMapsReply) error {
 
 	var dcm map[uint64]routing.DatacenterMap
@@ -833,13 +833,13 @@ func (s *OpsService) ListDatacenterMaps(r *http.Request, args *ListDatacenterMap
 	for _, dcMap := range dcm {
 		buyer, err := s.Storage.Buyer(dcMap.BuyerID)
 		if err != nil {
-			err = fmt.Errorf("DatacenterMapsForBuyer() could not parse buyer")
+			err = fmt.Errorf("ListDatacenterMaps() could not parse buyer: %w", err)
 			s.Logger.Log("err", err)
 			return err
 		}
 		datacenter, err := s.Storage.Datacenter(dcMap.Datacenter)
 		if err != nil {
-			err = fmt.Errorf("DatacenterMapsForBuyer() could not parse datacenter")
+			err = fmt.Errorf("ListDatacenterMaps() could not parse datacenter: %w", err)
 			s.Logger.Log("err", err)
 			return err
 		}

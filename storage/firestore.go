@@ -1197,7 +1197,7 @@ func (fs *Firestore) ListDatacenterMaps(dcID uint64) map[uint64]routing.Datacent
 
 	var dcs = make(map[uint64]routing.DatacenterMap)
 	for _, dc := range fs.datacenterMaps {
-		if dc.Datacenter == dcID {
+		if dc.Datacenter == dcID || dcID == 0 {
 			id := crypto.HashID(dc.Alias + fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.Datacenter))
 			dcs[id] = dc
 		}
