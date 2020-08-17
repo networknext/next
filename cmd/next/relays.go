@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/csv"
 	"fmt"
-	"log"
 	"os"
 	"sort"
 	"strconv"
@@ -67,8 +66,7 @@ func opsRelays(
 	for _, relay := range reply.Relays {
 		relayState, err := routing.ParseRelayState(relay.State)
 		if err != nil {
-			fmt.Printf("could not parse invalid relay state %s", relay.State)
-			os.Exit(0)
+			handleRunTimeError(fmt.Sprintf("could not parse invalid relay state %s\n", relay.State), 1)
 		}
 
 		includeRelay := true
@@ -212,14 +210,13 @@ func opsRelays(
 		fileName := "./relays.csv"
 		f, err := os.Create(fileName)
 		if err != nil {
-			fmt.Printf("Error creating local CSV file %s: %v\n", fileName, err)
-			return
+			handleRunTimeError(fmt.Sprintf("Error creating local CSV file %s: %v\n", fileName, err), 1)
 		}
 
 		writer := csv.NewWriter(f)
 		err = writer.WriteAll(relaysCSV)
 		if err != nil {
-			fmt.Printf("Error writing local CSV file %s: %v\n", fileName, err)
+			handleRunTimeError(fmt.Sprintf("Error writing local CSV file %s: %v\n", fileName, err), 1)
 		}
 		fmt.Println("CSV file written: relays.csv")
 		return
@@ -285,7 +282,7 @@ func relays(
 	for _, relay := range reply.Relays {
 		relayState, err := routing.ParseRelayState(relay.State)
 		if err != nil {
-			log.Fatalf("could not parse invalid relay state %s", relay.State)
+			handleRunTimeError(fmt.Sprintf("could not parse invalid relay state %s\n", relay.State), 0)
 		}
 
 		includeRelay := true
@@ -417,14 +414,13 @@ func relays(
 		fileName := "./relays.csv"
 		f, err := os.Create(fileName)
 		if err != nil {
-			fmt.Printf("Error creating local CSV file %s: %v\n", fileName, err)
-			return
+			handleRunTimeError(fmt.Sprintf("Error creating local CSV file %s: %v\n", fileName, err), 1)
 		}
 
 		writer := csv.NewWriter(f)
 		err = writer.WriteAll(relaysCSV)
 		if err != nil {
-			fmt.Printf("Error writing local CSV file %s: %v\n", fileName, err)
+			handleRunTimeError(fmt.Sprintf("Error writing local CSV file %s: %v\n", fileName, err), 1)
 		}
 		fmt.Println("CSV file written: relays.csv")
 		return
@@ -466,8 +462,7 @@ func removeRelay(rpcClient jsonrpc.RPCClient, env Environment, name string) {
 	relays := getRelayInfo(rpcClient, env, name)
 
 	if len(relays) == 0 {
-		fmt.Printf("no relays matched the name '%s'\n", name)
-		os.Exit(0)
+		handleRunTimeError(fmt.Sprintf("no relays matched the name '%s'\n", name), 0)
 	}
 
 	info := relays[0]
