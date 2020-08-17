@@ -10,24 +10,60 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-kit/kit/log"
-	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 )
 
+type RelayData struct {
+	SessionCount   uint64
+	Tx             uint64
+	Rx             uint64
+	Version        string
+	LastUpdateTime time.Time
+	CPU            float32
+	Mem            float32
+}
+
+type RelayStatsMap struct {
+	Internal *map[uint64]RelayData
+	mu       sync.RWMutex
+}
+
+func NewRelayStatsMap() RelayStatsMap {
+	m := make(map[uint64]RelayData)
+	return RelayStatsMap{
+		Internal: &m,
+	}
+}
+
+func (r *RelayStatsMap) Get(id uint64) (RelayData, bool) {
+	r.mu.RLock()
+	relay, ok := (*r.Internal)[id]
+	r.mu.RUnlock()
+	return relay, ok
+}
+
+func (r *RelayStatsMap) Swap(m *map[uint64]RelayData) {
+	r.mu.Lock()
+	r.Internal = m
+	r.mu.Unlock()
+}
+
 type OpsService struct {
 	Release   string
 	BuildTime string
 
-	RedisClient redis.Cmdable
-	Storage     storage.Storer
+	Storage storage.Storer
 	// RouteMatrix *routing.RouteMatrix
 
 	Logger log.Logger
+
+	RelayMap *RelayStatsMap
 }
 
 type CurrentReleaseArgs struct{}
@@ -413,18 +449,11 @@ type relay struct {
 	StartDate           time.Time             `json:"start_date"`
 	EndDate             time.Time             `json:"end_date"`
 	Type                routing.MachineType   `json:"machine_type"`
+	CPUUsage            float32               `json:"cpu_usage"`
+	MemUsage            float32               `json:"mem_usage"`
 }
 
 func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysReply) error {
-	hgetallResult := s.RedisClient.HGetAll(routing.HashKeyAllRelays)
-	if hgetallResult.Err() != nil && hgetallResult.Err() != redis.Nil {
-		err := fmt.Errorf("failed to get all relays: %v", hgetallResult.Err())
-		s.Logger.Log("err", err)
-		return err
-	}
-
-	relayCacheEntries := hgetallResult.Val()
-
 	for _, r := range s.Storage.Relays() {
 		relay := relay{
 			ID:                  r.ID,
@@ -453,20 +482,16 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			Type:                r.Type,
 		}
 
-		relayCacheEntry := routing.RelayCacheEntry{
-			ID: r.ID,
-		}
+		// If the relay is in memory, get its traffic stats and last update time
 
-		// If the relay is in redis, get its traffic stats and last update time
-		if relayCacheEntryString, ok := relayCacheEntries[relayCacheEntry.Key()]; ok {
-			if err := relayCacheEntry.UnmarshalBinary([]byte(relayCacheEntryString)); err == nil {
-				relay.SessionCount = relayCacheEntry.TrafficStats.SessionCount
-				relay.BytesSent = relayCacheEntry.TrafficStats.BytesSent
-				relay.BytesReceived = relayCacheEntry.TrafficStats.BytesReceived
-
-				relay.LastUpdateTime = relayCacheEntry.LastUpdateTime
-				relay.Version = relayCacheEntry.Version
-			}
+		if relayData, ok := s.RelayMap.Get(r.ID); ok {
+			relay.SessionCount = relayData.SessionCount
+			relay.BytesSent = relayData.Tx
+			relay.BytesReceived = relayData.Rx
+			relay.Version = relayData.Version
+			relay.LastUpdateTime = relayData.LastUpdateTime
+			relay.CPUUsage = relayData.CPU
+			relay.MemUsage = relayData.Mem
 		}
 
 		reply.Relays = append(reply.Relays, relay)
@@ -550,12 +575,43 @@ func (s *OpsService) RemoveRelay(r *http.Request, args *RemoveRelayArgs, reply *
 		return err
 	}
 
-	// Rather than actually removing the relay from firestore, just set it to the decomissioned state
+	// Rather than actually removing the relay from firestore, just
+	// rename it and set it to the decomissioned state
 	relay.State = routing.RelayStateDecommissioned
+
+	shortDate := time.Now().Format("2006-01-02")
+	shortTime := time.Now().Format("15:04:05")
+	relay.Name = fmt.Sprintf("%s-%s-%s", relay.Name, shortDate, shortTime)
 
 	if err = s.Storage.SetRelay(context.Background(), relay); err != nil {
 		err = fmt.Errorf("RemoveRelay() Storage.SetRelay error: %w", err)
 		s.Logger.Log("err", err)
+		return err
+	}
+
+	return nil
+}
+
+type RelayNameUpdateArgs struct {
+	RelayID   uint64 `json:"relay_id"`
+	RelayName string `json:"relay_name"`
+}
+
+type RelayNameUpdateReply struct {
+}
+
+func (s *OpsService) RelayNameUpdate(r *http.Request, args *RelayNameUpdateArgs, reply *RelayNameUpdateReply) error {
+
+	relay, err := s.Storage.Relay(args.RelayID)
+	if err != nil {
+		err = fmt.Errorf("RelayNameUpdate() Storage.Relay error: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	relay.Name = args.RelayName
+	if err = s.Storage.SetRelay(context.Background(), relay); err != nil {
+		err = fmt.Errorf("Storage.SetRelay error: %w", err)
 		return err
 	}
 
@@ -801,40 +857,6 @@ func (s *OpsService) ListDatacenterMaps(r *http.Request, args *ListDatacenterMap
 
 	reply.DatacenterMaps = replySlice
 
-	return nil
-}
-
-type ServerArgs struct {
-	BuyerID string `json:"buyer_id"`
-}
-
-type ServerReply struct {
-	ServerAddresses []string `json:"server_addrs"`
-}
-
-func (s *OpsService) Servers(r *http.Request, args *ServerArgs, reply *ServerReply) error {
-	var err error
-	var serverAddresses []string
-
-	// get the top session IDs globally or for a buyer from the sorted set
-	switch args.BuyerID {
-	case "":
-		err = s.RedisClient.SMembers("servers").ScanSlice(&serverAddresses)
-		if err != nil {
-			err = fmt.Errorf("Servers() failed getting servers: %v", err)
-			s.Logger.Log("err", err)
-			return err
-		}
-	default:
-		err = s.RedisClient.SMembers(fmt.Sprintf("buyer-%s-servers", args.BuyerID)).ScanSlice(&serverAddresses)
-		if err != nil {
-			err = fmt.Errorf("Servers() failed getting servers: %v", err)
-			s.Logger.Log("err", err)
-			return err
-		}
-	}
-
-	reply.ServerAddresses = serverAddresses
 	return nil
 }
 

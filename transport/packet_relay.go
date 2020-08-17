@@ -316,6 +316,9 @@ type RelayUpdateRequest struct {
 	PingStats    []routing.RelayStatsPing
 	TrafficStats routing.RelayTrafficStats
 
+	CPUUsage float64
+	MemUsage float64
+
 	ShuttingDown bool
 }
 
@@ -361,6 +364,9 @@ func (r *RelayUpdateRequest) UnmarshalJSON(buff []byte) error {
 	}
 
 	r.ShuttingDown = doc.Get("shutting_down").Bool()
+
+	r.CPUUsage = doc.Get("sys_stats.cpu_usage").Float()
+	r.MemUsage = doc.Get("sys_stats.mem_usage").Float()
 
 	return nil
 }

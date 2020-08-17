@@ -15,9 +15,9 @@ ARTIFACT_BUCKET=
 TYPE=
 
 deploy-backend() {
-  COMMAND="cd /app && sudo gsutil cp ${ARTIFACT_BUCKET}/bootstrap.sh . && sudo chmod +x ./bootstrap.sh && sudo ./bootstrap.sh -b ${ARTIFACT_BUCKET} -a ${TYPE}_backend.${ENV}.tar.gz"
-  printf "Deploying ${CUSTOMER} ${TYPE} backend... \n"
-  gcloud compute --project "network-next-v3-${ENV}" ssh ${TYPE}-backend-${CUSTOMER} -- ${COMMAND}
+  COMMAND="cd /app && sudo gsutil cp ${ARTIFACT_BUCKET}/bootstrap.sh . && sudo chmod +x ./bootstrap.sh && sudo ./bootstrap.sh -b ${ARTIFACT_BUCKET} -a ${TYPE}.${ENV}.tar.gz"
+  printf "Deploying ${CUSTOMER} ${TYPE}... \n"
+  gcloud compute --project "network-next-v3-${ENV}" ssh ${TYPE}-${CUSTOMER} -- ${COMMAND}
 	printf "done\n"
 }
 
@@ -42,7 +42,7 @@ while getopts 'e:c:t:b:h' flag; do
   case "${flag}" in
     b) ARTIFACT_BUCKET="${OPTARG}" ;;
     t) TYPE="${OPTARG}" ;;
-    c) CUSTOMER="${OPTARG,,}" ;;
+    c) CUSTOMER="${OPTARG}" ;;
     e) ENV="${OPTARG}" ;;
     h) print_usage
        exit 1 ;;

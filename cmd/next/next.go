@@ -510,15 +510,15 @@ func main() {
 
 	var selectCommand = &ffcli.Command{
 		Name:       "select",
-		ShortUsage: "next select <local|dev|prod>",
-		ShortHelp:  "Select environment to use (local|dev|prod)",
+		ShortUsage: "next select <local|dev|staging|prod>",
+		ShortHelp:  "Select environment to use (local|dev|staging|prod)",
 		Exec: func(_ context.Context, args []string) error {
 			if len(args) == 0 {
-				log.Fatal("Provide an environment to switch to (local|dev|prod)")
+				log.Fatal("Provide an environment to switch to (local|dev|staging|prod)")
 			}
 
-			if args[0] != "local" && args[0] != "dev" && args[0] != "prod" {
-				log.Fatalf("Invalid environment %s: use (local|dev|prod)", args[0])
+			if args[0] != "local" && args[0] != "dev" && args[0] != "staging" && args[0] != "prod" {
+				log.Fatalf("Invalid environment %s: use (local|dev|staging|prod)", args[0])
 			}
 
 			env.Name = args[0]
@@ -535,8 +535,8 @@ func main() {
 		ShortHelp:  "Display environment",
 		Exec: func(_ context.Context, args []string) error {
 			if len(args) > 0 {
-				if args[0] != "local" && args[0] != "dev" && args[0] != "prod" {
-					log.Fatalf("Invalid environment %s: use (local|dev|prod)", args[0])
+				if args[0] != "local" && args[0] != "dev" && args[0] != "staging" && args[0] != "prod" {
+					log.Fatalf("Invalid environment %s: use (local|dev|staging|prod)", args[0])
 				}
 
 				env.Name = args[0]
@@ -846,6 +846,24 @@ func main() {
 					}
 
 					setRelayState(rpcClient, env, args[0], args[1:])
+					return nil
+				},
+			},
+			{
+				Name:       "rename",
+				ShortUsage: "next relay rename <old name> <new name>",
+				ShortHelp:  "Rename the specified relay",
+				Exec: func(ctx context.Context, args []string) error {
+					if len(args) == 0 {
+						log.Fatal("You need to supply a current relay name and a new name for it.")
+					}
+
+					if len(args) == 1 {
+						log.Fatal("You need to supply a new name for the relay as well")
+					}
+
+					updateRelayName(rpcClient, env, args[0], args[1])
+
 					return nil
 				},
 			},
@@ -1550,9 +1568,31 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 					jsonData := readJSONData("sellers", args)
 
 					// Unmarshal the JSON and create the Seller struct
-					var s seller
-					if err := json.Unmarshal(jsonData, &s); err != nil {
+					var sellerUSD struct {
+						Name            string
+						IngressPriceUSD string
+						EgressPriceUSD  string
+					}
+
+					if err := json.Unmarshal(jsonData, &sellerUSD); err != nil {
 						log.Fatalf("Could not unmarshal seller: %v", err)
+					}
+
+					ingressUSD, err := strconv.ParseFloat(sellerUSD.IngressPriceUSD, 64)
+					if err != nil {
+						fmt.Printf("Unable to convert %s to a decimal number.", sellerUSD.IngressPriceUSD)
+						os.Exit(0)
+					}
+					egressUSD, err := strconv.ParseFloat(sellerUSD.EgressPriceUSD, 64)
+					if err != nil {
+						fmt.Printf("Unable to convert %s to a decimal number.", sellerUSD.EgressPriceUSD)
+						os.Exit(0)
+					}
+
+					s := seller{
+						Name:                 sellerUSD.Name,
+						IngressPriceNibblins: routing.DollarsToNibblins(ingressUSD),
+						EgressPriceNibblins:  routing.DollarsToNibblins(egressUSD),
 					}
 
 					// Add the Seller to storage
@@ -1570,8 +1610,14 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						ShortUsage: "next seller add example",
 						ShortHelp:  "Displays an example seller for the correct JSON schema",
 						Exec: func(_ context.Context, args []string) error {
-							example := seller{
-								Name: "amazon",
+							example := struct {
+								Name            string
+								IngressPriceUSD string
+								EgressPriceUSD  string
+							}{
+								Name:            "amazon",
+								IngressPriceUSD: "0.01",
+								EgressPriceUSD:  "0.1",
 							}
 
 							jsonBytes, err := json.MarshalIndent(example, "", "\t")
@@ -1579,8 +1625,9 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 								log.Fatal("Failed to marshal seller struct")
 							}
 
-							fmt.Println("Examaple JSON schema to add a new seller:")
+							fmt.Println("Example JSON schema to add a new seller - note that prices are in $USD:")
 							fmt.Println(string(jsonBytes))
+							return nil
 							return nil
 						},
 					},

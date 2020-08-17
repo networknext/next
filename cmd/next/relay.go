@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	LatestRelayVersion   = "1.0.2"
+	LatestRelayVersion   = "1.0.4"
 	MinimumUbuntuVersion = 18
 
 	// DisableRelayScript is the bash script used to disable relays
@@ -316,8 +316,6 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 					log.Fatalf("could not get backend url: %v\n", err)
 				}
 
-				oldBackendHostname, err := env.OldRelayBackendHostname()
-
 				if err != nil {
 					log.Fatalf("could not get old backend hostname: %v\n", err)
 				}
@@ -328,12 +326,6 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 				envvars["RELAY_PRIVATE_KEY"] = privateKeyB64
 				envvars["RELAY_ROUTER_PUBLIC_KEY"] = routerPublicKey
 				envvars["RELAY_BACKEND_HOSTNAME"] = backendURL
-				envvars["RELAY_V3_ENABLED"] = "0"
-				envvars["RELAY_V3_BACKEND_HOSTNAME"] = oldBackendHostname
-				envvars["RELAY_V3_BACKEND_PORT"] = "40000"
-				envvars["RELAY_V3_UPDATE_KEY"] = relay.updateKey
-				envvars["RELAY_V3_SPEED"] = relay.nicSpeed
-				envvars["RELAY_V3_NAME"] = relay.firestoreID
 
 				if opts.coreCount > 0 {
 					envvars["RELAY_MAX_CORES"] = strconv.FormatUint(opts.coreCount, 10)
@@ -514,7 +506,8 @@ func setRelayNIC(rpcClient jsonrpc.RPCClient, env Environment, relayName string,
 
 	var reply localjsonrpc.RelayNICSpeedUpdateReply
 	if err := rpcClient.CallFor(&reply, "OpsService.RelayNICSpeedUpdate", args); err != nil {
-		log.Fatal(err)
+		fmt.Printf("Error setting relay NIC speed: %v\n", err)
+		os.Exit(0)
 	}
 
 	// Give the portal enough time to pull down the new state so that
@@ -523,6 +516,30 @@ func setRelayNIC(rpcClient jsonrpc.RPCClient, env Environment, relayName string,
 	time.Sleep(11 * time.Second)
 
 	fmt.Printf("NIC speed set for %s\n", info.name)
+}
+
+func updateRelayName(rpcClient jsonrpc.RPCClient, env Environment, oldName string, newName string) {
+
+	var relay routing.Relay
+	var ok bool
+	if relay, ok = checkForRelay(rpcClient, env, oldName); !ok {
+		// error msg printed by called function
+		return
+	}
+
+	var reply localjsonrpc.RelayNameUpdateReply
+	args := localjsonrpc.RelayNameUpdateArgs{
+		RelayID:   relay.ID,
+		RelayName: newName,
+	}
+
+	if err := rpcClient.CallFor(&reply, "OpsService.RelayNameUpdate", args); err != nil {
+		fmt.Printf("error renaming relay: %v\n", (err))
+	} else {
+		fmt.Printf("Relay renamed successfully: %s -> %s\n", oldName, newName)
+
+	}
+
 }
 
 func setRelayState(rpcClient jsonrpc.RPCClient, env Environment, stateString string, regexes []string) {

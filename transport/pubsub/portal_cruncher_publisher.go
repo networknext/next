@@ -7,7 +7,8 @@ import (
 )
 
 const (
-	TopicPortalCruncherSessionData Topic = 1
+	TopicPortalCruncherSessionData   Topic = 1
+	TopicPortalCruncherSessionCounts Topic = 2
 )
 
 type PortalCruncherPublisher struct {
@@ -15,9 +16,17 @@ type PortalCruncherPublisher struct {
 	mutex  sync.Mutex
 }
 
-func NewPortalCruncherPublisher(host string) (*PortalCruncherPublisher, error) {
+func NewPortalCruncherPublisher(host string, sendBufferSize int) (*PortalCruncherPublisher, error) {
 	socket, err := zmq4.NewSocket(zmq4.PUB)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := socket.SetXpubNodrop(true); err != nil {
+		return nil, err
+	}
+
+	if err := socket.SetSndhwm(sendBufferSize); err != nil {
 		return nil, err
 	}
 

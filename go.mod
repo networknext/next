@@ -24,6 +24,7 @@ require (
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/protobuf v1.4.2
+	github.com/gomodule/redigo v1.8.2
 	github.com/gorilla/handlers v1.4.2
 	github.com/gorilla/mux v1.7.3
 	github.com/gorilla/rpc v1.2.0
@@ -32,9 +33,13 @@ require (
 	github.com/modood/table v0.0.0-20200225102042-88de94bb9876
 	github.com/olekukonko/tablewriter v0.0.4
 	github.com/oschwald/geoip2-golang v1.4.0
+	github.com/panjf2000/ants v1.3.0 // indirect
+	github.com/panjf2000/ants/v2 v2.4.1
 	github.com/pebbe/zmq4 v1.2.1
 	github.com/peterbourgon/ff/v3 v3.0.0
-	github.com/stretchr/testify v1.4.0
+	github.com/rs/cors v1.7.0
+	github.com/spaolacci/murmur3 v1.1.0
+	github.com/stretchr/testify v1.5.1
 	github.com/tidwall/gjson v1.6.0
 	github.com/tidwall/pretty v1.0.1 // indirect
 	github.com/urfave/cli v1.22.4
