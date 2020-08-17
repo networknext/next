@@ -221,20 +221,22 @@ func datacenterMapsForBuyer(rpcClient jsonrpc.RPCClient, env Environment, buyer 
 	var err error
 
 	buyerArgs := localjsonrpc.BuyersArgs{}
-	var buyers localjsonrpc.BuyersReply
-	if err = rpcClient.CallFor(&buyers, "OpsService.Buyers", buyerArgs); err != nil {
+	var buyersReply localjsonrpc.BuyersReply
+	if err = rpcClient.CallFor(&buyersReply, "OpsService.Buyers", buyerArgs); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}
 	r := regexp.MustCompile("(?i)" + buyer) // case-insensitive regex
-	for _, buyer := range buyers.Buyers {
+	for _, buyer := range buyersReply.Buyers {
 		if r.MatchString(buyer.Name) || r.MatchString(fmt.Sprintf("%016x", buyer.ID)) {
 			buyerID = buyer.ID
 		}
 	}
 
 	if buyerID == 0 {
-		fmt.Printf("No match for provided buyer ID: %v\n", buyer)
+		fmt.Printf("No match for provided buyer ID: %v\n\n", buyer)
+		fmt.Println("Here is a current list of buyers in the system:")
+		buyers(rpcClient, env, false)
 		return
 	}
 
