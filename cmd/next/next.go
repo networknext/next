@@ -803,7 +803,23 @@ func main() {
 						regexes = args
 					}
 
-					disableRelays(env, rpcClient, regexes, hardDisable)
+					disableRelays(env, rpcClient, regexes, hardDisable, false)
+
+					return nil
+				},
+			},
+			{
+				Name:       "maintenance",
+				ShortUsage: "next relay maintenance [regex...]",
+				ShortHelp:  "Move the specified relay(s) to maintenance mode",
+				FlagSet:    relaydisablefs,
+				Exec: func(_ context.Context, args []string) error {
+					regexes := []string{".*"}
+					if len(args) > 0 {
+						regexes = args
+					}
+
+					disableRelays(env, rpcClient, regexes, hardDisable, true)
 
 					return nil
 				},
