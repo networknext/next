@@ -49,6 +49,11 @@ void client_packet_received( next_client_t * client, void * context, const uint8
     (void) client; (void) context; (void) packet_data; (void) packet_bytes;
 }
 
+const char * server_addresses[] = {
+    "10.128.0.31",
+    "10.128.0.82"
+};
+
 int main()
 {
     printf( "\nWelcome to Network Next!\n\n" );
@@ -69,13 +74,6 @@ int main()
         return 1;
     }
 
-    const char* server_ip = std::getenv("SERVER_IP");
-    if (!server_ip)
-    {
-        printf( "error: server ip env var not defined\n" );
-        return 1;
-    }
-
     char * cores_str = std::getenv("CORES");
     if (!cores_str)
     {
@@ -84,12 +82,17 @@ int main()
     }
 
     int cores = std::atoi(cores_str);
+    int server_count = 0;
+    while ( server_addresses[server_count] )
+    {
+        server_count++;
+    }
 
     std::stringstream server_addrs_ss[cores];
 
     for (int i = 0; i < cores; i++)
     {
-        server_addrs_ss[i] << server_ip << ":" << std::to_string(50000 + i);
+        server_addrs_ss[i] << server_addresses[rand() % server_count] << ":" << std::to_string(50000 + i);
     }
 
     next_client_open_session( client, server_addrs_ss[rand() % cores].str().c_str() );
