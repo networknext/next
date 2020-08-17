@@ -41,11 +41,6 @@ export CORES=50
 /app/app &
 pid="$!"
 printf "PID ${pid}: Client opened\n"
-remainder=$((r%100))
-if [ $remainder == "0" ]
-then
-sleep 1
-fi
 done
 
 print_env
