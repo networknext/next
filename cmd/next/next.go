@@ -1537,9 +1537,31 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 					jsonData := readJSONData("sellers", args)
 
 					// Unmarshal the JSON and create the Seller struct
-					var s seller
-					if err := json.Unmarshal(jsonData, &s); err != nil {
+					var sellerUSD struct {
+						Name            string
+						IngressPriceUSD string
+						EgressPriceUSD  string
+					}
+
+					if err := json.Unmarshal(jsonData, &sellerUSD); err != nil {
 						log.Fatalf("Could not unmarshal seller: %v", err)
+					}
+
+					ingressUSD, err := strconv.ParseFloat(sellerUSD.IngressPriceUSD, 64)
+					if err != nil {
+						fmt.Printf("Unable to convert %s to a decimal number.", sellerUSD.IngressPriceUSD)
+						os.Exit(0)
+					}
+					egressUSD, err := strconv.ParseFloat(sellerUSD.EgressPriceUSD, 64)
+					if err != nil {
+						fmt.Printf("Unable to convert %s to a decimal number.", sellerUSD.EgressPriceUSD)
+						os.Exit(0)
+					}
+
+					s := seller{
+						Name:                 sellerUSD.Name,
+						IngressPriceNibblins: routing.DollarsToNibblins(ingressUSD),
+						EgressPriceNibblins:  routing.DollarsToNibblins(egressUSD),
 					}
 
 					// Add the Seller to storage
@@ -1557,8 +1579,14 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						ShortUsage: "next seller add example",
 						ShortHelp:  "Displays an example seller for the correct JSON schema",
 						Exec: func(_ context.Context, args []string) error {
-							example := seller{
-								Name: "amazon",
+							example := struct {
+								Name            string
+								IngressPriceUSD string
+								EgressPriceUSD  string
+							}{
+								Name:            "amazon",
+								IngressPriceUSD: "0.01",
+								EgressPriceUSD:  "0.1",
 							}
 
 							jsonBytes, err := json.MarshalIndent(example, "", "\t")
@@ -1566,8 +1594,9 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 								log.Fatal("Failed to marshal seller struct")
 							}
 
-							fmt.Println("Examaple JSON schema to add a new seller:")
+							fmt.Println("Example JSON schema to add a new seller - note that prices are in $USD:")
 							fmt.Println(string(jsonBytes))
+							return nil
 							return nil
 						},
 					},
