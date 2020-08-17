@@ -850,6 +850,24 @@ func main() {
 				},
 			},
 			{
+				Name:       "rename",
+				ShortUsage: "next relay rename <old name> <new name>",
+				ShortHelp:  "Rename the specified relay",
+				Exec: func(ctx context.Context, args []string) error {
+					if len(args) == 0 {
+						log.Fatal("You need to supply a current relay name and a new name for it.")
+					}
+
+					if len(args) == 1 {
+						log.Fatal("You need to supply a new name for the relay as well")
+					}
+
+					updateRelayName(rpcClient, env, args[0], args[1])
+
+					return nil
+				},
+			},
+			{
 				Name:       "add",
 				ShortUsage: "next relay add <filepath>",
 				ShortHelp:  "Add relay(s) from a JSON file or piped from stdin",
