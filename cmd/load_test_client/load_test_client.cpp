@@ -60,6 +60,7 @@ const char * server_addresses[] = {
 
 int main()
 {
+    next_sleep( (rand() % 120) );
     printf( "\nWelcome to Network Next!\n\n" );
 
     auto now = std::chrono::high_resolution_clock::now();
