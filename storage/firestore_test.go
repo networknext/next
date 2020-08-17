@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"testing"
+	"time"
 
 	"cloud.google.com/go/firestore"
 	"github.com/go-kit/kit/log"
@@ -1223,12 +1224,19 @@ func TestFirestore(t *testing.T) {
 			}
 
 			expected := routing.Relay{
-				ID:         1,
-				Name:       "local",
-				Addr:       *addr,
-				PublicKey:  make([]byte, crypto.KeySize),
-				Seller:     seller,
-				Datacenter: datacenter,
+				ID:           1,
+				Name:         "local",
+				Addr:         *addr,
+				PublicKey:    make([]byte, crypto.KeySize),
+				Seller:       seller,
+				Datacenter:   datacenter,
+				MRC:          19700000000000,
+				Overage:      26000000000000,
+				BWRule:       routing.BWRuleBurst,
+				ContractTerm: 12,
+				StartDate:    time.Now(),
+				EndDate:      time.Now(),
+				Type:         routing.BareMetal,
 			}
 
 			err = fs.AddSeller(ctx, seller)
@@ -1281,20 +1289,34 @@ func TestFirestore(t *testing.T) {
 
 		expected := []routing.Relay{
 			{
-				ID:         1,
-				Name:       "local",
-				Addr:       *addr1,
-				PublicKey:  make([]byte, crypto.KeySize),
-				Seller:     seller,
-				Datacenter: datacenter,
+				ID:           1,
+				Name:         "local",
+				Addr:         *addr1,
+				PublicKey:    make([]byte, crypto.KeySize),
+				Seller:       seller,
+				Datacenter:   datacenter,
+				MRC:          19700000000000,
+				Overage:      26000000000000,
+				BWRule:       routing.BWRuleBurst,
+				ContractTerm: 12,
+				StartDate:    time.Now(),
+				EndDate:      time.Now(),
+				Type:         routing.BareMetal,
 			},
 			{
-				ID:         2,
-				Name:       "local",
-				Addr:       *addr2,
-				PublicKey:  make([]byte, crypto.KeySize),
-				Seller:     seller,
-				Datacenter: datacenter,
+				ID:           2,
+				Name:         "local",
+				Addr:         *addr2,
+				PublicKey:    make([]byte, crypto.KeySize),
+				Seller:       seller,
+				Datacenter:   datacenter,
+				MRC:          19700000000000,
+				Overage:      26000000000000,
+				BWRule:       routing.BWRuleBurst,
+				ContractTerm: 12,
+				StartDate:    time.Now(),
+				EndDate:      time.Now(),
+				Type:         routing.VirtualMachine,
 			},
 		}
 
@@ -1327,10 +1349,17 @@ func TestFirestore(t *testing.T) {
 			assert.NoError(t, err)
 
 			expected := routing.Relay{
-				ID:        1,
-				Name:      "local",
-				Addr:      *addr,
-				PublicKey: make([]byte, crypto.KeySize),
+				ID:           1,
+				Name:         "local",
+				Addr:         *addr,
+				PublicKey:    make([]byte, crypto.KeySize),
+				MRC:          19700000000000,
+				Overage:      26000000000000,
+				BWRule:       routing.BWRuleBurst,
+				ContractTerm: 12,
+				StartDate:    time.Now(),
+				EndDate:      time.Now(),
+				Type:         routing.BareMetal,
 			}
 
 			err = fs.AddRelay(ctx, expected)
@@ -1357,11 +1386,18 @@ func TestFirestore(t *testing.T) {
 			}
 
 			expected := routing.Relay{
-				ID:        1,
-				Name:      "local",
-				Addr:      *addr,
-				PublicKey: make([]byte, crypto.KeySize),
-				Seller:    seller,
+				ID:           1,
+				Name:         "local",
+				Addr:         *addr,
+				PublicKey:    make([]byte, crypto.KeySize),
+				Seller:       seller,
+				MRC:          19700000000000,
+				Overage:      26000000000000,
+				BWRule:       routing.BWRuleBurst,
+				ContractTerm: 12,
+				StartDate:    time.Now(),
+				EndDate:      time.Now(),
+				Type:         routing.BareMetal,
 			}
 
 			err = fs.AddSeller(ctx, seller)
@@ -1401,12 +1437,19 @@ func TestFirestore(t *testing.T) {
 			}
 
 			expected := routing.Relay{
-				ID:         1,
-				Name:       "local",
-				Addr:       *addr,
-				PublicKey:  make([]byte, crypto.KeySize),
-				Seller:     seller,
-				Datacenter: datacenter,
+				ID:           1,
+				Name:         "local",
+				Addr:         *addr,
+				PublicKey:    make([]byte, crypto.KeySize),
+				Seller:       seller,
+				Datacenter:   datacenter,
+				MRC:          19700000000000,
+				Overage:      26000000000000,
+				BWRule:       routing.BWRuleBurst,
+				ContractTerm: 12,
+				StartDate:    time.Now(),
+				EndDate:      time.Now(),
+				Type:         routing.BareMetal,
 			}
 
 			err = fs.AddSeller(ctx, seller)
@@ -1469,12 +1512,19 @@ func TestFirestore(t *testing.T) {
 			}
 
 			relay := routing.Relay{
-				ID:         crypto.HashID(addr.String()),
-				Name:       "local",
-				Addr:       *addr,
-				PublicKey:  make([]byte, crypto.KeySize),
-				Seller:     seller,
-				Datacenter: datacenter,
+				ID:           crypto.HashID(addr.String()),
+				Name:         "local",
+				Addr:         *addr,
+				PublicKey:    make([]byte, crypto.KeySize),
+				Seller:       seller,
+				Datacenter:   datacenter,
+				MRC:          19700000000000,
+				Overage:      26000000000000,
+				BWRule:       routing.BWRuleBurst,
+				ContractTerm: 12,
+				StartDate:    time.Now(),
+				EndDate:      time.Now(),
+				Type:         routing.BareMetal,
 			}
 
 			err = fs.AddSeller(ctx, seller)
@@ -1545,13 +1595,20 @@ func TestFirestore(t *testing.T) {
 			}
 
 			expected := routing.Relay{
-				ID:         crypto.HashID(addr.String()),
-				Name:       "local",
-				Addr:       *addr,
-				PublicKey:  make([]byte, crypto.KeySize),
-				Seller:     seller,
-				Datacenter: datacenter,
-				State:      routing.RelayStateEnabled,
+				ID:           crypto.HashID(addr.String()),
+				Name:         "local",
+				Addr:         *addr,
+				PublicKey:    make([]byte, crypto.KeySize),
+				Seller:       seller,
+				Datacenter:   datacenter,
+				State:        routing.RelayStateEnabled,
+				MRC:          19700000000000,
+				Overage:      26000000000000,
+				BWRule:       routing.BWRuleBurst,
+				ContractTerm: 12,
+				StartDate:    time.Now(),
+				EndDate:      time.Now(),
+				Type:         routing.BareMetal,
 			}
 
 			err = fs.AddSeller(ctx, seller)
@@ -1926,15 +1983,25 @@ func TestFirestore(t *testing.T) {
 		addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
 		assert.NoError(t, err)
 
+		startDate, _ := time.Parse("January 2, 2006", "January 2, 2006")
+		endDate, _ := time.Parse("January 2, 2006", "January 2, 2007")
+
 		expectedRelay := routing.Relay{
-			ID:          crypto.HashID(addr.String()),
-			Name:        "local",
-			Addr:        *addr,
-			PublicKey:   make([]byte, crypto.KeySize),
-			Seller:      expectedSeller,
-			Datacenter:  expectedDatacenter,
-			MaxSessions: 3000,
-			UpdateKey:   make([]byte, 32),
+			ID:           crypto.HashID(addr.String()),
+			Name:         "local",
+			Addr:         *addr,
+			PublicKey:    make([]byte, crypto.KeySize),
+			Seller:       expectedSeller,
+			Datacenter:   expectedDatacenter,
+			MaxSessions:  3000,
+			UpdateKey:    make([]byte, 32),
+			MRC:          19700000000000,
+			Overage:      26000000000000,
+			BWRule:       routing.BWRuleBurst,
+			ContractTerm: 12,
+			StartDate:    startDate,
+			EndDate:      endDate,
+			Type:         routing.BareMetal,
 		}
 
 		err = fs.SetSequenceNumber(ctx, -1)
