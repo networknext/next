@@ -430,7 +430,7 @@ deploy-relay-backend-dev: ## builds and deploys the relay backend to dev
 
 .PHONY: deploy-portal-cruncher-dev
 deploy-portal-cruncher-dev: ## builds and deploys the portal cruncher to dev
-	./deploy/deploy.sh -e dev -c dev-1 -t portal-cruncher -b gs://development_artifacts
+	./deploy/deploy.sh -e dev -c dev-1 -t portal_cruncher -b gs://development_artifacts
 
 .PHONY: deploy-relay-backend-staging
 deploy-relay-backend-staging: ## builds and deploys the relay backend to prod
@@ -438,7 +438,7 @@ deploy-relay-backend-staging: ## builds and deploys the relay backend to prod
 
 .PHONY: deploy-portal-cruncher-staging
 deploy-portal-cruncher-staging: ## builds and deploys the server backend to staging
-	./deploy/deploy.sh -e staging -c staging-1 -t portal-cruncher -b gs://staging_artifacts
+	./deploy/deploy.sh -e staging -c staging-1 -t portal_cruncher -b gs://staging_artifacts
 
 .PHONY: deploy-relay-backend-prod
 deploy-relay-backend-prod: ## builds and deploys the relay backend to prod
@@ -446,7 +446,7 @@ deploy-relay-backend-prod: ## builds and deploys the relay backend to prod
 
 .PHONY: deploy-portal-cruncher-prod
 deploy-portal-cruncher-prod: ## builds and deploys the portal cruncher to prod
-	./deploy/deploy.sh -e prod -c prod -t portal-cruncher -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c prod -t portal_cruncher -b gs://prod_artifacts
 
 .PHONY: build-server-backend
 build-server-backend: ## builds the server backend binary
@@ -524,7 +524,7 @@ build-portal-artifacts-dev: build-portal ## builds the portal artifacts dev
 
 .PHONY: build-portal-cruncher-artifacts-dev
 build-portal-cruncher-artifacts-dev: build-portal-cruncher ## builds the portal cruncher artifacts dev
-	./deploy/build-artifacts.sh -e dev -s portal-cruncher
+	./deploy/build-artifacts.sh -e dev -s portal_cruncher
 
 .PHONY: build-relay-backend-artifacts-dev
 build-relay-backend-artifacts-dev: build-relay-backend ## builds the relay backend artifacts dev
@@ -556,7 +556,7 @@ build-relay-backend-artifacts-staging: build-relay-backend ## builds the relay b
 
 .PHONY: build-portal-cruncher-artifacts-staging
 build-portal-cruncher-artifacts-staging: build-portal-cruncher ## builds the portal cruncher artifacts staging
-	./deploy/build-artifacts.sh -e staging -s portal-cruncher
+	./deploy/build-artifacts.sh -e staging -s portal_cruncher
 
 .PHONY: build-load-test-artifacts-staging
 build-load-test-artifacts-staging: build-load-test ## builds the load test artifacts staging
@@ -584,7 +584,7 @@ build-portal-artifacts-prod: build-portal ## builds the portal artifacts prod
 
 .PHONY: build-portal-cruncher-artifacts-prod
 build-portal-cruncher-artifacts-prod: build-portal-cruncher ## builds the portal cruncher artifacts prod
-	./deploy/build-artifacts.sh -e prod -s portal-cruncher
+	./deploy/build-artifacts.sh -e prod -s portal_cruncher
 
 .PHONY: build-relay-backend-artifacts-prod
 build-relay-backend-artifacts-prod: build-relay-backend ## builds the relay backend artifacts prod
@@ -612,7 +612,7 @@ publish-portal-artifacts-dev: ## publishes the portal artifacts to GCP Storage w
 
 .PHONY: publish-portal-cruncher-artifacts-dev
 publish-portal-cruncher-artifacts-dev: ## publishes the portal cruncher artifacts to GCP Storage with gsutil dev
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s portal-cruncher
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s portal_cruncher
 
 .PHONY: publish-relay-backend-artifacts-dev
 publish-relay-backend-artifacts-dev: ## publishes the relay backend artifacts to GCP Storage with gsutil dev
@@ -644,7 +644,7 @@ publish-portal-artifacts-staging: ## publishes the portal artifacts to GCP Stora
 
 .PHONY: publish-portal-cruncher-artifacts-staging
 publish-portal-cruncher-artifacts-staging: ## publishes the portal cruncher artifacts to GCP Storage with gsutil staging
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s portal-cruncher
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s portal_cruncher
 
 .PHONY: publish-load-test-artifacts-staging
 publish-load-test-artifacts-staging: ## publishes the load test artifacts to GCP Storage with gsutil staging
@@ -684,7 +684,7 @@ publish-portal-artifacts-prod: ## publishes the portal artifacts to GCP Storage 
 
 .PHONY: publish-portal-cruncher-artifacts-prod
 publish-portal-cruncher-artifacts-prod: ## publishes the portal cruncher artifacts to GCP Storage with gsutil prod
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s portal-cruncher
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s portal_cruncher
 
 .PHONY: publish-relay-backend-artifacts-prod
 publish-relay-backend-artifacts-prod: ## publishes the relay backend artifacts to GCP Storage with gsutil prod
