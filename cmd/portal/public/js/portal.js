@@ -404,6 +404,8 @@ MapHandler = {
 						layers: layers
 					});
 				} else {
+					console.log("deckGL layers object:")
+					console.log(layers)
 					this.deckGlInstance.setProps({layers: []});
 					this.deckGlInstance.setProps({layers: layers});
 				}
