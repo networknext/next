@@ -1413,6 +1413,20 @@ func main() {
 				},
 			},
 			{
+				Name:       "datacenters",
+				ShortUsage: "next buyer datacenters <buyer id|name|string, optional>",
+				ShortHelp:  "Return a list of datacenters and aliases for the given buyer ID or buyer name",
+				Exec: func(_ context.Context, args []string) error {
+					if len(args) != 1 {
+						datacenterMapsForBuyer(rpcClient, env, "")
+						return nil
+					}
+
+					datacenterMapsForBuyer(rpcClient, env, args[0])
+					return nil
+				},
+			},
+			{
 				Name:       "datacenter",
 				ShortUsage: "next buyer datacenter <command>",
 				ShortHelp:  "Display and manipulate datacenters and aliases",
@@ -1427,12 +1441,11 @@ func main() {
 						LongHelp:   "A buyer ID or name must be supplied. If the name includes spaces it must be enclosed in quotations marks.",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) != 1 {
-								fmt.Printf("A buyer ID or name must be supplied. If the name includes spaces it must be enclosed in quotation marks.")
+								datacenterMapsForBuyer(rpcClient, env, "")
 								return nil
 							}
 
 							datacenterMapsForBuyer(rpcClient, env, args[0])
-
 							return nil
 						},
 					},

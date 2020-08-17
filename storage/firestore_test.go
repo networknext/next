@@ -1898,6 +1898,68 @@ func TestFirestore(t *testing.T) {
 		assert.Equal(t, expected, actual[id])
 	})
 
+	t.Run("Add two and get the list", func(t *testing.T) {
+		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+		assert.NoError(t, err)
+
+		defer func() {
+			err := cleanFireStore(ctx, fs.Client)
+			assert.NoError(t, err)
+		}()
+
+		buyer1 := routing.Buyer{
+			ID: 11,
+		}
+
+		buyer2 := routing.Buyer{
+			ID: 22,
+		}
+
+		expected1 := routing.DatacenterMap{
+			BuyerID:    11,
+			Datacenter: 1,
+			Alias:      "local.alias",
+		}
+
+		expected2 := routing.DatacenterMap{
+			BuyerID:    22,
+			Datacenter: 1,
+			Alias:      "other.local.alias",
+		}
+
+		datacenter := routing.Datacenter{
+			ID:      1,
+			Name:    "local",
+			Enabled: true,
+			Location: routing.Location{
+				Latitude:  70.5,
+				Longitude: 120.5,
+			},
+		}
+
+		id1 := crypto.HashID(expected1.Alias + fmt.Sprintf("%x", expected1.BuyerID) + fmt.Sprintf("%x", expected1.Datacenter))
+		id2 := crypto.HashID(expected2.Alias + fmt.Sprintf("%x", expected2.BuyerID) + fmt.Sprintf("%x", expected2.Datacenter))
+
+		err = fs.AddBuyer(ctx, buyer1)
+		assert.NoError(t, err)
+
+		err = fs.AddBuyer(ctx, buyer2)
+		assert.NoError(t, err)
+
+		err = fs.AddDatacenter(ctx, datacenter)
+		assert.NoError(t, err)
+
+		err = fs.AddDatacenterMap(ctx, expected1)
+		assert.NoError(t, err)
+
+		err = fs.AddDatacenterMap(ctx, expected2)
+		assert.NoError(t, err)
+
+		actual := fs.ListDatacenterMaps(0)
+		assert.Equal(t, expected1, actual[id1])
+		assert.Equal(t, expected2, actual[id2])
+	})
+
 	t.Run("Add and Remove DatacenterMap", func(t *testing.T) {
 		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
 		assert.NoError(t, err)
