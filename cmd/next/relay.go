@@ -275,7 +275,7 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 				}
 			}
 
-			if !disableRelays(env, rpcClient, []string{relay.name}, opts.hard) {
+			if !disableRelays(env, rpcClient, []string{relay.name}, opts.hard, false) {
 				continue
 			}
 
@@ -449,7 +449,7 @@ func enableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 	fmt.Printf("%s complete\n", str)
 }
 
-func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string, hard bool) bool {
+func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string, hard bool, maintenance bool) bool {
 	success := true
 	relaysDisabled := 0
 	testForSSHKey(env)
@@ -457,6 +457,16 @@ func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []strin
 	if hard {
 		script = DisableRelayScriptHard
 	}
+
+	relayState := routing.RelayStateDisabled
+	infoText := "Disabling"
+	successText := "disabled."
+	if maintenance {
+		relayState = routing.RelayStateMaintenance
+		infoText = "Setting maintenance mode on"
+		successText = "is now in maintenance mode."
+	}
+
 	for _, regex := range regexes {
 		relays := getRelayInfo(rpcClient, env, regex)
 		if len(relays) == 0 {
@@ -464,9 +474,9 @@ func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []strin
 			continue
 		}
 		for _, relay := range relays {
-			fmt.Printf("Disabling relay '%s' (id = %016x)\n", relay.name, relay.id)
+			fmt.Printf("%s relay '%s' (id = %016x)\n", infoText, relay.name, relay.id)
 			con := NewSSHConn(relay.user, relay.sshAddr, relay.sshPort, env.SSHKeyFilePath)
-			if !con.ConnectAndIssueCmd(script) || !updateRelayState(rpcClient, relay, routing.RelayStateDisabled) {
+			if !con.ConnectAndIssueCmd(script) || !updateRelayState(rpcClient, relay, relayState) {
 				success = false
 				continue
 			}
@@ -484,7 +494,7 @@ func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []strin
 		if relaysDisabled == 1 {
 			str = "Relay"
 		}
-		fmt.Printf("%s disabled\n", str)
+		fmt.Printf("%s %s\n", str, successText)
 	}
 
 	return success
@@ -506,7 +516,8 @@ func setRelayNIC(rpcClient jsonrpc.RPCClient, env Environment, relayName string,
 
 	var reply localjsonrpc.RelayNICSpeedUpdateReply
 	if err := rpcClient.CallFor(&reply, "OpsService.RelayNICSpeedUpdate", args); err != nil {
-		log.Fatal(err)
+		fmt.Printf("Error setting relay NIC speed: %v\n", err)
+		os.Exit(0)
 	}
 
 	// Give the portal enough time to pull down the new state so that
@@ -515,6 +526,30 @@ func setRelayNIC(rpcClient jsonrpc.RPCClient, env Environment, relayName string,
 	time.Sleep(11 * time.Second)
 
 	fmt.Printf("NIC speed set for %s\n", info.name)
+}
+
+func updateRelayName(rpcClient jsonrpc.RPCClient, env Environment, oldName string, newName string) {
+
+	var relay routing.Relay
+	var ok bool
+	if relay, ok = checkForRelay(rpcClient, env, oldName); !ok {
+		// error msg printed by called function
+		return
+	}
+
+	var reply localjsonrpc.RelayNameUpdateReply
+	args := localjsonrpc.RelayNameUpdateArgs{
+		RelayID:   relay.ID,
+		RelayName: newName,
+	}
+
+	if err := rpcClient.CallFor(&reply, "OpsService.RelayNameUpdate", args); err != nil {
+		fmt.Printf("error renaming relay: %v\n", (err))
+	} else {
+		fmt.Printf("Relay renamed successfully: %s -> %s\n", oldName, newName)
+
+	}
+
 }
 
 func setRelayState(rpcClient jsonrpc.RPCClient, env Environment, stateString string, regexes []string) {

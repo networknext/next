@@ -560,7 +560,7 @@ func main() {
 		},
 	}
 
-	var sessionCommand = &ffcli.Command{
+	var sessionsCommand = &ffcli.Command{
 		Name:       "sessions",
 		ShortUsage: "next sessions",
 		ShortHelp:  "List sessions",
@@ -587,6 +587,18 @@ func main() {
 		},
 	}
 
+	var sessionCommand = &ffcli.Command{
+		Name:       "session",
+		ShortUsage: "next session <session id>",
+		ShortHelp:  "Display details for the specified session",
+		Exec: func(_ context.Context, args []string) error {
+			if len(args) != 1 {
+				fmt.Printf("A session ID must be provided (see ./next sessions).")
+			}
+			sessions(rpcClient, env, args[0], sessionCount)
+			return nil
+		},
+	}
 	var relaysCommand = &ffcli.Command{
 		Name:       "relays",
 		ShortUsage: "next relays <regex>",
@@ -803,7 +815,23 @@ func main() {
 						regexes = args
 					}
 
-					disableRelays(env, rpcClient, regexes, hardDisable)
+					disableRelays(env, rpcClient, regexes, hardDisable, false)
+
+					return nil
+				},
+			},
+			{
+				Name:       "maintenance",
+				ShortUsage: "next relay maintenance [regex...]",
+				ShortHelp:  "Move the specified relay(s) to maintenance mode",
+				FlagSet:    relaydisablefs,
+				Exec: func(_ context.Context, args []string) error {
+					regexes := []string{".*"}
+					if len(args) > 0 {
+						regexes = args
+					}
+
+					disableRelays(env, rpcClient, regexes, hardDisable, true)
 
 					return nil
 				},
@@ -846,6 +874,24 @@ func main() {
 					}
 
 					setRelayState(rpcClient, env, args[0], args[1:])
+					return nil
+				},
+			},
+			{
+				Name:       "rename",
+				ShortUsage: "next relay rename <old name> <new name>",
+				ShortHelp:  "Rename the specified relay",
+				Exec: func(ctx context.Context, args []string) error {
+					if len(args) == 0 {
+						log.Fatal("You need to supply a current relay name and a new name for it.")
+					}
+
+					if len(args) == 1 {
+						log.Fatal("You need to supply a new name for the relay as well")
+					}
+
+					updateRelayName(rpcClient, env, args[0], args[1])
+
 					return nil
 				},
 			},
@@ -1395,6 +1441,20 @@ func main() {
 				},
 			},
 			{
+				Name:       "datacenters",
+				ShortUsage: "next buyer datacenters <buyer id|name|string, optional>",
+				ShortHelp:  "Return a list of datacenters and aliases for the given buyer ID or buyer name",
+				Exec: func(_ context.Context, args []string) error {
+					if len(args) != 1 {
+						datacenterMapsForBuyer(rpcClient, env, "")
+						return nil
+					}
+
+					datacenterMapsForBuyer(rpcClient, env, args[0])
+					return nil
+				},
+			},
+			{
 				Name:       "datacenter",
 				ShortUsage: "next buyer datacenter <command>",
 				ShortHelp:  "Display and manipulate datacenters and aliases",
@@ -1409,12 +1469,11 @@ func main() {
 						LongHelp:   "A buyer ID or name must be supplied. If the name includes spaces it must be enclosed in quotations marks.",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) != 1 {
-								fmt.Printf("A buyer ID or name must be supplied. If the name includes spaces it must be enclosed in quotation marks.")
+								datacenterMapsForBuyer(rpcClient, env, "")
 								return nil
 							}
 
 							datacenterMapsForBuyer(rpcClient, env, args[0])
-
 							return nil
 						},
 					},
@@ -1537,9 +1596,31 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 					jsonData := readJSONData("sellers", args)
 
 					// Unmarshal the JSON and create the Seller struct
-					var s seller
-					if err := json.Unmarshal(jsonData, &s); err != nil {
+					var sellerUSD struct {
+						Name            string
+						IngressPriceUSD string
+						EgressPriceUSD  string
+					}
+
+					if err := json.Unmarshal(jsonData, &sellerUSD); err != nil {
 						log.Fatalf("Could not unmarshal seller: %v", err)
+					}
+
+					ingressUSD, err := strconv.ParseFloat(sellerUSD.IngressPriceUSD, 64)
+					if err != nil {
+						fmt.Printf("Unable to convert %s to a decimal number.", sellerUSD.IngressPriceUSD)
+						os.Exit(0)
+					}
+					egressUSD, err := strconv.ParseFloat(sellerUSD.EgressPriceUSD, 64)
+					if err != nil {
+						fmt.Printf("Unable to convert %s to a decimal number.", sellerUSD.EgressPriceUSD)
+						os.Exit(0)
+					}
+
+					s := seller{
+						Name:                 sellerUSD.Name,
+						IngressPriceNibblins: routing.DollarsToNibblins(ingressUSD),
+						EgressPriceNibblins:  routing.DollarsToNibblins(egressUSD),
 					}
 
 					// Add the Seller to storage
@@ -1557,8 +1638,14 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						ShortUsage: "next seller add example",
 						ShortHelp:  "Displays an example seller for the correct JSON schema",
 						Exec: func(_ context.Context, args []string) error {
-							example := seller{
-								Name: "amazon",
+							example := struct {
+								Name            string
+								IngressPriceUSD string
+								EgressPriceUSD  string
+							}{
+								Name:            "amazon",
+								IngressPriceUSD: "0.01",
+								EgressPriceUSD:  "0.1",
 							}
 
 							jsonBytes, err := json.MarshalIndent(example, "", "\t")
@@ -1566,8 +1653,9 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 								log.Fatal("Failed to marshal seller struct")
 							}
 
-							fmt.Println("Examaple JSON schema to add a new seller:")
+							fmt.Println("Example JSON schema to add a new seller - note that prices are in $USD:")
 							fmt.Println(string(jsonBytes))
+							return nil
 							return nil
 						},
 					},
@@ -1886,6 +1974,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		selectCommand,
 		envCommand,
 		sessionCommand,
+		sessionsCommand,
 		relaysCommand,
 		relayCommand,
 		routesCommand,

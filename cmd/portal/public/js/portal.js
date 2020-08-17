@@ -260,7 +260,7 @@ MapHandler = {
 				let direct = response.direct
 				let next = response.next
 
-				const isDev = window.location.hostname == 'portal-dev.networknext.com' || window.location.hostname == '127.0.0.1';
+				const isDev = window.location.hostname == 'portal-dev.networknext.com' || window.location.hostname == '127.0.0.1' || window.location.hostname == 'portal-staging.networknext.com';
 				if (!isDev) {
 					this.totalDirectSessions[this.totalSessionCountCalls % 32] = direct
 					this.totalNextSessions[this.totalSessionCountCalls % 32] = next
