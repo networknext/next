@@ -22,12 +22,12 @@ const (
 	RouterPublicKeyProd    = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
 
 	RelayArtifactURLDev     = "https://storage.googleapis.com/development_artifacts/relay.dev.tar.gz"
-	RelayArtifactURLStaging = "https://storage.googleapis.com/staging_artifacts/relay.dev.tar.gz"
+	RelayArtifactURLStaging = "https://storage.googleapis.com/staging_artifacts/relay.staging.tar.gz"
 	RelayArtifactURLProd    = "https://storage.googleapis.com/prod_artifacts/relay.prod.tar.gz"
 
 	RelayBackendHostnameLocal   = "localhost"
 	RelayBackendHostnameDev     = "relay_backend.dev.networknext.com"
-	RelayBackendHostnameStaging = "relay_backend.staging.networknext.com"
+	RelayBackendHostnameStaging = "10.128.0.4"
 	RelayBackendHostnameProd    = "relay_backend.prod.networknext.com"
 
 	RelayBackendURLLocal   = "http://" + RelayBackendHostnameLocal + ":30000"
