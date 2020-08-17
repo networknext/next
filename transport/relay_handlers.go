@@ -652,3 +652,15 @@ func RoutesHandlerFunc(GetRouteMatrix func() *routing.RouteMatrix, statsdb *rout
 		writer.Write(buf.Bytes())
 	}
 }
+
+func RelayStatsFunc(logger log.Logger, rmap *routing.RelayMap) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, request *http.Request) {
+		if bin, err := rmap.MarshalBinary(); err == nil {
+			w.WriteHeader(http.StatusOK)
+			w.Write(bin)
+		} else {
+			level.Error(logger).Log("msg", "could not marshal relay map", "err", err)
+			http.Error(w, "could not marshal relay map", http.StatusInternalServerError)
+		}
+	}
+}

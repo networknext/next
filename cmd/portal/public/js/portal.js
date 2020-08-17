@@ -48,7 +48,18 @@ AuthHandler = {
 
 		// HACK THESE NEED TO BE ENV VARIABLES SOME HOW
 		const hostname = window.location.hostname
-		const clientID = hostname == 'portal.networknext.com' || hostname == 'portal-staging.networknext.com' ? 'MaSx99ma3AwYOwWMLm3XWNvQ5WyJWG2Y' : 'oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n';
+    let clientID = '';
+
+    switch (hostname) {
+      case 'portal.networknext.com':
+        clientID = 'MaSx99ma3AwYOwWMLm3XWNvQ5WyJWG2Y';
+        break;
+      case 'portal-staging.networknext.com':
+        clientID = 'BRvkWHQEyQmCqA7i2IBFOpm7XnDdwkpR';
+        break;
+      default:
+      clientID = 'oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n';
+    }
 
 		this.auth0Client = await createAuth0Client({
 			client_id: clientID,
@@ -249,7 +260,7 @@ MapHandler = {
 				let direct = response.direct
 				let next = response.next
 
-				const isDev = window.location.hostname == 'portal-dev.networknext.com' || window.location.hostname == '127.0.0.1';
+				const isDev = window.location.hostname == 'portal-dev.networknext.com' || window.location.hostname == '127.0.0.1' || window.location.hostname == 'portal-staging.networknext.com';
 				if (!isDev) {
 					this.totalDirectSessions[this.totalSessionCountCalls % 32] = direct
 					this.totalNextSessions[this.totalSessionCountCalls % 32] = next

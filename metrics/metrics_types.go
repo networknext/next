@@ -5,23 +5,39 @@ import (
 )
 
 type SessionMetrics struct {
-	Invocations     Counter
-	DirectSessions  Counter
-	NextSessions    Counter
-	DurationGauge   Gauge
-	LongDuration    Counter
-	DecisionMetrics DecisionMetrics
-	ErrorMetrics    SessionErrorMetrics
+	Invocations                       Counter
+	DirectSessions                    Counter
+	NextSessions                      Counter
+	DurationGauge                     Gauge
+	LongDuration                      Counter
+	PostSessionBillingEntriesSent     Counter
+	PostSessionBillingEntriesFinished Counter
+	PostSessionBillingBufferLength    Gauge
+	PostSessionBillingBufferFull      Counter
+	PostSessionPortalEntriesSent      Counter
+	PostSessionPortalEntriesFinished  Counter
+	PostSessionPortalBufferLength     Gauge
+	PostSessionPortalBufferFull       Counter
+	DecisionMetrics                   DecisionMetrics
+	ErrorMetrics                      SessionErrorMetrics
 }
 
 var EmptySessionMetrics SessionMetrics = SessionMetrics{
-	Invocations:     &EmptyCounter{},
-	DirectSessions:  &EmptyCounter{},
-	NextSessions:    &EmptyCounter{},
-	DurationGauge:   &EmptyGauge{},
-	LongDuration:    &EmptyCounter{},
-	DecisionMetrics: EmptyDecisionMetrics,
-	ErrorMetrics:    EmptySessionErrorMetrics,
+	Invocations:                       &EmptyCounter{},
+	DirectSessions:                    &EmptyCounter{},
+	NextSessions:                      &EmptyCounter{},
+	DurationGauge:                     &EmptyGauge{},
+	LongDuration:                      &EmptyCounter{},
+	PostSessionBillingEntriesSent:     &EmptyCounter{},
+	PostSessionBillingEntriesFinished: &EmptyCounter{},
+	PostSessionBillingBufferLength:    &EmptyGauge{},
+	PostSessionBillingBufferFull:      &EmptyCounter{},
+	PostSessionPortalEntriesSent:      &EmptyCounter{},
+	PostSessionPortalEntriesFinished:  &EmptyCounter{},
+	PostSessionPortalBufferLength:     &EmptyGauge{},
+	PostSessionPortalBufferFull:       &EmptyCounter{},
+	DecisionMetrics:                   EmptyDecisionMetrics,
+	ErrorMetrics:                      EmptySessionErrorMetrics,
 }
 
 type SessionErrorMetrics struct {
@@ -380,19 +396,21 @@ var EmptyBillingServiceMetrics BillingServiceMetrics = BillingServiceMetrics{
 }
 
 type BillingMetrics struct {
-	EntriesReceived  Counter
-	EntriesSubmitted Counter
-	EntriesQueued    Gauge
-	EntriesFlushed   Counter
-	ErrorMetrics     BillingErrorMetrics
+	EntriesReceived       Counter
+	EntriesSubmitted      Counter
+	EntriesQueued         Gauge
+	EntriesFlushed        Counter
+	EntriesReadUserHashV5 Counter
+	ErrorMetrics          BillingErrorMetrics
 }
 
 var EmptyBillingMetrics BillingMetrics = BillingMetrics{
-	EntriesReceived:  &EmptyCounter{},
-	EntriesSubmitted: &EmptyCounter{},
-	EntriesQueued:    &EmptyGauge{},
-	EntriesFlushed:   &EmptyCounter{},
-	ErrorMetrics:     EmptyBillingErrorMetrics,
+	EntriesReceived:       &EmptyCounter{},
+	EntriesSubmitted:      &EmptyCounter{},
+	EntriesQueued:         &EmptyGauge{},
+	EntriesFlushed:        &EmptyCounter{},
+	EntriesReadUserHashV5: &EmptyCounter{},
+	ErrorMetrics:          EmptyBillingErrorMetrics,
 }
 
 type BillingErrorMetrics struct {
@@ -511,6 +529,59 @@ var EmptyAnalyticsServiceMetrics = AnalyticsServiceMetrics{
 	MemoryAllocated:   &EmptyGauge{},
 	PingStatsMetrics:  EmptyAnalyticsMetrics,
 	RelayStatsMetrics: EmptyAnalyticsMetrics,
+}
+
+type PortalCruncherMetrics struct {
+	Goroutines           Gauge
+	MemoryAllocated      Gauge
+	ReceivedMessageCount Counter
+}
+
+var EmptyPortalCruncherMetrics = PortalCruncherMetrics{
+	Goroutines:           &EmptyGauge{},
+	MemoryAllocated:      &EmptyGauge{},
+	ReceivedMessageCount: &EmptyCounter{},
+}
+
+func NewPortalCruncherMetrics(ctx context.Context, metricsHandler Handler) (*PortalCruncherMetrics, error) {
+	var err error
+
+	portalCruncherMetrics := PortalCruncherMetrics{}
+
+	portalCruncherMetrics.Goroutines, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Portal Cruncher Goroutine Count",
+		ServiceName: "portal_cruncher",
+		ID:          "portal_cruncher.goroutines",
+		Unit:        "goroutines",
+		Description: "The number of goroutines the portal_cruncher is using",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	portalCruncherMetrics.MemoryAllocated, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Portal Cruncher Memory Allocated",
+		ServiceName: "portal_cruncher",
+		ID:          "portal_cruncher.memory",
+		Unit:        "MB",
+		Description: "The amount of memory the portal_cruncher has allocated in MB",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	portalCruncherMetrics.ReceivedMessageCount, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Portal Cruncher Received Message Count",
+		ServiceName: "portal_cruncher",
+		ID:          "portal_cruncher.received.message.count",
+		Unit:        "messages",
+		Description: "The amount of messages the portal_cruncher has received",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &portalCruncherMetrics, nil
 }
 
 func NewServerBackendMetrics(ctx context.Context, metricsHandler Handler) (*ServerBackendMetrics, error) {
@@ -791,6 +862,93 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		ID:          "session.long_durations",
 		Unit:        "durations",
 		Description: "The number of session update calls that took longer than 100ms to complete",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.PostSessionBillingEntriesSent, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Post Session Billing Entries Sent",
+		ServiceName: "server_backend",
+		ID:          "session.post_session.entries.billing.sent",
+		Unit:        "entries",
+		Description: "The number of billing entries sent to the post session billing channel",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.PostSessionBillingEntriesFinished, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Post Session Billing Entries Finished",
+		ServiceName: "server_backend",
+		ID:          "session.post_session.entries.billing.finished",
+		Unit:        "entries",
+		Description: "The number of billing entries that have completed processing in the post session handler",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.PostSessionBillingBufferLength, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Post Session Billing Buffer Length",
+		ServiceName: "server_backend",
+		ID:          "session.post_session.buffer.billing.size",
+		Unit:        "entries",
+		Description: "The number of queued billing entries waiting to be processed by the post session handler",
+	})
+	if err != nil {
+		return nil, err
+	}
+	sessionMetrics.PostSessionBillingBufferFull, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Post Session Billing Buffer Full",
+		ServiceName: "server_backend",
+		ID:          "session.post_session.buffer.billing.full",
+		Unit:        "invocations",
+		Description: "The number of times billing entries were rejected because the buffer was full",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.PostSessionPortalEntriesSent, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Post Session Portal Entries Sent",
+		ServiceName: "server_backend",
+		ID:          "session.post_session.entries.portal.sent",
+		Unit:        "entries",
+		Description: "The number of portal entries sent to the post session portal channel",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.PostSessionPortalEntriesFinished, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Post Session Portal Entries Finished",
+		ServiceName: "server_backend",
+		ID:          "session.post_session.entries.portal.finished",
+		Unit:        "entries",
+		Description: "The number of portal entries that have completed processing in the post session handler",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.PostSessionPortalBufferLength, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Post Session Portal Buffer Length",
+		ServiceName: "server_backend",
+		ID:          "session.post_session.buffer.portal.size",
+		Unit:        "entries",
+		Description: "The number of queued portal entries waiting to be processed by the post session handler",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.PostSessionPortalBufferFull, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Post Session Portal Buffer Full",
+		ServiceName: "server_backend",
+		ID:          "session.post_session.buffer.portal.full",
+		Unit:        "invocations",
+		Description: "The number of times portal entries were rejected because the buffer was full",
 	})
 	if err != nil {
 		return nil, err
@@ -1922,6 +2080,17 @@ func NewBillingServiceMetrics(ctx context.Context, metricsHandler Handler) (*Bil
 		ID:          "billing.entries.written",
 		Unit:        "entries",
 		Description: "The total number of billing entries written to BigQuery",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	billingServiceMetrics.BillingMetrics.EntriesReadUserHashV5, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Billing Entries Read User Hash V5",
+		ServiceName: "billing",
+		ID:          "billing.entries.read.user_hash_v5",
+		Unit:        "entries",
+		Description: "The total number of billing entries read from PubSub with the user hash on version 5",
 	})
 	if err != nil {
 		return nil, err

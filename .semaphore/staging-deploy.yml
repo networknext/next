@@ -22,6 +22,10 @@ blocks:
           commands:
             - make build-billing-artifacts-staging
             - make publish-billing-artifacts-staging
+        - name: Analytics
+          commands:
+            - make build-analytics-artifacts-staging
+            - make publish-analytics-artifacts-staging
         - name: Portal
           commands:
             - make build-portal-artifacts-staging
@@ -38,8 +42,12 @@ blocks:
           commands:
             - make build-server-backend-artifacts-staging
             - make publish-server-backend-artifacts-staging
+        - name: Load Test
+          commands:
+            - make build-load-test-artifacts-staging
+            - make publish-load-test-artifacts-staging
         - name: Bootstrap Script
           commands:
             - make publish-bootstrap-script-staging
       secrets:
-        - name: google-cloud-platform-prod
+        - name: google-cloud-platform-staging

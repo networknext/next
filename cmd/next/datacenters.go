@@ -89,8 +89,10 @@ func removeDatacenter(rpcClient jsonrpc.RPCClient, env Environment, name string)
 
 func listDatacenterMaps(rpcClient jsonrpc.RPCClient, env Environment, datacenter string) {
 
-	var dcID uint64
+	var dcIDs []uint64
 	var err error
+
+	// get list of datacenters matching the given id/name/substring
 	datacentersArgs := localjsonrpc.DatacentersArgs{}
 	var datacenters localjsonrpc.DatacentersReply
 	if err = rpcClient.CallFor(&datacenters, "OpsService.Datacenters", datacentersArgs); err != nil {
@@ -101,24 +103,40 @@ func listDatacenterMaps(rpcClient jsonrpc.RPCClient, env Environment, datacenter
 	r := regexp.MustCompile("(?i)" + datacenter) // case-insensitive regex
 	for _, dc := range datacenters.Datacenters {
 		if r.MatchString(dc.Name) || r.MatchString(fmt.Sprintf("%016x", dc.ID)) {
-			dcID = dc.ID
+			dcIDs = append(dcIDs, dc.ID)
 		}
 	}
 
-	if dcID == 0 {
-		handleRunTimeError(fmt.Sprintf("No match for provided datacenter ID: %v\n", datacenter), 0)
-	}
 
-	var reply localjsonrpc.ListDatacenterMapsReply
-	var arg = localjsonrpc.ListDatacenterMapsArgs{
-		DatacenterID: dcID,
-	}
-
-	if err := rpcClient.CallFor(&reply, "OpsService.ListDatacenterMaps", arg); err != nil {
-		handleJSONRPCError(env, err)
+	if len(dcIDs) == 0 {
+		fmt.Printf("No match for provided datacenter ID: %v\n", datacenter)
 		return
 	}
 
-	table.Output(reply.DatacenterMaps)
+	// assemble the full list of maps
+	var dcMapsFull []localjsonrpc.DatacenterMapsFull
+	for _, id := range dcIDs {
+		var reply localjsonrpc.ListDatacenterMapsReply
+		var arg = localjsonrpc.ListDatacenterMapsArgs{
+			DatacenterID: id,
+		}
+
+		if err := rpcClient.CallFor(&reply, "OpsService.ListDatacenterMaps", arg); err != nil {
+			fmt.Printf("rpc error: %v\n", err)
+			handleJSONRPCError(env, err)
+			return
+		}
+
+		for _, dcMap := range reply.DatacenterMaps {
+			dcMapsFull = append(dcMapsFull, dcMap)
+		}
+	}
+
+	if len(dcMapsFull) == 0 {
+		fmt.Printf("No buyers found for the provided datacenter ID: %v\n", datacenter)
+		return
+	}
+
+	table.Output(dcMapsFull)
 
 }

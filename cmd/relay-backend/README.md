@@ -9,7 +9,7 @@ The Relay Backend is responsible for:
 
 ### Load & Scalability
 
-Status: **LOW-MEDIUM**  
+Status: **LOW-MEDIUM**
 Scalability: **Vertically**
 
 1. Relays send HTTP requests every 1 second
@@ -30,7 +30,6 @@ The default setting is `warn` when running `make dev-relay-backend` and `make de
 #### Required
 
 - `BACKEND_LOG_LEVEL`: one of `none`, `error`, `warn`, `info`, `debug`
-- `REDIS_HOST_RELAYS`: address of the Redis server you want to connect to store relay information and their lat/long
 - `RELAY_ROUTER_PUBLIC_KEY`: the public key of the router
 - `RELAY_ROUTER_PRIVATE_KEY`: the private key of the router
 - `MAXMIND_DB_URI`: local path to a `.mmdb` file for IP lookups
@@ -69,3 +68,4 @@ When using the default json file, only spawn relays with addresses & ports betwe
   - Stores the relay in redis in binary format
 - `/relay_update`: After a relay has confirmation of successful initialization, it will keep sending this endpoint stats about its network timings
   - Within the response body will be a list of all other relays to ping and gather stats on
+- `/relay_stats`: Takes the backend's relay map and turns it into a binary format for the portal to unmarshal so we can query relay stats using the operator tool
