@@ -560,7 +560,7 @@ func main() {
 		},
 	}
 
-	var sessionCommand = &ffcli.Command{
+	var sessionsCommand = &ffcli.Command{
 		Name:       "sessions",
 		ShortUsage: "next sessions",
 		ShortHelp:  "List sessions",
@@ -587,6 +587,18 @@ func main() {
 		},
 	}
 
+	var sessionCommand = &ffcli.Command{
+		Name:       "session",
+		ShortUsage: "next session <session id>",
+		ShortHelp:  "Display details for the specified session",
+		Exec: func(_ context.Context, args []string) error {
+			if len(args) != 1 {
+				fmt.Printf("A session ID must be provided (see ./next sessions).")
+			}
+			sessions(rpcClient, env, args[0], sessionCount)
+			return nil
+		},
+	}
 	var relaysCommand = &ffcli.Command{
 		Name:       "relays",
 		ShortUsage: "next relays <regex>",
@@ -1962,6 +1974,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		selectCommand,
 		envCommand,
 		sessionCommand,
+		sessionsCommand,
 		relaysCommand,
 		relayCommand,
 		routesCommand,
