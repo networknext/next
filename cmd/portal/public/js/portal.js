@@ -404,6 +404,11 @@ MapHandler = {
 						layers: layers
 					});
 				} else {
+					if (!UserHandler.isAnonymous() && (UserHandler.userInfo.userId == "auth0|5e823e827e97a90cf402109e" || 
+					    UserHandler.userInfo.userId == "auth0|5ebac8b207ee8b1c19b4c0e2")) {
+							console.log("deckGL layers object:")
+							console.log(layers)
+								}
 					this.deckGlInstance.setProps({layers: []});
 					this.deckGlInstance.setProps({layers: layers});
 				}
