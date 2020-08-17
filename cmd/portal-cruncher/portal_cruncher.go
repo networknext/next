@@ -382,8 +382,15 @@ func main() {
 					clientTopSessions.StartCommand("ZADD")
 					clientTopSessions.CommandArgs("s-%d", minutes)
 					for j := range portalDataBuffer {
-						sessionID := fmt.Sprintf("%016x", portalDataBuffer[j].Meta.ID)
-						score := portalDataBuffer[j].Meta.DeltaRTT
+						meta := portalDataBuffer[j].Meta
+						sessionID := fmt.Sprintf("%016x", meta.ID)
+						score := meta.DeltaRTT
+						if score < 0 {
+							score = 0
+						}
+						if !meta.OnNetworkNext {
+							score = -meta.DirectRTT
+						}
 						clientTopSessions.CommandArgs(" %.2f %s", score, sessionID)
 					}
 					clientTopSessions.EndCommand()
