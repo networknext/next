@@ -891,11 +891,11 @@ func main() {
 				ShortHelp:  "Rename the specified relay",
 				Exec: func(ctx context.Context, args []string) error {
 					if len(args) == 0 {
-						log.Fatal("You need to supply a current relay name and a new name for it.")
+						handleRunTimeError(fmt.Sprintln("You need to supply a current relay name and a new name for it."), 0)
 					}
 
 					if len(args) == 1 {
-						log.Fatal("You need to supply a new name for the relay as well")
+						handleRunTimeError(fmt.Sprintln("You need to supply a new name for the relay as well"), 0)
 					}
 
 					updateRelayName(rpcClient, env, args[0], args[1])
@@ -1590,7 +1590,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 					}
 
 					if err := json.Unmarshal(jsonData, &sellerUSD); err != nil {
-						log.Fatalf("Could not unmarshal seller: %v", err)
+						handleRunTimeError(fmt.Sprintf("Could not unmarshal seller: %v\n", err), 1)
 					}
 
 					ingressUSD, err := strconv.ParseFloat(sellerUSD.IngressPriceUSD, 64)
