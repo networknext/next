@@ -52,7 +52,10 @@ void client_packet_received( next_client_t * client, void * context, const uint8
 const char * server_addresses[] = {
     "10.128.0.31",
     "10.128.0.82",
-    "10.128.0.83"
+    "10.128.0.83",
+    "10.128.0.102",
+    "10.128.0.103",
+    "10.128.0.104"
 };
 
 int main()
