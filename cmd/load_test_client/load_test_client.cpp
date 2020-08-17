@@ -60,12 +60,12 @@ const char * server_addresses[] = {
 
 int main()
 {
-    next_sleep( (rand() % 120) );
     printf( "\nWelcome to Network Next!\n\n" );
 
     auto now = std::chrono::high_resolution_clock::now();
 
     srand(std::chrono::duration<uint64_t, std::nano>(std::chrono::high_resolution_clock::now().time_since_epoch()).count());
+    next_sleep( (rand() % 120) );
 
     signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );
 
