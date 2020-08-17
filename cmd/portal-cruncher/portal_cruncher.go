@@ -395,8 +395,14 @@ func main() {
 						point := &portalDataBuffer[j].Point
 						sessionID := fmt.Sprintf("%016x", meta.ID)
 						customerID := fmt.Sprintf("%016x", meta.BuyerID)
-						score := meta.DeltaRTT
 						next := meta.OnNetworkNext
+						score := meta.DeltaRTT
+						if score < 0 {
+							score = 0
+						}
+						if !next {
+							score = -meta.DirectRTT
+						}
 
 						// Check if we should randomize the location (for staging load test)
 						if point.Latitude == 0 && point.Longitude == 0 && strings.Contains(meta.ClientAddr, "10.128.") {
