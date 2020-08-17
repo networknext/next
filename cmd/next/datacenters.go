@@ -107,6 +107,7 @@ func listDatacenterMaps(rpcClient jsonrpc.RPCClient, env Environment, datacenter
 		}
 	}
 
+
 	if len(dcIDs) == 0 {
 		fmt.Printf("No match for provided datacenter ID: %v\n", datacenter)
 		return
