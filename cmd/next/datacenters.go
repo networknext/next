@@ -36,7 +36,7 @@ func datacenters(rpcClient jsonrpc.RPCClient, env Environment, filter string, si
 		for _, dc := range reply.Datacenters {
 			dcs = append(dcs, datacenterReply{
 				Name:         dc.Name,
-				ID:           fmt.Sprintf("%d", int64(dc.ID)),
+				ID:           fmt.Sprintf("%d", dc.SignedID),
 				Latitude:     dc.Latitude,
 				Longitude:    dc.Longitude,
 				Enabled:      dc.Enabled,
