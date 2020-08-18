@@ -376,21 +376,25 @@ func main() {
 					if time.Since(pingTime) >= time.Second*10 {
 						if err := clientTopSessions.Ping(); err != nil {
 							level.Error(logger).Log("msg", "failed to ping REDIS_HOST_TOP_SESSIONS", "err", err)
+							fmt.Println(err)
 							os.Exit(1)
 						}
 
 						if err := clientSessionMap.Ping(); err != nil {
 							level.Error(logger).Log("msg", "failed to ping REDIS_HOST_SESSION_MAP", "err", err)
+							fmt.Println(err)
 							os.Exit(1)
 						}
 
 						if err := clientSessionMeta.Ping(); err != nil {
 							level.Error(logger).Log("msg", "failed to ping REDIS_HOST_SESSION_META", "err", err)
+							fmt.Println(err)
 							os.Exit(1)
 						}
 
 						if err := clientSessionSlices.Ping(); err != nil {
 							level.Error(logger).Log("msg", "failed to ping REDIS_HOST_SESSION_SLICES", "err", err)
+							fmt.Println(err)
 							os.Exit(1)
 						}
 
