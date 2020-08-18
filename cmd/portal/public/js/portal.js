@@ -404,8 +404,9 @@ MapHandler = {
 						layers: layers
 					});
 				} else {
-					const isStaging = window.location.hostname == 'portal-staging.networknext.com';
-					if (UserHandler.isAdmin() && isStaging) {
+					const displayLayersDebug = ((window.location.hostname == 'portal-staging.networknext.com') ||
+									  		    (window.location.hostname == 'portal-dev.networknext.com'));
+					if (UserHandler.isAdmin() && displayLayersDebug) {
 							console.log("deckGL layers object:")
 							console.log(layers)
 					}
