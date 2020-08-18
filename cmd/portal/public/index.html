@@ -418,8 +418,8 @@
                             </div>
                         </div>
                         <div v-bind:class="{
-                                'map-container-no-offset': true,
-                                'map-container-offset': false,
+                                'map-container-no-offset': !alerts.emailSent.show && !alerts.verifyEmail.show && !alerts.emailFailed.show,
+                                'map-container-offset': alerts.emailSent.show || alerts.verifyEmail.show || alerts.emailFailed.show,
                              }"
                              id="map-parent">
                             <div id="map" class="map" ref="map"></div>
