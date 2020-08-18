@@ -991,6 +991,10 @@ func (fs *Firestore) AddRelay(ctx context.Context, r routing.Relay) error {
 		LastUpdateTime:     r.LastUpdateTime,
 		MRC:                int64(r.MRC),
 		Overage:            int64(r.Overage),
+		BWRule:             int32(r.BWRule),
+		ContractTerm:       r.ContractTerm,
+		StartDate:          r.StartDate.UTC(),
+		EndDate:            r.EndDate.UTC(),
 		Type:               serverType,
 	}
 
@@ -1059,7 +1063,7 @@ func (fs *Firestore) RemoveRelay(ctx context.Context, id uint64) error {
 	return &DoesNotExistError{resourceType: "relay", resourceRef: fmt.Sprintf("%x", id)}
 }
 
-// Only relay state, public key, and NIC speed are updated in firestore for now
+// Only relay name, state, public key, and NIC speed are updated in firestore for now
 func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 	// Get a copy of the relay in cached storage
 	fs.relayMutex.RLock()
@@ -1095,6 +1099,7 @@ func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 		if rid == r.ID {
 			// Set the data to update the relay with
 			newRelayData := map[string]interface{}{
+				"name":            r.Name,
 				"state":           r.State,
 				"lastUpdateTime":  r.LastUpdateTime,
 				"stateUpdateTime": time.Now(),
@@ -1192,7 +1197,7 @@ func (fs *Firestore) ListDatacenterMaps(dcID uint64) map[uint64]routing.Datacent
 
 	var dcs = make(map[uint64]routing.DatacenterMap)
 	for _, dc := range fs.datacenterMaps {
-		if dc.Datacenter == dcID {
+		if dc.Datacenter == dcID || dcID == 0 {
 			id := crypto.HashID(dc.Alias + fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.Datacenter))
 			dcs[id] = dc
 		}
@@ -1633,9 +1638,9 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 		var serverType routing.MachineType
 		switch r.Type {
 		case "vm":
-			serverType = routing.BareMetal
-		case "bare-metal":
 			serverType = routing.VirtualMachine
+		case "bare-metal":
+			serverType = routing.BareMetal
 		case "n/a":
 			serverType = routing.NoneSpecified
 		default:
@@ -1664,8 +1669,8 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 			Overage:             routing.Nibblin(r.Overage),
 			BWRule:              bwRule,
 			ContractTerm:        r.ContractTerm,
-			StartDate:           r.StartDate,
-			EndDate:             r.EndDate,
+			StartDate:           r.StartDate.UTC(),
+			EndDate:             r.EndDate.UTC(),
 			Type:                serverType,
 		}
 
