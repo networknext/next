@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/networknext/backend/routing"
@@ -13,26 +12,26 @@ func optimizeCostMatrix(costFilename, routeFilename string, rtt int32) {
 
 	costFile, err := os.Open(costFilename)
 	if err != nil {
-		log.Fatalln(fmt.Errorf("could open the cost matrix file for reading: %w", err))
+		handleRunTimeError(fmt.Sprintf("could open the cost matrix file for reading: %v\n", err), 1)
 	}
 	defer costFile.Close()
 
 	if _, err := costMatrix.ReadFrom(costFile); err != nil {
-		log.Fatalln(fmt.Errorf("error reading cost matrix: %w", err))
+		handleRunTimeError(fmt.Sprintf("error reading cost matrix: %v\n", err), 1)
 	}
 
 	var routeMatrix routing.RouteMatrix
 	if err := costMatrix.Optimize(&routeMatrix, rtt); err != nil {
-		log.Fatalln(fmt.Errorf("error optimizing cost matrix: %w", err))
+		handleRunTimeError(fmt.Sprintf("error optimizing cost matrix: %v\n", err), 1)
 	}
 
 	routeFile, err := os.Create(routeFilename)
 	if err != nil {
-		log.Fatalln(fmt.Errorf("could not open the route matrix file for writing: %w", err))
+		handleRunTimeError(fmt.Sprintf("could not open the route matrix file for writing: %v\n", err), 1)
 	}
 	defer routeFile.Close()
 
 	if _, err := routeMatrix.WriteTo(routeFile); err != nil {
-		log.Fatalln(fmt.Errorf("error writing route matrix: %w", err))
+		handleRunTimeError(fmt.Sprintf("error writing route matrix: %v\n", err), 1)
 	}
 }

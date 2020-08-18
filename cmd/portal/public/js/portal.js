@@ -48,7 +48,18 @@ AuthHandler = {
 
 		// HACK THESE NEED TO BE ENV VARIABLES SOME HOW
 		const hostname = window.location.hostname
-		const clientID = hostname == 'portal.networknext.com' || hostname == 'portal-staging.networknext.com' ? 'MaSx99ma3AwYOwWMLm3XWNvQ5WyJWG2Y' : 'oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n';
+    let clientID = '';
+
+    switch (hostname) {
+      case 'portal.networknext.com':
+        clientID = 'MaSx99ma3AwYOwWMLm3XWNvQ5WyJWG2Y';
+        break;
+      case 'portal-staging.networknext.com':
+        clientID = 'BRvkWHQEyQmCqA7i2IBFOpm7XnDdwkpR';
+        break;
+      default:
+      clientID = 'oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n';
+    }
 
 		this.auth0Client = await createAuth0Client({
 			client_id: clientID,
@@ -215,9 +226,9 @@ MapHandler = {
 		}, 1000);
 
 		this.refreshMapSessions();
-		/* this.mapLoop = setInterval(() => {
+		this.mapLoop = setInterval(() => {
 			this.refreshMapSessions();
-		}, 10000); */
+		}, 10000);
 	},
 	updateMap(mapType) {
 		/*
@@ -249,7 +260,7 @@ MapHandler = {
 				let direct = response.direct
 				let next = response.next
 
-				const isDev = window.location.hostname == 'portal-dev.networknext.com' || window.location.hostname == '127.0.0.1';
+				const isDev = window.location.hostname == 'portal-dev.networknext.com' || window.location.hostname == '127.0.0.1' || window.location.hostname == 'portal-staging.networknext.com';
 				if (!isDev) {
 					this.totalDirectSessions[this.totalSessionCountCalls % 32] = direct
 					this.totalNextSessions[this.totalSessionCountCalls % 32] = next
@@ -282,8 +293,7 @@ MapHandler = {
 		JSONRPCClient
 			.call('BuyersService.SessionMap', {buyer_id: filter.buyerId || ""})
 			.then((response) => {
-				// let sessions = response.map_points || [];
-				let sessions = [];
+				let sessions = response.map_points || [];
 				let onNN = sessions.filter((point) => {
 					return (point[2] == 1);
 				});
@@ -374,11 +384,14 @@ MapHandler = {
 				}
 
 				if (!this.deckGlInstance) {
-					// creating the deck.gl instance
+          // creating the deck.gl instance
+          const mapParent = document.getElementById("map-parent")
+          const width = mapParent.offsetWidth
+          const height = mapParent.offsetHeight
 					this.deckGlInstance = new deck.Deck({
 						canvas: document.getElementById("deck-canvas"),
-						width: '100%',
-						height: '100%',
+						width: width,
+						height: height,
 						initialViewState: this.viewState,
 						controller: controller,
 						// change the map's viewstate whenever the view state of deck.gl changes
@@ -854,9 +867,9 @@ WorkspaceHandler = {
 		Object.assign(rootComponent.$data.pages.map.filter, {buyerId: id});
 		this.sessionLoop ? clearInterval(this.sessionLoop) : null;
 		this.refreshSessionTable();
-		/* this.sessionLoop = setInterval(() => {
+		this.sessionLoop = setInterval(() => {
 			this.refreshSessionTable();
-		}, 10000); */
+		}, 10000);
 	},
 	refreshSessionTable() {
 		setTimeout(() => {
@@ -865,8 +878,7 @@ WorkspaceHandler = {
 			JSONRPCClient
 				.call('BuyersService.TopSessions', {buyer_id: filter.buyerId})
 				.then((response) => {
-					// let sessions = response.sessions || [];
-					let sessions = [];
+					let sessions = response.sessions || [];
 
 					/**
 					 * I really dislike this but it is apparently the way to reload/update the data within a vue
