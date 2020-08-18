@@ -1003,7 +1003,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 		// Get the best route. This can be a network next route or a direct route.
 
 		var bestRoute *routing.Route
-		bestRoute, routeDecision = GetBestRoute(routeMatrix, nearRelays, datacenterRelays, &params.Metrics.ErrorMetrics, &buyer,
+		bestRoute, routeDecision = GetBestRoute(routeMatrix, nearRelays, datacenterRelays, params.Metrics, &buyer,
 			sessionDataReadOnly.RouteHash, sessionDataReadOnly.RouteDecision, &lastNextStats, &lastDirectStats, nextSliceCounter, &committedData, &directRoute)
 
 		if routeDecision.OnNetworkNext {
