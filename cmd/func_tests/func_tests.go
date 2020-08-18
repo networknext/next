@@ -1482,7 +1482,6 @@ type test_function func()
 
 func main() {
 	allTests := []test_function{
-		/*
 		test_direct_default,
 		test_direct_upgrade,
 		test_network_next,
@@ -1491,9 +1490,7 @@ func main() {
 		test_disable_network_next_on_client,
 		test_server_under_load,
 		test_reconnect_direct,
-		*/
 		test_reconnect_next,
-		/*
 		test_connect_to_another_server_direct,
 		test_connect_to_another_server_next,
 		test_route_switching,
@@ -1506,7 +1503,6 @@ func main() {
 		test_packet_loss_direct,
 		test_packet_loss_next,
 		test_idempotent,
-		*/
 	}
 
 	// If there are command line arguments, use reflection to see what tests to run

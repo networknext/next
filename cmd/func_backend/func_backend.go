@@ -824,9 +824,6 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 			relaysToPing = append(relaysToPing, routing.RelayPingData{ID: uint64(v.ID), Address: v.Addr.String()})
 		}
 	}
-	backend.mutex.Unlock()
-
-	backend.mutex.Lock()
 	relayData := backend.relayMap.GetRelayData(relay.Addr.String())
 	if relayData == nil {
 		backend.mutex.Unlock()
