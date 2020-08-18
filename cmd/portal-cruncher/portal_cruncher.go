@@ -449,8 +449,8 @@ func main() {
 							lat := (float64(latBits)) / 0xFFFFFFFF
 							long := (float64(longBits)) / 0xFFFFFFFF
 
-							point.Latitude = -90.0 + lat*180.0*0.25
-							point.Longitude = -180.0 + long*360.0*0.25
+							point.Latitude = (-90.0 + lat*180.0) * 0.25
+							point.Longitude = (-180.0 + long*360.0) * 0.25
 						}
 
 						// Remove the old per-buyer top sessions minute bucket from 2 minutes ago if it didnt expire
