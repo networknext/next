@@ -571,13 +571,13 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 				return err
 			}
 
-			if point.Latitude != 0 && point.Longitude != 0 {
-				mapPointsBuyers[stringID] = append(mapPointsBuyers[stringID], point)
-				mapPointsGlobal = append(mapPointsGlobal, point)
+			//if point.Latitude != 0 && point.Longitude != 0 {
+			mapPointsBuyers[stringID] = append(mapPointsBuyers[stringID], point)
+			mapPointsGlobal = append(mapPointsGlobal, point)
 
-				mapPointsBuyersCompact[stringID] = append(mapPointsBuyersCompact[stringID], []interface{}{point.Longitude, point.Latitude, false})
-				mapPointsGlobalCompact = append(mapPointsGlobalCompact, []interface{}{point.Longitude, point.Latitude, false})
-			}
+			mapPointsBuyersCompact[stringID] = append(mapPointsBuyersCompact[stringID], []interface{}{point.Longitude, point.Latitude, false})
+			mapPointsGlobalCompact = append(mapPointsGlobalCompact, []interface{}{point.Longitude, point.Latitude, false})
+			//}
 		}
 
 		for _, nextPointString := range nextPointStrings {

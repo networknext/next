@@ -1,14 +1,10 @@
 package routing
 
 const (
-	// MaxRelays ...
 	MaxRelays = 5
-
-	// MaxRoutesPerRelayPair ...
 	MaxRoutesPerRelayPair = 8
 )
 
-// RouteManager ...
 type RouteManager struct {
 	NumRoutes      int
 	RouteRTT       [MaxRoutesPerRelayPair]int32
@@ -17,10 +13,19 @@ type RouteManager struct {
 	RouteRelays    [MaxRoutesPerRelayPair][MaxRelays]uint64
 }
 
-// AddRoute ...
 func (manager *RouteManager) AddRoute(rtt int32, relays ...uint64) {
+	
 	if rtt < 0 {
 		return
+	}
+
+	// IMPORTANT: Filter out routes with loops. They can happen *very* occasionally.
+	loopCheck := make(map[uint64]int, len(relays))
+	for i := range relays {
+		if _, exists := loopCheck[relays[i]]; exists {
+			return
+		}
+		loopCheck[relays[i]] = 1
 	}
 
 	if manager.NumRoutes == 0 {
@@ -130,11 +135,9 @@ func (manager *RouteManager) AddRoute(rtt int32, relays ...uint64) {
 	}
 }
 
-// fnv64
 func routeHash(relays ...uint64) uint64 {
 	// http://www.isthe.com/chongo/tech/comp/fnv/
 	const fnv64OffsetBasis = uint64(0xCBF29CE484222325)
-
 	hash := uint64(0)
 	for i := range relays {
 		hash *= fnv64OffsetBasis
@@ -154,6 +157,5 @@ func routeHash(relays ...uint64) uint64 {
 		hash *= fnv64OffsetBasis
 		hash ^= relays[i] & 0xFF
 	}
-
 	return hash
 }
