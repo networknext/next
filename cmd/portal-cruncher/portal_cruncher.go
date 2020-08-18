@@ -468,12 +468,10 @@ func main() {
 						// has switched from direct -> next or next -> direct
 						pointString := point.RedisString()
 						if next {
-							clientSessionMap.Command("HSET", "n-%s-%d %s \"%s\"", customerID, minutes-1, sessionID, pointString)
 							clientSessionMap.Command("HSET", "n-%s-%d %s \"%s\"", customerID, minutes, sessionID, pointString)
 							clientSessionMap.Command("HDEL", "d-%s-%d %s", customerID, minutes-1, sessionID)
 							clientSessionMap.Command("HDEL", "d-%s-%d %s", customerID, minutes, sessionID)
 						} else {
-							clientSessionMap.Command("HSET", "d-%s-%d %s \"%s\"", customerID, minutes-1, sessionID, pointString)
 							clientSessionMap.Command("HSET", "d-%s-%d %s \"%s\"", customerID, minutes, sessionID, pointString)
 							clientSessionMap.Command("HDEL", "n-%s-%d %s", customerID, minutes-1, sessionID)
 							clientSessionMap.Command("HDEL", "n-%s-%d %s", customerID, minutes, sessionID)
