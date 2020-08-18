@@ -384,11 +384,14 @@ MapHandler = {
 				}
 
 				if (!this.deckGlInstance) {
-					// creating the deck.gl instance
+          // creating the deck.gl instance
+          const mapParent = document.getElementById("map-parent")
+          const width = mapParent.offsetWidth
+          const height = mapParent.offsetHeight
 					this.deckGlInstance = new deck.Deck({
 						canvas: document.getElementById("deck-canvas"),
-						width: '100%',
-						height: '100%',
+						width: width,
+						height: height,
 						initialViewState: this.viewState,
 						controller: controller,
 						// change the map's viewstate whenever the view state of deck.gl changes
