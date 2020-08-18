@@ -10,6 +10,8 @@ type SessionMetrics struct {
 	NextSessions                      Counter
 	DurationGauge                     Gauge
 	LongDuration                      Counter
+	RouteSelectionDuration            Gauge
+	RouteDecisionDuration             Gauge
 	PostSessionBillingEntriesSent     Counter
 	PostSessionBillingEntriesFinished Counter
 	PostSessionBillingBufferLength    Gauge
@@ -28,6 +30,8 @@ var EmptySessionMetrics SessionMetrics = SessionMetrics{
 	NextSessions:                      &EmptyCounter{},
 	DurationGauge:                     &EmptyGauge{},
 	LongDuration:                      &EmptyCounter{},
+	RouteSelectionDuration:            &EmptyGauge{},
+	RouteDecisionDuration:             &EmptyGauge{},
 	PostSessionBillingEntriesSent:     &EmptyCounter{},
 	PostSessionBillingEntriesFinished: &EmptyCounter{},
 	PostSessionBillingBufferLength:    &EmptyGauge{},
@@ -862,6 +866,28 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		ID:          "session.long_durations",
 		Unit:        "durations",
 		Description: "The number of session update calls that took longer than 100ms to complete",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.RouteSelectionDuration, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Session Route Selection Duration",
+		ServiceName: "server_backend",
+		ID:          "session.route_selection.duration",
+		Unit:        "ms",
+		Description: "How long it takes to run the route selection logic in milliseconds",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.RouteDecisionDuration, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Session Route Decision Duration",
+		ServiceName: "server_backend",
+		ID:          "session.route_decision.duration",
+		Unit:        "ms",
+		Description: "How long it takes to run the route decision logic in milliseconds",
 	})
 	if err != nil {
 		return nil, err
