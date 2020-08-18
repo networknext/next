@@ -23,6 +23,15 @@ func (manager *RouteManager) AddRoute(rtt int32, relays ...uint64) {
 		return
 	}
 
+	// IMPORTANT: Filter out routes with loops. They can happen *very* occasionally.
+	loopCheck := make(map[uint64]int, len(relays))
+	for i := range relays {
+		if _, exists := loopCheck[relays[i]]; exists {
+			return
+		}
+		loopCheck[relays[i]] = 1
+	}
+
 	if manager.NumRoutes == 0 {
 
 		// no routes yet. add the route
