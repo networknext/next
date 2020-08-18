@@ -817,20 +817,21 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
 	relaysToPing := make([]routing.RelayPingData, 0)
 
+	backend.mutex.Lock()
 	allRelayData := backend.relayMap.GetAllRelayData()
 	for _, v := range allRelayData {
 		if v.Addr.String() != relay.Addr.String() {
 			relaysToPing = append(relaysToPing, routing.RelayPingData{ID: uint64(v.ID), Address: v.Addr.String()})
 		}
 	}
-
 	relayData := backend.relayMap.GetRelayData(relay.Addr.String())
 	if relayData == nil {
+		backend.mutex.Unlock()
 		writer.WriteHeader(http.StatusNotFound)
 		return
 	}
-
 	backend.relayMap.UpdateRelayData(relay.Addr.String(), relay)
+	backend.mutex.Unlock()
 
 	responseData := make([]byte, 10*1024)
 
