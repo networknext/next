@@ -350,7 +350,7 @@ func relays(
 			} else if relayVersionFilter == "all" || relay.Version == relayVersionFilter {
 				var relayID string
 				if relayIDSigned {
-					relayID = fmt.Sprintf("%d", int64(relay.ID))
+					relayID = fmt.Sprintf("%d", relay.SignedID)
 				} else {
 					relayID = fmt.Sprintf("%016x", relay.ID)
 				}
@@ -370,7 +370,7 @@ func relays(
 		} else if relayVersionFilter == "all" || relay.Version == relayVersionFilter {
 			var relayID string
 			if relayIDSigned {
-				relayID = fmt.Sprintf("%d", int64(relay.ID))
+				relayID = fmt.Sprintf("%d", relay.SignedID)
 			} else {
 				relayID = fmt.Sprintf("%016x", relay.ID)
 			}

@@ -422,6 +422,7 @@ type RelaysReply struct {
 
 type relay struct {
 	ID                  uint64                `json:"id"`
+	SignedID            int64                 `json:"signed_id"`
 	Name                string                `json:"name"`
 	Addr                string                `json:"addr"`
 	Latitude            float64               `json:"latitude"`
@@ -457,6 +458,7 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 	for _, r := range s.Storage.Relays() {
 		relay := relay{
 			ID:                  r.ID,
+			SignedID:            r.SignedID,
 			Name:                r.Name,
 			Addr:                r.Addr.String(),
 			Latitude:            r.Datacenter.Location.Latitude,
@@ -481,8 +483,6 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			EndDate:             r.EndDate,
 			Type:                r.Type,
 		}
-
-		// If the relay is in memory, get its traffic stats and last update time
 
 		if relayData, ok := s.RelayMap.Get(r.ID); ok {
 			relay.SessionCount = relayData.SessionCount
@@ -740,6 +740,7 @@ type DatacentersReply struct {
 type datacenter struct {
 	Name         string  `json:"name"`
 	ID           uint64  `json:"id"`
+	SignedID     int64   `json:"signed_id"`
 	Latitude     float64 `json:"latitude"`
 	Longitude    float64 `json:"longitude"`
 	Enabled      bool    `json:"enabled"`
@@ -751,6 +752,7 @@ func (s *OpsService) Datacenters(r *http.Request, args *DatacentersArgs, reply *
 		reply.Datacenters = append(reply.Datacenters, datacenter{
 			Name:         d.Name,
 			ID:           d.ID,
+			SignedID:     d.SignedID,
 			Enabled:      d.Enabled,
 			Latitude:     d.Location.Latitude,
 			Longitude:    d.Location.Longitude,
