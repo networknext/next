@@ -407,12 +407,6 @@ MapHandler = {
 						layers: layers
 					});
 				} else {
-					const displayLayersDebug = ((window.location.hostname == 'portal-staging.networknext.com') ||
-									  		    (window.location.hostname == 'portal-dev.networknext.com'));
-					if (UserHandler.isAdmin() && displayLayersDebug) {
-							console.log("deckGL layers object:")
-							console.log(layers)
-					}
 					this.deckGlInstance.setProps({layers: []});
 					this.deckGlInstance.setProps({layers: layers});
 				}
