@@ -1003,7 +1003,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 		// Get the best route. This can be a network next route or a direct route.
 
 		var bestRoute *routing.Route
-		bestRoute, routeDecision = GetBestRoute(routeMatrix, nearRelays, datacenterRelays, &params.Metrics.ErrorMetrics, &buyer,
+		bestRoute, routeDecision = GetBestRoute(routeMatrix, nearRelays, datacenterRelays, params.Metrics, &buyer,
 			sessionDataReadOnly.RouteHash, sessionDataReadOnly.RouteDecision, &lastNextStats, &lastDirectStats, nextSliceCounter, &committedData, &directRoute)
 
 		if routeDecision.OnNetworkNext {
@@ -1021,12 +1021,12 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 
 // GetBestRoute returns the best route that a session can take for this slice. If we can't serve a network next route, the returned route will be the passed in direct route.
 // This function can either return a network next route or a direct route, and it also returns a reason as to why the route was chosen.
-func GetBestRoute(routeMatrix RouteProvider, nearRelays []routing.Relay, datacenterRelays []routing.Relay, errorMetrics *metrics.SessionErrorMetrics,
+func GetBestRoute(routeMatrix RouteProvider, nearRelays []routing.Relay, datacenterRelays []routing.Relay, metrics *metrics.SessionMetrics,
 	buyer *routing.Buyer, prevRouteHash uint64, prevRouteDecision routing.Decision, lastNextStats *routing.Stats, lastDirectStats *routing.Stats,
 	onNNSliceCounter uint64, committedData *routing.CommittedData, directRoute *routing.Route) (*routing.Route, routing.Decision) {
 
 	// We need to get a next route to compare against direct
-	nextRoute := GetNextRoute(routeMatrix, nearRelays, datacenterRelays, errorMetrics, buyer, prevRouteHash)
+	nextRoute := GetNextRoute(routeMatrix, nearRelays, datacenterRelays, metrics, buyer, prevRouteHash)
 	if nextRoute == nil {
 		// We couldn't find a network next route at all. This may happen if something goes wrong with the route matrix or if relays are flickering.
 		decision := routing.Decision{OnNetworkNext: false, Reason: routing.DecisionNoNextRoute}
@@ -1048,6 +1048,11 @@ func GetBestRoute(routeMatrix RouteProvider, nearRelays []routing.Relay, datacen
 
 		return nextRoute, routing.Decision{OnNetworkNext: true, Reason: routing.DecisionForceNext}
 	}
+
+	routeDecisionStartTime := time.Now()
+	defer func() {
+		metrics.RouteDecisionDuration.Set(float64(time.Since(routeDecisionStartTime).Milliseconds()))
+	}()
 
 	// Now that we have a next route, we have to decide if the route is worth taking over direct.
 	// This process can vary based on the customer's route shader.
@@ -1092,13 +1097,18 @@ func GetBestRoute(routeMatrix RouteProvider, nearRelays []routing.Relay, datacen
 	return directRoute, routeDecision
 }
 
-func GetNextRoute(routeMatrix RouteProvider, nearRelays []routing.Relay, datacenterRelays []routing.Relay, errorMetrics *metrics.SessionErrorMetrics, buyer *routing.Buyer, prevRouteHash uint64) *routing.Route {
+func GetNextRoute(routeMatrix RouteProvider, nearRelays []routing.Relay, datacenterRelays []routing.Relay, metrics *metrics.SessionMetrics, buyer *routing.Buyer, prevRouteHash uint64) *routing.Route {
 
 	// First, Get all possible routes between all near relays and all relays in the datacenter
 
+	routeSelectionStartTime := time.Now()
+	defer func() {
+		metrics.RouteSelectionDuration.Set(float64(time.Since(routeSelectionStartTime).Milliseconds()))
+	}()
+
 	routes, err := routeMatrix.GetRoutes(nearRelays, datacenterRelays)
 	if err != nil {
-		errorMetrics.RouteFailure.Add(1)
+		metrics.ErrorMetrics.RouteFailure.Add(1)
 		return nil
 	}
 
@@ -1127,7 +1137,7 @@ func GetNextRoute(routeMatrix RouteProvider, nearRelays []routing.Relay, datacen
 	}
 
 	if len(routes) == 0 {
-		errorMetrics.RouteSelectFailure.Add(1)
+		metrics.ErrorMetrics.RouteSelectFailure.Add(1)
 		return nil
 	}
 
@@ -1254,8 +1264,11 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, params *PostSessi
 	}
 
 	if !postSessionHandler.IsPortalBufferFull() {
-		postSessionHandler.SendPortalData(buildPortalData(params.packet, params.lastNextStats, params.lastDirectStats, hops, params.packet.OnNetworkNext, datacenterName, params.location, nearRelayData, params.timeNow, isMultipath, datacenterAlias))
-		params.sessionUpdateParams.Metrics.PostSessionPortalEntriesSent.Add(1)
+		portalData := buildPortalData(params.packet, params.lastNextStats, params.lastDirectStats, hops, params.packet.OnNetworkNext, datacenterName, params.location, nearRelayData, params.timeNow, isMultipath, datacenterAlias)
+		if portalData.Meta.NextRTT != 0 || portalData.Meta.DirectRTT != 0 {
+			postSessionHandler.SendPortalData(portalData)
+			params.sessionUpdateParams.Metrics.PostSessionPortalEntriesSent.Add(1)
+		}
 	} else {
 		params.sessionUpdateParams.Metrics.PostSessionPortalBufferFull.Add(1)
 	}
@@ -1280,6 +1293,9 @@ func buildPortalData(packet *SessionUpdatePacket, lastNNStats *routing.Stats, la
 		deltaRTT = 0
 	} else {
 		deltaRTT = lastDirectStats.RTT - lastNNStats.RTT
+		if lastNNStats.RTT == 0 || deltaRTT < 0 {
+			deltaRTT = 0
+		}
 	}
 
 	return &SessionPortalData{

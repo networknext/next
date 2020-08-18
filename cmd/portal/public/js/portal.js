@@ -260,7 +260,7 @@ MapHandler = {
 				let direct = response.direct
 				let next = response.next
 
-				const isDev = window.location.hostname == 'portal-dev.networknext.com' || window.location.hostname == '127.0.0.1';
+				const isDev = window.location.hostname == 'portal-dev.networknext.com' || window.location.hostname == '127.0.0.1' || window.location.hostname == 'portal-staging.networknext.com';
 				if (!isDev) {
 					this.totalDirectSessions[this.totalSessionCountCalls % 32] = direct
 					this.totalNextSessions[this.totalSessionCountCalls % 32] = next
@@ -384,11 +384,14 @@ MapHandler = {
 				}
 
 				if (!this.deckGlInstance) {
-					// creating the deck.gl instance
+          // creating the deck.gl instance
+          const mapParent = document.getElementById("map-parent")
+          const width = mapParent.offsetWidth
+          const height = mapParent.offsetHeight
 					this.deckGlInstance = new deck.Deck({
 						canvas: document.getElementById("deck-canvas"),
-						width: '100%',
-						height: '100%',
+						width: width,
+						height: height,
 						initialViewState: this.viewState,
 						controller: controller,
 						// change the map's viewstate whenever the view state of deck.gl changes

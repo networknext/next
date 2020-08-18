@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"runtime"
+	"strings"
 
 	"net/http"
 	"os"
@@ -355,6 +356,7 @@ func main() {
 				portalDataBuffer := make([]transport.SessionPortalData, 0)
 
 				now := time.Now()
+				pingTime := time.Now()
 
 				for incoming := range messageChan {
 					var sessionPortalData transport.SessionPortalData
@@ -369,6 +371,31 @@ func main() {
 						continue
 					}
 
+					// Periodically ping the redis instances and restart if we don't get a pong
+					if time.Since(pingTime) >= time.Second*10 {
+						if err := clientTopSessions.Ping(); err != nil {
+							level.Error(logger).Log("msg", "failed to ping REDIS_HOST_TOP_SESSIONS", "err", err)
+							os.Exit(1)
+						}
+
+						if err := clientSessionMap.Ping(); err != nil {
+							level.Error(logger).Log("msg", "failed to ping REDIS_HOST_SESSION_MAP", "err", err)
+							os.Exit(1)
+						}
+
+						if err := clientSessionMeta.Ping(); err != nil {
+							level.Error(logger).Log("msg", "failed to ping REDIS_HOST_SESSION_META", "err", err)
+							os.Exit(1)
+						}
+
+						if err := clientSessionSlices.Ping(); err != nil {
+							level.Error(logger).Log("msg", "failed to ping REDIS_HOST_SESSION_SLICES", "err", err)
+							os.Exit(1)
+						}
+
+						pingTime = time.Now()
+					}
+
 					now = time.Now()
 					secs := now.Unix()
 					minutes := secs / 60
@@ -380,8 +407,15 @@ func main() {
 					clientTopSessions.StartCommand("ZADD")
 					clientTopSessions.CommandArgs("s-%d", minutes)
 					for j := range portalDataBuffer {
-						sessionID := fmt.Sprintf("%016x", portalDataBuffer[j].Meta.ID)
-						score := portalDataBuffer[j].Meta.DeltaRTT
+						meta := portalDataBuffer[j].Meta
+						sessionID := fmt.Sprintf("%016x", meta.ID)
+						score := meta.DeltaRTT
+						if score < 0 {
+							score = 0
+						}
+						if !meta.OnNetworkNext {
+							score = -meta.DirectRTT
+						}
 						clientTopSessions.CommandArgs(" %.2f %s", score, sessionID)
 					}
 					clientTopSessions.EndCommand()
@@ -393,8 +427,32 @@ func main() {
 						point := &portalDataBuffer[j].Point
 						sessionID := fmt.Sprintf("%016x", meta.ID)
 						customerID := fmt.Sprintf("%016x", meta.BuyerID)
-						score := meta.DeltaRTT
 						next := meta.OnNetworkNext
+						score := meta.DeltaRTT
+						if score < 0 {
+							score = 0
+						}
+						if !next {
+							score = -meta.DirectRTT
+						}
+
+						// Check if we should randomize the location (for staging load test)
+						if point.Latitude == 0 && point.Longitude == 0 && strings.Contains(meta.ClientAddr, "10.128.") {
+							// Randomize the location by using 4 bits of the session ID for the lat, and the other 4 for the long
+							/* sessionIDBytes := make([]byte, 8)
+							binary.LittleEndian.PutUint64(sessionIDBytes, meta.ID)
+
+							latBits := binary.LittleEndian.Uint32(sessionIDBytes[0:4])
+							longBits := binary.LittleEndian.Uint32(sessionIDBytes[4:8])
+
+							lat := (float64(latBits)) / 0xFFFFFFFF
+							long := (float64(longBits)) / 0xFFFFFFFF
+
+							point.Latitude = -90.0 + lat*180.0
+							point.Longitude = -180.0 + long*360.0 */
+							point.Latitude = 0
+							point.Longitude = 0
+						}
 
 						// Remove the old per-buyer top sessions minute bucket from 2 minutes ago if it didnt expire
 						// and update the current per-buyer top sessions list
@@ -409,12 +467,13 @@ func main() {
 						// Update the map points for this minute bucket
 						// Make sure to remove the session ID from the opposite bucket in case the session
 						// has switched from direct -> next or next -> direct
+						pointString := point.RedisString()
 						if next {
-							clientSessionMap.Command("HSET", "n-%s-%d %s \"%s\"", customerID, minutes, sessionID, point.RedisString())
+							clientSessionMap.Command("HSET", "n-%s-%d %s \"%s\"", customerID, minutes, sessionID, pointString)
 							clientSessionMap.Command("HDEL", "d-%s-%d %s", customerID, minutes-1, sessionID)
 							clientSessionMap.Command("HDEL", "d-%s-%d %s", customerID, minutes, sessionID)
 						} else {
-							clientSessionMap.Command("HSET", "d-%s-%d %s \"%s\"", customerID, minutes, sessionID, point.RedisString())
+							clientSessionMap.Command("HSET", "d-%s-%d %s \"%s\"", customerID, minutes, sessionID, pointString)
 							clientSessionMap.Command("HDEL", "n-%s-%d %s", customerID, minutes-1, sessionID)
 							clientSessionMap.Command("HDEL", "n-%s-%d %s", customerID, minutes, sessionID)
 						}
