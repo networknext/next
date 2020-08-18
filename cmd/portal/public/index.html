@@ -49,8 +49,8 @@
                 left: 0;
             }
             #deckgl-overlay {
-                width: inherit !important;
-                height: inherit !important;
+                width: 100%;
+                height: 100%;
             }
             .uplot .legend.inline th::after {
                 content: "";
@@ -418,8 +418,8 @@
                             </div>
                         </div>
                         <div v-bind:class="{
-                                'map-container-no-offset': true,
-                                'map-container-offset': false,
+                                'map-container-no-offset': !alerts.emailSent.show && !alerts.verifyEmail.show && !alerts.emailFailed.show,
+                                'map-container-offset': alerts.emailSent.show || alerts.verifyEmail.show || alerts.emailFailed.show,
                              }"
                              id="map-parent">
                             <div id="map" class="map" ref="map"></div>
