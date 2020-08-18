@@ -80,7 +80,7 @@ namespace core
       }
 #else
       if (!mSocket.recv(pkt)) {
-        Log("failed to receive packet");
+        LOG("failed to receive packet");
         continue;
       }
 
@@ -137,7 +137,7 @@ namespace core
     switch (type) {
       case packets::Type::NewRelayPing: {
         if (!mShouldProcess) {
-          Log("relay in process of shutting down, rejecting relay ping packet");
+          LOG("relay in process of shutting down, rejecting relay ping packet");
           return;
         }
 

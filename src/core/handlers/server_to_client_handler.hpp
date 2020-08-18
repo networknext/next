@@ -48,7 +48,7 @@ namespace core
       // check if length excluding the hash is right,
       // and then check if the hash + everything else is too large
       if (length <= RELAY_HEADER_BYTES || mPacket.Len > RELAY_HEADER_BYTES + RELAY_MTU) {
-        Log("ignoring server to client packet, invalid size: ", length);
+        LOG("ignoring server to client packet, invalid size: ", length);
         return;
       }
 
@@ -60,7 +60,7 @@ namespace core
       if (
        relay::relay_peek_header(
         RELAY_DIRECTION_SERVER_TO_CLIENT, &type, &sequence, &session_id, &session_version, data, length) != RELAY_OK) {
-        Log("ignoring server to client packet, relay header could not be read");
+        LOG("ignoring server to client packet, relay header could not be read");
         return;
       }
 
@@ -69,25 +69,25 @@ namespace core
       auto session = mSessionMap.get(hash);
 
       if (!session) {
-        Log(
+        LOG(
          "session does not exist: session = ", std::hex, session_id, '.', std::dec, static_cast<unsigned int>(session_version));
         return;
       }
 
       if (session->expired()) {
-        Log("session expired: session = ", *session);
+        LOG("session expired: session = ", *session);
         mSessionMap.erase(hash);
         return;
       }
 
       uint64_t clean_sequence = relay::relay_clean_sequence(sequence);
       if (relay_replay_protection_already_received(&session->ServerToClientProtection, clean_sequence)) {
-        Log("ignoring server to client packet, packet already received: session = ", *session);
+        LOG("ignoring server to client packet, packet already received: session = ", *session);
         return;
       }
 
       if (relay::relay_verify_header(RELAY_DIRECTION_SERVER_TO_CLIENT, session->PrivateKey.data(), data, length) != RELAY_OK) {
-        Log("ignoring server to client packet, could not verify header: session = ", *session);
+        LOG("ignoring server to client packet, could not verify header: session = ", *session);
         return;
       }
 
@@ -99,7 +99,7 @@ namespace core
       buff.push(session->PrevAddr, mPacket.Buffer.data(), mPacket.Len);
 #else
       if (!socket.send(session->PrevAddr, mPacket.Buffer.data(), mPacket.Len)) {
-        Log("failed to forward server packet to ", session->PrevAddr);
+        LOG("failed to forward server packet to ", session->PrevAddr);
       }
 #endif
     }

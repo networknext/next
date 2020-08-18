@@ -27,32 +27,32 @@ namespace core
     size_t index = 0;
 
     if (!encoding::WriteUint32(v, index, Magic)) {
-      Log("could not write init request magic");
+      LOG("could not write init request magic");
       return false;
     }
 
     if (!encoding::WriteUint32(v, index, Version)) {
-      Log("could not write init request version");
+      LOG("could not write init request version");
       return false;
     }
 
     if (!encoding::WriteBytes(v, index, Nonce, Nonce.size())) {
-      Log("could not write init request nonce bytes");
+      LOG("could not write init request nonce bytes");
       return false;
     }
 
     if (!encoding::WriteString(v, index, Address)) {
-      Log("could not write init request address");
+      LOG("could not write init request address");
       return false;
     }
 
     if (!encoding::WriteBytes(v, index, EncryptedToken, EncryptedToken.size())) {
-      Log("could not write init request token");
+      LOG("could not write init request token");
       return false;
     }
 
     if (!encoding::WriteString(v, index, RelayVersion)) {
-      Log("could not write init request relay version");
+      LOG("could not write init request relay version");
       return false;
     }
 
@@ -216,7 +216,7 @@ namespace core
       relay.ID = encoding::ReadUint64(v, index);
       std::string addr = encoding::ReadString(v, index);
       if (!relay.Addr.parse(addr)) {
-        Log("unable to parse relay address: ", addr);
+        LOG("unable to parse relay address: ", addr);
         return false;
       }
     }
@@ -266,7 +266,7 @@ namespace core
         request.Nonce.data(),
         mKeychain.RouterPublicKey.data(),
         mKeychain.RelayPrivateKey.data()) != 0) {
-        Log("failed to encrypt init token");
+        LOG("failed to encrypt init token");
         return false;
       }
 
@@ -279,7 +279,7 @@ namespace core
     // send request
 
     if (!mRequester.sendRequest(mHostname, "/relay_init", requestData, responseData)) {
-      Log("init request failed");
+      LOG("init request failed");
       return false;
     }
 
@@ -291,7 +291,7 @@ namespace core
       }
 
       if (response.Version != InitResponseVersion) {
-        Log("error: bad relay init response version. expected ", InitResponseVersion, ", got ", response.Version);
+        LOG("error: bad relay init response version. expected ", InitResponseVersion, ", got ", response.Version);
         return false;
       }
 
@@ -325,16 +325,16 @@ namespace core
       } else {
         auto timeSinceLastUpdate = backendTimeout.elapsed<util::Second>();
         if (++updateAttempts == MaxUpdateAttempts) {
-          Log("could not update relay, max attempts reached, aborting program");
+          LOG("could not update relay, max attempts reached, aborting program");
           successfulRoutine = false;
           break;
         } else if (timeSinceLastUpdate > 30) {
-          Log("could not update relay for over 30 seconds, aborting program");
+          LOG("could not update relay for over 30 seconds, aborting program");
           successfulRoutine = false;
           break;
         }
 
-        Log(
+        LOG(
          "could not update relay, attempts: ", (unsigned int)updateAttempts, ", time since last update: ", timeSinceLastUpdate);
       }
 
@@ -466,7 +466,7 @@ namespace core
     }
 
     if (!mRequester.sendRequest(mHostname, "/relay_update", req, res)) {
-      Log("update request failed");
+      LOG("update request failed");
       return false;
     }
 
@@ -479,19 +479,19 @@ namespace core
     {
       UpdateResponse response;
       if (!response.from(res)) {
-        Log("could not deserialize update response");
+        LOG("could not deserialize update response");
         return false;
       }
 
       if (response.Version != UpdateResponseVersion) {
-        Log("error: bad relay version response version. expected ", UpdateResponseVersion, ", got ", response.Version);
+        LOG("error: bad relay version response version. expected ", UpdateResponseVersion, ", got ", response.Version);
         return false;
       }
 
       mRouterInfo.setTimestamp(response.Timestamp);
 
       if (response.NumRelays > MAX_RELAYS) {
-        Log("error: too many relays to ping. max is ", MAX_RELAYS, ", got ", response.NumRelays, '\n');
+        LOG("error: too many relays to ping. max is ", MAX_RELAYS, ", got ", response.NumRelays, '\n');
         return false;
       }
 

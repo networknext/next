@@ -64,19 +64,19 @@ namespace core
       }
 
       if (length < int(1 + ContinueToken::EncryptedByteSize * 2)) {
-        Log("ignoring continue request. bad packet size (", length, ")");
+        LOG("ignoring continue request. bad packet size (", length, ")");
         return;
       }
 
       size_t index = 1;
       core::ContinueToken token(mRouterInfo);
       if (!token.readEncrypted(data, length, index, mKeychain.RouterPublicKey, mKeychain.RelayPrivateKey)) {
-        Log("ignoring continue request. could not read continue token");
+        LOG("ignoring continue request. could not read continue token");
         return;
       }
 
       if (token.expired()) {
-        Log("ignoring continue request. token is expired");
+        LOG("ignoring continue request. token is expired");
         return;
       }
 
@@ -85,18 +85,18 @@ namespace core
       auto session = mSessionMap.get(hash);
 
       if (!session) {
-        Log("ignoring continue request. session does not exist");
+        LOG("ignoring continue request. session does not exist");
         return;
       }
 
       if (session->expired()) {
-        Log("ignoring continue request. session is expired");
+        LOG("ignoring continue request. session is expired");
         mSessionMap.erase(hash);
         return;
       }
 
       if (session->ExpireTimestamp != token.ExpireTimestamp) {
-        Log("session continued: ", token);
+        LOG("session continued: ", token);
       }
 
       session->ExpireTimestamp = token.ExpireTimestamp;
@@ -117,7 +117,7 @@ namespace core
       buff.push(session->NextAddr, &mPacket.Buffer[ContinueToken::EncryptedByteSize], length);
 #else
       if (!socket.send(session->NextAddr, &mPacket.Buffer[ContinueToken::EncryptedByteSize], length)) {
-        Log("failed to forward continue request");
+        LOG("failed to forward continue request");
       }
 #endif
     }

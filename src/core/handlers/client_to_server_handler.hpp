@@ -50,7 +50,7 @@ namespace core
       // check if length excluding the hash is right,
       // and then check if the hash + everything else is too large
       if (length <= RELAY_HEADER_BYTES || mPacket.Len > RELAY_HEADER_BYTES + RELAY_MTU) {
-        Log("ignoring client to server packet, invalid size: ", length);
+        LOG("ignoring client to server packet, invalid size: ", length);
         return;
       }
 
@@ -62,7 +62,7 @@ namespace core
       if (
        relay::relay_peek_header(
         RELAY_DIRECTION_CLIENT_TO_SERVER, &type, &sequence, &session_id, &session_version, data, length) != RELAY_OK) {
-        Log("ignoring client to server packet, relay header could not be read");
+        LOG("ignoring client to server packet, relay header could not be read");
         return;
       }
 
@@ -71,13 +71,13 @@ namespace core
       auto session = mSessionMap.get(hash);
 
       if (!session) {
-        Log(
+        LOG(
          "session does not exist: session = ", std::hex, session_id, '.', std::dec, static_cast<unsigned int>(session_version));
         return;
       }
 
       if (session->expired()) {
-        Log("session expired: session = ", *session);
+        LOG("session expired: session = ", *session);
         mSessionMap.erase(hash);
         return;
       }
@@ -85,12 +85,12 @@ namespace core
       uint64_t clean_sequence = relay::relay_clean_sequence(sequence);
 
       if (relay_replay_protection_already_received(&session->ClientToServerProtection, clean_sequence)) {
-        Log("ignoring client to server packet, already received packet: session = ", *session);
+        LOG("ignoring client to server packet, already received packet: session = ", *session);
         return;
       }
 
       if (relay::relay_verify_header(RELAY_DIRECTION_CLIENT_TO_SERVER, session->PrivateKey.data(), data, length) != RELAY_OK) {
-        Log("ignoring client to server packet, could not verify header: session = ", *session);
+        LOG("ignoring client to server packet, could not verify header: session = ", *session);
         return;
       }
 
@@ -102,7 +102,7 @@ namespace core
       buff.push(session->NextAddr, mPacket.Buffer.data(), mPacket.Len);
 #else
       if (!socket.send(session->NextAddr, mPacket.Buffer.data(), mPacket.Len)) {
-        Log("failed to forward client packet to ", session->NextAddr);
+        LOG("failed to forward client packet to ", session->NextAddr);
       }
 #endif
     }

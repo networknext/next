@@ -42,7 +42,7 @@ namespace core
       }
 
       if (length != 1 + 8 + 8 + 8 + 8) {
-        Log("ignoring near ping packet, length invalid: ", length);
+        LOG("ignoring near ping packet, length invalid: ", length);
         return;
       }
 
@@ -61,7 +61,7 @@ namespace core
       buff.push(mPacket.Addr, mPacket.Buffer.data(), length);
 #else
       if (!socket.send(mPacket.Addr, mPacket.Buffer.data(), length)) {
-        Log("failed to send near pong to ", mPacket.Addr);
+        LOG("failed to send near pong to ", mPacket.Addr);
       }
 #endif
     }

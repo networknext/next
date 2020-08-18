@@ -23,7 +23,7 @@ namespace core
     crypto::RandomBytes(nonce, nonce.size());  // fill nonce
 
     if (!encoding::WriteBytes(packetData, packetLength, index, nonce.data(), nonce.size())) {
-      Log("could not write nonce");
+      LOG("could not write nonce");
       return false;
     }
 
@@ -54,7 +54,7 @@ namespace core
     index += crypto_box_NONCEBYTES;  // followed by actual data
 
     if (!decrypt(packetData, index, senderPublicKey, receiverPrivateKey, nonceIndex)) {
-      Log("could not decrypt route token");
+      LOG("could not decrypt route token");
       return false;
     }
 

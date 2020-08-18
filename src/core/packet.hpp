@@ -139,10 +139,10 @@ namespace core
   template <size_t BuffSize, size_t PacketSize>
   void GenericPacketBuffer<BuffSize, PacketSize>::print()
   {
-    Log("Number of packets in buffer: ", Count);
+    LOG("Number of packets in buffer: ", Count);
     for (int i = 0; i < Count; i++) {
       auto& packet = Packets[i];
-      Log("Sending a packet of size ", packet.Len, " to ", packet.Addr, " with data:");
+      LOG("Sending a packet of size ", packet.Len, " to ", packet.Addr, " with data:");
       util::DumpHex(packet.Buffer.data(), packet.Len);
     }
   }

@@ -14,12 +14,12 @@ namespace relay
   int relay_initialize()
   {
     if (relay::relay_platform_init() != RELAY_OK) {
-      Log("failed to initialize platform");
+      LOG("failed to initialize platform");
       return RELAY_ERROR;
     }
 
     if (sodium_init() == -1) {
-      Log("failed to initialize sodium");
+      LOG("failed to initialize sodium");
       return RELAY_ERROR;
     }
 

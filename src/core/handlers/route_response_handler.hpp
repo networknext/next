@@ -46,7 +46,7 @@ namespace core
       }
 
       if (length != RELAY_HEADER_BYTES) {
-        Log("ignoring route response, header byte count invalid: ", length, " != ", RELAY_HEADER_BYTES);
+        LOG("ignoring route response, header byte count invalid: ", length, " != ", RELAY_HEADER_BYTES);
         return;
       }
 
@@ -57,7 +57,7 @@ namespace core
       if (
        relay::relay_peek_header(
         RELAY_DIRECTION_SERVER_TO_CLIENT, &type, &sequence, &session_id, &session_version, data, length) != RELAY_OK) {
-        Log("ignoring route response, relay header could not be read");
+        LOG("ignoring route response, relay header could not be read");
         return;
       }
 
@@ -66,7 +66,7 @@ namespace core
       auto session = mSessionMap.get(hash);
 
       if (!session) {
-        Log(
+        LOG(
          "ignoring route response, could not find session: session = ",
          std::hex,
          session_id,
@@ -77,7 +77,7 @@ namespace core
       }
 
       if (session->expired()) {
-        Log("ignoring route response, session expired: session = ", *session);
+        LOG("ignoring route response, session expired: session = ", *session);
         mSessionMap.erase(hash);
         return;
       }
@@ -85,7 +85,7 @@ namespace core
       uint64_t clean_sequence = relay::relay_clean_sequence(sequence);
 
       if (clean_sequence <= session->ServerToClientSeq) {
-        Log(
+        LOG(
          "ignoring route response, packet already received: session = ",
          *session,
          ", ",
@@ -96,7 +96,7 @@ namespace core
       }
 
       if (relay::relay_verify_header(RELAY_DIRECTION_SERVER_TO_CLIENT, session->PrivateKey.data(), data, length) != RELAY_OK) {
-        Log("ignoring route response, header is invalid: session = ", *session);
+        LOG("ignoring route response, header is invalid: session = ", *session);
         return;
       }
 
@@ -108,7 +108,7 @@ namespace core
       buff.push(session->PrevAddr, mPacket.Buffer.data(), mPacket.Len);
 #else
       if (!socket.send(session->PrevAddr, mPacket.Buffer.data(), mPacket.Len)) {
-        Log("failed to forward route response to ", session->PrevAddr);
+        LOG("failed to forward route response to ", session->PrevAddr);
       }
 #endif
     }

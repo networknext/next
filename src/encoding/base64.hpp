@@ -14,13 +14,13 @@ namespace encoding
   namespace base64
   {
     template <typename IT, typename OT>
-    size_t Encode(const IT& input, OT& output)
+    size_t encode(const IT& input, OT& output)
     {
       return legacy::base64_encode_data(input.data(), input.size(), output.data(), output.size());
     }
 
     template <typename IT, typename OT>
-    size_t Decode(const IT& input, OT& output)
+    size_t decode(const IT& input, OT& output)
     {
       return legacy::base64_decode_data(input.data(), output.data(), output.size());
     }

@@ -3,3 +3,4 @@
 
 // can be used direcly but preferably not
 util::Console _console_;
+util::Console _error_console_(std::cerr);

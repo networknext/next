@@ -24,84 +24,74 @@ using namespace std::chrono_literals;
 volatile bool gAlive = true;
 volatile bool gShouldCleanShutdown = false;
 
+namespace base64 = encoding::base64;
+
 namespace
 {
   // TODO move this out of main and somewhere else to allow for test coverage
-  inline bool getCryptoKeys(const util::Env& env, crypto::Keychain& keychain, std::string& b64RelayPubKey)
+  inline bool get_crypto_keys(const util::Env& env, crypto::Keychain& keychain, std::string& b64_relay_pub_key)
   {
     // relay private key
     {
-      std::string b64RelayPrivateKey = env.RelayPrivateKey;
-      auto len = encoding::base64::Decode(b64RelayPrivateKey, keychain.RelayPrivateKey);
+      std::string b64_relay_priv_key = env.relay_private_key;
+      auto len = base64::decode(b64_relay_priv_key, keychain.RelayPrivateKey);
       if (len != crypto::KeySize) {
-        std::cout << "error: invalid relay private key\n";
+        LOG("error: invalid relay private key");
         return false;
       }
-      std::cout << "    relay private key is '" << env.RelayPrivateKey << "'\n";
+
+      LOG("relay private key is '", env.relay_private_key, "'\n");
     }
 
     // relay public key
     {
-      b64RelayPubKey = env.RelayPublicKey;
-      auto len = encoding::base64::Decode(b64RelayPubKey, keychain.RelayPublicKey);
+      b64_relay_pub_key = env.relay_public_key;
+      auto len = base64::decode(b64_relay_pub_key, keychain.RelayPublicKey);
       if (len != crypto::KeySize) {
-        std::cout << "error: invalid relay public key\n";
+        LOG("error: invalid relay public key");
         return false;
       }
 
-      std::cout << "    relay public key is '" << env.RelayPublicKey << "'\n";
+      LOG("relay public key is '", env.relay_public_key, "'\n");
     }
 
     // router public key
     {
-      std::string b64RouterPublicKey = env.RelayRouterPublicKey;
-      auto len = encoding::base64::Decode(b64RouterPublicKey, keychain.RouterPublicKey);
+      std::string b64RouterPublicKey = env.relay_router_public_key;
+      auto len = base64::decode(b64RouterPublicKey, keychain.RouterPublicKey);
       if (len != crypto::KeySize) {
-        std::cout << "error: invalid router public key\n";
+        LOG("error: invalid router public key");
         return false;
       }
 
-      std::cout << "    router public key is '" << env.RelayRouterPublicKey << "'\n";
-    }
-
-    // update key
-
-    if (env.RelayV3Enabled == "1") {
-      std::string b64UpdateKey = env.RelayV3UpdateKey;
-      auto len = encoding::base64::Decode(b64UpdateKey, keychain.UpdateKey);
-      if (len != crypto_sign_SECRETKEYBYTES) {
-        std::cout << "error: invalid update key\n";
-        return false;
-      }
-
-      std::cout << "    update key is '" << env.RelayV3UpdateKey << "'\n";
+      LOG("router public key is '", env.relay_router_public_key, "'\n");
     }
 
     return true;
   }
 
-  inline bool getNumProcessors(const util::Env& env, unsigned int& numProcs)
+  inline bool get_num_procs(const util::Env& env, unsigned int& num_procs)
   {
-    if (env.ProcessorCount.empty()) {
-      numProcs = std::thread::hardware_concurrency();  // first core reserved for updates/outgoing pings
-      if (numProcs > 0) {
-        Log("RELAY_MAX_CORES not set, autodetected number of processors available: ", numProcs);
+    if (env.max_cpus.empty()) {
+      num_procs = std::thread::hardware_concurrency();  // first core reserved for updates/outgoing pings
+      if (num_procs > 0) {
+        LOG("RELAY_MAX_CORES not set, autodetected number of processors available: ", num_procs);
       } else {
-        Log("error: RELAY_MAX_CORES not set, could not detect processor count, please set the env var");
+        LOG("error: RELAY_MAX_CORES not set, could not detect processor count, please set the env var");
         return false;
       }
     } else {
       try {
-        numProcs = std::stoi(env.ProcessorCount);
+        num_procs = std::stoi(env.max_cpus);
       } catch (std::exception& e) {
-        Log("could not parse RELAY_MAX_CORES to a number, value: ", env.ProcessorCount);
+        LOG("could not parse RELAY_MAX_CORES to a number, value: ", env.max_cpus);
       }
     }
 
     return true;
   }
 
-  inline int getBufferSize(const std::string& envvar)
+  inline int get_buffer_size(const std::string& envvar)
   {
     int socketBufferSize = 1000000;
 
@@ -109,23 +99,23 @@ namespace
       try {
         socketBufferSize = std::stoi(envvar);
       } catch (std::exception& e) {
-        Log("Could not parse ", envvar, " env var to a number: ", e.what());
+        LOG("Could not parse ", envvar, " env var to a number: ", e.what());
       }
     }
 
     return socketBufferSize;
   }
 
-  inline void setupSignalHandlers()
+  inline void setup_signal_handlers()
   {
 #ifndef NDEBUG
     signal(SIGSEGV, [](int) {
       gAlive = false;
-      const auto StacktraceDepth = 13;
-      void* arr[StacktraceDepth];
+      const auto STACKTRACE_DEPTH = 13;
+      void* arr[STACKTRACE_DEPTH];
 
       // get stack frames
-      size_t size = backtrace(arr, StacktraceDepth);
+      size_t size = backtrace(arr, STACKTRACE_DEPTH);
 
       // print the stack trace
       std::cerr << "stacktrace\n";
@@ -180,39 +170,38 @@ int main(int argc, const char* argv[])
 
   // relay address - the address other devices should use to talk to this
   // sent to the relay backend and is the addr everything communicates with
-  net::Address relayAddr;
+  net::Address relay_addr;
   {
-    if (!relayAddr.parse(env.RelayAddress)) {
-      Log("error: invalid relay address: ", env.RelayAddress);
+    if (!relay_addr.parse(env.relay_address)) {
+      LOG("error: invalid relay address: ", env.relay_address);
       return 1;
     }
 
-    std::cout << "    relay address is '" << relayAddr << "'\n";
+    std::cout << "    relay address is '" << relay_addr << "'\n";
   }
 
   crypto::Keychain keychain;
   std::string b64RelayPubKey;
-  if (!getCryptoKeys(env, keychain, b64RelayPubKey)) {
+  if (!get_crypto_keys(env, keychain, b64RelayPubKey)) {
     return 1;
   }
 
-  std::cout << "    backend hostname is '" << env.BackendHostname << "'\n";
-  std::cout << "    v3 backend hostname is '" << env.RelayV3BackendHostname << ':' << env.RelayV3BackendPort << "'\n";
+  std::cout << "    backend hostname is '" << env.backend_hostname << "'\n";
 
   unsigned int numProcessors = 0;
-  if (!getNumProcessors(env, numProcessors)) {
+  if (!get_num_procs(env, numProcessors)) {
     return 1;
   }
 
-  int socketRecvBuffSize = getBufferSize(env.RecvBufferSize);
-  int socketSendBuffSize = getBufferSize(env.SendBufferSize);
+  int socketRecvBuffSize = get_buffer_size(env.recv_buffer_size);
+  int socketSendBuffSize = get_buffer_size(env.send_buffer_size);
 
   if (relay::relay_initialize() != RELAY_OK) {
-    Log("error: failed to initialize relay\n\n");
+    LOG("error: failed to initialize relay\n\n");
     return 1;
   }
 
-  Log("Initializing relay");
+  LOG("Initializing relay");
 
   bool success = false;
 
@@ -289,12 +278,12 @@ int main(int argc, const char* argv[])
   };
 
   // packet processing setup
-  Log("creating ", (numProcessors == 1) ? 1 : numProcessors - 1, " packet processing threads");
+  LOG("creating ", (numProcessors == 1) ? 1 : numProcessors - 1, " packet processing threads");
   {
     for (unsigned int i = ((numProcessors == 1) ? 0 : 1); i < numProcessors && gAlive; i++) {
-      auto socket = makeSocket(relayAddr.Port);
+      auto socket = makeSocket(relay_addr.Port);
       if (!socket) {
-        Log("could not create socket");
+        LOG("could not create socket");
         cleanup();
       }
 
@@ -313,14 +302,14 @@ int main(int argc, const char* argv[])
       {
         auto [ok, err] = os::SetThreadAffinity(*thread, (std::thread::hardware_concurrency() == 1) ? 0 : i);
         if (!ok) {
-          Log(err);
+          LOG(err);
         }
       }
 
       {
         auto [ok, err] = os::SetThreadSchedMax(*thread);
         if (!ok) {
-          Log(err);
+          LOG(err);
         }
       }
     }
@@ -342,14 +331,14 @@ int main(int argc, const char* argv[])
     {
       auto [ok, err] = os::SetThreadAffinity(*thread, 0);
       if (!ok) {
-        Log(err);
+        LOG(err);
       }
     }
 
     {
       auto [ok, err] = os::SetThreadSchedMax(*thread);
       if (!ok) {
-        Log(err);
+        LOG(err);
       }
     }
   }
@@ -357,12 +346,12 @@ int main(int argc, const char* argv[])
   // new backend setup
   {
     std::thread updateThread(
-     [&env, &relayAddr, &keychain, &routerInfo, &relayManager, &b64RelayPubKey, &sessions, &cleanup, &recorder, &success] {
+     [&env, &relay_addr, &keychain, &routerInfo, &relayManager, &b64RelayPubKey, &sessions, &cleanup, &recorder, &success] {
        bool relayInitialized = false;
 
        net::BeastWrapper wrapper;
        core::Backend backend(
-        env.BackendHostname, relayAddr.toString(), keychain, routerInfo, relayManager, b64RelayPubKey, sessions, wrapper);
+        env.backend_hostname, relay_addr.toString(), keychain, routerInfo, relayManager, b64RelayPubKey, sessions, wrapper);
 
        for (int i = 0; i < 60; ++i) {
          if (backend.init()) {
@@ -375,14 +364,14 @@ int main(int argc, const char* argv[])
        }
 
        if (!relayInitialized) {
-         Log("error: could not initialize relay");
+         LOG("error: could not initialize relay");
          cleanup();
        }
 
-       Log("relay initialized with new backend");
+       LOG("relay initialized with new backend");
 
        if (gAlive) {
-         setupSignalHandlers();
+         setup_signal_handlers();
 
          success = backend.updateCycle(gAlive, gShouldCleanShutdown, recorder, sessions);
        }
@@ -391,28 +380,28 @@ int main(int argc, const char* argv[])
     {
       auto [ok, err] = os::SetThreadAffinity(updateThread, 0);
       if (!ok) {
-        Log(err);
+        LOG(err);
       }
     }
 
     {
       auto [ok, err] = os::SetThreadSchedMax(updateThread);
       if (!ok) {
-        Log(err);
+        LOG(err);
       }
     }
 
     updateThread.join();
   }
 
-  Log("cleaning up");
+  LOG("cleaning up");
 
   shouldReceive = false;
 
   cleanup();
   joinThreads();
 
-  LogDebug("Receiving Address: ", relayAddr);
+  LOG_DEBUG("Receiving Address: ", relay_addr);
 
   return success ? 0 : 1;
 }

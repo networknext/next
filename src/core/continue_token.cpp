@@ -25,7 +25,7 @@ namespace core
 
     // write nonce to the buffer
     if (!encoding::WriteBytes(packetData, packetLength, index, nonce.data(), nonce.size())) {
-      Log("could not write nonce");
+      LOG("could not write nonce");
       return false;
     }
 
@@ -56,7 +56,7 @@ namespace core
     index += crypto_box_NONCEBYTES;  // followed by actual data
 
     if (!decrypt(packetData, packetLength, index, senderPublicKey, receiverPrivateKey, nonceIndex)) {
-      Log("failed to decrypt continue token");
+      LOG("failed to decrypt continue token");
       return false;
     }
 

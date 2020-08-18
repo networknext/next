@@ -83,12 +83,12 @@ namespace core
         // write data to the buffer
         {
           if (!encoding::WriteUint8(pkt.Buffer, index, static_cast<uint8_t>(packets::Type::NewRelayPing))) {
-            Log("could not write packet type");
+            LOG("could not write packet type");
             assert(false);
           }
 
           if (!encoding::WriteUint64(pkt.Buffer, index, ping.Seq)) {
-            Log("could not write sequence");
+            LOG("could not write sequence");
             assert(false);
           }
 
@@ -116,7 +116,7 @@ namespace core
 
 #ifndef RELAY_MULTISEND
         if (!mSocket.send(pkt)) {
-          Log("failed to send new ping to ", pkt.Addr);
+          LOG("failed to send new ping to ", pkt.Addr);
         }
 #endif
       }

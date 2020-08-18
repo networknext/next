@@ -46,7 +46,7 @@ namespace core
       }
 
       if (length > RELAY_HEADER_BYTES + 32) {
-        Log("ignoring session ping, packet size too large: ", length);
+        LOG("ignoring session ping, packet size too large: ", length);
         return;
       }
 
@@ -58,7 +58,7 @@ namespace core
       if (
        relay::relay_peek_header(
         RELAY_DIRECTION_CLIENT_TO_SERVER, &type, &sequence, &session_id, &session_version, data, length) != RELAY_OK) {
-        Log("ignoring session ping packet, relay header could not be read");
+        LOG("ignoring session ping packet, relay header could not be read");
         return;
       }
 
@@ -67,7 +67,7 @@ namespace core
       auto session = mSessionMap.get(hash);
 
       if (!session) {
-        Log(
+        LOG(
          "ignoring session ping packet, session does not exist: session = ",
          std::hex,
          session_id,
@@ -78,7 +78,7 @@ namespace core
       }
 
       if (session->expired()) {
-        Log("ignoring session ping packet, session expired: session = ", *session);
+        LOG("ignoring session ping packet, session expired: session = ", *session);
         mSessionMap.erase(hash);
         return;
       }
@@ -86,7 +86,7 @@ namespace core
       uint64_t clean_sequence = relay::relay_clean_sequence(sequence);
 
       if (clean_sequence <= session->ClientToServerSeq) {
-        Log(
+        LOG(
          "ignoring session ping packet, packet already received: session = ",
          *session,
          ", ",
@@ -97,7 +97,7 @@ namespace core
       }
 
       if (relay::relay_verify_header(RELAY_DIRECTION_CLIENT_TO_SERVER, session->PrivateKey.data(), data, length) != RELAY_OK) {
-        Log("ignoring session ping packet, could not verify header: session = ", *session);
+        LOG("ignoring session ping packet, could not verify header: session = ", *session);
         return;
       }
 
@@ -109,7 +109,7 @@ namespace core
       buff.push(session->NextAddr, mPacket.Buffer.data(), mPacket.Len);
 #else
       if (!socket.send(session->NextAddr, mPacket.Buffer.data(), mPacket.Len)) {
-        Log("failed to send session pong to ", session->NextAddr);
+        LOG("failed to send session pong to ", session->NextAddr);
       }
 #endif
     }

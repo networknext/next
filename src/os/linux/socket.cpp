@@ -116,7 +116,7 @@ namespace os
         return false;
       }
     } else {
-      Log("invalid address type, could not send packet");
+      LOG("invalid address type, could not send packet");
       return false;
     }
 
@@ -149,7 +149,7 @@ namespace os
       } else if (sockaddr_from.ss_family == AF_INET) {
         from = reinterpret_cast<sockaddr_in&>(sockaddr_from);
       } else {
-        Log("received packet with invalid ss family: ", sockaddr_from.ss_family);
+        LOG("received packet with invalid ss family: ", sockaddr_from.ss_family);
         return 0;
       }
     } else {
@@ -474,7 +474,7 @@ namespace legacy
         LogError("sendto (", address_string, ") failed");
       }
     } else {
-      Log("invalid address type. could not send packet");
+      LOG("invalid address type. could not send packet");
     }
   }
 

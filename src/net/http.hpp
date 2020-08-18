@@ -57,7 +57,7 @@ namespace net
     // so don't bother reporting it
 
     if (ec && ec != beast::errc::not_connected) {
-      Log("error shutting down socket");
+      LOG("error shutting down socket");
     }
   }
 
@@ -106,7 +106,7 @@ namespace net
       http::write(wrapper.stream, req, ec);
 
       if (ec) {
-        Log("failed to send http request: ", ec);
+        LOG("failed to send http request: ", ec);
         return false;
       }
 
@@ -119,13 +119,13 @@ namespace net
       // Receive the HTTP response
       http::read(wrapper.stream, buffer, res, ec);
       if (ec) {
-        Log("failed to send http request: ", ec);
+        LOG("failed to send http request: ", ec);
         return false;
       }
 
       // Check the status code
       if (res.result() != http::status::ok) {
-        Log("http call to '", hostname, endpoint, "' did not return a success, code: ", res.result_int());
+        LOG("http call to '", hostname, endpoint, "' did not return a success, code: ", res.result_int());
         return false;
       }
 
@@ -134,7 +134,7 @@ namespace net
 
       return true;
     } catch (std::exception& e) {
-      Log("could not send http request: ", e.what());
+      LOG("could not send http request: ", e.what());
       return false;
     }
   }

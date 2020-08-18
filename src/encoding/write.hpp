@@ -46,7 +46,7 @@ namespace encoding
   [[gnu::always_inline]] inline auto WriteUint8(uint8_t* buff, size_t buffLength, size_t& index, uint8_t value) -> bool
   {
     if (index + 1 > buffLength) {
-      Log("index out of range: goal = ", index + 1, ", buff size = ", buffLength);
+      LOG("index out of range: goal = ", index + 1, ", buff size = ", buffLength);
       return false;
     }
 
@@ -59,7 +59,7 @@ namespace encoding
   [[gnu::always_inline]] inline auto WriteUint8(T& buff, size_t& index, uint8_t value) -> bool
   {
     if (index + 1 > buff.size()) {
-      Log("index out of range: goal = ", index + 1, ", buff size = ", buff.size());
+      LOG("index out of range: goal = ", index + 1, ", buff size = ", buff.size());
       return false;
     }
 
@@ -71,7 +71,7 @@ namespace encoding
   [[gnu::always_inline]] inline auto WriteUint16(uint8_t* buff, size_t buffLength, size_t& index, uint16_t value) -> bool
   {
     if (index + 2 > buffLength) {
-      Log("index out of range: goal = ", index + 2, ", buff size = ", buffLength);
+      LOG("index out of range: goal = ", index + 2, ", buff size = ", buffLength);
       return false;
     }
 
@@ -85,7 +85,7 @@ namespace encoding
   [[gnu::always_inline]] inline auto WriteUint16(T& buff, size_t& index, uint16_t value) -> bool
   {
     if (index + 2 > buff.size()) {
-      Log("index out of range: goal = ", index + 2, ", buff size = ", buff.size());
+      LOG("index out of range: goal = ", index + 2, ", buff size = ", buff.size());
       return false;
     }
 
@@ -98,7 +98,7 @@ namespace encoding
   [[gnu::always_inline]] inline auto WriteUint32(uint8_t* buff, size_t buffLength, size_t& index, uint32_t value) -> bool
   {
     if (index + 4 > buffLength) {
-      Log("index out of range: goal = ", index + 4, ", buff size = ", buffLength);
+      LOG("index out of range: goal = ", index + 4, ", buff size = ", buffLength);
       return false;
     }
 
@@ -114,7 +114,7 @@ namespace encoding
   [[gnu::always_inline]] inline auto WriteUint32(T& buff, size_t& index, uint32_t value) -> bool
   {
     if (index + 4 > buff.size()) {
-      Log("index out of range: goal = ", index + 4, ", buff size = ", buff.size());
+      LOG("index out of range: goal = ", index + 4, ", buff size = ", buff.size());
       return false;
     }
 
@@ -129,7 +129,7 @@ namespace encoding
   [[gnu::always_inline]] inline auto WriteUint64(uint8_t* buff, size_t buffLength, size_t& index, uint64_t value) -> bool
   {
     if (index + 8 > buffLength) {
-      Log("index out of range: goal = ", index + 8, ", buff size = ", buffLength);
+      LOG("index out of range: goal = ", index + 8, ", buff size = ", buffLength);
       return false;
     }
 
@@ -149,7 +149,7 @@ namespace encoding
   [[gnu::always_inline]] inline auto WriteUint64(T& buff, size_t& index, uint64_t value) -> bool
   {
     if (index + 8 > buff.size()) {
-      Log("index out of range: goal = ", index + 8, ", buff size = ", buff.size());
+      LOG("index out of range: goal = ", index + 8, ", buff size = ", buff.size());
       return false;
     }
 
@@ -169,7 +169,7 @@ namespace encoding
   auto WriteDouble(T& buff, size_t& index, double value) -> bool
   {
     if (index + 8 > buff.size()) {
-      Log("index out of range: goal = ", index + 8, ", buff size = ", buff.size());
+      LOG("index out of range: goal = ", index + 8, ", buff size = ", buff.size());
       return false;
     }
     return encoding::WriteBytes(buff.data(), buff.size(), index, reinterpret_cast<uint8_t*>(&value), sizeof(double));
@@ -179,7 +179,7 @@ namespace encoding
    uint8_t* buff, size_t buffLength, size_t& index, const uint8_t* data, size_t dataLength) -> bool
   {
     if (index + dataLength > buffLength) {
-      Log("index out of range: goal = ", index + buffLength, ", buff size = ", buffLength);
+      LOG("index out of range: goal = ", index + buffLength, ", buff size = ", buffLength);
       return false;
     }
 
@@ -193,7 +193,7 @@ namespace encoding
   [[gnu::always_inline]] inline auto WriteBytes(T& buff, size_t& index, const U& data, size_t len) -> bool
   {
     if (index + len > buff.size()) {
-      Log("index out of range: goal = ", index + len, ", buff size = ", buff.size());
+      LOG("index out of range: goal = ", index + len, ", buff size = ", buff.size());
       return false;
     }
 
@@ -211,16 +211,16 @@ namespace encoding
 #endif
 
     if (index + net::Address::ByteSize > buffLength) {
-      Log("buffer too small for address");
-      Log("index end = ", index + net::Address::ByteSize, ", buffer size = ", buffLength);
+      LOG("buffer too small for address");
+      LOG("index end = ", index + net::Address::ByteSize, ", buffer size = ", buffLength);
       return false;
     }
 
     if (addr.Type == net::AddressType::IPv4) {
       // write the type
       if (!WriteUint8(buff, buffLength, index, static_cast<uint8_t>(net::AddressType::IPv4))) {
-        Log("buffer too small for address type");
-        Log("index end = ", index + 1, ", buffer size = ", buffLength);
+        LOG("buffer too small for address type");
+        LOG("index end = ", index + 1, ", buffer size = ", buffLength);
         return false;
       }
 
@@ -229,8 +229,8 @@ namespace encoding
 
       // write the port
       if (!WriteUint16(buff, buffLength, index, addr.Port)) {
-        Log("buffer too small for address port");
-        Log("index end = ", index + 2, ", buffer size = ", buffLength);
+        LOG("buffer too small for address port");
+        LOG("index end = ", index + 2, ", buffer size = ", buffLength);
         return false;
       }
 
@@ -238,22 +238,22 @@ namespace encoding
     } else if (addr.Type == net::AddressType::IPv6) {
       // write the type
       if (!WriteUint8(buff, buffLength, index, static_cast<uint8_t>(net::AddressType::IPv6))) {
-        Log("buffer too small for address type");
-        Log("index end = ", index + 1, ", buffer size = ", buffLength);
+        LOG("buffer too small for address type");
+        LOG("index end = ", index + 1, ", buffer size = ", buffLength);
         return false;
       }
 
       for (const auto& ip : addr.IPv6) {
         if (!WriteUint16(buff, buffLength, index, ip)) {
-          Log("buffer too small for address part");
-          Log("index end = ", index + 2, ", buffer size = ", buffLength);
+          LOG("buffer too small for address part");
+          LOG("index end = ", index + 2, ", buffer size = ", buffLength);
           return false;
         }
       }
 
       if (!WriteUint16(buff, buffLength, index, addr.Port)) {
-        Log("buffer too small for address port");
-        Log("index end = ", index + 2, ", buffer size = ", buffLength);
+        LOG("buffer too small for address port");
+        LOG("index end = ", index + 2, ", buffer size = ", buffLength);
         return false;
       }
     } else {
@@ -275,16 +275,16 @@ namespace encoding
 #endif
 
     if (index + net::Address::ByteSize > buff.size()) {
-      Log("buffer too small for address");
-      Log("index end = ", index + net::Address::ByteSize, ", buffer size = ", buff.size());
+      LOG("buffer too small for address");
+      LOG("index end = ", index + net::Address::ByteSize, ", buffer size = ", buff.size());
       return false;
     }
 
     if (addr.Type == net::AddressType::IPv4) {
       // write the type
       if (!WriteUint8(buff, index, static_cast<uint8_t>(net::AddressType::IPv4))) {
-        Log("buffer too small for address type");
-        Log("index end = ", index + 1, ", buffer size = ", buff.size());
+        LOG("buffer too small for address type");
+        LOG("index end = ", index + 1, ", buffer size = ", buff.size());
         return false;
       }
 
@@ -293,8 +293,8 @@ namespace encoding
 
       // write the port
       if (!WriteUint16(buff, index, addr.Port)) {
-        Log("buffer too small for address port");
-        Log("index end = ", index + 2, ", buffer size = ", buff.size());
+        LOG("buffer too small for address port");
+        LOG("index end = ", index + 2, ", buffer size = ", buff.size());
         return false;
       }
 
@@ -302,22 +302,22 @@ namespace encoding
     } else if (addr.Type == net::AddressType::IPv6) {
       // write the type
       if (!WriteUint8(buff, index, static_cast<uint8_t>(net::AddressType::IPv6))) {
-        Log("buffer too small for address type");
-        Log("index end = ", index + 1, ", buffer size = ", buff.size());
+        LOG("buffer too small for address type");
+        LOG("index end = ", index + 1, ", buffer size = ", buff.size());
         return false;
       }
 
       for (const auto& ip : addr.IPv6) {
         if (!WriteUint16(buff, index, ip)) {
-          Log("buffer too small for address part");
-          Log("index end = ", index + 2, ", buffer size = ", buff.size());
+          LOG("buffer too small for address part");
+          LOG("index end = ", index + 2, ", buffer size = ", buff.size());
           return false;
         }
       }
 
       if (!WriteUint16(buff, index, addr.Port)) {
-        Log("buffer too small for address port");
-        Log("index end = ", index + 2, ", buffer size = ", buff.size());
+        LOG("buffer too small for address port");
+        LOG("index end = ", index + 2, ", buffer size = ", buff.size());
         return false;
       }
     } else {
@@ -334,13 +334,13 @@ namespace encoding
   [[gnu::always_inline]] inline auto WriteString(T& buff, size_t& index, const std::string& str) -> bool
   {
     if (index + 4 + str.length() > buff.size()) {
-      Log("buffer too small for string");
+      LOG("buffer too small for string");
       return false;
     }
 
     // sanity check
     if (!encoding::WriteUint32(buff, index, str.length())) {
-      Log("could not write string length");
+      LOG("could not write string length");
       return false;
     }
 

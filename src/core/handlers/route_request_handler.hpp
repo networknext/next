@@ -69,7 +69,7 @@ namespace core
       }
 
       if (mPacket.Len < int(1 + RouteToken::EncryptedByteSize * 2)) {
-        Log("ignoring route request. bad packet size (", mPacket.Len, ")");
+        LOG("ignoring route request. bad packet size (", mPacket.Len, ")");
         return;
       }
 
@@ -78,13 +78,13 @@ namespace core
       core::RouteToken token(mRouterInfo);
 
       if (!token.readEncrypted(data, length, index, mKeychain.RouterPublicKey, mKeychain.RelayPrivateKey)) {
-        Log("ignoring route request. could not read route token");
+        LOG("ignoring route request. could not read route token");
         return;
       }
 
       // don't do anything if the token is expired - probably should log something here
       if (token.expired()) {
-        Log("ignoring route request. token expired");
+        LOG("ignoring route request. token expired");
         return;
       }
 
@@ -114,7 +114,7 @@ namespace core
 
         mSessionMap.set(hash, session);
 
-        Log("session created: ", *session);
+        LOG("session created: ", *session);
       } else {
         LogDebug("received additional route request for session: ", token);
       }
@@ -137,7 +137,7 @@ namespace core
       buff.push(token.NextAddr, &mPacket.Buffer[RouteToken::EncryptedByteSize], length);
 #else
       if (!socket.send(token.NextAddr, &mPacket.Buffer[RouteToken::EncryptedByteSize], length)) {
-        Log("failed to forward route request to ", token.NextAddr);
+        LOG("failed to forward route request to ", token.NextAddr);
       }
 #endif
     }

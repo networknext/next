@@ -46,7 +46,7 @@ namespace core
       buff.push(mPacket);
 #else
       if (!socket.send(mPacket)) {
-        Log("failed to send new pong to ", mPacket.Addr);
+        LOG("failed to send new pong to ", mPacket.Addr);
       }
 #endif
     }

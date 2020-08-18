@@ -26,10 +26,10 @@ namespace crypto
 
   inline auto Keychain::parse(std::string relayPublicKey, std::string relayPrivateKey, std::string routerPublicKey, std::string updateKey) -> bool
   {
-    return encoding::base64::Decode(relayPublicKey, RelayPublicKey) &&
-           encoding::base64::Decode(relayPrivateKey, RelayPrivateKey) &&
-           encoding::base64::Decode(routerPublicKey, RouterPublicKey) &&
-           encoding::base64::Decode(updateKey, UpdateKey);
+    return encoding::base64::decode(relayPublicKey, RelayPublicKey) &&
+           encoding::base64::decode(relayPrivateKey, RelayPrivateKey) &&
+           encoding::base64::decode(routerPublicKey, RouterPublicKey) &&
+           encoding::base64::decode(updateKey, UpdateKey);
   }
 }  // namespace crypto
 #endif
