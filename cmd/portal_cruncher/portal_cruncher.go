@@ -7,6 +7,7 @@ package main
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 	"io/ioutil"
 	"runtime"
@@ -375,21 +376,25 @@ func main() {
 					if time.Since(pingTime) >= time.Second*10 {
 						if err := clientTopSessions.Ping(); err != nil {
 							level.Error(logger).Log("msg", "failed to ping REDIS_HOST_TOP_SESSIONS", "err", err)
+							fmt.Println(err)
 							os.Exit(1)
 						}
 
 						if err := clientSessionMap.Ping(); err != nil {
 							level.Error(logger).Log("msg", "failed to ping REDIS_HOST_SESSION_MAP", "err", err)
+							fmt.Println(err)
 							os.Exit(1)
 						}
 
 						if err := clientSessionMeta.Ping(); err != nil {
 							level.Error(logger).Log("msg", "failed to ping REDIS_HOST_SESSION_META", "err", err)
+							fmt.Println(err)
 							os.Exit(1)
 						}
 
 						if err := clientSessionSlices.Ping(); err != nil {
 							level.Error(logger).Log("msg", "failed to ping REDIS_HOST_SESSION_SLICES", "err", err)
+							fmt.Println(err)
 							os.Exit(1)
 						}
 
@@ -439,7 +444,7 @@ func main() {
 						// Check if we should randomize the location (for staging load test)
 						if point.Latitude == 0 && point.Longitude == 0 && strings.Contains(meta.ClientAddr, "10.128.") {
 							// Randomize the location by using 4 bits of the session ID for the lat, and the other 4 for the long
-							/* sessionIDBytes := make([]byte, 8)
+							sessionIDBytes := make([]byte, 8)
 							binary.LittleEndian.PutUint64(sessionIDBytes, meta.ID)
 
 							latBits := binary.LittleEndian.Uint32(sessionIDBytes[0:4])
@@ -448,10 +453,8 @@ func main() {
 							lat := (float64(latBits)) / 0xFFFFFFFF
 							long := (float64(longBits)) / 0xFFFFFFFF
 
-							point.Latitude = -90.0 + lat*180.0
-							point.Longitude = -180.0 + long*360.0 */
-							point.Latitude = 0
-							point.Longitude = 0
+							point.Latitude = (-90.0 + lat*180.0) * 0.25
+							point.Longitude = (-180.0 + long*360.0)
 						}
 
 						// Remove the old per-buyer top sessions minute bucket from 2 minutes ago if it didnt expire

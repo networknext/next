@@ -54,7 +54,9 @@ func NewRawRedisClient(hostname string) (*RawRedisClient, error) {
 }
 
 func (r *RawRedisClient) Ping() error {
-	r.Command("PING", "")
+	if err := r.Command("PING", ""); err != nil {
+		return err
+	}
 
 	redisReplyReader := bufio.NewReader(r.conn)
 	_, err := redisReplyReader.ReadString('\n')
@@ -65,18 +67,20 @@ func (r *RawRedisClient) Ping() error {
 	return nil
 }
 
-func (r *RawRedisClient) Command(command string, format string, args ...interface{}) {
+func (r *RawRedisClient) Command(command string, format string, args ...interface{}) error {
 	if len(args) != 0 {
 		commandString := fmt.Sprintf(command+" "+format+"\r\n", args...)
 		if _, err := fmt.Fprint(r.conn, commandString); err != nil {
-			fmt.Printf("failed to write redis command '%s': %v\n", commandString, err)
+			return fmt.Errorf("failed to write redis command '%s': %v", commandString, err)
 		}
 	} else {
 		commandString := fmt.Sprintf(command+"\r\n", args...)
 		if _, err := fmt.Fprint(r.conn, commandString); err != nil {
-			fmt.Printf("failed to write redis command '%s': %v\n", commandString, err)
+			return fmt.Errorf("failed to write redis command '%s': %v", commandString, err)
 		}
 	}
+
+	return nil
 }
 
 func (r *RawRedisClient) StartCommand(command string) {

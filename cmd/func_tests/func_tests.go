@@ -1522,7 +1522,9 @@ func main() {
 		tests = allTests // No command line args, run all tests
 	}
 
-	for i := range tests {
-		tests[i]()
+	for {
+		for i := range tests {
+			tests[i]()
+		}
 	}
 }

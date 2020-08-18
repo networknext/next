@@ -141,6 +141,9 @@ type Relay struct {
 	// EndDate is the date the contract term ends
 	EndDate time.Time   `json:"end_date"`
 	Type    MachineType `json:"machine_type"`
+
+	// Useful in data science analysis
+	SignedID int64 `json:"signed_id"`
 }
 
 func (r *Relay) EncodedPublicKey() string {
