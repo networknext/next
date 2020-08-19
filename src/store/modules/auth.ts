@@ -1,5 +1,13 @@
 import { UserProfile } from '@/services/auth.service'
 
+/**
+ * Basic Vuex module specific to authorization/authentication
+ */
+
+/**
+ * TODO: Namespace these
+ */
+
 export default {
   state: {
     userProfile: null,

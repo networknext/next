@@ -1,3 +1,7 @@
+// Types that are used in API responses coming from the JSONRPC endpoints
+
+// TODO: Make these work and add all missing ones
+
 export interface Location {
   continent: string;
   country: string;

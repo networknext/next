@@ -48,6 +48,17 @@ import APIService from '@/services/api.service'
 import Alert from '@/components/Alert.vue'
 import { AlertTypes } from './types/AlertTypes'
 import { UserProfile } from '@/services/auth.service'
+import _ from 'lodash'
+
+/**
+ * This component displays all of the necessary information for the game configuration tab
+ *  within the settings page of the Portal and houses all the associated logic and api calls
+ */
+
+/**
+ * TODO: Clean up template
+ * TODO: Pretty sure the card-body can be taken out into a wrapper component - same with route shader and user management...
+ */
 
 @Component({
   components: {
@@ -64,7 +75,7 @@ export default class GameConfiguration extends Vue {
 
   constructor () {
     super()
-    this.userProfile = JSON.parse(JSON.stringify(this.$store.getters.userProfile))
+    this.userProfile = _.cloneDeep(this.$store.getters.userProfile)
     this.apiService = Vue.prototype.$apiService
     this.company = this.userProfile.company || ''
     this.pubKey = this.userProfile.pubKey || ''
@@ -72,12 +83,8 @@ export default class GameConfiguration extends Vue {
     this.alertType = ''
   }
 
-  private mounted () {
-    this.pubKey = this.$store.getters.userProfile.pubKey
-  }
-
   private updatePubKey () {
-    const domain = this.$store.getters.userProfile.domain || ''
+    const domain = this.userProfile.domain || ''
 
     this.apiService
       .updateGameConfiguration({ name: this.company, domain: domain, new_public_key: this.pubKey })

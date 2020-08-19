@@ -1,6 +1,6 @@
 <template>
   <h1 class="count-header" v-if="showCount" data-test="currentPage">
-    {{ $store.getters.currentPage[0].toUpperCase() + $store.getters.currentPage.slice(1) }}&nbsp;
+    {{ $store.getters.currentPage[0].toUpperCase() + $store.getters.currentPage.slice(1) }}
     <span class="badge badge-dark" data-test="totalSessions">
       {{ this.totalSessions }} Total Sessions
     </span>&nbsp;
@@ -14,6 +14,17 @@
 import { Component, Vue } from 'vue-property-decorator'
 import APIService from '../services/api.service'
 
+/**
+ * This component displays the total session counts and has all of the associated logic and api calls
+ */
+
+/**
+ * TODO: Add filter bar back in here, potentially in its own component if it is worth while?
+ * TODO: Figure out how to turn this into a class with functions that help control the count and refresh loop
+ *  This would help with the filter bar...
+ *  Similar idea with the alert component
+ */
+
 interface TotalSessionsReply {
   direct: number;
   onNN: number;
@@ -23,11 +34,8 @@ interface TotalSessionsReply {
 export default class SessionCounts extends Vue {
   private totalSessionsReply: TotalSessionsReply
   private apiService: APIService
-  private countLoop = -1
-
-  private showCount = false
-
-  // TODO: These values should probably go in a store
+  private showCount: boolean
+  private countLoop: number
 
   get totalSessions () {
     return this.totalSessionsReply.direct + this.totalSessionsReply.onNN
@@ -40,6 +48,8 @@ export default class SessionCounts extends Vue {
       direct: 0,
       onNN: 0
     }
+    this.countLoop = -1
+    this.showCount = false
   }
 
   private mounted () {
@@ -62,7 +72,7 @@ export default class SessionCounts extends Vue {
           this.showCount = true
         }
       })
-      .catch((error: any) => {
+      .catch((error: Error) => {
         console.log(error)
       })
   }

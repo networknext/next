@@ -4,6 +4,10 @@ import modules from './modules'
 
 Vue.use(Vuex)
 
+/**
+ * Basic Vuex store leveraging modules
+ */
+
 export default new Vuex.Store({
   strict: true,
   modules

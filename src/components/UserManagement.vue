@@ -132,8 +132,17 @@ import Multiselect from 'vue-multiselect'
 import APIService from '../services/api.service'
 import Alert from './Alert.vue'
 import { AlertTypes } from './types/AlertTypes'
-
 import _ from 'lodash'
+
+/**
+ * This component displays all of the necessary information for the user management tab
+ *  within the settings page of the Portal and houses all the associated logic and api calls
+ */
+
+/**
+ * TODO: Clean up template
+ * TODO: Pretty sure the card-body can be taken out into a wrapper component - same with route shader and game config...
+ */
 
 @Component({
   components: {
@@ -143,18 +152,14 @@ import _ from 'lodash'
 })
 export default class UserManagement extends Vue {
   private apiService: APIService
-  private allRoles: Array<any> = []
-  private companyUsers: Array<any> = []
-  private companyUsersReadOnly: Array<any> = []
-
-  private newUserRoles: any = []
-
-  private newUserEmails: string
-
-  private showTable: boolean
-
+  private allRoles: Array<any>
+  private companyUsers: Array<any>
+  private companyUsersReadOnly: Array<any>
+  private newUserRoles: Array<any>
   private messages: any
   private alertTypes: any
+  private showTable: boolean
+  private newUserEmails: string
 
   constructor () {
     super()
@@ -169,6 +174,10 @@ export default class UserManagement extends Vue {
       newUsers: '',
       editUser: ''
     }
+    this.allRoles = []
+    this.newUserRoles = []
+    this.companyUsers = []
+    this.companyUsersReadOnly = []
   }
 
   private mounted (): void {

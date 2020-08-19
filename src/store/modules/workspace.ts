@@ -1,3 +1,11 @@
+/**
+ * Basic Vuex module specific to workspace state
+ */
+
+/**
+ * TODO: Namespace these
+ */
+
 export default {
   state: {
     currentPage: 'map'

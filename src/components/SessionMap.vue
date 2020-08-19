@@ -3,7 +3,7 @@
          'map-container-no-offset': $store.getters.userProfile === null || $store.getters.userProfile.verified,
          'map-container-offset': $store.getters.userProfile !== null && !$store.getters.userProfile.verified,
        }">
-    <div id="map"></div>
+    <div class="map" id="map"></div>
     <canvas id="deck-canvas"></canvas>
   </div>
 </template>
@@ -15,31 +15,38 @@ import { ScreenGridLayer } from '@deck.gl/aggregation-layers'
 import mapboxgl from 'mapbox-gl'
 import APIService from '@/services/api.service'
 
+/**
+ * This component displays the map that is visible in the map workspace
+ *  and has all of the associated logic and api calls
+ */
+
+/**
+ * TODO: Cleanup component logic
+ */
+
 @Component({
   name: 'SessionMap'
 })
 export default class SessionMap extends Vue {
-  // TODO: Add in types for all of the any declarations
-  private mapInstance: any = null
-  private deckGlInstance: any = null
-
-  private mapLoop = -1
-
   private apiService: APIService
-
-  private viewState = {
-    latitude: 0,
-    longitude: 0,
-    zoom: 2,
-    pitch: 0,
-    bearing: 0,
-    minZoom: 2,
-    maxZoom: 16
-  }
+  private deckGlInstance: any
+  private mapInstance: any
+  private mapLoop: number
+  private viewState: any
 
   constructor () {
     super()
     this.apiService = Vue.prototype.$apiService
+    this.viewState = {
+      latitude: 0,
+      longitude: 0,
+      zoom: 2,
+      pitch: 0,
+      bearing: 0,
+      minZoom: 2,
+      maxZoom: 16
+    }
+    this.mapLoop = -1
   }
 
   private mounted () {
@@ -124,10 +131,17 @@ export default class SessionMap extends Vue {
 
         if (!this.deckGlInstance) {
           // creating the deck.gl instance
+          const mapParent = document.getElementById('map')
+          let width = 0
+          let height = 0
+          if (mapParent) {
+            width = mapParent.offsetWidth
+            height = mapParent.offsetHeight
+          }
           this.deckGlInstance = new Deck({
             canvas: document.getElementById('deck-canvas'),
-            width: '100%',
-            height: '100%',
+            width: width,
+            height: height,
             initialViewState: this.viewState,
             controller: {
               dragRotate: false,
@@ -169,7 +183,7 @@ export default class SessionMap extends Vue {
     position: relative;
     overflow: hidden;
   }
-  #map {
+  .map {
     position: absolute;
     top: 0;
     left: 0;
@@ -183,6 +197,8 @@ export default class SessionMap extends Vue {
     position: absolute;
     top: 0;
     left: 0;
+  }
+  #deckgl-overlay {
     width: 100%;
     height: 100%;
   }

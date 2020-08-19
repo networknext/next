@@ -25,9 +25,8 @@
           <a
             href="#"
             onclick="window.open('https://storage.googleapis.com/portal_sdk_download_storage_prod/next-3.4.6.zip')"
-            class="btn btn-primary m-1"
+            class="btn btn-primary m-1 btn-width"
             title="SDK v3.4.6"
-            style='width: "160px"'
           >
             <font-awesome-icon icon="download"
                                 class="fa-w-16 fa-fw"
@@ -37,9 +36,8 @@
           <a
             href="#"
             onclick="window.open('https://network-next-sdk.readthedocs-hosted.com/en/latest/')"
-            class="btn btn-primary m-1"
+            class="btn btn-primary m-1 btn-width"
             title="v3.4.6 Documentation"
-            style='width: "160px"'
           >
             <font-awesome-icon icon="download"
                                 class="fa-w-16 fa-fw"
@@ -58,11 +56,23 @@
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
 
+/**
+ * This component holds the workspace elements related to the downloads page in the Portal
+ */
+
+/**
+ * TODO: Make this a View
+ */
+
 @Component
 export default class DownloadsWorkspace extends Vue {
+  // Empty for now
 }
 </script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
+  .btn-width {
+    width: "160px";
+  }
 </style>

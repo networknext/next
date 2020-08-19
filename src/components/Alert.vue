@@ -8,7 +8,20 @@
 <script lang="ts">
 import { Component, Vue, Prop } from 'vue-property-decorator'
 
-// TODO: Add helper function that make it easier to set the message and alert type - It is kind of a pain to deal with when there are multiple alerts on the page
+/**
+ * This component is a reusable alert component
+ * It takes in a message and alert type props
+ *  and will display an alert with the passed in
+ *  message with a class attribute equivalent to the
+ *  passed in alert type
+ */
+
+/**
+ * TODO: Add helper function that make it easier to set the message and alert type
+ *  It is kind of a pain to deal with when there are multiple alerts on the page
+ *  Similar idea to the sessions count component
+ */
+
 @Component
 export default class Alert extends Vue {
   @Prop({ required: false, type: String, default: '' }) message!: string

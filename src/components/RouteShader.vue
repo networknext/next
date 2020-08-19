@@ -13,7 +13,7 @@
                         <input type="checkbox" checked v-model="routeShader.enable_nn">
                         <span class="slider round"></span>
                     </label>
-                    <span style="padding-left: 2rem;">
+                    <span class="text-pad-left">
                         Accelerate your sessions with Network Next
                     </span>
                 </div>
@@ -28,16 +28,16 @@
                   <input type="checkbox" checked v-model="routeShader.enable_rtt">
                   <span class="slider round"></span>
                 </label>
-                <span style="padding-left: 2rem;">
+                <span class="text-pad-left">
                   Reduce latency when it's higher than an acceptable amount
                 </span>
               </div>
             </div>
           </div>
-          <div class="form-group row" style="padding-left: 2rem;" v-show="routeShader.enable_rtt">
+          <div class="form-group row text-pad-left" v-show="routeShader.enable_rtt">
             <div class="col-sm-2">Acceptable Latency:</div>
             <div class="col-sm-10">
-              <input type="text" v-model="routeShader.acceptable_latency" style="width: 3.1rem;"> ms
+              <input type="text" v-model="routeShader.acceptable_latency" class="text-input-width"> ms
             </div>
           </div>
         <div class="form-group row">
@@ -48,16 +48,16 @@
                 <input type="checkbox" v-model="routeShader.enable_pl">
                 <span class="slider round"></span>
               </label>
-              <span style="padding-left: 2rem;">
+              <span class="text-pad-left">
                 Reduce packet loss when it's higher than an acceptable amount
               </span>
             </div>
           </div>
         </div>
-        <div class="form-group row" style="padding-left: 2rem;" v-show="routeShader.enable_pl">
+        <div class="form-group row text-pad-left" v-show="routeShader.enable_pl">
           <div class="col-sm-2">Acceptable Packet Loss:</div>
           <div class="col-sm-10">
-            <input type="text" v-model="routeShader.pl_threshold" style="width: 3.1rem;"> %
+            <input type="text" v-model="routeShader.pl_threshold" class="text-input-width"> %
           </div>
         </div>
         <div class="form-group row">
@@ -68,7 +68,7 @@
                 <input type="checkbox" v-model="routeShader.enable_mp">
                 <span class="slider round"></span>
               </label>
-              <span style="padding-left: 2rem;">
+              <span class="text-pad-left">
                 Send packets across Network Next <u>and</u> the public internet at the same time
               </span>
             </div>
@@ -82,13 +82,13 @@
                   <input type="checkbox" v-model="routeShader.enable_ab">
                   <span class="slider round"></span>
               </label>
-              <span style="padding-left: 2rem;">
+              <span class="text-pad-left">
                 Even session ids have Network Next enabled, odd do not
               </span>
             </div>
           </div>
         </div>
-        <button type="submit" class="btn btn-primary btn-sm" v-show="$store.getters.isOwner || $store.getters.isAdmin">
+        <button type="submit" class="btn btn-primary btn-sm" v-if="$store.getters.isOwner || $store.getters.isAdmin">
           Save route shader
         </button>
       </div>
@@ -98,10 +98,21 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
+import _ from 'lodash'
 import APIService from '../services/api.service'
 import Alert from '@/components/Alert.vue'
 import { AlertTypes } from './types/AlertTypes'
 import { UserProfile } from '@/services/auth.service'
+
+/**
+ * This component displays all of the necessary information for the route shader tab
+ *  within the settings page of the Portal and houses all the associated logic and api calls
+ */
+
+/**
+ * TODO: Clean up template
+ * TODO: Pretty sure the card-body can be taken out into a wrapper component - same with game config and user management...
+ */
 
 @Component({
   components: {
@@ -109,7 +120,6 @@ import { UserProfile } from '@/services/auth.service'
   }
 })
 export default class RouteShader extends Vue {
-  // TODO: Fix weird issue with dropdown library change events (select/delete) handler
   private apiService: APIService
   private routeShader: any
   private message: string
@@ -119,7 +129,7 @@ export default class RouteShader extends Vue {
   constructor () {
     super()
     this.apiService = Vue.prototype.$apiService
-    this.userProfile = JSON.parse(JSON.stringify(this.$store.getters.userProfile))
+    this.userProfile = _.cloneDeep(this.$store.getters.userProfile)
     this.routeShader = this.userProfile.routeShader
     this.message = ''
     this.alertType = ''
@@ -202,5 +212,11 @@ export default class RouteShader extends Vue {
   }
   .slider.round:before {
     border-radius: 50%;
+  }
+  .text-pad-left {
+    padding-left: 2rem;
+  }
+  .text-input-width {
+    width: 3.1rem;
   }
 </style>

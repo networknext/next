@@ -1,32 +1,54 @@
 <template>
   <div id="app">
     <nav-bar></nav-bar>
-    <div style="padding-top: 48px;" v-if="false">
-      <div class="alert alert-primary"
-            style="text-align: center;"
-            role="alert"
-      >
-        Please confirm your email address: EMAIL ADDRESS
-        <a href="#">
-            Resend email
-        </a>
-      </div>
-      <div class="alert alert-success"
-          style="text-align: center;"
-          role="alert"
-      >
-        Verification email was sent successfully. Please check your email for futher instructions.
-      </div>
-      <div class="alert alert-danger"
-          style="text-align: center;"
-          role="alert"
-      >
-        Something went wrong sending the verification email. Please try again later.
-      </div>
-    </div>
     <workspace></workspace>
   </div>
 </template>
+
+<script lang="ts">
+import Vue from 'vue'
+
+import {
+  faCheck,
+  faCircle,
+  faDownload,
+  faPen,
+  faTimes,
+  faTrash
+} from '@fortawesome/free-solid-svg-icons'
+import { library } from '@fortawesome/fontawesome-svg-core'
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+import NavBar from './components/NavBar.vue'
+import Workspace from './components/workspaces/Workspace.vue'
+
+/**
+ * Main component that is used to mount the entire Vue app. Contains the
+ *  main layout components (navbar and workspace)
+ * This component is also responsible for mounting third party libs as well
+ *  and defining global styles
+*/
+
+/**
+ * TODO: Purge unnecessary styles
+ */
+
+const ICONS = [
+  faCheck,
+  faCircle,
+  faDownload,
+  faPen,
+  faTimes,
+  faTrash
+]
+
+library.add(...ICONS)
+
+Vue.component('font-awesome-icon', FontAwesomeIcon)
+Vue.component('nav-bar', NavBar)
+Vue.component('workspace', Workspace)
+export default Vue.extend({})
+
+</script>
 
 <style lang="scss">
   @import url('https://fonts.googleapis.com/css?family=Montserrat:400,700');
@@ -163,36 +185,3 @@
     text-transform: uppercase;
   }
 </style>
-<script lang="ts">
-import Vue from 'vue'
-
-import {
-  faCheck,
-  faCircle,
-  faDownload,
-  faPen,
-  faTimes,
-  faTrash
-} from '@fortawesome/free-solid-svg-icons'
-import { library } from '@fortawesome/fontawesome-svg-core'
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-import NavBar from './components/NavBar.vue'
-import Workspace from './components/workspaces/Workspace.vue'
-
-const ICONS = [
-  faCheck,
-  faCircle,
-  faDownload,
-  faPen,
-  faTimes,
-  faTrash
-]
-
-library.add(...ICONS)
-
-Vue.component('font-awesome-icon', FontAwesomeIcon)
-Vue.component('nav-bar', NavBar)
-Vue.component('workspace', Workspace)
-export default Vue.extend({})
-
-</script>
