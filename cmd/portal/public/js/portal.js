@@ -385,7 +385,7 @@ MapHandler = {
 
 				if (!this.deckGlInstance) {
           // creating the deck.gl instance
-          const mapParent = document.getElementById("map-parent")
+          const mapParent = document.getElementById("map")
           const width = mapParent.offsetWidth
           const height = mapParent.offsetHeight
 					this.deckGlInstance = new deck.Deck({
