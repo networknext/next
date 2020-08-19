@@ -6,7 +6,6 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"sort"
@@ -159,7 +158,7 @@ func getInfoForAllRelays(rpcClient jsonrpc.RPCClient, env Environment) []relayIn
 	}
 
 	if len(reply.Relays) == 0 {
-		log.Fatal("could not find a single relay")
+		handleRunTimeError(fmt.Sprintln("could not find a single relay"), 0)
 	}
 
 	relays := make([]relayInfo, len(reply.Relays))
@@ -185,8 +184,7 @@ func updateRelayState(rpcClient jsonrpc.RPCClient, info relayInfo, state routing
 	}
 	var reply localjsonrpc.RelayStateUpdateReply
 	if err := rpcClient.CallFor(&reply, "OpsService.RelayStateUpdate", &args); err != nil {
-		fmt.Printf("could not update relay state: %v\n", err)
-		return false
+		handleRunTimeError(fmt.Sprintf("could not update relay state: %v\n", err), 1)
 	}
 
 	return true
@@ -202,29 +200,29 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 	// Fetch and save the latest binary
 	url, err := env.RelayArtifactURL()
 	if err != nil {
-		log.Fatalf("%v\n", err)
+		handleRunTimeError(fmt.Sprintf("%v\n", err), 0)
 	}
 
 	r, err := http.Get(url)
 	if err != nil {
-		log.Fatalf("could not acquire relay tar: %v\n", err)
+		handleRunTimeError(fmt.Sprintf("could not acquire relay tar: %v\n", err), 0)
 	}
 
 	defer r.Body.Close()
 
 	file, err := os.Create("dist/relay.tar.gz")
 	if err != nil {
-		log.Fatalf("could not open 'dist/relay.tar.gz' for writing: %v\n", err)
+		handleRunTimeError(fmt.Sprintf("could not open 'dist/relay.tar.gz' for writing: %v\n", err), 0)
 	}
 
 	defer file.Close()
 
 	if _, err := io.Copy(file, r.Body); err != nil {
-		log.Fatalf("failed to copy http response to file: %v\n", err)
+		handleRunTimeError(fmt.Sprintf("failed to copy http response to file: %v\n", err), 0)
 	}
 
 	if !runCommand("tar", []string{"-C", "./dist", "-xzf", "dist/relay.tar.gz"}) {
-		log.Fatalln("failed to untar relay")
+		handleRunTimeError(fmt.Sprintln("failed to untar relay"), 1)
 	}
 
 	doAllEnabled := false
@@ -239,7 +237,7 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 		relays := getRelayInfo(rpcClient, env, regex)
 
 		if len(relays) == 0 {
-			log.Printf("no relays matched the regex '%s'\n", regex)
+			fmt.Printf("no relays matched the regex '%s'\n", regex)
 			continue
 		}
 
@@ -275,7 +273,7 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 				}
 			}
 
-			if !disableRelays(env, rpcClient, []string{relay.name}, opts.hard) {
+			if !disableRelays(env, rpcClient, []string{relay.name}, opts.hard, false) {
 				continue
 			}
 
@@ -307,19 +305,17 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 				routerPublicKey, err := env.RouterPublicKey()
 
 				if err != nil {
-					log.Fatalf("could not get router public key: %v\n", err)
+					handleRunTimeError(fmt.Sprintf("could not get router public key: %v\n", err), 0)
 				}
 
 				backendURL, err := env.RelayBackendURL()
 
 				if err != nil {
-					log.Fatalf("could not get backend url: %v\n", err)
+					handleRunTimeError(fmt.Sprintf("could not get backend url: %v\n", err), 0)
 				}
 
-				oldBackendHostname, err := env.OldRelayBackendHostname()
-
 				if err != nil {
-					log.Fatalf("could not get old backend hostname: %v\n", err)
+					handleRunTimeError(fmt.Sprintf("could not get old backend hostname: %v\n", err), 0)
 				}
 
 				envvars := make(map[string]string)
@@ -328,12 +324,6 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 				envvars["RELAY_PRIVATE_KEY"] = privateKeyB64
 				envvars["RELAY_ROUTER_PUBLIC_KEY"] = routerPublicKey
 				envvars["RELAY_BACKEND_HOSTNAME"] = backendURL
-				envvars["RELAY_V3_ENABLED"] = "0"
-				envvars["RELAY_V3_BACKEND_HOSTNAME"] = oldBackendHostname
-				envvars["RELAY_V3_BACKEND_PORT"] = "40000"
-				envvars["RELAY_V3_UPDATE_KEY"] = relay.updateKey
-				envvars["RELAY_V3_SPEED"] = relay.nicSpeed
-				envvars["RELAY_V3_NAME"] = relay.firestoreID
 
 				if opts.coreCount > 0 {
 					envvars["RELAY_MAX_CORES"] = strconv.FormatUint(opts.coreCount, 10)
@@ -408,7 +398,7 @@ func revertRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 	for _, regex := range regexes {
 		relays := getRelayInfo(rpcClient, env, regex)
 		if len(relays) == 0 {
-			log.Printf("no relays matched the regex '%s'\n", regex)
+			fmt.Printf("no relays matched the regex '%s'\n", regex)
 			continue
 		}
 		for _, relay := range relays {
@@ -428,7 +418,7 @@ func enableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 	for _, regex := range regexes {
 		relays := getRelayInfo(rpcClient, env, regex)
 		if len(relays) == 0 {
-			log.Printf("no relays matched the regex '%s'\n", regex)
+			fmt.Printf("no relays matched the regex '%s'\n", regex)
 			continue
 		}
 		for _, relay := range relays {
@@ -457,7 +447,7 @@ func enableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 	fmt.Printf("%s complete\n", str)
 }
 
-func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string, hard bool) bool {
+func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string, hard bool, maintenance bool) bool {
 	success := true
 	relaysDisabled := 0
 	testForSSHKey(env)
@@ -465,16 +455,26 @@ func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []strin
 	if hard {
 		script = DisableRelayScriptHard
 	}
+
+	relayState := routing.RelayStateDisabled
+	infoText := "Disabling"
+	successText := "disabled."
+	if maintenance {
+		relayState = routing.RelayStateMaintenance
+		infoText = "Setting maintenance mode on"
+		successText = "is now in maintenance mode."
+	}
+
 	for _, regex := range regexes {
 		relays := getRelayInfo(rpcClient, env, regex)
 		if len(relays) == 0 {
-			log.Printf("no relays matched the regex '%s'\n", regex)
+			fmt.Printf("no relays matched the regex '%s'\n", regex)
 			continue
 		}
 		for _, relay := range relays {
-			fmt.Printf("Disabling relay '%s' (id = %016x)\n", relay.name, relay.id)
+			fmt.Printf("%s relay '%s' (id = %016x)\n", infoText, relay.name, relay.id)
 			con := NewSSHConn(relay.user, relay.sshAddr, relay.sshPort, env.SSHKeyFilePath)
-			if !con.ConnectAndIssueCmd(script) || !updateRelayState(rpcClient, relay, routing.RelayStateDisabled) {
+			if !con.ConnectAndIssueCmd(script) || !updateRelayState(rpcClient, relay, relayState) {
 				success = false
 				continue
 			}
@@ -492,7 +492,7 @@ func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []strin
 		if relaysDisabled == 1 {
 			str = "Relay"
 		}
-		fmt.Printf("%s disabled\n", str)
+		fmt.Printf("%s %s\n", str, successText)
 	}
 
 	return success
@@ -502,7 +502,7 @@ func setRelayNIC(rpcClient jsonrpc.RPCClient, env Environment, relayName string,
 	relays := getRelayInfo(rpcClient, env, relayName)
 
 	if len(relays) == 0 {
-		log.Fatalf("no relays matched the name '%s'\n", relayName)
+		handleRunTimeError(fmt.Sprintf("no relays matched the name '%s'\n", relayName), 0)
 	}
 
 	info := relays[0]
@@ -514,7 +514,8 @@ func setRelayNIC(rpcClient jsonrpc.RPCClient, env Environment, relayName string,
 
 	var reply localjsonrpc.RelayNICSpeedUpdateReply
 	if err := rpcClient.CallFor(&reply, "OpsService.RelayNICSpeedUpdate", args); err != nil {
-		log.Fatal(err)
+		fmt.Printf("Error setting relay NIC speed: %v\n", err)
+		os.Exit(0)
 	}
 
 	// Give the portal enough time to pull down the new state so that
@@ -525,17 +526,41 @@ func setRelayNIC(rpcClient jsonrpc.RPCClient, env Environment, relayName string,
 	fmt.Printf("NIC speed set for %s\n", info.name)
 }
 
+func updateRelayName(rpcClient jsonrpc.RPCClient, env Environment, oldName string, newName string) {
+
+	var relay routing.Relay
+	var ok bool
+	if relay, ok = checkForRelay(rpcClient, env, oldName); !ok {
+		// error msg printed by called function
+		return
+	}
+
+	var reply localjsonrpc.RelayNameUpdateReply
+	args := localjsonrpc.RelayNameUpdateArgs{
+		RelayID:   relay.ID,
+		RelayName: newName,
+	}
+
+	if err := rpcClient.CallFor(&reply, "OpsService.RelayNameUpdate", args); err != nil {
+		fmt.Printf("error renaming relay: %v\n", (err))
+	} else {
+		fmt.Printf("Relay renamed successfully: %s -> %s\n", oldName, newName)
+
+	}
+
+}
+
 func setRelayState(rpcClient jsonrpc.RPCClient, env Environment, stateString string, regexes []string) {
 	state, err := routing.ParseRelayState(stateString)
 	if err != nil {
-		log.Fatal(err)
+		handleRunTimeError(fmt.Sprintf("%v\n", err), 0)
 	}
 
 	for _, regex := range regexes {
 		relays := getRelayInfo(rpcClient, env, regex)
 
 		if len(relays) == 0 {
-			log.Printf("no relay matched the regex '%s'\n", regex)
+			fmt.Printf("no relay matched the regex '%s'\n", regex)
 			continue
 		}
 
@@ -661,7 +686,7 @@ func checkRelays(
 				if out, err := con.IssueCmdAndGetOutput(VersionCheckScript); err == nil {
 					infoIndx.UbuntuVersion = out
 				} else {
-					log.Printf("error when acquiring ubuntu version for relay %s: %v\n", r.name, err)
+					fmt.Printf("error when acquiring ubuntu version for relay %s: %v\n", r.name, err)
 					infoIndx.UbuntuVersion = "Error"
 				}
 			}
@@ -671,7 +696,7 @@ func checkRelays(
 				if out, err := con.IssueCmdAndGetOutput(CoreCheckScript); err == nil {
 					infoIndx.CPUCores = out
 				} else {
-					log.Printf("error when acquiring number of logical cpu cores for relay %s: %v\n", r.name, err)
+					fmt.Printf("error when acquiring number of logical cpu cores for relay %s: %v\n", r.name, err)
 					infoIndx.CPUCores = "Error"
 				}
 			}
@@ -686,11 +711,11 @@ func checkRelays(
 							infoIndx.CanPingBackend = "no"
 						}
 					} else {
-						log.Printf("error when checking relay %s can ping the backend: %v\n", r.name, err)
+						fmt.Printf("error when checking relay %s can ping the backend: %v\n", r.name, err)
 						infoIndx.CanPingBackend = "Error"
 					}
 				} else {
-					log.Printf("%v\n", err)
+					fmt.Printf("%v\n", err)
 				}
 			}
 
@@ -703,7 +728,7 @@ func checkRelays(
 						infoIndx.ServiceRunning = "no"
 					}
 				} else {
-					log.Printf("error when checking if relay %s has the service running: %v\n", r.name, err)
+					fmt.Printf("error when checking if relay %s has the service running: %v\n", r.name, err)
 					infoIndx.ServiceRunning = "Error"
 				}
 			}
@@ -717,12 +742,12 @@ func checkRelays(
 						infoIndx.PortBound = "no"
 					}
 				} else {
-					log.Printf("error when checking if relay %s has the right port bound: %v\n", r.name, err)
+					fmt.Printf("error when checking if relay %s has the right port bound: %v\n", r.name, err)
 					infoIndx.PortBound = "Error"
 				}
 			}
 
-			log.Printf("gathered info for relay %s\n", r.name)
+			fmt.Printf("gathered info for relay %s\n", r.name)
 		}(i, &wg)
 	}
 

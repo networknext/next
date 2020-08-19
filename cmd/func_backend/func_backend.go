@@ -159,7 +159,9 @@ func TimeoutThread() {
 
 func (backend *Backend) GetNearRelays() []routing.Relay {
 	var nearRelays = make([]routing.Relay, 0)
+	backend.mutex.Lock()
 	allRelayData := backend.relayMap.GetAllRelayData()
+	backend.mutex.Unlock()
 	for _, relayData := range allRelayData {
 		nearRelays = append(nearRelays, routing.Relay{
 			ID:         relayData.ID,
@@ -720,14 +722,18 @@ func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 		LastUpdateTime: time.Now(),
 	}
 
+	backend.mutex.Lock()
 	relayData := backend.relayMap.GetRelayData(relay.Addr.String())
+	backend.mutex.Unlock()
 	if relayData != nil {
 		writer.WriteHeader(http.StatusConflict)
 		return
 	}
 
+	backend.mutex.Lock()
 	backend.relayMap.UpdateRelayData(relay.Addr.String(), relay)
 	backend.dirty = true
+	backend.mutex.Unlock()
 
 	writer.Header().Set("Content-Type", "application/octet-stream")
 
@@ -817,20 +823,21 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
 	relaysToPing := make([]routing.RelayPingData, 0)
 
+	backend.mutex.Lock()
 	allRelayData := backend.relayMap.GetAllRelayData()
 	for _, v := range allRelayData {
 		if v.Addr.String() != relay.Addr.String() {
 			relaysToPing = append(relaysToPing, routing.RelayPingData{ID: uint64(v.ID), Address: v.Addr.String()})
 		}
 	}
-
 	relayData := backend.relayMap.GetRelayData(relay.Addr.String())
 	if relayData == nil {
+		backend.mutex.Unlock()
 		writer.WriteHeader(http.StatusNotFound)
 		return
 	}
-
 	backend.relayMap.UpdateRelayData(relay.Addr.String(), relay)
+	backend.mutex.Unlock()
 
 	responseData := make([]byte, 10*1024)
 
