@@ -101,20 +101,20 @@ func SelectRoutesByRandomDestRelay(source rand.Source) SelectorFunc {
 		destRelayRouteMap := make(map[uint64][]Route)
 		for _, route := range routes {
 			// In case the route has zero relays, ignore it
-			if len(route.Relays) == 0 {
+			if len(route.RelayIDs) == 0 {
 				continue
 			}
 
 			// Get the destination relay
-			destRelay := route.Relays[len(route.Relays)-1]
+			destRelayID := route.RelayIDs[len(route.RelayIDs)-1]
 
 			// If the relay isn't in the map yet, add an empty slice to add routes to
-			if _, ok := destRelayRouteMap[destRelay.ID]; !ok {
-				destRelayRouteMap[destRelay.ID] = nil
+			if _, ok := destRelayRouteMap[destRelayID]; !ok {
+				destRelayRouteMap[destRelayID] = nil
 			}
 
 			// Append the route to the relay's entry in the map
-			destRelayRouteMap[destRelay.ID] = append(destRelayRouteMap[destRelay.ID], route)
+			destRelayRouteMap[destRelayID] = append(destRelayRouteMap[destRelayID], route)
 		}
 
 		// Don't continue if there are no routes in the map
@@ -162,8 +162,8 @@ func SelectUnencumberedRoutes(sessionThreshold float64) SelectorFunc {
 
 		for _, route := range routes {
 			isRouteUnencumbered := true
-			for _, relay := range route.Relays {
-				if relay.MaxSessions == 0 || float64(relay.TrafficStats.SessionCount)/float64(relay.MaxSessions) >= sessionThreshold {
+			for i := range route.RelayIDs {
+				if route.RelayMaxSessions[i] == 0 || float64(route.RelaySessions[i])/float64(route.RelayMaxSessions[i]) >= sessionThreshold {
 					isRouteUnencumbered = false
 					break
 				}

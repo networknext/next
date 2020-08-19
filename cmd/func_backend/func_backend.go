@@ -157,22 +157,13 @@ func TimeoutThread() {
 	}
 }
 
-func (backend *Backend) GetNearRelays() []routing.Relay {
-	var nearRelays = make([]routing.Relay, 0)
+func (backend *Backend) GetNearRelays() []*routing.RelayData {
 	allRelayData := backend.relayMap.GetAllRelayData()
-	for _, relayData := range allRelayData {
-		nearRelays = append(nearRelays, routing.Relay{
-			ID:         relayData.ID,
-			Addr:       relayData.Addr,
-			Datacenter: relayData.Datacenter,
-			PublicKey:  relayData.PublicKey,
-		})
+	sort.SliceStable(allRelayData, func(i, j int) bool { return allRelayData[i].ID < allRelayData[j].ID })
+	if len(allRelayData) > int(transport.MaxNearRelays) {
+		allRelayData = allRelayData[:transport.MaxNearRelays]
 	}
-	sort.SliceStable(nearRelays[:], func(i, j int) bool { return nearRelays[i].ID < nearRelays[j].ID })
-	if len(nearRelays) > int(transport.MaxNearRelays) {
-		nearRelays = nearRelays[:transport.MaxNearRelays]
-	}
-	return nearRelays
+	return allRelayData
 }
 
 func main() {
@@ -421,9 +412,11 @@ func main() {
 			// Extract ids and addresses into own list to make response
 			var nearRelayIDs = make([]uint64, 0)
 			var nearRelayAddresses = make([]net.UDPAddr, 0)
+			var nearRelayPublicKeys = make([][]byte, 0)
 			for _, relay := range nearRelays {
 				nearRelayIDs = append(nearRelayIDs, relay.ID)
 				nearRelayAddresses = append(nearRelayAddresses, relay.Addr)
+				nearRelayPublicKeys = append(nearRelayPublicKeys, relay.PublicKey)
 			}
 
 			if !takeNetworkNext {
@@ -452,13 +445,24 @@ func main() {
 					numRelays = routing.MaxRelays
 				}
 				nextRoute := routing.Route{
-					Relays: nearRelays[:numRelays],
+					RelayIDs:        nearRelayIDs,
+					RelayAddrs:      nearRelayAddresses,
+					RelayPublicKeys: nearRelayPublicKeys,
 				}
 
 				if newSession {
 					sessionEntry.TimestampExpire = time.Now().Add(billing.BillingSliceSeconds * 2 * time.Second)
 				} else {
 					sessionEntry.TimestampExpire = sessionEntry.TimestampExpire.Add(billing.BillingSliceSeconds * time.Second)
+				}
+
+				relayTokens := make([]routing.RelayToken, len(nextRoute.RelayIDs))
+				for i := range relayTokens {
+					relayTokens[i] = routing.RelayToken{
+						ID:        nextRoute.RelayIDs[i],
+						Addr:      nextRoute.RelayAddrs[i],
+						PublicKey: nextRoute.RelayPublicKeys[i],
+					}
 				}
 
 				var token routing.Token
@@ -481,7 +485,7 @@ func main() {
 							PublicKey: serverEntry.publicKey,
 						},
 
-						Relays: nextRoute.Relays,
+						Relays: relayTokens,
 					}
 				} else {
 					sessionEntry.Version++
@@ -504,7 +508,7 @@ func main() {
 							PublicKey: serverEntry.publicKey,
 						},
 
-						Relays: nextRoute.Relays,
+						Relays: relayTokens,
 
 						KbpsUp:   256 * 100,
 						KbpsDown: 256 * 100,

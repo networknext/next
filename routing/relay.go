@@ -119,7 +119,6 @@ type Relay struct {
 	SSHPort        int64  `json:"ssh_port"`
 
 	TrafficStats RelayTrafficStats `json:"traffic_stats"`
-	ClientStats  Stats             `json:"client_stats"`
 
 	MaxSessions uint32 `json:"max_sessions"`
 
