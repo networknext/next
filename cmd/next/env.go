@@ -4,35 +4,35 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"path"
 	"strings"
 )
 
 const (
-	PortalHostnameLocal = "localhost:20000"
-	PortalHostnameDev   = "portal-dev.networknext.com"
-	PortalHostnameProd  = "portal.networknext.com"
+	PortalHostnameLocal   = "localhost:20000"
+	PortalHostnameDev     = "portal-dev.networknext.com"
+	PortalHostnameStaging = "portal-staging.networknext.com"
+	PortalHostnameProd    = "portal.networknext.com"
 
-	RouterPublicKeyLocal = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
-	RouterPublicKeyDev   = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
-	RouterPublicKeyProd  = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
+	RouterPublicKeyLocal   = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
+	RouterPublicKeyDev     = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
+	RouterPublicKeyStaging = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
+	RouterPublicKeyProd    = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
 
-	RelayArtifactURLDev  = "https://storage.googleapis.com/development_artifacts/relay.dev.tar.gz"
-	RelayArtifactURLProd = "https://storage.googleapis.com/prod_artifacts/relay.prod.tar.gz"
+	RelayArtifactURLDev     = "https://storage.googleapis.com/development_artifacts/relay.dev.tar.gz"
+	RelayArtifactURLStaging = "https://storage.googleapis.com/staging_artifacts/relay.dev.tar.gz"
+	RelayArtifactURLProd    = "https://storage.googleapis.com/prod_artifacts/relay.prod.tar.gz"
 
-	RelayBackendHostnameLocal = "localhost"
-	RelayBackendHostnameDev   = "relay_backend.dev.networknext.com"
-	RelayBackendHostnameProd  = "relay_backend.prod.networknext.com"
+	RelayBackendHostnameLocal   = "localhost"
+	RelayBackendHostnameDev     = "relay_backend.dev.networknext.com"
+	RelayBackendHostnameStaging = "relay_backend.staging.networknext.com"
+	RelayBackendHostnameProd    = "relay_backend.prod.networknext.com"
 
-	OldRelayBackendHostnameLocal = "localhost"
-	OldRelayBackendHostnameDev   = "relays.v3-dev.networknext.com"
-	OldRelayBackendHostnameProd  = "relays.v3.networknext.com"
-
-	RelayBackendURLLocal = "http://" + RelayBackendHostnameLocal + ":30000"
-	RelayBackendURLDev   = "http://" + RelayBackendHostnameDev
-	RelayBackendURLProd  = "http://" + RelayBackendHostnameProd
+	RelayBackendURLLocal   = "http://" + RelayBackendHostnameLocal + ":30000"
+	RelayBackendURLDev     = "http://" + RelayBackendHostnameDev
+	RelayBackendURLStaging = "http://" + RelayBackendHostnameStaging
+	RelayBackendURLProd    = "http://" + RelayBackendHostnameProd
 )
 
 type Environment struct {
@@ -64,7 +64,7 @@ func (e *Environment) String() string {
 func (e *Environment) Exists() bool {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		log.Fatal("failed to read environment", err)
+		handleRunTimeError(fmt.Sprintf("failed to read environment %v\n", err), 1)
 	}
 
 	envFilePath := path.Join(homeDir, ".nextenv")
@@ -79,102 +79,103 @@ func (e *Environment) Exists() bool {
 func (e *Environment) Read() {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		log.Fatal("failed to read environment", err)
+		handleRunTimeError(fmt.Sprintf("failed to read environment %v\n", err), 1)
 	}
 
 	envFilePath := path.Join(homeDir, ".nextenv")
 
 	f, err := os.Open(envFilePath)
 	if err != nil {
-		log.Fatal("failed to read environment", err)
+		handleRunTimeError(fmt.Sprintf("failed to read environment %v\n", err), 1)
 	}
 	defer f.Close()
 
 	if err := json.NewDecoder(f).Decode(e); err != nil {
-		log.Fatal("failed to read environment", err)
+		handleRunTimeError(fmt.Sprintf("failed to read environment %v\n", err), 1)
 	}
 }
 
 func (e *Environment) Write() {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		log.Fatal("failed to write environment", err)
+		handleRunTimeError(fmt.Sprintf("failed to read environment %v\n", err), 1)
 	}
 
 	envFilePath := path.Join(homeDir, ".nextenv")
 
 	f, err := os.Create(envFilePath)
 	if err != nil {
-		log.Fatal("failed to write environment", err)
+		handleRunTimeError(fmt.Sprintf("failed to read environment %v\n", err), 1)
 	}
 	defer f.Close()
 
 	if err := json.NewEncoder(f).Encode(e); err != nil {
-		log.Fatal("failed to write environment", err)
+		handleRunTimeError(fmt.Sprintf("failed to read environment %v\n", err), 1)
 	}
 }
 
 func (e *Environment) Clean() {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		log.Fatal("failed to clean environment", err)
+		handleRunTimeError(fmt.Sprintf("failed to clean environment %v\n", err), 1)
 	}
 
 	envFilePath := path.Join(homeDir, ".nextenv")
 
 	err = os.RemoveAll(envFilePath)
 	if err != nil {
-		log.Fatal("failed to clean environment", err)
+		handleRunTimeError(fmt.Sprintf("failed to clean environment %v\n", err), 1)
+
 	}
 }
 
 func (e *Environment) PortalHostname() string {
-	if hostname, err := e.localDevOrProd(PortalHostnameLocal, PortalHostnameDev, PortalHostnameProd); err == nil {
+	if hostname, err := e.switchEnvLocal(PortalHostnameLocal, PortalHostnameDev, PortalHostnameStaging, PortalHostnameProd); err == nil {
 		return hostname
 	}
 	return e.Hostname
 }
 
 func (e *Environment) RouterPublicKey() (string, error) {
-	return e.localDevOrProd(RouterPublicKeyLocal, RouterPublicKeyDev, RouterPublicKeyProd)
+	return e.switchEnvLocal(RouterPublicKeyLocal, RouterPublicKeyDev, RouterPublicKeyStaging, RouterPublicKeyProd)
 }
 
 func (e *Environment) RelayBackendURL() (string, error) {
-	return e.localDevOrProd(RelayBackendURLLocal, RelayBackendURLDev, RelayBackendURLProd)
-}
-
-func (e *Environment) OldRelayBackendHostname() (string, error) {
-	return e.localDevOrProd(OldRelayBackendHostnameLocal, OldRelayBackendHostnameDev, OldRelayBackendHostnameProd)
+	return e.switchEnvLocal(RelayBackendURLLocal, RelayBackendURLDev, RelayBackendURLStaging, RelayBackendURLProd)
 }
 
 func (e *Environment) RelayArtifactURL() (string, error) {
-	return e.devOrProd(RelayArtifactURLDev, RelayArtifactURLProd)
+	return e.switchEnv(RelayArtifactURLDev, RelayArtifactURLStaging, RelayArtifactURLProd)
 }
 
 func (e *Environment) RelayBackendHostname() (string, error) {
-	return e.localDevOrProd(RelayBackendHostnameLocal, RelayBackendHostnameDev, RelayBackendHostnameProd)
+	return e.switchEnvLocal(RelayBackendHostnameLocal, RelayBackendHostnameDev, RelayBackendHostnameStaging, RelayBackendHostnameProd)
 }
 
-func (e *Environment) localDevOrProd(ifIsLocal, ifIsDev, ifIsProd string) (string, error) {
+func (e *Environment) switchEnvLocal(ifIsLocal, ifIsDev, ifIsStaging, ifIsProd string) (string, error) {
 	switch e.Name {
 	case "local":
 		return ifIsLocal, nil
 	case "dev":
 		return ifIsDev, nil
+	case "staging":
+		return ifIsStaging, nil
 	case "prod":
 		return ifIsProd, nil
 	default:
-		return "", errors.New("Environment does not match 'local', 'dev', or 'prod'")
+		return "", errors.New("Environment does not match 'local', 'dev', 'staging', or 'prod'")
 	}
 }
 
-func (e *Environment) devOrProd(ifIsDev, ifIsProd string) (string, error) {
+func (e *Environment) switchEnv(ifIsDev, ifIsStaging, ifIsProd string) (string, error) {
 	switch e.Name {
 	case "dev":
 		return ifIsDev, nil
+	case "staging":
+		return ifIsStaging, nil
 	case "prod":
 		return ifIsProd, nil
 	default:
-		return "", errors.New("Environment does not match 'dev' or 'prod'")
+		return "", errors.New("Environment does not match 'dev', 'staging', or 'prod'")
 	}
 }

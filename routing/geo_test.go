@@ -2,7 +2,6 @@ package routing_test
 
 import (
 	"archive/tar"
-	"bytes"
 	"compress/gzip"
 	"context"
 	"io/ioutil"
@@ -146,118 +145,6 @@ func TestNewMaxmindDBReader(t *testing.T) {
 func TestIPLocator(t *testing.T) {
 	t.Parallel()
 
-	t.Run("IPStack", func(t *testing.T) {
-
-		{
-			ipstack := routing.IPStack{
-				Client: &http.Client{
-					Transport: &mockRoundTripper{
-						Response: &http.Response{
-							StatusCode: http.StatusOK,
-							Header:     make(http.Header),
-							Body: ioutil.NopCloser(bytes.NewBufferString(`{
-								"continent_name": "Europe",
-								"country_name": "United Kingdom",
-								"region_name": "England",
-								"city": "Stroud",
-								"latitude": 51.750999450683594,
-								"longitude": -2.296999931335449,
-								"connection": {
-									"isp": "Andrews & Arnold Ltd"
-								}
-							}`)),
-						},
-					},
-				},
-				AccessKey: "2a3640e34301da9ab257c59243b0d7c6",
-			}
-
-			expected := routing.Location{
-				Continent: "Europe",
-				Country:   "United Kingdom",
-				Region:    "England",
-				City:      "Stroud",
-				Latitude:  51.750999450683594,
-				Longitude: -2.296999931335449,
-				ISP:       "Andrews & Arnold Ltd",
-			}
-
-			actual, err := ipstack.LocateIP(net.ParseIP("81.2.69.160"))
-			assert.NoError(t, err)
-
-			assert.Equal(t, expected, actual)
-		}
-
-		{
-			ipstack := routing.IPStack{
-				Client: &http.Client{
-					Transport: &mockRoundTripper{
-						Response: &http.Response{
-							StatusCode: http.StatusOK,
-							Header:     make(http.Header),
-							Body: ioutil.NopCloser(bytes.NewBufferString(`{
-								"latitude": 0,
-								"longitude": 0
-							}`)),
-						},
-					},
-				},
-				AccessKey: "2a3640e34301da9ab257c59243b0d7c6",
-			}
-
-			actual, err := ipstack.LocateIP(net.ParseIP("127.0.0.1"))
-			assert.NoError(t, err)
-
-			assert.Equal(t, routing.LocationNullIsland, actual)
-		}
-
-		{
-			ipstack := routing.IPStack{
-				Client: &http.Client{
-					Transport: &mockRoundTripper{
-						Response: &http.Response{
-							StatusCode: http.StatusOK,
-							Header:     make(http.Header),
-							Body: ioutil.NopCloser(bytes.NewBufferString(`{
-								"latitude": 0,
-								"longitude": 0
-							}`)),
-						},
-					},
-				},
-				AccessKey: "2a3640e34301da9ab257c59243b0d7c6",
-			}
-
-			actual, err := ipstack.LocateIP(([]byte)("localhost"))
-			assert.NoError(t, err)
-
-			assert.Equal(t, routing.LocationNullIsland, actual)
-		}
-
-		{
-			ipstack := routing.IPStack{
-				Client: &http.Client{
-					Transport: &mockRoundTripper{
-						Response: &http.Response{
-							StatusCode: http.StatusOK,
-							Header:     make(http.Header),
-							Body: ioutil.NopCloser(bytes.NewBufferString(`{
-								"latitude": 0,
-								"longitude": 0
-							}`)),
-						},
-					},
-				},
-				AccessKey: "2a3640e34301da9ab257c59243b0d7c6",
-			}
-
-			actual, err := ipstack.LocateIP(net.ParseIP("0.0.0.0"))
-			assert.NoError(t, err)
-
-			assert.Equal(t, routing.LocationNullIsland, actual)
-		}
-	})
-
 	t.Run("Maxmind", func(t *testing.T) {
 		mmdb := routing.MaxmindDB{}
 
@@ -290,43 +177,6 @@ func TestIPLocator(t *testing.T) {
 			assert.Equal(t, expected, actual)
 		}
 
-		{
-			actual, err := mmdb.LocateIP(net.ParseIP("127.0.0.1"))
-			assert.NoError(t, err)
-
-			assert.Equal(t, routing.LocationNullIsland, actual)
-		}
-
-		{
-			actual, err := mmdb.LocateIP(([]byte)("localhost"))
-			assert.NoError(t, err)
-
-			assert.Equal(t, routing.LocationNullIsland, actual)
-		}
-
-		{
-			actual, err := mmdb.LocateIP(net.ParseIP("0.0.0.0"))
-			assert.NoError(t, err)
-
-			assert.Equal(t, routing.LocationNullIsland, actual)
-		}
-
-		{
-			mmdb := routing.MaxmindDB{}
-			actual, err := mmdb.LocateIP(net.ParseIP("0.0.0.0"))
-			assert.EqualError(t, err, "not configured with a Maxmind City DB")
-
-			assert.Equal(t, routing.Location{}, actual)
-		}
-
-		{
-			mmdb := routing.MaxmindDB{}
-			actual, err := mmdb.LocateIP(net.ParseIP("0.0.0.0"))
-			assert.EqualError(t, err, "not configured with a Maxmind City DB")
-
-			assert.Equal(t, routing.Location{}, actual)
-		}
-
 		// Fail to locate IP because the database cannot be read from
 		{
 			mmdb := routing.MaxmindDB{}
@@ -334,7 +184,7 @@ func TestIPLocator(t *testing.T) {
 			cityreader.Close()
 			ispreader.Close()
 
-			_, err := mmdb.LocateIP(net.ParseIP("0.0.0.0"))
+			_, err := mmdb.LocateIP(net.ParseIP("81.2.69.160"))
 			assert.EqualError(t, err, "not configured with a Maxmind City DB")
 
 		}
