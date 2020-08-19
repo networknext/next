@@ -40,6 +40,12 @@ type Server struct {
 	PublicKey []byte
 }
 
+type RelayToken struct {
+	ID        uint64
+	Addr      net.UDPAddr
+	PublicKey []byte
+}
+
 type ContinueRouteToken struct {
 	Expires uint64
 
@@ -49,7 +55,7 @@ type ContinueRouteToken struct {
 
 	Client Client
 	Server Server
-	Relays []Relay
+	Relays []RelayToken
 
 	privateKey []byte
 	tokens     []byte
@@ -130,7 +136,7 @@ type NextRouteToken struct {
 
 	Client Client
 	Server Server
-	Relays []Relay
+	Relays []RelayToken
 
 	privateKey []byte
 	tokens     []byte
