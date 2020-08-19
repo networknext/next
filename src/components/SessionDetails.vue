@@ -265,8 +265,13 @@ import APIService from '@/services/api.service'
 import { AlertTypes } from './types/AlertTypes'
 
 /**
+ * This component displays all of the information related to the session
+ *  tool page in the Portal and has all the associated logic and api calls
+ */
+
+/**
  * TODO: Cleanup template
- * TODO: Figure out what sessionMeta fields need to be required
+ * TODO: Cleanup this whole component...
  */
 
 @Component({

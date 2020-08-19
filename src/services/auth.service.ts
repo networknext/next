@@ -3,6 +3,15 @@ import store from '@/store'
 import APIService from '@/services/api.service'
 import Vue from 'vue'
 
+/**
+ * Rough attempt at making a "service" in Vue. It should be modeling how Angular handles services
+ *  but definitely isn't perfect. This service handles all of the different Auth related tasks.
+ *  Currently it is utilizing Auth0 and uses its lock library. This is very subject to change
+ */
+
+/**
+ * TODO: Clean all this up
+ */
 export default class AuthService {
   // TODO: Make these env vars
   private clientID = 'Kx0mbNIMZtMNA71vf9iatCp3N6qi1GfL'
@@ -55,7 +64,6 @@ export default class AuthService {
   }
 
   public logOut () {
-    // TODO: Make a env var for baseURL
     this.lockClient.logout({
       returnTo: process.env.VUE_APP_BASE_URL
     })

@@ -40,8 +40,18 @@
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
 
+/**
+ * This component holds the workspace elements related to the settings page in the Portal
+ */
+
+/**
+ * TODO: Make this a View
+ */
+
 @Component
-export default class SettingsWorkspace extends Vue {}
+export default class SettingsWorkspace extends Vue {
+  // Empty for now
+}
 </script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->

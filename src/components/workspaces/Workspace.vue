@@ -29,6 +29,12 @@ import Alert from '@/components/Alert.vue'
 import { AlertTypes } from '../types/AlertTypes'
 import APIService from '@/services/api.service'
 
+/**
+ * This component is the base component for all other workspace components
+ * It also holds the Email Verification alert and Session Count components
+ *  so that they are visible across all workspaces if necessary
+ */
+
 @Component({
   components: {
     Alert,
@@ -46,7 +52,7 @@ export default class Workspace extends Vue {
 
   constructor () {
     super()
-    this.apiService = new APIService()
+    this.apiService = Vue.prototype.$apiService
     this.message = ''
     this.alertType = ''
   }

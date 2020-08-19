@@ -74,21 +74,17 @@ import APIService from '../services/api.service'
 import { AlertTypes } from './types/AlertTypes'
 
 /**
- * TODO: Cleanup template
- * TODO: Figure out what sessionMeta fields need to be required
- * TODO: Hookup loop logic
+ * This component displays all of the information related to the user
+ *  tool page in the Portal and has all the associated logic and api calls
  */
 
 @Component
 export default class UserSessions extends Vue {
   private apiService: APIService
-  private showSessions: boolean
   private sessions: Array<any>
-
-  private searchID: string
-
   private sessionLoop: any
-
+  private showSessions: boolean
+  private searchID: string
   private message: string
   private alertType: string
 

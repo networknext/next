@@ -7,8 +7,11 @@ import { Component, Vue } from 'vue-property-decorator'
 import SessionMap from '@/components/SessionMap.vue'
 
 /**
- * TODO: Move the filter dropdown bar to its own component
- * TODO: Cleanup template
+ * This component holds the workspace elements related to the map page in the Portal
+ */
+
+/**
+ * TODO: Make this a View
  */
 
 @Component({

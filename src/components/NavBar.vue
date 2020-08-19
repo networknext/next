@@ -72,14 +72,25 @@
 import { Component, Vue } from 'vue-property-decorator'
 import AuthService from '../services/auth.service'
 import APIService from '@/services/api.service'
+
+/**
+ * This component opens up the main Vue router handlers to user interaction in the form of a navigation bar
+ */
+
+/**
+ * TODO: Clean up template
+ */
+
 @Component
 export default class NavBar extends Vue {
   private apiService: APIService
+  private authService: AuthService
   private portalVersion: string
 
   constructor () {
     super()
-    this.apiService = new APIService()
+    this.apiService = Vue.prototype.$apiService
+    this.authService = Vue.prototype.$authService
     this.portalVersion = ''
     this.fetchPortalVersion()
   }

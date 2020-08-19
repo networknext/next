@@ -1,5 +1,9 @@
 import camelCase from 'lodash/camelCase'
 
+/**
+ * Fancy way to import all modules in this folder into the Vuex store
+ */
+
 const requireModules = require.context('.', false, /\.ts$/)
 const modules: any = {}
 

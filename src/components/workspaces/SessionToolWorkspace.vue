@@ -53,8 +53,11 @@ import { Route, NavigationGuardNext } from 'vue-router'
 import Alert from '@/components/Alert.vue'
 import { AlertTypes } from '@/components/types/AlertTypes'
 /**
- * TODO: Cleanup template
- * TODO: Figure out what sessionMeta fields need to be required
+ * This component holds the workspace elements related to the session tool in the Portal
+ */
+
+/**
+ * TODO: Make this a View
  */
 
 @Component({
@@ -63,9 +66,9 @@ import { AlertTypes } from '@/components/types/AlertTypes'
   }
 })
 export default class SessionToolWorkspace extends Vue {
-  private searchID: string
-  private message: string
   private alertType: string
+  private message: string
+  private searchID: string
 
   constructor () {
     super()
@@ -76,7 +79,6 @@ export default class SessionToolWorkspace extends Vue {
   }
 
   private created () {
-    // Empty for now
     this.searchID = this.$route.params.pathMatch || ''
   }
 

@@ -119,11 +119,12 @@ import APIService from '../../services/api.service'
 import { Route, NavigationGuardNext } from 'vue-router'
 
 /**
- * TODO: Move the filter dropdown bar to its own component
- * TODO: Hookup lifecycle hooks and a spinner if necessary
+ * This component holds the workspace elements related to the top sessions page in the Portal
+ */
+
+/**
  * TODO: Cleanup template
- * TODO: Add in Relay interface
- * TODO: Figure out what sessionMeta fields need to be required
+ * TODO: Make this a View
  */
 
 @Component({
@@ -132,10 +133,10 @@ import { Route, NavigationGuardNext } from 'vue-router'
   }
 })
 export default class SessionsWorkspace extends Vue {
-  private sessions: Array<any>
   private apiService: APIService
-  private showTable = false
+  private sessions: Array<any>
   private sessionsLoop = -1
+  private showTable = false
 
   constructor () {
     super()

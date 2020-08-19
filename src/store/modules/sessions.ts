@@ -1,3 +1,12 @@
+/**
+ * Basic Vuex module specific to top sessions table
+ */
+
+/**
+ * TODO: Do we really need this?
+ * TODO: If yes Namespace these
+ */
+
 export default {
   state: {
     showTable: false

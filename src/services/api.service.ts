@@ -1,5 +1,12 @@
 import store from '@/store'
 
+/**
+ * Rough attempt at making a "service" in Vue. It should be modeling how Angular handles services
+ *  but definitely isn't perfect. This service handles all of the different API calls to the JSONRPC backend.
+ *  Function calls are defined here rather than in their associated components because this allows us to stub
+ *  them in tests.
+ */
+
 export default class APIService {
   private headers: any = null;
 
@@ -37,6 +44,11 @@ export default class APIService {
       })
     })
   }
+
+  // TODO: It may be better to make a generic call that takes the string name of the endpoint and the args for the endpoint
+  //        that way the calls are still stubable and we can keep each call in the associated component. IE: SessionMap call
+  //        in the SessionMap component...
+  //        Yeah I like that a lot better
 
   public fetchTotalSessionCounts (args: any) {
     return this.call('BuyersService.TotalSessions', args, '')

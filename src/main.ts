@@ -11,6 +11,18 @@ import AuthService, { UserProfile, NNAuth0Profile } from './services/auth.servic
 import { Route, NavigationGuardNext } from 'vue-router'
 import { CreateElement } from 'vue/types/umd'
 
+/**
+ * Main file responsible for mounting the App component,
+ *  setting up all of the services,
+ *  mounting the cypress instance if running e2e tests,
+ *  initializing all vuex stores,
+ *  initializing auth0 related functionality
+ */
+
+/**
+ * TODO: Clean all of this up a bit
+ * TODO: Potentially find a better auth solution
+ */
 function mountCypress (win: any, app: any) {
   win.app = app
 }

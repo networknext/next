@@ -16,6 +16,7 @@ import UserSessions from '@/components/UserSessions.vue'
 
 Vue.use(VueRouter)
 
+// All navigable routes for the Portal
 const routes: Array<RouteConfig> = [
   {
     path: '/',
@@ -88,6 +89,7 @@ const router = new VueRouter({
   routes
 })
 
+// Catch all for routes. This can be used for a lot of different things like separating anon portal from authorized portal etc
 router.beforeEach(async (to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
   if ((!store.getters.isAdmin && !store.getters.isOwner && to.name === 'settings') || to.name === 'undefined') {
     next('/')

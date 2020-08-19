@@ -52,6 +52,14 @@ import UserSessions from '@/components/UserSessions.vue'
 import { AlertTypes } from '../types/AlertTypes'
 import Alert from '@/components/Alert.vue'
 
+/**
+ * This component holds the workspace elements related to the user tool page in the Portal
+ */
+
+/**
+ * TODO: Make this a View
+ */
+
 @Component({
   components: {
     Alert,
@@ -59,10 +67,9 @@ import Alert from '@/components/Alert.vue'
   }
 })
 export default class UserToolWorkspace extends Vue {
-  private searchID: string
-
-  private message: string
   private alertType: string
+  private message: string
+  private searchID: string
 
   constructor () {
     super()
@@ -73,7 +80,6 @@ export default class UserToolWorkspace extends Vue {
   }
 
   private created () {
-    // Empty for now
     this.searchID = this.$route.params.pathMatch || ''
   }
 
