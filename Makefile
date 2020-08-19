@@ -662,6 +662,10 @@ publish-load-test-server-artifacts: ## publishes the server backend artifacts to
 publish-load-test-client-artifacts: ## publishes the server backend artifacts to GCP Storage with gsutil prod
 	./deploy/publish-load-test-artifacts.sh -b $(ARTIFACT_BUCKET_STAGING) -s load_test_client
 
+.PHONY: publish-load-test-server-list
+publish-load-test-server-list:
+	./deploy/publish-load-test-artifacts.sh -b $(ARTIFACT_BUCKET_STAGING) -s staging_servers.txt
+
 .PHONY: publish-billing-artifacts-prod
 publish-billing-artifacts-prod: ## publishes the billing artifacts to GCP Storage with gsutil prod
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s billing
@@ -700,6 +704,12 @@ publish-bootstrap-script-dev:
 publish-bootstrap-script-staging:
 	@printf "Publishing bootstrap script... \n\n"
 	@gsutil cp $(DEPLOY_DIR)/bootstrap.sh $(ARTIFACT_BUCKET_STAGING)/bootstrap.sh
+	@printf "done\n"
+
+.PHONY: publish-client-bootstrap-script-staging
+publish-client-bootstrap-script-staging:
+	@printf "Publishing client bootstrap script... \n\n"
+	@gsutil cp $(DEPLOY_DIR)/client_bootstrap.sh $(ARTIFACT_BUCKET_STAGING)/client_bootstrap.sh
 	@printf "done\n"
 
 .PHONY: publish-bootstrap-script-prod

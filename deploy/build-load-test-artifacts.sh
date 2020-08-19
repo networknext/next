@@ -23,8 +23,7 @@ build-artifacts() {
 		cp ${DIST_DIR}/${SERVICE} ${DIST_DIR}/artifact/${SERVICE}/app
     cp ${DIR}/client-spawner.service ${DIST_DIR}/artifact/${SERVICE}/${SYSTEMD_SERVICE_FILE}
     cp ${DIR}/client-spawner.sh ${DIST_DIR}/artifact/${SERVICE}/client-spawner.sh
-    cp ${DIR}/staging_servers.txt ${DIST_DIR}/artifact/${SERVICE}/staging_servers.txt
-    cd ${DIST_DIR}/artifact/${SERVICE} && tar -zcf ../../${SERVICE}.tar.gz app client-spawner.sh ${SYSTEMD_SERVICE_FILE} staging_servers.txt && cd ../..
+    cd ${DIST_DIR}/artifact/${SERVICE} && tar -zcf ../../${SERVICE}.tar.gz app client-spawner.sh ${SYSTEMD_SERVICE_FILE} && cd ../..
 	fi
 	printf "${DIST_DIR}/${SERVICE}.tar.gz\n"
 	printf "done\n"
