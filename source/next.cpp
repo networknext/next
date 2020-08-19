@@ -10148,7 +10148,10 @@ next_session_entry_t * next_server_internal_check_client_to_server_packet( next_
     packet_bytes -= NEXT_PACKET_HASH_BYTES;
 
     if ( packet_bytes <= NEXT_HEADER_BYTES )
+    {
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored client to server packet. packet bytes less than header bytes" );
         return NULL;
+    }
 
     uint8_t packet_type = 0;
     uint64_t packet_sequence = 0;
@@ -10157,11 +10160,17 @@ next_session_entry_t * next_server_internal_check_client_to_server_packet( next_
     uint8_t packet_session_flags = 0;
 
     if ( next_peek_header( NEXT_DIRECTION_CLIENT_TO_SERVER, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, &packet_session_flags, packet_data, packet_bytes ) != NEXT_OK )
+    {
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored client to server packet. could not peek header" );        
         return NULL;
+    }
 
     next_session_entry_t * entry = next_session_manager_find_by_session_id( server->session_manager, packet_session_id );
     if ( !entry )
+    {
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored client to server packet. could not find session" );        
         return NULL;
+    }
 
     if ( !entry->has_pending_route && !entry->has_current_route && !entry->has_previous_route )
     {
@@ -10222,7 +10231,10 @@ next_session_entry_t * next_server_internal_check_client_to_server_packet( next_
         const bool previous_route_ok = next_read_header( NEXT_DIRECTION_CLIENT_TO_SERVER, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, &packet_session_flags, entry->previous_route_private_key, packet_data, packet_bytes ) == NEXT_OK;
 
         if ( !current_route_ok && !previous_route_ok )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored client to server packet. did not verify" );
             return NULL;        
+        }
     }
 
     next_replay_protection_advance_sequence( replay_protection, clean_sequence );
@@ -11032,7 +11044,9 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         next_session_entry_t * entry = next_server_internal_check_client_to_server_packet( server, packet_data, packet_bytes );
         if ( !entry )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored client to server packet. did not verify" );
+            // IMPORTANT: There is no need to log this case, because next_server_internal_check_client_to_server_packet already
+            // logs all cases where it returns NULL to the debug log. Logging here duplicates the log and incorrectly prints
+            // out an error when the packet has already been received on the direct path, when multipath is enabled.
             return;
         }
 
