@@ -91,8 +91,7 @@ func opsBWRule(rpcClient jsonrpc.RPCClient,
 	case "none":
 		bwRule = routing.BWRuleNone
 	default:
-		fmt.Println("Bandwidth rule must be one of pool, burst, flat or none.")
-		return
+		handleRunTimeError(fmt.Sprintln("Bandwidth rule must be one of pool, burst, flat or none."), 0)
 	}
 	relay.BWRule = bwRule
 
@@ -154,8 +153,7 @@ func opsStartDate(rpcClient jsonrpc.RPCClient,
 	var err error
 	relay.StartDate, err = time.Parse("January 2, 2006", startDate)
 	if err != nil {
-		fmt.Printf("Could not parse `%s` - must be of the form 'January 2, 2006'\n", startDate)
-		return
+		handleRunTimeError(fmt.Sprintf("Could not parse `%s` - must be of the form 'January 2, 2006'\n", startDate), 0)
 	}
 
 	args := localjsonrpc.RelayMetadataArgs{
@@ -187,8 +185,7 @@ func opsEndDate(rpcClient jsonrpc.RPCClient,
 	var err error
 	relay.EndDate, err = time.Parse("January 2, 2006", endDate)
 	if err != nil {
-		fmt.Printf("Could not parse `%s` - must be of the form 'January 2, 2006'\n", endDate)
-		return
+		handleRunTimeError(fmt.Sprintf("Could not parse `%s` - must be of the form 'January 2, 2006'\n", endDate), 0)
 	}
 
 	args := localjsonrpc.RelayMetadataArgs{
@@ -226,8 +223,7 @@ func opsType(rpcClient jsonrpc.RPCClient,
 	case "none":
 		serverType = routing.NoneSpecified
 	default:
-		fmt.Println("machine type must be one of bare, vm or none.")
-		return
+		handleRunTimeError(fmt.Sprintln("machine type must be one of bare, vm or none."), 0)
 	}
 	relay.Type = serverType
 
@@ -316,11 +312,9 @@ func checkForRelay(rpcClient jsonrpc.RPCClient, env Environment, regex string) (
 	}
 
 	if len(reply.Relays) == 0 {
-		fmt.Printf("Zero relays found matching '%s'", regex)
-		return routing.Relay{}, false
+		handleRunTimeError(fmt.Sprintf("Zero relays found matching '%s'", regex), 0)
 	} else if len(reply.Relays) > 1 {
-		fmt.Printf("'%s' returned more than one relay - please be more specific.", regex)
-		return routing.Relay{}, false
+		handleRunTimeError(fmt.Sprintf("'%s' returned more than one relay - please be more specific.", regex), 0)
 	}
 
 	replyRelay := routing.Relay{
