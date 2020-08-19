@@ -5,7 +5,6 @@
 #include "crypto/hash.hpp"
 #include "encoding/base64.hpp"
 #include "encoding/write.hpp"
-#include "os/platform.hpp"
 #include "packets/new_relay_ping_packet.hpp"
 #include "packets/old_relay_ping_packet.hpp"
 #include "packets/types.hpp"

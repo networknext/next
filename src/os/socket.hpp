@@ -1,0 +1,425 @@
+#pragma once
+
+#include "core/packet.hpp"
+#include "net/address.hpp"
+#include "net/net.hpp"
+#include "util/logger.hpp"
+#include "util/macros.hpp"
+
+namespace os
+{
+  enum class SocketType : uint8_t
+  {
+    NonBlocking,
+    Blocking
+  };
+
+  INLINE auto operator==(SocketType st, int i) -> bool
+  {
+    return static_cast<int>(st) == i;
+  }
+
+  INLINE auto operator==(int i, SocketType st) -> bool
+  {
+    return static_cast<int>(st) == i;
+  }
+
+  class Socket
+  {
+   public:
+    Socket();
+    ~Socket();
+
+    auto create(SocketType type, net::Address& addr, size_t sendBuffSize, size_t recvBuffSize, float timeout, bool reuse) -> bool;
+
+    // uses sendto()
+    template <typename T>
+    auto send(const core::Packet<T>& packet) const -> bool;
+
+    // uses sendto()
+    auto send(const net::Address& to, const uint8_t* data, size_t size) const -> bool;
+
+    // uses sendmmsg()
+    template <size_t BuffSize, size_t PacketSize>
+    auto multisend(core::GenericPacketBuffer<BuffSize, PacketSize>& packetBuff) const -> bool;
+
+    // uses sendmmsg()
+    template <size_t BuffSize>
+    auto multisend(std::array<mmsghdr, BuffSize>& packetBuff, int count) const -> bool;
+
+    // uses recvfrom()
+    auto recv(net::Address& from, uint8_t* data, size_t maxSize) const -> int;
+
+    // uses recvfrom()
+    template <typename T>
+    auto recv(core::Packet<T>& packet) const -> bool;
+
+    // uses recvmmsg()
+    template <size_t BuffSize, size_t PacketSize>
+    auto multirecv(core::GenericPacketBuffer<BuffSize, PacketSize>& packetBuff) const -> bool;
+
+    // close the socket
+    void close();
+
+    // returns if the socket is closed
+    auto closed() const -> bool;
+
+   private:
+    int mSockFD = 0;
+    const SocketType mType;
+    std::atomic<bool> mClosed;
+
+    auto set_buffers_sizes(size_t sendBufferSize, size_t recvBufferSize) -> bool;
+    auto set_port_reuse(bool reuse) -> bool;
+
+    auto bind_ipv4(const net::Address& addr) -> bool;
+    auto bind_ipv6(const net::Address& addr) -> bool;
+
+    auto get_port_ipv4(net::Address& addr) -> bool;
+    auto get_port_ipv6(net::Address& addr) -> bool;
+
+    auto set_socket_type(float timeout) -> bool;
+  };
+
+  using SocketPtr = std::shared_ptr<Socket>;
+
+  INLINE Socket::Socket(SocketType type): mType(type), mClosed(false) {}
+
+  INLINE Socket::~Socket()
+  {
+    if (mSockFD) {
+      close();
+    }
+  }
+
+  INLINE auto Socket::create(SocketType type, net::Address& addr, size_t sendBuffSize, size_t recvBuffSize, float timeout, bool reuse) -> bool
+  {
+    assert(addr.Type != net::AddressType::None);
+
+    // create socket
+    {
+      mSockFD = std::socket((addr.Type == net::AddressType::IPv4) ? PF_INET : PF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+
+      if (mSockFD < 0) {
+        LogError("failed to create socket");
+        return false;
+      }
+    }
+
+    // force IPv6 only if necessary
+    {
+      if (addr.Type == net::AddressType::IPv6) {
+        int enable = 1;
+        if (setsockopt(mSockFD, IPPROTO_IPV6, IPV6_V6ONLY, &enable, sizeof(enable)) != 0) {
+          LogError("failed to set socket ipv6 only");
+          close();
+          return false;
+        }
+      }
+    }
+
+    if (!setBufferSizes(sendBuffSize, recvBuffSize)) {
+      return false;
+    }
+
+    if (!set_port_reuse(reuse)) {
+      return false;
+    }
+
+    // bind to port
+    {
+      if (addr.Type == net::AddressType::IPv6) {
+        if (!bind_ipv6(addr)) {
+          return false;
+        }
+      } else {
+        if (!bind_ipv4(addr)) {
+          return false;
+        }
+      }
+    }
+
+    // if bound to port 0, find the actual port we got
+    // port 0 is a "wildcard" so using it will bind to any available port
+    {
+      if (addr.Port == 0) {
+        if (addr.Type == net::AddressType::IPv6) {
+          if (!get_port_ipv6(addr)) {
+            return false;
+          }
+        } else {
+          if (!get_port_ipv4(addr)) {
+            return false;
+          }
+        }
+      }
+    }
+
+    if (!set_socket_type(timeout)) {
+      return false;
+    }
+
+    return true;
+  }
+
+  template <typename T>
+  INLINE auto Socket::send(const core::Packet<T>& packet) const -> bool
+  {
+    return send(packet.Addr, packet.Buffer.data(), packet.Len);
+  }
+
+  INLINE auto Socket::send(const net::Address& to, const uint8_t* data, size_t size) const -> bool
+  {
+    assert(to.Type == net::AddressType::IPv4 || to.Type == net::AddressType::IPv6);
+    assert(data != nullptr);
+    assert(size > 0);
+
+    if (mClosed) {
+      return false;
+    }
+
+    if (to.Type == net::AddressType::IPv6) {
+      sockaddr_in6 socket_address;
+      to.to(socket_address);
+
+      auto res = sendto(mSockFD, data, size, 0, reinterpret_cast<sockaddr*>(&socket_address), sizeof(sockaddr_in6));
+      if (res < 0) {
+        LogError("sendto (", to, ") failed");
+        return false;
+      }
+    } else if (to.Type == net::AddressType::IPv4) {
+      sockaddr_in socket_address;
+      to.to(socket_address);
+
+      auto res = sendto(mSockFD, data, size, 0, reinterpret_cast<sockaddr*>(&socket_address), sizeof(sockaddr_in6));
+      if (res < 0) {
+        LogError("sendto (", to, ") failed");
+        return false;
+      }
+    } else {
+      LOG("invalid address type, could not send packet");
+      return false;
+    }
+
+    return true;
+  }
+
+  template <size_t BuffSize>
+  INLINE auto Socket::multisend(std::array<mmsghdr, BuffSize>& headers, int count) const -> bool
+  {
+    static_assert(BuffSize <= 1024);  // max sendmmsg will allow
+
+    assert(count > 0);
+    assert(count <= 1024);
+
+    auto toSend = count;
+    count = sendmmsg(mSockFD, headers.data(), toSend, 0);
+
+    if (count < 0) {
+      LogError("sendmmsg() failed");
+      return false;
+    }
+
+    return toSend == count;
+  }
+
+  template <size_t BuffSize, size_t PacketSize>
+  INLINE auto Socket::multisend(core::GenericPacketBuffer<BuffSize, PacketSize>& packetBuff) const -> bool
+  {
+    return multisend(packetBuff.Headers, packetBuff.Count);
+  }
+
+  template <typename T>
+  INLINE auto Socket::recv(core::Packet<T>& packet) const -> bool
+  {
+    auto len = this->recv(packet.Addr, packet.Buffer.data(), packet.Buffer.size());
+    packet.Len = static_cast<size_t>(len);
+    return len > 0;
+  }
+
+  INLINE auto Socket::recv(net::Address& from, uint8_t* data, size_t maxSize) const -> int
+  {
+    assert(data != nullptr);
+    assert(maxSize > 0);
+
+    if (mClosed) {
+      return 0;
+    }
+
+    sockaddr_storage sockaddr_from = {};
+
+    socklen_t len = sizeof(sockaddr_from);
+    auto res = recvfrom(
+     mSockFD,
+     data,
+     maxSize,
+     (mType == SocketType::NonBlocking) ? MSG_DONTWAIT : 0,
+     reinterpret_cast<sockaddr*>(&sockaddr_from),
+     &len);
+
+    if (res > 0) {
+      if (sockaddr_from.ss_family == AF_INET6) {
+        from = reinterpret_cast<sockaddr_in6&>(sockaddr_from);
+      } else if (sockaddr_from.ss_family == AF_INET) {
+        from = reinterpret_cast<sockaddr_in&>(sockaddr_from);
+      } else {
+        LOG("received packet with invalid ss family: ", sockaddr_from.ss_family);
+        return 0;
+      }
+    } else {
+      // if not a timeout, log the error
+      if (errno != EAGAIN && errno != EINTR) {
+        LogError("recvfrom failed");
+      }
+    }
+
+    return res;
+  }
+
+  template <size_t BuffSize, size_t PacketSize>
+  INLINE Socket::multirecv(core::GenericPacketBuffer<BuffSize, PacketSize>& packetBuff) const -> bool
+  {
+    packetBuff.Count = recvmmsg(
+     mSockFD,
+     packetBuff.Headers.data(),
+     BuffSize,
+     MSG_WAITFORONE,
+     nullptr);  // DON'T EVER USE TIMEOUT, linux man pages state it is broken
+
+    if (packetBuff.Count < 0) {
+      LogError("recvmmsg failed");
+      return false;
+    }
+
+    return true;
+  }
+
+  INLINE void Socket::close()
+  {
+    mClosed = true;
+    shutdown(mSockFD, SHUT_RDWR);
+  }
+
+  INLINE auto Socket::closed() const -> bool
+  {
+    return mClosed;
+  }
+
+  INLINE auto Socket::setBufferSizes(size_t sendBuffSize, size_t recvBuffSize) -> bool
+  {
+    if (setsockopt(mSockFD, SOL_SOCKET, SO_SNDBUF, &sendBuffSize, sizeof(sendBuffSize)) != 0) {
+      LogError("failed to set socket send buffer size");
+      close();
+      return false;
+    }
+
+    if (setsockopt(mSockFD, SOL_SOCKET, SO_RCVBUF, &recvBuffSize, sizeof(recvBuffSize)) != 0) {
+      LogError("failed to set socket receive buffer size");
+      close();
+      return false;
+    }
+
+    return true;
+  }
+
+  // good read - https://stackoverflow.com/questions/14388706/how-do-so-reuseaddr-and-so-reuseport-differ
+  INLINE auto Socket::set_port_reuse(bool reuse) -> bool
+  {
+    if (reuse) {
+      int enable = 1;
+      if (setsockopt(mSockFD, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(enable)) < 0) {
+        LogError("could not set port reuse");
+        close();
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  INLINE auto Socket::bind_ipv4(const net::Address& addr) -> bool
+  {
+    sockaddr_in socket_address = {};
+    socket_address.sin_family = AF_INET;
+    socket_address.sin_addr.s_addr = (((uint32_t)addr.IPv4[0])) | (((uint32_t)addr.IPv4[1]) << 8) |
+                                     (((uint32_t)addr.IPv4[2]) << 16) | (((uint32_t)addr.IPv4[3]) << 24);
+    socket_address.sin_port = net::relay_htons(addr.Port);
+
+    if (bind(mSockFD, reinterpret_cast<sockaddr*>(&socket_address), sizeof(socket_address)) < 0) {
+      LogError("failed to bind to address ", addr, " (ipv4)");
+      close();
+      return false;
+    }
+
+    return true;
+  }
+
+  INLINE auto Socket::bind_ipv6(const net::Address& addr) -> bool
+  {
+    sockaddr_in6 socket_address = {};
+
+    socket_address.sin6_family = AF_INET6;
+    for (int i = 0; i < 8; i++) {
+      reinterpret_cast<uint16_t*>(&socket_address.sin6_addr)[i] = net::relay_htons(addr.IPv6[i]);
+    }
+
+    socket_address.sin6_port = net::relay_htons(addr.Port);
+
+    if (bind(mSockFD, reinterpret_cast<sockaddr*>(&socket_address), sizeof(socket_address)) < 0) {
+      LogError("failed to bind socket (ipv6)");
+      close();
+      return false;
+    }
+
+    return true;
+  }
+
+  INLINE auto Socket::get_port_ipv4(net::Address& addr) -> bool
+  {
+    sockaddr_in sin;
+    socklen_t len = sizeof(len);
+    if (getsockname(mSockFD, reinterpret_cast<sockaddr*>(&sin), &len) < 0) {
+      LogError("failed to get socket port (ipv4)");
+      close();
+      return false;
+    }
+    addr.Port = relay::relay_platform_ntohs(sin.sin_port);
+    return true;
+  }
+
+  INLINE auto Socket::get_port_ipv6(net::Address& addr) -> bool
+  {
+    sockaddr_in6 sin;
+    socklen_t len = sizeof(sin);
+    if (getsockname(mSockFD, reinterpret_cast<sockaddr*>(&sin), &len) < 0) {
+      LogError("failed to get socket port (ipv6)");
+      close();
+      return false;
+    }
+    addr.Port = relay::relay_platform_ntohs(sin.sin6_port);
+    return true;
+  }
+
+  INLINE auto Socket::set_socket_type(float timeout) -> bool
+  {
+    // set non-blocking io or receive timeout, or if neither then just blocking with no timeout
+    if (mType == SocketType::NonBlocking) {
+      if (fcntl(mSockFD, F_SETFL, O_NONBLOCK, 1) < 0) {
+        LogError("failed to set socket to non blocking");
+        close();
+        return false;
+      }
+    } else if (timeout > 0.0f) {
+      timeval tv;
+      tv.tv_sec = 0;
+      tv.tv_usec = (int)(timeout * 1000000.0f);
+      if (setsockopt(mSockFD, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
+        LogError("failed to set socket receive timeout");
+        close();
+        return false;
+      }
+    }
+
+    return true;
+  }
+}  // namespace os

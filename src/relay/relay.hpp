@@ -5,7 +5,6 @@
 #include "core/relay_manager.hpp"
 #include "relay_platform.hpp"
 
-#include "os/platform.hpp"
 #include "core/replay_protection.hpp"
 #include "core/packets/types.hpp"
 

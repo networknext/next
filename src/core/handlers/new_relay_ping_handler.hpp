@@ -6,7 +6,6 @@
 #include "crypto/hash.hpp"
 #include "encoding/read.hpp"
 #include "net/address.hpp"
-#include "os/platform.hpp"
 #include "util/throughput_recorder.hpp"
 
 namespace core

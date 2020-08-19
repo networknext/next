@@ -1,12 +1,12 @@
-#ifndef OS_LINUX_THREAD_HPP
-#define OS_LINUX_THREAD_HPP
+#pragma once
+
 namespace os
 {
-  inline auto SetThreadAffinity(std::thread& thread, int cpuNumber) -> std::tuple<bool, std::string>
+  inline auto set_thread_affinity(std::thread& thread, int core_id) -> std::tuple<bool, std::string>
   {
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
-    CPU_SET(cpuNumber, &cpuset);
+    CPU_SET(core_id, &cpuset);
     auto res = pthread_setaffinity_np(thread.native_handle(), sizeof(cpuset), &cpuset);
     if (res == 0) {
       return {true, std::string()};
@@ -17,7 +17,7 @@ namespace os
     }
   }
 
-  inline auto SetThreadSchedMax(std::thread& thread) -> std::tuple<bool, std::string>
+  inline auto set_thread_sched_max(std::thread& thread) -> std::tuple<bool, std::string>
   {
     struct sched_param param;
     param.sched_priority = sched_get_priority_max(SCHED_FIFO);
@@ -31,4 +31,3 @@ namespace os
     return {true, std::string()};
   }
 }  // namespace os
-#endif

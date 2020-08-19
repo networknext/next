@@ -3,7 +3,6 @@
 
 #include "base_handler.hpp"
 #include "crypto/keychain.hpp"
-#include "os/platform.hpp"
 #include "util/throughput_recorder.hpp"
 
 namespace core

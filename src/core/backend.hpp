@@ -5,7 +5,6 @@
 #include "crypto/keychain.hpp"
 #include "encoding/base64.hpp"
 #include "net/http.hpp"
-#include "os/platform.hpp"
 #include "relay_manager.hpp"
 #include "router_info.hpp"
 #include "session_map.hpp"

@@ -5,7 +5,6 @@
 #include "core/packets/types.hpp"
 #include "core/session_map.hpp"
 #include "crypto/keychain.hpp"
-#include "os/platform.hpp"
 #include "util/throughput_recorder.hpp"
 #include "core/router_info.hpp"
 

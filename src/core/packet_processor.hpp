@@ -2,7 +2,6 @@
 #define CORE_PACKET_PROCESSOR_HPP
 
 #include "crypto/keychain.hpp"
-#include "os/platform.hpp"
 #include "packet.hpp"
 #include "relay_manager.hpp"
 #include "router_info.hpp"

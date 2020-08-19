@@ -3,10 +3,6 @@
 
 #define RELAY_VERSION "1.1.2"
 
-// Legacy, use bools instead, eventually delete and replace these
-#define RELAY_OK 0
-#define RELAY_ERROR -1
-
 #define RELAY_MTU 1300
 
 #define RELAY_HEADER_BYTES 35

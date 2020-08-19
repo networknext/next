@@ -4,7 +4,6 @@
 #include "base_handler.hpp"
 #include "core/session_map.hpp"
 #include "crypto/keychain.hpp"
-#include "os/platform.hpp"
 #include "util/throughput_recorder.hpp"
 
 namespace core
