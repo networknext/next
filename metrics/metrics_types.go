@@ -2121,7 +2121,6 @@ func NewBillingServiceMetrics(ctx context.Context, metricsHandler Handler) (*Bil
 	if err != nil {
 		return nil, err
 	}
-
 	billingServiceMetrics.BillingMetrics.ErrorMetrics.BillingPublishFailure = &EmptyCounter{}
 
 	billingServiceMetrics.BillingMetrics.ErrorMetrics.BillingReadFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
