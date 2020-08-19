@@ -4517,6 +4517,8 @@ struct relay_t
     relay_address_t relay_addresses[MAX_RELAYS];
     std::atomic<uint64_t> bytes_sent;
     std::atomic<uint64_t> bytes_received;
+    float fake_packet_loss_percent;
+    float fake_packet_loss_start_time;
 };
 
 struct curl_buffer_t
@@ -4833,6 +4835,16 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
         if ( !relay_is_network_next_packet( packet_data, packet_bytes ) )
             continue;
 
+        if ( relay->fake_packet_loss_start_time >= 0.0f )
+        {
+            const double current_time = relay_platform_time();
+            if ( current_time >= relay->fake_packet_loss_start_time && ( ( rand() % 100 ) < relay->fake_packet_loss_percent ) )
+            {
+                printf( "relay drop packet\n" );
+                continue;
+            }
+        }
+        
         relay->bytes_received += packet_bytes;
 
         int packet_id = packet_data[RELAY_PACKET_HASH_BYTES];
@@ -5461,6 +5473,30 @@ int main( int argc, const char ** argv )
         return 1;
     }
 
+    float relay_fake_packet_loss_percent = 0.0f;
+    const char * fake_packet_loss_percent_env = relay_platform_getenv( "RELAY_FAKE_PACKET_LOSS_PERCENT" );
+    if ( fake_packet_loss_percent_env )
+    {
+        relay_fake_packet_loss_percent = atof( fake_packet_loss_percent_env );
+    }
+
+    if ( relay_fake_packet_loss_percent > 0.0f )
+    {
+        printf( "    fake packet loss is %.1f percent\n", relay_fake_packet_loss_percent );
+    }
+
+    float relay_fake_packet_loss_start_time = -1.0f;
+    const char * fake_packet_loss_start_time_env = relay_platform_getenv( "RELAY_FAKE_PACKET_LOSS_START_TIME" );
+    if ( fake_packet_loss_start_time_env )
+    {
+        relay_fake_packet_loss_start_time = atof( fake_packet_loss_start_time_env );
+    }
+
+    if ( relay_fake_packet_loss_start_time >= 0.0f )
+    {
+        printf( "    fake packet loss starts at %.1f seconds\n", relay_fake_packet_loss_start_time );
+    }
+
     relay_platform_socket_t * socket = relay_platform_socket_create( &relay_address, RELAY_PLATFORM_SOCKET_BLOCKING, 0.1f, 100 * 1024, 100 * 1024 );
     if ( socket == NULL )
     {
@@ -5531,6 +5567,8 @@ int main( int argc, const char ** argv )
     memset( relay.relay_addresses, 0, sizeof(relay.relay_addresses) );
     relay.bytes_sent = 0;
     relay.bytes_received = 0;
+    relay.fake_packet_loss_percent = relay_fake_packet_loss_percent;
+    relay.fake_packet_loss_start_time = relay_fake_packet_loss_start_time;
 
     relay.socket = socket;
     relay.mutex = relay_platform_mutex_create();
