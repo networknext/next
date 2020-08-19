@@ -34,6 +34,8 @@ export default class SessionMap extends Vue {
   private mapLoop: number
   private viewState: any
 
+  private unwatch: any
+
   constructor () {
     super()
     this.apiService = Vue.prototype.$apiService
@@ -50,19 +52,23 @@ export default class SessionMap extends Vue {
   }
 
   private mounted () {
-    this.refreshMapSessions()
-    this.mapLoop = setInterval(() => {
-      this.refreshMapSessions()
-    }, 10000)
+    this.restartLoop()
+    this.unwatch = this.$store.watch((state: any, getters: any) => {
+      return getters.currentFilter
+    }, () => {
+      clearInterval(this.mapLoop)
+      this.restartLoop()
+    })
   }
 
   private beforeDestroy () {
     clearInterval(this.mapLoop)
+    this.unwatch()
   }
 
-  private refreshMapSessions () {
+  private fetchMapSessions () {
     // creating the map
-    this.apiService.fetchMapSessions({})
+    this.apiService.fetchMapSessions({ buyer_id: this.$store.getters.currentFilter.buyerID || '' })
       .then((response: any) => {
         if (!this.mapInstance) {
           this.mapInstance = new mapboxgl.Map({
@@ -165,6 +171,13 @@ export default class SessionMap extends Vue {
           this.deckGlInstance.setProps({ layers: layers })
         }
       })
+  }
+
+  private restartLoop () {
+    this.fetchMapSessions()
+    this.mapLoop = setInterval(() => {
+      this.fetchMapSessions()
+    }, 10000)
   }
 }
 </script>
