@@ -99,7 +99,7 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 	if !encoding.ReadUint8(data, &index, &entry.Version) {
 		return false
 	}
-	if entry.Version <= BillingEntryVersion-1 {
+	if entry.Version > BillingEntryVersion-1 {
 		return false
 	}
 	if !encoding.ReadUint64(data, &index, &entry.BuyerID) {
@@ -239,131 +239,6 @@ func ReadBillingEntryUserHashV5(entry *BillingEntry, data []byte) bool {
 		if !encoding.ReadUint64(data, &index, &entry.UserHash) {
 			return false
 		}
-	}
-	if !encoding.ReadUint64(data, &index, &entry.SessionID) {
-		return false
-	}
-	if !encoding.ReadUint32(data, &index, &entry.SliceNumber) {
-		return false
-	}
-	if !encoding.ReadFloat32(data, &index, &entry.DirectRTT) {
-		return false
-	}
-	if !encoding.ReadFloat32(data, &index, &entry.DirectJitter) {
-		return false
-	}
-	if !encoding.ReadFloat32(data, &index, &entry.DirectPacketLoss) {
-		return false
-	}
-	if !encoding.ReadBool(data, &index, &entry.Next) {
-		return false
-	}
-
-	if entry.Next {
-		if !encoding.ReadFloat32(data, &index, &entry.NextRTT) {
-			return false
-		}
-		if !encoding.ReadFloat32(data, &index, &entry.NextJitter) {
-			return false
-		}
-		if !encoding.ReadFloat32(data, &index, &entry.NextPacketLoss) {
-			return false
-		}
-		if !encoding.ReadUint8(data, &index, &entry.NumNextRelays) {
-			return false
-		}
-		if entry.NumNextRelays > BillingEntryMaxRelays {
-			return false
-		}
-		for i := 0; i < int(entry.NumNextRelays); i++ {
-			if !encoding.ReadUint64(data, &index, &entry.NextRelays[i]) {
-				return false
-			}
-		}
-		if !encoding.ReadUint64(data, &index, &entry.TotalPrice) {
-			return false
-		}
-	}
-	if entry.Version >= 2 {
-		if !encoding.ReadUint64(data, &index, &entry.ClientToServerPacketsLost) {
-			return false
-		}
-		if !encoding.ReadUint64(data, &index, &entry.ServerToClientPacketsLost) {
-			return false
-		}
-	}
-
-	if entry.Version >= 3 {
-		if !encoding.ReadBool(data, &index, &entry.Committed) {
-			return false
-		}
-
-		if !encoding.ReadBool(data, &index, &entry.Flagged) {
-			return false
-		}
-
-		if !encoding.ReadBool(data, &index, &entry.Multipath) {
-			return false
-		}
-
-		if !encoding.ReadBool(data, &index, &entry.Initial) {
-			return false
-		}
-
-		if entry.Next {
-			if !encoding.ReadUint64(data, &index, &entry.NextBytesUp) {
-				return false
-			}
-			if !encoding.ReadUint64(data, &index, &entry.NextBytesDown) {
-				return false
-			}
-		}
-	}
-
-	if entry.Version >= 4 {
-		if !encoding.ReadUint64(data, &index, &entry.DatacenterID) {
-			return false
-		}
-
-		if entry.Next {
-			if !encoding.ReadBool(data, &index, &entry.RTTReduction) {
-				return false
-			}
-			if !encoding.ReadBool(data, &index, &entry.PacketLossReduction) {
-				return false
-			}
-		}
-	}
-
-	if entry.Version >= 5 {
-		if entry.Next {
-			if !encoding.ReadUint8(data, &index, &entry.NumNextRelays) {
-				return false
-			}
-			if entry.NumNextRelays > BillingEntryMaxRelays {
-				return false
-			}
-			for i := 0; i < int(entry.NumNextRelays); i++ {
-				if !encoding.ReadUint64(data, &index, &entry.NextRelaysPrice[i]) {
-					return false
-				}
-			}
-		}
-	}
-
-	return true
-}
-
-func ReadBillingEntryNoUserHashV5(entry *BillingEntry, data []byte) bool {
-	index := 0
-	if !encoding.ReadUint8(data, &index, &entry.Version) {
-		return false
-	}
-	if entry.Version > BillingEntryVersion {
-		return false
-	}
-	if !encoding.ReadUint64(data, &index, &entry.BuyerID) {
-		return false
 	}
 	if !encoding.ReadUint64(data, &index, &entry.SessionID) {
 		return false
