@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/csv"
 	"fmt"
-	"log"
 	"os"
 	"sort"
 	"strconv"
@@ -67,8 +66,7 @@ func opsRelays(
 	for _, relay := range reply.Relays {
 		relayState, err := routing.ParseRelayState(relay.State)
 		if err != nil {
-			fmt.Printf("could not parse invalid relay state %s", relay.State)
-			os.Exit(0)
+			handleRunTimeError(fmt.Sprintf("could not parse invalid relay state %s\n", relay.State), 1)
 		}
 
 		includeRelay := true
@@ -203,8 +201,8 @@ func opsRelays(
 	}
 
 	if csvOutputFlag {
-		if relaysCount > 0 {
-			relaysCSV = relaysCSV[:relaysCount]
+		if relaysCount > 0 && int(relaysCount) < len(relaysCSV) {
+			relaysCSV = relaysCSV[:relaysCount+2] // +2 for heading lines
 		}
 
 		// return csv file of structs
@@ -212,20 +210,19 @@ func opsRelays(
 		fileName := "./relays.csv"
 		f, err := os.Create(fileName)
 		if err != nil {
-			fmt.Printf("Error creating local CSV file %s: %v\n", fileName, err)
-			return
+			handleRunTimeError(fmt.Sprintf("Error creating local CSV file %s: %v\n", fileName, err), 1)
 		}
 
 		writer := csv.NewWriter(f)
 		err = writer.WriteAll(relaysCSV)
 		if err != nil {
-			fmt.Printf("Error writing local CSV file %s: %v\n", fileName, err)
+			handleRunTimeError(fmt.Sprintf("Error writing local CSV file %s: %v\n", fileName, err), 1)
 		}
 		fmt.Println("CSV file written: relays.csv")
 		return
 	}
 
-	if relaysCount > 0 {
+	if relaysCount > 0 && int(relaysCount) < len(relays) {
 		relays = relays[:relaysCount]
 	}
 
@@ -268,6 +265,8 @@ func relays(
 		Tx          string
 		Rx          string
 		Version     string
+		CPUUsage    string `table:"CPU Usage"`
+		MemUsage    string `table:"Memory Usage"`
 		LastUpdated string
 	}{}
 
@@ -283,7 +282,7 @@ func relays(
 	for _, relay := range reply.Relays {
 		relayState, err := routing.ParseRelayState(relay.State)
 		if err != nil {
-			log.Fatalf("could not parse invalid relay state %s", relay.State)
+			handleRunTimeError(fmt.Sprintf("could not parse invalid relay state %s\n", relay.State), 0)
 		}
 
 		includeRelay := true
@@ -306,14 +305,25 @@ func relays(
 			includeRelay = false
 		}
 
-		tx := fmt.Sprintf("%.02fGB", float64(relay.BytesSent)/float64(1000000000))
-		if relay.BytesSent < 1000000000 {
-			tx = fmt.Sprintf("%.02fMB", float64(relay.BytesSent)/float64(1000000))
+		var rx string
+		bitsReceived := relay.BytesReceived * 8
+		if bitsReceived > 1000000000 {
+			rx = fmt.Sprintf("%.02fGbps", float64(bitsReceived)/float64(1000000000))
+		} else {
+			rx = fmt.Sprintf("%.02fMbps", float64(bitsReceived)/float64(1000000))
 		}
-		rx := fmt.Sprintf("%.02fGB", float64(relay.BytesReceived)/float64(1000000000))
-		if relay.BytesReceived < 1000000000 {
-			rx = fmt.Sprintf("%.02fMB", float64(relay.BytesReceived)/float64(1000000))
+
+		var tx string
+		bitsTransmitted := relay.BytesSent * 8
+		if bitsTransmitted > 1000000000 {
+			tx = fmt.Sprintf("%.02fGbps", float64(bitsTransmitted)/float64(1000000000))
+		} else {
+			tx = fmt.Sprintf("%.02fMbps", float64(bitsTransmitted)/float64(1000000))
 		}
+
+		cpuUsage := fmt.Sprintf("%.02f%%", relay.CPUUsage)
+		memUsage := fmt.Sprintf("%.02f%%", relay.MemUsage)
+
 		lastUpdateDuration := time.Since(relay.LastUpdateTime).Truncate(time.Second)
 		lastUpdated := "n/a"
 		if relay.State == "enabled" {
@@ -340,7 +350,7 @@ func relays(
 			} else if relayVersionFilter == "all" || relay.Version == relayVersionFilter {
 				var relayID string
 				if relayIDSigned {
-					relayID = fmt.Sprintf("%d", int64(relay.ID))
+					relayID = fmt.Sprintf("%d", relay.SignedID)
 				} else {
 					relayID = fmt.Sprintf("%016x", relay.ID)
 				}
@@ -360,7 +370,7 @@ func relays(
 		} else if relayVersionFilter == "all" || relay.Version == relayVersionFilter {
 			var relayID string
 			if relayIDSigned {
-				relayID = fmt.Sprintf("%d", int64(relay.ID))
+				relayID = fmt.Sprintf("%d", relay.SignedID)
 			} else {
 				relayID = fmt.Sprintf("%016x", relay.ID)
 			}
@@ -373,6 +383,8 @@ func relays(
 				Tx          string
 				Rx          string
 				Version     string
+				CPUUsage    string `table:"CPU Usage"`
+				MemUsage    string `table:"Memory Usage"`
 				LastUpdated string
 			}{
 				Name:        relay.Name,
@@ -383,6 +395,8 @@ func relays(
 				Tx:          tx,
 				Rx:          rx,
 				Version:     relay.Version,
+				CPUUsage:    cpuUsage,
+				MemUsage:    memUsage,
 				LastUpdated: lastUpdated,
 			})
 		}
@@ -390,8 +404,9 @@ func relays(
 	}
 
 	if csvOutputFlag {
-		if relaysCount > 0 {
-			relaysCSV = relaysCSV[:relaysCount]
+
+		if relaysCount > 0 && int(relaysCount) < len(relaysCSV) {
+			relaysCSV = relaysCSV[:relaysCount+2] // +2 for heading lines
 		}
 
 		// return csv file of structs
@@ -399,21 +414,16 @@ func relays(
 		fileName := "./relays.csv"
 		f, err := os.Create(fileName)
 		if err != nil {
-			fmt.Printf("Error creating local CSV file %s: %v\n", fileName, err)
-			return
+			handleRunTimeError(fmt.Sprintf("Error creating local CSV file %s: %v\n", fileName, err), 1)
 		}
 
 		writer := csv.NewWriter(f)
 		err = writer.WriteAll(relaysCSV)
 		if err != nil {
-			fmt.Printf("Error writing local CSV file %s: %v\n", fileName, err)
+			handleRunTimeError(fmt.Sprintf("Error writing local CSV file %s: %v\n", fileName, err), 1)
 		}
 		fmt.Println("CSV file written: relays.csv")
 		return
-	}
-
-	if relaysCount > 0 {
-		relays = relays[:relaysCount]
 	}
 
 	if relaysListFlag {
@@ -424,6 +434,10 @@ func relays(
 		}
 		fmt.Println(strings.Join(relayNames, " "))
 		return
+	}
+
+	if relaysCount > 0 && int(relaysCount) < len(relays) {
+		relays = relays[:relaysCount]
 	}
 
 	table.Output(relays)
@@ -448,13 +462,19 @@ func removeRelay(rpcClient jsonrpc.RPCClient, env Environment, name string) {
 	relays := getRelayInfo(rpcClient, env, name)
 
 	if len(relays) == 0 {
-		log.Fatalf("no relays matched the name '%s'\n", name)
+		handleRunTimeError(fmt.Sprintf("no relays matched the name '%s'\n", name), 0)
 	}
 
 	info := relays[0]
 
 	if info.state == routing.RelayStateDecommissioned.String() {
-		log.Fatalf("Relay \"%s\" already removed\n", info.name)
+		fmt.Printf("Relay \"%s\" already removed\n", info.name)
+		os.Exit(0)
+	}
+
+	if info.state != routing.RelayStateDisabled.String() {
+		fmt.Printf("Relay %s must be disabled prior to removal.\n\n", info.name)
+		os.Exit(0)
 	}
 
 	args := localjsonrpc.RemoveRelayArgs{
