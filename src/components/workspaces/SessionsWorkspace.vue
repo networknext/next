@@ -135,14 +135,16 @@ import { Route, NavigationGuardNext } from 'vue-router'
 export default class SessionsWorkspace extends Vue {
   private apiService: APIService
   private sessions: Array<any>
-  private sessionsLoop = -1
-  private showTable = false
+  private sessionsLoop: number
+  private showTable: boolean
   private unwatch: any
 
   constructor () {
     super()
     this.apiService = Vue.prototype.$apiService
     this.sessions = []
+    this.sessionsLoop = -1
+    this.showTable = false
   }
 
   private mounted () {
