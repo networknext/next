@@ -592,7 +592,7 @@ build-relay-backend-artifacts-prod: build-relay-backend ## builds the relay back
 
 .PHONY: build-server-backend-artifacts-prod
 build-server-backend-artifacts-prod: build-server-backend ## builds the server backend artifacts prod
-	./deploy/build-artifacts.sh -e prod -s server-backend
+	./deploy/build-artifacts.sh -e prod -s server_backend
 
 .PHONY: publish-billing-artifacts-dev
 publish-billing-artifacts-dev: ## publishes the billing artifacts to GCP Storage with gsutil dev
@@ -688,7 +688,7 @@ publish-relay-backend-artifacts-prod: ## publishes the relay backend artifacts t
 
 .PHONY: publish-server-backend-artifacts-prod
 publish-server-backend-artifacts-prod: ## publishes the server backend artifacts to GCP Storage with gsutil prod
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s server-backend
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s server_backend
 
 .PHONY: publish-bootstrap-script-dev
 publish-bootstrap-script-dev:
