@@ -99,7 +99,7 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 	if !encoding.ReadUint8(data, &index, &entry.Version) {
 		return false
 	}
-	if entry.Version > BillingEntryVersion {
+	if entry.Version > BillingEntryVersion-1 {
 		return false
 	}
 	if !encoding.ReadUint64(data, &index, &entry.BuyerID) {
