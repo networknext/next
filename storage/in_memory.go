@@ -315,7 +315,7 @@ func (m *InMemory) GetDatacenterMapsForBuyer(id uint64) map[uint64]routing.Datac
 func (m *InMemory) ListDatacenterMaps(dcID uint64) map[uint64]routing.DatacenterMap {
 	var dcs = make(map[uint64]routing.DatacenterMap)
 	for _, dc := range m.localDatacenterMaps {
-		if dc.Datacenter == dcID {
+		if dc.Datacenter == dcID || dcID == 0 {
 			id := crypto.HashID(dc.Alias + fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.Datacenter))
 			dcs[id] = dc
 		}

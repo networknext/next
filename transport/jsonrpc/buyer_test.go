@@ -2,13 +2,14 @@ package jsonrpc_test
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/alicebob/miniredis"
 	"github.com/go-kit/kit/log"
-	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport/jsonrpc"
@@ -253,17 +254,30 @@ func TestTotalSessions(t *testing.T) {
 	t.Parallel()
 
 	redisServer, _ := miniredis.Run()
-	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+	redisPool := storage.NewRedisPool(redisServer.Addr())
 
-	redisServer.Set("session-count-total-next-instance-0", "3")
-	redisServer.HSet("session-count-total-next", "session-count-total-next-instance-0", "3")
-	redisServer.Set("session-count-total-direct-instance-0", "1")
-	redisServer.HSet("session-count-total-direct", "session-count-total-direct-instance-0", "1")
+	minutes := time.Now().Unix() / 60
+
+	redisServer.HSet(fmt.Sprintf("n-0000000000000000-%d", minutes), "123", "")
+	redisServer.HSet(fmt.Sprintf("n-0000000000000001-%d", minutes), "456", "")
+	redisServer.HSet(fmt.Sprintf("n-0000000000000002-%d", minutes), "789", "")
+
+	redisServer.HSet(fmt.Sprintf("d-0000000000000000-%d", minutes), "789", "")
+
+	storer := storage.InMemory{}
+	pubkey := make([]byte, 4)
+	storer.AddBuyer(context.Background(), routing.Buyer{ID: 0, Name: "local.local.0", PublicKey: pubkey, Domain: "networknext.com"})
+	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, Name: "local.local.1", PublicKey: pubkey, Domain: "networknext.com"})
+	storer.AddBuyer(context.Background(), routing.Buyer{ID: 2, Name: "local.local.2", PublicKey: pubkey, Domain: "networknext.com"})
 
 	logger := log.NewNopLogger()
 	svc := jsonrpc.BuyersService{
-		RedisClient: redisClient,
-		Logger:      logger,
+		RedisPoolTopSessions:   redisPool,
+		RedisPoolSessionMeta:   redisPool,
+		RedisPoolSessionSlices: redisPool,
+		RedisPoolSessionMap:    redisPool,
+		Storage:                &storer,
+		Logger:                 logger,
 	}
 
 	jwtSideload := "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik5rWXpOekkwTkVVNVFrSTVNRVF4TURRMk5UWTBNakkzTmpOQlJESkVNa1E0TnpGRFF6QkdRdyJ9.eyJuaWNrbmFtZSI6InRlc3QiLCJuYW1lIjoidGVzdEBuZXR3b3JrbmV4dC5jb20iLCJwaWN0dXJlIjoiaHR0cHM6Ly9zLmdyYXZhdGFyLmNvbS9hdmF0YXIvMmRhNWMwMjU5ZTQ3NmI1MDg0MTBlZWY3ZjI5Zjc1NGE_cz00ODAmcj1wZyZkPWh0dHBzJTNBJTJGJTJGY2RuLmF1dGgwLmNvbSUyRmF2YXRhcnMlMkZ0ZS5wbmciLCJ1cGRhdGVkX2F0IjoiMjAyMC0wNi0yM1QxMzozOToyMS44ODFaIiwiZW1haWwiOiJ0ZXN0QG5ldHdvcmtuZXh0LmNvbSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJpc3MiOiJodHRwczovL25ldHdvcmtuZXh0LmF1dGgwLmNvbS8iLCJzdWIiOiJhdXRoMHw1Yjk2ZjYxY2YxNjQyNzIxYWQ4NGVlYjYiLCJhdWQiOiJvUUpIM1lQSGR2WkpueENQbzFJcnR6NVVLaTV6cnI2biIsImlhdCI6MTU5MjkxOTU2NSwiZXhwIjoxNzUwNzA0MzI1LCJub25jZSI6ImRHZFNUWEpRTnpkdE5GcHNjR0Z1YVg1dlQxVlNhVFZXUjJoK2VHdG1hMnB2TkcweFZuNTFZalJJZmc9PSJ9.BvMe5fWJcheGzKmt3nCIeLjMD-C5426cpjtJiR55i7lmbT0k4h8Z2X6rynZ_aKR-gaCTY7FG5gI-Ty9ZY1zboWcIkxaTi0VKQzdMUTYVMXVEK2cQ1NVbph7_RSJhLfgO5y7PkmuMZXJEFdrI_2PkO4b3tOU-vpUHFUPtTsESV79a81kXn2C5j_KkKzCOPZ4zol1aEU3WliaaJNT38iSz3NX9URshrrdCE39JRClx6wbUgrfCGnVtfens-Sg7atijivaOx8IlUGOxLMEciYwBL2aY5EXaa7tp7c8ZvoEEj7uZH2R35fV7eUzACwShU-JLR9oOsNEhS4XO1AzTMtNHQA"
@@ -284,6 +298,13 @@ func TestTotalSessions(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, 3, reply.Next)
+	assert.Equal(t, 1, reply.Direct)
+
+	// test per buyer counts
+	err = svc.TotalSessions(req, &jsonrpc.TotalSessionsArgs{BuyerID: "0000000000000000"}, &reply)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 1, reply.Next)
 	assert.Equal(t, 1, reply.Direct)
 }
 
@@ -739,16 +760,19 @@ func TestGameConfiguration(t *testing.T) {
 	t.Parallel()
 
 	redisServer, _ := miniredis.Run()
-	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+	redisPool := storage.NewRedisPool(redisServer.Addr())
 	storer := storage.InMemory{}
 	pubkey := make([]byte, 4)
 	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, Name: "local.local.1", Domain: "local.com", PublicKey: pubkey})
 
 	logger := log.NewNopLogger()
 	svc := jsonrpc.BuyersService{
-		RedisClient: redisClient,
-		Storage:     &storer,
-		Logger:      logger,
+		RedisPoolTopSessions:   redisPool,
+		RedisPoolSessionMeta:   redisPool,
+		RedisPoolSessionSlices: redisPool,
+		RedisPoolSessionMap:    redisPool,
+		Storage:                &storer,
+		Logger:                 logger,
 	}
 
 	jwtSideload := "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik5rWXpOekkwTkVVNVFrSTVNRVF4TURRMk5UWTBNakkzTmpOQlJESkVNa1E0TnpGRFF6QkdRdyJ9.eyJuaWNrbmFtZSI6InRlc3QiLCJuYW1lIjoidGVzdEBuZXR3b3JrbmV4dC5jb20iLCJwaWN0dXJlIjoiaHR0cHM6Ly9zLmdyYXZhdGFyLmNvbS9hdmF0YXIvMmRhNWMwMjU5ZTQ3NmI1MDg0MTBlZWY3ZjI5Zjc1NGE_cz00ODAmcj1wZyZkPWh0dHBzJTNBJTJGJTJGY2RuLmF1dGgwLmNvbSUyRmF2YXRhcnMlMkZ0ZS5wbmciLCJ1cGRhdGVkX2F0IjoiMjAyMC0wNi0yM1QxMzozOToyMS44ODFaIiwiZW1haWwiOiJ0ZXN0QG5ldHdvcmtuZXh0LmNvbSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJpc3MiOiJodHRwczovL25ldHdvcmtuZXh0LmF1dGgwLmNvbS8iLCJzdWIiOiJhdXRoMHw1Yjk2ZjYxY2YxNjQyNzIxYWQ4NGVlYjYiLCJhdWQiOiJvUUpIM1lQSGR2WkpueENQbzFJcnR6NVVLaTV6cnI2biIsImlhdCI6MTU5MjkxOTU2NSwiZXhwIjoxNzUwNzA0MzI1LCJub25jZSI6ImRHZFNUWEpRTnpkdE5GcHNjR0Z1YVg1dlQxVlNhVFZXUjJoK2VHdG1hMnB2TkcweFZuNTFZalJJZmc9PSJ9.BvMe5fWJcheGzKmt3nCIeLjMD-C5426cpjtJiR55i7lmbT0k4h8Z2X6rynZ_aKR-gaCTY7FG5gI-Ty9ZY1zboWcIkxaTi0VKQzdMUTYVMXVEK2cQ1NVbph7_RSJhLfgO5y7PkmuMZXJEFdrI_2PkO4b3tOU-vpUHFUPtTsESV79a81kXn2C5j_KkKzCOPZ4zol1aEU3WliaaJNT38iSz3NX9URshrrdCE39JRClx6wbUgrfCGnVtfens-Sg7atijivaOx8IlUGOxLMEciYwBL2aY5EXaa7tp7c8ZvoEEj7uZH2R35fV7eUzACwShU-JLR9oOsNEhS4XO1AzTMtNHQA"

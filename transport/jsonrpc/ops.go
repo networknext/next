@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-kit/kit/log"
@@ -17,6 +18,41 @@ import (
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 )
+
+type RelayData struct {
+	SessionCount   uint64
+	Tx             uint64
+	Rx             uint64
+	Version        string
+	LastUpdateTime time.Time
+	CPU            float32
+	Mem            float32
+}
+
+type RelayStatsMap struct {
+	Internal *map[uint64]RelayData
+	mu       sync.RWMutex
+}
+
+func NewRelayStatsMap() RelayStatsMap {
+	m := make(map[uint64]RelayData)
+	return RelayStatsMap{
+		Internal: &m,
+	}
+}
+
+func (r *RelayStatsMap) Get(id uint64) (RelayData, bool) {
+	r.mu.RLock()
+	relay, ok := (*r.Internal)[id]
+	r.mu.RUnlock()
+	return relay, ok
+}
+
+func (r *RelayStatsMap) Swap(m *map[uint64]RelayData) {
+	r.mu.Lock()
+	r.Internal = m
+	r.mu.Unlock()
+}
 
 type OpsService struct {
 	Release   string
@@ -26,6 +62,8 @@ type OpsService struct {
 	// RouteMatrix *routing.RouteMatrix
 
 	Logger log.Logger
+
+	RelayMap *RelayStatsMap
 }
 
 type CurrentReleaseArgs struct{}
@@ -384,6 +422,7 @@ type RelaysReply struct {
 
 type relay struct {
 	ID                  uint64                `json:"id"`
+	SignedID            int64                 `json:"signed_id"`
 	Name                string                `json:"name"`
 	Addr                string                `json:"addr"`
 	Latitude            float64               `json:"latitude"`
@@ -411,12 +450,15 @@ type relay struct {
 	StartDate           time.Time             `json:"start_date"`
 	EndDate             time.Time             `json:"end_date"`
 	Type                routing.MachineType   `json:"machine_type"`
+	CPUUsage            float32               `json:"cpu_usage"`
+	MemUsage            float32               `json:"mem_usage"`
 }
 
 func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysReply) error {
 	for _, r := range s.Storage.Relays() {
 		relay := relay{
 			ID:                  r.ID,
+			SignedID:            r.SignedID,
 			Name:                r.Name,
 			Addr:                r.Addr.String(),
 			Latitude:            r.Datacenter.Location.Latitude,
@@ -442,18 +484,15 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			Type:                r.Type,
 		}
 
-		// We don't have a good way of getting the live relay stats now until we make some kind of endpoint on the relay backend for the portal to hit
-
-		// // If the relay is in memory, get its traffic stats and last update time
-		// relayData := s.RelayMap.GetRelayData(r.Addr.String())
-		// if relayData != nil {
-		// 	relay.SessionCount = relayData.TrafficStats.SessionCount
-		// 	relay.BytesSent = relayData.TrafficStats.BytesSent
-		// 	relay.BytesReceived = relayData.TrafficStats.BytesReceived
-
-		// 	relay.LastUpdateTime = relayData.LastUpdateTime
-		// 	relay.Version = relayData.Version
-		// }
+		if relayData, ok := s.RelayMap.Get(r.ID); ok {
+			relay.SessionCount = relayData.SessionCount
+			relay.BytesSent = relayData.Tx
+			relay.BytesReceived = relayData.Rx
+			relay.Version = relayData.Version
+			relay.LastUpdateTime = relayData.LastUpdateTime
+			relay.CPUUsage = relayData.CPU
+			relay.MemUsage = relayData.Mem
+		}
 
 		reply.Relays = append(reply.Relays, relay)
 	}
@@ -536,12 +575,43 @@ func (s *OpsService) RemoveRelay(r *http.Request, args *RemoveRelayArgs, reply *
 		return err
 	}
 
-	// Rather than actually removing the relay from firestore, just set it to the decomissioned state
+	// Rather than actually removing the relay from firestore, just
+	// rename it and set it to the decomissioned state
 	relay.State = routing.RelayStateDecommissioned
+
+	shortDate := time.Now().Format("2006-01-02")
+	shortTime := time.Now().Format("15:04:05")
+	relay.Name = fmt.Sprintf("%s-%s-%s", relay.Name, shortDate, shortTime)
 
 	if err = s.Storage.SetRelay(context.Background(), relay); err != nil {
 		err = fmt.Errorf("RemoveRelay() Storage.SetRelay error: %w", err)
 		s.Logger.Log("err", err)
+		return err
+	}
+
+	return nil
+}
+
+type RelayNameUpdateArgs struct {
+	RelayID   uint64 `json:"relay_id"`
+	RelayName string `json:"relay_name"`
+}
+
+type RelayNameUpdateReply struct {
+}
+
+func (s *OpsService) RelayNameUpdate(r *http.Request, args *RelayNameUpdateArgs, reply *RelayNameUpdateReply) error {
+
+	relay, err := s.Storage.Relay(args.RelayID)
+	if err != nil {
+		err = fmt.Errorf("RelayNameUpdate() Storage.Relay error: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	relay.Name = args.RelayName
+	if err = s.Storage.SetRelay(context.Background(), relay); err != nil {
+		err = fmt.Errorf("Storage.SetRelay error: %w", err)
 		return err
 	}
 
@@ -670,6 +740,7 @@ type DatacentersReply struct {
 type datacenter struct {
 	Name         string  `json:"name"`
 	ID           uint64  `json:"id"`
+	SignedID     int64   `json:"signed_id"`
 	Latitude     float64 `json:"latitude"`
 	Longitude    float64 `json:"longitude"`
 	Enabled      bool    `json:"enabled"`
@@ -681,6 +752,7 @@ func (s *OpsService) Datacenters(r *http.Request, args *DatacentersArgs, reply *
 		reply.Datacenters = append(reply.Datacenters, datacenter{
 			Name:         d.Name,
 			ID:           d.ID,
+			SignedID:     d.SignedID,
 			Enabled:      d.Enabled,
 			Latitude:     d.Location.Latitude,
 			Longitude:    d.Location.Longitude,
@@ -753,7 +825,7 @@ type ListDatacenterMapsReply struct {
 	DatacenterMaps []DatacenterMapsFull
 }
 
-// An empty DatacenterID returns a list of all maps.
+// A zero DatacenterID returns a list of all maps.
 func (s *OpsService) ListDatacenterMaps(r *http.Request, args *ListDatacenterMapsArgs, reply *ListDatacenterMapsReply) error {
 
 	var dcm map[uint64]routing.DatacenterMap
@@ -763,13 +835,13 @@ func (s *OpsService) ListDatacenterMaps(r *http.Request, args *ListDatacenterMap
 	for _, dcMap := range dcm {
 		buyer, err := s.Storage.Buyer(dcMap.BuyerID)
 		if err != nil {
-			err = fmt.Errorf("DatacenterMapsForBuyer() could not parse buyer")
+			err = fmt.Errorf("ListDatacenterMaps() could not parse buyer: %w", err)
 			s.Logger.Log("err", err)
 			return err
 		}
 		datacenter, err := s.Storage.Datacenter(dcMap.Datacenter)
 		if err != nil {
-			err = fmt.Errorf("DatacenterMapsForBuyer() could not parse datacenter")
+			err = fmt.Errorf("ListDatacenterMaps() could not parse datacenter: %w", err)
 			s.Logger.Log("err", err)
 			return err
 		}

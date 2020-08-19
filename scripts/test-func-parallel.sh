@@ -24,6 +24,8 @@ tests=(
     test_on_off
     test_on_on_off
     test_multipath
+    test_multipath_next_packet_loss
+    test_multipath_fallback_to_direct
     test_uncommitted
     test_uncommitted_to_committed
     test_user_flags
