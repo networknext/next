@@ -75,11 +75,13 @@ import APIService from '@/services/api.service'
 @Component
 export default class NavBar extends Vue {
   private apiService: APIService
+  private authService: AuthService
   private portalVersion: string
 
   constructor () {
     super()
-    this.apiService = new APIService()
+    this.apiService = Vue.prototype.$apiService
+    this.authService = Vue.prototype.$authService
     this.portalVersion = ''
     this.fetchPortalVersion()
   }

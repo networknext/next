@@ -136,6 +136,7 @@ export default class SessionsWorkspace extends Vue {
   private apiService: APIService
   private showTable = false
   private sessionsLoop = -1
+  private unwatch: any
 
   constructor () {
     super()
@@ -143,22 +144,24 @@ export default class SessionsWorkspace extends Vue {
     this.sessions = []
   }
 
-  private mounted (): void {
-    this.fetchSessions()
-    this.sessionsLoop = setInterval(() => {
-      this.fetchSessions()
-    }, 10000)
+  private mounted () {
+    this.restartLoop()
+    this.unwatch = this.$store.watch((state: any, getters: any) => {
+      return getters.currentFilter
+    }, () => {
+      clearInterval(this.sessionsLoop)
+      this.restartLoop()
+    })
   }
 
   private beforeDestroy (): void {
-    // Stop polling loop
-    this.sessions = []
+    // TODO: This really shouldn't be in a store
     this.$store.commit('TOGGLE_SESSION_TABLE', false)
     clearInterval(this.sessionsLoop)
   }
 
   private fetchSessions (): void {
-    this.apiService.fetchTopSessions({ buyer_id: '' })
+    this.apiService.fetchTopSessions({ buyer_id: this.$store.getters.currentFilter.buyerID || '' })
       .then((response: any) => {
         this.sessions = response.sessions
         this.$store.commit('TOGGLE_SESSION_TABLE', true)
@@ -178,6 +181,13 @@ export default class SessionsWorkspace extends Vue {
       }
     }
     return 'Private'
+  }
+
+  private restartLoop () {
+    this.fetchSessions()
+    this.sessionsLoop = setInterval(() => {
+      this.fetchSessions()
+    }, 10000)
   }
 }
 </script>
