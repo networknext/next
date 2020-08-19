@@ -12,12 +12,10 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
-	jsoniter "github.com/json-iterator/go"
 	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/metrics"
 	"github.com/oschwald/geoip2-golang"
@@ -28,14 +26,6 @@ const (
 
 	regexLocalhostIPs = `0\.0\.0\.0|127\.0\.0\.1|localhost`
 )
-
-func isLocalHost(ip net.IP) bool {
-	// if the ip is localhost, return nothing so we can test on our dev machines
-	matches, _ := regexp.Match(regexLocalhostIPs, []byte(ip.String()))
-	localhostMatches, _ := regexp.Match(regexLocalhostIPs, ip) // For the "localhost" case
-
-	return matches || localhostMatches
-}
 
 // IPLocator defines anything that returns a routing.Location given an net.IP
 type IPLocator interface {
@@ -159,90 +149,6 @@ func (l *Location) ParseRedisString(values []string) error {
 	return nil
 }
 
-type IPStack struct {
-	*http.Client
-
-	AccessKey string
-}
-
-type ipStackResponse struct {
-	IP            string  `json:"ip"`
-	Type          string  `json:"type"`
-	ContinentCode string  `json:"continent_code"`
-	ContinentName string  `json:"continent_name"`
-	CountryCode   string  `json:"country_code"`
-	CountryName   string  `json:"country_name"`
-	RegionCode    string  `json:"region_code"`
-	RegionName    string  `json:"region_name"`
-	City          string  `json:"city"`
-	Zip           string  `json:"zip"`
-	Latitude      float64 `json:"latitude"`
-	Longitude     float64 `json:"longitude"`
-	Location      struct {
-		GeonameID int    `json:"geoname_id"`
-		Capital   string `json:"capital"`
-		Languages []struct {
-			Code   string `json:"code"`
-			Name   string `json:"name"`
-			Native string `json:"native"`
-		} `json:"languages"`
-		CountryFlag             string `json:"country_flag"`
-		CountryFlagEmoji        string `json:"country_flag_emoji"`
-		CountryFlagEmojiUnicode string `json:"country_flag_emoji_unicode"`
-		CallingCode             string `json:"calling_code"`
-		IsEU                    bool   `json:"is_eu"`
-	} `json:"location"`
-	TimeZone struct {
-		ID               string `json:"id"`
-		CurrentTime      string `json:"current_time"`
-		GMTOffset        int    `json:"gmt_offset"`
-		Code             string `json:"code"`
-		IsDaylightSaving bool   `json:"is_daylight_saving"`
-	} `json:"time_zone"`
-	Currency struct {
-		Code         string `json:"code"`
-		Name         string `json:"name"`
-		Plural       string `json:"plural"`
-		Symbol       string `json:"symbol"`
-		SymbolNative string `json:"symbol_native"`
-	} `json:"currency"`
-	Connection struct {
-		ASN int    `json:"asn"`
-		ISP string `json:"isp"`
-	} `json:"connection"`
-}
-
-func (ips *IPStack) LocateIP(ip net.IP) (Location, error) {
-	if isLocalHost(ip) {
-		return LocationNullIsland, nil
-	}
-
-	res, err := ips.Get(fmt.Sprintf("https://api.ipstack.com/%s?access_key=%s", ip.String(), ips.AccessKey))
-	if err != nil {
-		return Location{}, err
-	}
-	defer res.Body.Close()
-
-	var ipstackres ipStackResponse
-	if err := jsoniter.NewDecoder(res.Body).Decode(&ipstackres); err != nil {
-		return Location{}, err
-	}
-
-	if ipstackres.Latitude == 0 && ipstackres.Longitude == 0 {
-		return Location{}, fmt.Errorf("no location found for '%s'", ip.String())
-	}
-
-	return Location{
-		Continent: ipstackres.ContinentName,
-		Country:   ipstackres.CountryName,
-		Region:    ipstackres.RegionName,
-		City:      ipstackres.City,
-		Latitude:  ipstackres.Latitude,
-		Longitude: ipstackres.Longitude,
-		ISP:       ipstackres.Connection.ISP,
-	}, nil
-}
-
 // MaxmindDB embeds the unofficial MaxmindDB reader so we can satisfy the IPLocator interface
 type MaxmindDB struct {
 	HTTPClient *http.Client
@@ -346,10 +252,6 @@ func (mmdb *MaxmindDB) LocateIP(ip net.IP) (Location, error) {
 	}
 	if mmdb.ispReader == nil {
 		return Location{}, errors.New("not configured with a Maxmind ISP DB")
-	}
-
-	if isLocalHost(ip) {
-		return LocationNullIsland, nil
 	}
 
 	cityres, err := mmdb.cityReader.City(ip)
