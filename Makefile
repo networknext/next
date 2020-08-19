@@ -729,7 +729,7 @@ build-functional-server:
 .PHONY: build-load-test-client
 build-load-test-client: build-sdk ## builds the load test client binary
 	@printf "Building load test client... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/load_test_client ./cmd/load_test_client/load_test_client.cpp -lnext $(LDFLAGS)
+	@$(CXX) -Isdk/include -o $(DIST_DIR)/load_test_client ./cmd/load_test_client/load_test_client.cpp -L./dist -lnext $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional-client
