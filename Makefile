@@ -426,27 +426,27 @@ build-relay-backend: ## builds the relay backend binary
 
 .PHONY: deploy-relay-backend-dev
 deploy-relay-backend-dev: ## builds and deploys the relay backend to dev
-	./deploy/deploy.sh -e dev -c dev-1 -t relay_backend -b gs://development_artifacts
+	./deploy/deploy.sh -e dev -c dev-1 -t relay-backend -b gs://development_artifacts
 
 .PHONY: deploy-portal-cruncher-dev
 deploy-portal-cruncher-dev: ## builds and deploys the portal cruncher to dev
-	./deploy/deploy.sh -e dev -c dev-1 -t portal_cruncher -b gs://development_artifacts
+	./deploy/deploy.sh -e dev -c dev-1 -t portal-cruncher -b gs://development_artifacts
 
 .PHONY: deploy-relay-backend-staging
 deploy-relay-backend-staging: ## builds and deploys the relay backend to prod
-	./deploy/deploy.sh -e staging -c staging-1 -t relay_backend -b gs://staging_artifacts
+	./deploy/deploy.sh -e staging -c staging-1 -t relay-backend -b gs://staging_artifacts
 
 .PHONY: deploy-portal-cruncher-staging
 deploy-portal-cruncher-staging: ## builds and deploys the server backend to staging
-	./deploy/deploy.sh -e staging -c staging-1 -t portal_cruncher -b gs://staging_artifacts
+	./deploy/deploy.sh -e staging -c staging-1 -t portal-cruncher -b gs://staging_artifacts
 
 .PHONY: deploy-relay-backend-prod
 deploy-relay-backend-prod: ## builds and deploys the relay backend to prod
-	./deploy/deploy.sh -e prod -c mig-jcr6 -t relay_backend -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c mig-jcr6 -t relay-backend -b gs://prod_artifacts
 
 .PHONY: deploy-portal-cruncher-prod
 deploy-portal-cruncher-prod: ## builds and deploys the portal cruncher to prod
-	./deploy/deploy.sh -e prod -c prod -t portal_cruncher -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c prod -t portal-cruncher -b gs://prod_artifacts
 
 .PHONY: build-server-backend
 build-server-backend: ## builds the server backend binary
