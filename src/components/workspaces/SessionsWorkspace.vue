@@ -161,6 +161,7 @@ export default class SessionsWorkspace extends Vue {
     // TODO: This really shouldn't be in a store
     this.$store.commit('TOGGLE_SESSION_TABLE', false)
     clearInterval(this.sessionsLoop)
+    this.unwatch()
   }
 
   private fetchSessions (): void {
