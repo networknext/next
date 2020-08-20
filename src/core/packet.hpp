@@ -25,7 +25,7 @@ namespace core
     size_t Len;
   };
 
-  template <size_t BuffSize>
+  template <size_t BuffSize = GenericPacketMaxSize>
   using GenericPacketContainer = std::array<uint8_t, BuffSize>;
 
   template <size_t BuffSize = GenericPacketMaxSize>

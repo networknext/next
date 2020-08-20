@@ -8,6 +8,7 @@
 #include "core/packet.hpp"
 
 using core::GenericPacketContainer;
+using core::packets::Type;
 using crypto::GenericKey;
 
 namespace core
@@ -25,27 +26,26 @@ namespace core
       static const size_t ByteSize = 35;
 
       Direction direction;
+      Type type;
 
       uint64_t sequence;
       uint64_t session_id;
       uint8_t session_version;
 
-      auto read(GenericPacketContainer& buffer, size_t buffer_length, const Type type) -> bool;
-      auto write(GenericPacketContainer& buffer, size_t buffer_length, const Type type, const GenericKey& public_key) -> bool;
-      auto verify(GenericPacketContainer& buffer, size_t buffer_length, const GenericKey& public_key) -> bool;
+      auto read(GenericPacketContainer<>& buffer, size_t buffer_length, size_t& index) -> bool;
+      auto write(GenericPacketContainer<>& buffer, size_t buffer_length, size_t& index, const GenericKey& public_key) -> bool;
+      auto verify(GenericPacketContainer<>& buffer, size_t buffer_length, size_t& index, const GenericKey& public_key) -> bool;
     };
 
-    INLINE auto Header::read(GenericPacketContainer& buffer, size_t buffer_length, const Type type) -> bool
+    INLINE auto Header::read(GenericPacketContainer<>& buffer, size_t buffer_length, size_t& index) -> bool
     {
-      assert(buffer != nullptr);
-
       if (buffer_length < ByteSize) {
         return false;
       }
 
-      core::packets::Type packet_type = static_cast<core::packets::Type>(legacy::read_uint8(&buffer));
+      Type packet_type = static_cast<Type>(encoding::ReadUint8(buffer, index));
 
-      uint64_t packet_sequence = encoding::packet_sequence = legacy::read_uint64(&buffer);
+      uint64_t packet_sequence = encoding::ReadUint64(buffer, index);
 
       if (direction == Direction::ServerToClient) {
         // high bit must be set
@@ -57,11 +57,11 @@ namespace core
           return false;
       }
 
-      *type = packet_type;
+      this->type = packet_type;
 
       if (
-       *type == core::packets::Type::SessionPing || *type == core::packets::Type::SessionPong ||
-       *type == core::packets::Type::RouteResponse || *type == core::packets::Type::ContinueResponse) {
+       this->type == Type::SessionPing || this->type == Type::SessionPong || this->type == Type::RouteResponse ||
+       this->type == Type::ContinueResponse) {
         // second highest bit must be set
         assert(packet_sequence & (1ULL << 62));
       } else {
@@ -69,38 +69,31 @@ namespace core
         assert((packet_sequence & (1ULL << 62)) == 0);
       }
 
-      *sequence = packet_sequence;
-      *session_id = legacy::read_uint64(&buffer);
-      *session_version = legacy::read_uint8(&buffer);
+      this->sequence = packet_sequence;
+      this->session_id = encoding::ReadUint64(buffer, index);
+      this->session_version = encoding::ReadUint8(buffer, index);
 
       return true;
     }
 
     INLINE auto Header::write(
-     GenericPacketContainer& buffer, size_t buffer_length, const Type type, const GenericKey& public_key) -> bool
+     GenericPacketContainer<>& buffer, size_t buffer_length, size_t& index, const GenericKey& private_key) -> bool
     {
-      assert(private_key);
-      assert(buffer);
-
       if (buffer_length < ByteSize) {
         return false;
       }
 
-      uint8_t* start = buffer;
-
-      (void)start;
-
-      if (direction == RELAY_DIRECTION_SERVER_TO_CLIENT) {
+      if (this->direction == Direction::ServerToClient) {
         // high bit must be set
-        assert(sequence & (1ULL << 63));
+        assert(this->sequence & (1ULL << 63));
       } else {
         // high bit must be clear
-        assert((sequence & (1ULL << 63)) == 0);
+        assert((this->sequence & (1ULL << 63)) == 0);
       }
 
       if (
-       type == core::packets::Type::SessionPing || type == core::packets::Type::SessionPong ||
-       type == core::packets::Type::RouteResponse || type == core::packets::Type::ContinueResponse) {
+       this->type == Type::SessionPing || this->type == Type::SessionPong || this->type == Type::RouteResponse ||
+       this->type == Type::ContinueResponse) {
         // second highest bit must be set
         assert(sequence & (1ULL << 62));
       } else {
@@ -108,68 +101,91 @@ namespace core
         assert((sequence & (1ULL << 62)) == 0);
       }
 
-      legacy::write_uint8(&buffer, static_cast<uint8_t>(type));
+      if (!encoding::WriteUint8(buffer, index, static_cast<uint8_t>(this->type))) {
+        return false;
+      }
 
-      legacy::write_uint64(&buffer, sequence);
+      if (!encoding::WriteUint64(buffer, index, this->sequence)) {
+        return false;
+      }
 
-      uint8_t* additional = buffer;
-      const int additional_length = 8 + 2;
+      uint8_t* additional = &buffer[index];
+      const int additional_length = 8 + 1 + 1;
 
-      legacy::write_uint64(&buffer, session_id);
-      legacy::write_uint8(&buffer, session_version);
-      legacy::write_uint8(&buffer, 0);  // todo: remove this once we fully switch to new relay
+      if (!encoding::WriteUint64(buffer, index, this->session_id)) {
+        return false;
+      }
 
-      uint8_t nonce[12];
+      if (!encoding::WriteUint8(buffer, index, this->session_version)) {
+        return false;
+      }
+
+      // todo: remove this once we fully switch to new relay
+      // todo: still applicable?
+      if (!encoding::WriteUint8(buffer, index, 0)) {
+        return false;
+      }
+
+      std::array<uint8_t, 12> nonce;
       {
-        uint8_t* p = nonce;
-        legacy::write_uint32(&p, 0);
-        legacy::write_uint64(&p, sequence);
+        size_t index = 0;
+        if (!encoding::WriteUint32(nonce, index, 0)) {
+          return false;
+        }
+
+        if (!encoding::WriteUint64(nonce, index, this->sequence)) {
+          return false;
+        }
       }
 
       unsigned long long encrypted_length = 0;
 
       int result = crypto_aead_chacha20poly1305_ietf_encrypt(
-       buffer, &encrypted_length, buffer, 0, additional, (unsigned long long)additional_length, NULL, nonce, private_key);
+       &buffer[index],
+       &encrypted_length,
+       &buffer[index],
+       0,
+       additional,
+       (unsigned long long)additional_length,
+       NULL,
+       nonce.data(),
+       private_key.data());
 
-      if (result != 0)
-        return RELAY_ERROR;
-
-      buffer += encrypted_length;
-
-      assert(int(buffer - start) == RELAY_HEADER_BYTES);
-      return true;
-    }
-
-    INLINE auto Header::verify(GenericPacketContainer& buffer, size_t buffer_length, const GenericKey& public_key) -> bool
-    {
-      assert(private_key);
-      assert(buffer);
-
-      if (buffer_length < RELAY_HEADER_BYTES) {
+      if (result != 0) {
         return false;
       }
 
-      const uint8_t* p = buffer;
+      index += encrypted_length;
 
-      core::packets::Type packet_type = static_cast<core::packets::Type>(legacy::read_uint8(&p));
+      return true;
+    }
 
-      uint64_t packet_sequence = legacy::read_uint64(&p);
+    INLINE auto Header::verify(
+     GenericPacketContainer<>& buffer, size_t buffer_length, size_t& index, const GenericKey& private_key) -> bool
+    {
+      if (buffer_length < ByteSize) {
+        return false;
+      }
 
-      if (direction == RELAY_DIRECTION_SERVER_TO_CLIENT) {
+      Type packet_type = static_cast<Type>(encoding::ReadUint8(buffer, index));
+
+      uint64_t packet_sequence = encoding::ReadUint64(buffer, index);
+
+      if (this->direction == Direction::ServerToClient) {
         // high bit must be set
-        if (!(packet_sequence & (1ULL << 63))) {
+        if ((packet_sequence & (1ULL << 63)) == 0) {
           return false;
         }
       } else {
         // high bit must be clear
-        if (packet_sequence & (1ULL << 63)) {
+        if (packet_sequence & (1ULL << 63) != 0) {
           return false;
         }
       }
 
       if (
-       packet_type == core::packets::Type::SessionPing || packet_type == core::packets::Type::SessionPong ||
-       packet_type == core::packets::Type::RouteResponse || packet_type == core::packets::Type::ContinueResponse) {
+       packet_type == Type::SessionPing || packet_type == Type::SessionPong || packet_type == Type::RouteResponse ||
+       packet_type == Type::ContinueResponse) {
         // second highest bit must be set
         assert(packet_sequence & (1ULL << 62));
       } else {
@@ -177,41 +193,35 @@ namespace core
         assert((packet_sequence & (1ULL << 62)) == 0);
       }
 
-      const uint8_t* additional = p;
+      const uint8_t* additional = &buffer[index];
+      const int additional_length = 8 + 1 + 1;
 
-      const int additional_length = 8 + 2;
+      index += 12;
 
-      uint64_t packet_session_id = legacy::read_uint64(&p);
-      uint8_t packet_session_version = legacy::read_uint8(&p);
-      uint8_t packet_session_flags = legacy::read_uint8(&p);  // todo: remove once we fully switch over to new relay
-
-      (void)packet_session_id;
-      (void)packet_session_version;
-      (void)packet_session_flags;
-
-      uint8_t nonce[12];
+      std::array<uint8_t, 12> nonce;
       {
-        uint8_t* q = nonce;
-        legacy::write_uint32(&q, 0);
-        legacy::write_uint64(&q, packet_sequence);
+        size_t index = 0;
+        encoding::WriteUint32(nonce, index, 0);
+        encoding::WriteUint64(nonce, index, packet_sequence);
       }
 
       unsigned long long decrypted_length;
 
       int result = crypto_aead_chacha20poly1305_ietf_decrypt(
-       buffer + 19,
+       &buffer[index + 19],
        &decrypted_length,
        nullptr,
-       buffer + 19,
+       &buffer[index + 19],
        (unsigned long long)crypto_aead_chacha20poly1305_IETF_ABYTES,
        additional,
        (unsigned long long)additional_length,
-       nonce,
-       private_key);
+       nonce.data(),
+       private_key.data());
 
       if (result != 0) {
         return false;
       }
+
       return true;
     }
 
