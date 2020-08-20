@@ -9,14 +9,12 @@ import (
 )
 
 type Route struct {
-	RelayIDs         []uint64      `json:"relayIDs"`
-	RelaySessions    []uint32      `json:"relaySessions"`
-	RelayMaxSessions []uint32      `json:"relayMaxSessions"`
-	RelayNames       []string      `json:"relayNames"`
-	RelayAddrs       []net.UDPAddr `json:"relayAddrs"`
-	RelayPublicKeys  [][]byte      `json:"relayPublicKeys"`
-	RelaySellers     []Seller      `json:"relaySellers"`
-	Stats            Stats         `json:"stats"`
+	RelayIDs        []uint64      `json:"relayIDs"`
+	RelayNames      []string      `json:"relayNames"`
+	RelayAddrs      []net.UDPAddr `json:"relayAddrs"`
+	RelayPublicKeys [][]byte      `json:"relayPublicKeys"`
+	RelaySellers    []Seller      `json:"relaySellers"`
+	Stats           Stats         `json:"stats"`
 }
 
 func (r Route) String() string {

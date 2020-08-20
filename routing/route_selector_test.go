@@ -102,51 +102,6 @@ func TestSelectContainsRouteHash(t *testing.T) {
 	assert.Equal(t, uint64(3), selectedRoutes[0].RelayIDs[2])
 }
 
-func TestSelectUnencumberedRoutes(t *testing.T) {
-	routes := []routing.Route{
-		{
-			RelayIDs: []uint64{
-				1, 2, 3,
-			},
-			RelaySessions: []uint32{
-				150, 450, 300,
-			},
-			RelayMaxSessions: []uint32{
-				3000, 3000, 3000,
-			},
-			Stats: routing.Stats{
-				RTT:        5,
-				Jitter:     0,
-				PacketLoss: 0,
-			},
-		},
-		{
-			RelayIDs: []uint64{
-				4, 2, 5, 3,
-			},
-			RelaySessions: []uint32{
-				3000,
-				450,
-				4500,
-				300,
-			},
-			RelayMaxSessions: []uint32{
-				3000, 3000, 6000, 3000,
-			},
-			Stats: routing.Stats{
-				RTT:        4.7,
-				Jitter:     0,
-				PacketLoss: 0,
-			},
-		},
-	}
-
-	selectedRoutes := routing.SelectUnencumberedRoutes(0.8)(routes)
-
-	assert.Equal(t, 1, len(selectedRoutes))
-	assert.Equal(t, routes[0], selectedRoutes[0])
-}
-
 func TestSelectRoutesByRandomDestRelay(t *testing.T) {
 	routes := []routing.Route{
 		{

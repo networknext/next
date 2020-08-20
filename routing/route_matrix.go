@@ -128,49 +128,95 @@ func (m *RouteMatrix) GetDatacenterRelayIDs(d Datacenter) []uint64 {
 }
 
 // GetRoutes returns all routes between the set of near relays and destination relays.
-func (m *RouteMatrix) GetRoutes(near []NearRelayData, destIDs []uint64) ([]Route, error) {
-	type RelayPairResult struct {
-		nearCost   int  // The RTT cost between the client and the from relay
-		entryIndex int  // The index in the route matrix entry
-		reverse    bool // Whether or not to reverse the relays to stay on the same side of the diagonal in the triangular matrix
-	}
-
-	relayPairLength := len(near) * len(destIDs)
-	relayPairResults := make([]RelayPairResult, relayPairLength)
-
-	// Do a "first pass" to determine the size of the Route buffer
-	var routeTotal int
+func (m *RouteMatrix) GetRoutes(near []NearRelayData, destIDs []uint64, rttEpsilon int32) ([]Route, error) {
+	// First, get the best route RTT so that we can build a slice of acceptable routes
+	// that are with rttEpsilon of the best RTT
+	bestRouteRTT := int32(math.MaxInt32)
+	var maxRoutesSize int32
 	for i, nearRelay := range near {
 		for j, destRelayID := range destIDs {
-			entryIndex, reverse := m.GetEntryIndex(nearRelay.ID, destRelayID)
-
-			// Add a bad pair result so that the second pass will skip over it.
-			// This way we don't have to append only good results to a new list, which is more expensive.
-			if entryIndex < 0 || entryIndex >= len(m.Entries) {
-				relayPairResults[i+j*len(near)] = RelayPairResult{0, -1, false}
+			if nearRelay.ID == destRelayID || i > j {
 				continue
 			}
 
-			relayPairResults[i+j*len(near)] = RelayPairResult{int(math.Ceil(nearRelay.ClientStats.RTT)), entryIndex, reverse}
-			routeTotal += int(m.Entries[entryIndex].NumRoutes)
+			entryIndex, _ := m.GetEntryIndex(nearRelay.ID, destRelayID)
+			if entryIndex == -1 {
+				continue
+			}
+
+			entry := &m.Entries[entryIndex]
+
+			// During this first pass, we can calculate the maximum route size and
+			// use this value to preallocate the routes slice
+			maxRoutesSize += entry.NumRoutes
+
+			// The routes in each route matrix entry are sorted by ascending RTT,
+			// so we only need to check the first one to find the best RTT
+			if entry.NumRoutes > 0 {
+				routeRTT := entry.RouteRTT[0]
+				if routeRTT < bestRouteRTT {
+					bestRouteRTT = routeRTT
+				}
+			}
 		}
 	}
 
-	// Now that we have the route total, make the Route buffer and fill it
-	var routeIndex int
-	routes := make([]Route, routeTotal)
-	for i := 0; i < relayPairLength; i++ {
-		if relayPairResults[i].entryIndex >= 0 {
-			m.FillRoutes(routes, &routeIndex, relayPairResults[i].nearCost, relayPairResults[i].entryIndex, relayPairResults[i].reverse)
+	// Now that we have the best RTT, we can build the slice of best routes
+	routes := make([]Route, maxRoutesSize)
+	var routeSize int
+
+	for i, nearRelay := range near {
+		for j, destRelayID := range destIDs {
+			if nearRelay.ID == destRelayID || i > j {
+				continue
+			}
+
+			entryIndex, reverse := m.GetEntryIndex(nearRelay.ID, destRelayID)
+			if entryIndex == -1 {
+				continue
+			}
+
+			entry := &m.Entries[entryIndex]
+
+			for routeIndex := 0; routeIndex < int(entry.NumRoutes); routeIndex++ {
+				routeRTT := entry.RouteRTT[routeIndex]
+
+				// Since the routes in the route matrix entry are sorted by ascending RTT,
+				// if we find a route that's not acceptable, we can early out
+				if routeRTT > bestRouteRTT+rttEpsilon {
+					break
+				}
+
+				// Now that we know this route is acceptable, we can get its relays and build the route struct
+				numRelays := int(entry.RouteNumRelays[routeIndex])
+				routeRelayIDs := make([]uint64, numRelays)
+				for relayIndex := 0; relayIndex < numRelays; relayIndex++ {
+					idx := entry.RouteRelays[routeIndex][relayIndex]
+
+					if !reverse {
+						routeRelayIDs[relayIndex] = m.RelayIDs[idx]
+					} else {
+						routeRelayIDs[numRelays-1-relayIndex] = m.RelayIDs[idx]
+					}
+				}
+
+				routes[routeSize] = Route{
+					RelayIDs: routeRelayIDs,
+					Stats: Stats{
+						RTT: math.Ceil(nearRelay.ClientStats.RTT) + float64(routeRTT),
+					},
+				}
+				routeSize++
+			}
 		}
 	}
 
 	// No routes found
-	if len(routes) == 0 {
+	if routeSize == 0 {
 		return nil, errors.New("no routes in route matrix")
 	}
 
-	return routes, nil
+	return routes[:routeSize], nil
 }
 
 // Returns the index in the route matrix representing the route between the near Relay and dest Relay and whether or not to reverse them
@@ -186,54 +232,6 @@ func (m *RouteMatrix) GetEntryIndex(nearRelayID uint64, destRelayID uint64) (int
 	}
 
 	return TriMatrixIndex(nearidx, destidx), destidx > nearidx
-}
-
-// FillRoutes is just the internal function to populate the given route buffer.
-// It takes the entryIndex and reverse data and fills the given route buffer, incrementing the routeIndex after
-// each route it adds.
-func (m *RouteMatrix) FillRoutes(routes []Route, routeIndex *int, fromCost int, entryIndex int, reverse bool) error {
-	entry := m.Entries[entryIndex]
-
-	for i := 0; i < int(entry.NumRoutes); i++ {
-		numRelays := int(entry.RouteNumRelays[i])
-
-		routeRelayIDs := make([]uint64, numRelays)
-		routeRelaySessions := make([]uint32, numRelays)
-		routeRelayMaxSessions := make([]uint32, numRelays)
-
-		for j := 0; j < numRelays; j++ {
-			relayIndex := entry.RouteRelays[i][j]
-
-			if !reverse {
-				routeRelayIDs[j] = m.RelayIDs[relayIndex]
-				routeRelaySessions[j] = m.RelaySessionCounts[relayIndex]
-				routeRelayMaxSessions[j] = m.RelayMaxSessionCounts[relayIndex]
-			} else {
-				routeRelayIDs[numRelays-1-j] = m.RelayIDs[relayIndex]
-				routeRelaySessions[numRelays-1-j] = m.RelaySessionCounts[relayIndex]
-				routeRelayMaxSessions[numRelays-1-j] = m.RelayMaxSessionCounts[relayIndex]
-			}
-		}
-
-		route := Route{
-			RelayIDs:         routeRelayIDs,
-			RelaySessions:    routeRelaySessions,
-			RelayMaxSessions: routeRelayMaxSessions,
-
-			Stats: Stats{
-				RTT: float64(fromCost + int(m.Entries[entryIndex].RouteRTT[i])),
-			},
-		}
-
-		if *routeIndex >= len(routes) {
-			continue
-		}
-
-		routes[*routeIndex] = route
-		*routeIndex++
-	}
-
-	return nil
 }
 
 // implements the io.ReadFrom interface

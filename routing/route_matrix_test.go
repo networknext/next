@@ -1221,7 +1221,7 @@ func TestRouteMatrix(t *testing.T) {
 			near := []routing.NearRelayData{}
 			dest := []uint64{}
 
-			actual, err := routeMatrixCopy.GetRoutes(near, dest)
+			actual, err := routeMatrixCopy.GetRoutes(near, dest, 0)
 			assert.EqualError(t, err, "no routes in route matrix")
 			assert.Equal(t, 0, len(actual))
 		})
@@ -1230,7 +1230,7 @@ func TestRouteMatrix(t *testing.T) {
 			near := []routing.NearRelayData{{ID: 1}}
 			dest := []uint64{2}
 
-			actual, err := routeMatrixCopy.GetRoutes(near, dest)
+			actual, err := routeMatrixCopy.GetRoutes(near, dest, 0)
 			assert.EqualError(t, err, "no routes in route matrix")
 			assert.Equal(t, 0, len(actual))
 		})
@@ -1239,7 +1239,7 @@ func TestRouteMatrix(t *testing.T) {
 			near := []routing.NearRelayData{{ID: 1}}
 			dest := []uint64{1500948990}
 
-			actual, err := routeMatrixCopy.GetRoutes(near, dest)
+			actual, err := routeMatrixCopy.GetRoutes(near, dest, 0)
 			assert.EqualError(t, err, "no routes in route matrix")
 			assert.Equal(t, 0, len(actual))
 		})
@@ -1287,10 +1287,12 @@ func TestRouteMatrix(t *testing.T) {
 				},
 			}
 
-			actual, err := routeMatrixCopy.GetRoutes(near, dest)
+			actual, err := routeMatrixCopy.GetRoutes(near, dest, 500)
 			assert.NoError(t, err)
 			assert.Equal(t, len(expected), len(actual))
 
+			fmt.Println(expected)
+			fmt.Println(actual)
 			for routeidx, route := range expected {
 				assert.Equal(t, len(expected[routeidx].RelayIDs), len(route.RelayIDs))
 
@@ -1477,7 +1479,7 @@ func BenchmarkGetRoutes(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		routeMatrix.GetRoutes(from, to)
+		routeMatrix.GetRoutes(from, to, 500)
 	}
 }
 

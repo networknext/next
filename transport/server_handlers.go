@@ -578,7 +578,7 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 
 type RouteProvider interface {
 	GetDatacenterRelayIDs(datacenter routing.Datacenter) []uint64
-	GetRoutes(nearIDs []routing.NearRelayData, destIDs []uint64) ([]routing.Route, error)
+	GetRoutes(nearIDs []routing.NearRelayData, destIDs []uint64, rttEpsilon int32) ([]routing.Route, error)
 	GetNearRelays(latitude float64, longitude float64, maxNearRelays int) ([]routing.NearRelayData, error)
 }
 
@@ -1104,7 +1104,7 @@ func GetNextRoute(routeMatrix RouteProvider, nearRelayIDs []routing.NearRelayDat
 		metrics.RouteSelectionDuration.Set(float64(time.Since(routeSelectionStartTime).Milliseconds()))
 	}()
 
-	routes, err := routeMatrix.GetRoutes(nearRelayIDs, datacenterRelayIDs)
+	routes, err := routeMatrix.GetRoutes(nearRelayIDs, datacenterRelayIDs, int32(rttEpsilon))
 	if err != nil {
 		metrics.ErrorMetrics.RouteFailure.Add(1)
 		return nil
@@ -1120,7 +1120,6 @@ func GetNextRoute(routeMatrix RouteProvider, nearRelayIDs []routing.NearRelayDat
 	//	5. If we still don't only have 1 route, choose a random one.
 
 	selectorFuncs := []routing.SelectorFunc{
-		routing.SelectUnencumberedRoutes(0.8),
 		routing.SelectAcceptableRoutesFromBestRTT(rttEpsilon),
 		routing.SelectContainsRouteHash(prevRouteHash),
 		routing.SelectRoutesByRandomDestRelay(rand.NewSource(rand.Int63())),
