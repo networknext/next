@@ -25,7 +25,9 @@ export default class APIService {
     return new Promise((resolve: any, reject: any) => {
       const options = params || {}
       const id = 'id'
-      fetch(`${process.env.VUE_APP_API_URL}/rpc`, {
+      const jsonrpc = 'http://172.24.130.4:20000'
+      // fetch(`${process.env.VUE_APP_API_URL}/rpc`, {
+      fetch(`${jsonrpc}/rpc`, {
         method: 'POST',
         headers: this.headers,
         body: JSON.stringify({

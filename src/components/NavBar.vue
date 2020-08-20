@@ -46,7 +46,7 @@
     </ul>
     <ul class="navbar-nav px-3" v-if="$store.getters.isAnonymous">
       <li class="nav-item text-nowrap">
-        <a data-test="loginButton" class="login btn-sm btn-primary" href="#" @click="authService.logIn()">
+        <a data-test="loginButton" class="login btn-sm btn-primary" href="#" @click="login()">
           Log in
         </a>
       </li>
@@ -60,7 +60,7 @@
     </ul>
     <ul class="navbar-nav px-3" v-if="!$store.getters.isAnonymous">
       <li class="nav-item text-nowrap">
-        <a class="logout btn-sm btn-primary" href="#" @click="authService.logOut()">
+        <a class="logout btn-sm btn-primary" href="#" @click="logout()">
           Logout
         </a>
       </li>
@@ -90,11 +90,22 @@ export default class NavBar extends Vue {
   constructor () {
     super()
     this.apiService = Vue.prototype.$apiService
-    this.authService = Vue.prototype.$authService
+    // this.authService = Vue.prototype.$authService
     this.portalVersion = ''
+    // ToDo: move to lifecycle method
     this.fetchPortalVersion()
   }
 
+  private login (): void {
+    Vue.login()
+  }
+
+  private logout (): void {
+    // Vue.prototype.$auth.logout()
+    Vue.logout()
+  }
+
+  // ToDo: move to lifecycle method
   private fetchPortalVersion (): void {
     const isDev = window.location.hostname === 'portal-dev.networknext.com'
     if (this.$store.getters.isAdmin || isDev) {
