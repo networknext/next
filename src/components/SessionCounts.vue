@@ -1,13 +1,31 @@
 <template>
-  <h1 class="count-header" v-if="showCount" data-test="currentPage">
-    {{ $store.getters.currentPage[0].toUpperCase() + $store.getters.currentPage.slice(1) }}
-    <span class="badge badge-dark" data-test="totalSessions">
-      {{ this.totalSessions }} Total Sessions
-    </span>&nbsp;
-    <span class="badge badge-success" data-test="nnSessions">
-      {{ this.totalSessionsReply.onNN }} on Network Next
-    </span>
-  </h1>
+  <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="count-header" v-if="showCount" data-test="currentPage">
+      {{ $store.getters.currentPage[0].toUpperCase() + $store.getters.currentPage.slice(1) }}&nbsp;
+      <span class="badge badge-dark" data-test="totalSessions">
+        {{ this.totalSessions }} Total Sessions
+      </span>&nbsp;
+      <span class="badge badge-success" data-test="nnSessions">
+        {{ this.totalSessionsReply.onNN }} on Network Next
+      </span>
+    </h1>
+    <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1">
+      <div class="mr-auto"></div>
+      <div class="px-2" v-if="$store.getters.isBuyer || $store.getters.isAdmin">
+        <select class="form-control" v-on:change="updateFilter($event.target.value)">
+          <option :value="getBuyerId()" v-if="!$store.getters.isAdmin && $store.getters.isBuyer" :selected="getBuyerId() == $store.getters.currentFilter">
+            {{ getBuyerName() }}
+          </option>
+          <option :value="''" :selected="'' == $store.getters.currentFilter">
+            All
+          </option>
+          <option :value="buyer.id" v-for="buyer in allBuyers" v-bind:key="buyer.id" :selected="buyer.id == $store.getters.currentFilter">
+            {{ buyer.name }}
+          </option>
+        </select>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script lang="ts">
@@ -41,6 +59,12 @@ export default class SessionCounts extends Vue {
     return this.totalSessionsReply.direct + this.totalSessionsReply.onNN
   }
 
+  get allBuyers () {
+    return this.$store.getters.allBuyers.filter((buyer: any) => {
+      return buyer.is_live || this.$store.getters.isAdmin
+    })
+  }
+
   constructor () {
     super()
     this.apiService = Vue.prototype.$apiService
@@ -53,10 +77,7 @@ export default class SessionCounts extends Vue {
   }
 
   private mounted () {
-    this.fetchSessionCounts()
-    this.countLoop = setInterval(() => {
-      this.fetchSessionCounts()
-    }, 1000)
+    this.restartLoop()
   }
 
   private beforeDestroy () {
@@ -64,7 +85,7 @@ export default class SessionCounts extends Vue {
   }
 
   private fetchSessionCounts () {
-    this.apiService.fetchTotalSessionCounts({})
+    this.apiService.fetchTotalSessionCounts({ buyer_id: this.$store.getters.currentFilter.buyerID || '' })
       .then((response: any) => {
         this.totalSessionsReply.direct = response.direct
         this.totalSessionsReply.onNN = response.next
@@ -75,6 +96,40 @@ export default class SessionCounts extends Vue {
       .catch((error: Error) => {
         console.log(error)
       })
+  }
+
+  private getBuyerId () {
+    const allBuyers = this.$store.getters.allBuyers
+    let i = 0
+    for (i; i < allBuyers.length; i++) {
+      if (allBuyers[i].id === this.$store.getters.userProfile.buyerID) {
+        return allBuyers[i].id
+      }
+    }
+    return 'Private'
+  }
+
+  private getBuyerName () {
+    const allBuyers = this.$store.getters.allBuyers
+    let i = 0
+    for (i; i < allBuyers.length; i++) {
+      if (allBuyers[i].id === this.$store.getters.userProfile.buyerID) {
+        return allBuyers[i].name
+      }
+    }
+    return 'Private'
+  }
+
+  private updateFilter (buyerID: string) {
+    this.$store.commit('UPDATE_CURRENT_FILTER', { buyerID: buyerID })
+    this.restartLoop()
+  }
+
+  private restartLoop () {
+    this.fetchSessionCounts()
+    this.countLoop = setInterval(() => {
+      this.fetchSessionCounts()
+    }, 10000)
   }
 }
 </script>
