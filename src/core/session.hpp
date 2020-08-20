@@ -1,11 +1,11 @@
-#ifndef CORE_SESSION_HPP
-#define CORE_SESSION_HPP
+#pragma once
 
 #include "expireable.hpp"
 #include "net/address.hpp"
 #include "replay_protection.hpp"
-#include "util/logger.hpp"
 #include "router_info.hpp"
+#include "util/logger.hpp"
+#include "util/macros.hpp"
 
 namespace core
 {
@@ -31,13 +31,12 @@ namespace core
     legacy::relay_replay_protection_t ClientToServerProtection;
   };
 
-  inline Session::Session(const RouterInfo& routerInfo): Expireable(routerInfo) {}
-
   using SessionPtr = std::shared_ptr<Session>;
 
-  inline std::ostream& operator<<(std::ostream& os, const Session& session)
+  INLINE Session::Session(const RouterInfo& routerInfo): Expireable(routerInfo) {}
+
+  INLINE std::ostream& operator<<(std::ostream& os, const Session& session)
   {
     return os << std::hex << session.SessionID << '.' << std::dec << static_cast<unsigned int>(session.SessionVersion);
   }
 }  // namespace core
-#endif

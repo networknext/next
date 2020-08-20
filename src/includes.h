@@ -1,5 +1,4 @@
 #include "config.hpp"
-#include "sysinfo.hpp"
 #include <algorithm>
 #include <alloca.h>
 #include <arpa/inet.h>

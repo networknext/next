@@ -20,6 +20,7 @@
 #include "testing/test.hpp"
 #include "util/env.hpp"
 #include "util/result.hpp"
+#include "core/packets/header.hpp"
 
 using namespace std::chrono_literals;
 
@@ -157,9 +158,8 @@ int main(int argc, const char* argv[])
   int socketRecvBuffSize = get_buffer_size(env.recv_buffer_size);
   int socketSendBuffSize = get_buffer_size(env.send_buffer_size);
 
-  if (relay::relay_initialize() != RELAY_OK) {
-    LOG(ERROR, "failed to initialize relay");
-    return 1;
+  if (sodium_init() == -1) {
+    LOG(FATAL, "failed to initialize sodium");
   }
 
   LOG(DEBUG, "initializing relay");

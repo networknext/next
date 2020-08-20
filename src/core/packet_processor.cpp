@@ -19,7 +19,6 @@
 #include "packet_processor.hpp"
 #include "packets/types.hpp"
 #include "relay/relay.hpp"
-#include "relay/relay_platform.hpp"
 
 namespace core
 {

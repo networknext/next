@@ -1,8 +1,6 @@
 #ifndef ENCODING_WRITE_HPP
 #define ENCODING_WRITE_HPP
 
-#include "net/net.hpp"
-
 #include "net/address.hpp"
 
 namespace encoding
