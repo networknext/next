@@ -23,7 +23,7 @@ func TestEncryptNextRouteToken(t *testing.T) {
 				Addr:      net.UDPAddr{IP: net.ParseIP("10.0.0.1"), Port: 13},
 				PublicKey: nodepublickey[:],
 			},
-			Relays: []routing.Relay{
+			Relays: []routing.RelayToken{
 				{
 					ID:        1,
 					Addr:      net.UDPAddr{IP: net.ParseIP("192.168.0.1"), Port: 13},
@@ -40,7 +40,7 @@ func TestEncryptNextRouteToken(t *testing.T) {
 				Addr:      net.UDPAddr{IP: net.ParseIP("10.0.0.1"), Port: 13},
 				PublicKey: nodepublickey[:],
 			},
-			Relays: []routing.Relay{
+			Relays: []routing.RelayToken{
 				{
 					ID:        1,
 					Addr:      net.UDPAddr{IP: net.ParseIP("192.168.0.1"), Port: 13},
@@ -61,7 +61,7 @@ func TestEncryptNextRouteToken(t *testing.T) {
 				Addr:      net.UDPAddr{IP: net.ParseIP("10.0.0.1"), Port: 13},
 				PublicKey: nodepublickey[:],
 			},
-			Relays: []routing.Relay{
+			Relays: []routing.RelayToken{
 				{
 					ID:   1,
 					Addr: net.UDPAddr{IP: net.ParseIP("192.168.0.1"), Port: 13},
@@ -112,7 +112,7 @@ func TestEncryptNextRouteToken(t *testing.T) {
 				Addr:      net.UDPAddr{IP: net.ParseIP("10.0.0.1"), Port: 13},
 				PublicKey: nodepublickey[:],
 			},
-			Relays: []routing.Relay{
+			Relays: []routing.RelayToken{
 				{
 					ID:        1,
 					Addr:      net.UDPAddr{IP: net.ParseIP("192.168.0.1"), Port: 13},
@@ -156,7 +156,7 @@ func TestEncryptContinueRouteDecision(t *testing.T) {
 				Addr:      net.UDPAddr{IP: net.ParseIP("10.0.0.1"), Port: 13},
 				PublicKey: nodepublickey[:],
 			},
-			Relays: []routing.Relay{
+			Relays: []routing.RelayToken{
 				{
 					ID:        1,
 					Addr:      net.UDPAddr{IP: net.ParseIP("192.168.0.1"), Port: 13},
@@ -199,7 +199,7 @@ func BenchmarkEncryptNextRouteToken(b *testing.B) {
 				Addr:      net.UDPAddr{IP: net.ParseIP("10.0.0.1"), Port: 13},
 				PublicKey: make([]byte, crypto.KeySize),
 			},
-			Relays: []routing.Relay{
+			Relays: []routing.RelayToken{
 				{
 					ID:   1,
 					Addr: net.UDPAddr{IP: net.ParseIP("192.168.0.1"), Port: 13},

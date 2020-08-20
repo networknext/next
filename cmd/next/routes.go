@@ -27,8 +27,8 @@ func routes(rpcClient jsonrpc.RPCClient, env Environment, srcrelays []string, de
 
 	for _, route := range reply.Routes {
 		fmt.Printf("RTT(%v) ", route.Stats.RTT)
-		for _, relay := range route.Relays {
-			fmt.Print(relay.Name, " ")
+		for _, relayName := range route.RelayNames {
+			fmt.Print(relayName, " ")
 		}
 		fmt.Println()
 	}
