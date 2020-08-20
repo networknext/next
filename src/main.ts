@@ -56,6 +56,7 @@ Vue.use(AuthPlugin, {
   domain: domain,
   clientId: clientID,
   onRedirectCallback: appState => {
+    console.log('onRedirectCallback()')
     router.push(
       appState && appState.targetUrl
         ? appState.targetUrl
@@ -69,71 +70,3 @@ new Vue({
   store,
   render: h => h(App)
 }).$mount('#app')
-
-// authService.lockClient.checkSession({
-//   scope: 'openid profile email user_metadata app_metadata'
-// }, (error: auth0.Auth0Error, authResult: AuthResult | undefined) => {
-//   if (!error && authResult) {
-//     authService.lockClient.getUserInfo(authResult.accessToken, (error: auth0.Auth0Error, profile: NNAuth0Profile) => {
-//       if (!error) {
-//         const roles = profile['https://networknext.com/userRoles'] || { roles: [] }
-//         const email = profile.email || ''
-//         const domain = email.split('@')[1]
-//         const token = authResult.idToken
-//         const userProfile: UserProfile = {
-//           auth0ID: profile.sub,
-//           company: '',
-//           email: profile.email || '',
-//           idToken: token,
-//           name: profile.name,
-//           roles: roles.roles,
-//           verified: profile.email_verified || false,
-//           routeShader: null,
-//           domain: domain,
-//           pubKey: '',
-//           buyerID: ''
-//         }
-//         const promises = [
-//           apiService.fetchUserAccount({ user_id: userProfile.auth0ID }, token),
-//           apiService.fetchGameConfiguration({ domain: domain }, token),
-//           apiService.fetchAllBuyers(token)
-//         ]
-//         Promise.all(promises)
-//           .then((responses: any) => {
-//             userProfile.buyerID = responses[0].account.buyer_id
-//             userProfile.company = responses[1].game_config.company
-//             userProfile.pubKey = responses[1].game_config.public_key
-//             userProfile.routeShader = responses[1].customer_route_shader
-//             const allBuyers = responses[2].buyers || []
-//             store.commit('UPDATE_USER_PROFILE', userProfile)
-//             store.commit('UPDATE_ALL_BUYERS', allBuyers)
-//             app = new Vue({
-//               router,
-//               store,
-//               render: (h: CreateElement) => h(App)
-//             }).$mount('#app')
-//             if (win.Cypress) {
-//               mountCypress(win, app)
-//             }
-//           })
-//           .catch((error: Error) => {
-//             console.log('Something went wrong fetching init data')
-//             console.log(error)
-//           })
-//       }
-//     })
-//   } else {
-//     // TODO: Come up with a way to handle errors better
-//     if (error.error !== 'login_required') {
-//       console.log(error)
-//     }
-//     app = new Vue({
-//       router,
-//       store,
-//       render: (h: CreateElement) => h(App)
-//     }).$mount('#app')
-//     if (win.Cypress) {
-//       mountCypress(win, app)
-//     }
-//   }
-// })
