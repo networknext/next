@@ -1,11 +1,12 @@
 #pragma once
 
+#include "core/packet.hpp"
 #include "crypto/keychain.hpp"
-#include "types.hpp"
-#include "util/macros.hpp"
 #include "encoding/read.hpp"
 #include "encoding/write.hpp"
-#include "core/packet.hpp"
+#include "types.hpp"
+#include "util/logger.hpp"
+#include "util/macros.hpp"
 
 using core::GenericPacketContainer;
 using core::packets::Type;
@@ -32,14 +33,15 @@ namespace core
       uint64_t session_id;
       uint8_t session_version;
 
-      auto read(GenericPacketContainer<>& buffer, size_t buffer_length, size_t& index) -> bool;
-      auto write(GenericPacketContainer<>& buffer, size_t buffer_length, size_t& index, const GenericKey& public_key) -> bool;
-      auto verify(GenericPacketContainer<>& buffer, size_t buffer_length, size_t& index, const GenericKey& public_key) -> bool;
+      auto read(GenericPacketContainer<>& buffer, size_t& index) -> bool;
+      auto write(GenericPacketContainer<>& buffer, size_t& index, const GenericKey& public_key) -> bool;
+      auto verify(GenericPacketContainer<>& buffer, size_t& index, const GenericKey& public_key) -> bool;
     };
 
-    INLINE auto Header::read(GenericPacketContainer<>& buffer, size_t buffer_length, size_t& index) -> bool
+    INLINE auto Header::read(GenericPacketContainer<>& buffer, size_t& index) -> bool
     {
-      if (buffer_length < ByteSize) {
+      if (index + ByteSize > buffer.size()) {
+        LOG(ERROR, "could not read header, buffer is too small");
         return false;
       }
 
@@ -76,10 +78,10 @@ namespace core
       return true;
     }
 
-    INLINE auto Header::write(
-     GenericPacketContainer<>& buffer, size_t buffer_length, size_t& index, const GenericKey& private_key) -> bool
+    INLINE auto Header::write(GenericPacketContainer<>& buffer, size_t& index, const GenericKey& private_key) -> bool
     {
-      if (buffer_length < ByteSize) {
+      if (index + ByteSize > buffer.size()) {
+        LOG(ERROR, "could not write header, buffer is too small");
         return false;
       }
 
@@ -160,10 +162,10 @@ namespace core
       return true;
     }
 
-    INLINE auto Header::verify(
-     GenericPacketContainer<>& buffer, size_t buffer_length, size_t& index, const GenericKey& private_key) -> bool
+    INLINE auto Header::verify(GenericPacketContainer<>& buffer, size_t& index, const GenericKey& private_key) -> bool
     {
-      if (buffer_length < ByteSize) {
+      if (index + ByteSize > buffer.size()) {
+        LOG(ERROR, "could not verify header, buffer is too small");
         return false;
       }
 
@@ -225,7 +227,7 @@ namespace core
       return true;
     }
 
-    INLINE uint64_t relay_clean_sequence(uint64_t sequence)
+    INLINE auto relay_clean_sequence(uint64_t sequence) -> uint64_t
     {
       uint64_t mask = ~((1ULL << 63) | (1ULL << 62));
       return sequence & mask;
