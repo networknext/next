@@ -25,58 +25,6 @@ func SelectLogger(logger log.Logger) SelectorFunc {
 	}
 }
 
-// SelectBestRTT returns the best routes based on lowest RTT, or nil if no best route is found.
-// This will return multiple routes if the routes have the same RTT.
-func SelectBestRTT() SelectorFunc {
-	return func(routes []Route) []Route {
-		bestRoutes := make([]Route, 0)
-		for _, route := range routes {
-			if len(bestRoutes) == 0 || route.Stats.RTT < bestRoutes[0].Stats.RTT {
-				bestRoutes = make([]Route, 1)
-				bestRoutes[0] = route
-			} else if route.Stats.RTT == bestRoutes[0].Stats.RTT {
-				bestRoutes = append(bestRoutes, route)
-			}
-		}
-
-		// Returns nil if there are no acceptable routes
-		if len(bestRoutes) == 0 {
-			return nil
-		}
-
-		return bestRoutes
-	}
-}
-
-// SelectAcceptableRoutesFromBestRTT will return a slice of acceptable routes, which is defined as all routes whose RTT is within the given threshold of the best RTT.
-// Returns nil if there are no acceptable routes.
-func SelectAcceptableRoutesFromBestRTT(rttEpsilon float64) SelectorFunc {
-	// Use SelectBestRTT() to get the best RTT
-	bestRTTSelector := SelectBestRTT()
-	return func(routes []Route) []Route {
-		bestRoutes := bestRTTSelector(routes)
-		if bestRoutes == nil {
-			return nil // This selector needs the best RTT to work correctly
-		}
-
-		bestRTT := bestRoutes[0].Stats.RTT
-		acceptableRoutes := make([]Route, 0)
-		for _, route := range routes {
-			rttDifference := route.Stats.RTT - bestRTT
-			if rttDifference <= rttEpsilon {
-				acceptableRoutes = append(acceptableRoutes, route)
-			}
-		}
-
-		// Return nil if there are no acceptable routes
-		if len(acceptableRoutes) == 0 {
-			return nil
-		}
-
-		return acceptableRoutes
-	}
-}
-
 // SelectContainsRouteHash returns the route if its route hash matches a route in the current list of routes.
 // If the route has doesn't match any of the routes, then it will return the existing list of routes to not break route selection.
 func SelectContainsRouteHash(routeHash uint64) SelectorFunc {

@@ -1120,7 +1120,6 @@ func GetNextRoute(routeMatrix RouteProvider, nearRelayIDs []routing.NearRelayDat
 	//	5. If we still don't only have 1 route, choose a random one.
 
 	selectorFuncs := []routing.SelectorFunc{
-		routing.SelectAcceptableRoutesFromBestRTT(rttEpsilon),
 		routing.SelectContainsRouteHash(prevRouteHash),
 		routing.SelectRoutesByRandomDestRelay(rand.NewSource(rand.Int63())),
 		routing.SelectRandomRoute(rand.NewSource(rand.Int63())),
