@@ -19,10 +19,12 @@
 #include "relay/relay.hpp"
 #include "testing/test.hpp"
 #include "util/env.hpp"
-#include "util/result.hpp"
 #include "core/packets/header.hpp"
 
 using namespace std::chrono_literals;
+using util::Env;
+using crypto::Keychain;
+using crypto::KeySize;
 
 namespace base64 = encoding::base64;
 
@@ -31,7 +33,7 @@ volatile bool gShouldCleanShutdown = false;
 
 namespace
 {
-  INLINE void get_crypto_keys(const util::Env& env, crypto::Keychain& keychain)
+  INLINE void get_crypto_keys(const Env& env, Keychain& keychain)
   {
     // relay private key
     {
@@ -64,10 +66,10 @@ namespace
     }
   }
 
-  INLINE auto get_num_cpus(const util::Env& env) -> size_t
+  INLINE auto get_num_cpus(const std::string& env) -> size_t
   {
     size_t num_cpus;
-    if (env.max_cpus.empty()) {
+    if (env.empty()) {
       num_cpus = std::thread::hardware_concurrency();  // first core reserved for updates/outgoing pings
       if (num_cpus > 0) {
         LOG(INFO, "RELAY_MAX_CORES not set, autodetected number of processors available: ", num_cpus);
@@ -76,7 +78,7 @@ namespace
       }
     } else {
       try {
-        num_cpus = std::stoull(env.max_cpus);
+        num_cpus = std::stoull(env);
       } catch (std::exception& e) {
         LOG(FATAL, "could not parse RELAY_MAX_CORES to a number, value: ", env.max_cpus);
       }
@@ -139,7 +141,7 @@ int main(int argc, const char* argv[])
 
   LOG(INFO, "Network Next Relay");
 
-  util::Env env;
+  Env env;
 
   net::Address relay_addr;
   if (!relay_addr.parse(env.relay_address)) {
@@ -149,12 +151,12 @@ int main(int argc, const char* argv[])
 
   LOG(INFO, "relay address is '", relay_addr, "'\n");
 
-  crypto::Keychain keychain;
+  Keychain keychain;
   get_crypto_keys(env, keychain);
 
   LOG(INFO, "backend hostname is '", env.backend_hostname, "'\n");
 
-  unsigned int num_cpus = get_num_cpus(env, num_cpus);
+  unsigned int num_cpus = get_num_cpus(env.max_cpus);
   int socketRecvBuffSize = get_buffer_size(env.recv_buffer_size);
   int socketSendBuffSize = get_buffer_size(env.send_buffer_size);
 

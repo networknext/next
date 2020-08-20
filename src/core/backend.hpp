@@ -4,13 +4,12 @@
 #include "crypto/bytes.hpp"
 #include "crypto/keychain.hpp"
 #include "encoding/base64.hpp"
-#include "net/http.hpp"
 #include "relay_manager.hpp"
 #include "router_info.hpp"
 #include "session_map.hpp"
 #include "testing/test.hpp"
 #include "util/logger.hpp"
-#include "util/throughput_recorder.hpp"
+#include "core/throughput_recorder.hpp"
 
 // forward declare test names to allow private functions to be visible them
 namespace testing

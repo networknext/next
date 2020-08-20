@@ -5,6 +5,10 @@
 
 namespace net
 {
+  // TODO these don't consider the ethernet header or the other parts of the packet
+  static const uint8_t IPv4UDPHeaderSize = 28;
+  static const uint8_t IPv6UDPHeaderSize = 48;
+
   enum class AddressType : uint8_t
   {
     None,

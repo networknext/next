@@ -2,15 +2,22 @@
 #define CORE_PING_PROCESSOR_HPP
 
 #include "core/relay_manager.hpp"
+#include "core/throughput_recorder.hpp"
 #include "crypto/hash.hpp"
 #include "encoding/base64.hpp"
 #include "encoding/write.hpp"
+#include "os/socket.hpp"
 #include "packets/new_relay_ping_packet.hpp"
 #include "packets/old_relay_ping_packet.hpp"
 #include "packets/types.hpp"
-#include "util/throughput_recorder.hpp"
 
 using namespace std::chrono_literals;
+
+using core::packets::NewRelayPingPacket;
+using core::packets::Type;
+using os::Socket;
+using util::ThroughputRecorder;
+using net::AddressType;
 
 namespace core
 {
@@ -21,8 +28,8 @@ namespace core
   {
    public:
     PingProcessor(
-     const os::Socket& socket,
-     core::RelayManager<T>& relayManger,
+     const Socket& socket,
+     RelayManager<T>& relayManger,
      const volatile bool& shouldProcess,
      util::ThroughputRecorder& recorder);
     ~PingProcessor() = default;
@@ -30,17 +37,17 @@ namespace core
     void process(std::atomic<bool>& readyToSend);
 
    private:
-    const os::Socket& mSocket;
-    core::RelayManager<T>& mRelayManager;
+    const Socket& mSocket;
+    RelayManager<T>& mRelayManager;
     const volatile bool& mShouldProcess;
-    util::ThroughputRecorder& mRecorder;
+    ThroughputRecorder& mRecorder;
 
     void fillMsgHdrWithAddr(msghdr& hdr, const net::Address& addr);
   };
 
   template <typename T>
   PingProcessor<T>::PingProcessor(
-   const os::Socket& socket,
+   const Socket& socket,
    core::RelayManager<T>& relayManager,
    const volatile bool& shouldProcess,
    util::ThroughputRecorder& recorder)
@@ -51,7 +58,7 @@ namespace core
   void PingProcessor<Relay>::process(std::atomic<bool>& readyToSend)
   {
     readyToSend = true;
-    GenericPacketBuffer<MaxPingsToSend, packets::NewRelayPingPacket::ByteSize> buffer;
+    GenericPacketBuffer<MaxPingsToSend, NewRelayPingPacket::ByteSize> buffer;
 
     while (!mSocket.closed() && mShouldProcess) {
       // Sleep for 10ms, but the actual ping rate is controlled by RELAY_PING_TIME
@@ -81,13 +88,13 @@ namespace core
 
         // write data to the buffer
         {
-          if (!encoding::WriteUint8(pkt.Buffer, index, static_cast<uint8_t>(packets::Type::NewRelayPing))) {
-            LOG("could not write packet type");
+          if (!encoding::WriteUint8(pkt.Buffer, index, static_cast<uint8_t>(Type::NewRelayPing))) {
+            LOG(ERROR, "could not write packet type");
             assert(false);
           }
 
           if (!encoding::WriteUint64(pkt.Buffer, index, ping.Seq)) {
-            LOG("could not write sequence");
+            LOG(ERROR, "could not write sequence");
             assert(false);
           }
 
@@ -98,9 +105,9 @@ namespace core
         hdr.msg_iov[0].iov_len = index;
 
         size_t headerSize = 0;
-        if (addr.Type == net::AddressType::IPv4) {
+        if (addr.Type == AddressType::IPv4) {
           headerSize = net::IPv4UDPHeaderSize;
-        } else if (addr.Type == net::AddressType::IPv6) {
+        } else if (addr.Type == AddressType::IPv6) {
           headerSize = net::IPv6UDPHeaderSize;
         }
 
@@ -115,7 +122,7 @@ namespace core
 
 #ifndef RELAY_MULTISEND
         if (!mSocket.send(pkt)) {
-          LOG("failed to send new ping to ", pkt.Addr);
+          LOG(ERROR, "failed to send new ping to ", pkt.Addr);
         }
 #endif
       }

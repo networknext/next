@@ -1,14 +1,13 @@
-#ifndef CORE_PACKET_PROCESSOR_HPP
-#define CORE_PACKET_PROCESSOR_HPP
+#pragma once
 
+#include "core/throughput_recorder.hpp"
 #include "crypto/keychain.hpp"
 #include "packet.hpp"
 #include "relay_manager.hpp"
 #include "router_info.hpp"
 #include "session_map.hpp"
 #include "token.hpp"
-#include "util/channel.hpp"
-#include "util/throughput_recorder.hpp"
+#include "util/macros.hpp"
 
 namespace core
 {
@@ -48,7 +47,7 @@ namespace core
     bool getAddrFromMsgHdr(net::Address& addr, const msghdr& hdr) const;
   };
 
-  [[gnu::always_inline]] inline bool PacketProcessor::getAddrFromMsgHdr(net::Address& addr, const msghdr& hdr) const
+  INLINE bool PacketProcessor::getAddrFromMsgHdr(net::Address& addr, const msghdr& hdr) const
   {
     bool retval = false;
     auto sockad = reinterpret_cast<sockaddr*>(hdr.msg_name);
@@ -69,4 +68,3 @@ namespace core
     return retval;
   }
 }  // namespace core
-#endif

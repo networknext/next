@@ -2,7 +2,6 @@
 
 #include "core/packet.hpp"
 #include "net/address.hpp"
-#include "net/net.hpp"
 #include "util/logger.hpp"
 #include "util/macros.hpp"
 
