@@ -1291,8 +1291,6 @@ func TestRouteMatrix(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, len(expected), len(actual))
 
-			fmt.Println(expected)
-			fmt.Println(actual)
 			for routeidx, route := range expected {
 				assert.Equal(t, len(expected[routeidx].RelayIDs), len(route.RelayIDs))
 
@@ -1304,89 +1302,158 @@ func TestRouteMatrix(t *testing.T) {
 			}
 		})
 
-		// todo: get these tests working again (or repurpose them)
+		t.Run("only best RTT routes", func(t *testing.T) {
+			near := []routing.NearRelayData{{ID: 2836356269}}
+			dest := []uint64{3263834878, 1500948990}
+			expected := []routing.Route{
+				{
+					RelayIDs: []uint64{2836356269, 1370686037, 2923051732, 1884974764, 3263834878},
+					Stats:    routing.Stats{RTT: 182},
+				},
+				{
+					RelayIDs: []uint64{2836356269, 1370686037, 2641807504, 3263834878},
+					Stats:    routing.Stats{RTT: 182},
+				},
+				{
+					RelayIDs: []uint64{2836356269, 1370686037, 1348914502, 1884974764, 3263834878},
+					Stats:    routing.Stats{RTT: 182},
+				},
+			}
 
-		// {
-		// 	"best RTT",
-		// 	[]routing.Relay{{ID: 2836356269}},
-		// 	[]routing.Relay{{ID: 3263834878}, {ID: 1500948990}},
-		// 	[]routing.Route{
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2923051732}, {ID: 1884974764}, {ID: 3263834878}},
-		// 			Stats:  routing.Stats{RTT: 182},
-		// 		},
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2641807504}, {ID: 3263834878}},
-		// 			Stats:  routing.Stats{RTT: 182},
-		// 		},
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 1348914502}, {ID: 1884974764}, {ID: 3263834878}},
-		// 			Stats:  routing.Stats{RTT: 182},
-		// 		},
-		// 	},
-		// 	nil,
-		// 	[]routing.SelectorFunc{
-		// 		routing.SelectBestRTT(),
-		// 	},
-		// },
-		// {
-		// 	"acceptable routes",
-		// 	[]routing.Relay{{ID: 2836356269}},
-		// 	[]routing.Relay{{ID: 3263834878}, {ID: 1500948990}},
-		// 	[]routing.Route{
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2923051732}, {ID: 1884974764}, {ID: 3263834878}},
-		// 			Stats:  routing.Stats{RTT: 182},
-		// 		},
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2641807504}, {ID: 3263834878}},
-		// 			Stats:  routing.Stats{RTT: 182},
-		// 		},
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 1348914502}, {ID: 1884974764}, {ID: 3263834878}},
-		// 			Stats:  routing.Stats{RTT: 182},
-		// 		},
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2576485547}, {ID: 1835585494}, {ID: 3263834878}},
-		// 			Stats:  routing.Stats{RTT: 183},
-		// 		},
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1348914502}, {ID: 1884974764}, {ID: 3263834878}},
-		// 			Stats:  routing.Stats{RTT: 183},
-		// 		},
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2663193268}, {ID: 2504465311}, {ID: 3263834878}},
-		// 			Stats:  routing.Stats{RTT: 184},
-		// 		},
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 427962386}, {ID: 2504465311}, {ID: 3263834878}},
-		// 			Stats:  routing.Stats{RTT: 184},
-		// 		},
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 4058587524}, {ID: 1350942731}, {ID: 3263834878}},
-		// 			Stats:  routing.Stats{RTT: 184},
-		// 		},
-		// 	},
-		// 	nil,
-		// 	[]routing.SelectorFunc{
-		// 		routing.SelectAcceptableRoutesFromBestRTT(10),
-		// 	},
-		// },
-		// {
-		// 	"contains route",
-		// 	[]routing.Relay{{ID: 2836356269}},
-		// 	[]routing.Relay{{ID: 3263834878}, {ID: 1500948990}},
-		// 	[]routing.Route{
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2923051732}, {ID: 1884974764}, {ID: 3263834878}},
-		// 			Stats:  routing.Stats{RTT: 182},
-		// 		},
-		// 	},
-		// 	nil,
-		// 	[]routing.SelectorFunc{
-		// 		routing.SelectContainsRouteHash(14287039991941962633),
-		// 	},
-		// },
+			actual, err := routeMatrixCopy.GetAcceptableRoutes(near, dest, 0, 0)
+			assert.NoError(t, err)
+			assert.Equal(t, len(expected), len(actual))
+
+			for routeidx, route := range expected {
+				assert.Equal(t, len(expected[routeidx].RelayIDs), len(route.RelayIDs))
+
+				for relayidx := range route.RelayIDs {
+					assert.Equal(t, expected[routeidx].RelayIDs[relayidx], actual[routeidx].RelayIDs[relayidx])
+				}
+
+				assert.Equal(t, expected[routeidx].Stats, actual[routeidx].Stats)
+			}
+		})
+
+		t.Run("acceptable routes", func(t *testing.T) {
+			near := []routing.NearRelayData{{ID: 2836356269}}
+			dest := []uint64{3263834878, 1500948990}
+			expected := []routing.Route{
+				{
+					RelayIDs: []uint64{2836356269, 1370686037, 2923051732, 1884974764, 3263834878},
+					Stats:    routing.Stats{RTT: 182},
+				},
+				{
+					RelayIDs: []uint64{2836356269, 1370686037, 2641807504, 3263834878},
+					Stats:    routing.Stats{RTT: 182},
+				},
+				{
+					RelayIDs: []uint64{2836356269, 1370686037, 1348914502, 1884974764, 3263834878},
+					Stats:    routing.Stats{RTT: 182},
+				},
+				{
+					RelayIDs: []uint64{2836356269, 1370686037, 2576485547, 1835585494, 3263834878},
+					Stats:    routing.Stats{RTT: 183},
+				},
+				{
+					RelayIDs: []uint64{2836356269, 1348914502, 1884974764, 3263834878},
+					Stats:    routing.Stats{RTT: 183},
+				},
+				{
+					RelayIDs: []uint64{2836356269, 1370686037, 2663193268, 2504465311, 3263834878},
+					Stats:    routing.Stats{RTT: 184},
+				},
+				{
+					RelayIDs: []uint64{2836356269, 1370686037, 427962386, 2504465311, 3263834878},
+					Stats:    routing.Stats{RTT: 184},
+				},
+				{
+					RelayIDs: []uint64{2836356269, 1370686037, 4058587524, 1350942731, 3263834878},
+					Stats:    routing.Stats{RTT: 184},
+				},
+			}
+
+			actual, err := routeMatrixCopy.GetAcceptableRoutes(near, dest, 0, 5)
+			assert.NoError(t, err)
+			assert.Equal(t, len(expected), len(actual))
+
+			for routeidx, route := range expected {
+				assert.Equal(t, len(expected[routeidx].RelayIDs), len(route.RelayIDs))
+
+				for relayidx := range route.RelayIDs {
+					assert.Equal(t, expected[routeidx].RelayIDs[relayidx], actual[routeidx].RelayIDs[relayidx])
+				}
+
+				assert.Equal(t, expected[routeidx].Stats, actual[routeidx].Stats)
+			}
+		})
+
+		t.Run("contains route and route is still acceptable", func(t *testing.T) {
+			near := []routing.NearRelayData{{ID: 2836356269}}
+			dest := []uint64{3263834878, 1500948990}
+
+			route := routing.Route{
+				RelayIDs: []uint64{2836356269, 1370686037, 2663193268, 2504465311, 3263834878},
+				Stats:    routing.Stats{RTT: 184},
+			}
+			routeHash := route.Hash64()
+
+			expected := []routing.Route{route}
+
+			actual, err := routeMatrixCopy.GetAcceptableRoutes(near, dest, routeHash, 5)
+			assert.NoError(t, err)
+			assert.Equal(t, len(expected), len(actual))
+
+			for routeidx, route := range expected {
+				assert.Equal(t, len(expected[routeidx].RelayIDs), len(route.RelayIDs))
+
+				for relayidx := range route.RelayIDs {
+					assert.Equal(t, expected[routeidx].RelayIDs[relayidx], actual[routeidx].RelayIDs[relayidx])
+				}
+
+				assert.Equal(t, expected[routeidx].Stats, actual[routeidx].Stats)
+			}
+		})
+
+		t.Run("contains route but route is no longer acceptable", func(t *testing.T) {
+			near := []routing.NearRelayData{{ID: 2836356269}}
+			dest := []uint64{3263834878, 1500948990}
+
+			route := routing.Route{
+				RelayIDs: []uint64{2836356269, 1370686037, 2663193268, 2504465311, 3263834878},
+				Stats:    routing.Stats{RTT: 184},
+			}
+			routeHash := route.Hash64()
+
+			expected := []routing.Route{
+				{
+					RelayIDs: []uint64{2836356269, 1370686037, 2923051732, 1884974764, 3263834878},
+					Stats:    routing.Stats{RTT: 182},
+				},
+				{
+					RelayIDs: []uint64{2836356269, 1370686037, 2641807504, 3263834878},
+					Stats:    routing.Stats{RTT: 182},
+				},
+				{
+					RelayIDs: []uint64{2836356269, 1370686037, 1348914502, 1884974764, 3263834878},
+					Stats:    routing.Stats{RTT: 182},
+				},
+			}
+
+			actual, err := routeMatrixCopy.GetAcceptableRoutes(near, dest, routeHash, 0)
+			assert.NoError(t, err)
+			assert.Equal(t, len(expected), len(actual))
+
+			for routeidx, route := range expected {
+				assert.Equal(t, len(expected[routeidx].RelayIDs), len(route.RelayIDs))
+
+				for relayidx := range route.RelayIDs {
+					assert.Equal(t, expected[routeidx].RelayIDs[relayidx], actual[routeidx].RelayIDs[relayidx])
+				}
+
+				assert.Equal(t, expected[routeidx].Stats, actual[routeidx].Stats)
+			}
+		})
 		// {
 		// 	"unencumbered routes",
 		// 	[]routing.Relay{{ID: 2836356269}},
