@@ -207,10 +207,9 @@ func (m *RouteMatrix) GetAcceptableRoutes(near []NearRelayData, destIDs []uint64
 					},
 				}
 
-				// If this route is the previous route we took, then use it again
+				// If we found the route we took last slice, take it again
 				if route.Hash64() == prevRouteHash {
-					routes = []Route{*route}
-					return routes, nil
+					return []Route{*route}, nil
 				}
 
 				routes[routeSize] = *route
@@ -227,7 +226,7 @@ func (m *RouteMatrix) GetAcceptableRoutes(near []NearRelayData, destIDs []uint64
 	return routes[:routeSize], nil
 }
 
-// Returns the index in the route matrix representing the route between the near Relay and dest Relay and whether or not to reverse them
+// Returns the index in the route matrix representing routes between the near relay and dest relay and whether or not to reverse them
 func (m *RouteMatrix) GetEntryIndex(nearRelayID uint64, destRelayID uint64) (int, bool) {
 	destidx, ok := m.RelayIndices[destRelayID]
 	if !ok {
@@ -490,24 +489,22 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 }
 
 func (m *RouteMatrix) UpdateRelayAddressCache() error {
-	if len(m.relayAddressCache) == 0 && len(m.RelayIDs) > 0 {
-		m.relayAddressCache = make([]*net.UDPAddr, len(m.RelayIDs))
-		for i := range m.RelayIDs {
-			// This trim is necessary because RelayAddresses has a fixed size of MaxRelayAddressLength which causes extra 0 bytes to be parsed if we don't trim
-			host, port, err := net.SplitHostPort(string(bytes.Trim(m.RelayAddresses[i], string([]byte{0x00}))))
-			if err != nil {
-				return err
-			}
+	m.relayAddressCache = make([]*net.UDPAddr, len(m.RelayIDs))
+	for i := range m.RelayIDs {
+		// This trim is necessary because RelayAddresses has a fixed size of MaxRelayAddressLength which causes extra 0 bytes to be parsed if we don't trim
+		host, port, err := net.SplitHostPort(string(bytes.Trim(m.RelayAddresses[i], string([]byte{0x00}))))
+		if err != nil {
+			return err
+		}
 
-			iport, err := strconv.Atoi(port)
-			if err != nil {
-				return err
-			}
+		iport, err := strconv.Atoi(port)
+		if err != nil {
+			return err
+		}
 
-			m.relayAddressCache[i] = &net.UDPAddr{
-				IP:   net.ParseIP(host),
-				Port: int(iport),
-			}
+		m.relayAddressCache[i] = &net.UDPAddr{
+			IP:   net.ParseIP(host),
+			Port: int(iport),
 		}
 	}
 	return nil

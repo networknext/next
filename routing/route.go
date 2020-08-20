@@ -48,18 +48,6 @@ func (r *Route) Decide(prevDecision Decision, lastNextStats *Stats, lastDirectSt
 	return nextDecision
 }
 
-func (r *Route) Hash() []byte {
-	fnv64 := fnv.New64()
-	id := make([]byte, 8)
-
-	for _, relayID := range r.RelayIDs {
-		binary.LittleEndian.PutUint64(id, relayID)
-		fnv64.Write(id)
-	}
-
-	return fnv64.Sum(nil)
-}
-
 func (r *Route) Hash64() uint64 {
 	fnv64 := fnv.New64()
 	id := make([]byte, 8)

@@ -66,7 +66,7 @@ func getPopulatedRouteMatrix(malformed bool) *routing.RouteMatrix {
 			NumRoutes:      1,
 			RouteRTT:       [8]int32{1},
 			RouteNumRelays: [8]int32{2},
-			RouteRelays:    [8][5]uint64{{123, 456}},
+			RouteRelays:    [8][5]uint64{{0, 1}},
 		},
 	}
 
@@ -85,7 +85,7 @@ func getPopulatedRouteMatrix(malformed bool) *routing.RouteMatrix {
 	return &matrix
 }
 
-func generateRouteMatrixEntries(entries []routing.RouteMatrixEntry) {
+func generateRouteMatrixEntries(entries []routing.RouteMatrixEntry, relayIDsSize int) {
 	for i := 0; i < len(entries); i++ {
 		entry := routing.RouteMatrixEntry{
 			DirectRTT: rand.Int31(),
@@ -108,7 +108,7 @@ func generateRouteMatrixEntries(entries []routing.RouteMatrixEntry) {
 		for j := 0; j < 8; j++ {
 			for k := 0; k < 5; k++ {
 				// doesn't have to be accurrate
-				routeRelays[j][k] = rand.Uint64()
+				routeRelays[j][k] = uint64(rand.Intn(relayIDsSize))
 			}
 		}
 		entry.RouteRelays = routeRelays
@@ -231,7 +231,7 @@ func getRouteMatrixDataV5() routeMatrixData {
 	datacenterRelays := [][]uint64{{relayIDs[0]}, {relayIDs[1]}, {relayIDs[2]}, {relayIDs[3]}, {relayIDs[4]}}
 	numEntries := routing.TriMatrixLength(numRelays)
 	entries := make([]routing.RouteMatrixEntry, numEntries)
-	generateRouteMatrixEntries(entries)
+	generateRouteMatrixEntries(entries, len(relayIDs))
 
 	relayNames := []string{"a name", "another name", "oh boy another", "they just keep coming", "i'm out of sarcasm"}
 
@@ -317,7 +317,7 @@ func getRouteMatrixDataV6() routeMatrixData {
 	datacenterRelays := [][]uint64{{relayIDs[0]}, {relayIDs[1]}, {relayIDs[2]}, {relayIDs[3]}, {relayIDs[4]}}
 	numEntries := routing.TriMatrixLength(numRelays)
 	entries := make([]routing.RouteMatrixEntry, numEntries)
-	generateRouteMatrixEntries(entries)
+	generateRouteMatrixEntries(entries, len(relayIDs))
 
 	relayNames := []string{"a name", "another name", "oh boy another", "they just keep coming", "i'm out of sarcasm"}
 
@@ -1420,8 +1420,8 @@ func TestRouteMatrix(t *testing.T) {
 			dest := []uint64{3263834878, 1500948990}
 
 			route := routing.Route{
-				RelayIDs: []uint64{2836356269, 1370686037, 2663193268, 2504465311, 3263834878},
-				Stats:    routing.Stats{RTT: 184},
+				RelayIDs: []uint64{2836356269, 1500948990},
+				Stats:    routing.Stats{RTT: 311},
 			}
 			routeHash := route.Hash64()
 
@@ -1545,8 +1545,10 @@ func BenchmarkGetRoutes(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
+	prevRouteHash := uint64(14287039991941962633)
+
 	for i := 0; i < b.N; i++ {
-		routeMatrix.GetAcceptableRoutes(from, to, 0, 500)
+		routeMatrix.GetAcceptableRoutes(from, to, prevRouteHash, 500)
 	}
 }
 
