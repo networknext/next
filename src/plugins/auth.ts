@@ -1,6 +1,8 @@
 import Vue from 'vue'
 import APIService from '@/services/api.service'
-import { Auth0Client } from '@auth0/auth0-spa-js'
+import store from '@/store'
+
+import { Auth0Client, IdToken } from '@auth0/auth0-spa-js'
 
 export class AuthService {
   private apiService: APIService
@@ -23,14 +25,17 @@ export class AuthService {
       domain: this.domain,
       client_id: this.clientID,
       // audience: options.audience,
-      redirect_uri: 'http://127.0.0.1:8080'
+      redirect_uri: 'http://127.0.0.1:8080',
+      advancedOptions: {
+        defaultScope: 'openid profile email user_metadata app_metadata'
+      },
+      cacheLocation: 'localstorage'
     }))
   }
 
   async login (o: any) {
     this.popupOpen = true
-    let token: any
-    let claims: any
+    let idToken: IdToken // auth0 IdToken?
 
     try {
       await this.authClient.loginWithPopup()
@@ -38,14 +43,10 @@ export class AuthService {
       console.log('login() error caught:')
       console.error(e)
     } finally {
-      token = await this.authClient.getTokenSilently()
-      console.log('token: ')
-      console.log(token)
-
-      // claims = await this.authClient.getIdTokenClaims()
-      // console.log('claims: ')
-      // console.log(claims)
-      // this.popupOpen = false
+      idToken = await this.authClient.getIdTokenClaims()
+      console.log('idToken: ')
+      console.log(idToken.__raw)
+      this.popupOpen = false
     }
 
     this.user = await this.authClient.getUser()
@@ -53,6 +54,43 @@ export class AuthService {
     console.log(this.user)
     // console.log(this.authClient.user.name)
     this.isAuthenticated = true
+
+    this.processAuthentication(idToken)
+  }
+
+  private processAuthentication (authResult: IdToken) {
+    this.apiService = new APIService()
+    const roles = authResult['https://networknext.com/userRoles'] || { roles: [] }
+    const email = authResult.email || ''
+    const domain = email.split('@')[1]
+    const token = authResult.__raw
+    const userProfile: UserProfile = {
+      auth0ID: authResult.sub,
+      company: '',
+      email: authResult.email || '',
+      idToken: token,
+      name: authResult.name || '',
+      roles: roles.roles,
+      verified: authResult.email_verified || false,
+      routeShader: null,
+      domain: domain,
+      pubKey: '',
+      buyerID: ''
+    }
+    const promises = [
+      this.apiService.fetchUserAccount({ user_id: userProfile.auth0ID }, token),
+      this.apiService.fetchGameConfiguration({ domain: domain }, token),
+      this.apiService.fetchAllBuyers(token)
+    ]
+    Promise.all(promises).then((responses: any) => {
+      userProfile.buyerID = responses[0].account.buyer_id
+      userProfile.company = responses[1].game_config.company
+      userProfile.pubKey = responses[1].game_config.public_key
+      userProfile.routeShader = responses[1].customer_route_shader
+      const allBuyers = responses[2].buyers || []
+      store.commit('UPDATE_USER_PROFILE', userProfile)
+      store.commit('UPDATE_ALL_BUYERS', allBuyers)
+    })
   }
 }
 
@@ -76,6 +114,12 @@ export const AuthPlugin = {
       console.log('getUserInfo(): ' + options.domain)
     }
   }
+}
+
+export interface NNAuth0Profile extends auth0.Auth0UserProfile {
+  'https://networknext.com/userRoles'?: {
+    roles: Array<string>;
+  };
 }
 
 export interface UserProfile {
