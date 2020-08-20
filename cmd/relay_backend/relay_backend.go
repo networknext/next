@@ -219,6 +219,7 @@ func main() {
 		datacenter := routing.Datacenter{
 			ID:       crypto.HashID("local"),
 			Name:     "local",
+			Enabled:  true,
 			Location: routing.LocationNullIsland,
 		}
 
