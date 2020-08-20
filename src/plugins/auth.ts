@@ -116,12 +116,6 @@ export const AuthPlugin = {
   }
 }
 
-export interface NNAuth0Profile extends auth0.Auth0UserProfile {
-  'https://networknext.com/userRoles'?: {
-    roles: Array<string>;
-  };
-}
-
 export interface UserProfile {
   auth0ID: string;
   company: string;
