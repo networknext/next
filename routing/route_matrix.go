@@ -127,8 +127,8 @@ func (m *RouteMatrix) GetDatacenterRelayIDs(d Datacenter) []uint64 {
 	return relayIDs
 }
 
-// GetRoutes returns all routes between the set of near relays and destination relays.
-func (m *RouteMatrix) GetRoutes(near []NearRelayData, destIDs []uint64, rttEpsilon int32) ([]Route, error) {
+// GetAcceptableRoutes returns all acceptable routes between the set of near relays and destination relays.
+func (m *RouteMatrix) GetAcceptableRoutes(near []NearRelayData, destIDs []uint64, prevRouteHash uint64, rttEpsilon int32) ([]Route, error) {
 	// First, get the best route RTT so that we can build a slice of acceptable routes
 	// that are with rttEpsilon of the best RTT
 	bestRouteRTT := int32(math.MaxInt32)
@@ -200,12 +200,20 @@ func (m *RouteMatrix) GetRoutes(near []NearRelayData, destIDs []uint64, rttEpsil
 					}
 				}
 
-				routes[routeSize] = Route{
+				route := &Route{
 					RelayIDs: routeRelayIDs,
 					Stats: Stats{
 						RTT: math.Ceil(nearRelay.ClientStats.RTT) + float64(routeRTT),
 					},
 				}
+
+				// If this route is the previous route we took, then use it again
+				if route.Hash64() == prevRouteHash {
+					routes = []Route{*route}
+					return routes, nil
+				}
+
+				routes[routeSize] = *route
 				routeSize++
 			}
 		}

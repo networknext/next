@@ -9,28 +9,6 @@ import (
 	"github.com/networknext/backend/routing"
 )
 
-func TestSelectContainsRouteHash(t *testing.T) {
-	routes := []routing.Route{
-		{
-			RelayIDs: []uint64{
-				1, 2, 3,
-			},
-		},
-		{
-			RelayIDs: []uint64{
-				4, 1, 2,
-			},
-		},
-	}
-
-	selectedRoutes := routing.SelectContainsRouteHash(routes[0].Hash64())(routes)
-
-	assert.Equal(t, 1, len(selectedRoutes))
-	assert.Equal(t, uint64(1), selectedRoutes[0].RelayIDs[0])
-	assert.Equal(t, uint64(2), selectedRoutes[0].RelayIDs[1])
-	assert.Equal(t, uint64(3), selectedRoutes[0].RelayIDs[2])
-}
-
 func TestSelectRoutesByRandomDestRelay(t *testing.T) {
 	routes := []routing.Route{
 		{

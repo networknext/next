@@ -25,21 +25,6 @@ func SelectLogger(logger log.Logger) SelectorFunc {
 	}
 }
 
-// SelectContainsRouteHash returns the route if its route hash matches a route in the current list of routes.
-// If the route has doesn't match any of the routes, then it will return the existing list of routes to not break route selection.
-func SelectContainsRouteHash(routeHash uint64) SelectorFunc {
-	return func(routes []Route) []Route {
-		for _, route := range routes {
-			sameRoute := routeHash == route.Hash64()
-			if sameRoute {
-				return []Route{route}
-			}
-		}
-
-		return routes
-	}
-}
-
 // SelectRoutesByRandomDestRelay will group the current routes by their destination relays, then choose a random relay to return routes from.
 func SelectRoutesByRandomDestRelay(source rand.Source) SelectorFunc {
 	randgen := rand.New(source)

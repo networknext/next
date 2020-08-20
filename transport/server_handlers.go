@@ -578,7 +578,7 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 
 type RouteProvider interface {
 	GetDatacenterRelayIDs(datacenter routing.Datacenter) []uint64
-	GetRoutes(nearIDs []routing.NearRelayData, destIDs []uint64, rttEpsilon int32) ([]routing.Route, error)
+	GetAcceptableRoutes(nearIDs []routing.NearRelayData, destIDs []uint64, prevRouteHash uint64, rttEpsilon int32) ([]routing.Route, error)
 	GetNearRelays(latitude float64, longitude float64, maxNearRelays int) ([]routing.NearRelayData, error)
 }
 
@@ -1104,23 +1104,19 @@ func GetNextRoute(routeMatrix RouteProvider, nearRelayIDs []routing.NearRelayDat
 		metrics.RouteSelectionDuration.Set(float64(time.Since(routeSelectionStartTime).Milliseconds()))
 	}()
 
-	routes, err := routeMatrix.GetRoutes(nearRelayIDs, datacenterRelayIDs, int32(rttEpsilon))
+	routes, err := routeMatrix.GetAcceptableRoutes(nearRelayIDs, datacenterRelayIDs, prevRouteHash, int32(rttEpsilon))
 	if err != nil {
 		metrics.ErrorMetrics.RouteFailure.Add(1)
 		return nil
 	}
 
-	// Now pick the best route from all possible routes:
+	// Now pick the best route from all acceptable routes:
 
-	//	1. Only select routes whose relays have session counts of less than 80% of their maximum allowed session counts (this is to avoid overloading a relay).
-	// 	2. Find the route with the lowest RTT, and return all routes whose RTT is with the given epsilon value. These are "acceptable routes".
-	// 	3. If the route the session is already taking is within the set of acceptable routes, choose that one. If it's not, continue to step 4.
-	// 	4. Choose a random destination relay (since all destination relays are in the same datacenter and have effectively the same RTT from relay -> game server)
+	// 	1. Choose a random destination relay (since all destination relays are in the same datacenter and have effectively the same RTT from relay -> game server)
 	//		and only select routes with that destination relay
-	//	5. If we still don't only have 1 route, choose a random one.
+	//	2. If we still don't only have 1 route, choose a random one.
 
 	selectorFuncs := []routing.SelectorFunc{
-		routing.SelectContainsRouteHash(prevRouteHash),
 		routing.SelectRoutesByRandomDestRelay(rand.NewSource(rand.Int63())),
 		routing.SelectRandomRoute(rand.NewSource(rand.Int63())),
 	}
