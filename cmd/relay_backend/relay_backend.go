@@ -653,7 +653,9 @@ func main() {
 
 			if err := statsdb.GetCostMatrix(&costMatrixNew, allNonValveRelayData, float32(maxJitter), float32(maxPacketLoss)); err == nil {
 				// todo: we need to handle this better in future, but just hold the previous cost matrix for the moment on error
+				costMatrixMutex.Lock()
 				costMatrix = &costMatrixNew
+				costMatrixMutex.Unlock()
 			} else {
 				costMatrixMetrics.ErrorMetrics.GenFailure.Add(1)
 			}
