@@ -8,9 +8,9 @@ DONE
 
 	Don't sign the whole packet, only sign the first 32 bytes. Much cheaper computationally.
 
-TODO
-
 	Server init packet should include datacenter name as a string.
+
+TODO
 
 	Remove "GetSignData" processing entirely. Packets have 8 bytes signature at the end (or beginning?). Which is most convenient?
 
