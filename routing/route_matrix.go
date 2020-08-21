@@ -152,22 +152,27 @@ func (m *RouteMatrix) GetAcceptableRoutes(near []NearRelayData, destIDs []uint64
 
 			// The routes in each route matrix entry are sorted by ascending RTT,
 			// so we only need to check the first one to find the best RTT
-			if entry.NumRoutes > 0 {
-				routeRTT := entry.RouteRTT[0]
+			for routeIndex := 0; routeIndex < int(entry.NumRoutes); routeIndex++ {
+				routeRTT := entry.RouteRTT[routeIndex]
 				if routeRTT < bestRouteRTT {
 					// Make sure any relay in the route isn't encumbered when considering it for the best route RTT
 					isEncumbered := false
-					for k := 0; k < int(entry.RouteNumRelays[0]); k++ {
-						relayIndex := entry.RouteRelays[0][k]
+					for k := 0; k < int(entry.RouteNumRelays[routeIndex]); k++ {
+						relayIndex := entry.RouteRelays[routeIndex][k]
 						if m.RelaySessionCounts[relayIndex] >= m.RelayMaxSessionCounts[relayIndex] {
 							isEncumbered = true
 							break
 						}
 					}
 
-					if !isEncumbered {
-						bestRouteRTT = routeRTT
+					if isEncumbered {
+						// We continue rather than break here since more routes for this entry
+						// might still have good RTT and unencumbered relays
+						continue
 					}
+
+					bestRouteRTT = routeRTT
+					break
 				}
 			}
 		}
@@ -236,7 +241,7 @@ func (m *RouteMatrix) GetAcceptableRoutes(near []NearRelayData, destIDs []uint64
 				}
 
 				if isEncumbered {
-					// We continue rather than break here since more route for this entry
+					// We continue rather than break here since more routes for this entry
 					// might still have good RTT and unencumbered relays
 					continue
 				}

@@ -1576,7 +1576,7 @@ func TestRouteMatrix(t *testing.T) {
 	})
 }
 
-func BenchmarkGetRoutes(b *testing.B) {
+func BenchmarkGetAcceptableRoutes(b *testing.B) {
 	costfile, _ := os.Open("./test_data/cost.bin")
 
 	var costMatrix routing.CostMatrix
