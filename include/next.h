@@ -31,10 +31,10 @@
 #include <stddef.h>
 
 #if !defined(NEXT_DEVELOPMENT)
-#define NEXT_VERSION_FULL                                   "3.4.7"
-#define NEXT_VERSION_MAJOR_INT                                    3
-#define NEXT_VERSION_MINOR_INT                                    4
-#define NEXT_VERSION_PATCH_INT                                    7
+#define NEXT_VERSION_FULL                                   "4.0.0"
+#define NEXT_VERSION_MAJOR_INT                                    4
+#define NEXT_VERSION_MINOR_INT                                    0
+#define NEXT_VERSION_PATCH_INT                                    0
 #else // #if !NEXT_DEVELOPMENT
 #define NEXT_VERSION_FULL                                     "dev"
 #define NEXT_VERSION_MAJOR_INT                                    0
@@ -209,15 +209,11 @@ struct next_client_stats_t
     bool committed;
     bool multipath;
     bool flagged;
-    float direct_min_rtt;
-    float direct_max_rtt;
-    float direct_mean_rtt;
+    float direct_rtt;
     float direct_jitter;
     float direct_packet_loss;
     bool next;
-    float next_min_rtt;
-    float next_max_rtt;
-    float next_mean_rtt;
+    float next_rtt;
     float next_jitter;
     float next_packet_loss;
     float next_kbps_up;

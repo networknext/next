@@ -3000,23 +3000,17 @@ struct NextClientStatsPacket
     int connection_type;
     float kbps_up;
     float kbps_down;
-    float direct_min_rtt;
-    float direct_max_rtt;
-    float direct_mean_rtt;
+    float direct_rtt;
     float direct_jitter;
     float direct_packet_loss;
     bool next;
     bool committed;
-    float next_min_rtt;
-    float next_max_rtt;
-    float next_mean_rtt;
+    float next_rtt;
     float next_jitter;
     float next_packet_loss;
     int num_near_relays;
     uint64_t near_relay_ids[NEXT_MAX_NEAR_RELAYS];
-    float near_relay_min_rtt[NEXT_MAX_NEAR_RELAYS];
-    float near_relay_max_rtt[NEXT_MAX_NEAR_RELAYS];
-    float near_relay_mean_rtt[NEXT_MAX_NEAR_RELAYS];
+    float near_relay_rtt[NEXT_MAX_NEAR_RELAYS];
     float near_relay_jitter[NEXT_MAX_NEAR_RELAYS];
     float near_relay_packet_loss[NEXT_MAX_NEAR_RELAYS];
     uint64_t packets_sent_client_to_server;
@@ -3038,18 +3032,14 @@ struct NextClientStatsPacket
         serialize_int( stream, connection_type, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_CELLULAR );
         serialize_float( stream, kbps_up );
         serialize_float( stream, kbps_down );
-        serialize_float( stream, direct_min_rtt );
-        serialize_float( stream, direct_max_rtt );
-        serialize_float( stream, direct_mean_rtt );
+        serialize_float( stream, direct_rtt );
         serialize_float( stream, direct_jitter );
         serialize_float( stream, direct_packet_loss );
         serialize_bool( stream, next );
         serialize_bool( stream, committed );
         if ( next )
         {
-            serialize_float( stream, next_min_rtt );
-            serialize_float( stream, next_max_rtt );
-            serialize_float( stream, next_mean_rtt );
+            serialize_float( stream, next_rtt );
             serialize_float( stream, next_jitter );
             serialize_float( stream, next_packet_loss );
         }
@@ -3057,9 +3047,7 @@ struct NextClientStatsPacket
         for ( int i = 0; i < num_near_relays; ++i )
         {
             serialize_uint64( stream, near_relay_ids[i] );
-            serialize_float( stream, near_relay_min_rtt[i] );
-            serialize_float( stream, near_relay_max_rtt[i] );
-            serialize_float( stream, near_relay_mean_rtt[i] );
+            serialize_float( stream, near_relay_rtt[i] );
             serialize_float( stream, near_relay_jitter[i] );
             serialize_float( stream, near_relay_packet_loss[i] );
         }
@@ -3899,9 +3887,7 @@ void * next_queue_pop( next_queue_t * queue )
 
 struct next_route_stats_t
 {
-    float min_rtt;
-    float max_rtt;
-    float mean_rtt;
+    float rtt;
     float jitter;
     float packet_loss;
 };
@@ -4000,9 +3986,7 @@ void next_route_stats_from_ping_history( const next_ping_history_t * history, do
     next_assert( stats );
     next_assert( start < end );
 
-    stats->min_rtt = 0.0f;
-    stats->max_rtt = 0.0f;
-    stats->mean_rtt = 0.0f;
+    stats->rtt = 0.0f;
     stats->jitter = 0.0f;
     stats->packet_loss = 0.0f;
 
@@ -4032,8 +4016,6 @@ void next_route_stats_from_ping_history( const next_ping_history_t * history, do
     // calculate min/max/mean RTT
 
     double min_rtt = FLT_MAX;
-    double max_rtt = 0.0;
-    double mean_rtt = 0.0;
     int num_pings = 0;
     int num_pongs = 0;
 
@@ -4050,34 +4032,21 @@ void next_route_stats_from_ping_history( const next_ping_history_t * history, do
                 {
                     min_rtt = rtt;
                 }
-                if ( rtt > max_rtt )
-                {
-                    max_rtt = rtt;
-                }
-                mean_rtt += rtt;
                 num_pongs++;
             }
             num_pings++;
         }
     }
 
-    if ( num_pongs > 0 )
-    {
-        mean_rtt /= num_pongs;
-    }
-    else
+    if ( num_pongs == 0 )
     {
         stats->packet_loss = num_pings > 0 ? 100.0f : 0.0f;
         return;
     }
 
     next_assert( min_rtt >= 0.0 );
-    next_assert( max_rtt >= 0.0 );
-    next_assert( mean_rtt >= 0.0 );
 
-    stats->min_rtt = float( min_rtt );
-    stats->max_rtt = float( max_rtt );
-    stats->mean_rtt = float( mean_rtt );
+    stats->rtt = float( min_rtt );
 
     // calculate jitter
 
@@ -4124,25 +4093,17 @@ struct next_relay_stats_t
 
     NEXT_DECLARE_SENTINEL(2)
 
-    float relay_min_rtt[NEXT_MAX_NEAR_RELAYS];
+    float relay_rtt[NEXT_MAX_NEAR_RELAYS];
 
     NEXT_DECLARE_SENTINEL(3)
 
-    float relay_max_rtt[NEXT_MAX_NEAR_RELAYS];
+    float relay_jitter[NEXT_MAX_NEAR_RELAYS];
 
     NEXT_DECLARE_SENTINEL(4)
 
-    float relay_mean_rtt[NEXT_MAX_NEAR_RELAYS];
-
-    NEXT_DECLARE_SENTINEL(5)
-
-    float relay_jitter[NEXT_MAX_NEAR_RELAYS];
-
-    NEXT_DECLARE_SENTINEL(6)
-
     float relay_packet_loss[NEXT_MAX_NEAR_RELAYS];
 
-    NEXT_DECLARE_SENTINEL(7)
+    NEXT_DECLARE_SENTINEL(5)
 };
 
 void next_relay_stats_initialize_sentinels( next_relay_stats_t * stats )
@@ -4155,8 +4116,6 @@ void next_relay_stats_initialize_sentinels( next_relay_stats_t * stats )
     NEXT_INITIALIZE_SENTINEL( stats, 3 )
     NEXT_INITIALIZE_SENTINEL( stats, 4 )
     NEXT_INITIALIZE_SENTINEL( stats, 5 )
-    NEXT_INITIALIZE_SENTINEL( stats, 6 )
-    NEXT_INITIALIZE_SENTINEL( stats, 7 )
 }
 
 void next_relay_stats_verify_sentinels( next_relay_stats_t * stats )
@@ -4169,8 +4128,6 @@ void next_relay_stats_verify_sentinels( next_relay_stats_t * stats )
     NEXT_VERIFY_SENTINEL( stats, 3 )
     NEXT_VERIFY_SENTINEL( stats, 4 )
     NEXT_VERIFY_SENTINEL( stats, 5 )
-    NEXT_VERIFY_SENTINEL( stats, 6 )
-    NEXT_VERIFY_SENTINEL( stats, 7 )
 }
 
 // ---------------------------------------------------------------
@@ -4472,9 +4429,7 @@ void next_relay_manager_get_stats( next_relay_manager_t * manager, next_relay_st
         next_route_stats_from_ping_history( manager->relay_ping_history[i], current_time - NEXT_CLIENT_STATS_WINDOW, current_time, &route_stats, NEXT_PING_SAFETY );
         
         stats->relay_ids[i] = manager->relay_ids[i];
-        stats->relay_min_rtt[i] = route_stats.min_rtt;
-        stats->relay_max_rtt[i] = route_stats.max_rtt;
-        stats->relay_mean_rtt[i] = route_stats.mean_rtt;
+        stats->relay_rtt[i] = route_stats.rtt;
         stats->relay_jitter[i] = route_stats.jitter;
         stats->relay_packet_loss[i] = route_stats.packet_loss;
     }
@@ -6816,9 +6771,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
 
         if ( network_next )
         {
-            client->client_stats.next_min_rtt = next_route_stats.min_rtt;
-            client->client_stats.next_max_rtt = next_route_stats.max_rtt;
-            client->client_stats.next_mean_rtt = next_route_stats.mean_rtt;
+            client->client_stats.next_rtt = next_route_stats.rtt;
             client->client_stats.next_jitter = next_route_stats.jitter;    
             client->client_stats.next_packet_loss = next_route_stats.packet_loss;
             next_platform_mutex_acquire( &client->bandwidth_mutex );
@@ -6828,29 +6781,21 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         }
         else
         {
-            client->client_stats.next_min_rtt = 0.0f;
-            client->client_stats.next_max_rtt = 0.0f;
-            client->client_stats.next_mean_rtt = 0.0f;
+            client->client_stats.next_rtt = 0.0f;
             client->client_stats.next_jitter = 0.0f;
             client->client_stats.next_packet_loss = 0.0f;
             client->client_stats.next_kbps_up = 0;
             client->client_stats.next_kbps_down = 0;
         }
 
-        client->client_stats.direct_min_rtt = direct_route_stats.min_rtt;
-        client->client_stats.direct_max_rtt = direct_route_stats.max_rtt;
-        client->client_stats.direct_mean_rtt = direct_route_stats.mean_rtt;
+        client->client_stats.direct_rtt = direct_route_stats.rtt;
         client->client_stats.direct_jitter = direct_route_stats.jitter;    
         client->client_stats.direct_packet_loss = direct_route_stats.packet_loss;
 
 #if NEXT_DEVELOPMENT
-        client->client_stats.direct_min_rtt += next_fake_direct_rtt;
-        client->client_stats.direct_max_rtt += next_fake_direct_rtt;
-        client->client_stats.direct_mean_rtt += next_fake_direct_rtt;
+        client->client_stats.direct_rtt += next_fake_direct_rtt;
         client->client_stats.direct_packet_loss += next_fake_direct_packet_loss;
-        client->client_stats.next_min_rtt += next_fake_next_rtt;
-        client->client_stats.next_max_rtt += next_fake_next_rtt;
-        client->client_stats.next_mean_rtt += next_fake_next_rtt;
+        client->client_stats.next_rtt += next_fake_next_rtt;
         client->client_stats.next_packet_loss += next_fake_next_packet_loss;
  #endif // #if NEXT_DEVELOPMENT
 
@@ -6879,7 +6824,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         client->last_stats_update_time = current_time;
     }        
 
-    if ( client->last_stats_report_time + 1.0 < current_time && client->client_stats.direct_min_rtt > 0.0f )
+    if ( client->last_stats_report_time + 1.0 < current_time && client->client_stats.direct_rtt > 0.0f )
     {
         NextClientStatsPacket packet;
 
@@ -6902,15 +6847,11 @@ void next_client_internal_update_stats( next_client_internal_t * client )
 
         packet.next = client->client_stats.next;
         packet.committed = client->client_stats.committed;
-        packet.next_min_rtt = client->client_stats.next_min_rtt;
-        packet.next_max_rtt = client->client_stats.next_max_rtt;
-        packet.next_mean_rtt = client->client_stats.next_mean_rtt;
+        packet.next_rtt = client->client_stats.next_rtt;
         packet.next_jitter = client->client_stats.next_jitter;
         packet.next_packet_loss = client->client_stats.next_packet_loss;
 
-        packet.direct_min_rtt = client->client_stats.direct_min_rtt;
-        packet.direct_max_rtt = client->client_stats.direct_max_rtt;
-        packet.direct_mean_rtt = client->client_stats.direct_mean_rtt;
+        packet.direct_rtt = client->client_stats.direct_rtt;
         packet.direct_jitter = client->client_stats.direct_jitter;
         packet.direct_packet_loss = client->client_stats.direct_packet_loss;
 
@@ -6920,9 +6861,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
             for ( int i = 0; i < packet.num_near_relays; ++i )
             {
                 packet.near_relay_ids[i] = client->near_relay_stats.relay_ids[i];
-                packet.near_relay_min_rtt[i] = client->near_relay_stats.relay_min_rtt[i];
-                packet.near_relay_max_rtt[i] = client->near_relay_stats.relay_max_rtt[i];
-                packet.near_relay_mean_rtt[i] = client->near_relay_stats.relay_mean_rtt[i];
+                packet.near_relay_rtt[i] = client->near_relay_stats.relay_rtt[i];
                 packet.near_relay_jitter[i] = client->near_relay_stats.relay_jitter[i];
                 packet.near_relay_packet_loss[i] = client->near_relay_stats.relay_packet_loss[i];
             }
@@ -8534,15 +8473,11 @@ struct next_session_entry_t
     int stats_connection_type;
     float stats_kbps_up;
     float stats_kbps_down;
-    float stats_direct_min_rtt;
-    float stats_direct_max_rtt;
-    float stats_direct_mean_rtt;
+    float stats_direct_rtt;
     float stats_direct_jitter;
     float stats_direct_packet_loss;
     bool stats_next;
-    float stats_next_min_rtt;
-    float stats_next_max_rtt;
-    float stats_next_mean_rtt;
+    float stats_next_rtt;
     float stats_next_jitter;
     float stats_next_packet_loss;
     int stats_num_near_relays;
@@ -8553,25 +8488,17 @@ struct next_session_entry_t
 
     NEXT_DECLARE_SENTINEL(3)
 
-    float stats_near_relay_min_rtt[NEXT_MAX_NEAR_RELAYS];
+    float stats_near_relay_rtt[NEXT_MAX_NEAR_RELAYS];
 
     NEXT_DECLARE_SENTINEL(4)
 
-    float stats_near_relay_max_rtt[NEXT_MAX_NEAR_RELAYS];
+    float stats_near_relay_jitter[NEXT_MAX_NEAR_RELAYS];
 
     NEXT_DECLARE_SENTINEL(5)
 
-    float stats_near_relay_mean_rtt[NEXT_MAX_NEAR_RELAYS];
-
-    NEXT_DECLARE_SENTINEL(6)
-
-    float stats_near_relay_jitter[NEXT_MAX_NEAR_RELAYS];
-
-    NEXT_DECLARE_SENTINEL(7)
-
     float stats_near_relay_packet_loss[NEXT_MAX_NEAR_RELAYS];
 
-    NEXT_DECLARE_SENTINEL(8)
+    NEXT_DECLARE_SENTINEL(6)
 
     uint64_t stats_packets_sent_client_to_server;
     uint64_t stats_packets_sent_server_to_client;
@@ -8593,31 +8520,31 @@ struct next_session_entry_t
     uint8_t update_type;
     int update_num_tokens;
 
-    NEXT_DECLARE_SENTINEL(9)
+    NEXT_DECLARE_SENTINEL(7)
 
     uint8_t update_tokens[NEXT_MAX_TOKENS*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES];
 
-    NEXT_DECLARE_SENTINEL(10)
+    NEXT_DECLARE_SENTINEL(8)
 
     int update_num_near_relays;
 
-    NEXT_DECLARE_SENTINEL(11)
+    NEXT_DECLARE_SENTINEL(9)
 
     uint64_t update_near_relay_ids[NEXT_MAX_NEAR_RELAYS];
 
-    NEXT_DECLARE_SENTINEL(12)
+    NEXT_DECLARE_SENTINEL(10)
 
     next_address_t update_near_relay_addresses[NEXT_MAX_NEAR_RELAYS];
 
-    NEXT_DECLARE_SENTINEL(13)
+    NEXT_DECLARE_SENTINEL(11)
 
     int update_packet_bytes;
 
-    NEXT_DECLARE_SENTINEL(14)
+    NEXT_DECLARE_SENTINEL(12)
 
     uint8_t update_packet_data[NEXT_MAX_PACKET_BYTES];
 
-    NEXT_DECLARE_SENTINEL(15)
+    NEXT_DECLARE_SENTINEL(13)
 
     bool has_pending_route;
     bool pending_route_committed;
@@ -8628,11 +8555,11 @@ struct next_session_entry_t
     int pending_route_kbps_down;
     next_address_t pending_route_send_address;
 
-    NEXT_DECLARE_SENTINEL(16)
+    NEXT_DECLARE_SENTINEL(14)
 
     uint8_t pending_route_private_key[crypto_box_SECRETKEYBYTES];
 
-    NEXT_DECLARE_SENTINEL(17)
+    NEXT_DECLARE_SENTINEL(15)
 
     bool has_current_route;
     bool current_route_committed;
@@ -8643,41 +8570,41 @@ struct next_session_entry_t
     int current_route_kbps_down;
     next_address_t current_route_send_address;
 
-    NEXT_DECLARE_SENTINEL(18)
+    NEXT_DECLARE_SENTINEL(16)
 
     uint8_t current_route_private_key[crypto_box_SECRETKEYBYTES];
 
-    NEXT_DECLARE_SENTINEL(19)
+    NEXT_DECLARE_SENTINEL(17)
 
     bool has_previous_route;
     next_address_t previous_route_send_address;
 
-    NEXT_DECLARE_SENTINEL(20)
+    NEXT_DECLARE_SENTINEL(18)
 
     uint8_t previous_route_private_key[crypto_box_SECRETKEYBYTES];
 
-    NEXT_DECLARE_SENTINEL(21)
+    NEXT_DECLARE_SENTINEL(19)
 
     uint8_t ephemeral_private_key[crypto_secretbox_KEYBYTES];
     uint8_t send_key[crypto_kx_SESSIONKEYBYTES];
     uint8_t receive_key[crypto_kx_SESSIONKEYBYTES];
     uint8_t client_route_public_key[crypto_box_PUBLICKEYBYTES];
 
-    NEXT_DECLARE_SENTINEL(22)
+    NEXT_DECLARE_SENTINEL(20)
 
     uint8_t upgrade_token[NEXT_UPGRADE_TOKEN_BYTES];
     
-    NEXT_DECLARE_SENTINEL(23)
+    NEXT_DECLARE_SENTINEL(21)
 
     next_replay_protection_t payload_replay_protection;
     next_replay_protection_t special_replay_protection;
     next_replay_protection_t internal_replay_protection;
 
-    NEXT_DECLARE_SENTINEL(24)
+    NEXT_DECLARE_SENTINEL(22)
 
     next_packet_loss_tracker_t packet_loss_tracker;
 
-    NEXT_DECLARE_SENTINEL(25)
+    NEXT_DECLARE_SENTINEL(23)
 
     bool mutex_multipath;
     bool mutex_committed;
@@ -8689,11 +8616,11 @@ struct next_session_entry_t
     bool mutex_send_over_network_next;
     next_address_t mutex_send_address;
  
-    NEXT_DECLARE_SENTINEL(26)
+    NEXT_DECLARE_SENTINEL(24)
 
     uint8_t mutex_private_key[crypto_box_SECRETKEYBYTES];
 
-    NEXT_DECLARE_SENTINEL(27)
+    NEXT_DECLARE_SENTINEL(25)
 };
 
 void next_session_entry_initialize_sentinels( next_session_entry_t * entry )
@@ -8726,8 +8653,6 @@ void next_session_entry_initialize_sentinels( next_session_entry_t * entry )
     NEXT_INITIALIZE_SENTINEL( entry, 23 )
     NEXT_INITIALIZE_SENTINEL( entry, 24 )
     NEXT_INITIALIZE_SENTINEL( entry, 25 )
-    NEXT_INITIALIZE_SENTINEL( entry, 26 )
-    NEXT_INITIALIZE_SENTINEL( entry, 27 )
 }
 
 void next_session_entry_verify_sentinels( next_session_entry_t * entry )
@@ -8760,8 +8685,6 @@ void next_session_entry_verify_sentinels( next_session_entry_t * entry )
     NEXT_VERIFY_SENTINEL( entry, 23 )
     NEXT_VERIFY_SENTINEL( entry, 24 )
     NEXT_VERIFY_SENTINEL( entry, 25 )
-    NEXT_VERIFY_SENTINEL( entry, 26 )
-    NEXT_VERIFY_SENTINEL( entry, 27 )
     next_replay_protection_verify_sentinels( &entry->payload_replay_protection );
     next_replay_protection_verify_sentinels( &entry->special_replay_protection );
     next_replay_protection_verify_sentinels( &entry->internal_replay_protection );
@@ -9285,23 +9208,17 @@ struct NextBackendSessionUpdatePacket
     bool flagged;
     bool fallback_to_direct;
     int connection_type;
-    float direct_min_rtt;
-    float direct_max_rtt;
-    float direct_mean_rtt;
+    float direct_rtt;
     float direct_jitter;
     float direct_packet_loss;
     bool next;
     bool committed;
-    float next_min_rtt;
-    float next_max_rtt;
-    float next_mean_rtt;
+    float next_rtt;
     float next_jitter;
     float next_packet_loss;
     int num_near_relays;
     uint64_t near_relay_ids[NEXT_MAX_NEAR_RELAYS];
-    float near_relay_min_rtt[NEXT_MAX_NEAR_RELAYS];
-    float near_relay_max_rtt[NEXT_MAX_NEAR_RELAYS];
-    float near_relay_mean_rtt[NEXT_MAX_NEAR_RELAYS];
+    float near_relay_rtt[NEXT_MAX_NEAR_RELAYS];
     float near_relay_jitter[NEXT_MAX_NEAR_RELAYS];
     float near_relay_packet_loss[NEXT_MAX_NEAR_RELAYS];
     next_address_t client_address;
@@ -9333,18 +9250,14 @@ struct NextBackendSessionUpdatePacket
         serialize_bool( stream, flagged );
         serialize_bool( stream, fallback_to_direct );
         serialize_int( stream, connection_type, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_CELLULAR );
-        serialize_float( stream, direct_min_rtt );
-        serialize_float( stream, direct_max_rtt );
-        serialize_float( stream, direct_mean_rtt );
+        serialize_float( stream, direct_rtt );
         serialize_float( stream, direct_jitter );
         serialize_float( stream, direct_packet_loss );
         serialize_bool( stream, next );
         serialize_bool( stream, committed );
         if ( next )
         {
-            serialize_float( stream, next_min_rtt );
-            serialize_float( stream, next_max_rtt );
-            serialize_float( stream, next_mean_rtt );
+            serialize_float( stream, next_rtt );
             serialize_float( stream, next_jitter );
             serialize_float( stream, next_packet_loss );
         }
@@ -9352,9 +9265,7 @@ struct NextBackendSessionUpdatePacket
         for ( int i = 0; i < num_near_relays; ++i )
         {
             serialize_uint64( stream, near_relay_ids[i] );
-            serialize_float( stream, near_relay_min_rtt[i] );
-            serialize_float( stream, near_relay_max_rtt[i] );
-            serialize_float( stream, near_relay_mean_rtt[i] );
+            serialize_float( stream, near_relay_rtt[i] );
             serialize_float( stream, near_relay_jitter[i] );
             serialize_float( stream, near_relay_packet_loss[i] );
         }
@@ -9386,23 +9297,17 @@ struct NextBackendSessionUpdatePacket
         next_write_uint8( &p, connection_type );
         next_write_uint8( &p, (uint8_t) next );
         next_write_uint8( &p, (uint8_t) committed );
-        next_write_float32( &p, direct_min_rtt );
-        next_write_float32( &p, direct_max_rtt );
-        next_write_float32( &p, direct_mean_rtt );
+        next_write_float32( &p, direct_rtt );
         next_write_float32( &p, direct_jitter );
         next_write_float32( &p, direct_packet_loss );
-        next_write_float32( &p, next_min_rtt );
-        next_write_float32( &p, next_max_rtt );
-        next_write_float32( &p, next_mean_rtt );
+        next_write_float32( &p, next_rtt );
         next_write_float32( &p, next_jitter );
         next_write_float32( &p, next_packet_loss );
         next_write_uint32( &p, num_near_relays );
         for ( int i = 0; i < num_near_relays; ++i )
         {
             next_write_uint64( &p, near_relay_ids[i] );
-            next_write_float32( &p, near_relay_min_rtt[i] );
-            next_write_float32( &p, near_relay_max_rtt[i] );
-            next_write_float32( &p, near_relay_mean_rtt[i] );
+            next_write_float32( &p, near_relay_rtt[i] );
             next_write_float32( &p, near_relay_jitter[i] );
             next_write_float32( &p, near_relay_packet_loss[i] );
         }
@@ -11168,25 +11073,19 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             session->stats_connection_type = packet.connection_type;
             session->stats_kbps_up = packet.kbps_up;
             session->stats_kbps_down = packet.kbps_down;
-            session->stats_direct_min_rtt = packet.direct_min_rtt;
-            session->stats_direct_max_rtt = packet.direct_max_rtt;
-            session->stats_direct_mean_rtt = packet.direct_mean_rtt;
+            session->stats_direct_rtt = packet.direct_rtt;
             session->stats_direct_jitter = packet.direct_jitter;
             session->stats_direct_packet_loss = packet.direct_packet_loss;
             session->stats_next = packet.next;
             session->stats_committed = packet.committed;
-            session->stats_next_min_rtt = packet.next_min_rtt;
-            session->stats_next_max_rtt = packet.next_max_rtt;
-            session->stats_next_mean_rtt = packet.next_mean_rtt;
+            session->stats_next_rtt = packet.next_rtt;
             session->stats_next_jitter = packet.next_jitter;
             session->stats_next_packet_loss = packet.next_packet_loss;
             session->stats_num_near_relays = packet.num_near_relays;
             for ( int i = 0; i < packet.num_near_relays; ++i )
             {
                 session->stats_near_relay_ids[i] = packet.near_relay_ids[i];
-                session->stats_near_relay_min_rtt[i] = packet.near_relay_min_rtt[i];
-                session->stats_near_relay_max_rtt[i] = packet.near_relay_max_rtt[i];
-                session->stats_near_relay_mean_rtt[i] = packet.near_relay_mean_rtt[i];
+                session->stats_near_relay_rtt[i] = packet.near_relay_rtt[i];
                 session->stats_near_relay_jitter[i] = packet.near_relay_jitter[i];
                 session->stats_near_relay_packet_loss[i] = packet.near_relay_packet_loss[i];
             }
@@ -11680,23 +11579,17 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.user_flags = session->stats_user_flags;
             packet.next = session->stats_next;
             packet.committed = session->stats_committed;
-            packet.next_min_rtt = session->stats_next_min_rtt;
-            packet.next_max_rtt = session->stats_next_max_rtt;
-            packet.next_mean_rtt = session->stats_next_mean_rtt;
+            packet.next_rtt = session->stats_next_rtt;
             packet.next_jitter = session->stats_next_jitter;
             packet.next_packet_loss = session->stats_next_packet_loss;
-            packet.direct_min_rtt = session->stats_direct_min_rtt;
-            packet.direct_max_rtt = session->stats_direct_max_rtt;
-            packet.direct_mean_rtt = session->stats_direct_mean_rtt;
+            packet.direct_rtt = session->stats_direct_rtt;
             packet.direct_jitter = session->stats_direct_jitter;
             packet.direct_packet_loss = session->stats_direct_packet_loss;
             packet.num_near_relays = session->stats_num_near_relays;
             for ( int j = 0; j < packet.num_near_relays; ++j )
             {
                 packet.near_relay_ids[j] = session->stats_near_relay_ids[j];
-                packet.near_relay_min_rtt[j] = session->stats_near_relay_min_rtt[j];
-                packet.near_relay_max_rtt[j] = session->stats_near_relay_max_rtt[j];
-                packet.near_relay_mean_rtt[j] = session->stats_near_relay_mean_rtt[j];
+                packet.near_relay_rtt[j] = session->stats_near_relay_rtt[j];
                 packet.near_relay_jitter[j] = session->stats_near_relay_jitter[j];
                 packet.near_relay_packet_loss[j] = session->stats_near_relay_packet_loss[j];
             }
@@ -12955,9 +12848,7 @@ static void test_ping_stats()
         next_route_stats_t route_stats;
         next_route_stats_from_ping_history( &history, 0.0, 10.0, &route_stats, ping_safety );
         
-        check( route_stats.min_rtt == 0.0f );
-        check( route_stats.max_rtt == 0.0f );
-        check( route_stats.mean_rtt == 0.0f );
+        check( route_stats.rtt == 0.0f );
         check( route_stats.jitter == 0.0f );
         check( route_stats.packet_loss == 0.0f );
     }
@@ -12977,9 +12868,7 @@ static void test_ping_stats()
         next_route_stats_t route_stats;
         next_route_stats_from_ping_history( &history, 0.0, 10.0, &route_stats, ping_safety );
 
-        check( route_stats.min_rtt == 0.0f );
-        check( route_stats.max_rtt == 0.0f );
-        check( route_stats.mean_rtt == 0.0f );
+        check( route_stats.rtt == 0.0f );
         check( route_stats.jitter == 0.0f );
         check( route_stats.packet_loss == 100.0f );
     }
@@ -13002,9 +12891,7 @@ static void test_ping_stats()
         next_route_stats_t route_stats;
         next_route_stats_from_ping_history( &history, 0.0, 100.0, &route_stats, ping_safety );
 
-        check( equal_within_tolerance( route_stats.min_rtt, expected_rtt * 1000.0 ) );
-        check( equal_within_tolerance( route_stats.max_rtt, expected_rtt * 1000.0 ) );
-        check( equal_within_tolerance( route_stats.mean_rtt, expected_rtt * 1000.0 ) );
+        check( equal_within_tolerance( route_stats.rtt, expected_rtt * 1000.0 ) );
         check( equal_within_tolerance( route_stats.jitter, 0.0 ) );
         check( route_stats.packet_loss == 0.0 );
     }
@@ -13035,9 +12922,7 @@ static void test_ping_stats()
         next_route_stats_t route_stats;
         next_route_stats_from_ping_history( &history, 0.0, 10.0, &route_stats, ping_safety );
 
-        check( equal_within_tolerance( route_stats.min_rtt, expected_rtt * 1000.0 ) );
-        check( equal_within_tolerance( route_stats.max_rtt, expected_rtt * 1000.0 ) );
-        check( equal_within_tolerance( route_stats.mean_rtt, expected_rtt * 1000.0 ) );
+        check( equal_within_tolerance( route_stats.rtt, expected_rtt * 1000.0 ) );
         check( equal_within_tolerance( route_stats.jitter, 0.0 ) );
         check( route_stats.packet_loss == 0.0 );
     }
@@ -13061,9 +12946,7 @@ static void test_ping_stats()
         next_route_stats_t route_stats;
         next_route_stats_from_ping_history( &history, 0.0, 100.0, &route_stats, ping_safety );
 
-        check( equal_within_tolerance( route_stats.min_rtt, expected_rtt * 1000.0 ) );
-        check( equal_within_tolerance( route_stats.max_rtt, expected_rtt * 1000.0 ) );
-        check( equal_within_tolerance( route_stats.mean_rtt, expected_rtt * 1000.0 ) );
+        check( equal_within_tolerance( route_stats.rtt, expected_rtt * 1000.0 ) );
         check( equal_within_tolerance( route_stats.jitter, 0.0 ) );
         check( equal_within_tolerance( route_stats.packet_loss, 50.0 ) );
     }
@@ -13087,9 +12970,7 @@ static void test_ping_stats()
         next_route_stats_t route_stats;
         next_route_stats_from_ping_history( &history, 0.0, 100.0, &route_stats, ping_safety );
 
-        check( equal_within_tolerance( route_stats.min_rtt, expected_rtt * 1000.0f ) );
-        check( equal_within_tolerance( route_stats.max_rtt, expected_rtt * 1000.0f ) );
-        check( equal_within_tolerance( route_stats.mean_rtt, expected_rtt * 1000.0f ) );
+        check( equal_within_tolerance( route_stats.rtt, expected_rtt * 1000.0f ) );
         check( equal_within_tolerance( route_stats.jitter, 0.0 ) );
         check( equal_within_tolerance( route_stats.packet_loss, 10.0f, 0.25f ) );
     }
@@ -13113,9 +12994,7 @@ static void test_ping_stats()
         next_route_stats_t route_stats;
         next_route_stats_from_ping_history( &history, 0.0, 100.0, &route_stats, ping_safety );
 
-        check( equal_within_tolerance( route_stats.min_rtt, expected_rtt * 1000.0f ) );
-        check( equal_within_tolerance( route_stats.max_rtt, expected_rtt * 1000.0f ) );
-        check( equal_within_tolerance( route_stats.mean_rtt, expected_rtt * 1000.0f ) );
+        check( equal_within_tolerance( route_stats.rtt, expected_rtt * 1000.0f ) );
         check( equal_within_tolerance( route_stats.jitter, 0.0f ) );
         check( equal_within_tolerance( route_stats.packet_loss, 90.0f, 0.25f ) );
     }
@@ -13742,25 +13621,19 @@ static void test_packets()
         in.fallback_to_direct = true;
         in.platform_id = NEXT_PLATFORM_WINDOWS;
         in.connection_type = NEXT_CONNECTION_TYPE_CELLULAR;
-        in.direct_min_rtt = 50.0f;
-        in.direct_max_rtt = 110.0f;
-        in.direct_mean_rtt = 60.0f;
+        in.direct_rtt = 50.0f;
         in.direct_jitter = 10.0f;
         in.direct_packet_loss = 0.1f;
         in.next = true;
         in.committed = true;
-        in.next_min_rtt = 50.0f;
-        in.next_max_rtt = 100.0f;
-        in.next_mean_rtt = 55.0f;
+        in.next_rtt = 50.0f;
         in.next_jitter = 5.0f;
         in.next_packet_loss = 0.01f;
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         {
             in.near_relay_ids[i] = uint64_t(10000000) + i;
-            in.near_relay_min_rtt[i] = 5 * i;
-            in.near_relay_max_rtt[i] = 5 * i + 50;
-            in.near_relay_mean_rtt[i] = 5 * i + 10;
+            in.near_relay_rtt[i] = 5 * i;
             in.near_relay_jitter[i] = 0.01f * i;
             in.near_relay_packet_loss[i] = i;
         }
@@ -13779,25 +13652,19 @@ static void test_packets()
         check( in.fallback_to_direct == out.fallback_to_direct );
         check( in.platform_id == out.platform_id );
         check( in.connection_type == out.connection_type );
-        check( in.direct_min_rtt == out.direct_min_rtt );
-        check( in.direct_max_rtt == out.direct_max_rtt );
-        check( in.direct_mean_rtt == out.direct_mean_rtt );
+        check( in.direct_rtt == out.direct_rtt );
         check( in.direct_jitter == out.direct_jitter );
         check( in.direct_packet_loss == out.direct_packet_loss );
         check( in.next == out.next );
         check( in.committed == out.committed );
-        check( in.next_min_rtt == out.next_min_rtt );
-        check( in.next_max_rtt == out.next_max_rtt );
-        check( in.next_mean_rtt == out.next_mean_rtt );
+        check( in.next_rtt == out.next_rtt );
         check( in.next_jitter == out.next_jitter );
         check( in.next_packet_loss == out.next_packet_loss );
         check( in.num_near_relays == out.num_near_relays );
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         {
             check( in.near_relay_ids[i] == out.near_relay_ids[i] );
-            check( in.near_relay_min_rtt[i] == out.near_relay_min_rtt[i] );
-            check( in.near_relay_max_rtt[i] == out.near_relay_max_rtt[i] );
-            check( in.near_relay_mean_rtt[i] == out.near_relay_mean_rtt[i] );
+            check( in.near_relay_rtt[i] == out.near_relay_rtt[i] );
             check( in.near_relay_jitter[i] == out.near_relay_jitter[i] );
             check( in.near_relay_packet_loss[i] == out.near_relay_packet_loss[i] );
         }
@@ -14413,25 +14280,19 @@ static void test_backend_packets()
         in.flagged = true;
         in.fallback_to_direct = true;
         in.connection_type = NEXT_CONNECTION_TYPE_WIRED;
-        in.direct_min_rtt = 10.1f;
-        in.direct_max_rtt = 100.1f;
-        in.direct_mean_rtt = 20.1f;
+        in.direct_rtt = 10.1f;
         in.direct_jitter = 5.2f;
         in.direct_packet_loss = 0.1f;
         in.next = true;
         in.committed = true;
-        in.next_min_rtt = 5.0f;
-        in.next_max_rtt = 20.0f;
-        in.next_mean_rtt = 10.0f;
+        in.next_rtt = 5.0f;
         in.next_jitter = 1.5f;
         in.next_packet_loss = 0.0f;
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         {
             in.near_relay_ids[i] = i;
-            in.near_relay_min_rtt[i] = i + 10.0f;
-            in.near_relay_max_rtt[i] = i + 100.0f;
-            in.near_relay_mean_rtt[i] = i + 20.0f;
+            in.near_relay_rtt[i] = i + 10.0f;
             in.near_relay_jitter[i] = i + 11.0f;
             in.near_relay_packet_loss[i] = i + 12.0f;
         }
@@ -14459,25 +14320,19 @@ static void test_backend_packets()
         check( in.flagged == out.flagged );
         check( in.fallback_to_direct == out.fallback_to_direct );
         check( in.connection_type == out.connection_type );
-        check( in.direct_min_rtt == out.direct_min_rtt );
-        check( in.direct_max_rtt == out.direct_max_rtt );
-        check( in.direct_mean_rtt == out.direct_mean_rtt );
+        check( in.direct_rtt == out.direct_rtt );
         check( in.direct_jitter == out.direct_jitter );
         check( in.direct_packet_loss == out.direct_packet_loss );
         check( in.next == out.next );
         check( in.committed == out.committed );
-        check( in.next_min_rtt == out.next_min_rtt );
-        check( in.next_max_rtt == out.next_max_rtt );
-        check( in.next_mean_rtt == out.next_mean_rtt );
+        check( in.next_rtt == out.next_rtt );
         check( in.next_jitter == out.next_jitter );
         check( in.next_packet_loss == out.next_packet_loss );
         check( in.num_near_relays == out.num_near_relays );
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         {
             check( in.near_relay_ids[i] == out.near_relay_ids[i] );
-            check( in.near_relay_min_rtt[i] == out.near_relay_min_rtt[i] );
-            check( in.near_relay_max_rtt[i] == out.near_relay_max_rtt[i] );
-            check( in.near_relay_mean_rtt[i] == out.near_relay_mean_rtt[i] );
+            check( in.near_relay_rtt[i] == out.near_relay_rtt[i] );
             check( in.near_relay_jitter[i] == out.near_relay_jitter[i] );
             check( in.near_relay_packet_loss[i] == out.near_relay_packet_loss[i] );
         }

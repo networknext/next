@@ -392,13 +392,13 @@ int main()
 
             printf( " + Flagged = %s\n", stats->flagged ? "yes" : "no" );
 
-            printf( " + Direct RTT = %.2fms\n", stats->direct_min_rtt );
+            printf( " + Direct RTT = %.2fms\n", stats->direct_rtt );
             printf( " + Direct Jitter = %.2fms\n", stats->direct_jitter );
             printf( " + Direct Packet Loss = %.1f%%\n", stats->direct_packet_loss );
 
             if ( stats->next )
             {
-                printf( " + Next RTT = %.2fms\n", stats->next_min_rtt );
+                printf( " + Next RTT = %.2fms\n", stats->next_rtt );
                 printf( " + Next Jitter = %.2fms\n", stats->next_jitter );
                 printf( " + Next Packet Loss = %.1f%%\n", stats->next_packet_loss );
                 printf( " + Next Bandwidth Up = %.1fkbps\n", stats->next_kbps_up );
