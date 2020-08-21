@@ -403,13 +403,21 @@ func main() {
 	statsdb := routing.NewStatsDatabase()
 	costMatrix := &routing.CostMatrix{}
 	routeMatrix := &routing.RouteMatrix{}
-	var routeMatrixMutex sync.RWMutex
 
+	var routeMatrixMutex sync.RWMutex
 	getRouteMatrixFunc := func() *routing.RouteMatrix {
 		routeMatrixMutex.RLock()
 		rm := routeMatrix
 		routeMatrixMutex.RUnlock()
 		return rm
+	}
+
+	var costMatrixMutex sync.RWMutex
+	getCostMatrixFunc := func() *routing.CostMatrix {
+		costMatrixMutex.RLock()
+		cm := costMatrix
+		costMatrixMutex.RUnlock()
+		return cm
 	}
 
 	// Get the max jitter and max packet loss env vars
@@ -904,6 +912,20 @@ func main() {
 		}
 	}
 
+	serveCostMatrixFunc := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/octet-stream")
+
+		m := getCostMatrixFunc()
+
+		data := m.GetResponseData()
+
+		buffer := bytes.NewBuffer(data)
+		_, err := buffer.WriteTo(w)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}
+
 	fmt.Printf("starting http server\n")
 
 	router := mux.NewRouter()
@@ -911,7 +933,7 @@ func main() {
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage))
 	router.HandleFunc("/relay_init", transport.RelayInitHandlerFunc(logger, &commonInitParams)).Methods("POST")
 	router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(logger, relayslogger, &commonUpdateParams)).Methods("POST")
-	router.Handle("/cost_matrix", costMatrix).Methods("GET")
+	router.HandleFunc("/cost_matrix", serveCostMatrixFunc).Methods("GET")
 	router.HandleFunc("/route_matrix", serveRouteMatrixFunc).Methods("GET")
 	router.HandleFunc("/route_matrix_valve", serveValveRouteMatrixFunc).Methods("GET")
 	router.Handle("/debug/vars", expvar.Handler())
