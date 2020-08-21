@@ -2830,6 +2830,13 @@ int next_packet_loss_tracker_update( next_packet_loss_tracker_t * tracker )
 #define NEXT_ROUTE_UPDATE_ACK_PACKET                       115
 #define NEXT_RELAY_PING_PACKET                             116
 #define NEXT_RELAY_PONG_PACKET                             117
+
+#define NEXT_BACKEND_SERVER_UPDATE_PACKET                  220
+#define NEXT_BACKEND_SESSION_UPDATE_PACKET                 221
+#define NEXT_BACKEND_SESSION_RESPONSE_PACKET               222
+#define NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET            223
+#define NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET           224
+
 #define NEXT_DIRECT_PACKET                                 255
 
 struct NextUpgradeRequestPacket
@@ -3521,6 +3528,8 @@ void next_post_validate_packet( uint8_t * packet_data, int packet_bytes, void * 
 
 // -------------------------------------------------------------
 
+static int next_signed_packets[256];
+
 static int next_encrypted_packets[256];
 
 void * next_global_context = NULL;
@@ -3710,6 +3719,14 @@ int next_init( void * context, next_config_t * config_in )
     }
 
     next_global_config = config;
+
+    next_signed_packets[NEXT_UPGRADE_REQUEST_PACKET] = 1;
+    next_signed_packets[NEXT_UPGRADE_CONFIRM_PACKET] = 1;
+    next_signed_packets[NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET] = 1;
+    next_signed_packets[NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET] = 1;
+    next_signed_packets[NEXT_BACKEND_SERVER_UPDATE_PACKET] = 1;
+    next_signed_packets[NEXT_BACKEND_SESSION_UPDATE_PACKET] = 1;
+    next_signed_packets[NEXT_BACKEND_SESSION_RESPONSE_PACKET] = 1;
 
     next_encrypted_packets[NEXT_DIRECT_PING_PACKET] = 1;
     next_encrypted_packets[NEXT_DIRECT_PONG_PACKET] = 1;
@@ -8963,13 +8980,6 @@ int next_session_manager_num_entries( next_session_manager_t * session_manager )
 }
 
 // ---------------------------------------------------------------
-
-#define NEXT_BACKEND_PACKET_BASE                        220
-#define NEXT_BACKEND_SERVER_UPDATE_PACKET               NEXT_BACKEND_PACKET_BASE
-#define NEXT_BACKEND_SESSION_UPDATE_PACKET              NEXT_BACKEND_PACKET_BASE + 1
-#define NEXT_BACKEND_SESSION_RESPONSE_PACKET            NEXT_BACKEND_PACKET_BASE + 2
-#define NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET         NEXT_BACKEND_PACKET_BASE + 3
-#define NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET        NEXT_BACKEND_PACKET_BASE + 4
 
 struct NextBackendServerInitRequestPacket
 {
