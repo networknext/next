@@ -532,7 +532,7 @@ build-relay-backend-artifacts-dev: build-relay-backend ## builds the relay backe
 
 .PHONY: build-server-backend-artifacts-dev
 build-server-backend-artifacts-dev: build-server-backend ## builds the server backend artifacts dev
-	./deploy/build-artifacts.sh -e dev -s server-backend
+	./deploy/build-artifacts.sh -e dev -s server_backend
 
 .PHONY: build-billing-artifacts-staging
 build-billing-artifacts-staging: build-billing ## builds the billing artifacts staging
@@ -564,7 +564,7 @@ build-load-test-artifacts-staging: build-load-test ## builds the load test artif
 
 .PHONY: build-server-backend-artifacts-staging
 build-server-backend-artifacts-staging: build-server-backend ## builds the server backend artifacts staging
-	./deploy/build-artifacts.sh -e staging -s server-backend
+	./deploy/build-artifacts.sh -e staging -s server_backend
 
 .PHONY: build-billing-artifacts-prod
 build-billing-artifacts-prod: build-billing ## builds the billing artifacts prod
