@@ -9865,6 +9865,8 @@ next_server_internal_t * next_server_internal_create( void * context, const char
         {
             next_printf( NEXT_LOG_LEVEL_INFO, "server datacenter is '%s'", datacenter );
             server->datacenter_id = next_datacenter_id( datacenter );
+            strncpy( server->datacenter_name, datacenter, NEXT_MAX_DATACENTER_NAME_LENGTH - 1 );
+            server->datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
         }
         else
         {
