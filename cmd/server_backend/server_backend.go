@@ -132,8 +132,6 @@ func main() {
 			os.Exit(1)
 		}
 
-		fmt.Println("read server backend private key")
-
 		if key := os.Getenv("RELAY_ROUTER_PRIVATE_KEY"); len(key) != 0 {
 			routerPrivateKey, err = base64.StdEncoding.DecodeString(key)
 			if err != nil {
@@ -144,8 +142,6 @@ func main() {
 			level.Error(logger).Log("err", "RELAY_ROUTER_PRIVATE_KEY not set")
 			os.Exit(1)
 		}
-
-		fmt.Println("read relay backend private key")
 
 		if env == "local" {
 			if key := os.Getenv("RELAY_PUBLIC_KEY"); len(key) != 0 {
@@ -175,17 +171,11 @@ func main() {
 		LocalMode: true,
 	}
 
-	fmt.Println("in memory created")
-
 	// Create a no-op biller
 	var biller billing.Biller = &billing.NoOpBiller{}
 
-	fmt.Println("biller created")
-
 	// Create a no-op metrics handler
 	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
-
-	fmt.Println("local metrics created")
 
 	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
 	_, firestoreEmulatorOK := os.LookupEnv("FIRESTORE_EMULATOR_HOST")
@@ -194,9 +184,6 @@ func main() {
 		gcpProjectID = "local"
 		level.Info(logger).Log("msg", "Detected firestore emulator")
 	}
-
-	fmt.Printf("got gcp project ID: %v", gcpOK)
-	fmt.Printf("got firestore emulator: %v", firestoreEmulatorOK)
 
 	if gcpOK || firestoreEmulatorOK {
 		// Firestore
