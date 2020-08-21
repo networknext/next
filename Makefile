@@ -413,11 +413,6 @@ build-portal: ## builds the portal binary
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/portal ./cmd/portal/portal.go
 	@printf "done\n"
 
-.PHONY: deploy-portal
-deploy-portal: ## builds and deploys the portal to dev
-	@printf "Deploying portal to dev... \n\n"
-	gcloud compute --project "network-next-v3-dev" ssh portal-dev-1 -- 'cd /app && sudo ./bootstrap.sh -b $(ARTIFACT_BUCKET) -a portal.dev.tar.gz'
-
 .PHONY: build-relay-backend
 build-relay-backend: ## builds the relay backend binary
 	@printf "Building relay backend... "
@@ -426,27 +421,27 @@ build-relay-backend: ## builds the relay backend binary
 
 .PHONY: deploy-relay-backend-dev
 deploy-relay-backend-dev: ## builds and deploys the relay backend to dev
-	./deploy/deploy.sh -e dev -c dev-1 -t relay-backend -b gs://development_artifacts
+	./deploy/deploy.sh -e dev -c dev-1 -t relay-backend -n relay_backend -b gs://development_artifacts
 
 .PHONY: deploy-portal-cruncher-dev
 deploy-portal-cruncher-dev: ## builds and deploys the portal cruncher to dev
-	./deploy/deploy.sh -e dev -c dev-1 -t portal-cruncher -b gs://development_artifacts
+	./deploy/deploy.sh -e dev -c dev-1 -t portal-cruncher -n portal_cruncher -b gs://development_artifacts
 
 .PHONY: deploy-relay-backend-staging
 deploy-relay-backend-staging: ## builds and deploys the relay backend to prod
-	./deploy/deploy.sh -e staging -c staging-1 -t relay-backend -b gs://staging_artifacts
+	./deploy/deploy.sh -e staging -c staging-1 -t relay-backend -n relay_backend -b gs://staging_artifacts
 
 .PHONY: deploy-portal-cruncher-staging
 deploy-portal-cruncher-staging: ## builds and deploys the server backend to staging
-	./deploy/deploy.sh -e staging -c staging-1 -t portal-cruncher -b gs://staging_artifacts
+	./deploy/deploy.sh -e staging -c staging-1 -t portal-cruncher -n portal_cruncher -b gs://staging_artifacts
 
 .PHONY: deploy-relay-backend-prod
 deploy-relay-backend-prod: ## builds and deploys the relay backend to prod
-	./deploy/deploy.sh -e prod -c mig-jcr6 -t relay-backend -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c mig-jcr6 -t relay-backend -n relay_backend -b gs://prod_artifacts
 
 .PHONY: deploy-portal-cruncher-prod
 deploy-portal-cruncher-prod: ## builds and deploys the portal cruncher to prod
-	./deploy/deploy.sh -e prod -c prod -t portal-cruncher -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c prod -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
 
 .PHONY: build-server-backend
 build-server-backend: ## builds the server backend binary
@@ -462,15 +457,15 @@ build-billing: ## builds the billing binary
 
 .PHONY: deploy-server-backend-dev-1
 deploy-server-backend-dev-1: ## builds and deploys the server backend to dev
-	./deploy/deploy.sh -e dev -c dev-1 -t server-backend -b gs://development_artifacts
+	./deploy/deploy.sh -e dev -c dev-1 -t server-backend -n server_backend -b gs://development_artifacts
 
 .PHONY: deploy-server-backend-dev-2
 deploy-server-backend-dev-2: ## builds and deploys the server backend to dev
-	./deploy/deploy.sh -e dev -c dev-2 -t server-backend -b gs://development_artifacts
+	./deploy/deploy.sh -e dev -c dev-2 -t server-backend -n server_backend -b gs://development_artifacts
 
 .PHONY: deploy-server-backend-staging
 deploy-server-backend-staging: ## builds and deploys the server backend to dev
-	./deploy/deploy.sh -e staging -c staging-1 -t server-backend -b gs://staging_artifacts
+	./deploy/deploy.sh -e staging -c staging-1 -t server-backend -n server_backend -b gs://staging_artifacts
 
 .PHONY: build-analytics
 build-analytics: ## builds the analytics binary
@@ -480,23 +475,23 @@ build-analytics: ## builds the analytics binary
 
 .PHONY: deploy-server-backend-psyonix
 deploy-server-backend-psyonix: ## builds and deploys the server backend to psyonix
-	./deploy/deploy.sh -e prod -c psyonix -t server-backend -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c psyonix -t server-backend -n server_backend -b gs://prod_artifacts
 
 .PHONY: deploy-server-backend-liquidbit
 deploy-server-backend-liquidbit: ## builds and deploys the server backend to liquidbit
-	./deploy/deploy.sh -e prod -c prod-42rz -t server-backend -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c prod-42rz -t server-backend -n server_backend -b gs://prod_artifacts
 
 .PHONY: deploy-server-backend-valve
 deploy-server-backend-valve: ## builds and deploys the server backend to valve
-	./deploy/deploy.sh -e prod -c valve-r57d -t server-backend -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c valve-r57d -t server-backend -n server_backend -b gs://prod_artifacts
 
 .PHONY: deploy-server-backend-velan
 deploy-server-backend-velan: ## builds and deploys the server backend to velan
-	./deploy/deploy.sh -e prod -c velan-730n -t server-backend -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c velan-730n -t server-backend -n server_backend -b gs://prod_artifacts
 
 .PHONY: deploy-server-backend-esl
 deploy-server-backend-esl: ## builds and deploys the server backend to esl
-	./deploy/deploy.sh -e prod -c esl-22dr -t server-backend -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c esl-22dr -t server-backend -n server_backend -b gs://prod_artifacts
 
 .PHONY: build-load-test-server-artifacts
 build-load-test-server-artifacts: build-load-test-server ## builds the load test artifacts staging
