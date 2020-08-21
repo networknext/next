@@ -3257,6 +3257,17 @@ int next_write_packet( uint8_t packet_id, void * packet_object, uint8_t * packet
 
     *packet_bytes = stream.GetBytesProcessed();
 
+    // todo: if signed_packet && signed_packet[packet_id]
+
+    /*
+        crypto_sign_state state;
+        crypto_sign_init( &state );
+        uint8_t sign_data[1024];
+        const int sign_bytes = GetSignData( sign_data, sizeof(sign_data) );
+        crypto_sign_update( &state, sign_data, sign_bytes );
+        crypto_sign_final_create( &state, signature, NULL, private_key );
+    */
+
     if ( encrypted_packet && encrypted_packet[packet_id] )
     {
         uint8_t * additional = packet_data + NEXT_PACKET_HASH_BYTES;
@@ -3320,6 +3331,17 @@ int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_obj
  
     if ( packet_bytes < 1 )
         return NEXT_ERROR;
+
+    // todo: if signed_packet && signed_packet[packet_id]
+
+    /*
+        crypto_sign_state state;
+        crypto_sign_init( &state );
+        uint8_t sign_data[1024];
+        const int sign_bytes = GetSignData( sign_data, sizeof(sign_data) );
+        crypto_sign_update( &state, sign_data, sign_bytes );
+        return crypto_sign_final_verify( &state, signature, public_key ) == 0;
+    */
 
     uint8_t packet_id = packet_data[0];
 
