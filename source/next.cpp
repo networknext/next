@@ -101,8 +101,6 @@
 #define NEXT_SERVER_INIT_RESPONSE_SDK_VERSION_TOO_OLD                   3
 #define NEXT_SERVER_INIT_RESPONSE_SIGNATURE_CHECK_FAILED                4
 
-#define NEXT_PACKET_HASH_BYTES                                          8
-
 #define NEXT_FLAGS_BAD_ROUTE_TOKEN                                 (1<<0)
 #define NEXT_FLAGS_NO_ROUTE_TO_CONTINUE                            (1<<1)
 #define NEXT_FLAGS_PREVIOUS_UPDATE_STILL_PENDING                   (1<<2)
@@ -2474,9 +2472,15 @@ bool next_is_network_next_packet( const uint8_t * packet_data, int packet_bytes 
         return false;
 
     const uint8_t * message = packet_data + NEXT_PACKET_HASH_BYTES;
-    const int message_length = packet_bytes - NEXT_PACKET_HASH_BYTES;
+    
+    int message_length = packet_bytes - NEXT_PACKET_HASH_BYTES;
+    if ( message_length > 32 )
+    {
+        message_length = 32;
+    }
 
     next_assert( message_length > 0 );
+    next_assert( message_length <= 32 );
 
     uint8_t hash[NEXT_PACKET_HASH_BYTES];
     crypto_generichash( hash, NEXT_PACKET_HASH_BYTES, message, message_length, next_packet_hash_key, crypto_generichash_KEYBYTES );
@@ -2487,7 +2491,12 @@ bool next_is_network_next_packet( const uint8_t * packet_data, int packet_bytes 
 void next_sign_network_next_packet( uint8_t * packet_data, size_t packet_bytes )
 {
     next_assert( packet_bytes > NEXT_PACKET_HASH_BYTES );
-    crypto_generichash( packet_data, NEXT_PACKET_HASH_BYTES, packet_data + NEXT_PACKET_HASH_BYTES, packet_bytes - NEXT_PACKET_HASH_BYTES, next_packet_hash_key, crypto_generichash_KEYBYTES );
+    int message_length = packet_bytes - NEXT_PACKET_HASH_BYTES;
+    if ( message_length > 32 )
+    {
+        message_length = 32;
+    }
+    crypto_generichash( packet_data, NEXT_PACKET_HASH_BYTES, packet_data + NEXT_PACKET_HASH_BYTES, message_length, next_packet_hash_key, crypto_generichash_KEYBYTES );
 }
 
 // -------------------------------------------------------------
@@ -2633,7 +2642,7 @@ void next_replay_protection_advance_sequence( next_replay_protection_t * replay_
 
 int next_wire_packet_bits( int payload_bytes )
 {
-    return ( NEXT_ETHERNET_HEADER_BYTES + NEXT_IPV4_HEADER_BYTES + NEXT_UDP_HEADER_BYTES + NEXT_HEADER_BYTES + payload_bytes ) * 8;
+    return ( NEXT_ETHERNET_HEADER_BYTES + NEXT_IPV4_HEADER_BYTES + NEXT_UDP_HEADER_BYTES + NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES + payload_bytes ) * 8;
 }
 
 struct next_bandwidth_limiter_t
@@ -3333,9 +3342,15 @@ int next_write_packet( uint8_t packet_id, void * packet_object, uint8_t * packet
     }
 
     const uint8_t * message = packet_data + NEXT_PACKET_HASH_BYTES;
-    const int message_length = *packet_bytes - NEXT_PACKET_HASH_BYTES;
+
+    int message_length = *packet_bytes - NEXT_PACKET_HASH_BYTES;
+    if ( message_length > 32 )
+    {
+        message_length = 32;
+    }
 
     next_assert( message_length > 0 );
+    next_assert( message_length <= 32 );
 
     crypto_generichash( packet_data, NEXT_PACKET_HASH_BYTES, message, message_length, next_packet_hash_key, crypto_generichash_KEYBYTES );
 
@@ -9526,9 +9541,15 @@ int next_write_backend_packet( uint8_t packet_id, void * packet_object, uint8_t 
     next_assert( *packet_bytes < NEXT_MAX_PACKET_BYTES );
 
     const uint8_t * message = packet_data + NEXT_PACKET_HASH_BYTES;
-    const int message_length = *packet_bytes - NEXT_PACKET_HASH_BYTES;
+    
+    int message_length = *packet_bytes - NEXT_PACKET_HASH_BYTES;
+    if ( message_length > 32 )
+    {
+        message_length = 32;
+    }
 
     next_assert( message_length > 0 );
+    next_assert( message_length <= 32 );
 
     crypto_generichash( packet_data, NEXT_PACKET_HASH_BYTES, message, message_length, next_packet_hash_key, crypto_generichash_KEYBYTES );
 

@@ -4,13 +4,15 @@ DONE
 
 	Make session update packet self contained so it has the SDK version in it.
 
+	Fix wire packet calculations so they include the 8 byte packet hash.
+
 TODO
+
+	Don't sign the whole packet, only sign the first 32 bytes. Much cheaper computationally.
 
 	Server init packet should include datacenter name as a string.
 
 	Remove "GetSignData" processing entirely. Packets have 8 bytes signature at the end (or beginning?). Which is most convenient?
-
-	Don't sign the whole packet, only sign the first 16 or 32 bytes. Much cheaper computationally.
 
 	Implement session data that is passed up in the session update request packet, and passed back down in the session update response packet.
 
