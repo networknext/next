@@ -154,13 +154,15 @@ func main() {
 			os.Exit(1)
 		}
 
-		if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
-			customerPublicKey, err = base64.StdEncoding.DecodeString(key)
-			if err != nil {
-				level.Error(logger).Log("envvar", "NEXT_CUSTOMER_PUBLIC_KEY", "msg", "could not parse", "err", err)
-				os.Exit(1)
+		if env == "local" {
+			if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
+				customerPublicKey, err = base64.StdEncoding.DecodeString(key)
+				if err != nil {
+					level.Error(logger).Log("envvar", "NEXT_CUSTOMER_PUBLIC_KEY", "msg", "could not parse", "err", err)
+					os.Exit(1)
+				}
+				customerPublicKey = customerPublicKey[8:]
 			}
-			customerPublicKey = customerPublicKey[8:]
 		}
 	}
 
