@@ -10,9 +10,9 @@ DONE
 
 	Server init packet should include datacenter name as a string.
 
-TODO
-
 	Uint64 platdorm id is ridiculously wasteful. Serialize it as an enum instead.
+
+TODO
 
 	Remove "GetSignData" processing entirely. Packets have 8 bytes signature at the end (or beginning?). Which is most convenient?
 

@@ -9268,7 +9268,12 @@ struct NextBackendSessionUpdatePacket
         serialize_uint64( stream, user_hash );
         serialize_int( stream, platform_id, NEXT_PLATFORM_UNKNOWN, NEXT_PLATFORM_MAX );
         serialize_uint64( stream, tag );
-        serialize_bits( stream, flags, NEXT_FLAGS_COUNT );
+        bool has_flags = Stream::IsWriting && flags != 0;
+        serialize_bool( stream, has_flags );
+        if ( has_flags )
+        {
+            serialize_bits( stream, flags, NEXT_FLAGS_COUNT );
+        }
         serialize_bool( stream, flagged );
         serialize_bool( stream, fallback_to_direct );
         serialize_int( stream, connection_type, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_MAX );
