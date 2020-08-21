@@ -2,20 +2,20 @@ DONE
 
 	Simplify stats from client -> server, eg. remove mean, min, max RTT.
 
+	Make session update packet self contained so it has the SDK version in it.
+
 TODO
-
-	Normalize all the backend and relay facing packet numbers so they don't conflict 3.x in any way (assume relay will have to support both old and new packets for a while now).
-
-	Simplify retries and slow down even further. Wait a full 2 seconds before first retry. Then retry 4 times each second after that before giving up.
-
-	Remove "GetSignData" processing entirely. Packets have 8 bytes signature at the end (or beginning?). Which is most convenient?
 
 	Server init packet should include datacenter name as a string.
 
-	Don't sign the whole packet, only sign the first 16 or 32 bytes. Much cheaper computationally.
+	Remove "GetSignData" processing entirely. Packets have 8 bytes signature at the end (or beginning?). Which is most convenient?
 
-	Make session update self contained, eg. have version info and any server info it needs, and not require looking up server info to function.
+	Don't sign the whole packet, only sign the first 16 or 32 bytes. Much cheaper computationally.
 
 	Implement session data that is passed up in the session update request packet, and passed back down in the session update response packet.
 
 	Uint64 packet id is ridiculously wasteful. Serialize it as an enum instead.
+
+	Server should try to resolve hostname and initialize every 5 - 10 minutes (randomized), if it cannot resolve or initialize. Otherwise, we run the risk of losing game servers forever until they are restarted.
+
+	Normalize all the backend and relay facing packet numbers so they don't conflict 3.x in any way (assume relay will have to support both old and new packets for a while now).

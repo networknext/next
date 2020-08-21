@@ -75,9 +75,6 @@
 #define NEXT_CONTINUE_REQUEST_TIMEOUT                                   5
 #define NEXT_SESSION_UPDATE_RESEND_TIME                               1.0
 #define NEXT_SESSION_UPDATE_TIMEOUT                                     5
-#define NEXT_VERSION_MAJOR_MAX                                        254
-#define NEXT_VERSION_MINOR_MAX                                       1023
-#define NEXT_VERSION_PATCH_MAX                                        254
 #define NEXT_BANDWIDTH_LIMITER_INTERVAL                               1.0
 
 #define NEXT_CLIENT_COUNTER_OPEN_SESSION                                0
@@ -8995,20 +8992,20 @@ int next_session_manager_num_entries( next_session_manager_t * session_manager )
 
 struct NextBackendServerInitRequestPacket
 {
-    uint64_t request_id;
     int version_major;
     int version_minor;
     int version_patch;
+    uint64_t request_id;
     uint64_t customer_id;
     uint64_t datacenter_id;
     uint8_t signature[crypto_sign_BYTES];
 
     NextBackendServerInitRequestPacket()
     {
-        request_id = 0;
         version_major = NEXT_VERSION_MAJOR_INT;
         version_minor = NEXT_VERSION_MINOR_INT;
         version_patch = NEXT_VERSION_PATCH_INT;
+        request_id = 0;
         customer_id = 0;
         datacenter_id = 0;
         memset( signature, 0, crypto_sign_BYTES );
@@ -9016,9 +9013,9 @@ struct NextBackendServerInitRequestPacket
 
     template <typename Stream> bool Serialize( Stream & stream )
     {
-        serialize_int( stream, version_major, 0, NEXT_VERSION_MAJOR_MAX );
-        serialize_int( stream, version_minor, 0, NEXT_VERSION_MINOR_MAX );
-        serialize_int( stream, version_patch, 0, NEXT_VERSION_PATCH_MAX );
+        serialize_bits( stream, version_major, 8 );
+        serialize_bits( stream, version_minor, 8 );
+        serialize_bits( stream, version_patch, 8 );
         serialize_uint64( stream, request_id );
         serialize_uint64( stream, customer_id );
         serialize_uint64( stream, datacenter_id );
@@ -9113,28 +9110,26 @@ struct NextBackendServerInitResponsePacket
 
 struct NextBackendServerUpdatePacket
 {
-    uint64_t sequence;
     int version_major;
     int version_minor;
     int version_patch;
+    uint64_t sequence;
     uint64_t customer_id;
     uint64_t datacenter_id;
-    uint32_t num_sessions_pending;
-    uint32_t num_sessions_upgraded;
+    uint32_t num_sessions;
     next_address_t server_address;
     uint8_t server_route_public_key[crypto_box_PUBLICKEYBYTES];
     uint8_t signature[crypto_sign_BYTES];
 
     NextBackendServerUpdatePacket()
     {
-        sequence = 0;
         version_major = NEXT_VERSION_MAJOR_INT;
         version_minor = NEXT_VERSION_MINOR_INT;
         version_patch = NEXT_VERSION_PATCH_INT;
+        sequence = 0;
         customer_id = 0;
         datacenter_id = 0;
-        num_sessions_pending = 0;
-        num_sessions_upgraded = 0;
+        num_sessions = 0;
         memset( &server_address, 0, sizeof(next_address_t) );
         memset( server_route_public_key, 0, sizeof(server_route_public_key) );
         memset( signature, 0, crypto_sign_BYTES );
@@ -9142,14 +9137,13 @@ struct NextBackendServerUpdatePacket
 
     template <typename Stream> bool Serialize( Stream & stream )
     {
+        serialize_bits( stream, version_major, 8 );
+        serialize_bits( stream, version_minor, 8 );
+        serialize_bits( stream, version_patch, 8 );
         serialize_uint64( stream, sequence );
-        serialize_int( stream, version_major, 0, NEXT_VERSION_MAJOR_MAX );
-        serialize_int( stream, version_minor, 0, NEXT_VERSION_MINOR_MAX );
-        serialize_int( stream, version_patch, 0, NEXT_VERSION_PATCH_MAX );
         serialize_uint64( stream, customer_id );
         serialize_uint64( stream, datacenter_id );
-        serialize_uint32( stream, num_sessions_pending );
-        serialize_uint32( stream, num_sessions_upgraded );
+        serialize_uint32( stream, num_sessions );
         serialize_address( stream, server_address );
         serialize_bytes( stream, server_route_public_key, crypto_box_PUBLICKEYBYTES );
         serialize_bytes( stream, signature, crypto_sign_BYTES );
@@ -9159,14 +9153,13 @@ struct NextBackendServerUpdatePacket
     int GetSignData( uint8_t * buffer, int buffer_size )
     {
         uint8_t * p = buffer;
+        next_write_uint8( &p, version_major );
+        next_write_uint8( &p, version_minor );
+        next_write_uint8( &p, version_patch );
         next_write_uint64( &p, sequence );
-        next_write_uint64( &p, version_major );
-        next_write_uint64( &p, version_minor );
-        next_write_uint64( &p, version_patch );
         next_write_uint64( &p, customer_id );
         next_write_uint64( &p, datacenter_id );
-        next_write_uint32( &p, num_sessions_pending );
-        next_write_uint32( &p, num_sessions_upgraded );
+        next_write_uint32( &p, num_sessions );
         next_write_address( &p, &server_address );
         next_write_bytes( &p, server_route_public_key, crypto_box_PUBLICKEYBYTES );
         next_assert( p - buffer <= buffer_size );
@@ -9197,6 +9190,9 @@ struct NextBackendServerUpdatePacket
 
 struct NextBackendSessionUpdatePacket
 {
+    int version_major;
+    int version_minor;
+    int version_patch;
     uint64_t sequence;
     uint64_t customer_id;
     next_address_t server_address;
@@ -9235,10 +9231,16 @@ struct NextBackendSessionUpdatePacket
     NextBackendSessionUpdatePacket()
     {
         memset( this, 0, sizeof(NextBackendSessionUpdatePacket) );
+        version_major = NEXT_VERSION_MAJOR_INT;
+        version_minor = NEXT_VERSION_MINOR_INT;
+        version_patch = NEXT_VERSION_PATCH_INT;
     }
 
     template <typename Stream> bool Serialize( Stream & stream )
     {
+        serialize_bits( stream, version_major, 8 );
+        serialize_bits( stream, version_minor, 8 );
+        serialize_bits( stream, version_patch, 8 );
         serialize_uint64( stream, sequence );
         serialize_uint64( stream, customer_id );
         serialize_address( stream, server_address );
@@ -9285,6 +9287,9 @@ struct NextBackendSessionUpdatePacket
     int GetSignData( uint8_t * buffer, int buffer_size )
     {
         uint8_t * p = buffer;
+        next_write_uint8( &p, version_major );
+        next_write_uint8( &p, version_minor );
+        next_write_uint8( &p, version_patch );
         next_write_uint64( &p, sequence );
         next_write_uint64( &p, customer_id );
         next_write_uint64( &p, session_id );
@@ -11517,8 +11522,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         packet.sequence = ++server->server_update_sequence;
         packet.customer_id = server->customer_id;
         packet.datacenter_id = server->datacenter_id;
-        packet.num_sessions_pending = next_pending_session_manager_num_entries( server->pending_session_manager );
-        packet.num_sessions_upgraded = next_session_manager_num_entries( server->session_manager );
+        packet.num_sessions = next_session_manager_num_entries( server->session_manager );
         packet.server_address = server->server_address;
         memcpy( packet.server_route_public_key, server->server_route_public_key, crypto_box_PUBLICKEYBYTES );
         packet.Sign( server->customer_private_key );
@@ -11537,7 +11541,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
         server->last_backend_server_update = current_time;
 
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent server update packet to backend (#%" PRId64 ": %d sessions pending, %d sessions upgraded)", packet.sequence, packet.num_sessions_pending, packet.num_sessions_upgraded );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent server update packet to backend (#%" PRId64 ": %d sessions)", packet.sequence, packet.num_sessions );
 
         server->first_server_update = false;
     }
@@ -14240,8 +14244,7 @@ static void test_backend_packets()
         in.sequence = 10000;
         in.customer_id = 1231234127431LL;
         in.datacenter_id = next_datacenter_id( "local" );
-        in.num_sessions_pending = 10;
-        in.num_sessions_upgraded = 20;
+        in.num_sessions = 20;
         next_address_parse( &in.server_address, "127.0.0.1:12345" );
         next_random_bytes( in.server_route_public_key, crypto_box_PUBLICKEYBYTES );
         in.Sign( private_key );
@@ -14256,8 +14259,7 @@ static void test_backend_packets()
         check( in.version_patch == out.version_patch );
         check( in.customer_id == out.customer_id );
         check( in.datacenter_id == out.datacenter_id );
-        check( in.num_sessions_pending == out.num_sessions_pending );
-        check( in.num_sessions_upgraded == out.num_sessions_upgraded );
+        check( in.num_sessions == out.num_sessions );
         check( next_address_equal( &in.server_address, &out.server_address ) );
         check( memcmp( in.server_route_public_key, out.server_route_public_key, crypto_box_PUBLICKEYBYTES ) == 0 );
         check( out.Verify( public_key ) );
