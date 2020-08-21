@@ -4,12 +4,17 @@ import (
 	"encoding/binary"
 	"fmt"
 	"hash/fnv"
+	"net"
 	"strings"
 )
 
 type Route struct {
-	Relays []Relay `json:"relays"`
-	Stats  Stats   `json:"stats"`
+	RelayIDs        []uint64      `json:"relayIDs"`
+	RelayNames      []string      `json:"relayNames"`
+	RelayAddrs      []net.UDPAddr `json:"relayAddrs"`
+	RelayPublicKeys [][]byte      `json:"relayPublicKeys"`
+	RelaySellers    []Seller      `json:"relaySellers"`
+	Stats           Stats         `json:"stats"`
 }
 
 func (r Route) String() string {
@@ -22,10 +27,10 @@ func (r Route) String() string {
 	sb.WriteString(fmt.Sprintf("%d", r.Hash64()))
 	sb.WriteString(" ")
 
-	sb.WriteString("relays=")
-	for idx, relay := range r.Relays {
-		sb.WriteString(relay.Addr.String())
-		if idx < len(r.Relays) {
+	sb.WriteString("relayIDs=")
+	for idx, relayID := range r.RelayIDs {
+		sb.WriteString(fmt.Sprintf("%d", relayID))
+		if idx < len(r.RelayIDs) {
 			sb.WriteString(" ")
 		}
 	}
@@ -43,24 +48,12 @@ func (r *Route) Decide(prevDecision Decision, lastNextStats *Stats, lastDirectSt
 	return nextDecision
 }
 
-func (r *Route) Hash() []byte {
-	fnv64 := fnv.New64()
-	id := make([]byte, 8)
-
-	for _, relay := range r.Relays {
-		binary.LittleEndian.PutUint64(id, relay.ID)
-		fnv64.Write(id)
-	}
-
-	return fnv64.Sum(nil)
-}
-
 func (r *Route) Hash64() uint64 {
 	fnv64 := fnv.New64()
 	id := make([]byte, 8)
 
-	for _, relay := range r.Relays {
-		binary.LittleEndian.PutUint64(id, relay.ID)
+	for _, relayID := range r.RelayIDs {
+		binary.LittleEndian.PutUint64(id, relayID)
 		fnv64.Write(id)
 	}
 
