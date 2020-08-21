@@ -6,6 +6,7 @@
 #include "expireable.hpp"
 #include "packet.hpp"
 #include "router_info.hpp"
+#include "util/macros.hpp"
 
 namespace core
 {
@@ -27,43 +28,43 @@ namespace core
     uint64_t key();
 
    protected:
-    void write(uint8_t* packetData, size_t packetLength, size_t& index);
-    void read(uint8_t* packetData, size_t packetLength, size_t& index);
+    void write(const uint8_t* packetData, size_t packetLength, size_t& index);
+    void read(const uint8_t* packetData, size_t packetLength, size_t& index);
   };
 
-  inline Token::Token(const RouterInfo& routerInfo): Expireable(routerInfo) {}
+  INLINE Token::Token(const RouterInfo& routerInfo): Expireable(routerInfo) {}
 
-  [[gnu::always_inline]] inline uint64_t Token::key()
+  INLINE uint64_t Token::key()
   {
     return SessionID ^ SessionVersion;
   }
 
-  [[gnu::always_inline]] inline void Token::write(uint8_t* packetData, size_t packetLength, size_t& index)
+  INLINE void Token::write(const uint8_t* packetData, size_t packetLength, size_t& index)
   {
     assert(index + Token::ByteSize < packetLength);
 
     if (!encoding::WriteUint64(packetData, packetLength, index, ExpireTimestamp)) {
-      LogDebug("could not write expire timestamp");
+      LOG(DEBUG, "could not write expire timestamp");
       assert(false);
     }
 
     if (!encoding::WriteUint64(packetData, packetLength, index, SessionID)) {
-      LogDebug("could not write session id");
+      LOG(DEBUG, "could not write session id");
       assert(false);
     }
 
     if (!encoding::WriteUint8(packetData, packetLength, index, SessionVersion)) {
-      LogDebug("could not write session version");
+      LOG(DEBUG, "could not write session version");
       assert(false);
     }
 
     if (!encoding::WriteUint8(packetData, packetLength, index, SessionFlags)) {
-      LogDebug("could not write session flags");
+      LOG(DEBUG, "could not write session flags");
       assert(false);
     }
   }
 
-  [[gnu::always_inline]] inline void Token::read(uint8_t* packetData, size_t packetLength, size_t& index)
+  INLINE void Token::read(const uint8_t* packetData, size_t packetLength, size_t& index)
   {
     (void)packetLength;
     assert(index + Token::ByteSize < packetLength);

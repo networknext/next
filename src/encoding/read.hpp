@@ -1,113 +1,128 @@
-#ifndef ENCODING_READ_HPP
-#define ENCODING_READ_HPP
-
-#include "net/address.hpp"
-
-#include "util/logger.hpp"
+#pragma once
 
 #include "binary.hpp"
+#include "net/address.hpp"
+#include "util/logger.hpp"
 
 namespace encoding
 {
   template <typename T>
-  uint8_t ReadUint8(const T& buff, size_t& index);
+  auto ReadUint8(const T& buff, size_t& index, uint8_t& value) -> bool;
 
   template <typename T>
-  uint16_t ReadUint16(const T& buff, size_t& index);
+  auto ReadUint16(const T& buff, size_t& index, uint16_t& value) -> bool;
 
   template <typename T>
-  uint32_t ReadUint32(const T& buff, size_t& index);
+  auto ReadUint32(const T& buff, size_t& index, uint32_t& value) -> bool;
 
   template <typename T>
-  uint64_t ReadUint64(const T& buff, size_t& index);
+  auto ReadUint64(const T& buff, size_t& index, uint64_t& value) -> bool;
 
   template <typename T>
-  double ReadDouble(const T& buff, size_t& index);
+  auto ReadDouble(const T& buff, size_t& index, double& value) -> bool;
 
-  void ReadBytes(const uint8_t* buff, size_t buffLength, size_t& index, uint8_t* storage, size_t storageLength, size_t len);
+  auto ReadBytes(
+   const uint8_t* const buff, size_t buffLength, size_t& index, const uint8_t* storage, size_t storageLength, size_t len)
+   -> bool;
 
   template <typename T, typename U>
-  void ReadBytes(const T& buff, size_t& index, U& storage, size_t len);
+  auto ReadBytes(const T& buff, size_t& index, U& storage, size_t len) -> bool;
 
-  void ReadAddress(const uint8_t* buff, size_t buffLength, size_t& index, net::Address& addr);
+  auto ReadAddress(const uint8_t* buff, size_t buffLength, size_t& index, net::Address& addr) -> bool;
 
   template <typename T>
-  void ReadAddress(const T& buff, size_t& index, net::Address& addr);
+  auto ReadAddress(const T& buff, size_t& index, net::Address& addr) -> bool;
 
   template <typename T>
   auto ReadString(const T& buff, size_t& index, std::string& str) -> std::string;
 
   template <typename T>
-  [[gnu::always_inline]] inline uint8_t ReadUint8(const T& buff, size_t& index)
+  INLINE auto ReadUint8(const T& buff, size_t& index, uint8_t& value) -> bool
   {
-    return buff[index++];
+    if (index + 1 > buff.size()) {
+      return false;
+    }
+    value = buff[index++];
+    return true;
   }
 
   template <typename T>
-  [[gnu::always_inline]] inline uint16_t ReadUint16(const T& buff, size_t& index)
+  INLINE auto ReadUint16(const T& buff, size_t& index, uint16_t& value) -> bool
   {
-    GCC_NO_OPT_OUT;
-    uint16_t retval;
-    retval = (buff)[index++];
-    retval |= (static_cast<uint64_t>(buff[index++]) << 8);
-    return retval;
+    if (index + 2 > buff.size()) {
+      return false;
+    }
+    value = (buff)[index++];
+    value |= (static_cast<uint64_t>(buff[index++]) << 8);
+    return true;
   }
 
   template <typename T>
-  [[gnu::always_inline]] inline uint32_t ReadUint32(const T& buff, size_t& index)
+  INLINE auto ReadUint32(const T& buff, size_t& index, uint32_t& value) -> bool
   {
-    uint32_t retval;
-    retval = buff[index++];
-    retval |= (static_cast<uint64_t>(buff[index++]) << 8);
-    retval |= (static_cast<uint64_t>(buff[index++]) << 16);
-    retval |= (static_cast<uint64_t>(buff[index++]) << 24);
-    return retval;
+    if (index + 4 > buff.size()) {
+      return false;
+    }
+    value = buff[index++];
+    value |= (static_cast<uint32_t>(buff[index++]) << 8);
+    value |= (static_cast<uint32_t>(buff[index++]) << 16);
+    value |= (static_cast<uint32_t>(buff[index++]) << 24);
+    return true;
   }
 
   template <typename T>
-  [[gnu::always_inline]] inline uint64_t ReadUint64(const T& buff, size_t& index)
+  INLINE auto ReadUint64(const T& buff, size_t& index, uint64_t& value) -> bool
   {
-    uint64_t retval;
-    retval = buff[index++];
-    retval |= (static_cast<uint64_t>(buff[index++]) << 8);
-    retval |= (static_cast<uint64_t>(buff[index++]) << 16);
-    retval |= (static_cast<uint64_t>(buff[index++]) << 24);
-    retval |= (static_cast<uint64_t>(buff[index++]) << 32);
-    retval |= (static_cast<uint64_t>(buff[index++]) << 40);
-    retval |= (static_cast<uint64_t>(buff[index++]) << 48);
-    retval |= (static_cast<uint64_t>(buff[index++]) << 56);
-    return retval;
+    if (index + 8 > buff.size()) {
+      return false;
+    }
+    value = buff[index++];
+    value |= (static_cast<uint64_t>(buff[index++]) << 8);
+    value |= (static_cast<uint64_t>(buff[index++]) << 16);
+    value |= (static_cast<uint64_t>(buff[index++]) << 24);
+    value |= (static_cast<uint64_t>(buff[index++]) << 32);
+    value |= (static_cast<uint64_t>(buff[index++]) << 40);
+    value |= (static_cast<uint64_t>(buff[index++]) << 48);
+    value |= (static_cast<uint64_t>(buff[index++]) << 56);
+    return true;
   }
 
   template <typename T>
-  double ReadDouble(const T& buff, size_t& index)
+  INLINE auto ReadDouble(const T& buff, size_t& index, double& value) -> bool
   {
-    double retval;
-    encoding::ReadBytes(buff.data(), buff.size(), index, reinterpret_cast<uint8_t*>(&retval), sizeof(double), sizeof(double));
-    return retval;
+    return encoding::ReadBytes(
+     buff.data(), buff.size(), index, reinterpret_cast<uint8_t*>(&value), sizeof(double), sizeof(double));
   }
 
-  [[gnu::always_inline]] inline void ReadBytes(
-   const uint8_t* buff, size_t buffLength, size_t& index, uint8_t* storage, size_t storageLength, size_t len)
+  INLINE auto ReadBytes(
+   const uint8_t* const buff, size_t buff_length, size_t& index, uint8_t* storage, size_t storage_length, size_t read_len) -> bool
   {
-    (void)buffLength;
-    (void)storageLength;
-    assert(len <= storageLength);
-    assert(index + len <= buffLength);
-    std::copy(buff + index, buff + index + len, storage);
-    index += len;
+    if (index + read_len > buff_length) {
+      return false;
+    }
+    if (read_len > storage_length) {
+      return false;
+    }
+    std::copy(buff + index, buff + index + read_len, storage);
+    index += read_len;
+    return true;
   }
 
   template <typename T, typename U>
-  [[gnu::always_inline]] inline void ReadBytes(const T& buff, size_t& index, U& storage, size_t len)
+  INLINE auto ReadBytes(const T& buff, size_t& index, U& storage, size_t read_len) -> bool
   {
-    assert(len <= storage.size());
-    assert(index + len <= buff.size());
-    std::copy(buff.begin() + index, buff.begin() + index + len, storage.begin());
-    index += len;
+    if (index + read_len > buff.size()) {
+      return false;
+    }
+    if (read_len > storage.size()) {
+      return false;
+    }
+    std::copy(buff.begin() + index, buff.begin() + index + read_len, storage.begin());
+    index += read_len;
+    return true;
   }
 
-  [[gnu::always_inline]] inline void ReadAddress(const uint8_t* buff, size_t buffLength, size_t& index, net::Address& addr)
+  INLINE auto ReadAddress(const uint8_t* buff, size_t buffLength, size_t& index, net::Address& addr) -> bool
   {
     (void)buffLength;
 #ifndef NDEBUG
@@ -170,26 +185,3 @@ namespace encoding
     return str;
   }
 }  // namespace encoding
-
-namespace legacy
-{
-  uint8_t read_uint8(const uint8_t** p);
-
-  uint16_t read_uint16(const uint8_t** p);
-
-  uint32_t read_uint32(const uint8_t** p);
-
-  uint64_t read_uint64(const uint8_t** p);
-
-  float read_float32(const uint8_t** p);
-
-  double read_float64(const uint8_t** p);
-
-  void read_bytes(const uint8_t** p, uint8_t* byte_array, int num_bytes);
-
-  void read_string(const uint8_t** p, char* string_data, uint32_t max_length);
-
-  void read_address(const uint8_t** buffer, legacy::relay_address_t* address);
-
-}  // namespace legacy
-#endif

@@ -1,7 +1,7 @@
 #include "includes.h"
 #include "testing/test.hpp"
 
-#include "core/packets/new_relay_ping_packet.hpp"
+#include "core/packets/relay_ping_packet.hpp"
 #include "core/packets/types.hpp"
 #include "crypto/bytes.hpp"
 #include "encoding/write.hpp"

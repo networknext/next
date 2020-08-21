@@ -1,11 +1,10 @@
-#ifndef CORE_HANDLERS_NEAR_PING_HANDLER_HPP
-#define CORE_HANDLERS_NEAR_PING_HANDLER_HPP
+#pragma once
 
 #include "base_handler.hpp"
 #include "core/packets/types.hpp"
 #include "core/session_map.hpp"
-#include "util/throughput_recorder.hpp"
-
+#include "core/throughput_recorder.hpp"
+#include "os/socket.hpp"
 namespace core
 {
   namespace handlers
@@ -66,4 +65,3 @@ namespace core
     }
   }  // namespace handlers
 }  // namespace core
-#endif

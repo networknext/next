@@ -29,7 +29,7 @@ namespace core
   using GenericPacketContainer = std::array<uint8_t, BuffSize>;
 
   template <size_t BuffSize = GenericPacketMaxSize>
-  using GenericPacket = Packet<GenericPacketContainer>;
+  using GenericPacket = Packet<GenericPacketContainer<BuffSize>>;
 
   // holds BuffSize packets and shares memory between the header and the packet, packet interface is meant to be easy to use
   template <size_t BuffSize, size_t PacketSize = GenericPacketMaxSize>

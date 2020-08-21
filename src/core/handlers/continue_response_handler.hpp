@@ -1,10 +1,10 @@
-#ifndef CORE_HANDLERS_CONTINUE_RESPONSE_HANDLER_HPP
-#define CORE_HANDLERS_CONTINUE_RESPONSE_HANDLER_HPP
+#pragma once
 
 #include "base_handler.hpp"
 #include "core/session_map.hpp"
+#include "core/throughput_recorder.hpp"
 #include "crypto/keychain.hpp"
-#include "util/throughput_recorder.hpp"
+#include "os/socket.hpp"
 
 namespace core
 {
@@ -114,5 +114,3 @@ namespace core
     }
   }  // namespace handlers
 }  // namespace core
-
-#endif

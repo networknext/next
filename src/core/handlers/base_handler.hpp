@@ -1,5 +1,4 @@
-#ifndef CORE_HANDLERS_BASE_HANDLER_HPP
-#define CORE_HANDLERS_BASE_HANDLER_HPP
+#pragma once
 
 #include "core/packet.hpp"
 
@@ -18,4 +17,3 @@ namespace core
     inline BaseHandler::BaseHandler(GenericPacket<>& packet): mPacket(packet) {}
   }  // namespace handlers
 }  // namespace core
-#endif

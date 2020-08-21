@@ -1,8 +1,10 @@
-#include "includes.h"
+#pragma once
 
 #include "core/continue_token.hpp"
 #include "core/route_token.hpp"
+#include "core/throughput_recorder.hpp"
 #include "crypto/hash.hpp"
+#include "crypto/keychain.hpp"
 #include "encoding/read.hpp"
 #include "encoding/write.hpp"
 #include "handlers/client_to_server_handler.hpp"
@@ -16,75 +18,83 @@
 #include "handlers/server_to_client_handler.hpp"
 #include "handlers/session_ping_handler.hpp"
 #include "handlers/session_pong_handler.hpp"
-#include "packet_processor.hpp"
+#include "os/socket.hpp"
+#include "packet.hpp"
 #include "packets/types.hpp"
 #include "relay/relay.hpp"
+#include "relay_manager.hpp"
+#include "router_info.hpp"
+#include "session_map.hpp"
+#include "token.hpp"
+#include "util/macros.hpp"
+
+using core::packets::Type;
+using crypto::Keychain;
+using os::Socket;
+using util::ThroughputRecorder;
+using core::RelayPingPacket;
 
 namespace core
 {
-  PacketProcessor::PacketProcessor(
-   const std::atomic<bool>& shouldReceive,
-   os::Socket& socket,
+  class PacketHandler
+  {
+   public:
+    PacketHandler(
+     const std::atomic<bool>& shouldReceive,
+     Socket& socket,
+     const crypto::Keychain& keychain,
+     SessionMap& sessions,
+     RelayManager& relayManager,
+     const volatile bool& handle,
+     ThroughputRecorder& recorder,
+     const RouterInfo& routerInfo);
+    ~PacketHandler() = default;
+
+    void handle_packets();
+
+   private:
+    const std::atomic<bool>& should_receive;
+    const Socket& socket;
+    const Keychain& keychain;
+    SessionMap& session_map;
+    RelayManager& relay_manager;
+    const volatile bool& should_process;
+    ThroughputRecorder& recorder;
+    const RouterInfo& router_info;
+
+    void handle_packet(GenericPacket<>& packet);
+  };
+
+  INLINE PacketHandler::PacketHandler(
+   const std::atomic<bool>& should_receive,
+   Socket& socket,
    const crypto::Keychain& keychain,
    SessionMap& sessions,
-   RelayManager<Relay>& relayManager,
-   const volatile bool& handle,
-   util::ThroughputRecorder& logger,
-   const RouterInfo& routerInfo)
-   : mShouldReceive(shouldReceive),
-     mSocket(socket),
-     mKeychain(keychain),
-     mSessionMap(sessions),
-     mRelayManager(relayManager),
-     mShouldProcess(handle),
-     mRecorder(logger),
-     mRouterInfo(routerInfo)
+   RelayManager& relay_manager,
+   const volatile bool& loop_handle,
+   ThroughputRecorder& recorder,
+   const RouterInfo& router_info)
+   : should_receive(should_receive),
+     socket(socket),
+     keychain(keychain),
+     session_map(sessions),
+     relay_manager(relay_manager),
+     should_process(loop_handle),
+     recorder(recorder),
+     router_info(router_info)
   {}
 
-  void PacketProcessor::process(std::atomic<bool>& readyToReceive)
+  INLINE void PacketHandler::handle_packets()
   {
-    static std::atomic<int> listenCounter;
-    int listenIndx = listenCounter.fetch_add(1);
-    (void)listenIndx;
+    core::GenericPacket<> packet;
 
-    readyToReceive = true;
-
-    GenericPacketBuffer<MaxPacketsToReceive> outputBuffer;
-
-#ifdef RELAY_MULTISEND
-    GenericPacketBuffer<MaxPacketsToReceive> inputBuffer;
-#else
-    core::GenericPacket<> pkt;
-#endif
-
-    while (!mSocket.closed() && mShouldReceive) {
-#ifdef RELAY_MULTISEND
-      if (!mSocket.multirecv(inputBuffer)) {
-        Log("failed to recv packets");
-      }
-
-      for (int i = 0; i < inputBuffer.Count; i++) {
-        auto& pkt = inputBuffer.Packets[i];
-        auto& header = inputBuffer.Headers[i];
-        if (header.msg_len > 0) {
-          pkt.Len = header.msg_len;
-          getAddrFromMsgHdr(pkt.Addr, header.msg_hdr);
-          processPacket(pkt, outputBuffer);
-        }
-      }
-
-      if (outputBuffer.Count > 0) {
-        mSocket.multisend(outputBuffer);
-        outputBuffer.Count = 0;
-      }
-#else
-      if (!mSocket.recv(pkt)) {
-        LOG("failed to receive packet");
+    while (!this->socket.closed() && this->should_receive) {
+      if (!this->socket.recv(packet)) {
+        LOG(ERROR, "failed to receive packet");
         continue;
       }
 
-      processPacket(pkt, outputBuffer);
-#endif
+      this->handle_packet(packet);
     }
   }
 
@@ -99,7 +109,7 @@ namespace core
    * However to not disrupt player experience the remaining packets are still
    * handled until the global killswitch is flagged
    */
-  inline void PacketProcessor::processPacket(GenericPacket<>& packet, GenericPacketBuffer<MaxPacketsToSend>& outputBuff)
+  INLINE void PacketHandler::handle_packet(GenericPacket<>& packet)
   {
     size_t headerBytes = 0;
 
@@ -111,37 +121,37 @@ namespace core
 
     size_t wholePacketSize = packet.Len + headerBytes;
 
-    packets::Type type;
+    Type type;
 
     bool isSigned;
     if (crypto::IsNetworkNextPacket(packet.Buffer, packet.Len)) {
-      type = static_cast<packets::Type>(packet.Buffer[crypto::PacketHashLength]);
+      type = static_cast<Type>(packet.Buffer[crypto::PacketHashLength]);
       isSigned = true;
     } else {
       // TODO uncomment below once all packets coming through have the hash
       // return;
-      type = static_cast<packets::Type>(packet.Buffer[0]);
+      type = static_cast<Type>(packet.Buffer[0]);
       isSigned = false;
     }
 
-    if (type != packets::Type::NewRelayPing && type != packets::Type::NewRelayPong) {
+    if (type != Type::RelayPing && type != Type::RelayPong) {
       if (isSigned) {
-        LogDebug("packet is from network next");
+        LOG(DEBUG, "packet is from network next");
       } else {
-        LogDebug("packet is not on network next");
+        LOG(DEBUG, "packet is not on network next");
       }
-      LogDebug("incoming packet, type = ", type);
+      LOG(DEBUG, "incoming packet, type = ", type);
     }
 
     switch (type) {
-      case packets::Type::NewRelayPing: {
-        if (!mShouldProcess) {
-          LOG("relay in process of shutting down, rejecting relay ping packet");
+      case Type::RelayPing: {
+        if (!this->should_process) {
+          LOG(INFO, "relay in process of shutting down, rejecting relay ping packet");
           return;
         }
 
-        if (packet.Len == packets::NewRelayPingPacket::ByteSize) {
-          mRecorder.InboundPingRx.add(wholePacketSize);
+        if (packet.Len == RelayPingPacket::BYTE_SIZE) {
+          this->recorder.InboundPingRx.add(wholePacketSize);
 
           handlers::NewRelayPingHandler handler(packet, mRecorder);
 
@@ -150,7 +160,7 @@ namespace core
           mRecorder.UnknownRx.add(wholePacketSize);
         }
       } break;
-      case packets::Type::NewRelayPong: {
+      case Type::RelayPong: {
         if (packet.Len == packets::NewRelayPingPacket::ByteSize) {
           mRecorder.PongRx.add(wholePacketSize);
 
@@ -228,5 +238,26 @@ namespace core
         mRecorder.UnknownRx.add(wholePacketSize);
       } break;
     }
+  }
+
+  INLINE bool PacketProcessor::getAddrFromMsgHdr(net::Address& addr, const msghdr& hdr) const
+  {
+    bool retval = false;
+    auto sockad = reinterpret_cast<sockaddr*>(hdr.msg_name);
+
+    switch (sockad->sa_family) {
+      case AF_INET: {
+        auto sin = reinterpret_cast<sockaddr_in*>(sockad);
+        addr = *sin;
+        retval = true;
+      } break;
+      case AF_INET6: {
+        auto sin = reinterpret_cast<sockaddr_in6*>(sockad);
+        addr = *sin;
+        retval = true;
+      } break;
+    }
+
+    return retval;
   }
 }  // namespace core

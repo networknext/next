@@ -1,9 +1,8 @@
 #pragma once
 
 #include "base_handler.hpp"
-#include "core/packets/new_relay_ping_packet.hpp"
+#include "core/packets/relay_ping_packet.hpp"
 #include "core/relay_manager.hpp"
-#include "util/logger.hpp"
 
 namespace core
 {

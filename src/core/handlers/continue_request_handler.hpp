@@ -1,108 +1,80 @@
-#ifndef CORE_HANDLERS_CONTINUE_REQUEST_HANDLER
-#define CORE_HANDLERS_CONTINUE_REQUEST_HANDLER
+#pragma once
 
 #include "base_handler.hpp"
 #include "core/packets/types.hpp"
-#include "core/session_map.hpp"
-#include "crypto/keychain.hpp"
-#include "util/throughput_recorder.hpp"
 #include "core/router_info.hpp"
+#include "core/session_map.hpp"
+#include "core/throughput_recorder.hpp"
+#include "crypto/keychain.hpp"
+#include "os/socket.hpp"
+
+using core::packets::Direction;
+using core::packets::Header;
 
 namespace core
 {
   namespace handlers
   {
-    class ContinueRequestHandler: public BaseHandler
-    {
-     public:
-      ContinueRequestHandler(
-       GenericPacket<>& packet,
-       core::SessionMap& sessions,
-       const crypto::Keychain& keychain,
-       util::ThroughputRecorder& recorder,
-       const RouterInfo& routerInfo);
-
-      template <size_t Size>
-      void handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket, bool isSigned);
-
-     private:
-      core::SessionMap& mSessionMap;
-      const crypto::Keychain& mKeychain;
-      util::ThroughputRecorder& mRecorder;
-      const RouterInfo& mRouterInfo;
-    };
-
-    inline ContinueRequestHandler::ContinueRequestHandler(
+    inline void continue_request_handler(
      GenericPacket<>& packet,
-     core::SessionMap& sessions,
+     core::SessionMap& session_map,
      const crypto::Keychain& keychain,
      util::ThroughputRecorder& recorder,
-     const RouterInfo& routerInfo)
-     : BaseHandler(packet),
-       mSessionMap(sessions),
-       mKeychain(keychain),
-       mRecorder(recorder),
-       mRouterInfo(routerInfo)
-    {}
-
-    template <size_t Size>
-    inline void ContinueRequestHandler::handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket, bool isSigned)
+     const RouterInfo& router_info,
+     const os::Socket& socket,
+     bool is_signed)
     {
-      (void)buff;
-      (void)socket;
+      size_t index = 0;
+      size_t length = packet.Len;
 
-      uint8_t* data;
-      size_t length;
-
-      if (isSigned) {
-        data = &mPacket.Buffer[crypto::PacketHashLength];
-        length = mPacket.Len - crypto::PacketHashLength;
-      } else {
-        data = &mPacket.Buffer[0];
-        length = mPacket.Len;
+      if (is_signed) {
+        index = crypto::PacketHashLength;
+        length = packet.Len - crypto::PacketHashLength;
       }
 
       if (length < int(1 + ContinueToken::EncryptedByteSize * 2)) {
-        LOG("ignoring continue request. bad packet size (", length, ")");
+        LOG(ERROR, "ignoring continue request. bad packet size (", length, ")");
         return;
       }
 
-      size_t index = 1;
-      core::ContinueToken token(mRouterInfo);
-      if (!token.readEncrypted(data, length, index, mKeychain.RouterPublicKey, mKeychain.RelayPrivateKey)) {
-        LOG("ignoring continue request. could not read continue token");
-        return;
+      core::ContinueToken token(router_info);
+      {
+        size_t i = index + 1;
+        if (!token.readEncrypted(packet.Buffer, i, keychain.RouterPublicKey, keychain.RelayPrivateKey)) {
+          LOG(ERROR, "ignoring continue request. could not read continue token");
+          return;
+        }
       }
 
       if (token.expired()) {
-        LOG("ignoring continue request. token is expired");
+        LOG(INFO, "ignoring continue request. token is expired");
         return;
       }
 
       auto hash = token.key();
 
-      auto session = mSessionMap.get(hash);
+      auto session = session_map.get(hash);
 
       if (!session) {
-        LOG("ignoring continue request. session does not exist");
+        LOG(ERROR, "ignoring continue request. session does not exist");
         return;
       }
 
       if (session->expired()) {
-        LOG("ignoring continue request. session is expired");
-        mSessionMap.erase(hash);
+        LOG(INFO, "ignoring continue request. session is expired");
+        session_map.erase(hash);
         return;
       }
 
       if (session->ExpireTimestamp != token.ExpireTimestamp) {
-        LOG("session continued: ", token);
+        LOG(INFO, "session continued: ", token);
       }
 
       session->ExpireTimestamp = token.ExpireTimestamp;
 
-      length = mPacket.Len - ContinueToken::EncryptedByteSize;
+      length = packet.Len - ContinueToken::EncryptedByteSize;
 
-      if (isSigned) {
+      if (is_signed) {
         mPacket.Buffer[ContinueToken::EncryptedByteSize + crypto::PacketHashLength] =
          static_cast<uint8_t>(packets::Type::ContinueRequest);
         legacy::relay_sign_network_next_packet(&mPacket.Buffer[ContinueToken::EncryptedByteSize], length);
@@ -112,13 +84,9 @@ namespace core
 
       mRecorder.ContinueRequestTx.add(length);
 
-#ifdef RELAY_MULTISEND
-      buff.push(session->NextAddr, &mPacket.Buffer[ContinueToken::EncryptedByteSize], length);
-#else
       if (!socket.send(session->NextAddr, &mPacket.Buffer[ContinueToken::EncryptedByteSize], length)) {
         LOG("failed to forward continue request");
       }
-#endif
     }
   }  // namespace handlers
 }  // namespace core

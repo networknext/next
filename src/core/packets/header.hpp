@@ -36,6 +36,8 @@ namespace core
       auto read(GenericPacketContainer<>& buffer, size_t& index) -> bool;
       auto write(GenericPacketContainer<>& buffer, size_t& index, const GenericKey& public_key) -> bool;
       auto verify(GenericPacketContainer<>& buffer, size_t& index, const GenericKey& public_key) -> bool;
+
+      auto Header::clean_sequence() -> uint64_t;
     };
 
     INLINE auto Header::read(GenericPacketContainer<>& buffer, size_t& index) -> bool
@@ -227,10 +229,16 @@ namespace core
       return true;
     }
 
-    INLINE auto relay_clean_sequence(uint64_t sequence) -> uint64_t
+    INLINE auto Header::clean_sequence() -> uint64_t
     {
-      uint64_t mask = ~((1ULL << 63) | (1ULL << 62));
-      return sequence & mask;
+      static const uint64_t mask = ~((1ULL << 63) | (1ULL << 62));
+      return this->sequence & mask;
+    }
+
+    INLINE std::ostream& operator<<(std::ostream& stream, const Header& header)
+    {
+      stream << std::hex << header.session_id << '.' << std::dec << static_cast<uint32_t>(header.session_version);
+      return stream;
     }
   }  // namespace packets
 }  // namespace core

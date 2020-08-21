@@ -1,5 +1,4 @@
-#ifndef CORE_PACKETS_RELAY_PING_PACKET_HPP
-#define CORE_PACKETS_RELAY_PING_PACKET_HPP
+#pragma once
 
 #include "core/packet.hpp"
 #include "crypto/hash.hpp"
@@ -11,12 +10,12 @@ namespace core
 {
   namespace packets
   {
-    class NewRelayPingPacket
+    class RelayPingPacket
     {
      public:
-      static const size_t ByteSize = crypto::PacketHashLength + 1 + 8;  // hash | type | sequence
+      static const size_t BYTE_SIZE = crypto::PacketHashLength + 1 + 8;  // hash | type | sequence
 
-      NewRelayPingPacket(GenericPacket<>& packet);
+      RelayPingPacket(GenericPacket<>& packet);
 
       // getters do no cache, just make the indexes of the packet clearer
       auto getSeqNum() -> uint64_t;
@@ -24,13 +23,12 @@ namespace core
       GenericPacket<>& Internal;
     };
 
-    inline NewRelayPingPacket::NewRelayPingPacket(GenericPacket<>& packet): Internal(packet) {}
+    inline RelayPingPacket::RelayPingPacket(GenericPacket<>& packet): Internal(packet) {}
 
-    inline auto NewRelayPingPacket::getSeqNum() -> uint64_t
+    inline auto RelayPingPacket::getSeqNum() -> uint64_t
     {
       size_t index = crypto::PacketHashLength + 1;
       return encoding::ReadUint64(Internal.Buffer, index);
     }
   }  // namespace packets
 }  // namespace core
-#endif

@@ -1,14 +1,14 @@
 #pragma once
 
 #include "core/route_stats.hpp"
+#include "crypto/hash.hpp"
 #include "net/address.hpp"
 #include "ping_history.hpp"
 #include "relay_stats.hpp"
-#include "util/clock.hpp"
-#include "util/logger.hpp"
 #include "router_info.hpp"
 #include "util/clock.hpp"
-#include "crypto/hash.hpp"
+#include "util/logger.hpp"
+#include "util/macros.hpp"
 
 namespace core
 {
@@ -28,8 +28,6 @@ namespace core
     PingHistory* History = nullptr;
   };
 
-  // where T == Relay || V3Relay
-  template <typename T>
   class RelayManager
   {
    public:
@@ -44,9 +42,7 @@ namespace core
 
     void getStats(RelayStats& stats);
 
-    // where U == PingData || V3PingData
-    template <typename U>
-    auto getPingData(std::array<U, MAX_RELAYS>& data) -> size_t;
+    auto getPingData(std::array<PingData, MAX_RELAYS>& data) -> size_t;
 
    private:
     std::mutex mLock;
@@ -56,15 +52,13 @@ namespace core
     util::Clock mClock;
   };
 
-  template <typename T>
-  RelayManager<T>::RelayManager()
+  INLINE RelayManager::RelayManager()
   {
     mPingHistoryBuff.resize(MAX_RELAYS);
     reset();
   }
 
-  template <typename T>
-  void RelayManager<T>::reset()
+  INLINE void RelayManager::reset()
   {
     // locked mutex scope
     std::lock_guard<std::mutex> lk(mLock);
@@ -72,8 +66,7 @@ namespace core
     std::fill(mRelays.begin(), mRelays.end(), T());
   }
 
-  template <typename T>
-  auto RelayManager<T>::processPong(const net::Address& from, uint64_t seq) -> bool
+  INLINE auto RelayManager::processPong(const net::Address& from, uint64_t seq) -> bool
   {
     bool pongReceived = false;
 
@@ -93,8 +86,7 @@ namespace core
     return pongReceived;
   }
 
-  template <typename T>
-  void RelayManager<T>::getStats(RelayStats& stats)
+  INLINE void RelayManager::getStats(RelayStats& stats)
   {
     auto currentTime = mClock.elapsed<util::Second>();
 
@@ -115,9 +107,7 @@ namespace core
     }
   }
 
-  template <>
-  template <>
-  inline auto RelayManager<Relay>::getPingData(std::array<PingData, MAX_RELAYS>& data) -> size_t
+  INLINE auto RelayManager::getPingData(std::array<PingData, MAX_RELAYS>& data) -> size_t
   {
     double currentTime = mClock.elapsed<util::Second>();
     size_t numPings = 0;
@@ -141,8 +131,7 @@ namespace core
   }
 
   // it is used in one place throughout the codebase, so always inline it, no sense in doing a function call
-  template <>
-  [[gnu::always_inline]] inline void RelayManager<Relay>::update(
+  INLINE void RelayManager::update(
    size_t numRelays, const std::array<Relay, MAX_RELAYS>& incoming)
   {
     assert(numRelays <= MAX_RELAYS);

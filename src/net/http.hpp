@@ -57,7 +57,7 @@ namespace net
     // so don't bother reporting it
 
     if (ec && ec != beast::errc::not_connected) {
-      LOG("error shutting down socket");
+      LOG(ERROR, "shutting down socket: ", ec);
     }
   }
 

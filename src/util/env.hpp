@@ -13,9 +13,9 @@ namespace util
     std::string relay_public_key;
     std::string relay_router_public_key;
     std::string backend_hostname;
-    std::string send_buffer_size;
-    std::string recv_buffer_size;
-    std::string max_cpus;
+    std::optional<std::string> send_buffer_size;
+    std::optional<std::string> recv_buffer_size;
+    std::optional<std::string> max_cpus;
   };
 
   inline Env::Env()
@@ -28,7 +28,7 @@ namespace util
      {"RELAY_BACKEND_HOSTNAME", &backend_hostname},
     };
 
-    std::unordered_map<const char*, std::string*> optional_vars = {
+    std::unordered_map<const char*, std::optional<std::string>*> optional_vars = {
      {"RELAY_SEND_BUFFER_SIZE", &send_buffer_size},
      {"RELAY_RECV_BUFFER_SIZE", &recv_buffer_size},
      {"RELAY_MAX_CORES", &max_cpus},
@@ -38,8 +38,7 @@ namespace util
       auto env = std::getenv(pair.first);
 
       if (env == nullptr) {
-        LOG("Error: ", pair.first, " not set");
-        std::exit(1);
+        LOG(FATAL, pair.first, " not set");
       }
 
       *pair.second = env;
