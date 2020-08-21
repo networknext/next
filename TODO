@@ -10,7 +10,11 @@ DONE
 
 	Server init packet should include datacenter name as a string.
 
-	Uint64 platdorm id is ridiculously wasteful. Serialize it as an enum instead.
+	Optimized platform id serialization.
+
+	Optimized user flags serialization.
+
+	Optimized flags serialization.
 
 TODO
 

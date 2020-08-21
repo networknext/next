@@ -114,6 +114,8 @@
 
 #define NEXT_MAX_DATACENTER_NAME_LENGTH                               256
 
+// todo: bring this back when signing is back
+/*
 static const uint8_t next_backend_public_key[] = 
 { 
      76,  97, 202, 140,  71, 135,  62, 212, 
@@ -121,6 +123,7 @@ static const uint8_t next_backend_public_key[] =
       8,  45,  37,  60, 145,  14, 212, 111, 
      25,  34, 175, 186,  37, 150, 163,  64 
 };
+*/
 
 static const uint8_t next_router_public_key[] = 
 { 
@@ -2809,24 +2812,24 @@ int next_packet_loss_tracker_update( next_packet_loss_tracker_t * tracker )
 
 // -------------------------------------------------------------
 
-#define NEXT_ROUTE_REQUEST_PACKET                            1
-#define NEXT_ROUTE_RESPONSE_PACKET                           2
-#define NEXT_CLIENT_TO_SERVER_PACKET                         3
-#define NEXT_SERVER_TO_CLIENT_PACKET                         4
-#define NEXT_PING_PACKET                                    11
-#define NEXT_PONG_PACKET                                    12
-#define NEXT_CONTINUE_REQUEST_PACKET                        13
-#define NEXT_CONTINUE_RESPONSE_PACKET                       14
-#define NEXT_UPGRADE_REQUEST_PACKET                         64
-#define NEXT_UPGRADE_RESPONSE_PACKET                        65
-#define NEXT_UPGRADE_CONFIRM_PACKET                         66
-#define NEXT_DIRECT_PING_PACKET                             68
-#define NEXT_DIRECT_PONG_PACKET                             69
-#define NEXT_CLIENT_STATS_PACKET                            70
-#define NEXT_ROUTE_UPDATE_PACKET                            71
-#define NEXT_ROUTE_UPDATE_ACK_PACKET                        72
-#define NEXT_RELAY_PING_PACKET                              73
-#define NEXT_RELAY_PONG_PACKET                              74
+#define NEXT_ROUTE_REQUEST_PACKET                          100
+#define NEXT_ROUTE_RESPONSE_PACKET                         101
+#define NEXT_CLIENT_TO_SERVER_PACKET                       102
+#define NEXT_SERVER_TO_CLIENT_PACKET                       103
+#define NEXT_PING_PACKET                                   104
+#define NEXT_PONG_PACKET                                   105
+#define NEXT_CONTINUE_REQUEST_PACKET                       106
+#define NEXT_CONTINUE_RESPONSE_PACKET                      107
+#define NEXT_UPGRADE_REQUEST_PACKET                        108
+#define NEXT_UPGRADE_RESPONSE_PACKET                       109
+#define NEXT_UPGRADE_CONFIRM_PACKET                        110
+#define NEXT_DIRECT_PING_PACKET                            111
+#define NEXT_DIRECT_PONG_PACKET                            112
+#define NEXT_CLIENT_STATS_PACKET                           113
+#define NEXT_ROUTE_UPDATE_PACKET                           114
+#define NEXT_ROUTE_UPDATE_ACK_PACKET                       115
+#define NEXT_RELAY_PING_PACKET                             116
+#define NEXT_RELAY_PONG_PACKET                             117
 #define NEXT_DIRECT_PACKET                                 255
 
 struct NextUpgradeRequestPacket
@@ -2852,39 +2855,6 @@ struct NextUpgradeRequestPacket
         serialize_bytes( stream, upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );
         serialize_bytes( stream, signature, crypto_sign_BYTES );
         return true;
-    }
-
-    int GetSignData( uint8_t * buffer, int buffer_size )
-    {
-        uint8_t * p = buffer;
-        next_write_uint64( &p, protocol_version );
-        next_write_uint64( &p, session_id );
-        next_write_address( &p, &server_address );
-        next_write_bytes( &p, server_kx_public_key, crypto_kx_PUBLICKEYBYTES );
-        next_write_bytes( &p, upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );
-        next_assert( p - buffer <= buffer_size );
-        (void) buffer_size;
-        return p - buffer;
-    }
-
-    void Sign( const uint8_t * private_key )
-    {
-        crypto_sign_state state;
-        crypto_sign_init( &state );
-        uint8_t sign_data[1024];
-        const int sign_bytes = GetSignData( sign_data, sizeof(sign_data) );
-        crypto_sign_update( &state, sign_data, sign_bytes );
-        crypto_sign_final_create( &state, signature, NULL, private_key );
-    }
-
-    bool Verify( const uint8_t * public_key )
-    {
-        crypto_sign_state state;
-        crypto_sign_init( &state );
-        uint8_t sign_data[1024];
-        const int sign_bytes = GetSignData( sign_data, sizeof(sign_data) );
-        crypto_sign_update( &state, sign_data, sign_bytes );
-        return crypto_sign_final_verify( &state, signature, public_key ) == 0;
     }
 };
 
@@ -2933,39 +2903,6 @@ struct NextUpgradeConfirmPacket
         serialize_bytes( stream, server_kx_public_key, crypto_kx_PUBLICKEYBYTES );
         serialize_bytes( stream, signature, crypto_sign_BYTES );
         return true;
-    }
-
-    int GetSignData( uint8_t * buffer, int buffer_length )
-    {
-        uint8_t * p = buffer;
-        next_write_uint64( &p, upgrade_sequence );
-        next_write_uint64( &p, session_id );
-        next_write_address( &p, &server_address );
-        next_write_bytes( &p, client_kx_public_key, crypto_kx_PUBLICKEYBYTES );
-        next_write_bytes( &p, server_kx_public_key, crypto_kx_PUBLICKEYBYTES );
-        next_assert( p - buffer <= buffer_length );
-        (void) buffer_length;
-        return p - buffer;
-    }
-
-    void Sign( const uint8_t * private_key )
-    {
-        crypto_sign_state state;
-        crypto_sign_init( &state );
-        uint8_t sign_data[1024];
-        const int sign_bytes = GetSignData( sign_data, sizeof(sign_data) );
-        crypto_sign_update( &state, sign_data, sign_bytes );
-        crypto_sign_final_create( &state, signature, NULL, private_key );
-    }
-
-    bool Verify( const uint8_t * public_key )
-    {
-        crypto_sign_state state;
-        crypto_sign_init( &state );
-        uint8_t sign_data[1024];
-        const int sign_bytes = GetSignData( sign_data, sizeof(sign_data) );
-        crypto_sign_update( &state, sign_data, sign_bytes );
-        return crypto_sign_final_verify( &state, signature, public_key ) == 0;
     }
 };
 
@@ -5967,11 +5904,14 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             return;
         }
 
+        // todo: verify directly in place on packet contents
+        /*
         if ( !packet.Verify( client->customer_public_key ) )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade request packet from server. did not verify" );
             return;
         }
+        */
 
         next_post_validate_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, NULL );
 
@@ -6038,11 +5978,14 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             return;
         }
 
+        // todo: verify on read
+        /*
         if ( !packet.Verify( client->customer_public_key ) )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade request packet from server. did not verify" );
             return;
         }
+        */
 
         if ( memcmp( packet.client_kx_public_key, client->client_kx_public_key, crypto_kx_PUBLICKEYBYTES ) != 0 )
         {
@@ -8999,7 +8942,7 @@ int next_session_manager_num_entries( next_session_manager_t * session_manager )
 
 // ---------------------------------------------------------------
 
-#define NEXT_BACKEND_PACKET_BASE                        200
+#define NEXT_BACKEND_PACKET_BASE                        220
 #define NEXT_BACKEND_SERVER_UPDATE_PACKET               NEXT_BACKEND_PACKET_BASE
 #define NEXT_BACKEND_SESSION_UPDATE_PACKET              NEXT_BACKEND_PACKET_BASE + 1
 #define NEXT_BACKEND_SESSION_RESPONSE_PACKET            NEXT_BACKEND_PACKET_BASE + 2
@@ -9041,40 +8984,6 @@ struct NextBackendServerInitRequestPacket
         serialize_string( stream, datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
         return true;
     }
-
-    int GetSignData( uint8_t * buffer, int buffer_size )
-    {
-        uint8_t * p = buffer;
-        next_write_uint64( &p, version_major );
-        next_write_uint64( &p, version_minor );
-        next_write_uint64( &p, version_patch );
-        next_write_uint64( &p, request_id );
-        next_write_uint64( &p, customer_id );
-        next_write_uint64( &p, datacenter_id );
-        next_assert( p - buffer <= buffer_size );
-        (void) buffer_size;
-        return p - buffer;
-    }
-
-    void Sign( const uint8_t * private_key )
-    {
-        crypto_sign_state state;
-        crypto_sign_init( &state );
-        uint8_t sign_data[1024];
-        const int sign_bytes = GetSignData( sign_data, sizeof(sign_data) );
-        crypto_sign_update( &state, sign_data, sign_bytes );
-        crypto_sign_final_create( &state, signature, NULL, private_key );
-    }
-
-    bool Verify( const uint8_t * public_key )
-    {
-        crypto_sign_state state;
-        crypto_sign_init( &state );
-        uint8_t sign_data[1024];
-        const int sign_bytes = GetSignData( sign_data, sizeof(sign_data) );
-        crypto_sign_update( &state, sign_data, sign_bytes );
-        return crypto_sign_final_verify( &state, signature, public_key ) == 0;
-    }
 };
 
 struct NextBackendServerInitResponsePacket
@@ -9094,36 +9003,6 @@ struct NextBackendServerInitResponsePacket
         serialize_uint32( stream, response );
         serialize_bytes( stream, signature, crypto_sign_BYTES );
         return true;
-    }
-
-    int GetSignData( uint8_t * buffer, int buffer_size )
-    {
-        uint8_t * p = buffer;
-        next_write_uint64( &p, request_id );
-        next_write_uint32( &p, response );
-        next_assert( p - buffer <= buffer_size );
-        (void) buffer_size;
-        return p - buffer;
-    }
-
-    void Sign( const uint8_t * private_key )
-    {
-        crypto_sign_state state;
-        crypto_sign_init( &state );
-        uint8_t sign_data[2048];
-        const int sign_bytes = GetSignData( sign_data, sizeof(sign_data) );
-        crypto_sign_update( &state, sign_data, sign_bytes );
-        crypto_sign_final_create( &state, signature, NULL, private_key );
-    }
-
-    bool Verify( const uint8_t * public_key )
-    {
-        crypto_sign_state state;
-        crypto_sign_init( &state );
-        uint8_t sign_data[2048];
-        const int sign_bytes = GetSignData( sign_data, sizeof(sign_data) );
-        crypto_sign_update( &state, sign_data, sign_bytes );
-        return crypto_sign_final_verify( &state, signature, public_key ) == 0;
     }
 };
 
@@ -9167,43 +9046,6 @@ struct NextBackendServerUpdatePacket
         serialize_bytes( stream, server_route_public_key, crypto_box_PUBLICKEYBYTES );
         serialize_bytes( stream, signature, crypto_sign_BYTES );
         return true;
-    }
-
-    int GetSignData( uint8_t * buffer, int buffer_size )
-    {
-        uint8_t * p = buffer;
-        next_write_uint8( &p, version_major );
-        next_write_uint8( &p, version_minor );
-        next_write_uint8( &p, version_patch );
-        next_write_uint64( &p, sequence );
-        next_write_uint64( &p, customer_id );
-        next_write_uint64( &p, datacenter_id );
-        next_write_uint32( &p, num_sessions );
-        next_write_address( &p, &server_address );
-        next_write_bytes( &p, server_route_public_key, crypto_box_PUBLICKEYBYTES );
-        next_assert( p - buffer <= buffer_size );
-        (void) buffer_size;
-        return p - buffer;
-    }
-
-    void Sign( const uint8_t * private_key )
-    {
-        crypto_sign_state state;
-        crypto_sign_init( &state );
-        uint8_t sign_data[1024];
-        const int sign_bytes = GetSignData( sign_data, sizeof(sign_data) );
-        crypto_sign_update( &state, sign_data, sign_bytes );
-        crypto_sign_final_create( &state, signature, NULL, private_key );
-    }
-
-    bool Verify( const uint8_t * public_key )
-    {
-        crypto_sign_state state;
-        crypto_sign_init( &state );
-        uint8_t sign_data[1024];
-        const int sign_bytes = GetSignData( sign_data, sizeof(sign_data) );
-        crypto_sign_update( &state, sign_data, sign_bytes );
-        return crypto_sign_final_verify( &state, signature, public_key ) == 0;
     }
 };
 
@@ -9359,26 +9201,6 @@ struct NextBackendSessionUpdatePacket
         (void) buffer_size;
         return p - buffer;
     }
-
-    void Sign( const uint8_t * private_key )
-    {
-        crypto_sign_state state;
-        crypto_sign_init( &state );
-        uint8_t sign_data[1500];
-        const int sign_bytes = GetSignData( sign_data, sizeof(sign_data) );
-        crypto_sign_update( &state, sign_data, sign_bytes );
-        crypto_sign_final_create( &state, signature, NULL, private_key );
-    }
-
-    bool Verify( const uint8_t * public_key )
-    {
-        crypto_sign_state state;
-        crypto_sign_init( &state );
-        uint8_t sign_data[1500];
-        const int sign_bytes = GetSignData( sign_data, sizeof(sign_data) );
-        crypto_sign_update( &state, sign_data, sign_bytes );
-        return crypto_sign_final_verify( &state, signature, public_key ) == 0;
-    }
 };
 
 struct NextBackendSessionResponsePacket
@@ -9429,58 +9251,6 @@ struct NextBackendSessionResponsePacket
         serialize_bytes( stream, server_route_public_key, crypto_box_PUBLICKEYBYTES );
         serialize_bytes( stream, signature, crypto_sign_BYTES );
         return true;
-    }
-
-    int GetSignData( uint8_t * buffer, int buffer_size )
-    {
-        uint8_t * p = buffer;
-        next_write_uint64( &p, sequence );
-        next_write_uint64( &p, session_id );
-        next_write_uint8( &p, num_near_relays );
-        for ( int i = 0; i < num_near_relays; ++i )
-        {
-            next_write_uint64( &p, near_relay_ids[i] );
-            next_write_address( &p, &near_relay_addresses[i] );
-        }
-        next_write_uint8( &p, response_type );
-        if ( response_type != NEXT_UPDATE_TYPE_DIRECT )
-        {
-            next_write_uint8( &p, multipath );
-            next_write_uint8( &p, committed );
-            next_write_uint8( &p, num_tokens );
-        }
-        if ( response_type == NEXT_UPDATE_TYPE_ROUTE )
-        {
-            next_write_bytes( &p, tokens, num_tokens * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES );
-        }
-        else if ( response_type == NEXT_UPDATE_TYPE_CONTINUE )
-        {
-            next_write_bytes( &p, tokens, num_tokens * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES );
-        }
-        next_write_bytes( &p, server_route_public_key, crypto_box_PUBLICKEYBYTES );
-        next_assert( p - buffer <= buffer_size );
-        (void) buffer_size;
-        return p - buffer;
-    }
-
-    void Sign( const uint8_t * private_key )
-    {
-        crypto_sign_state state;
-        crypto_sign_init( &state );
-        uint8_t sign_data[2048];
-        const int sign_bytes = GetSignData( sign_data, sizeof(sign_data) );
-        crypto_sign_update( &state, sign_data, sign_bytes );
-        crypto_sign_final_create( &state, signature, NULL, private_key );
-    }
-
-    bool Verify( const uint8_t * public_key )
-    {
-        crypto_sign_state state;
-        crypto_sign_init( &state );
-        uint8_t sign_data[2048];
-        const int sign_bytes = GetSignData( sign_data, sizeof(sign_data) );
-        crypto_sign_update( &state, sign_data, sign_bytes );
-        return crypto_sign_final_verify( &state, signature, public_key ) == 0;
     }
 };
 
@@ -10310,7 +10080,9 @@ void next_server_internal_update_pending_upgrades( next_server_internal_t * serv
             packet.server_address = server->server_address;
             memcpy( packet.server_kx_public_key, server->server_kx_public_key, crypto_kx_PUBLICKEYBYTES );
             memcpy( packet.upgrade_token, entry->upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );        
-            packet.Sign( server->customer_private_key );
+
+            // todo: sign in place when sending packet            
+            // packet.Sign( server->customer_private_key );
 
             next_server_internal_send_packet( server, &entry->address, NEXT_UPGRADE_REQUEST_PACKET, &packet );
         }
@@ -10478,11 +10250,14 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
                 return;
             }
 
+            // todo: verify in place when reading backend packet
+            /*
             if ( !packet.Verify( next_backend_public_key ) )
             {
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored server init response packet from backend. did not verify" );
                 return;
             }
+            */
 
             if ( packet.request_id != server->server_init_request_id )
             {
@@ -10550,11 +10325,14 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
                 return;
             }
 
+            // todo: verify in place when reading packet
+            /*
             if ( !packet.Verify( next_backend_public_key ) )
             {
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. did not verify" );
                 return;
             }
+            */
 
             if ( memcmp( packet.server_route_public_key, server->server_route_public_key, sizeof(packet.server_route_public_key) ) != 0 )
             {
@@ -10819,7 +10597,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         response.server_address = server->server_address;
         memcpy( response.client_kx_public_key, packet.client_kx_public_key, crypto_kx_PUBLICKEYBYTES );
         memcpy( response.server_kx_public_key, server->server_kx_public_key, crypto_kx_PUBLICKEYBYTES );
-        response.Sign( server->customer_private_key );
+        // todo: sign when sending packet internal
+        // response.Sign( server->customer_private_key );
 
         if ( next_server_internal_send_packet( server, from, NEXT_UPGRADE_CONFIRM_PACKET, &response ) != NEXT_OK )
         {
@@ -11500,7 +11279,8 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.datacenter_id = server->datacenter_id;
             strncpy( packet.datacenter_name, server->datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH - 1 );
             packet.datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
-            packet.Sign( server->customer_private_key );
+            // todo: todo sign in place when writing packet
+            // packet.Sign( server->customer_private_key );
 
             server->server_init_request_id = packet.request_id;
 
@@ -11565,7 +11345,8 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         packet.num_sessions = next_session_manager_num_entries( server->session_manager );
         packet.server_address = server->server_address;
         memcpy( packet.server_route_public_key, server->server_route_public_key, crypto_box_PUBLICKEYBYTES );
-        packet.Sign( server->customer_private_key );
+        // todo: sign in place when writing packet
+        // packet.Sign( server->customer_private_key );
 
         int packet_bytes = 0;
         uint8_t packet_data[NEXT_MAX_PACKET_BYTES*2];
@@ -11640,7 +11421,8 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.client_address = session->address;
             packet.server_address = server->server_address;
             memcpy( packet.client_route_public_key, session->client_route_public_key, crypto_box_PUBLICKEYBYTES );
-            packet.Sign( server->customer_private_key );
+            // todo: sign in place when writing
+            // packet.Sign( server->customer_private_key );
 
             if ( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_PACKET, &packet, session->update_packet_data, &session->update_packet_bytes ) != NEXT_OK )
             {
@@ -13566,7 +13348,8 @@ static void test_packets()
         next_address_parse( &in.server_address, "127.0.0.1:12345" );
         next_random_bytes( in.server_kx_public_key, crypto_kx_PUBLICKEYBYTES );
         next_random_bytes( in.upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );
-        in.Sign( private_key );
+        // todo: sign in place when writing packet
+        // in.Sign( private_key );
 
         int packet_bytes = 0;
         check( next_write_packet( NEXT_UPGRADE_REQUEST_PACKET, &in, buffer, &packet_bytes, NULL, NULL, NULL ) == NEXT_OK );
@@ -13578,7 +13361,8 @@ static void test_packets()
         check( next_address_equal( &in.server_address, &out.server_address ) );
         check( memcmp( in.server_kx_public_key, out.server_kx_public_key, crypto_kx_PUBLICKEYBYTES ) == 0 );
         check( memcmp( in.upgrade_token, out.upgrade_token, NEXT_UPGRADE_TOKEN_BYTES ) == 0 );
-        check( out.Verify( public_key ) );
+        // todo: verify in place when reading packet5
+        // check( out.Verify( public_key ) );
     }
 
     // upgrade response
@@ -13609,7 +13393,8 @@ static void test_packets()
         next_address_parse( &in.server_address, "127.0.0.1:12345" );
         next_random_bytes( in.client_kx_public_key, crypto_kx_PUBLICKEYBYTES );
         next_random_bytes( in.server_kx_public_key, crypto_kx_PUBLICKEYBYTES );
-        in.Sign( private_key );
+        // todo: sign in place when writing
+        // in.Sign( private_key );
 
         int packet_bytes = 0;
         check( next_write_packet( NEXT_UPGRADE_CONFIRM_PACKET, &in, buffer, &packet_bytes, NULL, NULL, NULL ) == NEXT_OK );
@@ -13621,7 +13406,8 @@ static void test_packets()
         check( next_address_equal( &in.server_address, &out.server_address ) );
         check( memcmp( in.client_kx_public_key, out.client_kx_public_key, crypto_kx_PUBLICKEYBYTES ) == 0 );
         check( memcmp( in.server_kx_public_key, out.server_kx_public_key, crypto_kx_PUBLICKEYBYTES ) == 0 );
-        check( out.Verify( public_key ) );
+        // todo: verify in place on read
+        // check( out.Verify( public_key ) );
     }
 
     uint8_t private_key[crypto_aead_chacha20poly1305_KEYBYTES];
@@ -14240,7 +14026,8 @@ static void test_backend_packets()
         in.customer_id = 1231234127431LL;
         in.datacenter_id = next_datacenter_id( "local" );
         strcpy( in.datacenter_name, "local" );
-        in.Sign( private_key );
+        // todo: sign in place when writing packet
+        // in.Sign( private_key );
 
         int packet_bytes = 0;
         check( next_write_backend_packet( NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET, &in, buffer, &packet_bytes ) == NEXT_OK );
@@ -14253,7 +14040,8 @@ static void test_backend_packets()
         check( in.customer_id == out.customer_id );
         check( in.datacenter_id == out.datacenter_id );
         check( strcmp( in.datacenter_name, out.datacenter_name ) == 0 );
-        check( out.Verify( public_key ) );
+        // todo: verify in place when reading packet
+        // check( out.Verify( public_key ) );
     }
 
     // server init response
@@ -14265,7 +14053,8 @@ static void test_backend_packets()
         static NextBackendServerInitResponsePacket in, out;
         in.request_id = next_random_uint64();
         in.response = NEXT_SERVER_INIT_RESPONSE_OK;
-        in.Sign( private_key );
+        // todo: sign in place when writing packet
+        // in.Sign( private_key );
 
         int packet_bytes = 0;
         check( next_write_backend_packet( NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET, &in, buffer, &packet_bytes ) == NEXT_OK );
@@ -14273,7 +14062,8 @@ static void test_backend_packets()
 
         check( in.request_id == out.request_id );
         check( in.response == out.response );
-        check( out.Verify( public_key ) );
+        // todo: verify in place when writing packet
+        // check( out.Verify( public_key ) );
     }
 
     // server update
@@ -14289,7 +14079,8 @@ static void test_backend_packets()
         in.num_sessions = 20;
         next_address_parse( &in.server_address, "127.0.0.1:12345" );
         next_random_bytes( in.server_route_public_key, crypto_box_PUBLICKEYBYTES );
-        in.Sign( private_key );
+        // todo: sign in place when writing packet
+        // in.Sign( private_key );
 
         int packet_bytes = 0;
         check( next_write_backend_packet( NEXT_BACKEND_SERVER_UPDATE_PACKET, &in, buffer, &packet_bytes ) == NEXT_OK );
@@ -14304,7 +14095,8 @@ static void test_backend_packets()
         check( in.num_sessions == out.num_sessions );
         check( next_address_equal( &in.server_address, &out.server_address ) );
         check( memcmp( in.server_route_public_key, out.server_route_public_key, crypto_box_PUBLICKEYBYTES ) == 0 );
-        check( out.Verify( public_key ) );
+        // todo: verify in place when reading packet
+        // check( out.Verify( public_key ) );
     }
 
     // session update
@@ -14348,7 +14140,8 @@ static void test_backend_packets()
         in.packets_lost_client_to_server = 100;
         in.packets_lost_server_to_client = 200;
         in.user_flags = 123;
-        in.Sign( private_key );
+        // todo: sign in place on write
+        // in.Sign( private_key );
 
         int packet_bytes = 0;
         check( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_PACKET, &in, buffer, &packet_bytes ) == NEXT_OK );
@@ -14388,7 +14181,8 @@ static void test_backend_packets()
         check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );
         check( in.packets_lost_server_to_client == out.packets_lost_server_to_client );
         check( in.user_flags == out.user_flags );
-        check( out.Verify( public_key ) );
+        // todo: verify in place in read
+        // check( out.Verify( public_key ) );
     }
 
     // session response packet (direct)
@@ -14412,7 +14206,8 @@ static void test_backend_packets()
         }
         in.response_type = NEXT_UPDATE_TYPE_DIRECT;
         next_random_bytes( in.server_route_public_key, sizeof(in.server_route_public_key) );
-        in.Sign( private_key );
+        // todo: sign in place when writing packet
+        // in.Sign( private_key );
 
         int packet_bytes = 0;
         check( next_write_backend_packet( NEXT_BACKEND_SESSION_RESPONSE_PACKET, &in, buffer, &packet_bytes ) == NEXT_OK );
@@ -14428,7 +14223,8 @@ static void test_backend_packets()
         }
         check( in.response_type == out.response_type );
         check( memcmp( in.server_route_public_key, out.server_route_public_key, sizeof(in.server_route_public_key) ) == 0 );
-        check( out.Verify( public_key ) );
+        // todo: verify in place when reading packet
+        // check( out.Verify( public_key ) );
     }
 
     // session response packet (route)
@@ -14456,7 +14252,8 @@ static void test_backend_packets()
         in.num_tokens = NEXT_MAX_TOKENS;
         next_random_bytes( in.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES );
         next_random_bytes( in.server_route_public_key, sizeof(in.server_route_public_key) );
-        in.Sign( private_key );
+        // todo: sign in place when writing packet
+        // in.Sign( private_key );
 
         int packet_bytes = 0;
         check( next_write_backend_packet( NEXT_BACKEND_SESSION_RESPONSE_PACKET, &in, buffer, &packet_bytes ) == NEXT_OK );
@@ -14476,7 +14273,8 @@ static void test_backend_packets()
         check( in.num_tokens == out.num_tokens );
         check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES ) == 0 );
         check( memcmp( in.server_route_public_key, out.server_route_public_key, sizeof(in.server_route_public_key) ) == 0 );
-        check( out.Verify( public_key ) );
+        // todo: verify in place when writing packet
+        // check( out.Verify( public_key ) );
     }
 
     // session response packet (continue)
@@ -14504,7 +14302,8 @@ static void test_backend_packets()
         in.num_tokens = NEXT_MAX_TOKENS;
         next_random_bytes( in.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES );
         next_random_bytes( in.server_route_public_key, sizeof(in.server_route_public_key) );
-        in.Sign( private_key );
+        // todo: sign in place when writing packet
+        // in.Sign( private_key );
 
         int packet_bytes = 0;
         check( next_write_backend_packet( NEXT_BACKEND_SESSION_RESPONSE_PACKET, &in, buffer, &packet_bytes ) == NEXT_OK );
@@ -14524,7 +14323,8 @@ static void test_backend_packets()
         check( in.num_tokens == out.num_tokens );
         check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES ) == 0 );
         check( memcmp( in.server_route_public_key, out.server_route_public_key, sizeof(in.server_route_public_key) ) == 0 );
-        check( out.Verify( public_key ) );
+        // todo: verify in place when reading packet
+        // check( out.Verify( public_key ) );
     }
 }
 
