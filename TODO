@@ -18,6 +18,8 @@ DONE
 
 	Remove "GetSignData" processing entirely.
 
+	Add scaffolding for programmatic packet signing.
+
 TODO
 
 	Sign and verify packets between client <-> server the new way.
