@@ -109,10 +109,8 @@
 #define NEXT_FLAGS_ROUTE_REQUEST_TIMED_OUT                         (1<<5)
 #define NEXT_FLAGS_CONTINUE_REQUEST_TIMED_OUT                      (1<<6)
 #define NEXT_FLAGS_CLIENT_TIMED_OUT                                (1<<7)
-#define NEXT_FLAGS_TRY_BEFORE_YOU_BUY_ABORT                        (1<<8)
-#define NEXT_FLAGS_DIRECT_ROUTE_EXPIRED                            (1<<9)
-#define NEXT_FLAGS_UPGRADE_RESPONSE_TIMED_OUT                     (1<<10)
-#define NEXT_FLAGS_COUNT                                               11
+#define NEXT_FLAGS_UPGRADE_RESPONSE_TIMED_OUT                     (1<<8)
+#define NEXT_FLAGS_COUNT                                                9
 
 #define NEXT_MAX_DATACENTER_NAME_LENGTH                               256
 
@@ -3004,7 +3002,7 @@ struct NextClientStatsPacket
     bool fallback_to_direct;
     bool multipath;
     uint64_t flags;
-    uint64_t platform_id;
+    int platform_id;
     int connection_type;
     float kbps_up;
     float kbps_down;
@@ -3036,8 +3034,8 @@ struct NextClientStatsPacket
         serialize_bool( stream, fallback_to_direct );
         serialize_bool( stream, multipath );
         serialize_bits( stream, flags, NEXT_FLAGS_COUNT );
-        serialize_uint64( stream, platform_id );
-        serialize_int( stream, connection_type, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_CELLULAR );
+        serialize_int( stream, platform_id, NEXT_PLATFORM_UNKNOWN, NEXT_PLATFORM_MAX );
+        serialize_int( stream, connection_type, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_MAX );
         serialize_float( stream, kbps_up );
         serialize_float( stream, kbps_down );
         serialize_float( stream, direct_rtt );
@@ -8484,7 +8482,7 @@ struct next_session_entry_t
     bool stats_multipath;
     bool stats_committed;
     bool stats_fallback_to_direct;
-    uint64_t stats_platform_id;
+    int stats_platform_id;
     int stats_connection_type;
     float stats_kbps_up;
     float stats_kbps_down;
@@ -9215,15 +9213,16 @@ struct NextBackendSessionUpdatePacket
     int version_minor;
     int version_patch;
     uint64_t sequence;
+    // todo: add retry number here
     uint64_t customer_id;
     next_address_t server_address;
     uint64_t session_id;
     uint64_t user_hash;
-    uint64_t platform_id;
     uint64_t tag;
     uint64_t flags;
     bool flagged;
     bool fallback_to_direct;
+    int platform_id;
     int connection_type;
     float direct_rtt;
     float direct_jitter;
@@ -9267,12 +9266,12 @@ struct NextBackendSessionUpdatePacket
         serialize_address( stream, server_address );
         serialize_uint64( stream, session_id );
         serialize_uint64( stream, user_hash );
-        serialize_uint64( stream, platform_id );
+        serialize_int( stream, platform_id, NEXT_PLATFORM_UNKNOWN, NEXT_PLATFORM_MAX );
         serialize_uint64( stream, tag );
         serialize_bits( stream, flags, NEXT_FLAGS_COUNT );
         serialize_bool( stream, flagged );
         serialize_bool( stream, fallback_to_direct );
-        serialize_int( stream, connection_type, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_CELLULAR );
+        serialize_int( stream, connection_type, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_MAX );
         serialize_float( stream, direct_rtt );
         serialize_float( stream, direct_jitter );
         serialize_float( stream, direct_packet_loss );
@@ -9300,7 +9299,11 @@ struct NextBackendSessionUpdatePacket
         serialize_uint64( stream, packets_sent_server_to_client );
         serialize_uint64( stream, packets_lost_client_to_server );
         serialize_uint64( stream, packets_lost_server_to_client );
-        serialize_uint64( stream, user_flags );
+        bool has_user_flags = Stream::IsWriting && user_flags != 0;
+        serialize_bool( stream, has_user_flags );
+        {
+            serialize_uint64( stream, user_flags );
+        }
         serialize_bytes( stream, signature, crypto_sign_BYTES );
         return true;
     }
@@ -13652,7 +13655,7 @@ static void test_packets()
     // client stats packet
     {
         static NextClientStatsPacket in, out;
-        in.flags = NEXT_FLAGS_BAD_ROUTE_TOKEN | NEXT_FLAGS_DIRECT_ROUTE_EXPIRED;
+        in.flags = NEXT_FLAGS_BAD_ROUTE_TOKEN;
         in.flagged = true;
         in.fallback_to_direct = true;
         in.platform_id = NEXT_PLATFORM_WINDOWS;
@@ -14312,7 +14315,7 @@ static void test_backend_packets()
         in.user_hash = 11111111;
         in.platform_id = 3;
         in.tag = 0x1231314141;
-        in.flags = NEXT_FLAGS_BAD_ROUTE_TOKEN | NEXT_FLAGS_ROUTE_REQUEST_TIMED_OUT | NEXT_FLAGS_DIRECT_ROUTE_EXPIRED;
+        in.flags = NEXT_FLAGS_BAD_ROUTE_TOKEN | NEXT_FLAGS_ROUTE_REQUEST_TIMED_OUT;
         in.flagged = true;
         in.fallback_to_direct = true;
         in.connection_type = NEXT_CONNECTION_TYPE_WIRED;

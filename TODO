@@ -12,11 +12,11 @@ DONE
 
 TODO
 
+	Uint64 platdorm id is ridiculously wasteful. Serialize it as an enum instead.
+
 	Remove "GetSignData" processing entirely. Packets have 8 bytes signature at the end (or beginning?). Which is most convenient?
 
 	Implement session data that is passed up in the session update request packet, and passed back down in the session update response packet.
-
-	Uint64 packet id is ridiculously wasteful. Serialize it as an enum instead.
 
 	Server should try to resolve hostname and initialize every 5 - 10 minutes (randomized), if it cannot resolve or initialize. Otherwise, we run the risk of losing game servers forever until they are restarted.
 

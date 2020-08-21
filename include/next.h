@@ -68,7 +68,9 @@
 #define NEXT_CONNECTION_TYPE_WIRED                                1
 #define NEXT_CONNECTION_TYPE_WIFI                                 2
 #define NEXT_CONNECTION_TYPE_CELLULAR                             3
+#define NEXT_CONNECTION_TYPE_MAX                                  3
 
+#define NEXT_PLATFORM_UNKNOWN                                     0
 #define NEXT_PLATFORM_WINDOWS                                     1
 #define NEXT_PLATFORM_MAC                                         2
 #define NEXT_PLATFORM_LINUX                                       3
@@ -76,6 +78,7 @@
 #define NEXT_PLATFORM_PS4                                         5
 #define NEXT_PLATFORM_IOS                                         6
 #define NEXT_PLATFORM_XBOX_ONE                                    7
+#define NEXT_PLATFORM_MAX                                         7
 
 #if defined(_WIN32)
 #define NOMINMAX
@@ -205,7 +208,7 @@ NEXT_EXPORT_FUNC bool next_address_equal( const next_address_t * a, const next_a
 
 struct next_client_stats_t
 {
-    uint64_t platform_id;
+    int platform_id;
     int connection_type;
     bool committed;
     bool multipath;
