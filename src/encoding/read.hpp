@@ -4,6 +4,9 @@
 #include "net/address.hpp"
 #include "util/logger.hpp"
 
+using net::Address;
+using net::AddressType;
+
 namespace encoding
 {
   template <typename T>
@@ -28,7 +31,7 @@ namespace encoding
   template <typename T, typename U>
   auto ReadBytes(const T& buff, size_t& index, U& storage, size_t len) -> bool;
 
-  auto ReadAddress(const uint8_t* buff, size_t buffLength, size_t& index, net::Address& addr) -> bool;
+  auto ReadAddress(const uint8_t* const buff, size_t buffLength, size_t& index, net::Address& addr) -> bool;
 
   template <typename T>
   auto ReadAddress(const T& buff, size_t& index, net::Address& addr) -> bool;
@@ -95,7 +98,8 @@ namespace encoding
   }
 
   INLINE auto ReadBytes(
-   const uint8_t* const buff, size_t buff_length, size_t& index, uint8_t* storage, size_t storage_length, size_t read_len) -> bool
+   const uint8_t* const buff, size_t buff_length, size_t& index, uint8_t* storage, size_t storage_length, size_t read_len)
+   -> bool
   {
     if (index + read_len > buff_length) {
       return false;
@@ -122,46 +126,68 @@ namespace encoding
     return true;
   }
 
-  INLINE auto ReadAddress(const uint8_t* buff, size_t buffLength, size_t& index, net::Address& addr) -> bool
+  INLINE auto ReadAddress(const uint8_t* const buff, size_t buff_length, size_t& index, net::Address& addr) -> bool
   {
-    (void)buffLength;
-#ifndef NDEBUG
-    auto start = index;
-#endif
-    assert(buffLength >= net::Address::ByteSize);
-    addr.Type = static_cast<net::AddressType>(ReadUint8(buff, index));  // read the type
-
-    if (addr.Type == net::AddressType::IPv4) {
-      std::copy(buff + index, buff + index + 4, addr.IPv4.begin());  // copy the address
-      index += 4;                                                    // increment the index
-      addr.Port = ReadUint16(buff, index);                           // read the port
-      index += 12;                                                   // increment the index past the reserved area
-    } else if (addr.Type == net::AddressType::IPv6) {
-      for (int i = 0; i < 8; i++) {
-        addr.IPv6[i] = ReadUint16(buff, index);
-      }
-      addr.Port = ReadUint16(buff, index);  // read the port
-    } else {
-      addr.reset();
-      index += net::Address::ByteSize - 1;  // if no type, increment the index past the address area
+    if (buff_length < Address::ByteSize) {
+      return false;
     }
 
-    assert(index - start == net::Address::ByteSize);
+    uint8_t type;
+    if (!ReadUint8(buff, index, type)) {
+      return false;
+    }
+    addr.Type = static_cast<AddressType>(type);
+
+    switch (addr.Type) {
+      case AddressType::IPv4: {
+        // read address parts
+        std::copy(buff + index, buff + index + 4, addr.IPv4.begin());
+        index += 4;
+        // read the port
+        if (!ReadUint16(buff, index, addr.Port)) {
+          return false;
+        }
+        index += 12;  // increment the index past the reserved area
+      } break;
+      case AddressType::IPv6: {
+        // read address parts
+        for (int i = 0; i < 8; i++) {
+          if (!ReadUint16(buff, index, addr.IPv6[i])) {
+            return false;
+          }
+        }
+        // read the port
+        if (!ReadUint16(buff, index, addr.Port)) {
+          return false;
+        }
+      } break;
+      default: {
+        // if no type, increment the index past the address area
+        index += Address::ByteSize - 1;
+        addr.reset();
+      } break;
+    }
+
+    return true;
   }
 
   template <typename T>
-  [[gnu::always_inline]] inline void ReadAddress(const T& buff, size_t& index, net::Address& addr)
+  INLINE void ReadAddress(const T& buff, size_t& index, net::Address& addr)
   {
-    GCC_NO_OPT_OUT;
-#ifndef NDEBUG
-    auto start = index;
-#endif
-    addr.Type = static_cast<net::AddressType>(ReadUint8(buff, index));  // read the type
+    uint8_t type;
+    if (!ReadUint8(buff, index, type)) {
+      return false;
+    }
+    addr.Type = static_cast<AddressType>(type);
 
     if (addr.Type == net::AddressType::IPv4) {
-      std::copy(buff.begin() + index, buff.begin() + index + 4, addr.IPv4.begin());  // copy the address
-      index += 4;                                                                    // increment the index
-      addr.Port = ReadUint16(buff, index);                                           // read the port
+      // copy the address parts
+      std::copy(buff.begin() + index, buff.begin() + index + 4, addr.IPv4.begin());
+      index += 4;
+      // read the port
+      if (!ReadUint16(buff, index, addr.Port)) {
+        return false;
+      }
       index += 12;  // increment the index past the reserved area
     } else if (addr.Type == net::AddressType::IPv6) {
       for (int i = 0; i < 8; i++) {
@@ -172,16 +198,17 @@ namespace encoding
       addr.reset();
       index += net::Address::ByteSize - 1;  // if no type, increment the index past the address area
     }
-
-    assert(index - start == net::Address::ByteSize);
   }
 
   template <typename T>
-  auto ReadString(const T& buff, size_t& index) -> std::string
+  INLINE auto ReadString(const T& buff, size_t& index, std::string& value) -> bool
   {
-    size_t len = ReadUint32(buff, index);
-    std::string str(buff.begin() + index, buff.begin() + index + len);
+    size_t len;
+    if (!ReadUint32(buff, index, len)) {
+      return false;
+    }
+    value = std::move(std::string(buff.begin() + index, buff.begin() + index + len));
     index += len;
-    return str;
+    return true;
   }
 }  // namespace encoding
