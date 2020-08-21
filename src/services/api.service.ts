@@ -25,7 +25,7 @@ export default class APIService {
     return new Promise((resolve: any, reject: any) => {
       const options = params || {}
       const id = 'id'
-      const jsonrpc = 'http://172.24.130.4:20000'
+      const jsonrpc = 'http://172.23.165.40:20000'
       // fetch(`${process.env.VUE_APP_API_URL}/rpc`, {
       fetch(`${jsonrpc}/rpc`, {
         method: 'POST',
@@ -43,6 +43,9 @@ export default class APIService {
           }
           resolve(json.result)
         })
+      }).catch((err: any) => {
+        console.log('fetch() error:')
+        console.log(err)
       })
     })
   }

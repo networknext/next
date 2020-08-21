@@ -35,7 +35,7 @@ export class AuthService {
 
   async login (o: any) {
     this.popupOpen = true
-    let idToken: IdToken // auth0 IdToken?
+    let idToken: any // IdToken // auth0 IdToken?
 
     try {
       await this.authClient.loginWithPopup()
@@ -53,12 +53,16 @@ export class AuthService {
     console.log('user: ')
     console.log(this.user)
     // console.log(this.authClient.user.name)
-    this.isAuthenticated = true
 
+    // console.log('login()')
+    // console.log(JSON.parse(idToken))
     this.processAuthentication(idToken)
+    this.isAuthenticated = true
   }
 
-  private processAuthentication (authResult: IdToken) {
+  public processAuthentication (authResult: IdToken) {
+    console.log('processAuthentication() authResult:')
+    console.log(JSON.stringify(authResult))
     this.apiService = new APIService()
     const roles = authResult['https://networknext.com/userRoles'] || { roles: [] }
     const email = authResult.email || ''
@@ -91,6 +95,10 @@ export class AuthService {
       store.commit('UPDATE_USER_PROFILE', userProfile)
       store.commit('UPDATE_ALL_BUYERS', allBuyers)
     })
+
+    // ToDo: we will need to pick on or the other
+    // localStorage.setItem('userProfile', JSON.stringify(userProfile))
+    localStorage.setItem('authResult', JSON.stringify(authResult))
   }
 }
 
@@ -99,6 +107,22 @@ export const AuthPlugin = {
     const client = new AuthService({
       domain: options.domain,
       clientId: options.clientId
+    })
+
+    Vue.mixin({
+      created: function () {
+        let err: any
+        // console.log('created(), getting idtoken: ')
+        try {
+          client.processAuthentication(JSON.parse(localStorage.authResult))
+          console.log('created()')
+          console.log(JSON.parse(localStorage.authResult))
+        } catch (err) {
+          console.log('processAuthentication(): nothing in localstorage')
+        } finally {
+          this.isAuthenticated = true
+        }
+      }
     })
 
     Vue.login = () => {
