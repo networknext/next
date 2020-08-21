@@ -132,16 +132,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		if key := os.Getenv("RELAY_PUBLIC_KEY"); len(key) != 0 {
-			relayPublicKey, err = base64.StdEncoding.DecodeString(key)
-			if err != nil {
-				level.Error(logger).Log("envvar", "RELAY_PUBLIC_KEY", "msg", "could not parse", "err", err)
-				os.Exit(1)
-			}
-		} else {
-			level.Error(logger).Log("err", "RELAY_PUBLIC_KEY not set")
-			os.Exit(1)
-		}
+		fmt.Println("read server backend private key")
 
 		if key := os.Getenv("RELAY_ROUTER_PRIVATE_KEY"); len(key) != 0 {
 			routerPrivateKey, err = base64.StdEncoding.DecodeString(key)
@@ -154,13 +145,28 @@ func main() {
 			os.Exit(1)
 		}
 
-		if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
-			customerPublicKey, err = base64.StdEncoding.DecodeString(key)
-			if err != nil {
-				level.Error(logger).Log("envvar", "NEXT_CUSTOMER_PUBLIC_KEY", "msg", "could not parse", "err", err)
+		fmt.Println("read relay backend private key")
+
+		if env == "local" {
+			if key := os.Getenv("RELAY_PUBLIC_KEY"); len(key) != 0 {
+				relayPublicKey, err = base64.StdEncoding.DecodeString(key)
+				if err != nil {
+					level.Error(logger).Log("envvar", "RELAY_PUBLIC_KEY", "msg", "could not parse", "err", err)
+					os.Exit(1)
+				}
+			} else {
+				level.Error(logger).Log("err", "RELAY_PUBLIC_KEY not set")
 				os.Exit(1)
 			}
-			customerPublicKey = customerPublicKey[8:]
+
+			if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
+				customerPublicKey, err = base64.StdEncoding.DecodeString(key)
+				if err != nil {
+					level.Error(logger).Log("envvar", "NEXT_CUSTOMER_PUBLIC_KEY", "msg", "could not parse", "err", err)
+					os.Exit(1)
+				}
+				customerPublicKey = customerPublicKey[8:]
+			}
 		}
 	}
 
@@ -169,11 +175,17 @@ func main() {
 		LocalMode: true,
 	}
 
+	fmt.Println("in memory created")
+
 	// Create a no-op biller
 	var biller billing.Biller = &billing.NoOpBiller{}
 
+	fmt.Println("biller created")
+
 	// Create a no-op metrics handler
 	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
+
+	fmt.Println("local metrics created")
 
 	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
 	_, firestoreEmulatorOK := os.LookupEnv("FIRESTORE_EMULATOR_HOST")
@@ -182,6 +194,9 @@ func main() {
 		gcpProjectID = "local"
 		level.Info(logger).Log("msg", "Detected firestore emulator")
 	}
+
+	fmt.Printf("got gcp project ID: %v", gcpOK)
+	fmt.Printf("got firestore emulator: %v", firestoreEmulatorOK)
 
 	if gcpOK || firestoreEmulatorOK {
 		// Firestore
