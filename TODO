@@ -6,9 +6,9 @@ DONE
 
 	Fix wire packet calculations so they include the 8 byte packet hash.
 
-TODO
-
 	Don't sign the whole packet, only sign the first 32 bytes. Much cheaper computationally.
+
+TODO
 
 	Server init packet should include datacenter name as a string.
 
