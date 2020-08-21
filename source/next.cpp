@@ -7792,6 +7792,7 @@ const char * next_address_to_string( const next_address_t * address, char * buff
         if ( address->port == 0 )
         {
             strncpy( buffer, address_string, NEXT_MAX_ADDRESS_STRING_LENGTH );
+            address_string[NEXT_MAX_ADDRESS_STRING_LENGTH-1] = '\0';
             return buffer;
         }
         else
@@ -9717,8 +9718,9 @@ struct next_server_internal_t
     void (*wake_up_callback)( void * context );
     void * context;
     int state;
-    uint64_t datacenter_id;
     uint64_t customer_id;
+    uint64_t datacenter_id;
+    char datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH];
 
     NEXT_DECLARE_SENTINEL(1)
 
@@ -11486,6 +11488,8 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.request_id = next_random_uint64();
             packet.customer_id = server->customer_id;
             packet.datacenter_id = server->datacenter_id;
+            strncpy( packet.datacenter_name, server->datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH - 1 );
+            packet.datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
             packet.Sign( server->customer_private_key );
 
             server->server_init_request_id = packet.request_id;
