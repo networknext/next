@@ -652,11 +652,19 @@ func main() {
 			}
 
 			if err := statsdb.GetCostMatrix(&costMatrixNew, allNonValveRelayData, float32(maxJitter), float32(maxPacketLoss)); err == nil {
-				// todo: we need to handle this better in future, but just hold the previous cost matrix for the moment on error
+				// Write the cost matrix to a buffer and serve that instead
+				// of writing a new buffer every time we want to serve the cost matrix
+				err = costMatrixNew.WriteResponseData()
+				if err != nil {
+					level.Error(logger).Log("matrix", "cost", "msg", "failed to write cost matrix response data", "err", err)
+					continue // Don't store the new route matrix if we fail to write cost matrix data
+				}
+
 				costMatrixMutex.Lock()
 				costMatrix = &costMatrixNew
 				costMatrixMutex.Unlock()
 			} else {
+				// todo: we need to handle this better in future, but just hold the previous cost matrix for the moment on error
 				costMatrixMetrics.ErrorMetrics.GenFailure.Add(1)
 			}
 
@@ -690,14 +698,6 @@ func main() {
 
 			if optimizeDurationSince.Seconds() > 1.0 {
 				optimizeMetrics.LongUpdateCount.Add(1)
-			}
-
-			// Write the cost matrix to a buffer and serve that instead
-			// of writing a new buffer every time we want to serve the cost matrix
-			err = costMatrix.WriteResponseData()
-			if err != nil {
-				level.Error(logger).Log("matrix", "cost", "msg", "failed to write cost matrix response data", "err", err)
-				continue // Don't store the new route matrix if we fail to write cost matrix data
 			}
 
 			// Write the route matrix to a buffer and serve that instead
