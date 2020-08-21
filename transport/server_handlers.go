@@ -1019,12 +1019,12 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 
 // GetBestRoute returns the best route that a session can take for this slice. If we can't serve a network next route, the returned route will be the passed in direct route.
 // This function can either return a network next route or a direct route, and it also returns a reason as to why the route was chosen.
-func GetBestRoute(routeMatrix RouteProvider, nearRelayIDs []routing.NearRelayData, datacenterRelayIDs []uint64, storer storage.Storer, metrics *metrics.SessionMetrics,
+func GetBestRoute(routeMatrix RouteProvider, nearRelayData []routing.NearRelayData, datacenterRelayIDs []uint64, storer storage.Storer, metrics *metrics.SessionMetrics,
 	buyer *routing.Buyer, prevRouteHash uint64, prevRouteDecision routing.Decision, lastNextStats *routing.Stats, lastDirectStats *routing.Stats,
 	onNNSliceCounter uint64, committedData *routing.CommittedData, directRoute *routing.Route) (*routing.Route, routing.Decision) {
 
 	// We need to get a next route to compare against direct
-	nextRoute := GetNextRoute(routeMatrix, nearRelayIDs, datacenterRelayIDs, storer, metrics, float64(buyer.RoutingRulesSettings.RTTEpsilon), prevRouteHash)
+	nextRoute := GetNextRoute(routeMatrix, nearRelayData, datacenterRelayIDs, storer, metrics, float64(buyer.RoutingRulesSettings.RTTEpsilon), prevRouteHash)
 	if nextRoute == nil {
 		// We couldn't find a network next route at all. This may happen if something goes wrong with the route matrix or if relays are flickering.
 		decision := routing.Decision{OnNetworkNext: false, Reason: routing.DecisionNoNextRoute}
@@ -1095,7 +1095,7 @@ func GetBestRoute(routeMatrix RouteProvider, nearRelayIDs []routing.NearRelayDat
 	return directRoute, routeDecision
 }
 
-func GetNextRoute(routeMatrix RouteProvider, nearRelayIDs []routing.NearRelayData, datacenterRelayIDs []uint64, storer storage.Storer, metrics *metrics.SessionMetrics, rttEpsilon float64, prevRouteHash uint64) *routing.Route {
+func GetNextRoute(routeMatrix RouteProvider, nearRelayData []routing.NearRelayData, datacenterRelayIDs []uint64, storer storage.Storer, metrics *metrics.SessionMetrics, rttEpsilon float64, prevRouteHash uint64) *routing.Route {
 
 	// First, Get all possible routes between all near relays and all relays in the datacenter
 
@@ -1104,7 +1104,7 @@ func GetNextRoute(routeMatrix RouteProvider, nearRelayIDs []routing.NearRelayDat
 		metrics.RouteSelectionDuration.Set(float64(time.Since(routeSelectionStartTime).Milliseconds()))
 	}()
 
-	routes, err := routeMatrix.GetAcceptableRoutes(nearRelayIDs, datacenterRelayIDs, prevRouteHash, int32(rttEpsilon))
+	routes, err := routeMatrix.GetAcceptableRoutes(nearRelayData, datacenterRelayIDs, prevRouteHash, int32(rttEpsilon))
 	if err != nil {
 		metrics.ErrorMetrics.RouteFailure.Add(1)
 		return nil

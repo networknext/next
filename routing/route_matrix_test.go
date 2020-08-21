@@ -1204,7 +1204,7 @@ func TestRouteMatrix(t *testing.T) {
 		})
 	})
 
-	t.Run("GetRoutes", func(t *testing.T) {
+	t.Run("GetAcceptableRoutes", func(t *testing.T) {
 		routeMatrixCopy := routeMatrix
 
 		// Hack to insert relay session counts without regenerating a new route matrix
@@ -1213,9 +1213,6 @@ func TestRouteMatrix(t *testing.T) {
 			routeMatrixCopy.RelaySessionCounts[i] = uint32(i)
 			routeMatrixCopy.RelayMaxSessionCounts[i] = 3000
 		}
-
-		// Have a relay be encumbered
-		routeMatrixCopy.RelaySessionCounts[3] = 3000
 
 		t.Run("empty near/dest sets", func(t *testing.T) {
 			near := []routing.NearRelayData{}
@@ -1454,49 +1451,98 @@ func TestRouteMatrix(t *testing.T) {
 				assert.Equal(t, expected[routeidx].Stats, actual[routeidx].Stats)
 			}
 		})
-		// {
-		// 	"unencumbered routes",
-		// 	[]routing.Relay{{ID: 2836356269}},
-		// 	[]routing.Relay{{ID: 3263834878}, {ID: 1500948990}},
-		// 	[]routing.Route{
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2923051732}, {ID: 1884974764}, {ID: 3263834878}},
-		// 			Stats:  routing.Stats{RTT: 182},
-		// 		},
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2641807504}, {ID: 3263834878}},
-		// 			Stats:  routing.Stats{RTT: 182},
-		// 		},
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 1348914502}, {ID: 1884974764}, {ID: 3263834878}},
-		// 			Stats:  routing.Stats{RTT: 182},
-		// 		},
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2576485547}, {ID: 1835585494}, {ID: 3263834878}},
-		// 			Stats:  routing.Stats{RTT: 183},
-		// 		},
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1348914502}, {ID: 1884974764}, {ID: 3263834878}},
-		// 			Stats:  routing.Stats{RTT: 183},
-		// 		},
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2663193268}, {ID: 2504465311}, {ID: 3263834878}},
-		// 			Stats:  routing.Stats{RTT: 184},
-		// 		},
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 427962386}, {ID: 2504465311}, {ID: 3263834878}},
-		// 			Stats:  routing.Stats{RTT: 184},
-		// 		},
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 4058587524}, {ID: 1350942731}, {ID: 3263834878}},
-		// 			Stats:  routing.Stats{RTT: 184},
-		// 		},
-		// 	},
-		// 	nil,
-		// 	[]routing.SelectorFunc{
-		// 		routing.SelectUnencumberedRoutes(0.8),
-		// 	},
-		// },
+
+		t.Run("encumbered route", func(t *testing.T) {
+			// Have a relay be encumbered
+			routeMatrixCopy.RelaySessionCounts[2] = 3000
+
+			near := []routing.NearRelayData{{ID: 2836356269}}
+			dest := []uint64{3263834878, 1500948990}
+
+			expected := []routing.Route{
+				{
+					RelayIDs: []uint64{2836356269, 1370686037, 2923051732, 1884974764, 3263834878},
+					Stats:    routing.Stats{RTT: 182},
+				},
+				{
+					RelayIDs: []uint64{2836356269, 1370686037, 2641807504, 3263834878},
+					Stats:    routing.Stats{RTT: 182},
+				},
+				{
+					RelayIDs: []uint64{2836356269, 1370686037, 1348914502, 1884974764, 3263834878},
+					Stats:    routing.Stats{RTT: 182},
+				},
+				{
+					RelayIDs: []uint64{2836356269, 1348914502, 1884974764, 3263834878},
+					Stats:    routing.Stats{RTT: 183},
+				},
+				{
+					RelayIDs: []uint64{2836356269, 1370686037, 2663193268, 2504465311, 3263834878},
+					Stats:    routing.Stats{RTT: 184},
+				},
+				{
+					RelayIDs: []uint64{2836356269, 1370686037, 427962386, 2504465311, 3263834878},
+					Stats:    routing.Stats{RTT: 184},
+				},
+				{
+					RelayIDs: []uint64{2836356269, 1370686037, 4058587524, 1350942731, 3263834878},
+					Stats:    routing.Stats{RTT: 184},
+				},
+				{
+					RelayIDs: []uint64{2836356269, 1500948990},
+					Stats:    routing.Stats{RTT: 311},
+				},
+			}
+
+			actual, err := routeMatrixCopy.GetAcceptableRoutes(near, dest, 0, 500)
+			assert.NoError(t, err)
+			assert.Equal(t, len(expected), len(actual))
+
+			for routeidx, route := range expected {
+				assert.Equal(t, len(expected[routeidx].RelayIDs), len(route.RelayIDs))
+
+				for relayidx := range route.RelayIDs {
+					assert.Equal(t, expected[routeidx].RelayIDs[relayidx], actual[routeidx].RelayIDs[relayidx])
+				}
+
+				assert.Equal(t, expected[routeidx].Stats, actual[routeidx].Stats)
+			}
+
+			// Undo the session count for other tests
+			routeMatrixCopy.RelaySessionCounts[2] = 0
+		})
+
+		t.Run("encumbered route but previously on it", func(t *testing.T) {
+			// Have a relay be encumbered
+			routeMatrixCopy.RelaySessionCounts[2] = 3000
+
+			near := []routing.NearRelayData{{ID: 2836356269}}
+			dest := []uint64{3263834878, 1500948990}
+
+			expected := []routing.Route{
+				{
+					RelayIDs: []uint64{2836356269, 1370686037, 2576485547, 1835585494, 3263834878},
+					Stats:    routing.Stats{RTT: 183},
+				},
+			}
+
+			actual, err := routeMatrixCopy.GetAcceptableRoutes(near, dest, 5103031862372043713, 500)
+			assert.NoError(t, err)
+			assert.Equal(t, len(expected), len(actual))
+
+			for routeidx, route := range expected {
+				assert.Equal(t, len(expected[routeidx].RelayIDs), len(route.RelayIDs))
+
+				for relayidx := range route.RelayIDs {
+					assert.Equal(t, expected[routeidx].RelayIDs[relayidx], actual[routeidx].RelayIDs[relayidx])
+				}
+
+				assert.Equal(t, expected[routeidx].Stats, actual[routeidx].Stats)
+			}
+
+			// Undo the session count for other tests
+			routeMatrixCopy.RelaySessionCounts[2] = 0
+		})
 		// {
 		// 	"routes by random dest relay",
 		// 	[]routing.Relay{{ID: 2836356269}},
