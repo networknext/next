@@ -299,10 +299,6 @@ func (database *StatsDatabase) GetCostMatrix(
 		for j := 0; j < i; j++ {
 			ijIndex := TriMatrixIndex(i, j)
 
-			if costMatrix.RelaySessionCounts[i] >= costMatrix.RelayMaxSessionCounts[i] || costMatrix.RelaySessionCounts[j] >= costMatrix.RelayMaxSessionCounts[j] {
-				costMatrix.RTT[ijIndex] = -1
-			}
-
 			idI := uint64(costMatrix.RelayIDs[i])
 			idJ := uint64(costMatrix.RelayIDs[j])
 			rtt, jitter, packetLoss := database.GetSample(idI, idJ)
