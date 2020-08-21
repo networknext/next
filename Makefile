@@ -615,7 +615,7 @@ publish-relay-backend-artifacts-dev: ## publishes the relay backend artifacts to
 
 .PHONY: publish-server-backend-artifacts-dev
 publish-server-backend-artifacts-dev: ## publishes the server backend artifacts to GCP Storage with gsutil dev
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s server-backend
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s server_backend
 
 .PHONY: publish-billing-artifacts-staging
 publish-billing-artifacts-staging: ## publishes the billing artifacts to GCP Storage with gsutil staging
@@ -647,7 +647,7 @@ publish-relay-backend-artifacts-staging: ## publishes the relay backend artifact
 
 .PHONY: publish-server-backend-artifacts-staging
 publish-server-backend-artifacts-staging: ## publishes the server backend artifacts to GCP Storage with gsutil staging
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s server-backend
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s server_backend
 
 .PHONY: publish-load-test-server-artifacts
 publish-load-test-server-artifacts: ## publishes the server backend artifacts to GCP Storage with gsutil prod
