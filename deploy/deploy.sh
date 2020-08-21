@@ -33,7 +33,7 @@ print_usage() {
   printf "> deploy.sh -e prod -c psyonix -t server-backend -n server_backend -b gs://prod_artifacts\n"
 }
 
-if [ ! $# -eq 8 ]
+if [ ! $# -eq 10 ]
 then
   print_usage
   exit 1
