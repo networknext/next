@@ -152,10 +152,27 @@ func (m *RouteMatrix) GetAcceptableRoutes(near []NearRelayData, destIDs []uint64
 
 			// The routes in each route matrix entry are sorted by ascending RTT,
 			// so we only need to check the first one to find the best RTT
-			if entry.NumRoutes > 0 {
-				routeRTT := entry.RouteRTT[0]
+			for routeIndex := 0; routeIndex < int(entry.NumRoutes); routeIndex++ {
+				routeRTT := entry.RouteRTT[routeIndex]
 				if routeRTT < bestRouteRTT {
+					// Make sure any relay in the route isn't encumbered when considering it for the best route RTT
+					isEncumbered := false
+					for k := 0; k < int(entry.RouteNumRelays[routeIndex]); k++ {
+						relayIndex := entry.RouteRelays[routeIndex][k]
+						if m.RelaySessionCounts[relayIndex] >= m.RelayMaxSessionCounts[relayIndex] {
+							isEncumbered = true
+							break
+						}
+					}
+
+					if isEncumbered {
+						// We continue rather than break here since more routes for this entry
+						// might still have good RTT and unencumbered relays
+						continue
+					}
+
 					bestRouteRTT = routeRTT
+					break
 				}
 			}
 		}
@@ -190,8 +207,17 @@ func (m *RouteMatrix) GetAcceptableRoutes(near []NearRelayData, destIDs []uint64
 				// Now that we know this route is acceptable, we can get its relays and build the route struct
 				numRelays := int(entry.RouteNumRelays[routeIndex])
 				routeRelayIDs := make([]uint64, numRelays)
+				isEncumbered := false
 				for relayIndex := 0; relayIndex < numRelays; relayIndex++ {
 					idx := entry.RouteRelays[routeIndex][relayIndex]
+
+					// Check to see if any relay in the route is encumbered, and if so, ignore the route
+					if m.RelaySessionCounts[idx] >= m.RelayMaxSessionCounts[idx] {
+						isEncumbered = true
+
+						// Don't break here so we can get all of the relays in case it's the route
+						// the session was previously on
+					}
 
 					if !reverse {
 						routeRelayIDs[relayIndex] = m.RelayIDs[idx]
@@ -208,8 +234,16 @@ func (m *RouteMatrix) GetAcceptableRoutes(near []NearRelayData, destIDs []uint64
 				}
 
 				// If we found the route we took last slice, take it again
+				// We check if this is the previous route before if any relays are encumbered
+				// so that if the session is already on the route it doesn't get kicked off
 				if route.Hash64() == prevRouteHash {
 					return []Route{*route}, nil
+				}
+
+				if isEncumbered {
+					// We continue rather than break here since more routes for this entry
+					// might still have good RTT and unencumbered relays
+					continue
 				}
 
 				routes[routeSize] = *route
