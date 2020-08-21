@@ -114,6 +114,8 @@
 #define NEXT_FLAGS_UPGRADE_RESPONSE_TIMED_OUT                     (1<<10)
 #define NEXT_FLAGS_COUNT                                               11
 
+#define NEXT_MAX_DATACENTER_NAME_LENGTH                               256
+
 static const uint8_t next_backend_public_key[] = 
 { 
      76,  97, 202, 140,  71, 135,  62, 212, 
@@ -9013,6 +9015,7 @@ struct NextBackendServerInitRequestPacket
     uint64_t request_id;
     uint64_t customer_id;
     uint64_t datacenter_id;
+    char datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH];
     uint8_t signature[crypto_sign_BYTES];
 
     NextBackendServerInitRequestPacket()
@@ -9023,6 +9026,7 @@ struct NextBackendServerInitRequestPacket
         request_id = 0;
         customer_id = 0;
         datacenter_id = 0;
+        datacenter_name[0] = '\0';
         memset( signature, 0, crypto_sign_BYTES );
     }
 
@@ -9035,6 +9039,7 @@ struct NextBackendServerInitRequestPacket
         serialize_uint64( stream, customer_id );
         serialize_uint64( stream, datacenter_id );
         serialize_bytes( stream, signature, crypto_sign_BYTES );
+        serialize_string( stream, datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
         return true;
     }
 
@@ -14220,6 +14225,7 @@ static void test_backend_packets()
         in.request_id = next_random_uint64();
         in.customer_id = 1231234127431LL;
         in.datacenter_id = next_datacenter_id( "local" );
+        strcpy( in.datacenter_name, "local" );
         in.Sign( private_key );
 
         int packet_bytes = 0;
@@ -14232,6 +14238,7 @@ static void test_backend_packets()
         check( in.version_patch == out.version_patch );
         check( in.customer_id == out.customer_id );
         check( in.datacenter_id == out.datacenter_id );
+        check( strcmp( in.datacenter_name, out.datacenter_name ) == 0 );
         check( out.Verify( public_key ) );
     }
 
