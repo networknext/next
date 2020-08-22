@@ -9334,8 +9334,11 @@ int next_write_backend_packet( uint8_t packet_id, void * packet_object, uint8_t 
     if ( signed_packet && signed_packet[packet_id] )
     {
         next_assert( sign_private_key );
-
-        // todo: sign packet with private key
+        crypto_sign_state state;
+        crypto_sign_init( &state );
+        crypto_sign_update( &state, packet_data + NEXT_PACKET_HASH_BYTES, *packet_bytes - NEXT_PACKET_HASH_BYTES );
+        crypto_sign_final_create( &state, packet_data + *packet_bytes, NULL, sign_private_key );
+        *packet_bytes += crypto_sign_BYTES;
     }
 
     const uint8_t * message = packet_data + NEXT_PACKET_HASH_BYTES;
@@ -9375,9 +9378,20 @@ int next_read_backend_packet( uint8_t * packet_data, int packet_bytes, void * pa
     {
         next_assert( sign_public_key );
 
-        // todo: verify packet signature
+        if ( packet_bytes < int( 1 + crypto_sign_BYTES ) )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "signed packet is too small to be valid" );
+            return NEXT_ERROR;
+        }
 
-        (void) sign_public_key;
+        crypto_sign_state state;
+        crypto_sign_init( &state );
+        crypto_sign_update( &state, packet_data, packet_bytes - crypto_sign_BYTES );
+        if ( crypto_sign_final_verify( &state, packet_data + packet_bytes - crypto_sign_BYTES, sign_public_key ) != 0 )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "signed packet did not verify" );
+            return NEXT_ERROR;
+        }
     }
 
     next::ReadStream stream( packet_data + 1, packet_bytes - 1 );
@@ -14072,8 +14086,6 @@ static void test_backend_packets()
         check( in.num_sessions == out.num_sessions );
         check( next_address_equal( &in.server_address, &out.server_address ) );
         check( memcmp( in.server_route_public_key, out.server_route_public_key, crypto_box_PUBLICKEYBYTES ) == 0 );
-        // todo: verify in place when reading packet
-        // check( out.Verify( public_key ) );
     }
 
     // session update
@@ -14117,8 +14129,6 @@ static void test_backend_packets()
         in.packets_lost_client_to_server = 100;
         in.packets_lost_server_to_client = 200;
         in.user_flags = 123;
-        // todo: sign in place on write
-        // in.Sign( private_key );
 
         int packet_bytes = 0;
         check( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, private_key ) == NEXT_OK );
@@ -14158,8 +14168,6 @@ static void test_backend_packets()
         check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );
         check( in.packets_lost_server_to_client == out.packets_lost_server_to_client );
         check( in.user_flags == out.user_flags );
-        // todo: verify in place in read
-        // check( out.Verify( public_key ) );
     }
 
     // session response packet (direct)
@@ -14183,8 +14191,6 @@ static void test_backend_packets()
         }
         in.response_type = NEXT_UPDATE_TYPE_DIRECT;
         next_random_bytes( in.server_route_public_key, sizeof(in.server_route_public_key) );
-        // todo: sign in place when writing packet
-        // in.Sign( private_key );
 
         int packet_bytes = 0;
         check( next_write_backend_packet( NEXT_BACKEND_SESSION_RESPONSE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, private_key ) == NEXT_OK );
@@ -14200,8 +14206,6 @@ static void test_backend_packets()
         }
         check( in.response_type == out.response_type );
         check( memcmp( in.server_route_public_key, out.server_route_public_key, sizeof(in.server_route_public_key) ) == 0 );
-        // todo: verify in place when reading packet
-        // check( out.Verify( public_key ) );
     }
 
     // session response packet (route)
@@ -14248,8 +14252,6 @@ static void test_backend_packets()
         check( in.num_tokens == out.num_tokens );
         check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES ) == 0 );
         check( memcmp( in.server_route_public_key, out.server_route_public_key, sizeof(in.server_route_public_key) ) == 0 );
-        // todo: verify in place when writing packet
-        // check( out.Verify( public_key ) );
     }
 
     // session response packet (continue)
@@ -14296,8 +14298,6 @@ static void test_backend_packets()
         check( in.num_tokens == out.num_tokens );
         check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES ) == 0 );
         check( memcmp( in.server_route_public_key, out.server_route_public_key, sizeof(in.server_route_public_key) ) == 0 );
-        // todo: verify in place when reading packet
-        // check( out.Verify( public_key ) );
     }
 }
 
