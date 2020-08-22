@@ -7577,7 +7577,6 @@ void next_client_send_packet_direct( next_client_t * client, const uint8_t * pac
 
     client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT]++;
 
-    // todo: thread safety with atomics
     client->internal->packets_sent++;
 }
 
@@ -13387,8 +13386,6 @@ static void test_packets()
         next_address_parse( &in.server_address, "127.0.0.1:12345" );
         next_random_bytes( in.client_kx_public_key, crypto_kx_PUBLICKEYBYTES );
         next_random_bytes( in.server_kx_public_key, crypto_kx_PUBLICKEYBYTES );
-
-        // todo: get this to work
 
         int packet_bytes = 0;
         check( next_write_packet( NEXT_UPGRADE_CONFIRM_PACKET, &in, buffer, &packet_bytes, next_signed_packets, NULL, NULL, private_key, NULL ) == NEXT_OK );
