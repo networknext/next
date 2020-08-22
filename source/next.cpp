@@ -13359,8 +13359,6 @@ static void test_packets()
         check( memcmp( in.upgrade_token, out.upgrade_token, NEXT_UPGRADE_TOKEN_BYTES ) == 0 );
     }
 
-    // todo
-    /*
     // upgrade response
     {
         static NextUpgradeResponsePacket in, out;
@@ -13393,9 +13391,9 @@ static void test_packets()
         // todo: get this to work
 
         int packet_bytes = 0;
-        check( next_write_packet( NEXT_UPGRADE_CONFIRM_PACKET, &in, buffer, &packet_bytes, next_signed_packets, NULL, NULL, NULL, NULL ) == NEXT_OK );
+        check( next_write_packet( NEXT_UPGRADE_CONFIRM_PACKET, &in, buffer, &packet_bytes, next_signed_packets, NULL, NULL, private_key, NULL ) == NEXT_OK );
 
-        check( next_read_packet( buffer, packet_bytes, &out, NULL, NULL, NULL, NULL, NULL, NULL ) == NEXT_UPGRADE_CONFIRM_PACKET );
+        check( next_read_packet( buffer, packet_bytes, &out, next_signed_packets, NULL, NULL, public_key, NULL, NULL ) == NEXT_UPGRADE_CONFIRM_PACKET );
 
         check( in.upgrade_sequence == out.upgrade_sequence );
         check( in.session_id == out.session_id );
@@ -13662,7 +13660,6 @@ static void test_packets()
         check( in.ping_sequence == out.ping_sequence );
         check( in.session_id == out.session_id );
     }
-    */
 }
 
 static void test_pending_session_manager()

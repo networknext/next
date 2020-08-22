@@ -24,9 +24,9 @@ DONE
 
 	Get tests failing for the sign upgrade request and upgrade confirm packets so I know the codepath is active.
 
-TODO
-
 	Get sign and verify working for upgrade request and upgrade confirm packets.
+
+TODO
 
 	----------------
 
