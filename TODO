@@ -28,8 +28,6 @@ DONE
 
 TODO
 
-	----------------
-
 	Add scaffolding for signing packets between the server and the backend.
 
 	Complex because the packets server -> client are signed with the customer private key, while the backend -> server packets are signed with backend private signing key.

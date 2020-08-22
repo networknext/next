@@ -114,8 +114,6 @@
 
 #define NEXT_MAX_DATACENTER_NAME_LENGTH                               256
 
-// todo: bring this back when backend signing is back
-/*
 static const uint8_t next_backend_public_key[] = 
 { 
      76,  97, 202, 140,  71, 135,  62, 212, 
@@ -123,7 +121,6 @@ static const uint8_t next_backend_public_key[] =
       8,  45,  37,  60, 145,  14, 212, 111, 
      25,  34, 175, 186,  37, 150, 163,  64 
 };
-*/
 
 static const uint8_t next_router_public_key[] = 
 { 
@@ -9266,7 +9263,7 @@ struct NextBackendSessionResponsePacket
 
 // ---------------------------------------------------------------
 
-int next_write_backend_packet( uint8_t packet_id, void * packet_object, uint8_t * packet_data, int * packet_bytes )
+int next_write_backend_packet( uint8_t packet_id, void * packet_object, uint8_t * packet_data, int * packet_bytes, const int * signed_packet, const uint8_t * sign_private_key )
 {
     next_assert( packet_object );
     next_assert( packet_data );
@@ -9334,6 +9331,13 @@ int next_write_backend_packet( uint8_t packet_id, void * packet_object, uint8_t 
     next_assert( *packet_bytes >= 0 );
     next_assert( *packet_bytes < NEXT_MAX_PACKET_BYTES );
 
+    if ( signed_packet && signed_packet[packet_id] )
+    {
+        next_assert( sign_private_key );
+
+        // todo: sign packet with private key
+    }
+
     const uint8_t * message = packet_data + NEXT_PACKET_HASH_BYTES;
     
     int message_length = *packet_bytes - NEXT_PACKET_HASH_BYTES;
@@ -9352,7 +9356,7 @@ int next_write_backend_packet( uint8_t packet_id, void * packet_object, uint8_t 
     return NEXT_OK;
 }
 
-int next_read_backend_packet( uint8_t * packet_data, int packet_bytes, void * packet_object )
+int next_read_backend_packet( uint8_t * packet_data, int packet_bytes, void * packet_object, const int * signed_packet, const uint8_t * sign_public_key )
 {
     next_assert( packet_data );
     next_assert( packet_object );
@@ -9366,6 +9370,15 @@ int next_read_backend_packet( uint8_t * packet_data, int packet_bytes, void * pa
         return NEXT_ERROR;
 
     uint8_t packet_id = packet_data[0];
+
+    if ( signed_packet && signed_packet[packet_id] )
+    {
+        next_assert( sign_public_key );
+
+        // todo: verify packet signature
+
+        (void) sign_public_key;
+    }
 
     next::ReadStream stream( packet_data + 1, packet_bytes - 1 );
 
@@ -10251,20 +10264,11 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
             NextBackendServerInitResponsePacket packet;
 
-            if ( next_read_backend_packet( packet_data, packet_bytes, &packet ) != packet_id )
+            if ( next_read_backend_packet( packet_data, packet_bytes, &packet, next_signed_packets, next_backend_public_key ) != packet_id )
             {
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored server init response packet from backend. packet failed to read" );
                 return;
             }
-
-            // todo: verify in place when reading backend packet
-            /*
-            if ( !packet.Verify( next_backend_public_key ) )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored server init response packet from backend. did not verify" );
-                return;
-            }
-            */
 
             if ( packet.request_id != server->server_init_request_id )
             {
@@ -10326,7 +10330,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
             NextBackendSessionResponsePacket packet;
 
-            if ( next_read_backend_packet( packet_data, packet_bytes, &packet ) != packet_id )
+            if ( next_read_backend_packet( packet_data, packet_bytes, &packet, next_signed_packets, next_backend_public_key ) != packet_id )
             {
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. packet failed to read" );
                 return;
@@ -11284,14 +11288,12 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.datacenter_id = server->datacenter_id;
             strncpy( packet.datacenter_name, server->datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH - 1 );
             packet.datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
-            // todo: todo sign in place when writing packet
-            // packet.Sign( server->customer_private_key );
 
             server->server_init_request_id = packet.request_id;
 
             int packet_bytes = 0;
             uint8_t packet_data[NEXT_MAX_PACKET_BYTES*2];
-            if ( next_write_backend_packet( NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET, &packet, packet_data, &packet_bytes ) != NEXT_OK )
+            if ( next_write_backend_packet( NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key ) != NEXT_OK )
             {
                 next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write server init request packet for backend" );
                 return;
@@ -11350,12 +11352,10 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         packet.num_sessions = next_session_manager_num_entries( server->session_manager );
         packet.server_address = server->server_address;
         memcpy( packet.server_route_public_key, server->server_route_public_key, crypto_box_PUBLICKEYBYTES );
-        // todo: sign in place when writing packet
-        // packet.Sign( server->customer_private_key );
 
         int packet_bytes = 0;
         uint8_t packet_data[NEXT_MAX_PACKET_BYTES*2];
-        if ( next_write_backend_packet( NEXT_BACKEND_SERVER_UPDATE_PACKET, &packet, packet_data, &packet_bytes ) != NEXT_OK )
+        if ( next_write_backend_packet( NEXT_BACKEND_SERVER_UPDATE_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write server update packet for backend" );
             return;
@@ -11426,10 +11426,8 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.client_address = session->address;
             packet.server_address = server->server_address;
             memcpy( packet.client_route_public_key, session->client_route_public_key, crypto_box_PUBLICKEYBYTES );
-            // todo: sign in place when writing
-            // packet.Sign( server->customer_private_key );
 
-            if ( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_PACKET, &packet, session->update_packet_data, &session->update_packet_bytes ) != NEXT_OK )
+            if ( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_PACKET, &packet, session->update_packet_data, &session->update_packet_bytes, next_signed_packets, server->customer_private_key ) != NEXT_OK )
             {
                 next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write session update packet for backend" );
                 return;
@@ -14015,12 +14013,10 @@ static void test_backend_packets()
         in.customer_id = 1231234127431LL;
         in.datacenter_id = next_datacenter_id( "local" );
         strcpy( in.datacenter_name, "local" );
-        // todo: sign in place when writing packet
-        // in.Sign( private_key );
 
         int packet_bytes = 0;
-        check( next_write_backend_packet( NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET, &in, buffer, &packet_bytes ) == NEXT_OK );
-        check( next_read_backend_packet( buffer, packet_bytes, &out ) == NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET );
+        check( next_write_backend_packet( NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET, &in, buffer, &packet_bytes, next_signed_packets, private_key ) == NEXT_OK );
+        check( next_read_backend_packet( buffer, packet_bytes, &out, next_signed_packets, public_key ) == NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET );
 
         check( in.request_id == out.request_id );
         check( in.version_major == out.version_major );
@@ -14029,8 +14025,6 @@ static void test_backend_packets()
         check( in.customer_id == out.customer_id );
         check( in.datacenter_id == out.datacenter_id );
         check( strcmp( in.datacenter_name, out.datacenter_name ) == 0 );
-        // todo: verify in place when reading packet
-        // check( out.Verify( public_key ) );
     }
 
     // server init response
@@ -14042,17 +14036,13 @@ static void test_backend_packets()
         static NextBackendServerInitResponsePacket in, out;
         in.request_id = next_random_uint64();
         in.response = NEXT_SERVER_INIT_RESPONSE_OK;
-        // todo: sign in place when writing packet
-        // in.Sign( private_key );
 
         int packet_bytes = 0;
-        check( next_write_backend_packet( NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET, &in, buffer, &packet_bytes ) == NEXT_OK );
-        check( next_read_backend_packet( buffer, packet_bytes, &out ) == NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET );
+        check( next_write_backend_packet( NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, private_key ) == NEXT_OK );
+        check( next_read_backend_packet( buffer, packet_bytes, &out, next_signed_packets, public_key ) == NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET );
 
         check( in.request_id == out.request_id );
         check( in.response == out.response );
-        // todo: verify in place when writing packet
-        // check( out.Verify( public_key ) );
     }
 
     // server update
@@ -14068,12 +14058,10 @@ static void test_backend_packets()
         in.num_sessions = 20;
         next_address_parse( &in.server_address, "127.0.0.1:12345" );
         next_random_bytes( in.server_route_public_key, crypto_box_PUBLICKEYBYTES );
-        // todo: sign in place when writing packet
-        // in.Sign( private_key );
 
         int packet_bytes = 0;
-        check( next_write_backend_packet( NEXT_BACKEND_SERVER_UPDATE_PACKET, &in, buffer, &packet_bytes ) == NEXT_OK );
-        check( next_read_backend_packet( buffer, packet_bytes, &out ) == NEXT_BACKEND_SERVER_UPDATE_PACKET );
+        check( next_write_backend_packet( NEXT_BACKEND_SERVER_UPDATE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, private_key ) == NEXT_OK );
+        check( next_read_backend_packet( buffer, packet_bytes, &out, next_signed_packets, public_key ) == NEXT_BACKEND_SERVER_UPDATE_PACKET );
 
         check( in.sequence == out.sequence );
         check( in.version_major == out.version_major );
@@ -14133,8 +14121,8 @@ static void test_backend_packets()
         // in.Sign( private_key );
 
         int packet_bytes = 0;
-        check( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_PACKET, &in, buffer, &packet_bytes ) == NEXT_OK );
-        check( next_read_backend_packet( buffer, packet_bytes, &out ) == NEXT_BACKEND_SESSION_UPDATE_PACKET );
+        check( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, private_key ) == NEXT_OK );
+        check( next_read_backend_packet( buffer, packet_bytes, &out, next_signed_packets, public_key ) == NEXT_BACKEND_SESSION_UPDATE_PACKET );
 
         check( in.sequence == out.sequence );
         check( in.customer_id == out.customer_id );
@@ -14199,8 +14187,8 @@ static void test_backend_packets()
         // in.Sign( private_key );
 
         int packet_bytes = 0;
-        check( next_write_backend_packet( NEXT_BACKEND_SESSION_RESPONSE_PACKET, &in, buffer, &packet_bytes ) == NEXT_OK );
-        check( next_read_backend_packet( buffer, packet_bytes, &out ) == NEXT_BACKEND_SESSION_RESPONSE_PACKET );
+        check( next_write_backend_packet( NEXT_BACKEND_SESSION_RESPONSE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, private_key ) == NEXT_OK );
+        check( next_read_backend_packet( buffer, packet_bytes, &out, next_signed_packets, public_key ) == NEXT_BACKEND_SESSION_RESPONSE_PACKET );
 
         check( in.sequence == out.sequence );
         check( in.session_id == out.session_id );
@@ -14241,12 +14229,10 @@ static void test_backend_packets()
         in.num_tokens = NEXT_MAX_TOKENS;
         next_random_bytes( in.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES );
         next_random_bytes( in.server_route_public_key, sizeof(in.server_route_public_key) );
-        // todo: sign in place when writing packet
-        // in.Sign( private_key );
 
         int packet_bytes = 0;
-        check( next_write_backend_packet( NEXT_BACKEND_SESSION_RESPONSE_PACKET, &in, buffer, &packet_bytes ) == NEXT_OK );
-        check( next_read_backend_packet( buffer, packet_bytes, &out ) == NEXT_BACKEND_SESSION_RESPONSE_PACKET );
+        check( next_write_backend_packet( NEXT_BACKEND_SESSION_RESPONSE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, private_key ) == NEXT_OK );
+        check( next_read_backend_packet( buffer, packet_bytes, &out, next_signed_packets, public_key ) == NEXT_BACKEND_SESSION_RESPONSE_PACKET );
 
         check( in.sequence == out.sequence );
         check( in.session_id == out.session_id );
@@ -14291,12 +14277,10 @@ static void test_backend_packets()
         in.num_tokens = NEXT_MAX_TOKENS;
         next_random_bytes( in.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES );
         next_random_bytes( in.server_route_public_key, sizeof(in.server_route_public_key) );
-        // todo: sign in place when writing packet
-        // in.Sign( private_key );
 
         int packet_bytes = 0;
-        check( next_write_backend_packet( NEXT_BACKEND_SESSION_RESPONSE_PACKET, &in, buffer, &packet_bytes ) == NEXT_OK );
-        check( next_read_backend_packet( buffer, packet_bytes, &out ) == NEXT_BACKEND_SESSION_RESPONSE_PACKET );
+        check( next_write_backend_packet( NEXT_BACKEND_SESSION_RESPONSE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, private_key ) == NEXT_OK );
+        check( next_read_backend_packet( buffer, packet_bytes, &out, next_signed_packets, public_key ) == NEXT_BACKEND_SESSION_RESPONSE_PACKET );
 
         check( in.sequence == out.sequence );
         check( in.session_id == out.session_id );
