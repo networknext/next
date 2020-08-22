@@ -3121,7 +3121,7 @@ struct NextRelayPongPacket
     }
 };
 
-int next_write_packet( uint8_t packet_id, void * packet_object, uint8_t * packet_data, int * packet_bytes, const int * signed_packet, const int * encrypted_packet, uint64_t * sequence, const uint8_t * encrypt_private_key )
+int next_write_packet( uint8_t packet_id, void * packet_object, uint8_t * packet_data, int * packet_bytes, const int * signed_packet, const int * encrypted_packet, uint64_t * sequence, const uint8_t * sign_private_key, const uint8_t * encrypt_private_key )
 {
     next_assert( packet_object );
     next_assert( packet_data );
@@ -3266,7 +3266,11 @@ int next_write_packet( uint8_t packet_id, void * packet_object, uint8_t * packet
 
     if ( signed_packet && signed_packet[packet_id] )
     {
+        next_assert( sign_private_key );
+
         // todo: sign packet, append 8 bytes signature to packet
+
+        (void) sign_private_key;
 
         /*
             crypto_sign_state state;
@@ -3331,7 +3335,7 @@ uint64_t next_clean_sequence( uint64_t sequence )
     return sequence & mask;
 }
 
-int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_object, const int * signed_packet, const int * encrypted_packet, uint64_t * sequence, const uint8_t * encrypt_private_key, next_replay_protection_t * replay_protection )
+int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_object, const int * signed_packet, const int * encrypted_packet, uint64_t * sequence, const uint8_t * sign_public_key, const uint8_t * encrypt_private_key, next_replay_protection_t * replay_protection )
 {
     next_assert( packet_data );
     next_assert( packet_object );
@@ -3348,6 +3352,8 @@ int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_obj
 
     if ( signed_packet && signed_packet[packet_id] )
     {
+        next_assert( sign_public_key );
+
         // todo: ignore packet if too small, eg. < 1 + signature_bytes
 
         // todo: calculate signature of packet minus signature bytes
@@ -3736,6 +3742,7 @@ int next_init( void * context, next_config_t * config_in )
 
     next_signed_packets[NEXT_UPGRADE_REQUEST_PACKET] = 1;
     next_signed_packets[NEXT_UPGRADE_CONFIRM_PACKET] = 1;
+
     next_signed_packets[NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET] = 1;
     next_signed_packets[NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET] = 1;
     next_signed_packets[NEXT_BACKEND_SERVER_UPDATE_PACKET] = 1;
@@ -4381,7 +4388,8 @@ void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platfor
             
             int packet_bytes = 0;
 
-            if ( next_write_packet( NEXT_RELAY_PING_PACKET, &packet, packet_data, &packet_bytes, NULL, NULL, NULL, NULL ) != NEXT_OK )
+            // todo: what is the sign private key here, is there any?
+            if ( next_write_packet( NEXT_RELAY_PING_PACKET, &packet, packet_data, &packet_bytes, NULL, NULL, NULL, NULL, NULL ) != NEXT_OK )
             {
                 next_printf( NEXT_LOG_LEVEL_ERROR, "failed to write ping packet" );
                 continue;
@@ -5856,7 +5864,7 @@ int next_client_internal_send_packet_to_server( next_client_internal_t * client,
 
     uint8_t buffer[NEXT_MAX_PACKET_BYTES*2];
 
-    if ( next_write_packet( packet_id, packet_object, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, &client->internal_send_sequence, client->client_send_key ) != NEXT_OK )
+    if ( next_write_packet( packet_id, packet_object, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, &client->internal_send_sequence, NULL, client->client_send_key ) != NEXT_OK )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "client failed to write internal packet type %d", packet_id );
         return NEXT_ERROR;
@@ -5945,7 +5953,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         }
 
         NextUpgradeRequestPacket packet;
-        if ( next_read_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, NULL ) != packet_id )
+        if ( next_read_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, NULL, NULL ) != packet_id )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade request packet from server. failed to read" );
             return;
@@ -5989,7 +5997,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         // stuck in an undefined state.
 
         client->upgrade_response_packet_bytes = 0;
-        if ( next_write_packet( NEXT_UPGRADE_RESPONSE_PACKET, &response, client->upgrade_response_packet_data, &client->upgrade_response_packet_bytes, next_signed_packets, next_encrypted_packets, &client->internal_send_sequence, client->client_send_key ) != NEXT_OK )
+        // todo: what is the sign private key here?
+        if ( next_write_packet( NEXT_UPGRADE_RESPONSE_PACKET, &response, client->upgrade_response_packet_data, &client->upgrade_response_packet_bytes, next_signed_packets, next_encrypted_packets, &client->internal_send_sequence, NULL, client->client_send_key ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_ERROR, "client failed to write upgrade response packet" );
             return;
@@ -6025,7 +6034,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         }
  
         NextUpgradeConfirmPacket packet;
-        if ( next_read_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, NULL ) != packet_id )
+        if ( next_read_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, NULL, NULL ) != packet_id )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade request packet from server. could not read packet" );
             return;
@@ -6400,7 +6409,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         NextRelayPongPacket packet;
 
-        if ( next_read_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, NULL ) != packet_id )
+        if ( next_read_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, NULL, NULL ) != packet_id )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored relay pong packet. failed to read" );
             return;
@@ -6434,7 +6443,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         uint64_t packet_sequence = 0;
 
-        if ( next_read_packet( packet_data, packet_bytes, &packet, next_signed_packets, next_encrypted_packets, &packet_sequence, client->client_receive_key, &client->internal_replay_protection ) != packet_id )
+        if ( next_read_packet( packet_data, packet_bytes, &packet, next_signed_packets, next_encrypted_packets, &packet_sequence, NULL, client->client_receive_key, &client->internal_replay_protection ) != packet_id )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored direct pong packet. could not read" );
             return;
@@ -6463,7 +6472,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         uint64_t packet_sequence = 0;
 
-        if ( next_read_packet( packet_data, packet_bytes, &packet, next_signed_packets, next_encrypted_packets, &packet_sequence, client->client_receive_key, &client->internal_replay_protection ) != packet_id )
+        if ( next_read_packet( packet_data, packet_bytes, &packet, next_signed_packets, next_encrypted_packets, &packet_sequence, NULL, client->client_receive_key, &client->internal_replay_protection ) != packet_id )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route update packet. could not read" );
             return;
@@ -9882,7 +9891,8 @@ int next_server_internal_send_packet( next_server_internal_t * server, const nex
         send_key = session->send_key;
     }
 
-    if ( next_write_packet( packet_id, packet_object, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, sequence, send_key ) != NEXT_OK )
+    // todo: what is the sign private key here?
+    if ( next_write_packet( packet_id, packet_object, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, sequence, NULL, send_key ) != NEXT_OK )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write internal packet with id %d", packet_id );
         return NEXT_ERROR;
@@ -10486,7 +10496,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
     {
         NextUpgradeResponsePacket packet;
 
-        if ( next_read_packet( packet_data, packet_bytes, &packet, next_signed_packets, NULL, NULL, NULL, NULL ) != packet_id )
+        if ( next_read_packet( packet_data, packet_bytes, &packet, next_signed_packets, NULL, NULL, NULL, NULL, NULL ) != packet_id )
             return;
         
         NextUpgradeToken upgrade_token;
@@ -10894,7 +10904,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         uint64_t packet_sequence = 0;
 
         NextDirectPingPacket packet;
-        if ( next_read_packet( packet_data, packet_bytes, &packet, next_signed_packets, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection ) != packet_id )
+        if ( next_read_packet( packet_data, packet_bytes, &packet, next_signed_packets, next_encrypted_packets, &packet_sequence, NULL, session->receive_key, &session->internal_replay_protection ) != packet_id )
             return;
 
         next_post_validate_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection, NULL );
@@ -10921,7 +10931,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         uint64_t packet_sequence = 0;
 
-        if ( next_read_packet( packet_data, packet_bytes, &packet, next_signed_packets, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection ) != packet_id )
+        if ( next_read_packet( packet_data, packet_bytes, &packet, next_signed_packets, next_encrypted_packets, &packet_sequence, NULL, session->receive_key, &session->internal_replay_protection ) != packet_id )
             return;
 
         next_post_validate_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection, NULL );
@@ -10974,7 +10984,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         uint64_t packet_sequence = 0;
 
-        if ( next_read_packet( packet_data, packet_bytes, &packet, next_signed_packets, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection ) != packet_id )
+        if ( next_read_packet( packet_data, packet_bytes, &packet, next_signed_packets, next_encrypted_packets, &packet_sequence, NULL, session->receive_key, &session->internal_replay_protection ) != packet_id )
             return;
 
         if ( packet.sequence != session->update_sequence )
@@ -13398,9 +13408,9 @@ static void test_packets()
         // in.Sign( private_key );
 
         int packet_bytes = 0;
-        check( next_write_packet( NEXT_UPGRADE_REQUEST_PACKET, &in, buffer, &packet_bytes, NULL, NULL, NULL, NULL ) == NEXT_OK );
+        check( next_write_packet( NEXT_UPGRADE_REQUEST_PACKET, &in, buffer, &packet_bytes, NULL, NULL, NULL, NULL, NULL ) == NEXT_OK );
 
-        check( next_read_packet( buffer, packet_bytes, &out, NULL, NULL, NULL, NULL, NULL ) == NEXT_UPGRADE_REQUEST_PACKET );
+        check( next_read_packet( buffer, packet_bytes, &out, NULL, NULL, NULL, NULL, NULL, NULL ) == NEXT_UPGRADE_REQUEST_PACKET );
 
         check( in.protocol_version == out.protocol_version );
         check( in.session_id == out.session_id );
@@ -13419,8 +13429,8 @@ static void test_packets()
         next_random_bytes( in.upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );
 
         int packet_bytes = 0;
-        check( next_write_packet( NEXT_UPGRADE_RESPONSE_PACKET, &in, buffer, &packet_bytes, NULL, NULL, NULL, NULL ) == NEXT_OK );
-        check( next_read_packet( buffer, packet_bytes, &out, NULL, NULL, NULL, NULL, NULL ) == NEXT_UPGRADE_RESPONSE_PACKET );
+        check( next_write_packet( NEXT_UPGRADE_RESPONSE_PACKET, &in, buffer, &packet_bytes, NULL, NULL, NULL, NULL, NULL ) == NEXT_OK );
+        check( next_read_packet( buffer, packet_bytes, &out, NULL, NULL, NULL, NULL, NULL, NULL ) == NEXT_UPGRADE_RESPONSE_PACKET );
 
         check( memcmp( in.client_kx_public_key, out.client_kx_public_key, crypto_kx_PUBLICKEYBYTES ) == 0 );
         check( memcmp( in.client_route_public_key, out.client_route_public_key, crypto_box_PUBLICKEYBYTES ) == 0 );
@@ -13443,9 +13453,9 @@ static void test_packets()
         // in.Sign( private_key );
 
         int packet_bytes = 0;
-        check( next_write_packet( NEXT_UPGRADE_CONFIRM_PACKET, &in, buffer, &packet_bytes, NULL, NULL, NULL, NULL ) == NEXT_OK );
+        check( next_write_packet( NEXT_UPGRADE_CONFIRM_PACKET, &in, buffer, &packet_bytes, NULL, NULL, NULL, NULL, NULL ) == NEXT_OK );
 
-        check( next_read_packet( buffer, packet_bytes, &out, NULL, NULL, NULL, NULL, NULL ) == NEXT_UPGRADE_CONFIRM_PACKET );
+        check( next_read_packet( buffer, packet_bytes, &out, NULL, NULL, NULL, NULL, NULL, NULL ) == NEXT_UPGRADE_CONFIRM_PACKET );
 
         check( in.upgrade_sequence == out.upgrade_sequence );
         check( in.session_id == out.session_id );
@@ -13468,8 +13478,8 @@ static void test_packets()
         int packet_bytes = 0;
         static next_replay_protection_t replay_protection;
         next_replay_protection_reset( &replay_protection );
-        check( next_write_packet( NEXT_DIRECT_PING_PACKET, &in, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, private_key ) == NEXT_OK );
-        check( next_read_packet( buffer, packet_bytes, &out, next_signed_packets, next_encrypted_packets, &out_sequence, private_key, &replay_protection ) == NEXT_DIRECT_PING_PACKET );
+        check( next_write_packet( NEXT_DIRECT_PING_PACKET, &in, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key ) == NEXT_OK );
+        check( next_read_packet( buffer, packet_bytes, &out, next_signed_packets, next_encrypted_packets, &out_sequence, NULL, private_key, &replay_protection ) == NEXT_DIRECT_PING_PACKET );
         check( in_sequence == out_sequence + 1 );
         check( in.ping_sequence == out.ping_sequence );
     }
@@ -13483,8 +13493,8 @@ static void test_packets()
         int packet_bytes = 0;
         static next_replay_protection_t replay_protection;
         next_replay_protection_reset( &replay_protection );
-        check( next_write_packet( NEXT_DIRECT_PONG_PACKET, &in, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, private_key ) == NEXT_OK );
-        check( next_read_packet( buffer, packet_bytes, &out, next_signed_packets, next_encrypted_packets, &out_sequence, private_key, &replay_protection ) == NEXT_DIRECT_PONG_PACKET );
+        check( next_write_packet( NEXT_DIRECT_PONG_PACKET, &in, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key ) == NEXT_OK );
+        check( next_read_packet( buffer, packet_bytes, &out, next_signed_packets, next_encrypted_packets, &out_sequence, NULL, private_key, &replay_protection ) == NEXT_DIRECT_PONG_PACKET );
         check( in_sequence == out_sequence + 1 );
         check( in.ping_sequence == out.ping_sequence );
     }
@@ -13520,8 +13530,8 @@ static void test_packets()
         int packet_bytes = 0;
         static next_replay_protection_t replay_protection;
         next_replay_protection_reset( &replay_protection );
-        check( next_write_packet( NEXT_CLIENT_STATS_PACKET, &in, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, private_key ) == NEXT_OK );
-        check( next_read_packet( buffer, packet_bytes, &out, next_signed_packets, next_encrypted_packets, &out_sequence, private_key, &replay_protection ) == NEXT_CLIENT_STATS_PACKET );
+        check( next_write_packet( NEXT_CLIENT_STATS_PACKET, &in, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key ) == NEXT_OK );
+        check( next_read_packet( buffer, packet_bytes, &out, next_signed_packets, next_encrypted_packets, &out_sequence, NULL, private_key, &replay_protection ) == NEXT_CLIENT_STATS_PACKET );
         check( in_sequence == out_sequence + 1 );
         check( in.flags == out.flags );
         check( in.flagged == out.flagged );
@@ -13571,8 +13581,8 @@ static void test_packets()
         int packet_bytes = 0;
         static next_replay_protection_t replay_protection;
         next_replay_protection_reset( &replay_protection );
-        check( next_write_packet( NEXT_ROUTE_UPDATE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, private_key ) == NEXT_OK );
-        check( next_read_packet( buffer, packet_bytes, &out, next_signed_packets, next_encrypted_packets, &out_sequence, private_key, &replay_protection ) == NEXT_ROUTE_UPDATE_PACKET );
+        check( next_write_packet( NEXT_ROUTE_UPDATE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key ) == NEXT_OK );
+        check( next_read_packet( buffer, packet_bytes, &out, next_signed_packets, next_encrypted_packets, &out_sequence, NULL, private_key, &replay_protection ) == NEXT_ROUTE_UPDATE_PACKET );
         check( in_sequence == out_sequence + 1 );
         check( in.sequence == out.sequence );
         check( in.num_near_relays == out.num_near_relays );
@@ -13612,8 +13622,8 @@ static void test_packets()
         int packet_bytes = 0;
         static next_replay_protection_t replay_protection;
         next_replay_protection_reset( &replay_protection );
-        check( next_write_packet( NEXT_ROUTE_UPDATE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, private_key ) == NEXT_OK );
-        check( next_read_packet( buffer, packet_bytes, &out, next_signed_packets, next_encrypted_packets, &out_sequence, private_key, &replay_protection ) == NEXT_ROUTE_UPDATE_PACKET );
+        check( next_write_packet( NEXT_ROUTE_UPDATE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key ) == NEXT_OK );
+        check( next_read_packet( buffer, packet_bytes, &out, next_signed_packets, next_encrypted_packets, &out_sequence, NULL, private_key, &replay_protection ) == NEXT_ROUTE_UPDATE_PACKET );
         check( in_sequence == out_sequence + 1 );
         check( in.sequence == out.sequence );
         check( in.num_near_relays == out.num_near_relays );
@@ -13656,8 +13666,8 @@ static void test_packets()
         int packet_bytes = 0;
         static next_replay_protection_t replay_protection;
         next_replay_protection_reset( &replay_protection );
-        check( next_write_packet( NEXT_ROUTE_UPDATE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, private_key ) == NEXT_OK );
-        check( next_read_packet( buffer, packet_bytes, &out, next_signed_packets, next_encrypted_packets, &out_sequence, private_key, &replay_protection ) == NEXT_ROUTE_UPDATE_PACKET );
+        check( next_write_packet( NEXT_ROUTE_UPDATE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key ) == NEXT_OK );
+        check( next_read_packet( buffer, packet_bytes, &out, next_signed_packets, next_encrypted_packets, &out_sequence, NULL, private_key, &replay_protection ) == NEXT_ROUTE_UPDATE_PACKET );
         check( in_sequence == out_sequence + 1 );
         check( in.sequence == out.sequence );
         check( in.num_near_relays == out.num_near_relays );
@@ -13683,8 +13693,8 @@ static void test_packets()
         int packet_bytes = 0;
         static next_replay_protection_t replay_protection;
         next_replay_protection_reset( &replay_protection );
-        check( next_write_packet( NEXT_ROUTE_UPDATE_ACK_PACKET, &in, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, private_key ) == NEXT_OK );
-        check( next_read_packet( buffer, packet_bytes, &out, next_signed_packets, next_encrypted_packets, &out_sequence, private_key, &replay_protection ) == NEXT_ROUTE_UPDATE_ACK_PACKET );
+        check( next_write_packet( NEXT_ROUTE_UPDATE_ACK_PACKET, &in, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key ) == NEXT_OK );
+        check( next_read_packet( buffer, packet_bytes, &out, next_signed_packets, next_encrypted_packets, &out_sequence, NULL, private_key, &replay_protection ) == NEXT_ROUTE_UPDATE_ACK_PACKET );
         check( in_sequence == out_sequence + 1 );
         check( in.sequence == out.sequence );
     }
@@ -13695,8 +13705,8 @@ static void test_packets()
         in.ping_sequence = 0xFFFFFFFFFFFFFFFFULL;
         in.session_id = 1000000;
         int packet_bytes = 0;
-        check( next_write_packet( NEXT_RELAY_PING_PACKET, &in, buffer, &packet_bytes, NULL, NULL, NULL, NULL ) == NEXT_OK );
-        check( next_read_packet( buffer, packet_bytes, &out, NULL, NULL, NULL, NULL, NULL ) == NEXT_RELAY_PING_PACKET );
+        check( next_write_packet( NEXT_RELAY_PING_PACKET, &in, buffer, &packet_bytes, NULL, NULL, NULL, NULL, NULL ) == NEXT_OK );
+        check( next_read_packet( buffer, packet_bytes, &out, NULL, NULL, NULL, NULL, NULL, NULL ) == NEXT_RELAY_PING_PACKET );
         check( in.ping_sequence == out.ping_sequence );
         check( in.session_id == out.session_id );
         check( in.padding1 == out.padding1 );
@@ -13709,8 +13719,8 @@ static void test_packets()
         in.ping_sequence = 0xFFFFFFFFFFFFFFFFULL;
         in.session_id = 1000000;
         int packet_bytes = 0;
-        check( next_write_packet( NEXT_RELAY_PONG_PACKET, &in, buffer, &packet_bytes, NULL, NULL, NULL, NULL ) == NEXT_OK );
-        check( next_read_packet( buffer, packet_bytes, &out, NULL, NULL, NULL, NULL, NULL ) == NEXT_RELAY_PONG_PACKET );
+        check( next_write_packet( NEXT_RELAY_PONG_PACKET, &in, buffer, &packet_bytes, NULL, NULL, NULL, NULL, NULL ) == NEXT_OK );
+        check( next_read_packet( buffer, packet_bytes, &out, NULL, NULL, NULL, NULL, NULL, NULL ) == NEXT_RELAY_PONG_PACKET );
         check( in.ping_sequence == out.ping_sequence );
         check( in.session_id == out.session_id );
     }

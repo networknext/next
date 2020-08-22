@@ -22,6 +22,16 @@ DONE
 
 TODO
 
+	Are there actually any signed packets that aren't between server <-> backend?
+
+	Only the upgrade request packet and the upgrade confirm packet.
+
+	These are part of key exchange.
+
+	Apparently there is no unit test that serializes these packets via read/write, because they *should* be asserting out right now.
+
+	----------------
+
 	Sign and verify packets between client <-> server the new way.
 
 	Sign and verify packets between server <-> backend the new way.
