@@ -31,9 +31,9 @@
 #include <inttypes.h>
 
 #if !NEXT_DEVELOPMENT
-#define NEXT_HOSTNAME                              "prod.networknext.com"
+#define NEXT_HOSTNAME                                "prod.spacecats.net"
 #else // #if !NEXT_DEVELOPMENT
-#define NEXT_HOSTNAME                               "dev.networknext.com"
+#define NEXT_HOSTNAME                                 "dev.spacecats.net"
 #endif // #if !NEXT_DEVELOPMENT
 #define NEXT_PORT                                                 "40000"
 #define NEXT_MAX_PACKET_BYTES                                        1500

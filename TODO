@@ -20,32 +20,34 @@ DONE
 
 	Add scaffolding for programmatic packet signing.
 
+	Removed some old code around a previous implementation of wakeup callback.
+
+	Get tests failing for the sign upgrade request and upgrade confirm packets so I know the codepath is active.
+
 TODO
 
-	Are there actually any signed packets that aren't between server <-> backend?
-
-	Only the upgrade request packet and the upgrade confirm packet...
-
-	These are part of key exchange between client and server.
-
-	Need to look at what keys are used, but I think it's the ephemeral server private/public keypair?
-
-	Apparently there is no unit test that serializes these packets via read/write, because they *should* be asserting out right now...
-
-	Upgrade request packet is verified with: client->customer_public_key, and signed with server->customer_private_key
+	Get sign and verify working for upgrade request and upgrade confirm packets.
 
 	----------------
 
-	Wake up callback code seems to not be implemented. What the actual fuck happened?!
+	Add scaffolding for signing packets between the server and the backend.
+
+	Complex because the packets server -> client are signed with the customer private key, while the backend -> server packets are signed with backend private signing key.
 
 	----------------
-
-	Sign and verify packets between client <-> server the new way.
-
-	Sign and verify packets between server <-> backend the new way.
 
 	Implement session data that is passed up in the session update request packet, and passed back down in the session update response packet.
 
 	Server should try to resolve hostname and initialize every 5 - 10 minutes (randomized), if it cannot resolve or initialize. Otherwise, we run the risk of losing game servers forever until they are restarted.
 
 	Normalize all the backend and relay facing packet numbers so they don't conflict 3.x in any way (assume relay will have to support both old and new packets for a while now).
+
+	----------------
+
+	When a client falls back to direct, keep doing pings to backend saying it's still there. 
+
+	We need to be able to measure when packets fallback to direct, vs. having them just disappear.
+
+	They should however, stop doing any near relay pings or anything like that though.
+
+	----------------
