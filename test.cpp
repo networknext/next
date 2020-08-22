@@ -27,8 +27,7 @@ int main()
 {
     printf( "\nRunning SDK tests:\n\n" );
 
-    // todo: off
-    // next_quiet( true );
+    next_quiet( true );
 
     if ( next_init( NULL, NULL ) != NEXT_OK )
     {

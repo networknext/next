@@ -401,7 +401,7 @@ void next_quiet( bool flag )
     log_quiet = flag;
 }
 
-static int log_level = NEXT_LOG_LEVEL_DEBUG; // todo: INFO;
+static int log_level = NEXT_LOG_LEVEL_INFO;
 
 void next_log_level( int level )
 {
@@ -3262,11 +3262,10 @@ int next_write_packet( uint8_t packet_id, void * packet_object, uint8_t * packet
 
     if ( signed_packet && signed_packet[packet_id] )
     {
-        printf("sign: %d -> %d (%d)\n", *packet_bytes, *packet_bytes + crypto_sign_BYTES, crypto_sign_BYTES );
         next_assert( sign_private_key );
         crypto_sign_state state;
         crypto_sign_init( &state );
-        crypto_sign_update( &state, packet_data, *packet_bytes );
+        crypto_sign_update( &state, packet_data + NEXT_PACKET_HASH_BYTES, *packet_bytes - NEXT_PACKET_HASH_BYTES );
         crypto_sign_final_create( &state, packet_data + *packet_bytes, NULL, sign_private_key );
         *packet_bytes += crypto_sign_BYTES;
     }
