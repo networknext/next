@@ -265,8 +265,6 @@ NEXT_EXPORT_FUNC const next_client_stats_t * next_client_stats( next_client_t * 
 
 NEXT_EXPORT_FUNC void next_client_set_user_flags( next_client_t * client, uint64_t user_flags );
 
-NEXT_EXPORT_FUNC void next_client_set_wake_up_callback( next_client_t * client, void (*wake_up_callback)( next_client_t * client, void * context ) );
-
 // -----------------------------------------
 
 #define NEXT_SERVER_STATE_DIRECT_ONLY               0
@@ -295,8 +293,6 @@ NEXT_EXPORT_FUNC bool next_server_session_upgraded( next_server_t * server, cons
 NEXT_EXPORT_FUNC void next_server_send_packet( next_server_t * server, const next_address_t * to_address, const uint8_t * packet_data, int packet_bytes );
 
 NEXT_EXPORT_FUNC void next_server_send_packet_direct( next_server_t * server, const next_address_t * to_address, const uint8_t * packet_data, int packet_bytes );
-
-NEXT_EXPORT_FUNC void next_server_set_wake_up_callback( next_server_t * server, void (*wake_up_callback)( next_server_t * server, void * context ) );
 
 // -----------------------------------------
 

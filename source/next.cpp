@@ -114,7 +114,7 @@
 
 #define NEXT_MAX_DATACENTER_NAME_LENGTH                               256
 
-// todo: bring this back when signing is back
+// todo: bring this back when backend signing is back
 /*
 static const uint8_t next_backend_public_key[] = 
 { 
@@ -2846,7 +2846,6 @@ struct NextUpgradeRequestPacket
     next_address_t server_address;
     uint8_t server_kx_public_key[crypto_kx_PUBLICKEYBYTES];
     uint8_t upgrade_token[NEXT_UPGRADE_TOKEN_BYTES];
-    uint8_t signature[crypto_sign_BYTES];
 
     NextUpgradeRequestPacket()
     {
@@ -2860,7 +2859,6 @@ struct NextUpgradeRequestPacket
         serialize_address( stream, server_address );
         serialize_bytes( stream, server_kx_public_key, crypto_kx_PUBLICKEYBYTES );
         serialize_bytes( stream, upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );
-        serialize_bytes( stream, signature, crypto_sign_BYTES );
         return true;
     }
 };
@@ -2894,7 +2892,6 @@ struct NextUpgradeConfirmPacket
     next_address_t server_address;
     uint8_t client_kx_public_key[crypto_kx_PUBLICKEYBYTES];
     uint8_t server_kx_public_key[crypto_kx_PUBLICKEYBYTES];
-    uint8_t signature[crypto_sign_BYTES];
 
     NextUpgradeConfirmPacket()
     {
@@ -2908,7 +2905,6 @@ struct NextUpgradeConfirmPacket
         serialize_address( stream, server_address );
         serialize_bytes( stream, client_kx_public_key, crypto_kx_PUBLICKEYBYTES );
         serialize_bytes( stream, server_kx_public_key, crypto_kx_PUBLICKEYBYTES );
-        serialize_bytes( stream, signature, crypto_sign_BYTES );
         return true;
     }
 };
@@ -3279,6 +3275,8 @@ int next_write_packet( uint8_t packet_id, void * packet_object, uint8_t * packet
             const int sign_bytes = GetSignData( sign_data, sizeof(sign_data) );
             crypto_sign_update( &state, sign_data, sign_bytes );
             crypto_sign_final_create( &state, signature, NULL, sign_private_key );
+
+            uint8_t signature[crypto_sign_BYTES];
         */
     }
 
@@ -3354,9 +3352,11 @@ int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_obj
     {
         next_assert( sign_public_key );
 
-        // todo: ignore packet if too small, eg. < 1 + signature_bytes
-
-        // todo: calculate signature of packet minus signature bytes
+        if ( packet_bytes < int( 1 + crypto_sign_BYTES ) )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "signed packet is too small to be valid" );
+            return NEXT_ERROR;
+        }
 
         // todo: verify signature
 
@@ -3368,6 +3368,9 @@ int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_obj
             crypto_sign_update( &state, sign_data, sign_bytes );
             return crypto_sign_final_verify( &state, signature, public_key ) == 0;
         */
+
+        // uint8_t signature[crypto_sign_BYTES];
+
     }
 
     if ( encrypted_packet && encrypted_packet[packet_id] )
@@ -4388,7 +4391,6 @@ void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platfor
             
             int packet_bytes = 0;
 
-            // todo: what is the sign private key here, is there any?
             if ( next_write_packet( NEXT_RELAY_PING_PACKET, &packet, packet_data, &packet_bytes, NULL, NULL, NULL, NULL, NULL ) != NEXT_OK )
             {
                 next_printf( NEXT_LOG_LEVEL_ERROR, "failed to write ping packet" );
@@ -5965,15 +5967,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             return;
         }
 
-        // todo: verify directly in place on packet contents
-        /*
-        if ( !packet.Verify( client->customer_public_key ) )
-        {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade request packet from server. did not verify" );
-            return;
-        }
-        */
-
         next_post_validate_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, NULL );
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client received upgrade request packet from server" );
@@ -5997,7 +5990,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         // stuck in an undefined state.
 
         client->upgrade_response_packet_bytes = 0;
-        // todo: what is the sign private key here?
         if ( next_write_packet( NEXT_UPGRADE_RESPONSE_PACKET, &response, client->upgrade_response_packet_data, &client->upgrade_response_packet_bytes, next_signed_packets, next_encrypted_packets, &client->internal_send_sequence, NULL, client->client_send_key ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_ERROR, "client failed to write upgrade response packet" );
@@ -6039,15 +6031,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade request packet from server. could not read packet" );
             return;
         }
-
-        // todo: verify on read
-        /*
-        if ( !packet.Verify( client->customer_public_key ) )
-        {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade request packet from server. did not verify" );
-            return;
-        }
-        */
 
         if ( memcmp( packet.client_kx_public_key, client->client_kx_public_key, crypto_kx_PUBLICKEYBYTES ) != 0 )
         {
@@ -7609,7 +7592,7 @@ void next_client_send_packet_direct( next_client_t * client, const uint8_t * pac
 
     client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT]++;
 
-    // todo: thread safety
+    // todo: thread safety with atomics
     client->internal->packets_sent++;
 }
 
@@ -9891,8 +9874,7 @@ int next_server_internal_send_packet( next_server_internal_t * server, const nex
         send_key = session->send_key;
     }
 
-    // todo: what is the sign private key here?
-    if ( next_write_packet( packet_id, packet_object, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, sequence, NULL, send_key ) != NEXT_OK )
+    if ( next_write_packet( packet_id, packet_object, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, sequence, server->customer_private_key, send_key ) != NEXT_OK )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write internal packet with id %d", packet_id );
         return NEXT_ERROR;
@@ -10136,9 +10118,6 @@ void next_server_internal_update_pending_upgrades( next_server_internal_t * serv
             packet.server_address = server->server_address;
             memcpy( packet.server_kx_public_key, server->server_kx_public_key, crypto_kx_PUBLICKEYBYTES );
             memcpy( packet.upgrade_token, entry->upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );        
-
-            // todo: sign in place when sending packet            
-            // packet.Sign( server->customer_private_key );
 
             next_server_internal_send_packet( server, &entry->address, NEXT_UPGRADE_REQUEST_PACKET, &packet );
         }
@@ -10653,8 +10632,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         response.server_address = server->server_address;
         memcpy( response.client_kx_public_key, packet.client_kx_public_key, crypto_kx_PUBLICKEYBYTES );
         memcpy( response.server_kx_public_key, server->server_kx_public_key, crypto_kx_PUBLICKEYBYTES );
-        // todo: sign when sending packet internal
-        // response.Sign( server->customer_private_key );
 
         if ( next_server_internal_send_packet( server, from, NEXT_UPGRADE_CONFIRM_PACKET, &response ) != NEXT_OK )
         {
@@ -12077,14 +12054,6 @@ void next_server_send_packet_direct( next_server_t * server, const next_address_
     next_platform_socket_send_packet( server->internal->socket, to_address, packet_data, packet_bytes );
 }
 
-void next_server_set_wake_up_callback( next_server_t * server, void (*wake_up_callback)( next_server_t * server, void * context ) )
-{
-    (void) server;
-    (void) wake_up_callback;
-
-    // todo
-}
-
 // ---------------------------------------------------------------
 
 int next_mutex_create( next_mutex_t * mutex )
@@ -13404,11 +13373,11 @@ static void test_packets()
         next_address_parse( &in.server_address, "127.0.0.1:12345" );
         next_random_bytes( in.server_kx_public_key, crypto_kx_PUBLICKEYBYTES );
         next_random_bytes( in.upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );
-        // todo: sign in place when writing packet
-        // in.Sign( private_key );
+
+        // todo: fix this and get it to pass
 
         int packet_bytes = 0;
-        check( next_write_packet( NEXT_UPGRADE_REQUEST_PACKET, &in, buffer, &packet_bytes, NULL, NULL, NULL, NULL, NULL ) == NEXT_OK );
+        check( next_write_packet( NEXT_UPGRADE_REQUEST_PACKET, &in, buffer, &packet_bytes, next_signed_packets, NULL, NULL, NULL, NULL ) == NEXT_OK );
 
         check( next_read_packet( buffer, packet_bytes, &out, NULL, NULL, NULL, NULL, NULL, NULL ) == NEXT_UPGRADE_REQUEST_PACKET );
 
@@ -13417,8 +13386,6 @@ static void test_packets()
         check( next_address_equal( &in.server_address, &out.server_address ) );
         check( memcmp( in.server_kx_public_key, out.server_kx_public_key, crypto_kx_PUBLICKEYBYTES ) == 0 );
         check( memcmp( in.upgrade_token, out.upgrade_token, NEXT_UPGRADE_TOKEN_BYTES ) == 0 );
-        // todo: verify in place when reading packet5
-        // check( out.Verify( public_key ) );
     }
 
     // upgrade response
@@ -13449,11 +13416,11 @@ static void test_packets()
         next_address_parse( &in.server_address, "127.0.0.1:12345" );
         next_random_bytes( in.client_kx_public_key, crypto_kx_PUBLICKEYBYTES );
         next_random_bytes( in.server_kx_public_key, crypto_kx_PUBLICKEYBYTES );
-        // todo: sign in place when writing
-        // in.Sign( private_key );
+
+        // todo: get this to work
 
         int packet_bytes = 0;
-        check( next_write_packet( NEXT_UPGRADE_CONFIRM_PACKET, &in, buffer, &packet_bytes, NULL, NULL, NULL, NULL, NULL ) == NEXT_OK );
+        check( next_write_packet( NEXT_UPGRADE_CONFIRM_PACKET, &in, buffer, &packet_bytes, next_signed_packets, NULL, NULL, NULL, NULL ) == NEXT_OK );
 
         check( next_read_packet( buffer, packet_bytes, &out, NULL, NULL, NULL, NULL, NULL, NULL ) == NEXT_UPGRADE_CONFIRM_PACKET );
 
@@ -13462,8 +13429,6 @@ static void test_packets()
         check( next_address_equal( &in.server_address, &out.server_address ) );
         check( memcmp( in.client_kx_public_key, out.client_kx_public_key, crypto_kx_PUBLICKEYBYTES ) == 0 );
         check( memcmp( in.server_kx_public_key, out.server_kx_public_key, crypto_kx_PUBLICKEYBYTES ) == 0 );
-        // todo: verify in place on read
-        // check( out.Verify( public_key ) );
     }
 
     uint8_t private_key[crypto_aead_chacha20poly1305_KEYBYTES];

@@ -24,11 +24,19 @@ TODO
 
 	Are there actually any signed packets that aren't between server <-> backend?
 
-	Only the upgrade request packet and the upgrade confirm packet.
+	Only the upgrade request packet and the upgrade confirm packet...
 
-	These are part of key exchange.
+	These are part of key exchange between client and server.
 
-	Apparently there is no unit test that serializes these packets via read/write, because they *should* be asserting out right now.
+	Need to look at what keys are used, but I think it's the ephemeral server private/public keypair?
+
+	Apparently there is no unit test that serializes these packets via read/write, because they *should* be asserting out right now...
+
+	Upgrade request packet is verified with: client->customer_public_key, and signed with server->customer_private_key
+
+	----------------
+
+	Wake up callback code seems to not be implemented. What the actual fuck happened?!
 
 	----------------
 
