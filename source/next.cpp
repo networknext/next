@@ -3121,7 +3121,7 @@ struct NextRelayPongPacket
     }
 };
 
-int next_write_packet( uint8_t packet_id, void * packet_object, uint8_t * packet_data, int * packet_bytes, const int * signed_packet, const int * encrypted_packet, uint64_t * sequence, const uint8_t * private_key )
+int next_write_packet( uint8_t packet_id, void * packet_object, uint8_t * packet_data, int * packet_bytes, const int * signed_packet, const int * encrypted_packet, uint64_t * sequence, const uint8_t * encrypt_private_key )
 {
     next_assert( packet_object );
     next_assert( packet_data );
@@ -3139,7 +3139,7 @@ int next_write_packet( uint8_t packet_id, void * packet_object, uint8_t * packet
     if ( encrypted_packet && encrypted_packet[packet_id] != 0 )
     {
         next_assert( sequence );
-        next_assert( private_key );
+        next_assert( encrypt_private_key );
 
         serialize_uint64( stream, *sequence );
     }
@@ -3274,7 +3274,7 @@ int next_write_packet( uint8_t packet_id, void * packet_object, uint8_t * packet
             uint8_t sign_data[1024];
             const int sign_bytes = GetSignData( sign_data, sizeof(sign_data) );
             crypto_sign_update( &state, sign_data, sign_bytes );
-            crypto_sign_final_create( &state, signature, NULL, private_key );
+            crypto_sign_final_create( &state, signature, NULL, sign_private_key );
         */
     }
 
@@ -3292,7 +3292,7 @@ int next_write_packet( uint8_t packet_id, void * packet_object, uint8_t * packet
         crypto_aead_chacha20poly1305_encrypt( message, &encrypted_bytes,
                                               message, message_length,
                                               additional, 1,
-                                              NULL, nonce, private_key );
+                                              NULL, nonce, encrypt_private_key );
 
         next_assert( encrypted_bytes == uint64_t(message_length) + crypto_aead_chacha20poly1305_ABYTES );
 
@@ -3331,7 +3331,7 @@ uint64_t next_clean_sequence( uint64_t sequence )
     return sequence & mask;
 }
 
-int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_object, const int * signed_packet, const int * encrypted_packet, uint64_t * sequence, const uint8_t * private_key, next_replay_protection_t * replay_protection )
+int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_object, const int * signed_packet, const int * encrypted_packet, uint64_t * sequence, const uint8_t * encrypt_private_key, next_replay_protection_t * replay_protection )
 {
     next_assert( packet_data );
     next_assert( packet_object );
@@ -3348,7 +3348,11 @@ int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_obj
 
     if ( signed_packet && signed_packet[packet_id] )
     {
-        // todo
+        // todo: ignore packet if too small, eg. < 1 + signature_bytes
+
+        // todo: calculate signature of packet minus signature bytes
+
+        // todo: verify signature
 
         /*
             crypto_sign_state state;
@@ -3365,7 +3369,7 @@ int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_obj
         next_assert( !( signed_packet && signed_packet[packet_id] ) );
 
         next_assert( sequence );
-        next_assert( private_key );
+        next_assert( encrypt_private_key );
         next_assert( replay_protection );
 
         if ( packet_bytes <= (int) ( 1 + 8 + crypto_aead_chacha20poly1305_ABYTES ) )
@@ -3389,7 +3393,7 @@ int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_obj
                                                    NULL,
                                                    message, message_length,
                                                    additional, 1,
-                                                   nonce, private_key ) != 0 )
+                                                   nonce, encrypt_private_key ) != 0 )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "encrypted packet failed to decrypt" );
             return NEXT_ERROR;
@@ -3505,11 +3509,11 @@ int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_obj
     return (int) packet_id;
 }
 
-void next_post_validate_packet( uint8_t * packet_data, int packet_bytes, void * packet_object, const int * encrypted_packet, uint64_t * sequence, const uint8_t * private_key, next_replay_protection_t * replay_protection, next_packet_loss_tracker_t * tracker )
+void next_post_validate_packet( uint8_t * packet_data, int packet_bytes, void * packet_object, const int * encrypted_packet, uint64_t * sequence, const uint8_t * encrypt_private_key, next_replay_protection_t * replay_protection, next_packet_loss_tracker_t * tracker )
 {
     (void) packet_bytes;
     (void) packet_object;
-    (void) private_key;
+    (void) encrypt_private_key;
 
     next_assert( packet_bytes >= NEXT_PACKET_HASH_BYTES );
 
