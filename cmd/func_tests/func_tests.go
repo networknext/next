@@ -45,8 +45,8 @@ func backend(mode string) (*exec.Cmd, *bytes.Buffer) {
 }
 
 type RelayConfig struct {
-	fake_packet_loss_percent   	 float32
-	fake_packet_loss_start_time  float32
+	fake_packet_loss_percent    float32
+	fake_packet_loss_start_time float32
 }
 
 func relay(configArray ...RelayConfig) (*exec.Cmd, *bytes.Buffer) {
@@ -1165,10 +1165,10 @@ func test_multipath_next_packet_loss() {
 	server_cmd, server_stdout := server(serverConfig)
 
 	relayConfig := RelayConfig{
-		fake_packet_loss_percent: 100.0,
+		fake_packet_loss_percent:    100.0,
 		fake_packet_loss_start_time: 20.0,
 	}
-	
+
 	relay_1_cmd, _ := relay(relayConfig)
 	relay_2_cmd, _ := relay(relayConfig)
 	relay_3_cmd, _ := relay(relayConfig)
@@ -1225,10 +1225,10 @@ func test_multipath_fallback_to_direct() {
 	server_cmd, server_stdout := server(serverConfig)
 
 	relayConfig := RelayConfig{
-		fake_packet_loss_percent: 100.0,
+		fake_packet_loss_percent:    100.0,
 		fake_packet_loss_start_time: 20.0,
 	}
-	
+
 	relay_1_cmd, _ := relay(relayConfig)
 	relay_2_cmd, _ := relay(relayConfig)
 	relay_3_cmd, _ := relay(relayConfig)
