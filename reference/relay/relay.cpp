@@ -15,16 +15,10 @@
 #include <float.h>
 #include <signal.h>
 #include "curl/curl.h"
-#include <memory>
-#include <atomic>
-#include <thread>
-#include <chrono>
-
-using namespace std::chrono_literals;
 
 #define RELAY_MTU                                               1300
 
-#define RELAY_HEADER_BYTES                                        35
+#define RELAY_HEADER_BYTES                                        34
 
 #define RELAY_ADDRESS_BYTES                                       19
 #define RELAY_ADDRESS_BUFFER_SAFETY                               32
@@ -33,10 +27,10 @@ using namespace std::chrono_literals;
 
 #define RELAY_BANDWIDTH_LIMITER_INTERVAL                         1.0
 
-#define RELAY_ROUTE_TOKEN_BYTES                                   77
-#define RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES                        117
-#define RELAY_CONTINUE_TOKEN_BYTES                                18
-#define RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES                      58
+#define RELAY_ROUTE_TOKEN_BYTES                                   76
+#define RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES                        116
+#define RELAY_CONTINUE_TOKEN_BYTES                                17
+#define RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES                      57
 
 #define RELAY_DIRECTION_CLIENT_TO_SERVER                           0
 #define RELAY_DIRECTION_SERVER_TO_CLIENT                           1
@@ -5637,12 +5631,12 @@ int main( int argc, const char ** argv )
         uint seconds = 0;
         while ( seconds++ < 60 && relay_update( curl, backend_hostname, relay_token, relay_address_string, update_response_memory, &relay, false ) != RELAY_OK )
         {
-            std::this_thread::sleep_for(1s);
+            relay_platform_sleep( 1.0 );
         }
 
-        if (seconds < 60)
+        if ( seconds < 60 )
         {
-            std::this_thread::sleep_for(30s);
+            relay_platform_sleep( 30.0 );
         }
     }
 
