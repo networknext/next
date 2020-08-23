@@ -373,16 +373,26 @@ dev-reference-relay: build-relay-ref ## runs a local reference relay
 	@$(DIST_DIR)/reference_relay
 
 .PHONY: dev-server
-dev-server: build-sdk3 build-server  ## runs a local server
-	@./dist/server
+dev-server: dev-server3
+
+.PHONY: dev-server3
+dev-server3: build-sdk3 build-server3  ## runs a local server (sdk3)
+	@./dist/server3
+
+.PHONY: dev-server4
+dev-server4: build-sdk4 build-server4  ## runs a local server (sdk4)
+	@./dist/server4
 
 .PHONY: dev-client
-dev-client: build-client  ## runs a local client
-	@./dist/client
+dev-client: dev-server3
 
-.PHONY: dev-multi-clients
-dev-multi-clients: build-client ## runs 20 local clients
-	./scripts/client-spawner.sh -n 20
+.PHONY: dev-client3
+dev-client3: build-client3  ## runs a local client (sdk3)
+	@./dist/client3
+
+.PHONY: dev-client4
+dev-client4: build-client4  ## runs a local client (sdk4)
+	@./dist/client4
 
 $(DIST_DIR)/$(SDK3NAME).so:
 	@printf "Building sdk3... "
@@ -712,10 +722,16 @@ publish-bootstrap-script-prod:
 	@gsutil cp $(DEPLOY_DIR)/bootstrap.sh $(ARTIFACT_BUCKET_PROD)/bootstrap.sh
 	@printf "done\n"
 
-.PHONY: build-server
-build-server: build-sdk3 ## builds the server
-	@printf "Building server... "
-	@$(CXX) -Isdk3/include -o $(DIST_DIR)/server ./cmd/server/server.cpp $(DIST_DIR)/$(SDK3NAME).so $(LDFLAGS)
+.PHONY: build-server3
+build-server3: build-sdk3 ## builds the server (sdk3)
+	@printf "Building server3... "
+	@$(CXX) -Isdk3/include -o $(DIST_DIR)/server3 ./cmd/server/server.cpp $(DIST_DIR)/$(SDK3NAME).so $(LDFLAGS)
+	@printf "done\n"
+
+.PHONY: build-server4
+build-server4: build-sdk3 ## builds the server (sdk4)
+	@printf "Building server4... "
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/server4 ./cmd/server/server.cpp $(DIST_DIR)/$(SDK4NAME).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-load-test-server
@@ -745,10 +761,16 @@ build-functional-client:
 .PHONY: build-functional
 build-functional: build-functional-client build-functional-server build-functional-backend build-functional-tests
 
-.PHONY: build-client
-build-client: build-sdk3 ## builds the client
-	@printf "Building client... "
-	@$(CXX) -Isdk3/include -o $(DIST_DIR)/client ./cmd/client/client.cpp $(DIST_DIR)/$(SDK3NAME).so $(LDFLAGS)
+.PHONY: build-client3
+build-client3: build-sdk3 ## builds the client (sdk3)
+	@printf "Building client3... "
+	@$(CXX) -Isdk3/include -o $(DIST_DIR)/client3 ./cmd/client/client.cpp $(DIST_DIR)/$(SDK3NAME).so $(LDFLAGS)
+	@printf "done\n"
+
+.PHONY: build-client4
+build-client4: build-sdk4 ## builds the client (sdk4)
+	@printf "Building client4... "
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/client4 ./cmd/client/client.cpp $(DIST_DIR)/$(SDK4NAME).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-next
@@ -758,7 +780,7 @@ build-next: ## builds the operator tool
 	@printf "done\n"
 
 .PHONY: build-all
-build-all: build-sdk3 build-sdk4 build-load-test build-portal-cruncher build-analytics build-billing build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
+build-all: build-sdk3 build-sdk4 build-load-test build-portal-cruncher build-analytics build-billing build-relay-backend build-server-backend build-relay-ref build-client3 build-client4 build-server3 build-server4 build-functional build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all
