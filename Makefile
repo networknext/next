@@ -322,27 +322,21 @@ dev-reference-backend: ## runs a local reference backend
 dev-reference-relay: build-relay-ref ## runs a local reference relay
 	@$(DIST_DIR)/reference_relay
 
-.PHONY: dev-server
-dev-server: dev-server3
+.PHONY: dev-client3
+dev-client3: build-client3  ## runs a local client (sdk3)
+	@./dist/client3
 
 .PHONY: dev-server3
 dev-server3: build-sdk3 build-server3  ## runs a local server (sdk3)
 	@./dist/server3
 
-.PHONY: dev-server4
-dev-server4: build-sdk4 build-server4  ## runs a local server (sdk4)
-	@./dist/server4
-
-.PHONY: dev-client
-dev-client: dev-server3
-
-.PHONY: dev-client3
-dev-client3: build-client3  ## runs a local client (sdk3)
-	@./dist/client3
-
 .PHONY: dev-client4
 dev-client4: build-client4  ## runs a local client (sdk4)
 	@./dist/client4
+
+.PHONY: dev-server4
+dev-server4: build-sdk4 build-server4  ## runs a local server (sdk4)
+	@./dist/server4
 
 $(DIST_DIR)/$(SDK3NAME).so:
 	@printf "Building sdk3... "
