@@ -215,18 +215,12 @@ help:
 	@echo "$$(grep -hE '^\S+:.*##' $(MAKEFILE_LIST) | sed -e 's/:.*##\s*/:/' -e 's/^\(.\+\):\(.*\)/\\033[36m\1\\033[m:\2/' | column -c2 -t -s :)"
 
 #####################
-## TESTS AND TOOLS ##
+## ESSENTIAL TOOLS ##
 #####################
 
 .PHONY: test
-test: test-unit ## runs unit tests
-
-.PHONY: test-unit-backend
-test-unit-backend:
+test: clean ## runs unit tests
 	@./scripts/test-unit-backend.sh
-
-.PHONY: test-unit
-test-unit: clean test-unit-backend
 
 .PHONY: build-analytics
 build-analytics:
@@ -245,13 +239,6 @@ build-load-test-client: build-sdk3
 	@printf "Building load test client... "
 	@$(CXX) -Isdk3/include -o $(DIST_DIR)/load_test_client ./cmd/load_test_client/load_test_client.cpp -lnext $(LDFLAGS)
 	@printf "done\n"
-
-ifeq ($(OS),linux)
-.PHONY: test-soak-valgrind
-test-soak-valgrind: clean build-soak-test
-	@valgrind --tool=memcheck --leak-check=yes --show-reachable=yes --num-callers=20 --track-fds=yes --track-origins=yes $(DIST_DIR)/$(SDK3NAME)_soak_test
-	@printf "\n"
-endif
 
 .PHONY: build-functional-backend
 build-functional-backend:
