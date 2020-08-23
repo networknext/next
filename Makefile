@@ -282,7 +282,7 @@ test-func-parallel: dist build-test-func-parallel run-test-func-parallel ## runs
 .PHONY: test-load
 test-load: ## runs load tests
 	@printf "\nRunning load tests...\n" ; \
-	$(GO) run ./cmd/load-test/load_tests.go
+	$(GO) run ./cmd/load_test/load_tests.go
 
 #######################
 
