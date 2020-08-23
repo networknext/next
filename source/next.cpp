@@ -109,10 +109,12 @@
 #define NEXT_FLAGS_ROUTE_REQUEST_TIMED_OUT                         (1<<5)
 #define NEXT_FLAGS_CONTINUE_REQUEST_TIMED_OUT                      (1<<6)
 #define NEXT_FLAGS_CLIENT_TIMED_OUT                                (1<<7)
-#define NEXT_FLAGS_UPGRADE_RESPONSE_TIMED_OUT                     (1<<8)
+#define NEXT_FLAGS_UPGRADE_RESPONSE_TIMED_OUT                      (1<<8)
 #define NEXT_FLAGS_COUNT                                                9
 
 #define NEXT_MAX_DATACENTER_NAME_LENGTH                               256
+
+#define NEXT_MAX_SESSION_DATA_BYTES                                   500
 
 static const uint8_t next_backend_public_key[] = 
 { 
@@ -9063,7 +9065,6 @@ struct NextBackendSessionUpdatePacket
     int version_minor;
     int version_patch;
     uint64_t sequence;
-    // todo: add retry number here
     uint64_t customer_id;
     next_address_t server_address;
     uint64_t session_id;
@@ -9097,6 +9098,8 @@ struct NextBackendSessionUpdatePacket
     uint64_t packets_lost_client_to_server;
     uint64_t packets_lost_server_to_client;
     uint64_t user_flags;
+    int session_data_bytes;
+    uint8_t session_data[NEXT_MAX_SESSION_DATA_BYTES];
 
     NextBackendSessionUpdatePacket()
     {
@@ -9160,6 +9163,8 @@ struct NextBackendSessionUpdatePacket
         {
             serialize_uint64( stream, user_flags );
         }
+        serialize_int( stream, session_data_bytes, 0, NEXT_MAX_SESSION_DATA_BYTES );
+        serialize_bytes( stream, session_data, session_data_bytes );
         return true;
     }
 };
@@ -9177,6 +9182,8 @@ struct NextBackendSessionResponsePacket
     int num_tokens;
     uint8_t tokens[NEXT_MAX_TOKENS*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES];
     uint8_t server_route_public_key[crypto_box_PUBLICKEYBYTES];
+    int session_data_bytes;
+    uint8_t session_data[NEXT_MAX_SESSION_DATA_BYTES];
 
     NextBackendSessionResponsePacket()
     {
@@ -9209,6 +9216,8 @@ struct NextBackendSessionResponsePacket
             serialize_bytes( stream, tokens, num_tokens * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES );
         }
         serialize_bytes( stream, server_route_public_key, crypto_box_PUBLICKEYBYTES );
+        serialize_int( stream, session_data_bytes, 0, NEXT_MAX_SESSION_DATA_BYTES );
+        serialize_bytes( stream, session_data, session_data_bytes );
         return true;
     }
 };
