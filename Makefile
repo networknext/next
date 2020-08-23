@@ -10,7 +10,8 @@ else
 	LDFLAGS = -lsodium -lcurl -lpthread -lm -DNEXT_DEVELOPMENT
 endif
 
-SDKNAME = libnext
+SDK3NAME = libnext3
+SDK4NAME = libnext4
 
 TIMESTAMP ?= $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
 SHA ?= $(shell git rev-parse --short HEAD)
@@ -246,7 +247,7 @@ test-unit: clean test-unit-backend ## runs backend unit tests
 ifeq ($(OS),linux)
 .PHONY: test-soak-valgrind
 test-soak-valgrind: clean build-soak-test ## runs sdk soak test under valgrind (linux only)
-	@valgrind --tool=memcheck --leak-check=yes --show-reachable=yes --num-callers=20 --track-fds=yes --track-origins=yes $(DIST_DIR)/$(SDKNAME)_soak_test
+	@valgrind --tool=memcheck --leak-check=yes --show-reachable=yes --num-callers=20 --track-fds=yes --track-origins=yes $(DIST_DIR)/$(SDK3NAME)_soak_test
 	@printf "\n"
 endif
 
@@ -263,7 +264,7 @@ build-functional-tests: ## builds functional tests
 	printf "done\n" ; \
 
 .PHONY: build-test-func
-build-test-func: clean build-sdk build-relay-ref build-functional-server build-functional-client build-functional-backend build-functional-tests ## builds the functional tests
+build-test-func: clean build-sdk3 build-sdk4 build-relay-ref build-functional-server build-functional-client build-functional-backend build-functional-tests ## builds the functional tests
 
 .PHONY: run-test-func
 run-test-func:
@@ -372,7 +373,7 @@ dev-reference-relay: build-relay-ref ## runs a local reference relay
 	@$(DIST_DIR)/reference_relay
 
 .PHONY: dev-server
-dev-server: build-sdk build-server  ## runs a local server
+dev-server: build-sdk3 build-server  ## runs a local server
 	@./dist/server
 
 .PHONY: dev-client
@@ -383,13 +384,21 @@ dev-client: build-client  ## runs a local client
 dev-multi-clients: build-client ## runs 20 local clients
 	./scripts/client-spawner.sh -n 20
 
-$(DIST_DIR)/$(SDKNAME).so:
-	@printf "Building sdk... "
-	@$(CXX) -fPIC -Isdk3/include -shared -o $(DIST_DIR)/$(SDKNAME).so ./sdk3/source/next.cpp ./sdk3/source/next_ios.cpp ./sdk3/source/next_linux.cpp ./sdk3/source/next_mac.cpp ./sdk3/source/next_ps4.cpp ./sdk3/source/next_switch.cpp ./sdk3/source/next_windows.cpp ./sdk3/source/next_xboxone.cpp $(LDFLAGS)
+$(DIST_DIR)/$(SDK3NAME).so:
+	@printf "Building sdk3... "
+	@$(CXX) -fPIC -Isdk3/include -shared -o $(DIST_DIR)/$(SDK3NAME).so ./sdk3/source/next.cpp ./sdk3/source/next_ios.cpp ./sdk3/source/next_linux.cpp ./sdk3/source/next_mac.cpp ./sdk3/source/next_ps4.cpp ./sdk3/source/next_switch.cpp ./sdk3/source/next_windows.cpp ./sdk3/source/next_xboxone.cpp $(LDFLAGS)
 	@printf "done\n"
 
-.PHONY: build-sdk
-build-sdk: $(DIST_DIR)/$(SDKNAME).so ## builds the sdk
+$(DIST_DIR)/$(SDK4NAME).so:
+	@printf "Building sdk4... "
+	@$(CXX) -fPIC -Isdk4/include -shared -o $(DIST_DIR)/$(SDK4NAME).so ./sdk4/source/next.cpp ./sdk4/source/next_ios.cpp ./sdk4/source/next_linux.cpp ./sdk4/source/next_mac.cpp ./sdk4/source/next_ps4.cpp ./sdk4/source/next_switch.cpp ./sdk4/source/next_windows.cpp ./sdk4/source/next_xboxone.cpp $(LDFLAGS)
+	@printf "done\n"
+
+.PHONY: build-sdk3
+build-sdk3: $(DIST_DIR)/$(SDK3NAME).so ## builds sdk3
+
+.PHONY: build-sdk4
+build-sdk4: $(DIST_DIR)/$(SDK4NAME).so ## builds sdk4
 
 PHONY: build-load-test
 build-load-test: ## builds the load test binary
@@ -704,25 +713,25 @@ publish-bootstrap-script-prod:
 	@printf "done\n"
 
 .PHONY: build-server
-build-server: build-sdk ## builds the server
+build-server: build-sdk3 ## builds the server
 	@printf "Building server... "
-	@$(CXX) -Isdk3/include -o $(DIST_DIR)/server ./cmd/server/server.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
+	@$(CXX) -Isdk3/include -o $(DIST_DIR)/server ./cmd/server/server.cpp $(DIST_DIR)/$(SDK3NAME).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-load-test-server
-build-load-test-server: build-sdk ## builds the load test server binary
+build-load-test-server: build-sdk3 ## builds the load test server binary
 	@printf "Building load test server... "
 	@$(CXX) -Isdk3/include -o $(DIST_DIR)/load_test_server ./cmd/load_test_server/load_test_server.cpp -lnext $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional-server
-build-functional-server:
+build-functional-server: build-sdk3
 	@printf "Building functional server... "
-	@$(CXX) -Isdk3/include -o $(DIST_DIR)/func_server ./cmd/func_server/func_server.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
+	@$(CXX) -Isdk3/include -o $(DIST_DIR)/func_server ./cmd/func_server/func_server.cpp $(DIST_DIR)/$(SDK3NAME).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-load-test-client
-build-load-test-client: build-sdk ## builds the load test client binary
+build-load-test-client: build-sdk3 ## builds the load test client binary
 	@printf "Building load test client... "
 	@$(CXX) -Isdk3/include -o $(DIST_DIR)/load_test_client ./cmd/load_test_client/load_test_client.cpp -lnext $(LDFLAGS)
 	@printf "done\n"
@@ -730,16 +739,16 @@ build-load-test-client: build-sdk ## builds the load test client binary
 .PHONY: build-functional-client
 build-functional-client:
 	@printf "Building functional client... "
-	@$(CXX) -Isdk3/include -o $(DIST_DIR)/func_client ./cmd/func_client/func_client.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
+	@$(CXX) -Isdk3/include -o $(DIST_DIR)/func_client ./cmd/func_client/func_client.cpp $(DIST_DIR)/$(SDK3NAME).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional
 build-functional: build-functional-client build-functional-server build-functional-backend build-functional-tests
 
 .PHONY: build-client
-build-client: build-sdk ## builds the client
+build-client: build-sdk3 ## builds the client
 	@printf "Building client... "
-	@$(CXX) -Isdk3/include -o $(DIST_DIR)/client ./cmd/client/client.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
+	@$(CXX) -Isdk3/include -o $(DIST_DIR)/client ./cmd/client/client.cpp $(DIST_DIR)/$(SDK3NAME).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-next
@@ -749,7 +758,7 @@ build-next: ## builds the operator tool
 	@printf "done\n"
 
 .PHONY: build-all
-build-all: build-load-test build-portal-cruncher build-analytics build-billing build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
+build-all: build-sdk3 build-sdk4 build-load-test build-portal-cruncher build-analytics build-billing build-relay-backend build-server-backend build-relay-ref build-client build-server build-functional build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all
