@@ -286,10 +286,6 @@ test-load: ## runs load tests
 
 #######################
 
-.PHONY: dev-optimizer
-dev-optimizer: ## runs a local optimizer
-	$(GO) run cmd/optimizer/optimizer.go
-
 .PHONY: dev-portal
 dev-portal: build-portal ## runs a local portal
 	@PORT=20000 BASIC_AUTH_USERNAME=local BASIC_AUTH_PASSWORD=local UI_DIR=./cmd/portal/public ./dist/portal
