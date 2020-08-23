@@ -35,16 +35,16 @@
 #define RELAY_DIRECTION_CLIENT_TO_SERVER                           0
 #define RELAY_DIRECTION_SERVER_TO_CLIENT                           1
 
-#define RELAY_ROUTE_REQUEST_PACKET                                 1
-#define RELAY_ROUTE_RESPONSE_PACKET                                2
-#define RELAY_CLIENT_TO_SERVER_PACKET                              3
-#define RELAY_SERVER_TO_CLIENT_PACKET                              4
-#define RELAY_SESSION_PING_PACKET                                 11
-#define RELAY_SESSION_PONG_PACKET                                 12
-#define RELAY_CONTINUE_REQUEST_PACKET                             13
-#define RELAY_CONTINUE_RESPONSE_PACKET                            14
-#define RELAY_NEAR_PING_PACKET                                    73
-#define RELAY_NEAR_PONG_PACKET                                    74
+#define RELAY_ROUTE_REQUEST_PACKET                               100
+#define RELAY_ROUTE_RESPONSE_PACKET                              101
+#define RELAY_CLIENT_TO_SERVER_PACKET                            102
+#define RELAY_SERVER_TO_CLIENT_PACKET                            103
+#define RELAY_SESSION_PING_PACKET                                104
+#define RELAY_SESSION_PONG_PACKET                                105
+#define RELAY_CONTINUE_REQUEST_PACKET                            106
+#define RELAY_CONTINUE_RESPONSE_PACKET                           107
+#define RELAY_NEAR_PING_PACKET                                   116
+#define RELAY_NEAR_PONG_PACKET                                   117
 
 #define RELAY_PING_HISTORY_ENTRY_COUNT                           256
 
@@ -5592,6 +5592,7 @@ int main( int argc, const char ** argv )
 
     uint8_t * update_response_memory = (uint8_t*) malloc( RESPONSE_MAX_BYTES );
 
+    // todo: gross
     const uint8_t MaxUpdateAttempts = 11;
     bool successfulUpdates = true;
     uint8_t updateAttempts = 0;
@@ -5617,6 +5618,7 @@ int main( int argc, const char ** argv )
         relay_platform_sleep( 1.0 );
     }
 
+    // todo: gross
     if ( gShouldCleanShutdown )
     {
         uint seconds = 0;
