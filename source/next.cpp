@@ -10399,6 +10399,9 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             memcpy( entry->update_near_relay_addresses, packet.near_relay_addresses, sizeof(next_address_t) * size_t(packet.num_near_relays) );
             entry->update_last_send_time = -1000.0;
 
+            entry->session_data_bytes = packet.session_data_bytes;
+            memcpy( entry->session_data, packet.session_data, packet.session_data_bytes );
+
             entry->waiting_for_update_response = false;
 
             if ( packet.response_type == NEXT_UPDATE_TYPE_DIRECT )

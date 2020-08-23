@@ -46,13 +46,11 @@ DONE
 
 	Removed session flags (unused). Saves 1 byte in header, route token and continue token.
 
+	Pass the session data up to the backend in the session update packet.
+
+	Store the session data in the session entry from the session response packet.
+
 TODO
-
-	----------------
-
-	Cache the session data in the session on the server, and pass it in to the session update.
-
-	Copy it back in to the session data for the session on the server, when a session response packet is received (with the expected slice # and retry # that is...)
 
 	----------------
 
