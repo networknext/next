@@ -229,7 +229,12 @@ int relay_is_network_next_packet( const uint8_t * packet_data, int packet_bytes 
 void relay_sign_network_next_packet( uint8_t * packet_data, int packet_bytes )
 {
     assert( packet_bytes > RELAY_PACKET_HASH_BYTES );
-    crypto_generichash( packet_data, RELAY_PACKET_HASH_BYTES, packet_data + RELAY_PACKET_HASH_BYTES, packet_bytes - RELAY_PACKET_HASH_BYTES, relay_packet_hash_key, crypto_generichash_KEYBYTES );
+    int message_length = packet_bytes - RELAY_PACKET_HASH_BYTES;
+    if ( message_length > 32 )
+    {
+        message_length = 32;
+    }
+    crypto_generichash( packet_data, RELAY_PACKET_HASH_BYTES, packet_data + RELAY_PACKET_HASH_BYTES, message_length, relay_packet_hash_key, crypto_generichash_KEYBYTES );
 }
 
 // -----------------------------------------------------------------------------
