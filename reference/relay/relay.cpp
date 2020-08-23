@@ -210,9 +210,15 @@ int relay_is_network_next_packet( const uint8_t * packet_data, int packet_bytes 
         return false;
 
     const uint8_t * message = packet_data + RELAY_PACKET_HASH_BYTES;
-    const int message_length = packet_bytes - RELAY_PACKET_HASH_BYTES;
+    
+    int message_length = packet_bytes - RELAY_PACKET_HASH_BYTES;
+    if ( message_length > 32 )
+    {
+        message_length = 32;
+    }
 
     assert( message_length > 0 );
+    assert( message_length <= 32 );
 
     uint8_t hash[RELAY_PACKET_HASH_BYTES];
     crypto_generichash( hash, RELAY_PACKET_HASH_BYTES, message, message_length, relay_packet_hash_key, crypto_generichash_KEYBYTES );
@@ -2280,7 +2286,6 @@ struct relay_route_token_t
     uint64_t expire_timestamp;
     uint64_t session_id;
     uint8_t session_version;
-    uint8_t session_flags;
     int kbps_up;
     int kbps_down;
     relay_address_t next_address;
@@ -2302,7 +2307,6 @@ void relay_write_route_token( relay_route_token_t * token, uint8_t * buffer, int
     relay_write_uint64( &buffer, token->expire_timestamp );
     relay_write_uint64( &buffer, token->session_id );
     relay_write_uint8( &buffer, token->session_version );
-    relay_write_uint8( &buffer, token->session_flags );
     relay_write_uint32( &buffer, token->kbps_up );
     relay_write_uint32( &buffer, token->kbps_down );
     relay_write_address( &buffer, &token->next_address );
@@ -2323,7 +2327,6 @@ void relay_read_route_token( relay_route_token_t * token, const uint8_t * buffer
     token->expire_timestamp = relay_read_uint64( &buffer );
     token->session_id = relay_read_uint64( &buffer );
     token->session_version = relay_read_uint8( &buffer );
-    token->session_flags = relay_read_uint8( &buffer );
     token->kbps_up = relay_read_uint32( &buffer );
     token->kbps_down = relay_read_uint32( &buffer );
     relay_read_address( &buffer, &token->next_address );
@@ -2420,7 +2423,6 @@ struct relay_continue_token_t
     uint64_t expire_timestamp;
     uint64_t session_id;
     uint8_t session_version;
-    uint8_t session_flags;
 };
 
 void relay_write_continue_token( relay_continue_token_t * token, uint8_t * buffer, int buffer_length )
@@ -2438,7 +2440,6 @@ void relay_write_continue_token( relay_continue_token_t * token, uint8_t * buffe
     relay_write_uint64( &buffer, token->expire_timestamp );
     relay_write_uint64( &buffer, token->session_id );
     relay_write_uint8( &buffer, token->session_version );
-    relay_write_uint8( &buffer, token->session_flags );
 
     assert( buffer - start == RELAY_CONTINUE_TOKEN_BYTES );
 }
@@ -2455,7 +2456,6 @@ void relay_read_continue_token( relay_continue_token_t * token, const uint8_t * 
     token->expire_timestamp = relay_read_uint64( &buffer );
     token->session_id = relay_read_uint64( &buffer );
     token->session_version = relay_read_uint8( &buffer );
-    token->session_flags = relay_read_uint8( &buffer );
 
     assert( buffer - start == RELAY_CONTINUE_TOKEN_BYTES );
 }
@@ -2583,11 +2583,10 @@ int relay_write_header( int direction, uint8_t type, uint64_t sequence, uint64_t
     relay_write_uint64( &buffer, sequence );
 
     uint8_t * additional = buffer;
-    const int additional_length = 8 + 2;
+    const int additional_length = 8 + 1;
 
     relay_write_uint64( &buffer, session_id );
     relay_write_uint8( &buffer, session_version );
-    relay_write_uint8( &buffer, 0 );
 
     uint8_t nonce[12];
     {
@@ -2707,15 +2706,13 @@ int relay_verify_header( int direction, const uint8_t * private_key, uint8_t * b
 
     const uint8_t * additional = p;
 
-    const int additional_length = 8 + 2;
+    const int additional_length = 8 + 1;
 
     uint64_t packet_session_id = relay_read_uint64( &p );
     uint8_t packet_session_version = relay_read_uint8( &p );
-    uint8_t packet_session_flags = relay_read_uint8( &p );
 
     (void) packet_session_id;
     (void) packet_session_version;
-    (void) packet_session_flags;
 
     uint8_t nonce[12];
     {
@@ -2726,8 +2723,8 @@ int relay_verify_header( int direction, const uint8_t * private_key, uint8_t * b
 
     unsigned long long decrypted_length;
 
-    int result = crypto_aead_chacha20poly1305_ietf_decrypt( buffer + 19, &decrypted_length, NULL,
-                                                            buffer + 19, (unsigned long long) crypto_aead_chacha20poly1305_IETF_ABYTES,
+    int result = crypto_aead_chacha20poly1305_ietf_decrypt( buffer + 18, &decrypted_length, NULL,
+                                                            buffer + 18, (unsigned long long) crypto_aead_chacha20poly1305_IETF_ABYTES,
                                                             additional, (unsigned long long) additional_length,
                                                             nonce, private_key );
 
@@ -4176,7 +4173,6 @@ static void test_route_token()
     input_token.expire_timestamp = 1234241431241LL;
     input_token.session_id = 1234241431241LL;
     input_token.session_version = 5;
-    input_token.session_flags = 1;
     input_token.next_address.type = RELAY_ADDRESS_IPV4;
     input_token.next_address.data.ipv4[0] = 127;
     input_token.next_address.data.ipv4[1] = 0;
@@ -4208,7 +4204,6 @@ static void test_route_token()
     check( input_token.expire_timestamp == output_token.expire_timestamp );
     check( input_token.session_id == output_token.session_id );
     check( input_token.session_version == output_token.session_version );
-    check( input_token.session_flags == output_token.session_flags );
     check( input_token.kbps_up == output_token.kbps_up );
     check( input_token.kbps_down == output_token.kbps_down );
     check( memcmp( input_token.private_key, output_token.private_key, crypto_box_SECRETKEYBYTES ) == 0 );
@@ -4225,7 +4220,6 @@ static void test_route_token()
     check( input_token.expire_timestamp == output_token.expire_timestamp );
     check( input_token.session_id == output_token.session_id );
     check( input_token.session_version == output_token.session_version );
-    check( input_token.session_flags == output_token.session_flags );
     check( input_token.kbps_up == output_token.kbps_up );
     check( input_token.kbps_down == output_token.kbps_down );
     check( memcmp( input_token.private_key, output_token.private_key, crypto_box_SECRETKEYBYTES ) == 0 );
@@ -4242,7 +4236,6 @@ static void test_continue_token()
     input_token.expire_timestamp = 1234241431241LL;
     input_token.session_id = 1234241431241LL;
     input_token.session_version = 5;
-    input_token.session_flags = 1;
 
     relay_write_continue_token( &input_token, buffer, RELAY_CONTINUE_TOKEN_BYTES );
 
@@ -4268,7 +4261,6 @@ static void test_continue_token()
     check( input_token.expire_timestamp == output_token.expire_timestamp );
     check( input_token.session_id == output_token.session_id );
     check( input_token.session_version == output_token.session_version );
-    check( input_token.session_flags == output_token.session_flags );
 
     uint8_t * p = buffer;
 
@@ -4282,7 +4274,6 @@ static void test_continue_token()
 
     check( input_token.expire_timestamp == output_token.expire_timestamp );
     check( input_token.session_id == output_token.session_id );
-    check( input_token.session_flags == output_token.session_flags );
 }
 
 static void test_header()
