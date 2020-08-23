@@ -9554,6 +9554,7 @@ struct next_server_internal_t
     double last_backend_server_init;
     double first_backend_server_init;
     double last_backend_server_update;
+    double next_resolve_hostname_time;
     next_address_t resolve_hostname_result;
     next_address_t backend_address;
     next_address_t server_address;
@@ -9605,9 +9606,29 @@ void next_server_internal_verify_sentinels( next_server_internal_t * server )
         next_pending_session_manager_verify_sentinels( server->pending_session_manager );
 }
 
-void next_server_internal_destroy( next_server_internal_t * server );
-
 static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_internal_resolve_hostname_thread_function( void * context );
+
+void next_server_internal_resolve_hostname( next_server_internal_t * server )
+{
+    if ( server->state == NEXT_SERVER_STATE_RESOLVING_HOSTNAME )
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "server is already resolving hostname" );
+        return;
+    }
+
+    server->resolve_hostname_thread = next_platform_thread_create( server->context, next_server_internal_resolve_hostname_thread_function, server );
+    if ( !server->resolve_hostname_thread )
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "server could not create resolve hostname thread" );
+        return;
+    }
+
+    next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
+    server->state = NEXT_SERVER_STATE_RESOLVING_HOSTNAME;
+    server->next_resolve_hostname_time = next_time() + 5*60 + next_random_float() * 5*60;
+}
+
+void next_server_internal_destroy( next_server_internal_t * server );
 
 static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_internal_thread_function( void * context );
 
@@ -9778,14 +9799,7 @@ next_server_internal_t * next_server_internal_create( void * context, const char
 
 	if ( !next_global_config.disable_network_next && server->valid_customer_private_key && !server->no_datacenter_specified )
 	{
-        server->state = NEXT_SERVER_STATE_RESOLVING_HOSTNAME;
-		server->resolve_hostname_thread = next_platform_thread_create( server->context, next_server_internal_resolve_hostname_thread_function, server );
-		if ( !server->resolve_hostname_thread )
-		{
-			next_printf( NEXT_LOG_LEVEL_ERROR, "server could not create resolve hostname thread" );
-			next_server_internal_destroy( server );
-			return NULL;
-		}
+        next_server_internal_resolve_hostname( server );
 	}
 
     next_printf( NEXT_LOG_LEVEL_INFO, "server started on %s", next_address_to_string( &server_address, address_string ) );
@@ -10014,6 +10028,19 @@ void next_server_internal_update_route( next_server_internal_t * server )
 
     const double current_time = next_time();
     
+    int state = NEXT_SERVER_STATE_DIRECT_ONLY;
+    {
+        next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
+        state = server->state;
+    }
+
+    if ( state == NEXT_SERVER_STATE_DIRECT_ONLY && server->next_resolve_hostname_time <= current_time )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "server resolving backend hostname" );
+        next_server_internal_resolve_hostname( server );
+        server->next_resolve_hostname_time = current_time + 5*60 + next_random_float() * 5*60;
+    }
+
     const int max_index = server->session_manager->max_entry_index;
 
     for ( int i = 0; i <= max_index; ++i )
@@ -11325,6 +11352,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             next_printf( NEXT_LOG_LEVEL_INFO, "server did not get an init response from backend. falling back to direct only" );
             next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
             server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
+            server->next_resolve_hostname_time = current_time + 5*60 + next_random_float() * 5*60;
         }
     }
 

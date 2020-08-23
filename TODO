@@ -26,19 +26,19 @@ DONE
 
 	Get sign and verify working for upgrade request and upgrade confirm packets.
 
-TODO
-
 	Add scaffolding for signing packets between the server and the backend.
 
-	Complex because the packets server -> client are signed with the customer private key, while the backend -> server packets are signed with backend private signing key.
+	Get unit tests passing for backend packets with signature verification.
+
+	Normalize all the backend and relay facing packet numbers so they don't conflict 3.x in any way (assume relay will have to support both old and new packets for a while).
+
+	Server should try to resolve hostname and initialize every 5 - 10 minutes (randomized) if it cannot resolve or initialize. Otherwise, we run the risk of losing game servers forever until they are restarted.
+
+TODO
 
 	----------------
 
 	Implement session data that is passed up in the session update request packet, and passed back down in the session update response packet.
-
-	Server should try to resolve hostname and initialize every 5 - 10 minutes (randomized), if it cannot resolve or initialize. Otherwise, we run the risk of losing game servers forever until they are restarted.
-
-	Normalize all the backend and relay facing packet numbers so they don't conflict 3.x in any way (assume relay will have to support both old and new packets for a while now).
 
 	----------------
 
@@ -46,6 +46,12 @@ TODO
 
 	We need to be able to measure when packets fallback to direct, vs. having them just disappear.
 
-	They should however, stop doing any near relay pings or anything like that though.
+	They should however, stop doing any near relay pings or anything like that though...
+
+	----------------
+
+	Session update should not be a cached packet, but instead should have the retry count includde in the packet itself.
+
+	This is useful for the backend so we can count how many retries are occuring.
 
 	----------------
