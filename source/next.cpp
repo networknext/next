@@ -116,6 +116,33 @@
 
 #define NEXT_MAX_SESSION_DATA_BYTES                                   511
 
+#define NEXT_ROUTE_REQUEST_PACKET                                     100
+#define NEXT_ROUTE_RESPONSE_PACKET                                    101
+#define NEXT_CLIENT_TO_SERVER_PACKET                                  102
+#define NEXT_SERVER_TO_CLIENT_PACKET                                  103
+#define NEXT_PING_PACKET                                              104
+#define NEXT_PONG_PACKET                                              105
+#define NEXT_CONTINUE_REQUEST_PACKET                                  106
+#define NEXT_CONTINUE_RESPONSE_PACKET                                 107
+#define NEXT_UPGRADE_REQUEST_PACKET                                   108
+#define NEXT_UPGRADE_RESPONSE_PACKET                                  109
+#define NEXT_UPGRADE_CONFIRM_PACKET                                   110
+#define NEXT_DIRECT_PING_PACKET                                       111
+#define NEXT_DIRECT_PONG_PACKET                                       112
+#define NEXT_CLIENT_STATS_PACKET                                      113
+#define NEXT_ROUTE_UPDATE_PACKET                                      114
+#define NEXT_ROUTE_UPDATE_ACK_PACKET                                  115
+#define NEXT_RELAY_PING_PACKET                                        116
+#define NEXT_RELAY_PONG_PACKET                                        117
+
+#define NEXT_BACKEND_SERVER_UPDATE_PACKET                             220
+#define NEXT_BACKEND_SESSION_UPDATE_PACKET                            221
+#define NEXT_BACKEND_SESSION_RESPONSE_PACKET                          222
+#define NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET                       223
+#define NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET                      224
+
+#define NEXT_DIRECT_PACKET                                            255
+
 static const uint8_t next_backend_public_key[] = 
 { 
      76,  97, 202, 140,  71, 135,  62, 212, 
@@ -2810,33 +2837,6 @@ int next_packet_loss_tracker_update( next_packet_loss_tracker_t * tracker )
 }
 
 // -------------------------------------------------------------
-
-#define NEXT_ROUTE_REQUEST_PACKET                          100
-#define NEXT_ROUTE_RESPONSE_PACKET                         101
-#define NEXT_CLIENT_TO_SERVER_PACKET                       102
-#define NEXT_SERVER_TO_CLIENT_PACKET                       103
-#define NEXT_PING_PACKET                                   104
-#define NEXT_PONG_PACKET                                   105
-#define NEXT_CONTINUE_REQUEST_PACKET                       106
-#define NEXT_CONTINUE_RESPONSE_PACKET                      107
-#define NEXT_UPGRADE_REQUEST_PACKET                        108
-#define NEXT_UPGRADE_RESPONSE_PACKET                       109
-#define NEXT_UPGRADE_CONFIRM_PACKET                        110
-#define NEXT_DIRECT_PING_PACKET                            111
-#define NEXT_DIRECT_PONG_PACKET                            112
-#define NEXT_CLIENT_STATS_PACKET                           113
-#define NEXT_ROUTE_UPDATE_PACKET                           114
-#define NEXT_ROUTE_UPDATE_ACK_PACKET                       115
-#define NEXT_RELAY_PING_PACKET                             116
-#define NEXT_RELAY_PONG_PACKET                             117
-
-#define NEXT_BACKEND_SERVER_UPDATE_PACKET                  220
-#define NEXT_BACKEND_SESSION_UPDATE_PACKET                 221
-#define NEXT_BACKEND_SESSION_RESPONSE_PACKET               222
-#define NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET            223
-#define NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET           224
-
-#define NEXT_DIRECT_PACKET                                 255
 
 struct NextUpgradeRequestPacket
 {
@@ -5844,6 +5844,9 @@ int next_client_internal_send_packet_to_server( next_client_internal_t * client,
         next_printf( NEXT_LOG_LEVEL_ERROR, "client failed to write internal packet type %d", packet_id );
         return NEXT_ERROR;
     }
+
+    // todo:
+    printf( "send packet to server (%d)\n", buffer[8] );
 
     next_platform_socket_send_packet( client->socket, &client->server_address, buffer, packet_bytes );
 

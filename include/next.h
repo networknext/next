@@ -37,9 +37,9 @@
 #define NEXT_VERSION_PATCH_INT                                    0
 #else // #if !NEXT_DEVELOPMENT
 #define NEXT_VERSION_FULL                                     "dev"
-#define NEXT_VERSION_MAJOR_INT                                    0
-#define NEXT_VERSION_MINOR_INT                                    0
-#define NEXT_VERSION_PATCH_INT                                    0
+#define NEXT_VERSION_MAJOR_INT                                  255
+#define NEXT_VERSION_MINOR_INT                                  255
+#define NEXT_VERSION_PATCH_INT                                  255
 #endif // #if !NEXT_DEVELOPMENT
 
 #define NEXT_OK                                                   0
