@@ -342,12 +342,12 @@ dev-client4: build-client4  ## runs a local client (sdk4)
 dev-server4: build-sdk4 build-server4  ## runs a local server (sdk4)
 	@./dist/server4
 
-$(DIST_DIR)/$(SDK3NAME).so:
+$(DIST_DIR)/$(SDK3NAME).so: dist
 	@printf "Building sdk3... "
 	@$(CXX) -fPIC -Isdk3/include -shared -o $(DIST_DIR)/$(SDK3NAME).so ./sdk3/source/next.cpp ./sdk3/source/next_ios.cpp ./sdk3/source/next_linux.cpp ./sdk3/source/next_mac.cpp ./sdk3/source/next_ps4.cpp ./sdk3/source/next_switch.cpp ./sdk3/source/next_windows.cpp ./sdk3/source/next_xboxone.cpp $(LDFLAGS)
 	@printf "done\n"
 
-$(DIST_DIR)/$(SDK4NAME).so:
+$(DIST_DIR)/$(SDK4NAME).so: dist
 	@printf "Building sdk4... "
 	@$(CXX) -fPIC -Isdk4/include -shared -o $(DIST_DIR)/$(SDK4NAME).so ./sdk4/source/next.cpp ./sdk4/source/next_ios.cpp ./sdk4/source/next_linux.cpp ./sdk4/source/next_mac.cpp ./sdk4/source/next_ps4.cpp ./sdk4/source/next_switch.cpp ./sdk4/source/next_windows.cpp ./sdk4/source/next_xboxone.cpp $(LDFLAGS)
 	@printf "done\n"
