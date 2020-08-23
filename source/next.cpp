@@ -36,7 +36,7 @@
 #define NEXT_HOSTNAME                                 "dev.spacecats.net"
 #endif // #if !NEXT_DEVELOPMENT
 #define NEXT_PORT                                                 "40000"
-#define NEXT_MAX_PACKET_BYTES                                       10240
+#define NEXT_MAX_PACKET_BYTES                                        4096
 #define NEXT_ADDRESS_BYTES                                             19
 #define NEXT_ADDRESS_BUFFER_SAFETY                                     32
 #define NEXT_DEFAULT_SOCKET_SEND_BUFFER_SIZE                      1000000
@@ -11413,6 +11413,11 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.server_address = server->server_address;
             memcpy( packet.client_route_public_key, session->client_route_public_key, crypto_box_PUBLICKEYBYTES );
             memcpy( packet.server_route_public_key, server->server_route_public_key, crypto_box_PUBLICKEYBYTES );
+
+            next_assert( session->session_data_bytes >= 0 );
+            next_assert( session->session_data_bytes <= NEXT_MAX_SESSION_DATA_BYTES );
+            packet.session_data_bytes = session->session_data_bytes;
+            memcpy( packet.session_data, session->session_data, session->session_data_bytes );
 
             if ( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_PACKET, &packet, session->update_packet_data, &session->update_packet_bytes, next_signed_packets, server->customer_private_key ) != NEXT_OK )
             {

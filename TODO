@@ -44,9 +44,9 @@ DONE
 
 	Add a test for session update and session response packets with session data included at max size.
 
-TODO
+	Removed session flags (unused). Saves 1 byte in header, route token and continue token.
 
-	Try to reduce size of route tokens, if possible.
+TODO
 
 	----------------
 
