@@ -31,15 +31,15 @@
 #include <stddef.h>
 
 #if !defined(NEXT_DEVELOPMENT)
-#define NEXT_VERSION_FULL                                   "3.4.7"
-#define NEXT_VERSION_MAJOR_INT                                    3
-#define NEXT_VERSION_MINOR_INT                                    4
-#define NEXT_VERSION_PATCH_INT                                    7
-#else // #if !NEXT_DEVELOPMENT
-#define NEXT_VERSION_FULL                                     "dev"
-#define NEXT_VERSION_MAJOR_INT                                    0
+#define NEXT_VERSION_FULL                                   "4.0.0"
+#define NEXT_VERSION_MAJOR_INT                                    4
 #define NEXT_VERSION_MINOR_INT                                    0
 #define NEXT_VERSION_PATCH_INT                                    0
+#else // #if !NEXT_DEVELOPMENT
+#define NEXT_VERSION_FULL                                     "dev"
+#define NEXT_VERSION_MAJOR_INT                                  255
+#define NEXT_VERSION_MINOR_INT                                  255
+#define NEXT_VERSION_PATCH_INT                                  255
 #endif // #if !NEXT_DEVELOPMENT
 
 #define NEXT_OK                                                   0
@@ -49,7 +49,8 @@
 #define NEXT_ETHERNET_HEADER_BYTES                               18
 #define NEXT_IPV4_HEADER_BYTES                                   20
 #define NEXT_UDP_HEADER_BYTES                                     8
-#define NEXT_HEADER_BYTES                                        35
+#define NEXT_PACKET_HASH_BYTES                                    8
+#define NEXT_HEADER_BYTES                                        34
 
 #define NEXT_LOG_LEVEL_NONE                                       0
 #define NEXT_LOG_LEVEL_ERROR                                      1
@@ -67,7 +68,9 @@
 #define NEXT_CONNECTION_TYPE_WIRED                                1
 #define NEXT_CONNECTION_TYPE_WIFI                                 2
 #define NEXT_CONNECTION_TYPE_CELLULAR                             3
+#define NEXT_CONNECTION_TYPE_MAX                                  3
 
+#define NEXT_PLATFORM_UNKNOWN                                     0
 #define NEXT_PLATFORM_WINDOWS                                     1
 #define NEXT_PLATFORM_MAC                                         2
 #define NEXT_PLATFORM_LINUX                                       3
@@ -75,6 +78,7 @@
 #define NEXT_PLATFORM_PS4                                         5
 #define NEXT_PLATFORM_IOS                                         6
 #define NEXT_PLATFORM_XBOX_ONE                                    7
+#define NEXT_PLATFORM_MAX                                         7
 
 #if defined(_WIN32)
 #define NOMINMAX
@@ -204,20 +208,16 @@ NEXT_EXPORT_FUNC bool next_address_equal( const next_address_t * a, const next_a
 
 struct next_client_stats_t
 {
-    uint64_t platform_id;
+    int platform_id;
     int connection_type;
     bool committed;
     bool multipath;
     bool flagged;
-    float direct_min_rtt;
-    float direct_max_rtt;
-    float direct_mean_rtt;
+    float direct_rtt;
     float direct_jitter;
     float direct_packet_loss;
     bool next;
-    float next_min_rtt;
-    float next_max_rtt;
-    float next_mean_rtt;
+    float next_rtt;
     float next_jitter;
     float next_packet_loss;
     float next_kbps_up;
@@ -265,8 +265,6 @@ NEXT_EXPORT_FUNC const next_client_stats_t * next_client_stats( next_client_t * 
 
 NEXT_EXPORT_FUNC void next_client_set_user_flags( next_client_t * client, uint64_t user_flags );
 
-NEXT_EXPORT_FUNC void next_client_set_wake_up_callback( next_client_t * client, void (*wake_up_callback)( next_client_t * client, void * context ) );
-
 // -----------------------------------------
 
 #define NEXT_SERVER_STATE_DIRECT_ONLY               0
@@ -295,8 +293,6 @@ NEXT_EXPORT_FUNC bool next_server_session_upgraded( next_server_t * server, cons
 NEXT_EXPORT_FUNC void next_server_send_packet( next_server_t * server, const next_address_t * to_address, const uint8_t * packet_data, int packet_bytes );
 
 NEXT_EXPORT_FUNC void next_server_send_packet_direct( next_server_t * server, const next_address_t * to_address, const uint8_t * packet_data, int packet_bytes );
-
-NEXT_EXPORT_FUNC void next_server_set_wake_up_callback( next_server_t * server, void (*wake_up_callback)( next_server_t * server, void * context ) );
 
 // -----------------------------------------
 
