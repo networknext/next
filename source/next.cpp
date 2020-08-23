@@ -10329,15 +10329,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
                 return;
             }
 
-            // todo: verify in place when reading packet
-            /*
-            if ( !packet.Verify( next_backend_public_key ) )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. did not verify" );
-                return;
-            }
-            */
-
             if ( memcmp( packet.server_route_public_key, server->server_route_public_key, sizeof(packet.server_route_public_key) ) != 0 )
             {
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. server public key mismatch" );

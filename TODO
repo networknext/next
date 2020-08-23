@@ -44,6 +44,8 @@ TODO
 
 	Implement session data that is passed up in the session update request packet, and passed back down in the session update response packet.
 
+	This makes the session update completely stateless so we can scale it wide.
+
 	----------------
 
 	When a client falls back to direct, keep doing pings to backend saying it's still there. 
