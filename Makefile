@@ -214,6 +214,10 @@ endif
 help:
 	@echo "$$(grep -hE '^\S+:.*##' $(MAKEFILE_LIST) | sed -e 's/:.*##\s*/:/' -e 's/^\(.\+\):\(.*\)/\\033[36m\1\\033[m:\2/' | column -c2 -t -s :)"
 
+.PHONY: dist
+dist:
+	mkdir -p $(DIST_DIR)
+
 #####################
 ## ESSENTIAL TOOLS ##
 #####################
@@ -223,37 +227,37 @@ test: clean ## runs unit tests
 	@./scripts/test-unit-backend.sh
 
 .PHONY: build-analytics
-build-analytics:
+build-analytics: dist
 	@printf "Building analytics... "
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/analytics ./cmd/analytics/analytics.go
 	@printf "done\n"
 
 .PHONY: build-load-test-server
-build-load-test-server: build-sdk3
+build-load-test-server: dist build-sdk3
 	@printf "Building load test server... "
 	@$(CXX) -Isdk3/include -o $(DIST_DIR)/load_test_server ./cmd/load_test_server/load_test_server.cpp -lnext $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-load-test-client
-build-load-test-client: build-sdk3
+build-load-test-client: dist build-sdk3
 	@printf "Building load test client... "
 	@$(CXX) -Isdk3/include -o $(DIST_DIR)/load_test_client ./cmd/load_test_client/load_test_client.cpp -lnext $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional-backend
-build-functional-backend:
+build-functional-backend: dist
 	@printf "Building functional backend... " ; \
 	$(GO) build -o ./dist/func_backend ./cmd/func_backend/*.go ; \
 	printf "done\n" ; \
 
 .PHONY: build-functional-tests
-build-functional-tests:
+build-functional-tests: dist
 	@printf "Building functional tests... " ; \
 	$(GO) build -o ./dist/func_tests ./cmd/func_tests/*.go ; \
 	printf "done\n" ; \
 
 .PHONY: build-test-func
-build-test-func: clean build-sdk3 build-sdk4 build-relay-ref build-functional-server build-functional-client build-functional-backend build-functional-tests
+build-test-func: clean dist build-sdk3 build-sdk4 build-relay-ref build-functional-server build-functional-client build-functional-backend build-functional-tests
 
 .PHONY: run-test-func
 run-test-func:
@@ -265,7 +269,7 @@ run-test-func:
 test-func: build-test-func run-test-func ## runs functional tests
 
 .PHONY: build-test-func-parallel
-build-test-func-parallel:
+build-test-func-parallel: dist
 	@docker build -t func_tests -f ./cmd/func_tests/Dockerfile .
 
 .PHONY: run-test-func-parallel
@@ -273,7 +277,7 @@ run-test-func-parallel:
 	@./scripts/test-func-parallel.sh
 
 .PHONY: test-func-parallel
-test-func-parallel: build-test-func-parallel run-test-func-parallel ## runs functional tests in parallel
+test-func-parallel: dist build-test-func-parallel run-test-func-parallel ## runs functional tests in parallel
 
 .PHONY: test-load
 test-load: ## runs load tests
