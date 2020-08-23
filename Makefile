@@ -385,7 +385,7 @@ dev-multi-clients: build-client ## runs 20 local clients
 
 $(DIST_DIR)/$(SDKNAME).so:
 	@printf "Building sdk... "
-	@$(CXX) -fPIC -Isdk/include -shared -o $(DIST_DIR)/$(SDKNAME).so ./sdk/source/next.cpp ./sdk/source/next_ios.cpp ./sdk/source/next_linux.cpp ./sdk/source/next_mac.cpp ./sdk/source/next_ps4.cpp ./sdk/source/next_switch.cpp ./sdk/source/next_windows.cpp ./sdk/source/next_xboxone.cpp $(LDFLAGS)
+	@$(CXX) -fPIC -Isdk3/include -shared -o $(DIST_DIR)/$(SDKNAME).so ./sdk3/source/next.cpp ./sdk3/source/next_ios.cpp ./sdk3/source/next_linux.cpp ./sdk3/source/next_mac.cpp ./sdk3/source/next_ps4.cpp ./sdk3/source/next_switch.cpp ./sdk3/source/next_windows.cpp ./sdk3/source/next_xboxone.cpp $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-sdk
@@ -706,31 +706,31 @@ publish-bootstrap-script-prod:
 .PHONY: build-server
 build-server: build-sdk ## builds the server
 	@printf "Building server... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/server ./cmd/server/server.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
+	@$(CXX) -Isdk3/include -o $(DIST_DIR)/server ./cmd/server/server.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-load-test-server
 build-load-test-server: build-sdk ## builds the load test server binary
 	@printf "Building load test server... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/load_test_server ./cmd/load_test_server/load_test_server.cpp -lnext $(LDFLAGS)
+	@$(CXX) -Isdk3/include -o $(DIST_DIR)/load_test_server ./cmd/load_test_server/load_test_server.cpp -lnext $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional-server
 build-functional-server:
 	@printf "Building functional server... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/func_server ./cmd/func_server/func_server.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
+	@$(CXX) -Isdk3/include -o $(DIST_DIR)/func_server ./cmd/func_server/func_server.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-load-test-client
 build-load-test-client: build-sdk ## builds the load test client binary
 	@printf "Building load test client... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/load_test_client ./cmd/load_test_client/load_test_client.cpp -lnext $(LDFLAGS)
+	@$(CXX) -Isdk3/include -o $(DIST_DIR)/load_test_client ./cmd/load_test_client/load_test_client.cpp -lnext $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional-client
 build-functional-client:
 	@printf "Building functional client... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/func_client ./cmd/func_client/func_client.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
+	@$(CXX) -Isdk3/include -o $(DIST_DIR)/func_client ./cmd/func_client/func_client.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional
@@ -739,7 +739,7 @@ build-functional: build-functional-client build-functional-server build-function
 .PHONY: build-client
 build-client: build-sdk ## builds the client
 	@printf "Building client... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/client ./cmd/client/client.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
+	@$(CXX) -Isdk3/include -o $(DIST_DIR)/client ./cmd/client/client.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-next
@@ -754,10 +754,6 @@ build-all: build-load-test build-portal-cruncher build-analytics build-billing b
 .PHONY: rebuild-all
 rebuild-all: clean build-all
 
-.PHONY: update-sdk
-update-sdk: ## updates the sdk submodule
+.PHONY: update-submodules
+update-submodules: ## updates submodules
 	git submodule update --remote --merge
-
-.PHONY: sync
-sync: ## syncs to latest code including submodules
-	git pull && git submodule update --recursive
