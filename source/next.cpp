@@ -36,7 +36,7 @@
 #define NEXT_HOSTNAME                                 "dev.spacecats.net"
 #endif // #if !NEXT_DEVELOPMENT
 #define NEXT_PORT                                                 "40000"
-#define NEXT_MAX_PACKET_BYTES                                        1500
+#define NEXT_MAX_PACKET_BYTES                                       10240
 #define NEXT_ADDRESS_BYTES                                             19
 #define NEXT_ADDRESS_BUFFER_SAFETY                                     32
 #define NEXT_DEFAULT_SOCKET_SEND_BUFFER_SIZE                      1000000
@@ -59,10 +59,10 @@
 #define NEXT_UPGRADE_TOKEN_BYTES                                      128
 #define NEXT_MAX_NEAR_RELAYS                                           32
 #define NEXT_RELAY_PING_TIME                                          1.0
-#define NEXT_ROUTE_TOKEN_BYTES                                         77
-#define NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES                              117
-#define NEXT_CONTINUE_TOKEN_BYTES                                      18
-#define NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES                            58
+#define NEXT_ROUTE_TOKEN_BYTES                                         76
+#define NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES                              116
+#define NEXT_CONTINUE_TOKEN_BYTES                                      17
+#define NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES                            57
 #define NEXT_UPDATE_TYPE_DIRECT                                         0
 #define NEXT_UPDATE_TYPE_ROUTE                                          1
 #define NEXT_UPDATE_TYPE_CONTINUE                                       2
@@ -114,7 +114,7 @@
 
 #define NEXT_MAX_DATACENTER_NAME_LENGTH                               256
 
-#define NEXT_MAX_SESSION_DATA_BYTES                                   500
+#define NEXT_MAX_SESSION_DATA_BYTES                                   511
 
 static const uint8_t next_backend_public_key[] = 
 { 
@@ -4447,7 +4447,6 @@ struct next_route_token_t
     uint64_t expire_timestamp;
     uint64_t session_id;
     uint8_t session_version;
-    uint8_t session_flags;
     int kbps_up;
     int kbps_down;
     next_address_t next_address;
@@ -4469,7 +4468,6 @@ void next_write_route_token( next_route_token_t * token, uint8_t * buffer, int b
     next_write_uint64( &buffer, token->expire_timestamp );
     next_write_uint64( &buffer, token->session_id );
     next_write_uint8( &buffer, token->session_version );
-    next_write_uint8( &buffer, token->session_flags );
     next_write_uint32( &buffer, token->kbps_up );
     next_write_uint32( &buffer, token->kbps_down );
     next_write_address( &buffer, &token->next_address );
@@ -4490,7 +4488,6 @@ void next_read_route_token( next_route_token_t * token, const uint8_t * buffer )
     token->expire_timestamp = next_read_uint64( &buffer );
     token->session_id = next_read_uint64( &buffer );
     token->session_version = next_read_uint8( &buffer );
-    token->session_flags = next_read_uint8( &buffer );
     token->kbps_up = next_read_uint32( &buffer );
     token->kbps_down = next_read_uint32( &buffer );
     next_read_address( &buffer, &token->next_address );
@@ -4587,7 +4584,6 @@ struct next_continue_token_t
     uint64_t expire_timestamp;
     uint64_t session_id;
     uint8_t session_version;
-    uint8_t session_flags;
 };
 
 void next_write_continue_token( next_continue_token_t * token, uint8_t * buffer, int buffer_length )
@@ -4605,7 +4601,6 @@ void next_write_continue_token( next_continue_token_t * token, uint8_t * buffer,
     next_write_uint64( &buffer, token->expire_timestamp );
     next_write_uint64( &buffer, token->session_id );
     next_write_uint8( &buffer, token->session_version );
-    next_write_uint8( &buffer, token->session_flags );
 
     next_assert( buffer - start == NEXT_CONTINUE_TOKEN_BYTES );
 }
@@ -4622,7 +4617,6 @@ void next_read_continue_token( next_continue_token_t * token, const uint8_t * bu
     token->expire_timestamp = next_read_uint64( &buffer );
     token->session_id = next_read_uint64( &buffer );
     token->session_version = next_read_uint8( &buffer );
-    token->session_flags = next_read_uint8( &buffer );
 
     next_assert( buffer - start == NEXT_CONTINUE_TOKEN_BYTES );
 }
@@ -4714,7 +4708,7 @@ int next_read_encrypted_continue_token( uint8_t ** buffer, next_continue_token_t
 #define NEXT_DIRECTION_CLIENT_TO_SERVER             0
 #define NEXT_DIRECTION_SERVER_TO_CLIENT             1
 
-int next_write_header( int direction, uint8_t type, uint64_t sequence, uint64_t session_id, uint8_t session_version, uint8_t session_flags, const uint8_t * private_key, uint8_t * buffer )
+int next_write_header( int direction, uint8_t type, uint64_t sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, uint8_t * buffer )
 {
     next_assert( private_key );
     next_assert( buffer );
@@ -4750,11 +4744,10 @@ int next_write_header( int direction, uint8_t type, uint64_t sequence, uint64_t 
     next_write_uint64( &buffer, sequence );
 
     uint8_t * additional = buffer;
-    const int additional_length = 8 + 2;
+    const int additional_length = 8 + 1;
 
     next_write_uint64( &buffer, session_id );
     next_write_uint8( &buffer, session_version );
-    next_write_uint8( &buffer, session_flags );
 
     uint8_t nonce[12];
     {
@@ -4780,7 +4773,7 @@ int next_write_header( int direction, uint8_t type, uint64_t sequence, uint64_t 
     return NEXT_OK;
 }
 
-int next_peek_header( int direction, uint8_t * type, uint64_t * sequence, uint64_t * session_id, uint8_t * session_version, uint8_t * session_flags, const uint8_t * buffer, int buffer_length )
+int next_peek_header( int direction, uint8_t * type, uint64_t * sequence, uint64_t * session_id, uint8_t * session_version, const uint8_t * buffer, int buffer_length )
 {
     uint8_t packet_type;
     uint64_t packet_sequence;
@@ -4824,12 +4817,11 @@ int next_peek_header( int direction, uint8_t * type, uint64_t * sequence, uint64
     *sequence = packet_sequence;
     *session_id = next_read_uint64( &buffer );
     *session_version = next_read_uint8( &buffer );
-    *session_flags = next_read_uint8( &buffer );
 
     return NEXT_OK;
 }
 
-int next_read_header( int direction, uint8_t * type, uint64_t * sequence, uint64_t * session_id, uint8_t * session_version, uint8_t * session_flags, const uint8_t * private_key, uint8_t * buffer, int buffer_length )
+int next_read_header( int direction, uint8_t * type, uint64_t * sequence, uint64_t * session_id, uint8_t * session_version, const uint8_t * private_key, uint8_t * buffer, int buffer_length )
 {
     next_assert( private_key );
     next_assert( buffer );
@@ -4875,11 +4867,10 @@ int next_read_header( int direction, uint8_t * type, uint64_t * sequence, uint64
 
     const uint8_t * additional = p;
 
-    const int additional_length = 8 + 2;
+    const int additional_length = 8 + 1;
 
     uint64_t packet_session_id = next_read_uint64( &p );
     uint8_t packet_session_version = next_read_uint8( &p );
-    uint8_t packet_session_flags = next_read_uint8( &p );
 
     uint8_t nonce[12];
     {
@@ -4890,8 +4881,8 @@ int next_read_header( int direction, uint8_t * type, uint64_t * sequence, uint64
 
     unsigned long long decrypted_length;
 
-    int result = crypto_aead_chacha20poly1305_ietf_decrypt( buffer + 19, &decrypted_length, NULL,
-                                                            buffer + 19, (unsigned long long) crypto_aead_chacha20poly1305_IETF_ABYTES,
+    int result = crypto_aead_chacha20poly1305_ietf_decrypt( buffer + 18, &decrypted_length, NULL,
+                                                            buffer + 18, (unsigned long long) crypto_aead_chacha20poly1305_IETF_ABYTES,
                                                             additional, (unsigned long long) additional_length,
                                                             nonce, private_key );
 
@@ -4904,7 +4895,6 @@ int next_read_header( int direction, uint8_t * type, uint64_t * sequence, uint64
     *sequence = packet_sequence;
     *session_id = packet_session_id;
     *session_version = packet_session_version;
-    *session_flags = packet_session_flags;
 
     return NEXT_OK;
 }
@@ -5244,7 +5234,7 @@ void next_route_manager_prepare_send_packet( next_route_manager_t * route_manage
 
     *to = route_manager->route_data.current_route_next_address;
 
-    if ( next_write_header( NEXT_DIRECTION_CLIENT_TO_SERVER, NEXT_CLIENT_TO_SERVER_PACKET, sequence, route_manager->route_data.current_route_session_id, route_manager->route_data.current_route_session_version, 0, route_manager->route_data.current_route_private_key, packet_data + NEXT_PACKET_HASH_BYTES ) != NEXT_OK )
+    if ( next_write_header( NEXT_DIRECTION_CLIENT_TO_SERVER, NEXT_CLIENT_TO_SERVER_PACKET, sequence, route_manager->route_data.current_route_session_id, route_manager->route_data.current_route_session_version, route_manager->route_data.current_route_private_key, packet_data + NEXT_PACKET_HASH_BYTES ) != NEXT_OK )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "client failed to write client to server packet header" );
         return;
@@ -5278,14 +5268,13 @@ bool next_route_manager_process_server_to_client_packet( next_route_manager_t * 
     uint64_t packet_sequence = 0;
     uint64_t packet_session_id = 0;
     uint8_t packet_session_version = 0;
-    uint8_t packet_session_flags = 0;
 
     bool from_current_route = true;
 
-    if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, &packet_session_flags, route_manager->route_data.current_route_private_key, packet_data, packet_bytes ) != NEXT_OK )
+    if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, route_manager->route_data.current_route_private_key, packet_data, packet_bytes ) != NEXT_OK )
     {
         from_current_route = false;
-        if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, &packet_session_flags, route_manager->route_data.previous_route_private_key, packet_data, packet_bytes ) != NEXT_OK )
+        if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, route_manager->route_data.previous_route_private_key, packet_data, packet_bytes ) != NEXT_OK )
             return false;
     }
 
@@ -6088,9 +6077,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         uint64_t packet_sequence = 0;
         uint64_t packet_session_id = 0;
         uint8_t packet_session_version = 0;
-        uint8_t packet_session_flags = 0;
 
-        if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, &packet_session_flags, route_private_key, packet_data + NEXT_PACKET_HASH_BYTES, packet_bytes - NEXT_PACKET_HASH_BYTES ) != NEXT_OK )
+        if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, route_private_key, packet_data + NEXT_PACKET_HASH_BYTES, packet_bytes - NEXT_PACKET_HASH_BYTES ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. could not read header" );
             return;
@@ -6233,9 +6221,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         uint64_t packet_sequence = 0;
         uint64_t packet_session_id = 0;
         uint8_t packet_session_version = 0;
-        uint8_t packet_session_flags = 0;
 
-        if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, &packet_session_flags, current_route_private_key, packet_data + NEXT_PACKET_HASH_BYTES, packet_bytes - NEXT_PACKET_HASH_BYTES ) != NEXT_OK )
+        if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, current_route_private_key, packet_data + NEXT_PACKET_HASH_BYTES, packet_bytes - NEXT_PACKET_HASH_BYTES ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored continue response packet from relay. could not read header" );
             return;
@@ -6942,7 +6929,7 @@ void next_client_internal_update_next_pings( next_client_internal_t * client )
 
         uint8_t packet_data[NEXT_MAX_PACKET_BYTES*2];
 
-        if ( next_write_header( NEXT_DIRECTION_CLIENT_TO_SERVER, NEXT_PING_PACKET, sequence, session_id, session_version, 0, private_key, packet_data + NEXT_PACKET_HASH_BYTES ) != NEXT_OK )
+        if ( next_write_header( NEXT_DIRECTION_CLIENT_TO_SERVER, NEXT_PING_PACKET, sequence, session_id, session_version, private_key, packet_data + NEXT_PACKET_HASH_BYTES ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_ERROR, "client failed to write next ping packet" );
             return;
@@ -8605,6 +8592,11 @@ struct next_session_entry_t
     uint8_t mutex_private_key[crypto_box_SECRETKEYBYTES];
 
     NEXT_DECLARE_SENTINEL(25)
+
+    int session_data_bytes;
+    uint8_t session_data[NEXT_MAX_SESSION_DATA_BYTES];
+
+    NEXT_DECLARE_SENTINEL(26)
 };
 
 void next_session_entry_initialize_sentinels( next_session_entry_t * entry )
@@ -8637,6 +8629,7 @@ void next_session_entry_initialize_sentinels( next_session_entry_t * entry )
     NEXT_INITIALIZE_SENTINEL( entry, 23 )
     NEXT_INITIALIZE_SENTINEL( entry, 24 )
     NEXT_INITIALIZE_SENTINEL( entry, 25 )
+    NEXT_INITIALIZE_SENTINEL( entry, 26 )
 }
 
 void next_session_entry_verify_sentinels( next_session_entry_t * entry )
@@ -8669,6 +8662,7 @@ void next_session_entry_verify_sentinels( next_session_entry_t * entry )
     NEXT_VERIFY_SENTINEL( entry, 23 )
     NEXT_VERIFY_SENTINEL( entry, 24 )
     NEXT_VERIFY_SENTINEL( entry, 25 )
+    NEXT_VERIFY_SENTINEL( entry, 26 )
     next_replay_protection_verify_sentinels( &entry->payload_replay_protection );
     next_replay_protection_verify_sentinels( &entry->special_replay_protection );
     next_replay_protection_verify_sentinels( &entry->internal_replay_protection );
@@ -9887,9 +9881,8 @@ next_session_entry_t * next_server_internal_check_client_to_server_packet( next_
     uint64_t packet_sequence = 0;
     uint64_t packet_session_id = 0;
     uint8_t packet_session_version = 0;
-    uint8_t packet_session_flags = 0;
 
-    if ( next_peek_header( NEXT_DIRECTION_CLIENT_TO_SERVER, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, &packet_session_flags, packet_data, packet_bytes ) != NEXT_OK )
+    if ( next_peek_header( NEXT_DIRECTION_CLIENT_TO_SERVER, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, packet_data, packet_bytes ) != NEXT_OK )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored client to server packet. could not peek header" );        
         return NULL;
@@ -9923,7 +9916,7 @@ next_session_entry_t * next_server_internal_check_client_to_server_packet( next_
         return NULL;
     }
 
-    if ( entry->has_pending_route && next_read_header( NEXT_DIRECTION_CLIENT_TO_SERVER, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, &packet_session_flags, entry->pending_route_private_key, packet_data, packet_bytes ) == NEXT_OK )
+    if ( entry->has_pending_route && next_read_header( NEXT_DIRECTION_CLIENT_TO_SERVER, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, entry->pending_route_private_key, packet_data, packet_bytes ) == NEXT_OK )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server promoted pending route for session %" PRIx64, entry->session_id );
 
@@ -9956,9 +9949,9 @@ next_session_entry_t * next_server_internal_check_client_to_server_packet( next_
     }
     else
     {
-        const bool current_route_ok = next_read_header( NEXT_DIRECTION_CLIENT_TO_SERVER, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, &packet_session_flags, entry->current_route_private_key, packet_data, packet_bytes ) == NEXT_OK;
+        const bool current_route_ok = next_read_header( NEXT_DIRECTION_CLIENT_TO_SERVER, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, entry->current_route_private_key, packet_data, packet_bytes ) == NEXT_OK;
 
-        const bool previous_route_ok = next_read_header( NEXT_DIRECTION_CLIENT_TO_SERVER, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, &packet_session_flags, entry->previous_route_private_key, packet_data, packet_bytes ) == NEXT_OK;
+        const bool previous_route_ok = next_read_header( NEXT_DIRECTION_CLIENT_TO_SERVER, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, entry->previous_route_private_key, packet_data, packet_bytes ) == NEXT_OK;
 
         if ( !current_route_ok && !previous_route_ok )
         {
@@ -10430,7 +10423,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             }
 
             // IMPORTANT: clear user flags after we get an response/ack for the last session update.
-            // This lets us accumulate user flags between each session update packet via session_flags |= packet.session_flags
+            // This lets us accumulate user flags between each session update packet via user_flags |= packet.user_flags
             // so we pick up on flags that were only set for a frame inside a 10 second long slice...
             entry->stats_user_flags = 0;
 
@@ -10675,7 +10668,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         session_send_sequence |= uint64_t(1) << 63;
         session_send_sequence |= uint64_t(1) << 62;
 
-        if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_ROUTE_RESPONSE_PACKET, session_send_sequence, entry->session_id, entry->pending_route_session_version, 0, entry->pending_route_private_key, response + NEXT_PACKET_HASH_BYTES ) != NEXT_OK )
+        if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_ROUTE_RESPONSE_PACKET, session_send_sequence, entry->session_id, entry->pending_route_session_version, entry->pending_route_private_key, response + NEXT_PACKET_HASH_BYTES ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server failed to write next route response packet" );
             return;
@@ -10745,7 +10738,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         session_send_sequence |= uint64_t(1) << 63;
         session_send_sequence |= uint64_t(1) << 62;
 
-        if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_CONTINUE_RESPONSE_PACKET, session_send_sequence, entry->session_id, entry->current_route_session_version, 0, entry->current_route_private_key, response + NEXT_PACKET_HASH_BYTES ) != NEXT_OK )
+        if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_CONTINUE_RESPONSE_PACKET, session_send_sequence, entry->session_id, entry->current_route_session_version, entry->current_route_private_key, response + NEXT_PACKET_HASH_BYTES ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write next continue response packet" );
             return;
@@ -10815,7 +10808,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         send_sequence |= uint64_t(1) << 63;
         send_sequence |= uint64_t(1) << 62;
 
-        if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_PONG_PACKET, send_sequence, entry->session_id, entry->current_route_session_version, 0, entry->current_route_private_key, packet_data + NEXT_PACKET_HASH_BYTES ) != NEXT_OK )
+        if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_PONG_PACKET, send_sequence, entry->session_id, entry->current_route_session_version, entry->current_route_private_key, packet_data + NEXT_PACKET_HASH_BYTES ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_WARN, "server failed to write pong packet header" );
             return;
@@ -11954,7 +11947,7 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
 
                 uint8_t next_packet_data[NEXT_MAX_PACKET_BYTES*2];
                 
-                if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_SERVER_TO_CLIENT_PACKET, send_sequence, session_id, session_version, 0, session_private_key, next_packet_data + NEXT_PACKET_HASH_BYTES ) != NEXT_OK )
+                if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_SERVER_TO_CLIENT_PACKET, send_sequence, session_id, session_version, session_private_key, next_packet_data + NEXT_PACKET_HASH_BYTES ) != NEXT_OK )
                 {
                     next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write server to client packet header" );
                     return;
@@ -14102,11 +14095,17 @@ static void test_backend_packets()
         next_address_parse( &in.client_address, "127.0.0.1:40000" );
         next_address_parse( &in.server_address, "127.0.0.1:12345" );
         next_random_bytes( in.client_route_public_key, crypto_box_PUBLICKEYBYTES );
+        next_random_bytes( in.server_route_public_key, crypto_box_PUBLICKEYBYTES );
         in.kbps_up = 100.0f;
         in.kbps_down = 200.0f;
         in.packets_lost_client_to_server = 100;
         in.packets_lost_server_to_client = 200;
         in.user_flags = 123;
+        in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
+        for ( int i = 0; i < NEXT_MAX_SESSION_DATA_BYTES; ++i )
+        {
+            in.session_data[i] = uint8_t(i);
+        }
 
         int packet_bytes = 0;
         check( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, private_key ) == NEXT_OK );
@@ -14141,11 +14140,17 @@ static void test_backend_packets()
         check( next_address_equal( &in.client_address, &out.client_address ) );
         check( next_address_equal( &in.server_address, &out.server_address ) );
         check( memcmp( in.client_route_public_key, out.client_route_public_key, crypto_box_PUBLICKEYBYTES ) == 0 );
+        check( memcmp( in.server_route_public_key, out.server_route_public_key, crypto_box_PUBLICKEYBYTES ) == 0 );
         check( in.kbps_up == out.kbps_up );
         check( in.kbps_down == out.kbps_down );
         check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );
         check( in.packets_lost_server_to_client == out.packets_lost_server_to_client );
         check( in.user_flags == out.user_flags );
+        check( in.session_data_bytes == out.session_data_bytes );
+        for ( int i = 0; i < NEXT_MAX_SESSION_DATA_BYTES; ++i )
+        {
+            check( in.session_data[i] == out.session_data[i] );
+        }
     }
 
     // session response packet (direct)
@@ -14169,6 +14174,11 @@ static void test_backend_packets()
         }
         in.response_type = NEXT_UPDATE_TYPE_DIRECT;
         next_random_bytes( in.server_route_public_key, sizeof(in.server_route_public_key) );
+        in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
+        for ( int i = 0; i < NEXT_MAX_SESSION_DATA_BYTES; ++i )
+        {
+            in.session_data[i] = uint8_t(i);
+        }
 
         int packet_bytes = 0;
         check( next_write_backend_packet( NEXT_BACKEND_SESSION_RESPONSE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, private_key ) == NEXT_OK );
@@ -14211,6 +14221,11 @@ static void test_backend_packets()
         in.num_tokens = NEXT_MAX_TOKENS;
         next_random_bytes( in.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES );
         next_random_bytes( in.server_route_public_key, sizeof(in.server_route_public_key) );
+        in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
+        for ( int i = 0; i < NEXT_MAX_SESSION_DATA_BYTES; ++i )
+        {
+            in.session_data[i] = uint8_t(i);
+        }
 
         int packet_bytes = 0;
         check( next_write_backend_packet( NEXT_BACKEND_SESSION_RESPONSE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, private_key ) == NEXT_OK );
@@ -14257,6 +14272,11 @@ static void test_backend_packets()
         in.num_tokens = NEXT_MAX_TOKENS;
         next_random_bytes( in.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES );
         next_random_bytes( in.server_route_public_key, sizeof(in.server_route_public_key) );
+        in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
+        for ( int i = 0; i < NEXT_MAX_SESSION_DATA_BYTES; ++i )
+        {
+            in.session_data[i] = uint8_t(i);
+        }
 
         int packet_bytes = 0;
         check( next_write_backend_packet( NEXT_BACKEND_SESSION_RESPONSE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, private_key ) == NEXT_OK );
@@ -14368,7 +14388,6 @@ static void test_route_token()
     input_token.expire_timestamp = 1234241431241LL;
     input_token.session_id = 1234241431241LL;
     input_token.session_version = 5;
-    input_token.session_flags = 1;
     input_token.next_address.type = NEXT_ADDRESS_IPV4;
     input_token.next_address.data.ipv4[0] = 127;
     input_token.next_address.data.ipv4[1] = 0;
@@ -14400,7 +14419,6 @@ static void test_route_token()
     check( input_token.expire_timestamp == output_token.expire_timestamp );
     check( input_token.session_id == output_token.session_id );
     check( input_token.session_version == output_token.session_version );
-    check( input_token.session_flags == output_token.session_flags );
     check( input_token.kbps_up == output_token.kbps_up );
     check( input_token.kbps_down == output_token.kbps_down );
     check( memcmp( input_token.private_key, output_token.private_key, crypto_box_SECRETKEYBYTES ) == 0 );
@@ -14417,7 +14435,6 @@ static void test_route_token()
     check( input_token.expire_timestamp == output_token.expire_timestamp );
     check( input_token.session_id == output_token.session_id );
     check( input_token.session_version == output_token.session_version );
-    check( input_token.session_flags == output_token.session_flags );
     check( input_token.kbps_up == output_token.kbps_up );
     check( input_token.kbps_down == output_token.kbps_down );
     check( memcmp( input_token.private_key, output_token.private_key, crypto_box_SECRETKEYBYTES ) == 0 );
@@ -14434,7 +14451,6 @@ static void test_continue_token()
     input_token.expire_timestamp = 1234241431241LL;
     input_token.session_id = 1234241431241LL;
     input_token.session_version = 5;
-    input_token.session_flags = 1;
 
     next_write_continue_token( &input_token, buffer, NEXT_CONTINUE_TOKEN_BYTES );
 
@@ -14460,7 +14476,6 @@ static void test_continue_token()
     check( input_token.expire_timestamp == output_token.expire_timestamp );
     check( input_token.session_id == output_token.session_id );
     check( input_token.session_version == output_token.session_version );
-    check( input_token.session_flags == output_token.session_flags );
 
     uint8_t * p = buffer;
 
@@ -14474,7 +14489,6 @@ static void test_continue_token()
 
     check( input_token.expire_timestamp == output_token.expire_timestamp );
     check( input_token.session_id == output_token.session_id );
-    check( input_token.session_flags == output_token.session_flags );
 }
 
 static void test_header()
@@ -14490,37 +14504,32 @@ static void test_header()
         uint64_t sequence = 123123130131LL;
         uint64_t session_id = 0x12313131;
         uint8_t session_version = 0x12;
-        uint8_t session_flags = 0x1;
 
-        check( next_write_header( NEXT_DIRECTION_CLIENT_TO_SERVER, NEXT_CLIENT_TO_SERVER_PACKET, sequence, session_id, session_version, session_flags, private_key, buffer ) == NEXT_OK );
+        check( next_write_header( NEXT_DIRECTION_CLIENT_TO_SERVER, NEXT_CLIENT_TO_SERVER_PACKET, sequence, session_id, session_version, private_key, buffer ) == NEXT_OK );
 
         uint8_t read_type = 0;
         uint64_t read_sequence = 0;
         uint64_t read_session_id = 0;
         uint8_t read_session_version = 0;
-        uint8_t read_session_flags = 0;
 
-        check( next_peek_header( NEXT_DIRECTION_CLIENT_TO_SERVER, &read_type, &read_sequence, &read_session_id, &read_session_version, &read_session_flags, buffer, sizeof( buffer ) ) == NEXT_OK );
+        check( next_peek_header( NEXT_DIRECTION_CLIENT_TO_SERVER, &read_type, &read_sequence, &read_session_id, &read_session_version, buffer, sizeof( buffer ) ) == NEXT_OK );
 
         check( read_type == NEXT_CLIENT_TO_SERVER_PACKET );
         check( read_sequence == sequence );
         check( read_session_id == session_id );
         check( read_session_version == session_version );
-        check( read_session_flags == session_flags );
 
         read_type = 0;
         read_sequence = 0;
         read_session_id = 0;
         read_session_version = 0;
-        read_session_flags = 0;
 
-        check( next_read_header( NEXT_DIRECTION_CLIENT_TO_SERVER, &read_type, &read_sequence, &read_session_id, &read_session_version, &read_session_flags, private_key, buffer, sizeof( buffer ) ) == NEXT_OK );
+        check( next_read_header( NEXT_DIRECTION_CLIENT_TO_SERVER, &read_type, &read_sequence, &read_session_id, &read_session_version, private_key, buffer, sizeof( buffer ) ) == NEXT_OK );
 
         check( read_type == NEXT_CLIENT_TO_SERVER_PACKET );
         check( read_sequence == sequence );
         check( read_session_id == session_id );
         check( read_session_version == session_version );
-        check( read_session_flags == session_flags );
     }
 
     // server -> client
@@ -14528,37 +14537,32 @@ static void test_header()
         uint64_t sequence = 123123130131LL | ( 1ULL << 63 );
         uint64_t session_id = 0x12313131;
         uint8_t session_version = 0x12;
-        uint8_t session_flags = 0x1;
 
-        check( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_SERVER_TO_CLIENT_PACKET, sequence, session_id, session_version, session_flags, private_key, buffer ) == NEXT_OK );
+        check( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_SERVER_TO_CLIENT_PACKET, sequence, session_id, session_version, private_key, buffer ) == NEXT_OK );
 
         uint8_t read_type = 0;
         uint64_t read_sequence = 0;
         uint64_t read_session_id = 0;
         uint8_t read_session_version = 0;
-        uint8_t read_session_flags = 0;
 
-        check( next_peek_header( NEXT_DIRECTION_SERVER_TO_CLIENT, &read_type, &read_sequence, &read_session_id, &read_session_version, &read_session_flags, buffer, sizeof( buffer ) ) == NEXT_OK );
+        check( next_peek_header( NEXT_DIRECTION_SERVER_TO_CLIENT, &read_type, &read_sequence, &read_session_id, &read_session_version, buffer, sizeof( buffer ) ) == NEXT_OK );
 
         check( read_type == NEXT_SERVER_TO_CLIENT_PACKET );
         check( read_sequence == sequence );
         check( read_session_id == session_id );
         check( read_session_version == session_version );
-        check( read_session_flags == session_flags );
 
         read_type = 0;
         read_sequence = 0;
         read_session_id = 0;
         read_session_version = 0;
-        read_session_flags = 0;
 
-        check( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, &read_type, &read_sequence, &read_session_id, &read_session_version, &read_session_flags, private_key, buffer, sizeof( buffer ) ) == NEXT_OK );
+        check( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, &read_type, &read_sequence, &read_session_id, &read_session_version, private_key, buffer, sizeof( buffer ) ) == NEXT_OK );
 
         check( read_type == NEXT_SERVER_TO_CLIENT_PACKET );
         check( read_sequence == sequence );
         check( read_session_id == session_id );
         check( read_session_version == session_version );
-        check( read_session_flags == session_flags );
     }
 }
 

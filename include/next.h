@@ -50,7 +50,7 @@
 #define NEXT_IPV4_HEADER_BYTES                                   20
 #define NEXT_UDP_HEADER_BYTES                                     8
 #define NEXT_PACKET_HASH_BYTES                                    8
-#define NEXT_HEADER_BYTES                                        35
+#define NEXT_HEADER_BYTES                                        34
 
 #define NEXT_LOG_LEVEL_NONE                                       0
 #define NEXT_LOG_LEVEL_ERROR                                      1
