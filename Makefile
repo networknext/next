@@ -314,9 +314,13 @@ dev-analytics: build-analytics ## runs a local analytics service
 dev-portal-cruncher: build-portal-cruncher ## runs a local portal cruncher
 	@HTTP_PORT=42000 CRUNCHER_PORT=5555 ./dist/portal_cruncher
 
-.PHONY: dev-reference-backend
-dev-reference-backend: ## runs a local reference backend
-	$(GO) run reference/backend/*.go
+.PHONY: dev-reference-backend3
+dev-reference-backend3: ## runs a local reference backend (sdk3)
+	$(GO) run reference/backend/backend3.go
+
+.PHONY: dev-reference-backend4
+dev-reference-backend4: ## runs a local reference backend (sdk4)
+	$(GO) run reference/backend/backend4.go
 
 .PHONY: dev-reference-relay
 dev-reference-relay: build-relay-ref ## runs a local reference relay
