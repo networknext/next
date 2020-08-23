@@ -38,13 +38,13 @@ DONE
 
 	Session update packet now contains routing public key. This makes the session update self contained. It does not require the server map.
 
-TODO
-
-	----------------
-
 	Implement session data that is passed up in the session update request packet, and passed back down in the session update response packet.
 
-	This makes the session update completely stateless so we can scale it wide.
+TODO
+
+	Cache the session data in the session on the server, and pass it in to the session update.
+
+	Copy it back in to the session data for the session on the server, when a session response packet is received (with the expected slice # and retry # that is...)
 
 	----------------
 
