@@ -1,6 +1,3 @@
-[submodule "sdk3"]
-	path = sdk3
-	url = git@github.com:networknext/console.git
 [submodule "cmd/relay"]
 	path = cmd/relay
 	url = git@github.com:networknext/relay
