@@ -34,6 +34,10 @@ DONE
 
 	Server should try to resolve hostname and initialize every 5 - 10 minutes (randomized) if it cannot resolve or initialize. Otherwise, we run the risk of losing game servers forever until they are restarted.
 
+	Removed server routing public key from server update packet.
+
+	Session update packet now contains routing public key. This makes the session update self contained. It does not require the server map.
+
 TODO
 
 	----------------
@@ -50,7 +54,7 @@ TODO
 
 	----------------
 
-	Session update should not be a cached packet, but instead should have the retry count includde in the packet itself.
+	Session update should not be a cached packet, but instead should have the retry count included in the packet itself.
 
 	This is useful for the backend so we can count how many retries are occuring.
 

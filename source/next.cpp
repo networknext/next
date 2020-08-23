@@ -9030,7 +9030,6 @@ struct NextBackendServerUpdatePacket
     uint64_t datacenter_id;
     uint32_t num_sessions;
     next_address_t server_address;
-    uint8_t server_route_public_key[crypto_box_PUBLICKEYBYTES];
 
     NextBackendServerUpdatePacket()
     {
@@ -9042,7 +9041,6 @@ struct NextBackendServerUpdatePacket
         datacenter_id = 0;
         num_sessions = 0;
         memset( &server_address, 0, sizeof(next_address_t) );
-        memset( server_route_public_key, 0, sizeof(server_route_public_key) );
     }
 
     template <typename Stream> bool Serialize( Stream & stream )
@@ -9055,7 +9053,6 @@ struct NextBackendServerUpdatePacket
         serialize_uint64( stream, datacenter_id );
         serialize_uint32( stream, num_sessions );
         serialize_address( stream, server_address );
-        serialize_bytes( stream, server_route_public_key, crypto_box_PUBLICKEYBYTES );
         return true;
     }
 };
@@ -9091,6 +9088,7 @@ struct NextBackendSessionUpdatePacket
     float near_relay_jitter[NEXT_MAX_NEAR_RELAYS];
     float near_relay_packet_loss[NEXT_MAX_NEAR_RELAYS];
     next_address_t client_address;
+    uint8_t server_route_public_key[crypto_box_PUBLICKEYBYTES];
     uint8_t client_route_public_key[crypto_box_PUBLICKEYBYTES];
     uint32_t kbps_up;
     uint32_t kbps_down;
@@ -9150,6 +9148,7 @@ struct NextBackendSessionUpdatePacket
         }
         serialize_address( stream, client_address );
         serialize_bytes( stream, client_route_public_key, crypto_box_PUBLICKEYBYTES );
+        serialize_bytes( stream, server_route_public_key, crypto_box_PUBLICKEYBYTES );
         serialize_uint32( stream, kbps_up );
         serialize_uint32( stream, kbps_down );
         serialize_uint64( stream, packets_sent_client_to_server );
@@ -9162,53 +9161,6 @@ struct NextBackendSessionUpdatePacket
             serialize_uint64( stream, user_flags );
         }
         return true;
-    }
-
-    int GetSignData( uint8_t * buffer, int buffer_size )
-    {
-        uint8_t * p = buffer;
-        next_write_uint8( &p, version_major );
-        next_write_uint8( &p, version_minor );
-        next_write_uint8( &p, version_patch );
-        next_write_uint64( &p, sequence );
-        next_write_uint64( &p, customer_id );
-        next_write_uint64( &p, session_id );
-        next_write_uint64( &p, user_hash );
-        next_write_uint64( &p, platform_id );
-        next_write_uint64( &p, tag );
-        next_write_uint32( &p, flags );
-        next_write_uint8( &p, (uint8_t) flagged );
-        next_write_uint8( &p, (uint8_t) fallback_to_direct );
-        next_write_uint8( &p, connection_type );
-        next_write_uint8( &p, (uint8_t) next );
-        next_write_uint8( &p, (uint8_t) committed );
-        next_write_float32( &p, direct_rtt );
-        next_write_float32( &p, direct_jitter );
-        next_write_float32( &p, direct_packet_loss );
-        next_write_float32( &p, next_rtt );
-        next_write_float32( &p, next_jitter );
-        next_write_float32( &p, next_packet_loss );
-        next_write_uint32( &p, num_near_relays );
-        for ( int i = 0; i < num_near_relays; ++i )
-        {
-            next_write_uint64( &p, near_relay_ids[i] );
-            next_write_float32( &p, near_relay_rtt[i] );
-            next_write_float32( &p, near_relay_jitter[i] );
-            next_write_float32( &p, near_relay_packet_loss[i] );
-        }
-        next_write_address( &p, &client_address );
-        next_write_address( &p, &server_address );
-        next_write_uint32( &p, kbps_up );
-        next_write_uint32( &p, kbps_down );
-        next_write_uint64( &p, packets_sent_client_to_server );
-        next_write_uint64( &p, packets_sent_server_to_client );
-        next_write_uint64( &p, packets_lost_client_to_server );
-        next_write_uint64( &p, packets_lost_server_to_client );
-        next_write_uint64( &p, user_flags );
-        next_write_bytes( &p, client_route_public_key, crypto_box_PUBLICKEYBYTES );
-        next_assert( p - buffer <= buffer_size );
-        (void) buffer_size;
-        return p - buffer;
     }
 };
 
@@ -11393,7 +11345,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         packet.datacenter_id = server->datacenter_id;
         packet.num_sessions = next_session_manager_num_entries( server->session_manager );
         packet.server_address = server->server_address;
-        memcpy( packet.server_route_public_key, server->server_route_public_key, crypto_box_PUBLICKEYBYTES );
 
         int packet_bytes = 0;
         uint8_t packet_data[NEXT_MAX_PACKET_BYTES*2];
@@ -11468,6 +11419,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.client_address = session->address;
             packet.server_address = server->server_address;
             memcpy( packet.client_route_public_key, session->client_route_public_key, crypto_box_PUBLICKEYBYTES );
+            memcpy( packet.server_route_public_key, server->server_route_public_key, crypto_box_PUBLICKEYBYTES );
 
             if ( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_PACKET, &packet, session->update_packet_data, &session->update_packet_bytes, next_signed_packets, server->customer_private_key ) != NEXT_OK )
             {
@@ -14099,7 +14051,6 @@ static void test_backend_packets()
         in.datacenter_id = next_datacenter_id( "local" );
         in.num_sessions = 20;
         next_address_parse( &in.server_address, "127.0.0.1:12345" );
-        next_random_bytes( in.server_route_public_key, crypto_box_PUBLICKEYBYTES );
 
         int packet_bytes = 0;
         check( next_write_backend_packet( NEXT_BACKEND_SERVER_UPDATE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, private_key ) == NEXT_OK );
@@ -14113,7 +14064,6 @@ static void test_backend_packets()
         check( in.datacenter_id == out.datacenter_id );
         check( in.num_sessions == out.num_sessions );
         check( next_address_equal( &in.server_address, &out.server_address ) );
-        check( memcmp( in.server_route_public_key, out.server_route_public_key, crypto_box_PUBLICKEYBYTES ) == 0 );
     }
 
     // session update
