@@ -60,6 +60,8 @@
 
 #define RELAY_PACKET_HASH_BYTES                                    8
 
+#define RELAY_MAX_UPDATE_ATTEMPTS                                 10
+
 static const uint8_t relay_packet_hash_key[] =
 {
     0xe3, 0x18, 0x61, 0x72, 0xee, 0x70, 0x62, 0x37, 
@@ -4785,14 +4787,13 @@ void interrupt_handler( int signal )
     (void) signal; quit = 1;
 }
 
-static volatile bool gShouldCleanShutdown = false;
+static volatile bool relay_clean_shutdown = false;
 
 void clean_shutdown_handler( int signal )
 {
-  (void) signal;
-
-  gShouldCleanShutdown = true;
-  quit = 1;
+    (void) signal;
+    relay_clean_shutdown = true;
+    quit = 1;
 }
 
 uint64_t relay_timestamp( relay_t * relay )
@@ -5597,22 +5598,22 @@ int main( int argc, const char ** argv )
 
     uint8_t * update_response_memory = (uint8_t*) malloc( RESPONSE_MAX_BYTES );
 
-    // todo: gross
-    const uint8_t MaxUpdateAttempts = 11;
-    bool successfulUpdates = true;
-    uint8_t updateAttempts = 0;
+    bool aborted = false;
+    
+    int update_attempts = 0;
+
     while ( !quit )
     {
         if ( relay_update( curl, backend_hostname, relay_token, relay_address_string, update_response_memory, &relay, false ) == RELAY_OK )
         {
-            updateAttempts = 0;
+            update_attempts = 0;
         }
         else
         {
-            if (++updateAttempts == MaxUpdateAttempts)
+            if ( update_attempts++ >= RELAY_MAX_UPDATE_ATTEMPTS )
             {
                 printf( "could not update relay, max attempts reached, aborting program" );
-                successfulUpdates = false;
+                aborted = true;
                 quit = 1;
                 break;
             }
@@ -5623,8 +5624,7 @@ int main( int argc, const char ** argv )
         relay_platform_sleep( 1.0 );
     }
 
-    // todo: gross
-    if ( gShouldCleanShutdown )
+    if ( relay_clean_shutdown )
     {
         uint seconds = 0;
         while ( seconds++ < 60 && relay_update( curl, backend_hostname, relay_token, relay_address_string, update_response_memory, &relay, false ) != RELAY_OK )
@@ -5671,5 +5671,5 @@ int main( int argc, const char ** argv )
 
     relay_term();
 
-    return successfulUpdates ? 0 : 1;
+    return aborted ? 1 : 0;
 }
