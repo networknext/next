@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
 	"time"
 
@@ -118,7 +119,6 @@ type Relay struct {
 	SSHPort        int64  `json:"ssh_port"`
 
 	TrafficStats RelayTrafficStats `json:"traffic_stats"`
-	ClientStats  Stats             `json:"client_stats"`
 
 	MaxSessions uint32 `json:"max_sessions"`
 
@@ -140,6 +140,9 @@ type Relay struct {
 	// EndDate is the date the contract term ends
 	EndDate time.Time   `json:"end_date"`
 	Type    MachineType `json:"machine_type"`
+
+	// Useful in data science analysis
+	SignedID int64 `json:"signed_id"`
 }
 
 func (r *Relay) EncodedPublicKey() string {
@@ -161,6 +164,32 @@ type Stats struct {
 
 func (s Stats) String() string {
 	return fmt.Sprintf("RTT(%f) J(%f) PL(%f)", s.RTT, s.Jitter, s.PacketLoss)
+}
+
+func (s Stats) RedisString() string {
+	return fmt.Sprintf("%.2f|%.2f|%.2f", s.RTT, s.Jitter, s.PacketLoss)
+}
+
+func (s *Stats) ParseRedisString(values []string) error {
+	var index int
+	var err error
+
+	if s.RTT, err = strconv.ParseFloat(values[index], 64); err != nil {
+		return fmt.Errorf("[Stats] failed to read RTT from redis data: %v", err)
+	}
+	index++
+
+	if s.Jitter, err = strconv.ParseFloat(values[index], 64); err != nil {
+		return fmt.Errorf("[Stats] failed to read jitter from redis data: %v", err)
+	}
+	index++
+
+	if s.PacketLoss, err = strconv.ParseFloat(values[index], 64); err != nil {
+		return fmt.Errorf("[Stats] failed to read packet loss from redis data: %v", err)
+	}
+	index++
+
+	return nil
 }
 
 type RelayPingData struct {

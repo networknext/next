@@ -157,22 +157,15 @@ func TimeoutThread() {
 	}
 }
 
-func (backend *Backend) GetNearRelays() []routing.Relay {
-	var nearRelays = make([]routing.Relay, 0)
+func (backend *Backend) GetNearRelays() []*routing.RelayData {
+	backend.mutex.Lock()
 	allRelayData := backend.relayMap.GetAllRelayData()
-	for _, relayData := range allRelayData {
-		nearRelays = append(nearRelays, routing.Relay{
-			ID:         relayData.ID,
-			Addr:       relayData.Addr,
-			Datacenter: relayData.Datacenter,
-			PublicKey:  relayData.PublicKey,
-		})
+	backend.mutex.Unlock()
+	sort.SliceStable(allRelayData, func(i, j int) bool { return allRelayData[i].ID < allRelayData[j].ID })
+	if len(allRelayData) > int(transport.MaxNearRelays) {
+		allRelayData = allRelayData[:transport.MaxNearRelays]
 	}
-	sort.SliceStable(nearRelays[:], func(i, j int) bool { return nearRelays[i].ID < nearRelays[j].ID })
-	if len(nearRelays) > int(transport.MaxNearRelays) {
-		nearRelays = nearRelays[:transport.MaxNearRelays]
-	}
-	return nearRelays
+	return allRelayData
 }
 
 func main() {
@@ -421,9 +414,11 @@ func main() {
 			// Extract ids and addresses into own list to make response
 			var nearRelayIDs = make([]uint64, 0)
 			var nearRelayAddresses = make([]net.UDPAddr, 0)
+			var nearRelayPublicKeys = make([][]byte, 0)
 			for _, relay := range nearRelays {
 				nearRelayIDs = append(nearRelayIDs, relay.ID)
 				nearRelayAddresses = append(nearRelayAddresses, relay.Addr)
+				nearRelayPublicKeys = append(nearRelayPublicKeys, relay.PublicKey)
 			}
 
 			if !takeNetworkNext {
@@ -452,13 +447,24 @@ func main() {
 					numRelays = routing.MaxRelays
 				}
 				nextRoute := routing.Route{
-					Relays: nearRelays[:numRelays],
+					RelayIDs:        nearRelayIDs,
+					RelayAddrs:      nearRelayAddresses,
+					RelayPublicKeys: nearRelayPublicKeys,
 				}
 
 				if newSession {
 					sessionEntry.TimestampExpire = time.Now().Add(billing.BillingSliceSeconds * 2 * time.Second)
 				} else {
 					sessionEntry.TimestampExpire = sessionEntry.TimestampExpire.Add(billing.BillingSliceSeconds * time.Second)
+				}
+
+				relayTokens := make([]routing.RelayToken, len(nextRoute.RelayIDs))
+				for i := range relayTokens {
+					relayTokens[i] = routing.RelayToken{
+						ID:        nextRoute.RelayIDs[i],
+						Addr:      nextRoute.RelayAddrs[i],
+						PublicKey: nextRoute.RelayPublicKeys[i],
+					}
 				}
 
 				var token routing.Token
@@ -481,7 +487,7 @@ func main() {
 							PublicKey: serverEntry.publicKey,
 						},
 
-						Relays: nextRoute.Relays,
+						Relays: relayTokens,
 					}
 				} else {
 					sessionEntry.Version++
@@ -504,7 +510,7 @@ func main() {
 							PublicKey: serverEntry.publicKey,
 						},
 
-						Relays: nextRoute.Relays,
+						Relays: relayTokens,
 
 						KbpsUp:   256 * 100,
 						KbpsDown: 256 * 100,
@@ -720,14 +726,18 @@ func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
 		LastUpdateTime: time.Now(),
 	}
 
+	backend.mutex.Lock()
 	relayData := backend.relayMap.GetRelayData(relay.Addr.String())
+	backend.mutex.Unlock()
 	if relayData != nil {
 		writer.WriteHeader(http.StatusConflict)
 		return
 	}
 
+	backend.mutex.Lock()
 	backend.relayMap.UpdateRelayData(relay.Addr.String(), relay)
 	backend.dirty = true
+	backend.mutex.Unlock()
 
 	writer.Header().Set("Content-Type", "application/octet-stream")
 
@@ -817,20 +827,21 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
 	relaysToPing := make([]routing.RelayPingData, 0)
 
+	backend.mutex.Lock()
 	allRelayData := backend.relayMap.GetAllRelayData()
 	for _, v := range allRelayData {
 		if v.Addr.String() != relay.Addr.String() {
 			relaysToPing = append(relaysToPing, routing.RelayPingData{ID: uint64(v.ID), Address: v.Addr.String()})
 		}
 	}
-
 	relayData := backend.relayMap.GetRelayData(relay.Addr.String())
 	if relayData == nil {
+		backend.mutex.Unlock()
 		writer.WriteHeader(http.StatusNotFound)
 		return
 	}
-
 	backend.relayMap.UpdateRelayData(relay.Addr.String(), relay)
+	backend.mutex.Unlock()
 
 	responseData := make([]byte, 10*1024)
 

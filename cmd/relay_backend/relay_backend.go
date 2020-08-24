@@ -219,6 +219,7 @@ func main() {
 		datacenter := routing.Datacenter{
 			ID:       crypto.HashID("local"),
 			Name:     "local",
+			Enabled:  true,
 			Location: routing.LocationNullIsland,
 		}
 
@@ -402,13 +403,21 @@ func main() {
 	statsdb := routing.NewStatsDatabase()
 	costMatrix := &routing.CostMatrix{}
 	routeMatrix := &routing.RouteMatrix{}
-	var routeMatrixMutex sync.RWMutex
 
+	var routeMatrixMutex sync.RWMutex
 	getRouteMatrixFunc := func() *routing.RouteMatrix {
 		routeMatrixMutex.RLock()
 		rm := routeMatrix
 		routeMatrixMutex.RUnlock()
 		return rm
+	}
+
+	var costMatrixMutex sync.RWMutex
+	getCostMatrixFunc := func() *routing.CostMatrix {
+		costMatrixMutex.RLock()
+		cm := costMatrix
+		costMatrixMutex.RUnlock()
+		return cm
 	}
 
 	// Get the max jitter and max packet loss env vars
@@ -643,9 +652,19 @@ func main() {
 			}
 
 			if err := statsdb.GetCostMatrix(&costMatrixNew, allNonValveRelayData, float32(maxJitter), float32(maxPacketLoss)); err == nil {
-				// todo: we need to handle this better in future, but just hold the previous cost matrix for the moment on error
+				// Write the cost matrix to a buffer and serve that instead
+				// of writing a new buffer every time we want to serve the cost matrix
+				err = costMatrixNew.WriteResponseData()
+				if err != nil {
+					level.Error(logger).Log("matrix", "cost", "msg", "failed to write cost matrix response data", "err", err)
+					continue // Don't store the new route matrix if we fail to write cost matrix data
+				}
+
+				costMatrixMutex.Lock()
 				costMatrix = &costMatrixNew
+				costMatrixMutex.Unlock()
 			} else {
+				// todo: we need to handle this better in future, but just hold the previous cost matrix for the moment on error
 				costMatrixMetrics.ErrorMetrics.GenFailure.Add(1)
 			}
 
@@ -679,14 +698,6 @@ func main() {
 
 			if optimizeDurationSince.Seconds() > 1.0 {
 				optimizeMetrics.LongUpdateCount.Add(1)
-			}
-
-			// Write the cost matrix to a buffer and serve that instead
-			// of writing a new buffer every time we want to serve the cost matrix
-			err = costMatrix.WriteResponseData()
-			if err != nil {
-				level.Error(logger).Log("matrix", "cost", "msg", "failed to write cost matrix response data", "err", err)
-				continue // Don't store the new route matrix if we fail to write cost matrix data
 			}
 
 			// Write the route matrix to a buffer and serve that instead
@@ -903,6 +914,20 @@ func main() {
 		}
 	}
 
+	serveCostMatrixFunc := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/octet-stream")
+
+		m := getCostMatrixFunc()
+
+		data := m.GetResponseData()
+
+		buffer := bytes.NewBuffer(data)
+		_, err := buffer.WriteTo(w)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}
+
 	fmt.Printf("starting http server\n")
 
 	router := mux.NewRouter()
@@ -910,12 +935,13 @@ func main() {
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage))
 	router.HandleFunc("/relay_init", transport.RelayInitHandlerFunc(logger, &commonInitParams)).Methods("POST")
 	router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(logger, relayslogger, &commonUpdateParams)).Methods("POST")
-	router.Handle("/cost_matrix", costMatrix).Methods("GET")
+	router.HandleFunc("/cost_matrix", serveCostMatrixFunc).Methods("GET")
 	router.HandleFunc("/route_matrix", serveRouteMatrixFunc).Methods("GET")
 	router.HandleFunc("/route_matrix_valve", serveValveRouteMatrixFunc).Methods("GET")
 	router.Handle("/debug/vars", expvar.Handler())
 	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(relayMap, getRouteMatrixFunc, statsdb, "local", "local", maxJitter))
 	router.HandleFunc("/routes", transport.RoutesHandlerFunc(getRouteMatrixFunc, statsdb, "local", "local"))
+	router.HandleFunc("/relay_stats", transport.RelayStatsFunc(logger, relayMap))
 
 	go func() {
 		port, ok := os.LookupEnv("PORT")

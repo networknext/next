@@ -10,6 +10,8 @@ type SessionMetrics struct {
 	NextSessions                      Counter
 	DurationGauge                     Gauge
 	LongDuration                      Counter
+	RouteSelectionDuration            Gauge
+	RouteDecisionDuration             Gauge
 	PostSessionBillingEntriesSent     Counter
 	PostSessionBillingEntriesFinished Counter
 	PostSessionBillingBufferLength    Gauge
@@ -28,6 +30,8 @@ var EmptySessionMetrics SessionMetrics = SessionMetrics{
 	NextSessions:                      &EmptyCounter{},
 	DurationGauge:                     &EmptyGauge{},
 	LongDuration:                      &EmptyCounter{},
+	RouteSelectionDuration:            &EmptyGauge{},
+	RouteDecisionDuration:             &EmptyGauge{},
 	PostSessionBillingEntriesSent:     &EmptyCounter{},
 	PostSessionBillingEntriesFinished: &EmptyCounter{},
 	PostSessionBillingBufferLength:    &EmptyGauge{},
@@ -396,19 +400,21 @@ var EmptyBillingServiceMetrics BillingServiceMetrics = BillingServiceMetrics{
 }
 
 type BillingMetrics struct {
-	EntriesReceived  Counter
-	EntriesSubmitted Counter
-	EntriesQueued    Gauge
-	EntriesFlushed   Counter
-	ErrorMetrics     BillingErrorMetrics
+	EntriesReceived       Counter
+	EntriesSubmitted      Counter
+	EntriesQueued         Gauge
+	EntriesFlushed        Counter
+	EntriesReadUserHashV5 Counter
+	ErrorMetrics          BillingErrorMetrics
 }
 
 var EmptyBillingMetrics BillingMetrics = BillingMetrics{
-	EntriesReceived:  &EmptyCounter{},
-	EntriesSubmitted: &EmptyCounter{},
-	EntriesQueued:    &EmptyGauge{},
-	EntriesFlushed:   &EmptyCounter{},
-	ErrorMetrics:     EmptyBillingErrorMetrics,
+	EntriesReceived:       &EmptyCounter{},
+	EntriesSubmitted:      &EmptyCounter{},
+	EntriesQueued:         &EmptyGauge{},
+	EntriesFlushed:        &EmptyCounter{},
+	EntriesReadUserHashV5: &EmptyCounter{},
+	ErrorMetrics:          EmptyBillingErrorMetrics,
 }
 
 type BillingErrorMetrics struct {
@@ -860,6 +866,28 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		ID:          "session.long_durations",
 		Unit:        "durations",
 		Description: "The number of session update calls that took longer than 100ms to complete",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.RouteSelectionDuration, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Session Route Selection Duration",
+		ServiceName: "server_backend",
+		ID:          "session.route_selection.duration",
+		Unit:        "ms",
+		Description: "How long it takes to run the route selection logic in milliseconds",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.RouteDecisionDuration, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Session Route Decision Duration",
+		ServiceName: "server_backend",
+		ID:          "session.route_decision.duration",
+		Unit:        "ms",
+		Description: "How long it takes to run the route decision logic in milliseconds",
 	})
 	if err != nil {
 		return nil, err
@@ -2078,6 +2106,17 @@ func NewBillingServiceMetrics(ctx context.Context, metricsHandler Handler) (*Bil
 		ID:          "billing.entries.written",
 		Unit:        "entries",
 		Description: "The total number of billing entries written to BigQuery",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	billingServiceMetrics.BillingMetrics.EntriesReadUserHashV5, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Billing Entries Read User Hash V5",
+		ServiceName: "billing",
+		ID:          "billing.entries.read.user_hash_v5",
+		Unit:        "entries",
+		Description: "The total number of billing entries read from PubSub with the user hash on version 5",
 	})
 	if err != nil {
 		return nil, err
