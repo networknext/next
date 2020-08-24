@@ -2618,7 +2618,7 @@ func RandomBytes(bytes int) []byte {
 	return buffer
 }
 
-func CryptoSignVerify(sign_data []byte, signature []byte, public_key []byte) bool {
+func CryptoVerify(sign_data []byte, signature []byte, public_key []byte) bool {
 	if len(public_key) != C.crypto_sign_PUBLICKEYBYTES || len(signature) != C.crypto_sign_BYTES {
 		return false
 	}
@@ -2628,7 +2628,7 @@ func CryptoSignVerify(sign_data []byte, signature []byte, public_key []byte) boo
 	return C.crypto_sign_final_verify(&state, (*C.uchar)(&signature[0]), (*C.uchar)(&public_key[0])) == 0
 }
 
-func CryptoSignCreate(sign_data []byte, private_key []byte) []byte {
+func CryptoSign(sign_data []byte, private_key []byte) []byte {
 	if len(private_key) != C.crypto_sign_BYTES {
 		return nil
 	}

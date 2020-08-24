@@ -31,6 +31,8 @@ import (
 	"github.com/gorilla/mux"
 )
 
+const NEXT_MAX_SESSION_DATA_BYTES = 511
+
 const NEXT_MAX_NEAR_RELAYS = 32
 const NEXT_RELAY_BACKEND_PORT = 30000
 const NEXT_SERVER_BACKEND_PORT = 40000
@@ -93,6 +95,7 @@ const (
 	NEXT_CONNECTION_TYPE_WIRED    = 1
 	NEXT_CONNECTION_TYPE_WIFI     = 2
 	NEXT_CONNECTION_TYPE_CELLULAR = 3
+	NEXT_CONNECTION_TYPE_MAX = 3
 )
 
 const (
@@ -104,6 +107,7 @@ const (
 	NEXT_PLATFORM_PS4      = 5
 	NEXT_PLATFORM_IOS      = 6
 	NEXT_PLATFORM_XBOX_ONE = 7
+	NEXT_PLATFORM_MAX      = 7
 )
 
 var relayPublicKey = []byte{
@@ -149,7 +153,7 @@ type NextBackendServerInitResponsePacket struct {
 
 func (packet *NextBackendServerInitResponsePacket) Serialize(stream Stream) error {
 	stream.SerializeUint64(&packet.RequestId)
-	stream.SerializeUint32(&packet.Response)
+	stream.SerializeBits(&packet.Response, 8)
 	return stream.Error()
 }
 
@@ -188,12 +192,10 @@ type NextBackendSessionUpdatePacket struct {
 	CustomerId                uint64
 	SessionId                 uint64
 	UserHash                  uint64
-	PlatformId                uint64
+	PlatformId                int32
 	Tag                       uint64
 	Flags                     uint32
 	Flagged                   bool
-	FallbackToDirect          bool
-	TryBeforeYouBuy           bool
 	ConnectionType            int32
 	OnNetworkNext             bool
 	Committed                 bool
@@ -219,6 +221,8 @@ type NextBackendSessionUpdatePacket struct {
 	PacketsLostClientToServer uint64
 	PacketsLostServerToClient uint64
 	UserFlags                 uint64
+	SessionDataBytes          int32
+	SessionData               [NEXT_MAX_SESSION_DATA_BYTES]byte
 }
 
 func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
@@ -230,12 +234,15 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 	stream.SerializeAddress(&packet.ServerAddress)
 	stream.SerializeUint64(&packet.SessionId)
 	stream.SerializeUint64(&packet.UserHash)
-	stream.SerializeUint64(&packet.PlatformId)
+	stream.SerializeInteger(&packet.PlatformId, 0, NEXT_PLATFORM_MAX)
 	stream.SerializeUint64(&packet.Tag)
-	stream.SerializeBits(&packet.Flags, 11)
+	hasFlags := stream.IsWriting() && packet.Flags != 0
+	stream.SerializeBool( &hasFlags )
+	if hasFlags {
+		stream.SerializeBits(&packet.Flags, 9)
+	}
 	stream.SerializeBool(&packet.Flagged)
-	stream.SerializeBool(&packet.FallbackToDirect)
-	stream.SerializeInteger(&packet.ConnectionType, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_CELLULAR)
+	stream.SerializeInteger(&packet.ConnectionType, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_MAX)
 	stream.SerializeFloat32(&packet.DirectRTT)
 	stream.SerializeFloat32(&packet.DirectJitter)
 	stream.SerializeFloat32(&packet.DirectPacketLoss)
@@ -273,7 +280,16 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 	stream.SerializeUint64(&packet.PacketsSentServerToClient)
 	stream.SerializeUint64(&packet.PacketsLostClientToServer)
 	stream.SerializeUint64(&packet.PacketsLostServerToClient)
-	stream.SerializeUint64(&packet.UserFlags)
+	hasUserFlags := stream.IsWriting() && packet.UserFlags != 0
+	stream.SerializeBool( &hasUserFlags )
+	if hasUserFlags {
+		stream.SerializeUint64(&packet.UserFlags)
+	}
+	stream.SerializeInteger(&packet.SessionDataBytes, 0, NEXT_MAX_SESSION_DATA_BYTES)
+	if packet.SessionDataBytes > 0 {
+		sessionData := packet.SessionData[:packet.SessionDataBytes]
+		stream.SerializeBytes(sessionData)
+	}
 	return stream.Error()
 }
 
@@ -483,14 +499,30 @@ func IsNetworkNextPacket(packetData []byte) bool {
 	return true
 }
 
-func SignNetworkNextPacket(packetData []byte) []byte {
-	signedPacketData := make([]byte, len(packetData)+NEXT_PACKET_HASH_BYTES)
+func SignNetworkNextPacket(packetData []byte, privateKey []byte) []byte {
+	signedPacketData := make([]byte, len(packetData)+C.crypto_sign_BYTES)
+	for i := 0; i < len(packetData); i++ {
+		signedPacketData[i] = packetData[i]
+	}
+	messageLength := len(packetData)
+	if messageLength > 32 {
+		messageLength = 32
+	}
+	var state C.crypto_sign_state
+	C.crypto_sign_init(&state)
+	C.crypto_sign_update(&state, (*C.uchar)(&signedPacketData[0]), C.ulonglong(messageLength))
+	C.crypto_sign_final_create(&state, (*C.uchar)(&signedPacketData[len(packetData)]), nil, (*C.uchar)(&privateKey[0]))
+	return signedPacketData
+}
+
+func HashNetworkNextPacket(packetData []byte) []byte {
+	hashedPacketData := make([]byte, len(packetData)+NEXT_PACKET_HASH_BYTES)
 	messageLength := len(packetData)
 	if messageLength > 32 {
 		messageLength = 32
 	}
 	C.crypto_generichash(
-		(*C.uchar)(&signedPacketData[0]),
+		(*C.uchar)(&hashedPacketData[0]),
 		C.ulong(NEXT_PACKET_HASH_BYTES),
 		(*C.uchar)(&packetData[0]),
 		C.ulonglong(messageLength),
@@ -498,12 +530,9 @@ func SignNetworkNextPacket(packetData []byte) []byte {
 		C.ulong(C.crypto_generichash_KEYBYTES),
 	)
 	for i := 0; i < len(packetData); i++ {
-		signedPacketData[NEXT_PACKET_HASH_BYTES+i] = packetData[i]
+		hashedPacketData[NEXT_PACKET_HASH_BYTES+i] = packetData[i]
 	}
-	if !IsNetworkNextPacket(signedPacketData) {
-		panic("packet sign failure")
-	}
-	return signedPacketData
+	return hashedPacketData
 }
 
 func main() {
@@ -570,8 +599,6 @@ func main() {
 				continue
 			}
 
-			fmt.Printf("NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET\n")
-
 			initResponse := &NextBackendServerInitResponsePacket{}
 			initResponse.RequestId = serverInitRequest.RequestId
 			initResponse.Response = NEXT_SERVER_INIT_RESPONSE_OK
@@ -592,54 +619,16 @@ func main() {
 
 			responsePacketData := writeStream.GetData()[0:writeStream.GetBytesProcessed()]
 
-			signedResponsePacketData := SignNetworkNextPacket(responsePacketData)
+			signedResponsePacketData := SignNetworkNextPacket(responsePacketData, backendPrivateKey[:])
 
-			_, err = connection.WriteToUDP(signedResponsePacketData, from)
+			hashedResponsePacketData := HashNetworkNextPacket(signedResponsePacketData)
+
+			_, err = connection.WriteToUDP(hashedResponsePacketData, from)
 			if err != nil {
 				fmt.Printf("error: failed to send udp response: %v\n", err)
 				continue
 			}
-		}
-
-		/*
-
-		if packetType == NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET {
-
-			readStream := CreateReadStream(packetData[1:])
-
-			serverInitRequest := &NextBackendServerInitRequestPacket{}
-			if err := serverInitRequest.Serialize(readStream); err != nil {
-				fmt.Printf("error: failed to read server init request packet: %v\n", err)
-				continue
-			}
-
-			initResponse := &NextBackendServerInitResponsePacket{}
-			initResponse.RequestId = serverInitRequest.RequestId
-			initResponse.Response = NEXT_SERVER_INIT_RESPONSE_OK
-
-			writeStream, err := CreateWriteStream(NEXT_MAX_PACKET_BYTES)
-			if err != nil {
-				fmt.Printf("error: failed to write server init response packet: %v\n", err)
-				continue
-			}
-			responsePacketType := uint32(NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET)
-			writeStream.SerializeBits(&responsePacketType, 8)
-			if err := initResponse.Serialize(writeStream); err != nil {
-				fmt.Printf("error: failed to write server init response packet: %v\n", err)
-				continue
-			}
-			writeStream.Flush()
-
-			responsePacketData := writeStream.GetData()[0:writeStream.GetBytesProcessed()]
-
-			signedResponsePacketData := SignNetworkNextPacket(responsePacketData)
-
-			_, err = connection.WriteToUDP(signedResponsePacketData, from)
-			if err != nil {
-				fmt.Printf("error: failed to send udp response: %v\n", err)
-				continue
-			}
-
+		
 		} else if packetType == NEXT_BACKEND_SERVER_UPDATE_PACKET {
 
 			readStream := CreateReadStream(packetData[1:])
@@ -649,8 +638,6 @@ func main() {
 				fmt.Printf("error: failed to read server update packet: %v\n", err)
 				continue
 			}
-
-			// todo: we really should run the signature check here
 
 			serverEntry := ServerEntry{}
 			serverEntry.address = from
@@ -668,6 +655,18 @@ func main() {
 
 		} else if packetType == NEXT_BACKEND_SESSION_UPDATE_PACKET {
 
+			fmt.Printf( "NEXT_BACKEND_SESSION_UPDATE_PACKET\n")
+
+			readStream := CreateReadStream(packetData[1:])
+			sessionUpdate := &NextBackendSessionUpdatePacket{}
+			if err := sessionUpdate.Serialize(readStream); err != nil {
+				fmt.Printf("error: failed to read server session update packet: %v\n", err)
+				continue
+			}
+
+		}
+
+		/*
 			readStream := CreateReadStream(packetData[1:])
 			sessionUpdate := &NextBackendSessionUpdatePacket{}
 			if err := sessionUpdate.Serialize(readStream); err != nil {
@@ -2438,28 +2437,6 @@ func RandomBytes(bytes int) []byte {
 	buffer := make([]byte, bytes)
 	C.randombytes_buf(unsafe.Pointer(&buffer[0]), C.size_t(bytes))
 	return buffer
-}
-
-func CryptoSignVerify(sign_data []byte, signature []byte, public_key []byte) bool {
-	if len(public_key) != C.crypto_sign_PUBLICKEYBYTES || len(signature) != C.crypto_sign_BYTES {
-		return false
-	}
-	var state C.crypto_sign_state
-	C.crypto_sign_init(&state)
-	C.crypto_sign_update(&state, (*C.uchar)(&sign_data[0]), C.ulonglong(len(sign_data)))
-	return C.crypto_sign_final_verify(&state, (*C.uchar)(&signature[0]), (*C.uchar)(&public_key[0])) == 0
-}
-
-func CryptoSignCreate(sign_data []byte, private_key []byte) []byte {
-	if len(private_key) != C.crypto_sign_BYTES {
-		return nil
-	}
-	signature := make([]byte, C.crypto_sign_BYTES)
-	var state C.crypto_sign_state
-	C.crypto_sign_init(&state)
-	C.crypto_sign_update(&state, (*C.uchar)(&sign_data[0]), C.ulonglong(len(sign_data)))
-	C.crypto_sign_final_create(&state, (*C.uchar)(&signature[0]), nil, (*C.uchar)(&private_key[0]))
-	return signature
 }
 
 func WriteSessionToken(token *SessionToken, buffer []byte) {
