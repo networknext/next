@@ -57,5 +57,8 @@ blocks:
         - name: Bootstrap Script
           commands:
             - make publish-bootstrap-script-staging
+        - name: Client Bootstrap Script
+          commands:
+            - make publish-client-bootstrap-script-staging
       secrets:
         - name: google-cloud-platform-staging
