@@ -104,14 +104,9 @@ export class AuthService {
 
 export const AuthPlugin = {
   install (Vue: any, options: any) {
-    let client: any = null
-    Vue.mixin({
-      created: () => {
-        client = new AuthService({
-          domain: options.domain,
-          clientID: options.clientID
-        })
-      }
+    const client = new AuthService({
+      domain: options.domain,
+      clientID: options.clientID
     })
 
     Vue.login = () => {
