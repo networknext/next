@@ -316,11 +316,11 @@ dev-portal-cruncher: build-portal-cruncher ## runs a local portal cruncher
 
 .PHONY: dev-reference-backend3
 dev-reference-backend3: ## runs a local reference backend (sdk3)
-	$(GO) run reference/backend/backend3.go
+	$(GO) run reference/backend3/backend3.go
 
 .PHONY: dev-reference-backend4
 dev-reference-backend4: ## runs a local reference backend (sdk4)
-	$(GO) run reference/backend/backend4.go
+	$(GO) run reference/backend4/backend4.go
 
 .PHONY: dev-reference-relay
 dev-reference-relay: build-relay-ref ## runs a local reference relay

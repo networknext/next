@@ -640,6 +640,18 @@ func RouteChanged(previous []uint64, current []uint64) bool {
 	return false
 }
 
+func CryptoSignCreate(sign_data []byte, private_key []byte) []byte {
+	if len(private_key) != C.crypto_sign_BYTES {
+		return nil
+	}
+	signature := make([]byte, C.crypto_sign_BYTES)
+	var state C.crypto_sign_state
+	C.crypto_sign_init(&state)
+	C.crypto_sign_update(&state, (*C.uchar)(&sign_data[0]), C.ulonglong(len(sign_data)))
+	C.crypto_sign_final_create(&state, (*C.uchar)(&signature[0]), nil, (*C.uchar)(&private_key[0]))
+	return signature
+}
+
 func IsNetworkNextPacket(packetData []byte, packetBytes int) bool {
 	if packetBytes <= NEXT_PACKET_HASH_BYTES {
 		fmt.Printf("packet too small\n")
