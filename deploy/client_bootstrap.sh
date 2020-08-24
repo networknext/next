@@ -8,7 +8,7 @@ bucket='gs://staging_artifacts'
 gsutil cp "$bucket/libsodium.so" '/usr/local/lib' || exit 1
 
 # Copy libnext from GCP Storage
-gsutil cp "$bucket/libnext.so" '/usr/local/lib' || exit 1
+gsutil cp "$bucket/libnext3.so" '/usr/local/lib' || exit 1
 
 # Copy the list of servers from GCP Storage
 gsutil cp "$bucket/staging_servers.txt" . || exit 1
