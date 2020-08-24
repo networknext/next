@@ -55,6 +55,14 @@ type RouteMatrix struct {
 	relayAddressCache []*net.UDPAddr
 }
 
+type NearRelayData struct {
+	ID          uint64
+	Addr        *net.UDPAddr
+	Name        string
+	distance    int
+	ClientStats Stats
+}
+
 func Truncate(value float64) float64 {
 	return float64(int64(value))
 }
@@ -75,12 +83,7 @@ func HaversineDistance(lat1 float64, long1 float64, lat2 float64, long2 float64)
 	return d // kilometers
 }
 
-func (m *RouteMatrix) GetNearRelays(latitude float64, longitude float64, maxNearRelays int) ([]Relay, error) {
-	type NearRelayData struct {
-		id       uint64
-		distance int
-	}
-
+func (m *RouteMatrix) GetNearRelays(latitude float64, longitude float64, maxNearRelays int) ([]NearRelayData, error) {
 	nearRelayData := make([]NearRelayData, len(m.RelayIDs))
 
 	// IMPORTANT: Truncate the lat/long values to nearest integer.
@@ -92,7 +95,9 @@ func (m *RouteMatrix) GetNearRelays(latitude float64, longitude float64, maxNear
 	long1 := Truncate(longitude)
 
 	for i, relayID := range m.RelayIDs {
-		nearRelayData[i].id = relayID
+		nearRelayData[i].ID = relayID
+		nearRelayData[i].Addr = m.relayAddressCache[i]
+		nearRelayData[i].Name = m.RelayNames[i]
 		lat2 := m.RelayLatitude[i]
 		long2 := m.RelayLongitude[i]
 		nearRelayData[i].distance = int(HaversineDistance(lat1, long1, lat2, long2))
@@ -109,179 +114,174 @@ func (m *RouteMatrix) GetNearRelays(latitude float64, longitude float64, maxNear
 		nearRelayData = nearRelayData[:maxNearRelays]
 	}
 
-	// Now that the relays are sorted by distance, construct the final near relays slice and return it
-	nearRelays := make([]Relay, len(nearRelayData))
-	var err error
-	for i, nearRelayData := range nearRelayData {
-		nearRelays[i], err = m.ResolveRelay(nearRelayData.id)
-		if err != nil {
-			return nil, fmt.Errorf("could not resolve relay ID %d: %v", nearRelayData.id, err)
-		}
-	}
-
-	return nearRelays, nil
-}
-
-func (m *RouteMatrix) ResolveRelay(id uint64) (Relay, error) {
-	relayIndex, ok := m.RelayIndices[id]
-	if !ok {
-		return Relay{}, fmt.Errorf("relay %d not in matrix", id)
-	}
-
-	if relayIndex >= len(m.RelayIDs) ||
-		relayIndex >= len(m.RelayNames) ||
-		relayIndex >= len(m.relayAddressCache) ||
-		relayIndex >= len(m.RelayPublicKeys) ||
-		relayIndex >= len(m.RelaySellers) ||
-		relayIndex >= len(m.RelaySessionCounts) ||
-		relayIndex >= len(m.RelayMaxSessionCounts) {
-		return Relay{}, fmt.Errorf("relay %d has an invalid index %d", id, relayIndex)
-	}
-
-	return Relay{
-		ID:        m.RelayIDs[relayIndex],
-		Name:      m.RelayNames[relayIndex],
-		Addr:      *m.relayAddressCache[relayIndex],
-		PublicKey: m.RelayPublicKeys[relayIndex],
-		Seller:    m.RelaySellers[relayIndex],
-		TrafficStats: RelayTrafficStats{
-			SessionCount: uint64(m.RelaySessionCounts[relayIndex]),
-		},
-		MaxSessions: m.RelayMaxSessionCounts[relayIndex],
-	}, nil
+	return nearRelayData, nil
 }
 
 // GetDatacenterRelays will return the set of Relays in the provided Datacenter
-func (m *RouteMatrix) GetDatacenterRelays(d Datacenter) []Relay {
+func (m *RouteMatrix) GetDatacenterRelayIDs(d Datacenter) []uint64 {
 	relayIDs, ok := m.DatacenterRelays[d.ID]
 	if !ok {
 		return nil
 	}
 
-	var err error
-	relayLength := len(relayIDs)
-
-	if relayLength <= 0 {
-		return nil
-	}
-
-	relays := make([]Relay, relayLength)
-	for i := 0; i < relayLength; i++ {
-		relays[i], err = m.ResolveRelay(relayIDs[i])
-		if err != nil {
-			continue
-		}
-	}
-
-	return relays
+	return relayIDs
 }
 
-// GetRoutes returns all routes between the set of near relays and destination relays.
-func (m *RouteMatrix) GetRoutes(near []Relay, dest []Relay) ([]Route, error) {
-	type RelayPairResult struct {
-		nearCost   int  // The RTT cost between the client and the from relay
-		entryIndex int  // The index in the route matrix entry
-		reverse    bool // Whether or not to reverse the relays to stay on the same side of the diagonal in the triangular matrix
-	}
-
-	relayPairLength := len(near) * len(dest)
-	relayPairResults := make([]RelayPairResult, relayPairLength)
-
-	// Do a "first pass" to determine the size of the Route buffer
-	var routeTotal int
-	for i, nearRelay := range near {
-		for j, destRelay := range dest {
-			entryIndex, reverse := m.GetEntryIndex(nearRelay, destRelay)
-
-			// Add a bad pair result so that the second pass will skip over it.
-			// This way we don't have to append only good results to a new list, which is more expensive.
-			if entryIndex < 0 || entryIndex >= len(m.Entries) {
-				relayPairResults[i+j*len(near)] = RelayPairResult{0, -1, false}
+// GetAcceptableRoutes returns all acceptable routes between the set of near relays and destination relays.
+func (m *RouteMatrix) GetAcceptableRoutes(near []NearRelayData, destIDs []uint64, prevRouteHash uint64, rttEpsilon int32) ([]Route, error) {
+	// First, get the best route RTT so that we can build a slice of acceptable routes
+	// that are with rttEpsilon of the best RTT
+	bestRouteRTT := int32(math.MaxInt32)
+	var maxRoutesSize int32
+	for _, nearRelay := range near {
+		for _, destRelayID := range destIDs {
+			if nearRelay.ID == destRelayID {
 				continue
 			}
 
-			relayPairResults[i+j*len(near)] = RelayPairResult{int(math.Ceil(nearRelay.ClientStats.RTT)), entryIndex, reverse}
-			routeTotal += int(m.Entries[entryIndex].NumRoutes)
+			entryIndex, _ := m.GetEntryIndex(nearRelay.ID, destRelayID)
+			if entryIndex == -1 {
+				continue
+			}
+
+			entry := &m.Entries[entryIndex]
+
+			nearCost := int32(math.Ceil(nearRelay.ClientStats.RTT))
+
+			// During this first pass, we can calculate the maximum route size and
+			// use this value to preallocate the routes slice
+			maxRoutesSize += entry.NumRoutes
+
+			// The routes in each route matrix entry are sorted by ascending RTT,
+			// so we only need to check the first one to find the best RTT
+			for routeIndex := 0; routeIndex < int(entry.NumRoutes); routeIndex++ {
+				routeRTT := entry.RouteRTT[routeIndex] + nearCost
+				if routeRTT < bestRouteRTT {
+					// Make sure any relay in the route isn't encumbered when considering it for the best route RTT
+					isEncumbered := false
+					for k := 0; k < int(entry.RouteNumRelays[routeIndex]); k++ {
+						relayIndex := entry.RouteRelays[routeIndex][k]
+						if m.RelaySessionCounts[relayIndex] >= m.RelayMaxSessionCounts[relayIndex] {
+							isEncumbered = true
+							break
+						}
+					}
+
+					if isEncumbered {
+						// We continue rather than break here since more routes for this entry
+						// might still have good RTT and unencumbered relays
+						continue
+					}
+
+					bestRouteRTT = routeRTT
+				}
+
+				break
+			}
 		}
 	}
 
-	// Now that we have the route total, make the Route buffer and fill it
-	var routeIndex int
-	routes := make([]Route, routeTotal)
-	for i := 0; i < relayPairLength; i++ {
-		if relayPairResults[i].entryIndex >= 0 {
-			m.FillRoutes(routes, &routeIndex, relayPairResults[i].nearCost, relayPairResults[i].entryIndex, relayPairResults[i].reverse)
+	if bestRouteRTT == math.MaxInt32 {
+		return nil, errors.New("could not find best route RTT")
+	}
+
+	// Now that we have the best RTT, we can build the slice of best routes
+	routes := make([]Route, maxRoutesSize)
+	var routeSize int
+
+	for _, nearRelay := range near {
+		for _, destRelayID := range destIDs {
+			if nearRelay.ID == destRelayID {
+				continue
+			}
+
+			entryIndex, reverse := m.GetEntryIndex(nearRelay.ID, destRelayID)
+			if entryIndex == -1 {
+				continue
+			}
+
+			entry := &m.Entries[entryIndex]
+
+			nearCost := int32(math.Ceil(nearRelay.ClientStats.RTT))
+
+			for routeIndex := 0; routeIndex < int(entry.NumRoutes); routeIndex++ {
+				routeRTT := entry.RouteRTT[routeIndex] + nearCost
+
+				// Since the routes in the route matrix entry are sorted by ascending RTT,
+				// if we find a route that's not acceptable, we can early out
+				if routeRTT > bestRouteRTT+rttEpsilon {
+					break
+				}
+
+				// Now that we know this route is acceptable, we can get its relays and build the route struct
+				numRelays := int(entry.RouteNumRelays[routeIndex])
+				routeRelayIDs := make([]uint64, numRelays)
+				isEncumbered := false
+				for relayIndex := 0; relayIndex < numRelays; relayIndex++ {
+					idx := entry.RouteRelays[routeIndex][relayIndex]
+
+					// Check to see if any relay in the route is encumbered, and if so, ignore the route
+					if m.RelaySessionCounts[idx] >= m.RelayMaxSessionCounts[idx] {
+						isEncumbered = true
+
+						// Don't break here so we can get all of the relays in case it's the route
+						// the session was previously on
+					}
+
+					if !reverse {
+						routeRelayIDs[relayIndex] = m.RelayIDs[idx]
+					} else {
+						routeRelayIDs[numRelays-1-relayIndex] = m.RelayIDs[idx]
+					}
+				}
+
+				route := &Route{
+					RelayIDs: routeRelayIDs,
+					Stats: Stats{
+						RTT: float64(routeRTT),
+					},
+				}
+
+				// If we found the route we took last slice, take it again
+				// We check if this is the previous route before if any relays are encumbered
+				// so that if the session is already on the route it doesn't get kicked off
+				if route.Hash64() == prevRouteHash {
+					return []Route{*route}, nil
+				}
+
+				if isEncumbered {
+					// We continue rather than break here since more routes for this entry
+					// might still have good RTT and unencumbered relays
+					continue
+				}
+
+				routes[routeSize] = *route
+				routeSize++
+			}
 		}
 	}
 
 	// No routes found
-	if len(routes) == 0 {
-		return nil, errors.New("no routes in route matrix")
+	if routeSize == 0 {
+		return nil, errors.New("could not add any routes to route slice")
 	}
 
-	return routes, nil
+	return routes[:routeSize], nil
 }
 
-// Returns the index in the route matrix representing the route between the near Relay and dest Relay and whether or not to reverse them
-func (m *RouteMatrix) GetEntryIndex(near Relay, dest Relay) (int, bool) {
-	destidx, ok := m.RelayIndices[dest.ID]
+// Returns the index in the route matrix representing routes between the near relay and dest relay and whether or not to reverse them
+func (m *RouteMatrix) GetEntryIndex(nearRelayID uint64, destRelayID uint64) (int, bool) {
+	destidx, ok := m.RelayIndices[destRelayID]
 	if !ok {
 		return -1, false
 	}
 
-	nearidx, ok := m.RelayIndices[near.ID]
+	nearidx, ok := m.RelayIndices[nearRelayID]
 	if !ok {
 		return -1, false
 	}
 
 	return TriMatrixIndex(nearidx, destidx), destidx > nearidx
-}
-
-// FillRoutes is just the internal function to populate the given route buffer.
-// It takes the entryIndex and reverse data and fills the given route buffer, incrementing the routeIndex after
-// each route it adds.
-func (m *RouteMatrix) FillRoutes(routes []Route, routeIndex *int, fromCost int, entryIndex int, reverse bool) error {
-	var err error
-
-	entry := m.Entries[entryIndex]
-
-	for i := 0; i < int(entry.NumRoutes); i++ {
-		numRelays := int(entry.RouteNumRelays[i])
-
-		routeRelays := make([]Relay, numRelays)
-
-		for j := 0; j < numRelays; j++ {
-			relayIndex := entry.RouteRelays[i][j]
-
-			id := m.RelayIDs[relayIndex]
-
-			if !reverse {
-				routeRelays[j], err = m.ResolveRelay(id)
-			} else {
-				routeRelays[numRelays-1-j], err = m.ResolveRelay(id)
-			}
-
-			if err != nil {
-				return err
-			}
-		}
-
-		route := Route{
-			Relays: routeRelays,
-			Stats: Stats{
-				RTT: float64(fromCost + int(m.Entries[entryIndex].RouteRTT[i])),
-			},
-		}
-
-		if *routeIndex >= len(routes) {
-			continue
-		}
-
-		routes[*routeIndex] = route
-		*routeIndex++
-	}
-
-	return nil
 }
 
 // implements the io.ReadFrom interface
@@ -532,24 +532,22 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 }
 
 func (m *RouteMatrix) UpdateRelayAddressCache() error {
-	if len(m.relayAddressCache) == 0 && len(m.RelayIDs) > 0 {
-		m.relayAddressCache = make([]*net.UDPAddr, len(m.RelayIDs))
-		for i := range m.RelayIDs {
-			// This trim is necessary because RelayAddresses has a fixed size of MaxRelayAddressLength which causes extra 0 bytes to be parsed if we don't trim
-			host, port, err := net.SplitHostPort(string(bytes.Trim(m.RelayAddresses[i], string([]byte{0x00}))))
-			if err != nil {
-				return err
-			}
+	m.relayAddressCache = make([]*net.UDPAddr, len(m.RelayIDs))
+	for i := range m.RelayIDs {
+		// This trim is necessary because RelayAddresses has a fixed size of MaxRelayAddressLength which causes extra 0 bytes to be parsed if we don't trim
+		host, port, err := net.SplitHostPort(string(bytes.Trim(m.RelayAddresses[i], string([]byte{0x00}))))
+		if err != nil {
+			return err
+		}
 
-			iport, err := strconv.Atoi(port)
-			if err != nil {
-				return err
-			}
+		iport, err := strconv.Atoi(port)
+		if err != nil {
+			return err
+		}
 
-			m.relayAddressCache[i] = &net.UDPAddr{
-				IP:   net.ParseIP(host),
-				Port: int(iport),
-			}
+		m.relayAddressCache[i] = &net.UDPAddr{
+			IP:   net.ParseIP(host),
+			Port: int(iport),
 		}
 	}
 	return nil
@@ -725,34 +723,6 @@ func (m *RouteMatrix) Size() uint64 {
 	length += uint64(len(m.RelayMaxSessionCounts) * 4)
 
 	return length
-}
-
-func (m *RouteMatrix) WriteRoutesTo(writer io.Writer) {
-	var b bytes.Buffer
-	for _, routeEntry := range m.Entries {
-		for routeidx := int32(0); routeidx < routeEntry.NumRoutes; routeidx++ {
-			b.WriteString(fmt.Sprintf("RTT(%d) ", routeEntry.RouteRTT[routeidx]))
-
-			for relayidx := int32(0); relayidx < routeEntry.RouteNumRelays[routeidx]; relayidx++ {
-				relay, err := m.ResolveRelay(m.RelayIDs[routeEntry.RouteRelays[routeidx][relayidx]])
-				if err != nil {
-					fmt.Println(err)
-				}
-
-				// display ip addr locally
-				// display actual name in dev/prod
-				name := relay.Addr.String()
-				if len(relay.Name) != 0 {
-					name = relay.Name
-				}
-				b.WriteString(name)
-				b.WriteString(" ")
-			}
-			b.WriteByte('\n')
-		}
-		b.WriteByte('\n')
-	}
-	writer.Write(b.Bytes())
 }
 
 func (m *RouteMatrix) WriteAnalysisTo(writer io.Writer) {
