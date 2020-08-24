@@ -61,8 +61,8 @@ export class AuthService {
   }
 
   public processAuthentication (authResult: IdToken) {
-    console.log('processAuthentication() authResult:')
-    console.log(JSON.stringify(authResult))
+    // console.log('processAuthentication() authResult:')
+    // console.log(JSON.stringify(authResult))
     this.apiService = new APIService()
     const roles = authResult['https://networknext.com/userRoles'] || { roles: [] }
     const email = authResult.email || ''
@@ -115,10 +115,10 @@ export const AuthPlugin = {
         // console.log('created(), getting idtoken: ')
         try {
           client.processAuthentication(JSON.parse(localStorage.authResult))
-          console.log('created()')
-          console.log(JSON.parse(localStorage.authResult))
+          // console.log('created()')
+          // console.log(JSON.parse(localStorage.authResult))
         } catch (err) {
-          console.log('processAuthentication(): nothing in localstorage')
+          // console.log('processAuthentication(): nothing in localstorage')
         } finally {
           this.isAuthenticated = true
         }

@@ -56,7 +56,7 @@ export default class SessionCounts extends Vue {
     this.fetchSessionCounts()
     this.countLoop = setInterval(() => {
       this.fetchSessionCounts()
-    }, 1000)
+    }, 10000000000000)
   }
 
   private beforeDestroy () {

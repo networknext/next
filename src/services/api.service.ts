@@ -19,6 +19,7 @@ export default class APIService {
   }
 
   private call (method: string, params: any, token: string): Promise<any> {
+    console.log('jsonrpc method: ' + method)
     if (!store.getters.isAnonymous || token) {
       this.headers.Authorization = `Bearer ${store.getters.idToken || token}`
     }
