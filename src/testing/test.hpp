@@ -149,30 +149,5 @@ namespace testing
 
     return retval;
   }
-
-  class StubbedCurlWrapper
-  {
-   public:
-    static bool Success;          // The request was a success
-    static std::string Request;   // The request that was sent
-    static std::string Response;  // The Response that should be received
-    static std::string Hostname;  // The hostname used
-    static std::string Endpoint;  // The endpoint to hit
-
-    template <typename ReqType, typename RespType>
-    static bool SendTo(const std::string hostname, const std::string endpoint, const ReqType& request, RespType& response);
-  };
-
-  template <typename ReqType, typename RespType>
-  bool StubbedCurlWrapper::SendTo(
-   const std::string hostname, const std::string endpoint, const ReqType& request, RespType& response)
-  {
-    Request.assign(request.begin(), request.end());
-    response.assign(Response.begin(), Response.end());
-    Hostname = hostname;
-    Endpoint = endpoint;
-    return Success;
-  }
-
 }  // namespace testing
 #endif

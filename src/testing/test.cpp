@@ -90,8 +90,4 @@ namespace testing
     }
     return retval;
   }
-
-  bool StubbedCurlWrapper::Success = true;
-  std::string StubbedCurlWrapper::Request, StubbedCurlWrapper::Response, StubbedCurlWrapper::Hostname,
-   StubbedCurlWrapper::Endpoint;
 }  // namespace testing

@@ -27,6 +27,9 @@ namespace encoding
   template <typename T>
   auto WriteUint64(T& buff, size_t& index, uint64_t value) -> bool;
 
+  template <typename T>
+  auto WriteDouble(T& buff, size_t& index, double value) -> bool;
+
   auto WriteBytes(uint8_t* buff, size_t buffLength, size_t& index, const uint8_t* data, size_t dataLength) -> bool;
 
   template <typename T, typename U>
@@ -36,6 +39,9 @@ namespace encoding
 
   template <typename T>
   auto WriteAddress(T& buff, size_t& index, const net::Address& addr) -> bool;
+
+  template <typename T>
+  auto WriteString(T& buff, size_t& index, const std::string& str) -> bool;
 
   [[gnu::always_inline]] inline auto WriteUint8(uint8_t* buff, size_t buffLength, size_t& index, uint8_t value) -> bool
   {
@@ -157,6 +163,16 @@ namespace encoding
     buff[index++] = value >> 56;
 
     return true;
+  }
+
+  template <typename T>
+  auto WriteDouble(T& buff, size_t& index, double value) -> bool
+  {
+    if (index + 8 > buff.size()) {
+      Log("index out of range: goal = ", index + 8, ", buff size = ", buff.size());
+      return false;
+    }
+    return encoding::WriteBytes(buff.data(), buff.size(), index, reinterpret_cast<uint8_t*>(&value), sizeof(double));
   }
 
   [[gnu::always_inline]] inline auto WriteBytes(
@@ -310,6 +326,27 @@ namespace encoding
     }
 
     assert(index - start == net::Address::ByteSize);
+
+    return true;
+  }
+
+  template <typename T>
+  [[gnu::always_inline]] inline auto WriteString(T& buff, size_t& index, const std::string& str) -> bool
+  {
+    if (index + 4 + str.length() > buff.size()) {
+      Log("buffer too small for string");
+      return false;
+    }
+
+    // sanity check
+    if (!encoding::WriteUint32(buff, index, str.length())) {
+      Log("could not write string length");
+      return false;
+    }
+
+    for (const auto c : str) {
+      buff[index++] = c;
+    }
 
     return true;
   }
