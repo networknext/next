@@ -53,7 +53,7 @@
     </ul>
     <ul class="navbar-nav px-3" v-if="$store.getters.isAnonymous">
       <li class="nav-item text-nowrap">
-        <a data-test="signUpButton" class="signup btn-sm btn-primary" href="#" @click="authService.signUp()">
+        <a data-test="signUpButton" class="signup btn-sm btn-primary" href="#" @click="signUp()">
           Sign up
         </a>
       </li>
@@ -70,7 +70,6 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
-import AuthService from '../services/auth.service'
 import APIService from '@/services/api.service'
 
 /**
@@ -84,15 +83,15 @@ import APIService from '@/services/api.service'
 @Component
 export default class NavBar extends Vue {
   private apiService: APIService
-  private authService: AuthService
   private portalVersion: string
 
   constructor () {
     super()
     this.apiService = Vue.prototype.$apiService
-    // this.authService = Vue.prototype.$authService
     this.portalVersion = ''
-    // ToDo: move to lifecycle method
+  }
+
+  private created () {
     this.fetchPortalVersion()
   }
 
@@ -101,11 +100,13 @@ export default class NavBar extends Vue {
   }
 
   private logout (): void {
-    // Vue.prototype.$auth.logout()
     Vue.logout()
   }
 
-  // ToDo: move to lifecycle method
+  private signUp (): void {
+    Vue.signUp()
+  }
+
   private fetchPortalVersion (): void {
     const isDev = window.location.hostname === 'portal-dev.networknext.com'
     if (this.$store.getters.isAdmin || isDev) {

@@ -6,17 +6,9 @@ import createAuth0Client, { Auth0Client, IdToken } from '@auth0/auth0-spa-js'
 
 export class AuthService {
   private apiService: APIService
-
-  // in case we move the new Auth0Client() call out of the constructor
   private clientID: string
   private domain: string
-
   private authClient: Auth0Client // Promise<Auth0Client>?
-
-  private isSignupRedirect = false
-  popupOpen = false
-  isAuthenticated = false
-  user: any
 
   constructor (options: any) {
     this.apiService = Vue.prototype.$apiService
@@ -50,6 +42,13 @@ export class AuthService {
         console.log('login() error caught:')
         console.error(error)
       })
+  }
+
+  public signUp () {
+    this.authClient.loginWithPopup({
+      connection: 'Username-Password-Authentication',
+      screen_hint: 'signup'
+    })
   }
 
   private async processAuthentication () {
@@ -128,6 +127,10 @@ export const AuthPlugin = {
 
     Vue.logout = () => {
       client.logout()
+    }
+
+    Vue.signUp = () => {
+      client.signUp()
     }
   }
 }
