@@ -6,3 +6,6 @@ After=network.target
 ExecStart=/app/server-spawner.sh -n 50
 Restart=always
 RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
