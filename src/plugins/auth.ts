@@ -14,19 +14,12 @@ export class AuthService {
     this.apiService = Vue.prototype.$apiService
     this.clientID = options.clientID
     this.domain = options.domain
-    createAuth0Client({
+    this.authClient = new Auth0Client({
       client_id: this.clientID,
       domain: this.domain,
       cacheLocation: 'localstorage'
     })
-      .then((client: Auth0Client) => {
-        this.authClient = client
-        this.processAuthentication()
-      })
-      .catch((error: Error) => {
-        console.log('Something went wrong initializing the auth0 client')
-        console.log(error)
-      })
+    this.processAuthentication()
   }
 
   public logout () {

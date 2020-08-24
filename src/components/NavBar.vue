@@ -84,11 +84,13 @@ import APIService from '@/services/api.service'
 export default class NavBar extends Vue {
   private apiService: APIService
   private portalVersion: string
+  private vueInstance: any
 
   constructor () {
     super()
     this.apiService = Vue.prototype.$apiService
     this.portalVersion = ''
+    this.vueInstance = Vue
   }
 
   private created () {
@@ -96,15 +98,15 @@ export default class NavBar extends Vue {
   }
 
   private login (): void {
-    Vue.login()
+    this.vueInstance.login()
   }
 
   private logout (): void {
-    Vue.logout()
+    this.vueInstance.logout()
   }
 
   private signUp (): void {
-    Vue.signUp()
+    this.vueInstance.signUp()
   }
 
   private fetchPortalVersion (): void {
