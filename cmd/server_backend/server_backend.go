@@ -10,6 +10,7 @@ import (
 	"encoding/base64"
 	"expvar"
 	"fmt"
+	"net"
 	"runtime"
 	"sync"
 
@@ -39,6 +40,10 @@ import (
 
 	metadataapi "cloud.google.com/go/compute/metadata"
 )
+
+// MaxRelayCount is the maximum number of relays you can run locally with the firestore emulator
+// An equal number of valve relays will also be added
+const MaxRelayCount = 10
 
 var (
 	buildtime     string
@@ -113,6 +118,7 @@ func main() {
 	var customerPublicKey []byte
 	var serverPrivateKey []byte
 	var routerPrivateKey []byte
+	var relayPublicKey []byte
 	var err error
 	{
 		if key := os.Getenv("SERVER_BACKEND_PRIVATE_KEY"); len(key) != 0 {
@@ -137,13 +143,26 @@ func main() {
 			os.Exit(1)
 		}
 
-		if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
-			customerPublicKey, err = base64.StdEncoding.DecodeString(key)
-			if err != nil {
-				level.Error(logger).Log("envvar", "NEXT_CUSTOMER_PUBLIC_KEY", "msg", "could not parse", "err", err)
+		if env == "local" {
+			if key := os.Getenv("RELAY_PUBLIC_KEY"); len(key) != 0 {
+				relayPublicKey, err = base64.StdEncoding.DecodeString(key)
+				if err != nil {
+					level.Error(logger).Log("envvar", "RELAY_PUBLIC_KEY", "msg", "could not parse", "err", err)
+					os.Exit(1)
+				}
+			} else {
+				level.Error(logger).Log("err", "RELAY_PUBLIC_KEY not set")
 				os.Exit(1)
 			}
-			customerPublicKey = customerPublicKey[8:]
+
+			if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
+				customerPublicKey, err = base64.StdEncoding.DecodeString(key)
+				if err != nil {
+					level.Error(logger).Log("envvar", "NEXT_CUSTOMER_PUBLIC_KEY", "msg", "could not parse", "err", err)
+					os.Exit(1)
+				}
+				customerPublicKey = customerPublicKey[8:]
+			}
 		}
 	}
 
@@ -197,7 +216,7 @@ func main() {
 
 	// Create dummy buyer and datacenter for local testing
 	if env == "local" {
-		fmt.Printf("adding dummy local buyer and datacenter\n")
+		fmt.Printf("adding dummy local buyer, sellers, datacenter, and relays\n")
 		if err := db.AddBuyer(ctx, routing.Buyer{
 			ID:                   13672574147039585173,
 			Name:                 "local",
@@ -208,13 +227,84 @@ func main() {
 			level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
 			os.Exit(1)
 		}
-		if err := db.AddDatacenter(ctx, routing.Datacenter{
-			ID:      crypto.HashID("local"),
-			Name:    "local",
-			Enabled: true,
-		}); err != nil {
+		seller := routing.Seller{
+			ID:                        "sellerID",
+			Name:                      "local",
+			IngressPriceNibblinsPerGB: 0.1 * 1e9,
+			EgressPriceNibblinsPerGB:  0.5 * 1e9,
+		}
+
+		valveSeller := routing.Seller{
+			ID:                        "valve",
+			Name:                      "valve",
+			IngressPriceNibblinsPerGB: 0.1 * 1e9,
+			EgressPriceNibblinsPerGB:  0.5 * 1e9,
+		}
+
+		datacenter := routing.Datacenter{
+			ID:       crypto.HashID("local"),
+			Name:     "local",
+			Enabled:  true,
+			Location: routing.LocationNullIsland,
+		}
+
+		if err := db.AddSeller(ctx, seller); err != nil {
+			level.Error(logger).Log("msg", "could not add seller to storage", "err", err)
+			os.Exit(1)
+		}
+
+		if err := db.AddSeller(ctx, valveSeller); err != nil {
+			level.Error(logger).Log("msg", "could not add valve seller to storage", "err", err)
+			os.Exit(1)
+		}
+
+		if err := db.AddDatacenter(ctx, datacenter); err != nil {
 			level.Error(logger).Log("msg", "could not add datacenter to storage", "err", err)
 			os.Exit(1)
+		}
+
+		for i := int64(0); i < MaxRelayCount; i++ {
+			addressString := "127.0.0.1:1000" + strconv.FormatInt(i, 10)
+			addr, err := net.ResolveUDPAddr("udp", addressString)
+			if err != nil {
+				level.Error(logger).Log("msg", "could parse udp address", "address", addressString, "err", err)
+				os.Exit(1)
+			}
+
+			if err := db.AddRelay(ctx, routing.Relay{
+				ID:          crypto.HashID(addr.String()),
+				Name:        addr.String(),
+				Addr:        *addr,
+				PublicKey:   relayPublicKey,
+				Seller:      seller,
+				Datacenter:  datacenter,
+				MaxSessions: 3000,
+			}); err != nil {
+				level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
+				os.Exit(1)
+			}
+		}
+
+		for i := int64(0); i < MaxRelayCount; i++ {
+			addressString := "127.0.0.1:1001" + strconv.FormatInt(i, 10)
+			addr, err := net.ResolveUDPAddr("udp", addressString)
+			if err != nil {
+				level.Error(logger).Log("msg", "could parse udp address", "address", addressString, "err", err)
+				os.Exit(1)
+			}
+
+			if err := db.AddRelay(ctx, routing.Relay{
+				ID:          crypto.HashID(addr.String()),
+				Name:        addr.String(),
+				Addr:        *addr,
+				PublicKey:   relayPublicKey,
+				Seller:      valveSeller,
+				Datacenter:  datacenter,
+				MaxSessions: 3000,
+			}); err != nil {
+				level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
+				os.Exit(1)
+			}
 		}
 	}
 
