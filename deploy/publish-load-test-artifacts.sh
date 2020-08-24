@@ -12,9 +12,14 @@ ARTIFACT_BUCKET=
 SERVICE=
 
 publish() {
-  printf "Publishing ${SERVICE} artifact to ${ARTIFACT_BUCKET} \n\n"
-	gsutil cp ${DIST_DIR}/${SERVICE}.tar.gz ${ARTIFACT_BUCKET}/${SERVICE}.tar.gz
-	printf "done\n"
+  if [ "$SERVICE" = "staging_servers.txt" ]; then
+    printf "Publishing ${SERVICE} to ${ARTIFACT_BUCKET} \n\n"
+    gsutil cp ${DIR}/${SERVICE} ${ARTIFACT_BUCKET}/${SERVICE} || exit 1
+  else
+    printf "Publishing ${SERVICE} artifact to ${ARTIFACT_BUCKET} \n\n"
+    gsutil cp ${DIST_DIR}/${SERVICE}.tar.gz ${ARTIFACT_BUCKET}/${SERVICE}.tar.gz || exit 1
+  fi
+  printf "done\n"
 }
 
 print_usage() {
