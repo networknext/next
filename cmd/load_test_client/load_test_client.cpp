@@ -35,7 +35,6 @@
 #include <netinet/in.h>
 #include <sys/ioctl.h>
 #include <sys/syscall.h>
-#include <chrono>
 
 static volatile int quit = 0;
 
@@ -80,9 +79,8 @@ int main()
 {
     printf( "\nWelcome to Network Next!\n\n" );
 
-    auto now = std::chrono::high_resolution_clock::now();
+    srand( next_time() * 100000ULL );
 
-    srand(std::chrono::duration<uint64_t, std::nano>(std::chrono::high_resolution_clock::now().time_since_epoch()).count());
     next_sleep( (rand() % 120) );
 
     signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );

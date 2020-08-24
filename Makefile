@@ -235,13 +235,13 @@ build-analytics: dist
 .PHONY: build-load-test-server
 build-load-test-server: dist build-sdk3
 	@printf "Building load test server... "
-	@$(CXX) -Isdk3/include -o $(DIST_DIR)/load_test_server ./cmd/load_test_server/load_test_server.cpp -lnext $(LDFLAGS)
+	@$(CXX) -Isdk3/include -o $(DIST_DIR)/load_test_server ./cmd/load_test_server/load_test_server.cpp -lnext3 $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-load-test-client
 build-load-test-client: dist build-sdk3
 	@printf "Building load test client... "
-	@$(CXX) -Isdk3/include -o $(DIST_DIR)/load_test_client ./cmd/load_test_client/load_test_client.cpp -lnext $(LDFLAGS)
+	@$(CXX) -Isdk3/include -o $(DIST_DIR)/load_test_client ./cmd/load_test_client/load_test_client.cpp -lnext3 $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional-backend
