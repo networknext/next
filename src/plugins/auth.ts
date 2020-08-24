@@ -2,7 +2,7 @@ import Vue from 'vue'
 import APIService from '@/services/api.service'
 import store from '@/store'
 
-import { Auth0Client, IdToken } from '@auth0/auth0-spa-js'
+import createAuth0Client, { Auth0Client, IdToken } from '@auth0/auth0-spa-js'
 
 export class AuthService {
   private apiService: APIService
@@ -11,82 +11,90 @@ export class AuthService {
   private clientID: string
   private domain: string
 
-  private authClient: any = null // Promise<Auth0Client>?
+  private authClient: Auth0Client // Promise<Auth0Client>?
+
+  private isSignupRedirect = false
   popupOpen = false
   isAuthenticated = false
   user: any
 
   constructor (options: any) {
     this.apiService = Vue.prototype.$apiService
-    this.clientID = options.clientId
+    this.clientID = options.clientID
     this.domain = options.domain
-
-    this.authClient = new Auth0Client(({
-      domain: this.domain,
+    createAuth0Client({
       client_id: this.clientID,
-      // audience: options.audience,
-      redirect_uri: 'http://127.0.0.1:8080',
-      advancedOptions: {
-        defaultScope: 'openid profile email user_metadata app_metadata'
-      },
-      cacheLocation: 'localstorage'
-    }))
+      domain: this.domain
+    })
+      .then((client: Auth0Client) => {
+        this.authClient = client
+        this.processAuthentication()
+      })
+      .catch((error: Error) => {
+        console.log('Something went wrong initializing the auth0 client')
+        console.log(error)
+      })
   }
 
-  async login (o: any) {
-    this.popupOpen = true
-    let idToken: any // IdToken // auth0 IdToken?
+  public logout () {
+    this.authClient.logout()
+  }
 
-    try {
-      await this.authClient.loginWithPopup()
-    } catch (e) {
-      console.log('login() error caught:')
-      console.error(e)
-    } finally {
-      idToken = await this.authClient.getIdTokenClaims()
-      console.log('idToken: ')
-      console.log(idToken.__raw)
-      this.popupOpen = false
+  public login () {
+    this.authClient.loginWithPopup()
+      .then(() => {
+        this.processAuthentication()
+      })
+      .catch((error: Error) => {
+        console.log('login() error caught:')
+        console.error(error)
+      })
+  }
+
+  private async processAuthentication () {
+    const isAuthenticated =
+      await this.authClient.isAuthenticated()
+        .catch((error: Error) => {
+          console.log('something went wrong checking auth status')
+          console.log(error)
+        })
+
+    if (!isAuthenticated) {
+      return
     }
-
-    this.user = await this.authClient.getUser()
-    console.log('user: ')
-    console.log(this.user)
-    // console.log(this.authClient.user.name)
-
-    // console.log('login()')
-    // console.log(JSON.parse(idToken))
-    this.processAuthentication(idToken)
-    this.isAuthenticated = true
-  }
-
-  public processAuthentication (authResult: IdToken) {
-    // console.log('processAuthentication() authResult:')
-    // console.log(JSON.stringify(authResult))
     this.apiService = new APIService()
-    const roles = authResult['https://networknext.com/userRoles'] || { roles: [] }
-    const email = authResult.email || ''
-    const domain = email.split('@')[1]
-    const token = authResult.__raw
     const userProfile: UserProfile = {
-      auth0ID: authResult.sub,
+      auth0ID: '',
       company: '',
-      email: authResult.email || '',
-      idToken: token,
-      name: authResult.name || '',
-      roles: roles.roles,
-      verified: authResult.email_verified || false,
+      email: '',
+      idToken: '',
+      name: '',
+      roles: [],
+      verified: false,
       routeShader: null,
-      domain: domain,
+      domain: '',
       pubKey: '',
       buyerID: ''
     }
-    const promises = [
-      this.apiService.fetchUserAccount({ user_id: userProfile.auth0ID }, token),
-      this.apiService.fetchGameConfiguration({ domain: domain }, token),
-      this.apiService.fetchAllBuyers(token)
-    ]
-    Promise.all(promises).then((responses: any) => {
+
+    this.authClient.getIdTokenClaims().then((authResult: any) => {
+      const roles: Array<any> = authResult['https://networknext.com/userRoles'].roles || { roles: [] }
+      const email = authResult.email || ''
+      const domain = email.split('@')[1]
+      const token = authResult.__raw
+
+      userProfile.roles = roles
+      userProfile.domain = domain
+      userProfile.email = email
+      userProfile.idToken = token
+      userProfile.auth0ID = authResult.sub
+
+      return Promise.all([
+        this.apiService.fetchUserAccount({ user_id: userProfile.auth0ID }, token),
+        this.apiService.fetchGameConfiguration({ domain: domain }, token),
+        this.apiService.fetchAllBuyers(token)
+      ])
+    }).then((responses: any) => {
       userProfile.buyerID = responses[0].account.buyer_id
       userProfile.company = responses[1].game_config.company
       userProfile.pubKey = responses[1].game_config.public_key
@@ -94,11 +102,10 @@ export class AuthService {
       const allBuyers = responses[2].buyers || []
       store.commit('UPDATE_USER_PROFILE', userProfile)
       store.commit('UPDATE_ALL_BUYERS', allBuyers)
+    }).catch((error: Error) => {
+      console.log('Something went wrong fetching user details')
+      console.log(error.message)
     })
-
-    // ToDo: we will need to pick on or the other
-    // localStorage.setItem('userProfile', JSON.stringify(userProfile))
-    localStorage.setItem('authResult', JSON.stringify(authResult))
   }
 }
 
@@ -106,32 +113,17 @@ export const AuthPlugin = {
   install (Vue: any, options: any) {
     const client = new AuthService({
       domain: options.domain,
-      clientId: options.clientId
-    })
-
-    Vue.mixin({
-      created: function () {
-        let err: any
-        // console.log('created(), getting idtoken: ')
-        try {
-          client.processAuthentication(JSON.parse(localStorage.authResult))
-          // console.log('created()')
-          // console.log(JSON.parse(localStorage.authResult))
-        } catch (err) {
-          // console.log('processAuthentication(): nothing in localstorage')
-        } finally {
-          this.isAuthenticated = true
-        }
-      }
+      clientID: options.clientID
     })
 
     Vue.login = () => {
       console.log('login(): ' + options.domain)
-      client.login(options)
+      client.login()
     }
 
     Vue.logout = () => {
       console.log('logout(): ' + options.domain)
+      client.logout()
     }
 
     Vue.getUserInfo = () => {

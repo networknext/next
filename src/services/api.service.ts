@@ -19,16 +19,13 @@ export default class APIService {
   }
 
   private call (method: string, params: any, token: string): Promise<any> {
-    console.log('jsonrpc method: ' + method)
     if (!store.getters.isAnonymous || token) {
       this.headers.Authorization = `Bearer ${store.getters.idToken || token}`
     }
     return new Promise((resolve: any, reject: any) => {
       const options = params || {}
       const id = 'id'
-      const jsonrpc = 'http://172.23.165.40:20000'
-      // fetch(`${process.env.VUE_APP_API_URL}/rpc`, {
-      fetch(`${jsonrpc}/rpc`, {
+      fetch(`${process.env.VUE_APP_API_URL}/rpc`, {
         method: 'POST',
         headers: this.headers,
         body: JSON.stringify({

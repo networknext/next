@@ -54,15 +54,7 @@ const domain = 'networknext.auth0.com'
 
 Vue.use(AuthPlugin, {
   domain: domain,
-  clientId: clientID,
-  onRedirectCallback: appState => {
-    console.log('onRedirectCallback()')
-    router.push(
-      appState && appState.targetUrl
-        ? appState.targetUrl
-        : window.location.pathname
-    )
-  }
+  clientID: clientID
 })
 
 new Vue({
