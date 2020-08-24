@@ -1,4 +1,3 @@
-CXX = g++
 CXX_FLAGS := -Wall -Wextra -std=c++17
 GO = go
 GOFMT = gofmt
@@ -6,8 +5,10 @@ GOFMT = gofmt
 OS := $(shell uname -s | tr A-Z a-z)
 ifeq ($(OS),darwin)
 	LDFLAGS = -lsodium -lcurl -lpthread -lm -framework CoreFoundation -framework SystemConfiguration -DNEXT_DEVELOPMENT
+	CXX = g++
 else
 	LDFLAGS = -lsodium -lcurl -lpthread -lm -DNEXT_DEVELOPMENT
+	CXX = g++-8
 endif
 
 SDK3NAME = libnext3
