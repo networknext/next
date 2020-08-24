@@ -146,6 +146,8 @@ func (m *RouteMatrix) GetAcceptableRoutes(near []NearRelayData, destIDs []uint64
 
 			entry := &m.Entries[entryIndex]
 
+			nearCost := int32(math.Ceil(nearRelay.ClientStats.RTT))
+
 			// During this first pass, we can calculate the maximum route size and
 			// use this value to preallocate the routes slice
 			maxRoutesSize += entry.NumRoutes
@@ -153,7 +155,7 @@ func (m *RouteMatrix) GetAcceptableRoutes(near []NearRelayData, destIDs []uint64
 			// The routes in each route matrix entry are sorted by ascending RTT,
 			// so we only need to check the first one to find the best RTT
 			for routeIndex := 0; routeIndex < int(entry.NumRoutes); routeIndex++ {
-				routeRTT := entry.RouteRTT[routeIndex]
+				routeRTT := entry.RouteRTT[routeIndex] + nearCost
 				if routeRTT < bestRouteRTT {
 					// Make sure any relay in the route isn't encumbered when considering it for the best route RTT
 					isEncumbered := false
@@ -200,8 +202,10 @@ func (m *RouteMatrix) GetAcceptableRoutes(near []NearRelayData, destIDs []uint64
 
 			entry := &m.Entries[entryIndex]
 
+			nearCost := int32(math.Ceil(nearRelay.ClientStats.RTT))
+
 			for routeIndex := 0; routeIndex < int(entry.NumRoutes); routeIndex++ {
-				routeRTT := entry.RouteRTT[routeIndex]
+				routeRTT := entry.RouteRTT[routeIndex] + nearCost
 
 				// Since the routes in the route matrix entry are sorted by ascending RTT,
 				// if we find a route that's not acceptable, we can early out
@@ -234,7 +238,7 @@ func (m *RouteMatrix) GetAcceptableRoutes(near []NearRelayData, destIDs []uint64
 				route := &Route{
 					RelayIDs: routeRelayIDs,
 					Stats: Stats{
-						RTT: math.Ceil(nearRelay.ClientStats.RTT) + float64(routeRTT),
+						RTT: float64(routeRTT),
 					},
 				}
 
