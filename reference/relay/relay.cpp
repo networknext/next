@@ -64,9 +64,9 @@
 
 static const uint8_t relay_packet_hash_key[] =
 {
-    0xe3, 0x18, 0x61, 0x72, 0xee, 0x70, 0x62, 0x37, 
-    0x40, 0xf6, 0x0a, 0xea, 0xe0, 0xb5, 0x1a, 0x2c, 
-    0x2a, 0x47, 0x98, 0x8f, 0x27, 0xec, 0x63, 0x2c, 
+    0xe3, 0x18, 0x61, 0x72, 0xee, 0x70, 0x62, 0x37,
+    0x40, 0xf6, 0x0a, 0xea, 0xe0, 0xb5, 0x1a, 0x2c,
+    0x2a, 0x47, 0x98, 0x8f, 0x27, 0xec, 0x63, 0x2c,
     0x25, 0x04, 0x74, 0x89, 0xaf, 0x5a, 0xeb, 0x24
 };
 
@@ -4669,6 +4669,9 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
     relay_write_uint64(&p, relay->bytes_received.load());
     relay->bytes_received.store(0);
     relay_write_uint8(&p, shutdown);
+    relay_write_float64(&p, 0.00); // cpu usage
+    relay_write_float64(&p, 0.00); // memory usage
+    relay_write_string(&p, "1.0.0", sizeof("1.0.0")); // relay version
 
     int update_data_length = (int) ( p - update_data );
 
@@ -4731,11 +4734,14 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
         return RELAY_ERROR;
     }
 
+    uint64_t timestamp = relay_read_uint64( &q );
+    (void) timestamp;
+
     uint32_t num_relays = relay_read_uint32( &q );
 
     if ( num_relays > MAX_RELAYS )
     {
-        relay_printf( "\nerror: too many relays to ping. max is %d, got %d\n\n", MAX_RELAYS, version );
+        relay_printf( "\nerror: too many relays to ping. max is %d, got %d\n\n", MAX_RELAYS, num_relays );
         return RELAY_ERROR;
     }
 
@@ -4876,7 +4882,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 relay_printf( "not a network next packet (%d)\n", packet_bytes );
                 continue;
             }
-            
+
             uint64_t hash = token.session_id ^ token.session_version;
 
             if ( relay->sessions->find(hash) == relay->sessions->end() )
@@ -4902,9 +4908,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             packet_data[RELAY_PACKET_HASH_BYTES+RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES] = RELAY_ROUTE_REQUEST_PACKET;
 
             relay_sign_network_next_packet( packet_data + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES, packet_bytes - RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES );
-            
+
             relay_platform_socket_send_packet( relay->socket, &token.next_address, packet_data + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES, packet_bytes - RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES );
-            
+
             relay->bytes_sent += packet_bytes - RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES;
         }
         else if ( packet_id == RELAY_ROUTE_RESPONSE_PACKET )
@@ -4947,7 +4953,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 relay_printf( "ignored route response packet. packet already received" );
                 continue;
             }
-            
+
             if ( relay_verify_header( RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet_data + RELAY_PACKET_HASH_BYTES, packet_bytes - RELAY_PACKET_HASH_BYTES ) != RELAY_OK )
             {
                 relay_printf( "ignored route response packet. header did not verify" );
@@ -5007,9 +5013,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             packet_data[RELAY_PACKET_HASH_BYTES+RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES] = RELAY_CONTINUE_REQUEST_PACKET;
 
             relay_sign_network_next_packet( packet_data + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES, packet_bytes - RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES );
-            
+
             relay_platform_socket_send_packet( relay->socket, &session->next_address, packet_data + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES, packet_bytes - RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES );
-            
+
             relay->bytes_sent += packet_bytes - RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES;
         }
         else if ( packet_id == RELAY_CONTINUE_RESPONSE_PACKET )
@@ -5046,7 +5052,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             }
 
             uint64_t clean_sequence = relay_clean_sequence( sequence );
-            
+
             if ( clean_sequence <= session->server_to_client_sequence )
             {
                 relay_printf( "ignored continue response packet. already received" );
@@ -5117,11 +5123,11 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 relay_printf( "ignored client to server packet. could not verify header" );
                 continue;
             }
-            
+
             relay_replay_protection_advance_sequence( &session->replay_protection_client_to_server, clean_sequence );
 
             relay_platform_socket_send_packet( relay->socket, &session->next_address, packet_data, packet_bytes );
-            
+
             relay->bytes_sent += packet_bytes;
         }
         else if ( packet_id == RELAY_SERVER_TO_CLIENT_PACKET )
@@ -5223,7 +5229,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 relay_printf( "ignored session ping packet. already received" );
                 continue;
             }
-        
+
             if ( relay_verify_header( RELAY_DIRECTION_CLIENT_TO_SERVER, session->private_key, packet_data + RELAY_PACKET_HASH_BYTES, packet_bytes - RELAY_PACKET_HASH_BYTES ) != RELAY_OK )
             {
                 relay_printf( "ignored session ping packet. could not verify header" );

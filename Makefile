@@ -1,4 +1,3 @@
-CXX = g++
 CXX_FLAGS := -Wall -Wextra -std=c++17
 GO = go
 GOFMT = gofmt
@@ -6,8 +5,10 @@ GOFMT = gofmt
 OS := $(shell uname -s | tr A-Z a-z)
 ifeq ($(OS),darwin)
 	LDFLAGS = -lsodium -lcurl -lpthread -lm -framework CoreFoundation -framework SystemConfiguration -DNEXT_DEVELOPMENT
+	CXX = g++
 else
 	LDFLAGS = -lsodium -lcurl -lpthread -lm -DNEXT_DEVELOPMENT
+	CXX = g++-8
 endif
 
 SDK3NAME = libnext3
@@ -235,13 +236,13 @@ build-analytics: dist
 .PHONY: build-load-test-server
 build-load-test-server: dist build-sdk3
 	@printf "Building load test server... "
-	@$(CXX) -Isdk3/include -o $(DIST_DIR)/load_test_server ./cmd/load_test_server/load_test_server.cpp -lnext3 $(LDFLAGS)
+	@$(CXX) -Isdk3/include -o $(DIST_DIR)/load_test_server ./cmd/load_test_server/load_test_server.cpp  $(DIST_DIR)/$(SDK3NAME).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-load-test-client
 build-load-test-client: dist build-sdk3
 	@printf "Building load test client... "
-	@$(CXX) -Isdk3/include -o $(DIST_DIR)/load_test_client ./cmd/load_test_client/load_test_client.cpp -lnext3 $(LDFLAGS)
+	@$(CXX) -Isdk3/include -o $(DIST_DIR)/load_test_client ./cmd/load_test_client/load_test_client.cpp  $(DIST_DIR)/$(SDK3NAME).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional-backend
@@ -618,6 +619,10 @@ publish-load-test-server-artifacts:
 publish-load-test-client-artifacts:
 	./deploy/publish-load-test-artifacts.sh -b $(ARTIFACT_BUCKET_STAGING) -s load_test_client
 
+.PHONY: publish-load-test-server-list
+publish-load-test-server-list:
+	./deploy/publish-load-test-artifacts.sh -b $(ARTIFACT_BUCKET_STAGING) -s staging_servers.txt
+
 .PHONY: publish-billing-artifacts-prod
 publish-billing-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s billing
@@ -656,6 +661,12 @@ publish-bootstrap-script-dev:
 publish-bootstrap-script-staging:
 	@printf "Publishing bootstrap script... \n\n"
 	@gsutil cp $(DEPLOY_DIR)/bootstrap.sh $(ARTIFACT_BUCKET_STAGING)/bootstrap.sh
+	@printf "done\n"
+
+.PHONY: publish-client-bootstrap-script-staging
+publish-client-bootstrap-script-staging:
+	@printf "Publishing client bootstrap script... \n\n"
+	@gsutil cp $(DEPLOY_DIR)/client_bootstrap.sh $(ARTIFACT_BUCKET_STAGING)/client_bootstrap.sh
 	@printf "done\n"
 
 .PHONY: publish-bootstrap-script-prod
