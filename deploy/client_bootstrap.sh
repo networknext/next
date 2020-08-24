@@ -7,11 +7,8 @@ bucket='gs://staging_artifacts'
 # Copy libsodium from GCP Storage
 gsutil cp "$bucket/libsodium.so" '/usr/local/lib' || exit 1
 
-# Create the dist dir under app so the linker can find libnext
-mkdir -p '/app/dist'
-
 # Copy libnext from GCP Storage
-gsutil cp "$bucket/libnext3.so" '/app/dist' || exit 1
+gsutil cp "$bucket/libnext3.so" '/usr/local/lib' || exit 1
 
 # Copy the list of servers from GCP Storage
 gsutil cp "$bucket/staging_servers.txt" . || exit 1
