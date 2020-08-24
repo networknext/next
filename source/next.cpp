@@ -5845,9 +5845,6 @@ int next_client_internal_send_packet_to_server( next_client_internal_t * client,
         return NEXT_ERROR;
     }
 
-    // todo:
-    printf( "send packet to server (%d)\n", buffer[8] );
-
     next_platform_socket_send_packet( client->socket, &client->server_address, buffer, packet_bytes );
 
     return NEXT_OK;
@@ -10248,9 +10245,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         if ( packet_id == NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET )
         {
-            // todo
-            printf( "NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET\n" );
-
             int state = NEXT_SERVER_STATE_DIRECT_ONLY;
             {
                 next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
@@ -10278,9 +10272,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             }
 
             next_printf( NEXT_LOG_LEVEL_INFO, "server received init response from backend" );
-
-            // todo
-            printf( "response = %d\n", packet.response );
 
             if ( packet.response != NEXT_SERVER_INIT_RESPONSE_OK )
             {
@@ -11006,16 +10997,10 @@ void next_server_internal_block_and_receive_packet( next_server_internal_t * ser
 
     if ( next_is_network_next_packet( packet_data, packet_bytes ) )
     {
-        // todo
-        printf( "received network next packet\n" );
-
         next_server_internal_process_network_next_packet( server, &from, packet_data, packet_bytes );
     }
     else
     {
-        // todo
-        printf( "*** not a network next packet ***\n" );
-
         next_server_internal_process_game_packet( server, &from, packet_data, packet_bytes );    
     }
 }
