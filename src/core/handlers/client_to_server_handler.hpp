@@ -1,6 +1,5 @@
 #pragma once
 
-#include "base_handler.hpp"
 #include "core/packets/header.hpp"
 #include "core/session_map.hpp"
 #include "core/throughput_recorder.hpp"
@@ -49,19 +48,12 @@ namespace core
         }
       }
 
-      uint64_t hash = header.session_id ^ header.session_version;
+      uint64_t hash = header.hash();
 
       auto session = session_map.get(hash);
 
       if (!session) {
-        LOG(
-         ERROR,
-         "session does not exist: session = ",
-         std::hex,
-         header.session_id,
-         '.',
-         std::dec,
-         static_cast<unsigned int>(header.session_version));
+        LOG(ERROR, "session does not exist: session = ", header);
         return;
       }
 

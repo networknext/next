@@ -20,6 +20,7 @@
 #include "handlers/session_pong_handler.hpp"
 #include "os/socket.hpp"
 #include "packet.hpp"
+#include "packets/relay_ping_packet.hpp"
 #include "packets/types.hpp"
 #include "relay/relay.hpp"
 #include "relay_manager.hpp"
@@ -28,11 +29,11 @@
 #include "token.hpp"
 #include "util/macros.hpp"
 
+using core::packets::RelayPingPacket;
 using core::packets::Type;
 using crypto::Keychain;
 using os::Socket;
 using util::ThroughputRecorder;
-using core::RelayPingPacket;
 
 namespace core
 {
@@ -98,17 +99,6 @@ namespace core
     }
   }
 
-  /*
-   * Switch based on packet type.
-   *
-   * If the relay is shutting down only reject ping packets
-   *
-   * This is so that other relays stop receiving proper stats and this one
-   * is slowly removed from route decisions
-   *
-   * However to not disrupt player experience the remaining packets are still
-   * handled until the global killswitch is flagged
-   */
   INLINE void PacketHandler::handle_packet(GenericPacket<>& packet)
   {
     size_t headerBytes = 0;
@@ -123,19 +113,17 @@ namespace core
 
     Type type;
 
-    bool isSigned;
+    bool is_signed;
     if (crypto::IsNetworkNextPacket(packet.Buffer, packet.Len)) {
       type = static_cast<Type>(packet.Buffer[crypto::PacketHashLength]);
-      isSigned = true;
+      is_signed = true;
     } else {
-      // TODO uncomment below once all packets coming through have the hash
-      // return;
       type = static_cast<Type>(packet.Buffer[0]);
-      isSigned = false;
+      is_signed = false;
     }
 
     if (type != Type::RelayPing && type != Type::RelayPong) {
-      if (isSigned) {
+      if (is_signed) {
         LOG(DEBUG, "packet is from network next");
       } else {
         LOG(DEBUG, "packet is not on network next");
@@ -149,115 +137,66 @@ namespace core
           LOG(INFO, "relay in process of shutting down, rejecting relay ping packet");
           return;
         }
-
         if (packet.Len == RelayPingPacket::BYTE_SIZE) {
           this->recorder.InboundPingRx.add(wholePacketSize);
-
-          handlers::NewRelayPingHandler handler(packet, mRecorder);
-
-          handler.handle(outputBuff, mSocket);
+          handlers::relay_ping_handler(packet, this->recorder, this->socket);
         } else {
-          mRecorder.UnknownRx.add(wholePacketSize);
+          this->recorder.UnknownRx.add(wholePacketSize);
         }
       } break;
       case Type::RelayPong: {
-        if (packet.Len == packets::NewRelayPingPacket::ByteSize) {
-          mRecorder.PongRx.add(wholePacketSize);
-
-          handlers::NewRelayPongHandler handler(packet, mRelayManager);
-
-          handler.handle();
+        if (!this->should_process) {
+          LOG(INFO, "relay in process of shutting down, rejecting relay pong packet");
+          return;
+        }
+        if (packet.Len == RelayPingPacket::BYTE_SIZE) {
+          this->recorder.PongRx.add(wholePacketSize);
+          handlers::relay_pong_handler(packet, this->relay_manager);
         } else {
-          mRecorder.UnknownRx.add(wholePacketSize);
+          this->recorder.UnknownRx.add(wholePacketSize);
         }
       } break;
       case packets::Type::RouteRequest: {
-        mRecorder.RouteRequestRx.add(wholePacketSize);
-
-        handlers::RouteRequestHandler handler(packet, packet.Addr, mKeychain, mSessionMap, mRecorder, mRouterInfo);
-
-        handler.handle(outputBuff, mSocket, isSigned);
+        this->recorder.RouteRequestRx.add(wholePacketSize);
+        handlers::route_request_handler(
+         packet, this->keychain, this->session_map, this->recorder, this->router_info, this->socket, is_signed);
       } break;
       case packets::Type::RouteResponse: {
-        mRecorder.RouteResponseRx.add(wholePacketSize);
-
-        handlers::RouteResponseHandler handler(packet, mSessionMap, mRecorder);
-
-        handler.handle(outputBuff, mSocket, isSigned);
+        this->recorder.RouteResponseRx.add(wholePacketSize);
+        handlers::route_response_handler(packet, this->session_map, this->recorder, this->socket, is_signed);
       } break;
       case packets::Type::ContinueRequest: {
-        mRecorder.ContinueRequestRx.add(wholePacketSize);
-
-        handlers::ContinueRequestHandler handler(packet, mSessionMap, mKeychain, mRecorder, mRouterInfo);
-
-        handler.handle(outputBuff, mSocket, isSigned);
+        this->recorder.ContinueRequestRx.add(wholePacketSize);
+        handlers::continue_request_handler(
+         packet, this->session_map, this->keychain, this->recorder, this->router_info, this->socket, is_signed);
       } break;
       case packets::Type::ContinueResponse: {
-        mRecorder.ContinueResponseRx.add(wholePacketSize);
-
-        handlers::ContinueResponseHandler handler(packet, mSessionMap, mRecorder);
-
-        handler.handle(outputBuff, mSocket, isSigned);
+        this->recorder.ContinueResponseRx.add(wholePacketSize);
+        handlers::continue_response_handler(packet, this->session_map, this->recorder, this->socket, is_signed);
       } break;
       case packets::Type::ClientToServer: {
-        mRecorder.ClientToServerRx.add(wholePacketSize);
-
-        handlers::ClientToServerHandler handler(packet, mSessionMap, mRecorder);
-
-        handler.handle(outputBuff, mSocket, isSigned);
+        this->recorder.ClientToServerRx.add(wholePacketSize);
+        handlers::client_to_server_handler(packet, this->session_map, this->recorder, this->socket, is_signed);
       } break;
       case packets::Type::ServerToClient: {
-        mRecorder.ServerToClientRx.add(wholePacketSize);
-
-        handlers::ServerToClientHandler handler(packet, mSessionMap, mRecorder);
-
-        handler.handle(outputBuff, mSocket, isSigned);
+        this->recorder.ServerToClientRx.add(wholePacketSize);
+        handlers::server_to_client_handler(packet, this->session_map, this->recorder, this->socket, is_signed);
       } break;
       case packets::Type::SessionPing: {
-        mRecorder.SessionPingRx.add(wholePacketSize);
-
-        handlers::SessionPingHandler handler(packet, mSessionMap, mRecorder);
-
-        handler.handle(outputBuff, mSocket, isSigned);
+        this->recorder.SessionPingRx.add(wholePacketSize);
+        handlers::session_ping_handler(packet, this->session_map, this->recorder, this->socket, is_signed);
       } break;
       case packets::Type::SessionPong: {
-        mRecorder.SessionPongRx.add(wholePacketSize);
-
-        handlers::SessionPongHandler handler(packet, mSessionMap, mRecorder);
-
-        handler.handle(outputBuff, mSocket, isSigned);
+        this->recorder.SessionPongRx.add(wholePacketSize);
+        handlers::session_pong_handler(packet, this->session_map, this->recorder, this->socket, is_signed);
       } break;
       case packets::Type::NearPing: {
-        mRecorder.NearPingRx.add(wholePacketSize);
-
-        handlers::NearPingHandler handler(packet, mRecorder);
-
-        handler.handle(outputBuff, mSocket, isSigned);
+        this->recorder.NearPingRx.add(wholePacketSize);
+        handlers::near_ping_handler(packet, this->recorder, this->socket, is_signed);
       } break;
       default: {
-        mRecorder.UnknownRx.add(wholePacketSize);
+        this->recorder.UnknownRx.add(wholePacketSize);
       } break;
     }
-  }
-
-  INLINE bool PacketProcessor::getAddrFromMsgHdr(net::Address& addr, const msghdr& hdr) const
-  {
-    bool retval = false;
-    auto sockad = reinterpret_cast<sockaddr*>(hdr.msg_name);
-
-    switch (sockad->sa_family) {
-      case AF_INET: {
-        auto sin = reinterpret_cast<sockaddr_in*>(sockad);
-        addr = *sin;
-        retval = true;
-      } break;
-      case AF_INET6: {
-        auto sin = reinterpret_cast<sockaddr_in6*>(sockad);
-        addr = *sin;
-        retval = true;
-      } break;
-    }
-
-    return retval;
   }
 }  // namespace core

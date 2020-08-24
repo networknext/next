@@ -1,6 +1,5 @@
 #pragma once
 
-#include "base_handler.hpp"
 #include "core/packets/types.hpp"
 #include "core/router_info.hpp"
 #include "core/session_map.hpp"
@@ -8,8 +7,9 @@
 #include "crypto/keychain.hpp"
 #include "os/socket.hpp"
 
-using core::packets::Direction;
-using core::packets::Header;
+using crypto::Keychain;
+using os::Socket;
+using util::ThroughputRecorder;
 
 namespace core
 {
@@ -17,11 +17,11 @@ namespace core
   {
     inline void continue_request_handler(
      GenericPacket<>& packet,
-     core::SessionMap& session_map,
-     const crypto::Keychain& keychain,
-     util::ThroughputRecorder& recorder,
+     SessionMap& session_map,
+     const Keychain& keychain,
+     ThroughputRecorder& recorder,
      const RouterInfo& router_info,
-     const os::Socket& socket,
+     const Socket& socket,
      bool is_signed)
     {
       size_t index = 0;
@@ -37,10 +37,10 @@ namespace core
         return;
       }
 
-      core::ContinueToken token(router_info);
+      ContinueToken token(router_info);
       {
         size_t i = index + 1;
-        if (!token.readEncrypted(packet.Buffer, i, keychain.RouterPublicKey, keychain.RelayPrivateKey)) {
+        if (!token.read_encrypted(packet, i, keychain.RouterPublicKey, keychain.RelayPrivateKey)) {
           LOG(ERROR, "ignoring continue request. could not read continue token");
           return;
         }
@@ -51,7 +51,7 @@ namespace core
         return;
       }
 
-      auto hash = token.key();
+      auto hash = token.hash();
 
       auto session = session_map.get(hash);
 
@@ -75,19 +75,18 @@ namespace core
       length = packet.Len - ContinueToken::EncryptedByteSize;
 
       if (is_signed) {
-        mPacket.Buffer[ContinueToken::EncryptedByteSize + crypto::PacketHashLength] =
+        packet.Buffer[ContinueToken::EncryptedByteSize + crypto::PacketHashLength] =
          static_cast<uint8_t>(packets::Type::ContinueRequest);
-        legacy::relay_sign_network_next_packet(&mPacket.Buffer[ContinueToken::EncryptedByteSize], length);
+        legacy::relay_sign_network_next_packet(&packet.Buffer[ContinueToken::EncryptedByteSize], length);
       } else {
-        mPacket.Buffer[ContinueToken::EncryptedByteSize] = static_cast<uint8_t>(packets::Type::ContinueRequest);
+        packet.Buffer[ContinueToken::EncryptedByteSize] = static_cast<uint8_t>(packets::Type::ContinueRequest);
       }
 
-      mRecorder.ContinueRequestTx.add(length);
+      recorder.ContinueRequestTx.add(length);
 
-      if (!socket.send(session->NextAddr, &mPacket.Buffer[ContinueToken::EncryptedByteSize], length)) {
-        LOG("failed to forward continue request");
+      if (!socket.send(session->NextAddr, &packet.Buffer[ContinueToken::EncryptedByteSize], length)) {
+        LOG(ERROR, "failed to forward continue request");
       }
     }
   }  // namespace handlers
 }  // namespace core
-#endif

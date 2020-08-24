@@ -1,32 +1,18 @@
 #pragma once
 
-#include "base_handler.hpp"
 #include "core/packets/relay_ping_packet.hpp"
 #include "core/relay_manager.hpp"
+
+using core::packets::RelayPingPacket;
 
 namespace core
 {
   namespace handlers
   {
-    class NewRelayPongHandler: public BaseHandler
+    inline void relay_pong_handler(GenericPacket<>& packet, RelayManager& manager)
     {
-     public:
-      NewRelayPongHandler(GenericPacket<>& packet, RelayManager<Relay>& manager);
-
-      void handle();
-
-     private:
-      RelayManager<Relay>& mRelayManager;
-    };
-
-    inline NewRelayPongHandler::NewRelayPongHandler(GenericPacket<>& packet, RelayManager<Relay>& manager)
-     : BaseHandler(packet), mRelayManager(manager)
-    {}
-
-    inline void NewRelayPongHandler::handle()
-    {
-      packets::NewRelayPingPacket packet(mPacket);
-      mRelayManager.processPong(mPacket.Addr, packet.getSeqNum());
+      packets::RelayPingPacket pkt(packet);
+      manager.processPong(packet.Addr, pkt.getSeqNum());
     }
   }  // namespace handlers
 }  // namespace core

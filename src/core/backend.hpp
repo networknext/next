@@ -42,7 +42,7 @@ namespace core
 
   struct InitResponse
   {
-    static const size_t ByteSize = 4 + 8 + crypto::KeySize;
+    static const size_t ByteSize = 4 + 8 + crypto::KEY_SIZE;
     uint32_t Version;
     uint64_t Timestamp;
     crypto::GenericKey PublicKey;
@@ -55,7 +55,7 @@ namespace core
   {
     uint32_t Version;
     std::string Address;
-    std::array<uint8_t, crypto::KeySize> PublicKey;
+    std::array<uint8_t, crypto::KEY_SIZE> PublicKey;
     RelayStats PingStats;
     uint64_t SessionCount;
     uint64_t OutboundPingTx;
@@ -117,7 +117,7 @@ namespace core
      const std::string address,
      const crypto::Keychain& keychain,
      RouterInfo& routerInfo,
-     RelayManager<Relay>& relayManager,
+     RelayManager& relayManager,
      std::string base64RelayPublicKey,
      const core::SessionMap& sessions,
      net::IHttpClient& client);
@@ -140,7 +140,7 @@ namespace core
     const std::string mAddressStr;
     const crypto::Keychain& mKeychain;
     RouterInfo& mRouterInfo;
-    RelayManager<Relay>& mRelayManager;
+    RelayManager& mRelayManager;
     const std::string mBase64RelayPublicKey;
     const core::SessionMap& mSessionMap;
     net::IHttpClient& mRequester;

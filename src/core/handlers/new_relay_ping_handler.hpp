@@ -1,6 +1,5 @@
 #pragma once
 
-#include "base_handler.hpp"
 #include "core/packets/relay_ping_packet.hpp"
 #include "core/packets/types.hpp"
 #include "core/throughput_recorder.hpp"
@@ -8,46 +7,26 @@
 #include "encoding/read.hpp"
 #include "net/address.hpp"
 #include "os/socket.hpp"
+
+using core::packets::Type;
+using os::Socket;
+using util::ThroughputRecorder;
+
 namespace core
 {
   namespace handlers
   {
-    class NewRelayPingHandler: public BaseHandler
+    inline void relay_ping_handler(GenericPacket<>& packet, util::ThroughputRecorder& recorder, const os::Socket& socket)
     {
-     public:
-      NewRelayPingHandler(GenericPacket<>& packet, util::ThroughputRecorder& recorder);
+      packet.Buffer[crypto::PacketHashLength] = static_cast<uint8_t>(Type::RelayPong);
 
-      template <size_t Size>
-      void handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket);
+      crypto::SignNetworkNextPacket(packet.Buffer, packet.Len);
 
-     private:
-      util::ThroughputRecorder& mRecorder;
-    };
+      recorder.InboundPingTx.add(packet.Len);
 
-    inline NewRelayPingHandler::NewRelayPingHandler(
-     GenericPacket<>& packet, util::ThroughputRecorder& recorder)
-     : BaseHandler(packet), mRecorder(recorder)
-    {}
-
-    template <size_t Size>
-    inline void NewRelayPingHandler::handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket)
-    {
-      (void)buff;
-      (void)socket;
-
-      mPacket.Buffer[crypto::PacketHashLength] = static_cast<uint8_t>(packets::Type::NewRelayPong);
-
-      crypto::SignNetworkNextPacket(mPacket.Buffer, mPacket.Len);
-
-      mRecorder.InboundPingTx.add(mPacket.Len);
-
-#ifdef RELAY_MULTISEND
-      buff.push(mPacket);
-#else
-      if (!socket.send(mPacket)) {
-        LOG("failed to send new pong to ", mPacket.Addr);
+      if (!socket.send(packet)) {
+        LOG(ERROR, "failed to send new pong to ", packet.Addr);
       }
-#endif
     }
   }  // namespace handlers
 }  // namespace core

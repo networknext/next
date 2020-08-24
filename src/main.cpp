@@ -8,21 +8,22 @@
 #include "bench/bench.hpp"
 #include "core/backend.hpp"
 #include "core/packet_handler.hpp"
+#include "core/packets/header.hpp"
 #include "core/pinger.hpp"
 #include "core/router_info.hpp"
 #include "crypto/bytes.hpp"
 #include "crypto/hash.hpp"
 #include "crypto/keychain.hpp"
 #include "encoding/base64.hpp"
+#include "net/http.hpp"
 #include "os/socket.hpp"
 #include "relay/relay.hpp"
 #include "testing/test.hpp"
 #include "util/env.hpp"
-#include "core/packets/header.hpp"
 
 using namespace std::chrono_literals;
 using core::Backend;
-using core::PacketProcessor;
+using core::PacketHandler;
 using core::Pinger;
 using crypto::KEY_SIZE;
 using crypto::Keychain;
@@ -256,9 +257,9 @@ int main(int argc, const char* argv[])
     }
 
     auto thread = std::make_shared<std::thread>([&, socket] {
-      PacketProcessor processor(
+      PacketHandler handler(
        should_receive, *socket, keychain, sessions, relay_manager, gAlive, recorder, router_info);
-      processor.process();
+      handler.handle_packets();
     });
 
     set_thread_affinity(*thread, (std::thread::hardware_concurrency() == 1) ? 0 : i);

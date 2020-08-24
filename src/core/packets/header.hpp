@@ -37,7 +37,8 @@ namespace core
       auto write(GenericPacketContainer<>& buffer, size_t& index, const GenericKey& public_key) -> bool;
       auto verify(GenericPacketContainer<>& buffer, size_t& index, const GenericKey& public_key) -> bool;
 
-      auto Header::clean_sequence() -> uint64_t;
+      auto hash() -> uint64_t;
+      auto clean_sequence() -> uint64_t;
     };
 
     INLINE auto Header::read(GenericPacketContainer<>& buffer, size_t& index) -> bool
@@ -47,9 +48,16 @@ namespace core
         return false;
       }
 
-      Type packet_type = static_cast<Type>(encoding::ReadUint8(buffer, index));
+      uint8_t type;
+      if (!encoding::ReadUint8(buffer, index, type)) {
+        return false;
+      }
+      Type packet_type = static_cast<Type>(type);
 
-      uint64_t packet_sequence = encoding::ReadUint64(buffer, index);
+      uint64_t packet_sequence;
+      if (!encoding::ReadUint64(buffer, index, packet_sequence)) {
+        return false;
+      }
 
       if (direction == Direction::ServerToClient) {
         // high bit must be set
@@ -74,8 +82,14 @@ namespace core
       }
 
       this->sequence = packet_sequence;
-      this->session_id = encoding::ReadUint64(buffer, index);
-      this->session_version = encoding::ReadUint8(buffer, index);
+
+      if (!encoding::ReadUint64(buffer, index, this->session_id)) {
+        return false;
+      }
+
+      if (!encoding::ReadUint8(buffer, index, this->session_version)) {
+        return false;
+      }
 
       return true;
     }
@@ -171,9 +185,16 @@ namespace core
         return false;
       }
 
-      Type packet_type = static_cast<Type>(encoding::ReadUint8(buffer, index));
+      uint8_t type;
+      if (!encoding::ReadUint8(buffer, index, type)) {
+        return false;
+      }
+      Type packet_type = static_cast<Type>(type);
 
-      uint64_t packet_sequence = encoding::ReadUint64(buffer, index);
+      uint64_t packet_sequence;
+      if (!encoding::ReadUint64(buffer, index, packet_sequence)) {
+        return false;
+      }
 
       if (this->direction == Direction::ServerToClient) {
         // high bit must be set
@@ -227,6 +248,11 @@ namespace core
       }
 
       return true;
+    }
+
+    INLINE auto Header::hash() -> uint64_t
+    {
+      return session_id ^ session_version;
     }
 
     INLINE auto Header::clean_sequence() -> uint64_t

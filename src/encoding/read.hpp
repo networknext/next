@@ -37,7 +37,7 @@ namespace encoding
   auto ReadAddress(const T& buff, size_t& index, net::Address& addr) -> bool;
 
   template <typename T>
-  auto ReadString(const T& buff, size_t& index, std::string& str) -> std::string;
+  auto ReadString(const T& buff, size_t& index, std::string& str) -> bool;
 
   template <typename T>
   INLINE auto ReadUint8(const T& buff, size_t& index, uint8_t& value) -> bool
