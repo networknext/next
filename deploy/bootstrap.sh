@@ -62,4 +62,5 @@ sudo sysctl -w net.core.wmem_max=1000000000
 
 # Start the service
 systemctl daemon-reload
+systemctl enable app.service
 systemctl start app.service
