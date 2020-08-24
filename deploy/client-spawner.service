@@ -5,3 +5,4 @@ Description=Network Next Client Load Test
 ExecStart=/app/client-spawner.sh -n 2000
 Restart=always
 RestartSec=3
+WorkingDirectory=/app
