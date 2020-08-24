@@ -2,7 +2,7 @@ import Vue from 'vue'
 import APIService from '@/services/api.service'
 import store from '@/store'
 
-import createAuth0Client, { Auth0Client, IdToken } from '@auth0/auth0-spa-js'
+import { Auth0Client } from '@auth0/auth0-spa-js'
 
 export class AuthService {
   private apiService: APIService
@@ -45,10 +45,11 @@ export class AuthService {
   }
 
   private async processAuthentication () {
-    let isAuthenticated = false
     this.authClient.isAuthenticated()
-      .then(() => {
-        isAuthenticated = true
+      .then((isAuthenticated: boolean) => {
+        if (!isAuthenticated) {
+          return
+        }
         this.apiService = new APIService()
         const userProfile: UserProfile = {
           auth0ID: '',
