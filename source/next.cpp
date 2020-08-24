@@ -2517,7 +2517,7 @@ bool next_is_network_next_packet( const uint8_t * packet_data, int packet_bytes 
     return memcmp( hash, packet_data, NEXT_PACKET_HASH_BYTES ) == 0;
 }
 
-void next_sign_network_next_packet( uint8_t * packet_data, size_t packet_bytes )
+void next_hash_network_next_packet( uint8_t * packet_data, size_t packet_bytes )
 {
     next_assert( packet_bytes > NEXT_PACKET_HASH_BYTES );
     int message_length = packet_bytes - NEXT_PACKET_HASH_BYTES;
@@ -5129,7 +5129,7 @@ void next_route_manager_begin_next_route( next_route_manager_t * route_manager, 
     route_manager->route_data.pending_route_request_packet_bytes = NEXT_PACKET_HASH_BYTES + 1 + ( num_tokens - 1 ) * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES;
     route_manager->route_data.pending_route_request_packet_data[NEXT_PACKET_HASH_BYTES] = NEXT_ROUTE_REQUEST_PACKET;
     memcpy( route_manager->route_data.pending_route_request_packet_data + NEXT_PACKET_HASH_BYTES + 1, tokens + NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES, ( size_t(num_tokens) - 1 ) * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES );
-    next_sign_network_next_packet( route_manager->route_data.pending_route_request_packet_data, route_manager->route_data.pending_route_request_packet_bytes );
+    next_hash_network_next_packet( route_manager->route_data.pending_route_request_packet_data, route_manager->route_data.pending_route_request_packet_bytes );
     memcpy( route_manager->route_data.pending_route_private_key, route_token.private_key, crypto_box_SECRETKEYBYTES );
     next_assert( route_manager->route_data.pending_route_request_packet_bytes <= NEXT_MAX_PACKET_BYTES );
 }
@@ -5175,7 +5175,7 @@ void next_route_manager_continue_next_route( next_route_manager_t * route_manage
     route_manager->route_data.pending_continue_request_packet_bytes = NEXT_PACKET_HASH_BYTES + 1 + ( num_tokens - 1 ) * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES;
     route_manager->route_data.pending_continue_request_packet_data[NEXT_PACKET_HASH_BYTES] = NEXT_CONTINUE_REQUEST_PACKET;
     memcpy( route_manager->route_data.pending_continue_request_packet_data + NEXT_PACKET_HASH_BYTES + 1, tokens + NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES, ( size_t(num_tokens) - 1 ) * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES );
-    next_sign_network_next_packet( route_manager->route_data.pending_continue_request_packet_data, route_manager->route_data.pending_continue_request_packet_bytes );    
+    next_hash_network_next_packet( route_manager->route_data.pending_continue_request_packet_data, route_manager->route_data.pending_continue_request_packet_bytes );    
     next_assert( route_manager->route_data.pending_continue_request_packet_bytes <= NEXT_MAX_PACKET_BYTES );
 
     next_printf( NEXT_LOG_LEVEL_INFO, "client continues route (%s)", committed ? "committed" : "uncommitted" );
@@ -5244,7 +5244,7 @@ void next_route_manager_prepare_send_packet( next_route_manager_t * route_manage
 
     *packet_bytes = NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES + payload_bytes;
 
-    next_sign_network_next_packet( packet_data, *packet_bytes );
+    next_hash_network_next_packet( packet_data, *packet_bytes );
 }
 
 bool next_route_manager_process_server_to_client_packet( next_route_manager_t * route_manager, const next_address_t * from, uint8_t * packet_data, int packet_bytes, uint64_t * payload_sequence )
@@ -6946,7 +6946,7 @@ void next_client_internal_update_next_pings( next_client_internal_t * client )
 
         int packet_bytes = NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES + 8;
 
-        next_sign_network_next_packet( packet_data, packet_bytes );
+        next_hash_network_next_packet( packet_data, packet_bytes );
 
         next_platform_socket_send_packet( client->socket, &to, packet_data, packet_bytes );
 
@@ -9014,7 +9014,7 @@ struct NextBackendServerInitResponsePacket
     template <typename Stream> bool Serialize( Stream & stream )
     {
         serialize_uint64( stream, request_id );
-        serialize_uint32( stream, response );
+        serialize_bits( stream, response, 8 );
         return true;
     }
 };
@@ -9338,7 +9338,7 @@ int next_read_backend_packet( uint8_t * packet_data, int packet_bytes, void * pa
 
         if ( packet_bytes < int( 1 + crypto_sign_BYTES ) )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "signed packet is too small to be valid" );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "signed packet is too small to be valid (%d bytes)", packet_bytes );
             return NEXT_ERROR;
         }
 
@@ -10248,6 +10248,9 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         if ( packet_id == NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET )
         {
+            // todo
+            printf( "NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET\n" );
+
             int state = NEXT_SERVER_STATE_DIRECT_ONLY;
             {
                 next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
@@ -10276,6 +10279,9 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
             next_printf( NEXT_LOG_LEVEL_INFO, "server received init response from backend" );
 
+            // todo
+            printf( "response = %d\n", packet.response );
+
             if ( packet.response != NEXT_SERVER_INIT_RESPONSE_OK )
             {
                 switch ( packet.response )
@@ -10297,7 +10303,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
                         return;
 
                     default:
-                        next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend for an unknown reason" );
+                        next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend" );
                         return;
                 }
             }
@@ -10680,7 +10686,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             return;
         }
 
-        next_sign_network_next_packet( response, NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES );
+        next_hash_network_next_packet( response, NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES );
 
         next_platform_socket_send_packet( server->socket, from, response, NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES );
 
@@ -10750,7 +10756,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             return;
         }
 
-        next_sign_network_next_packet( response, NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES );
+        next_hash_network_next_packet( response, NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES );
 
         next_platform_socket_send_packet( server->socket, from, response, NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES );
 
@@ -10820,7 +10826,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             return;
         }
 
-        next_sign_network_next_packet( packet_data, NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES + 8 );        
+        next_hash_network_next_packet( packet_data, NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES + 8 );        
 
         next_platform_socket_send_packet( server->socket, from, packet_data, NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES + 8 );
 
@@ -11000,10 +11006,16 @@ void next_server_internal_block_and_receive_packet( next_server_internal_t * ser
 
     if ( next_is_network_next_packet( packet_data, packet_bytes ) )
     {
+        // todo
+        printf( "received network next packet\n" );
+
         next_server_internal_process_network_next_packet( server, &from, packet_data, packet_bytes );
     }
     else
     {
+        // todo
+        printf( "*** not a network next packet ***\n" );
+
         next_server_internal_process_game_packet( server, &from, packet_data, packet_bytes );    
     }
 }
@@ -11968,7 +11980,7 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
 
                 int next_packet_bytes = NEXT_PACKET_HASH_BYTES + NEXT_HEADER_BYTES + packet_bytes;
 
-                next_sign_network_next_packet( next_packet_data, next_packet_bytes );
+                next_hash_network_next_packet( next_packet_data, next_packet_bytes );
 
                 next_assert( next_is_network_next_packet( next_packet_data, next_packet_bytes ) );
 
