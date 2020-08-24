@@ -53,9 +53,8 @@ int main()
 {
     printf( "\nWelcome to Network Next!\n\n" );
 
-    auto now = std::chrono::high_resolution_clock::now();
+    srand( uint64_t( next_time() * 10000ULL ) );
 
-    srand(std::chrono::duration<uint64_t, std::nano>(std::chrono::high_resolution_clock::now().time_since_epoch()).count());
     next_sleep( (rand() % 120) );
 
     signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );
@@ -71,46 +70,46 @@ int main()
     }
 
     std::ifstream ifstr("staging_servers.txt");
-    if (!ifstr)
+    if ( !ifstr )
     {
-      printf( "could not open servers list 'staging_servers.txt'" );
-      return 1;
+        printf( "error: could not open servers list 'staging_servers.txt'" );
+        return 1;
     }
 
     std::vector<std::string> servers;
 
     std::string line;
-    while (std::getline(ifstr, line))
+    while ( std::getline( ifstr, line ) )
     {
-      servers.push_back(line);
+        servers.push_back( line );
     }
 
-    const char* cores_str = std::getenv("CORES");
-    if (!cores_str)
+    const char * cores_str = std::getenv( "CORES" );
+    if ( !cores_str )
     {
         printf( "error: cores env var not defined\n" );
         return 1;
     }
 
+    // todo: oh my god you are seriously using exceptions to parse a string into a number?! LOL
     int cores;
-
     try
     {
         cores = std::atoi(cores_str);
     }
-    catch (std::exception& e)
+    catch ( std::exception & e )
     {
-        printf("could not parse CORES env var: %s\n", e.what());
+        printf( "could not parse CORES env var: %s\n", e.what() );
         return 1;
     }
 
-    std::vector<std::string> server_addrs(cores);
+    std::vector<std::string> server_addrs( cores );
 
-    for (int i = 0; i < cores; i++)
+    for ( int i = 0; i < cores; ++i )
     {
-      std::stringstream ss;
-      ss << servers[rand() % servers.size()] << ":" << 50000 + i;
-      server_addrs[i] = ss.str();
+        std::stringstream ss;
+        ss << servers[rand() % servers.size()] << ":" << 50000 + i;
+        server_addrs[i] = ss.str();
     }
 
     uint8_t packet_data[32];

@@ -48,7 +48,7 @@ void server_packet_received( next_server_t * server, void * context, const next_
         next_address_to_string(from, buff);
         size_t len = strlen(buff);
         uint64_t fnv = 0xCBF29CE484222325;
-        for (size_t i = 0; i < len; i++) {
+        for ( size_t i = 0; i < len; ++i ) {
             fnv ^= buff[i];
             fnv *= 0x00000100000001B3;
         }
@@ -68,15 +68,15 @@ int main()
 
     next_init( NULL, NULL );
 
-    const char* server_ip = std::getenv("SERVER_IP");
-    if (!server_ip)
+    const char * server_ip = std::getenv("SERVER_IP");
+    if ( !server_ip )
     {
         printf( "error: server ip env var not defined\n" );
         return 1;
     }
 
-    const char* server_port = std::getenv("SERVER_PORT");
-    if (!server_port)
+    const char * server_port = std::getenv("SERVER_PORT");
+    if ( !server_port )
     {
         printf( "error: server port env var not defined\n" );
         return 1;
@@ -90,8 +90,8 @@ int main()
     std::string server_addr = server_addr_ss.str();
     std::string bind_addr = bind_addr_ss.str();
 
-    const char* server_address = server_addr.c_str();
-    const char* bind_address = bind_addr.c_str();
+    const char * server_address = server_addr.c_str();
+    const char * bind_address = bind_addr.c_str();
 
     next_server_t * server = next_server_create( NULL, server_address, bind_address, "local", server_packet_received, NULL );
 
