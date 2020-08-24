@@ -8,7 +8,7 @@ export class AuthService {
   private apiService: APIService
   private clientID: string
   private domain: string
-  private authClient: Auth0Client | null = null
+  private authClient: Auth0Client | any
 
   constructor (options: any) {
     this.apiService = Vue.prototype.$apiService
@@ -30,16 +30,10 @@ export class AuthService {
   }
 
   public logout () {
-    if (!this.authClient) {
-      return
-    }
     this.authClient.logout()
   }
 
   public login () {
-    if (!this.authClient) {
-      return
-    }
     this.authClient.loginWithPopup()
       .then(() => {
         this.processAuthentication()
@@ -51,9 +45,6 @@ export class AuthService {
   }
 
   public signUp () {
-    if (!this.authClient) {
-      return
-    }
     this.authClient.loginWithPopup({
       connection: 'Username-Password-Authentication',
       screen_hint: 'signup'
@@ -61,9 +52,6 @@ export class AuthService {
   }
 
   private async processAuthentication () {
-    if (!this.authClient) {
-      return
-    }
     const isAuthenticated =
       await this.authClient.isAuthenticated()
         .catch((error: Error) => {
