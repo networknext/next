@@ -24,7 +24,8 @@ export class AuthService {
     this.domain = options.domain
     createAuth0Client({
       client_id: this.clientID,
-      domain: this.domain
+      domain: this.domain,
+      cacheLocation: 'localstorage'
     })
       .then((client: Auth0Client) => {
         this.authClient = client
@@ -111,23 +112,22 @@ export class AuthService {
 
 export const AuthPlugin = {
   install (Vue: any, options: any) {
-    const client = new AuthService({
-      domain: options.domain,
-      clientID: options.clientID
+    let client: any = null
+    Vue.mixin({
+      created: () => {
+        client = new AuthService({
+          domain: options.domain,
+          clientID: options.clientID
+        })
+      }
     })
 
     Vue.login = () => {
-      console.log('login(): ' + options.domain)
       client.login()
     }
 
     Vue.logout = () => {
-      console.log('logout(): ' + options.domain)
       client.logout()
-    }
-
-    Vue.getUserInfo = () => {
-      console.log('getUserInfo(): ' + options.domain)
     }
   }
 }
