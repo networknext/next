@@ -133,9 +133,9 @@ func (m *RouteMatrix) GetAcceptableRoutes(near []NearRelayData, destIDs []uint64
 	// that are with rttEpsilon of the best RTT
 	bestRouteRTT := int32(math.MaxInt32)
 	var maxRoutesSize int32
-	for i, nearRelay := range near {
-		for j, destRelayID := range destIDs {
-			if nearRelay.ID == destRelayID || i > j {
+	for _, nearRelay := range near {
+		for _, destRelayID := range destIDs {
+			if nearRelay.ID == destRelayID {
 				continue
 			}
 
@@ -172,19 +172,24 @@ func (m *RouteMatrix) GetAcceptableRoutes(near []NearRelayData, destIDs []uint64
 					}
 
 					bestRouteRTT = routeRTT
-					break
 				}
+
+				break
 			}
 		}
+	}
+
+	if bestRouteRTT == math.MaxInt32 {
+		return nil, errors.New("could not find best route RTT")
 	}
 
 	// Now that we have the best RTT, we can build the slice of best routes
 	routes := make([]Route, maxRoutesSize)
 	var routeSize int
 
-	for i, nearRelay := range near {
-		for j, destRelayID := range destIDs {
-			if nearRelay.ID == destRelayID || i > j {
+	for _, nearRelay := range near {
+		for _, destRelayID := range destIDs {
+			if nearRelay.ID == destRelayID {
 				continue
 			}
 
@@ -254,7 +259,7 @@ func (m *RouteMatrix) GetAcceptableRoutes(near []NearRelayData, destIDs []uint64
 
 	// No routes found
 	if routeSize == 0 {
-		return nil, errors.New("no routes in route matrix")
+		return nil, errors.New("could not add any routes to route slice")
 	}
 
 	return routes[:routeSize], nil
