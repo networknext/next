@@ -307,6 +307,8 @@ type NextBackendSessionResponsePacket struct {
 	NumTokens            int32
 	Tokens               []byte
 	ServerRoutePublicKey []byte
+	SessionDataBytes     int32
+	SessionData          [NEXT_MAX_SESSION_DATA_BYTES]byte
 }
 
 func (packet *NextBackendSessionResponsePacket) Serialize(stream Stream, versionMajor uint32, versionMinor uint32, versionPatch uint32) error {
@@ -344,6 +346,11 @@ func (packet *NextBackendSessionResponsePacket) Serialize(stream Stream, version
 		packet.ServerRoutePublicKey = make([]byte, Crypto_box_PUBLICKEYBYTES)
 	}
 	stream.SerializeBytes(packet.ServerRoutePublicKey)
+	stream.SerializeInteger(&packet.SessionDataBytes, 0, NEXT_MAX_SESSION_DATA_BYTES)
+	if packet.SessionDataBytes > 0 {
+		sessionData := packet.SessionData[:packet.SessionDataBytes]
+		stream.SerializeBytes(sessionData)
+	}
 	return stream.Error()
 }
 
@@ -533,313 +540,6 @@ func HashNetworkNextPacket(packetData []byte) []byte {
 		hashedPacketData[NEXT_PACKET_HASH_BYTES+i] = packetData[i]
 	}
 	return hashedPacketData
-}
-
-func main() {
-
-	rand.Seed(time.Now().UnixNano())
-
-	backend.relayDatabase = make(map[string]RelayEntry)
-	backend.serverDatabase = make(map[string]ServerEntry)
-	backend.sessionDatabase = make(map[uint64]SessionEntry)
-
-	go TimeoutThread()
-
-	go WebServer()
-
-	listenAddress := net.UDPAddr{
-		Port: NEXT_SERVER_BACKEND_PORT,
-		IP:   net.ParseIP("0.0.0.0"),
-	}
-
-	connection, err := net.ListenUDP("udp", &listenAddress)
-	if err != nil {
-		fmt.Printf("error: could not listen on %s\n", listenAddress.String())
-		return
-	}
-
-	defer connection.Close()
-
-	fmt.Printf("started reference backend on ports %d and %d (sdk4)\n", NEXT_RELAY_BACKEND_PORT, NEXT_SERVER_BACKEND_PORT)
-
-	for {
-
-		packetData := make([]byte, NEXT_MAX_PACKET_BYTES)
-
-		packetBytes, from, err := connection.ReadFromUDP(packetData)
-
-		packetData = packetData[:packetBytes]
-
-		if err != nil {
-			fmt.Printf("socket error: %v\n", err)
-			continue
-		}
-
-		if packetBytes <= 0 {
-			continue
-		}
-
-		if !IsNetworkNextPacket(packetData) {
-			fmt.Printf("error: not network next packet (%d)\n", packetData[8])
-			continue
-		}
-
-		packetData = packetData[NEXT_PACKET_HASH_BYTES:]
-		packetBytes -= NEXT_PACKET_HASH_BYTES
-
-		packetType := packetData[0]
-
-		if packetType == NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET {
-
-			readStream := CreateReadStream(packetData[1:])
-
-			serverInitRequest := &NextBackendServerInitRequestPacket{}
-			if err := serverInitRequest.Serialize(readStream); err != nil {
-				fmt.Printf("error: failed to read server init request packet: %v\n", err)
-				continue
-			}
-
-			initResponse := &NextBackendServerInitResponsePacket{}
-			initResponse.RequestId = serverInitRequest.RequestId
-			initResponse.Response = NEXT_SERVER_INIT_RESPONSE_OK
-
-			writeStream, err := CreateWriteStream(NEXT_MAX_PACKET_BYTES)
-			if err != nil {
-				fmt.Printf("error: failed to write server init response packet: %v\n", err)
-				continue
-			}
-
-			responsePacketType := uint32(NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET)
-			writeStream.SerializeBits(&responsePacketType, 8)
-			if err := initResponse.Serialize(writeStream); err != nil {
-				fmt.Printf("error: failed to write server init response packet: %v\n", err)
-				continue
-			}
-			writeStream.Flush()
-
-			responsePacketData := writeStream.GetData()[0:writeStream.GetBytesProcessed()]
-
-			signedResponsePacketData := SignNetworkNextPacket(responsePacketData, backendPrivateKey[:])
-
-			hashedResponsePacketData := HashNetworkNextPacket(signedResponsePacketData)
-
-			_, err = connection.WriteToUDP(hashedResponsePacketData, from)
-			if err != nil {
-				fmt.Printf("error: failed to send udp response: %v\n", err)
-				continue
-			}
-		
-		} else if packetType == NEXT_BACKEND_SERVER_UPDATE_PACKET {
-
-			readStream := CreateReadStream(packetData[1:])
-
-			serverUpdate := &NextBackendServerUpdatePacket{}
-			if err := serverUpdate.Serialize(readStream); err != nil {
-				fmt.Printf("error: failed to read server update packet: %v\n", err)
-				continue
-			}
-
-			serverEntry := ServerEntry{}
-			serverEntry.address = from
-			serverEntry.lastUpdate = time.Now().Unix()
-
-			key := string(from.String())
-
-			backend.mutex.Lock()
-			_, ok := backend.serverDatabase[key]
-			if !ok {
-				backend.dirty = true
-			}
-			backend.serverDatabase[key] = serverEntry
-			backend.mutex.Unlock()
-
-		} else if packetType == NEXT_BACKEND_SESSION_UPDATE_PACKET {
-
-			fmt.Printf( "NEXT_BACKEND_SESSION_UPDATE_PACKET\n")
-
-			readStream := CreateReadStream(packetData[1:])
-			sessionUpdate := &NextBackendSessionUpdatePacket{}
-			if err := sessionUpdate.Serialize(readStream); err != nil {
-				fmt.Printf("error: failed to read server session update packet: %v\n", err)
-				continue
-			}
-
-		}
-
-		/*
-			readStream := CreateReadStream(packetData[1:])
-			sessionUpdate := &NextBackendSessionUpdatePacket{}
-			if err := sessionUpdate.Serialize(readStream); err != nil {
-				fmt.Printf("error: failed to read server session update packet: %v\n", err)
-				continue
-			}
-
-			if sessionUpdate.FallbackToDirect {
-				continue
-			}
-
-			backend.mutex.RLock()
-			serverEntry, ok := backend.serverDatabase[string(from.String())]
-			backend.mutex.RUnlock()
-			if !ok {
-				continue
-			}
-
-			nearRelayIds, nearRelayAddresses := GetNearRelays()
-
-			var sessionResponse *NextBackendSessionResponsePacket
-
-			backend.mutex.RLock()
-			sessionEntry, ok := backend.sessionDatabase[sessionUpdate.SessionId]
-			backend.mutex.RUnlock()
-
-			newSession := !ok
-
-			if newSession {
-				sessionEntry.id = sessionUpdate.SessionId
-				sessionEntry.version = 0
-				sessionEntry.expireTimestamp = uint64(time.Now().Unix()) + 20
-			} else {
-				sessionEntry.expireTimestamp += 10
-				sessionEntry.slice++
-			}
-
-			takeNetworkNext := len(nearRelayIds) > 0
-
-			if !takeNetworkNext {
-
-				// direct route
-
-				sessionResponse = &NextBackendSessionResponsePacket{
-					Sequence:             sessionUpdate.Sequence,
-					SessionId:            sessionUpdate.SessionId,
-					NumNearRelays:        int32(len(nearRelayIds)),
-					NearRelayIds:         nearRelayIds,
-					NearRelayAddresses:   nearRelayAddresses,
-					RouteType:            int32(NEXT_ROUTE_TYPE_DIRECT),
-					NumTokens:            0,
-					Tokens:               nil,
-					ServerRoutePublicKey: serverEntry.publicKey,
-				}
-
-				sessionEntry.route = nil
-				sessionEntry.next = false
-
-			} else {
-
-				// next route
-
-				numRelays := len(nearRelayIds)
-				if numRelays > 5 {
-					numRelays = 5
-				}
-
-				route := make([]uint64, numRelays)
-				for i := 0; i < numRelays; i++ {
-					route[i] = nearRelayIds[i]
-				}
-
-				routeChanged := RouteChanged(sessionEntry.route, route)
-
-				numNodes := numRelays + 2
-
-				addresses := make([]*net.UDPAddr, numNodes)
-				publicKeys := make([][]byte, numNodes)
-				publicKeys[0] = sessionUpdate.ClientRoutePublicKey[:]
-
-				for i := 0; i < numRelays; i++ {
-					addresses[1+i] = &nearRelayAddresses[i]
-					publicKeys[1+i] = relayPublicKey
-				}
-
-				addresses[numNodes-1] = from
-				publicKeys[numNodes-1] = serverEntry.publicKey
-
-				var tokens []byte
-
-				var routeType int32
-
-				if !sessionEntry.next || routeChanged {
-
-					// new route
-
-					sessionEntry.version++
-					tokens, err = WriteRouteTokens(sessionEntry.expireTimestamp, sessionEntry.id, sessionEntry.version, 256, 256, numNodes, addresses, publicKeys, routerPrivateKey)
-					if err != nil {
-						fmt.Printf("error: could not write route tokens: %v\n", err)
-						continue
-					}
-					routeType = NEXT_ROUTE_TYPE_NEW
-
-				} else {
-
-					// continue route
-
-					tokens, err = WriteContinueTokens(sessionEntry.expireTimestamp, sessionEntry.id, sessionEntry.version, numNodes, publicKeys, routerPrivateKey)
-					if err != nil {
-						fmt.Printf("error: could not write continue tokens: %v\n", err)
-						continue
-					}
-					routeType = NEXT_ROUTE_TYPE_CONTINUE
-
-				}
-
-				sessionResponse = &NextBackendSessionResponsePacket{
-					Sequence:             sessionUpdate.Sequence,
-					SessionId:            sessionUpdate.SessionId,
-					NumNearRelays:        int32(len(nearRelayIds)),
-					NearRelayIds:         nearRelayIds,
-					NearRelayAddresses:   nearRelayAddresses,
-					RouteType:            routeType,
-					Multipath:            false,
-					Committed:            true,
-					NumTokens:            int32(numNodes),
-					Tokens:               tokens,
-					ServerRoutePublicKey: serverEntry.publicKey,
-				}
-
-				sessionEntry.route = route
-				sessionEntry.next = true
-			}
-
-			if sessionResponse == nil {
-				fmt.Printf("error: nil session response\n")
-				continue
-			}
-
-			backend.mutex.Lock()
-			if newSession {
-				backend.dirty = true
-			}
-			backend.sessionDatabase[sessionUpdate.SessionId] = sessionEntry
-			backend.mutex.Unlock()
-
-			writeStream, err := CreateWriteStream(NEXT_MAX_PACKET_BYTES)
-			if err != nil {
-				fmt.Printf("error: failed to write session response packet: %v\n", err)
-				continue
-			}
-			responsePacketType := uint32(NEXT_BACKEND_SESSION_RESPONSE_PACKET)
-			writeStream.SerializeBits(&responsePacketType, 8)
-			if err := sessionResponse.Serialize(writeStream, sessionUpdate.VersionMajor, sessionUpdate.VersionMinor, sessionUpdate.VersionPatch); err != nil {
-				fmt.Printf("error: failed to write session response packet: %v\n", err)
-				continue
-			}
-			writeStream.Flush()
-
-			responsePacketData := writeStream.GetData()[0:writeStream.GetBytesProcessed()]
-
-			signedResponsePacketData := SignNetworkNextPacket(responsePacketData)
-
-			_, err = connection.WriteToUDP(signedResponsePacketData, from)
-			if err != nil {
-				fmt.Printf("error: failed to send udp response: %v\n", err)
-				continue
-			}
-
-		}
-		*/
-	}
 }
 
 // -----------------------------------------------------------
@@ -2556,3 +2256,287 @@ type ContinueToken struct {
 }
 
 // -------------------------------------------------------
+
+func main() {
+
+	rand.Seed(time.Now().UnixNano())
+
+	backend.relayDatabase = make(map[string]RelayEntry)
+	backend.serverDatabase = make(map[string]ServerEntry)
+	backend.sessionDatabase = make(map[uint64]SessionEntry)
+
+	go TimeoutThread()
+
+	go WebServer()
+
+	listenAddress := net.UDPAddr{
+		Port: NEXT_SERVER_BACKEND_PORT,
+		IP:   net.ParseIP("0.0.0.0"),
+	}
+
+	connection, err := net.ListenUDP("udp", &listenAddress)
+	if err != nil {
+		fmt.Printf("error: could not listen on %s\n", listenAddress.String())
+		return
+	}
+
+	defer connection.Close()
+
+	fmt.Printf("started reference backend on ports %d and %d (sdk4)\n", NEXT_RELAY_BACKEND_PORT, NEXT_SERVER_BACKEND_PORT)
+
+	for {
+
+		packetData := make([]byte, NEXT_MAX_PACKET_BYTES)
+
+		packetBytes, from, err := connection.ReadFromUDP(packetData)
+
+		packetData = packetData[:packetBytes]
+
+		if err != nil {
+			fmt.Printf("socket error: %v\n", err)
+			continue
+		}
+
+		if packetBytes <= 0 {
+			continue
+		}
+
+		if !IsNetworkNextPacket(packetData) {
+			fmt.Printf("error: not network next packet (%d)\n", packetData[8])
+			continue
+		}
+
+		packetData = packetData[NEXT_PACKET_HASH_BYTES:]
+		packetBytes -= NEXT_PACKET_HASH_BYTES
+
+		packetType := packetData[0]
+
+		if packetType == NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET {
+
+			readStream := CreateReadStream(packetData[1:])
+
+			serverInitRequest := &NextBackendServerInitRequestPacket{}
+			if err := serverInitRequest.Serialize(readStream); err != nil {
+				fmt.Printf("error: failed to read server init request packet: %v\n", err)
+				continue
+			}
+
+			initResponse := &NextBackendServerInitResponsePacket{}
+			initResponse.RequestId = serverInitRequest.RequestId
+			initResponse.Response = NEXT_SERVER_INIT_RESPONSE_OK
+
+			writeStream, err := CreateWriteStream(NEXT_MAX_PACKET_BYTES)
+			if err != nil {
+				fmt.Printf("error: failed to write server init response packet: %v\n", err)
+				continue
+			}
+
+			responsePacketType := uint32(NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET)
+			writeStream.SerializeBits(&responsePacketType, 8)
+			if err := initResponse.Serialize(writeStream); err != nil {
+				fmt.Printf("error: failed to write server init response packet: %v\n", err)
+				continue
+			}
+			writeStream.Flush()
+
+			responsePacketData := writeStream.GetData()[0:writeStream.GetBytesProcessed()]
+
+			signedResponsePacketData := SignNetworkNextPacket(responsePacketData, backendPrivateKey[:])
+
+			hashedResponsePacketData := HashNetworkNextPacket(signedResponsePacketData)
+
+			_, err = connection.WriteToUDP(hashedResponsePacketData, from)
+			if err != nil {
+				fmt.Printf("error: failed to send udp response: %v\n", err)
+				continue
+			}
+		
+		} else if packetType == NEXT_BACKEND_SERVER_UPDATE_PACKET {
+
+			readStream := CreateReadStream(packetData[1:])
+
+			serverUpdate := &NextBackendServerUpdatePacket{}
+			if err := serverUpdate.Serialize(readStream); err != nil {
+				fmt.Printf("error: failed to read server update packet: %v\n", err)
+				continue
+			}
+
+			serverEntry := ServerEntry{}
+			serverEntry.address = from
+			serverEntry.lastUpdate = time.Now().Unix()
+
+			key := string(from.String())
+
+			backend.mutex.Lock()
+			_, ok := backend.serverDatabase[key]
+			if !ok {
+				backend.dirty = true
+			}
+			backend.serverDatabase[key] = serverEntry
+			backend.mutex.Unlock()
+
+		} else if packetType == NEXT_BACKEND_SESSION_UPDATE_PACKET {
+
+			readStream := CreateReadStream(packetData[1:])
+			sessionUpdate := &NextBackendSessionUpdatePacket{}
+			if err := sessionUpdate.Serialize(readStream); err != nil {
+				fmt.Printf("error: failed to read server session update packet: %v\n", err)
+				continue
+			}
+
+			nearRelayIds, nearRelayAddresses := GetNearRelays()
+
+			var sessionResponse *NextBackendSessionResponsePacket
+
+			backend.mutex.RLock()
+			sessionEntry, ok := backend.sessionDatabase[sessionUpdate.SessionId]
+			backend.mutex.RUnlock()
+
+			newSession := !ok
+
+			if newSession {
+				sessionEntry.id = sessionUpdate.SessionId
+				sessionEntry.version = 0
+				sessionEntry.expireTimestamp = uint64(time.Now().Unix()) + 20
+			} else {
+				sessionEntry.expireTimestamp += 10
+				sessionEntry.slice++
+			}
+
+			takeNetworkNext := len(nearRelayIds) > 0
+
+			if !takeNetworkNext {
+
+				// direct route
+
+				sessionResponse = &NextBackendSessionResponsePacket{
+					Sequence:             sessionUpdate.Sequence,
+					SessionId:            sessionUpdate.SessionId,
+					NumNearRelays:        int32(len(nearRelayIds)),
+					NearRelayIds:         nearRelayIds,
+					NearRelayAddresses:   nearRelayAddresses,
+					RouteType:            int32(NEXT_ROUTE_TYPE_DIRECT),
+					NumTokens:            0,
+					Tokens:               nil,
+					ServerRoutePublicKey: sessionUpdate.ServerRoutePublicKey,
+				}
+
+				sessionEntry.route = nil
+				sessionEntry.next = false
+
+			} else {
+
+				// next route
+
+				numRelays := len(nearRelayIds)
+				if numRelays > 5 {
+					numRelays = 5
+				}
+
+				route := make([]uint64, numRelays)
+				for i := 0; i < numRelays; i++ {
+					route[i] = nearRelayIds[i]
+				}
+
+				routeChanged := RouteChanged(sessionEntry.route, route)
+
+				numNodes := numRelays + 2
+
+				addresses := make([]*net.UDPAddr, numNodes)
+				publicKeys := make([][]byte, numNodes)
+				publicKeys[0] = sessionUpdate.ClientRoutePublicKey[:]
+
+				for i := 0; i < numRelays; i++ {
+					addresses[1+i] = &nearRelayAddresses[i]
+					publicKeys[1+i] = relayPublicKey
+				}
+
+				addresses[numNodes-1] = from
+				publicKeys[numNodes-1] = sessionUpdate.ServerRoutePublicKey
+
+				var tokens []byte
+
+				var routeType int32
+
+				if !sessionEntry.next || routeChanged {
+
+					// new route
+
+					sessionEntry.version++
+					tokens, err = WriteRouteTokens(sessionEntry.expireTimestamp, sessionEntry.id, sessionEntry.version, 256, 256, numNodes, addresses, publicKeys, routerPrivateKey)
+					if err != nil {
+						fmt.Printf("error: could not write route tokens: %v\n", err)
+						continue
+					}
+					routeType = NEXT_ROUTE_TYPE_NEW
+
+				} else {
+
+					// continue route
+
+					tokens, err = WriteContinueTokens(sessionEntry.expireTimestamp, sessionEntry.id, sessionEntry.version, numNodes, publicKeys, routerPrivateKey)
+					if err != nil {
+						fmt.Printf("error: could not write continue tokens: %v\n", err)
+						continue
+					}
+					routeType = NEXT_ROUTE_TYPE_CONTINUE
+
+				}
+
+				sessionResponse = &NextBackendSessionResponsePacket{
+					Sequence:             sessionUpdate.Sequence,
+					SessionId:            sessionUpdate.SessionId,
+					NumNearRelays:        int32(len(nearRelayIds)),
+					NearRelayIds:         nearRelayIds,
+					NearRelayAddresses:   nearRelayAddresses,
+					RouteType:            routeType,
+					Multipath:            false,
+					Committed:            true,
+					NumTokens:            int32(numNodes),
+					Tokens:               tokens,
+					ServerRoutePublicKey: sessionUpdate.ServerRoutePublicKey,
+				}
+
+				sessionEntry.route = route
+				sessionEntry.next = true
+			}
+
+			if sessionResponse == nil {
+				fmt.Printf("error: nil session response\n")
+				continue
+			}
+
+			backend.mutex.Lock()
+			if newSession {
+				backend.dirty = true
+			}
+			backend.sessionDatabase[sessionUpdate.SessionId] = sessionEntry
+			backend.mutex.Unlock()
+
+			writeStream, err := CreateWriteStream(NEXT_MAX_PACKET_BYTES)
+			if err != nil {
+				fmt.Printf("error: failed to write session response packet: %v\n", err)
+				continue
+			}
+			responsePacketType := uint32(NEXT_BACKEND_SESSION_RESPONSE_PACKET)
+			writeStream.SerializeBits(&responsePacketType, 8)
+			if err := sessionResponse.Serialize(writeStream, sessionUpdate.VersionMajor, sessionUpdate.VersionMinor, sessionUpdate.VersionPatch); err != nil {
+				fmt.Printf("error: failed to write session response packet: %v\n", err)
+				continue
+			}
+			writeStream.Flush()
+
+			responsePacketData := writeStream.GetData()[0:writeStream.GetBytesProcessed()]
+
+			signedResponsePacketData := SignNetworkNextPacket(responsePacketData, backendPrivateKey[:])
+
+			hashedResponsePacketData := HashNetworkNextPacket(signedResponsePacketData)
+
+			_, err = connection.WriteToUDP(hashedResponsePacketData, from)
+			if err != nil {
+				fmt.Printf("error: failed to send udp response: %v\n", err)
+				continue
+			}
+		}
+	}
+}
