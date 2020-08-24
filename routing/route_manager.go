@@ -1,7 +1,7 @@
 package routing
 
 const (
-	MaxRelays = 5
+	MaxRelays             = 5
 	MaxRoutesPerRelayPair = 8
 )
 
@@ -14,7 +14,7 @@ type RouteManager struct {
 }
 
 func (manager *RouteManager) AddRoute(rtt int32, relays ...uint64) {
-	
+
 	if rtt < 0 {
 		return
 	}
