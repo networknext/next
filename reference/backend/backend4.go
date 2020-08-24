@@ -2394,6 +2394,8 @@ func main() {
 
 			newSession := !ok
 
+			// todo: rather than storing session data in the map, store it in the session data and pass it back and forth to the SDK
+
 			if newSession {
 				sessionEntry.id = sessionUpdate.SessionId
 				sessionEntry.version = 0
