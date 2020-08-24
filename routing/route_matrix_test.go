@@ -1219,7 +1219,7 @@ func TestRouteMatrix(t *testing.T) {
 			dest := []uint64{}
 
 			actual, err := routeMatrixCopy.GetAcceptableRoutes(near, dest, 0, 0)
-			assert.EqualError(t, err, "no routes in route matrix")
+			assert.EqualError(t, err, "could not find best route RTT")
 			assert.Equal(t, 0, len(actual))
 		})
 
@@ -1228,7 +1228,7 @@ func TestRouteMatrix(t *testing.T) {
 			dest := []uint64{2}
 
 			actual, err := routeMatrixCopy.GetAcceptableRoutes(near, dest, 0, 0)
-			assert.EqualError(t, err, "no routes in route matrix")
+			assert.EqualError(t, err, "could not find best route RTT")
 			assert.Equal(t, 0, len(actual))
 		})
 
@@ -1237,7 +1237,7 @@ func TestRouteMatrix(t *testing.T) {
 			dest := []uint64{1500948990}
 
 			actual, err := routeMatrixCopy.GetAcceptableRoutes(near, dest, 0, 0)
-			assert.EqualError(t, err, "no routes in route matrix")
+			assert.EqualError(t, err, "could not find best route RTT")
 			assert.Equal(t, 0, len(actual))
 		})
 

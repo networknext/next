@@ -39,10 +39,13 @@ void server_packet_received( next_server_t * server, void * context, const next_
 
     next_server_send_packet( server, from, packet_data, packet_bytes );
 
+    // todo: disabled temporarily
+    /*
     if ( !next_server_session_upgraded( server, from ) )
     {
         next_server_upgrade_session( server, from, 0 );
     }
+    */
 }
 
 int main()
