@@ -47,6 +47,7 @@ export class AuthService {
   private async processAuthentication () {
     this.authClient.isAuthenticated()
       .then((isAuthenticated: boolean) => {
+        console.log(isAuthenticated)
         if (!isAuthenticated) {
           return
         }
