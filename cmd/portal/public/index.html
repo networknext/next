@@ -5,6 +5,9 @@
         <meta http-equiv='pragma' content='no-cache'>
         <script async src="https://www.googletagmanager.com/gtag/js?id=UA-141272717-2"></script>
         <script>
+            if (window.location.hostname !== 'portal.networknext.com') {
+              return
+            }
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
