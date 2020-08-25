@@ -41,6 +41,9 @@ export default class APIService {
           }
           resolve(json.result)
         })
+      }).catch((err: any) => {
+        console.log('fetch() error:')
+        console.log(err)
       })
     })
   }

@@ -46,21 +46,21 @@
     </ul>
     <ul class="navbar-nav px-3" v-if="$store.getters.isAnonymous">
       <li class="nav-item text-nowrap">
-        <a data-test="loginButton" class="login btn-sm btn-primary" href="#" @click="authService.logIn()">
+        <a data-test="loginButton" class="login btn-sm btn-primary" href="#" @click="login()">
           Log in
         </a>
       </li>
     </ul>
     <ul class="navbar-nav px-3" v-if="$store.getters.isAnonymous">
       <li class="nav-item text-nowrap">
-        <a data-test="signUpButton" class="signup btn-sm btn-primary" href="#" @click="authService.signUp()">
+        <a data-test="signUpButton" class="signup btn-sm btn-primary" href="#" @click="signUp()">
           Sign up
         </a>
       </li>
     </ul>
     <ul class="navbar-nav px-3" v-if="!$store.getters.isAnonymous">
       <li class="nav-item text-nowrap">
-        <a class="logout btn-sm btn-primary" href="#" @click="authService.logOut()">
+        <a class="logout btn-sm btn-primary" href="#" @click="logout()">
           Logout
         </a>
       </li>
@@ -70,7 +70,6 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
-import AuthService from '../services/auth.service'
 import APIService from '@/services/api.service'
 
 /**
@@ -84,15 +83,30 @@ import APIService from '@/services/api.service'
 @Component
 export default class NavBar extends Vue {
   private apiService: APIService
-  private authService: AuthService
   private portalVersion: string
+  private vueInstance: any
 
   constructor () {
     super()
     this.apiService = Vue.prototype.$apiService
-    this.authService = Vue.prototype.$authService
     this.portalVersion = ''
+    this.vueInstance = Vue
+  }
+
+  private created () {
     this.fetchPortalVersion()
+  }
+
+  private login (): void {
+    this.vueInstance.login()
+  }
+
+  private logout (): void {
+    this.vueInstance.logout()
+  }
+
+  private signUp (): void {
+    this.vueInstance.signUp()
   }
 
   private fetchPortalVersion (): void {
