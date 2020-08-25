@@ -571,6 +571,10 @@ WorkspaceHandler = {
 			case 'map':
 				break;
 			case 'sessions':
+        window.location.hostname === 'portal.networknext.com' ? gtag('event', 'session link clicked', {
+          'event_category': 'User Flow',
+          'event_label': 'Sessions table'
+        }) : null
 				this.loadSessionsPage();
 				break;
 			case 'sessionTool':
