@@ -975,7 +975,7 @@ func main() {
 								IncludedBandwidthGB: 1,
 								ManagementAddr:      "127.0.0.1",
 								SSHUser:             "root",
-								SSHPort:             40000,
+								SSHPort:             22,
 							}
 
 							jsonBytes, err := json.MarshalIndent(example, "", "\t")
