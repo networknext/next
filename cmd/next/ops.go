@@ -246,7 +246,6 @@ func opsBandwidth(rpcClient jsonrpc.RPCClient,
 	relayRegex string,
 	bw int32,
 ) {
-	fmt.Println("opsBandwidth()")
 	var relay routing.Relay
 	var ok bool
 	if relay, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
@@ -276,7 +275,6 @@ func opsNic(rpcClient jsonrpc.RPCClient,
 	relayRegex string,
 	nic int32,
 ) {
-	fmt.Println("opsNic()")
 	var relay routing.Relay
 	var ok bool
 	if relay, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
