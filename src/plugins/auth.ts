@@ -4,6 +4,8 @@ import store from '@/store'
 
 import { Auth0Client } from '@auth0/auth0-spa-js'
 
+import { UserProfile } from '@/components/types/AuthTypes.ts'
+
 export class AuthService {
   private apiService: APIService
   private clientID: string
@@ -121,18 +123,4 @@ export const AuthPlugin = {
       client.signUp()
     }
   }
-}
-
-export interface UserProfile {
-  auth0ID: string;
-  company: string;
-  email: string;
-  idToken: string;
-  name: string;
-  roles: Array<string>;
-  verified: boolean;
-  routeShader: any;
-  domain: string;
-  pubKey: string;
-  buyerID: string;
 }

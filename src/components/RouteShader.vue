@@ -102,7 +102,7 @@ import _ from 'lodash'
 import APIService from '../services/api.service'
 import Alert from '@/components/Alert.vue'
 import { AlertTypes } from './types/AlertTypes'
-import { UserProfile } from '@/services/auth.service'
+import { UserProfile } from '@/components/types/AuthTypes.ts'
 
 /**
  * This component displays all of the necessary information for the route shader tab
