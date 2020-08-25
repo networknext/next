@@ -135,10 +135,10 @@ AuthHandler = {
 		}, 30);
 	},
 	async signUp() {
-    gtag('event', 'clicked sign up', {
+    window.location.hostname === 'portal.networknext.com' ? gtag('event', 'clicked sign up', {
       'event_category': 'Account Creation',
       'event_label': 'Sign up'
-    })
+    }) : null
     setTimeout(() => {
       this.auth0Client.loginWithRedirect({
 				connection: "Username-Password-Authentication",
@@ -455,7 +455,7 @@ UserHandler = {
 				this.userInfo.company = response.account.company_name;
         this.userInfo.roles = response.account.roles;
 
-        if (AuthHandler.isSignupRedirect) {
+        if (AuthHandler.isSignupRedirect && window.location.hostname === 'portal.networknext.com') {
           gtag('event', 'successful sign up', {
             'event_category': 'Account Creation',
             'event_label': 'Redirect after sign up'
