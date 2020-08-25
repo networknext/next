@@ -571,10 +571,20 @@ WorkspaceHandler = {
 			case 'map':
 				break;
 			case 'sessions':
+        window.location.hostname === 'portal.networknext.com' ? gtag('event', 'session link clicked', {
+          'event_category': 'User Flow',
+          'event_label': 'Sessions table'
+        }) : null
 				this.loadSessionsPage();
 				break;
 			case 'sessionTool':
-				let id = options || '';
+        let id = options || '';
+        if (id !== '' && window.location.hostname === 'portal.networknext.com') {
+          gtag('event', 'session look up from table', {
+            'event_category': 'User Flow',
+            'event_label': 'Session lookup - session table'
+          })
+        }
 				Object.assign(rootComponent.$data.pages.sessionTool, {
 					danger: false,
 					id: id,
