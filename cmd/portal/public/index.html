@@ -3,7 +3,16 @@
         <meta http-equiv='cache-control' content='no-cache'>
         <meta http-equiv='expires' content='0'>
         <meta http-equiv='pragma' content='no-cache'>
+        <script async src="https://www.googletagmanager.com/gtag/js?id=UA-141272717-2"></script>
+        <script>
+            if (window.location.hostname === 'portal.networknext.com') {
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
 
+              gtag('config', 'UA-141272717-2');
+            }
+        </script>
         <title>Network Next</title>
         <link rel="icon" href="/favicon.ico">
 
@@ -281,7 +290,10 @@
     <body class="hidden" id="app">
         <div id="root">
             <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark p-0 shadow">
-                <a class="navbar-brand col-sm-3 col-md-2 mr-0" href="https://networknext.com">
+                <a class="navbar-brand col-sm-3 col-md-2 mr-0" href="https://networknext.com" v-on:click="gtag('event', 'redirect to networknext.com', {
+                  'event_category': 'Redirect',
+                  'event_label': 'Redirect to networknext.com'
+                })">
                     <div class="logo-container">
                         <img class="logo-fit" src="logo.png">
                     </div>
