@@ -4735,6 +4735,7 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
     }
 
     uint64_t timestamp = relay_read_uint64( &q );
+    (void) timestamp;
 
     uint32_t num_relays = relay_read_uint32( &q );
 

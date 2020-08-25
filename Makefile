@@ -1,4 +1,3 @@
-CXX = g++
 CXX_FLAGS := -Wall -Wextra -std=c++17
 GO = go
 GOFMT = gofmt
@@ -6,8 +5,10 @@ GOFMT = gofmt
 OS := $(shell uname -s | tr A-Z a-z)
 ifeq ($(OS),darwin)
 	LDFLAGS = -lsodium -lcurl -lpthread -lm -framework CoreFoundation -framework SystemConfiguration -DNEXT_DEVELOPMENT
+	CXX = g++
 else
 	LDFLAGS = -lsodium -lcurl -lpthread -lm -DNEXT_DEVELOPMENT
+	CXX = g++-8
 endif
 
 SDK3NAME = libnext3
@@ -232,17 +233,33 @@ build-analytics: dist
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/analytics ./cmd/analytics/analytics.go
 	@printf "done\n"
 
+ifeq ($(OS),darwin)
 .PHONY: build-load-test-server
 build-load-test-server: dist build-sdk3
 	@printf "Building load test server... "
-	@$(CXX) -Isdk3/include -o $(DIST_DIR)/load_test_server ./cmd/load_test_server/load_test_server.cpp -lnext $(LDFLAGS)
+	@$(CXX) -Isdk3/include -o $(DIST_DIR)/load_test_server ./cmd/load_test_server/load_test_server.cpp  $(DIST_DIR)/$(SDK3NAME).so $(LDFLAGS)
 	@printf "done\n"
+else
+.PHONY: build-load-test-server
+build-load-test-server: dist build-sdk3
+	@printf "Building load test server... "
+	@$(CXX) -Isdk3/include -o $(DIST_DIR)/load_test_server ./cmd/load_test_server/load_test_server.cpp -L./dist -lnext3 $(LDFLAGS)
+	@printf "done\n"
+endif
 
+ifeq ($(OS),darwin)
 .PHONY: build-load-test-client
 build-load-test-client: dist build-sdk3
 	@printf "Building load test client... "
-	@$(CXX) -Isdk3/include -o $(DIST_DIR)/load_test_client ./cmd/load_test_client/load_test_client.cpp -lnext $(LDFLAGS)
+	@$(CXX) -Isdk3/include -o $(DIST_DIR)/load_test_client ./cmd/load_test_client/load_test_client.cpp  $(DIST_DIR)/$(SDK3NAME).so $(LDFLAGS)
 	@printf "done\n"
+else
+.PHONY: build-load-test-client
+build-load-test-client: dist build-sdk3
+	@printf "Building load test client... "
+	@$(CXX) -Isdk3/include -o $(DIST_DIR)/load_test_client ./cmd/load_test_client/load_test_client.cpp -L./dist -lnext3 $(LDFLAGS)
+	@printf "done\n"
+endif
 
 .PHONY: build-functional-backend
 build-functional-backend: dist
