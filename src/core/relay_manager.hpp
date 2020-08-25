@@ -36,7 +36,7 @@ namespace core
 
     void reset();
 
-    void update(size_t numRelays, const std::array<T, MAX_RELAYS>& newRelays);
+    void update(size_t numRelays, const std::array<Relay, MAX_RELAYS>& newRelays);
 
     auto processPong(const net::Address& from, uint64_t seq) -> bool;
 
@@ -47,7 +47,7 @@ namespace core
    private:
     std::mutex mLock;
     unsigned int mNumRelays;
-    std::array<T, MAX_RELAYS> mRelays;
+    std::array<Relay, MAX_RELAYS> mRelays;
     std::vector<PingHistory> mPingHistoryBuff;
     util::Clock mClock;
   };
@@ -63,7 +63,7 @@ namespace core
     // locked mutex scope
     std::lock_guard<std::mutex> lk(mLock);
     mNumRelays = 0;
-    std::fill(mRelays.begin(), mRelays.end(), T());
+    std::fill(mRelays.begin(), mRelays.end(), Relay());
   }
 
   INLINE auto RelayManager::processPong(const net::Address& from, uint64_t seq) -> bool

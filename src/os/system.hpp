@@ -66,7 +66,8 @@ namespace os
 
       f = fopen("/proc/stat", "r");
       if (f == nullptr) {
-        LogError("could not open /proc/stat");
+        LOG(ERROR, "could not open /proc/stat");
+        perror("OS msg:");
         return {0, false};
       }
 
@@ -85,7 +86,8 @@ namespace os
       rewind(f);
 
       if (fgets(lineBuff.data(), lineBuff.size(), f) == nullptr) {
-        LogError("could not read first line of /proc/stat");
+        LOG(ERROR, "could not read first line of /proc/stat");
+        perror("OS msg:");
         return {0, false};
       }
 

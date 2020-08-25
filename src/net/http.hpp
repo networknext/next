@@ -106,7 +106,7 @@ namespace net
       http::write(wrapper.stream, req, ec);
 
       if (ec) {
-        LOG("failed to send http request: ", ec);
+        LOG(ERROR, "failed to send http request: ", ec);
         return false;
       }
 
@@ -119,13 +119,13 @@ namespace net
       // Receive the HTTP response
       http::read(wrapper.stream, buffer, res, ec);
       if (ec) {
-        LOG("failed to send http request: ", ec);
+        LOG(ERROR, "failed to send http request: ", ec);
         return false;
       }
 
       // Check the status code
       if (res.result() != http::status::ok) {
-        LOG("http call to '", hostname, endpoint, "' did not return a success, code: ", res.result_int());
+        LOG(ERROR, "http call to '", hostname, endpoint, "' did not return a success, code: ", res.result_int());
         return false;
       }
 
@@ -134,7 +134,7 @@ namespace net
 
       return true;
     } catch (std::exception& e) {
-      LOG("could not send http request: ", e.what());
+      LOG(ERROR, "could not send http request: ", e.what());
       return false;
     }
   }

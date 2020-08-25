@@ -63,16 +63,16 @@ namespace core
     if (packetLength < index + Token::ByteSize) {
       return false;
     }
-    if (!encoding::ReadUint64(packetData, index, this->ExpireTimestamp)) {
+    if (!encoding::ReadUint64(packetData, packetLength, index, this->ExpireTimestamp)) {
       return false;
     }
-    if (!encoding::ReadUint64(packetData, index, SessionID)) {
+    if (!encoding::ReadUint64(packetData, packetLength, index, SessionID)) {
       return false;
     }
-    if (!encoding::ReadUint8(packetData, index, SessionVersion)) {
+    if (!encoding::ReadUint8(packetData, packetLength, index, SessionVersion)) {
       return false;
     }
-    if (!encoding::ReadUint8(packetData, index, SessionFlags)) {
+    if (!encoding::ReadUint8(packetData, packetLength, index, SessionFlags)) {
       return false;
     }
 

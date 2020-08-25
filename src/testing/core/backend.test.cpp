@@ -34,7 +34,7 @@ namespace
     return buff;
   }();
 
-  auto makeInitResponse(uint32_t version, uint64_t timestamp, std::array<uint8_t, crypto::KeySize>& pk) -> std::vector<uint8_t>
+  auto makeInitResponse(uint32_t version, uint64_t timestamp, std::array<uint8_t, crypto::KEY_SIZE>& pk) -> std::vector<uint8_t>
   {
     std::vector<uint8_t> buff(core::InitResponse::ByteSize);
     core::InitResponse resp{
@@ -52,9 +52,9 @@ namespace
 Test(core_backend_init_valid)
 {
   core::RouterInfo routerInfo;
-  core::RelayManager<core::Relay> manager;
+  core::RelayManager manager;
   core::SessionMap sessions;
-  std::array<uint8_t, crypto::KeySize> pk{};
+  std::array<uint8_t, crypto::KEY_SIZE> pk{};
   testing::MockHttpClient client;
   client.Response = makeInitResponse(0, 123456789, pk);
   core::Backend backend(BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, client);
@@ -84,7 +84,7 @@ Test(core_Backend_updateCycle_shutdown_60s)
   util::Clock testClock;
 
   core::RouterInfo routerInfo;
-  core::RelayManager<core::Relay> manager;
+  core::RelayManager manager;
   core::SessionMap sessions;
   volatile bool handle = true;
   volatile bool shouldCleanShutdown = false;
@@ -118,7 +118,7 @@ Test(core_Backend_updateCycle_ack_and_30s)
   util::Clock testClock;
 
   core::RouterInfo routerInfo;
-  core::RelayManager<core::Relay> manager;
+  core::RelayManager manager;
   core::SessionMap sessions;
   volatile bool handle = true;
   volatile bool shouldCleanShutdown = false;
@@ -152,7 +152,7 @@ Test(core_Backend_updateCycle_no_ack_for_40s_then_ack_then_wait)
   util::Clock testClock;
 
   core::RouterInfo routerInfo;
-  core::RelayManager<core::Relay> manager;
+  core::RelayManager manager;
   core::SessionMap sessions;
   volatile bool handle = true;
   volatile bool shouldCleanShutdown = false;
@@ -189,7 +189,7 @@ Test(core_Backend_updateCycle_update_fails_for_max_number_of_attempts)
   util::Clock testClock;
 
   core::RouterInfo routerInfo;
-  core::RelayManager<core::Relay> manager;
+  core::RelayManager manager;
   core::SessionMap sessions;
   volatile bool handle = true;
   volatile bool shouldCleanShutdown = false;
@@ -223,7 +223,7 @@ Test(core_Backend_updateCycle_no_clean_shutdown)
   util::Clock testClock;
 
   core::RouterInfo routerInfo;
-  core::RelayManager<core::Relay> manager;
+  core::RelayManager manager;
   core::SessionMap sessions;
   volatile bool handle = true;
   volatile bool shouldCleanShutdown = false;
@@ -251,7 +251,7 @@ Test(core_Backend_update_valid)
 {
   util::Clock clock;
   core::RouterInfo routerInfo;
-  core::RelayManager<core::Relay> manager;
+  core::RelayManager manager;
   core::SessionMap sessions;
   util::ThroughputRecorder recorder;
   testing::MockHttpClient client;
@@ -364,7 +364,7 @@ Test(core_Backend_update_shutting_down_true)
 {
   util::Clock clock;
   core::RouterInfo routerInfo;
-  core::RelayManager<core::Relay> manager;
+  core::RelayManager manager;
   core::SessionMap sessions;
   util::ThroughputRecorder recorder;
   testing::MockHttpClient client;

@@ -186,7 +186,7 @@ namespace net
             LOG(ERROR, "generic except when parsing ipv4: ", e.what());
             return false;
           }
-          ptr[i] = '\0';
+          address[i] = '\0';
           break;
         }
       }
@@ -195,7 +195,7 @@ namespace net
 
       // &address[index] now points to the start of the address and the null term replaced the ':'
       sockaddr_in sockaddr4;
-      if (inet_pton(AF_INET, ptr, &sockaddr4.sin_addr) == 1) {
+      if (inet_pton(AF_INET, address.data(), &sockaddr4.sin_addr) == 1) {
         this->Type = AddressType::IPv4;
         const auto& addr4 = sockaddr4.sin_addr.s_addr;
         for (int i = 0; i < 4; i++) {
@@ -266,7 +266,7 @@ namespace net
 
     if (Type == AddressType::IPv6) {
       std::array<uint16_t, 8> ipv6_network_order;
-      for (const auto part : this->IPv6) {
+      for (size_t i = 0; i < 8; i++) {
         ipv6_network_order[i] = htons(IPv6[i]);
       }
 
@@ -339,11 +339,11 @@ namespace net
 
     switch (Type) {
       case AddressType::IPv4: {
-        this->to(*reinterpret_cast<sockaddr_in*>(hdr.msg_hdr.msg_name));
+        this->into(*reinterpret_cast<sockaddr_in*>(hdr.msg_hdr.msg_name));
         hdr.msg_hdr.msg_namelen = sizeof(sockaddr_in);
       } break;
       case AddressType::IPv6: {
-        this->to(*reinterpret_cast<sockaddr_in6*>(hdr.msg_hdr.msg_name));
+        this->into(*reinterpret_cast<sockaddr_in6*>(hdr.msg_hdr.msg_name));
         hdr.msg_hdr.msg_namelen = sizeof(sockaddr_in6);
       } break;
       case AddressType::None: {
@@ -447,7 +447,7 @@ namespace net
     this->IPv4[1] = static_cast<uint8_t>((addr.sin_addr.s_addr & 0x0000FF00) >> 8);
     this->IPv4[2] = static_cast<uint8_t>((addr.sin_addr.s_addr & 0x00FF0000) >> 16);
     this->IPv4[3] = static_cast<uint8_t>((addr.sin_addr.s_addr & 0xFF000000) >> 24);
-    this->Port = relay::relay_platform_ntohs(addr.sin_port);
+    this->Port = ntohs(addr.sin_port);
     return *this;
   }
 
@@ -455,9 +455,9 @@ namespace net
   {
     this->Type = net::AddressType::IPv6;
     for (int i = 0; i < 8; i++) {
-      this->IPv6[i] = relay::relay_platform_ntohs(reinterpret_cast<const uint16_t*>(&addr.sin6_addr)[i]);
+      this->IPv6[i] = ntohs(reinterpret_cast<const uint16_t*>(&addr.sin6_addr)[i]);
     }
-    this->Port = relay::relay_platform_ntohs(addr.sin6_port);
+    this->Port = ntohs(addr.sin6_port);
     return *this;
   }
 

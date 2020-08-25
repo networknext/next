@@ -1,8 +1,8 @@
-#ifndef CRYPTO_KEYCHAIN_HPP
-#define CRYPTO_KEYCHAIN_HPP
+#pragma once
 
 #include "encoding/base64.hpp"
 
+namespace base64 = encoding::base64;
 
 namespace crypto
 {
@@ -10,7 +10,7 @@ namespace crypto
   const size_t RELAY_PUBLIC_KEY_SIZE = KEY_SIZE;
   const size_t RELAY_PRIVATE_KEY_SIZE = KEY_SIZE;
 
-  using GenericKey = std::array<uint8_t, KeySize>;
+  using GenericKey = std::array<uint8_t, KEY_SIZE>;
 
   struct Keychain
   {
@@ -25,15 +25,14 @@ namespace crypto
     std::array<uint8_t, crypto_sign_PUBLICKEYBYTES> RouterPublicKey;
     std::array<uint8_t, crypto_sign_SECRETKEYBYTES> UpdateKey;
 
-    auto parse(std::string relayPublicKey, std::string relayPrivateKey, std::string routerPublicKey, std::string updateKey) -> bool;
+    auto parse(std::string relayPublicKey, std::string relayPrivateKey, std::string routerPublicKey, std::string updateKey)
+     -> bool;
   };
 
-  inline auto Keychain::parse(std::string relayPublicKey, std::string relayPrivateKey, std::string routerPublicKey, std::string updateKey) -> bool
+  inline auto Keychain::parse(
+   std::string relayPublicKey, std::string relayPrivateKey, std::string routerPublicKey, std::string updateKey) -> bool
   {
-    return encoding::base64::decode(relayPublicKey, RelayPublicKey) &&
-           encoding::base64::decode(relayPrivateKey, RelayPrivateKey) &&
-           encoding::base64::decode(routerPublicKey, RouterPublicKey) &&
-           encoding::base64::decode(updateKey, UpdateKey);
+    return base64::decode(relayPublicKey, RelayPublicKey) && base64::decode(relayPrivateKey, RelayPrivateKey) &&
+           base64::decode(routerPublicKey, RouterPublicKey) && base64::decode(updateKey, UpdateKey);
   }
 }  // namespace crypto
-#endif

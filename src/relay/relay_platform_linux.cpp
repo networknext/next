@@ -5,11 +5,9 @@
 #include "includes.h"
 #include "relay_platform_linux.hpp"
 
-#if RELAY_PLATFORM == RELAY_PLATFORM_LINUX
+#if RELAY_PLATFORM == RELAY_PLATFORM_LINUX && false
 
 #include "util/logger.hpp"
-
-#include "net/net.hpp"
 
 namespace
 {
@@ -118,7 +116,7 @@ namespace relay
     param.sched_priority = sched_get_priority_max(SCHED_FIFO);
     int ret = pthread_setschedparam(thread->handle, SCHED_FIFO, &param);
     if (ret) {
-      LogError("unable to increase server thread priority");
+      LOG(ERROR, "unable to increase server thread priority");
     }
   }
 
