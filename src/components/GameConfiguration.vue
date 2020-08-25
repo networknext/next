@@ -46,8 +46,8 @@
 import { Component, Vue } from 'vue-property-decorator'
 import APIService from '@/services/api.service'
 import Alert from '@/components/Alert.vue'
-import { AlertTypes } from './types/AlertTypes'
-import { UserProfile } from '@/services/auth.service'
+import { AlertTypes } from '@/components/types/AlertTypes'
+import { UserProfile } from '@/components/types/AuthTypes.ts'
 import _ from 'lodash'
 
 /**

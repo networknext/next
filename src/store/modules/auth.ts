@@ -1,4 +1,4 @@
-import { UserProfile } from '@/services/auth.service'
+import { UserProfile } from '@/components/types/AuthTypes.ts'
 
 /**
  * Basic Vuex module specific to authorization/authentication
