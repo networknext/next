@@ -1,9 +1,7 @@
 import Vue from 'vue'
 import APIService from '@/services/api.service'
 import store from '@/store'
-
 import { Auth0Client } from '@auth0/auth0-spa-js'
-
 import { UserProfile } from '@/components/types/AuthTypes.ts'
 
 export class AuthService {
@@ -12,8 +10,7 @@ export class AuthService {
   private domain: string
   public authClient: Auth0Client | any
 
-  constructor(options: any) {
-    console.log('AuthService constructor()')
+  constructor (options: any) {
     this.apiService = Vue.prototype.$apiService
     this.clientID = options.clientID
     this.domain = options.domain
@@ -25,40 +22,35 @@ export class AuthService {
     this.processAuthentication()
   }
 
-  public logout() {
+  public logout () {
     this.authClient.logout()
   }
 
-  public login() {
+  public login () {
     this.authClient
       .loginWithPopup()
       .then(() => {
         this.processAuthentication()
-        console.log('login().then()')
       })
       .catch((error: Error) => {
-        console.log('login() error caught:')
         console.error(error)
       })
   }
 
-  public signUp() {
+  public signUp () {
     this.authClient.loginWithPopup({
       connection: 'Username-Password-Authentication',
       screen_hint: 'signup'
     })
   }
 
-  private async processAuthentication() {
-    console.log('AuthService processAuthentication()')
+  private async processAuthentication () {
     this.authClient
       .isAuthenticated()
       .then((isAuthenticated: boolean) => {
         if (!isAuthenticated) {
-          console.log('!IsAuthenticated()')
           return
         }
-        console.log('IsAuthenticated()')
         this.apiService = new APIService()
         const userProfile: UserProfile = {
           auth0ID: '',
@@ -106,17 +98,11 @@ export class AuthService {
 }
 
 export const AuthPlugin = {
-  install(Vue: any, options: any) {
+  install (Vue: any, options: any) {
     const client = new AuthService({
       domain: options.domain,
       clientID: options.clientID
     })
-
-    // Vue.mixin({
-    //   created: function () {
-    //     console.log('AuthPlugin created()')
-    //   }
-    // })
 
     Vue.login = () => {
       client.login()

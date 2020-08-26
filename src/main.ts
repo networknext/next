@@ -58,8 +58,5 @@ Vue.use(JsonRPCPlugin)
 new Vue({
   router,
   store,
-  created: function() {
-    console.log('Vue created()')
-  },
   render: h => h(App)
 }).$mount('#app')
