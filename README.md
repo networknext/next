@@ -57,3 +57,34 @@ The easiest way I have found to run the E2E tests is to launch Vue UI, serve the
 This will start the dev server on 127.0.0.1:8080 and then attach the e2e tests.
 
 The other option is to run ```npm run serve``` in a terminal window and ```npm run test:e2e``` in another. Doing it this way will also require params to be passed in that I need to find...
+
+### Auto linting setup
+
+VSCode settings.js
+```
+  "go.formatTool": "goimports",
+  "go.useLanguageServer": true,
+  "window.zoomLevel": 1,
+  "explorer.confirmDelete": false,
+  "typescript.updateImportsOnFileMove.enabled": "always",
+  "javascript.updateImportsOnFileMove.enabled": "always",
+  "workbench.iconTheme": "vscode-simpler-icons",
+  "editor.suggestSelection": "first",
+  "explorer.confirmDragAndDrop": false,
+  "editor.tabSize": 2,
+  "editor.detectIndentation": false,
+  "C_Cpp.updateChannel": "Insiders",
+  "json.maxItemsComputed": 100000,
+  "editor.formatOnPaste": true,
+  "editor.formatOnSave": true,
+  "eslint.format.enable": true,
+  "eslint.run": "onSave",
+  "javascript.format.insertSpaceAfterConstructor": true,
+  "typescript.format.insertSpaceAfterConstructor": true,
+  "javascript.format.insertSpaceBeforeFunctionParenthesis": true,
+  "typescript.format.insertSpaceBeforeFunctionParenthesis": true,
+```
+
+VSCode Plugins:
+- beautify
+- eslint
