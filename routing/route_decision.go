@@ -77,6 +77,12 @@ func (dr DecisionReason) String() string {
 		reason = "No Location"
 	case DecisionBuyerNotLive:
 		reason = "Buyer Not Live"
+	case DecisionMultipathVetoRTT:
+		reason = "Multipath Veto RTT"
+	case DecisionMultipathVetoRTT | DecisionVetoYOLO:
+		reason = "Multipath Veto RTT YOLO"
+	case DecisionExcludedUser:
+		reason = "Excluded User"
 	default:
 		reason = "Unknown"
 	}
@@ -108,6 +114,8 @@ const (
 	DecisionVetoNoRoute             DecisionReason = 1 << 21
 	DecisionNoLocation              DecisionReason = 1 << 22
 	DecisionBuyerNotLive            DecisionReason = 1 << 23
+	DecisionMultipathVetoRTT        DecisionReason = 1 << 24
+	DecisionExcludedUser            DecisionReason = 1 << 25
 )
 
 // DecideUpgradeRTT will decide if the client should use the network next route if the RTT reduction is greater than the given threshold.
@@ -343,6 +351,13 @@ func DecideMultipath(rttMultipath bool, jitterMultipath bool, packetLossMultipat
 		if packetLossMultipath && lastDirectStats.PacketLoss >= packetLossThreshold {
 			decision.OnNetworkNext = true
 			decision.Reason |= DecisionHighPacketLossMultipath
+		}
+
+		// There was probably a ping spike due to an overloaded connection for 2x multipath bandwidth,
+		// so "multipath veto" this user
+		if lastDirectStats.RTT > 500 || lastNextStats.RTT > 500 {
+			decision.OnNetworkNext = false
+			decision.Reason = DecisionMultipathVetoRTT
 		}
 
 		return decision
