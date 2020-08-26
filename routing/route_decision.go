@@ -355,7 +355,7 @@ func DecideMultipath(rttMultipath bool, jitterMultipath bool, packetLossMultipat
 
 		// There was probably a ping spike due to an overloaded connection for 2x multipath bandwidth,
 		// so "multipath veto" this user
-		if lastDirectStats.RTT > 500 || lastNextStats.RTT > 500 {
+		if lastDirectStats.RTT >= 500 || lastNextStats.RTT >= 500 {
 			decision.OnNetworkNext = false
 			decision.Reason = DecisionMultipathVetoRTT
 		}
