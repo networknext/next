@@ -22,7 +22,7 @@ namespace core
     uint64_t ExpireTimestamp;
 
    protected:
-    Expireable(const RouterInfo& routerInfo);
+    Expireable(const RouterInfo& routerInfo); // TODO de-ruby-fy this, pass router info into expired()
 
    private:
     const RouterInfo& mRouterInfo;
