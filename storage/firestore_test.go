@@ -84,7 +84,7 @@ func TestSequenceNumbers(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("Sync", func(t *testing.T) {
-		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 		assert.NoError(t, err)
 
 		defer func() {
@@ -108,7 +108,7 @@ func TestSequenceNumbers(t *testing.T) {
 	})
 
 	t.Run("Do Not Sync", func(t *testing.T) {
-		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 		assert.NoError(t, err)
 
 		defer func() {
@@ -137,7 +137,7 @@ func TestFirestore(t *testing.T) {
 
 	t.Run("NewFirestore", func(t *testing.T) {
 		t.Run("firestore client failure", func(t *testing.T) {
-			_, err := storage.NewFirestore(ctx, "*detect-project-id*", log.NewNopLogger())
+			_, err := storage.NewFirestore(ctx, "*detect-project-id*", log.NewNopLogger(), "test")
 			assert.Error(t, err)
 		})
 
@@ -158,7 +158,7 @@ func TestFirestore(t *testing.T) {
 				Logger: logger,
 			}
 
-			actual, err := storage.NewFirestore(ctx, projectID, logger)
+			actual, err := storage.NewFirestore(ctx, projectID, logger, "test")
 			assert.NoError(t, err)
 
 			assert.Equal(t, expected.Logger, actual.Logger)
@@ -167,7 +167,7 @@ func TestFirestore(t *testing.T) {
 
 	t.Run("Buyer", func(t *testing.T) {
 		t.Run("buyer not found", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -181,7 +181,7 @@ func TestFirestore(t *testing.T) {
 		})
 
 		t.Run("success", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -209,7 +209,7 @@ func TestFirestore(t *testing.T) {
 	})
 
 	t.Run("Buyers", func(t *testing.T) {
-		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 		assert.NoError(t, err)
 
 		defer func() {
@@ -247,7 +247,7 @@ func TestFirestore(t *testing.T) {
 
 	t.Run("AddBuyer", func(t *testing.T) {
 		t.Run("new customer", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -307,7 +307,7 @@ func TestFirestore(t *testing.T) {
 		})
 
 		t.Run("existing customer", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -375,7 +375,7 @@ func TestFirestore(t *testing.T) {
 		})
 
 		t.Run("validate only 1 route shader", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -411,7 +411,7 @@ func TestFirestore(t *testing.T) {
 
 	t.Run("RemoveBuyer", func(t *testing.T) {
 		t.Run("buyer not found", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -424,7 +424,7 @@ func TestFirestore(t *testing.T) {
 		})
 
 		t.Run("success - update existing customer", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -470,7 +470,7 @@ func TestFirestore(t *testing.T) {
 		})
 
 		t.Run("success - removed customer", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -503,7 +503,7 @@ func TestFirestore(t *testing.T) {
 
 	t.Run("SetBuyer", func(t *testing.T) {
 		t.Run("buyer not found", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -525,7 +525,7 @@ func TestFirestore(t *testing.T) {
 		})
 
 		t.Run("success", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -564,7 +564,7 @@ func TestFirestore(t *testing.T) {
 
 	t.Run("Seller", func(t *testing.T) {
 		t.Run("seller not found", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -578,7 +578,7 @@ func TestFirestore(t *testing.T) {
 		})
 
 		t.Run("success", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -602,7 +602,7 @@ func TestFirestore(t *testing.T) {
 	})
 
 	t.Run("Sellers", func(t *testing.T) {
-		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 		assert.NoError(t, err)
 
 		defer func() {
@@ -636,7 +636,7 @@ func TestFirestore(t *testing.T) {
 
 	t.Run("AddSeller", func(t *testing.T) {
 		t.Run("seller already exists", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -659,7 +659,7 @@ func TestFirestore(t *testing.T) {
 		})
 
 		t.Run("success - add new customer", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -715,7 +715,7 @@ func TestFirestore(t *testing.T) {
 		})
 
 		t.Run("success - update existing customer", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -781,7 +781,7 @@ func TestFirestore(t *testing.T) {
 
 	t.Run("RemoveSeller", func(t *testing.T) {
 		t.Run("seller not found", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -794,7 +794,7 @@ func TestFirestore(t *testing.T) {
 		})
 
 		t.Run("success - removed customer", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -823,7 +823,7 @@ func TestFirestore(t *testing.T) {
 		})
 
 		t.Run("success - update existing customer", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -869,7 +869,7 @@ func TestFirestore(t *testing.T) {
 
 	t.Run("SetSeller", func(t *testing.T) {
 		t.Run("seller not found", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -889,7 +889,7 @@ func TestFirestore(t *testing.T) {
 		})
 
 		t.Run("success", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -926,7 +926,7 @@ func TestFirestore(t *testing.T) {
 
 	t.Run("SetCustomerLink", func(t *testing.T) {
 		t.Run("customer not found", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -939,7 +939,7 @@ func TestFirestore(t *testing.T) {
 		})
 
 		t.Run("clear buyer", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -972,7 +972,7 @@ func TestFirestore(t *testing.T) {
 		})
 
 		t.Run("clear seller", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -1005,7 +1005,7 @@ func TestFirestore(t *testing.T) {
 		})
 
 		t.Run("change buyer", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -1056,7 +1056,7 @@ func TestFirestore(t *testing.T) {
 		})
 
 		t.Run("change seller", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -1105,7 +1105,7 @@ func TestFirestore(t *testing.T) {
 
 	t.Run("BuyerIDFromCustomerName", func(t *testing.T) {
 		t.Run("customer not found", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -1119,7 +1119,7 @@ func TestFirestore(t *testing.T) {
 		})
 
 		t.Run("success", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -1143,7 +1143,7 @@ func TestFirestore(t *testing.T) {
 
 	t.Run("SellerIDFromCustomerName", func(t *testing.T) {
 		t.Run("customer not found", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -1157,7 +1157,7 @@ func TestFirestore(t *testing.T) {
 		})
 
 		t.Run("success", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -1181,7 +1181,7 @@ func TestFirestore(t *testing.T) {
 
 	t.Run("Relay", func(t *testing.T) {
 		t.Run("relay not found", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -1195,7 +1195,7 @@ func TestFirestore(t *testing.T) {
 		})
 
 		t.Run("success", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -1256,7 +1256,7 @@ func TestFirestore(t *testing.T) {
 	})
 
 	t.Run("Relays", func(t *testing.T) {
-		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 		assert.NoError(t, err)
 
 		defer func() {
@@ -1337,7 +1337,7 @@ func TestFirestore(t *testing.T) {
 
 	t.Run("AddRelay", func(t *testing.T) {
 		t.Run("seller not found", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -1367,7 +1367,7 @@ func TestFirestore(t *testing.T) {
 		})
 
 		t.Run("datacenter not found", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -1408,7 +1408,7 @@ func TestFirestore(t *testing.T) {
 		})
 
 		t.Run("success", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -1470,7 +1470,7 @@ func TestFirestore(t *testing.T) {
 
 	t.Run("RemoveRelay", func(t *testing.T) {
 		t.Run("relay not found", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -1483,7 +1483,7 @@ func TestFirestore(t *testing.T) {
 		})
 
 		t.Run("success", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -1543,7 +1543,7 @@ func TestFirestore(t *testing.T) {
 
 	t.Run("SetRelay", func(t *testing.T) {
 		t.Run("relay not found", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -1566,7 +1566,7 @@ func TestFirestore(t *testing.T) {
 		})
 
 		t.Run("success", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -1643,7 +1643,7 @@ func TestFirestore(t *testing.T) {
 
 	t.Run("Datacenter", func(t *testing.T) {
 		t.Run("datacenter not found", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -1657,7 +1657,7 @@ func TestFirestore(t *testing.T) {
 		})
 
 		t.Run("success", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -1686,7 +1686,7 @@ func TestFirestore(t *testing.T) {
 	})
 
 	t.Run("Datacenters", func(t *testing.T) {
-		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 		assert.NoError(t, err)
 
 		defer func() {
@@ -1725,7 +1725,7 @@ func TestFirestore(t *testing.T) {
 	})
 
 	t.Run("AddDatacenter", func(t *testing.T) {
-		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 		assert.NoError(t, err)
 
 		defer func() {
@@ -1754,7 +1754,7 @@ func TestFirestore(t *testing.T) {
 
 	t.Run("RemoveDatacenter", func(t *testing.T) {
 		t.Run("datacenter not found", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -1767,7 +1767,7 @@ func TestFirestore(t *testing.T) {
 		})
 
 		t.Run("success", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -1795,7 +1795,7 @@ func TestFirestore(t *testing.T) {
 
 	t.Run("SetDatacenter", func(t *testing.T) {
 		t.Run("datacenter not found", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -1818,7 +1818,7 @@ func TestFirestore(t *testing.T) {
 		})
 
 		t.Run("success", func(t *testing.T) {
-			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 			assert.NoError(t, err)
 
 			defer func() {
@@ -1855,7 +1855,7 @@ func TestFirestore(t *testing.T) {
 	})
 
 	t.Run("Add and Get DatacenterMap", func(t *testing.T) {
-		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 		assert.NoError(t, err)
 
 		defer func() {
@@ -1961,7 +1961,7 @@ func TestFirestore(t *testing.T) {
 	})
 
 	t.Run("Add and Remove DatacenterMap", func(t *testing.T) {
-		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 		assert.NoError(t, err)
 
 		defer func() {
@@ -2007,7 +2007,7 @@ func TestFirestore(t *testing.T) {
 
 	})
 	t.Run("Sync", func(t *testing.T) {
-		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 		assert.NoError(t, err)
 
 		defer func() {
