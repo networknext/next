@@ -1,9 +1,11 @@
 FROM node:latest as build-stage
+ARG ENVIRONMENT
+ENV ENVIRONMENT $ENVIRONMENT
 WORKDIR /app
 COPY package*.json ./
 RUN npm install
 COPY ./ .
-RUN npm run build-local
+RUN /bin/bash -c '[[ ${ENVIRONMENT} == "local" ]] && npm run build-local || npm run build-dev'
 
 FROM nginx as production-stage
 RUN mkdir /app
