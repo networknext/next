@@ -41,7 +41,7 @@ namespace core
       core::RouteToken token(router_info);
       {
         size_t i = index + 1;
-        if (!token.read_encrypted(packet, index, keychain.RouterPublicKey, keychain.RelayPrivateKey)) {
+        if (!token.read_encrypted(packet, i, keychain.RouterPublicKey, keychain.RelayPrivateKey)) {
           LOG(ERROR, "ignoring route request. could not read route token");
           return;
         }

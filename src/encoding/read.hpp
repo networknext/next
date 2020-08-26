@@ -19,6 +19,8 @@ namespace encoding
   template <typename T>
   auto ReadUint16(const T& buff, size_t& index, uint16_t& value) -> bool;
 
+  auto ReadUint32(const uint8_t* const buff, size_t bufflen, size_t& index, uint32_t& value) -> bool;
+
   template <typename T>
   auto ReadUint32(const T& buff, size_t& index, uint32_t& value) -> bool;
 
@@ -31,7 +33,7 @@ namespace encoding
   auto ReadDouble(const T& buff, size_t& index, double& value) -> bool;
 
   auto ReadBytes(
-   const uint8_t* const buff, size_t buffLength, size_t& index, const uint8_t* storage, size_t storageLength, size_t len)
+   const uint8_t* const buff, size_t buffLength, size_t& index, uint8_t* storage, size_t storageLength, size_t len)
    -> bool;
 
   template <typename T, typename U>
@@ -82,6 +84,18 @@ namespace encoding
     }
     value = (buff)[index++];
     value |= (static_cast<uint64_t>(buff[index++]) << 8);
+    return true;
+  }
+
+  INLINE auto ReadUint32(const uint8_t* const buff, size_t bufflen, size_t& index, uint32_t& value) -> bool
+  {
+    if (index + 4 > bufflen) {
+      return false;
+    }
+    value = buff[index++];
+    value |= (static_cast<uint32_t>(buff[index++]) << 8);
+    value |= (static_cast<uint32_t>(buff[index++]) << 16);
+    value |= (static_cast<uint32_t>(buff[index++]) << 24);
     return true;
   }
 
@@ -243,6 +257,8 @@ namespace encoding
       addr.reset();
       index += net::Address::ByteSize - 1;  // if no type, increment the index past the address area
     }
+
+    return true;
   }
 
   template <typename T>

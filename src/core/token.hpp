@@ -28,8 +28,8 @@ namespace core
     uint64_t hash();
 
    protected:
-    auto write(const uint8_t* packetData, size_t packetLength, size_t& index) -> bool;
-    auto read(const uint8_t* packetData, size_t packetLength, size_t& index) -> bool;
+    auto write(uint8_t* packetData, size_t packetLength, size_t& index) -> bool;
+    auto read(const uint8_t* const packetData, size_t packetLength, size_t& index) -> bool;
   };
 
   INLINE Token::Token(const RouterInfo& routerInfo): Expireable(routerInfo) {}
@@ -39,7 +39,7 @@ namespace core
     return SessionID ^ SessionVersion;
   }
 
-  INLINE auto Token::write(const uint8_t* packetData, size_t packetLength, size_t& index) -> bool
+  INLINE auto Token::write(uint8_t* packetData, size_t packetLength, size_t& index) -> bool
   {
     if (packetLength < index + Token::ByteSize) {
       return false;
@@ -56,9 +56,11 @@ namespace core
     if (!encoding::WriteUint8(packetData, packetLength, index, SessionFlags)) {
       return false;
     }
+
+    return true;
   }
 
-  INLINE auto Token::read(const uint8_t* packetData, size_t packetLength, size_t& index) -> bool
+  INLINE auto Token::read(const uint8_t* const packetData, size_t packetLength, size_t& index) -> bool
   {
     if (packetLength < index + Token::ByteSize) {
       return false;

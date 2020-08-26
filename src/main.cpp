@@ -17,7 +17,6 @@
 #include "encoding/base64.hpp"
 #include "net/http.hpp"
 #include "os/socket.hpp"
-#include "relay/relay.hpp"
 #include "testing/test.hpp"
 #include "util/env.hpp"
 
@@ -249,7 +248,7 @@ int main(int argc, const char* argv[])
   LOG(DEBUG, "creating ", num_cpus, " packet processing thread", (num_cpus != 1) ? "s" : "");
 
   // packet processing setup
-  for (unsigned int i = (num_cpus == 1) ? 0 : 1; i < num_cpus && gAlive; i++) {
+  for (unsigned int i = (num_cpus == 1) ? 0 : 1; i < num_threads && gAlive; i++) {
     auto socket = make_socket(relay_addr);
     if (!socket) {
       LOG(ERROR, "could not create socket");

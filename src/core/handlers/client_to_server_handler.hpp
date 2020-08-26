@@ -5,7 +5,6 @@
 #include "core/throughput_recorder.hpp"
 #include "crypto/hash.hpp"
 #include "os/socket.hpp"
-#include "relay/relay.hpp"
 
 using core::packets::Direction;
 using core::packets::Header;
@@ -36,13 +35,11 @@ namespace core
         return;
       }
 
-      Header header = {
-       .direction = Direction::ClientToServer,
-      };
+      Header header;
 
       {
         size_t i = index;
-        if (!header.read(packet.Buffer, i)) {
+        if (!header.read(packet.Buffer, i, Direction::ClientToServer)) {
           LOG(ERROR, "ignoring client to server packet, relay header could not be read");
           return;
         }
@@ -72,7 +69,7 @@ namespace core
 
       {
         size_t i = index;
-        if (!header.verify(packet.Buffer, i, session->PrivateKey)) {
+        if (!header.verify(packet.Buffer, i, Direction::ClientToServer, session->PrivateKey)) {
           LOG(ERROR, "ignoring client to server packet, could not verify header: session = ", *session);
           return;
         }

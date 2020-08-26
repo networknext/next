@@ -1,9 +1,7 @@
 #pragma once
 
-#include "core/packets/relay_ping_packet.hpp"
 #include "core/relay_manager.hpp"
-
-using core::packets::RelayPingPacket;
+#include "encoding/read.hpp"
 
 namespace core
 {
@@ -11,8 +9,13 @@ namespace core
   {
     inline void relay_pong_handler(GenericPacket<>& packet, RelayManager& manager)
     {
-      packets::RelayPingPacket pkt(packet);
-      manager.processPong(packet.Addr, pkt.getSeqNum());
+      uint64_t sequence_number;
+      size_t index = crypto::PacketHashLength + 1;
+      if (!encoding::ReadUint64(packet.Buffer, index, sequence_number)) {
+        LOG(ERROR, "could not read sequence number");
+        return;
+      }
+      manager.processPong(packet.Addr, sequence_number);
     }
   }  // namespace handlers
 }  // namespace core

@@ -51,15 +51,13 @@ Test(core_RouteToken_general)
 
   {
     size_t index = 0;
-    check(
-     inputToken.writeEncrypted(packet.Buffer.data(), packet.Buffer.size(), index, sender_private_key, receiver_public_key));
+    check(inputToken.write_encrypted(packet, index, sender_private_key, receiver_public_key));
   }
 
   core::RouteToken outputToken(info);
   {
     size_t index = 0;
-    check(
-     outputToken.readEncrypted(packet.Buffer.data(), packet.Buffer.size(), index, sender_public_key, receiver_private_key));
+    check(outputToken.read_encrypted(packet, index, sender_public_key, receiver_private_key));
   }
 
   // make sure nothing changed
@@ -81,70 +79,4 @@ Test(core_RouteToken_general)
   check(inputToken.KbpsDown == outputToken.KbpsDown);
   check(inputToken.PrivateKey == outputToken.PrivateKey);
   check(inputToken.NextAddr == outputToken.NextAddr);
-}
-
-Test(legacy_relay_route_token_t_general)
-{
-  uint8_t buffer[core::RouteToken::EncryptedByteSize];
-
-  legacy::relay_route_token_t input_token;
-  memset(&input_token, 0, sizeof(input_token));
-
-  input_token.expire_timestamp = 1234241431241LL;
-  input_token.session_id = 1234241431241LL;
-  input_token.session_version = 5;
-  input_token.session_flags = 1;
-  input_token.next_address.type = static_cast<uint8_t>(net::AddressType::IPv4);
-  input_token.next_address.data.ipv4[0] = 127;
-  input_token.next_address.data.ipv4[1] = 0;
-  input_token.next_address.data.ipv4[2] = 0;
-  input_token.next_address.data.ipv4[3] = 1;
-  input_token.next_address.port = 40000;
-
-  legacy::relay_write_route_token(&input_token, buffer, core::RouteToken::ByteSize);
-
-  unsigned char sender_public_key[crypto_box_PUBLICKEYBYTES];
-  unsigned char sender_private_key[crypto_box_SECRETKEYBYTES];
-  crypto_box_keypair(sender_public_key, sender_private_key);
-
-  unsigned char receiver_public_key[crypto_box_PUBLICKEYBYTES];
-  unsigned char receiver_private_key[crypto_box_SECRETKEYBYTES];
-  crypto_box_keypair(receiver_public_key, receiver_private_key);
-
-  unsigned char nonce[crypto_box_NONCEBYTES];
-  legacy::relay_random_bytes(nonce, crypto_box_NONCEBYTES);
-
-  check(legacy::relay_encrypt_route_token(sender_private_key, receiver_public_key, nonce, buffer, sizeof(buffer)) == RELAY_OK);
-
-  check(legacy::relay_decrypt_route_token(sender_public_key, receiver_private_key, nonce, buffer) == RELAY_OK);
-
-  legacy::relay_route_token_t output_token;
-
-  legacy::relay_read_route_token(&output_token, buffer);
-
-  check(input_token.expire_timestamp == output_token.expire_timestamp);
-  check(input_token.session_id == output_token.session_id);
-  check(input_token.session_version == output_token.session_version);
-  check(input_token.session_flags == output_token.session_flags);
-  check(input_token.kbps_up == output_token.kbps_up);
-  check(input_token.kbps_down == output_token.kbps_down);
-  check(memcmp(input_token.private_key, output_token.private_key, crypto_box_SECRETKEYBYTES) == 0);
-  check(legacy::relay_address_equal(&input_token.next_address, &output_token.next_address) == 1);
-
-  uint8_t* p = buffer;
-
-  check(relay_write_encrypted_route_token(&p, &input_token, sender_private_key, receiver_public_key) == RELAY_OK);
-
-  p = buffer;
-
-  check(relay_read_encrypted_route_token(&p, &output_token, sender_public_key, receiver_private_key) == RELAY_OK);
-
-  check(input_token.expire_timestamp == output_token.expire_timestamp);
-  check(input_token.session_id == output_token.session_id);
-  check(input_token.session_version == output_token.session_version);
-  check(input_token.session_flags == output_token.session_flags);
-  check(input_token.kbps_up == output_token.kbps_up);
-  check(input_token.kbps_down == output_token.kbps_down);
-  check(memcmp(input_token.private_key, output_token.private_key, crypto_box_SECRETKEYBYTES) == 0);
-  check(legacy::relay_address_equal(&input_token.next_address, &output_token.next_address) == 1);
 }

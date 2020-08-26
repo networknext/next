@@ -128,7 +128,7 @@ namespace core
     iov.iov_len = len;
     std::copy(data, data + len, reinterpret_cast<uint8_t*>(iov.iov_base));
 
-    dest.to(Headers[Count]);
+    dest.into(Headers[Count]);
 
     Count++;
   }

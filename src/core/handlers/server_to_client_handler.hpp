@@ -32,13 +32,14 @@ namespace core
         return;
       }
 
-      Header header = {
-       .direction = Direction::ServerToClient,
-      };
+      Header header;
 
-      if (!header.read(packet.Buffer, index)) {
-        LOG(ERROR, "ignoring server to client packet, relay header could not be read");
-        return;
+      {
+        size_t i = index;
+        if (!header.read(packet.Buffer, i, Direction::ServerToClient)) {
+          LOG(ERROR, "ignoring server to client packet, relay header could not be read");
+          return;
+        }
       }
 
       uint64_t hash = header.hash();
@@ -63,7 +64,7 @@ namespace core
         return;
       }
 
-      if (!header.verify(packet.Buffer, index, session->PrivateKey)) {
+      if (!header.verify(packet.Buffer, index, Direction::ServerToClient, session->PrivateKey)) {
         LOG(ERROR, "ignoring server to client packet, could not verify header: session = ", *session);
         return;
       }

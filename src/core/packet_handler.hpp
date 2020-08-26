@@ -20,17 +20,15 @@
 #include "handlers/session_pong_handler.hpp"
 #include "os/socket.hpp"
 #include "packet.hpp"
-#include "packets/relay_ping_packet.hpp"
 #include "packets/types.hpp"
-#include "relay/relay.hpp"
 #include "relay_manager.hpp"
 #include "router_info.hpp"
 #include "session_map.hpp"
 #include "token.hpp"
 #include "util/macros.hpp"
 
-using core::packets::RelayPingPacket;
 using core::packets::Type;
+using core::packets::RELAY_PING_PACKET_SIZE;
 using crypto::Keychain;
 using os::Socket;
 using util::ThroughputRecorder;
@@ -137,7 +135,7 @@ namespace core
           LOG(INFO, "relay in process of shutting down, rejecting relay ping packet");
           return;
         }
-        if (packet.Len == RelayPingPacket::BYTE_SIZE) {
+        if (packet.Len == RELAY_PING_PACKET_SIZE) {
           this->recorder.InboundPingRx.add(wholePacketSize);
           handlers::relay_ping_handler(packet, this->recorder, this->socket);
         } else {
@@ -149,7 +147,7 @@ namespace core
           LOG(INFO, "relay in process of shutting down, rejecting relay pong packet");
           return;
         }
-        if (packet.Len == RelayPingPacket::BYTE_SIZE) {
+        if (packet.Len == RELAY_PING_PACKET_SIZE) {
           this->recorder.PongRx.add(wholePacketSize);
           handlers::relay_pong_handler(packet, this->relay_manager);
         } else {

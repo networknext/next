@@ -33,18 +33,14 @@ namespace core
         return;
       }
 
-      packets::Type type;
-      uint64_t sequence;
-      uint64_t session_id;
-      uint8_t session_version;
+      Header header;
 
-      Header header = {
-       .direction = Direction::ServerToClient,
-      };
-
-      if (!header.read(packet.Buffer, index)) {
-        LOG(ERROR, "ignoring session pong packet, relay header could not be read");
-        return;
+      {
+        size_t i = index;
+        if (!header.read(packet.Buffer, i, Direction::ServerToClient)) {
+          LOG(ERROR, "ignoring session pong packet, relay header could not be read");
+          return;
+        }
       }
 
       uint64_t hash = header.hash();
@@ -69,7 +65,7 @@ namespace core
         return;
       }
 
-      if (!header.verify(packet.Buffer, index, session->PrivateKey)) {
+      if (!header.verify(packet.Buffer, index, Direction::ServerToClient, session->PrivateKey)) {
         LOG(ERROR, "ignoring session pong packet, could not verify header: session = ", *session);
         return;
       }

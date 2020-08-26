@@ -66,7 +66,7 @@ namespace os
 
    private:
     int mSockFD = 0;
-    const SocketType mType;
+    SocketType mType;
     std::atomic<bool> mClosed;
 
     auto set_buffer_sizes(size_t sendBufferSize, size_t recvBufferSize) -> bool;
@@ -83,7 +83,7 @@ namespace os
 
   using SocketPtr = std::shared_ptr<Socket>;
 
-  INLINE Socket::Socket(SocketType type): mType(type), mClosed(false) {}
+  INLINE Socket::Socket(): mClosed(false) {}
 
   INLINE Socket::~Socket()
   {
@@ -156,6 +156,8 @@ namespace os
         }
       }
     }
+
+    mType = type;
 
     if (!set_socket_type(timeout)) {
       return false;
@@ -389,7 +391,7 @@ namespace os
       close();
       return false;
     }
-    addr.Port = relay::relay_platform_ntohs(sin.sin_port);
+    addr.Port = ntohs(sin.sin_port);
     return true;
   }
 
@@ -403,7 +405,7 @@ namespace os
       close();
       return false;
     }
-    addr.Port = relay::relay_platform_ntohs(sin.sin6_port);
+    addr.Port = ntohs(sin.sin6_port);
     return true;
   }
 

@@ -6,13 +6,12 @@
 #include "encoding/base64.hpp"
 #include "encoding/write.hpp"
 #include "os/socket.hpp"
-#include "packets/relay_ping_packet.hpp"
 #include "packets/types.hpp"
 
 using namespace std::chrono_literals;
 
 using core::GenericPacket;
-using core::packets::RelayPingPacket;
+using core::packets::RELAY_PING_PACKET_SIZE;
 using core::packets::Type;
 using net::Address;
 using net::AddressType;
@@ -46,7 +45,7 @@ namespace core
 
   INLINE void Pinger::process()
   {
-    GenericPacket<RelayPingPacket::BYTE_SIZE> pkt;
+    GenericPacket<RELAY_PING_PACKET_SIZE> pkt;
 
     while (!socket.closed() && should_process) {
       // Sleep for 10ms, but the actual ping rate is controlled by RELAY_PING_TIME
@@ -69,7 +68,7 @@ namespace core
 
         // write data to the buffer
         {
-          if (!encoding::WriteUint8(pkt.Buffer, index, static_cast<uint8_t>(Type::NewRelayPing))) {
+          if (!encoding::WriteUint8(pkt.Buffer, index, static_cast<uint8_t>(Type::RelayPing))) {
             LOG(ERROR, "could not write packet type");
             assert(false);
           }

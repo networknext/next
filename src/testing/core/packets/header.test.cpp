@@ -22,7 +22,6 @@ Test(core_packets_header_general)
   // client -> server
   {
     Header header = {
-     .direction = Direction::ClientToServer,
      .type = Type::ClientToServer,
      .sequence = 123123130131LL,
      .session_id = 0x12313131,
@@ -31,15 +30,13 @@ Test(core_packets_header_general)
 
     size_t index = 0;
 
-    check(header.write(buffer, index, private_key));
+    check(header.write(buffer, index, Direction::ClientToServer, private_key));
     check(index == Header::ByteSize);
 
-    Header other = {
-     .direction = Direction::ClientToServer,
-    };
+    Header other;
 
     index = 0;
-    check(other.read(buffer, index));
+    check(other.read(buffer, index, Direction::ClientToServer));
 
     check(other.type == Type::ClientToServer);
     check(other.sequence == header.sequence);
@@ -47,13 +44,12 @@ Test(core_packets_header_general)
     check(other.session_version == header.session_version);
 
     index = 0;
-    check(header.verify(buffer, index, private_key));
+    check(header.verify(buffer, index, Direction::ClientToServer, private_key));
   }
 
   // server -> client
   {
     Header header = {
-     .direction = Direction::ServerToClient,
      .type = Type::ServerToClient,
      .sequence = 123123130131LL | (1ULL << 63),
      .session_id = 0x12313131,
@@ -62,20 +58,18 @@ Test(core_packets_header_general)
 
     size_t index = 0;
 
-    check(header.write(buffer, index, private_key));
+    check(header.write(buffer, index, Direction::ServerToClient, private_key));
 
-    Header other = {
-      .direction = Direction::ServerToClient,
-    };
+    Header other;
 
     index = 0;
-    check(other.read(buffer, index));
+    check(other.read(buffer, index, Direction::ServerToClient));
 
     check(other.type == Type::ServerToClient);
     check(other.sequence == header.sequence);
     check(other.session_id == header.session_id);
     check(other.session_version == header.session_version);
 
-    check(header.verify(buffer, index, private_key));
+    check(header.verify(buffer, index, Direction::ServerToClient, private_key));
   }
 }

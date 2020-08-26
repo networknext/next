@@ -27,7 +27,7 @@ namespace core
      const crypto::GenericKey& receiverPublicKey) -> bool;
 
     auto read_encrypted(
-     GenericPacket<>& packet,
+     const GenericPacket<>& packet,
      size_t& index,
      const crypto::GenericKey& senderPublicKey,
      const crypto::GenericKey& receiverPrivateKey) -> bool;
@@ -35,7 +35,7 @@ namespace core
    private:
     auto write(uint8_t* packetData, size_t packetLength, size_t& index) -> bool;
 
-    auto read(uint8_t* packetData, size_t packetLength, size_t& index) -> bool;
+    auto read(const uint8_t* const packetData, size_t packetLength, size_t& index) -> bool;
 
     auto encrypt(
      uint8_t* packetData,
@@ -46,7 +46,7 @@ namespace core
      const std::array<uint8_t, crypto_box_NONCEBYTES>& nonce) -> bool;
 
     auto decrypt(
-     uint8_t* packetData,
+     const uint8_t* const packetData,
      size_t packetLength,
      const size_t& index,
      const crypto::GenericKey& senderPublicKey,
@@ -99,13 +99,13 @@ namespace core
     return true;
   }
 
-  auto ContinueToken::read_encrypted(
-   GenericPacket<>& packet,
+  INLINE auto ContinueToken::read_encrypted(
+   const GenericPacket<>& packet,
    size_t& index,
    const crypto::GenericKey& senderPublicKey,
    const crypto::GenericKey& receiverPrivateKey) -> bool
   {
-    uint8_t* packetData = &packet.Buffer[index];
+    const uint8_t* const packetData = &packet.Buffer[index];
     size_t packetLength = packet.Len - index;
 
     const auto nonceIndex = index;   // nonce is first in the packet's data
@@ -123,7 +123,7 @@ namespace core
     return true;
   }
 
-  auto ContinueToken::write(uint8_t* packetData, size_t packetLength, size_t& index) -> bool
+  INLINE auto ContinueToken::write(uint8_t* packetData, size_t packetLength, size_t& index) -> bool
   {
     assert(index + ContinueToken::ByteSize < packetLength);
 
@@ -138,7 +138,7 @@ namespace core
     return true;
   }
 
-  auto ContinueToken::read(uint8_t* packetData, size_t packetLength, size_t& index) -> bool
+  INLINE auto ContinueToken::read(const uint8_t* const packetData, size_t packetLength, size_t& index) -> bool
   {
     const size_t start = index;
     (void)start;
@@ -151,7 +151,7 @@ namespace core
     return true;
   }
 
-  bool ContinueToken::encrypt(
+  INLINE bool ContinueToken::encrypt(
    uint8_t* packetData,
    size_t packetLength,
    const size_t& index,
@@ -176,8 +176,8 @@ namespace core
     return true;
   }
 
-  bool ContinueToken::decrypt(
-   uint8_t* packetData,
+  INLINE bool ContinueToken::decrypt(
+   const uint8_t* const packetData,
    size_t packetLength,
    const size_t& index,
    const crypto::GenericKey& senderPublicKey,
@@ -189,7 +189,7 @@ namespace core
 
     if (
      crypto_box_open_easy(
-      &packetData[index],
+      const_cast<uint8_t*>(&packetData[index]),
       &packetData[index],
       ContinueToken::EncryptionLength,
       &packetData[nonceIndex],

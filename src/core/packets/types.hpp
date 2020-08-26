@@ -1,5 +1,7 @@
 #pragma once
 
+#include "crypto/hash.hpp"
+
 #define PACKET_TYPE_SWITCH_MACRO(type) \
   case Type ::type: {                  \
     str = #type;                       \
@@ -9,6 +11,8 @@ namespace core
 {
   namespace packets
   {
+    static const size_t RELAY_PING_PACKET_SIZE = crypto::PacketHashLength + 1 + 8;  // hash | type | sequence
+
     enum class Type : uint8_t
     {
       None = 0,
@@ -46,8 +50,8 @@ namespace core
         PACKET_TYPE_SWITCH_MACRO(RouteResponse);
         PACKET_TYPE_SWITCH_MACRO(ClientToServer);
         PACKET_TYPE_SWITCH_MACRO(ServerToClient);
-        PACKET_TYPE_SWITCH_MACRO(NewRelayPing);
-        PACKET_TYPE_SWITCH_MACRO(NewRelayPong);
+        PACKET_TYPE_SWITCH_MACRO(RelayPing);
+        PACKET_TYPE_SWITCH_MACRO(RelayPong);
         PACKET_TYPE_SWITCH_MACRO(SessionPing);
         PACKET_TYPE_SWITCH_MACRO(SessionPong);
         PACKET_TYPE_SWITCH_MACRO(ContinueRequest);

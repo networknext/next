@@ -26,22 +26,21 @@ namespace core
     {
       static const size_t ByteSize = 35;
 
-      Direction direction;
       Type type;
 
       uint64_t sequence;
       uint64_t session_id;
       uint8_t session_version;
 
-      auto read(GenericPacketContainer<>& buffer, size_t& index) -> bool;
-      auto write(GenericPacketContainer<>& buffer, size_t& index, const GenericKey& public_key) -> bool;
-      auto verify(GenericPacketContainer<>& buffer, size_t& index, const GenericKey& public_key) -> bool;
+      auto read(GenericPacketContainer<>& buffer, size_t& index, Direction direction) -> bool;
+      auto write(GenericPacketContainer<>& buffer, size_t& index, Direction direction, const GenericKey& public_key) -> bool;
+      auto verify(GenericPacketContainer<>& buffer, size_t& index, Direction direction, const GenericKey& public_key) -> bool;
 
       auto hash() -> uint64_t;
       auto clean_sequence() -> uint64_t;
     };
 
-    INLINE auto Header::read(GenericPacketContainer<>& buffer, size_t& index) -> bool
+    INLINE auto Header::read(GenericPacketContainer<>& buffer, size_t& index, Direction direction) -> bool
     {
       if (index + ByteSize > buffer.size()) {
         LOG(ERROR, "could not read header, buffer is too small");
@@ -94,14 +93,14 @@ namespace core
       return true;
     }
 
-    INLINE auto Header::write(GenericPacketContainer<>& buffer, size_t& index, const GenericKey& private_key) -> bool
+    INLINE auto Header::write(GenericPacketContainer<>& buffer, size_t& index, Direction direction, const GenericKey& private_key) -> bool
     {
       if (index + ByteSize > buffer.size()) {
         LOG(ERROR, "could not write header, buffer is too small");
         return false;
       }
 
-      if (this->direction == Direction::ServerToClient) {
+      if (direction == Direction::ServerToClient) {
         // high bit must be set
         assert(this->sequence & (1ULL << 63));
       } else {
@@ -178,7 +177,7 @@ namespace core
       return true;
     }
 
-    INLINE auto Header::verify(GenericPacketContainer<>& buffer, size_t& index, const GenericKey& private_key) -> bool
+    INLINE auto Header::verify(GenericPacketContainer<>& buffer, size_t& index, Direction direction, const GenericKey& private_key) -> bool
     {
       if (index + ByteSize > buffer.size()) {
         LOG(ERROR, "could not verify header, buffer is too small");
@@ -196,14 +195,14 @@ namespace core
         return false;
       }
 
-      if (this->direction == Direction::ServerToClient) {
+      if (direction == Direction::ServerToClient) {
         // high bit must be set
         if ((packet_sequence & (1ULL << 63)) == 0) {
           return false;
         }
       } else {
         // high bit must be clear
-        if (packet_sequence & (1ULL << 63) != 0) {
+        if ((packet_sequence & (1ULL << 63)) != 0) {
           return false;
         }
       }

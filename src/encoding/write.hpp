@@ -28,7 +28,7 @@ namespace encoding
   template <typename T>
   auto WriteDouble(T& buff, size_t& index, double value) -> bool;
 
-  auto WriteBytes(const uint8_t* buff, size_t buffLength, size_t& index, const uint8_t* const data, size_t dataLength) -> bool;
+  auto WriteBytes(uint8_t* buff, size_t buffLength, size_t& index, const uint8_t* const data, size_t dataLength) -> bool;
 
   template <typename T, typename U>
   auto WriteBytes(T& buff, size_t& index, const U& data, size_t len) -> bool;
@@ -173,7 +173,7 @@ namespace encoding
     return encoding::WriteBytes(buff.data(), buff.size(), index, reinterpret_cast<uint8_t*>(&value), sizeof(double));
   }
 
-  INLINE auto WriteBytes(const uint8_t* buff, size_t buffLength, size_t& index, const uint8_t* const data, size_t dataLength)
+  INLINE auto WriteBytes(uint8_t* buff, size_t buffLength, size_t& index, const uint8_t* const data, size_t dataLength)
    -> bool
   {
     if (index + dataLength > buffLength) {

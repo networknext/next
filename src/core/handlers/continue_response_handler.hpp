@@ -28,13 +28,11 @@ namespace core
         return;
       }
 
-      Header header = {
-       .direction = Direction::ServerToClient,
-      };
+      Header header;
 
       {
         size_t i = index;
-        if (!header.read(packet.Buffer, i)) {
+        if (!header.read(packet.Buffer, i, Direction::ServerToClient)) {
           LOG(ERROR, "ignoring continue response, relay header could not be read");
           return;
         }
@@ -71,7 +69,7 @@ namespace core
 
       {
         size_t i = index;
-        if (!header.verify(packet.Buffer, i, session->PrivateKey)) {
+        if (!header.verify(packet.Buffer, i, Direction::ServerToClient, session->PrivateKey)) {
           LOG(ERROR, "ignoring continue response, could not verify header: session = ", *session);
           return;
         }

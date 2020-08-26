@@ -1,6 +1,5 @@
 #pragma once
 
-#include "core/packets/relay_ping_packet.hpp"
 #include "core/packets/types.hpp"
 #include "core/throughput_recorder.hpp"
 #include "crypto/hash.hpp"
