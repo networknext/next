@@ -77,7 +77,11 @@
     },
     "rules": {
       "@typescript-eslint/camelcase": "off",
-      "new-cap": "off"
+      "new-cap": "off",
+      "space-before-function-paren": [
+        "error",
+        "always"
+      ]
     },
     "overrides": [
       {
