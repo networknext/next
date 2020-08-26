@@ -480,23 +480,23 @@ build-analytics: ## builds the analytics binary
 
 .PHONY: deploy-server-backend-psyonix
 deploy-server-backend-psyonix: ## builds and deploys the server backend to psyonix
-	./deploy/deploy.sh -e prod -c psyonix -t server-backend -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c psyonix -t server-backend -n server_backend -b gs://prod_artifacts
 
 .PHONY: deploy-server-backend-liquidbit
 deploy-server-backend-liquidbit: ## builds and deploys the server backend to liquidbit
-	./deploy/deploy.sh -e prod -c prod-42rz -t server-backend -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c prod-42rz -t server-backend -n server_backend -b gs://prod_artifacts
 
 .PHONY: deploy-server-backend-valve
 deploy-server-backend-valve: ## builds and deploys the server backend to valve
-	./deploy/deploy.sh -e prod -c valve-r57d -t server-backend -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c valve-r57d -t server-backend -n server_backend -b gs://prod_artifacts
 
 .PHONY: deploy-server-backend-velan
 deploy-server-backend-velan: ## builds and deploys the server backend to velan
-	./deploy/deploy.sh -e prod -c velan-730n -t server-backend -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c velan-730n -t server-backend -n server_backend -b gs://prod_artifacts
 
 .PHONY: deploy-server-backend-esl
-deploy-server-backend-esl: ## builds and deploys the server backend to esl
-	./deploy/deploy.sh -e prod -c esl-22dr -t server-backend -b gs://prod_artifacts
+deploy-server-backend-esl:
+	./deploy/deploy.sh -e prod -c esl-22dr -t server-backend -n server_backend-esl-22dr -b gs://prod_artifacts
 
 .PHONY: build-load-test-server-artifacts
 build-load-test-server-artifacts: build-load-test-server ## builds the load test artifacts staging
@@ -532,7 +532,7 @@ build-relay-backend-artifacts-dev: build-relay-backend ## builds the relay backe
 
 .PHONY: build-server-backend-artifacts-dev
 build-server-backend-artifacts-dev: build-server-backend ## builds the server backend artifacts dev
-	./deploy/build-artifacts.sh -e dev -s server-backend
+	./deploy/build-artifacts.sh -e dev -s server_backend
 
 .PHONY: build-billing-artifacts-staging
 build-billing-artifacts-staging: build-billing ## builds the billing artifacts staging
@@ -564,7 +564,7 @@ build-load-test-artifacts-staging: build-load-test ## builds the load test artif
 
 .PHONY: build-server-backend-artifacts-staging
 build-server-backend-artifacts-staging: build-server-backend ## builds the server backend artifacts staging
-	./deploy/build-artifacts.sh -e staging -s server-backend
+	./deploy/build-artifacts.sh -e staging -s server_backend
 
 .PHONY: build-billing-artifacts-prod
 build-billing-artifacts-prod: build-billing ## builds the billing artifacts prod
@@ -592,7 +592,11 @@ build-relay-backend-artifacts-prod: build-relay-backend ## builds the relay back
 
 .PHONY: build-server-backend-artifacts-prod
 build-server-backend-artifacts-prod: build-server-backend ## builds the server backend artifacts prod
-	./deploy/build-artifacts.sh -e prod -s server-backend
+	./deploy/build-artifacts.sh -e prod -s server_backend
+
+.PHONY: build-server-backend-artifacts-prod-esl
+build-server-backend-artifacts-prod-esl: build-server-backend
+	./deploy/build-artifacts.sh -e prod -s server_backend -c esl-22dr
 
 .PHONY: publish-billing-artifacts-dev
 publish-billing-artifacts-dev: ## publishes the billing artifacts to GCP Storage with gsutil dev
@@ -689,6 +693,10 @@ publish-relay-backend-artifacts-prod: ## publishes the relay backend artifacts t
 .PHONY: publish-server-backend-artifacts-prod
 publish-server-backend-artifacts-prod: ## publishes the server backend artifacts to GCP Storage with gsutil prod
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s server-backend
+
+.PHONY: publish-server-backend-artifacts-prod-esl
+publish-server-backend-artifacts-prod-esl:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s server_backend -c esl-22dr
 
 .PHONY: publish-bootstrap-script-dev
 publish-bootstrap-script-dev:
