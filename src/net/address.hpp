@@ -123,19 +123,11 @@ namespace net
           }
 
           if (address[i] == ':') {
-            try {
-              this->Port = (uint16_t)(std::atoi(&address[i + 1]));
-            } catch (const std::invalid_argument& ia) {
-              LOG(ERROR, "invalid argument except when parsing ipv6: ", ia.what());
-              return false;
-            } catch (const std::out_of_range& oor) {
-              LOG(ERROR, "out of range except when parsing ipv6: ", oor.what());
-              return false;
-            } catch (const std::exception& e) {
-              LOG(ERROR, "generic except when parsing ipv6: ", e.what());
+            char* end = nullptr;
+            this->Port = (uint16_t)(std::strtol(&address[i + 1], &end, 10));
+            if (end == nullptr) {
               return false;
             }
-
             // 1 char back will be a ']', so end the string there
             address[i - 1] = '\0';
             break;
@@ -174,16 +166,9 @@ namespace net
         }
 
         if (address[i] == ':') {
-          try {
-            this->Port = (uint16_t)(atoi(&address[i + 1]));  // atoi throws exceptions in c++
-          } catch (const std::invalid_argument& ia) {
-            LOG(ERROR, "invalid argument except when parsing ipv4: ", ia.what());
-            return false;
-          } catch (const std::out_of_range& oor) {
-            LOG(ERROR, "out of range except when parsing ipv4: ", oor.what());
-            return false;
-          } catch (const std::exception& e) {
-            LOG(ERROR, "generic except when parsing ipv4: ", e.what());
+          char* end = nullptr;
+          this->Port = (uint16_t)(std::strtol(&address[i + 1], &end, 10));
+          if (end == nullptr) {
             return false;
           }
           address[i] = '\0';
@@ -297,9 +282,9 @@ namespace net
       total += snprintf(buff.data(), sizeof("NONE"), "NONE");
     }
 
-    //output.resize(total);
+    // output.resize(total);
     output.assign(buff.begin(), buff.begin() + total);
-    //std::copy(buff.begin(), buff.begin() + total, output.begin());
+    // std::copy(buff.begin(), buff.begin() + total, output.begin());
 
     return true;
   }

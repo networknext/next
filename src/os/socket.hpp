@@ -174,9 +174,17 @@ namespace os
 
   INLINE auto Socket::send(const net::Address& to, const uint8_t* data, size_t size) const -> bool
   {
-    assert(to.Type == net::AddressType::IPv4 || to.Type == net::AddressType::IPv6);
-    assert(data != nullptr);
-    assert(size > 0);
+    if (to.Type != net::AddressType::IPv4 && to.Type != net::AddressType::IPv6) {
+      return false;
+    }
+
+    if (data == nullptr) {
+      return false;
+    }
+
+    if (size == 0) {
+      return false;
+    }
 
     if (mClosed) {
       return false;
@@ -302,6 +310,7 @@ namespace os
   {
     mClosed = true;
     shutdown(mSockFD, SHUT_RDWR);
+    mSockFD = -1;
   }
 
   INLINE auto Socket::closed() const -> bool

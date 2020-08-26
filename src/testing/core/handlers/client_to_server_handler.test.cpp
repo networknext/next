@@ -85,7 +85,7 @@ Test(core_handlers_client_to_server_handler_signed_packet) {
 
   Header header = {
    .type = Type::ClientToServer,
-   .sequence = 123123130131LL,
+   .sequence = 1,//23123130131LL,
    .session_id = 0x12313131,
    .session_version = 0x12,
   };
@@ -94,13 +94,15 @@ Test(core_handlers_client_to_server_handler_signed_packet) {
   session->NextAddr = addr;
   session->ExpireTimestamp = 10;
   session->PrivateKey = private_key;
+  session->SessionID = header.session_id;
+  session->SessionVersion = header.session_version;
 
   map.set(header.hash(), session);
 
-  size_t index = 0;
+  size_t index = crypto::PacketHashLength;
 
   check(header.write(packet.Buffer, index, Direction::ClientToServer, private_key));
-  check(index == Header::ByteSize);
+  check(index == crypto::PacketHashLength + Header::ByteSize);
 
   core::handlers::client_to_server_handler(packet, map, recorder, socket, true);
   check(socket.recv(packet));

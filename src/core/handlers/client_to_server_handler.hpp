@@ -63,7 +63,7 @@ namespace core
       uint64_t clean_sequence = header.clean_sequence();
 
       if (relay_replay_protection_already_received(&session->ClientToServerProtection, clean_sequence)) {
-        LOG(ERROR, "ignoring client to server packet, already received packet: session = ", *session);
+        LOG(ERROR, "ignoring client to server packet, already received packet: session = ", *session, ", sequence = ", header.sequence, ", clean sequence = ", clean_sequence);
         return;
       }
 

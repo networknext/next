@@ -186,6 +186,8 @@ namespace core
         return false;
       }
 
+      size_t begin = index;
+
       uint8_t type;
       if (!encoding::ReadUint8(buffer, index, type)) {
         return false;
@@ -238,10 +240,10 @@ namespace core
       unsigned long long decrypted_length;
 
       int result = crypto_aead_chacha20poly1305_ietf_decrypt(
-       &buffer[19],
+       &buffer[begin + 19],
        &decrypted_length,
        nullptr,
-       &buffer[19],
+       &buffer[begin + 19],
        (unsigned long long)crypto_aead_chacha20poly1305_IETF_ABYTES,
        additional,
        (unsigned long long)additional_length,
