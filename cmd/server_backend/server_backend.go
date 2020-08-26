@@ -645,12 +645,21 @@ func main() {
 	}
 
 	vetoMap := transport.NewVetoMap()
+	multipathVetoMap := transport.NewVetoMap()
 	serverMap := transport.NewServerMap()
 	sessionMap := transport.NewSessionMap()
 	{
 		// Start a goroutine to timeout vetoes
 		go func() {
 			timeout := int64(60 * 5)
+			frequency := time.Millisecond * 100
+			ticker := time.NewTicker(frequency)
+			multipathVetoMap.TimeoutLoop(ctx, timeout, ticker.C)
+		}()
+
+		// Start a goroutine to timeout multipath vetoes
+		go func() {
+			timeout := int64(60 * 60 * 24)
 			frequency := time.Millisecond * 100
 			ticker := time.NewTicker(frequency)
 			vetoMap.TimeoutLoop(ctx, timeout, ticker.C)
@@ -772,6 +781,9 @@ func main() {
 				numVetoes := vetoMap.GetVetoCount()
 				serverBackendMetrics.VetoCount.Set(float64(numVetoes))
 
+				numMultipathVetoes := multipathVetoMap.GetVetoCount()
+				serverBackendMetrics.MultipathVetoCount.Set(float64(numMultipathVetoes))
+
 				numServers := serverMap.GetServerCount()
 				serverBackendMetrics.ServerCount.Set(float64(numServers))
 
@@ -794,6 +806,7 @@ func main() {
 				fmt.Printf("%.2f mb allocated\n", serverBackendMetrics.MemoryAllocated.Value())
 				fmt.Printf("%d goroutines\n", int(serverBackendMetrics.Goroutines.Value()))
 				fmt.Printf("%d vetoes\n", numVetoes)
+				fmt.Printf("%d multipath vetoes\n", numMultipathVetoes)
 				fmt.Printf("%d servers\n", numServers)
 				fmt.Printf("%d sessions\n", numSessions)
 				fmt.Printf("%d direct sessions\n", numDirectSessions)
@@ -868,6 +881,7 @@ func main() {
 			Metrics:           sessionUpdateMetrics,
 			Logger:            logger,
 			VetoMap:           vetoMap,
+			MultipathVetoMap:  multipathVetoMap,
 			ServerMap:         serverMap,
 			SessionMap:        sessionMap,
 			DatacenterTracker: datacenterTracker,
