@@ -60,11 +60,7 @@ The other option is to run ```npm run serve``` in a terminal window and ```npm r
 
 ### Auto linting setup
 
-<<<<<<< HEAD
 VSCode settings.json
-=======
-VSCode settings.js
->>>>>>> Added stuff to README for dev env setup
 ```
   "go.formatTool": "goimports",
   "go.useLanguageServer": true,
