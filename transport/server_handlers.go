@@ -776,6 +776,20 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 
 		timestamp := time.Now()
 
+		// Check if this user has been excluded from ever taking a network next route.
+		// If they have, then simply respond with the direct route and early out.
+		if _, ok := buyer.RoutingRulesSettings.ExcludedUserHashes[packet.UserHash]; ok {
+			routeDecision = routing.Decision{
+				OnNetworkNext: false,
+				Reason:        routing.DecisionExcludedUser,
+			}
+
+			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelays, routeDecision, sessionDataReadOnly.RouteDecision, sessionDataReadOnly.Initial, vetoReason, multipathVetoReason, nextSliceCounter,
+				committedData, sessionDataReadOnly.RouteHash, sessionDataReadOnly.RouteDecision.OnNetworkNext, timestamp, routeExpireTimestamp, sessionDataReadOnly.TokenVersion, params.RouterPrivateKey, nil, postSessionUpdateFunc) //sliceMutexes)
+
+			return
+		}
+
 		if location.IsZero() {
 			var err error
 			location, err = params.GetIPLocator().LocateIP(packet.ClientAddress.IP)

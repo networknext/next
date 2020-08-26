@@ -98,26 +98,27 @@ type datacenterMap struct {
 }
 
 type routingRulesSettings struct {
-	DisplayName                  string  `firestore:"displayName"`
-	EnvelopeKbpsUp               int64   `firestore:"envelopeKbpsUp"`
-	EnvelopeKbpsDown             int64   `firestore:"envelopeKbpsDown"`
-	Mode                         int64   `firestore:"mode"`
-	MaxPricePerGBNibblins        int64   `firestore:"maxPricePerGBNibblins"`
-	AcceptableLatency            float32 `firestore:"acceptableLatency"`
-	RTTEpsilon                   float32 `firestore:"rttRouteSwitch"`
-	RTTThreshold                 float32 `firestore:"rttThreshold"`
-	RTTHysteresis                float32 `firestore:"rttHysteresis"`
-	RTTVeto                      float32 `firestore:"rttVeto"`
-	EnableYouOnlyLiveOnce        bool    `firestore:"youOnlyLiveOnce"`
-	EnablePacketLossSafety       bool    `firestore:"packetLossSafety"`
-	EnableMultipathForPacketLoss bool    `firestore:"packetLossMultipath"`
-	MultipathPacketLossThreshold float32 `firestore:"multipathPacketLossThreshold"`
-	EnableMultipathForJitter     bool    `firestore:"jitterMultipath"`
-	EnableMultipathForRTT        bool    `firestore:"rttMultipath"`
-	EnableABTest                 bool    `firestore:"abTest"`
-	EnableTryBeforeYouBuy        bool    `firestore:"tryBeforeYouBuy"`
-	TryBeforeYouBuyMaxSlices     int8    `firestore:"tryBeforeYouBuyMaxSlices"`
-	SelectionPercentage          int64   `firestore:"selectionPercentage"`
+	DisplayName                  string          `firestore:"displayName"`
+	EnvelopeKbpsUp               int64           `firestore:"envelopeKbpsUp"`
+	EnvelopeKbpsDown             int64           `firestore:"envelopeKbpsDown"`
+	Mode                         int64           `firestore:"mode"`
+	MaxPricePerGBNibblins        int64           `firestore:"maxPricePerGBNibblins"`
+	AcceptableLatency            float32         `firestore:"acceptableLatency"`
+	RTTEpsilon                   float32         `firestore:"rttRouteSwitch"`
+	RTTThreshold                 float32         `firestore:"rttThreshold"`
+	RTTHysteresis                float32         `firestore:"rttHysteresis"`
+	RTTVeto                      float32         `firestore:"rttVeto"`
+	EnableYouOnlyLiveOnce        bool            `firestore:"youOnlyLiveOnce"`
+	EnablePacketLossSafety       bool            `firestore:"packetLossSafety"`
+	EnableMultipathForPacketLoss bool            `firestore:"packetLossMultipath"`
+	MultipathPacketLossThreshold float32         `firestore:"multipathPacketLossThreshold"`
+	EnableMultipathForJitter     bool            `firestore:"jitterMultipath"`
+	EnableMultipathForRTT        bool            `firestore:"rttMultipath"`
+	EnableABTest                 bool            `firestore:"abTest"`
+	EnableTryBeforeYouBuy        bool            `firestore:"tryBeforeYouBuy"`
+	TryBeforeYouBuyMaxSlices     int8            `firestore:"tryBeforeYouBuyMaxSlices"`
+	SelectionPercentage          int64           `firestore:"selectionPercentage"`
+	ExcludedUserHashes           map[uint64]bool `firestore:"excludedUserHashes"`
 }
 
 type FirestoreError struct {
@@ -1956,6 +1957,11 @@ func (fs *Firestore) getRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 		return rrs, err
 	}
 
+	// Prevent the excluded user hash map from being nil
+	if tempRRS.ExcludedUserHashes == nil {
+		tempRRS.ExcludedUserHashes = map[uint64]bool{}
+	}
+
 	// If successful, convert into routing.Buyer version and return it
 	rrs.EnvelopeKbpsUp = tempRRS.EnvelopeKbpsUp
 	rrs.EnvelopeKbpsDown = tempRRS.EnvelopeKbpsDown
@@ -1976,6 +1982,7 @@ func (fs *Firestore) getRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 	rrs.EnableTryBeforeYouBuy = tempRRS.EnableTryBeforeYouBuy
 	rrs.TryBeforeYouBuyMaxSlices = tempRRS.TryBeforeYouBuyMaxSlices
 	rrs.SelectionPercentage = tempRRS.SelectionPercentage
+	rrs.ExcludedUserHashes = tempRRS.ExcludedUserHashes
 
 	return rrs, nil
 }
@@ -2007,6 +2014,7 @@ func (fs *Firestore) setRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 		"tryBeforeYouBuy":              rrs.EnableTryBeforeYouBuy,
 		"tryBeforeYouBuyMaxSlices":     rrs.TryBeforeYouBuyMaxSlices,
 		"selectionPercentage":          rrs.SelectionPercentage,
+		"excludedUserHashes":           rrs.ExcludedUserHashes,
 	}
 
 	// Attempt to set route shader for buyer
