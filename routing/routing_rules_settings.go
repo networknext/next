@@ -82,6 +82,10 @@ type RoutingRulesSettings struct {
 	// If this defaults to 0 for any reason we force direct for the entire player base to be safe.
 	// Set this to >= 100 to enable ALL sessions for a buyer to be considered for route selection.
 	SelectionPercentage int64
+
+	// A map of user hashes that will never take a network next route and always go direct.
+	// The bool value isn't important, this map just represents a set for fast lookup.
+	ExcludedUserHashes map[uint64]bool
 }
 
 var DefaultRoutingRulesSettings = RoutingRulesSettings{
@@ -96,6 +100,7 @@ var DefaultRoutingRulesSettings = RoutingRulesSettings{
 	TryBeforeYouBuyMaxSlices:     3,
 	SelectionPercentage:          0,
 	MultipathPacketLossThreshold: 2.0,
+	ExcludedUserHashes:           map[uint64]bool{},
 }
 
 // LocalRoutingRulesSettings sets the rules for localhost:20000 Happy Path
@@ -113,4 +118,5 @@ var LocalRoutingRulesSettings = RoutingRulesSettings{
 	RTTVeto:                      -20,
 	SelectionPercentage:          100,
 	MultipathPacketLossThreshold: 1.0,
+	ExcludedUserHashes:           map[uint64]bool{},
 }

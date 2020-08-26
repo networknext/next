@@ -77,6 +77,12 @@ func (dr DecisionReason) String() string {
 		reason = "No Location"
 	case DecisionBuyerNotLive:
 		reason = "Buyer Not Live"
+	case DecisionMultipathVetoRTT:
+		reason = "Multipath Veto RTT"
+	case DecisionMultipathVetoRTT | DecisionVetoYOLO:
+		reason = "Multipath Veto RTT YOLO"
+	case DecisionExcludedUser:
+		reason = "Excluded User"
 	default:
 		reason = "Unknown"
 	}
@@ -108,6 +114,8 @@ const (
 	DecisionVetoNoRoute             DecisionReason = 1 << 21
 	DecisionNoLocation              DecisionReason = 1 << 22
 	DecisionBuyerNotLive            DecisionReason = 1 << 23
+	DecisionMultipathVetoRTT        DecisionReason = 1 << 24
+	DecisionExcludedUser            DecisionReason = 1 << 25
 )
 
 // DecideUpgradeRTT will decide if the client should use the network next route if the RTT reduction is greater than the given threshold.
@@ -313,13 +321,21 @@ func DecideCommitted(onNNLastSlice bool, maxObservedSlices uint8, yolo bool, com
 // If multipath isn't enabled then the decision isn't affected
 func DecideMultipath(rttMultipath bool, jitterMultipath bool, packetLossMultipath bool, rttThreshold float64, packetLossThreshold float64) DecisionFunc {
 	return func(prevDecision Decision, predictedNextStats, lastNextStats, lastDirectStats *Stats) Decision {
+		decision := prevDecision
+
 		// If we've already decided on multipath, then don't change the reason
 		// This is to make sure that the session can't go back to direct, since multipath always needs a next route
-		if IsMultipath(prevDecision) {
-			return prevDecision
-		}
+		if IsMultipath(decision) {
+			// However if there was a ping spike it might have been due to an overloaded connection for 2x multipath bandwidth,
+			// so "multipath veto" this user
+			if lastDirectStats.RTT >= 500 || lastNextStats.RTT >= 500 {
+				decision.OnNetworkNext = false
+				decision.Reason = DecisionMultipathVetoRTT
+				return decision
+			}
 
-		decision := prevDecision
+			return decision
+		}
 
 		// Reset the decision reason if multipath is enabled
 		if rttMultipath || jitterMultipath || packetLossMultipath {
