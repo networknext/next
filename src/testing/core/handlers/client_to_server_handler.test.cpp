@@ -5,6 +5,7 @@
 #include "crypto/bytes.hpp"
 
 using core::GenericPacket;
+using core::RouterInfo;
 using core::Session;
 using core::SessionMap;
 using core::packets::Direction;
@@ -13,7 +14,6 @@ using core::packets::Type;
 using net::Address;
 using os::Socket;
 using util::ThroughputRecorder;
-using core::RouterInfo;
 
 Test(core_handlers_client_to_server_handler_unsigned_packet)
 {
@@ -46,6 +46,8 @@ Test(core_handlers_client_to_server_handler_unsigned_packet)
   session->NextAddr = addr;
   session->ExpireTimestamp = 10;
   session->PrivateKey = private_key;
+  legacy::relay_replay_protection_reset(&session->ClientToServerProtection);
+  legacy::relay_replay_protection_reset(&session->ServerToClientProtection);
 
   map.set(header.hash(), session);
 
@@ -59,12 +61,19 @@ Test(core_handlers_client_to_server_handler_unsigned_packet)
   check(socket.recv(packet));
   check(prev_len == packet.Len);
 
+  check(recorder.ClientToServerTx.PacketCount == 1);
+  check(recorder.ClientToServerTx.ByteCount == packet.Len).onFail([&] {
+    std::cout << "packet len = " << packet.Len << std::endl;
+    std::cout << "byte count = " << recorder.ClientToServerTx.ByteCount << std::endl;
+  });
+
   core::handlers::client_to_server_handler(packet, map, recorder, socket, false);
   // check already received
   check(!socket.recv(packet));
 }
 
-Test(core_handlers_client_to_server_handler_signed_packet) {
+Test(core_handlers_client_to_server_handler_signed_packet)
+{
   Socket socket;
   Address addr;
   GenericPacket<> packet;
@@ -85,7 +94,7 @@ Test(core_handlers_client_to_server_handler_signed_packet) {
 
   Header header = {
    .type = Type::ClientToServer,
-   .sequence = 1,//23123130131LL,
+   .sequence = 123123130131LL,
    .session_id = 0x12313131,
    .session_version = 0x12,
   };
@@ -96,6 +105,8 @@ Test(core_handlers_client_to_server_handler_signed_packet) {
   session->PrivateKey = private_key;
   session->SessionID = header.session_id;
   session->SessionVersion = header.session_version;
+  legacy::relay_replay_protection_reset(&session->ClientToServerProtection);
+  legacy::relay_replay_protection_reset(&session->ServerToClientProtection);
 
   map.set(header.hash(), session);
 

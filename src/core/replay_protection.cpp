@@ -1,6 +1,8 @@
 #include "includes.h"
 #include "replay_protection.hpp"
 
+#include "util/logger.hpp"
+
 namespace core
 {
   void ReplayProtection::reset()
@@ -53,16 +55,19 @@ namespace legacy
   {
     assert(replay_protection);
 
-    if (sequence + RELAY_REPLAY_PROTECTION_BUFFER_SIZE <= replay_protection->most_recent_sequence)
+    if (sequence + RELAY_REPLAY_PROTECTION_BUFFER_SIZE <= replay_protection->most_recent_sequence) {
       return 1;
+    }
 
     int index = (int)(sequence % RELAY_REPLAY_PROTECTION_BUFFER_SIZE);
 
-    if (replay_protection->received_packet[index] == 0xFFFFFFFFFFFFFFFFLL)
+    if (replay_protection->received_packet[index] == 0xFFFFFFFFFFFFFFFFLL) {
       return 0;
+    }
 
-    if (replay_protection->received_packet[index] >= sequence)
+    if (replay_protection->received_packet[index] >= sequence) {
       return 1;
+    }
 
     return 0;
   }
