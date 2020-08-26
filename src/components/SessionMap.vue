@@ -1,8 +1,8 @@
 <template>
   <div v-bind:class="{
-         'map-container-no-offset': $store.getters.userProfile === null || $store.getters.userProfile.verified,
-         'map-container-offset': $store.getters.userProfile !== null && !$store.getters.userProfile.verified,
-       }">
+    'map-container-no-offset': $store.getters.userProfile === null || $store.getters.userProfile.verified,
+    'map-container-offset': $store.getters.userProfile !== null && !$store.getters.userProfile.verified,
+  }">
     <div class="map" id="map"></div>
     <canvas id="deck-canvas"></canvas>
   </div>
