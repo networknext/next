@@ -152,6 +152,18 @@ var EmptyDecisionMetrics DecisionMetrics = DecisionMetrics{
 	BuyerNotLive:        &EmptyCounter{},
 }
 
+type FirestoreSyncMetrics struct {
+	Invocations     Counter
+	RemoteSyncValue Gauge
+	LocalSyncValue  Gauge
+}
+
+var EmptyFirestoreSyncMetrics FirestoreSyncMetrics = FirestoreSyncMetrics{
+	Invocations:     &EmptyCounter{},
+	RemoteSyncValue: &EmptyGauge{},
+	LocalSyncValue:  &EmptyGauge{},
+}
+
 type OptimizeMetrics struct {
 	Invocations     Counter
 	DurationGauge   Gauge
@@ -1838,6 +1850,50 @@ func NewCostMatrixMetrics(ctx context.Context, metricsHandler Handler) (*CostMat
 	return &costMatrixMetrics, nil
 }
 
+func NewFirestoreSyncMetrics(ctx context.Context, metricsHandler Handler, serviceName string) (*FirestoreSyncMetrics, error) {
+	firestoreSyncInvocationsCounter, err := metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Firestore Sync Invocations",
+		ServiceName: serviceName,
+		ID:          "firestore_sync.count",
+		Unit:        "invocations",
+		Description: "Total number of sync operations per service",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	firestoreSyncRemoteValueGauge, err := metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Firestore Sync Remote Value",
+		ServiceName: serviceName,
+		ID:          "firestore_sync.remote_value",
+		Unit:        "counter",
+		Description: "Value of the remote Firestore sync counter",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	firestoreSyncLocalValueGauge, err := metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Firestore Sync Local Value",
+		ServiceName: serviceName,
+		ID:          "firestore_sync.local_value",
+		Unit:        "counter",
+		Description: "Value of the local Firestore sync counter",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	firestoreSyncMetrics := FirestoreSyncMetrics{
+		Invocations:     firestoreSyncInvocationsCounter,
+		RemoteSyncValue: firestoreSyncRemoteValueGauge,
+		LocalSyncValue:  firestoreSyncLocalValueGauge,
+	}
+
+	return &firestoreSyncMetrics, nil
+
+}
+
 func NewOptimizeMetrics(ctx context.Context, metricsHandler Handler) (*OptimizeMetrics, error) {
 	optimizeDurationGauge, err := metricsHandler.NewGauge(ctx, &Descriptor{
 		DisplayName: "Optimize duration",
@@ -2540,4 +2596,55 @@ func NewAnalyticsServiceMetrics(ctx context.Context, metricsHandler Handler) (*A
 	}
 
 	return &analyticsMetrics, nil
+}
+
+type FirestoreSyncMetrics struct {
+	Invocations  Counter
+	ErrorMetrics CostMatrixErrorMetrics
+}
+
+var EmptyFirestoreSyncMetrics FirestoreSyncMetrics = FirestoreSyncMetrics{
+	Invocations:  &EmptyCounter{},
+	ErrorMetrics: EmptyCostMatrixErrorMetrics,
+}
+
+type FirestoreSyncErrorMetrics struct {
+	GenFailure Counter
+}
+
+var EmptyFirestoreSyncErrorMetrics FirestoreSyncErrorMetrics = FirestoreSyncErrorMetrics{
+	GenFailure: &EmptyCounter{},
+}
+
+func NewFirestoreSyncMetrics(ctx context.Context, metricsHandler Handler, callingService string) (*FirestoreSyncMetrics, error) {
+
+	firestoreSyncMetricsInvocationsCounter, err := metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Total Firestore SyncLoop invocations",
+		ServiceName: callingService,
+		ID:          "firestore_sync.count",
+		Unit:        "invocations",
+		Description: "Total Firestore SyncLoop invocations",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	firestoreSyncMetricsFailure, err := metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Firestore Sync Sequence Number Get Failure",
+		ServiceName: callingService,
+		ID:          "firestore_sequence_number.failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	firestoreSyncMetrics := FirestoreSyncMetrics{
+		Invocations: firestoreSyncMetricsInvocationsCounter,
+		ErrorMetrics: CostMatrixErrorMetrics{
+			GenFailure: firestoreSyncMetricsFailure,
+		},
+	}
+
+	return &firestoreSyncMetrics, nil
 }

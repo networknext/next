@@ -174,7 +174,7 @@ func main() {
 			fmt.Printf("initializing firestore\n")
 
 			// Create a Firestore Storer
-			fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
+			fs, err := storage.NewFirestore(ctx, gcpProjectID, logger, "relay_backend")
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				os.Exit(1)
