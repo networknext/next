@@ -2,17 +2,22 @@
 
 function overrideEndpointsEmpty () {
   cy.window().then((win) => {
-    cy.stub(win.app.$apiService, 'fetchTotalSessionCounts').resolves({ result: { direct: 2, next: 2 } })
-    cy.stub(win.app.$apiService, 'fetchMapSessions').resolves({ result: { map_points: [] } })
-    cy.stub(win.app.$apiService, 'fetchTopSessions').resolves({ result: { sessions: [] } })
-  })
-}
-
-function overrideEndpointsFull () {
-  cy.window().then((win) => {
-    cy.stub(win.app.$apiService, 'fetchTotalSessionCounts').resolves({ result: { direct: 499, next: 143 } })
-    cy.stub(win.app.$apiService, 'fetchMapSessions').resolves({ result: { map_points: [] } })
-    cy.stub(win.app.$apiService, 'fetchTopSessions').resolves({ result: { sessions: [] } })
+    cy.stub(win.app.$apiService, 'fetchTotalSessionCounts').resolves({
+      result: {
+        direct: 2,
+        next: 2
+      }
+    })
+    cy.stub(win.app.$apiService, 'fetchMapSessions').resolves({
+      result: {
+        map_points: []
+      }
+    })
+    cy.stub(win.app.$apiService, 'fetchTopSessions').resolves({
+      result: {
+        sessions: []
+      }
+    })
   })
 }
 
