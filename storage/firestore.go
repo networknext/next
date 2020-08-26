@@ -29,7 +29,11 @@ type Firestore struct {
 	datacenterMaps map[uint64]routing.DatacenterMap
 
 	syncSequenceNumber int64
+<<<<<<< HEAD
 	syncMetrics        metrics.FirestoreSyncMetrics
+=======
+	callingService     string
+>>>>>>> 92ce8b606bb361933f5d02b26dadbf0abe5643f4
 
 	datacenterMutex     sync.RWMutex
 	relayMutex          sync.RWMutex

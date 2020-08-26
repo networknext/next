@@ -2597,3 +2597,54 @@ func NewAnalyticsServiceMetrics(ctx context.Context, metricsHandler Handler) (*A
 
 	return &analyticsMetrics, nil
 }
+
+type FirestoreSyncMetrics struct {
+	Invocations  Counter
+	ErrorMetrics CostMatrixErrorMetrics
+}
+
+var EmptyFirestoreSyncMetrics FirestoreSyncMetrics = FirestoreSyncMetrics{
+	Invocations:  &EmptyCounter{},
+	ErrorMetrics: EmptyCostMatrixErrorMetrics,
+}
+
+type FirestoreSyncErrorMetrics struct {
+	GenFailure Counter
+}
+
+var EmptyFirestoreSyncErrorMetrics FirestoreSyncErrorMetrics = FirestoreSyncErrorMetrics{
+	GenFailure: &EmptyCounter{},
+}
+
+func NewFirestoreSyncMetrics(ctx context.Context, metricsHandler Handler, callingService string) (*FirestoreSyncMetrics, error) {
+
+	firestoreSyncMetricsInvocationsCounter, err := metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Total Firestore SyncLoop invocations",
+		ServiceName: callingService,
+		ID:          "firestore_sync.count",
+		Unit:        "invocations",
+		Description: "Total Firestore SyncLoop invocations",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	firestoreSyncMetricsFailure, err := metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Firestore Sync Sequence Number Get Failure",
+		ServiceName: callingService,
+		ID:          "firestore_sequence_number.failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	firestoreSyncMetrics := FirestoreSyncMetrics{
+		Invocations: firestoreSyncMetricsInvocationsCounter,
+		ErrorMetrics: CostMatrixErrorMetrics{
+			GenFailure: firestoreSyncMetricsFailure,
+		},
+	}
+
+	return &firestoreSyncMetrics, nil
+}
