@@ -194,30 +194,49 @@ Test(Address_parse_additional)
 
   // all should fail
   {
+    addr.reset();
     check(addr.parse("") == false);
+    addr.reset();
     check(addr.parse("[") == false);
+    addr.reset();
     check(addr.parse("[]") == false);
+    addr.reset();
     check(addr.parse("[]:") == false);
+    addr.reset();
     check(addr.parse(":") == false);
+    addr.reset();
     check(addr.parse("1") == false);
+    addr.reset();
     check(addr.parse("12") == false);
+    addr.reset();
     check(addr.parse("123") == false);
+    addr.reset();
     check(addr.parse("1234") == false);
+    addr.reset();
     check(addr.parse("1234.0.12313.0000") == false);
+    addr.reset();
     check(addr.parse("1234.0.12313.0000.0.0.0.0.0") == false);
+    addr.reset();
     check(addr.parse("1312313:123131:1312313:123131:1312313:123131:1312313:123131:1312313:123131:1312313:123131") == false);
+    addr.reset();
     check(addr.parse(".") == false);
+    addr.reset();
     check(addr.parse("..") == false);
+    addr.reset();
     check(addr.parse("...") == false);
+    addr.reset();
     check(addr.parse("....") == false);
+    addr.reset();
     check(addr.parse(".....") == false);
+    addr.reset();
     check(addr.parse("0.0.0.0") == true);
-    check(addr.parse("107.77.207.77") == true);
   }
 
   // reset should pass
 
   {
+    addr.reset();
+    check(addr.parse("107.77.207.77") == true);
     check(addr.Type == net::AddressType::IPv4);
     check(addr.Port == 0);
     check(addr.IPv4[0] == 107);
@@ -227,6 +246,7 @@ Test(Address_parse_additional)
   }
 
   {
+    addr.reset();
     check(addr.parse("127.0.0.1") == true);
     check(addr.Type == net::AddressType::IPv4);
     check(addr.Port == 0);
@@ -237,6 +257,7 @@ Test(Address_parse_additional)
   }
 
   {
+    addr.reset();
     check(addr.parse("107.77.207.77:40000") == true);
     check(addr.Type == net::AddressType::IPv4);
     check(addr.Port == 40000);
@@ -247,6 +268,7 @@ Test(Address_parse_additional)
   }
 
   {
+    addr.reset();
     check(addr.parse("127.0.0.1:40000") == true);
     check(addr.Type == net::AddressType::IPv4);
     check(addr.Port == 40000);
@@ -254,9 +276,11 @@ Test(Address_parse_additional)
     check(addr.IPv4[1] == 0);
     check(addr.IPv4[2] == 0);
     check(addr.IPv4[3] == 1);
+    addr.reset();
   }
 
   {
+    addr.reset();
     check(addr.parse("fe80::202:b3ff:fe1e:8329") == true);
     check(addr.Type == net::AddressType::IPv6);
     check(addr.Port == 0);
@@ -271,6 +295,7 @@ Test(Address_parse_additional)
   }
 
   {
+    addr.reset();
     check(addr.parse("::") == true);
     check(addr.Type == net::AddressType::IPv6);
     check(addr.Port == 0);
@@ -285,6 +310,7 @@ Test(Address_parse_additional)
   }
 
   {
+    addr.reset();
     check(addr.parse("::1") == true);
     check(addr.Type == net::AddressType::IPv6);
     check(addr.Port == 0);
@@ -299,6 +325,7 @@ Test(Address_parse_additional)
   }
 
   {
+    addr.reset();
     check(addr.parse("[fe80::202:b3ff:fe1e:8329]:40000") == true);
     check(addr.Type == net::AddressType::IPv6);
     check(addr.Port == 40000);
@@ -313,6 +340,7 @@ Test(Address_parse_additional)
   }
 
   {
+    addr.reset();
     check(addr.parse("[::]:40000") == true);
     check(addr.Type == net::AddressType::IPv6);
     check(addr.Port == 40000);
@@ -327,6 +355,7 @@ Test(Address_parse_additional)
   }
 
   {
+    addr.reset();
     check(addr.parse("[::1]:40000") == true);
     check(addr.Type == net::AddressType::IPv6);
     check(addr.Port == 40000);
