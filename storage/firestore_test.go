@@ -1899,7 +1899,7 @@ func TestFirestore(t *testing.T) {
 	})
 
 	t.Run("Add two and get the list", func(t *testing.T) {
-		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 		assert.NoError(t, err)
 
 		defer func() {
