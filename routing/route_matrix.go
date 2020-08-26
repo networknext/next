@@ -215,7 +215,7 @@ func (m *RouteMatrix) GetAcceptableRoutes(near []NearRelayData, destIDs []uint64
 
 				// Now that we know this route is acceptable, we can get its relays and build the route struct
 				numRelays := int(entry.RouteNumRelays[routeIndex])
-				routeRelayIDs := make([]uint64, numRelays)
+				routeRelayIDs := [MaxRelays]uint64{}
 				isEncumbered := false
 				for relayIndex := 0; relayIndex < numRelays; relayIndex++ {
 					idx := entry.RouteRelays[routeIndex][relayIndex]
@@ -236,7 +236,8 @@ func (m *RouteMatrix) GetAcceptableRoutes(near []NearRelayData, destIDs []uint64
 				}
 
 				route := &Route{
-					RelayIDs: routeRelayIDs,
+					NumRelays: numRelays,
+					RelayIDs:  routeRelayIDs,
 					Stats: Stats{
 						RTT: float64(routeRTT),
 					},
