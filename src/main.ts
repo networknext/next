@@ -19,10 +19,6 @@ import { Route, NavigationGuardNext } from 'vue-router'
  *  initializing auth0 related functionality
  */
 
-// function mountCypress (win: any, app: any) {
-//   win.app = app
-// }
-
 Vue.config.productionTip = false
 
 const app: any = null
@@ -49,3 +45,7 @@ new Vue({
   store,
   render: h => h(App)
 }).$mount('#app')
+
+if (win.Cypress) {
+  win.app = app
+}
