@@ -26,9 +26,6 @@ import { Route, NavigationGuardNext } from 'vue-router'
  * TODO: Clean all of this up a bit
  * TODO: Potentially find a better auth solution
  */
-// function mountCypress (win: any, app: any) {
-//   win.app = app
-// }
 
 Vue.config.productionTip = false
 
@@ -40,7 +37,7 @@ Vue.prototype.$apiService = apiService
 // const authService = new AuthService()
 // Vue.prototype.$authService = authService
 
-const app: any = null
+let app: any = null
 const win: any = window
 
 store.dispatch('updateCurrentPage', router.currentRoute.name)
@@ -57,8 +54,12 @@ Vue.use(AuthPlugin, {
   clientID: clientID
 })
 
-new Vue({
+app = new Vue({
   router,
   store,
   render: h => h(App)
 }).$mount('#app')
+
+if (win.Cypress) {
+  win.app = app
+}
