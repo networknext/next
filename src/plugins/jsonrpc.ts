@@ -8,7 +8,6 @@ export class JsonRpcService {
   private unwatch: any
 
   constructor () {
-    console.log('JsonRPCService constructor()')
     this.headers = {
       Accept: 'application/json',
       'Accept-Encoding': 'gzip',
@@ -20,7 +19,6 @@ export class JsonRpcService {
       (newValue, oldValue) => {
         // it is enough to know that the token has changed - the value is
         // not relevant here
-        console.log(`Updating from ${oldValue} to ${newValue}`)
         this.processAuthChange(newValue)
       }
     )
@@ -77,12 +75,10 @@ export class JsonRpcService {
   }
 
   public fetchTotalSessionCounts (args: any) {
-    console.log('JsonRpcService.fetchTotalSessionCounts()')
     return this.call('BuyersService.TotalSessions', args, '')
   }
 
   public fetchMapSessions (args: any) {
-    console.log('JsonRpcService.fetchMapSessions()')
     return this.call('BuyersService.SessionMap', args, '')
   }
 
@@ -149,69 +145,67 @@ export const JsonRPCPlugin = {
     const client = new JsonRpcService()
 
     Vue.fetchTotalSessionCounts = (args: any) => {
-      console.log('Vue.fetchTotalSessionCounts()')
-      client.fetchTotalSessionCounts(args)
+      return client.fetchTotalSessionCounts(args)
     }
 
     Vue.fetchMapSessions = (args: any) => {
-      console.log('Vue.fetchMapSessions()')
-      client.fetchMapSessions(args)
+      return client.fetchMapSessions(args)
     }
 
     Vue.fetchSessionDetails = (args: any) => {
-      client.fetchSessionDetails(args)
+      return client.fetchSessionDetails(args)
     }
 
     Vue.fetchTopSessions = (args: any) => {
-      client.fetchTopSessions(args)
+      return client.fetchTopSessions(args)
     }
 
     Vue.fetchAllBuyers = (args: any) => {
-      client.fetchAllBuyers(args)
+      return client.fetchAllBuyers(args)
     }
 
     Vue.fetchUserSessions = (args: any) => {
-      client.fetchUserSessions(args)
+      return client.fetchUserSessions(args)
     }
 
     Vue.fetchAllRoles = () => {
-      client.fetchAllRoles()
+      return client.fetchAllRoles()
     }
 
     Vue.fetchAllAccounts = (args: any) => {
-      client.fetchAllAccounts(args)
+      return client.fetchAllAccounts(args)
     }
 
     Vue.updateUserRoles = (args: any) => {
-      client.updateUserRoles(args)
+      return client.updateUserRoles(args)
     }
 
     Vue.deleteUserAccount = (args: any) => {
-      client.deleteUserAccount(args)
+      return client.deleteUserAccount(args)
     }
 
     Vue.addNewUserAccounts = (args: any) => {
-      client.addNewUserAccounts(args)
+      return client.addNewUserAccounts(args)
     }
 
     Vue.fetchUserAccount = (args: any, token: string) => {
-      client.fetchUserAccount(args, token)
+      return client.fetchUserAccount(args, token)
     }
 
     Vue.fetchGameConfiguration = (args: any, token: string) => {
-      client.fetchGameConfiguration(args, token)
+      return client.fetchGameConfiguration(args, token)
     }
 
     Vue.updateRouteShader = (args: any) => {
-      client.updateRouteShader(args)
+      return client.updateRouteShader(args)
     }
 
     Vue.updateGameConfiguration = (args: any) => {
-      client.updateGameConfiguration(args)
+      return client.updateGameConfiguration(args)
     }
 
     Vue.resendVerificationEmail = (args: any) => {
-      client.resendVerificationEmail(args)
+      return client.resendVerificationEmail(args)
     }
   }
 }
