@@ -495,8 +495,8 @@ deploy-server-backend-velan: ## builds and deploys the server backend to velan
 	./deploy/deploy.sh -e prod -c velan-730n -t server-backend -b gs://prod_artifacts
 
 .PHONY: deploy-server-backend-esl
-deploy-server-backend-esl: ## builds and deploys the server backend to esl
-	./deploy/deploy.sh -e prod -c esl-22dr -t server-backend -b gs://prod_artifacts
+deploy-server-backend-esl:
+	./deploy/deploy.sh -e prod -c esl-22dr -t server-backend -n server_backend-esl-22dr -b gs://prod_artifacts
 
 .PHONY: build-load-test-server-artifacts
 build-load-test-server-artifacts: build-load-test-server ## builds the load test artifacts staging
@@ -594,6 +594,10 @@ build-relay-backend-artifacts-prod: build-relay-backend ## builds the relay back
 build-server-backend-artifacts-prod: build-server-backend ## builds the server backend artifacts prod
 	./deploy/build-artifacts.sh -e prod -s server-backend
 
+.PHONY: build-server-backend-artifacts-prod-esl
+build-server-backend-artifacts-prod-esl: build-server-backend
+	./deploy/build-artifacts.sh -e prod -s server_backend -c esl-22dr
+
 .PHONY: publish-billing-artifacts-dev
 publish-billing-artifacts-dev: ## publishes the billing artifacts to GCP Storage with gsutil dev
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s billing
@@ -689,6 +693,10 @@ publish-relay-backend-artifacts-prod: ## publishes the relay backend artifacts t
 .PHONY: publish-server-backend-artifacts-prod
 publish-server-backend-artifacts-prod: ## publishes the server backend artifacts to GCP Storage with gsutil prod
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s server-backend
+
+.PHONY: publish-server-backend-artifacts-prod-esl
+publish-server-backend-artifacts-prod-esl:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s server_backend -c esl-22dr
 
 .PHONY: publish-bootstrap-script-dev
 publish-bootstrap-script-dev:
