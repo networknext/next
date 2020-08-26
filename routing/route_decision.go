@@ -321,13 +321,21 @@ func DecideCommitted(onNNLastSlice bool, maxObservedSlices uint8, yolo bool, com
 // If multipath isn't enabled then the decision isn't affected
 func DecideMultipath(rttMultipath bool, jitterMultipath bool, packetLossMultipath bool, rttThreshold float64, packetLossThreshold float64) DecisionFunc {
 	return func(prevDecision Decision, predictedNextStats, lastNextStats, lastDirectStats *Stats) Decision {
+		decision := prevDecision
+
 		// If we've already decided on multipath, then don't change the reason
 		// This is to make sure that the session can't go back to direct, since multipath always needs a next route
-		if IsMultipath(prevDecision) {
-			return prevDecision
-		}
+		if IsMultipath(decision) {
+			// However if there was a ping spike it might have been due to an overloaded connection for 2x multipath bandwidth,
+			// so "multipath veto" this user
+			if lastDirectStats.RTT >= 500 || lastNextStats.RTT >= 500 {
+				decision.OnNetworkNext = false
+				decision.Reason = DecisionMultipathVetoRTT
+				return decision
+			}
 
-		decision := prevDecision
+			return decision
+		}
 
 		// Reset the decision reason if multipath is enabled
 		if rttMultipath || jitterMultipath || packetLossMultipath {
@@ -351,13 +359,6 @@ func DecideMultipath(rttMultipath bool, jitterMultipath bool, packetLossMultipat
 		if packetLossMultipath && lastDirectStats.PacketLoss >= packetLossThreshold {
 			decision.OnNetworkNext = true
 			decision.Reason |= DecisionHighPacketLossMultipath
-		}
-
-		// There was probably a ping spike due to an overloaded connection for 2x multipath bandwidth,
-		// so "multipath veto" this user
-		if lastDirectStats.RTT >= 500 || lastNextStats.RTT >= 500 {
-			decision.OnNetworkNext = false
-			decision.Reason = DecisionMultipathVetoRTT
 		}
 
 		return decision
