@@ -6,10 +6,10 @@ import router from './router'
 import store from './store'
 import 'bootstrap'
 import 'bootstrap/dist/css/bootstrap.min.css'
-import APIService from './services/api.service'
-// import AuthService, { UserProfile, NNAuth0Profile } from './services/auth.service'
+// import APIService from './services/api.service'
+
+import { JsonRPCPlugin } from './plugins/jsonrpc'
 import { AuthPlugin } from './plugins/auth'
-// import { Auth0Plugin } from './plugins/auth0'
 
 import { Route, NavigationGuardNext } from 'vue-router'
 // import { CreateElement } from 'vue/types/umd'
@@ -33,12 +33,8 @@ import { Route, NavigationGuardNext } from 'vue-router'
 Vue.config.productionTip = false
 
 // Add api service as a Vue property so it can be used in all Vue components
-const apiService = new APIService()
-Vue.prototype.$apiService = apiService
-
-// Add auth service as a Vue property so it can be used in all Vue components
-// const authService = new AuthService()
-// Vue.prototype.$authService = authService
+// const apiService = new APIService()
+// Vue.prototype.$apiService = apiService
 
 const app: any = null
 const win: any = window
@@ -57,8 +53,13 @@ Vue.use(AuthPlugin, {
   clientID: clientID
 })
 
+Vue.use(JsonRPCPlugin)
+
 new Vue({
   router,
   store,
+  created: function() {
+    console.log('Vue created()')
+  },
   render: h => h(App)
 }).$mount('#app')

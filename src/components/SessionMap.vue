@@ -33,6 +33,7 @@ export default class SessionMap extends Vue {
   private mapInstance: any
   private mapLoop: number
   private viewState: any
+  private vueInstance: any
 
   private unwatch: any
 
@@ -49,6 +50,7 @@ export default class SessionMap extends Vue {
       maxZoom: 16
     }
     this.mapLoop = -1
+    this.vueInstance = Vue
   }
 
   private mounted () {
@@ -68,7 +70,7 @@ export default class SessionMap extends Vue {
 
   private fetchMapSessions () {
     // creating the map
-    this.apiService.fetchMapSessions({ buyer_id: this.$store.getters.currentFilter.buyerID || '' })
+    this.vueInstance.fetchMapSessions({ buyer_id: this.$store.getters.currentFilter.buyerID || '' })
       .then((response: any) => {
         if (!this.mapInstance) {
           this.mapInstance = new mapboxgl.Map({
