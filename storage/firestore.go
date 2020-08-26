@@ -29,11 +29,8 @@ type Firestore struct {
 	datacenterMaps map[uint64]routing.DatacenterMap
 
 	syncSequenceNumber int64
-<<<<<<< HEAD
 	syncMetrics        metrics.FirestoreSyncMetrics
-=======
 	callingService     string
->>>>>>> 92ce8b606bb361933f5d02b26dadbf0abe5643f4
 
 	datacenterMutex     sync.RWMutex
 	relayMutex          sync.RWMutex
@@ -154,6 +151,7 @@ func NewFirestore(ctx context.Context, gcpProjectID string, logger log.Logger, s
 		relays:             make(map[uint64]routing.Relay),
 		buyers:             make(map[uint64]routing.Buyer),
 		sellers:            make(map[string]routing.Seller),
+		callingService:     serviceName,
 		syncSequenceNumber: -1,
 		syncMetrics:        *firestoreSyncMetrics,
 	}, nil
