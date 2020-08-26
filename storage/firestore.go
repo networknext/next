@@ -118,7 +118,7 @@ type routingRulesSettings struct {
 	EnableTryBeforeYouBuy        bool            `firestore:"tryBeforeYouBuy"`
 	TryBeforeYouBuyMaxSlices     int8            `firestore:"tryBeforeYouBuyMaxSlices"`
 	SelectionPercentage          int64           `firestore:"selectionPercentage"`
-	ExcludedUserHashes           map[uint64]bool `firestore:"excludedUserHashes"`
+	ExcludedUserHashes           map[string]bool `firestore:"excludedUserHashes"`
 }
 
 type FirestoreError struct {
@@ -1875,7 +1875,7 @@ func (fs *Firestore) syncCustomers(ctx context.Context) error {
 			}
 			rrs, err := fs.getRoutingRulesSettingsForBuyerID(ctx, bdoc.Ref.ID)
 			if err != nil {
-				level.Warn(fs.Logger).Log("msg", fmt.Sprintf("using default route rules for buyer %v", bdoc.Ref.ID), "err", err)
+				level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to completely read route shader for buyer %v, some fields will have default values", bdoc.Ref.ID), "err", err)
 			}
 			buyers[uint64(b.ID)] = routing.Buyer{
 				ID:                   uint64(b.ID),
@@ -1957,11 +1957,6 @@ func (fs *Firestore) getRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 		return rrs, err
 	}
 
-	// Prevent the excluded user hash map from being nil
-	if tempRRS.ExcludedUserHashes == nil {
-		tempRRS.ExcludedUserHashes = map[uint64]bool{}
-	}
-
 	// If successful, convert into routing.Buyer version and return it
 	rrs.EnvelopeKbpsUp = tempRRS.EnvelopeKbpsUp
 	rrs.EnvelopeKbpsDown = tempRRS.EnvelopeKbpsDown
@@ -1982,7 +1977,16 @@ func (fs *Firestore) getRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 	rrs.EnableTryBeforeYouBuy = tempRRS.EnableTryBeforeYouBuy
 	rrs.TryBeforeYouBuyMaxSlices = tempRRS.TryBeforeYouBuyMaxSlices
 	rrs.SelectionPercentage = tempRRS.SelectionPercentage
-	rrs.ExcludedUserHashes = tempRRS.ExcludedUserHashes
+
+	rrs.ExcludedUserHashes = map[uint64]bool{}
+	for userHashString := range tempRRS.ExcludedUserHashes {
+		userHash, err := strconv.ParseUint(userHashString, 16, 64)
+		if err != nil {
+			return rrs, err
+		}
+
+		rrs.ExcludedUserHashes[userHash] = true
+	}
 
 	return rrs, nil
 }
@@ -1991,6 +1995,12 @@ func (fs *Firestore) setRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 	// Comment below taken from old backend, at least attempting to explain why we need to append _0 (no existing entries have suffixes other than _0)
 	// "Must be of the form '<buyer key>_<tag id>'. The buyer key can be found by looking at the ID under Buyer; it should be something like 763IMDH693HLsr2LGTJY. The tag ID should be 0 (for default) or the fnv64a hash of the tag the customer is using. Therefore this value should look something like: 763IMDH693HLsr2LGTJY_0. This value can not be changed after the entity is created."
 	routeShaderID := ID + "_0"
+
+	// Convert the excluded user hashes to strings
+	excludedUserHashes := map[string]bool{}
+	for userHash := range rrs.ExcludedUserHashes {
+		excludedUserHashes[fmt.Sprintf("%016x", userHash)] = true
+	}
 
 	// Convert RoutingRulesSettings struct to firestore map
 	rrsFirestore := map[string]interface{}{
@@ -2014,7 +2024,7 @@ func (fs *Firestore) setRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 		"tryBeforeYouBuy":              rrs.EnableTryBeforeYouBuy,
 		"tryBeforeYouBuyMaxSlices":     rrs.TryBeforeYouBuyMaxSlices,
 		"selectionPercentage":          rrs.SelectionPercentage,
-		"excludedUserHashes":           rrs.ExcludedUserHashes,
+		"excludedUserHashes":           excludedUserHashes,
 	}
 
 	// Attempt to set route shader for buyer
