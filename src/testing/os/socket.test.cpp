@@ -16,7 +16,7 @@ Test(socket_nonblocking_ipv4)
   std::array<uint8_t, 256> packet = {};
   check(socket.send(local_address, packet.data(), packet.size()));
   size_t packets_received = 0;
-  while (socket.recv(from, packet.data(), packet.size())) {
+  while (socket.recv(from, packet.data(), packet.size()) == packet.size()) {
     check(from == local_address);
     packets_received++;
   }
@@ -35,7 +35,7 @@ Test(socket_blocking_ipv4)
   std::array<uint8_t, 256> packet = {};
   check(socket.send(local_address, packet.data(), packet.size()));
   size_t packets_received = 0;
-  while (socket.recv(from, packet.data(), packet.size())) {
+  while (socket.recv(from, packet.data(), packet.size()) == packet.size()) {
     check(from == local_address);
     packets_received++;
   }
@@ -69,7 +69,7 @@ Test(socket_nonblocking_ipv6)
   std::array<uint8_t, 256> packet = {};
   check(socket.send(local_address, packet.data(), packet.size()));
   size_t packets_received = 0;
-  while (socket.recv(from, packet.data(), packet.size())) {
+  while (socket.recv(from, packet.data(), packet.size()) == packet.size()) {
     check(from == local_address);
     packets_received++;
   }
@@ -88,7 +88,7 @@ Test(socket_blocking_ipv6)
   std::array<uint8_t, 256> packet = {};
   check(socket.send(local_address, packet.data(), packet.size()));
   size_t packets_received = 0;
-  while (socket.recv(from, packet.data(), packet.size())) {
+  while (socket.recv(from, packet.data(), packet.size()) == packet.size()) {
     check(from == local_address);
     packets_received++;
   }

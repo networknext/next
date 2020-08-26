@@ -419,7 +419,7 @@ namespace os
         close();
         return false;
       }
-    } else if (timeout > 0.0f) {
+    } else if (mType == SocketType::Blocking && timeout > 0.0f) {
       timeval tv;
       tv.tv_sec = 0;
       tv.tv_usec = (int)(timeout * 1000000.0f);

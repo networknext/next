@@ -4,12 +4,15 @@
 #include "net/address.hpp"
 #include "encoding/read.hpp"
 
+using net::Address;
+using net::AddressType;
+
 Test(ReadAddress_ipv4)
 {
-  net::Address addr;
-  std::array<uint8_t, net::Address::ByteSize> bin;
+  Address addr;
+  std::array<uint8_t, Address::ByteSize> bin;
   bin.fill(0);
-  bin[0] = static_cast<uint8_t>(net::AddressType::IPv4);
+  bin[0] = static_cast<uint8_t>(AddressType::IPv4);
   bin[1] = 127;
   bin[2] = 0;
   bin[3] = 0;
@@ -18,15 +21,15 @@ Test(ReadAddress_ipv4)
   bin[6] = 0xC7;
 
   size_t index = 0;
-  encoding::ReadAddress(bin, index, addr);
-  check(index == net::Address::ByteSize);
+  check(encoding::ReadAddress(bin, index, addr));
+  check(index == Address::ByteSize);
 }
 
 Test(ReadAddress_ipv6)
 {
-  net::Address addr;
-  std::array<uint8_t, net::Address::ByteSize> bin;
-  bin[0] = static_cast<uint8_t>(net::AddressType::IPv6);
+  Address addr;
+  std::array<uint8_t, Address::ByteSize> bin;
+  bin[0] = static_cast<uint8_t>(AddressType::IPv6);
   bin[1] = 0x1F;
   bin[2] = 0x3B;
   bin[3] = 0x33;
@@ -47,17 +50,31 @@ Test(ReadAddress_ipv6)
   bin[18] = 0xC7;
 
   size_t index = 0;
-  encoding::ReadAddress(bin, index, addr);
-  check(index == net::Address::ByteSize);
-  check(addr.toString() == "[3b1f:3c33:9928:ffff:ffff:ffff:ffff:ffff]:51034");
+  check(encoding::ReadAddress(bin, index, addr));
+
+  check(addr.Type == AddressType::IPv6);
+  check(addr.IPv6[0] == 0x3b1f);
+  check(addr.IPv6[1] == 0x3c33);
+  check(addr.IPv6[2] == 0x9928);
+  check(addr.IPv6[3] == 0xffff);
+  check(addr.IPv6[4] == 0xffff);
+  check(addr.IPv6[5] == 0xffff);
+  check(addr.IPv6[6] == 0xffff);
+  check(addr.IPv6[7] == 0xffff);
+  check(addr.Port == 51034);
+
+  check(index == Address::ByteSize);
+  check(addr.toString() == "[3b1f:3c33:9928:ffff:ffff:ffff:ffff:ffff]:51034").onFail([&] {
+    std::cout << addr.toString() << std::endl;
+  });
 }
 
 Test(ReadAddress_none)
 {
-  net::Address before, after;
-  std::array<uint8_t, net::Address::ByteSize> bin;
+  Address before, after;
+  std::array<uint8_t, Address::ByteSize> bin;
   bin.fill(0);
-  bin[0] = static_cast<uint8_t>(net::AddressType::None);
+  bin[0] = static_cast<uint8_t>(AddressType::None);
   bin[1] = 0x1F;
   bin[2] = 0x3B;
   bin[3] = 0x33;
@@ -78,8 +95,10 @@ Test(ReadAddress_none)
   bin[18] = 0xFF;
 
   size_t index = 0;
-  encoding::ReadAddress(bin, index, after);
-  check(index == net::Address::ByteSize);
-  check(after.toString() == "NONE");
+  check(encoding::ReadAddress(bin, index, after));
+  check(index == Address::ByteSize);
+  check(after.toString() == "NONE").onFail([&] {
+    std::cout << "\n'" << after.toString() << '\'' << std::endl;
+  });
   check(before == after);
 }

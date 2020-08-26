@@ -9,7 +9,7 @@ using core::packets::Header;
 using core::packets::Type;
 using crypto::GenericKey;
 
-Test(core_packets_header_general)
+Test(core_packets_Header_client_to_server)
 {
   const GenericKey private_key = [] {
     GenericKey private_key;
@@ -19,57 +19,65 @@ Test(core_packets_header_general)
 
   core::GenericPacketContainer<> buffer;
 
-  // client -> server
-  {
-    Header header = {
-     .type = Type::ClientToServer,
-     .sequence = 123123130131LL,
-     .session_id = 0x12313131,
-     .session_version = 0x12,
-    };
+  Header header = {
+   .type = Type::ClientToServer,
+   .sequence = 123123130131LL,
+   .session_id = 0x12313131,
+   .session_version = 0x12,
+  };
 
-    size_t index = 0;
+  size_t index = 0;
 
-    check(header.write(buffer, index, Direction::ClientToServer, private_key));
-    check(index == Header::ByteSize);
+  check(header.write(buffer, index, Direction::ClientToServer, private_key));
+  check(index == Header::ByteSize);
 
-    Header other;
+  Header other;
 
-    index = 0;
-    check(other.read(buffer, index, Direction::ClientToServer));
+  index = 0;
+  check(other.read(buffer, index, Direction::ClientToServer));
 
-    check(other.type == Type::ClientToServer);
-    check(other.sequence == header.sequence);
-    check(other.session_id == header.session_id);
-    check(other.session_version == header.session_version);
+  check(other.type == Type::ClientToServer);
+  check(other.sequence == header.sequence);
+  check(other.session_id == header.session_id);
+  check(other.session_version == header.session_version);
 
-    index = 0;
-    check(header.verify(buffer, index, Direction::ClientToServer, private_key));
-  }
+  index = 0;
+  check(header.verify(buffer, index, Direction::ClientToServer, private_key));
+}
 
-  // server -> client
-  {
-    Header header = {
-     .type = Type::ServerToClient,
-     .sequence = 123123130131LL | (1ULL << 63),
-     .session_id = 0x12313131,
-     .session_version = 0x12,
-    };
+Test(core_packets_Header_server_to_client)
+{
+  const GenericKey private_key = [] {
+    GenericKey private_key;
+    crypto::RandomBytes(private_key, private_key.size());
+    return private_key;
+  }();
 
-    size_t index = 0;
+  core::GenericPacketContainer<> buffer;
 
-    check(header.write(buffer, index, Direction::ServerToClient, private_key));
+  Header header = {
+   .type = Type::ServerToClient,
+   .sequence = 123123130131LL | (1ULL << 63),
+   .session_id = 0x12313131,
+   .session_version = 0x12,
+  };
 
-    Header other;
+  size_t index = 0;
 
-    index = 0;
-    check(other.read(buffer, index, Direction::ServerToClient));
+  check(header.write(buffer, index, Direction::ServerToClient, private_key));
 
-    check(other.type == Type::ServerToClient);
-    check(other.sequence == header.sequence);
-    check(other.session_id == header.session_id);
-    check(other.session_version == header.session_version);
+  Header other;
 
-    check(header.verify(buffer, index, Direction::ServerToClient, private_key));
-  }
+  index = 0;
+  check(other.read(buffer, index, Direction::ServerToClient));
+
+  check(other.type == Type::ServerToClient);
+  check(other.sequence == header.sequence);
+  check(other.session_id == header.session_id);
+  check(other.session_version == header.session_version);
+
+  index = 0;
+  check(header.verify(buffer, index, Direction::ServerToClient, private_key)).onFail([&] {
+    std::cout << header.sequence << std::endl;
+  });
 }

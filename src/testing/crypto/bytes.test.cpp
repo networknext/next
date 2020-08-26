@@ -85,7 +85,7 @@ Test(crypto_aead)
   unsigned long long ciphertext_len;
 
   crypto_aead_chacha20poly1305_keygen(key.data());
-  check(crypto::CreateNonceBytes(nonce));
+  check(crypto::RandomBytes(nonce, nonce.size()));
 
   crypto_aead_chacha20poly1305_encrypt(
    ciphertext.data(),

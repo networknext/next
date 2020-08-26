@@ -43,7 +43,7 @@ namespace net
     void swap(Address& other);
 
     // resizes the buffer string to fit the address length
-    void toString(std::string& buffer) const;
+    auto toString(std::string& buffer) const -> bool;
 
     // slow, use only for debugging or logging
     auto toString() const -> std::string;
@@ -141,7 +141,7 @@ namespace net
             break;
           }
 
-          if (address[index] == ']') {
+          if (address[i] == ']') {
             // no port number
             address[i] = '\0';
             break;
@@ -259,7 +259,7 @@ namespace net
     Port = 0;
   }
 
-  INLINE void Address::toString(std::string& output) const
+  INLINE auto Address::toString(std::string& output) const -> bool
   {
     std::array<char, MaxStrLen> buff = {};
     unsigned int total = 0;
@@ -267,24 +267,25 @@ namespace net
     if (Type == AddressType::IPv6) {
       std::array<uint16_t, 8> ipv6_network_order;
       for (size_t i = 0; i < 8; i++) {
-        ipv6_network_order[i] = htons(IPv6[i]);
+        ipv6_network_order[i] = htons(this->IPv6[i]);
       }
 
-      std::array<char, MaxStrLen> address_string;
+      std::array<char, MaxStrLen> addr_buff = {};
       if (
        inet_ntop(
         AF_INET6,
         reinterpret_cast<void*>(ipv6_network_order.data()),
-        address_string.data(),
-        static_cast<socklen_t>(sizeof(address_string))) != nullptr) {
+        addr_buff.data(),
+        static_cast<socklen_t>(sizeof(addr_buff))) == nullptr) {
         LOG(ERROR, "unable to convert binary ip data to string");
+        return false;
       }
 
       if (Port == 0) {
-        total += strlen(address_string.data());
-        std::copy(address_string.begin(), address_string.begin() + total, buff.begin());
+        total += strlen(addr_buff.data());
+        std::copy(addr_buff.begin(), addr_buff.begin() + total, buff.begin());
       } else {
-        total += snprintf(buff.data(), MaxStrLen, "[%s]:%hu", address_string.data(), Port);
+        total += snprintf(buff.data(), MaxStrLen, "[%s]:%hu", addr_buff.data(), Port);
       }
     } else if (Type == AddressType::IPv4) {
       if (Port == 0) {
@@ -296,8 +297,11 @@ namespace net
       total += snprintf(buff.data(), sizeof("NONE"), "NONE");
     }
 
-    output.resize(total + 1);
-    std::copy(buff.begin(), buff.begin() + total, output.begin());
+    //output.resize(total);
+    output.assign(buff.begin(), buff.begin() + total);
+    //std::copy(buff.begin(), buff.begin() + total, output.begin());
+
+    return true;
   }
 
   INLINE auto Address::toString() const -> std::string

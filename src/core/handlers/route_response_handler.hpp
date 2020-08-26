@@ -27,7 +27,7 @@ namespace core
       }
 
       if (length != Header::ByteSize) {
-        LOG(ERROR, "ignoring route response, header byte count invalid: ", length, " != ", RELAY_HEADER_BYTES);
+        LOG(ERROR, "ignoring route response, header byte count invalid: ", length, " != ", Header::ByteSize);
         return;
       }
 

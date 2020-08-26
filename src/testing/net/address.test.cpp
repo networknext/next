@@ -98,6 +98,19 @@ Test(Address_parse_ipv6_with_braces)
   check(addr.IPv6[5] == 0x8a2e);
   check(addr.IPv6[6] == 0x0370);
   check(addr.IPv6[7] == 0x7334);
+
+  addr.reset();
+  check(addr.parse("[::]"));
+  check(addr.Type == net::AddressType::IPv6);
+  check(addr.Port == 0);
+  check(addr.IPv6[0] == 0);
+  check(addr.IPv6[1] == 0);
+  check(addr.IPv6[2] == 0);
+  check(addr.IPv6[3] == 0);
+  check(addr.IPv6[4] == 0);
+  check(addr.IPv6[5] == 0);
+  check(addr.IPv6[6] == 0);
+  check(addr.IPv6[7] == 0);
 }
 
 Test(Address_parse_ipv6_without_braces)
@@ -145,26 +158,33 @@ Test(Address_toString)
 
   base = "127.0.0.1:51034";
   expected = base;
+  addr.reset();
   check(addr.parse(base) == true);
-  addr.toString(output);
+  check(addr.toString(output));
   check(output == expected);
 
   base = "[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:20000";
   expected = "[2001:db8:85a3::8a2e:370:7334]:20000";
+  addr.reset();
   check(addr.parse(base) == true);
-  addr.toString(output);
+  check(addr.toString(output));
   check(output == expected);
 
   base = "2001:0db8:85a3:0000:0000:8a2e:0370:7334";
   expected = "2001:db8:85a3::8a2e:370:7334";
+  addr.reset();
   check(addr.parse(base) == true);
-  addr.toString(output);
-  check(output == expected);
+  check(addr.toString(output));
+  check(output == expected).onFail([&] {
+    std::cout << "output = '" << output << '\'' << std::endl;
+    std::cout << "expected = '" << expected << '\'' << std::endl;
+  });
 
   base = "127.0djaid?.0.sad1:5as1034";
   expected = "NONE";
+  addr.reset();
   check(addr.parse(base) == false);
-  addr.toString(output);
+  check(addr.toString(output));
   check(output == expected);
 }
 

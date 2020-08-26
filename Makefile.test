@@ -14,7 +14,7 @@ LIB_DEP_FILES					:= $(patsubst $(LIB)/%.cpp, $(OBJ)/$(LIB)/%.test.d, $(LIB_FILE
 SRC_OBJ_FILES					:= $(patsubst $(SRC)/%.cpp, $(OBJ)/$(SRC)/%.test.o, $(SRC_FILES))
 SRC_DEP_FILES					:= $(patsubst $(SRC)/%.cpp, $(OBJ)/$(SRC)/%.test.d, $(SRC_FILES))
 
-DEF_FLAGS							:= -DTEST_BUILD
+DEF_FLAGS							:= -DTEST_BUILD -DRELAY_LOG_LEVEL=5
 
 ifeq ($(LOG_ALL),true)
 DEF_FLAGS 						:= $(DEF_FLAGS) -DLOG_ALL

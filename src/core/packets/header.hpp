@@ -93,7 +93,8 @@ namespace core
       return true;
     }
 
-    INLINE auto Header::write(GenericPacketContainer<>& buffer, size_t& index, Direction direction, const GenericKey& private_key) -> bool
+    INLINE auto Header::write(
+     GenericPacketContainer<>& buffer, size_t& index, Direction direction, const GenericKey& private_key) -> bool
     {
       if (index + ByteSize > buffer.size()) {
         LOG(ERROR, "could not write header, buffer is too small");
@@ -177,7 +178,8 @@ namespace core
       return true;
     }
 
-    INLINE auto Header::verify(GenericPacketContainer<>& buffer, size_t& index, Direction direction, const GenericKey& private_key) -> bool
+    INLINE auto Header::verify(
+     GenericPacketContainer<>& buffer, size_t& index, Direction direction, const GenericKey& private_key) -> bool
     {
       if (index + ByteSize > buffer.size()) {
         LOG(ERROR, "could not verify header, buffer is too small");
@@ -192,21 +194,25 @@ namespace core
 
       uint64_t packet_sequence;
       if (!encoding::ReadUint64(buffer, index, packet_sequence)) {
+        LOG(ERROR, "could not verify header, could not read sequence");
         return false;
       }
 
       if (direction == Direction::ServerToClient) {
         // high bit must be set
         if ((packet_sequence & (1ULL << 63)) == 0) {
+          LOG(ERROR, "could not verify header, server to client sequence check failed");
           return false;
         }
       } else {
         // high bit must be clear
         if ((packet_sequence & (1ULL << 63)) != 0) {
+          LOG(ERROR, "could not verify header, client to server sequence check failed");
           return false;
         }
       }
 
+      // TODO change this to if checks
       if (
        packet_type == Type::SessionPing || packet_type == Type::SessionPong || packet_type == Type::RouteResponse ||
        packet_type == Type::ContinueResponse) {
@@ -232,10 +238,10 @@ namespace core
       unsigned long long decrypted_length;
 
       int result = crypto_aead_chacha20poly1305_ietf_decrypt(
-       &buffer[index + 19],
+       &buffer[19],
        &decrypted_length,
        nullptr,
-       &buffer[index + 19],
+       &buffer[19],
        (unsigned long long)crypto_aead_chacha20poly1305_IETF_ABYTES,
        additional,
        (unsigned long long)additional_length,
@@ -243,6 +249,7 @@ namespace core
        private_key.data());
 
       if (result != 0) {
+        LOG(ERROR, "could not verify header, crypto aead check failed");
         return false;
       }
 

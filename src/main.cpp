@@ -98,7 +98,7 @@ namespace
       try {
         num_cpus = std::stoull(*envvar);
       } catch (std::exception& e) {
-        LOG(FATAL, "could not parse RELAY_MAX_CORES to a number, value: ", envvar.max_cpus);
+        LOG(FATAL, "could not parse RELAY_MAX_CORES to a number, value: ", *envvar);
       }
     } else {
       num_cpus = std::thread::hardware_concurrency();  // first core reserved for updates/outgoing pings
@@ -119,7 +119,7 @@ namespace
       try {
         socketBufferSize = std::stoull(*envvar);
       } catch (std::exception& e) {
-        LOG(ERROR, "Could not parse ", envvar, " env var to a number: ", e.what());
+        LOG(ERROR, "Could not parse ", *envvar, " env var to a number: ", e.what());
       }
     }
 

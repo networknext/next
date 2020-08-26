@@ -17,6 +17,7 @@ namespace
 Test(core_ContinueToken_general)
 {
   core::GenericPacket<> packet;
+  packet.Len = packet.Buffer.size();
 
   std::array<uint8_t, crypto_box_PUBLICKEYBYTES> sender_public_key;
   std::array<uint8_t, crypto_box_SECRETKEYBYTES> sender_private_key;
