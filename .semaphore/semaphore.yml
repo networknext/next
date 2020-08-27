@@ -36,3 +36,7 @@ promotions:
     pipeline_file: production-deploy.yml
     auto_promote:
       when: branch = 'prod' AND result = 'passed'
+  - name: Production ESL Deployment
+    pipeline_file: production-esl-deploy.yml
+    auto_promote:
+      when: branch = 'prod-esl' AND result = 'passed'

@@ -1236,13 +1236,13 @@ type PostSessionUpdateParams struct {
 	prevRouteDecision   routing.Decision
 	location            *routing.Location
 	nearRelays          []routing.NearRelayData
-	routeDecision       routing.Decision
 	timeNow             time.Time
 	totalPriceNibblins  routing.Nibblin
 	nextRelaysPrice     []routing.Nibblin
 	nextBytesUp         uint64
 	nextBytesDown       uint64
 	prevInitial         bool
+	abTest              bool
 }
 
 type PostSessionUpdateFunc = func(params *PostSessionUpdateParams)
@@ -1414,6 +1414,11 @@ func buildBillingEntry(params *PostSessionUpdateParams) *billing.BillingEntry {
 		RTTReduction:              params.prevRouteDecision.Reason&routing.DecisionRTTReduction != 0 || params.prevRouteDecision.Reason&routing.DecisionRTTReductionMultipath != 0,
 		PacketLossReduction:       params.prevRouteDecision.Reason&routing.DecisionHighPacketLossMultipath != 0,
 		NextRelaysPrice:           nextRelaysPriceArray,
+		Latitude:                  float32(params.location.Latitude),
+		Longitude:                 float32(params.location.Longitude),
+		ISP:                       params.location.ISP,
+		ABTest:                    params.abTest,
+		RouteDecision:             uint64(params.prevRouteDecision.Reason),
 	}
 }
 
@@ -1663,13 +1668,13 @@ func sendRouteResponse(w io.Writer, chosenRoute *routing.Route, params *SessionU
 		prevRouteDecision:   prevRouteDecision,
 		location:            location,
 		nearRelays:          nearRelayData,
-		routeDecision:       routeDecision,
 		timeNow:             timeNow,
 		totalPriceNibblins:  totalPriceNibblins,
 		nextRelaysPrice:     nextRelaysPrice,
 		nextBytesUp:         usageBytesUp,
 		nextBytesDown:       usageBytesDown,
 		prevInitial:         prevInitial,
+		abTest:              buyer.RoutingRulesSettings.EnableABTest,
 	})
 
 	// Send the Session Response back to the server
