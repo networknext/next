@@ -763,6 +763,7 @@ build-relay:
 	@printf "Building relay... "
 	@mkdir -p $(DIST_DIR)
 	@cd $(RELAY_DIR) && $(MAKE) release
+	@cp cmd/relay/bin/relay $(DIST_DIR)
 	@echo "done"
 
 .PHONY: dev-relay
