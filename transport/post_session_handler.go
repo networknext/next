@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"syscall"
-	"time"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -117,14 +116,13 @@ func (data *SessionPortalData) ProcessPortalData(publisher pubsub.Publisher, max
 
 	var retryCount int
 
-	for retryCount < maxRetries { // only retry so many times, then error out after that
+	for retryCount < maxRetries+1 { // only retry so many times, then error out after that
 		singleByteCount, err := publisher.Publish(pubsub.TopicPortalCruncherSessionData, sessionBytes)
 		if err != nil {
 			errno := zmq4.AsErrno(err)
 			switch errno {
 			case zmq4.AsErrno(syscall.EAGAIN):
 				retryCount++
-				time.Sleep(time.Millisecond * 100) // If the send queue is backed up, wait a little bit and try again
 			default:
 				return 0, err
 			}
