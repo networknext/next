@@ -1,8 +1,4 @@
 node_modules
 dist
 videos
-<<<<<<< HEAD
 .env.local
-=======
-.env.local
->>>>>>> API plugin port complete, cleaned out console debugs
