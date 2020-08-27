@@ -25,7 +25,6 @@ import SessionToolWorkspace from './SessionToolWorkspace.vue'
 import SettingsWorkspace from './SettingsWorkspace.vue'
 import Alert from '@/components/Alert.vue'
 import { AlertTypes } from '../types/AlertTypes'
-import APIService from '@/services/api.service'
 
 /**
  * This component is the base component for all other workspace components
@@ -44,15 +43,15 @@ import APIService from '@/services/api.service'
   }
 })
 export default class Workspace extends Vue {
-  private apiService: APIService
   private message: string
   private alertType: string
+  private vueInstance: any
 
   constructor () {
     super()
-    this.apiService = Vue.prototype.$apiService
     this.message = ''
     this.alertType = ''
+    this.vueInstance = Vue
   }
 
   mounted () {
@@ -65,7 +64,7 @@ export default class Workspace extends Vue {
   private resendVerificationEmail () {
     const userId = this.$store.getters.userProfile.auth0ID
     const email = this.$store.getters.userProfile.email
-    this.apiService
+    this.vueInstance
       .resendVerificationEmail({
         user_id: userId,
         user_email: email,

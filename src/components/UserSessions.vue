@@ -70,7 +70,6 @@
 
 <script lang="ts">
 import { Component, Vue, Prop } from 'vue-property-decorator'
-import APIService from '../services/api.service'
 import { AlertTypes } from './types/AlertTypes'
 
 /**
@@ -80,23 +79,23 @@ import { AlertTypes } from './types/AlertTypes'
 
 @Component
 export default class UserSessions extends Vue {
-  private apiService: APIService
   private sessions: Array<any>
   private sessionLoop: any
   private showSessions: boolean
   private searchID: string
   private message: string
   private alertType: string
+  private vueInstance: any
 
   constructor () {
     super()
-    this.apiService = Vue.prototype.$apiService
     this.searchID = ''
     this.sessions = []
     this.showSessions = false
     this.sessionLoop = null
     this.message = 'Failed to fetch user sessions'
     this.alertType = AlertTypes.ERROR
+    this.vueInstance = Vue
   }
 
   private mounted () {
@@ -114,7 +113,7 @@ export default class UserSessions extends Vue {
       return
     }
 
-    this.apiService.fetchUserSessions({ user_hash: this.searchID })
+    this.vueInstance.fetchUserSessions({ user_hash: this.searchID })
       .then((response: any) => {
         this.sessions = response.sessions || []
         this.showSessions = true

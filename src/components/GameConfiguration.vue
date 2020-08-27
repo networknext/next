@@ -1,42 +1,34 @@
 <template>
   <div class="card-body" id="config-page">
-    <h5 class="card-title">
-      Game Configuration
-    </h5>
-    <p class="card-text">
-      Manage how your game connects to Network Next.
-    </p>
-    <Alert :message="message" :alertType="alertType" v-if="message !== ''"/>
+    <h5 class="card-title">Game Configuration</h5>
+    <p class="card-text">Manage how your game connects to Network Next.</p>
+    <Alert :message="message" :alertType="alertType" v-if="message !== ''" />
     <form v-on:submit.prevent="updatePubKey()">
       <div class="form-group" id="pubKey">
-        <label>
-          Company Name
-        </label>
-        <input type="text"
-                class="form-control"
-                placeholder="Enter your company name"
-                id="company-input"
-                :disabled="!$store.getters.isOwner && !$store.getters.isAdmin"
-                v-model="company"
-        >
-        <br>
-        <label>
-          Public Key
-        </label>
-        <textarea class="form-control"
-                  placeholder="Enter your base64-encoded public key"
-                  id="pubkey-input"
-                  :disabled="!$store.getters.isOwner && !$store.getters.isAdmin"
-                  v-model="pubKey"
-        >
-        </textarea>
+        <label>Company Name</label>
+        <input
+          type="text"
+          class="form-control"
+          placeholder="Enter your company name"
+          id="company-input"
+          :disabled="!$store.getters.isOwner && !$store.getters.isAdmin"
+          v-model="company"
+        />
+        <br />
+        <label>Public Key</label>
+        <textarea
+          class="form-control"
+          placeholder="Enter your base64-encoded public key"
+          id="pubkey-input"
+          :disabled="!$store.getters.isOwner && !$store.getters.isAdmin"
+          v-model="pubKey"
+        ></textarea>
       </div>
-      <button type="submit"
-              class="btn btn-primary btn-sm"
-              v-if="$store.getters.isOwner && $store.getters.isAdmin"
-      >
-        Save game configuration
-      </button>
+      <button
+        type="submit"
+        class="btn btn-primary btn-sm"
+        v-if="$store.getters.isOwner && $store.getters.isAdmin"
+      >Save game configuration</button>
       <p class="text-muted text-small mt-2"></p>
     </form>
   </div>
@@ -44,7 +36,6 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
-import APIService from '@/services/api.service'
 import Alert from '@/components/Alert.vue'
 import { AlertTypes } from '@/components/types/AlertTypes'
 import { UserProfile } from '@/components/types/AuthTypes.ts'
@@ -66,29 +57,33 @@ import _ from 'lodash'
   }
 })
 export default class GameConfiguration extends Vue {
-  private apiService: APIService
   private company: string
   private pubKey: string
   private message: string
   private alertType: string
   private userProfile: UserProfile
+  private vueInstance: any
 
   constructor () {
     super()
     this.userProfile = _.cloneDeep(this.$store.getters.userProfile)
-    this.apiService = Vue.prototype.$apiService
     this.company = this.userProfile.company || ''
     this.pubKey = this.userProfile.pubKey || ''
     this.message = ''
     this.alertType = ''
+    this.vueInstance = Vue
   }
 
   private updatePubKey () {
     const domain = this.userProfile.domain || ''
 
-    this.apiService
-      .updateGameConfiguration({ name: this.company, domain: domain, new_public_key: this.pubKey })
-      .then((response) => {
+    this.vueInstance
+      .updateGameConfiguration({
+        name: this.company,
+        domain: domain,
+        new_public_key: this.pubKey
+      })
+      .then((response: any) => {
         this.userProfile.pubKey = response.game_config.public_key
         this.userProfile.company = response.game_config.company
         this.userProfile.buyerID = response.game_config.buyer_id
@@ -99,9 +94,9 @@ export default class GameConfiguration extends Vue {
           this.message = ''
         }, 5000)
       })
-      .catch((e) => {
+      .catch((error: Error) => {
         console.log('Something went wrong updating the public key')
-        console.log(e)
+        console.log(error)
         this.alertType = AlertTypes.ERROR
         this.message = 'Failed to update public key'
         setTimeout(() => {
@@ -110,7 +105,6 @@ export default class GameConfiguration extends Vue {
       })
   }
 }
-
 </script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->

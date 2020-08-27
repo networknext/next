@@ -1,10 +1,8 @@
 <template>
-  <div
-    v-bind:class="{
-         'map-container-no-offset': $store.getters.userProfile === null || $store.getters.userProfile.verified,
-         'map-container-offset': $store.getters.userProfile !== null && !$store.getters.userProfile.verified,
-       }"
-  >
+  <div v-bind:class="{
+    'map-container-no-offset': $store.getters.userProfile === null || $store.getters.userProfile.verified,
+    'map-container-offset': $store.getters.userProfile !== null && !$store.getters.userProfile.verified,
+  }">
     <div class="map" id="map"></div>
     <canvas id="deck-canvas"></canvas>
   </div>
@@ -15,7 +13,6 @@ import { Component, Vue } from 'vue-property-decorator'
 import { Deck } from '@deck.gl/core'
 import { ScreenGridLayer } from '@deck.gl/aggregation-layers'
 import mapboxgl from 'mapbox-gl'
-import APIService from '@/services/api.service'
 
 /**
  * This component displays the map that is visible in the map workspace
@@ -30,18 +27,15 @@ import APIService from '@/services/api.service'
   name: 'SessionMap'
 })
 export default class SessionMap extends Vue {
-  private apiService: APIService;
-  private deckGlInstance: any;
-  private mapInstance: any;
-  private mapLoop: number;
-  private viewState: any;
-  private vueInstance: any;
-
-  private unwatch: any;
+  private deckGlInstance: any
+  private mapInstance: any
+  private mapLoop: number
+  private viewState: any
+  private vueInstance: any
+  private unwatch: any
 
   constructor () {
     super()
-    this.apiService = Vue.prototype.$apiService
     this.viewState = {
       latitude: 0,
       longitude: 0,

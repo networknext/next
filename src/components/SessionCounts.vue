@@ -30,7 +30,6 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
-import APIService from '../services/api.service'
 
 /**
  * This component displays the total session counts and has all of the associated logic and api calls
@@ -51,7 +50,6 @@ interface TotalSessionsReply {
 @Component
 export default class SessionCounts extends Vue {
   private totalSessionsReply: TotalSessionsReply
-  private apiService: APIService
   private showCount: boolean
   private countLoop: number
   private vueInstance: any
@@ -68,7 +66,6 @@ export default class SessionCounts extends Vue {
 
   constructor () {
     super()
-    this.apiService = Vue.prototype.$apiService
     this.totalSessionsReply = {
       direct: 0,
       onNN: 0

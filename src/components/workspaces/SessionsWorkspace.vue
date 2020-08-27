@@ -48,9 +48,9 @@
                 icon="circle"
                 class="fa-w-16 fa-fw"
                 v-bind:class="{
-                                  'text-success': session.on_network_next,
-                                  'text-primary': !session.on_network_next
-                                 }"
+                  'text-success': session.on_network_next,
+                  'text-primary': !session.on_network_next
+                }"
               />
             </td>
             <td>
@@ -82,10 +82,10 @@
               <span
                 v-if="session.delta_rtt > 0 && session.on_network_next"
                 v-bind:class="{
-                        'text-success': session.delta_rtt >= 5,
-                        'text-warning': session.delta_rtt >= 2 && session.delta_rtt < 5,
-                        'text-danger': session.delta_rtt < 2 && session.delta_rtt > 0
-                    }"
+                  'text-success': session.delta_rtt >= 5,
+                  'text-warning': session.delta_rtt >= 2 && session.delta_rtt < 5,
+                  'text-danger': session.delta_rtt < 2 && session.delta_rtt > 0
+                }"
               >
                 <b>{{ parseFloat(session.delta_rtt).toFixed(2) }}</b>
               </span>
@@ -101,11 +101,8 @@
 </template>
 
 <script lang="ts">
-import { Component, Vue } from "vue-property-decorator";
-import SessionCounts from "@/components/SessionCounts.vue";
-import { SessionMeta } from "@/components/types/APITypes";
-import APIService from "../../services/api.service";
-import { Route, NavigationGuardNext } from "vue-router";
+import { Component, Vue } from 'vue-property-decorator'
+import SessionCounts from '@/components/SessionCounts.vue'
 
 /**
  * This component holds the workspace elements related to the top sessions page in the Portal
@@ -118,75 +115,75 @@ import { Route, NavigationGuardNext } from "vue-router";
 
 @Component({
   components: {
-    SessionCounts,
-  },
+    SessionCounts
+  }
 })
 export default class SessionsWorkspace extends Vue {
-  private apiService: APIService;
   private sessions: Array<any>;
   private sessionsLoop: number;
   private showTable: boolean;
   private unwatch: any;
+  private vueInstance: any
 
-  constructor() {
-    super();
-    this.apiService = Vue.prototype.$apiService;
-    this.sessions = [];
-    this.sessionsLoop = -1;
-    this.showTable = false;
+  constructor () {
+    super()
+    this.sessions = []
+    this.sessionsLoop = -1
+    this.showTable = false
+    this.vueInstance = Vue
   }
 
-  private mounted() {
-    this.restartLoop();
+  private mounted () {
+    this.restartLoop()
     this.unwatch = this.$store.watch(
       (state: any, getters: any) => {
-        return getters.currentFilter;
+        return getters.currentFilter
       },
       () => {
-        clearInterval(this.sessionsLoop);
-        this.restartLoop();
+        clearInterval(this.sessionsLoop)
+        this.restartLoop()
       }
-    );
+    )
   }
 
-  private beforeDestroy(): void {
+  private beforeDestroy (): void {
     // TODO: This really shouldn't be in a store
-    this.$store.commit("TOGGLE_SESSION_TABLE", false);
-    clearInterval(this.sessionsLoop);
-    this.unwatch();
+    this.$store.commit('TOGGLE_SESSION_TABLE', false)
+    clearInterval(this.sessionsLoop)
+    this.unwatch()
   }
 
-  private fetchSessions(): void {
-    this.apiService
+  private fetchSessions (): void {
+    this.vueInstance
       .fetchTopSessions({
-        buyer_id: this.$store.getters.currentFilter.buyerID || "",
+        buyer_id: this.$store.getters.currentFilter.buyerID || ''
       })
       .then((response: any) => {
-        this.sessions = response.sessions;
-        this.$store.commit("TOGGLE_SESSION_TABLE", true);
+        this.sessions = response.sessions
+        this.$store.commit('TOGGLE_SESSION_TABLE', true)
       })
       .catch((error: any) => {
-        console.log(error);
-      });
+        console.log(error)
+      })
   }
 
   // TODO: Move this somewhere with other helper functions
-  private getCustomerName(buyerId: string): string {
-    const allBuyers = this.$store.getters.allBuyers;
-    let i = 0;
+  private getCustomerName (buyerId: string): string {
+    const allBuyers = this.$store.getters.allBuyers
+    let i = 0
     for (i; i < allBuyers.length; i++) {
       if (allBuyers[i].id === buyerId) {
-        return allBuyers[i].name;
+        return allBuyers[i].name
       }
     }
-    return "Private";
+    return 'Private'
   }
 
-  private restartLoop() {
-    this.fetchSessions();
+  private restartLoop () {
+    this.fetchSessions()
     this.sessionsLoop = setInterval(() => {
-      this.fetchSessions();
-    }, 10000);
+      this.fetchSessions()
+    }, 10000)
   }
 }
 </script>
