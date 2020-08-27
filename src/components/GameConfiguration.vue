@@ -1,42 +1,34 @@
 <template>
   <div class="card-body" id="config-page">
-    <h5 class="card-title">
-      Game Configuration
-    </h5>
-    <p class="card-text">
-      Manage how your game connects to Network Next.
-    </p>
-    <Alert :message="message" :alertType="alertType" v-if="message !== ''"/>
+    <h5 class="card-title">Game Configuration</h5>
+    <p class="card-text">Manage how your game connects to Network Next.</p>
+    <Alert :message="message" :alertType="alertType" v-if="message !== ''" />
     <form v-on:submit.prevent="updatePubKey()">
       <div class="form-group" id="pubKey">
-        <label>
-          Company Name
-        </label>
-        <input type="text"
-                class="form-control"
-                placeholder="Enter your company name"
-                id="company-input"
-                :disabled="!$store.getters.isOwner && !$store.getters.isAdmin"
-                v-model="company"
-        >
-        <br>
-        <label>
-          Public Key
-        </label>
-        <textarea class="form-control"
-                  placeholder="Enter your base64-encoded public key"
-                  id="pubkey-input"
-                  :disabled="!$store.getters.isOwner && !$store.getters.isAdmin"
-                  v-model="pubKey"
-        >
-        </textarea>
+        <label>Company Name</label>
+        <input
+          type="text"
+          class="form-control"
+          placeholder="Enter your company name"
+          id="company-input"
+          :disabled="!$store.getters.isOwner && !$store.getters.isAdmin"
+          v-model="company"
+        />
+        <br />
+        <label>Public Key</label>
+        <textarea
+          class="form-control"
+          placeholder="Enter your base64-encoded public key"
+          id="pubkey-input"
+          :disabled="!$store.getters.isOwner && !$store.getters.isAdmin"
+          v-model="pubKey"
+        ></textarea>
       </div>
-      <button type="submit"
-              class="btn btn-primary btn-sm"
-              v-if="$store.getters.isOwner && $store.getters.isAdmin"
-      >
-        Save game configuration
-      </button>
+      <button
+        type="submit"
+        class="btn btn-primary btn-sm"
+        v-if="$store.getters.isOwner && $store.getters.isAdmin"
+      >Save game configuration</button>
       <p class="text-muted text-small mt-2"></p>
     </form>
   </div>
@@ -66,12 +58,12 @@ import _ from 'lodash'
   }
 })
 export default class GameConfiguration extends Vue {
-  private apiService: APIService
-  private company: string
-  private pubKey: string
-  private message: string
-  private alertType: string
-  private userProfile: UserProfile
+  private apiService: APIService;
+  private company: string;
+  private pubKey: string;
+  private message: string;
+  private alertType: string;
+  private userProfile: UserProfile;
 
   constructor () {
     super()
@@ -87,7 +79,11 @@ export default class GameConfiguration extends Vue {
     const domain = this.userProfile.domain || ''
 
     this.apiService
-      .updateGameConfiguration({ name: this.company, domain: domain, new_public_key: this.pubKey })
+      .updateGameConfiguration({
+        name: this.company,
+        domain: domain,
+        new_public_key: this.pubKey
+      })
       .then((response) => {
         this.userProfile.pubKey = response.game_config.public_key
         this.userProfile.company = response.game_config.company
@@ -110,7 +106,6 @@ export default class GameConfiguration extends Vue {
       })
   }
 }
-
 </script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
