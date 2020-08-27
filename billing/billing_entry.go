@@ -4,11 +4,14 @@ import (
 	"github.com/networknext/backend/encoding"
 )
 
-const BillingEntryVersion = uint8(6)
+const (
+	BillingEntryVersion = uint8(7)
 
-const BillingEntryMaxRelays = 5
+	BillingEntryMaxRelays    = 5
+	BillingEntryMaxISPLength = 64
 
-const MaxBillingEntryBytes = 8 + 1 + 8 + 8 + 8 + (4 * 4) + 1 + (3 * 4) + 1 + (BillingEntryMaxRelays * 8) + (3 * 8) + (4 * 1) + 8 + 8 + 8 + 1 + 1 + (BillingEntryMaxRelays * 8)
+	MaxBillingEntryBytes = 8 + 1 + 8 + 8 + 8 + (4 * 4) + 1 + (3 * 4) + 1 + (BillingEntryMaxRelays * 8) + (3 * 8) + (4 * 1) + 8 + 8 + 8 + 1 + 1 + (BillingEntryMaxRelays * 8) + 4 + 4 + BillingEntryMaxISPLength + 1 + 8
+)
 
 type BillingEntry struct {
 	Timestamp                 uint64 // IMPORTANT: Timestamp is not serialized. Pubsub already has the timestamp so we use that instead.
@@ -39,6 +42,11 @@ type BillingEntry struct {
 	RTTReduction              bool
 	PacketLossReduction       bool
 	NextRelaysPrice           [BillingEntryMaxRelays]uint64
+	Latitude                  float32
+	Longitude                 float32
+	ISP                       string
+	ABTest                    bool
+	RouteDecision             uint64
 }
 
 func WriteBillingEntry(entry *BillingEntry) []byte {
@@ -90,6 +98,12 @@ func WriteBillingEntry(entry *BillingEntry) []byte {
 			encoding.WriteUint64(data, &index, entry.NextRelaysPrice[i])
 		}
 	}
+
+	encoding.WriteFloat32(data, &index, entry.Latitude)
+	encoding.WriteFloat32(data, &index, entry.Longitude)
+	encoding.WriteString(data, &index, entry.ISP, BillingEntryMaxISPLength)
+	encoding.WriteBool(data, &index, entry.ABTest)
+	encoding.WriteUint64(data, &index, entry.RouteDecision)
 
 	return data[:index]
 }
@@ -221,133 +235,25 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 		}
 	}
 
-	return true
-}
-
-func ReadBillingEntryUserHashV5(entry *BillingEntry, data []byte) bool {
-	index := 0
-	if !encoding.ReadUint8(data, &index, &entry.Version) {
-		return false
-	}
-	if entry.Version > BillingEntryVersion {
-		return false
-	}
-	if !encoding.ReadUint64(data, &index, &entry.BuyerID) {
-		return false
-	}
-	if entry.Version >= 5 {
-		if !encoding.ReadUint64(data, &index, &entry.UserHash) {
-			return false
-		}
-	}
-	if !encoding.ReadUint64(data, &index, &entry.SessionID) {
-		return false
-	}
-	if !encoding.ReadUint32(data, &index, &entry.SliceNumber) {
-		return false
-	}
-	if !encoding.ReadFloat32(data, &index, &entry.DirectRTT) {
-		return false
-	}
-	if !encoding.ReadFloat32(data, &index, &entry.DirectJitter) {
-		return false
-	}
-	if !encoding.ReadFloat32(data, &index, &entry.DirectPacketLoss) {
-		return false
-	}
-	if !encoding.ReadBool(data, &index, &entry.Next) {
-		return false
-	}
-
-	if entry.Next {
-		if !encoding.ReadFloat32(data, &index, &entry.NextRTT) {
-			return false
-		}
-		if !encoding.ReadFloat32(data, &index, &entry.NextJitter) {
-			return false
-		}
-		if !encoding.ReadFloat32(data, &index, &entry.NextPacketLoss) {
-			return false
-		}
-		if !encoding.ReadUint8(data, &index, &entry.NumNextRelays) {
-			return false
-		}
-		if entry.NumNextRelays > BillingEntryMaxRelays {
-			return false
-		}
-		for i := 0; i < int(entry.NumNextRelays); i++ {
-			if !encoding.ReadUint64(data, &index, &entry.NextRelays[i]) {
-				return false
-			}
-		}
-		if !encoding.ReadUint64(data, &index, &entry.TotalPrice) {
-			return false
-		}
-	}
-	if entry.Version >= 2 {
-		if !encoding.ReadUint64(data, &index, &entry.ClientToServerPacketsLost) {
-			return false
-		}
-		if !encoding.ReadUint64(data, &index, &entry.ServerToClientPacketsLost) {
-			return false
-		}
-	}
-
-	if entry.Version >= 3 {
-		if !encoding.ReadBool(data, &index, &entry.Committed) {
+	if entry.Version >= 7 {
+		if !encoding.ReadFloat32(data, &index, &entry.Latitude) {
 			return false
 		}
 
-		if !encoding.ReadBool(data, &index, &entry.Flagged) {
+		if !encoding.ReadFloat32(data, &index, &entry.Longitude) {
 			return false
 		}
 
-		if !encoding.ReadBool(data, &index, &entry.Multipath) {
+		if !encoding.ReadString(data, &index, &entry.ISP, BillingEntryMaxISPLength) {
 			return false
 		}
 
-		if !encoding.ReadBool(data, &index, &entry.Initial) {
+		if !encoding.ReadBool(data, &index, &entry.ABTest) {
 			return false
 		}
 
-		if entry.Next {
-			if !encoding.ReadUint64(data, &index, &entry.NextBytesUp) {
-				return false
-			}
-			if !encoding.ReadUint64(data, &index, &entry.NextBytesDown) {
-				return false
-			}
-		}
-	}
-
-	if entry.Version >= 4 {
-		if !encoding.ReadUint64(data, &index, &entry.DatacenterID) {
+		if !encoding.ReadUint64(data, &index, &entry.RouteDecision) {
 			return false
-		}
-
-		if entry.Next {
-			if !encoding.ReadBool(data, &index, &entry.RTTReduction) {
-				return false
-			}
-			if !encoding.ReadBool(data, &index, &entry.PacketLossReduction) {
-				return false
-			}
-		}
-	}
-
-	if entry.Version >= 5 {
-		if entry.Next {
-			if !encoding.ReadUint8(data, &index, &entry.NumNextRelays) {
-				return false
-			}
-			if entry.NumNextRelays > BillingEntryMaxRelays {
-				return false
-			}
-			for i := 0; i < int(entry.NumNextRelays); i++ {
-				if !encoding.ReadUint64(data, &index, &entry.NextRelaysPrice[i]) {
-					return false
-				}
-			}
 		}
 	}
 
