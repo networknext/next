@@ -123,7 +123,7 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 	e["longitude"] = entry.Longitude
 	e["isp"] = entry.ISP
 	e["abTest"] = entry.ABTest
-	e["routeDecision"] = entry.RouteDecision
+	e["routeDecision"] = int(entry.RouteDecision)
 
 	return e, "", nil
 }
