@@ -1,5 +1,5 @@
 version: v1.0
-name: Frontend Deployment
+name: Frontend Tests
 agent:
   machine:
     type: e1-standard-8
