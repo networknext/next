@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"time"
 
 	"github.com/networknext/backend/encoding"
 	ghostarmy "github.com/networknext/backend/ghost_army"
 )
 
 const (
-	SlicesInday = 60 * 60 * 24 / 10
+	SlicesInDay = 60 * 60 * 24 / 10
 )
 
 func main() {
@@ -47,6 +48,18 @@ func main() {
 
 	for i := 0; i < 50; i++ {
 		fmt.Printf("\n%d = %v\n", i, entries[i])
+	}
+
+	sliceMap := make(map[int]*ghostarmy.Entry)
+
+	for i := range entries {
+		entry := &entries[i]
+		t := time.Unix(entry.Timestamp, 0)
+		year, month, day := t.Date()
+		t2 := time.Date(year, month, day, 0, 0, 0, 0, t.Location())
+		secsIntoDay := int(t.Sub(t2).Seconds())
+		sliceIndex := (secsIntoDay / 10) % SlicesInDay
+		sliceMap[sliceIndex] = entry
 	}
 
 	// publish to zero mq, sleep for 10 seconds, repeat
