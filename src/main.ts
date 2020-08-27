@@ -6,13 +6,10 @@ import router from './router'
 import store from './store'
 import 'bootstrap'
 import 'bootstrap/dist/css/bootstrap.min.css'
-import APIService from './services/api.service'
-// import AuthService, { UserProfile, NNAuth0Profile } from './services/auth.service'
+import { JsonRPCPlugin } from './plugins/jsonrpc'
 import { AuthPlugin } from './plugins/auth'
-// import { Auth0Plugin } from './plugins/auth0'
 
 import { Route, NavigationGuardNext } from 'vue-router'
-// import { CreateElement } from 'vue/types/umd'
 
 /**
  * Main file responsible for mounting the App component,
@@ -22,23 +19,11 @@ import { Route, NavigationGuardNext } from 'vue-router'
  *  initializing auth0 related functionality
  */
 
-/**
- * TODO: Clean all of this up a bit
- * TODO: Potentially find a better auth solution
- */
 // function mountCypress (win: any, app: any) {
 //   win.app = app
 // }
 
 Vue.config.productionTip = false
-
-// Add api service as a Vue property so it can be used in all Vue components
-const apiService = new APIService()
-Vue.prototype.$apiService = apiService
-
-// Add auth service as a Vue property so it can be used in all Vue components
-// const authService = new AuthService()
-// Vue.prototype.$authService = authService
 
 const app: any = null
 const win: any = window
@@ -56,6 +41,8 @@ Vue.use(AuthPlugin, {
   domain: domain,
   clientID: clientID
 })
+
+Vue.use(JsonRPCPlugin)
 
 new Vue({
   router,

@@ -54,6 +54,7 @@ export default class SessionCounts extends Vue {
   private apiService: APIService
   private showCount: boolean
   private countLoop: number
+  private vueInstance: any
 
   get totalSessions () {
     return this.totalSessionsReply.direct + this.totalSessionsReply.onNN
@@ -74,6 +75,7 @@ export default class SessionCounts extends Vue {
     }
     this.countLoop = -1
     this.showCount = false
+    this.vueInstance = Vue
   }
 
   private mounted () {
@@ -85,7 +87,7 @@ export default class SessionCounts extends Vue {
   }
 
   private fetchSessionCounts () {
-    this.apiService.fetchTotalSessionCounts({ buyer_id: this.$store.getters.currentFilter.buyerID || '' })
+    this.vueInstance.fetchTotalSessionCounts({ buyer_id: this.$store.getters.currentFilter.buyerID || '' })
       .then((response: any) => {
         this.totalSessionsReply.direct = response.direct
         this.totalSessionsReply.onNN = response.next

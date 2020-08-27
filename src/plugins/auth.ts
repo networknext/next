@@ -1,19 +1,14 @@
 import Vue from 'vue'
-import APIService from '@/services/api.service'
 import store from '@/store'
-
 import { Auth0Client } from '@auth0/auth0-spa-js'
-
 import { UserProfile } from '@/components/types/AuthTypes.ts'
 
 export class AuthService {
-  private apiService: APIService
   private clientID: string
   private domain: string
-  private authClient: Auth0Client | any
+  public authClient: Auth0Client | any
 
   constructor (options: any) {
-    this.apiService = Vue.prototype.$apiService
     this.clientID = options.clientID
     this.domain = options.domain
     this.authClient = new Auth0Client({
@@ -29,12 +24,12 @@ export class AuthService {
   }
 
   public login () {
-    this.authClient.loginWithPopup()
+    this.authClient
+      .loginWithPopup()
       .then(() => {
         this.processAuthentication()
       })
       .catch((error: Error) => {
-        console.log('login() error caught:')
         console.error(error)
       })
   }
@@ -47,12 +42,12 @@ export class AuthService {
   }
 
   private async processAuthentication () {
-    this.authClient.isAuthenticated()
+    this.authClient
+      .isAuthenticated()
       .then((isAuthenticated: boolean) => {
         if (!isAuthenticated) {
           return
         }
-        this.apiService = new APIService()
         const userProfile: UserProfile = {
           auth0ID: '',
           company: '',
@@ -67,35 +62,29 @@ export class AuthService {
           buyerID: ''
         }
 
-        this.authClient.getIdTokenClaims().then((authResult: any) => {
-          const roles: Array<any> = authResult['https://networknext.com/userRoles'].roles || { roles: [] }
-          const email = authResult.email || ''
-          const domain = email.split('@')[1]
-          const token = authResult.__raw
+        this.authClient
+          .getIdTokenClaims()
+          .then((authResult: any) => {
+            const roles: Array<any> = authResult[
+              'https://networknext.com/userRoles'
+            ].roles || { roles: [] }
+            const email = authResult.email || ''
+            const domain = email.split('@')[1]
+            const token = authResult.__raw
 
-          userProfile.roles = roles
-          userProfile.domain = domain
-          userProfile.email = email
-          userProfile.idToken = token
-          userProfile.auth0ID = authResult.sub
+            userProfile.roles = roles
+            userProfile.domain = domain
+            userProfile.email = email
+            userProfile.idToken = token
+            userProfile.auth0ID = authResult.sub
 
-          return Promise.all([
-            this.apiService.fetchUserAccount({ user_id: userProfile.auth0ID }, token),
-            this.apiService.fetchGameConfiguration({ domain: domain }, token),
-            this.apiService.fetchAllBuyers(token)
-          ])
-        }).then((responses: any) => {
-          userProfile.buyerID = responses[0].account.buyer_id
-          userProfile.company = responses[1].game_config.company
-          userProfile.pubKey = responses[1].game_config.public_key
-          userProfile.routeShader = responses[1].customer_route_shader
-          const allBuyers = responses[2].buyers || []
-          store.commit('UPDATE_USER_PROFILE', userProfile)
-          store.commit('UPDATE_ALL_BUYERS', allBuyers)
-        }).catch((error: Error) => {
-          console.log('Something went wrong fetching user details')
-          console.log(error.message)
-        })
+            localStorage.setItem('userProfile', JSON.stringify(userProfile))
+            store.commit('UPDATE_USER_PROFILE', userProfile)
+          })
+          .catch((error: Error) => {
+            console.log('Something went wrong fetching user details')
+            console.log(error.message)
+          })
       })
       .catch((error: Error) => {
         console.log('something went wrong checking auth status')
