@@ -574,10 +574,7 @@ func main() {
 		}
 
 		http.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s), allowCORS))
-
-		if allowCORS {
-			http.Handle("/", middleware.CacheControl(os.Getenv("HTTP_CACHE_CONTROL"), http.FileServer(http.Dir(uiDir))))
-		}
+		http.Handle("/", middleware.CacheControl(os.Getenv("HTTP_CACHE_CONTROL"), http.FileServer(http.Dir(uiDir))))
 
 		http.HandleFunc("/health", transport.HealthHandlerFunc())
 		http.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage))
