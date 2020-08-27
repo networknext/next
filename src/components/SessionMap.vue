@@ -1,8 +1,10 @@
 <template>
-  <div v-bind:class="{
+  <div
+    v-bind:class="{
          'map-container-no-offset': $store.getters.userProfile === null || $store.getters.userProfile.verified,
          'map-container-offset': $store.getters.userProfile !== null && !$store.getters.userProfile.verified,
-       }">
+       }"
+  >
     <div class="map" id="map"></div>
     <canvas id="deck-canvas"></canvas>
   </div>
@@ -28,14 +30,14 @@ import APIService from '@/services/api.service'
   name: 'SessionMap'
 })
 export default class SessionMap extends Vue {
-  private apiService: APIService
-  private deckGlInstance: any
-  private mapInstance: any
-  private mapLoop: number
-  private viewState: any
-  private vueInstance: any
+  private apiService: APIService;
+  private deckGlInstance: any;
+  private mapInstance: any;
+  private mapLoop: number;
+  private viewState: any;
+  private vueInstance: any;
 
-  private unwatch: any
+  private unwatch: any;
 
   constructor () {
     super()
@@ -55,12 +57,15 @@ export default class SessionMap extends Vue {
 
   private mounted () {
     this.restartLoop()
-    this.unwatch = this.$store.watch((state: any, getters: any) => {
-      return getters.currentFilter
-    }, () => {
-      clearInterval(this.mapLoop)
-      this.restartLoop()
-    })
+    this.unwatch = this.$store.watch(
+      (state: any, getters: any) => {
+        return getters.currentFilter
+      },
+      () => {
+        clearInterval(this.mapLoop)
+        this.restartLoop()
+      }
+    )
   }
 
   private beforeDestroy () {
@@ -70,16 +75,16 @@ export default class SessionMap extends Vue {
 
   private fetchMapSessions () {
     // creating the map
-    this.vueInstance.fetchMapSessions({ buyer_id: this.$store.getters.currentFilter.buyerID || '' })
+    this.vueInstance
+      .fetchMapSessions({
+        buyer_id: this.$store.getters.currentFilter.buyerID || ''
+      })
       .then((response: any) => {
         if (!this.mapInstance) {
           this.mapInstance = new mapboxgl.Map({
             accessToken: process.env.VUE_APP_MAPBOX_TOKEN,
             style: 'mapbox://styles/mapbox/dark-v10',
-            center: [
-              0,
-              0
-            ],
+            center: [0, 0],
             zoom: 2,
             pitch: 0,
             bearing: 0,
@@ -89,10 +94,10 @@ export default class SessionMap extends Vue {
 
         const sessions = response.map_points || []
         const onNN = sessions.filter((point: any) => {
-          return (point[2] === 1)
+          return point[2] === 1
         })
         const direct = sessions.filter((point: any) => {
-          return (point[2] === 0)
+          return point[2] === 0
         })
 
         const cellSize = 10
@@ -106,13 +111,7 @@ export default class SessionMap extends Vue {
           getPosition: (d: Array<number>) => [d[0], d[1]],
           getWeight: () => 1,
           cellSizePixels: cellSize,
-          colorRange: [
-            [
-              40,
-              167,
-              69
-            ]
-          ],
+          colorRange: [[40, 167, 69]],
           gpuAggregation,
           aggregation
         })
@@ -124,18 +123,13 @@ export default class SessionMap extends Vue {
           getPosition: (d: Array<number>) => [d[0], d[1]],
           getWeight: () => 1,
           cellSizePixels: cellSize,
-          colorRange: [
-            [
-              49,
-              130,
-              189
-            ]
-          ],
+          colorRange: [[49, 130, 189]],
           gpuAggregation,
           aggregation
         })
 
-        const layers = (onNN.length > 0 || direct.length > 0) ? [directLayer, nnLayer] : []
+        const layers =
+          onNN.length > 0 || direct.length > 0 ? [directLayer, nnLayer] : []
 
         if (!this.deckGlInstance) {
           // creating the deck.gl instance
@@ -186,35 +180,35 @@ export default class SessionMap extends Vue {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
-  .map-container-offset {
-    width: 100%;
-    height: calc(-160px + 90vh);
-    position: relative;
-    overflow: hidden;
-  }
-  .map-container-no-offset {
-    width: 100%;
-    height: calc(-160px + 100vh);
-    position: relative;
-    overflow: hidden;
-  }
-  .map {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    border: 1px solid rgb(136, 136, 136);
-    background-color: rgb(27, 27, 27);
-    overflow: hidden;
-  }
-  #deck-canvas {
-    position: absolute;
-    top: 0;
-    left: 0;
-  }
-  #deckgl-overlay {
-    width: 100%;
-    height: 100%;
-  }
+.map-container-offset {
+  width: 100%;
+  height: calc(-160px + 90vh);
+  position: relative;
+  overflow: hidden;
+}
+.map-container-no-offset {
+  width: 100%;
+  height: calc(-160px + 100vh);
+  position: relative;
+  overflow: hidden;
+}
+.map {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: 1px solid rgb(136, 136, 136);
+  background-color: rgb(27, 27, 27);
+  overflow: hidden;
+}
+#deck-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+#deckgl-overlay {
+  width: 100%;
+  height: 100%;
+}
 </style>
