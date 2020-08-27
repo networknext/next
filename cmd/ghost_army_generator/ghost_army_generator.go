@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"sort"
 	"strconv"
 	"time"
 
@@ -181,7 +182,7 @@ func main() {
 	}
 
 	// sort on timestamp
-	//sort.Sort(list)
+	sort.Sort(list)
 
 	// encode to binary format
 	index := 0

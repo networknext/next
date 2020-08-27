@@ -43,11 +43,11 @@ func main() {
 		if !entry.ReadFrom(bin, &index) {
 			fmt.Printf("can't read entry at index %d\n", i)
 		}
-
-		break
 	}
 
-	fmt.Printf("first entry = %v", entries[0])
+	for i := 0; i < 50; i++ {
+		fmt.Printf("\n%d = %v\n", i, entries[i])
+	}
 
 	// publish to zero mq, sleep for 10 seconds, repeat
 }
