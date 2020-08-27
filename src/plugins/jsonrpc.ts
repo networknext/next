@@ -1,11 +1,8 @@
-import Vue from 'vue'
 import store from '@/store'
-import { UserProfile } from '@/components/types/AuthTypes.ts'
 import _ from 'lodash'
 
 export class JsonRpcService {
-  private headers: any = null
-  private unwatch: any
+  private headers: any
 
   constructor () {
     this.headers = {
@@ -14,9 +11,9 @@ export class JsonRpcService {
       'Content-Type': 'application/json'
     }
 
-    this.unwatch = store.watch(
-      (state, getters) => getters.idToken,
-      (newValue, oldValue) => {
+    store.watch(
+      (_, getters: any) => getters.idToken,
+      (newValue: string) => {
         // it is enough to know that the token has changed - the value is
         // not relevant here
         this.processAuthChange(newValue)
@@ -24,7 +21,7 @@ export class JsonRpcService {
     )
   }
 
-  private processAuthChange (idToken: any): void {
+  private processAuthChange (idToken: string): void {
     // let userProfile: UserProfile
     const userProfile = _.cloneDeep(store.getters.userProfile)
     Promise.all([
@@ -74,137 +71,136 @@ export class JsonRpcService {
     })
   }
 
-  public fetchTotalSessionCounts (args: any) {
+  public fetchTotalSessionCounts (args: any): Promise<any> {
     return this.call('BuyersService.TotalSessions', args, '')
   }
 
-  public fetchMapSessions (args: any) {
+  public fetchMapSessions (args: any): Promise<any> {
     return this.call('BuyersService.SessionMap', args, '')
   }
 
-  public fetchSessionDetails (args: any) {
+  public fetchSessionDetails (args: any): Promise<any> {
     return this.call('BuyersService.SessionDetails', args, '')
   }
 
-  public fetchTopSessions (args: any) {
+  public fetchTopSessions (args: any): Promise<any> {
     return this.call('BuyersService.TopSessions', args, '')
   }
 
-  public fetchAllBuyers (token: string) {
+  public fetchAllBuyers (token: string): Promise<any> {
     return this.call('BuyersService.Buyers', {}, token)
   }
 
-  public fetchUserSessions (args: any) {
+  public fetchUserSessions (args: any): Promise<any> {
     return this.call('BuyersService.UserSessions', args, '')
   }
 
-  public fetchAllRoles () {
+  public fetchAllRoles (): Promise<any> {
     return this.call('AuthService.AllRoles', {}, '')
   }
 
-  public fetchAllAccounts (args: any) {
+  public fetchAllAccounts (args: any): Promise<any> {
     return this.call('AuthService.AllAccounts', args, '')
   }
 
-  public updateUserRoles (args: any) {
+  public updateUserRoles (args: any): Promise<any> {
     return this.call('AuthService.UpdateUserRoles', args, '')
   }
 
-  public deleteUserAccount (args: any) {
+  public deleteUserAccount (args: any): Promise<any> {
     return this.call('AuthService.DeleteUserAccount', args, '')
   }
 
-  public addNewUserAccounts (args: any) {
+  public addNewUserAccounts (args: any): Promise<any> {
     return this.call('AuthService.AddUserAccount', args, '')
   }
 
-  public fetchUserAccount (args: any, token: string) {
+  public fetchUserAccount (args: any, token: string): Promise<any> {
     return this.call('AuthService.UserAccount', args, token)
   }
 
-  public fetchGameConfiguration (args: any, token: string) {
+  public fetchGameConfiguration (args: any, token: string): Promise<any> {
     return this.call('BuyersService.GameConfiguration', args, token)
   }
 
-  public updateRouteShader (args: any) {
+  public updateRouteShader (args: any): Promise<any> {
     return this.call('BuyersService.UpdateRouteShader', args, '')
   }
 
-  public updateGameConfiguration (args: any) {
+  public updateGameConfiguration (args: any): Promise<any> {
     return this.call('BuyersService.UpdateGameConfiguration', args, '')
   }
 
-  public resendVerificationEmail (args: any) {
+  public resendVerificationEmail (args: any): Promise<any> {
     return this.call('AuthService.ResendVerificationEmail', args, '')
   }
 }
 
 export const JsonRPCPlugin = {
-  install (Vue: any, options: any) {
-    // options?
+  install (Vue: any) {
     const client = new JsonRpcService()
 
-    Vue.fetchTotalSessionCounts = (args: any) => {
+    Vue.fetchTotalSessionCounts = (args: any): Promise<any> => {
       return client.fetchTotalSessionCounts(args)
     }
 
-    Vue.fetchMapSessions = (args: any) => {
+    Vue.fetchMapSessions = (args: any): Promise<any> => {
       return client.fetchMapSessions(args)
     }
 
-    Vue.fetchSessionDetails = (args: any) => {
+    Vue.fetchSessionDetails = (args: any): Promise<any> => {
       return client.fetchSessionDetails(args)
     }
 
-    Vue.fetchTopSessions = (args: any) => {
+    Vue.fetchTopSessions = (args: any): Promise<any> => {
       return client.fetchTopSessions(args)
     }
 
-    Vue.fetchAllBuyers = (args: any) => {
+    Vue.fetchAllBuyers = (args: any): Promise<any> => {
       return client.fetchAllBuyers(args)
     }
 
-    Vue.fetchUserSessions = (args: any) => {
+    Vue.fetchUserSessions = (args: any): Promise<any> => {
       return client.fetchUserSessions(args)
     }
 
-    Vue.fetchAllRoles = () => {
+    Vue.fetchAllRoles = (): Promise<any> => {
       return client.fetchAllRoles()
     }
 
-    Vue.fetchAllAccounts = (args: any) => {
+    Vue.fetchAllAccounts = (args: any): Promise<any> => {
       return client.fetchAllAccounts(args)
     }
 
-    Vue.updateUserRoles = (args: any) => {
+    Vue.updateUserRoles = (args: any): Promise<any> => {
       return client.updateUserRoles(args)
     }
 
-    Vue.deleteUserAccount = (args: any) => {
+    Vue.deleteUserAccount = (args: any): Promise<any> => {
       return client.deleteUserAccount(args)
     }
 
-    Vue.addNewUserAccounts = (args: any) => {
+    Vue.addNewUserAccounts = (args: any): Promise<any> => {
       return client.addNewUserAccounts(args)
     }
 
-    Vue.fetchUserAccount = (args: any, token: string) => {
+    Vue.fetchUserAccount = (args: any, token: string): Promise<any> => {
       return client.fetchUserAccount(args, token)
     }
 
-    Vue.fetchGameConfiguration = (args: any, token: string) => {
+    Vue.fetchGameConfiguration = (args: any, token: string): Promise<any> => {
       return client.fetchGameConfiguration(args, token)
     }
 
-    Vue.updateRouteShader = (args: any) => {
+    Vue.updateRouteShader = (args: any): Promise<any> => {
       return client.updateRouteShader(args)
     }
 
-    Vue.updateGameConfiguration = (args: any) => {
+    Vue.updateGameConfiguration = (args: any): Promise<any> => {
       return client.updateGameConfiguration(args)
     }
 
-    Vue.resendVerificationEmail = (args: any) => {
+    Vue.resendVerificationEmail = (args: any): Promise<any> => {
       return client.resendVerificationEmail(args)
     }
   }

@@ -1,17 +1,14 @@
 import Vue from 'vue'
-import APIService from '@/services/api.service'
 import store from '@/store'
 import { Auth0Client } from '@auth0/auth0-spa-js'
 import { UserProfile } from '@/components/types/AuthTypes.ts'
 
 export class AuthService {
-  private apiService: APIService
   private clientID: string
   private domain: string
   public authClient: Auth0Client | any
 
   constructor (options: any) {
-    this.apiService = Vue.prototype.$apiService
     this.clientID = options.clientID
     this.domain = options.domain
     this.authClient = new Auth0Client({
@@ -51,7 +48,6 @@ export class AuthService {
         if (!isAuthenticated) {
           return
         }
-        this.apiService = new APIService()
         const userProfile: UserProfile = {
           auth0ID: '',
           company: '',
