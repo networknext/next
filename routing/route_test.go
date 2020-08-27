@@ -818,8 +818,8 @@ func TestDecideMultipathDirect(t *testing.T) {
 	}
 }
 
-// Test case to check that direct routes are never served if multipath is already active
-func TestDecideMultipathStayActive(t *testing.T) {
+// Test case to check that sessions are still vetoed correctly on multipath
+func TestDecideMultipathVetoed(t *testing.T) {
 	rrs := routing.DefaultRoutingRulesSettings
 	rrs.EnableMultipathForRTT = true
 	rrs.EnableMultipathForJitter = true
@@ -835,9 +835,123 @@ func TestDecideMultipathStayActive(t *testing.T) {
 	}
 
 	lastNNStats := &routing.Stats{
-		RTT:        50,
+		RTT:        60,
 		Jitter:     0,
 		PacketLoss: 0,
+	}
+
+	lastDirectStats := &routing.Stats{
+		RTT:        30,
+		Jitter:     0,
+		PacketLoss: 0,
+	}
+
+	route := routing.Route{
+		Stats: routing.Stats{
+			RTT:        40,
+			Jitter:     0,
+			PacketLoss: 0,
+		},
+	}
+
+	startingDecision := routing.Decision{true, routing.DecisionRTTReductionMultipath}
+
+	expected := routing.Decision{false, routing.DecisionVetoRTT}
+
+	// Loop through all permutations and combinations of the decision functions and test that the result is the same
+	decisionFuncIndices := createIndexSlice(decisionFuncs)
+	combs := combinations(decisionFuncIndices)
+	for i := 0; i < len(combs); i++ {
+		perms := permutations(combs[i])
+		perms = filterPermutations(perms, 2) // Remove all permutations that don't include DecideVeto, since that's the function we're testing for
+		funcs := replaceIndicesWithDecisionFuncs(perms, decisionFuncs)
+
+		for j := 0; j < len(perms); j++ {
+			decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, funcs[j]...)
+			assert.Equal(t, expected, decision)
+		}
+	}
+}
+
+// Test case to check that sessions are still vetoed correctly on multipath and YOLO is enabled
+func TestDecideMultipathVetoedYOLO(t *testing.T) {
+	rrs := routing.DefaultRoutingRulesSettings
+	rrs.EnableMultipathForRTT = true
+	rrs.EnableMultipathForJitter = true
+	rrs.EnableMultipathForPacketLoss = true
+
+	rrs.EnableYouOnlyLiveOnce = true
+
+	onNNSliceCounter := uint64(0)
+
+	decisionFuncs := []routing.DecisionFunc{
+		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
+		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), rrs.EnableYouOnlyLiveOnce),
+		routing.DecideVeto(onNNSliceCounter, float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
+		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.MultipathPacketLossThreshold)),
+	}
+
+	lastNNStats := &routing.Stats{
+		RTT:        60,
+		Jitter:     0,
+		PacketLoss: 0,
+	}
+
+	lastDirectStats := &routing.Stats{
+		RTT:        30,
+		Jitter:     0,
+		PacketLoss: 0,
+	}
+
+	route := routing.Route{
+		Stats: routing.Stats{
+			RTT:        40,
+			Jitter:     0,
+			PacketLoss: 0,
+		},
+	}
+
+	startingDecision := routing.Decision{true, routing.DecisionRTTReductionMultipath}
+
+	expected := routing.Decision{false, routing.DecisionVetoRTT | routing.DecisionVetoYOLO}
+
+	// Loop through all permutations and combinations of the decision functions and test that the result is the same
+	decisionFuncIndices := createIndexSlice(decisionFuncs)
+	combs := combinations(decisionFuncIndices)
+	for i := 0; i < len(combs); i++ {
+		perms := permutations(combs[i])
+		perms = filterPermutations(perms, 2) // Remove all permutations that don't include DecideVeto, since that's the function we're testing for
+		funcs := replaceIndicesWithDecisionFuncs(perms, decisionFuncs)
+
+		for j := 0; j < len(perms); j++ {
+			decision := route.Decide(startingDecision, lastNNStats, lastDirectStats, funcs[j]...)
+			assert.Equal(t, expected, decision)
+		}
+	}
+}
+
+// Test case to check that multipath sessions are not vetoed for increased packet loss
+func TestDecideMultipathNoPacketLossVeto(t *testing.T) {
+	rrs := routing.DefaultRoutingRulesSettings
+	rrs.EnableMultipathForRTT = true
+	rrs.EnableMultipathForJitter = true
+	rrs.EnableMultipathForPacketLoss = true
+
+	rrs.EnablePacketLossSafety = true
+
+	onNNSliceCounter := uint64(3)
+
+	decisionFuncs := []routing.DecisionFunc{
+		routing.DecideUpgradeRTT(float64(rrs.RTTThreshold)),
+		routing.DecideDowngradeRTT(float64(rrs.RTTHysteresis), rrs.EnableYouOnlyLiveOnce),
+		routing.DecideVeto(onNNSliceCounter, float64(rrs.RTTVeto), rrs.EnablePacketLossSafety, rrs.EnableYouOnlyLiveOnce),
+		routing.DecideMultipath(rrs.EnableMultipathForRTT, rrs.EnableMultipathForJitter, rrs.EnableMultipathForPacketLoss, float64(rrs.RTTThreshold), float64(rrs.MultipathPacketLossThreshold)),
+	}
+
+	lastNNStats := &routing.Stats{
+		RTT:        30,
+		Jitter:     0,
+		PacketLoss: 10,
 	}
 
 	lastDirectStats := &routing.Stats{
