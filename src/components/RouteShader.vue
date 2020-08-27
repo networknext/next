@@ -99,7 +99,6 @@
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
 import _ from 'lodash'
-import APIService from '../services/api.service'
 import Alert from '@/components/Alert.vue'
 import { AlertTypes } from './types/AlertTypes'
 import { UserProfile } from '@/components/types/AuthTypes.ts'
@@ -120,15 +119,15 @@ import { UserProfile } from '@/components/types/AuthTypes.ts'
   }
 })
 export default class RouteShader extends Vue {
-  private apiService: APIService
   private routeShader: any
   private message: string
   private alertType: string
   private userProfile: UserProfile
+  private vueInstance: any
 
   constructor () {
     super()
-    this.apiService = Vue.prototype.$apiService
+    this.vueInstance = Vue
     this.userProfile = _.cloneDeep(this.$store.getters.userProfile)
     this.routeShader = this.userProfile.routeShader
     this.message = ''
@@ -136,7 +135,7 @@ export default class RouteShader extends Vue {
   }
 
   public updateRouteShader () {
-    this.apiService
+    this.vueInstance
       .updateRouteShader(this.routeShader)
       .then((response: any) => {
         this.userProfile.routeShader = this.routeShader

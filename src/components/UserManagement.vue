@@ -129,7 +129,6 @@
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
 import Multiselect from 'vue-multiselect'
-import APIService from '../services/api.service'
 import Alert from './Alert.vue'
 import { AlertTypes } from './types/AlertTypes'
 import _ from 'lodash'
@@ -151,7 +150,6 @@ import _ from 'lodash'
   }
 })
 export default class UserManagement extends Vue {
-  private apiService: APIService
   private allRoles: Array<any>
   private companyUsers: Array<any>
   private companyUsersReadOnly: Array<any>
@@ -160,10 +158,10 @@ export default class UserManagement extends Vue {
   private alertTypes: any
   private showTable: boolean
   private newUserEmails: string
+  private vueInstance: any
 
   constructor () {
     super()
-    this.apiService = Vue.prototype.$apiService
     this.newUserEmails = ''
     this.showTable = false
     this.messages = {
@@ -178,12 +176,13 @@ export default class UserManagement extends Vue {
     this.newUserRoles = []
     this.companyUsers = []
     this.companyUsersReadOnly = []
+    this.vueInstance = Vue
   }
 
   private mounted (): void {
     const promises = [
-      this.apiService.fetchAllAccounts({}),
-      this.apiService.fetchAllRoles()
+      this.vueInstance.fetchAllAccounts({}),
+      this.vueInstance.fetchAllRoles()
     ]
     Promise.all(promises)
       .then((responses: any) => {
@@ -205,7 +204,7 @@ export default class UserManagement extends Vue {
   private saveUser (account: any, index: number): void {
     if (account.edit) {
       const roles = account.roles
-      this.apiService
+      this.vueInstance
         .updateUserRoles({ user_id: `auth0|${account.user_id}`, roles: roles })
         .then((response: any) => {
           account.roles = response.roles
@@ -230,7 +229,7 @@ export default class UserManagement extends Vue {
       return
     }
     if (account.delete) {
-      this.apiService
+      this.vueInstance
         .deleteUserAccount({ user_id: `auth0|${account.user_id}` })
         .then((response: any) => {
           this.companyUsers.splice(index, 1)
@@ -281,7 +280,7 @@ export default class UserManagement extends Vue {
         name: 'Viewer'
       }]
     }
-    this.apiService
+    this.vueInstance
       .addNewUserAccounts({ emails: emails, roles: roles })
       .then((response: any) => {
         const newAccounts: Array<any> = response.accounts

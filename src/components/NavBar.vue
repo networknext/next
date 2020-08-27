@@ -95,7 +95,6 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
-import APIService from '@/services/api.service'
 
 /**
  * This component opens up the main Vue router handlers to user interaction in the form of a navigation bar
@@ -107,13 +106,11 @@ import APIService from '@/services/api.service'
 
 @Component
 export default class NavBar extends Vue {
-  private apiService: APIService
   private portalVersion: string
   private vueInstance: any
 
   constructor () {
     super()
-    this.apiService = Vue.prototype.$apiService
     this.portalVersion = ''
     this.vueInstance = Vue
   }

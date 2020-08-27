@@ -36,7 +36,6 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
-import APIService from '@/services/api.service'
 import Alert from '@/components/Alert.vue'
 import { AlertTypes } from '@/components/types/AlertTypes'
 import { UserProfile } from '@/components/types/AuthTypes.ts'
@@ -58,33 +57,33 @@ import _ from 'lodash'
   }
 })
 export default class GameConfiguration extends Vue {
-  private apiService: APIService;
-  private company: string;
-  private pubKey: string;
-  private message: string;
-  private alertType: string;
-  private userProfile: UserProfile;
+  private company: string
+  private pubKey: string
+  private message: string
+  private alertType: string
+  private userProfile: UserProfile
+  private vueInstance: any
 
   constructor () {
     super()
     this.userProfile = _.cloneDeep(this.$store.getters.userProfile)
-    this.apiService = Vue.prototype.$apiService
     this.company = this.userProfile.company || ''
     this.pubKey = this.userProfile.pubKey || ''
     this.message = ''
     this.alertType = ''
+    this.vueInstance = Vue
   }
 
   private updatePubKey () {
     const domain = this.userProfile.domain || ''
 
-    this.apiService
+    this.vueInstance
       .updateGameConfiguration({
         name: this.company,
         domain: domain,
         new_public_key: this.pubKey
       })
-      .then((response) => {
+      .then((response: any) => {
         this.userProfile.pubKey = response.game_config.public_key
         this.userProfile.company = response.game_config.company
         this.userProfile.buyerID = response.game_config.buyer_id
@@ -95,9 +94,9 @@ export default class GameConfiguration extends Vue {
           this.message = ''
         }, 5000)
       })
-      .catch((e) => {
+      .catch((error: Error) => {
         console.log('Something went wrong updating the public key')
-        console.log(e)
+        console.log(error)
         this.alertType = AlertTypes.ERROR
         this.message = 'Failed to update public key'
         setTimeout(() => {

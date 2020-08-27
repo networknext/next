@@ -261,7 +261,6 @@ import { Component, Vue } from 'vue-property-decorator'
 import 'uplot/dist/uPlot.min.css'
 
 import Alert from '@/components/Alert.vue'
-import APIService from '@/services/api.service'
 import { AlertTypes } from './types/AlertTypes'
 
 /**
@@ -281,7 +280,6 @@ import { AlertTypes } from './types/AlertTypes'
 })
 export default class SessionDetails extends Vue {
   private showDetails = false
-  private apiService: APIService
 
   private searchID: string
 
@@ -312,12 +310,14 @@ export default class SessionDetails extends Vue {
   private message: string
   private alertType: string
 
+  private vueInstance: any
+
   constructor () {
     super()
-    this.apiService = Vue.prototype.$apiService
     this.searchID = ''
     this.message = ''
     this.alertType = AlertTypes.ERROR
+    this.vueInstance = Vue
   }
 
   private mounted () {
@@ -355,7 +355,7 @@ export default class SessionDetails extends Vue {
   }
 
   private fetchSessionDetails () {
-    this.apiService.fetchSessionDetails({ session_id: this.searchID })
+    this.vueInstance.fetchSessionDetails({ session_id: this.searchID })
       .then((response: any) => {
         this.meta = response.meta
         this.slices = response.slices
