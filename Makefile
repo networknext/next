@@ -736,6 +736,19 @@ build-next:
 	@$(GO) build -o ./dist/next ./cmd/next/*.go
 	@printf "done\n"
 
+.PHONY: build-ghost-army
+build-ghost-army:
+	@printf "Building ghost army... "
+	@$(GO) build -o ./dist/gag ./cmd/ghost_army/*.go
+	@printf "done\n"
+
+
+.PHONY: build-ghost-army-generator
+build-ghost-army-generator:
+	@printf "Building ghost army generator... "
+	@$(GO) build -o ./dist/gag ./cmd/ghost_army_generator/*.go
+	@printf "done\n"
+
 #######################
 # Relay Build Process #
 #######################

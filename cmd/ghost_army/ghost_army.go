@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"github.com/networknext/backend/transport"
+	"github.com/networknext/backend/encoding"
 )
 
 const (
@@ -13,13 +13,18 @@ const (
 
 func main() {
 	// read binary file
-	data, err := ioutil.ReadFile("ghost_army.dat")
+	bin, err := ioutil.ReadFile("ghost_army.dat")
 	if err != nil {
 		fmt.Printf("could not read 'ghost_army.dat': %v\n", err)
 	}
 
-	// sort & store in some data structure
+	// unmarshal
+	index := 0
+
+	var count uint64
+	if !encoding.ReadUint64(bin, &index, &count) {
+		fmt.Println("could not read count")
+	}
 
 	// publish to zero mq, sleep for 10 seconds, repeat
-	var session transport.SessionPortalData
 }

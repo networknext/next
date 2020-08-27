@@ -1,16 +1,15 @@
-package ghost_army
+// Package ghostarmy contains types shared between the ghost_army program & the generator
+package ghostarmy
 
 import (
-	"time"
-
 	"github.com/networknext/backend/encoding"
 )
 
-// Follows the csv schema
+// Entry is the contents of the csv
 type Entry struct {
 	SessionID                 int64
-	Timestamp                 time.Time
-	BuyerId                   int64
+	Timestamp                 int64
+	BuyerID                   int64
 	SliceNumber               int64
 	Next                      bool
 	DirectRTT                 float64
@@ -54,8 +53,8 @@ func (self *Entry) MarshalBinary() ([]byte, error) {
 	}
 
 	casterInt64(self.SessionID)
-	casterInt64(self.Timestamp.Unix())
-	casterInt64(self.BuyerId)
+	casterInt64(self.Timestamp)
+	casterInt64(self.BuyerID)
 	encoding.WriteFloat64(bin, &index, self.DirectRTT)
 	encoding.WriteFloat64(bin, &index, self.DirectJitter)
 	encoding.WriteFloat64(bin, &index, self.DirectPacketLoss)

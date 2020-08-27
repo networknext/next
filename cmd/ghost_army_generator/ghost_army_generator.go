@@ -8,14 +8,13 @@ import (
 	"os"
 	"sort"
 	"strconv"
-	"strings"
 	"time"
 
-	"github.com/networknext/backend/cmd/ghost_army"
 	"github.com/networknext/backend/encoding"
+	ghostarmy "github.com/networknext/backend/ghost_army"
 )
 
-type sortable []ghost_army.Entry
+type sortable []ghostarmy.Entry
 
 func (self sortable) Len() int {
 	return len(self)
@@ -26,12 +25,20 @@ func (self sortable) Swap(i, j int) {
 }
 
 func (self sortable) Less(i, j int) bool {
-	return self[i].Timestamp.Unix() < self[j].Timestamp.Unix()
+	return self[i].Timestamp < self[j].Timestamp
 }
 
 func main() {
+	if len(os.Args) != 3 {
+		fmt.Println("you must supply arguments (input file name, output file name)")
+		os.Exit(1)
+	}
+
+	infile := os.Args[1]
+	outfile := os.Args[2]
+
 	// read in exported data
-	inputfile, err := os.Open("ghost_army.csv")
+	inputfile, err := os.Open(infile)
 	if err != nil {
 		fmt.Printf("could not open ghost_army.csv: %v\n", err)
 		os.Exit(1)
@@ -47,126 +54,127 @@ func main() {
 	// convert to binary
 
 	var list sortable
-	list = make([]ghost_army.Entry, 0)
-	for _, line := range lines {
+	list = make([]ghostarmy.Entry, 0)
+	for lineNum, line := range lines {
+		if lineNum == 0 {
+			continue
+		}
 		var err error
-		var entry ghost_army.Entry
+		var entry ghostarmy.Entry
 
 		i := 0
 
 		// line into Entry
 		entry.SessionID, err = strconv.ParseInt(line[i], 10, 64)
-		checkErr(err)
+		checkErr(err, lineNum)
 		i++
 
-		entry.Timestamp, err = time.Parse("2006-1-2 15:04:05", line[i])
-		checkErr(err)
+		ts, err := time.Parse("2006-1-2 15:04:05", line[i])
+		checkErr(err, lineNum)
 		i++
 
-		entry.BuyerId, err = strconv.ParseInt(line[i], 10, 64)
-		checkErr(err)
+		entry.Timestamp = ts.Unix()
+
+		entry.BuyerID, err = strconv.ParseInt(line[i], 10, 64)
+		checkErr(err, lineNum)
 		i++
 
 		entry.SliceNumber, err = strconv.ParseInt(line[i], 10, 64)
-		checkErr(err)
+		checkErr(err, lineNum)
 		i++
 
 		entry.Next, err = strconv.ParseBool(line[i])
-		checkErr(err)
+		checkErr(err, lineNum)
 		i++
 
 		entry.DirectRTT, err = strconv.ParseFloat(line[i], 64)
-		checkErr(err)
+		checkErr(err, lineNum)
 		i++
 
 		entry.DirectJitter, err = strconv.ParseFloat(line[i], 64)
-		checkErr(err)
+		checkErr(err, lineNum)
 		i++
 
 		entry.DirectPacketLoss, err = strconv.ParseFloat(line[i], 64)
-		checkErr(err)
+		checkErr(err, lineNum)
 		i++
 
 		entry.NextRTT, err = strconv.ParseFloat(line[i], 64)
-		checkErr(err)
+		checkErr(err, lineNum)
 		i++
 
 		entry.NextJitter, err = strconv.ParseFloat(line[i], 64)
-		checkErr(err)
+		checkErr(err, lineNum)
 		i++
 
 		entry.NextPacketLoss, err = strconv.ParseFloat(line[i], 64)
-		checkErr(err)
+		checkErr(err, lineNum)
 		i++
 
-		relays, err := csv.NewReader(strings.NewReader(line[i])).ReadAll()
-		checkErr(err)
+		err = json.Unmarshal([]byte(line[i]), &entry.NextRelays)
+		checkErr(err, lineNum)
 		i++
-
-		for _, relay := range relays {
-			err = json.Unmarshal([]byte(relay[0]), &entry.NextRelays)
-			checkErr(err)
-		}
 
 		entry.TotalPrice, err = strconv.ParseInt(line[i], 10, 64)
-		checkErr(err)
+		checkErr(err, lineNum)
 		i++
 
-		entry.ClientToServerPacketsLost, err = strconv.ParseInt(line[i], 10, 64)
-		checkErr(err)
+		if line[i] != "" {
+			ctspl, err := strconv.ParseFloat(line[i], 64)
+			checkErr(err, lineNum)
+			entry.ClientToServerPacketsLost = int64(ctspl)
+		}
 		i++
 
-		entry.ServerToClientPacketsLost, err = strconv.ParseInt(line[i], 10, 64)
-		checkErr(err)
+		if line[i] != "" {
+			stcpl, err := strconv.ParseFloat(line[i], 64)
+			checkErr(err, lineNum)
+			entry.ServerToClientPacketsLost = int64(stcpl)
+		}
 		i++
 
 		entry.Committed, err = strconv.ParseBool(line[i])
-		checkErr(err)
+		checkErr(err, lineNum)
 		i++
 
 		entry.Flagged, err = strconv.ParseBool(line[i])
-		checkErr(err)
+		checkErr(err, lineNum)
 		i++
 
 		entry.Multipath, err = strconv.ParseBool(line[i])
-		checkErr(err)
+		checkErr(err, lineNum)
 		i++
 
 		entry.NextBytesUp, err = strconv.ParseInt(line[i], 10, 64)
-		checkErr(err)
+		checkErr(err, lineNum)
 		i++
 
 		entry.NextBytesDown, err = strconv.ParseInt(line[i], 10, 64)
-		checkErr(err)
+		checkErr(err, lineNum)
 		i++
 
 		entry.Initial, err = strconv.ParseBool(line[i])
-		checkErr(err)
+		checkErr(err, lineNum)
 		i++
 
 		entry.DatacenterID, err = strconv.ParseInt(line[i], 10, 64)
-		checkErr(err)
+		checkErr(err, lineNum)
 		i++
 
 		entry.RttReduction, err = strconv.ParseBool(line[i])
-		checkErr(err)
+		checkErr(err, lineNum)
 		i++
 
 		entry.PacketLossReduction, err = strconv.ParseBool(line[i])
-		checkErr(err)
+		checkErr(err, lineNum)
 		i++
 
-		prices, err := csv.NewReader(strings.NewReader(line[i])).ReadAll()
-		checkErr(err)
+		err = json.Unmarshal([]byte(line[i]), &entry.NextRelaysPrice)
+		checkErr(err, lineNum)
 		i++
-
-		for _, price := range prices {
-			err = json.Unmarshal([]byte(price[0]), &entry.NextRelaysPrice)
-			checkErr(err)
-		}
 
 		entry.Userhash, err = strconv.ParseInt(line[i], 10, 64)
-		checkErr(err)
+		checkErr(err, lineNum)
 		i++
 
 		// push back entry
@@ -193,14 +201,15 @@ func main() {
 
 	// export
 
-	err = ioutil.WriteFile("ghost_army.dat", bin, 644)
+	err = ioutil.WriteFile(outfile, bin, 0644)
 	if err != nil {
 		fmt.Printf("could not create output file: %v\n", err)
 	}
 }
 
-func checkErr(err error) {
+func checkErr(err error, lineNum int) {
 	if err != nil {
+		fmt.Printf("paniced on line %d of csv\n", lineNum)
 		panic(err)
 	}
 }
