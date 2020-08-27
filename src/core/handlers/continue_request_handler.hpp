@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/continue_token.hpp"
 #include "core/packets/types.hpp"
 #include "core/router_info.hpp"
 #include "core/session_map.hpp"
@@ -7,6 +8,7 @@
 #include "crypto/keychain.hpp"
 #include "os/socket.hpp"
 
+using core::ContinueToken;
 using crypto::Keychain;
 using os::Socket;
 using util::ThroughputRecorder;

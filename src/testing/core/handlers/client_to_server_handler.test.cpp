@@ -17,11 +17,12 @@ using util::ThroughputRecorder;
 
 Test(core_handlers_client_to_server_handler_unsigned_packet)
 {
-  Socket socket;
-  Address addr;
   GenericPacket<> packet;
   SessionMap map;
   ThroughputRecorder recorder;
+  Socket socket;
+
+  Address addr;
   const GenericKey private_key = [] {
     GenericKey private_key;
     crypto::RandomBytes(private_key, private_key.size());

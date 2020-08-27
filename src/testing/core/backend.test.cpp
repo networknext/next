@@ -3,6 +3,9 @@
 #include "core/backend.hpp"
 #include "testing/mocks.hpp"
 
+#define CRYPTO_HELPERS
+#include "testing/helpers.hpp"
+
 using namespace std::chrono_literals;
 
 namespace
@@ -12,15 +15,7 @@ namespace
 
   const std::string BackendHostname = "http://totally-real-backend.com";
   const auto RelayAddr = "127.0.0.1:12345";
-  const auto Base64RelayPublicKey = "9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=";
-  const auto Base64RelayPrivateKey = "lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=";
-  const auto Base64RouterPublicKey = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=";
-  const auto Base64UpdateKey = "ycOUBHcxeThec42twkVJkO7QaVqlZUk3pApu7Ki58SrvELV+iIfiMpgxuJcTASVaCs1XD2BNDoGcEu9JkHv/sQ==";
-  const crypto::Keychain Keychain = [] {
-    crypto::Keychain keychain;
-    check(keychain.parse(Base64RelayPublicKey, Base64RelayPrivateKey, Base64RouterPublicKey, Base64UpdateKey));
-    return keychain;
-  }();
+  const crypto::Keychain Keychain = testing::make_keychain();
 
   const std::vector<uint8_t> BasicValidUpdateResponse = [] {
     core::InitResponse response = {

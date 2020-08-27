@@ -40,7 +40,7 @@
  */
 #define Test(...) TEST_MACRO_CHOOSER(__VA_ARGS__)(__VA_ARGS__)
 
-#define check(cond) testing::CheckHandler((cond), #cond, __FUNCTION__, __FILE__, __LINE__)
+#define check(cond) testing::CheckHandler((cond), #cond, __FILE__, __LINE__)
 
 namespace testing
 {
@@ -61,7 +61,7 @@ namespace testing
   class SpecCheck
   {
    public:
-    SpecCheck(bool result, const char* condition, const char* function, const char* file, int line);
+    SpecCheck(bool result, const char* condition, const char* file, int line);
     ~SpecCheck();
 
     void onFail(std::function<void(void)> failFunc);
@@ -69,24 +69,24 @@ namespace testing
    private:
     bool mResult;
     const char* mCondition;
-    const char* mFunction;
     const char* mFile;
     const int mLine;
     std::function<void(void)> mOnFail;
   };
 
-  inline SpecCheck::SpecCheck(bool result, const char* condition, const char* function, const char* file, int line)
-   : mResult(result), mCondition(condition), mFunction(function), mFile(file), mLine(line)
+  inline SpecCheck::SpecCheck(bool result, const char* condition, const char* file, int line)
+   : mResult(result), mCondition(condition), mFile(file), mLine(line)
   {}
 
   inline SpecCheck::~SpecCheck()
   {
     if (!mResult) {
-      std::cout << "check failed: ( " << mCondition << " ), function " << mFunction << ", file " << mFile << ", line  " << mLine
-                << std::endl;
+      std::cout << "check failed: (" << mCondition << ")"
+                << ", file " << mFile << " (" << mLine << ")\n";
       if (mOnFail) {
         mOnFail();
       }
+      std::cout << std::flush;
 #if defined(__GNUC__)
       __builtin_trap();
 #elif defined(_MSC_VER)
@@ -102,12 +102,12 @@ namespace testing
   }
 
   template <typename T>
-  SpecCheck CheckHandler(T result, const char* condition, const char* function, const char* file, int line);
+  SpecCheck CheckHandler(T result, const char* condition, const char* file, int line);
 
   template <>
-  inline SpecCheck CheckHandler(bool result, const char* condition, const char* function, const char* file, int line)
+  inline SpecCheck CheckHandler(bool result, const char* condition, const char* file, int line)
   {
-    return SpecCheck(result, condition, function, file, line);
+    return SpecCheck(result, condition, file, line);
   }
 
   template <typename T>

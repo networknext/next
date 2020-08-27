@@ -8,6 +8,8 @@
 #include "router_info.hpp"
 #include "util/macros.hpp"
 
+using core::GenericPacket;
+
 namespace core
 {
   class Token: public Expireable
@@ -28,8 +30,8 @@ namespace core
     uint64_t hash();
 
    protected:
-    auto write(uint8_t* packetData, size_t packetLength, size_t& index) -> bool;
-    auto read(const uint8_t* const packetData, size_t packetLength, size_t& index) -> bool;
+    auto write(GenericPacket<>& packet, size_t& index) -> bool;
+    auto read(const GenericPacket<>& packet, size_t& index) -> bool;
   };
 
   INLINE Token::Token(const RouterInfo& routerInfo): Expireable(routerInfo) {}
@@ -39,42 +41,50 @@ namespace core
     return SessionID ^ SessionVersion;
   }
 
-  INLINE auto Token::write(uint8_t* packetData, size_t packetLength, size_t& index) -> bool
+  INLINE auto Token::write(GenericPacket<>& packet, size_t& index) -> bool
   {
-    if (packetLength < index + Token::ByteSize) {
+    if (index + Token::ByteSize > packet.Buffer.size()) {
       return false;
     }
-    if (!encoding::WriteUint64(packetData, packetLength, index, ExpireTimestamp)) {
+
+    if (!encoding::WriteUint64(packet.Buffer, index, ExpireTimestamp)) {
       return false;
     }
-    if (!encoding::WriteUint64(packetData, packetLength, index, SessionID)) {
+
+    if (!encoding::WriteUint64(packet.Buffer, index, SessionID)) {
       return false;
     }
-    if (!encoding::WriteUint8(packetData, packetLength, index, SessionVersion)) {
+
+    if (!encoding::WriteUint8(packet.Buffer, index, SessionVersion)) {
       return false;
     }
-    if (!encoding::WriteUint8(packetData, packetLength, index, SessionFlags)) {
+
+    if (!encoding::WriteUint8(packet.Buffer, index, SessionFlags)) {
       return false;
     }
 
     return true;
   }
 
-  INLINE auto Token::read(const uint8_t* const packetData, size_t packetLength, size_t& index) -> bool
+  INLINE auto Token::read(const GenericPacket<>& packet, size_t& index) -> bool
   {
-    if (packetLength < index + Token::ByteSize) {
+    if (index + Token::ByteSize > packet.Buffer.size()) {
       return false;
     }
-    if (!encoding::ReadUint64(packetData, packetLength, index, this->ExpireTimestamp)) {
+
+    if (!encoding::ReadUint64(packet.Buffer, index, this->ExpireTimestamp)) {
       return false;
     }
-    if (!encoding::ReadUint64(packetData, packetLength, index, SessionID)) {
+
+    if (!encoding::ReadUint64(packet.Buffer, index, SessionID)) {
       return false;
     }
-    if (!encoding::ReadUint8(packetData, packetLength, index, SessionVersion)) {
+
+    if (!encoding::ReadUint8(packet.Buffer, index, SessionVersion)) {
       return false;
     }
-    if (!encoding::ReadUint8(packetData, packetLength, index, SessionFlags)) {
+
+    if (!encoding::ReadUint8(packet.Buffer, index, SessionFlags)) {
       return false;
     }
 

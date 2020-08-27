@@ -34,26 +34,25 @@ namespace core
      const crypto::GenericKey& receiverPublicKey) -> bool;
 
     auto read_encrypted(
-     const GenericPacket<>& packet,
+     GenericPacket<>& packet,
      size_t& index,
      const crypto::GenericKey& senderPublicKey,
      const crypto::GenericKey& receiverPrivateKey) -> bool;
 
    private:
-    auto write(uint8_t* packetData, size_t packetLength, size_t& index) -> bool;
+    auto write(GenericPacket<>& packet, size_t& index) -> bool;
 
-    auto read(const uint8_t* const packetData, size_t packetLength, size_t& index) -> bool;
+    auto read(const GenericPacket<>& packet, size_t& index) -> bool;
 
     auto encrypt(
-     uint8_t* packetData,
-     size_t packetLength,
+     GenericPacket<>& packet,
      const size_t& index,
      const crypto::GenericKey& senderPrivateKey,
      const crypto::GenericKey& receiverPublicKey,
      const std::array<uint8_t, crypto_box_NONCEBYTES>& nonce) -> bool;
 
     auto decrypt(
-     const uint8_t* const packetData,
+     GenericPacket<>& packet,
      const size_t& index,
      const crypto::GenericKey& senderPublicKey,
      const crypto::GenericKey& receiverPrivateKey,
@@ -68,107 +67,113 @@ namespace core
    const crypto::GenericKey& senderPrivateKey,
    const crypto::GenericKey& receiverPublicKey) -> bool
   {
-    uint8_t* packetData = &packet.Buffer[index];
-    size_t packetLength = packet.Len - index;
-
     const size_t start = index;
     (void)start;
 
     std::array<uint8_t, crypto_box_NONCEBYTES> nonce;
     crypto::RandomBytes(nonce, nonce.size());  // fill nonce
 
-    if (!encoding::WriteBytes(packetData, packet.Len, index, nonce.data(), nonce.size())) {
+    if (!encoding::WriteBytes(packet.Buffer, index, nonce, nonce.size())) {
       LOG(ERROR, "could not write nonce");
       return false;
     }
 
     const size_t afterNonce = index;
 
-    write(packetData, packetLength, index);  // write the token data to the buffer
+    write(packet, index);  // write the token data to the buffer
 
     // encrypt at the start of the packet, function knows where to end
-    if (!encrypt(packetData, packetLength, afterNonce, senderPrivateKey, receiverPublicKey, nonce)) {
+    if (!encrypt(packet, afterNonce, senderPrivateKey, receiverPublicKey, nonce)) {
       return false;
     }
 
     index += crypto_box_MACBYTES;  // index at this point will be past nonce & token, so add the mac bytes to it
 
-    assert(index - start == RouteToken::EncryptedByteSize);
+    assert(index - start == RouteToken::EncryptedByteSize);  // TODO move to test
 
     return true;
   }
 
   INLINE auto RouteToken::read_encrypted(
-   const GenericPacket<>& packet,
+   GenericPacket<>& packet,
    size_t& index,
    const crypto::GenericKey& senderPublicKey,
    const crypto::GenericKey& receiverPrivateKey) -> bool
   {
-    const uint8_t* const packetData = &packet.Buffer[index];
-    size_t packetLength = packet.Len - index;
-
     const auto nonceIndex = index;   // nonce is first in the packet's data
     index += crypto_box_NONCEBYTES;  // followed by actual data
 
-    if (!decrypt(packetData, index, senderPublicKey, receiverPrivateKey, nonceIndex)) {
+    if (!decrypt(packet, index, senderPublicKey, receiverPrivateKey, nonceIndex)) {
       LOG(ERROR, "could not decrypt route token");
       return false;
     }
 
-    read(packetData, packetLength, index);
+    if (!read(packet, index)) {
+      return false;
+    }
 
     index += crypto_box_MACBYTES;  // adjust the offset past the decrypted data
 
     return true;
   }
 
-  INLINE auto RouteToken::write(uint8_t* packetData, size_t packetLength, size_t& index) -> bool
+  INLINE auto RouteToken::write(GenericPacket<>& packet, size_t& index) -> bool
   {
-    assert(packetLength >= RouteToken::ByteSize);
+    if (index + RouteToken::ByteSize > packet.Buffer.size()) {
+      return false;
+    }
 
     const auto start = index;
     (void)start;
 
-    Token::write(packetData, packetLength, index);
-    if (!encoding::WriteUint32(packetData, packetLength, index, this->KbpsUp)) {
+    if (!Token::write(packet, index)) {
       return false;
     }
 
-    if (!encoding::WriteUint32(packetData, packetLength, index, this->KbpsDown)) {
+    if (!encoding::WriteUint32(packet.Buffer, index, this->KbpsUp)) {
       return false;
     }
 
-    if (!encoding::WriteAddress(packetData, packetLength, index, this->NextAddr)) {
+    if (!encoding::WriteUint32(packet.Buffer, index, this->KbpsDown)) {
       return false;
     }
 
-    if (!encoding::WriteBytes(packetData, packetLength, index, this->PrivateKey.data(), this->PrivateKey.size())) {
+    if (!encoding::WriteAddress(packet.Buffer, index, this->NextAddr)) {
       return false;
     }
 
-    assert(index - start == RouteToken::ByteSize); // TODO move this to a test
+    if (!encoding::WriteBytes(packet.Buffer, index, this->PrivateKey, this->PrivateKey.size())) {
+      return false;
+    }
+
+    assert(index - start == RouteToken::ByteSize);  // TODO move this to a test
 
     return true;
   }
 
-  INLINE auto RouteToken::read(const uint8_t* const packetData, size_t packetLength, size_t& index) -> bool
+  INLINE auto RouteToken::read(const GenericPacket<>& packet, size_t& index) -> bool
   {
     const size_t start = index;
 
     (void)start;
 
-    Token::read(packetData, packetLength, index);
-    if (!encoding::ReadUint32(packetData, packetLength, index, this->KbpsUp)) {
+    if (!Token::read(packet, index)) {
       return false;
     }
-    if (!encoding::ReadUint32(packetData, packetLength, index, this->KbpsDown)) {
+
+    if (!encoding::ReadUint32(packet.Buffer, index, this->KbpsUp)) {
       return false;
     }
-    if (!encoding::ReadAddress(packetData, packetLength, index, this->NextAddr)) {
+
+    if (!encoding::ReadUint32(packet.Buffer, index, this->KbpsDown)) {
       return false;
     }
-    if (!encoding::ReadBytes(
-         packetData, packetLength, index, this->PrivateKey.data(), this->PrivateKey.size(), this->PrivateKey.size())) {
+
+    if (!encoding::ReadAddress(packet.Buffer, index, this->NextAddr)) {
+      return false;
+    }
+
+    if (!encoding::ReadBytes(packet.Buffer, index, this->PrivateKey, this->PrivateKey.size())) {
       return false;
     }
 
@@ -177,20 +182,20 @@ namespace core
   }
 
   INLINE auto RouteToken::encrypt(
-   uint8_t* packetData,
-   size_t packetLength,
-   const size_t& index,
+   GenericPacket<>& packet,
+   const size_t& encryption_start,
    const crypto::GenericKey& senderPrivateKey,
    const crypto::GenericKey& receiverPublicKey,
    const std::array<uint8_t, crypto_box_NONCEBYTES>& nonce) -> bool
   {
-    (void)packetLength;
-    assert(packetLength >= RouteToken::EncryptionLength);
+    if (encryption_start + RouteToken::EncryptionLength > packet.Buffer.size()) {
+      return false;
+    }
 
     if (
      crypto_box_easy(
-      &packetData[index],
-      &packetData[index],
+      &packet.Buffer[encryption_start],
+      &packet.Buffer[encryption_start],
       RouteToken::ByteSize,
       nonce.data(),
       receiverPublicKey.data(),
@@ -202,18 +207,22 @@ namespace core
   }
 
   INLINE auto RouteToken::decrypt(
-   const uint8_t* const packetData,
+   GenericPacket<>& packet,
    const size_t& index,
    const crypto::GenericKey& senderPublicKey,
    const crypto::GenericKey& receiverPrivateKey,
    const size_t nonceIndex) -> bool
   {
+    if (index + RouteToken::EncryptionLength > packet.Buffer.size()) {
+      return false;
+    }
+
     if (
      crypto_box_open_easy(
-      const_cast<uint8_t*>(&packetData[index]),
-      &packetData[index],
+      &packet.Buffer[index],
+      &packet.Buffer[index],
       RouteToken::EncryptionLength,
-      &packetData[nonceIndex],
+      &packet.Buffer[nonceIndex],
       senderPublicKey.data(),
       receiverPrivateKey.data()) != 0) {
       return false;
