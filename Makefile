@@ -739,9 +739,8 @@ build-next:
 .PHONY: build-ghost-army
 build-ghost-army:
 	@printf "Building ghost army... "
-	@$(GO) build -o ./dist/gag ./cmd/ghost_army/*.go
+	@$(GO) build -o ./dist/ghost_army ./cmd/ghost_army/*.go
 	@printf "done\n"
-
 
 .PHONY: build-ghost-army-generator
 build-ghost-army-generator:

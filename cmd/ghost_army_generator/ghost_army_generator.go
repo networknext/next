@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"sort"
 	"strconv"
 	"time"
 
@@ -40,7 +39,7 @@ func main() {
 	// read in exported data
 	inputfile, err := os.Open(infile)
 	if err != nil {
-		fmt.Printf("could not open ghost_army.csv: %v\n", err)
+		fmt.Printf("could not open '%s': %v\n", infile, err)
 		os.Exit(1)
 	}
 	defer inputfile.Close()
@@ -181,13 +180,13 @@ func main() {
 		list = append(list, entry)
 	}
 
-	bin := make([]byte, 8)
-
 	// sort on timestamp
-	sort.Sort(list)
+	//sort.Sort(list)
 
 	// encode to binary format
 	index := 0
+
+	bin := make([]byte, 8)
 	encoding.WriteUint64(bin, &index, uint64(len(list)))
 	for _, item := range list {
 		dat, err := item.MarshalBinary()
@@ -203,7 +202,7 @@ func main() {
 
 	err = ioutil.WriteFile(outfile, bin, 0644)
 	if err != nil {
-		fmt.Printf("could not create output file: %v\n", err)
+		fmt.Printf("could not create output file '%s': %v\n", outfile, err)
 	}
 }
 
