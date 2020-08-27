@@ -469,7 +469,7 @@ deploy-server-backend-velan:
 
 .PHONY: deploy-server-backend-esl
 deploy-server-backend-esl:
-	./deploy/deploy.sh -e prod -c esl-22dr -t server-backend -n server_backend -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c esl-22dr -t server-backend -n server_backend-esl-22dr -b gs://prod_artifacts
 
 .PHONY: build-load-test-server-artifacts
 build-load-test-server-artifacts: build-load-test-server
@@ -566,6 +566,10 @@ build-relay-backend-artifacts-prod: build-relay-backend
 .PHONY: build-server-backend-artifacts-prod
 build-server-backend-artifacts-prod: build-server-backend
 	./deploy/build-artifacts.sh -e prod -s server_backend
+
+.PHONY: build-server-backend-artifacts-prod-esl
+build-server-backend-artifacts-prod-esl: build-server-backend
+	./deploy/build-artifacts.sh -e prod -s server_backend -c esl-22dr
 
 .PHONY: publish-billing-artifacts-dev
 publish-billing-artifacts-dev:
@@ -667,6 +671,10 @@ publish-relay-backend-artifacts-prod:
 publish-server-backend-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s server_backend
 
+.PHONY: publish-server-backend-artifacts-prod-esl
+publish-server-backend-artifacts-prod-esl:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s server_backend -c esl-22dr
+
 .PHONY: publish-bootstrap-script-dev
 publish-bootstrap-script-dev:
 	@printf "Publishing bootstrap script... \n\n"
@@ -755,6 +763,7 @@ build-relay:
 	@printf "Building relay... "
 	@mkdir -p $(DIST_DIR)
 	@cd $(RELAY_DIR) && $(MAKE) release
+	@cp cmd/relay/bin/relay $(DIST_DIR)
 	@echo "done"
 
 .PHONY: dev-relay
