@@ -78,6 +78,7 @@ func getPopulatedRouteMatrix(malformed bool) *routing.RouteMatrix {
 	matrix.RelayMaxSessionCounts = []uint32{100, 200}
 
 	matrix.UpdateRelayAddressCache()
+	matrix.UpdateRouteCache()
 
 	matrix.RelayLatitude = []float64{1.0, 2.0}
 	matrix.RelayLongitude = []float64{3.0, 4.0}
@@ -1206,6 +1207,7 @@ func TestRouteMatrix(t *testing.T) {
 
 	t.Run("GetAcceptableRoutes", func(t *testing.T) {
 		routeMatrixCopy := routeMatrix
+		routeMatrixCopy.UpdateRouteCache()
 
 		// Hack to insert relay session counts without regenerating a new route matrix
 		numRelays := len(routeMatrixCopy.RelayIDs)
@@ -1660,6 +1662,23 @@ func BenchmarkGetAcceptableRoutes(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		routeMatrix.GetAcceptableRoutes(from, to, prevRouteHash, 500)
+	}
+}
+
+func BenchmarkUpdateRouteCache(b *testing.B) {
+	costfile, _ := os.Open("./test_data/cost.bin")
+
+	var costMatrix routing.CostMatrix
+	costMatrix.ReadFrom(costfile)
+
+	var routeMatrix routing.RouteMatrix
+	costMatrix.Optimize(&routeMatrix, 1)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		routeMatrix.UpdateRouteCache()
 	}
 }
 

@@ -400,6 +400,8 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 		return err
 	}
 
+	routes.UpdateRouteCache()
+
 	type Indirect struct {
 		relay uint64
 		rtt   int32
