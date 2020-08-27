@@ -179,11 +179,6 @@ func DecideDowngradeRTT(rttHysteresis float64, yolo bool) DecisionFunc {
 // Multipath sessions aren't considered.
 func DecideVeto(onNNSliceCounter uint64, rttVeto float64, packetLossSafety bool, yolo bool) DecisionFunc {
 	return func(prevDecision Decision, predictedNextStats, lastNextStats, lastDirectStats *Stats) Decision {
-		// If we've already decided on multipath, then don't change the reason
-		if IsMultipath(prevDecision) {
-			return prevDecision
-		}
-
 		actualImprovement := lastDirectStats.RTT - lastNextStats.RTT
 
 		if prevDecision.OnNetworkNext {
@@ -321,6 +316,11 @@ func DecideCommitted(onNNLastSlice bool, maxObservedSlices uint8, yolo bool, com
 // If multipath isn't enabled then the decision isn't affected
 func DecideMultipath(rttMultipath bool, jitterMultipath bool, packetLossMultipath bool, rttThreshold float64, packetLossThreshold float64) DecisionFunc {
 	return func(prevDecision Decision, predictedNextStats, lastNextStats, lastDirectStats *Stats) Decision {
+		// If the route decision was already set to veto, don't unveto it
+		if IsVetoed(prevDecision) {
+			return prevDecision
+		}
+
 		decision := prevDecision
 
 		// If we've already decided on multipath, then don't change the reason
