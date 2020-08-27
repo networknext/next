@@ -192,14 +192,17 @@ func DecideVeto(onNNSliceCounter uint64, rttVeto float64, packetLossSafety bool,
 				return Decision{false, DecisionVetoRTT}
 			}
 
-			// Whether or not the network next route made the packet loss worse, if the buyer has packet loss safety enabled
-			if onNNSliceCounter > 2 && packetLossSafety && lastNextStats.PacketLoss > lastDirectStats.PacketLoss {
-				// If the buyer has YouOnlyLiveOnce safety setting enabled, add that reason to the DecisionReason
-				if yolo {
-					return Decision{false, DecisionVetoPacketLoss | DecisionVetoYOLO}
-				}
+			// Only check the packet loss veto if it's not a multipath session
+			if !IsMultipath(prevDecision) {
+				// Whether or not the network next route made the packet loss worse, if the buyer has packet loss safety enabled
+				if onNNSliceCounter > 2 && packetLossSafety && lastNextStats.PacketLoss > lastDirectStats.PacketLoss {
+					// If the buyer has YouOnlyLiveOnce safety setting enabled, add that reason to the DecisionReason
+					if yolo {
+						return Decision{false, DecisionVetoPacketLoss | DecisionVetoYOLO}
+					}
 
-				return Decision{false, DecisionVetoPacketLoss}
+					return Decision{false, DecisionVetoPacketLoss}
+				}
 			}
 
 			// If the route isn't vetoed, then it stays on network next
