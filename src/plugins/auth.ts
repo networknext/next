@@ -1,5 +1,5 @@
-import Vue from 'vue'
 import store from '@/store'
+import router from '@/router'
 import { Auth0Client } from '@auth0/auth0-spa-js'
 import { UserProfile } from '@/components/types/AuthTypes.ts'
 
@@ -25,7 +25,9 @@ export class AuthService {
 
   public login () {
     this.authClient
-      .loginWithPopup()
+      .loginWithPopup({
+        redirect_uri: router.currentRoute.fullPath
+      })
       .then(() => {
         this.processAuthentication()
       })

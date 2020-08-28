@@ -30,8 +30,8 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
   next()
 })
 
-const clientID = 'Kx0mbNIMZtMNA71vf9iatCp3N6qi1GfL'
-const domain = 'networknext.auth0.com'
+const clientID = process.env.VUE_APP_AUTH0_CLIENTID
+const domain = process.env.VUE_APP_AUTH0_DOMAIN
 
 Vue.use(AuthPlugin, {
   domain: domain,

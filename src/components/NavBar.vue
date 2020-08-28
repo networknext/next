@@ -132,8 +132,8 @@ export default class NavBar extends Vue {
   }
 
   private fetchPortalVersion (): void {
-    if (process.env.VUE_APP_MODE) {
-      fetch('/rpc', {
+    if (process.env.VUE_APP_MODE === 'dev') {
+      fetch('/version', {
         headers: {
           Accept: 'application/json',
           'Accept-Encoding': 'gzip',
