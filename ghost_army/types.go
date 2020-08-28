@@ -3,6 +3,8 @@ package ghostarmy
 
 import (
 	"github.com/networknext/backend/encoding"
+	"github.com/networknext/backend/routing"
+	"github.com/networknext/backend/transport"
 )
 
 // Entry is the contents of the csv
@@ -242,4 +244,44 @@ func (self *Entry) MarshalBinary() ([]byte, error) {
 	encoding.WriteUint64(bin, &index, uint64(self.Userhash))
 
 	return bin, nil
+}
+
+func (self *Entry) Into(data *transport.SessionPortalData) {
+	// meta
+	{
+		data.Meta.ID = uint64(self.SessionID)
+		data.Meta.UserHash = uint64(self.Userhash)
+		data.Meta.DatacenterName = "TODO"   // TODO
+		data.Meta.DatacenterAlias = "TODO"  // TODO
+		data.Meta.OnNetworkNext = self.Next // TODO check
+		data.Meta.NextRTT = self.NextRTT
+		data.Meta.DirectRTT = self.DirectRTT
+
+		var deltaRTT float64
+		if !self.Next {
+			deltaRTT = 0
+		} else {
+			deltaRTT = self.DirectRTT - self.NextRTT
+			if self.NextRTT == 0 || deltaRTT < 0 {
+				deltaRTT = 0
+			}
+		}
+
+		data.Meta.DeltaRTT = deltaRTT
+
+		data.Meta.Location = routing.Location{} // TODO
+
+		data.Meta.ClientAddr = "TODO" // TODO
+		data.Meta.ServerAddr = "TODO" // TODO
+		data.Meta.Hops = make([]transport.RelayHop, len(self.NextRelays))
+		for i, id := range self.NextRelays {
+			data.Meta.Hops[i].ID = uint64(id)
+			data.Meta.Hops[i].Name = "TODO" // TODO
+		}
+		data.Meta.SDK = "1.2.3"                                           // TODO get valid version
+		data.Meta.Connection = 0                                          // TODO what is this?
+		data.Meta.NearbyRelays = make([]transport.NearRelayPortalData, 0) // TODO somehow come up with a list
+		data.Meta.Platform = 0                                            // TODO what is this?
+		data.Meta.BuyerID = uint64(self.BuyerID)
+	}
 }

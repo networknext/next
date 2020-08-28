@@ -11,6 +11,7 @@ import (
 
 	"github.com/networknext/backend/encoding"
 	ghostarmy "github.com/networknext/backend/ghost_army"
+	"github.com/networknext/backend/transport"
 	"github.com/networknext/backend/transport/pubsub"
 )
 
@@ -42,17 +43,19 @@ func main() {
 
 	fmt.Printf("reading in %d entries\n", count)
 
-	entries := make([]ghostarmy.Entry, count)
+	slices := make([]transport.SessionPortalData, count)
 	for i := uint64(0); i < count; i++ {
-		entry := &entries[i]
+		var entry ghostarmy.Entry
 		if !entry.ReadFrom(bin, &index) {
 			fmt.Printf("can't read entry at index %d\n", i)
 		}
+
+		entry.Into(&slices[i])
 	}
 
 	// publish to zero mq, sleep for 10 seconds, repeat
 
-	publishChan := make(chan ghostarmy.Entry)
+	publishChan := make(chan transport.SessionPortalData)
 
 	ctx := context.Background()
 
@@ -90,13 +93,13 @@ func main() {
 	go func() {
 		for {
 			select {
-			case entry := <-publishChan:
-				sessionBytes, err := entry.MarshalBinary()
+			case slice := <-publishChan:
+				sessionBytes, err := slice.MarshalBinary()
 				if err != nil {
+					fmt.Printf("could not marshal binary for slice session id %d", slice.Meta.ID)
 					continue
 				}
 				portalPublisher.Publish(pubsub.TopicPortalCruncherSessionData, sessionBytes)
-				fmt.Printf("%s\n", time.Unix(entry.Timestamp, 0).String())
 			case <-ctx.Done():
 				return
 			}
