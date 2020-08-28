@@ -331,6 +331,10 @@ dev-analytics: build-analytics ## runs a local analytics service
 dev-portal-cruncher: build-portal-cruncher ## runs a local portal cruncher
 	@HTTP_PORT=42000 CRUNCHER_PORT=5555 ./dist/portal_cruncher
 
+.PHONY: dev-ghost-army
+dev-ghost-army: build-ghost-army ## runs a local ghost army supplier
+	@CRUNCHER_PORT=5555 ./dist/ghost_army ./dist/ghost_army.bin
+
 .PHONY: dev-reference-backend3
 dev-reference-backend3: ## runs a local reference backend (sdk3)
 	$(GO) run reference/backend3/backend3.go

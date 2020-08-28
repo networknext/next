@@ -29,160 +29,168 @@ func (self sortableEntries) Less(i, j int) bool {
 }
 
 func main() {
-	if len(os.Args) != 3 {
-		fmt.Println("you must supply arguments (input file name, output file name)")
+	if len(os.Args) < 3 {
+		fmt.Println("you must supply at least 2 arguments (input file name, output file name)")
 		os.Exit(1)
 	}
 
-	infile := os.Args[1]
-	outfile := os.Args[2]
-
-	// read in exported data
-	inputfile, err := os.Open(infile)
-	if err != nil {
-		fmt.Printf("could not open '%s': %v\n", infile, err)
-		os.Exit(1)
+	infiles := make([]string, len(os.Args)-2)
+	for i := 1; i < len(os.Args)-1; i++ {
+		infiles[i-1] = os.Args[i]
 	}
-	defer inputfile.Close()
 
-	lines, err := csv.NewReader(inputfile).ReadAll()
-	if err != nil {
-		fmt.Printf("could not read csv data: %v\n", err)
-		os.Exit(1)
-	}
+	outfile := os.Args[len(os.Args)-1]
 
 	// convert to binary
 
 	var entries sortableEntries
 	entries = make([]ghostarmy.Entry, 0)
-	for lineNum, line := range lines {
-		if lineNum == 0 {
-			continue
+
+	for offset, infile := range infiles {
+		// read in exported data
+		inputfile, err := os.Open(infile)
+		if err != nil {
+			fmt.Printf("could not open '%s': %v\n", infile, err)
+			os.Exit(1)
 		}
-		var err error
-		var entry ghostarmy.Entry
+		defer inputfile.Close()
 
-		i := 0
+		lines, err := csv.NewReader(inputfile).ReadAll()
+		if err != nil {
+			fmt.Printf("could not read csv data: %v\n", err)
+			os.Exit(1)
+		}
 
-		// line into Entry
-		entry.SessionID, err = strconv.ParseInt(line[i], 10, 64)
-		checkErr(err, lineNum)
-		i++
+		for lineNum, line := range lines {
+			if lineNum == 0 {
+				continue
+			}
+			var err error
+			var entry ghostarmy.Entry
 
-		t, err := time.Parse("2006-1-2 15:04:05", line[i])
-		checkErr(err, lineNum)
-		i++
+			i := 0
 
-		year, month, day := t.Date()
-		t2 := time.Date(year, month, day, 0, 0, 0, 0, t.Location())
-		secsIntoDay := int64(t.Sub(t2).Seconds())
-
-		entry.Timestamp = secsIntoDay
-
-		entry.BuyerID, err = strconv.ParseInt(line[i], 10, 64)
-		checkErr(err, lineNum)
-		i++
-
-		entry.SliceNumber, err = strconv.ParseInt(line[i], 10, 64)
-		checkErr(err, lineNum)
-		i++
-
-		entry.Next, err = strconv.ParseBool(line[i])
-		checkErr(err, lineNum)
-		i++
-
-		entry.DirectRTT, err = strconv.ParseFloat(line[i], 64)
-		checkErr(err, lineNum)
-		i++
-
-		entry.DirectJitter, err = strconv.ParseFloat(line[i], 64)
-		checkErr(err, lineNum)
-		i++
-
-		entry.DirectPacketLoss, err = strconv.ParseFloat(line[i], 64)
-		checkErr(err, lineNum)
-		i++
-
-		entry.NextRTT, err = strconv.ParseFloat(line[i], 64)
-		checkErr(err, lineNum)
-		i++
-
-		entry.NextJitter, err = strconv.ParseFloat(line[i], 64)
-		checkErr(err, lineNum)
-		i++
-
-		entry.NextPacketLoss, err = strconv.ParseFloat(line[i], 64)
-		checkErr(err, lineNum)
-		i++
-
-		err = json.Unmarshal([]byte(line[i]), &entry.NextRelays)
-		checkErr(err, lineNum)
-		i++
-
-		entry.TotalPrice, err = strconv.ParseInt(line[i], 10, 64)
-		checkErr(err, lineNum)
-		i++
-
-		if line[i] != "" {
-			ctspl, err := strconv.ParseFloat(line[i], 64)
+			// line into Entry
+			entry.SessionID, err = strconv.ParseInt(line[i], 10, 64)
 			checkErr(err, lineNum)
-			entry.ClientToServerPacketsLost = int64(ctspl)
-		}
-		i++
+			i++
 
-		if line[i] != "" {
-			stcpl, err := strconv.ParseFloat(line[i], 64)
+			t, err := time.Parse("2006-1-2 15:04:05", line[i])
 			checkErr(err, lineNum)
-			entry.ServerToClientPacketsLost = int64(stcpl)
+			i++
+
+			year, month, day := t.Date()
+			t2 := time.Date(year, month, day, 0, 0, 0, 0, t.Location())
+			t2.AddDate(0, 0, offset)
+			secsIntoDay := int64(t.Sub(t2).Seconds())
+
+			entry.Timestamp = secsIntoDay
+
+			entry.BuyerID, err = strconv.ParseInt(line[i], 10, 64)
+			checkErr(err, lineNum)
+			i++
+
+			entry.SliceNumber, err = strconv.ParseInt(line[i], 10, 64)
+			checkErr(err, lineNum)
+			i++
+
+			entry.Next, err = strconv.ParseBool(line[i])
+			checkErr(err, lineNum)
+			i++
+
+			entry.DirectRTT, err = strconv.ParseFloat(line[i], 64)
+			checkErr(err, lineNum)
+			i++
+
+			entry.DirectJitter, err = strconv.ParseFloat(line[i], 64)
+			checkErr(err, lineNum)
+			i++
+
+			entry.DirectPacketLoss, err = strconv.ParseFloat(line[i], 64)
+			checkErr(err, lineNum)
+			i++
+
+			entry.NextRTT, err = strconv.ParseFloat(line[i], 64)
+			checkErr(err, lineNum)
+			i++
+
+			entry.NextJitter, err = strconv.ParseFloat(line[i], 64)
+			checkErr(err, lineNum)
+			i++
+
+			entry.NextPacketLoss, err = strconv.ParseFloat(line[i], 64)
+			checkErr(err, lineNum)
+			i++
+
+			err = json.Unmarshal([]byte(line[i]), &entry.NextRelays)
+			checkErr(err, lineNum)
+			i++
+
+			entry.TotalPrice, err = strconv.ParseInt(line[i], 10, 64)
+			checkErr(err, lineNum)
+			i++
+
+			if line[i] != "" {
+				ctspl, err := strconv.ParseFloat(line[i], 64)
+				checkErr(err, lineNum)
+				entry.ClientToServerPacketsLost = int64(ctspl)
+			}
+			i++
+
+			if line[i] != "" {
+				stcpl, err := strconv.ParseFloat(line[i], 64)
+				checkErr(err, lineNum)
+				entry.ServerToClientPacketsLost = int64(stcpl)
+			}
+			i++
+
+			entry.Committed, err = strconv.ParseBool(line[i])
+			checkErr(err, lineNum)
+			i++
+
+			entry.Flagged, err = strconv.ParseBool(line[i])
+			checkErr(err, lineNum)
+			i++
+
+			entry.Multipath, err = strconv.ParseBool(line[i])
+			checkErr(err, lineNum)
+			i++
+
+			entry.NextBytesUp, err = strconv.ParseInt(line[i], 10, 64)
+			checkErr(err, lineNum)
+			i++
+
+			entry.NextBytesDown, err = strconv.ParseInt(line[i], 10, 64)
+			checkErr(err, lineNum)
+			i++
+
+			entry.Initial, err = strconv.ParseBool(line[i])
+			checkErr(err, lineNum)
+			i++
+
+			entry.DatacenterID, err = strconv.ParseInt(line[i], 10, 64)
+			checkErr(err, lineNum)
+			i++
+
+			entry.RttReduction, err = strconv.ParseBool(line[i])
+			checkErr(err, lineNum)
+			i++
+
+			entry.PacketLossReduction, err = strconv.ParseBool(line[i])
+			checkErr(err, lineNum)
+			i++
+
+			err = json.Unmarshal([]byte(line[i]), &entry.NextRelaysPrice)
+			checkErr(err, lineNum)
+			i++
+
+			entry.Userhash, err = strconv.ParseInt(line[i], 10, 64)
+			checkErr(err, lineNum)
+			i++
+
+			// push back entry
+			entries = append(entries, entry)
 		}
-		i++
-
-		entry.Committed, err = strconv.ParseBool(line[i])
-		checkErr(err, lineNum)
-		i++
-
-		entry.Flagged, err = strconv.ParseBool(line[i])
-		checkErr(err, lineNum)
-		i++
-
-		entry.Multipath, err = strconv.ParseBool(line[i])
-		checkErr(err, lineNum)
-		i++
-
-		entry.NextBytesUp, err = strconv.ParseInt(line[i], 10, 64)
-		checkErr(err, lineNum)
-		i++
-
-		entry.NextBytesDown, err = strconv.ParseInt(line[i], 10, 64)
-		checkErr(err, lineNum)
-		i++
-
-		entry.Initial, err = strconv.ParseBool(line[i])
-		checkErr(err, lineNum)
-		i++
-
-		entry.DatacenterID, err = strconv.ParseInt(line[i], 10, 64)
-		checkErr(err, lineNum)
-		i++
-
-		entry.RttReduction, err = strconv.ParseBool(line[i])
-		checkErr(err, lineNum)
-		i++
-
-		entry.PacketLossReduction, err = strconv.ParseBool(line[i])
-		checkErr(err, lineNum)
-		i++
-
-		err = json.Unmarshal([]byte(line[i]), &entry.NextRelaysPrice)
-		checkErr(err, lineNum)
-		i++
-
-		entry.Userhash, err = strconv.ParseInt(line[i], 10, 64)
-		checkErr(err, lineNum)
-		i++
-
-		// push back entry
-		entries = append(entries, entry)
 	}
 
 	// sort on timestamp
@@ -205,7 +213,7 @@ func main() {
 
 	// export
 
-	err = ioutil.WriteFile(outfile, bin, 0644)
+	err := ioutil.WriteFile(outfile, bin, 0644)
 	if err != nil {
 		fmt.Printf("could not create output file '%s': %v\n", outfile, err)
 	}

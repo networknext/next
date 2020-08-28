@@ -110,23 +110,26 @@ func main() {
 		index := 0
 		var startTime int64 = 0
 
+		dateOffset := time.Now()
 		for {
 			begin := time.Now()
 			endIndex := (startTime + 10) / 10
 
-			if endIndex > SlicesInDay {
+			if endIndex > SlicesInDay*3 {
 				startTime = 10
 			}
 
 			for slices[index].Slice.Timestamp.Unix() < startTime {
-				fmt.Printf("skipping entry at index %d\n", index)
 				index++
 				index = index % len(slices)
 			}
 
 			for slices[index].Slice.Timestamp.Unix() < startTime+10 {
-				fmt.Printf("publishing entry at index %d\n", index)
-				publishChan <- slices[index]
+				slice := slices[index]
+
+				slice.Slice.Timestamp = dateOffset.Add(time.Second*-10 + time.Second*time.Duration(slice.Slice.Timestamp.Unix()))
+
+				publishChan <- slice
 				index++
 				index = index % len(slices)
 			}
