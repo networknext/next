@@ -281,10 +281,10 @@ func (self *Entry) Into(data *transport.SessionPortalData) {
 			meta.Hops[i].ID = uint64(id)
 			meta.Hops[i].Name = "TODO" // TODO
 		}
-		meta.SDK = "1.2.3"                                           // TODO get valid version
-		meta.Connection = 0                                          // TODO what is this?
+		meta.SDK = "4.0.0" // TODO get valid version
+		meta.Connection = transport.ParseConnectionType("wired")
 		meta.NearbyRelays = make([]transport.NearRelayPortalData, 0) // TODO somehow come up with a list
-		meta.Platform = 0                                            // TODO what is this?
+		meta.Platform = transport.ParsePlatformType("Windows")
 		meta.BuyerID = uint64(self.BuyerID)
 	}
 
