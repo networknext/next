@@ -1161,12 +1161,8 @@ func GetNextRoute(routeMatrix RouteProvider, nearRelayData []routing.NearRelayDa
 
 	// Now that we've selected a route, populate it with all of the necessary data
 	// We do this at the end to avoid populating data on routes we won't use
-	route.RelayAddrs = make([]net.UDPAddr, len(route.RelayIDs))
-	route.RelayNames = make([]string, len(route.RelayIDs))
-	route.RelayPublicKeys = make([][]byte, len(route.RelayIDs))
-	route.RelaySellers = make([]routing.Seller, len(route.RelayIDs))
-	for i, relayID := range route.RelayIDs {
-		relay, err := storer.Relay(relayID)
+	for i := 0; i < route.NumRelays; i++ {
+		relay, err := storer.Relay(route.RelayIDs[i])
 		if err != nil {
 			metrics.ErrorMetrics.RouteSelectFailure.Add(1)
 			return nil
@@ -1189,7 +1185,7 @@ func CalculateNextBytesUpAndDown(envelopeKbpsUp uint64, envelopeKbpsDown uint64,
 
 func CalculateTotalPriceNibblins(chosenRoute *routing.Route, envelopeBytesUp uint64, envelopeBytesDown uint64) routing.Nibblin {
 
-	if len(chosenRoute.RelayIDs) == 0 {
+	if chosenRoute.NumRelays == 0 {
 		return 0
 	}
 
@@ -1208,17 +1204,17 @@ func CalculateTotalPriceNibblins(chosenRoute *routing.Route, envelopeBytesUp uin
 }
 
 func CalculateRouteRelaysPrice(chosenRoute *routing.Route, envelopeBytesUp uint64, envelopeBytesDown uint64) []routing.Nibblin {
-	if len(chosenRoute.RelayIDs) == 0 {
+	if chosenRoute.NumRelays == 0 {
 		return nil
 	}
 
-	relayPrices := make([]routing.Nibblin, len(chosenRoute.RelayIDs))
+	relayPrices := make([]routing.Nibblin, chosenRoute.NumRelays)
 
 	envelopeUpGB := float64(envelopeBytesUp) / 1000000000.0
 	envelopeDownGB := float64(envelopeBytesDown) / 1000000000.0
 
-	for i, seller := range chosenRoute.RelaySellers {
-		relayPriceNibblins := float64(seller.EgressPriceNibblinsPerGB) * (envelopeUpGB + envelopeDownGB)
+	for i := 0; i < len(relayPrices); i++ {
+		relayPriceNibblins := float64(chosenRoute.RelaySellers[i].EgressPriceNibblinsPerGB) * (envelopeUpGB + envelopeDownGB)
 		relayPrices[i] = routing.Nibblin(relayPriceNibblins)
 	}
 
@@ -1276,7 +1272,7 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, params *PostSessi
 
 	isMultipath := routing.IsMultipath(params.prevRouteDecision)
 
-	hops := make([]RelayHop, len(params.chosenRoute.RelayIDs))
+	hops := make([]RelayHop, params.chosenRoute.NumRelays)
 	for i := range hops {
 		hops[i] = RelayHop{
 			ID:   params.chosenRoute.RelayIDs[i],
@@ -1378,7 +1374,7 @@ func buildBillingEntry(params *PostSessionUpdateParams) *billing.BillingEntry {
 	isMultipath := routing.IsMultipath(params.prevRouteDecision)
 
 	nextRelays := [billing.BillingEntryMaxRelays]uint64{}
-	for i := 0; i < len(params.chosenRoute.RelayIDs) && i < len(nextRelays); i++ {
+	for i := 0; i < len(nextRelays); i++ {
 		nextRelays[i] = params.chosenRoute.RelayIDs[i]
 	}
 
@@ -1399,7 +1395,7 @@ func buildBillingEntry(params *PostSessionUpdateParams) *billing.BillingEntry {
 		NextRTT:                   float32(params.lastNextStats.RTT),
 		NextJitter:                float32(params.lastNextStats.Jitter),
 		NextPacketLoss:            float32(params.lastNextStats.PacketLoss),
-		NumNextRelays:             uint8(len(params.chosenRoute.RelayIDs)),
+		NumNextRelays:             uint8(params.chosenRoute.NumRelays),
 		NextRelays:                nextRelays,
 		TotalPrice:                uint64(params.totalPriceNibblins),
 		ClientToServerPacketsLost: params.packet.PacketsLostClientToServer,
@@ -1526,7 +1522,7 @@ func sendRouteResponse(w io.Writer, chosenRoute *routing.Route, params *SessionU
 	if routeDecision.OnNetworkNext {
 		var token routing.Token
 
-		relayTokens := make([]routing.RelayToken, len(chosenRoute.RelayIDs))
+		relayTokens := make([]routing.RelayToken, chosenRoute.NumRelays)
 		for i := range relayTokens {
 			relayTokens[i] = routing.RelayToken{
 				ID:        chosenRoute.RelayIDs[i],
