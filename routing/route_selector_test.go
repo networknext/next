@@ -12,7 +12,8 @@ import (
 func TestSelectRoutesByRandomDestRelay(t *testing.T) {
 	routes := []routing.Route{
 		{
-			RelayIDs: []uint64{
+			NumRelays: 3,
+			RelayIDs: [routing.MaxRelays]uint64{
 				1, 2, 3,
 			},
 			Stats: routing.Stats{
@@ -22,7 +23,8 @@ func TestSelectRoutesByRandomDestRelay(t *testing.T) {
 			},
 		},
 		{
-			RelayIDs: []uint64{
+			NumRelays: 4,
+			RelayIDs: [routing.MaxRelays]uint64{
 				4, 2, 5, 3,
 			},
 			Stats: routing.Stats{
@@ -32,7 +34,8 @@ func TestSelectRoutesByRandomDestRelay(t *testing.T) {
 			},
 		},
 		{
-			RelayIDs: []uint64{
+			NumRelays: 2,
+			RelayIDs: [routing.MaxRelays]uint64{
 				1, 3,
 			},
 			Stats: routing.Stats{
