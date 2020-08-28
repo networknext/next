@@ -45,5 +45,10 @@ blocks:
         - name: Bootstrap Script
           commands:
             - make publish-bootstrap-script-prod
+        - name: Ghost Army
+          commands:
+            - make build-ghost-army-artifacts-prod
+            - make publish-ghost-army-artifacts-prod
+            - make publish-ghost-army-bootstrap-script-prod
       secrets:
         - name: google-cloud-platform-prod
