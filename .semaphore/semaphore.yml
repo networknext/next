@@ -22,12 +22,12 @@ blocks:
         - name: Frontend Unit
           commands:
             - npm run test:unit
-  - name: E2E Tests
-    task:
-      jobs:
-        - name: Frontend E2E
-          commands:
-            - npm run test:e2e
+  ## - name: E2E Tests
+    ## task:
+      ## jobs:
+        ## - name: Frontend E2E
+          ## commands:
+            ## - npm run test:e2e
 promotions:
   - name: Development Deployment
     pipeline_file: development-deploy.yml
