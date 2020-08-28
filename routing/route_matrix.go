@@ -2,8 +2,10 @@ package routing
 
 import (
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"io"
 	"io/ioutil"
 	"math"
@@ -52,7 +54,11 @@ type RouteMatrix struct {
 	analysisBuffer      []byte
 	analysisBufferMutex sync.RWMutex
 
-	routeCache        map[uint64]Route
+	routeCache map[uint64]struct {
+		entryIndex int
+		routeIndex int
+		reversed   bool
+	}
 	relayAddressCache []*net.UDPAddr
 }
 
@@ -187,16 +193,41 @@ func (m *RouteMatrix) GetAcceptableRoutes(near []NearRelayData, destIDs []uint64
 	}
 
 	// Now that we have the best RTT, check if the previous route is still cached and acceptable
-	if prevRoute, ok := m.routeCache[prevRouteHash]; ok && prevRoute.NumRelays > 0 {
-		// Previous route was found, but we still need to update the RTT
-		// to include the client hop to the near relay
-		for _, nearRelay := range near {
-			if nearRelay.ID == prevRoute.RelayIDs[0] {
-				prevRoute.Stats.RTT += math.Ceil(nearRelay.ClientStats.RTT)
+	if prevRouteData, ok := m.routeCache[prevRouteHash]; ok {
+		entry := &m.Entries[prevRouteData.entryIndex]
+		routeRTT := entry.RouteRTT[prevRouteData.routeIndex]
+		numRelays := int(entry.RouteNumRelays[prevRouteData.routeIndex])
 
-				if int32(prevRoute.Stats.RTT) <= bestRouteRTT+rttEpsilon {
-					return []Route{prevRoute}, nil
+		routeRelayIDs := [MaxRelays]uint64{}
+		for i := 0; i < numRelays; i++ {
+			relayIndex := entry.RouteRelays[prevRouteData.routeIndex][i]
+			relayID := m.RelayIDs[relayIndex]
+
+			if !prevRouteData.reversed {
+				routeRelayIDs[i] = relayID
+			} else {
+				routeRelayIDs[numRelays-1-i] = relayID
+			}
+		}
+
+		// Once we create the relay array, we need to find the near relay in the near slice
+		// so that we can apply the RTT for the client's initial hop
+		for _, nearRelay := range near {
+			if nearRelay.ID == routeRelayIDs[0] {
+				routeRTT += int32(math.Ceil(nearRelay.ClientStats.RTT))
+				if routeRTT > bestRouteRTT+rttEpsilon {
+					break
 				}
+
+				return []Route{
+					{
+						NumRelays: numRelays,
+						RelayIDs:  routeRelayIDs,
+						Stats: Stats{
+							RTT: float64(routeRTT),
+						},
+					},
+				}, nil
 			}
 		}
 	}
@@ -738,7 +769,16 @@ func (m *RouteMatrix) UpdateRouteCache() {
 		totalNumRoutes += m.Entries[entryIndex].NumRoutes
 	}
 
-	m.routeCache = make(map[uint64]Route, totalNumRoutes)
+	m.routeCache = make(map[uint64]struct {
+		entryIndex int
+		routeIndex int
+		reversed   bool
+	}, totalNumRoutes)
+
+	// Prefer to use a fnv64 hash directly on the relays rather than
+	// creating a route struct each time to avoid unnecessary allocations
+	fnv64 := fnv.New64()
+	id := make([]byte, 8)
 
 	for entryIndex := 0; entryIndex < len(m.Entries); entryIndex++ {
 		entry := &m.Entries[entryIndex]
@@ -746,7 +786,6 @@ func (m *RouteMatrix) UpdateRouteCache() {
 		for routeIndex := 0; routeIndex < int(entry.NumRoutes); routeIndex++ {
 			routeRelayIDs := [MaxRelays]uint64{}
 			routeRelayIDsReversed := [MaxRelays]uint64{}
-			routeRTT := entry.RouteRTT[routeIndex]
 
 			numRelays := int(entry.RouteNumRelays[routeIndex])
 			for relayIndex := 0; relayIndex < numRelays; relayIndex++ {
@@ -754,18 +793,31 @@ func (m *RouteMatrix) UpdateRouteCache() {
 				routeRelayIDsReversed[numRelays-1-relayIndex] = m.RelayIDs[entry.RouteRelays[routeIndex][relayIndex]]
 			}
 
-			route := Route{
-				NumRelays: numRelays,
-				RelayIDs:  routeRelayIDs,
-				Stats: Stats{
-					RTT: float64(routeRTT),
-				},
+			for i := 0; i < numRelays; i++ {
+				binary.LittleEndian.PutUint64(id, routeRelayIDs[i])
+				fnv64.Write(id)
 			}
 
-			m.routeCache[route.Hash64()] = route
+			m.routeCache[fnv64.Sum64()] = struct {
+				entryIndex int
+				routeIndex int
+				reversed   bool
+			}{entryIndex: entryIndex, routeIndex: routeIndex, reversed: false}
 
-			route.RelayIDs = routeRelayIDsReversed
-			m.routeCache[route.Hash64()] = route
+			fnv64.Reset()
+
+			for i := 0; i < numRelays; i++ {
+				binary.LittleEndian.PutUint64(id, routeRelayIDsReversed[i])
+				fnv64.Write(id)
+			}
+
+			m.routeCache[fnv64.Sum64()] = struct {
+				entryIndex int
+				routeIndex int
+				reversed   bool
+			}{entryIndex: entryIndex, routeIndex: routeIndex, reversed: true}
+
+			fnv64.Reset()
 		}
 	}
 }
