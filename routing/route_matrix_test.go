@@ -1655,6 +1655,10 @@ func BenchmarkGetAcceptableRoutes(b *testing.B) {
 	from := []routing.NearRelayData{{ID: 2836356269}}
 	to := []uint64{3263834878, 1500948990}
 
+	for i := 0; i < len(routeMatrix.RelayMaxSessionCounts); i++ {
+		routeMatrix.RelayMaxSessionCounts[i] = 3000
+	}
+
 	b.ReportAllocs()
 	b.ResetTimer()
 
@@ -1673,6 +1677,10 @@ func BenchmarkUpdateRouteCache(b *testing.B) {
 
 	var routeMatrix routing.RouteMatrix
 	costMatrix.Optimize(&routeMatrix, 1)
+
+	for i := 0; i < len(routeMatrix.RelayMaxSessionCounts); i++ {
+		routeMatrix.RelayMaxSessionCounts[i] = 3000
+	}
 
 	b.ReportAllocs()
 	b.ResetTimer()
