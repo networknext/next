@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/csv"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -20,12 +21,56 @@ const (
 )
 
 func main() {
-	if len(os.Args) != 2 {
-		fmt.Println("you must supply an argument (input file name)")
+	if len(os.Args) != 3 {
+		fmt.Println("you must supply required arguments (input file name, datacenter csv)")
 		os.Exit(1)
 	}
 
 	infile := os.Args[1]
+	datacenterCSV := os.Args[2]
+
+	// parse datacenter csv
+	inputfile, err := os.Open(datacenterCSV)
+	if err != nil {
+		fmt.Printf("could not open '%s': %v\n", datacenterCSV, err)
+		os.Exit(1)
+	}
+	defer inputfile.Close()
+
+	lines, err := csv.NewReader(inputfile).ReadAll()
+	if err != nil {
+		fmt.Printf("could not read csv data: %v\n", err)
+		os.Exit(1)
+	}
+
+	var dcmap ghostarmy.DatacenterMap
+	dcmap = make(map[uint64]ghostarmy.StrippedDatacenter)
+
+	for lineNum, line := range lines {
+		if lineNum == 0 {
+			continue
+		}
+
+		var datacenter ghostarmy.StrippedDatacenter
+		datacenter.Name = line[0]
+		id, err := strconv.ParseUint(line[1], 10, 64)
+		if err != nil {
+			fmt.Printf("could not parse id for dc %s", datacenter.Name)
+			continue
+		}
+		datacenter.Lat, err = strconv.ParseFloat(line[2], 64)
+		if err != nil {
+			fmt.Printf("could not parse lat for dc %s", datacenter.Name)
+			continue
+		}
+		datacenter.Long, err = strconv.ParseFloat(line[3], 64)
+		if err != nil {
+			fmt.Printf("could not parse long for dc %s", datacenter.Name)
+			continue
+		}
+
+		dcmap[id] = datacenter
+	}
 
 	// read binary file
 	bin, err := ioutil.ReadFile(infile)
@@ -50,7 +95,7 @@ func main() {
 			fmt.Printf("can't read entry at index %d\n", i)
 		}
 
-		entry.Into(&slices[i])
+		entry.Into(&slices[i], dcmap)
 	}
 
 	// publish to zero mq, sleep for 10 seconds, repeat
@@ -117,6 +162,7 @@ func main() {
 			if endIndex > SlicesInDay*3 {
 				startTime = 10
 				dateOffset = time.Now()
+				index = 0
 			}
 
 			for slices[index].Slice.Timestamp.Unix() < startTime {

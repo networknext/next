@@ -9,6 +9,14 @@ import (
 	"github.com/networknext/backend/transport"
 )
 
+type StrippedDatacenter struct {
+	Name string
+	Lat  float64
+	Long float64
+}
+
+type DatacenterMap = map[uint64]StrippedDatacenter
+
 // Entry is the contents of the csv
 type Entry struct {
 	SessionID                 int64
@@ -248,15 +256,26 @@ func (self *Entry) MarshalBinary() ([]byte, error) {
 	return bin, nil
 }
 
-func (self *Entry) Into(data *transport.SessionPortalData) {
+func (self *Entry) Into(data *transport.SessionPortalData, dcmap DatacenterMap) {
+	var dc StrippedDatacenter
+	if v, ok := dcmap[uint64(self.DatacenterID)]; ok {
+		dc.Name = v.Name
+		dc.Lat = v.Lat
+		dc.Long = v.Long
+	} else {
+		dc.Name = "Unknown"
+		dc.Lat = 0.0
+		dc.Long = 0.0
+	}
+
 	// meta
 	{
 		meta := &data.Meta
 		meta.ID = uint64(self.SessionID)
 		meta.UserHash = uint64(self.Userhash)
-		meta.DatacenterName = "TODO"   // TODO
-		meta.DatacenterAlias = "TODO"  // TODO
-		meta.OnNetworkNext = self.Next // TODO check
+		meta.DatacenterName = dc.Name
+		meta.DatacenterAlias = ""
+		meta.OnNetworkNext = self.Next
 		meta.NextRTT = self.NextRTT
 		meta.DirectRTT = self.DirectRTT
 
@@ -314,7 +333,7 @@ func (self *Entry) Into(data *transport.SessionPortalData) {
 	// map point
 	{
 		pt := &data.Point
-		pt.Latitude = 0.0  // TODO what should this be?
-		pt.Longitude = 0.0 // TODO ditto
+		pt.Latitude = dc.Lat
+		pt.Longitude = dc.Long
 	}
 }
