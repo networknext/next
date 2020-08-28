@@ -300,7 +300,7 @@ func (self *Entry) Into(data *transport.SessionPortalData, dcmap DatacenterMap) 
 			meta.Hops[i].ID = uint64(id)
 			meta.Hops[i].Name = "TODO" // TODO
 		}
-		meta.SDK = "4.0.0" // TODO get valid version
+		meta.SDK = "4.0.0"
 		meta.Connection = transport.ParseConnectionType("wired")
 		meta.NearbyRelays = make([]transport.NearRelayPortalData, 0) // TODO somehow come up with a list
 		meta.Platform = transport.ParsePlatformType("Windows")
