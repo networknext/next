@@ -2,6 +2,8 @@
 package ghostarmy
 
 import (
+	"time"
+
 	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/transport"
@@ -249,13 +251,14 @@ func (self *Entry) MarshalBinary() ([]byte, error) {
 func (self *Entry) Into(data *transport.SessionPortalData) {
 	// meta
 	{
-		data.Meta.ID = uint64(self.SessionID)
-		data.Meta.UserHash = uint64(self.Userhash)
-		data.Meta.DatacenterName = "TODO"   // TODO
-		data.Meta.DatacenterAlias = "TODO"  // TODO
-		data.Meta.OnNetworkNext = self.Next // TODO check
-		data.Meta.NextRTT = self.NextRTT
-		data.Meta.DirectRTT = self.DirectRTT
+		meta := &data.Meta
+		meta.ID = uint64(self.SessionID)
+		meta.UserHash = uint64(self.Userhash)
+		meta.DatacenterName = "TODO"   // TODO
+		meta.DatacenterAlias = "TODO"  // TODO
+		meta.OnNetworkNext = self.Next // TODO check
+		meta.NextRTT = self.NextRTT
+		meta.DirectRTT = self.DirectRTT
 
 		var deltaRTT float64
 		if !self.Next {
@@ -267,21 +270,44 @@ func (self *Entry) Into(data *transport.SessionPortalData) {
 			}
 		}
 
-		data.Meta.DeltaRTT = deltaRTT
+		meta.DeltaRTT = deltaRTT
 
-		data.Meta.Location = routing.Location{} // TODO
+		meta.Location = routing.Location{} // TODO
 
-		data.Meta.ClientAddr = "TODO" // TODO
-		data.Meta.ServerAddr = "TODO" // TODO
-		data.Meta.Hops = make([]transport.RelayHop, len(self.NextRelays))
+		meta.ClientAddr = "TODO" // TODO
+		meta.ServerAddr = "TODO" // TODO
+		meta.Hops = make([]transport.RelayHop, len(self.NextRelays))
 		for i, id := range self.NextRelays {
-			data.Meta.Hops[i].ID = uint64(id)
-			data.Meta.Hops[i].Name = "TODO" // TODO
+			meta.Hops[i].ID = uint64(id)
+			meta.Hops[i].Name = "TODO" // TODO
 		}
-		data.Meta.SDK = "1.2.3"                                           // TODO get valid version
-		data.Meta.Connection = 0                                          // TODO what is this?
-		data.Meta.NearbyRelays = make([]transport.NearRelayPortalData, 0) // TODO somehow come up with a list
-		data.Meta.Platform = 0                                            // TODO what is this?
-		data.Meta.BuyerID = uint64(self.BuyerID)
+		meta.SDK = "1.2.3"                                           // TODO get valid version
+		meta.Connection = 0                                          // TODO what is this?
+		meta.NearbyRelays = make([]transport.NearRelayPortalData, 0) // TODO somehow come up with a list
+		meta.Platform = 0                                            // TODO what is this?
+		meta.BuyerID = uint64(self.BuyerID)
+	}
+
+	// slice
+	{
+		slice := &data.Slice
+		slice.Timestamp = time.Unix(self.Timestamp, 0)
+		slice.Next = routing.Stats{
+			RTT:        self.NextRTT,
+			Jitter:     self.NextJitter,
+			PacketLoss: self.NextPacketLoss,
+		}
+		slice.Direct = routing.Stats{
+			RTT:        self.DirectRTT,
+			Jitter:     self.DirectJitter,
+			PacketLoss: self.DirectPacketLoss,
+		}
+		slice.Envelope = routing.Envelope{
+			Up:   self.NextBytesUp,   // TODO check
+			Down: self.NextBytesDown, // TODO check
+		}
+		slice.OnNetworkNext = self.Next
+		slice.IsMultiPath = self.Multipath
+		slice.IsTryBeforeYouBuy = false // TODO check
 	}
 }
