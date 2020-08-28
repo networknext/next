@@ -298,7 +298,7 @@ func TestTotalSessions(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, 3, reply.Next)
-	assert.Equal(t, 0, reply.Direct) // While the ghost army is active, direct will be zero for buyer with id 0
+	assert.Equal(t, 1, reply.Direct)
 
 	// test per buyer counts
 	err = svc.TotalSessions(req, &jsonrpc.TotalSessionsArgs{BuyerID: "0000000000000000"}, &reply)
