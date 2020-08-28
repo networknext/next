@@ -491,6 +491,18 @@ deploy-server-backend-velan:
 deploy-server-backend-esl:
 	./deploy/deploy.sh -e prod -c esl-22dr -t server-backend -n server_backend-esl-22dr -b gs://prod_artifacts
 
+.PHONY: deploy-ghost-army-dev
+deploy-ghost-army-dev:
+	./deploy/deploy.sh -e dev -c 1 -t ghost-army -n ghost_army -b gs://development_artifacts
+
+.PHONY: deploy-ghost-army-staging
+deploy-ghost-army-staging:
+	./deploy/deploy.sh -e staging -c 1 -t ghost-army -n ghost_army -b gs://staging_artifacts
+
+.PHONY: deploy-ghost-army-prod
+deploy-ghost-army-prod:
+	./deploy/deploy.sh -e prod -c 1 -t ghost-army -n ghost_army -b gs://prod_artifacts
+
 .PHONY: build-load-test-server-artifacts
 build-load-test-server-artifacts: build-load-test-server
 	./deploy/build-load-test-artifacts.sh -s load_test_server
