@@ -86,6 +86,7 @@ const routes: Array<RouteConfig> = [
 ]
 
 const router = new VueRouter({
+  mode: 'history',
   routes
 })
 
