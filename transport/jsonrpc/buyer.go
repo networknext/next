@@ -275,7 +275,9 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			reply.Next = newCount
 		}
 
-		reply.Direct = reply.Next * directModifier
+		if directModifier > 0 {
+			reply.Direct = reply.Next * directModifier
+		}
 	default:
 		if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
 			err := fmt.Errorf("TotalSessions(): %v", ErrInsufficientPrivileges)
