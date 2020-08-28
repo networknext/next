@@ -495,6 +495,10 @@ build-relay-artifacts-dev: build-relay
 build-portal-artifacts-dev: build-portal
 	./deploy/build-artifacts.sh -e dev -s portal -b $(ARTIFACT_BUCKET)
 
+.PHONY: build-portal-artifacts-dev-test
+build-portal-artifacts-dev-test: build-portal
+	./deploy/build-artifacts.sh -e dev -s portal-test -b $(ARTIFACT_BUCKET)
+
 .PHONY: build-portal-cruncher-artifacts-dev
 build-portal-cruncher-artifacts-dev: build-portal-cruncher
 	./deploy/build-artifacts.sh -e dev -s portal_cruncher
@@ -586,6 +590,10 @@ publish-relay-artifacts-dev:
 .PHONY: publish-portal-artifacts-dev
 publish-portal-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s portal
+
+.PHONY: publish-portal-artifacts-dev-test
+publish-portal-artifacts-dev-test:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s portal-test
 
 .PHONY: publish-portal-cruncher-artifacts-dev
 publish-portal-cruncher-artifacts-dev:

@@ -22,11 +22,11 @@ build-artifacts() {
 		cp ${DIR}/${SERVICE}/${SERVICE}.service ${DIST_DIR}/artifact/${SERVICE}/${SERVICE}.service
 		cp ${DIR}/${SERVICE}/install.sh ${DIST_DIR}/artifact/${SERVICE}/install.sh
 		cd ${DIST_DIR}/artifact/${SERVICE} && tar -zcf ../../${SERVICE}.${ENV}.tar.gz ${SERVICE} ${SERVICE}.service install.sh && cd ../..
-  elif [ "$SERVICE" = "portal" ]; then
+  elif [ "$SERVICE" = "portal" ] || [ "$SERVICE" = "portal-test" ]; then
     gsutil cp ${ARTIFACT_BUCKET}/${SERVICE}-dist.${ENV}.tar.gz ${DIST_DIR}/artifact/${SERVICE}/.
     tar -xvf ${DIST_DIR}/artifact/${SERVICE}/${SERVICE}-dist.${ENV}.tar.gz --directory ${DIST_DIR}/artifact/${SERVICE}
-    cp ${DIST_DIR}/${SERVICE} ${DIST_DIR}/artifact/${SERVICE}/app
-    cp ./cmd/${SERVICE}/${ENV}.env ${DIST_DIR}/artifact/${SERVICE}/app.env
+    cp ${DIST_DIR}/portal ${DIST_DIR}/artifact/${SERVICE}/app
+    cp ./cmd/portal/${ENV}.env ${DIST_DIR}/artifact/${SERVICE}/app.env
     cp ${DIR}/${SYSTEMD_SERVICE_FILE} ${DIST_DIR}/artifact/${SERVICE}/${SYSTEMD_SERVICE_FILE}
     cd ${DIST_DIR}/artifact/${SERVICE} && tar -zcf ../../${SERVICE}.${ENV}.tar.gz dist app app.env ${SYSTEMD_SERVICE_FILE} && cd ../..
   elif [ "$SERVICE" = "server_backend" ] && [ -n "$CUSTOMER" ]; then
