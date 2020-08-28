@@ -162,18 +162,29 @@ func main() {
 	}()
 
 	go func() {
+		getLastMidnight := func() time.Time {
+			t := time.Now()
+			year, month, day := t.Date()
+			t = time.Date(year, month, day, 0, 0, 0, 0, t.Location())
+			return t
+		}
+
+		// slice begin should be the
+		t := time.Now()
+		year, month, day := t.Date()
+		t2 := time.Date(year, month, day, 0, 0, 0, 0, t.Location())
+		sliceBegin := int64(t.Sub(t2).Seconds())
+
 		index := 0
-		var sliceBegin int64 = 0
-		dateOffset := time.Now()
+		dateOffset := getLastMidnight()
 		for {
 			begin := time.Now()
 			endIndex := (sliceBegin + 10) / 10
 
 			if endIndex > SlicesInDay*3 {
-				// if past the 3 days, then set the offset to now and loop from the begining
-				dateOffset = time.Now()
-				sliceBegin = 10
 				index = 0
+				sliceBegin = 0
+				dateOffset = getLastMidnight()
 			}
 
 			for slices[index].Slice.Timestamp.Unix() < sliceBegin {

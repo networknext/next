@@ -53,13 +53,14 @@ func main() {
 			fmt.Printf("could not open '%s': %v\n", infile, err)
 			os.Exit(1)
 		}
-		defer inputfile.Close()
 
 		lines, err := csv.NewReader(inputfile).ReadAll()
 		if err != nil {
 			fmt.Printf("could not read csv data: %v\n", err)
 			os.Exit(1)
 		}
+
+		inputfile.Close()
 
 		for lineNum, line := range lines {
 			if lineNum == 0 {
