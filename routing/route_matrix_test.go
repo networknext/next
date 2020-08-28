@@ -1664,6 +1664,8 @@ func BenchmarkGetAcceptableRoutes(b *testing.B) {
 		routeMatrix.RelayMaxSessionCounts[i] = 3000
 	}
 
+	routeMatrix.UpdateRouteCache()
+
 	b.ReportAllocs()
 	b.ResetTimer()
 
