@@ -305,7 +305,7 @@ test-load: ## runs load tests
 
 .PHONY: dev-portal
 dev-portal: build-portal ## runs a local portal
-	@PORT=20000 BASIC_AUTH_USERNAME=local BASIC_AUTH_PASSWORD=local UI_DIR=./cmd/portal/public ./dist/portal
+	@PORT=20000 BASIC_AUTH_USERNAME=local BASIC_AUTH_PASSWORD=local UI_DIR=./cmd/portal/dist ./dist/portal
 
 .PHONY: dev-relay-backend
 dev-relay-backend: build-relay-backend ## runs a local relay backend
@@ -501,7 +501,11 @@ build-relay-artifacts-dev: build-relay
 
 .PHONY: build-portal-artifacts-dev
 build-portal-artifacts-dev: build-portal
-	./deploy/build-artifacts.sh -e dev -s portal
+	./deploy/build-artifacts.sh -e dev -s portal -b $(ARTIFACT_BUCKET)
+
+.PHONY: build-portal-artifacts-dev-test
+build-portal-artifacts-dev-test: build-portal
+	./deploy/build-artifacts.sh -e dev -s portal-test -b $(ARTIFACT_BUCKET)
 
 .PHONY: build-portal-cruncher-artifacts-dev
 build-portal-cruncher-artifacts-dev: build-portal-cruncher
@@ -529,7 +533,7 @@ build-relay-artifacts-staging: build-relay
 
 .PHONY: build-portal-artifacts-staging
 build-portal-artifacts-staging: build-portal
-	./deploy/build-artifacts.sh -e staging -s portal
+	./deploy/build-artifacts.sh -e staging -s portal -b $(ARTIFACT_BUCKET_STAGING)
 
 .PHONY: build-relay-backend-artifacts-staging
 build-relay-backend-artifacts-staging: build-relay-backend
@@ -561,7 +565,7 @@ build-relay-artifacts-prod: build-relay
 
 .PHONY: build-portal-artifacts-prod
 build-portal-artifacts-prod: build-portal
-	./deploy/build-artifacts.sh -e prod -s portal
+	./deploy/build-artifacts.sh -e prod -s portal -n $(ARTIFACT_BUCKET_PROD)
 
 .PHONY: build-portal-cruncher-artifacts-prod
 build-portal-cruncher-artifacts-prod: build-portal-cruncher
@@ -594,6 +598,10 @@ publish-relay-artifacts-dev:
 .PHONY: publish-portal-artifacts-dev
 publish-portal-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s portal
+
+.PHONY: publish-portal-artifacts-dev-test
+publish-portal-artifacts-dev-test:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s portal-test
 
 .PHONY: publish-portal-cruncher-artifacts-dev
 publish-portal-cruncher-artifacts-dev:
