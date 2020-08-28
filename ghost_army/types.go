@@ -9,6 +9,28 @@ import (
 	"github.com/networknext/backend/transport"
 )
 
+const (
+	LocalBuyerID   = 13672574147039585173
+	DevBuyerID     = 0
+	ProdBuyerID    = 0
+	StagingBuyerID = 0
+)
+
+func GhostArmyBuyerID(env string) uint64 {
+	switch env {
+	case "local":
+		return LocalBuyerID
+	case "dev":
+		return DevBuyerID
+	case "staging":
+		return StagingBuyerID
+	case "prod":
+		return ProdBuyerID
+	}
+
+	return 0
+}
+
 type StrippedDatacenter struct {
 	Name string
 	Lat  float64
@@ -57,15 +79,6 @@ func (self *Entry) ReadFrom(bin []byte, index *int) bool {
 		return true
 	}
 
-	casterBool := func(x *bool) bool {
-		var y uint8
-		if !encoding.ReadUint8(bin, index, &y) {
-			return false
-		}
-		*x = y == 1
-		return true
-	}
-
 	if !casterInt64(&self.SessionID) {
 		return false
 	}
@@ -82,7 +95,7 @@ func (self *Entry) ReadFrom(bin []byte, index *int) bool {
 		return false
 	}
 
-	if !casterBool(&self.Next) {
+	if !encoding.ReadBool(bin, index, &self.Next) {
 		return false
 	}
 
@@ -135,15 +148,15 @@ func (self *Entry) ReadFrom(bin []byte, index *int) bool {
 		return false
 	}
 
-	if !casterBool(&self.Committed) {
+	if !encoding.ReadBool(bin, index, &self.Committed) {
 		return false
 	}
 
-	if !casterBool(&self.Flagged) {
+	if !encoding.ReadBool(bin, index, &self.Flagged) {
 		return false
 	}
 
-	if !casterBool(&self.Multipath) {
+	if !encoding.ReadBool(bin, index, &self.Multipath) {
 		return false
 	}
 
@@ -155,7 +168,7 @@ func (self *Entry) ReadFrom(bin []byte, index *int) bool {
 		return false
 	}
 
-	if !casterBool(&self.Initial) {
+	if !encoding.ReadBool(bin, index, &self.Initial) {
 		return false
 	}
 
@@ -163,11 +176,11 @@ func (self *Entry) ReadFrom(bin []byte, index *int) bool {
 		return false
 	}
 
-	if !casterBool(&self.RttReduction) {
+	if !encoding.ReadBool(bin, index, &self.RttReduction) {
 		return false
 	}
 
-	if !casterBool(&self.PacketLossReduction) {
+	if !encoding.ReadBool(bin, index, &self.PacketLossReduction) {
 		return false
 	}
 
@@ -196,11 +209,7 @@ func (self *Entry) MarshalBinary() ([]byte, error) {
 	encoding.WriteUint64(bin, &index, uint64(self.Timestamp))
 	encoding.WriteUint64(bin, &index, uint64(self.BuyerID))
 	encoding.WriteUint64(bin, &index, uint64(self.SliceNumber))
-	if self.Next {
-		encoding.WriteUint8(bin, &index, 1)
-	} else {
-		encoding.WriteUint8(bin, &index, 0)
-	}
+	encoding.WriteBool(bin, &index, self.Next)
 	encoding.WriteFloat64(bin, &index, self.DirectRTT)
 	encoding.WriteFloat64(bin, &index, self.DirectJitter)
 	encoding.WriteFloat64(bin, &index, self.DirectPacketLoss)
@@ -214,39 +223,15 @@ func (self *Entry) MarshalBinary() ([]byte, error) {
 	encoding.WriteUint64(bin, &index, uint64(self.TotalPrice))
 	encoding.WriteUint64(bin, &index, uint64(self.ClientToServerPacketsLost))
 	encoding.WriteUint64(bin, &index, uint64(self.ServerToClientPacketsLost))
-	if self.Committed {
-		encoding.WriteUint8(bin, &index, 1)
-	} else {
-		encoding.WriteUint8(bin, &index, 0)
-	}
-	if self.Flagged {
-		encoding.WriteUint8(bin, &index, 1)
-	} else {
-		encoding.WriteUint8(bin, &index, 0)
-	}
-	if self.Multipath {
-		encoding.WriteUint8(bin, &index, 1)
-	} else {
-		encoding.WriteUint8(bin, &index, 0)
-	}
+	encoding.WriteBool(bin, &index, self.Committed)
+	encoding.WriteBool(bin, &index, self.Flagged)
+	encoding.WriteBool(bin, &index, self.Multipath)
 	encoding.WriteUint64(bin, &index, uint64(self.NextBytesUp))
 	encoding.WriteUint64(bin, &index, uint64(self.NextBytesDown))
-	if self.Initial {
-		encoding.WriteUint8(bin, &index, 1)
-	} else {
-		encoding.WriteUint8(bin, &index, 0)
-	}
+	encoding.WriteBool(bin, &index, self.Initial)
 	encoding.WriteUint64(bin, &index, uint64(self.DatacenterID))
-	if self.RttReduction {
-		encoding.WriteUint8(bin, &index, 1)
-	} else {
-		encoding.WriteUint8(bin, &index, 0)
-	}
-	if self.PacketLossReduction {
-		encoding.WriteUint8(bin, &index, 1)
-	} else {
-		encoding.WriteUint8(bin, &index, 0)
-	}
+	encoding.WriteBool(bin, &index, self.RttReduction)
+	encoding.WriteBool(bin, &index, self.PacketLossReduction)
 	encoding.WriteUint64(bin, &index, uint64(int64(len(self.NextRelaysPrice))))
 	for _, price := range self.NextRelaysPrice {
 		encoding.WriteUint64(bin, &index, uint64(price))

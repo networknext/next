@@ -18,11 +18,6 @@ import (
 
 const (
 	SlicesInDay = 60 * 60 * 24 / 10
-
-	LocalBuyerID   = 13672574147039585173
-	DevBuyerID     = 0
-	ProdBuyerID    = 0
-	StagingBuyerID = 0
 )
 
 func main() {
@@ -42,17 +37,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	var buyerID uint64
-	switch os.Getenv("ENV") {
-	case "local":
-		buyerID = LocalBuyerID
-	case "dev":
-		buyerID = DevBuyerID
-	case "staging":
-		buyerID = StagingBuyerID
-	case "prod":
-		buyerID = ProdBuyerID
-	}
+	buyerID := ghostarmy.GhostArmyBuyerID(os.Getenv("ENV"))
 
 	// parse datacenter csv
 	inputfile, err := os.Open(datacenterCSV)
