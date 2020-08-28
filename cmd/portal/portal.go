@@ -33,6 +33,7 @@ import (
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
 	"github.com/networknext/backend/transport/jsonrpc"
+	"github.com/networknext/backend/transport/middleware"
 )
 
 var (
@@ -582,7 +583,7 @@ func main() {
 
 		spa := spaHandler{staticPath: uiDir, indexPath: "index.html"}
 
-		r.PathPrefix("/").Handler(spa)
+		r.PathPrefix("/").Handler(middleware.CacheControl(os.Getenv("HTTP_CACHE_CONTROL"), handlers.CompressHandler(spa)))
 
 		level.Info(logger).Log("addr", ":"+port)
 
