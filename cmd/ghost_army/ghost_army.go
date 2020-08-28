@@ -109,7 +109,6 @@ func main() {
 	go func() {
 		index := 0
 		var startTime int64 = 0
-
 		dateOffset := time.Now()
 		for {
 			begin := time.Now()
@@ -117,6 +116,7 @@ func main() {
 
 			if endIndex > SlicesInDay*3 {
 				startTime = 10
+				dateOffset = time.Now()
 			}
 
 			for slices[index].Slice.Timestamp.Unix() < startTime {
