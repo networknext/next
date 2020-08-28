@@ -1207,7 +1207,6 @@ func TestRouteMatrix(t *testing.T) {
 
 	t.Run("GetAcceptableRoutes", func(t *testing.T) {
 		routeMatrixCopy := routeMatrix
-		routeMatrixCopy.UpdateRouteCache()
 
 		// Hack to insert relay session counts without regenerating a new route matrix
 		numRelays := len(routeMatrixCopy.RelayIDs)
@@ -1215,6 +1214,8 @@ func TestRouteMatrix(t *testing.T) {
 			routeMatrixCopy.RelaySessionCounts[i] = uint32(i)
 			routeMatrixCopy.RelayMaxSessionCounts[i] = 3000
 		}
+
+		routeMatrixCopy.UpdateRouteCache()
 
 		t.Run("empty near/dest sets", func(t *testing.T) {
 			near := []routing.NearRelayData{}
@@ -1543,6 +1544,7 @@ func TestRouteMatrix(t *testing.T) {
 		t.Run("encumbered route", func(t *testing.T) {
 			// Have a relay be encumbered
 			routeMatrixCopy.RelaySessionCounts[2] = 3000
+			routeMatrixCopy.UpdateRouteCache()
 
 			near := []routing.NearRelayData{{ID: 2836356269}}
 			dest := []uint64{3263834878, 1500948990}
@@ -1606,11 +1608,13 @@ func TestRouteMatrix(t *testing.T) {
 
 			// Undo the session count for other tests
 			routeMatrixCopy.RelaySessionCounts[2] = 0
+			routeMatrixCopy.UpdateRouteCache()
 		})
 
 		t.Run("encumbered route but previously on it", func(t *testing.T) {
 			// Have a relay be encumbered
 			routeMatrixCopy.RelaySessionCounts[2] = 3000
+			routeMatrixCopy.UpdateRouteCache()
 
 			near := []routing.NearRelayData{{ID: 2836356269}}
 			dest := []uint64{3263834878, 1500948990}
@@ -1639,6 +1643,7 @@ func TestRouteMatrix(t *testing.T) {
 
 			// Undo the session count for other tests
 			routeMatrixCopy.RelaySessionCounts[2] = 0
+			routeMatrixCopy.UpdateRouteCache()
 		})
 	})
 }
