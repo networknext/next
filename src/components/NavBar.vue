@@ -149,6 +149,9 @@ export default class NavBar extends Vue {
             json.commit_message || 'none'
           }`
         })
+      }).catch((error: Error) => {
+        console.log('Something went wrong fetching the software version')
+        console.log(error)
       })
     }
   }
