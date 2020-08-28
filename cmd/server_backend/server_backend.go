@@ -654,15 +654,15 @@ func main() {
 			timeout := int64(60 * 5)
 			frequency := time.Millisecond * 100
 			ticker := time.NewTicker(frequency)
-			multipathVetoMap.TimeoutLoop(ctx, timeout, ticker.C)
+			vetoMap.TimeoutLoop(ctx, timeout, ticker.C)
 		}()
 
 		// Start a goroutine to timeout multipath vetoes
 		go func() {
-			timeout := int64(60 * 60 * 24)
+			timeout := int64(60 * 60 * 24 * 7)
 			frequency := time.Millisecond * 100
 			ticker := time.NewTicker(frequency)
-			vetoMap.TimeoutLoop(ctx, timeout, ticker.C)
+			multipathVetoMap.TimeoutLoop(ctx, timeout, ticker.C)
 		}()
 
 		// Start a goroutine to timeout servers

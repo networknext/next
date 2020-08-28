@@ -125,5 +125,9 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 	e["abTest"] = entry.ABTest
 	e["routeDecision"] = int(entry.RouteDecision)
 
+	e["connectionType"] = int(entry.ConnectionType)
+	e["platformType"] = int(entry.PlatformType)
+	e["sdkVersion"] = entry.SDKVersion
+
 	return e, "", nil
 }
