@@ -18,16 +18,41 @@ import (
 
 const (
 	SlicesInDay = 60 * 60 * 24 / 10
+
+	LocalBuyerID   = 13672574147039585173
+	DevBuyerID     = 0
+	ProdBuyerID    = 0
+	StagingBuyerID = 0
 )
 
 func main() {
-	if len(os.Args) != 3 {
-		fmt.Println("you must supply required arguments (input file name, datacenter csv)")
+	var infile string
+	if v, ok := os.LookupEnv("GHOST_ARMY_BIN"); ok {
+		infile = v
+	} else {
+		fmt.Println("you must set GHOST_ARMY_BIN to a file")
 		os.Exit(1)
 	}
 
-	infile := os.Args[1]
-	datacenterCSV := os.Args[2]
+	var datacenterCSV string
+	if v, ok := os.LookupEnv("DATACENTERS_CSV"); ok {
+		datacenterCSV = v
+	} else {
+		fmt.Println("you must set DATACENTERS_CSV to a file")
+		os.Exit(1)
+	}
+
+	var buyerID uint64
+	switch os.Getenv("ENV") {
+	case "local":
+		buyerID = LocalBuyerID
+	case "dev":
+		buyerID = DevBuyerID
+	case "staging":
+		buyerID = StagingBuyerID
+	case "prod":
+		buyerID = ProdBuyerID
+	}
 
 	// parse datacenter csv
 	inputfile, err := os.Open(datacenterCSV)
@@ -95,7 +120,7 @@ func main() {
 			fmt.Printf("can't read entry at index %d\n", i)
 		}
 
-		entry.Into(&slices[i], dcmap)
+		entry.Into(&slices[i], dcmap, buyerID)
 	}
 
 	// publish to zero mq, sleep for 10 seconds, repeat
@@ -153,26 +178,29 @@ func main() {
 
 	go func() {
 		index := 0
-		var startTime int64 = 0
+		var sliceBegin int64 = 0
 		dateOffset := time.Now()
 		for {
 			begin := time.Now()
-			endIndex := (startTime + 10) / 10
+			endIndex := (sliceBegin + 10) / 10
 
 			if endIndex > SlicesInDay*3 {
-				startTime = 10
+				// if past the 3 days, then set the offset to now and loop from the begining
 				dateOffset = time.Now()
+				sliceBegin = 10
 				index = 0
 			}
 
-			for slices[index].Slice.Timestamp.Unix() < startTime {
+			for slices[index].Slice.Timestamp.Unix() < sliceBegin {
 				index++
 				index = index % len(slices)
 			}
 
-			for slices[index].Slice.Timestamp.Unix() < startTime+10 {
+			for slices[index].Slice.Timestamp.Unix() < sliceBegin+10 {
 				slice := slices[index]
 
+				// slice timestamp will be in the range of 0 - SecondsInDay * 3,
+				// so adjust the timestamp by the time the loop was started
 				slice.Slice.Timestamp = dateOffset.Add(time.Second*-10 + time.Second*time.Duration(slice.Slice.Timestamp.Unix()))
 
 				publishChan <- slice
@@ -180,7 +208,7 @@ func main() {
 				index = index % len(slices)
 			}
 
-			startTime += 10
+			sliceBegin += 10
 
 			end := time.Now()
 

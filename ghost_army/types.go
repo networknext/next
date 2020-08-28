@@ -256,7 +256,7 @@ func (self *Entry) MarshalBinary() ([]byte, error) {
 	return bin, nil
 }
 
-func (self *Entry) Into(data *transport.SessionPortalData, dcmap DatacenterMap) {
+func (self *Entry) Into(data *transport.SessionPortalData, dcmap DatacenterMap, buyerID uint64) {
 	var dc StrippedDatacenter
 	if v, ok := dcmap[uint64(self.DatacenterID)]; ok {
 		dc.Name = v.Name
@@ -296,18 +296,18 @@ func (self *Entry) Into(data *transport.SessionPortalData, dcmap DatacenterMap) 
 			Longitude: dc.Long,
 		}
 
-		meta.ClientAddr = "TODO" // TODO
-		meta.ServerAddr = "TODO" // TODO
+		meta.ClientAddr = "?"
+		meta.ServerAddr = "?"
 		meta.Hops = make([]transport.RelayHop, len(self.NextRelays))
 		for i, id := range self.NextRelays {
 			meta.Hops[i].ID = uint64(id)
-			meta.Hops[i].Name = "TODO" // TODO
+			meta.Hops[i].Name = "?"
 		}
 		meta.SDK = "4.0.0"
 		meta.Connection = transport.ParseConnectionType("wired")
-		meta.NearbyRelays = make([]transport.NearRelayPortalData, 0) // TODO somehow come up with a list
+		meta.NearbyRelays = make([]transport.NearRelayPortalData, 0)
 		meta.Platform = transport.ParsePlatformType("Windows")
-		meta.BuyerID = uint64(self.BuyerID)
+		meta.BuyerID = buyerID
 	}
 
 	// slice
@@ -325,12 +325,12 @@ func (self *Entry) Into(data *transport.SessionPortalData, dcmap DatacenterMap) 
 			PacketLoss: self.DirectPacketLoss,
 		}
 		slice.Envelope = routing.Envelope{
-			Up:   self.NextBytesUp,   // TODO check
-			Down: self.NextBytesDown, // TODO check
+			Up:   self.NextBytesUp,
+			Down: self.NextBytesDown,
 		}
 		slice.OnNetworkNext = self.Next
 		slice.IsMultiPath = self.Multipath
-		slice.IsTryBeforeYouBuy = false // TODO check
+		slice.IsTryBeforeYouBuy = false
 	}
 
 	// map point

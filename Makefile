@@ -519,6 +519,10 @@ build-relay-backend-artifacts-dev: build-relay-backend
 build-server-backend-artifacts-dev: build-server-backend
 	./deploy/build-artifacts.sh -e dev -s server_backend
 
+.PHONY: build-ghost-army-artifacts-dev
+build-ghost-army-artifacts-dev: build-ghost-army
+	./deploy/build-artifacts.sh -e dev -s ghost_army
+
 .PHONY: build-billing-artifacts-staging
 build-billing-artifacts-staging: build-billing
 	./deploy/build-artifacts.sh -e staging -s billing
@@ -550,6 +554,10 @@ build-load-test-artifacts-staging: build-load-test
 .PHONY: build-server-backend-artifacts-staging
 build-server-backend-artifacts-staging: build-server-backend
 	./deploy/build-artifacts.sh -e staging -s server_backend
+
+.PHONY: build-ghost-army-artifacts-staging
+build-ghost-army-artifacts-staging: build-ghost-army
+	./deploy/build-artifacts.sh -e staging -s ghost_army
 
 .PHONY: build-billing-artifacts-prod
 build-billing-artifacts-prod: build-billing
@@ -583,6 +591,10 @@ build-server-backend-artifacts-prod: build-server-backend
 build-server-backend-artifacts-prod-esl: build-server-backend
 	./deploy/build-artifacts.sh -e prod -s server_backend -c esl-22dr
 
+.PHONY: build-ghost-army-artifacts-prod
+build-ghost-army-artifacts-prod: build-ghost-army
+	./deploy/build-artifacts.sh -e prod -s ghost_army
+
 .PHONY: publish-billing-artifacts-dev
 publish-billing-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s billing
@@ -610,6 +622,10 @@ publish-relay-backend-artifacts-dev:
 .PHONY: publish-server-backend-artifacts-dev
 publish-server-backend-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s server_backend
+
+.PHONY: publish-ghost-army-artifacts-dev
+publish-ghost-army-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s ghost_army
 
 .PHONY: publish-billing-artifacts-staging
 publish-billing-artifacts-staging:
@@ -642,6 +658,10 @@ publish-relay-backend-artifacts-staging:
 .PHONY: publish-server-backend-artifacts-staging
 publish-server-backend-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s server_backend
+
+.PHONY: publish-ghost-army-artifacts-staging
+publish-ghost-army-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s ghost_army
 
 .PHONY: publish-load-test-server-artifacts
 publish-load-test-server-artifacts:
@@ -687,6 +707,10 @@ publish-server-backend-artifacts-prod:
 publish-server-backend-artifacts-prod-esl:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s server_backend -c esl-22dr
 
+.PHONY: publish-ghost-army-artifacts-prod
+publish-ghost-army-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s ghost_army
+
 .PHONY: publish-bootstrap-script-dev
 publish-bootstrap-script-dev:
 	@printf "Publishing bootstrap script... \n\n"
@@ -709,6 +733,24 @@ publish-client-bootstrap-script-staging:
 publish-bootstrap-script-prod:
 	@printf "Publishing bootstrap script... \n\n"
 	@gsutil cp $(DEPLOY_DIR)/bootstrap.sh $(ARTIFACT_BUCKET_PROD)/bootstrap.sh
+	@printf "done\n"
+
+.PHONY: publish-ghost-army-bootstrap-script-dev
+publish-ghost-army-bootstrap-script-dev:
+	@printf "Publishing ghost army bootstrap script... \n\n"
+	@gsutil cp $(DEPLOY_DIR)/ghost_army_bootstrap.sh $(ARTIFACT_BUCKET)/ghost_army_bootstrap.sh
+	@printf "done\n"
+
+.PHONY: publish-ghost-army-bootstrap-script-staging
+publish-ghost-army-bootstrap-script-staging:
+	@printf "Publishing ghost army bootstrap script... \n\n"
+	@gsutil cp $(DEPLOY_DIR)/ghost_army_bootstrap.sh $(ARTIFACT_BUCKET_STAGING)/ghost_army_bootstrap.sh
+	@printf "done\n"
+
+.PHONY: publish-ghost-army-bootstrap-script-prod
+publish-ghost-army-bootstrap-script-prod:
+	@printf "Publishing ghost army bootstrap script... \n\n"
+	@gsutil cp $(DEPLOY_DIR)/ghost_army_bootstrap.sh $(ARTIFACT_BUCKET_PROD)/ghost_army_bootstrap.sh
 	@printf "done\n"
 
 .PHONY: build-server3
