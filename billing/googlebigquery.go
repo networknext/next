@@ -119,5 +119,15 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 	}
 	e["nextRelaysPrice"] = nextRelaysPrice
 
+	e["latitude"] = entry.Latitude
+	e["longitude"] = entry.Longitude
+	e["isp"] = entry.ISP
+	e["abTest"] = entry.ABTest
+	e["routeDecision"] = int(entry.RouteDecision)
+
+	e["connectionType"] = int(entry.ConnectionType)
+	e["platformType"] = int(entry.PlatformType)
+	e["sdkVersion"] = entry.SDKVersion
+
 	return e, "", nil
 }
