@@ -9,6 +9,7 @@ cover.out
 .ycm_extra_conf.py
 .env
 *.rdb
+*.csv
 
 # There's no point storing this
 # Generated each time
