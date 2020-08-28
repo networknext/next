@@ -341,7 +341,7 @@ dev-portal-cruncher: build-portal-cruncher ## runs a local portal cruncher
 
 .PHONY: dev-ghost-army
 dev-ghost-army: build-ghost-army ## runs a local ghost army supplier
-	@CRUNCHER_PORT=5555 ./dist/ghost_army ./dist/ghost_army.bin ./dist/datacenters-prod.csv
+	@./dist/ghost_army
 
 .PHONY: dev-reference-backend3
 dev-reference-backend3: ## runs a local reference backend (sdk3)
