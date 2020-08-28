@@ -396,10 +396,6 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 	routes.RelaySessionCounts = m.RelaySessionCounts
 	routes.RelayMaxSessionCounts = m.RelayMaxSessionCounts
 
-	if err := routes.UpdateRelayAddressCache(); err != nil {
-		return err
-	}
-
 	type Indirect struct {
 		relay uint64
 		rtt   int32
