@@ -291,7 +291,10 @@ func (self *Entry) Into(data *transport.SessionPortalData, dcmap DatacenterMap) 
 
 		meta.DeltaRTT = deltaRTT
 
-		meta.Location = routing.Location{} // TODO
+		meta.Location = routing.Location{
+			Latitude:  dc.Lat,
+			Longitude: dc.Long,
+		}
 
 		meta.ClientAddr = "TODO" // TODO
 		meta.ServerAddr = "TODO" // TODO
