@@ -310,4 +310,11 @@ func (self *Entry) Into(data *transport.SessionPortalData) {
 		slice.IsMultiPath = self.Multipath
 		slice.IsTryBeforeYouBuy = false // TODO check
 	}
+
+	// map point
+	{
+		pt := &data.Point
+		pt.Latitude = 0.0  // TODO what should this be?
+		pt.Longitude = 0.0 // TODO ditto
+	}
 }
