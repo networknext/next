@@ -49,5 +49,6 @@ blocks:
           commands:
             - make build-ghost-army-artifacts-dev
             - make publish-ghost-army-artifacts-dev
+            - make publish-ghost-army-bootstrap-script-dev
       secrets:
         - name: google-cloud-platform
