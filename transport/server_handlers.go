@@ -1406,6 +1406,9 @@ func buildBillingEntry(params *PostSessionUpdateParams) *billing.BillingEntry {
 		ISP:                       params.location.ISP,
 		ABTest:                    params.abTest,
 		RouteDecision:             uint64(params.prevRouteDecision.Reason),
+		ConnectionType:            uint8(params.packet.ConnectionType),
+		PlatformType:              uint8(params.packet.PlatformID),
+		SDKVersion:                params.packet.Version.String(),
 	}
 }
 
