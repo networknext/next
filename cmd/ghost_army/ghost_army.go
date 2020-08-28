@@ -118,17 +118,17 @@ func main() {
 				startTime = 10
 			}
 
-			for entries[index].Timestamp < startTime {
+			for slices[index].Slice.Timestamp.Unix() < startTime {
 				fmt.Printf("skipping entry at index %d\n", index)
 				index++
-				index = index % len(entries)
+				index = index % len(slices)
 			}
 
-			for entries[index].Timestamp < startTime+10 {
+			for slices[index].Slice.Timestamp.Unix() < startTime+10 {
 				fmt.Printf("publishing entry at index %d\n", index)
-				publishChan <- entries[index]
+				publishChan <- slices[index]
 				index++
-				index = index % len(entries)
+				index = index % len(slices)
 			}
 
 			startTime += 10
