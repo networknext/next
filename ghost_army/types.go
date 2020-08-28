@@ -309,9 +309,18 @@ func (self *Entry) Into(data *transport.SessionPortalData, dcmap DatacenterMap, 
 			Jitter:     self.DirectJitter,
 			PacketLoss: self.DirectPacketLoss,
 		}
+
+		var sliceDuration int64
+		if self.Initial {
+			sliceDuration = 20
+		} else {
+			sliceDuration = 10
+		}
+
+		// multiply by 5 at the end to inflate the numbers 5x
 		slice.Envelope = routing.Envelope{
-			Up:   self.NextBytesUp,
-			Down: self.NextBytesDown,
+			Up:   self.NextBytesUp / 1000 / sliceDuration * 8 * 5,
+			Down: self.NextBytesDown / 1000 / sliceDuration * 8 * 5,
 		}
 		slice.OnNetworkNext = self.Next
 		slice.IsMultiPath = self.Multipath
