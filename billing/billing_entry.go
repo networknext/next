@@ -1,16 +1,19 @@
 package billing
 
 import (
+	"fmt"
+
 	"github.com/networknext/backend/encoding"
 )
 
 const (
-	BillingEntryVersion = uint8(7)
+	BillingEntryVersion = uint8(8)
 
-	BillingEntryMaxRelays    = 5
-	BillingEntryMaxISPLength = 64
+	BillingEntryMaxRelays           = 5
+	BillingEntryMaxISPLength        = 64
+	BillingEntryMaxSDKVersionLength = 8
 
-	MaxBillingEntryBytes = 8 + 1 + 8 + 8 + 8 + (4 * 4) + 1 + (3 * 4) + 1 + (BillingEntryMaxRelays * 8) + (3 * 8) + (4 * 1) + 8 + 8 + 8 + 1 + 1 + (BillingEntryMaxRelays * 8) + 4 + 4 + BillingEntryMaxISPLength + 1 + 8
+	MaxBillingEntryBytes = 8 + 1 + 8 + 8 + 8 + (4 * 4) + 1 + (3 * 4) + 1 + (BillingEntryMaxRelays * 8) + (3 * 8) + (4 * 1) + 8 + 8 + 8 + 1 + 1 + (BillingEntryMaxRelays * 8) + 4 + 4 + BillingEntryMaxISPLength + 1 + 8 + 1 + 1 + BillingEntryMaxSDKVersionLength
 )
 
 type BillingEntry struct {
@@ -47,9 +50,18 @@ type BillingEntry struct {
 	ISP                       string
 	ABTest                    bool
 	RouteDecision             uint64
+	ConnectionType            uint8
+	PlatformType              uint8
+	SDKVersion                string
 }
 
 func WriteBillingEntry(entry *BillingEntry) []byte {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("recovered from panic during billing entry write: %v\n", r)
+		}
+	}()
+
 	data := make([]byte, MaxBillingEntryBytes)
 	index := 0
 	encoding.WriteUint8(data, &index, BillingEntryVersion)
@@ -104,6 +116,10 @@ func WriteBillingEntry(entry *BillingEntry) []byte {
 	encoding.WriteString(data, &index, entry.ISP, BillingEntryMaxISPLength)
 	encoding.WriteBool(data, &index, entry.ABTest)
 	encoding.WriteUint64(data, &index, entry.RouteDecision)
+
+	encoding.WriteUint8(data, &index, entry.ConnectionType)
+	encoding.WriteUint8(data, &index, entry.PlatformType)
+	encoding.WriteString(data, &index, entry.SDKVersion, BillingEntryMaxSDKVersionLength)
 
 	return data[:index]
 }
@@ -253,6 +269,20 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 		}
 
 		if !encoding.ReadUint64(data, &index, &entry.RouteDecision) {
+			return false
+		}
+	}
+
+	if entry.Version >= 8 {
+		if !encoding.ReadUint8(data, &index, &entry.ConnectionType) {
+			return false
+		}
+
+		if !encoding.ReadUint8(data, &index, &entry.PlatformType) {
+			return false
+		}
+
+		if !encoding.ReadString(data, &index, &entry.SDKVersion, BillingEntryMaxSDKVersionLength) {
 			return false
 		}
 	}
