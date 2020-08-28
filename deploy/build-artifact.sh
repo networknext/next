@@ -22,8 +22,13 @@ print_usage() {
 build-artifacts() {
   printf "Building ${ENV} artifact... \n"
   npm run build-${ENV}
-  tar -zcf ${DIST_DIR}/../${SERVICE}-dist.${ENV}.tar.gz ${DIST_DIR}
-  gsutil cp ${DIST_DIR}/../${SERVICE}-dist.${ENV}.tar.gz ${ARTIFACT_BUCKET}/${SERVICE}-dist.${ENV}.tar.gz
+  if [ "$ENV" = "dev-test" ]; then
+    env=dev
+  else
+    env=$ENV
+  fi
+  tar -zcf ${DIST_DIR}/../${SERVICE}-dist.${env}.tar.gz ${DIST_DIR}
+  gsutil cp ${DIST_DIR}/../${SERVICE}-dist.${env}.tar.gz ${ARTIFACT_BUCKET}/${SERVICE}-dist.${env}.tar.gz
   printf "Done building and artifact was published\n"
 }
 

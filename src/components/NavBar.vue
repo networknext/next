@@ -132,9 +132,8 @@ export default class NavBar extends Vue {
   }
 
   private fetchPortalVersion (): void {
-    const isDev = window.location.hostname === 'portal-dev.networknext.com'
-    if (this.$store.getters.isAdmin || isDev) {
-      fetch(`${process.env.VUE_APP_API_URL}/version`, {
+    if (process.env.VUE_APP_MODE) {
+      fetch('/rpc', {
         headers: {
           Accept: 'application/json',
           'Accept-Encoding': 'gzip',

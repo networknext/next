@@ -51,7 +51,11 @@ export class JsonRpcService {
     return new Promise((resolve: any, reject: any) => {
       const options = params || {}
       const id = 'id'
-      fetch(`${process.env.VUE_APP_API_URL}/rpc`, {
+      let url = ''
+      if (process.env.VUE_APP_MODE === 'local') {
+        url = `${process.env.VUE_APP_API_URL}`
+      }
+      fetch(`${url}/rpc`, {
         method: 'POST',
         headers: this.headers,
         body: JSON.stringify({
