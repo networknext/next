@@ -6,10 +6,12 @@ import (
 	"io/ioutil"
 	"os"
 	"os/signal"
+	"strconv"
 	"time"
 
 	"github.com/networknext/backend/encoding"
 	ghostarmy "github.com/networknext/backend/ghost_army"
+	"github.com/networknext/backend/transport/pubsub"
 )
 
 const (
@@ -48,20 +50,52 @@ func main() {
 		}
 	}
 
-	for i := 0; i < 50; i++ {
-		fmt.Printf("\n%d = %v\n", i, entries[i])
-	}
-
 	// publish to zero mq, sleep for 10 seconds, repeat
 
 	publishChan := make(chan ghostarmy.Entry)
 
 	ctx := context.Background()
 
+	var portalPublisher pubsub.Publisher
+	{
+		fmt.Printf("setting up portal cruncher\n")
+
+		portalCruncherHost, ok := os.LookupEnv("PORTAL_CRUNCHER_HOST")
+		if !ok {
+			fmt.Println("env var PORTAL_CRUNCHER_HOST must be set")
+			os.Exit(1)
+		}
+
+		postSessionPortalSendBufferSizeString, ok := os.LookupEnv("POST_SESSION_PORTAL_SEND_BUFFER_SIZE")
+		if !ok {
+			fmt.Println("env var POST_SESSION_PORTAL_SEND_BUFFER_SIZE must be set")
+			os.Exit(1)
+		}
+
+		postSessionPortalSendBufferSize, err := strconv.ParseInt(postSessionPortalSendBufferSizeString, 10, 64)
+		if err != nil {
+			fmt.Printf("could not parse envvar POST_SESSION_PORTAL_SEND_BUFFER_SIZE: %v\n", err)
+			os.Exit(1)
+		}
+
+		portalCruncherPublisher, err := pubsub.NewPortalCruncherPublisher(portalCruncherHost, int(postSessionPortalSendBufferSize))
+		if err != nil {
+			fmt.Printf("could not create portal cruncher publisher: %v\n", err)
+			os.Exit(1)
+		}
+
+		portalPublisher = portalCruncherPublisher
+	}
+
 	go func() {
 		for {
 			select {
 			case entry := <-publishChan:
+				sessionBytes, err := entry.MarshalBinary()
+				if err != nil {
+					continue
+				}
+				portalPublisher.Publish(pubsub.TopicPortalCruncherSessionData, sessionBytes)
 				fmt.Printf("%s\n", time.Unix(entry.Timestamp, 0).String())
 			case <-ctx.Done():
 				return
@@ -74,6 +108,7 @@ func main() {
 		var startTime int64 = 0
 
 		for {
+			begin := time.Now()
 			endIndex := (startTime + 10) / 10
 
 			if endIndex > SlicesInDay {
@@ -95,7 +130,11 @@ func main() {
 
 			startTime += 10
 
-			time.Sleep(time.Second * 10)
+			end := time.Now()
+
+			diff := end.Sub(begin)
+
+			time.Sleep((time.Second * 10) - diff)
 		}
 	}()
 
