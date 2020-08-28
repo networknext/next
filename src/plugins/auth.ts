@@ -84,7 +84,6 @@ export class AuthService {
             userProfile.idToken = token
             userProfile.auth0ID = authResult.sub
 
-            localStorage.setItem('userProfile', JSON.stringify(userProfile))
             store.commit('UPDATE_USER_PROFILE', userProfile)
           })
           .catch((error: Error) => {

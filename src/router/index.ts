@@ -71,12 +71,12 @@ const routes: Array<RouteConfig> = [
         path: 'users',
         name: 'users',
         component: UserManagement
-      },
+      }/* ,
       {
         path: 'route-shader',
         name: 'shader',
         component: RouteShader
-      }
+      } */
     ]
   },
   {
