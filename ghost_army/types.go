@@ -310,8 +310,8 @@ func (self *Entry) Into(data *transport.SessionPortalData, dcmap DatacenterMap, 
 			PacketLoss: self.DirectPacketLoss,
 		}
 		slice.Envelope = routing.Envelope{
-			Up:   self.NextBytesUp,
-			Down: self.NextBytesDown,
+			Up:   self.NextBytesUp / 1000,
+			Down: self.NextBytesDown / 1000,
 		}
 		slice.OnNetworkNext = self.Next
 		slice.IsMultiPath = self.Multipath
