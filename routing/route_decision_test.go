@@ -111,13 +111,8 @@ func TestDecideVeto(t *testing.T) {
 	rttVeto := float64(routing.DefaultRoutingRulesSettings.RTTVeto)
 	routeDecisionFunc := routing.DecideVeto(onNNSliceCounter, rttVeto, false, false)
 
-	// Test if multipath is enabled
-	decision := routing.Decision{true, routing.DecisionRTTReductionMultipath}
-	decision = routeDecisionFunc(decision, &routing.Stats{}, lastNextStats, directStats)
-	assert.Equal(t, routing.Decision{true, routing.DecisionRTTReductionMultipath}, decision)
-
-	// Now test if a route is vetoed for RTT increases
-	decision = routing.Decision{true, routing.DecisionNoReason}
+	// Test if a route is vetoed for RTT increases
+	decision := routing.Decision{true, routing.DecisionNoReason}
 	decision = routeDecisionFunc(decision, &routing.Stats{}, lastNextStats, directStats)
 	assert.Equal(t, routing.Decision{false, routing.DecisionVetoRTT}, decision)
 
