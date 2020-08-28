@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/signal"
 	"time"
 
 	"github.com/networknext/backend/encoding"
@@ -50,17 +52,54 @@ func main() {
 		fmt.Printf("\n%d = %v\n", i, entries[i])
 	}
 
-	sliceMap := make(map[int]*ghostarmy.Entry)
-
-	for i := range entries {
-		entry := &entries[i]
-		t := time.Unix(entry.Timestamp, 0)
-		year, month, day := t.Date()
-		t2 := time.Date(year, month, day, 0, 0, 0, 0, t.Location())
-		secsIntoDay := int(t.Sub(t2).Seconds())
-		sliceIndex := (secsIntoDay / 10) % SlicesInDay
-		sliceMap[sliceIndex] = entry
-	}
-
 	// publish to zero mq, sleep for 10 seconds, repeat
+
+	publishChan := make(chan ghostarmy.Entry)
+
+	ctx := context.Background()
+
+	go func() {
+		for {
+			select {
+			case entry := <-publishChan:
+				fmt.Printf("%s\n", time.Unix(entry.Timestamp, 0).String())
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	go func() {
+		index := 0
+		var startTime int64 = 0
+
+		for {
+			endIndex := (startTime + 10) / 10
+
+			if endIndex > SlicesInDay {
+				startTime = 10
+			}
+
+			for entries[index].Timestamp < startTime {
+				fmt.Printf("skipping entry at index %d\n", index)
+				index++
+				index = index % len(entries)
+			}
+
+			for entries[index].Timestamp < startTime+10 {
+				fmt.Printf("publishing entry at index %d\n", index)
+				publishChan <- entries[index]
+				index++
+				index = index % len(entries)
+			}
+
+			startTime += 10
+
+			time.Sleep(time.Second * 10)
+		}
+	}()
+
+	sigint := make(chan os.Signal, 1)
+	signal.Notify(sigint, os.Interrupt)
+	<-sigint
 }

@@ -14,17 +14,17 @@ import (
 	ghostarmy "github.com/networknext/backend/ghost_army"
 )
 
-type sortable []ghostarmy.Entry
+type sortableEntries []ghostarmy.Entry
 
-func (self sortable) Len() int {
+func (self sortableEntries) Len() int {
 	return len(self)
 }
 
-func (self sortable) Swap(i, j int) {
+func (self sortableEntries) Swap(i, j int) {
 	self[i], self[j] = self[j], self[i]
 }
 
-func (self sortable) Less(i, j int) bool {
+func (self sortableEntries) Less(i, j int) bool {
 	return self[i].Timestamp < self[j].Timestamp
 }
 
@@ -53,8 +53,8 @@ func main() {
 
 	// convert to binary
 
-	var list sortable
-	list = make([]ghostarmy.Entry, 0)
+	var entries sortableEntries
+	entries = make([]ghostarmy.Entry, 0)
 	for lineNum, line := range lines {
 		if lineNum == 0 {
 			continue
@@ -69,11 +69,15 @@ func main() {
 		checkErr(err, lineNum)
 		i++
 
-		ts, err := time.Parse("2006-1-2 15:04:05", line[i])
+		t, err := time.Parse("2006-1-2 15:04:05", line[i])
 		checkErr(err, lineNum)
 		i++
 
-		entry.Timestamp = ts.Unix()
+		year, month, day := t.Date()
+		t2 := time.Date(year, month, day, 0, 0, 0, 0, t.Location())
+		secsIntoDay := int64(t.Sub(t2).Seconds())
+
+		entry.Timestamp = secsIntoDay
 
 		entry.BuyerID, err = strconv.ParseInt(line[i], 10, 64)
 		checkErr(err, lineNum)
@@ -178,21 +182,21 @@ func main() {
 		i++
 
 		// push back entry
-		list = append(list, entry)
+		entries = append(entries, entry)
 	}
 
 	// sort on timestamp
-	sort.Sort(list)
+	sort.Sort(entries)
 
 	// encode to binary format
 	index := 0
 
 	bin := make([]byte, 8)
-	encoding.WriteUint64(bin, &index, uint64(len(list)))
-	for _, item := range list {
-		dat, err := item.MarshalBinary()
+	encoding.WriteUint64(bin, &index, uint64(len(entries)))
+	for _, entry := range entries {
+		dat, err := entry.MarshalBinary()
 		if err != nil {
-			fmt.Printf("unable to marshal binary for session %d: %v\n", item.SessionID, err)
+			fmt.Printf("unable to marshal binary for session %d: %v\n", entry.SessionID, err)
 			continue
 		}
 

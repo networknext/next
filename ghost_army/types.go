@@ -8,7 +8,7 @@ import (
 // Entry is the contents of the csv
 type Entry struct {
 	SessionID                 int64
-	Timestamp                 int64
+	Timestamp                 int64 // not actual timestamp, but # of seconds into the day
 	BuyerID                   int64
 	SliceNumber               int64
 	Next                      bool
