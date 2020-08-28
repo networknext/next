@@ -211,6 +211,14 @@ ifndef CRUNCHER_RECEIVE_BUFFER_SIZE
 export CRUNCHER_RECEIVE_BUFFER_SIZE = 100
 endif
 
+ifndef GHOST_ARMY_BIN
+export GHOST_ARMY_BIN = ./dist/ghost_army.bin
+endif
+
+ifndef DATACENTERS_CSV
+export DATACENTERS_CSV = ./dist/datacenters.csv
+endif
+
 .PHONY: help
 help:
 	@echo "$$(grep -hE '^\S+:.*##' $(MAKEFILE_LIST) | sed -e 's/:.*##\s*/:/' -e 's/^\(.\+\):\(.*\)/\\033[36m\1\\033[m:\2/' | column -c2 -t -s :)"
