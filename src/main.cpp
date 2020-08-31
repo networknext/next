@@ -7,9 +7,8 @@
 
 #include "bench/bench.hpp"
 #include "core/backend.hpp"
-#include "core/packet_handler.hpp"
+#include "core/packet_processing.hpp"
 #include "core/packets/header.hpp"
-#include "core/pinger.hpp"
 #include "core/router_info.hpp"
 #include "crypto/bytes.hpp"
 #include "crypto/hash.hpp"
@@ -22,8 +21,6 @@
 
 using namespace std::chrono_literals;
 using core::Backend;
-using core::PacketHandler;
-using core::Pinger;
 using crypto::KEY_SIZE;
 using crypto::Keychain;
 using net::Address;
@@ -265,8 +262,7 @@ int main(int argc, const char* argv[])
     }
 
     auto thread = std::make_shared<std::thread>([&, socket] {
-      PacketHandler handler(should_receive, *socket, keychain, sessions, relay_manager, gAlive, recorder, router_info);
-      handler.handle_packets();
+      core::recv_loop(should_receive, *socket, keychain, sessions, relay_manager, gAlive, recorder, router_info);
     });
 
     set_thread_affinity(*thread, (std::thread::hardware_concurrency() == 1) ? 0 : i);
@@ -287,8 +283,7 @@ int main(int argc, const char* argv[])
   if (gAlive) {
     auto socket = next_socket();
     auto thread = std::make_shared<std::thread>([&, socket] {
-      Pinger pinger(*socket, relay_manager, gAlive, recorder);
-      pinger.process();
+      core::ping_loop(*socket, relay_manager, gAlive, recorder);
     });
 
     set_thread_affinity(*thread, 0);
