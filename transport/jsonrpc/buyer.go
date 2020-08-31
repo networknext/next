@@ -215,7 +215,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 
 		var oldCount int
 		var newCount int
-		for range buyers {
+		for _, buyer := range buyers {
 			count, err := redis.Int(redisClient.Receive())
 			if err != nil {
 				err = fmt.Errorf("TotalSessions() failed getting total session count direct: %v", err)
@@ -229,6 +229,9 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 				err = fmt.Errorf("TotalSessions() failed getting total session count direct: %v", err)
 				level.Error(s.Logger).Log("err", err)
 				return err
+			}
+			if buyer.ID == ghostArmyBuyerID {
+				count += 100000
 			}
 			newCount += count
 		}
@@ -248,7 +251,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		}
 		redisClient.Flush()
 
-		for _, buyer := range buyers {
+		for range buyers {
 			count, err := redis.Int(redisClient.Receive())
 			if err != nil {
 				err = fmt.Errorf("TotalSessions() failed getting total session count next: %v", err)
@@ -262,9 +265,6 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 				err = fmt.Errorf("TotalSessions() failed getting total session count next: %v", err)
 				level.Error(s.Logger).Log("err", err)
 				return err
-			}
-			if buyer.ID == ghostArmyBuyerID {
-				count += 100000
 			}
 			newCount += count
 		}
