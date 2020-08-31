@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -18,7 +17,6 @@ import (
 	"github.com/go-kit/kit/log/level"
 	"github.com/gomodule/redigo/redis"
 	"github.com/networknext/backend/encoding"
-	ghostarmy "github.com/networknext/backend/ghost_army"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
@@ -200,8 +198,6 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 	defer redisClient.Close()
 	minutes := time.Now().Unix() / 60
 
-	ghostArmyBuyerID := ghostarmy.GhostArmyBuyerID(os.Getenv("ENV"))
-
 	switch args.BuyerID {
 	case "":
 		buyers := s.Storage.Buyers()
@@ -215,7 +211,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 
 		var oldCount int
 		var newCount int
-		for := range buyers {
+		for range buyers {
 			count, err := redis.Int(redisClient.Receive())
 			if err != nil {
 				err = fmt.Errorf("TotalSessions() failed getting total session count direct: %v", err)
