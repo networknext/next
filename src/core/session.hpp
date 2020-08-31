@@ -12,7 +12,7 @@ namespace core
   class Session: public Expireable
   {
    public:
-    Session(const RouterInfo& routerInfo);
+    Session() = default;
     virtual ~Session() override = default;
 
     uint64_t SessionID;
@@ -32,8 +32,6 @@ namespace core
   };
 
   using SessionPtr = std::shared_ptr<Session>;
-
-  INLINE Session::Session(const RouterInfo& routerInfo): Expireable(routerInfo) {}
 
   INLINE std::ostream& operator<<(std::ostream& os, const Session& session)
   {

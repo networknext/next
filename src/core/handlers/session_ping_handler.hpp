@@ -5,6 +5,7 @@
 #include "os/socket.hpp"
 #include "util/macros.hpp"
 
+using core::RouterInfo;
 using core::packets::Direction;
 using core::packets::Header;
 using os::Socket;
@@ -15,7 +16,12 @@ namespace core
   namespace handlers
   {
     INLINE void session_ping_handler(
-     Packet& packet, SessionMap& session_map, ThroughputRecorder& recorder, const Socket& socket, bool is_signed)
+     Packet& packet,
+     SessionMap& session_map,
+     ThroughputRecorder& recorder,
+     const RouterInfo& router_info,
+     const Socket& socket,
+     bool is_signed)
     {
       size_t index = 0;
       size_t length = packet.Len;
@@ -49,7 +55,7 @@ namespace core
         return;
       }
 
-      if (session->expired()) {
+      if (session->expired(router_info)) {
         LOG(ERROR, "ignoring session ping packet, session expired: session = ", *session);
         session_map.erase(hash);
         return;

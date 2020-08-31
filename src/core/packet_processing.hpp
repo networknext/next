@@ -169,7 +169,7 @@ namespace core
         } break;
         case Type::RouteResponse: {
           recorder.RouteResponseRx.add(wholePacketSize);
-          handlers::route_response_handler(packet, session_map, recorder, socket, is_signed);
+          handlers::route_response_handler(packet, session_map, recorder, router_info, socket, is_signed);
         } break;
         case Type::ContinueRequest: {
           recorder.ContinueRequestRx.add(wholePacketSize);
@@ -177,23 +177,23 @@ namespace core
         } break;
         case Type::ContinueResponse: {
           recorder.ContinueResponseRx.add(wholePacketSize);
-          handlers::continue_response_handler(packet, session_map, recorder, socket, is_signed);
+          handlers::continue_response_handler(packet, session_map, recorder, router_info, socket, is_signed);
         } break;
         case Type::ClientToServer: {
           recorder.ClientToServerRx.add(wholePacketSize);
-          handlers::client_to_server_handler(packet, session_map, recorder, socket, is_signed);
+          handlers::client_to_server_handler(packet, session_map, recorder, router_info, socket, is_signed);
         } break;
         case Type::ServerToClient: {
           recorder.ServerToClientRx.add(wholePacketSize);
-          handlers::server_to_client_handler(packet, session_map, recorder, socket, is_signed);
+          handlers::server_to_client_handler(packet, session_map, recorder, router_info, socket, is_signed);
         } break;
         case Type::SessionPing: {
           recorder.SessionPingRx.add(wholePacketSize);
-          handlers::session_ping_handler(packet, session_map, recorder, socket, is_signed);
+          handlers::session_ping_handler(packet, session_map, recorder, router_info, socket, is_signed);
         } break;
         case Type::SessionPong: {
           recorder.SessionPongRx.add(wholePacketSize);
-          handlers::session_pong_handler(packet, session_map, recorder, socket, is_signed);
+          handlers::session_pong_handler(packet, session_map, recorder, router_info, socket, is_signed);
         } break;
         case Type::NearPing: {
           recorder.NearPingRx.add(wholePacketSize);

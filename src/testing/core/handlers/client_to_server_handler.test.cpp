@@ -47,7 +47,7 @@ Test(core_handlers_client_to_server_handler_unsigned_packet)
    .session_version = 0x12,
   };
 
-  auto session = std::make_shared<Session>(info);
+  auto session = std::make_shared<Session>();
   session->NextAddr = addr;
   session->ExpireTimestamp = 10;
   session->PrivateKey = private_key;
@@ -62,7 +62,7 @@ Test(core_handlers_client_to_server_handler_unsigned_packet)
   check(header.write(packet, index, Direction::ClientToServer, private_key));
   check(index == Header::ByteSize);
 
-  core::handlers::client_to_server_handler(packet, map, recorder, socket, false);
+  core::handlers::client_to_server_handler(packet, map, recorder, info, socket, false);
   size_t prev_len = packet.Len;
   check(socket.recv(packet));
   check(prev_len == packet.Len);
@@ -73,7 +73,7 @@ Test(core_handlers_client_to_server_handler_unsigned_packet)
     std::cout << "byte count = " << recorder.ClientToServerTx.ByteCount << std::endl;
   });
 
-  core::handlers::client_to_server_handler(packet, map, recorder, socket, false);
+  core::handlers::client_to_server_handler(packet, map, recorder, info, socket, false);
   // check already received
   check(!socket.recv(packet));
 }
@@ -105,7 +105,7 @@ Test(core_handlers_client_to_server_handler_signed_packet)
    .session_version = 0x12,
   };
 
-  auto session = std::make_shared<Session>(info);
+  auto session = std::make_shared<Session>();
   session->NextAddr = addr;
   session->ExpireTimestamp = 10;
   session->PrivateKey = private_key;
@@ -122,10 +122,10 @@ Test(core_handlers_client_to_server_handler_signed_packet)
   check(header.write(packet, index, Direction::ClientToServer, private_key));
   check(index == crypto::PacketHashLength + Header::ByteSize);
 
-  core::handlers::client_to_server_handler(packet, map, recorder, socket, true);
+  core::handlers::client_to_server_handler(packet, map, recorder, info, socket, true);
   check(socket.recv(packet));
 
-  core::handlers::client_to_server_handler(packet, map, recorder, socket, true);
+  core::handlers::client_to_server_handler(packet, map, recorder, info, socket, true);
   // check already received
   check(!socket.recv(packet));
 }

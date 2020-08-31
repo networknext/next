@@ -6,8 +6,11 @@
 #include "crypto/hash.hpp"
 #include "os/socket.hpp"
 
+using core::Packet;
+using core::RouterInfo;
 using core::packets::Direction;
 using core::packets::Header;
+using util::ThroughputRecorder;
 
 namespace core
 {
@@ -17,6 +20,7 @@ namespace core
      Packet& packet,
      core::SessionMap& session_map,
      util::ThroughputRecorder& recorder,
+     const RouterInfo& router_info,
      const os::Socket& socket,
      bool is_signed)
     {
@@ -54,7 +58,7 @@ namespace core
         return;
       }
 
-      if (session->expired()) {
+      if (session->expired(router_info)) {
         LOG(INFO, "session expired: session = ", *session);
         session_map.erase(hash);
         return;
@@ -63,7 +67,14 @@ namespace core
       uint64_t clean_sequence = header.clean_sequence();
 
       if (relay_replay_protection_already_received(&session->ClientToServerProtection, clean_sequence)) {
-        LOG(ERROR, "ignoring client to server packet, already received packet: session = ", *session, ", sequence = ", header.sequence, ", clean sequence = ", clean_sequence);
+        LOG(
+         ERROR,
+         "ignoring client to server packet, already received packet: session = ",
+         *session,
+         ", sequence = ",
+         header.sequence,
+         ", clean sequence = ",
+         clean_sequence);
         return;
       }
 

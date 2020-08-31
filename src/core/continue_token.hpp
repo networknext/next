@@ -23,7 +23,7 @@ namespace core
     friend testing::_test_core_ContinueToken_read_;
 
    public:
-    ContinueToken(const RouterInfo& routerInfo);
+    ContinueToken() = default;
     virtual ~ContinueToken() override = default;
 
     static const size_t ByteSize = Token::ByteSize;
@@ -63,8 +63,6 @@ namespace core
      const crypto::GenericKey& receiverPrivateKey,
      const size_t nonceIndex) -> bool;
   };
-
-  INLINE ContinueToken::ContinueToken(const RouterInfo& routerInfo): Token(routerInfo) {}
 
   INLINE auto ContinueToken::write_encrypted(
    Packet& packet,

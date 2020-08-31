@@ -38,7 +38,7 @@ Test(core_RouteToken_general)
   std::array<uint8_t, crypto_box_SECRETKEYBYTES> PrivateKey;
   crypto::RandomBytes(PrivateKey, PrivateKey.size());
 
-  core::RouteToken inputToken(info);
+  core::RouteToken inputToken;
   {
     inputToken.ExpireTimestamp = ExpireTimestamp;
     inputToken.SessionID = SessionID;
@@ -55,7 +55,7 @@ Test(core_RouteToken_general)
     check(inputToken.write_encrypted(packet, index, sender_private_key, receiver_public_key));
   }
 
-  core::RouteToken outputToken(info);
+  core::RouteToken outputToken;
   {
     size_t index = 0;
     check(outputToken.read_encrypted(packet, index, sender_public_key, receiver_private_key));

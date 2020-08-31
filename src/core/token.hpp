@@ -15,7 +15,7 @@ namespace core
   class Token: public Expireable
   {
    public:
-    Token(const RouterInfo& routerInfo);
+    Token() = default;
     virtual ~Token() override = default;
     // Expireable (8) +
     // session id (8) +
@@ -33,8 +33,6 @@ namespace core
     auto write(Packet& packet, size_t& index) -> bool;
     auto read(const Packet& packet, size_t& index) -> bool;
   };
-
-  INLINE Token::Token(const RouterInfo& routerInfo): Expireable(routerInfo) {}
 
   INLINE uint64_t Token::hash()
   {

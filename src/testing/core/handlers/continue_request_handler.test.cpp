@@ -38,7 +38,7 @@ Test(core_handlers_continue_request_handler_unsigned)
   packet.Buffer[0] = static_cast<uint8_t>(Type::ContinueRequest);
   packet.Len = 1 + ContinueToken::EncryptedByteSize * 2;
 
-  ContinueToken token(info);
+  ContinueToken token;
   token.ExpireTimestamp = 20;
   token.SessionID = 0x13;
   token.SessionVersion = 3;
@@ -50,7 +50,7 @@ Test(core_handlers_continue_request_handler_unsigned)
     std::cout << index << '\n';
   });
 
-  auto session = std::make_shared<Session>(info);
+  auto session = std::make_shared<Session>();
   session->ExpireTimestamp = 10;
   session->SessionID = token.SessionID;
   session->SessionVersion = token.SessionVersion;
@@ -86,7 +86,7 @@ Test(core_handlers_continue_request_handler_signed)
   check(addr.parse("127.0.0.1"));
   check(socket.create(addr, config));
 
-  ContinueToken token(info);
+  ContinueToken token;
   token.ExpireTimestamp = 20;
   token.SessionID = 0x13;
   token.SessionVersion = 3;
@@ -98,7 +98,7 @@ Test(core_handlers_continue_request_handler_signed)
     std::cout << index << '\n';
   });
 
-  auto session = std::make_shared<Session>(info);
+  auto session = std::make_shared<Session>();
   session->ExpireTimestamp = 10;
   session->SessionID = token.SessionID;
   session->SessionVersion = token.SessionVersion;

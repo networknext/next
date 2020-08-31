@@ -12,7 +12,7 @@ using core::ContinueToken;
 using crypto::Keychain;
 using os::Socket;
 using util::ThroughputRecorder;
-
+using core::RouterInfo;
 namespace core
 {
   namespace handlers
@@ -39,7 +39,7 @@ namespace core
         return;
       }
 
-      ContinueToken token(router_info);
+      ContinueToken token;
       {
         size_t i = index + 1;
         if (!token.read_encrypted(packet, i, keychain.RouterPublicKey, keychain.RelayPrivateKey)) {
@@ -48,7 +48,7 @@ namespace core
         }
       }
 
-      if (token.expired()) {
+      if (token.expired(router_info)) {
         LOG(INFO, "ignoring continue request. token is expired");
         return;
       }
@@ -62,7 +62,7 @@ namespace core
         return;
       }
 
-      if (session->expired()) {
+      if (session->expired(router_info)) {
         LOG(INFO, "ignoring continue request. session is expired");
         session_map.erase(hash);
         return;

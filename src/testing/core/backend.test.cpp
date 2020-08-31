@@ -270,7 +270,7 @@ Test(core_Backend_update_valid)
   testing::MockHttpClient client;
   Backend backend(BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, client);
 
-  sessions.set(1234, std::make_shared<Session>(routerInfo));  // just add one thing to the map to make it non-zero
+  sessions.set(1234, std::make_shared<Session>());  // just add one thing to the map to make it non-zero
 
   // seed relay manager
   {

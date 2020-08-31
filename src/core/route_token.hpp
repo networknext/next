@@ -12,7 +12,7 @@ namespace core
   class RouteToken: public Token
   {
    public:
-    RouteToken(const RouterInfo& routerInfo);
+    RouteToken() = default;
     virtual ~RouteToken() override = default;
     // KbpsUp (4) +
     // KbpsDown (4) +
@@ -58,8 +58,6 @@ namespace core
      const crypto::GenericKey& receiverPrivateKey,
      const size_t nonceIndex) -> bool;
   };
-
-  INLINE RouteToken::RouteToken(const RouterInfo& routerInfo): Token(routerInfo) {}
 
   INLINE auto RouteToken::write_encrypted(
    Packet& packet,

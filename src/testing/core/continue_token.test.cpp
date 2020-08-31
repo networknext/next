@@ -9,15 +9,6 @@ using core::ContinueToken;
 using core::Packet;
 using core::RouterInfo;
 
-namespace
-{
-  core::ContinueToken make_token()
-  {
-    static RouterInfo info;
-    return ContinueToken(info);
-  }
-}  // namespace
-
 Test(core_ContinueToken_general)
 {
   Packet packet;
@@ -39,7 +30,7 @@ Test(core_ContinueToken_general)
   const auto SessionVersion = crypto::Random<uint8_t>();
   const auto SessionFlags = crypto::Random<uint8_t>();
 
-  ContinueToken input_token = std::move(make_token());
+  ContinueToken input_token;
   {
     input_token.ExpireTimestamp = ExpireTimestamp;
     input_token.SessionID = SessionID;
@@ -53,7 +44,7 @@ Test(core_ContinueToken_general)
     check(index == ContinueToken::EncryptedByteSize);
   }
 
-  ContinueToken output_token = std::move(make_token());
+  ContinueToken output_token;
   {
     size_t index = 0;
     check(output_token.read_encrypted(packet, index, sender_public_key, receiver_private_key));
@@ -75,7 +66,7 @@ Test(core_ContinueToken_general)
 Test(core_ContinueToken_write)
 {
   Packet packet;
-  ContinueToken token = std::move(make_token());
+  ContinueToken token;
 
   token.ExpireTimestamp = 6;
   token.SessionID = 1;
@@ -106,7 +97,7 @@ Test(core_ContinueToken_write)
 Test(core_ContinueToken_read)
 {
   Packet packet;
-  ContinueToken token = std::move(make_token());
+  ContinueToken token;
 
   token.ExpireTimestamp = 6;
   token.SessionID = 1;
@@ -116,7 +107,7 @@ Test(core_ContinueToken_read)
   size_t index = 0;
   check(token.write(packet, index));
 
-  ContinueToken other = std::move(make_token());
+  ContinueToken other;
 
   index = 0;
   check(other.read(packet, index));

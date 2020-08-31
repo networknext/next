@@ -13,39 +13,28 @@ namespace core
     virtual ~Expireable() = default;
 
     /* Returns true if the expire timestamp is less than the current unix time */
-    auto expired() -> bool;
+    auto expired(const RouterInfo& router_info) -> bool;
 
-    /* Returns true if the expire timestamp is less than the argument */
+    /* Returns true if the expire timestamp is less than the number of specified seconds */
     auto expired(double seconds) -> bool;
 
     // Time to expire in seconds, unix time
     uint64_t ExpireTimestamp;
 
    protected:
-    Expireable(const RouterInfo& routerInfo); // TODO de-ruby-fy this, pass router info into expired()
+    Expireable() = default;
 
    private:
-    const RouterInfo& mRouterInfo;
-
-    inline auto timestamp() -> uint64_t;
   };
 
-  inline Expireable::Expireable(const RouterInfo& routerInfo): mRouterInfo(routerInfo) {}
-
-  inline auto Expireable::expired() -> bool
+  inline auto Expireable::expired(const RouterInfo& router_info) -> bool
   {
-    return this->ExpireTimestamp < timestamp() + 1;
+    return this->ExpireTimestamp < router_info.currentTime() + 1;
   }
 
   inline auto Expireable::expired(double seconds) -> bool
   {
     return this->ExpireTimestamp < seconds;
-  }
-
-  inline auto Expireable::timestamp() -> uint64_t
-  {
-    // elapsed time is the amount of seconds since the relay initialized with the backend
-    return mRouterInfo.currentTime();
   }
 }  // namespace core
 #endif

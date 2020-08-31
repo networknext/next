@@ -4,6 +4,8 @@
 #include "crypto/keychain.hpp"
 #include "os/socket.hpp"
 
+using core::RouterInfo;
+using core::SessionMap;
 using core::packets::Direction;
 using core::packets::Header;
 using os::Socket;
@@ -15,8 +17,9 @@ namespace core
   {
     inline void session_pong_handler(
      Packet& packet,
-     core::SessionMap& session_map,
-     util::ThroughputRecorder& recorder,
+     SessionMap& session_map,
+     ThroughputRecorder& recorder,
+     const RouterInfo& router_info,
      const os::Socket& socket,
      bool is_signed)
     {
@@ -52,7 +55,7 @@ namespace core
         return;
       }
 
-      if (session->expired()) {
+      if (session->expired(router_info)) {
         LOG(ERROR, "ignoring session pong packet, session expired: session = ", *session);
         session_map.erase(hash);
         return;

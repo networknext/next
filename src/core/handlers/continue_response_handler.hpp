@@ -6,6 +6,7 @@
 #include "crypto/keychain.hpp"
 #include "os/socket.hpp"
 
+using core::RouterInfo;
 using core::packets::Direction;
 using core::packets::Header;
 using crypto::Keychain;
@@ -17,7 +18,12 @@ namespace core
   namespace handlers
   {
     inline void continue_response_handler(
-     Packet& packet, SessionMap& session_map, ThroughputRecorder& recorder, const Socket& socket, bool is_signed)
+     Packet& packet,
+     SessionMap& session_map,
+     ThroughputRecorder& recorder,
+     const RouterInfo& router_info,
+     const Socket& socket,
+     bool is_signed)
     {
       size_t index = 0;
       size_t length = packet.Len;
@@ -51,7 +57,7 @@ namespace core
         return;
       }
 
-      if (session->expired()) {
+      if (session->expired(router_info)) {
         LOG(INFO, "ignoring continue response, session expired: session = ", *session);
         session_map.erase(hash);
         return;

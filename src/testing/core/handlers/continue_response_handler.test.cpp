@@ -46,7 +46,7 @@ Test(core_handlers_continue_response_handler_unsigned)
    .session_version = 0x12,
   };
 
-  auto session = std::make_shared<Session>(info);
+  auto session = std::make_shared<Session>();
   session->SessionID = header.session_id;
   session->SessionVersion = header.session_version;
   session->PrivateKey = private_key;
@@ -59,7 +59,7 @@ Test(core_handlers_continue_response_handler_unsigned)
   size_t index = 0;
   check(header.write(packet, index, Direction::ServerToClient, private_key));
 
-  core::handlers::continue_response_handler(packet, map, recorder, socket, false);
+  core::handlers::continue_response_handler(packet, map, recorder, info, socket, false);
   size_t prev_len = packet.Len;
   check(socket.recv(packet)).onFail([&] {
     std::cout << "unable to receive packet\n";
@@ -72,7 +72,7 @@ Test(core_handlers_continue_response_handler_unsigned)
     std::cout << "byte count = " << recorder.ContinueResponseRx.ByteCount << '\n';
   });
 
-  core::handlers::continue_response_handler(packet, map, recorder, socket, false);
+  core::handlers::continue_response_handler(packet, map, recorder, info, socket, false);
   check(!socket.recv(packet));
 }
 
@@ -102,7 +102,7 @@ Test(core_handlers_continue_response_handler_signed)
    .session_version = 0x12,
   };
 
-  auto session = std::make_shared<Session>(info);
+  auto session = std::make_shared<Session>();
   session->SessionID = header.session_id;
   session->SessionVersion = header.session_version;
   session->PrivateKey = private_key;
@@ -115,7 +115,7 @@ Test(core_handlers_continue_response_handler_signed)
   size_t index = crypto::PacketHashLength;
   check(header.write(packet, index, Direction::ServerToClient, private_key));
 
-  core::handlers::continue_response_handler(packet, map, recorder, socket, true);
+  core::handlers::continue_response_handler(packet, map, recorder, info, socket, true);
   size_t prev_len = packet.Len;
   check(socket.recv(packet)).onFail([&] {
     std::cout << "unable to receive packet\n";
@@ -128,6 +128,6 @@ Test(core_handlers_continue_response_handler_signed)
     std::cout << "byte count = " << recorder.ContinueResponseRx.ByteCount << '\n';
   });
 
-  core::handlers::continue_response_handler(packet, map, recorder, socket, true);
+  core::handlers::continue_response_handler(packet, map, recorder, info, socket, true);
   check(!socket.recv(packet));
 }

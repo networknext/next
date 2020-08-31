@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/packets/types.hpp"
+#include "core/route_token.hpp"
 #include "core/router_info.hpp"
 #include "core/session_map.hpp"
 #include "core/throughput_recorder.hpp"
@@ -8,6 +9,8 @@
 #include "net/address.hpp"
 #include "os/socket.hpp"
 
+using core::RouterInfo;
+using core::RouteToken;
 using crypto::Keychain;
 using os::Socket;
 using util::ThroughputRecorder;
@@ -38,7 +41,7 @@ namespace core
         return;
       }
 
-      core::RouteToken token(router_info);
+      RouteToken token;
       {
         size_t i = index + 1;
         if (!token.read_encrypted(packet, i, keychain.RouterPublicKey, keychain.RelayPrivateKey)) {
@@ -48,7 +51,7 @@ namespace core
       }
 
       // don't do anything if the token is expired - probably should log something here
-      if (token.expired()) {
+      if (token.expired(router_info)) {
         LOG(INFO, "ignoring route request. token expired");
         return;
       }
@@ -58,7 +61,7 @@ namespace core
 
       if (!session_map.get(hash)) {
         // create the session
-        auto session = std::make_shared<Session>(router_info);
+        auto session = std::make_shared<Session>();
         assert(session);
 
         // fill it with data in the token
