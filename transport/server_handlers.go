@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"hash/fnv"
+	"math/rand"
 	"os"
 	"strconv"
 	"syscall"
@@ -12,7 +13,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math/rand"
 	"net"
 
 	"sync"
@@ -776,21 +776,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 
 		timestamp := time.Now()
 
-		// Check if this user has been excluded from ever taking a network next route.
-		// If they have, then simply respond with the direct route and early out.
-		if _, ok := buyer.RoutingRulesSettings.ExcludedUserHashes[packet.UserHash]; ok {
-			routeDecision = routing.Decision{
-				OnNetworkNext: false,
-				Reason:        routing.DecisionExcludedUser,
-			}
-
-			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelayData, routeDecision, sessionDataReadOnly.RouteDecision, sessionDataReadOnly.Initial, vetoReason, multipathVetoReason, nextSliceCounter,
-				committedData, sessionDataReadOnly.RouteHash, sessionDataReadOnly.RouteDecision.OnNetworkNext, timestamp, routeExpireTimestamp, sessionDataReadOnly.TokenVersion, params.RouterPrivateKey, nil, postSessionUpdateFunc) //sliceMutexes)
-
-			return
-		}
-
-		if location.IsZero() {
+		if newSession {
 			var err error
 			location, err = params.GetIPLocator().LocateIP(packet.ClientAddress.IP)
 
@@ -839,6 +825,20 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 
 			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelayData, routeDecision, sessionDataReadOnly.RouteDecision, sessionDataReadOnly.Initial, vetoReason, multipathVetoReason, nextSliceCounter,
 				committedData, sessionDataReadOnly.RouteHash, sessionDataReadOnly.RouteDecision.OnNetworkNext, timestamp, routeExpireTimestamp, sessionDataReadOnly.TokenVersion, params.RouterPrivateKey, nil, postSessionUpdateFunc) //sliceMutexes)
+			return
+		}
+
+		// Check if this user has been excluded from ever taking a network next route.
+		// If they have, then simply respond with the direct route and early out.
+		if _, ok := buyer.RoutingRulesSettings.ExcludedUserHashes[packet.UserHash]; ok {
+			routeDecision = routing.Decision{
+				OnNetworkNext: false,
+				Reason:        routing.DecisionExcludedUser,
+			}
+
+			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelayData, routeDecision, sessionDataReadOnly.RouteDecision, sessionDataReadOnly.Initial, vetoReason, multipathVetoReason, nextSliceCounter,
+				committedData, sessionDataReadOnly.RouteHash, sessionDataReadOnly.RouteDecision.OnNetworkNext, timestamp, routeExpireTimestamp, sessionDataReadOnly.TokenVersion, params.RouterPrivateKey, nil, postSessionUpdateFunc) //sliceMutexes)
+
 			return
 		}
 
@@ -1134,37 +1134,16 @@ func GetNextRoute(routeMatrix RouteProvider, nearRelayData []routing.NearRelayDa
 		return nil
 	}
 
-	// Now pick the best route from all acceptable routes:
-
-	// 	1. Choose a random destination relay (since all destination relays are in the same datacenter and have effectively the same RTT from relay -> game server)
-	//		and only select routes with that destination relay
-	//	2. If we still don't only have 1 route, choose a random one.
-
-	selectorFuncs := []routing.SelectorFunc{
-		routing.SelectRoutesByRandomDestRelay(rand.NewSource(rand.Int63())),
-		routing.SelectRandomRoute(rand.NewSource(rand.Int63())),
-	}
-
-	for _, selectorFunc := range selectorFuncs {
-		routes = selectorFunc(routes)
-		if len(routes) == 0 {
-			break
-		}
-	}
-
-	if len(routes) == 0 {
-		metrics.ErrorMetrics.RouteSelectFailure.Add(1)
-		return nil
-	}
-
-	route := &routes[0]
+	// Now that we have a slice of acceptable routes, choose a random one
+	randRouteIndex := rand.Intn(len(routes))
+	route := &routes[randRouteIndex]
 
 	// Now that we've selected a route, populate it with all of the necessary data
 	// We do this at the end to avoid populating data on routes we won't use
 	for i := 0; i < route.NumRelays; i++ {
 		relay, err := storer.Relay(route.RelayIDs[i])
 		if err != nil {
-			metrics.ErrorMetrics.RouteSelectFailure.Add(1)
+			metrics.ErrorMetrics.RouteFailure.Add(1)
 			return nil
 		}
 
