@@ -1,4 +1,3 @@
-import Vue from 'vue'
 import store from '@/store'
 import { Auth0Client } from '@auth0/auth0-spa-js'
 import { UserProfile } from '@/components/types/AuthTypes.ts'
