@@ -264,7 +264,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 				return err
 			}
 			if buyer.ID == ghostArmyBuyerID {
-				count *= 300
+				count += 100000
 			}
 			newCount += count
 		}
