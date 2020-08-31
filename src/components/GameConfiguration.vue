@@ -2,7 +2,7 @@
   <div class="card-body" id="config-page">
     <h5 class="card-title">Game Configuration</h5>
     <p class="card-text">Manage how your game connects to Network Next.</p>
-    <Alert :message="message" :alertType="alertType" v-if="message !== ''" />
+    <Alert :message="message" :alertType="alertType" v-if="message || '' !== ''" />
     <form v-on:submit.prevent="updatePubKey()">
       <div class="form-group" id="pubKey">
         <label>Company Name</label>
