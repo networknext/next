@@ -36,7 +36,7 @@
         </tr>
       </thead>
       <tbody v-if="sessions.length > 0">
-        <tr v-for="(session, index) in sessions" v-bind:key="index">
+        <tr id="data-row" v-for="(session, index) in sessions" v-bind:key="index">
           <td>
               <router-link v-bind:to="`/session-tool/${session.id}`" class="text-dark fixed-width">{{ session.id }}</router-link>
           </td>
@@ -69,7 +69,7 @@
 </template>
 
 <script lang="ts">
-import { Component, Vue, Prop } from 'vue-property-decorator'
+import { Component, Vue } from 'vue-property-decorator'
 import { AlertTypes } from './types/AlertTypes'
 
 /**
@@ -85,7 +85,6 @@ export default class UserSessions extends Vue {
   private searchID: string
   private message: string
   private alertType: string
-  private vueInstance: any
 
   constructor () {
     super()
@@ -95,7 +94,6 @@ export default class UserSessions extends Vue {
     this.sessionLoop = null
     this.message = 'Failed to fetch user sessions'
     this.alertType = AlertTypes.ERROR
-    this.vueInstance = Vue
   }
 
   private mounted () {
@@ -113,7 +111,9 @@ export default class UserSessions extends Vue {
       return
     }
 
-    this.vueInstance.fetchUserSessions({ user_hash: this.searchID })
+    // TODO: Figure out how to get rid of this. this.$apiService should be possible...
+    // HACK: This is a hack to get tests to work properly
+    (this as any).$apiService.fetchUserSessions({ user_hash: this.searchID })
       .then((response: any) => {
         this.sessions = response.sessions || []
         this.showSessions = true

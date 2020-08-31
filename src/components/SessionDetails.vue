@@ -310,14 +310,11 @@ export default class SessionDetails extends Vue {
   private message: string
   private alertType: string
 
-  private vueInstance: any
-
   constructor () {
     super()
     this.searchID = ''
     this.message = ''
     this.alertType = AlertTypes.ERROR
-    this.vueInstance = Vue
   }
 
   private mounted () {
@@ -355,7 +352,7 @@ export default class SessionDetails extends Vue {
   }
 
   private fetchSessionDetails () {
-    this.vueInstance.fetchSessionDetails({ session_id: this.searchID })
+    (this as any).$apiService.fetchSessionDetails({ session_id: this.searchID })
       .then((response: any) => {
         this.meta = response.meta
         this.slices = response.slices

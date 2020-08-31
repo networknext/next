@@ -45,13 +45,11 @@ import { AlertTypes } from '@/components/types/AlertTypes'
 export default class Workspace extends Vue {
   private message: string
   private alertType: string
-  private vueInstance: any
 
   constructor () {
     super()
     this.message = ''
     this.alertType = ''
-    this.vueInstance = Vue
   }
 
   mounted () {
@@ -62,9 +60,13 @@ export default class Workspace extends Vue {
   }
 
   private resendVerificationEmail () {
+    // HACK because eslint likes to complain...
+    const vm = (this as any)
     const userId = this.$store.getters.userProfile.auth0ID
     const email = this.$store.getters.userProfile.email
-    this.vueInstance
+    // TODO: Figure out how to get rid of this. this.$apiService should be possible...
+    // HACK: This is a hack to get tests to work properly
+    vm.$apiService
       .resendVerificationEmail({
         user_id: userId,
         user_email: email,

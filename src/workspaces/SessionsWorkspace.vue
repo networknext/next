@@ -123,14 +123,12 @@ export default class SessionsWorkspace extends Vue {
   private sessionsLoop: number
   private showTable: boolean
   private unwatch: any
-  private vueInstance: any
 
   constructor () {
     super()
     this.sessions = []
     this.sessionsLoop = -1
     this.showTable = false
-    this.vueInstance = Vue
   }
 
   private mounted () {
@@ -154,7 +152,7 @@ export default class SessionsWorkspace extends Vue {
   }
 
   private fetchSessions (): void {
-    this.vueInstance
+    (this as any).$apiService
       .fetchTopSessions({
         buyer_id: this.$store.getters.currentFilter.buyerID || ''
       })
