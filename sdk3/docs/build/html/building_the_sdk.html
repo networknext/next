@@ -1,0 +1,168 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Building the SDK &#8212; Network Next SDK 3.4.5 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Simple Client Example" href="simple_client_example.html" />
+    <link rel="prev" title="Getting Started" href="getting_started.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="building-the-sdk">
+<h1>Building the SDK<a class="headerlink" href="#building-the-sdk" title="Permalink to this headline">¶</a></h1>
+<p>Official binaries for Windows and consoles are in the “lib” directory.</p>
+<p>To build the example programs, see the instructions below:</p>
+<div class="section" id="windows">
+<h2>Windows<a class="headerlink" href="#windows" title="Permalink to this headline">¶</a></h2>
+<p>Install <em>premake5</em> from <a class="reference external" href="https://premake.github.io/download.html">https://premake.github.io/download.html</a></p>
+<p>Generate a visual studio solution by running premake at the root directory of the SDK:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$</span> premake5 vs2017
+</pre></div>
+</div>
+<p>Open the generated solution file and build all.</p>
+<p>Native Visual Studio solutions are also available in the “build” and “testbed” directories.</p>
+</div>
+<div class="section" id="mac">
+<h2>Mac<a class="headerlink" href="#mac" title="Permalink to this headline">¶</a></h2>
+<p>Make sure the XCode command line tools are installed:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$</span> xcode-select --install
+</pre></div>
+</div>
+<p>Install <em>premake5</em> from <a class="reference external" href="https://premake.github.io/download.html">https://premake.github.io/download.html</a></p>
+<p>Generate makefiles by running premake at the root directory of the SDK:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$</span> premake5 gmake
+</pre></div>
+</div>
+<p>Build the SDK:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$</span> make
+</pre></div>
+</div>
+<p>Run the unit tests:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$</span> ./bin/test
+</pre></div>
+</div>
+</div>
+<div class="section" id="linux">
+<h2>Linux<a class="headerlink" href="#linux" title="Permalink to this headline">¶</a></h2>
+<p>Make sure the build essential package is installed:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$</span> sudo apt install build-essential
+</pre></div>
+</div>
+<p>Install <em>premake5</em> from <a class="reference external" href="https://premake.github.io/download.html">https://premake.github.io/download.html</a></p>
+<p>Generate makefiles by running premake at the root directory of the SDK:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$</span> premake5 gmake
+</pre></div>
+</div>
+<p>Build the SDK:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$</span> make
+</pre></div>
+</div>
+<p>Run the unit tests:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$</span> ./bin/test
+</pre></div>
+</div>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">Network Next SDK</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="how_it_works.html">How it works</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Building the SDK</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simple_client_example.html">Simple Client Example</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simple_server_example.html">Simple Server Example</a></li>
+<li class="toctree-l1"><a class="reference internal" href="upgraded_client_example.html">Upgraded Client Example</a></li>
+<li class="toctree-l1"><a class="reference internal" href="upgraded_server_example.html">Upgraded Server Example</a></li>
+<li class="toctree-l1"><a class="reference internal" href="complex_client_example.html">Complex Client Example</a></li>
+<li class="toctree-l1"><a class="reference internal" href="complex_server_example.html">Complex Server Example</a></li>
+<li class="toctree-l1"><a class="reference internal" href="reference.html">Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="getting_started.html" title="previous chapter">Getting Started</a></li>
+      <li>Next: <a href="simple_client_example.html" title="next chapter">Simple Client Example</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, Network Next, Inc..
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.0.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/building_the_sdk.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

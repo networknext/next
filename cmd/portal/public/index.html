@@ -292,7 +292,10 @@
         </noscript>
         <div id="root">
             <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark p-0 shadow">
-                <a class="navbar-brand col-sm-3 col-md-2 mr-0" href="https://networknext.com">
+                <a class="navbar-brand col-sm-3 col-md-2 mr-0" href="https://networknext.com" v-on:click="gtag('event', 'redirect to networknext.com', {
+                  'event_category': 'Redirect',
+                  'event_label': 'Redirect to networknext.com'
+                })">
                     <div class="logo-container">
                         <img id="wix-redirect" class="logo-fit" src="logo.png">
                     </div>

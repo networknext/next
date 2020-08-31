@@ -297,10 +297,11 @@ func (database *StatsDatabase) GetCostMatrix(
 
 	for i := 0; i < numRelays; i++ {
 		for j := 0; j < i; j++ {
+			ijIndex := TriMatrixIndex(i, j)
+
 			idI := uint64(costMatrix.RelayIDs[i])
 			idJ := uint64(costMatrix.RelayIDs[j])
 			rtt, jitter, packetLoss := database.GetSample(idI, idJ)
-			ijIndex := TriMatrixIndex(i, j)
 			if rtt != InvalidRouteValue && jitter <= maxJitter && packetLoss <= maxPacketLoss {
 				costMatrix.RTT[ijIndex] = int32(math.Floor(float64(rtt) + float64(jitter)))
 			} else {
