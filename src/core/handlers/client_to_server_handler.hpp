@@ -14,7 +14,7 @@ namespace core
   namespace handlers
   {
     inline void client_to_server_handler(
-     GenericPacket<>& packet,
+     Packet& packet,
      core::SessionMap& session_map,
      util::ThroughputRecorder& recorder,
      const os::Socket& socket,
@@ -39,7 +39,7 @@ namespace core
 
       {
         size_t i = index;
-        if (!header.read(packet.Buffer, i, Direction::ClientToServer)) {
+        if (!header.read(packet, i, Direction::ClientToServer)) {
           LOG(ERROR, "ignoring client to server packet, relay header could not be read");
           return;
         }
@@ -69,7 +69,7 @@ namespace core
 
       {
         size_t i = index;
-        if (!header.verify(packet.Buffer, i, Direction::ClientToServer, session->PrivateKey)) {
+        if (!header.verify(packet, i, Direction::ClientToServer, session->PrivateKey)) {
           LOG(ERROR, "ignoring client to server packet, could not verify header: session = ", *session);
           return;
         }

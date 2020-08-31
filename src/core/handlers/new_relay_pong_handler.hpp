@@ -7,7 +7,7 @@ namespace core
 {
   namespace handlers
   {
-    inline void relay_pong_handler(GenericPacket<>& packet, RelayManager& manager)
+    inline void relay_pong_handler(Packet& packet, RelayManager& manager)
     {
       uint64_t sequence_number;
       size_t index = crypto::PacketHashLength + 1;

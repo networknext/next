@@ -15,7 +15,7 @@ namespace core
 {
   namespace handlers
   {
-    inline void relay_ping_handler(GenericPacket<>& packet, util::ThroughputRecorder& recorder, const os::Socket& socket)
+    inline void relay_ping_handler(Packet& packet, util::ThroughputRecorder& recorder, const os::Socket& socket)
     {
       packet.Buffer[crypto::PacketHashLength] = static_cast<uint8_t>(Type::RelayPong);
 

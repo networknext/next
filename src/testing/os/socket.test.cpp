@@ -5,7 +5,7 @@
 #include "net/address.hpp"
 #include "os/socket.hpp"
 
-using core::GenericPacket;
+using core::Packet;
 
 Test(os_socket_nonblocking_ipv4)
 {
@@ -38,7 +38,7 @@ Test(os_socket_nonblocking_ipv4)
 
   // generic packet
   {
-    GenericPacket<> out, in;
+    Packet out, in;
 
     out.Addr = local_address;
     out.Len = 256;

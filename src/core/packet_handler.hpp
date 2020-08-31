@@ -61,7 +61,7 @@ namespace core
     ThroughputRecorder& recorder;
     const RouterInfo& router_info;
 
-    void handle_packet(GenericPacket<>& packet);
+    void handle_packet(Packet& packet);
   };
 
   INLINE PacketHandler::PacketHandler(
@@ -85,7 +85,7 @@ namespace core
 
   INLINE void PacketHandler::handle_packets()
   {
-    core::GenericPacket<> packet;
+    core::Packet packet;
 
     while (!this->socket.closed() && this->should_receive) {
       if (!this->socket.recv(packet)) {
@@ -97,7 +97,7 @@ namespace core
     }
   }
 
-  INLINE void PacketHandler::handle_packet(GenericPacket<>& packet)
+  INLINE void PacketHandler::handle_packet(Packet& packet)
   {
     size_t headerBytes = 0;
 

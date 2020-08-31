@@ -13,7 +13,7 @@ namespace core
 {
   namespace handlers
   {
-    inline void near_ping_handler(GenericPacket<>& packet, ThroughputRecorder& recorder, const Socket& socket, bool is_signed)
+    inline void near_ping_handler(Packet& packet, ThroughputRecorder& recorder, const Socket& socket, bool is_signed)
     {
       size_t length = packet.Len;
 

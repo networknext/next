@@ -10,7 +10,7 @@
 
 using namespace std::chrono_literals;
 
-using core::GenericPacket;
+using core::Packet;
 using core::packets::RELAY_PING_PACKET_SIZE;
 using core::packets::Type;
 using net::Address;
@@ -45,7 +45,7 @@ namespace core
 
   INLINE void Pinger::process()
   {
-    GenericPacket<RELAY_PING_PACKET_SIZE> pkt;
+    Packet pkt;
 
     while (!socket.closed() && should_process) {
       // Sleep for 10ms, but the actual ping rate is controlled by RELAY_PING_TIME

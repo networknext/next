@@ -17,7 +17,7 @@ namespace core
   namespace handlers
   {
     inline void route_request_handler(
-     GenericPacket<>& packet,
+     Packet& packet,
      const Keychain& keychain,
      SessionMap& session_map,
      ThroughputRecorder& recorder,

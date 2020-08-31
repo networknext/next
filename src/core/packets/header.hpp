@@ -8,7 +8,7 @@
 #include "util/logger.hpp"
 #include "util/macros.hpp"
 
-using core::GenericPacketContainer;
+using core::Packet;
 using core::packets::Type;
 using crypto::GenericKey;
 
@@ -32,29 +32,29 @@ namespace core
       uint64_t session_id;
       uint8_t session_version;
 
-      auto read(GenericPacketContainer<>& buffer, size_t& index, Direction direction) -> bool;
-      auto write(GenericPacketContainer<>& buffer, size_t& index, Direction direction, const GenericKey& public_key) -> bool;
-      auto verify(GenericPacketContainer<>& buffer, size_t& index, Direction direction, const GenericKey& public_key) -> bool;
+      auto read(Packet& packet, size_t& index, Direction direction) -> bool;
+      auto write(Packet& packet, size_t& index, Direction direction, const GenericKey& public_key) -> bool;
+      auto verify(Packet& packet, size_t& index, Direction direction, const GenericKey& public_key) -> bool;
 
       auto hash() -> uint64_t;
       auto clean_sequence() -> uint64_t;
     };
 
-    INLINE auto Header::read(GenericPacketContainer<>& buffer, size_t& index, Direction direction) -> bool
+    INLINE auto Header::read(Packet& packet, size_t& index, Direction direction) -> bool
     {
-      if (index + ByteSize > buffer.size()) {
+      if (index + ByteSize > packet.Buffer.size()) {
         LOG(ERROR, "could not read header, buffer is too small");
         return false;
       }
 
       uint8_t type;
-      if (!encoding::ReadUint8(buffer, index, type)) {
+      if (!encoding::ReadUint8(packet.Buffer, index, type)) {
         return false;
       }
       Type packet_type = static_cast<Type>(type);
 
       uint64_t packet_sequence;
-      if (!encoding::ReadUint64(buffer, index, packet_sequence)) {
+      if (!encoding::ReadUint64(packet.Buffer, index, packet_sequence)) {
         return false;
       }
 
@@ -82,65 +82,72 @@ namespace core
 
       this->sequence = packet_sequence;
 
-      if (!encoding::ReadUint64(buffer, index, this->session_id)) {
+      if (!encoding::ReadUint64(packet.Buffer, index, this->session_id)) {
         return false;
       }
 
-      if (!encoding::ReadUint8(buffer, index, this->session_version)) {
+      if (!encoding::ReadUint8(packet.Buffer, index, this->session_version)) {
         return false;
       }
 
       return true;
     }
 
-    INLINE auto Header::write(
-     GenericPacketContainer<>& buffer, size_t& index, Direction direction, const GenericKey& private_key) -> bool
+    INLINE auto Header::write(Packet& packet, size_t& index, Direction direction, const GenericKey& private_key) -> bool
     {
-      if (index + ByteSize > buffer.size()) {
+      if (index + ByteSize > packet.Buffer.size()) {
         LOG(ERROR, "could not write header, buffer is too small");
         return false;
       }
 
       if (direction == Direction::ServerToClient) {
         // high bit must be set
-        assert(this->sequence & (1ULL << 63));
+        if ((this->sequence & (1ULL << 63)) == 0) {
+          return false;
+        }
       } else {
         // high bit must be clear
-        assert((this->sequence & (1ULL << 63)) == 0);
+        if ((this->sequence & (1ULL << 63)) != 0) {
+          return false;
+        }
       }
 
       if (
        this->type == Type::SessionPing || this->type == Type::SessionPong || this->type == Type::RouteResponse ||
        this->type == Type::ContinueResponse) {
         // second highest bit must be set
-        assert(sequence & (1ULL << 62));
+        if ((sequence & (1ULL << 62)) == 0) {
+          return false;
+        }
       } else {
         // second highest bit must be clear
-        assert((sequence & (1ULL << 62)) == 0);
+        if ((sequence & (1ULL << 62)) != 0) {
+          return false;
+        }
       }
 
-      if (!encoding::WriteUint8(buffer, index, static_cast<uint8_t>(this->type))) {
+      if (!encoding::WriteUint8(packet.Buffer, index, static_cast<uint8_t>(this->type))) {
         return false;
       }
 
-      if (!encoding::WriteUint64(buffer, index, this->sequence)) {
+      if (!encoding::WriteUint64(packet.Buffer, index, this->sequence)) {
         return false;
       }
 
-      uint8_t* additional = &buffer[index];
+      uint8_t* additional = &packet.Buffer[index];
       const int additional_length = 8 + 1 + 1;
 
-      if (!encoding::WriteUint64(buffer, index, this->session_id)) {
+      if (!encoding::WriteUint64(packet.Buffer, index, this->session_id)) {
         return false;
       }
 
-      if (!encoding::WriteUint8(buffer, index, this->session_version)) {
+      if (!encoding::WriteUint8(packet.Buffer, index, this->session_version)) {
         return false;
       }
 
       // todo: remove this once we fully switch to new relay
-      // todo: still applicable?
-      if (!encoding::WriteUint8(buffer, index, 0)) {
+      // todo: ^ still applicable?
+      if (!encoding::WriteUint8(packet.Buffer, index, 0)) {
         return false;
       }
 
@@ -159,9 +166,9 @@ namespace core
       unsigned long long encrypted_length = 0;
 
       int result = crypto_aead_chacha20poly1305_ietf_encrypt(
-       &buffer[index],
+       &packet.Buffer[index],
        &encrypted_length,
-       &buffer[index],
+       &packet.Buffer[index],
        0,
        additional,
        (unsigned long long)additional_length,
@@ -178,10 +185,9 @@ namespace core
       return true;
     }
 
-    INLINE auto Header::verify(
-     GenericPacketContainer<>& buffer, size_t& index, Direction direction, const GenericKey& private_key) -> bool
+    INLINE auto Header::verify(Packet& packet, size_t& index, Direction direction, const GenericKey& private_key) -> bool
     {
-      if (index + ByteSize > buffer.size()) {
+      if (index + ByteSize > packet.Buffer.size()) {
         LOG(ERROR, "could not verify header, buffer is too small");
         return false;
       }
@@ -189,13 +195,13 @@ namespace core
       size_t begin = index;
 
       uint8_t type;
-      if (!encoding::ReadUint8(buffer, index, type)) {
+      if (!encoding::ReadUint8(packet.Buffer, index, type)) {
         return false;
       }
       Type packet_type = static_cast<Type>(type);
 
       uint64_t packet_sequence;
-      if (!encoding::ReadUint64(buffer, index, packet_sequence)) {
+      if (!encoding::ReadUint64(packet.Buffer, index, packet_sequence)) {
         LOG(ERROR, "could not verify header, could not read sequence");
         return false;
       }
@@ -225,7 +231,7 @@ namespace core
         assert((packet_sequence & (1ULL << 62)) == 0);
       }
 
-      const uint8_t* additional = &buffer[index];
+      size_t additional_index = index;
       const int additional_length = 8 + 1 + 1;
 
       index += 12;
@@ -240,12 +246,12 @@ namespace core
       unsigned long long decrypted_length;
 
       int result = crypto_aead_chacha20poly1305_ietf_decrypt(
-       &buffer[begin + 19],
+       &packet.Buffer[begin + 19],
        &decrypted_length,
        nullptr,
-       &buffer[begin + 19],
+       &packet.Buffer[begin + 19],
        (unsigned long long)crypto_aead_chacha20poly1305_IETF_ABYTES,
-       additional,
+       &packet.Buffer[additional_index],
        (unsigned long long)additional_length,
        nonce.data(),
        private_key.data());

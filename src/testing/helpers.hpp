@@ -18,11 +18,19 @@ namespace testing
     return keychain;
   }
 
-  inline auto router_private_key() -> crypto::GenericKey {
+  inline auto router_private_key() -> crypto::GenericKey
+  {
     std::string key = Base64RouterPrivateKey;
     crypto::GenericKey buff;
     encoding::base64::decode(key, buff);
     return buff;
+  }
+
+  inline auto random_private_key() -> crypto::GenericKey
+  {
+    crypto::GenericKey private_key;
+    crypto::RandomBytes(private_key, private_key.size());
+    return private_key;
   }
 #endif
 }  // namespace testing

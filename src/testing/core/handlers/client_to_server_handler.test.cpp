@@ -4,7 +4,10 @@
 #include "core/handlers/client_to_server_handler.hpp"
 #include "crypto/bytes.hpp"
 
-using core::GenericPacket;
+#define CRYPTO_HELPERS
+#include "testing/helpers.hpp"
+
+using core::Packet;
 using core::RouterInfo;
 using core::Session;
 using core::SessionMap;
@@ -17,17 +20,13 @@ using util::ThroughputRecorder;
 
 Test(core_handlers_client_to_server_handler_unsigned_packet)
 {
-  GenericPacket<> packet;
+  Packet packet;
   SessionMap map;
   ThroughputRecorder recorder;
   Socket socket;
 
   Address addr;
-  const GenericKey private_key = [] {
-    GenericKey private_key;
-    crypto::RandomBytes(private_key, private_key.size());
-    return private_key;
-  }();
+  const GenericKey private_key = random_private_key();
   RouterInfo info;
   info.setTimestamp(0);
 
@@ -54,7 +53,7 @@ Test(core_handlers_client_to_server_handler_unsigned_packet)
 
   size_t index = 0;
 
-  check(header.write(packet.Buffer, index, Direction::ClientToServer, private_key));
+  check(header.write(packet, index, Direction::ClientToServer, private_key));
   check(index == Header::ByteSize);
 
   core::handlers::client_to_server_handler(packet, map, recorder, socket, false);
@@ -77,7 +76,7 @@ Test(core_handlers_client_to_server_handler_signed_packet)
 {
   Socket socket;
   Address addr;
-  GenericPacket<> packet;
+  Packet packet;
   SessionMap map;
   ThroughputRecorder recorder;
   const GenericKey private_key = [] {
@@ -113,7 +112,7 @@ Test(core_handlers_client_to_server_handler_signed_packet)
 
   size_t index = crypto::PacketHashLength;
 
-  check(header.write(packet.Buffer, index, Direction::ClientToServer, private_key));
+  check(header.write(packet, index, Direction::ClientToServer, private_key));
   check(index == crypto::PacketHashLength + Header::ByteSize);
 
   core::handlers::client_to_server_handler(packet, map, recorder, socket, true);

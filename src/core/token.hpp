@@ -8,7 +8,7 @@
 #include "router_info.hpp"
 #include "util/macros.hpp"
 
-using core::GenericPacket;
+using core::Packet;
 
 namespace core
 {
@@ -30,8 +30,8 @@ namespace core
     uint64_t hash();
 
    protected:
-    auto write(GenericPacket<>& packet, size_t& index) -> bool;
-    auto read(const GenericPacket<>& packet, size_t& index) -> bool;
+    auto write(Packet& packet, size_t& index) -> bool;
+    auto read(const Packet& packet, size_t& index) -> bool;
   };
 
   INLINE Token::Token(const RouterInfo& routerInfo): Expireable(routerInfo) {}
@@ -41,7 +41,7 @@ namespace core
     return SessionID ^ SessionVersion;
   }
 
-  INLINE auto Token::write(GenericPacket<>& packet, size_t& index) -> bool
+  INLINE auto Token::write(Packet& packet, size_t& index) -> bool
   {
     if (index + Token::ByteSize > packet.Buffer.size()) {
       return false;
@@ -66,7 +66,7 @@ namespace core
     return true;
   }
 
-  INLINE auto Token::read(const GenericPacket<>& packet, size_t& index) -> bool
+  INLINE auto Token::read(const Packet& packet, size_t& index) -> bool
   {
     if (index + Token::ByteSize > packet.Buffer.size()) {
       return false;

@@ -7,7 +7,7 @@
 #include "token.hpp"
 #include "util/macros.hpp"
 
-using core::GenericPacket;
+using core::Packet;
 
 namespace testing
 {
@@ -31,13 +31,13 @@ namespace core
     static const size_t EncryptionLength = ContinueToken::ByteSize + crypto_box_MACBYTES;
 
     auto write_encrypted(
-     GenericPacket<>& packet,
+     Packet& packet,
      size_t& index,
      const crypto::GenericKey& senderPrivateKey,
      const crypto::GenericKey& receiverPublicKey) -> bool;
 
     auto read_encrypted(
-     GenericPacket<>& packet,
+     Packet& packet,
      size_t& index,
      const crypto::GenericKey& senderPublicKey,
      const crypto::GenericKey& receiverPrivateKey) -> bool;
@@ -45,19 +45,19 @@ namespace core
     auto operator==(const ContinueToken& other) const -> bool;
 
    private:
-    auto write(GenericPacket<>& packet, size_t& index) -> bool;
+    auto write(Packet& packet, size_t& index) -> bool;
 
-    auto read(const GenericPacket<>& packet, size_t& index) -> bool;
+    auto read(const Packet& packet, size_t& index) -> bool;
 
     auto encrypt(
-     GenericPacket<>& packet,
+     Packet& packet,
      const size_t& index,
      const crypto::GenericKey& senderPrivateKey,
      const crypto::GenericKey& receiverPublicKey,
      const std::array<uint8_t, crypto_box_NONCEBYTES>& nonce) -> bool;
 
     auto decrypt(
-     GenericPacket<>& packet,
+     Packet& packet,
      const size_t& index,
      const crypto::GenericKey& senderPublicKey,
      const crypto::GenericKey& receiverPrivateKey,
@@ -67,7 +67,7 @@ namespace core
   INLINE ContinueToken::ContinueToken(const RouterInfo& routerInfo): Token(routerInfo) {}
 
   INLINE auto ContinueToken::write_encrypted(
-   GenericPacket<>& packet,
+   Packet& packet,
    size_t& index,
    const crypto::GenericKey& senderPrivateKey,
    const crypto::GenericKey& receiverPublicKey) -> bool
@@ -102,7 +102,7 @@ namespace core
   }
 
   INLINE auto ContinueToken::read_encrypted(
-   GenericPacket<>& packet,
+   Packet& packet,
    size_t& index,
    const crypto::GenericKey& senderPublicKey,
    const crypto::GenericKey& receiverPrivateKey) -> bool
@@ -130,18 +130,18 @@ namespace core
            this->SessionVersion == other.SessionVersion && this->SessionFlags == other.SessionFlags;
   }
 
-  INLINE auto ContinueToken::write(GenericPacket<>& packet, size_t& index) -> bool
+  INLINE auto ContinueToken::write(Packet& packet, size_t& index) -> bool
   {
     return Token::write(packet, index);
   }
 
-  INLINE auto ContinueToken::read(const GenericPacket<>& packet, size_t& index) -> bool
+  INLINE auto ContinueToken::read(const Packet& packet, size_t& index) -> bool
   {
     return Token::read(packet, index);
   }
 
   INLINE bool ContinueToken::encrypt(
-   GenericPacket<>& packet,
+   Packet& packet,
    const size_t& index,
    const crypto::GenericKey& senderPrivateKey,
    const crypto::GenericKey& receiverPublicKey,
@@ -166,7 +166,7 @@ namespace core
   }
 
   INLINE bool ContinueToken::decrypt(
-   GenericPacket<>& packet,
+   Packet& packet,
    const size_t& index,
    const crypto::GenericKey& senderPublicKey,
    const crypto::GenericKey& receiverPrivateKey,

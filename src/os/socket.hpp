@@ -5,6 +5,11 @@
 #include "util/logger.hpp"
 #include "util/macros.hpp"
 
+using core::Packet;
+using core::PacketBuffer;
+using net::Address;
+using net::AddressType;
+
 namespace os
 {
   enum class SocketType : uint8_t
@@ -29,34 +34,31 @@ namespace os
     Socket();
     ~Socket();
 
-    auto create(SocketType type, net::Address& addr, size_t sendBuffSize, size_t recvBuffSize, float timeout, bool reuse)
-     -> bool;
+    auto create(SocketType type, Address& addr, size_t sendBuffSize, size_t recvBuffSize, float timeout, bool reuse) -> bool;
 
     // uses sendto()
-    template <typename T>
-    auto send(const core::Packet<T>& packet) const -> bool;
+    auto send(const Packet& packet) const -> bool;
 
     // uses sendto()
-    auto send(const net::Address& to, const uint8_t* data, size_t size) const -> bool;
+    auto send(const Address& to, const uint8_t* data, size_t size) const -> bool;
 
     // uses sendmmsg()
-    template <size_t BuffSize, size_t PacketSize>
-    auto multisend(core::GenericPacketBuffer<BuffSize, PacketSize>& packetBuff) const -> bool;
+    template <size_t BuffSize>
+    auto multisend(PacketBuffer<BuffSize>& packetBuff) const -> bool;
 
     // uses sendmmsg()
     template <size_t BuffSize>
     auto multisend(std::array<mmsghdr, BuffSize>& packetBuff, int count) const -> bool;
 
     // uses recvfrom()
-    auto recv(net::Address& from, uint8_t* data, size_t maxSize) const -> int;
+    auto recv(Address& from, uint8_t* data, size_t maxSize) const -> int;
 
     // uses recvfrom()
-    template <typename T>
-    auto recv(core::Packet<T>& packet) const -> bool;
+    auto recv(Packet& packet) const -> bool;
 
     // uses recvmmsg()
-    template <size_t BuffSize, size_t PacketSize>
-    auto multirecv(core::GenericPacketBuffer<BuffSize, PacketSize>& packetBuff) const -> bool;
+    template <size_t BuffSize>
+    auto multirecv(PacketBuffer<BuffSize>& packetBuff) const -> bool;
 
     // close the socket
     void close();
@@ -72,11 +74,11 @@ namespace os
     auto set_buffer_sizes(size_t sendBufferSize, size_t recvBufferSize) -> bool;
     auto set_port_reuse(bool reuse) -> bool;
 
-    auto bind_ipv4(const net::Address& addr) -> bool;
-    auto bind_ipv6(const net::Address& addr) -> bool;
+    auto bind_ipv4(const Address& addr) -> bool;
+    auto bind_ipv6(const Address& addr) -> bool;
 
-    auto get_port_ipv4(net::Address& addr) -> bool;
-    auto get_port_ipv6(net::Address& addr) -> bool;
+    auto get_port_ipv4(Address& addr) -> bool;
+    auto get_port_ipv6(Address& addr) -> bool;
 
     auto set_socket_type(float timeout) -> bool;
   };
@@ -93,13 +95,13 @@ namespace os
   }
 
   INLINE auto Socket::create(
-   SocketType type, net::Address& addr, size_t sendBuffSize, size_t recvBuffSize, float timeout, bool reuse) -> bool
+   SocketType type, Address& addr, size_t sendBuffSize, size_t recvBuffSize, float timeout, bool reuse) -> bool
   {
-    assert(addr.Type != net::AddressType::None);
+    assert(addr.Type != AddressType::None);
 
     // create socket
     {
-      mSockFD = socket((addr.Type == net::AddressType::IPv4) ? PF_INET : PF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+      mSockFD = socket((addr.Type == AddressType::IPv4) ? PF_INET : PF_INET6, SOCK_DGRAM, IPPROTO_UDP);
 
       if (mSockFD < 0) {
         LOG(ERROR, "failed to create socket");
@@ -110,7 +112,7 @@ namespace os
 
     // force IPv6 only if necessary
     {
-      if (addr.Type == net::AddressType::IPv6) {
+      if (addr.Type == AddressType::IPv6) {
         int enable = 1;
         if (setsockopt(mSockFD, IPPROTO_IPV6, IPV6_V6ONLY, &enable, sizeof(enable)) != 0) {
           LOG(ERROR, "failed to set socket ipv6 only");
@@ -130,7 +132,7 @@ namespace os
 
     // bind to port
     {
-      if (addr.Type == net::AddressType::IPv6) {
+      if (addr.Type == AddressType::IPv6) {
         if (!bind_ipv6(addr)) {
           return false;
         }
@@ -145,7 +147,7 @@ namespace os
     // port 0 is a "wildcard" so using it will bind to any available port
     {
       if (addr.Port == 0) {
-        if (addr.Type == net::AddressType::IPv6) {
+        if (addr.Type == AddressType::IPv6) {
           if (!get_port_ipv6(addr)) {
             return false;
           }
@@ -166,15 +168,14 @@ namespace os
     return true;
   }
 
-  template <typename T>
-  INLINE auto Socket::send(const core::Packet<T>& packet) const -> bool
+  INLINE auto Socket::send(const Packet& packet) const -> bool
   {
     return send(packet.Addr, packet.Buffer.data(), packet.Len);
   }
 
-  INLINE auto Socket::send(const net::Address& to, const uint8_t* data, size_t size) const -> bool
+  INLINE auto Socket::send(const Address& to, const uint8_t* data, size_t size) const -> bool
   {
-    if (to.Type != net::AddressType::IPv4 && to.Type != net::AddressType::IPv6) {
+    if (to.Type != AddressType::IPv4 && to.Type != AddressType::IPv6) {
       return false;
     }
 
@@ -190,7 +191,7 @@ namespace os
       return false;
     }
 
-    if (to.Type == net::AddressType::IPv6) {
+    if (to.Type == AddressType::IPv6) {
       sockaddr_in6 socket_address;
       to.into(socket_address);
 
@@ -199,7 +200,7 @@ namespace os
         LOG(ERROR, "sendto (", to, ") failed");
         return false;
       }
-    } else if (to.Type == net::AddressType::IPv4) {
+    } else if (to.Type == AddressType::IPv4) {
       sockaddr_in socket_address;
       to.into(socket_address);
 
@@ -235,21 +236,20 @@ namespace os
     return toSend == count;
   }
 
-  template <size_t BuffSize, size_t PacketSize>
-  INLINE auto Socket::multisend(core::GenericPacketBuffer<BuffSize, PacketSize>& packetBuff) const -> bool
+  template <size_t BuffSize>
+  INLINE auto Socket::multisend(PacketBuffer<BuffSize>& packetBuff) const -> bool
   {
     return multisend(packetBuff.Headers, packetBuff.Count);
   }
 
-  template <typename T>
-  INLINE auto Socket::recv(core::Packet<T>& packet) const -> bool
+  INLINE auto Socket::recv(Packet& packet) const -> bool
   {
     auto len = this->recv(packet.Addr, packet.Buffer.data(), packet.Buffer.size());
     packet.Len = static_cast<size_t>(len);
     return len > 0;
   }
 
-  INLINE auto Socket::recv(net::Address& from, uint8_t* data, size_t maxSize) const -> int
+  INLINE auto Socket::recv(Address& from, uint8_t* data, size_t maxSize) const -> int
   {
     assert(data != nullptr);
     assert(maxSize > 0);
@@ -288,8 +288,8 @@ namespace os
     return res;
   }
 
-  template <size_t BuffSize, size_t PacketSize>
-  INLINE auto Socket::multirecv(core::GenericPacketBuffer<BuffSize, PacketSize>& packetBuff) const -> bool
+  template <size_t BuffSize>
+  INLINE auto Socket::multirecv(PacketBuffer<BuffSize>& packetBuff) const -> bool
   {
     packetBuff.Count = recvmmsg(
      mSockFD,

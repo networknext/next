@@ -2,45 +2,37 @@
 #define CORE_PACKET_HPP
 
 #include "net/address.hpp"
-
-#include "util/logger.hpp"
-
 #include "util/dump.hpp"
+#include "util/logger.hpp"
+#include "util/macros.hpp"
 
 namespace core
 {
   const size_t GenericPacketMaxSize = RELAY_MAX_PACKET_BYTES;
 
-  template <typename T>
   struct Packet
   {
     Packet() = default;
-    Packet(Packet<T>&& other);
+    Packet(Packet&& other);
     ~Packet() = default;
 
-    Packet<T>& operator=(Packet<T>&& other);
+    Packet& operator=(Packet&& other);
 
     net::Address Addr;
-    T Buffer;
+    std::array<uint8_t, GenericPacketMaxSize> Buffer;
     size_t Len;
   };
 
-  template <size_t BuffSize = GenericPacketMaxSize>
-  using GenericPacketContainer = std::array<uint8_t, BuffSize>;
-
-  template <size_t BuffSize = GenericPacketMaxSize>
-  using GenericPacket = Packet<GenericPacketContainer<BuffSize>>;
-
   // holds BuffSize packets and shares memory between the header and the packet, packet interface is meant to be easy to use
-  template <size_t BuffSize, size_t PacketSize = GenericPacketMaxSize>
-  class GenericPacketBuffer
+  template <size_t BuffSize>
+  class PacketBuffer
   {
    public:
-    GenericPacketBuffer();
+    PacketBuffer();
 
     // for sending packets
     void push(const net::Address& dest, const uint8_t* data, size_t length);
-    void push(const GenericPacket<PacketSize>& pkt);
+    void push(const Packet& pkt);
 
     // for debugging
     void print();
@@ -49,7 +41,7 @@ namespace core
     int Count;
 
     // wrapper array for received packets
-    std::array<GenericPacket<PacketSize>, BuffSize> Packets;
+    std::array<Packet, BuffSize> Packets;
 
     // c struct needed for sendmmsg & recvmmsg
     std::array<mmsghdr, BuffSize> Headers;
@@ -66,12 +58,10 @@ namespace core
     std::mutex mLock;
   };
 
-  template <typename T>
-  Packet<T>::Packet(Packet<T>&& other): Addr(std::move(other.Addr)), Buffer(std::move(other.Buffer)), Len(std::move(other.Len))
+  INLINE Packet::Packet(Packet&& other): Addr(std::move(other.Addr)), Buffer(std::move(other.Buffer)), Len(std::move(other.Len))
   {}
 
-  template <typename T>
-  Packet<T>& Packet<T>::operator=(Packet<T>&& other)
+  INLINE Packet& Packet::operator=(Packet&& other)
   {
     this->Addr = std::move(other.Addr);
     this->Buffer = std::move(other.Buffer);
@@ -79,8 +69,8 @@ namespace core
     return *this;
   }
 
-  template <size_t BuffSize, size_t PacketSize>
-  GenericPacketBuffer<BuffSize, PacketSize>::GenericPacketBuffer(): Count(0), mRawAddrBuff(BuffSize), mIOVecBuff(BuffSize)
+  template <size_t BuffSize>
+  INLINE PacketBuffer<BuffSize>::PacketBuffer(): Count(0), mRawAddrBuff(BuffSize), mIOVecBuff(BuffSize)
   {
     for (size_t i = 0; i < BuffSize; i++) {
       auto& pkt = Packets[i];
@@ -110,11 +100,9 @@ namespace core
     }
   }
 
-  template <size_t BuffSize, size_t PacketSize>
-  void GenericPacketBuffer<BuffSize, PacketSize>::push(const net::Address& dest, const uint8_t* data, size_t len)
+  template <size_t BuffSize>
+  INLINE void PacketBuffer<BuffSize>::push(const net::Address& dest, const uint8_t* data, size_t len)
   {
-    assert(len <= PacketSize);
-
     // TODO if ever going back to sendmmsg/recvmmsg
     // replace count with an atomic
     // and set by auto count = Count.exchange(Count + 1)
@@ -133,14 +121,14 @@ namespace core
     Count++;
   }
 
-  template <size_t BuffSize, size_t PacketSize>
-  void GenericPacketBuffer<BuffSize, PacketSize>::push(const GenericPacket<PacketSize>& pkt)
+  template <size_t BuffSize>
+  INLINE void PacketBuffer<BuffSize>::push(const Packet& pkt)
   {
     push(pkt.Addr, pkt.Buffer.data(), pkt.Len);
   }
 
-  template <size_t BuffSize, size_t PacketSize>
-  void GenericPacketBuffer<BuffSize, PacketSize>::print()
+  template <size_t BuffSize>
+  INLINE void PacketBuffer<BuffSize>::print()
   {
     LOG(DEBUG, "number of packets in buffer: ", Count);
     for (int i = 0; i < Count; i++) {

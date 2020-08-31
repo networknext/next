@@ -6,7 +6,7 @@
 #include "core/continue_token.hpp"
 
 using core::ContinueToken;
-using core::GenericPacket;
+using core::Packet;
 using core::RouterInfo;
 
 namespace
@@ -20,7 +20,7 @@ namespace
 
 Test(core_ContinueToken_general)
 {
-  GenericPacket<> packet;
+  Packet packet;
   packet.Len = packet.Buffer.size();
 
   std::array<uint8_t, crypto_box_PUBLICKEYBYTES> sender_public_key;
@@ -74,7 +74,7 @@ Test(core_ContinueToken_general)
 
 Test(core_ContinueToken_write)
 {
-  GenericPacket<> packet;
+  Packet packet;
   ContinueToken token = std::move(make_token());
 
   token.ExpireTimestamp = 6;
@@ -105,7 +105,7 @@ Test(core_ContinueToken_write)
 
 Test(core_ContinueToken_read)
 {
-  GenericPacket<> packet;
+  Packet packet;
   ContinueToken token = std::move(make_token());
 
   token.ExpireTimestamp = 6;

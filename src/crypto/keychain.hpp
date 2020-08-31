@@ -1,6 +1,7 @@
 #pragma once
 
 #include "encoding/base64.hpp"
+#include "bytes.hpp"
 
 namespace base64 = encoding::base64;
 

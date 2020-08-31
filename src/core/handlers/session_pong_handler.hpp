@@ -14,7 +14,7 @@ namespace core
   namespace handlers
   {
     inline void session_pong_handler(
-     GenericPacket<>& packet,
+     Packet& packet,
      core::SessionMap& session_map,
      util::ThroughputRecorder& recorder,
      const os::Socket& socket,
@@ -37,7 +37,7 @@ namespace core
 
       {
         size_t i = index;
-        if (!header.read(packet.Buffer, i, Direction::ServerToClient)) {
+        if (!header.read(packet, i, Direction::ServerToClient)) {
           LOG(ERROR, "ignoring session pong packet, relay header could not be read");
           return;
         }
@@ -65,7 +65,7 @@ namespace core
         return;
       }
 
-      if (!header.verify(packet.Buffer, index, Direction::ServerToClient, session->PrivateKey)) {
+      if (!header.verify(packet, index, Direction::ServerToClient, session->PrivateKey)) {
         LOG(ERROR, "ignoring session pong packet, could not verify header: session = ", *session);
         return;
       }

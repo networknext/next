@@ -8,7 +8,7 @@
 Test(core_RouteToken_general)
 {
   core::RouterInfo info;
-  core::GenericPacket<> packet;
+  core::Packet packet;
   packet.Len = packet.Buffer.size();
 
   std::array<uint8_t, crypto_box_PUBLICKEYBYTES> sender_public_key;

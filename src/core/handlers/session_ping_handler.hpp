@@ -15,7 +15,7 @@ namespace core
   namespace handlers
   {
     INLINE void session_ping_handler(
-     GenericPacket<>& packet, SessionMap& session_map, ThroughputRecorder& recorder, const Socket& socket, bool is_signed)
+     Packet& packet, SessionMap& session_map, ThroughputRecorder& recorder, const Socket& socket, bool is_signed)
     {
       size_t index = 0;
       size_t length = packet.Len;
@@ -34,7 +34,7 @@ namespace core
 
       {
         size_t i = 0;
-        if (!header.read(packet.Buffer, i, Direction::ClientToServer)) {
+        if (!header.read(packet, i, Direction::ClientToServer)) {
           LOG(ERROR, "ignoring session ping packet, relay header could not be read");
           return;
         }
@@ -62,7 +62,7 @@ namespace core
         return;
       }
 
-      if (!header.verify(packet.Buffer, index, Direction::ClientToServer, session->PrivateKey)) {
+      if (!header.verify(packet, index, Direction::ClientToServer, session->PrivateKey)) {
         LOG(ERROR, "ignoring session ping packet, could not verify header: session = ", *session);
         return;
       }

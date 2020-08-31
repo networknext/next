@@ -28,31 +28,31 @@ namespace core
     std::array<uint8_t, crypto_box_SECRETKEYBYTES> PrivateKey;
 
     auto write_encrypted(
-     GenericPacket<>& packet,
+     Packet& packet,
      size_t& index,
      const crypto::GenericKey& senderPrivateKey,
      const crypto::GenericKey& receiverPublicKey) -> bool;
 
     auto read_encrypted(
-     GenericPacket<>& packet,
+     Packet& packet,
      size_t& index,
      const crypto::GenericKey& senderPublicKey,
      const crypto::GenericKey& receiverPrivateKey) -> bool;
 
    private:
-    auto write(GenericPacket<>& packet, size_t& index) -> bool;
+    auto write(Packet& packet, size_t& index) -> bool;
 
-    auto read(const GenericPacket<>& packet, size_t& index) -> bool;
+    auto read(const Packet& packet, size_t& index) -> bool;
 
     auto encrypt(
-     GenericPacket<>& packet,
+     Packet& packet,
      const size_t& index,
      const crypto::GenericKey& senderPrivateKey,
      const crypto::GenericKey& receiverPublicKey,
      const std::array<uint8_t, crypto_box_NONCEBYTES>& nonce) -> bool;
 
     auto decrypt(
-     GenericPacket<>& packet,
+     Packet& packet,
      const size_t& index,
      const crypto::GenericKey& senderPublicKey,
      const crypto::GenericKey& receiverPrivateKey,
@@ -62,7 +62,7 @@ namespace core
   INLINE RouteToken::RouteToken(const RouterInfo& routerInfo): Token(routerInfo) {}
 
   INLINE auto RouteToken::write_encrypted(
-   GenericPacket<>& packet,
+   Packet& packet,
    size_t& index,
    const crypto::GenericKey& senderPrivateKey,
    const crypto::GenericKey& receiverPublicKey) -> bool
@@ -95,7 +95,7 @@ namespace core
   }
 
   INLINE auto RouteToken::read_encrypted(
-   GenericPacket<>& packet,
+   Packet& packet,
    size_t& index,
    const crypto::GenericKey& senderPublicKey,
    const crypto::GenericKey& receiverPrivateKey) -> bool
@@ -117,7 +117,7 @@ namespace core
     return true;
   }
 
-  INLINE auto RouteToken::write(GenericPacket<>& packet, size_t& index) -> bool
+  INLINE auto RouteToken::write(Packet& packet, size_t& index) -> bool
   {
     if (index + RouteToken::ByteSize > packet.Buffer.size()) {
       return false;
@@ -151,7 +151,7 @@ namespace core
     return true;
   }
 
-  INLINE auto RouteToken::read(const GenericPacket<>& packet, size_t& index) -> bool
+  INLINE auto RouteToken::read(const Packet& packet, size_t& index) -> bool
   {
     const size_t start = index;
 
@@ -182,7 +182,7 @@ namespace core
   }
 
   INLINE auto RouteToken::encrypt(
-   GenericPacket<>& packet,
+   Packet& packet,
    const size_t& encryption_start,
    const crypto::GenericKey& senderPrivateKey,
    const crypto::GenericKey& receiverPublicKey,
@@ -207,7 +207,7 @@ namespace core
   }
 
   INLINE auto RouteToken::decrypt(
-   GenericPacket<>& packet,
+   Packet& packet,
    const size_t& index,
    const crypto::GenericKey& senderPublicKey,
    const crypto::GenericKey& receiverPrivateKey,

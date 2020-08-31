@@ -1,20 +1,23 @@
 #pragma once
 
+#include "core/packets/header.hpp"
 #include "core/session_map.hpp"
 #include "core/throughput_recorder.hpp"
 #include "crypto/keychain.hpp"
 #include "os/socket.hpp"
 
+using core::packets::Direction;
 using core::packets::Header;
 using crypto::Keychain;
 using os::Socket;
 using util::ThroughputRecorder;
+
 namespace core
 {
   namespace handlers
   {
     inline void continue_response_handler(
-     GenericPacket<>& packet, SessionMap& session_map, ThroughputRecorder& recorder, const Socket& socket, bool is_signed)
+     Packet& packet, SessionMap& session_map, ThroughputRecorder& recorder, const Socket& socket, bool is_signed)
     {
       size_t index = 0;
       size_t length = packet.Len;
@@ -32,7 +35,7 @@ namespace core
 
       {
         size_t i = index;
-        if (!header.read(packet.Buffer, i, Direction::ServerToClient)) {
+        if (!header.read(packet, i, Direction::ServerToClient)) {
           LOG(ERROR, "ignoring continue response, relay header could not be read");
           return;
         }
@@ -69,7 +72,7 @@ namespace core
 
       {
         size_t i = index;
-        if (!header.verify(packet.Buffer, i, Direction::ServerToClient, session->PrivateKey)) {
+        if (!header.verify(packet, i, Direction::ServerToClient, session->PrivateKey)) {
           LOG(ERROR, "ignoring continue response, could not verify header: session = ", *session);
           return;
         }
