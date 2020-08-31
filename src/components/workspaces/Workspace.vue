@@ -64,6 +64,10 @@ export default class Workspace extends Vue {
     )
   }
 
+  private destroy () {
+    this.unwatch()
+  }
+
   // Not sure why this is necessary but Vue is ignoring all updates to message
   private updateAlert (showAlert: boolean) {
     this.message = showAlert ? `Please confirm your email address: ${this.$store.getters.userProfile.email}` : ''
