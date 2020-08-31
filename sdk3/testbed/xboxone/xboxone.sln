@@ -1,0 +1,27 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.28010.2046
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "testbed", "testbed.vcxproj", "{E153BC48-A071-4229-A75C-E7D8E724FA96}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|XBoxOne = Debug|XBoxOne
+		Release|XBoxOne = Release|XBoxOne
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E153BC48-A071-4229-A75C-E7D8E724FA96}.Debug|XBoxOne.ActiveCfg = Debug|Durango
+		{E153BC48-A071-4229-A75C-E7D8E724FA96}.Debug|XBoxOne.Build.0 = Debug|Durango
+		{E153BC48-A071-4229-A75C-E7D8E724FA96}.Debug|XBoxOne.Deploy.0 = Debug|Durango
+		{E153BC48-A071-4229-A75C-E7D8E724FA96}.Release|XBoxOne.ActiveCfg = Release|Durango
+		{E153BC48-A071-4229-A75C-E7D8E724FA96}.Release|XBoxOne.Build.0 = Release|Durango
+		{E153BC48-A071-4229-A75C-E7D8E724FA96}.Release|XBoxOne.Deploy.0 = Release|Durango
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {6F606F9F-15F4-45ED-8962-D81EF520D34E}
+	EndGlobalSection
+EndGlobal

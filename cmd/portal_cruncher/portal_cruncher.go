@@ -438,7 +438,7 @@ func main() {
 							score = 0
 						}
 						if !next {
-							score = -meta.DirectRTT
+							score = -100000 + meta.DirectRTT
 						}
 
 						// Check if we should randomize the location (for staging load test)

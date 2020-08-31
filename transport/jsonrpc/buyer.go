@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -17,6 +18,7 @@ import (
 	"github.com/go-kit/kit/log/level"
 	"github.com/gomodule/redigo/redis"
 	"github.com/networknext/backend/encoding"
+	ghostarmy "github.com/networknext/backend/ghost_army"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
@@ -198,6 +200,8 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 	defer redisClient.Close()
 	minutes := time.Now().Unix() / 60
 
+	ghostArmyBuyerID := ghostarmy.GhostArmyBuyerID(os.Getenv("ENV"))
+
 	switch args.BuyerID {
 	case "":
 		buyers := s.Storage.Buyers()
@@ -244,7 +248,8 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		}
 		redisClient.Flush()
 
-		for range buyers {
+		directModifier := 0
+		for _, buyer := range buyers {
 			count, err := redis.Int(redisClient.Receive())
 			if err != nil {
 				err = fmt.Errorf("TotalSessions() failed getting total session count next: %v", err)
@@ -259,12 +264,19 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 				level.Error(s.Logger).Log("err", err)
 				return err
 			}
+			if buyer.ID == ghostArmyBuyerID {
+				directModifier = 300
+			}
 			newCount += count
 		}
 
 		reply.Next = oldCount
 		if newCount > oldCount {
 			reply.Next = newCount
+		}
+
+		if directModifier > 0 {
+			reply.Direct = reply.Next * directModifier
 		}
 	default:
 		if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {

@@ -7,7 +7,6 @@ import (
 	"io"
 	"io/ioutil"
 	"math"
-	"net/http"
 	"runtime"
 	"sort"
 	"sync"
@@ -71,18 +70,6 @@ func (m *CostMatrix) WriteTo(w io.Writer) (int64, error) {
 	}
 
 	return int64(n), nil
-}
-
-func (m *CostMatrix) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/octet-stream")
-
-	data := m.GetResponseData()
-
-	buffer := bytes.NewBuffer(data)
-	_, err := buffer.WriteTo(w)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-	}
 }
 
 func (m *CostMatrix) UnmarshalBinary(data []byte) error {
@@ -408,10 +395,6 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 	routes.RelaySellers = m.RelaySellers
 	routes.RelaySessionCounts = m.RelaySessionCounts
 	routes.RelayMaxSessionCounts = m.RelayMaxSessionCounts
-
-	if err := routes.UpdateRelayAddressCache(); err != nil {
-		return err
-	}
 
 	type Indirect struct {
 		relay uint64

@@ -7,7 +7,7 @@ agent:
 global_job_config:
   prologue:
     commands:
-      - sudo apt-get update && sudo apt-get -y install libsodium-dev libzmq3-dev
+      - sudo apt-get update && sudo apt-get -y install libsodium-dev libzmq3-dev gcc-8
       - gcloud auth activate-service-account --key-file=/home/semaphore/gcp-service-account.json
       - gcloud auth configure-docker -q
       - checkout
@@ -57,5 +57,13 @@ blocks:
         - name: Bootstrap Script
           commands:
             - make publish-bootstrap-script-staging
+        - name: Client Bootstrap Script
+          commands:
+            - make publish-client-bootstrap-script-staging
+        - name: Ghost Army
+          commands:
+            - make build-ghost-army-artifacts-staging
+            - make publish-ghost-army-artifacts-staging
+            - make publish-ghost-army-bootstrap-script-staging
       secrets:
         - name: google-cloud-platform-staging
