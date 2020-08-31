@@ -6,7 +6,7 @@ import router from './router'
 import store from './store'
 import 'bootstrap'
 import 'bootstrap/dist/css/bootstrap.min.css'
-import { JsonRPCPlugin } from './plugins/jsonrpc'
+import { JSONRPCPlugin } from './plugins/jsonrpc'
 import { AuthPlugin } from './plugins/auth'
 
 import { Route, NavigationGuardNext } from 'vue-router'
@@ -38,7 +38,7 @@ Vue.use(AuthPlugin, {
   clientID: clientID
 })
 
-Vue.use(JsonRPCPlugin)
+Vue.use(JSONRPCPlugin)
 
 new Vue({
   router,
