@@ -1,5 +1,7 @@
-#ifndef CORE_PING_HISTORY_HPP
-#define CORE_PING_HISTORY_HPP
+#pragma once
+
+#include "util/logger.hpp"
+#include "util/macros.hpp"
 
 namespace core
 {
@@ -36,12 +38,12 @@ namespace core
     friend class RouteStats;
   };
 
-  [[gnu::always_inline]] inline PingHistory::PingHistory(const PingHistory& other)
+  INLINE PingHistory::PingHistory(const PingHistory& other)
   {
     *this = other;
   }
 
-  inline void PingHistory::clear()
+  INLINE void PingHistory::clear()
   {
     GCC_NO_OPT_OUT;
     mSeq = 0;
@@ -49,43 +51,42 @@ namespace core
     mEntries.fill(HistoryEntry());
   }
 
-  inline auto PingHistory::seq() -> uint64_t
+  INLINE auto PingHistory::pingSent(double time) -> uint64_t
+  {
+    GCC_NO_OPT_OUT;
+    const auto index = mSeq % RELAY_PING_HISTORY_ENTRY_COUNT;
+    auto& entry = mEntries[index];
+    entry.Sequence = mSeq;
+    entry.TimePingSent = time;
+    entry.TimePongReceived = -1.0;
+    mSeq++;
+    return entry.Sequence;
+  }
+
+  INLINE void PingHistory::pongReceived(uint64_t seq, double time)
+  {
+    GCC_NO_OPT_OUT;
+    const size_t index = seq % RELAY_PING_HISTORY_ENTRY_COUNT;
+    auto& entry = mEntries[index];
+    if (entry.Sequence == seq) {
+      entry.TimePongReceived = time;
+    }
+  }
+
+  INLINE auto PingHistory::seq() -> uint64_t
   {
     return mSeq;
   }
 
-  inline auto PingHistory::operator[](size_t i) -> const HistoryEntry&
+  INLINE auto PingHistory::operator[](size_t i) -> const HistoryEntry&
   {
     return mEntries[i % mEntries.size()];
   }
 
-  [[gnu::always_inline]] inline auto PingHistory::operator=(const PingHistory& other) -> PingHistory&
+  INLINE auto PingHistory::operator=(const PingHistory& other) -> PingHistory&
   {
     this->mSeq = other.mSeq;
     std::copy(other.mEntries.begin(), other.mEntries.end(), this->mEntries.begin());
     return *this;
   }
 }  // namespace core
-
-namespace legacy
-{
-  struct relay_ping_history_entry_t
-  {
-    uint64_t sequence;
-    double time_ping_sent;
-    double time_pong_received;
-  };
-
-  struct relay_ping_history_t
-  {
-    uint64_t sequence;
-    relay_ping_history_entry_t entries[RELAY_PING_HISTORY_ENTRY_COUNT];
-  };
-
-  void relay_ping_history_clear(relay_ping_history_t* history);
-
-  uint64_t relay_ping_history_ping_sent(relay_ping_history_t* history, double time);
-
-  void relay_ping_history_pong_received(relay_ping_history_t* history, uint64_t sequence, double time);
-}  // namespace legacy
-#endif

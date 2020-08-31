@@ -94,7 +94,7 @@ namespace core
     uint32_t Version;
     uint64_t Timestamp;
     uint32_t NumRelays;
-    std::array<Relay, MAX_RELAYS> Relays;
+    std::array<RelayPingInfo, MAX_RELAYS> Relays;
 
     auto size() -> size_t;
     auto into(std::vector<uint8_t>& v) -> bool;

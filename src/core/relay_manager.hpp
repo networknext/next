@@ -10,6 +10,11 @@
 #include "util/logger.hpp"
 #include "util/macros.hpp"
 
+namespace testing
+{
+  class _test_core_handlers_relay_pong_handler_;
+}
+
 namespace core
 {
   const auto INVALID_PING_TIME = -10000.0;
@@ -28,15 +33,23 @@ namespace core
     PingHistory* History = nullptr;
   };
 
+  struct RelayPingInfo
+  {
+    uint64_t ID;
+    net::Address Addr;
+  };
+
   class RelayManager
   {
+    friend class testing::_test_core_handlers_relay_pong_handler_;
+
    public:
     RelayManager();
     ~RelayManager() = default;
 
     void reset();
 
-    void update(size_t numRelays, const std::array<Relay, MAX_RELAYS>& newRelays);
+    void update(size_t numRelays, const std::array<RelayPingInfo, MAX_RELAYS>& newRelays);
 
     auto processPong(const net::Address& from, uint64_t seq) -> bool;
 
@@ -131,8 +144,7 @@ namespace core
   }
 
   // it is used in one place throughout the codebase, so always inline it, no sense in doing a function call
-  INLINE void RelayManager::update(
-   size_t numRelays, const std::array<Relay, MAX_RELAYS>& incoming)
+  INLINE void RelayManager::update(size_t numRelays, const std::array<RelayPingInfo, MAX_RELAYS>& incoming)
   {
     assert(numRelays <= MAX_RELAYS);
 

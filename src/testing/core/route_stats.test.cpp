@@ -3,7 +3,7 @@
 
 #include "core/route_stats.hpp"
 
-Test(new_and_legacy_route_stats_basic)
+Test(core_route_stats_basic_test)
 {
   std::default_random_engine gen;
   std::uniform_real_distribution<float> pingDist(0.0, 1000.0);  // pings will happen in this range
@@ -12,9 +12,6 @@ Test(new_and_legacy_route_stats_basic)
   auto pongRand = std::bind(pongDist, gen);
 
   core::PingHistory ph;
-
-  legacy::relay_route_stats_t l_stats;
-  legacy::relay_ping_history_t l_ph;
 
   float totalPing = 0.0;
   float totalRTT = 0.0;
@@ -30,39 +27,51 @@ Test(new_and_legacy_route_stats_basic)
       auto seq = ph.pingSent(ping);
       ph.pongReceived(seq, ping + pong);
 
-      // legacy
-      seq = legacy::relay_ping_history_ping_sent(&l_ph, ping);
-      legacy::relay_ping_history_pong_received(&l_ph, seq, ping + pong);
-
       totalPing += ping;
       totalRTT += 1000.0f * pong;
     } else {
       // every even entry will have not received a pong
       ph.pingSent(ping);
-      legacy::relay_ping_history_ping_sent(&l_ph, ping);
     }
   }
 
-  legacy::relay_route_stats_from_ping_history(&l_ph, 0.0, 1000.0, &l_stats, 0.0);
+  double mean_rtt = totalRTT / 128;
+  double std_dev_rtt = 0.0;
+  size_t num_jitter_samples = 0;
 
-  auto expectedPacketloss = 50.0;     // half the pings never get a pong, so 50%
+  for (int i = 1; i < RELAY_PING_HISTORY_ENTRY_COUNT; i += 2) {
+    auto& entry = ph[i];
+    double rtt = 1000.0 * (entry.TimePongReceived - entry.TimePingSent);
+    if (rtt > mean_rtt) {
+      double error = rtt - mean_rtt;
+      std_dev_rtt += error * error;
+      num_jitter_samples++;
+    }
+  }
+
   auto expectedRTT = totalRTT / 128;  // every odd is added, so half the relay ping history entry count
+  auto expectedJitter = 3.0f * static_cast<float>(std::sqrt(std_dev_rtt / num_jitter_samples));
+  auto expectedPacketloss = 50.0;  // half the pings never get a pong, so 50%
 
   // account for floating point imprecision
-  expectedRTT = std::floor(expectedRTT * 100) / 100;
-  l_stats.rtt = std::floor(l_stats.rtt * 100) / 100;
+  expectedRTT = (expectedRTT * 100.0) / 100.0;
+  expectedJitter = (expectedJitter * 100.0) / 100.0;
 
   core::RouteStats stats(ph, 0.0, 1000.0, 0.0);
 
   // of the three fields, skipping jitter, too much time to check, relying on legacy code being correct
 
-  check(l_stats.packet_loss == expectedPacketloss);
-  check(l_stats.rtt == expectedRTT);
+  double actual_rtt = (stats.getRTT() * 100.0) / 100.0;
+  double actual_jitter = (stats.getJitter() * 100.0) / 100.0;
+  double actual_packet_loss = (stats.getPacketLoss() * 100.0) / 100.0;
 
-
-  check(fabs(stats.getRTT() - l_stats.rtt) <= 0.1).onFail([&] {
-    std::cout << "stats rtt = " << stats.getRTT() << ", legacy stats = " << l_stats.rtt << std::endl;
+  check(std::abs(actual_rtt - expectedRTT) < 0.001).onFail([&] {
+    std::cout << "actual rtt = " << actual_rtt << '\n';
+    std::cout << "expected rtt = " << expectedRTT << '\n';
   });
-  check(stats.getPacketLoss() == l_stats.packet_loss);
-  check(stats.getJitter() == l_stats.jitter);
+  check(std::abs(actual_jitter - expectedJitter) < 0.001).onFail([&] {
+    std::cout << "actual jitter = " << actual_jitter << '\n';
+    std::cout << "expected jitter = " << expectedJitter << '\n';
+  });
+  check(std::abs(actual_packet_loss - expectedPacketloss) < 0.001);
 }

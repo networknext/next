@@ -1,8 +1,10 @@
 #pragma once
 
 #include "core/packet.hpp"
+#include "core/packets/types.hpp"
 #include "core/relay_manager.hpp"
 #include "encoding/read.hpp"
+#include "net/address.hpp"
 
 using core::Packet;
 using core::RelayManager;

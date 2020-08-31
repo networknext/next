@@ -1,5 +1,4 @@
-#ifndef CORE_ROUTE_STATS_HPP
-#define CORE_ROUTE_STATS_HPP
+#pragma once
 
 #include "ping_history.hpp"
 
@@ -36,17 +35,3 @@ namespace core
     return mPacketLoss;
   }
 }  // namespace core
-
-namespace legacy
-{
-  struct relay_route_stats_t
-  {
-    float rtt;
-    float jitter;
-    float packet_loss;
-  };
-
-  void relay_route_stats_from_ping_history(
-   const legacy::relay_ping_history_t* history, double start, double end, relay_route_stats_t* stats, double ping_safety);
-}  // namespace legacy
-#endif

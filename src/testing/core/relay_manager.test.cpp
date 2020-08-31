@@ -3,12 +3,16 @@
 
 #include "core/relay_manager.hpp"
 
+using core::RelayManager;
+using core::RelayPingInfo;
+using core::RelayStats;
+
 Test(RelayManager)
 {
   const int MaxRelays = MAX_RELAYS;
   const int NumRelays = 32;
 
-  std::array<core::Relay, MAX_RELAYS> incoming;
+  std::array<RelayPingInfo, MAX_RELAYS> incoming;
 
   for (int i = 0; i < MaxRelays; ++i) {
     auto& relay = incoming[i];
@@ -19,11 +23,11 @@ Test(RelayManager)
     check(relay.Addr.Port == 40000 + i);
   }
 
-  core::RelayManager manager;
+  RelayManager manager;
 
   // should be no relays when manager is first created
   {
-    core::RelayStats stats;
+    RelayStats stats;
     manager.getStats(stats);
     check(stats.NumRelays == 0);
   }
@@ -31,11 +35,11 @@ Test(RelayManager)
   // add max relays
   manager.update(NumRelays, incoming);
   {
-    core::RelayStats stats;
+    RelayStats stats;
     manager.getStats(stats);
     check(stats.NumRelays == NumRelays);
     for (int i = 0; i < NumRelays; ++i) {
-      check(std::find_if(incoming.begin(), incoming.end(), [&](const core::Relay& relay) -> bool {
+      check(std::find_if(incoming.begin(), incoming.end(), [&](const RelayPingInfo& relay) -> bool {
               return relay.ID == stats.IDs[i];
             }) != incoming.end());
     }
@@ -45,7 +49,7 @@ Test(RelayManager)
 
   manager.update(0, incoming);
   {
-    core::RelayStats stats;
+    RelayStats stats;
     manager.getStats(stats);
     check(stats.NumRelays == 0);
   }
@@ -55,7 +59,7 @@ Test(RelayManager)
   for (int j = 0; j < 2; ++j) {
     manager.update(NumRelays, incoming);
     {
-      core::RelayStats stats;
+      RelayStats stats;
       manager.getStats(stats);
       check(stats.NumRelays == NumRelays);
       for (int i = 0; i < NumRelays; ++i) {
@@ -66,11 +70,11 @@ Test(RelayManager)
 
   // now add a few new relays, while some relays remain the same
 
-  std::array<core::Relay, MAX_RELAYS> diffRelays;
+  std::array<RelayPingInfo, MAX_RELAYS> diffRelays;
   std::copy(incoming.begin() + 4, incoming.end(), diffRelays.begin());
   manager.update(NumRelays, diffRelays);
   {
-    core::RelayStats stats;
+    RelayStats stats;
     manager.getStats(stats);
     check(stats.NumRelays == NumRelays);
     for (int i = 0; i < NumRelays; ++i) {
