@@ -4,6 +4,7 @@
 #include "core/handlers/continue_response_handler.hpp"
 
 #define CRYPTO_HELPERS
+#define OS_HELPERS
 #include "testing/helpers.hpp"
 
 using core::Packet;
@@ -15,6 +16,7 @@ using core::packets::Header;
 using core::packets::Type;
 using net::Address;
 using os::Socket;
+using os::SocketConfig;
 using util::ThroughputRecorder;
 
 Test(core_handlers_continue_response_handler_unsigned)
@@ -25,12 +27,15 @@ Test(core_handlers_continue_response_handler_unsigned)
   Socket socket;
 
   const GenericKey private_key = random_private_key();
+
   RouterInfo info;
   info.setTimestamp(0);
 
   Address addr;
+  SocketConfig config = default_socket_config();
+
   check(addr.parse("127.0.0.1"));
-  check(socket.create(os::SocketType::NonBlocking, addr, 64 * 1024, 64 * 1024, 0.0, false));
+  check(socket.create(addr, config));
 
   packet.Len = Header::ByteSize;
 
@@ -47,6 +52,7 @@ Test(core_handlers_continue_response_handler_unsigned)
   session->PrivateKey = private_key;
   session->PrevAddr = addr;
   session->ExpireTimestamp = 10;
+  session->ServerToClientSeq = 0;
 
   map.set(header.hash(), session);
 
@@ -82,8 +88,10 @@ Test(core_handlers_continue_response_handler_signed)
   info.setTimestamp(0);
 
   Address addr;
+  SocketConfig config = default_socket_config();
+
   check(addr.parse("127.0.0.1"));
-  check(socket.create(os::SocketType::NonBlocking, addr, 64 * 1024, 64 * 1024, 0.0, false));
+  check(socket.create(addr, config));
 
   packet.Len = crypto::PacketHashLength + Header::ByteSize;
 
@@ -100,6 +108,7 @@ Test(core_handlers_continue_response_handler_signed)
   session->PrivateKey = private_key;
   session->PrevAddr = addr;
   session->ExpireTimestamp = 10;
+  session->ServerToClientSeq = 0;
 
   map.set(header.hash(), session);
 

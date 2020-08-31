@@ -28,13 +28,22 @@ namespace os
     return static_cast<int>(st) == i;
   }
 
+  struct SocketConfig
+  {
+    SocketType socket_type;
+    size_t send_buffer_size;
+    size_t recv_buffer_size;
+    std::optional<float> recv_timeout;
+    bool reuse_port;
+  };
+
   class Socket
   {
    public:
     Socket();
     ~Socket();
 
-    auto create(SocketType type, Address& addr, size_t sendBuffSize, size_t recvBuffSize, float timeout, bool reuse) -> bool;
+    auto create(Address& bind_addr, SocketConfig config) -> bool;
 
     // uses sendto()
     auto send(const Packet& packet) const -> bool;
@@ -67,9 +76,9 @@ namespace os
     auto closed() const -> bool;
 
    private:
-    int mSockFD = 0;
-    SocketType mType;
-    std::atomic<bool> mClosed;
+    int socket_fd = 0;
+    SocketType type;
+    std::atomic<bool> is_closed;
 
     auto set_buffer_sizes(size_t sendBufferSize, size_t recvBufferSize) -> bool;
     auto set_port_reuse(bool reuse) -> bool;
@@ -80,30 +89,31 @@ namespace os
     auto get_port_ipv4(Address& addr) -> bool;
     auto get_port_ipv6(Address& addr) -> bool;
 
-    auto set_socket_type(float timeout) -> bool;
+    auto set_socket_type(SocketType type, std::optional<float> timeout) -> bool;
   };
 
   using SocketPtr = std::shared_ptr<Socket>;
 
-  INLINE Socket::Socket(): mClosed(false) {}
+  INLINE Socket::Socket(): is_closed(false) {}
 
   INLINE Socket::~Socket()
   {
-    if (mSockFD) {
+    if (this->socket_fd) {
       close();
     }
   }
 
-  INLINE auto Socket::create(
-   SocketType type, Address& addr, size_t sendBuffSize, size_t recvBuffSize, float timeout, bool reuse) -> bool
+  INLINE auto Socket::create(Address& bind_addr, SocketConfig config) -> bool
   {
-    assert(addr.Type != AddressType::None);
+    if (bind_addr.Type == AddressType::None) {
+      return false;
+    }
 
     // create socket
     {
-      mSockFD = socket((addr.Type == AddressType::IPv4) ? PF_INET : PF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+      this->socket_fd = socket((bind_addr.Type == AddressType::IPv4) ? PF_INET : PF_INET6, SOCK_DGRAM, IPPROTO_UDP);
 
-      if (mSockFD < 0) {
+      if (this->socket_fd < 0) {
         LOG(ERROR, "failed to create socket");
         perror("OS msg:");
         return false;
@@ -112,32 +122,33 @@ namespace os
 
     // force IPv6 only if necessary
     {
-      if (addr.Type == AddressType::IPv6) {
+      if (bind_addr.Type == AddressType::IPv6) {
         int enable = 1;
-        if (setsockopt(mSockFD, IPPROTO_IPV6, IPV6_V6ONLY, &enable, sizeof(enable)) != 0) {
+        if (setsockopt(this->socket_fd, IPPROTO_IPV6, IPV6_V6ONLY, &enable, sizeof(enable)) != 0) {
           LOG(ERROR, "failed to set socket ipv6 only");
+          perror("OS msg:");
           close();
           return false;
         }
       }
     }
 
-    if (!this->set_buffer_sizes(sendBuffSize, recvBuffSize)) {
+    if (!this->set_buffer_sizes(config.send_buffer_size, config.recv_buffer_size)) {
       return false;
     }
 
-    if (!set_port_reuse(reuse)) {
+    if (!set_port_reuse(config.reuse_port)) {
       return false;
     }
 
     // bind to port
     {
-      if (addr.Type == AddressType::IPv6) {
-        if (!bind_ipv6(addr)) {
+      if (bind_addr.Type == AddressType::IPv6) {
+        if (!bind_ipv6(bind_addr)) {
           return false;
         }
       } else {
-        if (!bind_ipv4(addr)) {
+        if (!bind_ipv4(bind_addr)) {
           return false;
         }
       }
@@ -146,24 +157,24 @@ namespace os
     // if bound to port 0, find the actual port we got
     // port 0 is a "wildcard" so using it will bind to any available port
     {
-      if (addr.Port == 0) {
-        if (addr.Type == AddressType::IPv6) {
-          if (!get_port_ipv6(addr)) {
+      if (bind_addr.Port == 0) {
+        if (bind_addr.Type == AddressType::IPv6) {
+          if (!get_port_ipv6(bind_addr)) {
             return false;
           }
         } else {
-          if (!get_port_ipv4(addr)) {
+          if (!get_port_ipv4(bind_addr)) {
             return false;
           }
         }
       }
     }
 
-    mType = type;
-
-    if (!set_socket_type(timeout)) {
+    if (!set_socket_type(config.socket_type, config.recv_timeout)) {
       return false;
     }
+
+    this->type = config.socket_type;
 
     return true;
   }
@@ -187,7 +198,7 @@ namespace os
       return false;
     }
 
-    if (mClosed) {
+    if (this->closed()) {
       return false;
     }
 
@@ -195,7 +206,7 @@ namespace os
       sockaddr_in6 socket_address;
       to.into(socket_address);
 
-      auto res = sendto(mSockFD, data, size, 0, reinterpret_cast<sockaddr*>(&socket_address), sizeof(sockaddr_in6));
+      auto res = sendto(this->socket_fd, data, size, 0, reinterpret_cast<sockaddr*>(&socket_address), sizeof(sockaddr_in6));
       if (res < 0) {
         LOG(ERROR, "sendto (", to, ") failed");
         return false;
@@ -204,7 +215,7 @@ namespace os
       sockaddr_in socket_address;
       to.into(socket_address);
 
-      auto res = sendto(mSockFD, data, size, 0, reinterpret_cast<sockaddr*>(&socket_address), sizeof(sockaddr_in6));
+      auto res = sendto(this->socket_fd, data, size, 0, reinterpret_cast<sockaddr*>(&socket_address), sizeof(sockaddr_in6));
       if (res < 0) {
         LOG(ERROR, "sendto (", to, ") failed");
         return false;
@@ -226,7 +237,7 @@ namespace os
     assert(count <= 1024);
 
     auto toSend = count;
-    count = sendmmsg(mSockFD, headers.data(), toSend, 0);
+    count = sendmmsg(this->socket_fd, headers.data(), toSend, 0);
 
     if (count < 0) {
       LOG(ERROR, "sendmmsg() failed");
@@ -254,7 +265,7 @@ namespace os
     assert(data != nullptr);
     assert(maxSize > 0);
 
-    if (mClosed) {
+    if (this->closed()) {
       return 0;
     }
 
@@ -262,10 +273,10 @@ namespace os
 
     socklen_t len = sizeof(sockaddr_from);
     auto res = recvfrom(
-     mSockFD,
+     this->socket_fd,
      data,
      maxSize,
-     (mType == SocketType::NonBlocking) ? MSG_DONTWAIT : 0,
+     (this->type == SocketType::NonBlocking) ? MSG_DONTWAIT : 0,
      reinterpret_cast<sockaddr*>(&sockaddr_from),
      &len);
 
@@ -292,7 +303,7 @@ namespace os
   INLINE auto Socket::multirecv(PacketBuffer<BuffSize>& packetBuff) const -> bool
   {
     packetBuff.Count = recvmmsg(
-     mSockFD,
+     this->socket_fd,
      packetBuff.Headers.data(),
      BuffSize,
      MSG_WAITFORONE,
@@ -308,25 +319,25 @@ namespace os
 
   INLINE void Socket::close()
   {
-    mClosed = true;
-    shutdown(mSockFD, SHUT_RDWR);
-    mSockFD = -1;
+    this->is_closed = true;
+    shutdown(this->socket_fd, SHUT_RDWR);
+    this->socket_fd = -1;
   }
 
   INLINE auto Socket::closed() const -> bool
   {
-    return mClosed;
+    return this->is_closed;
   }
 
   INLINE auto Socket::set_buffer_sizes(size_t sendBuffSize, size_t recvBuffSize) -> bool
   {
-    if (setsockopt(mSockFD, SOL_SOCKET, SO_SNDBUF, &sendBuffSize, sizeof(sendBuffSize)) != 0) {
+    if (setsockopt(this->socket_fd, SOL_SOCKET, SO_SNDBUF, &sendBuffSize, sizeof(sendBuffSize)) != 0) {
       LOG(ERROR, "failed to set socket send buffer size");
       this->close();
       return false;
     }
 
-    if (setsockopt(mSockFD, SOL_SOCKET, SO_RCVBUF, &recvBuffSize, sizeof(recvBuffSize)) != 0) {
+    if (setsockopt(this->socket_fd, SOL_SOCKET, SO_RCVBUF, &recvBuffSize, sizeof(recvBuffSize)) != 0) {
       LOG(ERROR, "failed to set socket receive buffer size");
       this->close();
       return false;
@@ -340,7 +351,7 @@ namespace os
   {
     if (reuse) {
       int enable = 1;
-      if (setsockopt(mSockFD, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(enable)) < 0) {
+      if (setsockopt(this->socket_fd, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(enable)) < 0) {
         LOG(ERROR, "could not set port reuse");
         perror("OS msg:");
         close();
@@ -359,7 +370,7 @@ namespace os
                                      (((uint32_t)addr.IPv4[2]) << 16) | (((uint32_t)addr.IPv4[3]) << 24);
     socket_address.sin_port = htons(addr.Port);
 
-    if (bind(mSockFD, reinterpret_cast<sockaddr*>(&socket_address), sizeof(socket_address)) < 0) {
+    if (bind(this->socket_fd, reinterpret_cast<sockaddr*>(&socket_address), sizeof(socket_address)) < 0) {
       LOG(ERROR, "failed to bind to address ", addr, " (ipv4)");
       perror("OS msg:");
       close();
@@ -380,7 +391,7 @@ namespace os
 
     socket_address.sin6_port = htons(addr.Port);
 
-    if (bind(mSockFD, reinterpret_cast<sockaddr*>(&socket_address), sizeof(socket_address)) < 0) {
+    if (bind(this->socket_fd, reinterpret_cast<sockaddr*>(&socket_address), sizeof(socket_address)) < 0) {
       LOG(ERROR, "failed to bind socket (ipv6)");
       perror("OS msg:");
       close();
@@ -394,7 +405,7 @@ namespace os
   {
     sockaddr_in sin;
     socklen_t len = sizeof(len);
-    if (getsockname(mSockFD, reinterpret_cast<sockaddr*>(&sin), &len) < 0) {
+    if (getsockname(this->socket_fd, reinterpret_cast<sockaddr*>(&sin), &len) < 0) {
       LOG(ERROR, "failed to get socket port (ipv4)");
       perror("OS msg:");
       close();
@@ -408,7 +419,7 @@ namespace os
   {
     sockaddr_in6 sin;
     socklen_t len = sizeof(sin);
-    if (getsockname(mSockFD, reinterpret_cast<sockaddr*>(&sin), &len) < 0) {
+    if (getsockname(this->socket_fd, reinterpret_cast<sockaddr*>(&sin), &len) < 0) {
       LOG(ERROR, "failed to get socket port (ipv6)");
       perror("OS msg:");
       close();
@@ -418,21 +429,21 @@ namespace os
     return true;
   }
 
-  INLINE auto Socket::set_socket_type(float timeout) -> bool
+  INLINE auto Socket::set_socket_type(SocketType type, std::optional<float> timeout) -> bool
   {
     // set non-blocking io or receive timeout, or if neither then just blocking with no timeout
-    if (mType == SocketType::NonBlocking) {
-      if (fcntl(mSockFD, F_SETFL, O_NONBLOCK, 1) < 0) {
+    if (type == SocketType::NonBlocking) {
+      if (fcntl(this->socket_fd, F_SETFL, O_NONBLOCK, 1) < 0) {
         LOG(ERROR, "failed to set socket to non blocking");
         perror("OS msg:");
         close();
         return false;
       }
-    } else if (mType == SocketType::Blocking && timeout > 0.0f) {
+    } else if (type == SocketType::Blocking && timeout.has_value()) {
       timeval tv;
       tv.tv_sec = 0;
-      tv.tv_usec = (int)(timeout * 1000000.0f);
-      if (setsockopt(mSockFD, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
+      tv.tv_usec = (int)(*timeout * 1000000.0f);
+      if (setsockopt(this->socket_fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
         LOG(ERROR, "failed to set socket receive timeout");
         perror("OS msg:");
         close();

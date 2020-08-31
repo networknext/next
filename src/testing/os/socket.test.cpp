@@ -6,15 +6,24 @@
 #include "os/socket.hpp"
 
 using core::Packet;
+using net::Address;
+using os::Socket;
+using os::SocketConfig;
+using os::SocketType;
 
 Test(os_socket_nonblocking_ipv4)
 {
-  net::Address bind_address, local_address;
-  os::Socket socket;
+  Address bind_address, local_address;
+  Socket socket;
+  SocketConfig config;
+  config.socket_type = SocketType::NonBlocking;
+  config.send_buffer_size = 1000000;
+  config.recv_buffer_size = 1000000;
+  config.reuse_port = false;
 
   check(bind_address.parse("0.0.0.0"));
   check(local_address.parse("127.0.0.1"));
-  check(socket.create(os::SocketType::NonBlocking, bind_address, 64 * 1024, 64 * 1024, 0.0, false));
+  check(socket.create(bind_address, config));
   local_address.Port = bind_address.Port;
 
   // regular buffer
@@ -62,12 +71,19 @@ Test(os_socket_nonblocking_ipv4)
 
 Test(os_socket_blocking_ipv4_with_timeout)
 {
-  net::Address bind_address, local_address, from;
-  os::Socket socket;
+  Address bind_address, local_address, from;
+  Socket socket;
+  SocketConfig config;
+  config.socket_type = SocketType::Blocking;
+  config.recv_timeout = 0.01f;
+  config.send_buffer_size = 1000000;
+  config.recv_buffer_size = 1000000;
+  config.reuse_port = false;
 
   check(bind_address.parse("0.0.0.0"));
   check(local_address.parse("127.0.0.1"));
-  check(socket.create(os::SocketType::Blocking, bind_address, 64 * 1024, 64 * 1024, 0.01, false));
+  check(socket.create(bind_address, config));
+
   local_address.Port = bind_address.Port;
   std::array<uint8_t, 256> packet = {};
   check(socket.send(local_address, packet.data(), packet.size()));
@@ -81,12 +97,17 @@ Test(os_socket_blocking_ipv4_with_timeout)
 
 Test(os_socket_blocking_with_no_timeout_ipv4)
 {
-  net::Address bind_address, local_address, from;
-  os::Socket socket;
+  Address bind_address, local_address, from;
+  Socket socket;
+  SocketConfig config;
+  config.socket_type = SocketType::Blocking;
+  config.send_buffer_size = 1000000;
+  config.recv_buffer_size = 1000000;
+  config.reuse_port = false;
 
   check(bind_address.parse("0.0.0.0"));
   check(local_address.parse("127.0.0.1"));
-  check(socket.create(os::SocketType::Blocking, bind_address, 64 * 1024, 64 * 1024, 0.0, false));
+  check(socket.create(bind_address, config));
   local_address.Port = bind_address.Port;
   std::array<uint8_t, 256> packet = {};
   check(socket.send(local_address, packet.data(), packet.size()));
@@ -96,12 +117,17 @@ Test(os_socket_blocking_with_no_timeout_ipv4)
 
 Test(os_socket_nonblocking_ipv6)
 {
-  net::Address bind_address, local_address, from;
-  os::Socket socket;
+  Address bind_address, local_address, from;
+  Socket socket;
+  SocketConfig config;
+  config.socket_type = SocketType::NonBlocking;
+  config.send_buffer_size = 1000000;
+  config.recv_buffer_size = 1000000;
+  config.reuse_port = false;
 
   check(bind_address.parse("[::]"));
   check(local_address.parse("[::1]"));
-  check(socket.create(os::SocketType::NonBlocking, bind_address, 64 * 1024, 64 * 1024, 0.0, false));
+  check(socket.create(bind_address, config));
   local_address.Port = bind_address.Port;
   std::array<uint8_t, 256> packet = {};
   check(socket.send(local_address, packet.data(), packet.size()));
@@ -115,12 +141,19 @@ Test(os_socket_nonblocking_ipv6)
 
 Test(os_socket_blocking_ipv6)
 {
-  net::Address bind_address, local_address, from;
-  os::Socket socket;
+  Address bind_address, local_address, from;
+  Socket socket;
+  SocketConfig config;
+  config.socket_type = SocketType::Blocking;
+  config.recv_timeout = 0.01f;
+  config.send_buffer_size = 1000000;
+  config.recv_buffer_size = 1000000;
+  config.reuse_port = false;
 
   check(bind_address.parse("[::]"));
   check(local_address.parse("[::1]"));
-  check(socket.create(os::SocketType::Blocking, bind_address, 64 * 1024, 64 * 1024, 0.01, false));
+  check(socket.create(bind_address, config));
+
   local_address.Port = bind_address.Port;
   std::array<uint8_t, 256> packet = {};
   check(socket.send(local_address, packet.data(), packet.size()));
@@ -134,12 +167,18 @@ Test(os_socket_blocking_ipv6)
 
 Test(os_socket_blocking_with_no_timeout_ipv6)
 {
-  net::Address bind_address, local_address, from;
-  os::Socket socket;
+  Address bind_address, local_address, from;
+  Socket socket;
+  SocketConfig config;
+  config.socket_type = SocketType::Blocking;
+  config.send_buffer_size = 1000000;
+  config.recv_buffer_size = 1000000;
+  config.reuse_port = false;
 
   check(bind_address.parse("[::]"));
   check(local_address.parse("[::1]"));
-  check(socket.create(os::SocketType::Blocking, bind_address, 64 * 1024, 64 * 1024, 0.0, false));
+  check(socket.create(bind_address, config));
+
   local_address.Port = bind_address.Port;
   std::array<uint8_t, 256> packet = {};
   check(socket.send(local_address, packet.data(), packet.size()));

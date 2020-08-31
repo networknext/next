@@ -33,4 +33,18 @@ namespace testing
     return private_key;
   }
 #endif
+
+#ifdef OS_HELPERS
+#include "os/socket.hpp"
+  inline auto default_socket_config() -> os::SocketConfig
+  {
+    os::SocketConfig config;
+    config.socket_type = os::SocketType::NonBlocking;
+    config.send_buffer_size = 1000000;
+    config.recv_buffer_size = 1000000;
+    config.reuse_port = false;
+
+    return config;
+  }
+#endif
 }  // namespace testing

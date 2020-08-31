@@ -3,8 +3,12 @@
 
 #include "core/handlers/near_ping_handler.hpp"
 
+#define OS_HELPERS
+#include "testing/helpers.hpp"
+
 using core::Packet;
 using os::Socket;
+using os::SocketConfig;
 using util::ThroughputRecorder;
 
 Test(core_handlers_near_ping_handler_unsigned)
@@ -14,8 +18,10 @@ Test(core_handlers_near_ping_handler_unsigned)
   Socket socket;
 
   Address addr;
+  SocketConfig config = default_socket_config();
+
   check(addr.parse("127.0.0.1"));
-  check(socket.create(os::SocketType::NonBlocking, addr, 64 * 1024, 64 * 1024, 0.0, false));
+  check(socket.create(addr, config));
 
   packet.Len = 1 + 8 + 8 + 8 + 8;
   packet.Addr = addr;
@@ -41,8 +47,10 @@ Test(core_handlers_near_ping_handler_signed)
   Socket socket;
 
   Address addr;
+  SocketConfig config = default_socket_config();
+
   check(addr.parse("127.0.0.1"));
-  check(socket.create(os::SocketType::NonBlocking, addr, 64 * 1024, 64 * 1024, 0.0, false));
+  check(socket.create(addr, config));
 
   packet.Len = crypto::PacketHashLength + 1 + 8 + 8 + 8 + 8;
   packet.Addr = addr;

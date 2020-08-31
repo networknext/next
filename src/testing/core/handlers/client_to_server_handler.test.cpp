@@ -5,6 +5,7 @@
 #include "crypto/bytes.hpp"
 
 #define CRYPTO_HELPERS
+#define OS_HELPERS
 #include "testing/helpers.hpp"
 
 using core::Packet;
@@ -16,6 +17,7 @@ using core::packets::Header;
 using core::packets::Type;
 using net::Address;
 using os::Socket;
+using os::SocketConfig;
 using util::ThroughputRecorder;
 
 Test(core_handlers_client_to_server_handler_unsigned_packet)
@@ -25,15 +27,18 @@ Test(core_handlers_client_to_server_handler_unsigned_packet)
   ThroughputRecorder recorder;
   Socket socket;
 
-  Address addr;
   const GenericKey private_key = random_private_key();
+
   RouterInfo info;
   info.setTimestamp(0);
 
   packet.Len = Header::ByteSize + 100;
 
+  Address addr;
+  SocketConfig config = default_socket_config();
+
   check(addr.parse("127.0.0.1"));
-  check(socket.create(os::SocketType::NonBlocking, addr, 64 * 1024, 64 * 1024, 0.0, false));
+  check(socket.create(addr, config));
 
   Header header = {
    .type = Type::ClientToServer,
@@ -46,6 +51,7 @@ Test(core_handlers_client_to_server_handler_unsigned_packet)
   session->NextAddr = addr;
   session->ExpireTimestamp = 10;
   session->PrivateKey = private_key;
+  session->ClientToServerSeq = 0;
   legacy::relay_replay_protection_reset(&session->ClientToServerProtection);
   legacy::relay_replay_protection_reset(&session->ServerToClientProtection);
 
@@ -75,22 +81,22 @@ Test(core_handlers_client_to_server_handler_unsigned_packet)
 Test(core_handlers_client_to_server_handler_signed_packet)
 {
   Socket socket;
-  Address addr;
   Packet packet;
   SessionMap map;
   ThroughputRecorder recorder;
-  const GenericKey private_key = [] {
-    GenericKey private_key;
-    crypto::RandomBytes(private_key, private_key.size());
-    return private_key;
-  }();
+
+  const GenericKey private_key = random_private_key();
+
   RouterInfo info;
   info.setTimestamp(0);
 
   packet.Len = crypto::PacketHashLength + Header::ByteSize + 100;
 
+  Address addr;
+  SocketConfig config = default_socket_config();
+
   check(addr.parse("127.0.0.1"));
-  check(socket.create(os::SocketType::NonBlocking, addr, 64 * 1024, 64 * 1024, 0.0, false));
+  check(socket.create(addr, config));
 
   Header header = {
    .type = Type::ClientToServer,
@@ -105,6 +111,7 @@ Test(core_handlers_client_to_server_handler_signed_packet)
   session->PrivateKey = private_key;
   session->SessionID = header.session_id;
   session->SessionVersion = header.session_version;
+  session->ClientToServerSeq = 0;
   legacy::relay_replay_protection_reset(&session->ClientToServerProtection);
   legacy::relay_replay_protection_reset(&session->ServerToClientProtection);
 

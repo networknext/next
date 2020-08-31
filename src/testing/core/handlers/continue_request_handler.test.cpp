@@ -4,6 +4,7 @@
 #include "core/handlers/continue_request_handler.hpp"
 
 #define CRYPTO_HELPERS
+#define OS_HELPERS
 #include "testing/helpers.hpp"
 
 using core::ContinueToken;
@@ -15,6 +16,7 @@ using core::packets::Type;
 using crypto::Keychain;
 using net::Address;
 using os::Socket;
+using os::SocketConfig;
 using util::ThroughputRecorder;
 
 Test(core_handlers_continue_request_handler_unsigned)
@@ -28,12 +30,13 @@ Test(core_handlers_continue_request_handler_unsigned)
   Socket socket;
 
   Address addr;
+  SocketConfig config = default_socket_config();
+
+  check(addr.parse("127.0.0.1"));
+  check(socket.create(addr, config));
 
   packet.Buffer[0] = static_cast<uint8_t>(Type::ContinueRequest);
   packet.Len = 1 + ContinueToken::EncryptedByteSize * 2;
-
-  check(addr.parse("127.0.0.1"));
-  check(socket.create(os::SocketType::NonBlocking, addr, 64 * 1024, 64 * 1024, 0.0, false));
 
   ContinueToken token(info);
   token.ExpireTimestamp = 20;
@@ -52,6 +55,7 @@ Test(core_handlers_continue_request_handler_unsigned)
   session->SessionID = token.SessionID;
   session->SessionVersion = token.SessionVersion;
   session->NextAddr = addr;
+  session->ClientToServerSeq = 0;
   map.set(token.hash(), session);
 
   size_t prev_len = packet.Len;
@@ -73,13 +77,14 @@ Test(core_handlers_continue_request_handler_signed)
   info.setTimestamp(0);
   Socket socket;
 
-  Address addr;
-
   packet.Buffer[crypto::PacketHashLength] = static_cast<uint8_t>(Type::ContinueRequest);
   packet.Len = crypto::PacketHashLength + 1 + ContinueToken::EncryptedByteSize * 2;
 
+  Address addr;
+  SocketConfig config = default_socket_config();
+
   check(addr.parse("127.0.0.1"));
-  check(socket.create(os::SocketType::NonBlocking, addr, 64 * 1024, 64 * 1024, 0.0, false));
+  check(socket.create(addr, config));
 
   ContinueToken token(info);
   token.ExpireTimestamp = 20;
@@ -98,6 +103,7 @@ Test(core_handlers_continue_request_handler_signed)
   session->SessionID = token.SessionID;
   session->SessionVersion = token.SessionVersion;
   session->NextAddr = addr;
+  session->ClientToServerSeq = 0;
   map.set(token.hash(), session);
 
   size_t prev_len = packet.Len;

@@ -28,6 +28,10 @@ using crypto::KEY_SIZE;
 using crypto::Keychain;
 using net::Address;
 using net::BeastWrapper;
+using os::Socket;
+using os::SocketConfig;
+using os::SocketPtr;
+using os::SocketType;
 using util::Env;
 
 namespace base64 = encoding::base64;
@@ -197,7 +201,7 @@ int main(int argc, const char* argv[])
   core::RelayManager relay_manager;
   util::ThroughputRecorder recorder;
 
-  std::vector<os::SocketPtr> sockets;
+  std::vector<SocketPtr> sockets;
   std::vector<std::shared_ptr<std::thread>> threads;
 
   // decides if the relay should receive packets
@@ -226,13 +230,12 @@ int main(int argc, const char* argv[])
   };
 
   // makes a shared ptr to a socket object
-  auto make_socket = [&](Address& addr_in) -> os::SocketPtr {
-    // don't set addr, so that it's 0.0.0.0:some-port
+  auto make_socket = [&](Address& addr_in, SocketConfig config) -> SocketPtr {
     Address addr;
     addr.Port = addr_in.Port;
     addr.Type = addr_in.Type;
-    auto socket = std::make_shared<os::Socket>();
-    if (!socket->create(os::SocketType::Blocking, addr, socketSendBuffSize, socketRecvBuffSize, 0.0f, true)) {
+    auto socket = std::make_shared<Socket>();
+    if (!socket->create(addr, config)) {
       return nullptr;
     }
 
@@ -244,20 +247,25 @@ int main(int argc, const char* argv[])
     return socket;
   };
 
+  SocketConfig config;
+  config.socket_type = SocketType::Blocking;
+  config.reuse_port = true;
+  config.send_buffer_size = socketSendBuffSize;
+  config.recv_buffer_size = socketRecvBuffSize;
+
   size_t num_threads = (num_cpus == 1) ? num_cpus : num_cpus - 1;
   LOG(DEBUG, "creating ", num_cpus, " packet processing thread", (num_cpus != 1) ? "s" : "");
 
   // packet processing setup
   for (unsigned int i = (num_cpus == 1) ? 0 : 1; i < num_threads && gAlive; i++) {
-    auto socket = make_socket(relay_addr);
+    auto socket = make_socket(relay_addr, config);
     if (!socket) {
       LOG(ERROR, "could not create socket");
       cleanup();
     }
 
     auto thread = std::make_shared<std::thread>([&, socket] {
-      PacketHandler handler(
-       should_receive, *socket, keychain, sessions, relay_manager, gAlive, recorder, router_info);
+      PacketHandler handler(should_receive, *socket, keychain, sessions, relay_manager, gAlive, recorder, router_info);
       handler.handle_packets();
     });
 
@@ -296,7 +304,14 @@ int main(int argc, const char* argv[])
     std::thread thread([&] {
       BeastWrapper wrapper;
       core::Backend backend(
-       env.backend_hostname, relay_addr.toString(), keychain, router_info, relay_manager, env.relay_public_key, sessions, wrapper);
+       env.backend_hostname,
+       relay_addr.toString(),
+       keychain,
+       router_info,
+       relay_manager,
+       env.relay_public_key,
+       sessions,
+       wrapper);
 
       size_t attempts = 0;
       while (attempts < 60) {
