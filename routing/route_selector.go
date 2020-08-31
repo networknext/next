@@ -34,12 +34,12 @@ func SelectRoutesByRandomDestRelay(source rand.Source) SelectorFunc {
 		destRelayRouteMap := make(map[uint64][]Route)
 		for _, route := range routes {
 			// In case the route has zero relays, ignore it
-			if len(route.RelayIDs) == 0 {
+			if route.NumRelays == 0 {
 				continue
 			}
 
 			// Get the destination relay
-			destRelayID := route.RelayIDs[len(route.RelayIDs)-1]
+			destRelayID := route.RelayIDs[route.NumRelays-1]
 
 			// If the relay isn't in the map yet, add an empty slice to add routes to
 			if _, ok := destRelayRouteMap[destRelayID]; !ok {
