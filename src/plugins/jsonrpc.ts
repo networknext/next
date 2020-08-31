@@ -140,70 +140,7 @@ export const JSONRPCPlugin = {
   service: {} as JSONRPCService,
   install (Vue: any) {
     this.service = new JSONRPCService()
-
-    Vue.fetchTotalSessionCounts = (args: any): Promise<any> => {
-      return this.service.fetchTotalSessionCounts(args)
-    }
-
-    Vue.fetchMapSessions = (args: any): Promise<any> => {
-      return this.service.fetchMapSessions(args)
-    }
-
-    Vue.fetchSessionDetails = (args: any): Promise<any> => {
-      return this.service.fetchSessionDetails(args)
-    }
-
-    Vue.fetchTopSessions = (args: any): Promise<any> => {
-      return this.service.fetchTopSessions(args)
-    }
-
-    Vue.fetchAllBuyers = (args: any): Promise<any> => {
-      return this.service.fetchAllBuyers(args)
-    }
-
-    Vue.fetchUserSessions = (args: any): Promise<any> => {
-      return this.service.fetchUserSessions(args)
-    }
-
-    Vue.fetchAllRoles = (): Promise<any> => {
-      return this.service.fetchAllRoles()
-    }
-
-    Vue.fetchAllAccounts = (args: any): Promise<any> => {
-      return this.service.fetchAllAccounts(args)
-    }
-
-    Vue.updateUserRoles = (args: any): Promise<any> => {
-      return this.service.updateUserRoles(args)
-    }
-
-    Vue.deleteUserAccount = (args: any): Promise<any> => {
-      return this.service.deleteUserAccount(args)
-    }
-
-    Vue.addNewUserAccounts = (args: any): Promise<any> => {
-      return this.service.addNewUserAccounts(args)
-    }
-
-    Vue.fetchUserAccount = (args: any, token: string): Promise<any> => {
-      return this.service.fetchUserAccount(args, token)
-    }
-
-    Vue.fetchGameConfiguration = (args: any, token: string): Promise<any> => {
-      return this.service.fetchGameConfiguration(args, token)
-    }
-
-    Vue.updateRouteShader = (args: any): Promise<any> => {
-      return this.service.updateRouteShader(args)
-    }
-
-    Vue.updateGameConfiguration = (args: any): Promise<any> => {
-      return this.service.updateGameConfiguration(args)
-    }
-
-    Vue.resendVerificationEmail = (args: any): Promise<any> => {
-      return this.service.resendVerificationEmail(args)
-    }
+    Vue.prototype.$apiService = this.service
   },
   fetchTotalSessionCounts: function (args: any): Promise<any> {
     return this.service.fetchTotalSessionCounts(args)

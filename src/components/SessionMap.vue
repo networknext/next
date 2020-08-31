@@ -31,7 +31,6 @@ export default class SessionMap extends Vue {
   private mapInstance: any
   private mapLoop: number
   private viewState: any
-  private vueInstance: any
   private unwatch: any
 
   constructor () {
@@ -46,7 +45,6 @@ export default class SessionMap extends Vue {
       maxZoom: 16
     }
     this.mapLoop = -1
-    this.vueInstance = Vue
   }
 
   private mounted () {
@@ -68,8 +66,9 @@ export default class SessionMap extends Vue {
   }
 
   private fetchMapSessions () {
-    // creating the map
-    this.vueInstance
+    // TODO: Figure out how to get rid of this. this.$apiService should be possible...
+    // HACK: This is a hack to get tests to work properly
+    (this as any).$apiService
       .fetchMapSessions({
         buyer_id: this.$store.getters.currentFilter.buyerID || ''
       })

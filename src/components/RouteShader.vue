@@ -123,11 +123,9 @@ export default class RouteShader extends Vue {
   private message: string
   private alertType: string
   private userProfile: UserProfile
-  private vueInstance: any
 
   constructor () {
     super()
-    this.vueInstance = Vue
     this.userProfile = _.cloneDeep(this.$store.getters.userProfile)
     this.routeShader = this.userProfile.routeShader
     this.message = ''
@@ -135,7 +133,9 @@ export default class RouteShader extends Vue {
   }
 
   public updateRouteShader () {
-    this.vueInstance
+    // TODO: Figure out how to get rid of this. this.$apiService should be possible...
+    // HACK: This is a hack to get tests to work properly
+    (this as any).$apiService
       .updateRouteShader(this.routeShader)
       .then((response: any) => {
         this.userProfile.routeShader = this.routeShader

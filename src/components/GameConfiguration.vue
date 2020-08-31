@@ -62,7 +62,6 @@ export default class GameConfiguration extends Vue {
   private message: string
   private alertType: string
   private userProfile: UserProfile
-  private vueInstance: any
 
   constructor () {
     super()
@@ -71,13 +70,15 @@ export default class GameConfiguration extends Vue {
     this.pubKey = this.userProfile.pubKey || ''
     this.message = ''
     this.alertType = ''
-    this.vueInstance = Vue
   }
 
   private updatePubKey () {
+    // TODO: Figure out how to get rid of this. this.$apiService should be possible...
+    // HACK: This is a hack to get tests to work properly
+    const vm = (this as any)
     const domain = this.userProfile.domain || ''
 
-    this.vueInstance
+    vm.$apiService
       .updateGameConfiguration({
         name: this.company,
         domain: domain,
