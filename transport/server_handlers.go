@@ -1299,7 +1299,7 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, params *PostSessi
 	if !postSessionHandler.IsPortalBufferFull() {
 		portalData := buildPortalData(params.packet, params.lastNextStats, params.lastDirectStats, hops, params.packet.OnNetworkNext, datacenterName, params.location, nearRelayData, params.timeNow, isMultipath, datacenterAlias)
 		if portalData.Meta.NextRTT != 0 || portalData.Meta.DirectRTT != 0 {
-			postSessionHandler.SendPortalData(portalData)
+			// postSessionHandler.SendPortalData(portalData)
 			params.sessionUpdateParams.Metrics.PostSessionPortalEntriesSent.Add(1)
 		}
 	} else {
