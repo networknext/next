@@ -74,6 +74,10 @@ export default class Workspace extends Vue {
 >>>>>>> Fixed issue with the verification email alert and upgrading new accounts:src/components/workspaces/Workspace.vue
   }
 
+  private destroy () {
+    this.unwatch()
+  }
+
   // Not sure why this is necessary but Vue is ignoring all updates to message
   private updateAlert (showAlert: boolean) {
     this.message = showAlert ? `Please confirm your email address: ${this.$store.getters.userProfile.email}` : ''
