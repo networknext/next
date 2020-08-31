@@ -75,6 +75,5 @@ describe('Alert.vue', () => {
 
     expect((wrapper.vm as any).alertMessage).toBe(message)
     expect((wrapper.vm as any).className).toBe(alertType)
-
   })
 })

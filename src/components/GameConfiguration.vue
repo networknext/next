@@ -27,7 +27,7 @@
       <button
         type="submit"
         class="btn btn-primary btn-sm"
-        v-if="$store.getters.isOwner && $store.getters.isAdmin"
+        v-if="$store.getters.isOwner || $store.getters.isAdmin"
       >Save game configuration</button>
       <p class="text-muted text-small mt-2"></p>
     </form>

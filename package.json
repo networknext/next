@@ -10,6 +10,7 @@
     "build-dev-test": "vue-cli-service build --mode dev-test",
     "build-local": "vue-cli-service build --mode local",
     "test:unit": "vue-cli-service test:unit",
+    "test:unit-dev": "vue-cli-service test:unit --watch",
     "test:e2e": "vue-cli-service test:e2e",
     "lint": "vue-cli-service lint"
   },

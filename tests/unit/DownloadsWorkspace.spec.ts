@@ -13,7 +13,7 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
 describe('Alert.vue', () => {
 
-  const localVue: any = createLocalVue()
+  const localVue = createLocalVue()
 
   const ICONS = [
     faCheck,
