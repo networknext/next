@@ -1,6 +1,6 @@
 <template>
   <div v-bind:class="{
-    'map-container-no-offset': $store.getters.isAnonymous || !$store.getters.isAnonymousPlus,
+    'map-container-no-offset': !$store.getters.isAnonymousPlus,
     'map-container-offset': $store.getters.isAnonymousPlus,
   }">
     <div class="map" id="map"></div>
