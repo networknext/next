@@ -26,6 +26,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"hash/fnv"
 
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
@@ -1579,6 +1580,34 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		},
 	}
 
+	var userCommand = &ffcli.Command{
+		Name:       "user",
+		ShortUsage: "next buyer <subcommand>",
+		ShortHelp:  "Manage users",
+		FlagSet:    buyersfs,
+		Exec: func(_ context.Context, args []string) error {
+			return flag.ErrHelp
+		},
+		Subcommands: []*ffcli.Command{
+			{ // hash
+				Name:       "hash",
+				ShortUsage: "next user hash <userid>",
+				ShortHelp:  "Prints the user hash in signed int format",
+				Exec: func(_ context.Context, args []string) error {
+					userId := ""
+					if len(args) >= 1 {
+						userId = args[0]
+					}
+					hash := fnv.New64a()
+					hash.Write([]byte(userId))
+					userHash := int64(hash.Sum64())
+					fmt.Printf("user hash: \"%s\" -> %d\n", userId, userHash)
+					return nil
+				},
+			},
+		},
+	}
+
 	var sellerCommand = &ffcli.Command{
 		Name:       "seller",
 		ShortUsage: "next seller <subcommand>",
@@ -1985,6 +2014,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		sellerCommand,
 		buyerCommand,
 		buyersCommand,
+		userCommand,
 		shaderCommand,
 		sshCommand,
 		costCommand,
