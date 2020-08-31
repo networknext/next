@@ -43,29 +43,35 @@ namespace core
     INLINE auto Header::read(Packet& packet, size_t& index, Direction direction) -> bool
     {
       if (index + ByteSize > packet.Buffer.size()) {
-        LOG(ERROR, "could not read header, buffer is too small");
+        LOG(ERROR, "header read, buffer is too small");
         return false;
       }
 
       uint8_t type;
       if (!encoding::ReadUint8(packet.Buffer, index, type)) {
+        LOG(ERROR, "header read, unable to read packet type");
         return false;
       }
       Type packet_type = static_cast<Type>(type);
 
       uint64_t packet_sequence;
       if (!encoding::ReadUint64(packet.Buffer, index, packet_sequence)) {
+        LOG(ERROR, "header read, unable to read packet sequence");
         return false;
       }
 
       if (direction == Direction::ServerToClient) {
         // high bit must be set
-        if (!(packet_sequence & (1ULL << 63)))
+        if ((packet_sequence & (1ULL << 63)) == 0) {
+          LOG(ERROR, "header read, high bit unset");
           return false;
+        }
       } else {
         // high bit must be clear
-        if (packet_sequence & (1ULL << 63))
+        if ((packet_sequence & (1ULL << 63)) != 0) {
+          LOG(ERROR, "header read, high bit set");
           return false;
+        }
       }
 
       this->type = packet_type;
@@ -74,19 +80,27 @@ namespace core
        this->type == Type::SessionPing || this->type == Type::SessionPong || this->type == Type::RouteResponse ||
        this->type == Type::ContinueResponse) {
         // second highest bit must be set
-        assert(packet_sequence & (1ULL << 62));
+        if ((packet_sequence & (1ULL << 62)) == 0) {
+          LOG(ERROR, "header read, second high bit unset");
+          return false;
+        }
       } else {
         // second highest bit must be clear
-        assert((packet_sequence & (1ULL << 62)) == 0);
+        if ((packet_sequence & (1ULL << 62)) != 0) {
+          LOG(ERROR, "header read, second high bit set");
+          return false;
+        }
       }
 
       this->sequence = packet_sequence;
 
       if (!encoding::ReadUint64(packet.Buffer, index, this->session_id)) {
+        LOG(ERROR, "header read, could not read session id");
         return false;
       }
 
       if (!encoding::ReadUint8(packet.Buffer, index, this->session_version)) {
+        LOG(ERROR, "header read, could not read session version");
         return false;
       }
 
