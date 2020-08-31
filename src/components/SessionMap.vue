@@ -1,7 +1,7 @@
 <template>
   <div v-bind:class="{
-    'map-container-no-offset': $store.getters.userProfile === null || !$store.getters.userProfile.verified,
-    'map-container-offset': $store.getters.userProfile !== null && !$store.getters.userProfile.verified,
+    'map-container-no-offset': $store.getters.isAnonymous || !$store.getters.isAnonymousPlus,
+    'map-container-offset': $store.getters.isAnonymousPlus,
   }">
     <div class="map" id="map"></div>
     <canvas id="deck-canvas"></canvas>
@@ -175,7 +175,7 @@ export default class SessionMap extends Vue {
 <style scoped lang="scss">
 .map-container-offset {
   width: 100%;
-  height: calc(-160px + 90vh);
+  height: calc(-160px + 95vh);
   position: relative;
   overflow: hidden;
 }
