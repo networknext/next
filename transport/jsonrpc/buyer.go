@@ -248,7 +248,6 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		}
 		redisClient.Flush()
 
-		directModifier := 0
 		for _, buyer := range buyers {
 			count, err := redis.Int(redisClient.Receive())
 			if err != nil {
@@ -265,7 +264,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 				return err
 			}
 			if buyer.ID == ghostArmyBuyerID {
-				directModifier = 300
+				count *= 300
 			}
 			newCount += count
 		}
@@ -273,10 +272,6 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		reply.Next = oldCount
 		if newCount > oldCount {
 			reply.Next = newCount
-		}
-
-		if directModifier > 0 {
-			reply.Direct = reply.Next * directModifier
 		}
 	default:
 		if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
