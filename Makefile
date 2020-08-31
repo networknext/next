@@ -457,7 +457,7 @@ deploy-relay-backend-prod:
 
 .PHONY: deploy-portal-cruncher-prod
 deploy-portal-cruncher-prod:
-	./deploy/deploy.sh -e prod -c prod -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c mig-07q1 -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
 
 .PHONY: deploy-server-backend-dev-1
 deploy-server-backend-dev-1:
@@ -489,7 +489,7 @@ deploy-server-backend-velan:
 
 .PHONY: deploy-server-backend-esl
 deploy-server-backend-esl:
-	./deploy/deploy.sh -e prod -c esl-22dr -t server-backend -n server_backend-esl-22dr -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c esl-22dr -t server-backend -n server_backend -b gs://prod_artifacts
 
 .PHONY: deploy-ghost-army-dev
 deploy-ghost-army-dev:
@@ -607,10 +607,6 @@ build-relay-backend-artifacts-prod: build-relay-backend
 build-server-backend-artifacts-prod: build-server-backend
 	./deploy/build-artifacts.sh -e prod -s server_backend
 
-.PHONY: build-server-backend-artifacts-prod-esl
-build-server-backend-artifacts-prod-esl: build-server-backend
-	./deploy/build-artifacts.sh -e prod -s server_backend -c esl-22dr
-
 .PHONY: build-ghost-army-artifacts-prod
 build-ghost-army-artifacts-prod: build-ghost-army
 	./deploy/build-artifacts.sh -e prod -s ghost_army
@@ -722,10 +718,6 @@ publish-relay-backend-artifacts-prod:
 .PHONY: publish-server-backend-artifacts-prod
 publish-server-backend-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s server_backend
-
-.PHONY: publish-server-backend-artifacts-prod-esl
-publish-server-backend-artifacts-prod-esl:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s server_backend -c esl-22dr
 
 .PHONY: publish-ghost-army-artifacts-prod
 publish-ghost-army-artifacts-prod:
