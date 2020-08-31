@@ -1299,7 +1299,7 @@ func PostSessionUpdate(postSessionHandler *PostSessionHandler, params *PostSessi
 	if !postSessionHandler.IsPortalBufferFull() {
 		portalData := buildPortalData(params.packet, params.lastNextStats, params.lastDirectStats, hops, params.packet.OnNetworkNext, datacenterName, params.location, nearRelayData, params.timeNow, isMultipath, datacenterAlias)
 		if portalData.Meta.NextRTT != 0 || portalData.Meta.DirectRTT != 0 {
-			// postSessionHandler.SendPortalData(portalData)
+			postSessionHandler.SendPortalData(portalData)
 			params.sessionUpdateParams.Metrics.PostSessionPortalEntriesSent.Add(1)
 		}
 	} else {
@@ -1647,34 +1647,34 @@ func sendRouteResponse(w io.Writer, chosenRoute *routing.Route, params *SessionU
 		lastSliceDuration *= 2
 	}
 
-	usageBytesUp, usageBytesDown := CalculateNextBytesUpAndDown(uint64(packet.KbpsUp), uint64(packet.KbpsDown), lastSliceDuration)
-	envelopeBytesUp, envelopeBytesDown := CalculateNextBytesUpAndDown(uint64(buyer.RoutingRulesSettings.EnvelopeKbpsUp), uint64(buyer.RoutingRulesSettings.EnvelopeKbpsDown), lastSliceDuration)
+	// usageBytesUp, usageBytesDown := CalculateNextBytesUpAndDown(uint64(packet.KbpsUp), uint64(packet.KbpsDown), lastSliceDuration)
+	// envelopeBytesUp, envelopeBytesDown := CalculateNextBytesUpAndDown(uint64(buyer.RoutingRulesSettings.EnvelopeKbpsUp), uint64(buyer.RoutingRulesSettings.EnvelopeKbpsDown), lastSliceDuration)
 
-	// Calculate the total price for the billing entry
-	totalPriceNibblins := CalculateTotalPriceNibblins(chosenRoute, envelopeBytesUp, envelopeBytesDown)
+	// // Calculate the total price for the billing entry
+	// totalPriceNibblins := CalculateTotalPriceNibblins(chosenRoute, envelopeBytesUp, envelopeBytesDown)
 
-	nextRelaysPrice := CalculateRouteRelaysPrice(chosenRoute, envelopeBytesUp, envelopeBytesDown)
+	// nextRelaysPrice := CalculateRouteRelaysPrice(chosenRoute, envelopeBytesUp, envelopeBytesDown)
 
 	// IMPORTANT: run post in parallel so it doesn't block the response
-	postSessionUpdateFunc(&PostSessionUpdateParams{
-		sessionUpdateParams: params,
-		packet:              packet,
-		response:            response,
-		serverDataReadOnly:  serverDataReadOnly,
-		chosenRoute:         chosenRoute,
-		lastNextStats:       lastNextStats,
-		lastDirectStats:     lastDirectStats,
-		prevRouteDecision:   prevRouteDecision,
-		location:            location,
-		nearRelays:          nearRelayData,
-		timeNow:             timeNow,
-		totalPriceNibblins:  totalPriceNibblins,
-		nextRelaysPrice:     nextRelaysPrice,
-		nextBytesUp:         usageBytesUp,
-		nextBytesDown:       usageBytesDown,
-		prevInitial:         prevInitial,
-		abTest:              buyer.RoutingRulesSettings.EnableABTest,
-	})
+	// postSessionUpdateFunc(&PostSessionUpdateParams{
+	// 	sessionUpdateParams: params,
+	// 	packet:              packet,
+	// 	response:            response,
+	// 	serverDataReadOnly:  serverDataReadOnly,
+	// 	chosenRoute:         chosenRoute,
+	// 	lastNextStats:       lastNextStats,
+	// 	lastDirectStats:     lastDirectStats,
+	// 	prevRouteDecision:   prevRouteDecision,
+	// 	location:            location,
+	// 	nearRelays:          nearRelayData,
+	// 	timeNow:             timeNow,
+	// 	totalPriceNibblins:  totalPriceNibblins,
+	// 	nextRelaysPrice:     nextRelaysPrice,
+	// 	nextBytesUp:         usageBytesUp,
+	// 	nextBytesDown:       usageBytesDown,
+	// 	prevInitial:         prevInitial,
+	// 	abTest:              buyer.RoutingRulesSettings.EnableABTest,
+	// })
 
 	// Send the Session Response back to the server
 	if _, err := w.Write(responseData); err != nil {
