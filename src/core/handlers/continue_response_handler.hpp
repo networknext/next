@@ -28,6 +28,7 @@ namespace core
       }
 
       if (length != Header::ByteSize) {
+        LOG(ERROR, "dropping continue response packet, invalid size: ", length);
         return;
       }
 
