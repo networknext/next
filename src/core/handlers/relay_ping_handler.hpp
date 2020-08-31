@@ -8,6 +8,7 @@
 #include "os/socket.hpp"
 
 using core::Packet;
+using core::packets::RELAY_PING_PACKET_SIZE;
 using core::packets::Type;
 using os::Socket;
 using util::ThroughputRecorder;
@@ -16,8 +17,7 @@ namespace core
 {
   namespace handlers
   {
-    inline void relay_ping_handler(
-     Packet& packet, util::ThroughputRecorder& recorder, const os::Socket& socket, bool should_handle)
+    inline void relay_ping_handler(Packet& packet, ThroughputRecorder& recorder, const Socket& socket, bool should_handle)
     {
       if (!should_handle) {
         LOG(INFO, "relay in process of shutting down, ignoring relay ping packet");

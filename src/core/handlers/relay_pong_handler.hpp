@@ -1,7 +1,12 @@
 #pragma once
 
+#include "core/packet.hpp"
 #include "core/relay_manager.hpp"
 #include "encoding/read.hpp"
+
+using core::Packet;
+using core::RelayManager;
+using core::packets::RELAY_PING_PACKET_SIZE;
 
 namespace core
 {
