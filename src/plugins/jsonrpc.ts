@@ -13,21 +13,18 @@ export class JsonRpcService {
 
     store.watch(
       (_, getters: any) => getters.idToken,
-      (newValue: string) => {
-        // it is enough to know that the token has changed - the value is
-        // not relevant here
-        this.processAuthChange(newValue)
+      () => {
+        this.processAuthChange()
       }
     )
   }
 
-  private processAuthChange (idToken: string): void {
-    // let userProfile: UserProfile
+  private processAuthChange (): void {
     const userProfile = _.cloneDeep(store.getters.userProfile)
     Promise.all([
-      this.fetchUserAccount({ user_id: userProfile.auth0ID }, idToken),
-      this.fetchGameConfiguration({ domain: userProfile.domain }, idToken),
-      this.fetchAllBuyers(idToken)
+      this.fetchUserAccount({ user_id: userProfile.auth0ID }, userProfile.token),
+      this.fetchGameConfiguration({ domain: userProfile.domain }, userProfile.token),
+      this.fetchAllBuyers(userProfile.token)
     ])
       .then((responses: any) => {
         userProfile.buyerID = responses[0].account.buyer_id
@@ -37,6 +34,24 @@ export class JsonRpcService {
         const allBuyers = responses[2].buyers || []
         store.commit('UPDATE_USER_PROFILE', userProfile)
         store.commit('UPDATE_ALL_BUYERS', allBuyers)
+        // If the user has no roles, check to see if they are the only one in the company and upgrade their account to owner
+        // TODO: Figure out a better way of doing this...
+        if (!store.getters.isAnonymous && !store.getters.isAnonymousPlus && userProfile.roles.length === 0) {
+          this.upgradeAccount({ user_id: userProfile.auth0ID }, userProfile.token)
+            .then((response: any) => {
+              const newRoles = response.new_roles || []
+              if (newRoles.length > 0) {
+                userProfile.roles = newRoles
+              }
+              store.commit('UPDATE_USER_PROFILE', userProfile)
+            })
+            .catch((error) => {
+              console.log('Something went wrong upgrading the account')
+              console.log(error)
+            })
+          return
+        }
+        store.commit('UPDATE_USER_PROFILE', userProfile)
       })
       .catch((error: Error) => {
         console.log('Something went wrong fetching user details')
@@ -69,6 +84,10 @@ export class JsonRpcService {
         })
       })
     })
+  }
+
+  public upgradeAccount (args: any, token: string): Promise<any> {
+    return this.call('AuthService.UpgradeAccount', args, token)
   }
 
   public fetchTotalSessionCounts (args: any): Promise<any> {

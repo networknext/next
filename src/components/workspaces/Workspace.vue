@@ -1,12 +1,10 @@
 <template>
   <div class="container-fluid below-nav-bar">
-    <div style="padding-top: 20px;" v-if="message !== ''">
-      <Alert :message="message" :alertType="alertType">
-        <a href="#" @click="resendVerificationEmail()">
-          Resend email
-        </a>
-      </Alert>
-    </div>
+    <Alert :message="alertMessage" :alertType="alertType" v-if="message !== ''">
+      <a href="#" @click="resendVerificationEmail()">
+        Resend email
+      </a>
+    </Alert>
     <div class="row">
       <main role="main" class="col-md-12 col-lg-12 px-4">
         <SessionCounts v-if="$store.getters.currentPage == 'map' || $store.getters.currentPage == 'sessions'"/>
@@ -43,22 +41,32 @@ import { AlertTypes } from '../types/AlertTypes'
   }
 })
 export default class Workspace extends Vue {
+  get alertMessage () {
+    return this.message
+  }
+
   private message: string
   private alertType: string
   private vueInstance: any
+  private unwatch: any
 
   constructor () {
     super()
-    this.message = ''
-    this.alertType = ''
+    this.alertType = AlertTypes.INFO
     this.vueInstance = Vue
+    this.message = ''
+    this.unwatch = this.$store.watch(
+      (_, getters: any) => getters.isAnonymousPlus,
+      (showAlert: boolean) => {
+        // Not sure why this is necessary but Watch seems to need a function call
+        this.updateAlert(showAlert)
+      }
+    )
   }
 
-  mounted () {
-    if (this.$store.getters.isAnonymousPlus) {
-      this.message = `Please confirm your email address: ${this.$store.getters.userProfile.email}`
-      this.alertType = AlertTypes.INFO
-    }
+  // Not sure why this is necessary but Vue is ignoring all updates to message
+  private updateAlert (showAlert: boolean) {
+    this.message = showAlert ? `Please confirm your email address: ${this.$store.getters.userProfile.email}` : ''
   }
 
   private resendVerificationEmail () {
