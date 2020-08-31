@@ -24,7 +24,7 @@ type SessionData struct {
 	BuyerID              uint64
 	Location             routing.Location
 	Sequence             uint64
-	NearRelays           []routing.Relay
+	NearRelayData        []routing.NearRelayData
 	RouteHash            uint64
 	Initial              bool
 	RouteDecision        routing.Decision

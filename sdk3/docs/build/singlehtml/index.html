@@ -1,0 +1,1727 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Network Next SDK 3.4.5 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="network-next-sdk">
+<h1>Network Next SDK<a class="headerlink" href="#network-next-sdk" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h2>
+<p>Welcome to Network Next!</p>
+<p>Network Next is the marketplace for premium network transit.</p>
+<p>Our technology monitors each player’s network connection and finds routes across private networks with better performance than the public internet.</p>
+<p>We do this by running bids on our marketplace on your behalf every 10 seconds for each player. When we find a route for a player on our marketplace that meets your optimization requirements, our SDK steers game traffic off the public internet and across our network of private networks.</p>
+<p>If at any point Network Next is down, our SDK simply falls back to the public internet, without causing any disruption to your players.</p>
+<div class="toctree-wrapper compound">
+<span id="document-how_it_works"></span><div class="section" id="how-it-works">
+<h3>How it works<a class="headerlink" href="#how-it-works" title="Permalink to this headline">¶</a></h3>
+<p>The SDK has two main components. A client and a server.</p>
+<p>(diagrams etc.)</p>
+<p>These components work together to monitor a player’s connection and accelerate it when we find a route across Network Next.</p>
+<p>(etc etc…)</p>
+</div>
+<span id="document-getting_started"></span><div class="section" id="getting-started">
+<h3>Getting Started<a class="headerlink" href="#getting-started" title="Permalink to this headline">¶</a></h3>
+<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+<p>Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin mauris. Integer in mauris eu nibh euismod gravida. Duis ac tellus et risus vulputate vehicula. Donec lobortis risus a elit. Etiam tempor. Ut ullamcorper, ligula eu tempor congue, eros est euismod turpis, id tincidunt sapien risus a quam. Maecenas fermentum consequat mi. Donec fermentum. Pellentesque malesuada nulla a mi. Duis sapien sem, aliquet nec, commodo eget, consequat quis, neque. Aliquam faucibus, elit ut dictum aliquet, felis nisl adipiscing sapien, sed malesuada diam lacus eget erat. Cras mollis scelerisque nunc. Nullam arcu. Aliquam consequat. Curabitur augue lorem, dapibus quis, laoreet et, pretium ac, nisi. Aenean magna nisl, mollis quis, molestie eu, feugiat in, orci. In hac habitasse platea dictumst.</p>
+</div>
+<span id="document-building_the_sdk"></span><div class="section" id="building-the-sdk">
+<h3>Building the SDK<a class="headerlink" href="#building-the-sdk" title="Permalink to this headline">¶</a></h3>
+<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+<p>Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin mauris. Integer in mauris eu nibh euismod gravida. Duis ac tellus et risus vulputate vehicula. Donec lobortis risus a elit. Etiam tempor. Ut ullamcorper, ligula eu tempor congue, eros est euismod turpis, id tincidunt sapien risus a quam. Maecenas fermentum consequat mi. Donec fermentum. Pellentesque malesuada nulla a mi. Duis sapien sem, aliquet nec, commodo eget, consequat quis, neque. Aliquam faucibus, elit ut dictum aliquet, felis nisl adipiscing sapien, sed malesuada diam lacus eget erat. Cras mollis scelerisque nunc. Nullam arcu. Aliquam consequat. Curabitur augue lorem, dapibus quis, laoreet et, pretium ac, nisi. Aenean magna nisl, mollis quis, molestie eu, feugiat in, orci. In hac habitasse platea dictumst.</p>
+</div>
+<span id="document-simple_client_example"></span><div class="section" id="simple-client-example">
+<h3>Simple Client Example<a class="headerlink" href="#simple-client-example" title="Permalink to this headline">¶</a></h3>
+<p>In this example we setup the simplest possible client using Network Next.</p>
+<p>First, initialize the SDK:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="p">(</span> <span class="n">next_init</span><span class="p">(</span> <span class="nb">NULL</span><span class="p">,</span> <span class="nb">NULL</span> <span class="p">)</span> <span class="o">!=</span> <span class="n">NEXT_OK</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span> <span class="s">&quot;error: could not initialize network next</span><span class="se">\n</span><span class="s">&quot;</span> <span class="p">);</span>
+    <span class="k">return</span> <span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Next, define a function to be called when packets are received:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span> <span class="nf">client_packet_received</span><span class="p">(</span> <span class="n">next_client_t</span> <span class="o">*</span> <span class="n">client</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span> <span class="n">context</span><span class="p">,</span> <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span> <span class="n">packet_data</span><span class="p">,</span> <span class="kt">int</span> <span class="n">packet_bytes</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">next_printf</span><span class="p">(</span> <span class="n">NEXT_LOG_LEVEL_INFO</span><span class="p">,</span> <span class="s">&quot;client received packet (%d bytes)&quot;</span><span class="p">,</span> <span class="n">packet_bytes</span> <span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Create the client.</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_client_t</span> <span class="o">*</span> <span class="n">client</span> <span class="o">=</span> <span class="n">next_client_create</span><span class="p">(</span> <span class="nb">NULL</span><span class="p">,</span> <span class="s">&quot;0.0.0.0:0&quot;</span><span class="p">,</span> <span class="n">client_packet_received</span> <span class="p">);</span>
+<span class="k">if</span> <span class="p">(</span> <span class="n">client</span> <span class="o">==</span> <span class="nb">NULL</span> <span class="p">)</span>
+<span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span> <span class="s">&quot;error: failed to create client</span><span class="se">\n</span><span class="s">&quot;</span> <span class="p">);</span>
+        <span class="k">return</span> <span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>In this case we bind the client to any IPv4 address and port zero, so the system selects a port to use.</p>
+<p>Next, open a session between the client and the server:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_client_open_session</span><span class="p">(</span> <span class="n">client</span><span class="p">,</span> <span class="s">&quot;127.0.0.0:50000&quot;</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p>Now you can send packets to the server like this:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">uint8_t</span> <span class="n">packet_data</span><span class="p">[</span><span class="mi">32</span><span class="p">];</span>
+<span class="n">memset</span><span class="p">(</span> <span class="n">packet_data</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span> <span class="n">packet_data</span> <span class="p">)</span> <span class="p">);</span>
+<span class="n">next_client_send_packet</span><span class="p">(</span> <span class="n">client</span><span class="p">,</span> <span class="n">packet_data</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">packet_data</span><span class="p">)</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p>Make sure the client is updated once every frame:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_client_update</span><span class="p">(</span> <span class="n">client</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p>When you have finished your session with the server, please close it:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_client_close_session</span><span class="p">(</span> <span class="n">client</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p>When you have finished using your client, please destroy it:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_client_destroy</span><span class="p">(</span> <span class="n">client</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p>Before your application terminates, please shut down the SDK:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_term</span><span class="p">();</span>
+</pre></div>
+</div>
+</div>
+<span id="document-simple_server_example"></span><div class="section" id="simple-server-example">
+<h3>Simple Server Example<a class="headerlink" href="#simple-server-example" title="Permalink to this headline">¶</a></h3>
+<p>In this example we setup the simplest possible server using Network Next.</p>
+<p>First, initialize the SDK:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="p">(</span> <span class="n">next_init</span><span class="p">(</span> <span class="nb">NULL</span><span class="p">,</span> <span class="nb">NULL</span> <span class="p">)</span> <span class="o">!=</span> <span class="n">NEXT_OK</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span> <span class="s">&quot;error: could not initialize network next</span><span class="se">\n</span><span class="s">&quot;</span> <span class="p">);</span>
+    <span class="k">return</span> <span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Next, define a function to be called when packets are received from clients.</p>
+<p>Here is one that reflects the packet back to the client that sent it:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span> <span class="nf">server_packet_received</span><span class="p">(</span> <span class="n">next_server_t</span> <span class="o">*</span> <span class="n">server</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span> <span class="n">context</span><span class="p">,</span> <span class="k">const</span> <span class="n">next_address_t</span> <span class="o">*</span> <span class="n">from</span><span class="p">,</span> <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span> <span class="n">packet_data</span><span class="p">,</span> <span class="kt">int</span> <span class="n">packet_bytes</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">next_server_send_packet</span><span class="p">(</span> <span class="n">server</span><span class="p">,</span> <span class="n">from</span><span class="p">,</span> <span class="n">packet_data</span><span class="p">,</span> <span class="n">packet_bytes</span> <span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Now create the server.</p>
+<p>In this example, we bind the server to port 50000 on 127.0.0.1 IPv4 address (localhost) and set the datacenter where your server is running to “local”:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_server_t</span> <span class="o">*</span> <span class="n">server</span> <span class="o">=</span> <span class="n">next_server_create</span><span class="p">(</span> <span class="nb">NULL</span><span class="p">,</span> <span class="s">&quot;127.0.0.1:50000&quot;</span><span class="p">,</span> <span class="s">&quot;0.0.0.0:50000&quot;</span><span class="p">,</span> <span class="s">&quot;local&quot;</span><span class="p">,</span> <span class="n">server_packet_received</span> <span class="p">);</span>
+<span class="k">if</span> <span class="p">(</span> <span class="n">server</span> <span class="o">==</span> <span class="nb">NULL</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span> <span class="s">&quot;error: failed to create server</span><span class="se">\n</span><span class="s">&quot;</span> <span class="p">);</span>
+    <span class="k">return</span> <span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Make sure the server gets updated every frame:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_server_update</span><span class="p">(</span> <span class="n">server</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p>When you have finished using your server, please destroy it:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_server_destroy</span><span class="p">(</span> <span class="n">server</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p>Before your application terminates, please shut down the SDK:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_term</span><span class="p">();</span>
+</pre></div>
+</div>
+</div>
+<span id="document-upgraded_client_example"></span><div class="section" id="upgraded-client-example">
+<h3>Upgraded Client Example<a class="headerlink" href="#upgraded-client-example" title="Permalink to this headline">¶</a></h3>
+<p>In this example we setup a client for monitoring and acceleration by network next.</p>
+<p>First define configuration values for the client:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">bind_address</span> <span class="o">=</span> <span class="s">&quot;0.0.0.0:0&quot;</span><span class="p">;</span>
+<span class="k">const</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">server_address</span> <span class="o">=</span> <span class="s">&quot;127.0.0.1:50000&quot;</span><span class="p">;</span>
+<span class="k">const</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">customer_public_key</span> <span class="o">=</span> <span class="s">&quot;leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==&quot;</span><span class="p">;</span>
+</pre></div>
+</div>
+<p>These includes the bind address for the client socket, the server address to connect to, and the test customer public key we’re using in this example. A customer public key is required to enable acceleration by Network Next.</p>
+<p>Next, initialize a configuration struct to defaults, then copy the customer public key on top.</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_config_t</span> <span class="n">config</span><span class="p">;</span>
+<span class="n">next_default_config</span><span class="p">(</span> <span class="o">&amp;</span><span class="n">config</span> <span class="p">);</span>
+<span class="n">strncpy</span><span class="p">(</span> <span class="n">config</span><span class="p">.</span><span class="n">customer_public_key</span><span class="p">,</span> <span class="n">customer_public_key</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">config</span><span class="p">.</span><span class="n">customer_public_key</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span> <span class="p">);</span>
+
+<span class="k">if</span> <span class="p">(</span> <span class="n">next_init</span><span class="p">(</span> <span class="nb">NULL</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">config</span> <span class="p">)</span> <span class="o">!=</span> <span class="n">NEXT_OK</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span> <span class="s">&quot;error: could not initialize network next</span><span class="se">\n</span><span class="s">&quot;</span> <span class="p">);</span>
+    <span class="k">return</span> <span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Initialize the SDK, this time passing in the configuration struct.</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="p">(</span> <span class="n">next_init</span><span class="p">(</span> <span class="nb">NULL</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">config</span> <span class="p">)</span> <span class="o">!=</span> <span class="n">NEXT_OK</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span> <span class="s">&quot;error: could not initialize network next</span><span class="se">\n</span><span class="s">&quot;</span> <span class="p">);</span>
+    <span class="k">return</span> <span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>This activates the customer public key so it’s used by the client.</p>
+<p>Network Next needs a customer public key to monitor and accelerate players. Without a customer public key, Network Next just sends player traffic across the public internet.</p>
+<p>Next, define a function to be called when packets are received:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span> <span class="nf">client_packet_received</span><span class="p">(</span> <span class="n">next_client_t</span> <span class="o">*</span> <span class="n">client</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span> <span class="n">context</span><span class="p">,</span> <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span> <span class="n">packet_data</span><span class="p">,</span> <span class="kt">int</span> <span class="n">packet_bytes</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span> <span class="s">&quot;client received packet (%d bytes)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">packet_bytes</span> <span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Create the client:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_client_t</span> <span class="o">*</span> <span class="n">client</span> <span class="o">=</span> <span class="n">next_client_create</span><span class="p">(</span> <span class="nb">NULL</span><span class="p">,</span> <span class="n">bind_address</span><span class="p">,</span> <span class="n">client_packet_received</span> <span class="p">);</span>
+<span class="k">if</span> <span class="p">(</span> <span class="n">client</span> <span class="o">==</span> <span class="nb">NULL</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span> <span class="s">&quot;error: failed to create client</span><span class="se">\n</span><span class="s">&quot;</span> <span class="p">);</span>
+    <span class="k">return</span> <span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Open a session between the client and the server:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_client_open_session</span><span class="p">(</span> <span class="n">client</span><span class="p">,</span> <span class="n">server_address</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p>Now you can send packets to the server like this:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">uint8_t</span> <span class="n">packet_data</span><span class="p">[</span><span class="mi">32</span><span class="p">];</span>
+<span class="n">memset</span><span class="p">(</span> <span class="n">packet_data</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span> <span class="n">packet_data</span> <span class="p">)</span> <span class="p">);</span>
+<span class="n">next_client_send_packet</span><span class="p">(</span> <span class="n">client</span><span class="p">,</span> <span class="n">packet_data</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">packet_data</span><span class="p">)</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p>Make sure the client is updated once every frame:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_client_update</span><span class="p">(</span> <span class="n">client</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p>When you have finished your session with the server, please close it:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_client_close_session</span><span class="p">(</span> <span class="n">client</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p>When you have finished using your client, please destroy it:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_client_destroy</span><span class="p">(</span> <span class="n">client</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p>Before your application terminates, please shut down the SDK:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_term</span><span class="p">();</span>
+</pre></div>
+</div>
+</div>
+<span id="document-upgraded_server_example"></span><div class="section" id="upgraded-server-example">
+<h3>Upgraded Server Example<a class="headerlink" href="#upgraded-server-example" title="Permalink to this headline">¶</a></h3>
+<p>In this example we setup a server for monitoring and acceleration by network next.</p>
+<p>First define configuration values for the server:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">bind_address</span> <span class="o">=</span> <span class="s">&quot;0.0.0.0:50000&quot;</span><span class="p">;</span>
+<span class="k">const</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">server_address</span> <span class="o">=</span> <span class="s">&quot;127.0.0.1:50000&quot;</span><span class="p">;</span>
+<span class="k">const</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">server_datacenter</span> <span class="o">=</span> <span class="s">&quot;local&quot;</span><span class="p">;</span>
+<span class="k">const</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">backend_hostname</span> <span class="o">=</span> <span class="s">&quot;dev.networknext.com&quot;</span><span class="p">;</span>
+<span class="k">const</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">customer_private_key</span> <span class="o">=</span> <span class="s">&quot;leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn&quot;</span><span class="p">;</span>
+</pre></div>
+</div>
+<p>This includes the test customer private key we’re using in this example. A customer private key is required on the server to enable acceleration by Network Next.</p>
+<p>Next, initialize a configuration struct to defaults, then copy the hostname and the customer private key on top.</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_config_t</span> <span class="n">config</span><span class="p">;</span>
+<span class="n">next_default_config</span><span class="p">(</span> <span class="o">&amp;</span><span class="n">config</span> <span class="p">);</span>
+<span class="n">strncpy</span><span class="p">(</span> <span class="n">config</span><span class="p">.</span><span class="n">hostname</span><span class="p">,</span> <span class="n">backend_hostname</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">config</span><span class="p">.</span><span class="n">hostname</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span> <span class="p">);</span>
+<span class="n">strncpy</span><span class="p">(</span> <span class="n">config</span><span class="p">.</span><span class="n">customer_private_key</span><span class="p">,</span> <span class="n">customer_private_key</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">config</span><span class="p">.</span><span class="n">customer_private_key</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span> <span class="p">);</span>
+
+    <span class="k">if</span> <span class="p">(</span> <span class="n">next_init</span><span class="p">(</span> <span class="nb">NULL</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">config</span> <span class="p">)</span> <span class="o">!=</span> <span class="n">NEXT_OK</span> <span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span> <span class="s">&quot;error: could not initialize network next</span><span class="se">\n</span><span class="s">&quot;</span> <span class="p">);</span>
+        <span class="k">return</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="p">}</span>
+</pre></div>
+</div>
+<p>IMPORTANT: Generally speaking it’s bad form to include a private key in your codebase like this, it’s done here only to make this example easy to use. In production environments, we strongly recommend passing in “” for your customer private key, and setting it via the environment variable: <em>NEXT_CUSTOMER_PRIVATE_KEY</em> which overrides the value specified in code.</p>
+<p>Next we initialize the SDK, this time passing in the configuration struct.</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="p">(</span> <span class="n">next_init</span><span class="p">(</span> <span class="nb">NULL</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">config</span> <span class="p">)</span> <span class="o">!=</span> <span class="n">NEXT_OK</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span> <span class="s">&quot;error: could not initialize network next</span><span class="se">\n</span><span class="s">&quot;</span> <span class="p">);</span>
+    <span class="k">return</span> <span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Now we define a function to be called when packets are received from clients.</p>
+<p>Here is one that reflects the packet back to the client that sent it, and upgrades the client that sent the packet for monitoring and acceleration by Network Next.</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_server_send_packet</span><span class="p">(</span> <span class="n">server</span><span class="p">,</span> <span class="n">from</span><span class="p">,</span> <span class="n">packet_data</span><span class="p">,</span> <span class="n">packet_bytes</span> <span class="p">);</span>
+
+<span class="n">next_printf</span><span class="p">(</span> <span class="n">NEXT_LOG_LEVEL_INFO</span><span class="p">,</span> <span class="s">&quot;server received packet from client (%d bytes)&quot;</span><span class="p">,</span> <span class="n">packet_bytes</span> <span class="p">);</span>
+
+<span class="k">if</span> <span class="p">(</span> <span class="o">!</span><span class="n">next_server_session_upgraded</span><span class="p">(</span> <span class="n">server</span><span class="p">,</span> <span class="n">from</span> <span class="p">)</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">user_id_string</span> <span class="o">=</span> <span class="s">&quot;12345&quot;</span><span class="p">;</span>
+    <span class="n">next_server_upgrade_session</span><span class="p">(</span> <span class="n">server</span><span class="p">,</span> <span class="n">from</span><span class="p">,</span> <span class="n">user_id_string</span> <span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Generally you would <em>not</em> want to upgrade every client session you receive a packet from. This is just done to make this example easy to implement.</p>
+<p>Instead, you should only upgrade sessions that have passed whatever security and protocol level checks you have in your game so you are 100% confident this is a real player joining your game.</p>
+<p>Also notice that you can pass in a user id as a string to the upgrade call.</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_server_upgrade_session</span><span class="p">(</span> <span class="n">server</span><span class="p">,</span> <span class="n">from</span><span class="p">,</span> <span class="n">user_id_string</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p>This user id is very important because it allows you to look up users by that id in our portal. Please make sure you set the user id to however you uniquely identify users in your game. For example, PSN ids, Steam Ids and so on. For privacy reasons, this user id is hashed before sending to our backend.</p>
+<p>Now, create the server.</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_server_t</span> <span class="o">*</span> <span class="n">server</span> <span class="o">=</span> <span class="n">next_server_create</span><span class="p">(</span> <span class="nb">NULL</span><span class="p">,</span> <span class="n">server_address</span><span class="p">,</span> <span class="n">bind_address</span><span class="p">,</span> <span class="n">server_datacenter</span><span class="p">,</span> <span class="n">server_packet_received</span> <span class="p">);</span>
+<span class="k">if</span> <span class="p">(</span> <span class="n">server</span> <span class="o">==</span> <span class="nb">NULL</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span> <span class="s">&quot;error: failed to create server</span><span class="se">\n</span><span class="s">&quot;</span> <span class="p">);</span>
+    <span class="k">return</span> <span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Make sure the server gets updated every frame:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_server_update</span><span class="p">(</span> <span class="n">server</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p>When you have finished using your server, please destroy it:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_server_destroy</span><span class="p">(</span> <span class="n">server</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p>Before your application terminates, please shut down the SDK:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_term</span><span class="p">();</span>
+</pre></div>
+</div>
+</div>
+<span id="document-complex_client_example"></span><div class="section" id="complex-client-example">
+<h3>Complex Client Example<a class="headerlink" href="#complex-client-example" title="Permalink to this headline">¶</a></h3>
+<p>In this example we build the kitchen sink version of a client where we show off all the features :)</p>
+<p>We demonstrate:</p>
+<ul class="simple">
+<li><p>Setting the network next log level</p></li>
+<li><p>Setting a custom log function</p></li>
+<li><p>Setting a custom assert handler</p></li>
+<li><p>Setting a custom allocator</p></li>
+<li><p>Querying the port the client socket is bound to</p></li>
+<li><p>Getting statistics from the client</p></li>
+</ul>
+<p>This is going to be a huge example, so let’s get started!</p>
+<p>First, as with the upgraded client example, we start by defining our key configuration variables:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">bind_address</span> <span class="o">=</span> <span class="s">&quot;0.0.0.0:0&quot;</span><span class="p">;</span>
+<span class="k">const</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">server_address</span> <span class="o">=</span> <span class="s">&quot;127.0.0.1:50000&quot;</span><span class="p">;</span>
+<span class="k">const</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">customer_public_key</span> <span class="o">=</span> <span class="s">&quot;leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==&quot;</span><span class="p">;</span>
+</pre></div>
+</div>
+<p>Next, we dive right in and define a custom allocator class that tracks all allocations made, and checks them for leaks when it shuts down:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="k">struct</span> <span class="n">AllocatorEntry</span>
+<span class="p">{</span>
+    <span class="c1">// ...</span>
+<span class="p">};</span>
+
+<span class="k">class</span> <span class="nc">Allocator</span>
+<span class="p">{</span>
+    <span class="kt">int64_t</span> <span class="n">num_allocations</span><span class="p">;</span>
+    <span class="n">next_mutex_t</span> <span class="n">mutex</span><span class="p">;</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">map</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">*</span><span class="p">,</span> <span class="n">AllocatorEntry</span><span class="o">*&gt;</span> <span class="n">entries</span><span class="p">;</span>
+
+<span class="k">public</span><span class="o">:</span>
+
+    <span class="n">Allocator</span><span class="p">()</span>
+    <span class="p">{</span>
+        <span class="kt">int</span> <span class="n">result</span> <span class="o">=</span> <span class="n">next_mutex_create</span><span class="p">(</span> <span class="o">&amp;</span><span class="n">mutex</span> <span class="p">);</span>
+        <span class="n">next_assert</span><span class="p">(</span> <span class="n">result</span> <span class="o">==</span> <span class="n">NEXT_OK</span> <span class="p">);</span>
+        <span class="n">num_allocations</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="o">~</span><span class="n">Allocator</span><span class="p">()</span>
+    <span class="p">{</span>
+        <span class="n">next_mutex_destroy</span><span class="p">(</span> <span class="o">&amp;</span><span class="n">mutex</span> <span class="p">);</span>
+        <span class="n">next_assert</span><span class="p">(</span> <span class="n">num_allocations</span> <span class="o">==</span> <span class="mi">0</span> <span class="p">);</span>
+        <span class="n">next_assert</span><span class="p">(</span> <span class="n">entries</span><span class="p">.</span><span class="n">size</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span> <span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="kt">void</span> <span class="o">*</span> <span class="n">Alloc</span><span class="p">(</span> <span class="kt">size_t</span> <span class="n">size</span> <span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">next_mutex_guard</span><span class="p">(</span> <span class="o">&amp;</span><span class="n">mutex</span> <span class="p">);</span>
+        <span class="kt">void</span> <span class="o">*</span> <span class="n">pointer</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span> <span class="n">size</span> <span class="p">);</span>
+        <span class="n">next_assert</span><span class="p">(</span> <span class="n">pointer</span> <span class="p">);</span>
+        <span class="n">next_assert</span><span class="p">(</span> <span class="n">entries</span><span class="p">[</span><span class="n">pointer</span><span class="p">]</span> <span class="o">==</span> <span class="nb">NULL</span> <span class="p">);</span>
+        <span class="n">AllocatorEntry</span> <span class="o">*</span> <span class="n">entry</span> <span class="o">=</span> <span class="k">new</span> <span class="n">AllocatorEntry</span><span class="p">();</span>
+        <span class="n">entries</span><span class="p">[</span><span class="n">pointer</span><span class="p">]</span> <span class="o">=</span> <span class="n">entry</span><span class="p">;</span>
+        <span class="n">num_allocations</span><span class="o">++</span><span class="p">;</span>
+        <span class="k">return</span> <span class="n">pointer</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="kt">void</span> <span class="n">Free</span><span class="p">(</span> <span class="kt">void</span> <span class="o">*</span> <span class="n">pointer</span> <span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">next_mutex_guard</span><span class="p">(</span> <span class="o">&amp;</span><span class="n">mutex</span> <span class="p">);</span>
+        <span class="n">next_assert</span><span class="p">(</span> <span class="n">pointer</span> <span class="p">);</span>
+        <span class="n">next_assert</span><span class="p">(</span> <span class="n">num_allocations</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="p">);</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">map</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">*</span><span class="p">,</span> <span class="n">AllocatorEntry</span><span class="o">*&gt;::</span><span class="n">iterator</span> <span class="n">itor</span> <span class="o">=</span> <span class="n">entries</span><span class="p">.</span><span class="n">find</span><span class="p">(</span> <span class="n">pointer</span> <span class="p">);</span>
+        <span class="n">next_assert</span><span class="p">(</span> <span class="n">itor</span> <span class="o">!=</span> <span class="n">entries</span><span class="p">.</span><span class="n">end</span><span class="p">()</span> <span class="p">);</span>
+        <span class="n">entries</span><span class="p">.</span><span class="n">erase</span><span class="p">(</span> <span class="n">itor</span> <span class="p">);</span>
+        <span class="n">num_allocations</span><span class="o">--</span><span class="p">;</span>
+        <span class="n">free</span><span class="p">(</span> <span class="n">pointer</span> <span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>IMPORTANT: Since this allocator will be called from multiple threads, it must be thread safe. This is done by using the platform independent mutex supplied by the Network Next SDK.</p>
+<p>There are three types of allocations done by the Network Next SDK:</p>
+<ol class="arabic simple">
+<li><p>Global allocations</p></li>
+<li><p>Per-client allocations</p></li>
+<li><p>Per-server allocations</p></li>
+</ol>
+<p>Each of these situations corresponds to what is called a “context” in the Network Next SDK.</p>
+<p>A context is simply a void* to a type that you define which is passed in to malloc and free callbacks that we call to perform allocations on behalf of the SDK. The context passed is gives you the flexibility to have a specific memory pool for Network Next (most common), or even to have a completely different allocation pool used for each client and server instance. That’s what we’re going to do in this example.</p>
+<p>Let’s define a base context that will be used for global allocations:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="k">struct</span> <span class="n">Context</span>
+<span class="p">{</span>
+    <span class="n">Allocator</span> <span class="o">*</span> <span class="n">allocator</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>And a per-client context that is binary compatible with the base context, to be used for per-client allocations:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="k">struct</span> <span class="n">ClientContext</span>
+<span class="p">{</span>
+    <span class="n">Allocator</span> <span class="o">*</span> <span class="n">allocator</span><span class="p">;</span>
+    <span class="kt">uint32_t</span> <span class="n">client_data</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>As you can see, the client context can contain additional information aside from the allocator. The context is not <em>just</em> passed into allocator callbacks, but to all callbacks from the client and server, so you can use it to integrate with your own client and server objects in your game.</p>
+<p>Here we just put a dummy uint32_t in the client context and check its value to verify it’s being passed through correctly. For example, in the received packet callback, we have access to the client context and check the dummy value is what we expect:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span> <span class="nf">client_packet_received</span><span class="p">(</span> <span class="n">next_client_t</span> <span class="o">*</span> <span class="n">client</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span> <span class="n">_context</span><span class="p">,</span> <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span> <span class="n">packet_data</span><span class="p">,</span> <span class="kt">int</span> <span class="n">packet_bytes</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="p">(</span><span class="kt">void</span><span class="p">)</span> <span class="n">client</span><span class="p">;</span>
+
+    <span class="n">ClientContext</span> <span class="o">*</span> <span class="n">context</span> <span class="o">=</span> <span class="p">(</span><span class="n">ClientContext</span><span class="o">*</span><span class="p">)</span> <span class="n">_context</span><span class="p">;</span>
+
+    <span class="n">next_assert</span><span class="p">(</span> <span class="n">context</span> <span class="p">);</span>
+    <span class="n">next_assert</span><span class="p">(</span> <span class="n">context</span><span class="o">-&gt;</span><span class="n">allocator</span> <span class="o">!=</span> <span class="nb">NULL</span> <span class="p">);</span>
+    <span class="n">next_assert</span><span class="p">(</span> <span class="n">context</span><span class="o">-&gt;</span><span class="n">client_data</span> <span class="o">==</span> <span class="mh">0x12345</span> <span class="p">);</span>
+
+    <span class="n">next_printf</span><span class="p">(</span> <span class="n">NEXT_LOG_LEVEL_INFO</span><span class="p">,</span> <span class="s">&quot;client received packet from server (%d bytes)&quot;</span><span class="p">,</span> <span class="n">packet_bytes</span> <span class="p">);</span>
+
+    <span class="n">verify_packet</span><span class="p">(</span> <span class="n">packet_data</span><span class="p">,</span> <span class="n">packet_bytes</span> <span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Next we define custom malloc and free functions to pass in to the SDK. These same functions are used for global, per-client and per-server allocations. The only difference is the context passed in to each.</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span> <span class="o">*</span> <span class="nf">malloc_function</span><span class="p">(</span> <span class="kt">void</span> <span class="o">*</span> <span class="n">_context</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">bytes</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">Context</span> <span class="o">*</span> <span class="n">context</span> <span class="o">=</span> <span class="p">(</span><span class="n">Context</span><span class="o">*</span><span class="p">)</span> <span class="n">_context</span><span class="p">;</span>
+    <span class="n">next_assert</span><span class="p">(</span> <span class="n">context</span> <span class="p">);</span>
+    <span class="n">next_assert</span><span class="p">(</span> <span class="n">context</span><span class="o">-&gt;</span><span class="n">allocator</span> <span class="p">);</span>
+    <span class="k">return</span> <span class="n">context</span><span class="o">-&gt;</span><span class="n">allocator</span><span class="o">-&gt;</span><span class="n">Alloc</span><span class="p">(</span> <span class="n">bytes</span> <span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="nf">free_function</span><span class="p">(</span> <span class="kt">void</span> <span class="o">*</span> <span class="n">_context</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span> <span class="n">p</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">Context</span> <span class="o">*</span> <span class="n">context</span> <span class="o">=</span> <span class="p">(</span><span class="n">Context</span><span class="o">*</span><span class="p">)</span> <span class="n">_context</span><span class="p">;</span>
+    <span class="n">next_assert</span><span class="p">(</span> <span class="n">context</span> <span class="p">);</span>
+    <span class="n">next_assert</span><span class="p">(</span> <span class="n">context</span><span class="o">-&gt;</span><span class="n">allocator</span> <span class="p">);</span>
+    <span class="k">return</span> <span class="n">context</span><span class="o">-&gt;</span><span class="n">allocator</span><span class="o">-&gt;</span><span class="n">Free</span><span class="p">(</span> <span class="n">p</span> <span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Moving past allocations for the moment, we set up a callback for our own custom logging function:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="k">extern</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span> <span class="nf">log_level_string</span><span class="p">(</span> <span class="kt">int</span> <span class="n">level</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span> <span class="n">level</span> <span class="o">==</span> <span class="n">NEXT_LOG_LEVEL_DEBUG</span> <span class="p">)</span>
+        <span class="k">return</span> <span class="s">&quot;debug&quot;</span><span class="p">;</span>
+    <span class="k">else</span> <span class="k">if</span> <span class="p">(</span> <span class="n">level</span> <span class="o">==</span> <span class="n">NEXT_LOG_LEVEL_INFO</span> <span class="p">)</span>
+        <span class="k">return</span> <span class="s">&quot;info&quot;</span><span class="p">;</span>
+    <span class="k">else</span> <span class="k">if</span> <span class="p">(</span> <span class="n">level</span> <span class="o">==</span> <span class="n">NEXT_LOG_LEVEL_ERROR</span> <span class="p">)</span>
+        <span class="k">return</span> <span class="s">&quot;error&quot;</span><span class="p">;</span>
+    <span class="k">else</span> <span class="k">if</span> <span class="p">(</span> <span class="n">level</span> <span class="o">==</span> <span class="n">NEXT_LOG_LEVEL_WARN</span> <span class="p">)</span>
+        <span class="k">return</span> <span class="s">&quot;warning&quot;</span><span class="p">;</span>
+    <span class="k">else</span>
+        <span class="k">return</span> <span class="s">&quot;???&quot;</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="nf">log_function</span><span class="p">(</span> <span class="kt">int</span> <span class="n">level</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">format</span><span class="p">,</span> <span class="p">...</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">va_list</span> <span class="n">args</span><span class="p">;</span>
+    <span class="n">va_start</span><span class="p">(</span> <span class="n">args</span><span class="p">,</span> <span class="n">format</span> <span class="p">);</span>
+    <span class="kt">char</span> <span class="n">buffer</span><span class="p">[</span><span class="mi">1024</span><span class="p">];</span>
+    <span class="n">vsnprintf</span><span class="p">(</span> <span class="n">buffer</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span> <span class="n">buffer</span> <span class="p">),</span> <span class="n">format</span><span class="p">,</span> <span class="n">args</span> <span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span> <span class="n">level</span> <span class="o">!=</span> <span class="n">NEXT_LOG_LEVEL_NONE</span> <span class="p">)</span>
+    <span class="p">{</span>
+        <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">level_string</span> <span class="o">=</span> <span class="n">log_level_string</span><span class="p">(</span> <span class="n">level</span> <span class="p">);</span>
+        <span class="n">printf</span><span class="p">(</span> <span class="s">&quot;%.2f: %s: %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">next_time</span><span class="p">(),</span> <span class="n">level_string</span><span class="p">,</span> <span class="n">buffer</span> <span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">else</span>
+    <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span> <span class="s">&quot;%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">buffer</span> <span class="p">);</span>
+    <span class="p">}</span>
+    <span class="n">va_end</span><span class="p">(</span> <span class="n">args</span> <span class="p">);</span>
+    <span class="n">fflush</span><span class="p">(</span> <span class="n">stdout</span> <span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>There are four different log levels in Network Next:</p>
+<ol class="arabic simple">
+<li><p>NEXT_LOG_LEVEL_NONE (0)</p></li>
+<li><p>NEXT_LOG_LEVEL_ERROR (1)</p></li>
+<li><p>NEXT_LOG_LEVEL_INFO (2)</p></li>
+<li><p>NEXT_LOG_LEVEL_WARN (3)</p></li>
+<li><p>NEXT_LOG_LEVEL_DEBUG (4)</p></li>
+</ol>
+<p>The default log level is NEXT_LOG_LEVEL_INFO, which shows both info and error logs. This is a good default, as these messages are infrequent. Warnings can be more frequent, and aren’t important enough to be errors, so are off by default. Debug logs are incredibly spammy and should only be turned on when debugging a specific issue in the Network Next SDK.</p>
+<p>How you handle each of these log levels in the log function callback is up to you. We just pass them in, but depending on the log level we will not call the callback unless the level of the log is &lt;= the current log level value set.</p>
+<p>Finally, there is a small feature where a log with NEXT_LOG_LEVEL_NONE is used to indicate an unadorned regular printf. This is useful for console platforms like XBoxOne where hoops need to be jumped through just to get text printed to stdout. This is used by our unit tests and by the default assert handler function in the Network Next SDK.</p>
+<p>Next we define a custom assert handler:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span> <span class="nf">assert_function</span><span class="p">(</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">condition</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">function</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">file</span><span class="p">,</span> <span class="kt">int</span> <span class="n">line</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">next_printf</span><span class="p">(</span> <span class="s">&quot;assert failed: ( %s ), function %s, file %s, line %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">condition</span><span class="p">,</span> <span class="n">function</span><span class="p">,</span> <span class="n">file</span><span class="p">,</span> <span class="n">line</span> <span class="p">);</span>
+    <span class="n">fflush</span><span class="p">(</span> <span class="n">stdout</span> <span class="p">);</span>
+    <span class="cp">#if defined(_MSC_VER)</span>
+        <span class="n">__debugbreak</span><span class="p">();</span>
+    <span class="cp">#elif defined(__ORBIS__)</span>
+        <span class="n">__builtin_trap</span><span class="p">();</span>
+    <span class="cp">#elif defined(__clang__)</span>
+        <span class="n">__builtin_debugtrap</span><span class="p">();</span>
+    <span class="cp">#elif defined(__GNUC__)</span>
+        <span class="n">__builtin_trap</span><span class="p">();</span>
+    <span class="cp">#elif defined(linux) || defined(__linux) || defined(__linux__) || defined(__APPLE__)</span>
+        <span class="n">raise</span><span class="p">(</span><span class="n">SIGTRAP</span><span class="p">);</span>
+    <span class="cp">#else</span>
+        <span class="cp">#error &quot;asserts not supported on this platform!&quot;</span>
+    <span class="cp">#endif</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Here we print out the assert message and force a break. Again, typically you would override this to point to your own assert handler in your game. The code above actually corresponds exactly to our default handler, so you can see what we do if you choose to not override it.</p>
+<p>Now instead of sending zero byte packets, let’s send some packets with real intent.</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span> <span class="nf">generate_packet</span><span class="p">(</span> <span class="kt">uint8_t</span> <span class="o">*</span> <span class="n">packet_data</span><span class="p">,</span> <span class="kt">int</span> <span class="o">&amp;</span> <span class="n">packet_bytes</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">packet_bytes</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">+</span> <span class="p">(</span> <span class="n">rand</span><span class="p">()</span> <span class="o">%</span> <span class="n">NEXT_MTU</span> <span class="p">);</span>
+    <span class="k">const</span> <span class="kt">int</span> <span class="n">start</span> <span class="o">=</span> <span class="n">packet_bytes</span> <span class="o">%</span> <span class="mi">256</span><span class="p">;</span>
+    <span class="k">for</span> <span class="p">(</span> <span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">packet_bytes</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span> <span class="p">)</span>
+        <span class="n">packet_data</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="kt">uint8_t</span><span class="p">)</span> <span class="p">(</span> <span class="n">start</span> <span class="o">+</span> <span class="n">i</span> <span class="p">)</span> <span class="o">%</span> <span class="mi">256</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="nf">verify_packet</span><span class="p">(</span> <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span> <span class="n">packet_data</span><span class="p">,</span> <span class="kt">int</span> <span class="n">packet_bytes</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">const</span> <span class="kt">int</span> <span class="n">start</span> <span class="o">=</span> <span class="n">packet_bytes</span> <span class="o">%</span> <span class="mi">256</span><span class="p">;</span>
+    <span class="k">for</span> <span class="p">(</span> <span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">packet_bytes</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span> <span class="p">)</span>
+    <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span> <span class="n">packet_data</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">!=</span> <span class="p">(</span><span class="kt">uint8_t</span><span class="p">)</span> <span class="p">(</span> <span class="p">(</span> <span class="n">start</span> <span class="o">+</span> <span class="n">i</span> <span class="p">)</span> <span class="o">%</span> <span class="mi">256</span> <span class="p">)</span> <span class="p">)</span>
+        <span class="p">{</span>
+            <span class="n">printf</span><span class="p">(</span> <span class="s">&quot;%d: %d != %d (%d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">packet_data</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="p">(</span> <span class="n">start</span> <span class="o">+</span> <span class="n">i</span> <span class="p">)</span> <span class="o">%</span> <span class="mi">256</span><span class="p">,</span> <span class="n">packet_bytes</span> <span class="p">);</span>
+        <span class="p">}</span>
+        <span class="n">next_assert</span><span class="p">(</span> <span class="n">packet_data</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="p">(</span><span class="kt">uint8_t</span><span class="p">)</span> <span class="p">(</span> <span class="p">(</span> <span class="n">start</span> <span class="o">+</span> <span class="n">i</span> <span class="p">)</span> <span class="o">%</span> <span class="mi">256</span> <span class="p">)</span> <span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The functions above generate packets of random length from 1 to the maximum size packet that can be sent across Network Next – NEXT_MTU (1300 bytes). These packets have contents that can be inferred by the size of the packet, making it possible for us to test a packet and with high probability, ensure that the packet has not been incorrectly truncated or padded, and that it contains the exact bytes sent.</p>
+<p>Now we are ready to set a custom log level, set our custom log function, allocators and assert handler.</p>
+<p>Before initializing Network Next, do this:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_log_level</span><span class="p">(</span> <span class="n">NEXT_LOG_LEVEL_INFO</span> <span class="p">);</span>
+
+<span class="n">next_log_function</span><span class="p">(</span> <span class="n">log_function</span> <span class="p">);</span>
+
+<span class="n">next_assert_function</span><span class="p">(</span> <span class="n">assert_function</span> <span class="p">);</span>
+
+<span class="n">next_allocator</span><span class="p">(</span> <span class="n">malloc_function</span><span class="p">,</span> <span class="n">free_function</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p>Next, create a global context and pass it in to <em>next_init</em> to be used for any global allocations made by the Network Next SDK:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">Context</span> <span class="n">global_context</span><span class="p">;</span>
+<span class="n">global_context</span><span class="p">.</span><span class="n">allocator</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">global_allocator</span><span class="p">;</span>
+
+<span class="n">next_config_t</span> <span class="n">config</span><span class="p">;</span>
+<span class="n">next_default_config</span><span class="p">(</span> <span class="o">&amp;</span><span class="n">config</span> <span class="p">);</span>
+<span class="n">strncpy</span><span class="p">(</span> <span class="n">config</span><span class="p">.</span><span class="n">customer_public_key</span><span class="p">,</span> <span class="n">customer_public_key</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">config</span><span class="p">.</span><span class="n">customer_public_key</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p>Now when the Network Next SDK makes any global allocations, they will be made by calling the malloc_function and free_function callbacks, passing in the global context pointer as a void*.</p>
+<p>Next, create a per-client context and pass it in as the context when creating the client:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">Allocator</span> <span class="n">client_allocator</span><span class="p">;</span>
+<span class="n">ClientContext</span> <span class="n">client_context</span><span class="p">;</span>
+<span class="n">client_context</span><span class="p">.</span><span class="n">allocator</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">client_allocator</span><span class="p">;</span>
+<span class="n">client_context</span><span class="p">.</span><span class="n">client_data</span> <span class="o">=</span> <span class="mh">0x12345</span><span class="p">;</span>
+
+<span class="n">next_client_t</span> <span class="o">*</span> <span class="n">client</span> <span class="o">=</span> <span class="n">next_client_create</span><span class="p">(</span> <span class="o">&amp;</span><span class="n">client_context</span><span class="p">,</span> <span class="n">bind_address</span><span class="p">,</span> <span class="n">client_packet_received</span> <span class="p">);</span>
+<span class="k">if</span> <span class="p">(</span> <span class="n">client</span> <span class="o">==</span> <span class="nb">NULL</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span> <span class="s">&quot;error: failed to create client</span><span class="se">\n</span><span class="s">&quot;</span> <span class="p">);</span>
+    <span class="k">return</span> <span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Now when the client makes any allocations, and when it calls callbacks like <em>packet_received</em> it will pass in the client context as a void*.</p>
+<p>Since we are binding the client to port 0, the system will choose the actual port number. We can retrieve this port number as follows and print it out for posterity:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">uint16_t</span> <span class="n">client_port</span> <span class="o">=</span> <span class="n">next_client_port</span><span class="p">(</span> <span class="n">client</span> <span class="p">);</span>
+
+<span class="n">next_printf</span><span class="p">(</span> <span class="n">NEXT_LOG_LEVEL_INFO</span><span class="p">,</span> <span class="s">&quot;client port is %d&quot;</span><span class="p">,</span> <span class="n">client_port</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p>Finally, the client has been extended to print out all the useful stats you can retrieve from a network next client, once every ten seconds:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">accumulator</span> <span class="o">+=</span> <span class="n">delta_time</span><span class="p">;</span>
+
+<span class="k">if</span> <span class="p">(</span> <span class="n">accumulator</span> <span class="o">&gt;</span> <span class="mf">10.0</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">accumulator</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">;</span>
+
+    <span class="n">printf</span><span class="p">(</span> <span class="s">&quot;================================================================</span><span class="se">\n</span><span class="s">&quot;</span> <span class="p">);</span>
+
+    <span class="n">printf</span><span class="p">(</span> <span class="s">&quot;Client Stats:</span><span class="se">\n</span><span class="s">&quot;</span> <span class="p">);</span>
+
+    <span class="k">const</span> <span class="n">next_client_stats_t</span> <span class="o">*</span> <span class="n">stats</span> <span class="o">=</span> <span class="n">next_client_stats</span><span class="p">(</span> <span class="n">client</span> <span class="p">);</span>
+
+    <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">platform</span> <span class="o">=</span> <span class="s">&quot;unknown&quot;</span><span class="p">;</span>
+
+    <span class="k">switch</span> <span class="p">(</span> <span class="n">stats</span><span class="o">-&gt;</span><span class="n">platform_id</span> <span class="p">)</span>
+    <span class="p">{</span>
+        <span class="k">case</span> <span class="nl">NEXT_PLATFORM_WINDOWS</span><span class="p">:</span>
+            <span class="n">platform</span> <span class="o">=</span> <span class="s">&quot;windows&quot;</span><span class="p">;</span>
+            <span class="k">break</span><span class="p">;</span>
+
+        <span class="k">case</span> <span class="nl">NEXT_PLATFORM_MAC</span><span class="p">:</span>
+            <span class="n">platform</span> <span class="o">=</span> <span class="s">&quot;mac&quot;</span><span class="p">;</span>
+            <span class="k">break</span><span class="p">;</span>
+
+        <span class="k">case</span> <span class="nl">NEXT_PLATFORM_LINUX</span><span class="p">:</span>
+            <span class="n">platform</span> <span class="o">=</span> <span class="s">&quot;linux&quot;</span><span class="p">;</span>
+            <span class="k">break</span><span class="p">;</span>
+
+        <span class="k">case</span> <span class="nl">NEXT_PLATFORM_SWITCH</span><span class="p">:</span>
+            <span class="n">platform</span> <span class="o">=</span> <span class="s">&quot;nintendo switch&quot;</span><span class="p">;</span>
+            <span class="k">break</span><span class="p">;</span>
+
+        <span class="k">case</span> <span class="nl">NEXT_PLATFORM_PS4</span><span class="p">:</span>
+            <span class="n">platform</span> <span class="o">=</span> <span class="s">&quot;ps4&quot;</span><span class="p">;</span>
+            <span class="k">break</span><span class="p">;</span>
+
+        <span class="k">case</span> <span class="nl">NEXT_PLATFORM_IOS</span><span class="p">:</span>
+            <span class="n">platform</span> <span class="o">=</span> <span class="s">&quot;ios&quot;</span><span class="p">;</span>
+            <span class="k">break</span><span class="p">;</span>
+
+        <span class="k">case</span> <span class="nl">NEXT_PLATFORM_XBOX_ONE</span><span class="p">:</span>
+            <span class="n">platform</span> <span class="o">=</span> <span class="s">&quot;xbox one&quot;</span><span class="p">;</span>
+            <span class="k">break</span><span class="p">;</span>
+
+        <span class="k">default</span><span class="o">:</span>
+            <span class="k">break</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">state</span> <span class="o">=</span> <span class="s">&quot;???&quot;</span><span class="p">;</span>
+
+    <span class="k">const</span> <span class="kt">int</span> <span class="n">client_state</span> <span class="o">=</span> <span class="n">next_client_state</span><span class="p">(</span> <span class="n">client</span> <span class="p">);</span>
+
+    <span class="k">switch</span> <span class="p">(</span> <span class="n">client_state</span> <span class="p">)</span>
+    <span class="p">{</span>
+        <span class="k">case</span> <span class="nl">NEXT_CLIENT_STATE_CLOSED</span><span class="p">:</span>
+            <span class="n">state</span> <span class="o">=</span> <span class="s">&quot;closed&quot;</span><span class="p">;</span>
+            <span class="k">break</span><span class="p">;</span>
+
+        <span class="k">case</span> <span class="nl">NEXT_CLIENT_STATE_OPEN</span><span class="p">:</span>
+            <span class="n">state</span> <span class="o">=</span> <span class="s">&quot;open&quot;</span><span class="p">;</span>
+            <span class="k">break</span><span class="p">;</span>
+
+        <span class="k">case</span> <span class="nl">NEXT_CLIENT_STATE_ERROR</span><span class="p">:</span>
+            <span class="n">state</span> <span class="o">=</span> <span class="s">&quot;error&quot;</span><span class="p">;</span>
+            <span class="k">break</span><span class="p">;</span>
+
+        <span class="k">default</span><span class="o">:</span>
+            <span class="k">break</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="n">printf</span><span class="p">(</span> <span class="s">&quot; + State = %s (%d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="n">client_state</span> <span class="p">);</span>
+
+    <span class="n">printf</span><span class="p">(</span> <span class="s">&quot; + Session Id = %&quot;</span> <span class="n">PRIx64</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">next_client_session_id</span><span class="p">(</span> <span class="n">client</span> <span class="p">)</span> <span class="p">);</span>
+
+    <span class="n">printf</span><span class="p">(</span> <span class="s">&quot; + Platform = %s (%d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">platform</span><span class="p">,</span> <span class="p">(</span><span class="kt">int</span><span class="p">)</span> <span class="n">stats</span><span class="o">-&gt;</span><span class="n">platform_id</span> <span class="p">);</span>
+
+    <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">connection</span> <span class="o">=</span> <span class="s">&quot;unknown&quot;</span><span class="p">;</span>
+
+    <span class="k">switch</span> <span class="p">(</span> <span class="n">stats</span><span class="o">-&gt;</span><span class="n">connection_type</span> <span class="p">)</span>
+    <span class="p">{</span>
+        <span class="k">case</span> <span class="nl">NEXT_CONNECTION_TYPE_WIRED</span><span class="p">:</span>
+            <span class="n">connection</span> <span class="o">=</span> <span class="s">&quot;wired&quot;</span><span class="p">;</span>
+            <span class="k">break</span><span class="p">;</span>
+
+        <span class="k">case</span> <span class="nl">NEXT_CONNECTION_TYPE_WIFI</span><span class="p">:</span>
+            <span class="n">connection</span> <span class="o">=</span> <span class="s">&quot;wifi&quot;</span><span class="p">;</span>
+            <span class="k">break</span><span class="p">;</span>
+
+        <span class="k">case</span> <span class="nl">NEXT_CONNECTION_TYPE_CELLULAR</span><span class="p">:</span>
+            <span class="n">connection</span> <span class="o">=</span> <span class="s">&quot;cellular&quot;</span><span class="p">;</span>
+            <span class="k">break</span><span class="p">;</span>
+
+        <span class="k">default</span><span class="o">:</span>
+            <span class="k">break</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="n">printf</span><span class="p">(</span> <span class="s">&quot; + Connection = %s (%d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">connection</span><span class="p">,</span> <span class="n">stats</span><span class="o">-&gt;</span><span class="n">connection_type</span> <span class="p">);</span>
+
+    <span class="n">printf</span><span class="p">(</span> <span class="s">&quot; + Committed = %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">stats</span><span class="o">-&gt;</span><span class="n">committed</span> <span class="o">?</span> <span class="s">&quot;yes&quot;</span> <span class="o">:</span> <span class="s">&quot;no&quot;</span> <span class="p">);</span>
+
+    <span class="n">printf</span><span class="p">(</span> <span class="s">&quot; + Multipath = %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">stats</span><span class="o">-&gt;</span><span class="n">multipath</span> <span class="o">?</span> <span class="s">&quot;yes&quot;</span> <span class="o">:</span> <span class="s">&quot;no&quot;</span> <span class="p">);</span>
+
+    <span class="n">printf</span><span class="p">(</span> <span class="s">&quot; + Flagged = %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">stats</span><span class="o">-&gt;</span><span class="n">flagged</span> <span class="o">?</span> <span class="s">&quot;yes&quot;</span> <span class="o">:</span> <span class="s">&quot;no&quot;</span> <span class="p">);</span>
+
+    <span class="n">printf</span><span class="p">(</span> <span class="s">&quot; + Direct RTT = %.2fms</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">stats</span><span class="o">-&gt;</span><span class="n">direct_min_rtt</span> <span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span> <span class="s">&quot; + Direct Jitter = %.2fms</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">stats</span><span class="o">-&gt;</span><span class="n">direct_jitter</span> <span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span> <span class="s">&quot; + Direct Packet Loss = %.1f%%</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">stats</span><span class="o">-&gt;</span><span class="n">direct_packet_loss</span> <span class="p">);</span>
+
+    <span class="k">if</span> <span class="p">(</span> <span class="n">stats</span><span class="o">-&gt;</span><span class="n">next</span> <span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span> <span class="s">&quot; + Next RTT = %.2fms</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">stats</span><span class="o">-&gt;</span><span class="n">next_min_rtt</span> <span class="p">);</span>
+        <span class="n">printf</span><span class="p">(</span> <span class="s">&quot; + Next Jitter = %.2fms</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">stats</span><span class="o">-&gt;</span><span class="n">next_jitter</span> <span class="p">);</span>
+        <span class="n">printf</span><span class="p">(</span> <span class="s">&quot; + Next Packet Loss = %.1f%%</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">stats</span><span class="o">-&gt;</span><span class="n">next_packet_loss</span> <span class="p">);</span>
+        <span class="n">printf</span><span class="p">(</span> <span class="s">&quot; + Next Bandwidth Up = %.1fkbps</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">stats</span><span class="o">-&gt;</span><span class="n">next_kbps_up</span> <span class="p">);</span>
+        <span class="n">printf</span><span class="p">(</span> <span class="s">&quot; + Next Bandwidth Down = %.1fkbps</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">stats</span><span class="o">-&gt;</span><span class="n">next_kbps_down</span> <span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="n">printf</span><span class="p">(</span> <span class="s">&quot;================================================================</span><span class="se">\n</span><span class="s">&quot;</span> <span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Thanks to Jacob Langworthy and the whole crew at Velan Studios for inspiring this example!</p>
+</div>
+<span id="document-complex_server_example"></span><div class="section" id="complex-server-example">
+<h3>Complex Server Example<a class="headerlink" href="#complex-server-example" title="Permalink to this headline">¶</a></h3>
+<p>In this example we build the kitchen sink version of a server where we show off all the features :)</p>
+<p>We demonstrate:</p>
+<ul class="simple">
+<li><p>Setting the network next log level</p></li>
+<li><p>Setting a custom log function</p></li>
+<li><p>Setting a custom assert handler</p></li>
+<li><p>Setting a custom allocator</p></li>
+</ul>
+<p>In this example, everything is as per the complex client example: setting up the allocator, a global context, override functions for malloc and free, custom log function and a custom assert function.</p>
+<p>When creating a server, we create it with a server context as follows:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">Allocator</span> <span class="n">server_allocator</span><span class="p">;</span>
+<span class="n">ServerContext</span> <span class="n">server_context</span><span class="p">;</span>
+<span class="n">server_context</span><span class="p">.</span><span class="n">allocator</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">server_allocator</span><span class="p">;</span>
+<span class="n">server_context</span><span class="p">.</span><span class="n">server_data</span> <span class="o">=</span> <span class="mh">0x12345678</span><span class="p">;</span>
+
+<span class="n">next_server_t</span> <span class="o">*</span> <span class="n">server</span> <span class="o">=</span> <span class="n">next_server_create</span><span class="p">(</span> <span class="o">&amp;</span><span class="n">server_context</span><span class="p">,</span> <span class="n">server_address</span><span class="p">,</span> <span class="n">bind_address</span><span class="p">,</span> <span class="n">server_datacenter</span><span class="p">,</span> <span class="n">server_packet_received</span> <span class="p">);</span>
+<span class="k">if</span> <span class="p">(</span> <span class="n">server</span> <span class="o">==</span> <span class="nb">NULL</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span> <span class="s">&quot;error: failed to create server</span><span class="se">\n</span><span class="s">&quot;</span> <span class="p">);</span>
+    <span class="k">return</span> <span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The overridden malloc and free functions are now called with the server context including our custom allocator:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span> <span class="o">*</span> <span class="nf">malloc_function</span><span class="p">(</span> <span class="kt">void</span> <span class="o">*</span> <span class="n">_context</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">bytes</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">Context</span> <span class="o">*</span> <span class="n">context</span> <span class="o">=</span> <span class="p">(</span><span class="n">Context</span><span class="o">*</span><span class="p">)</span> <span class="n">_context</span><span class="p">;</span>
+    <span class="n">next_assert</span><span class="p">(</span> <span class="n">context</span> <span class="p">);</span>
+    <span class="n">next_assert</span><span class="p">(</span> <span class="n">context</span><span class="o">-&gt;</span><span class="n">allocator</span> <span class="p">);</span>
+    <span class="k">return</span> <span class="n">context</span><span class="o">-&gt;</span><span class="n">allocator</span><span class="o">-&gt;</span><span class="n">Alloc</span><span class="p">(</span> <span class="n">bytes</span> <span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="nf">free_function</span><span class="p">(</span> <span class="kt">void</span> <span class="o">*</span> <span class="n">_context</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span> <span class="n">p</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">Context</span> <span class="o">*</span> <span class="n">context</span> <span class="o">=</span> <span class="p">(</span><span class="n">Context</span><span class="o">*</span><span class="p">)</span> <span class="n">_context</span><span class="p">;</span>
+    <span class="n">next_assert</span><span class="p">(</span> <span class="n">context</span> <span class="p">);</span>
+    <span class="n">next_assert</span><span class="p">(</span> <span class="n">context</span><span class="o">-&gt;</span><span class="n">allocator</span> <span class="p">);</span>
+    <span class="k">return</span> <span class="n">context</span><span class="o">-&gt;</span><span class="n">allocator</span><span class="o">-&gt;</span><span class="n">Free</span><span class="p">(</span> <span class="n">p</span> <span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>And the packet received callback with the server context, allowing you to get a pointer to your own internal server data structure passed in to the packet received callback:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span> <span class="nf">server_packet_received</span><span class="p">(</span> <span class="n">next_server_t</span> <span class="o">*</span> <span class="n">server</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span> <span class="n">_context</span><span class="p">,</span> <span class="k">const</span> <span class="n">next_address_t</span> <span class="o">*</span> <span class="n">from</span><span class="p">,</span> <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span> <span class="n">packet_data</span><span class="p">,</span> <span class="kt">int</span> <span class="n">packet_bytes</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">ServerContext</span> <span class="o">*</span> <span class="n">context</span> <span class="o">=</span> <span class="p">(</span><span class="n">ServerContext</span><span class="o">*</span><span class="p">)</span> <span class="n">_context</span><span class="p">;</span>
+
+    <span class="p">(</span><span class="kt">void</span><span class="p">)</span> <span class="n">context</span><span class="p">;</span>
+
+    <span class="n">next_assert</span><span class="p">(</span> <span class="n">context</span> <span class="p">);</span>
+    <span class="n">next_assert</span><span class="p">(</span> <span class="n">context</span><span class="o">-&gt;</span><span class="n">allocator</span> <span class="o">!=</span> <span class="nb">NULL</span> <span class="p">);</span>
+    <span class="n">next_assert</span><span class="p">(</span> <span class="n">context</span><span class="o">-&gt;</span><span class="n">server_data</span> <span class="o">==</span> <span class="mh">0x12345678</span> <span class="p">);</span>
+
+    <span class="n">verify_packet</span><span class="p">(</span> <span class="n">packet_data</span><span class="p">,</span> <span class="n">packet_bytes</span> <span class="p">);</span>
+
+    <span class="n">next_server_send_packet</span><span class="p">(</span> <span class="n">server</span><span class="p">,</span> <span class="n">from</span><span class="p">,</span> <span class="n">packet_data</span><span class="p">,</span> <span class="n">packet_bytes</span> <span class="p">);</span>
+
+    <span class="kt">char</span> <span class="n">address_buffer</span><span class="p">[</span><span class="n">NEXT_MAX_ADDRESS_STRING_LENGTH</span><span class="p">];</span>
+
+    <span class="n">next_printf</span><span class="p">(</span> <span class="n">NEXT_LOG_LEVEL_INFO</span><span class="p">,</span> <span class="s">&quot;server received packet from client %s (%d bytes)&quot;</span><span class="p">,</span> <span class="n">next_address_to_string</span><span class="p">(</span> <span class="n">from</span><span class="p">,</span> <span class="n">address_buffer</span> <span class="p">),</span> <span class="n">packet_bytes</span> <span class="p">);</span>
+
+    <span class="k">if</span> <span class="p">(</span> <span class="o">!</span><span class="n">next_server_session_upgraded</span><span class="p">(</span> <span class="n">server</span><span class="p">,</span> <span class="n">from</span> <span class="p">)</span> <span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">next_server_upgrade_session</span><span class="p">(</span> <span class="n">server</span><span class="p">,</span> <span class="n">from</span><span class="p">,</span> <span class="nb">NULL</span> <span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+<span id="document-reference"></span><div class="section" id="reference">
+<h3>Reference<a class="headerlink" href="#reference" title="Permalink to this headline">¶</a></h3>
+<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+<p>Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin mauris. Integer in mauris eu nibh euismod gravida. Duis ac tellus et risus vulputate vehicula. Donec lobortis risus a elit. Etiam tempor. Ut ullamcorper, ligula eu tempor congue, eros est euismod turpis, id tincidunt sapien risus a quam. Maecenas fermentum consequat mi. Donec fermentum. Pellentesque malesuada nulla a mi. Duis sapien sem, aliquet nec, commodo eget, consequat quis, neque. Aliquam faucibus, elit ut dictum aliquet, felis nisl adipiscing sapien, sed malesuada diam lacus eget erat. Cras mollis scelerisque nunc. Nullam arcu. Aliquam consequat. Curabitur augue lorem, dapibus quis, laoreet et, pretium ac, nisi. Aenean magna nisl, mollis quis, molestie eu, feugiat in, orci. In hac habitasse platea dictumst.</p>
+<div class="toctree-wrapper compound">
+<span id="document-next_client_t"></span><div class="section" id="next-client-t">
+<h4>next_client_t<a class="headerlink" href="#next-client-t" title="Permalink to this headline">¶</a></h4>
+<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+<p>Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin mauris. Integer in mauris eu nibh euismod gravida. Duis ac tellus et risus vulputate vehicula. Donec lobortis risus a elit. Etiam tempor. Ut ullamcorper, ligula eu tempor congue, eros est euismod turpis, id tincidunt sapien risus a quam. Maecenas fermentum consequat mi. Donec fermentum. Pellentesque malesuada nulla a mi. Duis sapien sem, aliquet nec, commodo eget, consequat quis, neque. Aliquam faucibus, elit ut dictum aliquet, felis nisl adipiscing sapien, sed malesuada diam lacus eget erat. Cras mollis scelerisque nunc. Nullam arcu. Aliquam consequat. Curabitur augue lorem, dapibus quis, laoreet et, pretium ac, nisi. Aenean magna nisl, mollis quis, molestie eu, feugiat in, orci. In hac habitasse platea dictumst.</p>
+<p><strong>Examples:</strong></p>
+<div class="toctree-wrapper compound">
+</div>
+<div class="section" id="next-client-create">
+<h5>next_client_create<a class="headerlink" href="#next-client-create" title="Permalink to this headline">¶</a></h5>
+<p>Creates an instance of a client, binding a socket to the specified address and port.</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_client_t</span> <span class="o">*</span> <span class="nf">next_client_create</span><span class="p">(</span> <span class="kt">void</span> <span class="o">*</span> <span class="n">context</span><span class="p">,</span>
+                                    <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">bind_address</span><span class="p">,</span>
+                                    <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">packet_received_callback</span><span class="p">)(</span> <span class="n">next_client_t</span> <span class="o">*</span> <span class="n">client</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span> <span class="n">context</span><span class="p">,</span> <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span> <span class="n">packet_data</span><span class="p">,</span> <span class="kt">int</span> <span class="n">packet_bytes</span> <span class="p">)</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p><strong>Parameters:</strong></p>
+<blockquote>
+<div><ul class="simple">
+<li><p><strong>context</strong> – An optional pointer to context passed to any callbacks made from the client.</p></li>
+<li><p><strong>bind_address</strong> – An address string describing the bind address and port to bind to. Typically “0.0.0.0:0” is passed in, which binds to any IPv4 interface and lets the system pick a port. Alternatively, you can bind to a specific port, for example: “0.0.0.0:50000”.</p></li>
+<li><p><strong>packet_received_callback</strong> – Called from the same thread that calls <em>next_client_update</em>, whenever a packet is received from the server. Required.</p></li>
+</ul>
+</div></blockquote>
+<p><strong>Return value:</strong></p>
+<blockquote>
+<div><p>The newly created client instance, or NULL, if the client could not be created.</p>
+<p>Typically, NULL is only returned when another socket is already bound on the same port, or if an invalid bind address is passed in.</p>
+</div></blockquote>
+<p><strong>Example:</strong></p>
+<p>First define a callback for received packets:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span> <span class="nf">client_packet_received</span><span class="p">(</span> <span class="n">next_client_t</span> <span class="o">*</span> <span class="n">client</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span> <span class="n">context</span><span class="p">,</span> <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span> <span class="n">packet_data</span><span class="p">,</span> <span class="kt">int</span> <span class="n">packet_bytes</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span> <span class="s">&quot;client received packet from server (%d bytes)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">packet_bytes</span> <span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Then, create a client:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_client_t</span> <span class="o">*</span> <span class="n">client</span> <span class="o">=</span> <span class="n">next_client_create</span><span class="p">(</span> <span class="nb">NULL</span><span class="p">,</span> <span class="s">&quot;0.0.0.0:0&quot;</span><span class="p">,</span> <span class="n">client_packet_received</span> <span class="p">);</span>
+<span class="k">if</span> <span class="p">(</span> <span class="n">client</span> <span class="o">==</span> <span class="nb">NULL</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span> <span class="s">&quot;error: failed to create client</span><span class="se">\n</span><span class="s">&quot;</span> <span class="p">);</span>
+    <span class="k">return</span> <span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="next-client-destroy">
+<h5>next_client_destroy<a class="headerlink" href="#next-client-destroy" title="Permalink to this headline">¶</a></h5>
+<p>Destroys a client instance, and the socket it manages internally.</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span> <span class="nf">next_client_destroy</span><span class="p">(</span> <span class="n">next_client_t</span> <span class="o">*</span> <span class="n">client</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p><strong>Parameters:</strong></p>
+<blockquote>
+<div><ul class="simple">
+<li><p><strong>client</strong> – The client instance to destroy. Must be a valid client instance created by <em>next_client_create</em>. Do not pass in NULL.</p></li>
+</ul>
+</div></blockquote>
+<p><strong>Example:</strong></p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_client_destroy</span><span class="p">(</span> <span class="n">client</span> <span class="p">);</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="next-client-port">
+<h5>next_client_port<a class="headerlink" href="#next-client-port" title="Permalink to this headline">¶</a></h5>
+<p>Gets the port the client socket is bound to.</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">uint16_t</span> <span class="nf">next_client_port</span><span class="p">(</span> <span class="n">next_client_t</span> <span class="o">*</span> <span class="n">client</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p><strong>Return value:</strong></p>
+<blockquote>
+<div><p>The port number the client socket is bound to.</p>
+<p>This makes it possible to look up what specific port the client is bound to when you bind to port zero and the system chooses a port.</p>
+</div></blockquote>
+<p><strong>Example:</strong></p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_client_t</span> <span class="o">*</span> <span class="n">client</span> <span class="o">=</span> <span class="n">next_client_create</span><span class="p">(</span> <span class="nb">NULL</span><span class="p">,</span> <span class="s">&quot;0.0.0.0:0&quot;</span><span class="p">,</span> <span class="n">client_packet_received</span> <span class="p">);</span>
+<span class="k">if</span> <span class="p">(</span> <span class="n">client</span> <span class="o">==</span> <span class="nb">NULL</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span> <span class="s">&quot;error: failed to create client</span><span class="se">\n</span><span class="s">&quot;</span> <span class="p">);</span>
+    <span class="k">return</span> <span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">const</span> <span class="kt">uint16_t</span> <span class="n">client_port</span> <span class="o">=</span> <span class="n">next_client_port</span><span class="p">(</span> <span class="n">client</span> <span class="p">);</span>
+
+<span class="n">printf</span><span class="p">(</span> <span class="s">&quot;the client was bound to port %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">client_port</span> <span class="p">);</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="next-client-open-session">
+<h5>next_client_open_session<a class="headerlink" href="#next-client-open-session" title="Permalink to this headline">¶</a></h5>
+<p>Opens a session between the client and a server.</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span> <span class="n">next_client_open_session</span><span class="p">(</span> <span class="n">next_client_t</span> <span class="o">*</span> <span class="n">client</span><span class="p">,</span>
+                               <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">server_address</span> <span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Parameters:</strong></p>
+<blockquote>
+<div><ul class="simple">
+<li><p><strong>client</strong> – The client instance.</p></li>
+<li><p><strong>server_address</strong> – The address of the server that the client wants to connect to.</p></li>
+</ul>
+</div></blockquote>
+<p><strong>Example:</strong></p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_client_open_session</span><span class="p">(</span> <span class="n">client</span><span class="p">,</span> <span class="s">&quot;127.0.0.1:50000&quot;</span> <span class="p">);</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="next-client-close-session">
+<h5>next_client_close_session<a class="headerlink" href="#next-client-close-session" title="Permalink to this headline">¶</a></h5>
+<p>Closes the session between the client and server.</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span> <span class="n">next_client_close_session</span><span class="p">(</span> <span class="n">next_client_t</span> <span class="o">*</span> <span class="n">client</span> <span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Parameters:</strong></p>
+<blockquote>
+<div><ul class="simple">
+<li><p><strong>client</strong> – The client instance.</p></li>
+</ul>
+</div></blockquote>
+<p><strong>Example:</strong></p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_client_close_session</span><span class="p">(</span> <span class="n">client</span> <span class="p">);</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="next-client-is-session-open">
+<h5>next_client_is_session_open<a class="headerlink" href="#next-client-is-session-open" title="Permalink to this headline">¶</a></h5>
+<p>Check if the client has a session open.</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">bool</span> <span class="nf">next_client_is_session_open</span><span class="p">(</span> <span class="n">next_client_t</span> <span class="o">*</span> <span class="n">client</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p><strong>Parameters:</strong></p>
+<blockquote>
+<div><ul class="simple">
+<li><p><strong>client</strong> – The client instance.</p></li>
+</ul>
+</div></blockquote>
+<p><strong>Return value:</strong></p>
+<blockquote>
+<div><p>True, if the client has an open session with a server, false otherwise.</p>
+</div></blockquote>
+<p><strong>Example:</strong></p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="k">const</span> <span class="kt">bool</span> <span class="n">session_open</span> <span class="o">=</span> <span class="n">next_client_session_open</span><span class="p">(</span> <span class="n">client</span> <span class="p">);</span>
+
+<span class="n">printf</span><span class="p">(</span> <span class="s">&quot;session open = %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">session_open</span> <span class="o">?</span> <span class="s">&quot;yes&quot;</span> <span class="o">:</span> <span class="s">&quot;no&quot;</span> <span class="p">);</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="next-client-state">
+<h5>next_client_state<a class="headerlink" href="#next-client-state" title="Permalink to this headline">¶</a></h5>
+<p>Gets the state the client is in.</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">int</span> <span class="nf">next_client_state</span><span class="p">(</span> <span class="n">next_client_t</span> <span class="o">*</span> <span class="n">client</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p><strong>Parameters:</strong></p>
+<blockquote>
+<div><ul class="simple">
+<li><p><strong>client</strong> – The client instance.</p></li>
+</ul>
+</div></blockquote>
+<p><strong>Return value:</strong></p>
+<blockquote>
+<div><p>The client state is either:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>NEXT_CLIENT_STATE_CLOSED</p></li>
+<li><p>NEXT_CLIENT_STATE_OPEN</p></li>
+<li><p>NEXT_CLIENT_STATE_ERROR</p></li>
+</ul>
+</div></blockquote>
+<p>The client is initially in closed state. After <em>next_client_open_session</em> the client is immediately in open state on success, or error state if something went wrong while opening the session, for example, an invalid server address was passed in.</p>
+</div></blockquote>
+<p><strong>Example:</strong></p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">state</span> <span class="o">=</span> <span class="s">&quot;???&quot;</span><span class="p">;</span>
+
+<span class="k">const</span> <span class="kt">int</span> <span class="n">client_state</span> <span class="o">=</span> <span class="n">next_client_state</span><span class="p">(</span> <span class="n">client</span> <span class="p">);</span>
+
+<span class="k">switch</span> <span class="p">(</span> <span class="n">client_state</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">case</span> <span class="nl">NEXT_CLIENT_STATE_CLOSED</span><span class="p">:</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="s">&quot;closed&quot;</span><span class="p">;</span>
+        <span class="k">break</span><span class="p">;</span>
+
+    <span class="k">case</span> <span class="nl">NEXT_CLIENT_STATE_OPEN</span><span class="p">:</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="s">&quot;open&quot;</span><span class="p">;</span>
+        <span class="k">break</span><span class="p">;</span>
+
+    <span class="k">case</span> <span class="nl">NEXT_CLIENT_STATE_ERROR</span><span class="p">:</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="s">&quot;error&quot;</span><span class="p">;</span>
+        <span class="k">break</span><span class="p">;</span>
+
+    <span class="k">default</span><span class="o">:</span>
+        <span class="k">break</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="n">printf</span><span class="p">(</span> <span class="s">&quot;client state = %s (%d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="n">client_state</span> <span class="p">);</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="next-client-update">
+<h5>next_client_update<a class="headerlink" href="#next-client-update" title="Permalink to this headline">¶</a></h5>
+<p>Updates the client.</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">int</span> <span class="nf">next_client_update</span><span class="p">(</span> <span class="n">next_client_t</span> <span class="o">*</span> <span class="n">client</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p>Please call this every frame as it drives the packet received callback.</p>
+<p><strong>Parameters:</strong></p>
+<blockquote>
+<div><ul class="simple">
+<li><p><strong>client</strong> – The client instance.</p></li>
+</ul>
+</div></blockquote>
+<p><strong>Example:</strong></p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="k">while</span> <span class="p">(</span> <span class="o">!</span><span class="n">quit</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">next_client_update</span><span class="p">(</span> <span class="n">client</span> <span class="p">);</span>
+
+    <span class="c1">// ... do stuff ...</span>
+
+    <span class="n">next_sleep</span><span class="p">(</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="mf">60.0</span> <span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="next-client-send-packet">
+<h5>next_client_send_packet<a class="headerlink" href="#next-client-send-packet" title="Permalink to this headline">¶</a></h5>
+<p>Sends a packet to the server.</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span> <span class="nf">next_client_send_packet</span><span class="p">(</span> <span class="n">next_client_t</span> <span class="o">*</span> <span class="n">client</span><span class="p">,</span> <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span> <span class="n">packet_data</span><span class="p">,</span> <span class="kt">int</span> <span class="n">packet_bytes</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p>Depending on whether this player is accelerated or not, this packet will be sent direct across the public internet, or through Network Next’s network of private networks.</p>
+<p><strong>Parameters:</strong></p>
+<blockquote>
+<div><ul class="simple">
+<li><p><strong>client</strong> – The client instance.</p></li>
+<li><p><strong>packet_data</strong> – The packet data to send to the server.</p></li>
+<li><p><strong>packet_bytes</strong> – The size of the packet in bytes. Must be in range 1 to NEXT_MTU (1300).</p></li>
+</ul>
+</div></blockquote>
+<p><strong>Example:</strong></p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">uint8_t</span> <span class="n">packet_data</span><span class="p">[</span><span class="mi">32</span><span class="p">];</span>
+<span class="n">memset</span><span class="p">(</span> <span class="n">packet_data</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span> <span class="n">packet_data</span> <span class="p">)</span> <span class="p">);</span>
+
+<span class="k">while</span> <span class="p">(</span> <span class="o">!</span><span class="n">quit</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">next_client_update</span><span class="p">(</span> <span class="n">client</span> <span class="p">);</span>
+
+    <span class="n">next_client_send_packet</span><span class="p">(</span> <span class="n">client</span><span class="p">,</span> <span class="n">packet_data</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">packet_data</span><span class="p">)</span> <span class="p">);</span>
+
+    <span class="n">next_sleep</span><span class="p">(</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="mf">60.0</span> <span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="next-client-send-packet-direct">
+<h5>next_client_send_packet_direct<a class="headerlink" href="#next-client-send-packet-direct" title="Permalink to this headline">¶</a></h5>
+<p>Sends a packet to the server, forcing the packet to be sent across the public internet.</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span> <span class="nf">next_client_send_packet_direct</span><span class="p">(</span> <span class="n">next_client_t</span> <span class="o">*</span> <span class="n">client</span><span class="p">,</span> <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span> <span class="n">packet_data</span><span class="p">,</span> <span class="kt">int</span> <span class="n">packet_bytes</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p>The packet will be sent unaccelerated across the public internet and will not count towards your Network Next bandwidth envelope.</p>
+<p>This can be very useful when you need to send a burst of non-latency sensitive packets, for example, in a load screen.</p>
+<p><strong>Parameters:</strong></p>
+<blockquote>
+<div><ul class="simple">
+<li><p><strong>client</strong> – The client instance.</p></li>
+<li><p><strong>packet_data</strong> – The packet data to send to the server.</p></li>
+<li><p><strong>packet_bytes</strong> – The size of the packet in bytes. Must be in range 1 to NEXT_MTU (1300).</p></li>
+</ul>
+</div></blockquote>
+<p>Example:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">uint8_t</span> <span class="n">packet_data</span><span class="p">[</span><span class="mi">32</span><span class="p">];</span>
+<span class="n">memset</span><span class="p">(</span> <span class="n">packet_data</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span> <span class="n">packet_data</span> <span class="p">)</span> <span class="p">);</span>
+
+<span class="k">while</span> <span class="p">(</span> <span class="o">!</span><span class="n">quit</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">next_client_update</span><span class="p">(</span> <span class="n">client</span> <span class="p">);</span>
+
+    <span class="n">next_client_send_packet_direct</span><span class="p">(</span> <span class="n">client</span><span class="p">,</span> <span class="n">packet_data</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">packet_data</span><span class="p">)</span> <span class="p">);</span>
+
+    <span class="n">next_sleep</span><span class="p">(</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="mf">60.0</span> <span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="next-client-flag-session">
+<h5>next_client_flag_session<a class="headerlink" href="#next-client-flag-session" title="Permalink to this headline">¶</a></h5>
+<p>Flag the session as problematic.</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span> <span class="nf">next_client_flag_session</span><span class="p">(</span> <span class="n">next_client_t</span> <span class="o">*</span> <span class="n">client</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p>This feature was added to support our customers who let players flag bad play sessions in their game UI.</p>
+<p>Call this function when your players complain, and it’s sent to our backend so we can help you track down why!</p>
+<p><strong>Parameters:</strong></p>
+<blockquote>
+<div><ul class="simple">
+<li><p><strong>client</strong> – The client instance.</p></li>
+</ul>
+</div></blockquote>
+<p><strong>Example:</strong></p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_client_report_session</span><span class="p">(</span> <span class="n">client</span> <span class="p">);</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="next-client-session-id">
+<h5>next_client_session_id<a class="headerlink" href="#next-client-session-id" title="Permalink to this headline">¶</a></h5>
+<p>Gets the client session id.</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">uint64_t</span> <span class="nf">next_client_session_id</span><span class="p">(</span> <span class="n">next_client_t</span> <span class="o">*</span> <span class="n">client</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p>A session id uniquely identifies each session on Network Next.</p>
+<p>Session ids are distinct from user ids. User ids are unique on a per-user basis, while session ids are unique for each call to <em>next_client_open_session</em>.</p>
+<p>A session id is assigned when the server upgrades the session via <em>next_server_upgrade_session</em>. Until that point the session id is 0.</p>
+<p><strong>Parameters:</strong></p>
+<blockquote>
+<div><ul class="simple">
+<li><p><strong>client</strong> – The client instance.</p></li>
+</ul>
+</div></blockquote>
+<p><strong>Return value:</strong></p>
+<blockquote>
+<div><p>The session id, if the client has been upgraded, otherwise 0.</p>
+</div></blockquote>
+<p><strong>Example:</strong></p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="k">const</span> <span class="kt">uint64_t</span> <span class="n">session_id</span> <span class="o">=</span> <span class="n">next_client_session_id</span><span class="p">(</span> <span class="n">client</span> <span class="p">);</span>
+
+<span class="n">printf</span><span class="p">(</span> <span class="s">&quot;session id = %&quot;</span> <span class="n">PRIx64</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">session_id</span> <span class="p">);</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="next-client-stats">
+<h5>next_client_stats<a class="headerlink" href="#next-client-stats" title="Permalink to this headline">¶</a></h5>
+<p>Gets client statistics.</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="k">const</span> <span class="n">next_client_stats_t</span> <span class="o">*</span> <span class="nf">next_client_stats</span><span class="p">(</span> <span class="n">next_client_t</span> <span class="o">*</span> <span class="n">client</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p><strong>Parameters:</strong></p>
+<blockquote>
+<div><ul class="simple">
+<li><p><strong>client</strong> – The client instance.</p></li>
+</ul>
+</div></blockquote>
+<p><strong>Return value:</strong></p>
+<blockquote>
+<div><p>A const pointer to the client stats struct.</p>
+</div></blockquote>
+<p><strong>Example:</strong></p>
+<p>The client stats struct is defined as follows:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="k">struct</span> <span class="n">next_client_stats_t</span>
+<span class="p">{</span>
+    <span class="kt">uint64_t</span> <span class="n">platform_id</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">connection_type</span><span class="p">;</span>
+    <span class="kt">bool</span> <span class="n">committed</span><span class="p">;</span>
+    <span class="kt">bool</span> <span class="n">multipath</span><span class="p">;</span>
+    <span class="kt">bool</span> <span class="n">flagged</span><span class="p">;</span>
+    <span class="kt">float</span> <span class="n">direct_min_rtt</span><span class="p">;</span>
+    <span class="kt">float</span> <span class="n">direct_max_rtt</span><span class="p">;</span>
+    <span class="kt">float</span> <span class="n">direct_mean_rtt</span><span class="p">;</span>
+    <span class="kt">float</span> <span class="n">direct_jitter</span><span class="p">;</span>
+    <span class="kt">float</span> <span class="n">direct_packet_loss</span><span class="p">;</span>
+    <span class="kt">bool</span> <span class="n">next</span><span class="p">;</span>
+    <span class="kt">float</span> <span class="n">next_min_rtt</span><span class="p">;</span>
+    <span class="kt">float</span> <span class="n">next_max_rtt</span><span class="p">;</span>
+    <span class="kt">float</span> <span class="n">next_mean_rtt</span><span class="p">;</span>
+    <span class="kt">float</span> <span class="n">next_jitter</span><span class="p">;</span>
+    <span class="kt">float</span> <span class="n">next_packet_loss</span><span class="p">;</span>
+    <span class="kt">float</span> <span class="n">next_kbps_up</span><span class="p">;</span>
+    <span class="kt">float</span> <span class="n">next_kbps_down</span><span class="p">;</span>
+    <span class="kt">uint64_t</span> <span class="n">packets_sent_client_to_server</span><span class="p">;</span>
+    <span class="kt">uint64_t</span> <span class="n">packets_sent_server_to_client</span><span class="p">;</span>
+    <span class="kt">uint64_t</span> <span class="n">packets_lost_client_to_server</span><span class="p">;</span>
+    <span class="kt">uint64_t</span> <span class="n">packets_lost_server_to_client</span><span class="p">;</span>
+    <span class="kt">uint64_t</span> <span class="n">user_flags</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>Here is how to query it, and print out various interesting values:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="k">const</span> <span class="n">next_client_stats_t</span> <span class="o">*</span> <span class="n">stats</span> <span class="o">=</span> <span class="n">next_client_stats</span><span class="p">(</span> <span class="n">client</span> <span class="p">);</span>
+
+<span class="n">printf</span><span class="p">(</span> <span class="s">&quot;Client Stats:</span><span class="se">\n</span><span class="s">&quot;</span> <span class="p">);</span>
+
+<span class="k">const</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">platform</span> <span class="o">=</span> <span class="s">&quot;unknown&quot;</span><span class="p">;</span>
+
+<span class="k">switch</span> <span class="p">(</span> <span class="n">stats</span><span class="o">-&gt;</span><span class="n">platform_id</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">case</span> <span class="nl">NEXT_PLATFORM_WINDOWS</span><span class="p">:</span>
+        <span class="n">platform</span> <span class="o">=</span> <span class="s">&quot;windows&quot;</span><span class="p">;</span>
+        <span class="k">break</span><span class="p">;</span>
+
+    <span class="k">case</span> <span class="nl">NEXT_PLATFORM_MAC</span><span class="p">:</span>
+        <span class="n">platform</span> <span class="o">=</span> <span class="s">&quot;mac&quot;</span><span class="p">;</span>
+        <span class="k">break</span><span class="p">;</span>
+
+    <span class="k">case</span> <span class="nl">NEXT_PLATFORM_LINUX</span><span class="p">:</span>
+        <span class="n">platform</span> <span class="o">=</span> <span class="s">&quot;linux&quot;</span><span class="p">;</span>
+        <span class="k">break</span><span class="p">;</span>
+
+    <span class="k">case</span> <span class="nl">NEXT_PLATFORM_SWITCH</span><span class="p">:</span>
+        <span class="n">platform</span> <span class="o">=</span> <span class="s">&quot;nintendo switch&quot;</span><span class="p">;</span>
+        <span class="k">break</span><span class="p">;</span>
+
+    <span class="k">case</span> <span class="nl">NEXT_PLATFORM_PS4</span><span class="p">:</span>
+        <span class="n">platform</span> <span class="o">=</span> <span class="s">&quot;ps4&quot;</span><span class="p">;</span>
+        <span class="k">break</span><span class="p">;</span>
+
+    <span class="k">case</span> <span class="nl">NEXT_PLATFORM_IOS</span><span class="p">:</span>
+        <span class="n">platform</span> <span class="o">=</span> <span class="s">&quot;ios&quot;</span><span class="p">;</span>
+        <span class="k">break</span><span class="p">;</span>
+
+    <span class="k">case</span> <span class="nl">NEXT_PLATFORM_XBOX_ONE</span><span class="p">:</span>
+        <span class="n">platform</span> <span class="o">=</span> <span class="s">&quot;xbox one&quot;</span><span class="p">;</span>
+        <span class="k">break</span><span class="p">;</span>
+
+    <span class="k">default</span><span class="o">:</span>
+        <span class="k">break</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">const</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">state</span> <span class="o">=</span> <span class="s">&quot;???&quot;</span><span class="p">;</span>
+
+<span class="k">const</span> <span class="kt">int</span> <span class="n">client_state</span> <span class="o">=</span> <span class="n">next_client_state</span><span class="p">(</span> <span class="n">client</span> <span class="p">);</span>
+
+<span class="k">switch</span> <span class="p">(</span> <span class="n">client_state</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">case</span> <span class="nl">NEXT_CLIENT_STATE_CLOSED</span><span class="p">:</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="s">&quot;closed&quot;</span><span class="p">;</span>
+        <span class="k">break</span><span class="p">;</span>
+
+    <span class="k">case</span> <span class="nl">NEXT_CLIENT_STATE_OPEN</span><span class="p">:</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="s">&quot;open&quot;</span><span class="p">;</span>
+        <span class="k">break</span><span class="p">;</span>
+
+    <span class="k">case</span> <span class="nl">NEXT_CLIENT_STATE_ERROR</span><span class="p">:</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="s">&quot;error&quot;</span><span class="p">;</span>
+        <span class="k">break</span><span class="p">;</span>
+
+    <span class="k">default</span><span class="o">:</span>
+        <span class="k">break</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="n">printf</span><span class="p">(</span> <span class="s">&quot; + State = %s (%d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="n">client_state</span> <span class="p">);</span>
+
+<span class="n">printf</span><span class="p">(</span> <span class="s">&quot; + Session Id = %&quot;</span> <span class="n">PRIx64</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">next_client_session_id</span><span class="p">(</span> <span class="n">client</span> <span class="p">)</span> <span class="p">);</span>
+
+<span class="n">printf</span><span class="p">(</span> <span class="s">&quot; + Platform = %s (%d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">platform</span><span class="p">,</span> <span class="p">(</span><span class="kt">int</span><span class="p">)</span> <span class="n">stats</span><span class="o">-&gt;</span><span class="n">platform_id</span> <span class="p">);</span>
+
+<span class="k">const</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">connection</span> <span class="o">=</span> <span class="s">&quot;unknown&quot;</span><span class="p">;</span>
+
+<span class="k">switch</span> <span class="p">(</span> <span class="n">stats</span><span class="o">-&gt;</span><span class="n">connection_type</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">case</span> <span class="nl">NEXT_CONNECTION_TYPE_WIRED</span><span class="p">:</span>
+        <span class="n">connection</span> <span class="o">=</span> <span class="s">&quot;wired&quot;</span><span class="p">;</span>
+        <span class="k">break</span><span class="p">;</span>
+
+    <span class="k">case</span> <span class="nl">NEXT_CONNECTION_TYPE_WIFI</span><span class="p">:</span>
+        <span class="n">connection</span> <span class="o">=</span> <span class="s">&quot;wifi&quot;</span><span class="p">;</span>
+        <span class="k">break</span><span class="p">;</span>
+
+    <span class="k">case</span> <span class="nl">NEXT_CONNECTION_TYPE_CELLULAR</span><span class="p">:</span>
+        <span class="n">connection</span> <span class="o">=</span> <span class="s">&quot;cellular&quot;</span><span class="p">;</span>
+        <span class="k">break</span><span class="p">;</span>
+
+    <span class="k">default</span><span class="o">:</span>
+        <span class="k">break</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="n">printf</span><span class="p">(</span> <span class="s">&quot; + Connection = %s (%d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">connection</span><span class="p">,</span> <span class="n">stats</span><span class="o">-&gt;</span><span class="n">connection_type</span> <span class="p">);</span>
+
+<span class="n">printf</span><span class="p">(</span> <span class="s">&quot; + Committed = %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">stats</span><span class="o">-&gt;</span><span class="n">committed</span> <span class="o">?</span> <span class="s">&quot;yes&quot;</span> <span class="o">:</span> <span class="s">&quot;no&quot;</span> <span class="p">);</span>
+
+<span class="n">printf</span><span class="p">(</span> <span class="s">&quot; + Multipath = %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">stats</span><span class="o">-&gt;</span><span class="n">multipath</span> <span class="o">?</span> <span class="s">&quot;yes&quot;</span> <span class="o">:</span> <span class="s">&quot;no&quot;</span> <span class="p">);</span>
+
+<span class="n">printf</span><span class="p">(</span> <span class="s">&quot; + Flagged = %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">stats</span><span class="o">-&gt;</span><span class="n">flagged</span> <span class="o">?</span> <span class="s">&quot;yes&quot;</span> <span class="o">:</span> <span class="s">&quot;no&quot;</span> <span class="p">);</span>
+
+<span class="n">printf</span><span class="p">(</span> <span class="s">&quot; + Direct RTT = %.2fms</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">stats</span><span class="o">-&gt;</span><span class="n">direct_min_rtt</span> <span class="p">);</span>
+<span class="n">printf</span><span class="p">(</span> <span class="s">&quot; + Direct Jitter = %.2fms</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">stats</span><span class="o">-&gt;</span><span class="n">direct_jitter</span> <span class="p">);</span>
+<span class="n">printf</span><span class="p">(</span> <span class="s">&quot; + Direct Packet Loss = %.1f%%</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">stats</span><span class="o">-&gt;</span><span class="n">direct_packet_loss</span> <span class="p">);</span>
+
+<span class="k">if</span> <span class="p">(</span> <span class="n">stats</span><span class="o">-&gt;</span><span class="n">next</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span> <span class="s">&quot; + Next RTT = %.2fms</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">stats</span><span class="o">-&gt;</span><span class="n">next_min_rtt</span> <span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span> <span class="s">&quot; + Next Jitter = %.2fms</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">stats</span><span class="o">-&gt;</span><span class="n">next_jitter</span> <span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span> <span class="s">&quot; + Next Packet Loss = %.1f%%</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">stats</span><span class="o">-&gt;</span><span class="n">next_packet_loss</span> <span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span> <span class="s">&quot; + Next Bandwidth Up = %.1fkbps</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">stats</span><span class="o">-&gt;</span><span class="n">next_kbps_up</span> <span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span> <span class="s">&quot; + Next Bandwidth Down = %.1fkbps</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">stats</span><span class="o">-&gt;</span><span class="n">next_kbps_down</span> <span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="next-client-set-user-flags">
+<h5>next_client_set_user_flags<a class="headerlink" href="#next-client-set-user-flags" title="Permalink to this headline">¶</a></h5>
+<p>Set user flags.</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span> <span class="nf">next_client_set_user_flags</span><span class="p">(</span> <span class="n">next_client_t</span> <span class="o">*</span> <span class="n">client</span><span class="p">,</span> <span class="kt">uint64_t</span> <span class="n">user_flags</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p>This feature was added to allow you to define your own set of flags, mapping to important events in <em>your</em> game, and pass them up to our backend.</p>
+<p>For example, you could define (1&lt;&lt;0) as “low framerate”, (1&lt;&lt;1) as “player died”, (1&lt;&lt;2) as “large frame hitch” and so on. Then, as we study reported sessions for your player base, our data scientists look for correlations with user flags you specify.</p>
+<p><strong>Parameters:</strong></p>
+<blockquote>
+<div><ul class="simple">
+<li><p><strong>client</strong> – The client instance.</p></li>
+<li><p><strong>user_flags</strong> – The current user flags value as defined by <em>you</em>.</p></li>
+</ul>
+</div></blockquote>
+</div>
+</div>
+<span id="document-next_server_t"></span><div class="section" id="next-server-t">
+<h4>next_server_t<a class="headerlink" href="#next-server-t" title="Permalink to this headline">¶</a></h4>
+<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+<p>Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin mauris. Integer in mauris eu nibh euismod gravida. Duis ac tellus et risus vulputate vehicula. Donec lobortis risus a elit. Etiam tempor. Ut ullamcorper, ligula eu tempor congue, eros est euismod turpis, id tincidunt sapien risus a quam. Maecenas fermentum consequat mi. Donec fermentum. Pellentesque malesuada nulla a mi. Duis sapien sem, aliquet nec, commodo eget, consequat quis, neque. Aliquam faucibus, elit ut dictum aliquet, felis nisl adipiscing sapien, sed malesuada diam lacus eget erat. Cras mollis scelerisque nunc. Nullam arcu. Aliquam consequat. Curabitur augue lorem, dapibus quis, laoreet et, pretium ac, nisi. Aenean magna nisl, mollis quis, molestie eu, feugiat in, orci. In hac habitasse platea dictumst.</p>
+<p><strong>Examples:</strong></p>
+<div class="toctree-wrapper compound">
+</div>
+</div>
+<div class="section" id="next-server-create">
+<h4>next_server_create<a class="headerlink" href="#next-server-create" title="Permalink to this headline">¶</a></h4>
+<p>Creates an instance of a server, binding a socket to the specified address and port.</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_server_t</span> <span class="o">*</span> <span class="nf">next_server_create</span><span class="p">(</span> <span class="kt">void</span> <span class="o">*</span> <span class="n">context</span><span class="p">,</span>
+                                    <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">server_address</span><span class="p">,</span>
+                                    <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">bind_address</span><span class="p">,</span>
+                                    <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">datacenter</span><span class="p">,</span>
+                                    <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">packet_received_callback</span><span class="p">)(</span> <span class="n">next_server_t</span> <span class="o">*</span> <span class="n">server</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span> <span class="n">context</span><span class="p">,</span> <span class="k">const</span> <span class="n">next_address_t</span> <span class="o">*</span> <span class="n">from</span><span class="p">,</span> <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span> <span class="n">packet_data</span><span class="p">,</span> <span class="kt">int</span> <span class="n">packet_bytes</span> <span class="p">)</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p><strong>Parameters:</strong></p>
+<blockquote>
+<div><ul class="simple">
+<li><p><strong>context</strong> – An optional pointer to context passed to any callbacks made from the server.</p></li>
+<li><p><strong>server_address</strong> – The public IP address and port that clients will connect to.</p></li>
+<li><p><strong>bind_address</strong> – The address and port to bind to. Typically “0.0.0.0:[portnum]” is passed in, binding the server socket to any IPv4 interface on a specific port, for example: “0.0.0.0:50000”.</p></li>
+<li><p><strong>datacenter</strong> – The name of the datacenter that the game server is running in. Please pass in “local” until we work with you to determine the set of datacenters you host servers in.</p></li>
+<li><p><strong>packet_received_callback</strong> – Called from the same thread that calls <em>next_server_update</em>, whenever a packet is received from a client. Required.</p></li>
+</ul>
+</div></blockquote>
+<p><strong>Return value:</strong></p>
+<blockquote>
+<div><p>The newly created server instance, or NULL, if the server could not be created.</p>
+<p>Typically, NULL is only returned when another socket is already bound on the same port, or if an invalid server or bind address is passed in.</p>
+</div></blockquote>
+<p><strong>Example:</strong></p>
+<p>First define a callback for received packets:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span> <span class="nf">server_packet_received</span><span class="p">(</span> <span class="n">next_server_t</span> <span class="o">*</span> <span class="n">server</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span> <span class="n">context</span><span class="p">,</span> <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span> <span class="n">packet_data</span><span class="p">,</span> <span class="kt">int</span> <span class="n">packet_bytes</span> <span class="p">)</span>
+<span class="p">{</span>
+        <span class="c1">// todo: print address here</span>
+    <span class="n">printf</span><span class="p">(</span> <span class="s">&quot;server received packet from client ... (%d bytes)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">packet_bytes</span> <span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Then, create a server:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_server_t</span> <span class="o">*</span> <span class="n">server</span> <span class="o">=</span> <span class="n">next_server_create</span><span class="p">(</span> <span class="nb">NULL</span><span class="p">,</span> <span class="s">&quot;0.0.0.0:0&quot;</span><span class="p">,</span> <span class="n">server_packet_received</span> <span class="p">);</span>
+<span class="k">if</span> <span class="p">(</span> <span class="n">server</span> <span class="o">==</span> <span class="nb">NULL</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span> <span class="s">&quot;error: failed to create server</span><span class="se">\n</span><span class="s">&quot;</span> <span class="p">);</span>
+    <span class="k">return</span> <span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="next-server-destroy">
+<h4>next_server_destroy<a class="headerlink" href="#next-server-destroy" title="Permalink to this headline">¶</a></h4>
+<p>Destroys a server instance, and the socket it manages internally.</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span> <span class="nf">next_server_destroy</span><span class="p">(</span> <span class="n">next_server_t</span> <span class="o">*</span> <span class="n">server</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p><strong>Parameters:</strong></p>
+<blockquote>
+<div><ul class="simple">
+<li><p><strong>server</strong> – The server instance to destroy. Must be a valid server instance created by <em>next_server_create</em>. Do not pass in NULL.</p></li>
+</ul>
+</div></blockquote>
+<p><strong>Example:</strong></p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_server_destroy</span><span class="p">(</span> <span class="n">server</span> <span class="p">);</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="next-server-port">
+<h4>next_server_port<a class="headerlink" href="#next-server-port" title="Permalink to this headline">¶</a></h4>
+<p>Gets the port the server socket is bound to.</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">uint16_t</span> <span class="nf">next_server_port</span><span class="p">(</span> <span class="n">next_server_t</span> <span class="o">*</span> <span class="n">server</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p><strong>Return value:</strong></p>
+<blockquote>
+<div><p>The port number the server socket is bound to.</p>
+</div></blockquote>
+<p><strong>Example:</strong></p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_server_t</span> <span class="o">*</span> <span class="n">server</span> <span class="o">=</span> <span class="n">next_server_create</span><span class="p">(</span> <span class="nb">NULL</span><span class="p">,</span> <span class="s">&quot;127.0.0.1&quot;</span><span class="p">,</span> <span class="s">&quot;0.0.0.0:50000&quot;</span><span class="p">,</span> <span class="s">&quot;local&quot;</span><span class="p">,</span> <span class="n">server_packet_received</span> <span class="p">);</span>
+<span class="k">if</span> <span class="p">(</span> <span class="n">server</span> <span class="o">==</span> <span class="nb">NULL</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span> <span class="s">&quot;error: failed to create server</span><span class="se">\n</span><span class="s">&quot;</span> <span class="p">);</span>
+    <span class="k">return</span> <span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">const</span> <span class="kt">uint16_t</span> <span class="n">server_port</span> <span class="o">=</span> <span class="n">next_server_port</span><span class="p">(</span> <span class="n">client</span> <span class="p">);</span>
+
+<span class="n">printf</span><span class="p">(</span> <span class="s">&quot;the client is bound to port %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">server_port</span> <span class="p">);</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="next-server-state">
+<h4>next_server_state<a class="headerlink" href="#next-server-state" title="Permalink to this headline">¶</a></h4>
+<p>Gets the state the server is in.</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">int</span> <span class="nf">next_server_state</span><span class="p">(</span> <span class="n">next_server_t</span> <span class="o">*</span> <span class="n">server</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p><strong>Parameters:</strong></p>
+<blockquote>
+<div><ul class="simple">
+<li><p><strong>server</strong> – The server instance.</p></li>
+</ul>
+</div></blockquote>
+<p><strong>Return value:</strong></p>
+<blockquote>
+<div><p>The server state, which is one of the following:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>NEXT_SERVER_STATE_DIRECT_ONLY</p></li>
+<li><p>NEXT_SERVER_STATE_RESOLVING_HOSTNAME</p></li>
+<li><p>NEXT_SERVER_STATE_INITIALIZING</p></li>
+<li><p>NEXT_SERVER_STATE_INITIALIZED</p></li>
+</ul>
+</div></blockquote>
+<p>The server is initially in the direct only state.</p>
+<p>If a valid customer private key is setup, the server will first try to resolve the backend hostname, which is “prod.networknext.com” by default.</p>
+<p>Once the backend hostname is resolved, the server initializes with the backend. When everything works, the server lands in the initialized state and is ready to accelerate players.</p>
+<p>If anything fails, the server falls back to the direct only state, and only serves up direct routes over the public internet.</p>
+</div></blockquote>
+<p><strong>Example:</strong></p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">state</span> <span class="o">=</span> <span class="s">&quot;???&quot;</span><span class="p">;</span>
+
+<span class="k">const</span> <span class="kt">int</span> <span class="n">server_state</span> <span class="o">=</span> <span class="n">next_server_state</span><span class="p">(</span> <span class="n">server</span> <span class="p">);</span>
+
+<span class="k">switch</span> <span class="p">(</span> <span class="n">server_state</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">case</span> <span class="nl">NEXT_SERVER_STATE_DIRECT_ONLY</span><span class="p">:</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="s">&quot;direct only&quot;</span><span class="p">;</span>
+        <span class="k">break</span><span class="p">;</span>
+
+    <span class="k">case</span> <span class="nl">NEXT_SERVER_STATE_RESOLVING_HOSTNAME</span><span class="p">:</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="s">&quot;resolving hostname&quot;</span><span class="p">;</span>
+        <span class="k">break</span><span class="p">;</span>
+
+    <span class="k">case</span> <span class="nl">NEXT_SERVER_STATE_INITIALIZING</span><span class="p">:</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="s">&quot;initializing&quot;</span><span class="p">;</span>
+        <span class="k">break</span><span class="p">;</span>
+
+    <span class="k">case</span> <span class="nl">NEXT_SERVER_STATE_INITIALIZED</span><span class="p">:</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="s">&quot;initialized&quot;</span><span class="p">;</span>
+        <span class="k">break</span><span class="p">;</span>
+
+    <span class="k">default</span><span class="o">:</span>
+        <span class="k">break</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="n">printf</span><span class="p">(</span> <span class="s">&quot;server state = %s (%d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="n">server_state</span> <span class="p">);</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="next-server-upgrade-session">
+<h4>next_server_upgrade_session<a class="headerlink" href="#next-server-upgrade-session" title="Permalink to this headline">¶</a></h4>
+<p>Upgrades a session for monitoring and <em>potential</em> acceleration by Network Next.</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">uint64_t</span> <span class="nf">next_server_upgrade_session</span><span class="p">(</span> <span class="n">next_server_t</span> <span class="o">*</span> <span class="n">server</span><span class="p">,</span>
+                                      <span class="k">const</span> <span class="n">next_address_t</span> <span class="o">*</span> <span class="n">address</span><span class="p">,</span>
+                                      <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">user_id</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p>IMPORTANT: Make sure you only call this function when you are 100% sure this is a real player in your game.</p>
+<p><strong>Parameters:</strong></p>
+<blockquote>
+<div><ul class="simple">
+<li><p><strong>server</strong> – The server instance.</p></li>
+<li><p><strong>address</strong> – The address of the client to be upgraded.</p></li>
+<li><p><strong>user_id</strong> – The user id for the session. Pass in any unique per-user identifier you have.</p></li>
+</ul>
+</div></blockquote>
+<p><strong>Return value:</strong></p>
+<blockquote>
+<div><p>The session id assigned the session that was upgraded.</p>
+</div></blockquote>
+<p><strong>Example:</strong></p>
+<p>The address struct is defined as follows:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="k">struct</span> <span class="n">next_address_t</span>
+<span class="p">{</span>
+    <span class="k">union</span> <span class="p">{</span> <span class="kt">uint8_t</span> <span class="n">ipv4</span><span class="p">[</span><span class="mi">4</span><span class="p">];</span> <span class="kt">uint16_t</span> <span class="n">ipv6</span><span class="p">[</span><span class="mi">8</span><span class="p">];</span> <span class="p">}</span> <span class="n">data</span><span class="p">;</span>
+    <span class="kt">uint16_t</span> <span class="n">port</span><span class="p">;</span>
+    <span class="kt">uint8_t</span> <span class="n">type</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>You can parse an address from a string like this:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_address_t</span> <span class="n">address</span><span class="p">;</span>
+<span class="k">if</span> <span class="p">(</span> <span class="n">next_address_parse</span><span class="p">(</span> <span class="o">&amp;</span><span class="n">address</span><span class="p">,</span> <span class="s">&quot;127.0.0.1:50000&quot;</span> <span class="p">)</span> <span class="o">!=</span> <span class="n">NEXT_OK</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span> <span class="s">&quot;error: failed to parse address</span><span class="se">\n</span><span class="s">&quot;</span> <span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The address struct is passed in when you receive packet from a client:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span> <span class="nf">server_packet_received</span><span class="p">(</span> <span class="n">next_server_t</span> <span class="o">*</span> <span class="n">server</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span> <span class="n">context</span><span class="p">,</span> <span class="k">const</span> <span class="n">next_address_t</span> <span class="o">*</span> <span class="n">from</span><span class="p">,</span> <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span> <span class="n">packet_data</span><span class="p">,</span> <span class="kt">int</span> <span class="n">packet_bytes</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">char</span> <span class="n">address_buffer</span><span class="p">[</span><span class="n">NEXT_MAX_ADDRESS_STRING_LENGTH</span><span class="p">];</span>
+    <span class="n">next_printf</span><span class="p">(</span> <span class="n">NEXT_LOG_LEVEL_INFO</span><span class="p">,</span> <span class="s">&quot;server received packet from client %s (%d bytes)&quot;</span><span class="p">,</span> <span class="n">next_address_to_string</span><span class="p">(</span> <span class="n">from</span><span class="p">,</span> <span class="n">address_buffer</span> <span class="p">),</span> <span class="n">packet_bytes</span> <span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Once you have the address, upgrading a session is easy:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_server_upgrade_session</span><span class="p">(</span> <span class="n">server</span><span class="p">,</span> <span class="n">client_address</span><span class="p">,</span> <span class="n">user_id</span> <span class="p">);</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="next-server-tag-session">
+<h4>next_server_tag_session<a class="headerlink" href="#next-server-tag-session" title="Permalink to this headline">¶</a></h4>
+<p>Tags a session for potentially different network optimization parameters.</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span> <span class="nf">next_server_tag_session</span><span class="p">(</span> <span class="n">next_server_t</span> <span class="o">*</span> <span class="n">server</span><span class="p">,</span> <span class="k">const</span> <span class="n">next_address_t</span> <span class="o">*</span> <span class="n">address</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">tag</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p><strong>Parameters:</strong></p>
+<blockquote>
+<div><ul class="simple">
+<li><p><strong>server</strong> – The server instance.</p></li>
+<li><p><strong>address</strong> – The address of the client to tag.</p></li>
+<li><p><strong>tag</strong> – The tag to be applied to the client. Some ideas: “pro”, “streamer” or “dev”.</p></li>
+</ul>
+</div></blockquote>
+<p><strong>Example:</strong></p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_server_tag_session</span><span class="p">(</span> <span class="n">server</span><span class="p">,</span> <span class="n">client_address</span><span class="p">,</span> <span class="s">&quot;pro&quot;</span> <span class="p">);</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="next-server-session-upgraded">
+<h4>next_server_session_upgraded<a class="headerlink" href="#next-server-session-upgraded" title="Permalink to this headline">¶</a></h4>
+<p>Checks if a session has been upgraded.</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">bool</span> <span class="nf">next_server_session_upgraded</span><span class="p">(</span> <span class="n">next_server_t</span> <span class="o">*</span> <span class="n">server</span><span class="p">,</span> <span class="k">const</span> <span class="n">next_address_t</span> <span class="o">*</span> <span class="n">address</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p><strong>Parameters:</strong></p>
+<blockquote>
+<div><ul class="simple">
+<li><p><strong>server</strong> – The server instance.</p></li>
+<li><p><strong>address</strong> – The address of the client to check.</p></li>
+</ul>
+</div></blockquote>
+<p><strong>Return value:</strong></p>
+<blockquote>
+<div><p>True if the session has been upgraded, false otherwise.</p>
+</div></blockquote>
+<p><strong>Example:</strong></p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="k">const</span> <span class="kt">bool</span> <span class="n">upgraded</span> <span class="o">=</span> <span class="n">next_server_session_upgraded</span><span class="p">(</span> <span class="n">server</span><span class="p">,</span> <span class="n">client_address</span> <span class="p">);</span>
+
+<span class="n">printf</span><span class="p">(</span> <span class="s">&quot;session upgraded = %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">upgraded</span> <span class="o">?</span> <span class="s">&quot;true&quot;</span> <span class="o">:</span> <span class="s">&quot;false&quot;</span> <span class="p">);</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="next-server-send-packet">
+<h4>next_server_send_packet<a class="headerlink" href="#next-server-send-packet" title="Permalink to this headline">¶</a></h4>
+<p>Send a packet to a client.</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span> <span class="nf">next_server_send_packet</span><span class="p">(</span> <span class="n">next_server_t</span> <span class="o">*</span> <span class="n">server</span><span class="p">,</span> <span class="k">const</span> <span class="n">next_address_t</span> <span class="o">*</span> <span class="n">to_address</span><span class="p">,</span> <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span> <span class="n">packet_data</span><span class="p">,</span> <span class="kt">int</span> <span class="n">packet_bytes</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p>Sends a packet to a client. If the client is upgraded and accelerated by network next, the packet will be sent across our private network of networks.</p>
+<p>Otherwise, the packet will be sent across the public internet.</p>
+<p><strong>Parameters:</strong></p>
+<blockquote>
+<div><ul class="simple">
+<li><p><strong>server</strong> – The server instance.</p></li>
+<li><p><strong>to_address</strong> – The address of the client to send the packet to.</p></li>
+<li><p><strong>packet_data</strong> – The packet data to send.</p></li>
+<li><p><strong>packet_bytes</strong> – The size of the packet. Must be in the range 1 to NEXT_MTU (1300).</p></li>
+</ul>
+</div></blockquote>
+<p><strong>Example:</strong></p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">uint8_t</span> <span class="n">packet_data</span><span class="p">[</span><span class="mi">32</span><span class="p">];</span>
+<span class="n">memset</span><span class="p">(</span> <span class="n">packet_data</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">packet_data</span><span class="p">)</span> <span class="p">);</span>
+<span class="n">next_server_send_packet</span><span class="p">(</span> <span class="n">server</span><span class="p">,</span> <span class="n">client_address</span><span class="p">,</span> <span class="n">packet_data</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">packet_data</span><span class="p">)</span> <span class="p">);</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="next-server-send-packet-direct">
+<h4>next_server_send_packet_direct<a class="headerlink" href="#next-server-send-packet-direct" title="Permalink to this headline">¶</a></h4>
+<p>Send a packet to a client, forcing the packet to be sent over the public internet.</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span> <span class="nf">next_server_send_packet_direct</span><span class="p">(</span> <span class="n">next_server_t</span> <span class="o">*</span> <span class="n">server</span><span class="p">,</span> <span class="k">const</span> <span class="n">next_address_t</span> <span class="o">*</span> <span class="n">to_address</span><span class="p">,</span> <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span> <span class="n">packet_data</span><span class="p">,</span> <span class="kt">int</span> <span class="n">packet_bytes</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p>This function is useful when you need to send non-latency sensitive packets to the client, for example, during a load screen.</p>
+<p>Packets sent via this function do not apply to your network next bandwidth envelope.</p>
+<p><strong>Parameters:</strong></p>
+<blockquote>
+<div><ul class="simple">
+<li><p><strong>server</strong> – The server instance.</p></li>
+<li><p><strong>to_address</strong> – The address of the client to send the packet to.</p></li>
+<li><p><strong>packet_data</strong> – The packet data to send.</p></li>
+<li><p><strong>packet_bytes</strong> – The size of the packet. Must be in the range 1 to NEXT_MTU (1300).</p></li>
+</ul>
+</div></blockquote>
+<p><strong>Example:</strong></p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">uint8_t</span> <span class="n">packet_data</span><span class="p">[</span><span class="mi">32</span><span class="p">];</span>
+<span class="n">memset</span><span class="p">(</span> <span class="n">packet_data</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">packet_data</span><span class="p">)</span> <span class="p">);</span>
+<span class="n">next_server_send_packet_direct</span><span class="p">(</span> <span class="n">server</span><span class="p">,</span> <span class="n">client_address</span><span class="p">,</span> <span class="n">packet_data</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">packet_data</span><span class="p">)</span> <span class="p">);</span>
+</pre></div>
+</div>
+</div>
+<span id="document-next_address_t"></span><div class="section" id="next-address-t">
+<h4>next_address_t<a class="headerlink" href="#next-address-t" title="Permalink to this headline">¶</a></h4>
+<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+<p>Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin mauris. Integer in mauris eu nibh euismod gravida. Duis ac tellus et risus vulputate vehicula. Donec lobortis risus a elit. Etiam tempor. Ut ullamcorper, ligula eu tempor congue, eros est euismod turpis, id tincidunt sapien risus a quam. Maecenas fermentum consequat mi. Donec fermentum. Pellentesque malesuada nulla a mi. Duis sapien sem, aliquet nec, commodo eget, consequat quis, neque. Aliquam faucibus, elit ut dictum aliquet, felis nisl adipiscing sapien, sed malesuada diam lacus eget erat. Cras mollis scelerisque nunc. Nullam arcu. Aliquam consequat. Curabitur augue lorem, dapibus quis, laoreet et, pretium ac, nisi. Aenean magna nisl, mollis quis, molestie eu, feugiat in, orci. In hac habitasse platea dictumst.</p>
+<div class="section" id="next-client-create">
+<h5>next_client_create<a class="headerlink" href="#next-client-create" title="Permalink to this headline">¶</a></h5>
+<p>Creates an instance of a client, binding a socket to the specified address and port.</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_client_t</span> <span class="o">*</span> <span class="nf">next_client_create</span><span class="p">(</span> <span class="kt">void</span> <span class="o">*</span> <span class="n">context</span><span class="p">,</span>
+                                    <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">bind_address</span><span class="p">,</span>
+                                    <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">packet_received_callback</span><span class="p">)(</span> <span class="n">next_client_t</span> <span class="o">*</span> <span class="n">client</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span> <span class="n">context</span><span class="p">,</span> <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span> <span class="n">packet_data</span><span class="p">,</span> <span class="kt">int</span> <span class="n">packet_bytes</span> <span class="p">)</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p><strong>Parameters:</strong></p>
+<blockquote>
+<div><ul class="simple">
+<li><p><strong>context</strong> – An optional pointer to context passed to any callbacks made from the client.</p></li>
+<li><p><strong>bind_address</strong> – An address string describing the bind address and port to bind to. Typically “0.0.0.0:0” is passed in, which binds to any IPv4 interface and lets the system pick a port. Alternatively, you can bind to a specific port, for example: “0.0.0.0:50000”.</p></li>
+<li><p><strong>packet_received_callback</strong> – Called from the same thread that calls <em>next_client_update</em>, whenever a packet is received from the server. Required.</p></li>
+</ul>
+</div></blockquote>
+<p><strong>Return value:</strong></p>
+<blockquote>
+<div><p>The newly created client instance, or NULL, if the client could not be created.</p>
+<p>Typically, NULL is only returned when another socket is already bound on the same port, or if an invalid bind address is passed in.</p>
+</div></blockquote>
+<p><strong>Example:</strong></p>
+<p>First define a callback for received packets:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span> <span class="nf">client_packet_received</span><span class="p">(</span> <span class="n">next_client_t</span> <span class="o">*</span> <span class="n">client</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span> <span class="n">context</span><span class="p">,</span> <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span> <span class="n">packet_data</span><span class="p">,</span> <span class="kt">int</span> <span class="n">packet_bytes</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span> <span class="s">&quot;client received packet from server (%d bytes)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">packet_bytes</span> <span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Then, create a client:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_client_t</span> <span class="o">*</span> <span class="n">client</span> <span class="o">=</span> <span class="n">next_client_create</span><span class="p">(</span> <span class="nb">NULL</span><span class="p">,</span> <span class="s">&quot;0.0.0.0:0&quot;</span><span class="p">,</span> <span class="n">client_packet_received</span> <span class="p">);</span>
+<span class="k">if</span> <span class="p">(</span> <span class="n">client</span> <span class="o">==</span> <span class="nb">NULL</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span> <span class="s">&quot;error: failed to create client</span><span class="se">\n</span><span class="s">&quot;</span> <span class="p">);</span>
+    <span class="k">return</span> <span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="next-client-destroy">
+<h5>next_client_destroy<a class="headerlink" href="#next-client-destroy" title="Permalink to this headline">¶</a></h5>
+<p>Destroys a client instance, and the socket it manages internally.</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span> <span class="nf">next_client_destroy</span><span class="p">(</span> <span class="n">next_client_t</span> <span class="o">*</span> <span class="n">client</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p><strong>Parameters:</strong></p>
+<blockquote>
+<div><ul class="simple">
+<li><p><strong>client</strong> – The client instance to destroy. Must be a valid client instance created by <em>next_client_create</em>. Do not pass in NULL.</p></li>
+</ul>
+</div></blockquote>
+<p><strong>Example:</strong></p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_client_destroy</span><span class="p">(</span> <span class="n">client</span> <span class="p">);</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="next-client-port">
+<h5>next_client_port<a class="headerlink" href="#next-client-port" title="Permalink to this headline">¶</a></h5>
+<p>Gets the port the client socket is bound to.</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">uint16_t</span> <span class="nf">next_client_port</span><span class="p">(</span> <span class="n">next_client_t</span> <span class="o">*</span> <span class="n">client</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p><strong>Return value:</strong></p>
+<blockquote>
+<div><p>The port number the client socket is bound to.</p>
+<p>This makes it possible to look up what specific port the client is bound to when you bind to port zero and the system chooses a port.</p>
+</div></blockquote>
+<p><strong>Example:</strong></p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">next_client_t</span> <span class="o">*</span> <span class="n">client</span> <span class="o">=</span> <span class="n">next_client_create</span><span class="p">(</span> <span class="nb">NULL</span><span class="p">,</span> <span class="s">&quot;0.0.0.0:0&quot;</span><span class="p">,</span> <span class="n">client_packet_received</span> <span class="p">);</span>
+<span class="k">if</span> <span class="p">(</span> <span class="n">client</span> <span class="o">==</span> <span class="nb">NULL</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span> <span class="s">&quot;error: failed to create client</span><span class="se">\n</span><span class="s">&quot;</span> <span class="p">);</span>
+    <span class="k">return</span> <span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">const</span> <span class="kt">uint16_t</span> <span class="n">client_port</span> <span class="o">=</span> <span class="n">next_client_port</span><span class="p">(</span> <span class="n">client</span> <span class="p">);</span>
+
+<span class="n">printf</span><span class="p">(</span> <span class="s">&quot;the client was bound to port %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">client_port</span> <span class="p">);</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="#">Network Next SDK</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="index.html#document-how_it_works">How it works</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html#document-getting_started">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html#document-building_the_sdk">Building the SDK</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html#document-simple_client_example">Simple Client Example</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html#document-simple_server_example">Simple Server Example</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html#document-upgraded_client_example">Upgraded Client Example</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html#document-upgraded_server_example">Upgraded Server Example</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html#document-complex_client_example">Complex Client Example</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html#document-complex_server_example">Complex Server Example</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html#document-reference">Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="#">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, Network Next, Inc..
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.0.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

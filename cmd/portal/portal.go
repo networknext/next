@@ -428,10 +428,15 @@ func main() {
 				level.Error(logger).Log("msg", "unable to get relay stats", "err", err)
 				continue
 			}
-			defer res.Body.Close()
+
+			if res.ContentLength == -1 {
+				res.Body.Close()
+				continue
+			}
 
 			data := make([]byte, res.ContentLength)
 			res.Body.Read(data)
+			res.Body.Close()
 
 			index := 0
 
@@ -475,16 +480,19 @@ func main() {
 				var major uint8
 				if !encoding.ReadUint8(data, &index, &major) {
 					level.Error(logger).Log("msg", "unable to relay stats major version")
+					break
 				}
 
 				var minor uint8
 				if !encoding.ReadUint8(data, &index, &minor) {
 					level.Error(logger).Log("msg", "unable to relay stats minor version")
+					break
 				}
 
 				var patch uint8
 				if !encoding.ReadUint8(data, &index, &patch) {
 					level.Error(logger).Log("msg", "unable to relay stats patch version")
+					break
 				}
 
 				relay.Version = fmt.Sprintf("%d.%d.%d", major, minor, patch)

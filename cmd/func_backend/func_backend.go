@@ -157,24 +157,15 @@ func TimeoutThread() {
 	}
 }
 
-func (backend *Backend) GetNearRelays() []routing.Relay {
-	var nearRelays = make([]routing.Relay, 0)
+func (backend *Backend) GetNearRelays() []*routing.RelayData {
 	backend.mutex.Lock()
 	allRelayData := backend.relayMap.GetAllRelayData()
 	backend.mutex.Unlock()
-	for _, relayData := range allRelayData {
-		nearRelays = append(nearRelays, routing.Relay{
-			ID:         relayData.ID,
-			Addr:       relayData.Addr,
-			Datacenter: relayData.Datacenter,
-			PublicKey:  relayData.PublicKey,
-		})
+	sort.SliceStable(allRelayData, func(i, j int) bool { return allRelayData[i].ID < allRelayData[j].ID })
+	if len(allRelayData) > int(transport.MaxNearRelays) {
+		allRelayData = allRelayData[:transport.MaxNearRelays]
 	}
-	sort.SliceStable(nearRelays[:], func(i, j int) bool { return nearRelays[i].ID < nearRelays[j].ID })
-	if len(nearRelays) > int(transport.MaxNearRelays) {
-		nearRelays = nearRelays[:transport.MaxNearRelays]
-	}
-	return nearRelays
+	return allRelayData
 }
 
 func main() {
@@ -421,11 +412,13 @@ func main() {
 			}
 
 			// Extract ids and addresses into own list to make response
-			var nearRelayIDs = make([]uint64, 0)
-			var nearRelayAddresses = make([]net.UDPAddr, 0)
-			for _, relay := range nearRelays {
-				nearRelayIDs = append(nearRelayIDs, relay.ID)
-				nearRelayAddresses = append(nearRelayAddresses, relay.Addr)
+			var nearRelayIDs = [MaxRelays]uint64{}
+			var nearRelayAddresses = [MaxRelays]net.UDPAddr{}
+			var nearRelayPublicKeys = [MaxRelays][]byte{}
+			for i, relay := range nearRelays {
+				nearRelayIDs[i] = relay.ID
+				nearRelayAddresses[i] = relay.Addr
+				nearRelayPublicKeys[i] = relay.PublicKey
 			}
 
 			if !takeNetworkNext {
@@ -435,8 +428,8 @@ func main() {
 					Sequence:             sessionUpdate.Sequence,
 					SessionID:            sessionUpdate.SessionID,
 					NumNearRelays:        int32(len(nearRelays)),
-					NearRelayIDs:         nearRelayIDs,
-					NearRelayAddresses:   nearRelayAddresses,
+					NearRelayIDs:         nearRelayIDs[:len(nearRelays)],
+					NearRelayAddresses:   nearRelayAddresses[:len(nearRelays)],
 					RouteType:            int32(routing.RouteTypeDirect),
 					NumTokens:            0,
 					Tokens:               nil,
@@ -454,13 +447,25 @@ func main() {
 					numRelays = routing.MaxRelays
 				}
 				nextRoute := routing.Route{
-					Relays: nearRelays[:numRelays],
+					NumRelays:       numRelays,
+					RelayIDs:        nearRelayIDs,
+					RelayAddrs:      nearRelayAddresses,
+					RelayPublicKeys: nearRelayPublicKeys,
 				}
 
 				if newSession {
 					sessionEntry.TimestampExpire = time.Now().Add(billing.BillingSliceSeconds * 2 * time.Second)
 				} else {
 					sessionEntry.TimestampExpire = sessionEntry.TimestampExpire.Add(billing.BillingSliceSeconds * time.Second)
+				}
+
+				relayTokens := make([]routing.RelayToken, nextRoute.NumRelays)
+				for i := range relayTokens {
+					relayTokens[i] = routing.RelayToken{
+						ID:        nextRoute.RelayIDs[i],
+						Addr:      nextRoute.RelayAddrs[i],
+						PublicKey: nextRoute.RelayPublicKeys[i],
+					}
 				}
 
 				var token routing.Token
@@ -483,7 +488,7 @@ func main() {
 							PublicKey: serverEntry.publicKey,
 						},
 
-						Relays: nextRoute.Relays,
+						Relays: relayTokens,
 					}
 				} else {
 					sessionEntry.Version++
@@ -506,7 +511,7 @@ func main() {
 							PublicKey: serverEntry.publicKey,
 						},
 
-						Relays: nextRoute.Relays,
+						Relays: relayTokens,
 
 						KbpsUp:   256 * 100,
 						KbpsDown: 256 * 100,
@@ -524,8 +529,8 @@ func main() {
 					Sequence:             sessionUpdate.Sequence,
 					SessionID:            sessionUpdate.SessionID,
 					NumNearRelays:        int32(len(nearRelays)),
-					NearRelayIDs:         nearRelayIDs,
-					NearRelayAddresses:   nearRelayAddresses,
+					NearRelayIDs:         nearRelayIDs[:len(nearRelays)],
+					NearRelayAddresses:   nearRelayAddresses[:len(nearRelays)],
 					RouteType:            int32(token.Type()),
 					Multipath:            multipath,
 					Committed:            committed,
@@ -580,7 +585,7 @@ const UpdateRequestVersion = 0
 const UpdateResponseVersion = 0
 const MaxRelayAddressLength = 256
 const RelayTokenBytes = 32
-const MaxRelays = 1024
+const MaxRelays = 5
 
 func ReadUint32(data []byte, index *int, value *uint32) bool {
 	if *index+4 > len(data) {
