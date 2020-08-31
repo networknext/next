@@ -49,7 +49,7 @@
 import { Component, Vue } from 'vue-property-decorator'
 import { Route, NavigationGuardNext } from 'vue-router'
 import UserSessions from '@/components/UserSessions.vue'
-import { AlertTypes } from '../types/AlertTypes'
+import { AlertTypes } from '@/components/types/AlertTypes'
 import Alert from '@/components/Alert.vue'
 
 /**

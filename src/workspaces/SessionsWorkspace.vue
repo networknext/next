@@ -119,10 +119,10 @@ import SessionCounts from '@/components/SessionCounts.vue'
   }
 })
 export default class SessionsWorkspace extends Vue {
-  private sessions: Array<any>;
-  private sessionsLoop: number;
-  private showTable: boolean;
-  private unwatch: any;
+  private sessions: Array<any>
+  private sessionsLoop: number
+  private showTable: boolean
+  private unwatch: any
   private vueInstance: any
 
   constructor () {
