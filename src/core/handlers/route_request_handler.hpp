@@ -11,6 +11,7 @@
 
 using core::RouterInfo;
 using core::RouteToken;
+using core::SessionMap;
 using crypto::Keychain;
 using os::Socket;
 using util::ThroughputRecorder;
@@ -50,9 +51,8 @@ namespace core
         }
       }
 
-      // don't do anything if the token is expired - probably should log something here
       if (token.expired(router_info)) {
-        LOG(INFO, "ignoring route request. token expired");
+        LOG(INFO, "ignoring route request, token expired, session = ", token);
         return;
       }
 

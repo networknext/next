@@ -19,8 +19,8 @@ namespace core
     uint8_t SessionVersion;
     uint64_t ClientToServerSeq;
     uint64_t ServerToClientSeq;
-    int KbpsUp;
-    int KbpsDown;
+    uint32_t KbpsUp;
+    uint32_t KbpsDown;
     net::Address PrevAddr;
     net::Address NextAddr;
     std::array<uint8_t, crypto_box_SECRETKEYBYTES> PrivateKey;
