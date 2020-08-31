@@ -5,6 +5,7 @@
 #include "core/throughput_recorder.hpp"
 #include "os/socket.hpp"
 
+using core::Packet;
 using core::packets::Type;
 using os::Socket;
 using util::ThroughputRecorder;
