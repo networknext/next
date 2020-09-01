@@ -6,6 +6,7 @@ describe('Alert.vue', () => {
   it('mounts an alert successfully', () => {
     const wrapper = shallowMount(Alert)
     expect(wrapper.exists()).toBe(true)
+    wrapper.destroy()
   })
 
   it('mounts an alert with a message', () => {
@@ -21,6 +22,7 @@ describe('Alert.vue', () => {
     expect(wrapper.find('div').classes(AlertTypes.DEFAULT)).toBe(true)
     // ^^^
     expect(wrapper.find('div').text()).toBe('This is a test')
+    wrapper.destroy()
   })
 
   it('mounts an alert with a message and alert type', () => {
@@ -35,6 +37,7 @@ describe('Alert.vue', () => {
     expect(wrapper.find('div').classes(AlertTypes.SUCCESS)).toBe(true)
     // ^^^
     expect(wrapper.find('div').text()).toBe('This is still a test')
+    wrapper.destroy()
   })
 
   it('mounts an alert with a link', () => {
@@ -50,6 +53,7 @@ describe('Alert.vue', () => {
 
     expect(wrapper.find('div').text()).toBe('This is a test with a link: \n  I am a link!')
     expect(wrapper.find('a').text()).toBe('I am a link!')
+    wrapper.destroy()
   })
 
   it('tests computed properties', () => {
@@ -75,5 +79,6 @@ describe('Alert.vue', () => {
 
     expect((wrapper.vm as any).alertMessage).toBe(message)
     expect((wrapper.vm as any).className).toBe(alertType)
+    wrapper.destroy()
   })
 })

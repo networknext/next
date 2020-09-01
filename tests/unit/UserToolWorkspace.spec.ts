@@ -1,4 +1,4 @@
-import { shallowMount, createLocalVue, mount } from '@vue/test-utils'
+import { shallowMount, createLocalVue, mount, createWrapper } from '@vue/test-utils'
 import UserToolWorkspace from '@/workspaces/UserToolWorkspace.vue'
 import VueRouter from 'vue-router'
 import { waitFor } from './utils'
@@ -22,6 +22,7 @@ describe('UserToolWorkspace.vue', () => {
     const router = defaultRouter
     const wrapper = shallowMount(UserToolWorkspace, { localVue, router })
     expect(wrapper.exists()).toBe(true)
+    wrapper.destroy()
   })
 
   it('check no sessions for user', () => {
@@ -53,6 +54,7 @@ describe('UserToolWorkspace.vue', () => {
 
     // Check for an info alert
     expect(wrapper.find('.alert').text()).toBe('Please enter a User ID or Hash to view their sessions.')
+    wrapper.destroy()
   })
 
   it('type into input and search', () => {
