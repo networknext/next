@@ -157,25 +157,28 @@ type RelayTrafficStats struct {
 }
 
 // MaxValues returns the maximum values between the receiving instance and the given one
-func (rts *RelayTrafficStats) MaxValues(other *RelayTrafficStats, out *RelayTrafficStats) {
+func (rts *RelayTrafficStats) MaxValues(other *RelayTrafficStats) RelayTrafficStats {
+	var retval RelayTrafficStats
 
 	if rts.SessionCount > other.SessionCount {
-		out.SessionCount = rts.SessionCount
+		retval.SessionCount = rts.SessionCount
 	} else {
-		out.SessionCount = other.SessionCount
+		retval.SessionCount = other.SessionCount
 	}
 
 	if rts.BytesSent > other.BytesSent {
-		out.BytesSent = rts.BytesSent
+		retval.BytesSent = rts.BytesSent
 	} else {
-		out.BytesSent = other.BytesSent
+		retval.BytesSent = other.BytesSent
 	}
 
 	if rts.BytesReceived > other.BytesReceived {
-		out.BytesReceived = rts.BytesReceived
+		retval.BytesReceived = rts.BytesReceived
 	} else {
-		out.BytesReceived = other.BytesReceived
+		retval.BytesReceived = other.BytesReceived
 	}
+
+	return retval
 }
 
 type Stats struct {
