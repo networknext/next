@@ -3,7 +3,7 @@ import UserSessions from '@/components/UserSessions.vue'
 import UserToolWorkspace from '@/workspaces/UserToolWorkspace.vue'
 import VueRouter from 'vue-router'
 import { JSONRPCPlugin } from '@/plugins/jsonrpc'
-import { CombinedVueInstance } from 'vue/types/vue'
+import { waitFor } from './utils'
 
 describe('UserSessions.vue no sessions', () => {
   const localVue = createLocalVue()
@@ -39,6 +39,9 @@ describe('UserSessions.vue no sessions', () => {
 
     // Trigger the user sessions page through navigation
     router.push({ path: '/user-tool/0000000000' })
+
+    // Check if navigation worked
+    expect(router.currentRoute.fullPath).toBe('/user-tool/0000000000')
 
     const spy = jest.spyOn(localVue.prototype.$apiService, 'fetchUserSessions').mockImplementationOnce(() => {
       return Promise.resolve({ sessions: [] })
@@ -96,6 +99,9 @@ describe('UserSessions.vue no sessions', () => {
     // Trigger the user sessions page through navigation
     router.push({ path: '/user-tool/0000000000' })
 
+    // Check if navigation worked
+    expect(router.currentRoute.fullPath).toBe('/user-tool/0000000000')
+
     const spy = jest.spyOn(localVue.prototype.$apiService, 'fetchUserSessions').mockImplementationOnce(() => {
       return Promise.resolve(
         {
@@ -150,19 +156,3 @@ describe('UserSessions.vue no sessions', () => {
     expect(row.at(5).text()).toBe('127.0.0.1')
   })
 })
-
-const waitFor = (
-  wrapper:
-    Wrapper<CombinedVueInstance<UserSessions, object, object, object, Record<never, any>>>,
-  selector: string
-) => {
-  return new Promise(resolve => {
-    const timer = setInterval(() => {
-      const el = wrapper.findAll(selector)
-      if (el.length > 0) {
-        clearInterval(timer)
-        resolve()
-      }
-    }, 100)
-  })
-}
