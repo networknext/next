@@ -396,6 +396,9 @@ func main() {
 	var datacenterIdSigned bool
 	datacentersfs.BoolVar(&datacenterIdSigned, "signed", false, "Display datacenter IDs as signed ints")
 
+	var datacentersCSV bool
+	datacentersfs.BoolVar(&datacentersCSV, "csv", false, "Send output to CSV instead of the command line")
+
 	sessionsfs := flag.NewFlagSet("sessions", flag.ExitOnError)
 	var sessionCount int64
 	sessionsfs.Int64Var(&sessionCount, "n", 0, "number of top sessions to display (default: all)")
@@ -1216,10 +1219,10 @@ func main() {
 		FlagSet:    datacentersfs,
 		Exec: func(_ context.Context, args []string) error {
 			if len(args) > 0 {
-				datacenters(rpcClient, env, args[0], datacenterIdSigned)
+				datacenters(rpcClient, env, args[0], datacenterIdSigned, datacentersCSV)
 				return nil
 			}
-			datacenters(rpcClient, env, "", datacenterIdSigned)
+			datacenters(rpcClient, env, "", datacenterIdSigned, datacentersCSV)
 			return nil
 		},
 	}
