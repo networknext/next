@@ -49,13 +49,6 @@ export default class Workspace extends Vue {
 
   private message: string
   private alertType: string
-<<<<<<< HEAD:src/workspaces/Workspace.vue
-
-  constructor () {
-    super()
-    this.message = ''
-    this.alertType = ''
-=======
   private vueInstance: any
   private unwatch: any
 
@@ -71,7 +64,6 @@ export default class Workspace extends Vue {
         this.updateAlert(showAlert)
       }
     )
->>>>>>> Fixed issue with the verification email alert and upgrading new accounts:src/components/workspaces/Workspace.vue
   }
 
   private destroy () {
