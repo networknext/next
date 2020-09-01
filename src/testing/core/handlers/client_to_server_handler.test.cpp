@@ -25,20 +25,21 @@ Test(core_handlers_client_to_server_handler_unsigned_packet)
   Packet packet;
   SessionMap map;
   ThroughputRecorder recorder;
+  RouterInfo router_info;
   Socket socket;
 
   const GenericKey private_key = random_private_key();
 
-  RouterInfo info;
-  info.setTimestamp(0);
-
-  packet.Len = Header::ByteSize + 100;
+  router_info.setTimestamp(0);
 
   Address addr;
   SocketConfig config = default_socket_config();
 
   check(addr.parse("127.0.0.1"));
   check(socket.create(addr, config));
+
+  packet.Len = Header::ByteSize + 100;
+  packet.Addr = addr;
 
   Header header = {
    .type = Type::ClientToServer,
@@ -62,7 +63,7 @@ Test(core_handlers_client_to_server_handler_unsigned_packet)
   check(header.write(packet, index, Direction::ClientToServer, private_key));
   check(index == Header::ByteSize);
 
-  core::handlers::client_to_server_handler(packet, map, recorder, info, socket, false);
+  core::handlers::client_to_server_handler(packet, map, recorder, router_info, socket, false);
   size_t prev_len = packet.Len;
   check(socket.recv(packet));
   check(prev_len == packet.Len);
@@ -73,30 +74,31 @@ Test(core_handlers_client_to_server_handler_unsigned_packet)
     std::cout << "byte count = " << recorder.ClientToServerTx.ByteCount << std::endl;
   });
 
-  core::handlers::client_to_server_handler(packet, map, recorder, info, socket, false);
+  core::handlers::client_to_server_handler(packet, map, recorder, router_info, socket, false);
   // check already received
   check(!socket.recv(packet));
 }
 
 Test(core_handlers_client_to_server_handler_signed_packet)
 {
-  Socket socket;
   Packet packet;
   SessionMap map;
   ThroughputRecorder recorder;
+  RouterInfo router_info;
+  Socket socket;
 
   const GenericKey private_key = random_private_key();
 
-  RouterInfo info;
-  info.setTimestamp(0);
-
-  packet.Len = crypto::PacketHashLength + Header::ByteSize + 100;
+  router_info.setTimestamp(0);
 
   Address addr;
   SocketConfig config = default_socket_config();
 
   check(addr.parse("127.0.0.1"));
   check(socket.create(addr, config));
+
+  packet.Len = crypto::PacketHashLength + Header::ByteSize + 100;
+  packet.Addr = addr;
 
   Header header = {
    .type = Type::ClientToServer,
@@ -122,10 +124,10 @@ Test(core_handlers_client_to_server_handler_signed_packet)
   check(header.write(packet, index, Direction::ClientToServer, private_key));
   check(index == crypto::PacketHashLength + Header::ByteSize);
 
-  core::handlers::client_to_server_handler(packet, map, recorder, info, socket, true);
+  core::handlers::client_to_server_handler(packet, map, recorder, router_info, socket, true);
   check(socket.recv(packet));
 
-  core::handlers::client_to_server_handler(packet, map, recorder, info, socket, true);
+  core::handlers::client_to_server_handler(packet, map, recorder, router_info, socket, true);
   // check already received
   check(!socket.recv(packet));
 }

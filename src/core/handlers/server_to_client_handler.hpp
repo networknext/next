@@ -1,5 +1,7 @@
 #pragma once
 
+#include "core/packets/header.hpp"
+#include "core/packets/types.hpp"
 #include "core/session_map.hpp"
 #include "core/throughput_recorder.hpp"
 #include "os/socket.hpp"
