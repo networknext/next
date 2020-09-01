@@ -32,6 +32,7 @@ describe('UserSessions.vue no sessions', () => {
     const router = defaultRouter
     const wrapper = shallowMount(UserSessions, { localVue, router })
     expect(wrapper.exists()).toBe(true)
+    wrapper.destroy()
   })
 
   it('check no sessions for user', async () => {
@@ -76,6 +77,7 @@ describe('UserSessions.vue no sessions', () => {
     const rows = wrapper.findAll('td')
     expect(wrapper.findAll('td').length).toBe(1)
     expect(rows.at(0).text()).toBe('There are no sessions belonging to this user.')
+    wrapper.destroy()
   })
 
   it('check sessions for user', async () => {
@@ -154,5 +156,6 @@ describe('UserSessions.vue no sessions', () => {
     expect(row.at(3).text()).toBe('local')
     expect(row.at(4).text()).toBe('local')
     expect(row.at(5).text()).toBe('127.0.0.1')
+    wrapper.destroy()
   })
 })

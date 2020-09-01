@@ -33,6 +33,7 @@ describe('Alert.vue', () => {
     it('mounts the downloads workspace successfully', () => {
       const wrapper = shallowMount(DownloadsWorkspace, { localVue })
       expect(wrapper.exists()).toBe(true)
+      wrapper.destroy()
     })
 
     it('checks if the links are correct', () => {
@@ -46,6 +47,7 @@ describe('Alert.vue', () => {
       expect(wrapper.findAll('.btn').at(1).text()).toBe('v3.4.6 Documentation')
       expect(wrapper.findAll('.btn').at(1).attributes('onclick'))
         .toBe("window.open('https://network-next-sdk.readthedocs-hosted.com/en/latest/')")
+      wrapper.destroy()
     })
   })
 })

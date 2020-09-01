@@ -42,6 +42,7 @@ describe('GameConfiguration.vue', () => {
       expect(labels.length).toBe(2)
       expect(labels.at(0).text()).toBe('Company Name')
       expect(labels.at(1).text()).toBe('Public Key')
+      wrapper.destroy()
     })
 
     it('checks state handling unauthorized', () => {
@@ -59,6 +60,7 @@ describe('GameConfiguration.vue', () => {
       // Check button
       const button = wrapper.findAll('button')
       expect(button.length).toBe(0)
+      wrapper.destroy()
     })
 
     it('checks state handling authorized', () => {
@@ -86,6 +88,7 @@ describe('GameConfiguration.vue', () => {
       // Check button
       const button = wrapper.findAll('button')
       expect(button.length).toBe(1)
+      wrapper.destroy()
     })
 
     // TODO: Add in tests that check api response handling and the alert functionality
