@@ -13,7 +13,6 @@ import { Component, Vue } from 'vue-property-decorator'
 import { Deck } from '@deck.gl/core'
 import { ScreenGridLayer } from '@deck.gl/aggregation-layers'
 import mapboxgl from 'mapbox-gl'
-import { Route, NavigationGuardNext } from 'vue-router'
 
 /**
  * This component displays the map that is visible in the map workspace
