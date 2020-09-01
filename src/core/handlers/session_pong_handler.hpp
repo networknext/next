@@ -1,5 +1,9 @@
 #pragma once
 
+#include "core/packet.hpp"
+#include "core/packets/header.hpp"
+#include "core/packets/types.hpp"
+#include "core/session_map.hpp"
 #include "core/throughput_recorder.hpp"
 #include "crypto/keychain.hpp"
 #include "os/socket.hpp"
@@ -20,7 +24,7 @@ namespace core
      SessionMap& session_map,
      ThroughputRecorder& recorder,
      const RouterInfo& router_info,
-     const os::Socket& socket,
+     const Socket& socket,
      bool is_signed)
     {
       size_t index = 0;

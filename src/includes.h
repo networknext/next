@@ -38,7 +38,6 @@
 #include <list>
 #include <map>
 #include <memory>
-#include <miniz/miniz.h>
 #include <mutex>
 #include <mutex>
 #include <netdb.h>
