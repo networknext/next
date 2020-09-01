@@ -2,8 +2,10 @@ package routing
 
 import (
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"io"
 	"io/ioutil"
 	"math"
@@ -52,6 +54,11 @@ type RouteMatrix struct {
 	analysisBuffer      []byte
 	analysisBufferMutex sync.RWMutex
 
+	routeCache map[uint64]struct {
+		entryIndex int
+		routeIndex int
+		reversed   bool
+	}
 	relayAddressCache []*net.UDPAddr
 }
 
@@ -185,7 +192,47 @@ func (m *RouteMatrix) GetAcceptableRoutes(near []NearRelayData, destIDs []uint64
 		return nil, errors.New("could not find best route RTT")
 	}
 
-	// Now that we have the best RTT, we can build the slice of best routes
+	// Now that we have the best RTT, check if the previous route is still cached and acceptable
+	if prevRouteData, ok := m.routeCache[prevRouteHash]; ok {
+		entry := &m.Entries[prevRouteData.entryIndex]
+		routeRTT := entry.RouteRTT[prevRouteData.routeIndex]
+		numRelays := int(entry.RouteNumRelays[prevRouteData.routeIndex])
+
+		routeRelayIDs := [MaxRelays]uint64{}
+		for i := 0; i < numRelays; i++ {
+			relayIndex := entry.RouteRelays[prevRouteData.routeIndex][i]
+			relayID := m.RelayIDs[relayIndex]
+
+			if !prevRouteData.reversed {
+				routeRelayIDs[i] = relayID
+			} else {
+				routeRelayIDs[numRelays-1-i] = relayID
+			}
+		}
+
+		// Once we create the relay array, we need to find the near relay in the near slice
+		// so that we can apply the RTT for the client's initial hop
+		for _, nearRelay := range near {
+			if nearRelay.ID == routeRelayIDs[0] {
+				routeRTT += int32(math.Ceil(nearRelay.ClientStats.RTT))
+				if routeRTT > bestRouteRTT+rttEpsilon {
+					break
+				}
+
+				return []Route{
+					{
+						NumRelays: numRelays,
+						RelayIDs:  routeRelayIDs,
+						Stats: Stats{
+							RTT: float64(routeRTT),
+						},
+					},
+				}, nil
+			}
+		}
+	}
+
+	// If the previous route wasn't found or is no longer acceptable, then we can build a new slice of best routes
 	routes := make([]Route, maxRoutesSize)
 	var routeSize int
 
@@ -215,7 +262,7 @@ func (m *RouteMatrix) GetAcceptableRoutes(near []NearRelayData, destIDs []uint64
 
 				// Now that we know this route is acceptable, we can get its relays and build the route struct
 				numRelays := int(entry.RouteNumRelays[routeIndex])
-				routeRelayIDs := make([]uint64, numRelays)
+				routeRelayIDs := [MaxRelays]uint64{}
 				isEncumbered := false
 				for relayIndex := 0; relayIndex < numRelays; relayIndex++ {
 					idx := entry.RouteRelays[routeIndex][relayIndex]
@@ -223,9 +270,7 @@ func (m *RouteMatrix) GetAcceptableRoutes(near []NearRelayData, destIDs []uint64
 					// Check to see if any relay in the route is encumbered, and if so, ignore the route
 					if m.RelaySessionCounts[idx] >= m.RelayMaxSessionCounts[idx] {
 						isEncumbered = true
-
-						// Don't break here so we can get all of the relays in case it's the route
-						// the session was previously on
+						break
 					}
 
 					if !reverse {
@@ -235,27 +280,19 @@ func (m *RouteMatrix) GetAcceptableRoutes(near []NearRelayData, destIDs []uint64
 					}
 				}
 
-				route := &Route{
-					RelayIDs: routeRelayIDs,
-					Stats: Stats{
-						RTT: float64(routeRTT),
-					},
-				}
-
-				// If we found the route we took last slice, take it again
-				// We check if this is the previous route before if any relays are encumbered
-				// so that if the session is already on the route it doesn't get kicked off
-				if route.Hash64() == prevRouteHash {
-					return []Route{*route}, nil
-				}
-
 				if isEncumbered {
 					// We continue rather than break here since more routes for this entry
 					// might still have good RTT and unencumbered relays
 					continue
 				}
 
-				routes[routeSize] = *route
+				routes[routeSize] = Route{
+					NumRelays: numRelays,
+					RelayIDs:  routeRelayIDs,
+					Stats: Stats{
+						RTT: float64(routeRTT),
+					},
+				}
 				routeSize++
 			}
 		}
@@ -527,29 +564,8 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 	}
 
 	m.UpdateRelayAddressCache()
+	m.UpdateRouteCache()
 
-	return nil
-}
-
-func (m *RouteMatrix) UpdateRelayAddressCache() error {
-	m.relayAddressCache = make([]*net.UDPAddr, len(m.RelayIDs))
-	for i := range m.RelayIDs {
-		// This trim is necessary because RelayAddresses has a fixed size of MaxRelayAddressLength which causes extra 0 bytes to be parsed if we don't trim
-		host, port, err := net.SplitHostPort(string(bytes.Trim(m.RelayAddresses[i], string([]byte{0x00}))))
-		if err != nil {
-			return err
-		}
-
-		iport, err := strconv.Atoi(port)
-		if err != nil {
-			return err
-		}
-
-		m.relayAddressCache[i] = &net.UDPAddr{
-			IP:   net.ParseIP(host),
-			Port: int(iport),
-		}
-	}
 	return nil
 }
 
@@ -723,6 +739,87 @@ func (m *RouteMatrix) Size() uint64 {
 	length += uint64(len(m.RelayMaxSessionCounts) * 4)
 
 	return length
+}
+
+func (m *RouteMatrix) UpdateRelayAddressCache() error {
+	m.relayAddressCache = make([]*net.UDPAddr, len(m.RelayIDs))
+	for i := range m.RelayIDs {
+		// This trim is necessary because RelayAddresses has a fixed size of MaxRelayAddressLength which causes extra 0 bytes to be parsed if we don't trim
+		host, port, err := net.SplitHostPort(string(bytes.Trim(m.RelayAddresses[i], string([]byte{0x00}))))
+		if err != nil {
+			return err
+		}
+
+		iport, err := strconv.Atoi(port)
+		if err != nil {
+			return err
+		}
+
+		m.relayAddressCache[i] = &net.UDPAddr{
+			IP:   net.ParseIP(host),
+			Port: int(iport),
+		}
+	}
+	return nil
+}
+
+func (m *RouteMatrix) UpdateRouteCache() {
+	var totalNumRoutes int32
+	for entryIndex := 0; entryIndex < len(m.Entries); entryIndex++ {
+		totalNumRoutes += m.Entries[entryIndex].NumRoutes
+	}
+
+	m.routeCache = make(map[uint64]struct {
+		entryIndex int
+		routeIndex int
+		reversed   bool
+	}, totalNumRoutes)
+
+	// Prefer to use a fnv64 hash directly on the relays rather than
+	// creating a route struct each time to avoid unnecessary allocations
+	fnv64 := fnv.New64()
+	id := make([]byte, 8)
+
+	for entryIndex := 0; entryIndex < len(m.Entries); entryIndex++ {
+		entry := &m.Entries[entryIndex]
+
+		for routeIndex := 0; routeIndex < int(entry.NumRoutes); routeIndex++ {
+			routeRelayIDs := [MaxRelays]uint64{}
+			routeRelayIDsReversed := [MaxRelays]uint64{}
+
+			numRelays := int(entry.RouteNumRelays[routeIndex])
+			for relayIndex := 0; relayIndex < numRelays; relayIndex++ {
+				routeRelayIDs[relayIndex] = m.RelayIDs[entry.RouteRelays[routeIndex][relayIndex]]
+				routeRelayIDsReversed[numRelays-1-relayIndex] = m.RelayIDs[entry.RouteRelays[routeIndex][relayIndex]]
+			}
+
+			for i := 0; i < numRelays; i++ {
+				binary.LittleEndian.PutUint64(id, routeRelayIDs[i])
+				fnv64.Write(id)
+			}
+
+			m.routeCache[fnv64.Sum64()] = struct {
+				entryIndex int
+				routeIndex int
+				reversed   bool
+			}{entryIndex: entryIndex, routeIndex: routeIndex, reversed: false}
+
+			fnv64.Reset()
+
+			for i := 0; i < numRelays; i++ {
+				binary.LittleEndian.PutUint64(id, routeRelayIDsReversed[i])
+				fnv64.Write(id)
+			}
+
+			m.routeCache[fnv64.Sum64()] = struct {
+				entryIndex int
+				routeIndex int
+				reversed   bool
+			}{entryIndex: entryIndex, routeIndex: routeIndex, reversed: true}
+
+			fnv64.Reset()
+		}
+	}
 }
 
 func (m *RouteMatrix) WriteAnalysisTo(writer io.Writer) {

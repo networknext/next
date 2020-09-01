@@ -5,7 +5,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-	// "fmt"
 
 	"github.com/networknext/backend/routing"
 )
@@ -111,7 +110,6 @@ func (vetoMap *VetoMap) TimeoutLoop(ctx context.Context, timeoutSeconds int64, c
 				if len(deleteList) > 0 {
 					vetoMap.shard[index].mutex.Lock()
 					for i := range deleteList {
-						// fmt.Printf("timeout veto %x\n", deleteList[i])
 						delete(vetoMap.shard[index].vetoes, deleteList[i])
 						atomic.AddUint64(&vetoMap.numVetoes, ^uint64(0))
 					}
