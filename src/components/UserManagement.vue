@@ -158,7 +158,6 @@ export default class UserManagement extends Vue {
   private alertTypes: any
   private showTable: boolean
   private newUserEmails: string
-  private vueInstance: any
 
   constructor () {
     super()
@@ -176,13 +175,14 @@ export default class UserManagement extends Vue {
     this.newUserRoles = []
     this.companyUsers = []
     this.companyUsersReadOnly = []
-    this.vueInstance = Vue
   }
 
   private mounted (): void {
     const promises = [
-      this.vueInstance.fetchAllAccounts({}),
-      this.vueInstance.fetchAllRoles()
+      // TODO: Figure out how to get rid of this. this.$apiService should be possible...
+      // HACK: This is a hack to get tests to work properly
+      (this as any).$apiService.fetchAllAccounts({}),
+      (this as any).$apiService.fetchAllRoles()
     ]
     Promise.all(promises)
       .then((responses: any) => {
@@ -203,8 +203,12 @@ export default class UserManagement extends Vue {
 
   private saveUser (account: any, index: number): void {
     if (account.edit) {
+      // HACK because eslint likes to complain...
+      // TODO: Figure out how to get rid of this. this.$apiService should be possible...
+      // HACK: This is a hack to get tests to work properly
+      const vm = (this as any)
       const roles = account.roles
-      this.vueInstance
+      vm.$apiService
         .updateUserRoles({ user_id: `auth0|${account.user_id}`, roles: roles })
         .then((response: any) => {
           account.roles = response.roles
@@ -229,7 +233,9 @@ export default class UserManagement extends Vue {
       return
     }
     if (account.delete) {
-      this.vueInstance
+      // TODO: Figure out how to get rid of this. this.$apiService should be possible...
+      // HACK: This is a hack to get tests to work properly
+      (this as any).$apiService
         .deleteUserAccount({ user_id: `auth0|${account.user_id}` })
         .then((response: any) => {
           this.companyUsers.splice(index, 1)
@@ -280,7 +286,9 @@ export default class UserManagement extends Vue {
         name: 'Viewer'
       }]
     }
-    this.vueInstance
+    // TODO: Figure out how to get rid of this. this.$apiService should be possible...
+    // HACK: This is a hack to get tests to work properly
+    (this as any).$apiService
       .addNewUserAccounts({ emails: emails, roles: roles })
       .then((response: any) => {
         const newAccounts: Array<any> = response.accounts

@@ -2,15 +2,15 @@
   <div class="container-fluid below-nav-bar">
     <div style="padding-top: 20px;" v-if="message !== ''">
       <Alert :message="message" :alertType="alertType">
-        <a href="#" @click="resendVerificationEmail()">
-          Resend email
-        </a>
+        <a href="#" @click="resendVerificationEmail()">Resend email</a>
       </Alert>
     </div>
     <div class="row">
       <main role="main" class="col-md-12 col-lg-12 px-4">
-        <SessionCounts v-if="$store.getters.currentPage == 'map' || $store.getters.currentPage == 'sessions'"/>
-        <router-view/>
+        <SessionCounts
+          v-if="$store.getters.currentPage == 'map' || $store.getters.currentPage == 'sessions'"
+        />
+        <router-view />
       </main>
     </div>
   </div>
@@ -18,13 +18,13 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
-import MapWorkspace from './MapWorkspace.vue'
-import SessionCounts from '../SessionCounts.vue'
-import SessionsWorkspace from './SessionsWorkspace.vue'
-import SessionToolWorkspace from './SessionToolWorkspace.vue'
-import SettingsWorkspace from './SettingsWorkspace.vue'
+import MapWorkspace from '@/workspaces/MapWorkspace.vue'
+import SessionCounts from '@/components/SessionCounts.vue'
+import SessionsWorkspace from '@/workspaces/SessionsWorkspace.vue'
+import SessionToolWorkspace from '@/workspaces/SessionToolWorkspace.vue'
+import SettingsWorkspace from '@/workspaces/SettingsWorkspace.vue'
 import Alert from '@/components/Alert.vue'
-import { AlertTypes } from '../types/AlertTypes'
+import { AlertTypes } from '@/components/types/AlertTypes'
 
 /**
  * This component is the base component for all other workspace components
@@ -45,13 +45,11 @@ import { AlertTypes } from '../types/AlertTypes'
 export default class Workspace extends Vue {
   private message: string
   private alertType: string
-  private vueInstance: any
 
   constructor () {
     super()
     this.message = ''
     this.alertType = ''
-    this.vueInstance = Vue
   }
 
   mounted () {
@@ -62,9 +60,13 @@ export default class Workspace extends Vue {
   }
 
   private resendVerificationEmail () {
+    // HACK because eslint likes to complain...
+    const vm = (this as any)
     const userId = this.$store.getters.userProfile.auth0ID
     const email = this.$store.getters.userProfile.email
-    this.vueInstance
+    // TODO: Figure out how to get rid of this. this.$apiService should be possible...
+    // HACK: This is a hack to get tests to work properly
+    vm.$apiService
       .resendVerificationEmail({
         user_id: userId,
         user_email: email,
@@ -72,13 +74,15 @@ export default class Workspace extends Vue {
         connection: 'Username-Password-Authentication'
       })
       .then((response: any) => {
-        this.message = 'Verification email was sent successfully. Please check your email for futher instructions.'
+        this.message =
+          'Verification email was sent successfully. Please check your email for futher instructions.'
         this.alertType = AlertTypes.SUCCESS
       })
       .catch((error: Error) => {
         console.log('something went wrong with resending verification email')
         console.log(error)
-        this.message = 'Something went wrong sending the verification email. Please try again later.'
+        this.message =
+          'Something went wrong sending the verification email. Please try again later.'
         this.alertType = AlertTypes.ERROR
       })
   }

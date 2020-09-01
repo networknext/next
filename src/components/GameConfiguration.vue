@@ -2,7 +2,7 @@
   <div class="card-body" id="config-page">
     <h5 class="card-title">Game Configuration</h5>
     <p class="card-text">Manage how your game connects to Network Next.</p>
-    <Alert :message="message" :alertType="alertType" v-if="message !== ''" />
+    <Alert :message="message" :alertType="alertType" v-if="message || '' !== ''" />
     <form v-on:submit.prevent="updatePubKey()">
       <div class="form-group" id="pubKey">
         <label>Company Name</label>
@@ -27,7 +27,7 @@
       <button
         type="submit"
         class="btn btn-primary btn-sm"
-        v-if="$store.getters.isOwner && $store.getters.isAdmin"
+        v-if="$store.getters.isOwner || $store.getters.isAdmin"
       >Save game configuration</button>
       <p class="text-muted text-small mt-2"></p>
     </form>
@@ -62,7 +62,6 @@ export default class GameConfiguration extends Vue {
   private message: string
   private alertType: string
   private userProfile: UserProfile
-  private vueInstance: any
 
   constructor () {
     super()
@@ -71,13 +70,15 @@ export default class GameConfiguration extends Vue {
     this.pubKey = this.userProfile.pubKey || ''
     this.message = ''
     this.alertType = ''
-    this.vueInstance = Vue
   }
 
   private updatePubKey () {
+    // TODO: Figure out how to get rid of this. this.$apiService should be possible...
+    // HACK: This is a hack to get tests to work properly
+    const vm = (this as any)
     const domain = this.userProfile.domain || ''
 
-    this.vueInstance
+    vm.$apiService
       .updateGameConfiguration({
         name: this.company,
         domain: domain,

@@ -56,10 +56,9 @@ interface TotalSessionsReply {
 
 @Component
 export default class SessionCounts extends Vue {
-  private totalSessionsReply: TotalSessionsReply;
-  private showCount: boolean;
-  private countLoop: number;
-  private vueInstance: any;
+  private totalSessionsReply: TotalSessionsReply
+  private showCount: boolean
+  private countLoop: number
 
   get totalSessions () {
     return this.totalSessionsReply.direct + this.totalSessionsReply.onNN
@@ -79,7 +78,6 @@ export default class SessionCounts extends Vue {
     }
     this.countLoop = -1
     this.showCount = false
-    this.vueInstance = Vue
   }
 
   private mounted () {
@@ -91,10 +89,9 @@ export default class SessionCounts extends Vue {
   }
 
   private fetchSessionCounts () {
-    this.vueInstance
-      .fetchTotalSessionCounts({
-        buyer_id: this.$store.getters.currentFilter.buyerID || ''
-      })
+    // TODO: Figure out how to get rid of this. this.$apiService should be possible...
+    // HACK: This is a hack to get tests to work properly
+    (this as any).$apiService.fetchTotalSessionCounts({ buyer_id: this.$store.getters.currentFilter.buyerID || '' })
       .then((response: any) => {
         this.totalSessionsReply.direct = response.direct
         this.totalSessionsReply.onNN = response.next

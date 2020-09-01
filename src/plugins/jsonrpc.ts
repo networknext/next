@@ -1,7 +1,7 @@
 import store from '@/store'
 import _ from 'lodash'
 
-export class JsonRpcService {
+export class JSONRPCService {
   private headers: any
 
   constructor () {
@@ -141,72 +141,58 @@ export class JsonRpcService {
   }
 }
 
-export const JsonRPCPlugin = {
+export const JSONRPCPlugin = {
+  service: {} as JSONRPCService,
   install (Vue: any) {
-    const client = new JsonRpcService()
-
-    Vue.fetchTotalSessionCounts = (args: any): Promise<any> => {
-      return client.fetchTotalSessionCounts(args)
-    }
-
-    Vue.fetchMapSessions = (args: any): Promise<any> => {
-      return client.fetchMapSessions(args)
-    }
-
-    Vue.fetchSessionDetails = (args: any): Promise<any> => {
-      return client.fetchSessionDetails(args)
-    }
-
-    Vue.fetchTopSessions = (args: any): Promise<any> => {
-      return client.fetchTopSessions(args)
-    }
-
-    Vue.fetchAllBuyers = (args: any): Promise<any> => {
-      return client.fetchAllBuyers(args)
-    }
-
-    Vue.fetchUserSessions = (args: any): Promise<any> => {
-      return client.fetchUserSessions(args)
-    }
-
-    Vue.fetchAllRoles = (): Promise<any> => {
-      return client.fetchAllRoles()
-    }
-
-    Vue.fetchAllAccounts = (args: any): Promise<any> => {
-      return client.fetchAllAccounts(args)
-    }
-
-    Vue.updateUserRoles = (args: any): Promise<any> => {
-      return client.updateUserRoles(args)
-    }
-
-    Vue.deleteUserAccount = (args: any): Promise<any> => {
-      return client.deleteUserAccount(args)
-    }
-
-    Vue.addNewUserAccounts = (args: any): Promise<any> => {
-      return client.addNewUserAccounts(args)
-    }
-
-    Vue.fetchUserAccount = (args: any, token: string): Promise<any> => {
-      return client.fetchUserAccount(args, token)
-    }
-
-    Vue.fetchGameConfiguration = (args: any, token: string): Promise<any> => {
-      return client.fetchGameConfiguration(args, token)
-    }
-
-    Vue.updateRouteShader = (args: any): Promise<any> => {
-      return client.updateRouteShader(args)
-    }
-
-    Vue.updateGameConfiguration = (args: any): Promise<any> => {
-      return client.updateGameConfiguration(args)
-    }
-
-    Vue.resendVerificationEmail = (args: any): Promise<any> => {
-      return client.resendVerificationEmail(args)
-    }
+    this.service = new JSONRPCService()
+    Vue.prototype.$apiService = this.service
+  },
+  fetchTotalSessionCounts: function (args: any): Promise<any> {
+    return this.service.fetchTotalSessionCounts(args)
+  },
+  fetchMapSessions: function (args: any): Promise<any> {
+    return this.service.fetchMapSessions(args)
+  },
+  fetchSessionDetails: function (args: any): Promise<any> {
+    return this.service.fetchSessionDetails(args)
+  },
+  fetchTopSessions: function (args: any): Promise<any> {
+    return this.service.fetchTopSessions(args)
+  },
+  fetchAllBuyers: function (args: any): Promise<any> {
+    return this.service.fetchAllBuyers(args)
+  },
+  fetchUserSessions: function (args: any): Promise<any> {
+    return this.service.fetchUserSessions(args)
+  },
+  fetchAllRoles: function (): Promise<any> {
+    return this.service.fetchAllRoles()
+  },
+  fetchAllAccounts: function (args: any): Promise<any> {
+    return this.service.fetchAllAccounts(args)
+  },
+  updateUserRoles: function (args: any): Promise<any> {
+    return this.service.updateUserRoles(args)
+  },
+  deleteUserAccount: function (args: any): Promise<any> {
+    return this.service.deleteUserAccount(args)
+  },
+  addNewUserAccounts: function (args: any): Promise<any> {
+    return this.service.addNewUserAccounts(args)
+  },
+  fetchUserAccount: function (args: any, token: string): Promise<any> {
+    return this.service.fetchUserAccount(args, token)
+  },
+  fetchGameConfiguration: function (args: any, token: string): Promise<any> {
+    return this.service.fetchGameConfiguration(args, token)
+  },
+  updateRouteShader: function (args: any): Promise<any> {
+    return this.service.updateRouteShader(args)
+  },
+  updateGameConfiguration: function (args: any): Promise<any> {
+    return this.service.updateGameConfiguration(args)
+  },
+  resendVerificationEmail: function (args: any): Promise<any> {
+    return this.service.resendVerificationEmail(args)
   }
 }
