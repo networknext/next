@@ -326,7 +326,7 @@ export default class SessionDetails extends Vue {
       this.fetchSessionDetails()
       this.detailsLoop = setInterval(() => {
         this.fetchSessionDetails()
-      }, 1000)
+      }, 10000)
     }
   }
 
@@ -375,13 +375,16 @@ export default class SessionDetails extends Vue {
           const aggregation = 'MEAN'
           const gpuAggregation = navigator.appVersion.indexOf('Win') === -1
 
+          this.viewState.latitude = this.meta.location.latitude
+          this.viewState.longitude = this.meta.location.longitude
+
           if (!this.mapInstance) {
             this.mapInstance = new mapboxgl.Map({
               accessToken: process.env.VUE_APP_MAPBOX_TOKEN,
               style: 'mapbox://styles/mapbox/dark-v10',
               center: [
-                0,
-                0
+                this.meta.location.longitude,
+                this.meta.location.latitude
               ],
               zoom: 2,
               pitch: 0,
@@ -419,7 +422,8 @@ export default class SessionDetails extends Vue {
                   zoom: viewState.zoom,
                   bearing: viewState.bearing,
                   pitch: viewState.pitch,
-                  minZoom: 2
+                  minZoom: 2,
+                  maxZoom: 16
                 })
               },
               layers: [sessionLocationLayer]

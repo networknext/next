@@ -27,7 +27,7 @@
           <li class="nav-item">
             <router-link to="/settings/game-config" class="nav-link" v-bind:class="{ active: $store.getters.currentPage === 'config'}">Game Configuration</router-link>
           </li>
-          <li class="nav-item" v-if="$store.getters.isABTester">
+          <li class="nav-item" v-if="$store.getters.isABTester && false"><!-- Disabled -->
             <router-link to="/settings/route-shader" class="nav-link" v-bind:class="{ active: $store.getters.currentPage === 'shader'}">Route Shader</router-link>
           </li>
         </ul>

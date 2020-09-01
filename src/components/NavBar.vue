@@ -132,9 +132,8 @@ export default class NavBar extends Vue {
   }
 
   private fetchPortalVersion (): void {
-    const isDev = window.location.hostname === 'portal-dev.networknext.com'
-    if (this.$store.getters.isAdmin || isDev) {
-      fetch(`${process.env.VUE_APP_API_URL}/version`, {
+    if (process.env.VUE_APP_MODE === 'dev') {
+      fetch('/version', {
         headers: {
           Accept: 'application/json',
           'Accept-Encoding': 'gzip',
@@ -150,6 +149,9 @@ export default class NavBar extends Vue {
             json.commit_message || 'none'
           }`
         })
+      }).catch((error: Error) => {
+        console.log('Something went wrong fetching the software version')
+        console.log(error)
       })
     }
   }
