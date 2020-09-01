@@ -13,6 +13,7 @@ import { Component, Vue } from 'vue-property-decorator'
 import { Deck } from '@deck.gl/core'
 import { ScreenGridLayer } from '@deck.gl/aggregation-layers'
 import mapboxgl from 'mapbox-gl'
+import { Route, NavigationGuardNext } from 'vue-router'
 
 /**
  * This component displays the map that is visible in the map workspace
@@ -83,14 +84,15 @@ export default class SessionMap extends Vue {
             bearing: 0,
             container: 'map'
           })
+          // this.mapInstance.setRenderWorldCopies(status === 'false')
         }
 
         const sessions = response.map_points || []
         const onNN = sessions.filter((point: any) => {
-          return point[2] === 1
+          return point[2] === true
         })
         const direct = sessions.filter((point: any) => {
-          return point[2] === 0
+          return point[2] === false
         })
 
         const cellSize = 10
