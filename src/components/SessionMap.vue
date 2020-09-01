@@ -87,10 +87,10 @@ export default class SessionMap extends Vue {
 
         const sessions = response.map_points || []
         const onNN = sessions.filter((point: any) => {
-          return point[2] === 1
+          return point[2] === true
         })
         const direct = sessions.filter((point: any) => {
-          return point[2] === 0
+          return point[2] === false
         })
 
         const cellSize = 10
