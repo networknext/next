@@ -83,6 +83,7 @@ export default class SessionMap extends Vue {
             bearing: 0,
             container: 'map'
           })
+          // this.mapInstance.setRenderWorldCopies(status === 'false')
         }
 
         const sessions = response.map_points || []

@@ -705,7 +705,7 @@ export default class SessionDetails extends Vue {
     }
 
     if (latencyChartElement) {
-      this.latencyComparisonChart = new uPlot(latencyComparisonOpts, bandwidthData, latencyChartElement)
+      this.latencyComparisonChart = new uPlot(latencyComparisonOpts, latencyData, latencyChartElement)
     }
 
     if (this.jitterComparisonChart) {
@@ -713,7 +713,7 @@ export default class SessionDetails extends Vue {
     }
 
     if (jitterChartElement) {
-      this.jitterComparisonChart = new uPlot(latencyComparisonOpts, bandwidthData, jitterChartElement)
+      this.jitterComparisonChart = new uPlot(latencyComparisonOpts, jitterData, jitterChartElement)
     }
 
     if (this.packetLossComparisonChart) {
