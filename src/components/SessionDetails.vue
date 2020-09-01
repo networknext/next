@@ -721,7 +721,7 @@ export default class SessionDetails extends Vue {
     }
 
     if (packetLossChartElement) {
-      this.packetLossComparisonChart = new uPlot(packetLossComparisonOpts, bandwidthData, packetLossChartElement)
+      this.packetLossComparisonChart = new uPlot(packetLossComparisonOpts, packetLossData, packetLossChartElement)
     }
 
     if (this.bandwidthChart) {
