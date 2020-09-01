@@ -339,6 +339,8 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			Version:        relayUpdateRequest.RelayVersion,
 		}
 
+		relay.TrafficStats.MaxValues(&relayUpdateRequest.TrafficStats, &relayData.PeakTrafficStats)
+
 		// Update the relay data
 		params.RelayMap.Lock(relayUpdateRequest.Address.String())
 		params.RelayMap.UpdateRelayData(relayUpdateRequest.Address.String(), relayData)
