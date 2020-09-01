@@ -118,28 +118,42 @@ func Seal(data []byte, nonce []byte, publicKey []byte, privateKey []byte) []byte
 }
 
 // Sign wraps sodiumSign with is a wrapper around libsodium
-// We wrap this to avoid inclding C in other libs breaking
+// We wrap this to avoid including C in other libs breaking
 // code linting
 func Sign(privateKey []byte, data []byte) []byte {
 	return sodiumSign(data, privateKey)
 }
 
+// SignPacket wraps sodiumSignPacket with is a wrapper around libsodium
+// We wrap this to avoid including C in other libs breaking
+// code linting
+func SignPacket(key []byte, data []byte) []byte {
+	return sodiumSignPacket(data, key)
+}
+
 // Verify wraps sodiumVerify with is a wrapper around libsodium
-// We wrap this to avoid inclding C in other libs breaking
+// We wrap this to avoid including C in other libs breaking
 // code linting
 func Verify(publicKey []byte, data []byte, sig []byte) bool {
 	return sodiumVerify(data, sig, publicKey)
 }
 
 // Hash wraps sodiumHash with is a wrapper around libsodium
-// We wrap this to avoid inclding C in other libs breaking
+// We wrap this to avoid including C in other libs breaking
 // code linting
 func Hash(key []byte, data []byte) []byte {
 	return sodiumHash(data, key)
 }
 
+// HashPacket wraps hashPacket with is a wrapper around libsodium
+// We wrap this to avoid including C in other libs breaking
+// code linting
+func HashPacket(key []byte, data []byte) []byte {
+	return sodiumHashPacket(data, key)
+}
+
 // Check wraps sodiumCheck with is a wrapper around libsodium
-// We wrap this to avoid inclding C in other libs breaking
+// We wrap this to avoid including C in other libs breaking
 // code linting
 func Check(key []byte, data []byte) bool {
 	return sodiumCheck(data, key)

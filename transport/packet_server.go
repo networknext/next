@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	DefaultMaxPacketSize = 1500
+	DefaultMaxPacketSize = 4096
 
 	PacketTypeServerUpdate       = 200
 	PacketTypeSessionUpdate      = 201
