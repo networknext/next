@@ -19,7 +19,7 @@ namespace core
     auto expired(double seconds) -> bool;
 
     // Time to expire in seconds, unix time
-    uint64_t ExpireTimestamp;
+    uint64_t expire_timestamp;
 
    protected:
     Expireable() = default;
@@ -29,12 +29,12 @@ namespace core
 
   inline auto Expireable::expired(const RouterInfo& router_info) -> bool
   {
-    return this->ExpireTimestamp < router_info.currentTime() + 1;
+    return this->expire_timestamp < router_info.currentTime() + 1;
   }
 
   inline auto Expireable::expired(double seconds) -> bool
   {
-    return this->ExpireTimestamp < seconds;
+    return this->expire_timestamp < seconds;
   }
 }  // namespace core
 #endif

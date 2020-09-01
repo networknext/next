@@ -1,14 +1,15 @@
 #pragma once
 
 #include "core/packet.hpp"
-#include "core/packets/types.hpp"
+#include "core/packet_types.hpp"
 #include "core/relay_manager.hpp"
 #include "encoding/read.hpp"
 #include "net/address.hpp"
 
 using core::Packet;
+using core::RELAY_PING_PACKET_SIZE;
 using core::RelayManager;
-using core::packets::RELAY_PING_PACKET_SIZE;
+using crypto::PACKET_HASH_LENGTH;
 
 namespace core
 {
@@ -21,18 +22,18 @@ namespace core
         return;
       }
 
-      if (packet.Len != RELAY_PING_PACKET_SIZE) {
+      if (packet.length != RELAY_PING_PACKET_SIZE) {
         LOG(ERROR, "ignoring relay pong, invalid packet size");
         return;
       }
 
       uint64_t sequence_number;
-      size_t index = crypto::PacketHashLength + 1;
-      if (!encoding::ReadUint64(packet.Buffer, index, sequence_number)) {
+      size_t index = PACKET_HASH_LENGTH + 1;
+      if (!encoding::read_uint64(packet.buffer, index, sequence_number)) {
         LOG(ERROR, "could not read sequence number");
         return;
       }
-      manager.processPong(packet.Addr, sequence_number);
+      manager.process_pong(packet.addr, sequence_number);
     }
   }  // namespace handlers
 }  // namespace core

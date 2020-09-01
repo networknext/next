@@ -41,23 +41,23 @@ namespace core
 
   INLINE auto Token::write(Packet& packet, size_t& index) -> bool
   {
-    if (index + Token::ByteSize > packet.Buffer.size()) {
+    if (index + Token::ByteSize > packet.buffer.size()) {
       return false;
     }
 
-    if (!encoding::WriteUint64(packet.Buffer, index, ExpireTimestamp)) {
+    if (!encoding::write_uint64(packet.buffer, index, expire_timestamp)) {
       return false;
     }
 
-    if (!encoding::WriteUint64(packet.Buffer, index, SessionID)) {
+    if (!encoding::write_uint64(packet.buffer, index, SessionID)) {
       return false;
     }
 
-    if (!encoding::WriteUint8(packet.Buffer, index, SessionVersion)) {
+    if (!encoding::write_uint8(packet.buffer, index, SessionVersion)) {
       return false;
     }
 
-    if (!encoding::WriteUint8(packet.Buffer, index, SessionFlags)) {
+    if (!encoding::write_uint8(packet.buffer, index, SessionFlags)) {
       return false;
     }
 
@@ -66,23 +66,23 @@ namespace core
 
   INLINE auto Token::read(const Packet& packet, size_t& index) -> bool
   {
-    if (index + Token::ByteSize > packet.Buffer.size()) {
+    if (index + Token::ByteSize > packet.buffer.size()) {
       return false;
     }
 
-    if (!encoding::ReadUint64(packet.Buffer, index, this->ExpireTimestamp)) {
+    if (!encoding::read_uint64(packet.buffer, index, this->expire_timestamp)) {
       return false;
     }
 
-    if (!encoding::ReadUint64(packet.Buffer, index, SessionID)) {
+    if (!encoding::read_uint64(packet.buffer, index, SessionID)) {
       return false;
     }
 
-    if (!encoding::ReadUint8(packet.Buffer, index, SessionVersion)) {
+    if (!encoding::read_uint8(packet.buffer, index, SessionVersion)) {
       return false;
     }
 
-    if (!encoding::ReadUint8(packet.Buffer, index, SessionFlags)) {
+    if (!encoding::read_uint8(packet.buffer, index, SessionFlags)) {
       return false;
     }
 

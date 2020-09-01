@@ -1,7 +1,7 @@
 #include "includes.h"
 #include "testing/test.hpp"
 
-#include "core/packets/types.hpp"
+#include "core/packet_types.hpp"
 #include "core/handlers/relay_ping_handler.hpp"
 
 #define OS_HELPERS
@@ -27,16 +27,16 @@ Test(core_handlers_relay_ping_handler)
   check(addr.parse("127.0.0.1"));
   check(socket.create(addr, config));
 
-  packet.Addr = addr;
-  packet.Len = RELAY_PING_PACKET_SIZE;
+  packet.addr = addr;
+  packet.length = RELAY_PING_PACKET_SIZE;
 
   core::handlers::relay_ping_handler(packet, recorder, socket, true);
 
-  size_t prev_len = packet.Len;
+  size_t prev_len = packet.length;
   check(socket.recv(packet));
-  check(prev_len == packet.Len);
+  check(prev_len == packet.length);
 
-  check(recorder.InboundPingTx.PacketCount == 1);
-  check(recorder.InboundPingTx.ByteCount == RELAY_PING_PACKET_SIZE);
-  check(static_cast<Type>(packet.Buffer[crypto::PacketHashLength]) == Type::RelayPong);
+  check(recorder.inbound_ping_tx.num_packets == 1);
+  check(recorder.inbound_ping_tx.num_bytes == RELAY_PING_PACKET_SIZE);
+  check(static_cast<Type>(packet.buffer[crypto::PACKET_HASH_LENGTH]) == Type::RelayPong);
 }

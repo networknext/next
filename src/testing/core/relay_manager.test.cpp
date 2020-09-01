@@ -16,11 +16,11 @@ Test(RelayManager)
 
   for (int i = 0; i < MaxRelays; ++i) {
     auto& relay = incoming[i];
-    relay.ID = i;
+    relay.id = i;
     std::stringstream ss;
     ss << "127.0.0.1:" << 40000 + i;
-    check(relay.Addr.parse(ss.str()) == true);
-    check(relay.Addr.Port == 40000 + i);
+    check(relay.address.parse(ss.str()) == true);
+    check(relay.address.Port == 40000 + i);
   }
 
   RelayManager manager;
@@ -28,7 +28,7 @@ Test(RelayManager)
   // should be no relays when manager is first created
   {
     RelayStats stats;
-    manager.getStats(stats);
+    manager.get_stats(stats);
     check(stats.NumRelays == 0);
   }
 
@@ -36,11 +36,11 @@ Test(RelayManager)
   manager.update(NumRelays, incoming);
   {
     RelayStats stats;
-    manager.getStats(stats);
+    manager.get_stats(stats);
     check(stats.NumRelays == NumRelays);
     for (int i = 0; i < NumRelays; ++i) {
       check(std::find_if(incoming.begin(), incoming.end(), [&](const RelayPingInfo& relay) -> bool {
-              return relay.ID == stats.IDs[i];
+              return relay.id == stats.IDs[i];
             }) != incoming.end());
     }
   }
@@ -50,7 +50,7 @@ Test(RelayManager)
   manager.update(0, incoming);
   {
     RelayStats stats;
-    manager.getStats(stats);
+    manager.get_stats(stats);
     check(stats.NumRelays == 0);
   }
 
@@ -60,10 +60,10 @@ Test(RelayManager)
     manager.update(NumRelays, incoming);
     {
       RelayStats stats;
-      manager.getStats(stats);
+      manager.get_stats(stats);
       check(stats.NumRelays == NumRelays);
       for (int i = 0; i < NumRelays; ++i) {
-        check(incoming[i].ID == stats.IDs[i]);
+        check(incoming[i].id == stats.IDs[i]);
       }
     }
   }
@@ -75,10 +75,10 @@ Test(RelayManager)
   manager.update(NumRelays, diffRelays);
   {
     RelayStats stats;
-    manager.getStats(stats);
+    manager.get_stats(stats);
     check(stats.NumRelays == NumRelays);
     for (int i = 0; i < NumRelays; ++i) {
-      check(incoming[i + 4].ID == stats.IDs[i]);
+      check(incoming[i + 4].id == stats.IDs[i]);
     }
   }
 }

@@ -14,7 +14,7 @@ namespace legacy
 {
   bool relay_is_network_next_packet(const uint8_t* packet_data, size_t packet_length)
   {
-    if (packet_length <= crypto::PacketHashLength) {
+    if (packet_length <= crypto::PACKET_HASH_LENGTH) {
       return 0;
     }
 
@@ -22,26 +22,26 @@ namespace legacy
       return false;
     }
 
-    const uint8_t* message = packet_data + crypto::PacketHashLength;
-    const int message_length = packet_length - crypto::PacketHashLength;
+    const uint8_t* message = packet_data + crypto::PACKET_HASH_LENGTH;
+    const int message_length = packet_length - crypto::PACKET_HASH_LENGTH;
 
     assert(message_length > 0);
 
-    uint8_t hash[crypto::PacketHashLength];
+    uint8_t hash[crypto::PACKET_HASH_LENGTH];
     crypto_generichash(
-     hash, crypto::PacketHashLength, message, message_length, RelayPacketHashKey.data(), crypto_generichash_KEYBYTES);
+     hash, crypto::PACKET_HASH_LENGTH, message, message_length, RelayPacketHashKey.data(), crypto_generichash_KEYBYTES);
 
-    return memcmp(hash, packet_data, crypto::PacketHashLength) == 0;
+    return memcmp(hash, packet_data, crypto::PACKET_HASH_LENGTH) == 0;
   }
 
   void relay_sign_network_next_packet(uint8_t* packet_data, size_t packet_length)
   {
-    assert(packet_length > crypto::PacketHashLength);
+    assert(packet_length > crypto::PACKET_HASH_LENGTH);
     crypto_generichash(
      packet_data,
-     crypto::PacketHashLength,
-     packet_data + crypto::PacketHashLength,
-     packet_length - crypto::PacketHashLength,
+     crypto::PACKET_HASH_LENGTH,
+     packet_data + crypto::PACKET_HASH_LENGTH,
+     packet_length - crypto::PACKET_HASH_LENGTH,
      RelayPacketHashKey.data(),
      crypto_generichash_KEYBYTES);
   }

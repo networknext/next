@@ -9,45 +9,45 @@ using net::AddressType;
 
 namespace encoding
 {
-  auto ReadUint8(const char* const buff, size_t bufflen, size_t& index, uint8_t& value) -> bool;
+  auto read_uint8(const char* const buff, size_t bufflen, size_t& index, uint8_t& value) -> bool;
 
   template <typename T>
-  auto ReadUint8(const T& buff, size_t& index, uint8_t& value) -> bool;
+  auto read_uint8(const T& buff, size_t& index, uint8_t& value) -> bool;
 
-  auto ReadUint16(const uint8_t* const buff, size_t bufflen, size_t& index, uint16_t& value) -> bool;
-
-  template <typename T>
-  auto ReadUint16(const T& buff, size_t& index, uint16_t& value) -> bool;
-
-  auto ReadUint32(const uint8_t* const buff, size_t bufflen, size_t& index, uint32_t& value) -> bool;
+  auto read_uint16(const uint8_t* const buff, size_t bufflen, size_t& index, uint16_t& value) -> bool;
 
   template <typename T>
-  auto ReadUint32(const T& buff, size_t& index, uint32_t& value) -> bool;
+  auto read_uint16(const T& buff, size_t& index, uint16_t& value) -> bool;
 
-  auto ReadUint64(const uint8_t* const buff, size_t bufflen, size_t& index, uint64_t& value) -> bool;
-
-  template <typename T>
-  auto ReadUint64(const T& buff, size_t& index, uint64_t& value) -> bool;
+  auto read_uint32(const uint8_t* const buff, size_t bufflen, size_t& index, uint32_t& value) -> bool;
 
   template <typename T>
-  auto ReadDouble(const T& buff, size_t& index, double& value) -> bool;
+  auto read_uint32(const T& buff, size_t& index, uint32_t& value) -> bool;
 
-  auto ReadBytes(
+  auto read_uint64(const uint8_t* const buff, size_t bufflen, size_t& index, uint64_t& value) -> bool;
+
+  template <typename T>
+  auto read_uint64(const T& buff, size_t& index, uint64_t& value) -> bool;
+
+  template <typename T>
+  auto read_double(const T& buff, size_t& index, double& value) -> bool;
+
+  auto read_bytes(
    const uint8_t* const buff, size_t buffLength, size_t& index, uint8_t* storage, size_t storageLength, size_t len)
    -> bool;
 
   template <typename T, typename U>
-  auto ReadBytes(const T& buff, size_t& index, U& storage, size_t len) -> bool;
+  auto read_bytes(const T& buff, size_t& index, U& storage, size_t len) -> bool;
 
-  auto ReadAddress(const uint8_t* const buff, size_t buffLength, size_t& index, net::Address& addr) -> bool;
-
-  template <typename T>
-  auto ReadAddress(const T& buff, size_t& index, net::Address& addr) -> bool;
+  auto read_address(const uint8_t* const buff, size_t buffLength, size_t& index, net::Address& addr) -> bool;
 
   template <typename T>
-  auto ReadString(const T& buff, size_t& index, std::string& str) -> bool;
+  auto read_address(const T& buff, size_t& index, net::Address& addr) -> bool;
 
-  INLINE auto ReadUint8(const uint8_t* const buff, size_t bufflen, size_t& index, uint8_t& value) -> bool
+  template <typename T>
+  auto read_string(const T& buff, size_t& index, std::string& str) -> bool;
+
+  INLINE auto read_uint8(const uint8_t* const buff, size_t bufflen, size_t& index, uint8_t& value) -> bool
   {
     if (index + 1 > bufflen) {
       return false;
@@ -57,7 +57,7 @@ namespace encoding
   }
 
   template <typename T>
-  INLINE auto ReadUint8(const T& buff, size_t& index, uint8_t& value) -> bool
+  INLINE auto read_uint8(const T& buff, size_t& index, uint8_t& value) -> bool
   {
     if (index + 1 > buff.size()) {
       return false;
@@ -66,7 +66,7 @@ namespace encoding
     return true;
   }
 
-  INLINE auto ReadUint16(const uint8_t* const buff, size_t bufflen, size_t& index, uint16_t& value) -> bool
+  INLINE auto read_uint16(const uint8_t* const buff, size_t bufflen, size_t& index, uint16_t& value) -> bool
   {
     if (index + 2 > bufflen) {
       return false;
@@ -77,7 +77,7 @@ namespace encoding
   }
 
   template <typename T>
-  INLINE auto ReadUint16(const T& buff, size_t& index, uint16_t& value) -> bool
+  INLINE auto read_uint16(const T& buff, size_t& index, uint16_t& value) -> bool
   {
     if (index + 2 > buff.size()) {
       return false;
@@ -87,7 +87,7 @@ namespace encoding
     return true;
   }
 
-  INLINE auto ReadUint32(const uint8_t* const buff, size_t bufflen, size_t& index, uint32_t& value) -> bool
+  INLINE auto read_uint32(const uint8_t* const buff, size_t bufflen, size_t& index, uint32_t& value) -> bool
   {
     if (index + 4 > bufflen) {
       return false;
@@ -100,7 +100,7 @@ namespace encoding
   }
 
   template <typename T>
-  INLINE auto ReadUint32(const T& buff, size_t& index, uint32_t& value) -> bool
+  INLINE auto read_uint32(const T& buff, size_t& index, uint32_t& value) -> bool
   {
     if (index + 4 > buff.size()) {
       return false;
@@ -112,7 +112,7 @@ namespace encoding
     return true;
   }
 
-  INLINE auto ReadUint64(const uint8_t* const buff, size_t bufflen, size_t& index, uint64_t& value) -> bool
+  INLINE auto read_uint64(const uint8_t* const buff, size_t bufflen, size_t& index, uint64_t& value) -> bool
   {
     if (index + 8 > bufflen) {
       return false;
@@ -129,7 +129,7 @@ namespace encoding
   }
 
   template <typename T>
-  INLINE auto ReadUint64(const T& buff, size_t& index, uint64_t& value) -> bool
+  INLINE auto read_uint64(const T& buff, size_t& index, uint64_t& value) -> bool
   {
     if (index + 8 > buff.size()) {
       return false;
@@ -146,13 +146,13 @@ namespace encoding
   }
 
   template <typename T>
-  INLINE auto ReadDouble(const T& buff, size_t& index, double& value) -> bool
+  INLINE auto read_double(const T& buff, size_t& index, double& value) -> bool
   {
-    return encoding::ReadBytes(
+    return encoding::read_bytes(
      buff.data(), buff.size(), index, reinterpret_cast<uint8_t*>(&value), sizeof(double), sizeof(double));
   }
 
-  INLINE auto ReadBytes(
+  INLINE auto read_bytes(
    const uint8_t* const buff, size_t buff_length, size_t& index, uint8_t* storage, size_t storage_length, size_t read_len)
    -> bool
   {
@@ -168,7 +168,7 @@ namespace encoding
   }
 
   template <typename T, typename U>
-  INLINE auto ReadBytes(const T& buff, size_t& index, U& storage, size_t read_len) -> bool
+  INLINE auto read_bytes(const T& buff, size_t& index, U& storage, size_t read_len) -> bool
   {
     if (index + read_len > buff.size()) {
       return false;
@@ -181,14 +181,14 @@ namespace encoding
     return true;
   }
 
-  INLINE auto ReadAddress(const uint8_t* const buff, size_t buff_length, size_t& index, net::Address& addr) -> bool
+  INLINE auto read_address(const uint8_t* const buff, size_t buff_length, size_t& index, net::Address& addr) -> bool
   {
     if (buff_length < Address::ByteSize) {
       return false;
     }
 
     uint8_t type;
-    if (!ReadUint8(buff, buff_length, index, type)) {
+    if (!read_uint8(buff, buff_length, index, type)) {
       return false;
     }
     addr.Type = static_cast<AddressType>(type);
@@ -199,7 +199,7 @@ namespace encoding
         std::copy(buff + index, buff + index + 4, addr.IPv4.data());
         index += 4;
         // read the port
-        if (!ReadUint16(buff, buff_length, index, addr.Port)) {
+        if (!read_uint16(buff, buff_length, index, addr.Port)) {
           return false;
         }
         index += 12;  // increment the index past the reserved area
@@ -207,12 +207,12 @@ namespace encoding
       case AddressType::IPv6: {
         // read address parts
         for (int i = 0; i < 8; i++) {
-          if (!ReadUint16(buff, buff_length, index, addr.IPv6[i])) {
+          if (!read_uint16(buff, buff_length, index, addr.IPv6[i])) {
             return false;
           }
         }
         // read the port
-        if (!ReadUint16(buff, buff_length, index, addr.Port)) {
+        if (!read_uint16(buff, buff_length, index, addr.Port)) {
           return false;
         }
       } break;
@@ -227,10 +227,10 @@ namespace encoding
   }
 
   template <typename T>
-  INLINE auto ReadAddress(const T& buff, size_t& index, net::Address& addr) -> bool
+  INLINE auto read_address(const T& buff, size_t& index, net::Address& addr) -> bool
   {
     uint8_t type;
-    if (!ReadUint8(buff, index, type)) {
+    if (!read_uint8(buff, index, type)) {
       return false;
     }
     addr.Type = static_cast<AddressType>(type);
@@ -240,17 +240,17 @@ namespace encoding
       std::copy(buff.begin() + index, buff.begin() + index + 4, addr.IPv4.begin());
       index += 4;
       // read the port
-      if (!ReadUint16(buff, index, addr.Port)) {
+      if (!read_uint16(buff, index, addr.Port)) {
         return false;
       }
       index += 12;  // increment the index past the reserved area
     } else if (addr.Type == net::AddressType::IPv6) {
       for (int i = 0; i < 8; i++) {
-        if (!ReadUint16(buff, index, addr.IPv6[i])) {
+        if (!read_uint16(buff, index, addr.IPv6[i])) {
           return false;
         }
       }
-      if (!ReadUint16(buff, index, addr.Port)) {
+      if (!read_uint16(buff, index, addr.Port)) {
         return false;
       }
     } else {
@@ -262,10 +262,10 @@ namespace encoding
   }
 
   template <typename T>
-  INLINE auto ReadString(const T& buff, size_t& index, std::string& value) -> bool
+  INLINE auto read_string(const T& buff, size_t& index, std::string& value) -> bool
   {
     uint32_t len;
-    if (!ReadUint32(buff, index, len)) {
+    if (!read_uint32(buff, index, len)) {
       return false;
     }
     value = std::move(std::string(buff.begin() + index, buff.begin() + index + len));

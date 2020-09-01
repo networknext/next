@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/packets/header.hpp"
+#include "core/packet_header.hpp"
 #include "core/session_map.hpp"
 #include "core/throughput_recorder.hpp"
 #include "os/socket.hpp"
@@ -27,11 +27,11 @@ namespace core
      bool is_signed)
     {
       size_t index = 0;
-      size_t length = packet.Len;
+      size_t length = packet.length;
 
       if (is_signed) {
-        index = crypto::PacketHashLength;
-        length = packet.Len - crypto::PacketHashLength;
+        index = crypto::PACKET_HASH_LENGTH;
+        length = packet.length - crypto::PACKET_HASH_LENGTH;
       }
 
       if (length != Header::ByteSize) {
@@ -66,7 +66,7 @@ namespace core
 
       uint64_t clean_sequence = header.clean_sequence();
 
-      if (clean_sequence <= session->ServerToClientSeq) {
+      if (clean_sequence <= session->server_to_client_sequence) {
         LOG(
          ERROR,
          "ignoring route response, packet already received: session = ",
@@ -74,21 +74,21 @@ namespace core
          ", ",
          clean_sequence,
          " <= ",
-         session->ServerToClientSeq);
+         session->server_to_client_sequence);
         return;
       }
 
-      if (!header.verify(packet, index, Direction::ServerToClient, session->PrivateKey)) {
+      if (!header.verify(packet, index, Direction::ServerToClient, session->private_key)) {
         LOG(ERROR, "ignoring route response, header is invalid: session = ", *session);
         return;
       }
 
-      session->ServerToClientSeq = clean_sequence;
+      session->server_to_client_sequence = clean_sequence;
 
-      recorder.RouteResponseTx.add(packet.Len);
+      recorder.route_response_tx.add(packet.length);
 
-      if (!socket.send(session->PrevAddr, packet.Buffer.data(), packet.Len)) {
-        LOG(ERROR, "failed to forward route response to ", session->PrevAddr);
+      if (!socket.send(session->prev_addr, packet.buffer.data(), packet.length)) {
+        LOG(ERROR, "failed to forward route response to ", session->prev_addr);
       }
     }
   }  // namespace handlers

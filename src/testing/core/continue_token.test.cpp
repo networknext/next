@@ -12,7 +12,7 @@ using core::RouterInfo;
 Test(core_ContinueToken_general)
 {
   Packet packet;
-  packet.Len = packet.Buffer.size();
+  packet.length = packet.buffer.size();
 
   std::array<uint8_t, crypto_box_PUBLICKEYBYTES> sender_public_key;
   std::array<uint8_t, crypto_box_SECRETKEYBYTES> sender_private_key;
@@ -32,7 +32,7 @@ Test(core_ContinueToken_general)
 
   ContinueToken input_token;
   {
-    input_token.ExpireTimestamp = ExpireTimestamp;
+    input_token.expire_timestamp = ExpireTimestamp;
     input_token.SessionID = SessionID;
     input_token.SessionVersion = SessionVersion;
     input_token.SessionFlags = SessionFlags;
@@ -41,7 +41,7 @@ Test(core_ContinueToken_general)
   {
     size_t index = 0;
     check(input_token.write_encrypted(packet, index, sender_private_key, receiver_public_key));
-    check(index == ContinueToken::EncryptedByteSize);
+    check(index == ContinueToken::SIZE_OF_ENCRYPTED);
   }
 
   ContinueToken output_token;
@@ -51,13 +51,13 @@ Test(core_ContinueToken_general)
   }
 
   // make sure nothing changed
-  check(input_token.ExpireTimestamp == ExpireTimestamp);
+  check(input_token.expire_timestamp == ExpireTimestamp);
   check(input_token.SessionID == SessionID);
   check(input_token.SessionVersion == SessionVersion);
   check(input_token.SessionFlags == SessionFlags);
 
   // assert input == output
-  check(input_token.ExpireTimestamp == output_token.ExpireTimestamp);
+  check(input_token.expire_timestamp == output_token.expire_timestamp);
   check(input_token.SessionID == output_token.SessionID);
   check(input_token.SessionVersion == output_token.SessionVersion);
   check(input_token.SessionFlags == output_token.SessionFlags);
@@ -68,14 +68,14 @@ Test(core_ContinueToken_write)
   Packet packet;
   ContinueToken token;
 
-  token.ExpireTimestamp = 6;
+  token.expire_timestamp = 6;
   token.SessionID = 1;
   token.SessionVersion = 2;
   token.SessionFlags = 3;
 
   size_t index = 0;
   check(token.write(packet, index));
-  check(index == ContinueToken::ByteSize);
+  check(index == ContinueToken::SIZE_OF);
 
   uint64_t expire;
   uint64_t id;
@@ -83,10 +83,10 @@ Test(core_ContinueToken_write)
   uint8_t flags;
 
   index = 0;
-  check(encoding::ReadUint64(packet.Buffer, index, expire));
-  check(encoding::ReadUint64(packet.Buffer, index, id));
-  check(encoding::ReadUint8(packet.Buffer, index, ver));
-  check(encoding::ReadUint8(packet.Buffer, index, flags));
+  check(encoding::read_uint64(packet.buffer, index, expire));
+  check(encoding::read_uint64(packet.buffer, index, id));
+  check(encoding::read_uint8(packet.buffer, index, ver));
+  check(encoding::read_uint8(packet.buffer, index, flags));
 
   check(expire == 6);
   check(id == 1);
@@ -99,7 +99,7 @@ Test(core_ContinueToken_read)
   Packet packet;
   ContinueToken token;
 
-  token.ExpireTimestamp = 6;
+  token.expire_timestamp = 6;
   token.SessionID = 1;
   token.SessionVersion = 2;
   token.SessionFlags = 3;
@@ -111,7 +111,7 @@ Test(core_ContinueToken_read)
 
   index = 0;
   check(other.read(packet, index));
-  check(index == ContinueToken::ByteSize);
+  check(index == ContinueToken::SIZE_OF);
 
   check(token == other);
 }

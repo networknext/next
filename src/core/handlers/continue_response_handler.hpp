@@ -1,15 +1,17 @@
 #pragma once
 
-#include "core/packets/header.hpp"
+#include "core/packet_header.hpp"
 #include "core/session_map.hpp"
 #include "core/throughput_recorder.hpp"
 #include "crypto/keychain.hpp"
 #include "os/socket.hpp"
+#include "util/macros.hpp"
 
+using core::PacketDirection;
+using core::PacketHeader;
 using core::RouterInfo;
-using core::packets::Direction;
-using core::packets::Header;
 using crypto::Keychain;
+using crypto::PACKET_HASH_LENGTH;
 using os::Socket;
 using util::ThroughputRecorder;
 
@@ -17,7 +19,7 @@ namespace core
 {
   namespace handlers
   {
-    inline void continue_response_handler(
+    INLINE void continue_response_handler(
      Packet& packet,
      SessionMap& session_map,
      ThroughputRecorder& recorder,
@@ -26,23 +28,22 @@ namespace core
      bool is_signed)
     {
       size_t index = 0;
-      size_t length = packet.Len;
+      size_t length = packet.length;
 
       if (is_signed) {
-        index = crypto::PacketHashLength;
-        length = packet.Len - crypto::PacketHashLength;
+        index = PACKET_HASH_LENGTH;
+        length = packet.length - PACKET_HASH_LENGTH;
       }
 
-      if (length != Header::ByteSize) {
+      if (length != PacketHeader::SIZE_OF) {
         LOG(ERROR, "dropping continue response packet, invalid size: ", length);
         return;
       }
 
-      Header header;
-
+      PacketHeader header;
       {
         size_t i = index;
-        if (!header.read(packet, i, Direction::ServerToClient)) {
+        if (!header.read(packet, i, PacketDirection::ServerToClient)) {
           LOG(ERROR, "ignoring continue response, relay header could not be read");
           return;
         }
@@ -65,7 +66,7 @@ namespace core
 
       uint64_t clean_sequence = header.clean_sequence();
 
-      if (clean_sequence <= session->ServerToClientSeq) {
+      if (clean_sequence <= session->server_to_client_sequence) {
         LOG(
          ERROR,
          "ignoring continue response, packet already received: session = ",
@@ -73,24 +74,24 @@ namespace core
          ", ",
          clean_sequence,
          " <= ",
-         session->ServerToClientSeq);
+         session->server_to_client_sequence);
         return;
       }
 
       {
         size_t i = index;
-        if (!header.verify(packet, i, Direction::ServerToClient, session->PrivateKey)) {
+        if (!header.verify(packet, i, PacketDirection::ServerToClient, session->private_key)) {
           LOG(ERROR, "ignoring continue response, could not verify header: session = ", *session);
           return;
         }
       }
 
-      session->ServerToClientSeq = clean_sequence;
+      session->server_to_client_sequence = clean_sequence;
 
-      recorder.ContinueResponseTx.add(packet.Len);
+      recorder.continue_response_tx.add(packet.length);
 
-      if (!socket.send(session->PrevAddr, packet.Buffer.data(), packet.Len)) {
-        LOG(ERROR, "failed to forward continue response to ", session->PrevAddr);
+      if (!socket.send(session->prev_addr, packet.buffer.data(), packet.length)) {
+        LOG(ERROR, "failed to forward continue response to ", session->prev_addr);
       }
     }
   }  // namespace handlers

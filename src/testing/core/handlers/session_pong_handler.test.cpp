@@ -37,8 +37,8 @@ Test(core_handlers_session_pong_handler_unsigned)
   check(addr.parse("127.0.0.1"));
   check(socket.create(addr, config));
 
-  packet.Len = Header::ByteSize + 32;
-  packet.Addr = addr;
+  packet.length = Header::ByteSize + 32;
+  packet.addr = addr;
 
   Header header = {
    .type = Type::ServerToClient,
@@ -48,13 +48,13 @@ Test(core_handlers_session_pong_handler_unsigned)
   };
 
   auto session = std::make_shared<Session>();
-  session->ClientToServerSeq = 0;
-  session->ExpireTimestamp = 10;
-  session->NextAddr = addr;
-  session->PrevAddr = addr;
-  session->PrivateKey = private_key;
-  session->SessionID = header.session_id;
-  session->SessionVersion = header.session_version;
+  session->client_to_server_sequence = 0;
+  session->expire_timestamp = 10;
+  session->next_addr = addr;
+  session->prev_addr = addr;
+  session->private_key = private_key;
+  session->session_id = header.session_id;
+  session->session_version = header.session_version;
 
   map.set(header.hash(), session);
 
@@ -65,9 +65,9 @@ Test(core_handlers_session_pong_handler_unsigned)
 
   core::handlers::session_pong_handler(packet, map, recorder, router_info, socket, false);
 
-  size_t prev_len = packet.Len;
+  size_t prev_len = packet.length;
   check(socket.recv(packet));
-  check(prev_len == packet.Len);
+  check(prev_len == packet.length);
 
   core::handlers::session_pong_handler(packet, map, recorder, router_info, socket, false);
   check(!socket.recv(packet));
@@ -91,8 +91,8 @@ Test(core_handlers_session_pong_handler_signed)
   check(addr.parse("127.0.0.1"));
   check(socket.create(addr, config));
 
-  packet.Len = crypto::PacketHashLength + Header::ByteSize + 32;
-  packet.Addr = addr;
+  packet.length = crypto::PACKET_HASH_LENGTH + Header::ByteSize + 32;
+  packet.addr = addr;
 
   Header header = {
    .type = Type::ServerToClient,
@@ -102,26 +102,26 @@ Test(core_handlers_session_pong_handler_signed)
   };
 
   auto session = std::make_shared<Session>();
-  session->ClientToServerSeq = 0;
-  session->ExpireTimestamp = 10;
-  session->NextAddr = addr;
-  session->PrevAddr = addr;
-  session->PrivateKey = private_key;
-  session->SessionID = header.session_id;
-  session->SessionVersion = header.session_version;
+  session->client_to_server_sequence = 0;
+  session->expire_timestamp = 10;
+  session->next_addr = addr;
+  session->prev_addr = addr;
+  session->private_key = private_key;
+  session->session_id = header.session_id;
+  session->session_version = header.session_version;
 
   map.set(header.hash(), session);
 
-  size_t index = crypto::PacketHashLength;
+  size_t index = crypto::PACKET_HASH_LENGTH;
 
   check(header.write(packet, index, Direction::ServerToClient, private_key));
-  check(index == crypto::PacketHashLength + Header::ByteSize);
+  check(index == crypto::PACKET_HASH_LENGTH + Header::ByteSize);
 
   core::handlers::session_pong_handler(packet, map, recorder, router_info, socket, true);
 
-  size_t prev_len = packet.Len;
+  size_t prev_len = packet.length;
   check(socket.recv(packet));
-  check(prev_len == packet.Len);
+  check(prev_len == packet.length);
 
   core::handlers::session_pong_handler(packet, map, recorder, router_info, socket, true);
   check(!socket.recv(packet));

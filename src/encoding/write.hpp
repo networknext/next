@@ -5,43 +5,43 @@
 
 namespace encoding
 {
-  auto WriteUint8(const uint8_t* buff, size_t buffLength, size_t& index, uint8_t value) -> bool;
+  auto write_uint8(const uint8_t* buff, size_t buffLength, size_t& index, uint8_t value) -> bool;
 
   template <typename T>
-  auto WriteUint8(T& buff, size_t& index, uint8_t value) -> bool;
+  auto write_uint8(T& buff, size_t& index, uint8_t value) -> bool;
 
-  auto WriteUint16(const uint8_t* buff, size_t buffLength, size_t& index, uint16_t value) -> bool;
-
-  template <typename T>
-  auto WriteUint16(T& buff, size_t& index, uint16_t value) -> bool;
-
-  auto WriteUint32(const uint8_t* buff, size_t buffLength, size_t& index, uint32_t value) -> bool;
+  auto write_uint16(const uint8_t* buff, size_t buffLength, size_t& index, uint16_t value) -> bool;
 
   template <typename T>
-  auto WriteUint32(T& buff, size_t& index, uint32_t value) -> bool;
+  auto write_uint16(T& buff, size_t& index, uint16_t value) -> bool;
 
-  auto WriteUint64(const uint8_t* buff, size_t buffLength, size_t& index, uint64_t value) -> bool;
-
-  template <typename T>
-  auto WriteUint64(T& buff, size_t& index, uint64_t value) -> bool;
+  auto write_uint32(const uint8_t* buff, size_t buffLength, size_t& index, uint32_t value) -> bool;
 
   template <typename T>
-  auto WriteDouble(T& buff, size_t& index, double value) -> bool;
+  auto write_uint32(T& buff, size_t& index, uint32_t value) -> bool;
 
-  auto WriteBytes(uint8_t* buff, size_t buffLength, size_t& index, const uint8_t* const data, size_t dataLength) -> bool;
+  auto write_uint64(const uint8_t* buff, size_t buffLength, size_t& index, uint64_t value) -> bool;
+
+  template <typename T>
+  auto write_uint64(T& buff, size_t& index, uint64_t value) -> bool;
+
+  template <typename T>
+  auto write_double(T& buff, size_t& index, double value) -> bool;
+
+  auto write_bytes(uint8_t* buff, size_t buffLength, size_t& index, const uint8_t* const data, size_t dataLength) -> bool;
 
   template <typename T, typename U>
-  auto WriteBytes(T& buff, size_t& index, const U& data, size_t len) -> bool;
+  auto write_bytes(T& buff, size_t& index, const U& data, size_t len) -> bool;
 
-  auto WriteAddress(uint8_t* buff, size_t buffLength, size_t& index, const net::Address& addr) -> bool;
-
-  template <typename T>
-  auto WriteAddress(T& buff, size_t& index, const net::Address& addr) -> bool;
+  auto write_address(uint8_t* buff, size_t buffLength, size_t& index, const net::Address& addr) -> bool;
 
   template <typename T>
-  auto WriteString(T& buff, size_t& index, const std::string& str) -> bool;
+  auto write_address(T& buff, size_t& index, const net::Address& addr) -> bool;
 
-  INLINE auto WriteUint8(uint8_t* buff, size_t buffLength, size_t& index, uint8_t value) -> bool
+  template <typename T>
+  auto write_string(T& buff, size_t& index, const std::string& str) -> bool;
+
+  INLINE auto write_uint8(uint8_t* buff, size_t buffLength, size_t& index, uint8_t value) -> bool
   {
     if (index + 1 > buffLength) {
       LOG(DEBUG, "index out of range: goal = ", index + 1, ", buff size = ", buffLength);
@@ -54,7 +54,7 @@ namespace encoding
   }
 
   template <typename T>
-  INLINE auto WriteUint8(T& buff, size_t& index, uint8_t value) -> bool
+  INLINE auto write_uint8(T& buff, size_t& index, uint8_t value) -> bool
   {
     if (index + 1 > buff.size()) {
       LOG(DEBUG, "index out of range: goal = ", index + 1, ", buff size = ", buff.size());
@@ -66,7 +66,7 @@ namespace encoding
     return true;
   }
 
-  INLINE auto WriteUint16(uint8_t* buff, size_t buffLength, size_t& index, uint16_t value) -> bool
+  INLINE auto write_uint16(uint8_t* buff, size_t buffLength, size_t& index, uint16_t value) -> bool
   {
     if (index + 2 > buffLength) {
       LOG(DEBUG, "index out of range: goal = ", index + 2, ", buff size = ", buffLength);
@@ -80,7 +80,7 @@ namespace encoding
   }
 
   template <typename T>
-  INLINE auto WriteUint16(T& buff, size_t& index, uint16_t value) -> bool
+  INLINE auto write_uint16(T& buff, size_t& index, uint16_t value) -> bool
   {
     if (index + 2 > buff.size()) {
       LOG(DEBUG, "index out of range: goal = ", index + 2, ", buff size = ", buff.size());
@@ -93,7 +93,7 @@ namespace encoding
     return true;
   }
 
-  INLINE auto WriteUint32(uint8_t* buff, size_t buffLength, size_t& index, uint32_t value) -> bool
+  INLINE auto write_uint32(uint8_t* buff, size_t buffLength, size_t& index, uint32_t value) -> bool
   {
     if (index + 4 > buffLength) {
       LOG(DEBUG, "index out of range: goal = ", index + 4, ", buff size = ", buffLength);
@@ -109,7 +109,7 @@ namespace encoding
   }
 
   template <typename T>
-  INLINE auto WriteUint32(T& buff, size_t& index, uint32_t value) -> bool
+  INLINE auto write_uint32(T& buff, size_t& index, uint32_t value) -> bool
   {
     if (index + 4 > buff.size()) {
       LOG(DEBUG, "index out of range: goal = ", index + 4, ", buff size = ", buff.size());
@@ -124,7 +124,7 @@ namespace encoding
     return true;
   }
 
-  INLINE auto WriteUint64(uint8_t* buff, size_t buffLength, size_t& index, uint64_t value) -> bool
+  INLINE auto write_uint64(uint8_t* buff, size_t buffLength, size_t& index, uint64_t value) -> bool
   {
     if (index + 8 > buffLength) {
       LOG(DEBUG, "index out of range: goal = ", index + 8, ", buff size = ", buffLength);
@@ -144,7 +144,7 @@ namespace encoding
   }
 
   template <typename T>
-  INLINE auto WriteUint64(T& buff, size_t& index, uint64_t value) -> bool
+  INLINE auto write_uint64(T& buff, size_t& index, uint64_t value) -> bool
   {
     if (index + 8 > buff.size()) {
       LOG(DEBUG, "index out of range: goal = ", index + 8, ", buff size = ", buff.size());
@@ -164,16 +164,16 @@ namespace encoding
   }
 
   template <typename T>
-  INLINE auto WriteDouble(T& buff, size_t& index, double value) -> bool
+  INLINE auto write_double(T& buff, size_t& index, double value) -> bool
   {
     if (index + 8 > buff.size()) {
       LOG(DEBUG, "index out of range: goal = ", index + 8, ", buff size = ", buff.size());
       return false;
     }
-    return encoding::WriteBytes(buff.data(), buff.size(), index, reinterpret_cast<uint8_t*>(&value), sizeof(double));
+    return encoding::write_bytes(buff.data(), buff.size(), index, reinterpret_cast<uint8_t*>(&value), sizeof(double));
   }
 
-  INLINE auto WriteBytes(uint8_t* buff, size_t buffLength, size_t& index, const uint8_t* const data, size_t dataLength)
+  INLINE auto write_bytes(uint8_t* buff, size_t buffLength, size_t& index, const uint8_t* const data, size_t dataLength)
    -> bool
   {
     if (index + dataLength > buffLength) {
@@ -188,7 +188,7 @@ namespace encoding
   }
 
   template <typename T, typename U>
-  INLINE auto WriteBytes(T& buff, size_t& index, const U& data, size_t len) -> bool
+  INLINE auto write_bytes(T& buff, size_t& index, const U& data, size_t len) -> bool
   {
     if (index + len > buff.size()) {
       LOG(DEBUG, "index out of range: goal = ", index + len, ", buff size = ", buff.size());
@@ -201,7 +201,7 @@ namespace encoding
     return true;
   }
 
-  INLINE auto WriteAddress(uint8_t* buff, size_t buffLength, size_t& index, const net::Address& addr) -> bool
+  INLINE auto write_address(uint8_t* buff, size_t buffLength, size_t& index, const net::Address& addr) -> bool
   {
 #ifndef NDEBUG
     auto start = index;
@@ -215,7 +215,7 @@ namespace encoding
 
     if (addr.Type == net::AddressType::IPv4) {
       // write the type
-      if (!WriteUint8(buff, buffLength, index, static_cast<uint8_t>(net::AddressType::IPv4))) {
+      if (!write_uint8(buff, buffLength, index, static_cast<uint8_t>(net::AddressType::IPv4))) {
         LOG(DEBUG, "buffer too small for address type");
         LOG(DEBUG, "index end = ", index + 1, ", buffer size = ", buffLength);
         return false;
@@ -225,7 +225,7 @@ namespace encoding
       index += addr.IPv4.size() * sizeof(uint8_t);                  // increment the index
 
       // write the port
-      if (!WriteUint16(buff, buffLength, index, addr.Port)) {
+      if (!write_uint16(buff, buffLength, index, addr.Port)) {
         LOG(DEBUG, "buffer too small for address port");
         LOG(DEBUG, "index end = ", index + 2, ", buffer size = ", buffLength);
         return false;
@@ -234,21 +234,21 @@ namespace encoding
       index += 12;  // increment the index past the address section
     } else if (addr.Type == net::AddressType::IPv6) {
       // write the type
-      if (!WriteUint8(buff, buffLength, index, static_cast<uint8_t>(net::AddressType::IPv6))) {
+      if (!write_uint8(buff, buffLength, index, static_cast<uint8_t>(net::AddressType::IPv6))) {
         LOG(DEBUG, "buffer too small for address type");
         LOG(DEBUG, "index end = ", index + 1, ", buffer size = ", buffLength);
         return false;
       }
 
       for (const auto& ip : addr.IPv6) {
-        if (!WriteUint16(buff, buffLength, index, ip)) {
+        if (!write_uint16(buff, buffLength, index, ip)) {
           LOG(DEBUG, "buffer too small for address part");
           LOG(DEBUG, "index end = ", index + 2, ", buffer size = ", buffLength);
           return false;
         }
       }
 
-      if (!WriteUint16(buff, buffLength, index, addr.Port)) {
+      if (!write_uint16(buff, buffLength, index, addr.Port)) {
         LOG(DEBUG, "buffer too small for address port");
         LOG(DEBUG, "index end = ", index + 2, ", buffer size = ", buffLength);
         return false;
@@ -264,7 +264,7 @@ namespace encoding
   }
 
   template <typename T>
-  INLINE auto WriteAddress(T& buff, size_t& index, const net::Address& addr) -> bool
+  INLINE auto write_address(T& buff, size_t& index, const net::Address& addr) -> bool
   {
     GCC_NO_OPT_OUT;
 #ifndef NDEBUG
@@ -279,7 +279,7 @@ namespace encoding
 
     if (addr.Type == net::AddressType::IPv4) {
       // write the type
-      if (!WriteUint8(buff, index, static_cast<uint8_t>(net::AddressType::IPv4))) {
+      if (!write_uint8(buff, index, static_cast<uint8_t>(net::AddressType::IPv4))) {
         LOG(TRACE, "buffer too small for address type");
         LOG(TRACE, "index end = ", index + 1, ", buffer size = ", buff.size());
         return false;
@@ -289,7 +289,7 @@ namespace encoding
       index += addr.IPv4.size() * sizeof(uint8_t);                          // increment the index
 
       // write the port
-      if (!WriteUint16(buff, index, addr.Port)) {
+      if (!write_uint16(buff, index, addr.Port)) {
         LOG(TRACE, "buffer too small for address port");
         LOG(TRACE, "index end = ", index + 2, ", buffer size = ", buff.size());
         return false;
@@ -298,21 +298,21 @@ namespace encoding
       index += 12;  // increment the index past the address section
     } else if (addr.Type == net::AddressType::IPv6) {
       // write the type
-      if (!WriteUint8(buff, index, static_cast<uint8_t>(net::AddressType::IPv6))) {
+      if (!write_uint8(buff, index, static_cast<uint8_t>(net::AddressType::IPv6))) {
         LOG(TRACE, "buffer too small for address type");
         LOG(TRACE, "index end = ", index + 1, ", buffer size = ", buff.size());
         return false;
       }
 
       for (const auto& ip : addr.IPv6) {
-        if (!WriteUint16(buff, index, ip)) {
+        if (!write_uint16(buff, index, ip)) {
           LOG(TRACE, "buffer too small for address part");
           LOG(TRACE, "index end = ", index + 2, ", buffer size = ", buff.size());
           return false;
         }
       }
 
-      if (!WriteUint16(buff, index, addr.Port)) {
+      if (!write_uint16(buff, index, addr.Port)) {
         LOG(TRACE, "buffer too small for address port");
         LOG(TRACE, "index end = ", index + 2, ", buffer size = ", buff.size());
         return false;
@@ -328,7 +328,7 @@ namespace encoding
   }
 
   template <typename T>
-  INLINE auto WriteString(T& buff, size_t& index, const std::string& str) -> bool
+  INLINE auto write_string(T& buff, size_t& index, const std::string& str) -> bool
   {
     if (index + 4 + str.length() > buff.size()) {
       LOG(TRACE, "buffer too small for string");
@@ -336,7 +336,7 @@ namespace encoding
     }
 
     // sanity check
-    if (!encoding::WriteUint32(buff, index, str.length())) {
+    if (!encoding::write_uint32(buff, index, str.length())) {
       LOG(TRACE, "could not write string length");
       return false;
     }

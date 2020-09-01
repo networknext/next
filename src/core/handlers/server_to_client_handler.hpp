@@ -1,7 +1,7 @@
 #pragma once
 
-#include "core/packets/header.hpp"
-#include "core/packets/types.hpp"
+#include "core/packet_header.hpp"
+#include "core/packet_types.hpp"
 #include "core/session_map.hpp"
 #include "core/throughput_recorder.hpp"
 #include "os/socket.hpp"
@@ -26,16 +26,16 @@ namespace core
      bool is_signed)
     {
       size_t index = 0;
-      size_t length = packet.Len;
+      size_t length = packet.length;
 
       if (is_signed) {
-        index = crypto::PacketHashLength;
-        length = packet.Len - crypto::PacketHashLength;
+        index = crypto::PACKET_HASH_LENGTH;
+        length = packet.length - crypto::PACKET_HASH_LENGTH;
       }
 
       // check if length excluding the hash is right,
       // and then check if the hash + everything else is too large
-      if (length <= Header::ByteSize || packet.Len > Header::ByteSize + RELAY_MTU) {
+      if (length <= Header::ByteSize || packet.length > Header::ByteSize + RELAY_MTU) {
         LOG(ERROR, "ignoring server to client packet, invalid size: ", length);
         return;
       }
@@ -67,22 +67,22 @@ namespace core
 
       uint64_t clean_sequence = header.clean_sequence();
 
-      if (relay_replay_protection_already_received(&session->ServerToClientProtection, clean_sequence)) {
+      if (relay_replay_protection_already_received(&session->server_to_client_protection, clean_sequence)) {
         LOG(ERROR, "ignoring server to client packet, packet already received: session = ", *session);
         return;
       }
 
-      if (!header.verify(packet, index, Direction::ServerToClient, session->PrivateKey)) {
+      if (!header.verify(packet, index, Direction::ServerToClient, session->private_key)) {
         LOG(ERROR, "ignoring server to client packet, could not verify header: session = ", *session);
         return;
       }
 
-      relay_replay_protection_advance_sequence(&session->ServerToClientProtection, clean_sequence);
+      relay_replay_protection_advance_sequence(&session->server_to_client_protection, clean_sequence);
 
-      recorder.ServerToClientTx.add(packet.Len);
+      recorder.server_to_client_tx.add(packet.length);
 
-      if (!socket.send(session->PrevAddr, packet.Buffer.data(), packet.Len)) {
-        LOG(ERROR, "failed to forward server packet to ", session->PrevAddr);
+      if (!socket.send(session->prev_addr, packet.buffer.data(), packet.length)) {
+        LOG(ERROR, "failed to forward server packet to ", session->prev_addr);
       }
     }
   }  // namespace handlers

@@ -8,7 +8,7 @@
 #include "bench/bench.hpp"
 #include "core/backend.hpp"
 #include "core/packet_processing.hpp"
-#include "core/packets/header.hpp"
+#include "core/packet_header.hpp"
 #include "core/router_info.hpp"
 #include "crypto/bytes.hpp"
 #include "crypto/hash.hpp"
@@ -63,7 +63,7 @@ namespace
   {
     // relay private key
     {
-      auto len = base64::decode(env.relay_private_key, keychain.RelayPrivateKey);
+      auto len = base64::decode(env.relay_private_key, keychain.relay_private_key);
       if (len != KEY_SIZE) {
         LOG(FATAL, "invalid relay private key");
       }
@@ -73,7 +73,7 @@ namespace
 
     // relay public key
     {
-      auto len = base64::decode(env.relay_public_key, keychain.RelayPublicKey);
+      auto len = base64::decode(env.relay_public_key, keychain.relay_public_key);
       if (len != KEY_SIZE) {
         LOG(FATAL, "invalid relay public key");
       }
@@ -83,7 +83,7 @@ namespace
 
     // router public key
     {
-      auto len = base64::decode(env.relay_router_public_key, keychain.RouterPublicKey);
+      auto len = base64::decode(env.relay_router_public_key, keychain.backend_public_key);
       if (len != KEY_SIZE) {
         LOG(FATAL, "invalid router public key");
       }

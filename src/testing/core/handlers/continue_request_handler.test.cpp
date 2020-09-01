@@ -35,37 +35,37 @@ Test(core_handlers_continue_request_handler_unsigned)
   check(addr.parse("127.0.0.1"));
   check(socket.create(addr, config));
 
-  packet.Buffer[0] = static_cast<uint8_t>(Type::ContinueRequest);
-  packet.Len = 1 + ContinueToken::EncryptedByteSize * 2;
+  packet.buffer[0] = static_cast<uint8_t>(Type::ContinueRequest);
+  packet.length = 1 + ContinueToken::SIZE_OF_ENCRYPTED * 2;
 
   ContinueToken token;
-  token.ExpireTimestamp = 20;
+  token.expire_timestamp = 20;
   token.SessionID = 0x13;
   token.SessionVersion = 3;
   token.SessionFlags = 0;
 
   size_t index = 1;
-  check(token.write_encrypted(packet, index, router_private_key(), keychain.RelayPublicKey));
-  check(packet.Buffer[0] == static_cast<uint8_t>(Type::ContinueRequest));
-  check(index == 1 + ContinueToken::EncryptedByteSize).onFail([&] {
+  check(token.write_encrypted(packet, index, router_private_key(), keychain.relay_public_key));
+  check(packet.buffer[0] == static_cast<uint8_t>(Type::ContinueRequest));
+  check(index == 1 + ContinueToken::SIZE_OF_ENCRYPTED).onFail([&] {
     std::cout << index << '\n';
   });
 
   auto session = std::make_shared<Session>();
-  session->ExpireTimestamp = 10;
-  session->SessionID = token.SessionID;
-  session->SessionVersion = token.SessionVersion;
-  session->NextAddr = addr;
-  session->ClientToServerSeq = 0;
+  session->expire_timestamp = 10;
+  session->session_id = token.SessionID;
+  session->session_version = token.SessionVersion;
+  session->next_addr = addr;
+  session->client_to_server_sequence = 0;
   map.set(token.hash(), session);
 
-  size_t prev_len = packet.Len;
+  size_t prev_len = packet.length;
 
   core::handlers::continue_request_handler(packet, map, keychain, recorder, info, socket, false);
 
   check(socket.recv(packet));
-  check(packet.Len == prev_len - ContinueToken::EncryptedByteSize);
-  check(session->ExpireTimestamp == token.ExpireTimestamp);
+  check(packet.length == prev_len - ContinueToken::SIZE_OF_ENCRYPTED);
+  check(session->expire_timestamp == token.expire_timestamp);
 }
 
 Test(core_handlers_continue_request_handler_signed)
@@ -78,8 +78,8 @@ Test(core_handlers_continue_request_handler_signed)
   info.setTimestamp(0);
   Socket socket;
 
-  packet.Buffer[crypto::PacketHashLength] = static_cast<uint8_t>(Type::ContinueRequest);
-  packet.Len = crypto::PacketHashLength + 1 + ContinueToken::EncryptedByteSize * 2;
+  packet.buffer[crypto::PACKET_HASH_LENGTH] = static_cast<uint8_t>(Type::ContinueRequest);
+  packet.length = crypto::PACKET_HASH_LENGTH + 1 + ContinueToken::SIZE_OF_ENCRYPTED * 2;
 
   Address addr;
   SocketConfig config = default_socket_config();
@@ -88,31 +88,31 @@ Test(core_handlers_continue_request_handler_signed)
   check(socket.create(addr, config));
 
   ContinueToken token;
-  token.ExpireTimestamp = 20;
+  token.expire_timestamp = 20;
   token.SessionID = 0x13;
   token.SessionVersion = 3;
   token.SessionFlags = 0;
 
-  size_t index = crypto::PacketHashLength + 1;
-  check(token.write_encrypted(packet, index, router_private_key(), keychain.RelayPublicKey));
-  check(packet.Buffer[crypto::PacketHashLength] == static_cast<uint8_t>(Type::ContinueRequest));
-  check(index == crypto::PacketHashLength + 1 + ContinueToken::EncryptedByteSize).onFail([&] {
+  size_t index = crypto::PACKET_HASH_LENGTH + 1;
+  check(token.write_encrypted(packet, index, router_private_key(), keychain.relay_public_key));
+  check(packet.buffer[crypto::PACKET_HASH_LENGTH] == static_cast<uint8_t>(Type::ContinueRequest));
+  check(index == crypto::PACKET_HASH_LENGTH + 1 + ContinueToken::SIZE_OF_ENCRYPTED).onFail([&] {
     std::cout << index << '\n';
   });
 
   auto session = std::make_shared<Session>();
-  session->ExpireTimestamp = 10;
-  session->SessionID = token.SessionID;
-  session->SessionVersion = token.SessionVersion;
-  session->NextAddr = addr;
-  session->ClientToServerSeq = 0;
+  session->expire_timestamp = 10;
+  session->session_id = token.SessionID;
+  session->session_version = token.SessionVersion;
+  session->next_addr = addr;
+  session->client_to_server_sequence = 0;
   map.set(token.hash(), session);
 
-  size_t prev_len = packet.Len;
+  size_t prev_len = packet.length;
 
   core::handlers::continue_request_handler(packet, map, keychain, recorder, info, socket, true);
 
   check(socket.recv(packet));
-  check(packet.Len == prev_len - ContinueToken::EncryptedByteSize);
-  check(session->ExpireTimestamp == token.ExpireTimestamp);
+  check(packet.length == prev_len - ContinueToken::SIZE_OF_ENCRYPTED);
+  check(session->expire_timestamp == token.expire_timestamp);
 }

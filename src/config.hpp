@@ -3,8 +3,6 @@
 
 #define RELAY_VERSION "1.1.2"
 
-#define RELAY_MTU 1300
-
 #define RELAY_ADDRESS_BUFFER_SAFETY 32
 
 #define RELAY_REPLAY_PROTECTION_BUFFER_SIZE 256UL
@@ -19,8 +17,6 @@
 
 // how many seconds before a packet is considered as lost
 #define RELAY_PING_SAFETY 1.0
-
-#define RELAY_MAX_PACKET_BYTES 1500
 
 #define RELAY_MAX_ADDRESS_STRING_LENGTH 256
 

@@ -277,16 +277,16 @@ Test(core_Backend_update_valid)
     const size_t numRelays = 1;
     std::array<RelayPingInfo, MAX_RELAYS> incoming;
     std::array<PingData, MAX_RELAYS> pingData;
-    incoming[0].ID = 987654321;
+    incoming[0].id = 987654321;
     Address addr;
     check(addr.parse("127.0.0.1:12345"));
-    incoming[0].Addr = addr;
+    incoming[0].address = addr;
     manager.update(numRelays, incoming);
-    check(manager.getPingData(pingData) == 1);
-    manager.processPong(pingData[0].Addr, pingData[0].Seq);
+    check(manager.get_ping_targets(pingData) == 1);
+    manager.process_pong(pingData[0].address, pingData[0].sequence);
   }
 
-  recorder.UnknownRx.add(10);
+  recorder.unknown_rx.add(10);
   UpdateResponse response;
   response.Version = 0;
   response.Timestamp = 123456789;
@@ -295,11 +295,11 @@ Test(core_Backend_update_valid)
   {
     RelayPingInfo relay1, relay2;
 
-    relay1.ID = 135792468;
-    check(relay1.Addr.parse("127.0.0.1:54321"));
+    relay1.id = 135792468;
+    check(relay1.address.parse("127.0.0.1:54321"));
 
-    relay2.ID = 246813579;
-    check(relay2.Addr.parse("127.0.0.1:13524"));
+    relay2.id = 246813579;
+    check(relay2.address.parse("127.0.0.1:13524"));
     response.Relays = {
      relay1,
      relay2,
@@ -312,8 +312,8 @@ Test(core_Backend_update_valid)
   const auto outboundPing = 123456789;
   const auto pong = 987654321;
 
-  recorder.OutboundPingTx.add(outboundPing);
-  recorder.PongRx.add(pong);
+  recorder.outbound_ping_tx.add(outboundPing);
+  recorder.pong_rx.add(pong);
 
   check(backend.update(recorder, false));
 
@@ -324,7 +324,7 @@ Test(core_Backend_update_valid)
 
     check(request.Version == 1);
     check(request.Address == RelayAddr);
-    check(request.PublicKey == Keychain.RelayPublicKey);
+    check(request.PublicKey == Keychain.relay_public_key);
     check(request.SessionCount == sessions.size());
     check(request.OutboundPingTx == outboundPing);
     check(request.RouteRequestRx == 0);
@@ -359,13 +359,13 @@ Test(core_Backend_update_valid)
     std::array<PingData, MAX_RELAYS> pingData;
 
     std::this_thread::sleep_for(1s);  // needed so that getPingData() will always return the right number
-    auto count = manager.getPingData(pingData);
+    auto count = manager.get_ping_targets(pingData);
 
     check(count == 2).onFail([&] {
       std::cout << "count is " << count << '\n';
     });
-    check(pingData[0].Addr.toString() == "127.0.0.1:54321");
-    check(pingData[1].Addr.toString() == "127.0.0.1:13524");
+    check(pingData[0].address.toString() == "127.0.0.1:54321");
+    check(pingData[1].address.toString() == "127.0.0.1:13524");
 
     check(routerInfo.currentTime() >= 123456789).onFail([&] {
       std::cout << "info timestamp = " << routerInfo.currentTime() << '\n';
@@ -393,7 +393,7 @@ Test(core_Backend_update_shutting_down_true)
 
   check(request.Version == 1);
   check(request.Address == RelayAddr);
-  check(request.PublicKey == Keychain.RelayPublicKey);
+  check(request.PublicKey == Keychain.relay_public_key);
   check(request.SessionCount == 0);
   check(request.OutboundPingTx == 0);
   check(request.RouteRequestRx == 0);

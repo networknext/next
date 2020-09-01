@@ -1,7 +1,7 @@
 #include "includes.h"
 #include "testing/test.hpp"
 
-#include "core/packets/header.hpp"
+#include "core/packet_header.hpp"
 #include "crypto/bytes.hpp"
 
 using core::Packet;

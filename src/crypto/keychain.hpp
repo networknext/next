@@ -21,18 +21,18 @@ namespace crypto
     static_assert(KEY_SIZE == RELAY_PRIVATE_KEY_SIZE);
     static_assert(KEY_SIZE == crypto_sign_PUBLICKEYBYTES);
 
-    std::array<uint8_t, RELAY_PUBLIC_KEY_SIZE> RelayPublicKey;
-    std::array<uint8_t, RELAY_PRIVATE_KEY_SIZE> RelayPrivateKey;
-    std::array<uint8_t, crypto_sign_PUBLICKEYBYTES> RouterPublicKey;
+    std::array<uint8_t, RELAY_PUBLIC_KEY_SIZE> relay_public_key;
+    std::array<uint8_t, RELAY_PRIVATE_KEY_SIZE> relay_private_key;
+    std::array<uint8_t, crypto_sign_PUBLICKEYBYTES> backend_public_key;
 
-    auto parse(std::string relayPublicKey, std::string relayPrivateKey, std::string routerPublicKey)
-     -> bool;
+    auto parse(std::string relay_public_key, std::string relay_private_key, std::string backend_public_key) -> bool;
   };
 
-  inline auto Keychain::parse(
-   std::string relayPublicKey, std::string relayPrivateKey, std::string routerPublicKey) -> bool
+  inline auto Keychain::parse(std::string relay_public_key, std::string relay_private_key, std::string backend_public_key)
+   -> bool
   {
-    return base64::decode(relayPublicKey, RelayPublicKey) && base64::decode(relayPrivateKey, RelayPrivateKey) &&
-           base64::decode(routerPublicKey, RouterPublicKey);
+    return base64::decode(relay_public_key, this->relay_public_key) &&
+           base64::decode(relay_private_key, this->relay_private_key) &&
+           base64::decode(backend_public_key, this->backend_public_key);
   }
 }  // namespace crypto

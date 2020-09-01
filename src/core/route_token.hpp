@@ -71,7 +71,7 @@ namespace core
     std::array<uint8_t, crypto_box_NONCEBYTES> nonce;
     crypto::RandomBytes(nonce, nonce.size());  // fill nonce
 
-    if (!encoding::WriteBytes(packet.Buffer, index, nonce, nonce.size())) {
+    if (!encoding::write_bytes(packet.buffer, index, nonce, nonce.size())) {
       LOG(ERROR, "could not write nonce");
       return false;
     }
@@ -117,7 +117,7 @@ namespace core
 
   INLINE auto RouteToken::write(Packet& packet, size_t& index) -> bool
   {
-    if (index + RouteToken::ByteSize > packet.Buffer.size()) {
+    if (index + RouteToken::ByteSize > packet.buffer.size()) {
       return false;
     }
 
@@ -128,19 +128,19 @@ namespace core
       return false;
     }
 
-    if (!encoding::WriteUint32(packet.Buffer, index, this->KbpsUp)) {
+    if (!encoding::write_uint32(packet.buffer, index, this->KbpsUp)) {
       return false;
     }
 
-    if (!encoding::WriteUint32(packet.Buffer, index, this->KbpsDown)) {
+    if (!encoding::write_uint32(packet.buffer, index, this->KbpsDown)) {
       return false;
     }
 
-    if (!encoding::WriteAddress(packet.Buffer, index, this->NextAddr)) {
+    if (!encoding::write_address(packet.buffer, index, this->NextAddr)) {
       return false;
     }
 
-    if (!encoding::WriteBytes(packet.Buffer, index, this->PrivateKey, this->PrivateKey.size())) {
+    if (!encoding::write_bytes(packet.buffer, index, this->PrivateKey, this->PrivateKey.size())) {
       return false;
     }
 
@@ -159,19 +159,19 @@ namespace core
       return false;
     }
 
-    if (!encoding::ReadUint32(packet.Buffer, index, this->KbpsUp)) {
+    if (!encoding::read_uint32(packet.buffer, index, this->KbpsUp)) {
       return false;
     }
 
-    if (!encoding::ReadUint32(packet.Buffer, index, this->KbpsDown)) {
+    if (!encoding::read_uint32(packet.buffer, index, this->KbpsDown)) {
       return false;
     }
 
-    if (!encoding::ReadAddress(packet.Buffer, index, this->NextAddr)) {
+    if (!encoding::read_address(packet.buffer, index, this->NextAddr)) {
       return false;
     }
 
-    if (!encoding::ReadBytes(packet.Buffer, index, this->PrivateKey, this->PrivateKey.size())) {
+    if (!encoding::read_bytes(packet.buffer, index, this->PrivateKey, this->PrivateKey.size())) {
       return false;
     }
 
@@ -186,14 +186,14 @@ namespace core
    const crypto::GenericKey& receiverPublicKey,
    const std::array<uint8_t, crypto_box_NONCEBYTES>& nonce) -> bool
   {
-    if (encryption_start + RouteToken::EncryptionLength > packet.Buffer.size()) {
+    if (encryption_start + RouteToken::EncryptionLength > packet.buffer.size()) {
       return false;
     }
 
     if (
      crypto_box_easy(
-      &packet.Buffer[encryption_start],
-      &packet.Buffer[encryption_start],
+      &packet.buffer[encryption_start],
+      &packet.buffer[encryption_start],
       RouteToken::ByteSize,
       nonce.data(),
       receiverPublicKey.data(),
@@ -211,16 +211,16 @@ namespace core
    const crypto::GenericKey& receiverPrivateKey,
    const size_t nonceIndex) -> bool
   {
-    if (index + RouteToken::EncryptionLength > packet.Buffer.size()) {
+    if (index + RouteToken::EncryptionLength > packet.buffer.size()) {
       return false;
     }
 
     if (
      crypto_box_open_easy(
-      &packet.Buffer[index],
-      &packet.Buffer[index],
+      &packet.buffer[index],
+      &packet.buffer[index],
       RouteToken::EncryptionLength,
-      &packet.Buffer[nonceIndex],
+      &packet.buffer[nonceIndex],
       senderPublicKey.data(),
       receiverPrivateKey.data()) != 0) {
       return false;

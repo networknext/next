@@ -38,8 +38,8 @@ Test(core_handlers_client_to_server_handler_unsigned_packet)
   check(addr.parse("127.0.0.1"));
   check(socket.create(addr, config));
 
-  packet.Len = Header::ByteSize + 100;
-  packet.Addr = addr;
+  packet.length = Header::ByteSize + 100;
+  packet.addr = addr;
 
   Header header = {
    .type = Type::ClientToServer,
@@ -49,12 +49,12 @@ Test(core_handlers_client_to_server_handler_unsigned_packet)
   };
 
   auto session = std::make_shared<Session>();
-  session->NextAddr = addr;
-  session->ExpireTimestamp = 10;
-  session->PrivateKey = private_key;
-  session->ClientToServerSeq = 0;
-  legacy::relay_replay_protection_reset(&session->ClientToServerProtection);
-  legacy::relay_replay_protection_reset(&session->ServerToClientProtection);
+  session->next_addr = addr;
+  session->expire_timestamp = 10;
+  session->private_key = private_key;
+  session->client_to_server_sequence = 0;
+  legacy::relay_replay_protection_reset(&session->client_to_server_protection);
+  legacy::relay_replay_protection_reset(&session->server_to_client_protection);
 
   map.set(header.hash(), session);
 
@@ -64,14 +64,14 @@ Test(core_handlers_client_to_server_handler_unsigned_packet)
   check(index == Header::ByteSize);
 
   core::handlers::client_to_server_handler(packet, map, recorder, router_info, socket, false);
-  size_t prev_len = packet.Len;
+  size_t prev_len = packet.length;
   check(socket.recv(packet));
-  check(prev_len == packet.Len);
+  check(prev_len == packet.length);
 
-  check(recorder.ClientToServerTx.PacketCount == 1);
-  check(recorder.ClientToServerTx.ByteCount == packet.Len).onFail([&] {
-    std::cout << "packet len = " << packet.Len << std::endl;
-    std::cout << "byte count = " << recorder.ClientToServerTx.ByteCount << std::endl;
+  check(recorder.client_to_server_tx.num_packets == 1);
+  check(recorder.client_to_server_tx.num_bytes == packet.length).onFail([&] {
+    std::cout << "packet len = " << packet.length << std::endl;
+    std::cout << "byte count = " << recorder.client_to_server_tx.num_bytes << std::endl;
   });
 
   core::handlers::client_to_server_handler(packet, map, recorder, router_info, socket, false);
@@ -97,8 +97,8 @@ Test(core_handlers_client_to_server_handler_signed_packet)
   check(addr.parse("127.0.0.1"));
   check(socket.create(addr, config));
 
-  packet.Len = crypto::PacketHashLength + Header::ByteSize + 100;
-  packet.Addr = addr;
+  packet.length = crypto::PACKET_HASH_LENGTH + Header::ByteSize + 100;
+  packet.addr = addr;
 
   Header header = {
    .type = Type::ClientToServer,
@@ -108,21 +108,21 @@ Test(core_handlers_client_to_server_handler_signed_packet)
   };
 
   auto session = std::make_shared<Session>();
-  session->NextAddr = addr;
-  session->ExpireTimestamp = 10;
-  session->PrivateKey = private_key;
-  session->SessionID = header.session_id;
-  session->SessionVersion = header.session_version;
-  session->ClientToServerSeq = 0;
-  legacy::relay_replay_protection_reset(&session->ClientToServerProtection);
-  legacy::relay_replay_protection_reset(&session->ServerToClientProtection);
+  session->next_addr = addr;
+  session->expire_timestamp = 10;
+  session->private_key = private_key;
+  session->session_id = header.session_id;
+  session->session_version = header.session_version;
+  session->client_to_server_sequence = 0;
+  legacy::relay_replay_protection_reset(&session->client_to_server_protection);
+  legacy::relay_replay_protection_reset(&session->server_to_client_protection);
 
   map.set(header.hash(), session);
 
-  size_t index = crypto::PacketHashLength;
+  size_t index = crypto::PACKET_HASH_LENGTH;
 
   check(header.write(packet, index, Direction::ClientToServer, private_key));
-  check(index == crypto::PacketHashLength + Header::ByteSize);
+  check(index == crypto::PACKET_HASH_LENGTH + Header::ByteSize);
 
   core::handlers::client_to_server_handler(packet, map, recorder, router_info, socket, true);
   check(socket.recv(packet));

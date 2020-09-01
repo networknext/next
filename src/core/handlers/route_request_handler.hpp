@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/packets/types.hpp"
+#include "core/packet_types.hpp"
 #include "core/route_token.hpp"
 #include "core/router_info.hpp"
 #include "core/session_map.hpp"
@@ -30,11 +30,11 @@ namespace core
      bool is_signed)
     {
       size_t index = 0;
-      size_t length = packet.Len;
+      size_t length = packet.length;
 
       if (is_signed) {
-        index = crypto::PacketHashLength;
-        length = packet.Len - crypto::PacketHashLength;
+        index = crypto::PACKET_HASH_LENGTH;
+        length = packet.length - crypto::PACKET_HASH_LENGTH;
       }
 
       if (length < static_cast<size_t>(1 + RouteToken::EncryptedByteSize * 2)) {
@@ -45,7 +45,7 @@ namespace core
       RouteToken token;
       {
         size_t i = index + 1;
-        if (!token.read_encrypted(packet, i, keychain.RouterPublicKey, keychain.RelayPrivateKey)) {
+        if (!token.read_encrypted(packet, i, keychain.backend_public_key, keychain.relay_private_key)) {
           LOG(ERROR, "ignoring route request. could not read route token");
           return;
         }
@@ -65,20 +65,20 @@ namespace core
         assert(session);
 
         // fill it with data in the token
-        session->ExpireTimestamp = token.ExpireTimestamp;
-        session->SessionID = token.SessionID;
-        session->SessionVersion = token.SessionVersion;
+        session->expire_timestamp = token.expire_timestamp;
+        session->session_id = token.SessionID;
+        session->session_version = token.SessionVersion;
 
         // initialize the rest of the fields
-        session->ClientToServerSeq = 0;
-        session->ServerToClientSeq = 0;
-        session->KbpsUp = token.KbpsUp;
-        session->KbpsDown = token.KbpsDown;
-        session->PrevAddr = packet.Addr;
-        session->NextAddr = token.NextAddr;
-        std::copy(token.PrivateKey.begin(), token.PrivateKey.end(), session->PrivateKey.begin());
-        relay_replay_protection_reset(&session->ClientToServerProtection);
-        relay_replay_protection_reset(&session->ServerToClientProtection);
+        session->client_to_server_sequence = 0;
+        session->server_to_client_sequence = 0;
+        session->kbps_up = token.KbpsUp;
+        session->kbps_down = token.KbpsDown;
+        session->prev_addr = packet.addr;
+        session->next_addr = token.NextAddr;
+        std::copy(token.PrivateKey.begin(), token.PrivateKey.end(), session->private_key.begin());
+        relay_replay_protection_reset(&session->client_to_server_protection);
+        relay_replay_protection_reset(&session->server_to_client_protection);
 
         session_map.set(hash, session);
 
@@ -89,22 +89,22 @@ namespace core
 
       // remove this part of the token by offseting it the request packet bytes
 
-      length = packet.Len - RouteToken::EncryptedByteSize;
+      length = packet.length - RouteToken::EncryptedByteSize;
 
       if (is_signed) {
-        packet.Buffer[RouteToken::EncryptedByteSize + crypto::PacketHashLength] =
+        packet.buffer[RouteToken::EncryptedByteSize + crypto::PACKET_HASH_LENGTH] =
          static_cast<uint8_t>(packets::Type::RouteRequest);
-        legacy::relay_sign_network_next_packet(&packet.Buffer[RouteToken::EncryptedByteSize], length);
+        legacy::relay_sign_network_next_packet(&packet.buffer[RouteToken::EncryptedByteSize], length);
       } else {
-        packet.Buffer[RouteToken::EncryptedByteSize] = static_cast<uint8_t>(packets::Type::RouteRequest);
+        packet.buffer[RouteToken::EncryptedByteSize] = static_cast<uint8_t>(packets::Type::RouteRequest);
       }
 
-      recorder.RouteRequestTx.add(length);
+      recorder.route_request_tx.add(length);
 
 #ifdef RELAY_MULTISEND
       buff.push(token.NextAddr, &mPacket.Buffer[RouteToken::EncryptedByteSize], length);
 #else
-      if (!socket.send(token.NextAddr, &packet.Buffer[RouteToken::EncryptedByteSize], length)) {
+      if (!socket.send(token.NextAddr, &packet.buffer[RouteToken::EncryptedByteSize], length)) {
         LOG(ERROR, "failed to forward route request to ", token.NextAddr);
       }
 #endif

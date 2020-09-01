@@ -17,21 +17,21 @@ Test(ReadAndWritingAddresses)
   std::array<uint8_t, 1024> buffer;
 
   size_t index = 0;
-  encoding::WriteAddress(buffer, index, a);
+  encoding::write_address(buffer, index, a);
   check(index == net::Address::ByteSize);
-  encoding::WriteAddress(buffer, index, b);
+  encoding::write_address(buffer, index, b);
   check(index == net::Address::ByteSize * 2);
-  encoding::WriteAddress(buffer, index, c);
+  encoding::write_address(buffer, index, c);
   check(index == net::Address::ByteSize * 3);
 
   net::Address read_a, read_b, read_c;
 
   index = 0;
-  encoding::ReadAddress(buffer, index, read_a);
+  encoding::read_address(buffer, index, read_a);
   check(index == net::Address::ByteSize);
-  encoding::ReadAddress(buffer, index, read_b);
+  encoding::read_address(buffer, index, read_b);
   check(index == net::Address::ByteSize * 2);
-  encoding::ReadAddress(buffer, index, read_c);
+  encoding::read_address(buffer, index, read_c);
   check(index == net::Address::ByteSize * 3);
 
   check(a == read_a);

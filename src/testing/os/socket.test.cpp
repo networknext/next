@@ -49,23 +49,23 @@ Test(os_socket_nonblocking_ipv4)
   {
     Packet out, in;
 
-    out.Addr = local_address;
-    out.Len = 256;
+    out.addr = local_address;
+    out.length = 256;
     // randomize past 256
-    crypto::RandomBytes(out.Buffer, out.Buffer.size());
+    crypto::RandomBytes(out.buffer, out.buffer.size());
 
     check(socket.send(out));
 
     size_t packets_received = 0;
     while (socket.recv(in)) {
-      check(in.Addr == local_address);
-      check(in.Len == 256);
+      check(in.addr == local_address);
+      check(in.length == 256);
       packets_received++;
     }
 
     check(packets_received == 1);
     // only check the range
-    std::equal(out.Buffer.begin(), out.Buffer.begin() + out.Len, in.Buffer.begin(), in.Buffer.begin() + in.Len);
+    std::equal(out.buffer.begin(), out.buffer.begin() + out.length, in.buffer.begin(), in.buffer.begin() + in.length);
   }
 }
 

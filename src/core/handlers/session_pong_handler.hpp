@@ -1,8 +1,8 @@
 #pragma once
 
 #include "core/packet.hpp"
-#include "core/packets/header.hpp"
-#include "core/packets/types.hpp"
+#include "core/packet_header.hpp"
+#include "core/packet_types.hpp"
 #include "core/session_map.hpp"
 #include "core/throughput_recorder.hpp"
 #include "crypto/keychain.hpp"
@@ -28,11 +28,11 @@ namespace core
      bool is_signed)
     {
       size_t index = 0;
-      size_t length = packet.Len;
+      size_t length = packet.length;
 
       if (is_signed) {
-        index = crypto::PacketHashLength;
-        length = packet.Len - crypto::PacketHashLength;
+        index = crypto::PACKET_HASH_LENGTH;
+        length = packet.length - crypto::PACKET_HASH_LENGTH;
       }
 
       if (length > Header::ByteSize + 32) {
@@ -67,22 +67,22 @@ namespace core
 
       uint64_t clean_sequence = header.clean_sequence();
 
-      if (clean_sequence <= session->ServerToClientSeq) {
+      if (clean_sequence <= session->server_to_client_sequence) {
         LOG(ERROR, "ignoring session pong packet, packet already received: session = ", *session);
         return;
       }
 
-      if (!header.verify(packet, index, Direction::ServerToClient, session->PrivateKey)) {
+      if (!header.verify(packet, index, Direction::ServerToClient, session->private_key)) {
         LOG(ERROR, "ignoring session pong packet, could not verify header: session = ", *session);
         return;
       }
 
-      session->ServerToClientSeq = clean_sequence;
+      session->server_to_client_sequence = clean_sequence;
 
-      recorder.SessionPongTx.add(packet.Len);
+      recorder.session_pong_tx.add(packet.length);
 
-      if (!socket.send(session->PrevAddr, packet.Buffer.data(), packet.Len)) {
-        LOG(ERROR, "failed to send session pong to ", session->PrevAddr);
+      if (!socket.send(session->prev_addr, packet.buffer.data(), packet.length)) {
+        LOG(ERROR, "failed to send session pong to ", session->prev_addr);
       }
     }
   }  // namespace handlers

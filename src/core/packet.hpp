@@ -1,7 +1,7 @@
-#ifndef CORE_PACKET_HPP
-#define CORE_PACKET_HPP
+#pragma once
 
 #include "net/address.hpp"
+#include "packet_types.hpp"
 #include "util/dump.hpp"
 #include "util/logger.hpp"
 #include "util/macros.hpp"
@@ -18,9 +18,9 @@ namespace core
 
     Packet& operator=(Packet&& other);
 
-    net::Address Addr;
-    std::array<uint8_t, GenericPacketMaxSize> Buffer;
-    size_t Len;
+    net::Address addr;
+    std::array<uint8_t, GenericPacketMaxSize> buffer;
+    size_t length;
   };
 
   // holds BuffSize packets and shares memory between the header and the packet, packet interface is meant to be easy to use
@@ -58,14 +58,14 @@ namespace core
     std::mutex mLock;
   };
 
-  INLINE Packet::Packet(Packet&& other): Addr(std::move(other.Addr)), Buffer(std::move(other.Buffer)), Len(std::move(other.Len))
+  INLINE Packet::Packet(Packet&& other): addr(std::move(other.addr)), buffer(std::move(other.buffer)), length(std::move(other.length))
   {}
 
   INLINE Packet& Packet::operator=(Packet&& other)
   {
-    this->Addr = std::move(other.Addr);
-    this->Buffer = std::move(other.Buffer);
-    this->Len = std::move(other.Len);
+    this->addr = std::move(other.addr);
+    this->buffer = std::move(other.buffer);
+    this->length = std::move(other.length);
     return *this;
   }
 
@@ -124,7 +124,7 @@ namespace core
   template <size_t BuffSize>
   INLINE void PacketBuffer<BuffSize>::push(const Packet& pkt)
   {
-    push(pkt.Addr, pkt.Buffer.data(), pkt.Len);
+    push(pkt.addr, pkt.buffer.data(), pkt.length);
   }
 
   template <size_t BuffSize>
@@ -138,4 +138,3 @@ namespace core
     }
   }
 }  // namespace core
-#endif

@@ -26,9 +26,9 @@ namespace core
     ContinueToken() = default;
     virtual ~ContinueToken() override = default;
 
-    static const size_t ByteSize = Token::ByteSize;
-    static const size_t EncryptedByteSize = crypto_box_NONCEBYTES + ContinueToken::ByteSize + crypto_box_MACBYTES;
-    static const size_t EncryptionLength = ContinueToken::ByteSize + crypto_box_MACBYTES;
+    static const size_t SIZE_OF = Token::ByteSize;
+    static const size_t SIZE_OF_ENCRYPTED = crypto_box_NONCEBYTES + ContinueToken::SIZE_OF + crypto_box_MACBYTES;
+    static const size_t ENCRYPTION_LENGTH = ContinueToken::SIZE_OF + crypto_box_MACBYTES;
 
     auto write_encrypted(
      Packet& packet,
@@ -76,7 +76,7 @@ namespace core
     }
 
     // write nonce to the buffer
-    if (!encoding::WriteBytes(packet.Buffer, index, nonce, nonce.size())) {
+    if (!encoding::write_bytes(packet.buffer, index, nonce, nonce.size())) {
       LOG(ERROR, "could not write nonce");
       return false;
     }
@@ -124,7 +124,7 @@ namespace core
 
   INLINE auto ContinueToken::operator==(const ContinueToken& other) const -> bool
   {
-    return this->ExpireTimestamp == other.ExpireTimestamp && this->SessionID == other.SessionID &&
+    return this->expire_timestamp == other.expire_timestamp && this->SessionID == other.SessionID &&
            this->SessionVersion == other.SessionVersion && this->SessionFlags == other.SessionFlags;
   }
 
@@ -145,15 +145,15 @@ namespace core
    const crypto::GenericKey& receiverPublicKey,
    const std::array<uint8_t, crypto_box_NONCEBYTES>& nonce)
   {
-    if (index + ContinueToken::EncryptionLength > packet.Buffer.size()) {
+    if (index + ContinueToken::ENCRYPTION_LENGTH > packet.buffer.size()) {
       return false;
     }
 
     if (
      crypto_box_easy(
-      &packet.Buffer[index],
-      &packet.Buffer[index],
-      ContinueToken::ByteSize,
+      &packet.buffer[index],
+      &packet.buffer[index],
+      ContinueToken::SIZE_OF,
       nonce.data(),
       receiverPublicKey.data(),
       senderPrivateKey.data()) != 0) {
@@ -170,16 +170,16 @@ namespace core
    const crypto::GenericKey& receiverPrivateKey,
    const size_t nonceIndex)
   {
-    if (index + ContinueToken::EncryptionLength > packet.Buffer.size()) {
+    if (index + ContinueToken::ENCRYPTION_LENGTH > packet.buffer.size()) {
       return false;
     }
 
     if (
      crypto_box_open_easy(
-      &packet.Buffer[index],
-      &packet.Buffer[index],
-      ContinueToken::EncryptionLength,
-      &packet.Buffer[nonceIndex],
+      &packet.buffer[index],
+      &packet.buffer[index],
+      ContinueToken::ENCRYPTION_LENGTH,
+      &packet.buffer[nonceIndex],
       senderPublicKey.data(),
       receiverPrivateKey.data()) != 0) {
       return false;

@@ -1,22 +1,25 @@
 #pragma once
 
-#include "core/packets/header.hpp"
+#include "core/packet_header.hpp"
+#include "core/packet_types.hpp"
 #include "core/session_map.hpp"
 #include "core/throughput_recorder.hpp"
 #include "crypto/hash.hpp"
 #include "os/socket.hpp"
+#include "util/macros.hpp"
 
 using core::Packet;
+using core::PacketDirection;
+using core::PacketHeader;
 using core::RouterInfo;
-using core::packets::Direction;
-using core::packets::Header;
+using crypto::PACKET_HASH_LENGTH;
 using util::ThroughputRecorder;
 
 namespace core
 {
   namespace handlers
   {
-    inline void client_to_server_handler(
+    INLINE void client_to_server_handler(
      Packet& packet,
      core::SessionMap& session_map,
      util::ThroughputRecorder& recorder,
@@ -25,25 +28,24 @@ namespace core
      bool is_signed)
     {
       size_t index = 0;
-      size_t length = packet.Len;
+      size_t length = packet.length;
 
       if (is_signed) {
-        index = crypto::PacketHashLength;
-        length = packet.Len - crypto::PacketHashLength;
+        index = PACKET_HASH_LENGTH;
+        length = packet.length - PACKET_HASH_LENGTH;
       }
 
       // check if length excluding the hash is right,
       // and then check if the hash + everything else is too large
-      if (length <= Header::ByteSize || packet.Len > Header::ByteSize + RELAY_MTU) {
+      if (length <= PacketHeader::SIZE_OF || packet.length > PacketHeader::SIZE_OF + RELAY_MTU) {
         LOG(ERROR, "ignoring client to server packet, invalid size: ", length);
         return;
       }
 
-      Header header;
-
+      PacketHeader header;
       {
         size_t i = index;
-        if (!header.read(packet, i, Direction::ClientToServer)) {
+        if (!header.read(packet, i, PacketDirection::ClientToServer)) {
           LOG(ERROR, "ignoring client to server packet, relay header could not be read");
           return;
         }
@@ -66,32 +68,25 @@ namespace core
 
       uint64_t clean_sequence = header.clean_sequence();
 
-      if (relay_replay_protection_already_received(&session->ClientToServerProtection, clean_sequence)) {
-        LOG(
-         ERROR,
-         "ignoring client to server packet, already received packet: session = ",
-         *session,
-         ", sequence = ",
-         header.sequence,
-         ", clean sequence = ",
-         clean_sequence);
+      if (relay_replay_protection_already_received(&session->client_to_server_protection, clean_sequence)) {
+        LOG(ERROR, "ignoring client to server packet, already received packet: session = ", *session);
         return;
       }
 
       {
         size_t i = index;
-        if (!header.verify(packet, i, Direction::ClientToServer, session->PrivateKey)) {
+        if (!header.verify(packet, i, PacketDirection::ClientToServer, session->private_key)) {
           LOG(ERROR, "ignoring client to server packet, could not verify header: session = ", *session);
           return;
         }
       }
 
-      relay_replay_protection_advance_sequence(&session->ClientToServerProtection, clean_sequence);
+      relay_replay_protection_advance_sequence(&session->client_to_server_protection, clean_sequence);
 
-      recorder.ClientToServerTx.add(packet.Len);
+      recorder.client_to_server_tx.add(packet.length);
 
-      if (!socket.send(session->NextAddr, packet.Buffer.data(), packet.Len)) {
-        LOG(ERROR, "failed to forward client packet to ", session->NextAddr);
+      if (!socket.send(session->next_addr, packet.buffer.data(), packet.length)) {
+        LOG(ERROR, "failed to forward client packet to ", session->next_addr, ", session = ", *session);
       }
     }
   }  // namespace handlers

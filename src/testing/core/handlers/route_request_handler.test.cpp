@@ -39,8 +39,8 @@ Test(core_handlers_route_request_handler_unsigned)
   check(next.parse("127.0.0.1"));
   check(next_socket.create(next, config));
 
-  packet.Len = 1 + RouteToken::EncryptedByteSize * 2;
-  packet.Addr = from;
+  packet.length = 1 + RouteToken::EncryptedByteSize * 2;
+  packet.addr = from;
 
   RouteToken token;
   token.KbpsUp = crypto::Random<uint32_t>();
@@ -50,10 +50,10 @@ Test(core_handlers_route_request_handler_unsigned)
   token.SessionID = 123456789;
   token.SessionVersion = 123;
   token.SessionFlags = 234;
-  token.ExpireTimestamp = 10;
+  token.expire_timestamp = 10;
 
   size_t index = 1;
-  check(token.write_encrypted(packet, index, router_private_key(), keychain.RelayPublicKey));
+  check(token.write_encrypted(packet, index, router_private_key(), keychain.relay_public_key));
 
   check(map.get(token.hash()) == nullptr);
 
@@ -63,28 +63,28 @@ Test(core_handlers_route_request_handler_unsigned)
 
   auto session = map.get(token.hash());
 
-  check(session->ExpireTimestamp == token.ExpireTimestamp);
-  check(session->SessionID == token.SessionID);
-  check(session->SessionVersion == token.SessionVersion);
-  check(session->KbpsUp == token.KbpsUp);
-  check(session->KbpsDown == token.KbpsDown);
-  check(session->PrevAddr == from);
-  check(session->NextAddr == token.NextAddr);
-  check(session->PrivateKey == token.PrivateKey);
+  check(session->expire_timestamp == token.expire_timestamp);
+  check(session->session_id == token.SessionID);
+  check(session->session_version == token.SessionVersion);
+  check(session->kbps_up == token.KbpsUp);
+  check(session->kbps_down == token.KbpsDown);
+  check(session->prev_addr == from);
+  check(session->next_addr == token.NextAddr);
+  check(session->private_key == token.PrivateKey);
 
-  check(recorder.RouteRequestTx.PacketCount == 1);
-  check(recorder.RouteRequestTx.ByteCount == packet.Len - RouteToken::EncryptedByteSize);
+  check(recorder.route_request_tx.num_packets == 1);
+  check(recorder.route_request_tx.num_bytes == packet.length - RouteToken::EncryptedByteSize);
 
-  size_t prev_len = packet.Len;
+  size_t prev_len = packet.length;
   check(next_socket.recv(packet));
-  check(packet.Addr == addr).onFail([&] {
+  check(packet.addr == addr).onFail([&] {
     std::cout << "addr = " << addr << '\n';
     std::cout << "next = " << next << '\n';
-    std::cout << "packet = " << packet.Addr << '\n';
+    std::cout << "packet = " << packet.addr << '\n';
   });
-  check(packet.Len == prev_len - RouteToken::EncryptedByteSize);
+  check(packet.length == prev_len - RouteToken::EncryptedByteSize);
 
-  check(!crypto::IsNetworkNextPacket(packet.Buffer, packet.Len));
+  check(!crypto::is_network_next_packet(packet.buffer, packet.length));
 }
 
 Test(core_handlers_route_request_handler_signed)
@@ -110,8 +110,8 @@ Test(core_handlers_route_request_handler_signed)
   check(next.parse("127.0.0.1"));
   check(next_socket.create(next, config));
 
-  packet.Len = crypto::PacketHashLength + 1 + RouteToken::EncryptedByteSize * 2;
-  packet.Addr = from;
+  packet.length = crypto::PACKET_HASH_LENGTH + 1 + RouteToken::EncryptedByteSize * 2;
+  packet.addr = from;
 
   RouteToken token;
   token.KbpsUp = crypto::Random<uint32_t>();
@@ -121,10 +121,10 @@ Test(core_handlers_route_request_handler_signed)
   token.SessionID = 123456789;
   token.SessionVersion = 123;
   token.SessionFlags = 234;
-  token.ExpireTimestamp = 10;
+  token.expire_timestamp = 10;
 
-  size_t index = crypto::PacketHashLength + 1;
-  check(token.write_encrypted(packet, index, router_private_key(), keychain.RelayPublicKey));
+  size_t index = crypto::PACKET_HASH_LENGTH + 1;
+  check(token.write_encrypted(packet, index, router_private_key(), keychain.relay_public_key));
 
   check(map.get(token.hash()) == nullptr);
 
@@ -134,22 +134,22 @@ Test(core_handlers_route_request_handler_signed)
 
   auto session = map.get(token.hash());
 
-  check(session->ExpireTimestamp == token.ExpireTimestamp);
-  check(session->SessionID == token.SessionID);
-  check(session->SessionVersion == token.SessionVersion);
-  check(session->KbpsUp == token.KbpsUp);
-  check(session->KbpsDown == token.KbpsDown);
-  check(session->PrevAddr == from);
-  check(session->NextAddr == token.NextAddr);
-  check(session->PrivateKey == token.PrivateKey);
+  check(session->expire_timestamp == token.expire_timestamp);
+  check(session->session_id == token.SessionID);
+  check(session->session_version == token.SessionVersion);
+  check(session->kbps_up == token.KbpsUp);
+  check(session->kbps_down == token.KbpsDown);
+  check(session->prev_addr == from);
+  check(session->next_addr == token.NextAddr);
+  check(session->private_key == token.PrivateKey);
 
-  check(recorder.RouteRequestTx.PacketCount == 1);
-  check(recorder.RouteRequestTx.ByteCount == packet.Len - RouteToken::EncryptedByteSize);
+  check(recorder.route_request_tx.num_packets == 1);
+  check(recorder.route_request_tx.num_bytes == packet.length - RouteToken::EncryptedByteSize);
 
-  size_t prev_len = packet.Len;
+  size_t prev_len = packet.length;
   check(next_socket.recv(packet));
-  check(packet.Addr == addr);
-  check(packet.Len == prev_len - RouteToken::EncryptedByteSize);
+  check(packet.addr == addr);
+  check(packet.length == prev_len - RouteToken::EncryptedByteSize);
 
-  check(crypto::IsNetworkNextPacket(packet.Buffer, packet.Len));
+  check(crypto::is_network_next_packet(packet.buffer, packet.length));
 }

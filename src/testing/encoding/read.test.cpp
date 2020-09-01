@@ -21,7 +21,7 @@ Test(ReadAddress_ipv4)
   bin[6] = 0xC7;
 
   size_t index = 0;
-  check(encoding::ReadAddress(bin, index, addr));
+  check(encoding::read_address(bin, index, addr));
   check(index == Address::ByteSize);
 }
 
@@ -50,7 +50,7 @@ Test(ReadAddress_ipv6)
   bin[18] = 0xC7;
 
   size_t index = 0;
-  check(encoding::ReadAddress(bin, index, addr));
+  check(encoding::read_address(bin, index, addr));
 
   check(addr.Type == AddressType::IPv6);
   check(addr.IPv6[0] == 0x3b1f);
@@ -95,7 +95,7 @@ Test(ReadAddress_none)
   bin[18] = 0xFF;
 
   size_t index = 0;
-  check(encoding::ReadAddress(bin, index, after));
+  check(encoding::read_address(bin, index, after));
   check(index == Address::ByteSize);
   check(after.toString() == "NONE").onFail([&] {
     std::cout << "\n'" << after.toString() << '\'' << std::endl;

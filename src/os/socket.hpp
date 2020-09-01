@@ -181,7 +181,7 @@ namespace os
 
   INLINE auto Socket::send(const Packet& packet) const -> bool
   {
-    return send(packet.Addr, packet.Buffer.data(), packet.Len);
+    return send(packet.addr, packet.buffer.data(), packet.length);
   }
 
   INLINE auto Socket::send(const Address& to, const uint8_t* data, size_t size) const -> bool
@@ -255,8 +255,8 @@ namespace os
 
   INLINE auto Socket::recv(Packet& packet) const -> bool
   {
-    auto len = this->recv(packet.Addr, packet.Buffer.data(), packet.Buffer.size());
-    packet.Len = static_cast<size_t>(len);
+    auto len = this->recv(packet.addr, packet.buffer.data(), packet.buffer.size());
+    packet.length = static_cast<size_t>(len);
     return len > 0;
   }
 

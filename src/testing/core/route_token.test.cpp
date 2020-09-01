@@ -9,7 +9,7 @@ Test(core_RouteToken_general)
 {
   core::RouterInfo info;
   core::Packet packet;
-  packet.Len = packet.Buffer.size();
+  packet.length = packet.buffer.size();
 
   std::array<uint8_t, crypto_box_PUBLICKEYBYTES> sender_public_key;
   std::array<uint8_t, crypto_box_SECRETKEYBYTES> sender_private_key;
@@ -40,7 +40,7 @@ Test(core_RouteToken_general)
 
   core::RouteToken inputToken;
   {
-    inputToken.ExpireTimestamp = ExpireTimestamp;
+    inputToken.expire_timestamp = ExpireTimestamp;
     inputToken.SessionID = SessionID;
     inputToken.SessionVersion = SessionVersion;
     inputToken.SessionFlags = SessionFlags;
@@ -62,7 +62,7 @@ Test(core_RouteToken_general)
   }
 
   // make sure nothing changed
-  check(inputToken.ExpireTimestamp == ExpireTimestamp);
+  check(inputToken.expire_timestamp == ExpireTimestamp);
   check(inputToken.SessionID == SessionID);
   check(inputToken.SessionVersion == SessionVersion);
   check(inputToken.SessionFlags == SessionFlags);
@@ -72,7 +72,7 @@ Test(core_RouteToken_general)
   check(inputToken.NextAddr == NextAddr);
 
   // make sure input == output
-  check(inputToken.ExpireTimestamp == outputToken.ExpireTimestamp);
+  check(inputToken.expire_timestamp == outputToken.expire_timestamp);
   check(inputToken.SessionID == outputToken.SessionID);
   check(inputToken.SessionVersion == outputToken.SessionVersion);
   check(inputToken.SessionFlags == outputToken.SessionFlags);

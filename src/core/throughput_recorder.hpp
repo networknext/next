@@ -1,6 +1,7 @@
 #pragma once
 
 #include "util/console.hpp"
+#include "util/macros.hpp"
 
 namespace util
 {
@@ -11,8 +12,8 @@ namespace util
 
     void add(size_t count);
 
-    std::atomic<size_t> PacketCount = 0;
-    std::atomic<size_t> ByteCount = 0;
+    std::atomic<size_t> num_packets = 0;
+    std::atomic<size_t> num_bytes = 0;
   };
 
   class ThroughputRecorder
@@ -22,77 +23,76 @@ namespace util
     ThroughputRecorder(ThroughputRecorder&& other);
     ~ThroughputRecorder() = default;
 
-    // packets sent out via ping processor
-    ThroughputStats OutboundPingTx;
+    ThroughputStats outbound_ping_tx;
 
-    ThroughputStats RouteRequestRx;
-    ThroughputStats RouteRequestTx;
+    ThroughputStats route_request_rx;
+    ThroughputStats route_request_tx;
 
-    ThroughputStats RouteResponseRx;
-    ThroughputStats RouteResponseTx;
+    ThroughputStats route_response_rx;
+    ThroughputStats route_response_tx;
 
-    ThroughputStats ClientToServerRx;
-    ThroughputStats ClientToServerTx;
+    ThroughputStats client_to_server_rx;
+    ThroughputStats client_to_server_tx;
 
-    ThroughputStats ServerToClientRx;
-    ThroughputStats ServerToClientTx;
+    ThroughputStats server_to_client_rx;
+    ThroughputStats server_to_client_tx;
 
-    ThroughputStats InboundPingRx;
-    ThroughputStats InboundPingTx;
+    ThroughputStats inbound_ping_rx;
+    ThroughputStats inbound_ping_tx;
 
-    ThroughputStats PongRx;
+    ThroughputStats pong_rx;
 
-    ThroughputStats SessionPingRx;
-    ThroughputStats SessionPingTx;
+    ThroughputStats session_ping_rx;
+    ThroughputStats session_ping_tx;
 
-    ThroughputStats SessionPongRx;
-    ThroughputStats SessionPongTx;
+    ThroughputStats session_pong_rx;
+    ThroughputStats session_pong_tx;
 
-    ThroughputStats ContinueRequestRx;
-    ThroughputStats ContinueRequestTx;
+    ThroughputStats continue_request_rx;
+    ThroughputStats continue_request_tx;
 
-    ThroughputStats ContinueResponseRx;
-    ThroughputStats ContinueResponseTx;
+    ThroughputStats continue_response_rx;
+    ThroughputStats continue_response_tx;
 
-    ThroughputStats NearPingRx;
-    ThroughputStats NearPingTx;
+    ThroughputStats near_ping_rx;
+    ThroughputStats near_ping_tx;
 
-    ThroughputStats UnknownRx;
+    ThroughputStats unknown_rx;
   };
 
-  inline ThroughputStats::ThroughputStats(ThroughputStats&& other)
-   : PacketCount(other.PacketCount.exchange(0)), ByteCount(other.ByteCount.exchange(0))
+  INLINE ThroughputStats::ThroughputStats(ThroughputStats&& other)
+   : num_packets(other.num_packets.exchange(0)), num_bytes(other.num_bytes.exchange(0))
   {}
 
-  inline ThroughputRecorder::ThroughputRecorder(ThroughputRecorder&& other)
-   : OutboundPingTx(std::move(other.OutboundPingTx)),
-     RouteRequestRx(std::move(other.RouteRequestRx)),
-     RouteRequestTx(std::move(other.RouteRequestTx)),
-     RouteResponseRx(std::move(other.RouteResponseRx)),
-     RouteResponseTx(std::move(other.RouteResponseTx)),
-     ClientToServerRx(std::move(other.ClientToServerRx)),
-     ClientToServerTx(std::move(other.ClientToServerTx)),
-     ServerToClientRx(std::move(other.ServerToClientRx)),
-     ServerToClientTx(std::move(other.ServerToClientTx)),
-     InboundPingRx(std::move(other.InboundPingRx)),
-     InboundPingTx(std::move(other.InboundPingTx)),
-     PongRx(std::move(other.PongRx)),
-     SessionPingRx(std::move(other.SessionPingRx)),
-     SessionPingTx(std::move(other.SessionPingTx)),
-     SessionPongRx(std::move(other.SessionPongRx)),
-     SessionPongTx(std::move(other.SessionPongTx)),
-     ContinueRequestRx(std::move(other.ContinueRequestRx)),
-     ContinueRequestTx(std::move(other.ContinueRequestTx)),
-     ContinueResponseRx(std::move(other.ContinueResponseRx)),
-     ContinueResponseTx(std::move(other.ContinueResponseTx)),
-     NearPingRx(std::move(other.NearPingRx)),
-     NearPingTx(std::move(other.NearPingTx)),
-     UnknownRx(std::move(other.UnknownRx))
+  INLINE ThroughputRecorder::ThroughputRecorder(ThroughputRecorder&& other)
+   : outbound_ping_tx(std::move(other.outbound_ping_tx)),
+     route_request_rx(std::move(other.route_request_rx)),
+     route_request_tx(std::move(other.route_request_tx)),
+     route_response_rx(std::move(other.route_response_rx)),
+     route_response_tx(std::move(other.route_response_tx)),
+     client_to_server_rx(std::move(other.client_to_server_rx)),
+     client_to_server_tx(std::move(other.client_to_server_tx)),
+     server_to_client_rx(std::move(other.server_to_client_rx)),
+     server_to_client_tx(std::move(other.server_to_client_tx)),
+     inbound_ping_rx(std::move(other.inbound_ping_rx)),
+     inbound_ping_tx(std::move(other.inbound_ping_tx)),
+     pong_rx(std::move(other.pong_rx)),
+     session_ping_rx(std::move(other.session_ping_rx)),
+     session_ping_tx(std::move(other.session_ping_tx)),
+     session_pong_rx(std::move(other.session_pong_rx)),
+     session_pong_tx(std::move(other.session_pong_tx)),
+     continue_request_rx(std::move(other.continue_request_rx)),
+     continue_request_tx(std::move(other.continue_request_tx)),
+     continue_response_rx(std::move(other.continue_response_rx)),
+     continue_response_tx(std::move(other.continue_response_tx)),
+     near_ping_rx(std::move(other.near_ping_rx)),
+     near_ping_tx(std::move(other.near_ping_tx)),
+     unknown_rx(std::move(other.unknown_rx))
   {}
 
-  [[gnu::always_inline]] inline void ThroughputStats::add(size_t count)
+  INLINE void ThroughputStats::add(size_t count)
   {
-    this->ByteCount += count;
-    this->PacketCount++;
+    this->num_bytes += count;
+    this->num_packets++;
   }
 }  // namespace util

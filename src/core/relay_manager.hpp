@@ -10,6 +10,8 @@
 #include "util/logger.hpp"
 #include "util/macros.hpp"
 
+using net::Address;
+
 namespace testing
 {
   class _test_core_handlers_relay_pong_handler_;
@@ -21,22 +23,22 @@ namespace core
 
   struct PingData
   {
-    uint64_t Seq;
-    net::Address Addr;
-  };
-
-  struct Relay
-  {
-    uint64_t ID;
-    double LastPingTime = INVALID_PING_TIME;
-    net::Address Addr;
-    PingHistory* History = nullptr;
+    uint64_t sequence;
+    Address address;
   };
 
   struct RelayPingInfo
   {
-    uint64_t ID;
-    net::Address Addr;
+    uint64_t id;
+    Address address;
+  };
+
+  struct Relay
+  {
+    uint64_t id;
+    Address address;
+    double last_ping_time = INVALID_PING_TIME;
+    PingHistory* history = nullptr;
   };
 
   class RelayManager
@@ -51,11 +53,11 @@ namespace core
 
     void update(size_t numRelays, const std::array<RelayPingInfo, MAX_RELAYS>& newRelays);
 
-    auto processPong(const net::Address& from, uint64_t seq) -> bool;
+    auto process_pong(const Address& from, uint64_t seq) -> bool;
 
-    void getStats(RelayStats& stats);
+    void get_stats(RelayStats& stats);
 
-    auto getPingData(std::array<PingData, MAX_RELAYS>& data) -> size_t;
+    auto get_ping_targets(std::array<PingData, MAX_RELAYS>& data) -> size_t;
 
    private:
     std::mutex mLock;
@@ -79,7 +81,7 @@ namespace core
     std::fill(mRelays.begin(), mRelays.end(), Relay());
   }
 
-  INLINE auto RelayManager::processPong(const net::Address& from, uint64_t seq) -> bool
+  INLINE auto RelayManager::process_pong(const Address& from, uint64_t seq) -> bool
   {
     bool pongReceived = false;
 
@@ -88,8 +90,8 @@ namespace core
       std::lock_guard<std::mutex> lk(mLock);
       for (unsigned int i = 0; i < mNumRelays; i++) {
         auto& relay = mRelays[i];
-        if (from == relay.Addr) {
-          relay.History->pongReceived(seq, mClock.elapsed<util::Second>());
+        if (from == relay.address) {
+          relay.history->pongReceived(seq, mClock.elapsed<util::Second>());
           pongReceived = true;
           break;
         }
@@ -99,7 +101,7 @@ namespace core
     return pongReceived;
   }
 
-  INLINE void RelayManager::getStats(RelayStats& stats)
+  INLINE void RelayManager::get_stats(RelayStats& stats)
   {
     auto currentTime = mClock.elapsed<util::Second>();
 
@@ -111,8 +113,8 @@ namespace core
       for (unsigned int i = 0; i < mNumRelays; i++) {
         auto& relay = mRelays[i];
 
-        RouteStats rs(*relay.History, currentTime - RELAY_STATS_WINDOW, currentTime, RELAY_PING_SAFETY);
-        stats.IDs[i] = relay.ID;
+        RouteStats rs(*relay.history, currentTime - RELAY_STATS_WINDOW, currentTime, RELAY_PING_SAFETY);
+        stats.IDs[i] = relay.id;
         stats.RTT[i] = rs.getRTT();
         stats.Jitter[i] = rs.getJitter();
         stats.PacketLoss[i] = rs.getPacketLoss();
@@ -120,7 +122,7 @@ namespace core
     }
   }
 
-  INLINE auto RelayManager::getPingData(std::array<PingData, MAX_RELAYS>& data) -> size_t
+  INLINE auto RelayManager::get_ping_targets(std::array<PingData, MAX_RELAYS>& data) -> size_t
   {
     double currentTime = mClock.elapsed<util::Second>();
     size_t numPings = 0;
@@ -129,13 +131,13 @@ namespace core
     {
       std::lock_guard<std::mutex> lk(mLock);
       for (unsigned int i = 0; i < mNumRelays; ++i) {
-        if (mRelays[i].LastPingTime + RELAY_PING_TIME <= currentTime) {
+        if (mRelays[i].last_ping_time + RELAY_PING_TIME <= currentTime) {
           auto& relay = mRelays[i];
           auto& pingData = data[numPings++];
 
-          pingData.Seq = relay.History->pingSent(currentTime);
-          pingData.Addr = relay.Addr;
-          relay.LastPingTime = currentTime;
+          pingData.sequence = relay.history->pingSent(currentTime);
+          pingData.address = relay.address;
+          relay.last_ping_time = currentTime;
         }
       }
     }
@@ -162,11 +164,11 @@ namespace core
       for (unsigned int i = 0; i < mNumRelays; i++) {
         const auto& relay = mRelays[i];
         for (unsigned int j = 0; j < numRelays; j++) {
-          if (relay.ID == incoming[j].ID) {
+          if (relay.id == incoming[j].id) {
             found[j] = true;
             newRelays[index++] = relay;
 
-            const auto slot = relay.History - mPingHistoryBuff.data();
+            const auto slot = relay.history - mPingHistoryBuff.data();
             assert(slot >= 0);
             assert(slot < MAX_RELAYS);
             historySlotTaken[slot] = true;
@@ -179,8 +181,8 @@ namespace core
       for (unsigned int i = 0; i < numRelays; i++) {
         if (!found[i]) {
           auto& newRelay = newRelays[index];
-          newRelay.ID = incoming[i].ID;
-          newRelay.Addr = incoming[i].Addr;
+          newRelay.id = incoming[i].id;
+          newRelay.address = incoming[i].address;
 
           // find a history slot for this relay
           // helps when updating and copying in the above loop
@@ -188,13 +190,13 @@ namespace core
           // it just copies the pointer
           for (int j = 0; j < MAX_RELAYS; j++) {
             if (!historySlotTaken[j]) {
-              newRelay.History = &mPingHistoryBuff[j];
-              newRelay.History->clear();
+              newRelay.history = &mPingHistoryBuff[j];
+              newRelay.history->clear();
               historySlotTaken[j] = true;
               break;
             }
           }
-          assert(newRelay.History != nullptr);
+          assert(newRelay.history != nullptr);
           index++;
         }
       }
@@ -208,7 +210,7 @@ namespace core
       auto currentTime = mClock.elapsed<util::Second>();
 
       for (unsigned int i = 0; i < mNumRelays; i++) {
-        mRelays[i].LastPingTime = currentTime - RELAY_PING_TIME + i * RELAY_PING_TIME / mNumRelays;
+        mRelays[i].last_ping_time = currentTime - RELAY_PING_TIME + i * RELAY_PING_TIME / mNumRelays;
       }
 
 #ifndef NDEBUG
@@ -222,7 +224,7 @@ namespace core
         for (unsigned int j = 0; j < mNumRelays; j++) {
           const auto& incomingRelay = incoming[i];
           const auto& relay = mRelays[j];
-          if (incomingRelay.ID == relay.ID && incomingRelay.Addr == relay.Addr) {
+          if (incomingRelay.id == relay.id && incomingRelay.address == relay.address) {
             numFound++;
             break;
           }
@@ -236,7 +238,7 @@ namespace core
           if (i == j) {
             continue;
           }
-          assert(mRelays[i].History != mRelays[j].History);
+          assert(mRelays[i].history != mRelays[j].history);
         }
       }
 #endif

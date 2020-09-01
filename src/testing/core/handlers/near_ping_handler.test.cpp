@@ -23,21 +23,21 @@ Test(core_handlers_near_ping_handler_unsigned)
   check(addr.parse("127.0.0.1"));
   check(socket.create(addr, config));
 
-  packet.Len = 1 + 8 + 8 + 8 + 8;
-  packet.Addr = addr;
+  packet.length = 1 + 8 + 8 + 8 + 8;
+  packet.addr = addr;
 
   core::handlers::near_ping_handler(packet, recorder, socket, false);
-  size_t prev_len = packet.Len;
+  size_t prev_len = packet.length;
   check(socket.recv(packet));
-  check(packet.Len == prev_len - 16);
+  check(packet.length == prev_len - 16);
 
   // no check for already received
-  packet.Len = 1 + 8 + 8 + 8 + 8;
+  packet.length = 1 + 8 + 8 + 8 + 8;
 
   core::handlers::near_ping_handler(packet, recorder, socket, false);
-  prev_len = packet.Len;
+  prev_len = packet.length;
   check(socket.recv(packet));
-  check(packet.Len == prev_len - 16);
+  check(packet.length == prev_len - 16);
 }
 
 Test(core_handlers_near_ping_handler_signed)
@@ -52,21 +52,21 @@ Test(core_handlers_near_ping_handler_signed)
   check(addr.parse("127.0.0.1"));
   check(socket.create(addr, config));
 
-  packet.Len = crypto::PacketHashLength + 1 + 8 + 8 + 8 + 8;
-  packet.Addr = addr;
+  packet.length = crypto::PACKET_HASH_LENGTH + 1 + 8 + 8 + 8 + 8;
+  packet.addr = addr;
 
   core::handlers::near_ping_handler(packet, recorder, socket, true);
-  size_t prev_len = packet.Len;
+  size_t prev_len = packet.length;
   check(socket.recv(packet));
-  check(packet.Len == prev_len - 16);
-  check(crypto::IsNetworkNextPacket(packet.Buffer, packet.Len));
+  check(packet.length == prev_len - 16);
+  check(crypto::is_network_next_packet(packet.buffer, packet.length));
 
   // no check for already received
-  packet.Len = crypto::PacketHashLength + 1 + 8 + 8 + 8 + 8;
+  packet.length = crypto::PACKET_HASH_LENGTH + 1 + 8 + 8 + 8 + 8;
 
   core::handlers::near_ping_handler(packet, recorder, socket, true);
-  prev_len = packet.Len;
+  prev_len = packet.length;
   check(socket.recv(packet));
-  check(packet.Len == prev_len - 16);
-  check(crypto::IsNetworkNextPacket(packet.Buffer, packet.Len));
+  check(packet.length == prev_len - 16);
+  check(crypto::is_network_next_packet(packet.buffer, packet.length));
 }

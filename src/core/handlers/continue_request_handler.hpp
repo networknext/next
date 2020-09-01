@@ -2,25 +2,28 @@
 
 #include "core/continue_token.hpp"
 #include "core/packet.hpp"
-#include "core/packets/types.hpp"
+#include "core/packet_types.hpp"
 #include "core/router_info.hpp"
 #include "core/session_map.hpp"
 #include "core/throughput_recorder.hpp"
 #include "crypto/keychain.hpp"
 #include "os/socket.hpp"
+#include "util/macros.hpp"
 
 using core::ContinueToken;
 using core::Packet;
 using core::RouterInfo;
+using core::Type;
 using crypto::Keychain;
 using os::Socket;
 using util::ThroughputRecorder;
+using crypto::PACKET_HASH_LENGTH;
 
 namespace core
 {
   namespace handlers
   {
-    inline void continue_request_handler(
+    INLINE void continue_request_handler(
      Packet& packet,
      SessionMap& session_map,
      const Keychain& keychain,
@@ -30,14 +33,14 @@ namespace core
      bool is_signed)
     {
       size_t index = 0;
-      size_t length = packet.Len;
+      size_t length = packet.length;
 
       if (is_signed) {
-        index = crypto::PacketHashLength;
-        length = packet.Len - crypto::PacketHashLength;
+        index = PACKET_HASH_LENGTH;
+        length = packet.length - PACKET_HASH_LENGTH;
       }
 
-      if (length < int(1 + ContinueToken::EncryptedByteSize * 2)) {
+      if (length < int(1 + ContinueToken::SIZE_OF_ENCRYPTED * 2)) {
         LOG(ERROR, "ignoring continue request. bad packet size (", length, ")");
         return;
       }
@@ -45,7 +48,7 @@ namespace core
       ContinueToken token;
       {
         size_t i = index + 1;
-        if (!token.read_encrypted(packet, i, keychain.RouterPublicKey, keychain.RelayPrivateKey)) {
+        if (!token.read_encrypted(packet, i, keychain.backend_public_key, keychain.relay_private_key)) {
           LOG(ERROR, "ignoring continue request. could not read continue token");
           return;
         }
@@ -71,25 +74,25 @@ namespace core
         return;
       }
 
-      if (session->ExpireTimestamp != token.ExpireTimestamp) {
+      if (session->expire_timestamp != token.expire_timestamp) {
         LOG(INFO, "session continued: ", token);
       }
 
-      session->ExpireTimestamp = token.ExpireTimestamp;
+      session->expire_timestamp = token.expire_timestamp;
 
-      length = packet.Len - ContinueToken::EncryptedByteSize;
+      length = packet.length - ContinueToken::SIZE_OF_ENCRYPTED;
 
       if (is_signed) {
-        packet.Buffer[ContinueToken::EncryptedByteSize + crypto::PacketHashLength] =
-         static_cast<uint8_t>(packets::Type::ContinueRequest);
-        legacy::relay_sign_network_next_packet(&packet.Buffer[ContinueToken::EncryptedByteSize], length);
+        packet.buffer[ContinueToken::SIZE_OF_ENCRYPTED + PACKET_HASH_LENGTH] =
+         static_cast<uint8_t>(Type::ContinueRequest);
+        legacy::relay_sign_network_next_packet(&packet.buffer[ContinueToken::SIZE_OF_ENCRYPTED], length);
       } else {
-        packet.Buffer[ContinueToken::EncryptedByteSize] = static_cast<uint8_t>(packets::Type::ContinueRequest);
+        packet.buffer[ContinueToken::SIZE_OF_ENCRYPTED] = static_cast<uint8_t>(Type::ContinueRequest);
       }
 
-      recorder.ContinueRequestTx.add(length);
+      recorder.continue_request_tx.add(length);
 
-      if (!socket.send(session->NextAddr, &packet.Buffer[ContinueToken::EncryptedByteSize], length)) {
+      if (!socket.send(session->next_addr, &packet.buffer[ContinueToken::SIZE_OF_ENCRYPTED], length)) {
         LOG(ERROR, "failed to forward continue request");
       }
     }

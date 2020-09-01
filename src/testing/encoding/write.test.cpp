@@ -12,7 +12,7 @@ Test(WriteAddress_ipv4)
   bin.fill(0);
   addr.parse("127.0.0.1:51034");
   size_t index = 0;
-  encoding::WriteAddress(bin, index, addr);
+  encoding::write_address(bin, index, addr);
   check(index == net::Address::ByteSize);
   check(bin[0] == net::AddressType::IPv4);
   check(bin[1] == 127);
@@ -31,7 +31,7 @@ Test(WriteAddress_ipv6)
   bin.fill(0);
   addr.parse("[3b1f:3c33:9928:ffff:ffff:ffff:ffff:ffff]:51034");
   size_t index = 0;
-  encoding::WriteAddress(bin, index, addr);
+  encoding::write_address(bin, index, addr);
   check(index == net::Address::ByteSize);
   check(bin[0] == net::AddressType::IPv6);
   check(bin[1] == 0x1F);
@@ -62,7 +62,7 @@ Test(WriteAddress_none)
   bin.fill(0);
   addr.parse("1udai898haidfihe");
   size_t index = 0;
-  encoding::WriteAddress(bin, index, addr);
+  encoding::write_address(bin, index, addr);
   for (auto& i : bin) {
     check(i == 0);
   }
@@ -78,7 +78,7 @@ Test(WriteBytes_array)
     data[i] = i;
   }
 
-  encoding::WriteBytes(buff, index, data, 4);
+  encoding::write_bytes(buff, index, data, 4);
 
   check(index == 12);
 

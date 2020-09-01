@@ -37,8 +37,8 @@ Test(core_handlers_route_response_handler_unsigned)
   check(addr.parse("127.0.0.1"));
   check(socket.create(addr, config));
 
-  packet.Len = Header::ByteSize;
-  packet.Addr = addr;
+  packet.length = Header::ByteSize;
+  packet.addr = addr;
 
   Header header = {
    .type = Type::RouteResponse,
@@ -48,12 +48,12 @@ Test(core_handlers_route_response_handler_unsigned)
   };
 
   auto session = std::make_shared<Session>();
-  session->SessionID = header.session_id;
-  session->SessionVersion = header.session_version;
-  session->PrivateKey = private_key;
-  session->PrevAddr = addr;
-  session->ExpireTimestamp = 10;
-  session->ServerToClientSeq = 0;
+  session->session_id = header.session_id;
+  session->session_version = header.session_version;
+  session->private_key = private_key;
+  session->prev_addr = addr;
+  session->expire_timestamp = 10;
+  session->server_to_client_sequence = 0;
 
   map.set(header.hash(), session);
 
@@ -62,12 +62,12 @@ Test(core_handlers_route_response_handler_unsigned)
 
   core::handlers::route_response_handler(packet, map, recorder, router_info, socket, false);
 
-  size_t prev_len = packet.Len;
+  size_t prev_len = packet.length;
   check(socket.recv(packet));
-  check(prev_len == packet.Len);
+  check(prev_len == packet.length);
 
-  check(recorder.RouteResponseTx.PacketCount == 1);
-  check(recorder.RouteResponseTx.ByteCount == Header::ByteSize);
+  check(recorder.route_response_tx.num_packets == 1);
+  check(recorder.route_response_tx.num_bytes == Header::ByteSize);
 
   core::handlers::route_response_handler(packet, map, recorder, router_info, socket, false);
   check(!socket.recv(packet));
@@ -91,8 +91,8 @@ Test(core_handlers_route_response_handler_signed)
   check(addr.parse("127.0.0.1"));
   check(socket.create(addr, config));
 
-  packet.Len = crypto::PacketHashLength + Header::ByteSize;
-  packet.Addr = addr;
+  packet.length = crypto::PACKET_HASH_LENGTH + Header::ByteSize;
+  packet.addr = addr;
 
   Header header = {
    .type = Type::RouteResponse,
@@ -102,26 +102,26 @@ Test(core_handlers_route_response_handler_signed)
   };
 
   auto session = std::make_shared<Session>();
-  session->SessionID = header.session_id;
-  session->SessionVersion = header.session_version;
-  session->PrivateKey = private_key;
-  session->PrevAddr = addr;
-  session->ExpireTimestamp = 10;
-  session->ServerToClientSeq = 0;
+  session->session_id = header.session_id;
+  session->session_version = header.session_version;
+  session->private_key = private_key;
+  session->prev_addr = addr;
+  session->expire_timestamp = 10;
+  session->server_to_client_sequence = 0;
 
   map.set(header.hash(), session);
 
-  size_t index = crypto::PacketHashLength;
+  size_t index = crypto::PACKET_HASH_LENGTH;
   check(header.write(packet, index, Direction::ServerToClient, private_key));
 
   core::handlers::route_response_handler(packet, map, recorder, router_info, socket, true);
 
-  size_t prev_len = packet.Len;
+  size_t prev_len = packet.length;
   check(socket.recv(packet));
-  check(prev_len == packet.Len);
+  check(prev_len == packet.length);
 
-  check(recorder.RouteResponseTx.PacketCount == 1);
-  check(recorder.RouteResponseTx.ByteCount == crypto::PacketHashLength + Header::ByteSize);
+  check(recorder.route_response_tx.num_packets == 1);
+  check(recorder.route_response_tx.num_bytes == crypto::PACKET_HASH_LENGTH + Header::ByteSize);
 
   core::handlers::route_response_handler(packet, map, recorder, router_info, socket, true);
   check(!socket.recv(packet));

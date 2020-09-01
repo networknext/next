@@ -30,32 +30,32 @@ namespace core
   {
     size_t index = 0;
 
-    if (!encoding::WriteUint32(v, index, Magic)) {
+    if (!encoding::write_uint32(v, index, Magic)) {
       LOG(ERROR, "could not write init request magic");
       return false;
     }
 
-    if (!encoding::WriteUint32(v, index, Version)) {
+    if (!encoding::write_uint32(v, index, Version)) {
       LOG(ERROR, "could not write init request version");
       return false;
     }
 
-    if (!encoding::WriteBytes(v, index, Nonce, Nonce.size())) {
+    if (!encoding::write_bytes(v, index, Nonce, Nonce.size())) {
       LOG(ERROR, "could not write init request nonce bytes");
       return false;
     }
 
-    if (!encoding::WriteString(v, index, Address)) {
+    if (!encoding::write_string(v, index, Address)) {
       LOG(ERROR, "could not write init request address");
       return false;
     }
 
-    if (!encoding::WriteBytes(v, index, EncryptedToken, EncryptedToken.size())) {
+    if (!encoding::write_bytes(v, index, EncryptedToken, EncryptedToken.size())) {
       LOG(ERROR, "could not write init request token");
       return false;
     }
 
-    if (!encoding::WriteString(v, index, RelayVersion)) {
+    if (!encoding::write_string(v, index, RelayVersion)) {
       LOG(ERROR, "could not write init request relay version");
       return false;
     }
@@ -66,22 +66,22 @@ namespace core
   auto InitRequest::from(const std::vector<uint8_t>& v) -> bool
   {
     size_t index = 0;
-    if (!encoding::ReadUint32(v, index, this->Magic)) {
+    if (!encoding::read_uint32(v, index, this->Magic)) {
       return false;
     }
-    if (!encoding::ReadUint32(v, index, this->Version)) {
+    if (!encoding::read_uint32(v, index, this->Version)) {
       return false;
     }
-    if (!encoding::ReadBytes(v, index, this->Nonce, this->Nonce.size())) {
+    if (!encoding::read_bytes(v, index, this->Nonce, this->Nonce.size())) {
       return false;
     }
-    if (!encoding::ReadString(v, index, this->Address)) {
+    if (!encoding::read_string(v, index, this->Address)) {
       return false;
     }
-    if (!encoding::ReadBytes(v, index, this->EncryptedToken, this->EncryptedToken.size())) {
+    if (!encoding::read_bytes(v, index, this->EncryptedToken, this->EncryptedToken.size())) {
       return false;
     }
-    if (!encoding::ReadString(v, index, this->RelayVersion)) {
+    if (!encoding::read_string(v, index, this->RelayVersion)) {
       return false;
     }
     return true;
@@ -91,17 +91,17 @@ namespace core
   auto InitResponse::into(std::vector<uint8_t>& v) -> bool
   {
     size_t index = 0;
-    if (!encoding::WriteUint32(v, index, Version)) {
+    if (!encoding::write_uint32(v, index, Version)) {
       LOG(TRACE, "unable to write version");
       return false;
     }
 
-    if (!encoding::WriteUint64(v, index, Timestamp)) {
+    if (!encoding::write_uint64(v, index, Timestamp)) {
       LOG(TRACE, "unable to write timestamp");
       return false;
     }
 
-    if (!encoding::WriteBytes(v, index, PublicKey, PublicKey.size())) {
+    if (!encoding::write_bytes(v, index, PublicKey, PublicKey.size())) {
       LOG(TRACE, "unable to write public key");
       return false;
     }
@@ -112,13 +112,13 @@ namespace core
   auto InitResponse::from(const std::vector<uint8_t>& v) -> bool
   {
     size_t index = 0;
-    if (!encoding::ReadUint32(v, index, this->Version)) {
+    if (!encoding::read_uint32(v, index, this->Version)) {
       return false;
     }
-    if (!encoding::ReadUint64(v, index, this->Timestamp)) {
+    if (!encoding::read_uint64(v, index, this->Timestamp)) {
       return false;
     }
-    if (!encoding::ReadBytes(v, index, PublicKey, PublicKey.size())) {
+    if (!encoding::read_bytes(v, index, PublicKey, PublicKey.size())) {
       return false;
     }
     return true;
@@ -127,121 +127,121 @@ namespace core
   auto UpdateRequest::from(const std::vector<uint8_t>& v) -> bool
   {
     size_t index = 0;
-    if (!encoding::ReadUint32(v, index, this->Version)) {
+    if (!encoding::read_uint32(v, index, this->Version)) {
       return false;
     }
-    if (!encoding::ReadString(v, index, this->Address)) {
+    if (!encoding::read_string(v, index, this->Address)) {
       return false;
     }
-    if (!encoding::ReadBytes(v, index, PublicKey, PublicKey.size())) {
+    if (!encoding::read_bytes(v, index, PublicKey, PublicKey.size())) {
       return false;
     }
-    if (!encoding::ReadUint32(v, index, this->PingStats.NumRelays)) {
+    if (!encoding::read_uint32(v, index, this->PingStats.NumRelays)) {
       return false;
     }
 
     for (size_t i = 0; i < PingStats.NumRelays; i++) {
-      if (!encoding::ReadUint64(v, index, this->PingStats.IDs[i])) {
+      if (!encoding::read_uint64(v, index, this->PingStats.IDs[i])) {
         return false;
       }
-      if (!encoding::ReadBytes(
+      if (!encoding::read_bytes(
            v.data(), v.size(), index, reinterpret_cast<uint8_t*>(&PingStats.RTT[i]), sizeof(float), sizeof(float))) {
         return false;
       }
-      if (!encoding::ReadBytes(
+      if (!encoding::read_bytes(
            v.data(), v.size(), index, reinterpret_cast<uint8_t*>(&PingStats.Jitter[i]), sizeof(float), sizeof(float))) {
         return false;
       }
-      if (!encoding::ReadBytes(
+      if (!encoding::read_bytes(
            v.data(), v.size(), index, reinterpret_cast<uint8_t*>(&PingStats.PacketLoss[i]), sizeof(float), sizeof(float))) {
         return false;
       }
     }
-    if (!encoding::ReadUint64(v, index, this->SessionCount)) {
+    if (!encoding::read_uint64(v, index, this->SessionCount)) {
       return false;
     }
-    if (!encoding::ReadUint64(v, index, this->OutboundPingTx)) {
+    if (!encoding::read_uint64(v, index, this->OutboundPingTx)) {
       return false;
     }
-    if (!encoding::ReadUint64(v, index, this->RouteRequestRx)) {
+    if (!encoding::read_uint64(v, index, this->RouteRequestRx)) {
       return false;
     }
-    if (!encoding::ReadUint64(v, index, this->RouteRequestTx)) {
+    if (!encoding::read_uint64(v, index, this->RouteRequestTx)) {
       return false;
     }
-    if (!encoding::ReadUint64(v, index, this->RouteResponseRx)) {
+    if (!encoding::read_uint64(v, index, this->RouteResponseRx)) {
       return false;
     }
-    if (!encoding::ReadUint64(v, index, this->RouteResponseTx)) {
+    if (!encoding::read_uint64(v, index, this->RouteResponseTx)) {
       return false;
     }
-    if (!encoding::ReadUint64(v, index, this->ClientToServerRx)) {
+    if (!encoding::read_uint64(v, index, this->ClientToServerRx)) {
       return false;
     }
-    if (!encoding::ReadUint64(v, index, this->ClientToServerTx)) {
+    if (!encoding::read_uint64(v, index, this->ClientToServerTx)) {
       return false;
     }
-    if (!encoding::ReadUint64(v, index, this->ServerToClientRx)) {
+    if (!encoding::read_uint64(v, index, this->ServerToClientRx)) {
       return false;
     }
-    if (!encoding::ReadUint64(v, index, this->ServerToClientTx)) {
+    if (!encoding::read_uint64(v, index, this->ServerToClientTx)) {
       return false;
     }
-    if (!encoding::ReadUint64(v, index, this->InboundPingRx)) {
+    if (!encoding::read_uint64(v, index, this->InboundPingRx)) {
       return false;
     }
-    if (!encoding::ReadUint64(v, index, this->InboundPingTx)) {
+    if (!encoding::read_uint64(v, index, this->InboundPingTx)) {
       return false;
     }
-    if (!encoding::ReadUint64(v, index, this->PongRx)) {
+    if (!encoding::read_uint64(v, index, this->PongRx)) {
       return false;
     }
-    if (!encoding::ReadUint64(v, index, this->SessionPingRx)) {
+    if (!encoding::read_uint64(v, index, this->SessionPingRx)) {
       return false;
     }
-    if (!encoding::ReadUint64(v, index, this->SessionPingTx)) {
+    if (!encoding::read_uint64(v, index, this->SessionPingTx)) {
       return false;
     }
-    if (!encoding::ReadUint64(v, index, this->SessionPongRx)) {
+    if (!encoding::read_uint64(v, index, this->SessionPongRx)) {
       return false;
     }
-    if (!encoding::ReadUint64(v, index, this->SessionPongTx)) {
+    if (!encoding::read_uint64(v, index, this->SessionPongTx)) {
       return false;
     }
-    if (!encoding::ReadUint64(v, index, this->ContinueRequestRx)) {
+    if (!encoding::read_uint64(v, index, this->ContinueRequestRx)) {
       return false;
     }
-    if (!encoding::ReadUint64(v, index, this->ContinueRequestTx)) {
+    if (!encoding::read_uint64(v, index, this->ContinueRequestTx)) {
       return false;
     }
-    if (!encoding::ReadUint64(v, index, this->ContinueResponseRx)) {
+    if (!encoding::read_uint64(v, index, this->ContinueResponseRx)) {
       return false;
     }
-    if (!encoding::ReadUint64(v, index, this->ContinueResponseTx)) {
+    if (!encoding::read_uint64(v, index, this->ContinueResponseTx)) {
       return false;
     }
-    if (!encoding::ReadUint64(v, index, this->NearPingRx)) {
+    if (!encoding::read_uint64(v, index, this->NearPingRx)) {
       return false;
     }
-    if (!encoding::ReadUint64(v, index, this->NearPingTx)) {
+    if (!encoding::read_uint64(v, index, this->NearPingTx)) {
       return false;
     }
-    if (!encoding::ReadUint64(v, index, this->UnknownRx)) {
+    if (!encoding::read_uint64(v, index, this->UnknownRx)) {
       return false;
     }
     uint8_t shutdown_flag;
-    if (!encoding::ReadUint8(v, index, shutdown_flag)) {
+    if (!encoding::read_uint8(v, index, shutdown_flag)) {
       return false;
     }
     this->ShuttingDown = static_cast<bool>(shutdown_flag);
 
-    if (!encoding::ReadDouble(v, index, CPUUsage)) {
+    if (!encoding::read_double(v, index, CPUUsage)) {
       return false;
     }
-    if (!encoding::ReadDouble(v, index, MemUsage)) {
+    if (!encoding::read_double(v, index, MemUsage)) {
       return false;
     }
-    if (!encoding::ReadString(v, index, RelayVersion)) {
+    if (!encoding::read_string(v, index, RelayVersion)) {
       return false;
     }
 
@@ -255,7 +255,7 @@ namespace core
     for (size_t i = 0; i < NumRelays; i++) {
       // only used in tests, so being lazy here;
       const auto& relay = Relays[i];
-      size += relay.Addr.toString().length();
+      size += relay.address.toString().length();
     }
 
     return size;
@@ -266,17 +266,17 @@ namespace core
   {
     size_t index = 0;
 
-    if (!encoding::WriteUint32(v, index, Version)) {
+    if (!encoding::write_uint32(v, index, Version)) {
       LOG(TRACE, "could not write version");
       return false;
     }
 
-    if (!encoding::WriteUint64(v, index, Timestamp)) {
+    if (!encoding::write_uint64(v, index, Timestamp)) {
       LOG(TRACE, "could not write timestamp");
       return false;
     }
 
-    if (!encoding::WriteUint32(v, index, NumRelays)) {
+    if (!encoding::write_uint32(v, index, NumRelays)) {
       LOG(TRACE, "could not write num relays");
       return false;
     }
@@ -284,12 +284,12 @@ namespace core
     for (size_t i = 0; i < NumRelays; i++) {
       const auto& relay = Relays[i];
 
-      if (!encoding::WriteUint64(v, index, relay.ID)) {
+      if (!encoding::write_uint64(v, index, relay.id)) {
         LOG(TRACE, "could not write relay id");
         return false;
       }
 
-      if (!encoding::WriteString(v, index, relay.Addr.toString())) {
+      if (!encoding::write_string(v, index, relay.address.toString())) {
         LOG(TRACE, "could not write relay address");
         return false;
       }
@@ -302,25 +302,25 @@ namespace core
   {
     size_t index = 0;
 
-    if (!encoding::ReadUint32(v, index, Version)) {
+    if (!encoding::read_uint32(v, index, Version)) {
       return false;
     }
-    if (!encoding::ReadUint64(v, index, Timestamp)) {
+    if (!encoding::read_uint64(v, index, Timestamp)) {
       return false;
     }
-    if (!encoding::ReadUint32(v, index, NumRelays)) {
+    if (!encoding::read_uint32(v, index, NumRelays)) {
       return false;
     }
     for (size_t i = 0; i < NumRelays; i++) {
       auto& relay = Relays[i];
-      if (!encoding::ReadUint64(v, index, relay.ID)) {
+      if (!encoding::read_uint64(v, index, relay.id)) {
         return false;
       }
       std::string addr;
-      if (!encoding::ReadString(v, index, addr)) {
+      if (!encoding::read_string(v, index, addr)) {
         return false;
       }
-      if (!relay.Addr.parse(addr)) {
+      if (!relay.address.parse(addr)) {
         LOG(ERROR, "unable to parse relay address: ", addr);
         return false;
       }
@@ -369,8 +369,8 @@ namespace core
         token.data(),
         token.size(),
         request.Nonce.data(),
-        mKeychain.RouterPublicKey.data(),
-        mKeychain.RelayPrivateKey.data()) != 0) {
+        mKeychain.backend_public_key.data(),
+        mKeychain.relay_private_key.data()) != 0) {
         LOG(TRACE, "failed to encrypt init token");
         return false;
       }
@@ -473,7 +473,7 @@ namespace core
     // serialize request
     {
       core::RelayStats stats;
-      mRelayManager.getStats(stats);
+      mRelayManager.get_stats(stats);
 
       const size_t requestSize = 4 +                     // request version
                                  4 +                     // address length
@@ -514,64 +514,64 @@ namespace core
 
       size_t index = 0;
 
-      encoding::WriteUint32(req, index, UpdateRequestVersion);
-      encoding::WriteString(req, index, mAddressStr);
-      encoding::WriteBytes(req, index, mKeychain.RelayPublicKey, mKeychain.RelayPublicKey.size());
-      encoding::WriteUint32(req, index, stats.NumRelays);
+      encoding::write_uint32(req, index, UpdateRequestVersion);
+      encoding::write_string(req, index, mAddressStr);
+      encoding::write_bytes(req, index, mKeychain.relay_public_key, mKeychain.relay_public_key.size());
+      encoding::write_uint32(req, index, stats.NumRelays);
 
       for (unsigned int i = 0; i < stats.NumRelays; ++i) {
-        encoding::WriteUint64(req, index, stats.IDs[i]);
-        encoding::WriteBytes(req.data(), req.size(), index, reinterpret_cast<uint8_t*>(&stats.RTT[i]), sizeof(float));
-        encoding::WriteBytes(req.data(), req.size(), index, reinterpret_cast<uint8_t*>(&stats.Jitter[i]), sizeof(float));
-        encoding::WriteBytes(req.data(), req.size(), index, reinterpret_cast<uint8_t*>(&stats.PacketLoss[i]), sizeof(float));
+        encoding::write_uint64(req, index, stats.IDs[i]);
+        encoding::write_bytes(req.data(), req.size(), index, reinterpret_cast<uint8_t*>(&stats.RTT[i]), sizeof(float));
+        encoding::write_bytes(req.data(), req.size(), index, reinterpret_cast<uint8_t*>(&stats.Jitter[i]), sizeof(float));
+        encoding::write_bytes(req.data(), req.size(), index, reinterpret_cast<uint8_t*>(&stats.PacketLoss[i]), sizeof(float));
       }
 
-      encoding::WriteUint64(req, index, mSessionMap.size());
+      encoding::write_uint64(req, index, mSessionMap.size());
 
       util::ThroughputRecorder trafficStats(std::move(recorder));
 
-      encoding::WriteUint64(req, index, trafficStats.OutboundPingTx.ByteCount.load());
+      encoding::write_uint64(req, index, trafficStats.outbound_ping_tx.num_bytes.load());
 
-      encoding::WriteUint64(req, index, trafficStats.RouteRequestRx.ByteCount.load());
-      encoding::WriteUint64(req, index, trafficStats.RouteRequestTx.ByteCount.load());
+      encoding::write_uint64(req, index, trafficStats.route_request_rx.num_bytes.load());
+      encoding::write_uint64(req, index, trafficStats.route_request_tx.num_bytes.load());
 
-      encoding::WriteUint64(req, index, trafficStats.RouteResponseRx.ByteCount.load());
-      encoding::WriteUint64(req, index, trafficStats.RouteResponseTx.ByteCount.load());
+      encoding::write_uint64(req, index, trafficStats.route_response_rx.num_bytes.load());
+      encoding::write_uint64(req, index, trafficStats.route_response_tx.num_bytes.load());
 
-      encoding::WriteUint64(req, index, trafficStats.ClientToServerRx.ByteCount.load());
-      encoding::WriteUint64(req, index, trafficStats.ClientToServerTx.ByteCount.load());
+      encoding::write_uint64(req, index, trafficStats.client_to_server_rx.num_bytes.load());
+      encoding::write_uint64(req, index, trafficStats.client_to_server_tx.num_bytes.load());
 
-      encoding::WriteUint64(req, index, trafficStats.ServerToClientRx.ByteCount.load());
-      encoding::WriteUint64(req, index, trafficStats.ServerToClientTx.ByteCount.load());
+      encoding::write_uint64(req, index, trafficStats.server_to_client_rx.num_bytes.load());
+      encoding::write_uint64(req, index, trafficStats.server_to_client_tx.num_bytes.load());
 
-      encoding::WriteUint64(req, index, trafficStats.InboundPingRx.ByteCount.load());
-      encoding::WriteUint64(req, index, trafficStats.InboundPingTx.ByteCount.load());
+      encoding::write_uint64(req, index, trafficStats.inbound_ping_rx.num_bytes.load());
+      encoding::write_uint64(req, index, trafficStats.inbound_ping_tx.num_bytes.load());
 
-      encoding::WriteUint64(req, index, trafficStats.PongRx.ByteCount.load());
+      encoding::write_uint64(req, index, trafficStats.pong_rx.num_bytes.load());
 
-      encoding::WriteUint64(req, index, trafficStats.SessionPingRx.ByteCount.load());
-      encoding::WriteUint64(req, index, trafficStats.SessionPingTx.ByteCount.load());
+      encoding::write_uint64(req, index, trafficStats.session_ping_rx.num_bytes.load());
+      encoding::write_uint64(req, index, trafficStats.session_ping_tx.num_bytes.load());
 
-      encoding::WriteUint64(req, index, trafficStats.SessionPongRx.ByteCount.load());
-      encoding::WriteUint64(req, index, trafficStats.SessionPongTx.ByteCount.load());
+      encoding::write_uint64(req, index, trafficStats.session_pong_rx.num_bytes.load());
+      encoding::write_uint64(req, index, trafficStats.session_pong_tx.num_bytes.load());
 
-      encoding::WriteUint64(req, index, trafficStats.ContinueRequestRx.ByteCount.load());
-      encoding::WriteUint64(req, index, trafficStats.ContinueRequestTx.ByteCount.load());
+      encoding::write_uint64(req, index, trafficStats.continue_request_rx.num_bytes.load());
+      encoding::write_uint64(req, index, trafficStats.continue_request_tx.num_bytes.load());
 
-      encoding::WriteUint64(req, index, trafficStats.ContinueResponseRx.ByteCount.load());
-      encoding::WriteUint64(req, index, trafficStats.ContinueResponseTx.ByteCount.load());
+      encoding::write_uint64(req, index, trafficStats.continue_response_rx.num_bytes.load());
+      encoding::write_uint64(req, index, trafficStats.continue_response_tx.num_bytes.load());
 
-      encoding::WriteUint64(req, index, trafficStats.NearPingRx.ByteCount.load());
-      encoding::WriteUint64(req, index, trafficStats.NearPingTx.ByteCount.load());
+      encoding::write_uint64(req, index, trafficStats.near_ping_rx.num_bytes.load());
+      encoding::write_uint64(req, index, trafficStats.near_ping_tx.num_bytes.load());
 
-      encoding::WriteUint64(req, index, trafficStats.UnknownRx.ByteCount.load());
+      encoding::write_uint64(req, index, trafficStats.unknown_rx.num_bytes.load());
 
-      encoding::WriteUint8(req, index, shutdown);
+      encoding::write_uint8(req, index, shutdown);
 
       auto sysStats = os::GetUsage();
-      encoding::WriteDouble(req, index, sysStats.CPU);
-      encoding::WriteDouble(req, index, sysStats.Mem);
-      encoding::WriteString(req, index, RELAY_VERSION);
+      encoding::write_double(req, index, sysStats.CPU);
+      encoding::write_double(req, index, sysStats.Mem);
+      encoding::write_string(req, index, RELAY_VERSION);
     }
 
     if (!mRequester.sendRequest(mHostname, "/relay_update", req, res)) {
