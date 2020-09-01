@@ -42,6 +42,7 @@ Test(core_handlers_continue_request_handler_unsigned)
   token.ExpireTimestamp = 20;
   token.SessionID = 0x13;
   token.SessionVersion = 3;
+  token.SessionFlags = 0;
 
   size_t index = 1;
   check(token.write_encrypted(packet, index, router_private_key(), keychain.RelayPublicKey));
@@ -90,6 +91,7 @@ Test(core_handlers_continue_request_handler_signed)
   token.ExpireTimestamp = 20;
   token.SessionID = 0x13;
   token.SessionVersion = 3;
+  token.SessionFlags = 0;
 
   size_t index = crypto::PacketHashLength + 1;
   check(token.write_encrypted(packet, index, router_private_key(), keychain.RelayPublicKey));

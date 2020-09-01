@@ -11,8 +11,14 @@ EXE										:= relay.benchmark
 SRC_OBJ_FILES					:= $(patsubst $(SRC)/%.cpp, $(OBJ)/$(SRC)/%.bench.o, $(SRC_FILES))
 SRC_DEP_FILES					:= $(patsubst $(SRC)/%.cpp, $(OBJ)/$(SRC)/%.bench.d, $(SRC_FILES))
 
+DEF_FLAGS							:= -DBENCH_BUILD -DRELAY_LOG_LEVEL=0
+
+ifeq ($(LOG_ALL),true)
+DEF_FLAGS 						:= $(DEF_FLAGS) -DLOG_ALL
+endif
+
 COMMON_FLAGS 					:= $(CXX) $(CXX_FLAGS) $(CXX_PERF_FLAGS)
-COMMON_COMPILE_FLAGS 	:= $(COMMON_FLAGS) -c -DNDEBUG -DBENCH_BUILD
+COMMON_COMPILE_FLAGS 	:= $(COMMON_FLAGS) -c $(DEF_FLAGS)
 
 ################
 ### Targets  ###

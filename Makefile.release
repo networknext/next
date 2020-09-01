@@ -11,8 +11,14 @@ EXE										:= relay
 SRC_OBJ_FILES					:= $(patsubst $(SRC)/%.cpp, $(OBJ)/$(SRC)/%.o, $(SRC_FILES))
 SRC_DEP_FILES					:= $(patsubst $(SRC)/%.cpp, $(OBJ)/$(SRC)/%.d, $(SRC_FILES))
 
+DEF_FLAGS							:= -DNDEBUG -DRELAY_LOG_LEVEL=3
+
+ifeq ($(LOG_ALL),true)
+DEF_FLAGS 						:= $(DEF_FLAGS) -DLOG_ALL
+endif
+
 COMMON_FLAGS 					:= $(CXX) $(CXX_FLAGS) $(CXX_PERF_FLAGS)
-COMMON_COMPILE_FLAGS 	:= $(COMMON_FLAGS) -c -DNDEBUG
+COMMON_COMPILE_FLAGS 	:= $(COMMON_FLAGS) -c $(DEF_FLAGS)
 
 DIST_DIR							:= ../../dist
 
