@@ -126,13 +126,6 @@ export default class SessionMap extends Vue {
 
         if (!this.deckGlInstance) {
           // creating the deck.gl instance
-          const mapParent = document.getElementById('map')
-          let width = 0
-          let height = 0
-          if (mapParent) {
-            width = mapParent.offsetWidth
-            height = mapParent.offsetHeight
-          }
           this.deckGlInstance = new Deck({
             canvas: document.getElementById('deck-canvas'),
             width: '100%',
