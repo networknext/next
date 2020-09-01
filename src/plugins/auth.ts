@@ -40,10 +40,6 @@ export class AuthService {
     this.authClient.loginWithPopup({
       connection: 'Username-Password-Authentication',
       screen_hint: 'signup'
-    }).then((response: any) => {
-      console.log(response)
-    }).catch((error: Error) => {
-      console.log(error)
     })
   }
 
@@ -83,6 +79,7 @@ export class AuthService {
             userProfile.email = email
             userProfile.idToken = token
             userProfile.auth0ID = authResult.sub
+            userProfile.verified = authResult.email_verified
 
             store.commit('UPDATE_USER_PROFILE', userProfile)
           })
