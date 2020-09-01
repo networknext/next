@@ -158,3 +158,10 @@ func HashPacket(key []byte, data []byte) []byte {
 func Check(key []byte, data []byte) bool {
 	return sodiumCheck(data, key)
 }
+
+// IsNetworkNextPacket wraps sodiumIsNetworkNextPacket with is a wrapper around libsodium
+// We wrap this to avoid including C in other libs breaking
+// code linting
+func IsNetworkNextPacket(key []byte, data []byte) bool {
+	return sodiumIsNetworkNextPacket(data, key)
+}

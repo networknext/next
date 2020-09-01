@@ -329,6 +329,12 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	serverUpdateMetrics, err := metrics.NewServerUpdateMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create server update metrics", "err", err)
+		return 1
+	}
+
 	// Create datacenter tracker
 	datacenterTracker := transport.NewDatacenterTracker()
 
@@ -388,6 +394,7 @@ func mainReturnWithCode() int {
 	connections := make([]*net.UDPConn, numThreads)
 
 	serverInitHandler := transport.ServerInitHandlerFunc4(logger, storer, datacenterTracker, serverInitMetrics)
+	serverUpdateHandler := transport.ServerUpdateHandlerFunc4(logger, storer, datacenterTracker, serverUpdateMetrics)
 
 	for i := 0; i < numThreads; i++ {
 		go func(thread int) {
@@ -429,7 +436,7 @@ func mainReturnWithCode() int {
 
 				// Check the packet hash is legit and remove the hash from the beginning of the packet
 				// to continue processing the packet as normal
-				hashedPacket := crypto.Check(crypto.PacketHashKey, data[:transport.PacketHashMessageSize+crypto.PacketHashSize])
+				hashedPacket := crypto.IsNetworkNextPacket(crypto.PacketHashKey, data)
 				switch hashedPacket {
 				case true:
 					data = data[crypto.PacketHashSize:size]
@@ -445,6 +452,8 @@ func mainReturnWithCode() int {
 				switch packetType {
 				case transport.PacketTypeServerInitRequest4:
 					serverInitHandler(&buffer, &packet)
+				case transport.PacketTypeServerUpdate4:
+					serverUpdateHandler(&buffer, &packet)
 				default:
 					level.Error(logger).Log("err", "unknown packet type", "packet_type", packet.Data[0])
 				}

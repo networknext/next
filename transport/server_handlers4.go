@@ -112,7 +112,7 @@ func ServerInitHandlerFunc4(logger log.Logger, storer storage.Storer, datacenter
 	}
 }
 
-func ServerUpdateHander4() UDPHandlerFunc {
+func ServerUpdateHandlerFunc4(logger log.Logger, storer storage.Storer, datacenterTracker *DatacenterTracker, metrics *metrics.ServerUpdateMetrics) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
 
 	}

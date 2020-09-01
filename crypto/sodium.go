@@ -99,3 +99,29 @@ func sodiumCheck(data []byte, key []byte) bool {
 	}
 	return true
 }
+
+func sodiumIsNetworkNextPacket(packetData []byte, hashKey []byte) bool {
+	packetBytes := len(packetData)
+	if packetBytes <= PacketHashSize {
+		return false
+	}
+	messageLength := packetBytes - PacketHashSize
+	if messageLength > 32 {
+		messageLength = 32
+	}
+	hash := make([]byte, PacketHashSize)
+	C.crypto_generichash(
+		(*C.uchar)(&hash[0]),
+		C.ulong(PacketHashSize),
+		(*C.uchar)(&packetData[PacketHashSize]),
+		C.ulonglong(messageLength),
+		(*C.uchar)(&hashKey[0]),
+		C.ulong(C.crypto_generichash_KEYBYTES),
+	)
+	for i := 0; i < PacketHashSize; i++ {
+		if hash[i] != packetData[i] {
+			return false
+		}
+	}
+	return true
+}
