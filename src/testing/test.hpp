@@ -87,11 +87,6 @@ namespace testing
         mOnFail();
       }
       std::cout << std::flush;
-#if defined(__GNUC__)
-      __builtin_trap();
-#elif defined(_MSC_VER)
-      __debugbreak();
-#endif
       std::exit(1);
     }
   }

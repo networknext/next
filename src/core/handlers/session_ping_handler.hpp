@@ -1,11 +1,15 @@
 #pragma once
 
+#include "core/packet.hpp"
+#include "core/packets/header.hpp"
+#include "core/packets/types.hpp"
 #include "core/session_map.hpp"
 #include "core/throughput_recorder.hpp"
 #include "os/socket.hpp"
 #include "util/macros.hpp"
 
 using core::RouterInfo;
+using core::SessionMap;
 using core::packets::Direction;
 using core::packets::Header;
 using os::Socket;
@@ -39,7 +43,7 @@ namespace core
       Header header;
 
       {
-        size_t i = 0;
+        size_t i = index;
         if (!header.read(packet, i, Direction::ClientToServer)) {
           LOG(ERROR, "ignoring session ping packet, relay header could not be read");
           return;
@@ -51,7 +55,7 @@ namespace core
       auto session = session_map.get(hash);
 
       if (!session) {
-        LOG(ERROR, "ignoring session ping packet, session does not exist: session = ", hash);
+        LOG(ERROR, "ignoring session ping packet, session does not exist: session = ", header);
         return;
       }
 
@@ -64,7 +68,7 @@ namespace core
       uint64_t clean_sequence = header.clean_sequence();
 
       if (clean_sequence <= session->ClientToServerSeq) {
-        LOG(ERROR, "ignoring session ping packet, packet already received: session = ", header);
+        LOG(ERROR, "ignoring session ping packet, packet already received: session = ", *session);
         return;
       }
 
