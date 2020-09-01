@@ -17,6 +17,7 @@
 #include <atomic>
 
 #include "curl/curl.h"
+#include <atomic>
 
 #define RELAY_MTU                                               1300
 
