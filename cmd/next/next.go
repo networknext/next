@@ -1601,7 +1601,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 					hash := fnv.New64a()
 					hash.Write([]byte(userId))
 					userHash := int64(hash.Sum64())
-					fmt.Printf("user hash: \"%s\" -> %d\n", userId, userHash)
+					fmt.Printf("user hash: \"%s\" -> %d (%x)\n", userId, userHash, uint64(userHash))
 					return nil
 				},
 			},
