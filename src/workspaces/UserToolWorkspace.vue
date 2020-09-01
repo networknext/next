@@ -12,6 +12,7 @@
               border-bottom
             "
     >
+      <!-- TODO: Fix this interesting class name -->
       <h1 class="h2">
         User Tool
       </h1>
@@ -40,7 +41,7 @@
         </div>
       </div>
     </form>
-    <Alert :message="message" :alertType="alertType" v-if="message !== '' && $route.path === '/user-tool'"/>
+    <Alert :message="message" :alertType="alertType" v-if="getAlertMessage !== '' && $route.path === '/user-tool'"/>
     <router-view />
   </div>
 </template>
@@ -67,6 +68,10 @@ import Alert from '@/components/Alert.vue'
   }
 })
 export default class UserToolWorkspace extends Vue {
+  get alertMessage () {
+    return this.message
+  }
+
   private alertType: string
   private message: string
   private searchID: string
