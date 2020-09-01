@@ -1019,7 +1019,7 @@ func main() {
 				Subcommands: []*ffcli.Command{
 					{
 						Name:       "mrc",
-						ShortUsage: "next relay ops mrc <relay> <value>",
+						ShortUsage: "next relay ops mrc <relay> <value in USD>",
 						ShortHelp:  "Set the mrc value for the given relay (in $USD)",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) != 2 {
@@ -1038,7 +1038,7 @@ func main() {
 					},
 					{
 						Name:       "overage",
-						ShortUsage: "next relay ops overage <relay> <value>",
+						ShortUsage: "next relay ops overage <relay> <value in USD>",
 						ShortHelp:  "Set the overage value for the given relay (in $USD)",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) != 2 {

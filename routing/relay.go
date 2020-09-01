@@ -107,8 +107,8 @@ type Relay struct {
 	Seller     Seller     `json:"seller"`
 	Datacenter Datacenter `json:"datacenter"`
 
-	NICSpeedMbps        int32 `json:"nic_speed_mbps"`
-	IncludedBandwidthGB int32 `json:"included_bandwidth_GB"`
+	NICSpeedMbps        int32 `json:"nicSpeedMbps"`
+	IncludedBandwidthGB int32 `json:"includedBandwidthGB"`
 
 	LastUpdateTime time.Time `json:"last_udpate_time"`
 
@@ -129,17 +129,17 @@ type Relay struct {
 	FirestoreID string `json:"firestore_id"`
 
 	// MRC is the monthly recurring cost for the relay
-	MRC Nibblin `json:"mrc"`
+	MRC Nibblin `json:"monthlyRecurringChargeNibblins"`
 	// Overage is the charge/penalty if we exceed the bandwidth alloted for the relay
 	Overage Nibblin       `json:"overage"`
-	BWRule  BandWidthRule `json:"bw_rule"`
+	BWRule  BandWidthRule `json:"bandwidthRule"`
 	//ContractTerm is the term in months
-	ContractTerm int32 `json:"contract_term"`
+	ContractTerm int32 `json:"contractTerm"`
 	// StartDate is the date the contract term starts
-	StartDate time.Time `json:"start_date"`
+	StartDate time.Time `json:"startDate"`
 	// EndDate is the date the contract term ends
-	EndDate time.Time   `json:"end_date"`
-	Type    MachineType `json:"machine_type"`
+	EndDate time.Time   `json:"endDate"`
+	Type    MachineType `json:"machineType"`
 
 	// Useful in data science analysis
 	SignedID int64 `json:"signed_id"`
