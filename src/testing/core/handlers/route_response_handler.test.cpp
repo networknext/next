@@ -1,7 +1,7 @@
 #include "includes.h"
 #include "testing/test.hpp"
 
-#include "core/handlers/continue_response_handler.hpp"
+#include "core/handlers/route_response_handler.hpp"
 
 #define CRYPTO_HELPERS
 #define OS_HELPERS
@@ -15,22 +15,19 @@ using core::packets::Direction;
 using core::packets::Header;
 using core::packets::Type;
 using crypto::GenericKey;
-using net::Address;
 using os::Socket;
 using os::SocketConfig;
 using util::ThroughputRecorder;
 
-Test(core_handlers_continue_response_handler_unsigned)
+Test(core_handlers_route_response_handler_unsigned)
 {
   Packet packet;
   SessionMap map;
   ThroughputRecorder recorder;
+  RouterInfo router_info;
   Socket socket;
 
   const GenericKey private_key = random_private_key();
-
-  RouterInfo router_info;
-  router_info.setTimestamp(0);
 
   Address addr;
   SocketConfig config = default_socket_config();
@@ -39,9 +36,10 @@ Test(core_handlers_continue_response_handler_unsigned)
   check(socket.create(addr, config));
 
   packet.Len = Header::ByteSize;
+  packet.Addr = addr;
 
   Header header = {
-   .type = Type::ContinueResponse,
+   .type = Type::RouteResponse,
    .sequence = 123123130131LL | (1ULL << 63) | (1ULL << 62),
    .session_id = 0x12313131,
    .session_version = 0x12,
@@ -60,33 +58,28 @@ Test(core_handlers_continue_response_handler_unsigned)
   size_t index = 0;
   check(header.write(packet, index, Direction::ServerToClient, private_key));
 
-  core::handlers::continue_response_handler(packet, map, recorder, router_info, socket, false);
+  core::handlers::route_response_handler(packet, map, recorder, router_info, socket, false);
+
   size_t prev_len = packet.Len;
-  check(socket.recv(packet)).onFail([&] {
-    std::cout << "unable to receive packet\n";
-  });
+  check(socket.recv(packet));
   check(prev_len == packet.Len);
 
-  check(recorder.ContinueResponseTx.PacketCount == 1);
-  check(recorder.ContinueResponseTx.ByteCount == packet.Len).onFail([&] {
-    std::cout << "packet len = " << packet.Len << '\n';
-    std::cout << "byte count = " << recorder.ContinueResponseRx.ByteCount << '\n';
-  });
+  check(recorder.RouteResponseTx.PacketCount == 1);
+  check(recorder.RouteResponseTx.ByteCount == Header::ByteSize);
 
-  core::handlers::continue_response_handler(packet, map, recorder, router_info, socket, false);
+  core::handlers::route_response_handler(packet, map, recorder, router_info, socket, false);
   check(!socket.recv(packet));
 }
 
-Test(core_handlers_continue_response_handler_signed)
+Test(core_handlers_route_response_handler_signed)
 {
   Packet packet;
   SessionMap map;
   ThroughputRecorder recorder;
+  RouterInfo router_info;
   Socket socket;
 
   const GenericKey private_key = random_private_key();
-  RouterInfo router_info;
-  router_info.setTimestamp(0);
 
   Address addr;
   SocketConfig config = default_socket_config();
@@ -95,9 +88,10 @@ Test(core_handlers_continue_response_handler_signed)
   check(socket.create(addr, config));
 
   packet.Len = crypto::PacketHashLength + Header::ByteSize;
+  packet.Addr = addr;
 
   Header header = {
-   .type = Type::ContinueResponse,
+   .type = Type::RouteResponse,
    .sequence = 123123130131LL | (1ULL << 63) | (1ULL << 62),
    .session_id = 0x12313131,
    .session_version = 0x12,
@@ -116,19 +110,15 @@ Test(core_handlers_continue_response_handler_signed)
   size_t index = crypto::PacketHashLength;
   check(header.write(packet, index, Direction::ServerToClient, private_key));
 
-  core::handlers::continue_response_handler(packet, map, recorder, router_info, socket, true);
+  core::handlers::route_response_handler(packet, map, recorder, router_info, socket, true);
+
   size_t prev_len = packet.Len;
-  check(socket.recv(packet)).onFail([&] {
-    std::cout << "unable to receive packet\n";
-  });
+  check(socket.recv(packet));
   check(prev_len == packet.Len);
 
-  check(recorder.ContinueResponseTx.PacketCount == 1);
-  check(recorder.ContinueResponseTx.ByteCount == packet.Len).onFail([&] {
-    std::cout << "packet len = " << packet.Len << '\n';
-    std::cout << "byte count = " << recorder.ContinueResponseRx.ByteCount << '\n';
-  });
+  check(recorder.RouteResponseTx.PacketCount == 1);
+  check(recorder.RouteResponseTx.ByteCount == crypto::PacketHashLength + Header::ByteSize);
 
-  core::handlers::continue_response_handler(packet, map, recorder, router_info, socket, true);
+  core::handlers::route_response_handler(packet, map, recorder, router_info, socket, true);
   check(!socket.recv(packet));
 }

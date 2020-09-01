@@ -6,7 +6,9 @@
 #include "os/socket.hpp"
 #include "util/macros.hpp"
 
+using core::Packet;
 using core::RouterInfo;
+using core::SessionMap;
 using core::packets::Direction;
 using core::packets::Header;
 using os::Socket;
@@ -33,7 +35,7 @@ namespace core
       }
 
       if (length != Header::ByteSize) {
-        LOG(ERROR, "ignoring route response, header byte count invalid: ", length, " != ", Header::ByteSize);
+        LOG(ERROR, "ignoring route response, header byte count invalid: ", length);
         return;
       }
 
