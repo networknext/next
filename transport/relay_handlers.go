@@ -325,18 +325,19 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 		}
 
 		relayData := &routing.RelayData{
-			ID:             relay.ID,
-			Name:           relay.Name,
-			Addr:           relay.Addr,
-			PublicKey:      relay.PublicKey,
-			Seller:         relay.Seller,
-			Datacenter:     relay.Datacenter,
-			LastUpdateTime: time.Now(),
-			TrafficStats:   relayUpdateRequest.TrafficStats,
-			MaxSessions:    relay.MaxSessions,
-			CPUUsage:       float32(relayUpdateRequest.CPUUsage) * 100.0,
-			MemUsage:       float32(relayUpdateRequest.MemUsage) * 100.0,
-			Version:        relayUpdateRequest.RelayVersion,
+			ID:               relay.ID,
+			Name:             relay.Name,
+			Addr:             relay.Addr,
+			PublicKey:        relay.PublicKey,
+			Seller:           relay.Seller,
+			Datacenter:       relay.Datacenter,
+			LastUpdateTime:   time.Now(),
+			TrafficStats:     relayUpdateRequest.TrafficStats,
+			PeakTrafficStats: relay.TrafficStats.MaxValues(&relayUpdateRequest.TrafficStats),
+			MaxSessions:      relay.MaxSessions,
+			CPUUsage:         float32(relayUpdateRequest.CPUUsage) * 100.0,
+			MemUsage:         float32(relayUpdateRequest.MemUsage) * 100.0,
+			Version:          relayUpdateRequest.RelayVersion,
 		}
 
 		// Update the relay data

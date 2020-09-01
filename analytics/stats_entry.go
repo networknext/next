@@ -104,10 +104,15 @@ type RelayStatsEntry struct {
 	MemUsage    float32
 	Tx          uint64
 	Rx          uint64
+
+	// Maximum traffic stats since the last upload for this relay
+	PeakSessions              uint64
+	PeakSentBandwidthMbps     float32
+	PeakReceivedBandwidthMbps float32
 }
 
 func WriteRelayStatsEntries(entries []RelayStatsEntry) []byte {
-	length := 1 + 8 + len(entries)*(8+8+4+4+8+8)
+	length := 1 + 8 + len(entries)*(8+8+4+4+8+8+8+4+4)
 	data := make([]byte, length)
 
 	index := 0
@@ -122,6 +127,9 @@ func WriteRelayStatsEntries(entries []RelayStatsEntry) []byte {
 		encoding.WriteFloat32(data, &index, entry.MemUsage)
 		encoding.WriteUint64(data, &index, entry.Tx)
 		encoding.WriteUint64(data, &index, entry.Rx)
+		encoding.WriteUint64(data, &index, entry.PeakSessions)
+		encoding.WriteFloat32(data, &index, entry.PeakSentBandwidthMbps)
+		encoding.WriteFloat32(data, &index, entry.PeakReceivedBandwidthMbps)
 	}
 
 	return data
@@ -168,6 +176,18 @@ func ReadRelayStatsEntries(data []byte) ([]RelayStatsEntry, bool) {
 		if !encoding.ReadUint64(data, &index, &entry.Rx) {
 			return nil, false
 		}
+
+		if !encoding.ReadUint64(data, &index, &entry.PeakSessions) {
+			return nil, false
+		}
+
+		if !encoding.ReadFloat32(data, &index, &entry.PeakSentBandwidthMbps) {
+			return nil, false
+		}
+
+		if !encoding.ReadFloat32(data, &index, &entry.PeakReceivedBandwidthMbps) {
+			return nil, false
+		}
 	}
 
 	return entries, true
@@ -185,6 +205,9 @@ func (e *RelayStatsEntry) Save() (map[string]bigquery.Value, string, error) {
 	bqEntry["mem"] = e.MemUsage
 	bqEntry["tx"] = e.Tx
 	bqEntry["rx"] = e.Rx
+	bqEntry["peakSessions"] = e.PeakSessions
+	bqEntry["peakSentBandwidthMbps"] = e.PeakSentBandwidthMbps
+	bqEntry["peakReceivedBandwidthMbps"] = e.PeakReceivedBandwidthMbps
 
 	return bqEntry, "", nil
 }
