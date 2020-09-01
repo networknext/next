@@ -87,10 +87,10 @@ export default class SessionMap extends Vue {
 
         const sessions = response.map_points || []
         const onNN = sessions.filter((point: any) => {
-          return point[2] === true
+          return point[2] === 1
         })
         const direct = sessions.filter((point: any) => {
-          return point[2] === false
+          return point[2] === 0
         })
 
         const cellSize = 10
@@ -135,8 +135,8 @@ export default class SessionMap extends Vue {
           }
           this.deckGlInstance = new Deck({
             canvas: document.getElementById('deck-canvas'),
-            width: width,
-            height: height,
+            width: '100%',
+            height: '100%',
             initialViewState: this.viewState,
             controller: {
               dragRotate: false,
@@ -178,12 +178,14 @@ export default class SessionMap extends Vue {
   height: calc(-160px + 95vh);
   position: relative;
   overflow: hidden;
+  max-height: 1000px;
 }
 .map-container-no-offset {
   width: 100%;
   height: calc(-160px + 100vh);
   position: relative;
   overflow: hidden;
+  max-height: 1000px;
 }
 .map {
   position: absolute;
