@@ -325,7 +325,7 @@ dev-server-backend: build-server-backend ## runs a local server backend
 
 .PHONY: dev-server-backend4
 dev-server-backend4: build-server-backend4 ## runs a local server backend4
-	@UDP_PORT=40000 ./dist/server_backend4
+	@HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend4
 
 .PHONY: dev-server-backend-valve
 dev-server-backend-valve: build-server-backend

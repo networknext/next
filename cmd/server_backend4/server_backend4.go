@@ -8,8 +8,10 @@ package main
 import (
 	"bytes"
 	"context"
+	"expvar"
 	"fmt"
 	"net"
+	"net/http"
 	"strconv"
 	"sync"
 	"syscall"
@@ -20,6 +22,7 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
+	"github.com/gorilla/mux"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/envvar"
 	"github.com/networknext/backend/logging"
@@ -347,6 +350,29 @@ func mainReturnWithCode() int {
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
+	}
+
+	// Start HTTP server
+	{
+		router := mux.NewRouter()
+		router.HandleFunc("/health", transport.HealthHandlerFunc())
+		router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage))
+		router.Handle("/debug/vars", expvar.Handler())
+
+		go func() {
+			if !envvar.Exists("HTTP_PORT") {
+				level.Error(logger).Log("err", "env var HTTP_PORT must be set")
+				return
+			}
+
+			httpPort := envvar.Get("HTTP_PORT", "40000")
+
+			err := http.ListenAndServe(":"+httpPort, router)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				return
+			}
+		}()
 	}
 
 	numThreads, err := envvar.GetInt("NUM_THREADS", 1)
