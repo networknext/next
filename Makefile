@@ -340,7 +340,7 @@ dev-portal-cruncher: build-portal-cruncher ## runs a local portal cruncher
 	@HTTP_PORT=42000 CRUNCHER_PORT=5555 ./dist/portal_cruncher
 
 .PHONY: dev-ghost-army
-dev-ghost-army: build-ghost-army ## runs a local ghost army supplier
+dev-ghost-army: build-ghost-army ## runs a local ghost army
 	@./dist/ghost_army
 
 .PHONY: dev-reference-backend3
@@ -359,21 +359,21 @@ dev-reference-relay: build-relay-ref ## runs a local reference relay
 dev-client3: build-client3  ## runs a local client (sdk3)
 	@./dist/client3
 
-.PHONY: dev-multi-clients3
-dev-multi-clients3: build-client3  ## runs 10 local clients (sdk3)
-	@./scripts/client-spawner.sh -n 10 -v 3
-
-.PHONY: dev-server3
-dev-server3: build-sdk3 build-server3  ## runs a local server (sdk3)
-	@./dist/server3
-
 .PHONY: dev-client4
 dev-client4: build-client4  ## runs a local client (sdk4)
 	@./dist/client4
 
+.PHONY: dev-multi-clients3
+dev-multi-clients3: build-client3  ## runs 10 local clients (sdk3)
+	@./scripts/client-spawner.sh -n 10 -v 3
+
 .PHONY: dev-multi-clients4
 dev-multi-clients4: build-client4  ## runs 10 local clients (sdk4)
 	@./scripts/client-spawner.sh -n 10 -v 4
+
+.PHONY: dev-server3
+dev-server3: build-sdk3 build-server3  ## runs a local server (sdk3)
+	@./dist/server3
 
 .PHONY: dev-server4
 dev-server4: build-sdk4 build-server4  ## runs a local server (sdk4)
@@ -457,7 +457,7 @@ deploy-relay-backend-prod:
 
 .PHONY: deploy-portal-cruncher-prod
 deploy-portal-cruncher-prod:
-	./deploy/deploy.sh -e prod -c prod -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c mig-07q1 -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
 
 .PHONY: deploy-server-backend-dev-1
 deploy-server-backend-dev-1:
@@ -489,7 +489,7 @@ deploy-server-backend-velan:
 
 .PHONY: deploy-server-backend-esl
 deploy-server-backend-esl:
-	./deploy/deploy.sh -e prod -c esl-22dr -t server-backend -n server_backend-esl-22dr -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c esl-22dr -t server-backend -n server_backend -b gs://prod_artifacts
 
 .PHONY: deploy-ghost-army-dev
 deploy-ghost-army-dev:
@@ -607,10 +607,6 @@ build-relay-backend-artifacts-prod: build-relay-backend
 build-server-backend-artifacts-prod: build-server-backend
 	./deploy/build-artifacts.sh -e prod -s server_backend
 
-.PHONY: build-server-backend-artifacts-prod-esl
-build-server-backend-artifacts-prod-esl: build-server-backend
-	./deploy/build-artifacts.sh -e prod -s server_backend -c esl-22dr
-
 .PHONY: build-ghost-army-artifacts-prod
 build-ghost-army-artifacts-prod: build-ghost-army
 	./deploy/build-artifacts.sh -e prod -s ghost_army
@@ -722,10 +718,6 @@ publish-relay-backend-artifacts-prod:
 .PHONY: publish-server-backend-artifacts-prod
 publish-server-backend-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s server_backend
-
-.PHONY: publish-server-backend-artifacts-prod-esl
-publish-server-backend-artifacts-prod-esl:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s server_backend -c esl-22dr
 
 .PHONY: publish-ghost-army-artifacts-prod
 publish-ghost-army-artifacts-prod:
