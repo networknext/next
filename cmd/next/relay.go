@@ -108,15 +108,15 @@ func unitFormat(bytes uint64) string {
 	)
 
 	if bytes > giga {
-		return fmt.Sprintf("%.02fGB", float64(bytes)/float64(giga))
+		return fmt.Sprintf("%.02fGb/s", float64(bytes)/float64(giga))
 	}
 
 	if bytes > mega {
-		return fmt.Sprintf("%.02fMB", float64(bytes)/float64(mega))
+		return fmt.Sprintf("%.02fMb/s", float64(bytes)/float64(mega))
 	}
 
 	if bytes > kilo {
-		return fmt.Sprintf("%.02fKB", float64(bytes)/float64(kilo))
+		return fmt.Sprintf("%.02fKb/s", float64(bytes)/float64(kilo))
 	}
 
 	return fmt.Sprintf("%d", bytes)
