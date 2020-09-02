@@ -156,6 +156,37 @@ type RelayTrafficStats struct {
 	BytesReceived uint64
 }
 
+type PeakRelayTrafficStats struct {
+	SessionCount           uint64
+	BytesSentPerSecond     uint64
+	BytesReceivedPerSecond uint64
+}
+
+// MaxValues returns the maximum values between the receiving instance and the given one
+func (rts *PeakRelayTrafficStats) MaxValues(other *PeakRelayTrafficStats) PeakRelayTrafficStats {
+	var retval PeakRelayTrafficStats
+
+	if rts.SessionCount > other.SessionCount {
+		retval.SessionCount = rts.SessionCount
+	} else {
+		retval.SessionCount = other.SessionCount
+	}
+
+	if rts.BytesSentPerSecond > other.BytesSentPerSecond {
+		retval.BytesSentPerSecond = rts.BytesSentPerSecond
+	} else {
+		retval.BytesSentPerSecond = other.BytesSentPerSecond
+	}
+
+	if rts.BytesReceivedPerSecond > other.BytesReceivedPerSecond {
+		retval.BytesReceivedPerSecond = rts.BytesReceivedPerSecond
+	} else {
+		retval.BytesReceivedPerSecond = other.BytesReceivedPerSecond
+	}
+
+	return retval
+}
+
 type Stats struct {
 	RTT        float64 `json:"rtt"`
 	Jitter     float64 `json:"jitter"`
