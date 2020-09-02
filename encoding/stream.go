@@ -199,7 +199,9 @@ func (stream *WriteStream) SerializeString(value *string, maxSize int) {
 	min := int32(0)
 	max := int32(maxSize - 1)
 	stream.SerializeInteger(&length, min, max)
-	stream.SerializeBytes([]byte(*value))
+	if length > 0 {
+		stream.SerializeBytes([]byte(*value))
+	}
 }
 
 func (stream *WriteStream) SerializeIntRelative(previous *int32, current *int32) {
@@ -600,6 +602,10 @@ func (stream *ReadStream) SerializeString(value *string, maxSize int) {
 	max := int32(maxSize - 1)
 	stream.SerializeInteger(&length, min, max)
 	if stream.err != nil {
+		return
+	}
+	if length == 0 {
+		*value = ""
 		return
 	}
 	stringBytes := make([]byte, length)
