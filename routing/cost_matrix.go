@@ -23,7 +23,7 @@ const (
 type CostMatrix struct {
 	mu sync.RWMutex
 
-	RelayIndices map[uint64]int
+	RelayIndices map[uint64]int 			// todo: rename to RelayIDToIndex
 
 	RelayIDs              []uint64
 	RelayNames            []string
@@ -405,6 +405,16 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 
 	indirect := make([][][]Indirect, numRelays)
 
+	// create mapping from relay index to datacenter id
+
+	relayDatacenter := make([]uint64, numRelays)
+	for datacenterId, relayIds := range routes.DatacenterRelays {
+		for i := range relayIds {
+			relayIndex := routes.RelayIndices[relayIds[i]]
+			relayDatacenter[relayIndex] = datacenterId
+		}
+	}
+
 	// phase 1: build a matrix of indirect routes from relays i -> j that have lower rtt than direct, eg. i -> (x) -> j, where x is every other relay
 
 	numCPUs := runtime.NumCPU()
@@ -545,6 +555,10 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 							routes.Entries[ijIndex].RouteRelays[0][0] = uint64(i)
 							routes.Entries[ijIndex].RouteRelays[0][1] = uint64(j)
 
+						} else {
+
+							// no route exists from i -> j
+
 						}
 
 					} else {
@@ -555,11 +569,11 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 
 						for k := range indirect[i][j] {
 
-							routeManager.AddRoute(rtt[ijIndex], uint64(i), uint64(j))
+							routeManager.AddRoute(rtt[ijIndex], relayDatacenter, uint64(i), uint64(j))
 
 							y := indirect[i][j][k]
 
-							routeManager.AddRoute(y.rtt, uint64(i), y.relay, uint64(j))
+							routeManager.AddRoute(y.rtt, relayDatacenter, uint64(i), y.relay, uint64(j))
 
 							var x *Indirect
 							if indirect[i][y.relay] != nil {
@@ -576,8 +590,7 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 								xyIndex := TriMatrixIndex(int(x.relay), int(y.relay))
 								yjIndex := TriMatrixIndex(int(y.relay), j)
 
-								routeManager.AddRoute(rtt[ixIndex]+rtt[xyIndex]+rtt[yjIndex],
-									uint64(i), x.relay, y.relay, uint64(j))
+								routeManager.AddRoute(rtt[ixIndex]+rtt[xyIndex]+rtt[yjIndex], relayDatacenter, uint64(i), x.relay, y.relay, uint64(j))
 							}
 
 							if z != nil {
@@ -585,8 +598,7 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 								yzIndex := TriMatrixIndex(int(y.relay), int(z.relay))
 								zjIndex := TriMatrixIndex(int(z.relay), j)
 
-								routeManager.AddRoute(rtt[iyIndex]+rtt[yzIndex]+rtt[zjIndex],
-									uint64(i), y.relay, z.relay, uint64(j))
+								routeManager.AddRoute(rtt[iyIndex]+rtt[yzIndex]+rtt[zjIndex], relayDatacenter, uint64(i), y.relay, z.relay, uint64(j))
 							}
 
 							if x != nil && z != nil {
@@ -595,8 +607,7 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 								yzIndex := TriMatrixIndex(int(y.relay), int(z.relay))
 								zjIndex := TriMatrixIndex(int(z.relay), j)
 
-								routeManager.AddRoute(rtt[ixIndex]+rtt[xyIndex]+rtt[yzIndex]+rtt[zjIndex],
-									uint64(i), x.relay, y.relay, z.relay, uint64(j))
+								routeManager.AddRoute(rtt[ixIndex]+rtt[xyIndex]+rtt[yzIndex]+rtt[zjIndex], relayDatacenter, uint64(i), x.relay, y.relay, z.relay, uint64(j))
 							}
 
 							numRoutes := routeManager.NumRoutes
