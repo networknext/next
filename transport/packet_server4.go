@@ -6,6 +6,7 @@ import (
 
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
+	"github.com/networknext/backend/routing"
 )
 
 const (
@@ -261,4 +262,53 @@ type SessionResponsePacket4 struct {
 	ServerRoutePublicKey []byte
 	SessionDataBytes     int32
 	SessionData          [MaxSessionDataSize]byte
+}
+
+func (packet *SessionResponsePacket4) Serialize(stream encoding.Stream) error {
+	packetType := uint32(PacketTypeSessionResponse4)
+	stream.SerializeBits(&packetType, 8)
+
+	if packetType != PacketTypeSessionResponse4 {
+		return fmt.Errorf("[SessionResponsePacket4] wrong packet type %d, expected %d", packetType, PacketTypeSessionResponse4)
+	}
+
+	stream.SerializeUint64(&packet.Sequence)
+	stream.SerializeUint64(&packet.SessionID)
+	stream.SerializeInteger(&packet.NumNearRelays, 0, MaxNearRelays)
+	if stream.IsReading() {
+		packet.NearRelayIDs = make([]uint64, packet.NumNearRelays)
+		packet.NearRelayAddresses = make([]net.UDPAddr, packet.NumNearRelays)
+	}
+	for i := 0; i < int(packet.NumNearRelays); i++ {
+		stream.SerializeUint64(&packet.NearRelayIDs[i])
+		stream.SerializeAddress(&packet.NearRelayAddresses[i])
+	}
+	stream.SerializeInteger(&packet.RouteType, routing.RouteTypeDirect, routing.RouteTypeContinue)
+	if packet.RouteType != routing.RouteTypeDirect {
+		stream.SerializeBool(&packet.Multipath)
+		stream.SerializeBool(&packet.Committed)
+		stream.SerializeInteger(&packet.NumTokens, 0, MaxTokens)
+	}
+	if packet.RouteType == routing.RouteTypeNew {
+		if stream.IsReading() {
+			packet.Tokens = make([]byte, packet.NumTokens*routing.EncryptedNextRouteTokenSize4)
+		}
+		stream.SerializeBytes(packet.Tokens)
+	}
+	if packet.RouteType == routing.RouteTypeContinue {
+		if stream.IsReading() {
+			packet.Tokens = make([]byte, packet.NumTokens*routing.EncryptedContinueRouteTokenSize4)
+		}
+		stream.SerializeBytes(packet.Tokens)
+	}
+	if stream.IsReading() {
+		packet.ServerRoutePublicKey = make([]byte, crypto.KeySize)
+	}
+	stream.SerializeBytes(packet.ServerRoutePublicKey)
+	stream.SerializeInteger(&packet.SessionDataBytes, 0, MaxSessionDataSize)
+	if packet.SessionDataBytes > 0 {
+		sessionData := packet.SessionData[:packet.SessionDataBytes]
+		stream.SerializeBytes(sessionData)
+	}
+	return stream.Error()
 }

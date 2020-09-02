@@ -9,13 +9,9 @@ func sodiumSignPacket(packetData []byte, privateKey []byte) []byte {
 	for i := 0; i < len(packetData); i++ {
 		signedPacketData[i] = packetData[i]
 	}
-	messageLength := len(packetData)
-	if messageLength > 32 {
-		messageLength = 32
-	}
 	var state C.crypto_sign_state
 	C.crypto_sign_init(&state)
-	C.crypto_sign_update(&state, (*C.uchar)(&signedPacketData[0]), C.ulonglong(messageLength))
+	C.crypto_sign_update(&state, (*C.uchar)(&signedPacketData[0]), C.ulonglong(len(signedPacketData)-C.crypto_sign_BYTES))
 	C.crypto_sign_final_create(&state, (*C.uchar)(&signedPacketData[len(packetData)]), nil, (*C.uchar)(&privateKey[0]))
 	return signedPacketData
 }

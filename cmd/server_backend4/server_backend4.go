@@ -469,14 +469,12 @@ func mainReturnWithCode() int {
 
 				// Check the packet hash is legit and remove the hash from the beginning of the packet
 				// to continue processing the packet as normal
-				hashedPacket := crypto.IsNetworkNextPacket(crypto.PacketHashKey, data)
-				switch hashedPacket {
-				case true:
-					data = data[crypto.PacketHashSize:size]
-				default:
+				if !crypto.IsNetworkNextPacket(crypto.PacketHashKey, data) {
 					level.Error(logger).Log("err", "received non network next packet")
 					continue
 				}
+
+				data = data[crypto.PacketHashSize:size]
 
 				var buffer bytes.Buffer
 				packetType := data[0]
@@ -496,13 +494,9 @@ func mainReturnWithCode() int {
 				if buffer.Len() > 0 {
 					response := buffer.Bytes()
 
-					// Sign the response
+					// Sign and hash the response
 					response = crypto.SignPacket(privateKey, response)
-
-					// If the hash checks out above then hash the response to the sender
-					if hashedPacket {
-						response = crypto.HashPacket(crypto.PacketHashKey, response)
-					}
+					response = crypto.HashPacket(crypto.PacketHashKey, response)
 
 					if _, err := conn.WriteToUDP(response, fromAddr); err != nil {
 						level.Error(logger).Log("msg", "failed to write UDP response", "err", err)

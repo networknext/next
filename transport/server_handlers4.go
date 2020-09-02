@@ -30,6 +30,35 @@ func writeServerInitResponse4(w io.Writer, packet *ServerInitRequestPacket4, res
 	return nil
 }
 
+func writeSessionResponse4(w io.Writer, packet *SessionUpdatePacket4) error {
+	responsePacket := SessionResponsePacket4{
+		Sequence:             packet.Sequence,
+		SessionID:            packet.SessionID,
+		NumNearRelays:        0,
+		NearRelayIDs:         nil,
+		NearRelayAddresses:   nil,
+		RouteType:            routing.RouteTypeDirect,
+		Multipath:            false,
+		Committed:            false,
+		NumTokens:            0,
+		Tokens:               nil,
+		ServerRoutePublicKey: packet.ServerRoutePublicKey,
+		SessionDataBytes:     0,
+		SessionData:          [MaxSessionDataSize]byte{},
+	}
+
+	responseData, err := MarshalPacket(&responsePacket)
+	if err != nil {
+		return err
+	}
+
+	if _, err := w.Write(responseData); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func ServerInitHandlerFunc4(logger log.Logger, storer storage.Storer, datacenterTracker *DatacenterTracker, metrics *metrics.ServerInitMetrics) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
 		metrics.Invocations.Add(1)
@@ -201,5 +230,10 @@ func SessionUpdateHandlerFunc4(logger log.Logger, storer storage.Storer, datacen
 			metrics.ErrorMetrics.ReadPacketFailure.Add(1)
 			return
 		}
+
+		// For now, only send back direct routes
+		writeSessionResponse4(w, &packet)
+
+		level.Debug(logger).Log("msg", "successfully sent direct route")
 	}
 }
