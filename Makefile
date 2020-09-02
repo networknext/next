@@ -340,7 +340,7 @@ dev-portal-cruncher: build-portal-cruncher ## runs a local portal cruncher
 	@HTTP_PORT=42000 CRUNCHER_PORT=5555 ./dist/portal_cruncher
 
 .PHONY: dev-ghost-army
-dev-ghost-army: build-ghost-army ## runs a local ghost army supplier
+dev-ghost-army: build-ghost-army ## runs a local ghost army
 	@./dist/ghost_army
 
 .PHONY: dev-reference-backend3
@@ -359,21 +359,21 @@ dev-reference-relay: build-relay-ref ## runs a local reference relay
 dev-client3: build-client3  ## runs a local client (sdk3)
 	@./dist/client3
 
-.PHONY: dev-multi-clients3
-dev-multi-clients3: build-client3  ## runs 10 local clients (sdk3)
-	@./scripts/client-spawner.sh -n 10 -v 3
-
-.PHONY: dev-server3
-dev-server3: build-sdk3 build-server3  ## runs a local server (sdk3)
-	@./dist/server3
-
 .PHONY: dev-client4
 dev-client4: build-client4  ## runs a local client (sdk4)
 	@./dist/client4
 
+.PHONY: dev-multi-clients3
+dev-multi-clients3: build-client3  ## runs 10 local clients (sdk3)
+	@./scripts/client-spawner.sh -n 10 -v 3
+
 .PHONY: dev-multi-clients4
 dev-multi-clients4: build-client4  ## runs 10 local clients (sdk4)
 	@./scripts/client-spawner.sh -n 10 -v 4
+
+.PHONY: dev-server3
+dev-server3: build-sdk3 build-server3  ## runs a local server (sdk3)
+	@./dist/server3
 
 .PHONY: dev-server4
 dev-server4: build-sdk4 build-server4  ## runs a local server (sdk4)
