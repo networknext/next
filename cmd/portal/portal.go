@@ -27,6 +27,7 @@ import (
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/logging"
+	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
@@ -268,12 +269,22 @@ func main() {
 	if gcpOK || emulatorOK {
 		// Firestore
 		{
+			// Create a no-op metrics handler
+			var metricsHandler metrics.Handler = &metrics.LocalHandler{}
+
+			// create firestore sync metrics
+			firestoreSyncMetrics, err := metrics.NewFirestoreSyncMetrics(ctx, metricsHandler, "portal")
+			if err != nil {
+				level.Error(logger).Log("msg", "failed to create firestore sync metrics", "err", err)
+			}
+
 			// Create a Firestore Storer
-			fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
+			fs, err := storage.NewFirestore(ctx, gcpProjectID, logger, "portal")
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				os.Exit(1)
 			}
+			fs.SyncMetrics = *firestoreSyncMetrics
 
 			fssyncinterval := os.Getenv("GOOGLE_FIRESTORE_SYNC_INTERVAL")
 			syncInterval, err := time.ParseDuration(fssyncinterval)

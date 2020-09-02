@@ -106,6 +106,45 @@ func main() {
 		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
 	}
 
+	// Create a no-op metrics handler
+	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
+
+	// create firestore sync metrics
+	firestoreSyncMetrics, err := metrics.NewFirestoreSyncMetrics(ctx, metricsHandler, "server_backend")
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create firestore sync metrics", "err", err)
+	}
+
+	// Create server init metrics
+	serverInitMetrics, err := metrics.NewServerInitMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create server init metrics", "err", err)
+	}
+
+	// Create server update metrics
+	serverUpdateMetrics, err := metrics.NewServerUpdateMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create server update metrics", "err", err)
+	}
+
+	// Create session update metrics
+	sessionUpdateMetrics, err := metrics.NewSessionMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create session metrics", "err", err)
+	}
+
+	// Create maxmindb sync metrics
+	maxmindSyncMetrics, err := metrics.NewMaxmindSyncMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create session metrics", "err", err)
+	}
+
+	// Create server backend metrics
+	serverBackendMetrics, err := metrics.NewServerBackendMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create server backend metrics", "err", err)
+	}
+
 	// Get env
 	env, ok := os.LookupEnv("ENV")
 	if !ok {
@@ -119,7 +158,7 @@ func main() {
 	var serverPrivateKey []byte
 	var routerPrivateKey []byte
 	var relayPublicKey []byte
-	var err error
+
 	{
 		if key := os.Getenv("SERVER_BACKEND_PRIVATE_KEY"); len(key) != 0 {
 			serverPrivateKey, err = base64.StdEncoding.DecodeString(key)
@@ -174,9 +213,6 @@ func main() {
 	// Create a no-op biller
 	var biller billing.Biller = &billing.NoOpBiller{}
 
-	// Create a no-op metrics handler
-	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
-
 	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
 	_, firestoreEmulatorOK := os.LookupEnv("FIRESTORE_EMULATOR_HOST")
 	if firestoreEmulatorOK {
@@ -191,11 +227,12 @@ func main() {
 			fmt.Printf("setting up firestore\n")
 
 			// Create a Firestore Storer
-			fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
+			fs, err := storage.NewFirestore(ctx, gcpProjectID, logger, "server_backend")
 			if err != nil {
 				level.Error(logger).Log("msg", "could not create firestore", "err", err)
 				os.Exit(1)
 			}
+			fs.SyncMetrics = *firestoreSyncMetrics
 
 			fssyncinterval := os.Getenv("GOOGLE_FIRESTORE_SYNC_INTERVAL")
 			syncInterval, err := time.ParseDuration(fssyncinterval)
@@ -398,36 +435,6 @@ func main() {
 				}
 			}
 		}
-	}
-
-	// Create server init metrics
-	serverInitMetrics, err := metrics.NewServerInitMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create server init metrics", "err", err)
-	}
-
-	// Create server update metrics
-	serverUpdateMetrics, err := metrics.NewServerUpdateMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create server update metrics", "err", err)
-	}
-
-	// Create session update metrics
-	sessionUpdateMetrics, err := metrics.NewSessionMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create session metrics", "err", err)
-	}
-
-	// Create maxmindb sync metrics
-	maxmindSyncMetrics, err := metrics.NewMaxmindSyncMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create session metrics", "err", err)
-	}
-
-	// Create server backend metrics
-	serverBackendMetrics, err := metrics.NewServerBackendMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create server backend metrics", "err", err)
 	}
 
 	_, pubsubEmulatorOK := os.LookupEnv("PUBSUB_EMULATOR_HOST")
