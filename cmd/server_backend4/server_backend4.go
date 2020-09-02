@@ -338,6 +338,12 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	sessionUpdateMetrics, err := metrics.NewSessionMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create session update metrics", "err", err)
+		return 1
+	}
+
 	// Create datacenter tracker
 	datacenterTracker := transport.NewDatacenterTracker()
 
@@ -421,6 +427,7 @@ func mainReturnWithCode() int {
 
 	serverInitHandler := transport.ServerInitHandlerFunc4(logger, storer, datacenterTracker, serverInitMetrics)
 	serverUpdateHandler := transport.ServerUpdateHandlerFunc4(logger, storer, datacenterTracker, serverUpdateMetrics)
+	sessionUpdateHandler := transport.SessionUpdateHandlerFunc4(logger, storer, datacenterTracker, sessionUpdateMetrics)
 
 	for i := 0; i < numThreads; i++ {
 		go func(thread int) {
@@ -480,6 +487,8 @@ func mainReturnWithCode() int {
 					serverInitHandler(&buffer, &packet)
 				case transport.PacketTypeServerUpdate4:
 					serverUpdateHandler(&buffer, &packet)
+				case transport.PacketTypeSessionUpdate4:
+					sessionUpdateHandler(&buffer, &packet)
 				default:
 					level.Error(logger).Log("err", "unknown packet type", "packet_type", packet.Data[0])
 				}

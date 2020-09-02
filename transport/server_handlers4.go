@@ -180,3 +180,26 @@ func ServerUpdateHandlerFunc4(logger log.Logger, storer storage.Storer, datacent
 		level.Debug(logger).Log("msg", "server updated successfully", "server_address", packet.ServerAddress.String(), "sequence", packet.Sequence)
 	}
 }
+
+func SessionUpdateHandlerFunc4(logger log.Logger, storer storage.Storer, datacenterTracker *DatacenterTracker, metrics *metrics.SessionMetrics) UDPHandlerFunc {
+	return func(w io.Writer, incoming *UDPPacket) {
+		metrics.Invocations.Add(1)
+
+		timeStart := time.Now()
+		defer func() {
+			milliseconds := float64(time.Since(timeStart).Milliseconds())
+			metrics.DurationGauge.Set(milliseconds)
+
+			if milliseconds > 100 {
+				metrics.LongDuration.Add(1)
+			}
+		}()
+
+		var packet SessionUpdatePacket4
+		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
+			level.Error(logger).Log("msg", "could not read session update packet", "err", err)
+			metrics.ErrorMetrics.ReadPacketFailure.Add(1)
+			return
+		}
+	}
+}

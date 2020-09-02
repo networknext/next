@@ -32,6 +32,7 @@ const (
 	ConnectionTypeWired    = 1
 	ConnectionTypeWifi     = 2
 	ConnectionTypeCellular = 3
+	ConnectionTypeMax      = 3
 
 	PlatformTypeUnknown = 0
 	PlatformTypeWindows = 1
@@ -41,6 +42,7 @@ const (
 	PlatformTypePS4     = 5
 	PlatformTypeIOS     = 6
 	PlatformTypeXBOXOne = 7
+	PlatformTypeMax     = 7
 
 	FallbackFlagsBadRouteToken              = (1 << 0)
 	FallbackFlagsNoNextRouteToContinue      = (1 << 1)

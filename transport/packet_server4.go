@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
 )
 
@@ -238,17 +239,17 @@ func (packet ServerUpdatePacket4) Size() uint64 {
 }
 
 type SessionUpdatePacket4 struct {
-	VersionMajor              uint32
-	VersionMinor              uint32
-	VersionPatch              uint32
+	Version                   SDKVersion
 	Sequence                  uint64
 	CustomerID                uint64
+	ServerAddress             net.UDPAddr
 	SessionID                 uint64
 	UserHash                  uint64
 	PlatformID                int32
 	Tag                       uint64
 	Flags                     uint32
 	Flagged                   bool
+	FallbackToDirect          bool
 	ConnectionType            int32
 	OnNetworkNext             bool
 	Committed                 bool
@@ -264,7 +265,6 @@ type SessionUpdatePacket4 struct {
 	NearRelayJitter           []float32
 	NearRelayPacketLoss       []float32
 	ClientAddress             net.UDPAddr
-	ServerAddress             net.UDPAddr
 	ClientRoutePublicKey      []byte
 	ServerRoutePublicKey      []byte
 	KbpsUp                    uint32
@@ -276,6 +276,107 @@ type SessionUpdatePacket4 struct {
 	UserFlags                 uint64
 	SessionDataBytes          int32
 	SessionData               [MaxSessionDataSize]byte
+}
+
+func (packet *SessionUpdatePacket4) UnmarshalBinary(data []byte) error {
+	if err := packet.Serialize(encoding.CreateReadStream(data)); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (packet SessionUpdatePacket4) MarshalBinary() ([]byte, error) {
+	ws, err := encoding.CreateWriteStream(DefaultMaxPacketSize)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := packet.Serialize(ws); err != nil {
+		return nil, err
+	}
+	ws.Flush()
+
+	return ws.GetData()[:ws.GetBytesProcessed()], nil
+}
+
+func (packet *SessionUpdatePacket4) Serialize(stream encoding.Stream) error {
+	var packetType uint32
+	stream.SerializeBits(&packetType, 8)
+
+	if packetType != PacketTypeSessionUpdate4 {
+		return fmt.Errorf("[SessionUpdatePacket4] wrong packet type %d, expected %d", packetType, PacketTypeSessionUpdate4)
+	}
+
+	var versionMajor uint32
+	var versionMinor uint32
+	var versionPatch uint32
+	stream.SerializeBits(&versionMajor, 8)
+	stream.SerializeBits(&versionMinor, 8)
+	stream.SerializeBits(&versionPatch, 8)
+	packet.Version = SDKVersion{int32(versionMajor), int32(versionMinor), int32(versionPatch)}
+	stream.SerializeUint64(&packet.Sequence)
+	stream.SerializeUint64(&packet.CustomerID)
+	stream.SerializeAddress(&packet.ServerAddress)
+	stream.SerializeUint64(&packet.SessionID)
+	stream.SerializeUint64(&packet.UserHash)
+	stream.SerializeInteger(&packet.PlatformID, PlatformTypeUnknown, PlatformTypeMax)
+	stream.SerializeUint64(&packet.Tag)
+	hasFlags := stream.IsWriting() && packet.Flags != 0
+	stream.SerializeBool(&hasFlags)
+	if hasFlags {
+		stream.SerializeBits(&packet.Flags, 9)
+	}
+	stream.SerializeBool(&packet.Flagged)
+	stream.SerializeBool(&packet.FallbackToDirect)
+	stream.SerializeInteger(&packet.ConnectionType, ConnectionTypeUnknown, ConnectionTypeMax)
+	stream.SerializeFloat32(&packet.DirectRTT)
+	stream.SerializeFloat32(&packet.DirectJitter)
+	stream.SerializeFloat32(&packet.DirectPacketLoss)
+	stream.SerializeBool(&packet.OnNetworkNext)
+	stream.SerializeBool(&packet.Committed)
+	if packet.OnNetworkNext {
+		stream.SerializeFloat32(&packet.NextRTT)
+		stream.SerializeFloat32(&packet.NextJitter)
+		stream.SerializeFloat32(&packet.NextPacketLoss)
+	}
+	stream.SerializeInteger(&packet.NumNearRelays, 0, MaxNearRelays)
+	if stream.IsReading() {
+		packet.NearRelayIDs = make([]uint64, packet.NumNearRelays)
+		packet.NearRelayRTT = make([]float32, packet.NumNearRelays)
+		packet.NearRelayJitter = make([]float32, packet.NumNearRelays)
+		packet.NearRelayPacketLoss = make([]float32, packet.NumNearRelays)
+	}
+	var i int32
+	for i = 0; i < packet.NumNearRelays; i++ {
+		stream.SerializeUint64(&packet.NearRelayIDs[i])
+		stream.SerializeFloat32(&packet.NearRelayRTT[i])
+		stream.SerializeFloat32(&packet.NearRelayJitter[i])
+		stream.SerializeFloat32(&packet.NearRelayPacketLoss[i])
+	}
+	stream.SerializeAddress(&packet.ClientAddress)
+	if stream.IsReading() {
+		packet.ClientRoutePublicKey = make([]byte, crypto.KeySize)
+		packet.ServerRoutePublicKey = make([]byte, crypto.KeySize)
+	}
+	stream.SerializeBytes(packet.ClientRoutePublicKey)
+	stream.SerializeBytes(packet.ServerRoutePublicKey)
+	stream.SerializeUint32(&packet.KbpsUp)
+	stream.SerializeUint32(&packet.KbpsDown)
+	stream.SerializeUint64(&packet.PacketsSentClientToServer)
+	stream.SerializeUint64(&packet.PacketsSentServerToClient)
+	stream.SerializeUint64(&packet.PacketsLostClientToServer)
+	stream.SerializeUint64(&packet.PacketsLostServerToClient)
+	hasUserFlags := stream.IsWriting() && packet.UserFlags != 0
+	stream.SerializeBool(&hasUserFlags)
+	if hasUserFlags {
+		stream.SerializeUint64(&packet.UserFlags)
+	}
+	stream.SerializeInteger(&packet.SessionDataBytes, 0, MaxSessionDataSize)
+	if packet.SessionDataBytes > 0 {
+		sessionData := packet.SessionData[:packet.SessionDataBytes]
+		stream.SerializeBytes(sessionData)
+	}
+	return stream.Error()
 }
 
 type SessionResponsePacket4 struct {
