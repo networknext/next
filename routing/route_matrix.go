@@ -32,7 +32,8 @@ type RouteMatrixEntry struct {
 }
 
 type RouteMatrix struct {
-	RelayIndices map[uint64]int
+
+	RelayIndices map[uint64]int 		// todo: rename to "RelayIDToIndex"
 
 	RelayIDs              []uint64
 	RelayNames            []string
@@ -59,6 +60,7 @@ type RouteMatrix struct {
 		routeIndex int
 		reversed   bool
 	}
+	
 	relayAddressCache []*net.UDPAddr
 }
 
