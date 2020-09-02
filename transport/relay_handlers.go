@@ -334,7 +334,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 		trafficStats.BytesSent = uint64(float64(trafficStats.BytesSent) / diff.Seconds())
 		trafficStats.BytesReceived = uint64(float64(trafficStats.BytesReceived) / diff.Seconds())
 
-		peekTrafficStats := relay.TrafficStats.MaxValues(&relayUpdateRequest.TrafficStats)
+		peekTrafficStats := relay.TrafficStats.MaxValues(&trafficStats)
 
 		relayData := &routing.RelayData{
 			ID:               relay.ID,
