@@ -608,13 +608,26 @@ func main() {
 				entries := make([]analytics.RelayStatsEntry, len(allRelayData))
 
 				for i, relay := range allRelayData {
+					// convert peak to mbps
+					peakSessions := relay.PeakTrafficStats.SessionCount
+					peakSent := float64(relay.PeakTrafficStats.BytesSentPerSecond) * 8.0 / 1024.0 / 1024.0
+					peakReceived := float64(relay.PeakTrafficStats.BytesReceivedPerSecond) * 8.0 / 1024.0 / 1024.0
+
+					// reset the peak so the next update takes affect
+					relay.PeakTrafficStats.SessionCount = 0
+					relay.PeakTrafficStats.BytesSentPerSecond = 0
+					relay.PeakTrafficStats.BytesReceivedPerSecond = 0
+
 					entries[i] = analytics.RelayStatsEntry{
-						ID:          relay.ID,
-						NumSessions: relay.TrafficStats.SessionCount,
-						CPUUsage:    relay.CPUUsage,
-						MemUsage:    relay.MemUsage,
-						Tx:          relay.TrafficStats.BytesSent,
-						Rx:          relay.TrafficStats.BytesReceived,
+						ID:                        relay.ID,
+						NumSessions:               relay.TrafficStats.SessionCount,
+						CPUUsage:                  relay.CPUUsage,
+						MemUsage:                  relay.MemUsage,
+						Tx:                        relay.TrafficStats.BytesSent,
+						Rx:                        relay.TrafficStats.BytesReceived,
+						PeakSessions:              peakSessions,
+						PeakSentBandwidthMbps:     float32(peakSent),
+						PeakReceivedBandwidthMbps: float32(peakReceived),
 					}
 				}
 
