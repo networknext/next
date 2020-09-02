@@ -405,21 +405,21 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 
 	indirect := make([][][]Indirect, numRelays)
 
+	// create mapping from relay id -> relay index
+
 	relayIdToIndex := make(map[uint64]int)
 	for i := range routes.RelayIDs {
 		relayIdToIndex[routes.RelayIDs[i]] = i
 	}
 
+	// create mapping from relay index to datacenter id
+
 	relayDatacenter := make([]uint64, numRelays)
 	for datacenterId, relayIds := range routes.DatacenterRelays {
-		fmt.Printf("datacenter id = %x\n", datacenterId)
 		for i := range relayIds {
 			relayIndex := relayIdToIndex[relayIds[i]]
 			relayDatacenter[relayIndex] = datacenterId
 		}
-	}
-	for i := range relayDatacenter {
-		fmt.Printf("relay %d is in datacenter %x\n", i, relayDatacenter[i])
 	}
 
 	// phase 1: build a matrix of indirect routes from relays i -> j that have lower rtt than direct, eg. i -> (x) -> j, where x is every other relay
