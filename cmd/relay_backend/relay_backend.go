@@ -690,7 +690,7 @@ func main() {
 			optimizeMetrics.Invocations.Add(1)
 
 			optimizeDurationStart := time.Now()
-			if err := costMatrix.Optimize(newRouteMatrix, 1); err != nil {
+			if err := costMatrix.Optimize(newRouteMatrix, 5); err != nil {
 				level.Warn(logger).Log("matrix", "cost", "op", "optimize", "err", err)
 			}
 			optimizeDurationSince := time.Since(optimizeDurationStart)
