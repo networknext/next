@@ -30,7 +30,7 @@ Test(core_handlers_client_to_server_handler_unsigned_packet)
 
   const GenericKey private_key = random_private_key();
 
-  router_info.setTimestamp(0);
+  router_info.set_timestamp(0);
 
   Address addr;
   SocketConfig config = default_socket_config();
@@ -89,7 +89,7 @@ Test(core_handlers_client_to_server_handler_signed_packet)
 
   const GenericKey private_key = random_private_key();
 
-  router_info.setTimestamp(0);
+  router_info.set_timestamp(0);
 
   Address addr;
   SocketConfig config = default_socket_config();

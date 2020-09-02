@@ -26,7 +26,7 @@ Test(core_handlers_continue_request_handler_unsigned)
   Keychain keychain = testing::make_keychain();
   ThroughputRecorder recorder;
   RouterInfo info;
-  info.setTimestamp(0);
+  info.set_timestamp(0);
   Socket socket;
 
   Address addr;
@@ -75,7 +75,7 @@ Test(core_handlers_continue_request_handler_signed)
   Keychain keychain = testing::make_keychain();
   ThroughputRecorder recorder;
   RouterInfo info;
-  info.setTimestamp(0);
+  info.set_timestamp(0);
   Socket socket;
 
   packet.buffer[crypto::PACKET_HASH_LENGTH] = static_cast<uint8_t>(Type::ContinueRequest);

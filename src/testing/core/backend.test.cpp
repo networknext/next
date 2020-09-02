@@ -9,9 +9,9 @@
 using namespace std::chrono_literals;
 
 using core::Backend;
+using core::INIT_REQUEST_MAGIC;
+using core::INIT_REQUEST_VERSION;
 using core::InitRequest;
-using core::InitRequestMagic;
-using core::InitRequestVersion;
 using core::InitResponse;
 using core::PingData;
 using core::RelayManager;
@@ -37,23 +37,23 @@ namespace
 
   const std::vector<uint8_t> BasicValidUpdateResponse = [] {
     InitResponse response = {
-     .Version = 0,
-     .Timestamp = 0,
-     .PublicKey = {},
+     .version = 0,
+     .timestamp = 0,
+     .public_key = {},
     };
 
-    std::vector<uint8_t> buff(InitResponse::ByteSize);
+    std::vector<uint8_t> buff(InitResponse::SIZE_OF);
     check(response.into(buff));
     return buff;
   }();
 
   auto makeInitResponse(uint32_t version, uint64_t timestamp, std::array<uint8_t, crypto::KEY_SIZE>& pk) -> std::vector<uint8_t>
   {
-    std::vector<uint8_t> buff(InitResponse::ByteSize);
+    std::vector<uint8_t> buff(InitResponse::SIZE_OF);
     InitResponse resp{
-     .Version = version,
-     .Timestamp = timestamp,
-     .PublicKey = pk,
+     .version = version,
+     .timestamp = timestamp,
+     .public_key = pk,
     };
 
     resp.into(buff);
@@ -76,14 +76,14 @@ Test(core_backend_init_valid)
 
   check(client.Hostname == BackendHostname);
   check(client.Endpoint == "/relay_init");
-  check(routerInfo.currentTime() >= 123456789 / 1000);
+  check(routerInfo.current_time() >= 123456789 / 1000);
 
   InitRequest request;
   check(request.from(client.Request));
 
-  check(request.Magic == InitRequestMagic);
-  check(request.Version == InitRequestVersion);
-  check(request.Address == RelayAddr);
+  check(request.magic == INIT_REQUEST_MAGIC);
+  check(request.version == INIT_REQUEST_VERSION);
+  check(request.address == RelayAddr);
 
   // can't check nonce or encrypted token since they're random
 }
@@ -288,7 +288,7 @@ Test(core_Backend_update_valid)
 
   recorder.unknown_rx.add(10);
   UpdateResponse response;
-  response.Version = 0;
+  response.version = 0;
   response.Timestamp = 123456789;
   response.NumRelays = 2;
 
@@ -322,36 +322,36 @@ Test(core_Backend_update_valid)
     UpdateRequest request;
     check(request.from(client.Request));
 
-    check(request.Version == 1);
-    check(request.Address == RelayAddr);
-    check(request.PublicKey == Keychain.relay_public_key);
-    check(request.SessionCount == sessions.size());
-    check(request.OutboundPingTx == outboundPing);
-    check(request.RouteRequestRx == 0);
-    check(request.RouteRequestTx == 0);
-    check(request.RouteResponseRx == 0);
-    check(request.RouteResponseTx == 0);
-    check(request.ClientToServerRx == 0);
-    check(request.ClientToServerTx == 0);
-    check(request.ServerToClientRx == 0);
-    check(request.ServerToClientTx == 0);
-    check(request.InboundPingRx == 0);
-    check(request.InboundPingTx == 0);
-    check(request.PongRx == pong);
-    check(request.SessionPingRx == 0);
-    check(request.SessionPingTx == 0);
-    check(request.SessionPongRx == 0);
-    check(request.SessionPongTx == 0);
-    check(request.ContinueRequestRx == 0);
-    check(request.ContinueRequestTx == 0);
-    check(request.ContinueResponseRx == 0);
-    check(request.ContinueResponseTx == 0);
-    check(request.NearPingRx == 0);
-    check(request.NearPingTx == 0);
-    check(request.UnknownRx == 10);
-    check(request.ShuttingDown == false);
-    check(request.PingStats.NumRelays == 1);
-    check(request.RelayVersion == RELAY_VERSION);
+    check(request.version == 1);
+    check(request.address == RelayAddr);
+    check(request.public_key == Keychain.relay_public_key);
+    check(request.session_count == sessions.size());
+    check(request.outbound_ping_tx == outboundPing);
+    check(request.route_request_rx == 0);
+    check(request.route_request_tx == 0);
+    check(request.route_response_rx == 0);
+    check(request.route_response_tx == 0);
+    check(request.client_to_server_rx == 0);
+    check(request.client_to_server_tx == 0);
+    check(request.server_to_client_rx == 0);
+    check(request.server_to_client_tx == 0);
+    check(request.inbound_ping_rx == 0);
+    check(request.inbound_ping_tx == 0);
+    check(request.pong_rx == pong);
+    check(request.session_ping_rx == 0);
+    check(request.session_ping_tx == 0);
+    check(request.session_pong_rx == 0);
+    check(request.session_pong_tx == 0);
+    check(request.continue_request_rx == 0);
+    check(request.continue_request_tx == 0);
+    check(request.continue_response_rx == 0);
+    check(request.continue_response_tx == 0);
+    check(request.near_ping_rx == 0);
+    check(request.near_ping_tx == 0);
+    check(request.unknown_rx == 10);
+    check(request.shutting_down == false);
+    check(request.ping_stats.num_relays == 1);
+    check(request.relay_version == RELAY_VERSION);
   }
 
   // check that the response was processed
@@ -367,8 +367,8 @@ Test(core_Backend_update_valid)
     check(pingData[0].address.toString() == "127.0.0.1:54321");
     check(pingData[1].address.toString() == "127.0.0.1:13524");
 
-    check(routerInfo.currentTime() >= 123456789).onFail([&] {
-      std::cout << "info timestamp = " << routerInfo.currentTime() << '\n';
+    check(routerInfo.current_time() >= 123456789).onFail([&] {
+      std::cout << "info timestamp = " << routerInfo.current_time() << '\n';
     });
   }
 }
@@ -391,34 +391,34 @@ Test(core_Backend_update_shutting_down_true)
   UpdateRequest request;
   check(request.from(client.Request));
 
-  check(request.Version == 1);
-  check(request.Address == RelayAddr);
-  check(request.PublicKey == Keychain.relay_public_key);
-  check(request.SessionCount == 0);
-  check(request.OutboundPingTx == 0);
-  check(request.RouteRequestRx == 0);
-  check(request.RouteRequestTx == 0);
-  check(request.RouteResponseRx == 0);
-  check(request.RouteResponseTx == 0);
-  check(request.ClientToServerRx == 0);
-  check(request.ClientToServerTx == 0);
-  check(request.ServerToClientRx == 0);
-  check(request.ServerToClientTx == 0);
-  check(request.InboundPingRx == 0);
-  check(request.InboundPingTx == 0);
-  check(request.PongRx == 0);
-  check(request.SessionPingRx == 0);
-  check(request.SessionPingTx == 0);
-  check(request.SessionPongRx == 0);
-  check(request.SessionPongTx == 0);
-  check(request.ContinueRequestRx == 0);
-  check(request.ContinueRequestTx == 0);
-  check(request.ContinueResponseRx == 0);
-  check(request.ContinueResponseTx == 0);
-  check(request.NearPingRx == 0);
-  check(request.NearPingTx == 0);
-  check(request.UnknownRx == 0);
-  check(request.ShuttingDown == true);
-  check(request.PingStats.NumRelays == 0);
-  check(request.RelayVersion == RELAY_VERSION);
+  check(request.version == 1);
+  check(request.address == RelayAddr);
+  check(request.public_key == Keychain.relay_public_key);
+  check(request.session_count == 0);
+  check(request.outbound_ping_tx == 0);
+  check(request.route_request_rx == 0);
+  check(request.route_request_tx == 0);
+  check(request.route_response_rx == 0);
+  check(request.route_response_tx == 0);
+  check(request.client_to_server_rx == 0);
+  check(request.client_to_server_rx == 0);
+  check(request.server_to_client_rx == 0);
+  check(request.server_to_client_tx == 0);
+  check(request.inbound_ping_rx == 0);
+  check(request.inbound_ping_tx == 0);
+  check(request.pong_rx == 0);
+  check(request.session_ping_rx == 0);
+  check(request.session_ping_tx == 0);
+  check(request.session_pong_rx == 0);
+  check(request.session_pong_tx == 0);
+  check(request.continue_request_rx == 0);
+  check(request.continue_request_tx == 0);
+  check(request.continue_response_rx == 0);
+  check(request.continue_response_tx == 0);
+  check(request.near_ping_rx == 0);
+  check(request.near_ping_tx == 0);
+  check(request.unknown_rx == 0);
+  check(request.shutting_down == true);
+  check(request.ping_stats.num_relays == 0);
+  check(request.relay_version == RELAY_VERSION);
 }

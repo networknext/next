@@ -7,9 +7,10 @@
 #include "os/socket.hpp"
 #include "util/macros.hpp"
 
+using core::PacketDirection;
+using core::PacketHeader;
 using core::RouterInfo;
-using core::packets::Direction;
-using core::packets::Header;
+using crypto::PACKET_HASH_LENGTH;
 using os::Socket;
 using util::ThroughputRecorder;
 
@@ -29,22 +30,22 @@ namespace core
       size_t length = packet.length;
 
       if (is_signed) {
-        index = crypto::PACKET_HASH_LENGTH;
-        length = packet.length - crypto::PACKET_HASH_LENGTH;
+        index = PACKET_HASH_LENGTH;
+        length = packet.length - PACKET_HASH_LENGTH;
       }
 
       // check if length excluding the hash is right,
       // and then check if the hash + everything else is too large
-      if (length <= Header::ByteSize || packet.length > Header::ByteSize + RELAY_MTU) {
+      if (length <= PacketHeader::SIZE_OF || packet.length > PacketHeader::SIZE_OF + RELAY_MTU) {
         LOG(ERROR, "ignoring server to client packet, invalid size: ", length);
         return;
       }
 
-      Header header;
+      PacketHeader header;
 
       {
         size_t i = index;
-        if (!header.read(packet, i, Direction::ServerToClient)) {
+        if (!header.read(packet, i, PacketDirection::ServerToClient)) {
           LOG(ERROR, "ignoring server to client packet, relay header could not be read");
           return;
         }
@@ -72,7 +73,7 @@ namespace core
         return;
       }
 
-      if (!header.verify(packet, index, Direction::ServerToClient, session->private_key)) {
+      if (!header.verify(packet, index, PacketDirection::ServerToClient, session->private_key)) {
         LOG(ERROR, "ignoring server to client packet, could not verify header: session = ", *session);
         return;
       }

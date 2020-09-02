@@ -7,10 +7,11 @@
 #include "util/macros.hpp"
 
 using core::Packet;
+using core::PacketDirection;
+using core::PacketHeader;
 using core::RouterInfo;
 using core::SessionMap;
-using core::packets::Direction;
-using core::packets::Header;
+using crypto::PACKET_HASH_LENGTH;
 using os::Socket;
 using util::ThroughputRecorder;
 
@@ -30,20 +31,20 @@ namespace core
       size_t length = packet.length;
 
       if (is_signed) {
-        index = crypto::PACKET_HASH_LENGTH;
-        length = packet.length - crypto::PACKET_HASH_LENGTH;
+        index = PACKET_HASH_LENGTH;
+        length = packet.length - PACKET_HASH_LENGTH;
       }
 
-      if (length != Header::ByteSize) {
+      if (length != PacketHeader::SIZE_OF) {
         LOG(ERROR, "ignoring route response, header byte count invalid: ", length);
         return;
       }
 
-      Header header;
+      PacketHeader header;
 
       {
         size_t i = index;
-        if (!header.read(packet, i, Direction::ServerToClient)) {
+        if (!header.read(packet, i, PacketDirection::ServerToClient)) {
           LOG(ERROR, "ignoring route response, relay header could not be read");
           return;
         }
@@ -78,7 +79,7 @@ namespace core
         return;
       }
 
-      if (!header.verify(packet, index, Direction::ServerToClient, session->private_key)) {
+      if (!header.verify(packet, index, PacketDirection::ServerToClient, session->private_key)) {
         LOG(ERROR, "ignoring route response, header is invalid: session = ", *session);
         return;
       }

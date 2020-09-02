@@ -11,6 +11,8 @@
 #include "testing/test.hpp"
 #include "util/logger.hpp"
 
+using crypto::KEY_SIZE;
+
 // forward declare test names to allow private functions to be visible them
 namespace testing
 {
@@ -20,20 +22,21 @@ namespace testing
 
 namespace core
 {
-  const uint32_t InitRequestMagic = 0x9083708f;
+  const uint32_t INIT_REQUEST_MAGIC = 0x9083708f;
 
-  const uint32_t InitRequestVersion = 0;
+  const uint32_t INIT_REQUEST_VERSION = 0;
 
-  const uint8_t MaxUpdateAttempts = 11;  // 1 initial + 10 more for failures
+  const uint8_t MAX_UPDATE_ATTEMPTS = 11;  // 1 initial + 10 more for failures
+
   // | magic | version | nonce | address | encrypted token | relay version |
   struct InitRequest
   {
-    uint32_t Magic = InitRequestMagic;
-    uint32_t Version = InitRequestVersion;
-    std::array<uint8_t, crypto_box_NONCEBYTES> Nonce;
-    std::string Address;
-    std::array<uint8_t, RELAY_TOKEN_BYTES + crypto_box_MACBYTES> EncryptedToken;
-    std::string RelayVersion = RELAY_VERSION;
+    uint32_t magic = INIT_REQUEST_MAGIC;
+    uint32_t version = INIT_REQUEST_VERSION;
+    std::array<uint8_t, crypto_box_NONCEBYTES> nonce;
+    std::string address;
+    std::array<uint8_t, RELAY_TOKEN_BYTES + crypto_box_MACBYTES> encrypted_token;
+    std::string relay_version = RELAY_VERSION;
 
     auto size() -> size_t;
     auto into(std::vector<uint8_t>& v) -> bool;
@@ -42,10 +45,10 @@ namespace core
 
   struct InitResponse
   {
-    static const size_t ByteSize = 4 + 8 + crypto::KEY_SIZE;
-    uint32_t Version;
-    uint64_t Timestamp;
-    crypto::GenericKey PublicKey;
+    static const size_t SIZE_OF = 4 + 8 + KEY_SIZE;
+    uint32_t version;
+    uint64_t timestamp;
+    crypto::GenericKey public_key;
 
     auto into(std::vector<uint8_t>& v) -> bool;
     auto from(const std::vector<uint8_t>& v) -> bool;
@@ -53,47 +56,47 @@ namespace core
 
   struct UpdateRequest
   {
-    uint32_t Version;
-    std::string Address;
-    std::array<uint8_t, crypto::KEY_SIZE> PublicKey;
-    RelayStats PingStats;
-    uint64_t SessionCount;
-    uint64_t OutboundPingTx;
-    uint64_t RouteRequestRx;
-    uint64_t RouteRequestTx;
-    uint64_t RouteResponseRx;
-    uint64_t RouteResponseTx;
-    uint64_t ClientToServerRx;
-    uint64_t ClientToServerTx;
-    uint64_t ServerToClientRx;
-    uint64_t ServerToClientTx;
-    uint64_t InboundPingRx;
-    uint64_t InboundPingTx;
-    uint64_t PongRx;
-    uint64_t SessionPingRx;
-    uint64_t SessionPingTx;
-    uint64_t SessionPongRx;
-    uint64_t SessionPongTx;
-    uint64_t ContinueRequestRx;
-    uint64_t ContinueRequestTx;
-    uint64_t ContinueResponseRx;
-    uint64_t ContinueResponseTx;
-    uint64_t NearPingRx;
-    uint64_t NearPingTx;
-    uint64_t UnknownRx;
-    bool ShuttingDown;
-    double CPUUsage;
-    double MemUsage;
-    std::string RelayVersion;
+    uint32_t version;
+    std::string address;
+    std::array<uint8_t, crypto::KEY_SIZE> public_key;
+    RelayStats ping_stats;
+    uint64_t session_count;
+    uint64_t outbound_ping_tx;
+    uint64_t route_request_rx;
+    uint64_t route_request_tx;
+    uint64_t route_response_rx;
+    uint64_t route_response_tx;
+    uint64_t client_to_server_rx;
+    uint64_t client_to_server_tx;
+    uint64_t server_to_client_rx;
+    uint64_t server_to_client_tx;
+    uint64_t inbound_ping_rx;
+    uint64_t inbound_ping_tx;
+    uint64_t pong_rx;
+    uint64_t session_ping_rx;
+    uint64_t session_ping_tx;
+    uint64_t session_pong_rx;
+    uint64_t session_pong_tx;
+    uint64_t continue_request_rx;
+    uint64_t continue_request_tx;
+    uint64_t continue_response_rx;
+    uint64_t continue_response_tx;
+    uint64_t near_ping_rx;
+    uint64_t near_ping_tx;
+    uint64_t unknown_rx;
+    bool shutting_down;
+    double cpu_usage;
+    double mem_usage;
+    std::string relay_version;
 
     auto from(const std::vector<uint8_t>& v) -> bool;
   };
 
   struct UpdateResponse
   {
-    uint32_t Version;
-    uint64_t Timestamp;
-    uint32_t NumRelays;
+    uint32_t version;
+    uint64_t timestamp;
+    uint32_t num_relays;
     std::array<RelayPingInfo, MAX_RELAYS> Relays;
 
     auto size() -> size_t;
@@ -116,9 +119,9 @@ namespace core
      const std::string hostname,
      const std::string address,
      const crypto::Keychain& keychain,
-     RouterInfo& routerInfo,
-     RelayManager& relayManager,
-     std::string base64RelayPublicKey,
+     RouterInfo& router_info,
+     RelayManager& relay_manager,
+     std::string base64_relay_public_key,
      const core::SessionMap& sessions,
      net::IHttpClient& client);
     ~Backend() = default;
@@ -130,20 +133,20 @@ namespace core
      * Returns true as long as the relay doesn't reach the max number of failed update attempts
      */
     auto updateCycle(
-     const volatile bool& loopHandle,
-     const volatile bool& shouldCleanShutdown,
+     const volatile bool& should_loop,
+     const volatile bool& should_shutdown_clean,
      util::ThroughputRecorder& logger,
      core::SessionMap& sessions) -> bool;
 
    private:
-    const std::string mHostname;
-    const std::string mAddressStr;
-    const crypto::Keychain& mKeychain;
-    RouterInfo& mRouterInfo;
-    RelayManager& mRelayManager;
-    const std::string mBase64RelayPublicKey;
-    const core::SessionMap& mSessionMap;
-    net::IHttpClient& mRequester;
+    const std::string hostname;
+    const std::string relay_address;
+    const crypto::Keychain& keychain;
+    RouterInfo& router_info;
+    RelayManager& relay_manager;
+    const std::string base64_relay_public_key;
+    const core::SessionMap& session_map;
+    net::IHttpClient& http_client;
 
     auto update(util::ThroughputRecorder& recorder, bool shutdown) -> bool;
   };

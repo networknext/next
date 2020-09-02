@@ -35,7 +35,7 @@ Test(core_handlers_server_to_client_handler_unsigned)
   check(addr.parse("127.0.0.1"));
   check(socket.create(addr, config));
 
-  router_info.setTimestamp(0);
+  router_info.set_timestamp(0);
 
   packet.length = Header::ByteSize + 100;
   packet.addr = addr;
@@ -90,7 +90,7 @@ Test(core_handlers_server_to_client_handler_signed)
   check(addr.parse("127.0.0.1"));
   check(socket.create(addr, config));
 
-  router_info.setTimestamp(0);
+  router_info.set_timestamp(0);
 
   packet.length = crypto::PACKET_HASH_LENGTH + Header::ByteSize + 100;
   packet.addr = addr;

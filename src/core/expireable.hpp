@@ -29,7 +29,7 @@ namespace core
 
   inline auto Expireable::expired(const RouterInfo& router_info) -> bool
   {
-    return this->expire_timestamp < router_info.currentTime() + 1;
+    return this->expire_timestamp < router_info.current_time() + 1;
   }
 
   inline auto Expireable::expired(double seconds) -> bool

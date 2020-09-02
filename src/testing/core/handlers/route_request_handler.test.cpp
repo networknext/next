@@ -25,7 +25,7 @@ Test(core_handlers_route_request_handler_unsigned)
   RouterInfo router_info;
   Socket from_socket, socket, next_socket;
 
-  router_info.setTimestamp(0);
+  router_info.set_timestamp(0);
 
   Address from, addr, next;
   SocketConfig config = default_socket_config();
@@ -96,7 +96,7 @@ Test(core_handlers_route_request_handler_signed)
   RouterInfo router_info;
   Socket from_socket, socket, next_socket;
 
-  router_info.setTimestamp(0);
+  router_info.set_timestamp(0);
 
   Address from, addr, next;
   SocketConfig config = default_socket_config();

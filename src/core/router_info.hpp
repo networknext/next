@@ -1,7 +1,9 @@
-#ifndef CORE_ROUTER_INFO_HPP
-#define CORE_ROUTER_INFO_HPP
+#pragma once
 
 #include "util/clock.hpp"
+#include "util/macros.hpp"
+
+using util::Clock;
 
 namespace core
 {
@@ -10,26 +12,25 @@ namespace core
    public:
     RouterInfo() = default;
 
-    void setTimestamp(int64_t ts);
-    auto currentTime() const -> double;
+    void set_timestamp(int64_t ts);
+    auto current_time() const -> double;
 
    private:
-    mutable std::mutex mLock;
-    int64_t mBackendTimestamp = 0;  // in seconds, so the backend and relays have a time sync
-    util::Clock mClock;
+    mutable std::mutex mutex;
+    int64_t backend_timestamp = 0;  // in seconds, so the backend and relays have a time sync
+    Clock clock;
   };
 
-  [[gnu::always_inline]] inline void RouterInfo::setTimestamp(int64_t ts)
+  INLINE void RouterInfo::set_timestamp(int64_t ts)
   {
-    std::lock_guard<std::mutex> lk(mLock);
-    mBackendTimestamp = ts;
-    mClock.reset();
+    std::lock_guard<std::mutex> lk(mutex);
+    this->backend_timestamp = ts;
+    clock.reset();
   }
 
-  [[gnu::always_inline]] inline auto RouterInfo::currentTime() const -> double
+  INLINE auto RouterInfo::current_time() const -> double
   {
-    std::lock_guard<std::mutex> lk(mLock);
-    return mBackendTimestamp + mClock.elapsed<util::Second>();
+    std::lock_guard<std::mutex> lk(mutex);
+    return this->backend_timestamp + clock.elapsed<util::Second>();
   }
 }  // namespace core
-#endif

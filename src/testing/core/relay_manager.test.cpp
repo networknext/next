@@ -29,7 +29,7 @@ Test(RelayManager)
   {
     RelayStats stats;
     manager.get_stats(stats);
-    check(stats.NumRelays == 0);
+    check(stats.num_relays == 0);
   }
 
   // add max relays
@@ -37,10 +37,10 @@ Test(RelayManager)
   {
     RelayStats stats;
     manager.get_stats(stats);
-    check(stats.NumRelays == NumRelays);
+    check(stats.num_relays == NumRelays);
     for (int i = 0; i < NumRelays; ++i) {
       check(std::find_if(incoming.begin(), incoming.end(), [&](const RelayPingInfo& relay) -> bool {
-              return relay.id == stats.IDs[i];
+              return relay.id == stats.ids[i];
             }) != incoming.end());
     }
   }
@@ -51,7 +51,7 @@ Test(RelayManager)
   {
     RelayStats stats;
     manager.get_stats(stats);
-    check(stats.NumRelays == 0);
+    check(stats.num_relays == 0);
   }
 
   // add same relay set repeatedly
@@ -61,9 +61,9 @@ Test(RelayManager)
     {
       RelayStats stats;
       manager.get_stats(stats);
-      check(stats.NumRelays == NumRelays);
+      check(stats.num_relays == NumRelays);
       for (int i = 0; i < NumRelays; ++i) {
-        check(incoming[i].id == stats.IDs[i]);
+        check(incoming[i].id == stats.ids[i]);
       }
     }
   }
@@ -76,9 +76,9 @@ Test(RelayManager)
   {
     RelayStats stats;
     manager.get_stats(stats);
-    check(stats.NumRelays == NumRelays);
+    check(stats.num_relays == NumRelays);
     for (int i = 0; i < NumRelays; ++i) {
-      check(incoming[i + 4].id == stats.IDs[i]);
+      check(incoming[i + 4].id == stats.ids[i]);
     }
   }
 }
