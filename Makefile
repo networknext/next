@@ -501,6 +501,10 @@ deploy-server-backend-velan:
 deploy-server-backend-esl:
 	./deploy/deploy.sh -e prod -c esl-22dr -t server-backend -n server_backend -b gs://prod_artifacts
 
+.PHONY: deploy-server-backend4-dev
+deploy-server-backend4-dev:
+	./deploy/deploy.sh -e dev -c dev-1 -t server-backend4 -n server_backend4 -b gs://development_artifacts
+
 .PHONY: deploy-ghost-army-dev
 deploy-ghost-army-dev:
 	./deploy/deploy.sh -e dev -c 1 -t ghost-army -n ghost_army -b gs://development_artifacts
@@ -549,6 +553,10 @@ build-relay-backend-artifacts-dev: build-relay-backend
 build-server-backend-artifacts-dev: build-server-backend
 	./deploy/build-artifacts.sh -e dev -s server_backend
 
+.PHONY: build-server-backend4-artifacts-dev
+build-server-backend4-artifacts-dev: build-server-backend4
+	./deploy/build-artifacts.sh -e dev -s server_backend4
+
 .PHONY: build-ghost-army-artifacts-dev
 build-ghost-army-artifacts-dev: build-ghost-army
 	./deploy/build-artifacts.sh -e dev -s ghost_army
@@ -585,6 +593,10 @@ build-load-test-artifacts-staging: build-load-test
 build-server-backend-artifacts-staging: build-server-backend
 	./deploy/build-artifacts.sh -e staging -s server_backend
 
+.PHONY: build-server-backend4-artifacts-staging
+build-server-backend4-artifacts-staging: build-server-backend4
+	./deploy/build-artifacts.sh -e staging -s server_backend4
+
 .PHONY: build-ghost-army-artifacts-staging
 build-ghost-army-artifacts-staging: build-ghost-army
 	./deploy/build-artifacts.sh -e staging -s ghost_army
@@ -617,6 +629,10 @@ build-relay-backend-artifacts-prod: build-relay-backend
 build-server-backend-artifacts-prod: build-server-backend
 	./deploy/build-artifacts.sh -e prod -s server_backend
 
+.PHONY: build-server-backend4-artifacts-prod
+build-server-backend4-artifacts-prod: build-server-backend4
+	./deploy/build-artifacts.sh -e prod -s server_backend4
+
 .PHONY: build-ghost-army-artifacts-prod
 build-ghost-army-artifacts-prod: build-ghost-army
 	./deploy/build-artifacts.sh -e prod -s ghost_army
@@ -648,6 +664,10 @@ publish-relay-backend-artifacts-dev:
 .PHONY: publish-server-backend-artifacts-dev
 publish-server-backend-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s server_backend
+
+.PHONY: publish-server-backend4-artifacts-dev
+publish-server-backend4-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s server_backend4
 
 .PHONY: publish-ghost-army-artifacts-dev
 publish-ghost-army-artifacts-dev:
@@ -684,6 +704,10 @@ publish-relay-backend-artifacts-staging:
 .PHONY: publish-server-backend-artifacts-staging
 publish-server-backend-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s server_backend
+
+.PHONY: publish-server-backend4-artifacts-staging
+publish-server-backend4-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s server_backend4
 
 .PHONY: publish-ghost-army-artifacts-staging
 publish-ghost-army-artifacts-staging:
@@ -728,6 +752,10 @@ publish-relay-backend-artifacts-prod:
 .PHONY: publish-server-backend-artifacts-prod
 publish-server-backend-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s server_backend
+
+.PHONY: publish-server-backend4-artifacts-prod
+publish-server-backend4-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s server_backend4
 
 .PHONY: publish-ghost-army-artifacts-prod
 publish-ghost-army-artifacts-prod:
