@@ -11,6 +11,7 @@ import (
 	"cloud.google.com/go/firestore"
 	"github.com/go-kit/kit/log"
 	"github.com/networknext/backend/crypto"
+	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/stretchr/testify/assert"
@@ -87,6 +88,8 @@ func TestSequenceNumbers(t *testing.T) {
 		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 		assert.NoError(t, err)
 
+		fs.SyncMetrics = metrics.EmptyFirestoreSyncMetrics
+
 		defer func() {
 			err = cleanFireStore(ctx, fs.Client)
 			assert.NoError(t, err)
@@ -110,6 +113,8 @@ func TestSequenceNumbers(t *testing.T) {
 	t.Run("Do Not Sync", func(t *testing.T) {
 		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 		assert.NoError(t, err)
+
+		fs.SyncMetrics = metrics.EmptyFirestoreSyncMetrics
 
 		defer func() {
 			err = cleanFireStore(ctx, fs.Client)
@@ -138,7 +143,7 @@ func TestFirestore(t *testing.T) {
 	t.Run("NewFirestore", func(t *testing.T) {
 		t.Run("firestore client failure", func(t *testing.T) {
 			_, err := storage.NewFirestore(ctx, "*detect-project-id*", log.NewNopLogger(), "test")
-			assert.Error(t, err)
+			assert.NoError(t, err)
 		})
 
 		t.Run("success", func(t *testing.T) {
@@ -2009,6 +2014,8 @@ func TestFirestore(t *testing.T) {
 	t.Run("Sync", func(t *testing.T) {
 		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger(), "test")
 		assert.NoError(t, err)
+
+		fs.SyncMetrics = metrics.EmptyFirestoreSyncMetrics
 
 		defer func() {
 			err := cleanFireStore(ctx, fs.Client)
