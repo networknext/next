@@ -13,10 +13,19 @@ type RouteManager struct {
 	RouteRelays    [MaxRoutesPerRelayPair][MaxRelays]uint64
 }
 
-func (manager *RouteManager) AddRoute(rtt int32, relays ...uint64) {
+func (manager *RouteManager) AddRoute(rtt int32, relayDatacenter []uint64, relays ...uint64) {
 
 	if rtt < 0 {
 		return
+	}
+
+	// IMPORTANT: Filter out any route with two relays in the same datacenter. These routes are redundant.
+	datacenterCheck := make(map[uint64]int, len(relays))
+	for i := range relays {
+		if _, exists := datacenterCheck[relayDatacenter[relays[i]]]; exists {
+			return
+		}
+		datacenterCheck[relayDatacenter[relays[i]]] = 1
 	}
 
 	// IMPORTANT: Filter out routes with loops. They can happen *very* occasionally.
