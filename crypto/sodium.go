@@ -4,6 +4,38 @@ package crypto
 // #include <sodium.h>
 import "C"
 
+func sodiumSignPacket(packetData []byte, privateKey []byte) []byte {
+	signedPacketData := make([]byte, len(packetData)+C.crypto_sign_BYTES)
+	for i := 0; i < len(packetData); i++ {
+		signedPacketData[i] = packetData[i]
+	}
+	var state C.crypto_sign_state
+	C.crypto_sign_init(&state)
+	C.crypto_sign_update(&state, (*C.uchar)(&signedPacketData[0]), C.ulonglong(len(signedPacketData)-C.crypto_sign_BYTES))
+	C.crypto_sign_final_create(&state, (*C.uchar)(&signedPacketData[len(packetData)]), nil, (*C.uchar)(&privateKey[0]))
+	return signedPacketData
+}
+
+func sodiumHashPacket(packetData []byte, hashKey []byte) []byte {
+	hashedPacketData := make([]byte, len(packetData)+PacketHashSize)
+	messageLength := len(packetData)
+	if messageLength > 32 {
+		messageLength = 32
+	}
+	C.crypto_generichash(
+		(*C.uchar)(&hashedPacketData[0]),
+		C.ulong(PacketHashSize),
+		(*C.uchar)(&packetData[0]),
+		C.ulonglong(messageLength),
+		(*C.uchar)(&hashKey[0]),
+		C.ulong(C.crypto_generichash_KEYBYTES),
+	)
+	for i := 0; i < len(packetData); i++ {
+		hashedPacketData[PacketHashSize+i] = packetData[i]
+	}
+	return hashedPacketData
+}
+
 func sodiumSign(sign_data []byte, private_key []byte) []byte {
 	if len(private_key) != C.crypto_sign_BYTES {
 		return nil
@@ -58,6 +90,32 @@ func sodiumCheck(data []byte, key []byte) bool {
 	)
 	for i := 0; i < PacketHashSize; i++ {
 		if hash[i] != data[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func sodiumIsNetworkNextPacket(packetData []byte, hashKey []byte) bool {
+	packetBytes := len(packetData)
+	if packetBytes <= PacketHashSize {
+		return false
+	}
+	messageLength := packetBytes - PacketHashSize
+	if messageLength > 32 {
+		messageLength = 32
+	}
+	hash := make([]byte, PacketHashSize)
+	C.crypto_generichash(
+		(*C.uchar)(&hash[0]),
+		C.ulong(PacketHashSize),
+		(*C.uchar)(&packetData[PacketHashSize]),
+		C.ulonglong(messageLength),
+		(*C.uchar)(&hashKey[0]),
+		C.ulong(C.crypto_generichash_KEYBYTES),
+	)
+	for i := 0; i < PacketHashSize; i++ {
+		if hash[i] != packetData[i] {
 			return false
 		}
 	}
