@@ -143,7 +143,7 @@ func TestFirestore(t *testing.T) {
 	t.Run("NewFirestore", func(t *testing.T) {
 		t.Run("firestore client failure", func(t *testing.T) {
 			_, err := storage.NewFirestore(ctx, "*detect-project-id*", log.NewNopLogger(), "test")
-			assert.NoError(t, err)
+			assert.Error(t, err)
 		})
 
 		t.Run("success", func(t *testing.T) {
