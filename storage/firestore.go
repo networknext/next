@@ -1506,7 +1506,9 @@ func (fs *Firestore) Sync(ctx context.Context) error {
 
 	var outerErr error
 	var wg sync.WaitGroup
+
 	wg.Add(5)
+	firestoreSyncStart := time.Now()
 
 	go func() {
 
@@ -1545,6 +1547,8 @@ func (fs *Firestore) Sync(ctx context.Context) error {
 	}()
 
 	wg.Wait()
+	firestoreSyncSince := time.Since(firestoreSyncStart)
+	fs.SyncMetrics.DurationGauge.Set(float64(firestoreSyncSince.Milliseconds()))
 
 	return outerErr
 }

@@ -158,12 +158,22 @@ type FirestoreSyncMetrics struct {
 	Invocations     Counter
 	RemoteSyncValue Gauge
 	LocalSyncValue  Gauge
+	DurationGauge   Gauge
 }
 
 var EmptyFirestoreSyncMetrics FirestoreSyncMetrics = FirestoreSyncMetrics{
 	Invocations:     &EmptyCounter{},
 	RemoteSyncValue: &EmptyGauge{},
 	LocalSyncValue:  &EmptyGauge{},
+	DurationGauge:   &EmptyGauge{},
+}
+
+type FirestoreSyncErrorMetrics struct {
+	SyncDatacentersErr    Counter
+	SyncRelaysErr         Counter
+	SyncSellersErr        Counter
+	SyncDatacenterMapsErr Counter
+	SyncCustomersErr      Counter
 }
 
 type OptimizeMetrics struct {
@@ -1909,10 +1919,19 @@ func NewFirestoreSyncMetrics(ctx context.Context, metricsHandler Handler, servic
 		return nil, err
 	}
 
+	firestoreSyncDurationGauge, err := metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Firestore Sync Duration",
+		ServiceName: serviceName,
+		ID:          "firestore_sync.duration",
+		Unit:        "milliseconds",
+		Description: "How long it takes to sync data from Firestore.",
+	})
+
 	firestoreSyncMetrics := FirestoreSyncMetrics{
 		Invocations:     firestoreSyncInvocationsCounter,
 		RemoteSyncValue: firestoreSyncRemoteValueGauge,
 		LocalSyncValue:  firestoreSyncLocalValueGauge,
+		DurationGauge:   firestoreSyncDurationGauge,
 	}
 
 	return &firestoreSyncMetrics, nil
