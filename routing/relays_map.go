@@ -30,11 +30,17 @@ type RelayData struct {
 	Seller         Seller
 	Datacenter     Datacenter
 	LastUpdateTime time.Time
-	TrafficStats   RelayTrafficStats
-	MaxSessions    uint32
-	CPUUsage       float32
-	MemUsage       float32
-	Version        string
+
+	// values since the last update
+	TrafficStats RelayTrafficStats
+
+	// estimated values per second
+	PeakTrafficStats RelayTrafficStats
+
+	MaxSessions uint32
+	CPUUsage    float32
+	MemUsage    float32
+	Version     string
 }
 
 type RelayMapShard struct {
