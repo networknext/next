@@ -156,9 +156,15 @@ type RelayTrafficStats struct {
 	BytesReceived uint64
 }
 
+type PeakRelayTrafficStats struct {
+	SessionCount           uint64
+	BytesSentPerSecond     uint64
+	BytesReceivedPerSecond uint64
+}
+
 // MaxValues returns the maximum values between the receiving instance and the given one
-func (rts *RelayTrafficStats) MaxValues(other *RelayTrafficStats) RelayTrafficStats {
-	var retval RelayTrafficStats
+func (rts *PeakRelayTrafficStats) MaxValues(other *PeakRelayTrafficStats) PeakRelayTrafficStats {
+	var retval PeakRelayTrafficStats
 
 	if rts.SessionCount > other.SessionCount {
 		retval.SessionCount = rts.SessionCount
@@ -166,16 +172,16 @@ func (rts *RelayTrafficStats) MaxValues(other *RelayTrafficStats) RelayTrafficSt
 		retval.SessionCount = other.SessionCount
 	}
 
-	if rts.BytesSent > other.BytesSent {
-		retval.BytesSent = rts.BytesSent
+	if rts.BytesSentPerSecond > other.BytesSentPerSecond {
+		retval.BytesSentPerSecond = rts.BytesSentPerSecond
 	} else {
-		retval.BytesSent = other.BytesSent
+		retval.BytesSentPerSecond = other.BytesSentPerSecond
 	}
 
-	if rts.BytesReceived > other.BytesReceived {
-		retval.BytesReceived = rts.BytesReceived
+	if rts.BytesReceivedPerSecond > other.BytesReceivedPerSecond {
+		retval.BytesReceivedPerSecond = rts.BytesReceivedPerSecond
 	} else {
-		retval.BytesReceived = other.BytesReceived
+		retval.BytesReceivedPerSecond = other.BytesReceivedPerSecond
 	}
 
 	return retval
