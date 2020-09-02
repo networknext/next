@@ -327,14 +327,14 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 		updateTime := time.Now()
 
 		// LastUpdateTime is set in init so it will always have a non-zero value here
-		diff := updateTime.Sub(relay.LastUpdateTime)
+		diff := updateTime.Sub(relayDataReadOnly.LastUpdateTime)
 		trafficStats := relayUpdateRequest.TrafficStats
 
 		// estimate number per second
 		trafficStats.BytesSent = uint64(float64(trafficStats.BytesSent) / diff.Seconds())
 		trafficStats.BytesReceived = uint64(float64(trafficStats.BytesReceived) / diff.Seconds())
 
-		peekTrafficStats := relay.TrafficStats.MaxValues(&trafficStats)
+		peakTrafficStats := relayDataReadOnly.PeakTrafficStats.MaxValues(&trafficStats)
 
 		relayData := &routing.RelayData{
 			ID:               relay.ID,
@@ -345,7 +345,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			Datacenter:       relay.Datacenter,
 			LastUpdateTime:   updateTime,
 			TrafficStats:     relayUpdateRequest.TrafficStats,
-			PeakTrafficStats: peekTrafficStats,
+			PeakTrafficStats: peakTrafficStats,
 			MaxSessions:      relay.MaxSessions,
 			CPUUsage:         float32(relayUpdateRequest.CPUUsage) * 100.0,
 			MemUsage:         float32(relayUpdateRequest.MemUsage) * 100.0,
