@@ -96,7 +96,7 @@ func ServerInitHandlerFunc4(logger log.Logger, storer storage.Storer, datacenter
 					// in our database, then send an unknown datacenter response back.
 
 					if err != nil {
-						level.Warn(logger).Log("msg", "customer has a misconfigured datacenter alias", "err", "datacenter not in database", "datacenter", packet.DatacenterName)
+						level.Error(logger).Log("msg", "customer has a misconfigured datacenter alias", "err", "datacenter not in database", "datacenter", packet.DatacenterName)
 
 						writeServerInitResponse4(w, &packet, InitResponseUnknownDatacenter)
 						return
@@ -114,6 +114,69 @@ func ServerInitHandlerFunc4(logger log.Logger, storer storage.Storer, datacenter
 
 func ServerUpdateHandlerFunc4(logger log.Logger, storer storage.Storer, datacenterTracker *DatacenterTracker, metrics *metrics.ServerUpdateMetrics) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
+		metrics.Invocations.Add(1)
 
+		timeStart := time.Now()
+		defer func() {
+			milliseconds := float64(time.Since(timeStart).Milliseconds())
+			metrics.DurationGauge.Set(milliseconds)
+
+			if milliseconds > 100 {
+				metrics.LongDuration.Add(1)
+			}
+		}()
+
+		var packet ServerUpdatePacket4
+		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
+			level.Error(logger).Log("msg", "could not read server update packet", "err", err)
+			metrics.ErrorMetrics.ReadPacketFailure.Add(1)
+			return
+		}
+
+		buyer, err := storer.Buyer(packet.CustomerID)
+		if err != nil {
+			level.Error(logger).Log("err", "unknown customer", "customerID", packet.CustomerID)
+			metrics.ErrorMetrics.BuyerNotFound.Add(1)
+			return
+		}
+
+		if !packet.Version.AtLeast(SDKVersion{4, 0, 0}) && !buyer.Debug {
+			level.Error(logger).Log("err", "sdk too old", "version", packet.Version.String())
+			metrics.ErrorMetrics.SDKTooOld.Add(1)
+			return
+		}
+
+		datacenter, err := storer.Datacenter(packet.DatacenterID)
+
+		// If we can't find a datacenter or alias for this customer,
+		// track the datacenter so we can work with them and add it to our database.
+
+		defer func() {
+			if datacenter.ID == routing.UnknownDatacenter.ID {
+				level.Warn(logger).Log("err", "received server update request with unknown datacenter", "datacenter", packet.DatacenterID)
+				metrics.ErrorMetrics.DatacenterNotFound.Add(1)
+
+				datacenterTracker.AddUnknownDatacenter(packet.DatacenterID)
+			}
+		}()
+
+		if err != nil {
+			// search the list of aliases created by/for this buyer
+			datacenterAliases := storer.GetDatacenterMapsForBuyer(packet.CustomerID)
+			for _, dcMap := range datacenterAliases {
+				if packet.DatacenterID == crypto.HashID(dcMap.Alias) {
+					datacenter, err = storer.Datacenter(dcMap.Datacenter)
+					if err != nil {
+						level.Error(logger).Log("msg", "customer has a misconfigured datacenter alias", "err", "datacenter not in database", "datacenter", packet.DatacenterID)
+						return
+					}
+
+					datacenter.AliasName = dcMap.Alias
+					break
+				}
+			}
+		}
+
+		level.Debug(logger).Log("msg", "server updated successfully", "server_address", packet.ServerAddress.String(), "sequence", packet.Sequence)
 	}
 }

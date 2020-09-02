@@ -203,8 +203,55 @@ func TestServerInitHandler4Success(t *testing.T) {
 	assert.NoError(t, err)
 
 	err = storer.AddDatacenter(context.Background(), routing.Datacenter{
-		ID:   crypto.HashID("datacenter.alias"),
-		Name: "datacenter.alias",
+		ID:   crypto.HashID("datacenter.name"),
+		Name: "datacenter.name",
+	})
+	assert.NoError(t, err)
+
+	datacenterTracker := transport.NewDatacenterTracker()
+	metricsHandler := metrics.LocalHandler{}
+	metrics, err := metrics.NewServerInitMetrics(context.Background(), &metricsHandler)
+	assert.NoError(t, err)
+	responseBuffer := bytes.NewBuffer(nil)
+
+	requestPacket := transport.ServerInitRequestPacket4{
+		Version:        transport.SDKVersion{4, 0, 0},
+		RequestID:      100,
+		CustomerID:     123,
+		DatacenterID:   crypto.HashID("datacenter.name"),
+		DatacenterName: "datacenter.name",
+	}
+	requestData, err := requestPacket.MarshalBinary()
+	assert.NoError(t, err)
+
+	handler := transport.ServerInitHandlerFunc4(logger, storer, datacenterTracker, metrics)
+	handler(responseBuffer, &transport.UDPPacket{
+		Data: requestData,
+	})
+
+	var responsePacket transport.ServerInitResponsePacket4
+	err = responsePacket.UnmarshalBinary(responseBuffer.Bytes())
+	assert.NoError(t, err)
+
+	assert.Equal(t, requestPacket.RequestID, responsePacket.RequestID)
+	assert.Equal(t, uint32(transport.InitResponseOK), responsePacket.Response)
+
+	unknownDatacenterNames := datacenterTracker.GetUnknownDatacentersNames()
+	assert.Empty(t, unknownDatacenterNames)
+}
+
+func TestServerInitHandler4SuccessDatacenterAliasFound(t *testing.T) {
+	logger := log.NewNopLogger()
+	storer := &storage.InMemory{}
+
+	err := storer.AddBuyer(context.Background(), routing.Buyer{
+		ID: 123,
+	})
+	assert.NoError(t, err)
+
+	err = storer.AddDatacenter(context.Background(), routing.Datacenter{
+		ID:   crypto.HashID("datacenter.name"),
+		Name: "datacenter.name",
 	})
 	assert.NoError(t, err)
 
