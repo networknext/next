@@ -14,6 +14,7 @@
 #include <map>
 #include <float.h>
 #include <signal.h>
+#include <atomic>
 
 #include "curl/curl.h"
 

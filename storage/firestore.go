@@ -29,7 +29,7 @@ type Firestore struct {
 	datacenterMaps map[uint64]routing.DatacenterMap
 
 	syncSequenceNumber int64
-	syncMetrics        metrics.FirestoreSyncMetrics
+	SyncMetrics        metrics.FirestoreSyncMetrics
 	callingService     string
 
 	datacenterMutex     sync.RWMutex
@@ -132,14 +132,8 @@ func (e *FirestoreError) Error() string {
 	return fmt.Sprintf("unknown Firestore error: %v", e.err)
 }
 
-func NewFirestore(ctx context.Context, gcpProjectID string, logger log.Logger, serviceName string) (*Firestore, error) {
+func NewFirestore(ctx context.Context, gcpProjectID string, logger log.Logger, caller string) (*Firestore, error) {
 	client, err := firestore.NewClient(ctx, gcpProjectID)
-	if err != nil {
-		return nil, err
-	}
-
-	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
-	firestoreSyncMetrics, err := metrics.NewFirestoreSyncMetrics(ctx, metricsHandler, serviceName)
 	if err != nil {
 		return nil, err
 	}
@@ -152,9 +146,8 @@ func NewFirestore(ctx context.Context, gcpProjectID string, logger log.Logger, s
 		relays:             make(map[uint64]routing.Relay),
 		buyers:             make(map[uint64]routing.Buyer),
 		sellers:            make(map[string]routing.Seller),
-		callingService:     serviceName,
 		syncSequenceNumber: -1,
-		syncMetrics:        *firestoreSyncMetrics,
+		callingService:     caller,
 	}, nil
 
 }
@@ -231,9 +224,9 @@ func (fs *Firestore) CheckSequenceNumber(ctx context.Context) (bool, error) {
 	localSeqNum := fs.syncSequenceNumber
 	fs.sequenceNumberMutex.RUnlock()
 
-	fs.syncMetrics.Invocations.Add(1)
-	fs.syncMetrics.LocalSyncValue.Set(float64(localSeqNum))
-	fs.syncMetrics.RemoteSyncValue.Set(float64(num.Value))
+	fs.SyncMetrics.Invocations.Add(1)
+	fs.SyncMetrics.LocalSyncValue.Set(float64(localSeqNum))
+	fs.SyncMetrics.RemoteSyncValue.Set(float64(num.Value))
 
 	if localSeqNum != num.Value || num.Value == 0 {
 		fs.sequenceNumberMutex.Lock()

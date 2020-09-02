@@ -118,6 +118,56 @@ func main() {
 		relayslogger = log.With(relayslogger, "ts", log.DefaultTimestampUTC)
 	}
 
+	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
+
+	// create firestore sync metrics
+	firestoreSyncMetrics, err := metrics.NewFirestoreSyncMetrics(ctx, metricsHandler, "relay_backend")
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create firestore sync metrics", "err", err)
+	}
+
+	// Create relay init metrics
+	relayInitMetrics, err := metrics.NewRelayInitMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create relay init metrics", "err", err)
+	}
+
+	// Create relay update metrics
+	relayUpdateMetrics, err := metrics.NewRelayUpdateMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create relay update metrics", "err", err)
+	}
+
+	costMatrixMetrics, err := metrics.NewCostMatrixMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create cost matrix metrics", "err", err)
+	}
+
+	optimizeMetrics, err := metrics.NewOptimizeMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create optimize metrics", "err", err)
+	}
+
+	valveCostMatrixMetrics, err := metrics.NewValveCostMatrixMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create valve cost matrix metrics", "err", err)
+	}
+
+	valveOptimizeMetrics, err := metrics.NewValveOptimizeMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create valve optimize metrics", "err", err)
+	}
+
+	valveRouteMatrixMetrics, err := metrics.NewValveRouteMatrixMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create valve route matrix metrics", "err", err)
+	}
+
+	relayBackendMetrics, err := metrics.NewRelayBackendMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create relay backend metrics", "err", err)
+	}
+
 	// Get env
 	env, ok := os.LookupEnv("ENV")
 	if !ok {
@@ -179,6 +229,7 @@ func main() {
 				level.Error(logger).Log("err", err)
 				os.Exit(1)
 			}
+			fs.SyncMetrics = *firestoreSyncMetrics
 
 			fssyncinterval := os.Getenv("GOOGLE_FIRESTORE_SYNC_INTERVAL")
 			syncInterval, err := time.ParseDuration(fssyncinterval)
@@ -283,8 +334,6 @@ func main() {
 		}
 	}
 
-	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
-
 	if gcpOK {
 		// Stackdriver Metrics
 		{
@@ -356,48 +405,6 @@ func main() {
 				}
 			}
 		}
-	}
-
-	// Create relay init metrics
-	relayInitMetrics, err := metrics.NewRelayInitMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create relay init metrics", "err", err)
-	}
-
-	// Create relay update metrics
-	relayUpdateMetrics, err := metrics.NewRelayUpdateMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create relay update metrics", "err", err)
-	}
-
-	costMatrixMetrics, err := metrics.NewCostMatrixMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create cost matrix metrics", "err", err)
-	}
-
-	optimizeMetrics, err := metrics.NewOptimizeMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create optimize metrics", "err", err)
-	}
-
-	valveCostMatrixMetrics, err := metrics.NewValveCostMatrixMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create valve cost matrix metrics", "err", err)
-	}
-
-	valveOptimizeMetrics, err := metrics.NewValveOptimizeMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create valve optimize metrics", "err", err)
-	}
-
-	valveRouteMatrixMetrics, err := metrics.NewValveRouteMatrixMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create valve route matrix metrics", "err", err)
-	}
-
-	relayBackendMetrics, err := metrics.NewRelayBackendMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create relay backend metrics", "err", err)
 	}
 
 	statsdb := routing.NewStatsDatabase()
