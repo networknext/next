@@ -23,7 +23,7 @@ const (
 type CostMatrix struct {
 	mu sync.RWMutex
 
-	RelayIndices map[uint64]int
+	RelayIndices map[uint64]int 			// todo: rename to RelayIDToIndex
 
 	RelayIDs              []uint64
 	RelayNames            []string
@@ -405,19 +405,12 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 
 	indirect := make([][][]Indirect, numRelays)
 
-	// create mapping from relay id -> relay index
-
-	relayIdToIndex := make(map[uint64]int)
-	for i := range routes.RelayIDs {
-		relayIdToIndex[routes.RelayIDs[i]] = i
-	}
-
 	// create mapping from relay index to datacenter id
 
 	relayDatacenter := make([]uint64, numRelays)
 	for datacenterId, relayIds := range routes.DatacenterRelays {
 		for i := range relayIds {
-			relayIndex := relayIdToIndex[relayIds[i]]
+			relayIndex := routes.RelayIndices[relayIds[i]]
 			relayDatacenter[relayIndex] = datacenterId
 		}
 	}
