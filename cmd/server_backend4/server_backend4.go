@@ -54,7 +54,7 @@ func main() {
 }
 
 func mainReturnWithCode() int {
-	fmt.Printf("server_backend: Git Hash: %s - Commit: %s\n", sha, commitMessage)
+	fmt.Printf("server_backend4: Git Hash: %s - Commit: %s\n", sha, commitMessage)
 
 	ctx := context.Background()
 
