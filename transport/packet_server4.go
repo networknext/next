@@ -1,7 +1,6 @@
 package transport
 
 import (
-	"errors"
 	"fmt"
 	"net"
 
@@ -23,6 +22,31 @@ const (
 	PacketTypeServerInitResponse4 = 224
 )
 
+type Packet interface {
+	Serialize(stream encoding.Stream) error
+}
+
+func UnmarshalPacket(packet Packet, data []byte) error {
+	if err := packet.Serialize(encoding.CreateReadStream(data)); err != nil {
+		return err
+	}
+	return nil
+}
+
+func MarshalPacket(packet Packet) ([]byte, error) {
+	ws, err := encoding.CreateWriteStream(DefaultMaxPacketSize)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := packet.Serialize(ws); err != nil {
+		return nil, err
+	}
+	ws.Flush()
+
+	return ws.GetData()[:ws.GetBytesProcessed()], nil
+}
+
 type ServerInitRequestPacket4 struct {
 	Version        SDKVersion
 	RequestID      uint64
@@ -31,85 +55,26 @@ type ServerInitRequestPacket4 struct {
 	DatacenterName string
 }
 
-func (packet *ServerInitRequestPacket4) UnmarshalBinary(data []byte) error {
-	var index int
-
-	var packetType uint8
-	if !encoding.ReadUint8(data, &index, &packetType) {
-		return errors.New("[ServerInitRequestPacket4] failed to read packet type")
-	}
+func (packet *ServerInitRequestPacket4) Serialize(stream encoding.Stream) error {
+	packetType := uint32(PacketTypeServerInitRequest4)
+	stream.SerializeBits(&packetType, 8)
 
 	if packetType != PacketTypeServerInitRequest4 {
 		return fmt.Errorf("[ServerInitRequestPacket4] wrong packet type %d, expected %d", packetType, PacketTypeServerInitRequest4)
 	}
 
-	var versionMajor uint8
-	if !encoding.ReadUint8(data, &index, &versionMajor) {
-		return errors.New("[ServerInitRequestPacket4] failed to read version major")
-	}
-
-	var versionMinor uint8
-	if !encoding.ReadUint8(data, &index, &versionMinor) {
-		return errors.New("[ServerInitRequestPacket4] failed to read version minor")
-	}
-
-	var versionPatch uint8
-	if !encoding.ReadUint8(data, &index, &versionPatch) {
-		return errors.New("[ServerInitRequestPacket4] failed to read version patch")
-	}
-
-	packet.Version = SDKVersion{
-		Major: int32(versionMajor),
-		Minor: int32(versionMinor),
-		Patch: int32(versionPatch),
-	}
-
-	if !encoding.ReadUint64(data, &index, &packet.RequestID) {
-		return errors.New("[ServerInitRequestPacket4] failed to read request ID")
-	}
-
-	if !encoding.ReadUint64(data, &index, &packet.CustomerID) {
-		return errors.New("[ServerInitRequestPacket4] failed to read customer ID")
-	}
-
-	if !encoding.ReadUint64(data, &index, &packet.DatacenterID) {
-		return errors.New("[ServerInitRequestPacket4] failed to read datacenter ID")
-	}
-
-	var datacenterNameLength uint8
-	if !encoding.ReadUint8(data, &index, &datacenterNameLength) {
-		return errors.New("[ServerInitRequestPacket4] failed to read datacenter name length")
-	}
-
-	var datacenterNameBytes []byte
-	if !encoding.ReadBytes(data, &index, &datacenterNameBytes, uint32(datacenterNameLength)) {
-		return errors.New("[ServerInitRequestPacket4] failed to read datacenter name")
-	}
-	packet.DatacenterName = string(datacenterNameBytes)
-
-	return nil
-}
-
-func (packet ServerInitRequestPacket4) MarshalBinary() ([]byte, error) {
-	data := make([]byte, packet.Size())
-	var index int
-
-	encoding.WriteUint8(data, &index, PacketTypeServerInitRequest4)
-	encoding.WriteUint8(data, &index, uint8(packet.Version.Major))
-	encoding.WriteUint8(data, &index, uint8(packet.Version.Minor))
-	encoding.WriteUint8(data, &index, uint8(packet.Version.Patch))
-	encoding.WriteUint64(data, &index, packet.RequestID)
-	encoding.WriteUint64(data, &index, packet.CustomerID)
-	encoding.WriteUint64(data, &index, packet.DatacenterID)
-
-	encoding.WriteUint8(data, &index, uint8(len(packet.DatacenterName)))
-	encoding.WriteBytes(data, &index, []byte(packet.DatacenterName), len(packet.DatacenterName))
-
-	return data, nil
-}
-
-func (packet ServerInitRequestPacket4) Size() uint64 {
-	return uint64(1 + 1*3 + 8 + 8 + 8 + 4 + len(packet.DatacenterName))
+	versionMajor := uint32(packet.Version.Major)
+	versionMinor := uint32(packet.Version.Minor)
+	versionPatch := uint32(packet.Version.Patch)
+	stream.SerializeBits(&versionMajor, 8)
+	stream.SerializeBits(&versionMinor, 8)
+	stream.SerializeBits(&versionPatch, 8)
+	packet.Version = SDKVersion{int32(versionMajor), int32(versionMinor), int32(versionPatch)}
+	stream.SerializeUint64(&packet.RequestID)
+	stream.SerializeUint64(&packet.CustomerID)
+	stream.SerializeUint64(&packet.DatacenterID)
+	stream.SerializeString(&packet.DatacenterName, MaxDatacenterNameLength)
+	return stream.Error()
 }
 
 type ServerInitResponsePacket4 struct {
@@ -117,42 +82,17 @@ type ServerInitResponsePacket4 struct {
 	Response  uint32
 }
 
-func (packet *ServerInitResponsePacket4) UnmarshalBinary(data []byte) error {
-	var index int
-
-	var packetType uint8
-	if !encoding.ReadUint8(data, &index, &packetType) {
-		return errors.New("[ServerInitResponsePacket4] failed to read packet type")
-	}
+func (packet *ServerInitResponsePacket4) Serialize(stream encoding.Stream) error {
+	packetType := uint32(PacketTypeServerInitResponse4)
+	stream.SerializeBits(&packetType, 8)
 
 	if packetType != PacketTypeServerInitResponse4 {
 		return fmt.Errorf("[ServerInitResponsePacket4] wrong packet type %d, expected %d", packetType, PacketTypeServerInitResponse4)
 	}
 
-	if !encoding.ReadUint64(data, &index, &packet.RequestID) {
-		return errors.New("[ServerInitResponsePacket4] failed to read request ID")
-	}
-
-	if !encoding.ReadUint32(data, &index, &packet.Response) {
-		return errors.New("[ServerInitResponsePacket4] failed to read response code")
-	}
-
-	return nil
-}
-
-func (packet ServerInitResponsePacket4) MarshalBinary() ([]byte, error) {
-	data := make([]byte, packet.Size())
-	var index int
-
-	encoding.WriteUint8(data, &index, PacketTypeServerInitResponse4)
-	encoding.WriteUint64(data, &index, packet.RequestID)
-	encoding.WriteUint32(data, &index, packet.Response)
-
-	return data, nil
-}
-
-func (packet ServerInitResponsePacket4) Size() uint64 {
-	return 1 + 8 + 4
+	stream.SerializeUint64(&packet.RequestID)
+	stream.SerializeUint32(&packet.Response)
+	return stream.Error()
 }
 
 type ServerUpdatePacket4 struct {
@@ -164,78 +104,27 @@ type ServerUpdatePacket4 struct {
 	ServerAddress net.UDPAddr
 }
 
-func (packet *ServerUpdatePacket4) UnmarshalBinary(data []byte) error {
-	var index int
-
-	var packetType uint8
-	if !encoding.ReadUint8(data, &index, &packetType) {
-		return errors.New("[ServerUpdatePacket4] failed to read packet type")
-	}
+func (packet *ServerUpdatePacket4) Serialize(stream encoding.Stream) error {
+	packetType := uint32(PacketTypeServerUpdate4)
+	stream.SerializeBits(&packetType, 8)
 
 	if packetType != PacketTypeServerUpdate4 {
 		return fmt.Errorf("[ServerUpdatePacket4] wrong packet type %d, expected %d", packetType, PacketTypeServerUpdate4)
 	}
 
-	var versionMajor uint8
-	if !encoding.ReadUint8(data, &index, &versionMajor) {
-		return errors.New("[ServerUpdatePacket4] failed to read version major")
-	}
-
-	var versionMinor uint8
-	if !encoding.ReadUint8(data, &index, &versionMinor) {
-		return errors.New("[ServerUpdatePacket4] failed to read version minor")
-	}
-
-	var versionPatch uint8
-	if !encoding.ReadUint8(data, &index, &versionPatch) {
-		return errors.New("[ServerUpdatePacket4] failed to read version patch")
-	}
-
-	packet.Version = SDKVersion{
-		Major: int32(versionMajor),
-		Minor: int32(versionMinor),
-		Patch: int32(versionPatch),
-	}
-
-	if !encoding.ReadUint64(data, &index, &packet.Sequence) {
-		return errors.New("[ServerUpdatePacket4] failed to read sequence number")
-	}
-
-	if !encoding.ReadUint64(data, &index, &packet.CustomerID) {
-		return errors.New("[ServerUpdatePacket4] failed to read customer ID")
-	}
-
-	if !encoding.ReadUint64(data, &index, &packet.DatacenterID) {
-		return errors.New("[ServerUpdatePacket4] failed to read datacenter ID")
-	}
-
-	if !encoding.ReadUint32(data, &index, &packet.NumSessions) {
-		return errors.New("[ServerUpdatePacket4] failed to read number of sessions")
-	}
-
-	packet.ServerAddress = *encoding.ReadAddress(data[index:])
-	return nil
-}
-
-func (packet ServerUpdatePacket4) MarshalBinary() ([]byte, error) {
-	data := make([]byte, packet.Size())
-	var index int
-
-	encoding.WriteUint8(data, &index, PacketTypeServerUpdate4)
-	encoding.WriteUint8(data, &index, uint8(packet.Version.Major))
-	encoding.WriteUint8(data, &index, uint8(packet.Version.Minor))
-	encoding.WriteUint8(data, &index, uint8(packet.Version.Patch))
-	encoding.WriteUint64(data, &index, packet.Sequence)
-	encoding.WriteUint64(data, &index, packet.CustomerID)
-	encoding.WriteUint64(data, &index, packet.DatacenterID)
-	encoding.WriteUint32(data, &index, packet.NumSessions)
-	encoding.WriteAddress(data[index:], &packet.ServerAddress)
-
-	return data, nil
-}
-
-func (packet ServerUpdatePacket4) Size() uint64 {
-	return 1 + 1*3 + 8 + 8 + 8 + 4 + 19
+	versionMajor := uint32(packet.Version.Major)
+	versionMinor := uint32(packet.Version.Minor)
+	versionPatch := uint32(packet.Version.Patch)
+	stream.SerializeBits(&versionMajor, 8)
+	stream.SerializeBits(&versionMinor, 8)
+	stream.SerializeBits(&versionPatch, 8)
+	packet.Version = SDKVersion{int32(versionMajor), int32(versionMinor), int32(versionPatch)}
+	stream.SerializeUint64(&packet.Sequence)
+	stream.SerializeUint64(&packet.CustomerID)
+	stream.SerializeUint64(&packet.DatacenterID)
+	stream.SerializeUint32(&packet.NumSessions)
+	stream.SerializeAddress(&packet.ServerAddress)
+	return stream.Error()
 }
 
 type SessionUpdatePacket4 struct {
@@ -278,38 +167,17 @@ type SessionUpdatePacket4 struct {
 	SessionData               [MaxSessionDataSize]byte
 }
 
-func (packet *SessionUpdatePacket4) UnmarshalBinary(data []byte) error {
-	if err := packet.Serialize(encoding.CreateReadStream(data)); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (packet SessionUpdatePacket4) MarshalBinary() ([]byte, error) {
-	ws, err := encoding.CreateWriteStream(DefaultMaxPacketSize)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := packet.Serialize(ws); err != nil {
-		return nil, err
-	}
-	ws.Flush()
-
-	return ws.GetData()[:ws.GetBytesProcessed()], nil
-}
-
 func (packet *SessionUpdatePacket4) Serialize(stream encoding.Stream) error {
-	var packetType uint32
+	packetType := uint32(PacketTypeSessionUpdate4)
 	stream.SerializeBits(&packetType, 8)
 
 	if packetType != PacketTypeSessionUpdate4 {
 		return fmt.Errorf("[SessionUpdatePacket4] wrong packet type %d, expected %d", packetType, PacketTypeSessionUpdate4)
 	}
 
-	var versionMajor uint32
-	var versionMinor uint32
-	var versionPatch uint32
+	versionMajor := uint32(packet.Version.Major)
+	versionMinor := uint32(packet.Version.Minor)
+	versionPatch := uint32(packet.Version.Patch)
 	stream.SerializeBits(&versionMajor, 8)
 	stream.SerializeBits(&versionMinor, 8)
 	stream.SerializeBits(&versionPatch, 8)

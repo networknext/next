@@ -43,7 +43,7 @@ func TestServerUpdateHandler4BuyerNotFound(t *testing.T) {
 	responseBuffer := bytes.NewBuffer(nil)
 
 	requestPacket := transport.ServerUpdatePacket4{}
-	requestData, err := requestPacket.MarshalBinary()
+	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
 	handler := transport.ServerUpdateHandlerFunc4(logger, storer, datacenterTracker, metrics)
@@ -73,7 +73,7 @@ func TestServerUpdateHandler4SDKTooOld(t *testing.T) {
 		Version:    transport.SDKVersion{3, 3, 4},
 		CustomerID: 123,
 	}
-	requestData, err := requestPacket.MarshalBinary()
+	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
 	handler := transport.ServerUpdateHandlerFunc4(logger, storer, datacenterTracker, metrics)
@@ -111,7 +111,7 @@ func TestServerUpdateHandler4MisconfiguredDatacenterAlias(t *testing.T) {
 		CustomerID:   123,
 		DatacenterID: crypto.HashID("datacenter.alias"),
 	}
-	requestData, err := requestPacket.MarshalBinary()
+	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
 	handler := transport.ServerUpdateHandlerFunc4(logger, storer, datacenterTracker, metrics)
@@ -145,7 +145,7 @@ func TestServerUpdateHandler4DatacenterAndAliasNotFound(t *testing.T) {
 		CustomerID:   123,
 		DatacenterID: crypto.HashID("datacenter.alias"),
 	}
-	requestData, err := requestPacket.MarshalBinary()
+	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
 	handler := transport.ServerUpdateHandlerFunc4(logger, storer, datacenterTracker, metrics)
@@ -185,7 +185,7 @@ func TestServerUpdateHandler4Success(t *testing.T) {
 		CustomerID:   123,
 		DatacenterID: crypto.HashID("datacenter.name"),
 	}
-	requestData, err := requestPacket.MarshalBinary()
+	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
 	handler := transport.ServerUpdateHandlerFunc4(logger, storer, datacenterTracker, metrics)
@@ -230,7 +230,7 @@ func TestServerUpdateHandler4SuccessDatacenterAliasFound(t *testing.T) {
 		CustomerID:   123,
 		DatacenterID: crypto.HashID("datacenter.alias"),
 	}
-	requestData, err := requestPacket.MarshalBinary()
+	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
 	handler := transport.ServerUpdateHandlerFunc4(logger, storer, datacenterTracker, metrics)

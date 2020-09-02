@@ -44,7 +44,7 @@ func TestServerInitHandler4BuyerNotFound(t *testing.T) {
 	requestPacket := transport.ServerInitRequestPacket4{
 		RequestID: 100,
 	}
-	requestData, err := requestPacket.MarshalBinary()
+	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
 	handler := transport.ServerInitHandlerFunc4(logger, storer, datacenterTracker, metrics)
@@ -53,7 +53,7 @@ func TestServerInitHandler4BuyerNotFound(t *testing.T) {
 	})
 
 	var responsePacket transport.ServerInitResponsePacket4
-	err = responsePacket.UnmarshalBinary(responseBuffer.Bytes())
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes())
 	assert.NoError(t, err)
 
 	assert.Equal(t, requestPacket.RequestID, responsePacket.RequestID)
@@ -82,7 +82,7 @@ func TestServerInitHandler4SDKTooOld(t *testing.T) {
 		RequestID:  100,
 		CustomerID: 123,
 	}
-	requestData, err := requestPacket.MarshalBinary()
+	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
 	handler := transport.ServerInitHandlerFunc4(logger, storer, datacenterTracker, metrics)
@@ -91,7 +91,7 @@ func TestServerInitHandler4SDKTooOld(t *testing.T) {
 	})
 
 	var responsePacket transport.ServerInitResponsePacket4
-	err = responsePacket.UnmarshalBinary(responseBuffer.Bytes())
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes())
 	assert.NoError(t, err)
 
 	assert.Equal(t, requestPacket.RequestID, responsePacket.RequestID)
@@ -129,7 +129,7 @@ func TestServerInitHandler4MisconfiguredDatacenterAlias(t *testing.T) {
 		DatacenterID:   crypto.HashID("datacenter.alias"),
 		DatacenterName: "datacenter.alias",
 	}
-	requestData, err := requestPacket.MarshalBinary()
+	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
 	handler := transport.ServerInitHandlerFunc4(logger, storer, datacenterTracker, metrics)
@@ -138,7 +138,7 @@ func TestServerInitHandler4MisconfiguredDatacenterAlias(t *testing.T) {
 	})
 
 	var responsePacket transport.ServerInitResponsePacket4
-	err = responsePacket.UnmarshalBinary(responseBuffer.Bytes())
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes())
 	assert.NoError(t, err)
 
 	assert.Equal(t, requestPacket.RequestID, responsePacket.RequestID)
@@ -172,7 +172,7 @@ func TestServerInitHandler4DatacenterAndAliasNotFound(t *testing.T) {
 		DatacenterID:   crypto.HashID("datacenter.alias"),
 		DatacenterName: "datacenter.alias",
 	}
-	requestData, err := requestPacket.MarshalBinary()
+	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
 	handler := transport.ServerInitHandlerFunc4(logger, storer, datacenterTracker, metrics)
@@ -181,7 +181,7 @@ func TestServerInitHandler4DatacenterAndAliasNotFound(t *testing.T) {
 	})
 
 	var responsePacket transport.ServerInitResponsePacket4
-	err = responsePacket.UnmarshalBinary(responseBuffer.Bytes())
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes())
 	assert.NoError(t, err)
 
 	assert.Equal(t, requestPacket.RequestID, responsePacket.RequestID)
@@ -221,7 +221,7 @@ func TestServerInitHandler4Success(t *testing.T) {
 		DatacenterID:   crypto.HashID("datacenter.name"),
 		DatacenterName: "datacenter.name",
 	}
-	requestData, err := requestPacket.MarshalBinary()
+	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
 	handler := transport.ServerInitHandlerFunc4(logger, storer, datacenterTracker, metrics)
@@ -230,7 +230,7 @@ func TestServerInitHandler4Success(t *testing.T) {
 	})
 
 	var responsePacket transport.ServerInitResponsePacket4
-	err = responsePacket.UnmarshalBinary(responseBuffer.Bytes())
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes())
 	assert.NoError(t, err)
 
 	assert.Equal(t, requestPacket.RequestID, responsePacket.RequestID)
@@ -275,7 +275,7 @@ func TestServerInitHandler4SuccessDatacenterAliasFound(t *testing.T) {
 		DatacenterID:   crypto.HashID("datacenter.alias"),
 		DatacenterName: "datacenter.alias",
 	}
-	requestData, err := requestPacket.MarshalBinary()
+	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
 	handler := transport.ServerInitHandlerFunc4(logger, storer, datacenterTracker, metrics)
@@ -284,7 +284,7 @@ func TestServerInitHandler4SuccessDatacenterAliasFound(t *testing.T) {
 	})
 
 	var responsePacket transport.ServerInitResponsePacket4
-	err = responsePacket.UnmarshalBinary(responseBuffer.Bytes())
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes())
 	assert.NoError(t, err)
 
 	assert.Equal(t, requestPacket.RequestID, responsePacket.RequestID)

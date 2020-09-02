@@ -18,7 +18,7 @@ func writeServerInitResponse4(w io.Writer, packet *ServerInitRequestPacket4, res
 		Response:  response,
 	}
 
-	responseData, err := responsePacket.MarshalBinary()
+	responseData, err := MarshalPacket(&responsePacket)
 	if err != nil {
 		return err
 	}
@@ -45,7 +45,7 @@ func ServerInitHandlerFunc4(logger log.Logger, storer storage.Storer, datacenter
 		}()
 
 		var packet ServerInitRequestPacket4
-		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
+		if err := UnmarshalPacket(&packet, incoming.Data); err != nil {
 			level.Error(logger).Log("msg", "could not read server init packet", "err", err)
 			metrics.ErrorMetrics.ReadPacketFailure.Add(1)
 			return
@@ -127,7 +127,7 @@ func ServerUpdateHandlerFunc4(logger log.Logger, storer storage.Storer, datacent
 		}()
 
 		var packet ServerUpdatePacket4
-		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
+		if err := UnmarshalPacket(&packet, incoming.Data); err != nil {
 			level.Error(logger).Log("msg", "could not read server update packet", "err", err)
 			metrics.ErrorMetrics.ReadPacketFailure.Add(1)
 			return
@@ -196,7 +196,7 @@ func SessionUpdateHandlerFunc4(logger log.Logger, storer storage.Storer, datacen
 		}()
 
 		var packet SessionUpdatePacket4
-		if err := packet.UnmarshalBinary(incoming.Data); err != nil {
+		if err := UnmarshalPacket(&packet, incoming.Data); err != nil {
 			level.Error(logger).Log("msg", "could not read session update packet", "err", err)
 			metrics.ErrorMetrics.ReadPacketFailure.Add(1)
 			return
