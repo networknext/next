@@ -340,7 +340,7 @@ dev-portal-cruncher: build-portal-cruncher ## runs a local portal cruncher
 	@HTTP_PORT=42000 CRUNCHER_PORT=5555 ./dist/portal_cruncher
 
 .PHONY: dev-ghost-army
-dev-ghost-army: build-ghost-army ## runs a local ghost army supplier
+dev-ghost-army: build-ghost-army ## runs a local ghost army\
 	@./dist/ghost_army
 
 .PHONY: dev-reference-backend3
