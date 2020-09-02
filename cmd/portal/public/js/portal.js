@@ -48,7 +48,18 @@ AuthHandler = {
 
 		// HACK THESE NEED TO BE ENV VARIABLES SOME HOW
 		const hostname = window.location.hostname
-		const clientID = hostname == 'portal.networknext.com' || hostname == 'portal-staging.networknext.com' ? 'MaSx99ma3AwYOwWMLm3XWNvQ5WyJWG2Y' : 'oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n';
+    let clientID = '';
+
+    switch (hostname) {
+      case 'portal.networknext.com':
+        clientID = 'MaSx99ma3AwYOwWMLm3XWNvQ5WyJWG2Y';
+        break;
+      case 'portal-staging.networknext.com':
+        clientID = 'BRvkWHQEyQmCqA7i2IBFOpm7XnDdwkpR';
+        break;
+      default:
+      clientID = 'oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n';
+    }
 
 		this.auth0Client = await createAuth0Client({
 			client_id: clientID,
@@ -123,9 +134,13 @@ AuthHandler = {
 		});
 		}, 30);
 	},
-	signUp() {
-		setTimeout(() => {
-			this.auth0Client.loginWithRedirect({
+	async signUp() {
+    window.location.hostname === 'portal.networknext.com' ? gtag('event', 'clicked sign up', {
+      'event_category': 'Account Creation',
+      'event_label': 'Sign up'
+    }) : null
+    setTimeout(() => {
+      this.auth0Client.loginWithRedirect({
 				connection: "Username-Password-Authentication",
 				redirect_uri: window.location.origin,
 				screen_hint: "signup"
@@ -249,7 +264,7 @@ MapHandler = {
 				let direct = response.direct
 				let next = response.next
 
-				const isDev = window.location.hostname == 'portal-dev.networknext.com' || window.location.hostname == '127.0.0.1';
+				const isDev = window.location.hostname == 'portal-dev.networknext.com' || window.location.hostname == '127.0.0.1' || window.location.hostname == 'portal-staging.networknext.com';
 				if (!isDev) {
 					this.totalDirectSessions[this.totalSessionCountCalls % 32] = direct
 					this.totalNextSessions[this.totalSessionCountCalls % 32] = next
@@ -373,11 +388,14 @@ MapHandler = {
 				}
 
 				if (!this.deckGlInstance) {
-					// creating the deck.gl instance
+          // creating the deck.gl instance
+          const mapParent = document.getElementById("map")
+          const width = mapParent.offsetWidth
+          const height = mapParent.offsetHeight
 					this.deckGlInstance = new deck.Deck({
 						canvas: document.getElementById("deck-canvas"),
-						width: '100%',
-						height: '100%',
+						width: width,
+						height: height,
 						initialViewState: this.viewState,
 						controller: controller,
 						// change the map's viewstate whenever the view state of deck.gl changes
@@ -435,7 +453,14 @@ UserHandler = {
 
 				this.userInfo.id = response.account.id;
 				this.userInfo.company = response.account.company_name;
-				this.userInfo.roles = response.account.roles;
+        this.userInfo.roles = response.account.roles;
+
+        if (AuthHandler.isSignupRedirect && window.location.hostname === 'portal.networknext.com') {
+          gtag('event', 'successful sign up', {
+            'event_category': 'Account Creation',
+            'event_label': 'Redirect after sign up'
+          })
+        }
 
 				if (AuthHandler.isSignupRedirect && !UserHandler.isAnonymous() && !UserHandler.isAnonymousPlus() && (!UserHandler.isOwner() || !UserHandler.isAdmin())) {
 					JSONRPCClient
@@ -1176,7 +1201,8 @@ function createVueComponents() {
 			portalVersion: ''
 		},
 		methods: {
-			addUsers: addUsers,
+      addUsers: addUsers,
+      gtag: gtag,
 			saveAutoSignIn: saveAutoSignIn,
 			updatePubKey: updatePubKey,
 		}

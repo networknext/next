@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/ybbus/jsonrpc"
@@ -10,18 +9,18 @@ import (
 
 func testForSSHKey(env Environment) {
 	if env.SSHKeyFilePath == "" {
-		log.Fatalf("The ssh key file name is not set, set it with 'next ssh key <path>'")
+		handleRunTimeError(fmt.Sprintln("The ssh key file name is not set, set it with 'next ssh key <path>'"), 0)
 	}
 
 	if _, err := os.Stat(env.SSHKeyFilePath); err != nil {
-		log.Fatalf("The ssh key file '%s' does not exist, set it with 'next ssh key <path>'", env.SSHKeyFilePath)
+		handleRunTimeError(fmt.Sprintf("The ssh key file '%s' does not exist, set it with 'next ssh key <path>'\n", env.SSHKeyFilePath), 0)
 	}
 }
 
 func SSHInto(env Environment, rpcClient jsonrpc.RPCClient, relayName string) {
 	relays := getRelayInfo(rpcClient, env, relayName)
 	if len(relays) == 0 {
-		log.Fatalf("no relays matches the regex '%s'", relayName)
+		handleRunTimeError(fmt.Sprintf("no relays matches the regex '%s'\n", relayName), 0)
 	}
 	info := relays[0]
 	testForSSHKey(env)
@@ -61,7 +60,7 @@ func (con SSHConn) Connect() {
 	args := con.commonSSHCommands()
 	args = append(args, "-tt", con.user+"@"+con.address)
 	if !runCommandEnv("ssh", args, nil) {
-		log.Fatalf("could not start ssh session")
+		handleRunTimeError(fmt.Sprintln("could not start ssh session"), 1)
 	}
 }
 
@@ -69,8 +68,7 @@ func (con SSHConn) ConnectAndIssueCmd(cmd string) bool {
 	args := con.commonSSHCommands()
 	args = append(args, "-tt", con.user+"@"+con.address, "--", cmd)
 	if !runCommandEnv("ssh", args, nil) {
-		fmt.Println("could not start ssh session")
-		return false
+		handleRunTimeError(fmt.Sprintln("could not start ssh session"), 0)
 	}
 
 	return true

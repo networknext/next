@@ -3,7 +3,6 @@ package transport_test
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -93,24 +92,6 @@ func (rp *mockRouteProvider) ResolveRelay(id uint64) (routing.Relay, error) {
 
 func (rp *mockRouteProvider) RelaysIn(ds routing.Datacenter) []routing.Relay {
 	return rp.datacenterRelays
-}
-
-func (rp *mockRouteProvider) Routes(from []routing.Relay, fromCosts []int, to []routing.Relay, routeSelectors ...routing.SelectorFunc) ([]routing.Route, error) {
-	if rp.routes == nil || len(rp.routes) == 0 {
-		return nil, errors.New("No routes in route matrix")
-	}
-
-	// Apply the selectors in order
-	routes := rp.routes
-	for _, selector := range routeSelectors {
-		routes = selector(routes)
-
-		if len(routes) == 0 {
-			break
-		}
-	}
-
-	return routes, nil
 }
 
 type RoundTripFunc func(req *http.Request) *http.Response

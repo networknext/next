@@ -324,19 +324,36 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			}
 		}
 
+		updateTime := time.Now()
+
+		// LastUpdateTime is set in init so it will always have a non-zero value here
+		diff := updateTime.Sub(relayDataReadOnly.LastUpdateTime)
+		peakTrafficStats := routing.PeakRelayTrafficStats{
+			SessionCount:           relayUpdateRequest.TrafficStats.SessionCount,
+			BytesSentPerSecond:     relayUpdateRequest.TrafficStats.BytesSent,
+			BytesReceivedPerSecond: relayUpdateRequest.TrafficStats.BytesReceived,
+		}
+
+		// estimate number per second
+		peakTrafficStats.BytesSentPerSecond = uint64(float64(peakTrafficStats.BytesSentPerSecond) / diff.Seconds())
+		peakTrafficStats.BytesReceivedPerSecond = uint64(float64(peakTrafficStats.BytesReceivedPerSecond) / diff.Seconds())
+
+		peakTrafficStats = relayDataReadOnly.PeakTrafficStats.MaxValues(&peakTrafficStats)
+
 		relayData := &routing.RelayData{
-			ID:             relay.ID,
-			Name:           relay.Name,
-			Addr:           relay.Addr,
-			PublicKey:      relay.PublicKey,
-			Seller:         relay.Seller,
-			Datacenter:     relay.Datacenter,
-			LastUpdateTime: time.Now(),
-			TrafficStats:   relayUpdateRequest.TrafficStats,
-			MaxSessions:    relay.MaxSessions,
-			CPUUsage:       float32(relayUpdateRequest.CPUUsage) * 100.0,
-			MemUsage:       float32(relayUpdateRequest.MemUsage) * 100.0,
-			Version:        relayUpdateRequest.RelayVersion,
+			ID:               relay.ID,
+			Name:             relay.Name,
+			Addr:             relay.Addr,
+			PublicKey:        relay.PublicKey,
+			Seller:           relay.Seller,
+			Datacenter:       relay.Datacenter,
+			LastUpdateTime:   updateTime,
+			TrafficStats:     relayUpdateRequest.TrafficStats,
+			PeakTrafficStats: peakTrafficStats,
+			MaxSessions:      relay.MaxSessions,
+			CPUUsage:         float32(relayUpdateRequest.CPUUsage) * 100.0,
+			MemUsage:         float32(relayUpdateRequest.MemUsage) * 100.0,
+			Version:          relayUpdateRequest.RelayVersion,
 		}
 
 		// Update the relay data
@@ -656,6 +673,7 @@ func RoutesHandlerFunc(GetRouteMatrix func() *routing.RouteMatrix, statsdb *rout
 func RelayStatsFunc(logger log.Logger, rmap *routing.RelayMap) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, request *http.Request) {
 		if bin, err := rmap.MarshalBinary(); err == nil {
+			w.Header().Set("Content-Length", fmt.Sprintf("%d", len(bin)))
 			w.WriteHeader(http.StatusOK)
 			w.Write(bin)
 		} else {

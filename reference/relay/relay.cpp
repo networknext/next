@@ -14,17 +14,13 @@
 #include <map>
 #include <float.h>
 #include <signal.h>
-#include "curl/curl.h"
-#include <memory>
 #include <atomic>
-#include <thread>
-#include <chrono>
 
-using namespace std::chrono_literals;
+#include "curl/curl.h"
 
 #define RELAY_MTU                                               1300
 
-#define RELAY_HEADER_BYTES                                        35
+#define RELAY_HEADER_BYTES                                        34
 
 #define RELAY_ADDRESS_BYTES                                       19
 #define RELAY_ADDRESS_BUFFER_SAFETY                               32
@@ -33,24 +29,24 @@ using namespace std::chrono_literals;
 
 #define RELAY_BANDWIDTH_LIMITER_INTERVAL                         1.0
 
-#define RELAY_ROUTE_TOKEN_BYTES                                   77
-#define RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES                        117
-#define RELAY_CONTINUE_TOKEN_BYTES                                18
-#define RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES                      58
+#define RELAY_ROUTE_TOKEN_BYTES                                   76
+#define RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES                        116
+#define RELAY_CONTINUE_TOKEN_BYTES                                17
+#define RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES                      57
 
 #define RELAY_DIRECTION_CLIENT_TO_SERVER                           0
 #define RELAY_DIRECTION_SERVER_TO_CLIENT                           1
 
-#define RELAY_ROUTE_REQUEST_PACKET                                 1
-#define RELAY_ROUTE_RESPONSE_PACKET                                2
-#define RELAY_CLIENT_TO_SERVER_PACKET                              3
-#define RELAY_SERVER_TO_CLIENT_PACKET                              4
-#define RELAY_SESSION_PING_PACKET                                 11
-#define RELAY_SESSION_PONG_PACKET                                 12
-#define RELAY_CONTINUE_REQUEST_PACKET                             13
-#define RELAY_CONTINUE_RESPONSE_PACKET                            14
-#define RELAY_NEAR_PING_PACKET                                    73
-#define RELAY_NEAR_PONG_PACKET                                    74
+#define RELAY_ROUTE_REQUEST_PACKET                               100
+#define RELAY_ROUTE_RESPONSE_PACKET                              101
+#define RELAY_CLIENT_TO_SERVER_PACKET                            102
+#define RELAY_SERVER_TO_CLIENT_PACKET                            103
+#define RELAY_SESSION_PING_PACKET                                104
+#define RELAY_SESSION_PONG_PACKET                                105
+#define RELAY_CONTINUE_REQUEST_PACKET                            106
+#define RELAY_CONTINUE_RESPONSE_PACKET                           107
+#define RELAY_NEAR_PING_PACKET                                   116
+#define RELAY_NEAR_PONG_PACKET                                   117
 
 #define RELAY_PING_HISTORY_ENTRY_COUNT                           256
 
@@ -65,6 +61,8 @@ using namespace std::chrono_literals;
 #define RELAY_PRIVATE_KEY_BYTES                                   32
 
 #define RELAY_PACKET_HASH_BYTES                                    8
+
+#define RELAY_MAX_UPDATE_ATTEMPTS                                 10
 
 static const uint8_t relay_packet_hash_key[] =
 {
@@ -216,9 +214,15 @@ int relay_is_network_next_packet( const uint8_t * packet_data, int packet_bytes 
         return false;
 
     const uint8_t * message = packet_data + RELAY_PACKET_HASH_BYTES;
-    const int message_length = packet_bytes - RELAY_PACKET_HASH_BYTES;
+    
+    int message_length = packet_bytes - RELAY_PACKET_HASH_BYTES;
+    if ( message_length > 32 )
+    {
+        message_length = 32;
+    }
 
     assert( message_length > 0 );
+    assert( message_length <= 32 );
 
     uint8_t hash[RELAY_PACKET_HASH_BYTES];
     crypto_generichash( hash, RELAY_PACKET_HASH_BYTES, message, message_length, relay_packet_hash_key, crypto_generichash_KEYBYTES );
@@ -229,7 +233,12 @@ int relay_is_network_next_packet( const uint8_t * packet_data, int packet_bytes 
 void relay_sign_network_next_packet( uint8_t * packet_data, int packet_bytes )
 {
     assert( packet_bytes > RELAY_PACKET_HASH_BYTES );
-    crypto_generichash( packet_data, RELAY_PACKET_HASH_BYTES, packet_data + RELAY_PACKET_HASH_BYTES, packet_bytes - RELAY_PACKET_HASH_BYTES, relay_packet_hash_key, crypto_generichash_KEYBYTES );
+    int message_length = packet_bytes - RELAY_PACKET_HASH_BYTES;
+    if ( message_length > 32 )
+    {
+        message_length = 32;
+    }
+    crypto_generichash( packet_data, RELAY_PACKET_HASH_BYTES, packet_data + RELAY_PACKET_HASH_BYTES, message_length, relay_packet_hash_key, crypto_generichash_KEYBYTES );
 }
 
 // -----------------------------------------------------------------------------
@@ -2286,7 +2295,6 @@ struct relay_route_token_t
     uint64_t expire_timestamp;
     uint64_t session_id;
     uint8_t session_version;
-    uint8_t session_flags;
     int kbps_up;
     int kbps_down;
     relay_address_t next_address;
@@ -2308,7 +2316,6 @@ void relay_write_route_token( relay_route_token_t * token, uint8_t * buffer, int
     relay_write_uint64( &buffer, token->expire_timestamp );
     relay_write_uint64( &buffer, token->session_id );
     relay_write_uint8( &buffer, token->session_version );
-    relay_write_uint8( &buffer, token->session_flags );
     relay_write_uint32( &buffer, token->kbps_up );
     relay_write_uint32( &buffer, token->kbps_down );
     relay_write_address( &buffer, &token->next_address );
@@ -2329,7 +2336,6 @@ void relay_read_route_token( relay_route_token_t * token, const uint8_t * buffer
     token->expire_timestamp = relay_read_uint64( &buffer );
     token->session_id = relay_read_uint64( &buffer );
     token->session_version = relay_read_uint8( &buffer );
-    token->session_flags = relay_read_uint8( &buffer );
     token->kbps_up = relay_read_uint32( &buffer );
     token->kbps_down = relay_read_uint32( &buffer );
     relay_read_address( &buffer, &token->next_address );
@@ -2426,7 +2432,6 @@ struct relay_continue_token_t
     uint64_t expire_timestamp;
     uint64_t session_id;
     uint8_t session_version;
-    uint8_t session_flags;
 };
 
 void relay_write_continue_token( relay_continue_token_t * token, uint8_t * buffer, int buffer_length )
@@ -2444,7 +2449,6 @@ void relay_write_continue_token( relay_continue_token_t * token, uint8_t * buffe
     relay_write_uint64( &buffer, token->expire_timestamp );
     relay_write_uint64( &buffer, token->session_id );
     relay_write_uint8( &buffer, token->session_version );
-    relay_write_uint8( &buffer, token->session_flags );
 
     assert( buffer - start == RELAY_CONTINUE_TOKEN_BYTES );
 }
@@ -2461,7 +2465,6 @@ void relay_read_continue_token( relay_continue_token_t * token, const uint8_t * 
     token->expire_timestamp = relay_read_uint64( &buffer );
     token->session_id = relay_read_uint64( &buffer );
     token->session_version = relay_read_uint8( &buffer );
-    token->session_flags = relay_read_uint8( &buffer );
 
     assert( buffer - start == RELAY_CONTINUE_TOKEN_BYTES );
 }
@@ -2589,11 +2592,10 @@ int relay_write_header( int direction, uint8_t type, uint64_t sequence, uint64_t
     relay_write_uint64( &buffer, sequence );
 
     uint8_t * additional = buffer;
-    const int additional_length = 8 + 2;
+    const int additional_length = 8 + 1;
 
     relay_write_uint64( &buffer, session_id );
     relay_write_uint8( &buffer, session_version );
-    relay_write_uint8( &buffer, 0 );
 
     uint8_t nonce[12];
     {
@@ -2713,15 +2715,13 @@ int relay_verify_header( int direction, const uint8_t * private_key, uint8_t * b
 
     const uint8_t * additional = p;
 
-    const int additional_length = 8 + 2;
+    const int additional_length = 8 + 1;
 
     uint64_t packet_session_id = relay_read_uint64( &p );
     uint8_t packet_session_version = relay_read_uint8( &p );
-    uint8_t packet_session_flags = relay_read_uint8( &p );
 
     (void) packet_session_id;
     (void) packet_session_version;
-    (void) packet_session_flags;
 
     uint8_t nonce[12];
     {
@@ -2732,8 +2732,8 @@ int relay_verify_header( int direction, const uint8_t * private_key, uint8_t * b
 
     unsigned long long decrypted_length;
 
-    int result = crypto_aead_chacha20poly1305_ietf_decrypt( buffer + 19, &decrypted_length, NULL,
-                                                            buffer + 19, (unsigned long long) crypto_aead_chacha20poly1305_IETF_ABYTES,
+    int result = crypto_aead_chacha20poly1305_ietf_decrypt( buffer + 18, &decrypted_length, NULL,
+                                                            buffer + 18, (unsigned long long) crypto_aead_chacha20poly1305_IETF_ABYTES,
                                                             additional, (unsigned long long) additional_length,
                                                             nonce, private_key );
 
@@ -4182,7 +4182,6 @@ static void test_route_token()
     input_token.expire_timestamp = 1234241431241LL;
     input_token.session_id = 1234241431241LL;
     input_token.session_version = 5;
-    input_token.session_flags = 1;
     input_token.next_address.type = RELAY_ADDRESS_IPV4;
     input_token.next_address.data.ipv4[0] = 127;
     input_token.next_address.data.ipv4[1] = 0;
@@ -4214,7 +4213,6 @@ static void test_route_token()
     check( input_token.expire_timestamp == output_token.expire_timestamp );
     check( input_token.session_id == output_token.session_id );
     check( input_token.session_version == output_token.session_version );
-    check( input_token.session_flags == output_token.session_flags );
     check( input_token.kbps_up == output_token.kbps_up );
     check( input_token.kbps_down == output_token.kbps_down );
     check( memcmp( input_token.private_key, output_token.private_key, crypto_box_SECRETKEYBYTES ) == 0 );
@@ -4231,7 +4229,6 @@ static void test_route_token()
     check( input_token.expire_timestamp == output_token.expire_timestamp );
     check( input_token.session_id == output_token.session_id );
     check( input_token.session_version == output_token.session_version );
-    check( input_token.session_flags == output_token.session_flags );
     check( input_token.kbps_up == output_token.kbps_up );
     check( input_token.kbps_down == output_token.kbps_down );
     check( memcmp( input_token.private_key, output_token.private_key, crypto_box_SECRETKEYBYTES ) == 0 );
@@ -4248,7 +4245,6 @@ static void test_continue_token()
     input_token.expire_timestamp = 1234241431241LL;
     input_token.session_id = 1234241431241LL;
     input_token.session_version = 5;
-    input_token.session_flags = 1;
 
     relay_write_continue_token( &input_token, buffer, RELAY_CONTINUE_TOKEN_BYTES );
 
@@ -4274,7 +4270,6 @@ static void test_continue_token()
     check( input_token.expire_timestamp == output_token.expire_timestamp );
     check( input_token.session_id == output_token.session_id );
     check( input_token.session_version == output_token.session_version );
-    check( input_token.session_flags == output_token.session_flags );
 
     uint8_t * p = buffer;
 
@@ -4288,7 +4283,6 @@ static void test_continue_token()
 
     check( input_token.expire_timestamp == output_token.expire_timestamp );
     check( input_token.session_id == output_token.session_id );
-    check( input_token.session_flags == output_token.session_flags );
 }
 
 static void test_header()
@@ -4517,6 +4511,8 @@ struct relay_t
     relay_address_t relay_addresses[MAX_RELAYS];
     std::atomic<uint64_t> bytes_sent;
     std::atomic<uint64_t> bytes_received;
+    float fake_packet_loss_percent;
+    float fake_packet_loss_start_time;
 };
 
 struct curl_buffer_t
@@ -4741,6 +4737,7 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
     }
 
     uint64_t timestamp = relay_read_uint64( &q );
+    (void) timestamp;
 
     uint32_t num_relays = relay_read_uint32( &q );
 
@@ -4798,14 +4795,13 @@ void interrupt_handler( int signal )
     (void) signal; quit = 1;
 }
 
-static volatile bool gShouldCleanShutdown = false;
+static volatile bool relay_clean_shutdown = false;
 
 void clean_shutdown_handler( int signal )
 {
-  (void) signal;
-
-  gShouldCleanShutdown = true;
-  quit = 1;
+    (void) signal;
+    relay_clean_shutdown = true;
+    quit = 1;
 }
 
 uint64_t relay_timestamp( relay_t * relay )
@@ -4838,6 +4834,16 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
         if ( !relay_is_network_next_packet( packet_data, packet_bytes ) )
             continue;
 
+        if ( relay->fake_packet_loss_start_time >= 0.0f )
+        {
+            const double current_time = relay_platform_time();
+            if ( current_time >= relay->fake_packet_loss_start_time && ( ( rand() % 100 ) < relay->fake_packet_loss_percent ) )
+            {
+                printf( "relay drop packet\n" );
+                continue;
+            }
+        }
+        
         relay->bytes_received += packet_bytes;
 
         int packet_id = packet_data[RELAY_PACKET_HASH_BYTES];
@@ -5466,6 +5472,30 @@ int main( int argc, const char ** argv )
         return 1;
     }
 
+    float relay_fake_packet_loss_percent = 0.0f;
+    const char * fake_packet_loss_percent_env = relay_platform_getenv( "RELAY_FAKE_PACKET_LOSS_PERCENT" );
+    if ( fake_packet_loss_percent_env )
+    {
+        relay_fake_packet_loss_percent = atof( fake_packet_loss_percent_env );
+    }
+
+    if ( relay_fake_packet_loss_percent > 0.0f )
+    {
+        printf( "    fake packet loss is %.1f percent\n", relay_fake_packet_loss_percent );
+    }
+
+    float relay_fake_packet_loss_start_time = -1.0f;
+    const char * fake_packet_loss_start_time_env = relay_platform_getenv( "RELAY_FAKE_PACKET_LOSS_START_TIME" );
+    if ( fake_packet_loss_start_time_env )
+    {
+        relay_fake_packet_loss_start_time = atof( fake_packet_loss_start_time_env );
+    }
+
+    if ( relay_fake_packet_loss_start_time >= 0.0f )
+    {
+        printf( "    fake packet loss starts at %.1f seconds\n", relay_fake_packet_loss_start_time );
+    }
+
     relay_platform_socket_t * socket = relay_platform_socket_create( &relay_address, RELAY_PLATFORM_SOCKET_BLOCKING, 0.1f, 100 * 1024, 100 * 1024 );
     if ( socket == NULL )
     {
@@ -5536,6 +5566,8 @@ int main( int argc, const char ** argv )
     memset( relay.relay_addresses, 0, sizeof(relay.relay_addresses) );
     relay.bytes_sent = 0;
     relay.bytes_received = 0;
+    relay.fake_packet_loss_percent = relay_fake_packet_loss_percent;
+    relay.fake_packet_loss_start_time = relay_fake_packet_loss_start_time;
 
     relay.socket = socket;
     relay.mutex = relay_platform_mutex_create();
@@ -5574,21 +5606,22 @@ int main( int argc, const char ** argv )
 
     uint8_t * update_response_memory = (uint8_t*) malloc( RESPONSE_MAX_BYTES );
 
-    const uint8_t MaxUpdateAttempts = 11;
-    bool successfulUpdates = true;
-    uint8_t updateAttempts = 0;
+    bool aborted = false;
+    
+    int update_attempts = 0;
+
     while ( !quit )
     {
         if ( relay_update( curl, backend_hostname, relay_token, relay_address_string, update_response_memory, &relay, false ) == RELAY_OK )
         {
-            updateAttempts = 0;
+            update_attempts = 0;
         }
         else
         {
-            if (++updateAttempts == MaxUpdateAttempts)
+            if ( update_attempts++ >= RELAY_MAX_UPDATE_ATTEMPTS )
             {
                 printf( "could not update relay, max attempts reached, aborting program" );
-                successfulUpdates = false;
+                aborted = true;
                 quit = 1;
                 break;
             }
@@ -5599,17 +5632,17 @@ int main( int argc, const char ** argv )
         relay_platform_sleep( 1.0 );
     }
 
-    if ( gShouldCleanShutdown )
+    if ( relay_clean_shutdown )
     {
         uint seconds = 0;
         while ( seconds++ < 60 && relay_update( curl, backend_hostname, relay_token, relay_address_string, update_response_memory, &relay, false ) != RELAY_OK )
         {
-            std::this_thread::sleep_for(1s);
+            relay_platform_sleep( 1.0 );
         }
 
-        if (seconds < 60)
+        if ( seconds < 60 )
         {
-            std::this_thread::sleep_for(30s);
+            relay_platform_sleep( 30.0 );
         }
     }
 
@@ -5646,5 +5679,5 @@ int main( int argc, const char ** argv )
 
     relay_term();
 
-    return successfulUpdates ? 0 : 1;
+    return aborted ? 1 : 0;
 }

@@ -98,26 +98,27 @@ type datacenterMap struct {
 }
 
 type routingRulesSettings struct {
-	DisplayName                  string  `firestore:"displayName"`
-	EnvelopeKbpsUp               int64   `firestore:"envelopeKbpsUp"`
-	EnvelopeKbpsDown             int64   `firestore:"envelopeKbpsDown"`
-	Mode                         int64   `firestore:"mode"`
-	MaxPricePerGBNibblins        int64   `firestore:"maxPricePerGBNibblins"`
-	AcceptableLatency            float32 `firestore:"acceptableLatency"`
-	RTTEpsilon                   float32 `firestore:"rttRouteSwitch"`
-	RTTThreshold                 float32 `firestore:"rttThreshold"`
-	RTTHysteresis                float32 `firestore:"rttHysteresis"`
-	RTTVeto                      float32 `firestore:"rttVeto"`
-	EnableYouOnlyLiveOnce        bool    `firestore:"youOnlyLiveOnce"`
-	EnablePacketLossSafety       bool    `firestore:"packetLossSafety"`
-	EnableMultipathForPacketLoss bool    `firestore:"packetLossMultipath"`
-	MultipathPacketLossThreshold float32 `firestore:"multipathPacketLossThreshold"`
-	EnableMultipathForJitter     bool    `firestore:"jitterMultipath"`
-	EnableMultipathForRTT        bool    `firestore:"rttMultipath"`
-	EnableABTest                 bool    `firestore:"abTest"`
-	EnableTryBeforeYouBuy        bool    `firestore:"tryBeforeYouBuy"`
-	TryBeforeYouBuyMaxSlices     int8    `firestore:"tryBeforeYouBuyMaxSlices"`
-	SelectionPercentage          int64   `firestore:"selectionPercentage"`
+	DisplayName                  string          `firestore:"displayName"`
+	EnvelopeKbpsUp               int64           `firestore:"envelopeKbpsUp"`
+	EnvelopeKbpsDown             int64           `firestore:"envelopeKbpsDown"`
+	Mode                         int64           `firestore:"mode"`
+	MaxPricePerGBNibblins        int64           `firestore:"maxPricePerGBNibblins"`
+	AcceptableLatency            float32         `firestore:"acceptableLatency"`
+	RTTEpsilon                   float32         `firestore:"rttRouteSwitch"`
+	RTTThreshold                 float32         `firestore:"rttThreshold"`
+	RTTHysteresis                float32         `firestore:"rttHysteresis"`
+	RTTVeto                      float32         `firestore:"rttVeto"`
+	EnableYouOnlyLiveOnce        bool            `firestore:"youOnlyLiveOnce"`
+	EnablePacketLossSafety       bool            `firestore:"packetLossSafety"`
+	EnableMultipathForPacketLoss bool            `firestore:"packetLossMultipath"`
+	MultipathPacketLossThreshold float32         `firestore:"multipathPacketLossThreshold"`
+	EnableMultipathForJitter     bool            `firestore:"jitterMultipath"`
+	EnableMultipathForRTT        bool            `firestore:"rttMultipath"`
+	EnableABTest                 bool            `firestore:"abTest"`
+	EnableTryBeforeYouBuy        bool            `firestore:"tryBeforeYouBuy"`
+	TryBeforeYouBuyMaxSlices     int8            `firestore:"tryBeforeYouBuyMaxSlices"`
+	SelectionPercentage          int64           `firestore:"selectionPercentage"`
+	ExcludedUserHashes           map[string]bool `firestore:"excludedUserHashes"`
 }
 
 type FirestoreError struct {
@@ -991,6 +992,10 @@ func (fs *Firestore) AddRelay(ctx context.Context, r routing.Relay) error {
 		LastUpdateTime:     r.LastUpdateTime,
 		MRC:                int64(r.MRC),
 		Overage:            int64(r.Overage),
+		BWRule:             int32(r.BWRule),
+		ContractTerm:       r.ContractTerm,
+		StartDate:          r.StartDate.UTC(),
+		EndDate:            r.EndDate.UTC(),
 		Type:               serverType,
 	}
 
@@ -1059,7 +1064,7 @@ func (fs *Firestore) RemoveRelay(ctx context.Context, id uint64) error {
 	return &DoesNotExistError{resourceType: "relay", resourceRef: fmt.Sprintf("%x", id)}
 }
 
-// Only relay state, public key, and NIC speed are updated in firestore for now
+// Only relay name, state, public key, and NIC speed are updated in firestore for now
 func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 	// Get a copy of the relay in cached storage
 	fs.relayMutex.RLock()
@@ -1095,6 +1100,7 @@ func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 		if rid == r.ID {
 			// Set the data to update the relay with
 			newRelayData := map[string]interface{}{
+				"name":            r.Name,
 				"state":           r.State,
 				"lastUpdateTime":  r.LastUpdateTime,
 				"stateUpdateTime": time.Now(),
@@ -1192,7 +1198,7 @@ func (fs *Firestore) ListDatacenterMaps(dcID uint64) map[uint64]routing.Datacent
 
 	var dcs = make(map[uint64]routing.DatacenterMap)
 	for _, dc := range fs.datacenterMaps {
-		if dc.Datacenter == dcID {
+		if dc.Datacenter == dcID || dcID == 0 {
 			id := crypto.HashID(dc.Alias + fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.Datacenter))
 			dcs[id] = dc
 		}
@@ -1633,9 +1639,9 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 		var serverType routing.MachineType
 		switch r.Type {
 		case "vm":
-			serverType = routing.BareMetal
-		case "bare-metal":
 			serverType = routing.VirtualMachine
+		case "bare-metal":
+			serverType = routing.BareMetal
 		case "n/a":
 			serverType = routing.NoneSpecified
 		default:
@@ -1664,8 +1670,8 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 			Overage:             routing.Nibblin(r.Overage),
 			BWRule:              bwRule,
 			ContractTerm:        r.ContractTerm,
-			StartDate:           r.StartDate,
-			EndDate:             r.EndDate,
+			StartDate:           r.StartDate.UTC(),
+			EndDate:             r.EndDate.UTC(),
 			Type:                serverType,
 		}
 
@@ -1869,7 +1875,7 @@ func (fs *Firestore) syncCustomers(ctx context.Context) error {
 			}
 			rrs, err := fs.getRoutingRulesSettingsForBuyerID(ctx, bdoc.Ref.ID)
 			if err != nil {
-				level.Warn(fs.Logger).Log("msg", fmt.Sprintf("using default route rules for buyer %v", bdoc.Ref.ID), "err", err)
+				level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to completely read route shader for buyer %v, some fields will have default values", bdoc.Ref.ID), "err", err)
 			}
 			buyers[uint64(b.ID)] = routing.Buyer{
 				ID:                   uint64(b.ID),
@@ -1972,6 +1978,16 @@ func (fs *Firestore) getRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 	rrs.TryBeforeYouBuyMaxSlices = tempRRS.TryBeforeYouBuyMaxSlices
 	rrs.SelectionPercentage = tempRRS.SelectionPercentage
 
+	rrs.ExcludedUserHashes = map[uint64]bool{}
+	for userHashString := range tempRRS.ExcludedUserHashes {
+		userHash, err := strconv.ParseUint(userHashString, 16, 64)
+		if err != nil {
+			return rrs, err
+		}
+
+		rrs.ExcludedUserHashes[userHash] = true
+	}
+
 	return rrs, nil
 }
 
@@ -1979,6 +1995,12 @@ func (fs *Firestore) setRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 	// Comment below taken from old backend, at least attempting to explain why we need to append _0 (no existing entries have suffixes other than _0)
 	// "Must be of the form '<buyer key>_<tag id>'. The buyer key can be found by looking at the ID under Buyer; it should be something like 763IMDH693HLsr2LGTJY. The tag ID should be 0 (for default) or the fnv64a hash of the tag the customer is using. Therefore this value should look something like: 763IMDH693HLsr2LGTJY_0. This value can not be changed after the entity is created."
 	routeShaderID := ID + "_0"
+
+	// Convert the excluded user hashes to strings
+	excludedUserHashes := map[string]bool{}
+	for userHash := range rrs.ExcludedUserHashes {
+		excludedUserHashes[fmt.Sprintf("%016x", userHash)] = true
+	}
 
 	// Convert RoutingRulesSettings struct to firestore map
 	rrsFirestore := map[string]interface{}{
@@ -2002,6 +2024,7 @@ func (fs *Firestore) setRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 		"tryBeforeYouBuy":              rrs.EnableTryBeforeYouBuy,
 		"tryBeforeYouBuyMaxSlices":     rrs.TryBeforeYouBuyMaxSlices,
 		"selectionPercentage":          rrs.SelectionPercentage,
+		"excludedUserHashes":           excludedUserHashes,
 	}
 
 	// Attempt to set route shader for buyer

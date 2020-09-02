@@ -10,6 +10,8 @@ type SessionMetrics struct {
 	NextSessions                      Counter
 	DurationGauge                     Gauge
 	LongDuration                      Counter
+	RouteSelectionDuration            Gauge
+	RouteDecisionDuration             Gauge
 	PostSessionBillingEntriesSent     Counter
 	PostSessionBillingEntriesFinished Counter
 	PostSessionBillingBufferLength    Gauge
@@ -28,6 +30,8 @@ var EmptySessionMetrics SessionMetrics = SessionMetrics{
 	NextSessions:                      &EmptyCounter{},
 	DurationGauge:                     &EmptyGauge{},
 	LongDuration:                      &EmptyCounter{},
+	RouteSelectionDuration:            &EmptyGauge{},
+	RouteDecisionDuration:             &EmptyGauge{},
 	PostSessionBillingEntriesSent:     &EmptyCounter{},
 	PostSessionBillingEntriesFinished: &EmptyCounter{},
 	PostSessionBillingBufferLength:    &EmptyGauge{},
@@ -124,6 +128,7 @@ type DecisionMetrics struct {
 	RTTHysteresis       Counter
 	VetoCommit          Counter
 	BuyerNotLive        Counter
+	MultipathVetoRTT    Counter
 }
 
 var EmptyDecisionMetrics DecisionMetrics = DecisionMetrics{
@@ -146,6 +151,7 @@ var EmptyDecisionMetrics DecisionMetrics = DecisionMetrics{
 	RTTHysteresis:       &EmptyCounter{},
 	VetoCommit:          &EmptyCounter{},
 	BuyerNotLive:        &EmptyCounter{},
+	MultipathVetoRTT:    &EmptyCounter{},
 }
 
 type OptimizeMetrics struct {
@@ -489,6 +495,7 @@ type ServerBackendMetrics struct {
 	Goroutines                 Gauge
 	MemoryAllocated            Gauge
 	VetoCount                  Gauge
+	MultipathVetoCount         Gauge
 	ServerCount                Gauge
 	SessionCount               Gauge
 	SessionDirectCount         Gauge
@@ -505,6 +512,7 @@ var EmptyServerBackendMetrics ServerBackendMetrics = ServerBackendMetrics{
 	Goroutines:                 &EmptyGauge{},
 	MemoryAllocated:            &EmptyGauge{},
 	VetoCount:                  &EmptyGauge{},
+	MultipathVetoCount:         &EmptyGauge{},
 	ServerCount:                &EmptyGauge{},
 	SessionCount:               &EmptyGauge{},
 	SessionDirectCount:         &EmptyGauge{},
@@ -617,6 +625,17 @@ func NewServerBackendMetrics(ctx context.Context, metricsHandler Handler) (*Serv
 		ID:          "server_backend.vetoes",
 		Unit:        "sessions",
 		Description: "The number of sessions the server_backend has vetoed",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	serverBackendMetrics.MultipathVetoCount, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Total multipath veto count",
+		ServiceName: "server_backend",
+		ID:          "server_backend.multipath_vetoes",
+		Unit:        "users",
+		Description: "The number of users the server_backend has vetoed from using multipath",
 	})
 	if err != nil {
 		return nil, err
@@ -862,6 +881,28 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		ID:          "session.long_durations",
 		Unit:        "durations",
 		Description: "The number of session update calls that took longer than 100ms to complete",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.RouteSelectionDuration, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Session Route Selection Duration",
+		ServiceName: "server_backend",
+		ID:          "session.route_selection.duration",
+		Unit:        "ms",
+		Description: "How long it takes to run the route selection logic in milliseconds",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.RouteDecisionDuration, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Session Route Decision Duration",
+		ServiceName: "server_backend",
+		ID:          "session.route_decision.duration",
+		Unit:        "ms",
+		Description: "How long it takes to run the route decision logic in milliseconds",
 	})
 	if err != nil {
 		return nil, err
@@ -1138,7 +1179,17 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		DisplayName: "Session Buyer Not Live",
 		ServiceName: "server_backend",
 		ID:          "session.route_decision.buyer_not_live",
-		Unit:        "errors",
+		Unit:        "decisions",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.DecisionMetrics.MultipathVetoRTT, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Session Multipath Veto RTT",
+		ServiceName: "server_backend",
+		ID:          "session.route_decision.multipath_veto_rtt",
+		Unit:        "decisions",
 	})
 	if err != nil {
 		return nil, err

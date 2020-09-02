@@ -1,11 +1,13 @@
 package main
 
 import (
+	"encoding/csv"
 	"fmt"
 	"os"
 	"reflect"
 	"regexp"
 	"sort"
+	"strconv"
 
 	"github.com/modood/table"
 	"github.com/networknext/backend/routing"
@@ -215,41 +217,170 @@ func setRoutingRulesSettings(rpcClient jsonrpc.RPCClient, env Environment, buyer
 	fmt.Printf("Route shader for buyer with ID \"%s\" updated.\n", buyerID)
 }
 
-func datacenterMapsForBuyer(rpcClient jsonrpc.RPCClient, env Environment, buyer string) {
+func datacenterMapsForBuyer(
+	rpcClient jsonrpc.RPCClient,
+	env Environment,
+	buyer string,
+	csvOutput bool,
+	signedIDs bool,
+) {
 
-	var buyerID uint64
-	var err error
+	if buyer == "" {
+		var reply localjsonrpc.ListDatacenterMapsReply
+		var arg = localjsonrpc.ListDatacenterMapsArgs{
+			DatacenterID: 0,
+		}
 
-	buyerArgs := localjsonrpc.BuyersArgs{}
-	var buyers localjsonrpc.BuyersReply
-	if err = rpcClient.CallFor(&buyers, "OpsService.Buyers", buyerArgs); err != nil {
-		handleJSONRPCError(env, err)
-		return
-	}
-	r := regexp.MustCompile("(?i)" + buyer) // case-insensitive regex
-	for _, buyer := range buyers.Buyers {
-		if r.MatchString(buyer.Name) || r.MatchString(fmt.Sprintf("%016x", buyer.ID)) {
-			buyerID = buyer.ID
+		if err := rpcClient.CallFor(&reply, "OpsService.ListDatacenterMaps", arg); err != nil {
+			fmt.Printf("rpc error: %v\n", err)
+			handleJSONRPCError(env, err)
+			return
+		}
+
+		if signedIDs {
+			var newMaps []localjsonrpc.DatacenterMapsFull
+			for _, dcMap := range reply.DatacenterMaps {
+				buyerID, err := strconv.ParseUint(dcMap.BuyerID, 16, 64)
+				if err != nil {
+					handleRunTimeError(fmt.Sprintf("Error converting BuyerID hex to signed int: %s\n", dcMap.BuyerID), 1)
+				}
+				dcID, err := strconv.ParseUint(dcMap.DatacenterID, 16, 64)
+				if err != nil {
+					handleRunTimeError(fmt.Sprintf("Error converting DatacenterID hex to signed int: %s\n", dcMap.DatacenterID), 1)
+				}
+				dcMap.BuyerID = fmt.Sprintf("%d", int64(buyerID))
+				dcMap.DatacenterID = fmt.Sprintf("%d", int64(dcID))
+
+				newMaps = append(newMaps, dcMap)
+			}
+
+			reply.DatacenterMaps = newMaps
+		}
+
+		if csvOutput {
+			var csvInfo [][]string
+			csvInfo = append(csvInfo, []string{
+				"Alias", "DatacenterName", "DatacenterID", "BuyerName", "BuyerID", "SupplierName"})
+			for _, dcMap := range reply.DatacenterMaps {
+
+				csvInfo = append(csvInfo, []string{
+					dcMap.Alias,
+					dcMap.DatacenterName,
+					dcMap.DatacenterID,
+					dcMap.BuyerName,
+					dcMap.BuyerID,
+					dcMap.SupplierName,
+				})
+			}
+
+			fileName := "./dcmaps.csv"
+			f, err := os.Create(fileName)
+			if err != nil {
+				fmt.Printf("Error creating local CSV file %s: %v\n", fileName, err)
+				return
+			}
+
+			writer := csv.NewWriter(f)
+			err = writer.WriteAll(csvInfo)
+			if err != nil {
+				fmt.Printf("Error writing local CSV file %s: %v\n", fileName, err)
+			}
+			fmt.Println("CSV file written: dcmaps.csv")
+		} else {
+			table.Output(reply.DatacenterMaps)
+		}
+
+	} else {
+		var buyerID uint64
+		var err error
+
+		buyerArgs := localjsonrpc.BuyersArgs{}
+		var buyersReply localjsonrpc.BuyersReply
+		if err = rpcClient.CallFor(&buyersReply, "OpsService.Buyers", buyerArgs); err != nil {
+			handleJSONRPCError(env, err)
+			return
+		}
+		r := regexp.MustCompile("(?i)" + buyer) // case-insensitive regex
+		for _, buyer := range buyersReply.Buyers {
+			if r.MatchString(buyer.Name) || r.MatchString(fmt.Sprintf("%016x", buyer.ID)) {
+				buyerID = buyer.ID
+			}
+		}
+
+		if buyerID == 0 {
+			fmt.Printf("No match for provided buyer ID: %v\n\n", buyer)
+			fmt.Println("Here is a current list of buyers in the system:")
+			buyers(rpcClient, env, false)
+			return
+		}
+
+		args := localjsonrpc.DatacenterMapsArgs{
+			ID: buyerID,
+		}
+
+		var reply localjsonrpc.DatacenterMapsReply
+		if err := rpcClient.CallFor(&reply, "BuyersService.DatacenterMapsForBuyer", args); err != nil {
+			fmt.Printf("rpc error: %v\n", err)
+			handleJSONRPCError(env, err)
+			return
+		}
+
+		sort.Slice(reply.DatacenterMaps, func(i int, j int) bool {
+			return reply.DatacenterMaps[i].DatacenterName < reply.DatacenterMaps[j].DatacenterName
+		})
+
+		if signedIDs {
+			var newMaps []localjsonrpc.DatacenterMapsFull
+			for _, dcMap := range reply.DatacenterMaps {
+				buyerID, err := strconv.ParseUint(dcMap.BuyerID, 16, 64)
+				if err != nil {
+					handleRunTimeError(fmt.Sprintf("Error converting BuyerID hex to signed int: %s\n", dcMap.BuyerID), 1)
+				}
+				dcID, err := strconv.ParseUint(dcMap.DatacenterID, 16, 64)
+				if err != nil {
+					handleRunTimeError(fmt.Sprintf("Error converting DatacenterID hex to signed int: %s\n", dcMap.DatacenterID), 1)
+				}
+				dcMap.BuyerID = fmt.Sprintf("%d", int64(buyerID))
+				dcMap.DatacenterID = fmt.Sprintf("%d", int64(dcID))
+
+				newMaps = append(newMaps, dcMap)
+			}
+
+			reply.DatacenterMaps = newMaps
+		}
+
+		if csvOutput {
+			var csvInfo [][]string
+			csvInfo = append(csvInfo, []string{
+				"Alias", "DatacenterName", "DatacenterID", "BuyerName", "BuyerID", "SupplierName"})
+			for _, dcMap := range reply.DatacenterMaps {
+				csvInfo = append(csvInfo, []string{
+					dcMap.Alias,
+					dcMap.DatacenterName,
+					dcMap.DatacenterID,
+					dcMap.BuyerName,
+					dcMap.BuyerID,
+					dcMap.SupplierName,
+				})
+			}
+
+			fileName := "./dcmaps.csv"
+			f, err := os.Create(fileName)
+			if err != nil {
+				fmt.Printf("Error creating local CSV file %s: %v\n", fileName, err)
+				return
+			}
+
+			writer := csv.NewWriter(f)
+			err = writer.WriteAll(csvInfo)
+			if err != nil {
+				fmt.Printf("Error writing local CSV file %s: %v\n", fileName, err)
+			}
+			fmt.Println("CSV file written: dcmaps.csv")
+		} else {
+			table.Output(reply.DatacenterMaps)
 		}
 	}
-
-	if buyerID == 0 {
-		fmt.Printf("No match for provided buyer ID: %v\n", buyer)
-		return
-	}
-
-	args := localjsonrpc.DatacenterMapsArgs{
-		ID: buyerID,
-	}
-
-	var reply localjsonrpc.DatacenterMapsReply
-	if err := rpcClient.CallFor(&reply, "BuyersService.DatacenterMapsForBuyer", args); err != nil {
-		fmt.Printf("rpc error: %v\n", err)
-		handleJSONRPCError(env, err)
-		return
-	}
-
-	table.Output(reply.DatacenterMaps)
 
 }
 
@@ -262,8 +393,7 @@ func addDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMapStr
 	buyerArgs := localjsonrpc.BuyersArgs{}
 	var buyers localjsonrpc.BuyersReply
 	if err = rpcClient.CallFor(&buyers, "OpsService.Buyers", buyerArgs); err != nil {
-		fmt.Printf("Unable to retrive buyer list.")
-		os.Exit(0)
+		handleRunTimeError(fmt.Sprintln("Unable to retrive buyer list."), 1)
 	}
 	r := regexp.MustCompile("(?i)" + dcm.BuyerID) // case-insensitive regex
 	for _, buyer := range buyers.Buyers {
@@ -272,15 +402,13 @@ func addDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMapStr
 		}
 	}
 	if buyerID == 0 {
-		fmt.Printf("Buyer %s does not seem to exist.\n", dcm.BuyerID)
-		os.Exit(0)
+		handleRunTimeError(fmt.Sprintf("Buyer %s does not seem to exist.\n", dcm.BuyerID), 0)
 	}
 
 	dcArgs := localjsonrpc.DatacentersArgs{}
 	var dcReply localjsonrpc.DatacentersReply
 	if err = rpcClient.CallFor(&dcReply, "OpsService.Datacenters", dcArgs); err != nil {
-		fmt.Printf("Unable to retrive datacenter list.")
-		os.Exit(0)
+		handleRunTimeError(fmt.Sprintln("Unable to retrive datacenter list."), 1)
 	}
 	r = regexp.MustCompile("(?i)" + dcm.Datacenter) // case-insensitive regex
 	for _, dc := range dcReply.Datacenters {
@@ -289,8 +417,7 @@ func addDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMapStr
 		}
 	}
 	if dcID == 0 {
-		fmt.Printf("Datacenter %s does not seem to exist.\n", dcm.Datacenter)
-		os.Exit(0)
+		handleRunTimeError(fmt.Sprintf("Datacenter %s does not seem to exist.\n", dcm.Datacenter), 0)
 	}
 
 	arg := localjsonrpc.AddDatacenterMapArgs{
@@ -320,8 +447,7 @@ func removeDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMap
 	buyerArgs := localjsonrpc.BuyersArgs{}
 	var buyers localjsonrpc.BuyersReply
 	if err = rpcClient.CallFor(&buyers, "OpsService.Buyers", buyerArgs); err != nil {
-		fmt.Printf("Unable to retrive buyer list.")
-		os.Exit(0)
+		handleRunTimeError(fmt.Sprintln("Unable to retrive buyer list."), 1)
 	}
 	r := regexp.MustCompile("(?i)" + dcm.BuyerID) // case-insensitive regex
 	for _, buyer := range buyers.Buyers {
@@ -330,15 +456,13 @@ func removeDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMap
 		}
 	}
 	if buyerID == 0 {
-		fmt.Printf("Buyer %s does not seem to exist.\n", dcm.BuyerID)
-		os.Exit(0)
+		handleRunTimeError(fmt.Sprintf("Buyer %s does not seem to exist.\n", dcm.BuyerID), 0)
 	}
 
 	dcArgs := localjsonrpc.DatacentersArgs{}
 	var dcReply localjsonrpc.DatacentersReply
 	if err = rpcClient.CallFor(&dcReply, "OpsService.Datacenters", dcArgs); err != nil {
-		fmt.Printf("Unable to retrive datacenter list.")
-		os.Exit(0)
+		handleRunTimeError(fmt.Sprintln("Unable to retrive datacenter list."), 1)
 	}
 	r = regexp.MustCompile("(?i)" + dcm.Datacenter) // case-insensitive regex
 	for _, dc := range dcReply.Datacenters {
@@ -347,8 +471,7 @@ func removeDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMap
 		}
 	}
 	if dcID == 0 {
-		fmt.Printf("Datacenter %s does not seem to exist.\n", dcm.Datacenter)
-		os.Exit(0)
+		handleRunTimeError(fmt.Sprintf("Datacenter %s does not seem to exist.\n", dcm.Datacenter), 0)
 	}
 
 	arg := localjsonrpc.RemoveDatacenterMapArgs{

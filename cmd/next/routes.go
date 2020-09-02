@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"sort"
 
@@ -28,8 +27,8 @@ func routes(rpcClient jsonrpc.RPCClient, env Environment, srcrelays []string, de
 
 	for _, route := range reply.Routes {
 		fmt.Printf("RTT(%v) ", route.Stats.RTT)
-		for _, relay := range route.Relays {
-			fmt.Print(relay.Name, " ")
+		for _, relayName := range route.RelayNames {
+			fmt.Print(relayName, " ")
 		}
 		fmt.Println()
 	}
@@ -38,13 +37,13 @@ func routes(rpcClient jsonrpc.RPCClient, env Environment, srcrelays []string, de
 func viewCostMatrix(inputFile string) {
 	file, err := os.Open(inputFile)
 	if err != nil {
-		log.Fatalln(fmt.Errorf("could not open the cost matrix file for reading: %w", err))
+		handleRunTimeError(fmt.Sprintf("could not open the cost matrix file for reading: %v\n", err), 1)
 	}
 	defer file.Close()
 
 	var costMatrix routing.CostMatrix
 	if _, err := costMatrix.ReadFrom(file); err != nil {
-		log.Fatalln(fmt.Errorf("error reading cost matrix: %w", err))
+		handleRunTimeError(fmt.Sprintf("error reading cost matrix: %v\n", err), 1)
 	}
 
 	var entries []struct {
@@ -93,13 +92,13 @@ func viewCostMatrix(inputFile string) {
 func viewRouteMatrix(inputFile string, srcRelayNameFilter string, destRelayNameFilter string) {
 	file, err := os.Open(inputFile)
 	if err != nil {
-		log.Fatalln(fmt.Errorf("could not open the route matrix file for reading: %w", err))
+		handleRunTimeError(fmt.Sprintf("could not open the route matrix file for reading: %v\n", err), 1)
 	}
 	defer file.Close()
 
 	var routeMatrix routing.RouteMatrix
 	if _, err := routeMatrix.ReadFrom(file); err != nil {
-		log.Fatalln(fmt.Errorf("error reading route matrix: %w", err))
+		handleRunTimeError(fmt.Sprintf("error reading route matrix: %v\n", err), 1)
 	}
 
 	var displayCount int
@@ -113,19 +112,19 @@ func viewRouteMatrix(inputFile string, srcRelayNameFilter string, destRelayNameF
 		}{}
 
 		if len(entry.RouteNumRelays) == 0 {
-			log.Fatalf("RouteNumRelays empty or nil")
+			handleRunTimeError(fmt.Sprintln("RouteNumRelays empty or nil"), 0)
 		}
 
 		if len(entry.RouteRelays) == 0 {
-			log.Fatalf("RouteRelays empty or nil")
+			handleRunTimeError(fmt.Sprintln("RouteRelays empty or nil"), 0)
 		}
 
 		if len(entry.RouteRelays[0]) == 0 {
-			log.Fatalf("RouteRelays[0] empty or nil")
+			handleRunTimeError(fmt.Sprintln("RouteRelays[0] empty or nil"), 0)
 		}
 
 		if len(routeMatrix.RelayNames) == 0 {
-			log.Fatalf("RelayNames empty or nil")
+			handleRunTimeError(fmt.Sprintln("RelayNames empty or nil"), 0)
 		}
 
 		srcRelayName := routeMatrix.RelayNames[entry.RouteRelays[0][0]]

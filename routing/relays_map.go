@@ -55,18 +55,19 @@ const (
 )
 
 type RelayData struct {
-	ID             uint64
-	Name           string
-	Addr           net.UDPAddr
-	PublicKey      []byte
-	Seller         Seller
-	Datacenter     Datacenter
-	LastUpdateTime time.Time
-	TrafficStats   RelayTrafficStats
-	MaxSessions    uint32
-	CPUUsage       float32
-	MemUsage       float32
-	Version        string
+	ID               uint64
+	Name             string
+	Addr             net.UDPAddr
+	PublicKey        []byte
+	Seller           Seller
+	Datacenter       Datacenter
+	LastUpdateTime   time.Time
+	TrafficStats     RelayTrafficStats
+	PeakTrafficStats PeakRelayTrafficStats
+	MaxSessions      uint32
+	CPUUsage         float32
+	MemUsage         float32
+	Version          string
 }
 
 type RelayMapShard struct {

@@ -1,0 +1,8 @@
+[Unit]
+Description=Network Next Server Load Test
+After=network.target
+
+[Service]
+ExecStart=/app/server-spawner.sh -n 50
+Restart=always
+RestartSec=3

@@ -431,12 +431,13 @@ type RelaysReply struct {
 
 type relay struct {
 	ID                  uint64                    `json:"id"`
+	SignedID            int64                     `json:"signed_id"`
 	Name                string                    `json:"name"`
 	Addr                string                    `json:"addr"`
 	Latitude            float64                   `json:"latitude"`
 	Longitude           float64                   `json:"longitude"`
-	NICSpeedMbps        int32                     `json:"nic_speed_mpbs"`
-	IncludedBandwidthGB int32                     `json:"included_bandwidth_gb"`
+	NICSpeedMbps        int32                     `json:"nicSpeedMpbs"`
+	IncludedBandwidthGB int32                     `json:"includedBandwidthGB"`
 	State               string                    `json:"state"`
 	LastUpdateTime      time.Time                 `json:"lastUpdateTime"`
 	ManagementAddr      string                    `json:"management_addr"`
@@ -444,18 +445,20 @@ type relay struct {
 	SSHPort             int64                     `json:"ssh_port"`
 	MaxSessionCount     uint32                    `json:"maxSessionCount"`
 	SessionCount        uint64                    `json:"sessionCount"`
+	BytesSent           uint64                    `json:"bytesTx"`
+	BytesReceived       uint64                    `json:"bytesRx"`
 	PublicKey           string                    `json:"public_key"`
 	UpdateKey           string                    `json:"update_key"`
 	FirestoreID         string                    `json:"firestore_id"`
 	Version             string                    `json:"relay_version"`
 	SellerName          string                    `json:"seller_name"`
-	MRC                 routing.Nibblin           `json:"monthly_recurring_charge_nibblins"`
+	MRC                 routing.Nibblin           `json:"monthlyRecurringChargeNibblins"`
 	Overage             routing.Nibblin           `json:"overage"`
-	BWRule              routing.BandWidthRule     `json:"bandwidth_rule"`
-	ContractTerm        int32                     `json:"contract_term"`
-	StartDate           time.Time                 `json:"start_date"`
-	EndDate             time.Time                 `json:"end_date"`
-	Type                routing.MachineType       `json:"machine_type"`
+	BWRule              routing.BandWidthRule     `json:"bandwidthRule"`
+	ContractTerm        int32                     `json:"contractTerm"`
+	StartDate           time.Time                 `json:"startDate"`
+	EndDate             time.Time                 `json:"endDate"`
+	Type                routing.MachineType       `json:"machineType"`
 	CPUUsage            float32                   `json:"cpu_usage"`
 	MemUsage            float32                   `json:"mem_usage"`
 	TrafficStats        routing.RelayTrafficStats `json:"traffic_stats"`
@@ -465,6 +468,7 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 	for _, r := range s.Storage.Relays() {
 		relay := relay{
 			ID:                  r.ID,
+			SignedID:            r.SignedID,
 			Name:                r.Name,
 			Addr:                r.Addr.String(),
 			Latitude:            r.Datacenter.Location.Latitude,
@@ -489,8 +493,6 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			EndDate:             r.EndDate,
 			Type:                r.Type,
 		}
-
-		// If the relay is in memory, get its traffic stats and last update time
 
 		if relayData, ok := s.RelayMap.Get(r.ID); ok {
 			relay.SessionCount = relayData.SessionCount
@@ -582,12 +584,43 @@ func (s *OpsService) RemoveRelay(r *http.Request, args *RemoveRelayArgs, reply *
 		return err
 	}
 
-	// Rather than actually removing the relay from firestore, just set it to the decomissioned state
+	// Rather than actually removing the relay from firestore, just
+	// rename it and set it to the decomissioned state
 	relay.State = routing.RelayStateDecommissioned
+
+	shortDate := time.Now().Format("2006-01-02")
+	shortTime := time.Now().Format("15:04:05")
+	relay.Name = fmt.Sprintf("%s-%s-%s", relay.Name, shortDate, shortTime)
 
 	if err = s.Storage.SetRelay(context.Background(), relay); err != nil {
 		err = fmt.Errorf("RemoveRelay() Storage.SetRelay error: %w", err)
 		s.Logger.Log("err", err)
+		return err
+	}
+
+	return nil
+}
+
+type RelayNameUpdateArgs struct {
+	RelayID   uint64 `json:"relay_id"`
+	RelayName string `json:"relay_name"`
+}
+
+type RelayNameUpdateReply struct {
+}
+
+func (s *OpsService) RelayNameUpdate(r *http.Request, args *RelayNameUpdateArgs, reply *RelayNameUpdateReply) error {
+
+	relay, err := s.Storage.Relay(args.RelayID)
+	if err != nil {
+		err = fmt.Errorf("RelayNameUpdate() Storage.Relay error: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	relay.Name = args.RelayName
+	if err = s.Storage.SetRelay(context.Background(), relay); err != nil {
+		err = fmt.Errorf("Storage.SetRelay error: %w", err)
 		return err
 	}
 
@@ -716,6 +749,7 @@ type DatacentersReply struct {
 type datacenter struct {
 	Name         string  `json:"name"`
 	ID           uint64  `json:"id"`
+	SignedID     int64   `json:"signed_id"`
 	Latitude     float64 `json:"latitude"`
 	Longitude    float64 `json:"longitude"`
 	Enabled      bool    `json:"enabled"`
@@ -727,6 +761,7 @@ func (s *OpsService) Datacenters(r *http.Request, args *DatacentersArgs, reply *
 		reply.Datacenters = append(reply.Datacenters, datacenter{
 			Name:         d.Name,
 			ID:           d.ID,
+			SignedID:     d.SignedID,
 			Enabled:      d.Enabled,
 			Latitude:     d.Location.Latitude,
 			Longitude:    d.Location.Longitude,
@@ -799,7 +834,7 @@ type ListDatacenterMapsReply struct {
 	DatacenterMaps []DatacenterMapsFull
 }
 
-// An empty DatacenterID returns a list of all maps.
+// A zero DatacenterID returns a list of all maps.
 func (s *OpsService) ListDatacenterMaps(r *http.Request, args *ListDatacenterMapsArgs, reply *ListDatacenterMapsReply) error {
 
 	var dcm map[uint64]routing.DatacenterMap
@@ -809,13 +844,13 @@ func (s *OpsService) ListDatacenterMaps(r *http.Request, args *ListDatacenterMap
 	for _, dcMap := range dcm {
 		buyer, err := s.Storage.Buyer(dcMap.BuyerID)
 		if err != nil {
-			err = fmt.Errorf("DatacenterMapsForBuyer() could not parse buyer")
+			err = fmt.Errorf("ListDatacenterMaps() could not parse buyer: %w", err)
 			s.Logger.Log("err", err)
 			return err
 		}
 		datacenter, err := s.Storage.Datacenter(dcMap.Datacenter)
 		if err != nil {
-			err = fmt.Errorf("DatacenterMapsForBuyer() could not parse datacenter")
+			err = fmt.Errorf("ListDatacenterMaps() could not parse datacenter: %w", err)
 			s.Logger.Log("err", err)
 			return err
 		}

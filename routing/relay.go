@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
 	"time"
 
@@ -106,8 +107,8 @@ type Relay struct {
 	Seller     Seller     `json:"seller"`
 	Datacenter Datacenter `json:"datacenter"`
 
-	NICSpeedMbps        int32 `json:"nic_speed_mbps"`
-	IncludedBandwidthGB int32 `json:"included_bandwidth_GB"`
+	NICSpeedMbps        int32 `json:"nicSpeedMbps"`
+	IncludedBandwidthGB int32 `json:"includedBandwidthGB"`
 
 	LastUpdateTime time.Time `json:"last_udpate_time"`
 
@@ -118,7 +119,6 @@ type Relay struct {
 	SSHPort        int64  `json:"ssh_port"`
 
 	TrafficStats RelayTrafficStats `json:"traffic_stats"`
-	ClientStats  Stats             `json:"client_stats"`
 
 	MaxSessions uint32 `json:"max_sessions"`
 
@@ -129,17 +129,20 @@ type Relay struct {
 	FirestoreID string `json:"firestore_id"`
 
 	// MRC is the monthly recurring cost for the relay
-	MRC Nibblin `json:"mrc"`
+	MRC Nibblin `json:"monthlyRecurringChargeNibblins"`
 	// Overage is the charge/penalty if we exceed the bandwidth alloted for the relay
 	Overage Nibblin       `json:"overage"`
-	BWRule  BandWidthRule `json:"bw_rule"`
+	BWRule  BandWidthRule `json:"bandwidthRule"`
 	//ContractTerm is the term in months
-	ContractTerm int32 `json:"contract_term"`
+	ContractTerm int32 `json:"contractTerm"`
 	// StartDate is the date the contract term starts
-	StartDate time.Time `json:"start_date"`
+	StartDate time.Time `json:"startDate"`
 	// EndDate is the date the contract term ends
-	EndDate time.Time   `json:"end_date"`
-	Type    MachineType `json:"machine_type"`
+	EndDate time.Time   `json:"endDate"`
+	Type    MachineType `json:"machineType"`
+
+	// Useful in data science analysis
+	SignedID int64 `json:"signed_id"`
 }
 
 func (r *Relay) EncodedPublicKey() string {
@@ -209,6 +212,37 @@ func (self *RelayTrafficStats) GameStatsTx() uint64 {
 	return self.RouteRequestTx + self.RouteResponseTx + self.ClientToServerTx + self.ServerToClientTx + self.SessionPingTx + self.SessionPongTx + self.ContinueRequestTx + self.ContinueResponseTx + self.NearPingTx
 }
 
+type PeakRelayTrafficStats struct {
+	SessionCount           uint64
+	BytesSentPerSecond     uint64
+	BytesReceivedPerSecond uint64
+}
+
+// MaxValues returns the maximum values between the receiving instance and the given one
+func (rts *PeakRelayTrafficStats) MaxValues(other *PeakRelayTrafficStats) PeakRelayTrafficStats {
+	var retval PeakRelayTrafficStats
+
+	if rts.SessionCount > other.SessionCount {
+		retval.SessionCount = rts.SessionCount
+	} else {
+		retval.SessionCount = other.SessionCount
+	}
+
+	if rts.BytesSentPerSecond > other.BytesSentPerSecond {
+		retval.BytesSentPerSecond = rts.BytesSentPerSecond
+	} else {
+		retval.BytesSentPerSecond = other.BytesSentPerSecond
+	}
+
+	if rts.BytesReceivedPerSecond > other.BytesReceivedPerSecond {
+		retval.BytesReceivedPerSecond = rts.BytesReceivedPerSecond
+	} else {
+		retval.BytesReceivedPerSecond = other.BytesReceivedPerSecond
+	}
+
+	return retval
+}
+
 type Stats struct {
 	RTT        float64 `json:"rtt"`
 	Jitter     float64 `json:"jitter"`
@@ -217,6 +251,32 @@ type Stats struct {
 
 func (s Stats) String() string {
 	return fmt.Sprintf("RTT(%f) J(%f) PL(%f)", s.RTT, s.Jitter, s.PacketLoss)
+}
+
+func (s Stats) RedisString() string {
+	return fmt.Sprintf("%.2f|%.2f|%.2f", s.RTT, s.Jitter, s.PacketLoss)
+}
+
+func (s *Stats) ParseRedisString(values []string) error {
+	var index int
+	var err error
+
+	if s.RTT, err = strconv.ParseFloat(values[index], 64); err != nil {
+		return fmt.Errorf("[Stats] failed to read RTT from redis data: %v", err)
+	}
+	index++
+
+	if s.Jitter, err = strconv.ParseFloat(values[index], 64); err != nil {
+		return fmt.Errorf("[Stats] failed to read jitter from redis data: %v", err)
+	}
+	index++
+
+	if s.PacketLoss, err = strconv.ParseFloat(values[index], 64); err != nil {
+		return fmt.Errorf("[Stats] failed to read packet loss from redis data: %v", err)
+	}
+	index++
+
+	return nil
 }
 
 type RelayPingData struct {

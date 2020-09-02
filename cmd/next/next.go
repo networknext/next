@@ -16,7 +16,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net"
 	"net/http"
 	"os"
@@ -27,6 +26,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"hash/fnv"
 
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
@@ -103,10 +103,10 @@ func runCommandEnv(command string, args []string, env map[string]string) bool {
 		if cmd.Process != nil {
 			if sig == syscall.SIGINT {
 				if err := cmd.Process.Kill(); err != nil {
-					log.Fatal(err)
+					fmt.Printf("Error trying to kill a process: %v\n", err)
 				}
 			} else if err := cmd.Process.Signal(sig); err != nil {
-				log.Fatal(err)
+				fmt.Printf("Error trying to interrupt a process: %v\n", err)
 			}
 			os.Exit(1)
 		}
@@ -233,7 +233,7 @@ func bashQuiet(command string) (bool, string) {
 func secureShell(user string, address string, port int) {
 	ssh, err := exec.LookPath("ssh")
 	if err != nil {
-		log.Fatalf("error: could not find ssh")
+		handleRunTimeError(fmt.Sprintln("error: could not find ssh"), 1)
 	}
 	args := make([]string, 4)
 	args[0] = "ssh"
@@ -243,7 +243,7 @@ func secureShell(user string, address string, port int) {
 	env := os.Environ()
 	err = syscall.Exec(ssh, args, env)
 	if err != nil {
-		log.Fatalf("error: failed to exec ssh")
+		handleRunTimeError(fmt.Sprintln("error: failed to exec ssh"), 1)
 	}
 }
 
@@ -251,7 +251,7 @@ func readJSONData(entity string, args []string) []byte {
 	// Check if the input is piped or a filepath
 	fileInfo, err := os.Stdin.Stat()
 	if err != nil {
-		fmt.Printf("Error checking stdin stat: %v\n", err)
+		handleRunTimeError(fmt.Sprintf("Error checking stdin stat: %v\n", err), 1)
 	}
 	isPipedInput := fileInfo.Mode()&os.ModeCharDevice == 0
 
@@ -260,21 +260,30 @@ func readJSONData(entity string, args []string) []byte {
 		// Read the piped input from stdin
 		data, err = ioutil.ReadAll(bufio.NewReader(os.Stdin))
 		if err != nil {
-			fmt.Printf("Error reading from stdin: %v\n", err)
+			handleRunTimeError(fmt.Sprintf("Error reading from stdin: %v\n", err), 1)
 		}
 	} else {
 		// Read the file at the given filepath
 		if len(args) == 0 {
-			fmt.Printf("Supply a file path to read the %s JSON or pipe it through stdin\nnext %s add [filepath]\nor\ncat <filepath> | next %s add\n\nFor an example JSON schema:\nnext %s add example\n", entity, entity, entity, entity)
+			handleRunTimeError(fmt.Sprintf("Supply a file path to read the %s JSON or pipe it through stdin\nnext %s add [filepath]\nor\ncat <filepath> | next %s add\n\nFor an example JSON schema:\nnext %s add example\n", entity, entity, entity, entity), 0)
 		}
 
 		data, err = ioutil.ReadFile(args[0])
 		if err != nil {
-			fmt.Printf("Error reading %s JSON file: %v\n", entity, err)
+			handleRunTimeError(fmt.Sprintf("Error reading %s JSON file: %v\n", entity, err), 1)
 		}
 	}
 
 	return data
+}
+
+// level 0: user error
+// level 1: program error
+func handleRunTimeError(msg string, level int) {
+	fmt.Println()
+	fmt.Printf(msg)
+	fmt.Println()
+	os.Exit(level)
 }
 
 func handleJSONRPCError(env Environment, err error) {
@@ -286,15 +295,15 @@ func handleJSONRPCErrorCustom(env Environment, err error, msg string) {
 	case *jsonrpc.HTTPError:
 		switch e.Code {
 		case http.StatusUnauthorized:
-			fmt.Printf("%d: %s - use `next auth` to authorize the operator tool\n", e.Code, http.StatusText(e.Code))
+			handleRunTimeError(fmt.Sprintf("%d: %s - use `next auth` to authorize the operator tool\n", e.Code, http.StatusText(e.Code)), 0)
 		default:
-			fmt.Printf("%d: %s", e.Code, http.StatusText(e.Code))
+			handleRunTimeError(fmt.Sprintf("%d: %s\n", e.Code, http.StatusText(e.Code)), 0)
 		}
 	default:
 		if env.Name != "local" && env.Name != "dev" && env.Name != "prod" {
-			fmt.Printf("%v - make sure the env name is set to either 'prod', 'dev', or 'local' with\nnext select <env>", err)
+			handleRunTimeError(fmt.Sprintf("%v - make sure the env name is set to either 'prod', 'dev', or 'local' with\nnext select <env>\n", err), 0)
 		} else {
-			fmt.Printf("%s\n\n", msg)
+			handleRunTimeError(fmt.Sprintf("%s\n\n", msg), 1)
 		}
 	}
 	os.Exit(1)
@@ -378,9 +387,18 @@ func main() {
 	var buyersIdSigned bool
 	buyersfs.BoolVar(&buyersIdSigned, "signed", false, "Display buyer IDs as signed ints")
 
+	buyerfs := flag.NewFlagSet("buyers", flag.ExitOnError)
+	var csvOutput bool
+	var signedIDs bool
+	buyerfs.BoolVar(&csvOutput, "csv", false, "Send output to CSV file")
+	buyerfs.BoolVar(&signedIDs, "signed", false, "Display buyer and datacenter IDs as signed ints")
+
 	datacentersfs := flag.NewFlagSet("datacenters", flag.ExitOnError)
 	var datacenterIdSigned bool
 	datacentersfs.BoolVar(&datacenterIdSigned, "signed", false, "Display datacenter IDs as signed ints")
+
+	var datacentersCSV bool
+	datacentersfs.BoolVar(&datacentersCSV, "csv", false, "Send output to CSV instead of the command line")
 
 	sessionsfs := flag.NewFlagSet("sessions", flag.ExitOnError)
 	var sessionCount int64
@@ -510,15 +528,15 @@ func main() {
 
 	var selectCommand = &ffcli.Command{
 		Name:       "select",
-		ShortUsage: "next select <local|dev|prod>",
-		ShortHelp:  "Select environment to use (local|dev|prod)",
+		ShortUsage: "next select <local|dev|staging|prod>",
+		ShortHelp:  "Select environment to use (local|dev|staging|prod)",
 		Exec: func(_ context.Context, args []string) error {
 			if len(args) == 0 {
-				log.Fatal("Provide an environment to switch to (local|dev|prod)")
+				handleRunTimeError(fmt.Sprintln("Provide an environment to switch to (local|dev|prod)"), 0)
 			}
 
-			if args[0] != "local" && args[0] != "dev" && args[0] != "prod" {
-				log.Fatalf("Invalid environment %s: use (local|dev|prod)", args[0])
+			if args[0] != "local" && args[0] != "dev" && args[0] != "staging" && args[0] != "prod" {
+				handleRunTimeError(fmt.Sprintf("Invalid environment %s: use (local|dev|prod)\n", args[0]), 0)
 			}
 
 			env.Name = args[0]
@@ -535,8 +553,8 @@ func main() {
 		ShortHelp:  "Display environment",
 		Exec: func(_ context.Context, args []string) error {
 			if len(args) > 0 {
-				if args[0] != "local" && args[0] != "dev" && args[0] != "prod" {
-					log.Fatalf("Invalid environment %s: use (local|dev|prod)", args[0])
+				if args[0] != "local" && args[0] != "dev" && args[0] != "staging" && args[0] != "prod" {
+					handleRunTimeError(fmt.Sprintf("Invalid environment %s: use (local|dev|prod)\n", args[0]), 0)
 				}
 
 				env.Name = args[0]
@@ -560,7 +578,7 @@ func main() {
 		},
 	}
 
-	var sessionCommand = &ffcli.Command{
+	var sessionsCommand = &ffcli.Command{
 		Name:       "sessions",
 		ShortUsage: "next sessions",
 		ShortHelp:  "List sessions",
@@ -587,6 +605,18 @@ func main() {
 		},
 	}
 
+	var sessionCommand = &ffcli.Command{
+		Name:       "session",
+		ShortUsage: "next session <session id>",
+		ShortHelp:  "Display details for the specified session",
+		Exec: func(_ context.Context, args []string) error {
+			if len(args) != 1 {
+				fmt.Printf("A session ID must be provided (see ./next sessions).")
+			}
+			sessions(rpcClient, env, args[0], sessionCount)
+			return nil
+		},
+	}
 	var relaysCommand = &ffcli.Command{
 		Name:       "relays",
 		ShortUsage: "next relays <regex>",
@@ -685,7 +715,7 @@ func main() {
 				FlagSet:    relaylogfs,
 				Exec: func(ctx context.Context, args []string) error {
 					if len(args) == 0 {
-						log.Fatalln("you must supply at least one argument")
+						handleRunTimeError(fmt.Sprintln("you must supply at least one argument"), 0)
 					}
 
 					relayLogs(rpcClient, env, loglines, args)
@@ -735,7 +765,7 @@ func main() {
 					relays := getRelayInfo(rpcClient, env, args[0])
 
 					if len(relays) == 0 {
-						log.Fatalf("no relays matched the name '%s'\n", args[0])
+						handleRunTimeError(fmt.Sprintf("no relays matched the name '%s'\n", args[0]), 0)
 					}
 
 					relay := &relays[0]
@@ -803,7 +833,23 @@ func main() {
 						regexes = args
 					}
 
-					disableRelays(env, rpcClient, regexes, hardDisable)
+					disableRelays(env, rpcClient, regexes, hardDisable, false)
+
+					return nil
+				},
+			},
+			{
+				Name:       "maintenance",
+				ShortUsage: "next relay maintenance [regex...]",
+				ShortHelp:  "Move the specified relay(s) to maintenance mode",
+				FlagSet:    relaydisablefs,
+				Exec: func(_ context.Context, args []string) error {
+					regexes := []string{".*"}
+					if len(args) > 0 {
+						regexes = args
+					}
+
+					disableRelays(env, rpcClient, regexes, hardDisable, true)
 
 					return nil
 				},
@@ -814,16 +860,16 @@ func main() {
 				ShortHelp:  "sets the speed value of a relay",
 				Exec: func(_ context.Context, args []string) error {
 					if len(args) == 0 {
-						log.Fatal("You need to supply a relay name")
+						handleRunTimeError(fmt.Sprintln("You need to supply a relay name"), 0)
 					}
 
 					if len(args) == 1 {
-						log.Fatal("You need to supply a relay NIC speed in Mbps")
+						handleRunTimeError(fmt.Sprintln("You need to supply a relay NIC speed in Mbps"), 0)
 					}
 
 					nicSpeed, err := strconv.ParseUint(args[1], 10, 64)
 					if err != nil {
-						log.Fatalf("Unable to parse %s as uint64", args[1])
+						handleRunTimeError(fmt.Sprintf("Unable to parse %s as uint64\n", args[1]), 1)
 					}
 
 					setRelayNIC(rpcClient, env, args[0], nicSpeed)
@@ -838,14 +884,32 @@ func main() {
 				LongHelp:   "This command should be avoided unless something goes wrong and the operator knows what he or she is doing.\nState values:\nenabled\noffline\nmaintenance\ndisabled\nquarantine\ndecommissioned",
 				Exec: func(ctx context.Context, args []string) error {
 					if len(args) == 0 {
-						log.Fatal("You need to supply a relay state")
+						handleRunTimeError(fmt.Sprintln("You need to supply a relay state"), 0)
 					}
 
 					if len(args) == 1 {
-						log.Fatal("You need to supply at least one relay name regex")
+						handleRunTimeError(fmt.Sprintln("You need to supply at least one relay name regex"), 0)
 					}
 
 					setRelayState(rpcClient, env, args[0], args[1:])
+					return nil
+				},
+			},
+			{
+				Name:       "rename",
+				ShortUsage: "next relay rename <old name> <new name>",
+				ShortHelp:  "Rename the specified relay",
+				Exec: func(ctx context.Context, args []string) error {
+					if len(args) == 0 {
+						handleRunTimeError(fmt.Sprintln("You need to supply a current relay name and a new name for it."), 0)
+					}
+
+					if len(args) == 1 {
+						handleRunTimeError(fmt.Sprintln("You need to supply a new name for the relay as well"), 0)
+					}
+
+					updateRelayName(rpcClient, env, args[0], args[1])
+
 					return nil
 				},
 			},
@@ -859,22 +923,24 @@ func main() {
 					// Unmarshal the JSON and create the relay struct
 					var relay relay
 					if err := json.Unmarshal(jsonData, &relay); err != nil {
-						log.Fatalf("Could not unmarshal relay: %v", err)
+						handleRunTimeError(fmt.Sprintf("Could not unmarshal relay: %v\n", err), 1)
 					}
 
 					addr, err := net.ResolveUDPAddr("udp", relay.Addr)
 					if err != nil {
-						log.Fatalf("Could not resolve udp address %s: %v", relay.Addr, err)
+						handleRunTimeError(fmt.Sprintf("Could not resolve udp address %s: %v\n", relay.Addr, err), 1)
 					}
 
 					publicKey, err := base64.StdEncoding.DecodeString(relay.PublicKey)
 					if err != nil {
-						log.Fatalf("Could not decode bas64 public key %s: %v", relay.PublicKey, err)
+						handleRunTimeError(fmt.Sprintf("Could not decode bas64 public key %s: %v\n", relay.PublicKey, err), 1)
 					}
 
 					// Build the actual Relay struct from the input relay struct
+					rid := crypto.HashID(relay.Addr)
 					realRelay := routing.Relay{
-						ID:        crypto.HashID(relay.Addr),
+						ID:        rid,
+						SignedID:  int64(rid),
 						Name:      relay.Name,
 						Addr:      *addr,
 						PublicKey: publicKey,
@@ -913,12 +979,12 @@ func main() {
 								IncludedBandwidthGB: 1,
 								ManagementAddr:      "127.0.0.1",
 								SSHUser:             "root",
-								SSHPort:             40000,
+								SSHPort:             22,
 							}
 
 							jsonBytes, err := json.MarshalIndent(example, "", "\t")
 							if err != nil {
-								log.Fatal("Failed to marshal relay struct")
+								handleRunTimeError(fmt.Sprintln("Failed to marshal relay struct"), 1)
 							}
 
 							fmt.Println("Example JSON schema to add a new relay:")
@@ -934,7 +1000,7 @@ func main() {
 				ShortHelp:  "Remove a relay from storage",
 				Exec: func(_ context.Context, args []string) error {
 					if len(args) == 0 {
-						log.Fatal("Provide the relay name of the relay you wish to remove\nFor a list of relay, use next relay")
+						handleRunTimeError(fmt.Sprintln("Provide the relay name of the relay you wish to remove\nFor a list of relay, use next relay"), 0)
 					}
 
 					removeRelay(rpcClient, env, args[0])
@@ -947,8 +1013,7 @@ func main() {
 				ShortHelp:  "Operations-related relay setup commands",
 				Exec: func(_ context.Context, args []string) error {
 					if len(args) == 0 {
-						fmt.Println("Please provide at least one command name")
-						return nil
+						handleRunTimeError(fmt.Sprintln("Please provide at least one command name"), 0)
 					}
 
 					removeRelay(rpcClient, env, args[0])
@@ -957,18 +1022,17 @@ func main() {
 				Subcommands: []*ffcli.Command{
 					{
 						Name:       "mrc",
-						ShortUsage: "next relay ops mrc <relay> <value>",
+						ShortUsage: "next relay ops mrc <relay> <value in USD>",
 						ShortHelp:  "Set the mrc value for the given relay (in $USD)",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) != 2 {
-								fmt.Println("Must provide the relay name and an MRC value in $USD")
+								handleRunTimeError(fmt.Sprintln("Must provide the relay name and an MRC value in $USD"), 0)
 								return nil
 							}
 
 							mrc, err := strconv.ParseFloat(args[1], 64)
 							if err != nil {
-								fmt.Printf("Could not parse %s as a decimal number", args[1])
-								return nil
+								handleRunTimeError(fmt.Sprintf("Could not parse %s as a decimal number\n", args[1]), 1)
 							}
 							opsMRC(rpcClient, env, args[0], mrc)
 
@@ -977,18 +1041,16 @@ func main() {
 					},
 					{
 						Name:       "overage",
-						ShortUsage: "next relay ops overage <relay> <value>",
+						ShortUsage: "next relay ops overage <relay> <value in USD>",
 						ShortHelp:  "Set the overage value for the given relay (in $USD)",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) != 2 {
-								fmt.Println("Must provide the relay name and an overage value in $USD")
-								return nil
+								handleRunTimeError(fmt.Sprintln("Must provide the relay name and an overage value in $USD"), 0)
 							}
 
 							overage, err := strconv.ParseFloat(args[1], 64)
 							if err != nil {
-								fmt.Printf("Could not parse %s as a decimal number", args[1])
-								return nil
+								handleRunTimeError(fmt.Sprintf("Could not parse %s as a decimal number\n", args[1]), 1)
 							}
 							opsOverage(rpcClient, env, args[0], overage)
 
@@ -1001,8 +1063,7 @@ func main() {
 						ShortHelp:  "Set the bandwidth rule for the given relay",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) != 2 {
-								fmt.Println("Must provide the relay name and abandwidth rule")
-								return nil
+								handleRunTimeError(fmt.Sprintln("Must provide the relay name and abandwidth rule"), 0)
 							}
 
 							rules := []string{"none", "flat", "pool", "burst"}
@@ -1013,7 +1074,7 @@ func main() {
 								}
 							}
 
-							fmt.Printf("'%s' not a valid bandwidth rule - must be one of none, flat, pool or burst", args[1])
+							handleRunTimeError(fmt.Sprintf("'%s' not a valid bandwidth rule - must be one of none, flat, pool or burst\n", args[1]), 0)
 							return nil
 						},
 					},
@@ -1023,8 +1084,7 @@ func main() {
 						ShortHelp:  "Set the machine/server type for the given relay",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) != 2 {
-								fmt.Println("Must provide the relay name and amachine type")
-								return nil
+								handleRunTimeError(fmt.Sprintln("Must provide the relay name and a machine type"), 0)
 							}
 
 							rules := []string{"none", "vm", "bare"}
@@ -1035,7 +1095,7 @@ func main() {
 								}
 							}
 
-							fmt.Printf("'%s' not a valid machine type - must be one of none, vm or bare", args[1])
+							handleRunTimeError(fmt.Sprintf("'%s' not a valid machine type - must be one of none, vm or bare\n", args[1]), 0)
 							return nil
 						},
 					},
@@ -1045,14 +1105,12 @@ func main() {
 						ShortHelp:  "Set the contract term for the given relay (in months)",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) != 2 {
-								fmt.Println("Must provide the relay name and a contract term in months")
-								return nil
+								handleRunTimeError(fmt.Sprintln("Must provide the relay name and a contract term in months"), 0)
 							}
 
 							term, err := strconv.ParseUint(args[1], 10, 32)
 							if err != nil {
-								fmt.Printf("Could not parse %s as an integer", args[1])
-								return nil
+								handleRunTimeError(fmt.Sprintf("Could not parse %s as an integer\n", args[1]), 0)
 							}
 							opsTerm(rpcClient, env, args[0], int32(term))
 
@@ -1065,8 +1123,7 @@ func main() {
 						ShortHelp:  "Set the contract start date for the given relay (e.g. 'January 2, 2006')",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) != 2 {
-								fmt.Println("Must provide the relay name and a contract start date e.g. 'January 2, 2006'")
-								return nil
+								handleRunTimeError(fmt.Sprintln("Must provide the relay name and a contract start date e.g. 'January 2, 2006'"), 0)
 							}
 
 							opsStartDate(rpcClient, env, args[0], args[1])
@@ -1079,8 +1136,7 @@ func main() {
 						ShortHelp:  "Set the contract end date for the given relay (e.g. 'January 2, 2006')",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) != 2 {
-								fmt.Println("Must provide the relay name and a contract end date e.g. 'January 2, 2006'")
-								return nil
+								handleRunTimeError(fmt.Sprintln("Must provide the relay name and a contract end date e.g. 'January 2, 2006'"), 0)
 							}
 
 							opsEndDate(rpcClient, env, args[0], args[1])
@@ -1093,14 +1149,12 @@ func main() {
 						ShortHelp:  "Set the bandwidth allotment for the give relay",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) != 2 {
-								fmt.Println("Must provide the relay name and a bandwidth value in GB")
-								return nil
+								handleRunTimeError(fmt.Sprintln("Must provide the relay name and a bandwidth value in GB"), 0)
 							}
 
 							bw, err := strconv.ParseUint(args[1], 10, 32)
 							if err != nil {
-								fmt.Printf("Could not parse %s as an integer", args[1])
-								return nil
+								handleRunTimeError(fmt.Sprintf("Could not parse %s as an integer\n", args[1]), 0)
 							}
 
 							opsBandwidth(rpcClient, env, args[0], int32(bw))
@@ -1113,14 +1167,12 @@ func main() {
 						ShortHelp:  "Set the NIC available to the specified relay",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) != 2 {
-								fmt.Println("Must provide the relay name and a value in Mbps")
-								return nil
+								handleRunTimeError(fmt.Sprintln("Must provide the relay name and a value in Mbps"), 0)
 							}
 
 							nic, err := strconv.ParseUint(args[1], 10, 32)
 							if err != nil {
-								fmt.Printf("Could not parse %s as an integer", args[1])
-								return nil
+								handleRunTimeError(fmt.Sprintf("Could not parse %s as an integer\n", args[1]), 0)
 							}
 
 							opsNic(rpcClient, env, args[0], int32(nic))
@@ -1181,10 +1233,10 @@ func main() {
 		FlagSet:    datacentersfs,
 		Exec: func(_ context.Context, args []string) error {
 			if len(args) > 0 {
-				datacenters(rpcClient, env, args[0], datacenterIdSigned)
+				datacenters(rpcClient, env, args[0], datacenterIdSigned, datacentersCSV)
 				return nil
 			}
-			datacenters(rpcClient, env, "", datacenterIdSigned)
+			datacenters(rpcClient, env, "", datacenterIdSigned, datacentersCSV)
 			return nil
 		},
 	}
@@ -1227,12 +1279,14 @@ func main() {
 					// Unmarshal the JSON and create the datacenter struct
 					var datacenter datacenter
 					if err := json.Unmarshal(jsonData, &datacenter); err != nil {
-						log.Fatalf("Could not unmarshal datacenter: %v", err)
+						handleRunTimeError(fmt.Sprintf("Could not unmarshal datacenter: %v\n", err), 1)
 					}
 
 					// Build the actual Datacenter struct from the input datacenter struct
+					did := crypto.HashID(datacenter.Name)
 					realDatacenter := routing.Datacenter{
-						ID:       crypto.HashID(datacenter.Name),
+						ID:       did,
+						SignedID: int64(did),
 						Name:     datacenter.Name,
 						Enabled:  datacenter.Enabled,
 						Location: datacenter.Location,
@@ -1256,7 +1310,7 @@ func main() {
 
 							jsonBytes, err := json.MarshalIndent(example, "", "\t")
 							if err != nil {
-								log.Fatal("Failed to marshal datacenter struct")
+								handleRunTimeError(fmt.Sprintln("Failed to marshal datacenter struct"), 1)
 							}
 
 							fmt.Println("Example JSON schema to add a new datacenter:")
@@ -1288,8 +1342,7 @@ func main() {
 				Exec: func(_ context.Context, args []string) error {
 
 					if len(args) == 0 {
-						fmt.Println("Exactly zero or one datacenter ID or name must be provided.")
-						return nil
+						handleRunTimeError(fmt.Sprintln("Exactly zero or one datacenter ID or name must be provided."), 0)
 					}
 
 					listDatacenterMaps(rpcClient, env, args[0])
@@ -1341,17 +1394,17 @@ func main() {
 					// Unmarshal the JSON and create the Buyer struct
 					var b buyer
 					if err := json.Unmarshal(jsonData, &b); err != nil {
-						log.Fatalf("Could not unmarshal buyer: %v", err)
+						handleRunTimeError(fmt.Sprintf("Could not unmarshal buyer: %v\n", err), 1)
 					}
 
 					// Get the ID from the first 8 bytes of the public key
 					publicKey, err := base64.StdEncoding.DecodeString(b.PublicKey)
 					if err != nil {
-						log.Fatalf("Could not get buyer ID from public key: %v", err)
+						handleRunTimeError(fmt.Sprintf("Could not get buyer ID from public key: %v\n", err), 1)
 					}
 
 					if len(publicKey) != crypto.KeySize+8 {
-						log.Fatalf("Invalid public key length %d", len(publicKey))
+						handleRunTimeError(fmt.Sprintf("Invalid public key length %d\n", len(publicKey)), 1)
 					}
 
 					// Add the Buyer to storage
@@ -1384,7 +1437,7 @@ func main() {
 
 							jsonBytes, err := json.MarshalIndent(example, "", "\t")
 							if err != nil {
-								log.Fatal("Failed to marshal buyer struct")
+								handleRunTimeError(fmt.Sprintln("Failed to marshal buyer struct"), 1)
 							}
 
 							fmt.Println("Example JSON schema to add a new buyer:")
@@ -1400,7 +1453,7 @@ func main() {
 				ShortHelp:  "Remove a buyer from storage",
 				Exec: func(_ context.Context, args []string) error {
 					if len(args) == 0 {
-						log.Fatal("Provide the buyer ID of the buyer you wish to remove\nFor a list of buyers, use next buyers")
+						handleRunTimeError(fmt.Sprintln("Provide the buyer ID of the buyer you wish to remove\nFor a list of buyers, use next buyers"), 0)
 					}
 
 					removeBuyer(rpcClient, env, args[0])
@@ -1408,9 +1461,25 @@ func main() {
 				},
 			},
 			{
+				Name:       "datacenters",
+				ShortUsage: "next buyer datacenters <buyer id|name|string, optional>",
+				ShortHelp:  "Return a list of datacenters and aliases for the given buyer ID or buyer name",
+				FlagSet:    buyerfs,
+				Exec: func(_ context.Context, args []string) error {
+					if len(args) != 1 {
+						datacenterMapsForBuyer(rpcClient, env, "", csvOutput, signedIDs)
+						return nil
+					}
+
+					datacenterMapsForBuyer(rpcClient, env, args[0], csvOutput, signedIDs)
+					return nil
+				},
+			},
+			{
 				Name:       "datacenter",
 				ShortUsage: "next buyer datacenter <command>",
 				ShortHelp:  "Display and manipulate datacenters and aliases",
+				FlagSet:    buyerfs,
 				Exec: func(_ context.Context, args []string) error {
 					return flag.ErrHelp
 				},
@@ -1422,12 +1491,11 @@ func main() {
 						LongHelp:   "A buyer ID or name must be supplied. If the name includes spaces it must be enclosed in quotations marks.",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) != 1 {
-								fmt.Printf("A buyer ID or name must be supplied. If the name includes spaces it must be enclosed in quotation marks.")
+								datacenterMapsForBuyer(rpcClient, env, "", csvOutput, signedIDs)
 								return nil
 							}
 
-							datacenterMapsForBuyer(rpcClient, env, args[0])
-
+							datacenterMapsForBuyer(rpcClient, env, args[0], csvOutput, signedIDs)
 							return nil
 						},
 					},
@@ -1451,21 +1519,18 @@ The buyer and datacenter must exist. Hex IDs are required for now.
 							var err error
 
 							if len(args) == 0 {
-								fmt.Printf("An input file name must be supplied. For more info run:\n\n./next buyer datacenter add -h")
-								return nil
+								handleRunTimeError(fmt.Sprintf("An input file name must be supplied. For more info run:\n\n./next buyer datacenter add -h\n"), 0)
 							}
 
 							jsonData, err := ioutil.ReadFile(args[0])
 							if err != nil {
-								fmt.Printf("Error reading JSON input file: %s\n", args[0])
-								return nil
+								handleRunTimeError(fmt.Sprintf("Error reading JSON input file: %s\n", args[0]), 1)
 							}
 
 							// Unmarshal the JSON and create the Buyer struct
 							var dcmStrings dcMapStrings
 							if err = json.Unmarshal(jsonData, &dcmStrings); err != nil {
-								fmt.Printf("Could not unmarshal datacenter map: %v", err)
-								return nil
+								handleRunTimeError(fmt.Sprintf("Could not unmarshal datacenter map: %v\n", err), 1)
 							}
 
 							err = addDatacenterMap(rpcClient, env, dcmStrings)
@@ -1501,21 +1566,18 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 							var err error
 
 							if len(args) == 0 {
-								fmt.Printf("An input file name must be supplied. For more info run:\n\n./next buyer datacenter remove -h")
-								return nil
+								handleRunTimeError(fmt.Sprintln("An input file name must be supplied. For more info run:\n\n./next buyer datacenter remove -h"), 0)
 							}
 
 							jsonData, err := ioutil.ReadFile(args[0])
 							if err != nil {
-								fmt.Printf("Error reading JSON input file: %s\n", args[0])
-								return nil
+								handleRunTimeError(fmt.Sprintf("Error reading JSON input file: %s\n", args[0]), 1)
 							}
 
 							// Unmarshal the JSON and create the Buyer struct
 							var dcmStrings dcMapStrings
 							if err = json.Unmarshal(jsonData, &dcmStrings); err != nil {
-								fmt.Printf("Could not unmarshal datacenter map: %v", err)
-								return nil
+								handleRunTimeError(fmt.Sprintf("Could not unmarshal datacenter map: %v\n", err), 1)
 							}
 
 							err = removeDatacenterMap(rpcClient, env, dcmStrings)
@@ -1529,6 +1591,34 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 							return nil
 						},
 					},
+				},
+			},
+		},
+	}
+
+	var userCommand = &ffcli.Command{
+		Name:       "user",
+		ShortUsage: "next buyer <subcommand>",
+		ShortHelp:  "Manage users",
+		FlagSet:    buyersfs,
+		Exec: func(_ context.Context, args []string) error {
+			return flag.ErrHelp
+		},
+		Subcommands: []*ffcli.Command{
+			{ // hash
+				Name:       "hash",
+				ShortUsage: "next user hash <userid>",
+				ShortHelp:  "Prints the user hash in signed int format",
+				Exec: func(_ context.Context, args []string) error {
+					userId := ""
+					if len(args) >= 1 {
+						userId = args[0]
+					}
+					hash := fnv.New64a()
+					hash.Write([]byte(userId))
+					userHash := int64(hash.Sum64())
+					fmt.Printf("user hash: \"%s\" -> %d (%x)\n", userId, userHash, uint64(userHash))
+					return nil
 				},
 			},
 		},
@@ -1550,9 +1640,31 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 					jsonData := readJSONData("sellers", args)
 
 					// Unmarshal the JSON and create the Seller struct
-					var s seller
-					if err := json.Unmarshal(jsonData, &s); err != nil {
-						log.Fatalf("Could not unmarshal seller: %v", err)
+					var sellerUSD struct {
+						Name            string
+						IngressPriceUSD string
+						EgressPriceUSD  string
+					}
+
+					if err := json.Unmarshal(jsonData, &sellerUSD); err != nil {
+						handleRunTimeError(fmt.Sprintf("Could not unmarshal seller: %v\n", err), 1)
+					}
+
+					ingressUSD, err := strconv.ParseFloat(sellerUSD.IngressPriceUSD, 64)
+					if err != nil {
+						fmt.Printf("Unable to convert %s to a decimal number.", sellerUSD.IngressPriceUSD)
+						os.Exit(0)
+					}
+					egressUSD, err := strconv.ParseFloat(sellerUSD.EgressPriceUSD, 64)
+					if err != nil {
+						fmt.Printf("Unable to convert %s to a decimal number.", sellerUSD.EgressPriceUSD)
+						os.Exit(0)
+					}
+
+					s := seller{
+						Name:                 sellerUSD.Name,
+						IngressPriceNibblins: routing.DollarsToNibblins(ingressUSD),
+						EgressPriceNibblins:  routing.DollarsToNibblins(egressUSD),
 					}
 
 					// Add the Seller to storage
@@ -1570,17 +1682,24 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						ShortUsage: "next seller add example",
 						ShortHelp:  "Displays an example seller for the correct JSON schema",
 						Exec: func(_ context.Context, args []string) error {
-							example := seller{
-								Name: "amazon",
+							example := struct {
+								Name            string
+								IngressPriceUSD string
+								EgressPriceUSD  string
+							}{
+								Name:            "amazon",
+								IngressPriceUSD: "0.01",
+								EgressPriceUSD:  "0.1",
 							}
 
 							jsonBytes, err := json.MarshalIndent(example, "", "\t")
 							if err != nil {
-								log.Fatal("Failed to marshal seller struct")
+								handleRunTimeError(fmt.Sprintln("Failed to marshal seller struct"), 1)
 							}
 
-							fmt.Println("Examaple JSON schema to add a new seller:")
+							fmt.Println("Example JSON schema to add a new seller - note that prices are in $USD:")
 							fmt.Println(string(jsonBytes))
+							return nil
 							return nil
 						},
 					},
@@ -1592,7 +1711,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 				ShortHelp:  "Remove a seller from storage",
 				Exec: func(_ context.Context, args []string) error {
 					if len(args) == 0 {
-						log.Fatal("Provide the seller ID of the seller you wish to remove\nFor a list of sellers, use next sellers")
+						handleRunTimeError(fmt.Sprintln("Provide the seller ID of the seller you wish to remove\nFor a list of sellers, use next sellers"), 0)
 					}
 
 					removeSeller(rpcClient, env, args[0])
@@ -1608,7 +1727,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		ShortHelp:  "Retrieve route shader settings for the specified buyer",
 		Exec: func(_ context.Context, args []string) error {
 			if len(args) == 0 {
-				log.Fatal("No buyer name or substring provided.\nUsage:\nnext shader <buyer name or substring>\n")
+				handleRunTimeError(fmt.Sprintf("No buyer name or substring provided.\nUsage:\nnext shader <buyer name or substring>\n"), 0)
 			}
 
 			// Get the buyer's route shader
@@ -1622,7 +1741,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 				ShortHelp:  "Set the buyer's route shader in storage from a JSON file or piped from stdin",
 				Exec: func(_ context.Context, args []string) error {
 					if len(args) == 0 {
-						log.Fatal("No buyer ID provided.\nUsage:\nnext shader set <buyer ID> [filepath]\nbuyer ID: the buyer's ID\n(Optional) filepath: the filepath to a JSON file with the new route shader data. If this data is piped through stdin, this parameter is optional.\nFor a list of buyers, use next buyers")
+						handleRunTimeError(fmt.Sprintf("No buyer ID provided.\nUsage:\nnext shader set <buyer ID> [filepath]\nbuyer ID: the buyer's ID\n(Optional) filepath: the filepath to a JSON file with the new route shader data. If this data is piped through stdin, this parameter is optional.\nFor a list of buyers, use next buyers\n"), 0)
 					}
 
 					jsonData := readJSONData("buyers", args[1:])
@@ -1630,7 +1749,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 					// Unmarshal the JSON and create the RoutingRuleSettings struct
 					var rrs routing.RoutingRulesSettings
 					if err := json.Unmarshal(jsonData, &rrs); err != nil {
-						log.Fatalf("Could not unmarshal route shader: %v", err)
+						handleRunTimeError(fmt.Sprintf("Could not unmarshal route shader: %v\n", err), 1)
 					}
 
 					// Set the route shader in storage
@@ -1645,7 +1764,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						Exec: func(_ context.Context, args []string) error {
 							jsonBytes, err := json.MarshalIndent(routing.DefaultRoutingRulesSettings, "", "\t")
 							if err != nil {
-								log.Fatal("Failed to marshal route shader struct")
+								handleRunTimeError(fmt.Sprintln("Failed to marshal route shader struct"), 0)
 							}
 
 							fmt.Println("Example JSON schema to set a new route shader:")
@@ -1661,7 +1780,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 				ShortHelp:  "Retrieve route shader information for the given buyer ID",
 				Exec: func(_ context.Context, args []string) error {
 					if len(args) == 0 {
-						log.Fatal("No buyer ID provided.\nUsage:\nnext shader <buyer ID>\nbuyer ID: the buyer's ID\nFor a list of buyers, use next buyers")
+						handleRunTimeError(fmt.Sprintf("No buyer ID provided.\nUsage:\nnext shader <buyer ID>\nbuyer ID: the buyer's ID\nFor a list of buyers, use next buyers\n"), 0)
 					}
 
 					// Get the buyer's route shader
@@ -1694,16 +1813,16 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						ShortHelp:  "Edit what buyer this customer is linked to",
 						Exec: func(ctx context.Context, args []string) error {
 							if len(args) == 0 {
-								log.Fatal("You need to provide a customer name")
+								handleRunTimeError(fmt.Sprintln("You need to provide a customer name"), 0)
 							}
 
 							if len(args) == 1 {
-								log.Fatal("You need to provide a new buyer ID for the customer to link to")
+								handleRunTimeError(fmt.Sprintln("You need to provide a new buyer ID for the customer to link to"), 0)
 							}
 
 							buyerID, err := strconv.ParseUint(args[1], 10, 64)
 							if err != nil {
-								log.Fatalf("Could not parse %s as an unsigned 64-bit integer", args[1])
+								handleRunTimeError(fmt.Sprintf("Could not parse %s as an unsigned 64-bit integer\n", args[1]), 1)
 							}
 
 							customerLink(rpcClient, env, args[0], buyerID, "")
@@ -1716,11 +1835,11 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						ShortHelp:  "Edit what seller this customer is linked to",
 						Exec: func(ctx context.Context, args []string) error {
 							if len(args) == 0 {
-								log.Fatal("You need to provide a customer name")
+								handleRunTimeError(fmt.Sprintln("You need to provide a customer name"), 0)
 							}
 
 							if len(args) == 1 {
-								log.Fatal("You need to provide a new seller ID for the customer to link to")
+								handleRunTimeError(fmt.Sprintln("You need to provide a new seller ID for the customer to link to"), 0)
 							}
 
 							customerLink(rpcClient, env, args[0], 0, args[1])
@@ -1738,7 +1857,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		ShortHelp:  "SSH into a relay by name",
 		Exec: func(ctx context.Context, args []string) error {
 			if len(args) == 0 {
-				log.Fatal("You need to supply a device identifer")
+				handleRunTimeError(fmt.Sprintln("You need to supply a device identifer"), 0)
 			}
 
 			SSHInto(env, rpcClient, args[0])
@@ -1786,13 +1905,13 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		Exec: func(ctx context.Context, args []string) error {
 			input := "cost.bin"
 			output := "optimize.bin"
-			rtt := int32(1)
+			rtt := int32(5)
 
 			if len(args) > 0 {
 				if res, err := strconv.ParseInt(args[0], 10, 32); err == nil {
 					rtt = int32(res)
 				} else {
-					log.Fatalln(fmt.Errorf("could not parse 1st argument to number: %w", err))
+					handleRunTimeError(fmt.Sprintf("could not parse 1st argument to number: %v\n", err), 1)
 				}
 			}
 
@@ -1835,7 +1954,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		ShortHelp:  "Debug tool",
 		Exec: func(ctx context.Context, args []string) error {
 			if len(args) == 0 {
-				log.Fatal("You need to supply a relay name")
+				handleRunTimeError(fmt.Sprintln("You need to supply a relay name"), 0)
 			}
 			relayName := args[0]
 			inputFile := "optimize.bin"
@@ -1880,7 +1999,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 					}
 
 					if len(args) == 1 {
-						log.Fatalf("You must provide a destination relay if you provide a source relay. For all entries, omit the relay parameters")
+						handleRunTimeError(fmt.Sprintln("You must provide a destination relay if you provide a source relay. For all entries, omit the relay parameters"), 0)
 					}
 
 					if len(args) > 1 {
@@ -1899,6 +2018,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		selectCommand,
 		envCommand,
 		sessionCommand,
+		sessionsCommand,
 		relaysCommand,
 		relayCommand,
 		routesCommand,
@@ -1910,6 +2030,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		sellerCommand,
 		buyerCommand,
 		buyersCommand,
+		userCommand,
 		shaderCommand,
 		sshCommand,
 		costCommand,
@@ -1937,7 +2058,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 
 	if err := root.ParseAndRun(context.Background(), args); err != nil {
 		fmt.Printf("\n")
-		log.Fatal(err)
+		handleRunTimeError(fmt.Sprintf("%v\n", err), 1)
 	}
 
 	if len(args) == 0 {
