@@ -224,7 +224,6 @@ func (fs *Firestore) CheckSequenceNumber(ctx context.Context) (bool, error) {
 	localSeqNum := fs.syncSequenceNumber
 	fs.sequenceNumberMutex.RUnlock()
 
-	fs.SyncMetrics.Invocations.Add(1)
 	fs.SyncMetrics.LocalSyncValue.Set(float64(localSeqNum))
 	fs.SyncMetrics.RemoteSyncValue.Set(float64(num.Value))
 
@@ -1502,6 +1501,8 @@ func (fs *Firestore) Sync(ctx context.Context) error {
 	if !seqNumberNotInSync {
 		return nil
 	}
+
+	fs.SyncMetrics.Invocations.Add(1)
 
 	var outerErr error
 	var wg sync.WaitGroup
