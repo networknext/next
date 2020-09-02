@@ -451,10 +451,6 @@ func mainReturnWithCode() int {
 			dataArray := [transport.DefaultMaxPacketSize]byte{}
 			for {
 				data := dataArray[:]
-				for i := 0; i < transport.DefaultMaxPacketSize; i++ {
-					data[i] = 0
-				}
-
 				size, fromAddr, err := conn.ReadFromUDP(data)
 				if err != nil {
 					level.Error(logger).Log("msg", "failed to read UDP packet", "err", err)
