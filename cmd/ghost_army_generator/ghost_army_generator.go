@@ -14,6 +14,12 @@ import (
 	ghostarmy "github.com/networknext/backend/ghost_army"
 )
 
+/*
+ * August 18th: https://drive.google.com/file/d/1on1dfWUvGTxF_DDUKsyr1WJosiJrRfGO/view?usp=sharing
+ * August 19th: https://drive.google.com/file/d/1AnIspF8WaZYQ4o8BSn7kb5DDZrK6E2Yh/view?usp=sharing
+ * August 20th: https://drive.google.com/file/d/1z9crn3410-1_o3tJOnIswNxwj2rInVtJ/view?usp=sharing
+ */
+
 type sortableEntries []ghostarmy.Entry
 
 func (self sortableEntries) Len() int {
