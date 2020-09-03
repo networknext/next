@@ -9061,7 +9061,7 @@ struct NextBackendSessionUpdatePacket
     int version_major;
     int version_minor;
     int version_patch;
-    uint64_t sequence;
+    uint32_t slice_number;
     uint64_t customer_id;
     next_address_t server_address;
     uint64_t session_id;
@@ -9110,7 +9110,7 @@ struct NextBackendSessionUpdatePacket
         serialize_bits( stream, version_major, 8 );
         serialize_bits( stream, version_minor, 8 );
         serialize_bits( stream, version_patch, 8 );
-        serialize_uint64( stream, sequence );
+        serialize_bits( stream, slice_number, 32 );
         serialize_uint64( stream, customer_id );
         serialize_address( stream, server_address );
         serialize_uint64( stream, session_id );
@@ -11378,7 +11378,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         {
             NextBackendSessionUpdatePacket packet;
 
-            packet.sequence = ++session->update_sequence;
+            packet.slice_number = session->update_sequence++;
             packet.customer_id = server->customer_id;
             packet.session_id = session->session_id;
             packet.platform_id = session->stats_platform_id;
@@ -14074,7 +14074,7 @@ static void test_backend_packets()
         crypto_sign_keypair( public_key, private_key );
 
         static NextBackendSessionUpdatePacket in, out;
-        in.sequence = 10000;
+        in.slice_number = 10000;
         in.customer_id = 1231234127431LL;
         in.session_id = 1234342431431LL;
         in.user_hash = 11111111;
@@ -14118,7 +14118,7 @@ static void test_backend_packets()
         check( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, private_key ) == NEXT_OK );
         check( next_read_backend_packet( buffer, packet_bytes, &out, next_signed_packets, public_key ) == NEXT_BACKEND_SESSION_UPDATE_PACKET );
 
-        check( in.sequence == out.sequence );
+        check( in.slice_number == out.slice_number );
         check( in.customer_id == out.customer_id );
         check( in.session_id == out.session_id );
         check( in.user_hash == out.user_hash );
