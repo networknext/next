@@ -116,6 +116,8 @@
 
 #define NEXT_MAX_SESSION_DATA_BYTES                                   511
 
+#define NEXT_MAX_SESSION_UPDATE_RETRIES                                10
+
 #define NEXT_ROUTE_REQUEST_PACKET                                     100
 #define NEXT_ROUTE_RESPONSE_PACKET                                    101
 #define NEXT_CLIENT_TO_SERVER_PACKET                                  102
@@ -8998,6 +9000,8 @@ struct NextBackendServerInitRequestPacket
     }
 };
 
+// ---------------------------------------------------------------
+
 struct NextBackendServerInitResponsePacket
 {
     uint64_t request_id;
@@ -9015,6 +9019,8 @@ struct NextBackendServerInitResponsePacket
         return true;
     }
 };
+
+// ---------------------------------------------------------------
 
 struct NextBackendServerUpdatePacket
 {
@@ -9053,15 +9059,22 @@ struct NextBackendServerUpdatePacket
     }
 };
 
+// ---------------------------------------------------------------
+
 struct NextBackendSessionUpdatePacket
 {
     int version_major;
     int version_minor;
     int version_patch;
+    uint64_t session_id;
     uint32_t slice_number;
+    uint32_t retry_number;
+    int session_data_bytes;
+    uint8_t session_data[NEXT_MAX_SESSION_DATA_BYTES];
+    // todo
+    /*
     uint64_t customer_id;
     next_address_t server_address;
-    uint64_t session_id;
     uint64_t user_hash;
     uint64_t tag;
     uint64_t flags;
@@ -9091,8 +9104,7 @@ struct NextBackendSessionUpdatePacket
     uint64_t packets_lost_client_to_server;
     uint64_t packets_lost_server_to_client;
     uint64_t user_flags;
-    int session_data_bytes;
-    uint8_t session_data[NEXT_MAX_SESSION_DATA_BYTES];
+    */
 
     NextBackendSessionUpdatePacket()
     {
@@ -9107,12 +9119,24 @@ struct NextBackendSessionUpdatePacket
         serialize_bits( stream, version_major, 8 );
         serialize_bits( stream, version_minor, 8 );
         serialize_bits( stream, version_patch, 8 );
+        serialize_uint64( stream, session_id );
         serialize_bits( stream, slice_number, 32 );
+        serialize_int( stream, slice_number, 0, NEXT_MAX_SESSION_UPDATE_RETRIES );
+        serialize_int( stream, session_data_bytes, 0, NEXT_MAX_SESSION_DATA_BYTES );
+        if ( session_data_bytes > 0 )
+        {
+            if ( Stream::IsWriting )
+            {
+                printf( "session data bytes = %d (write)\n", session_data_bytes );
+            }
+            serialize_bytes( stream, session_data, session_data_bytes );
+        }
+        /*
         serialize_uint64( stream, customer_id );
         serialize_address( stream, server_address );
-        serialize_uint64( stream, session_id );
         serialize_uint64( stream, user_hash );
         serialize_int( stream, platform_id, NEXT_PLATFORM_UNKNOWN, NEXT_PLATFORM_MAX );
+        // todo: bool has_tag
         serialize_uint64( stream, tag );
         bool has_flags = Stream::IsWriting && flags != 0;
         serialize_bool( stream, has_flags );
@@ -9155,18 +9179,12 @@ struct NextBackendSessionUpdatePacket
         {
             serialize_uint64( stream, user_flags );
         }
-        serialize_int( stream, session_data_bytes, 0, NEXT_MAX_SESSION_DATA_BYTES );
-        if ( session_data_bytes > 0 )
-        {
-            if ( Stream::IsWriting )
-            {
-                printf( "session data bytes = %d (write)\n", session_data_bytes );
-            }
-            serialize_bytes( stream, session_data, session_data_bytes );
-        }
+        */
         return true;
     }
 };
+
+// ---------------------------------------------------------------
 
 struct NextBackendSessionResponsePacket
 {
@@ -11393,9 +11411,10 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         {
             NextBackendSessionUpdatePacket packet;
 
-            packet.slice_number = session->update_sequence++;
-            packet.customer_id = server->customer_id;
             packet.session_id = session->session_id;
+            packet.slice_number = session->update_sequence++;
+            /*
+            packet.customer_id = server->customer_id;
             packet.platform_id = session->stats_platform_id;
             packet.user_hash = session->user_hash;
             packet.tag = session->tag;
@@ -11431,6 +11450,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.server_address = server->server_address;
             memcpy( packet.client_route_public_key, session->client_route_public_key, crypto_box_PUBLICKEYBYTES );
             memcpy( packet.server_route_public_key, server->server_route_public_key, crypto_box_PUBLICKEYBYTES );
+            */
 
             next_assert( session->session_data_bytes >= 0 );
             next_assert( session->session_data_bytes <= NEXT_MAX_SESSION_DATA_BYTES );
@@ -14085,6 +14105,8 @@ static void test_backend_packets()
         check( next_address_equal( &in.server_address, &out.server_address ) );
     }
 
+    // todo
+    /*
     // session update
     {
         unsigned char public_key[crypto_sign_PUBLICKEYBYTES];
@@ -14176,6 +14198,7 @@ static void test_backend_packets()
             check( in.session_data[i] == out.session_data[i] );
         }
     }
+    */
 
     // session response packet (direct)
     {
