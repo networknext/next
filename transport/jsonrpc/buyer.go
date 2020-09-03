@@ -224,6 +224,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 				level.Error(s.Logger).Log("err", err)
 				return err
 			}
+			ealierCountForGA := count
 			oldCount += count
 
 			count, err = redis.Int(redisClient.Receive())
@@ -232,13 +233,14 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 				level.Error(s.Logger).Log("err", err)
 				return err
 			}
+			laterCountForGA := count
 			newCount += count
 
 			if buyer.ID == ghostArmyBuyerID {
-				if newCount > oldCount {
-					ghostArmyNextCount = newCount
+				if ealierCountForGA > laterCountForGA {
+					ghostArmyNextCount = ealierCountForGA
 				} else {
-					ghostArmyNextCount = oldCount
+					ghostArmyNextCount = laterCountForGA
 				}
 			}
 		}
