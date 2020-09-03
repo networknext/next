@@ -9158,6 +9158,10 @@ struct NextBackendSessionUpdatePacket
         serialize_int( stream, session_data_bytes, 0, NEXT_MAX_SESSION_DATA_BYTES );
         if ( session_data_bytes > 0 )
         {
+            if ( Stream::IsWriting )
+            {
+                printf( "session data bytes = %d (write)\n", session_data_bytes );
+            }
             serialize_bytes( stream, session_data, session_data_bytes );
         }
         return true;
@@ -9218,7 +9222,7 @@ struct NextBackendSessionResponsePacket
             // todo
             if ( Stream::IsReading )
             {
-                printf( "session data bytes = %d\n", session_data_bytes );
+                printf( "session data bytes = %d (read)\n", session_data_bytes );
             }
         }
         return true;
@@ -11434,7 +11438,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             memcpy( packet.session_data, session->session_data, session->session_data_bytes );
 
             // todo
-            printf( "session data bytes = %d (write)\n", packet.session_data_bytes );
+            printf( "session data bytes = %d (load)\n", packet.session_data_bytes );
 
             if ( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_PACKET, &packet, session->update_packet_data, &session->update_packet_bytes, next_signed_packets, server->customer_private_key ) != NEXT_OK )
             {
