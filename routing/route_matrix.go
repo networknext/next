@@ -32,7 +32,7 @@ type RouteMatrixEntry struct {
 }
 
 type RouteMatrix struct {
-	RelayIndices map[uint64]int // todo: rename to "RelayIDToIndex"
+	RelayIDToIndex map[uint64]int
 
 	RelayIDs              []uint64
 	RelayNames            []string
@@ -309,12 +309,12 @@ func (m *RouteMatrix) GetAcceptableRoutes(near []NearRelayData, destIDs []uint64
 
 // Returns the index in the route matrix representing routes between the near relay and dest relay and whether or not to reverse them
 func (m *RouteMatrix) GetEntryIndex(nearRelayID uint64, destRelayID uint64) (int, bool) {
-	destidx, ok := m.RelayIndices[destRelayID]
+	destidx, ok := m.RelayIDToIndex[destRelayID]
 	if !ok {
 		return -1, false
 	}
 
-	nearidx, ok := m.RelayIndices[nearRelayID]
+	nearidx, ok := m.RelayIDToIndex[nearRelayID]
 	if !ok {
 		return -1, false
 	}
@@ -383,7 +383,7 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 		return errors.New("[RouteMatrix] invalid read at number of relays")
 	}
 
-	m.RelayIndices = make(map[uint64]int)
+	m.RelayIDToIndex = make(map[uint64]int)
 	m.RelayIDs = make([]uint64, numRelays)
 
 	for i := 0; i < int(numRelays); i++ {
@@ -391,7 +391,7 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 		if err := idReadFunc(data, &index, &tmp, "[RouteMatrix] invalid read at relay ids"); err != nil {
 			return err
 		}
-		m.RelayIndices[tmp] = i
+		m.RelayIDToIndex[tmp] = i
 		m.RelayIDs[i] = tmp
 	}
 

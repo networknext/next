@@ -14,9 +14,9 @@ import (
 func getPopulatedCostMatrix(malformed bool) *routing.CostMatrix {
 	var matrix routing.CostMatrix
 
-	matrix.RelayIndices = make(map[uint64]int)
-	matrix.RelayIndices[123] = 0
-	matrix.RelayIndices[456] = 1
+	matrix.RelayIDToIndex = make(map[uint64]int)
+	matrix.RelayIDToIndex[123] = 0
+	matrix.RelayIDToIndex[456] = 1
 
 	matrix.RelayIDs = make([]uint64, 2)
 	matrix.RelayIDs[0] = 123

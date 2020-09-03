@@ -175,7 +175,7 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string, se
 			relays[i].name = routeMatrix.RelayNames[i]
 		}
 
-		destRelayIndex, ok := routeMatrix.RelayIndices[destRelayId]
+		destRelayIndex, ok := routeMatrix.RelayIDToIndex[destRelayId]
 		if !ok {
 			handleRunTimeError(fmt.Sprintf("dest relay %x not in matrix\n", destRelayId), 1)
 		}
@@ -188,7 +188,7 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string, se
 				continue
 			}
 
-			sourceRelayIndex, ok := routeMatrix.RelayIndices[sourceRelayId]
+			sourceRelayIndex, ok := routeMatrix.RelayIDToIndex[sourceRelayId]
 			if !ok {
 				handleRunTimeError(fmt.Sprintf("source relay %x not in matrix\n", sourceRelayId), 1)
 			}

@@ -249,7 +249,7 @@ func (database *StatsDatabase) GetCostMatrix(
 		return stableRelays[i].ID < stableRelays[j].ID
 	})
 
-	costMatrix.RelayIndices = make(map[uint64]int)
+	costMatrix.RelayIDToIndex = make(map[uint64]int)
 	costMatrix.RelayIDs = make([]uint64, numRelays)
 	costMatrix.RelayNames = make([]string, numRelays)
 	costMatrix.RelayAddresses = make([][]byte, numRelays)
@@ -267,7 +267,7 @@ func (database *StatsDatabase) GetCostMatrix(
 	datacenterNameMap := make(map[uint64]string)
 
 	for i, relayData := range stableRelays {
-		costMatrix.RelayIndices[relayData.ID] = i
+		costMatrix.RelayIDToIndex[relayData.ID] = i
 		costMatrix.RelayIDs[i] = relayData.ID
 		costMatrix.RelayNames[i] = relayData.Name
 		costMatrix.RelaySellers[i] = relayData.Seller
