@@ -218,24 +218,28 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 
 		var ghostArmyNextCount int
 		for _, buyer := range buyers {
-			count, err := redis.Int(redisClient.Receive())
+			firstCount, err := redis.Int(redisClient.Receive())
 			if err != nil {
 				err = fmt.Errorf("TotalSessions() failed getting total session count next: %v", err)
 				level.Error(s.Logger).Log("err", err)
 				return err
 			}
-			oldCount += count
+			oldCount += firstCount
 
-			count, err = redis.Int(redisClient.Receive())
+			secondCount, err := redis.Int(redisClient.Receive())
 			if err != nil {
 				err = fmt.Errorf("TotalSessions() failed getting total session count next: %v", err)
 				level.Error(s.Logger).Log("err", err)
 				return err
 			}
-			newCount += count
+			newCount += secondCount
 
 			if buyer.ID == ghostArmyBuyerID {
-				ghostArmyNextCount = count
+				if firstCount > secondCount {
+					ghostArmyNextCount = firstCount
+				} else {
+					ghostArmyNextCount = secondCount
+				}
 			}
 		}
 
