@@ -23,7 +23,7 @@ const (
 type CostMatrix struct {
 	mu sync.RWMutex
 
-	RelayIndices map[uint64]int 			// todo: rename to RelayIDToIndex
+	RelayIDToIndex map[uint64]int
 
 	RelayIDs              []uint64
 	RelayNames            []string
@@ -103,7 +103,7 @@ func (m *CostMatrix) UnmarshalBinary(data []byte) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.RelayIndices = make(map[uint64]int)
+	m.RelayIDToIndex = make(map[uint64]int)
 	m.RelayIDs = make([]uint64, numRelays)
 
 	for i := 0; i < int(numRelays); i++ {
@@ -111,7 +111,7 @@ func (m *CostMatrix) UnmarshalBinary(data []byte) error {
 		if err := idReadFunc(data, &index, &tmp, "[CostMatrix] invalid read at relay ids"); err != nil {
 			return err
 		}
-		m.RelayIndices[tmp] = i
+		m.RelayIDToIndex[tmp] = i
 		m.RelayIDs[i] = tmp
 	}
 
@@ -381,7 +381,7 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 
 	entryCount := TriMatrixLength(numRelays)
 
-	routes.RelayIndices = m.RelayIndices
+	routes.RelayIDToIndex = m.RelayIDToIndex
 	routes.RelayIDs = m.RelayIDs
 	routes.RelayNames = m.RelayNames
 	routes.RelayAddresses = m.RelayAddresses
@@ -410,7 +410,7 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 	relayDatacenter := make([]uint64, numRelays)
 	for datacenterId, relayIds := range routes.DatacenterRelays {
 		for i := range relayIds {
-			relayIndex := routes.RelayIndices[relayIds[i]]
+			relayIndex := routes.RelayIDToIndex[relayIds[i]]
 			relayDatacenter[relayIndex] = datacenterId
 		}
 	}
@@ -633,6 +633,7 @@ func (m *CostMatrix) Optimize(routes *RouteMatrix, thresholdRTT int32) error {
 
 	wg.Wait()
 
+	routes.UpdateRouteCache()
 	return nil
 }
 
