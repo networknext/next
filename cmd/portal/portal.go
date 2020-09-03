@@ -145,110 +145,112 @@ func main() {
 	}
 
 	{
-		if err := db.AddBuyer(ctx, routing.Buyer{
-			ID:                   customerID,
-			Name:                 "local",
-			PublicKey:            customerPublicKey,
-			RoutingRulesSettings: routing.LocalRoutingRulesSettings,
-		}); err != nil {
-			level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
-			os.Exit(1)
-		}
+		if env == "local" {
+			if err := db.AddBuyer(ctx, routing.Buyer{
+				ID:                   customerID,
+				Name:                 "local",
+				PublicKey:            customerPublicKey,
+				RoutingRulesSettings: routing.LocalRoutingRulesSettings,
+			}); err != nil {
+				level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
+				os.Exit(1)
+			}
 
-		if err := db.AddBuyer(ctx, routing.Buyer{
-			ID:                   0,
-			Name:                 "Ghost Army",
-			PublicKey:            customerPublicKey,
-			RoutingRulesSettings: routing.LocalRoutingRulesSettings,
-		}); err != nil {
-			level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
-			os.Exit(1)
-		}
+			if err := db.AddBuyer(ctx, routing.Buyer{
+				ID:                   0,
+				Name:                 "Ghost Army",
+				PublicKey:            customerPublicKey,
+				RoutingRulesSettings: routing.LocalRoutingRulesSettings,
+			}); err != nil {
+				level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
+				os.Exit(1)
+			}
 
-		seller := routing.Seller{
-			ID:                        "sellerID",
-			Name:                      "local",
-			IngressPriceNibblinsPerGB: 0.1 * 1e9,
-			EgressPriceNibblinsPerGB:  0.2 * 1e9,
-		}
+			seller := routing.Seller{
+				ID:                        "sellerID",
+				Name:                      "local",
+				IngressPriceNibblinsPerGB: 0.1 * 1e9,
+				EgressPriceNibblinsPerGB:  0.2 * 1e9,
+			}
 
-		did := crypto.HashID("local")
-		datacenter := routing.Datacenter{
-			ID:           did,
-			SignedID:     int64(did),
-			Name:         "local",
-			SupplierName: "usw2-az4",
-		}
+			did := crypto.HashID("local")
+			datacenter := routing.Datacenter{
+				ID:           did,
+				SignedID:     int64(did),
+				Name:         "local",
+				SupplierName: "usw2-az4",
+			}
 
-		if err := db.AddSeller(ctx, seller); err != nil {
-			level.Error(logger).Log("msg", "could not add seller to storage", "err", err)
-			os.Exit(1)
-		}
+			if err := db.AddSeller(ctx, seller); err != nil {
+				level.Error(logger).Log("msg", "could not add seller to storage", "err", err)
+				os.Exit(1)
+			}
 
-		if err := db.AddDatacenter(ctx, datacenter); err != nil {
-			level.Error(logger).Log("msg", "could not add datacenter to storage", "err", err)
-			os.Exit(1)
-		}
+			if err := db.AddDatacenter(ctx, datacenter); err != nil {
+				level.Error(logger).Log("msg", "could not add datacenter to storage", "err", err)
+				os.Exit(1)
+			}
 
-		addr1 := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10000}
-		rid1 := crypto.HashID(addr1.String())
-		if err := db.AddRelay(ctx, routing.Relay{
-			Name:           "local.test_relay.a",
-			ID:             rid1,
-			SignedID:       int64(rid1),
-			Addr:           addr1,
-			PublicKey:      relayPublicKey,
-			Seller:         seller,
-			Datacenter:     datacenter,
-			ManagementAddr: "127.0.0.1",
-			SSHUser:        "root",
-			SSHPort:        22,
-			MRC:            19700000000000,
-			Overage:        26000000000000,
-			BWRule:         routing.BWRuleBurst,
-			ContractTerm:   12,
-			StartDate:      time.Now(),
-			EndDate:        time.Now(),
-			Type:           routing.BareMetal,
-		}); err != nil {
-			level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
-			os.Exit(1)
-		}
+			addr1 := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10000}
+			rid1 := crypto.HashID(addr1.String())
+			if err := db.AddRelay(ctx, routing.Relay{
+				Name:           "local.test_relay.a",
+				ID:             rid1,
+				SignedID:       int64(rid1),
+				Addr:           addr1,
+				PublicKey:      relayPublicKey,
+				Seller:         seller,
+				Datacenter:     datacenter,
+				ManagementAddr: "127.0.0.1",
+				SSHUser:        "root",
+				SSHPort:        22,
+				MRC:            19700000000000,
+				Overage:        26000000000000,
+				BWRule:         routing.BWRuleBurst,
+				ContractTerm:   12,
+				StartDate:      time.Now(),
+				EndDate:        time.Now(),
+				Type:           routing.BareMetal,
+			}); err != nil {
+				level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
+				os.Exit(1)
+			}
 
-		addr2 := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10001}
-		rid2 := crypto.HashID(addr2.String())
-		if err := db.AddRelay(ctx, routing.Relay{
-			Name:           "local.test_relay.b",
-			ID:             rid2,
-			SignedID:       int64(rid2),
-			Addr:           addr2,
-			PublicKey:      relayPublicKey,
-			Seller:         seller,
-			Datacenter:     datacenter,
-			ManagementAddr: "127.0.0.1",
-			SSHUser:        "root",
-			SSHPort:        22,
-		}); err != nil {
-			level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
-			os.Exit(1)
-		}
+			addr2 := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10001}
+			rid2 := crypto.HashID(addr2.String())
+			if err := db.AddRelay(ctx, routing.Relay{
+				Name:           "local.test_relay.b",
+				ID:             rid2,
+				SignedID:       int64(rid2),
+				Addr:           addr2,
+				PublicKey:      relayPublicKey,
+				Seller:         seller,
+				Datacenter:     datacenter,
+				ManagementAddr: "127.0.0.1",
+				SSHUser:        "root",
+				SSHPort:        22,
+			}); err != nil {
+				level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
+				os.Exit(1)
+			}
 
-		addr3 := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10002}
-		rid3 := crypto.HashID(addr3.String())
-		if err := db.AddRelay(ctx, routing.Relay{
-			Name:           "abc.xyz",
-			ID:             rid3,
-			SignedID:       int64(rid3),
-			Addr:           addr3,
-			PublicKey:      relayPublicKey,
-			Seller:         seller,
-			Datacenter:     datacenter,
-			ManagementAddr: "127.0.0.1",
-			SSHUser:        "root",
-			SSHPort:        22,
-		}); err != nil {
-			level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
-			os.Exit(1)
+			addr3 := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10002}
+			rid3 := crypto.HashID(addr3.String())
+			if err := db.AddRelay(ctx, routing.Relay{
+				Name:           "abc.xyz",
+				ID:             rid3,
+				SignedID:       int64(rid3),
+				Addr:           addr3,
+				PublicKey:      relayPublicKey,
+				Seller:         seller,
+				Datacenter:     datacenter,
+				ManagementAddr: "127.0.0.1",
+				SSHUser:        "root",
+				SSHPort:        22,
+			}); err != nil {
+				level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
+				os.Exit(1)
+			}
 		}
 	}
 
