@@ -2408,7 +2408,7 @@ func main() {
 			var sessionData SessionData
 			err := sessionData.Serialize(sessionDataReadStream)
 			if err != nil {
-				fmt.Printf("error: could not read session data: %vn\", err")
+				fmt.Printf("error: could not read session data: %v\n", err)
 				continue
 			}
 
