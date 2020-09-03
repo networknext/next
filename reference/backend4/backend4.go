@@ -347,6 +347,7 @@ func (packet *NextBackendSessionResponsePacket) Serialize(stream Stream, version
 	}
 	stream.SerializeBytes(packet.ServerRoutePublicKey)
 	stream.SerializeInteger(&packet.SessionDataBytes, 0, NEXT_MAX_SESSION_DATA_BYTES)
+	fmt.Printf("session data bytes = %d (response)\n", packet.SessionDataBytes)
 	if packet.SessionDataBytes > 0 {
 		sessionData := packet.SessionData[:packet.SessionDataBytes]
 		stream.SerializeBytes(sessionData)
@@ -532,9 +533,6 @@ func SignNetworkNextPacket(packetData []byte, privateKey []byte) []byte {
 		signedPacketData[i] = packetData[i]
 	}
 	messageLength := len(packetData)
-	if messageLength > 32 {
-		messageLength = 32
-	}
 	var state C.crypto_sign_state
 	C.crypto_sign_init(&state)
 	C.crypto_sign_update(&state, (*C.uchar)(&signedPacketData[0]), C.ulonglong(messageLength))
@@ -2548,19 +2546,20 @@ func main() {
 			backend.sessionDatabase[sessionUpdate.SessionId] = sessionEntry
 			backend.mutex.Unlock()
 
-			if sessionData.SessionId != sessionUpdate.SessionId {
-				panic("bad session id in session data")
-			}
-
-			if sessionData.SliceNumber != sessionUpdate.SliceNumber {
-				panic("bad slice number in session data")
+			if sessionUpdate.SliceNumber != 0 {
+				if sessionData.SessionId != sessionUpdate.SessionId {
+					panic("bad session id in session data")
+				}
+				if sessionData.SliceNumber != sessionUpdate.SliceNumber {
+					panic("bad slice number in session data")
+				}
 			}
 
 			sessionData.Version = SessionDataVersion
 			sessionData.SessionId = sessionUpdate.SessionId
 			sessionData.SliceNumber = sessionUpdate.SliceNumber + 1
 
-			sessionDataWriteStream, err := CreateWriteStream(NEXT_MAX_SESSION_DATA_BYTES)
+			sessionDataWriteStream, err := CreateWriteStream(1024)
 			if err != nil {
 				fmt.Printf("error: failed to create write stream for session data: %v\n", err)
 				continue
@@ -2572,6 +2571,10 @@ func main() {
 			sessionDataWriteStream.Flush()
 			copy(sessionResponse.SessionData[:], sessionDataWriteStream.GetData()[0:sessionDataWriteStream.GetBytesProcessed()])
 			sessionResponse.SessionDataBytes = int32(sessionDataWriteStream.GetBytesProcessed())
+
+			if sessionResponse.SessionDataBytes > NEXT_MAX_SESSION_DATA_BYTES {
+				panic("session data is too large")
+			}
 			
 			fmt.Printf("session data bytes = %d (write)\n", sessionDataWriteStream.GetBytesProcessed())
 
