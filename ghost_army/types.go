@@ -263,12 +263,8 @@ func (self *Entry) Into(data *transport.SessionPortalData, dcmap DatacenterMap, 
 	var dc StrippedDatacenter
 	if v, ok := dcmap[uint64(self.DatacenterID)]; ok {
 		dc.Name = v.Name
-		dc.Lat = v.Lat
-		dc.Long = v.Long
 	} else {
 		dc.Name = "Unknown"
-		dc.Lat = 0.0
-		dc.Long = 0.0
 	}
 
 	// meta
@@ -295,8 +291,8 @@ func (self *Entry) Into(data *transport.SessionPortalData, dcmap DatacenterMap, 
 		meta.DeltaRTT = deltaRTT
 
 		meta.Location = routing.Location{
-			Latitude:  dc.Lat,
-			Longitude: dc.Long,
+			Latitude:  self.Latitude,
+			Longitude: self.Longitude,
 		}
 
 		meta.ClientAddr = "?"
@@ -348,7 +344,7 @@ func (self *Entry) Into(data *transport.SessionPortalData, dcmap DatacenterMap, 
 	// map point
 	{
 		pt := &data.Point
-		pt.Latitude = dc.Lat
-		pt.Longitude = dc.Long
+		pt.Latitude = self.Latitude
+		pt.Longitude = self.Longitude
 	}
 }
