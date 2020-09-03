@@ -354,6 +354,26 @@ func (packet *NextBackendSessionResponsePacket) Serialize(stream Stream, version
 	return stream.Error()
 }
 
+// ------------------------------------------------------------------------------------------
+
+const SessionDataVersion = 0
+
+type SessionData struct {
+	Version uint32
+	SessionId uint64
+	SliceNumber uint32
+}
+
+func (packet *SessionData) Serialize(stream Stream) error {
+	stream.SerializeBits(&packet.Version, 8)
+	if stream.IsReading() && packet.Version != SessionDataVersion {
+		return fmt.Errorf("bad session data version %d, expected %d", packet.Version, SessionDataVersion)
+	}
+	stream.SerializeUint64(&packet.SessionId)
+	stream.SerializeBits(&packet.SliceNumber, 32)
+	return stream.Error()
+}
+
 // ===================================================================================================================
 
 type Backend struct {
@@ -2384,6 +2404,14 @@ func main() {
 				continue
 			}
 
+			sessionDataReadStream := CreateReadStream(sessionUpdate.SessionData[:sessionUpdate.SessionDataBytes])
+			var sessionData SessionData
+			err := sessionData.Serialize(sessionDataReadStream)
+			if err != nil {
+				fmt.Printf("error: could not read session data: %vn\", err")
+				continue
+			}
+
 			nearRelayIds, nearRelayAddresses := GetNearRelays()
 
 			var sessionResponse *NextBackendSessionResponsePacket
@@ -2515,9 +2543,34 @@ func main() {
 			backend.sessionDatabase[sessionUpdate.SessionId] = sessionEntry
 			backend.mutex.Unlock()
 
+			if sessionData.SessionId != sessionUpdate.SessionId {
+				panic("bad session id in session data")
+			}
+
+			if sessionData.SliceNumber != uint32(sessionUpdate.Sequence) {
+				panic("bad slice number in session data")
+			}
+
+			sessionData.Version = SessionDataVersion
+			sessionData.SessionId = sessionUpdate.SessionId
+			sessionData.SliceNumber = uint32(sessionUpdate.Sequence + 1)
+
+			sessionDataWriteStream, err := CreateWriteStream(NEXT_MAX_SESSION_DATA_BYTES)
+			if err != nil {
+				fmt.Printf("error: failed to create write stream for session data: %v\n", err)
+				continue
+			}
+			if err := sessionData.Serialize(sessionDataWriteStream); err != nil {
+				fmt.Printf("error: failed to write session data: %v\n", err)
+				continue
+			}
+			sessionDataWriteStream.Flush()
+			copy(sessionResponse.SessionData[:], sessionDataWriteStream.GetData()[0:sessionDataWriteStream.GetBytesProcessed()])
+			sessionResponse.SessionDataBytes = int32(sessionDataWriteStream.GetBytesProcessed())
+
 			writeStream, err := CreateWriteStream(NEXT_MAX_PACKET_BYTES)
 			if err != nil {
-				fmt.Printf("error: failed to write session response packet: %v\n", err)
+				fmt.Printf("error: failed to create write stream for session response packet: %v\n", err)
 				continue
 			}
 			responsePacketType := uint32(NEXT_BACKEND_SESSION_RESPONSE_PACKET)
