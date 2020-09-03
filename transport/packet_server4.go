@@ -138,7 +138,7 @@ type SessionUpdatePacket4 struct {
 	PlatformID                int32
 	Tag                       uint64
 	Flags                     uint32
-	Flagged                   bool
+	Reported                  bool
 	FallbackToDirect          bool
 	ConnectionType            int32
 	OnNetworkNext             bool
@@ -195,7 +195,7 @@ func (packet *SessionUpdatePacket4) Serialize(stream encoding.Stream) error {
 	if hasFlags {
 		stream.SerializeBits(&packet.Flags, 9)
 	}
-	stream.SerializeBool(&packet.Flagged)
+	stream.SerializeBool(&packet.Reported)
 	stream.SerializeBool(&packet.FallbackToDirect)
 	stream.SerializeInteger(&packet.ConnectionType, ConnectionTypeUnknown, ConnectionTypeMax)
 	stream.SerializeFloat32(&packet.DirectRTT)
