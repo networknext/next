@@ -235,7 +235,11 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			newCount += count
 
 			if buyer.ID == ghostArmyBuyerID {
-				ghostArmyNextCount = count
+				if newCount > oldCount {
+					ghostArmyNextCount = newCount
+				} else {
+					ghostArmyNextCount = oldCount
+				}
 			}
 		}
 
