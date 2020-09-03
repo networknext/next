@@ -293,6 +293,7 @@ func (self *Entry) Into(data *transport.SessionPortalData, dcmap DatacenterMap, 
 		meta.Location = routing.Location{
 			Latitude:  self.Latitude,
 			Longitude: self.Longitude,
+			ISP:       self.ISP,
 		}
 
 		meta.ClientAddr = "?"
