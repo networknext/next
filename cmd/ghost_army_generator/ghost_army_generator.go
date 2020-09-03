@@ -22,6 +22,10 @@ import (
 
 type sortableEntries []ghostarmy.Entry
 
+const (
+	SecondsInDay = 86400
+)
+
 func (self sortableEntries) Len() int {
 	return len(self)
 }
@@ -88,8 +92,7 @@ func main() {
 
 			year, month, day := t.Date()
 			t2 := time.Date(year, month, day, 0, 0, 0, 0, t.Location())
-			t2.AddDate(0, 0, offset)
-			secsIntoDay := int64(t.Sub(t2).Seconds())
+			secsIntoDay := int64(t.Sub(t2).Seconds()) + int64(offset*SecondsInDay)
 
 			entry.Timestamp = secsIntoDay
 
