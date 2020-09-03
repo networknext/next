@@ -165,11 +165,10 @@ func main() {
 		getLastMidnight := func() time.Time {
 			t := time.Now()
 			year, month, day := t.Date()
-			t = time.Date(year, month, day, 0, 0, 0, 0, t.Location())
-			return t
+			return time.Date(year, month, day, 0, 0, 0, 0, t.Location())
 		}
 
-		// slice begin should be the
+		// slice begin is the current number of seconds into the day
 		t := time.Now()
 		year, month, day := t.Date()
 		t2 := time.Date(year, month, day, 0, 0, 0, 0, t.Location())
