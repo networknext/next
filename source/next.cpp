@@ -9159,7 +9159,10 @@ struct NextBackendSessionUpdatePacket
             serialize_uint64( stream, user_flags );
         }
         serialize_int( stream, session_data_bytes, 0, NEXT_MAX_SESSION_DATA_BYTES );
-        serialize_bytes( stream, session_data, session_data_bytes );
+        if ( session_data_bytes > 0 )
+        {
+            serialize_bytes( stream, session_data, session_data_bytes );
+        }
         return true;
     }
 };
@@ -9212,7 +9215,10 @@ struct NextBackendSessionResponsePacket
         }
         serialize_bytes( stream, server_route_public_key, crypto_box_PUBLICKEYBYTES );
         serialize_int( stream, session_data_bytes, 0, NEXT_MAX_SESSION_DATA_BYTES );
-        serialize_bytes( stream, session_data, session_data_bytes );
+        if ( session_data_bytes > 0 )
+        {
+            serialize_bytes( stream, session_data, session_data_bytes );
+        }
         return true;
     }
 };
