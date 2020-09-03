@@ -57,7 +57,7 @@ func TestServerInitHandler4BuyerNotFound(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, requestPacket.RequestID, responsePacket.RequestID)
-	assert.Equal(t, uint32(transport.InitResponseUnknownCustomer), responsePacket.Response)
+	assert.Equal(t, uint8(transport.InitResponseUnknownCustomer), responsePacket.Response)
 
 	assert.Equal(t, metrics.ErrorMetrics.BuyerNotFound.Value(), 1.0)
 }
@@ -95,7 +95,7 @@ func TestServerInitHandler4SDKTooOld(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, requestPacket.RequestID, responsePacket.RequestID)
-	assert.Equal(t, uint32(transport.InitResponseOldSDKVersion), responsePacket.Response)
+	assert.Equal(t, uint8(transport.InitResponseOldSDKVersion), responsePacket.Response)
 
 	assert.Equal(t, metrics.ErrorMetrics.SDKTooOld.Value(), 1.0)
 }
@@ -142,7 +142,7 @@ func TestServerInitHandler4MisconfiguredDatacenterAlias(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, requestPacket.RequestID, responsePacket.RequestID)
-	assert.Equal(t, uint32(transport.InitResponseUnknownDatacenter), responsePacket.Response)
+	assert.Equal(t, uint8(transport.InitResponseUnknownDatacenter), responsePacket.Response)
 
 	assert.Equal(t, metrics.ErrorMetrics.DatacenterNotFound.Value(), 1.0)
 
@@ -185,7 +185,7 @@ func TestServerInitHandler4DatacenterAndAliasNotFound(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, requestPacket.RequestID, responsePacket.RequestID)
-	assert.Equal(t, uint32(transport.InitResponseOK), responsePacket.Response)
+	assert.Equal(t, uint8(transport.InitResponseOK), responsePacket.Response)
 
 	assert.Equal(t, metrics.ErrorMetrics.DatacenterNotFound.Value(), 1.0)
 
@@ -234,7 +234,7 @@ func TestServerInitHandler4Success(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, requestPacket.RequestID, responsePacket.RequestID)
-	assert.Equal(t, uint32(transport.InitResponseOK), responsePacket.Response)
+	assert.Equal(t, uint8(transport.InitResponseOK), responsePacket.Response)
 
 	unknownDatacenterNames := datacenterTracker.GetUnknownDatacentersNames()
 	assert.Empty(t, unknownDatacenterNames)
@@ -288,7 +288,7 @@ func TestServerInitHandler4SuccessDatacenterAliasFound(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, requestPacket.RequestID, responsePacket.RequestID)
-	assert.Equal(t, uint32(transport.InitResponseOK), responsePacket.Response)
+	assert.Equal(t, uint8(transport.InitResponseOK), responsePacket.Response)
 
 	unknownDatacenterNames := datacenterTracker.GetUnknownDatacentersNames()
 	assert.Empty(t, unknownDatacenterNames)

@@ -80,7 +80,7 @@ func (packet *ServerInitRequestPacket4) Serialize(stream encoding.Stream) error 
 
 type ServerInitResponsePacket4 struct {
 	RequestID uint64
-	Response  uint32
+	Response  uint8
 }
 
 func (packet *ServerInitResponsePacket4) Serialize(stream encoding.Stream) error {
@@ -92,7 +92,9 @@ func (packet *ServerInitResponsePacket4) Serialize(stream encoding.Stream) error
 	}
 
 	stream.SerializeUint64(&packet.RequestID)
-	stream.SerializeUint32(&packet.Response)
+	responseCode := uint32(packet.Response)
+	stream.SerializeBits(&responseCode, 8)
+	packet.Response = uint8(responseCode)
 	return stream.Error()
 }
 
@@ -139,7 +141,6 @@ type SessionUpdatePacket4 struct {
 	Tag                       uint64
 	Flags                     uint32
 	Reported                  bool
-	FallbackToDirect          bool
 	ConnectionType            int32
 	OnNetworkNext             bool
 	Committed                 bool
@@ -196,7 +197,6 @@ func (packet *SessionUpdatePacket4) Serialize(stream encoding.Stream) error {
 		stream.SerializeBits(&packet.Flags, 9)
 	}
 	stream.SerializeBool(&packet.Reported)
-	stream.SerializeBool(&packet.FallbackToDirect)
 	stream.SerializeInteger(&packet.ConnectionType, ConnectionTypeUnknown, ConnectionTypeMax)
 	stream.SerializeFloat32(&packet.DirectRTT)
 	stream.SerializeFloat32(&packet.DirectJitter)

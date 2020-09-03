@@ -12,7 +12,7 @@ import (
 	"github.com/networknext/backend/storage"
 )
 
-func writeServerInitResponse4(w io.Writer, packet *ServerInitRequestPacket4, response uint32) error {
+func writeServerInitResponse4(w io.Writer, packet *ServerInitRequestPacket4, response uint8) error {
 	responsePacket := ServerInitResponsePacket4{
 		RequestID: packet.RequestID,
 		Response:  response,
