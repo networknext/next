@@ -9014,7 +9014,7 @@ struct NextBackendServerInitResponsePacket
     template <typename Stream> bool Serialize( Stream & stream )
     {
         serialize_uint64( stream, request_id );
-        serialize_uint32( stream, response, 8 );
+        serialize_bits( stream, response, 8 );
         return true;
     }
 };
