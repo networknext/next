@@ -188,7 +188,7 @@ type NextBackendSessionUpdatePacket struct {
 	VersionMajor         	  uint32
 	VersionMinor              uint32
 	VersionPatch              uint32
-	Sequence                  uint64
+	SliceNumber               uint32
 	CustomerId                uint64
 	SessionId                 uint64
 	UserHash                  uint64
@@ -229,7 +229,7 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 	stream.SerializeBits(&packet.VersionMajor, 8)
 	stream.SerializeBits(&packet.VersionMinor, 8)
 	stream.SerializeBits(&packet.VersionPatch, 8)
-	stream.SerializeUint64(&packet.Sequence)
+	stream.SerializeBits(&packet.SliceNumber, 32)
 	stream.SerializeUint64(&packet.CustomerId)
 	stream.SerializeAddress(&packet.ServerAddress)
 	stream.SerializeUint64(&packet.SessionId)
@@ -296,7 +296,7 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 // --------------------------------------------------------------------------------
 
 type NextBackendSessionResponsePacket struct {
-	Sequence             uint64
+	SliceNumber          uint32
 	SessionId            uint64
 	NumNearRelays        int32
 	NearRelayIds         []uint64
@@ -312,7 +312,7 @@ type NextBackendSessionResponsePacket struct {
 }
 
 func (packet *NextBackendSessionResponsePacket) Serialize(stream Stream, versionMajor uint32, versionMinor uint32, versionPatch uint32) error {
-	stream.SerializeUint64(&packet.Sequence)
+	stream.SerializeBits(&packet.SliceNumber, 32)
 	stream.SerializeUint64(&packet.SessionId)
 	stream.SerializeInteger(&packet.NumNearRelays, 0, NEXT_MAX_NEAR_RELAYS)
 	if stream.IsReading() {
@@ -2409,7 +2409,7 @@ func main() {
 			sessionDataReadStream := CreateReadStream(sessionUpdate.SessionData[:sessionUpdate.SessionDataBytes])
 			var sessionData SessionData
 			sessionData.Version = SessionDataVersion
-			if sessionUpdate.Sequence != 0 {
+			if sessionUpdate.SliceNumber != 0 {
 				err := sessionData.Serialize(sessionDataReadStream)
 				if err != nil {
 					fmt.Printf("error: could not read session data: %v\n", err)
@@ -2445,7 +2445,7 @@ func main() {
 				// direct route
 
 				sessionResponse = &NextBackendSessionResponsePacket{
-					Sequence:             sessionUpdate.Sequence,
+					SliceNumber:          sessionUpdate.SliceNumber,
 					SessionId:            sessionUpdate.SessionId,
 					NumNearRelays:        int32(len(nearRelayIds)),
 					NearRelayIds:         nearRelayIds,
@@ -2519,7 +2519,7 @@ func main() {
 				}
 
 				sessionResponse = &NextBackendSessionResponsePacket{
-					Sequence:             sessionUpdate.Sequence,
+					SliceNumber:          sessionUpdate.SliceNumber,
 					SessionId:            sessionUpdate.SessionId,
 					NumNearRelays:        int32(len(nearRelayIds)),
 					NearRelayIds:         nearRelayIds,
@@ -2552,13 +2552,13 @@ func main() {
 				panic("bad session id in session data")
 			}
 
-			if sessionData.SliceNumber != uint32(sessionUpdate.Sequence) {
+			if sessionData.SliceNumber != sessionUpdate.SliceNumber {
 				panic("bad slice number in session data")
 			}
 
 			sessionData.Version = SessionDataVersion
 			sessionData.SessionId = sessionUpdate.SessionId
-			sessionData.SliceNumber = uint32(sessionUpdate.Sequence + 1)
+			sessionData.SliceNumber = sessionUpdate.SliceNumber + 1
 
 			sessionDataWriteStream, err := CreateWriteStream(NEXT_MAX_SESSION_DATA_BYTES)
 			if err != nil {
