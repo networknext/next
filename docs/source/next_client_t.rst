@@ -328,14 +328,14 @@ Example:
         next_sleep( 1.0 / 60.0 );
     }
 
-next_client_flag_session
-------------------------
+next_client_report_session
+--------------------------
 
-Flag the session as problematic.
+Report the session as problematic.
 
 .. code-block:: c++
 
-	void next_client_flag_session( next_client_t * client );
+	void next_client_report_session( next_client_t * client );
 
 This feature was added to support our customers who let players flag bad play sessions in their game UI.
 

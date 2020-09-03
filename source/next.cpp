@@ -2937,7 +2937,7 @@ struct NextDirectPongPacket
 
 struct NextClientStatsPacket
 {
-    bool flagged;
+    bool reported;
     bool fallback_to_direct;
     bool multipath;
     uint64_t flags;
@@ -2969,7 +2969,7 @@ struct NextClientStatsPacket
 
     template <typename Stream> bool Serialize( Stream & stream )
     {
-        serialize_bool( stream, flagged );
+        serialize_bool( stream, reported );
         serialize_bool( stream, fallback_to_direct );
         serialize_bool( stream, multipath );
         serialize_bits( stream, flags, NEXT_FLAGS_COUNT );
@@ -5507,7 +5507,7 @@ struct next_client_internal_t
     uint16_t bound_port;
     bool session_open;
     bool upgraded;
-    bool flagged;
+    bool reported;
     bool fallback_to_direct;
     bool multipath;
     uint64_t user_flags;
@@ -6613,7 +6613,7 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
 
                 client->session_open = false;
                 client->upgraded = false;
-                client->flagged = false;
+                client->reported = false;
                 client->fallback_to_direct = false;
                 client->multipath = false;
                 client->user_flags = 0;
@@ -6683,10 +6683,10 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
 
             case NEXT_CLIENT_COMMAND_FLAG_SESSION:
             {
-                if ( client->session_id != 0 && !client->flagged )
+                if ( client->session_id != 0 && !client->reported )
                 {
-                    next_printf( NEXT_LOG_LEVEL_INFO, "client flagged session %" PRIx64, client->session_id );
-                    client->flagged = true;
+                    next_printf( NEXT_LOG_LEVEL_INFO, "client reported session %" PRIx64, client->session_id );
+                    client->reported = true;
                 }
             }
             break;
@@ -6731,7 +6731,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         next_platform_mutex_release( &client->route_manager_mutex );
 
         client->client_stats.next = network_next;
-        client->client_stats.flagged = client->flagged;
+        client->client_stats.reported = client->reported;
         client->client_stats.multipath = client->multipath;
         client->client_stats.committed = committed;
         client->client_stats.platform_id = next_platform_id();
@@ -6807,7 +6807,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         next_platform_mutex_release( &client->route_manager_mutex );
 
         packet.flags = flags;
-        packet.flagged = client->flagged;
+        packet.reported = client->reported;
         packet.fallback_to_direct = client->fallback_to_direct;
         packet.multipath = client->multipath;
         packet.committed = client->client_stats.committed;
@@ -8439,7 +8439,7 @@ struct next_session_entry_t
     NEXT_DECLARE_SENTINEL(1)
 
     uint64_t stats_flags;
-    bool stats_flagged;
+    bool stats_reported;
     bool stats_multipath;
     bool stats_committed;
     bool stats_fallback_to_direct;
@@ -9068,7 +9068,7 @@ struct NextBackendSessionUpdatePacket
     uint64_t user_hash;
     uint64_t tag;
     uint64_t flags;
-    bool flagged;
+    bool reported;
     bool fallback_to_direct;
     int platform_id;
     int connection_type;
@@ -9124,7 +9124,7 @@ struct NextBackendSessionUpdatePacket
         {
             serialize_bits( stream, flags, NEXT_FLAGS_COUNT );
         }
-        serialize_bool( stream, flagged );
+        serialize_bool( stream, reported );
         serialize_bool( stream, fallback_to_direct );
         serialize_int( stream, connection_type, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_MAX );
         serialize_float( stream, direct_rtt );
@@ -10888,7 +10888,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             session->stats_sequence = packet_sequence;
 
             session->stats_flags |= packet.flags;
-            session->stats_flagged = packet.flagged;
+            session->stats_reported = packet.reported;
             session->stats_multipath = packet.multipath;
             session->stats_fallback_to_direct = packet.fallback_to_direct;
 
@@ -11387,7 +11387,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.user_hash = session->user_hash;
             packet.tag = session->tag;
             packet.flags = session->stats_flags;
-            packet.flagged = session->stats_flagged;
+            packet.reported = session->stats_reported;
             packet.fallback_to_direct = session->stats_fallback_to_direct;
             packet.connection_type = session->stats_connection_type;
             packet.kbps_up = session->stats_kbps_up;
@@ -12635,7 +12635,7 @@ static void test_replay_protection()
 
         check( next_replay_protection_already_received( &replay_protection, 0 ) == 1 );
 
-        // packets received a second time should be flagged already received
+        // packets received a second time should be detected as already received
 
         for ( sequence = MAX_SEQUENCE - 10; sequence < MAX_SEQUENCE; ++sequence )
         {
@@ -13432,7 +13432,7 @@ static void test_packets()
     {
         static NextClientStatsPacket in, out;
         in.flags = NEXT_FLAGS_BAD_ROUTE_TOKEN;
-        in.flagged = true;
+        in.reported = true;
         in.fallback_to_direct = true;
         in.platform_id = NEXT_PLATFORM_WINDOWS;
         in.connection_type = NEXT_CONNECTION_TYPE_CELLULAR;
@@ -13463,7 +13463,7 @@ static void test_packets()
         check( next_read_packet( buffer, packet_bytes, &out, next_signed_packets, next_encrypted_packets, &out_sequence, NULL, private_key, &replay_protection ) == NEXT_CLIENT_STATS_PACKET );
         check( in_sequence == out_sequence + 1 );
         check( in.flags == out.flags );
-        check( in.flagged == out.flagged );
+        check( in.reported == out.reported );
         check( in.fallback_to_direct == out.fallback_to_direct );
         check( in.platform_id == out.platform_id );
         check( in.connection_type == out.connection_type );
@@ -14084,7 +14084,7 @@ static void test_backend_packets()
         in.platform_id = 3;
         in.tag = 0x1231314141;
         in.flags = NEXT_FLAGS_BAD_ROUTE_TOKEN | NEXT_FLAGS_ROUTE_REQUEST_TIMED_OUT;
-        in.flagged = true;
+        in.reported = true;
         in.fallback_to_direct = true;
         in.connection_type = NEXT_CONNECTION_TYPE_WIRED;
         in.direct_rtt = 10.1f;
@@ -14129,7 +14129,7 @@ static void test_backend_packets()
         check( in.platform_id == out.platform_id );
         check( in.tag == out.tag );
         check( in.flags == out.flags );
-        check( in.flagged == out.flagged );
+        check( in.reported == out.reported );
         check( in.fallback_to_direct == out.fallback_to_direct );
         check( in.connection_type == out.connection_type );
         check( in.direct_rtt == out.direct_rtt );

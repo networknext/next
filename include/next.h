@@ -212,7 +212,7 @@ struct next_client_stats_t
     int connection_type;
     bool committed;
     bool multipath;
-    bool flagged;
+    bool reported;
     float direct_rtt;
     float direct_jitter;
     float direct_packet_loss;
@@ -257,7 +257,7 @@ NEXT_EXPORT_FUNC void next_client_send_packet( next_client_t * client, const uin
 
 NEXT_EXPORT_FUNC void next_client_send_packet_direct( next_client_t * client, const uint8_t * packet_data, int packet_bytes );
 
-NEXT_EXPORT_FUNC void next_client_flag_session( next_client_t * client );
+NEXT_EXPORT_FUNC void next_client_report_session( next_client_t * client );
 
 NEXT_EXPORT_FUNC uint64_t next_client_session_id( next_client_t * client );
 

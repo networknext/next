@@ -390,7 +390,7 @@ int main()
 
             printf( " + Multipath = %s\n", stats->multipath ? "yes" : "no" );
 
-            printf( " + Flagged = %s\n", stats->flagged ? "yes" : "no" );
+            printf( " + Reported = %s\n", stats->reported ? "yes" : "no" );
 
             printf( " + Direct RTT = %.2fms\n", stats->direct_rtt );
             printf( " + Direct Jitter = %.2fms\n", stats->direct_jitter );
