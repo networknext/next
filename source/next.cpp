@@ -10357,7 +10357,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
                 return;
             }
 
-            if ( packet.slice_number != entry->update_sequence )
+            if ( packet.slice_number != entry->update_sequence - 1 )
             {
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. wrong sequence number" );
                 return;
