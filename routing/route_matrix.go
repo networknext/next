@@ -20,7 +20,7 @@ import (
 
 const (
 	// IMPORTANT: Increment this when you change the binary format
-	RouteMatrixVersion = 6
+	RouteMatrixVersion = 7
 )
 
 type RouteMatrixEntry struct {
@@ -32,8 +32,7 @@ type RouteMatrixEntry struct {
 }
 
 type RouteMatrix struct {
-
-	RelayIndices map[uint64]int 		// todo: rename to "RelayIDToIndex"
+	RelayIndices map[uint64]int // todo: rename to "RelayIDToIndex"
 
 	RelayIDs              []uint64
 	RelayNames            []string
@@ -60,7 +59,7 @@ type RouteMatrix struct {
 		routeIndex int
 		reversed   bool
 	}
-	
+
 	relayAddressCache []*net.UDPAddr
 }
 
@@ -565,9 +564,55 @@ func (m *RouteMatrix) UnmarshalBinary(data []byte) error {
 		}
 	}
 
-	m.UpdateRelayAddressCache()
-	m.UpdateRouteCache()
+	if version >= 7 {
+		var routeCacheEntryCount uint32
+		if !encoding.ReadUint32(data, &index, &routeCacheEntryCount) {
+			return errors.New("[RouteMatrix] invalid read on route cache entry count")
+		}
 
+		m.routeCache = make(map[uint64]struct {
+			entryIndex int
+			routeIndex int
+			reversed   bool
+		}, routeCacheEntryCount)
+
+		for i := 0; i < int(routeCacheEntryCount); i++ {
+			var routeHash uint64
+			var entryIndex uint32
+			var routeIndex uint32
+			var reversed bool
+
+			if !encoding.ReadUint64(data, &index, &routeHash) {
+				return errors.New("[RouteMatrix] invalid read on route hash")
+			}
+
+			if !encoding.ReadUint32(data, &index, &entryIndex) {
+				return errors.New("[RouteMatrix] invalid read on route data entry index")
+			}
+
+			if !encoding.ReadUint32(data, &index, &routeIndex) {
+				return errors.New("[RouteMatrix] invalid read on route data route index")
+			}
+
+			if !encoding.ReadBool(data, &index, &reversed) {
+				return errors.New("[RouteMatrix] invalid read on route data reversed")
+			}
+
+			routeData := struct {
+				entryIndex int
+				routeIndex int
+				reversed   bool
+			}{
+				entryIndex: int(entryIndex),
+				routeIndex: int(routeIndex),
+				reversed:   reversed,
+			}
+
+			m.routeCache[routeHash] = routeData
+		}
+	}
+
+	m.UpdateRelayAddressCache()
 	return nil
 }
 
@@ -692,6 +737,14 @@ func (m *RouteMatrix) MarshalBinary() ([]byte, error) {
 		encoding.WriteUint32(data, &index, m.RelayMaxSessionCounts[i])
 	}
 
+	encoding.WriteUint32(data, &index, uint32(len(m.routeCache)))
+	for routeHash, routeData := range m.routeCache {
+		encoding.WriteUint64(data, &index, routeHash)
+		encoding.WriteUint32(data, &index, uint32(routeData.entryIndex))
+		encoding.WriteUint32(data, &index, uint32(routeData.routeIndex))
+		encoding.WriteBool(data, &index, routeData.reversed)
+	}
+
 	return data, nil
 }
 
@@ -739,6 +792,10 @@ func (m *RouteMatrix) Size() uint64 {
 
 	// Add length of relay max session counts
 	length += uint64(len(m.RelayMaxSessionCounts) * 4)
+
+	// Add length of route cache
+	length += 4
+	length += uint64(len(m.routeCache) * (8 + 4 + 4 + 1))
 
 	return length
 }
