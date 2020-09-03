@@ -5845,9 +5845,6 @@ int next_client_internal_send_packet_to_server( next_client_internal_t * client,
         return NEXT_ERROR;
     }
 
-    // todo:
-    printf( "send packet to server (%d)\n", buffer[8] );
-
     next_platform_socket_send_packet( client->socket, &client->server_address, buffer, packet_bytes );
 
     return NEXT_OK;
