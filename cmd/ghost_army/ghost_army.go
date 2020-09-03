@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/csv"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -29,58 +28,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	var datacenterCSV string
-	if v, ok := os.LookupEnv("DATACENTERS_CSV"); ok {
-		datacenterCSV = v
-	} else {
-		fmt.Println("you must set DATACENTERS_CSV to a file")
-		os.Exit(1)
-	}
-
 	buyerID := ghostarmy.GhostArmyBuyerID(os.Getenv("ENV"))
-
-	// parse datacenter csv
-	inputfile, err := os.Open(datacenterCSV)
-	if err != nil {
-		fmt.Printf("could not open '%s': %v\n", datacenterCSV, err)
-		os.Exit(1)
-	}
-	defer inputfile.Close()
-
-	lines, err := csv.NewReader(inputfile).ReadAll()
-	if err != nil {
-		fmt.Printf("could not read csv data: %v\n", err)
-		os.Exit(1)
-	}
-
-	var dcmap ghostarmy.DatacenterMap
-	dcmap = make(map[uint64]ghostarmy.StrippedDatacenter)
-
-	for lineNum, line := range lines {
-		if lineNum == 0 {
-			continue
-		}
-
-		var datacenter ghostarmy.StrippedDatacenter
-		datacenter.Name = line[0]
-		id, err := strconv.ParseUint(line[1], 10, 64)
-		if err != nil {
-			fmt.Printf("could not parse id for dc %s", datacenter.Name)
-			continue
-		}
-		datacenter.Lat, err = strconv.ParseFloat(line[2], 64)
-		if err != nil {
-			fmt.Printf("could not parse lat for dc %s", datacenter.Name)
-			continue
-		}
-		datacenter.Long, err = strconv.ParseFloat(line[3], 64)
-		if err != nil {
-			fmt.Printf("could not parse long for dc %s", datacenter.Name)
-			continue
-		}
-
-		dcmap[id] = datacenter
-	}
 
 	// read binary file
 	bin, err := ioutil.ReadFile(infile)
@@ -172,44 +120,42 @@ func main() {
 		t := time.Now()
 		year, month, day := t.Date()
 		t2 := time.Date(year, month, day, 0, 0, 0, 0, t.Location())
-		sliceBegin := int64(t.Sub(t2).Seconds())
+		sliceBegin := (int64(t.Sub(t2).Seconds()) / 10) * 10
 
 		index := 0
 		dateOffset := getLastMidnight()
+
 		for {
 			begin := time.Now()
 			endIndex := (sliceBegin + 10) / 10
 
-			if endIndex > SlicesInDay*3 {
+			if endIndex > SlicesInDay {
 				index = 0
 				sliceBegin = 0
 				dateOffset = getLastMidnight()
 			}
 
+			// seek to the next position slices should be from
 			for slices[index].Slice.Timestamp.Unix() < sliceBegin {
-				index++
-				index = index % len(slices)
+				index = (index + 1) % len(slices)
 			}
 
+			// only read for the next 10 seconds
 			for slices[index].Slice.Timestamp.Unix() < sliceBegin+10 {
 				slice := slices[index]
 
 				// slice timestamp will be in the range of 0 - SecondsInDay * 3,
 				// so adjust the timestamp by the time the loop was started
-				slice.Slice.Timestamp = dateOffset.Add(time.Second*-10 + time.Second*time.Duration(slice.Slice.Timestamp.Unix()))
+				slice.Slice.Timestamp = dateOffset.Add(time.Second * time.Duration(slice.Slice.Timestamp.Unix()))
 
 				publishChan <- slice
-				index++
-				index = index % len(slices)
+				index = (index + 1) % len(slices)
 			}
 
+			// increment by 10 seconds
 			sliceBegin += 10
 
-			end := time.Now()
-
-			diff := end.Sub(begin)
-
-			time.Sleep((time.Second * 10) - diff)
+			time.Sleep((time.Second * 10) - time.Since(begin))
 		}
 	}()
 
