@@ -9069,7 +9069,6 @@ struct NextBackendSessionUpdatePacket
     uint64_t tag;
     uint64_t flags;
     bool reported;
-    bool fallback_to_direct;
     int platform_id;
     int connection_type;
     float direct_rtt;
@@ -9125,7 +9124,6 @@ struct NextBackendSessionUpdatePacket
             serialize_bits( stream, flags, NEXT_FLAGS_COUNT );
         }
         serialize_bool( stream, reported );
-        serialize_bool( stream, fallback_to_direct );
         serialize_int( stream, connection_type, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_MAX );
         serialize_float( stream, direct_rtt );
         serialize_float( stream, direct_jitter );
@@ -11388,7 +11386,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.tag = session->tag;
             packet.flags = session->stats_flags;
             packet.reported = session->stats_reported;
-            packet.fallback_to_direct = session->stats_fallback_to_direct;
             packet.connection_type = session->stats_connection_type;
             packet.kbps_up = session->stats_kbps_up;
             packet.kbps_down = session->stats_kbps_down;
@@ -14085,7 +14082,6 @@ static void test_backend_packets()
         in.tag = 0x1231314141;
         in.flags = NEXT_FLAGS_BAD_ROUTE_TOKEN | NEXT_FLAGS_ROUTE_REQUEST_TIMED_OUT;
         in.reported = true;
-        in.fallback_to_direct = true;
         in.connection_type = NEXT_CONNECTION_TYPE_WIRED;
         in.direct_rtt = 10.1f;
         in.direct_jitter = 5.2f;
@@ -14130,7 +14126,6 @@ static void test_backend_packets()
         check( in.tag == out.tag );
         check( in.flags == out.flags );
         check( in.reported == out.reported );
-        check( in.fallback_to_direct == out.fallback_to_direct );
         check( in.connection_type == out.connection_type );
         check( in.direct_rtt == out.direct_rtt );
         check( in.direct_jitter == out.direct_jitter );
