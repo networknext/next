@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -17,6 +18,7 @@ import (
 	"github.com/go-kit/kit/log/level"
 	"github.com/gomodule/redigo/redis"
 	"github.com/networknext/backend/encoding"
+	ghostarmy "github.com/networknext/backend/ghost_army"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
@@ -198,44 +200,14 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 	defer redisClient.Close()
 	minutes := time.Now().Unix() / 60
 
+	ghostArmyBuyerID := ghostarmy.GhostArmyBuyerID(os.Getenv("ENV"))
+
 	switch args.BuyerID {
 	case "":
 		buyers := s.Storage.Buyers()
 
-		for _, buyer := range buyers {
-			stringID := fmt.Sprintf("%016x", buyer.ID)
-			redisClient.Send("HLEN", fmt.Sprintf("d-%s-%d", stringID, minutes-1))
-			redisClient.Send("HLEN", fmt.Sprintf("d-%s-%d", stringID, minutes))
-		}
-		redisClient.Flush()
-
 		var oldCount int
 		var newCount int
-		for range buyers {
-			count, err := redis.Int(redisClient.Receive())
-			if err != nil {
-				err = fmt.Errorf("TotalSessions() failed getting total session count direct: %v", err)
-				level.Error(s.Logger).Log("err", err)
-				return err
-			}
-			oldCount += count
-
-			count, err = redis.Int(redisClient.Receive())
-			if err != nil {
-				err = fmt.Errorf("TotalSessions() failed getting total session count direct: %v", err)
-				level.Error(s.Logger).Log("err", err)
-				return err
-			}
-			newCount += count
-		}
-
-		reply.Direct = oldCount
-		if newCount > oldCount {
-			reply.Direct = newCount
-		}
-
-		oldCount = 0
-		newCount = 0
 
 		for _, buyer := range buyers {
 			stringID := fmt.Sprintf("%016x", buyer.ID)
@@ -265,6 +237,45 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		reply.Next = oldCount
 		if newCount > oldCount {
 			reply.Next = newCount
+		}
+
+		oldCount = 0
+		newCount = 0
+
+		for _, buyer := range buyers {
+			stringID := fmt.Sprintf("%016x", buyer.ID)
+			redisClient.Send("HLEN", fmt.Sprintf("d-%s-%d", stringID, minutes-1))
+			redisClient.Send("HLEN", fmt.Sprintf("d-%s-%d", stringID, minutes))
+		}
+		redisClient.Flush()
+
+		for _, buyer := range buyers {
+			if buyer.ID == ghostArmyBuyerID {
+				// scale by next values because ghost army data contains 0 direct
+				newCount += reply.Next * 300
+				continue
+			}
+
+			count, err := redis.Int(redisClient.Receive())
+			if err != nil {
+				err = fmt.Errorf("TotalSessions() failed getting total session count direct: %v", err)
+				level.Error(s.Logger).Log("err", err)
+				return err
+			}
+			oldCount += count
+
+			count, err = redis.Int(redisClient.Receive())
+			if err != nil {
+				err = fmt.Errorf("TotalSessions() failed getting total session count direct: %v", err)
+				level.Error(s.Logger).Log("err", err)
+				return err
+			}
+			newCount += count
+		}
+
+		reply.Direct = oldCount
+		if newCount > oldCount {
+			reply.Direct = newCount
 		}
 	default:
 		if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
