@@ -9215,6 +9215,11 @@ struct NextBackendSessionResponsePacket
         if ( session_data_bytes > 0 )
         {
             serialize_bytes( stream, session_data, session_data_bytes );
+            // todo
+            if ( Stream::IsReading )
+            {
+                printf( "session data bytes = %d\n", session_data_bytes );
+            }
         }
         return true;
     }
@@ -10403,6 +10408,9 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             memcpy( entry->update_near_relay_addresses, packet.near_relay_addresses, sizeof(next_address_t) * size_t(packet.num_near_relays) );
             entry->update_last_send_time = -1000.0;
 
+            // todo
+            printf( "session data bytes = %d (store)\n", packet.session_data_bytes );
+
             entry->session_data_bytes = packet.session_data_bytes;
             memcpy( entry->session_data, packet.session_data, packet.session_data_bytes );
 
@@ -11424,6 +11432,9 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             next_assert( session->session_data_bytes <= NEXT_MAX_SESSION_DATA_BYTES );
             packet.session_data_bytes = session->session_data_bytes;
             memcpy( packet.session_data, session->session_data, session->session_data_bytes );
+
+            // todo
+            printf( "session data bytes = %d (write)\n", packet.session_data_bytes );
 
             if ( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_PACKET, &packet, session->update_packet_data, &session->update_packet_bytes, next_signed_packets, server->customer_private_key ) != NEXT_OK )
             {
