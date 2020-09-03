@@ -10,7 +10,8 @@ import (
 )
 
 const (
-	LocalBuyerID   = 13672574147039585173
+	// All the same for now, but just in case they change later
+	LocalBuyerID   = 0
 	DevBuyerID     = 0
 	ProdBuyerID    = 0
 	StagingBuyerID = 0

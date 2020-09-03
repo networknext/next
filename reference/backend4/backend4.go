@@ -195,7 +195,7 @@ type NextBackendSessionUpdatePacket struct {
 	PlatformId                int32
 	Tag                       uint64
 	Flags                     uint32
-	Flagged                   bool
+	Reported                  bool
 	ConnectionType            int32
 	OnNetworkNext             bool
 	Committed                 bool
@@ -241,7 +241,7 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 	if hasFlags {
 		stream.SerializeBits(&packet.Flags, 9)
 	}
-	stream.SerializeBool(&packet.Flagged)
+	stream.SerializeBool(&packet.Reported)
 	stream.SerializeInteger(&packet.ConnectionType, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_MAX)
 	stream.SerializeFloat32(&packet.DirectRTT)
 	stream.SerializeFloat32(&packet.DirectJitter)
@@ -351,6 +351,26 @@ func (packet *NextBackendSessionResponsePacket) Serialize(stream Stream, version
 		sessionData := packet.SessionData[:packet.SessionDataBytes]
 		stream.SerializeBytes(sessionData)
 	}
+	return stream.Error()
+}
+
+// ------------------------------------------------------------------------------------------
+
+const SessionDataVersion = 0
+
+type SessionData struct {
+	Version uint32
+	SessionId uint64
+	SliceNumber uint32
+}
+
+func (packet *SessionData) Serialize(stream Stream) error {
+	stream.SerializeBits(&packet.Version, 8)
+	if stream.IsReading() && packet.Version != SessionDataVersion {
+		return fmt.Errorf("bad session data version %d, expected %d", packet.Version, SessionDataVersion)
+	}
+	stream.SerializeUint64(&packet.SessionId)
+	stream.SerializeBits(&packet.SliceNumber, 32)
 	return stream.Error()
 }
 
@@ -2282,8 +2302,8 @@ func main() {
 
 	defer connection.Close()
 
-	fmt.Printf("started reference backend on ports %d and %d (sdk4)\n", NEXT_RELAY_BACKEND_PORT, NEXT_SERVER_BACKEND_PORT)
-
+	fmt.Printf("\nreference backend (sdk4)\n\n")
+	
 	for {
 
 		packetData := make([]byte, NEXT_MAX_PACKET_BYTES)
@@ -2381,6 +2401,14 @@ func main() {
 			sessionUpdate := &NextBackendSessionUpdatePacket{}
 			if err := sessionUpdate.Serialize(readStream); err != nil {
 				fmt.Printf("error: failed to read server session update packet: %v\n", err)
+				continue
+			}
+
+			sessionDataReadStream := CreateReadStream(sessionUpdate.SessionData[:sessionUpdate.SessionDataBytes])
+			var sessionData SessionData
+			err := sessionData.Serialize(sessionDataReadStream)
+			if err != nil {
+				fmt.Printf("error: could not read session data: %v\n", err)
 				continue
 			}
 
@@ -2515,9 +2543,34 @@ func main() {
 			backend.sessionDatabase[sessionUpdate.SessionId] = sessionEntry
 			backend.mutex.Unlock()
 
+			if sessionData.SessionId != sessionUpdate.SessionId {
+				panic("bad session id in session data")
+			}
+
+			if sessionData.SliceNumber != uint32(sessionUpdate.Sequence) {
+				panic("bad slice number in session data")
+			}
+
+			sessionData.Version = SessionDataVersion
+			sessionData.SessionId = sessionUpdate.SessionId
+			sessionData.SliceNumber = uint32(sessionUpdate.Sequence + 1)
+
+			sessionDataWriteStream, err := CreateWriteStream(NEXT_MAX_SESSION_DATA_BYTES)
+			if err != nil {
+				fmt.Printf("error: failed to create write stream for session data: %v\n", err)
+				continue
+			}
+			if err := sessionData.Serialize(sessionDataWriteStream); err != nil {
+				fmt.Printf("error: failed to write session data: %v\n", err)
+				continue
+			}
+			sessionDataWriteStream.Flush()
+			copy(sessionResponse.SessionData[:], sessionDataWriteStream.GetData()[0:sessionDataWriteStream.GetBytesProcessed()])
+			sessionResponse.SessionDataBytes = int32(sessionDataWriteStream.GetBytesProcessed())
+
 			writeStream, err := CreateWriteStream(NEXT_MAX_PACKET_BYTES)
 			if err != nil {
-				fmt.Printf("error: failed to write session response packet: %v\n", err)
+				fmt.Printf("error: failed to create write stream for session response packet: %v\n", err)
 				continue
 			}
 			responsePacketType := uint32(NEXT_BACKEND_SESSION_RESPONSE_PACKET)
