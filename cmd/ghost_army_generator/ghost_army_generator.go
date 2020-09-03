@@ -14,7 +14,17 @@ import (
 	ghostarmy "github.com/networknext/backend/ghost_army"
 )
 
+/*
+ * August 18th: https://drive.google.com/file/d/1on1dfWUvGTxF_DDUKsyr1WJosiJrRfGO/view?usp=sharing
+ * August 19th: https://drive.google.com/file/d/1AnIspF8WaZYQ4o8BSn7kb5DDZrK6E2Yh/view?usp=sharing
+ * August 20th: https://drive.google.com/file/d/1z9crn3410-1_o3tJOnIswNxwj2rInVtJ/view?usp=sharing
+ */
+
 type sortableEntries []ghostarmy.Entry
+
+const (
+	SecondsInDay = 86400
+)
 
 func (self sortableEntries) Len() int {
 	return len(self)
@@ -82,8 +92,7 @@ func main() {
 
 			year, month, day := t.Date()
 			t2 := time.Date(year, month, day, 0, 0, 0, 0, t.Location())
-			t2.AddDate(0, 0, offset)
-			secsIntoDay := int64(t.Sub(t2).Seconds())
+			secsIntoDay := int64(t.Sub(t2).Seconds()) + int64(offset*SecondsInDay)
 
 			entry.Timestamp = secsIntoDay
 
