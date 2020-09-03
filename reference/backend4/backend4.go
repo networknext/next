@@ -2404,12 +2404,17 @@ func main() {
 				continue
 			}
 
+			fmt.Printf("session data bytes = %d (read)\n", sessionUpdate.SessionDataBytes)
+
 			sessionDataReadStream := CreateReadStream(sessionUpdate.SessionData[:sessionUpdate.SessionDataBytes])
 			var sessionData SessionData
-			err := sessionData.Serialize(sessionDataReadStream)
-			if err != nil {
-				fmt.Printf("error: could not read session data: %v\n", err)
-				continue
+			sessionData.Version = SessionDataVersion
+			if sessionUpdate.Sequence != 0 {
+				err := sessionData.Serialize(sessionDataReadStream)
+				if err != nil {
+					fmt.Printf("error: could not read session data: %v\n", err)
+					continue
+				}
 			}
 
 			nearRelayIds, nearRelayAddresses := GetNearRelays()
@@ -2567,6 +2572,8 @@ func main() {
 			sessionDataWriteStream.Flush()
 			copy(sessionResponse.SessionData[:], sessionDataWriteStream.GetData()[0:sessionDataWriteStream.GetBytesProcessed()])
 			sessionResponse.SessionDataBytes = int32(sessionDataWriteStream.GetBytesProcessed())
+			
+			fmt.Printf("session data bytes = %d (write)\n", sessionDataWriteStream.GetBytesProcessed())
 
 			writeStream, err := CreateWriteStream(NEXT_MAX_PACKET_BYTES)
 			if err != nil {
