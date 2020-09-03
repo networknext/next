@@ -195,7 +195,7 @@ type NextBackendSessionUpdatePacket struct {
 	PlatformId                int32
 	Tag                       uint64
 	Flags                     uint32
-	Flagged                   bool
+	Reported                  bool
 	ConnectionType            int32
 	OnNetworkNext             bool
 	Committed                 bool
@@ -241,7 +241,7 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 	if hasFlags {
 		stream.SerializeBits(&packet.Flags, 9)
 	}
-	stream.SerializeBool(&packet.Flagged)
+	stream.SerializeBool(&packet.Reported)
 	stream.SerializeInteger(&packet.ConnectionType, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_MAX)
 	stream.SerializeFloat32(&packet.DirectRTT)
 	stream.SerializeFloat32(&packet.DirectJitter)
@@ -2282,8 +2282,8 @@ func main() {
 
 	defer connection.Close()
 
-	fmt.Printf("started reference backend on ports %d and %d (sdk4)\n", NEXT_RELAY_BACKEND_PORT, NEXT_SERVER_BACKEND_PORT)
-
+	fmt.Printf("\nreference backend (sdk4)\n\n")
+	
 	for {
 
 		packetData := make([]byte, NEXT_MAX_PACKET_BYTES)
