@@ -9166,7 +9166,7 @@ struct NextBackendSessionUpdatePacket
 
 struct NextBackendSessionResponsePacket
 {
-    uint64_t sequence;
+    uint32_t slice_number;
     uint64_t session_id;
     int num_near_relays;
     uint64_t near_relay_ids[NEXT_MAX_NEAR_RELAYS];
@@ -9187,7 +9187,7 @@ struct NextBackendSessionResponsePacket
 
     template <typename Stream> bool Serialize( Stream & stream )
     {
-        serialize_uint64( stream, sequence );
+        serialize_uint32( stream, slice_number );
         serialize_uint64( stream, session_id );
         serialize_int( stream, num_near_relays, 0, NEXT_MAX_NEAR_RELAYS );
         for ( int i = 0; i < num_near_relays; ++i )
@@ -10351,7 +10351,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
                 return;
             }
 
-            if ( packet.sequence != entry->update_sequence )
+            if ( packet.slice_number != entry->update_sequence )
             {
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. wrong sequence number" );
                 return;
@@ -14166,7 +14166,7 @@ static void test_backend_packets()
         crypto_sign_keypair( public_key, private_key );
 
         static NextBackendSessionResponsePacket in, out;
-        in.sequence = 10000;
+        in.slice_number = 10000;
         in.session_id = 1234342431431LL;
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
@@ -14190,7 +14190,7 @@ static void test_backend_packets()
         check( next_write_backend_packet( NEXT_BACKEND_SESSION_RESPONSE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, private_key ) == NEXT_OK );
         check( next_read_backend_packet( buffer, packet_bytes, &out, next_signed_packets, public_key ) == NEXT_BACKEND_SESSION_RESPONSE_PACKET );
 
-        check( in.sequence == out.sequence );
+        check( in.slice_number == out.slice_number );
         check( in.session_id == out.session_id );
         check( in.num_near_relays == out.num_near_relays );
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
@@ -14209,7 +14209,7 @@ static void test_backend_packets()
         crypto_sign_keypair( public_key, private_key );
 
         static NextBackendSessionResponsePacket in, out;
-        in.sequence = 10000;
+        in.slice_number = 10000;
         in.session_id = 1234342431431LL;
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
@@ -14237,7 +14237,7 @@ static void test_backend_packets()
         check( next_write_backend_packet( NEXT_BACKEND_SESSION_RESPONSE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, private_key ) == NEXT_OK );
         check( next_read_backend_packet( buffer, packet_bytes, &out, next_signed_packets, public_key ) == NEXT_BACKEND_SESSION_RESPONSE_PACKET );
 
-        check( in.sequence == out.sequence );
+        check( in.slice_number == out.slice_number );
         check( in.session_id == out.session_id );
         check( in.num_near_relays == out.num_near_relays );
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
@@ -14260,7 +14260,7 @@ static void test_backend_packets()
         crypto_sign_keypair( public_key, private_key );
 
         static NextBackendSessionResponsePacket in, out;
-        in.sequence = 10000;
+        in.slice_number = 10000;
         in.session_id = 1234342431431LL;
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
@@ -14288,7 +14288,7 @@ static void test_backend_packets()
         check( next_write_backend_packet( NEXT_BACKEND_SESSION_RESPONSE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, private_key ) == NEXT_OK );
         check( next_read_backend_packet( buffer, packet_bytes, &out, next_signed_packets, public_key ) == NEXT_BACKEND_SESSION_RESPONSE_PACKET );
 
-        check( in.sequence == out.sequence );
+        check( in.slice_number == out.slice_number );
         check( in.session_id == out.session_id );
         check( in.multipath == out.multipath );
         check( in.committed == out.committed );
