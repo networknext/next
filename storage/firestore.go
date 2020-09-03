@@ -72,7 +72,6 @@ type relay struct {
 	SSHUser            string                 `firestore:"sshUser"`
 	SSHPort            int64                  `firestore:"sshPort"`
 	State              routing.RelayState     `firestore:"state"`
-	LastUpdateTime     time.Time              `firestore:"lastUpdateTime"`
 	MaxSessions        int32                  `firestore:"maxSessions"`
 	MRC                int64                  `firestore:"monthlyRecurringChargeNibblins"`
 	Overage            int64                  `firestore:"overage"`
@@ -989,7 +988,6 @@ func (fs *Firestore) AddRelay(ctx context.Context, r routing.Relay) error {
 		SSHUser:            r.SSHUser,
 		SSHPort:            r.SSHPort,
 		State:              r.State,
-		LastUpdateTime:     r.LastUpdateTime,
 		MRC:                int64(r.MRC),
 		Overage:            int64(r.Overage),
 		BWRule:             int32(r.BWRule),
@@ -1100,12 +1098,10 @@ func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 		if rid == r.ID {
 			// Set the data to update the relay with
 			newRelayData := map[string]interface{}{
-				"name":            r.Name,
-				"state":           r.State,
-				"lastUpdateTime":  r.LastUpdateTime,
-				"stateUpdateTime": time.Now(),
-				"publicKey":       r.PublicKey,
-				"nicSpeedMbps":    int64(r.NICSpeedMbps),
+				"name":         r.Name,
+				"state":        r.State,
+				"publicKey":    r.PublicKey,
+				"nicSpeedMbps": int64(r.NICSpeedMbps),
 			}
 
 			// Update the relay in firestore
@@ -1662,7 +1658,6 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 			SSHUser:             r.SSHUser,
 			SSHPort:             r.SSHPort,
 			State:               r.State,
-			LastUpdateTime:      r.LastUpdateTime,
 			MaxSessions:         uint32(r.MaxSessions),
 			UpdateKey:           r.UpdateKey,
 			FirestoreID:         rdoc.Ref.ID,
