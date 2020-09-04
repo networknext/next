@@ -33,6 +33,8 @@ import (
 
 const NEXT_MAX_SESSION_DATA_BYTES = 511
 
+const NEXT_MAX_SESSION_UPDATE_RETRIES = 10
+
 const NEXT_MAX_NEAR_RELAYS = 32
 const NEXT_RELAY_BACKEND_PORT = 30000
 const NEXT_SERVER_BACKEND_PORT = 40000
@@ -190,6 +192,7 @@ type NextBackendSessionUpdatePacket struct {
 	VersionPatch              uint32
 	SessionId                 uint64
 	SliceNumber               uint32
+	RetryNumber               int32
 	SessionDataBytes          int32
 	SessionData               [NEXT_MAX_SESSION_DATA_BYTES]byte
 	/*
@@ -233,6 +236,7 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 	stream.SerializeBits(&packet.VersionPatch, 8)
 	stream.SerializeUint64(&packet.SessionId)
 	stream.SerializeBits(&packet.SliceNumber, 32)
+	stream.SerializeInteger(&packet.RetryNumber, 0, NEXT_MAX_SESSION_UPDATE_RETRIES)
 	stream.SerializeInteger(&packet.SessionDataBytes, 0, NEXT_MAX_SESSION_DATA_BYTES)
 	fmt.Printf("session data bytes = %d (read update)\n", packet.SessionDataBytes)
 	if packet.SessionDataBytes > 0 {
