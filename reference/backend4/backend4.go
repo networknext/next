@@ -131,18 +131,18 @@ type NextBackendServerInitRequestPacket struct {
 	VersionMajor uint32
 	VersionMinor uint32
 	VersionPatch uint32
-	RequestId    uint64
 	CustomerId   uint64
 	DatacenterId uint64
+	RequestId    uint64
 }
 
 func (packet *NextBackendServerInitRequestPacket) Serialize(stream Stream) error {
 	stream.SerializeBits(&packet.VersionMajor, 8)
 	stream.SerializeBits(&packet.VersionMinor, 8)
 	stream.SerializeBits(&packet.VersionPatch, 8)
-	stream.SerializeUint64(&packet.RequestId)
 	stream.SerializeUint64(&packet.CustomerId)
 	stream.SerializeUint64(&packet.DatacenterId)
+	stream.SerializeUint64(&packet.RequestId)
 	return stream.Error()
 }
 
@@ -165,7 +165,6 @@ type NextBackendServerUpdatePacket struct {
 	VersionMajor         uint32
 	VersionMinor         uint32
 	VersionPatch         uint32
-	Sequence             uint64
 	CustomerId           uint64
 	DatacenterId         uint64
 	NumSessions   		 uint32
@@ -176,7 +175,6 @@ func (packet *NextBackendServerUpdatePacket) Serialize(stream Stream) error {
 	stream.SerializeBits(&packet.VersionMajor, 8)
 	stream.SerializeBits(&packet.VersionMinor, 8)
 	stream.SerializeBits(&packet.VersionPatch, 8)
-	stream.SerializeUint64(&packet.Sequence)
 	stream.SerializeUint64(&packet.CustomerId)
 	stream.SerializeUint64(&packet.DatacenterId)
 	stream.SerializeUint32(&packet.NumSessions)
@@ -190,13 +188,13 @@ type NextBackendSessionUpdatePacket struct {
 	VersionMajor         	  uint32
 	VersionMinor              uint32
 	VersionPatch              uint32
+	CustomerId                uint64
 	SessionId                 uint64
 	SliceNumber               uint32
 	RetryNumber               int32
 	SessionDataBytes          int32
 	SessionData               [NEXT_MAX_SESSION_DATA_BYTES]byte
 	/*
-	CustomerId                uint64
 	UserHash                  uint64
 	PlatformId                int32
 	Tag                       uint64
@@ -234,6 +232,7 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 	stream.SerializeBits(&packet.VersionMajor, 8)
 	stream.SerializeBits(&packet.VersionMinor, 8)
 	stream.SerializeBits(&packet.VersionPatch, 8)
+	stream.SerializeUint64(&packet.CustomerId)
 	stream.SerializeUint64(&packet.SessionId)
 	stream.SerializeBits(&packet.SliceNumber, 32)
 	stream.SerializeInteger(&packet.RetryNumber, 0, NEXT_MAX_SESSION_UPDATE_RETRIES)
@@ -243,7 +242,6 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 		stream.SerializeBytes(sessionData)
 	}
 	/*
-	stream.SerializeUint64(&packet.CustomerId)
 	stream.SerializeAddress(&packet.ServerAddress)
 	stream.SerializeUint64(&packet.UserHash)
 	stream.SerializeInteger(&packet.PlatformId, 0, NEXT_PLATFORM_MAX)
@@ -409,6 +407,7 @@ type ServerEntry struct {
 }
 
 type SessionEntry struct {
+	// todo: all this stuff needs to move into the session data, just minimal timeout data here is all that's needed
 	id              uint64
 	version         uint8
 	expireTimestamp uint64
