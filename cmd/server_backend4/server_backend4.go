@@ -10,6 +10,7 @@ import (
 	"context"
 	"expvar"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"strconv"
@@ -190,6 +191,18 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	// Create maxmindb sync metrics
+	maxmindSyncMetrics, err := metrics.NewMaxmindSyncMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create session metrics", "err", err)
+	}
+
+	// Create server backend metrics
+	serverBackendMetrics, err := metrics.NewServerBackendMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create server backend metrics", "err", err)
+	}
+
 	sessionDataMetrics, err := metrics.NewSessionDataMetrics(ctx, metricsHandler)
 	if err != nil {
 		level.Error(logger).Log("msg", "failed to create session data metrics", "err", err)
@@ -365,6 +378,149 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	getIPLocatorFunc := func() routing.IPLocator {
+		return routing.NullIsland
+	}
+
+	// Open the Maxmind DB and create a routing.MaxmindDB from it
+	maxmindCityURI := envvar.Get("MAXMIND_CITY_DB_URI", "")
+	maxmindISPURI := envvar.Get("MAXMIND_ISP_DB_URI", "")
+	if maxmindCityURI != "" && maxmindISPURI != "" {
+		mmdb := &routing.MaxmindDB{
+			HTTPClient: http.DefaultClient,
+			CityURI:    maxmindCityURI,
+			IspURI:     maxmindISPURI,
+		}
+		var mmdbMutex sync.RWMutex
+
+		getIPLocatorFunc = func() routing.IPLocator {
+			mmdbMutex.RLock()
+			defer mmdbMutex.RUnlock()
+
+			mmdbRet := mmdb
+			return mmdbRet
+		}
+
+		if err := mmdb.Sync(ctx, maxmindSyncMetrics); err != nil {
+			level.Error(logger).Log("err", err)
+			return 1
+		}
+
+		// todo: disable the sync for now until we can find out why it's causing session drops
+
+		// if envvar.Exists("MAXMIND_SYNC_DB_INTERVAL") {
+		// 	syncInterval, err := envvar.GetDuration("MAXMIND_SYNC_DB_INTERVAL", time.Hour*24)
+		// 	if err != nil {
+		// 		level.Error(logger).Log("err", err)
+		// 		return 1
+		// 	}
+
+		// 	// Start a goroutine to sync from Maxmind.com
+		// 	go func() {
+		// 		ticker := time.NewTicker(syncInterval)
+		// 		for {
+		// 			newMMDB := &routing.MaxmindDB{}
+
+		// 			select {
+		// 			case <-ticker.C:
+		// 				if err := newMMDB.Sync(ctx, maxmindSyncMetrics); err != nil {
+		// 					level.Error(logger).Log("err", err)
+		// 					continue
+		// 				}
+
+		// 				// Pointer swap the mmdb so we can sync from Maxmind.com lock free
+		// 				mmdbMutex.Lock()
+		// 				mmdb = newMMDB
+		// 				mmdbMutex.Unlock()
+		// 			case <-ctx.Done():
+		// 				return
+		// 			}
+
+		// 			time.Sleep(syncInterval)
+		// 		}
+		// 	}()
+		// }
+	}
+
+	routeMatrix := &routing.RouteMatrix{}
+	var routeMatrixMutex sync.RWMutex
+
+	getRouteMatrixFunc := func() transport.RouteProvider {
+		routeMatrixMutex.RLock()
+		rm := routeMatrix
+		routeMatrixMutex.RUnlock()
+		return rm
+	}
+
+	// Sync route matrix
+	{
+		if envvar.Exists("ROUTE_MATRIX_URI") {
+			uri := envvar.Get("ROUTE_MATRIX_URI", "")
+			syncInterval, err := envvar.GetDuration("ROUTE_MATRIX_SYNC_INTERVAL", time.Second)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				return 1
+			}
+
+			go func() {
+				httpClient := &http.Client{
+					Timeout: time.Second * 2,
+				}
+				for {
+					newRouteMatrix := routing.RouteMatrix{}
+					var matrixReader io.ReadCloser
+
+					// Default to reading route matrix from file
+					if f, err := os.Open(uri); err == nil {
+						matrixReader = f
+					}
+
+					// Prefer to get it remotely if possible
+					if r, err := httpClient.Get(uri); err == nil {
+						matrixReader = r.Body
+					}
+
+					start := time.Now()
+
+					bytes, err := newRouteMatrix.ReadFrom(matrixReader)
+					matrixReader.Close()
+					if err != nil {
+						level.Error(logger).Log("envvar", "ROUTE_MATRIX_URI", "value", uri, "msg", "could not read route matrix", "err", err)
+						time.Sleep(syncInterval)
+						continue // Don't swap route matrix if we fail to read
+					}
+
+					routeMatrixTime := time.Since(start)
+
+					serverBackendMetrics.RouteMatrixUpdateDuration.Set(float64(routeMatrixTime.Milliseconds()))
+
+					if routeMatrixTime.Seconds() > 1.0 {
+						serverBackendMetrics.LongRouteMatrixUpdateCount.Add(1)
+					}
+
+					serverBackendMetrics.RouteMatrix.RelayCount.Set(float64(len(newRouteMatrix.RelayIDs)))
+					serverBackendMetrics.RouteMatrix.DatacenterCount.Set(float64(len(newRouteMatrix.DatacenterIDs)))
+
+					// todo: calculate this in optimize and store in route matrix so we don't have to calc this here
+					numRoutes := int32(0)
+					for i := range newRouteMatrix.Entries {
+						numRoutes += newRouteMatrix.Entries[i].NumRoutes
+					}
+					serverBackendMetrics.RouteMatrix.RouteCount.Set(float64(numRoutes))
+					serverBackendMetrics.RouteMatrix.Bytes.Set(float64(bytes))
+
+					// Swap the route matrix pointer to the new one
+					// This double buffered route matrix approach makes the route matrix lockless
+					routeMatrixMutex.Lock()
+					routeMatrix = &newRouteMatrix
+					routeMatrixMutex.Unlock()
+
+					time.Sleep(syncInterval)
+				}
+			}()
+		}
+	}
+
 	// Start HTTP server
 	{
 		router := mux.NewRouter()
@@ -434,7 +590,7 @@ func mainReturnWithCode() int {
 
 	serverInitHandler := transport.ServerInitHandlerFunc4(logger, storer, datacenterTracker, serverInitMetrics)
 	serverUpdateHandler := transport.ServerUpdateHandlerFunc4(logger, storer, datacenterTracker, serverUpdateMetrics)
-	sessionUpdateHandler := transport.SessionUpdateHandlerFunc4(logger, storer, sessionUpdateMetrics)
+	sessionUpdateHandler := transport.SessionUpdateHandlerFunc4(logger, getIPLocatorFunc, getRouteMatrixFunc, sessionUpdateMetrics)
 
 	for i := 0; i < numThreads; i++ {
 		go func(thread int) {
