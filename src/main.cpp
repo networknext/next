@@ -68,7 +68,7 @@ namespace
         LOG(FATAL, "invalid relay private key");
       }
 
-      LOG(INFO, "relay private key is '", env.relay_private_key, "'\n");
+      LOG(INFO, "relay private key is '", env.relay_private_key, '\'');
     }
 
     // relay public key
@@ -78,7 +78,7 @@ namespace
         LOG(FATAL, "invalid relay public key");
       }
 
-      LOG(INFO, "relay public key is '", env.relay_public_key, "'\n");
+      LOG(INFO, "relay public key is '", env.relay_public_key, '\'');
     }
 
     // router public key
@@ -88,7 +88,7 @@ namespace
         LOG(FATAL, "invalid router public key");
       }
 
-      LOG(INFO, "router public key is '", env.relay_router_public_key, "'\n");
+      LOG(INFO, "router public key is '", env.relay_router_public_key, '\'');
     }
   }
 
@@ -175,12 +175,12 @@ int main(int argc, const char* argv[])
     return 1;
   }
 
-  LOG(INFO, "relay address is '", relay_addr, "'\n");
+  LOG(INFO, "relay address is '", relay_addr, '\'');
 
   Keychain keychain;
   get_crypto_keys(env, keychain);
 
-  LOG(INFO, "backend hostname is '", env.backend_hostname, "'\n");
+  LOG(INFO, "backend hostname is '", env.backend_hostname, '\'');
 
   unsigned int num_cpus = get_num_cpus(env.max_cpus);
   int socketRecvBuffSize = get_buffer_size(env.recv_buffer_size);
