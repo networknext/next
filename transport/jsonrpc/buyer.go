@@ -277,7 +277,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			if buyer.ID == ghostArmyBuyerID {
 				// scale by next values because ghost army data contains 0 direct
 				// if ghost army is turned off then this number will be 0 and have no effect
-				count = ghostArmyNextCount * 300
+				count = ghostArmyNextCount * 25
 			}
 			newCount += count
 		}
