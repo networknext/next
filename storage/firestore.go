@@ -50,6 +50,7 @@ type buyer struct {
 	Name      string `firestore:"name"`
 	Active    bool   `firestore:"active"`
 	Live      bool   `firestore:"isLiveCustomer"`
+	Debug     bool   `firestore:"isDebug"`
 	PublicKey []byte `firestore:"sdkVersion3PublicKeyData"`
 }
 
@@ -274,6 +275,7 @@ func (fs *Firestore) AddBuyer(ctx context.Context, b routing.Buyer) error {
 		Name:      b.Name,
 		Active:    b.Active,
 		Live:      b.Live,
+		Debug:     b.Debug,
 		PublicKey: b.PublicKey,
 	}
 
@@ -481,6 +483,7 @@ func (fs *Firestore) SetBuyer(ctx context.Context, b routing.Buyer) error {
 				"name":                     b.Name,
 				"active":                   b.Active,
 				"isLiveCustomer":           b.Live,
+				"isDebug":                  b.Debug,
 				"sdkVersion3PublicKeyData": b.PublicKey,
 			}
 
