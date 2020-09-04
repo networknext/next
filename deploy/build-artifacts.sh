@@ -27,7 +27,7 @@ build-artifacts() {
     cp ./cmd/${SERVICE}/${ENV}.env ${DIST_DIR}/artifact/${SERVICE}/app.env
     cp ${DIR}/${SYSTEMD_SERVICE_FILE} ${DIST_DIR}/artifact/${SERVICE}/${SYSTEMD_SERVICE_FILE}
     cd ${DIST_DIR}/artifact/${SERVICE} && tar -zcf ../../${SERVICE}.${ENV}.tar.gz public app app.env ${SYSTEMD_SERVICE_FILE} && cd ../..
-  elif [ "$SERVICE" = "server_backend" ] && [ -n "$CUSTOMER" ]; then
+  elif { [ "$SERVICE" = "server_backend" ] || [ "$SERVICE" = "server_backend4" ]; } && [ -n "$CUSTOMER" ]; then
 		cp ${DIST_DIR}/${SERVICE} ${DIST_DIR}/artifact/${SERVICE}/app
 		cp ${DIR}/../cmd/${SERVICE}/${ENV}.env ${DIST_DIR}/artifact/${SERVICE}/app.env
 		cp ${DIR}/${SYSTEMD_SERVICE_FILE} ${DIST_DIR}/artifact/${SERVICE}/${SYSTEMD_SERVICE_FILE}
@@ -39,7 +39,7 @@ build-artifacts() {
 		cd ${DIST_DIR}/artifact/${SERVICE} && tar -zcf ../../${SERVICE}.${ENV}.tar.gz app app.env ${SYSTEMD_SERVICE_FILE} && cd ../..
 	fi
 
-  if [ "$SERVICE" = "server_backend" ] && [ -n "$CUSTOMER" ]; then
+  if { [ "$SERVICE" = "server_backend" ] || [ "$SERVICE" = "server_backend4" ]; } && [ -n "$CUSTOMER" ]; then
 	  printf "${DIST_DIR}/${SERVICE}-${CUSTOMER}.${ENV}.tar.gz\n"
   else
     printf "${DIST_DIR}/${SERVICE}.${ENV}.tar.gz\n"

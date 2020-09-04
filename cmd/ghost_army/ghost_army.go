@@ -108,6 +108,8 @@ func main() {
 		entry.Into(&slices[i], dcmap, buyerID)
 	}
 
+	bin = nil
+
 	// publish to zero mq, sleep for 10 seconds, repeat
 
 	publishChan := make(chan transport.SessionPortalData)
@@ -165,52 +167,49 @@ func main() {
 		getLastMidnight := func() time.Time {
 			t := time.Now()
 			year, month, day := t.Date()
-			t = time.Date(year, month, day, 0, 0, 0, 0, t.Location())
-			return t
+			return time.Date(year, month, day, 0, 0, 0, 0, t.Location())
 		}
 
-		// slice begin should be the
+		// slice begin is the current number of seconds into the day
 		t := time.Now()
 		year, month, day := t.Date()
 		t2 := time.Date(year, month, day, 0, 0, 0, 0, t.Location())
-		sliceBegin := int64(t.Sub(t2).Seconds())
+		sliceBegin := (int64(t.Sub(t2).Seconds()) / 10) * 10
 
 		index := 0
 		dateOffset := getLastMidnight()
+
 		for {
 			begin := time.Now()
 			endIndex := (sliceBegin + 10) / 10
 
-			if endIndex > SlicesInDay*3 {
+			if endIndex > SlicesInDay {
 				index = 0
 				sliceBegin = 0
 				dateOffset = getLastMidnight()
 			}
 
+			// seek to the next position slices should be from
 			for slices[index].Slice.Timestamp.Unix() < sliceBegin {
-				index++
-				index = index % len(slices)
+				index = (index + 1) % len(slices)
 			}
 
+			// only read for the next 10 seconds
 			for slices[index].Slice.Timestamp.Unix() < sliceBegin+10 {
 				slice := slices[index]
 
 				// slice timestamp will be in the range of 0 - SecondsInDay * 3,
 				// so adjust the timestamp by the time the loop was started
-				slice.Slice.Timestamp = dateOffset.Add(time.Second*-10 + time.Second*time.Duration(slice.Slice.Timestamp.Unix()))
+				slice.Slice.Timestamp = dateOffset.Add(time.Second * time.Duration(slice.Slice.Timestamp.Unix()))
 
 				publishChan <- slice
-				index++
-				index = index % len(slices)
+				index = (index + 1) % len(slices)
 			}
 
+			// increment by 10 seconds
 			sliceBegin += 10
 
-			end := time.Now()
-
-			diff := end.Sub(begin)
-
-			time.Sleep((time.Second * 10) - diff)
+			time.Sleep((time.Second * 10) - time.Since(begin))
 		}
 	}()
 

@@ -20,6 +20,7 @@ type SessionMetrics struct {
 	PostSessionPortalEntriesFinished  Counter
 	PostSessionPortalBufferLength     Gauge
 	PostSessionPortalBufferFull       Counter
+	SessionDataMetrics                SessionDataErrorMetrics
 	DecisionMetrics                   DecisionMetrics
 	ErrorMetrics                      SessionErrorMetrics
 }
@@ -40,6 +41,7 @@ var EmptySessionMetrics SessionMetrics = SessionMetrics{
 	PostSessionPortalEntriesFinished:  &EmptyCounter{},
 	PostSessionPortalBufferLength:     &EmptyGauge{},
 	PostSessionPortalBufferFull:       &EmptyCounter{},
+	SessionDataMetrics:                EmptySessionDataErrorMetrics,
 	DecisionMetrics:                   EmptyDecisionMetrics,
 	ErrorMetrics:                      EmptySessionErrorMetrics,
 }
@@ -106,6 +108,16 @@ var EmptySessionErrorMetrics SessionErrorMetrics = SessionErrorMetrics{
 	UpdateCacheFailure:          &EmptyCounter{},
 	BillingFailure:              &EmptyCounter{},
 	UpdatePortalFailure:         &EmptyCounter{},
+}
+
+type SessionDataErrorMetrics struct {
+	BadSessionID      Counter
+	BadSequenceNumber Counter
+}
+
+var EmptySessionDataErrorMetrics SessionDataErrorMetrics = SessionDataErrorMetrics{
+	BadSessionID:      &EmptyCounter{},
+	BadSequenceNumber: &EmptyCounter{},
 }
 
 type DecisionMetrics struct {
@@ -1485,7 +1497,36 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		return nil, err
 	}
 
+	sessionMetrics.SessionDataMetrics = EmptySessionDataErrorMetrics
+
 	return &sessionMetrics, nil
+}
+
+func NewSessionDataMetrics(ctx context.Context, metricsHandler Handler) (*SessionDataErrorMetrics, error) {
+	sessionDataMetrics := SessionDataErrorMetrics{}
+	var err error
+
+	sessionDataMetrics.BadSessionID, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Session Data Bad Session ID",
+		ServiceName: "server_backend",
+		ID:          "session_data.error.bad_session_id",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionDataMetrics.BadSequenceNumber, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Session Data Bad Sequence Number",
+		ServiceName: "server_backend",
+		ID:          "session_data.error.bad_sequence_number",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &sessionDataMetrics, nil
 }
 
 func NewServerInitMetrics(ctx context.Context, metricsHandler Handler) (*ServerInitMetrics, error) {

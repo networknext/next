@@ -7,7 +7,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -17,6 +19,7 @@ import (
 	"github.com/go-kit/kit/log/level"
 	"github.com/gomodule/redigo/redis"
 	"github.com/networknext/backend/encoding"
+	ghostarmy "github.com/networknext/backend/ghost_army"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
@@ -198,44 +201,20 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 	defer redisClient.Close()
 	minutes := time.Now().Unix() / 60
 
+	ghostArmyBuyerID := ghostarmy.GhostArmyBuyerID(os.Getenv("ENV"))
+	var ghostArmyScalar uint64 = 25
+	if v, ok := os.LookupEnv("GHOST_ARMY_SCALER"); ok {
+		if v, err := strconv.ParseUint(v, 10, 64); err == nil {
+			ghostArmyScalar = v
+		}
+	}
+
 	switch args.BuyerID {
 	case "":
 		buyers := s.Storage.Buyers()
 
-		for _, buyer := range buyers {
-			stringID := fmt.Sprintf("%016x", buyer.ID)
-			redisClient.Send("HLEN", fmt.Sprintf("d-%s-%d", stringID, minutes-1))
-			redisClient.Send("HLEN", fmt.Sprintf("d-%s-%d", stringID, minutes))
-		}
-		redisClient.Flush()
-
 		var oldCount int
 		var newCount int
-		for range buyers {
-			count, err := redis.Int(redisClient.Receive())
-			if err != nil {
-				err = fmt.Errorf("TotalSessions() failed getting total session count direct: %v", err)
-				level.Error(s.Logger).Log("err", err)
-				return err
-			}
-			oldCount += count
-
-			count, err = redis.Int(redisClient.Receive())
-			if err != nil {
-				err = fmt.Errorf("TotalSessions() failed getting total session count direct: %v", err)
-				level.Error(s.Logger).Log("err", err)
-				return err
-			}
-			newCount += count
-		}
-
-		reply.Direct = oldCount
-		if newCount > oldCount {
-			reply.Direct = newCount
-		}
-
-		oldCount = 0
-		newCount = 0
 
 		for _, buyer := range buyers {
 			stringID := fmt.Sprintf("%016x", buyer.ID)
@@ -244,10 +223,52 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		}
 		redisClient.Flush()
 
-		for range buyers {
-			count, err := redis.Int(redisClient.Receive())
+		var ghostArmyNextCount int
+		for _, buyer := range buyers {
+			firstCount, err := redis.Int(redisClient.Receive())
 			if err != nil {
 				err = fmt.Errorf("TotalSessions() failed getting total session count next: %v", err)
+				level.Error(s.Logger).Log("err", err)
+				return err
+			}
+			oldCount += firstCount
+
+			secondCount, err := redis.Int(redisClient.Receive())
+			if err != nil {
+				err = fmt.Errorf("TotalSessions() failed getting total session count next: %v", err)
+				level.Error(s.Logger).Log("err", err)
+				return err
+			}
+			newCount += secondCount
+
+			if buyer.ID == ghostArmyBuyerID {
+				if firstCount > secondCount {
+					ghostArmyNextCount = firstCount
+				} else {
+					ghostArmyNextCount = secondCount
+				}
+			}
+		}
+
+		reply.Next = oldCount
+		if newCount > oldCount {
+			reply.Next = newCount
+		}
+
+		oldCount = 0
+		newCount = 0
+
+		for _, buyer := range buyers {
+			stringID := fmt.Sprintf("%016x", buyer.ID)
+			redisClient.Send("HLEN", fmt.Sprintf("d-%s-%d", stringID, minutes-1))
+			redisClient.Send("HLEN", fmt.Sprintf("d-%s-%d", stringID, minutes))
+		}
+		redisClient.Flush()
+
+		for _, buyer := range buyers {
+			count, err := redis.Int(redisClient.Receive())
+			if err != nil {
+				err = fmt.Errorf("TotalSessions() failed getting total session count direct: %v", err)
 				level.Error(s.Logger).Log("err", err)
 				return err
 			}
@@ -255,16 +276,22 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 
 			count, err = redis.Int(redisClient.Receive())
 			if err != nil {
-				err = fmt.Errorf("TotalSessions() failed getting total session count next: %v", err)
+				err = fmt.Errorf("TotalSessions() failed getting total session count direct: %v", err)
 				level.Error(s.Logger).Log("err", err)
 				return err
+			}
+
+			if buyer.ID == ghostArmyBuyerID {
+				// scale by next values because ghost army data contains 0 direct
+				// if ghost army is turned off then this number will be 0 and have no effect
+				count = ghostArmyNextCount * int(ghostArmyScalar)
 			}
 			newCount += count
 		}
 
-		reply.Next = oldCount
+		reply.Direct = oldCount
 		if newCount > oldCount {
-			reply.Next = newCount
+			reply.Direct = newCount
 		}
 	default:
 		if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
