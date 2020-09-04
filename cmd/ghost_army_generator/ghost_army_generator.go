@@ -15,19 +15,6 @@ import (
 	ghostarmy "github.com/networknext/backend/ghost_army"
 )
 
-/*
- * August 18th: Needs to be pulled again
- * August 19th: Needs to be pulled again
- * August 20th: Needs to be pulled again
- * August 27th: https://drive.google.com/file/d/1y4zOJXXx_9KQD8pz_l5b46lNKrK-pkGN/view
- * August 28th: https://drive.google.com/file/d/1C8GvCLUGA5v0IIMY4ywqleO61iZN_H1p/view
- * August 29th: https://drive.google.com/file/d/1kutKjR7KmmBmJDmJ4BNj0GuC9I-7zukm/view?usp=sharing
- * August 30th: https://drive.google.com/file/d/1OYshu0pfoVDEsH_4pBBbwmfEYnpUjHC0/view?usp=sharing
- * August 31th: https://drive.google.com/file/d/1aXXfkA5s4nF7eWXHr8G6VdMvShmrk6re/view?usp=sharing
- * September 1st: https://drive.google.com/file/d/1dXAMg-aKwMEZt22GlzYKRKc49yvE1KhK/view?usp=sharing
- * September 2nd: https://drive.google.com/file/d/1HgJMZd88gjXmeSx79ueah1oXxGXiOYjp/view?usp=sharing
- */
-
 type sortableEntries []ghostarmy.Entry
 
 func (self sortableEntries) Len() int {
