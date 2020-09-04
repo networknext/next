@@ -7392,7 +7392,7 @@ void next_client_update( next_client_t * client )
                 client->fallback_to_direct = stats_updated->fallback_to_direct;
                 if ( client->fallback_to_direct && client->upgraded )
                 {
-                    next_printf( NEXT_LOG_LEVEL_DEBUG, "detected race between upgrade and fallback to direct. clearing upgraded flag to avoid zombie client" );
+                    next_printf( NEXT_LOG_LEVEL_DEBUG, "clearing upgraded flag" );
                     client->upgraded = false;
                     client->session_id = 0;
                 }
@@ -8971,9 +8971,9 @@ struct NextBackendServerInitRequestPacket
     int version_major;
     int version_minor;
     int version_patch;
-    uint64_t request_id;
     uint64_t customer_id;
     uint64_t datacenter_id;
+    uint64_t request_id;
     char datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH];
 
     NextBackendServerInitRequestPacket()
@@ -8981,9 +8981,9 @@ struct NextBackendServerInitRequestPacket
         version_major = NEXT_VERSION_MAJOR_INT;
         version_minor = NEXT_VERSION_MINOR_INT;
         version_patch = NEXT_VERSION_PATCH_INT;
-        request_id = 0;
         customer_id = 0;
         datacenter_id = 0;
+        request_id = 0;
         datacenter_name[0] = '\0';
     }
 
@@ -8992,9 +8992,9 @@ struct NextBackendServerInitRequestPacket
         serialize_bits( stream, version_major, 8 );
         serialize_bits( stream, version_minor, 8 );
         serialize_bits( stream, version_patch, 8 );
-        serialize_uint64( stream, request_id );
         serialize_uint64( stream, customer_id );
         serialize_uint64( stream, datacenter_id );
+        serialize_uint64( stream, request_id );
         serialize_string( stream, datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
         return true;
     }
@@ -9027,7 +9027,6 @@ struct NextBackendServerUpdatePacket
     int version_major;
     int version_minor;
     int version_patch;
-    uint64_t sequence;
     uint64_t customer_id;
     uint64_t datacenter_id;
     uint32_t num_sessions;
@@ -9038,7 +9037,6 @@ struct NextBackendServerUpdatePacket
         version_major = NEXT_VERSION_MAJOR_INT;
         version_minor = NEXT_VERSION_MINOR_INT;
         version_patch = NEXT_VERSION_PATCH_INT;
-        sequence = 0;
         customer_id = 0;
         datacenter_id = 0;
         num_sessions = 0;
@@ -9050,7 +9048,6 @@ struct NextBackendServerUpdatePacket
         serialize_bits( stream, version_major, 8 );
         serialize_bits( stream, version_minor, 8 );
         serialize_bits( stream, version_patch, 8 );
-        serialize_uint64( stream, sequence );
         serialize_uint64( stream, customer_id );
         serialize_uint64( stream, datacenter_id );
         serialize_uint32( stream, num_sessions );
@@ -9066,6 +9063,7 @@ struct NextBackendSessionUpdatePacket
     int version_major;
     int version_minor;
     int version_patch;
+    uint64_t customer_id;
     uint64_t session_id;
     uint32_t slice_number;
     uint32_t retry_number;
@@ -9073,7 +9071,6 @@ struct NextBackendSessionUpdatePacket
     uint8_t session_data[NEXT_MAX_SESSION_DATA_BYTES];
     // todo
     /*
-    uint64_t customer_id;
     next_address_t server_address;
     uint64_t user_hash;
     uint64_t tag;
@@ -9119,20 +9116,16 @@ struct NextBackendSessionUpdatePacket
         serialize_bits( stream, version_major, 8 );
         serialize_bits( stream, version_minor, 8 );
         serialize_bits( stream, version_patch, 8 );
+        serialize_uint64( stream, customer_id );
         serialize_uint64( stream, session_id );
         serialize_bits( stream, slice_number, 32 );
         serialize_int( stream, slice_number, 0, NEXT_MAX_SESSION_UPDATE_RETRIES );
         serialize_int( stream, session_data_bytes, 0, NEXT_MAX_SESSION_DATA_BYTES );
         if ( session_data_bytes > 0 )
         {
-            if ( Stream::IsWriting )
-            {
-                printf( "session data bytes = %d (write)\n", session_data_bytes );
-            }
             serialize_bytes( stream, session_data, session_data_bytes );
         }
         /*
-        serialize_uint64( stream, customer_id );
         serialize_address( stream, server_address );
         serialize_uint64( stream, user_hash );
         serialize_int( stream, platform_id, NEXT_PLATFORM_UNKNOWN, NEXT_PLATFORM_MAX );
@@ -9217,11 +9210,6 @@ struct NextBackendSessionResponsePacket
         if ( session_data_bytes > 0 )
         {
             serialize_bytes( stream, session_data, session_data_bytes );
-            // todo
-            if ( Stream::IsReading )
-            {
-                printf( "session data bytes = %d (read)\n", session_data_bytes );
-            }
         }
         /*
         serialize_int( stream, num_near_relays, 0, NEXT_MAX_NEAR_RELAYS );
@@ -11384,7 +11372,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
     if ( server->last_backend_server_update + NEXT_SECONDS_BETWEEN_SERVER_UPDATES <= current_time )
     {
         NextBackendServerUpdatePacket packet;
-        packet.sequence = ++server->server_update_sequence;
         packet.customer_id = server->customer_id;
         packet.datacenter_id = server->datacenter_id;
         packet.num_sessions = next_session_manager_num_entries( server->session_manager );
@@ -11404,7 +11391,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
         server->last_backend_server_update = current_time;
 
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent server update packet to backend (#%" PRId64 ": %d sessions)", packet.sequence, packet.num_sessions );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent server update packet to backend (%d sessions)", packet.num_sessions );
 
         server->first_server_update = false;
     }
@@ -14099,7 +14086,6 @@ static void test_backend_packets()
         crypto_sign_keypair( public_key, private_key );
 
         static NextBackendServerUpdatePacket in, out;
-        in.sequence = 10000;
         in.customer_id = 1231234127431LL;
         in.datacenter_id = next_datacenter_id( "local" );
         in.num_sessions = 20;
@@ -14109,7 +14095,6 @@ static void test_backend_packets()
         check( next_write_backend_packet( NEXT_BACKEND_SERVER_UPDATE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, private_key ) == NEXT_OK );
         check( next_read_backend_packet( buffer, packet_bytes, &out, next_signed_packets, public_key ) == NEXT_BACKEND_SERVER_UPDATE_PACKET );
 
-        check( in.sequence == out.sequence );
         check( in.version_major == out.version_major );
         check( in.version_minor == out.version_minor );
         check( in.version_patch == out.version_patch );
