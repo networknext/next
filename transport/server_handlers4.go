@@ -14,7 +14,7 @@ import (
 	"github.com/networknext/backend/storage"
 )
 
-func writeServerInitResponse4(w io.Writer, packet *ServerInitRequestPacket4, response uint8) error {
+func writeServerInitResponse4(w io.Writer, packet *ServerInitRequestPacket4, response uint32) error {
 	responsePacket := ServerInitResponsePacket4{
 		RequestID: packet.RequestID,
 		Response:  response,
@@ -60,7 +60,7 @@ func writeSessionResponse4(w io.Writer, packet *SessionUpdatePacket4, routeType 
 		SessionDataBytes:   int32(len(sessionDataBuffer)),
 		RouteType:          routeType,
 		NumNearRelays:      numNearRelays,
-		NearRelayIds:       nearRelayIDs,
+		NearRelayIDs:       nearRelayIDs,
 		NearRelayAddresses: nearRelayAddrs,
 		NumTokens:          0,
 		Tokens:             nil,
@@ -298,17 +298,15 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 				return
 			}
 
-			// todo: apply near relay stats from client -> relay
-
-			// for i, nearRelay := range nearRelays {
-			// 	for j, clientNearRelayID := range packet. {
-			// 		if nearRelay.ID == clientNearRelayID {
-			// 			nearRelayData[i].ClientStats.RTT = float64(packet.NearRelayMinRTT[j])
-			// 			nearRelayData[i].ClientStats.Jitter = float64(packet.NearRelayJitter[j])
-			// 			nearRelayData[i].ClientStats.PacketLoss = float64(packet.NearRelayPacketLoss[j])
-			// 		}
-			// 	}
-			// }
+			for i := range nearRelays {
+				for j, clientNearRelayID := range packet.NearRelayIDs {
+					if nearRelays[i].ID == clientNearRelayID {
+						nearRelays[i].ClientStats.RTT = float64(packet.NearRelayRTT[j])
+						nearRelays[i].ClientStats.Jitter = float64(packet.NearRelayJitter[j])
+						nearRelays[i].ClientStats.PacketLoss = float64(packet.NearRelayPacketLoss[j])
+					}
+				}
+			}
 		}
 
 		// For now, only send back direct routes
