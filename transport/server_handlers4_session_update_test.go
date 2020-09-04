@@ -93,6 +93,25 @@ func TestSessionUpdateHandler4ClientLocateFailure(t *testing.T) {
 		return &badRouteProvider
 	}
 
+	expectedResponse := transport.SessionResponsePacket4{
+		SessionID:          requestPacket.SessionID,
+		SliceNumber:        requestPacket.SliceNumber,
+		SessionDataBytes:   14,
+		RouteType:          routing.RouteTypeDirect,
+		NearRelayIDs:       make([]uint64, 0),
+		NearRelayAddresses: make([]net.UDPAddr, 0),
+	}
+
+	expectedSessionData := transport.SessionData4{
+		SessionID:   requestPacket.SessionID,
+		SliceNumber: requestPacket.SliceNumber + 1,
+		Route:       nil,
+	}
+
+	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
+	assert.NoError(t, err)
+	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
+
 	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeProviderFunc, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
@@ -106,13 +125,7 @@ func TestSessionUpdateHandler4ClientLocateFailure(t *testing.T) {
 	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
 	assert.NoError(t, err)
 
-	assert.Equal(t, requestPacket.SliceNumber, responsePacket.SliceNumber)
-	assert.Equal(t, requestPacket.SessionID, responsePacket.SessionID)
-	assert.Equal(t, int32(routing.RouteTypeDirect), responsePacket.RouteType)
-
-	assert.Equal(t, int32(14), responsePacket.SessionDataBytes)
-	assert.Equal(t, requestPacket.SessionID, sessionData.SessionID)
-	assert.Equal(t, uint32(requestPacket.SliceNumber+1), sessionData.SliceNumber)
+	assert.Equal(t, expectedResponse, responsePacket)
 
 	assert.Equal(t, metrics.ErrorMetrics.ClientLocateFailure.Value(), 1.0)
 }
@@ -143,6 +156,25 @@ func TestSessionUpdateHandler4NoNearRelays(t *testing.T) {
 		return &badRouteProvider
 	}
 
+	expectedResponse := transport.SessionResponsePacket4{
+		SessionID:          requestPacket.SessionID,
+		SliceNumber:        requestPacket.SliceNumber,
+		SessionDataBytes:   14,
+		RouteType:          routing.RouteTypeDirect,
+		NearRelayIDs:       make([]uint64, 0),
+		NearRelayAddresses: make([]net.UDPAddr, 0),
+	}
+
+	expectedSessionData := transport.SessionData4{
+		SessionID:   requestPacket.SessionID,
+		SliceNumber: requestPacket.SliceNumber + 1,
+		Route:       nil,
+	}
+
+	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
+	assert.NoError(t, err)
+	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
+
 	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeProviderFunc, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
@@ -156,13 +188,7 @@ func TestSessionUpdateHandler4NoNearRelays(t *testing.T) {
 	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
 	assert.NoError(t, err)
 
-	assert.Equal(t, requestPacket.SliceNumber, responsePacket.SliceNumber)
-	assert.Equal(t, requestPacket.SessionID, responsePacket.SessionID)
-	assert.Equal(t, int32(routing.RouteTypeDirect), responsePacket.RouteType)
-
-	assert.Equal(t, int32(14), responsePacket.SessionDataBytes)
-	assert.Equal(t, requestPacket.SessionID, sessionData.SessionID)
-	assert.Equal(t, uint32(requestPacket.SliceNumber+1), sessionData.SliceNumber)
+	assert.Equal(t, expectedResponse, responsePacket)
 
 	assert.Equal(t, metrics.ErrorMetrics.NearRelaysLocateFailure.Value(), 1.0)
 }
@@ -281,6 +307,25 @@ func TestSessionUpdateHandler4InitialSlice(t *testing.T) {
 		return &goodRouteProvider
 	}
 
+	expectedResponse := transport.SessionResponsePacket4{
+		SessionID:          requestPacket.SessionID,
+		SliceNumber:        requestPacket.SliceNumber,
+		SessionDataBytes:   14,
+		RouteType:          routing.RouteTypeDirect,
+		NearRelayIDs:       make([]uint64, 0),
+		NearRelayAddresses: make([]net.UDPAddr, 0),
+	}
+
+	expectedSessionData := transport.SessionData4{
+		SessionID:   requestPacket.SessionID,
+		SliceNumber: requestPacket.SliceNumber + 1,
+		Route:       nil,
+	}
+
+	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
+	assert.NoError(t, err)
+	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
+
 	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeProviderFunc, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
@@ -294,13 +339,7 @@ func TestSessionUpdateHandler4InitialSlice(t *testing.T) {
 	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
 	assert.NoError(t, err)
 
-	assert.Equal(t, requestPacket.SliceNumber, responsePacket.SliceNumber)
-	assert.Equal(t, requestPacket.SessionID, responsePacket.SessionID)
-	assert.Equal(t, int32(routing.RouteTypeDirect), responsePacket.RouteType)
-
-	assert.Equal(t, int32(14), responsePacket.SessionDataBytes)
-	assert.Equal(t, requestPacket.SessionID, sessionData.SessionID)
-	assert.Equal(t, uint32(requestPacket.SliceNumber+1), sessionData.SliceNumber)
+	assert.Equal(t, expectedResponse, responsePacket)
 }
 
 func TestSessionUpdateHandler4DirectRoute(t *testing.T) {
@@ -343,6 +382,25 @@ func TestSessionUpdateHandler4DirectRoute(t *testing.T) {
 		return &goodRouteProvider
 	}
 
+	expectedResponse := transport.SessionResponsePacket4{
+		SessionID:          requestPacket.SessionID,
+		SliceNumber:        requestPacket.SliceNumber,
+		SessionDataBytes:   14,
+		RouteType:          routing.RouteTypeDirect,
+		NearRelayIDs:       make([]uint64, 0),
+		NearRelayAddresses: make([]net.UDPAddr, 0),
+	}
+
+	expectedSessionData := transport.SessionData4{
+		SessionID:   requestPacket.SessionID,
+		SliceNumber: requestPacket.SliceNumber + 1,
+		Route:       nil,
+	}
+
+	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
+	assert.NoError(t, err)
+	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
+
 	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeProviderFunc, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
@@ -356,11 +414,5 @@ func TestSessionUpdateHandler4DirectRoute(t *testing.T) {
 	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
 	assert.NoError(t, err)
 
-	assert.Equal(t, requestPacket.SliceNumber, responsePacket.SliceNumber)
-	assert.Equal(t, requestPacket.SessionID, responsePacket.SessionID)
-	assert.Equal(t, int32(routing.RouteTypeDirect), responsePacket.RouteType)
-
-	assert.Equal(t, int32(14), responsePacket.SessionDataBytes)
-	assert.Equal(t, requestPacket.SessionID, sessionData.SessionID)
-	assert.Equal(t, uint32(requestPacket.SliceNumber+1), sessionData.SliceNumber)
+	assert.Equal(t, expectedResponse, responsePacket)
 }
