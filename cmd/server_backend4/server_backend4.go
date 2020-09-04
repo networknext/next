@@ -378,6 +378,12 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	routerPrivateKey, err := envvar.GetBase64("RELAY_BACKEND_PRIVATE_KEY", nil)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
 	getIPLocatorFunc := func() routing.IPLocator {
 		return routing.NullIsland
 	}
@@ -590,7 +596,7 @@ func mainReturnWithCode() int {
 
 	serverInitHandler := transport.ServerInitHandlerFunc4(logger, storer, datacenterTracker, serverInitMetrics)
 	serverUpdateHandler := transport.ServerUpdateHandlerFunc4(logger, storer, datacenterTracker, serverUpdateMetrics)
-	sessionUpdateHandler := transport.SessionUpdateHandlerFunc4(logger, getIPLocatorFunc, getRouteMatrixFunc, sessionUpdateMetrics)
+	sessionUpdateHandler := transport.SessionUpdateHandlerFunc4(logger, getIPLocatorFunc, getRouteMatrixFunc, routerPrivateKey, sessionUpdateMetrics)
 
 	for i := 0; i < numThreads; i++ {
 		go func(thread int) {

@@ -32,7 +32,7 @@ func writeServerInitResponse4(w io.Writer, packet *ServerInitRequestPacket4, res
 	return nil
 }
 
-func writeSessionResponse4(w io.Writer, packet *SessionUpdatePacket4, routeType int32, nearRelays []routing.NearRelayData, sessionData *SessionData4) error {
+func writeSessionResponse4(w io.Writer, packet *SessionUpdatePacket4, routeType int32, nearRelays []routing.NearRelayData, numRouteTokens int32, routeTokens []byte, sessionData *SessionData4) error {
 	sessionData.Version = SessionDataVersion4
 	sessionData.SessionID = packet.SessionID
 	sessionData.SliceNumber = uint32(packet.SliceNumber + 1)
@@ -62,8 +62,8 @@ func writeSessionResponse4(w io.Writer, packet *SessionUpdatePacket4, routeType 
 		NumNearRelays:      numNearRelays,
 		NearRelayIDs:       nearRelayIDs,
 		NearRelayAddresses: nearRelayAddrs,
-		NumTokens:          0,
-		Tokens:             nil,
+		NumTokens:          numRouteTokens,
+		Tokens:             routeTokens,
 		Multipath:          false,
 		Committed:          false,
 	}
@@ -232,7 +232,7 @@ func ServerUpdateHandlerFunc4(logger log.Logger, storer storage.Storer, datacent
 	}
 }
 
-func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IPLocator, getRouteProvider func() RouteProvider, metrics *metrics.SessionMetrics) UDPHandlerFunc {
+func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IPLocator, getRouteProvider func() RouteProvider, routerPrivateKey []byte, metrics *metrics.SessionMetrics) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
 		metrics.Invocations.Add(1)
 
@@ -257,6 +257,8 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 		location := routing.LocationNullIsland
 		ipLocator := getIPLocator()
 		routeMatrix := getRouteProvider()
+		routeType := routing.RouteTypeDirect
+		route := routing.Route{}
 		var nearRelays []routing.NearRelayData
 		var err error
 
@@ -266,7 +268,7 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 			if err != nil {
 				level.Error(logger).Log("msg", "failed to locate IP", "err", err)
 				metrics.ErrorMetrics.ClientLocateFailure.Add(1)
-				writeSessionResponse4(w, &packet, routing.RouteTypeDirect, nearRelays, &sessionData)
+				writeSessionResponse4(w, &packet, routing.RouteTypeDirect, nearRelays, 0, nil, &sessionData)
 				return
 			}
 
@@ -274,7 +276,7 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 			if err != nil {
 				level.Error(logger).Log("msg", "failed to get near relays", "err", err)
 				metrics.ErrorMetrics.NearRelaysLocateFailure.Add(1)
-				writeSessionResponse4(w, &packet, routing.RouteTypeDirect, nearRelays, &sessionData)
+				writeSessionResponse4(w, &packet, routing.RouteTypeDirect, nearRelays, 0, nil, &sessionData)
 				return
 			}
 		}
@@ -309,9 +311,76 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 			}
 		}
 
-		// For now, only send back direct routes
-		writeSessionResponse4(w, &packet, routing.RouteTypeDirect, nearRelays, &sessionData)
+		var numRouteTokens int
+		var routeTokens []byte
 
-		level.Debug(logger).Log("msg", "successfully sent direct route")
+		if routeType != routing.RouteTypeDirect {
+			var token routing.Token
+
+			relayTokens := make([]routing.RelayToken, route.NumRelays)
+			for i := range relayTokens {
+				relayTokens[i] = routing.RelayToken{
+					ID:        route.RelayIDs[i],
+					Addr:      route.RelayAddrs[i],
+					PublicKey: route.RelayPublicKeys[i],
+				}
+			}
+
+			if route.Equals(sessionData.Route) {
+				token = &routing.ContinueRouteToken{
+					Expires: uint64(time.Now().Unix() + 15),
+
+					SessionID: packet.SessionID,
+
+					SessionVersion: uint8(sessionData.SessionVersion),
+
+					Client: routing.Client{
+						Addr:      packet.ClientAddress,
+						PublicKey: packet.ClientRoutePublicKey,
+					},
+
+					Server: routing.Server{
+						Addr:      packet.ServerAddress,
+						PublicKey: packet.ServerRoutePublicKey,
+					},
+
+					Relays: relayTokens,
+				}
+			} else {
+				sessionData.SessionVersion++
+				token = &routing.NextRouteToken{
+					Expires: uint64(time.Now().Unix() + 15),
+
+					SessionID: packet.SessionID,
+
+					SessionVersion: uint8(sessionData.SessionVersion),
+
+					// todo: add back when buyer lookup is implemented in the session update handler
+
+					// KbpsUp:   uint32(buyer.RoutingRulesSettings.EnvelopeKbpsUp),
+					// KbpsDown: uint32(buyer.RoutingRulesSettings.EnvelopeKbpsDown),
+
+					Client: routing.Client{
+						Addr:      packet.ClientAddress,
+						PublicKey: packet.ClientRoutePublicKey,
+					},
+
+					Server: routing.Server{
+						Addr:      packet.ServerAddress,
+						PublicKey: packet.ServerRoutePublicKey,
+					},
+
+					Relays: relayTokens,
+				}
+			}
+
+			routeTokens, numRouteTokens, err = token.Encrypt(routerPrivateKey)
+			if err != nil {
+				metrics.ErrorMetrics.EncryptionFailure.Add(1)
+				return
+			}
+		}
+
+		writeSessionResponse4(w, &packet, int32(routeType), nearRelays, int32(numRouteTokens), routeTokens, &sessionData)
 	}
 }
