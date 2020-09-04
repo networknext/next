@@ -293,15 +293,29 @@ MapHandler = {
 		JSONRPCClient
 			.call('BuyersService.SessionMap', {buyer_id: filter.buyerId || ""})
 			.then((response) => {
-				let sessions = response.map_points || [];
-				let onNN = sessions.filter((point) => {
-					return (point[2] == 1);
-				});
-				let direct = sessions.filter((point) => {
-					return (point[2] == 0);
-				});
-				/* let onNN = response.map_points.green_points || [];
-				let direct = response.map_points.blue_points || []; */
+        let sessions = response.map_points || [];
+        let onNN = []
+        let direct = []
+        if (UserHandler.isAnonymous() || UserHandler.isAnonymousPlus() || filter.buyerId == '') {
+          onNN = sessions
+        } else {
+          onNN = sessions.filter((point) => {
+            return (point[2] == 1);
+          });
+          direct = sessions.filter((point) => {
+            return (point[2] == 0);
+          });
+        }
+        /*
+          onNN = sessions.filter((point) => {
+            return (point[2] == 1);
+          });
+          direct = sessions.filter((point) => {
+            return (point[2] == 0);
+          });
+         */
+        /* let onNN = response.map_points.green_points || [];
+        let direct = response.map_points.blue_points || []; */
 
 				let maintenanceMode = rootComponent.$data.maintenanceMode
 
