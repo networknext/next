@@ -238,7 +238,6 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 	stream.SerializeBits(&packet.SliceNumber, 32)
 	stream.SerializeInteger(&packet.RetryNumber, 0, NEXT_MAX_SESSION_UPDATE_RETRIES)
 	stream.SerializeInteger(&packet.SessionDataBytes, 0, NEXT_MAX_SESSION_DATA_BYTES)
-	fmt.Printf("session data bytes = %d (read update)\n", packet.SessionDataBytes)
 	if packet.SessionDataBytes > 0 {
 		sessionData := packet.SessionData[:packet.SessionDataBytes]
 		stream.SerializeBytes(sessionData)
@@ -325,7 +324,6 @@ func (packet *NextBackendSessionResponsePacket) Serialize(stream Stream, version
 	stream.SerializeUint64(&packet.SessionId)
 	stream.SerializeBits(&packet.SliceNumber, 32)
 	stream.SerializeInteger(&packet.SessionDataBytes, 0, NEXT_MAX_SESSION_DATA_BYTES)
-	fmt.Printf("session data bytes = %d (write response)\n", packet.SessionDataBytes)
 	if packet.SessionDataBytes > 0 {
 		sessionData := packet.SessionData[:packet.SessionDataBytes]
 		stream.SerializeBytes(sessionData)
@@ -2410,10 +2408,6 @@ func main() {
 				continue
 			}
 
-			fmt.Printf("slice number = %d\n", sessionUpdate.SliceNumber)
-
-			fmt.Printf("session data bytes = %d\n", sessionUpdate.SessionDataBytes)
-
 			sessionDataReadStream := CreateReadStream(sessionUpdate.SessionData[:sessionUpdate.SessionDataBytes])
 			var sessionData SessionData
 			sessionData.Version = SessionDataVersion
@@ -2596,8 +2590,6 @@ func main() {
 				panic("session data is too large")
 			}
 			
-			fmt.Printf("session data bytes = %d (write)\n", sessionDataWriteStream.GetBytesProcessed())
-
 			sessionResponse.SessionDataBytes = int32(sessionDataWriteStream.GetBytesProcessed())
 			copy(sessionResponse.SessionData[:], sessionDataWriteStream.GetData()[0:sessionDataWriteStream.GetBytesProcessed()])
 
