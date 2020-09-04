@@ -1,6 +1,7 @@
 package transport
 
 import (
+	"errors"
 	"io"
 	"time"
 
@@ -30,7 +31,16 @@ func writeServerInitResponse4(w io.Writer, packet *ServerInitRequestPacket4, res
 	return nil
 }
 
-func writeSessionResponse4(w io.Writer, packet *SessionUpdatePacket4) error {
+func writeSessionResponse4(w io.Writer, packet *SessionUpdatePacket4, sessionData *SessionData4) error {
+	sessionDataBuffer, err := MarshalSessionData(sessionData)
+	if err != nil {
+		return err
+	}
+
+	if len(sessionDataBuffer) > MaxSessionDataSize {
+		return errors.New("session data too large")
+	}
+
 	responsePacket := SessionResponsePacket4{
 		Sequence:             packet.Sequence,
 		SessionID:            packet.SessionID,
@@ -43,9 +53,9 @@ func writeSessionResponse4(w io.Writer, packet *SessionUpdatePacket4) error {
 		NumTokens:            0,
 		Tokens:               nil,
 		ServerRoutePublicKey: packet.ServerRoutePublicKey,
-		SessionDataBytes:     0,
-		SessionData:          [MaxSessionDataSize]byte{},
+		SessionDataBytes:     int32(len(sessionDataBuffer)),
 	}
+	copy(responsePacket.SessionData[:], sessionDataBuffer)
 
 	responseData, err := MarshalPacket(&responsePacket)
 	if err != nil {
@@ -231,8 +241,31 @@ func SessionUpdateHandlerFunc4(logger log.Logger, storer storage.Storer, metrics
 			return
 		}
 
+		var sessionData SessionData4
+		if err := UnmarshalSessionData(&sessionData, packet.SessionData[:]); err != nil {
+			level.Error(logger).Log("msg", "could not read session data in session update packet", "err", err)
+			metrics.ErrorMetrics.ReadPacketFailure.Add(1)
+			return
+		}
+
+		if sessionData.SessionID != packet.SessionID {
+			level.Error(logger).Log("err", "bad session ID in session data")
+			metrics.SessionDataMetrics.BadSessionID.Add(1)
+			return
+		}
+
+		if sessionData.Sequence != uint32(packet.Sequence) {
+			level.Error(logger).Log("err", "bad sequence number in session data")
+			metrics.SessionDataMetrics.BadSequenceNumber.Add(1)
+			return
+		}
+
+		sessionData.Version = SessionDataVersion4
+		sessionData.SessionID = packet.SessionID
+		sessionData.Sequence = uint32(packet.Sequence + 1)
+
 		// For now, only send back direct routes
-		writeSessionResponse4(w, &packet)
+		writeSessionResponse4(w, &packet, &sessionData)
 
 		level.Debug(logger).Log("msg", "successfully sent direct route")
 	}

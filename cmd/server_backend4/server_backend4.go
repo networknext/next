@@ -109,6 +109,94 @@ func mainReturnWithCode() int {
 	}
 	env := envvar.Get("ENV", "")
 
+	// Create a local metrics handler
+	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
+
+	if gcpOK {
+		// StackDriver Metrics
+		{
+			enableSDMetrics, err := envvar.GetBool("ENABLE_STACKDRIVER_METRICS", false)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				return 1
+			}
+
+			if enableSDMetrics {
+				// Set up StackDriver metrics
+				sd := metrics.StackDriverHandler{
+					ProjectID:          gcpProjectID,
+					OverwriteFrequency: time.Second,
+					OverwriteTimeout:   10 * time.Second,
+				}
+
+				if err := sd.Open(ctx); err != nil {
+					level.Error(logger).Log("msg", "Failed to create StackDriver metrics client", "err", err)
+					os.Exit(1)
+				}
+
+				metricsHandler = &sd
+
+				sdWriteInterval, err := envvar.GetDuration("GOOGLE_STACKDRIVER_METRICS_WRITE_INTERVAL", time.Minute)
+				if err != nil {
+					level.Error(logger).Log("err", err)
+					return 1
+				}
+
+				go func() {
+					metricsHandler.WriteLoop(ctx, logger, sdWriteInterval, 200)
+				}()
+			}
+		}
+
+		// StackDriver Profiler
+		{
+			enableSDProfiler, err := envvar.GetBool("ENABLE_STACKDRIVER_PROFILER", false)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				return 1
+			}
+
+			if enableSDProfiler {
+				// Set up StackDriver profiler
+				if err := profiler.Start(profiler.Config{
+					Service:        "server_backend",
+					ServiceVersion: env,
+					ProjectID:      gcpProjectID,
+					MutexProfiling: true,
+				}); err != nil {
+					level.Error(logger).Log("msg", "failed to initialze StackDriver profiler", "err", err)
+					os.Exit(1)
+				}
+			}
+		}
+	}
+
+	// Create metrics
+	serverInitMetrics, err := metrics.NewServerInitMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create server init metrics", "err", err)
+		return 1
+	}
+
+	serverUpdateMetrics, err := metrics.NewServerUpdateMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create server update metrics", "err", err)
+		return 1
+	}
+
+	sessionUpdateMetrics, err := metrics.NewSessionMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create session update metrics", "err", err)
+		return 1
+	}
+
+	sessionDataMetrics, err := metrics.NewSessionDataMetrics(ctx, metricsHandler)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create session data metrics", "err", err)
+		return 1
+	}
+	sessionUpdateMetrics.SessionDataMetrics = *sessionDataMetrics
+
 	// Create an in-memory storer
 	var storer storage.Storer = &storage.InMemory{
 		LocalMode: true,
@@ -261,87 +349,6 @@ func mainReturnWithCode() int {
 			// Set the Firestore Storer to give to handlers
 			storer = fs
 		}
-	}
-
-	// Create a local metrics handler
-	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
-
-	if gcpOK {
-		// StackDriver Metrics
-		{
-			enableSDMetrics, err := envvar.GetBool("ENABLE_STACKDRIVER_METRICS", false)
-			if err != nil {
-				level.Error(logger).Log("err", err)
-				return 1
-			}
-
-			if enableSDMetrics {
-				// Set up StackDriver metrics
-				sd := metrics.StackDriverHandler{
-					ProjectID:          gcpProjectID,
-					OverwriteFrequency: time.Second,
-					OverwriteTimeout:   10 * time.Second,
-				}
-
-				if err := sd.Open(ctx); err != nil {
-					level.Error(logger).Log("msg", "Failed to create StackDriver metrics client", "err", err)
-					os.Exit(1)
-				}
-
-				metricsHandler = &sd
-
-				sdWriteInterval, err := envvar.GetDuration("GOOGLE_STACKDRIVER_METRICS_WRITE_INTERVAL", time.Minute)
-				if err != nil {
-					level.Error(logger).Log("err", err)
-					return 1
-				}
-
-				go func() {
-					metricsHandler.WriteLoop(ctx, logger, sdWriteInterval, 200)
-				}()
-			}
-		}
-
-		// StackDriver Profiler
-		{
-			enableSDProfiler, err := envvar.GetBool("ENABLE_STACKDRIVER_PROFILER", false)
-			if err != nil {
-				level.Error(logger).Log("err", err)
-				return 1
-			}
-
-			if enableSDProfiler {
-				// Set up StackDriver profiler
-				if err := profiler.Start(profiler.Config{
-					Service:        "server_backend",
-					ServiceVersion: env,
-					ProjectID:      gcpProjectID,
-					MutexProfiling: true,
-				}); err != nil {
-					level.Error(logger).Log("msg", "failed to initialze StackDriver profiler", "err", err)
-					os.Exit(1)
-				}
-			}
-		}
-	}
-
-	// Create metrics
-	serverInitMetrics, err := metrics.NewServerInitMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create server init metrics", "err", err)
-		return 1
-	}
-
-	serverUpdateMetrics, err := metrics.NewServerUpdateMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create server update metrics", "err", err)
-		return 1
-	}
-
-	sessionUpdateMetrics, err := metrics.NewSessionMetrics(ctx, metricsHandler)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create session update metrics", "err", err)
-		return 1
 	}
 
 	// Create datacenter tracker

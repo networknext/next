@@ -14,7 +14,8 @@ const (
 
 	MaxDatacenterNameLength = 256
 
-	MaxSessionDataSize = 511
+	SessionDataVersion4 = 0
+	MaxSessionDataSize  = 511
 
 	PacketTypeServerUpdate4       = 220
 	PacketTypeSessionUpdate4      = 221
@@ -310,5 +311,43 @@ func (packet *SessionResponsePacket4) Serialize(stream encoding.Stream) error {
 		sessionData := packet.SessionData[:packet.SessionDataBytes]
 		stream.SerializeBytes(sessionData)
 	}
+	return stream.Error()
+}
+
+type SessionData4 struct {
+	Version   uint32
+	SessionID uint64
+	Sequence  uint32
+}
+
+func UnmarshalSessionData(sessionData *SessionData4, data []byte) error {
+	if err := sessionData.Serialize(encoding.CreateReadStream(data)); err != nil {
+		return err
+	}
+	return nil
+}
+
+func MarshalSessionData(sessionData *SessionData4) ([]byte, error) {
+	ws, err := encoding.CreateWriteStream(DefaultMaxPacketSize)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := sessionData.Serialize(ws); err != nil {
+		return nil, err
+	}
+	ws.Flush()
+
+	return ws.GetData()[:ws.GetBytesProcessed()], nil
+}
+
+func (sessionData *SessionData4) Serialize(stream encoding.Stream) error {
+	stream.SerializeBits(&sessionData.Version, 8)
+	if stream.IsReading() && sessionData.Version != SessionDataVersion4 {
+		return fmt.Errorf("bad session data version %d, expected %d", sessionData.Version, SessionDataVersion4)
+	}
+	stream.SerializeUint64(&sessionData.SessionID)
+	stream.SerializeUint32(&sessionData.Sequence)
+
 	return stream.Error()
 }
