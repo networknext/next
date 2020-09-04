@@ -41,9 +41,7 @@ func TestServerInitHandler4BuyerNotFound(t *testing.T) {
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 
-	requestPacket := transport.ServerInitRequestPacket4{
-		RequestID: 100,
-	}
+	requestPacket := transport.ServerInitRequestPacket4{}
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
 
@@ -79,7 +77,6 @@ func TestServerInitHandler4SDKTooOld(t *testing.T) {
 
 	requestPacket := transport.ServerInitRequestPacket4{
 		Version:    transport.SDKVersion{3, 3, 4},
-		RequestID:  100,
 		CustomerID: 123,
 	}
 	requestData, err := transport.MarshalPacket(&requestPacket)
@@ -124,7 +121,6 @@ func TestServerInitHandler4MisconfiguredDatacenterAlias(t *testing.T) {
 
 	requestPacket := transport.ServerInitRequestPacket4{
 		Version:        transport.SDKVersion{4, 0, 0},
-		RequestID:      100,
 		CustomerID:     123,
 		DatacenterID:   crypto.HashID("datacenter.alias"),
 		DatacenterName: "datacenter.alias",
@@ -167,7 +163,6 @@ func TestServerInitHandler4DatacenterAndAliasNotFound(t *testing.T) {
 
 	requestPacket := transport.ServerInitRequestPacket4{
 		Version:        transport.SDKVersion{4, 0, 0},
-		RequestID:      100,
 		CustomerID:     123,
 		DatacenterID:   crypto.HashID("datacenter.alias"),
 		DatacenterName: "datacenter.alias",
@@ -216,7 +211,6 @@ func TestServerInitHandler4Success(t *testing.T) {
 
 	requestPacket := transport.ServerInitRequestPacket4{
 		Version:        transport.SDKVersion{4, 0, 0},
-		RequestID:      100,
 		CustomerID:     123,
 		DatacenterID:   crypto.HashID("datacenter.name"),
 		DatacenterName: "datacenter.name",
@@ -270,7 +264,6 @@ func TestServerInitHandler4SuccessDatacenterAliasFound(t *testing.T) {
 
 	requestPacket := transport.ServerInitRequestPacket4{
 		Version:        transport.SDKVersion{4, 0, 0},
-		RequestID:      100,
 		CustomerID:     123,
 		DatacenterID:   crypto.HashID("datacenter.alias"),
 		DatacenterName: "datacenter.alias",

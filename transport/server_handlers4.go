@@ -42,18 +42,17 @@ func writeSessionResponse4(w io.Writer, packet *SessionUpdatePacket4, sessionDat
 	}
 
 	responsePacket := SessionResponsePacket4{
-		Sequence:             packet.Sequence,
-		SessionID:            packet.SessionID,
-		NumNearRelays:        0,
-		NearRelayIDs:         nil,
-		NearRelayAddresses:   nil,
-		RouteType:            routing.RouteTypeDirect,
-		Multipath:            false,
-		Committed:            false,
-		NumTokens:            0,
-		Tokens:               nil,
-		ServerRoutePublicKey: packet.ServerRoutePublicKey,
-		SessionDataBytes:     int32(len(sessionDataBuffer)),
+		SessionID:          packet.SessionID,
+		SliceNumber:        packet.SliceNumber,
+		SessionDataBytes:   int32(len(sessionDataBuffer)),
+		RouteType:          routing.RouteTypeDirect,
+		NumNearRelays:      0,
+		NearRelayIds:       nil,
+		NearRelayAddresses: nil,
+		NumTokens:          0,
+		Tokens:             nil,
+		Multipath:          false,
+		Committed:          false,
 	}
 	copy(responsePacket.SessionData[:], sessionDataBuffer)
 
@@ -216,7 +215,7 @@ func ServerUpdateHandlerFunc4(logger log.Logger, storer storage.Storer, datacent
 			}
 		}
 
-		level.Debug(logger).Log("msg", "server updated successfully", "server_address", packet.ServerAddress.String(), "sequence", packet.Sequence)
+		level.Debug(logger).Log("msg", "server updated successfully", "server_address", packet.ServerAddress.String())
 	}
 }
 
@@ -242,27 +241,29 @@ func SessionUpdateHandlerFunc4(logger log.Logger, storer storage.Storer, metrics
 		}
 
 		var sessionData SessionData4
-		if err := UnmarshalSessionData(&sessionData, packet.SessionData[:]); err != nil {
-			level.Error(logger).Log("msg", "could not read session data in session update packet", "err", err)
-			metrics.ErrorMetrics.ReadPacketFailure.Add(1)
-			return
-		}
+		if packet.SliceNumber > 0 {
+			if err := UnmarshalSessionData(&sessionData, packet.SessionData[:]); err != nil {
+				level.Error(logger).Log("msg", "could not read session data in session update packet", "err", err)
+				metrics.ErrorMetrics.ReadPacketFailure.Add(1)
+				return
+			}
 
-		if sessionData.SessionID != packet.SessionID {
-			level.Error(logger).Log("err", "bad session ID in session data")
-			metrics.SessionDataMetrics.BadSessionID.Add(1)
-			return
-		}
+			if sessionData.SessionID != packet.SessionID {
+				level.Error(logger).Log("err", "bad session ID in session data")
+				metrics.SessionDataMetrics.BadSessionID.Add(1)
+				return
+			}
 
-		if sessionData.Sequence != uint32(packet.Sequence) {
-			level.Error(logger).Log("err", "bad sequence number in session data")
-			metrics.SessionDataMetrics.BadSequenceNumber.Add(1)
-			return
+			if sessionData.SliceNumber != uint32(packet.SliceNumber) {
+				level.Error(logger).Log("err", "bad sequence number in session data")
+				metrics.SessionDataMetrics.BadSequenceNumber.Add(1)
+				return
+			}
 		}
 
 		sessionData.Version = SessionDataVersion4
 		sessionData.SessionID = packet.SessionID
-		sessionData.Sequence = uint32(packet.Sequence + 1)
+		sessionData.SliceNumber = uint32(packet.SliceNumber + 1)
 
 		// For now, only send back direct routes
 		writeSessionResponse4(w, &packet, &sessionData)
