@@ -31,6 +31,8 @@ import (
 	"github.com/gorilla/mux"
 )
 
+const NEXT_MAX_ROUTE_RELAYS = 5
+
 const NEXT_MAX_SESSION_DATA_BYTES = 511
 
 const NEXT_MAX_SESSION_UPDATE_RETRIES = 10
@@ -367,6 +369,7 @@ type SessionData struct {
 	Version uint32
 	SessionId uint64
 	SliceNumber uint32
+	Route []uint64
 }
 
 func (packet *SessionData) Serialize(stream Stream) error {
@@ -376,6 +379,22 @@ func (packet *SessionData) Serialize(stream Stream) error {
 	}
 	stream.SerializeUint64(&packet.SessionId)
 	stream.SerializeBits(&packet.SliceNumber, 32)
+	numRelays := int32(0)
+	hasRoute := false
+	if stream.IsWriting() {
+		numRelays = int32(len(packet.Route))
+		hasRoute = numRelays > 0
+	}
+	stream.SerializeBool(&hasRoute) 
+	if hasRoute {
+		stream.SerializeInteger(&numRelays, 0, NEXT_MAX_ROUTE_RELAYS)
+		if stream.IsReading() {
+			packet.Route = make([]uint64, numRelays)
+		}
+		for i := 0; i < int(numRelays); i++ {
+			stream.SerializeUint64(&packet.Route[i])
+		}
+	}
 	return stream.Error()
 }
 
@@ -407,13 +426,8 @@ type ServerEntry struct {
 }
 
 type SessionEntry struct {
-	// todo: all this stuff needs to move into the session data, just minimal timeout data here is all that's needed
 	id              uint64
-	version         uint8
 	expireTimestamp uint64
-	route           []uint64
-	next            bool
-	slice           uint64
 }
 
 func TimeoutThread() {
@@ -2418,27 +2432,16 @@ func main() {
 				}
 			}
 
-			// todo
-			// nearRelayIds, nearRelayAddresses := GetNearRelays()
-
 			var sessionResponse *NextBackendSessionResponsePacket
 
 			backend.mutex.RLock()
-			sessionEntry, ok := backend.sessionDatabase[sessionUpdate.SessionId]
+			sessionEntry := backend.sessionDatabase[sessionUpdate.SessionId]
 			backend.mutex.RUnlock()
 
-			newSession := !ok
+			sessionEntry.expireTimestamp = uint64(time.Now().Unix()) + 30
 
-			// todo: whether this is a new session or not should derive from the session data, not the session map...
-
-			if newSession {
-				sessionEntry.id = sessionUpdate.SessionId
-				sessionEntry.version = 0
-				sessionEntry.expireTimestamp = uint64(time.Now().Unix()) + 20
-			} else {
-				sessionEntry.expireTimestamp += 10
-				sessionEntry.slice++
-			}
+			// todo
+			// nearRelayIds, nearRelayAddresses := GetNearRelays()
 
 			takeNetworkNext := false // todo: len(nearRelayIds) > 0
 
@@ -2458,15 +2461,7 @@ func main() {
 					NumTokens:            0,
 					Tokens:               nil,
 					*/
-					// todo: why are we sending this back down to the server... it already knows it...
-					// ServerRoutePublicKey: sessionUpdate.ServerRoutePublicKey,
 				}
-
-				// todo
-				/*
-				sessionEntry.route = nil
-				sessionEntry.next = false
-				*/
 
 			} else {
 
@@ -2555,7 +2550,7 @@ func main() {
 			}
 
 			backend.mutex.Lock()
-			if newSession {
+			if sessionData.SliceNumber == 0 {
 				backend.dirty = true
 			}
 			backend.sessionDatabase[sessionUpdate.SessionId] = sessionEntry
