@@ -13,6 +13,7 @@ type Buyer struct {
 	Domain               string
 	Active               bool
 	Live                 bool
+	Debug                bool
 	PublicKey            []byte
 	RoutingRulesSettings RoutingRulesSettings
 }
