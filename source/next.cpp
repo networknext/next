@@ -9122,7 +9122,9 @@ struct NextBackendSessionUpdatePacket
         
         serialize_uint64( stream, session_id );
         
-        serialize_int( stream, slice_number, 0, NEXT_MAX_SESSION_UPDATE_RETRIES );
+        serialize_uint32( stream, slice_number );
+
+        serialize_int( stream, retry_number, 0, NEXT_MAX_SESSION_UPDATE_RETRIES );
 
         serialize_int( stream, session_data_bytes, 0, NEXT_MAX_SESSION_DATA_BYTES );
         if ( session_data_bytes > 0 )
@@ -9182,7 +9184,7 @@ struct NextBackendSessionUpdatePacket
             serialize_uint64( stream, user_flags );
         }
         */
-        
+
         return true;
     }
 };
