@@ -3,7 +3,6 @@ package transport
 import (
 	"errors"
 	"io"
-	"net"
 	"time"
 
 	"github.com/go-kit/kit/log"
@@ -31,12 +30,7 @@ func writeServerInitResponse4(w io.Writer, packet *ServerInitRequestPacket4, res
 
 	return nil
 }
-
-func writeSessionResponse4(w io.Writer, packet *SessionUpdatePacket4, routeType int32, nearRelays []routing.NearRelayData, numRouteTokens int32, routeTokens []byte, sessionData *SessionData4) error {
-	sessionData.Version = SessionDataVersion4
-	sessionData.SessionID = packet.SessionID
-	sessionData.SliceNumber = uint32(packet.SliceNumber + 1)
-
+func writeSessionResponse4(w io.Writer, response *SessionResponsePacket4, sessionData *SessionData4) error {
 	sessionDataBuffer, err := MarshalSessionData(sessionData)
 	if err != nil {
 		return err
@@ -46,30 +40,10 @@ func writeSessionResponse4(w io.Writer, packet *SessionUpdatePacket4, routeType 
 		return errors.New("session data too large")
 	}
 
-	numNearRelays := int32(len(nearRelays))
-	nearRelayIDs := make([]uint64, numNearRelays)
-	nearRelayAddrs := make([]net.UDPAddr, numNearRelays)
-	for i := int32(0); i < numNearRelays; i++ {
-		nearRelayIDs[i] = nearRelays[i].ID
-		nearRelayAddrs[i] = *nearRelays[i].Addr
-	}
+	response.SessionDataBytes = int32(len(sessionDataBuffer))
+	copy(response.SessionData[:], sessionDataBuffer)
 
-	responsePacket := SessionResponsePacket4{
-		SessionID:          packet.SessionID,
-		SliceNumber:        packet.SliceNumber,
-		SessionDataBytes:   int32(len(sessionDataBuffer)),
-		RouteType:          routeType,
-		NumNearRelays:      numNearRelays,
-		NearRelayIDs:       nearRelayIDs,
-		NearRelayAddresses: nearRelayAddrs,
-		NumTokens:          numRouteTokens,
-		Tokens:             routeTokens,
-		Multipath:          false,
-		Committed:          false,
-	}
-	copy(responsePacket.SessionData[:], sessionDataBuffer)
-
-	responseData, err := MarshalPacket(&responsePacket)
+	responseData, err := MarshalPacket(response)
 	if err != nil {
 		return err
 	}
@@ -253,35 +227,48 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 			return
 		}
 
+		newSession := packet.SliceNumber == 0
+
 		var sessionData SessionData4
-		location := routing.LocationNullIsland
+
 		ipLocator := getIPLocator()
 		routeMatrix := getRouteProvider()
-		routeType := routing.RouteTypeDirect
 		route := routing.Route{}
-		var nearRelays []routing.NearRelayData
 		var err error
 
-		newSession := packet.SliceNumber == 0
+		response := SessionResponsePacket4{
+			SessionID:   packet.SessionID,
+			SliceNumber: packet.SliceNumber,
+			RouteType:   routing.RouteTypeDirect,
+		}
+
 		if newSession {
-			location, err = ipLocator.LocateIP(incoming.SourceAddr.IP)
+			sessionData.Version = SessionDataVersion4
+			sessionData.SessionID = packet.SessionID
+			sessionData.SliceNumber = uint32(packet.SliceNumber + 1)
+
+			location, err := ipLocator.LocateIP(incoming.SourceAddr.IP)
 			if err != nil {
 				level.Error(logger).Log("msg", "failed to locate IP", "err", err)
 				metrics.ErrorMetrics.ClientLocateFailure.Add(1)
-				writeSessionResponse4(w, &packet, routing.RouteTypeDirect, nearRelays, 0, nil, &sessionData)
+				writeSessionResponse4(w, &response, &sessionData)
 				return
 			}
 
-			nearRelays, err = routeMatrix.GetNearRelays(location.Latitude, location.Longitude, MaxNearRelays)
+			nearRelays, err := routeMatrix.GetNearRelays(location.Latitude, location.Longitude, MaxNearRelays)
 			if err != nil {
 				level.Error(logger).Log("msg", "failed to get near relays", "err", err)
 				metrics.ErrorMetrics.NearRelaysLocateFailure.Add(1)
-				writeSessionResponse4(w, &packet, routing.RouteTypeDirect, nearRelays, 0, nil, &sessionData)
+				writeSessionResponse4(w, &response, &sessionData)
 				return
 			}
-		}
 
-		if !newSession {
+			response.NumNearRelays = int32(len(nearRelays))
+			for i := int32(0); i < response.NumNearRelays; i++ {
+				response.NearRelayIDs[i] = nearRelays[i].ID
+				response.NearRelayAddresses[i] = *nearRelays[i].Addr
+			}
+		} else {
 			if err := UnmarshalSessionData(&sessionData, packet.SessionData[:]); err != nil {
 				level.Error(logger).Log("msg", "could not read session data in session update packet", "err", err)
 				metrics.ErrorMetrics.ReadPacketFailure.Add(1)
@@ -300,21 +287,25 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 				return
 			}
 
-			for i := range nearRelays {
-				for j, clientNearRelayID := range packet.NearRelayIDs {
-					if nearRelays[i].ID == clientNearRelayID {
-						nearRelays[i].ClientStats.RTT = float64(packet.NearRelayRTT[j])
-						nearRelays[i].ClientStats.Jitter = float64(packet.NearRelayJitter[j])
-						nearRelays[i].ClientStats.PacketLoss = float64(packet.NearRelayPacketLoss[j])
-					}
-				}
-			}
+			sessionData.SliceNumber = uint32(packet.SliceNumber + 1)
+
+			// todo: we need to store the near relays in the session data so that we can update their client stats
+
+			// for i := range nearRelays {
+			// 	for j, clientNearRelayID := range packet.NearRelayIDs {
+			// 		if nearRelays[i].ID == clientNearRelayID {
+			// 			nearRelays[i].ClientStats.RTT = float64(packet.NearRelayRTT[j])
+			// 			nearRelays[i].ClientStats.Jitter = float64(packet.NearRelayJitter[j])
+			// 			nearRelays[i].ClientStats.PacketLoss = float64(packet.NearRelayPacketLoss[j])
+			// 		}
+			// 	}
+			// }
 		}
 
 		var numRouteTokens int
 		var routeTokens []byte
 
-		if routeType != routing.RouteTypeDirect {
+		if response.RouteType != routing.RouteTypeDirect {
 			var token routing.Token
 
 			relayTokens := make([]routing.RelayToken, route.NumRelays)
@@ -379,8 +370,12 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 				metrics.ErrorMetrics.EncryptionFailure.Add(1)
 				return
 			}
+
+			response.RouteType = int32(token.Type())
+			response.NumTokens = int32(numRouteTokens)
+			response.Tokens = routeTokens
 		}
 
-		writeSessionResponse4(w, &packet, int32(routeType), nearRelays, int32(numRouteTokens), routeTokens, &sessionData)
+		writeSessionResponse4(w, &response, &sessionData)
 	}
 }
