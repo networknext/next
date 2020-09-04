@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/go-kit/kit/log"
+	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/transport"
@@ -74,8 +75,10 @@ func TestSessionUpdateHandler4ClientLocateFailure(t *testing.T) {
 	responseBuffer := bytes.NewBuffer(nil)
 
 	requestPacket := transport.SessionUpdatePacket4{
-		SessionID:        1111,
-		SessionDataBytes: 1,
+		SessionID:            1111,
+		SessionDataBytes:     1,
+		ClientRoutePublicKey: make([]byte, crypto.KeySize),
+		ServerRoutePublicKey: make([]byte, crypto.KeySize),
 	}
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
@@ -122,8 +125,10 @@ func TestSessionUpdateHandler4NoNearRelays(t *testing.T) {
 	responseBuffer := bytes.NewBuffer(nil)
 
 	requestPacket := transport.SessionUpdatePacket4{
-		SessionID:        1111,
-		SessionDataBytes: 1,
+		SessionID:            1111,
+		SessionDataBytes:     1,
+		ClientRoutePublicKey: make([]byte, crypto.KeySize),
+		ServerRoutePublicKey: make([]byte, crypto.KeySize),
 	}
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
@@ -172,9 +177,11 @@ func TestSessionUpdateHandler4SessionDataBadSessionID(t *testing.T) {
 	responseBuffer := bytes.NewBuffer(nil)
 
 	requestPacket := transport.SessionUpdatePacket4{
-		SessionID:        1111,
-		SliceNumber:      1,
-		SessionDataBytes: 1,
+		SessionID:            1111,
+		SliceNumber:          1,
+		SessionDataBytes:     1,
+		ClientRoutePublicKey: make([]byte, crypto.KeySize),
+		ServerRoutePublicKey: make([]byte, crypto.KeySize),
 	}
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
@@ -220,10 +227,12 @@ func TestSessionUpdateHandler4SessionDataBadSequenceNumber(t *testing.T) {
 	copy(sessionDataArray[:], sessionDataSlice)
 
 	requestPacket := transport.SessionUpdatePacket4{
-		SessionID:        1111,
-		SliceNumber:      1,
-		SessionDataBytes: 8,
-		SessionData:      sessionDataArray,
+		SessionID:            1111,
+		SliceNumber:          1,
+		SessionDataBytes:     8,
+		SessionData:          sessionDataArray,
+		ClientRoutePublicKey: make([]byte, crypto.KeySize),
+		ServerRoutePublicKey: make([]byte, crypto.KeySize),
 	}
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
@@ -255,7 +264,9 @@ func TestSessionUpdateHandler4InitialSlice(t *testing.T) {
 	responseBuffer := bytes.NewBuffer(nil)
 
 	requestPacket := transport.SessionUpdatePacket4{
-		SessionID: 1111,
+		SessionID:            1111,
+		ClientRoutePublicKey: make([]byte, crypto.KeySize),
+		ServerRoutePublicKey: make([]byte, crypto.KeySize),
 	}
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
@@ -312,10 +323,12 @@ func TestSessionUpdateHandler4DirectRoute(t *testing.T) {
 	copy(sessionDataArray[:], sessionDataSlice)
 
 	requestPacket := transport.SessionUpdatePacket4{
-		SessionID:        1111,
-		SliceNumber:      1,
-		SessionDataBytes: 13,
-		SessionData:      sessionDataArray,
+		SessionID:            1111,
+		SliceNumber:          1,
+		SessionDataBytes:     13,
+		SessionData:          sessionDataArray,
+		ClientRoutePublicKey: make([]byte, crypto.KeySize),
+		ServerRoutePublicKey: make([]byte, crypto.KeySize),
 	}
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
