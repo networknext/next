@@ -15,13 +15,6 @@ import (
 	ghostarmy "github.com/networknext/backend/ghost_army"
 )
 
-/*
- * August 18th: https://drive.google.com/file/d/1on1dfWUvGTxF_DDUKsyr1WJosiJrRfGO/view?usp=sharing
- * August 19th: https://drive.google.com/file/d/1AnIspF8WaZYQ4o8BSn7kb5DDZrK6E2Yh/view?usp=sharing
- * August 20th: https://drive.google.com/file/d/1z9crn3410-1_o3tJOnIswNxwj2rInVtJ/view?usp=sharing
- * August 27th: https://drive.google.com/file/d/1y4zOJXXx_9KQD8pz_l5b46lNKrK-pkGN/view
- */
-
 type sortableEntries []ghostarmy.Entry
 
 func (self sortableEntries) Len() int {
@@ -130,6 +123,7 @@ func main() {
 
 	for _, infile := range infiles {
 		// read in exported data
+		fmt.Printf("reading %s\n", infile)
 		inputfile, err := os.Open(infile)
 		if err != nil {
 			fmt.Printf("could not open '%s': %v\n", infile, err)
@@ -306,9 +300,11 @@ func main() {
 	}
 
 	// sort on timestamp
+	fmt.Printf("sorting %d entries...\n", len(entries))
 	sort.Sort(entries)
 
 	// encode to binary format
+	fmt.Println("encoding to buffer...")
 	index := 0
 
 	bin := make([]byte, 8)
@@ -323,12 +319,17 @@ func main() {
 		bin = append(bin, dat...)
 	}
 
+	entries = nil // free the data buffer now that it's unused
+
 	// export
 
+	fmt.Println("writing to file...")
 	err = ioutil.WriteFile(outfile, bin, 0644)
 	if err != nil {
 		fmt.Printf("could not create output file '%s': %v\n", outfile, err)
 	}
+
+	fmt.Println("done!")
 }
 
 func checkErr(err error, lineNum int) {
