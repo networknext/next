@@ -308,28 +308,32 @@ type NextBackendSessionResponsePacket struct {
 	SliceNumber          uint32
 	SessionDataBytes     int32
 	SessionData          [NEXT_MAX_SESSION_DATA_BYTES]byte
-	/*
+	RouteType            int32
 	NumNearRelays        int32
 	NearRelayIds         []uint64
 	NearRelayAddresses   []net.UDPAddr
-	RouteType            int32
-	Multipath            bool
-	Committed            bool
 	NumTokens            int32
 	Tokens               []byte
-	*/
+	Multipath            bool
+	Committed            bool
 }
 
 func (packet *NextBackendSessionResponsePacket) Serialize(stream Stream, versionMajor uint32, versionMinor uint32, versionPatch uint32) error {
+
 	stream.SerializeUint64(&packet.SessionId)
+
 	stream.SerializeBits(&packet.SliceNumber, 32)
+
 	stream.SerializeInteger(&packet.SessionDataBytes, 0, NEXT_MAX_SESSION_DATA_BYTES)
 	if packet.SessionDataBytes > 0 {
 		sessionData := packet.SessionData[:packet.SessionDataBytes]
 		stream.SerializeBytes(sessionData)
 	}
-	/*
+
+	stream.SerializeInteger(&packet.RouteType, 0, NEXT_ROUTE_TYPE_CONTINUE)
+
 	stream.SerializeInteger(&packet.NumNearRelays, 0, NEXT_MAX_NEAR_RELAYS)
+
 	if stream.IsReading() {
 		packet.NearRelayIds = make([]uint64, packet.NumNearRelays)
 		packet.NearRelayAddresses = make([]net.UDPAddr, packet.NumNearRelays)
@@ -339,25 +343,27 @@ func (packet *NextBackendSessionResponsePacket) Serialize(stream Stream, version
 		stream.SerializeUint64(&packet.NearRelayIds[i])
 		stream.SerializeAddress(&packet.NearRelayAddresses[i])
 	}
-	stream.SerializeInteger(&packet.RouteType, 0, NEXT_ROUTE_TYPE_CONTINUE)
+
 	if packet.RouteType != NEXT_ROUTE_TYPE_DIRECT {
 		stream.SerializeBool(&packet.Multipath)
 		stream.SerializeBool(&packet.Committed)
 		stream.SerializeInteger(&packet.NumTokens, 0, NEXT_MAX_NODES)
 	}
+
 	if packet.RouteType == NEXT_ROUTE_TYPE_NEW {
 		if stream.IsReading() {
 			packet.Tokens = make([]byte, packet.NumTokens*NEXT_ENCRYPTED_SESSION_TOKEN_BYTES)
 		}
 		stream.SerializeBytes(packet.Tokens)
 	}
+
 	if packet.RouteType == NEXT_ROUTE_TYPE_CONTINUE {
 		if stream.IsReading() {
 			packet.Tokens = make([]byte, packet.NumTokens*NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES)
 		}
 		stream.SerializeBytes(packet.Tokens)
 	}
-	*/
+
 	return stream.Error()
 }
 
@@ -2438,12 +2444,11 @@ func main() {
 			sessionEntry := backend.sessionDatabase[sessionUpdate.SessionId]
 			backend.mutex.RUnlock()
 
-			sessionEntry.expireTimestamp = uint64(time.Now().Unix()) + 30
+			sessionEntry.expireTimestamp = uint64(time.Now().Unix()) + 15
 
-			// todo
-			// nearRelayIds, nearRelayAddresses := GetNearRelays()
+			nearRelayIds, nearRelayAddresses := GetNearRelays()
 
-			takeNetworkNext := false // todo: len(nearRelayIds) > 0
+			takeNetworkNext := len(nearRelayIds) > 0
 
 			if !takeNetworkNext {
 
@@ -2452,15 +2457,12 @@ func main() {
 				sessionResponse = &NextBackendSessionResponsePacket{
 					SessionId:            sessionUpdate.SessionId,
 					SliceNumber:          sessionUpdate.SliceNumber,
-					// todo
-					/*
+					RouteType:            int32(NEXT_ROUTE_TYPE_DIRECT),
 					NumNearRelays:        int32(len(nearRelayIds)),
 					NearRelayIds:         nearRelayIds,
 					NearRelayAddresses:   nearRelayAddresses,
-					RouteType:            int32(NEXT_ROUTE_TYPE_DIRECT),
 					NumTokens:            0,
 					Tokens:               nil,
-					*/
 				}
 
 			} else {
