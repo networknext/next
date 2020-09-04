@@ -5,6 +5,7 @@
 #include "core/router_info.hpp"
 #include "core/session_map.hpp"
 #include "core/throughput_recorder.hpp"
+#include "crypto/hash.hpp"
 #include "crypto/keychain.hpp"
 #include "net/address.hpp"
 #include "os/socket.hpp"
@@ -12,7 +13,9 @@
 using core::RouterInfo;
 using core::RouteToken;
 using core::SessionMap;
+using core::Type;
 using crypto::Keychain;
+using crypto::PACKET_HASH_LENGTH;
 using os::Socket;
 using util::ThroughputRecorder;
 
@@ -33,8 +36,8 @@ namespace core
       size_t length = packet.length;
 
       if (is_signed) {
-        index = crypto::PACKET_HASH_LENGTH;
-        length = packet.length - crypto::PACKET_HASH_LENGTH;
+        index = PACKET_HASH_LENGTH;
+        length = packet.length - PACKET_HASH_LENGTH;
       }
 
       if (length < static_cast<size_t>(1 + RouteToken::EncryptedByteSize * 2)) {
@@ -66,8 +69,8 @@ namespace core
 
         // fill it with data in the token
         session->expire_timestamp = token.expire_timestamp;
-        session->session_id = token.SessionID;
-        session->session_version = token.SessionVersion;
+        session->session_id = token.session_id;
+        session->session_version = token.session_version;
 
         // initialize the rest of the fields
         session->client_to_server_sequence = 0;
@@ -92,22 +95,20 @@ namespace core
       length = packet.length - RouteToken::EncryptedByteSize;
 
       if (is_signed) {
-        packet.buffer[RouteToken::EncryptedByteSize + crypto::PACKET_HASH_LENGTH] =
-         static_cast<uint8_t>(packets::Type::RouteRequest);
-        legacy::relay_sign_network_next_packet(&packet.buffer[RouteToken::EncryptedByteSize], length);
+        size_t index = RouteToken::EncryptedByteSize;
+        packet.buffer[index + PACKET_HASH_LENGTH] = static_cast<uint8_t>(Type::RouteRequest);
+        if (!crypto::sign_network_next_packet(packet.buffer, index, length)) {
+          LOG(ERROR, "unable to sign route request packet for session ", token);
+        }
       } else {
-        packet.buffer[RouteToken::EncryptedByteSize] = static_cast<uint8_t>(packets::Type::RouteRequest);
+        packet.buffer[RouteToken::EncryptedByteSize] = static_cast<uint8_t>(Type::RouteRequest);
       }
 
       recorder.route_request_tx.add(length);
 
-#ifdef RELAY_MULTISEND
-      buff.push(token.NextAddr, &mPacket.Buffer[RouteToken::EncryptedByteSize], length);
-#else
       if (!socket.send(token.NextAddr, &packet.buffer[RouteToken::EncryptedByteSize], length)) {
         LOG(ERROR, "failed to forward route request to ", token.NextAddr);
       }
-#endif
     }
   }  // namespace handlers
 }  // namespace core

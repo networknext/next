@@ -8,13 +8,14 @@
 #include "testing/helpers.hpp"
 
 using core::Packet;
+using core::PacketDirection;
+using core::PacketHeader;
 using core::RouterInfo;
 using core::Session;
 using core::SessionMap;
-using core::packets::Direction;
-using core::packets::Header;
-using core::packets::Type;
+using core::Type;
 using crypto::GenericKey;
+using crypto::PACKET_HASH_LENGTH;
 using net::Address;
 using os::Socket;
 using os::SocketConfig;
@@ -38,9 +39,9 @@ Test(core_handlers_continue_response_handler_unsigned)
   check(addr.parse("127.0.0.1"));
   check(socket.create(addr, config));
 
-  packet.length = Header::ByteSize;
+  packet.length = PacketHeader::SIZE_OF;
 
-  Header header = {
+  PacketHeader header = {
    .type = Type::ContinueResponse,
    .sequence = 123123130131LL | (1ULL << 63) | (1ULL << 62),
    .session_id = 0x12313131,
@@ -58,7 +59,7 @@ Test(core_handlers_continue_response_handler_unsigned)
   map.set(header.hash(), session);
 
   size_t index = 0;
-  check(header.write(packet, index, Direction::ServerToClient, private_key));
+  check(header.write(packet, index, PacketDirection::ServerToClient, private_key));
 
   core::handlers::continue_response_handler(packet, map, recorder, router_info, socket, false);
   size_t prev_len = packet.length;
@@ -94,9 +95,9 @@ Test(core_handlers_continue_response_handler_signed)
   check(addr.parse("127.0.0.1"));
   check(socket.create(addr, config));
 
-  packet.length = crypto::PACKET_HASH_LENGTH + Header::ByteSize;
+  packet.length = PACKET_HASH_LENGTH + PacketHeader::SIZE_OF;
 
-  Header header = {
+  PacketHeader header = {
    .type = Type::ContinueResponse,
    .sequence = 123123130131LL | (1ULL << 63) | (1ULL << 62),
    .session_id = 0x12313131,
@@ -113,8 +114,8 @@ Test(core_handlers_continue_response_handler_signed)
 
   map.set(header.hash(), session);
 
-  size_t index = crypto::PACKET_HASH_LENGTH;
-  check(header.write(packet, index, Direction::ServerToClient, private_key));
+  size_t index = PACKET_HASH_LENGTH;
+  check(header.write(packet, index, PacketDirection::ServerToClient, private_key));
 
   core::handlers::continue_response_handler(packet, map, recorder, router_info, socket, true);
   size_t prev_len = packet.length;

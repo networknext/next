@@ -3,6 +3,7 @@
 #include "core/packet_types.hpp"
 #include "core/session_map.hpp"
 #include "core/throughput_recorder.hpp"
+#include "crypto/hash.hpp"
 #include "os/socket.hpp"
 #include "util/macros.hpp"
 
@@ -32,8 +33,12 @@ namespace core
       length = packet.length - 16;
 
       if (is_signed) {
+        size_t index = 0;
         packet.buffer[PACKET_HASH_LENGTH] = static_cast<uint8_t>(Type::NearPong);
-        crypto::sign_network_next_packet(packet.buffer, length);
+        if (!crypto::sign_network_next_packet(packet.buffer, index, length)) {
+          LOG(ERROR, "unable to sign near ping packet for address", packet.addr);
+          return;
+        }
       } else {
         packet.buffer[0] = static_cast<uint8_t>(Type::NearPong);
       }

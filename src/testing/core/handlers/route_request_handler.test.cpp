@@ -47,9 +47,9 @@ Test(core_handlers_route_request_handler_unsigned)
   token.KbpsDown = crypto::Random<uint32_t>();
   token.NextAddr = next;
   token.PrivateKey = random_private_key();
-  token.SessionID = 123456789;
-  token.SessionVersion = 123;
-  token.SessionFlags = 234;
+  token.session_id = 123456789;
+  token.session_version = 123;
+  token.session_flags = 234;
   token.expire_timestamp = 10;
 
   size_t index = 1;
@@ -64,8 +64,8 @@ Test(core_handlers_route_request_handler_unsigned)
   auto session = map.get(token.hash());
 
   check(session->expire_timestamp == token.expire_timestamp);
-  check(session->session_id == token.SessionID);
-  check(session->session_version == token.SessionVersion);
+  check(session->session_id == token.session_id);
+  check(session->session_version == token.session_version);
   check(session->kbps_up == token.KbpsUp);
   check(session->kbps_down == token.KbpsDown);
   check(session->prev_addr == from);
@@ -84,7 +84,8 @@ Test(core_handlers_route_request_handler_unsigned)
   });
   check(packet.length == prev_len - RouteToken::EncryptedByteSize);
 
-  check(!crypto::is_network_next_packet(packet.buffer, packet.length));
+  index = 0;
+  check(!crypto::is_network_next_packet(packet.buffer, index, packet.length));
 }
 
 Test(core_handlers_route_request_handler_signed)
@@ -118,9 +119,9 @@ Test(core_handlers_route_request_handler_signed)
   token.KbpsDown = crypto::Random<uint32_t>();
   token.NextAddr = next;
   token.PrivateKey = random_private_key();
-  token.SessionID = 123456789;
-  token.SessionVersion = 123;
-  token.SessionFlags = 234;
+  token.session_id = 123456789;
+  token.session_version = 123;
+  token.session_flags = 234;
   token.expire_timestamp = 10;
 
   size_t index = crypto::PACKET_HASH_LENGTH + 1;
@@ -135,8 +136,8 @@ Test(core_handlers_route_request_handler_signed)
   auto session = map.get(token.hash());
 
   check(session->expire_timestamp == token.expire_timestamp);
-  check(session->session_id == token.SessionID);
-  check(session->session_version == token.SessionVersion);
+  check(session->session_id == token.session_id);
+  check(session->session_version == token.session_version);
   check(session->kbps_up == token.KbpsUp);
   check(session->kbps_down == token.KbpsDown);
   check(session->prev_addr == from);
@@ -151,5 +152,6 @@ Test(core_handlers_route_request_handler_signed)
   check(packet.addr == addr);
   check(packet.length == prev_len - RouteToken::EncryptedByteSize);
 
-  check(crypto::is_network_next_packet(packet.buffer, packet.length));
+  index = 0;
+  check(crypto::is_network_next_packet(packet.buffer, index, packet.length));
 }

@@ -32,8 +32,8 @@
 using namespace std::chrono_literals;
 
 using core::Packet;
-using core::packets::RELAY_PING_PACKET_SIZE;
-using core::packets::Type;
+using core::RELAY_PING_PACKET_SIZE;
+using core::Type;
 using crypto::Keychain;
 using net::Address;
 using net::AddressType;
@@ -78,7 +78,11 @@ namespace core
             assert(false);
           }
 
-          crypto::sign_network_next_packet(pkt.buffer, index);
+          size_t sign_index = 0;
+          if (!crypto::sign_network_next_packet(pkt.buffer, sign_index, index)) {
+            LOG(ERROR, "unable to sign ping packet");
+            continue;
+          }
         }
 
         pkt.length = index;
@@ -137,7 +141,8 @@ namespace core
       Type type;
 
       bool is_signed;
-      if (crypto::is_network_next_packet(packet.buffer, packet.length)) {
+      size_t sign_index = 0;
+      if (crypto::is_network_next_packet(packet.buffer, sign_index, packet.length)) {
         type = static_cast<Type>(packet.buffer[crypto::PACKET_HASH_LENGTH]);
         is_signed = true;
       } else {

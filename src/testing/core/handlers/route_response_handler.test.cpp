@@ -8,13 +8,14 @@
 #include "testing/helpers.hpp"
 
 using core::Packet;
+using core::PacketDirection;
+using core::PacketHeader;
 using core::RouterInfo;
 using core::Session;
 using core::SessionMap;
-using core::packets::Direction;
-using core::packets::Header;
-using core::packets::Type;
+using core::Type;
 using crypto::GenericKey;
+using crypto::PACKET_HASH_LENGTH;
 using os::Socket;
 using os::SocketConfig;
 using util::ThroughputRecorder;
@@ -37,10 +38,10 @@ Test(core_handlers_route_response_handler_unsigned)
   check(addr.parse("127.0.0.1"));
   check(socket.create(addr, config));
 
-  packet.length = Header::ByteSize;
+  packet.length = PacketHeader::SIZE_OF;
   packet.addr = addr;
 
-  Header header = {
+  PacketHeader header = {
    .type = Type::RouteResponse,
    .sequence = 123123130131LL | (1ULL << 63) | (1ULL << 62),
    .session_id = 0x12313131,
@@ -58,7 +59,7 @@ Test(core_handlers_route_response_handler_unsigned)
   map.set(header.hash(), session);
 
   size_t index = 0;
-  check(header.write(packet, index, Direction::ServerToClient, private_key));
+  check(header.write(packet, index, PacketDirection::ServerToClient, private_key));
 
   core::handlers::route_response_handler(packet, map, recorder, router_info, socket, false);
 
@@ -67,7 +68,7 @@ Test(core_handlers_route_response_handler_unsigned)
   check(prev_len == packet.length);
 
   check(recorder.route_response_tx.num_packets == 1);
-  check(recorder.route_response_tx.num_bytes == Header::ByteSize);
+  check(recorder.route_response_tx.num_bytes == PacketHeader::SIZE_OF);
 
   core::handlers::route_response_handler(packet, map, recorder, router_info, socket, false);
   check(!socket.recv(packet));
@@ -91,10 +92,10 @@ Test(core_handlers_route_response_handler_signed)
   check(addr.parse("127.0.0.1"));
   check(socket.create(addr, config));
 
-  packet.length = crypto::PACKET_HASH_LENGTH + Header::ByteSize;
+  packet.length = crypto::PACKET_HASH_LENGTH + PacketHeader::SIZE_OF;
   packet.addr = addr;
 
-  Header header = {
+  PacketHeader header = {
    .type = Type::RouteResponse,
    .sequence = 123123130131LL | (1ULL << 63) | (1ULL << 62),
    .session_id = 0x12313131,
@@ -112,7 +113,7 @@ Test(core_handlers_route_response_handler_signed)
   map.set(header.hash(), session);
 
   size_t index = crypto::PACKET_HASH_LENGTH;
-  check(header.write(packet, index, Direction::ServerToClient, private_key));
+  check(header.write(packet, index, PacketDirection::ServerToClient, private_key));
 
   core::handlers::route_response_handler(packet, map, recorder, router_info, socket, true);
 
@@ -121,7 +122,7 @@ Test(core_handlers_route_response_handler_signed)
   check(prev_len == packet.length);
 
   check(recorder.route_response_tx.num_packets == 1);
-  check(recorder.route_response_tx.num_bytes == crypto::PACKET_HASH_LENGTH + Header::ByteSize);
+  check(recorder.route_response_tx.num_bytes == PACKET_HASH_LENGTH + PacketHeader::SIZE_OF);
 
   core::handlers::route_response_handler(packet, map, recorder, router_info, socket, true);
   check(!socket.recv(packet));

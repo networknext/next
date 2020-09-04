@@ -8,8 +8,6 @@
 
 namespace core
 {
-  const size_t GenericPacketMaxSize = RELAY_MAX_PACKET_BYTES;
-
   struct Packet
   {
     Packet() = default;
@@ -19,7 +17,7 @@ namespace core
     Packet& operator=(Packet&& other);
 
     net::Address addr;
-    std::array<uint8_t, GenericPacketMaxSize> buffer;
+    std::array<uint8_t, RELAY_MAX_PACKET_BYTES> buffer;
     size_t length;
   };
 
@@ -38,7 +36,7 @@ namespace core
     void print();
 
     // # to send & # sent, or # received
-    int Count;
+    int count;
 
     // wrapper array for received packets
     std::array<Packet, BuffSize> Packets;
@@ -70,7 +68,7 @@ namespace core
   }
 
   template <size_t BuffSize>
-  INLINE PacketBuffer<BuffSize>::PacketBuffer(): Count(0), mRawAddrBuff(BuffSize), mIOVecBuff(BuffSize)
+  INLINE PacketBuffer<BuffSize>::PacketBuffer(): count(0), mRawAddrBuff(BuffSize), mIOVecBuff(BuffSize)
   {
     for (size_t i = 0; i < BuffSize; i++) {
       auto& pkt = Packets[i];
@@ -105,20 +103,20 @@ namespace core
   {
     // TODO if ever going back to sendmmsg/recvmmsg
     // replace count with an atomic
-    // and set by auto count = Count.exchange(Count + 1)
+    // and set by auto count = count.exchange(count + 1)
     // or something of the like, it should be possible
     // to prevent a mutex lock within this
     std::lock_guard<std::mutex> lk(mLock);
 
-    auto& pkt = Packets[Count];
+    auto& pkt = Packets[count];
     pkt.Len = len;
-    auto& iov = mIOVecBuff[Count];
+    auto& iov = mIOVecBuff[count];
     iov.iov_len = len;
     std::copy(data, data + len, reinterpret_cast<uint8_t*>(iov.iov_base));
 
-    dest.into(Headers[Count]);
+    dest.into(Headers[count]);
 
-    Count++;
+    count++;
   }
 
   template <size_t BuffSize>
@@ -130,8 +128,8 @@ namespace core
   template <size_t BuffSize>
   INLINE void PacketBuffer<BuffSize>::print()
   {
-    LOG(DEBUG, "number of packets in buffer: ", Count);
-    for (int i = 0; i < Count; i++) {
+    LOG(DEBUG, "number of packets in buffer: ", count);
+    for (int i = 0; i < count; i++) {
       auto& packet = Packets[i];
       LOG(DEBUG, "sending a packet of size ", packet.Len, " to ", packet.Addr, " with data:");
       util::DumpHex(packet.Buffer.data(), packet.Len);

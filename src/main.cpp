@@ -329,7 +329,7 @@ int main(int argc, const char* argv[])
       if (gAlive) {
         setup_signal_handlers();
 
-        success = backend.updateCycle(gAlive, gShouldCleanShutdown, recorder, sessions);
+        success = backend.update_loop(gAlive, gShouldCleanShutdown, recorder, sessions);
       }
     });
 

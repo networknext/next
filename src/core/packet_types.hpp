@@ -1,7 +1,5 @@
 #pragma once
 
-#include "crypto/hash.hpp"
-
 #define PACKET_TYPE_SWITCH_MACRO(type) \
   case Type ::type: {                  \
     str = #type;                       \
@@ -9,9 +7,9 @@
 
 namespace core
 {
-  static const size_t RELAY_PING_PACKET_SIZE = crypto::PACKET_HASH_LENGTH + 1 + 8;  // hash | type | sequence
-  static const size_t RELAY_MTU = 1300;
-  static const size_t RELAY_MAX_PACKET_BYTES = 1500;
+  const size_t RELAY_PING_PACKET_SIZE = 1 + 8;  // type | sequence
+  const size_t RELAY_MTU = 1300;
+  const size_t RELAY_MAX_PACKET_BYTES = 1500;
 
   enum class Type : uint8_t
   {

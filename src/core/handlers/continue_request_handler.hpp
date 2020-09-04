@@ -6,6 +6,7 @@
 #include "core/router_info.hpp"
 #include "core/session_map.hpp"
 #include "core/throughput_recorder.hpp"
+#include "crypto/hash.hpp"
 #include "crypto/keychain.hpp"
 #include "os/socket.hpp"
 #include "util/macros.hpp"
@@ -15,9 +16,9 @@ using core::Packet;
 using core::RouterInfo;
 using core::Type;
 using crypto::Keychain;
+using crypto::PACKET_HASH_LENGTH;
 using os::Socket;
 using util::ThroughputRecorder;
-using crypto::PACKET_HASH_LENGTH;
 
 namespace core
 {
@@ -83,9 +84,12 @@ namespace core
       length = packet.length - ContinueToken::SIZE_OF_ENCRYPTED;
 
       if (is_signed) {
-        packet.buffer[ContinueToken::SIZE_OF_ENCRYPTED + PACKET_HASH_LENGTH] =
-         static_cast<uint8_t>(Type::ContinueRequest);
-        legacy::relay_sign_network_next_packet(&packet.buffer[ContinueToken::SIZE_OF_ENCRYPTED], length);
+        size_t index = ContinueToken::SIZE_OF_ENCRYPTED;
+        packet.buffer[index + PACKET_HASH_LENGTH] = static_cast<uint8_t>(Type::ContinueRequest);
+        if (!crypto::sign_network_next_packet(packet.buffer, index, length)) {
+          LOG(ERROR, "failed to sign continue request for session ", *session);
+          return;
+        }
       } else {
         packet.buffer[ContinueToken::SIZE_OF_ENCRYPTED] = static_cast<uint8_t>(Type::ContinueRequest);
       }

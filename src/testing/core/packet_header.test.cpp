@@ -5,9 +5,9 @@
 #include "crypto/bytes.hpp"
 
 using core::Packet;
-using core::packets::Direction;
-using core::packets::Header;
-using core::packets::Type;
+using core::PacketDirection;
+using core::PacketHeader;
+using core::Type;
 using crypto::GenericKey;
 
 Test(core_packets_Header_client_to_server)
@@ -20,7 +20,7 @@ Test(core_packets_Header_client_to_server)
 
   Packet packet;
 
-  Header header = {
+  PacketHeader header = {
    .type = Type::ClientToServer,
    .sequence = 123123130131LL,
    .session_id = 0x12313131,
@@ -29,13 +29,13 @@ Test(core_packets_Header_client_to_server)
 
   size_t index = 0;
 
-  check(header.write(packet, index, Direction::ClientToServer, private_key));
-  check(index == Header::ByteSize);
+  check(header.write(packet, index, PacketDirection::ClientToServer, private_key));
+  check(index == PacketHeader::SIZE_OF);
 
-  Header other;
+  PacketHeader other;
 
   index = 0;
-  check(other.read(packet, index, Direction::ClientToServer));
+  check(other.read(packet, index, PacketDirection::ClientToServer));
 
   check(other.type == Type::ClientToServer);
   check(other.sequence == header.sequence);
@@ -43,7 +43,7 @@ Test(core_packets_Header_client_to_server)
   check(other.session_version == header.session_version);
 
   index = 0;
-  check(header.verify(packet, index, Direction::ClientToServer, private_key));
+  check(header.verify(packet, index, PacketDirection::ClientToServer, private_key));
 }
 
 Test(core_packets_Header_server_to_client)
@@ -56,7 +56,7 @@ Test(core_packets_Header_server_to_client)
 
   Packet packet;
 
-  Header header = {
+  PacketHeader header = {
    .type = Type::ServerToClient,
    .sequence = 123123130131LL | (1ULL << 63),
    .session_id = 0x12313131,
@@ -65,12 +65,12 @@ Test(core_packets_Header_server_to_client)
 
   size_t index = 0;
 
-  check(header.write(packet, index, Direction::ServerToClient, private_key));
+  check(header.write(packet, index, PacketDirection::ServerToClient, private_key));
 
-  Header other;
+  PacketHeader other;
 
   index = 0;
-  check(other.read(packet, index, Direction::ServerToClient));
+  check(other.read(packet, index, PacketDirection::ServerToClient));
 
   check(other.type == Type::ServerToClient);
   check(other.sequence == header.sequence);
@@ -78,7 +78,7 @@ Test(core_packets_Header_server_to_client)
   check(other.session_version == header.session_version);
 
   index = 0;
-  check(header.verify(packet, index, Direction::ServerToClient, private_key)).onFail([&] {
+  check(header.verify(packet, index, PacketDirection::ServerToClient, private_key)).onFail([&] {
     std::cout << header.sequence << std::endl;
   });
 }

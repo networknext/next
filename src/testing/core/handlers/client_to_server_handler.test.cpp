@@ -12,9 +12,9 @@ using core::Packet;
 using core::RouterInfo;
 using core::Session;
 using core::SessionMap;
-using core::packets::Direction;
-using core::packets::Header;
-using core::packets::Type;
+using core::PacketDirection;
+using core::PacketHeader;
+using core::Type;
 using net::Address;
 using os::Socket;
 using os::SocketConfig;
@@ -38,10 +38,10 @@ Test(core_handlers_client_to_server_handler_unsigned_packet)
   check(addr.parse("127.0.0.1"));
   check(socket.create(addr, config));
 
-  packet.length = Header::ByteSize + 100;
+  packet.length = PacketHeader::SIZE_OF + 100;
   packet.addr = addr;
 
-  Header header = {
+  PacketHeader header = {
    .type = Type::ClientToServer,
    .sequence = 123123130131LL,
    .session_id = 0x12313131,
@@ -60,8 +60,8 @@ Test(core_handlers_client_to_server_handler_unsigned_packet)
 
   size_t index = 0;
 
-  check(header.write(packet, index, Direction::ClientToServer, private_key));
-  check(index == Header::ByteSize);
+  check(header.write(packet, index, PacketDirection::ClientToServer, private_key));
+  check(index == PacketHeader::SIZE_OF);
 
   core::handlers::client_to_server_handler(packet, map, recorder, router_info, socket, false);
   size_t prev_len = packet.length;
@@ -97,10 +97,10 @@ Test(core_handlers_client_to_server_handler_signed_packet)
   check(addr.parse("127.0.0.1"));
   check(socket.create(addr, config));
 
-  packet.length = crypto::PACKET_HASH_LENGTH + Header::ByteSize + 100;
+  packet.length = crypto::PACKET_HASH_LENGTH + PacketHeader::SIZE_OF + 100;
   packet.addr = addr;
 
-  Header header = {
+  PacketHeader header = {
    .type = Type::ClientToServer,
    .sequence = 123123130131LL,
    .session_id = 0x12313131,
@@ -121,8 +121,8 @@ Test(core_handlers_client_to_server_handler_signed_packet)
 
   size_t index = crypto::PACKET_HASH_LENGTH;
 
-  check(header.write(packet, index, Direction::ClientToServer, private_key));
-  check(index == crypto::PACKET_HASH_LENGTH + Header::ByteSize);
+  check(header.write(packet, index, PacketDirection::ClientToServer, private_key));
+  check(index == crypto::PACKET_HASH_LENGTH + PacketHeader::SIZE_OF);
 
   core::handlers::client_to_server_handler(packet, map, recorder, router_info, socket, true);
   check(socket.recv(packet));

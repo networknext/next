@@ -5,6 +5,7 @@
 #include "core/packet_types.hpp"
 #include "core/session_map.hpp"
 #include "core/throughput_recorder.hpp"
+#include "crypto/hash.hpp"
 #include "crypto/keychain.hpp"
 #include "os/socket.hpp"
 #include "util/macros.hpp"

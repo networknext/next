@@ -34,6 +34,4 @@
 #define GCC_NO_OPT_OUT
 #endif
 
-// #define RELAY_MULTISEND
-
 #endif

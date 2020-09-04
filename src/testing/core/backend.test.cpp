@@ -117,7 +117,7 @@ Test(core_Backend_updateCycle_shutdown_60s)
     handle = false;
   });
 
-  check(backend.updateCycle(handle, shouldCleanShutdown, logger, sessions));
+  check(backend.update_loop(handle, shouldCleanShutdown, logger, sessions));
   auto elapsed = testClock.elapsed<Second>();
   check(elapsed >= 62.0);
 }
@@ -150,7 +150,7 @@ Test(core_Backend_updateCycle_ack_and_30s)
     handle = false;
   });
 
-  check(backend.updateCycle(handle, shouldCleanShutdown, logger, sessions));
+  check(backend.update_loop(handle, shouldCleanShutdown, logger, sessions));
   auto elapsed = testClock.elapsed<Second>();
   check(elapsed >= 32.0);
 }
@@ -187,7 +187,7 @@ Test(core_Backend_updateCycle_no_ack_for_40s_then_ack_then_wait)
     client.Success = true;
   });
 
-  check(backend.updateCycle(handle, shouldCleanShutdown, recorder, sessions));
+  check(backend.update_loop(handle, shouldCleanShutdown, recorder, sessions));
   auto elapsed = testClock.elapsed<Second>();
   check(elapsed >= 63.0);
 }
@@ -220,7 +220,7 @@ Test(core_Backend_updateCycle_update_fails_for_max_number_of_attempts)
     client.Success = false;  // set to false here to trigger failed updates
   });
 
-  check(!backend.updateCycle(handle, shouldCleanShutdown, recorder, sessions));
+  check(!backend.update_loop(handle, shouldCleanShutdown, recorder, sessions));
   auto elapsed = testClock.elapsed<Second>();
   // time will be 2 seconds of good updates and
   // 10 seconds of bad updates, which will cause
@@ -255,7 +255,7 @@ Test(core_Backend_updateCycle_no_clean_shutdown)
     handle = false;
   });
 
-  check(backend.updateCycle(handle, shouldCleanShutdown, recorder, sessions));
+  check(backend.update_loop(handle, shouldCleanShutdown, recorder, sessions));
   auto elapsed = testClock.elapsed<Second>();
   check(elapsed >= 2.0);
 }
@@ -289,8 +289,8 @@ Test(core_Backend_update_valid)
   recorder.unknown_rx.add(10);
   UpdateResponse response;
   response.version = 0;
-  response.Timestamp = 123456789;
-  response.NumRelays = 2;
+  response.timestamp = 123456789;
+  response.num_relays = 2;
 
   {
     RelayPingInfo relay1, relay2;

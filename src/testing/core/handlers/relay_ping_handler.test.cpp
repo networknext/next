@@ -8,8 +8,9 @@
 #include "testing/helpers.hpp"
 
 using core::Packet;
-using core::packets::RELAY_PING_PACKET_SIZE;
-using core::packets::Type;
+using core::RELAY_PING_PACKET_SIZE;
+using core::Type;
+using crypto::PACKET_HASH_LENGTH;
 using net::Address;
 using os::Socket;
 using os::SocketConfig;
@@ -28,7 +29,7 @@ Test(core_handlers_relay_ping_handler)
   check(socket.create(addr, config));
 
   packet.addr = addr;
-  packet.length = RELAY_PING_PACKET_SIZE;
+  packet.length = PACKET_HASH_LENGTH + RELAY_PING_PACKET_SIZE;
 
   core::handlers::relay_ping_handler(packet, recorder, socket, true);
 
@@ -37,6 +38,6 @@ Test(core_handlers_relay_ping_handler)
   check(prev_len == packet.length);
 
   check(recorder.inbound_ping_tx.num_packets == 1);
-  check(recorder.inbound_ping_tx.num_bytes == RELAY_PING_PACKET_SIZE);
+  check(recorder.inbound_ping_tx.num_bytes == PACKET_HASH_LENGTH + RELAY_PING_PACKET_SIZE);
   check(static_cast<Type>(packet.buffer[crypto::PACKET_HASH_LENGTH]) == Type::RelayPong);
 }

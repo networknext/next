@@ -41,9 +41,9 @@ Test(core_RouteToken_general)
   core::RouteToken inputToken;
   {
     inputToken.expire_timestamp = ExpireTimestamp;
-    inputToken.SessionID = SessionID;
-    inputToken.SessionVersion = SessionVersion;
-    inputToken.SessionFlags = SessionFlags;
+    inputToken.session_id = SessionID;
+    inputToken.session_version = SessionVersion;
+    inputToken.session_flags = SessionFlags;
     inputToken.KbpsUp = KbpsUp;
     inputToken.KbpsDown = KbpsDown;
     inputToken.NextAddr = NextAddr;
@@ -63,9 +63,9 @@ Test(core_RouteToken_general)
 
   // make sure nothing changed
   check(inputToken.expire_timestamp == ExpireTimestamp);
-  check(inputToken.SessionID == SessionID);
-  check(inputToken.SessionVersion == SessionVersion);
-  check(inputToken.SessionFlags == SessionFlags);
+  check(inputToken.session_id == SessionID);
+  check(inputToken.session_version == SessionVersion);
+  check(inputToken.session_flags == SessionFlags);
   check(inputToken.KbpsUp == KbpsUp);
   check(inputToken.KbpsDown == KbpsDown);
   check(inputToken.PrivateKey == PrivateKey);
@@ -73,9 +73,9 @@ Test(core_RouteToken_general)
 
   // make sure input == output
   check(inputToken.expire_timestamp == outputToken.expire_timestamp);
-  check(inputToken.SessionID == outputToken.SessionID);
-  check(inputToken.SessionVersion == outputToken.SessionVersion);
-  check(inputToken.SessionFlags == outputToken.SessionFlags);
+  check(inputToken.session_id == outputToken.session_id);
+  check(inputToken.session_version == outputToken.session_version);
+  check(inputToken.session_flags == outputToken.session_flags);
   check(inputToken.KbpsUp == outputToken.KbpsUp);
   check(inputToken.KbpsDown == outputToken.KbpsDown);
   check(inputToken.PrivateKey == outputToken.PrivateKey);

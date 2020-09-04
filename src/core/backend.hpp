@@ -132,7 +132,7 @@ namespace core
      * Updates the relay in a loop once per second until loopHandle is false
      * Returns true as long as the relay doesn't reach the max number of failed update attempts
      */
-    auto updateCycle(
+    auto update_loop(
      const volatile bool& should_loop,
      const volatile bool& should_shutdown_clean,
      util::ThroughputRecorder& logger,

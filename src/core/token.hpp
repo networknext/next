@@ -21,11 +21,11 @@ namespace core
     // session id (8) +
     // session version (1) +
     // session flags (1) =
-    static const size_t ByteSize = 18;
+    static const size_t SIZE_OF = 18;
 
-    uint64_t SessionID;
-    uint8_t SessionVersion;
-    uint8_t SessionFlags;
+    uint64_t session_id;
+    uint8_t session_version;
+    uint8_t session_flags;
 
     uint64_t hash();
 
@@ -36,12 +36,12 @@ namespace core
 
   INLINE uint64_t Token::hash()
   {
-    return SessionID ^ SessionVersion;
+    return session_id ^ session_version;
   }
 
   INLINE auto Token::write(Packet& packet, size_t& index) -> bool
   {
-    if (index + Token::ByteSize > packet.buffer.size()) {
+    if (index + Token::SIZE_OF > packet.buffer.size()) {
       return false;
     }
 
@@ -49,15 +49,15 @@ namespace core
       return false;
     }
 
-    if (!encoding::write_uint64(packet.buffer, index, SessionID)) {
+    if (!encoding::write_uint64(packet.buffer, index, session_id)) {
       return false;
     }
 
-    if (!encoding::write_uint8(packet.buffer, index, SessionVersion)) {
+    if (!encoding::write_uint8(packet.buffer, index, session_version)) {
       return false;
     }
 
-    if (!encoding::write_uint8(packet.buffer, index, SessionFlags)) {
+    if (!encoding::write_uint8(packet.buffer, index, session_flags)) {
       return false;
     }
 
@@ -66,7 +66,7 @@ namespace core
 
   INLINE auto Token::read(const Packet& packet, size_t& index) -> bool
   {
-    if (index + Token::ByteSize > packet.buffer.size()) {
+    if (index + Token::SIZE_OF > packet.buffer.size()) {
       return false;
     }
 
@@ -74,15 +74,15 @@ namespace core
       return false;
     }
 
-    if (!encoding::read_uint64(packet.buffer, index, SessionID)) {
+    if (!encoding::read_uint64(packet.buffer, index, session_id)) {
       return false;
     }
 
-    if (!encoding::read_uint8(packet.buffer, index, SessionVersion)) {
+    if (!encoding::read_uint8(packet.buffer, index, session_version)) {
       return false;
     }
 
-    if (!encoding::read_uint8(packet.buffer, index, SessionFlags)) {
+    if (!encoding::read_uint8(packet.buffer, index, session_flags)) {
       return false;
     }
 
@@ -91,7 +91,7 @@ namespace core
 
   inline std::ostream& operator<<(std::ostream& os, const Token& token)
   {
-    return os << std::hex << token.SessionID << '.' << std::dec << static_cast<unsigned int>(token.SessionVersion);
+    return os << std::hex << token.session_id << '.' << std::dec << static_cast<unsigned int>(token.session_version);
   }
 }  // namespace core
 #endif

@@ -22,7 +22,7 @@ namespace core
         return;
       }
 
-      if (packet.length != RELAY_PING_PACKET_SIZE) {
+      if (packet.length != PACKET_HASH_LENGTH + RELAY_PING_PACKET_SIZE) {
         LOG(ERROR, "ignoring relay pong, invalid packet size");
         return;
       }

@@ -59,7 +59,8 @@ Test(core_handlers_near_ping_handler_signed)
   size_t prev_len = packet.length;
   check(socket.recv(packet));
   check(packet.length == prev_len - 16);
-  check(crypto::is_network_next_packet(packet.buffer, packet.length));
+  size_t index = 0;
+  check(crypto::is_network_next_packet(packet.buffer, index, packet.length));
 
   // no check for already received
   packet.length = crypto::PACKET_HASH_LENGTH + 1 + 8 + 8 + 8 + 8;
@@ -68,5 +69,6 @@ Test(core_handlers_near_ping_handler_signed)
   prev_len = packet.length;
   check(socket.recv(packet));
   check(packet.length == prev_len - 16);
-  check(crypto::is_network_next_packet(packet.buffer, packet.length));
+  index = 0;
+  check(crypto::is_network_next_packet(packet.buffer, index, packet.length));
 }

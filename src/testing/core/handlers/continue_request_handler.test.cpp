@@ -12,7 +12,7 @@ using core::Packet;
 using core::RouterInfo;
 using core::Session;
 using core::SessionMap;
-using core::packets::Type;
+using core::Type;
 using crypto::Keychain;
 using net::Address;
 using os::Socket;
@@ -40,9 +40,9 @@ Test(core_handlers_continue_request_handler_unsigned)
 
   ContinueToken token;
   token.expire_timestamp = 20;
-  token.SessionID = 0x13;
-  token.SessionVersion = 3;
-  token.SessionFlags = 0;
+  token.session_id = 0x13;
+  token.session_version = 3;
+  token.session_flags = 0;
 
   size_t index = 1;
   check(token.write_encrypted(packet, index, router_private_key(), keychain.relay_public_key));
@@ -53,8 +53,8 @@ Test(core_handlers_continue_request_handler_unsigned)
 
   auto session = std::make_shared<Session>();
   session->expire_timestamp = 10;
-  session->session_id = token.SessionID;
-  session->session_version = token.SessionVersion;
+  session->session_id = token.session_id;
+  session->session_version = token.session_version;
   session->next_addr = addr;
   session->client_to_server_sequence = 0;
   map.set(token.hash(), session);
@@ -89,9 +89,9 @@ Test(core_handlers_continue_request_handler_signed)
 
   ContinueToken token;
   token.expire_timestamp = 20;
-  token.SessionID = 0x13;
-  token.SessionVersion = 3;
-  token.SessionFlags = 0;
+  token.session_id = 0x13;
+  token.session_version = 3;
+  token.session_flags = 0;
 
   size_t index = crypto::PACKET_HASH_LENGTH + 1;
   check(token.write_encrypted(packet, index, router_private_key(), keychain.relay_public_key));
@@ -102,8 +102,8 @@ Test(core_handlers_continue_request_handler_signed)
 
   auto session = std::make_shared<Session>();
   session->expire_timestamp = 10;
-  session->session_id = token.SessionID;
-  session->session_version = token.SessionVersion;
+  session->session_id = token.session_id;
+  session->session_version = token.session_version;
   session->next_addr = addr;
   session->client_to_server_sequence = 0;
   map.set(token.hash(), session);

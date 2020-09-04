@@ -18,7 +18,7 @@ namespace core
     // KbpsDown (4) +
     // NextAddr (net::Address::size) +
     // PrivateKey (crypto_box_SECRETKEYBYTES) =
-    static const size_t ByteSize = Token::ByteSize + 4 + 4 + net::Address::ByteSize + crypto_box_SECRETKEYBYTES;
+    static const size_t ByteSize = Token::SIZE_OF + 4 + 4 + net::Address::ByteSize + crypto_box_SECRETKEYBYTES;
     static const size_t EncryptedByteSize = crypto_box_NONCEBYTES + RouteToken::ByteSize + crypto_box_MACBYTES;
     static const size_t EncryptionLength = RouteToken::ByteSize + crypto_box_MACBYTES;
 

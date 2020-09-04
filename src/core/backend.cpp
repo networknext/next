@@ -410,7 +410,7 @@ namespace core
     return true;
   }
 
-  bool Backend::updateCycle(
+  bool Backend::update_loop(
    const volatile bool& should_loop,
    const volatile bool& should_shutdown_clean,
    util::ThroughputRecorder& recorder,
@@ -601,7 +601,7 @@ namespace core
       this->router_info.set_timestamp(response.timestamp);
 
       if (response.num_relays > MAX_RELAYS) {
-        LOG(ERROR, "too many relays to ping. max is ", MAX_RELAYS, ", got ", response.NumRelays, '\n');
+        LOG(ERROR, "too many relays to ping. max is ", MAX_RELAYS, ", got ", response.num_relays, '\n');
         return false;
       }
 

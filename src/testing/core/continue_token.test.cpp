@@ -33,9 +33,9 @@ Test(core_ContinueToken_general)
   ContinueToken input_token;
   {
     input_token.expire_timestamp = ExpireTimestamp;
-    input_token.SessionID = SessionID;
-    input_token.SessionVersion = SessionVersion;
-    input_token.SessionFlags = SessionFlags;
+    input_token.session_id = SessionID;
+    input_token.session_version = SessionVersion;
+    input_token.session_flags = SessionFlags;
   }
 
   {
@@ -52,15 +52,15 @@ Test(core_ContinueToken_general)
 
   // make sure nothing changed
   check(input_token.expire_timestamp == ExpireTimestamp);
-  check(input_token.SessionID == SessionID);
-  check(input_token.SessionVersion == SessionVersion);
-  check(input_token.SessionFlags == SessionFlags);
+  check(input_token.session_id == SessionID);
+  check(input_token.session_version == SessionVersion);
+  check(input_token.session_flags == SessionFlags);
 
   // assert input == output
   check(input_token.expire_timestamp == output_token.expire_timestamp);
-  check(input_token.SessionID == output_token.SessionID);
-  check(input_token.SessionVersion == output_token.SessionVersion);
-  check(input_token.SessionFlags == output_token.SessionFlags);
+  check(input_token.session_id == output_token.session_id);
+  check(input_token.session_version == output_token.session_version);
+  check(input_token.session_flags == output_token.session_flags);
 }
 
 Test(core_ContinueToken_write)
@@ -69,9 +69,9 @@ Test(core_ContinueToken_write)
   ContinueToken token;
 
   token.expire_timestamp = 6;
-  token.SessionID = 1;
-  token.SessionVersion = 2;
-  token.SessionFlags = 3;
+  token.session_id = 1;
+  token.session_version = 2;
+  token.session_flags = 3;
 
   size_t index = 0;
   check(token.write(packet, index));
@@ -100,9 +100,9 @@ Test(core_ContinueToken_read)
   ContinueToken token;
 
   token.expire_timestamp = 6;
-  token.SessionID = 1;
-  token.SessionVersion = 2;
-  token.SessionFlags = 3;
+  token.session_id = 1;
+  token.session_version = 2;
+  token.session_flags = 3;
 
   size_t index = 0;
   check(token.write(packet, index));

@@ -5,6 +5,7 @@
 #include "core/packet_types.hpp"
 #include "core/session_map.hpp"
 #include "core/throughput_recorder.hpp"
+#include "crypto/hash.hpp"
 #include "crypto/keychain.hpp"
 #include "os/socket.hpp"
 
@@ -12,6 +13,7 @@ using core::PacketDirection;
 using core::PacketHeader;
 using core::RouterInfo;
 using core::SessionMap;
+using crypto::PACKET_HASH_LENGTH;
 using os::Socket;
 using util::ThroughputRecorder;
 
@@ -31,8 +33,8 @@ namespace core
       size_t length = packet.length;
 
       if (is_signed) {
-        index = crypto::PACKET_HASH_LENGTH;
-        length = packet.length - crypto::PACKET_HASH_LENGTH;
+        index = PACKET_HASH_LENGTH;
+        length = packet.length - PACKET_HASH_LENGTH;
       }
 
       if (length > PacketHeader::SIZE_OF + 32) {

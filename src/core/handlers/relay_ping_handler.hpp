@@ -26,14 +26,17 @@ namespace core
         return;
       }
 
-      if (packet.length != RELAY_PING_PACKET_SIZE) {
+      if (packet.length != PACKET_HASH_LENGTH + RELAY_PING_PACKET_SIZE) {
         LOG(ERROR, "ignoring relay ping, invalid packet size");
         return;
       }
 
       packet.buffer[PACKET_HASH_LENGTH] = static_cast<uint8_t>(Type::RelayPong);
 
-      crypto::sign_network_next_packet(packet.buffer, packet.length);
+      size_t index = 0;
+      if (!crypto::sign_network_next_packet(packet.buffer, index, packet.length)) {
+        LOG(ERROR, "unable to sign relay ping from ", packet.addr);
+      }
 
       recorder.inbound_ping_tx.add(packet.length);
 
