@@ -209,7 +209,6 @@ type NextBackendSessionUpdatePacket struct {
 	Tag                       uint64
 	Flags                     uint32
 	UserFlags                 uint64
-	/*
 	DirectRTT                 float32
 	DirectJitter              float32
 	DirectPacketLoss          float32
@@ -227,7 +226,6 @@ type NextBackendSessionUpdatePacket struct {
 	PacketsSentServerToClient uint64
 	PacketsLostClientToServer uint64
 	PacketsLostServerToClient uint64
-	*/
 }
 
 func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
@@ -290,15 +288,16 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 		stream.SerializeUint64(&packet.UserFlags)
 	}
 
-	/*
 	stream.SerializeFloat32(&packet.DirectRTT)
 	stream.SerializeFloat32(&packet.DirectJitter)
 	stream.SerializeFloat32(&packet.DirectPacketLoss)
-	if packet.OnNetworkNext {
+
+	if packet.Next {
 		stream.SerializeFloat32(&packet.NextRTT)
 		stream.SerializeFloat32(&packet.NextJitter)
 		stream.SerializeFloat32(&packet.NextPacketLoss)
 	}
+
 	stream.SerializeInteger(&packet.NumNearRelays, 0, NEXT_MAX_NEAR_RELAYS)
 	if stream.IsReading() {
 		packet.NearRelayIds = make([]uint64, packet.NumNearRelays)
@@ -313,13 +312,15 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 		stream.SerializeFloat32(&packet.NearRelayJitter[i])
 		stream.SerializeFloat32(&packet.NearRelayPacketLoss[i])
 	}
+
 	stream.SerializeUint32(&packet.KbpsUp)
 	stream.SerializeUint32(&packet.KbpsDown)
+
 	stream.SerializeUint64(&packet.PacketsSentClientToServer)
 	stream.SerializeUint64(&packet.PacketsSentServerToClient)
+
 	stream.SerializeUint64(&packet.PacketsLostClientToServer)
 	stream.SerializeUint64(&packet.PacketsLostServerToClient)
-	*/
 
 	return stream.Error()
 }
