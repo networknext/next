@@ -9185,12 +9185,12 @@ struct NextBackendSessionResponsePacket
     uint32_t slice_number;
     int session_data_bytes;
     uint8_t session_data[NEXT_MAX_SESSION_DATA_BYTES];
-
-    /*
+    uint8_t response_type;
     int num_near_relays;
     uint64_t near_relay_ids[NEXT_MAX_NEAR_RELAYS];
     next_address_t near_relay_addresses[NEXT_MAX_NEAR_RELAYS];
-    uint8_t response_type;
+
+    /*
     bool multipath;
     bool committed;
     int num_tokens;
@@ -9205,20 +9205,25 @@ struct NextBackendSessionResponsePacket
     template <typename Stream> bool Serialize( Stream & stream )
     {
         serialize_uint64( stream, session_id );
+
         serialize_uint32( stream, slice_number );
+
         serialize_int( stream, session_data_bytes, 0, NEXT_MAX_SESSION_DATA_BYTES );
         if ( session_data_bytes > 0 )
         {
             serialize_bytes( stream, session_data, session_data_bytes );
         }
-        /*
+
+        serialize_int( stream, response_type, 0, NEXT_UPDATE_TYPE_CONTINUE );
+
         serialize_int( stream, num_near_relays, 0, NEXT_MAX_NEAR_RELAYS );
         for ( int i = 0; i < num_near_relays; ++i )
         {
             serialize_uint64( stream, near_relay_ids[i] );
             serialize_address( stream, near_relay_addresses[i] );
         }
-        serialize_int( stream, response_type, 0, NEXT_UPDATE_TYPE_CONTINUE );
+
+        /*
         if ( response_type != NEXT_UPDATE_TYPE_DIRECT )
         {
             serialize_bool( stream, multipath );
@@ -9234,6 +9239,7 @@ struct NextBackendSessionResponsePacket
             serialize_bytes( stream, tokens, num_tokens * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES );
         }
         */
+
         return true;
     }
 };
@@ -10353,15 +10359,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
                 return;
             }
 
-            // todo: is this really necessary?
-            /*
-            if ( memcmp( packet.server_route_public_key, server->server_route_public_key, sizeof(packet.server_route_public_key) ) != 0 )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. server public key mismatch" );
-                return;
-            }
-            */
-
             next_session_entry_t * entry = next_session_manager_find_by_session_id( server->session_manager, packet.session_id );
             if ( !entry )
             {
@@ -10381,8 +10378,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
                 return;
             }
 
-            // todo
-            /*
             const char * update_type = "???";
 
             switch ( packet.response_type )
@@ -10394,6 +10389,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server received session response from backend for session %" PRIx64 " (%s)", entry->session_id, update_type );
 
+            // todo
+            /*
             bool multipath = packet.multipath;
 
             if ( multipath && !entry->multipath )
@@ -10437,8 +10434,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
             entry->waiting_for_update_response = false;
 
-            // todo
-            /*
             if ( packet.response_type == NEXT_UPDATE_TYPE_DIRECT )
             {
                 bool session_transitions_to_direct = false;
@@ -10459,7 +10454,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
                     memcpy( entry->previous_route_private_key, entry->current_route_private_key, crypto_box_SECRETKEYBYTES );
                 }
             }
-            */
 
             // IMPORTANT: clear user flags after we get an response/ack for the last session update.
             // This lets us accumulate user flags between each session update packet via user_flags |= packet.user_flags
@@ -11457,9 +11451,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             next_assert( session->session_data_bytes <= NEXT_MAX_SESSION_DATA_BYTES );
             packet.session_data_bytes = session->session_data_bytes;
             memcpy( packet.session_data, session->session_data, session->session_data_bytes );
-
-            // todo
-            printf( "session data bytes = %d (load)\n", packet.session_data_bytes );
 
             if ( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_PACKET, &packet, session->update_packet_data, &session->update_packet_bytes, next_signed_packets, server->customer_private_key ) != NEXT_OK )
             {
