@@ -9188,8 +9188,12 @@ struct NextBackendSessionUpdatePacket
 
 struct NextBackendSessionResponsePacket
 {
-    uint32_t slice_number;
     uint64_t session_id;
+    uint32_t slice_number;
+    int session_data_bytes;
+    uint8_t session_data[NEXT_MAX_SESSION_DATA_BYTES];
+
+    /*
     int num_near_relays;
     uint64_t near_relay_ids[NEXT_MAX_NEAR_RELAYS];
     next_address_t near_relay_addresses[NEXT_MAX_NEAR_RELAYS];
@@ -9198,9 +9202,7 @@ struct NextBackendSessionResponsePacket
     bool committed;
     int num_tokens;
     uint8_t tokens[NEXT_MAX_TOKENS*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES];
-    uint8_t server_route_public_key[crypto_box_PUBLICKEYBYTES];
-    int session_data_bytes;
-    uint8_t session_data[NEXT_MAX_SESSION_DATA_BYTES];
+    */
 
     NextBackendSessionResponsePacket()
     {
@@ -9209,8 +9211,19 @@ struct NextBackendSessionResponsePacket
 
     template <typename Stream> bool Serialize( Stream & stream )
     {
-        serialize_uint32( stream, slice_number );
         serialize_uint64( stream, session_id );
+        serialize_uint32( stream, slice_number );
+        serialize_int( stream, session_data_bytes, 0, NEXT_MAX_SESSION_DATA_BYTES );
+        if ( session_data_bytes > 0 )
+        {
+            serialize_bytes( stream, session_data, session_data_bytes );
+            // todo
+            if ( Stream::IsReading )
+            {
+                printf( "session data bytes = %d (read)\n", session_data_bytes );
+            }
+        }
+        /*
         serialize_int( stream, num_near_relays, 0, NEXT_MAX_NEAR_RELAYS );
         for ( int i = 0; i < num_near_relays; ++i )
         {
@@ -9232,17 +9245,7 @@ struct NextBackendSessionResponsePacket
         {
             serialize_bytes( stream, tokens, num_tokens * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES );
         }
-        serialize_bytes( stream, server_route_public_key, crypto_box_PUBLICKEYBYTES );
-        serialize_int( stream, session_data_bytes, 0, NEXT_MAX_SESSION_DATA_BYTES );
-        if ( session_data_bytes > 0 )
-        {
-            serialize_bytes( stream, session_data, session_data_bytes );
-            // todo
-            if ( Stream::IsReading )
-            {
-                printf( "session data bytes = %d (read)\n", session_data_bytes );
-            }
-        }
+        */
         return true;
     }
 };
@@ -10362,11 +10365,14 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
                 return;
             }
 
+            // todo: is this really necessary?
+            /*
             if ( memcmp( packet.server_route_public_key, server->server_route_public_key, sizeof(packet.server_route_public_key) ) != 0 )
             {
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. server public key mismatch" );
                 return;
             }
+            */
 
             next_session_entry_t * entry = next_session_manager_find_by_session_id( server->session_manager, packet.session_id );
             if ( !entry )
@@ -10387,6 +10393,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
                 return;
             }
 
+            // todo
+            /*
             const char * update_type = "???";
 
             switch ( packet.response_type )
@@ -10428,9 +10436,12 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             entry->update_num_near_relays = packet.num_near_relays;
             memcpy( entry->update_near_relay_ids, packet.near_relay_ids, 8 * size_t(packet.num_near_relays) );
             memcpy( entry->update_near_relay_addresses, packet.near_relay_addresses, sizeof(next_address_t) * size_t(packet.num_near_relays) );
-            entry->update_last_send_time = -1000.0;
+            */
 
             // todo
+
+            entry->update_last_send_time = -1000.0;
+
             printf( "session data bytes = %d (store)\n", packet.session_data_bytes );
 
             entry->session_data_bytes = packet.session_data_bytes;
@@ -10438,6 +10449,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
             entry->waiting_for_update_response = false;
 
+            // todo
+            /*
             if ( packet.response_type == NEXT_UPDATE_TYPE_DIRECT )
             {
                 bool session_transitions_to_direct = false;
@@ -10458,6 +10471,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
                     memcpy( entry->previous_route_private_key, entry->current_route_private_key, crypto_box_SECRETKEYBYTES );
                 }
             }
+            */
 
             // IMPORTANT: clear user flags after we get an response/ack for the last session update.
             // This lets us accumulate user flags between each session update packet via user_flags |= packet.user_flags
@@ -14200,6 +14214,8 @@ static void test_backend_packets()
     }
     */
 
+    // todo
+    /*
     // session response packet (direct)
     {
         unsigned char public_key[crypto_sign_PUBLICKEYBYTES];
@@ -14220,7 +14236,6 @@ static void test_backend_packets()
             next_address_parse( &in.near_relay_addresses[i], relay_address );
         }
         in.response_type = NEXT_UPDATE_TYPE_DIRECT;
-        next_random_bytes( in.server_route_public_key, sizeof(in.server_route_public_key) );
         in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
         for ( int i = 0; i < NEXT_MAX_SESSION_DATA_BYTES; ++i )
         {
@@ -14240,7 +14255,6 @@ static void test_backend_packets()
             check( next_address_equal( &in.near_relay_addresses[i], &out.near_relay_addresses[i] ) );
         }
         check( in.response_type == out.response_type );
-        check( memcmp( in.server_route_public_key, out.server_route_public_key, sizeof(in.server_route_public_key) ) == 0 );
     }
 
     // session response packet (route)
@@ -14267,7 +14281,6 @@ static void test_backend_packets()
         in.committed = true;
         in.num_tokens = NEXT_MAX_TOKENS;
         next_random_bytes( in.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES );
-        next_random_bytes( in.server_route_public_key, sizeof(in.server_route_public_key) );
         in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
         for ( int i = 0; i < NEXT_MAX_SESSION_DATA_BYTES; ++i )
         {
@@ -14291,7 +14304,6 @@ static void test_backend_packets()
         check( in.committed == out.committed );
         check( in.num_tokens == out.num_tokens );
         check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES ) == 0 );
-        check( memcmp( in.server_route_public_key, out.server_route_public_key, sizeof(in.server_route_public_key) ) == 0 );
     }
 
     // session response packet (continue)
@@ -14318,7 +14330,6 @@ static void test_backend_packets()
         in.committed = true;
         in.num_tokens = NEXT_MAX_TOKENS;
         next_random_bytes( in.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES );
-        next_random_bytes( in.server_route_public_key, sizeof(in.server_route_public_key) );
         in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
         for ( int i = 0; i < NEXT_MAX_SESSION_DATA_BYTES; ++i )
         {
@@ -14342,8 +14353,8 @@ static void test_backend_packets()
         check( in.response_type == out.response_type );
         check( in.num_tokens == out.num_tokens );
         check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES ) == 0 );
-        check( memcmp( in.server_route_public_key, out.server_route_public_key, sizeof(in.server_route_public_key) ) == 0 );
     }
+    */
 }
 
 static void test_relay_manager()
