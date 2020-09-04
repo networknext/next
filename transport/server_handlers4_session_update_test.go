@@ -109,6 +109,8 @@ func TestSessionUpdateHandler4ClientLocateFailure(t *testing.T) {
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
 	assert.NoError(t, err)
+
+	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
 	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeProviderFunc, nil, metrics)
@@ -171,6 +173,8 @@ func TestSessionUpdateHandler4NoNearRelays(t *testing.T) {
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
 	assert.NoError(t, err)
+
+	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
 	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeProviderFunc, nil, metrics)
@@ -321,6 +325,8 @@ func TestSessionUpdateHandler4InitialSlice(t *testing.T) {
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
 	assert.NoError(t, err)
+
+	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
 	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeProviderFunc, nil, metrics)
@@ -382,7 +388,6 @@ func TestSessionUpdateHandler4DirectRoute(t *testing.T) {
 	expectedResponse := transport.SessionResponsePacket4{
 		SessionID:          requestPacket.SessionID,
 		SliceNumber:        requestPacket.SliceNumber,
-		SessionDataBytes:   15,
 		RouteType:          routing.RouteTypeDirect,
 		NearRelayIDs:       make([]uint64, 0),
 		NearRelayAddresses: make([]net.UDPAddr, 0),
@@ -395,6 +400,8 @@ func TestSessionUpdateHandler4DirectRoute(t *testing.T) {
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
 	assert.NoError(t, err)
+
+	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
 	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeProviderFunc, nil, metrics)
