@@ -200,15 +200,16 @@ type NextBackendSessionUpdatePacket struct {
 	ServerAddress             net.UDPAddr
 	ClientRoutePublicKey      []byte
 	ServerRoutePublicKey      []byte
-	/*
 	UserHash                  uint64
 	PlatformId                int32
+	ConnectionType            int32
+	Next             		  bool
+	Committed                 bool
+	Reported                  bool
 	Tag                       uint64
 	Flags                     uint32
-	Reported                  bool
-	ConnectionType            int32
-	OnNetworkNext             bool
-	Committed                 bool
+	UserFlags                 uint64
+	/*
 	DirectRTT                 float32
 	DirectJitter              float32
 	DirectPacketLoss          float32
@@ -226,7 +227,6 @@ type NextBackendSessionUpdatePacket struct {
 	PacketsSentServerToClient uint64
 	PacketsLostClientToServer uint64
 	PacketsLostServerToClient uint64
-	UserFlags                 uint64
 	*/
 }
 
@@ -260,22 +260,40 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 	stream.SerializeBytes(packet.ClientRoutePublicKey)
 	stream.SerializeBytes(packet.ServerRoutePublicKey)
 
-	/*
 	stream.SerializeUint64(&packet.UserHash)
+
 	stream.SerializeInteger(&packet.PlatformId, 0, NEXT_PLATFORM_MAX)
-	stream.SerializeUint64(&packet.Tag)
+
+	stream.SerializeInteger(&packet.ConnectionType, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_MAX)
+
+	stream.SerializeBool(&packet.Next)
+
+	stream.SerializeBool(&packet.Committed)
+
+	stream.SerializeBool(&packet.Reported)
+
+	hasTag := stream.IsWriting() && packet.Tag != 0
+	stream.SerializeBool( &hasTag )
+	if hasTag {
+		stream.SerializeUint64(&packet.Tag)
+	}
+
 	hasFlags := stream.IsWriting() && packet.Flags != 0
 	stream.SerializeBool( &hasFlags )
 	if hasFlags {
 		stream.SerializeBits(&packet.Flags, 9)
 	}
-	stream.SerializeBool(&packet.Reported)
-	stream.SerializeInteger(&packet.ConnectionType, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_MAX)
+
+	hasUserFlags := stream.IsWriting() && packet.UserFlags != 0
+	stream.SerializeBool( &hasUserFlags )
+	if hasUserFlags {
+		stream.SerializeUint64(&packet.UserFlags)
+	}
+
+	/*
 	stream.SerializeFloat32(&packet.DirectRTT)
 	stream.SerializeFloat32(&packet.DirectJitter)
 	stream.SerializeFloat32(&packet.DirectPacketLoss)
-	stream.SerializeBool(&packet.OnNetworkNext)
-	stream.SerializeBool(&packet.Committed)
 	if packet.OnNetworkNext {
 		stream.SerializeFloat32(&packet.NextRTT)
 		stream.SerializeFloat32(&packet.NextJitter)
@@ -301,12 +319,8 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 	stream.SerializeUint64(&packet.PacketsSentServerToClient)
 	stream.SerializeUint64(&packet.PacketsLostClientToServer)
 	stream.SerializeUint64(&packet.PacketsLostServerToClient)
-	hasUserFlags := stream.IsWriting() && packet.UserFlags != 0
-	stream.SerializeBool( &hasUserFlags )
-	if hasUserFlags {
-		stream.SerializeUint64(&packet.UserFlags)
-	}
 	*/
+
 	return stream.Error()
 }
 
