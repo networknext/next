@@ -136,6 +136,7 @@ func main() {
 
 	for _, infile := range infiles {
 		// read in exported data
+		fmt.Printf("reading %s\n", infile)
 		inputfile, err := os.Open(infile)
 		if err != nil {
 			fmt.Printf("could not open '%s': %v\n", infile, err)
@@ -312,9 +313,11 @@ func main() {
 	}
 
 	// sort on timestamp
+	fmt.Printf("sorting %d entries...\n", len(entries))
 	sort.Sort(entries)
 
 	// encode to binary format
+	fmt.Println("encoding to buffer...")
 	index := 0
 
 	bin := make([]byte, 8)
@@ -329,12 +332,17 @@ func main() {
 		bin = append(bin, dat...)
 	}
 
+	entries = nil // free the data buffer now that it's unused
+
 	// export
 
+	fmt.Println("writing to file...")
 	err = ioutil.WriteFile(outfile, bin, 0644)
 	if err != nil {
 		fmt.Printf("could not create output file '%s': %v\n", outfile, err)
 	}
+
+	fmt.Println("done!")
 }
 
 func checkErr(err error, lineNum int) {
