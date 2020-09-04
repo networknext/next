@@ -9082,9 +9082,6 @@ struct NextBackendSessionUpdatePacket
     uint64_t tag;
     uint64_t flags;
     uint64_t user_flags;
-
-    // todo
-    /*
     float direct_rtt;
     float direct_jitter;
     float direct_packet_loss;
@@ -9102,7 +9099,6 @@ struct NextBackendSessionUpdatePacket
     uint64_t packets_sent_server_to_client;
     uint64_t packets_lost_client_to_server;
     uint64_t packets_lost_server_to_client;
-    */
 
     NextBackendSessionUpdatePacket()
     {
@@ -9170,17 +9166,19 @@ struct NextBackendSessionUpdatePacket
             serialize_uint64( stream, user_flags );
         }
 
-        /*
         serialize_float( stream, direct_rtt );
         serialize_float( stream, direct_jitter );
         serialize_float( stream, direct_packet_loss );
+
         if ( next )
         {
             serialize_float( stream, next_rtt );
             serialize_float( stream, next_jitter );
             serialize_float( stream, next_packet_loss );
         }
+
         serialize_int( stream, num_near_relays, 0, NEXT_MAX_NEAR_RELAYS );
+
         for ( int i = 0; i < num_near_relays; ++i )
         {
             serialize_uint64( stream, near_relay_ids[i] );
@@ -9188,13 +9186,15 @@ struct NextBackendSessionUpdatePacket
             serialize_float( stream, near_relay_jitter[i] );
             serialize_float( stream, near_relay_packet_loss[i] );
         }
+
         serialize_uint32( stream, kbps_up );
         serialize_uint32( stream, kbps_down );
+
         serialize_uint64( stream, packets_sent_client_to_server );
         serialize_uint64( stream, packets_sent_server_to_client );
+
         serialize_uint64( stream, packets_lost_client_to_server );
         serialize_uint64( stream, packets_lost_server_to_client );
-        */
 
         return true;
     }
@@ -10409,8 +10409,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server received session response from backend for session %" PRIx64 " (%s)", entry->session_id, update_type );
 
-            // todo
-            /*
             bool multipath = packet.multipath;
 
             if ( multipath && !entry->multipath )
@@ -10428,8 +10426,11 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             next_platform_mutex_release( &server->session_mutex );
 
             entry->update_dirty = true;
+
             entry->update_type = (uint8_t) packet.response_type;
+
             entry->update_num_tokens = packet.num_tokens;
+
             if ( packet.response_type == NEXT_UPDATE_TYPE_ROUTE )
             {
                 memcpy( entry->update_tokens, packet.tokens, NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES * size_t(packet.num_tokens) );
@@ -10438,12 +10439,10 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             {
                 memcpy( entry->update_tokens, packet.tokens, NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES * size_t(packet.num_tokens) );
             }
+
             entry->update_num_near_relays = packet.num_near_relays;
             memcpy( entry->update_near_relay_ids, packet.near_relay_ids, 8 * size_t(packet.num_near_relays) );
             memcpy( entry->update_near_relay_addresses, packet.near_relay_addresses, sizeof(next_address_t) * size_t(packet.num_near_relays) );
-            */
-
-            // todo
 
             entry->update_last_send_time = -1000.0;
 
@@ -14113,8 +14112,6 @@ static void test_backend_packets()
         check( next_address_equal( &in.server_address, &out.server_address ) );
     }
 
-    // todo
-    /*
     // session update
     {
         unsigned char public_key[crypto_sign_PUBLICKEYBYTES];
@@ -14206,10 +14203,7 @@ static void test_backend_packets()
             check( in.session_data[i] == out.session_data[i] );
         }
     }
-    */
 
-    // todo
-    /*
     // session response packet (direct)
     {
         unsigned char public_key[crypto_sign_PUBLICKEYBYTES];
@@ -14348,7 +14342,6 @@ static void test_backend_packets()
         check( in.num_tokens == out.num_tokens );
         check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES ) == 0 );
     }
-    */
 }
 
 static void test_relay_manager()
