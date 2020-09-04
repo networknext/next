@@ -9189,13 +9189,10 @@ struct NextBackendSessionResponsePacket
     int num_near_relays;
     uint64_t near_relay_ids[NEXT_MAX_NEAR_RELAYS];
     next_address_t near_relay_addresses[NEXT_MAX_NEAR_RELAYS];
-
-    /*
-    bool multipath;
-    bool committed;
     int num_tokens;
     uint8_t tokens[NEXT_MAX_TOKENS*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES];
-    */
+    bool multipath;
+    bool committed;
 
     NextBackendSessionResponsePacket()
     {
@@ -9223,23 +9220,23 @@ struct NextBackendSessionResponsePacket
             serialize_address( stream, near_relay_addresses[i] );
         }
 
-        /*
         if ( response_type != NEXT_UPDATE_TYPE_DIRECT )
         {
             serialize_bool( stream, multipath );
             serialize_bool( stream, committed );
             serialize_int( stream, num_tokens, 0, NEXT_MAX_TOKENS );
         }
+
         if ( response_type == NEXT_UPDATE_TYPE_ROUTE )
         {
             serialize_bytes( stream, tokens, num_tokens * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES );
         }
-        else if ( response_type == NEXT_UPDATE_TYPE_CONTINUE )
+        
+        if ( response_type == NEXT_UPDATE_TYPE_CONTINUE )
         {
             serialize_bytes( stream, tokens, num_tokens * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES );
         }
-        */
-
+        
         return true;
     }
 };
@@ -10426,8 +10423,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             // todo
 
             entry->update_last_send_time = -1000.0;
-
-            printf( "session data bytes = %d (store)\n", packet.session_data_bytes );
 
             entry->session_data_bytes = packet.session_data_bytes;
             memcpy( entry->session_data, packet.session_data, packet.session_data_bytes );
