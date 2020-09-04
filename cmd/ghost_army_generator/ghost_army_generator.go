@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -28,11 +29,85 @@ func (self sortableEntries) Less(i, j int) bool {
 	return self[i].Timestamp < self[j].Timestamp
 }
 
+// Input files can be in any order
+
 func main() {
 	if len(os.Args) < 3 {
-		fmt.Println("you must supply at least 2 arguments (input file name, output file name)")
+		fmt.Println("you must supply at least 2 arguments: <input file name(s)> <output file name>")
 		os.Exit(1)
 	}
+
+	var datacenterCSV string
+	if v, ok := os.LookupEnv("DATACENTERS_CSV"); ok {
+		datacenterCSV = v
+	} else {
+		fmt.Println("you must set DATACENTERS_CSV to a file")
+		os.Exit(1)
+	}
+
+	// parse datacenter csv
+	inputfile, err := os.Open(datacenterCSV)
+	if err != nil {
+		fmt.Printf("could not open '%s': %v\n", datacenterCSV, err)
+		os.Exit(1)
+	}
+
+	lines, err := csv.NewReader(inputfile).ReadAll()
+	if err != nil {
+		fmt.Printf("could not read csv data: %v\n", err)
+		os.Exit(1)
+	}
+	inputfile.Close()
+
+	var dcmap ghostarmy.DatacenterMap
+	dcmap = make(map[uint64]ghostarmy.StrippedDatacenter)
+
+	for lineNum, line := range lines {
+		if lineNum == 0 {
+			continue
+		}
+
+		var datacenter ghostarmy.StrippedDatacenter
+		datacenter.Name = line[0]
+		id, err := strconv.ParseUint(line[1], 10, 64)
+		if err != nil {
+			fmt.Printf("could not parse id for dc %s", datacenter.Name)
+			continue
+		}
+		datacenter.Lat, err = strconv.ParseFloat(line[2], 64)
+		if err != nil {
+			fmt.Printf("could not parse lat for dc %s", datacenter.Name)
+			continue
+		}
+		datacenter.Long, err = strconv.ParseFloat(line[3], 64)
+		if err != nil {
+			fmt.Printf("could not parse long for dc %s", datacenter.Name)
+			continue
+		}
+
+		dcmap[id] = datacenter
+	}
+
+	var ispsFilename string
+	if v, ok := os.LookupEnv("ISPS_FILE"); ok {
+		ispsFilename = v
+	} else {
+		fmt.Println("you must set ISPS_FILE to a file")
+		os.Exit(1)
+	}
+
+	file, err := os.Open(ispsFilename)
+	if err != nil {
+		fmt.Printf("could not open %s: %v", ispsFilename, err)
+		os.Exit(1)
+	}
+
+	var isps []string
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		isps = append(isps, scanner.Text())
+	}
+	file.Close()
 
 	infiles := make([]string, len(os.Args)-2)
 	for i := 1; i < len(os.Args)-1; i++ {
@@ -46,8 +121,9 @@ func main() {
 	var entries sortableEntries
 	entries = make([]ghostarmy.Entry, 0)
 
-	for offset, infile := range infiles {
+	for _, infile := range infiles {
 		// read in exported data
+		fmt.Printf("reading %s\n", infile)
 		inputfile, err := os.Open(infile)
 		if err != nil {
 			fmt.Printf("could not open '%s': %v\n", infile, err)
@@ -82,7 +158,6 @@ func main() {
 
 			year, month, day := t.Date()
 			t2 := time.Date(year, month, day, 0, 0, 0, 0, t.Location())
-			t2.AddDate(0, 0, offset)
 			secsIntoDay := int64(t.Sub(t2).Seconds())
 
 			entry.Timestamp = secsIntoDay
@@ -189,15 +264,47 @@ func main() {
 			checkErr(err, lineNum)
 			i++
 
+			if line[i] == "" {
+				// get latitude from datacenter
+				entry.Latitude = dcmap[uint64(entry.DatacenterID)].Lat
+			} else {
+				// use actual latitude
+				lat, err := strconv.ParseFloat(line[i], 64)
+				checkErr(err, lineNum)
+				entry.Latitude = lat
+			}
+			i++
+
+			if line[i] == "" {
+				// get longitude from datacenter
+				entry.Longitude = dcmap[uint64(entry.DatacenterID)].Long
+			} else {
+				// use actual longitude
+				long, err := strconv.ParseFloat(line[i], 64)
+				checkErr(err, lineNum)
+				entry.Longitude = long
+			}
+			i++
+
+			if line[i] == "" {
+				// get random isp
+				entry.ISP = isps[uint64(entry.Userhash)%uint64(len(isps))]
+			} else {
+				// use actual isp
+				entry.ISP = line[i]
+			}
+
 			// push back entry
 			entries = append(entries, entry)
 		}
 	}
 
 	// sort on timestamp
+	fmt.Printf("sorting %d entries...\n", len(entries))
 	sort.Sort(entries)
 
 	// encode to binary format
+	fmt.Println("encoding to buffer...")
 	index := 0
 
 	bin := make([]byte, 8)
@@ -212,12 +319,17 @@ func main() {
 		bin = append(bin, dat...)
 	}
 
+	entries = nil // free the data buffer now that it's unused
+
 	// export
 
-	err := ioutil.WriteFile(outfile, bin, 0644)
+	fmt.Println("writing to file...")
+	err = ioutil.WriteFile(outfile, bin, 0644)
 	if err != nil {
 		fmt.Printf("could not create output file '%s': %v\n", outfile, err)
 	}
+
+	fmt.Println("done!")
 }
 
 func checkErr(err error, lineNum int) {

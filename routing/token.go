@@ -21,8 +21,11 @@ const (
 	ContinueRouteTokenSize          = 42
 	EncryptedContinueRouteTokenSize = ContinueRouteTokenSize + crypto.MACSize
 
-	TokenTypeRouteRequest    = 0x01
-	TokenTypeContinueRequest = 0x0D
+	NextRouteTokenSize4          = 100
+	EncryptedNextRouteTokenSize4 = NextRouteTokenSize4 + crypto.MACSize
+
+	ContinueRouteTokenSize4          = 41
+	EncryptedContinueRouteTokenSize4 = ContinueRouteTokenSize4 + crypto.MACSize
 )
 
 type Token interface {

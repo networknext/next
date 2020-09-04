@@ -46,7 +46,7 @@ func (a SDKVersion) Compare(b SDKVersion) int {
 }
 
 func (v SDKVersion) IsInternal() bool {
-	if v.Major == 0 && v.Minor == 0 && v.Patch == 0 {
+	if (v.Major == 0 && v.Minor == 0 && v.Patch == 0) || (v.Major == 255 && v.Minor == 255 && v.Patch == 255) {
 		return true
 	}
 	return false
