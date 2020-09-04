@@ -9069,9 +9069,13 @@ struct NextBackendSessionUpdatePacket
     uint32_t retry_number;
     int session_data_bytes;
     uint8_t session_data[NEXT_MAX_SESSION_DATA_BYTES];
+    next_address_t client_address;
+    next_address_t server_address;
+    uint8_t client_route_public_key[crypto_box_PUBLICKEYBYTES];
+    uint8_t server_route_public_key[crypto_box_PUBLICKEYBYTES];
+
     // todo
     /*
-    next_address_t server_address;
     uint64_t user_hash;
     uint64_t tag;
     uint64_t flags;
@@ -9091,9 +9095,6 @@ struct NextBackendSessionUpdatePacket
     float near_relay_rtt[NEXT_MAX_NEAR_RELAYS];
     float near_relay_jitter[NEXT_MAX_NEAR_RELAYS];
     float near_relay_packet_loss[NEXT_MAX_NEAR_RELAYS];
-    next_address_t client_address;
-    uint8_t server_route_public_key[crypto_box_PUBLICKEYBYTES];
-    uint8_t client_route_public_key[crypto_box_PUBLICKEYBYTES];
     uint32_t kbps_up;
     uint32_t kbps_down;
     uint64_t packets_sent_client_to_server;
@@ -9116,17 +9117,28 @@ struct NextBackendSessionUpdatePacket
         serialize_bits( stream, version_major, 8 );
         serialize_bits( stream, version_minor, 8 );
         serialize_bits( stream, version_patch, 8 );
+
         serialize_uint64( stream, customer_id );
+        
         serialize_uint64( stream, session_id );
-        serialize_bits( stream, slice_number, 32 );
+        
         serialize_int( stream, slice_number, 0, NEXT_MAX_SESSION_UPDATE_RETRIES );
+
         serialize_int( stream, session_data_bytes, 0, NEXT_MAX_SESSION_DATA_BYTES );
         if ( session_data_bytes > 0 )
         {
             serialize_bytes( stream, session_data, session_data_bytes );
         }
-        /*
+
+        serialize_address( stream, client_address );
         serialize_address( stream, server_address );
+
+        serialize_bytes( stream, client_route_public_key, crypto_box_PUBLICKEYBYTES );
+        serialize_bytes( stream, server_route_public_key, crypto_box_PUBLICKEYBYTES );
+
+        // ...
+
+        /*
         serialize_uint64( stream, user_hash );
         serialize_int( stream, platform_id, NEXT_PLATFORM_UNKNOWN, NEXT_PLATFORM_MAX );
         // todo: bool has_tag
@@ -9158,9 +9170,6 @@ struct NextBackendSessionUpdatePacket
             serialize_float( stream, near_relay_jitter[i] );
             serialize_float( stream, near_relay_packet_loss[i] );
         }
-        serialize_address( stream, client_address );
-        serialize_bytes( stream, client_route_public_key, crypto_box_PUBLICKEYBYTES );
-        serialize_bytes( stream, server_route_public_key, crypto_box_PUBLICKEYBYTES );
         serialize_uint32( stream, kbps_up );
         serialize_uint32( stream, kbps_down );
         serialize_uint64( stream, packets_sent_client_to_server );
@@ -9173,6 +9182,7 @@ struct NextBackendSessionUpdatePacket
             serialize_uint64( stream, user_flags );
         }
         */
+        
         return true;
     }
 };
