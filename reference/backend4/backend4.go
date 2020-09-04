@@ -196,6 +196,10 @@ type NextBackendSessionUpdatePacket struct {
 	RetryNumber               int32
 	SessionDataBytes          int32
 	SessionData               [NEXT_MAX_SESSION_DATA_BYTES]byte
+	ClientAddress             net.UDPAddr
+	ServerAddress             net.UDPAddr
+	ClientRoutePublicKey      []byte
+	ServerRoutePublicKey      []byte
 	/*
 	UserHash                  uint64
 	PlatformId                int32
@@ -216,10 +220,6 @@ type NextBackendSessionUpdatePacket struct {
 	NearRelayRTT              []float32
 	NearRelayJitter           []float32
 	NearRelayPacketLoss       []float32
-	ClientAddress             net.UDPAddr
-	ServerAddress             net.UDPAddr
-	ClientRoutePublicKey      []byte
-	ServerRoutePublicKey      []byte
 	KbpsUp                    uint32
 	KbpsDown                  uint32
 	PacketsSentClientToServer uint64
@@ -231,20 +231,36 @@ type NextBackendSessionUpdatePacket struct {
 }
 
 func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
+	
 	stream.SerializeBits(&packet.VersionMajor, 8)
 	stream.SerializeBits(&packet.VersionMinor, 8)
 	stream.SerializeBits(&packet.VersionPatch, 8)
+	
 	stream.SerializeUint64(&packet.CustomerId)
+	
 	stream.SerializeUint64(&packet.SessionId)
+	
 	stream.SerializeBits(&packet.SliceNumber, 32)
+	
 	stream.SerializeInteger(&packet.RetryNumber, 0, NEXT_MAX_SESSION_UPDATE_RETRIES)
+	
 	stream.SerializeInteger(&packet.SessionDataBytes, 0, NEXT_MAX_SESSION_DATA_BYTES)
 	if packet.SessionDataBytes > 0 {
 		sessionData := packet.SessionData[:packet.SessionDataBytes]
 		stream.SerializeBytes(sessionData)
 	}
-	/*
+	
+	stream.SerializeAddress(&packet.ClientAddress)
 	stream.SerializeAddress(&packet.ServerAddress)
+
+	if stream.IsReading() {
+		packet.ClientRoutePublicKey = make([]byte, Crypto_box_PUBLICKEYBYTES)
+		packet.ServerRoutePublicKey = make([]byte, Crypto_box_PUBLICKEYBYTES)
+	}
+	stream.SerializeBytes(packet.ClientRoutePublicKey)
+	stream.SerializeBytes(packet.ServerRoutePublicKey)
+
+	/*
 	stream.SerializeUint64(&packet.UserHash)
 	stream.SerializeInteger(&packet.PlatformId, 0, NEXT_PLATFORM_MAX)
 	stream.SerializeUint64(&packet.Tag)
@@ -279,13 +295,6 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 		stream.SerializeFloat32(&packet.NearRelayJitter[i])
 		stream.SerializeFloat32(&packet.NearRelayPacketLoss[i])
 	}
-	stream.SerializeAddress(&packet.ClientAddress)
-	if stream.IsReading() {
-		packet.ClientRoutePublicKey = make([]byte, Crypto_box_PUBLICKEYBYTES)
-		packet.ServerRoutePublicKey = make([]byte, Crypto_box_PUBLICKEYBYTES)
-	}
-	stream.SerializeBytes(packet.ClientRoutePublicKey)
-	stream.SerializeBytes(packet.ServerRoutePublicKey)
 	stream.SerializeUint32(&packet.KbpsUp)
 	stream.SerializeUint32(&packet.KbpsDown)
 	stream.SerializeUint64(&packet.PacketsSentClientToServer)
@@ -374,23 +383,31 @@ const SessionDataVersion = 0
 type SessionData struct {
 	Version uint32
 	SessionId uint64
+	SessionVersion uint32
 	SliceNumber uint32
 	Route []uint64
 }
 
 func (packet *SessionData) Serialize(stream Stream) error {
+
 	stream.SerializeBits(&packet.Version, 8)
 	if stream.IsReading() && packet.Version != SessionDataVersion {
 		return fmt.Errorf("bad session data version %d, expected %d", packet.Version, SessionDataVersion)
 	}
+	
 	stream.SerializeUint64(&packet.SessionId)
+	
 	stream.SerializeBits(&packet.SliceNumber, 32)
+	
+	stream.SerializeBits(&packet.SessionVersion, 8)
+
 	numRelays := int32(0)
 	hasRoute := false
 	if stream.IsWriting() {
 		numRelays = int32(len(packet.Route))
 		hasRoute = numRelays > 0
 	}
+	
 	stream.SerializeBool(&hasRoute) 
 	if hasRoute {
 		stream.SerializeInteger(&numRelays, 0, NEXT_MAX_ROUTE_RELAYS)
@@ -401,6 +418,7 @@ func (packet *SessionData) Serialize(stream Stream) error {
 			stream.SerializeUint64(&packet.Route[i])
 		}
 	}
+	
 	return stream.Error()
 }
 
@@ -2467,9 +2485,6 @@ func main() {
 
 			} else {
 
-				// todo: not yet
-
-				/*
 				// next route
 
 				numRelays := len(nearRelayIds)
@@ -2482,7 +2497,7 @@ func main() {
 					route[i] = nearRelayIds[i]
 				}
 
-				routeChanged := RouteChanged(sessionEntry.route, route)
+				routeChanged := RouteChanged(sessionData.Route, route)
 
 				numNodes := numRelays + 2
 
@@ -2502,28 +2517,32 @@ func main() {
 
 				var routeType int32
 
-				if !sessionEntry.next || routeChanged {
+				if routeChanged {
 
 					// new route
 
-					sessionEntry.version++
-					tokens, err = WriteRouteTokens(sessionEntry.expireTimestamp, sessionEntry.id, sessionEntry.version, 256, 256, numNodes, addresses, publicKeys, routerPrivateKey)
+					routeType = NEXT_ROUTE_TYPE_NEW
+
+					tokens, err = WriteRouteTokens(sessionEntry.expireTimestamp, sessionData.SessionId, uint8(sessionData.SessionVersion), 256, 256, numNodes, addresses, publicKeys, routerPrivateKey)
+
 					if err != nil {
 						fmt.Printf("error: could not write route tokens: %v\n", err)
 						continue
 					}
-					routeType = NEXT_ROUTE_TYPE_NEW
+
 
 				} else {
 
 					// continue route
 
-					tokens, err = WriteContinueTokens(sessionEntry.expireTimestamp, sessionEntry.id, sessionEntry.version, numNodes, publicKeys, routerPrivateKey)
+					routeType = NEXT_ROUTE_TYPE_CONTINUE
+
+					tokens, err = WriteContinueTokens(sessionEntry.expireTimestamp, sessionData.SessionId, uint8(sessionData.SessionVersion), numNodes, publicKeys, routerPrivateKey)
+
 					if err != nil {
 						fmt.Printf("error: could not write continue tokens: %v\n", err)
 						continue
 					}
-					routeType = NEXT_ROUTE_TYPE_CONTINUE
 
 				}
 
@@ -2534,16 +2553,13 @@ func main() {
 					NearRelayIds:         nearRelayIds,
 					NearRelayAddresses:   nearRelayAddresses,
 					RouteType:            routeType,
-					Multipath:            false,
-					Committed:            true,
 					NumTokens:            int32(numNodes),
 					Tokens:               tokens,
-					ServerRoutePublicKey: sessionUpdate.ServerRoutePublicKey,
+					Multipath:            false,
+					Committed:            true,
 				}
 
-				sessionEntry.route = route
-				sessionEntry.next = true
-				*/
+				sessionData.Route = route
 			}
 
 			if sessionResponse == nil {
