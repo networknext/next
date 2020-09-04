@@ -9073,20 +9073,21 @@ struct NextBackendSessionUpdatePacket
     next_address_t server_address;
     uint8_t client_route_public_key[crypto_box_PUBLICKEYBYTES];
     uint8_t server_route_public_key[crypto_box_PUBLICKEYBYTES];
+    uint64_t user_hash;
+    int platform_id;
+    int connection_type;
+    bool next;
+    bool committed;
+    bool reported;
+    uint64_t tag;
+    uint64_t flags;
+    uint64_t user_flags;
 
     // todo
     /*
-    uint64_t user_hash;
-    uint64_t tag;
-    uint64_t flags;
-    bool reported;
-    int platform_id;
-    int connection_type;
     float direct_rtt;
     float direct_jitter;
     float direct_packet_loss;
-    bool next;
-    bool committed;
     float next_rtt;
     float next_jitter;
     float next_packet_loss;
@@ -9101,7 +9102,6 @@ struct NextBackendSessionUpdatePacket
     uint64_t packets_sent_server_to_client;
     uint64_t packets_lost_client_to_server;
     uint64_t packets_lost_server_to_client;
-    uint64_t user_flags;
     */
 
     NextBackendSessionUpdatePacket()
@@ -9138,26 +9138,42 @@ struct NextBackendSessionUpdatePacket
         serialize_bytes( stream, client_route_public_key, crypto_box_PUBLICKEYBYTES );
         serialize_bytes( stream, server_route_public_key, crypto_box_PUBLICKEYBYTES );
 
-        // ...
-
-        /*
         serialize_uint64( stream, user_hash );
+
         serialize_int( stream, platform_id, NEXT_PLATFORM_UNKNOWN, NEXT_PLATFORM_MAX );
-        // todo: bool has_tag
-        serialize_uint64( stream, tag );
+
+        serialize_int( stream, connection_type, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_MAX );
+
+        serialize_bool( stream, next );
+
+        serialize_bool( stream, committed );
+
+        serialize_bool( stream, reported );
+
+        bool has_tag = Stream::IsWriting && tag != 0;
+        serialize_bool( stream, has_tag );
+        if ( has_tag )
+        {
+            serialize_uint64( stream, tag );
+        }
+
         bool has_flags = Stream::IsWriting && flags != 0;
         serialize_bool( stream, has_flags );
         if ( has_flags )
         {
             serialize_bits( stream, flags, NEXT_FLAGS_COUNT );
         }
-        serialize_bool( stream, reported );
-        serialize_int( stream, connection_type, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_MAX );
+
+        bool has_user_flags = Stream::IsWriting && user_flags != 0;
+        serialize_bool( stream, has_user_flags );
+        {
+            serialize_uint64( stream, user_flags );
+        }
+
+        /*
         serialize_float( stream, direct_rtt );
         serialize_float( stream, direct_jitter );
         serialize_float( stream, direct_packet_loss );
-        serialize_bool( stream, next );
-        serialize_bool( stream, committed );
         if ( next )
         {
             serialize_float( stream, next_rtt );
@@ -9178,11 +9194,6 @@ struct NextBackendSessionUpdatePacket
         serialize_uint64( stream, packets_sent_server_to_client );
         serialize_uint64( stream, packets_lost_client_to_server );
         serialize_uint64( stream, packets_lost_server_to_client );
-        bool has_user_flags = Stream::IsWriting && user_flags != 0;
-        serialize_bool( stream, has_user_flags );
-        {
-            serialize_uint64( stream, user_flags );
-        }
         */
 
         return true;
