@@ -3954,11 +3954,11 @@ uint64_t next_ping_history_ping_sent( next_ping_history_t * history, double time
 
     next_ping_history_entry_t * entry = &history->entries[index];
 
-    history->sequence++;
-
     entry->sequence = history->sequence;
     entry->time_ping_sent = time;
     entry->time_pong_received = -1.0;
+
+    history->sequence++;
 
     return entry->sequence;
 }
