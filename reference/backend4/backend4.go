@@ -51,8 +51,8 @@ const NEXT_MAX_PACKET_BYTES = 4096
 const NEXT_MTU = 1300
 const NEXT_ADDRESS_BYTES = 19
 const NEXT_MAX_NODES = 7
-const NEXT_SESSION_TOKEN_BYTES = 76
-const NEXT_ENCRYPTED_SESSION_TOKEN_BYTES = 116
+const NEXT_ROUTE_TOKEN_BYTES = 76
+const NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES = 116
 const NEXT_CONTINUE_TOKEN_BYTES = 17
 const NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES = 57
 
@@ -376,7 +376,7 @@ func (packet *NextBackendSessionResponsePacket) Serialize(stream Stream, version
 
 	if packet.RouteType == NEXT_ROUTE_TYPE_NEW {
 		if stream.IsReading() {
-			packet.Tokens = make([]byte, packet.NumTokens*NEXT_ENCRYPTED_SESSION_TOKEN_BYTES)
+			packet.Tokens = make([]byte, packet.NumTokens*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES)
 		}
 		stream.SerializeBytes(packet.Tokens)
 	}
@@ -2202,13 +2202,6 @@ func Decrypt_ChaCha20(encrypted []byte, additional []byte, nonce []byte, private
 	}
 }
 
-func GenerateSessionId() uint64 {
-	var sessionId uint64
-	C.randombytes_buf(unsafe.Pointer(&sessionId), 8)
-	sessionId &= ^((uint64(1)) << 63)
-	return sessionId
-}
-
 func RandomBytes(bytes int) []byte {
 	buffer := make([]byte, bytes)
 	C.randombytes_buf(unsafe.Pointer(&buffer[0]), C.size_t(bytes))
@@ -2255,7 +2248,7 @@ func WriteRouteTokens(expireTimestamp uint64, sessionId uint64, sessionVersion u
 		return nil, fmt.Errorf("invalid numNodes %d. expected value in range [1,%d]", numNodes, NEXT_MAX_NODES)
 	}
 	privateKey := RandomBytes(KeyBytes)
-	tokenData := make([]byte, numNodes*NEXT_ENCRYPTED_SESSION_TOKEN_BYTES)
+	tokenData := make([]byte, numNodes*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES)
 	for i := 0; i < numNodes; i++ {
 		nonce := RandomBytes(NonceBytes)
 		token := &RouteToken{}
@@ -2268,7 +2261,7 @@ func WriteRouteTokens(expireTimestamp uint64, sessionId uint64, sessionVersion u
 			token.nextAddress = addresses[i+1]
 		}
 		token.privateKey = privateKey
-		err := WriteEncryptedRouteToken(tokenData[i*NEXT_ENCRYPTED_SESSION_TOKEN_BYTES:], token, masterPrivateKey[:], publicKeys[i], nonce)
+		err := WriteEncryptedRouteToken(tokenData[i*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:], token, masterPrivateKey[:], publicKeys[i], nonce)
 		if err != nil {
 			return nil, err
 		}
@@ -2297,7 +2290,7 @@ func WriteContinueTokens(expireTimestamp uint64, sessionId uint64, sessionVersio
 func WriteEncryptedRouteToken(buffer []byte, token *RouteToken, senderPrivateKey []byte, receiverPublicKey []byte, nonce []byte) error {
 	copy(buffer, nonce)
 	WriteRouteToken(token, buffer[NonceBytes:])
-	result := Encrypt(senderPrivateKey, receiverPublicKey, nonce, buffer[NonceBytes:], NEXT_SESSION_TOKEN_BYTES)
+	result := Encrypt(senderPrivateKey, receiverPublicKey, nonce, buffer[NonceBytes:], NEXT_ROUTE_TOKEN_BYTES)
 	return result
 }
 
@@ -2518,7 +2511,7 @@ func main() {
 
 				addresses := make([]*net.UDPAddr, numNodes)
 				publicKeys := make([][]byte, numNodes)
-				publicKeys[0] = sessionUpdate.ClientRoutePublicKey[:]
+				publicKeys[0] = sessionUpdate.ClientRoutePublicKey
 
 				for i := 0; i < numRelays; i++ {
 					addresses[1+i] = &nearRelayAddresses[i]
