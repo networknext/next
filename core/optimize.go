@@ -30,7 +30,7 @@ const MaxRelays = 5
 
 const MaxRoutesPerRelayPair = 8
 
-type RouteMatrixEntry struct {
+type RouteEntry struct {
     DirectCost     int32
     NumRoutes      int32
     RouteCost      [MaxRoutesPerRelayPair]int32
@@ -47,6 +47,8 @@ type RouteManager struct {
 }
 
 func (manager *RouteManager) AddRoute(cost int32, relays ...int32) {
+
+    // todo: need to bring back the code to filter out routes with two relays in the same datacenter
 
     // IMPORTANT: Filter out routes with loops. They can happen *very* occasionally.
     loopCheck := make(map[int32]int, len(relays))
@@ -181,61 +183,7 @@ func RouteHash(relays ...int32) uint32 {
     return hash
 }
 
-func main() {
-
-	costData, err := ioutil.ReadFile("cost.txt")
-	if err != nil {
-    	fmt.Printf("error: could not read cost.txt: %v\n", err)
-    	os.Exit(1)
-    }
-
-    costStrings := strings.Split(string(costData), ",")
-
-    costValues := make([]int, len(costStrings))
-    
-    for i := range costStrings {
-    	costValues[i], err = strconv.Atoi(costStrings[i])
-    	if err != nil {
-    		panic(err)
-    	}
-    }
-
-    numRelays := int(math.Sqrt(float64(len(costValues))))
-
-    fmt.Printf("\nLoaded data for %d relays\n", numRelays)
-
-    entryCount := TriMatrixLength(numRelays)
-
-    cost := make([]int32, entryCount)
-
-    for i := 0; i < numRelays; i++ {
-    	for j := 0; j < numRelays; j++ {
-    		if i == j {
-    			continue
-    		}
-    		index := TriMatrixIndex(i,j)
-    		cost[index] = int32(costValues[i+j*numRelays])
-    	}
-    }
-
-    for i := 0; i < numRelays; i++ {
-    	for j := 0; j < numRelays; j++ {
-    		if i == j {
-    			continue
-    		}
-    		index := TriMatrixIndex(i,j)
-    		c := cost[index]
-    		if c != int32(costValues[i+j*numRelays]) {
-    			panic("wtfz")
-    		}
-    	}
-    }
-
-    // -----------------------------------------------------------------------------
-    //                                OPTIMIZATION 
-    // -----------------------------------------------------------------------------
-
-    start := time.Now()
+func Optimize(numRelays int, cost []int32) []RouteEntry {
 
     // build a matrix of indirect routes from relays i -> j that have lower cost than direct, eg. i -> (x) -> j, where x is every other relay
 
@@ -356,7 +304,9 @@ func main() {
 
     // use the indirect matrix to subdivide a route up to 5 hops
 
-    routes := make([]RouteMatrixEntry, entryCount)
+    entryCount := TriMatrixLength(numRelays)
+
+    routes := make([]RouteEntry, entryCount)
 
     wg.Add(numSegments)
 
@@ -472,13 +422,10 @@ func main() {
 
     wg.Wait()
 
-    duration := time.Since(start)
+    return routes
+}
 
-    fmt.Printf("\nOptimization completed in %s\n", duration.String())
-
-    // -----------------------------------------------------------------------------
-    //                                  ANALYSIS
-    // -----------------------------------------------------------------------------
+func Analyze(numRelays int, routes []RouteEntry) {
 
     buckets := make([]int, 6)
 
@@ -517,4 +464,66 @@ func main() {
     }
 
     fmt.Printf("\n")
+
+}
+
+func main() {
+
+	costData, err := ioutil.ReadFile("cost.txt")
+	if err != nil {
+    	fmt.Printf("error: could not read cost.txt: %v\n", err)
+    	os.Exit(1)
+    }
+
+    costStrings := strings.Split(string(costData), ",")
+
+    costValues := make([]int, len(costStrings))
+    
+    for i := range costStrings {
+    	costValues[i], err = strconv.Atoi(costStrings[i])
+    	if err != nil {
+    		panic(err)
+    	}
+    }
+
+    numRelays := int(math.Sqrt(float64(len(costValues))))
+
+    fmt.Printf("\nLoaded data for %d relays\n", numRelays)
+
+    entryCount := TriMatrixLength(numRelays)
+
+    cost := make([]int32, entryCount)
+
+    for i := 0; i < numRelays; i++ {
+    	for j := 0; j < numRelays; j++ {
+    		if i == j {
+    			continue
+    		}
+    		index := TriMatrixIndex(i,j)
+    		cost[index] = int32(costValues[i+j*numRelays])
+    	}
+    }
+
+    for i := 0; i < numRelays; i++ {
+    	for j := 0; j < numRelays; j++ {
+    		if i == j {
+    			continue
+    		}
+    		index := TriMatrixIndex(i,j)
+    		c := cost[index]
+    		if c != int32(costValues[i+j*numRelays]) {
+    			panic("wtfz")
+    		}
+    	}
+    }
+
+    start := time.Now()
+
+    routes := Optimize(numRelays, cost)
+
+    duration := time.Since(start)
+
+    fmt.Printf("\nOptimization completed in %s\n", duration.String())
+
+    Analyze(numRelays, routes)
 }
