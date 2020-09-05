@@ -2215,7 +2215,7 @@ func RandomBytes(bytes int) []byte {
 	return buffer
 }
 
-func WriteSessionToken(token *SessionToken, buffer []byte) {
+func WriteRouteToken(token *RouteToken, buffer []byte) {
 	binary.LittleEndian.PutUint64(buffer[0:], token.expireTimestamp)
 	binary.LittleEndian.PutUint64(buffer[8:], token.sessionId)
 	buffer[8+8] = token.sessionVersion
@@ -2258,7 +2258,7 @@ func WriteRouteTokens(expireTimestamp uint64, sessionId uint64, sessionVersion u
 	tokenData := make([]byte, numNodes*NEXT_ENCRYPTED_SESSION_TOKEN_BYTES)
 	for i := 0; i < numNodes; i++ {
 		nonce := RandomBytes(NonceBytes)
-		token := &SessionToken{}
+		token := &RouteToken{}
 		token.expireTimestamp = expireTimestamp
 		token.sessionId = sessionId
 		token.sessionVersion = sessionVersion
@@ -2268,7 +2268,7 @@ func WriteRouteTokens(expireTimestamp uint64, sessionId uint64, sessionVersion u
 			token.nextAddress = addresses[i+1]
 		}
 		token.privateKey = privateKey
-		err := WriteEncryptedSessionToken(tokenData[i*NEXT_ENCRYPTED_SESSION_TOKEN_BYTES:], token, masterPrivateKey[:], publicKeys[i], nonce)
+		err := WriteEncryptedRouteToken(tokenData[i*NEXT_ENCRYPTED_SESSION_TOKEN_BYTES:], token, masterPrivateKey[:], publicKeys[i], nonce)
 		if err != nil {
 			return nil, err
 		}
@@ -2294,9 +2294,9 @@ func WriteContinueTokens(expireTimestamp uint64, sessionId uint64, sessionVersio
 	return tokenData, nil
 }
 
-func WriteEncryptedSessionToken(buffer []byte, token *SessionToken, senderPrivateKey []byte, receiverPublicKey []byte, nonce []byte) error {
+func WriteEncryptedRouteToken(buffer []byte, token *RouteToken, senderPrivateKey []byte, receiverPublicKey []byte, nonce []byte) error {
 	copy(buffer, nonce)
-	WriteSessionToken(token, buffer[NonceBytes:])
+	WriteRouteToken(token, buffer[NonceBytes:])
 	result := Encrypt(senderPrivateKey, receiverPublicKey, nonce, buffer[NonceBytes:], NEXT_SESSION_TOKEN_BYTES)
 	return result
 }
@@ -2315,7 +2315,7 @@ func ReadEncryptedContinueToken(tokenData []byte, senderPublicKey []byte, receiv
 
 // --------------------------------------------------------
 
-type SessionToken struct {
+type RouteToken struct {
 	expireTimestamp uint64
 	sessionId       uint64
 	sessionVersion  uint8
