@@ -3954,11 +3954,11 @@ uint64_t next_ping_history_ping_sent( next_ping_history_t * history, double time
 
     next_ping_history_entry_t * entry = &history->entries[index];
 
+    history->sequence++;
+
     entry->sequence = history->sequence;
     entry->time_ping_sent = time;
     entry->time_pong_received = -1.0;
-
-    history->sequence++;
 
     return entry->sequence;
 }
@@ -6926,7 +6926,7 @@ void next_client_internal_update_next_pings( next_client_internal_t * client )
         memcpy( private_key, client->route_manager->route_data.current_route_private_key, crypto_box_SECRETKEYBYTES );
         next_platform_mutex_release( &client->route_manager_mutex );
 
-        uint64_t sequence = client->special_send_sequence++;
+        uint64_t sequence = ++client->special_send_sequence;
         sequence |= (1ULL<<62);
 
         uint8_t packet_data[NEXT_MAX_PACKET_BYTES*2];
@@ -10797,7 +10797,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         uint8_t response[NEXT_MAX_PACKET_BYTES*2];
 
-        uint64_t session_send_sequence = entry->special_send_sequence++;
+        uint64_t session_send_sequence = ++entry->special_send_sequence;
         session_send_sequence |= uint64_t(1) << 63;
         session_send_sequence |= uint64_t(1) << 62;
 
@@ -10867,7 +10867,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             return;
         }
 
-        uint64_t send_sequence = entry->special_send_sequence++;
+        uint64_t send_sequence = ++entry->special_send_sequence;
         send_sequence |= uint64_t(1) << 63;
         send_sequence |= uint64_t(1) << 62;
 
