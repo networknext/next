@@ -2387,9 +2387,11 @@ func main() {
 		packetData = packetData[NEXT_PACKET_HASH_BYTES:]
 		packetBytes -= NEXT_PACKET_HASH_BYTES
 
+		// todo: check packet signature
+
 		packetType := packetData[0]
 
-		if packetType == NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET {
+		if packetType == NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET {			
 
 			readStream := CreateReadStream(packetData[1:])
 
@@ -2558,7 +2560,6 @@ func main() {
 						fmt.Printf("error: could not write route tokens: %v\n", err)
 						continue
 					}
-
 
 				} else {
 
