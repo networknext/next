@@ -11471,12 +11471,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             memcpy( packet.client_route_public_key, session->client_route_public_key, crypto_box_PUBLICKEYBYTES );
             memcpy( packet.server_route_public_key, server->server_route_public_key, crypto_box_PUBLICKEYBYTES );
 
-            printf("client route public key:\n");
-            for ( int i = 0; i < int(crypto_box_PUBLICKEYBYTES); ++i )
-            {
-                printf("%d: %d\n", i, int(packet.client_route_public_key[i]));
-            }
- 
             next_assert( session->session_data_bytes >= 0 );
             next_assert( session->session_data_bytes <= NEXT_MAX_SESSION_DATA_BYTES );
             packet.session_data_bytes = session->session_data_bytes;
