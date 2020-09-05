@@ -9141,27 +9141,30 @@ struct NextBackendSessionUpdatePacket
         serialize_int( stream, connection_type, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_MAX );
 
         serialize_bool( stream, next );
-
         serialize_bool( stream, committed );
-
         serialize_bool( stream, reported );
 
         bool has_tag = Stream::IsWriting && tag != 0;
+        bool has_flags = Stream::IsWriting && flags != 0;
+        bool has_user_flags = Stream::IsWriting && user_flags != 0;
+        bool has_lost_packets = Stream::IsWriting && ( packets_lost_client_to_server + packets_lost_server_to_client ) > 0;
+
         serialize_bool( stream, has_tag );
+        serialize_bool( stream, has_flags );
+        serialize_bool( stream, has_user_flags );
+        serialize_bool( stream, has_lost_packets );
+
         if ( has_tag )
         {
             serialize_uint64( stream, tag );
         }
 
-        bool has_flags = Stream::IsWriting && flags != 0;
-        serialize_bool( stream, has_flags );
         if ( has_flags )
         {
             serialize_bits( stream, flags, NEXT_FLAGS_COUNT );
         }
 
-        bool has_user_flags = Stream::IsWriting && user_flags != 0;
-        serialize_bool( stream, has_user_flags );
+        if ( has_user_flags )
         {
             serialize_uint64( stream, user_flags );
         }
@@ -9187,14 +9190,20 @@ struct NextBackendSessionUpdatePacket
             serialize_float( stream, near_relay_packet_loss[i] );
         }
 
-        serialize_uint32( stream, kbps_up );
-        serialize_uint32( stream, kbps_down );
+        if ( next )
+        {
+            serialize_uint32( stream, kbps_up );
+            serialize_uint32( stream, kbps_down );
+        }
 
         serialize_uint64( stream, packets_sent_client_to_server );
         serialize_uint64( stream, packets_sent_server_to_client );
 
-        serialize_uint64( stream, packets_lost_client_to_server );
-        serialize_uint64( stream, packets_lost_server_to_client );
+        if ( has_lost_packets )
+        {
+            serialize_uint64( stream, packets_lost_client_to_server );
+            serialize_uint64( stream, packets_lost_server_to_client );
+        }
 
         return true;
     }
