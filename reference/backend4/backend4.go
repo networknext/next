@@ -265,25 +265,27 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 	stream.SerializeInteger(&packet.ConnectionType, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_MAX)
 
 	stream.SerializeBool(&packet.Next)
-
 	stream.SerializeBool(&packet.Committed)
-
 	stream.SerializeBool(&packet.Reported)
 
 	hasTag := stream.IsWriting() && packet.Tag != 0
+	hasFlags := stream.IsWriting() && packet.Flags != 0
+	hasUserFlags := stream.IsWriting() && packet.UserFlags != 0
+	hasLostPackets := stream.IsWriting() && ( packet.PacketsLostClientToServer + packet.PacketsLostServerToClient ) > 0
+
 	stream.SerializeBool( &hasTag )
+	stream.SerializeBool( &hasFlags )
+	stream.SerializeBool( &hasUserFlags )
+	stream.SerializeBool( &hasLostPackets )
+
 	if hasTag {
 		stream.SerializeUint64(&packet.Tag)
 	}
 
-	hasFlags := stream.IsWriting() && packet.Flags != 0
-	stream.SerializeBool( &hasFlags )
 	if hasFlags {
-		stream.SerializeBits(&packet.Flags, 9)
+		stream.SerializeBits(&packet.Flags, NEXT_FLAGS_COUNT)
 	}
 
-	hasUserFlags := stream.IsWriting() && packet.UserFlags != 0
-	stream.SerializeBool( &hasUserFlags )
 	if hasUserFlags {
 		stream.SerializeUint64(&packet.UserFlags)
 	}
@@ -313,14 +315,18 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 		stream.SerializeFloat32(&packet.NearRelayPacketLoss[i])
 	}
 
-	stream.SerializeUint32(&packet.KbpsUp)
-	stream.SerializeUint32(&packet.KbpsDown)
+	if packet.Next {
+		stream.SerializeUint32(&packet.KbpsUp)
+		stream.SerializeUint32(&packet.KbpsDown)
+	}
 
 	stream.SerializeUint64(&packet.PacketsSentClientToServer)
 	stream.SerializeUint64(&packet.PacketsSentServerToClient)
 
-	stream.SerializeUint64(&packet.PacketsLostClientToServer)
-	stream.SerializeUint64(&packet.PacketsLostServerToClient)
+	if hasLostPackets {
+		stream.SerializeUint64(&packet.PacketsLostClientToServer)
+		stream.SerializeUint64(&packet.PacketsLostServerToClient)
+	}
 
 	return stream.Error()
 }
@@ -2266,7 +2272,6 @@ func WriteRouteTokens(expireTimestamp uint64, sessionId uint64, sessionVersion u
 	if numNodes < 1 || numNodes > NEXT_MAX_NODES {
 		return nil, fmt.Errorf("invalid numNodes %d. expected value in range [1,%d]", numNodes, NEXT_MAX_NODES)
 	}
-	fmt.Printf("numNodes = %d\n", numNodes)
 	privateKey := RandomBytes(KeyBytes)
 	tokenData := make([]byte, numNodes*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES)
 	for i := 0; i < numNodes; i++ {
@@ -2281,11 +2286,6 @@ func WriteRouteTokens(expireTimestamp uint64, sessionId uint64, sessionVersion u
 			token.nextAddress = addresses[i+1]
 		}
 		token.privateKey = privateKey
-		fmt.Printf("encrypt token %d\n", i)
-		fmt.Printf("token = %v\n", token)
-		fmt.Printf("private key = %v\n", masterPrivateKey)
-		fmt.Printf("public key = %v\n", publicKeys[i])
-		fmt.Printf("nonce = %v\n", nonce)
 		err := WriteEncryptedRouteToken(tokenData[i*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:], token, masterPrivateKey[:], publicKeys[i], nonce)
 		if err != nil {
 			return nil, err
@@ -2518,6 +2518,8 @@ func main() {
 				addresses := make([]*net.UDPAddr, numNodes)
 				publicKeys := make([][]byte, numNodes)
 				publicKeys[0] = sessionUpdate.ClientRoutePublicKey
+
+				fmt.Printf("client route public key = %v\n", sessionUpdate.ClientRoutePublicKey)
 
 				for i := 0; i < numRelays; i++ {
 					addresses[1+i] = &nearRelayAddresses[i]
