@@ -5787,6 +5787,9 @@ next_client_internal_t * next_client_internal_create( void * context, const char
 
     next_client_internal_verify_sentinels( client );
 
+    client->special_send_sequence = 1;
+    client->internal_send_sequence = 1;
+
     return client;
 }
 
@@ -8827,6 +8830,9 @@ void next_clear_session_entry( next_session_entry_t * entry, const next_address_
     next_packet_loss_tracker_reset( &entry->packet_loss_tracker );
 
     next_session_entry_verify_sentinels( entry );
+
+    entry->special_send_sequence = 1;
+    entry->internal_send_sequence = 1;
 }
 
 next_session_entry_t * next_session_manager_add( next_session_manager_t * session_manager, const next_address_t * address, uint64_t session_id, const uint8_t * ephemeral_private_key, const uint8_t * upgrade_token )
