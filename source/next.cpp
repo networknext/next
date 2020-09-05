@@ -8938,6 +8938,10 @@ next_session_entry_t * next_session_manager_find_by_session_id( next_session_man
 {
     next_session_manager_verify_sentinels( session_manager );
     next_assert( session_id );
+    if ( session_id == 0 )
+    {
+        return NULL;
+    }
     const int max_index = session_manager->max_entry_index;
     for ( int i = 0; i <= max_index; ++i )
     {
