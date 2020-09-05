@@ -406,6 +406,7 @@ type SessionData struct {
 	SessionId uint64
 	SessionVersion uint32
 	SliceNumber uint32
+	ExpireTimestamp uint64
 	Route []uint64
 }
 
@@ -421,6 +422,8 @@ func (packet *SessionData) Serialize(stream Stream) error {
 	stream.SerializeBits(&packet.SliceNumber, 32)
 	
 	stream.SerializeBits(&packet.SessionVersion, 8)
+
+	stream.SerializeUint64(&packet.ExpireTimestamp)
 
 	numRelays := int32(0)
 	hasRoute := false
@@ -2470,13 +2473,18 @@ func main() {
 				}
 			}
 
+			// todo: various checks on the session data to make sure it's valid
+
+			sessionData.Version = SessionDataVersion
+			sessionData.SessionId = sessionUpdate.SessionId
+			sessionData.SliceNumber = sessionUpdate.SliceNumber + 1
+
 			var sessionResponse *NextBackendSessionResponsePacket
 
 			backend.mutex.RLock()
 			sessionEntry := backend.sessionDatabase[sessionUpdate.SessionId]
-			backend.mutex.RUnlock()
-
 			sessionEntry.expireTimestamp = uint64(time.Now().Unix()) + 15
+			backend.mutex.RUnlock()
 
 			nearRelayIds, nearRelayAddresses := GetNearRelays()
 
@@ -2519,8 +2527,6 @@ func main() {
 				publicKeys := make([][]byte, numNodes)
 				publicKeys[0] = sessionUpdate.ClientRoutePublicKey
 
-				fmt.Printf("client route public key = %v\n", sessionUpdate.ClientRoutePublicKey)
-
 				for i := 0; i < numRelays; i++ {
 					addresses[1+i] = &nearRelayAddresses[i]
 					publicKeys[1+i] = relayPublicKey
@@ -2533,13 +2539,20 @@ func main() {
 
 				var routeType int32
 
+				if sessionData.ExpireTimestamp == 0 {
+					sessionData.ExpireTimestamp = uint64(time.Now().Unix())
+				}
+
 				if routeChanged {
 
 					// new route
 
 					routeType = NEXT_ROUTE_TYPE_NEW
 
-					tokens, err = WriteRouteTokens(sessionEntry.expireTimestamp, sessionData.SessionId, uint8(sessionData.SessionVersion), 256, 256, numNodes, addresses, publicKeys, routerPrivateKey)
+					sessionData.ExpireTimestamp += 20
+					sessionData.SessionVersion += 1
+
+					tokens, err = WriteRouteTokens(sessionData.ExpireTimestamp, sessionData.SessionId, uint8(sessionData.SessionVersion), 256, 256, numNodes, addresses, publicKeys, routerPrivateKey)
 
 					if err != nil {
 						fmt.Printf("error: could not write route tokens: %v\n", err)
@@ -2553,7 +2566,9 @@ func main() {
 
 					routeType = NEXT_ROUTE_TYPE_CONTINUE
 
-					tokens, err = WriteContinueTokens(sessionEntry.expireTimestamp, sessionData.SessionId, uint8(sessionData.SessionVersion), numNodes, publicKeys, routerPrivateKey)
+					sessionData.ExpireTimestamp += 10
+
+					tokens, err = WriteContinueTokens(sessionData.ExpireTimestamp, sessionData.SessionId, uint8(sessionData.SessionVersion), numNodes, publicKeys, routerPrivateKey)
 
 					if err != nil {
 						fmt.Printf("error: could not write continue tokens: %v\n", err)
@@ -2589,15 +2604,6 @@ func main() {
 			}
 			backend.sessionDatabase[sessionUpdate.SessionId] = sessionEntry
 			backend.mutex.Unlock()
-
-			if sessionUpdate.SliceNumber != 0 {
-				if sessionData.SessionId != sessionUpdate.SessionId {
-					panic("bad session id in session data")
-				}
-				if sessionData.SliceNumber != sessionUpdate.SliceNumber {
-					panic("bad slice number in session data")
-				}
-			}
 
 			sessionData.Version = SessionDataVersion
 			sessionData.SessionId = sessionUpdate.SessionId
