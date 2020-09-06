@@ -4,9 +4,11 @@ package main
 import (
     "testing"
     "math"
+    "net"
     "io/ioutil"
     "strings"
     "strconv"
+    "hash/fnv"
     "github.com/stretchr/testify/assert"
 )
 
@@ -227,7 +229,9 @@ func TestOptimize(t *testing.T) {
     	}
     }
 
-    routes := Optimize(numRelays, cost)
+    costThreshold := int32(5)
+
+    routes := Optimize(numRelays, cost, costThreshold)
 
     buckets := Analyze(numRelays, routes)
 
@@ -252,5 +256,388 @@ func TestOptimize(t *testing.T) {
                 relays[routes[i].RouteRelays[j][k]] = true
             }
         }
+    }
+}
+
+func GetTestRelayId(name string) uint32 {
+    hash := fnv.New32a()
+    hash.Write([]byte(name))
+    return hash.Sum32()
+}
+
+type TestRelayData struct {
+    id         uint32
+    name       string
+    address    *net.UDPAddr
+    publicKey  []byte
+    privateKey []byte
+    index      int
+}
+
+type TestEnvironment struct {
+    relayArray []*TestRelayData
+    relays     map[string]*TestRelayData
+    cost       [][]int32
+}
+
+func NewTestEnvironment() *TestEnvironment {
+    env := &TestEnvironment{}
+    env.relays = make(map[string]*TestRelayData)
+    return env
+}
+
+func (env *TestEnvironment) Clear() {
+    numRelays := len(env.relays)
+    env.cost = make([][]int32, numRelays)
+    for i := 0; i < numRelays; i++ {
+        env.cost[i] = make([]int32, numRelays)
+        for j := 0; j < numRelays; j++ {
+            env.cost[i][j] = -1
+        }
+    }
+}
+
+func (env *TestEnvironment) AddRelay(relayName string, relayAddress string) {
+    relay := &TestRelayData{}
+    relay.id = GetTestRelayId(relayName)
+    relay.name = relayName
+    relay.address = ParseAddress(relayAddress)
+    var err error
+    relay.publicKey, relay.privateKey, err = GenerateRelayKeyPair()
+    if err != nil {
+        panic(err)
+    }
+    relay.index = len(env.relayArray)
+    env.relays[relayName] = relay
+    env.relayArray = append(env.relayArray, relay)
+    env.Clear()
+}
+
+func (env *TestEnvironment) SetCost(sourceRelayName string, destRelayName string, cost int32) {
+    i := env.relays[sourceRelayName].index
+    j := env.relays[destRelayName].index
+    if j > i {
+        i, j = j, i
+    }
+    env.cost[i][j] = cost
+}
+
+func (env *TestEnvironment) GetRelayIndex(relayName string) int {
+    relayData := env.GetRelayData(relayName)
+    if relayData != nil {
+        return relayData.index
+    }
+    return -1
+}
+
+func (env *TestEnvironment) GetRelayData(relayName string) *TestRelayData {
+    return env.relays[relayName]
+}
+
+func (env *TestEnvironment) GetCostMatrix() ([]int32, int) {
+    numRelays := len(env.relays)
+    entryCount := TriMatrixLength(numRelays)
+    costMatrix := make([]int32, entryCount)
+    for i := 0; i < numRelays; i++ {
+        for j := 0; j < i; j++ {
+            index := TriMatrixIndex(i, j)
+            costMatrix[index] = env.cost[i][j]
+        }
+    }
+    return costMatrix, numRelays
+}
+
+type TestRouteData struct {
+    cost   int32
+    relays []string
+}
+
+func (env *TestEnvironment) GetRoutes(routeMatrix []RouteEntry, sourceRelayName string, destRelayName string) []TestRouteData {
+    sourceRelay := env.relays[sourceRelayName]
+    destRelay := env.relays[destRelayName]
+    i := sourceRelay.index
+    j := destRelay.index
+    if i == j {
+        return nil
+    }
+    index := TriMatrixIndex(i, j)
+    entry := routeMatrix[index]
+    testRouteData := make([]TestRouteData, entry.NumRoutes)
+    for k := 0; k < int(entry.NumRoutes); k++ {
+        testRouteData[k].cost = entry.RouteCost[k]
+        testRouteData[k].relays = make([]string, entry.RouteNumRelays[k])
+        if j < i {
+            for l := 0; l < int(entry.RouteNumRelays[k]); l++ {
+                relayIndex := entry.RouteRelays[k][l]
+                testRouteData[k].relays[l] = env.relayArray[relayIndex].name
+            }
+        } else {
+            for l := 0; l < int(entry.RouteNumRelays[k]); l++ {
+                relayIndex := entry.RouteRelays[k][int(entry.RouteNumRelays[k])-1-l]
+                testRouteData[k].relays[l] = env.relayArray[relayIndex].name
+            }
+
+        }
+    }
+    return testRouteData
+}
+
+func TestTheTestEnvironment(t *testing.T) {
+
+    t.Parallel()
+
+    env := NewTestEnvironment()
+
+    env.AddRelay("losangeles", "10.0.0.1")
+    env.AddRelay("chicago", "10.0.0.2")
+    env.AddRelay("a", "10.0.0.3")
+    env.AddRelay("b", "10.0.0.4")
+    env.AddRelay("c", "10.0.0.5")
+    env.AddRelay("d", "10.0.0.6")
+    env.AddRelay("e", "10.0.0.7")
+
+    env.SetCost("losangeles", "chicago", 100)
+
+    costMatrix, numRelays := env.GetCostMatrix()
+
+    routeMatrix := Optimize(numRelays, costMatrix, 5)
+
+    sourceIndex := env.GetRelayIndex("losangeles")
+    destIndex := env.GetRelayIndex("chicago")
+
+    assert.True(t, sourceIndex != -1 )
+    assert.True(t, destIndex != -1 )
+
+    routeIndex := TriMatrixIndex(sourceIndex, destIndex)
+    
+    assert.Equal(t, int32(1), routeMatrix[routeIndex].NumRoutes)
+}
+
+func TestIndirectRoute3(t *testing.T) {
+
+    t.Parallel()
+
+    env := NewTestEnvironment()
+
+    env.AddRelay("losangeles", "10.0.0.1")
+    env.AddRelay("chicago", "10.0.0.2")
+    env.AddRelay("a", "10.0.0.3")
+    env.AddRelay("b", "10.0.0.4")
+    env.AddRelay("c", "10.0.0.5")
+    env.AddRelay("d", "10.0.0.6")
+    env.AddRelay("e", "10.0.0.7")
+
+    env.SetCost("losangeles", "a", 10)
+    env.SetCost("a", "chicago", 10)
+
+    costMatrix, numRelays := env.GetCostMatrix()
+
+    routeMatrix := Optimize(numRelays, costMatrix, 5)
+
+    routes := env.GetRoutes(routeMatrix, "losangeles", "chicago")
+
+    assert.Equal(t, 1, len(routes))
+    if len(routes) == 1 {
+        assert.Equal(t, int32(20), routes[0].cost)
+        assert.Equal(t, 3, len(routes[0].relays))
+        if len(routes[0].relays) == 3 {
+            assert.Equal(t, []string{"losangeles", "a", "chicago"}, routes[0].relays)
+        }
+    }
+}
+
+func TestIndirectRoute4(t *testing.T) {
+
+    t.Parallel()
+
+    env := NewTestEnvironment()
+
+    env.AddRelay("losangeles", "10.0.0.1")
+    env.AddRelay("chicago", "10.0.0.2")
+    env.AddRelay("a", "10.0.0.3")
+    env.AddRelay("b", "10.0.0.4")
+    env.AddRelay("c", "10.0.0.5")
+    env.AddRelay("d", "10.0.0.6")
+    env.AddRelay("e", "10.0.0.7")
+
+    env.SetCost("losangeles", "a", 10)
+    env.SetCost("losangeles", "b", 100)
+    env.SetCost("a", "b", 10)
+    env.SetCost("b", "chicago", 10)
+
+    costMatrix, numRelays := env.GetCostMatrix()
+
+    routeMatrix := Optimize(numRelays, costMatrix, 5)
+
+    routes := env.GetRoutes(routeMatrix, "losangeles", "chicago")
+
+    assert.True(t, len(routes) >= 1)
+    if len(routes) >= 1 {
+        assert.Equal(t, int32(30), routes[0].cost)
+        assert.Equal(t, []string{"losangeles", "a", "b", "chicago"}, routes[0].relays)
+    }
+}
+
+func TestIndirectRoute5(t *testing.T) {
+
+    t.Parallel()
+
+    env := NewTestEnvironment()
+
+    env.AddRelay("losangeles", "10.0.0.1")
+    env.AddRelay("chicago", "10.0.0.2")
+    env.AddRelay("a", "10.0.0.3")
+    env.AddRelay("b", "10.0.0.4")
+    env.AddRelay("c", "10.0.0.5")
+    env.AddRelay("d", "10.0.0.6")
+    env.AddRelay("e", "10.0.0.7")
+
+    env.SetCost("losangeles", "a", 10)
+    env.SetCost("a", "b", 10)
+    env.SetCost("b", "c", 10)
+    env.SetCost("c", "chicago", 10)
+
+    env.SetCost("losangeles", "b", 100)
+    env.SetCost("b", "chicago", 100)
+
+    costMatrix, numRelays := env.GetCostMatrix()
+
+    routeMatrix := Optimize(numRelays, costMatrix, 5)
+
+    routes := env.GetRoutes(routeMatrix, "losangeles", "chicago")
+
+    assert.True(t, len(routes) >= 1)
+    if len(routes) >= 1 {
+        assert.Equal(t, int32(40), routes[0].cost)
+        assert.Equal(t, []string{"losangeles", "a", "b", "c", "chicago"}, routes[0].relays)
+    }
+}
+
+func TestFasterRoute3(t *testing.T) {
+
+    t.Parallel()
+
+    env := NewTestEnvironment()
+
+    env.AddRelay("losangeles", "10.0.0.1")
+    env.AddRelay("chicago", "10.0.0.2")
+    env.AddRelay("a", "10.0.0.3")
+
+    env.SetCost("losangeles", "chicago", 100)
+    env.SetCost("losangeles", "a", 10)
+    env.SetCost("a", "chicago", 10)
+
+    costMatrix, numRelays := env.GetCostMatrix()
+
+    routeMatrix := Optimize(numRelays, costMatrix, 5)
+
+    routes := env.GetRoutes(routeMatrix, "losangeles", "chicago")
+
+    assert.Equal(t, 2, len(routes))
+    if len(routes) == 2 {
+        assert.Equal(t, int32(20), routes[0].cost)
+        assert.Equal(t, []string{"losangeles", "a", "chicago"}, routes[0].relays)
+        assert.Equal(t, int32(100), routes[1].cost)
+        assert.Equal(t, []string{"losangeles", "chicago"}, routes[1].relays)
+    }
+}
+
+func TestFasterRoute4(t *testing.T) {
+
+    t.Parallel()
+
+    env := NewTestEnvironment()
+
+    env.AddRelay("losangeles", "10.0.0.1")
+    env.AddRelay("chicago", "10.0.0.2")
+    env.AddRelay("a", "10.0.0.3")
+    env.AddRelay("b", "10.0.0.4")
+
+    env.SetCost("losangeles", "chicago", 100)
+    env.SetCost("losangeles", "a", 10)
+    env.SetCost("a", "chicago", 50)
+    env.SetCost("a", "b", 10)
+    env.SetCost("b", "chicago", 10)
+
+    costMatrix, numRelays := env.GetCostMatrix()
+
+    routeMatrix := Optimize(numRelays, costMatrix, 5)
+
+    routes := env.GetRoutes(routeMatrix, "losangeles", "chicago")
+
+    assert.Equal(t, 3, len(routes))
+    if len(routes) == 3 {
+        assert.Equal(t, int32(30), routes[0].cost)
+        assert.Equal(t, []string{"losangeles", "a", "b", "chicago"}, routes[0].relays)
+    }
+}
+
+func TestFasterRoute5(t *testing.T) {
+
+    t.Parallel()
+
+    env := NewTestEnvironment()
+
+    env.AddRelay("losangeles", "10.0.0.1")
+    env.AddRelay("chicago", "10.0.0.2")
+    env.AddRelay("a", "10.0.0.3")
+    env.AddRelay("b", "10.0.0.4")
+    env.AddRelay("c", "10.0.0.5")
+
+    env.SetCost("losangeles", "chicago", 1000)
+    env.SetCost("losangeles", "a", 10)
+    env.SetCost("losangeles", "b", 100)
+    env.SetCost("losangeles", "c", 100)
+    env.SetCost("a", "chicago", 100)
+    env.SetCost("b", "chicago", 100)
+    env.SetCost("c", "chicago", 10)
+    env.SetCost("a", "b", 10)
+    env.SetCost("a", "c", 100)
+    env.SetCost("b", "c", 10)
+
+    costMatrix, numRelays := env.GetCostMatrix()
+
+    routeMatrix := Optimize(numRelays, costMatrix, 5)
+
+    routes := env.GetRoutes(routeMatrix, "losangeles", "chicago")
+
+    assert.Equal(t, 7, len(routes))
+    if len(routes) == 7 {
+        assert.Equal(t, int32(40), routes[0].cost)
+        assert.Equal(t, []string{"losangeles", "a", "b", "c", "chicago"}, routes[0].relays)
+    }
+}
+
+func TestSlowerRoute(t *testing.T) {
+
+    t.Parallel()
+
+    env := NewTestEnvironment()
+
+    env.AddRelay("losangeles", "10.0.0.1")
+    env.AddRelay("chicago", "10.0.0.2")
+    env.AddRelay("a", "10.0.0.3")
+    env.AddRelay("b", "10.0.0.4")
+    env.AddRelay("c", "10.0.0.5")
+
+    env.SetCost("losangeles", "chicago", 10)
+    env.SetCost("losangeles", "a", 100)
+    env.SetCost("a", "chicago", 100)
+    env.SetCost("b", "chicago", 100)
+    env.SetCost("c", "chicago", 100)
+    env.SetCost("a", "b", 100)
+    env.SetCost("a", "c", 100)
+    env.SetCost("b", "c", 100)
+
+    costMatrix, numRelays := env.GetCostMatrix()
+
+    routeMatrix := Optimize(numRelays, costMatrix, 5)
+
+    routes := env.GetRoutes(routeMatrix, "losangeles", "chicago")
+
+    assert.Equal(t, 1, len(routes))
+    if len(routes) == 1 {
+        assert.Equal(t, int32(10), routes[0].cost)
+        assert.Equal(t, []string{"losangeles", "chicago"}, routes[0].relays)
     }
 }

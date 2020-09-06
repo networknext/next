@@ -2,10 +2,14 @@
 package main
 
 import (
+    "net"
     "runtime"
     "sync"
     "sort"
     "math"
+    "math/rand"
+    "strconv"
+    "crypto/ed25519"
 )
 
 const MaxRelays = 5
@@ -43,6 +47,40 @@ func TriMatrixIndex(i, j int) int {
 	} else {
         return j*(j+1)/2 - j + i        
     }
+}
+
+func ParseAddress(input string) *net.UDPAddr {
+    address := &net.UDPAddr{}
+    ip_string, port_string, err := net.SplitHostPort(input)
+    if err != nil {
+        address.IP = net.ParseIP(input)
+        address.Port = 0
+        return address
+    }
+    address.IP = net.ParseIP(ip_string)
+    address.Port, _ = strconv.Atoi(port_string)
+    return address
+}
+
+func GenerateRelayKeyPair() ([]byte, []byte, error) {
+    publicKey, privateKey, err := ed25519.GenerateKey(nil)
+    return publicKey, privateKey, err
+}
+
+func GenerateCustomerKeyPair() ([]byte, []byte, error) {
+    customerId := make([]byte, 8)
+    rand.Read(customerId)
+    publicKey, privateKey, err := ed25519.GenerateKey(nil)
+    if err != nil {
+        return nil, nil, err
+    }
+    customerPublicKey := make([]byte, 0)
+    customerPublicKey = append(customerPublicKey, customerId...)
+    customerPublicKey = append(customerPublicKey, publicKey...)
+    customerPrivateKey := make([]byte, 0)
+    customerPrivateKey = append(customerPrivateKey, customerId...)
+    customerPrivateKey = append(customerPrivateKey, privateKey...)
+    return customerPublicKey, customerPrivateKey, nil
 }
 
 type RouteEntry struct {
@@ -198,7 +236,7 @@ func RouteHash(relays ...int32) uint32 {
     return hash
 }
 
-func Optimize(numRelays int, cost []int32) []RouteEntry {
+func Optimize(numRelays int, cost []int32, costThreshold int32) []RouteEntry {
 
     // build a matrix of indirect routes from relays i -> j that have lower cost than direct, eg. i -> (x) -> j, where x is every other relay
 
@@ -222,8 +260,6 @@ func Optimize(numRelays int, cost []int32) []RouteEntry {
     var wg sync.WaitGroup
 
     wg.Add(numSegments)
-
-    costThreshold := int32(5)
 
     for segment := 0; segment < numSegments; segment++ {
 
