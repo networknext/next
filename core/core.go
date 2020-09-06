@@ -1,7 +1,14 @@
 
 package main
 
+// #cgo pkg-config: libsodium
+// #include <sodium.h>
+import "C"
+
 import (
+    "encoding/binary"
+    "unsafe"
+    "fmt"
     "net"
     "runtime"
     "sync"
@@ -11,6 +18,13 @@ import (
     "strconv"
     "crypto/ed25519"
 )
+
+const NEXT_MAX_NODES = 7
+const NEXT_ADDRESS_BYTES = 19
+const NEXT_ROUTE_TOKEN_BYTES = 76
+const NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES = 116
+const NEXT_CONTINUE_TOKEN_BYTES = 17
+const NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES = 57
 
 const MaxRelays = 5
 const MaxRoutesPerRelayPair = 8
@@ -49,19 +63,6 @@ func TriMatrixIndex(i, j int) int {
     }
 }
 
-func ParseAddress(input string) *net.UDPAddr {
-    address := &net.UDPAddr{}
-    ip_string, port_string, err := net.SplitHostPort(input)
-    if err != nil {
-        address.IP = net.ParseIP(input)
-        address.Port = 0
-        return address
-    }
-    address.IP = net.ParseIP(ip_string)
-    address.Port, _ = strconv.Atoi(port_string)
-    return address
-}
-
 func GenerateRelayKeyPair() ([]byte, []byte, error) {
     publicKey, privateKey, err := ed25519.GenerateKey(nil)
     return publicKey, privateKey, err
@@ -83,13 +84,59 @@ func GenerateCustomerKeyPair() ([]byte, []byte, error) {
     return customerPublicKey, customerPrivateKey, nil
 }
 
-type RouteEntry struct {
-    DirectCost     int32
-    NumRoutes      int32
-    RouteCost      [MaxRoutesPerRelayPair]int32
-    RouteNumRelays [MaxRoutesPerRelayPair]int32
-    RouteRelays    [MaxRoutesPerRelayPair][MaxRelays]int32
+func ParseAddress(input string) *net.UDPAddr {
+    address := &net.UDPAddr{}
+    ip_string, port_string, err := net.SplitHostPort(input)
+    if err != nil {
+        address.IP = net.ParseIP(input)
+        address.Port = 0
+        return address
+    }
+    address.IP = net.ParseIP(ip_string)
+    address.Port, _ = strconv.Atoi(port_string)
+    return address
 }
+
+const (
+    ADDRESS_NONE = 0
+    ADDRESS_IPV4 = 1
+    ADDRESS_IPV6 = 2
+)
+
+func WriteAddress(buffer []byte, address *net.UDPAddr) {
+    if address == nil {
+        buffer[0] = ADDRESS_NONE
+        return
+    }
+    ipv4 := address.IP.To4()
+    port := address.Port
+    if ipv4 != nil {
+        buffer[0] = ADDRESS_IPV4
+        buffer[1] = ipv4[0]
+        buffer[2] = ipv4[1]
+        buffer[3] = ipv4[2]
+        buffer[4] = ipv4[3]
+        buffer[5] = (byte)(port & 0xFF)
+        buffer[6] = (byte)(port >> 8)
+    } else {
+        buffer[0] = ADDRESS_IPV6
+        copy(buffer[1:], address.IP)
+        buffer[17] = (byte)(port & 0xFF)
+        buffer[18] = (byte)(port >> 8)
+    }
+}
+
+func ReadAddress(buffer []byte) *net.UDPAddr {
+    addressType := buffer[0]
+    if addressType == ADDRESS_IPV4 {
+        return &net.UDPAddr{IP: net.IPv4(buffer[1], buffer[2], buffer[3], buffer[4]), Port: ((int)(binary.LittleEndian.Uint16(buffer[5:])))}
+    } else if addressType == ADDRESS_IPV6 {
+        return &net.UDPAddr{IP: buffer[1:], Port: ((int)(binary.LittleEndian.Uint16(buffer[17:])))}
+    }
+    return nil
+}
+
+// ---------------------------------------------------
 
 type RouteManager struct {
     NumRoutes      int
@@ -234,6 +281,14 @@ func RouteHash(relays ...int32) uint32 {
         hash *= prime
     }
     return hash
+}
+
+type RouteEntry struct {
+    DirectCost     int32
+    NumRoutes      int32
+    RouteCost      [MaxRoutesPerRelayPair]int32
+    RouteNumRelays [MaxRoutesPerRelayPair]int32
+    RouteRelays    [MaxRoutesPerRelayPair][MaxRelays]int32
 }
 
 func Optimize(numRelays int, cost []int32, costThreshold int32) []RouteEntry {
@@ -506,4 +561,195 @@ func Analyze(numRelays int, routes []RouteEntry) []int {
 
     return buckets
 
+}
+
+// ---------------------------------------------------
+
+type RouteToken struct {
+    expireTimestamp uint64
+    sessionId       uint64
+    sessionVersion  uint8
+    kbpsUp          uint32
+    kbpsDown        uint32
+    nextAddress     *net.UDPAddr
+    privateKey      []byte
+}
+
+type ContinueToken struct {
+    expireTimestamp uint64
+    sessionId       uint64
+    sessionVersion  uint8
+}
+
+const Crypto_kx_PUBLICKEYBYTES = C.crypto_kx_PUBLICKEYBYTES
+const Crypto_box_PUBLICKEYBYTES = C.crypto_box_PUBLICKEYBYTES
+
+const KeyBytes = 32
+const NonceBytes = 24
+const SignatureBytes = C.crypto_sign_BYTES
+const PublicKeyBytes = C.crypto_sign_PUBLICKEYBYTES
+
+func Encrypt(senderPrivateKey []byte, receiverPublicKey []byte, nonce []byte, buffer []byte, bytes int) error {
+    result := C.crypto_box_easy((*C.uchar)(&buffer[0]),
+        (*C.uchar)(&buffer[0]),
+        C.ulonglong(bytes),
+        (*C.uchar)(&nonce[0]),
+        (*C.uchar)(&receiverPublicKey[0]),
+        (*C.uchar)(&senderPrivateKey[0]))
+    if result != 0 {
+        return fmt.Errorf("failed to encrypt: result = %d", result)
+    } else {
+        return nil
+    }
+}
+
+func Decrypt(senderPublicKey []byte, receiverPrivateKey []byte, nonce []byte, buffer []byte, bytes int) error {
+    result := C.crypto_box_open_easy(
+        (*C.uchar)(&buffer[0]),
+        (*C.uchar)(&buffer[0]),
+        C.ulonglong(bytes),
+        (*C.uchar)(&nonce[0]),
+        (*C.uchar)(&senderPublicKey[0]),
+        (*C.uchar)(&receiverPrivateKey[0]))
+    if result != 0 {
+        return fmt.Errorf("failed to decrypt: result = %d", result)
+    } else {
+        return nil
+    }
+}
+
+func Encrypt_ChaCha20(buffer []byte, additional []byte, privateKey []byte) ([]byte, []byte, error) {
+    nonce := RandomBytes(C.crypto_aead_xchacha20poly1305_ietf_NPUBBYTES)
+    encrypted := make([]byte, len(buffer)+C.crypto_aead_xchacha20poly1305_ietf_ABYTES)
+    var encryptedLength = C.ulonglong(0)
+    result := C.crypto_aead_xchacha20poly1305_ietf_encrypt((*C.uchar)(&encrypted[0]), &encryptedLength,
+        (*C.uchar)(&buffer[0]), C.ulonglong(len(buffer)),
+        (*C.uchar)(&additional[0]), C.ulonglong(len(additional)),
+        nil, (*C.uchar)(&nonce[0]), (*C.uchar)(&privateKey[0]))
+    if result != 0 {
+        return nil, nil, fmt.Errorf("failed to encrypt chacha20: result = %d", result)
+    } else {
+        return encrypted, nonce, nil
+    }
+}
+
+func Decrypt_ChaCha20(encrypted []byte, additional []byte, nonce []byte, privateKey []byte) ([]byte, error) {
+    if len(encrypted) <= C.crypto_aead_xchacha20poly1305_ietf_ABYTES {
+        return nil, fmt.Errorf("failed to decrypt chacha20: encrypted data is too small")
+    }
+    decrypted := make([]byte, len(encrypted)-C.crypto_aead_xchacha20poly1305_ietf_ABYTES)
+    var decryptedLength = C.ulonglong(0)
+    result := C.crypto_aead_xchacha20poly1305_ietf_decrypt((*C.uchar)(&decrypted[0]), &decryptedLength, nil,
+        (*C.uchar)(&encrypted[0]), C.ulonglong(len(encrypted)),
+        (*C.uchar)(&additional[0]), C.ulonglong(len(additional)),
+        (*C.uchar)(&nonce[0]), (*C.uchar)(&privateKey[0]))
+    if result != 0 {
+        return nil, fmt.Errorf("failed to decrypt chacha20: result = %d", result)
+    } else {
+        return decrypted, nil
+    }
+}
+
+func RandomBytes(bytes int) []byte {
+    buffer := make([]byte, bytes)
+    C.randombytes_buf(unsafe.Pointer(&buffer[0]), C.size_t(bytes))
+    return buffer
+}
+
+func WriteRouteToken(token *RouteToken, buffer []byte) {
+    binary.LittleEndian.PutUint64(buffer[0:], token.expireTimestamp)
+    binary.LittleEndian.PutUint64(buffer[8:], token.sessionId)
+    buffer[8+8] = token.sessionVersion
+    binary.LittleEndian.PutUint32(buffer[8+8+1:], token.kbpsUp)
+    binary.LittleEndian.PutUint32(buffer[8+8+1+4:], token.kbpsDown)
+    WriteAddress(buffer[8+8+1+4+4:], token.nextAddress)
+    copy(buffer[8+8+1+4+4+NEXT_ADDRESS_BYTES:], token.privateKey)
+}
+
+func WriteContinueToken(token *ContinueToken, buffer []byte) {
+    binary.LittleEndian.PutUint64(buffer[0:], token.expireTimestamp)
+    binary.LittleEndian.PutUint64(buffer[8:], token.sessionId)
+    buffer[8+8] = token.sessionVersion
+}
+
+func ReadContinueToken(buffer []byte) (*ContinueToken, error) {
+    if len(buffer) < NEXT_CONTINUE_TOKEN_BYTES {
+        return nil, fmt.Errorf("buffer too small to read continue token")
+    }
+    token := &ContinueToken{}
+    token.expireTimestamp = binary.LittleEndian.Uint64(buffer[0:])
+    token.sessionId = binary.LittleEndian.Uint64(buffer[8:])
+    token.sessionVersion = buffer[8+8]
+    return token, nil
+}
+
+func WriteEncryptedContinueToken(buffer []byte, token *ContinueToken, senderPrivateKey []byte, receiverPublicKey []byte) error {
+    nonce := RandomBytes(NonceBytes)
+    copy(buffer, nonce)
+    WriteContinueToken(token, buffer[NonceBytes:])
+    result := Encrypt(senderPrivateKey, receiverPublicKey, nonce, buffer[NonceBytes:], NEXT_CONTINUE_TOKEN_BYTES)
+    return result
+}
+
+func WriteEncryptedRouteToken(buffer []byte, token *RouteToken, senderPrivateKey []byte, receiverPublicKey []byte, nonce []byte) error {
+    copy(buffer, nonce)
+    WriteRouteToken(token, buffer[NonceBytes:])
+    result := Encrypt(senderPrivateKey, receiverPublicKey, nonce, buffer[NonceBytes:], NEXT_ROUTE_TOKEN_BYTES)
+    return result
+}
+
+func ReadEncryptedContinueToken(tokenData []byte, senderPublicKey []byte, receiverPrivateKey []byte) (*ContinueToken, error) {
+    if len(tokenData) < NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES {
+        return nil, fmt.Errorf("not enough bytes for encrypted continue token")
+    }
+    nonce := tokenData[0 : C.crypto_box_NONCEBYTES-1]
+    tokenData = tokenData[C.crypto_box_NONCEBYTES:]
+    if err := Decrypt(senderPublicKey, receiverPrivateKey, nonce, tokenData, NEXT_CONTINUE_TOKEN_BYTES+C.crypto_box_MACBYTES); err != nil {
+        return nil, err
+    }
+    return ReadContinueToken(tokenData)
+}
+
+func WriteRouteTokens(expireTimestamp uint64, sessionId uint64, sessionVersion uint8, kbpsUp uint32, kbpsDown uint32, numNodes int, addresses []*net.UDPAddr, publicKeys [][]byte, masterPrivateKey [KeyBytes]byte) ([]byte, error) {
+    if numNodes < 1 || numNodes > NEXT_MAX_NODES {
+        return nil, fmt.Errorf("invalid numNodes %d. expected value in range [1,%d]", numNodes, NEXT_MAX_NODES)
+    }
+    privateKey := RandomBytes(KeyBytes)
+    tokenData := make([]byte, numNodes*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES)
+    for i := 0; i < numNodes; i++ {
+        nonce := RandomBytes(NonceBytes)
+        token := &RouteToken{}
+        token.expireTimestamp = expireTimestamp
+        token.sessionId = sessionId
+        token.sessionVersion = sessionVersion
+        token.kbpsUp = kbpsUp
+        token.kbpsDown = kbpsDown
+        if i != numNodes-1 {
+            token.nextAddress = addresses[i+1]
+        }
+        token.privateKey = privateKey
+        err := WriteEncryptedRouteToken(tokenData[i*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:], token, masterPrivateKey[:], publicKeys[i], nonce)
+        if err != nil {
+            return nil, err
+        }
+    }
+    return tokenData, nil
+}
+
+func WriteContinueTokens(expireTimestamp uint64, sessionId uint64, sessionVersion uint8, numNodes int, publicKeys [][]byte, masterPrivateKey [KeyBytes]byte) ([]byte, error) {
+    if numNodes < 1 || numNodes > NEXT_MAX_NODES {
+        return nil, fmt.Errorf("invalid numNodes %d. expected value in range [1,%d]", numNodes, NEXT_MAX_NODES)
+    }
+    tokenData := make([]byte, numNodes*NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES)
+    for i := 0; i < numNodes; i++ {
+        token := &ContinueToken{}
+        token.expireTimestamp = expireTimestamp
+        token.sessionId = sessionId
+        token.sessionVersion = sessionVersion
+        err := WriteEncryptedContinueToken(tokenData[i*NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES:], token, masterPrivateKey[:], publicKeys[i])
+        if err != nil {
+            return nil, err
+        }
+    }
+    return tokenData, nil
 }
