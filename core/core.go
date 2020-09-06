@@ -25,9 +25,7 @@ const NEXT_ROUTE_TOKEN_BYTES = 76
 const NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES = 116
 const NEXT_CONTINUE_TOKEN_BYTES = 17
 const NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES = 57
-
-const MaxRelays = 5
-const MaxRoutesPerRelayPair = 8
+const NEXT_PRIVATE_KEY_BYTES = 32
 
 func ProtocolVersionAtLeast(serverMajor int32, serverMinor int32, serverPatch int32, targetMajor int32, targetMinor int32, targetPatch int32) bool {
     serverVersion := ( (serverMajor&0xFF) << 16 ) | ( (serverMinor&0xFF) << 8 ) | (serverPatch&0xFF);
@@ -137,6 +135,9 @@ func ReadAddress(buffer []byte) *net.UDPAddr {
 }
 
 // ---------------------------------------------------
+
+const MaxRelays = 5
+const MaxRoutesPerRelayPair = 8
 
 type RouteManager struct {
     NumRoutes      int
@@ -670,6 +671,22 @@ func WriteContinueToken(token *ContinueToken, buffer []byte) {
     binary.LittleEndian.PutUint64(buffer[0:], token.expireTimestamp)
     binary.LittleEndian.PutUint64(buffer[8:], token.sessionId)
     buffer[8+8] = token.sessionVersion
+}
+
+func ReadRouteToken(buffer []byte) (*RouteToken, error) {
+    if len(buffer) < NEXT_ROUTE_TOKEN_BYTES {
+        return nil, fmt.Errorf("buffer too small to read route token")
+    }
+    token := &RouteToken{}
+    token.expireTimestamp = binary.LittleEndian.Uint64(buffer[0:])
+    token.sessionId = binary.LittleEndian.Uint64(buffer[8:])
+    token.sessionVersion = buffer[8+8]
+    token.kbpsUp = binary.LittleEndian.Uint32(buffer[8+8+1:])
+    token.kbpsDown = binary.LittleEndian.Uint32(buffer[8+8+1+4:])
+    token.nextAddress = ReadAddress(buffer[8+8+1+4+4:])
+    token.privateKey = make([]byte, NEXT_PRIVATE_KEY_BYTES)
+    copy(token.privateKey, buffer[8+8+1+4+4+NEXT_ADDRESS_BYTES:])
+    return token, nil
 }
 
 func ReadContinueToken(buffer []byte) (*ContinueToken, error) {
