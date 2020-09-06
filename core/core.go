@@ -789,11 +789,11 @@ func GetBestRoute_Initial(routeMatrix []RouteEntry, sourceRelays []int, sourceRe
 
     // todo: best routes 1024 entries on stack
 
-    bestRouteCost := math.MaxInt32
+    bestRouteCost := int32(math.MaxInt32)
 
     for i := range sourceRelays {
 
-        if sourceRelayCost < 0 {
+        if sourceRelayCost[i] < int32(0) {
             continue
         }
 
@@ -846,6 +846,7 @@ func GetBestRoute_Initial(routeMatrix []RouteEntry, sourceRelays []int, sourceRe
 }
 
 func GetBestRoute_Update() {
+
     
     // todo: does the current route still exist? if so, return it as best route.
 
