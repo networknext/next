@@ -136,7 +136,7 @@ func ReadAddress(buffer []byte) *net.UDPAddr {
 
 // ---------------------------------------------------
 
-const MaxRelays = 5
+const MaxRelaysPerRoute = 5
 const MaxRoutesPerEntry = 8
 
 type RouteManager struct {
@@ -144,7 +144,7 @@ type RouteManager struct {
     RouteCost      [MaxRoutesPerEntry]int32
     RouteHash      [MaxRoutesPerEntry]uint32
     RouteNumRelays [MaxRoutesPerEntry]int32
-    RouteRelays    [MaxRoutesPerEntry][MaxRelays]int32
+    RouteRelays    [MaxRoutesPerEntry][MaxRelaysPerRoute]int32
 }
 
 func (manager *RouteManager) AddRoute(cost int32, relays ...int32) {
@@ -289,7 +289,7 @@ type RouteEntry struct {
     NumRoutes      int32
     RouteCost      [MaxRoutesPerEntry]int32
     RouteNumRelays [MaxRoutesPerEntry]int32
-    RouteRelays    [MaxRoutesPerEntry][MaxRelays]int32
+    RouteRelays    [MaxRoutesPerEntry][MaxRelaysPerRoute]int32
     RouteHash      [MaxRoutesPerEntry]uint32
 }
 
@@ -847,7 +847,14 @@ func RouteStillExists(routeMatrix []RouteEntry, routeHash uint32, routeRelays []
     return false, -1
 }
 
-func GetBestRoutes() {      // todo: minimumCost
+type Route struct {
+    Cost       int32    
+    NumRelays  int
+    Relays     [MaxRelaysPerRoute]int32
+    Hash       uint32
+}
+
+func GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []int, sourceRelayCost[] int32, destRelays []int, minimumCost int32, costThreshold int32, bestRoutes []Route, numBestRoutes *int) {
 
     // todo: best routes 1024 entries on stack
 
@@ -910,9 +917,17 @@ func GetBestRoutes() {      // todo: minimumCost
 
 // -------------------------------------------
 
-func GetBestRoute_Initial(routeMatrix []RouteEntry, sourceRelays []int, sourceRelayCost[] int32, destRelays []int, directCost int32, costThreshold int32, bestRouteCost *int32, bestRouteHash *uint32, bestRouteRelays []uint64, bestRouteNumRelays *int) {
+func GetBestRoute_Initial(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost[] int32, destRelays []int32, maxCost int32, costThreshold int32, bestRoute *Route) {
     
-    // todo: GetBestRoutes -- make sure to pass in a minimumCost above which we won't even consider the routes as valid or useful
+    bestRouteCost := GetBestRouteCost(routeMatrix, sourceRelays, sourceRelayCost, destRelays)
+
+    if bestRouteCost > maxCost {
+        bestRoute.NumRelays = 0
+        bestRoute.Cost = -1
+        return 
+    }
+
+    // todo: GetBestRoutes -- make sure to pass in a maxCost above which we won't even consider the routes as valid or useful
 
     // todo: randomly pick one of the best routes
 

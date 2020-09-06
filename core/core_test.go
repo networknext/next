@@ -253,7 +253,7 @@ func TestOptimize(t *testing.T) {
         for j := 0; j < int(routes[i].NumRoutes); j++ {
             assert.True(t, routes[i].DirectCost == -1 || routes[i].DirectCost >= routes[i].RouteCost[j])
             assert.True(t, routes[i].RouteNumRelays[j] >= 0)
-            assert.True(t, routes[i].RouteNumRelays[j] <= MaxRelays)
+            assert.True(t, routes[i].RouteNumRelays[j] <= MaxRelaysPerRoute)
             relays := make(map[int32]bool, 0)
             for k := 0; k < int(routes[i].RouteNumRelays[j]); k++ {
                 _, found := relays[routes[i].RouteRelays[j][k]]
@@ -385,6 +385,24 @@ func (env *TestEnvironment) GetRoutes(routeMatrix []RouteEntry, sourceRelayName 
         }
     }
     return testRouteData
+}
+
+func (env *TestEnvironment) GetBestRouteCost(routeMatrix []RouteEntry, sourceRelays []string, sourceRelayCost[] int32, destRelays []string) int32 {
+    sourceRelayIndex := make([]int32, len(sourceRelays))
+    for i := range sourceRelays {
+        sourceRelayIndex[i] = int32(env.GetRelayIndex(sourceRelays[i]))
+        if sourceRelayIndex[i] == -1 {
+            panic("bad source relay name")
+        }
+    }
+    destRelayIndex := make([]int32, len(destRelays))
+    for i := range destRelays {
+        destRelayIndex[i] = int32(env.GetRelayIndex(destRelays[i]))
+        if destRelayIndex[i] == -1 {
+            panic("bad dest relay name")
+        }
+    }
+    return GetBestRouteCost(routeMatrix, sourceRelayIndex, sourceRelayCost, destRelayIndex)
 }
 
 func TestTheTestEnvironment(t *testing.T) {
@@ -719,4 +737,105 @@ func TestContinueToken(t *testing.T) {
     assert.Equal(t, continueToken, readContinueToken)
 
     // todo: test "WriteContinueTokens"
+}
+
+func TestBestRouteCostSimple(t *testing.T) {
+
+    t.Parallel()
+
+    env := NewTestEnvironment()
+
+    env.AddRelay("losangeles", "10.0.0.1")
+    env.AddRelay("chicago", "10.0.0.2")
+    env.AddRelay("a", "10.0.0.3")
+    env.AddRelay("b", "10.0.0.4")
+
+    env.SetCost("losangeles", "chicago", 100)
+    env.SetCost("losangeles", "a", 10)
+    env.SetCost("a", "chicago", 50)
+    env.SetCost("a", "b", 10)
+    env.SetCost("b", "chicago", 10)
+
+    costMatrix, numRelays := env.GetCostMatrix()
+
+    routeMatrix := Optimize(numRelays, costMatrix, 5)
+
+    sourceRelays := []string{"losangeles"}
+    sourceRelayCosts := []int32{10}
+
+    destRelays := []string{"chicago"}
+
+    bestRouteCost := env.GetBestRouteCost(routeMatrix, sourceRelays, sourceRelayCosts, destRelays)
+
+    assert.Equal(t, int32(40), bestRouteCost)
+}
+
+func TestBestRouteCostComplex(t *testing.T) {
+
+    t.Parallel()
+
+    env := NewTestEnvironment()
+
+    env.AddRelay("losangeles.a", "10.0.0.1")
+    env.AddRelay("losangeles.b", "10.0.0.2")
+    env.AddRelay("chicago.a", "10.0.0.3")
+    env.AddRelay("chicago.b", "10.0.0.4")
+    env.AddRelay("a", "10.0.0.5")
+    env.AddRelay("b", "10.0.0.6")
+
+    env.SetCost("losangeles.a", "chicago.a", 100)
+    env.SetCost("losangeles.a", "chicago.b", 150)
+    env.SetCost("losangeles.a", "a", 10)
+
+    env.SetCost("a", "chicago.a", 50)
+    env.SetCost("a", "chicago.b", 20)
+    env.SetCost("a", "b", 10)
+
+    env.SetCost("b", "chicago.a", 10)
+    env.SetCost("b", "chicago.b", 5)
+
+    env.SetCost("losangeles.b", "chicago.a", 75)
+    env.SetCost("losangeles.b", "chicago.b", 110)
+    env.SetCost("losangeles.b", "a", 10)
+    env.SetCost("losangeles.b", "b", 5)
+
+    costMatrix, numRelays := env.GetCostMatrix()
+
+    routeMatrix := Optimize(numRelays, costMatrix, 5)
+
+    sourceRelays := []string{"losangeles.a", "losangeles.b"}
+    sourceRelayCosts := []int32{10, 5}
+
+    destRelays := []string{"chicago.a", "chicago.b"}
+
+    bestRouteCost := env.GetBestRouteCost(routeMatrix, sourceRelays, sourceRelayCosts, destRelays)
+
+    assert.Equal(t, int32(15), bestRouteCost)
+}
+
+func TestBestRouteCostNoRoute(t *testing.T) {
+
+    t.Parallel()
+
+    env := NewTestEnvironment()
+
+    env.AddRelay("losangeles.a", "10.0.0.1")
+    env.AddRelay("losangeles.b", "10.0.0.2")
+    env.AddRelay("chicago.a", "10.0.0.3")
+    env.AddRelay("chicago.b", "10.0.0.4")
+    env.AddRelay("a", "10.0.0.5")
+    env.AddRelay("b", "10.0.0.6")
+
+    costMatrix, numRelays := env.GetCostMatrix()
+
+    routeMatrix := Optimize(numRelays, costMatrix, 5)
+
+    sourceRelays := []string{"losangeles.a", "losangeles.b"}
+    sourceRelayCosts := []int32{10, 5}
+
+    destRelays := []string{"chicago.a", "chicago.b"}
+
+    bestRouteCost := env.GetBestRouteCost(routeMatrix, sourceRelays, sourceRelayCosts, destRelays)
+
+    assert.Equal(t, int32(math.MaxInt32), bestRouteCost)
 }
