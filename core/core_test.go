@@ -37,6 +37,12 @@ func TestTriMatrixIndex(t *testing.T) {
     assert.Equal(t, 5, TriMatrixIndex(3,2))
 }
 
+func TestRouteManager(t *testing.T) {
+
+    // todo
+    
+}
+
 func TestOptimize(t *testing.T) {
 
     t.Parallel()
