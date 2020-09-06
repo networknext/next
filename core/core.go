@@ -137,14 +137,14 @@ func ReadAddress(buffer []byte) *net.UDPAddr {
 // ---------------------------------------------------
 
 const MaxRelays = 5
-const MaxRoutesPerRelayPair = 8
+const MaxRoutesPerEntry = 8
 
 type RouteManager struct {
     NumRoutes      int
-    RouteCost      [MaxRoutesPerRelayPair]int32
-    RouteHash      [MaxRoutesPerRelayPair]uint32
-    RouteNumRelays [MaxRoutesPerRelayPair]int32
-    RouteRelays    [MaxRoutesPerRelayPair][MaxRelays]int32
+    RouteCost      [MaxRoutesPerEntry]int32
+    RouteHash      [MaxRoutesPerEntry]uint32
+    RouteNumRelays [MaxRoutesPerEntry]int32
+    RouteRelays    [MaxRoutesPerEntry][MaxRelays]int32
 }
 
 func (manager *RouteManager) AddRoute(cost int32, relays ...int32) {
@@ -172,7 +172,7 @@ func (manager *RouteManager) AddRoute(cost int32, relays ...int32) {
             manager.RouteRelays[0][i] = relays[i]
         }
 
-    } else if manager.NumRoutes < MaxRoutesPerRelayPair {
+    } else if manager.NumRoutes < MaxRoutesPerEntry {
 
         // not at max routes yet. insert according cost sort order
 
@@ -287,9 +287,10 @@ func RouteHash(relays ...int32) uint32 {
 type RouteEntry struct {
     DirectCost     int32
     NumRoutes      int32
-    RouteCost      [MaxRoutesPerRelayPair]int32
-    RouteNumRelays [MaxRoutesPerRelayPair]int32
-    RouteRelays    [MaxRoutesPerRelayPair][MaxRelays]int32
+    RouteCost      [MaxRoutesPerEntry]int32
+    RouteNumRelays [MaxRoutesPerEntry]int32
+    RouteRelays    [MaxRoutesPerEntry][MaxRelays]int32
+    RouteHash      [MaxRoutesPerEntry]uint32
 }
 
 func Optimize(numRelays int, cost []int32, costThreshold int32) []RouteEntry {
@@ -447,6 +448,7 @@ func Optimize(numRelays int, cost []int32, costThreshold int32) []RouteEntry {
                             routes[ijIndex].RouteNumRelays[0] = 2
                             routes[ijIndex].RouteRelays[0][0] = int32(i)
                             routes[ijIndex].RouteRelays[0][1] = int32(j)
+                            // todo: RouteHash
 
                         } else {
 
@@ -518,6 +520,7 @@ func Optimize(numRelays int, cost []int32, costThreshold int32) []RouteEntry {
                                 for v := 0; v < numRelays; v++ {
                                     routes[ijIndex].RouteRelays[u][v] = routeManager.RouteRelays[u][v]
                                 }
+                                routes[ijIndex].RouteHash[u] = routeManager.RouteHash[u]
                             }
                         }
                     }
@@ -785,9 +788,70 @@ func WriteContinueTokens(expireTimestamp uint64, sessionId uint64, sessionVersio
 
 // -------------------------------------------
 
-func GetBestRoute_Initial(routeMatrix []RouteEntry, sourceRelays []int, sourceRelayCost[] int32, destRelays []int, directCost int32, costThreshold int32, out_bestRouteCost *int32, out_bestRouteRelays []uint64, out_bestRouteNumRelays *int) {
+func GetBestRouteCost(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost[] int32, destRelays []int32) int32 {
+    bestRouteCost := int32(math.MaxInt32)
+    for i := range sourceRelays {
+        if sourceRelayCost[i] < int32(0) {
+            continue
+        }
+        sourceRelayIndex := sourceRelays[i]
+        for j := range destRelays {
+            destRelayIndex := destRelays[j]
+            if sourceRelayIndex == destRelayIndex {
+                continue
+            }
+            index := TriMatrixIndex(int(sourceRelayIndex), int(destRelayIndex))
+            entry := &routeMatrix[index]
+            if entry.NumRoutes > 0 {
+                cost := sourceRelayCost[i] + entry.RouteCost[0]
+                if cost < bestRouteCost {
+                    bestRouteCost = cost
+                }
+            }
+        }
+    }
+    return bestRouteCost
+}
+
+func RouteStillExists(routeMatrix []RouteEntry, routeHash uint32, routeRelays []int32, sourceRelays []int32, sourceRelayCost[] int32, destRelays []int32) (bool, int32) {
+    if len(routeRelays) == 0 {
+        return false, -1
+    }
+    firstRouteRelay := routeRelays[0]
+    for i := range sourceRelays {
+        if sourceRelayCost[i] < int32(0) {
+            continue
+        }
+        if sourceRelays[i] == firstRouteRelay {
+            for j := range destRelays {
+                sourceRelayIndex := sourceRelays[i]
+                destRelayIndex := destRelays[j]
+                if sourceRelayIndex == destRelayIndex {
+                    continue
+                }
+                index := TriMatrixIndex(int(sourceRelayIndex), int(destRelayIndex))
+                entry := &routeMatrix[index]
+                for k := 0; k < int(entry.NumRoutes); k++ {
+                    if entry.RouteHash[k] == routeHash && int(entry.RouteNumRelays[k]) == len(routeRelays) {
+                        for l := range routeRelays {
+                            if entry.RouteRelays[k][l] != routeRelays[l] {
+                                return false, -1
+                            }
+                        }
+                        return true, entry.RouteCost[k]
+                    }
+                }
+            }
+        }
+    }
+    return false, -1
+}
+
+func GetBestRoutes() {      // todo: minimumCost
 
     // todo: best routes 1024 entries on stack
+
+    /*
 
     bestRouteCost := int32(math.MaxInt32)
 
@@ -821,7 +885,6 @@ func GetBestRoute_Initial(routeMatrix []RouteEntry, sourceRelays []int, sourceRe
 
                 // todo: add to best routes
 
-                /*
                 if j < i {
                     for l := 0; l < int(entry.RouteNumRelays[k]); l++ {
                         relayIndex := entry.RouteRelays[k][l]
@@ -833,7 +896,6 @@ func GetBestRoute_Initial(routeMatrix []RouteEntry, sourceRelays []int, sourceRe
                         testRouteData[k].relays[l] = env.relayArray[relayIndex].name
                     }
                 }
-                */
             }
 
         }
@@ -843,15 +905,35 @@ func GetBestRoute_Initial(routeMatrix []RouteEntry, sourceRelays []int, sourceRe
     *out_bestRouteCost = bestRouteCost
 
     // todo: if we have best routes, randomly pick one and copy it to the out_*
+    */
+}
+
+// -------------------------------------------
+
+func GetBestRoute_Initial(routeMatrix []RouteEntry, sourceRelays []int, sourceRelayCost[] int32, destRelays []int, directCost int32, costThreshold int32, bestRouteCost *int32, bestRouteHash *uint32, bestRouteRelays []uint64, bestRouteNumRelays *int) {
+    
+    // todo: GetBestRoutes -- make sure to pass in a minimumCost above which we won't even consider the routes as valid or useful
+
+    // todo: randomly pick one of the best routes
+
 }
 
 func GetBestRoute_Update() {
 
+    /*
+    routeValid, routeCost := RouteStillExists
     
-    // todo: does the current route still exist? if so, return it as best route.
+    if routeValid && Fabs(routeCost - bestRouteCost) > costThreshold {
+        routeValid = false
+    }
+    
+    if !routeValid {
+        GetBestRoutes
+        randomly pick out of best routes
+    }
 
-    // todo: otherwise, look up a new best route (GetBestRoute_Initial).
-
+    hold current route
+    */
 }
 
 func MakeRouteDecision_TakeNetworkNext() {

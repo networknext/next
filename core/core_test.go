@@ -249,7 +249,7 @@ func TestOptimize(t *testing.T) {
 
     for i := 0; i < entryCount; i++ {
         assert.True(t, routes[i].NumRoutes >= 0)
-        assert.True(t, routes[i].NumRoutes <= MaxRoutesPerRelayPair)
+        assert.True(t, routes[i].NumRoutes <= MaxRoutesPerEntry)
         for j := 0; j < int(routes[i].NumRoutes); j++ {
             assert.True(t, routes[i].DirectCost == -1 || routes[i].DirectCost >= routes[i].RouteCost[j])
             assert.True(t, routes[i].RouteNumRelays[j] >= 0)
