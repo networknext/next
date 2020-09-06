@@ -5,10 +5,33 @@ import (
     "runtime"
     "sync"
     "sort"
+    "math"
 )
 
 const MaxRelays = 5
 const MaxRoutesPerRelayPair = 8
+
+func ProtocolVersionAtLeast(serverMajor int32, serverMinor int32, serverPatch int32, targetMajor int32, targetMinor int32, targetPatch int32) bool {
+    serverVersion := ( (serverMajor&0xFF) << 16 ) | ( (serverMinor&0xFF) << 8 ) | (serverPatch&0xFF);
+    targetVersion := ( (targetMajor&0xFF) << 16 ) | ( (targetMinor&0xFF) << 8 ) | (targetPatch&0xFF);
+    return serverVersion >= targetVersion
+}
+
+func HaversineDistance(lat1 float64, long1 float64, lat2 float64, long2 float64) float64 {
+    lat1 *= math.Pi / 180
+    lat2 *= math.Pi / 180
+    long1 *= math.Pi / 180
+    long2 *= math.Pi / 180
+    delta_lat := lat2 - lat1
+    delta_long := long2 - long1
+    lat_sine := math.Sin(delta_lat / 2)
+    long_sine := math.Sin(delta_long / 2)
+    a := lat_sine*lat_sine + math.Cos(lat1)*math.Cos(lat2)*long_sine*long_sine
+    c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
+    r := 6371.0
+    d := r * c
+    return d // kilometers
+}
 
 func TriMatrixLength(size int) int {
 	return (size * (size - 1)) / 2
