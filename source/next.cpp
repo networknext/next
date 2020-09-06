@@ -2870,7 +2870,9 @@ struct NextUpgradeResponsePacket
     uint8_t client_kx_public_key[crypto_kx_PUBLICKEYBYTES];
     uint8_t client_route_public_key[crypto_box_PUBLICKEYBYTES];
     uint8_t upgrade_token[NEXT_UPGRADE_TOKEN_BYTES];
-
+    int platform_id;
+    int connection_type;
+ 
     NextUpgradeResponsePacket()
     {
         memset( this, 0, sizeof(NextUpgradeResponsePacket) );
@@ -2882,6 +2884,8 @@ struct NextUpgradeResponsePacket
         serialize_bytes( stream, client_kx_public_key, crypto_kx_PUBLICKEYBYTES );
         serialize_bytes( stream, client_route_public_key, crypto_box_PUBLICKEYBYTES );
         serialize_bytes( stream, upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );
+        serialize_int( stream, platform_id, NEXT_PLATFORM_UNKNOWN, NEXT_PLATFORM_MAX );
+        serialize_int( stream, connection_type, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_MAX );
         return true;
     }
 };
@@ -2939,19 +2943,20 @@ struct NextDirectPongPacket
 
 struct NextClientStatsPacket
 {
-    bool reported;
     bool fallback_to_direct;
+    bool next;
+    bool committed;
     bool multipath;
-    uint64_t flags;
+    bool reported;
     int platform_id;
     int connection_type;
+    uint64_t flags;
+    uint64_t user_flags;
     float kbps_up;
     float kbps_down;
     float direct_rtt;
     float direct_jitter;
     float direct_packet_loss;
-    bool next;
-    bool committed;
     float next_rtt;
     float next_jitter;
     float next_packet_loss;
@@ -2962,7 +2967,6 @@ struct NextClientStatsPacket
     float near_relay_packet_loss[NEXT_MAX_NEAR_RELAYS];
     uint64_t packets_sent_client_to_server;
     uint64_t packets_lost_server_to_client;
-    uint64_t user_flags;
 
     NextClientStatsPacket()
     {
@@ -2971,10 +2975,14 @@ struct NextClientStatsPacket
 
     template <typename Stream> bool Serialize( Stream & stream )
     {
-        serialize_bool( stream, reported );
         serialize_bool( stream, fallback_to_direct );
+        serialize_bool( stream, next );
+        serialize_bool( stream, committed );
         serialize_bool( stream, multipath );
+        serialize_bool( stream, reported );
+        // todo: has flags, has user flags etc.
         serialize_bits( stream, flags, NEXT_FLAGS_COUNT );
+        serialize_uint64( stream, user_flags );
         serialize_int( stream, platform_id, NEXT_PLATFORM_UNKNOWN, NEXT_PLATFORM_MAX );
         serialize_int( stream, connection_type, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_MAX );
         serialize_float( stream, kbps_up );
@@ -2982,8 +2990,6 @@ struct NextClientStatsPacket
         serialize_float( stream, direct_rtt );
         serialize_float( stream, direct_jitter );
         serialize_float( stream, direct_packet_loss );
-        serialize_bool( stream, next );
-        serialize_bool( stream, committed );
         if ( next )
         {
             serialize_float( stream, next_rtt );
@@ -3000,7 +3006,6 @@ struct NextClientStatsPacket
         }
         serialize_uint64( stream, packets_sent_client_to_server );
         serialize_uint64( stream, packets_lost_server_to_client );
-        serialize_uint64( stream, user_flags );
         return true;
     }
 };
@@ -5954,6 +5959,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         memcpy( response.client_kx_public_key, client->client_kx_public_key, crypto_kx_PUBLICKEYBYTES );
         memcpy( response.client_route_public_key, client->client_route_public_key, crypto_box_PUBLICKEYBYTES );
         memcpy( response.upgrade_token, packet.upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );
+        response.platform_id = next_platform_id();
+        response.connection_type = next_platform_connection_type();
 
         if ( next_client_internal_send_packet_to_server( client, NEXT_UPGRADE_RESPONSE_PACKET, &response ) != NEXT_OK )
         {
@@ -10604,6 +10611,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             entry->user_hash = pending_entry->user_hash;
             entry->tag = pending_entry->tag;
             entry->client_open_session_sequence = packet.client_open_session_sequence;
+            entry->stats_platform_id = packet.platform_id;
+            entry->stats_connection_type = packet.connection_type;
 
             // notify session upgraded
 
@@ -13421,6 +13430,8 @@ static void test_packets()
         next_random_bytes( in.client_kx_public_key, crypto_kx_PUBLICKEYBYTES );
         next_random_bytes( in.client_route_public_key, crypto_box_PUBLICKEYBYTES );
         next_random_bytes( in.upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );
+        in.platform_id = NEXT_PLATFORM_WINDOWS;
+        in.connection_type = NEXT_CONNECTION_TYPE_CELLULAR;
 
         int packet_bytes = 0;
         check( next_write_packet( NEXT_UPGRADE_RESPONSE_PACKET, &in, buffer, &packet_bytes, NULL, NULL, NULL, NULL, NULL ) == NEXT_OK );
@@ -13429,6 +13440,8 @@ static void test_packets()
         check( memcmp( in.client_kx_public_key, out.client_kx_public_key, crypto_kx_PUBLICKEYBYTES ) == 0 );
         check( memcmp( in.client_route_public_key, out.client_route_public_key, crypto_box_PUBLICKEYBYTES ) == 0 );
         check( memcmp( in.upgrade_token, out.upgrade_token, NEXT_UPGRADE_TOKEN_BYTES ) == 0 );
+        check( in.platform_id == out.platform_id );
+        check( in.connection_type == out.connection_type );
     }
 
     // upgrade confirm
