@@ -667,12 +667,6 @@ func WriteRouteToken(token *RouteToken, buffer []byte) {
     copy(buffer[8+8+1+4+4+NEXT_ADDRESS_BYTES:], token.privateKey)
 }
 
-func WriteContinueToken(token *ContinueToken, buffer []byte) {
-    binary.LittleEndian.PutUint64(buffer[0:], token.expireTimestamp)
-    binary.LittleEndian.PutUint64(buffer[8:], token.sessionId)
-    buffer[8+8] = token.sessionVersion
-}
-
 func ReadRouteToken(buffer []byte) (*RouteToken, error) {
     if len(buffer) < NEXT_ROUTE_TOKEN_BYTES {
         return nil, fmt.Errorf("buffer too small to read route token")
@@ -687,6 +681,57 @@ func ReadRouteToken(buffer []byte) (*RouteToken, error) {
     token.privateKey = make([]byte, NEXT_PRIVATE_KEY_BYTES)
     copy(token.privateKey, buffer[8+8+1+4+4+NEXT_ADDRESS_BYTES:])
     return token, nil
+}
+
+func WriteEncryptedRouteToken(buffer []byte, token *RouteToken, senderPrivateKey []byte, receiverPublicKey []byte) error {
+    nonce := RandomBytes(NonceBytes)
+    copy(buffer, nonce)
+    WriteRouteToken(token, buffer[NonceBytes:])
+    result := Encrypt(senderPrivateKey, receiverPublicKey, nonce, buffer[NonceBytes:], NEXT_ROUTE_TOKEN_BYTES)
+    return result
+}
+
+func ReadEncryptedRouteToken(tokenData []byte, senderPublicKey []byte, receiverPrivateKey []byte) (*RouteToken, error) {
+    if len(tokenData) < NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES {
+        return nil, fmt.Errorf("not enough bytes for encrypted route token")
+    }
+    nonce := tokenData[0 : C.crypto_box_NONCEBYTES-1]
+    tokenData = tokenData[C.crypto_box_NONCEBYTES:]
+    if err := Decrypt(senderPublicKey, receiverPrivateKey, nonce, tokenData, NEXT_ROUTE_TOKEN_BYTES+C.crypto_box_MACBYTES); err != nil {
+        return nil, err
+    }
+    return ReadRouteToken(tokenData)
+}
+
+func WriteRouteTokens(expireTimestamp uint64, sessionId uint64, sessionVersion uint8, kbpsUp uint32, kbpsDown uint32, numNodes int, addresses []*net.UDPAddr, publicKeys [][]byte, masterPrivateKey [KeyBytes]byte) ([]byte, error) {
+    if numNodes < 1 || numNodes > NEXT_MAX_NODES {
+        return nil, fmt.Errorf("invalid numNodes %d. expected value in range [1,%d]", numNodes, NEXT_MAX_NODES)
+    }
+    privateKey := RandomBytes(KeyBytes)
+    tokenData := make([]byte, numNodes*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES)
+    for i := 0; i < numNodes; i++ {
+        token := &RouteToken{}
+        token.expireTimestamp = expireTimestamp
+        token.sessionId = sessionId
+        token.sessionVersion = sessionVersion
+        token.kbpsUp = kbpsUp
+        token.kbpsDown = kbpsDown
+        if i != numNodes-1 {
+            token.nextAddress = addresses[i+1]
+        }
+        token.privateKey = privateKey
+        err := WriteEncryptedRouteToken(tokenData[i*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:], token, masterPrivateKey[:], publicKeys[i])
+        if err != nil {
+            return nil, err
+        }
+    }
+    return tokenData, nil
+}
+
+func WriteContinueToken(token *ContinueToken, buffer []byte) {
+    binary.LittleEndian.PutUint64(buffer[0:], token.expireTimestamp)
+    binary.LittleEndian.PutUint64(buffer[8:], token.sessionId)
+    buffer[8+8] = token.sessionVersion
 }
 
 func ReadContinueToken(buffer []byte) (*ContinueToken, error) {
@@ -708,13 +753,6 @@ func WriteEncryptedContinueToken(buffer []byte, token *ContinueToken, senderPriv
     return result
 }
 
-func WriteEncryptedRouteToken(buffer []byte, token *RouteToken, senderPrivateKey []byte, receiverPublicKey []byte, nonce []byte) error {
-    copy(buffer, nonce)
-    WriteRouteToken(token, buffer[NonceBytes:])
-    result := Encrypt(senderPrivateKey, receiverPublicKey, nonce, buffer[NonceBytes:], NEXT_ROUTE_TOKEN_BYTES)
-    return result
-}
-
 func ReadEncryptedContinueToken(tokenData []byte, senderPublicKey []byte, receiverPrivateKey []byte) (*ContinueToken, error) {
     if len(tokenData) < NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES {
         return nil, fmt.Errorf("not enough bytes for encrypted continue token")
@@ -725,32 +763,6 @@ func ReadEncryptedContinueToken(tokenData []byte, senderPublicKey []byte, receiv
         return nil, err
     }
     return ReadContinueToken(tokenData)
-}
-
-func WriteRouteTokens(expireTimestamp uint64, sessionId uint64, sessionVersion uint8, kbpsUp uint32, kbpsDown uint32, numNodes int, addresses []*net.UDPAddr, publicKeys [][]byte, masterPrivateKey [KeyBytes]byte) ([]byte, error) {
-    if numNodes < 1 || numNodes > NEXT_MAX_NODES {
-        return nil, fmt.Errorf("invalid numNodes %d. expected value in range [1,%d]", numNodes, NEXT_MAX_NODES)
-    }
-    privateKey := RandomBytes(KeyBytes)
-    tokenData := make([]byte, numNodes*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES)
-    for i := 0; i < numNodes; i++ {
-        nonce := RandomBytes(NonceBytes)
-        token := &RouteToken{}
-        token.expireTimestamp = expireTimestamp
-        token.sessionId = sessionId
-        token.sessionVersion = sessionVersion
-        token.kbpsUp = kbpsUp
-        token.kbpsDown = kbpsDown
-        if i != numNodes-1 {
-            token.nextAddress = addresses[i+1]
-        }
-        token.privateKey = privateKey
-        err := WriteEncryptedRouteToken(tokenData[i*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:], token, masterPrivateKey[:], publicKeys[i], nonce)
-        if err != nil {
-            return nil, err
-        }
-    }
-    return tokenData, nil
 }
 
 func WriteContinueTokens(expireTimestamp uint64, sessionId uint64, sessionVersion uint8, numNodes int, publicKeys [][]byte, masterPrivateKey [KeyBytes]byte) ([]byte, error) {
@@ -770,3 +782,83 @@ func WriteContinueTokens(expireTimestamp uint64, sessionId uint64, sessionVersio
     }
     return tokenData, nil
 }
+
+// -------------------------------------------
+
+func GetBestRoute_Initial(routeMatrix []RouteEntry, sourceRelays []int, sourceRelayCost[] int32, destRelays []int, directCost int32, costThreshold int32, out_bestRouteCost *int32, out_bestRouteRelays []uint64, out_bestRouteNumRelays *int) {
+
+    // todo: best routes 1024 entries on stack
+
+    bestRouteCost := math.MaxInt32
+
+    for i := range sourceRelays {
+
+        if sourceRelayCost < 0 {
+            continue
+        }
+
+        for j := range destRelays {
+
+            if i == j {
+                continue
+            }
+
+            index := TriMatrixIndex(i, j)
+    
+            entry := &routeMatrix[index]
+
+            for k := 0; k < int(entry.NumRoutes); k++ {
+                
+                cost := entry.RouteCost[k]
+
+                if cost > bestRouteCost + costThreshold {
+                    break
+                }                 
+
+                if cost < bestRouteCost {
+                    bestRouteCost = cost
+                }
+
+                // todo: add to best routes
+
+                /*
+                if j < i {
+                    for l := 0; l < int(entry.RouteNumRelays[k]); l++ {
+                        relayIndex := entry.RouteRelays[k][l]
+                        testRouteData[k].relays[l] = env.relayArray[relayIndex].name
+                    }
+                } else {
+                    for l := 0; l < int(entry.RouteNumRelays[k]); l++ {
+                        relayIndex := entry.RouteRelays[k][int(entry.RouteNumRelays[k])-1-l]
+                        testRouteData[k].relays[l] = env.relayArray[relayIndex].name
+                    }
+                }
+                */
+            }
+
+        }
+
+    }
+
+    *out_bestRouteCost = bestRouteCost
+
+    // todo: if we have best routes, randomly pick one and copy it to the out_*
+}
+
+func GetBestRoute_Update() {
+    
+    // todo: does the current route still exist? if so, return it as best route.
+
+    // todo: otherwise, look up a new best route (GetBestRoute_Initial).
+
+}
+
+func MakeRouteDecision_TakeNetworkNext() {
+    // todo
+}
+
+func MakeRouteDecision_StayOnNetworkNext() {
+    // todo
+}
+
+// -------------------------------------------
