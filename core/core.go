@@ -908,18 +908,16 @@ func GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCo
             index := TriMatrixIndex(int(sourceRelayIndex), int(destRelayIndex))
             entry := &routeMatrix[index]
             for k := 0; k < int(entry.NumRoutes); k++ {
-                cost := entry.RouteCost[k]
+                cost := entry.RouteCost[k] + sourceRelayCost[i]
                 if cost > maxCost {
                     break
                 }
-                bestRoutes[numRoutes].Cost = cost + sourceRelayCost[sourceRelayIndex]
+                bestRoutes[numRoutes].Cost = cost
                 bestRoutes[numRoutes].NumRelays = entry.RouteNumRelays[k]
                 for l := int32(0); l < bestRoutes[numRoutes].NumRelays; l++ {
                     bestRoutes[numRoutes].Relays[l] = entry.RouteRelays[k][l]
                 }
-                srcIndex := bestRoutes[numRoutes].Relays[0]
-                destIndex := bestRoutes[numRoutes].Relays[bestRoutes[numRoutes].NumRelays-1]
-                bestRoutes[numRoutes].NeedToReverse = srcIndex > destIndex
+                bestRoutes[numRoutes].NeedToReverse = sourceRelayIndex < destRelayIndex
                 numRoutes++
                 if numRoutes == maxRoutes {
                     *numBestRoutes = numRoutes

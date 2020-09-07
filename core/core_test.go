@@ -2,6 +2,8 @@
 package main
 
 import (
+    "os"
+    "fmt"
     "sort"
     "testing"
     "math"
@@ -13,6 +15,10 @@ import (
     "hash/fnv"
     "github.com/stretchr/testify/assert"
 )
+
+func FuckOffGolang() {
+    fmt.Fprintf(os.Stdout, "I'm sick of adding and removing the fmt and os imports as I work")
+}
 
 func TestProtocolVersionAtLeast(t *testing.T) {
     t.Parallel()
@@ -1011,6 +1017,119 @@ func TestGetBestRoutesSimple(t *testing.T) {
 
     expectedBestRoutes[2].cost = 110
     expectedBestRoutes[2].relays = []string{"losangeles", "chicago"}
+
+    assert.Equal(t, expectedBestRoutes, bestRoutes)
+}
+
+func TestGetBestRoutesReverse(t *testing.T) {
+
+    t.Parallel()
+
+    env := NewTestEnvironment()
+
+    env.AddRelay("losangeles", "10.0.0.1")
+    env.AddRelay("chicago", "10.0.0.2")
+    env.AddRelay("a", "10.0.0.3")
+    env.AddRelay("b", "10.0.0.4")
+
+    env.SetCost("losangeles", "chicago", 100)
+    env.SetCost("losangeles", "a", 10)
+    env.SetCost("a", "chicago", 50)
+    env.SetCost("a", "b", 10)
+    env.SetCost("b", "chicago", 10)
+
+    costMatrix, numRelays := env.GetCostMatrix()
+
+    routeMatrix := Optimize(numRelays, costMatrix, 5)
+
+    sourceRelays := []string{"chicago"}
+    sourceRelayCosts := []int32{10}
+
+    destRelays := []string{"losangeles"}
+
+    maxCost := int32(1000)
+
+    bestRoutes := env.GetBestRoutes(routeMatrix, sourceRelays, sourceRelayCosts, destRelays, maxCost)
+
+    sort.Slice(bestRoutes, func(i int, j int) bool { return bestRoutes[i].cost < bestRoutes[j].cost })
+
+    expectedBestRoutes := make([]TestRouteData, 3)
+
+    expectedBestRoutes[0].cost = 40
+    expectedBestRoutes[0].relays = []string{"chicago", "b", "a", "losangeles"}
+
+    expectedBestRoutes[1].cost = 70
+    expectedBestRoutes[1].relays = []string{"chicago", "a", "losangeles"}
+
+    expectedBestRoutes[2].cost = 110
+    expectedBestRoutes[2].relays = []string{"chicago", "losangeles"}
+
+    assert.Equal(t, expectedBestRoutes, bestRoutes)
+}
+
+func TestGetBestRoutesComplex(t *testing.T) {
+
+    t.Parallel()
+
+    env := NewTestEnvironment()
+
+    env.AddRelay("losangeles.a", "10.0.0.1")
+    env.AddRelay("losangeles.b", "10.0.0.2")
+    env.AddRelay("chicago.a", "10.0.0.3")
+    env.AddRelay("chicago.b", "10.0.0.4")
+    env.AddRelay("a", "10.0.0.5")
+    env.AddRelay("b", "10.0.0.6")
+
+    env.SetCost("losangeles.a", "chicago.a", 1)
+    env.SetCost("losangeles.a", "chicago.b", 150)
+    env.SetCost("losangeles.a", "a", 10)
+
+    env.SetCost("a", "chicago.a", 50)
+    env.SetCost("a", "chicago.b", 20)
+    env.SetCost("a", "b", 10)
+
+    env.SetCost("b", "chicago.a", 10)
+    env.SetCost("b", "chicago.b", 5)
+
+    env.SetCost("losangeles.b", "chicago.a", 75)
+    env.SetCost("losangeles.b", "chicago.b", 110)
+    env.SetCost("losangeles.b", "a", 10)
+    env.SetCost("losangeles.b", "b", 5)
+
+    costMatrix, numRelays := env.GetCostMatrix()
+
+    routeMatrix := Optimize(numRelays, costMatrix, 5)
+
+    sourceRelays := []string{"losangeles.a", "losangeles.b"}
+    sourceRelayCosts := []int32{5, 3}
+
+    destRelays := []string{"chicago.a", "chicago.b"}
+
+    maxCost := int32(30)
+
+    bestRoutes := env.GetBestRoutes(routeMatrix, sourceRelays, sourceRelayCosts, destRelays, maxCost)
+
+    sort.Slice(bestRoutes, func(i int, j int) bool { return bestRoutes[i].cost < bestRoutes[j].cost })
+
+    expectedBestRoutes := make([]TestRouteData, 6)
+
+    expectedBestRoutes[0].cost = 6
+    expectedBestRoutes[0].relays = []string{"losangeles.a", "chicago.a"}
+
+    expectedBestRoutes[1].cost = 13
+    expectedBestRoutes[1].relays = []string{"losangeles.b", "b", "chicago.b"}
+
+    expectedBestRoutes[2].cost = 18
+    expectedBestRoutes[2].relays = []string{"losangeles.b", "b", "chicago.a"}
+
+    expectedBestRoutes[3].cost = 24
+    expectedBestRoutes[3].relays = []string{"losangeles.b", "a", "losangeles.a", "chicago.a"}
+
+    expectedBestRoutes[4].cost = 28
+    expectedBestRoutes[4].relays = []string{"losangeles.b", "a", "b", "chicago.b"}
+
+    expectedBestRoutes[5].cost = 30
+    expectedBestRoutes[5].relays = []string{"losangeles.a", "a", "b", "chicago.b"}
 
     assert.Equal(t, expectedBestRoutes, bestRoutes)
 }
