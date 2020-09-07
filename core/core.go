@@ -6,7 +6,6 @@ package main
 import "C"
 
 import (
-    "os"
     "encoding/binary"
     "unsafe"
     "fmt"
@@ -814,17 +813,26 @@ func GetBestRouteCost(routeMatrix []RouteEntry, sourceRelays []int32, sourceRela
     return bestRouteCost
 }
 
+func ReverseRoute(route []int32) {
+    for i, j := 0, len(route)-1; i < j; i, j = i+1, j-1 {
+        route[i], route[j] = route[j], route[i]
+    }    
+}
+
 func GetCurrentRouteCost(routeMatrix []RouteEntry, routeRelays []int32, sourceRelays []int32, sourceRelayCost[] int32, destRelays []int32) int32 {
     if len(routeRelays) == 0 {
         return -1
     }
-    // todo: should we reverse route relays? compare first and last relay index
-    // calculate route hash
+    reversed := false
+    if routeRelays[0] < routeRelays[len(routeRelays)-1] {
+        ReverseRoute(routeRelays)
+        destRelays, sourceRelays = sourceRelays, destRelays
+        reversed = true
+    }
+    routeHash := RouteHash(routeRelays...)
     firstRouteRelay := routeRelays[0]
-    fmt.Fprintf(os.Stdout, "hello\n")
     for i := range sourceRelays {
         if sourceRelayCost[i] < int32(0) {
-            fmt.Fprintf(os.Stdout, "source relay cost < 0\n")
             continue
         }
         if sourceRelays[i] == firstRouteRelay {
@@ -837,9 +845,7 @@ func GetCurrentRouteCost(routeMatrix []RouteEntry, routeRelays []int32, sourceRe
                 index := TriMatrixIndex(int(sourceRelayIndex), int(destRelayIndex))
                 entry := &routeMatrix[index]
                 for k := 0; k < int(entry.NumRoutes); k++ {
-                    // fmt.Fprintf(os.Stdout, "%x vs %x\n", routeHash, entry.RouteHash[k])
-                    // if entry.RouteHash[k] == routeHash && int(entry.RouteNumRelays[k]) == len(routeRelays) {
-                        fmt.Fprintf(os.Stdout, "*** hash match ***\n")
+                    if entry.RouteHash[k] == routeHash && int(entry.RouteNumRelays[k]) == len(routeRelays) {
                         found := true
                         for l := range routeRelays {
                             if entry.RouteRelays[k][l] != routeRelays[l] {
@@ -848,9 +854,30 @@ func GetCurrentRouteCost(routeMatrix []RouteEntry, routeRelays []int32, sourceRe
                             }
                         }
                         if found {
-                            return entry.RouteCost[k]
+                            sourceCost := int32(math.MaxInt32)
+                            if reversed {
+                                sourceRelays = destRelays
+                                actualSourceRelay := routeRelays[len(routeRelays)-1]
+                                for m := range sourceRelays {
+                                    if sourceRelays[m] == actualSourceRelay {
+                                        sourceCost = sourceRelayCost[m]
+                                        break
+                                    }
+                                }
+                            } else {
+                                for m := range sourceRelays {
+                                    if sourceRelays[m] == firstRouteRelay {
+                                        sourceCost = sourceRelayCost[m]
+                                        break
+                                    }
+                                }
+                            }
+                            if sourceCost == int32(math.MaxInt32) {
+                                panic("this should never happen")
+                            }
+                            return sourceCost + entry.RouteCost[k]
                         }
-                    //}
+                    }
                 }
             }
         }

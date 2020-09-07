@@ -865,8 +865,6 @@ func TestBestRouteCostNoRoute(t *testing.T) {
     assert.Equal(t, int32(math.MaxInt32), bestRouteCost)
 }
 
-// todo: need to handle route reversing to get the current route test to pass
-/*
 func TestCurrentRouteCost(t *testing.T) {
 
     t.Parallel()
@@ -899,6 +897,6 @@ func TestCurrentRouteCost(t *testing.T) {
 
     assert.Equal(t, int32(40), currentRouteCost)
 }
-*/
+
 
 // RouteStillExists(routeMatrix []RouteEntry, routeHash uint32, routeRelays []int32, sourceRelays []int32, sourceRelayCost[] int32, destRelays []int32) (bool, int32) {
