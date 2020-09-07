@@ -6,6 +6,7 @@ package main
 import "C"
 
 import (
+    "os"
     "encoding/binary"
     "unsafe"
     "fmt"
@@ -448,7 +449,7 @@ func Optimize(numRelays int, cost []int32, costThreshold int32) []RouteEntry {
                             routes[ijIndex].RouteNumRelays[0] = 2
                             routes[ijIndex].RouteRelays[0][0] = int32(i)
                             routes[ijIndex].RouteRelays[0][1] = int32(j)
-                            // todo: RouteHash
+                            routes[ijIndex].RouteHash[0] = RouteHash(int32(i), int32(j))
 
                         } else {
 
@@ -813,13 +814,17 @@ func GetBestRouteCost(routeMatrix []RouteEntry, sourceRelays []int32, sourceRela
     return bestRouteCost
 }
 
-func RouteStillExists(routeMatrix []RouteEntry, routeHash uint32, routeRelays []int32, sourceRelays []int32, sourceRelayCost[] int32, destRelays []int32) (bool, int32) {
+func GetCurrentRouteCost(routeMatrix []RouteEntry, routeRelays []int32, sourceRelays []int32, sourceRelayCost[] int32, destRelays []int32) int32 {
     if len(routeRelays) == 0 {
-        return false, -1
+        return -1
     }
+    // todo: should we reverse route relays? compare first and last relay index
+    // calculate route hash
     firstRouteRelay := routeRelays[0]
+    fmt.Fprintf(os.Stdout, "hello\n")
     for i := range sourceRelays {
         if sourceRelayCost[i] < int32(0) {
+            fmt.Fprintf(os.Stdout, "source relay cost < 0\n")
             continue
         }
         if sourceRelays[i] == firstRouteRelay {
@@ -832,19 +837,25 @@ func RouteStillExists(routeMatrix []RouteEntry, routeHash uint32, routeRelays []
                 index := TriMatrixIndex(int(sourceRelayIndex), int(destRelayIndex))
                 entry := &routeMatrix[index]
                 for k := 0; k < int(entry.NumRoutes); k++ {
-                    if entry.RouteHash[k] == routeHash && int(entry.RouteNumRelays[k]) == len(routeRelays) {
+                    // fmt.Fprintf(os.Stdout, "%x vs %x\n", routeHash, entry.RouteHash[k])
+                    // if entry.RouteHash[k] == routeHash && int(entry.RouteNumRelays[k]) == len(routeRelays) {
+                        fmt.Fprintf(os.Stdout, "*** hash match ***\n")
+                        found := true
                         for l := range routeRelays {
                             if entry.RouteRelays[k][l] != routeRelays[l] {
-                                return false, -1
+                                found = false
+                                break
                             }
                         }
-                        return true, entry.RouteCost[k]
-                    }
+                        if found {
+                            return entry.RouteCost[k]
+                        }
+                    //}
                 }
             }
         }
     }
-    return false, -1
+    return -1
 }
 
 type Route struct {
@@ -936,7 +947,11 @@ func GetBestRoute_Initial(routeMatrix []RouteEntry, sourceRelays []int32, source
 func GetBestRoute_Update() {
 
     /*
-    routeValid, routeCost := RouteStillExists
+    get route in terms of indices in current route matrix (relayId -> relayIndex)
+
+    if any relay in the current route does not exist in current route matrix, get best route initial
+
+    routeCost := GetCurrentRouteCost
     
     if routeValid && Fabs(routeCost - bestRouteCost) > costThreshold {
         routeValid = false

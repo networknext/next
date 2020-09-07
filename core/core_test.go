@@ -405,6 +405,31 @@ func (env *TestEnvironment) GetBestRouteCost(routeMatrix []RouteEntry, sourceRel
     return GetBestRouteCost(routeMatrix, sourceRelayIndex, sourceRelayCost, destRelayIndex)
 }
 
+func (env *TestEnvironment) GetCurrentRouteCost(routeMatrix []RouteEntry, routeRelays []string, sourceRelays []string, sourceRelayCost[] int32, destRelays []string) int32 {
+    routeRelayIndex := make([]int32, len(routeRelays))
+    for i := range routeRelays {
+        routeRelayIndex[i] = int32(env.GetRelayIndex(routeRelays[i]))
+        if routeRelayIndex[i] == -1 {
+            panic("bad route relay name")
+        }
+    }
+    sourceRelayIndex := make([]int32, len(sourceRelays))
+    for i := range sourceRelays {
+        sourceRelayIndex[i] = int32(env.GetRelayIndex(sourceRelays[i]))
+        if sourceRelayIndex[i] == -1 {
+            panic("bad source relay name")
+        }
+    }
+    destRelayIndex := make([]int32, len(destRelays))
+    for i := range destRelays {
+        destRelayIndex[i] = int32(env.GetRelayIndex(destRelays[i]))
+        if destRelayIndex[i] == -1 {
+            panic("bad dest relay name")
+        }
+    }
+    return GetCurrentRouteCost(routeMatrix, routeRelayIndex, sourceRelayIndex, sourceRelayCost, destRelayIndex)
+}
+
 func TestTheTestEnvironment(t *testing.T) {
 
     t.Parallel()
@@ -839,3 +864,41 @@ func TestBestRouteCostNoRoute(t *testing.T) {
 
     assert.Equal(t, int32(math.MaxInt32), bestRouteCost)
 }
+
+// todo: need to handle route reversing to get the current route test to pass
+/*
+func TestCurrentRouteCost(t *testing.T) {
+
+    t.Parallel()
+
+    env := NewTestEnvironment()
+
+    env.AddRelay("losangeles", "10.0.0.1")
+    env.AddRelay("chicago", "10.0.0.2")
+    env.AddRelay("a", "10.0.0.3")
+    env.AddRelay("b", "10.0.0.4")
+
+    env.SetCost("losangeles", "chicago", 100)
+    env.SetCost("losangeles", "a", 10)
+    env.SetCost("a", "chicago", 50)
+    env.SetCost("a", "b", 10)
+    env.SetCost("b", "chicago", 10)
+
+    costMatrix, numRelays := env.GetCostMatrix()
+
+    routeMatrix := Optimize(numRelays, costMatrix, 5)
+
+    routeRelays := []string{"losangeles", "a", "b", "chicago"}
+
+    sourceRelays := []string{"losangeles"}
+    sourceRelayCosts := []int32{10}
+
+    destRelays := []string{"chicago"}
+
+    currentRouteCost := env.GetCurrentRouteCost(routeMatrix, routeRelays, sourceRelays, sourceRelayCosts, destRelays)
+
+    assert.Equal(t, int32(40), currentRouteCost)
+}
+*/
+
+// RouteStillExists(routeMatrix []RouteEntry, routeHash uint32, routeRelays []int32, sourceRelays []int32, sourceRelayCost[] int32, destRelays []int32) (bool, int32) {
