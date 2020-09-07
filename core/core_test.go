@@ -898,5 +898,37 @@ func TestCurrentRouteCost(t *testing.T) {
     assert.Equal(t, int32(40), currentRouteCost)
 }
 
+func TestCurrentRouteCostReverse(t *testing.T) {
+
+    t.Parallel()
+
+    env := NewTestEnvironment()
+
+    env.AddRelay("losangeles", "10.0.0.1")
+    env.AddRelay("chicago", "10.0.0.2")
+    env.AddRelay("a", "10.0.0.3")
+    env.AddRelay("b", "10.0.0.4")
+
+    env.SetCost("losangeles", "chicago", 100)
+    env.SetCost("losangeles", "a", 10)
+    env.SetCost("a", "chicago", 50)
+    env.SetCost("a", "b", 10)
+    env.SetCost("b", "chicago", 10)
+
+    costMatrix, numRelays := env.GetCostMatrix()
+
+    routeMatrix := Optimize(numRelays, costMatrix, 5)
+
+    routeRelays := []string{"chicago", "b", "a", "losangeles"}
+
+    sourceRelays := []string{"chicago"}
+    sourceRelayCosts := []int32{10}
+
+    destRelays := []string{"losangeles"}
+
+    currentRouteCost := env.GetCurrentRouteCost(routeMatrix, routeRelays, sourceRelays, sourceRelayCosts, destRelays)
+
+    assert.Equal(t, int32(40), currentRouteCost)
+}
 
 // RouteStillExists(routeMatrix []RouteEntry, routeHash uint32, routeRelays []int32, sourceRelays []int32, sourceRelayCost[] int32, destRelays []int32) (bool, int32) {
