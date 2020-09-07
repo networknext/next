@@ -210,13 +210,13 @@ struct next_client_stats_t
 {
     int platform_id;
     int connection_type;
+    bool next;
     bool committed;
     bool multipath;
     bool reported;
     float direct_rtt;
     float direct_jitter;
     float direct_packet_loss;
-    bool next;
     float next_rtt;
     float next_jitter;
     float next_packet_loss;
