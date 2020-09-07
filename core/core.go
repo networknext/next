@@ -931,6 +931,9 @@ func GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCo
 
 // -------------------------------------------
 
+// todo: need a function to convert a route expressed in terms of uint64 relayIds into a route in terms of relax indices in the current route matrix
+// this function *can* return error, if one of the relays in the route no longer exists.
+
 // todo
 /*
 func GetBestRoute_Initial(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost[] int32, destRelays []int32, maxCost int32, costThreshold int32, bestRoute *BestRoute) {
