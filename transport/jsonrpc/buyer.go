@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -201,6 +202,12 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 	minutes := time.Now().Unix() / 60
 
 	ghostArmyBuyerID := ghostarmy.GhostArmyBuyerID(os.Getenv("ENV"))
+	var ghostArmyScalar uint64 = 25
+	if v, ok := os.LookupEnv("GHOST_ARMY_SCALER"); ok {
+		if v, err := strconv.ParseUint(v, 10, 64); err == nil {
+			ghostArmyScalar = v
+		}
+	}
 
 	switch args.BuyerID {
 	case "":
@@ -277,7 +284,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			if buyer.ID == ghostArmyBuyerID {
 				// scale by next values because ghost army data contains 0 direct
 				// if ghost army is turned off then this number will be 0 and have no effect
-				count = ghostArmyNextCount * 25
+				count = ghostArmyNextCount * int(ghostArmyScalar)
 			}
 			newCount += count
 		}
