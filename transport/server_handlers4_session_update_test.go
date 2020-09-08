@@ -76,7 +76,6 @@ func TestSessionUpdateHandler4ClientLocateFailure(t *testing.T) {
 
 	requestPacket := transport.SessionUpdatePacket4{
 		SessionID:            1111,
-		SessionDataBytes:     1,
 		ClientRoutePublicKey: make([]byte, crypto.KeySize),
 		ServerRoutePublicKey: make([]byte, crypto.KeySize),
 	}
@@ -140,7 +139,6 @@ func TestSessionUpdateHandler4NoNearRelays(t *testing.T) {
 
 	requestPacket := transport.SessionUpdatePacket4{
 		SessionID:            1111,
-		SessionDataBytes:     1,
 		ClientRoutePublicKey: make([]byte, crypto.KeySize),
 		ServerRoutePublicKey: make([]byte, crypto.KeySize),
 	}
@@ -207,7 +205,6 @@ func TestSessionUpdateHandler4SessionDataBadSessionID(t *testing.T) {
 	requestPacket := transport.SessionUpdatePacket4{
 		SessionID:            1111,
 		SliceNumber:          1,
-		SessionDataBytes:     1,
 		ClientRoutePublicKey: make([]byte, crypto.KeySize),
 		ServerRoutePublicKey: make([]byte, crypto.KeySize),
 	}
@@ -233,7 +230,7 @@ func TestSessionUpdateHandler4SessionDataBadSessionID(t *testing.T) {
 	assert.Equal(t, metrics.SessionDataMetrics.BadSessionID.Value(), 1.0)
 }
 
-func TestSessionUpdateHandler4SessionDataBadSequenceNumber(t *testing.T) {
+func TestSessionUpdateHandler4SessionDataBadSliceNumber(t *testing.T) {
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
 	sessionDataMetrics, err := metrics.NewSessionDataMetrics(context.Background(), &metricsHandler)
@@ -257,7 +254,7 @@ func TestSessionUpdateHandler4SessionDataBadSequenceNumber(t *testing.T) {
 	requestPacket := transport.SessionUpdatePacket4{
 		SessionID:            1111,
 		SliceNumber:          1,
-		SessionDataBytes:     8,
+		SessionDataBytes:     8, // don't include the slice number in the size to induce the bad read
 		SessionData:          sessionDataArray,
 		ClientRoutePublicKey: make([]byte, crypto.KeySize),
 		ServerRoutePublicKey: make([]byte, crypto.KeySize),
@@ -312,7 +309,6 @@ func TestSessionUpdateHandler4InitialSlice(t *testing.T) {
 	expectedResponse := transport.SessionResponsePacket4{
 		SessionID:          requestPacket.SessionID,
 		SliceNumber:        requestPacket.SliceNumber,
-		SessionDataBytes:   15,
 		RouteType:          routing.RouteTypeDirect,
 		NearRelayIDs:       make([]uint64, 0),
 		NearRelayAddresses: make([]net.UDPAddr, 0),
@@ -367,7 +363,7 @@ func TestSessionUpdateHandler4DirectRoute(t *testing.T) {
 	requestPacket := transport.SessionUpdatePacket4{
 		SessionID:            1111,
 		SliceNumber:          1,
-		SessionDataBytes:     13,
+		SessionDataBytes:     int32(len(sessionDataSlice)),
 		SessionData:          sessionDataArray,
 		ClientRoutePublicKey: make([]byte, crypto.KeySize),
 		ServerRoutePublicKey: make([]byte, crypto.KeySize),
