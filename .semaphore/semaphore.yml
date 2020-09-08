@@ -5,12 +5,16 @@ agent:
     type: e1-standard-8
     os_image: ubuntu1804
 global_job_config:
+  secrets:
+    - name: sdk4-repo-access
   prologue:
     commands:
       - sudo apt-get update && sudo apt-get -y install libsodium-dev google-cloud-sdk-firestore-emulator google-cloud-sdk-pubsub-emulator libzmq3-dev
       - checkout
       - sem-version go 1.13
       - make clean
+      - chmod 0600 ~/.ssh/id_rsa_semaphoreci_sdk4
+      - ssh-add ~/.ssh/id_rsa_semaphoreci_sdk4
       - git submodule init
       - git submodule update
 blocks:
