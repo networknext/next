@@ -861,11 +861,11 @@ func relayTraffic(rpcClient jsonrpc.RPCClient, env Environment, regex string) {
 
 		statsList = append(statsList, trafficStats{
 			Name:       relay.Name,
-			InternalRx: unitFormat(relay.TrafficStats.InternalStatsRx()),
-			InternalTx: unitFormat(relay.TrafficStats.InternalStatsTx()),
-			GameRx:     unitFormat(relay.TrafficStats.GameStatsRx()),
-			GameTx:     unitFormat(relay.TrafficStats.GameStatsTx()),
-			UnknownRx:  unitFormat(relay.TrafficStats.UnknownRx),
+			InternalRx: unitFormat(relay.TrafficStats.InternalStatsRx() * 8),
+			InternalTx: unitFormat(relay.TrafficStats.InternalStatsTx() * 8),
+			GameRx:     unitFormat(relay.TrafficStats.GameStatsRx() * 8),
+			GameTx:     unitFormat(relay.TrafficStats.GameStatsTx() * 8),
+			UnknownRx:  unitFormat(relay.TrafficStats.UnknownRx * 8),
 		})
 	}
 

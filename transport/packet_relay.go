@@ -253,6 +253,68 @@ func (r *RelayUpdateRequest) UnmarshalBinary(buff []byte) error {
 	}
 }
 
+func (r *RelayUpdateRequest) unmarshalBinaryV0(buff []byte, index int) error {
+	var numRelays uint32
+
+	var addr string
+	if !(encoding.ReadString(buff, &index, &addr, routing.MaxRelayAddressLength) &&
+		encoding.ReadBytes(buff, &index, &r.Token, crypto.KeySize) &&
+		encoding.ReadUint32(buff, &index, &numRelays)) {
+		return errors.New("invalid packet")
+	}
+
+	if udp, err := net.ResolveUDPAddr("udp", addr); udp != nil && err == nil {
+		r.Address = *udp
+	} else {
+		return fmt.Errorf("could not resolve init packet with address '%s' with reason: %v", addr, err)
+	}
+
+	r.PingStats = make([]routing.RelayStatsPing, numRelays)
+	for i := 0; i < int(numRelays); i++ {
+		stats := &r.PingStats[i]
+
+		if !(encoding.ReadUint64(buff, &index, &stats.RelayID) &&
+			encoding.ReadFloat32(buff, &index, &stats.RTT) &&
+			encoding.ReadFloat32(buff, &index, &stats.Jitter) &&
+			encoding.ReadFloat32(buff, &index, &stats.PacketLoss)) {
+			return errors.New("invalid packet, could not read a ping stat")
+		}
+	}
+
+	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.SessionCount) {
+		return errors.New("invalid packet, could not read session count")
+	}
+
+	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.BytesSent) {
+		return errors.New("invalid packet, could not read bytes sent")
+	}
+
+	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.BytesReceived) {
+		return errors.New("invalid packet, could not read bytes received")
+	}
+
+	var shuttingDown uint8
+	if !encoding.ReadUint8(buff, &index, &shuttingDown) {
+		return errors.New("invalid packet, could not read shutdown flag")
+	}
+
+	r.ShuttingDown = shuttingDown != 0
+
+	if !encoding.ReadFloat64(buff, &index, &r.CPUUsage) {
+		return errors.New("invalid packet, could not read cpu usage")
+	}
+
+	if !encoding.ReadFloat64(buff, &index, &r.MemUsage) {
+		return errors.New("invalid packet, could not read memory usage")
+	}
+
+	if !encoding.ReadString(buff, &index, &r.RelayVersion, math.MaxUint32) {
+		return errors.New("invalid packet, could not read relay version")
+	}
+
+	return nil
+}
+
 func (r *RelayUpdateRequest) unmarshalBinaryV1(buff []byte, index int) error {
 	var numRelays uint32
 
@@ -393,68 +455,6 @@ func (r *RelayUpdateRequest) unmarshalBinaryV1(buff []byte, index int) error {
 	return nil
 }
 
-func (r *RelayUpdateRequest) unmarshalBinaryV0(buff []byte, index int) error {
-	var numRelays uint32
-
-	var addr string
-	if !(encoding.ReadString(buff, &index, &addr, routing.MaxRelayAddressLength) &&
-		encoding.ReadBytes(buff, &index, &r.Token, crypto.KeySize) &&
-		encoding.ReadUint32(buff, &index, &numRelays)) {
-		return errors.New("invalid packet")
-	}
-
-	if udp, err := net.ResolveUDPAddr("udp", addr); udp != nil && err == nil {
-		r.Address = *udp
-	} else {
-		return fmt.Errorf("could not resolve init packet with address '%s' with reason: %v", addr, err)
-	}
-
-	r.PingStats = make([]routing.RelayStatsPing, numRelays)
-	for i := 0; i < int(numRelays); i++ {
-		stats := &r.PingStats[i]
-
-		if !(encoding.ReadUint64(buff, &index, &stats.RelayID) &&
-			encoding.ReadFloat32(buff, &index, &stats.RTT) &&
-			encoding.ReadFloat32(buff, &index, &stats.Jitter) &&
-			encoding.ReadFloat32(buff, &index, &stats.PacketLoss)) {
-			return errors.New("invalid packet, could not read a ping stat")
-		}
-	}
-
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.SessionCount) {
-		return errors.New("invalid packet, could not read session count")
-	}
-
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.BytesSent) {
-		return errors.New("invalid packet, could not read bytes sent")
-	}
-
-	if !encoding.ReadUint64(buff, &index, &r.TrafficStats.BytesReceived) {
-		return errors.New("invalid packet, could not read bytes received")
-	}
-
-	var shuttingDown uint8
-	if !encoding.ReadUint8(buff, &index, &shuttingDown) {
-		return errors.New("invalid packet, could not read shutdown flag")
-	}
-
-	r.ShuttingDown = shuttingDown != 0
-
-	if !encoding.ReadFloat64(buff, &index, &r.CPUUsage) {
-		return errors.New("invalid packet, could not read cpu usage")
-	}
-
-	if !encoding.ReadFloat64(buff, &index, &r.MemUsage) {
-		return errors.New("invalid packet, could not read memory usage")
-	}
-
-	if !encoding.ReadString(buff, &index, &r.RelayVersion, math.MaxUint32) {
-		return errors.New("invalid packet, could not read relay version")
-	}
-
-	return nil
-}
-
 func (r RelayUpdateRequest) MarshalJSON() ([]byte, error) {
 	data := make(map[string]interface{})
 
@@ -488,6 +488,41 @@ func (r RelayUpdateRequest) MarshalBinary() ([]byte, error) {
 	default:
 		return nil, fmt.Errorf("invalid update request version: %d", r.Version)
 	}
+}
+
+func (r RelayUpdateRequest) marshalBinaryV0() ([]byte, error) {
+	data := make([]byte, r.sizeV0())
+
+	index := 0
+	encoding.WriteUint32(data, &index, r.Version)
+	encoding.WriteString(data, &index, r.Address.String(), math.MaxInt32)
+	encoding.WriteBytes(data, &index, r.Token, crypto.KeySize)
+	encoding.WriteUint32(data, &index, uint32(len(r.PingStats)))
+
+	for i := 0; i < len(r.PingStats); i++ {
+		stats := &r.PingStats[i]
+
+		encoding.WriteUint64(data, &index, stats.RelayID)
+		encoding.WriteUint32(data, &index, math.Float32bits(stats.RTT))
+		encoding.WriteUint32(data, &index, math.Float32bits(stats.Jitter))
+		encoding.WriteUint32(data, &index, math.Float32bits(stats.PacketLoss))
+	}
+
+	encoding.WriteUint64(data, &index, r.TrafficStats.SessionCount)
+	encoding.WriteUint64(data, &index, r.TrafficStats.BytesSent)
+	encoding.WriteUint64(data, &index, r.TrafficStats.BytesReceived)
+	var shutdownFlag uint8
+	if r.ShuttingDown {
+		shutdownFlag = 1
+	} else {
+		shutdownFlag = 0
+	}
+	encoding.WriteUint8(data, &index, shutdownFlag)
+	encoding.WriteFloat64(data, &index, r.CPUUsage)
+	encoding.WriteFloat64(data, &index, r.MemUsage)
+	encoding.WriteString(data, &index, r.RelayVersion, uint32(len(r.RelayVersion)))
+
+	return data[:index], nil
 }
 
 func (r RelayUpdateRequest) marshalBinaryV1() ([]byte, error) {
@@ -540,41 +575,6 @@ func (r RelayUpdateRequest) marshalBinaryV1() ([]byte, error) {
 		shutdownFlag = 0
 	}
 
-	encoding.WriteUint8(data, &index, shutdownFlag)
-	encoding.WriteFloat64(data, &index, r.CPUUsage)
-	encoding.WriteFloat64(data, &index, r.MemUsage)
-	encoding.WriteString(data, &index, r.RelayVersion, uint32(len(r.RelayVersion)))
-
-	return data[:index], nil
-}
-
-func (r RelayUpdateRequest) marshalBinaryV0() ([]byte, error) {
-	data := make([]byte, r.sizeV0())
-
-	index := 0
-	encoding.WriteUint32(data, &index, r.Version)
-	encoding.WriteString(data, &index, r.Address.String(), math.MaxInt32)
-	encoding.WriteBytes(data, &index, r.Token, crypto.KeySize)
-	encoding.WriteUint32(data, &index, uint32(len(r.PingStats)))
-
-	for i := 0; i < len(r.PingStats); i++ {
-		stats := &r.PingStats[i]
-
-		encoding.WriteUint64(data, &index, stats.RelayID)
-		encoding.WriteUint32(data, &index, math.Float32bits(stats.RTT))
-		encoding.WriteUint32(data, &index, math.Float32bits(stats.Jitter))
-		encoding.WriteUint32(data, &index, math.Float32bits(stats.PacketLoss))
-	}
-
-	encoding.WriteUint64(data, &index, r.TrafficStats.SessionCount)
-	encoding.WriteUint64(data, &index, r.TrafficStats.BytesSent)
-	encoding.WriteUint64(data, &index, r.TrafficStats.BytesReceived)
-	var shutdownFlag uint8
-	if r.ShuttingDown {
-		shutdownFlag = 1
-	} else {
-		shutdownFlag = 0
-	}
 	encoding.WriteUint8(data, &index, shutdownFlag)
 	encoding.WriteFloat64(data, &index, r.CPUUsage)
 	encoding.WriteFloat64(data, &index, r.MemUsage)

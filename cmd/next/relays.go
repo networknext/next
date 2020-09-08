@@ -305,8 +305,9 @@ func relays(
 			includeRelay = false
 		}
 		unitFormat(0)
-		tx := unitFormat(relay.TrafficStats.BytesSent * 8)
-		rx := unitFormat(relay.TrafficStats.BytesReceived * 8)
+		bitsTransmitted := unitFormat(relay.TrafficStats.BytesSent * 8)
+		bitsReceived := unitFormat(relay.TrafficStats.BytesReceived * 8)
+
 		cpuUsage := fmt.Sprintf("%.02f%%", relay.CPUUsage)
 		memUsage := fmt.Sprintf("%.02f%%", relay.MemUsage)
 
@@ -346,8 +347,8 @@ func relays(
 					address,
 					relay.State,
 					fmt.Sprintf("%d", relay.SessionCount),
-					tx,
-					rx,
+					bitsTransmitted,
+					bitsReceived,
 					relay.Version,
 					lastUpdated,
 				})
@@ -378,8 +379,8 @@ func relays(
 				Address:     address,
 				State:       relay.State,
 				Sessions:    fmt.Sprintf("%d", relay.SessionCount),
-				Tx:          tx,
-				Rx:          rx,
+				Tx:          bitsTransmitted,
+				Rx:          bitsReceived,
 				Version:     relay.Version,
 				CPUUsage:    cpuUsage,
 				MemUsage:    memUsage,
