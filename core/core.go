@@ -954,12 +954,12 @@ func ReframeRoute(routeRelayIds []uint64, relayIdToIndex map[uint64]int32) ([]in
     return routeRelays, nil
 }
 
-func GetBestRoute_Initial(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost[] int32, destRelays []int32, maxCost int32, bestRoute *BestRoute) (BestRoute, error) {
+func GetBestRoute_Initial(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost[] int32, destRelays []int32, maxCost int32, bestRoute *BestRoute) bool {
     
     bestRouteCost := GetBestRouteCost(routeMatrix, sourceRelays, sourceRelayCost, destRelays)
 
     if bestRouteCost > maxCost {
-        return BestRoute{}, errors.New("best route is > max cost")
+        return false
     }
 
     numBestRoutes := 0
@@ -967,12 +967,14 @@ func GetBestRoute_Initial(routeMatrix []RouteEntry, sourceRelays []int32, source
     GetBestRoutes(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, bestRoutes, &numBestRoutes)
 
     if numBestRoutes == 0 {
-        return BestRoute{}, errors.New("no suitable routes found")
+        return false
     }
 
     randomIndex := rand.Intn(numBestRoutes)
 
-    return bestRoutes[randomIndex], nil
+    *bestRoute = bestRoutes[randomIndex]
+    
+    return true
 }
 
 func GetBestRoute_Update() {
