@@ -306,23 +306,33 @@ namespace core
     size_t index = 0;
 
     if (!encoding::read_uint32(v, index, version)) {
+      LOG(ERROR, "unable to read update response version");
       return false;
     }
+
     if (!encoding::read_uint64(v, index, this->timestamp)) {
+      LOG(ERROR, "unable to read update response timestamp");
       return false;
     }
+
     if (!encoding::read_uint32(v, index, this->num_relays)) {
+      LOG(ERROR, "unable to read update response relay count");
       return false;
     }
+
     for (size_t i = 0; i < this->num_relays; i++) {
       auto& relay = Relays[i];
       if (!encoding::read_uint64(v, index, relay.id)) {
+        LOG(ERROR, "unable to read update response relay id #", i);
         return false;
       }
+
       std::string addr;
       if (!encoding::read_string(v, index, addr)) {
+        LOG(ERROR, "unable to read update response relay address #", i);
         return false;
       }
+
       if (!relay.address.parse(addr)) {
         LOG(ERROR, "unable to parse relay address: ", addr);
         return false;
@@ -404,7 +414,10 @@ namespace core
       }
 
       // for old relay compat the router sends this back in millis, so convert back to seconds
+      // TODO eventually get to this ^
       this->router_info.set_timestamp(response.timestamp / 1000);
+
+      this->update_token = response.public_key;
     }
 
     return true;
@@ -517,7 +530,7 @@ namespace core
 
       encoding::write_uint32(req, index, UPDATE_REQUEST_VERSION);
       encoding::write_string(req, index, this->relay_address);
-      encoding::write_bytes(req, index, this->keychain.relay_public_key, this->keychain.relay_public_key.size());
+      encoding::write_bytes(req, index, this->update_token, this->update_token.size());
       encoding::write_uint32(req, index, stats.num_relays);
 
       for (unsigned int i = 0; i < stats.num_relays; ++i) {
@@ -589,7 +602,7 @@ namespace core
     {
       UpdateResponse response;
       if (!response.from(res)) {
-        LOG(ERROR, "could not deserialize update response");
+        LOG(ERROR, "could not deserialize update response, response size = ", res.size());
         return false;
       }
 
@@ -607,6 +620,8 @@ namespace core
 
       this->relay_manager.update(response.num_relays, response.Relays);
     }
+
+    LOG(DEBUG, "updated relay");
 
     return true;
   }

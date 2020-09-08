@@ -11,6 +11,7 @@
 #include "testing/test.hpp"
 #include "util/logger.hpp"
 
+using crypto::GenericKey;
 using crypto::KEY_SIZE;
 
 // forward declare test names to allow private functions to be visible them
@@ -58,7 +59,7 @@ namespace core
   {
     uint32_t version;
     std::string address;
-    std::array<uint8_t, crypto::KEY_SIZE> public_key;
+    GenericKey public_key;
     RelayStats ping_stats;
     uint64_t session_count;
     uint64_t outbound_ping_tx;
@@ -147,6 +148,11 @@ namespace core
     const std::string base64_relay_public_key;
     const core::SessionMap& session_map;
     net::IHttpClient& http_client;
+
+    // this is the public key in the actual backend
+    // for reference backends it's random so has to
+    // be saved from the init response
+    GenericKey update_token;
 
     auto update(util::ThroughputRecorder& recorder, bool shutdown) -> bool;
   };
