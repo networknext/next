@@ -489,7 +489,11 @@ func mainReturnWithCode() int {
 					start := time.Now()
 
 					bytes, err := newRouteMatrix.ReadFrom(matrixReader)
-					matrixReader.Close()
+
+					if matrixReader != nil {
+						matrixReader.Close()
+					}
+
 					if err != nil {
 						level.Error(logger).Log("envvar", "ROUTE_MATRIX_URI", "value", uri, "msg", "could not read route matrix", "err", err)
 						time.Sleep(syncInterval)
