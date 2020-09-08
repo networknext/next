@@ -14,8 +14,14 @@ LIB_DEP_FILES					:= $(patsubst $(LIB)/%.cpp, $(OBJ)/$(LIB)/%.test.d, $(LIB_FILE
 SRC_OBJ_FILES					:= $(patsubst $(SRC)/%.cpp, $(OBJ)/$(SRC)/%.test.o, $(SRC_FILES))
 SRC_DEP_FILES					:= $(patsubst $(SRC)/%.cpp, $(OBJ)/$(SRC)/%.test.d, $(SRC_FILES))
 
+DEF_FLAGS							:= -DTEST_BUILD
+
+ifeq ($(LOG_ALL),true)
+DEF_FLAGS 						:= $(DEF_FLAGS) -DLOG_ALL
+endif
+
 COMMON_FLAGS 					:= $(CXX) $(CXX_FLAGS) $(CXX_DBG_FLAGS)
-COMMON_COMPILE_FLAGS 	:= $(COMMON_FLAGS) -c -DTEST_BUILD
+COMMON_COMPILE_FLAGS 	:= $(COMMON_FLAGS) -c $(DEF_FLAGS)
 
 ################
 ### Targets  ###
@@ -29,7 +35,7 @@ run: $(BIN)/$(EXE)
 	@$< $(TESTS)
 
 .PHONY: clean
-clean: 
+clean:
 	@rm -f $(BIN)/$(EXE) $(SRC_OBJ_FILES) $(SRC_DEP_FILES) $(LIB_OBJ_FILES) $(LIB_DEP_FILES) $(GCH)
 
 ##############
@@ -49,4 +55,3 @@ $(BIN)/$(EXE): $(SRC_OBJ_FILES) $(LIB_OBJ_FILES)
 	$(COMMON_FLAGS) -o $@ $^ $(LIBRARIES)
 
 -include $(SRC_DEP_FILES) $(LIB_DEP_FILES)
-

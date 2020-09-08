@@ -360,8 +360,16 @@ int main(int argc, const char* argv[])
      [&env, &relayAddr, &keychain, &routerInfo, &relayManager, &b64RelayPubKey, &sessions, &cleanup, &recorder, &success] {
        bool relayInitialized = false;
 
-       core::Backend<net::BeastWrapper> backend(
-        env.BackendHostname, relayAddr.toString(), keychain, routerInfo, relayManager, b64RelayPubKey, sessions);
+      net::BeastWrapper wrapper;
+      core::Backend backend(
+       env.BackendHostname,
+       relayAddr.toString(),
+       keychain,
+       routerInfo,
+       relayManager,
+       b64RelayPubKey,
+       sessions,
+       wrapper);
 
        for (int i = 0; i < 60; ++i) {
          if (backend.init()) {

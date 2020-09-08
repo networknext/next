@@ -1,4 +1,3 @@
-
 #include "config.hpp"
 #include "sysinfo.hpp"
 #include <algorithm>
@@ -31,6 +30,7 @@
 #include <glibtop/cpu.h>
 #include <glibtop/mem.h>
 #include <ifaddrs.h>
+#include <iomanip>
 #include <iostream>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
