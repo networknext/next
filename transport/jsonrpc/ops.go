@@ -427,8 +427,8 @@ type relay struct {
 	Addr                string                `json:"addr"`
 	Latitude            float64               `json:"latitude"`
 	Longitude           float64               `json:"longitude"`
-	NICSpeedMbps        int32                 `json:"nic_speed_mpbs"`
-	IncludedBandwidthGB int32                 `json:"included_bandwidth_gb"`
+	NICSpeedMbps        int32                 `json:"nicSpeedMpbs"`
+	IncludedBandwidthGB int32                 `json:"includedBandwidthGB"`
 	State               string                `json:"state"`
 	LastUpdateTime      time.Time             `json:"lastUpdateTime"`
 	ManagementAddr      string                `json:"management_addr"`
@@ -443,13 +443,13 @@ type relay struct {
 	FirestoreID         string                `json:"firestore_id"`
 	Version             string                `json:"relay_version"`
 	SellerName          string                `json:"seller_name"`
-	MRC                 routing.Nibblin       `json:"monthly_recurring_charge_nibblins"`
+	MRC                 routing.Nibblin       `json:"monthlyRecurringChargeNibblins"`
 	Overage             routing.Nibblin       `json:"overage"`
-	BWRule              routing.BandWidthRule `json:"bandwidth_rule"`
-	ContractTerm        int32                 `json:"contract_term"`
-	StartDate           time.Time             `json:"start_date"`
-	EndDate             time.Time             `json:"end_date"`
-	Type                routing.MachineType   `json:"machine_type"`
+	BWRule              routing.BandWidthRule `json:"bandwidthRule"`
+	ContractTerm        int32                 `json:"contractTerm"`
+	StartDate           time.Time             `json:"startDate"`
+	EndDate             time.Time             `json:"endDate"`
+	Type                routing.MachineType   `json:"machineType"`
 	CPUUsage            float32               `json:"cpu_usage"`
 	MemUsage            float32               `json:"mem_usage"`
 }

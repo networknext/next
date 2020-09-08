@@ -32,7 +32,7 @@ type RouteMatrixEntry struct {
 }
 
 type RouteMatrix struct {
-	RelayIndices map[uint64]int
+	RelayIndices map[uint64]int // todo: rename to "RelayIDToIndex"
 
 	RelayIDs              []uint64
 	RelayNames            []string
@@ -59,6 +59,7 @@ type RouteMatrix struct {
 		routeIndex int
 		reversed   bool
 	}
+
 	relayAddressCache []*net.UDPAddr
 }
 
@@ -119,6 +120,10 @@ func (m *RouteMatrix) GetNearRelays(latitude float64, longitude float64, maxNear
 
 	if len(nearRelayData) > maxNearRelays {
 		nearRelayData = nearRelayData[:maxNearRelays]
+	}
+
+	if len(nearRelayData) == 0 {
+		return nil, errors.New("no near relays")
 	}
 
 	return nearRelayData, nil
