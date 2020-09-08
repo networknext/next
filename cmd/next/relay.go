@@ -100,26 +100,26 @@ const (
 	PortCheckScript = `echo "$(sudo lsof -i -P -n 2>/dev/null | grep '*:40000' | tr -s ' ' | cut -d ' ' -f 1 | head -1)"`
 )
 
-func unitFormat(bytes uint64) string {
+func unitFormat(bits uint64) string {
 	const (
 		kilo = 1000
 		mega = 1000000
 		giga = 1000000000
 	)
 
-	if bytes > giga {
-		return fmt.Sprintf("%.02fGb/s", float64(bytes)/float64(giga))
+	if bits > giga {
+		return fmt.Sprintf("%.02fGb/s", float64(bits)/float64(giga))
 	}
 
-	if bytes > mega {
-		return fmt.Sprintf("%.02fMb/s", float64(bytes)/float64(mega))
+	if bits > mega {
+		return fmt.Sprintf("%.02fMb/s", float64(bits)/float64(mega))
 	}
 
-	if bytes > kilo {
-		return fmt.Sprintf("%.02fKb/s", float64(bytes)/float64(kilo))
+	if bits > kilo {
+		return fmt.Sprintf("%.02fKb/s", float64(bits)/float64(kilo))
 	}
 
-	return fmt.Sprintf("%d", bytes)
+	return fmt.Sprintf("%d", bits)
 }
 
 type relayInfo struct {
