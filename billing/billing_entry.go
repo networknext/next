@@ -1,14 +1,20 @@
 package billing
 
 import (
+	"fmt"
+
 	"github.com/networknext/backend/encoding"
 )
 
-const BillingEntryVersion = uint8(6)
+const (
+	BillingEntryVersion = uint8(8)
 
-const BillingEntryMaxRelays = 5
+	BillingEntryMaxRelays           = 5
+	BillingEntryMaxISPLength        = 64
+	BillingEntryMaxSDKVersionLength = 8
 
-const MaxBillingEntryBytes = 8 + 1 + 8 + 8 + 8 + (4 * 4) + 1 + (3 * 4) + 1 + (BillingEntryMaxRelays * 8) + (3 * 8) + (4 * 1) + 8 + 8 + 8 + 1 + 1 + (BillingEntryMaxRelays * 8)
+	MaxBillingEntryBytes = 8 + 1 + 8 + 8 + 8 + (4 * 4) + 1 + (3 * 4) + 1 + (BillingEntryMaxRelays * 8) + (3 * 8) + (4 * 1) + 8 + 8 + 8 + 1 + 1 + (BillingEntryMaxRelays * 8) + 4 + 4 + BillingEntryMaxISPLength + 1 + 8 + 1 + 1 + BillingEntryMaxSDKVersionLength
+)
 
 type BillingEntry struct {
 	Timestamp                 uint64 // IMPORTANT: Timestamp is not serialized. Pubsub already has the timestamp so we use that instead.
@@ -39,9 +45,23 @@ type BillingEntry struct {
 	RTTReduction              bool
 	PacketLossReduction       bool
 	NextRelaysPrice           [BillingEntryMaxRelays]uint64
+	Latitude                  float32
+	Longitude                 float32
+	ISP                       string
+	ABTest                    bool
+	RouteDecision             uint64
+	ConnectionType            uint8
+	PlatformType              uint8
+	SDKVersion                string
 }
 
 func WriteBillingEntry(entry *BillingEntry) []byte {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("recovered from panic during billing entry write: %v\n", r)
+		}
+	}()
+
 	data := make([]byte, MaxBillingEntryBytes)
 	index := 0
 	encoding.WriteUint8(data, &index, BillingEntryVersion)
@@ -91,6 +111,16 @@ func WriteBillingEntry(entry *BillingEntry) []byte {
 		}
 	}
 
+	encoding.WriteFloat32(data, &index, entry.Latitude)
+	encoding.WriteFloat32(data, &index, entry.Longitude)
+	encoding.WriteString(data, &index, entry.ISP, BillingEntryMaxISPLength)
+	encoding.WriteBool(data, &index, entry.ABTest)
+	encoding.WriteUint64(data, &index, entry.RouteDecision)
+
+	encoding.WriteUint8(data, &index, entry.ConnectionType)
+	encoding.WriteUint8(data, &index, entry.PlatformType)
+	encoding.WriteString(data, &index, entry.SDKVersion, BillingEntryMaxSDKVersionLength)
+
 	return data[:index]
 }
 
@@ -99,7 +129,7 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 	if !encoding.ReadUint8(data, &index, &entry.Version) {
 		return false
 	}
-	if entry.Version <= BillingEntryVersion-1 {
+	if entry.Version > BillingEntryVersion {
 		return false
 	}
 	if !encoding.ReadUint64(data, &index, &entry.BuyerID) {
@@ -221,133 +251,39 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 		}
 	}
 
-	return true
-}
+	if entry.Version >= 7 {
+		if !encoding.ReadFloat32(data, &index, &entry.Latitude) {
+			return false
+		}
 
-func ReadBillingEntryUserHashV5(entry *BillingEntry, data []byte) bool {
-	index := 0
-	if !encoding.ReadUint8(data, &index, &entry.Version) {
-		return false
-	}
-	if entry.Version > BillingEntryVersion {
-		return false
-	}
-	if !encoding.ReadUint64(data, &index, &entry.BuyerID) {
-		return false
-	}
-	if entry.Version >= 5 {
-		if !encoding.ReadUint64(data, &index, &entry.UserHash) {
+		if !encoding.ReadFloat32(data, &index, &entry.Longitude) {
 			return false
 		}
-	}
-	if !encoding.ReadUint64(data, &index, &entry.SessionID) {
-		return false
-	}
-	if !encoding.ReadUint32(data, &index, &entry.SliceNumber) {
-		return false
-	}
-	if !encoding.ReadFloat32(data, &index, &entry.DirectRTT) {
-		return false
-	}
-	if !encoding.ReadFloat32(data, &index, &entry.DirectJitter) {
-		return false
-	}
-	if !encoding.ReadFloat32(data, &index, &entry.DirectPacketLoss) {
-		return false
-	}
-	if !encoding.ReadBool(data, &index, &entry.Next) {
-		return false
-	}
 
-	if entry.Next {
-		if !encoding.ReadFloat32(data, &index, &entry.NextRTT) {
+		if !encoding.ReadString(data, &index, &entry.ISP, BillingEntryMaxISPLength) {
 			return false
 		}
-		if !encoding.ReadFloat32(data, &index, &entry.NextJitter) {
+
+		if !encoding.ReadBool(data, &index, &entry.ABTest) {
 			return false
 		}
-		if !encoding.ReadFloat32(data, &index, &entry.NextPacketLoss) {
-			return false
-		}
-		if !encoding.ReadUint8(data, &index, &entry.NumNextRelays) {
-			return false
-		}
-		if entry.NumNextRelays > BillingEntryMaxRelays {
-			return false
-		}
-		for i := 0; i < int(entry.NumNextRelays); i++ {
-			if !encoding.ReadUint64(data, &index, &entry.NextRelays[i]) {
-				return false
-			}
-		}
-		if !encoding.ReadUint64(data, &index, &entry.TotalPrice) {
-			return false
-		}
-	}
-	if entry.Version >= 2 {
-		if !encoding.ReadUint64(data, &index, &entry.ClientToServerPacketsLost) {
-			return false
-		}
-		if !encoding.ReadUint64(data, &index, &entry.ServerToClientPacketsLost) {
+
+		if !encoding.ReadUint64(data, &index, &entry.RouteDecision) {
 			return false
 		}
 	}
 
-	if entry.Version >= 3 {
-		if !encoding.ReadBool(data, &index, &entry.Committed) {
+	if entry.Version >= 8 {
+		if !encoding.ReadUint8(data, &index, &entry.ConnectionType) {
 			return false
 		}
 
-		if !encoding.ReadBool(data, &index, &entry.Flagged) {
+		if !encoding.ReadUint8(data, &index, &entry.PlatformType) {
 			return false
 		}
 
-		if !encoding.ReadBool(data, &index, &entry.Multipath) {
+		if !encoding.ReadString(data, &index, &entry.SDKVersion, BillingEntryMaxSDKVersionLength) {
 			return false
-		}
-
-		if !encoding.ReadBool(data, &index, &entry.Initial) {
-			return false
-		}
-
-		if entry.Next {
-			if !encoding.ReadUint64(data, &index, &entry.NextBytesUp) {
-				return false
-			}
-			if !encoding.ReadUint64(data, &index, &entry.NextBytesDown) {
-				return false
-			}
-		}
-	}
-
-	if entry.Version >= 4 {
-		if !encoding.ReadUint64(data, &index, &entry.DatacenterID) {
-			return false
-		}
-
-		if entry.Next {
-			if !encoding.ReadBool(data, &index, &entry.RTTReduction) {
-				return false
-			}
-			if !encoding.ReadBool(data, &index, &entry.PacketLossReduction) {
-				return false
-			}
-		}
-	}
-
-	if entry.Version >= 5 {
-		if entry.Next {
-			if !encoding.ReadUint8(data, &index, &entry.NumNextRelays) {
-				return false
-			}
-			if entry.NumNextRelays > BillingEntryMaxRelays {
-				return false
-			}
-			for i := 0; i < int(entry.NumNextRelays); i++ {
-				if !encoding.ReadUint64(data, &index, &entry.NextRelaysPrice[i]) {
-					return false
-				}
-			}
 		}
 	}
 

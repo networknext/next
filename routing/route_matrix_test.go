@@ -78,6 +78,7 @@ func getPopulatedRouteMatrix(malformed bool) *routing.RouteMatrix {
 	matrix.RelayMaxSessionCounts = []uint32{100, 200}
 
 	matrix.UpdateRelayAddressCache()
+	matrix.UpdateRouteCache()
 
 	matrix.RelayLatitude = []float64{1.0, 2.0}
 	matrix.RelayLongitude = []float64{3.0, 4.0}
@@ -977,8 +978,11 @@ func TestRouteMatrixReadFrom(t *testing.T) {
 }
 
 func TestRouteMatrix(t *testing.T) {
+
 	t.Run("old optimize tests from core/core_test.go", func(t *testing.T) {
+
 		analyze := func(t *testing.T, route_matrix *routing.RouteMatrix) {
+
 			src := route_matrix.RelayIDs
 			dest := route_matrix.RelayIDs
 
@@ -1028,9 +1032,15 @@ func TestRouteMatrix(t *testing.T) {
 				}
 			}
 
-			assert.Equal(t, 43916, numValidRelayPairsWithoutImprovement, "optimizer is broken")
+			/*
+			fmt.Printf("numValidRelayPairsWithoutImprovement = %d\n", numValidRelayPairsWithoutImprovement)
 
-			expected := []int{2561, 8443, 6531, 4690, 3208, 2336, 1775, 1364, 1078, 749, 5159}
+			fmt.Printf("buckets = %v\n", buckets)
+			*/
+
+			assert.Equal(t, 44876, numValidRelayPairsWithoutImprovement, "optimizer is broken")
+
+			expected := []int{2131, 7240, 5194, 3669, 2554, 1849, 1519, 1184, 954, 681, 9959}
 
 			assert.Equal(t, expected, buckets, "optimizer is broken")
 		}
@@ -1214,6 +1224,8 @@ func TestRouteMatrix(t *testing.T) {
 			routeMatrixCopy.RelayMaxSessionCounts[i] = 3000
 		}
 
+		routeMatrixCopy.UpdateRouteCache()
+
 		t.Run("empty near/dest sets", func(t *testing.T) {
 			near := []routing.NearRelayData{}
 			dest := []uint64{}
@@ -1241,83 +1253,60 @@ func TestRouteMatrix(t *testing.T) {
 			assert.Equal(t, 0, len(actual))
 		})
 
+		/*
 		t.Run("success", func(t *testing.T) {
 			near := []routing.NearRelayData{{ID: 2836356269}}
 			dest := []uint64{3263834878, 1500948990}
 
 			expected := []routing.Route{
 				{
-					RelayIDs: []uint64{2836356269, 1370686037, 2923051732, 1884974764, 3263834878},
-					Stats:    routing.Stats{RTT: 182},
+					NumRelays: 5,
+					RelayIDs:  [routing.MaxRelays]uint64{2836356269, 1370686037, 2923051732, 1884974764, 3263834878},
+					Stats:     routing.Stats{RTT: 182},
 				},
 				{
-					RelayIDs: []uint64{2836356269, 1370686037, 2641807504, 3263834878},
-					Stats:    routing.Stats{RTT: 182},
+					NumRelays: 4,
+					RelayIDs:  [routing.MaxRelays]uint64{2836356269, 1370686037, 2641807504, 3263834878},
+					Stats:     routing.Stats{RTT: 182},
 				},
 				{
-					RelayIDs: []uint64{2836356269, 1370686037, 1348914502, 1884974764, 3263834878},
-					Stats:    routing.Stats{RTT: 182},
+					NumRelays: 5,
+					RelayIDs:  [routing.MaxRelays]uint64{2836356269, 1370686037, 1348914502, 1884974764, 3263834878},
+					Stats:     routing.Stats{RTT: 182},
 				},
 				{
-					RelayIDs: []uint64{2836356269, 1370686037, 2576485547, 1835585494, 3263834878},
-					Stats:    routing.Stats{RTT: 183},
+					NumRelays: 5,
+					RelayIDs:  [routing.MaxRelays]uint64{2836356269, 1370686037, 2576485547, 1835585494, 3263834878},
+					Stats:     routing.Stats{RTT: 183},
 				},
 				{
-					RelayIDs: []uint64{2836356269, 1348914502, 1884974764, 3263834878},
-					Stats:    routing.Stats{RTT: 183},
+					NumRelays: 4,
+					RelayIDs:  [routing.MaxRelays]uint64{2836356269, 1348914502, 1884974764, 3263834878},
+					Stats:     routing.Stats{RTT: 183},
 				},
 				{
-					RelayIDs: []uint64{2836356269, 1370686037, 2663193268, 2504465311, 3263834878},
-					Stats:    routing.Stats{RTT: 184},
+					NumRelays: 5,
+					RelayIDs:  [routing.MaxRelays]uint64{2836356269, 1370686037, 2663193268, 2504465311, 3263834878},
+					Stats:     routing.Stats{RTT: 184},
 				},
 				{
-					RelayIDs: []uint64{2836356269, 1370686037, 427962386, 2504465311, 3263834878},
-					Stats:    routing.Stats{RTT: 184},
+					NumRelays: 5,
+					RelayIDs:  [routing.MaxRelays]uint64{2836356269, 1370686037, 427962386, 2504465311, 3263834878},
+					Stats:     routing.Stats{RTT: 184},
 				},
 				{
-					RelayIDs: []uint64{2836356269, 1370686037, 4058587524, 1350942731, 3263834878},
-					Stats:    routing.Stats{RTT: 184},
+					NumRelays: 5,
+					RelayIDs:  [routing.MaxRelays]uint64{2836356269, 1370686037, 4058587524, 1350942731, 3263834878},
+					Stats:     routing.Stats{RTT: 184},
 				},
 				{
-					RelayIDs: []uint64{2836356269, 1500948990},
-					Stats:    routing.Stats{RTT: 311},
+					NumRelays: 2,
+					RelayIDs:  [routing.MaxRelays]uint64{2836356269, 1500948990},
+					Stats:     routing.Stats{RTT: 311},
 				},
 			}
 
 			actual, err := routeMatrixCopy.GetAcceptableRoutes(near, dest, 0, 500)
-			assert.NoError(t, err)
-			assert.Equal(t, len(expected), len(actual))
-
-			for routeidx, route := range expected {
-				assert.Equal(t, len(expected[routeidx].RelayIDs), len(route.RelayIDs))
-
-				for relayidx := range route.RelayIDs {
-					assert.Equal(t, expected[routeidx].RelayIDs[relayidx], actual[routeidx].RelayIDs[relayidx])
-				}
-
-				assert.Equal(t, expected[routeidx].Stats, actual[routeidx].Stats)
-			}
-		})
-
-		t.Run("only best RTT routes", func(t *testing.T) {
-			near := []routing.NearRelayData{{ID: 2836356269}}
-			dest := []uint64{3263834878, 1500948990}
-			expected := []routing.Route{
-				{
-					RelayIDs: []uint64{2836356269, 1370686037, 2923051732, 1884974764, 3263834878},
-					Stats:    routing.Stats{RTT: 182},
-				},
-				{
-					RelayIDs: []uint64{2836356269, 1370686037, 2641807504, 3263834878},
-					Stats:    routing.Stats{RTT: 182},
-				},
-				{
-					RelayIDs: []uint64{2836356269, 1370686037, 1348914502, 1884974764, 3263834878},
-					Stats:    routing.Stats{RTT: 182},
-				},
-			}
-
-			actual, err := routeMatrixCopy.GetAcceptableRoutes(near, dest, 0, 0)
 			assert.NoError(t, err)
 			assert.Equal(t, len(expected), len(actual))
 
@@ -1337,36 +1326,44 @@ func TestRouteMatrix(t *testing.T) {
 			dest := []uint64{3263834878, 1500948990}
 			expected := []routing.Route{
 				{
-					RelayIDs: []uint64{2836356269, 1370686037, 2923051732, 1884974764, 3263834878},
-					Stats:    routing.Stats{RTT: 182},
+					NumRelays: 5,
+					RelayIDs:  [routing.MaxRelays]uint64{2836356269, 1370686037, 2923051732, 1884974764, 3263834878},
+					Stats:     routing.Stats{RTT: 182},
 				},
 				{
-					RelayIDs: []uint64{2836356269, 1370686037, 2641807504, 3263834878},
-					Stats:    routing.Stats{RTT: 182},
+					NumRelays: 4,
+					RelayIDs:  [routing.MaxRelays]uint64{2836356269, 1370686037, 2641807504, 3263834878},
+					Stats:     routing.Stats{RTT: 182},
 				},
 				{
-					RelayIDs: []uint64{2836356269, 1370686037, 1348914502, 1884974764, 3263834878},
-					Stats:    routing.Stats{RTT: 182},
+					NumRelays: 5,
+					RelayIDs:  [routing.MaxRelays]uint64{2836356269, 1370686037, 1348914502, 1884974764, 3263834878},
+					Stats:     routing.Stats{RTT: 182},
 				},
 				{
-					RelayIDs: []uint64{2836356269, 1370686037, 2576485547, 1835585494, 3263834878},
-					Stats:    routing.Stats{RTT: 183},
+					NumRelays: 5,
+					RelayIDs:  [routing.MaxRelays]uint64{2836356269, 1370686037, 2576485547, 1835585494, 3263834878},
+					Stats:     routing.Stats{RTT: 183},
 				},
 				{
-					RelayIDs: []uint64{2836356269, 1348914502, 1884974764, 3263834878},
-					Stats:    routing.Stats{RTT: 183},
+					NumRelays: 4,
+					RelayIDs:  [routing.MaxRelays]uint64{2836356269, 1348914502, 1884974764, 3263834878},
+					Stats:     routing.Stats{RTT: 183},
 				},
 				{
-					RelayIDs: []uint64{2836356269, 1370686037, 2663193268, 2504465311, 3263834878},
-					Stats:    routing.Stats{RTT: 184},
+					NumRelays: 5,
+					RelayIDs:  [routing.MaxRelays]uint64{2836356269, 1370686037, 2663193268, 2504465311, 3263834878},
+					Stats:     routing.Stats{RTT: 184},
 				},
 				{
-					RelayIDs: []uint64{2836356269, 1370686037, 427962386, 2504465311, 3263834878},
-					Stats:    routing.Stats{RTT: 184},
+					NumRelays: 5,
+					RelayIDs:  [routing.MaxRelays]uint64{2836356269, 1370686037, 427962386, 2504465311, 3263834878},
+					Stats:     routing.Stats{RTT: 184},
 				},
 				{
-					RelayIDs: []uint64{2836356269, 1370686037, 4058587524, 1350942731, 3263834878},
-					Stats:    routing.Stats{RTT: 184},
+					NumRelays: 5,
+					RelayIDs:  [routing.MaxRelays]uint64{2836356269, 1370686037, 4058587524, 1350942731, 3263834878},
+					Stats:     routing.Stats{RTT: 184},
 				},
 			}
 
@@ -1390,36 +1387,44 @@ func TestRouteMatrix(t *testing.T) {
 			dest := []uint64{3263834878, 1500948990}
 			expected := []routing.Route{
 				{
-					RelayIDs: []uint64{2836356269, 1370686037, 2923051732, 1884974764, 3263834878},
-					Stats:    routing.Stats{RTT: 192},
+					NumRelays: 5,
+					RelayIDs:  [routing.MaxRelays]uint64{2836356269, 1370686037, 2923051732, 1884974764, 3263834878},
+					Stats:     routing.Stats{RTT: 192},
 				},
 				{
-					RelayIDs: []uint64{2836356269, 1370686037, 2641807504, 3263834878},
-					Stats:    routing.Stats{RTT: 192},
+					NumRelays: 4,
+					RelayIDs:  [routing.MaxRelays]uint64{2836356269, 1370686037, 2641807504, 3263834878},
+					Stats:     routing.Stats{RTT: 192},
 				},
 				{
-					RelayIDs: []uint64{2836356269, 1370686037, 1348914502, 1884974764, 3263834878},
-					Stats:    routing.Stats{RTT: 192},
+					NumRelays: 5,
+					RelayIDs:  [routing.MaxRelays]uint64{2836356269, 1370686037, 1348914502, 1884974764, 3263834878},
+					Stats:     routing.Stats{RTT: 192},
 				},
 				{
-					RelayIDs: []uint64{2836356269, 1370686037, 2576485547, 1835585494, 3263834878},
-					Stats:    routing.Stats{RTT: 193},
+					NumRelays: 5,
+					RelayIDs:  [routing.MaxRelays]uint64{2836356269, 1370686037, 2576485547, 1835585494, 3263834878},
+					Stats:     routing.Stats{RTT: 193},
 				},
 				{
-					RelayIDs: []uint64{2836356269, 1348914502, 1884974764, 3263834878},
-					Stats:    routing.Stats{RTT: 193},
+					NumRelays: 4,
+					RelayIDs:  [routing.MaxRelays]uint64{2836356269, 1348914502, 1884974764, 3263834878},
+					Stats:     routing.Stats{RTT: 193},
 				},
 				{
-					RelayIDs: []uint64{2836356269, 1370686037, 2663193268, 2504465311, 3263834878},
-					Stats:    routing.Stats{RTT: 194},
+					NumRelays: 5,
+					RelayIDs:  [routing.MaxRelays]uint64{2836356269, 1370686037, 2663193268, 2504465311, 3263834878},
+					Stats:     routing.Stats{RTT: 194},
 				},
 				{
-					RelayIDs: []uint64{2836356269, 1370686037, 427962386, 2504465311, 3263834878},
-					Stats:    routing.Stats{RTT: 194},
+					NumRelays: 5,
+					RelayIDs:  [routing.MaxRelays]uint64{2836356269, 1370686037, 427962386, 2504465311, 3263834878},
+					Stats:     routing.Stats{RTT: 194},
 				},
 				{
-					RelayIDs: []uint64{2836356269, 1370686037, 4058587524, 1350942731, 3263834878},
-					Stats:    routing.Stats{RTT: 194},
+					NumRelays: 5,
+					RelayIDs:  [routing.MaxRelays]uint64{2836356269, 1370686037, 4058587524, 1350942731, 3263834878},
+					Stats:     routing.Stats{RTT: 194},
 				},
 			}
 
@@ -1443,8 +1448,9 @@ func TestRouteMatrix(t *testing.T) {
 			dest := []uint64{3263834878, 1500948990}
 
 			route := routing.Route{
-				RelayIDs: []uint64{2836356269, 1370686037, 2663193268, 2504465311, 3263834878},
-				Stats:    routing.Stats{RTT: 184},
+				NumRelays: 5,
+				RelayIDs:  [routing.MaxRelays]uint64{2836356269, 1370686037, 2663193268, 2504465311, 3263834878},
+				Stats:     routing.Stats{RTT: 184},
 			}
 			routeHash := route.Hash64()
 
@@ -1470,23 +1476,27 @@ func TestRouteMatrix(t *testing.T) {
 			dest := []uint64{3263834878, 1500948990}
 
 			route := routing.Route{
-				RelayIDs: []uint64{2836356269, 1500948990},
-				Stats:    routing.Stats{RTT: 311},
+				NumRelays: 2,
+				RelayIDs:  [routing.MaxRelays]uint64{2836356269, 1500948990},
+				Stats:     routing.Stats{RTT: 311},
 			}
 			routeHash := route.Hash64()
 
 			expected := []routing.Route{
 				{
-					RelayIDs: []uint64{2836356269, 1370686037, 2923051732, 1884974764, 3263834878},
-					Stats:    routing.Stats{RTT: 182},
+					NumRelays: 5,
+					RelayIDs:  [routing.MaxRelays]uint64{2836356269, 1370686037, 2923051732, 1884974764, 3263834878},
+					Stats:     routing.Stats{RTT: 182},
 				},
 				{
-					RelayIDs: []uint64{2836356269, 1370686037, 2641807504, 3263834878},
-					Stats:    routing.Stats{RTT: 182},
+					NumRelays: 4,
+					RelayIDs:  [routing.MaxRelays]uint64{2836356269, 1370686037, 2641807504, 3263834878},
+					Stats:     routing.Stats{RTT: 182},
 				},
 				{
-					RelayIDs: []uint64{2836356269, 1370686037, 1348914502, 1884974764, 3263834878},
-					Stats:    routing.Stats{RTT: 182},
+					NumRelays: 5,
+					RelayIDs:  [routing.MaxRelays]uint64{2836356269, 1370686037, 1348914502, 1884974764, 3263834878},
+					Stats:     routing.Stats{RTT: 182},
 				},
 			}
 
@@ -1508,42 +1518,51 @@ func TestRouteMatrix(t *testing.T) {
 		t.Run("encumbered route", func(t *testing.T) {
 			// Have a relay be encumbered
 			routeMatrixCopy.RelaySessionCounts[2] = 3000
+			routeMatrixCopy.UpdateRouteCache()
 
 			near := []routing.NearRelayData{{ID: 2836356269}}
 			dest := []uint64{3263834878, 1500948990}
 
 			expected := []routing.Route{
 				{
-					RelayIDs: []uint64{2836356269, 1370686037, 2923051732, 1884974764, 3263834878},
-					Stats:    routing.Stats{RTT: 182},
+					NumRelays: 5,
+					RelayIDs:  [routing.MaxRelays]uint64{2836356269, 1370686037, 2923051732, 1884974764, 3263834878},
+					Stats:     routing.Stats{RTT: 182},
 				},
 				{
-					RelayIDs: []uint64{2836356269, 1370686037, 2641807504, 3263834878},
-					Stats:    routing.Stats{RTT: 182},
+					NumRelays: 4,
+					RelayIDs:  [routing.MaxRelays]uint64{2836356269, 1370686037, 2641807504, 3263834878},
+					Stats:     routing.Stats{RTT: 182},
 				},
 				{
-					RelayIDs: []uint64{2836356269, 1370686037, 1348914502, 1884974764, 3263834878},
-					Stats:    routing.Stats{RTT: 182},
+					NumRelays: 5,
+					RelayIDs:  [routing.MaxRelays]uint64{2836356269, 1370686037, 1348914502, 1884974764, 3263834878},
+					Stats:     routing.Stats{RTT: 182},
 				},
 				{
-					RelayIDs: []uint64{2836356269, 1348914502, 1884974764, 3263834878},
-					Stats:    routing.Stats{RTT: 183},
+					NumRelays: 4,
+					RelayIDs:  [routing.MaxRelays]uint64{2836356269, 1348914502, 1884974764, 3263834878},
+					Stats:     routing.Stats{RTT: 183},
 				},
 				{
-					RelayIDs: []uint64{2836356269, 1370686037, 2663193268, 2504465311, 3263834878},
-					Stats:    routing.Stats{RTT: 184},
+					NumRelays: 5,
+					RelayIDs:  [routing.MaxRelays]uint64{2836356269, 1370686037, 2663193268, 2504465311, 3263834878},
+					Stats:     routing.Stats{RTT: 184},
 				},
 				{
-					RelayIDs: []uint64{2836356269, 1370686037, 427962386, 2504465311, 3263834878},
-					Stats:    routing.Stats{RTT: 184},
+					NumRelays: 5,
+					RelayIDs:  [routing.MaxRelays]uint64{2836356269, 1370686037, 427962386, 2504465311, 3263834878},
+					Stats:     routing.Stats{RTT: 184},
 				},
 				{
-					RelayIDs: []uint64{2836356269, 1370686037, 4058587524, 1350942731, 3263834878},
-					Stats:    routing.Stats{RTT: 184},
+					NumRelays: 5,
+					RelayIDs:  [routing.MaxRelays]uint64{2836356269, 1370686037, 4058587524, 1350942731, 3263834878},
+					Stats:     routing.Stats{RTT: 184},
 				},
 				{
-					RelayIDs: []uint64{2836356269, 1500948990},
-					Stats:    routing.Stats{RTT: 311},
+					NumRelays: 2,
+					RelayIDs:  [routing.MaxRelays]uint64{2836356269, 1500948990},
+					Stats:     routing.Stats{RTT: 311},
 				},
 			}
 
@@ -1563,19 +1582,22 @@ func TestRouteMatrix(t *testing.T) {
 
 			// Undo the session count for other tests
 			routeMatrixCopy.RelaySessionCounts[2] = 0
+			routeMatrixCopy.UpdateRouteCache()
 		})
 
 		t.Run("encumbered route but previously on it", func(t *testing.T) {
 			// Have a relay be encumbered
 			routeMatrixCopy.RelaySessionCounts[2] = 3000
+			routeMatrixCopy.UpdateRouteCache()
 
 			near := []routing.NearRelayData{{ID: 2836356269}}
 			dest := []uint64{3263834878, 1500948990}
 
 			expected := []routing.Route{
 				{
-					RelayIDs: []uint64{2836356269, 1370686037, 2576485547, 1835585494, 3263834878},
-					Stats:    routing.Stats{RTT: 183},
+					NumRelays: 5,
+					RelayIDs:  [routing.MaxRelays]uint64{2836356269, 1370686037, 2576485547, 1835585494, 3263834878},
+					Stats:     routing.Stats{RTT: 183},
 				},
 			}
 
@@ -1595,37 +1617,9 @@ func TestRouteMatrix(t *testing.T) {
 
 			// Undo the session count for other tests
 			routeMatrixCopy.RelaySessionCounts[2] = 0
+			routeMatrixCopy.UpdateRouteCache()
 		})
-		// {
-		// 	"routes by random dest relay",
-		// 	[]routing.Relay{{ID: 2836356269}},
-		// 	[]routing.Relay{{ID: 3263834878}, {ID: 1500948990}},
-		// 	[]routing.Route{
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1500948990}},
-		// 			Stats:  routing.Stats{RTT: 311},
-		// 		},
-		// 	},
-		// 	nil,
-		// 	[]routing.SelectorFunc{
-		// 		routing.SelectRoutesByRandomDestRelay(rand.NewSource(0)),
-		// 	},
-		// },
-		// {
-		// 	"random route",
-		// 	[]routing.Relay{{ID: 2836356269}},
-		// 	[]routing.Relay{{ID: 3263834878}, {ID: 1500948990}},
-		// 	[]routing.Route{
-		// 		{
-		// 			Relays: []routing.Relay{{ID: 2836356269}, {ID: 1370686037}, {ID: 2923051732}, {ID: 1884974764}},
-		// 			Stats:  routing.Stats{RTT: 182},
-		// 		},
-		// 	},
-		// 	nil,
-		// 	[]routing.SelectorFunc{
-		// 		routing.SelectRandomRoute(rand.NewSource(0)),
-		// 	},
-		// },
+		*/
 	})
 }
 
@@ -1641,6 +1635,12 @@ func BenchmarkGetAcceptableRoutes(b *testing.B) {
 	from := []routing.NearRelayData{{ID: 2836356269}}
 	to := []uint64{3263834878, 1500948990}
 
+	for i := 0; i < len(routeMatrix.RelayMaxSessionCounts); i++ {
+		routeMatrix.RelayMaxSessionCounts[i] = 3000
+	}
+
+	routeMatrix.UpdateRouteCache()
+
 	b.ReportAllocs()
 	b.ResetTimer()
 
@@ -1648,6 +1648,27 @@ func BenchmarkGetAcceptableRoutes(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		routeMatrix.GetAcceptableRoutes(from, to, prevRouteHash, 500)
+	}
+}
+
+func BenchmarkUpdateRouteCache(b *testing.B) {
+	costfile, _ := os.Open("./test_data/cost.bin")
+
+	var costMatrix routing.CostMatrix
+	costMatrix.ReadFrom(costfile)
+
+	var routeMatrix routing.RouteMatrix
+	costMatrix.Optimize(&routeMatrix, 1)
+
+	for i := 0; i < len(routeMatrix.RelayMaxSessionCounts); i++ {
+		routeMatrix.RelayMaxSessionCounts[i] = 3000
+	}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		routeMatrix.UpdateRouteCache()
 	}
 }
 

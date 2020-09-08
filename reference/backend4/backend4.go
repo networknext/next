@@ -31,7 +31,11 @@ import (
 	"github.com/gorilla/mux"
 )
 
+const NEXT_MAX_ROUTE_RELAYS = 5
+
 const NEXT_MAX_SESSION_DATA_BYTES = 511
+
+const NEXT_MAX_SESSION_UPDATE_RETRIES = 10
 
 const NEXT_MAX_NEAR_RELAYS = 32
 const NEXT_RELAY_BACKEND_PORT = 30000
@@ -47,8 +51,8 @@ const NEXT_MAX_PACKET_BYTES = 4096
 const NEXT_MTU = 1300
 const NEXT_ADDRESS_BYTES = 19
 const NEXT_MAX_NODES = 7
-const NEXT_SESSION_TOKEN_BYTES = 76
-const NEXT_ENCRYPTED_SESSION_TOKEN_BYTES = 116
+const NEXT_ROUTE_TOKEN_BYTES = 76
+const NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES = 116
 const NEXT_CONTINUE_TOKEN_BYTES = 17
 const NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES = 57
 
@@ -129,18 +133,18 @@ type NextBackendServerInitRequestPacket struct {
 	VersionMajor uint32
 	VersionMinor uint32
 	VersionPatch uint32
-	RequestId    uint64
 	CustomerId   uint64
 	DatacenterId uint64
+	RequestId    uint64
 }
 
 func (packet *NextBackendServerInitRequestPacket) Serialize(stream Stream) error {
 	stream.SerializeBits(&packet.VersionMajor, 8)
 	stream.SerializeBits(&packet.VersionMinor, 8)
 	stream.SerializeBits(&packet.VersionPatch, 8)
-	stream.SerializeUint64(&packet.RequestId)
 	stream.SerializeUint64(&packet.CustomerId)
 	stream.SerializeUint64(&packet.DatacenterId)
+	stream.SerializeUint64(&packet.RequestId)
 	return stream.Error()
 }
 
@@ -163,7 +167,6 @@ type NextBackendServerUpdatePacket struct {
 	VersionMajor         uint32
 	VersionMinor         uint32
 	VersionPatch         uint32
-	Sequence             uint64
 	CustomerId           uint64
 	DatacenterId         uint64
 	NumSessions   		 uint32
@@ -174,7 +177,6 @@ func (packet *NextBackendServerUpdatePacket) Serialize(stream Stream) error {
 	stream.SerializeBits(&packet.VersionMajor, 8)
 	stream.SerializeBits(&packet.VersionMinor, 8)
 	stream.SerializeBits(&packet.VersionPatch, 8)
-	stream.SerializeUint64(&packet.Sequence)
 	stream.SerializeUint64(&packet.CustomerId)
 	stream.SerializeUint64(&packet.DatacenterId)
 	stream.SerializeUint32(&packet.NumSessions)
@@ -188,17 +190,25 @@ type NextBackendSessionUpdatePacket struct {
 	VersionMajor         	  uint32
 	VersionMinor              uint32
 	VersionPatch              uint32
-	Sequence                  uint64
 	CustomerId                uint64
 	SessionId                 uint64
+	SliceNumber               uint32
+	RetryNumber               int32
+	SessionDataBytes          int32
+	SessionData               [NEXT_MAX_SESSION_DATA_BYTES]byte
+	ClientAddress             net.UDPAddr
+	ServerAddress             net.UDPAddr
+	ClientRoutePublicKey      []byte
+	ServerRoutePublicKey      []byte
 	UserHash                  uint64
 	PlatformId                int32
+	ConnectionType            int32
+	Next             		  bool
+	Committed                 bool
+	Reported                  bool
 	Tag                       uint64
 	Flags                     uint32
-	Flagged                   bool
-	ConnectionType            int32
-	OnNetworkNext             bool
-	Committed                 bool
+	UserFlags                 uint64
 	DirectRTT                 float32
 	DirectJitter              float32
 	DirectPacketLoss          float32
@@ -210,49 +220,86 @@ type NextBackendSessionUpdatePacket struct {
 	NearRelayRTT              []float32
 	NearRelayJitter           []float32
 	NearRelayPacketLoss       []float32
-	ClientAddress             net.UDPAddr
-	ServerAddress             net.UDPAddr
-	ClientRoutePublicKey      []byte
-	ServerRoutePublicKey      []byte
 	KbpsUp                    uint32
 	KbpsDown                  uint32
 	PacketsSentClientToServer uint64
 	PacketsSentServerToClient uint64
 	PacketsLostClientToServer uint64
 	PacketsLostServerToClient uint64
-	UserFlags                 uint64
-	SessionDataBytes          int32
-	SessionData               [NEXT_MAX_SESSION_DATA_BYTES]byte
 }
 
 func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
+	
 	stream.SerializeBits(&packet.VersionMajor, 8)
 	stream.SerializeBits(&packet.VersionMinor, 8)
 	stream.SerializeBits(&packet.VersionPatch, 8)
-	stream.SerializeUint64(&packet.Sequence)
+	
 	stream.SerializeUint64(&packet.CustomerId)
-	stream.SerializeAddress(&packet.ServerAddress)
+	
 	stream.SerializeUint64(&packet.SessionId)
-	stream.SerializeUint64(&packet.UserHash)
-	stream.SerializeInteger(&packet.PlatformId, 0, NEXT_PLATFORM_MAX)
-	stream.SerializeUint64(&packet.Tag)
-	hasFlags := stream.IsWriting() && packet.Flags != 0
-	stream.SerializeBool( &hasFlags )
-	if hasFlags {
-		stream.SerializeBits(&packet.Flags, 9)
+	
+	stream.SerializeBits(&packet.SliceNumber, 32)
+	
+	stream.SerializeInteger(&packet.RetryNumber, 0, NEXT_MAX_SESSION_UPDATE_RETRIES)
+	
+	stream.SerializeInteger(&packet.SessionDataBytes, 0, NEXT_MAX_SESSION_DATA_BYTES)
+	if packet.SessionDataBytes > 0 {
+		sessionData := packet.SessionData[:packet.SessionDataBytes]
+		stream.SerializeBytes(sessionData)
 	}
-	stream.SerializeBool(&packet.Flagged)
+	
+	stream.SerializeAddress(&packet.ClientAddress)
+	stream.SerializeAddress(&packet.ServerAddress)
+
+	if stream.IsReading() {
+		packet.ClientRoutePublicKey = make([]byte, Crypto_box_PUBLICKEYBYTES)
+		packet.ServerRoutePublicKey = make([]byte, Crypto_box_PUBLICKEYBYTES)
+	}
+	stream.SerializeBytes(packet.ClientRoutePublicKey)
+	stream.SerializeBytes(packet.ServerRoutePublicKey)
+
+	stream.SerializeUint64(&packet.UserHash)
+
+	stream.SerializeInteger(&packet.PlatformId, 0, NEXT_PLATFORM_MAX)
+
 	stream.SerializeInteger(&packet.ConnectionType, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_MAX)
+
+	stream.SerializeBool(&packet.Next)
+	stream.SerializeBool(&packet.Committed)
+	stream.SerializeBool(&packet.Reported)
+
+	hasTag := stream.IsWriting() && packet.Tag != 0
+	hasFlags := stream.IsWriting() && packet.Flags != 0
+	hasUserFlags := stream.IsWriting() && packet.UserFlags != 0
+	hasLostPackets := stream.IsWriting() && ( packet.PacketsLostClientToServer + packet.PacketsLostServerToClient ) > 0
+
+	stream.SerializeBool( &hasTag )
+	stream.SerializeBool( &hasFlags )
+	stream.SerializeBool( &hasUserFlags )
+	stream.SerializeBool( &hasLostPackets )
+
+	if hasTag {
+		stream.SerializeUint64(&packet.Tag)
+	}
+
+	if hasFlags {
+		stream.SerializeBits(&packet.Flags, NEXT_FLAGS_COUNT)
+	}
+
+	if hasUserFlags {
+		stream.SerializeUint64(&packet.UserFlags)
+	}
+
 	stream.SerializeFloat32(&packet.DirectRTT)
 	stream.SerializeFloat32(&packet.DirectJitter)
 	stream.SerializeFloat32(&packet.DirectPacketLoss)
-	stream.SerializeBool(&packet.OnNetworkNext)
-	stream.SerializeBool(&packet.Committed)
-	if packet.OnNetworkNext {
+
+	if packet.Next {
 		stream.SerializeFloat32(&packet.NextRTT)
 		stream.SerializeFloat32(&packet.NextJitter)
 		stream.SerializeFloat32(&packet.NextPacketLoss)
 	}
+
 	stream.SerializeInteger(&packet.NumNearRelays, 0, NEXT_MAX_NEAR_RELAYS)
 	if stream.IsReading() {
 		packet.NearRelayIds = make([]uint64, packet.NumNearRelays)
@@ -267,54 +314,56 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 		stream.SerializeFloat32(&packet.NearRelayJitter[i])
 		stream.SerializeFloat32(&packet.NearRelayPacketLoss[i])
 	}
-	stream.SerializeAddress(&packet.ClientAddress)
-	if stream.IsReading() {
-		packet.ClientRoutePublicKey = make([]byte, Crypto_box_PUBLICKEYBYTES)
-		packet.ServerRoutePublicKey = make([]byte, Crypto_box_PUBLICKEYBYTES)
+
+	if packet.Next {
+		stream.SerializeUint32(&packet.KbpsUp)
+		stream.SerializeUint32(&packet.KbpsDown)
 	}
-	stream.SerializeBytes(packet.ClientRoutePublicKey)
-	stream.SerializeBytes(packet.ServerRoutePublicKey)
-	stream.SerializeUint32(&packet.KbpsUp)
-	stream.SerializeUint32(&packet.KbpsDown)
+
 	stream.SerializeUint64(&packet.PacketsSentClientToServer)
 	stream.SerializeUint64(&packet.PacketsSentServerToClient)
-	stream.SerializeUint64(&packet.PacketsLostClientToServer)
-	stream.SerializeUint64(&packet.PacketsLostServerToClient)
-	hasUserFlags := stream.IsWriting() && packet.UserFlags != 0
-	stream.SerializeBool( &hasUserFlags )
-	if hasUserFlags {
-		stream.SerializeUint64(&packet.UserFlags)
+
+	if hasLostPackets {
+		stream.SerializeUint64(&packet.PacketsLostClientToServer)
+		stream.SerializeUint64(&packet.PacketsLostServerToClient)
 	}
-	stream.SerializeInteger(&packet.SessionDataBytes, 0, NEXT_MAX_SESSION_DATA_BYTES)
-	if packet.SessionDataBytes > 0 {
-		sessionData := packet.SessionData[:packet.SessionDataBytes]
-		stream.SerializeBytes(sessionData)
-	}
+
 	return stream.Error()
 }
 
 // --------------------------------------------------------------------------------
 
 type NextBackendSessionResponsePacket struct {
-	Sequence             uint64
 	SessionId            uint64
+	SliceNumber          uint32
+	SessionDataBytes     int32
+	SessionData          [NEXT_MAX_SESSION_DATA_BYTES]byte
+	RouteType            int32
 	NumNearRelays        int32
 	NearRelayIds         []uint64
 	NearRelayAddresses   []net.UDPAddr
-	RouteType            int32
-	Multipath            bool
-	Committed            bool
 	NumTokens            int32
 	Tokens               []byte
-	ServerRoutePublicKey []byte
-	SessionDataBytes     int32
-	SessionData          [NEXT_MAX_SESSION_DATA_BYTES]byte
+	Multipath            bool
+	Committed            bool
 }
 
 func (packet *NextBackendSessionResponsePacket) Serialize(stream Stream, versionMajor uint32, versionMinor uint32, versionPatch uint32) error {
-	stream.SerializeUint64(&packet.Sequence)
+
 	stream.SerializeUint64(&packet.SessionId)
+
+	stream.SerializeBits(&packet.SliceNumber, 32)
+
+	stream.SerializeInteger(&packet.SessionDataBytes, 0, NEXT_MAX_SESSION_DATA_BYTES)
+	if packet.SessionDataBytes > 0 {
+		sessionData := packet.SessionData[:packet.SessionDataBytes]
+		stream.SerializeBytes(sessionData)
+	}
+
+	stream.SerializeInteger(&packet.RouteType, 0, NEXT_ROUTE_TYPE_CONTINUE)
+
 	stream.SerializeInteger(&packet.NumNearRelays, 0, NEXT_MAX_NEAR_RELAYS)
+
 	if stream.IsReading() {
 		packet.NearRelayIds = make([]uint64, packet.NumNearRelays)
 		packet.NearRelayAddresses = make([]net.UDPAddr, packet.NumNearRelays)
@@ -324,33 +373,76 @@ func (packet *NextBackendSessionResponsePacket) Serialize(stream Stream, version
 		stream.SerializeUint64(&packet.NearRelayIds[i])
 		stream.SerializeAddress(&packet.NearRelayAddresses[i])
 	}
-	stream.SerializeInteger(&packet.RouteType, 0, NEXT_ROUTE_TYPE_CONTINUE)
+
 	if packet.RouteType != NEXT_ROUTE_TYPE_DIRECT {
 		stream.SerializeBool(&packet.Multipath)
 		stream.SerializeBool(&packet.Committed)
 		stream.SerializeInteger(&packet.NumTokens, 0, NEXT_MAX_NODES)
 	}
+
 	if packet.RouteType == NEXT_ROUTE_TYPE_NEW {
 		if stream.IsReading() {
-			packet.Tokens = make([]byte, packet.NumTokens*NEXT_ENCRYPTED_SESSION_TOKEN_BYTES)
+			packet.Tokens = make([]byte, packet.NumTokens*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES)
 		}
 		stream.SerializeBytes(packet.Tokens)
 	}
+
 	if packet.RouteType == NEXT_ROUTE_TYPE_CONTINUE {
 		if stream.IsReading() {
 			packet.Tokens = make([]byte, packet.NumTokens*NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES)
 		}
 		stream.SerializeBytes(packet.Tokens)
 	}
-	if stream.IsReading() {
-		packet.ServerRoutePublicKey = make([]byte, Crypto_box_PUBLICKEYBYTES)
+
+	return stream.Error()
+}
+
+// ------------------------------------------------------------------------------------------
+
+const SessionDataVersion = 0
+
+type SessionData struct {
+	Version uint32
+	SessionId uint64
+	SessionVersion uint32
+	SliceNumber uint32
+	ExpireTimestamp uint64
+	Route []uint64
+}
+
+func (packet *SessionData) Serialize(stream Stream) error {
+
+	stream.SerializeBits(&packet.Version, 8)
+	if stream.IsReading() && packet.Version != SessionDataVersion {
+		return fmt.Errorf("bad session data version %d, expected %d", packet.Version, SessionDataVersion)
 	}
-	stream.SerializeBytes(packet.ServerRoutePublicKey)
-	stream.SerializeInteger(&packet.SessionDataBytes, 0, NEXT_MAX_SESSION_DATA_BYTES)
-	if packet.SessionDataBytes > 0 {
-		sessionData := packet.SessionData[:packet.SessionDataBytes]
-		stream.SerializeBytes(sessionData)
+	
+	stream.SerializeUint64(&packet.SessionId)
+	
+	stream.SerializeBits(&packet.SliceNumber, 32)
+	
+	stream.SerializeBits(&packet.SessionVersion, 8)
+
+	stream.SerializeUint64(&packet.ExpireTimestamp)
+
+	numRelays := int32(0)
+	hasRoute := false
+	if stream.IsWriting() {
+		numRelays = int32(len(packet.Route))
+		hasRoute = numRelays > 0
 	}
+	
+	stream.SerializeBool(&hasRoute) 
+	if hasRoute {
+		stream.SerializeInteger(&numRelays, 0, NEXT_MAX_ROUTE_RELAYS)
+		if stream.IsReading() {
+			packet.Route = make([]uint64, numRelays)
+		}
+		for i := 0; i < int(numRelays); i++ {
+			stream.SerializeUint64(&packet.Route[i])
+		}
+	}
+	
 	return stream.Error()
 }
 
@@ -383,11 +475,7 @@ type ServerEntry struct {
 
 type SessionEntry struct {
 	id              uint64
-	version         uint8
 	expireTimestamp uint64
-	route           []uint64
-	next            bool
-	slice           uint64
 }
 
 func TimeoutThread() {
@@ -512,9 +600,6 @@ func SignNetworkNextPacket(packetData []byte, privateKey []byte) []byte {
 		signedPacketData[i] = packetData[i]
 	}
 	messageLength := len(packetData)
-	if messageLength > 32 {
-		messageLength = 32
-	}
 	var state C.crypto_sign_state
 	C.crypto_sign_init(&state)
 	C.crypto_sign_update(&state, (*C.uchar)(&signedPacketData[0]), C.ulonglong(messageLength))
@@ -2126,20 +2211,13 @@ func Decrypt_ChaCha20(encrypted []byte, additional []byte, nonce []byte, private
 	}
 }
 
-func GenerateSessionId() uint64 {
-	var sessionId uint64
-	C.randombytes_buf(unsafe.Pointer(&sessionId), 8)
-	sessionId &= ^((uint64(1)) << 63)
-	return sessionId
-}
-
 func RandomBytes(bytes int) []byte {
 	buffer := make([]byte, bytes)
 	C.randombytes_buf(unsafe.Pointer(&buffer[0]), C.size_t(bytes))
 	return buffer
 }
 
-func WriteSessionToken(token *SessionToken, buffer []byte) {
+func WriteRouteToken(token *RouteToken, buffer []byte) {
 	binary.LittleEndian.PutUint64(buffer[0:], token.expireTimestamp)
 	binary.LittleEndian.PutUint64(buffer[8:], token.sessionId)
 	buffer[8+8] = token.sessionVersion
@@ -2174,15 +2252,34 @@ func WriteEncryptedContinueToken(buffer []byte, token *ContinueToken, senderPriv
 	return result
 }
 
+func WriteEncryptedRouteToken(buffer []byte, token *RouteToken, senderPrivateKey []byte, receiverPublicKey []byte, nonce []byte) error {
+	copy(buffer, nonce)
+	WriteRouteToken(token, buffer[NonceBytes:])
+	result := Encrypt(senderPrivateKey, receiverPublicKey, nonce, buffer[NonceBytes:], NEXT_ROUTE_TOKEN_BYTES)
+	return result
+}
+
+func ReadEncryptedContinueToken(tokenData []byte, senderPublicKey []byte, receiverPrivateKey []byte) (*ContinueToken, error) {
+	if len(tokenData) < NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES {
+		return nil, fmt.Errorf("not enough bytes for encrypted continue token")
+	}
+	nonce := tokenData[0 : C.crypto_box_NONCEBYTES-1]
+	tokenData = tokenData[C.crypto_box_NONCEBYTES:]
+	if err := Decrypt(senderPublicKey, receiverPrivateKey, nonce, tokenData, NEXT_CONTINUE_TOKEN_BYTES+C.crypto_box_MACBYTES); err != nil {
+		return nil, err
+	}
+	return ReadContinueToken(tokenData)
+}
+
 func WriteRouteTokens(expireTimestamp uint64, sessionId uint64, sessionVersion uint8, kbpsUp uint32, kbpsDown uint32, numNodes int, addresses []*net.UDPAddr, publicKeys [][]byte, masterPrivateKey [KeyBytes]byte) ([]byte, error) {
 	if numNodes < 1 || numNodes > NEXT_MAX_NODES {
 		return nil, fmt.Errorf("invalid numNodes %d. expected value in range [1,%d]", numNodes, NEXT_MAX_NODES)
 	}
 	privateKey := RandomBytes(KeyBytes)
-	tokenData := make([]byte, numNodes*NEXT_ENCRYPTED_SESSION_TOKEN_BYTES)
+	tokenData := make([]byte, numNodes*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES)
 	for i := 0; i < numNodes; i++ {
 		nonce := RandomBytes(NonceBytes)
-		token := &SessionToken{}
+		token := &RouteToken{}
 		token.expireTimestamp = expireTimestamp
 		token.sessionId = sessionId
 		token.sessionVersion = sessionVersion
@@ -2192,7 +2289,7 @@ func WriteRouteTokens(expireTimestamp uint64, sessionId uint64, sessionVersion u
 			token.nextAddress = addresses[i+1]
 		}
 		token.privateKey = privateKey
-		err := WriteEncryptedSessionToken(tokenData[i*NEXT_ENCRYPTED_SESSION_TOKEN_BYTES:], token, masterPrivateKey[:], publicKeys[i], nonce)
+		err := WriteEncryptedRouteToken(tokenData[i*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:], token, masterPrivateKey[:], publicKeys[i], nonce)
 		if err != nil {
 			return nil, err
 		}
@@ -2218,28 +2315,9 @@ func WriteContinueTokens(expireTimestamp uint64, sessionId uint64, sessionVersio
 	return tokenData, nil
 }
 
-func WriteEncryptedSessionToken(buffer []byte, token *SessionToken, senderPrivateKey []byte, receiverPublicKey []byte, nonce []byte) error {
-	copy(buffer, nonce)
-	WriteSessionToken(token, buffer[NonceBytes:])
-	result := Encrypt(senderPrivateKey, receiverPublicKey, nonce, buffer[NonceBytes:], NEXT_SESSION_TOKEN_BYTES)
-	return result
-}
-
-func ReadEncryptedContinueToken(tokenData []byte, senderPublicKey []byte, receiverPrivateKey []byte) (*ContinueToken, error) {
-	if len(tokenData) < NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES {
-		return nil, fmt.Errorf("not enough bytes for encrypted continue token")
-	}
-	nonce := tokenData[0 : C.crypto_box_NONCEBYTES-1]
-	tokenData = tokenData[C.crypto_box_NONCEBYTES:]
-	if err := Decrypt(senderPublicKey, receiverPrivateKey, nonce, tokenData, NEXT_CONTINUE_TOKEN_BYTES+C.crypto_box_MACBYTES); err != nil {
-		return nil, err
-	}
-	return ReadContinueToken(tokenData)
-}
-
 // --------------------------------------------------------
 
-type SessionToken struct {
+type RouteToken struct {
 	expireTimestamp uint64
 	sessionId       uint64
 	sessionVersion  uint8
@@ -2282,8 +2360,8 @@ func main() {
 
 	defer connection.Close()
 
-	fmt.Printf("started reference backend on ports %d and %d (sdk4)\n", NEXT_RELAY_BACKEND_PORT, NEXT_SERVER_BACKEND_PORT)
-
+	fmt.Printf("\nreference backend (sdk4)\n\n")
+	
 	for {
 
 		packetData := make([]byte, NEXT_MAX_PACKET_BYTES)
@@ -2309,9 +2387,11 @@ func main() {
 		packetData = packetData[NEXT_PACKET_HASH_BYTES:]
 		packetBytes -= NEXT_PACKET_HASH_BYTES
 
+		// todo: check packet signature
+
 		packetType := packetData[0]
 
-		if packetType == NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET {
+		if packetType == NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET {			
 
 			readStream := CreateReadStream(packetData[1:])
 
@@ -2384,26 +2464,31 @@ func main() {
 				continue
 			}
 
-			nearRelayIds, nearRelayAddresses := GetNearRelays()
+			sessionDataReadStream := CreateReadStream(sessionUpdate.SessionData[:sessionUpdate.SessionDataBytes])
+			var sessionData SessionData
+			sessionData.Version = SessionDataVersion
+			if sessionUpdate.SliceNumber != 0 {
+				err := sessionData.Serialize(sessionDataReadStream)
+				if err != nil {
+					fmt.Printf("error: could not read session data: %v\n", err)
+					continue
+				}
+			}
+
+			// todo: various checks on the session data to make sure it's valid
+
+			sessionData.Version = SessionDataVersion
+			sessionData.SessionId = sessionUpdate.SessionId
+			sessionData.SliceNumber = sessionUpdate.SliceNumber + 1
 
 			var sessionResponse *NextBackendSessionResponsePacket
 
 			backend.mutex.RLock()
-			sessionEntry, ok := backend.sessionDatabase[sessionUpdate.SessionId]
+			sessionEntry := backend.sessionDatabase[sessionUpdate.SessionId]
+			sessionEntry.expireTimestamp = uint64(time.Now().Unix()) + 15
 			backend.mutex.RUnlock()
 
-			newSession := !ok
-
-			// todo: rather than storing session data in the map, store it in the session data and pass it back and forth to the SDK
-
-			if newSession {
-				sessionEntry.id = sessionUpdate.SessionId
-				sessionEntry.version = 0
-				sessionEntry.expireTimestamp = uint64(time.Now().Unix()) + 20
-			} else {
-				sessionEntry.expireTimestamp += 10
-				sessionEntry.slice++
-			}
+			nearRelayIds, nearRelayAddresses := GetNearRelays()
 
 			takeNetworkNext := len(nearRelayIds) > 0
 
@@ -2412,19 +2497,15 @@ func main() {
 				// direct route
 
 				sessionResponse = &NextBackendSessionResponsePacket{
-					Sequence:             sessionUpdate.Sequence,
 					SessionId:            sessionUpdate.SessionId,
+					SliceNumber:          sessionUpdate.SliceNumber,
+					RouteType:            int32(NEXT_ROUTE_TYPE_DIRECT),
 					NumNearRelays:        int32(len(nearRelayIds)),
 					NearRelayIds:         nearRelayIds,
 					NearRelayAddresses:   nearRelayAddresses,
-					RouteType:            int32(NEXT_ROUTE_TYPE_DIRECT),
 					NumTokens:            0,
 					Tokens:               nil,
-					ServerRoutePublicKey: sessionUpdate.ServerRoutePublicKey,
 				}
-
-				sessionEntry.route = nil
-				sessionEntry.next = false
 
 			} else {
 
@@ -2440,13 +2521,13 @@ func main() {
 					route[i] = nearRelayIds[i]
 				}
 
-				routeChanged := RouteChanged(sessionEntry.route, route)
+				routeChanged := RouteChanged(sessionData.Route, route)
 
 				numNodes := numRelays + 2
 
 				addresses := make([]*net.UDPAddr, numNodes)
 				publicKeys := make([][]byte, numNodes)
-				publicKeys[0] = sessionUpdate.ClientRoutePublicKey[:]
+				publicKeys[0] = sessionUpdate.ClientRoutePublicKey
 
 				for i := 0; i < numRelays; i++ {
 					addresses[1+i] = &nearRelayAddresses[i]
@@ -2460,47 +2541,57 @@ func main() {
 
 				var routeType int32
 
-				if !sessionEntry.next || routeChanged {
+				if sessionData.ExpireTimestamp == 0 {
+					sessionData.ExpireTimestamp = uint64(time.Now().Unix())
+				}
+
+				if routeChanged {
 
 					// new route
 
-					sessionEntry.version++
-					tokens, err = WriteRouteTokens(sessionEntry.expireTimestamp, sessionEntry.id, sessionEntry.version, 256, 256, numNodes, addresses, publicKeys, routerPrivateKey)
+					routeType = NEXT_ROUTE_TYPE_NEW
+
+					sessionData.ExpireTimestamp += 20
+					sessionData.SessionVersion += 1
+
+					tokens, err = WriteRouteTokens(sessionData.ExpireTimestamp, sessionData.SessionId, uint8(sessionData.SessionVersion), 256, 256, numNodes, addresses, publicKeys, routerPrivateKey)
+
 					if err != nil {
 						fmt.Printf("error: could not write route tokens: %v\n", err)
 						continue
 					}
-					routeType = NEXT_ROUTE_TYPE_NEW
 
 				} else {
 
 					// continue route
 
-					tokens, err = WriteContinueTokens(sessionEntry.expireTimestamp, sessionEntry.id, sessionEntry.version, numNodes, publicKeys, routerPrivateKey)
+					routeType = NEXT_ROUTE_TYPE_CONTINUE
+
+					sessionData.ExpireTimestamp += 10
+
+					tokens, err = WriteContinueTokens(sessionData.ExpireTimestamp, sessionData.SessionId, uint8(sessionData.SessionVersion), numNodes, publicKeys, routerPrivateKey)
+
 					if err != nil {
 						fmt.Printf("error: could not write continue tokens: %v\n", err)
 						continue
 					}
-					routeType = NEXT_ROUTE_TYPE_CONTINUE
 
 				}
 
 				sessionResponse = &NextBackendSessionResponsePacket{
-					Sequence:             sessionUpdate.Sequence,
+					SliceNumber:          sessionUpdate.SliceNumber,
 					SessionId:            sessionUpdate.SessionId,
 					NumNearRelays:        int32(len(nearRelayIds)),
 					NearRelayIds:         nearRelayIds,
 					NearRelayAddresses:   nearRelayAddresses,
 					RouteType:            routeType,
-					Multipath:            false,
-					Committed:            true,
 					NumTokens:            int32(numNodes),
 					Tokens:               tokens,
-					ServerRoutePublicKey: sessionUpdate.ServerRoutePublicKey,
+					Multipath:            false,
+					Committed:            true,
 				}
 
-				sessionEntry.route = route
-				sessionEntry.next = true
+				sessionData.Route = route
 			}
 
 			if sessionResponse == nil {
@@ -2509,15 +2600,37 @@ func main() {
 			}
 
 			backend.mutex.Lock()
-			if newSession {
+			if sessionData.SliceNumber == 0 {
 				backend.dirty = true
 			}
 			backend.sessionDatabase[sessionUpdate.SessionId] = sessionEntry
 			backend.mutex.Unlock()
 
+			sessionData.Version = SessionDataVersion
+			sessionData.SessionId = sessionUpdate.SessionId
+			sessionData.SliceNumber = sessionUpdate.SliceNumber + 1
+
+			sessionDataWriteStream, err := CreateWriteStream(1024)
+			if err != nil {
+				fmt.Printf("error: failed to create write stream for session data: %v\n", err)
+				continue
+			}
+			if err := sessionData.Serialize(sessionDataWriteStream); err != nil {
+				fmt.Printf("error: failed to write session data: %v\n", err)
+				continue
+			}
+			sessionDataWriteStream.Flush()
+
+			if sessionResponse.SessionDataBytes > NEXT_MAX_SESSION_DATA_BYTES {
+				panic("session data is too large")
+			}
+			
+			sessionResponse.SessionDataBytes = int32(sessionDataWriteStream.GetBytesProcessed())
+			copy(sessionResponse.SessionData[:], sessionDataWriteStream.GetData()[0:sessionDataWriteStream.GetBytesProcessed()])
+
 			writeStream, err := CreateWriteStream(NEXT_MAX_PACKET_BYTES)
 			if err != nil {
-				fmt.Printf("error: failed to write session response packet: %v\n", err)
+				fmt.Printf("error: failed to create write stream for session response packet: %v\n", err)
 				continue
 			}
 			responsePacketType := uint32(NEXT_BACKEND_SESSION_RESPONSE_PACKET)

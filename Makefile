@@ -211,6 +211,14 @@ ifndef CRUNCHER_RECEIVE_BUFFER_SIZE
 export CRUNCHER_RECEIVE_BUFFER_SIZE = 100
 endif
 
+ifndef GHOST_ARMY_BIN
+export GHOST_ARMY_BIN = ./dist/ghost_army.bin
+endif
+
+ifndef DATACENTERS_CSV
+export DATACENTERS_CSV = ./dist/datacenters.csv
+endif
+
 .PHONY: help
 help:
 	@echo "$$(grep -hE '^\S+:.*##' $(MAKEFILE_LIST) | sed -e 's/:.*##\s*/:/' -e 's/^\(.\+\):\(.*\)/\\033[36m\1\\033[m:\2/' | column -c2 -t -s :)"
@@ -315,6 +323,10 @@ dev-relay-backend: build-relay-backend ## runs a local relay backend
 dev-server-backend: build-server-backend ## runs a local server backend
 	@HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend
 
+.PHONY: dev-server-backend4
+dev-server-backend4: build-server-backend4 ## runs a local server backend4
+	@HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend4
+
 .PHONY: dev-server-backend-valve
 dev-server-backend-valve: build-server-backend
 	@HTTP_PORT=40001 UDP_PORT=40001 ROUTE_MATRIX_URI=http://127.0.0.1:30000/route_matrix_valve ./dist/server_backend
@@ -330,6 +342,10 @@ dev-analytics: build-analytics ## runs a local analytics service
 .PHONY: dev-portal-cruncher
 dev-portal-cruncher: build-portal-cruncher ## runs a local portal cruncher
 	@HTTP_PORT=42000 CRUNCHER_PORT=5555 ./dist/portal_cruncher
+
+.PHONY: dev-ghost-army
+dev-ghost-army: build-ghost-army ## runs a local ghost army
+	@./dist/ghost_army
 
 .PHONY: dev-reference-backend3
 dev-reference-backend3: ## runs a local reference backend (sdk3)
@@ -347,13 +363,21 @@ dev-reference-relay: build-relay-ref ## runs a local reference relay
 dev-client3: build-client3  ## runs a local client (sdk3)
 	@./dist/client3
 
-.PHONY: dev-server3
-dev-server3: build-sdk3 build-server3  ## runs a local server (sdk3)
-	@./dist/server3
-
 .PHONY: dev-client4
 dev-client4: build-client4  ## runs a local client (sdk4)
 	@./dist/client4
+
+.PHONY: dev-multi-clients3
+dev-multi-clients3: build-client3  ## runs 10 local clients (sdk3)
+	@./scripts/client-spawner.sh -n 10 -v 3
+
+.PHONY: dev-multi-clients4
+dev-multi-clients4: build-client4  ## runs 10 local clients (sdk4)
+	@./scripts/client-spawner.sh -n 10 -v 4
+
+.PHONY: dev-server3
+dev-server3: build-sdk3 build-server3  ## runs a local server (sdk3)
+	@./dist/server3
 
 .PHONY: dev-server4
 dev-server4: build-sdk4 build-server4  ## runs a local server (sdk4)
@@ -409,6 +433,12 @@ build-server-backend:
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/server_backend ./cmd/server_backend/server_backend.go
 	@printf "done\n"
 
+.PHONY: build-server-backend4
+build-server-backend4:
+	@printf "Building server_backend4... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/server_backend4 ./cmd/server_backend4/server_backend4.go
+	@printf "done\n"
+
 .PHONY: build-billing
 build-billing:
 	@printf "Building billing... "
@@ -437,7 +467,7 @@ deploy-relay-backend-prod:
 
 .PHONY: deploy-portal-cruncher-prod
 deploy-portal-cruncher-prod:
-	./deploy/deploy.sh -e prod -c prod -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c mig-07q1 -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
 
 .PHONY: deploy-server-backend-dev-1
 deploy-server-backend-dev-1:
@@ -469,7 +499,23 @@ deploy-server-backend-velan:
 
 .PHONY: deploy-server-backend-esl
 deploy-server-backend-esl:
-	./deploy/deploy.sh -e prod -c esl-22dr -t server-backend -n server_backend-esl-22dr -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c esl-22dr -t server-backend -n server_backend -b gs://prod_artifacts
+
+.PHONY: deploy-server-backend4-dev
+deploy-server-backend4-dev:
+	./deploy/deploy.sh -e dev -c dev-1 -t server-backend4 -n server_backend4 -b gs://development_artifacts
+
+.PHONY: deploy-ghost-army-dev
+deploy-ghost-army-dev:
+	./deploy/deploy.sh -e dev -c 1 -t ghost-army -n ghost_army -b gs://development_artifacts
+
+.PHONY: deploy-ghost-army-staging
+deploy-ghost-army-staging:
+	./deploy/deploy.sh -e staging -c 1 -t ghost-army -n ghost_army -b gs://staging_artifacts
+
+.PHONY: deploy-ghost-army-prod
+deploy-ghost-army-prod:
+	./deploy/deploy.sh -e prod -c 1 -t ghost-army -n ghost_army -b gs://prod_artifacts
 
 .PHONY: build-load-test-server-artifacts
 build-load-test-server-artifacts: build-load-test-server
@@ -511,6 +557,14 @@ build-relay-backend-artifacts-dev: build-relay-backend
 build-server-backend-artifacts-dev: build-server-backend
 	./deploy/build-artifacts.sh -e dev -s server_backend
 
+.PHONY: build-server-backend4-artifacts-dev
+build-server-backend4-artifacts-dev: build-server-backend4
+	./deploy/build-artifacts.sh -e dev -s server_backend4
+
+.PHONY: build-ghost-army-artifacts-dev
+build-ghost-army-artifacts-dev: build-ghost-army
+	./deploy/build-artifacts.sh -e dev -s ghost_army
+
 .PHONY: build-billing-artifacts-staging
 build-billing-artifacts-staging: build-billing
 	./deploy/build-artifacts.sh -e staging -s billing
@@ -543,6 +597,14 @@ build-load-test-artifacts-staging: build-load-test
 build-server-backend-artifacts-staging: build-server-backend
 	./deploy/build-artifacts.sh -e staging -s server_backend
 
+.PHONY: build-server-backend4-artifacts-staging
+build-server-backend4-artifacts-staging: build-server-backend4
+	./deploy/build-artifacts.sh -e staging -s server_backend4
+
+.PHONY: build-ghost-army-artifacts-staging
+build-ghost-army-artifacts-staging: build-ghost-army
+	./deploy/build-artifacts.sh -e staging -s ghost_army
+
 .PHONY: build-billing-artifacts-prod
 build-billing-artifacts-prod: build-billing
 	./deploy/build-artifacts.sh -e prod -s billing
@@ -571,9 +633,13 @@ build-relay-backend-artifacts-prod: build-relay-backend
 build-server-backend-artifacts-prod: build-server-backend
 	./deploy/build-artifacts.sh -e prod -s server_backend
 
-.PHONY: build-server-backend-artifacts-prod-esl
-build-server-backend-artifacts-prod-esl: build-server-backend
-	./deploy/build-artifacts.sh -e prod -s server_backend -c esl-22dr
+.PHONY: build-server-backend4-artifacts-prod
+build-server-backend4-artifacts-prod: build-server-backend4
+	./deploy/build-artifacts.sh -e prod -s server_backend4
+
+.PHONY: build-ghost-army-artifacts-prod
+build-ghost-army-artifacts-prod: build-ghost-army
+	./deploy/build-artifacts.sh -e prod -s ghost_army
 
 .PHONY: publish-billing-artifacts-dev
 publish-billing-artifacts-dev:
@@ -607,6 +673,14 @@ publish-relay-backend-artifacts-dev:
 publish-server-backend-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s server_backend
 
+.PHONY: publish-server-backend4-artifacts-dev
+publish-server-backend4-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s server_backend4
+
+.PHONY: publish-ghost-army-artifacts-dev
+publish-ghost-army-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s ghost_army
+
 .PHONY: publish-billing-artifacts-staging
 publish-billing-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s billing
@@ -638,6 +712,14 @@ publish-relay-backend-artifacts-staging:
 .PHONY: publish-server-backend-artifacts-staging
 publish-server-backend-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s server_backend
+
+.PHONY: publish-server-backend4-artifacts-staging
+publish-server-backend4-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s server_backend4
+
+.PHONY: publish-ghost-army-artifacts-staging
+publish-ghost-army-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s ghost_army
 
 .PHONY: publish-load-test-server-artifacts
 publish-load-test-server-artifacts:
@@ -679,9 +761,13 @@ publish-relay-backend-artifacts-prod:
 publish-server-backend-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s server_backend
 
-.PHONY: publish-server-backend-artifacts-prod-esl
-publish-server-backend-artifacts-prod-esl:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s server_backend -c esl-22dr
+.PHONY: publish-server-backend4-artifacts-prod
+publish-server-backend4-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s server_backend4
+
+.PHONY: publish-ghost-army-artifacts-prod
+publish-ghost-army-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s ghost_army
 
 .PHONY: publish-bootstrap-script-dev
 publish-bootstrap-script-dev:
@@ -705,6 +791,24 @@ publish-client-bootstrap-script-staging:
 publish-bootstrap-script-prod:
 	@printf "Publishing bootstrap script... \n\n"
 	@gsutil cp $(DEPLOY_DIR)/bootstrap.sh $(ARTIFACT_BUCKET_PROD)/bootstrap.sh
+	@printf "done\n"
+
+.PHONY: publish-ghost-army-bootstrap-script-dev
+publish-ghost-army-bootstrap-script-dev:
+	@printf "Publishing ghost army bootstrap script... \n\n"
+	@gsutil cp $(DEPLOY_DIR)/ghost_army_bootstrap.sh $(ARTIFACT_BUCKET)/ghost_army_bootstrap.sh
+	@printf "done\n"
+
+.PHONY: publish-ghost-army-bootstrap-script-staging
+publish-ghost-army-bootstrap-script-staging:
+	@printf "Publishing ghost army bootstrap script... \n\n"
+	@gsutil cp $(DEPLOY_DIR)/ghost_army_bootstrap.sh $(ARTIFACT_BUCKET_STAGING)/ghost_army_bootstrap.sh
+	@printf "done\n"
+
+.PHONY: publish-ghost-army-bootstrap-script-prod
+publish-ghost-army-bootstrap-script-prod:
+	@printf "Publishing ghost army bootstrap script... \n\n"
+	@gsutil cp $(DEPLOY_DIR)/ghost_army_bootstrap.sh $(ARTIFACT_BUCKET_PROD)/ghost_army_bootstrap.sh
 	@printf "done\n"
 
 .PHONY: build-server3
@@ -750,6 +854,18 @@ build-client4: build-sdk4
 build-next:
 	@printf "Building operator tool... "
 	@$(GO) build -o ./dist/next ./cmd/next/*.go
+	@printf "done\n"
+
+.PHONY: build-ghost-army
+build-ghost-army:
+	@printf "Building ghost army... "
+	@$(GO) build -o ./dist/ghost_army ./cmd/ghost_army/*.go
+	@printf "done\n"
+
+.PHONY: build-ghost-army-generator
+build-ghost-army-generator:
+	@printf "Building ghost army generator... "
+	@$(GO) build -o ./dist/gag ./cmd/ghost_army_generator/*.go
 	@printf "done\n"
 
 #######################
