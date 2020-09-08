@@ -14,12 +14,16 @@ type DatacenterTracker struct {
 
 	emptyDatacentersMap   map[string]time.Time
 	emptyDatacentersMutex sync.Mutex
+
+	unknownDatacentersNamesMap   map[string]time.Time
+	unknownDatacentersNamesMutex sync.Mutex
 }
 
 func NewDatacenterTracker() *DatacenterTracker {
 	return &DatacenterTracker{
-		unknownDatacentersMap: make(map[uint64]time.Time),
-		emptyDatacentersMap:   make(map[string]time.Time),
+		unknownDatacentersMap:      make(map[uint64]time.Time),
+		emptyDatacentersMap:        make(map[string]time.Time),
+		unknownDatacentersNamesMap: make(map[string]time.Time),
 	}
 }
 
@@ -37,6 +41,13 @@ func (tracker *DatacenterTracker) AddEmptyDatacenter(datacenterName string) {
 	tracker.emptyDatacentersMap[datacenterName] = time.Now()
 }
 
+func (tracker *DatacenterTracker) AddUnknownDatacenterName(datacenterName string) {
+	tracker.unknownDatacentersNamesMutex.Lock()
+	defer tracker.unknownDatacentersNamesMutex.Unlock()
+
+	tracker.unknownDatacentersNamesMap[datacenterName] = time.Now()
+}
+
 func (tracker *DatacenterTracker) UnknownDatacenterLength() int {
 	tracker.unknownDatacentersMutex.Lock()
 	defer tracker.unknownDatacentersMutex.Unlock()
@@ -49,6 +60,13 @@ func (tracker *DatacenterTracker) EmptyDatacenterLength() int {
 	defer tracker.emptyDatacentersMutex.Unlock()
 
 	return len(tracker.emptyDatacentersMap)
+}
+
+func (tracker *DatacenterTracker) UnknownDatacenterNamesLength() int {
+	tracker.unknownDatacentersNamesMutex.Lock()
+	defer tracker.unknownDatacentersNamesMutex.Unlock()
+
+	return len(tracker.unknownDatacentersNamesMap)
 }
 
 func (tracker *DatacenterTracker) GetUnknownDatacenters() []string {
@@ -91,6 +109,26 @@ func (tracker *DatacenterTracker) GetEmptyDatacenters() []string {
 	return emptyDatacenters
 }
 
+func (tracker *DatacenterTracker) GetUnknownDatacentersNames() []string {
+	tracker.unknownDatacentersNamesMutex.Lock()
+
+	unknownDatacenters := make([]string, len(tracker.unknownDatacentersNamesMap))
+
+	var i int
+	for name := range tracker.unknownDatacentersNamesMap {
+		unknownDatacenters[i] = name
+		i++
+	}
+
+	tracker.unknownDatacentersNamesMutex.Unlock()
+
+	sort.Slice(unknownDatacenters, func(i, j int) bool {
+		return unknownDatacenters[i] < unknownDatacenters[j]
+	})
+
+	return unknownDatacenters
+}
+
 func (tracker *DatacenterTracker) TimeoutLoop(ctx context.Context, timeout time.Duration, c <-chan time.Time) {
 	for {
 		select {
@@ -131,6 +169,25 @@ func (tracker *DatacenterTracker) TimeoutLoop(ctx context.Context, timeout time.
 				}
 
 				tracker.emptyDatacentersMutex.Unlock()
+			}
+
+			{
+				tracker.unknownDatacentersNamesMutex.Lock()
+
+				numIterations := 0
+				for datacenterName, expireTime := range tracker.unknownDatacentersNamesMap {
+					if numIterations > 3 {
+						break
+					}
+
+					if time.Since(expireTime) >= timeout {
+						delete(tracker.unknownDatacentersNamesMap, datacenterName)
+					}
+
+					numIterations++
+				}
+
+				tracker.unknownDatacentersNamesMutex.Unlock()
 			}
 		case <-ctx.Done():
 			return

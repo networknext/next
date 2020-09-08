@@ -108,6 +108,8 @@ func main() {
 		entry.Into(&slices[i], dcmap, buyerID)
 	}
 
+	bin = nil
+
 	// publish to zero mq, sleep for 10 seconds, repeat
 
 	publishChan := make(chan transport.SessionPortalData)
