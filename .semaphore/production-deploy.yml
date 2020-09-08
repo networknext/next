@@ -5,6 +5,8 @@ agent:
     type: e1-standard-8
     os_image: ubuntu1804
 global_job_config:
+  secrets:
+    - name: sdk4-repo-access
   prologue:
     commands:
       - sudo apt-get update && sudo apt-get -y install libsodium-dev libzmq3-dev
