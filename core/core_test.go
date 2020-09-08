@@ -1234,3 +1234,15 @@ func TestReframeRoute(t *testing.T) {
     assert.Equal(t, int32(4), route[1])
     assert.Equal(t, int32(3), route[2])
 }
+
+func TestBestRouteInitial(t *testing.T) {
+
+    // todo
+
+}
+
+func TestBestRouteUpdate(t *testing.T) {
+
+    // todo
+    
+}
