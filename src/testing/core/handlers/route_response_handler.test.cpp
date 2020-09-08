@@ -10,10 +10,10 @@
 using core::Packet;
 using core::PacketDirection;
 using core::PacketHeader;
+using core::PacketType;
 using core::RouterInfo;
 using core::Session;
 using core::SessionMap;
-using core::PacketType;
 using crypto::GenericKey;
 using crypto::PACKET_HASH_LENGTH;
 using os::Socket;
@@ -38,14 +38,15 @@ Test(core_handlers_route_response_handler_unsigned)
   check(addr.parse("127.0.0.1"));
   check(socket.create(addr, config));
 
-  packet.length = PacketHeader::SIZE_OF;
+  packet.length = PacketHeader::SIZE_OF_ENCRYPTED;
   packet.addr = addr;
 
-  PacketHeader header = {
-   .type = PacketType::RouteResponse,
-   .sequence = 123123130131LL | (1ULL << 63) | (1ULL << 62),
-   .session_id = 0x12313131,
-   .session_version = 0x12,
+  PacketHeader header;
+  {
+    header.type = PacketType::RouteResponse;
+    header.sequence = 123123130131LL | (1ULL << 63) | (1ULL << 62);
+    header.session_id = 0x12313131;
+    header.session_version = 0x12;
   };
 
   auto session = std::make_shared<Session>();
@@ -68,7 +69,7 @@ Test(core_handlers_route_response_handler_unsigned)
   check(prev_len == packet.length);
 
   check(recorder.route_response_tx.num_packets == 1);
-  check(recorder.route_response_tx.num_bytes == PacketHeader::SIZE_OF);
+  check(recorder.route_response_tx.num_bytes == PacketHeader::SIZE_OF_ENCRYPTED);
 
   core::handlers::route_response_handler(packet, map, recorder, router_info, socket, false);
   check(!socket.recv(packet));
@@ -92,14 +93,15 @@ Test(core_handlers_route_response_handler_signed)
   check(addr.parse("127.0.0.1"));
   check(socket.create(addr, config));
 
-  packet.length = crypto::PACKET_HASH_LENGTH + PacketHeader::SIZE_OF;
+  packet.length = crypto::PACKET_HASH_LENGTH + PacketHeader::SIZE_OF_ENCRYPTED;
   packet.addr = addr;
 
-  PacketHeader header = {
-   .type = PacketType::RouteResponse,
-   .sequence = 123123130131LL | (1ULL << 63) | (1ULL << 62),
-   .session_id = 0x12313131,
-   .session_version = 0x12,
+  PacketHeader header;
+  {
+    header.type = PacketType::RouteResponse;
+    header.sequence = 123123130131LL | (1ULL << 63) | (1ULL << 62);
+    header.session_id = 0x12313131;
+    header.session_version = 0x12;
   };
 
   auto session = std::make_shared<Session>();
@@ -122,7 +124,7 @@ Test(core_handlers_route_response_handler_signed)
   check(prev_len == packet.length);
 
   check(recorder.route_response_tx.num_packets == 1);
-  check(recorder.route_response_tx.num_bytes == PACKET_HASH_LENGTH + PacketHeader::SIZE_OF);
+  check(recorder.route_response_tx.num_bytes == PACKET_HASH_LENGTH + PacketHeader::SIZE_OF_ENCRYPTED);
 
   core::handlers::route_response_handler(packet, map, recorder, router_info, socket, true);
   check(!socket.recv(packet));

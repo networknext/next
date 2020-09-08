@@ -36,7 +36,7 @@ namespace core
         length = packet.length - PACKET_HASH_LENGTH;
       }
 
-      if (length != PacketHeader::SIZE_OF) {
+      if (length != PacketHeader::SIZE_OF_ENCRYPTED) {
         LOG(ERROR, "ignoring route response, header byte count invalid: ", length);
         return;
       }

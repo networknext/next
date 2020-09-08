@@ -38,7 +38,7 @@ namespace core
         length = packet.length - PACKET_HASH_LENGTH;
       }
 
-      if (length > PacketHeader::SIZE_OF + 32) {
+      if (length > PacketHeader::SIZE_OF_ENCRYPTED + 32) {
         LOG(ERROR, "ignoring session ping, packet size too large: ", length);
         return;
       }

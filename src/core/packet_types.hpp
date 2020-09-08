@@ -1,7 +1,7 @@
 #pragma once
 
 #define PACKET_TYPE_SWITCH_MACRO(type) \
-  case PacketType ::type: {                  \
+  case PacketType ::type: {            \
     str = #type;                       \
   } break
 
@@ -14,18 +14,32 @@ namespace core
   enum class PacketType : uint8_t
   {
     None = 0,
+    RelayPing = 7,
+    RelayPong = 8,
+
+    // SDK 3.x.x
     RouteRequest = 1,
     RouteResponse = 2,
     ClientToServer = 3,
     ServerToClient = 4,
-    RelayPing = 7,
-    RelayPong = 8,
     SessionPing = 11,
     SessionPong = 12,
     ContinueRequest = 13,
     ContinueResponse = 14,
     NearPing = 73,
     NearPong = 74,
+
+    // SDK 4.x.x
+    RouteRequest4 = 100,
+    RouteResponse4 = 101,
+    ClientToServer4 = 102,
+    ServerToClient4 = 103,
+    SessionPing4 = 104,
+    SessionPong4 = 105,
+    ContinueRequest4 = 106,
+    ContinueResponse4 = 107,
+    NearPing4 = 116,
+    NearPong4 = 117,
   };
 
   template <typename T>

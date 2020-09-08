@@ -38,14 +38,15 @@ Test(core_handlers_client_to_server_handler_unsigned_packet)
   check(addr.parse("127.0.0.1"));
   check(socket.create(addr, config));
 
-  packet.length = PacketHeader::SIZE_OF + 100;
+  packet.length = PacketHeader::SIZE_OF_ENCRYPTED + 100;
   packet.addr = addr;
 
-  PacketHeader header = {
-   .type = PacketType::ClientToServer,
-   .sequence = 123123130131LL,
-   .session_id = 0x12313131,
-   .session_version = 0x12,
+  PacketHeader header;
+  {
+    header.type = PacketType::ClientToServer;
+    header.sequence = 123123130131LL;
+    header.session_id = 0x12313131;
+    header.session_version = 0x12;
   };
 
   auto session = std::make_shared<Session>();
@@ -61,7 +62,7 @@ Test(core_handlers_client_to_server_handler_unsigned_packet)
   size_t index = 0;
 
   check(header.write(packet, index, PacketDirection::ClientToServer, private_key));
-  check(index == PacketHeader::SIZE_OF);
+  check(index == PacketHeader::SIZE_OF_ENCRYPTED);
 
   core::handlers::client_to_server_handler(packet, map, recorder, router_info, socket, false);
   size_t prev_len = packet.length;
@@ -97,14 +98,15 @@ Test(core_handlers_client_to_server_handler_signed_packet)
   check(addr.parse("127.0.0.1"));
   check(socket.create(addr, config));
 
-  packet.length = crypto::PACKET_HASH_LENGTH + PacketHeader::SIZE_OF + 100;
+  packet.length = crypto::PACKET_HASH_LENGTH + PacketHeader::SIZE_OF_ENCRYPTED + 100;
   packet.addr = addr;
 
-  PacketHeader header = {
-   .type = PacketType::ClientToServer,
-   .sequence = 123123130131LL,
-   .session_id = 0x12313131,
-   .session_version = 0x12,
+  PacketHeader header;
+  {
+    header.type = PacketType::ClientToServer;
+    header.sequence = 123123130131LL;
+    header.session_id = 0x12313131;
+    header.session_version = 0x12;
   };
 
   auto session = std::make_shared<Session>();
@@ -122,7 +124,7 @@ Test(core_handlers_client_to_server_handler_signed_packet)
   size_t index = crypto::PACKET_HASH_LENGTH;
 
   check(header.write(packet, index, PacketDirection::ClientToServer, private_key));
-  check(index == crypto::PACKET_HASH_LENGTH + PacketHeader::SIZE_OF);
+  check(index == crypto::PACKET_HASH_LENGTH + PacketHeader::SIZE_OF_ENCRYPTED);
 
   core::handlers::client_to_server_handler(packet, map, recorder, router_info, socket, true);
   check(socket.recv(packet));

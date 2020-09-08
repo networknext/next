@@ -20,17 +20,18 @@ Test(core_packets_Header_client_to_server)
 
   Packet packet;
 
-  PacketHeader header = {
-   .type = PacketType::ClientToServer,
-   .sequence = 123123130131LL,
-   .session_id = 0x12313131,
-   .session_version = 0x12,
-  };
+  PacketHeader header;
+  {
+    header.type = PacketType::ClientToServer;
+    header.sequence = 123123130131LL;
+    header.session_id = 0x12313131;
+    header.session_version = 0x12;
+  }
 
   size_t index = 0;
 
   check(header.write(packet, index, PacketDirection::ClientToServer, private_key));
-  check(index == PacketHeader::SIZE_OF);
+  check(index == PacketHeader::SIZE_OF_ENCRYPTED);
 
   PacketHeader other;
 
@@ -56,11 +57,12 @@ Test(core_packets_Header_server_to_client)
 
   Packet packet;
 
-  PacketHeader header = {
-   .type = PacketType::ServerToClient,
-   .sequence = 123123130131LL | (1ULL << 63),
-   .session_id = 0x12313131,
-   .session_version = 0x12,
+  PacketHeader header;
+  {
+    header.type = PacketType::ServerToClient;
+    header.sequence = 123123130131LL | (1ULL << 63);
+    header.session_id = 0x12313131;
+    header.session_version = 0x12;
   };
 
   size_t index = 0;

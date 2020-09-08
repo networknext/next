@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/session.hpp"
 #include "crypto/keychain.hpp"
 #include "encoding/read.hpp"
 #include "encoding/write.hpp"
@@ -18,28 +19,24 @@ namespace core
     ServerToClient,
   };
 
-  struct PacketHeader
+  struct PacketHeader: public SessionHasher
   {
-    // the size of this struct when stored in binary format
-    static const size_t SIZE_OF = 35;
+    static const size_t SIZE_OF_ENCRYPTED = 35;
 
     PacketType type;
 
     uint64_t sequence;
-    uint64_t session_id;
-    uint8_t session_version;
 
     auto read(Packet& packet, size_t& index, PacketDirection direction) -> bool;
     auto write(Packet& packet, size_t& index, PacketDirection direction, const GenericKey& public_key) -> bool;
     auto verify(Packet& packet, size_t& index, PacketDirection direction, const GenericKey& public_key) -> bool;
 
-    auto hash() -> uint64_t;
     auto clean_sequence() -> uint64_t;
   };
 
   INLINE auto PacketHeader::read(Packet& packet, size_t& index, PacketDirection direction) -> bool
   {
-    if (index + SIZE_OF > packet.buffer.size()) {
+    if (index + SIZE_OF_ENCRYPTED > packet.buffer.size()) {
       LOG(ERROR, "header read, buffer is too small");
       return false;
     }
@@ -74,8 +71,8 @@ namespace core
     this->type = packet_type;
 
     if (
-     this->type == PacketType::SessionPing || this->type == PacketType::SessionPong || this->type == PacketType::RouteResponse ||
-     this->type == PacketType::ContinueResponse) {
+     this->type == PacketType::SessionPing || this->type == PacketType::SessionPong ||
+     this->type == PacketType::RouteResponse || this->type == PacketType::ContinueResponse) {
       // second highest bit must be set
       if ((packet_sequence & (1ULL << 62)) == 0) {
         LOG(ERROR, "header read, second high bit unset");
@@ -104,9 +101,10 @@ namespace core
     return true;
   }
 
-  INLINE auto PacketHeader::write(Packet& packet, size_t& index, PacketDirection direction, const GenericKey& private_key) -> bool
+  INLINE auto PacketHeader::write(Packet& packet, size_t& index, PacketDirection direction, const GenericKey& private_key)
+   -> bool
   {
-    if (index + SIZE_OF > packet.buffer.size()) {
+    if (index + SIZE_OF_ENCRYPTED > packet.buffer.size()) {
       LOG(ERROR, "could not write header, buffer is too small");
       return false;
     }
@@ -124,8 +122,8 @@ namespace core
     }
 
     if (
-     this->type == PacketType::SessionPing || this->type == PacketType::SessionPong || this->type == PacketType::RouteResponse ||
-     this->type == PacketType::ContinueResponse) {
+     this->type == PacketType::SessionPing || this->type == PacketType::SessionPong ||
+     this->type == PacketType::RouteResponse || this->type == PacketType::ContinueResponse) {
       // second highest bit must be set
       if ((sequence & (1ULL << 62)) == 0) {
         return false;
@@ -196,9 +194,10 @@ namespace core
     return true;
   }
 
-  INLINE auto PacketHeader::verify(Packet& packet, size_t& index, PacketDirection direction, const GenericKey& private_key) -> bool
+  INLINE auto PacketHeader::verify(Packet& packet, size_t& index, PacketDirection direction, const GenericKey& private_key)
+   -> bool
   {
-    if (index + SIZE_OF > packet.buffer.size()) {
+    if (index + SIZE_OF_ENCRYPTED > packet.buffer.size()) {
       LOG(ERROR, "could not verify header, buffer is too small");
       return false;
     }
@@ -233,8 +232,8 @@ namespace core
 
     // TODO change this to if checks
     if (
-     packet_type == PacketType::SessionPing || packet_type == PacketType::SessionPong || packet_type == PacketType::RouteResponse ||
-     packet_type == PacketType::ContinueResponse) {
+     packet_type == PacketType::SessionPing || packet_type == PacketType::SessionPong ||
+     packet_type == PacketType::RouteResponse || packet_type == PacketType::ContinueResponse) {
       // second highest bit must be set
       assert(packet_sequence & (1ULL << 62));
     } else {
@@ -273,11 +272,6 @@ namespace core
     }
 
     return true;
-  }
-
-  INLINE auto PacketHeader::hash() -> uint64_t
-  {
-    return session_id ^ session_version;
   }
 
   INLINE auto PacketHeader::clean_sequence() -> uint64_t

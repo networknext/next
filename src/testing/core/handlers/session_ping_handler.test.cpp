@@ -8,12 +8,12 @@
 #include "testing/helpers.hpp"
 
 using core::Packet;
-using core::RouterInfo;
-using core::Session;
-using core::SessionMap;
 using core::PacketDirection;
 using core::PacketHeader;
 using core::PacketType;
+using core::RouterInfo;
+using core::Session;
+using core::SessionMap;
 using net::Address;
 using os::Socket;
 using os::SocketConfig;
@@ -37,14 +37,15 @@ Test(core_handlers_session_ping_handler_unsigned)
   check(addr.parse("127.0.0.1"));
   check(socket.create(addr, config));
 
-  packet.length = PacketHeader::SIZE_OF + 32;
+  packet.length = PacketHeader::SIZE_OF_ENCRYPTED + 32;
   packet.addr = addr;
 
-  PacketHeader header = {
-   .type = PacketType::ClientToServer,
-   .sequence = 123123130131LL,
-   .session_id = 0x12313131,
-   .session_version = 0x12,
+  PacketHeader header;
+  {
+    header.type = PacketType::ClientToServer;
+    header.sequence = 123123130131LL;
+    header.session_id = 0x12313131;
+    header.session_version = 0x12;
   };
 
   auto session = std::make_shared<Session>();
@@ -58,7 +59,7 @@ Test(core_handlers_session_ping_handler_unsigned)
   size_t index = 0;
 
   check(header.write(packet, index, PacketDirection::ClientToServer, private_key));
-  check(index == PacketHeader::SIZE_OF);
+  check(index == PacketHeader::SIZE_OF_ENCRYPTED);
 
   core::handlers::session_ping_handler(packet, map, recorder, router_info, socket, false);
 
@@ -88,14 +89,15 @@ Test(core_handlers_session_ping_handler_signed)
   check(addr.parse("127.0.0.1"));
   check(socket.create(addr, config));
 
-  packet.length = crypto::PACKET_HASH_LENGTH + PacketHeader::SIZE_OF + 32;
+  packet.length = crypto::PACKET_HASH_LENGTH + PacketHeader::SIZE_OF_ENCRYPTED + 32;
   packet.addr = addr;
 
-  PacketHeader header = {
-   .type = PacketType::ClientToServer,
-   .sequence = 123123130131LL,
-   .session_id = 0x12313131,
-   .session_version = 0x12,
+  PacketHeader header;
+  {
+    header.type = PacketType::ClientToServer;
+    header.sequence = 123123130131LL;
+    header.session_id = 0x12313131;
+    header.session_version = 0x12;
   };
 
   auto session = std::make_shared<Session>();
@@ -112,7 +114,7 @@ Test(core_handlers_session_ping_handler_signed)
   size_t index = crypto::PACKET_HASH_LENGTH;
 
   check(header.write(packet, index, PacketDirection::ClientToServer, private_key));
-  check(index == crypto::PACKET_HASH_LENGTH + PacketHeader::SIZE_OF);
+  check(index == crypto::PACKET_HASH_LENGTH + PacketHeader::SIZE_OF_ENCRYPTED);
 
   core::handlers::session_ping_handler(packet, map, recorder, router_info, socket, true);
 

@@ -9,6 +9,7 @@
 #include "crypto/keychain.hpp"
 #include "net/address.hpp"
 #include "os/socket.hpp"
+#include "util/macros.hpp"
 
 using core::PacketType;
 using core::RouterInfo;
@@ -23,7 +24,7 @@ namespace core
 {
   namespace handlers
   {
-    inline void route_request_handler(
+    INLINE void route_request_handler(
      Packet& packet,
      const Keychain& keychain,
      SessionMap& session_map,

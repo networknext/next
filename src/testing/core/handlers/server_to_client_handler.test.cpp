@@ -10,10 +10,10 @@
 using core::Packet;
 using core::PacketDirection;
 using core::PacketHeader;
+using core::PacketType;
 using core::RouterInfo;
 using core::Session;
 using core::SessionMap;
-using core::PacketType;
 using net::Address;
 using os::Socket;
 using os::SocketConfig;
@@ -37,14 +37,15 @@ Test(core_handlers_server_to_client_handler_unsigned)
 
   router_info.set_timestamp(0);
 
-  packet.length = PacketHeader::SIZE_OF + 100;
+  packet.length = PacketHeader::SIZE_OF_ENCRYPTED + 100;
   packet.addr = addr;
 
-  PacketHeader header = {
-   .type = PacketType::ServerToClient,
-   .sequence = 123123130131LL | (1ULL << 63),
-   .session_id = 0x12313131,
-   .session_version = 0x12,
+  PacketHeader header;
+  {
+    header.type = PacketType::ServerToClient;
+    header.sequence = 123123130131LL | (1ULL << 63);
+    header.session_id = 0x12313131;
+    header.session_version = 0x12;
   };
 
   auto session = std::make_shared<Session>();
@@ -92,14 +93,15 @@ Test(core_handlers_server_to_client_handler_signed)
 
   router_info.set_timestamp(0);
 
-  packet.length = crypto::PACKET_HASH_LENGTH + PacketHeader::SIZE_OF + 100;
+  packet.length = crypto::PACKET_HASH_LENGTH + PacketHeader::SIZE_OF_ENCRYPTED + 100;
   packet.addr = addr;
 
-  PacketHeader header = {
-   .type = PacketType::ServerToClient,
-   .sequence = 123123130131LL | (1ULL << 63),
-   .session_id = 0x12313131,
-   .session_version = 0x12,
+  PacketHeader header;
+  {
+    header.type = PacketType::ServerToClient;
+    header.sequence = 123123130131LL | (1ULL << 63);
+    header.session_id = 0x12313131;
+    header.session_version = 0x12;
   };
 
   auto session = std::make_shared<Session>();

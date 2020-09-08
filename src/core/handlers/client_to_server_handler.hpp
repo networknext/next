@@ -37,7 +37,7 @@ namespace core
 
       // check if length excluding the hash is right,
       // and then check if the hash + everything else is too large
-      if (length <= PacketHeader::SIZE_OF || packet.length > PacketHeader::SIZE_OF + RELAY_MTU) {
+      if (length <= PacketHeader::SIZE_OF_ENCRYPTED || packet.length > PacketHeader::SIZE_OF_ENCRYPTED + RELAY_MTU) {
         LOG(ERROR, "ignoring client to server packet, invalid size: ", length);
         return;
       }

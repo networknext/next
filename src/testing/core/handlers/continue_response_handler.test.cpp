@@ -10,10 +10,10 @@
 using core::Packet;
 using core::PacketDirection;
 using core::PacketHeader;
+using core::PacketType;
 using core::RouterInfo;
 using core::Session;
 using core::SessionMap;
-using core::PacketType;
 using crypto::GenericKey;
 using crypto::PACKET_HASH_LENGTH;
 using net::Address;
@@ -39,13 +39,14 @@ Test(core_handlers_continue_response_handler_unsigned)
   check(addr.parse("127.0.0.1"));
   check(socket.create(addr, config));
 
-  packet.length = PacketHeader::SIZE_OF;
+  packet.length = PacketHeader::SIZE_OF_ENCRYPTED;
 
-  PacketHeader header = {
-   .type = PacketType::ContinueResponse,
-   .sequence = 123123130131LL | (1ULL << 63) | (1ULL << 62),
-   .session_id = 0x12313131,
-   .session_version = 0x12,
+  PacketHeader header;
+  {
+    header.type = PacketType::ContinueResponse;
+    header.sequence = 123123130131LL | (1ULL << 63) | (1ULL << 62);
+    header.session_id = 0x12313131;
+    header.session_version = 0x12;
   };
 
   auto session = std::make_shared<Session>();
@@ -95,13 +96,14 @@ Test(core_handlers_continue_response_handler_signed)
   check(addr.parse("127.0.0.1"));
   check(socket.create(addr, config));
 
-  packet.length = PACKET_HASH_LENGTH + PacketHeader::SIZE_OF;
+  packet.length = PACKET_HASH_LENGTH + PacketHeader::SIZE_OF_ENCRYPTED;
 
-  PacketHeader header = {
-   .type = PacketType::ContinueResponse,
-   .sequence = 123123130131LL | (1ULL << 63) | (1ULL << 62),
-   .session_id = 0x12313131,
-   .session_version = 0x12,
+  PacketHeader header;
+  {
+    header.type = PacketType::ContinueResponse;
+    header.sequence = 123123130131LL | (1ULL << 63) | (1ULL << 62);
+    header.session_id = 0x12313131;
+    header.session_version = 0x12;
   };
 
   auto session = std::make_shared<Session>();
