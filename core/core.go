@@ -7,6 +7,7 @@ import "C"
 
 import (
     "fmt"
+    "errors"
     "encoding/binary"
     "unsafe"
     "net"
@@ -930,6 +931,18 @@ func GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCo
 }
 
 // -------------------------------------------
+
+func ReframeRoute(routeRelayIds []uint64, relayIdToIndex map[uint64]int32) ([]int32, error) {
+    routeRelays := make([]int32, len(routeRelayIds))
+    for i := range routeRelayIds {
+        relayIndex, ok := relayIdToIndex[routeRelayIds[i]]
+        if !ok {
+            return nil, errors.New("relay id does not exist")
+        }
+        routeRelays[i] = relayIndex
+    }
+    return routeRelays, nil
+}
 
 // todo: need a function to convert a route expressed in terms of uint64 relayIds into a route in terms of relax indices in the current route matrix
 // this function *can* return error, if one of the relays in the route no longer exists.
