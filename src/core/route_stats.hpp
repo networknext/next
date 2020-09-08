@@ -4,8 +4,8 @@ namespace core
 {
   struct RouteStats
   {
-    float rtt;
-    float jitter;
-    float packet_loss;
+    float rtt = 0.0f;
+    float jitter = -1.0f;
+    float packet_loss = -1.0f;
   };
 }  // namespace core
