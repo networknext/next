@@ -125,37 +125,37 @@ namespace core
 
   INLINE auto RelayManager::get_ping_targets(std::array<PingData, MAX_RELAYS>& data) -> size_t
   {
-    double currentTime = this->clock.elapsed<Second>();
-    size_t numPings = 0;
+    double current_time = this->clock.elapsed<Second>();
+    size_t num_pings = 0;
 
     // locked mutex scope
     {
       std::lock_guard<std::mutex> lk(this->mutex);
       for (unsigned int i = 0; i < this->num_relays; ++i) {
-        if (this->relays[i].last_ping_time + RELAY_PING_TIME <= currentTime) {
+        if (this->relays[i].last_ping_time + RELAY_PING_TIME <= current_time) {
           auto& relay = this->relays[i];
-          auto& pingData = data[numPings++];
+          auto& ping_data = data[num_pings++];
 
-          pingData.sequence = relay.history->pingSent(currentTime);
-          pingData.address = relay.address;
-          relay.last_ping_time = currentTime;
+          ping_data.sequence = relay.history->pingSent(current_time);
+          ping_data.address = relay.address;
+          relay.last_ping_time = current_time;
         }
       }
     }
 
-    return numPings;
+    return num_pings;
   }
 
   // it is used in one place throughout the codebase, so always inline it, no sense in doing a function call
-  INLINE void RelayManager::update(size_t numRelays, const std::array<RelayPingInfo, MAX_RELAYS>& incoming)
+  INLINE void RelayManager::update(size_t num_incoming_relays, const std::array<RelayPingInfo, MAX_RELAYS>& incoming)
   {
-    assert(numRelays <= MAX_RELAYS);
+    assert(num_incoming_relays <= MAX_RELAYS);
 
     // first copy all current relays that are also in the update lists
 
-    std::array<bool, MAX_RELAYS> historySlotTaken{};
+    std::array<bool, MAX_RELAYS> history_slot_taken{};
     std::array<bool, MAX_RELAYS> found{};
-    std::array<Relay, MAX_RELAYS> newRelays{};
+    std::array<Relay, MAX_RELAYS> new_relays{};
 
     unsigned int index = 0;
 
@@ -164,24 +164,24 @@ namespace core
       std::lock_guard<std::mutex> lk(this->mutex);
       for (unsigned int i = 0; i < this->num_relays; i++) {
         const auto& relay = this->relays[i];
-        for (unsigned int j = 0; j < numRelays; j++) {
+        for (unsigned int j = 0; j < num_incoming_relays; j++) {
           if (relay.id == incoming[j].id) {
             found[j] = true;
-            newRelays[index++] = relay;
+            new_relays[index++] = relay;
 
             const auto slot = relay.history - this->ping_history.data();
             assert(slot >= 0);
             assert(slot < MAX_RELAYS);
-            historySlotTaken[slot] = true;
+            history_slot_taken[slot] = true;
           }
         }
       }
 
       // copy all near relays not found in the current relay list
 
-      for (unsigned int i = 0; i < numRelays; i++) {
+      for (unsigned int i = 0; i < num_incoming_relays; i++) {
         if (!found[i]) {
-          auto& newRelay = newRelays[index];
+          auto& newRelay = new_relays[index];
           newRelay.id = incoming[i].id;
           newRelay.address = incoming[i].address;
 
@@ -190,10 +190,10 @@ namespace core
           // instead of copying the while ping history array
           // it just copies the pointer
           for (int j = 0; j < MAX_RELAYS; j++) {
-            if (!historySlotTaken[j]) {
+            if (!history_slot_taken[j]) {
               newRelay.history = &this->ping_history[j];
               newRelay.history->clear();
-              historySlotTaken[j] = true;
+              history_slot_taken[j] = true;
               break;
             }
           }
@@ -204,38 +204,40 @@ namespace core
 
       // commit the updated relay array
       this->num_relays = index;
-      std::copy(newRelays.begin(), newRelays.begin() + index, this->relays.begin());
+      std::copy(new_relays.begin(), new_relays.begin() + index, this->relays.begin());
 
       // make sure all the ping times are evenly distributed to avoid clusters of ping packets
 
-      auto currentTime = this->clock.elapsed<Second>();
+      auto current_time = this->clock.elapsed<Second>();
 
       for (unsigned int i = 0; i < this->num_relays; i++) {
-        this->relays[i].last_ping_time = currentTime - RELAY_PING_TIME + i * RELAY_PING_TIME / this->num_relays;
+        this->relays[i].last_ping_time = current_time - RELAY_PING_TIME + i * RELAY_PING_TIME / this->num_relays;
       }
 
 #ifndef NDEBUG
 
       // make sure everything is correct
 
+      // TODO move these to tests
+
       assert(this->num_relays == index);
 
-      unsigned int numFound = 0;
-      for (unsigned int i = 0; i < numRelays; i++) {
+      unsigned int num_found = 0;
+      for (unsigned int i = 0; i < num_incoming_relays; i++) {
         for (unsigned int j = 0; j < this->num_relays; j++) {
           const auto& incomingRelay = incoming[i];
           const auto& relay = this->relays[j];
           if (incomingRelay.id == relay.id && incomingRelay.address == relay.address) {
-            numFound++;
+            num_found++;
             break;
           }
         }
       }
 
-      assert(numFound == this->num_relays);
+      assert(num_found == this->num_relays);
 
-      for (unsigned int i = 0; i < numRelays; i++) {
-        for (unsigned int j = 0; j < numRelays; j++) {
+      for (unsigned int i = 0; i < num_incoming_relays; i++) {
+        for (unsigned int j = 0; j < num_incoming_relays; j++) {
           if (i == j) {
             continue;
           }

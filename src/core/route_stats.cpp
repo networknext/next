@@ -16,7 +16,7 @@ namespace core
     int numPings = 0;
     int numPongs = 0;
 
-    for (const auto& entry : ph.mEntries) {
+    for (const auto& entry : ph.entries) {
       if (entry.TimePingSent >= start) {
         if (entry.TimePingSent <= end - safety) {
           numPingsSent++;
@@ -50,7 +50,7 @@ namespace core
     auto numJitterSamples = 0u;
     auto stdDevRTT = 0.0;
 
-    for (const auto& entry : ph.mEntries) {
+    for (const auto& entry : ph.entries) {
       // if the entry is within the window and the pong was received
       if (entry.TimePingSent >= start && entry.TimePingSent <= end && entry.TimePongReceived > entry.TimePingSent) {
         double rtt = 1000.0 * (entry.TimePongReceived - entry.TimePingSent);

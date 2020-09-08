@@ -3,45 +3,6 @@
 
 #include "util/logger.hpp"
 
-namespace core
-{
-  void ReplayProtection::reset()
-  {
-    mRecentSeq = 0;
-    mReceivedPacket.fill(INVALID_SEQUENCE_NUMBER);
-  }
-
-  bool ReplayProtection::alreadyReceived(uint64_t seq)
-  {
-    if (seq + RELAY_REPLAY_PROTECTION_BUFFER_SIZE <= mRecentSeq) {
-      return true;
-    }
-
-    auto index = seq % RELAY_REPLAY_PROTECTION_BUFFER_SIZE;
-
-    if (mReceivedPacket[index] == INVALID_SEQUENCE_NUMBER) {
-      return false;
-    }
-
-    if (mReceivedPacket[index] >= seq) {
-      return true;
-    }
-
-    return false;
-  }
-
-  void ReplayProtection::advanceSeq(uint64_t seq)
-  {
-    if (seq > mRecentSeq) {
-      mRecentSeq = seq;
-    }
-
-    auto index = seq % RELAY_REPLAY_PROTECTION_BUFFER_SIZE;
-
-    mReceivedPacket[index] = seq;
-  }
-}  // namespace core
-
 namespace legacy
 {
   void relay_replay_protection_reset(relay_replay_protection_t* replay_protection)
