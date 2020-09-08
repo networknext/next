@@ -474,6 +474,15 @@ func (env *TestEnvironment) GetBestRoutes(routeMatrix []RouteEntry, sourceRelays
     return routes
 }
 
+func (env *TestEnvironment) ReframeRoute(route []uint64) ([]int32, error) {
+    relayIdToIndex := make(map[uint64]int32)
+    for _, v := range env.relays {
+        id := RelayHash64(v.name)
+        relayIdToIndex[id] = int32(v.index)
+    }
+    return ReframeRoute(route, relayIdToIndex)
+}
+
 func TestTheTestEnvironment(t *testing.T) {
 
     t.Parallel()
@@ -1132,4 +1141,37 @@ func TestGetBestRoutesComplex(t *testing.T) {
     expectedBestRoutes[5].relays = []string{"losangeles.a", "a", "b", "chicago.b"}
 
     assert.Equal(t, expectedBestRoutes, bestRoutes)
+}
+
+func RelayHash64(name string) uint64 {
+    hash := fnv.New64a()
+    hash.Write([]byte(name))
+    return hash.Sum64()
+}
+
+func TestReframeRoute(t *testing.T) {
+
+    t.Parallel()
+
+    env := NewTestEnvironment()
+
+    env.AddRelay("losangeles.a", "10.0.0.1")
+    env.AddRelay("losangeles.b", "10.0.0.2")
+    env.AddRelay("chicago.a", "10.0.0.3")
+    env.AddRelay("chicago.b", "10.0.0.4")
+    env.AddRelay("a", "10.0.0.5")
+    env.AddRelay("b", "10.0.0.6")
+
+    currentRoute := make([]uint64, 3)
+    currentRoute[0] = RelayHash64("losangeles.a")
+    currentRoute[1] = RelayHash64("a")
+    currentRoute[2] = RelayHash64("chicago.b")
+
+    route, err := env.ReframeRoute(currentRoute)
+
+    assert.NoError(t, err)
+
+    assert.Equal(t, int32(0), route[0])
+    assert.Equal(t, int32(4), route[1])
+    assert.Equal(t, int32(3), route[2])
 }
