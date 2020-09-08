@@ -947,34 +947,33 @@ func ReframeRoute(routeRelayIds []uint64, relayIdToIndex map[uint64]int32) ([]in
     for i := range routeRelayIds {
         relayIndex, ok := relayIdToIndex[routeRelayIds[i]]
         if !ok {
-            return nil, errors.New("relay id does not exist")
+            return nil, errors.New("one or more relays in the route don't exist")
         }
         routeRelays[i] = relayIndex
     }
     return routeRelays, nil
 }
 
-// todo: need a function to convert a route expressed in terms of uint64 relayIds into a route in terms of relax indices in the current route matrix
-// this function *can* return error, if one of the relays in the route no longer exists.
-
-// todo
-/*
-func GetBestRoute_Initial(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost[] int32, destRelays []int32, maxCost int32, costThreshold int32, bestRoute *BestRoute) {
+func GetBestRoute_Initial(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost[] int32, destRelays []int32, maxCost int32, bestRoute *BestRoute) (BestRoute, error) {
     
-    bestRouteCost := GetBestRouteCost(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, )
+    bestRouteCost := GetBestRouteCost(routeMatrix, sourceRelays, sourceRelayCost, destRelays)
 
     if bestRouteCost > maxCost {
-        bestRoute.NumRelays = 0
-        bestRoute.Cost = -1
-        return 
+        return BestRoute{}, errors.New("best route is > max cost")
     }
 
-    // todo: GetBestRoutes -- make sure to pass in a maxCost above which we won't even consider the routes as valid or useful
+    numBestRoutes := 0
+    bestRoutes := make([]BestRoute, 1024)
+    GetBestRoutes(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, bestRoutes, &numBestRoutes)
 
-    // todo: randomly pick one of the best routes
+    if numBestRoutes == 0 {
+        return BestRoute{}, errors.New("no suitable routes found")
+    }
 
+    randomIndex := rand.Intn(numBestRoutes)
+
+    return bestRoutes[randomIndex], nil
 }
-*/
 
 func GetBestRoute_Update() {
 
