@@ -11,6 +11,8 @@ global_job_config:
       - checkout
       - sem-version go 1.13
       - make clean
+      - git submodule init
+      - git submodule update
 blocks:
   - name: Unit Tests
     task:
