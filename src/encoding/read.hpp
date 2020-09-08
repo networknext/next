@@ -33,13 +33,13 @@ namespace encoding
   auto read_double(const T& buff, size_t& index, double& value) -> bool;
 
   auto read_bytes(
-   const uint8_t* const buff, size_t buffLength, size_t& index, uint8_t* storage, size_t storageLength, size_t len)
+   const uint8_t* const buff, size_t buff_length, size_t& index, uint8_t* storage, size_t storage_length, size_t len)
    -> bool;
 
   template <typename T, typename U>
   auto read_bytes(const T& buff, size_t& index, U& storage, size_t len) -> bool;
 
-  auto read_address(const uint8_t* const buff, size_t buffLength, size_t& index, net::Address& addr) -> bool;
+  auto read_address(const uint8_t* const buff, size_t buff_length, size_t& index, net::Address& addr) -> bool;
 
   template <typename T>
   auto read_address(const T& buff, size_t& index, net::Address& addr) -> bool;

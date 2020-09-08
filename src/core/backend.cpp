@@ -258,7 +258,7 @@ namespace core
     for (size_t i = 0; i < this->num_relays; i++) {
       // only used in tests, so being lazy here;
       const auto& relay = Relays[i];
-      size += relay.address.toString().length();
+      size += relay.address.to_string().length();
     }
 
     return size;
@@ -292,7 +292,7 @@ namespace core
         return false;
       }
 
-      if (!encoding::write_string(v, index, relay.address.toString())) {
+      if (!encoding::write_string(v, index, relay.address.to_string())) {
         LOG(TRACE, "could not write relay address");
         return false;
       }
@@ -336,24 +336,24 @@ namespace core
    std::string hostname,
    std::string address,
    const crypto::Keychain& keychain,
-   RouterInfo& routerInfo,
-   RelayManager& relayManager,
-   std::string base64RelayPublicKey,
+   RouterInfo& router_info,
+   RelayManager& relay_manager,
+   std::string base64_relay_public_key,
    const core::SessionMap& sessions,
    net::IHttpClient& client)
    : hostname(hostname),
      relay_address(address),
      keychain(keychain),
-     router_info(routerInfo),
-     relay_manager(relayManager),
-     base64_relay_public_key(base64RelayPublicKey),
+     router_info(router_info),
+     relay_manager(relay_manager),
+     base64_relay_public_key(base64_relay_public_key),
      session_map(sessions),
      http_client(client)
   {}
 
   auto Backend::init() -> bool
   {
-    std::vector<uint8_t> requestData, responseData;
+    std::vector<uint8_t> request_data, response_data;
 
     // serialize request
     {
@@ -378,15 +378,15 @@ namespace core
         return false;
       }
 
-      requestData.resize(request.size());
-      if (!request.into(requestData)) {
+      request_data.resize(request.size());
+      if (!request.into(request_data)) {
         return false;
       }
     }
 
     // send request
 
-    if (!this->http_client.sendRequest(this->hostname, "/relay_init", requestData, responseData)) {
+    if (!this->http_client.send_request(this->hostname, "/relay_init", request_data, response_data)) {
       LOG(ERROR, "init request failed");
       return false;
     }
@@ -394,7 +394,7 @@ namespace core
     // deserialize response
     {
       InitResponse response;
-      if (!response.from(responseData)) {
+      if (!response.from(response_data)) {
         return false;
       }
 
@@ -529,53 +529,53 @@ namespace core
 
       encoding::write_uint64(req, index, this->session_map.size());
 
-      util::ThroughputRecorder trafficStats(std::move(recorder));
+      util::ThroughputRecorder traffic_stats(std::move(recorder));
 
-      encoding::write_uint64(req, index, trafficStats.outbound_ping_tx.num_bytes.load());
+      encoding::write_uint64(req, index, traffic_stats.outbound_ping_tx.num_bytes.load());
 
-      encoding::write_uint64(req, index, trafficStats.route_request_rx.num_bytes.load());
-      encoding::write_uint64(req, index, trafficStats.route_request_tx.num_bytes.load());
+      encoding::write_uint64(req, index, traffic_stats.route_request_rx.num_bytes.load());
+      encoding::write_uint64(req, index, traffic_stats.route_request_tx.num_bytes.load());
 
-      encoding::write_uint64(req, index, trafficStats.route_response_rx.num_bytes.load());
-      encoding::write_uint64(req, index, trafficStats.route_response_tx.num_bytes.load());
+      encoding::write_uint64(req, index, traffic_stats.route_response_rx.num_bytes.load());
+      encoding::write_uint64(req, index, traffic_stats.route_response_tx.num_bytes.load());
 
-      encoding::write_uint64(req, index, trafficStats.client_to_server_rx.num_bytes.load());
-      encoding::write_uint64(req, index, trafficStats.client_to_server_tx.num_bytes.load());
+      encoding::write_uint64(req, index, traffic_stats.client_to_server_rx.num_bytes.load());
+      encoding::write_uint64(req, index, traffic_stats.client_to_server_tx.num_bytes.load());
 
-      encoding::write_uint64(req, index, trafficStats.server_to_client_rx.num_bytes.load());
-      encoding::write_uint64(req, index, trafficStats.server_to_client_tx.num_bytes.load());
+      encoding::write_uint64(req, index, traffic_stats.server_to_client_rx.num_bytes.load());
+      encoding::write_uint64(req, index, traffic_stats.server_to_client_tx.num_bytes.load());
 
-      encoding::write_uint64(req, index, trafficStats.inbound_ping_rx.num_bytes.load());
-      encoding::write_uint64(req, index, trafficStats.inbound_ping_tx.num_bytes.load());
+      encoding::write_uint64(req, index, traffic_stats.inbound_ping_rx.num_bytes.load());
+      encoding::write_uint64(req, index, traffic_stats.inbound_ping_tx.num_bytes.load());
 
-      encoding::write_uint64(req, index, trafficStats.pong_rx.num_bytes.load());
+      encoding::write_uint64(req, index, traffic_stats.pong_rx.num_bytes.load());
 
-      encoding::write_uint64(req, index, trafficStats.session_ping_rx.num_bytes.load());
-      encoding::write_uint64(req, index, trafficStats.session_ping_tx.num_bytes.load());
+      encoding::write_uint64(req, index, traffic_stats.session_ping_rx.num_bytes.load());
+      encoding::write_uint64(req, index, traffic_stats.session_ping_tx.num_bytes.load());
 
-      encoding::write_uint64(req, index, trafficStats.session_pong_rx.num_bytes.load());
-      encoding::write_uint64(req, index, trafficStats.session_pong_tx.num_bytes.load());
+      encoding::write_uint64(req, index, traffic_stats.session_pong_rx.num_bytes.load());
+      encoding::write_uint64(req, index, traffic_stats.session_pong_tx.num_bytes.load());
 
-      encoding::write_uint64(req, index, trafficStats.continue_request_rx.num_bytes.load());
-      encoding::write_uint64(req, index, trafficStats.continue_request_tx.num_bytes.load());
+      encoding::write_uint64(req, index, traffic_stats.continue_request_rx.num_bytes.load());
+      encoding::write_uint64(req, index, traffic_stats.continue_request_tx.num_bytes.load());
 
-      encoding::write_uint64(req, index, trafficStats.continue_response_rx.num_bytes.load());
-      encoding::write_uint64(req, index, trafficStats.continue_response_tx.num_bytes.load());
+      encoding::write_uint64(req, index, traffic_stats.continue_response_rx.num_bytes.load());
+      encoding::write_uint64(req, index, traffic_stats.continue_response_tx.num_bytes.load());
 
-      encoding::write_uint64(req, index, trafficStats.near_ping_rx.num_bytes.load());
-      encoding::write_uint64(req, index, trafficStats.near_ping_tx.num_bytes.load());
+      encoding::write_uint64(req, index, traffic_stats.near_ping_rx.num_bytes.load());
+      encoding::write_uint64(req, index, traffic_stats.near_ping_tx.num_bytes.load());
 
-      encoding::write_uint64(req, index, trafficStats.unknown_rx.num_bytes.load());
+      encoding::write_uint64(req, index, traffic_stats.unknown_rx.num_bytes.load());
 
       encoding::write_uint8(req, index, shutdown);
 
-      auto sysStats = os::GetUsage();
-      encoding::write_double(req, index, sysStats.CPU);
-      encoding::write_double(req, index, sysStats.Mem);
+      auto sys_stats = os::GetUsage();
+      encoding::write_double(req, index, sys_stats.CPU);
+      encoding::write_double(req, index, sys_stats.Mem);
       encoding::write_string(req, index, RELAY_VERSION);
     }
 
-    if (!this->http_client.sendRequest(this->hostname, "/relay_update", req, res)) {
+    if (!this->http_client.send_request(this->hostname, "/relay_update", req, res)) {
       LOG(ERROR, "update request failed");
       return false;
     }

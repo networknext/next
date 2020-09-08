@@ -59,16 +59,16 @@ namespace core
     // using vectors here to reduce stack memory
 
     // buffer for sockaddr's
-    std::vector<std::array<uint8_t, sizeof(sockaddr_in6)>> mRawAddrBuff;
+    std::vector<std::array<uint8_t, sizeof(sockaddr_in6)>> raw_address_buffer;
 
     // buffer for iovec structs
-    std::vector<iovec> mIOVecBuff;
+    std::vector<iovec> io_vec_buffer;
 
-    std::mutex mLock;
+    std::mutex mutex;
   };
 
   template <size_t BuffSize>
-  INLINE PacketBuffer<BuffSize>::PacketBuffer(): count(0), mRawAddrBuff(BuffSize), mIOVecBuff(BuffSize)
+  INLINE PacketBuffer<BuffSize>::PacketBuffer(): count(0), raw_address_buffer(BuffSize), io_vec_buffer(BuffSize)
   {
     for (size_t i = 0; i < BuffSize; i++) {
       auto& pkt = Packets[i];
@@ -77,14 +77,14 @@ namespace core
       auto& hdr = mhdr.msg_hdr;
 
       // assign the address buffered area to the header
-      auto& addr = mRawAddrBuff[i];
+      auto& addr = raw_address_buffer[i];
       {
         hdr.msg_namelen = addr.size();
         hdr.msg_name = addr.data();
       }
 
       // assign the iovec to the packet buffer
-      auto iov = &mIOVecBuff[i];
+      auto iov = &io_vec_buffer[i];
       {
         iov->iov_len = pkt.Buffer.size();
         iov->iov_base = pkt.Buffer.data();
@@ -106,11 +106,11 @@ namespace core
     // and set by auto count = count.exchange(count + 1)
     // or something of the like, it should be possible
     // to prevent a mutex lock within this
-    std::lock_guard<std::mutex> lk(mLock);
+    std::lock_guard<std::mutex> lk(mutex);
 
     auto& pkt = Packets[count];
     pkt.Len = len;
-    auto& iov = mIOVecBuff[count];
+    auto& iov = io_vec_buffer[count];
     iov.iov_len = len;
     std::copy(data, data + len, reinterpret_cast<uint8_t*>(iov.iov_base));
 

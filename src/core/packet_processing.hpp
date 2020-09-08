@@ -53,13 +53,13 @@ namespace core
 
       std::array<core::PingData, MAX_RELAYS> pings;
 
-      auto numberOfRelaysToPing = relay_manager.get_ping_targets(pings);
+      auto number_of_relays_to_ping = relay_manager.get_ping_targets(pings);
 
-      if (numberOfRelaysToPing == 0) {
+      if (number_of_relays_to_ping == 0) {
         continue;
       }
 
-      for (unsigned int i = 0; i < numberOfRelaysToPing; i++) {
+      for (unsigned int i = 0; i < number_of_relays_to_ping; i++) {
         const auto& ping = pings[i];
 
         pkt.addr = ping.address;
@@ -95,17 +95,17 @@ namespace core
           LOG(ERROR, "failed to send new ping to ", pkt.addr);
         }
 
-        size_t headerSize = 0;
+        size_t header_size = 0;
         if (pkt.addr.Type == AddressType::IPv4) {
-          headerSize = net::IPv4UDPHeaderSize;
+          header_size = net::IPv4UDPHeaderSize;
         } else if (pkt.addr.Type == AddressType::IPv6) {
-          headerSize = net::IPv6UDPHeaderSize;
+          header_size = net::IPv6UDPHeaderSize;
         }
 
-        size_t wholePacketSize = headerSize + pkt.length;
+        size_t whole_packet_size = header_size + pkt.length;
 
         // could also just do: (1 + 8) * number of relays to ping to make this faster
-        recorder.outbound_ping_tx.add(wholePacketSize);
+        recorder.outbound_ping_tx.add(whole_packet_size);
       }
     }
   }
@@ -128,15 +128,15 @@ namespace core
         continue;
       }
 
-      size_t headerBytes = 0;
+      size_t header_bytes = 0;
 
       if (packet.addr.Type == net::AddressType::IPv4) {
-        headerBytes = net::IPv4UDPHeaderSize;
+        header_bytes = net::IPv4UDPHeaderSize;
       } else if (packet.addr.Type == net::AddressType::IPv6) {
-        headerBytes = net::IPv6UDPHeaderSize;
+        header_bytes = net::IPv6UDPHeaderSize;
       }
 
-      size_t wholePacketSize = packet.length + headerBytes;
+      size_t whole_packet_size = packet.length + header_bytes;
 
       PacketType type;
 
@@ -161,51 +161,51 @@ namespace core
 
       switch (type) {
         case PacketType::RelayPing: {
-          recorder.inbound_ping_rx.add(wholePacketSize);
+          recorder.inbound_ping_rx.add(whole_packet_size);
           handlers::relay_ping_handler(packet, recorder, socket, should_handle);
         } break;
         case PacketType::RelayPong: {
-          recorder.pong_rx.add(wholePacketSize);
+          recorder.pong_rx.add(whole_packet_size);
           handlers::relay_pong_handler(packet, relay_manager, should_handle);
         } break;
         case PacketType::RouteRequest: {
-          recorder.route_request_rx.add(wholePacketSize);
+          recorder.route_request_rx.add(whole_packet_size);
           handlers::route_request_handler(packet, keychain, session_map, recorder, router_info, socket, is_signed);
         } break;
         case PacketType::RouteResponse: {
-          recorder.route_response_rx.add(wholePacketSize);
+          recorder.route_response_rx.add(whole_packet_size);
           handlers::route_response_handler(packet, session_map, recorder, router_info, socket, is_signed);
         } break;
         case PacketType::ContinueRequest: {
-          recorder.continue_request_rx.add(wholePacketSize);
+          recorder.continue_request_rx.add(whole_packet_size);
           handlers::continue_request_handler(packet, session_map, keychain, recorder, router_info, socket, is_signed);
         } break;
         case PacketType::ContinueResponse: {
-          recorder.continue_response_rx.add(wholePacketSize);
+          recorder.continue_response_rx.add(whole_packet_size);
           handlers::continue_response_handler(packet, session_map, recorder, router_info, socket, is_signed);
         } break;
         case PacketType::ClientToServer: {
-          recorder.client_to_server_rx.add(wholePacketSize);
+          recorder.client_to_server_rx.add(whole_packet_size);
           handlers::client_to_server_handler(packet, session_map, recorder, router_info, socket, is_signed);
         } break;
         case PacketType::ServerToClient: {
-          recorder.server_to_client_rx.add(wholePacketSize);
+          recorder.server_to_client_rx.add(whole_packet_size);
           handlers::server_to_client_handler(packet, session_map, recorder, router_info, socket, is_signed);
         } break;
         case PacketType::SessionPing: {
-          recorder.session_ping_rx.add(wholePacketSize);
+          recorder.session_ping_rx.add(whole_packet_size);
           handlers::session_ping_handler(packet, session_map, recorder, router_info, socket, is_signed);
         } break;
         case PacketType::SessionPong: {
-          recorder.session_pong_rx.add(wholePacketSize);
+          recorder.session_pong_rx.add(whole_packet_size);
           handlers::session_pong_handler(packet, session_map, recorder, router_info, socket, is_signed);
         } break;
         case PacketType::NearPing: {
-          recorder.near_ping_rx.add(wholePacketSize);
+          recorder.near_ping_rx.add(whole_packet_size);
           handlers::near_ping_handler(packet, recorder, socket, is_signed);
         } break;
         default: {
-          recorder.unknown_rx.add(wholePacketSize);
+          recorder.unknown_rx.add(whole_packet_size);
         } break;
       }
     }

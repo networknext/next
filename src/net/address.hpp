@@ -43,10 +43,10 @@ namespace net
     void swap(Address& other);
 
     // resizes the buffer string to fit the address length
-    auto toString(std::string& buffer) const -> bool;
+    auto to_string(std::string& buffer) const -> bool;
 
     // slow, use only for debugging or logging
-    auto toString() const -> std::string;
+    auto to_string() const -> std::string;
 
     // generic conversion function with specializations
     template <typename T>
@@ -244,7 +244,7 @@ namespace net
     Port = 0;
   }
 
-  INLINE auto Address::toString(std::string& output) const -> bool
+  INLINE auto Address::to_string(std::string& output) const -> bool
   {
     std::array<char, MaxStrLen> buff = {};
     unsigned int total = 0;
@@ -289,10 +289,10 @@ namespace net
     return true;
   }
 
-  INLINE auto Address::toString() const -> std::string
+  INLINE auto Address::to_string() const -> std::string
   {
     std::string buff;
-    this->toString(buff);
+    this->to_string(buff);
     return buff;
   }
 
@@ -453,7 +453,7 @@ namespace net
   INLINE std::ostream& operator<<(std::ostream& os, const Address& addr)
   {
     std::string str;
-    addr.toString(str);
+    addr.to_string(str);
     return os << str;
   }
 }  // namespace net

@@ -3,7 +3,7 @@
 
 #include "core/ping_history.hpp"
 
-Test(PingHistory_general)
+Test(core_PingHistory_general)
 {
   std::default_random_engine gen;
   std::uniform_real_distribution<double> dist(1.0, 1000.0);
@@ -15,29 +15,29 @@ Test(PingHistory_general)
 
     // by default, all entries start out like this
     if (i < RELAY_PING_HISTORY_ENTRY_COUNT) {
-      check(entry.Sequence == INVALID_SEQUENCE_NUMBER);
-      check(entry.TimePingSent == -1.0);
-      check(entry.TimePongReceived == -1.0);
+      check(entry.sequence_number == INVALID_SEQUENCE_NUMBER);
+      check(entry.time_ping_sent == -1.0);
+      check(entry.time_pong_received == -1.0);
     } else {
-      check(entry.Sequence != INVALID_SEQUENCE_NUMBER);
-      check(entry.TimePingSent != -1.0);
-      check(entry.TimePongReceived != -1.0);
+      check(entry.sequence_number != INVALID_SEQUENCE_NUMBER);
+      check(entry.time_ping_sent != -1.0);
+      check(entry.time_pong_received != -1.0);
     }
 
-    auto lastSeq = ph.seq();
+    auto lastSeq = ph.most_recent_sequence;
     auto pingTime = rand();
     auto pongTime = rand();
 
     // record the ping data
-    check(ph.pingSent(pingTime) == lastSeq);
-    check(ph.seq() == lastSeq + 1);
-    check(entry.Sequence == lastSeq);
-    check(entry.TimePingSent == pingTime);
-    check(entry.TimePongReceived == -1.0);
+    check(ph.ping_sent(pingTime) == lastSeq);
+    check(ph.most_recent_sequence == lastSeq + 1);
+    check(entry.sequence_number == lastSeq);
+    check(entry.time_ping_sent == pingTime);
+    check(entry.time_pong_received == -1.0);
 
     // record the pong data
-    ph.pongReceived(lastSeq, pongTime);
+    ph.pong_received(lastSeq, pongTime);
 
-    check(entry.TimePongReceived == pongTime);
+    check(entry.time_pong_received == pongTime);
   }
 }

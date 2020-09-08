@@ -10,10 +10,10 @@
 #include "net/address.hpp"
 #include "os/socket.hpp"
 
+using core::PacketType;
 using core::RouterInfo;
 using core::RouteToken;
 using core::SessionMap;
-using core::PacketType;
 using crypto::Keychain;
 using crypto::PACKET_HASH_LENGTH;
 using os::Socket;
@@ -80,8 +80,8 @@ namespace core
         session->prev_addr = packet.addr;
         session->next_addr = token.NextAddr;
         std::copy(token.PrivateKey.begin(), token.PrivateKey.end(), session->private_key.begin());
-        relay_replay_protection_reset(&session->client_to_server_protection);
-        relay_replay_protection_reset(&session->server_to_client_protection);
+        session->client_to_server_protection.reset();
+        session->server_to_client_protection.reset();
 
         session_map.set(hash, session);
 

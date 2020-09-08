@@ -129,7 +129,7 @@ namespace core
     auto init() -> bool;
 
     /*
-     * Updates the relay in a loop once per second until loopHandle is false
+     * Updates the relay in a loop once per second until should_loop is false
      * Returns true as long as the relay doesn't reach the max number of failed update attempts
      */
     auto update_loop(

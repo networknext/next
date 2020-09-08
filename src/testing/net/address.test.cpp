@@ -160,21 +160,21 @@ Test(Address_toString)
   expected = base;
   addr.reset();
   check(addr.parse(base) == true);
-  check(addr.toString(output));
+  check(addr.to_string(output));
   check(output == expected);
 
   base = "[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:20000";
   expected = "[2001:db8:85a3::8a2e:370:7334]:20000";
   addr.reset();
   check(addr.parse(base) == true);
-  check(addr.toString(output));
+  check(addr.to_string(output));
   check(output == expected);
 
   base = "2001:0db8:85a3:0000:0000:8a2e:0370:7334";
   expected = "2001:db8:85a3::8a2e:370:7334";
   addr.reset();
   check(addr.parse(base) == true);
-  check(addr.toString(output));
+  check(addr.to_string(output));
   check(output == expected).onFail([&] {
     std::cout << "output = '" << output << '\'' << std::endl;
     std::cout << "expected = '" << expected << '\'' << std::endl;
@@ -184,7 +184,7 @@ Test(Address_toString)
   expected = "NONE";
   addr.reset();
   check(addr.parse(base) == false);
-  check(addr.toString(output));
+  check(addr.to_string(output));
   check(output == expected);
 }
 

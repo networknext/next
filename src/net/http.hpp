@@ -9,7 +9,7 @@ namespace net
   {
    public:
     virtual ~IHttpClient() = default;
-    virtual auto sendRequest(
+    virtual auto send_request(
      const std::string hostname,
      const std::string endpoint,
      const std::vector<uint8_t>& request,
@@ -30,7 +30,7 @@ namespace net
     BeastWrapper();
     ~BeastWrapper();
 
-    auto sendRequest(
+    auto send_request(
      const std::string hostname,
      const std::string endpoint,
      const std::vector<uint8_t>& request,
@@ -61,7 +61,7 @@ namespace net
     }
   }
 
-  inline auto BeastWrapper::sendRequest(
+  inline auto BeastWrapper::send_request(
    const std::string hostname, const std::string endpoint, const std::vector<uint8_t>& request, std::vector<uint8_t>& response)
    -> bool
   {

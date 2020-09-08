@@ -9,12 +9,12 @@
 #include "testing/helpers.hpp"
 
 using core::Packet;
-using core::RouterInfo;
-using core::Session;
-using core::SessionMap;
 using core::PacketDirection;
 using core::PacketHeader;
 using core::PacketType;
+using core::RouterInfo;
+using core::Session;
+using core::SessionMap;
 using net::Address;
 using os::Socket;
 using os::SocketConfig;
@@ -53,8 +53,8 @@ Test(core_handlers_client_to_server_handler_unsigned_packet)
   session->expire_timestamp = 10;
   session->private_key = private_key;
   session->client_to_server_sequence = 0;
-  legacy::relay_replay_protection_reset(&session->client_to_server_protection);
-  legacy::relay_replay_protection_reset(&session->server_to_client_protection);
+  session->client_to_server_protection.reset();
+  session->server_to_client_protection.reset();
 
   map.set(header.hash(), session);
 
@@ -114,8 +114,8 @@ Test(core_handlers_client_to_server_handler_signed_packet)
   session->session_id = header.session_id;
   session->session_version = header.session_version;
   session->client_to_server_sequence = 0;
-  legacy::relay_replay_protection_reset(&session->client_to_server_protection);
-  legacy::relay_replay_protection_reset(&session->server_to_client_protection);
+  session->client_to_server_protection.reset();
+  session->server_to_client_protection.reset();
 
   map.set(header.hash(), session);
 

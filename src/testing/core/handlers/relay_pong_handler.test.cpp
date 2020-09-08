@@ -31,7 +31,7 @@ Test(core_handlers_relay_pong_handler)
 
   check(manager.relays[0].address == addr);
 
-  auto& ping_sent = (*manager.relays[0].history)[0].TimePingSent;
+  auto& ping_sent = (*manager.relays[0].history)[0].time_ping_sent;
 
   check(ping_sent == -1);
 
@@ -47,7 +47,7 @@ Test(core_handlers_relay_pong_handler)
 
   check(ping_sent > 0);
 
-  auto& pong_received = (*manager.relays[0].history)[0].TimePongReceived;
+  auto& pong_received = (*manager.relays[0].history)[0].time_pong_received;
 
   check(pong_received == -1).onFail([&] {
     std::cout << "pong received == " << pong_received << '\n';

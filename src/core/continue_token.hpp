@@ -62,7 +62,7 @@ namespace core
      const size_t& index,
      const GenericKey& sender_public_key,
      const GenericKey& receiver_private_key,
-     const size_t nonceIndex) -> bool;
+     const size_t nonce_index) -> bool;
   };
 
   INLINE auto ContinueToken::write_encrypted(
@@ -169,7 +169,7 @@ namespace core
    const size_t& index,
    const GenericKey& sender_public_key,
    const GenericKey& receiver_private_key,
-   const size_t nonceIndex)
+   const size_t nonce_index)
   {
     if (index + ContinueToken::ENCRYPTION_LENGTH > packet.buffer.size()) {
       return false;
@@ -180,7 +180,7 @@ namespace core
       &packet.buffer[index],
       &packet.buffer[index],
       ContinueToken::ENCRYPTION_LENGTH,
-      &packet.buffer[nonceIndex],
+      &packet.buffer[nonce_index],
       sender_public_key.data(),
       receiver_private_key.data()) != 0) {
       return false;

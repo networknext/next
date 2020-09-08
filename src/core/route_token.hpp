@@ -30,14 +30,14 @@ namespace core
     auto write_encrypted(
      Packet& packet,
      size_t& index,
-     const crypto::GenericKey& senderPrivateKey,
-     const crypto::GenericKey& receiverPublicKey) -> bool;
+     const crypto::GenericKey& sender_private_key,
+     const crypto::GenericKey& receiver_public_key) -> bool;
 
     auto read_encrypted(
      Packet& packet,
      size_t& index,
-     const crypto::GenericKey& senderPublicKey,
-     const crypto::GenericKey& receiverPrivateKey) -> bool;
+     const crypto::GenericKey& sender_public_key,
+     const crypto::GenericKey& receiver_private_key) -> bool;
 
    private:
     auto write(Packet& packet, size_t& index) -> bool;
@@ -47,23 +47,23 @@ namespace core
     auto encrypt(
      Packet& packet,
      const size_t& index,
-     const crypto::GenericKey& senderPrivateKey,
-     const crypto::GenericKey& receiverPublicKey,
+     const crypto::GenericKey& sender_private_key,
+     const crypto::GenericKey& receiver_public_key,
      const std::array<uint8_t, crypto_box_NONCEBYTES>& nonce) -> bool;
 
     auto decrypt(
      Packet& packet,
      const size_t& index,
-     const crypto::GenericKey& senderPublicKey,
-     const crypto::GenericKey& receiverPrivateKey,
-     const size_t nonceIndex) -> bool;
+     const crypto::GenericKey& sender_public_key,
+     const crypto::GenericKey& receiver_private_key,
+     const size_t nonce_index) -> bool;
   };
 
   INLINE auto RouteToken::write_encrypted(
    Packet& packet,
    size_t& index,
-   const crypto::GenericKey& senderPrivateKey,
-   const crypto::GenericKey& receiverPublicKey) -> bool
+   const crypto::GenericKey& sender_private_key,
+   const crypto::GenericKey& receiver_public_key) -> bool
   {
     const size_t start = index;
     (void)start;
@@ -76,12 +76,12 @@ namespace core
       return false;
     }
 
-    const size_t afterNonce = index;
+    const size_t after_nonce = index;
 
     write(packet, index);  // write the token data to the buffer
 
     // encrypt at the start of the packet, function knows where to end
-    if (!encrypt(packet, afterNonce, senderPrivateKey, receiverPublicKey, nonce)) {
+    if (!encrypt(packet, after_nonce, sender_private_key, receiver_public_key, nonce)) {
       return false;
     }
 
@@ -95,13 +95,13 @@ namespace core
   INLINE auto RouteToken::read_encrypted(
    Packet& packet,
    size_t& index,
-   const crypto::GenericKey& senderPublicKey,
-   const crypto::GenericKey& receiverPrivateKey) -> bool
+   const crypto::GenericKey& sender_public_key,
+   const crypto::GenericKey& receiver_private_key) -> bool
   {
-    const auto nonceIndex = index;   // nonce is first in the packet's data
+    const auto nonce_index = index;   // nonce is first in the packet's data
     index += crypto_box_NONCEBYTES;  // followed by actual data
 
-    if (!decrypt(packet, index, senderPublicKey, receiverPrivateKey, nonceIndex)) {
+    if (!decrypt(packet, index, sender_public_key, receiver_private_key, nonce_index)) {
       LOG(ERROR, "could not decrypt route token");
       return false;
     }
@@ -182,8 +182,8 @@ namespace core
   INLINE auto RouteToken::encrypt(
    Packet& packet,
    const size_t& encryption_start,
-   const crypto::GenericKey& senderPrivateKey,
-   const crypto::GenericKey& receiverPublicKey,
+   const crypto::GenericKey& sender_private_key,
+   const crypto::GenericKey& receiver_public_key,
    const std::array<uint8_t, crypto_box_NONCEBYTES>& nonce) -> bool
   {
     if (encryption_start + RouteToken::EncryptionLength > packet.buffer.size()) {
@@ -196,8 +196,8 @@ namespace core
       &packet.buffer[encryption_start],
       RouteToken::ByteSize,
       nonce.data(),
-      receiverPublicKey.data(),
-      senderPrivateKey.data()) != 0) {
+      receiver_public_key.data(),
+      sender_private_key.data()) != 0) {
       return false;
     }
 
@@ -207,9 +207,9 @@ namespace core
   INLINE auto RouteToken::decrypt(
    Packet& packet,
    const size_t& index,
-   const crypto::GenericKey& senderPublicKey,
-   const crypto::GenericKey& receiverPrivateKey,
-   const size_t nonceIndex) -> bool
+   const crypto::GenericKey& sender_public_key,
+   const crypto::GenericKey& receiver_private_key,
+   const size_t nonce_index) -> bool
   {
     if (index + RouteToken::EncryptionLength > packet.buffer.size()) {
       return false;
@@ -220,9 +220,9 @@ namespace core
       &packet.buffer[index],
       &packet.buffer[index],
       RouteToken::EncryptionLength,
-      &packet.buffer[nonceIndex],
-      senderPublicKey.data(),
-      receiverPrivateKey.data()) != 0) {
+      &packet.buffer[nonce_index],
+      sender_public_key.data(),
+      receiver_private_key.data()) != 0) {
       return false;
     }
 

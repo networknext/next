@@ -364,8 +364,8 @@ Test(core_Backend_update_valid)
     check(count == 2).onFail([&] {
       std::cout << "count is " << count << '\n';
     });
-    check(pingData[0].address.toString() == "127.0.0.1:54321");
-    check(pingData[1].address.toString() == "127.0.0.1:13524");
+    check(pingData[0].address.to_string() == "127.0.0.1:54321");
+    check(pingData[1].address.to_string() == "127.0.0.1:13524");
 
     check(routerInfo.current_time() >= 123456789).onFail([&] {
       std::cout << "info timestamp = " << routerInfo.current_time() << '\n';

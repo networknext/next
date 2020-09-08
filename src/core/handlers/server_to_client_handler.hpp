@@ -69,7 +69,7 @@ namespace core
 
       uint64_t clean_sequence = header.clean_sequence();
 
-      if (relay_replay_protection_already_received(&session->server_to_client_protection, clean_sequence)) {
+      if (session->server_to_client_protection.is_already_received(clean_sequence)) {
         LOG(ERROR, "ignoring server to client packet, packet already received: session = ", *session);
         return;
       }
@@ -79,7 +79,7 @@ namespace core
         return;
       }
 
-      relay_replay_protection_advance_sequence(&session->server_to_client_protection, clean_sequence);
+      session->server_to_client_protection.advance_sequence_to(clean_sequence);
 
       recorder.server_to_client_tx.add(packet.length);
 

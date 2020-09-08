@@ -33,8 +33,14 @@ using util::Env;
 
 namespace base64 = encoding::base64;
 
-volatile bool gAlive = true;
-volatile bool gShouldCleanShutdown = false;
+struct
+{
+  volatile bool alive;
+  volatile bool should_clean_shutdown;
+} Globals = {
+ .alive = false,
+ .should_clean_shutdown = false,
+};
 
 namespace
 {
@@ -114,41 +120,41 @@ namespace
 
   INLINE auto get_buffer_size(const std::optional<std::string>& envvar) -> size_t
   {
-    size_t socketBufferSize = 1000000;
+    size_t socket_buffer_size = 1000000;
 
     if (envvar.has_value()) {
       try {
-        socketBufferSize = std::stoull(*envvar);
+        socket_buffer_size = std::stoull(*envvar);
       } catch (std::exception& e) {
         LOG(ERROR, "Could not parse ", *envvar, " env var to a number: ", e.what());
       }
     }
 
-    return socketBufferSize;
+    return socket_buffer_size;
   }
 
   INLINE void setup_signal_handlers()
   {
-    auto gracefulShutdownHandler = [](int) {
-      if (gAlive) {
-        gAlive = false;
+    auto graceful_shutdown_handler = [](int) {
+      if (Globals.alive) {
+        Globals.alive = false;
       } else {
         std::exit(1);
       }
     };
 
-    auto cleanShutdownHandler = [](int) {
-      if (gAlive) {
-        gShouldCleanShutdown = true;
-        gAlive = false;
+    auto clean_shutdown_handler = [](int) {
+      if (Globals.alive) {
+        Globals.should_clean_shutdown = true;
+        Globals.alive = false;
       } else {
         std::exit(1);
       }
     };
 
-    std::signal(SIGINT, gracefulShutdownHandler);  // ctrl-c
-    std::signal(SIGTERM, cleanShutdownHandler);    // systemd stop
-    std::signal(SIGHUP, cleanShutdownHandler);     // terminal session ends
+    std::signal(SIGINT, graceful_shutdown_handler);  // ctrl-c
+    std::signal(SIGTERM, clean_shutdown_handler);    // systemd stop
+    std::signal(SIGHUP, clean_shutdown_handler);     // terminal session ends
   }
 }  // namespace
 
@@ -183,8 +189,8 @@ int main(int argc, const char* argv[])
   LOG(INFO, "backend hostname is '", env.backend_hostname, '\'');
 
   unsigned int num_cpus = get_num_cpus(env.max_cpus);
-  int socketRecvBuffSize = get_buffer_size(env.recv_buffer_size);
-  int socketSendBuffSize = get_buffer_size(env.send_buffer_size);
+  int socket_recv_buff_size = get_buffer_size(env.recv_buffer_size);
+  int socket_send_buff_size = get_buffer_size(env.send_buffer_size);
 
   if (sodium_init() == -1) {
     LOG(FATAL, "failed to initialize sodium");
@@ -220,8 +226,8 @@ int main(int argc, const char* argv[])
   };
 
   auto cleanup = [&] {
-    if (gAlive) {
-      gAlive = false;
+    if (Globals.alive) {
+      Globals.alive = false;
       close_sockets();
     }
   };
@@ -247,14 +253,14 @@ int main(int argc, const char* argv[])
   SocketConfig config;
   config.socket_type = SocketType::Blocking;
   config.reuse_port = true;
-  config.send_buffer_size = socketSendBuffSize;
-  config.recv_buffer_size = socketRecvBuffSize;
+  config.send_buffer_size = socket_send_buff_size;
+  config.recv_buffer_size = socket_recv_buff_size;
 
   size_t num_threads = (num_cpus == 1) ? num_cpus : num_cpus - 1;
   LOG(DEBUG, "creating ", num_cpus, " packet processing thread", (num_cpus != 1) ? "s" : "");
 
   // packet processing setup
-  for (unsigned int i = (num_cpus == 1) ? 0 : 1; i < num_threads && gAlive; i++) {
+  for (unsigned int i = (num_cpus == 1) ? 0 : 1; i < num_threads && Globals.alive; i++) {
     auto socket = make_socket(relay_addr, config);
     if (!socket) {
       LOG(ERROR, "could not create socket");
@@ -262,7 +268,7 @@ int main(int argc, const char* argv[])
     }
 
     auto thread = std::make_shared<std::thread>([&, socket] {
-      core::recv_loop(should_receive, *socket, keychain, sessions, relay_manager, gAlive, recorder, router_info);
+      core::recv_loop(should_receive, *socket, keychain, sessions, relay_manager, Globals.alive, recorder, router_info);
     });
 
     set_thread_affinity(*thread, (std::thread::hardware_concurrency() == 1) ? 0 : i);
@@ -275,15 +281,15 @@ int main(int argc, const char* argv[])
 
   // gets a socket from those available round robbin style
   auto next_socket = [&] {
-    static size_t socketChooser = 0;
-    return sockets[socketChooser++ % sockets.size()];
+    static size_t socket_chooser = 0;
+    return sockets[socket_chooser++ % sockets.size()];
   };
 
   // ping processing setup
-  if (gAlive) {
+  if (Globals.alive) {
     auto socket = next_socket();
     auto thread = std::make_shared<std::thread>([&, socket] {
-      core::ping_loop(*socket, relay_manager, gAlive, recorder);
+      core::ping_loop(*socket, relay_manager, Globals.alive, recorder);
     });
 
     set_thread_affinity(*thread, 0);
@@ -300,7 +306,7 @@ int main(int argc, const char* argv[])
       BeastWrapper wrapper;
       core::Backend backend(
        env.backend_hostname,
-       relay_addr.toString(),
+       relay_addr.to_string(),
        keychain,
        router_info,
        relay_manager,
@@ -326,10 +332,10 @@ int main(int argc, const char* argv[])
         cleanup();
       }
 
-      if (gAlive) {
+      if (Globals.alive) {
         setup_signal_handlers();
 
-        success = backend.update_loop(gAlive, gShouldCleanShutdown, recorder, sessions);
+        success = backend.update_loop(Globals.alive, Globals.should_clean_shutdown, recorder, sessions);
       }
     });
 

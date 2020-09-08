@@ -24,11 +24,8 @@ namespace core
     net::Address prev_addr;
     net::Address next_addr;
     std::array<uint8_t, crypto_box_SECRETKEYBYTES> private_key;
-    legacy::relay_replay_protection_t client_to_server_protection;
-    legacy::relay_replay_protection_t server_to_client_protection;
-    // Not tested or benchmarked yet, don't use
-    // ReplayProtection ClientToServerProtection;
-    // ReplayProtection ServerToClientProtection;
+    ReplayProtection client_to_server_protection;
+    ReplayProtection server_to_client_protection;
   };
 
   using SessionPtr = std::shared_ptr<Session>;

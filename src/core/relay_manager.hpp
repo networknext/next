@@ -52,7 +52,7 @@ namespace core
 
     void reset();
 
-    void update(size_t numRelays, const std::array<RelayPingInfo, MAX_RELAYS>& newRelays);
+    void update(size_t num_incoming_relays, const std::array<RelayPingInfo, MAX_RELAYS>& incoming_relays);
 
     auto process_pong(const Address& from, uint64_t seq) -> bool;
 
@@ -92,7 +92,7 @@ namespace core
       for (unsigned int i = 0; i < this->num_relays; i++) {
         auto& relay = this->relays[i];
         if (from == relay.address) {
-          relay.history->pongReceived(seq, this->clock.elapsed<Second>());
+          relay.history->pong_received(seq, this->clock.elapsed<Second>());
           pong_received = true;
           break;
         }
@@ -104,7 +104,7 @@ namespace core
 
   INLINE void RelayManager::get_stats(RelayStats& stats)
   {
-    auto currentTime = this->clock.elapsed<Second>();
+    auto current_time = this->clock.elapsed<Second>();
 
     // locked mutex scope
     {
@@ -113,12 +113,12 @@ namespace core
 
       for (unsigned int i = 0; i < this->num_relays; i++) {
         auto& relay = this->relays[i];
-
-        RouteStats rs(*relay.history, currentTime - RELAY_STATS_WINDOW, currentTime, RELAY_PING_SAFETY);
+        RouteStats rs;
+        relay.history->into(rs, current_time - RELAY_STATS_WINDOW, current_time, RELAY_PING_SAFETY);
         stats.ids[i] = relay.id;
-        stats.rtt[i] = rs.getRTT();
-        stats.jitter[i] = rs.getJitter();
-        stats.packet_loss[i] = rs.getPacketLoss();
+        stats.rtt[i] = rs.rtt;
+        stats.jitter[i] = rs.jitter;
+        stats.packet_loss[i] = rs.packet_loss;
       }
     }
   }
@@ -136,7 +136,7 @@ namespace core
           auto& relay = this->relays[i];
           auto& ping_data = data[num_pings++];
 
-          ping_data.sequence = relay.history->pingSent(current_time);
+          ping_data.sequence = relay.history->ping_sent(current_time);
           ping_data.address = relay.address;
           relay.last_ping_time = current_time;
         }
@@ -181,9 +181,9 @@ namespace core
 
       for (unsigned int i = 0; i < num_incoming_relays; i++) {
         if (!found[i]) {
-          auto& newRelay = new_relays[index];
-          newRelay.id = incoming[i].id;
-          newRelay.address = incoming[i].address;
+          auto& new_relay = new_relays[index];
+          new_relay.id = incoming[i].id;
+          new_relay.address = incoming[i].address;
 
           // find a history slot for this relay
           // helps when updating and copying in the above loop
@@ -191,13 +191,13 @@ namespace core
           // it just copies the pointer
           for (int j = 0; j < MAX_RELAYS; j++) {
             if (!history_slot_taken[j]) {
-              newRelay.history = &this->ping_history[j];
-              newRelay.history->clear();
+              new_relay.history = &this->ping_history[j];
+              new_relay.history->clear();
               history_slot_taken[j] = true;
               break;
             }
           }
-          assert(newRelay.history != nullptr);
+          assert(new_relay.history != nullptr);
           index++;
         }
       }
@@ -225,9 +225,9 @@ namespace core
       unsigned int num_found = 0;
       for (unsigned int i = 0; i < num_incoming_relays; i++) {
         for (unsigned int j = 0; j < this->num_relays; j++) {
-          const auto& incomingRelay = incoming[i];
+          const auto& incoming_relay = incoming[i];
           const auto& relay = this->relays[j];
-          if (incomingRelay.id == relay.id && incomingRelay.address == relay.address) {
+          if (incoming_relay.id == relay.id && incoming_relay.address == relay.address) {
             num_found++;
             break;
           }
