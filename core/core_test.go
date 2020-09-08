@@ -74,8 +74,19 @@ func TestTriMatrixIndex(t *testing.T) {
     assert.Equal(t, 5, TriMatrixIndex(3,2))
 }
 
+func CheckAddress(t *testing.T, addressString string, expected string) {
+    address := ParseAddress(addressString)
+    buffer := make([]uint8, NEXT_ADDRESS_BYTES)
+    WriteAddress(buffer, address)
+    readAddress := ReadAddress(buffer)
+    readAddressString := readAddress.String()
+    assert.Equal(t, expected, readAddressString)
+}
+
 func TestAddress(t *testing.T) {
-    // todo: test parse address, write address, read address
+    CheckAddress(t, "127.0.0.1", "127.0.0.1:0")
+    CheckAddress(t, "127.0.0.1:40000", "127.0.0.1:40000")
+    CheckAddress(t, "1.2.3.4:50000", "1.2.3.4:50000")
 }
 
 func TestRouteManager(t *testing.T) {
