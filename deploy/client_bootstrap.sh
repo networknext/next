@@ -36,8 +36,13 @@ gsutil cp "$bucket/staging_servers.txt" . || exit 1
 # Refresh the known libs on the system
 ldconfig
 
-# Copy the required files for the service from GCP Storage
-gsutil cp "$bucket/load_test_client.tar.gz" 'artifact.tar.gz' || exit 1
+if [ $version = "4" ]; then
+    # Copy the required files for the service from GCP Storage
+    gsutil cp "$bucket/load_test_client4.tar.gz" 'artifact.tar.gz' || exit 1
+else
+    # Copy the required files for the service from GCP Storage
+    gsutil cp "$bucket/load_test_client.tar.gz" 'artifact.tar.gz' || exit 1
+fi
 
 # Stop the service
 systemctl stop app.service
