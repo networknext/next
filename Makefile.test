@@ -11,7 +11,11 @@ EXE										:= relay.test
 SRC_OBJ_FILES					:= $(patsubst $(SRC)/%.cpp, $(OBJ)/$(SRC)/%.test.o, $(SRC_FILES))
 SRC_DEP_FILES					:= $(patsubst $(SRC)/%.cpp, $(OBJ)/$(SRC)/%.test.d, $(SRC_FILES))
 
-DEF_FLAGS							:= -DTEST_BUILD -DRELAY_LOG_LEVEL=0
+ifndef LOG_LEVEL
+LOG_LEVEL             := 0
+endif
+
+DEF_FLAGS							:= -DTEST_BUILD -DRELAY_LOG_LEVEL=$(LOG_LEVEL)
 
 ifeq ($(LOG_ALL),true)
 DEF_FLAGS 						:= $(DEF_FLAGS) -DLOG_ALL

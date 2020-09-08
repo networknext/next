@@ -14,12 +14,12 @@
 using core::PacketType;
 using core::RouterInfo;
 using core::RouteToken;
+using core::RouteTokenV4;
 using core::SessionMap;
 using crypto::Keychain;
 using crypto::PACKET_HASH_LENGTH;
 using os::Socket;
 using util::ThroughputRecorder;
-
 namespace core
 {
   namespace handlers
