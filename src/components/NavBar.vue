@@ -60,8 +60,10 @@
           class="nav-link"
           v-bind:class="{
             active:
+              $store.getters.currentPage == 'account-settings' ||
               $store.getters.currentPage == 'config' ||
-              $store.getters.currentPage == 'users'
+              $store.getters.currentPage == 'users' ||
+              $store.getters.currentPage == 'route-shader'
           }"
           v-if="!$store.getters.isAnonymous"
         >Settings</router-link>

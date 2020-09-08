@@ -1,5 +1,6 @@
 import store from '@/store'
 import _ from 'lodash'
+import Vue from 'vue'
 
 export class JSONRPCService {
   private headers: any
@@ -22,14 +23,13 @@ export class JSONRPCService {
   private processAuthChange (): void {
     const userProfile = _.cloneDeep(store.getters.userProfile)
     Promise.all([
-      this.fetchUserAccount({ user_id: userProfile.auth0ID }, userProfile.token),
-      this.fetchGameConfiguration({ domain: userProfile.domain }, userProfile.token),
-      this.fetchAllBuyers(userProfile.token)
+      this.fetchUserAccount({ user_id: userProfile.auth0ID }),
+      this.fetchGameConfiguration({ domain: userProfile.domain }),
+      this.fetchAllBuyers()
     ])
       .then((responses: any) => {
         // userProfile.buyerID = responses[0].account.buyer_id
         userProfile.buyerID = responses[0].account.id
-        userProfile.company = responses[1].game_config.company
         userProfile.pubKey = responses[1].game_config.public_key
         // userProfile.routeShader = responses[1].customer_route_shader
         const allBuyers = responses[2].buyers || []
@@ -38,7 +38,7 @@ export class JSONRPCService {
         // If the user has no roles, check to see if they are the only one in the company and upgrade their account to owner
         // TODO: Figure out a better way of doing this...
         if (!store.getters.isAnonymous && !store.getters.isAnonymousPlus && userProfile.roles.length === 0) {
-          this.upgradeAccount({ user_id: userProfile.auth0ID }, userProfile.token)
+          this.upgradeAccount({ user_id: userProfile.auth0ID })
             .then((response: any) => {
               const newRoles = response.new_roles || []
               if (newRoles.length > 0) {
@@ -60,9 +60,9 @@ export class JSONRPCService {
       })
   }
 
-  private call (method: string, params: any, token: string): Promise<any> {
-    if (!store.getters.isAnonymous || token) {
-      this.headers.Authorization = `Bearer ${store.getters.idToken || token}`
+  private call (method: string, params: any): Promise<any> {
+    if (!store.getters.isAnonymous) {
+      this.headers.Authorization = `Bearer ${store.getters.idToken}`
     }
     return new Promise((resolve: any, reject: any) => {
       const options = params || {}
@@ -91,72 +91,72 @@ export class JSONRPCService {
     })
   }
 
-  public upgradeAccount (args: any, token: string): Promise<any> {
-    return this.call('AuthService.UpgradeAccount', args, token)
+  public upgradeAccount (args: any): Promise<any> {
+    return this.call('AuthService.UpgradeAccount', args)
   }
 
   public fetchTotalSessionCounts (args: any): Promise<any> {
-    return this.call('BuyersService.TotalSessions', args, '')
+    return this.call('BuyersService.TotalSessions', args)
   }
 
   public fetchMapSessions (args: any): Promise<any> {
-    return this.call('BuyersService.SessionMap', args, '')
+    return this.call('BuyersService.SessionMap', args)
   }
 
   public fetchSessionDetails (args: any): Promise<any> {
-    return this.call('BuyersService.SessionDetails', args, '')
+    return this.call('BuyersService.SessionDetails', args)
   }
 
   public fetchTopSessions (args: any): Promise<any> {
-    return this.call('BuyersService.TopSessions', args, '')
+    return this.call('BuyersService.TopSessions', args)
   }
 
-  public fetchAllBuyers (token: string): Promise<any> {
-    return this.call('BuyersService.Buyers', {}, token)
+  public fetchAllBuyers (): Promise<any> {
+    return this.call('BuyersService.Buyers', {})
   }
 
   public fetchUserSessions (args: any): Promise<any> {
-    return this.call('BuyersService.UserSessions', args, '')
+    return this.call('BuyersService.UserSessions', args)
   }
 
   public fetchAllRoles (): Promise<any> {
-    return this.call('AuthService.AllRoles', {}, '')
+    return this.call('AuthService.AllRoles', {})
   }
 
-  public fetchAllAccounts (args: any): Promise<any> {
-    return this.call('AuthService.AllAccounts', args, '')
+  public fetchAllAccounts (): Promise<any> {
+    return this.call('AuthService.AllAccounts', {})
   }
 
   public updateUserRoles (args: any): Promise<any> {
-    return this.call('AuthService.UpdateUserRoles', args, '')
+    return this.call('AuthService.UpdateUserRoles', args)
   }
 
   public deleteUserAccount (args: any): Promise<any> {
-    return this.call('AuthService.DeleteUserAccount', args, '')
+    return this.call('AuthService.DeleteUserAccount', args)
   }
 
   public addNewUserAccounts (args: any): Promise<any> {
-    return this.call('AuthService.AddUserAccount', args, '')
+    return this.call('AuthService.AddUserAccount', args)
   }
 
-  public fetchUserAccount (args: any, token: string): Promise<any> {
-    return this.call('AuthService.UserAccount', args, token)
+  public fetchUserAccount (args: any): Promise<any> {
+    return this.call('AuthService.UserAccount', args)
   }
 
-  public fetchGameConfiguration (args: any, token: string): Promise<any> {
-    return this.call('BuyersService.GameConfiguration', args, token)
+  public fetchGameConfiguration (args: any): Promise<any> {
+    return this.call('BuyersService.GameConfiguration', args)
   }
 
   public updateRouteShader (args: any): Promise<any> {
-    return this.call('BuyersService.UpdateRouteShader', args, '')
+    return this.call('BuyersService.UpdateRouteShader', args)
   }
 
   public updateGameConfiguration (args: any): Promise<any> {
-    return this.call('BuyersService.UpdateGameConfiguration', args, '')
+    return this.call('BuyersService.UpdateGameConfiguration', args)
   }
 
   public resendVerificationEmail (args: any): Promise<any> {
-    return this.call('AuthService.ResendVerificationEmail', args, '')
+    return this.call('AuthService.ResendVerificationEmail', args)
   }
 }
 
@@ -178,8 +178,8 @@ export const JSONRPCPlugin = {
   fetchTopSessions: function (args: any): Promise<any> {
     return this.service.fetchTopSessions(args)
   },
-  fetchAllBuyers: function (args: any): Promise<any> {
-    return this.service.fetchAllBuyers(args)
+  fetchAllBuyers: function (): Promise<any> {
+    return this.service.fetchAllBuyers()
   },
   fetchUserSessions: function (args: any): Promise<any> {
     return this.service.fetchUserSessions(args)
@@ -187,8 +187,8 @@ export const JSONRPCPlugin = {
   fetchAllRoles: function (): Promise<any> {
     return this.service.fetchAllRoles()
   },
-  fetchAllAccounts: function (args: any): Promise<any> {
-    return this.service.fetchAllAccounts(args)
+  fetchAllAccounts: function (): Promise<any> {
+    return this.service.fetchAllAccounts()
   },
   updateUserRoles: function (args: any): Promise<any> {
     return this.service.updateUserRoles(args)
@@ -199,11 +199,11 @@ export const JSONRPCPlugin = {
   addNewUserAccounts: function (args: any): Promise<any> {
     return this.service.addNewUserAccounts(args)
   },
-  fetchUserAccount: function (args: any, token: string): Promise<any> {
-    return this.service.fetchUserAccount(args, token)
+  fetchUserAccount: function (args: any): Promise<any> {
+    return this.service.fetchUserAccount(args)
   },
-  fetchGameConfiguration: function (args: any, token: string): Promise<any> {
-    return this.service.fetchGameConfiguration(args, token)
+  fetchGameConfiguration: function (args: any): Promise<any> {
+    return this.service.fetchGameConfiguration(args)
   },
   updateRouteShader: function (args: any): Promise<any> {
     return this.service.updateRouteShader(args)

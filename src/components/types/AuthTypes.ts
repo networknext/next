@@ -10,4 +10,5 @@ export interface UserProfile {
   domain: string;
   pubKey: string;
   buyerID: string;
+  newsletterConsent: boolean
 }

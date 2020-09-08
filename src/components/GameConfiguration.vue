@@ -9,10 +9,9 @@
         <input
           type="text"
           class="form-control"
-          placeholder="Enter your company name"
           id="company-input"
-          :disabled="!$store.getters.isOwner && !$store.getters.isAdmin"
-          v-model="company"
+          :disabled="true"
+          v-bind:value="companyName"
         />
         <br />
         <label>Public Key</label>
@@ -57,19 +56,43 @@ import _ from 'lodash'
   }
 })
 export default class GameConfiguration extends Vue {
-  private company: string
+  private companyName: string
   private pubKey: string
   private message: string
   private alertType: string
   private userProfile: UserProfile
+  private unwatch: any
 
   constructor () {
     super()
-    this.userProfile = _.cloneDeep(this.$store.getters.userProfile)
-    this.company = this.userProfile.company || ''
-    this.pubKey = this.userProfile.pubKey || ''
+    this.companyName = ''
+    this.pubKey = ''
     this.message = ''
     this.alertType = ''
+    this.userProfile = {} as UserProfile
+  }
+
+  private destroy () {
+    this.unwatch()
+  }
+
+  private mounted () {
+    if (!this.$store.getters.userProfile) {
+      this.unwatch = this.$store.watch(
+        (_, getters: any) => getters.userProfile,
+        (userProfile: any) => {
+          this.updateCompanyName(userProfile)
+        }
+      )
+    } else {
+      this.updateCompanyName(this.$store.getters.userProfile)
+    }
+  }
+
+  private updateCompanyName (userProfile: UserProfile) {
+    if (this.companyName === '') {
+      this.companyName = userProfile.company || ''
+    }
   }
 
   private updatePubKey () {
@@ -80,13 +103,12 @@ export default class GameConfiguration extends Vue {
 
     vm.$apiService
       .updateGameConfiguration({
-        name: this.company,
+        name: this.companyName,
         domain: domain,
         new_public_key: this.pubKey
       })
       .then((response: any) => {
         this.userProfile.pubKey = response.game_config.public_key
-        this.userProfile.company = response.game_config.company
         this.userProfile.buyerID = response.game_config.buyer_id
         this.$store.commit('UPDATE_USER_PROFILE', this.userProfile)
         this.alertType = AlertTypes.SUCCESS

@@ -132,6 +132,7 @@ import Multiselect from 'vue-multiselect'
 import Alert from './Alert.vue'
 import { AlertTypes } from './types/AlertTypes'
 import _ from 'lodash'
+import { UserProfile } from './types/AuthTypes'
 
 /**
  * This component displays all of the necessary information for the user management tab
@@ -158,6 +159,7 @@ export default class UserManagement extends Vue {
   private alertTypes: any
   private showTable: boolean
   private newUserEmails: string
+  private unwatch: any
 
   constructor () {
     super()
@@ -177,11 +179,31 @@ export default class UserManagement extends Vue {
     this.companyUsersReadOnly = []
   }
 
-  private mounted (): void {
+  private mounted () {
+    if (!this.$store.getters.userProfile) {
+      this.unwatch = this.$store.watch(
+        (_, getters: any) => getters.userProfile,
+        (userProfile: any) => {
+          this.loadUserAccounts(userProfile)
+        }
+      )
+    } else {
+      this.loadUserAccounts(this.$store.getters.userProfile)
+    }
+  }
+
+  private destory () {
+    this.unwatch()
+  }
+
+  private loadUserAccounts (userProfile: UserProfile) {
+    if (!userProfile) {
+      return
+    }
     const promises = [
       // TODO: Figure out how to get rid of this. this.$apiService should be possible...
       // HACK: This is a hack to get tests to work properly
-      (this as any).$apiService.fetchAllAccounts({}),
+      (this as any).$apiService.fetchAllAccounts(),
       (this as any).$apiService.fetchAllRoles()
     ]
     Promise.all(promises)

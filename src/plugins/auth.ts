@@ -61,15 +61,19 @@ export class AuthService {
           routeShader: null,
           domain: '',
           pubKey: '',
-          buyerID: ''
+          buyerID: '',
+          newsletterConsent: false
         }
 
         this.authClient
           .getIdTokenClaims()
           .then((authResult: any) => {
-            const roles: Array<any> = authResult[
+            const nnScope = authResult[
               'https://networknext.com/userRoles'
-            ].roles || { roles: [] }
+            ]
+            const roles: Array<any> = nnScope.roles || { roles: [] }
+            const company: string = nnScope.company || { company: '' }
+            const newsletterConsent: boolean = nnScope.newsletterConsent || false
             const email = authResult.email || ''
             const domain = email.split('@')[1]
             const token = authResult.__raw
@@ -80,6 +84,8 @@ export class AuthService {
             userProfile.idToken = token
             userProfile.auth0ID = authResult.sub
             userProfile.verified = authResult.email_verified
+            userProfile.company = company
+            userProfile.newsletterConsent = newsletterConsent
 
             store.commit('UPDATE_USER_PROFILE', userProfile)
           })

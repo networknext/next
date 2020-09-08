@@ -11,6 +11,7 @@ import SettingsWorkspace from '@/workspaces/SettingsWorkspace.vue'
 import UserManagement from '@/components/UserManagement.vue'
 import UserToolWorkspace from '@/workspaces/UserToolWorkspace.vue'
 import RouteShader from '@/components/RouteShader.vue'
+import AccountSettings from '@/components/AccountSettings.vue'
 import SessionDetails from '@/components/SessionDetails.vue'
 import UserSessions from '@/components/UserSessions.vue'
 
@@ -63,6 +64,11 @@ const routes: Array<RouteConfig> = [
     component: SettingsWorkspace,
     children: [
       {
+        path: 'account',
+        name: 'account-settings',
+        component: AccountSettings
+      },
+      {
         path: 'game-config',
         name: 'config',
         component: GameConfiguration
@@ -98,8 +104,8 @@ router.beforeEach(async (to: Route, from: Route, next: NavigationGuardNext<Vue>)
     return
   }
   if (to.name === 'settings') {
-    store.commit('UPDATE_CURRENT_PAGE', 'users')
-    next('/settings/users')
+    store.commit('UPDATE_CURRENT_PAGE', 'account-settings')
+    next('/settings/account')
     return
   }
   store.commit('UPDATE_CURRENT_PAGE', to.name)
