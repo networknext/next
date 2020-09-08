@@ -38,7 +38,7 @@ struct
   volatile bool alive;
   volatile bool should_clean_shutdown;
 } Globals = {
- .alive = false,
+ .alive = true,
  .should_clean_shutdown = false,
 };
 
