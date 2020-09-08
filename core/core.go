@@ -141,22 +141,23 @@ const MaxRelaysPerRoute = 5
 const MaxRoutesPerEntry = 8
 
 type RouteManager struct {
-    NumRoutes      int
-    RouteCost      [MaxRoutesPerEntry]int32
-    RouteHash      [MaxRoutesPerEntry]uint32
-    RouteNumRelays [MaxRoutesPerEntry]int32
-    RouteRelays    [MaxRoutesPerEntry][MaxRelaysPerRoute]int32
+    NumRoutes       int
+    RouteCost       [MaxRoutesPerEntry]int32
+    RouteHash       [MaxRoutesPerEntry]uint32
+    RouteNumRelays  [MaxRoutesPerEntry]int32
+    RouteRelays     [MaxRoutesPerEntry][MaxRelaysPerRoute]int32
+    RelayDatacenter []uint64
 }
 
-func (manager *RouteManager) AddRoute(cost int32, relayDatacenter []uint64, relays ...int32) {
+func (manager *RouteManager) AddRoute(cost int32, relays ...int32) {
 
     // IMPORTANT: Filter out any route with two relays in the same datacenter. These routes are redundant.
     datacenterCheck := make(map[uint64]int, len(relays))
     for i := range relays {
-        if _, exists := datacenterCheck[relayDatacenter[relays[i]]]; exists {
+        if _, exists := datacenterCheck[manager.RelayDatacenter[relays[i]]]; exists {
             return
         }
-        datacenterCheck[relayDatacenter[relays[i]]] = 1
+        datacenterCheck[manager.RelayDatacenter[relays[i]]] = 1
     }
 
     // IMPORTANT: Filter out routes with loops. They can happen *very* occasionally.
@@ -301,7 +302,7 @@ type RouteEntry struct {
     RouteHash      [MaxRoutesPerEntry]uint32
 }
 
-func Optimize(numRelays int, cost []int32, costThreshold int32) []RouteEntry {
+func Optimize(numRelays int, cost []int32, costThreshold int32, relayDatacenter []uint64) []RouteEntry {
 
     // build a matrix of indirect routes from relays i -> j that have lower cost than direct, eg. i -> (x) -> j, where x is every other relay
 
@@ -469,6 +470,8 @@ func Optimize(numRelays int, cost []int32, costThreshold int32) []RouteEntry {
                         // subdivide routes from i -> j as follows: i -> (x) -> (y) -> (z) -> j, where the subdivision improves significantly on cost
 
                         var routeManager RouteManager
+
+                        routeManager.RelayDatacenter = relayDatacenter
 
                         for k := range indirect[i][j] {
 
