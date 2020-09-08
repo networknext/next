@@ -2,6 +2,7 @@
 package ghostarmy
 
 import (
+	"math"
 	"time"
 
 	"github.com/networknext/backend/encoding"
@@ -10,7 +11,8 @@ import (
 )
 
 const (
-	LocalBuyerID   = 13672574147039585173
+	// All the same for now, but just in case they change later
+	LocalBuyerID   = 0
 	DevBuyerID     = 0
 	ProdBuyerID    = 0
 	StagingBuyerID = 0
@@ -67,6 +69,9 @@ type Entry struct {
 	PacketLossReduction       bool
 	NextRelaysPrice           []int64
 	Userhash                  int64
+	Latitude                  float64
+	Longitude                 float64
+	ISP                       string
 }
 
 func (self *Entry) ReadFrom(bin []byte, index *int) bool {
@@ -197,11 +202,21 @@ func (self *Entry) ReadFrom(bin []byte, index *int) bool {
 		}
 	}
 
-	return casterInt64(&self.Userhash)
+	casterInt64(&self.Userhash)
+
+	if !encoding.ReadFloat64(bin, index, &self.Latitude) {
+		return false
+	}
+
+	if !encoding.ReadFloat64(bin, index, &self.Longitude) {
+		return false
+	}
+
+	return encoding.ReadString(bin, index, &self.ISP, math.MaxInt32)
 }
 
 func (self *Entry) MarshalBinary() ([]byte, error) {
-	size := 8 + 8 + 8 + 8 + 1 + 8 + 8 + 8 + 8 + 8 + 8 + 8 + 8*len(self.NextRelays) + 8 + 8 + 8 + 1 + 1 + 1 + 8 + 8 + 1 + 8 + 1 + 1 + 8 + 8*len(self.NextRelaysPrice) + 8
+	size := 8 + 8 + 8 + 8 + 1 + 8 + 8 + 8 + 8 + 8 + 8 + 8 + 8*len(self.NextRelays) + 8 + 8 + 8 + 1 + 1 + 1 + 8 + 8 + 1 + 8 + 1 + 1 + 8 + 8*len(self.NextRelaysPrice) + 8 + 8 + 8 + 4 + len(self.ISP)
 	bin := make([]byte, size)
 	index := 0
 
@@ -237,6 +252,9 @@ func (self *Entry) MarshalBinary() ([]byte, error) {
 		encoding.WriteUint64(bin, &index, uint64(price))
 	}
 	encoding.WriteUint64(bin, &index, uint64(self.Userhash))
+	encoding.WriteFloat64(bin, &index, self.Latitude)
+	encoding.WriteFloat64(bin, &index, self.Longitude)
+	encoding.WriteString(bin, &index, self.ISP, uint32(len(self.ISP)))
 
 	return bin, nil
 }
@@ -245,12 +263,8 @@ func (self *Entry) Into(data *transport.SessionPortalData, dcmap DatacenterMap, 
 	var dc StrippedDatacenter
 	if v, ok := dcmap[uint64(self.DatacenterID)]; ok {
 		dc.Name = v.Name
-		dc.Lat = v.Lat
-		dc.Long = v.Long
 	} else {
 		dc.Name = "Unknown"
-		dc.Lat = 0.0
-		dc.Long = 0.0
 	}
 
 	// meta
@@ -277,8 +291,9 @@ func (self *Entry) Into(data *transport.SessionPortalData, dcmap DatacenterMap, 
 		meta.DeltaRTT = deltaRTT
 
 		meta.Location = routing.Location{
-			Latitude:  dc.Lat,
-			Longitude: dc.Long,
+			Latitude:  self.Latitude,
+			Longitude: self.Longitude,
+			ISP:       self.ISP,
 		}
 
 		meta.ClientAddr = "?"
@@ -330,7 +345,7 @@ func (self *Entry) Into(data *transport.SessionPortalData, dcmap DatacenterMap, 
 	// map point
 	{
 		pt := &data.Point
-		pt.Latitude = dc.Lat
-		pt.Longitude = dc.Long
+		pt.Latitude = self.Latitude
+		pt.Longitude = self.Longitude
 	}
 }

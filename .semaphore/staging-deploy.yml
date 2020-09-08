@@ -42,6 +42,10 @@ blocks:
           commands:
             - make build-server-backend-artifacts-staging
             - make publish-server-backend-artifacts-staging
+        - name: Server Backend4
+          commands:
+            - make build-server-backend4-artifacts-staging
+            - make publish-server-backend4-artifacts-staging
         - name: Load Test
           commands:
             - make build-load-test-artifacts-staging
@@ -54,6 +58,14 @@ blocks:
           commands:
             - make build-load-test-client-artifacts
             - make publish-load-test-client-artifacts
+        - name: Load Test Server 4
+          commands:
+            - make build-load-test-server4-artifacts
+            - make publish-load-test-server4-artifacts
+        - name: Load Test Client 4
+          commands:
+            - make build-load-test-client4-artifacts
+            - make publish-load-test-client4-artifacts
         - name: Bootstrap Script
           commands:
             - make publish-bootstrap-script-staging
