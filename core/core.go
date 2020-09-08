@@ -954,7 +954,7 @@ func ReframeRoute(routeRelayIds []uint64, relayIdToIndex map[uint64]int32) ([]in
     return routeRelays, nil
 }
 
-func GetBestRoute_Initial(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost[] int32, destRelays []int32, maxCost int32, out_bestRouteCost *int32, out_bestRouteRelays []int32) bool {
+func GetRandomBestRoute(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost[] int32, destRelays []int32, maxCost int32, out_bestRouteCost *int32, out_bestRouteRelays []int32) bool {
     
     bestRouteCost := GetBestRouteCost(routeMatrix, sourceRelays, sourceRelayCost, destRelays)
 
@@ -978,26 +978,34 @@ func GetBestRoute_Initial(routeMatrix []RouteEntry, sourceRelays []int32, source
     return true
 }
 
-func GetBestRoute_Update(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost[] int32, destRelays []int32, currentRouteCost int32, currentRouteRelays []int32, updatedRouteCost *int32, updatedRouteRelays []int32) {
+func GetBestRoute_Initial(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost[] int32, destRelays []int32, maxCost int32, out_bestRouteCost *int32, out_bestRouteRelays []int32) bool {
 
-    /*
-    get route in terms of indices in current route matrix (relayId -> relayIndex)
+    return GetRandomBestRoute(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, out_bestRouteCost, out_bestRouteRelays)
 
-    if any relay in the current route does not exist in current route matrix, get best route initial
+}
 
-    routeCost := GetCurrentRouteCost
-    
-    if routeValid && Fabs(routeCost - bestRouteCost) > costThreshold {
-        routeValid = false
-    }
-    
-    if !routeValid {
-        GetBestRoutes
-        randomly pick out of best routes
+func GetBestRoute_Update(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost[] int32, destRelays []int32, maxCost int32, costThreshold int32, currentRouteRelays []int32, out_updatedRouteCost *int32, out_updatedRouteRelays []int32) {
+
+    currentRouteCost := GetCurrentRouteCost(routeMatrix, currentRouteRelays, sourceRelays, sourceRelayCost, destRelays)
+
+    if currentRouteCost < 0 {
+        GetRandomBestRoute(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, out_updatedRouteCost, out_updatedRouteRelays)
+        return
     }
 
-    hold current route
-    */
+    bestRouteCost := GetBestRouteCost(routeMatrix, sourceRelays, sourceRelayCost, destRelays)
+
+    if bestRouteCost + costThreshold < currentRouteCost {
+        GetRandomBestRoute(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, out_updatedRouteCost, out_updatedRouteRelays)
+        return
+    }
+
+    *out_updatedRouteCost = currentRouteCost
+    copy(out_updatedRouteRelays, currentRouteRelays[:])
+}
+
+type RouteShader struct {
+    // todo: sketch out route shader
 }
 
 func MakeRouteDecision_TakeNetworkNext() {
