@@ -11,7 +11,7 @@ namespace util
     void write(Args&&... args);
 
     template <typename... Args>
-    void writeLine(Args&&... args);
+    void write_line(Args&&... args);
 
     template <typename... Args>
     void log(Args&&... args);
@@ -19,23 +19,23 @@ namespace util
     void flush();
 
    private:
-    std::ostream& mStream;
-    std::mutex mLock;
+    std::ostream& stream;
+    std::mutex lock;
 
-    static std::string StrTime();
+    static std::string stringify_time();
   };
 
-  inline Console::Console(std::ostream& stream): mStream(stream) {}
+  inline Console::Console(std::ostream& stream): stream(stream) {}
 
   template <typename... Args>
   inline void Console::write(Args&&... args)
   {
-    std::lock_guard<std::mutex> lk(mLock); // prevents log messages from merging into unreadable messes
-    ((mStream << std::forward<Args>(args)), ...);
+    std::lock_guard<std::mutex> lk(this->lock);
+    ((this->stream << std::forward<Args>(args)), ...);
   }
 
   template <typename... Args>
-  inline void Console::writeLine(Args&&... args)
+  inline void Console::write_line(Args&&... args)
   {
     write(args..., '\n');
   }
@@ -43,15 +43,15 @@ namespace util
   template <typename... Args>
   inline void Console::log(Args&&... args)
   {
-    writeLine('[', StrTime(), "] ", args...);
+    write_line('[', stringify_time(), "] ", args...);
   }
 
   inline void Console::flush()
   {
-    mStream.flush();
+    this->stream.flush();
   }
 
-  inline std::string Console::StrTime()
+  inline std::string Console::stringify_time()
   {
     std::array<char, 16> timebuff;
     auto t = time(nullptr);

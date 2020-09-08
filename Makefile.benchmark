@@ -8,14 +8,17 @@ include $(MAKEFILE_DIR)/Makefile.common
 
 EXE										:= relay.benchmark
 
-LIB_OBJ_FILES					:= $(patsubst $(LIB)/%.cpp, $(OBJ)/$(LIB)/%.bench.o, $(LIB_FILES))
-LIB_DEP_FILES					:= $(patsubst $(LIB)/%.cpp, $(OBJ)/$(LIB)/%.bench.d, $(LIB_FILES))
-
 SRC_OBJ_FILES					:= $(patsubst $(SRC)/%.cpp, $(OBJ)/$(SRC)/%.bench.o, $(SRC_FILES))
 SRC_DEP_FILES					:= $(patsubst $(SRC)/%.cpp, $(OBJ)/$(SRC)/%.bench.d, $(SRC_FILES))
 
+DEF_FLAGS							:= -DBENCH_BUILD -DRELAY_LOG_LEVEL=0
+
+ifeq ($(LOG_ALL),true)
+DEF_FLAGS 						:= $(DEF_FLAGS) -DLOG_ALL
+endif
+
 COMMON_FLAGS 					:= $(CXX) $(CXX_FLAGS) $(CXX_PERF_FLAGS)
-COMMON_COMPILE_FLAGS 	:= $(COMMON_FLAGS) -c -DNDEBUG -DBENCH_BUILD
+COMMON_COMPILE_FLAGS 	:= $(COMMON_FLAGS) -c $(DEF_FLAGS)
 
 ################
 ### Targets  ###
@@ -29,8 +32,8 @@ run: $(BIN)/$(EXE)
 	@$<
 
 .PHONY: clean
-clean: 
-	@rm -f $(BIN)/$(EXE) $(SRC_OBJ_FILES) $(SRC_DEP_FILES) $(LIB_OBJ_FILES) $(LIB_DEP_FILES) $(GCH)
+clean:
+	@rm -f $(BIN)/$(EXE) $(SRC_OBJ_FILES) $(SRC_DEP_FILES) $(GCH)
 
 ##############
 ### Builds ###
@@ -45,8 +48,7 @@ $(OBJ)/%.bench.o: %.cpp $(GCH)
 	$(COMMON_COMPILE_FLAGS) -o $@ $(INCLUDE_DIRS) -MMD -MP $<
 
 # the executable
-$(BIN)/$(EXE): $(SRC_OBJ_FILES) $(LIB_OBJ_FILES)
+$(BIN)/$(EXE): $(SRC_OBJ_FILES)
 	$(COMMON_FLAGS) -o $@ $^ $(LIBRARIES)
 
--include $(SRC_DEP_FILES) $(LIB_DEP_FILES)
-
+-include $(SRC_DEP_FILES)

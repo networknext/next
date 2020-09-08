@@ -1,152 +1,114 @@
-#ifndef CORE_HANDLERS_ROUTE_REQUEST_HANDLER_HPP
-#define CORE_HANDLERS_ROUTE_REQUEST_HANDLER_HPP
+#pragma once
 
-#include "base_handler.hpp"
-#include "core/packets/types.hpp"
-#include "core/session_map.hpp"
-#include "crypto/keychain.hpp"
-#include "legacy/v3/traffic_stats.hpp"
-#include "net/address.hpp"
-#include "os/platform.hpp"
-#include "util/throughput_recorder.hpp"
+#include "core/packet_types.hpp"
+#include "core/route_token.hpp"
 #include "core/router_info.hpp"
+#include "core/session_map.hpp"
+#include "core/throughput_recorder.hpp"
+#include "crypto/hash.hpp"
+#include "crypto/keychain.hpp"
+#include "net/address.hpp"
+#include "os/socket.hpp"
+
+using core::PacketType;
+using core::RouterInfo;
+using core::RouteToken;
+using core::SessionMap;
+using crypto::Keychain;
+using crypto::PACKET_HASH_LENGTH;
+using os::Socket;
+using util::ThroughputRecorder;
 
 namespace core
 {
   namespace handlers
   {
-    class RouteRequestHandler: public BaseHandler
+    inline void route_request_handler(
+     Packet& packet,
+     const Keychain& keychain,
+     SessionMap& session_map,
+     ThroughputRecorder& recorder,
+     const RouterInfo& router_info,
+     const Socket& socket,
+     bool is_signed)
     {
-     public:
-      RouteRequestHandler(
-       GenericPacket<>& packet,
-       const net::Address& from,
-       const crypto::Keychain& keychain,
-       core::SessionMap& sessions,
-       util::ThroughputRecorder& recorder,
-       legacy::v3::TrafficStats& stats,
-       const RouterInfo& routerInfo);
+      size_t index = 0;
+      size_t length = packet.length;
 
-      template <size_t Size>
-      void handle(core::GenericPacketBuffer<Size>& size, const os::Socket& socket, bool isSigned);
-
-     private:
-      const net::Address& mFrom;
-      const crypto::Keychain& mKeychain;
-      core::SessionMap& mSessionMap;
-      util::ThroughputRecorder& mRecorder;
-      legacy::v3::TrafficStats& mStats;
-      const RouterInfo& mRouterInfo;
-    };
-
-    inline RouteRequestHandler::RouteRequestHandler(
-     GenericPacket<>& packet,
-     const net::Address& from,
-     const crypto::Keychain& keychain,
-     core::SessionMap& sessions,
-     util::ThroughputRecorder& recorder,
-     legacy::v3::TrafficStats& stats,
-     const RouterInfo& routerInfo)
-     : BaseHandler(packet),
-       mFrom(from),
-       mKeychain(keychain),
-       mSessionMap(sessions),
-       mRecorder(recorder),
-       mStats(stats),
-       mRouterInfo(routerInfo)
-    {}
-
-    template <size_t Size>
-    inline void RouteRequestHandler::handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket, bool isSigned)
-    {
-      (void)buff;
-      (void)socket;
-
-      uint8_t* data;
-      size_t length;
-
-      if (isSigned) {
-        data = &mPacket.Buffer[crypto::PacketHashLength];
-        length = mPacket.Len - crypto::PacketHashLength;
-      } else {
-        data = &mPacket.Buffer[0];
-        length = mPacket.Len;
+      if (is_signed) {
+        index = PACKET_HASH_LENGTH;
+        length = packet.length - PACKET_HASH_LENGTH;
       }
 
-      if (mPacket.Len < int(1 + RouteToken::EncryptedByteSize * 2)) {
-        Log("ignoring route request. bad packet size (", mPacket.Len, ")");
+      if (length < static_cast<size_t>(1 + RouteToken::EncryptedByteSize * 2)) {
+        LOG(ERROR, "ignoring route request. bad packet size (", length, ")");
         return;
       }
 
-      // ignore the header byte of the packet
-      size_t index = 1;
-      core::RouteToken token(mRouterInfo);
-
-      if (!token.readEncrypted(data, length, index, mKeychain.RouterPublicKey, mKeychain.RelayPrivateKey)) {
-        Log("ignoring route request. could not read route token");
-        return;
+      RouteToken token;
+      {
+        size_t i = index + 1;
+        if (!token.read_encrypted(packet, i, keychain.backend_public_key, keychain.relay_private_key)) {
+          LOG(ERROR, "ignoring route request. could not read route token");
+          return;
+        }
       }
 
-      // don't do anything if the token is expired - probably should log something here
-      if (token.expired()) {
-        Log("ignoring route request. token expired");
+      if (token.expired(router_info)) {
+        LOG(INFO, "ignoring route request, token expired, session = ", token);
         return;
       }
 
       // create a new session and add it to the session map
-      uint64_t hash = token.key();
+      uint64_t hash = token.hash();
 
-      if (!mSessionMap.get(hash)) {
+      if (!session_map.get(hash)) {
         // create the session
-        auto session = std::make_shared<Session>(mRouterInfo);
+        auto session = std::make_shared<Session>();
         assert(session);
 
         // fill it with data in the token
-        session->ExpireTimestamp = token.ExpireTimestamp;
-        session->SessionID = token.SessionID;
-        session->SessionVersion = token.SessionVersion;
+        session->expire_timestamp = token.expire_timestamp;
+        session->session_id = token.session_id;
+        session->session_version = token.session_version;
 
         // initialize the rest of the fields
-        session->ClientToServerSeq = 0;
-        session->ServerToClientSeq = 0;
-        session->KbpsUp = token.KbpsUp;
-        session->KbpsDown = token.KbpsDown;
-        session->PrevAddr = mFrom;
-        session->NextAddr = token.NextAddr;
-        std::copy(token.PrivateKey.begin(), token.PrivateKey.end(), session->PrivateKey.begin());
-        relay_replay_protection_reset(&session->ClientToServerProtection);
-        relay_replay_protection_reset(&session->ServerToClientProtection);
+        session->client_to_server_sequence = 0;
+        session->server_to_client_sequence = 0;
+        session->kbps_up = token.KbpsUp;
+        session->kbps_down = token.KbpsDown;
+        session->prev_addr = packet.addr;
+        session->next_addr = token.NextAddr;
+        std::copy(token.PrivateKey.begin(), token.PrivateKey.end(), session->private_key.begin());
+        session->client_to_server_protection.reset();
+        session->server_to_client_protection.reset();
 
-        mSessionMap.set(hash, session);
+        session_map.set(hash, session);
 
-        Log("session created: ", *session);
+        LOG(INFO, "session created: ", *session);
       } else {
-        LogDebug("received additional route request for session: ", token);
+        LOG(DEBUG, "received additional route request for session: ", token);
       }
 
       // remove this part of the token by offseting it the request packet bytes
 
-      length = mPacket.Len - RouteToken::EncryptedByteSize;
+      length = packet.length - RouteToken::EncryptedByteSize;
 
-      if (isSigned) {
-        mPacket.Buffer[RouteToken::EncryptedByteSize + crypto::PacketHashLength] =
-         static_cast<uint8_t>(packets::Type::RouteRequest);
-        legacy::relay_sign_network_next_packet(&mPacket.Buffer[RouteToken::EncryptedByteSize], length);
+      if (is_signed) {
+        size_t index = RouteToken::EncryptedByteSize;
+        packet.buffer[index + PACKET_HASH_LENGTH] = static_cast<uint8_t>(PacketType::RouteRequest);
+        if (!crypto::sign_network_next_packet(packet.buffer, index, length)) {
+          LOG(ERROR, "unable to sign route request packet for session ", token);
+        }
       } else {
-        mPacket.Buffer[RouteToken::EncryptedByteSize] = static_cast<uint8_t>(packets::Type::RouteRequest);
+        packet.buffer[RouteToken::EncryptedByteSize] = static_cast<uint8_t>(PacketType::RouteRequest);
       }
 
-      mRecorder.addToSent(length);
-      mStats.BytesPerSecManagementTx += length;
+      recorder.route_request_tx.add(length);
 
-#ifdef RELAY_MULTISEND
-      buff.push(token.NextAddr, &mPacket.Buffer[RouteToken::EncryptedByteSize], length);
-#else
-      if (!socket.send(token.NextAddr, &mPacket.Buffer[RouteToken::EncryptedByteSize], length)) {
-        Log("failed to forward route request to ", token.NextAddr);
+      if (!socket.send(token.NextAddr, &packet.buffer[RouteToken::EncryptedByteSize], length)) {
+        LOG(ERROR, "failed to forward route request to ", token.NextAddr);
       }
-#endif
     }
   }  // namespace handlers
 }  // namespace core
-#endif

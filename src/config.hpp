@@ -1,24 +1,13 @@
 #ifndef CONFIG_HPP
 #define CONFIG_HPP
 
-#define RELAY_VERSION "1.1.0"
-
-// Legacy, use bools instead, eventually delete and replace these
-#define RELAY_OK 0
-#define RELAY_ERROR -1
-
-#define RELAY_MTU 1300
-
-#define RELAY_HEADER_BYTES 35
+#define RELAY_VERSION "1.1.2"
 
 #define RELAY_ADDRESS_BUFFER_SAFETY 32
 
 #define RELAY_REPLAY_PROTECTION_BUFFER_SIZE 256UL
 
 #define RELAY_BANDWIDTH_LIMITER_INTERVAL 1.0
-
-#define RELAY_DIRECTION_CLIENT_TO_SERVER 0
-#define RELAY_DIRECTION_SERVER_TO_CLIENT 1
 
 #define RELAY_PING_HISTORY_ENTRY_COUNT 256
 
@@ -28,11 +17,6 @@
 
 // how many seconds before a packet is considered as lost
 #define RELAY_PING_SAFETY 1.0
-
-#define RELAY_MAX_PACKET_BYTES 1500
-
-#define RELAY_PUBLIC_KEY_BYTES 32UL
-#define RELAY_PRIVATE_KEY_BYTES 32UL
 
 #define RELAY_MAX_ADDRESS_STRING_LENGTH 256
 
@@ -49,7 +33,5 @@
 #else
 #define GCC_NO_OPT_OUT
 #endif
-
-// #define RELAY_MULTISEND
 
 #endif

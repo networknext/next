@@ -1,74 +1,53 @@
-#ifndef CORE_HANDLERS_NEAR_PING_HANDLER_HPP
-#define CORE_HANDLERS_NEAR_PING_HANDLER_HPP
+#pragma once
 
-#include "base_handler.hpp"
-#include "core/packets/types.hpp"
+#include "core/packet_types.hpp"
 #include "core/session_map.hpp"
-#include "legacy/v3/traffic_stats.hpp"
-#include "os/platform.hpp"
-#include "util/throughput_recorder.hpp"
+#include "core/throughput_recorder.hpp"
+#include "crypto/hash.hpp"
+#include "os/socket.hpp"
+#include "util/macros.hpp"
+
+using core::Packet;
+using core::PacketType;
+using crypto::PACKET_HASH_LENGTH;
+using os::Socket;
+using util::ThroughputRecorder;
 
 namespace core
 {
   namespace handlers
   {
-    class NearPingHandler: public BaseHandler
+    INLINE void near_ping_handler(Packet& packet, ThroughputRecorder& recorder, const Socket& socket, bool is_signed)
     {
-     public:
-      NearPingHandler(GenericPacket<>& packet, util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats);
+      size_t length = packet.length;
 
-      template <size_t Size>
-      void handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket, bool isSigned);
-
-     private:
-      util::ThroughputRecorder& mRecorder;
-      legacy::v3::TrafficStats& mStats;
-    };
-
-    inline NearPingHandler::NearPingHandler(
-     GenericPacket<>& packet, util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats)
-     : BaseHandler(packet), mRecorder(recorder), mStats(stats)
-    {}
-
-    template <size_t Size>
-    inline void NearPingHandler::handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket, bool isSigned)
-    {
-      (void)buff;
-      (void)socket;
-
-      size_t length;
-
-      if (isSigned) {
-        length = mPacket.Len - crypto::PacketHashLength;
-      } else {
-        length = mPacket.Len;
+      if (is_signed) {
+        length = packet.length - PACKET_HASH_LENGTH;
       }
 
       if (length != 1 + 8 + 8 + 8 + 8) {
-        Log("ignoring near ping packet, length invalid: ", length);
+        LOG(ERROR, "ignoring near ping packet, length invalid: ", length);
         return;
       }
 
-      length = mPacket.Len - 16;
+      length = packet.length - 16;
 
-      if (isSigned) {
-        mPacket.Buffer[crypto::PacketHashLength] = static_cast<uint8_t>(packets::Type::NearPong);
-        crypto::SignNetworkNextPacket(mPacket.Buffer, length);
+      if (is_signed) {
+        size_t index = 0;
+        packet.buffer[PACKET_HASH_LENGTH] = static_cast<uint8_t>(PacketType::NearPong);
+        if (!crypto::sign_network_next_packet(packet.buffer, index, length)) {
+          LOG(ERROR, "unable to sign near ping packet for address", packet.addr);
+          return;
+        }
       } else {
-        mPacket.Buffer[0] = static_cast<uint8_t>(packets::Type::NearPong);
+        packet.buffer[0] = static_cast<uint8_t>(PacketType::NearPong);
       }
 
-      mRecorder.addToSent(length);
-      mStats.BytesPerSecMeasurementTx += length;
+      recorder.near_ping_tx.add(length);
 
-#ifdef RELAY_MULTISEND
-      buff.push(mPacket.Addr, mPacket.Buffer.data(), length);
-#else
-      if (!socket.send(mPacket.Addr, mPacket.Buffer.data(), length)) {
-        Log("failed to send near pong to ", mPacket.Addr);
+      if (!socket.send(packet.addr, packet.buffer.data(), length)) {
+        LOG(ERROR, "failed to send near pong to ", packet.addr);
       }
-#endif
     }
   }  // namespace handlers
 }  // namespace core
-#endif

@@ -1,11 +1,11 @@
 #include "config.hpp"
-#include "sysinfo.hpp"
 #include <algorithm>
 #include <alloca.h>
 #include <arpa/inet.h>
 #include <array>
 #include <atomic>
 #include <boost/beast.hpp>
+#include <boost/beast/core/detail/base64.hpp>
 #include <cassert>
 #include <cerrno>
 #include <cfloat>
@@ -38,7 +38,6 @@
 #include <list>
 #include <map>
 #include <memory>
-#include <miniz/miniz.h>
 #include <mutex>
 #include <mutex>
 #include <netdb.h>

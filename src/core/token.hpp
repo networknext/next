@@ -6,76 +6,92 @@
 #include "expireable.hpp"
 #include "packet.hpp"
 #include "router_info.hpp"
+#include "util/macros.hpp"
+
+using core::Packet;
 
 namespace core
 {
   class Token: public Expireable
   {
    public:
-    Token(const RouterInfo& routerInfo);
+    Token() = default;
     virtual ~Token() override = default;
     // Expireable (8) +
     // session id (8) +
     // session version (1) +
     // session flags (1) =
-    static const size_t ByteSize = 18;
+    static const size_t SIZE_OF = 18;
 
-    uint64_t SessionID;
-    uint8_t SessionVersion;
-    uint8_t SessionFlags;
+    uint64_t session_id;
+    uint8_t session_version;
+    uint8_t session_flags;
 
-    uint64_t key();
+    uint64_t hash();
 
    protected:
-    void write(uint8_t* packetData, size_t packetLength, size_t& index);
-    void read(uint8_t* packetData, size_t packetLength, size_t& index);
+    auto write(Packet& packet, size_t& index) -> bool;
+    auto read(const Packet& packet, size_t& index) -> bool;
   };
 
-  inline Token::Token(const RouterInfo& routerInfo): Expireable(routerInfo) {}
-
-  [[gnu::always_inline]] inline uint64_t Token::key()
+  INLINE uint64_t Token::hash()
   {
-    return SessionID ^ SessionVersion;
+    return session_id ^ session_version;
   }
 
-  [[gnu::always_inline]] inline void Token::write(uint8_t* packetData, size_t packetLength, size_t& index)
+  INLINE auto Token::write(Packet& packet, size_t& index) -> bool
   {
-    assert(index + Token::ByteSize < packetLength);
-
-    if (!encoding::WriteUint64(packetData, packetLength, index, ExpireTimestamp)) {
-      LogDebug("could not write expire timestamp");
-      assert(false);
+    if (index + Token::SIZE_OF > packet.buffer.size()) {
+      return false;
     }
 
-    if (!encoding::WriteUint64(packetData, packetLength, index, SessionID)) {
-      LogDebug("could not write session id");
-      assert(false);
+    if (!encoding::write_uint64(packet.buffer, index, expire_timestamp)) {
+      return false;
     }
 
-    if (!encoding::WriteUint8(packetData, packetLength, index, SessionVersion)) {
-      LogDebug("could not write session version");
-      assert(false);
+    if (!encoding::write_uint64(packet.buffer, index, session_id)) {
+      return false;
     }
 
-    if (!encoding::WriteUint8(packetData, packetLength, index, SessionFlags)) {
-      LogDebug("could not write session flags");
-      assert(false);
+    if (!encoding::write_uint8(packet.buffer, index, session_version)) {
+      return false;
     }
+
+    if (!encoding::write_uint8(packet.buffer, index, session_flags)) {
+      return false;
+    }
+
+    return true;
   }
 
-  [[gnu::always_inline]] inline void Token::read(uint8_t* packetData, size_t packetLength, size_t& index)
+  INLINE auto Token::read(const Packet& packet, size_t& index) -> bool
   {
-    (void)packetLength;
-    assert(index + Token::ByteSize < packetLength);
-    ExpireTimestamp = encoding::ReadUint64(packetData, index);
-    SessionID = encoding::ReadUint64(packetData, index);
-    SessionVersion = encoding::ReadUint8(packetData, index);
-    SessionFlags = encoding::ReadUint8(packetData, index);
+    if (index + Token::SIZE_OF > packet.buffer.size()) {
+      return false;
+    }
+
+    if (!encoding::read_uint64(packet.buffer, index, this->expire_timestamp)) {
+      return false;
+    }
+
+    if (!encoding::read_uint64(packet.buffer, index, session_id)) {
+      return false;
+    }
+
+    if (!encoding::read_uint8(packet.buffer, index, session_version)) {
+      return false;
+    }
+
+    if (!encoding::read_uint8(packet.buffer, index, session_flags)) {
+      return false;
+    }
+
+    return true;
   }
 
   inline std::ostream& operator<<(std::ostream& os, const Token& token)
   {
-    return os << std::hex << token.SessionID << '.' << std::dec << static_cast<unsigned int>(token.SessionVersion);
+    return os << std::hex << token.session_id << '.' << std::dec << static_cast<unsigned int>(token.session_version);
   }
 }  // namespace core
 #endif

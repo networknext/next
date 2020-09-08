@@ -1,115 +1,91 @@
-#ifndef CORE_HANDLERS_SERVER_TO_CLIENT_HANDLER_HPP
-#define CORE_HANDLERS_SERVER_TO_CLIENT_HANDLER_HPP
+#pragma once
 
-#include "base_handler.hpp"
+#include "core/packet_header.hpp"
+#include "core/packet_types.hpp"
 #include "core/session_map.hpp"
-#include "os/platform.hpp"
-#include "util/throughput_recorder.hpp"
-#include "legacy/v3/traffic_stats.hpp"
+#include "core/throughput_recorder.hpp"
+#include "crypto/hash.hpp"
+#include "os/socket.hpp"
+#include "util/macros.hpp"
+
+using core::PacketDirection;
+using core::PacketHeader;
+using core::RouterInfo;
+using crypto::PACKET_HASH_LENGTH;
+using os::Socket;
+using util::ThroughputRecorder;
 
 namespace core
 {
   namespace handlers
   {
-    class ServerToClientHandler: public BaseHandler
+    INLINE void server_to_client_handler(
+     Packet& packet,
+     SessionMap& session_map,
+     ThroughputRecorder& recorder,
+     const RouterInfo& router_info,
+     const Socket& socket,
+     bool is_signed)
     {
-     public:
-      ServerToClientHandler(
-       GenericPacket<>& packet,
-       core::SessionMap& sessions,
-       util::ThroughputRecorder& recorder,
-       legacy::v3::TrafficStats& stats);
+      size_t index = 0;
+      size_t length = packet.length;
 
-      template <size_t Size>
-      void handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket, bool isSigned);
-
-     private:
-      core::SessionMap& mSessionMap;
-      util::ThroughputRecorder& mRecorder;
-      legacy::v3::TrafficStats& mStats;
-    };
-
-    inline ServerToClientHandler::ServerToClientHandler(
-     GenericPacket<>& packet, core::SessionMap& sessions, util::ThroughputRecorder& recorder, legacy::v3::TrafficStats& stats)
-     : BaseHandler(packet), mSessionMap(sessions), mRecorder(recorder), mStats(stats)
-    {}
-
-    template <size_t Size>
-    inline void ServerToClientHandler::handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket, bool isSigned)
-    {
-      (void)buff;
-      (void)socket;
-
-      uint8_t* data;
-      size_t length;
-
-      if (isSigned) {
-        data = &mPacket.Buffer[crypto::PacketHashLength];
-        length = mPacket.Len - crypto::PacketHashLength;
-      } else {
-        data = &mPacket.Buffer[0];
-        length = mPacket.Len;
+      if (is_signed) {
+        index = PACKET_HASH_LENGTH;
+        length = packet.length - PACKET_HASH_LENGTH;
       }
 
       // check if length excluding the hash is right,
       // and then check if the hash + everything else is too large
-      if (length <= RELAY_HEADER_BYTES || mPacket.Len > RELAY_HEADER_BYTES + RELAY_MTU) {
-        Log("ignoring server to client packet, invalid size: ", length);
+      if (length <= PacketHeader::SIZE_OF || packet.length > PacketHeader::SIZE_OF + RELAY_MTU) {
+        LOG(ERROR, "ignoring server to client packet, invalid size: ", length);
         return;
       }
 
-      packets::Type type;
-      uint64_t sequence;
-      uint64_t session_id;
-      uint8_t session_version;
+      PacketHeader header;
 
-      if (
-       relay::relay_peek_header(
-        RELAY_DIRECTION_SERVER_TO_CLIENT, &type, &sequence, &session_id, &session_version, data, length) != RELAY_OK) {
-        Log("ignoring server to client packet, relay header could not be read");
-        return;
+      {
+        size_t i = index;
+        if (!header.read(packet, i, PacketDirection::ServerToClient)) {
+          LOG(ERROR, "ignoring server to client packet, relay header could not be read");
+          return;
+        }
       }
 
-      uint64_t hash = session_id ^ session_version;
+      uint64_t hash = header.hash();
 
-      auto session = mSessionMap.get(hash);
+      auto session = session_map.get(hash);
 
       if (!session) {
-        Log(
-         "session does not exist: session = ", std::hex, session_id, '.', std::dec, static_cast<unsigned int>(session_version));
+        LOG(ERROR, "session does not exist: session = ", header);
         return;
       }
 
-      if (session->expired()) {
-        Log("session expired: session = ", *session);
-        mSessionMap.erase(hash);
+      if (session->expired(router_info)) {
+        LOG(ERROR, "session expired: session = ", *session);
+        session_map.erase(hash);
         return;
       }
 
-      uint64_t clean_sequence = relay::relay_clean_sequence(sequence);
-      if (relay_replay_protection_already_received(&session->ServerToClientProtection, clean_sequence)) {
-        Log("ignoring server to client packet, packet already received: session = ", *session);
+      uint64_t clean_sequence = header.clean_sequence();
+
+      if (session->server_to_client_protection.is_already_received(clean_sequence)) {
+        LOG(ERROR, "ignoring server to client packet, packet already received: session = ", *session);
         return;
       }
 
-      if (relay::relay_verify_header(RELAY_DIRECTION_SERVER_TO_CLIENT, session->PrivateKey.data(), data, length) != RELAY_OK) {
-        Log("ignoring server to client packet, could not verify header: session = ", *session);
+      if (!header.verify(packet, index, PacketDirection::ServerToClient, session->private_key)) {
+        LOG(ERROR, "ignoring server to client packet, could not verify header: session = ", *session);
         return;
       }
 
-      relay_replay_protection_advance_sequence(&session->ServerToClientProtection, clean_sequence);
+      session->server_to_client_protection.advance_sequence_to(clean_sequence);
 
-      mRecorder.addToSent(mPacket.Len);
-      mStats.BytesPerSecPaidTx += mPacket.Len;
+      recorder.server_to_client_tx.add(packet.length);
 
-#ifdef RELAY_MULTISEND
-      buff.push(session->PrevAddr, mPacket.Buffer.data(), mPacket.Len);
-#else
-      if (!socket.send(session->PrevAddr, mPacket.Buffer.data(), mPacket.Len)) {
-        Log("failed to forward server packet to ", session->PrevAddr);
+      if (!socket.send(session->prev_addr, packet.buffer.data(), packet.length)) {
+        LOG(ERROR, "failed to forward server packet to ", session->prev_addr);
       }
-#endif
     }
   }  // namespace handlers
 }  // namespace core
-#endif
