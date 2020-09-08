@@ -378,6 +378,12 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	routerPrivateKey, err := envvar.GetBase64("RELAY_BACKEND_PRIVATE_KEY", nil)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
 	getIPLocatorFunc := func() routing.IPLocator {
 		return routing.NullIsland
 	}
@@ -483,7 +489,11 @@ func mainReturnWithCode() int {
 					start := time.Now()
 
 					bytes, err := newRouteMatrix.ReadFrom(matrixReader)
-					matrixReader.Close()
+
+					if matrixReader != nil {
+						matrixReader.Close()
+					}
+
 					if err != nil {
 						level.Error(logger).Log("envvar", "ROUTE_MATRIX_URI", "value", uri, "msg", "could not read route matrix", "err", err)
 						time.Sleep(syncInterval)
@@ -590,7 +600,7 @@ func mainReturnWithCode() int {
 
 	serverInitHandler := transport.ServerInitHandlerFunc4(logger, storer, datacenterTracker, serverInitMetrics)
 	serverUpdateHandler := transport.ServerUpdateHandlerFunc4(logger, storer, datacenterTracker, serverUpdateMetrics)
-	sessionUpdateHandler := transport.SessionUpdateHandlerFunc4(logger, getIPLocatorFunc, getRouteMatrixFunc, sessionUpdateMetrics)
+	sessionUpdateHandler := transport.SessionUpdateHandlerFunc4(logger, getIPLocatorFunc, getRouteMatrixFunc, routerPrivateKey, sessionUpdateMetrics)
 
 	for i := 0; i < numThreads; i++ {
 		go func(thread int) {
