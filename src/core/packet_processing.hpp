@@ -219,16 +219,26 @@ namespace core
           handlers::client_to_server_handler(packet, session_map, recorder, router_info, socket, is_signed);
         } break;
         case PacketType::ServerToClient4: {
+          recorder.server_to_client_rx.add(whole_packet_size);
+          handlers::server_to_client_handler(packet, session_map, recorder, router_info, socket, is_signed);
         } break;
         case PacketType::SessionPing4: {
+          recorder.session_ping_rx.add(whole_packet_size);
+          handlers::session_ping_handler(packet, session_map, recorder, router_info, socket, is_signed);
         } break;
         case PacketType::SessionPong4: {
+          recorder.session_pong_rx.add(whole_packet_size);
+          handlers::session_pong_handler(packet, session_map, recorder, router_info, socket, is_signed);
         } break;
         case PacketType::ContinueRequest4: {
         } break;
         case PacketType::ContinueResponse4: {
+          recorder.continue_response_rx.add(whole_packet_size);
+          handlers::continue_response_handler(packet, session_map, recorder, router_info, socket, is_signed);
         } break;
         case PacketType::NearPing4: {
+          recorder.near_ping_rx.add(whole_packet_size);
+          handlers::near_ping_handler(packet, recorder, socket, is_signed);
         } break;
         default: {
           recorder.unknown_rx.add(whole_packet_size);
