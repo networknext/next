@@ -61,6 +61,7 @@
 </template>
 
 <script lang="ts">
+import { cloneDeep } from 'lodash'
 import { Component, Vue } from 'vue-property-decorator'
 import Alert from './Alert.vue'
 import { AlertTypes } from './types/AlertTypes'
@@ -181,8 +182,16 @@ export default class AccountSettings extends Vue {
 
   private updateCompanyName () {
     (this as any).$apiService
-      .updateCompanyName({ companyName: this.companyName })
+      .updateCompanyName({ company_name: this.companyName })
       .then((response: any) => {
+        const roles = response.new_roles
+        const companyName = response.company_name
+        const userProfile: UserProfile = cloneDeep(this.$store.getters.userProfile)
+        if (roles.length > 0) {
+          userProfile.roles = roles
+        }
+        userProfile.company = companyName
+        this.$store.commit('UPDATE_USER_PROFILE', userProfile)
         this.message = 'Company name updated successfully'
         this.alertType = AlertTypes.SUCCESS
         setTimeout(() => {

@@ -91,6 +91,14 @@ export class JSONRPCService {
     })
   }
 
+  public updateAccountSettings (args: any): Promise<any> {
+    return this.call('AuthService.UpdateAccountSettings', args)
+  }
+
+  public updateCompanyName (args: any): Promise<any> {
+    return this.call('AuthService.UpdateCompanyName', args)
+  }
+
   public upgradeAccount (args: any): Promise<any> {
     return this.call('AuthService.UpgradeAccount', args)
   }
