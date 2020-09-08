@@ -98,7 +98,7 @@ namespace core
       if (is_signed) {
         size_t index = RouteTokenV4::EncryptedByteSize;
         packet.buffer[index + PACKET_HASH_LENGTH] = static_cast<uint8_t>(PacketType::RouteRequest4);
-        if (!crypto::sign_network_next_packet(packet.buffer, index, length)) {
+        if (!crypto::sign_network_next_packet_sdk4(packet.buffer, index, length)) {
           LOG(ERROR, "unable to sign route request packet for session ", token);
         }
       } else {

@@ -88,7 +88,7 @@ Test(core_handlers_route_request_handler_sdk4_unsigned)
   check(packet.length == prev_len - RouteTokenV4::EncryptedByteSize);
 
   index = 0;
-  check(!crypto::is_network_next_packet(packet.buffer, index, packet.length));
+  check(!crypto::is_network_next_packet_sdk4(packet.buffer, index, packet.length));
 }
 
 Test(core_handlers_route_request_handler_sdk4_signed)
@@ -155,7 +155,7 @@ Test(core_handlers_route_request_handler_sdk4_signed)
   check(packet.length == prev_len - RouteTokenV4::EncryptedByteSize);
 
   index = 0;
-  check(crypto::is_network_next_packet(packet.buffer, index, packet.length));
+  check(crypto::is_network_next_packet_sdk4(packet.buffer, index, packet.length));
 }
 
 Test(core_handlers_route_request_handler_unsigned)

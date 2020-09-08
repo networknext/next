@@ -207,10 +207,16 @@ namespace core
 
           // SDK 4.x.x
         case PacketType::RouteRequest4: {
+          recorder.route_request_rx.add(whole_packet_size);
+          handlers::route_request_handler_sdk4(packet, keychain, session_map, recorder, router_info, socket, is_signed);
         } break;
         case PacketType::RouteResponse4: {
+          recorder.route_response_rx.add(whole_packet_size);
+          handlers::route_response_handler(packet, session_map, recorder, router_info, socket, is_signed);
         } break;
         case PacketType::ClientToServer4: {
+          recorder.client_to_server_rx.add(whole_packet_size);
+          handlers::client_to_server_handler(packet, session_map, recorder, router_info, socket, is_signed);
         } break;
         case PacketType::ServerToClient4: {
         } break;
