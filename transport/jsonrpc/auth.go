@@ -477,49 +477,63 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 }
 
 type UpgradeArgs struct {
+	CompanyName string `json:"company_name"`
 }
 
 type UpgradeReply struct {
-	NewRoles []*management.Role `json:"new_roles"`
+	NewRoles    []*management.Role `json:"new_roles"`
+	CompanyName string             `json:"company_name"`
 }
 
-func (s *AuthService) UpgradeAccount(r *http.Request, args *UpgradeArgs, reply *UpgradeReply) error {
-	if VerifyAnyRole(r, AdminRole, OwnerRole) {
+func (s *AuthService) UpdateCompanyName(r *http.Request, args *UpgradeArgs, reply *UpgradeReply) error {
+	if VerifyAnyRole(r, AnonymousRole, UnverifiedRole) {
 		return nil
 	}
 	var companyUsers []*management.User
-	accountList, err := s.Auth0.Manager.User.List()
+	companyName := args.CompanyName
 
-	if err != nil {
-		err = fmt.Errorf("UpgradeAccount() failed to fetch user list: %v", err)
-		s.Logger.Log("err", err)
-		return err
-	}
 	requestUser := r.Context().Value("user")
 	if requestUser == nil {
-		err = fmt.Errorf("UpgradeAccount() unable to parse user from token")
+		err := fmt.Errorf("UpdateCompanyName() unable to parse user from token")
 		s.Logger.Log("err", err)
 		return err
 	}
 
-	requestEmail, ok := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["email"].(string)
+	requestID, ok := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["sub"].(string)
 	if !ok {
-		err = fmt.Errorf("UpgradeAccount() unable to parse email from token")
+		err := fmt.Errorf("UpdateCompanyName() unable to parse id from token")
 		s.Logger.Log("err", err)
 		return err
 	}
-	requestEmailParts := strings.Split(requestEmail, "@")
-	requestDomain := requestEmailParts[len(requestEmailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
+
+	userAccount, err := s.Auth0.Manager.User.Read(requestID)
+	if err != nil {
+		err := fmt.Errorf("UpdateCompanyName() failed to fetch user account: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	userAccount.AppMetadata["company"] = args.CompanyName
+
+	err = s.Auth0.Manager.User.Update("company", userAccount)
+	if err != nil {
+		err = fmt.Errorf("UpdateCompanyName() failed to update company name: %v", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	reply.CompanyName = args.CompanyName
+
+	accountList, err := s.Auth0.Manager.User.List()
+	if err != nil {
+		err = fmt.Errorf("UpdateCompanyName() failed to fetch user list: %v", err)
+		s.Logger.Log("err", err)
+		return err
+	}
 
 	for _, a := range accountList.Users {
-		emailParts := strings.Split(*a.Email, "@")
-		if len(emailParts) <= 0 {
-			err = fmt.Errorf("UpgradeAccount() failed to parse email %s for domain", *a.Email)
-			s.Logger.Log("err", err)
-			return err
-		}
-		domain := emailParts[len(emailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
-		if requestDomain != domain {
+		userCompany, ok := a.AppMetadata["company"].(string)
+		if !ok || userCompany != companyName {
 			continue
 		}
 		companyUsers = append(companyUsers, a)
@@ -540,12 +554,6 @@ func (s *AuthService) UpgradeAccount(r *http.Request, args *UpgradeArgs, reply *
 		"Can access and manage everything in an account.",
 	}
 
-	requestID, ok := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["sub"].(string)
-	if !ok {
-		err = fmt.Errorf("UpgradeAccount() unable to parse id from token")
-		s.Logger.Log("err", err)
-		return err
-	}
 	// Upgrade account
 	roles := []*management.Role{
 		{
@@ -563,24 +571,12 @@ func (s *AuthService) UpgradeAccount(r *http.Request, args *UpgradeArgs, reply *
 	err = s.Auth0.Manager.User.AssignRoles(requestID, roles...)
 
 	if err != nil {
-		return err
-	}
-
-	userAccount, err := s.Auth0.Manager.User.Read(requestID)
-	if err != nil {
-		err := fmt.Errorf("UpgradeAccount() failed to fetch user account: %w", err)
+		err := fmt.Errorf("UpgradeAccount() failed to assign user roles: %w", err)
 		s.Logger.Log("err", err)
 		return err
 	}
 
-	userRoles, err := s.Auth0.Manager.User.Roles(*userAccount.ID)
-	if err != nil {
-		err := fmt.Errorf("UpgradeAccount() failed to fetch user roles: %w", err)
-		s.Logger.Log("err", err)
-		return fmt.Errorf("failed to fetch user roles: %w", err)
-	}
-
-	reply.NewRoles = userRoles.Roles
+	reply.NewRoles = roles
 
 	return nil
 }
