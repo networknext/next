@@ -13,7 +13,7 @@
 using core::RouterInfo;
 using core::RouteToken;
 using core::SessionMap;
-using core::Type;
+using core::PacketType;
 using crypto::Keychain;
 using crypto::PACKET_HASH_LENGTH;
 using os::Socket;
@@ -96,12 +96,12 @@ namespace core
 
       if (is_signed) {
         size_t index = RouteToken::EncryptedByteSize;
-        packet.buffer[index + PACKET_HASH_LENGTH] = static_cast<uint8_t>(Type::RouteRequest);
+        packet.buffer[index + PACKET_HASH_LENGTH] = static_cast<uint8_t>(PacketType::RouteRequest);
         if (!crypto::sign_network_next_packet(packet.buffer, index, length)) {
           LOG(ERROR, "unable to sign route request packet for session ", token);
         }
       } else {
-        packet.buffer[RouteToken::EncryptedByteSize] = static_cast<uint8_t>(Type::RouteRequest);
+        packet.buffer[RouteToken::EncryptedByteSize] = static_cast<uint8_t>(PacketType::RouteRequest);
       }
 
       recorder.route_request_tx.add(length);

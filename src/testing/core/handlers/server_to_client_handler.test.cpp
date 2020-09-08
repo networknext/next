@@ -13,7 +13,7 @@ using core::PacketHeader;
 using core::RouterInfo;
 using core::Session;
 using core::SessionMap;
-using core::Type;
+using core::PacketType;
 using net::Address;
 using os::Socket;
 using os::SocketConfig;
@@ -41,7 +41,7 @@ Test(core_handlers_server_to_client_handler_unsigned)
   packet.addr = addr;
 
   PacketHeader header = {
-   .type = Type::ServerToClient,
+   .type = PacketType::ServerToClient,
    .sequence = 123123130131LL | (1ULL << 63),
    .session_id = 0x12313131,
    .session_version = 0x12,
@@ -96,7 +96,7 @@ Test(core_handlers_server_to_client_handler_signed)
   packet.addr = addr;
 
   PacketHeader header = {
-   .type = Type::ServerToClient,
+   .type = PacketType::ServerToClient,
    .sequence = 123123130131LL | (1ULL << 63),
    .session_id = 0x12313131,
    .session_version = 0x12,

@@ -13,7 +13,7 @@ using core::PacketHeader;
 using core::RouterInfo;
 using core::Session;
 using core::SessionMap;
-using core::Type;
+using core::PacketType;
 using crypto::GenericKey;
 using crypto::PACKET_HASH_LENGTH;
 using net::Address;
@@ -42,7 +42,7 @@ Test(core_handlers_continue_response_handler_unsigned)
   packet.length = PacketHeader::SIZE_OF;
 
   PacketHeader header = {
-   .type = Type::ContinueResponse,
+   .type = PacketType::ContinueResponse,
    .sequence = 123123130131LL | (1ULL << 63) | (1ULL << 62),
    .session_id = 0x12313131,
    .session_version = 0x12,
@@ -98,7 +98,7 @@ Test(core_handlers_continue_response_handler_signed)
   packet.length = PACKET_HASH_LENGTH + PacketHeader::SIZE_OF;
 
   PacketHeader header = {
-   .type = Type::ContinueResponse,
+   .type = PacketType::ContinueResponse,
    .sequence = 123123130131LL | (1ULL << 63) | (1ULL << 62),
    .session_id = 0x12313131,
    .session_version = 0x12,

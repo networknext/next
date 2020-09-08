@@ -1,7 +1,7 @@
 #pragma once
 
 #define PACKET_TYPE_SWITCH_MACRO(type) \
-  case Type ::type: {                  \
+  case PacketType ::type: {                  \
     str = #type;                       \
   } break
 
@@ -11,7 +11,7 @@ namespace core
   const size_t RELAY_MTU = 1300;
   const size_t RELAY_MAX_PACKET_BYTES = 1500;
 
-  enum class Type : uint8_t
+  enum class PacketType : uint8_t
   {
     None = 0,
     RouteRequest = 1,
@@ -29,18 +29,18 @@ namespace core
   };
 
   template <typename T>
-  inline auto operator==(Type t, T other) -> bool
+  inline auto operator==(PacketType t, T other) -> bool
   {
-    return t == static_cast<Type>(other);
+    return t == static_cast<PacketType>(other);
   }
 
   template <typename T>
-  inline auto operator!=(Type t, T other) -> bool
+  inline auto operator!=(PacketType t, T other) -> bool
   {
     return !(t == other);
   }
 
-  inline std::ostream& operator<<(std::ostream& os, const Type& type)
+  inline std::ostream& operator<<(std::ostream& os, const PacketType& type)
   {
     std::string str;
     switch (type) {

@@ -14,7 +14,7 @@
 using core::ContinueToken;
 using core::Packet;
 using core::RouterInfo;
-using core::Type;
+using core::PacketType;
 using crypto::Keychain;
 using crypto::PACKET_HASH_LENGTH;
 using os::Socket;
@@ -85,13 +85,13 @@ namespace core
 
       if (is_signed) {
         size_t index = ContinueToken::SIZE_OF_ENCRYPTED;
-        packet.buffer[index + PACKET_HASH_LENGTH] = static_cast<uint8_t>(Type::ContinueRequest);
+        packet.buffer[index + PACKET_HASH_LENGTH] = static_cast<uint8_t>(PacketType::ContinueRequest);
         if (!crypto::sign_network_next_packet(packet.buffer, index, length)) {
           LOG(ERROR, "failed to sign continue request for session ", *session);
           return;
         }
       } else {
-        packet.buffer[ContinueToken::SIZE_OF_ENCRYPTED] = static_cast<uint8_t>(Type::ContinueRequest);
+        packet.buffer[ContinueToken::SIZE_OF_ENCRYPTED] = static_cast<uint8_t>(PacketType::ContinueRequest);
       }
 
       recorder.continue_request_tx.add(length);

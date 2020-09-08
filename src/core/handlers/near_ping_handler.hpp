@@ -8,7 +8,7 @@
 #include "util/macros.hpp"
 
 using core::Packet;
-using core::Type;
+using core::PacketType;
 using crypto::PACKET_HASH_LENGTH;
 using os::Socket;
 using util::ThroughputRecorder;
@@ -34,13 +34,13 @@ namespace core
 
       if (is_signed) {
         size_t index = 0;
-        packet.buffer[PACKET_HASH_LENGTH] = static_cast<uint8_t>(Type::NearPong);
+        packet.buffer[PACKET_HASH_LENGTH] = static_cast<uint8_t>(PacketType::NearPong);
         if (!crypto::sign_network_next_packet(packet.buffer, index, length)) {
           LOG(ERROR, "unable to sign near ping packet for address", packet.addr);
           return;
         }
       } else {
-        packet.buffer[0] = static_cast<uint8_t>(Type::NearPong);
+        packet.buffer[0] = static_cast<uint8_t>(PacketType::NearPong);
       }
 
       recorder.near_ping_tx.add(length);

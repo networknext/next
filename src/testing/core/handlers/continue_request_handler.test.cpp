@@ -12,7 +12,7 @@ using core::Packet;
 using core::RouterInfo;
 using core::Session;
 using core::SessionMap;
-using core::Type;
+using core::PacketType;
 using crypto::Keychain;
 using net::Address;
 using os::Socket;
@@ -35,7 +35,7 @@ Test(core_handlers_continue_request_handler_unsigned)
   check(addr.parse("127.0.0.1"));
   check(socket.create(addr, config));
 
-  packet.buffer[0] = static_cast<uint8_t>(Type::ContinueRequest);
+  packet.buffer[0] = static_cast<uint8_t>(PacketType::ContinueRequest);
   packet.length = 1 + ContinueToken::SIZE_OF_ENCRYPTED * 2;
 
   ContinueToken token;
@@ -46,7 +46,7 @@ Test(core_handlers_continue_request_handler_unsigned)
 
   size_t index = 1;
   check(token.write_encrypted(packet, index, router_private_key(), keychain.relay_public_key));
-  check(packet.buffer[0] == static_cast<uint8_t>(Type::ContinueRequest));
+  check(packet.buffer[0] == static_cast<uint8_t>(PacketType::ContinueRequest));
   check(index == 1 + ContinueToken::SIZE_OF_ENCRYPTED).onFail([&] {
     std::cout << index << '\n';
   });
@@ -78,7 +78,7 @@ Test(core_handlers_continue_request_handler_signed)
   info.set_timestamp(0);
   Socket socket;
 
-  packet.buffer[crypto::PACKET_HASH_LENGTH] = static_cast<uint8_t>(Type::ContinueRequest);
+  packet.buffer[crypto::PACKET_HASH_LENGTH] = static_cast<uint8_t>(PacketType::ContinueRequest);
   packet.length = crypto::PACKET_HASH_LENGTH + 1 + ContinueToken::SIZE_OF_ENCRYPTED * 2;
 
   Address addr;
@@ -95,7 +95,7 @@ Test(core_handlers_continue_request_handler_signed)
 
   size_t index = crypto::PACKET_HASH_LENGTH + 1;
   check(token.write_encrypted(packet, index, router_private_key(), keychain.relay_public_key));
-  check(packet.buffer[crypto::PACKET_HASH_LENGTH] == static_cast<uint8_t>(Type::ContinueRequest));
+  check(packet.buffer[crypto::PACKET_HASH_LENGTH] == static_cast<uint8_t>(PacketType::ContinueRequest));
   check(index == crypto::PACKET_HASH_LENGTH + 1 + ContinueToken::SIZE_OF_ENCRYPTED).onFail([&] {
     std::cout << index << '\n';
   });

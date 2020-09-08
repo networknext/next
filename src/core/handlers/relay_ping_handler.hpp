@@ -10,7 +10,7 @@
 
 using core::Packet;
 using core::RELAY_PING_PACKET_SIZE;
-using core::Type;
+using core::PacketType;
 using crypto::PACKET_HASH_LENGTH;
 using os::Socket;
 using util::ThroughputRecorder;
@@ -31,7 +31,7 @@ namespace core
         return;
       }
 
-      packet.buffer[PACKET_HASH_LENGTH] = static_cast<uint8_t>(Type::RelayPong);
+      packet.buffer[PACKET_HASH_LENGTH] = static_cast<uint8_t>(PacketType::RelayPong);
 
       size_t index = 0;
       if (!crypto::sign_network_next_packet(packet.buffer, index, packet.length)) {

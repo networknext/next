@@ -21,6 +21,17 @@ namespace core
     size_t length;
   };
 
+  INLINE Packet::Packet(Packet&& other): addr(std::move(other.addr)), buffer(std::move(other.buffer)), length(std::move(other.length))
+  {}
+
+  INLINE Packet& Packet::operator=(Packet&& other)
+  {
+    this->addr = std::move(other.addr);
+    this->buffer = std::move(other.buffer);
+    this->length = std::move(other.length);
+    return *this;
+  }
+
   // holds BuffSize packets and shares memory between the header and the packet, packet interface is meant to be easy to use
   template <size_t BuffSize>
   class PacketBuffer
@@ -55,17 +66,6 @@ namespace core
 
     std::mutex mLock;
   };
-
-  INLINE Packet::Packet(Packet&& other): addr(std::move(other.addr)), buffer(std::move(other.buffer)), length(std::move(other.length))
-  {}
-
-  INLINE Packet& Packet::operator=(Packet&& other)
-  {
-    this->addr = std::move(other.addr);
-    this->buffer = std::move(other.buffer);
-    this->length = std::move(other.length);
-    return *this;
-  }
 
   template <size_t BuffSize>
   INLINE PacketBuffer<BuffSize>::PacketBuffer(): count(0), mRawAddrBuff(BuffSize), mIOVecBuff(BuffSize)

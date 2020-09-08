@@ -7,7 +7,7 @@
 using core::Packet;
 using core::PacketDirection;
 using core::PacketHeader;
-using core::Type;
+using core::PacketType;
 using crypto::GenericKey;
 
 Test(core_packets_Header_client_to_server)
@@ -21,7 +21,7 @@ Test(core_packets_Header_client_to_server)
   Packet packet;
 
   PacketHeader header = {
-   .type = Type::ClientToServer,
+   .type = PacketType::ClientToServer,
    .sequence = 123123130131LL,
    .session_id = 0x12313131,
    .session_version = 0x12,
@@ -37,7 +37,7 @@ Test(core_packets_Header_client_to_server)
   index = 0;
   check(other.read(packet, index, PacketDirection::ClientToServer));
 
-  check(other.type == Type::ClientToServer);
+  check(other.type == PacketType::ClientToServer);
   check(other.sequence == header.sequence);
   check(other.session_id == header.session_id);
   check(other.session_version == header.session_version);
@@ -57,7 +57,7 @@ Test(core_packets_Header_server_to_client)
   Packet packet;
 
   PacketHeader header = {
-   .type = Type::ServerToClient,
+   .type = PacketType::ServerToClient,
    .sequence = 123123130131LL | (1ULL << 63),
    .session_id = 0x12313131,
    .session_version = 0x12,
@@ -72,7 +72,7 @@ Test(core_packets_Header_server_to_client)
   index = 0;
   check(other.read(packet, index, PacketDirection::ServerToClient));
 
-  check(other.type == Type::ServerToClient);
+  check(other.type == PacketType::ServerToClient);
   check(other.sequence == header.sequence);
   check(other.session_id == header.session_id);
   check(other.session_version == header.session_version);

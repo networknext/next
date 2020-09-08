@@ -9,7 +9,7 @@ using core::PingData;
 using core::RELAY_PING_PACKET_SIZE;
 using core::RelayManager;
 using core::RelayPingInfo;
-using core::Type;
+using core::PacketType;
 using crypto::PACKET_HASH_LENGTH;
 using net::Address;
 
@@ -54,7 +54,7 @@ Test(core_handlers_relay_pong_handler)
   });
 
   size_t index = crypto::PACKET_HASH_LENGTH;
-  encoding::write_uint8(packet.buffer, index, static_cast<uint8_t>(Type::RelayPong));
+  encoding::write_uint8(packet.buffer, index, static_cast<uint8_t>(PacketType::RelayPong));
   encoding::write_uint64(packet.buffer, index, ping_data[0].sequence);
 
   core::handlers::relay_pong_handler(packet, manager, true);

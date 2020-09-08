@@ -23,7 +23,7 @@ namespace core
     // the size of this struct when stored in binary format
     static const size_t SIZE_OF = 35;
 
-    Type type;
+    PacketType type;
 
     uint64_t sequence;
     uint64_t session_id;
@@ -49,7 +49,7 @@ namespace core
       LOG(ERROR, "header read, unable to read packet type");
       return false;
     }
-    Type packet_type = static_cast<Type>(type);
+    PacketType packet_type = static_cast<PacketType>(type);
 
     uint64_t packet_sequence;
     if (!encoding::read_uint64(packet.buffer, index, packet_sequence)) {
@@ -74,8 +74,8 @@ namespace core
     this->type = packet_type;
 
     if (
-     this->type == Type::SessionPing || this->type == Type::SessionPong || this->type == Type::RouteResponse ||
-     this->type == Type::ContinueResponse) {
+     this->type == PacketType::SessionPing || this->type == PacketType::SessionPong || this->type == PacketType::RouteResponse ||
+     this->type == PacketType::ContinueResponse) {
       // second highest bit must be set
       if ((packet_sequence & (1ULL << 62)) == 0) {
         LOG(ERROR, "header read, second high bit unset");
@@ -124,8 +124,8 @@ namespace core
     }
 
     if (
-     this->type == Type::SessionPing || this->type == Type::SessionPong || this->type == Type::RouteResponse ||
-     this->type == Type::ContinueResponse) {
+     this->type == PacketType::SessionPing || this->type == PacketType::SessionPong || this->type == PacketType::RouteResponse ||
+     this->type == PacketType::ContinueResponse) {
       // second highest bit must be set
       if ((sequence & (1ULL << 62)) == 0) {
         return false;
@@ -209,7 +209,7 @@ namespace core
     if (!encoding::read_uint8(packet.buffer, index, type)) {
       return false;
     }
-    Type packet_type = static_cast<Type>(type);
+    PacketType packet_type = static_cast<PacketType>(type);
 
     uint64_t packet_sequence;
     if (!encoding::read_uint64(packet.buffer, index, packet_sequence)) {
@@ -233,8 +233,8 @@ namespace core
 
     // TODO change this to if checks
     if (
-     packet_type == Type::SessionPing || packet_type == Type::SessionPong || packet_type == Type::RouteResponse ||
-     packet_type == Type::ContinueResponse) {
+     packet_type == PacketType::SessionPing || packet_type == PacketType::SessionPong || packet_type == PacketType::RouteResponse ||
+     packet_type == PacketType::ContinueResponse) {
       // second highest bit must be set
       assert(packet_sequence & (1ULL << 62));
     } else {
