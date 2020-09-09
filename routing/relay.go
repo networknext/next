@@ -192,24 +192,24 @@ type RelayTrafficStats struct {
 	UnknownRx uint64
 }
 
-// InternalStatsRx returns the relay to relay rx stats
-func (self *RelayTrafficStats) OtherStatsRx() uint64 {
-	return self.PongRx + self.InboundPingRx
+// OtherStatsRx returns the relay to relay rx stats
+func (rts *RelayTrafficStats) OtherStatsRx() uint64 {
+	return rts.PongRx + rts.InboundPingRx
 }
 
-// InternalStatsTx returns the relay to relay tx stats
-func (self *RelayTrafficStats) OtherStatsTx() uint64 {
-	return self.OutboundPingTx + self.InboundPingTx
+// OtherStatsTx returns the relay to relay tx stats
+func (rts *RelayTrafficStats) OtherStatsTx() uint64 {
+	return rts.OutboundPingTx + rts.InboundPingTx
 }
 
 // GameStatsRx returns the game <-> relay rx stats
-func (self *RelayTrafficStats) GameStatsRx() uint64 {
-	return self.RouteRequestRx + self.RouteResponseRx + self.ClientToServerRx + self.ServerToClientRx + self.SessionPingRx + self.SessionPongRx + self.ContinueRequestRx + self.ContinueResponseRx + self.NearPingRx
+func (rts *RelayTrafficStats) GameStatsRx() uint64 {
+	return rts.RouteRequestRx + rts.RouteResponseRx + rts.ClientToServerRx + rts.ServerToClientRx + rts.SessionPingRx + rts.SessionPongRx + rts.ContinueRequestRx + rts.ContinueResponseRx + rts.NearPingRx
 }
 
 // GameStatsTx returns the game <-> relay tx stats
-func (self *RelayTrafficStats) GameStatsTx() uint64 {
-	return self.RouteRequestTx + self.RouteResponseTx + self.ClientToServerTx + self.ServerToClientTx + self.SessionPingTx + self.SessionPongTx + self.ContinueRequestTx + self.ContinueResponseTx + self.NearPingTx
+func (rts *RelayTrafficStats) GameStatsTx() uint64 {
+	return rts.RouteRequestTx + rts.RouteResponseTx + rts.ClientToServerTx + rts.ServerToClientTx + rts.SessionPingTx + rts.SessionPongTx + rts.ContinueRequestTx + rts.ContinueResponseTx + rts.NearPingTx
 }
 
 type PeakRelayTrafficStats struct {
