@@ -11,7 +11,7 @@ const (
 
 	BillingEntryMaxRelays           = 5
 	BillingEntryMaxISPLength        = 64
-	BillingEntryMaxSDKVersionLength = 8
+	BillingEntryMaxSDKVersionLength = 11
 
 	MaxBillingEntryBytes = 8 + 1 + 8 + 8 + 8 + (4 * 4) + 1 + (3 * 4) + 1 + (BillingEntryMaxRelays * 8) + (3 * 8) + (4 * 1) + 8 + 8 + 8 + 1 + 1 + (BillingEntryMaxRelays * 8) + 4 + 4 + BillingEntryMaxISPLength + 1 + 8 + 1 + 1 + BillingEntryMaxSDKVersionLength
 )

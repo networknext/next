@@ -1156,10 +1156,10 @@ func GetNextRoute(routeMatrix RouteProvider, nearRelayData []routing.NearRelayDa
 	return route
 }
 
-func CalculateNextBytesUpAndDown(envelopeKbpsUp uint64, envelopeKbpsDown uint64, sliceDuration uint64) (uint64, uint64) {
-	envelopeBytesUp := (((1000 * envelopeKbpsUp) / 8) * sliceDuration)
-	envelopeBytesDown := (((1000 * envelopeKbpsDown) / 8) * sliceDuration)
-	return envelopeBytesUp, envelopeBytesDown
+func CalculateNextBytesUpAndDown(kbpsUp uint64, kbpsDown uint64, sliceDuration uint64) (uint64, uint64) {
+	bytesUp := (((1000 * kbpsUp) / 8) * sliceDuration)
+	bytesDown := (((1000 * kbpsDown) / 8) * sliceDuration)
+	return bytesUp, bytesDown
 }
 
 func CalculateTotalPriceNibblins(chosenRoute *routing.Route, envelopeBytesUp uint64, envelopeBytesDown uint64) routing.Nibblin {
