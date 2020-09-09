@@ -193,12 +193,12 @@ type RelayTrafficStats struct {
 }
 
 // InternalStatsRx returns the relay to relay rx stats
-func (self *RelayTrafficStats) InternalStatsRx() uint64 {
+func (self *RelayTrafficStats) OtherStatsRx() uint64 {
 	return self.PongRx + self.InboundPingRx
 }
 
 // InternalStatsTx returns the relay to relay tx stats
-func (self *RelayTrafficStats) InternalStatsTx() uint64 {
+func (self *RelayTrafficStats) OtherStatsTx() uint64 {
 	return self.OutboundPingTx + self.InboundPingTx
 }
 

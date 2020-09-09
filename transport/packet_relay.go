@@ -429,9 +429,9 @@ func (r *RelayUpdateRequest) unmarshalBinaryV1(buff []byte, index int) error {
 		return errors.New("invalid packet, could not read unknown rx")
 	}
 
-	r.TrafficStats.BytesReceived = r.TrafficStats.InternalStatsRx() + r.TrafficStats.GameStatsRx() + r.TrafficStats.UnknownRx
+	r.TrafficStats.BytesReceived = r.TrafficStats.OtherStatsRx() + r.TrafficStats.GameStatsRx() + r.TrafficStats.UnknownRx
 
-	r.TrafficStats.BytesSent = r.TrafficStats.InternalStatsTx() + r.TrafficStats.GameStatsTx()
+	r.TrafficStats.BytesSent = r.TrafficStats.OtherStatsTx() + r.TrafficStats.GameStatsTx()
 
 	var shuttingDown uint8
 	if !encoding.ReadUint8(buff, &index, &shuttingDown) {
