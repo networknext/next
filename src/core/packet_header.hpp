@@ -19,13 +19,17 @@ namespace core
     ServerToClient,
   };
 
-  struct PacketHeaderV4: public SessionHasher
+  // type | sequence | session id | session version
+
+  class PacketHeaderV4: public SessionHasher
   {
+   public:
     // type (1) +
     // SessionHasher (9) +
     // sequence (8)
     static const size_t SIZE_OF = 18;
-    static const size_t SIZE_OF_SIGNED = SIZE_OF + crypto_aead_chacha20poly1305_IETF_ABYTES;
+    static const size_t SIZE_OF_SIGNATURE = crypto_aead_chacha20poly1305_IETF_ABYTES;
+    static const size_t SIZE_OF_SIGNED = SIZE_OF + SIZE_OF_SIGNATURE;
 
     PacketType type;
 
@@ -255,7 +259,7 @@ namespace core
      &decrypted_length,
      nullptr,
      &packet.buffer[begin + 18],
-     (unsigned long long)crypto_aead_chacha20poly1305_IETF_ABYTES,
+     (unsigned long long)SIZE_OF_SIGNATURE,
      &packet.buffer[additional_index],
      (unsigned long long)additional_length,
      nonce.data(),
@@ -288,7 +292,8 @@ namespace core
     // sequence (8) +
     // ??? (1)
     static const size_t SIZE_OF = 19;
-    static const size_t SIZE_OF_SIGNED = SIZE_OF + crypto_aead_chacha20poly1305_IETF_ABYTES;
+    static const size_t SIZE_OF_SIGNATURE = crypto_aead_chacha20poly1305_IETF_ABYTES;
+    static const size_t SIZE_OF_SIGNED = SIZE_OF + SIZE_OF_SIGNATURE;
 
     PacketType type;
 
