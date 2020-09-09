@@ -58,7 +58,7 @@ func TestSessionUpdateHandler4ReadPacketFailure(t *testing.T) {
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 
-	handler := transport.SessionUpdateHandlerFunc4(logger, nil, nil, nil, metrics)
+	handler := transport.SessionUpdateHandlerFunc4(logger, nil, nil, nil, nil, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: nil,
 	})
@@ -112,7 +112,8 @@ func TestSessionUpdateHandler4ClientLocateFailure(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeProviderFunc, nil, metrics)
+	postSessionHandler := transport.PostSessionHandler{}
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeProviderFunc, nil, &postSessionHandler, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -175,7 +176,8 @@ func TestSessionUpdateHandler4NoNearRelays(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeProviderFunc, nil, metrics)
+	postSessionHandler := transport.PostSessionHandler{}
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeProviderFunc, nil, &postSessionHandler, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -221,7 +223,7 @@ func TestSessionUpdateHandler4SessionDataBadSessionID(t *testing.T) {
 		return &goodRouteProvider
 	}
 
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeProviderFunc, nil, metrics)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeProviderFunc, nil, nil, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -272,7 +274,7 @@ func TestSessionUpdateHandler4SessionDataBadSliceNumber(t *testing.T) {
 		return &goodRouteProvider
 	}
 
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeProviderFunc, nil, metrics)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeProviderFunc, nil, nil, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -325,7 +327,8 @@ func TestSessionUpdateHandler4InitialSlice(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeProviderFunc, nil, metrics)
+	postSessionHandler := transport.PostSessionHandler{}
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeProviderFunc, nil, &postSessionHandler, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -400,7 +403,8 @@ func TestSessionUpdateHandler4DirectRoute(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeProviderFunc, nil, metrics)
+	postSessionHandler := transport.PostSessionHandler{}
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeProviderFunc, nil, &postSessionHandler, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
