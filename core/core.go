@@ -1098,7 +1098,7 @@ func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState) bool {
     return false
 }
 
-func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, internal *InternalConfig, directLatency int32, directPacketLoss float32, sourceRelays []int32, sourceRelayCost[]int32, destRelays []int32) bool {
+func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, internal *InternalConfig, directLatency int32, directPacketLoss float32, sourceRelays []int32, sourceRelayCost[]int32, destRelays []int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32) bool {
 
     if routeState.Next {
         panic("only call MakeRouteDecision_TakeNetworkNext when *not* already taking network next")
@@ -1151,6 +1151,10 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
     routeState.ReducePacketLoss = reducePacketLoss
     routeState.ProMode = proMode
     routeState.Multipath = routeShader.Multipath && userHasMultipathVeto
+
+    *out_updatedRouteCost = bestRouteCost
+    *out_updatedRouteNumRelays = bestRouteNumRelays
+    copy(out_updatedRouteRelays, bestRouteRelays[:bestRouteNumRelays])
 
     return true
 }
