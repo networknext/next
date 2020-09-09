@@ -20,9 +20,20 @@ namespace os
 
   inline auto LibTopWrapper::getCPU() -> double
   {
+    static struct {
+      uint64_t total = 0;
+      uint64_t idle = 0;
+    } lastCPU, currCPU;
     glibtop_cpu cpu;
     glibtop_get_cpu(&cpu);
-    return static_cast<double>(cpu.total - cpu.idle) / static_cast<double>(cpu.total);
+
+    currCPU.total = cpu.total - lastCPU.total;
+    currCPU.idle = cpu.idle - lastCPU.idle;
+
+    lastCPU.total = cpu.total;
+    lastCPU.idle = cpu.idle;
+
+    return static_cast<double>(currCPU.total - currCPU.idle) / static_cast<double>(currCPU.total);
   }
 
   inline auto LibTopWrapper::getMem() -> double
