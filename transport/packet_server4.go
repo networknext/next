@@ -207,20 +207,13 @@ func (packet *SessionUpdatePacket4) Serialize(stream encoding.Stream) error {
 	stream.SerializeBool(&packet.Committed)
 	stream.SerializeBool(&packet.Reported)
 	hasTag := stream.IsWriting() && packet.Tag != 0
-	stream.SerializeBool(&hasTag)
-	if hasTag {
-		stream.SerializeUint64(&packet.Tag)
-	}
 	hasFlags := stream.IsWriting() && packet.Flags != 0
-	stream.SerializeBool(&hasFlags)
-	if hasFlags {
-		stream.SerializeBits(&packet.Flags, 9)
-	}
 	hasUserFlags := stream.IsWriting() && packet.UserFlags != 0
+	hasLostPackets := stream.IsWriting() && (packet.PacketsLostClientToServer+packet.PacketsLostServerToClient) > 0
+	stream.SerializeBool(&hasTag)
+	stream.SerializeBool(&hasFlags)
 	stream.SerializeBool(&hasUserFlags)
-	if hasUserFlags {
-		stream.SerializeUint64(&packet.UserFlags)
-	}
+	stream.SerializeBool(&hasLostPackets)
 	stream.SerializeFloat32(&packet.DirectRTT)
 	stream.SerializeFloat32(&packet.DirectJitter)
 	stream.SerializeFloat32(&packet.DirectPacketLoss)
@@ -242,12 +235,16 @@ func (packet *SessionUpdatePacket4) Serialize(stream encoding.Stream) error {
 		stream.SerializeFloat32(&packet.NearRelayJitter[i])
 		stream.SerializeFloat32(&packet.NearRelayPacketLoss[i])
 	}
-	stream.SerializeUint32(&packet.KbpsUp)
-	stream.SerializeUint32(&packet.KbpsDown)
+	if packet.Next {
+		stream.SerializeUint32(&packet.KbpsUp)
+		stream.SerializeUint32(&packet.KbpsDown)
+	}
 	stream.SerializeUint64(&packet.PacketsSentClientToServer)
 	stream.SerializeUint64(&packet.PacketsSentServerToClient)
-	stream.SerializeUint64(&packet.PacketsLostClientToServer)
-	stream.SerializeUint64(&packet.PacketsLostServerToClient)
+	if hasLostPackets {
+		stream.SerializeUint64(&packet.PacketsLostClientToServer)
+		stream.SerializeUint64(&packet.PacketsLostServerToClient)
+	}
 	return stream.Error()
 }
 
