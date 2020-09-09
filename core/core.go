@@ -1221,14 +1221,14 @@ func MakeRouteDecision_StayOnNetworkNext(routeMatrix []RouteEntry, routeShader *
         panic("only call MakeRouteDecision_TakeNetworkNext when session is on network next")
     }
 
-    leaveNetworkNext := MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix, routeShader, routeState, internal, directLatency, nextLatency, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCost, destRelays, out_updatedRouteCost, out_updatedRouteNumRelays, out_updatedRouteRelays)
+    stayOnNetworkNext := MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix, routeShader, routeState, internal, directLatency, nextLatency, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCost, destRelays, out_updatedRouteCost, out_updatedRouteNumRelays, out_updatedRouteRelays)
 
-    if routeState.Next && leaveNetworkNext {
+    if routeState.Next && !stayOnNetworkNext {
         routeState.Next = false
         routeState.Veto = true
     }
 
-    return leaveNetworkNext
+    return stayOnNetworkNext
 }
 
 // -------------------------------------------
