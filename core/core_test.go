@@ -461,7 +461,7 @@ func (env *TestEnvironment) GetCurrentRouteCost(routeMatrix []RouteEntry, routeR
             panic("bad dest relay name")
         }
     }
-    return GetCurrentRouteCost(routeMatrix, routeRelayIndex, sourceRelayIndex, sourceRelayCost, destRelayIndex)
+    return GetCurrentRouteCost(routeMatrix, int32(len(routeRelays)), routeRelayIndex, sourceRelayIndex, sourceRelayCost, destRelayIndex)
 }
 
 func (env *TestEnvironment) GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []string, sourceRelayCost[] int32, destRelays []string, maxCost int32) []TestRouteData {
