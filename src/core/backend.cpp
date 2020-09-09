@@ -201,7 +201,6 @@ namespace core
    RelayManager<Relay>& relayManager,
    std::string base64RelayPublicKey,
    const core::SessionMap& sessions,
-   legacy::v3::TrafficStats& stats,
    net::IHttpClient& client)
    : mHostname(hostname),
      mAddressStr(address),
@@ -210,7 +209,6 @@ namespace core
      mRelayManager(relayManager),
      mBase64RelayPublicKey(base64RelayPublicKey),
      mSessionMap(sessions),
-     mStats(stats),
      mRequester(client)
   {}
 

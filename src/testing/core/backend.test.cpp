@@ -16,7 +16,6 @@ namespace
   const auto Base64RelayPrivateKey = "lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=";
   const auto Base64RouterPublicKey = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=";
   const auto Base64UpdateKey = "ycOUBHcxeThec42twkVJkO7QaVqlZUk3pApu7Ki58SrvELV+iIfiMpgxuJcTASVaCs1XD2BNDoGcEu9JkHv/sQ==";
-  legacy::v3::TrafficStats TrafficStats;
   crypto::Keychain Keychain = [] {
     crypto::Keychain keychain;
     check(keychain.parse(Base64RelayPublicKey, Base64RelayPrivateKey, Base64RouterPublicKey, Base64UpdateKey));
@@ -58,8 +57,7 @@ Test(core_backend_init_valid)
   std::array<uint8_t, crypto::KeySize> pk{};
   testing::MockHttpClient client;
   client.Response = makeInitResponse(0, 123456789, pk);
-  core::Backend backend(
-   BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, TrafficStats, client);
+  core::Backend backend(BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, client);
 
   check(backend.init());
 
@@ -93,8 +91,7 @@ Test(core_Backend_updateCycle_shutdown_60s)
   util::ThroughputRecorder logger;
   testing::MockHttpClient client;
 
-  core::Backend backend(
-   BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, TrafficStats, client);
+  core::Backend backend(BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, client);
 
   client.Success = true;
   client.Response = BasicValidUpdateResponse;
@@ -128,8 +125,7 @@ Test(core_Backend_updateCycle_ack_and_30s)
   util::ThroughputRecorder logger;
   testing::MockHttpClient client;
 
-  core::Backend backend(
-   BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, TrafficStats, client);
+  core::Backend backend(BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, client);
 
   client.Success = true;
   client.Response = BasicValidUpdateResponse;
@@ -163,8 +159,7 @@ Test(core_Backend_updateCycle_no_ack_for_40s_then_ack_then_wait)
   util::ThroughputRecorder recorder;
   testing::MockHttpClient client;
 
-  core::Backend backend(
-   BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, TrafficStats, client);
+  core::Backend backend(BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, client);
 
   client.Success = true;
   client.Response = BasicValidUpdateResponse;
@@ -201,8 +196,7 @@ Test(core_Backend_updateCycle_update_fails_for_max_number_of_attempts)
   util::ThroughputRecorder recorder;
   testing::MockHttpClient client;
 
-  core::Backend backend(
-   BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, TrafficStats, client);
+  core::Backend backend(BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, client);
 
   client.Success = true;
   client.Response = BasicValidUpdateResponse;
@@ -236,8 +230,7 @@ Test(core_Backend_updateCycle_no_clean_shutdown)
   util::ThroughputRecorder recorder;
   testing::MockHttpClient client;
 
-  core::Backend backend(
-   BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, TrafficStats, client);
+  core::Backend backend(BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, client);
 
   client.Success = true;
   client.Response = BasicValidUpdateResponse;
@@ -262,8 +255,7 @@ Test(core_Backend_update_valid)
   core::SessionMap sessions;
   util::ThroughputRecorder recorder;
   testing::MockHttpClient client;
-  core::Backend backend(
-   BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, TrafficStats, client);
+  core::Backend backend(BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, client);
 
   sessions.set(1234, std::make_shared<core::Session>(routerInfo));  // just add one thing to the map to make it non-zero
 
@@ -354,8 +346,7 @@ Test(core_Backend_update_shutting_down_true)
   util::ThroughputRecorder recorder;
   testing::MockHttpClient client;
 
-  core::Backend backend(
-   BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, TrafficStats, client);
+  core::Backend backend(BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, client);
 
   client.Response = ::BasicValidUpdateResponse;
 

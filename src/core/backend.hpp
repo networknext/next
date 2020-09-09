@@ -3,7 +3,7 @@
 
 #include "crypto/bytes.hpp"
 #include "crypto/keychain.hpp"
-#include "legacy/v3/traffic_stats.hpp"
+#include "encoding/base64.hpp"
 #include "net/http.hpp"
 #include "os/platform.hpp"
 #include "relay_manager.hpp"
@@ -106,9 +106,7 @@ namespace core
      RelayManager<Relay>& relayManager,
      std::string base64RelayPublicKey,
      const core::SessionMap& sessions,
-     legacy::v3::TrafficStats& stats,
      net::IHttpClient& client);
-    ~Backend() = default;
 
     auto init() -> bool;
 
@@ -130,9 +128,7 @@ namespace core
     RelayManager<Relay>& mRelayManager;
     const std::string mBase64RelayPublicKey;
     const core::SessionMap& mSessionMap;
-    legacy::v3::TrafficStats& mStats;
     net::IHttpClient& mRequester;
-
     auto update(util::ThroughputRecorder& recorder, bool shutdown) -> bool;
   };
 }  // namespace core

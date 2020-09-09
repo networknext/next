@@ -16,20 +16,12 @@ namespace core
       RouteResponse = 2,
       ClientToServer = 3,
       ServerToClient = 4,
-      OldRelayPing = 5,
-      OldRelayPong = 6,
       NewRelayPing = 7,
       NewRelayPong = 8,
       SessionPing = 11,
       SessionPong = 12,
       ContinueRequest = 13,
       ContinueResponse = 14,
-      V3InitRequest = 43,
-      V3UpdateRequest = 48,
-      V3BackendUpdateResponse = 49,
-      V3ConfigRequest = 50,
-      V3BackendConfigResponse = 51,
-      V3BackendInitResponse = 52,
       NearPing = 73,
       NearPong = 74,
     };
@@ -54,20 +46,12 @@ namespace core
         PACKET_TYPE_SWITCH_MACRO(RouteResponse);
         PACKET_TYPE_SWITCH_MACRO(ClientToServer);
         PACKET_TYPE_SWITCH_MACRO(ServerToClient);
-        PACKET_TYPE_SWITCH_MACRO(OldRelayPing);
-        PACKET_TYPE_SWITCH_MACRO(OldRelayPong);
         PACKET_TYPE_SWITCH_MACRO(NewRelayPing);
         PACKET_TYPE_SWITCH_MACRO(NewRelayPong);
         PACKET_TYPE_SWITCH_MACRO(SessionPing);
         PACKET_TYPE_SWITCH_MACRO(SessionPong);
         PACKET_TYPE_SWITCH_MACRO(ContinueRequest);
         PACKET_TYPE_SWITCH_MACRO(ContinueResponse);
-        PACKET_TYPE_SWITCH_MACRO(V3InitRequest);
-        PACKET_TYPE_SWITCH_MACRO(V3UpdateRequest);
-        PACKET_TYPE_SWITCH_MACRO(V3BackendUpdateResponse);
-        PACKET_TYPE_SWITCH_MACRO(V3ConfigRequest);
-        PACKET_TYPE_SWITCH_MACRO(V3BackendConfigResponse);
-        PACKET_TYPE_SWITCH_MACRO(V3BackendInitResponse);
         PACKET_TYPE_SWITCH_MACRO(NearPing);
         PACKET_TYPE_SWITCH_MACRO(NearPong);
         default: {
