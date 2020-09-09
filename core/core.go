@@ -1118,8 +1118,8 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
     }
 
     routeState.Next = true
-    routeState.ReduceLatency = routeState.ReduceLatency || reduceLatency
-    routeState.ReducePacketLoss = routeState.ReducePacketLoss || reducePacketLoss
+    routeState.ReduceLatency = routeState.ReduceLatency
+    routeState.ReducePacketLoss = routeState.ReducePacketLoss
     routeState.Multipath = routeShader.Multipath && !routeShader.MultipathVetoUsers[routeState.UserID]
 
     return true
@@ -1139,7 +1139,11 @@ func MakeRouteDecision_StayOnNetworkNext(routeShader *RouteShader, routeState *R
         return false
     }
 
-    // todo
+    // have we made latency worse?
+
+    // have we made packet loss worse? (singlepath only)
+
+    // have we overloaded the connection with multipath?
 
     return true
 }
