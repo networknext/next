@@ -1,5 +1,4 @@
-#ifndef CORE_TOKEN_HPP
-#define CORE_TOKEN_HPP
+#pragma once
 
 #include "encoding/read.hpp"
 #include "encoding/write.hpp"
@@ -145,4 +144,3 @@ namespace core
     return os << std::hex << token.session_id << '.' << std::dec << static_cast<unsigned int>(token.session_version);
   }
 }  // namespace core
-#endif

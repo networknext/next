@@ -1,5 +1,4 @@
-#ifndef ENCODING_BINARY_HPP
-#define ENCODING_BINARY_HPP
+#pragma once
 
 namespace encoding
 {
@@ -189,4 +188,3 @@ namespace encoding
     return sequence_greater_than(s2, s1);
   }
 }  // namespace encoding
-#endif

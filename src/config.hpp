@@ -1,7 +1,6 @@
-#ifndef CONFIG_HPP
-#define CONFIG_HPP
+#pragma once
 
-#define RELAY_VERSION "1.2.0"
+#define RELAY_VERSION "1.2.1"
 
 #define RELAY_ADDRESS_BUFFER_SAFETY 32
 
@@ -32,6 +31,4 @@
 #define GCC_NO_OPT_OUT asm("")
 #else
 #define GCC_NO_OPT_OUT
-#endif
-
 #endif

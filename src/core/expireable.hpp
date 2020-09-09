@@ -1,5 +1,4 @@
-#ifndef CORE_EXPIREABLE_HPP
-#define CORE_EXPIREABLE_HPP
+#pragma once
 
 #include "core/router_info.hpp"
 #include "util/clock.hpp"
@@ -39,4 +38,3 @@ namespace core
     return this->expire_timestamp < seconds;
   }
 }  // namespace core
-#endif

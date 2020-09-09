@@ -1,5 +1,4 @@
-#ifndef TESTING_TEST_HPP
-#define TESTING_TEST_HPP
+#pragma once
 
 #include "net/address.hpp"
 
@@ -145,4 +144,3 @@ namespace testing
     return retval;
   }
 }  // namespace testing
-#endif

@@ -1,5 +1,4 @@
-#ifndef CORE_SESSION_MAP_HPP
-#define CORE_SESSION_MAP_HPP
+#pragma once
 
 #include "session.hpp"
 
@@ -83,4 +82,3 @@ namespace core
     return this->internal_map.find(key) != this->internal_map.end();
   }
 }  // namespace core
-#endif
