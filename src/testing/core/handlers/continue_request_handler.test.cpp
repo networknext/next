@@ -36,7 +36,7 @@ Test(core_handlers_continue_request_handler_sdk4_unsigned)
   check(addr.parse("127.0.0.1"));
   check(socket.create(addr, config));
 
-  packet.buffer[0] = static_cast<uint8_t>(PacketType::ContinueRequest);
+  packet.buffer[0] = static_cast<uint8_t>(PacketType::ContinueRequest4);
   packet.length = 1 + ContinueTokenV4::SIZE_OF_ENCRYPTED * 2;
 
   ContinueTokenV4 token;
@@ -46,7 +46,7 @@ Test(core_handlers_continue_request_handler_sdk4_unsigned)
 
   size_t index = 1;
   check(token.write_encrypted(packet, index, router_private_key(), keychain.relay_public_key));
-  check(packet.buffer[0] == static_cast<uint8_t>(PacketType::ContinueRequest));
+  check(packet.buffer[0] == static_cast<uint8_t>(PacketType::ContinueRequest4));
   check(index == 1 + ContinueTokenV4::SIZE_OF_ENCRYPTED).onFail([&] {
     std::cout << index << '\n';
   });

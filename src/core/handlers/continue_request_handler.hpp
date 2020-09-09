@@ -34,6 +34,8 @@ namespace core
      const Socket& socket,
      bool is_signed)
     {
+      LOG(DEBUG, "got continue request from ", packet.addr);
+
       size_t index = 0;
       size_t length = packet.length;
 
@@ -57,7 +59,7 @@ namespace core
       }
 
       if (token.expired(router_info)) {
-        LOG(INFO, "ignoring continue request. token is expired");
+        LOG(ERROR, "ignoring continue request. token is expired");
         return;
       }
 
@@ -71,7 +73,7 @@ namespace core
       }
 
       if (session->expired(router_info)) {
-        LOG(INFO, "ignoring continue request. session is expired");
+        LOG(ERROR, "ignoring continue request. session is expired");
         session_map.erase(hash);
         return;
       }
@@ -86,17 +88,18 @@ namespace core
 
       if (is_signed) {
         size_t index = ContinueTokenV4::SIZE_OF_ENCRYPTED;
-        packet.buffer[index + PACKET_HASH_LENGTH] = static_cast<uint8_t>(PacketType::ContinueRequest);
+        packet.buffer[index + PACKET_HASH_LENGTH] = static_cast<uint8_t>(PacketType::ContinueRequest4);
         if (!crypto::sign_network_next_packet_sdk4(packet.buffer, index, length)) {
           LOG(ERROR, "failed to sign continue request for session ", *session);
           return;
         }
       } else {
-        packet.buffer[ContinueTokenV4::SIZE_OF_ENCRYPTED] = static_cast<uint8_t>(PacketType::ContinueRequest);
+        packet.buffer[ContinueTokenV4::SIZE_OF_ENCRYPTED] = static_cast<uint8_t>(PacketType::ContinueRequest4);
       }
 
       recorder.continue_request_tx.add(length);
 
+      LOG(DEBUG, "forwarding continue request to ", session->next_addr);
       if (!socket.send(session->next_addr, &packet.buffer[ContinueTokenV4::SIZE_OF_ENCRYPTED], length)) {
         LOG(ERROR, "failed to forward continue request");
       }

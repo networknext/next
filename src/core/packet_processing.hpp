@@ -130,20 +130,20 @@ namespace core
 
       bool is_signed = false;
 
+      PacketType type;
       size_t sign_index = 0;
       size_t sign_index_sdk4 = 0;
-      if (
-       crypto::is_network_next_packet_sdk4(packet.buffer, sign_index_sdk4, packet.length) ||
-       crypto::is_network_next_packet(packet.buffer, sign_index, packet.length)) {
-        is_signed = true;
-      }
-
-      PacketType type;
-
-      if (is_signed) {
+      if (crypto::is_network_next_packet_sdk4(packet.buffer, sign_index_sdk4, packet.length)) {
         type = static_cast<PacketType>(packet.buffer[crypto::PACKET_HASH_LENGTH]);
+        is_signed = true;
+        LOG(DEBUG, "sdk4 packet: ", type);
+      } else if (crypto::is_network_next_packet(packet.buffer, sign_index, packet.length)) {
+        type = static_cast<PacketType>(packet.buffer[crypto::PACKET_HASH_LENGTH]);
+        is_signed = true;
+        LOG(DEBUG, "sdk3 packet: ", type);
       } else {
         type = static_cast<PacketType>(packet.buffer[0]);
+        LOG(DEBUG, "pre-hash packet: ", type);
       }
 
       size_t header_bytes = 0;
@@ -231,6 +231,8 @@ namespace core
           handlers::session_pong_handler_sdk4(packet, session_map, recorder, router_info, socket, is_signed);
         } break;
         case PacketType::ContinueRequest4: {
+          recorder.continue_request_rx.add(whole_packet_size);
+          handlers::continue_request_handler_sdk4(packet, session_map, keychain, recorder, router_info, socket, is_signed);
         } break;
         case PacketType::ContinueResponse4: {
           recorder.continue_response_rx.add(whole_packet_size);

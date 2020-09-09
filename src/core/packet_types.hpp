@@ -70,6 +70,16 @@ namespace core
       PACKET_TYPE_SWITCH_MACRO(ContinueResponse);
       PACKET_TYPE_SWITCH_MACRO(NearPing);
       PACKET_TYPE_SWITCH_MACRO(NearPong);
+      PACKET_TYPE_SWITCH_MACRO(RouteRequest4);
+      PACKET_TYPE_SWITCH_MACRO(RouteResponse4);
+      PACKET_TYPE_SWITCH_MACRO(ClientToServer4);
+      PACKET_TYPE_SWITCH_MACRO(ServerToClient4);
+      PACKET_TYPE_SWITCH_MACRO(SessionPing4);
+      PACKET_TYPE_SWITCH_MACRO(SessionPong4);
+      PACKET_TYPE_SWITCH_MACRO(ContinueRequest4);
+      PACKET_TYPE_SWITCH_MACRO(ContinueResponse4);
+      PACKET_TYPE_SWITCH_MACRO(NearPing4);
+      PACKET_TYPE_SWITCH_MACRO(NearPong4);
       default: {
         str = "Unknown";
       } break;
