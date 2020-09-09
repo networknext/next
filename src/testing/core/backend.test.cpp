@@ -269,6 +269,7 @@ Test(core_Backend_update_valid)
   ThroughputRecorder recorder;
   testing::MockHttpClient client;
   Backend backend(BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, client);
+  crypto::RandomBytes(backend.update_token, backend.update_token.size());
 
   sessions.set(1234, std::make_shared<Session>());  // just add one thing to the map to make it non-zero
 
@@ -324,7 +325,7 @@ Test(core_Backend_update_valid)
 
     check(request.version == 1);
     check(request.address == RelayAddr);
-    check(request.public_key == Keychain.relay_public_key);
+    check(request.public_key == backend.update_token);
     check(request.session_count == sessions.size());
     check(request.outbound_ping_tx == outboundPing);
     check(request.route_request_rx == 0);
@@ -383,6 +384,7 @@ Test(core_Backend_update_shutting_down_true)
   testing::MockHttpClient client;
 
   Backend backend(BackendHostname, RelayAddr, Keychain, routerInfo, manager, Base64RelayPublicKey, sessions, client);
+  crypto::RandomBytes(backend.update_token, backend.update_token.size());
 
   client.Response = ::BasicValidUpdateResponse;
 
@@ -393,7 +395,7 @@ Test(core_Backend_update_shutting_down_true)
 
   check(request.version == 1);
   check(request.address == RelayAddr);
-  check(request.public_key == Keychain.relay_public_key);
+  check(request.public_key == backend.update_token);
   check(request.session_count == 0);
   check(request.outbound_ping_tx == 0);
   check(request.route_request_rx == 0);
