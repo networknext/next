@@ -1030,6 +1030,7 @@ type RouteState struct {
     Banned bool
     Disabled bool
     Unselected bool
+    ABTest bool
     A bool
     B bool
     ReduceLatency bool
@@ -1059,6 +1060,7 @@ func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState) bool {
     }
 
     if routeShader.ABTest {
+        routeState.ABTest = true
         if (routeState.UserID % 2) == 1 {
             routeState.B = true
             return true
