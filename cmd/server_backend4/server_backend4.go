@@ -753,6 +753,7 @@ func mainReturnWithCode() int {
 				var buffer bytes.Buffer
 				packetType := data[0]
 				packet := transport.UDPPacket{SourceAddr: *fromAddr, Data: data}
+				level.Debug(logger).Log("source_addr", fromAddr.String())
 
 				switch packetType {
 				case transport.PacketTypeServerInitRequest4:

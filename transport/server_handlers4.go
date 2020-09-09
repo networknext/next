@@ -204,7 +204,7 @@ func ServerUpdateHandlerFunc4(logger log.Logger, storer storage.Storer, datacent
 			}
 		}
 
-		level.Debug(logger).Log("msg", "server updated successfully", "server_address", packet.ServerAddress.String())
+		level.Debug(logger).Log("msg", "server updated successfully", "source_address", incoming.SourceAddr.String(), "server_address", packet.ServerAddress.String())
 	}
 }
 
