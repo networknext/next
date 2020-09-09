@@ -1108,7 +1108,9 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
         return false
     }
 
-    maxCost := directLatency - 1
+    maxCost := directLatency
+
+    // if we predict we can reduce latency, take network next
 
     reduceLatency := false
     if routeShader.ReduceLatency {
@@ -1120,11 +1122,15 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
         }
     }
 
+    // if we predict we can reduce packet loss, take network next
+
     reducePacketLoss := false
     if routeShader.ReducePacketLoss && directPacketLoss > routeShader.AcceptablePacketLoss {
         maxCost = directLatency + internal.MaxLatencyTradeOff
         reducePacketLoss = true
     }
+
+    // if we are in pro mode, take network next pro-actively in multipath before anything goes wrong
 
     userHasMultipathVeto := !routeShader.MultipathVetoUsers[routeState.UserID]
 
@@ -1136,15 +1142,21 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
         proMode = true
     }
 
+    // get the initial best route
+
     bestRouteCost := int32(0)
     bestRouteNumRelays := int32(0)
     bestRouteRelays := [MaxRelaysPerRoute]int32{}
 
     GetBestRoute_Initial(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, &bestRouteCost, &bestRouteNumRelays, bestRouteRelays[:])
 
+    // if we don't find any network next route, we can't take network next
+
     if bestRouteNumRelays == 0 {
         return false
     }
+
+    // take network next
 
     routeState.Next = true
     routeState.ReduceLatency = reduceLatency
