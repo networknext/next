@@ -204,6 +204,7 @@ func (s *AuthService) DeleteUserAccount(r *http.Request, args *AccountArgs, repl
 func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, reply *AccountsReply) error {
 	var adminString string = "Admin"
 	var accounts []account
+	var buyer routing.Buyer
 
 	if !VerifyAnyRole(req, AdminRole, OwnerRole) {
 		err := fmt.Errorf("UserAccount(): %v", ErrInsufficientPrivileges)
@@ -226,25 +227,47 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 		}
 	}
 
+	// Gather request user information
+	requestUser := req.Context().Value("user")
+	if requestUser == nil {
+		err := fmt.Errorf("UpdateCompanyName() unable to parse user from token")
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	requestID, ok := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["sub"].(string)
+	if !ok {
+		err := fmt.Errorf("UpdateCompanyName() unable to parse id from token")
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	userAccount, err := s.Auth0.Manager.User.Read(requestID)
+	if err != nil {
+		err := fmt.Errorf("UpdateCompanyName() failed to fetch user account: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	userCompany, ok := userAccount.AppMetadata["company"].(string)
+	if !ok {
+		err := fmt.Errorf("UpdateCompanyName() failed to fetch user company: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
 	connectionID := "Username-Password-Authentication"
 	emails := args.Emails
 	falseValue := false
 
-	newCustomerIDsMap := make(map[string]interface{})
-
-	// Not an onboard signup
-	for _, e := range emails {
-
-		emailParts := strings.Split(e, "@")
-		if len(emailParts) <= 0 {
-			err := fmt.Errorf("AddUserAccount() failed to parse email %s for domain", e)
-			s.Logger.Log("err", err)
-			return err
+	for _, b := range s.Storage.Buyers() {
+		if b.Name == userCompany {
+			buyer = b
 		}
-		domain := emailParts[len(emailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
+	}
 
-		buyer, err := s.Storage.BuyerWithDomain(domain)
-
+	// Create an account for each new email
+	for _, e := range emails {
 		pw, err := GenerateRandomString(32)
 		if err != nil {
 			err := fmt.Errorf("AddUserAccount() failed to generate a random password: %w", err)
@@ -258,7 +281,7 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 			VerifyEmail:   &falseValue,
 			Password:      &pw,
 			AppMetadata: map[string]interface{}{
-				"customer": newCustomerIDsMap,
+				"company": userCompany,
 			},
 		}
 		if err = s.Auth0.Manager.User.Create(newUser); err != nil {
@@ -476,21 +499,38 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 	return nil
 }
 
-type UpgradeArgs struct {
+type CompanyNameArgs struct {
 	CompanyName string `json:"company_name"`
 }
 
-type UpgradeReply struct {
-	NewRoles    []*management.Role `json:"new_roles"`
-	CompanyName string             `json:"company_name"`
+type CompanyNameReply struct {
+	NewRoles []*management.Role `json:"new_roles"`
 }
 
-func (s *AuthService) UpdateCompanyName(r *http.Request, args *UpgradeArgs, reply *UpgradeReply) error {
+func (s *AuthService) UpdateCompanyName(r *http.Request, args *CompanyNameArgs, reply *CompanyNameReply) error {
 	if VerifyAnyRole(r, AnonymousRole, UnverifiedRole) {
 		return nil
 	}
-	var companyUsers []*management.User
+
 	companyName := args.CompanyName
+
+	accountList, err := s.Auth0.Manager.User.List()
+	if err != nil {
+		err = fmt.Errorf("UpdateCompanyName() failed to fetch user list: %v", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	// check if someone is assigned to this company already
+	for _, a := range accountList.Users {
+		userCompany, ok := a.AppMetadata["company"].(string)
+		if !ok || userCompany != companyName {
+			continue
+		}
+		err := fmt.Errorf("UpdateCompanyName() company already exists")
+		s.Logger.Log("err", err)
+		return err
+	}
 
 	requestUser := r.Context().Value("user")
 	if requestUser == nil {
@@ -515,32 +555,13 @@ func (s *AuthService) UpdateCompanyName(r *http.Request, args *UpgradeArgs, repl
 
 	userAccount.AppMetadata["company"] = args.CompanyName
 
-	err = s.Auth0.Manager.User.Update("company", userAccount)
+	err = s.Auth0.Manager.User.Update(requestID, userAccount)
 	if err != nil {
 		err = fmt.Errorf("UpdateCompanyName() failed to update company name: %v", err)
 		s.Logger.Log("err", err)
 		return err
 	}
 
-	reply.CompanyName = args.CompanyName
-
-	accountList, err := s.Auth0.Manager.User.List()
-	if err != nil {
-		err = fmt.Errorf("UpdateCompanyName() failed to fetch user list: %v", err)
-		s.Logger.Log("err", err)
-		return err
-	}
-
-	for _, a := range accountList.Users {
-		userCompany, ok := a.AppMetadata["company"].(string)
-		if !ok || userCompany != companyName {
-			continue
-		}
-		companyUsers = append(companyUsers, a)
-	}
-	if len(companyUsers) > 1 {
-		return nil
-	}
 	roleNames := []string{
 		"rol_ScQpWhLvmTKRlqLU",
 		"rol_8r0281hf2oC4cvrD",
@@ -577,6 +598,51 @@ func (s *AuthService) UpdateCompanyName(r *http.Request, args *UpgradeArgs, repl
 	}
 
 	reply.NewRoles = roles
+
+	return nil
+}
+
+type UpdatePasswordArgs struct {
+	Password string `json:"password"`
+}
+
+type UpdatePasswordReply struct {
+}
+
+func (s *AuthService) UpdateUserPassword(r *http.Request, args *UpdatePasswordArgs, reply *UpdatePasswordReply) error {
+	if VerifyAnyRole(r, AnonymousRole, UnverifiedRole) {
+		return nil
+	}
+
+	requestUser := r.Context().Value("user")
+	if requestUser == nil {
+		err := fmt.Errorf("UpdateUserPassword() unable to parse user from token")
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	requestID, ok := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["sub"].(string)
+	if !ok {
+		err := fmt.Errorf("UpdateUserPassword() unable to parse id from token")
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	userAccount, err := s.Auth0.Manager.User.Read(requestID)
+	if err != nil {
+		err := fmt.Errorf("UpdateUserPassword() failed to fetch user account: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	userAccount.Password = &args.Password
+
+	err = s.Auth0.Manager.User.Update(requestID, userAccount)
+	if err != nil {
+		err = fmt.Errorf("UpdateUserPassword() failed to update user password: %v", err)
+		s.Logger.Log("err", err)
+		return err
+	}
 
 	return nil
 }
