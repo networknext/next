@@ -313,10 +313,11 @@ func (packet *SessionResponsePacket4) Serialize(stream encoding.Stream) error {
 }
 
 type SessionData4 struct {
-	Version     uint32
-	SessionID   uint64
-	SliceNumber uint32
-	Route       []uint64
+	Version        uint32
+	SessionID      uint64
+	SessionVersion uint32
+	SliceNumber    uint32
+	Route          routing.Route
 }
 
 func UnmarshalSessionData(sessionData *SessionData4, data []byte) error {
@@ -346,21 +347,23 @@ func (sessionData *SessionData4) Serialize(stream encoding.Stream) error {
 		return fmt.Errorf("bad session data version %d, expected %d", sessionData.Version, SessionDataVersion4)
 	}
 	stream.SerializeUint64(&sessionData.SessionID)
+	stream.SerializeBits(&sessionData.SessionVersion, 8)
 	stream.SerializeUint32(&sessionData.SliceNumber)
 	numRelays := int32(0)
 	hasRoute := false
 	if stream.IsWriting() {
-		numRelays = int32(len(sessionData.Route))
+		numRelays = int32(sessionData.Route.NumRelays)
 		hasRoute = numRelays > 0
 	}
 	stream.SerializeBool(&hasRoute)
 	if hasRoute {
 		stream.SerializeInteger(&numRelays, 0, routing.MaxRelays)
 		if stream.IsReading() {
-			sessionData.Route = make([]uint64, numRelays)
+			sessionData.Route.NumRelays = int(numRelays)
 		}
+
 		for i := 0; i < int(numRelays); i++ {
-			stream.SerializeUint64(&sessionData.Route[i])
+			stream.SerializeUint64(&sessionData.Route.RelayIDs[i])
 		}
 	}
 
