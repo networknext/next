@@ -1020,6 +1020,7 @@ type RouteShader struct {
     LatencyThreshold     int32
     AcceptablePacketLoss float32
     BannedUsers          map[uint64]bool
+    MultipathVetoUsers   map[uint64]bool
 }
 
 type RouteState struct {
@@ -1031,6 +1032,9 @@ type RouteState struct {
     Unselected bool
     A bool
     B bool
+    ReduceLatency bool
+    ReducePacketLoss bool
+    Multipath bool
 }
 
 type InternalConfig struct {
@@ -1083,16 +1087,20 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 
     maxCost := directLatency - 1
 
+    reduceLatency := false
     if routeShader.ReduceLatency {
         if directLatency > routeShader.AcceptableLatency {
             maxCost = directLatency - routeShader.LatencyThreshold
+            reduceLatency = true
         } else {
             maxCost = -1
         }
     }
 
+    reducePacketLoss := false
     if routeShader.ReducePacketLoss && directPacketLoss > routeShader.AcceptablePacketLoss {
-        maxCost = directLatency + internal.MaxLatencyTradeOffToReducePacketLoss 
+        maxCost = directLatency + internal.MaxLatencyTradeOffToReducePacketLoss
+        reducePacketLoss = true
     }
 
     bestRouteCost := int32(0)
@@ -1106,6 +1114,9 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
     }
 
     routeState.Next = true
+    routeState.ReduceLatency = routeState.ReduceLatency || reduceLatency
+    routeState.ReducePacketLoss = routeState.ReducePacketLoss || reducePacketLoss
+    routeState.Multipath = routeShader.Multipath && !routeShader.MultipathVetoUsers[routeState.UserID]
 
     return true
 }
