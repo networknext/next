@@ -2,13 +2,33 @@
 
 # This script is only used in the staging environment for clients
 
+version=
+
+print_usage() {
+    printf "Usage: client_bootstrap.sh -v version\n\n"
+    printf "v [string]\t SDK version\n"
+
+    printf "Example:\n\n"
+    printf "> client_bootstrap.sh -v 3\n"
+}
+
+while getopts 'v:h' flag; do
+  case "${flag}" in
+    v) version="${OPTARG}" ;;
+    h) print_usage
+       exit 1 ;;
+    *) print_usage
+       exit 1 ;;
+  esac
+done
+
 bucket='gs://staging_artifacts'
 
 # Copy libsodium from GCP Storage
 gsutil cp "$bucket/libsodium.so" '/usr/local/lib' || exit 1
 
 # Copy libnext from GCP Storage
-gsutil cp "$bucket/libnext3.so" '/usr/local/lib' || exit 1
+gsutil cp "$bucket/libnext$version.so" '/usr/local/lib' || exit 1
 
 # Copy the list of servers from GCP Storage
 gsutil cp "$bucket/staging_servers.txt" . || exit 1
@@ -16,8 +36,13 @@ gsutil cp "$bucket/staging_servers.txt" . || exit 1
 # Refresh the known libs on the system
 ldconfig
 
-# Copy the required files for the service from GCP Storage
-gsutil cp "$bucket/load_test_client.tar.gz" 'artifact.tar.gz' || exit 1
+if [ $version = "4" ]; then
+    # Copy the required files for the service from GCP Storage
+    gsutil cp "$bucket/load_test_client4.tar.gz" 'artifact.tar.gz' || exit 1
+else
+    # Copy the required files for the service from GCP Storage
+    gsutil cp "$bucket/load_test_client.tar.gz" 'artifact.tar.gz' || exit 1
+fi
 
 # Stop the service
 systemctl stop app.service
