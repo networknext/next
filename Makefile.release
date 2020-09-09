@@ -24,7 +24,7 @@ DIST_DIR							:= ../../dist
 ################
 
 .PHONY: all
-all: $(BIN)/$(EXE) $(DIST_DIR)/$(EXE)
+all: $(BIN)/$(EXE)
 
 .PHONY: run
 run: $(BIN)/$(EXE)
@@ -51,15 +51,3 @@ $(BIN)/$(EXE): $(SRC_OBJ_FILES) $(LIB_OBJ_FILES)
 	$(COMMON_FLAGS) -o $@ $^ $(LIBRARIES)
 
 -include $(SRC_DEP_FILES) $(LIB_DEP_FILES)
-
-####################
-### Distribution ###
-####################
-
-# Have to copy twice.
-# Both the reference and new build to dist/relay.
-# For publishing to gcp there needs to be a
-# difference so that it isn't overwritten by accident.
-$(DIST_DIR)/$(EXE): $(BIN)/$(EXE)
-	cp $< $@
-	cp $< $(@)_new
