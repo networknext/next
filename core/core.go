@@ -954,6 +954,8 @@ func ReframeRoute(routeRelayIds []uint64, relayIdToIndex map[uint64]int32) ([]in
     return routeRelays, nil
 }
 
+// todo: ReframeRelays (use for sourceRelays, sourceRelayCost and destRelays -- pass them all)
+
 func GetRandomBestRoute(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost[] int32, destRelays []int32, maxCost int32, out_bestRouteCost *int32, out_bestRouteNumRelays *int32, out_bestRouteRelays []int32) bool {
     
     if maxCost == -1 {
