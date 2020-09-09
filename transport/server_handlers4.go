@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
+	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
@@ -31,12 +32,7 @@ func writeServerInitResponse4(w io.Writer, packet *ServerInitRequestPacket4, res
 
 	return nil
 }
-
-func writeSessionResponse4(w io.Writer, packet *SessionUpdatePacket4, routeType int32, nearRelays []routing.NearRelayData, sessionData *SessionData4) error {
-	sessionData.Version = SessionDataVersion4
-	sessionData.SessionID = packet.SessionID
-	sessionData.SliceNumber = uint32(packet.SliceNumber + 1)
-
+func writeSessionResponse4(w io.Writer, response *SessionResponsePacket4, sessionData *SessionData4) error {
 	sessionDataBuffer, err := MarshalSessionData(sessionData)
 	if err != nil {
 		return err
@@ -46,30 +42,10 @@ func writeSessionResponse4(w io.Writer, packet *SessionUpdatePacket4, routeType 
 		return errors.New("session data too large")
 	}
 
-	numNearRelays := int32(len(nearRelays))
-	nearRelayIDs := make([]uint64, numNearRelays)
-	nearRelayAddrs := make([]net.UDPAddr, numNearRelays)
-	for i := int32(0); i < numNearRelays; i++ {
-		nearRelayIDs[i] = nearRelays[i].ID
-		nearRelayAddrs[i] = *nearRelays[i].Addr
-	}
+	response.SessionDataBytes = int32(len(sessionDataBuffer))
+	copy(response.SessionData[:], sessionDataBuffer)
 
-	responsePacket := SessionResponsePacket4{
-		SessionID:          packet.SessionID,
-		SliceNumber:        packet.SliceNumber,
-		SessionDataBytes:   int32(len(sessionDataBuffer)),
-		RouteType:          routeType,
-		NumNearRelays:      numNearRelays,
-		NearRelayIDs:       nearRelayIDs,
-		NearRelayAddresses: nearRelayAddrs,
-		NumTokens:          0,
-		Tokens:             nil,
-		Multipath:          false,
-		Committed:          false,
-	}
-	copy(responsePacket.SessionData[:], sessionDataBuffer)
-
-	responseData, err := MarshalPacket(&responsePacket)
+	responseData, err := MarshalPacket(response)
 	if err != nil {
 		return err
 	}
@@ -232,7 +208,7 @@ func ServerUpdateHandlerFunc4(logger log.Logger, storer storage.Storer, datacent
 	}
 }
 
-func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IPLocator, getRouteProvider func() RouteProvider, metrics *metrics.SessionMetrics) UDPHandlerFunc {
+func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IPLocator, getRouteProvider func() RouteProvider, routerPrivateKey []byte, postSessionHandler *PostSessionHandler, metrics *metrics.SessionMetrics) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
 		metrics.Invocations.Add(1)
 
@@ -253,20 +229,37 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 			return
 		}
 
+		newSession := packet.SliceNumber == 0
+
+		// todo: use 20 seconds if the previous slice was an initial route slice
+		usageBytesUp, usageBytesDown := CalculateNextBytesUpAndDown(uint64(packet.KbpsUp), uint64(packet.KbpsDown), billing.BillingSliceSeconds)
+
 		var sessionData SessionData4
-		location := routing.LocationNullIsland
+
 		ipLocator := getIPLocator()
 		routeMatrix := getRouteProvider()
+		location := routing.LocationNullIsland
 		var nearRelays []routing.NearRelayData
+		route := routing.Route{}
 		var err error
 
-		newSession := packet.SliceNumber == 0
+		response := SessionResponsePacket4{
+			SessionID:   packet.SessionID,
+			SliceNumber: packet.SliceNumber,
+			RouteType:   routing.RouteTypeDirect,
+		}
+
 		if newSession {
-			location, err = ipLocator.LocateIP(incoming.SourceAddr.IP)
+			sessionData.Version = SessionDataVersion4
+			sessionData.SessionID = packet.SessionID
+			sessionData.SliceNumber = uint32(packet.SliceNumber + 1)
+
+			location, err = ipLocator.LocateIP(packet.ClientAddress.IP)
 			if err != nil {
 				level.Error(logger).Log("msg", "failed to locate IP", "err", err)
 				metrics.ErrorMetrics.ClientLocateFailure.Add(1)
-				writeSessionResponse4(w, &packet, routing.RouteTypeDirect, nearRelays, &sessionData)
+				writeSessionResponse4(w, &response, &sessionData)
+				go PostSessionUpdate4(postSessionHandler, &packet, &location, nearRelays, usageBytesUp, usageBytesDown, metrics)
 				return
 			}
 
@@ -274,12 +267,20 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 			if err != nil {
 				level.Error(logger).Log("msg", "failed to get near relays", "err", err)
 				metrics.ErrorMetrics.NearRelaysLocateFailure.Add(1)
-				writeSessionResponse4(w, &packet, routing.RouteTypeDirect, nearRelays, &sessionData)
+				writeSessionResponse4(w, &response, &sessionData)
+				go PostSessionUpdate4(postSessionHandler, &packet, &location, nearRelays, usageBytesUp, usageBytesDown, metrics)
 				return
 			}
-		}
 
-		if !newSession {
+			// todo: fix this
+			response.NumNearRelays = /*int32(len(nearRelays))*/ 0
+			response.NearRelayIDs = make([]uint64, response.NumNearRelays)
+			response.NearRelayAddresses = make([]net.UDPAddr, response.NumNearRelays)
+			for i := int32(0); i < response.NumNearRelays; i++ {
+				response.NearRelayIDs[i] = nearRelays[i].ID
+				response.NearRelayAddresses[i] = *nearRelays[i].Addr
+			}
+		} else {
 			if err := UnmarshalSessionData(&sessionData, packet.SessionData[:]); err != nil {
 				level.Error(logger).Log("msg", "could not read session data in session update packet", "err", err)
 				metrics.ErrorMetrics.ReadPacketFailure.Add(1)
@@ -298,20 +299,211 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 				return
 			}
 
-			for i := range nearRelays {
-				for j, clientNearRelayID := range packet.NearRelayIDs {
-					if nearRelays[i].ID == clientNearRelayID {
-						nearRelays[i].ClientStats.RTT = float64(packet.NearRelayRTT[j])
-						nearRelays[i].ClientStats.Jitter = float64(packet.NearRelayJitter[j])
-						nearRelays[i].ClientStats.PacketLoss = float64(packet.NearRelayPacketLoss[j])
-					}
-				}
-			}
+			sessionData.SliceNumber = uint32(packet.SliceNumber + 1)
+
+			// todo: we need to store the near relays in the session data so that we can update their client stats
+
+			// for i := range nearRelays {
+			// 	for j, clientNearRelayID := range packet.NearRelayIDs {
+			// 		if nearRelays[i].ID == clientNearRelayID {
+			// 			nearRelays[i].ClientStats.RTT = float64(packet.NearRelayRTT[j])
+			// 			nearRelays[i].ClientStats.Jitter = float64(packet.NearRelayJitter[j])
+			// 			nearRelays[i].ClientStats.PacketLoss = float64(packet.NearRelayPacketLoss[j])
+			// 		}
+			// 	}
+			// }
 		}
 
-		// For now, only send back direct routes
-		writeSessionResponse4(w, &packet, routing.RouteTypeDirect, nearRelays, &sessionData)
+		var numRouteTokens int
+		var routeTokens []byte
 
-		level.Debug(logger).Log("msg", "successfully sent direct route")
+		if response.RouteType != routing.RouteTypeDirect {
+			var token routing.Token
+
+			relayTokens := make([]routing.RelayToken, route.NumRelays)
+			for i := range relayTokens {
+				relayTokens[i] = routing.RelayToken{
+					ID:        route.RelayIDs[i],
+					Addr:      route.RelayAddrs[i],
+					PublicKey: route.RelayPublicKeys[i],
+				}
+			}
+
+			if route.Equals(sessionData.Route) {
+				token = &routing.ContinueRouteToken{
+					Expires: uint64(time.Now().Unix() + 15),
+
+					SessionID: packet.SessionID,
+
+					SessionVersion: uint8(sessionData.SessionVersion),
+
+					Client: routing.Client{
+						Addr:      packet.ClientAddress,
+						PublicKey: packet.ClientRoutePublicKey,
+					},
+
+					Server: routing.Server{
+						Addr:      packet.ServerAddress,
+						PublicKey: packet.ServerRoutePublicKey,
+					},
+
+					Relays: relayTokens,
+				}
+			} else {
+				sessionData.SessionVersion++
+				token = &routing.NextRouteToken{
+					Expires: uint64(time.Now().Unix() + 15),
+
+					SessionID: packet.SessionID,
+
+					SessionVersion: uint8(sessionData.SessionVersion),
+
+					// todo: add back when buyer lookup is implemented in the session update handler
+
+					// KbpsUp:   uint32(buyer.RoutingRulesSettings.EnvelopeKbpsUp),
+					// KbpsDown: uint32(buyer.RoutingRulesSettings.EnvelopeKbpsDown),
+
+					Client: routing.Client{
+						Addr:      packet.ClientAddress,
+						PublicKey: packet.ClientRoutePublicKey,
+					},
+
+					Server: routing.Server{
+						Addr:      packet.ServerAddress,
+						PublicKey: packet.ServerRoutePublicKey,
+					},
+
+					Relays: relayTokens,
+				}
+			}
+
+			routeTokens, numRouteTokens, err = token.Encrypt(routerPrivateKey)
+			if err != nil {
+				metrics.ErrorMetrics.EncryptionFailure.Add(1)
+				return
+			}
+
+			response.RouteType = int32(token.Type())
+			response.NumTokens = int32(numRouteTokens)
+			response.Tokens = routeTokens
+		}
+
+		writeSessionResponse4(w, &response, &sessionData)
+		go PostSessionUpdate4(postSessionHandler, &packet, &location, nearRelays, usageBytesUp, usageBytesDown, metrics)
+	}
+}
+
+func PostSessionUpdate4(postSessionHandler *PostSessionHandler, packet *SessionUpdatePacket4, location *routing.Location, nearRelays []routing.NearRelayData, nextBytesUp uint64, nextBytesDown uint64, metrics *metrics.SessionMetrics) {
+	billingEntry := &billing.BillingEntry{
+		BuyerID:                   packet.CustomerID,
+		UserHash:                  packet.UserHash,
+		SessionID:                 packet.SessionID,
+		SliceNumber:               packet.SliceNumber,
+		DirectRTT:                 packet.DirectRTT,
+		DirectJitter:              packet.DirectJitter,
+		DirectPacketLoss:          packet.DirectPacketLoss,
+		Next:                      packet.Next,
+		NextRTT:                   packet.NextRTT,
+		NextJitter:                packet.NextJitter,
+		NextPacketLoss:            packet.NextPacketLoss,
+		NumNextRelays:             0,
+		NextRelays:                [routing.MaxRelays]uint64{},
+		TotalPrice:                0,
+		ClientToServerPacketsLost: packet.PacketsLostClientToServer,
+		ServerToClientPacketsLost: packet.PacketsLostServerToClient,
+		Committed:                 packet.Committed,
+		Flagged:                   packet.Reported,
+		Multipath:                 false,
+		Initial:                   false,
+		NextBytesUp:               nextBytesUp,
+		NextBytesDown:             nextBytesDown,
+		DatacenterID:              0,
+		RTTReduction:              false,
+		PacketLossReduction:       false,
+		NextRelaysPrice:           [routing.MaxRelays]uint64{},
+		Latitude:                  float32(location.Latitude),
+		Longitude:                 float32(location.Longitude),
+		ISP:                       location.ISP,
+		ABTest:                    false,
+		RouteDecision:             0,
+		ConnectionType:            uint8(packet.ConnectionType),
+		PlatformType:              uint8(packet.PlatformType),
+		SDKVersion:                packet.Version.String(),
+	}
+
+	if !postSessionHandler.IsBillingBufferFull() {
+		postSessionHandler.SendBillingEntry(billingEntry)
+		metrics.PostSessionBillingEntriesSent.Add(1)
+	} else {
+		metrics.PostSessionBillingBufferFull.Add(1)
+	}
+
+	nearRelayPortalData := make([]NearRelayPortalData, len(nearRelays))
+	for i := range nearRelayPortalData {
+		nearRelayPortalData[i] = NearRelayPortalData{
+			ID:          nearRelays[i].ID,
+			Name:        nearRelays[i].Name,
+			ClientStats: nearRelays[i].ClientStats,
+		}
+	}
+
+	var deltaRTT float32
+	if packet.Next && packet.NextRTT != 0 && packet.DirectRTT >= packet.NextRTT {
+		deltaRTT = packet.DirectRTT - packet.NextRTT
+	}
+
+	portalData := &SessionPortalData{
+		Meta: SessionMeta{
+			ID:              packet.SessionID,
+			UserHash:        packet.UserHash,
+			DatacenterName:  "local", // todo: we need the datacenter ID or name in the session update packet
+			DatacenterAlias: "local",
+			OnNetworkNext:   packet.Next,
+			NextRTT:         float64(packet.NextRTT),
+			DirectRTT:       float64(packet.DirectRTT),
+			DeltaRTT:        float64(deltaRTT),
+			Location:        *location,
+			ClientAddr:      packet.ClientAddress.String(),
+			ServerAddr:      packet.ServerAddress.String(),
+			Hops:            nil,
+			SDK:             packet.Version.String(),
+			Connection:      uint8(packet.ConnectionType),
+			NearbyRelays:    nearRelayPortalData,
+			Platform:        uint8(packet.PlatformType),
+			BuyerID:         packet.CustomerID,
+		},
+		Slice: SessionSlice{
+			Timestamp: time.Now(),
+			Next: routing.Stats{
+				RTT:        float64(packet.NextRTT),
+				Jitter:     float64(packet.NextJitter),
+				PacketLoss: float64(packet.NextPacketLoss),
+			},
+			Direct: routing.Stats{
+				RTT:        float64(packet.DirectRTT),
+				Jitter:     float64(packet.DirectJitter),
+				PacketLoss: float64(packet.DirectPacketLoss),
+			},
+			Envelope: routing.Envelope{
+				Up:   int64(packet.KbpsUp),
+				Down: int64(packet.KbpsDown),
+			},
+			IsMultiPath:       false,
+			IsTryBeforeYouBuy: false,
+			OnNetworkNext:     packet.Next,
+		},
+		Point: SessionMapPoint{
+			Latitude:  location.Latitude,
+			Longitude: location.Longitude,
+		},
+	}
+
+	if !postSessionHandler.IsPortalBufferFull() {
+		if portalData.Meta.NextRTT != 0 || portalData.Meta.DirectRTT != 0 {
+			postSessionHandler.SendPortalData(portalData)
+			metrics.PostSessionPortalEntriesSent.Add(1)
+		}
+	} else {
+		metrics.PostSessionPortalBufferFull.Add(1)
 	}
 }
