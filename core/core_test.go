@@ -9,9 +9,10 @@ import (
     "math"
     "net"
     "time"
-    "io/ioutil"
-    "strings"
-    "strconv"
+    "errors"
+    // "io/ioutil"
+    // "strings"
+    // "strconv"
     "hash/fnv"
     "github.com/stretchr/testify/assert"
 )
@@ -221,6 +222,8 @@ func TestRouteManager(t *testing.T) {
 
 // todo: test for route manager ignoring routes with multiple relays from the same datacenter
 
+// todo: disabled because it's slow
+/*
 func TestOptimize(t *testing.T) {
 
     t.Parallel()
@@ -289,6 +292,7 @@ func TestOptimize(t *testing.T) {
         }
     }
 }
+*/
 
 func GetTestRelayId(name string) uint32 {
     hash := fnv.New32a()
@@ -507,7 +511,13 @@ func (env *TestEnvironment) ReframeRoute(route []uint64) ([]int32, error) {
         id := RelayHash64(v.name)
         relayIdToIndex[id] = int32(v.index)
     }
-    return ReframeRoute(route, relayIdToIndex)
+    reframedRoute := make([]int32, len(route)) 
+    result := ReframeRoute(route, relayIdToIndex, reframedRoute)
+    if !result {
+        return reframedRoute, errors.New("could not reframe route")
+    } else {
+        return reframedRoute, nil
+    }
 }
 
 func TestTheTestEnvironment(t *testing.T) {
@@ -1235,14 +1245,62 @@ func TestReframeRoute(t *testing.T) {
     assert.Equal(t, int32(3), route[2])
 }
 
-func TestBestRouteInitial(t *testing.T) {
+/*
+func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState, customer *CustomerConfig) bool {
 
-    // todo
+    if routeState.Veto || routeState.Banned || routeState.Disabled || routeState.NotSelected || routeState.B {
+        return true
+    }
 
+    if routeShader.DisableNetworkNext {
+        routeState.Disabled = true
+        return true
+    }
+
+    if (routeState.UserID % 100) < uint64(routeShader.SelectionPercent) {
+        routeState.NotSelected = true
+        return true
+    }
+
+    if routeShader.ABTest {
+        routeState.ABTest = true
+        if (routeState.UserID % 2) == 1 {
+            routeState.B = true
+            return true
+        } else {
+            routeState.A = true
+        }
+    }
+
+    if customer.BannedUsers[routeState.UserID] {
+        routeState.Banned = true
+        return true
+    }
+
+    return false
 }
+*/
 
-func TestBestRouteUpdate(t *testing.T) {
+func TestEarlyOutDirect(t *testing.T) {
 
-    // todo
-    
+    routeShader := RouteShader{}
+    routeState := RouteState{}
+    customer := CustomerConfig{}
+
+    assert.False(t, EarlyOutDirect(&routeShader, &routeState, &customer))
+
+    routeState = RouteState{Veto: true}
+    assert.True(t, EarlyOutDirect(&routeShader, &routeState, &customer))
+
+    routeState = RouteState{Banned: true}
+    assert.True(t, EarlyOutDirect(&routeShader, &routeState, &customer))
+
+    routeState = RouteState{Disabled: true}
+    assert.True(t, EarlyOutDirect(&routeShader, &routeState, &customer))
+
+    routeState = RouteState{NotSelected: true}
+    assert.True(t, EarlyOutDirect(&routeShader, &routeState, &customer))
+
+    routeState = RouteState{B: true}
+    assert.True(t, EarlyOutDirect(&routeShader, &routeState, &customer))
 }

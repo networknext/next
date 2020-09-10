@@ -1,4 +1,3 @@
-
 package main
 
 // #cgo pkg-config: libsodium
@@ -7,7 +6,6 @@ import "C"
 
 import (
     "fmt"
-    "errors"
     "encoding/binary"
     "unsafe"
     "net"
@@ -942,16 +940,15 @@ func GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCo
 
 // -------------------------------------------
 
-func ReframeRoute(routeRelayIds []uint64, relayIdToIndex map[uint64]int32) ([]int32, error) {
-    routeRelays := make([]int32, len(routeRelayIds))
+func ReframeRoute(routeRelayIds []uint64, relayIdToIndex map[uint64]int32, out_routeRelays []int32) bool {
     for i := range routeRelayIds {
         relayIndex, ok := relayIdToIndex[routeRelayIds[i]]
         if !ok {
-            return nil, errors.New("one or more relays in the route don't exist")
+            return false
         }
-        routeRelays[i] = relayIndex
+        out_routeRelays[i] = relayIndex
     }
-    return routeRelays, nil
+    return true
 }
 
 // todo: ReframeRelays (use for sourceRelays, sourceRelayCost and destRelays -- pass them all)
