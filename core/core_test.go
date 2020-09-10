@@ -4,9 +4,9 @@ package main
 import (
     "os"
     "fmt"
-    // "sort"
-    // "math"
-    // "time"
+    "sort"
+    "math"
+    "time"
     "testing"
     "net"
     // "io/ioutil"
@@ -521,8 +521,6 @@ func (env *TestEnvironment) ReframeRouteHash(route []uint64) (int32, [MaxRelaysP
     if !result {
         return 0, reframedRoute
     } else {
-        // todo
-        fmt.Fprintf(os.Stdout, "reframed: %v\n", reframedRoute[:len(route)])
         return int32(len(route)), reframedRoute
     }
 }
@@ -599,7 +597,6 @@ func (env *TestEnvironment) GetBestRoute_Update(routeMatrix []RouteEntry, source
     
     bestRouteRelayNames := make([]string, bestRouteNumRelays)
     for i := 0; i < int(bestRouteNumRelays); i++ {
-        fmt.Fprintf(os.Stdout, "%d: %d\n", i, bestRouteRelays[i])
         routeData := env.relayArray[bestRouteRelays[i]]
         bestRouteRelayNames[i] = routeData.name
     }
@@ -607,8 +604,6 @@ func (env *TestEnvironment) GetBestRoute_Update(routeMatrix []RouteEntry, source
     return bestRouteCost, bestRouteRelayNames
 }
 
-// todo
-/*
 func TestTheTestEnvironment(t *testing.T) {
 
     t.Parallel()
@@ -1065,7 +1060,6 @@ func TestBestRouteCostNoRoute(t *testing.T) {
 
     assert.Equal(t, int32(math.MaxInt32), bestRouteCost)
 }
-*/
 
 func TestCurrentRouteCost(t *testing.T) {
 
@@ -1137,7 +1131,6 @@ func TestCurrentRouteCostReverse(t *testing.T) {
     assert.Equal(t, int32(40), currentRouteCost)
 }
 
-/*
 func TestGetBestRoutesSimple(t *testing.T) {
 
     t.Parallel()
@@ -1623,19 +1616,118 @@ func TestGetBestRoute_Update_Simple(t *testing.T) {
 
     costThreshold := int32(5)
 
-    bestRoutes := env.GetBestRoutes(routeMatrix, sourceRelayNames, sourceRelayCosts, destRelayNames, maxCost)
+    currentRoute := []string{"losangeles", "a", "b", "chicago"}
 
-    sort.Slice(bestRoutes, func(i int, j int) bool { return bestRoutes[i].cost < bestRoutes[j].cost })
+    bestRouteCost, bestRouteRelays := env.GetBestRoute_Update(routeMatrix, sourceRelayNames, sourceRelayCosts, destRelayNames, maxCost, costThreshold, currentRoute)
 
-    t.Log(fmt.Sprintf("best routes = %v\n", bestRoutes))
+    assert.Equal(t, int32(40), bestRouteCost)
+    assert.Equal(t, []string{"losangeles", "a", "b", "chicago"}, bestRouteRelays)
+}
+
+func TestGetBestRoute_Update_BetterRoute(t *testing.T) {
+
+    t.Parallel()
+
+    env := NewTestEnvironment()
+
+    env.AddRelay("losangeles", "10.0.0.1")
+    env.AddRelay("chicago", "10.0.0.2")
+    env.AddRelay("a", "10.0.0.3")
+    env.AddRelay("b", "10.0.0.4")
+
+    env.SetCost("losangeles", "chicago", 1)
+    env.SetCost("losangeles", "a", 10)
+    env.SetCost("a", "chicago", 50)
+    env.SetCost("a", "b", 10)
+    env.SetCost("b", "chicago", 10)
+
+    costMatrix, numRelays := env.GetCostMatrix()
+
+    relayDatacenters := env.GetRelayDatacenters()
+
+    routeMatrix := Optimize(numRelays, costMatrix, 5, relayDatacenters)
+
+    sourceRelayNames := []string{"losangeles"}
+    sourceRelayCosts := []int32{1}
+
+    destRelayNames := []string{"chicago"}
+
+    maxCost := int32(5)
+
+    costThreshold := int32(5)
 
     currentRoute := []string{"losangeles", "a", "b", "chicago"}
 
     bestRouteCost, bestRouteRelays := env.GetBestRoute_Update(routeMatrix, sourceRelayNames, sourceRelayCosts, destRelayNames, maxCost, costThreshold, currentRoute)
 
-    t.Log(fmt.Sprintf("%d: %v\n", bestRouteCost, bestRouteRelays))
-
-    assert.Equal(t, int32(40), bestRouteCost)
-    assert.Equal(t, []string{"losangeles", "a", "b", "chicago"}, bestRouteRelays)
+    assert.Equal(t, int32(2), bestRouteCost)
+    assert.Equal(t, []string{"losangeles", "chicago"}, bestRouteRelays)
 }
-*/
+
+func TestGetBestRoute_Update_NoRoute(t *testing.T) {
+
+    t.Parallel()
+
+    env := NewTestEnvironment()
+
+    env.AddRelay("losangeles", "10.0.0.1")
+    env.AddRelay("chicago", "10.0.0.2")
+    env.AddRelay("a", "10.0.0.3")
+    env.AddRelay("b", "10.0.0.4")
+
+    costMatrix, numRelays := env.GetCostMatrix()
+
+    relayDatacenters := env.GetRelayDatacenters()
+
+    routeMatrix := Optimize(numRelays, costMatrix, 5, relayDatacenters)
+
+    sourceRelayNames := []string{"losangeles"}
+    sourceRelayCosts := []int32{1}
+
+    destRelayNames := []string{"chicago"}
+
+    maxCost := int32(5)
+
+    costThreshold := int32(5)
+
+    currentRoute := []string{"losangeles", "a", "b", "chicago"}
+
+    bestRouteCost, bestRouteRelays := env.GetBestRoute_Update(routeMatrix, sourceRelayNames, sourceRelayCosts, destRelayNames, maxCost, costThreshold, currentRoute)
+
+    assert.Equal(t, int32(0), bestRouteCost)
+    assert.Equal(t, []string{}, bestRouteRelays)
+}
+
+func TestGetBestRoute_Update_NegativeMaxCost(t *testing.T) {
+
+    t.Parallel()
+
+    env := NewTestEnvironment()
+
+    env.AddRelay("losangeles", "10.0.0.1")
+    env.AddRelay("chicago", "10.0.0.2")
+    env.AddRelay("a", "10.0.0.3")
+    env.AddRelay("b", "10.0.0.4")
+
+    costMatrix, numRelays := env.GetCostMatrix()
+
+    relayDatacenters := env.GetRelayDatacenters()
+
+    routeMatrix := Optimize(numRelays, costMatrix, 5, relayDatacenters)
+
+    sourceRelayNames := []string{"losangeles"}
+    sourceRelayCosts := []int32{1}
+
+    destRelayNames := []string{"chicago"}
+
+    maxCost := int32(-1)
+
+    costThreshold := int32(5)
+
+    currentRoute := []string{"losangeles", "a", "b", "chicago"}
+
+    bestRouteCost, bestRouteRelays := env.GetBestRoute_Update(routeMatrix, sourceRelayNames, sourceRelayCosts, destRelayNames, maxCost, costThreshold, currentRoute)
+
+    assert.Equal(t, int32(0), bestRouteCost)
+    assert.Equal(t, []string{}, bestRouteRelays)
+}

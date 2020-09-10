@@ -5,7 +5,6 @@ package main
 import "C"
 
 import (
-    "os"
     "fmt"
     "encoding/binary"
     "unsafe"
@@ -992,9 +991,6 @@ func GetBestRoute_Initial(routeMatrix []RouteEntry, sourceRelays []int32, source
 
 func GetBestRoute_Update(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost[] int32, destRelays []int32, maxCost int32, costThreshold int32, currentRouteNumRelays int32, currentRouteRelays [MaxRelaysPerRoute]int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays *[MaxRelaysPerRoute]int32) bool {
 
-    // todo
-    fmt.Fprintf(os.Stdout, "core - current route: %v\n", currentRouteRelays)
-
     // if the current route no longer exists, pick a new route
 
     currentRouteCost := GetCurrentRouteCost(routeMatrix, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCost, destRelays)
@@ -1014,9 +1010,6 @@ func GetBestRoute_Update(routeMatrix []RouteEntry, sourceRelays []int32, sourceR
     }
 
     // hold current route
-
-    // todo
-    fmt.Fprintf(os.Stdout, "core - hold current: %v\n", currentRouteRelays)
 
     *out_updatedRouteCost = currentRouteCost
     *out_updatedRouteNumRelays = currentRouteNumRelays
