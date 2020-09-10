@@ -774,7 +774,10 @@ func mainReturnWithCode() int {
 
 					if _, err := conn.WriteToUDP(response, fromAddr); err != nil {
 						level.Error(logger).Log("msg", "failed to write UDP response", "err", err)
+						continue
 					}
+
+					level.Debug(logger).Log("successfully responded")
 				}
 			}
 
