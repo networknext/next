@@ -5,13 +5,6 @@
 namespace crypto
 {
   template <typename T>
-  INLINE std::enable_if_t<std::numeric_limits<T>::is_integer, T> Random()
-  {
-    static auto rand = std::bind(std::uniform_int_distribution<T>(), std::default_random_engine());
-    return rand();
-  }
-
-  template <typename T>
   INLINE auto RandomBytes(T& buffer, size_t length) -> bool
   {
     if (buffer.size() < length) {

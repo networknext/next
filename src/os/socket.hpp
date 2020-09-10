@@ -105,13 +105,13 @@ namespace os
 
   INLINE auto Socket::create(Address& bind_addr, SocketConfig config) -> bool
   {
-    if (bind_addr.Type == AddressType::None) {
+    if (bind_addr.type == AddressType::None) {
       return false;
     }
 
     // create socket
     {
-      this->socket_fd = socket((bind_addr.Type == AddressType::IPv4) ? PF_INET : PF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+      this->socket_fd = socket((bind_addr.type == AddressType::IPv4) ? PF_INET : PF_INET6, SOCK_DGRAM, IPPROTO_UDP);
 
       if (this->socket_fd < 0) {
         LOG(ERROR, "failed to create socket");
@@ -122,7 +122,7 @@ namespace os
 
     // force IPv6 only if necessary
     {
-      if (bind_addr.Type == AddressType::IPv6) {
+      if (bind_addr.type == AddressType::IPv6) {
         int enable = 1;
         if (setsockopt(this->socket_fd, IPPROTO_IPV6, IPV6_V6ONLY, &enable, sizeof(enable)) != 0) {
           LOG(ERROR, "failed to set socket ipv6 only");
@@ -143,7 +143,7 @@ namespace os
 
     // bind to port
     {
-      if (bind_addr.Type == AddressType::IPv6) {
+      if (bind_addr.type == AddressType::IPv6) {
         if (!bind_ipv6(bind_addr)) {
           return false;
         }
@@ -157,8 +157,8 @@ namespace os
     // if bound to port 0, find the actual port we got
     // port 0 is a "wildcard" so using it will bind to any available port
     {
-      if (bind_addr.Port == 0) {
-        if (bind_addr.Type == AddressType::IPv6) {
+      if (bind_addr.port == 0) {
+        if (bind_addr.type == AddressType::IPv6) {
           if (!get_port_ipv6(bind_addr)) {
             return false;
           }
@@ -186,7 +186,7 @@ namespace os
 
   INLINE auto Socket::send(const Address& to, const uint8_t* data, size_t size) const -> bool
   {
-    if (to.Type != AddressType::IPv4 && to.Type != AddressType::IPv6) {
+    if (to.type != AddressType::IPv4 && to.type != AddressType::IPv6) {
       return false;
     }
 
@@ -202,7 +202,7 @@ namespace os
       return false;
     }
 
-    if (to.Type == AddressType::IPv6) {
+    if (to.type == AddressType::IPv6) {
       sockaddr_in6 socket_address;
       to.into(socket_address);
 
@@ -211,7 +211,7 @@ namespace os
         LOG(ERROR, "sendto (", to, ") failed");
         return false;
       }
-    } else if (to.Type == AddressType::IPv4) {
+    } else if (to.type == AddressType::IPv4) {
       sockaddr_in socket_address;
       to.into(socket_address);
 
@@ -373,9 +373,9 @@ namespace os
   {
     sockaddr_in socket_address = {};
     socket_address.sin_family = AF_INET;
-    socket_address.sin_addr.s_addr = (((uint32_t)addr.IPv4[0])) | (((uint32_t)addr.IPv4[1]) << 8) |
-                                     (((uint32_t)addr.IPv4[2]) << 16) | (((uint32_t)addr.IPv4[3]) << 24);
-    socket_address.sin_port = htons(addr.Port);
+    socket_address.sin_addr.s_addr = (((uint32_t)addr.ipv4[0])) | (((uint32_t)addr.ipv4[1]) << 8) |
+                                     (((uint32_t)addr.ipv4[2]) << 16) | (((uint32_t)addr.ipv4[3]) << 24);
+    socket_address.sin_port = htons(addr.port);
 
     if (bind(this->socket_fd, reinterpret_cast<sockaddr*>(&socket_address), sizeof(socket_address)) < 0) {
       LOG(ERROR, "failed to bind to address ", addr, " (ipv4)");
@@ -393,10 +393,10 @@ namespace os
 
     socket_address.sin6_family = AF_INET6;
     for (int i = 0; i < 8; i++) {
-      reinterpret_cast<uint16_t*>(&socket_address.sin6_addr)[i] = htons(addr.IPv6[i]);
+      reinterpret_cast<uint16_t*>(&socket_address.sin6_addr)[i] = htons(addr.ipv6[i]);
     }
 
-    socket_address.sin6_port = htons(addr.Port);
+    socket_address.sin6_port = htons(addr.port);
 
     if (bind(this->socket_fd, reinterpret_cast<sockaddr*>(&socket_address), sizeof(socket_address)) < 0) {
       LOG(ERROR, "failed to bind socket (ipv6)");
@@ -418,7 +418,7 @@ namespace os
       close();
       return false;
     }
-    addr.Port = ntohs(sin.sin_port);
+    addr.port = ntohs(sin.sin_port);
     return true;
   }
 
@@ -432,7 +432,7 @@ namespace os
       close();
       return false;
     }
-    addr.Port = ntohs(sin.sin6_port);
+    addr.port = ntohs(sin.sin6_port);
     return true;
   }
 

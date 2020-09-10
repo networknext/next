@@ -1,7 +1,6 @@
 #include "includes.h"
 #include "testing/test.hpp"
-
-#include "crypto/bytes.hpp"
+#include "testing/helpers.hpp"
 
 #include "core/continue_token.hpp"
 
@@ -26,9 +25,9 @@ Test(core_ContinueTokenV4_general)
   std::array<uint8_t, crypto_box_NONCEBYTES> nonce;
   crypto::RandomBytes(nonce, crypto_box_NONCEBYTES);
 
-  const auto ExpireTimestamp = crypto::Random<uint64_t>();
-  const auto SessionID = crypto::Random<uint64_t>();
-  const auto SessionVersion = crypto::Random<uint8_t>();
+  const auto ExpireTimestamp = RandomWhole<uint64_t>();
+  const auto SessionID = RandomWhole<uint64_t>();
+  const auto SessionVersion = RandomWhole<uint8_t>();
 
   ContinueTokenV4 input_token;
   {
@@ -124,10 +123,10 @@ Test(core_ContinueToken_general)
   std::array<uint8_t, crypto_box_NONCEBYTES> nonce;
   crypto::RandomBytes(nonce, crypto_box_NONCEBYTES);
 
-  const auto ExpireTimestamp = crypto::Random<uint64_t>();
-  const auto SessionID = crypto::Random<uint64_t>();
-  const auto SessionVersion = crypto::Random<uint8_t>();
-  const auto SessionFlags = crypto::Random<uint8_t>();
+  const auto ExpireTimestamp = RandomWhole<uint64_t>();
+  const auto SessionID = RandomWhole<uint64_t>();
+  const auto SessionVersion = RandomWhole<uint8_t>();
+  const auto SessionFlags = RandomWhole<uint8_t>();
 
   ContinueToken input_token;
   {

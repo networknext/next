@@ -10,7 +10,7 @@ using net::AddressType;
 Test(ReadAddress_ipv4)
 {
   Address addr;
-  std::array<uint8_t, Address::ByteSize> bin;
+  std::array<uint8_t, Address::SIZE_OF> bin;
   bin.fill(0);
   bin[0] = static_cast<uint8_t>(AddressType::IPv4);
   bin[1] = 127;
@@ -22,13 +22,13 @@ Test(ReadAddress_ipv4)
 
   size_t index = 0;
   check(encoding::read_address(bin, index, addr));
-  check(index == Address::ByteSize);
+  check(index == Address::SIZE_OF);
 }
 
 Test(ReadAddress_ipv6)
 {
   Address addr;
-  std::array<uint8_t, Address::ByteSize> bin;
+  std::array<uint8_t, Address::SIZE_OF> bin;
   bin[0] = static_cast<uint8_t>(AddressType::IPv6);
   bin[1] = 0x1F;
   bin[2] = 0x3B;
@@ -52,18 +52,18 @@ Test(ReadAddress_ipv6)
   size_t index = 0;
   check(encoding::read_address(bin, index, addr));
 
-  check(addr.Type == AddressType::IPv6);
-  check(addr.IPv6[0] == 0x3b1f);
-  check(addr.IPv6[1] == 0x3c33);
-  check(addr.IPv6[2] == 0x9928);
-  check(addr.IPv6[3] == 0xffff);
-  check(addr.IPv6[4] == 0xffff);
-  check(addr.IPv6[5] == 0xffff);
-  check(addr.IPv6[6] == 0xffff);
-  check(addr.IPv6[7] == 0xffff);
-  check(addr.Port == 51034);
+  check(addr.type == AddressType::IPv6);
+  check(addr.ipv6[0] == 0x3b1f);
+  check(addr.ipv6[1] == 0x3c33);
+  check(addr.ipv6[2] == 0x9928);
+  check(addr.ipv6[3] == 0xffff);
+  check(addr.ipv6[4] == 0xffff);
+  check(addr.ipv6[5] == 0xffff);
+  check(addr.ipv6[6] == 0xffff);
+  check(addr.ipv6[7] == 0xffff);
+  check(addr.port == 51034);
 
-  check(index == Address::ByteSize);
+  check(index == Address::SIZE_OF);
   check(addr.to_string() == "[3b1f:3c33:9928:ffff:ffff:ffff:ffff:ffff]:51034").on_fail([&] {
     std::cout << addr.to_string() << std::endl;
   });
@@ -72,7 +72,7 @@ Test(ReadAddress_ipv6)
 Test(ReadAddress_none)
 {
   Address before, after;
-  std::array<uint8_t, Address::ByteSize> bin;
+  std::array<uint8_t, Address::SIZE_OF> bin;
   bin.fill(0);
   bin[0] = static_cast<uint8_t>(AddressType::None);
   bin[1] = 0x1F;
@@ -96,7 +96,7 @@ Test(ReadAddress_none)
 
   size_t index = 0;
   check(encoding::read_address(bin, index, after));
-  check(index == Address::ByteSize);
+  check(index == Address::SIZE_OF);
   check(after.to_string() == "NONE").on_fail([&] {
     std::cout << "\n'" << after.to_string() << '\'' << std::endl;
   });

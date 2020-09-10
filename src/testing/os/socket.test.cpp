@@ -2,7 +2,6 @@
 #include "testing/test.hpp"
 
 #include "crypto/bytes.hpp"
-#include "net/address.hpp"
 #include "os/socket.hpp"
 
 using core::Packet;
@@ -24,7 +23,7 @@ Test(os_socket_nonblocking_ipv4)
   check(bind_address.parse("0.0.0.0"));
   check(local_address.parse("127.0.0.1"));
   check(socket.create(bind_address, config));
-  local_address.Port = bind_address.Port;
+  local_address.port = bind_address.port;
 
   // regular buffer
   {
@@ -84,7 +83,7 @@ Test(os_socket_blocking_ipv4_with_timeout)
   check(local_address.parse("127.0.0.1"));
   check(socket.create(bind_address, config));
 
-  local_address.Port = bind_address.Port;
+  local_address.port = bind_address.port;
   std::array<uint8_t, 256> packet = {};
   check(socket.send(local_address, packet.data(), packet.size()));
   size_t packets_received = 0;
@@ -108,7 +107,7 @@ Test(os_socket_blocking_with_no_timeout_ipv4)
   check(bind_address.parse("0.0.0.0"));
   check(local_address.parse("127.0.0.1"));
   check(socket.create(bind_address, config));
-  local_address.Port = bind_address.Port;
+  local_address.port = bind_address.port;
   std::array<uint8_t, 256> packet = {};
   check(socket.send(local_address, packet.data(), packet.size()));
   check(socket.recv(from, packet.data(), packet.size()) == packet.size());
@@ -128,7 +127,7 @@ Test(os_socket_nonblocking_ipv6)
   check(bind_address.parse("[::]"));
   check(local_address.parse("[::1]"));
   check(socket.create(bind_address, config));
-  local_address.Port = bind_address.Port;
+  local_address.port = bind_address.port;
   std::array<uint8_t, 256> packet = {};
   check(socket.send(local_address, packet.data(), packet.size()));
   size_t packets_received = 0;
@@ -154,7 +153,7 @@ Test(os_socket_blocking_ipv6)
   check(local_address.parse("[::1]"));
   check(socket.create(bind_address, config));
 
-  local_address.Port = bind_address.Port;
+  local_address.port = bind_address.port;
   std::array<uint8_t, 256> packet = {};
   check(socket.send(local_address, packet.data(), packet.size()));
   size_t packets_received = 0;
@@ -179,7 +178,7 @@ Test(os_socket_blocking_with_no_timeout_ipv6)
   check(local_address.parse("[::1]"));
   check(socket.create(bind_address, config));
 
-  local_address.Port = bind_address.Port;
+  local_address.port = bind_address.port;
   std::array<uint8_t, 256> packet = {};
   check(socket.send(local_address, packet.data(), packet.size()));
   check(socket.recv(from, packet.data(), packet.size()) == packet.size());

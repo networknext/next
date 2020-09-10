@@ -7,7 +7,7 @@ using core::RelayManager;
 using core::RelayPingInfo;
 using core::RelayStats;
 
-Test(RelayManager)
+Test(core_RelayManager_general)
 {
   const int MaxRelays = MAX_RELAYS;
   const int NumRelays = 32;
@@ -20,7 +20,7 @@ Test(RelayManager)
     std::stringstream ss;
     ss << "127.0.0.1:" << 40000 + i;
     check(relay.address.parse(ss.str()) == true);
-    check(relay.address.Port == 40000 + i);
+    check(relay.address.port == 40000 + i);
   }
 
   RelayManager manager;

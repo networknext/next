@@ -2,7 +2,6 @@
 #include "testing/test.hpp"
 
 #include "core/handlers/client_to_server_handler.hpp"
-#include "crypto/bytes.hpp"
 
 #define CRYPTO_HELPERS
 #define OS_HELPERS

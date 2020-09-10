@@ -104,22 +104,10 @@ namespace testing
     return SpecCheck(result, condition, file, line);
   }
 
-  template <typename T>
-  std::enable_if_t<std::is_floating_point<T>::value, T> RandomDecimal();
-
-  net::Address RandomAddress();
-
   // slow but easy to write, use for tests only
   // valid return types are std string/vector
   template <class ReturnType>
   ReturnType ReadFile(std::string filename);
-
-  template <typename T>
-  std::enable_if_t<std::is_floating_point<T>::value, T> RandomDecimal()
-  {
-    static auto rand = std::bind(std::uniform_real_distribution<T>(), std::default_random_engine());
-    return static_cast<T>(rand());
-  }
 
   template <class ReturnType>
   ReturnType ReadFile(std::string filename)

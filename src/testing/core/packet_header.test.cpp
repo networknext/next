@@ -2,7 +2,9 @@
 #include "testing/test.hpp"
 
 #include "core/packet_header.hpp"
-#include "crypto/bytes.hpp"
+
+#define CRYPTO_HELPERS
+#include "testing/helpers.hpp"
 
 using core::Packet;
 using core::PacketDirection;
@@ -13,11 +15,7 @@ using crypto::GenericKey;
 
 Test(core_PacketHeaderV4_client_to_server)
 {
-  const GenericKey private_key = [] {
-    GenericKey private_key;
-    crypto::RandomBytes(private_key, private_key.size());
-    return private_key;
-  }();
+  const GenericKey private_key = random_private_key();
 
   Packet packet;
 

@@ -4,16 +4,18 @@
 #include "net/address.hpp"
 #include "encoding/write.hpp"
 
+using net::Address;
+
 Test(WriteAddress_ipv4)
 {
-  net::Address addr;
-  std::array<uint8_t, net::Address::ByteSize> bin;
+  Address addr;
+  std::array<uint8_t, Address::SIZE_OF> bin;
 
   bin.fill(0);
   addr.parse("127.0.0.1:51034");
   size_t index = 0;
   encoding::write_address(bin, index, addr);
-  check(index == net::Address::ByteSize);
+  check(index == Address::SIZE_OF);
   check(bin[0] == net::AddressType::IPv4);
   check(bin[1] == 127);
   check(bin[2] == 0);
@@ -25,14 +27,14 @@ Test(WriteAddress_ipv4)
 
 Test(WriteAddress_ipv6)
 {
-  net::Address addr;
-  std::array<uint8_t, net::Address::ByteSize> bin;
+  Address addr;
+  std::array<uint8_t, Address::SIZE_OF> bin;
 
   bin.fill(0);
   addr.parse("[3b1f:3c33:9928:ffff:ffff:ffff:ffff:ffff]:51034");
   size_t index = 0;
   encoding::write_address(bin, index, addr);
-  check(index == net::Address::ByteSize);
+  check(index == Address::SIZE_OF);
   check(bin[0] == net::AddressType::IPv6);
   check(bin[1] == 0x1F);
   check(bin[2] == 0x3B);
@@ -56,8 +58,8 @@ Test(WriteAddress_ipv6)
 
 Test(WriteAddress_none)
 {
-  net::Address addr;
-  std::array<uint8_t, net::Address::ByteSize> bin;
+  Address addr;
+  std::array<uint8_t, Address::SIZE_OF> bin;
 
   bin.fill(0);
   addr.parse("1udai898haidfihe");

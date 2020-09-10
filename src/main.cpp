@@ -216,15 +216,15 @@ int main(int argc, const char* argv[])
   // makes a shared ptr to a socket object
   auto make_socket = [&](Address& addr_in, SocketConfig config) -> SocketPtr {
     Address addr;
-    addr.Port = addr_in.Port;
-    addr.Type = addr_in.Type;
+    addr.port = addr_in.port;
+    addr.type = addr_in.type;
     auto socket = std::make_shared<Socket>();
     if (!socket->create(addr, config)) {
       return nullptr;
     }
 
     // if port was 0, this will set the reference parameter to what it changed to
-    addr_in.Port = addr.Port;
+    addr_in.port = addr.port;
 
     sockets.push_back(socket);
 

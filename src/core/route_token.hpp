@@ -19,9 +19,9 @@ namespace core
     // KbpsDown (4) +
     // NextAddr (net::Address::size) +
     // PrivateKey (crypto_box_SECRETKEYBYTES) =
-    static const size_t ByteSize = TokenV4::SIZE_OF + 4 + 4 + net::Address::ByteSize + crypto_box_SECRETKEYBYTES;
-    static const size_t EncryptedByteSize = crypto_box_NONCEBYTES + RouteTokenV4::ByteSize + crypto_box_MACBYTES;
-    static const size_t EncryptionLength = RouteTokenV4::ByteSize + crypto_box_MACBYTES;
+    static const size_t SIZE_OF = TokenV4::SIZE_OF + 4 + 4 + net::Address::SIZE_OF + crypto_box_SECRETKEYBYTES;
+    static const size_t EncryptedByteSize = crypto_box_NONCEBYTES + RouteTokenV4::SIZE_OF + crypto_box_MACBYTES;
+    static const size_t EncryptionLength = RouteTokenV4::SIZE_OF + crypto_box_MACBYTES;
 
     uint32_t KbpsUp;
     uint32_t KbpsDown;
@@ -118,7 +118,7 @@ namespace core
 
   INLINE auto RouteTokenV4::write(Packet& packet, size_t& index) -> bool
   {
-    if (index + RouteTokenV4::ByteSize > packet.buffer.size()) {
+    if (index + RouteTokenV4::SIZE_OF > packet.buffer.size()) {
       return false;
     }
 
@@ -145,7 +145,7 @@ namespace core
       return false;
     }
 
-    assert(index - start == RouteTokenV4::ByteSize);  // TODO move this to a test
+    assert(index - start == RouteTokenV4::SIZE_OF);  // TODO move this to a test
 
     return true;
   }
@@ -176,7 +176,7 @@ namespace core
       return false;
     }
 
-    assert(index - start == RouteTokenV4::ByteSize);
+    assert(index - start == RouteTokenV4::SIZE_OF);
     return true;
   }
 
@@ -195,7 +195,7 @@ namespace core
      crypto_box_easy(
       &packet.buffer[encryption_start],
       &packet.buffer[encryption_start],
-      RouteTokenV4::ByteSize,
+      RouteTokenV4::SIZE_OF,
       nonce.data(),
       receiver_public_key.data(),
       sender_private_key.data()) != 0) {
@@ -240,7 +240,7 @@ namespace core
     // KbpsDown (4) +
     // NextAddr (net::Address::size) +
     // PrivateKey (crypto_box_SECRETKEYBYTES) =
-    static const size_t ByteSize = Token::SIZE_OF + 4 + 4 + net::Address::ByteSize + crypto_box_SECRETKEYBYTES;
+    static const size_t ByteSize = Token::SIZE_OF + 4 + 4 + net::Address::SIZE_OF + crypto_box_SECRETKEYBYTES;
     static const size_t EncryptedByteSize = crypto_box_NONCEBYTES + RouteToken::ByteSize + crypto_box_MACBYTES;
     static const size_t EncryptionLength = RouteToken::ByteSize + crypto_box_MACBYTES;
 

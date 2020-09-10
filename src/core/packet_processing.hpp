@@ -96,9 +96,9 @@ namespace core
         }
 
         size_t header_size = 0;
-        if (pkt.addr.Type == AddressType::IPv4) {
+        if (pkt.addr.type == AddressType::IPv4) {
           header_size = net::IPv4UDPHeaderSize;
-        } else if (pkt.addr.Type == AddressType::IPv6) {
+        } else if (pkt.addr.type == AddressType::IPv6) {
           header_size = net::IPv6UDPHeaderSize;
         }
 
@@ -148,9 +148,9 @@ namespace core
 
       size_t header_bytes = 0;
 
-      if (packet.addr.Type == net::AddressType::IPv4) {
+      if (packet.addr.type == net::AddressType::IPv4) {
         header_bytes = net::IPv4UDPHeaderSize;
-      } else if (packet.addr.Type == net::AddressType::IPv6) {
+      } else if (packet.addr.type == net::AddressType::IPv6) {
         header_bytes = net::IPv6UDPHeaderSize;
       }
 

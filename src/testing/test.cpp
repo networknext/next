@@ -1,8 +1,6 @@
 #include "includes.h"
 #include "test.hpp"
 
-#include "crypto/bytes.hpp"
-
 namespace
 {
   struct
@@ -74,22 +72,4 @@ namespace testing
     return no_tests_skipped;
   }
 
-  net::Address RandomAddress()
-  {
-    net::Address retval;
-    if (crypto::Random<uint8_t>() & 1) {
-      retval.Type = net::AddressType::IPv4;
-      for (auto& ip : retval.IPv4) {
-        ip = crypto::Random<uint8_t>();
-      }
-      retval.Port = crypto::Random<uint16_t>();
-    } else {
-      retval.Type = net::AddressType::IPv6;
-      for (auto& ip : retval.IPv6) {
-        ip = crypto::Random<uint16_t>();
-      }
-      retval.Port = crypto::Random<uint16_t>();
-    }
-    return retval;
-  }
 }  // namespace testing
