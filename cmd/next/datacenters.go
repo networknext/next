@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/csv"
 	"fmt"
+	"os"
 	"regexp"
 
 	"github.com/modood/table"
@@ -19,10 +21,22 @@ type datacenterReply struct {
 	SupplierName string
 }
 
-func datacenters(rpcClient jsonrpc.RPCClient, env Environment, filter string, signed bool) {
+func datacenters(
+	rpcClient jsonrpc.RPCClient,
+	env Environment,
+	filter string,
+	signed bool,
+	csvOutput bool,
+) {
 	args := localjsonrpc.DatacentersArgs{
 		Name: filter,
 	}
+
+	datacentersCSV := [][]string{}
+
+	datacentersCSV = append(datacentersCSV, []string{
+		"Name", "HexID", "Latitude", "Longitude",
+	})
 
 	var reply localjsonrpc.DatacentersReply
 	if err := rpcClient.CallFor(&reply, "OpsService.Datacenters", args); err != nil {
@@ -30,33 +44,70 @@ func datacenters(rpcClient jsonrpc.RPCClient, env Environment, filter string, si
 		return
 	}
 
-	var dcs []datacenterReply
+	if csvOutput {
+		if signed {
+			for _, dc := range reply.Datacenters {
+				datacentersCSV = append(datacentersCSV, []string{
+					dc.Name,
+					fmt.Sprintf("%d", int64(dc.ID)),
+					fmt.Sprintf("%.2f", dc.Latitude),
+					fmt.Sprintf("%.2f", dc.Longitude),
+				})
+			}
+		} else {
+			for _, dc := range reply.Datacenters {
+				datacentersCSV = append(datacentersCSV, []string{
+					dc.Name,
+					fmt.Sprintf("%d", dc.ID),
+					fmt.Sprintf("%.2f", dc.Latitude),
+					fmt.Sprintf("%.2f", dc.Longitude),
+				})
+			}
+		}
 
-	if signed {
-		for _, dc := range reply.Datacenters {
-			dcs = append(dcs, datacenterReply{
-				Name:         dc.Name,
-				ID:           fmt.Sprintf("%d", dc.SignedID),
-				Latitude:     dc.Latitude,
-				Longitude:    dc.Longitude,
-				Enabled:      dc.Enabled,
-				SupplierName: dc.SupplierName,
-			})
+		fileName := "./datacenters.csv"
+		f, err := os.Create(fileName)
+		if err != nil {
+			handleRunTimeError(fmt.Sprintf("Error creating local CSV file %s: %v\n", fileName, err), 1)
 		}
+
+		writer := csv.NewWriter(f)
+		err = writer.WriteAll(datacentersCSV)
+		if err != nil {
+			handleRunTimeError(fmt.Sprintf("Error writing local CSV file %s: %v\n", fileName, err), 1)
+		}
+		fmt.Println("CSV file written: datacenters.csv")
+
 	} else {
-		for _, dc := range reply.Datacenters {
-			dcs = append(dcs, datacenterReply{
-				Name:         dc.Name,
-				ID:           fmt.Sprintf("%016x", dc.ID),
-				Latitude:     dc.Latitude,
-				Longitude:    dc.Longitude,
-				Enabled:      dc.Enabled,
-				SupplierName: dc.SupplierName,
-			})
+
+		var dcs []datacenterReply
+		if signed {
+			for _, dc := range reply.Datacenters {
+				dcs = append(dcs, datacenterReply{
+					Name: dc.Name,
+					// ID:           fmt.Sprintf("%d", dc.SignedID), // ToDo: could come from storage (exists in firestore)
+					ID:           fmt.Sprintf("%d", int64(dc.ID)),
+					Latitude:     dc.Latitude,
+					Longitude:    dc.Longitude,
+					Enabled:      dc.Enabled,
+					SupplierName: dc.SupplierName,
+				})
+			}
+		} else {
+			for _, dc := range reply.Datacenters {
+				dcs = append(dcs, datacenterReply{
+					Name:         dc.Name,
+					ID:           fmt.Sprintf("%016x", dc.ID),
+					Latitude:     dc.Latitude,
+					Longitude:    dc.Longitude,
+					Enabled:      dc.Enabled,
+					SupplierName: dc.SupplierName,
+				})
+			}
 		}
+		table.Output(dcs)
 	}
 
-	table.Output(dcs)
 }
 
 func addDatacenter(rpcClient jsonrpc.RPCClient, env Environment, datacenter routing.Datacenter) {

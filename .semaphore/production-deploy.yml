@@ -42,8 +42,17 @@ blocks:
           commands:
             - make build-server-backend-artifacts-prod
             - make publish-server-backend-artifacts-prod
+        - name: Server Backend4
+          commands:
+            - make build-server-backend4-artifacts-prod
+            - make publish-server-backend4-artifacts-prod
         - name: Bootstrap Script
           commands:
             - make publish-bootstrap-script-prod
+        - name: Ghost Army
+          commands:
+            - make build-ghost-army-artifacts-prod
+            - make publish-ghost-army-artifacts-prod
+            - make publish-ghost-army-bootstrap-script-prod
       secrets:
         - name: google-cloud-platform-prod

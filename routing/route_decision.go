@@ -179,11 +179,6 @@ func DecideDowngradeRTT(rttHysteresis float64, yolo bool) DecisionFunc {
 // Multipath sessions aren't considered.
 func DecideVeto(onNNSliceCounter uint64, rttVeto float64, packetLossSafety bool, yolo bool) DecisionFunc {
 	return func(prevDecision Decision, predictedNextStats, lastNextStats, lastDirectStats *Stats) Decision {
-		// If we've already decided on multipath, then don't change the reason
-		if IsMultipath(prevDecision) {
-			return prevDecision
-		}
-
 		actualImprovement := lastDirectStats.RTT - lastNextStats.RTT
 
 		if prevDecision.OnNetworkNext {
@@ -197,14 +192,17 @@ func DecideVeto(onNNSliceCounter uint64, rttVeto float64, packetLossSafety bool,
 				return Decision{false, DecisionVetoRTT}
 			}
 
-			// Whether or not the network next route made the packet loss worse, if the buyer has packet loss safety enabled
-			if onNNSliceCounter > 2 && packetLossSafety && lastNextStats.PacketLoss > lastDirectStats.PacketLoss {
-				// If the buyer has YouOnlyLiveOnce safety setting enabled, add that reason to the DecisionReason
-				if yolo {
-					return Decision{false, DecisionVetoPacketLoss | DecisionVetoYOLO}
-				}
+			// Only check the packet loss veto if it's not a multipath session
+			if !IsMultipath(prevDecision) {
+				// Whether or not the network next route made the packet loss worse, if the buyer has packet loss safety enabled
+				if onNNSliceCounter > 2 && packetLossSafety && lastNextStats.PacketLoss > lastDirectStats.PacketLoss {
+					// If the buyer has YouOnlyLiveOnce safety setting enabled, add that reason to the DecisionReason
+					if yolo {
+						return Decision{false, DecisionVetoPacketLoss | DecisionVetoYOLO}
+					}
 
-				return Decision{false, DecisionVetoPacketLoss}
+					return Decision{false, DecisionVetoPacketLoss}
+				}
 			}
 
 			// If the route isn't vetoed, then it stays on network next
@@ -323,17 +321,22 @@ func DecideMultipath(rttMultipath bool, jitterMultipath bool, packetLossMultipat
 	return func(prevDecision Decision, predictedNextStats, lastNextStats, lastDirectStats *Stats) Decision {
 		decision := prevDecision
 
+		// If there was a ping spike and the session was using multipath, it might have been due
+		// to an overloaded connection from 2x multipath bandwidth, so "multipath veto" this user
+		if (IsMultipath(decision) || IsVetoed(decision)) && (lastDirectStats.RTT >= 500 || lastNextStats.RTT >= 500) {
+			decision.OnNetworkNext = false
+			decision.Reason = DecisionMultipathVetoRTT
+			return decision
+		}
+
+		// If the route decision was already set to veto, don't unveto it
+		if IsVetoed(decision) {
+			return decision
+		}
+
 		// If we've already decided on multipath, then don't change the reason
 		// This is to make sure that the session can't go back to direct, since multipath always needs a next route
 		if IsMultipath(decision) {
-			// However if there was a ping spike it might have been due to an overloaded connection for 2x multipath bandwidth,
-			// so "multipath veto" this user
-			if lastDirectStats.RTT >= 500 || lastNextStats.RTT >= 500 {
-				decision.OnNetworkNext = false
-				decision.Reason = DecisionMultipathVetoRTT
-				return decision
-			}
-
 			return decision
 		}
 

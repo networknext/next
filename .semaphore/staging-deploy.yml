@@ -42,6 +42,10 @@ blocks:
           commands:
             - make build-server-backend-artifacts-staging
             - make publish-server-backend-artifacts-staging
+        - name: Server Backend4
+          commands:
+            - make build-server-backend4-artifacts-staging
+            - make publish-server-backend4-artifacts-staging
         - name: Load Test
           commands:
             - make build-load-test-artifacts-staging
@@ -60,5 +64,10 @@ blocks:
         - name: Client Bootstrap Script
           commands:
             - make publish-client-bootstrap-script-staging
+        - name: Ghost Army
+          commands:
+            - make build-ghost-army-artifacts-staging
+            - make publish-ghost-army-artifacts-staging
+            - make publish-ghost-army-bootstrap-script-staging
       secrets:
         - name: google-cloud-platform-staging

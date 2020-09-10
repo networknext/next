@@ -318,16 +318,18 @@ func checkForRelay(rpcClient jsonrpc.RPCClient, env Environment, regex string) (
 	}
 
 	replyRelay := routing.Relay{
-		ID:           reply.Relays[0].ID,
-		Name:         reply.Relays[0].Name,
-		FirestoreID:  reply.Relays[0].FirestoreID,
-		MRC:          reply.Relays[0].MRC,
-		Overage:      reply.Relays[0].Overage,
-		BWRule:       reply.Relays[0].BWRule,
-		ContractTerm: reply.Relays[0].ContractTerm,
-		StartDate:    reply.Relays[0].StartDate,
-		EndDate:      reply.Relays[0].EndDate,
-		Type:         reply.Relays[0].Type,
+		ID:                  reply.Relays[0].ID,
+		Name:                reply.Relays[0].Name,
+		IncludedBandwidthGB: reply.Relays[0].IncludedBandwidthGB,
+		NICSpeedMbps:        reply.Relays[0].NICSpeedMbps,
+		FirestoreID:         reply.Relays[0].FirestoreID,
+		MRC:                 reply.Relays[0].MRC,
+		Overage:             reply.Relays[0].Overage,
+		BWRule:              reply.Relays[0].BWRule,
+		ContractTerm:        reply.Relays[0].ContractTerm,
+		StartDate:           reply.Relays[0].StartDate,
+		EndDate:             reply.Relays[0].EndDate,
+		Type:                reply.Relays[0].Type,
 	}
 
 	return replyRelay, true

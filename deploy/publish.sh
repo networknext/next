@@ -14,7 +14,7 @@ SERVICE=
 CUSTOMER=
 
 publish() {
-  if [ "$SERVICE" = "server_backend" ] && [ -n "$CUSTOMER" ]; then
+  if { [ "$SERVICE" = "server_backend" ] || [ "$SERVICE" = "server_backend4" ]; } && [ -n "$CUSTOMER" ]; then
     printf "Publishing ${SERVICE}-${CUSTOMER} ${ENV} artifact to ${ARTIFACT_BUCKET} \n\n"
     gsutil cp ${DIST_DIR}/${SERVICE}-${CUSTOMER}.${ENV}.tar.gz ${ARTIFACT_BUCKET}/${SERVICE}-${CUSTOMER}.${ENV}.tar.gz
     gsutil setmeta -h "x-goog-meta-build-time:${TIMESTAMP}" -h "x-goog-meta-sha:${SHA}" -h "x-goog-meta-release:${RELEASE}" -h "x-goog-meta-commitMessage:${COMMITMESSAGE}" ${ARTIFACT_BUCKET}/${SERVICE}-${CUSTOMER}.${ENV}.tar.gz

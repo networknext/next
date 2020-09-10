@@ -26,6 +26,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"hash/fnv"
 
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
@@ -395,6 +396,9 @@ func main() {
 	datacentersfs := flag.NewFlagSet("datacenters", flag.ExitOnError)
 	var datacenterIdSigned bool
 	datacentersfs.BoolVar(&datacenterIdSigned, "signed", false, "Display datacenter IDs as signed ints")
+
+	var datacentersCSV bool
+	datacentersfs.BoolVar(&datacentersCSV, "csv", false, "Send output to CSV instead of the command line")
 
 	sessionsfs := flag.NewFlagSet("sessions", flag.ExitOnError)
 	var sessionCount int64
@@ -1018,7 +1022,7 @@ func main() {
 				Subcommands: []*ffcli.Command{
 					{
 						Name:       "mrc",
-						ShortUsage: "next relay ops mrc <relay> <value>",
+						ShortUsage: "next relay ops mrc <relay> <value in USD>",
 						ShortHelp:  "Set the mrc value for the given relay (in $USD)",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) != 2 {
@@ -1037,7 +1041,7 @@ func main() {
 					},
 					{
 						Name:       "overage",
-						ShortUsage: "next relay ops overage <relay> <value>",
+						ShortUsage: "next relay ops overage <relay> <value in USD>",
 						ShortHelp:  "Set the overage value for the given relay (in $USD)",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) != 2 {
@@ -1216,10 +1220,10 @@ func main() {
 		FlagSet:    datacentersfs,
 		Exec: func(_ context.Context, args []string) error {
 			if len(args) > 0 {
-				datacenters(rpcClient, env, args[0], datacenterIdSigned)
+				datacenters(rpcClient, env, args[0], datacenterIdSigned, datacentersCSV)
 				return nil
 			}
-			datacenters(rpcClient, env, "", datacenterIdSigned)
+			datacenters(rpcClient, env, "", datacenterIdSigned, datacentersCSV)
 			return nil
 		},
 	}
@@ -1579,6 +1583,34 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		},
 	}
 
+	var userCommand = &ffcli.Command{
+		Name:       "user",
+		ShortUsage: "next buyer <subcommand>",
+		ShortHelp:  "Manage users",
+		FlagSet:    buyersfs,
+		Exec: func(_ context.Context, args []string) error {
+			return flag.ErrHelp
+		},
+		Subcommands: []*ffcli.Command{
+			{ // hash
+				Name:       "hash",
+				ShortUsage: "next user hash <userid>",
+				ShortHelp:  "Prints the user hash in signed int format",
+				Exec: func(_ context.Context, args []string) error {
+					userId := ""
+					if len(args) >= 1 {
+						userId = args[0]
+					}
+					hash := fnv.New64a()
+					hash.Write([]byte(userId))
+					userHash := int64(hash.Sum64())
+					fmt.Printf("user hash: \"%s\" -> %d (%x)\n", userId, userHash, uint64(userHash))
+					return nil
+				},
+			},
+		},
+	}
+
 	var sellerCommand = &ffcli.Command{
 		Name:       "seller",
 		ShortUsage: "next seller <subcommand>",
@@ -1860,7 +1892,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		Exec: func(ctx context.Context, args []string) error {
 			input := "cost.bin"
 			output := "optimize.bin"
-			rtt := int32(1)
+			rtt := int32(5)
 
 			if len(args) > 0 {
 				if res, err := strconv.ParseInt(args[0], 10, 32); err == nil {
@@ -1985,6 +2017,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		sellerCommand,
 		buyerCommand,
 		buyersCommand,
+		userCommand,
 		shaderCommand,
 		sshCommand,
 		costCommand,

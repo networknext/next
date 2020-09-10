@@ -234,7 +234,7 @@ func main() {
 		IP:   net.ParseIP("0.0.0.0"),
 	}
 
-	fmt.Printf("started reference backend on ports %d and %d\n", NEXT_RELAY_BACKEND_PORT, NEXT_SERVER_BACKEND_PORT)
+	fmt.Printf("started functional backend on ports %d and %d\n", NEXT_RELAY_BACKEND_PORT, NEXT_SERVER_BACKEND_PORT)
 
 	connection, err := net.ListenUDP("udp", &listenAddress)
 	if err != nil {
@@ -412,13 +412,13 @@ func main() {
 			}
 
 			// Extract ids and addresses into own list to make response
-			var nearRelayIDs = make([]uint64, 0)
-			var nearRelayAddresses = make([]net.UDPAddr, 0)
-			var nearRelayPublicKeys = make([][]byte, 0)
-			for _, relay := range nearRelays {
-				nearRelayIDs = append(nearRelayIDs, relay.ID)
-				nearRelayAddresses = append(nearRelayAddresses, relay.Addr)
-				nearRelayPublicKeys = append(nearRelayPublicKeys, relay.PublicKey)
+			var nearRelayIDs = [MaxRelays]uint64{}
+			var nearRelayAddresses = [MaxRelays]net.UDPAddr{}
+			var nearRelayPublicKeys = [MaxRelays][]byte{}
+			for i, relay := range nearRelays {
+				nearRelayIDs[i] = relay.ID
+				nearRelayAddresses[i] = relay.Addr
+				nearRelayPublicKeys[i] = relay.PublicKey
 			}
 
 			if !takeNetworkNext {
@@ -428,8 +428,8 @@ func main() {
 					Sequence:             sessionUpdate.Sequence,
 					SessionID:            sessionUpdate.SessionID,
 					NumNearRelays:        int32(len(nearRelays)),
-					NearRelayIDs:         nearRelayIDs,
-					NearRelayAddresses:   nearRelayAddresses,
+					NearRelayIDs:         nearRelayIDs[:len(nearRelays)],
+					NearRelayAddresses:   nearRelayAddresses[:len(nearRelays)],
 					RouteType:            int32(routing.RouteTypeDirect),
 					NumTokens:            0,
 					Tokens:               nil,
@@ -447,6 +447,7 @@ func main() {
 					numRelays = routing.MaxRelays
 				}
 				nextRoute := routing.Route{
+					NumRelays:       numRelays,
 					RelayIDs:        nearRelayIDs,
 					RelayAddrs:      nearRelayAddresses,
 					RelayPublicKeys: nearRelayPublicKeys,
@@ -458,7 +459,7 @@ func main() {
 					sessionEntry.TimestampExpire = sessionEntry.TimestampExpire.Add(billing.BillingSliceSeconds * time.Second)
 				}
 
-				relayTokens := make([]routing.RelayToken, len(nextRoute.RelayIDs))
+				relayTokens := make([]routing.RelayToken, nextRoute.NumRelays)
 				for i := range relayTokens {
 					relayTokens[i] = routing.RelayToken{
 						ID:        nextRoute.RelayIDs[i],
@@ -528,8 +529,8 @@ func main() {
 					Sequence:             sessionUpdate.Sequence,
 					SessionID:            sessionUpdate.SessionID,
 					NumNearRelays:        int32(len(nearRelays)),
-					NearRelayIDs:         nearRelayIDs,
-					NearRelayAddresses:   nearRelayAddresses,
+					NearRelayIDs:         nearRelayIDs[:len(nearRelays)],
+					NearRelayAddresses:   nearRelayAddresses[:len(nearRelays)],
 					RouteType:            int32(token.Type()),
 					Multipath:            multipath,
 					Committed:            committed,
@@ -584,7 +585,7 @@ const UpdateRequestVersion = 0
 const UpdateResponseVersion = 0
 const MaxRelayAddressLength = 256
 const RelayTokenBytes = 32
-const MaxRelays = 1024
+const MaxRelays = 5
 
 func ReadUint32(data []byte, index *int, value *uint32) bool {
 	if *index+4 > len(data) {
