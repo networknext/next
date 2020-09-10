@@ -1248,10 +1248,6 @@ func TestReframeRoute(t *testing.T) {
 /*
 func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState, customer *CustomerConfig) bool {
 
-    if routeState.Veto || routeState.Banned || routeState.Disabled || routeState.NotSelected || routeState.B {
-        return true
-    }
-
     if routeShader.DisableNetworkNext {
         routeState.Disabled = true
         return true
@@ -1286,7 +1282,6 @@ func TestEarlyOutDirect(t *testing.T) {
     routeShader := RouteShader{}
     routeState := RouteState{}
     customer := CustomerConfig{}
-
     assert.False(t, EarlyOutDirect(&routeShader, &routeState, &customer))
 
     routeState = RouteState{Veto: true}
@@ -1303,4 +1298,9 @@ func TestEarlyOutDirect(t *testing.T) {
 
     routeState = RouteState{B: true}
     assert.True(t, EarlyOutDirect(&routeShader, &routeState, &customer))
+
+    routeShader = RouteShader{DisableNetworkNext: true}
+    routeState = RouteState{}
+    assert.True(t, EarlyOutDirect(&routeShader, &routeState, &customer))
+    assert.True(t, routeState.Disabled)
 }
