@@ -3,6 +3,9 @@
 
 #include "core/ping_history.hpp"
 
+using core::INVALID_SEQUENCE_NUMBER;
+using core::PING_HISTORY_ENTRY_COUNT;
+
 TEST(core_PingHistory_general)
 {
   std::default_random_engine gen;
@@ -10,11 +13,11 @@ TEST(core_PingHistory_general)
   auto rand = std::bind(dist, gen);
 
   core::PingHistory ph;
-  for (size_t i = 0; i < RELAY_PING_HISTORY_ENTRY_COUNT * 2; i++) {
+  for (size_t i = 0; i < PING_HISTORY_ENTRY_COUNT * 2; i++) {
     auto& entry = ph[i];
 
     // by default, all entries start out like this
-    if (i < RELAY_PING_HISTORY_ENTRY_COUNT) {
+    if (i < PING_HISTORY_ENTRY_COUNT) {
       CHECK(entry.sequence_number == INVALID_SEQUENCE_NUMBER);
       CHECK(entry.time_ping_sent == -1.0);
       CHECK(entry.time_pong_received == -1.0);

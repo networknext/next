@@ -11,7 +11,7 @@ namespace core
    public:
     virtual ~Expireable() = default;
 
-    const static size_t SIZE_OF = 8;
+    static const size_t SIZE_OF = 8;
 
     /* Returns true if the expire timestamp is less than the current unix time */
     auto expired(const RouterInfo& router_info) -> bool;

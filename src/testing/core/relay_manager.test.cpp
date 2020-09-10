@@ -6,14 +6,15 @@
 using core::RelayManager;
 using core::RelayPingInfo;
 using core::RelayStats;
+using core::MAX_RELAYS;
 
 TEST(core_RelayManager_general)
 {
-  const int NUM_RELAYS = 32;
+  const int num_relays = 32;
 
   std::array<RelayPingInfo, MAX_RELAYS> incoming;
 
-  for (int i = 0; i < MAX_RELAYS; ++i) {
+  for (size_t i = 0; i < MAX_RELAYS; ++i) {
     auto& relay = incoming[i];
     relay.id = i;
     std::stringstream ss;
@@ -32,12 +33,12 @@ TEST(core_RelayManager_general)
   }
 
   // add max relays
-  manager.update(NUM_RELAYS, incoming);
+  manager.update(num_relays, incoming);
   {
     RelayStats stats;
     manager.get_stats(stats);
-    CHECK(stats.num_relays == NUM_RELAYS);
-    for (int i = 0; i < NUM_RELAYS; ++i) {
+    CHECK(stats.num_relays == num_relays);
+    for (int i = 0; i < num_relays; ++i) {
       CHECK(std::find_if(incoming.begin(), incoming.end(), [&](const RelayPingInfo& relay) -> bool {
               return relay.id == stats.ids[i];
             }) != incoming.end());
@@ -56,12 +57,12 @@ TEST(core_RelayManager_general)
   // add same relay set repeatedly
 
   for (int j = 0; j < 2; ++j) {
-    manager.update(NUM_RELAYS, incoming);
+    manager.update(num_relays, incoming);
     {
       RelayStats stats;
       manager.get_stats(stats);
-      CHECK(stats.num_relays == NUM_RELAYS);
-      for (int i = 0; i < NUM_RELAYS; ++i) {
+      CHECK(stats.num_relays == num_relays);
+      for (int i = 0; i < num_relays; ++i) {
         CHECK(incoming[i].id == stats.ids[i]);
       }
     }
@@ -71,12 +72,12 @@ TEST(core_RelayManager_general)
 
   std::array<RelayPingInfo, MAX_RELAYS> diff_relays;
   std::copy(incoming.begin() + 4, incoming.end(), diff_relays.begin());
-  manager.update(NUM_RELAYS, diff_relays);
+  manager.update(num_relays, diff_relays);
   {
     RelayStats stats;
     manager.get_stats(stats);
-    CHECK(stats.num_relays == NUM_RELAYS);
-    for (int i = 0; i < NUM_RELAYS; ++i) {
+    CHECK(stats.num_relays == num_relays);
+    for (int i = 0; i < num_relays; ++i) {
       CHECK(incoming[i + 4].id == stats.ids[i]);
     }
   }

@@ -4,6 +4,8 @@
 #include "core/route_stats.hpp"
 #include "core/ping_history.hpp"
 
+using core::PING_HISTORY_ENTRY_COUNT;
+
 TEST(core_route_stats_basic_test)
 {
   std::default_random_engine gen;
@@ -17,7 +19,7 @@ TEST(core_route_stats_basic_test)
   float total_ping = 0.0;
   float total_rtt = 0.0;
 
-  for (int i = 0; i < RELAY_PING_HISTORY_ENTRY_COUNT; i++) {
+  for (size_t i = 0; i < PING_HISTORY_ENTRY_COUNT; i++) {
     auto ping = ping_rand();
 
     if ((i & 1) == 1) {
@@ -40,7 +42,7 @@ TEST(core_route_stats_basic_test)
   double std_dev_rtt = 0.0;
   size_t num_jitter_samples = 0;
 
-  for (int i = 1; i < RELAY_PING_HISTORY_ENTRY_COUNT; i += 2) {
+  for (size_t i = 1; i < PING_HISTORY_ENTRY_COUNT; i += 2) {
     auto& entry = ph[i];
     double rtt = 1000.0 * (entry.time_pong_received - entry.time_ping_sent);
     if (rtt > mean_rtt) {

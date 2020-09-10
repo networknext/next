@@ -48,7 +48,7 @@ namespace core
     Packet pkt;
 
     while (!socket.closed() && should_process) {
-      // Sleep for 10ms, but the actual ping rate is controlled by RELAY_PING_TIME
+      // Sleep for 10ms, but the actual ping rate is controlled by PING_RATE
       std::this_thread::sleep_for(10ms);
 
       std::array<core::PingData, MAX_RELAYS> pings;

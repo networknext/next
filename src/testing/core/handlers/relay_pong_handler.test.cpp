@@ -12,6 +12,7 @@ using core::RelayPingInfo;
 using core::PacketType;
 using crypto::PACKET_HASH_LENGTH;
 using net::Address;
+using core::PING_RATE;
 
 TEST(core_handlers_relay_pong_handler)
 {
@@ -39,7 +40,7 @@ TEST(core_handlers_relay_pong_handler)
 
   std::array<PingData, 1024> ping_data;
   // just to increment the sequence
-  manager.relays[0].last_ping_time = RELAY_PING_TIME * -1.0;
+  manager.relays[0].last_ping_time = PING_RATE * -1.0;
   CHECK(manager.get_ping_targets(ping_data) == 1);
 
   CHECK(ping_data[0].sequence == 0);

@@ -3,9 +3,11 @@
 
 #include "core/replay_protection.hpp"
 
+using core::REPLAY_PROTECTION_BUFFER_SIZE;
+
 namespace
 {
-  const auto MAX_SEQUENCE = RELAY_REPLAY_PROTECTION_BUFFER_SIZE * 4;
+  const auto MAX_SEQUENCE = REPLAY_PROTECTION_BUFFER_SIZE * 4;
 }
 
 TEST(core_ReplayProtection_additional_logic_tests)
@@ -36,7 +38,7 @@ TEST(core_ReplayProtection_additional_logic_tests)
 
     // jumping ahead to a much higher sequence should be considered not already received
 
-    CHECK(rp.is_already_received(MAX_SEQUENCE + RELAY_REPLAY_PROTECTION_BUFFER_SIZE) == false);
+    CHECK(rp.is_already_received(MAX_SEQUENCE + REPLAY_PROTECTION_BUFFER_SIZE) == false);
 
     // old packets should be considered already received
 

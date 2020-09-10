@@ -23,9 +23,12 @@ namespace testing
 
 namespace core
 {
+  extern const char* RELAY_VERSION;
   const uint32_t INIT_REQUEST_MAGIC = 0x9083708f;
-
   const uint32_t INIT_REQUEST_VERSION = 0;
+  const uint32_t INIT_RESPONSE_VERSION = 0;
+  const uint32_t UPDATE_REQUEST_VERSION = 1;
+  const uint32_t UPDATE_RESPONSE_VERSION = 0;
 
   const uint8_t MAX_UPDATE_ATTEMPTS = 11;  // 1 initial + 10 more for failures
 
@@ -36,7 +39,7 @@ namespace core
     uint32_t version = INIT_REQUEST_VERSION;
     std::array<uint8_t, crypto_box_NONCEBYTES> nonce;
     std::string address;
-    std::array<uint8_t, RELAY_TOKEN_BYTES + crypto_box_MACBYTES> encrypted_token;
+    std::array<uint8_t, KEY_SIZE + crypto_box_MACBYTES> encrypted_token;
     std::string relay_version = RELAY_VERSION;
 
     auto size() -> size_t;

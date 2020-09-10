@@ -20,7 +20,14 @@ namespace testing
 
 namespace core
 {
-  const auto INVALID_PING_TIME = -10000.0;
+  // how long between relay to relay pings, in seconds
+  const size_t PING_RATE = 0.1;
+  // how many seconds before a packet is considered as lost
+  const size_t PING_SAFETY = 1.0;
+  // default value for stats
+  const double INVALID_PING_TIME = -10000.0;
+  // how long to sample for relay stats, in seconds
+  const double STATS_WINDOW = 10.0;
 
   struct PingData
   {
@@ -114,7 +121,7 @@ namespace core
       for (unsigned int i = 0; i < this->num_relays; i++) {
         auto& relay = this->relays[i];
         RouteStats rs;
-        relay.history->into(rs, current_time - RELAY_STATS_WINDOW, current_time, RELAY_PING_SAFETY);
+        relay.history->into(rs, current_time - STATS_WINDOW, current_time, PING_SAFETY);
         stats.ids[i] = relay.id;
         stats.rtt[i] = rs.rtt;
         stats.jitter[i] = rs.jitter;
@@ -132,7 +139,7 @@ namespace core
     {
       std::lock_guard<std::mutex> lk(this->mutex);
       for (unsigned int i = 0; i < this->num_relays; ++i) {
-        if (this->relays[i].last_ping_time + RELAY_PING_TIME <= current_time) {
+        if (this->relays[i].last_ping_time + PING_RATE <= current_time) {
           auto& relay = this->relays[i];
           auto& ping_data = data[num_pings++];
 
@@ -189,7 +196,7 @@ namespace core
           // helps when updating and copying in the above loop
           // instead of copying the while ping history array
           // it just copies the pointer
-          for (int j = 0; j < MAX_RELAYS; j++) {
+          for (size_t j = 0; j < MAX_RELAYS; j++) {
             if (!history_slot_taken[j]) {
               new_relay.history = &this->ping_history[j];
               new_relay.history->clear();
@@ -211,7 +218,7 @@ namespace core
       auto current_time = this->clock.elapsed<Second>();
 
       for (unsigned int i = 0; i < this->num_relays; i++) {
-        this->relays[i].last_ping_time = current_time - RELAY_PING_TIME + i * RELAY_PING_TIME / this->num_relays;
+        this->relays[i].last_ping_time = current_time - PING_RATE + i * PING_RATE / this->num_relays;
       }
 
 #ifndef NDEBUG

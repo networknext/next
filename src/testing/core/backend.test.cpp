@@ -1,7 +1,8 @@
 #include "includes.h"
 #include "testing/test.hpp"
-#include "core/backend.hpp"
 #include "testing/mocks.hpp"
+
+#include "core/backend.hpp"
 
 #define CRYPTO_HELPERS
 #include "testing/helpers.hpp"
@@ -13,7 +14,9 @@ using core::INIT_REQUEST_MAGIC;
 using core::INIT_REQUEST_VERSION;
 using core::InitRequest;
 using core::InitResponse;
+using core::MAX_RELAYS;
 using core::PingData;
+using core::RELAY_VERSION;
 using core::RelayManager;
 using core::RelayPingInfo;
 using core::RouterInfo;

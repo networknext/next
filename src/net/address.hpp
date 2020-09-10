@@ -233,7 +233,6 @@ namespace net
 
   INLINE void Address::reset()
   {
-    GCC_NO_OPT_OUT;
     if (this->type == AddressType::IPv4) {
       this->ipv4.fill(0);
     } else if (this->type == AddressType::IPv6) {

@@ -12,17 +12,11 @@
 using core::RelayStats;
 using crypto::KEY_SIZE;
 
-namespace
-{
-  const uint32_t INIT_RESPONSE_VERSION = 0;
-
-  const uint32_t UPDATE_REQUEST_VERSION = 1;
-  const uint32_t UPDATE_RESPONSE_VERSION = 0;
-}  // namespace
-
 namespace core
 {
   using namespace std::chrono_literals;
+
+  const char* RELAY_VERSION = "1.2.2";
 
   auto InitRequest::size() -> size_t
   {
@@ -371,7 +365,7 @@ namespace core
       crypto::CreateNonceBytes(request.nonce);
 
       // just has to be something the backend can decrypt
-      std::array<uint8_t, RELAY_TOKEN_BYTES> token = {};
+      GenericKey token = {};
       crypto::RandomBytes(token, token.size());
 
       if (

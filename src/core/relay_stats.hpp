@@ -2,7 +2,7 @@
 
 namespace core
 {
-
+  const size_t MAX_RELAYS = 1024;
   // TODO make this an array of structs composed of id, rtt, jitter, and pl, would be cache friendly
   struct RelayStats
   {

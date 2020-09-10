@@ -36,132 +36,132 @@ using os::SocketType;
 using util::Env;
 using util::ThroughputRecorder;
 
-struct
-{
-  volatile bool alive;
-  volatile bool should_clean_shutdown;
-} Globals = {
- .alive = true,
- .should_clean_shutdown = false,
-};
-
 namespace
 {
-  INLINE void set_thread_affinity(std::thread& thread, int core_id)
+  struct
   {
-    cpu_set_t cpuset;
-    CPU_ZERO(&cpuset);
-    CPU_SET(core_id, &cpuset);
-    auto res = pthread_setaffinity_np(thread.native_handle(), sizeof(cpuset), &cpuset);
-    if (res != 0) {
-      LOG(ERROR, "error setting thread affinity: ", res);
-    }
-  }
-
-  INLINE void set_thread_sched_max(std::thread& thread)
-  {
-    struct sched_param param;
-    param.sched_priority = sched_get_priority_max(SCHED_FIFO);
-    int ret = pthread_setschedparam(thread.native_handle(), SCHED_FIFO, &param);
-    if (ret) {
-      LOG(ERROR, "unable to increase server thread priority: ", strerror(ret));
-    }
-  }
-
-  INLINE void get_crypto_keys(const Env& env, Keychain& keychain)
-  {
-    namespace base64 = encoding::base64;
-
-    // relay private key
-    {
-      auto len = base64::decode(env.relay_private_key, keychain.relay_private_key);
-      if (len != KEY_SIZE) {
-        LOG(FATAL, "invalid relay private key");
-      }
-
-      LOG(INFO, "relay private key is '", env.relay_private_key, '\'');
-    }
-
-    // relay public key
-    {
-      auto len = base64::decode(env.relay_public_key, keychain.relay_public_key);
-      if (len != KEY_SIZE) {
-        LOG(FATAL, "invalid relay public key");
-      }
-
-      LOG(INFO, "relay public key is '", env.relay_public_key, '\'');
-    }
-
-    // router public key
-    {
-      auto len = base64::decode(env.relay_router_public_key, keychain.backend_public_key);
-      if (len != KEY_SIZE) {
-        LOG(FATAL, "invalid router public key");
-      }
-
-      LOG(INFO, "router public key is '", env.relay_router_public_key, '\'');
-    }
-  }
-
-  INLINE auto get_num_cpus(const std::optional<std::string>& envvar) -> size_t
-  {
-    size_t num_cpus = 0;
-    if (envvar.has_value()) {
-      try {
-        num_cpus = std::stoull(*envvar);
-      } catch (std::exception& e) {
-        LOG(FATAL, "could not parse RELAY_MAX_CORES to a number, value: ", *envvar);
-      }
-    } else {
-      num_cpus = std::thread::hardware_concurrency();  // first core reserved for updates/outgoing pings
-      if (num_cpus > 0) {
-        LOG(INFO, "RELAY_MAX_CORES not set, autodetected number of processors available: ", num_cpus);
-      } else {
-        LOG(FATAL, "RELAY_MAX_CORES not set, could not detect processor count, please set the env var");
-      }
-    }
-    return num_cpus;
-  }
-
-  INLINE auto get_buffer_size(const std::optional<std::string>& envvar) -> size_t
-  {
-    size_t socket_buffer_size = 1000000;
-
-    if (envvar.has_value()) {
-      try {
-        socket_buffer_size = std::stoull(*envvar);
-      } catch (std::exception& e) {
-        LOG(ERROR, "Could not parse ", *envvar, " env var to a number: ", e.what());
-      }
-    }
-
-    return socket_buffer_size;
-  }
-
-  INLINE void setup_signal_handlers()
-  {
-    auto graceful_shutdown_handler = [](int) {
-      if (Globals.alive) {
-        Globals.alive = false;
-      } else {
-        std::exit(1);
-      }
-    };
-
-    auto clean_shutdown_handler = [](int) {
-      if (Globals.alive) {
-        Globals.should_clean_shutdown = true;
-        Globals.alive = false;
-      } else {
-        std::exit(1);
-      }
-    };
-
-    std::signal(SIGINT, graceful_shutdown_handler);  // ctrl-c
-    std::signal(SIGTERM, clean_shutdown_handler);    // systemd stop
-    std::signal(SIGHUP, clean_shutdown_handler);     // terminal session ends
-  }
+    volatile bool alive;
+    volatile bool should_clean_shutdown;
+  } Globals = {
+   .alive = true,
+   .should_clean_shutdown = false,
+  };
 }  // namespace
+
+INLINE void set_thread_affinity(std::thread& thread, int core_id)
+{
+  cpu_set_t cpuset;
+  CPU_ZERO(&cpuset);
+  CPU_SET(core_id, &cpuset);
+  auto res = pthread_setaffinity_np(thread.native_handle(), sizeof(cpuset), &cpuset);
+  if (res != 0) {
+    LOG(ERROR, "error setting thread affinity: ", res);
+  }
+}
+
+INLINE void set_thread_sched_max(std::thread& thread)
+{
+  struct sched_param param;
+  param.sched_priority = sched_get_priority_max(SCHED_FIFO);
+  int ret = pthread_setschedparam(thread.native_handle(), SCHED_FIFO, &param);
+  if (ret) {
+    LOG(ERROR, "unable to increase server thread priority: ", strerror(ret));
+  }
+}
+
+INLINE void get_crypto_keys(const Env& env, Keychain& keychain)
+{
+  namespace base64 = encoding::base64;
+
+  // relay private key
+  {
+    auto len = base64::decode(env.relay_private_key, keychain.relay_private_key);
+    if (len != KEY_SIZE) {
+      LOG(FATAL, "invalid relay private key");
+    }
+
+    LOG(INFO, "relay private key is '", env.relay_private_key, '\'');
+  }
+
+  // relay public key
+  {
+    auto len = base64::decode(env.relay_public_key, keychain.relay_public_key);
+    if (len != KEY_SIZE) {
+      LOG(FATAL, "invalid relay public key");
+    }
+
+    LOG(INFO, "relay public key is '", env.relay_public_key, '\'');
+  }
+
+  // router public key
+  {
+    auto len = base64::decode(env.relay_router_public_key, keychain.backend_public_key);
+    if (len != KEY_SIZE) {
+      LOG(FATAL, "invalid router public key");
+    }
+
+    LOG(INFO, "router public key is '", env.relay_router_public_key, '\'');
+  }
+}
+
+INLINE auto get_num_cpus(const std::optional<std::string>& envvar) -> size_t
+{
+  size_t num_cpus = 0;
+  if (envvar.has_value()) {
+    try {
+      num_cpus = std::stoull(*envvar);
+    } catch (std::exception& e) {
+      LOG(FATAL, "could not parse RELAY_MAX_CORES to a number, value: ", *envvar);
+    }
+  } else {
+    num_cpus = std::thread::hardware_concurrency();  // first core reserved for updates/outgoing pings
+    if (num_cpus > 0) {
+      LOG(INFO, "RELAY_MAX_CORES not set, autodetected number of processors available: ", num_cpus);
+    } else {
+      LOG(FATAL, "RELAY_MAX_CORES not set, could not detect processor count, please set the env var");
+    }
+  }
+  return num_cpus;
+}
+
+INLINE auto get_buffer_size(const std::optional<std::string>& envvar) -> size_t
+{
+  size_t socket_buffer_size = 1000000;
+
+  if (envvar.has_value()) {
+    try {
+      socket_buffer_size = std::stoull(*envvar);
+    } catch (std::exception& e) {
+      LOG(ERROR, "Could not parse ", *envvar, " env var to a number: ", e.what());
+    }
+  }
+
+  return socket_buffer_size;
+}
+
+INLINE void setup_signal_handlers()
+{
+  auto graceful_shutdown_handler = [](int) {
+    if (Globals.alive) {
+      Globals.alive = false;
+    } else {
+      std::exit(1);
+    }
+  };
+
+  auto clean_shutdown_handler = [](int) {
+    if (Globals.alive) {
+      Globals.should_clean_shutdown = true;
+      Globals.alive = false;
+    } else {
+      std::exit(1);
+    }
+  };
+
+  std::signal(SIGINT, graceful_shutdown_handler);  // ctrl-c
+  std::signal(SIGTERM, clean_shutdown_handler);    // systemd stop
+  std::signal(SIGHUP, clean_shutdown_handler);     // terminal session ends
+}
 
 int main(int argc, const char* argv[])
 {
@@ -192,10 +192,6 @@ int main(int argc, const char* argv[])
   get_crypto_keys(env, keychain);
 
   LOG(INFO, "backend hostname is '", env.backend_hostname, '\'');
-
-  unsigned int num_cpus = get_num_cpus(env.max_cpus);
-  int socket_recv_buff_size = get_buffer_size(env.recv_buffer_size);
-  int socket_send_buff_size = get_buffer_size(env.send_buffer_size);
 
   if (sodium_init() == -1) {
     LOG(FATAL, "failed to initialize sodium");
@@ -239,14 +235,23 @@ int main(int argc, const char* argv[])
   SocketConfig config;
   config.socket_type = SocketType::Blocking;
   config.reuse_port = true;
-  config.send_buffer_size = socket_send_buff_size;
-  config.recv_buffer_size = socket_recv_buff_size;
-
-  size_t num_threads = (num_cpus == 1) ? num_cpus : num_cpus - 1;
-  LOG(DEBUG, "creating ", num_cpus, " packet processing thread", (num_cpus != 1) ? "s" : "");
+  config.send_buffer_size = get_buffer_size(env.send_buffer_size);
+  config.recv_buffer_size = get_buffer_size(env.recv_buffer_size);
 
   // packet processing setup
-  for (unsigned int i = (num_cpus == 1) ? 0 : 1; i < num_threads && Globals.alive; i++) {
+  size_t hw_thread_count = std::thread::hardware_concurrency();
+
+  size_t num_threads = get_num_cpus(env.max_cpus) - 1;
+  if (num_threads < 1) {
+    num_threads = 1;
+  } else if (num_threads > hw_thread_count) {
+    num_threads = hw_thread_count - 1;
+    LOG(WARN, "number of threads exceeds maximum available, reducing to number of detected hardware threads");
+  }
+
+  LOG(DEBUG, "number of packet receiving threads: ", num_threads);
+
+  for (unsigned int i = 1; i <= num_threads && Globals.alive; i++) {
     auto socket = make_socket(relay_addr, config);
     if (!socket) {
       LOG(ERROR, "could not create socket");
@@ -258,7 +263,7 @@ int main(int argc, const char* argv[])
       LOG(DEBUG, "exiting recv loop #", i);
     });
 
-    set_thread_affinity(*thread, (std::thread::hardware_concurrency() == 1) ? 0 : i);
+    set_thread_affinity(*thread, (hw_thread_count == 1) ? 0 : i);
 
     set_thread_sched_max(*thread);
 
