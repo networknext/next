@@ -979,6 +979,11 @@ func GetRandomBestRoute(routeMatrix []RouteEntry, sourceRelays []int32, sourceRe
     *out_bestRouteNumRelays = bestRoutes[randomIndex].NumRelays
     copy(out_bestRouteRelays, bestRoutes[randomIndex].Relays[:bestRoutes[randomIndex].NumRelays])
 
+    // todo: can reverse while we copy. faster.
+    if bestRoutes[randomIndex].NeedToReverse {
+        ReverseRoute(out_bestRouteRelays[:*out_bestRouteNumRelays])        
+    }
+
     return true
 }
 

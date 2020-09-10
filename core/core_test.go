@@ -348,26 +348,6 @@ func (env *TestEnvironment) AddRelay(relayName string, relayAddress string) {   
     env.Clear()
 }
 
-func (env *TestEnvironment) ReframeRelays(sourceRelayNames []string, destRelayNames []string) ([]int32, []int32) {
-    sourceRelays := make([]int32, len(sourceRelayNames))
-    for i := range sourceRelayNames {
-        relayData, ok := env.relays[sourceRelayNames[i]]
-        if !ok {
-            panic("source relay does not exist")
-        }
-        sourceRelays[i] = int32(relayData.index)
-    }
-    destRelays := make([]int32, len(destRelayNames))
-    for i := range destRelayNames {
-        relayData, ok := env.relays[destRelayNames[i]]
-        if !ok {
-            panic("dest relay does not exist")
-        }
-        destRelays[i] = int32(relayData.index)
-    }
-    return sourceRelays, destRelays
-}
-
 func (env *TestEnvironment) GetRelayDatacenters() []uint64 {
     // todo: get datacenter mapping properly
     relayDatacenters := make([]uint64, len(env.relays))
@@ -538,6 +518,49 @@ func (env *TestEnvironment) ReframeRoute(route []uint64) ([]int32, error) {
     } else {
         return reframedRoute, nil
     }
+}
+
+func (env *TestEnvironment) ReframeRelays(sourceRelayNames []string, destRelayNames []string) ([]int32, []int32) {
+    sourceRelays := make([]int32, len(sourceRelayNames))
+    for i := range sourceRelayNames {
+        relayData, ok := env.relays[sourceRelayNames[i]]
+        if !ok {
+            panic("source relay does not exist")
+        }
+        sourceRelays[i] = int32(relayData.index)
+    }
+    destRelays := make([]int32, len(destRelayNames))
+    for i := range destRelayNames {
+        relayData, ok := env.relays[destRelayNames[i]]
+        if !ok {
+            panic("dest relay does not exist")
+        }
+        destRelays[i] = int32(relayData.index)
+    }
+    return sourceRelays, destRelays
+}
+
+func (env *TestEnvironment) GetBestRoute_Initial(routeMatrix []RouteEntry, sourceRelayNames []string, sourceRelayCost[] int32, destRelayNames []string, maxCost int32) (int32, []string) {
+
+    sourceRelays, destRelays := env.ReframeRelays(sourceRelayNames, destRelayNames)
+
+    bestRouteCost := int32(0)
+    bestRouteNumRelays := int32(0)
+    bestRouteRelays := [MaxRelaysPerRoute]int32{}
+
+    result := GetBestRoute_Initial(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, &bestRouteCost, &bestRouteNumRelays, bestRouteRelays[:])
+    if !result {
+        return 0, []string{}
+    }
+
+    bestRouteRelayNames := make([]string, bestRouteNumRelays)
+
+    for i := 0; i < int(bestRouteNumRelays); i++ {
+        routeData := env.relayArray[bestRouteRelays[i]]
+        bestRouteRelayNames[i] = routeData.name
+    }
+
+    return bestRouteCost, bestRouteRelayNames
 }
 
 func TestTheTestEnvironment(t *testing.T) {
@@ -1366,17 +1389,10 @@ func TestGetBestRoute_Initial_Simple(t *testing.T) {
 
     destRelayNames := []string{"chicago"}
 
-    sourceRelays, destRelays := env.ReframeRelays(sourceRelayNames, destRelayNames)
-
     maxCost := int32(40)
 
-    bestRouteCost := int32(0)
-    bestRouteNumRelays := int32(0)
-    bestRouteRelays := [MaxRelaysPerRoute]int32{}
+    bestRouteCost, bestRouteRelays := env.GetBestRoute_Initial(routeMatrix, sourceRelayNames, sourceRelayCosts, destRelayNames, maxCost)
 
-    result := GetBestRoute_Initial(routeMatrix, sourceRelays, sourceRelayCosts, destRelays, maxCost, &bestRouteCost, &bestRouteNumRelays, bestRouteRelays[:])
-
-    assert.True(t, result)
-
-    t.Log(fmt.Sprintf("best route relays: %v (%d)\n", bestRouteRelays[:bestRouteNumRelays], bestRouteCost))
+    assert.Equal(t, int32(40), bestRouteCost)
+    assert.Equal(t, []string{"losangeles", "a", "b", "chicago"}, bestRouteRelays)
 }
