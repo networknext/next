@@ -1248,26 +1248,6 @@ func TestReframeRoute(t *testing.T) {
 /*
 func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState, customer *CustomerConfig) bool {
 
-    if routeShader.DisableNetworkNext {
-        routeState.Disabled = true
-        return true
-    }
-
-    if (routeState.UserID % 100) < uint64(routeShader.SelectionPercent) {
-        routeState.NotSelected = true
-        return true
-    }
-
-    if routeShader.ABTest {
-        routeState.ABTest = true
-        if (routeState.UserID % 2) == 1 {
-            routeState.B = true
-            return true
-        } else {
-            routeState.A = true
-        }
-    }
-
     if customer.BannedUsers[routeState.UserID] {
         routeState.Banned = true
         return true
@@ -1279,9 +1259,9 @@ func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState, customer *
 
 func TestEarlyOutDirect(t *testing.T) {
 
-    routeShader := RouteShader{}
+    routeShader := NewRouteShader()
     routeState := RouteState{}
-    customer := CustomerConfig{}
+    customer := NewCustomerConfig()
     assert.False(t, EarlyOutDirect(&routeShader, &routeState, &customer))
 
     routeState = RouteState{Veto: true}
@@ -1299,8 +1279,53 @@ func TestEarlyOutDirect(t *testing.T) {
     routeState = RouteState{B: true}
     assert.True(t, EarlyOutDirect(&routeShader, &routeState, &customer))
 
-    routeShader = RouteShader{DisableNetworkNext: true}
+    routeShader = NewRouteShader()
+    routeShader.DisableNetworkNext = true
     routeState = RouteState{}
     assert.True(t, EarlyOutDirect(&routeShader, &routeState, &customer))
     assert.True(t, routeState.Disabled)
+
+    routeShader = NewRouteShader()
+    routeShader.SelectionPercent = 0
+    routeState = RouteState{}
+    assert.True(t, EarlyOutDirect(&routeShader, &routeState, &customer))
+    assert.True(t, routeState.NotSelected)
+
+    routeShader = NewRouteShader()
+    routeShader.SelectionPercent = 0
+    routeState = RouteState{}
+    assert.True(t, EarlyOutDirect(&routeShader, &routeState, &customer))
+    assert.True(t, routeState.NotSelected)
+
+    routeShader = NewRouteShader()
+    routeShader.ABTest = true
+    routeState = RouteState{}
+    routeState.UserID = 0
+    assert.False(t, EarlyOutDirect(&routeShader, &routeState, &customer))
+    assert.True(t, routeState.ABTest)
+    assert.True(t, routeState.A)
+    assert.False(t, routeState.B)
+
+    routeShader = NewRouteShader()
+    routeShader.ABTest = true
+    routeState = RouteState{}
+    routeState.UserID = 1
+    assert.True(t, EarlyOutDirect(&routeShader, &routeState, &customer))
+    assert.True(t, routeState.ABTest)
+    assert.False(t, routeState.A)
+    assert.True(t, routeState.B)
+
+    routeShader = NewRouteShader()
+    routeState = RouteState{}
+    customer = NewCustomerConfig()
+    customer.BannedUsers[1000] = true
+    assert.False(t, EarlyOutDirect(&routeShader, &routeState, &customer))
+
+    routeShader = NewRouteShader()
+    routeState = RouteState{}
+    routeState.UserID = 1000
+    customer = NewCustomerConfig()
+    customer.BannedUsers[1000] = true
+    assert.True(t, EarlyOutDirect(&routeShader, &routeState, &customer))
+    assert.True(t, routeState.Banned)
 }

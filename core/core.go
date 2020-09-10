@@ -1020,6 +1020,21 @@ type RouteShader struct {
     AcceptablePacketLoss float32
 }
 
+func NewRouteShader() RouteShader {
+    return RouteShader{
+        DisableNetworkNext: false,
+        SelectionPercent: 100,
+        ABTest: false,
+        ProMode: false,
+        ReduceLatency: true,
+        ReducePacketLoss: true,
+        Multipath: false,
+        AcceptableLatency: 25,
+        LatencyThreshold: 5,
+        AcceptablePacketLoss: 1.0,
+    }
+}
+
 type RouteState struct {
     UserID uint64
     Next bool
@@ -1042,6 +1057,13 @@ type RouteState struct {
 type CustomerConfig struct {
     BannedUsers          map[uint64]bool
     MultipathVetoUsers   map[uint64]bool    
+}
+
+func NewCustomerConfig() CustomerConfig {
+    return CustomerConfig {
+        BannedUsers: make(map[uint64]bool),
+        MultipathVetoUsers: make(map[uint64]bool),
+    }
 }
 
 type InternalConfig struct {
@@ -1075,7 +1097,7 @@ func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState, customer *
         return true
     }
 
-    if (routeState.UserID % 100) < uint64(routeShader.SelectionPercent) {
+    if routeShader.SelectionPercent == 0 || (routeState.UserID % 100) > uint64(routeShader.SelectionPercent) {
         routeState.NotSelected = true
         return true
     }
