@@ -557,7 +557,7 @@ build-relay-artifacts-prod: build-relay
 
 .PHONY: build-portal-artifacts-prod
 build-portal-artifacts-prod: build-portal
-	./deploy/build-artifacts.sh -e prod -s portal -n $(ARTIFACT_BUCKET_PROD)
+	./deploy/build-artifacts.sh -e prod -s portal -b $(ARTIFACT_BUCKET_PROD)
 
 .PHONY: build-portal-cruncher-artifacts-prod
 build-portal-cruncher-artifacts-prod: build-portal-cruncher
