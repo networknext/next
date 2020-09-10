@@ -348,6 +348,26 @@ func (env *TestEnvironment) AddRelay(relayName string, relayAddress string) {   
     env.Clear()
 }
 
+func (env *TestEnvironment) ReframeRelays(sourceRelayNames []string, destRelayNames []string) ([]int32, []int32) {
+    sourceRelays := make([]int32, len(sourceRelayNames))
+    for i := range sourceRelayNames {
+        relayData, ok := env.relays[sourceRelayNames[i]]
+        if !ok {
+            panic("source relay does not exist")
+        }
+        sourceRelays[i] = int32(relayData.index)
+    }
+    destRelays := make([]int32, len(destRelayNames))
+    for i := range destRelayNames {
+        relayData, ok := env.relays[destRelayNames[i]]
+        if !ok {
+            panic("dest relay does not exist")
+        }
+        destRelays[i] = int32(relayData.index)
+    }
+    return sourceRelays, destRelays
+}
+
 func (env *TestEnvironment) GetRelayDatacenters() []uint64 {
     // todo: get datacenter mapping properly
     relayDatacenters := make([]uint64, len(env.relays))
@@ -1245,18 +1265,6 @@ func TestReframeRoute(t *testing.T) {
     assert.Equal(t, int32(3), route[2])
 }
 
-/*
-func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState, customer *CustomerConfig) bool {
-
-    if customer.BannedUsers[routeState.UserID] {
-        routeState.Banned = true
-        return true
-    }
-
-    return false
-}
-*/
-
 func TestEarlyOutDirect(t *testing.T) {
 
     routeShader := NewRouteShader()
@@ -1328,4 +1336,47 @@ func TestEarlyOutDirect(t *testing.T) {
     customer.BannedUsers[1000] = true
     assert.True(t, EarlyOutDirect(&routeShader, &routeState, &customer))
     assert.True(t, routeState.Banned)
+}
+
+func TestGetBestRoute_Initial_Simple(t *testing.T) {
+
+    t.Parallel()
+
+    env := NewTestEnvironment()
+
+    env.AddRelay("losangeles", "10.0.0.1")
+    env.AddRelay("chicago", "10.0.0.2")
+    env.AddRelay("a", "10.0.0.3")
+    env.AddRelay("b", "10.0.0.4")
+
+    env.SetCost("losangeles", "chicago", 100)
+    env.SetCost("losangeles", "a", 10)
+    env.SetCost("a", "chicago", 50)
+    env.SetCost("a", "b", 10)
+    env.SetCost("b", "chicago", 10)
+
+    costMatrix, numRelays := env.GetCostMatrix()
+
+    relayDatacenters := env.GetRelayDatacenters()
+
+    routeMatrix := Optimize(numRelays, costMatrix, 5, relayDatacenters)
+
+    sourceRelayNames := []string{"losangeles"}
+    sourceRelayCosts := []int32{10}
+
+    destRelayNames := []string{"chicago"}
+
+    sourceRelays, destRelays := env.ReframeRelays(sourceRelayNames, destRelayNames)
+
+    maxCost := int32(40)
+
+    bestRouteCost := int32(0)
+    bestRouteNumRelays := int32(0)
+    bestRouteRelays := [MaxRelaysPerRoute]int32{}
+
+    result := GetBestRoute_Initial(routeMatrix, sourceRelays, sourceRelayCosts, destRelays, maxCost, &bestRouteCost, &bestRouteNumRelays, bestRouteRelays[:])
+
+    assert.True(t, result)
+
+    t.Log(fmt.Sprintf("best route relays: %v (%d)\n", bestRouteRelays[:bestRouteNumRelays], bestRouteCost))
 }
