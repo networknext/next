@@ -1,4 +1,3 @@
-
 package main
 
 // #cgo pkg-config: libsodium
@@ -7,7 +6,6 @@ import "C"
 
 import (
     "fmt"
-    "errors"
     "encoding/binary"
     "unsafe"
     "net"
@@ -942,16 +940,15 @@ func GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCo
 
 // -------------------------------------------
 
-func ReframeRoute(routeRelayIds []uint64, relayIdToIndex map[uint64]int32) ([]int32, error) {
-    routeRelays := make([]int32, len(routeRelayIds))
+func ReframeRoute(routeRelayIds []uint64, relayIdToIndex map[uint64]int32, out_routeRelays []int32) bool {
     for i := range routeRelayIds {
         relayIndex, ok := relayIdToIndex[routeRelayIds[i]]
         if !ok {
-            return nil, errors.New("one or more relays in the route don't exist")
+            return false
         }
-        routeRelays[i] = relayIndex
+        out_routeRelays[i] = relayIndex
     }
-    return routeRelays, nil
+    return true
 }
 
 // todo: ReframeRelays (use for sourceRelays, sourceRelayCost and destRelays -- pass them all)
@@ -1021,8 +1018,21 @@ type RouteShader struct {
     AcceptableLatency    int32
     LatencyThreshold     int32
     AcceptablePacketLoss float32
-    BannedUsers          map[uint64]bool
-    MultipathVetoUsers   map[uint64]bool
+}
+
+func NewRouteShader() RouteShader {
+    return RouteShader{
+        DisableNetworkNext: false,
+        SelectionPercent: 100,
+        ABTest: false,
+        ProMode: false,
+        ReduceLatency: true,
+        ReducePacketLoss: true,
+        Multipath: false,
+        AcceptableLatency: 25,
+        LatencyThreshold: 5,
+        AcceptablePacketLoss: 1.0,
+    }
 }
 
 type RouteState struct {
@@ -1042,6 +1052,18 @@ type RouteState struct {
     RTTVeto bool
     MultipathOverload bool
     NoRoute bool
+}
+
+type CustomerConfig struct {
+    BannedUsers          map[uint64]bool
+    MultipathVetoUsers   map[uint64]bool    
+}
+
+func NewCustomerConfig() CustomerConfig {
+    return CustomerConfig {
+        BannedUsers: make(map[uint64]bool),
+        MultipathVetoUsers: make(map[uint64]bool),
+    }
 }
 
 type InternalConfig struct {
@@ -1064,7 +1086,7 @@ func NewInternalConfig() InternalConfig {
     }
 }
 
-func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState) bool {
+func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState, customer *CustomerConfig) bool {
 
     if routeState.Veto || routeState.Banned || routeState.Disabled || routeState.NotSelected || routeState.B {
         return true
@@ -1075,7 +1097,7 @@ func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState) bool {
         return true
     }
 
-    if (routeState.UserID % 100) < uint64(routeShader.SelectionPercent) {
+    if routeShader.SelectionPercent == 0 || (routeState.UserID % 100) > uint64(routeShader.SelectionPercent) {
         routeState.NotSelected = true
         return true
     }
@@ -1090,7 +1112,7 @@ func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState) bool {
         }
     }
 
-    if routeShader.BannedUsers[routeState.UserID] {
+    if customer.BannedUsers[routeState.UserID] {
         routeState.Banned = true
         return true
     }
@@ -1098,13 +1120,13 @@ func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState) bool {
     return false
 }
 
-func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, internal *InternalConfig, directLatency int32, directPacketLoss float32, sourceRelays []int32, sourceRelayCost[]int32, destRelays []int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32) bool {
+func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, customer *CustomerConfig, internal *InternalConfig, directLatency int32, directPacketLoss float32, sourceRelays []int32, sourceRelayCost[]int32, destRelays []int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32) bool {
 
     if routeState.Next {
         panic("only call MakeRouteDecision_TakeNetworkNext when *not* already taking network next")
     }
 
-    if EarlyOutDirect(routeShader, routeState) {
+    if EarlyOutDirect(routeShader, routeState, customer) {
         return false
     }
 
@@ -1132,7 +1154,7 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 
     // if we are in pro mode, take network next pro-actively in multipath before anything goes wrong
 
-    userHasMultipathVeto := !routeShader.MultipathVetoUsers[routeState.UserID]
+    userHasMultipathVeto := !customer.MultipathVetoUsers[routeState.UserID]
 
     proMode := false
     if routeShader.ProMode && !userHasMultipathVeto {
@@ -1171,9 +1193,9 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
     return true
 }
 
-func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, internal *InternalConfig, directLatency int32, nextLatency int32, currentRouteNumRelays int32, currentRouteRelays []int32, sourceRelays []int32, sourceRelayCost[]int32, destRelays []int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32) bool {
+func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, customer *CustomerConfig, internal *InternalConfig, directLatency int32, nextLatency int32, currentRouteNumRelays int32, currentRouteRelays []int32, sourceRelays []int32, sourceRelayCost[]int32, destRelays []int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32) bool {
 
-    if EarlyOutDirect(routeShader, routeState) {
+    if EarlyOutDirect(routeShader, routeState, customer) {
         return false
     }
 
@@ -1227,13 +1249,13 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
     return true
 }
 
-func MakeRouteDecision_StayOnNetworkNext(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, internal *InternalConfig, directLatency int32, nextLatency int32, currentRouteNumRelays int32, currentRouteRelays []int32, sourceRelays []int32, sourceRelayCost[]int32, destRelays []int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32) bool {
+func MakeRouteDecision_StayOnNetworkNext(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, customer *CustomerConfig, internal *InternalConfig, directLatency int32, nextLatency int32, currentRouteNumRelays int32, currentRouteRelays []int32, sourceRelays []int32, sourceRelayCost[]int32, destRelays []int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32) bool {
 
     if !routeState.Next {
         panic("only call MakeRouteDecision_TakeNetworkNext when session is on network next")
     }
 
-    stayOnNetworkNext := MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix, routeShader, routeState, internal, directLatency, nextLatency, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCost, destRelays, out_updatedRouteCost, out_updatedRouteNumRelays, out_updatedRouteRelays)
+    stayOnNetworkNext := MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix, routeShader, routeState, customer, internal, directLatency, nextLatency, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCost, destRelays, out_updatedRouteCost, out_updatedRouteNumRelays, out_updatedRouteRelays)
 
     if routeState.Next && !stayOnNetworkNext {
         routeState.Next = false
@@ -1244,4 +1266,3 @@ func MakeRouteDecision_StayOnNetworkNext(routeMatrix []RouteEntry, routeShader *
 }
 
 // -------------------------------------------
-
