@@ -26,8 +26,10 @@ var (
 type contextType string
 
 const (
-	anonymousCallKey contextType = "anonymous"
-	rolesKey         contextType = "roles"
+	anonymousCallKey     contextType = "anonymous"
+	rolesKey             contextType = "roles"
+	companyKey           contextType = "company"
+	newsletterConsentKey contextType = "newsletter"
 )
 
 type AuthService struct {
@@ -602,44 +604,46 @@ func (s *AuthService) UpdateCompanyName(r *http.Request, args *CompanyNameArgs, 
 	return nil
 }
 
-type UpdatePasswordArgs struct {
-	Password string `json:"password"`
+type AccountSettingsArgs struct {
+	Password          string `json:"password"`
+	NewsLetterConsent bool   `json:"newsletter"`
 }
 
-type UpdatePasswordReply struct {
+type AccountSettingsReply struct {
 }
 
-func (s *AuthService) UpdateUserPassword(r *http.Request, args *UpdatePasswordArgs, reply *UpdatePasswordReply) error {
+func (s *AuthService) UpdateAccountSettings(r *http.Request, args *AccountSettingsArgs, reply *AccountSettingsReply) error {
 	if VerifyAnyRole(r, AnonymousRole, UnverifiedRole) {
 		return nil
 	}
 
 	requestUser := r.Context().Value("user")
 	if requestUser == nil {
-		err := fmt.Errorf("UpdateUserPassword() unable to parse user from token")
+		err := fmt.Errorf("UpdateUserPrivacyAndSecurity() unable to parse user from token")
 		s.Logger.Log("err", err)
 		return err
 	}
 
 	requestID, ok := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["sub"].(string)
 	if !ok {
-		err := fmt.Errorf("UpdateUserPassword() unable to parse id from token")
+		err := fmt.Errorf("UpdateUserPrivacyAndSecurity() unable to parse id from token")
 		s.Logger.Log("err", err)
 		return err
 	}
 
 	userAccount, err := s.Auth0.Manager.User.Read(requestID)
 	if err != nil {
-		err := fmt.Errorf("UpdateUserPassword() failed to fetch user account: %w", err)
+		err := fmt.Errorf("UpdateUserPrivacyAndSecurity() failed to fetch user account: %w", err)
 		s.Logger.Log("err", err)
 		return err
 	}
 
 	userAccount.Password = &args.Password
+	userAccount.AppMetadata["newsletter"] = args.NewsLetterConsent
 
 	err = s.Auth0.Manager.User.Update(requestID, userAccount)
 	if err != nil {
-		err = fmt.Errorf("UpdateUserPassword() failed to update user password: %v", err)
+		err = fmt.Errorf("UpdateUserPrivacyAndSecurity() failed to update user password: %v", err)
 		s.Logger.Log("err", err)
 		return err
 	}
@@ -782,19 +786,19 @@ func IsAnonymous(r *http.Request) bool {
 	return ok && anon
 }
 
-func SetRoles(r *http.Request, roles []string) *http.Request {
+func AddTokenContext(r *http.Request, roles []string, companyName string, newsletterConsent bool) *http.Request {
 	ctx := r.Context()
-	ctx = context.WithValue(ctx, rolesKey, roles)
-	return r.WithContext(ctx)
-}
-
-func RequestRoles(r *http.Request) management.RoleList {
-	roles := r.Context().Value(rolesKey)
-
-	if roles != nil {
-		return roles.(management.RoleList)
+	if len(roles) > 0 {
+		ctx = context.WithValue(ctx, rolesKey, roles)
 	}
-	return management.RoleList{}
+	if companyName != "" {
+		ctx = context.WithValue(ctx, companyKey, companyName)
+	}
+	if companyName != "" {
+		ctx = context.WithValue(ctx, companyKey, companyName)
+	}
+	ctx = context.WithValue(ctx, newsletterConsentKey, newsletterConsent)
+	return r.WithContext(ctx)
 }
 
 // RoleFunc defines a function that takes in an http.Request and perform a check on it whether it has a role or not.

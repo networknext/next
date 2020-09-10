@@ -954,7 +954,6 @@ func (s *BuyersService) SessionMapByte(r *http.Request, args *MapPointsArgs, rep
 
 type GameConfigurationArgs struct {
 	Domain       string `json:"domain"`
-	Name         string `json:"name"`
 	NewPublicKey string `json:"new_public_key"`
 }
 
@@ -963,7 +962,6 @@ type GameConfigurationReply struct {
 }
 
 type gameConfiguration struct {
-	Company   string `json:"company"`
 	PublicKey string `json:"public_key"`
 }
 
@@ -978,7 +976,6 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 	}
 
 	reply.GameConfiguration.PublicKey = ""
-	reply.GameConfiguration.Company = ""
 
 	buyer, err = s.Storage.BuyerWithDomain(args.Domain)
 	// Buyer not found
@@ -987,7 +984,6 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 	}
 
 	reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
-	reply.GameConfiguration.Company = buyer.Name
 
 	return nil
 }
@@ -1011,12 +1007,6 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		return err
 	}
 
-	if args.Name == "" {
-		err = fmt.Errorf("UpdateGameConfiguration() company name is required")
-		level.Error(s.Logger).Log("err", err)
-		return err
-	}
-
 	if args.NewPublicKey == "" {
 		err = fmt.Errorf("UpdateGameConfiguration() new public key is required")
 		level.Error(s.Logger).Log("err", err)
@@ -1034,13 +1024,15 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 
 	buyerID = binary.LittleEndian.Uint64(byteKey[0:8])
 
+	company := r.Context().Value(companyKey).(string)
+
 	// Buyer not found
 	if buyer.ID == 0 {
 
 		// Create new buyer
 		err = s.Storage.AddBuyer(ctx, routing.Buyer{
 			ID:        buyerID,
-			Name:      args.Name,
+			Name:      company,
 			Domain:    args.Domain,
 			Active:    true,
 			Live:      false,
@@ -1062,7 +1054,6 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 
 		// Setup reply
 		reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
-		reply.GameConfiguration.Company = buyer.Name
 
 		return nil
 	}
@@ -1078,7 +1069,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 
 	err = s.Storage.AddBuyer(ctx, routing.Buyer{
 		ID:        buyerID,
-		Name:      args.Name,
+		Name:      company,
 		Domain:    args.Domain,
 		Active:    active,
 		Live:      live,
@@ -1100,7 +1091,6 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 
 	// Set reply
 	reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
-	reply.GameConfiguration.Company = buyer.Name
 
 	return nil
 }

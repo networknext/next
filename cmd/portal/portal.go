@@ -548,17 +548,24 @@ func main() {
 			if user != nil {
 				claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
 
-				if requestRoles, ok := claims["https://networknext.com/userRoles"]; ok {
-					if roles, ok := requestRoles.(map[string]interface{})["roles"]; ok {
+				if requestData, ok := claims["https://networknext.com/userRoles"]; ok {
+					var userRoles []string
+					if roles, ok := requestData.(map[string]interface{})["roles"]; ok {
 						rolesInterface := roles.([]interface{})
-						userRoles := make([]string, len(rolesInterface))
+						userRoles = make([]string, len(rolesInterface))
 						for i, v := range rolesInterface {
 							userRoles[i] = v.(string)
 						}
-						if len(userRoles) > 0 {
-							return jsonrpc.SetRoles(i.Request, userRoles)
-						}
 					}
+					var companyName string
+					if company, ok := requestData.(map[string]interface{})["company"]; ok {
+						companyName = company.(string)
+					}
+					var newsletterConsent bool
+					if consent, ok := requestData.(map[string]interface{})["newsletter"]; ok {
+						newsletterConsent = consent.(bool)
+					}
+					return jsonrpc.AddTokenContext(i.Request, userRoles, companyName, newsletterConsent)
 				}
 			}
 			return jsonrpc.SetIsAnonymous(i.Request, i.Request.Header.Get("Authorization") == "")
