@@ -4,7 +4,7 @@
 
 #include "core/route_token.hpp"
 
-Test(core_RouteTokenV4_general)
+TEST(core_RouteTokenV4_general)
 {
   core::RouterInfo info;
   core::Packet packet;
@@ -21,11 +21,11 @@ Test(core_RouteTokenV4_general)
   std::array<uint8_t, crypto_box_NONCEBYTES> nonce;
   crypto::RandomBytes(nonce, crypto_box_NONCEBYTES);
 
-  const auto ExpireTimestamp = random_whole<uint64_t>();
-  const auto SessionID = random_whole<uint64_t>();
-  const auto SessionVersion = random_whole<uint8_t>();
-  const auto KbpsUp = random_whole<uint32_t>();
-  const auto KbpsDown = random_whole<uint32_t>();
+  const auto expire_timestamp = random_whole<uint64_t>();
+  const auto session_id = random_whole<uint64_t>();
+  const auto session_version = random_whole<uint8_t>();
+  const auto kbps_up = random_whole<uint32_t>();
+  const auto kbps_down = random_whole<uint32_t>();
   net::Address NextAddr;
   NextAddr.type = net::AddressType::IPv4;
   NextAddr.ipv4[0] = random_whole<uint8_t>();
@@ -38,46 +38,46 @@ Test(core_RouteTokenV4_general)
 
   core::RouteTokenV4 input_token;
   {
-    input_token.expire_timestamp = ExpireTimestamp;
-    input_token.session_id = SessionID;
-    input_token.session_version = SessionVersion;
-    input_token.KbpsUp = KbpsUp;
-    input_token.KbpsDown = KbpsDown;
-    input_token.NextAddr = NextAddr;
-    input_token.PrivateKey = PrivateKey;
+    input_token.expire_timestamp = expire_timestamp;
+    input_token.session_id = session_id;
+    input_token.session_version = session_version;
+    input_token.kbps_up = kbps_up;
+    input_token.kbps_down = kbps_down;
+    input_token.next_addr = NextAddr;
+    input_token.private_key = PrivateKey;
   }
 
   {
     size_t index = 0;
-    check(input_token.write_encrypted(packet, index, sender_private_key, receiver_public_key));
+    CHECK(input_token.write_encrypted(packet, index, sender_private_key, receiver_public_key));
   }
 
   core::RouteTokenV4 output_token;
   {
     size_t index = 0;
-    check(output_token.read_encrypted(packet, index, sender_public_key, receiver_private_key));
+    CHECK(output_token.read_encrypted(packet, index, sender_public_key, receiver_private_key));
   }
 
   // make sure nothing changed
-  check(input_token.expire_timestamp == ExpireTimestamp);
-  check(input_token.session_id == SessionID);
-  check(input_token.session_version == SessionVersion);
-  check(input_token.KbpsUp == KbpsUp);
-  check(input_token.KbpsDown == KbpsDown);
-  check(input_token.PrivateKey == PrivateKey);
-  check(input_token.NextAddr == NextAddr);
+  CHECK(input_token.expire_timestamp == expire_timestamp);
+  CHECK(input_token.session_id == session_id);
+  CHECK(input_token.session_version == session_version);
+  CHECK(input_token.kbps_up == kbps_up);
+  CHECK(input_token.kbps_down == kbps_down);
+  CHECK(input_token.private_key == PrivateKey);
+  CHECK(input_token.next_addr == NextAddr);
 
   // make sure input == output
-  check(input_token.expire_timestamp == output_token.expire_timestamp);
-  check(input_token.session_id == output_token.session_id);
-  check(input_token.session_version == output_token.session_version);
-  check(input_token.KbpsUp == output_token.KbpsUp);
-  check(input_token.KbpsDown == output_token.KbpsDown);
-  check(input_token.PrivateKey == output_token.PrivateKey);
-  check(input_token.NextAddr == output_token.NextAddr);
+  CHECK(input_token.expire_timestamp == output_token.expire_timestamp);
+  CHECK(input_token.session_id == output_token.session_id);
+  CHECK(input_token.session_version == output_token.session_version);
+  CHECK(input_token.kbps_up == output_token.kbps_up);
+  CHECK(input_token.kbps_down == output_token.kbps_down);
+  CHECK(input_token.private_key == output_token.private_key);
+  CHECK(input_token.next_addr == output_token.next_addr);
 }
 
-Test(core_RouteToken_general)
+TEST(core_RouteToken_general)
 {
   core::RouterInfo info;
   core::Packet packet;
@@ -116,40 +116,40 @@ Test(core_RouteToken_general)
     input_token.session_id = SessionID;
     input_token.session_version = SessionVersion;
     input_token.session_flags = SessionFlags;
-    input_token.KbpsUp = KbpsUp;
-    input_token.KbpsDown = KbpsDown;
-    input_token.NextAddr = NextAddr;
-    input_token.PrivateKey = PrivateKey;
+    input_token.kbps_up = KbpsUp;
+    input_token.kbps_down = KbpsDown;
+    input_token.next_addr = NextAddr;
+    input_token.private_key = PrivateKey;
   }
 
   {
     size_t index = 0;
-    check(input_token.write_encrypted(packet, index, sender_private_key, receiver_public_key));
+    CHECK(input_token.write_encrypted(packet, index, sender_private_key, receiver_public_key));
   }
 
   core::RouteToken output_token;
   {
     size_t index = 0;
-    check(output_token.read_encrypted(packet, index, sender_public_key, receiver_private_key));
+    CHECK(output_token.read_encrypted(packet, index, sender_public_key, receiver_private_key));
   }
 
   // make sure nothing changed
-  check(input_token.expire_timestamp == ExpireTimestamp);
-  check(input_token.session_id == SessionID);
-  check(input_token.session_version == SessionVersion);
-  check(input_token.session_flags == SessionFlags);
-  check(input_token.KbpsUp == KbpsUp);
-  check(input_token.KbpsDown == KbpsDown);
-  check(input_token.PrivateKey == PrivateKey);
-  check(input_token.NextAddr == NextAddr);
+  CHECK(input_token.expire_timestamp == ExpireTimestamp);
+  CHECK(input_token.session_id == SessionID);
+  CHECK(input_token.session_version == SessionVersion);
+  CHECK(input_token.session_flags == SessionFlags);
+  CHECK(input_token.kbps_up == KbpsUp);
+  CHECK(input_token.kbps_down == KbpsDown);
+  CHECK(input_token.private_key == PrivateKey);
+  CHECK(input_token.next_addr == NextAddr);
 
   // make sure input == output
-  check(input_token.expire_timestamp == output_token.expire_timestamp);
-  check(input_token.session_id == output_token.session_id);
-  check(input_token.session_version == output_token.session_version);
-  check(input_token.session_flags == output_token.session_flags);
-  check(input_token.KbpsUp == output_token.KbpsUp);
-  check(input_token.KbpsDown == output_token.KbpsDown);
-  check(input_token.PrivateKey == output_token.PrivateKey);
-  check(input_token.NextAddr == output_token.NextAddr);
+  CHECK(input_token.expire_timestamp == output_token.expire_timestamp);
+  CHECK(input_token.session_id == output_token.session_id);
+  CHECK(input_token.session_version == output_token.session_version);
+  CHECK(input_token.session_flags == output_token.session_flags);
+  CHECK(input_token.kbps_up == output_token.kbps_up);
+  CHECK(input_token.kbps_down == output_token.kbps_down);
+  CHECK(input_token.private_key == output_token.private_key);
+  CHECK(input_token.next_addr == output_token.next_addr);
 }

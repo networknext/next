@@ -7,7 +7,7 @@
 using net::Address;
 using net::AddressType;
 
-Test(ReadAddress_ipv4)
+TEST(ReadAddress_ipv4)
 {
   Address addr;
   std::array<uint8_t, Address::SIZE_OF> bin;
@@ -21,11 +21,11 @@ Test(ReadAddress_ipv4)
   bin[6] = 0xC7;
 
   size_t index = 0;
-  check(encoding::read_address(bin, index, addr));
-  check(index == Address::SIZE_OF);
+  CHECK(encoding::read_address(bin, index, addr));
+  CHECK(index == Address::SIZE_OF);
 }
 
-Test(ReadAddress_ipv6)
+TEST(ReadAddress_ipv6)
 {
   Address addr;
   std::array<uint8_t, Address::SIZE_OF> bin;
@@ -50,26 +50,26 @@ Test(ReadAddress_ipv6)
   bin[18] = 0xC7;
 
   size_t index = 0;
-  check(encoding::read_address(bin, index, addr));
+  CHECK(encoding::read_address(bin, index, addr));
 
-  check(addr.type == AddressType::IPv6);
-  check(addr.ipv6[0] == 0x3b1f);
-  check(addr.ipv6[1] == 0x3c33);
-  check(addr.ipv6[2] == 0x9928);
-  check(addr.ipv6[3] == 0xffff);
-  check(addr.ipv6[4] == 0xffff);
-  check(addr.ipv6[5] == 0xffff);
-  check(addr.ipv6[6] == 0xffff);
-  check(addr.ipv6[7] == 0xffff);
-  check(addr.port == 51034);
+  CHECK(addr.type == AddressType::IPv6);
+  CHECK(addr.ipv6[0] == 0x3b1f);
+  CHECK(addr.ipv6[1] == 0x3c33);
+  CHECK(addr.ipv6[2] == 0x9928);
+  CHECK(addr.ipv6[3] == 0xffff);
+  CHECK(addr.ipv6[4] == 0xffff);
+  CHECK(addr.ipv6[5] == 0xffff);
+  CHECK(addr.ipv6[6] == 0xffff);
+  CHECK(addr.ipv6[7] == 0xffff);
+  CHECK(addr.port == 51034);
 
-  check(index == Address::SIZE_OF);
-  check(addr.to_string() == "[3b1f:3c33:9928:ffff:ffff:ffff:ffff:ffff]:51034").on_fail([&] {
+  CHECK(index == Address::SIZE_OF);
+  CHECK(addr.to_string() == "[3b1f:3c33:9928:ffff:ffff:ffff:ffff:ffff]:51034").on_fail([&] {
     std::cout << addr.to_string() << std::endl;
   });
 }
 
-Test(ReadAddress_none)
+TEST(ReadAddress_none)
 {
   Address before, after;
   std::array<uint8_t, Address::SIZE_OF> bin;
@@ -95,10 +95,10 @@ Test(ReadAddress_none)
   bin[18] = 0xFF;
 
   size_t index = 0;
-  check(encoding::read_address(bin, index, after));
-  check(index == Address::SIZE_OF);
-  check(after.to_string() == "NONE").on_fail([&] {
+  CHECK(encoding::read_address(bin, index, after));
+  CHECK(index == Address::SIZE_OF);
+  CHECK(after.to_string() == "NONE").on_fail([&] {
     std::cout << "\n'" << after.to_string() << '\'' << std::endl;
   });
-  check(before == after);
+  CHECK(before == after);
 }

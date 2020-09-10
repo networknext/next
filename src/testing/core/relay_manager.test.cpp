@@ -7,20 +7,19 @@ using core::RelayManager;
 using core::RelayPingInfo;
 using core::RelayStats;
 
-Test(core_RelayManager_general)
+TEST(core_RelayManager_general)
 {
-  const int MaxRelays = MAX_RELAYS;
-  const int NumRelays = 32;
+  const int NUM_RELAYS = 32;
 
   std::array<RelayPingInfo, MAX_RELAYS> incoming;
 
-  for (int i = 0; i < MaxRelays; ++i) {
+  for (int i = 0; i < MAX_RELAYS; ++i) {
     auto& relay = incoming[i];
     relay.id = i;
     std::stringstream ss;
     ss << "127.0.0.1:" << 40000 + i;
-    check(relay.address.parse(ss.str()) == true);
-    check(relay.address.port == 40000 + i);
+    CHECK(relay.address.parse(ss.str()) == true);
+    CHECK(relay.address.port == 40000 + i);
   }
 
   RelayManager manager;
@@ -29,17 +28,17 @@ Test(core_RelayManager_general)
   {
     RelayStats stats;
     manager.get_stats(stats);
-    check(stats.num_relays == 0);
+    CHECK(stats.num_relays == 0);
   }
 
   // add max relays
-  manager.update(NumRelays, incoming);
+  manager.update(NUM_RELAYS, incoming);
   {
     RelayStats stats;
     manager.get_stats(stats);
-    check(stats.num_relays == NumRelays);
-    for (int i = 0; i < NumRelays; ++i) {
-      check(std::find_if(incoming.begin(), incoming.end(), [&](const RelayPingInfo& relay) -> bool {
+    CHECK(stats.num_relays == NUM_RELAYS);
+    for (int i = 0; i < NUM_RELAYS; ++i) {
+      CHECK(std::find_if(incoming.begin(), incoming.end(), [&](const RelayPingInfo& relay) -> bool {
               return relay.id == stats.ids[i];
             }) != incoming.end());
     }
@@ -51,19 +50,19 @@ Test(core_RelayManager_general)
   {
     RelayStats stats;
     manager.get_stats(stats);
-    check(stats.num_relays == 0);
+    CHECK(stats.num_relays == 0);
   }
 
   // add same relay set repeatedly
 
   for (int j = 0; j < 2; ++j) {
-    manager.update(NumRelays, incoming);
+    manager.update(NUM_RELAYS, incoming);
     {
       RelayStats stats;
       manager.get_stats(stats);
-      check(stats.num_relays == NumRelays);
-      for (int i = 0; i < NumRelays; ++i) {
-        check(incoming[i].id == stats.ids[i]);
+      CHECK(stats.num_relays == NUM_RELAYS);
+      for (int i = 0; i < NUM_RELAYS; ++i) {
+        CHECK(incoming[i].id == stats.ids[i]);
       }
     }
   }
@@ -72,13 +71,13 @@ Test(core_RelayManager_general)
 
   std::array<RelayPingInfo, MAX_RELAYS> diff_relays;
   std::copy(incoming.begin() + 4, incoming.end(), diff_relays.begin());
-  manager.update(NumRelays, diff_relays);
+  manager.update(NUM_RELAYS, diff_relays);
   {
     RelayStats stats;
     manager.get_stats(stats);
-    check(stats.num_relays == NumRelays);
-    for (int i = 0; i < NumRelays; ++i) {
-      check(incoming[i + 4].id == stats.ids[i]);
+    CHECK(stats.num_relays == NUM_RELAYS);
+    for (int i = 0; i < NUM_RELAYS; ++i) {
+      CHECK(incoming[i + 4].id == stats.ids[i]);
     }
   }
 }

@@ -4,7 +4,7 @@
 #include "core/route_stats.hpp"
 #include "core/ping_history.hpp"
 
-Test(core_route_stats_basic_test)
+TEST(core_route_stats_basic_test)
 {
   std::default_random_engine gen;
   std::uniform_real_distribution<float> ping_dist(0.0, 1000.0);  // pings will happen in this range
@@ -67,13 +67,13 @@ Test(core_route_stats_basic_test)
   double actual_jitter = (stats.jitter * 100.0) / 100.0;
   double actual_packet_loss = (stats.packet_loss * 100.0) / 100.0;
 
-  check(std::abs(actual_rtt - expected_rtt) < 0.001).on_fail([&] {
+  CHECK(std::abs(actual_rtt - expected_rtt) < 0.001).on_fail([&] {
     std::cout << "actual rtt = " << actual_rtt << '\n';
     std::cout << "expected rtt = " << expected_rtt << '\n';
   });
-  check(std::abs(actual_jitter - expected_jitter) < 0.001).on_fail([&] {
+  CHECK(std::abs(actual_jitter - expected_jitter) < 0.001).on_fail([&] {
     std::cout << "actual jitter = " << actual_jitter << '\n';
     std::cout << "expected jitter = " << expected_jitter << '\n';
   });
-  check(std::abs(actual_packet_loss - expected_packet_loss) < 0.001);
+  CHECK(std::abs(actual_packet_loss - expected_packet_loss) < 0.001);
 }

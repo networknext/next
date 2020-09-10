@@ -1,6 +1,6 @@
 #pragma once
 
-#include "net/address.hpp"
+#include "util/macros.hpp"
 
 #define TEST_BREAK "\n=============================================\n\n"
 #define TEST_BREAK_WARNING "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n"
@@ -37,9 +37,9 @@
  * To do so first forward declare the complete name of the test (with the pre & postfix) within the testing namespace.
  * Then simply use the friend keyword within the class you'd like to test the private functions of.
  */
-#define Test(...) TEST_MACRO_CHOOSER(__VA_ARGS__)(__VA_ARGS__)
+#define TEST(...) TEST_MACRO_CHOOSER(__VA_ARGS__)(__VA_ARGS__)
 
-#define check(cond) testing::CheckHandler((cond), #cond, __FILE__, __LINE__)
+#define CHECK(cond) testing::CheckHandler((cond), #cond, __FILE__, __LINE__)
 
 namespace testing
 {
@@ -96,39 +96,11 @@ namespace testing
   }
 
   template <typename T>
-  SpecCheck CheckHandler(T result, const char* condition, const char* file, int line);
+  INLINE SpecCheck CheckHandler(T result, const char* condition, const char* file, int line);
 
   template <>
   INLINE SpecCheck CheckHandler(bool result, const char* condition, const char* file, int line)
   {
     return SpecCheck(result, condition, file, line);
-  }
-
-  // slow but easy to write, use for tests only
-  // valid return types are std string/vector
-  template <class ReturnType>
-  ReturnType ReadFile(std::string filename);
-
-  template <class ReturnType>
-  ReturnType ReadFile(std::string filename)
-  {
-    ReturnType retval;
-
-    if (!filename.empty()) {
-      std::ifstream stream;
-
-      stream.open(filename, std::ios::binary);
-
-      if (stream) {
-        std::stringstream data;
-        data << stream.rdbuf();
-        auto str = data.str();
-        retval.assign(str.begin(), str.end());
-      }
-
-      stream.close();
-    }
-
-    return retval;
   }
 }  // namespace testing

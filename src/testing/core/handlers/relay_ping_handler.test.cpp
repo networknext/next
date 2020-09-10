@@ -16,7 +16,7 @@ using os::Socket;
 using os::SocketConfig;
 using util::ThroughputRecorder;
 
-Test(core_handlers_relay_ping_handler)
+TEST(core_handlers_relay_ping_handler)
 {
   Packet packet;
   ThroughputRecorder recorder;
@@ -25,8 +25,8 @@ Test(core_handlers_relay_ping_handler)
   Address addr;
   SocketConfig config = default_socket_config();
 
-  check(addr.parse("127.0.0.1"));
-  check(socket.create(addr, config));
+  CHECK(addr.parse("127.0.0.1"));
+  CHECK(socket.create(addr, config));
 
   packet.addr = addr;
   packet.length = PACKET_HASH_LENGTH + RELAY_PING_PACKET_SIZE;
@@ -34,10 +34,10 @@ Test(core_handlers_relay_ping_handler)
   core::handlers::relay_ping_handler(packet, recorder, socket, true);
 
   size_t prev_len = packet.length;
-  check(socket.recv(packet));
-  check(prev_len == packet.length);
+  CHECK(socket.recv(packet));
+  CHECK(prev_len == packet.length);
 
-  check(recorder.inbound_ping_tx.num_packets == 1);
-  check(recorder.inbound_ping_tx.num_bytes == PACKET_HASH_LENGTH + RELAY_PING_PACKET_SIZE);
-  check(static_cast<PacketType>(packet.buffer[crypto::PACKET_HASH_LENGTH]) == PacketType::RelayPong);
+  CHECK(recorder.inbound_ping_tx.num_packets == 1);
+  CHECK(recorder.inbound_ping_tx.num_bytes == PACKET_HASH_LENGTH + RELAY_PING_PACKET_SIZE);
+  CHECK(static_cast<PacketType>(packet.buffer[crypto::PACKET_HASH_LENGTH]) == PacketType::RelayPong);
 }

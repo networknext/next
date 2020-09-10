@@ -20,7 +20,7 @@ using os::Socket;
 using os::SocketConfig;
 using util::ThroughputRecorder;
 
-Test(core_handlers_continue_request_handler_sdk4_unsigned)
+TEST(core_handlers_continue_request_handler_sdk4_unsigned)
 {
   Packet packet;
   SessionMap map;
@@ -33,8 +33,8 @@ Test(core_handlers_continue_request_handler_sdk4_unsigned)
   Address addr;
   SocketConfig config = default_socket_config();
 
-  check(addr.parse("127.0.0.1"));
-  check(socket.create(addr, config));
+  CHECK(addr.parse("127.0.0.1"));
+  CHECK(socket.create(addr, config));
 
   packet.buffer[0] = static_cast<uint8_t>(PacketType::ContinueRequest4);
   packet.length = 1 + ContinueTokenV4::SIZE_OF_ENCRYPTED * 2;
@@ -45,9 +45,9 @@ Test(core_handlers_continue_request_handler_sdk4_unsigned)
   token.session_version = 3;
 
   size_t index = 1;
-  check(token.write_encrypted(packet, index, router_private_key(), keychain.relay_public_key));
-  check(packet.buffer[0] == static_cast<uint8_t>(PacketType::ContinueRequest4));
-  check(index == 1 + ContinueTokenV4::SIZE_OF_ENCRYPTED).on_fail([&] {
+  CHECK(token.write_encrypted(packet, index, router_private_key(), keychain.relay_public_key));
+  CHECK(packet.buffer[0] == static_cast<uint8_t>(PacketType::ContinueRequest4));
+  CHECK(index == 1 + ContinueTokenV4::SIZE_OF_ENCRYPTED).on_fail([&] {
     std::cout << index << '\n';
   });
 
@@ -63,15 +63,15 @@ Test(core_handlers_continue_request_handler_sdk4_unsigned)
 
   core::handlers::continue_request_handler_sdk4(packet, map, keychain, recorder, info, socket, false);
 
-  check(socket.recv(packet));
-  check(packet.length == prev_len - ContinueTokenV4::SIZE_OF_ENCRYPTED);
-  check(session->expire_timestamp == token.expire_timestamp);
+  CHECK(socket.recv(packet));
+  CHECK(packet.length == prev_len - ContinueTokenV4::SIZE_OF_ENCRYPTED);
+  CHECK(session->expire_timestamp == token.expire_timestamp);
 
   index = 0;
-  check(!crypto::is_network_next_packet_sdk4(packet.buffer, index, packet.length));
+  CHECK(!crypto::is_network_next_packet_sdk4(packet.buffer, index, packet.length));
 }
 
-Test(core_handlers_continue_request_handler_sdk4_signed)
+TEST(core_handlers_continue_request_handler_sdk4_signed)
 {
   Packet packet;
   SessionMap map;
@@ -87,8 +87,8 @@ Test(core_handlers_continue_request_handler_sdk4_signed)
   Address addr;
   SocketConfig config = default_socket_config();
 
-  check(addr.parse("127.0.0.1"));
-  check(socket.create(addr, config));
+  CHECK(addr.parse("127.0.0.1"));
+  CHECK(socket.create(addr, config));
 
   ContinueTokenV4 token;
   token.expire_timestamp = 20;
@@ -96,9 +96,9 @@ Test(core_handlers_continue_request_handler_sdk4_signed)
   token.session_version = 3;
 
   size_t index = crypto::PACKET_HASH_LENGTH + 1;
-  check(token.write_encrypted(packet, index, router_private_key(), keychain.relay_public_key));
-  check(packet.buffer[crypto::PACKET_HASH_LENGTH] == static_cast<uint8_t>(PacketType::ContinueRequest));
-  check(index == crypto::PACKET_HASH_LENGTH + 1 + ContinueTokenV4::SIZE_OF_ENCRYPTED).on_fail([&] {
+  CHECK(token.write_encrypted(packet, index, router_private_key(), keychain.relay_public_key));
+  CHECK(packet.buffer[crypto::PACKET_HASH_LENGTH] == static_cast<uint8_t>(PacketType::ContinueRequest));
+  CHECK(index == crypto::PACKET_HASH_LENGTH + 1 + ContinueTokenV4::SIZE_OF_ENCRYPTED).on_fail([&] {
     std::cout << index << '\n';
   });
 
@@ -114,15 +114,15 @@ Test(core_handlers_continue_request_handler_sdk4_signed)
 
   core::handlers::continue_request_handler_sdk4(packet, map, keychain, recorder, info, socket, true);
 
-  check(socket.recv(packet));
-  check(packet.length == prev_len - ContinueTokenV4::SIZE_OF_ENCRYPTED);
-  check(session->expire_timestamp == token.expire_timestamp);
+  CHECK(socket.recv(packet));
+  CHECK(packet.length == prev_len - ContinueTokenV4::SIZE_OF_ENCRYPTED);
+  CHECK(session->expire_timestamp == token.expire_timestamp);
 
   index = 0;
-  check(crypto::is_network_next_packet_sdk4(packet.buffer, index, packet.length));
+  CHECK(crypto::is_network_next_packet_sdk4(packet.buffer, index, packet.length));
 }
 
-Test(core_handlers_continue_request_handler_unsigned)
+TEST(core_handlers_continue_request_handler_unsigned)
 {
   Packet packet;
   SessionMap map;
@@ -135,8 +135,8 @@ Test(core_handlers_continue_request_handler_unsigned)
   Address addr;
   SocketConfig config = default_socket_config();
 
-  check(addr.parse("127.0.0.1"));
-  check(socket.create(addr, config));
+  CHECK(addr.parse("127.0.0.1"));
+  CHECK(socket.create(addr, config));
 
   packet.buffer[0] = static_cast<uint8_t>(PacketType::ContinueRequest);
   packet.length = 1 + ContinueToken::SIZE_OF_ENCRYPTED * 2;
@@ -148,9 +148,9 @@ Test(core_handlers_continue_request_handler_unsigned)
   token.session_flags = 0;
 
   size_t index = 1;
-  check(token.write_encrypted(packet, index, router_private_key(), keychain.relay_public_key));
-  check(packet.buffer[0] == static_cast<uint8_t>(PacketType::ContinueRequest));
-  check(index == 1 + ContinueToken::SIZE_OF_ENCRYPTED).on_fail([&] {
+  CHECK(token.write_encrypted(packet, index, router_private_key(), keychain.relay_public_key));
+  CHECK(packet.buffer[0] == static_cast<uint8_t>(PacketType::ContinueRequest));
+  CHECK(index == 1 + ContinueToken::SIZE_OF_ENCRYPTED).on_fail([&] {
     std::cout << index << '\n';
   });
 
@@ -166,15 +166,15 @@ Test(core_handlers_continue_request_handler_unsigned)
 
   core::handlers::continue_request_handler(packet, map, keychain, recorder, info, socket, false);
 
-  check(socket.recv(packet));
-  check(packet.length == prev_len - ContinueToken::SIZE_OF_ENCRYPTED);
-  check(session->expire_timestamp == token.expire_timestamp);
+  CHECK(socket.recv(packet));
+  CHECK(packet.length == prev_len - ContinueToken::SIZE_OF_ENCRYPTED);
+  CHECK(session->expire_timestamp == token.expire_timestamp);
 
   index = 0;
-  check(!crypto::is_network_next_packet(packet.buffer, index, packet.length));
+  CHECK(!crypto::is_network_next_packet(packet.buffer, index, packet.length));
 }
 
-Test(core_handlers_continue_request_handler_signed)
+TEST(core_handlers_continue_request_handler_signed)
 {
   Packet packet;
   SessionMap map;
@@ -190,8 +190,8 @@ Test(core_handlers_continue_request_handler_signed)
   Address addr;
   SocketConfig config = default_socket_config();
 
-  check(addr.parse("127.0.0.1"));
-  check(socket.create(addr, config));
+  CHECK(addr.parse("127.0.0.1"));
+  CHECK(socket.create(addr, config));
 
   ContinueToken token;
   token.expire_timestamp = 20;
@@ -200,9 +200,9 @@ Test(core_handlers_continue_request_handler_signed)
   token.session_flags = 0;
 
   size_t index = crypto::PACKET_HASH_LENGTH + 1;
-  check(token.write_encrypted(packet, index, router_private_key(), keychain.relay_public_key));
-  check(packet.buffer[crypto::PACKET_HASH_LENGTH] == static_cast<uint8_t>(PacketType::ContinueRequest));
-  check(index == crypto::PACKET_HASH_LENGTH + 1 + ContinueToken::SIZE_OF_ENCRYPTED).on_fail([&] {
+  CHECK(token.write_encrypted(packet, index, router_private_key(), keychain.relay_public_key));
+  CHECK(packet.buffer[crypto::PACKET_HASH_LENGTH] == static_cast<uint8_t>(PacketType::ContinueRequest));
+  CHECK(index == crypto::PACKET_HASH_LENGTH + 1 + ContinueToken::SIZE_OF_ENCRYPTED).on_fail([&] {
     std::cout << index << '\n';
   });
 
@@ -218,10 +218,10 @@ Test(core_handlers_continue_request_handler_signed)
 
   core::handlers::continue_request_handler(packet, map, keychain, recorder, info, socket, true);
 
-  check(socket.recv(packet));
-  check(packet.length == prev_len - ContinueToken::SIZE_OF_ENCRYPTED);
-  check(session->expire_timestamp == token.expire_timestamp);
+  CHECK(socket.recv(packet));
+  CHECK(packet.length == prev_len - ContinueToken::SIZE_OF_ENCRYPTED);
+  CHECK(session->expire_timestamp == token.expire_timestamp);
 
   index = 0;
-  check(crypto::is_network_next_packet(packet.buffer, index, packet.length));
+  CHECK(crypto::is_network_next_packet(packet.buffer, index, packet.length));
 }

@@ -20,7 +20,7 @@ using os::Socket;
 using os::SocketConfig;
 using util::ThroughputRecorder;
 
-Test(core_handlers_client_to_server_handler_sdk4_unsigned_packet)
+TEST(core_handlers_client_to_server_handler_sdk4_unsigned_packet)
 {
   Packet packet;
   SessionMap map;
@@ -35,8 +35,8 @@ Test(core_handlers_client_to_server_handler_sdk4_unsigned_packet)
   Address addr;
   SocketConfig config = default_socket_config();
 
-  check(addr.parse("127.0.0.1"));
-  check(socket.create(addr, config));
+  CHECK(addr.parse("127.0.0.1"));
+  CHECK(socket.create(addr, config));
 
   packet.length = PacketHeaderV4::SIZE_OF_SIGNED + 100;
   packet.addr = addr;
@@ -61,26 +61,26 @@ Test(core_handlers_client_to_server_handler_sdk4_unsigned_packet)
 
   size_t index = 0;
 
-  check(header.write(packet, index, PacketDirection::ClientToServer, private_key));
-  check(index == PacketHeaderV4::SIZE_OF_SIGNED);
+  CHECK(header.write(packet, index, PacketDirection::ClientToServer, private_key));
+  CHECK(index == PacketHeaderV4::SIZE_OF_SIGNED);
 
   core::handlers::client_to_server_handler_sdk4(packet, map, recorder, router_info, socket, false);
   size_t prev_len = packet.length;
-  check(socket.recv(packet));
-  check(prev_len == packet.length);
+  CHECK(socket.recv(packet));
+  CHECK(prev_len == packet.length);
 
-  check(recorder.client_to_server_tx.num_packets == 1);
-  check(recorder.client_to_server_tx.num_bytes == packet.length).on_fail([&] {
+  CHECK(recorder.client_to_server_tx.num_packets == 1);
+  CHECK(recorder.client_to_server_tx.num_bytes == packet.length).on_fail([&] {
     std::cout << "packet len = " << packet.length << std::endl;
     std::cout << "byte count = " << recorder.client_to_server_tx.num_bytes << std::endl;
   });
 
   core::handlers::client_to_server_handler_sdk4(packet, map, recorder, router_info, socket, false);
   // check already received
-  check(!socket.recv(packet));
+  CHECK(!socket.recv(packet));
 }
 
-Test(core_handlers_client_to_server_handler_sdk4_signed_packet)
+TEST(core_handlers_client_to_server_handler_sdk4_signed_packet)
 {
   Packet packet;
   SessionMap map;
@@ -95,8 +95,8 @@ Test(core_handlers_client_to_server_handler_sdk4_signed_packet)
   Address addr;
   SocketConfig config = default_socket_config();
 
-  check(addr.parse("127.0.0.1"));
-  check(socket.create(addr, config));
+  CHECK(addr.parse("127.0.0.1"));
+  CHECK(socket.create(addr, config));
 
   packet.length = crypto::PACKET_HASH_LENGTH + PacketHeaderV4::SIZE_OF_SIGNED + 100;
   packet.addr = addr;
@@ -123,18 +123,18 @@ Test(core_handlers_client_to_server_handler_sdk4_signed_packet)
 
   size_t index = crypto::PACKET_HASH_LENGTH;
 
-  check(header.write(packet, index, PacketDirection::ClientToServer, private_key));
-  check(index == crypto::PACKET_HASH_LENGTH + PacketHeaderV4::SIZE_OF_SIGNED);
+  CHECK(header.write(packet, index, PacketDirection::ClientToServer, private_key));
+  CHECK(index == crypto::PACKET_HASH_LENGTH + PacketHeaderV4::SIZE_OF_SIGNED);
 
   core::handlers::client_to_server_handler_sdk4(packet, map, recorder, router_info, socket, true);
-  check(socket.recv(packet));
+  CHECK(socket.recv(packet));
 
   core::handlers::client_to_server_handler_sdk4(packet, map, recorder, router_info, socket, true);
   // check already received
-  check(!socket.recv(packet));
+  CHECK(!socket.recv(packet));
 }
 
-Test(core_handlers_client_to_server_handler_unsigned_packet)
+TEST(core_handlers_client_to_server_handler_unsigned_packet)
 {
   Packet packet;
   SessionMap map;
@@ -149,8 +149,8 @@ Test(core_handlers_client_to_server_handler_unsigned_packet)
   Address addr;
   SocketConfig config = default_socket_config();
 
-  check(addr.parse("127.0.0.1"));
-  check(socket.create(addr, config));
+  CHECK(addr.parse("127.0.0.1"));
+  CHECK(socket.create(addr, config));
 
   packet.length = PacketHeader::SIZE_OF_SIGNED + 100;
   packet.addr = addr;
@@ -175,26 +175,26 @@ Test(core_handlers_client_to_server_handler_unsigned_packet)
 
   size_t index = 0;
 
-  check(header.write(packet, index, PacketDirection::ClientToServer, private_key));
-  check(index == PacketHeader::SIZE_OF_SIGNED);
+  CHECK(header.write(packet, index, PacketDirection::ClientToServer, private_key));
+  CHECK(index == PacketHeader::SIZE_OF_SIGNED);
 
   core::handlers::client_to_server_handler(packet, map, recorder, router_info, socket, false);
   size_t prev_len = packet.length;
-  check(socket.recv(packet));
-  check(prev_len == packet.length);
+  CHECK(socket.recv(packet));
+  CHECK(prev_len == packet.length);
 
-  check(recorder.client_to_server_tx.num_packets == 1);
-  check(recorder.client_to_server_tx.num_bytes == packet.length).on_fail([&] {
+  CHECK(recorder.client_to_server_tx.num_packets == 1);
+  CHECK(recorder.client_to_server_tx.num_bytes == packet.length).on_fail([&] {
     std::cout << "packet len = " << packet.length << std::endl;
     std::cout << "byte count = " << recorder.client_to_server_tx.num_bytes << std::endl;
   });
 
   core::handlers::client_to_server_handler(packet, map, recorder, router_info, socket, false);
   // check already received
-  check(!socket.recv(packet));
+  CHECK(!socket.recv(packet));
 }
 
-Test(core_handlers_client_to_server_handler_signed_packet)
+TEST(core_handlers_client_to_server_handler_signed_packet)
 {
   Packet packet;
   SessionMap map;
@@ -209,8 +209,8 @@ Test(core_handlers_client_to_server_handler_signed_packet)
   Address addr;
   SocketConfig config = default_socket_config();
 
-  check(addr.parse("127.0.0.1"));
-  check(socket.create(addr, config));
+  CHECK(addr.parse("127.0.0.1"));
+  CHECK(socket.create(addr, config));
 
   packet.length = crypto::PACKET_HASH_LENGTH + PacketHeader::SIZE_OF_SIGNED + 100;
   packet.addr = addr;
@@ -237,13 +237,13 @@ Test(core_handlers_client_to_server_handler_signed_packet)
 
   size_t index = crypto::PACKET_HASH_LENGTH;
 
-  check(header.write(packet, index, PacketDirection::ClientToServer, private_key));
-  check(index == crypto::PACKET_HASH_LENGTH + PacketHeader::SIZE_OF_SIGNED);
+  CHECK(header.write(packet, index, PacketDirection::ClientToServer, private_key));
+  CHECK(index == crypto::PACKET_HASH_LENGTH + PacketHeader::SIZE_OF_SIGNED);
 
   core::handlers::client_to_server_handler(packet, map, recorder, router_info, socket, true);
-  check(socket.recv(packet));
+  CHECK(socket.recv(packet));
 
   core::handlers::client_to_server_handler(packet, map, recorder, router_info, socket, true);
   // check already received
-  check(!socket.recv(packet));
+  CHECK(!socket.recv(packet));
 }

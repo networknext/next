@@ -22,7 +22,7 @@ using os::Socket;
 using os::SocketConfig;
 using util::ThroughputRecorder;
 
-Test(core_handlers_continue_response_handler_sdk4_unsigned)
+TEST(core_handlers_continue_response_handler_sdk4_unsigned)
 {
   Packet packet;
   SessionMap map;
@@ -37,8 +37,8 @@ Test(core_handlers_continue_response_handler_sdk4_unsigned)
   Address addr;
   SocketConfig config = default_socket_config();
 
-  check(addr.parse("127.0.0.1"));
-  check(socket.create(addr, config));
+  CHECK(addr.parse("127.0.0.1"));
+  CHECK(socket.create(addr, config));
 
   packet.length = PacketHeaderV4::SIZE_OF_SIGNED;
 
@@ -61,26 +61,26 @@ Test(core_handlers_continue_response_handler_sdk4_unsigned)
   map.set(header.hash(), session);
 
   size_t index = 0;
-  check(header.write(packet, index, PacketDirection::ServerToClient, private_key));
+  CHECK(header.write(packet, index, PacketDirection::ServerToClient, private_key));
 
   core::handlers::continue_response_handler_sdk4(packet, map, recorder, router_info, socket, false);
   size_t prev_len = packet.length;
-  check(socket.recv(packet)).on_fail([&] {
+  CHECK(socket.recv(packet)).on_fail([&] {
     std::cout << "unable to receive packet\n";
   });
-  check(prev_len == packet.length);
+  CHECK(prev_len == packet.length);
 
-  check(recorder.continue_response_tx.num_packets == 1);
-  check(recorder.continue_response_tx.num_bytes == packet.length).on_fail([&] {
+  CHECK(recorder.continue_response_tx.num_packets == 1);
+  CHECK(recorder.continue_response_tx.num_bytes == packet.length).on_fail([&] {
     std::cout << "packet len = " << packet.length << '\n';
     std::cout << "byte count = " << recorder.continue_response_rx.num_bytes << '\n';
   });
 
   core::handlers::continue_response_handler_sdk4(packet, map, recorder, router_info, socket, false);
-  check(!socket.recv(packet));
+  CHECK(!socket.recv(packet));
 }
 
-Test(core_handlers_continue_response_handler_sdk4_signed)
+TEST(core_handlers_continue_response_handler_sdk4_signed)
 {
   Packet packet;
   SessionMap map;
@@ -94,8 +94,8 @@ Test(core_handlers_continue_response_handler_sdk4_signed)
   Address addr;
   SocketConfig config = default_socket_config();
 
-  check(addr.parse("127.0.0.1"));
-  check(socket.create(addr, config));
+  CHECK(addr.parse("127.0.0.1"));
+  CHECK(socket.create(addr, config));
 
   packet.length = PACKET_HASH_LENGTH + PacketHeaderV4::SIZE_OF_SIGNED;
 
@@ -118,26 +118,26 @@ Test(core_handlers_continue_response_handler_sdk4_signed)
   map.set(header.hash(), session);
 
   size_t index = PACKET_HASH_LENGTH;
-  check(header.write(packet, index, PacketDirection::ServerToClient, private_key));
+  CHECK(header.write(packet, index, PacketDirection::ServerToClient, private_key));
 
   core::handlers::continue_response_handler_sdk4(packet, map, recorder, router_info, socket, true);
   size_t prev_len = packet.length;
-  check(socket.recv(packet)).on_fail([&] {
+  CHECK(socket.recv(packet)).on_fail([&] {
     std::cout << "unable to receive packet\n";
   });
-  check(prev_len == packet.length);
+  CHECK(prev_len == packet.length);
 
-  check(recorder.continue_response_tx.num_packets == 1);
-  check(recorder.continue_response_tx.num_bytes == packet.length).on_fail([&] {
+  CHECK(recorder.continue_response_tx.num_packets == 1);
+  CHECK(recorder.continue_response_tx.num_bytes == packet.length).on_fail([&] {
     std::cout << "packet len = " << packet.length << '\n';
     std::cout << "byte count = " << recorder.continue_response_rx.num_bytes << '\n';
   });
 
   core::handlers::continue_response_handler_sdk4(packet, map, recorder, router_info, socket, true);
-  check(!socket.recv(packet));
+  CHECK(!socket.recv(packet));
 }
 
-Test(core_handlers_continue_response_handler_unsigned)
+TEST(core_handlers_continue_response_handler_unsigned)
 {
   Packet packet;
   SessionMap map;
@@ -152,8 +152,8 @@ Test(core_handlers_continue_response_handler_unsigned)
   Address addr;
   SocketConfig config = default_socket_config();
 
-  check(addr.parse("127.0.0.1"));
-  check(socket.create(addr, config));
+  CHECK(addr.parse("127.0.0.1"));
+  CHECK(socket.create(addr, config));
 
   packet.length = PacketHeader::SIZE_OF_SIGNED;
 
@@ -176,26 +176,26 @@ Test(core_handlers_continue_response_handler_unsigned)
   map.set(header.hash(), session);
 
   size_t index = 0;
-  check(header.write(packet, index, PacketDirection::ServerToClient, private_key));
+  CHECK(header.write(packet, index, PacketDirection::ServerToClient, private_key));
 
   core::handlers::continue_response_handler(packet, map, recorder, router_info, socket, false);
   size_t prev_len = packet.length;
-  check(socket.recv(packet)).on_fail([&] {
+  CHECK(socket.recv(packet)).on_fail([&] {
     std::cout << "unable to receive packet\n";
   });
-  check(prev_len == packet.length);
+  CHECK(prev_len == packet.length);
 
-  check(recorder.continue_response_tx.num_packets == 1);
-  check(recorder.continue_response_tx.num_bytes == packet.length).on_fail([&] {
+  CHECK(recorder.continue_response_tx.num_packets == 1);
+  CHECK(recorder.continue_response_tx.num_bytes == packet.length).on_fail([&] {
     std::cout << "packet len = " << packet.length << '\n';
     std::cout << "byte count = " << recorder.continue_response_rx.num_bytes << '\n';
   });
 
   core::handlers::continue_response_handler(packet, map, recorder, router_info, socket, false);
-  check(!socket.recv(packet));
+  CHECK(!socket.recv(packet));
 }
 
-Test(core_handlers_continue_response_handler_signed)
+TEST(core_handlers_continue_response_handler_signed)
 {
   Packet packet;
   SessionMap map;
@@ -209,8 +209,8 @@ Test(core_handlers_continue_response_handler_signed)
   Address addr;
   SocketConfig config = default_socket_config();
 
-  check(addr.parse("127.0.0.1"));
-  check(socket.create(addr, config));
+  CHECK(addr.parse("127.0.0.1"));
+  CHECK(socket.create(addr, config));
 
   packet.length = PACKET_HASH_LENGTH + PacketHeader::SIZE_OF_SIGNED;
 
@@ -233,21 +233,21 @@ Test(core_handlers_continue_response_handler_signed)
   map.set(header.hash(), session);
 
   size_t index = PACKET_HASH_LENGTH;
-  check(header.write(packet, index, PacketDirection::ServerToClient, private_key));
+  CHECK(header.write(packet, index, PacketDirection::ServerToClient, private_key));
 
   core::handlers::continue_response_handler(packet, map, recorder, router_info, socket, true);
   size_t prev_len = packet.length;
-  check(socket.recv(packet)).on_fail([&] {
+  CHECK(socket.recv(packet)).on_fail([&] {
     std::cout << "unable to receive packet\n";
   });
-  check(prev_len == packet.length);
+  CHECK(prev_len == packet.length);
 
-  check(recorder.continue_response_tx.num_packets == 1);
-  check(recorder.continue_response_tx.num_bytes == packet.length).on_fail([&] {
+  CHECK(recorder.continue_response_tx.num_packets == 1);
+  CHECK(recorder.continue_response_tx.num_bytes == packet.length).on_fail([&] {
     std::cout << "packet len = " << packet.length << '\n';
     std::cout << "byte count = " << recorder.continue_response_rx.num_bytes << '\n';
   });
 
   core::handlers::continue_response_handler(packet, map, recorder, router_info, socket, true);
-  check(!socket.recv(packet));
+  CHECK(!socket.recv(packet));
 }

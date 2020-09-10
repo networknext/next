@@ -7,8 +7,8 @@
 
 #include "bench/bench.hpp"
 #include "core/backend.hpp"
-#include "core/packet_processing.hpp"
 #include "core/packet_header.hpp"
+#include "core/packet_processing.hpp"
 #include "core/router_info.hpp"
 #include "crypto/bytes.hpp"
 #include "crypto/hash.hpp"
@@ -22,6 +22,9 @@
 using namespace std::chrono_literals;
 
 using core::Backend;
+using core::RelayManager;
+using core::RouterInfo;
+using core::SessionMap;
 using crypto::KEY_SIZE;
 using crypto::Keychain;
 using net::Address;
@@ -31,8 +34,7 @@ using os::SocketConfig;
 using os::SocketPtr;
 using os::SocketType;
 using util::Env;
-
-namespace base64 = encoding::base64;
+using util::ThroughputRecorder;
 
 struct
 {
@@ -68,6 +70,8 @@ namespace
 
   INLINE void get_crypto_keys(const Env& env, Keychain& keychain)
   {
+    namespace base64 = encoding::base64;
+
     // relay private key
     {
       auto len = base64::decode(env.relay_private_key, keychain.relay_private_key);
@@ -201,9 +205,9 @@ int main(int argc, const char* argv[])
 
   bool success = false;
 
-  core::RouterInfo router_info;
-  core::RelayManager relay_manager;
-  util::ThroughputRecorder recorder;
+  RouterInfo router_info;
+  RelayManager relay_manager;
+  ThroughputRecorder recorder;
 
   std::vector<SocketPtr> sockets;
   std::vector<std::shared_ptr<std::thread>> threads;
@@ -212,7 +216,7 @@ int main(int argc, const char* argv[])
   std::atomic<bool> should_receive(true);
 
   // session map to be shared across packet processors
-  core::SessionMap sessions;
+  SessionMap sessions;
 
   // makes a shared ptr to a socket object
   auto make_socket = [&](Address& addr_in, SocketConfig config) -> SocketPtr {

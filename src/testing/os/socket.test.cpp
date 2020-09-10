@@ -10,7 +10,7 @@ using os::Socket;
 using os::SocketConfig;
 using os::SocketType;
 
-Test(os_socket_nonblocking_ipv4)
+TEST(os_socket_nonblocking_ipv4)
 {
   Address bind_address, local_address;
   Socket socket;
@@ -20,9 +20,9 @@ Test(os_socket_nonblocking_ipv4)
   config.recv_buffer_size = 1000000;
   config.reuse_port = false;
 
-  check(bind_address.parse("0.0.0.0"));
-  check(local_address.parse("127.0.0.1"));
-  check(socket.create(bind_address, config));
+  CHECK(bind_address.parse("0.0.0.0"));
+  CHECK(local_address.parse("127.0.0.1"));
+  CHECK(socket.create(bind_address, config));
   local_address.port = bind_address.port;
 
   // regular buffer
@@ -32,16 +32,16 @@ Test(os_socket_nonblocking_ipv4)
 
     crypto::RandomBytes(out, out.size());
 
-    check(socket.send(local_address, out.data(), out.size()));
+    CHECK(socket.send(local_address, out.data(), out.size()));
 
     size_t packets_received = 0;
     while (socket.recv(from, in.data(), in.size()) == out.size()) {
-      check(from == local_address);
+      CHECK(from == local_address);
       packets_received++;
     }
 
-    check(packets_received == 1);
-    check(in == out);
+    CHECK(packets_received == 1);
+    CHECK(in == out);
   }
 
   // generic packet
@@ -53,22 +53,22 @@ Test(os_socket_nonblocking_ipv4)
     // randomize past 256
     crypto::RandomBytes(out.buffer, out.buffer.size());
 
-    check(socket.send(out));
+    CHECK(socket.send(out));
 
     size_t packets_received = 0;
     while (socket.recv(in)) {
-      check(in.addr == local_address);
-      check(in.length == 256);
+      CHECK(in.addr == local_address);
+      CHECK(in.length == 256);
       packets_received++;
     }
 
-    check(packets_received == 1);
+    CHECK(packets_received == 1);
     // only check the range
     std::equal(out.buffer.begin(), out.buffer.begin() + out.length, in.buffer.begin(), in.buffer.begin() + in.length);
   }
 }
 
-Test(os_socket_blocking_ipv4_with_timeout)
+TEST(os_socket_blocking_ipv4_with_timeout)
 {
   Address bind_address, local_address, from;
   Socket socket;
@@ -79,22 +79,22 @@ Test(os_socket_blocking_ipv4_with_timeout)
   config.recv_buffer_size = 1000000;
   config.reuse_port = false;
 
-  check(bind_address.parse("0.0.0.0"));
-  check(local_address.parse("127.0.0.1"));
-  check(socket.create(bind_address, config));
+  CHECK(bind_address.parse("0.0.0.0"));
+  CHECK(local_address.parse("127.0.0.1"));
+  CHECK(socket.create(bind_address, config));
 
   local_address.port = bind_address.port;
   std::array<uint8_t, 256> packet = {};
-  check(socket.send(local_address, packet.data(), packet.size()));
+  CHECK(socket.send(local_address, packet.data(), packet.size()));
   size_t packets_received = 0;
   while (socket.recv(from, packet.data(), packet.size()) == packet.size()) {
-    check(from == local_address);
+    CHECK(from == local_address);
     packets_received++;
   }
-  check(packets_received == 1);
+  CHECK(packets_received == 1);
 }
 
-Test(os_socket_blocking_with_no_timeout_ipv4)
+TEST(os_socket_blocking_with_no_timeout_ipv4)
 {
   Address bind_address, local_address, from;
   Socket socket;
@@ -104,17 +104,17 @@ Test(os_socket_blocking_with_no_timeout_ipv4)
   config.recv_buffer_size = 1000000;
   config.reuse_port = false;
 
-  check(bind_address.parse("0.0.0.0"));
-  check(local_address.parse("127.0.0.1"));
-  check(socket.create(bind_address, config));
+  CHECK(bind_address.parse("0.0.0.0"));
+  CHECK(local_address.parse("127.0.0.1"));
+  CHECK(socket.create(bind_address, config));
   local_address.port = bind_address.port;
   std::array<uint8_t, 256> packet = {};
-  check(socket.send(local_address, packet.data(), packet.size()));
-  check(socket.recv(from, packet.data(), packet.size()) == packet.size());
-  check(from == local_address);
+  CHECK(socket.send(local_address, packet.data(), packet.size()));
+  CHECK(socket.recv(from, packet.data(), packet.size()) == packet.size());
+  CHECK(from == local_address);
 }
 
-Test(os_socket_nonblocking_ipv6)
+TEST(os_socket_nonblocking_ipv6)
 {
   Address bind_address, local_address, from;
   Socket socket;
@@ -124,21 +124,21 @@ Test(os_socket_nonblocking_ipv6)
   config.recv_buffer_size = 1000000;
   config.reuse_port = false;
 
-  check(bind_address.parse("[::]"));
-  check(local_address.parse("[::1]"));
-  check(socket.create(bind_address, config));
+  CHECK(bind_address.parse("[::]"));
+  CHECK(local_address.parse("[::1]"));
+  CHECK(socket.create(bind_address, config));
   local_address.port = bind_address.port;
   std::array<uint8_t, 256> packet = {};
-  check(socket.send(local_address, packet.data(), packet.size()));
+  CHECK(socket.send(local_address, packet.data(), packet.size()));
   size_t packets_received = 0;
   while (socket.recv(from, packet.data(), packet.size()) == packet.size()) {
-    check(from == local_address);
+    CHECK(from == local_address);
     packets_received++;
   }
-  check(packets_received == 1);
+  CHECK(packets_received == 1);
 }
 
-Test(os_socket_blocking_ipv6)
+TEST(os_socket_blocking_ipv6)
 {
   Address bind_address, local_address, from;
   Socket socket;
@@ -149,22 +149,22 @@ Test(os_socket_blocking_ipv6)
   config.recv_buffer_size = 1000000;
   config.reuse_port = false;
 
-  check(bind_address.parse("[::]"));
-  check(local_address.parse("[::1]"));
-  check(socket.create(bind_address, config));
+  CHECK(bind_address.parse("[::]"));
+  CHECK(local_address.parse("[::1]"));
+  CHECK(socket.create(bind_address, config));
 
   local_address.port = bind_address.port;
   std::array<uint8_t, 256> packet = {};
-  check(socket.send(local_address, packet.data(), packet.size()));
+  CHECK(socket.send(local_address, packet.data(), packet.size()));
   size_t packets_received = 0;
   while (socket.recv(from, packet.data(), packet.size()) == packet.size()) {
-    check(from == local_address);
+    CHECK(from == local_address);
     packets_received++;
   }
-  check(packets_received == 1);
+  CHECK(packets_received == 1);
 }
 
-Test(os_socket_blocking_with_no_timeout_ipv6)
+TEST(os_socket_blocking_with_no_timeout_ipv6)
 {
   Address bind_address, local_address, from;
   Socket socket;
@@ -174,13 +174,13 @@ Test(os_socket_blocking_with_no_timeout_ipv6)
   config.recv_buffer_size = 1000000;
   config.reuse_port = false;
 
-  check(bind_address.parse("[::]"));
-  check(local_address.parse("[::1]"));
-  check(socket.create(bind_address, config));
+  CHECK(bind_address.parse("[::]"));
+  CHECK(local_address.parse("[::1]"));
+  CHECK(socket.create(bind_address, config));
 
   local_address.port = bind_address.port;
   std::array<uint8_t, 256> packet = {};
-  check(socket.send(local_address, packet.data(), packet.size()));
-  check(socket.recv(from, packet.data(), packet.size()) == packet.size());
-  check(from == local_address);
+  CHECK(socket.send(local_address, packet.data(), packet.size()));
+  CHECK(socket.recv(from, packet.data(), packet.size()) == packet.size());
+  CHECK(from == local_address);
 }
