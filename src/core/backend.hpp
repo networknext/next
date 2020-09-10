@@ -11,8 +11,12 @@
 #include "testing/test.hpp"
 #include "util/logger.hpp"
 
+using core::SessionMap;
 using crypto::GenericKey;
 using crypto::KEY_SIZE;
+using crypto::Keychain;
+using net::IHttpClient;
+using util::ThroughputRecorder;
 
 // forward declare test names to allow private functions to be visible them
 namespace testing
@@ -122,11 +126,11 @@ namespace core
     Backend(
      const std::string hostname,
      const std::string address,
-     const crypto::Keychain& keychain,
+     const Keychain& keychain,
      RouterInfo& router_info,
      RelayManager& relay_manager,
-     const core::SessionMap& sessions,
-     net::IHttpClient& client);
+     const SessionMap& sessions,
+     IHttpClient& client);
     ~Backend() = default;
 
     auto init() -> bool;
@@ -138,17 +142,17 @@ namespace core
     auto update_loop(
      const volatile bool& should_loop,
      const volatile bool& should_shutdown_clean,
-     util::ThroughputRecorder& logger,
-     core::SessionMap& sessions) -> bool;
+     ThroughputRecorder& logger,
+     SessionMap& sessions) -> bool;
 
    private:
     const std::string hostname;
     const std::string relay_address;
-    const crypto::Keychain& keychain;
+    const Keychain& keychain;
     RouterInfo& router_info;
     RelayManager& relay_manager;
-    const core::SessionMap& session_map;
-    net::IHttpClient& http_client;
+    const SessionMap& session_map;
+    IHttpClient& http_client;
 
     // this is the public key in the actual backend
     // for reference backends it's random so has to
