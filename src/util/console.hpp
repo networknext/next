@@ -1,5 +1,7 @@
 #pragma once
 
+#include "macros.hpp"
+
 namespace util
 {
   class Console
@@ -25,33 +27,33 @@ namespace util
     static std::string stringify_time();
   };
 
-  inline Console::Console(std::ostream& stream): stream(stream) {}
+  INLINE Console::Console(std::ostream& stream): stream(stream) {}
 
   template <typename... Args>
-  inline void Console::write(Args&&... args)
+  INLINE void Console::write(Args&&... args)
   {
     std::lock_guard<std::mutex> lk(this->lock);
     ((this->stream << std::forward<Args>(args)), ...);
   }
 
   template <typename... Args>
-  inline void Console::write_line(Args&&... args)
+  INLINE void Console::write_line(Args&&... args)
   {
     write(args..., '\n');
   }
 
   template <typename... Args>
-  inline void Console::log(Args&&... args)
+  INLINE void Console::log(Args&&... args)
   {
     write_line('[', stringify_time(), "] ", args...);
   }
 
-  inline void Console::flush()
+  INLINE void Console::flush()
   {
     this->stream.flush();
   }
 
-  inline std::string Console::stringify_time()
+  INLINE std::string Console::stringify_time()
   {
     std::array<char, 16> timebuff;
     auto t = time(nullptr);

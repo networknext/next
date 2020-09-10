@@ -20,6 +20,7 @@
 #include "util/env.hpp"
 
 using namespace std::chrono_literals;
+
 using core::Backend;
 using crypto::KEY_SIZE;
 using crypto::Keychain;

@@ -39,31 +39,31 @@ namespace core
     auto exists(uint64_t key) const -> bool;
   };
 
-  inline void SessionMap::set(uint64_t key, SessionPtr val)
+  INLINE void SessionMap::set(uint64_t key, SessionPtr val)
   {
     std::lock_guard<std::mutex> lk(this->mutex);
     this->internal_map[key] = val;
   }
 
-  inline auto SessionMap::get(uint64_t key) -> SessionPtr
+  INLINE auto SessionMap::get(uint64_t key) -> SessionPtr
   {
     std::lock_guard<std::mutex> lk(this->mutex);
     return exists(key) ? this->internal_map[key] : nullptr;
   }
 
-  inline auto SessionMap::erase(uint64_t key) -> bool
+  INLINE auto SessionMap::erase(uint64_t key) -> bool
   {
     std::lock_guard<std::mutex> lk(this->mutex);
     return this->internal_map.erase(key) > 0;
   }
 
-  inline auto SessionMap::size() const -> size_t
+  INLINE auto SessionMap::size() const -> size_t
   {
     std::lock_guard<std::mutex> lk(this->mutex);
     return this->internal_map.size();
   }
 
-  inline void SessionMap::purge(double seconds)
+  INLINE void SessionMap::purge(double seconds)
   {
     std::lock_guard<std::mutex> lk(this->mutex);
     auto iter = this->internal_map.begin();
@@ -77,7 +77,7 @@ namespace core
   }
 
   /* Don't use a mutex, locking here will create a deadlock */
-  inline auto SessionMap::exists(uint64_t key) const -> bool
+  INLINE auto SessionMap::exists(uint64_t key) const -> bool
   {
     return this->internal_map.find(key) != this->internal_map.end();
   }

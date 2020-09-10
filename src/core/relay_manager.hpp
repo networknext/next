@@ -146,7 +146,7 @@ namespace core
     return num_pings;
   }
 
-  // it is used in one place throughout the codebase, so always inline it, no sense in doing a function call
+  // it is used in one place throughout the codebase, so always INLINE it, no sense in doing a function call
   INLINE void RelayManager::update(size_t num_incoming_relays, const std::array<RelayPingInfo, MAX_RELAYS>& incoming)
   {
     assert(num_incoming_relays <= MAX_RELAYS);

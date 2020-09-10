@@ -43,18 +43,18 @@ namespace core
   };
 
   template <typename T>
-  inline auto operator==(PacketType t, T other) -> bool
+  INLINE auto operator==(PacketType t, T other) -> bool
   {
     return t == static_cast<PacketType>(other);
   }
 
   template <typename T>
-  inline auto operator!=(PacketType t, T other) -> bool
+  INLINE auto operator!=(PacketType t, T other) -> bool
   {
     return !(t == other);
   }
 
-  inline std::ostream& operator<<(std::ostream& os, const PacketType& type)
+  INLINE std::ostream& operator<<(std::ostream& os, const PacketType& type)
   {
     std::string str;
     switch (type) {

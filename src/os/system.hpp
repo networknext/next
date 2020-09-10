@@ -13,12 +13,12 @@ namespace os
     auto get_mem() -> double;
   };
 
-  inline LibTopWrapper::LibTopWrapper()
+  INLINE LibTopWrapper::LibTopWrapper()
   {
     glibtop_init();
   }
 
-  inline auto LibTopWrapper::get_cpu() -> double
+  INLINE auto LibTopWrapper::get_cpu() -> double
   {
     static struct
     {
@@ -37,7 +37,7 @@ namespace os
     return static_cast<double>(curr_cpu.total - curr_cpu.idle) / static_cast<double>(curr_cpu.total);
   }
 
-  inline auto LibTopWrapper::get_mem() -> double
+  INLINE auto LibTopWrapper::get_mem() -> double
   {
     glibtop_mem mem;
     glibtop_get_mem(&mem);
@@ -50,7 +50,7 @@ namespace os
     double mem;
   };
 
-  inline auto GetUsage() -> SysUsage
+  INLINE auto GetUsage() -> SysUsage
   {
     static LibTopWrapper wrapper;
     return SysUsage{
@@ -68,7 +68,7 @@ namespace os
   // This should basically do what libtop does
   // mainly a sanity check in case libtop behaves weird
   // after the binary is deployed
-  inline auto GetUsageAlt() -> std::tuple<double, bool>
+  INLINE auto GetUsageAlt() -> std::tuple<double, bool>
   {
     double usage = 0.0;
     // get the first line of /proc/stat

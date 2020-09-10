@@ -5,14 +5,14 @@
 namespace testing
 {
   template <typename T>
-  inline std::enable_if_t<std::is_floating_point<T>::value, T> random_float()
+  INLINE std::enable_if_t<std::is_floating_point<T>::value, T> random_float()
   {
     static auto rand = std::bind(std::uniform_real_distribution<T>(), std::default_random_engine());
     return static_cast<T>(rand());
   }
 
   template <typename T>
-  inline std::enable_if_t<std::numeric_limits<T>::is_integer, T> random_whole()
+  INLINE std::enable_if_t<std::numeric_limits<T>::is_integer, T> random_whole()
   {
     static auto rand = std::bind(std::uniform_int_distribution<T>(), std::default_random_engine());
     return rand();
@@ -25,14 +25,14 @@ namespace testing
   const auto BASE64_ROUTER_PUBLIC_KEY = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=";
   const auto BASE64_ROUTER_PRIVATE_KEY = "ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=";
 
-  inline auto make_keychain() -> crypto::Keychain
+  INLINE auto make_keychain() -> crypto::Keychain
   {
     crypto::Keychain keychain;
     keychain.parse(BASE64_RELAY_PUBLIC_KEY, BASE64_RELAY_PRIVATE_KEY, BASE64_ROUTER_PUBLIC_KEY);
     return keychain;
   }
 
-  inline auto router_private_key() -> crypto::GenericKey
+  INLINE auto router_private_key() -> crypto::GenericKey
   {
     std::string key = BASE64_ROUTER_PRIVATE_KEY;
     crypto::GenericKey buff;
@@ -40,7 +40,7 @@ namespace testing
     return buff;
   }
 
-  inline auto random_private_key() -> crypto::GenericKey
+  INLINE auto random_private_key() -> crypto::GenericKey
   {
     crypto::GenericKey private_key;
     crypto::RandomBytes(private_key, private_key.size());
@@ -50,7 +50,7 @@ namespace testing
 
 #ifdef OS_HELPERS
 #include "os/socket.hpp"
-  inline auto default_socket_config() -> os::SocketConfig
+  INLINE auto default_socket_config() -> os::SocketConfig
   {
     os::SocketConfig config;
     config.socket_type = os::SocketType::NonBlocking;
@@ -64,7 +64,7 @@ namespace testing
 
 #ifdef NET_HELPERS
 #include "net/address.hpp"
-  inline auto random_address() -> net::Address
+  INLINE auto random_address() -> net::Address
   {
     net::Address retval;
     if (RandomWhole<uint8_t>() & 1) {

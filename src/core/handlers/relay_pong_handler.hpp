@@ -15,7 +15,7 @@ namespace core
 {
   namespace handlers
   {
-    inline void relay_pong_handler(Packet& packet, RelayManager& manager, bool should_handle)
+    INLINE void relay_pong_handler(Packet& packet, RelayManager& manager, bool should_handle)
     {
       if (!should_handle) {
         LOG(INFO, "relay in process of shutting down, ignoring relay pong packet");

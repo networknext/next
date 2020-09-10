@@ -2,7 +2,7 @@
 
 namespace util
 {
-  inline void DumpHex(void const* const data, size_t size, std::ostream& out = std::cout)
+  INLINE void DumpHex(void const* const data, size_t size, std::ostream& out = std::cout)
   {
     char ascii[17];
     size_t i, j;
@@ -34,7 +34,7 @@ namespace util
   }
 
   template <typename T>
-  inline void DumpHex(const T& buff, std::ostream& out = std::cout)
+  INLINE void DumpHex(const T& buff, std::ostream& out = std::cout)
   {
     DumpHex(buff.data(), buff.size(), out);
   }

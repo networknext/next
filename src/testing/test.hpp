@@ -73,11 +73,11 @@ namespace testing
     std::function<void(void)> on_fail_func;
   };
 
-  inline SpecCheck::SpecCheck(bool result, const char* condition, const char* file, int line)
+  INLINE SpecCheck::SpecCheck(bool result, const char* condition, const char* file, int line)
    : result(result), condition(condition), file(file), line(line)
   {}
 
-  inline SpecCheck::~SpecCheck()
+  INLINE SpecCheck::~SpecCheck()
   {
     if (!this->result) {
       std::cout << "check failed: (" << this->condition << ")"
@@ -90,7 +90,7 @@ namespace testing
     }
   }
 
-  inline void SpecCheck::on_fail(std::function<void(void)> fail_func)
+  INLINE void SpecCheck::on_fail(std::function<void(void)> fail_func)
   {
     this->on_fail_func = fail_func;
   }
@@ -99,7 +99,7 @@ namespace testing
   SpecCheck CheckHandler(T result, const char* condition, const char* file, int line);
 
   template <>
-  inline SpecCheck CheckHandler(bool result, const char* condition, const char* file, int line)
+  INLINE SpecCheck CheckHandler(bool result, const char* condition, const char* file, int line)
   {
     return SpecCheck(result, condition, file, line);
   }

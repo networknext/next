@@ -8,7 +8,7 @@ namespace encoding
       @returns The input value with the byte order reversed.
    */
 
-  inline uint64_t bswap(uint64_t value)
+  INLINE uint64_t bswap(uint64_t value)
   {
 #ifdef __GNUC__
     return __builtin_bswap64(value);
@@ -26,7 +26,7 @@ namespace encoding
       @returns The input value with the byte order reversed.
    */
 
-  inline uint32_t bswap(uint32_t value)
+  INLINE uint32_t bswap(uint32_t value)
   {
 #ifdef __GNUC__
     return __builtin_bswap32(value);
@@ -41,7 +41,7 @@ namespace encoding
       @returns The input value with the byte order reversed.
    */
 
-  inline uint16_t bswap(uint16_t value)
+  INLINE uint16_t bswap(uint16_t value)
   {
 #ifdef __GNUC__
     return __builtin_bswap16(value);
@@ -107,7 +107,7 @@ namespace encoding
       @returns The number of bits set to 1 in the input value.
    */
 
-  inline uint32_t popcount(uint32_t x)
+  INLINE uint32_t popcount(uint32_t x)
   {
 #ifdef __GNUC__
     return __builtin_popcount(x);
@@ -130,7 +130,7 @@ namespace encoding
 
   // TODO test if using __builtin_log2(x) works here
   // takes a double so it may be slower
-  inline uint32_t log2(uint32_t x)
+  INLINE uint32_t log2(uint32_t x)
   {
     const uint32_t a = x | (x >> 1);
     const uint32_t b = a | (a >> 2);
@@ -148,7 +148,7 @@ namespace encoding
       @returns The number of bits required to serialize the integer.
    */
 
-  inline int bits_required(uint32_t min, uint32_t max)
+  INLINE int bits_required(uint32_t min, uint32_t max)
   {
 #ifdef __GNUC__
     return (min == max) ? 0 : 32 - __builtin_clz(max - min);
@@ -167,7 +167,7 @@ namespace encoding
       @returns True if the s1 is greater than s2, with sequence number wrapping considered.
    */
 
-  inline bool sequence_greater_than(uint16_t s1, uint16_t s2)
+  INLINE bool sequence_greater_than(uint16_t s1, uint16_t s2)
   {
     return ((s1 > s2) && (s1 - s2 <= 32768)) || ((s1 < s2) && (s2 - s1 > 32768));
   }
@@ -183,7 +183,7 @@ namespace encoding
       @returns True if the s1 is less than s2, with sequence number wrapping considered.
    */
 
-  inline bool sequence_less_than(uint16_t s1, uint16_t s2)
+  INLINE bool sequence_less_than(uint16_t s1, uint16_t s2)
   {
     return sequence_greater_than(s2, s1);
   }

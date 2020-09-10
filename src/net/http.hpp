@@ -45,9 +45,9 @@ namespace net
     beast::tcp_stream stream;
   };
 
-  inline BeastWrapper::BeastWrapper(): resolver(ioc), stream(ioc) {}
+  INLINE BeastWrapper::BeastWrapper(): resolver(ioc), stream(ioc) {}
 
-  inline BeastWrapper::~BeastWrapper()
+  INLINE BeastWrapper::~BeastWrapper()
   {
     // Gracefully close the socket
     beast::error_code ec;
@@ -61,7 +61,7 @@ namespace net
     }
   }
 
-  inline auto BeastWrapper::send_request(
+  INLINE auto BeastWrapper::send_request(
    const std::string hostname, const std::string endpoint, const std::vector<uint8_t>& request, std::vector<uint8_t>& response)
    -> bool
   {
@@ -164,13 +164,13 @@ namespace net
   //  static bool SendTo(const std::string hostname, const std::string endpoint, const ReqType& request, RespType& response);
   //};
 
-  // inline CurlWrapper::CurlWrapper()
+  // INLINE CurlWrapper::CurlWrapper()
   //{
   //  curl_global_init(0);
   //  mHandle = curl_easy_init();
   //}
 
-  // inline CurlWrapper::~CurlWrapper()
+  // INLINE CurlWrapper::~CurlWrapper()
   //{
   //  curl_easy_cleanup(mHandle);
   //  curl_global_cleanup();

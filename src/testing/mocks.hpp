@@ -18,7 +18,7 @@ namespace testing
      std::vector<uint8_t>& response) -> bool override;
   };
 
-  inline auto MockHttpClient::send_request(
+  INLINE auto MockHttpClient::send_request(
    const std::string hostname, const std::string endpoint, const std::vector<uint8_t>& request, std::vector<uint8_t>& response)
    -> bool
   {
