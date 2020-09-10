@@ -5,14 +5,14 @@
 namespace testing
 {
   template <typename T>
-  inline std::enable_if_t<std::is_floating_point<T>::value, T> RandomFloat()
+  inline std::enable_if_t<std::is_floating_point<T>::value, T> random_float()
   {
     static auto rand = std::bind(std::uniform_real_distribution<T>(), std::default_random_engine());
     return static_cast<T>(rand());
   }
 
   template <typename T>
-  inline std::enable_if_t<std::numeric_limits<T>::is_integer, T> RandomWhole()
+  inline std::enable_if_t<std::numeric_limits<T>::is_integer, T> random_whole()
   {
     static auto rand = std::bind(std::uniform_int_distribution<T>(), std::default_random_engine());
     return rand();
@@ -20,21 +20,21 @@ namespace testing
 
 #ifdef CRYPTO_HELPERS
 #include "crypto/keychain.hpp"
-  const auto Base64RelayPublicKey = "9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=";
-  const auto Base64RelayPrivateKey = "lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=";
-  const auto Base64RouterPublicKey = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=";
-  const auto Base64RouterPrivateKey = "ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=";
+  const auto BASE64_RELAY_PUBLIC_KEY = "9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=";
+  const auto BASE64_RELAY_PRIVATE_KEY = "lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=";
+  const auto BASE64_ROUTER_PUBLIC_KEY = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=";
+  const auto BASE64_ROUTER_PRIVATE_KEY = "ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=";
 
   inline auto make_keychain() -> crypto::Keychain
   {
     crypto::Keychain keychain;
-    keychain.parse(Base64RelayPublicKey, Base64RelayPrivateKey, Base64RouterPublicKey);
+    keychain.parse(BASE64_RELAY_PUBLIC_KEY, BASE64_RELAY_PRIVATE_KEY, BASE64_ROUTER_PUBLIC_KEY);
     return keychain;
   }
 
   inline auto router_private_key() -> crypto::GenericKey
   {
-    std::string key = Base64RouterPrivateKey;
+    std::string key = BASE64_ROUTER_PRIVATE_KEY;
     crypto::GenericKey buff;
     encoding::base64::decode(key, buff);
     return buff;
@@ -64,21 +64,21 @@ namespace testing
 
 #ifdef NET_HELPERS
 #include "net/address.hpp"
-  inline auto RandomAddress() -> net::Address
+  inline auto random_address() -> net::Address
   {
     net::Address retval;
     if (RandomWhole<uint8_t>() & 1) {
       retval.Type = net::AddressType::IPv4;
       for (auto& ip : retval.IPv4) {
-        ip = RandomWhole<uint8_t>();
+        ip = random_whole<uint8_t>();
       }
-      retval.Port = crypto::RandomWhole<uint16_t>();
+      retval.Port = random_whole<uint16_t>();
     } else {
       retval.Type = net::AddressType::IPv6;
       for (auto& ip : retval.IPv6) {
-        ip = crypto::RandomWhole<uint16_t>();
+        ip = random_whole<uint16_t>();
       }
-      retval.Port = crypto::RandomWhole<uint16_t>();
+      retval.Port = random_whole<uint16_t>();
     }
     return retval;
   }

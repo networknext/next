@@ -6,8 +6,8 @@
 namespace net
 {
   // Ethernet Frame | IP | Proto
-  static const uint8_t IPv4UDPHeaderSize = 18 + 20 + 8;
-  static const uint8_t IPv6UDPHeaderSize = 18 + 40 + 8;
+  static const uint8_t IPV4_UDP_PACKET_HEADER_SIZE = 18 + 20 + 8;
+  static const uint8_t IPV6_UDP_PACKET_HEADER_SIZE = 18 + 40 + 8;
 
   enum class AddressType : uint8_t
   {

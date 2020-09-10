@@ -282,14 +282,7 @@ int main(int argc, const char* argv[])
     std::thread thread([&] {
       BeastWrapper wrapper;
       core::Backend backend(
-       env.backend_hostname,
-       relay_addr.to_string(),
-       keychain,
-       router_info,
-       relay_manager,
-       env.relay_public_key,
-       sessions,
-       wrapper);
+       env.backend_hostname, relay_addr.to_string(), keychain, router_info, relay_manager, sessions, wrapper);
 
       size_t attempts = 0;
       while (attempts < 60) {

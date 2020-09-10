@@ -25,9 +25,9 @@ Test(core_ContinueTokenV4_general)
   std::array<uint8_t, crypto_box_NONCEBYTES> nonce;
   crypto::RandomBytes(nonce, crypto_box_NONCEBYTES);
 
-  const auto ExpireTimestamp = RandomWhole<uint64_t>();
-  const auto SessionID = RandomWhole<uint64_t>();
-  const auto SessionVersion = RandomWhole<uint8_t>();
+  const auto ExpireTimestamp = random_whole<uint64_t>();
+  const auto SessionID = random_whole<uint64_t>();
+  const auto SessionVersion = random_whole<uint8_t>();
 
   ContinueTokenV4 input_token;
   {
@@ -123,10 +123,10 @@ Test(core_ContinueToken_general)
   std::array<uint8_t, crypto_box_NONCEBYTES> nonce;
   crypto::RandomBytes(nonce, crypto_box_NONCEBYTES);
 
-  const auto ExpireTimestamp = RandomWhole<uint64_t>();
-  const auto SessionID = RandomWhole<uint64_t>();
-  const auto SessionVersion = RandomWhole<uint8_t>();
-  const auto SessionFlags = RandomWhole<uint8_t>();
+  const auto ExpireTimestamp = random_whole<uint64_t>();
+  const auto SessionID = random_whole<uint64_t>();
+  const auto SessionVersion = random_whole<uint8_t>();
+  const auto SessionFlags = random_whole<uint8_t>();
 
   ContinueToken input_token;
   {

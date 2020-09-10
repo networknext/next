@@ -21,18 +21,18 @@ Test(core_RouteTokenV4_general)
   std::array<uint8_t, crypto_box_NONCEBYTES> nonce;
   crypto::RandomBytes(nonce, crypto_box_NONCEBYTES);
 
-  const auto ExpireTimestamp = RandomWhole<uint64_t>();
-  const auto SessionID = RandomWhole<uint64_t>();
-  const auto SessionVersion = RandomWhole<uint8_t>();
-  const auto KbpsUp = RandomWhole<uint32_t>();
-  const auto KbpsDown = RandomWhole<uint32_t>();
+  const auto ExpireTimestamp = random_whole<uint64_t>();
+  const auto SessionID = random_whole<uint64_t>();
+  const auto SessionVersion = random_whole<uint8_t>();
+  const auto KbpsUp = random_whole<uint32_t>();
+  const auto KbpsDown = random_whole<uint32_t>();
   net::Address NextAddr;
   NextAddr.type = net::AddressType::IPv4;
-  NextAddr.ipv4[0] = RandomWhole<uint8_t>();
-  NextAddr.ipv4[1] = RandomWhole<uint8_t>();
-  NextAddr.ipv4[2] = RandomWhole<uint8_t>();
-  NextAddr.ipv4[3] = RandomWhole<uint8_t>();
-  NextAddr.port = RandomWhole<uint32_t>();
+  NextAddr.ipv4[0] = random_whole<uint8_t>();
+  NextAddr.ipv4[1] = random_whole<uint8_t>();
+  NextAddr.ipv4[2] = random_whole<uint8_t>();
+  NextAddr.ipv4[3] = random_whole<uint8_t>();
+  NextAddr.port = random_whole<uint32_t>();
   std::array<uint8_t, crypto_box_SECRETKEYBYTES> PrivateKey;
   crypto::RandomBytes(PrivateKey, PrivateKey.size());
 
@@ -94,19 +94,19 @@ Test(core_RouteToken_general)
   std::array<uint8_t, crypto_box_NONCEBYTES> nonce;
   crypto::RandomBytes(nonce, crypto_box_NONCEBYTES);
 
-  const auto ExpireTimestamp = RandomWhole<uint64_t>();
-  const auto SessionID = RandomWhole<uint64_t>();
-  const auto SessionVersion = RandomWhole<uint8_t>();
-  const auto SessionFlags = RandomWhole<uint8_t>();
-  const auto KbpsUp = RandomWhole<uint32_t>();
-  const auto KbpsDown = RandomWhole<uint32_t>();
+  const auto ExpireTimestamp = random_whole<uint64_t>();
+  const auto SessionID = random_whole<uint64_t>();
+  const auto SessionVersion = random_whole<uint8_t>();
+  const auto SessionFlags = random_whole<uint8_t>();
+  const auto KbpsUp = random_whole<uint32_t>();
+  const auto KbpsDown = random_whole<uint32_t>();
   net::Address NextAddr;
   NextAddr.type = net::AddressType::IPv4;
-  NextAddr.ipv4[0] = RandomWhole<uint8_t>();
-  NextAddr.ipv4[1] = RandomWhole<uint8_t>();
-  NextAddr.ipv4[2] = RandomWhole<uint8_t>();
-  NextAddr.ipv4[3] = RandomWhole<uint8_t>();
-  NextAddr.port = RandomWhole<uint32_t>();
+  NextAddr.ipv4[0] = random_whole<uint8_t>();
+  NextAddr.ipv4[1] = random_whole<uint8_t>();
+  NextAddr.ipv4[2] = random_whole<uint8_t>();
+  NextAddr.ipv4[3] = random_whole<uint8_t>();
+  NextAddr.port = random_whole<uint32_t>();
   std::array<uint8_t, crypto_box_SECRETKEYBYTES> PrivateKey;
   crypto::RandomBytes(PrivateKey, PrivateKey.size());
 

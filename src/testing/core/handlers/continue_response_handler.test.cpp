@@ -44,7 +44,7 @@ Test(core_handlers_continue_response_handler_sdk4_unsigned)
 
   PacketHeaderV4 header;
   {
-    header.type = PacketType::ContinueResponse;
+    header.type = PacketType::ContinueResponse4;
     header.sequence = 123123130131LL | (1ULL << 63) | (1ULL << 62);
     header.session_id = 0x12313131;
     header.session_version = 0x12;
@@ -101,7 +101,7 @@ Test(core_handlers_continue_response_handler_sdk4_signed)
 
   PacketHeaderV4 header;
   {
-    header.type = PacketType::ContinueResponse;
+    header.type = PacketType::ContinueResponse4;
     header.sequence = 123123130131LL | (1ULL << 63) | (1ULL << 62);
     header.session_id = 0x12313131;
     header.session_version = 0x12;

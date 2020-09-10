@@ -348,7 +348,6 @@ namespace core
    const crypto::Keychain& keychain,
    RouterInfo& router_info,
    RelayManager& relay_manager,
-   std::string base64_relay_public_key,
    const core::SessionMap& sessions,
    net::IHttpClient& client)
    : hostname(hostname),
@@ -356,7 +355,6 @@ namespace core
      keychain(keychain),
      router_info(router_info),
      relay_manager(relay_manager),
-     base64_relay_public_key(base64_relay_public_key),
      session_map(sessions),
      http_client(client)
   {}

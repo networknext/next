@@ -122,7 +122,6 @@ namespace core
      const crypto::Keychain& keychain,
      RouterInfo& router_info,
      RelayManager& relay_manager,
-     std::string base64_relay_public_key,
      const core::SessionMap& sessions,
      net::IHttpClient& client);
     ~Backend() = default;
@@ -145,7 +144,6 @@ namespace core
     const crypto::Keychain& keychain;
     RouterInfo& router_info;
     RelayManager& relay_manager;
-    const std::string base64_relay_public_key;
     const core::SessionMap& session_map;
     net::IHttpClient& http_client;
 

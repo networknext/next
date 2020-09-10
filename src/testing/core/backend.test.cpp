@@ -21,6 +21,8 @@ using core::Session;
 using core::SessionMap;
 using core::UpdateRequest;
 using core::UpdateResponse;
+using crypto::KEY_SIZE;
+using crypto::Keychain;
 using net::Address;
 using util::Clock;
 using util::Second;
@@ -28,14 +30,10 @@ using util::ThroughputRecorder;
 
 namespace
 {
-  const unsigned int Base64NonceLength = 32;
-  const unsigned int Base64EncryptedTokenLength = 64;
-
-  const std::string BackendHostname = "http://totally-real-backend.com";
-  const auto RelayAddr = "127.0.0.1:12345";
-  const crypto::Keychain Keychain = testing::make_keychain();
-
-  const std::vector<uint8_t> BasicValidUpdateResponse = [] {
+  const std::string BACKEND_HOSTNAME = "http://totally-real-backend.com";
+  const auto RELAY_ADDR = "127.0.0.1:12345";
+  const Keychain KEYCHAIN = testing::make_keychain();
+  const std::vector<uint8_t> BASIC_VALID_UPDATE_RESPONSE = [] {
     InitResponse response = {
      .version = 0,
      .timestamp = 0,
@@ -47,7 +45,7 @@ namespace
     return buff;
   }();
 
-  auto make_init_response(uint32_t version, uint64_t timestamp, std::array<uint8_t, crypto::KEY_SIZE>& pk) -> std::vector<uint8_t>
+  auto make_init_response(uint32_t version, uint64_t timestamp, std::array<uint8_t, KEY_SIZE>& pk) -> std::vector<uint8_t>
   {
     std::vector<uint8_t> buff(InitResponse::SIZE_OF);
     InitResponse resp{
@@ -70,11 +68,11 @@ Test(core_backend_init_valid)
   std::array<uint8_t, crypto::KEY_SIZE> pk{};
   testing::MockHttpClient client;
   client.Response = make_init_response(0, 123456789, pk);
-  Backend backend(BackendHostname, RelayAddr, Keychain, router_info, manager, Base64RelayPublicKey, sessions, client);
+  Backend backend(BACKEND_HOSTNAME, RELAY_ADDR, KEYCHAIN, router_info, manager, sessions, client);
 
   check(backend.init());
 
-  check(client.Hostname == BackendHostname);
+  check(client.Hostname == BACKEND_HOSTNAME);
   check(client.Endpoint == "/relay_init");
   check(router_info.current_time() >= 123456789 / 1000);
 
@@ -83,7 +81,7 @@ Test(core_backend_init_valid)
 
   check(request.magic == INIT_REQUEST_MAGIC);
   check(request.version == INIT_REQUEST_VERSION);
-  check(request.address == RelayAddr);
+  check(request.address == RELAY_ADDR);
 
   // can't check nonce or encrypted token since they're random
 }
@@ -104,10 +102,10 @@ Test(core_Backend_updateCycle_shutdown_60s)
   ThroughputRecorder logger;
   testing::MockHttpClient client;
 
-  Backend backend(BackendHostname, RelayAddr, Keychain, router_info, manager, Base64RelayPublicKey, sessions, client);
+  Backend backend(BACKEND_HOSTNAME, RELAY_ADDR, KEYCHAIN, router_info, manager, sessions, client);
 
   client.Success = true;
-  client.Response = BasicValidUpdateResponse;
+  client.Response = BASIC_VALID_UPDATE_RESPONSE;
 
   test_clock.reset();
   auto fut = std::async(std::launch::async, [&] {
@@ -138,10 +136,10 @@ Test(core_Backend_updateCycle_ack_and_30s)
   ThroughputRecorder logger;
   testing::MockHttpClient client;
 
-  Backend backend(BackendHostname, RelayAddr, Keychain, router_info, manager, Base64RelayPublicKey, sessions, client);
+  Backend backend(BACKEND_HOSTNAME, RELAY_ADDR, KEYCHAIN, router_info, manager, sessions, client);
 
   client.Success = true;
-  client.Response = BasicValidUpdateResponse;
+  client.Response = BASIC_VALID_UPDATE_RESPONSE;
 
   test_clock.reset();
   auto fut = std::async(std::launch::async, [&] {
@@ -172,10 +170,10 @@ Test(core_Backend_updateCycle_no_ack_for_40s_then_ack_then_wait)
   ThroughputRecorder recorder;
   testing::MockHttpClient client;
 
-  Backend backend(BackendHostname, RelayAddr, Keychain, router_info, manager, Base64RelayPublicKey, sessions, client);
+  Backend backend(BACKEND_HOSTNAME, RELAY_ADDR, KEYCHAIN, router_info, manager, sessions, client);
 
   client.Success = true;
-  client.Response = BasicValidUpdateResponse;
+  client.Response = BASIC_VALID_UPDATE_RESPONSE;
 
   test_clock.reset();
   auto fut = std::async(std::launch::async, [&] {
@@ -209,10 +207,10 @@ Test(core_Backend_updateCycle_update_fails_for_max_number_of_attempts)
   ThroughputRecorder recorder;
   testing::MockHttpClient client;
 
-  Backend backend(BackendHostname, RelayAddr, Keychain, router_info, manager, Base64RelayPublicKey, sessions, client);
+  Backend backend(BACKEND_HOSTNAME, RELAY_ADDR, KEYCHAIN, router_info, manager, sessions, client);
 
   client.Success = true;
-  client.Response = BasicValidUpdateResponse;
+  client.Response = BASIC_VALID_UPDATE_RESPONSE;
 
   test_clock.reset();
   auto fut = std::async(std::launch::async, [&] {
@@ -243,10 +241,10 @@ Test(core_Backend_updateCycle_no_clean_shutdown)
   ThroughputRecorder recorder;
   testing::MockHttpClient client;
 
-  Backend backend(BackendHostname, RelayAddr, Keychain, router_info, manager, Base64RelayPublicKey, sessions, client);
+  Backend backend(BACKEND_HOSTNAME, RELAY_ADDR, KEYCHAIN, router_info, manager, sessions, client);
 
   client.Success = true;
-  client.Response = BasicValidUpdateResponse;
+  client.Response = BASIC_VALID_UPDATE_RESPONSE;
 
   test_clock.reset();
   auto fut = std::async(std::launch::async, [&] {
@@ -268,7 +266,7 @@ Test(core_Backend_update_valid)
   SessionMap sessions;
   ThroughputRecorder recorder;
   testing::MockHttpClient client;
-  Backend backend(BackendHostname, RelayAddr, Keychain, router_info, manager, Base64RelayPublicKey, sessions, client);
+  Backend backend(BACKEND_HOSTNAME, RELAY_ADDR, KEYCHAIN, router_info, manager, sessions, client);
   crypto::RandomBytes(backend.update_token, backend.update_token.size());
 
   sessions.set(1234, std::make_shared<Session>());  // just add one thing to the map to make it non-zero
@@ -324,7 +322,7 @@ Test(core_Backend_update_valid)
     check(request.from(client.Request));
 
     check(request.version == 1);
-    check(request.address == RelayAddr);
+    check(request.address == RELAY_ADDR);
     check(request.public_key == backend.update_token);
     check(request.session_count == sessions.size());
     check(request.outbound_ping_tx == outbound_ping);
@@ -383,10 +381,10 @@ Test(core_Backend_update_shutting_down_true)
   ThroughputRecorder recorder;
   testing::MockHttpClient client;
 
-  Backend backend(BackendHostname, RelayAddr, Keychain, router_info, manager, Base64RelayPublicKey, sessions, client);
+  Backend backend(BACKEND_HOSTNAME, RELAY_ADDR, KEYCHAIN, router_info, manager, sessions, client);
   crypto::RandomBytes(backend.update_token, backend.update_token.size());
 
-  client.Response = ::BasicValidUpdateResponse;
+  client.Response = ::BASIC_VALID_UPDATE_RESPONSE;
 
   check(backend.update(recorder, true));
 
@@ -394,7 +392,7 @@ Test(core_Backend_update_shutting_down_true)
   check(request.from(client.Request));
 
   check(request.version == 1);
-  check(request.address == RelayAddr);
+  check(request.address == RELAY_ADDR);
   check(request.public_key == backend.update_token);
   check(request.session_count == 0);
   check(request.outbound_ping_tx == 0);

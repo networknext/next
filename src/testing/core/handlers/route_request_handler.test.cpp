@@ -44,8 +44,8 @@ Test(core_handlers_route_request_handler_sdk4_unsigned)
   packet.addr = from;
 
   RouteTokenV4 token;
-  token.KbpsUp = RandomWhole<uint32_t>();
-  token.KbpsDown = RandomWhole<uint32_t>();
+  token.KbpsUp = random_whole<uint32_t>();
+  token.KbpsDown = random_whole<uint32_t>();
   token.NextAddr = next;
   token.PrivateKey = random_private_key();
   token.session_id = 123456789;
@@ -118,8 +118,8 @@ Test(core_handlers_route_request_handler_sdk4_signed)
   packet.addr = from;
 
   RouteTokenV4 token;
-  token.KbpsUp = RandomWhole<uint32_t>();
-  token.KbpsDown = RandomWhole<uint32_t>();
+  token.KbpsUp = random_whole<uint32_t>();
+  token.KbpsDown = random_whole<uint32_t>();
   token.NextAddr = next;
   token.PrivateKey = random_private_key();
   token.session_id = 123456789;
@@ -185,8 +185,8 @@ Test(core_handlers_route_request_handler_unsigned)
   packet.addr = from;
 
   RouteToken token;
-  token.KbpsUp = RandomWhole<uint32_t>();
-  token.KbpsDown = RandomWhole<uint32_t>();
+  token.KbpsUp = random_whole<uint32_t>();
+  token.KbpsDown = random_whole<uint32_t>();
   token.NextAddr = next;
   token.PrivateKey = random_private_key();
   token.session_id = 123456789;
@@ -257,8 +257,8 @@ Test(core_handlers_route_request_handler_signed)
   packet.addr = from;
 
   RouteToken token;
-  token.KbpsUp = RandomWhole<uint32_t>();
-  token.KbpsDown = RandomWhole<uint32_t>();
+  token.KbpsUp = random_whole<uint32_t>();
+  token.KbpsDown = random_whole<uint32_t>();
   token.NextAddr = next;
   token.PrivateKey = random_private_key();
   token.session_id = 123456789;

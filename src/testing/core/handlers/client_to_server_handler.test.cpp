@@ -43,7 +43,7 @@ Test(core_handlers_client_to_server_handler_sdk4_unsigned_packet)
 
   PacketHeaderV4 header;
   {
-    header.type = PacketType::ClientToServer;
+    header.type = PacketType::ClientToServer4;
     header.sequence = 123123130131LL;
     header.session_id = 0x12313131;
     header.session_version = 0x12;
@@ -103,7 +103,7 @@ Test(core_handlers_client_to_server_handler_sdk4_signed_packet)
 
   PacketHeaderV4 header;
   {
-    header.type = PacketType::ClientToServer;
+    header.type = PacketType::ClientToServer4;
     header.sequence = 123123130131LL;
     header.session_id = 0x12313131;
     header.session_version = 0x12;

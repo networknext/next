@@ -44,8 +44,8 @@ Test(core_handlers_session_pong_handler_sdk4_unsigned)
 
   PacketHeaderV4 header;
   {
-    header.type = PacketType::ServerToClient;
-    header.sequence = 123123130131LL | (1ULL << 63);
+    header.type = PacketType::SessionPong4;
+    header.sequence = 123123130131LL | (1ULL << 63) | (1ULL << 62);
     header.session_id = 0x12313131;
     header.session_version = 0x12;
   };
@@ -99,8 +99,8 @@ Test(core_handlers_session_pong_handler_sdk4_signed)
 
   PacketHeaderV4 header;
   {
-    header.type = PacketType::ServerToClient;
-    header.sequence = 123123130131LL | (1ULL << 63);
+    header.type = PacketType::SessionPong4;
+    header.sequence = 123123130131LL | (1ULL << 63) | (1ULL << 62);
     header.session_id = 0x12313131;
     header.session_version = 0x12;
   };
@@ -154,7 +154,7 @@ Test(core_handlers_session_pong_handler_unsigned)
 
   PacketHeader header;
   {
-    header.type = PacketType::ServerToClient;
+    header.type = PacketType::SessionPong4;
     header.sequence = 123123130131LL | (1ULL << 63);
     header.session_id = 0x12313131;
     header.session_version = 0x12;
@@ -209,8 +209,8 @@ Test(core_handlers_session_pong_handler_signed)
 
   PacketHeader header;
   {
-    header.type = PacketType::ServerToClient;
-    header.sequence = 123123130131LL | (1ULL << 63);
+    header.type = PacketType::SessionPong;
+    header.sequence = 123123130131LL | (1ULL << 63) | (1ULL << 62);
     header.session_id = 0x12313131;
     header.session_version = 0x12;
   };
