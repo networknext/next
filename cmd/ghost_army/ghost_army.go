@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	SlicesInDay = 60 * 60 * 24 / 10
+	SecondsInDay = 86400
 )
 
 func main() {
@@ -170,46 +170,71 @@ func main() {
 			return time.Date(year, month, day, 0, 0, 0, 0, t.Location())
 		}
 
-		// slice begin is the current number of seconds into the day
-		t := time.Now()
-		year, month, day := t.Date()
-		t2 := time.Date(year, month, day, 0, 0, 0, 0, t.Location())
-		sliceBegin := (int64(t.Sub(t2).Seconds()) / 10) * 10
+		currentSecs := func() int64 {
+			t := time.Now()
+			year, month, day := t.Date()
+			t2 := time.Date(year, month, day, 0, 0, 0, 0, t.Location())
+			return int64(t.Sub(t2).Seconds())
+		}
 
-		index := 0
+		// slice begin is the current number of seconds into the day
+		sliceBegin := currentSecs()
+
+		// date offset is used to adjust the slice timestamp to the current day
 		dateOffset := getLastMidnight()
 
+		i := 0
 		for {
 			begin := time.Now()
-			endIndex := (sliceBegin + 10) / 10
 
-			if endIndex > SlicesInDay {
-				index = 0
-				sliceBegin = 0
+			// reset if at end of day
+			if sliceBegin == SecondsInDay {
+				i = 0
+				sliceBegin = currentSecs() // account for any inaccuracy by calling sleep()
 				dateOffset = getLastMidnight()
 			}
 
-			// seek to the next position slices should be from
-			for slices[index].Slice.Timestamp.Unix() < sliceBegin {
-				index = (index + 1) % len(slices)
+			var interval int64 = 10
+
+			// only useful at 11:50:5x pm - midnight
+			// forces the last slice to be sent within the above interval
+			if sliceBegin+10 > SecondsInDay {
+				interval = SecondsInDay - sliceBegin
 			}
 
+			// seek to the next position slices should be from
+			// mainly useful when starting the program
+			for slices[i].Slice.Timestamp.Unix() < sliceBegin && i < len(slices) {
+				i++
+			}
+
+			before := i
+
 			// only read for the next 10 seconds
-			for slices[index].Slice.Timestamp.Unix() < sliceBegin+10 {
-				slice := slices[index]
+			for slices[i].Slice.Timestamp.Unix() < sliceBegin+interval && i < len(slices) {
+				slice := slices[i]
 
 				// slice timestamp will be in the range of 0 - SecondsInDay * 3,
 				// so adjust the timestamp by the time the loop was started
 				slice.Slice.Timestamp = dateOffset.Add(time.Second * time.Duration(slice.Slice.Timestamp.Unix()))
 
 				publishChan <- slice
-				index = (index + 1) % len(slices)
+				i++
 			}
 
-			// increment by 10 seconds
-			sliceBegin += 10
+			// check if somehow too many slices were sent, using the analyzer the
+			// interval with the most slices was 10,265, so give it a little buffer
+			// since the program may start anywhere within an interval
+			slicesSent := i - before
+			if slicesSent > 12000 {
+				fmt.Printf("sent too many slices at %s = %d\n", time.Now().String(), slicesSent)
+			}
 
-			time.Sleep((time.Second * 10) - time.Since(begin))
+			// increment by the interval, usually 10 seconds
+			// at 11:50:5x this will make sliceBegin == 86400
+			sliceBegin += interval
+
+			time.Sleep((time.Second * time.Duration(interval)) - time.Since(begin))
 		}
 	}()
 
