@@ -32,11 +32,11 @@ namespace util
 
     /* Returns the number of seconds since the epoch */
     template <typename U>
-    double unixTime() const;
+    double unix_time() const;
 
    private:
-    Instant mNow;
-    size_t mDelta;
+    Instant now;
+    size_t delta;
 
     template <typename T>
     double diff() const;
@@ -49,7 +49,7 @@ namespace util
 
   inline void Clock::reset()
   {
-    mNow = InternalClock::now();
+    this->now = InternalClock::now();
   }
 
   template <>
@@ -79,11 +79,11 @@ namespace util
   template <typename U>
   inline bool Clock::elapsed(double value) const
   {
-    return std::chrono::duration_cast<U>(InternalClock::now() - mNow).count() >= value;
+    return std::chrono::duration_cast<U>(InternalClock::now() - this->now).count() >= value;
   }
 
   template <typename T>
-  inline double Clock::unixTime() const
+  inline double Clock::unix_time() const
   {
     const auto seconds = std::chrono::duration_cast<T>(InternalClock::now().time_since_epoch());
     return seconds.count();
@@ -92,6 +92,6 @@ namespace util
   template <typename T>
   inline double Clock::diff() const
   {
-    return std::chrono::duration<double, T>(InternalClock::now() - mNow).count();
+    return std::chrono::duration<double, T>(InternalClock::now() - this->now).count();
   }
-}  // namespace epoch
+}  // namespace util

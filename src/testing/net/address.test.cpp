@@ -175,7 +175,7 @@ Test(Address_toString)
   addr.reset();
   check(addr.parse(base) == true);
   check(addr.to_string(output));
-  check(output == expected).onFail([&] {
+  check(output == expected).on_fail([&] {
     std::cout << "output = '" << output << '\'' << std::endl;
     std::cout << "expected = '" << expected << '\'' << std::endl;
   });

@@ -583,8 +583,8 @@ namespace core
       encoding::write_uint8(req, index, shutdown);
 
       auto sys_stats = os::GetUsage();
-      encoding::write_double(req, index, sys_stats.CPU);
-      encoding::write_double(req, index, sys_stats.Mem);
+      encoding::write_double(req, index, sys_stats.cpu);
+      encoding::write_double(req, index, sys_stats.mem);
       encoding::write_string(req, index, RELAY_VERSION);
     }
 

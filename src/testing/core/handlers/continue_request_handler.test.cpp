@@ -47,7 +47,7 @@ Test(core_handlers_continue_request_handler_sdk4_unsigned)
   size_t index = 1;
   check(token.write_encrypted(packet, index, router_private_key(), keychain.relay_public_key));
   check(packet.buffer[0] == static_cast<uint8_t>(PacketType::ContinueRequest4));
-  check(index == 1 + ContinueTokenV4::SIZE_OF_ENCRYPTED).onFail([&] {
+  check(index == 1 + ContinueTokenV4::SIZE_OF_ENCRYPTED).on_fail([&] {
     std::cout << index << '\n';
   });
 
@@ -98,7 +98,7 @@ Test(core_handlers_continue_request_handler_sdk4_signed)
   size_t index = crypto::PACKET_HASH_LENGTH + 1;
   check(token.write_encrypted(packet, index, router_private_key(), keychain.relay_public_key));
   check(packet.buffer[crypto::PACKET_HASH_LENGTH] == static_cast<uint8_t>(PacketType::ContinueRequest));
-  check(index == crypto::PACKET_HASH_LENGTH + 1 + ContinueTokenV4::SIZE_OF_ENCRYPTED).onFail([&] {
+  check(index == crypto::PACKET_HASH_LENGTH + 1 + ContinueTokenV4::SIZE_OF_ENCRYPTED).on_fail([&] {
     std::cout << index << '\n';
   });
 
@@ -150,7 +150,7 @@ Test(core_handlers_continue_request_handler_unsigned)
   size_t index = 1;
   check(token.write_encrypted(packet, index, router_private_key(), keychain.relay_public_key));
   check(packet.buffer[0] == static_cast<uint8_t>(PacketType::ContinueRequest));
-  check(index == 1 + ContinueToken::SIZE_OF_ENCRYPTED).onFail([&] {
+  check(index == 1 + ContinueToken::SIZE_OF_ENCRYPTED).on_fail([&] {
     std::cout << index << '\n';
   });
 
@@ -202,7 +202,7 @@ Test(core_handlers_continue_request_handler_signed)
   size_t index = crypto::PACKET_HASH_LENGTH + 1;
   check(token.write_encrypted(packet, index, router_private_key(), keychain.relay_public_key));
   check(packet.buffer[crypto::PACKET_HASH_LENGTH] == static_cast<uint8_t>(PacketType::ContinueRequest));
-  check(index == crypto::PACKET_HASH_LENGTH + 1 + ContinueToken::SIZE_OF_ENCRYPTED).onFail([&] {
+  check(index == crypto::PACKET_HASH_LENGTH + 1 + ContinueToken::SIZE_OF_ENCRYPTED).on_fail([&] {
     std::cout << index << '\n';
   });
 

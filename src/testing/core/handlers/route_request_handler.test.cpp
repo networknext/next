@@ -73,14 +73,14 @@ Test(core_handlers_route_request_handler_sdk4_unsigned)
   check(session->private_key == token.PrivateKey);
 
   check(recorder.route_request_tx.num_packets == 1);
-  check(recorder.route_request_tx.num_bytes == packet.length - RouteTokenV4::EncryptedByteSize).onFail([&] {
+  check(recorder.route_request_tx.num_bytes == packet.length - RouteTokenV4::EncryptedByteSize).on_fail([&] {
     std::cout << "len = " << packet.length << '\n';
     std::cout << "bytes = " << recorder.route_request_tx.num_bytes << '\n';
   });
 
   size_t prev_len = packet.length;
   check(next_socket.recv(packet));
-  check(packet.addr == addr).onFail([&] {
+  check(packet.addr == addr).on_fail([&] {
     std::cout << "addr = " << addr << '\n';
     std::cout << "next = " << next << '\n';
     std::cout << "packet = " << packet.addr << '\n';
@@ -219,7 +219,7 @@ Test(core_handlers_route_request_handler_unsigned)
 
   size_t prev_len = packet.length;
   check(next_socket.recv(packet));
-  check(packet.addr == addr).onFail([&] {
+  check(packet.addr == addr).on_fail([&] {
     std::cout << "addr = " << addr << '\n';
     std::cout << "next = " << next << '\n';
     std::cout << "packet = " << packet.addr << '\n';

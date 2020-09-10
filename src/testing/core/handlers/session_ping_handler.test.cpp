@@ -120,7 +120,7 @@ Test(core_handlers_session_ping_handler_sdk4_signed)
   core::handlers::session_ping_handler_sdk4(packet, map, recorder, router_info, socket, true);
 
   size_t prev_len = packet.length;
-  check(socket.recv(packet)).onFail([&] {
+  check(socket.recv(packet)).on_fail([&] {
     std::cout << "session = " << *session << '\n';
   });
   check(prev_len == packet.length);
@@ -229,7 +229,7 @@ Test(core_handlers_session_ping_handler_signed)
   core::handlers::session_ping_handler(packet, map, recorder, router_info, socket, true);
 
   size_t prev_len = packet.length;
-  check(socket.recv(packet)).onFail([&] {
+  check(socket.recv(packet)).on_fail([&] {
     std::cout << "session = " << *session << '\n';
   });
   check(prev_len == packet.length);

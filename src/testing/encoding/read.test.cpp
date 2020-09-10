@@ -64,7 +64,7 @@ Test(ReadAddress_ipv6)
   check(addr.Port == 51034);
 
   check(index == Address::ByteSize);
-  check(addr.to_string() == "[3b1f:3c33:9928:ffff:ffff:ffff:ffff:ffff]:51034").onFail([&] {
+  check(addr.to_string() == "[3b1f:3c33:9928:ffff:ffff:ffff:ffff:ffff]:51034").on_fail([&] {
     std::cout << addr.to_string() << std::endl;
   });
 }
@@ -97,7 +97,7 @@ Test(ReadAddress_none)
   size_t index = 0;
   check(encoding::read_address(bin, index, after));
   check(index == Address::ByteSize);
-  check(after.to_string() == "NONE").onFail([&] {
+  check(after.to_string() == "NONE").on_fail([&] {
     std::cout << "\n'" << after.to_string() << '\'' << std::endl;
   });
   check(before == after);

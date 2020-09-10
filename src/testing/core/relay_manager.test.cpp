@@ -70,9 +70,9 @@ Test(RelayManager)
 
   // now add a few new relays, while some relays remain the same
 
-  std::array<RelayPingInfo, MAX_RELAYS> diffRelays;
-  std::copy(incoming.begin() + 4, incoming.end(), diffRelays.begin());
-  manager.update(NumRelays, diffRelays);
+  std::array<RelayPingInfo, MAX_RELAYS> diff_relays;
+  std::copy(incoming.begin() + 4, incoming.end(), diff_relays.begin());
+  manager.update(NumRelays, diff_relays);
   {
     RelayStats stats;
     manager.get_stats(stats);

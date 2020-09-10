@@ -65,13 +65,13 @@ Test(core_handlers_continue_response_handler_sdk4_unsigned)
 
   core::handlers::continue_response_handler_sdk4(packet, map, recorder, router_info, socket, false);
   size_t prev_len = packet.length;
-  check(socket.recv(packet)).onFail([&] {
+  check(socket.recv(packet)).on_fail([&] {
     std::cout << "unable to receive packet\n";
   });
   check(prev_len == packet.length);
 
   check(recorder.continue_response_tx.num_packets == 1);
-  check(recorder.continue_response_tx.num_bytes == packet.length).onFail([&] {
+  check(recorder.continue_response_tx.num_bytes == packet.length).on_fail([&] {
     std::cout << "packet len = " << packet.length << '\n';
     std::cout << "byte count = " << recorder.continue_response_rx.num_bytes << '\n';
   });
@@ -122,13 +122,13 @@ Test(core_handlers_continue_response_handler_sdk4_signed)
 
   core::handlers::continue_response_handler_sdk4(packet, map, recorder, router_info, socket, true);
   size_t prev_len = packet.length;
-  check(socket.recv(packet)).onFail([&] {
+  check(socket.recv(packet)).on_fail([&] {
     std::cout << "unable to receive packet\n";
   });
   check(prev_len == packet.length);
 
   check(recorder.continue_response_tx.num_packets == 1);
-  check(recorder.continue_response_tx.num_bytes == packet.length).onFail([&] {
+  check(recorder.continue_response_tx.num_bytes == packet.length).on_fail([&] {
     std::cout << "packet len = " << packet.length << '\n';
     std::cout << "byte count = " << recorder.continue_response_rx.num_bytes << '\n';
   });
@@ -180,13 +180,13 @@ Test(core_handlers_continue_response_handler_unsigned)
 
   core::handlers::continue_response_handler(packet, map, recorder, router_info, socket, false);
   size_t prev_len = packet.length;
-  check(socket.recv(packet)).onFail([&] {
+  check(socket.recv(packet)).on_fail([&] {
     std::cout << "unable to receive packet\n";
   });
   check(prev_len == packet.length);
 
   check(recorder.continue_response_tx.num_packets == 1);
-  check(recorder.continue_response_tx.num_bytes == packet.length).onFail([&] {
+  check(recorder.continue_response_tx.num_bytes == packet.length).on_fail([&] {
     std::cout << "packet len = " << packet.length << '\n';
     std::cout << "byte count = " << recorder.continue_response_rx.num_bytes << '\n';
   });
@@ -237,13 +237,13 @@ Test(core_handlers_continue_response_handler_signed)
 
   core::handlers::continue_response_handler(packet, map, recorder, router_info, socket, true);
   size_t prev_len = packet.length;
-  check(socket.recv(packet)).onFail([&] {
+  check(socket.recv(packet)).on_fail([&] {
     std::cout << "unable to receive packet\n";
   });
   check(prev_len == packet.length);
 
   check(recorder.continue_response_tx.num_packets == 1);
-  check(recorder.continue_response_tx.num_bytes == packet.length).onFail([&] {
+  check(recorder.continue_response_tx.num_bytes == packet.length).on_fail([&] {
     std::cout << "packet len = " << packet.length << '\n';
     std::cout << "byte count = " << recorder.continue_response_rx.num_bytes << '\n';
   });

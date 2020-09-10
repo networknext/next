@@ -71,7 +71,7 @@ Test(core_handlers_client_to_server_handler_sdk4_unsigned_packet)
   check(prev_len == packet.length);
 
   check(recorder.client_to_server_tx.num_packets == 1);
-  check(recorder.client_to_server_tx.num_bytes == packet.length).onFail([&] {
+  check(recorder.client_to_server_tx.num_bytes == packet.length).on_fail([&] {
     std::cout << "packet len = " << packet.length << std::endl;
     std::cout << "byte count = " << recorder.client_to_server_tx.num_bytes << std::endl;
   });
@@ -185,7 +185,7 @@ Test(core_handlers_client_to_server_handler_unsigned_packet)
   check(prev_len == packet.length);
 
   check(recorder.client_to_server_tx.num_packets == 1);
-  check(recorder.client_to_server_tx.num_bytes == packet.length).onFail([&] {
+  check(recorder.client_to_server_tx.num_bytes == packet.length).on_fail([&] {
     std::cout << "packet len = " << packet.length << std::endl;
     std::cout << "byte count = " << recorder.client_to_server_tx.num_bytes << std::endl;
   });

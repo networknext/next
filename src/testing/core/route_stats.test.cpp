@@ -67,11 +67,11 @@ Test(core_route_stats_basic_test)
   double actual_jitter = (stats.jitter * 100.0) / 100.0;
   double actual_packet_loss = (stats.packet_loss * 100.0) / 100.0;
 
-  check(std::abs(actual_rtt - expected_rtt) < 0.001).onFail([&] {
+  check(std::abs(actual_rtt - expected_rtt) < 0.001).on_fail([&] {
     std::cout << "actual rtt = " << actual_rtt << '\n';
     std::cout << "expected rtt = " << expected_rtt << '\n';
   });
-  check(std::abs(actual_jitter - expected_jitter) < 0.001).onFail([&] {
+  check(std::abs(actual_jitter - expected_jitter) < 0.001).on_fail([&] {
     std::cout << "actual jitter = " << actual_jitter << '\n';
     std::cout << "expected jitter = " << expected_jitter << '\n';
   });

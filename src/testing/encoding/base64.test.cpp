@@ -13,7 +13,7 @@ Test(encoding_base64_general)
   check(decoded_length > 0);
 
   std::string output(decoded.begin(), decoded.begin() + decoded_length);
-  check(input == output).onFail([&] {
+  check(input == output).on_fail([&] {
     std::cout << "input = " << input;
     std::cout << "output = " << output;
   });

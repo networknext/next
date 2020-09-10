@@ -24,20 +24,20 @@ Test(core_PingHistory_general)
       check(entry.time_pong_received != -1.0);
     }
 
-    auto lastSeq = ph.most_recent_sequence;
-    auto pingTime = rand();
-    auto pongTime = rand();
+    auto last_seq = ph.most_recent_sequence;
+    auto ping_time = rand();
+    auto pong_time = rand();
 
     // record the ping data
-    check(ph.ping_sent(pingTime) == lastSeq);
-    check(ph.most_recent_sequence == lastSeq + 1);
-    check(entry.sequence_number == lastSeq);
-    check(entry.time_ping_sent == pingTime);
+    check(ph.ping_sent(ping_time) == last_seq);
+    check(ph.most_recent_sequence == last_seq + 1);
+    check(entry.sequence_number == last_seq);
+    check(entry.time_ping_sent == ping_time);
     check(entry.time_pong_received == -1.0);
 
     // record the pong data
-    ph.pong_received(lastSeq, pongTime);
+    ph.pong_received(last_seq, pong_time);
 
-    check(entry.time_pong_received == pongTime);
+    check(entry.time_pong_received == pong_time);
   }
 }

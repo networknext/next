@@ -49,7 +49,7 @@ Test(core_handlers_relay_pong_handler)
 
   auto& pong_received = (*manager.relays[0].history)[0].time_pong_received;
 
-  check(pong_received == -1).onFail([&] {
+  check(pong_received == -1).on_fail([&] {
     std::cout << "pong received == " << pong_received << '\n';
   });
 
@@ -59,7 +59,7 @@ Test(core_handlers_relay_pong_handler)
 
   core::handlers::relay_pong_handler(packet, manager, true);
 
-  check(pong_received > 0).onFail([&] {
+  check(pong_received > 0).on_fail([&] {
     std::cout << "pong received == " << pong_received << '\n';
   });
 }

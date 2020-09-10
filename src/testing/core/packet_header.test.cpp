@@ -82,7 +82,7 @@ Test(core_PacketHeaderV4_server_to_client)
   check(other.session_version == header.session_version);
 
   index = 0;
-  check(header.verify(packet, index, PacketDirection::ServerToClient, private_key)).onFail([&] {
+  check(header.verify(packet, index, PacketDirection::ServerToClient, private_key)).on_fail([&] {
     std::cout << header.sequence << std::endl;
   });
 }
@@ -158,7 +158,7 @@ Test(core_PacketHeader_server_to_client)
   check(other.session_version == header.session_version);
 
   index = 0;
-  check(header.verify(packet, index, PacketDirection::ServerToClient, private_key)).onFail([&] {
+  check(header.verify(packet, index, PacketDirection::ServerToClient, private_key)).on_fail([&] {
     std::cout << header.sequence << std::endl;
   });
 }

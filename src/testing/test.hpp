@@ -63,36 +63,36 @@ namespace testing
     SpecCheck(bool result, const char* condition, const char* file, int line);
     ~SpecCheck();
 
-    void onFail(std::function<void(void)> failFunc);
+    void on_fail(std::function<void(void)> fail_func);
 
    private:
-    bool mResult;
-    const char* mCondition;
-    const char* mFile;
-    const int mLine;
-    std::function<void(void)> mOnFail;
+    bool result;
+    const char* condition;
+    const char* file;
+    const int line;
+    std::function<void(void)> on_fail_func;
   };
 
   inline SpecCheck::SpecCheck(bool result, const char* condition, const char* file, int line)
-   : mResult(result), mCondition(condition), mFile(file), mLine(line)
+   : result(result), condition(condition), file(file), line(line)
   {}
 
   inline SpecCheck::~SpecCheck()
   {
-    if (!mResult) {
-      std::cout << "check failed: (" << mCondition << ")"
-                << ", file " << mFile << " (" << mLine << ")\n";
-      if (mOnFail) {
-        mOnFail();
+    if (!this->result) {
+      std::cout << "check failed: (" << this->condition << ")"
+                << ", file " << this->file << " (" << this->line << ")\n";
+      if (this->on_fail_func) {
+        this->on_fail_func();
       }
       std::cout << std::flush;
       std::exit(1);
     }
   }
 
-  inline void SpecCheck::onFail(std::function<void(void)> failFunc)
+  inline void SpecCheck::on_fail(std::function<void(void)> fail_func)
   {
-    mOnFail = failFunc;
+    this->on_fail_func = fail_func;
   }
 
   template <typename T>

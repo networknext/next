@@ -7,7 +7,6 @@ namespace
 {
   struct
   {
-    bool benchmark_init = false;
     std::unique_ptr<std::deque<bench::Benchmark*>> benchmarks;
   } Globals;
 
@@ -18,9 +17,8 @@ namespace bench
   Benchmark::Benchmark(const char* name, bool enabled): benchmark_name(name), enabled(enabled)
   {
     // to prevent static initialization fiasco
-    if (!Globals.benchmark_init) {
+    if (Globals.benchmarks == nullptr) {
       Globals.benchmarks = std::make_unique<std::deque<Benchmark*>>();
-      Globals.benchmark_init = true;
     }
     Globals.benchmarks->push_back(this);
   }
