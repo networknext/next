@@ -85,6 +85,7 @@ func ServerInitHandlerFunc4(logger log.Logger, storer storage.Storer, datacenter
 
 			if err := writeServerInitResponse4(w, &packet, InitResponseUnknownCustomer); err != nil {
 				level.Error(logger).Log("msg", "failed to write server init response", "err", err)
+				metrics.ErrorMetrics.WriteResponseFailure.Add(1)
 			}
 
 			return
@@ -94,7 +95,11 @@ func ServerInitHandlerFunc4(logger log.Logger, storer storage.Storer, datacenter
 			level.Error(logger).Log("err", "sdk too old", "version", packet.Version.String())
 			metrics.ErrorMetrics.SDKTooOld.Add(1)
 
-			writeServerInitResponse4(w, &packet, InitResponseOldSDKVersion)
+			if err := writeServerInitResponse4(w, &packet, InitResponseOldSDKVersion); err != nil {
+				level.Error(logger).Log("msg", "failed to write server init response", "err", err)
+				metrics.ErrorMetrics.WriteResponseFailure.Add(1)
+			}
+
 			return
 		}
 
@@ -125,7 +130,11 @@ func ServerInitHandlerFunc4(logger log.Logger, storer storage.Storer, datacenter
 					if err != nil {
 						level.Error(logger).Log("msg", "customer has a misconfigured datacenter alias", "err", "datacenter not in database", "datacenter", packet.DatacenterName)
 
-						writeServerInitResponse4(w, &packet, InitResponseUnknownDatacenter)
+						if err := writeServerInitResponse4(w, &packet, InitResponseUnknownDatacenter); err != nil {
+							level.Error(logger).Log("msg", "failed to write server init response", "err", err)
+							metrics.ErrorMetrics.WriteResponseFailure.Add(1)
+						}
+
 						return
 					}
 
@@ -135,7 +144,13 @@ func ServerInitHandlerFunc4(logger log.Logger, storer storage.Storer, datacenter
 			}
 		}
 
-		writeServerInitResponse4(w, &packet, InitResponseOK)
+		if err := writeServerInitResponse4(w, &packet, InitResponseOK); err != nil {
+			level.Error(logger).Log("msg", "failed to write server init response", "err", err)
+			metrics.ErrorMetrics.WriteResponseFailure.Add(1)
+			return
+		}
+
+		level.Debug(logger).Log("msg", "server initialized successfully", "source_address", incoming.SourceAddr.String())
 	}
 }
 
@@ -258,7 +273,12 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 			if err != nil {
 				level.Error(logger).Log("msg", "failed to locate IP", "err", err)
 				metrics.ErrorMetrics.ClientLocateFailure.Add(1)
-				writeSessionResponse4(w, &response, &sessionData)
+				if err := writeSessionResponse4(w, &response, &sessionData); err != nil {
+					level.Error(logger).Log("msg", "failed to write session update response", "err", err)
+					metrics.ErrorMetrics.WriteResponseFailure.Add(1)
+					return
+				}
+
 				go PostSessionUpdate4(postSessionHandler, &packet, &location, nearRelays, usageBytesUp, usageBytesDown, metrics)
 				return
 			}
@@ -267,7 +287,12 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 			if err != nil {
 				level.Error(logger).Log("msg", "failed to get near relays", "err", err)
 				metrics.ErrorMetrics.NearRelaysLocateFailure.Add(1)
-				writeSessionResponse4(w, &response, &sessionData)
+				if err := writeSessionResponse4(w, &response, &sessionData); err != nil {
+					level.Error(logger).Log("msg", "failed to write session update response", "err", err)
+					metrics.ErrorMetrics.WriteResponseFailure.Add(1)
+					return
+				}
+
 				go PostSessionUpdate4(postSessionHandler, &packet, &location, nearRelays, usageBytesUp, usageBytesDown, metrics)
 				return
 			}
@@ -388,8 +413,15 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 			response.Tokens = routeTokens
 		}
 
-		writeSessionResponse4(w, &response, &sessionData)
+		if err := writeSessionResponse4(w, &response, &sessionData); err != nil {
+			level.Error(logger).Log("msg", "failed to write session update response", "err", err)
+			metrics.ErrorMetrics.WriteResponseFailure.Add(1)
+			return
+		}
+
 		go PostSessionUpdate4(postSessionHandler, &packet, &location, nearRelays, usageBytesUp, usageBytesDown, metrics)
+
+		level.Debug(logger).Log("msg", "session updated successfully", "source_address", incoming.SourceAddr.String(), "server_address", packet.ServerAddress.String(), "client_address", packet.ClientAddress.String())
 	}
 }
 
