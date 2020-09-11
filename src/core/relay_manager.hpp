@@ -23,9 +23,9 @@ namespace testing
 namespace core
 {
   // how long between relay to relay pings, in seconds
-  const size_t PING_RATE = 0.1;
+  const double PING_RATE = 0.1;
   // how many seconds before a packet is considered as lost
-  const size_t PING_SAFETY = 1.0;
+  const double PING_SAFETY = 1.0;
   // default value for stats
   const double INVALID_PING_TIME = -10000.0;
   // how long to sample for relay stats, in seconds

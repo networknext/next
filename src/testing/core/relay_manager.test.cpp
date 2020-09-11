@@ -118,7 +118,8 @@ TEST(core_RelayManager_update)
   }
 }
 
-TEST(core_RelayManager_get_ping_targets) {
+TEST(core_RelayManager_get_ping_targets)
+{
   RelayManager manager;
   std::array<RelayPingInfo, MAX_RELAYS> incoming;
   incoming[0].id = 12345;
@@ -136,6 +137,9 @@ TEST(core_RelayManager_get_ping_targets) {
   CHECK(manager.get_ping_targets(ping_data) == 1);
   CHECK(ping_data[0].sequence == 1);
   CHECK(ping_data[0].address == incoming[0].address);
+
+  std::this_thread::sleep_for(90ms);
+  CHECK(manager.get_ping_targets(ping_data) == 0);
 }
 
 TEST(core_RelayManager_process_pong)
@@ -154,4 +158,19 @@ TEST(core_RelayManager_process_pong)
   CHECK(manager.relays[0].history->entries[ping_data[0].sequence].time_pong_received == -1.0);
   CHECK(manager.process_pong(ping_data[0].address, ping_data[0].sequence));
   CHECK(manager.relays[0].history->entries[ping_data[0].sequence].time_pong_received != -1.0);
+}
+
+TEST(core_RelayManager_get_stats)
+{
+  RelayManager manager;
+  std::array<RelayPingInfo, MAX_RELAYS> incoming;
+  incoming[0].id = 12345;
+  CHECK(incoming[0].address.parse("127.0.0.1:1234"));
+
+  manager.update(1, incoming);
+
+  RelayStats rs;
+  manager.get_stats(rs);
+
+  CHECK(rs.num_relays == 1);
 }
