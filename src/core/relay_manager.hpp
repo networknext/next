@@ -178,7 +178,7 @@ namespace core
 
             const auto slot = relay.history - this->ping_history.data();
             assert(slot >= 0);
-            assert(slot < MAX_RELAYS);
+            assert(slot < static_cast<long>(MAX_RELAYS));
             history_slot_taken[slot] = true;
           }
         }

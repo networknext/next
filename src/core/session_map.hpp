@@ -1,6 +1,7 @@
 #pragma once
 
 #include "session.hpp"
+#include "router_info.hpp"
 
 namespace core
 {
@@ -27,7 +28,7 @@ namespace core
     auto size() const -> size_t;
 
     /* Remove all entries past the given timestamp */
-    void purge(double seconds);
+    void purge(const RouterInfo& router_info);
 
    private:
     // Using a map for now, it's a uint key so an unordered map might
@@ -63,12 +64,12 @@ namespace core
     return this->internal_map.size();
   }
 
-  INLINE void SessionMap::purge(double seconds)
+  INLINE void SessionMap::purge(const RouterInfo& router_info)
   {
     std::lock_guard<std::mutex> lk(this->mutex);
     auto iter = this->internal_map.begin();
     while (iter != this->internal_map.end()) {
-      if (iter->second && iter->second->expired(seconds)) {
+      if (iter->second && iter->second->expired(router_info)) {
         iter = this->internal_map.erase(iter);
       } else {
         iter++;

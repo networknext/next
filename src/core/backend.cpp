@@ -453,7 +453,7 @@ namespace core
          time_since_last_update);
       }
 
-      sessions.purge(this->router_info.current_time());
+      sessions.purge(this->router_info);
 
       std::this_thread::sleep_for(1s);
     }

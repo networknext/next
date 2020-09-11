@@ -4,6 +4,7 @@
 #include "util/macros.hpp"
 
 using util::Clock;
+using util::Second;
 
 namespace core
 {
@@ -13,7 +14,9 @@ namespace core
     RouterInfo() = default;
 
     void set_timestamp(int64_t ts);
-    auto current_time() const -> double;
+
+    template <typename R>
+    auto current_time() const -> R;
 
    private:
     mutable std::mutex mutex;
@@ -28,9 +31,10 @@ namespace core
     clock.reset();
   }
 
-  INLINE auto RouterInfo::current_time() const -> double
+  template <typename R>
+  INLINE auto RouterInfo::current_time() const -> R
   {
     std::lock_guard<std::mutex> lk(mutex);
-    return this->backend_timestamp + clock.elapsed<util::Second>();
+    return static_cast<R>(this->backend_timestamp + clock.elapsed<Second>());
   }
 }  // namespace core

@@ -77,7 +77,7 @@ TEST(core_backend_init_valid)
 
   CHECK(client.Hostname == BACKEND_HOSTNAME);
   CHECK(client.Endpoint == "/relay_init");
-  CHECK(router_info.current_time() >= 123456789 / 1000);
+  CHECK(router_info.current_time<uint64_t>() >= 123456789 / 1000);
 
   InitRequest request;
   CHECK(request.from(client.Request));
@@ -369,8 +369,8 @@ TEST(core_Backend_update_valid)
     CHECK(ping_data[0].address.to_string() == "127.0.0.1:54321");
     CHECK(ping_data[1].address.to_string() == "127.0.0.1:13524");
 
-    CHECK(router_info.current_time() >= 123456789).on_fail([&] {
-      std::cout << "info timestamp = " << router_info.current_time() << '\n';
+    CHECK(router_info.current_time<uint64_t>() >= 123456789).on_fail([&] {
+      std::cout << "info timestamp = " << router_info.current_time<uint64_t>() << '\n';
     });
   }
 }
