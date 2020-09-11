@@ -6,7 +6,7 @@
 
 namespace testing
 {
-  class _test_core_ReplayProtection_additional_logic_tests_;
+  class _test_core_ReplayProtection_all_;
 }
 
 namespace core
@@ -15,7 +15,7 @@ namespace core
 
   class ReplayProtection
   {
-    friend testing::_test_core_ReplayProtection_additional_logic_tests_;
+    friend testing::_test_core_ReplayProtection_all_;
 
    public:
     ReplayProtection() = default;

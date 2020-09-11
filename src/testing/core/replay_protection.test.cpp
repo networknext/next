@@ -10,7 +10,7 @@ namespace
   const auto MAX_SEQUENCE = REPLAY_PROTECTION_BUFFER_SIZE * 4;
 }
 
-TEST(core_ReplayProtection_additional_logic_tests)
+TEST(core_ReplayProtection_all)
 {
   core::ReplayProtection rp;
 

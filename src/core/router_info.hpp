@@ -6,10 +6,19 @@
 using util::Clock;
 using util::Second;
 
+namespace testing
+{
+  class _test_core_RouterInfo_set_timestamp_;
+  class _test_core_RouterInfo_current_time_;
+}
+
 namespace core
 {
   class RouterInfo
   {
+    friend testing::_test_core_RouterInfo_set_timestamp_;
+    friend testing::_test_core_RouterInfo_current_time_;
+
    public:
     RouterInfo() = default;
 
