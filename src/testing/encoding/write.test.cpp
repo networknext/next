@@ -61,7 +61,8 @@ TEST(encoding_write_uint64)
   CHECK(buff[8] == 0x88);
 }
 
-TEST(encoding_write_double) {
+TEST(encoding_write_double)
+{
   union
   {
     std::array<uint8_t, 16> buff;
@@ -73,6 +74,25 @@ TEST(encoding_write_double) {
 
   CHECK(encoding::write_double(values.buff, index, num));
   CHECK(values.num == num);
+}
+
+TEST(encoding_write_bytes)
+{
+  std::array<uint8_t, 32> buff;
+  std::array<uint8_t, 8> data;
+  size_t index = 8;
+
+  for (uint8_t i = 0; i < data.size(); i++) {
+    data[i] = i;
+  }
+
+  encoding::write_bytes(buff, index, data, 4);
+
+  CHECK(index == 12);
+
+  for (size_t i = 8, j = 0; i < 4; i++) {
+    CHECK(buff[i] == data[j]);
+  }
 }
 
 TEST(encoding_write_address_ipv4)
@@ -139,21 +159,23 @@ TEST(encoding_write_address_none)
   }
 }
 
-TEST(encoding_write_bytes)
+TEST(encoding_write_string)
 {
-  std::array<uint8_t, 32> buff;
-  std::array<uint8_t, 8> data;
-  size_t index = 8;
+  std::array<char, 32> buff{};  // = {0x08, 0x00, 0x00, 0x00, 'a', ' ', 's', 't', 'r', 'i', 'n', 'g'};
 
-  for (uint8_t i = 0; i < data.size(); i++) {
-    data[i] = i;
-  }
-
-  encoding::write_bytes(buff, index, data, 4);
-
-  CHECK(index == 12);
-
-  for (size_t i = 8, j = 0; i < 4; i++) {
-    CHECK(buff[i] == data[j]);
-  }
+  std::string val = "a string";
+  size_t index = 0;
+  CHECK(encoding::write_string(buff, index, val));
+  CHECK(buff[0] == 0x08);
+  CHECK(buff[1] == 0x00);
+  CHECK(buff[2] == 0x00);
+  CHECK(buff[3] == 0x00);
+  CHECK(buff[4] == 'a');
+  CHECK(buff[5] == ' ');
+  CHECK(buff[6] == 's');
+  CHECK(buff[7] == 't');
+  CHECK(buff[8] == 'r');
+  CHECK(buff[9] == 'i');
+  CHECK(buff[10] == 'n');
+  CHECK(buff[11] == 'g');
 }

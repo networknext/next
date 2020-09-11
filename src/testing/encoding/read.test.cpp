@@ -83,6 +83,24 @@ TEST(encoding_read_double)
   CHECK(val == num);
 }
 
+TEST(encoding_read_bytes)
+{
+  std::array<uint8_t, 16> buff{};
+  std::array<uint8_t, 8> actual{}, expected{};
+
+  for (size_t i = 0; i < buff.size(); i++) {
+    buff[i] = 0xFF - 0x11 * i;
+  }
+
+  for (size_t i = 0; i < expected.size(); i++) {
+    expected[i] = 0xCC - 0x11 * i;
+  }
+
+  size_t index = 3;
+  CHECK(encoding::read_bytes(buff, index, actual, actual.size()));
+  CHECK(actual == expected);
+}
+
 TEST(encoding_read_address_ipv4)
 {
   Address addr;
@@ -177,4 +195,14 @@ TEST(encoding_read_address_none)
     std::cout << "\n'" << after.to_string() << '\'' << std::endl;
   });
   CHECK(before == after);
+}
+
+TEST(encoding_read_string)
+{
+  std::array<char, 32> buff = {0x08, 0x00, 0x00, 0x00, 'a', ' ', 's', 't', 'r', 'i', 'n', 'g'};
+
+  std::string val;
+  size_t index = 0;
+  CHECK(encoding::read_string(buff, index, val));
+  CHECK(val == "a string");
 }
