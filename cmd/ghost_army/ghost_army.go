@@ -198,20 +198,20 @@ func main() {
 
 			// only useful at 11:50:5x pm - midnight
 			// forces the last slice to be sent within the above interval
-			if sliceBegin+10 > SecondsInDay {
+			if sliceBegin+interval > SecondsInDay {
 				interval = SecondsInDay - sliceBegin
 			}
 
 			// seek to the next position slices should be from
 			// mainly useful when starting the program
-			for slices[i].Slice.Timestamp.Unix() < sliceBegin && i < len(slices) {
+			for i < len(slices) && slices[i].Slice.Timestamp.Unix() < sliceBegin {
 				i++
 			}
 
 			before := i
 
 			// only read for the next 10 seconds
-			for slices[i].Slice.Timestamp.Unix() < sliceBegin+interval && i < len(slices) {
+			for i < len(slices) && slices[i].Slice.Timestamp.Unix() < sliceBegin+interval {
 				slice := slices[i]
 
 				// slice timestamp will be in the range of 0 - SecondsInDay * 3,
