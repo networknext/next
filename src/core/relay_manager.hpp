@@ -19,6 +19,7 @@ namespace testing
   class _test_core_RelayManager_reset_;
   class _test_core_RelayManager_process_pong_;
   class _test_core_RelayManager_copy_existing_relays_;
+  class _test_core_RelayManager_copy_new_relays_;
 }  // namespace testing
 
 namespace core
@@ -67,6 +68,7 @@ namespace core
     friend testing::_test_core_RelayManager_reset_;
     friend testing::_test_core_RelayManager_process_pong_;
     friend testing::_test_core_RelayManager_copy_existing_relays_;
+    friend testing::_test_core_RelayManager_copy_new_relays_;
 
    public:
     RelayManager();

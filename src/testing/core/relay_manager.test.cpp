@@ -190,8 +190,19 @@ TEST(core_RelayManager_copy_existing_relays)
 
   CHECK(manager.update(num_incoming_relays, incoming));
 
+  num_incoming_relays = 2;
+
+  incoming[1] = incoming[0];
+  incoming[0].id = random_whole<uint64_t>();
+  incoming[0].address = random_address();
+
   std::array<Relay, MAX_RELAYS> new_relays{};
-  std::array<bool, MAX_RELAYS> found{};
+  std::array<bool, MAX_RELAYS> relay_found{};
+
+  for (const auto found : relay_found) {
+    CHECK(!found);
+  }
+
   std::array<bool, MAX_RELAYS> history_slot_taken{};
 
   for (const auto taken : history_slot_taken) {
@@ -199,8 +210,37 @@ TEST(core_RelayManager_copy_existing_relays)
   }
 
   size_t index = 0;
-  CHECK(manager.copy_existing_relays(index, num_incoming_relays, incoming, new_relays, found, history_slot_taken));
+  CHECK(manager.copy_existing_relays(index, num_incoming_relays, incoming, new_relays, relay_found, history_slot_taken));
 
   CHECK(new_relays[0] == manager.relays[0]);
+  CHECK(new_relays[0].history == &manager.ping_history[0]);
   CHECK(history_slot_taken[0]);
+}
+
+TEST(core_RelayManager_copy_new_relays) {
+  RelayManager manager;
+
+  size_t num_incoming_relays = 1;
+  std::array<RelayPingInfo, MAX_RELAYS> incoming;
+  incoming[0].id = random_whole<uint64_t>();
+  incoming[0].address = random_address();
+
+  CHECK(manager.update(num_incoming_relays, incoming));
+
+  num_incoming_relays = 2;
+
+  incoming[1] = incoming[0];
+  incoming[0].id = random_whole<uint64_t>();
+  incoming[0].address = random_address();
+
+  std::array<Relay, MAX_RELAYS> new_relays{};
+  std::array<bool, MAX_RELAYS> relay_found{};
+  std::array<bool, MAX_RELAYS> history_slot_taken{};
+
+  size_t index = 0;
+  CHECK(manager.copy_existing_relays(index, num_incoming_relays, incoming, new_relays, relay_found, history_slot_taken));
+
+  CHECK(manager.copy_new_relays(index, num_incoming_relays, incoming, new_relays, relay_found, history_slot_taken));
+  CHECK(new_relays[0].history == &manager.ping_history[0]);
+  CHECK(new_relays[1].history == &manager.ping_history[1]);
 }

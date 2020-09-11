@@ -30,7 +30,7 @@ namespace testing
         Globals.tests->end(),
         [argc, argv](auto test) -> bool {
           for (int i = 1; i < argc; i++) {
-            if (std::string(argv[i]) == test->TestName) {
+            if (strstr(test->TestName, argv[i]) != nullptr) {
               return false;
             }
           }
