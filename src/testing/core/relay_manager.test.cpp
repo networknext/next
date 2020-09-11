@@ -3,12 +3,45 @@
 
 #include "core/relay_manager.hpp"
 
+using core::INVALID_PING_TIME;
+using core::MAX_RELAYS;
+using core::PingData;
 using core::RelayManager;
 using core::RelayPingInfo;
 using core::RelayStats;
-using core::MAX_RELAYS;
+using net::Address;
 
-TEST(core_RelayManager_general)
+TEST(core_RelayManager_reset)
+{
+  RelayManager manager;
+  std::array<RelayPingInfo, MAX_RELAYS> incoming;
+  incoming[0].id = 12345;
+  CHECK(incoming[0].address.parse("127.0.0.1:1234"));
+
+  CHECK(manager.num_relays == 0);
+  CHECK(manager.relays[0].id == 0);
+  CHECK(manager.relays[0].address == Address());
+  CHECK(manager.relays[0].history == nullptr);
+  CHECK(manager.relays[0].last_ping_time == INVALID_PING_TIME);
+
+  manager.update(1, incoming);
+
+  CHECK(manager.num_relays == 1);
+  CHECK(manager.relays[0].id == incoming[0].id);
+  CHECK(manager.relays[0].address == incoming[0].address);
+  CHECK(manager.relays[0].history != nullptr);
+  CHECK(manager.relays[0].last_ping_time != INVALID_PING_TIME);
+
+  manager.reset();
+
+  CHECK(manager.num_relays == 0);
+  CHECK(manager.relays[0].id == 0);
+  CHECK(manager.relays[0].address == Address());
+  CHECK(manager.relays[0].history == nullptr);
+  CHECK(manager.relays[0].last_ping_time == INVALID_PING_TIME);
+}
+
+TEST(core_RelayManager_update)
 {
   const int num_relays = 32;
 
@@ -81,4 +114,22 @@ TEST(core_RelayManager_general)
       CHECK(incoming[i + 4].id == stats.ids[i]);
     }
   }
+}
+
+TEST(core_RelayManager_process_pong)
+{
+  RelayManager manager;
+  std::array<RelayPingInfo, MAX_RELAYS> incoming;
+  incoming[0].id = 12345;
+  CHECK(incoming[0].address.parse("127.0.0.1:1234"));
+
+  manager.update(1, incoming);
+
+  std::array<PingData, MAX_RELAYS> ping_data;
+  manager.get_ping_targets(ping_data);
+
+  CHECK(manager.relays[0].last_ping_time != INVALID_PING_TIME);
+  CHECK(manager.relays[0].history->entries[ping_data[0].sequence].time_pong_received == -1.0);
+  CHECK(manager.process_pong(ping_data[0].address, ping_data[0].sequence));
+  CHECK(manager.relays[0].history->entries[ping_data[0].sequence].time_pong_received != -1.0);
 }

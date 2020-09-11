@@ -5,9 +5,9 @@
 namespace testing
 {
   template <typename T>
-  INLINE std::enable_if_t<std::is_floating_point<T>::value, T> random_float()
+  INLINE std::enable_if_t<std::is_floating_point<T>::value, T> random_decimal()
   {
-    static auto rand = std::bind(std::uniform_real_distribution<T>(), std::default_random_engine());
+    static auto rand = std::bind(std::uniform_real_distribution<T>(0.0, 1.0), std::default_random_engine());
     return static_cast<T>(rand());
   }
 

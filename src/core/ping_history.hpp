@@ -7,7 +7,8 @@
 namespace testing
 {
   class _test_core_PingHistory_general_;
-}
+  class _test_core_RelayManager_process_pong_;
+}  // namespace testing
 
 namespace core
 {
@@ -24,6 +25,7 @@ namespace core
   class PingHistory
   {
     friend testing::_test_core_PingHistory_general_;
+    friend testing::_test_core_RelayManager_process_pong_;
 
    public:
     PingHistory() = default;

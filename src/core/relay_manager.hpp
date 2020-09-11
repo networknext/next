@@ -16,7 +16,9 @@ using util::Second;
 namespace testing
 {
   class _test_core_handlers_relay_pong_handler_;
-}
+  class _test_core_RelayManager_reset_;
+  class _test_core_RelayManager_process_pong_;
+}  // namespace testing
 
 namespace core
 {
@@ -31,19 +33,19 @@ namespace core
 
   struct PingData
   {
-    uint64_t sequence;
+    uint64_t sequence = 0;
     Address address;
   };
 
   struct RelayPingInfo
   {
-    uint64_t id;
+    uint64_t id = 0;
     Address address;
   };
 
   struct Relay
   {
-    uint64_t id;
+    uint64_t id = 0;
     Address address;
     double last_ping_time = INVALID_PING_TIME;
     PingHistory* history = nullptr;
@@ -51,7 +53,9 @@ namespace core
 
   class RelayManager
   {
-    friend class testing::_test_core_handlers_relay_pong_handler_;
+    friend testing::_test_core_handlers_relay_pong_handler_;
+    friend testing::_test_core_RelayManager_reset_;
+    friend testing::_test_core_RelayManager_process_pong_;
 
    public:
     RelayManager();
@@ -61,11 +65,11 @@ namespace core
 
     void update(size_t num_incoming_relays, const std::array<RelayPingInfo, MAX_RELAYS>& incoming_relays);
 
+    auto get_ping_targets(std::array<PingData, MAX_RELAYS>& data) -> size_t;
+
     auto process_pong(const Address& from, uint64_t seq) -> bool;
 
     void get_stats(RelayStats& stats);
-
-    auto get_ping_targets(std::array<PingData, MAX_RELAYS>& data) -> size_t;
 
    private:
     std::mutex mutex;
@@ -87,6 +91,29 @@ namespace core
     std::lock_guard<std::mutex> lk(this->mutex);
     this->num_relays = 0;
     std::fill(this->relays.begin(), this->relays.end(), Relay());
+  }
+
+  INLINE auto RelayManager::get_ping_targets(std::array<PingData, MAX_RELAYS>& data) -> size_t
+  {
+    double current_time = this->clock.elapsed<Second>();
+    size_t num_pings = 0;
+
+    // locked mutex scope
+    {
+      std::lock_guard<std::mutex> lk(this->mutex);
+      for (unsigned int i = 0; i < this->num_relays; ++i) {
+        if (this->relays[i].last_ping_time + PING_RATE <= current_time) {
+          auto& relay = this->relays[i];
+          auto& ping_data = data[num_pings++];
+
+          ping_data.sequence = relay.history->ping_sent(current_time);
+          ping_data.address = relay.address;
+          relay.last_ping_time = current_time;
+        }
+      }
+    }
+
+    return num_pings;
   }
 
   INLINE auto RelayManager::process_pong(const Address& from, uint64_t seq) -> bool
@@ -130,30 +157,6 @@ namespace core
     }
   }
 
-  INLINE auto RelayManager::get_ping_targets(std::array<PingData, MAX_RELAYS>& data) -> size_t
-  {
-    double current_time = this->clock.elapsed<Second>();
-    size_t num_pings = 0;
-
-    // locked mutex scope
-    {
-      std::lock_guard<std::mutex> lk(this->mutex);
-      for (unsigned int i = 0; i < this->num_relays; ++i) {
-        if (this->relays[i].last_ping_time + PING_RATE <= current_time) {
-          auto& relay = this->relays[i];
-          auto& ping_data = data[num_pings++];
-
-          ping_data.sequence = relay.history->ping_sent(current_time);
-          ping_data.address = relay.address;
-          relay.last_ping_time = current_time;
-        }
-      }
-    }
-
-    return num_pings;
-  }
-
-  // it is used in one place throughout the codebase, so always INLINE it, no sense in doing a function call
   INLINE void RelayManager::update(size_t num_incoming_relays, const std::array<RelayPingInfo, MAX_RELAYS>& incoming)
   {
     assert(num_incoming_relays <= MAX_RELAYS);
