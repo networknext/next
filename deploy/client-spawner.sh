@@ -37,7 +37,8 @@ trap "kill 0" EXIT
 for ((r=0 ; r<${num_clients} ; r++)); do
 export NEXT_LOG_LEVEL=0
 export CORES=50
-/app/app &
+ips=$(gcloud compute instances list --filter='load-test-server-staging' --format='get(networkInterfaces[0].networkIP)')
+$ips | /app/app &
 pid="$!"
 printf "PID ${pid}: Client opened\n"
 done
