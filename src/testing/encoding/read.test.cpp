@@ -7,6 +7,65 @@
 using net::Address;
 using net::AddressType;
 
+TEST(encoding_read_uint8)
+{
+  std::array<uint8_t, 16> buff{};
+
+  for (size_t i = 0; i < buff.size(); i++) {
+    buff[i] = 0xFF - 0x11 * i;
+  }
+
+  uint8_t val = 0;
+  size_t index = 1;
+  CHECK(encoding::read_uint8(buff, index, val));
+  CHECK(val == 0xEE);
+}
+
+TEST(encoding_read_uint16)
+{
+  std::array<uint8_t, 16> buff{};
+
+  for (size_t i = 0; i < buff.size(); i++) {
+    buff[i] = 0xFF - 0x11 * i;
+  }
+
+  uint16_t val = 0;
+  size_t index = 1;
+
+  CHECK(encoding::read_uint16(buff, index, val));
+  CHECK(val == 0xDDEE);
+}
+
+TEST(encoding_read_uint32)
+{
+  std::array<uint8_t, 16> buff{};
+
+  for (size_t i = 0; i < buff.size(); i++) {
+    buff[i] = 0xFF - 0x11 * i;
+  }
+
+  uint32_t val = 0;
+  size_t index = 1;
+
+  CHECK(encoding::read_uint32(buff, index, val));
+  CHECK(val == 0xBBCCDDEE);
+}
+
+TEST(encoding_read_uint64)
+{
+  std::array<uint8_t, 16> buff{};
+
+  for (size_t i = 0; i < buff.size(); i++) {
+    buff[i] = 0xFF - 0x11 * i;
+  }
+
+  uint64_t val = 0;
+  size_t index = 1;
+
+  CHECK(encoding::read_uint64(buff, index, val));
+  CHECK(val == 0x778899AABBCCDDEE);
+}
+
 TEST(encoding_read_address_ipv4)
 {
   Address addr;

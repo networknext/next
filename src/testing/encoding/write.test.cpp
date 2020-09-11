@@ -6,6 +6,61 @@
 
 using net::Address;
 
+TEST(encoding_write_uint8)
+{
+  std::array<uint8_t, 16> buff{};
+
+  uint8_t val = 0xFF;
+  size_t index = 1;
+
+  CHECK(encoding::write_uint8(buff, index, val));
+  CHECK(buff[1] == 0xFF);
+}
+
+TEST(encoding_write_uint16)
+{
+  std::array<uint8_t, 16> buff{};
+
+  uint16_t val = 0xEEFF;
+  size_t index = 1;
+
+  CHECK(encoding::write_uint16(buff, index, val));
+  CHECK(buff[1] == 0xFF);
+  CHECK(buff[2] == 0xEE);
+}
+
+TEST(encoding_write_uint32)
+{
+  std::array<uint8_t, 16> buff{};
+
+  uint32_t val = 0xCCDDEEFF;
+  size_t index = 1;
+
+  CHECK(encoding::write_uint32(buff, index, val));
+  CHECK(buff[1] == 0xFF);
+  CHECK(buff[2] == 0xEE);
+  CHECK(buff[3] == 0xDD);
+  CHECK(buff[4] == 0xCC);
+}
+
+TEST(encoding_write_uint64)
+{
+  std::array<uint8_t, 16> buff{};
+
+  uint64_t val = 0x8899AABBCCDDEEFF;
+  size_t index = 1;
+
+  CHECK(encoding::write_uint64(buff, index, val));
+  CHECK(buff[1] == 0xFF);
+  CHECK(buff[2] == 0xEE);
+  CHECK(buff[3] == 0xDD);
+  CHECK(buff[4] == 0xCC);
+  CHECK(buff[5] == 0xBB);
+  CHECK(buff[6] == 0xAA);
+  CHECK(buff[7] == 0x99);
+  CHECK(buff[8] == 0x88);
+}
+
 TEST(encoding_write_address_ipv4)
 {
   Address addr;
