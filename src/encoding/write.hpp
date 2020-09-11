@@ -166,11 +166,13 @@ namespace encoding
   template <typename T>
   INLINE auto write_double(T& buff, size_t& index, double value) -> bool
   {
-    if (index + 8 > buff.size()) {
-      LOG(DEBUG, "index out of range: goal = ", index + 8, ", buff size = ", buff.size());
-      return false;
-    }
-    return encoding::write_bytes(buff.data(), buff.size(), index, reinterpret_cast<uint8_t*>(&value), sizeof(double));
+    union
+    {
+      uint64_t fake;
+      double actual;
+    } values = {};
+    values.actual = value;
+    return encoding::write_uint64(buff, index, values.fake);
   }
 
   INLINE auto write_bytes(uint8_t* buff, size_t buff_length, size_t& index, const uint8_t* const data, size_t data_length)

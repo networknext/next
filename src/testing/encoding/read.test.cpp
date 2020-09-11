@@ -1,7 +1,7 @@
 #include "includes.h"
 #include "testing/test.hpp"
+#include "testing/helpers.hpp"
 
-#include "net/address.hpp"
 #include "encoding/read.hpp"
 
 using net::Address;
@@ -64,6 +64,23 @@ TEST(encoding_read_uint64)
 
   CHECK(encoding::read_uint64(buff, index, val));
   CHECK(val == 0x778899AABBCCDDEE);
+}
+
+TEST(encoding_read_double)
+{
+  union
+  {
+    std::array<uint8_t, 16> buff;
+    double num;
+  } values;
+
+  double num = 123.456;
+  values.num = num;
+
+  double val;
+  size_t index = 0;
+  CHECK(encoding::read_double(values.buff, index, val));
+  CHECK(val == num);
 }
 
 TEST(encoding_read_address_ipv4)

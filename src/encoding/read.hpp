@@ -32,8 +32,7 @@ namespace encoding
   auto read_double(const T& buff, size_t& index, double& value) -> bool;
 
   auto read_bytes(
-   const uint8_t* const buff, size_t buff_length, size_t& index, uint8_t* storage, size_t storage_length, size_t len)
-   -> bool;
+   const uint8_t* const buff, size_t buff_length, size_t& index, uint8_t* storage, size_t storage_length, size_t len) -> bool;
 
   template <typename T, typename U>
   auto read_bytes(const T& buff, size_t& index, U& storage, size_t len) -> bool;
@@ -147,8 +146,14 @@ namespace encoding
   template <typename T>
   INLINE auto read_double(const T& buff, size_t& index, double& value) -> bool
   {
-    return encoding::read_bytes(
-     buff.data(), buff.size(), index, reinterpret_cast<uint8_t*>(&value), sizeof(double), sizeof(double));
+    union
+    {
+      uint64_t fake;
+      double actual;
+    } values = {};
+    bool retval = encoding::read_uint64(buff, index, values.fake);
+    value = values.actual;
+    return retval;
   }
 
   INLINE auto read_bytes(

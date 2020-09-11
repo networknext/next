@@ -61,6 +61,20 @@ TEST(encoding_write_uint64)
   CHECK(buff[8] == 0x88);
 }
 
+TEST(encoding_write_double) {
+  union
+  {
+    std::array<uint8_t, 16> buff;
+    double num;
+  } values;
+
+  double num = 123.456;
+  size_t index = 0;
+
+  CHECK(encoding::write_double(values.buff, index, num));
+  CHECK(values.num == num);
+}
+
 TEST(encoding_write_address_ipv4)
 {
   Address addr;
