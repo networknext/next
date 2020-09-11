@@ -73,7 +73,7 @@ int main()
     std::vector<std::string> servers;
 
     std::string line;
-    while( std::getline( std::cin, line ) )
+    while ( std::getline( std::cin, line ) )
     {
         servers.push_back( line );
     }
