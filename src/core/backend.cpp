@@ -610,7 +610,10 @@ namespace core
         return false;
       }
 
-      this->relay_manager.update(response.num_relays, response.Relays);
+      if (!this->relay_manager.update(response.num_relays, response.Relays)) {
+        LOG(ERROR, "could not update relay manager");
+        return false;
+      }
     }
 
     LOG(DEBUG, "updated relay");

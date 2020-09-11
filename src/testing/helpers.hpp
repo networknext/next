@@ -67,18 +67,18 @@ namespace testing
   INLINE auto random_address() -> net::Address
   {
     net::Address retval;
-    if (RandomWhole<uint8_t>() & 1) {
-      retval.Type = net::AddressType::IPv4;
-      for (auto& ip : retval.IPv4) {
+    if (random_whole<uint8_t>() & 1) {
+      retval.type = net::AddressType::IPv4;
+      for (auto& ip : retval.ipv4) {
         ip = random_whole<uint8_t>();
       }
-      retval.Port = random_whole<uint16_t>();
+      retval.port = random_whole<uint16_t>();
     } else {
-      retval.Type = net::AddressType::IPv6;
-      for (auto& ip : retval.IPv6) {
+      retval.type = net::AddressType::IPv6;
+      for (auto& ip : retval.ipv6) {
         ip = random_whole<uint16_t>();
       }
-      retval.Port = random_whole<uint16_t>();
+      retval.port = random_whole<uint16_t>();
     }
     return retval;
   }

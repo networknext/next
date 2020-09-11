@@ -3,11 +3,15 @@
 
 #include "core/relay_manager.hpp"
 
+#define NET_HELPERS
+#include "testing/helpers.hpp"
+
 using namespace std::chrono_literals;
 
 using core::INVALID_PING_TIME;
 using core::MAX_RELAYS;
 using core::PingData;
+using core::Relay;
 using core::RelayManager;
 using core::RelayPingInfo;
 using core::RelayStats;
@@ -17,8 +21,8 @@ TEST(core_RelayManager_reset)
 {
   RelayManager manager;
   std::array<RelayPingInfo, MAX_RELAYS> incoming;
-  incoming[0].id = 12345;
-  CHECK(incoming[0].address.parse("127.0.0.1:1234"));
+  incoming[0].id = random_whole<uint64_t>();
+  incoming[0].address = random_address();
 
   CHECK(manager.num_relays == 0);
   CHECK(manager.relays[0].id == 0);
@@ -122,8 +126,8 @@ TEST(core_RelayManager_get_ping_targets)
 {
   RelayManager manager;
   std::array<RelayPingInfo, MAX_RELAYS> incoming;
-  incoming[0].id = 12345;
-  CHECK(incoming[0].address.parse("127.0.0.1:1234"));
+  incoming[0].id = random_whole<uint64_t>();
+  incoming[0].address = random_address();
 
   manager.update(1, incoming);
 
@@ -146,8 +150,8 @@ TEST(core_RelayManager_process_pong)
 {
   RelayManager manager;
   std::array<RelayPingInfo, MAX_RELAYS> incoming;
-  incoming[0].id = 12345;
-  CHECK(incoming[0].address.parse("127.0.0.1:1234"));
+  incoming[0].id = random_whole<uint64_t>();
+  incoming[0].address = random_address();
 
   manager.update(1, incoming);
 
@@ -164,8 +168,8 @@ TEST(core_RelayManager_get_stats)
 {
   RelayManager manager;
   std::array<RelayPingInfo, MAX_RELAYS> incoming;
-  incoming[0].id = 12345;
-  CHECK(incoming[0].address.parse("127.0.0.1:1234"));
+  incoming[0].id = random_whole<uint64_t>();
+  incoming[0].address = random_address();
 
   manager.update(1, incoming);
 
@@ -173,4 +177,30 @@ TEST(core_RelayManager_get_stats)
   manager.get_stats(rs);
 
   CHECK(rs.num_relays == 1);
+}
+
+TEST(core_RelayManager_copy_existing_relays)
+{
+  RelayManager manager;
+
+  size_t num_incoming_relays = 1;
+  std::array<RelayPingInfo, MAX_RELAYS> incoming;
+  incoming[0].id = random_whole<uint64_t>();
+  incoming[0].address = random_address();
+
+  CHECK(manager.update(num_incoming_relays, incoming));
+
+  std::array<Relay, MAX_RELAYS> new_relays{};
+  std::array<bool, MAX_RELAYS> found{};
+  std::array<bool, MAX_RELAYS> history_slot_taken{};
+
+  for (const auto taken : history_slot_taken) {
+    CHECK(!taken);
+  }
+
+  size_t index = 0;
+  CHECK(manager.copy_existing_relays(index, num_incoming_relays, incoming, new_relays, found, history_slot_taken));
+
+  CHECK(new_relays[0] == manager.relays[0]);
+  CHECK(history_slot_taken[0]);
 }

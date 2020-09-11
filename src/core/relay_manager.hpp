@@ -18,6 +18,7 @@ namespace testing
   class _test_core_handlers_relay_pong_handler_;
   class _test_core_RelayManager_reset_;
   class _test_core_RelayManager_process_pong_;
+  class _test_core_RelayManager_copy_existing_relays_;
 }  // namespace testing
 
 namespace core
@@ -49,13 +50,23 @@ namespace core
     Address address;
     double last_ping_time = INVALID_PING_TIME;
     PingHistory* history = nullptr;
+
+    // Used only in tests, asserts using the history's pointed to address, not the value of it
+    auto operator==(const Relay& other) const -> bool;
   };
+
+  INLINE auto Relay::operator==(const Relay& other) const -> bool
+  {
+    return this->id == other.id && this->address == other.address && this->last_ping_time == other.last_ping_time &&
+           this->history == other.history;
+  }
 
   class RelayManager
   {
     friend testing::_test_core_handlers_relay_pong_handler_;
     friend testing::_test_core_RelayManager_reset_;
     friend testing::_test_core_RelayManager_process_pong_;
+    friend testing::_test_core_RelayManager_copy_existing_relays_;
 
    public:
     RelayManager();
@@ -63,7 +74,7 @@ namespace core
 
     void reset();
 
-    void update(size_t num_incoming_relays, const std::array<RelayPingInfo, MAX_RELAYS>& incoming_relays);
+    auto update(size_t num_incoming_relays, const std::array<RelayPingInfo, MAX_RELAYS>& incoming_relays) -> bool;
 
     auto get_ping_targets(std::array<PingData, MAX_RELAYS>& data) -> size_t;
 
@@ -77,6 +88,22 @@ namespace core
     std::array<Relay, MAX_RELAYS> relays;
     std::vector<PingHistory> ping_history;
     util::Clock clock;
+
+    auto copy_existing_relays(
+     size_t& index,
+     size_t num_incoming_relays,
+     const std::array<RelayPingInfo, MAX_RELAYS>& incoming,
+     std::array<Relay, MAX_RELAYS>& new_relays,
+     std::array<bool, MAX_RELAYS>& found,
+     std::array<bool, MAX_RELAYS>& history_slot_taken) -> bool;
+
+    auto copy_new_relays(
+     size_t& index,
+     size_t num_incoming_relays,
+     const std::array<RelayPingInfo, MAX_RELAYS>& incoming,
+     std::array<Relay, MAX_RELAYS>& new_relays,
+     std::array<bool, MAX_RELAYS>& found,
+     std::array<bool, MAX_RELAYS>& history_slot_taken) -> bool;
   };
 
   INLINE RelayManager::RelayManager()
@@ -91,6 +118,77 @@ namespace core
     std::lock_guard<std::mutex> lk(this->mutex);
     this->num_relays = 0;
     std::fill(this->relays.begin(), this->relays.end(), Relay());
+  }
+
+  INLINE auto RelayManager::update(size_t num_incoming_relays, const std::array<RelayPingInfo, MAX_RELAYS>& incoming) -> bool
+  {
+    if (num_incoming_relays > MAX_RELAYS) {
+      LOG(ERROR, "updating with too many relays: ", num_incoming_relays);
+      return false;
+    }
+
+    std::array<bool, MAX_RELAYS> history_slot_taken{};
+    std::array<bool, MAX_RELAYS> found{};
+    std::array<Relay, MAX_RELAYS> new_relays{};
+
+    size_t index = 0;
+
+    {
+      std::lock_guard<std::mutex> lk(this->mutex);
+
+      // preserve existing relay entries if they exist in the new data set
+      copy_existing_relays(index, num_incoming_relays, incoming, new_relays, found, history_slot_taken);
+
+      // copy all new relays not found in the current relay list
+      copy_new_relays(index, num_incoming_relays, incoming, new_relays, found, history_slot_taken);
+
+      // commit the updated relay array, move semantics won't make a difference here
+      this->num_relays = index;
+      std::copy(new_relays.begin(), new_relays.begin() + index, this->relays.begin());
+
+      // make sure all the ping times are evenly distributed to avoid clusters of ping packets (prevent relays from ddos-ing
+      // eachother)
+
+      auto current_time = this->clock.elapsed<Second>();
+
+      for (unsigned int i = 0; i < this->num_relays; i++) {
+        this->relays[i].last_ping_time = current_time - PING_RATE + i * PING_RATE / this->num_relays;
+      }
+
+#ifndef NDEBUG
+
+      // make sure everything is correct
+
+      // TODO move these to tests
+
+      assert(this->num_relays == index);
+
+      unsigned int num_found = 0;
+      for (unsigned int i = 0; i < num_incoming_relays; i++) {
+        for (unsigned int j = 0; j < this->num_relays; j++) {
+          const auto& incoming_relay = incoming[i];
+          const auto& relay = this->relays[j];
+          if (incoming_relay.id == relay.id && incoming_relay.address == relay.address) {
+            num_found++;
+            break;
+          }
+        }
+      }
+
+      assert(num_found == this->num_relays);
+
+      for (unsigned int i = 0; i < num_incoming_relays; i++) {
+        for (unsigned int j = 0; j < num_incoming_relays; j++) {
+          if (i == j) {
+            continue;
+          }
+          assert(this->relays[i].history != this->relays[j].history);
+        }
+      }
+#endif
+    }
+
+    return true;
   }
 
   INLINE auto RelayManager::get_ping_targets(std::array<PingData, MAX_RELAYS>& data) -> size_t
@@ -157,104 +255,72 @@ namespace core
     }
   }
 
-  INLINE void RelayManager::update(size_t num_incoming_relays, const std::array<RelayPingInfo, MAX_RELAYS>& incoming)
+  INLINE auto RelayManager::copy_existing_relays(
+   size_t& index,
+   size_t num_incoming_relays,
+   const std::array<RelayPingInfo, MAX_RELAYS>& incoming,
+   std::array<Relay, MAX_RELAYS>& new_relays,
+   std::array<bool, MAX_RELAYS>& found,
+   std::array<bool, MAX_RELAYS>& history_slot_taken) -> bool
   {
-    assert(num_incoming_relays <= MAX_RELAYS);
+    for (unsigned int i = 0; i < this->num_relays; i++) {
+      const auto& relay = this->relays[i];
+      for (unsigned int j = 0; j < num_incoming_relays; j++) {
+        if (relay.id == incoming[j].id) {
+          found[j] = true;
+          new_relays[index++] = relay;
 
-    // first copy all current relays that are also in the update lists
+          const long slot = relay.history - this->ping_history.data();
 
-    std::array<bool, MAX_RELAYS> history_slot_taken{};
-    std::array<bool, MAX_RELAYS> found{};
-    std::array<Relay, MAX_RELAYS> new_relays{};
-
-    unsigned int index = 0;
-
-    // locked mutex scope
-    {
-      std::lock_guard<std::mutex> lk(this->mutex);
-      for (unsigned int i = 0; i < this->num_relays; i++) {
-        const auto& relay = this->relays[i];
-        for (unsigned int j = 0; j < num_incoming_relays; j++) {
-          if (relay.id == incoming[j].id) {
-            found[j] = true;
-            new_relays[index++] = relay;
-
-            const auto slot = relay.history - this->ping_history.data();
-            assert(slot >= 0);
-            assert(slot < static_cast<long>(MAX_RELAYS));
-            history_slot_taken[slot] = true;
+          if (slot < 0) {
+            LOG(ERROR, "history slot index invalid (< 0)");
+            return false;
           }
+
+          if (slot >= static_cast<long>(MAX_RELAYS)) {
+            LOG(ERROR, "history slot index invalid (>= MAX_RELAYS)");
+            return false;
+          }
+
+          history_slot_taken[slot] = true;
         }
       }
+    }
 
-      // copy all near relays not found in the current relay list
+    return true;
+  }
 
-      for (unsigned int i = 0; i < num_incoming_relays; i++) {
-        if (!found[i]) {
-          auto& new_relay = new_relays[index];
-          new_relay.id = incoming[i].id;
-          new_relay.address = incoming[i].address;
+  INLINE auto RelayManager::copy_new_relays(
+   size_t& index,
+   size_t num_incoming_relays,
+   const std::array<RelayPingInfo, MAX_RELAYS>& incoming,
+   std::array<Relay, MAX_RELAYS>& new_relays,
+   std::array<bool, MAX_RELAYS>& found,
+   std::array<bool, MAX_RELAYS>& history_slot_taken) -> bool
+  {
+    for (unsigned int i = 0; i < num_incoming_relays; i++) {
+      if (!found[i]) {
+        auto& new_relay = new_relays[index];
+        new_relay.id = incoming[i].id;
+        new_relay.address = incoming[i].address;
 
-          // find a history slot for this relay
-          // helps when updating and copying in the above loop
-          // instead of copying the while ping history array
-          // it just copies the pointer
-          for (size_t j = 0; j < MAX_RELAYS; j++) {
-            if (!history_slot_taken[j]) {
-              new_relay.history = &this->ping_history[j];
-              new_relay.history->clear();
-              history_slot_taken[j] = true;
-              break;
-            }
-          }
-          assert(new_relay.history != nullptr);
-          index++;
-        }
-      }
-
-      // commit the updated relay array
-      this->num_relays = index;
-      std::copy(new_relays.begin(), new_relays.begin() + index, this->relays.begin());
-
-      // make sure all the ping times are evenly distributed to avoid clusters of ping packets
-
-      auto current_time = this->clock.elapsed<Second>();
-
-      for (unsigned int i = 0; i < this->num_relays; i++) {
-        this->relays[i].last_ping_time = current_time - PING_RATE + i * PING_RATE / this->num_relays;
-      }
-
-#ifndef NDEBUG
-
-      // make sure everything is correct
-
-      // TODO move these to tests
-
-      assert(this->num_relays == index);
-
-      unsigned int num_found = 0;
-      for (unsigned int i = 0; i < num_incoming_relays; i++) {
-        for (unsigned int j = 0; j < this->num_relays; j++) {
-          const auto& incoming_relay = incoming[i];
-          const auto& relay = this->relays[j];
-          if (incoming_relay.id == relay.id && incoming_relay.address == relay.address) {
-            num_found++;
+        for (size_t j = 0; j < MAX_RELAYS; j++) {
+          if (!history_slot_taken[j]) {
+            new_relay.history = &this->ping_history[j];
+            new_relay.history->clear();
+            history_slot_taken[j] = true;
             break;
           }
         }
-      }
 
-      assert(num_found == this->num_relays);
-
-      for (unsigned int i = 0; i < num_incoming_relays; i++) {
-        for (unsigned int j = 0; j < num_incoming_relays; j++) {
-          if (i == j) {
-            continue;
-          }
-          assert(this->relays[i].history != this->relays[j].history);
+        if (new_relay.history == nullptr) {
+          return false;
         }
+
+        index++;
       }
-#endif
     }
+
+    return true;
   }
 }  // namespace core
