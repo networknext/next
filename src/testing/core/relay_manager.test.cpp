@@ -3,6 +3,8 @@
 
 #include "core/relay_manager.hpp"
 
+using namespace std::chrono_literals;
+
 using core::INVALID_PING_TIME;
 using core::MAX_RELAYS;
 using core::PingData;
@@ -116,6 +118,26 @@ TEST(core_RelayManager_update)
   }
 }
 
+TEST(core_RelayManager_get_ping_targets) {
+  RelayManager manager;
+  std::array<RelayPingInfo, MAX_RELAYS> incoming;
+  incoming[0].id = 12345;
+  CHECK(incoming[0].address.parse("127.0.0.1:1234"));
+
+  manager.update(1, incoming);
+
+  std::array<PingData, MAX_RELAYS> ping_data;
+  CHECK(manager.get_ping_targets(ping_data) == 1);
+  CHECK(ping_data[0].sequence == 0);
+  CHECK(ping_data[0].address == incoming[0].address);
+
+  std::this_thread::sleep_for(100ms);
+
+  CHECK(manager.get_ping_targets(ping_data) == 1);
+  CHECK(ping_data[0].sequence == 1);
+  CHECK(ping_data[0].address == incoming[0].address);
+}
+
 TEST(core_RelayManager_process_pong)
 {
   RelayManager manager;
@@ -126,7 +148,7 @@ TEST(core_RelayManager_process_pong)
   manager.update(1, incoming);
 
   std::array<PingData, MAX_RELAYS> ping_data;
-  manager.get_ping_targets(ping_data);
+  CHECK(manager.get_ping_targets(ping_data) == 1);
 
   CHECK(manager.relays[0].last_ping_time != INVALID_PING_TIME);
   CHECK(manager.relays[0].history->entries[ping_data[0].sequence].time_pong_received == -1.0);
