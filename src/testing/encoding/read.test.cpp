@@ -7,7 +7,7 @@
 using net::Address;
 using net::AddressType;
 
-TEST(ReadAddress_ipv4)
+TEST(encoding_read_address_ipv4)
 {
   Address addr;
   std::array<uint8_t, Address::SIZE_OF> bin;
@@ -25,7 +25,7 @@ TEST(ReadAddress_ipv4)
   CHECK(index == Address::SIZE_OF);
 }
 
-TEST(ReadAddress_ipv6)
+TEST(encoding_read_address_ipv6)
 {
   Address addr;
   std::array<uint8_t, Address::SIZE_OF> bin;
@@ -69,7 +69,7 @@ TEST(ReadAddress_ipv6)
   });
 }
 
-TEST(ReadAddress_none)
+TEST(encoding_read_address_none)
 {
   Address before, after;
   std::array<uint8_t, Address::SIZE_OF> bin;

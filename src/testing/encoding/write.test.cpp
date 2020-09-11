@@ -6,7 +6,7 @@
 
 using net::Address;
 
-TEST(WriteAddress_ipv4)
+TEST(encoding_write_address_ipv4)
 {
   Address addr;
   std::array<uint8_t, Address::SIZE_OF> bin;
@@ -25,7 +25,7 @@ TEST(WriteAddress_ipv4)
   CHECK(bin[6] == 0xC7);
 }
 
-TEST(WriteAddress_ipv6)
+TEST(encoding_write_address_ipv6)
 {
   Address addr;
   std::array<uint8_t, Address::SIZE_OF> bin;
@@ -56,7 +56,7 @@ TEST(WriteAddress_ipv6)
   CHECK(bin[18] == 0xC7);
 }
 
-TEST(WriteAddress_none)
+TEST(encoding_write_address_none)
 {
   Address addr;
   std::array<uint8_t, Address::SIZE_OF> bin;
@@ -70,7 +70,7 @@ TEST(WriteAddress_none)
   }
 }
 
-TEST(WriteBytes_array)
+TEST(encoding_write_bytes)
 {
   std::array<uint8_t, 32> buff;
   std::array<uint8_t, 8> data;

@@ -63,7 +63,7 @@ namespace
   }
 }  // namespace
 
-TEST(core_backend_init_valid)
+TEST(core_Backend_init_valid)
 {
   RouterInfo router_info;
   RelayManager manager;

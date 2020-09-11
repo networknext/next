@@ -2,7 +2,7 @@
 #include "testing/test.hpp"
 #include "crypto/bytes.hpp"
 
-TEST(random_bytes)
+TEST(crypto_random_bytes)
 {
   std::array<uint8_t, 32> buff1, buff2;
   CHECK(crypto::RandomBytes(buff1, sizeof(buff1)));
@@ -10,7 +10,7 @@ TEST(random_bytes)
   CHECK(buff1 != buff2);
 }
 
-TEST(create_nonce_bytes)
+TEST(crypto_create_nonce_bytes)
 {
   std::array<uint8_t, 32> buff1, buff2;
   CHECK(crypto::CreateNonceBytes(buff1));

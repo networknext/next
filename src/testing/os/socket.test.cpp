@@ -10,7 +10,7 @@ using os::Socket;
 using os::SocketConfig;
 using os::SocketType;
 
-TEST(os_socket_nonblocking_ipv4)
+TEST(os_Socket_nonblocking_ipv4)
 {
   Address bind_address, local_address;
   Socket socket;
@@ -68,7 +68,7 @@ TEST(os_socket_nonblocking_ipv4)
   }
 }
 
-TEST(os_socket_blocking_ipv4_with_timeout)
+TEST(os_Socket_blocking_ipv4_with_timeout)
 {
   Address bind_address, local_address, from;
   Socket socket;
@@ -94,7 +94,7 @@ TEST(os_socket_blocking_ipv4_with_timeout)
   CHECK(packets_received == 1);
 }
 
-TEST(os_socket_blocking_with_no_timeout_ipv4)
+TEST(os_Socket_blocking_with_no_timeout_ipv4)
 {
   Address bind_address, local_address, from;
   Socket socket;
@@ -114,7 +114,7 @@ TEST(os_socket_blocking_with_no_timeout_ipv4)
   CHECK(from == local_address);
 }
 
-TEST(os_socket_nonblocking_ipv6)
+TEST(os_Socket_nonblocking_ipv6)
 {
   Address bind_address, local_address, from;
   Socket socket;
@@ -138,7 +138,7 @@ TEST(os_socket_nonblocking_ipv6)
   CHECK(packets_received == 1);
 }
 
-TEST(os_socket_blocking_ipv6)
+TEST(os_Socket_blocking_ipv6)
 {
   Address bind_address, local_address, from;
   Socket socket;
@@ -164,7 +164,7 @@ TEST(os_socket_blocking_ipv6)
   CHECK(packets_received == 1);
 }
 
-TEST(os_socket_blocking_with_no_timeout_ipv6)
+TEST(os_Socket_blocking_with_no_timeout_ipv6)
 {
   Address bind_address, local_address, from;
   Socket socket;

@@ -6,7 +6,7 @@
 #include "encoding/read.hpp"
 #include "encoding/write.hpp"
 
-TEST(Address_operator_eq_and_neq)
+TEST(net_Address_operator_eq_and_neq)
 {
   net::Address a, b;
 
@@ -45,7 +45,7 @@ TEST(Address_operator_eq_and_neq)
   CHECK(a == b);
 }
 
-TEST(Address_reset)
+TEST(net_Address_reset)
 {
   net::Address addr, base;
   addr.type = static_cast<net::AddressType>(77);
@@ -59,7 +59,7 @@ TEST(Address_reset)
   CHECK(addr == base);
 }
 
-TEST(Address_parse_ipv4)
+TEST(net_Address_parse_ipv4)
 {
   net::Address addr;
   CHECK(addr.parse("127.0.0.1:51034") == true);
@@ -71,7 +71,7 @@ TEST(Address_parse_ipv4)
   CHECK(addr.ipv4[3] == 1);
 }
 
-TEST(Address_parse_ipv6_with_braces)
+TEST(net_Address_parse_ipv6_with_braces)
 {
   net::Address addr;
   CHECK(addr.parse("[::1]:51034") == true);
@@ -113,7 +113,7 @@ TEST(Address_parse_ipv6_with_braces)
   CHECK(addr.ipv6[7] == 0);
 }
 
-TEST(Address_parse_ipv6_without_braces)
+TEST(net_Address_parse_ipv6_without_braces)
 {
   net::Address addr;
   CHECK(addr.parse("2001:0db8:85a3:0000:0000:8a2e:0370:7334") == true);
@@ -129,7 +129,7 @@ TEST(Address_parse_ipv6_without_braces)
   CHECK(addr.ipv6[7] == 0x7334);
 }
 
-TEST(Address_parse_invalid_ips)
+TEST(net_Address_parse_invalid_ips)
 {
   net::Address addr;
   CHECK(addr.parse("127.0.:182a") == false);
@@ -151,7 +151,7 @@ TEST(Address_parse_invalid_ips)
   CHECK(addr.ipv6[7] == 0);
 }
 
-TEST(Address_toString)
+TEST(net_Address_toString)
 {
   net::Address addr;
   std::string base, output, expected;
@@ -188,7 +188,7 @@ TEST(Address_toString)
   CHECK(output == expected);
 }
 
-TEST(Address_parse_additional)
+TEST(net_Address_parse_additional)
 {
   net::Address addr;
 
