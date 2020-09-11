@@ -362,11 +362,11 @@ namespace core
       InitRequest request;
       request.address = this->relay_address;
 
-      crypto::CreateNonceBytes(request.nonce);
+      crypto::create_nonce_bytes(request.nonce);
 
       // just has to be something the backend can decrypt
       GenericKey token = {};
-      crypto::RandomBytes(token, token.size());
+      crypto::random_bytes(token, token.size());
 
       if (
        crypto_box_easy(

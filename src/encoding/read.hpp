@@ -1,6 +1,5 @@
 #pragma once
 
-#include "binary.hpp"
 #include "net/address.hpp"
 #include "util/logger.hpp"
 

@@ -5,16 +5,16 @@
 TEST(crypto_random_bytes)
 {
   std::array<uint8_t, 32> buff1, buff2;
-  CHECK(crypto::RandomBytes(buff1, sizeof(buff1)));
-  CHECK(crypto::RandomBytes(buff2, sizeof(buff2)));
+  CHECK(crypto::random_bytes(buff1, sizeof(buff1)));
+  CHECK(crypto::random_bytes(buff2, sizeof(buff2)));
   CHECK(buff1 != buff2);
 }
 
 TEST(crypto_create_nonce_bytes)
 {
   std::array<uint8_t, 32> buff1, buff2;
-  CHECK(crypto::CreateNonceBytes(buff1));
-  CHECK(crypto::CreateNonceBytes(buff2));
+  CHECK(crypto::create_nonce_bytes(buff1));
+  CHECK(crypto::create_nonce_bytes(buff2));
   CHECK(buff1 != buff2);
 }
 
@@ -33,7 +33,7 @@ TEST(crypto_box)
 
   std::array<unsigned char, crypto_box_NONCEBYTES> nonce;
   std::array<unsigned char, CRYPTO_BOX_CIPHERTEXT_LEN> ciphertext;
-  CHECK(crypto::RandomBytes(nonce, nonce.size()));
+  CHECK(crypto::random_bytes(nonce, nonce.size()));
 
   CHECK(
    crypto_box_easy(
@@ -64,7 +64,7 @@ TEST(crypto_secret_box)
   std::array<unsigned char, CRYPTO_SECRET_BOX_CIPHERTEXT_LEN> ciphertext;
 
   crypto_secretbox_keygen(key.data());
-  CHECK(crypto::CreateNonceBytes(nonce));
+  CHECK(crypto::create_nonce_bytes(nonce));
   CHECK(
    crypto_secretbox_easy(
     ciphertext.data(), CRYPTO_SECRET_BOX_MESSAGE.data(), CRYPTO_SECRET_BOX_MESSAGE.size(), nonce.data(), key.data()) == 0);
@@ -85,7 +85,7 @@ TEST(crypto_aead)
   unsigned long long ciphertext_len;
 
   crypto_aead_chacha20poly1305_keygen(key.data());
-  CHECK(crypto::RandomBytes(nonce, nonce.size()));
+  CHECK(crypto::random_bytes(nonce, nonce.size()));
 
   crypto_aead_chacha20poly1305_encrypt(
    ciphertext.data(),
@@ -124,7 +124,7 @@ TEST(crypto_aead_ietf)
   unsigned long long ciphertext_len;
 
   crypto_aead_xchacha20poly1305_ietf_keygen(key.data());
-  CHECK(crypto::CreateNonceBytes(nonce));
+  CHECK(crypto::create_nonce_bytes(nonce));
 
   crypto_aead_xchacha20poly1305_ietf_encrypt(
    ciphertext.data(),

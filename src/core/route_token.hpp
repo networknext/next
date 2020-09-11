@@ -72,7 +72,7 @@ namespace core
     (void)start;
 
     std::array<uint8_t, crypto_box_NONCEBYTES> nonce;
-    crypto::RandomBytes(nonce, nonce.size());  // fill nonce
+    crypto::random_bytes(nonce, nonce.size());  // fill nonce
 
     if (!encoding::write_bytes(packet.buffer, index, nonce, nonce.size())) {
       LOG(ERROR, "could not write nonce");
@@ -293,7 +293,7 @@ namespace core
     (void)start;
 
     std::array<uint8_t, crypto_box_NONCEBYTES> nonce;
-    crypto::RandomBytes(nonce, nonce.size());  // fill nonce
+    crypto::random_bytes(nonce, nonce.size());  // fill nonce
 
     if (!encoding::write_bytes(packet.buffer, index, nonce, nonce.size())) {
       LOG(ERROR, "could not write nonce");

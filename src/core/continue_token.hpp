@@ -66,7 +66,7 @@ namespace core
    Packet& packet, size_t& index, const GenericKey& sender_private_key, const GenericKey& receiver_public_key) -> bool
   {
     std::array<uint8_t, crypto_box_NONCEBYTES> nonce;
-    if (!crypto::CreateNonceBytes(nonce)) {
+    if (!crypto::create_nonce_bytes(nonce)) {
       return false;
     }
 
@@ -225,7 +225,7 @@ namespace core
    Packet& packet, size_t& index, const GenericKey& sender_private_key, const GenericKey& receiver_public_key) -> bool
   {
     std::array<uint8_t, crypto_box_NONCEBYTES> nonce;
-    if (!crypto::CreateNonceBytes(nonce)) {
+    if (!crypto::create_nonce_bytes(nonce)) {
       return false;
     }
 

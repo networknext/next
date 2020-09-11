@@ -50,7 +50,7 @@ TEST(core_PacketHeaderV4_server_to_client)
 {
   const GenericKey private_key = [] {
     GenericKey private_key;
-    crypto::RandomBytes(private_key, private_key.size());
+    crypto::random_bytes(private_key, private_key.size());
     return private_key;
   }();
 
@@ -89,7 +89,7 @@ TEST(core_PacketHeader_client_to_server)
 {
   const GenericKey private_key = [] {
     GenericKey private_key;
-    crypto::RandomBytes(private_key, private_key.size());
+    crypto::random_bytes(private_key, private_key.size());
     return private_key;
   }();
 
@@ -126,7 +126,7 @@ TEST(core_PacketHeader_server_to_client)
 {
   const GenericKey private_key = [] {
     GenericKey private_key;
-    crypto::RandomBytes(private_key, private_key.size());
+    crypto::random_bytes(private_key, private_key.size());
     return private_key;
   }();
 

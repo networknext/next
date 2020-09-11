@@ -5,7 +5,7 @@
 namespace crypto
 {
   template <typename T>
-  INLINE auto RandomBytes(T& buffer, size_t length) -> bool
+  INLINE auto random_bytes(T& buffer, size_t length) -> bool
   {
     if (buffer.size() < length) {
       return false;
@@ -15,8 +15,8 @@ namespace crypto
   }
 
   template <typename T>
-  INLINE auto CreateNonceBytes(T& buffer) -> bool
+  INLINE auto create_nonce_bytes(T& buffer) -> bool
   {
-    return RandomBytes(buffer, crypto_box_NONCEBYTES);
+    return random_bytes(buffer, crypto_box_NONCEBYTES);
   }
 }  // namespace crypto

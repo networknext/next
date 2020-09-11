@@ -30,7 +30,7 @@ TEST(os_Socket_nonblocking_ipv4)
     net::Address from;
     std::array<uint8_t, 256> out, in;
 
-    crypto::RandomBytes(out, out.size());
+    crypto::random_bytes(out, out.size());
 
     CHECK(socket.send(local_address, out.data(), out.size()));
 
@@ -51,7 +51,7 @@ TEST(os_Socket_nonblocking_ipv4)
     out.addr = local_address;
     out.length = 256;
     // randomize past 256
-    crypto::RandomBytes(out.buffer, out.buffer.size());
+    crypto::random_bytes(out.buffer, out.buffer.size());
 
     CHECK(socket.send(out));
 

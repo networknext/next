@@ -19,7 +19,7 @@ TEST(core_RouteTokenV4_general)
   crypto_box_keypair(receiver_public_key.data(), receiver_private_key.data());
 
   std::array<uint8_t, crypto_box_NONCEBYTES> nonce;
-  crypto::RandomBytes(nonce, crypto_box_NONCEBYTES);
+  crypto::random_bytes(nonce, crypto_box_NONCEBYTES);
 
   const auto expire_timestamp = random_whole<uint64_t>();
   const auto session_id = random_whole<uint64_t>();
@@ -34,7 +34,7 @@ TEST(core_RouteTokenV4_general)
   NextAddr.ipv4[3] = random_whole<uint8_t>();
   NextAddr.port = random_whole<uint32_t>();
   std::array<uint8_t, crypto_box_SECRETKEYBYTES> PrivateKey;
-  crypto::RandomBytes(PrivateKey, PrivateKey.size());
+  crypto::random_bytes(PrivateKey, PrivateKey.size());
 
   core::RouteTokenV4 input_token;
   {
@@ -92,7 +92,7 @@ TEST(core_RouteToken_general)
   crypto_box_keypair(receiver_public_key.data(), receiver_private_key.data());
 
   std::array<uint8_t, crypto_box_NONCEBYTES> nonce;
-  crypto::RandomBytes(nonce, crypto_box_NONCEBYTES);
+  crypto::random_bytes(nonce, crypto_box_NONCEBYTES);
 
   const auto ExpireTimestamp = random_whole<uint64_t>();
   const auto SessionID = random_whole<uint64_t>();
@@ -108,7 +108,7 @@ TEST(core_RouteToken_general)
   NextAddr.ipv4[3] = random_whole<uint8_t>();
   NextAddr.port = random_whole<uint32_t>();
   std::array<uint8_t, crypto_box_SECRETKEYBYTES> PrivateKey;
-  crypto::RandomBytes(PrivateKey, PrivateKey.size());
+  crypto::random_bytes(PrivateKey, PrivateKey.size());
 
   core::RouteToken input_token;
   {

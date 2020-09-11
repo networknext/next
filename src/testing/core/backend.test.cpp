@@ -270,7 +270,7 @@ TEST(core_Backend_update_valid)
   ThroughputRecorder recorder;
   testing::MockHttpClient client;
   Backend backend(BACKEND_HOSTNAME, RELAY_ADDR, KEYCHAIN, router_info, manager, sessions, client);
-  crypto::RandomBytes(backend.update_token, backend.update_token.size());
+  crypto::random_bytes(backend.update_token, backend.update_token.size());
 
   sessions.set(1234, std::make_shared<Session>());  // just add one thing to the map to make it non-zero
 
@@ -385,7 +385,7 @@ TEST(core_Backend_update_shutting_down_true)
   testing::MockHttpClient client;
 
   Backend backend(BACKEND_HOSTNAME, RELAY_ADDR, KEYCHAIN, router_info, manager, sessions, client);
-  crypto::RandomBytes(backend.update_token, backend.update_token.size());
+  crypto::random_bytes(backend.update_token, backend.update_token.size());
 
   client.Response = ::BASIC_VALID_UPDATE_RESPONSE;
 

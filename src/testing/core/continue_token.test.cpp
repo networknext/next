@@ -23,7 +23,7 @@ TEST(core_ContinueTokenV4_general)
   crypto_box_keypair(receiver_public_key.data(), receiver_private_key.data());
 
   std::array<uint8_t, crypto_box_NONCEBYTES> nonce;
-  crypto::RandomBytes(nonce, crypto_box_NONCEBYTES);
+  crypto::random_bytes(nonce, crypto_box_NONCEBYTES);
 
   const auto expire_timestamp = random_whole<uint64_t>();
   const auto session_id = random_whole<uint64_t>();
@@ -121,7 +121,7 @@ TEST(core_ContinueToken_general)
   crypto_box_keypair(receiver_public_key.data(), receiver_private_key.data());
 
   std::array<uint8_t, crypto_box_NONCEBYTES> nonce;
-  crypto::RandomBytes(nonce, crypto_box_NONCEBYTES);
+  crypto::random_bytes(nonce, crypto_box_NONCEBYTES);
 
   const auto expire_timestamp = random_whole<uint64_t>();
   const auto session_id = random_whole<uint64_t>();

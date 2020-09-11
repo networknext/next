@@ -43,7 +43,7 @@ namespace testing
   INLINE auto random_private_key() -> crypto::GenericKey
   {
     crypto::GenericKey private_key;
-    crypto::RandomBytes(private_key, private_key.size());
+    crypto::random_bytes(private_key, private_key.size());
     return private_key;
   }
 #endif
