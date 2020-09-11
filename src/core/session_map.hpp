@@ -5,17 +5,13 @@
 
 namespace core
 {
-  /*
-   * Each method locks a mutex so that this map can be
-   * used with multiple threads without worry
-   */
-
+  // Thread-safe
   class SessionMap
   {
    public:
     SessionMap() = default;
 
-    /* Emplace a new entry into the map */
+    /* Emplace a new entry into the map. Overwrites if it already exists */
     void set(uint64_t key, SessionPtr val);
 
     /* Get the specified entry */
