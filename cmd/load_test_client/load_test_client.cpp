@@ -37,6 +37,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <vector>
+#include <iostream>
 
 static volatile int quit = 0;
 
@@ -69,17 +70,10 @@ int main()
         return 1;
     }
 
-    std::ifstream ifstr("staging_servers.txt");
-    if ( !ifstr )
-    {
-        printf( "error: could not open servers list 'staging_servers.txt'" );
-        return 1;
-    }
-
     std::vector<std::string> servers;
 
     std::string line;
-    while ( std::getline( ifstr, line ) )
+    while( std::getline( std::cin, line ) )
     {
         servers.push_back( line );
     }
