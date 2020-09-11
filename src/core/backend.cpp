@@ -16,7 +16,7 @@ namespace core
 {
   using namespace std::chrono_literals;
 
-  const char* RELAY_VERSION = "1.2.2";
+  const char* RELAY_VERSION = "1.2.3";
 
   auto InitRequest::size() -> size_t
   {
