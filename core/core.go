@@ -11,7 +11,6 @@ import (
     "net"
     "runtime"
     "sync"
-    "sort"
     "math"
     "math/rand"
     "strconv"
@@ -407,7 +406,6 @@ func Optimize(numRelays int, cost []int32, costThreshold int32, relayDatacenter 
                     if numRoutes > 0 {
                         indirect[i][j] = make([]Indirect, numRoutes)
                         copy(indirect[i][j], working)
-                        sort.Slice(indirect[i][j], func(a, b int) bool { return indirect[i][j][a].cost < indirect[i][j][b].cost })
                     }
                 }
             }
@@ -949,6 +947,7 @@ func ReframeRoute(routeRelayIds []uint64, relayIdToIndex map[uint64]int32, out_r
 }
 
 // todo: ReframeRelays (use for sourceRelays, sourceRelayCost and destRelays -- pass them all)
+// todo: pass in jitter and packet loss so we can make sure we exclude any near relays with significant PL (high risk)
 
 func GetRandomBestRoute(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost[] int32, destRelays []int32, maxCost int32, out_bestRouteCost *int32, out_bestRouteNumRelays *int32, out_bestRouteRelays *[MaxRelaysPerRoute]int32) bool {
     
@@ -974,11 +973,14 @@ func GetRandomBestRoute(routeMatrix []RouteEntry, sourceRelays []int32, sourceRe
 
     *out_bestRouteCost = bestRoutes[randomIndex].Cost
     *out_bestRouteNumRelays = bestRoutes[randomIndex].NumRelays
-    copy(out_bestRouteRelays[:], bestRoutes[randomIndex].Relays[:bestRoutes[randomIndex].NumRelays])
 
-    // todo: can reverse while we copy. faster.
-    if bestRoutes[randomIndex].NeedToReverse {
-        ReverseRoute(out_bestRouteRelays[:*out_bestRouteNumRelays])        
+    if !bestRoutes[randomIndex].NeedToReverse {
+        copy(out_bestRouteRelays[:], bestRoutes[randomIndex].Relays[:bestRoutes[randomIndex].NumRelays])
+    } else {
+        numRouteRelays := bestRoutes[randomIndex].NumRelays
+        for i := int32(0); i < numRouteRelays; i++ {
+            out_bestRouteRelays[numRouteRelays-1-i] = bestRoutes[randomIndex].Relays[i]
+        }
     }
 
     return true
@@ -1000,7 +1002,7 @@ func GetBestRoute_Update(routeMatrix []RouteEntry, sourceRelays []int32, sourceR
         return true
     }
 
-    // if the current route is no longer within threshold of the best route, update the route
+    // if the current route is no longer within threshold of the best route, pick a new the route
 
     bestRouteCost := GetBestRouteCost(routeMatrix, sourceRelays, sourceRelayCost, destRelays)
 
