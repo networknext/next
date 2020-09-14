@@ -1038,10 +1038,10 @@ func NewRouteShader() RouteShader {
         DisableNetworkNext: false,
         SelectionPercent: 100,
         ABTest: false,
-        ProMode: false,
         ReduceLatency: true,
         ReducePacketLoss: true,
         Multipath: false,
+        ProMode: false,
         AcceptableLatency: 25,
         LatencyThreshold: 5,
         AcceptablePacketLoss: 1.0,
@@ -1091,10 +1091,10 @@ type InternalConfig struct {
 func NewInternalConfig() InternalConfig {
     return InternalConfig{
         RouteSwitchThreshold: -5,
-        MaxLatencyTradeOff: 20,
+        MaxLatencyTradeOff: 10,
         RTTVeto_Default: -5,
-        RTTVeto_PacketLoss: -30,
-        RTTVeto_Multipath: -30,
+        RTTVeto_PacketLoss: -20,
+        RTTVeto_Multipath: -20,
         MultipathOverloadThreshold: 500,
     }
 }
@@ -1133,7 +1133,7 @@ func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState, customer *
     return false
 }
 
-func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, customer *CustomerConfig, internal *InternalConfig, directLatency int32, directPacketLoss float32, sourceRelays []int32, sourceRelayCost[]int32, destRelays []int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32) bool {
+func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, customer *CustomerConfig, internal *InternalConfig, directLatency int32, directPacketLoss float32, sourceRelays []int32, sourceRelayCost[]int32, destRelays []int32, out_routeCost *int32, out_routeNumRelays *int32, out_routeRelays []int32) bool {
 
     if routeState.Next {
         panic("only call MakeRouteDecision_TakeNetworkNext when *not* already taking network next")
@@ -1199,9 +1199,9 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
     routeState.ProMode = proMode
     routeState.Multipath = routeShader.Multipath && userHasMultipathVeto
 
-    *out_updatedRouteCost = bestRouteCost
-    *out_updatedRouteNumRelays = bestRouteNumRelays
-    copy(out_updatedRouteRelays, bestRouteRelays[:bestRouteNumRelays])
+    *out_routeCost = bestRouteCost
+    *out_routeNumRelays = bestRouteNumRelays
+    copy(out_routeRelays, bestRouteRelays[:bestRouteNumRelays])
 
     return true
 }
