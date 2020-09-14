@@ -9081,6 +9081,7 @@ struct NextBackendSessionUpdatePacket
     int version_minor;
     int version_patch;
     uint64_t customer_id;
+    uint64_t datacenter_id;
     uint64_t session_id;
     uint32_t slice_number;
     uint32_t retry_number;
@@ -9133,6 +9134,8 @@ struct NextBackendSessionUpdatePacket
 
         serialize_uint64( stream, customer_id );
         
+        serialize_uint64( stream, datacenter_id );
+
         serialize_uint64( stream, session_id );
         
         serialize_uint32( stream, slice_number );
@@ -11451,9 +11454,10 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         {
             NextBackendSessionUpdatePacket packet;
 
+            packet.customer_id = server->customer_id;
+            packet.datacenter_id = server->datacenter_id;
             packet.session_id = session->session_id;
             packet.slice_number = session->update_sequence++;
-            packet.customer_id = server->customer_id;
             packet.platform_id = session->stats_platform_id;
             packet.user_hash = session->user_hash;
             packet.tag = session->tag;
@@ -14151,6 +14155,7 @@ static void test_backend_packets()
         static NextBackendSessionUpdatePacket in, out;
         in.slice_number = 10000;
         in.customer_id = 1231234127431LL;
+        in.datacenter_id = 111222454443LL;
         in.session_id = 1234342431431LL;
         in.user_hash = 11111111;
         in.platform_id = 3;
@@ -14195,6 +14200,7 @@ static void test_backend_packets()
 
         check( in.slice_number == out.slice_number );
         check( in.customer_id == out.customer_id );
+        check( in.datacenter_id == out.datacenter_id );
         check( in.session_id == out.session_id );
         check( in.user_hash == out.user_hash );
         check( in.platform_id == out.platform_id );
@@ -14891,11 +14897,11 @@ void next_test()
     RUN_TEST( test_platform_socket );
     RUN_TEST( test_platform_thread );
     RUN_TEST( test_platform_mutex );
-	RUN_TEST( test_client_ipv4 );
-	RUN_TEST( test_server_ipv4 );
+    RUN_TEST( test_client_ipv4 );
+    RUN_TEST( test_server_ipv4 );
 #if defined(NEXT_PLATFORM_HAS_IPV6)
-	RUN_TEST( test_client_ipv6 );
-	RUN_TEST( test_server_ipv6 );
+    RUN_TEST( test_client_ipv6 );
+    RUN_TEST( test_server_ipv6 );
 #endif // #if defined(NEXT_PLATFORM_HAS_IPV6)
     RUN_TEST( test_upgrade_token );
     RUN_TEST( test_packets );
