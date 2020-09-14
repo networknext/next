@@ -1898,7 +1898,11 @@ func TestTakeNetworkNext_ReduceLatency_NotEnoughReduction(t *testing.T) {
     assert.Equal(t, expectedRouteState, routeState)
 }
 
+// -----------------------------------------------------------------------------
+
 // todo: all the boring things, eg. don't take network next if disabled, AB test, selection %, banned etc.
+
+// -----------------------------------------------------------------------------
 
 func TestTakeNetworkNext_ReducePacketLoss_Simple(t *testing.T) {
 
@@ -2091,7 +2095,15 @@ func TestTakeNetworkNext_ReducePacketLoss_ReducePacketLossAndLatency(t *testing.
     assert.Equal(t, expectedRouteState, routeState)
 }
 
-// todo: all the complex stuff like pro mode, multipath, etc.
+// -----------------------------------------------------------------------------
+
+// todo: multipath
+
+// -----------------------------------------------------------------------------
+
+// todo: pro mode
+
+// -----------------------------------------------------------------------------
 
 func TestStayOnNetworkNext_ReduceLatency_Simple(t *testing.T) {
 
@@ -2155,16 +2167,20 @@ func TestStayOnNetworkNext_ReduceLatency_Simple(t *testing.T) {
 
 // todo: if all routes go away, test that we get kicked off network next with "no route" and "veto" set
 
-// -----------------------------------------------
+// -----------------------------------------------------------------------------
 
 // todo: test that we can make rtt moderately worse, but not get kicked off
 
 // todo: test rtt veto (PL)
 
-// -----------------------------------------------
+// -----------------------------------------------------------------------------
 
 // todo: test various multipath things
 
 // todo: test multipath overload
 
+// -----------------------------------------------------------------------------
+
 // todo: test all the boring stuff, eg. network next disabled, selection % etc.
+
+// -----------------------------------------------------------------------------
