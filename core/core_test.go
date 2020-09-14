@@ -2170,19 +2170,16 @@ func TestTakeNetworkNext_ReducePacketLoss_ReducePacketLossAndLatency(t *testing.
 
 // -----------------------------------------------------------------------------
 
-// todo: multipath
+// todo: test multipath take network next
 
 // -----------------------------------------------------------------------------
 
-// todo: pro mode
+// todo: test pro mode take network next
 
 // -----------------------------------------------------------------------------
 
 func TestStayOnNetworkNext_ReduceLatency_Simple(t *testing.T) {
 
-    // test that we stay on network next if we are still reducing latency
-
-    /*
     t.Parallel()
 
     env := NewTestEnvironment()
@@ -2198,8 +2195,9 @@ func TestStayOnNetworkNext_ReduceLatency_Simple(t *testing.T) {
 
     routeMatrix := Optimize(numRelays, costMatrix, 5, relayDatacenters)
 
-    directLatency := int32(20)
-    directPacketLoss := float32(5.0)
+    directLatency := int32(30)
+    
+    nextLatency := int32(20)
 
     sourceRelays := []int32{0}
     sourceRelayCosts := []int32{10}
@@ -2215,20 +2213,32 @@ func TestStayOnNetworkNext_ReduceLatency_Simple(t *testing.T) {
     customer := CustomerConfig{}
     internal := NewInternalConfig()
 
+    routeState.Next = true
     routeState.UserID = 100
+    routeState.ReduceLatency = true
 
-    result := MakeRouteDecision_TakeNetworkNext(routeMatrix, &routeShader, &routeState, &customer, &internal, directLatency, directPacketLoss, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:])
+    currentRouteNumRelays := int32(2)
+    currentRouteRelays := [MaxRelaysPerRoute]int32{0,1}
+
+    result := MakeRouteDecision_StayOnNetworkNext(routeMatrix, &routeShader, &routeState, &customer, &internal, directLatency, nextLatency, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:])
 
     assert.True(t, result)
 
     expectedRouteState := RouteState{}
     expectedRouteState.UserID = 100
     expectedRouteState.Next = true
-    expectedRouteState.ReducePacketLoss = true
+    expectedRouteState.ReduceLatency = true
 
     assert.Equal(t, expectedRouteState, routeState)
-    */
+
 }
+
+// (routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, customer *CustomerConfig, internal *InternalConfig, 
+// directLatency int32, nextLatency int32, 
+// currentRouteNumRelays int32, currentRouteRelays [MaxRelaysPerRoute]int32, 
+// sourceRelays []int32, sourceRelayCost[]int32, 
+// destRelays []int32, 
+// out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32) bool {
 
 // todo: test that we can make rtt slightly worse, but not get kicked off
 

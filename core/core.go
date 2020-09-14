@@ -1094,7 +1094,7 @@ type RouteState struct {
     ReducePacketLoss bool
     ProMode bool
     Multipath bool
-    RTTVeto bool
+    LatencyWorse bool
     MultipathOverload bool
     NoRoute bool
 }
@@ -1244,7 +1244,14 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
         return false
     }
 
-    // if we make latency significantly worse, leave network next
+    // if we overload the connection in multipath, leave network next
+
+    if routeState.Multipath && directLatency > internal.MultipathOverloadThreshold {
+        routeState.MultipathOverload = true
+        return false
+    }
+
+    // if we have made rtt significantly worse, leave network next
 
     rttVeto := internal.RTTVeto_Default
 
@@ -1256,25 +1263,18 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
         rttVeto = internal.RTTVeto_Multipath
     }
 
-    if nextLatency < directLatency + rttVeto {
-        routeState.RTTVeto = true
-        return false
-    }
-
-    // if we overload the connection in multipath, leave network next
-
-    if directLatency > internal.MultipathOverloadThreshold {
-        routeState.MultipathOverload = true
+    if nextLatency > directLatency + rttVeto {
+        routeState.LatencyWorse = true
         return false
     }
 
     // update the current best route
 
+    maxCost := directLatency + rttVeto
+
     bestRouteCost := int32(0)
     bestRouteNumRelays := int32(0)
     bestRouteRelays := [MaxRelaysPerRoute]int32{}
-
-    maxCost := directLatency + rttVeto
 
     GetBestRoute_Update(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, internal.RouteSwitchThreshold, currentRouteNumRelays, currentRouteRelays, &bestRouteCost, &bestRouteNumRelays, &bestRouteRelays)
 
