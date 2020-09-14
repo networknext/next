@@ -382,7 +382,7 @@ func TestStatsDatabase(t *testing.T) {
 				return routing.TriMatrixIndex(indxOfI, indxOfJ)
 			}
 
-			assert.Equal(t, int32(123), costMatrix.RTT[getAddressIndex("127.0.0.1:40000", "127.0.0.2:40000")])
+			assert.Equal(t, int32(124), costMatrix.RTT[getAddressIndex("127.0.0.1:40000", "127.0.0.2:40000")])
 			assert.Equal(t, int32(-1), costMatrix.RTT[getAddressIndex("127.0.0.1:40000", "127.0.0.3:40000")])
 			assert.Equal(t, int32(-1), costMatrix.RTT[getAddressIndex("127.0.0.1:40000", "654.0.0.4:40000")])
 			assert.Equal(t, int32(-1), costMatrix.RTT[getAddressIndex("127.0.0.1:40000", "000.0.0.5:40000")])

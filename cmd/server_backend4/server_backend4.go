@@ -13,7 +13,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"runtime"
 	"strconv"
 	"sync"
 	"syscall"
@@ -25,7 +24,6 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
-	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/envvar"
 	"github.com/networknext/backend/logging"
@@ -33,12 +31,10 @@ import (
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
-	"github.com/networknext/backend/transport/pubsub"
 	"golang.org/x/sys/unix"
 
 	gcplogging "cloud.google.com/go/logging"
 	"cloud.google.com/go/profiler"
-	googlepubsub "cloud.google.com/go/pubsub"
 )
 
 // MaxRelayCount is the maximum number of relays you can run locally with the firestore emulator
@@ -136,7 +132,7 @@ func mainReturnWithCode() int {
 
 				if err := sd.Open(ctx); err != nil {
 					level.Error(logger).Log("msg", "Failed to create StackDriver metrics client", "err", err)
-					return 1
+					os.Exit(1)
 				}
 
 				metricsHandler = &sd
@@ -170,7 +166,7 @@ func mainReturnWithCode() int {
 					MutexProfiling: true,
 				}); err != nil {
 					level.Error(logger).Log("msg", "failed to initialze StackDriver profiler", "err", err)
-					return 1
+					os.Exit(1)
 				}
 			}
 		}
@@ -251,7 +247,7 @@ func mainReturnWithCode() int {
 			RoutingRulesSettings: routing.LocalRoutingRulesSettings,
 		}); err != nil {
 			level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
-			return 1
+			os.Exit(1)
 		}
 		seller := routing.Seller{
 			ID:                        "sellerID",
@@ -276,17 +272,17 @@ func mainReturnWithCode() int {
 
 		if err := storer.AddSeller(ctx, seller); err != nil {
 			level.Error(logger).Log("msg", "could not add seller to storage", "err", err)
-			return 1
+			os.Exit(1)
 		}
 
 		if err := storer.AddSeller(ctx, valveSeller); err != nil {
 			level.Error(logger).Log("msg", "could not add valve seller to storage", "err", err)
-			return 1
+			os.Exit(1)
 		}
 
 		if err := storer.AddDatacenter(ctx, datacenter); err != nil {
 			level.Error(logger).Log("msg", "could not add datacenter to storage", "err", err)
-			return 1
+			os.Exit(1)
 		}
 
 		for i := int64(0); i < MaxRelayCount; i++ {
@@ -294,7 +290,7 @@ func mainReturnWithCode() int {
 			addr, err := net.ResolveUDPAddr("udp", addressString)
 			if err != nil {
 				level.Error(logger).Log("msg", "could parse udp address", "address", addressString, "err", err)
-				return 1
+				os.Exit(1)
 			}
 
 			if err := storer.AddRelay(ctx, routing.Relay{
@@ -307,7 +303,7 @@ func mainReturnWithCode() int {
 				MaxSessions: 3000,
 			}); err != nil {
 				level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
-				return 1
+				os.Exit(1)
 			}
 		}
 
@@ -316,7 +312,7 @@ func mainReturnWithCode() int {
 			addr, err := net.ResolveUDPAddr("udp", addressString)
 			if err != nil {
 				level.Error(logger).Log("msg", "could parse udp address", "address", addressString, "err", err)
-				return 1
+				os.Exit(1)
 			}
 
 			if err := storer.AddRelay(ctx, routing.Relay{
@@ -329,7 +325,7 @@ func mainReturnWithCode() int {
 				MaxSessions: 3000,
 			}); err != nil {
 				level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
-				return 1
+				os.Exit(1)
 			}
 		}
 	}
@@ -377,12 +373,6 @@ func mainReturnWithCode() int {
 	}
 
 	privateKey, err := envvar.GetBase64("SERVER_BACKEND_PRIVATE_KEY", nil)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		return 1
-	}
-
-	routerPrivateKey, err := envvar.GetBase64("RELAY_BACKEND_PRIVATE_KEY", nil)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
@@ -493,11 +483,7 @@ func mainReturnWithCode() int {
 					start := time.Now()
 
 					bytes, err := newRouteMatrix.ReadFrom(matrixReader)
-
-					if matrixReader != nil {
-						matrixReader.Close()
-					}
-
+					matrixReader.Close()
 					if err != nil {
 						level.Error(logger).Log("envvar", "ROUTE_MATRIX_URI", "value", uri, "msg", "could not read route matrix", "err", err)
 						time.Sleep(syncInterval)
@@ -534,107 +520,6 @@ func mainReturnWithCode() int {
 			}()
 		}
 	}
-
-	// Create a local biller
-	var biller billing.Biller = &billing.LocalBiller{
-		Logger:  logger,
-		Metrics: &serverBackendMetrics.BillingMetrics,
-	}
-
-	pubsubEmulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
-	if gcpOK || pubsubEmulatorOK {
-
-		pubsubCtx := ctx
-		if pubsubEmulatorOK {
-			gcpProjectID = "local"
-
-			var cancelFunc context.CancelFunc
-			pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(5*time.Second))
-			defer cancelFunc()
-
-			level.Info(logger).Log("msg", "Detected pubsub emulator")
-		}
-
-		// Google Pubsub
-		{
-			clientCount, err := envvar.GetInt("BILLING_CLIENT_COUNT", 1)
-			if err != nil {
-				level.Error(logger).Log("err", err)
-				return 1
-			}
-
-			countThreshold, err := envvar.GetInt("BILLING_BATCHED_MESSAGE_COUNT", 100)
-			if err != nil {
-				level.Error(logger).Log("err", err)
-				return 1
-			}
-
-			byteThreshold, err := envvar.GetInt("BILLING_BATCHED_MESSAGE_MIN_BYTES", 1024)
-			if err != nil {
-				level.Error(logger).Log("err", err)
-				return 1
-			}
-
-			// We do our own batching so don't stack the library's batching on top of ours
-			// Specifically, don't stack the message count thresholds
-			settings := googlepubsub.DefaultPublishSettings
-			settings.CountThreshold = 1
-			settings.ByteThreshold = byteThreshold
-			settings.NumGoroutines = runtime.GOMAXPROCS(0)
-
-			pubsub, err := billing.NewGooglePubSubBiller(pubsubCtx, &serverBackendMetrics.BillingMetrics, logger, gcpProjectID, "billing", clientCount, countThreshold, byteThreshold, &settings)
-			if err != nil {
-				level.Error(logger).Log("msg", "could not create pubsub biller", "err", err)
-				return 1
-			}
-
-			biller = pubsub
-		}
-	}
-
-	// Start portal cruncher publisher
-	var portalPublisher pubsub.Publisher
-	{
-		portalCruncherHost := envvar.Get("PORTAL_CRUNCHER_HOST", "tcp://127.0.0.1:5555")
-
-		postSessionPortalSendBufferSize, err := envvar.GetInt("POST_SESSION_PORTAL_SEND_BUFFER_SIZE", 1000000)
-		if err != nil {
-			level.Error(logger).Log("err", err)
-			return 1
-		}
-
-		portalCruncherPublisher, err := pubsub.NewPortalCruncherPublisher(portalCruncherHost, postSessionPortalSendBufferSize)
-		if err != nil {
-			level.Error(logger).Log("msg", "could not create portal cruncher publisher", "err", err)
-			return 1
-		}
-
-		portalPublisher = portalCruncherPublisher
-	}
-
-	numPostSessionGoroutines, err := envvar.GetInt("POST_SESSION_THREAD_COUNT", 1000)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		return 1
-	}
-
-	postSessionBufferSize, err := envvar.GetInt("POST_SESSION_BUFFER_SIZE", 1000000)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		return 1
-	}
-
-	postSessionPortalMaxRetries, err := envvar.GetInt("POST_SESSION_PORTAL_MAX_RETRIES", 10)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		return 1
-	}
-
-	// Create a post session handler to handle the post process of session updates.
-	// This way, we can quickly return from the session update handler and not spawn a
-	// ton of goroutines if things get backed up.
-	postSessionHandler := transport.NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, portalPublisher, postSessionPortalMaxRetries, biller, logger, sessionUpdateMetrics)
-	postSessionHandler.StartProcessing(ctx)
 
 	// Start HTTP server
 	{
@@ -705,7 +590,7 @@ func mainReturnWithCode() int {
 
 	serverInitHandler := transport.ServerInitHandlerFunc4(logger, storer, datacenterTracker, serverInitMetrics)
 	serverUpdateHandler := transport.ServerUpdateHandlerFunc4(logger, storer, datacenterTracker, serverUpdateMetrics)
-	sessionUpdateHandler := transport.SessionUpdateHandlerFunc4(logger, getIPLocatorFunc, getRouteMatrixFunc, routerPrivateKey, postSessionHandler, sessionUpdateMetrics)
+	sessionUpdateHandler := transport.SessionUpdateHandlerFunc4(logger, getIPLocatorFunc, getRouteMatrixFunc, sessionUpdateMetrics)
 
 	for i := 0; i < numThreads; i++ {
 		go func(thread int) {

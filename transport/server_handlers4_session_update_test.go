@@ -58,7 +58,7 @@ func TestSessionUpdateHandler4ReadPacketFailure(t *testing.T) {
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 
-	handler := transport.SessionUpdateHandlerFunc4(logger, nil, nil, nil, nil, metrics)
+	handler := transport.SessionUpdateHandlerFunc4(logger, nil, nil, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: nil,
 	})
@@ -76,6 +76,7 @@ func TestSessionUpdateHandler4ClientLocateFailure(t *testing.T) {
 
 	requestPacket := transport.SessionUpdatePacket4{
 		SessionID:            1111,
+		SessionDataBytes:     1,
 		ClientRoutePublicKey: make([]byte, crypto.KeySize),
 		ServerRoutePublicKey: make([]byte, crypto.KeySize),
 	}
@@ -95,7 +96,7 @@ func TestSessionUpdateHandler4ClientLocateFailure(t *testing.T) {
 	expectedResponse := transport.SessionResponsePacket4{
 		SessionID:          requestPacket.SessionID,
 		SliceNumber:        requestPacket.SliceNumber,
-		SessionDataBytes:   15,
+		SessionDataBytes:   14,
 		RouteType:          routing.RouteTypeDirect,
 		NearRelayIDs:       make([]uint64, 0),
 		NearRelayAddresses: make([]net.UDPAddr, 0),
@@ -104,16 +105,14 @@ func TestSessionUpdateHandler4ClientLocateFailure(t *testing.T) {
 	expectedSessionData := transport.SessionData4{
 		SessionID:   requestPacket.SessionID,
 		SliceNumber: requestPacket.SliceNumber + 1,
+		Route:       nil,
 	}
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
 	assert.NoError(t, err)
-
-	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.PostSessionHandler{}
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeProviderFunc, nil, &postSessionHandler, metrics)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeProviderFunc, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -140,6 +139,7 @@ func TestSessionUpdateHandler4NoNearRelays(t *testing.T) {
 
 	requestPacket := transport.SessionUpdatePacket4{
 		SessionID:            1111,
+		SessionDataBytes:     1,
 		ClientRoutePublicKey: make([]byte, crypto.KeySize),
 		ServerRoutePublicKey: make([]byte, crypto.KeySize),
 	}
@@ -159,7 +159,7 @@ func TestSessionUpdateHandler4NoNearRelays(t *testing.T) {
 	expectedResponse := transport.SessionResponsePacket4{
 		SessionID:          requestPacket.SessionID,
 		SliceNumber:        requestPacket.SliceNumber,
-		SessionDataBytes:   15,
+		SessionDataBytes:   14,
 		RouteType:          routing.RouteTypeDirect,
 		NearRelayIDs:       make([]uint64, 0),
 		NearRelayAddresses: make([]net.UDPAddr, 0),
@@ -168,16 +168,14 @@ func TestSessionUpdateHandler4NoNearRelays(t *testing.T) {
 	expectedSessionData := transport.SessionData4{
 		SessionID:   requestPacket.SessionID,
 		SliceNumber: requestPacket.SliceNumber + 1,
+		Route:       nil,
 	}
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
 	assert.NoError(t, err)
-
-	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.PostSessionHandler{}
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeProviderFunc, nil, &postSessionHandler, metrics)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeProviderFunc, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -207,6 +205,7 @@ func TestSessionUpdateHandler4SessionDataBadSessionID(t *testing.T) {
 	requestPacket := transport.SessionUpdatePacket4{
 		SessionID:            1111,
 		SliceNumber:          1,
+		SessionDataBytes:     1,
 		ClientRoutePublicKey: make([]byte, crypto.KeySize),
 		ServerRoutePublicKey: make([]byte, crypto.KeySize),
 	}
@@ -223,7 +222,7 @@ func TestSessionUpdateHandler4SessionDataBadSessionID(t *testing.T) {
 		return &goodRouteProvider
 	}
 
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeProviderFunc, nil, nil, metrics)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeProviderFunc, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -232,7 +231,7 @@ func TestSessionUpdateHandler4SessionDataBadSessionID(t *testing.T) {
 	assert.Equal(t, metrics.SessionDataMetrics.BadSessionID.Value(), 1.0)
 }
 
-func TestSessionUpdateHandler4SessionDataBadSliceNumber(t *testing.T) {
+func TestSessionUpdateHandler4SessionDataBadSequenceNumber(t *testing.T) {
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
 	sessionDataMetrics, err := metrics.NewSessionDataMetrics(context.Background(), &metricsHandler)
@@ -256,7 +255,7 @@ func TestSessionUpdateHandler4SessionDataBadSliceNumber(t *testing.T) {
 	requestPacket := transport.SessionUpdatePacket4{
 		SessionID:            1111,
 		SliceNumber:          1,
-		SessionDataBytes:     8, // don't include the slice number in the size to induce the bad read
+		SessionDataBytes:     8,
 		SessionData:          sessionDataArray,
 		ClientRoutePublicKey: make([]byte, crypto.KeySize),
 		ServerRoutePublicKey: make([]byte, crypto.KeySize),
@@ -274,7 +273,7 @@ func TestSessionUpdateHandler4SessionDataBadSliceNumber(t *testing.T) {
 		return &goodRouteProvider
 	}
 
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeProviderFunc, nil, nil, metrics)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeProviderFunc, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -311,6 +310,7 @@ func TestSessionUpdateHandler4InitialSlice(t *testing.T) {
 	expectedResponse := transport.SessionResponsePacket4{
 		SessionID:          requestPacket.SessionID,
 		SliceNumber:        requestPacket.SliceNumber,
+		SessionDataBytes:   14,
 		RouteType:          routing.RouteTypeDirect,
 		NearRelayIDs:       make([]uint64, 0),
 		NearRelayAddresses: make([]net.UDPAddr, 0),
@@ -319,16 +319,14 @@ func TestSessionUpdateHandler4InitialSlice(t *testing.T) {
 	expectedSessionData := transport.SessionData4{
 		SessionID:   requestPacket.SessionID,
 		SliceNumber: requestPacket.SliceNumber + 1,
+		Route:       nil,
 	}
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
 	assert.NoError(t, err)
-
-	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.PostSessionHandler{}
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeProviderFunc, nil, &postSessionHandler, metrics)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeProviderFunc, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -366,7 +364,7 @@ func TestSessionUpdateHandler4DirectRoute(t *testing.T) {
 	requestPacket := transport.SessionUpdatePacket4{
 		SessionID:            1111,
 		SliceNumber:          1,
-		SessionDataBytes:     int32(len(sessionDataSlice)),
+		SessionDataBytes:     13,
 		SessionData:          sessionDataArray,
 		ClientRoutePublicKey: make([]byte, crypto.KeySize),
 		ServerRoutePublicKey: make([]byte, crypto.KeySize),
@@ -387,6 +385,7 @@ func TestSessionUpdateHandler4DirectRoute(t *testing.T) {
 	expectedResponse := transport.SessionResponsePacket4{
 		SessionID:          requestPacket.SessionID,
 		SliceNumber:        requestPacket.SliceNumber,
+		SessionDataBytes:   14,
 		RouteType:          routing.RouteTypeDirect,
 		NearRelayIDs:       make([]uint64, 0),
 		NearRelayAddresses: make([]net.UDPAddr, 0),
@@ -395,16 +394,14 @@ func TestSessionUpdateHandler4DirectRoute(t *testing.T) {
 	expectedSessionData := transport.SessionData4{
 		SessionID:   requestPacket.SessionID,
 		SliceNumber: requestPacket.SliceNumber + 1,
+		Route:       nil,
 	}
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
 	assert.NoError(t, err)
-
-	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.PostSessionHandler{}
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeProviderFunc, nil, &postSessionHandler, metrics)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeProviderFunc, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
