@@ -935,7 +935,7 @@ func GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCo
 
 // -------------------------------------------
 
-func ReframeRoute(routeRelayIds []uint64, relayIdToIndex map[uint64]int32, out_routeRelays *[MaxRelaysPerRoute]int32) bool {
+func ReframeRoute(relayIdToIndex map[uint64]int32, routeRelayIds []uint64, out_routeRelays *[MaxRelaysPerRoute]int32) bool {
     for i := range routeRelayIds {
         relayIndex, ok := relayIdToIndex[routeRelayIds[i]]
         if !ok {
@@ -946,8 +946,40 @@ func ReframeRoute(routeRelayIds []uint64, relayIdToIndex map[uint64]int32, out_r
     return true
 }
 
-// todo: ReframeRelays (use for sourceRelays, sourceRelayCost and destRelays -- pass them all)
-// todo: pass in jitter and packet loss so we can make sure we exclude any near relays with significant PL (high risk)
+func ReframeRelays(relayIdToIndex map[uint64]int32, sourceRelayIds []uint64, sourceRelayLatency []int32, sourceRelayPacketLoss []float32, destRelayIds []uint64, out_numSourceRelays *int32, out_sourceRelays []int32, out_numDestRelays *int32, out_destRelays []int32) {
+    
+    numSourceRelays := int32(0)
+    numDestRelays := int32(0)
+
+    for i := range sourceRelayIds {
+        if sourceRelayLatency[i] <= 0 {
+            // you say your latency is 0ms? I don't believe you!
+            continue
+        }
+        if sourceRelayPacketLoss[i] > 50.0 {
+            // any source relay with > 50% PL in the last slice is bad news
+            continue
+        }
+        sourceRelayIndex, ok := relayIdToIndex[sourceRelayIds[i]]
+        if !ok {
+            continue
+        }
+        out_sourceRelays[numSourceRelays] = sourceRelayIndex
+        numSourceRelays++
+    }
+
+    for i := range destRelayIds {
+        destRelayIndex, ok := relayIdToIndex[destRelayIds[i]]
+        if !ok {
+            continue
+        }
+        out_destRelays[numDestRelays] = destRelayIndex
+        numDestRelays++
+    }
+
+    *out_numSourceRelays = numSourceRelays
+    *out_numDestRelays = numDestRelays
+}
 
 func GetRandomBestRoute(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost[] int32, destRelays []int32, maxCost int32, out_bestRouteCost *int32, out_bestRouteNumRelays *int32, out_bestRouteRelays *[MaxRelaysPerRoute]int32) bool {
     

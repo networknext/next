@@ -517,7 +517,7 @@ func (env *TestEnvironment) ReframeRouteHash(route []uint64) (int32, [MaxRelaysP
         relayIdToIndex[id] = int32(v.index)
     }
     reframedRoute := [MaxRelaysPerRoute]int32{}
-    result := ReframeRoute(route, relayIdToIndex, &reframedRoute)
+    result := ReframeRoute(relayIdToIndex, route, &reframedRoute)
     if !result {
         return 0, reframedRoute
     } else {
