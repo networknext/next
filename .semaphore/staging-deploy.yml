@@ -5,6 +5,8 @@ agent:
     type: e1-standard-8
     os_image: ubuntu1804
 global_job_config:
+  secrets:
+    - name: sdk4-repo-access
   prologue:
     commands:
       - sudo apt-get update && sudo apt-get -y install libsodium-dev libzmq3-dev gcc-8
@@ -13,6 +15,10 @@ global_job_config:
       - checkout
       - sem-version go 1.13
       - make clean
+      - chmod 0600 ~/.ssh/id_rsa_semaphoreci_sdk4
+      - ssh-add ~/.ssh/id_rsa_semaphoreci_sdk4
+      - git submodule init sdk4
+      - git submodule update sdk4
 blocks:
   - name: Build & Publish Artifacts
     dependencies: []
@@ -58,6 +64,14 @@ blocks:
           commands:
             - make build-load-test-client-artifacts
             - make publish-load-test-client-artifacts
+        - name: Load Test Server 4
+          commands:
+            - make build-load-test-server4-artifacts
+            - make publish-load-test-server4-artifacts
+        - name: Load Test Client 4
+          commands:
+            - make build-load-test-client4-artifacts
+            - make publish-load-test-client4-artifacts
         - name: Bootstrap Script
           commands:
             - make publish-bootstrap-script-staging
