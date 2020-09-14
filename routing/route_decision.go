@@ -317,7 +317,7 @@ func DecideCommitted(onNNLastSlice bool, maxObservedSlices uint8, yolo bool, com
 // DecideMultipath will decide if we should serve a network next route to be used for multipath
 // If the decision function can't find a good enough reason to send a network next route, then it decides to go direct
 // If multipath isn't enabled then the decision isn't affected
-func DecideMultipath(rttMultipath bool, jitterMultipath bool, packetLossMultipath bool, rttThreshold float64, packetLossThreshold float64) DecisionFunc {
+func DecideMultipath(rttMultipath bool, jitterMultipath bool, packetLossMultipath bool, rttThreshold float64, packetLossThreshold float64, packetLossClientToServer float64, packetLossServerToClient float64) DecisionFunc {
 	return func(prevDecision Decision, predictedNextStats, lastNextStats, lastDirectStats *Stats) Decision {
 		decision := prevDecision
 
@@ -358,8 +358,8 @@ func DecideMultipath(rttMultipath bool, jitterMultipath bool, packetLossMultipat
 			decision.Reason |= DecisionHighJitterMultipath
 		}
 
-		// If the direct packet loss is more than 1%, then use multipath for packet loss
-		if packetLossMultipath && lastDirectStats.PacketLoss >= packetLossThreshold {
+		// If the direct packet loss or in game packet loss is more than the packet loss threshold, then use multipath for packet loss
+		if packetLossMultipath && (lastDirectStats.PacketLoss >= packetLossThreshold || packetLossClientToServer >= packetLossThreshold || packetLossServerToClient >= packetLossThreshold) {
 			decision.OnNetworkNext = true
 			decision.Reason |= DecisionHighPacketLossMultipath
 		}

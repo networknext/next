@@ -1017,11 +1017,15 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 			return
 		}
 
+		packetLossClientToServer := float64(packet.PacketsLostClientToServer) / float64(packet.PacketsSentClientToServer) * 100.0
+		packetLossServerToClient := float64(packet.PacketsLostServerToClient) / float64(packet.PacketsSentServerToClient) * 100.0
+
 		// Get the best route. This can be a network next route or a direct route.
 
 		var bestRoute *routing.Route
 		bestRoute, routeDecision = GetBestRoute(routeMatrix, nearRelayData, datacenterRelays, params.Storer, params.Metrics, &buyer,
-			sessionDataReadOnly.RouteHash, sessionDataReadOnly.RouteDecision, &lastNextStats, &lastDirectStats, nextSliceCounter, &committedData, multipathVetoReason, packet.UserHash, &directRoute)
+			sessionDataReadOnly.RouteHash, sessionDataReadOnly.RouteDecision, &lastNextStats, &lastDirectStats, packetLossClientToServer, packetLossServerToClient,
+			nextSliceCounter, &committedData, multipathVetoReason, packet.UserHash, &directRoute)
 
 		if routeDecision.OnNetworkNext {
 			nextSliceCounter++
@@ -1039,7 +1043,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 // GetBestRoute returns the best route that a session can take for this slice. If we can't serve a network next route, the returned route will be the passed in direct route.
 // This function can either return a network next route or a direct route, and it also returns a reason as to why the route was chosen.
 func GetBestRoute(routeMatrix RouteProvider, nearRelayData []routing.NearRelayData, datacenterRelayIDs []uint64, storer storage.Storer, metrics *metrics.SessionMetrics,
-	buyer *routing.Buyer, prevRouteHash uint64, prevRouteDecision routing.Decision, lastNextStats *routing.Stats, lastDirectStats *routing.Stats,
+	buyer *routing.Buyer, prevRouteHash uint64, prevRouteDecision routing.Decision, lastNextStats *routing.Stats, lastDirectStats *routing.Stats, packetLossClientToServer float64, packetLossServerToClient float64,
 	onNNSliceCounter uint64, committedData *routing.CommittedData, multipathVetoReason routing.DecisionReason, userHash uint64, directRoute *routing.Route) (*routing.Route, routing.Decision) {
 
 	// We need to get a next route to compare against direct
@@ -1090,7 +1094,8 @@ func GetBestRoute(routeMatrix RouteProvider, nearRelayData []routing.NearRelayDa
 	// Only run the multipath decision func if the user hasn't been multipath vetoed
 	if multipathVetoReason&routing.DecisionMultipathVetoRTT == 0 {
 		deciderFuncs = append(deciderFuncs,
-			routing.DecideMultipath(buyer.RoutingRulesSettings.EnableMultipathForRTT, buyer.RoutingRulesSettings.EnableMultipathForJitter, buyer.RoutingRulesSettings.EnableMultipathForPacketLoss, float64(buyer.RoutingRulesSettings.RTTThreshold), float64(buyer.RoutingRulesSettings.MultipathPacketLossThreshold)))
+			routing.DecideMultipath(buyer.RoutingRulesSettings.EnableMultipathForRTT, buyer.RoutingRulesSettings.EnableMultipathForJitter, buyer.RoutingRulesSettings.EnableMultipathForPacketLoss,
+				float64(buyer.RoutingRulesSettings.RTTThreshold), float64(buyer.RoutingRulesSettings.MultipathPacketLossThreshold), packetLossClientToServer, packetLossServerToClient))
 	}
 
 	if buyer.RoutingRulesSettings.EnableTryBeforeYouBuy {
