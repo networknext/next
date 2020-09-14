@@ -2157,6 +2157,8 @@ func TestStayOnNetworkNext_ReduceLatency_Simple(t *testing.T) {
 
 // -----------------------------------------------
 
+// todo: test that we can make rtt moderately worse, but not get kicked off
+
 // todo: test rtt veto (PL)
 
 // -----------------------------------------------
