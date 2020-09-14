@@ -191,6 +191,7 @@ type NextBackendSessionUpdatePacket struct {
 	VersionMinor              uint32
 	VersionPatch              uint32
 	CustomerId                uint64
+	DatacenterId              uint64
 	SessionId                 uint64
 	SliceNumber               uint32
 	RetryNumber               int32
@@ -236,6 +237,8 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 	
 	stream.SerializeUint64(&packet.CustomerId)
 	
+	stream.SerializeUint64(&packet.DatacenterId)
+
 	stream.SerializeUint64(&packet.SessionId)
 	
 	stream.SerializeBits(&packet.SliceNumber, 32)
