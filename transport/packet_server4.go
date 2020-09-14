@@ -207,13 +207,20 @@ func (packet *SessionUpdatePacket4) Serialize(stream encoding.Stream) error {
 	stream.SerializeBool(&packet.Committed)
 	stream.SerializeBool(&packet.Reported)
 	hasTag := stream.IsWriting() && packet.Tag != 0
-	hasFlags := stream.IsWriting() && packet.Flags != 0
-	hasUserFlags := stream.IsWriting() && packet.UserFlags != 0
-	hasLostPackets := stream.IsWriting() && (packet.PacketsLostClientToServer+packet.PacketsLostServerToClient) > 0
 	stream.SerializeBool(&hasTag)
+	if hasTag {
+		stream.SerializeUint64(&packet.Tag)
+	}
+	hasFlags := stream.IsWriting() && packet.Flags != 0
 	stream.SerializeBool(&hasFlags)
+	if hasFlags {
+		stream.SerializeBits(&packet.Flags, 9)
+	}
+	hasUserFlags := stream.IsWriting() && packet.UserFlags != 0
 	stream.SerializeBool(&hasUserFlags)
-	stream.SerializeBool(&hasLostPackets)
+	if hasUserFlags {
+		stream.SerializeUint64(&packet.UserFlags)
+	}
 	stream.SerializeFloat32(&packet.DirectRTT)
 	stream.SerializeFloat32(&packet.DirectJitter)
 	stream.SerializeFloat32(&packet.DirectPacketLoss)
@@ -235,16 +242,12 @@ func (packet *SessionUpdatePacket4) Serialize(stream encoding.Stream) error {
 		stream.SerializeFloat32(&packet.NearRelayJitter[i])
 		stream.SerializeFloat32(&packet.NearRelayPacketLoss[i])
 	}
-	if packet.Next {
-		stream.SerializeUint32(&packet.KbpsUp)
-		stream.SerializeUint32(&packet.KbpsDown)
-	}
+	stream.SerializeUint32(&packet.KbpsUp)
+	stream.SerializeUint32(&packet.KbpsDown)
 	stream.SerializeUint64(&packet.PacketsSentClientToServer)
 	stream.SerializeUint64(&packet.PacketsSentServerToClient)
-	if hasLostPackets {
-		stream.SerializeUint64(&packet.PacketsLostClientToServer)
-		stream.SerializeUint64(&packet.PacketsLostServerToClient)
-	}
+	stream.SerializeUint64(&packet.PacketsLostClientToServer)
+	stream.SerializeUint64(&packet.PacketsLostServerToClient)
 	return stream.Error()
 }
 
@@ -310,11 +313,10 @@ func (packet *SessionResponsePacket4) Serialize(stream encoding.Stream) error {
 }
 
 type SessionData4 struct {
-	Version        uint32
-	SessionID      uint64
-	SessionVersion uint32
-	SliceNumber    uint32
-	Route          routing.Route
+	Version     uint32
+	SessionID   uint64
+	SliceNumber uint32
+	Route       []uint64
 }
 
 func UnmarshalSessionData(sessionData *SessionData4, data []byte) error {
@@ -344,23 +346,21 @@ func (sessionData *SessionData4) Serialize(stream encoding.Stream) error {
 		return fmt.Errorf("bad session data version %d, expected %d", sessionData.Version, SessionDataVersion4)
 	}
 	stream.SerializeUint64(&sessionData.SessionID)
-	stream.SerializeBits(&sessionData.SessionVersion, 8)
 	stream.SerializeUint32(&sessionData.SliceNumber)
 	numRelays := int32(0)
 	hasRoute := false
 	if stream.IsWriting() {
-		numRelays = int32(sessionData.Route.NumRelays)
+		numRelays = int32(len(sessionData.Route))
 		hasRoute = numRelays > 0
 	}
 	stream.SerializeBool(&hasRoute)
 	if hasRoute {
 		stream.SerializeInteger(&numRelays, 0, routing.MaxRelays)
 		if stream.IsReading() {
-			sessionData.Route.NumRelays = int(numRelays)
+			sessionData.Route = make([]uint64, numRelays)
 		}
-
 		for i := 0; i < int(numRelays); i++ {
-			stream.SerializeUint64(&sessionData.Route.RelayIDs[i])
+			stream.SerializeUint64(&sessionData.Route[i])
 		}
 	}
 

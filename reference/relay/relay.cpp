@@ -2676,8 +2676,6 @@ int relay_verify_header( int direction, const uint8_t * private_key, uint8_t * b
 
     if ( buffer_length < RELAY_HEADER_BYTES )
     {
-        // todo
-        printf( "packet too small\n" );
         return RELAY_ERROR;
     }
 
@@ -2741,8 +2739,6 @@ int relay_verify_header( int direction, const uint8_t * private_key, uint8_t * b
 
     if ( result != 0 )
     {
-        // todo
-        printf( "failed to decrypt\n" );
         return RELAY_ERROR;
     }
 
@@ -4956,7 +4952,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
             if ( clean_sequence <= session->server_to_client_sequence )
             {
-                relay_printf( "ignored route response packet. packet already received (%d <= %d)", clean_sequence, session->server_to_client_sequence );
+                relay_printf( "ignored route response packet. packet already received" );
                 continue;
             }
 
@@ -5232,7 +5228,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
             if ( clean_sequence <= session->client_to_server_sequence )
             {
-                relay_printf( "ignored session ping packet. already received (%d <= %d)", int(clean_sequence), int(session->client_to_server_sequence) );
+                relay_printf( "ignored session ping packet. already received" );
                 continue;
             }
 
@@ -5285,7 +5281,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
             if ( clean_sequence <= session->server_to_client_sequence )
             {
-                relay_printf( "ignored session pong packet. already received (%d <= %d)", int(clean_sequence), int(session->server_to_client_sequence) );
+                relay_printf( "ignored session pong packet. already received" );
                 continue;
             }
 

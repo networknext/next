@@ -23,12 +23,12 @@ publish() {
 }
 
 print_usage() {
-  printf "Usage: publish-load-test-artifacts.sh -s service -b bucket\n\n"
-  printf "s [string]\tService being published [load_test_server, load_test_client, etc]\n"
+  printf "Usage: publish.sh -e environment -s service -b bucket\n\n"
+  printf "s [string]\tService being published [portal, portal_cruncher, server_backend, etc]\n"
   printf "b [string]\tBucket name on GCP Storage\n"
 
   printf "Example:\n\n"
-  printf "> publish-load-test-artifacts.sh -s load_test_server -b gs://staging_artifacts\n"
+  printf "> publish.sh -e dev -s portal -b gs://development_artifacts\n"
 }
 
 if [ ! $# -eq 4 ]
