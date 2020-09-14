@@ -129,5 +129,9 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 	e["platformType"] = int(entry.PlatformType)
 	e["sdkVersion"] = entry.SDKVersion
 
+	if entry.PacketLoss > 0.0 {
+		e["packetLoss"] = entry.PacketLoss
+	}
+
 	return e, "", nil
 }
