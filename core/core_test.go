@@ -362,6 +362,15 @@ func (env *TestEnvironment) GetRelayDatacenters() []uint64 {
     return relayDatacenters
 }
 
+func (env *TestEnvironment) GetRelayIdToIndex() map[uint64]int32 {
+    relayIdToIndex := make(map[uint64]int32)
+    for i := range env.relayArray {
+        relayHash := RelayHash64(env.relayArray[i].name)
+        relayIdToIndex[relayHash] = int32(i)
+    }
+    return relayIdToIndex
+}
+
 func (env *TestEnvironment) SetCost(sourceRelayName string, destRelayName string, cost int32) {
     i := env.relays[sourceRelayName].index
     j := env.relays[destRelayName].index
@@ -1322,9 +1331,73 @@ func TestReframeRoute(t *testing.T) {
     assert.Equal(t, int32(3), routeRelays[2])
 }
 
-// todo: test for reframe source relays
+func TestReframeRelays(t *testing.T) {
 
-// todo: make sure that if a relay has 100% PL that it is *excluded* from being used as a source
+    t.Parallel()
+
+    env := NewTestEnvironment()
+
+    env.AddRelay("losangeles.a", "10.0.0.1")
+    env.AddRelay("losangeles.b", "10.0.0.2")
+    env.AddRelay("chicago.a", "10.0.0.3")
+    env.AddRelay("chicago.b", "10.0.0.4")
+    env.AddRelay("a", "10.0.0.5")
+    env.AddRelay("b", "10.0.0.6")
+
+    relayIdToIndex := env.GetRelayIdToIndex()    
+
+    assert.Equal(t, int32(0), relayIdToIndex[RelayHash64("losangeles.a")])
+    assert.Equal(t, int32(1), relayIdToIndex[RelayHash64("losangeles.b")])
+    assert.Equal(t, int32(2), relayIdToIndex[RelayHash64("chicago.a")])
+    assert.Equal(t, int32(3), relayIdToIndex[RelayHash64("chicago.b")])
+    assert.Equal(t, int32(4), relayIdToIndex[RelayHash64("a")])
+    assert.Equal(t, int32(5), relayIdToIndex[RelayHash64("b")])
+
+    sourceRelayIds := []uint64{
+        RelayHash64("losangeles.a"),
+        RelayHash64("losangeles.b"),
+        RelayHash64("a"),
+        RelayHash64("b"),
+        RelayHash64("idontexist"),
+    }
+
+    sourceRelayLatency := []int32{
+        10,
+        0,
+        100,
+        -1,
+        1,
+    }
+
+    sourceRelayPacketLoss := []float32{
+        0.0,
+        0.0,
+        100.0,
+        0.0,
+        0.0,
+    }
+
+    destRelayIds := []uint64{
+        RelayHash64("idontexist"),
+        RelayHash64("chicago.a"),
+        RelayHash64("chicago.b"),
+    }
+
+    numSourceRelays := int32(0)
+    sourceRelays := [32]int32{}
+
+    numDestRelays := int32(0)
+    destRelays := [32]int32{}
+
+    ReframeRelays(relayIdToIndex, sourceRelayIds, sourceRelayLatency, sourceRelayPacketLoss, destRelayIds, &numSourceRelays, sourceRelays[:], &numDestRelays, destRelays[:])
+
+    assert.Equal(t, int32(1), numSourceRelays)
+    assert.Equal(t, int32(0), sourceRelays[0])
+
+    assert.Equal(t, int32(2), numDestRelays)
+    assert.Equal(t, int32(2), destRelays[0])
+    assert.Equal(t, int32(3), destRelays[1])
+}
 
 func TestEarlyOutDirect(t *testing.T) {
 
