@@ -904,6 +904,12 @@ build-ghost-army-generator:
 	@$(GO) build -o ./dist/gag ./cmd/ghost_army_generator/*.go
 	@printf "done\n"
 
+.PHONY: build-ghost-army-analyzer
+build-ghost-army-analyzer:
+	@printf "Building ghost army analyzer... "
+	@$(GO) build -o ./dist/gaa ./cmd/ghost_army_analyzer/*.go
+	@printf "done\n"
+
 #######################
 # Relay Build Process #
 #######################
