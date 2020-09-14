@@ -2,23 +2,20 @@
 
 bucket=
 artifact=
-version=
 
 print_usage() {
-    printf "Usage: bootstrap.sh -b bucket_name -a artifact -v version\n\n"
+    printf "Usage: bootstrap.sh -a artifact\n\n"
     printf "b [string]\tBucket name on GCP Storage\n"
     printf "a [string]\tArtifact name on GCP Storage\n"
-    printf "v [string]\t SDK version\n"
 
     printf "Example:\n\n"
-    printf "> bootstrap.sh -b gs://development_artifacts -a server_backend.dev.tar.gz -v 3\n"
+    printf "> bootstrap.sh -b gs://development_artifacts -a server_backend.dev.tar.gz\n"
 }
 
-while getopts 'b:a:v:h' flag; do
+while getopts 'b:a:h' flag; do
   case "${flag}" in
     b) bucket="${OPTARG}" ;;
     a) artifact="${OPTARG}" ;;
-    v) version="${OPTARG}" ;;
     h) print_usage
        exit 1 ;;
     *) print_usage
@@ -39,7 +36,7 @@ gsutil cp "$bucket/libpgm-5.2.so.0" '/usr/local/lib'
 gsutil cp "$bucket/libzmq.so" '/usr/local/lib'
 
 # Copy libzmq from GCP Storage
-gsutil cp "$bucket/libnext$version.so" '/usr/local/lib'
+gsutil cp "$bucket/libnext.so" '/usr/local/lib'
 
 # Refresh the known libs on the system
 ldconfig
