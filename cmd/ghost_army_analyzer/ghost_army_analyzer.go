@@ -16,13 +16,7 @@ const (
 )
 
 func main() {
-	var infile string
-	if v, ok := os.LookupEnv("GHOST_ARMY_BIN"); ok {
-		infile = v
-	} else {
-		fmt.Println("you must set GHOST_ARMY_BIN to a file")
-		os.Exit(1)
-	}
+	infile := os.Args[1]
 
 	bin, err := ioutil.ReadFile(infile)
 	if err != nil {
