@@ -256,6 +256,20 @@ build-load-test-server: dist build-sdk3
 endif
 
 ifeq ($(OS),darwin)
+.PHONY: build-load-test-server4
+build-load-test-server4: dist build-sdk4
+	@printf "Building load test server 4... "
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/load_test_server4 ./cmd/load_test_server/load_test_server.cpp  $(DIST_DIR)/$(SDK4NAME).so $(LDFLAGS)
+	@printf "done\n"
+else
+.PHONY: build-load-test-server4
+build-load-test-server4: dist build-sdk4
+	@printf "Building load test server 4... "
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/load_test_server4 ./cmd/load_test_server/load_test_server.cpp -L./dist -lnext4 $(LDFLAGS)
+	@printf "done\n"
+endif
+
+ifeq ($(OS),darwin)
 .PHONY: build-load-test-client
 build-load-test-client: dist build-sdk3
 	@printf "Building load test client... "
@@ -266,6 +280,20 @@ else
 build-load-test-client: dist build-sdk3
 	@printf "Building load test client... "
 	@$(CXX) -Isdk3/include -o $(DIST_DIR)/load_test_client ./cmd/load_test_client/load_test_client.cpp -L./dist -lnext3 $(LDFLAGS)
+	@printf "done\n"
+endif
+
+ifeq ($(OS),darwin)
+.PHONY: build-load-test-client4
+build-load-test-client4: dist build-sdk4
+	@printf "Building load test client 4... "
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/load_test_client4 ./cmd/load_test_client/load_test_client.cpp  $(DIST_DIR)/$(SDK4NAME).so $(LDFLAGS)
+	@printf "done\n"
+else
+.PHONY: build-load-test-client4
+build-load-test-client4: dist build-sdk4
+	@printf "Building load test client 4... "
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/load_test_client4 ./cmd/load_test_client/load_test_client.cpp -L./dist -lnext4 $(LDFLAGS)
 	@printf "done\n"
 endif
 
@@ -525,6 +553,14 @@ build-load-test-server-artifacts: build-load-test-server
 build-load-test-client-artifacts: build-load-test-client
 	./deploy/build-load-test-artifacts.sh -s load_test_client
 
+.PHONY: build-load-test-server4-artifacts
+build-load-test-server4-artifacts: build-load-test-server4
+	./deploy/build-load-test-artifacts.sh -s load_test_server4
+
+.PHONY: build-load-test-client4-artifacts
+build-load-test-client4-artifacts: build-load-test-client4
+	./deploy/build-load-test-artifacts.sh -s load_test_client4
+
 .PHONY: build-billing-artifacts-dev
 build-billing-artifacts-dev: build-billing
 	./deploy/build-artifacts.sh -e dev -s billing
@@ -721,6 +757,14 @@ publish-load-test-server-artifacts:
 publish-load-test-client-artifacts:
 	./deploy/publish-load-test-artifacts.sh -b $(ARTIFACT_BUCKET_STAGING) -s load_test_client
 
+.PHONY: publish-load-test-server4-artifacts
+publish-load-test-server4-artifacts:
+	./deploy/publish-load-test-artifacts.sh -b $(ARTIFACT_BUCKET_STAGING) -s load_test_server4
+
+.PHONY: publish-load-test-client4-artifacts
+publish-load-test-client4-artifacts:
+	./deploy/publish-load-test-artifacts.sh -b $(ARTIFACT_BUCKET_STAGING) -s load_test_client4
+
 .PHONY: publish-load-test-server-list
 publish-load-test-server-list:
 	./deploy/publish-load-test-artifacts.sh -b $(ARTIFACT_BUCKET_STAGING) -s staging_servers.txt
@@ -858,6 +902,12 @@ build-ghost-army:
 build-ghost-army-generator:
 	@printf "Building ghost army generator... "
 	@$(GO) build -o ./dist/gag ./cmd/ghost_army_generator/*.go
+	@printf "done\n"
+
+.PHONY: build-ghost-army-analyzer
+build-ghost-army-analyzer:
+	@printf "Building ghost army analyzer... "
+	@$(GO) build -o ./dist/gaa ./cmd/ghost_army_analyzer/*.go
 	@printf "done\n"
 
 #######################
