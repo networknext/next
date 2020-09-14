@@ -208,6 +208,8 @@ func main() {
 				i++
 			}
 
+			before := i
+
 			// only read for the interval, usually 10 seconds
 			for i < len(slices) && slices[i].Slice.Timestamp.Unix() < sliceBegin+interval {
 				slice := slices[i]
@@ -218,6 +220,12 @@ func main() {
 
 				publishChan <- slice
 				i++
+			}
+
+			diff := i - before
+
+			if diff > 12000 {
+				fmt.Printf("sent more than 12k slices this interval, num sent = %d, current interval in secs = %d - %d\n", diff, sliceBegin, sliceBegin+interval)
 			}
 
 			// increment by the interval
