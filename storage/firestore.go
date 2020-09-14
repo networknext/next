@@ -309,7 +309,8 @@ func (fs *Firestore) AddBuyer(ctx context.Context, b routing.Buyer) error {
 		var customerInRemoteStorage customer
 		err = cdoc.DataTo(&customerInRemoteStorage)
 		if err != nil {
-			return &UnmarshalError{err: err}
+			level.Error(fs.Logger).Log("err", &UnmarshalError{err: err})
+			continue
 		}
 
 		if customerInRemoteStorage.Name == b.Name && customerInRemoteStorage.Buyer == nil {
@@ -377,7 +378,8 @@ func (fs *Firestore) RemoveBuyer(ctx context.Context, id uint64) error {
 		var buyerInRemoteStorage buyer
 		err = bdoc.DataTo(&buyerInRemoteStorage)
 		if err != nil {
-			return &UnmarshalError{err: err}
+			level.Error(fs.Logger).Log("err", &UnmarshalError{err: err})
+			continue
 		}
 
 		if uint64(buyerInRemoteStorage.ID) == id {
@@ -408,7 +410,8 @@ func (fs *Firestore) RemoveBuyer(ctx context.Context, id uint64) error {
 				var customerInRemoteStorage customer
 				err = cdoc.DataTo(&customerInRemoteStorage)
 				if err != nil {
-					return &UnmarshalError{err: err}
+					level.Error(fs.Logger).Log("err", &UnmarshalError{err: err})
+					continue
 				}
 
 				if customerInRemoteStorage.Buyer != nil && customerInRemoteStorage.Buyer.ID == bdoc.Ref.ID {
@@ -473,7 +476,8 @@ func (fs *Firestore) SetBuyer(ctx context.Context, b routing.Buyer) error {
 		var buyerInRemoteStorage buyer
 		err = bdoc.DataTo(&buyerInRemoteStorage)
 		if err != nil {
-			return &UnmarshalError{err: err}
+			level.Error(fs.Logger).Log("err", &UnmarshalError{err: err})
+			continue
 		}
 
 		// If the buyer is the one we want to update, update it with the new data
@@ -579,7 +583,8 @@ func (fs *Firestore) AddSeller(ctx context.Context, s routing.Seller) error {
 		var customerInRemoteStorage customer
 		err = cdoc.DataTo(&customerInRemoteStorage)
 		if err != nil {
-			return &UnmarshalError{err: err}
+			level.Error(fs.Logger).Log("err", &UnmarshalError{err: err})
+			continue
 		}
 
 		if customerInRemoteStorage.Name == s.Name && customerInRemoteStorage.Seller == nil {
@@ -653,7 +658,8 @@ func (fs *Firestore) RemoveSeller(ctx context.Context, id string) error {
 		var customerInRemoteStorage customer
 		err = cdoc.DataTo(&customerInRemoteStorage)
 		if err != nil {
-			return &UnmarshalError{err: err}
+			level.Error(fs.Logger).Log("err", &UnmarshalError{err: err})
+			continue
 		}
 
 		if customerInRemoteStorage.Seller != nil && customerInRemoteStorage.Seller.ID == sdoc.ID {
@@ -738,7 +744,8 @@ func (fs *Firestore) SetCustomerLink(ctx context.Context, customerName string, b
 		var c customer
 		err = cdoc.DataTo(&c)
 		if err != nil {
-			return &UnmarshalError{err: err}
+			level.Error(fs.Logger).Log("err", &UnmarshalError{err: err})
+			continue
 		}
 
 		if c.Name == customerName {
@@ -763,7 +770,8 @@ func (fs *Firestore) SetCustomerLink(ctx context.Context, customerName string, b
 				var b buyer
 				err = bdoc.DataTo(&b)
 				if err != nil {
-					return &UnmarshalError{err: err}
+					level.Error(fs.Logger).Log("err", &UnmarshalError{err: err})
+					continue
 				}
 
 				if uint64(b.ID) == buyerID {
@@ -826,7 +834,8 @@ func (fs *Firestore) BuyerIDFromCustomerName(ctx context.Context, customerName s
 		var c customer
 		err = cdoc.DataTo(&c)
 		if err != nil {
-			return 0, &UnmarshalError{err: err}
+			level.Error(fs.Logger).Log("err", &UnmarshalError{err: err})
+			continue
 		}
 
 		if c.Name == customerName {
@@ -837,7 +846,8 @@ func (fs *Firestore) BuyerIDFromCustomerName(ctx context.Context, customerName s
 
 			var b buyer
 			if err := bdoc.DataTo(&b); err != nil {
-				return 0, &UnmarshalError{err: err}
+				level.Error(fs.Logger).Log("err", &UnmarshalError{err: err})
+				continue
 			}
 
 			return uint64(b.ID), nil
@@ -865,7 +875,8 @@ func (fs *Firestore) SellerIDFromCustomerName(ctx context.Context, customerName 
 		var c customer
 		err = cdoc.DataTo(&c)
 		if err != nil {
-			return "", &UnmarshalError{err: err}
+			level.Error(fs.Logger).Log("err", &UnmarshalError{err: err})
+			continue
 		}
 
 		if c.Name == customerName {
@@ -952,7 +963,8 @@ func (fs *Firestore) AddRelay(ctx context.Context, r routing.Relay) error {
 		var d datacenter
 		err = ddoc.DataTo(&d)
 		if err != nil {
-			return &UnmarshalError{err: err}
+			level.Error(fs.Logger).Log("err", &UnmarshalError{err: err})
+			continue
 		}
 
 		// If the datacenter is the one associated with this relay, set the relay's datacenter reference
@@ -1043,7 +1055,8 @@ func (fs *Firestore) RemoveRelay(ctx context.Context, id uint64) error {
 		var relayInRemoteStorage relay
 		err = rdoc.DataTo(&relayInRemoteStorage)
 		if err != nil {
-			return &UnmarshalError{err: err}
+			level.Error(fs.Logger).Log("err", &UnmarshalError{err: err})
+			continue
 		}
 
 		rid := crypto.HashID(relayInRemoteStorage.Address)
@@ -1095,7 +1108,8 @@ func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 		var relayInRemoteStorage relay
 		err = rdoc.DataTo(&relayInRemoteStorage)
 		if err != nil {
-			return &UnmarshalError{err: err}
+			level.Error(fs.Logger).Log("err", &UnmarshalError{err: err})
+			continue
 		}
 
 		// If the relay is the one we want to update, update it with the new data
@@ -1229,7 +1243,8 @@ func (fs *Firestore) RemoveDatacenterMap(ctx context.Context, dcMap routing.Data
 
 		err = dmdoc.DataTo(&dcm)
 		if err != nil {
-			return &UnmarshalError{err: err}
+			level.Error(fs.Logger).Log("err", &UnmarshalError{err: err})
+			continue
 		}
 
 		// all components must match (one-to-many)
@@ -1282,7 +1297,8 @@ func (fs *Firestore) SetRelayMetadata(ctx context.Context, modifiedRelay routing
 		var relayInRemoteStorage relay
 		err = rdoc.DataTo(&relayInRemoteStorage)
 		if err != nil {
-			return &UnmarshalError{err: err}
+			level.Error(fs.Logger).Log("err", &UnmarshalError{err: err})
+			continue
 		}
 
 		// If the relay is the one we want to update, update it with the new data
@@ -1383,7 +1399,8 @@ func (fs *Firestore) RemoveDatacenter(ctx context.Context, id uint64) error {
 		var datacenterInRemoteStorage datacenter
 		err = ddoc.DataTo(&datacenterInRemoteStorage)
 		if err != nil {
-			return &UnmarshalError{err: err}
+			level.Error(fs.Logger).Log("err", &UnmarshalError{err: err})
+			continue
 		}
 
 		if crypto.HashID(datacenterInRemoteStorage.Name) == id {
@@ -1433,7 +1450,8 @@ func (fs *Firestore) SetDatacenter(ctx context.Context, d routing.Datacenter) er
 		var datacenterInRemoteStorage datacenter
 		err = ddoc.DataTo(&datacenterInRemoteStorage)
 		if err != nil {
-			return &UnmarshalError{err: err}
+			level.Error(fs.Logger).Log("err", &UnmarshalError{err: err})
+			continue
 		}
 
 		// If the datacenter is the one we want to update, update it with the new data
