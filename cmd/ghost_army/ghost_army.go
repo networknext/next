@@ -188,7 +188,7 @@ func main() {
 			begin := time.Now()
 
 			// reset if at end of day
-			if sliceBegin == SecondsInDay {
+			if sliceBegin >= SecondsInDay {
 				i = 0
 				sliceBegin = currentSecs() // account for any inaccuracy by calling sleep()
 				dateOffset = getLastMidnight()
@@ -197,7 +197,7 @@ func main() {
 			var interval int64 = 10
 
 			// only useful at 11:50:5x pm - midnight
-			// forces the last slice to be sent within the above interval
+			// forces the last batch to be sent within the above interval
 			if sliceBegin+interval > SecondsInDay {
 				interval = SecondsInDay - sliceBegin
 			}
@@ -208,9 +208,7 @@ func main() {
 				i++
 			}
 
-			before := i
-
-			// only read for the next 10 seconds
+			// only read for the interval, usually 10 seconds
 			for i < len(slices) && slices[i].Slice.Timestamp.Unix() < sliceBegin+interval {
 				slice := slices[i]
 
@@ -222,16 +220,7 @@ func main() {
 				i++
 			}
 
-			// check if somehow too many slices were sent, using the analyzer the
-			// interval with the most slices was 10,265, so give it a little buffer
-			// since the program may start anywhere within an interval
-			slicesSent := i - before
-			if slicesSent > 12000 {
-				fmt.Printf("sent too many slices at %s = %d\n", time.Now().String(), slicesSent)
-			}
-
-			// increment by the interval, usually 10 seconds
-			// at 11:50:5x this will make sliceBegin == 86400
+			// increment by the interval
 			sliceBegin += interval
 
 			time.Sleep((time.Second * time.Duration(interval)) - time.Since(begin))
