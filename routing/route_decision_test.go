@@ -263,7 +263,7 @@ func TestDecideMultipath(t *testing.T) {
 	packetLossThreshold := float64(routing.LocalRoutingRulesSettings.MultipathPacketLossThreshold)
 
 	// Test if multipath isn't enabled
-	routeDecisionFunc := routing.DecideMultipath(false, false, false, rttThreshold, packetLossThreshold, 0)
+	routeDecisionFunc := routing.DecideMultipath(false, false, false, rttThreshold, packetLossThreshold)
 	predictedNNStats := &routing.Stats{RTT: 30}
 	directStats := &routing.Stats{RTT: 60}
 	decision := routing.Decision{}
@@ -271,7 +271,7 @@ func TestDecideMultipath(t *testing.T) {
 	assert.Equal(t, routing.Decision{}, decision)
 
 	// Test if multipath is already active
-	routeDecisionFunc = routing.DecideMultipath(true, true, true, rttThreshold, packetLossThreshold, 0)
+	routeDecisionFunc = routing.DecideMultipath(true, true, true, rttThreshold, packetLossThreshold)
 	decision = routing.Decision{true, routing.DecisionRTTReductionMultipath}
 	decision = routeDecisionFunc(decision, predictedNNStats, &routing.Stats{}, directStats)
 	assert.Equal(t, routing.Decision{true, routing.DecisionRTTReductionMultipath}, decision)
@@ -282,25 +282,22 @@ func TestDecideMultipath(t *testing.T) {
 	assert.Equal(t, routing.Decision{true, routing.DecisionRTTReductionMultipath}, decision)
 
 	// Test when multipath reason is high jitter
-	routeDecisionFunc = routing.DecideMultipath(true, true, true, rttThreshold, packetLossThreshold, 0)
+	// directStats.RTT set to -6.0 as it must be less than LocalROutingRulesSettings.RTTTHreshold
+	// if predictedNNStats.RTT = 0 (default) for happy path to run and force NN.
+	routeDecisionFunc = routing.DecideMultipath(true, true, true, rttThreshold, packetLossThreshold)
 	decision = routing.Decision{}
 	predictedNNStats = &routing.Stats{}
 	directStats = &routing.Stats{Jitter: 50, RTT: -6.0}
 	decision = routeDecisionFunc(decision, predictedNNStats, &routing.Stats{}, directStats)
 	assert.Equal(t, routing.Decision{true, routing.DecisionHighJitterMultipath}, decision)
 
-	// Test when multipath reason is high ping packet loss
-	routeDecisionFunc = routing.DecideMultipath(true, true, true, rttThreshold, packetLossThreshold, 0)
+	// Test when multipath reason is high packet loss
+	// directStats.RTT set to -5 as it must be less than LocalROutingRulesSettings.RTTTHreshold
+	// if predictedNNStats.RTT = 0 (default) for happy path to run and force NN.
+	routeDecisionFunc = routing.DecideMultipath(true, true, true, rttThreshold, packetLossThreshold)
 	decision = routing.Decision{}
 	predictedNNStats = &routing.Stats{}
 	directStats = &routing.Stats{PacketLoss: 1, RTT: -6.0}
-	decision = routeDecisionFunc(decision, predictedNNStats, &routing.Stats{}, directStats)
-	assert.Equal(t, routing.Decision{true, routing.DecisionHighPacketLossMultipath}, decision)
-
-	// Test when multipath reason is high in game packet loss
-	routeDecisionFunc = routing.DecideMultipath(true, true, true, rttThreshold, packetLossThreshold, 1)
-	decision = routing.Decision{}
-	predictedNNStats = &routing.Stats{}
 	decision = routeDecisionFunc(decision, predictedNNStats, &routing.Stats{}, directStats)
 	assert.Equal(t, routing.Decision{true, routing.DecisionHighPacketLossMultipath}, decision)
 }

@@ -9,7 +9,7 @@ func CentsToNibblins(cents float64) Nibblin {
 }
 
 func DollarsToNibblins(dollars float64) Nibblin {
-	return Nibblin(dollars * 1e11)
+	return Nibblin(dollars * 1e7)
 }
 
 func (n Nibblin) ToCents() float64 {
@@ -17,5 +17,5 @@ func (n Nibblin) ToCents() float64 {
 }
 
 func (n Nibblin) ToDollars() float64 {
-	return float64(n) / 1e11
+	return float64(n) / 1e7
 }
