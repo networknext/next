@@ -1666,5 +1666,3 @@ func main() {
 		tests[i]()
 	}
 }
-
-// todo: add test to verify that connection type and platform id are not zero on first slice

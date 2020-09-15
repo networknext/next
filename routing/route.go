@@ -60,17 +60,3 @@ func (r *Route) Hash64() uint64 {
 
 	return fnv64.Sum64()
 }
-
-func (r Route) Equals(other Route) bool {
-	if r.NumRelays != other.NumRelays {
-		return false
-	}
-
-	for i := 0; i < r.NumRelays; i++ {
-		if r.RelayIDs[i] != other.RelayIDs[i] {
-			return false
-		}
-	}
-
-	return true
-}
