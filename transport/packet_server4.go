@@ -131,6 +131,7 @@ func (packet *ServerUpdatePacket4) Serialize(stream encoding.Stream) error {
 type SessionUpdatePacket4 struct {
 	Version                   SDKVersion
 	CustomerID                uint64
+	DatacenterID              uint64
 	SessionID                 uint64
 	SliceNumber               uint32
 	RetryNumber               int32
@@ -184,6 +185,7 @@ func (packet *SessionUpdatePacket4) Serialize(stream encoding.Stream) error {
 	stream.SerializeBits(&versionPatch, 8)
 	packet.Version = SDKVersion{int32(versionMajor), int32(versionMinor), int32(versionPatch)}
 	stream.SerializeUint64(&packet.CustomerID)
+	stream.SerializeUint64(&packet.DatacenterID)
 	stream.SerializeUint64(&packet.SessionID)
 	stream.SerializeUint32(&packet.SliceNumber)
 	stream.SerializeInteger(&packet.RetryNumber, 0, MaxSessionUpdateRetries)
@@ -310,11 +312,12 @@ func (packet *SessionResponsePacket4) Serialize(stream encoding.Stream) error {
 }
 
 type SessionData4 struct {
-	Version        uint32
-	SessionID      uint64
-	SessionVersion uint32
-	SliceNumber    uint32
-	Route          routing.Route
+	Version         uint32
+	SessionID       uint64
+	SessionVersion  uint32
+	SliceNumber     uint32
+	ExpireTimestamp uint64
+	Route           routing.Route
 }
 
 func UnmarshalSessionData(sessionData *SessionData4, data []byte) error {
@@ -346,6 +349,7 @@ func (sessionData *SessionData4) Serialize(stream encoding.Stream) error {
 	stream.SerializeUint64(&sessionData.SessionID)
 	stream.SerializeBits(&sessionData.SessionVersion, 8)
 	stream.SerializeUint32(&sessionData.SliceNumber)
+	stream.SerializeUint64(&sessionData.ExpireTimestamp)
 	numRelays := int32(0)
 	hasRoute := false
 	if stream.IsWriting() {

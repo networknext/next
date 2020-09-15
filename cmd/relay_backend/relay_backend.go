@@ -11,6 +11,7 @@ import (
 	"encoding/base64"
 	"expvar"
 	"fmt"
+	"math"
 	"net"
 	"net/http"
 	"os"
@@ -22,6 +23,8 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/networknext/backend/analytics"
+	"github.com/networknext/backend/core"
+	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/logging"
 	"github.com/networknext/backend/transport"
 
@@ -403,6 +406,7 @@ func main() {
 	statsdb := routing.NewStatsDatabase()
 	costMatrix := &routing.CostMatrix{}
 	routeMatrix := &routing.RouteMatrix{}
+	routeEntriesSDK4 := []core.RouteEntry{}
 
 	var routeMatrixMutex sync.RWMutex
 	getRouteMatrixFunc := func() *routing.RouteMatrix {
@@ -418,6 +422,14 @@ func main() {
 		cm := costMatrix
 		costMatrixMutex.RUnlock()
 		return cm
+	}
+
+	var routeEntriesSDK4Mutex sync.RWMutex
+	getRouteEntriesSDK4Func := func() []core.RouteEntry {
+		routeEntriesSDK4Mutex.RLock()
+		entries := routeEntriesSDK4
+		routeEntriesSDK4Mutex.RUnlock()
+		return entries
 	}
 
 	// Get the max jitter and max packet loss env vars
@@ -453,7 +465,7 @@ func main() {
 	cleanupCallback := func(relayData *routing.RelayData) error {
 		// Remove relay entry from statsDB (which in turn means it won't appear in cost matrix)
 		statsdb.DeleteEntry(relayData.ID)
-		level.Warn(logger).Log("msg", "relay timed out", "relay ID", relayData, "relay addr", relayData.Addr.String(), "relay name", relayData.Name)
+		level.Warn(logger).Log("msg", "relay timed out", "relay ID", relayData.ID, "relay addr", relayData.Addr.String(), "relay name", relayData.Name)
 		return nil
 	}
 
@@ -828,7 +840,7 @@ func main() {
 			valveOptimizeMetrics.Invocations.Add(1)
 
 			optimizeDurationStart := time.Now()
-			if err := valveCostMatrix.Optimize(newRouteMatrix, 1); err != nil {
+			if err := valveCostMatrix.Optimize(newRouteMatrix, 5); err != nil {
 				level.Warn(logger).Log("matrix", "valve_cost", "op", "optimize", "err", err)
 			}
 			optimizeDurationSince := time.Since(optimizeDurationStart)
@@ -874,6 +886,56 @@ func main() {
 				numRoutes += newRouteMatrix.Entries[i].NumRoutes
 			}
 			valveRouteMatrixMetrics.RouteCount.Set(float64(numRoutes))
+
+			time.Sleep(syncInterval)
+		}
+	}()
+
+	// Generate a separate route matrix for SDK4
+	go func() {
+		for {
+			sdk4CostMatrix := routing.CostMatrix{}
+
+			// For now, remove all valve relays in the normal cost matrix generation
+			allNonValveRelayData := make([]*routing.RelayData, 0)
+			allRelayData := relayMap.GetAllRelayData()
+			for _, relayData := range allRelayData {
+				if relayData.Seller.ID != "valve" { // Filter out any relays whose seller has a Firestore key of "valve"
+					allNonValveRelayData = append(allNonValveRelayData, relayData)
+				}
+			}
+
+			if err := statsdb.GetCostMatrix(&sdk4CostMatrix, allNonValveRelayData, float32(maxJitter), float32(maxPacketLoss)); err != nil {
+				level.Warn(logger).Log("matrix", "cost", "op", "generate", "warn", "failed to generate cost matrix")
+				continue
+			}
+
+			for i := range sdk4CostMatrix.RelayIDs {
+				relay, err := db.Relay(sdk4CostMatrix.RelayIDs[i])
+				if err == nil {
+					sdk4CostMatrix.RelayLatitude[i] = relay.Datacenter.Location.Latitude
+					sdk4CostMatrix.RelayLongitude[i] = relay.Datacenter.Location.Longitude
+				}
+			}
+
+			relayDatacenter := make([]uint64, len(sdk4CostMatrix.RelayIDs))
+			for datacenterID, relayIDs := range sdk4CostMatrix.DatacenterRelays {
+				for i := range relayIDs {
+					relayIndex := sdk4CostMatrix.RelayIndices[relayIDs[i]]
+					relayDatacenter[relayIndex] = datacenterID
+				}
+			}
+
+			routeEntries := core.Optimize(len(sdk4CostMatrix.RelayIDs), sdk4CostMatrix.RTT, 5, relayDatacenter)
+			if len(routeEntries) == 0 {
+				level.Warn(logger).Log("matrix", "cost", "op", "optimize", "warn", "no route entries generated from cost matrix")
+				time.Sleep(syncInterval)
+				continue
+			}
+
+			routeEntriesSDK4Mutex.Lock()
+			routeEntriesSDK4 = routeEntries
+			routeEntriesSDK4Mutex.Unlock()
 
 			time.Sleep(syncInterval)
 		}
@@ -927,6 +989,52 @@ func main() {
 		}
 	}
 
+	serveRouteMatrixSDK4Func := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/octet-stream")
+
+		entries := getRouteEntriesSDK4Func()
+
+		stream, err := encoding.CreateWriteStream(10000) // something adequately large for now
+		if err != nil {
+			level.Error(logger).Log("msg", "failed to create write stream in SDK4 route entries serving function", "err", err)
+			return
+		}
+
+		for i := 0; i < len(entries); i++ {
+			entry := &entries[i]
+
+			stream.SerializeInteger(&entry.DirectCost, 0, routing.InvalidRouteValue)
+			stream.SerializeInteger(&entry.NumRoutes, 0, math.MaxInt32)
+
+			for i := 0; i < routing.MaxRoutesPerRelayPair; i++ {
+				stream.SerializeInteger(&entry.RouteCost[i], 0, routing.InvalidRouteValue)
+			}
+
+			for i := 0; i < routing.MaxRoutesPerRelayPair; i++ {
+				stream.SerializeInteger(&entry.RouteNumRelays[i], 0, routing.MaxRelays)
+			}
+
+			for i := 0; i < routing.MaxRoutesPerRelayPair; i++ {
+				for j := 0; j < routing.MaxRelays; j++ {
+					stream.SerializeInteger(&entry.RouteRelays[i][j], 0, math.MaxInt32)
+				}
+			}
+
+			for i := 0; i < routing.MaxRoutesPerRelayPair; i++ {
+				stream.SerializeUint32(&entry.RouteHash[i])
+			}
+		}
+
+		stream.Flush()
+		data := stream.GetData()[:stream.GetBytesProcessed()]
+
+		buffer := bytes.NewBuffer(data)
+		_, err = buffer.WriteTo(w)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}
+
 	serveCostMatrixFunc := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/octet-stream")
 
@@ -951,6 +1059,7 @@ func main() {
 	router.HandleFunc("/cost_matrix", serveCostMatrixFunc).Methods("GET")
 	router.HandleFunc("/route_matrix", serveRouteMatrixFunc).Methods("GET")
 	router.HandleFunc("/route_matrix_valve", serveValveRouteMatrixFunc).Methods("GET")
+	router.HandleFunc("/route_matrix_sdk4", serveRouteMatrixSDK4Func).Methods("GET")
 	router.Handle("/debug/vars", expvar.Handler())
 	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(relayMap, getRouteMatrixFunc, statsdb, "local", "local", maxJitter))
 	router.HandleFunc("/routes", transport.RoutesHandlerFunc(getRouteMatrixFunc, statsdb, "local", "local"))
