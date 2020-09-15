@@ -1053,16 +1053,18 @@ func GetBestRoute_Update(routeMatrix []RouteEntry, sourceRelays []int32, sourceR
 }
 
 type RouteShader struct {
-    DisableNetworkNext   bool
-    SelectionPercent     int
-    ABTest               bool
-    ProMode              bool
-    ReduceLatency        bool
-    ReducePacketLoss     bool
-    Multipath            bool
-    AcceptableLatency    int32
-    LatencyThreshold     int32
-    AcceptablePacketLoss float32
+    DisableNetworkNext          bool
+    SelectionPercent            int
+    ABTest                      bool
+    ProMode                     bool
+    ReduceLatency               bool
+    ReducePacketLoss            bool
+    Multipath                   bool
+    AcceptableLatency           int32
+    LatencyThreshold            int32
+    AcceptablePacketLoss        float32
+    BandwidthEnvelopeUpKbps     int32
+    BandwidthEnvelopeDownKbps   int32
 }
 
 func NewRouteShader() RouteShader {
@@ -1077,6 +1079,8 @@ func NewRouteShader() RouteShader {
         AcceptableLatency: 25,
         LatencyThreshold: 5,
         AcceptablePacketLoss: 1.0,
+        BandwidthEnvelopeUpKbps: 1024,
+        BandwidthEnvelopeDownKbps: 1024,
     }
 }
 
