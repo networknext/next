@@ -67,7 +67,7 @@ type NearRelayData struct {
 	ID          uint64
 	Addr        *net.UDPAddr
 	Name        string
-	distance    int
+	Distance    int
 	ClientStats Stats
 }
 

@@ -11,6 +11,7 @@ import (
 	"expvar"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"runtime"
@@ -26,7 +27,9 @@ import (
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
 	"github.com/networknext/backend/billing"
+	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/crypto"
+	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/envvar"
 	"github.com/networknext/backend/logging"
 	"github.com/networknext/backend/metrics"
@@ -452,14 +455,14 @@ func mainReturnWithCode() int {
 		// }
 	}
 
-	routeMatrix := &routing.RouteMatrix{}
-	var routeMatrixMutex sync.RWMutex
+	routeEntries := []core.RouteEntry{}
+	var routeEntriesMutex sync.RWMutex
 
-	getRouteMatrixFunc := func() transport.RouteProvider {
-		routeMatrixMutex.RLock()
-		rm := routeMatrix
-		routeMatrixMutex.RUnlock()
-		return rm
+	getRouteEntriesFunc := func() []core.RouteEntry {
+		routeEntriesMutex.RLock()
+		entries := routeEntries
+		routeEntriesMutex.RUnlock()
+		return entries
 	}
 
 	// Sync route matrix
@@ -477,25 +480,24 @@ func mainReturnWithCode() int {
 					Timeout: time.Second * 2,
 				}
 				for {
-					newRouteMatrix := routing.RouteMatrix{}
-					var matrixReader io.ReadCloser
+					var routeEntriesReader io.ReadCloser
 
 					// Default to reading route matrix from file
 					if f, err := os.Open(uri); err == nil {
-						matrixReader = f
+						routeEntriesReader = f
 					}
 
 					// Prefer to get it remotely if possible
 					if r, err := httpClient.Get(uri); err == nil {
-						matrixReader = r.Body
+						routeEntriesReader = r.Body
 					}
 
 					start := time.Now()
 
-					bytes, err := newRouteMatrix.ReadFrom(matrixReader)
+					buffer, err := ioutil.ReadAll(routeEntriesReader)
 
-					if matrixReader != nil {
-						matrixReader.Close()
+					if routeEntriesReader != nil {
+						routeEntriesReader.Close()
 					}
 
 					if err != nil {
@@ -504,30 +506,30 @@ func mainReturnWithCode() int {
 						continue // Don't swap route matrix if we fail to read
 					}
 
-					routeMatrixTime := time.Since(start)
+					rs := encoding.CreateReadStream(buffer)
 
-					serverBackendMetrics.RouteMatrixUpdateDuration.Set(float64(routeMatrixTime.Milliseconds()))
+					var numEntries uint32
+					rs.SerializeUint32(&numEntries)
 
-					if routeMatrixTime.Seconds() > 1.0 {
+					routeEntries := make([]core.RouteEntry, numEntries)
+					for i := uint32(0); i < numEntries; i++ {
+						routeEntries[i].Serialize(rs)
+					}
+
+					routeEntriesTime := time.Since(start)
+
+					serverBackendMetrics.RouteMatrixUpdateDuration.Set(float64(routeEntriesTime.Milliseconds()))
+
+					if routeEntriesTime.Seconds() > 1.0 {
 						serverBackendMetrics.LongRouteMatrixUpdateCount.Add(1)
 					}
 
-					serverBackendMetrics.RouteMatrix.RelayCount.Set(float64(len(newRouteMatrix.RelayIDs)))
-					serverBackendMetrics.RouteMatrix.DatacenterCount.Set(float64(len(newRouteMatrix.DatacenterIDs)))
-
-					// todo: calculate this in optimize and store in route matrix so we don't have to calc this here
 					numRoutes := int32(0)
-					for i := range newRouteMatrix.Entries {
-						numRoutes += newRouteMatrix.Entries[i].NumRoutes
+					for i := range routeEntries {
+						numRoutes += routeEntries[i].NumRoutes
 					}
 					serverBackendMetrics.RouteMatrix.RouteCount.Set(float64(numRoutes))
-					serverBackendMetrics.RouteMatrix.Bytes.Set(float64(bytes))
-
-					// Swap the route matrix pointer to the new one
-					// This double buffered route matrix approach makes the route matrix lockless
-					routeMatrixMutex.Lock()
-					routeMatrix = &newRouteMatrix
-					routeMatrixMutex.Unlock()
+					serverBackendMetrics.RouteMatrix.Bytes.Set(float64(len(buffer)))
 
 					time.Sleep(syncInterval)
 				}
@@ -705,7 +707,7 @@ func mainReturnWithCode() int {
 
 	serverInitHandler := transport.ServerInitHandlerFunc4(logger, storer, datacenterTracker, serverInitMetrics)
 	serverUpdateHandler := transport.ServerUpdateHandlerFunc4(logger, storer, datacenterTracker, serverUpdateMetrics)
-	sessionUpdateHandler := transport.SessionUpdateHandlerFunc4(logger, getIPLocatorFunc, getRouteMatrixFunc, routerPrivateKey, postSessionHandler, sessionUpdateMetrics)
+	sessionUpdateHandler := transport.SessionUpdateHandlerFunc4(logger, getIPLocatorFunc, getRouteEntriesFunc, routerPrivateKey, postSessionHandler, sessionUpdateMetrics)
 
 	for i := 0; i < numThreads; i++ {
 		go func(thread int) {

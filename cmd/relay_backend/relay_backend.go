@@ -11,7 +11,6 @@ import (
 	"encoding/base64"
 	"expvar"
 	"fmt"
-	"math"
 	"net"
 	"net/http"
 	"os"
@@ -994,39 +993,20 @@ func main() {
 
 		entries := getRouteEntriesSDK4Func()
 
-		stream, err := encoding.CreateWriteStream(10000) // something adequately large for now
+		ws, err := encoding.CreateWriteStream(10000) // something adequately large for now
 		if err != nil {
 			level.Error(logger).Log("msg", "failed to create write stream in SDK4 route entries serving function", "err", err)
 			return
 		}
 
+		numEntries := uint32(len(entries))
+		ws.SerializeUint32(&numEntries)
 		for i := 0; i < len(entries); i++ {
-			entry := &entries[i]
-
-			stream.SerializeInteger(&entry.DirectCost, 0, routing.InvalidRouteValue)
-			stream.SerializeInteger(&entry.NumRoutes, 0, math.MaxInt32)
-
-			for i := 0; i < routing.MaxRoutesPerRelayPair; i++ {
-				stream.SerializeInteger(&entry.RouteCost[i], 0, routing.InvalidRouteValue)
-			}
-
-			for i := 0; i < routing.MaxRoutesPerRelayPair; i++ {
-				stream.SerializeInteger(&entry.RouteNumRelays[i], 0, routing.MaxRelays)
-			}
-
-			for i := 0; i < routing.MaxRoutesPerRelayPair; i++ {
-				for j := 0; j < routing.MaxRelays; j++ {
-					stream.SerializeInteger(&entry.RouteRelays[i][j], 0, math.MaxInt32)
-				}
-			}
-
-			for i := 0; i < routing.MaxRoutesPerRelayPair; i++ {
-				stream.SerializeUint32(&entry.RouteHash[i])
-			}
+			entries[i].Serialize(ws)
 		}
 
-		stream.Flush()
-		data := stream.GetData()[:stream.GetBytesProcessed()]
+		ws.Flush()
+		data := ws.GetData()[:ws.GetBytesProcessed()]
 
 		buffer := bytes.NewBuffer(data)
 		_, err = buffer.WriteTo(w)
