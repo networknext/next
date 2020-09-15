@@ -34,4 +34,6 @@ if [ ! $testResult -eq 0 ]; then
     exit $testResult
 fi
 
+printf "\n\nCoverage results of go tests:\n\n"
+go tool cover -func ./cover.out
 printf "\n"
