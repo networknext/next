@@ -15,8 +15,6 @@ import (
     "math/rand"
     "strconv"
     "crypto/ed25519"
-
-    "github.com/networknext/backend/encoding"
 )
 
 const NEXT_MAX_NODES = 7
@@ -299,31 +297,6 @@ type RouteEntry struct {
     RouteNumRelays [MaxRoutesPerEntry]int32
     RouteRelays    [MaxRoutesPerEntry][MaxRelaysPerRoute]int32
     RouteHash      [MaxRoutesPerEntry]uint32
-}
-
-func (entry *RouteEntry) Serialize(stream encoding.Stream) error {
-    stream.SerializeInteger(&entry.DirectCost, 0, 10000)
-    stream.SerializeInteger(&entry.NumRoutes, 0, math.MaxInt32)
-
-    for i := 0; i < MaxRoutesPerEntry; i++ {
-        stream.SerializeInteger(&entry.RouteCost[i], 0, 10000)
-    }
-
-    for i := 0; i < MaxRoutesPerEntry; i++ {
-        stream.SerializeInteger(&entry.RouteNumRelays[i], 0, MaxRelaysPerRoute)
-    }
-
-    for i := 0; i < MaxRoutesPerEntry; i++ {
-        for j := 0; j < MaxRelaysPerRoute; j++ {
-            stream.SerializeInteger(&entry.RouteRelays[i][j], 0, math.MaxInt32)
-        }
-    }
-
-    for i := 0; i < MaxRoutesPerEntry; i++ {
-        stream.SerializeUint32(&entry.RouteHash[i])
-    }
-
-    return nil
 }
 
 func Optimize(numRelays int, cost []int32, costThreshold int32, relayDatacenter []uint64) []RouteEntry {

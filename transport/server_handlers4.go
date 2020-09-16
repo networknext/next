@@ -9,7 +9,6 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/billing"
-	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
@@ -225,7 +224,7 @@ func ServerUpdateHandlerFunc4(logger log.Logger, storer storage.Storer, datacent
 	}
 }
 
-func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IPLocator, getRouteEntries func() []core.RouteEntry, routerPrivateKey []byte, postSessionHandler *PostSessionHandler, metrics *metrics.SessionMetrics) UDPHandlerFunc {
+func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IPLocator, getRouteMatrix4 func() RouteProvider, routerPrivateKey []byte, postSessionHandler *PostSessionHandler, metrics *metrics.SessionMetrics) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
 		metrics.Invocations.Add(1)
 
@@ -254,7 +253,7 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 		var sessionData SessionData4
 
 		ipLocator := getIPLocator()
-		routeEntries := getRouteEntries()
+		routeMatrix := getRouteMatrix4()
 		location := routing.LocationNullIsland
 		var nearRelays []routing.NearRelayData
 		var destRelays []uint64
@@ -285,7 +284,7 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 				return
 			}
 
-			nearRelays, err = routeEntries.GetNearRelays(location.Latitude, location.Longitude, MaxNearRelays)
+			nearRelays, err = routeMatrix.GetNearRelays(location.Latitude, location.Longitude, MaxNearRelays)
 			if err != nil {
 				level.Error(logger).Log("msg", "failed to get near relays", "err", err)
 				metrics.ErrorMetrics.NearRelaysLocateFailure.Add(1)
@@ -339,7 +338,7 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 			// 	}
 			// }
 
-			destRelays = routeEntries.GetDatacenterRelayIDs(routing.Datacenter{ID: packet.DatacenterID})
+			destRelays = routeMatrix.GetDatacenterRelayIDs(packet.DatacenterID)
 			if len(destRelays) == 0 {
 				level.Error(logger).Log("msg", "failed to get dest relays", "err", err)
 				metrics.ErrorMetrics.NoRelaysInDatacenter.Add(1)

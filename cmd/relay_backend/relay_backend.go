@@ -405,7 +405,7 @@ func main() {
 	statsdb := routing.NewStatsDatabase()
 	costMatrix := &routing.CostMatrix{}
 	routeMatrix := &routing.RouteMatrix{}
-	routeEntriesSDK4 := []core.RouteEntry{}
+	routeMatrix4 := &routing.RouteMatrix4{}
 
 	var routeMatrixMutex sync.RWMutex
 	getRouteMatrixFunc := func() *routing.RouteMatrix {
@@ -423,12 +423,12 @@ func main() {
 		return cm
 	}
 
-	var routeEntriesSDK4Mutex sync.RWMutex
-	getRouteEntriesSDK4Func := func() []core.RouteEntry {
-		routeEntriesSDK4Mutex.RLock()
-		entries := routeEntriesSDK4
-		routeEntriesSDK4Mutex.RUnlock()
-		return entries
+	var routeMatrix4Mutex sync.RWMutex
+	getRouteMatrix4Func := func() *routing.RouteMatrix4 {
+		routeMatrix4Mutex.RLock()
+		rm4 := routeMatrix4
+		routeMatrix4Mutex.RUnlock()
+		return rm4
 	}
 
 	// Get the max jitter and max packet loss env vars
@@ -893,48 +893,57 @@ func main() {
 	// Generate a separate route matrix for SDK4
 	go func() {
 		for {
-			sdk4CostMatrix := routing.CostMatrix{}
-
-			// For now, remove all valve relays in the normal cost matrix generation
-			allNonValveRelayData := make([]*routing.RelayData, 0)
+			// For now, exclude all valve relays
+			relayIDs := make([]uint64, 0)
 			allRelayData := relayMap.GetAllRelayData()
 			for _, relayData := range allRelayData {
 				if relayData.Seller.ID != "valve" { // Filter out any relays whose seller has a Firestore key of "valve"
-					allNonValveRelayData = append(allNonValveRelayData, relayData)
+					relayIDs = append(relayIDs, relayData.ID)
 				}
 			}
 
-			if err := statsdb.GetCostMatrix(&sdk4CostMatrix, allNonValveRelayData, float32(maxJitter), float32(maxPacketLoss)); err != nil {
-				level.Warn(logger).Log("matrix", "cost", "op", "generate", "warn", "failed to generate cost matrix")
-				continue
-			}
+			numRelays := len(relayIDs)
+			relayAddresses := make([]net.UDPAddr, numRelays)
+			relayNames := make([]string, numRelays)
+			relayLatitudes := make([]float32, numRelays)
+			relayLongitudes := make([]float32, numRelays)
+			relayDatacenterIDs := make([]uint64, numRelays)
 
-			for i := range sdk4CostMatrix.RelayIDs {
-				relay, err := db.Relay(sdk4CostMatrix.RelayIDs[i])
-				if err == nil {
-					sdk4CostMatrix.RelayLatitude[i] = relay.Datacenter.Location.Latitude
-					sdk4CostMatrix.RelayLongitude[i] = relay.Datacenter.Location.Longitude
+			for i, relayID := range relayIDs {
+				relay, err := db.Relay(relayID)
+				if err != nil {
+					continue
 				}
+
+				relayAddresses[i] = relay.Addr
+				relayNames[i] = relay.Name
+				relayLatitudes[i] = float32(relay.Datacenter.Location.Latitude)
+				relayLongitudes[i] = float32(relay.Datacenter.Location.Longitude)
+				relayDatacenterIDs[i] = relay.Datacenter.ID
 			}
 
-			relayDatacenter := make([]uint64, len(sdk4CostMatrix.RelayIDs))
-			for datacenterID, relayIDs := range sdk4CostMatrix.DatacenterRelays {
-				for i := range relayIDs {
-					relayIndex := sdk4CostMatrix.RelayIndices[relayIDs[i]]
-					relayDatacenter[relayIndex] = datacenterID
-				}
-			}
+			costMatrix4 := statsdb.GenerateCostMatrix4(relayIDs, float32(maxJitter), float32(maxPacketLoss))
 
-			routeEntries := core.Optimize(len(sdk4CostMatrix.RelayIDs), sdk4CostMatrix.RTT, 5, relayDatacenter)
+			routeEntries := core.Optimize(numRelays, costMatrix4, 5, relayDatacenterIDs)
 			if len(routeEntries) == 0 {
 				level.Warn(logger).Log("matrix", "cost", "op", "optimize", "warn", "no route entries generated from cost matrix")
 				time.Sleep(syncInterval)
 				continue
 			}
 
-			routeEntriesSDK4Mutex.Lock()
-			routeEntriesSDK4 = routeEntries
-			routeEntriesSDK4Mutex.Unlock()
+			routeMatrix4New := &routing.RouteMatrix4{
+				RelayIDs:           relayIDs,
+				RelayAddresses:     relayAddresses,
+				RelayNames:         relayNames,
+				RelayLatitudes:     relayLatitudes,
+				RelayLongitudes:    relayLongitudes,
+				RelayDatacenterIDs: relayDatacenterIDs,
+				RouteEntries:       routeEntries,
+			}
+
+			routeMatrix4Mutex.Lock()
+			routeMatrix4 = routeMatrix4New
+			routeMatrix4Mutex.Unlock()
 
 			time.Sleep(syncInterval)
 		}
@@ -991,7 +1000,7 @@ func main() {
 	serveRouteMatrixSDK4Func := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/octet-stream")
 
-		entries := getRouteEntriesSDK4Func()
+		routeMatrix4 := getRouteMatrix4Func()
 
 		ws, err := encoding.CreateWriteStream(10000) // something adequately large for now
 		if err != nil {
@@ -999,12 +1008,7 @@ func main() {
 			return
 		}
 
-		numEntries := uint32(len(entries))
-		ws.SerializeUint32(&numEntries)
-		for i := 0; i < len(entries); i++ {
-			entries[i].Serialize(ws)
-		}
-
+		routeMatrix4.Serialize(ws)
 		ws.Flush()
 		data := ws.GetData()[:ws.GetBytesProcessed()]
 

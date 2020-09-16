@@ -577,7 +577,7 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 }
 
 type RouteProvider interface {
-	GetDatacenterRelayIDs(datacenter routing.Datacenter) []uint64
+	GetDatacenterRelayIDs(datacenterID uint64) []uint64
 	GetAcceptableRoutes(nearIDs []routing.NearRelayData, destIDs []uint64, prevRouteHash uint64, rttEpsilon int32) ([]routing.Route, error)
 	GetNearRelays(latitude float64, longitude float64, maxNearRelays int) ([]routing.NearRelayData, error)
 }
@@ -993,7 +993,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 		// Routes are planned between the near relays for this session,
 		// and the set of dest relays in the datacenter.
 
-		datacenterRelays := routeMatrix.GetDatacenterRelayIDs(serverDataReadOnly.Datacenter)
+		datacenterRelays := routeMatrix.GetDatacenterRelayIDs(serverDataReadOnly.Datacenter.ID)
 		if len(datacenterRelays) == 0 {
 			routeDecision = routing.Decision{
 				OnNetworkNext: false,

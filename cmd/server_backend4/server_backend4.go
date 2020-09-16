@@ -27,7 +27,6 @@ import (
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
 	"github.com/networknext/backend/billing"
-	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/envvar"
@@ -455,14 +454,14 @@ func mainReturnWithCode() int {
 		// }
 	}
 
-	routeEntries := []core.RouteEntry{}
-	var routeEntriesMutex sync.RWMutex
+	routeMatrix4 := &routing.RouteMatrix4{}
+	var routeMatrix4Mutex sync.RWMutex
 
-	getRouteEntriesFunc := func() []core.RouteEntry {
-		routeEntriesMutex.RLock()
-		entries := routeEntries
-		routeEntriesMutex.RUnlock()
-		return entries
+	getRouteMatrix4Func := func() transport.RouteProvider {
+		routeMatrix4Mutex.RLock()
+		rm4 := routeMatrix4
+		routeMatrix4Mutex.RUnlock()
+		return rm4
 	}
 
 	// Sync route matrix
@@ -507,14 +506,7 @@ func mainReturnWithCode() int {
 					}
 
 					rs := encoding.CreateReadStream(buffer)
-
-					var numEntries uint32
-					rs.SerializeUint32(&numEntries)
-
-					routeEntries := make([]core.RouteEntry, numEntries)
-					for i := uint32(0); i < numEntries; i++ {
-						routeEntries[i].Serialize(rs)
-					}
+					routeMatrix4.Serialize(rs)
 
 					routeEntriesTime := time.Since(start)
 
@@ -525,8 +517,8 @@ func mainReturnWithCode() int {
 					}
 
 					numRoutes := int32(0)
-					for i := range routeEntries {
-						numRoutes += routeEntries[i].NumRoutes
+					for i := range routeMatrix4.RouteEntries {
+						numRoutes += routeMatrix4.RouteEntries[i].NumRoutes
 					}
 					serverBackendMetrics.RouteMatrix.RouteCount.Set(float64(numRoutes))
 					serverBackendMetrics.RouteMatrix.Bytes.Set(float64(len(buffer)))
@@ -707,7 +699,7 @@ func mainReturnWithCode() int {
 
 	serverInitHandler := transport.ServerInitHandlerFunc4(logger, storer, datacenterTracker, serverInitMetrics)
 	serverUpdateHandler := transport.ServerUpdateHandlerFunc4(logger, storer, datacenterTracker, serverUpdateMetrics)
-	sessionUpdateHandler := transport.SessionUpdateHandlerFunc4(logger, getIPLocatorFunc, getRouteEntriesFunc, routerPrivateKey, postSessionHandler, sessionUpdateMetrics)
+	sessionUpdateHandler := transport.SessionUpdateHandlerFunc4(logger, getIPLocatorFunc, getRouteMatrix4Func, routerPrivateKey, postSessionHandler, sessionUpdateMetrics)
 
 	for i := 0; i < numThreads; i++ {
 		go func(thread int) {
