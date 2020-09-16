@@ -64,22 +64,6 @@ func GenerateRelayKeyPair() ([]byte, []byte, error) {
     return publicKey, privateKey, err
 }
 
-func GenerateCustomerKeyPair() ([]byte, []byte, error) {
-    customerId := make([]byte, 8)
-    rand.Read(customerId)
-    publicKey, privateKey, err := ed25519.GenerateKey(nil)
-    if err != nil {
-        return nil, nil, err
-    }
-    customerPublicKey := make([]byte, 0)
-    customerPublicKey = append(customerPublicKey, customerId...)
-    customerPublicKey = append(customerPublicKey, publicKey...)
-    customerPrivateKey := make([]byte, 0)
-    customerPrivateKey = append(customerPrivateKey, customerId...)
-    customerPrivateKey = append(customerPrivateKey, privateKey...)
-    return customerPublicKey, customerPrivateKey, nil
-}
-
 func ParseAddress(input string) *net.UDPAddr {
     address := &net.UDPAddr{}
     ip_string, port_string, err := net.SplitHostPort(input)
@@ -127,7 +111,7 @@ func ReadAddress(buffer []byte) *net.UDPAddr {
     if addressType == ADDRESS_IPV4 {
         return &net.UDPAddr{IP: net.IPv4(buffer[1], buffer[2], buffer[3], buffer[4]), Port: ((int)(binary.LittleEndian.Uint16(buffer[5:])))}
     } else if addressType == ADDRESS_IPV6 {
-        return &net.UDPAddr{IP: buffer[1:], Port: ((int)(binary.LittleEndian.Uint16(buffer[17:])))}
+        return &net.UDPAddr{IP: buffer[1:17], Port: ((int)(binary.LittleEndian.Uint16(buffer[17:19])))}
     }
     return nil
 }

@@ -80,7 +80,15 @@ func TestTriMatrixIndex(t *testing.T) {
     assert.Equal(t, 5, TriMatrixIndex(3,2))
 }
 
-func CheckAddress(t *testing.T, addressString string, expected string) {
+func CheckNilAddress(t *testing.T) {
+    var address *net.UDPAddr
+    buffer := make([]uint8, NEXT_ADDRESS_BYTES)
+    WriteAddress(buffer, address)
+    readAddress := ReadAddress(buffer)
+    assert.True(t, readAddress == nil)
+}
+
+func CheckIPv4Address(t *testing.T, addressString string, expected string) {
     address := ParseAddress(addressString)
     buffer := make([]uint8, NEXT_ADDRESS_BYTES)
     WriteAddress(buffer, address)
@@ -89,10 +97,22 @@ func CheckAddress(t *testing.T, addressString string, expected string) {
     assert.Equal(t, expected, readAddressString)
 }
 
+func CheckIPv6Address(t *testing.T, addressString string, expected string) {
+    address := ParseAddress(addressString)
+    buffer := make([]uint8, NEXT_ADDRESS_BYTES)
+    WriteAddress(buffer, address)
+    readAddress := ReadAddress(buffer)
+    assert.Equal(t, readAddress.IP, address.IP)
+    assert.Equal(t, readAddress.Port, address.Port)
+}
+
 func TestAddress(t *testing.T) {
-    CheckAddress(t, "127.0.0.1", "127.0.0.1:0")
-    CheckAddress(t, "127.0.0.1:40000", "127.0.0.1:40000")
-    CheckAddress(t, "1.2.3.4:50000", "1.2.3.4:50000")
+    CheckNilAddress(t)
+    CheckIPv4Address(t, "127.0.0.1", "127.0.0.1:0")
+    CheckIPv4Address(t, "127.0.0.1:40000", "127.0.0.1:40000")
+    CheckIPv4Address(t, "1.2.3.4:50000", "1.2.3.4:50000")
+    CheckIPv6Address(t, "[::C0A8:1]:80", "[::C0A8:1]:80")
+    CheckIPv6Address(t, "[::1]:80", "[::1]:80")
 }
 
 func TestRouteManager(t *testing.T) {
@@ -2449,6 +2469,121 @@ func TestTakeNetworkNext_ReducePacketLoss_ReducePacketLossAndLatency(t *testing.
 // -----------------------------------------------------------------------------
 
 // todo: test pro mode take network next
+
+// -----------------------------------------------------------------------------
+
+func TestStayOnNetworkNext_EarlyOut_Veto(t *testing.T) {
+
+    t.Parallel()
+
+    env := NewTestEnvironment()
+
+    env.AddRelay("losangeles", "10.0.0.1")
+    env.AddRelay("chicago", "10.0.0.2")
+
+    env.SetCost("losangeles", "chicago", 10)
+
+    costMatrix, numRelays := env.GetCostMatrix()
+
+    relayDatacenters := env.GetRelayDatacenters()
+
+    routeMatrix := Optimize(numRelays, costMatrix, 5, relayDatacenters)
+
+    directLatency := int32(30)
+    
+    nextLatency := int32(20)
+
+    sourceRelays := []int32{0}
+    sourceRelayCosts := []int32{10}
+
+    destRelays := []int32{1}
+
+    routeCost := int32(0)
+    routeNumRelays := int32(0)
+    routeRelays := [MaxRelaysPerRoute]int32{}
+
+    routeShader := NewRouteShader()
+    routeState := RouteState{}
+    customer := CustomerConfig{}
+    internal := NewInternalConfig()
+
+    routeState.Next = true
+    routeState.UserID = 100
+    routeState.ReduceLatency = true
+    routeState.Veto = true
+
+    currentRouteNumRelays := int32(2)
+    currentRouteRelays := [MaxRelaysPerRoute]int32{0,1}
+
+    result := MakeRouteDecision_StayOnNetworkNext(routeMatrix, &routeShader, &routeState, &customer, &internal, directLatency, nextLatency, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:])
+
+    assert.False(t, result)
+
+    expectedRouteState := RouteState{}
+    expectedRouteState.UserID = 100
+    expectedRouteState.ReduceLatency = true
+    expectedRouteState.Veto = true
+
+    assert.Equal(t, expectedRouteState, routeState)
+
+}
+
+func TestStayOnNetworkNext_EarlyOut_Banned(t *testing.T) {
+
+    t.Parallel()
+
+    env := NewTestEnvironment()
+
+    env.AddRelay("losangeles", "10.0.0.1")
+    env.AddRelay("chicago", "10.0.0.2")
+
+    env.SetCost("losangeles", "chicago", 10)
+
+    costMatrix, numRelays := env.GetCostMatrix()
+
+    relayDatacenters := env.GetRelayDatacenters()
+
+    routeMatrix := Optimize(numRelays, costMatrix, 5, relayDatacenters)
+
+    directLatency := int32(30)
+    
+    nextLatency := int32(20)
+
+    sourceRelays := []int32{0}
+    sourceRelayCosts := []int32{10}
+
+    destRelays := []int32{1}
+
+    routeCost := int32(0)
+    routeNumRelays := int32(0)
+    routeRelays := [MaxRelaysPerRoute]int32{}
+
+    routeShader := NewRouteShader()
+    routeState := RouteState{}
+    customer := CustomerConfig{}
+    internal := NewInternalConfig()
+
+    routeState.Next = true
+    routeState.UserID = 100
+    routeState.ReduceLatency = true
+    routeState.Banned = true
+
+    currentRouteNumRelays := int32(2)
+    currentRouteRelays := [MaxRelaysPerRoute]int32{0,1}
+
+    result := MakeRouteDecision_StayOnNetworkNext(routeMatrix, &routeShader, &routeState, &customer, &internal, directLatency, nextLatency, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:])
+
+    assert.False(t, result)
+
+    expectedRouteState := RouteState{}
+    expectedRouteState.UserID = 100
+    expectedRouteState.ReduceLatency = true
+    expectedRouteState.Banned = true
+    expectedRouteState.Veto = true
+
+    assert.Equal(t, expectedRouteState, routeState)
+
+}
 
 // -----------------------------------------------------------------------------
 
