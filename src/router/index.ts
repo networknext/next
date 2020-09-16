@@ -98,7 +98,7 @@ const router = new VueRouter({
 
 // Catch all for routes. This can be used for a lot of different things like separating anon portal from authorized portal etc
 router.beforeEach(async (to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
-  if ((!store.getters.isAdmin && !store.getters.isOwner && to.name === 'settings') || to.name === 'undefined') {
+  if ((!store.getters.isAdmin && !store.getters.isOwner && (to.name === 'users' || to.name === 'game-config')) || to.name === 'undefined') {
     next('/')
     store.commit('UPDATE_CURRENT_PAGE', 'map')
     return

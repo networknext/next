@@ -1,6 +1,5 @@
 import store from '@/store'
 import _ from 'lodash'
-import Vue from 'vue'
 
 export class JSONRPCService {
   private headers: any
@@ -22,36 +21,33 @@ export class JSONRPCService {
 
   private processAuthChange (): void {
     const userProfile = _.cloneDeep(store.getters.userProfile)
-    Promise.all([
-      this.fetchUserAccount({ user_id: userProfile.auth0ID }),
-      this.fetchGameConfiguration({ domain: userProfile.domain }),
-      this.fetchAllBuyers()
-    ])
+    let promises = []
+    if (store.getters.registeredToCompany) {
+      promises = [
+        this.fetchUserAccount({ user_id: userProfile.auth0ID }),
+        this.fetchGameConfiguration({ domain: userProfile.domain }),
+        this.fetchAllBuyers()
+      ]
+    } else {
+      promises = [
+        this.fetchUserAccount({ user_id: userProfile.auth0ID }),
+        this.fetchAllBuyers()
+      ]
+    }
+    Promise.all(promises)
       .then((responses: any) => {
+        if (store.getters.registeredToCompany) {
+          userProfile.publicKey = responses[1].game_config.public_key
+          userProfile.allBuyers = responses[2].buyers
+        } else {
+          userProfile.allBuyers = responses[1].buyers
+        }
         // userProfile.buyerID = responses[0].account.buyer_id
         userProfile.buyerID = responses[0].account.id
-        userProfile.pubKey = responses[1].game_config.public_key
+        userProfile.companyName = responses[0].account.company_name || ''
         // userProfile.routeShader = responses[1].customer_route_shader
-        const allBuyers = responses[2].buyers || []
         store.commit('UPDATE_USER_PROFILE', userProfile)
-        store.commit('UPDATE_ALL_BUYERS', allBuyers)
-        // If the user has no roles, check to see if they are the only one in the company and upgrade their account to owner
-        // TODO: Figure out a better way of doing this...
-        if (!store.getters.isAnonymous && !store.getters.isAnonymousPlus && userProfile.roles.length === 0) {
-          this.upgradeAccount({ user_id: userProfile.auth0ID })
-            .then((response: any) => {
-              const newRoles = response.new_roles || []
-              if (newRoles.length > 0) {
-                userProfile.roles = newRoles
-              }
-              store.commit('UPDATE_USER_PROFILE', userProfile)
-            })
-            .catch((error) => {
-              console.log('Something went wrong upgrading the account')
-              console.log(error)
-            })
-          return
-        }
+        store.commit('UPDATE_ALL_BUYERS', userProfile.allBuyers)
         store.commit('UPDATE_USER_PROFILE', userProfile)
       })
       .catch((error: Error) => {
@@ -95,8 +91,8 @@ export class JSONRPCService {
     return this.call('AuthService.UpdateAccountSettings', args)
   }
 
-  public updateCompanyName (args: any): Promise<any> {
-    return this.call('AuthService.UpdateCompanyName', args)
+  public UpdateCompanyInformation (args: any): Promise<any> {
+    return this.call('AuthService.UpdateCompanyInformation', args)
   }
 
   public upgradeAccount (args: any): Promise<any> {

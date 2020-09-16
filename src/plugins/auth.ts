@@ -52,7 +52,8 @@ export class AuthService {
         }
         const userProfile: UserProfile = {
           auth0ID: '',
-          company: '',
+          companyCode: '',
+          companyName: '',
           email: '',
           idToken: '',
           name: '',
@@ -69,10 +70,10 @@ export class AuthService {
           .getIdTokenClaims()
           .then((authResult: any) => {
             const nnScope = authResult[
-              'https://networknext.com/userRoles'
+              'https://networknext.com/userData'
             ]
             const roles: Array<any> = nnScope.roles || { roles: [] }
-            const company: string = nnScope.company || { company: '' }
+            const companyCode: string = nnScope.company_code || ''
             const newsletterConsent: boolean = nnScope.newsletterConsent || false
             const email = authResult.email || ''
             const domain = email.split('@')[1]
@@ -84,7 +85,7 @@ export class AuthService {
             userProfile.idToken = token
             userProfile.auth0ID = authResult.sub
             userProfile.verified = authResult.email_verified
-            userProfile.company = company
+            userProfile.companyCode = companyCode
             userProfile.newsletterConsent = newsletterConsent
 
             store.commit('UPDATE_USER_PROFILE', userProfile)

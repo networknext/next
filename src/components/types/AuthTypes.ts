@@ -1,6 +1,7 @@
 export interface UserProfile {
   auth0ID: string;
-  company: string;
+  companyCode: string;
+  companyName: string;
   email: string;
   idToken: string;
   name: string;

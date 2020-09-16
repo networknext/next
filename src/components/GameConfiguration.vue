@@ -91,7 +91,7 @@ export default class GameConfiguration extends Vue {
 
   private updateCompanyName (userProfile: UserProfile) {
     if (this.companyName === '') {
-      this.companyName = userProfile.company || ''
+      this.companyName = userProfile.companyName || ''
     }
   }
 

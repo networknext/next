@@ -28,7 +28,7 @@
             v-for="buyer in allBuyers"
             v-bind:key="buyer.id"
             :selected="buyer.id == $store.getters.currentFilter"
-          >{{ buyer.name }}</option>
+          >{{ buyer.company_name }}</option>
         </select>
       </div>
     </div>
@@ -120,7 +120,7 @@ export default class SessionCounts extends Vue {
     let i = 0
     for (i; i < allBuyers.length; i++) {
       if (allBuyers[i].id === this.$store.getters.userProfile.buyerID) {
-        return allBuyers[i].name
+        return allBuyers[i].company_name
       }
     }
     return 'Private'

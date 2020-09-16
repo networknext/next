@@ -7,17 +7,34 @@
       Update user account profile.
     </p>
     <Alert :message="message" :alertType="alertType" v-if="message !== ''"/>
-    <form @submit.prevent="updateCompanyName()">
+    <form @submit.prevent="UpdateCompanyInformation()">
       <div class="form-group">
         <label for="companyName">
           Company Name
         </label>
-        <input type="text" class="form-control form-control-sm" id="companyName" v-model="companyName" placeholder="Enter your company name"/>
+        <input type="text" class="form-control form-control-sm" id="companyName" v-model="companyName" placeholder="Enter your company name" @change="checkCompanyName()"/>
         <small class="form-text text-muted">
           This is the company that you would like your account to be assigned to. Case and white space sensitive.
         </small>
+        <small v-for="(error, index) in companyNameErrors" :key="index" class="text-danger">
+          {{ error }}
+          <br/>
+        </small>
       </div>
-      <button type="submit" class="btn btn-primary btn-sm" v-bind:disabled="companyName.length === 0">
+      <div class="form-group">
+        <label for="companyCode">
+          Company Code
+        </label>
+        <input type="text" class="form-control form-control-sm" id="companyCode" v-model="companyCode" placeholder="Enter your company code" @change="checkCompanyCode()"/>
+        <small class="form-text text-muted">
+          This is the unique string associated to your company account and to be used in your company subdomain. Examples: my-test-company, testcompany, test-company
+        </small>
+        <small v-for="(error, index) in companyCodeErrors" :key="index" class="text-danger">
+          {{ error }}
+          <br/>
+        </small>
+      </div>
+      <button type="submit" class="btn btn-primary btn-sm" v-bind:disabled="!validCompanyInfo">
         Update Company Name
       </button>
       <p class="text-muted text-small mt-2"></p>
@@ -52,7 +69,7 @@
           I would like to recieve the Network Next newsletter
         </small>
       </div>
-      <button type="submit" class="btn btn-primary btn-sm" v-bind:disabled="!validForm" style="margin-top: 1rem;">
+      <button type="submit" class="btn btn-primary btn-sm" v-bind:disabled="!validPasswordForm" style="margin-top: 1rem;">
         Save
       </button>
       <p class="text-muted text-small mt-2"></p>
@@ -83,15 +100,24 @@ import { UserProfile } from './types/AuthTypes'
   }
 })
 export default class AccountSettings extends Vue {
+  get validCompanyInfo (): boolean {
+    return this.validCompanyName && this.validCompanyCode
+  }
+
   private message: any
   private alertType: any
   private companyName: string
+  private companyCode: string
   private newPassword: string
   private confirmPassword: string
   private unwatch: any
   private validPassword: boolean
-  private validForm: boolean
+  private validPasswordForm: boolean
+  private validCompanyCode: boolean
+  private validCompanyName: boolean
   private newPasswordErrors: Array<string>
+  private companyNameErrors: Array<string>
+  private companyCodeErrors: Array<string>
   private confirmPasswordErrors: Array<string>
   private newsletterConsent: boolean
 
@@ -100,11 +126,18 @@ export default class AccountSettings extends Vue {
     this.message = ''
     this.alertType = AlertTypes.DEFAULT
     this.companyName = ''
+    this.companyCode = ''
     this.newPassword = ''
     this.confirmPassword = ''
     this.validPassword = false
-    this.validForm = false
+    this.validPasswordForm = false
+    this.validCompanyName = false
+    this.validCompanyCode = false
+    this.validCompanyCode = false
+    this.validCompanyName = false
     this.newPasswordErrors = []
+    this.companyNameErrors = []
+    this.companyCodeErrors = []
     this.confirmPasswordErrors = []
     this.newsletterConsent = false
   }
@@ -124,13 +157,51 @@ export default class AccountSettings extends Vue {
 
   private checkUserProfile (userProfile: UserProfile) {
     if (this.companyName === '') {
-      this.companyName = userProfile.company || ''
+      this.companyName = userProfile.companyName || ''
+    }
+    if (this.companyCode === '') {
+      this.companyCode = userProfile.companyCode || ''
     }
     this.newsletterConsent = userProfile.newsletterConsent || false
+    this.checkCompanyName()
+    this.checkCompanyCode()
   }
 
   private destory () {
     this.unwatch()
+  }
+
+  private checkCompanyName () {
+    this.companyNameErrors = []
+    this.validCompanyName = false
+    if (this.companyName.length === 0) {
+      return
+    }
+    if (this.companyName.length > 256) {
+      this.companyNameErrors.push('Please choose a company name that is at most 256 characters')
+    }
+    if (this.companyNameErrors.length === 0) {
+      this.validCompanyName = true
+    }
+  }
+
+  private checkCompanyCode () {
+    this.companyCodeErrors = []
+    this.validCompanyCode = false
+    this.companyCode = this.companyCode.toLowerCase()
+    if (this.companyCode.length === 0) {
+      return
+    }
+    if (this.companyCode.length > 32) {
+      this.companyCodeErrors.push('Please choose a company code that is at most 32 characters')
+    }
+    const regex = new RegExp('^([a-z])+(-?[a-z])*$')
+    if (!regex.test(this.companyCode)) {
+      this.companyCodeErrors.push('Please choose a company code that contains character padded hyphens and no special characters')
+    }
+    if (this.companyCodeErrors.length === 0) {
+      this.validCompanyCode = true
+    }
   }
 
   private checkNewPassword () {
@@ -168,7 +239,7 @@ export default class AccountSettings extends Vue {
 
   private checkConfirmPassword () {
     this.confirmPasswordErrors = []
-    this.validForm = false || this.newsletterConsent
+    this.validPasswordForm = false || this.newsletterConsent
     if (this.confirmPassword.length === 0) {
       return
     }
@@ -176,21 +247,23 @@ export default class AccountSettings extends Vue {
       this.confirmPasswordErrors.push('Confirmation password does not match')
     }
     if (this.confirmPasswordErrors.length === 0) {
-      this.validForm = true
+      this.validPasswordForm = true
     }
   }
 
-  private updateCompanyName () {
+  private UpdateCompanyInformation () {
     (this as any).$apiService
-      .updateCompanyName({ company_name: this.companyName })
+      .UpdateCompanyInformation({ company_name: this.companyName, company_code: this.companyCode })
       .then((response: any) => {
-        const roles = response.new_roles
-        const companyName = response.company_name
+        const roles = response.new_roles || []
+        const companyName = this.companyName
+        const companyCode = this.companyCode
         const userProfile: UserProfile = cloneDeep(this.$store.getters.userProfile)
         if (roles.length > 0) {
           userProfile.roles = roles
         }
-        userProfile.company = companyName
+        userProfile.companyCode = companyCode
+        userProfile.companyName = companyName
         this.$store.commit('UPDATE_USER_PROFILE', userProfile)
         this.message = 'Company name updated successfully'
         this.alertType = AlertTypes.SUCCESS

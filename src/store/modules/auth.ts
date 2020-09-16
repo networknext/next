@@ -28,7 +28,8 @@ export default {
     isABTester: (state: any, getters: any) => (getters.isBuyer && state.abTesters.includes(getters.userProfile.id)) || getters.isAdmin,
     isBuyer: (state: any) => (state.userProfile ? state.userProfile.buyerID !== '' : false),
     userProfile: (state: any) => state.userProfile,
-    allBuyers: (state: any) => state.allBuyers
+    allBuyers: (state: any) => state.allBuyers,
+    registeredToCompany: (state: any) => (state.userProfile ? state.userProfile.companyName !== '' : false)
   },
   actions: {
     updateUserProfile ({ commit }: any, userProfile: any) {
