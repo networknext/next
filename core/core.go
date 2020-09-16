@@ -9,7 +9,6 @@ import (
     "encoding/binary"
     "unsafe"
     "net"
-    "runtime"
     "sync"
     "math"
     "math/rand"
@@ -132,15 +131,6 @@ type RouteManager struct {
 
 func (manager *RouteManager) AddRoute(cost int32, relays ...int32) {
 
-    // IMPORTANT: Filter out any route with two relays in the same datacenter. These routes are redundant.
-    datacenterCheck := make(map[uint64]int, len(relays))
-    for i := range relays {
-        if _, exists := datacenterCheck[manager.RelayDatacenter[relays[i]]]; exists {
-            return
-        }
-        datacenterCheck[manager.RelayDatacenter[relays[i]]] = 1
-    }
-
     // IMPORTANT: Filter out routes with loops. They can happen *very* occasionally.
     loopCheck := make(map[int32]int, len(relays))
     for i := range relays {
@@ -148,6 +138,15 @@ func (manager *RouteManager) AddRoute(cost int32, relays ...int32) {
             return
         }
         loopCheck[relays[i]] = 1
+    }
+
+    // IMPORTANT: Filter out any route with two relays in the same datacenter. These routes are redundant.
+    datacenterCheck := make(map[uint64]int, len(relays))
+    for i := range relays {
+        if _, exists := datacenterCheck[manager.RelayDatacenter[relays[i]]]; exists {
+            return
+        }
+        datacenterCheck[manager.RelayDatacenter[relays[i]]] = 1
     }
 
     if manager.NumRoutes == 0 {
@@ -283,7 +282,7 @@ type RouteEntry struct {
     RouteHash      [MaxRoutesPerEntry]uint32
 }
 
-func Optimize(numRelays int, cost []int32, costThreshold int32, relayDatacenter []uint64) []RouteEntry {
+func Optimize(numRelays int, numSegments int, cost []int32, costThreshold int32, relayDatacenter []uint64) []RouteEntry {
 
     // build a matrix of indirect routes from relays i -> j that have lower cost than direct, eg. i -> (x) -> j, where x is every other relay
 
@@ -293,16 +292,6 @@ func Optimize(numRelays int, cost []int32, costThreshold int32, relayDatacenter 
     }
 
     indirect := make([][][]Indirect, numRelays)
-
-    numCPUs := runtime.NumCPU()
-
-    numSegments := numRelays
-    if numCPUs < numRelays {
-        numSegments = numRelays / 5
-        if numSegments == 0 {
-            numSegments = 1
-        }
-    }
 
     var wg sync.WaitGroup
 
@@ -526,38 +515,6 @@ func Optimize(numRelays int, cost []int32, costThreshold int32, relayDatacenter 
     return routes
 }
 
-func Analyze(numRelays int, routes []RouteEntry) []int {
-
-    buckets := make([]int, 6)
-
-    for i := 0; i < numRelays; i++ {
-        for j := 0; j < numRelays; j++ {
-            if j < i {
-                abFlatIndex := TriMatrixIndex(i, j)
-                if len(routes[abFlatIndex].RouteCost) > 0 {
-                    improvement := routes[abFlatIndex].DirectCost - routes[abFlatIndex].RouteCost[0]
-                    if improvement <= 10 {
-                        buckets[0]++
-                    } else if improvement <= 20 {
-                        buckets[1]++
-                    } else if improvement <= 30 {
-                        buckets[2]++
-                    } else if improvement <= 40 {
-                        buckets[3]++
-                    } else if improvement <= 50 {
-                        buckets[4]++
-                    } else {
-                        buckets[5]++
-                    }
-                }
-            }
-        }
-    }
-
-    return buckets
-
-}
-
 // ---------------------------------------------------
 
 type RouteToken struct {
@@ -584,18 +541,13 @@ const NonceBytes = 24
 const SignatureBytes = C.crypto_sign_BYTES
 const PublicKeyBytes = C.crypto_sign_PUBLICKEYBYTES
 
-func Encrypt(senderPrivateKey []byte, receiverPublicKey []byte, nonce []byte, buffer []byte, bytes int) error {
-    result := C.crypto_box_easy((*C.uchar)(&buffer[0]),
+func Encrypt(senderPrivateKey []byte, receiverPublicKey []byte, nonce []byte, buffer []byte, bytes int) {
+    C.crypto_box_easy((*C.uchar)(&buffer[0]),
         (*C.uchar)(&buffer[0]),
         C.ulonglong(bytes),
         (*C.uchar)(&nonce[0]),
         (*C.uchar)(&receiverPublicKey[0]),
         (*C.uchar)(&senderPrivateKey[0]))
-    if result != 0 {
-        return fmt.Errorf("failed to encrypt: result = %d", result)
-    } else {
-        return nil
-    }
 }
 
 func Decrypt(senderPublicKey []byte, receiverPrivateKey []byte, nonce []byte, buffer []byte, bytes int) error {
@@ -610,38 +562,6 @@ func Decrypt(senderPublicKey []byte, receiverPrivateKey []byte, nonce []byte, bu
         return fmt.Errorf("failed to decrypt: result = %d", result)
     } else {
         return nil
-    }
-}
-
-func Encrypt_ChaCha20(buffer []byte, additional []byte, privateKey []byte) ([]byte, []byte, error) {
-    nonce := RandomBytes(C.crypto_aead_xchacha20poly1305_ietf_NPUBBYTES)
-    encrypted := make([]byte, len(buffer)+C.crypto_aead_xchacha20poly1305_ietf_ABYTES)
-    var encryptedLength = C.ulonglong(0)
-    result := C.crypto_aead_xchacha20poly1305_ietf_encrypt((*C.uchar)(&encrypted[0]), &encryptedLength,
-        (*C.uchar)(&buffer[0]), C.ulonglong(len(buffer)),
-        (*C.uchar)(&additional[0]), C.ulonglong(len(additional)),
-        nil, (*C.uchar)(&nonce[0]), (*C.uchar)(&privateKey[0]))
-    if result != 0 {
-        return nil, nil, fmt.Errorf("failed to encrypt chacha20: result = %d", result)
-    } else {
-        return encrypted, nonce, nil
-    }
-}
-
-func Decrypt_ChaCha20(encrypted []byte, additional []byte, nonce []byte, privateKey []byte) ([]byte, error) {
-    if len(encrypted) <= C.crypto_aead_xchacha20poly1305_ietf_ABYTES {
-        return nil, fmt.Errorf("failed to decrypt chacha20: encrypted data is too small")
-    }
-    decrypted := make([]byte, len(encrypted)-C.crypto_aead_xchacha20poly1305_ietf_ABYTES)
-    var decryptedLength = C.ulonglong(0)
-    result := C.crypto_aead_xchacha20poly1305_ietf_decrypt((*C.uchar)(&decrypted[0]), &decryptedLength, nil,
-        (*C.uchar)(&encrypted[0]), C.ulonglong(len(encrypted)),
-        (*C.uchar)(&additional[0]), C.ulonglong(len(additional)),
-        (*C.uchar)(&nonce[0]), (*C.uchar)(&privateKey[0]))
-    if result != 0 {
-        return nil, fmt.Errorf("failed to decrypt chacha20: result = %d", result)
-    } else {
-        return decrypted, nil
     }
 }
 
@@ -677,12 +597,11 @@ func ReadRouteToken(buffer []byte) (*RouteToken, error) {
     return token, nil
 }
 
-func WriteEncryptedRouteToken(buffer []byte, token *RouteToken, senderPrivateKey []byte, receiverPublicKey []byte) error {
+func WriteEncryptedRouteToken(buffer []byte, token *RouteToken, senderPrivateKey []byte, receiverPublicKey []byte) {
     nonce := RandomBytes(NonceBytes)
     copy(buffer, nonce)
     WriteRouteToken(token, buffer[NonceBytes:])
-    result := Encrypt(senderPrivateKey, receiverPublicKey, nonce, buffer[NonceBytes:], NEXT_ROUTE_TOKEN_BYTES)
-    return result
+    Encrypt(senderPrivateKey, receiverPublicKey, nonce, buffer[NonceBytes:], NEXT_ROUTE_TOKEN_BYTES)
 }
 
 func ReadEncryptedRouteToken(tokenData []byte, senderPublicKey []byte, receiverPrivateKey []byte) (*RouteToken, error) {
@@ -697,10 +616,7 @@ func ReadEncryptedRouteToken(tokenData []byte, senderPublicKey []byte, receiverP
     return ReadRouteToken(tokenData)
 }
 
-func WriteRouteTokens(expireTimestamp uint64, sessionId uint64, sessionVersion uint8, kbpsUp uint32, kbpsDown uint32, numNodes int, addresses []*net.UDPAddr, publicKeys [][]byte, masterPrivateKey [KeyBytes]byte) ([]byte, error) {
-    if numNodes < 1 || numNodes > NEXT_MAX_NODES {
-        return nil, fmt.Errorf("invalid numNodes %d. expected value in range [1,%d]", numNodes, NEXT_MAX_NODES)
-    }
+func WriteRouteTokens(expireTimestamp uint64, sessionId uint64, sessionVersion uint8, kbpsUp uint32, kbpsDown uint32, numNodes int, addresses []*net.UDPAddr, publicKeys [][]byte, masterPrivateKey [KeyBytes]byte) []byte {
     privateKey := RandomBytes(KeyBytes)
     tokenData := make([]byte, numNodes*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES)
     for i := 0; i < numNodes; i++ {
@@ -714,12 +630,9 @@ func WriteRouteTokens(expireTimestamp uint64, sessionId uint64, sessionVersion u
             token.nextAddress = addresses[i+1]
         }
         token.privateKey = privateKey
-        err := WriteEncryptedRouteToken(tokenData[i*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:], token, masterPrivateKey[:], publicKeys[i])
-        if err != nil {
-            return nil, err
-        }
+        WriteEncryptedRouteToken(tokenData[i*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:], token, masterPrivateKey[:], publicKeys[i])
     }
-    return tokenData, nil
+    return tokenData
 }
 
 func WriteContinueToken(token *ContinueToken, buffer []byte) {
@@ -739,12 +652,11 @@ func ReadContinueToken(buffer []byte) (*ContinueToken, error) {
     return token, nil
 }
 
-func WriteEncryptedContinueToken(buffer []byte, token *ContinueToken, senderPrivateKey []byte, receiverPublicKey []byte) error {
+func WriteEncryptedContinueToken(buffer []byte, token *ContinueToken, senderPrivateKey []byte, receiverPublicKey []byte) {
     nonce := RandomBytes(NonceBytes)
     copy(buffer, nonce)
     WriteContinueToken(token, buffer[NonceBytes:])
-    result := Encrypt(senderPrivateKey, receiverPublicKey, nonce, buffer[NonceBytes:], NEXT_CONTINUE_TOKEN_BYTES)
-    return result
+    Encrypt(senderPrivateKey, receiverPublicKey, nonce, buffer[NonceBytes:], NEXT_CONTINUE_TOKEN_BYTES)
 }
 
 func ReadEncryptedContinueToken(tokenData []byte, senderPublicKey []byte, receiverPrivateKey []byte) (*ContinueToken, error) {
@@ -759,22 +671,16 @@ func ReadEncryptedContinueToken(tokenData []byte, senderPublicKey []byte, receiv
     return ReadContinueToken(tokenData)
 }
 
-func WriteContinueTokens(expireTimestamp uint64, sessionId uint64, sessionVersion uint8, numNodes int, publicKeys [][]byte, masterPrivateKey [KeyBytes]byte) ([]byte, error) {
-    if numNodes < 1 || numNodes > NEXT_MAX_NODES {
-        return nil, fmt.Errorf("invalid numNodes %d. expected value in range [1,%d]", numNodes, NEXT_MAX_NODES)
-    }
+func WriteContinueTokens(expireTimestamp uint64, sessionId uint64, sessionVersion uint8, numNodes int, publicKeys [][]byte, masterPrivateKey [KeyBytes]byte) []byte {
     tokenData := make([]byte, numNodes*NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES)
     for i := 0; i < numNodes; i++ {
         token := &ContinueToken{}
         token.expireTimestamp = expireTimestamp
         token.sessionId = sessionId
         token.sessionVersion = sessionVersion
-        err := WriteEncryptedContinueToken(tokenData[i*NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES:], token, masterPrivateKey[:], publicKeys[i])
-        if err != nil {
-            return nil, err
-        }
+        WriteEncryptedContinueToken(tokenData[i*NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES:], token, masterPrivateKey[:], publicKeys[i])
     }
-    return tokenData, nil
+    return tokenData
 }
 
 // -------------------------------------------
@@ -782,9 +688,6 @@ func WriteContinueTokens(expireTimestamp uint64, sessionId uint64, sessionVersio
 func GetBestRouteCost(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost[] int32, destRelays []int32) int32 {
     bestRouteCost := int32(math.MaxInt32)
     for i := range sourceRelays {
-        if sourceRelayCost[i] < int32(0) {
-            continue
-        }
         sourceRelayIndex := sourceRelays[i]
         for j := range destRelays {
             destRelayIndex := destRelays[j]
@@ -820,9 +723,6 @@ func GetCurrentRouteCost(routeMatrix []RouteEntry, routeNumRelays int32, routeRe
     routeHash := RouteHash(routeRelays[:routeNumRelays]...)
     firstRouteRelay := routeRelays[0]
     for i := range sourceRelays {
-        if sourceRelayCost[i] < int32(0) {
-            continue
-        }
         if sourceRelays[i] == firstRouteRelay {
             for j := range destRelays {
                 sourceRelayIndex := sourceRelays[i]
@@ -842,7 +742,7 @@ func GetCurrentRouteCost(routeMatrix []RouteEntry, routeNumRelays int32, routeRe
                             }
                         }
                         if found {
-                            sourceCost := int32(math.MaxInt32)
+                            sourceCost := int32(100000)
                             if reversed {
                                 sourceRelays = destRelays
                                 actualSourceRelay := routeRelays[routeNumRelays-1]
@@ -859,9 +759,6 @@ func GetCurrentRouteCost(routeMatrix []RouteEntry, routeNumRelays int32, routeRe
                                         break
                                     }
                                 }
-                            }
-                            if sourceCost == int32(math.MaxInt32) {
-                                panic("this should never happen")
                             }
                             return sourceCost + entry.RouteCost[k]
                         }
@@ -884,9 +781,6 @@ func GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCo
     numRoutes := 0
     maxRoutes := len(bestRoutes)
     for i := range sourceRelays {
-        if sourceRelayCost[i] < int32(0) {
-            continue
-        }
         for j := range destRelays {
             sourceRelayIndex := sourceRelays[i]
             destRelayIndex := destRelays[j]
