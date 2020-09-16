@@ -1091,57 +1091,44 @@ func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 		return &DoesNotExistError{resourceType: "relay", resourceRef: fmt.Sprintf("%x", r.ID)}
 	}
 
-	// Loop through all relays in firestore
-	rdocs := fs.Client.Collection("Relay").Documents(ctx)
-	defer rdocs.Stop()
+	// query returns a list, even if there is only one hit
+	iter := fs.Client.Collection("Relay").Where("displayName", "==", r.Name).Documents(ctx)
+	defer iter.Stop()
 	for {
-		rdoc, err := rdocs.Next()
+		rdoc, err := iter.Next()
 		if err == iterator.Done {
 			break
 		}
-
-		if err != nil {
-			return &FirestoreError{err: err}
-		}
-
-		// Unmarshal the relay in firestore to see if it's the relay we want to update
-		var relayInRemoteStorage relay
-		err = rdoc.DataTo(&relayInRemoteStorage)
 		if err != nil {
 			level.Error(fs.Logger).Log("err", &UnmarshalError{err: err})
 			continue
 		}
-
-		// If the relay is the one we want to update, update it with the new data
-		rid := crypto.HashID(relayInRemoteStorage.Address)
-		if rid == r.ID {
-			// Set the data to update the relay with
-			newRelayData := map[string]interface{}{
-				"name":            r.Name,
-				"state":           r.State,
-				"lastUpdateTime":  r.LastUpdateTime,
-				"stateUpdateTime": time.Now(),
-				"publicKey":       r.PublicKey,
-				"nicSpeedMbps":    int64(r.NICSpeedMbps),
-			}
-
-			// Update the relay in firestore
-			if _, err := rdoc.Ref.Set(ctx, newRelayData, firestore.MergeAll); err != nil {
-				return &FirestoreError{err: err}
-			}
-
-			// Update the cached version
-			relayInCachedStorage.State = r.State
-			relayInCachedStorage.LastUpdateTime = r.LastUpdateTime
-
-			fs.relayMutex.Lock()
-			fs.relays[r.ID] = relayInCachedStorage
-			fs.relayMutex.Unlock()
-
-			fs.IncrementSequenceNumber(ctx)
-
-			return nil
+		// Set the data to update the relay with
+		newRelayData := map[string]interface{}{
+			"name":            r.Name,
+			"state":           r.State,
+			"lastUpdateTime":  r.LastUpdateTime,
+			"stateUpdateTime": time.Now(),
+			"publicKey":       r.PublicKey,
+			"nicSpeedMbps":    int64(r.NICSpeedMbps),
 		}
+
+		// Update the relay in firestore
+		if _, err := rdoc.Ref.Set(ctx, newRelayData, firestore.MergeAll); err != nil {
+			return &FirestoreError{err: err}
+		}
+
+		// Update the cached version
+		relayInCachedStorage.State = r.State
+		relayInCachedStorage.LastUpdateTime = r.LastUpdateTime
+
+		fs.relayMutex.Lock()
+		fs.relays[r.ID] = relayInCachedStorage
+		fs.relayMutex.Unlock()
+
+		fs.IncrementSequenceNumber(ctx)
+
+		return nil
 	}
 
 	return &DoesNotExistError{resourceType: "relay", resourceRef: fmt.Sprintf("%x", r.ID)}
