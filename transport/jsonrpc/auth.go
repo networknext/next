@@ -59,6 +59,7 @@ type account struct {
 	UserID      string             `json:"user_id"`
 	ID          string             `json:"id"`
 	CompanyName string             `json:"company_name"`
+	CompanyCode string             `json:"company_code"`
 	Name        string             `json:"name"`
 	Email       string             `json:"email"`
 	Roles       []*management.Role `json:"roles"`
@@ -88,24 +89,14 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 		return err
 	}
 
-	requestEmail, ok := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["email"].(string)
-	if !ok {
-		err = fmt.Errorf("AllAcounts() unable to parse email from token")
-		s.Logger.Log("err", err)
-		return err
+	requestCompany := r.Context().Value(companyKey)
+	if requestCompany == nil {
+		return fmt.Errorf("AllAcounts(): failed to get company from context")
 	}
-	requestEmailParts := strings.Split(requestEmail, "@")
-	requestDomain := requestEmailParts[len(requestEmailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
 
 	for _, a := range accountList.Users {
-		emailParts := strings.Split(*a.Email, "@")
-		if len(emailParts) <= 0 {
-			err = fmt.Errorf("AllAcounts() failed to parse email %s for domain", *a.Email)
-			s.Logger.Log("err", err)
-			return err
-		}
-		domain := emailParts[len(emailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
-		if requestDomain != domain {
+		companyCode, ok := a.AppMetadata["company_code"].(string)
+		if !ok || requestCompany != companyCode {
 			continue
 		}
 		userRoles, err := s.Auth0.Manager.User.Roles(*a.ID)
@@ -115,9 +106,15 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 			return err
 		}
 
-		buyer, err := s.Storage.BuyerWithDomain(domain)
+		buyer, _ := s.Storage.BuyerWithCompanyCode(companyCode)
+		company, err := s.Storage.Customer(companyCode)
+		if err != nil {
+			err = fmt.Errorf("AllAcounts() failed to fetch company: %v", err)
+			s.Logger.Log("err", err)
+			return err
+		}
 
-		reply.UserAccounts = append(reply.UserAccounts, newAccount(a, userRoles.Roles, buyer))
+		reply.UserAccounts = append(reply.UserAccounts, newAccount(a, userRoles.Roles, buyer, company.Name))
 	}
 
 	return nil
@@ -146,12 +143,10 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 		s.Logger.Log("err", err)
 		return err
 	}
-	if ok && requestID != args.UserID {
-		if !VerifyAnyRole(r, AdminRole, OwnerRole) {
-			err := fmt.Errorf("UserAccount(): %v", ErrInsufficientPrivileges)
-			s.Logger.Log("err", err)
-			return err
-		}
+	if requestID != args.UserID && !VerifyAnyRole(r, AdminRole, OwnerRole) {
+		err := fmt.Errorf("UserAccount(): %v", ErrInsufficientPrivileges)
+		s.Logger.Log("err", err)
+		return err
 	}
 
 	userAccount, err := s.Auth0.Manager.User.Read(args.UserID)
@@ -160,16 +155,20 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 		s.Logger.Log("err", err)
 		return err
 	}
-
-	emailParts := strings.Split(*userAccount.Email, "@")
-	if len(emailParts) <= 0 {
-		err := fmt.Errorf("UserAccount() failed to parse email %s for domain", *userAccount.Email)
-		s.Logger.Log("err", err)
-		return err
+	companyCode, ok := userAccount.AppMetadata["company_code"].(string)
+	if !ok {
+		companyCode = ""
 	}
-
-	domain := emailParts[len(emailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
-	buyer, err := s.Storage.BuyerWithDomain(domain)
+	var company routing.Customer
+	if companyCode != "" {
+		company, err = s.Storage.Customer(companyCode)
+		if err != nil {
+			err := fmt.Errorf("UserAccount() failed to fetch user company: %w", err)
+			s.Logger.Log("err", err)
+			return err
+		}
+	}
+	buyer, err := s.Storage.BuyerWithCompanyCode(companyCode)
 	userRoles, err := s.Auth0.Manager.User.Roles(*userAccount.ID)
 	if err != nil {
 		err := fmt.Errorf("UserAccount() failed to fetch user roles: %w", err)
@@ -177,7 +176,7 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 		return err
 	}
 
-	reply.UserAccount = newAccount(userAccount, userRoles.Roles, buyer)
+	reply.UserAccount = newAccount(userAccount, userRoles.Roles, buyer, company.Name)
 
 	return nil
 }
@@ -232,28 +231,28 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 	// Gather request user information
 	requestUser := req.Context().Value("user")
 	if requestUser == nil {
-		err := fmt.Errorf("UpdateCompanyName() unable to parse user from token")
+		err := fmt.Errorf("AddUserAccount() unable to parse user from token")
 		s.Logger.Log("err", err)
 		return err
 	}
 
 	requestID, ok := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["sub"].(string)
 	if !ok {
-		err := fmt.Errorf("UpdateCompanyName() unable to parse id from token")
+		err := fmt.Errorf("AddUserAccount() unable to parse id from token")
 		s.Logger.Log("err", err)
 		return err
 	}
 
 	userAccount, err := s.Auth0.Manager.User.Read(requestID)
 	if err != nil {
-		err := fmt.Errorf("UpdateCompanyName() failed to fetch user account: %w", err)
+		err := fmt.Errorf("AddUserAccount() failed to fetch user account: %w", err)
 		s.Logger.Log("err", err)
 		return err
 	}
 
-	userCompany, ok := userAccount.AppMetadata["company"].(string)
+	userCompanyCode, ok := userAccount.AppMetadata["company_code"].(string)
 	if !ok {
-		err := fmt.Errorf("UpdateCompanyName() failed to fetch user company: %w", err)
+		err := fmt.Errorf("AddUserAccount() user is not assigned to a company: %w", err)
 		s.Logger.Log("err", err)
 		return err
 	}
@@ -263,7 +262,7 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 	falseValue := false
 
 	for _, b := range s.Storage.Buyers() {
-		if b.Name == userCompany {
+		if b.CompanyCode == userCompanyCode {
 			buyer = b
 		}
 	}
@@ -283,7 +282,7 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 			VerifyEmail:   &falseValue,
 			Password:      &pw,
 			AppMetadata: map[string]interface{}{
-				"company": userCompany,
+				"company_code": userCompanyCode,
 			},
 		}
 		if err = s.Auth0.Manager.User.Create(newUser); err != nil {
@@ -297,8 +296,13 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 			s.Logger.Log("err", err)
 			return err
 		}
-
-		accounts = append(accounts, newAccount(newUser, args.Roles, buyer))
+		company, err := s.Storage.Customer(userCompanyCode)
+		if err != nil {
+			err := fmt.Errorf("AddUserAccount() failed to fetch user company: %w", err)
+			s.Logger.Log("err", err)
+			return err
+		}
+		accounts = append(accounts, newAccount(newUser, args.Roles, buyer, company.Name))
 	}
 	reply.UserAccounts = accounts
 	return nil
@@ -329,15 +333,17 @@ func GenerateRandomBytes(n int) ([]byte, error) {
 	return b, nil
 }
 
-func newAccount(u *management.User, r []*management.Role, buyer routing.Buyer) account {
+func newAccount(u *management.User, r []*management.Role, buyer routing.Buyer, companyName string) account {
 	buyerID := ""
 	if buyer.ID != 0 {
 		buyerID = fmt.Sprintf("%016x", buyer.ID)
 	}
+
 	account := account{
 		UserID:      *u.Identities[0].UserID,
 		ID:          buyerID,
-		CompanyName: buyer.Name,
+		CompanyCode: buyer.CompanyCode,
+		CompanyName: companyName,
 		Name:        *u.Name,
 		Email:       *u.Email,
 		Roles:       r,
@@ -503,63 +509,86 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 
 type CompanyNameArgs struct {
 	CompanyName string `json:"company_name"`
+	CompanyCode string `json:"company_code"`
 }
 
 type CompanyNameReply struct {
 	NewRoles []*management.Role `json:"new_roles"`
 }
 
-func (s *AuthService) UpdateCompanyName(r *http.Request, args *CompanyNameArgs, reply *CompanyNameReply) error {
+func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNameArgs, reply *CompanyNameReply) error {
 	if VerifyAnyRole(r, AnonymousRole, UnverifiedRole) {
 		return nil
 	}
 
+	var newCompany bool
 	companyName := args.CompanyName
+	companyCode := args.CompanyCode
 
-	accountList, err := s.Auth0.Manager.User.List()
-	if err != nil {
-		err = fmt.Errorf("UpdateCompanyName() failed to fetch user list: %v", err)
-		s.Logger.Log("err", err)
-		return err
-	}
-
-	// check if someone is assigned to this company already
-	for _, a := range accountList.Users {
-		userCompany, ok := a.AppMetadata["company"].(string)
-		if !ok || userCompany != companyName {
-			continue
-		}
-		err := fmt.Errorf("UpdateCompanyName() company already exists")
-		s.Logger.Log("err", err)
-		return err
-	}
-
+	// grab request user information
 	requestUser := r.Context().Value("user")
 	if requestUser == nil {
-		err := fmt.Errorf("UpdateCompanyName() unable to parse user from token")
+		err := fmt.Errorf("UpdateCompanyInformation() unable to parse user from token")
 		s.Logger.Log("err", err)
 		return err
 	}
 
+	// parse request email for domain
+	requestEmail, ok := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["email"].(string)
+	if !ok {
+		err := fmt.Errorf("UpdateCompanyInformation() unable to parse email from token")
+		s.Logger.Log("err", err)
+		return err
+	}
+	requestEmailParts := strings.Split(requestEmail, "@")
+	requestDomain := requestEmailParts[len(requestEmailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
+
+	// check if there is a company with the same code being requested
+	company, err := s.Storage.Customer(companyCode)
+	if err == nil {
+		autoSigninDomains := company.AutomaticSignInDomains
+		// the company exists and the new user is part of the auto signup
+		if strings.Contains(autoSigninDomains, requestDomain) {
+			newCompany = false
+		} else {
+			// the company exists and the new user is not part of the auto signup
+			err = fmt.Errorf("UpdateCompanyInformation() email domain is not part of auto signup for this company: %v", err)
+			s.Logger.Log("err", err)
+			return err
+		}
+	} else {
+		newCompany = true
+	}
+
+	// get request user ID for role assignment
 	requestID, ok := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["sub"].(string)
 	if !ok {
-		err := fmt.Errorf("UpdateCompanyName() unable to parse id from token")
+		err := fmt.Errorf("UpdateCompanyInformation() unable to parse id from token")
 		s.Logger.Log("err", err)
 		return err
 	}
 
-	userAccount, err := s.Auth0.Manager.User.Read(requestID)
-	if err != nil {
-		err := fmt.Errorf("UpdateCompanyName() failed to fetch user account: %w", err)
-		s.Logger.Log("err", err)
-		return err
+	ctx := context.Background()
+
+	// existing company -> update the company code and name
+	if !newCompany && VerifyAnyRole(r, OwnerRole, AdminRole) {
+		company.Code = companyCode
+		company.Name = companyName
+		if err := s.Storage.SetCustomer(ctx, company); err != nil {
+			err = fmt.Errorf("UpdateCompanyInformation() failed to update company: %v", err)
+			s.Logger.Log("err", err)
+			return err
+		}
 	}
 
-	userAccount.AppMetadata["company"] = args.CompanyName
-
-	err = s.Auth0.Manager.User.Update(requestID, userAccount)
+	// update auth0 user
+	err = s.Auth0.Manager.User.Update(requestID, &management.User{
+		AppMetadata: map[string]interface{}{
+			"company_code": args.CompanyCode,
+		},
+	})
 	if err != nil {
-		err = fmt.Errorf("UpdateCompanyName() failed to update company name: %v", err)
+		err = fmt.Errorf("UpdateCompanyInformation() failed to update user company name: %v", err)
 		s.Logger.Log("err", err)
 		return err
 	}
@@ -567,39 +596,62 @@ func (s *AuthService) UpdateCompanyName(r *http.Request, args *CompanyNameArgs, 
 	roleNames := []string{
 		"rol_ScQpWhLvmTKRlqLU",
 		"rol_8r0281hf2oC4cvrD",
+		"rol_YfFrtom32or4vH89",
 	}
 	roleTypes := []string{
 		"Viewer",
 		"Owner",
+		"Admin",
 	}
 	roleDescriptions := []string{
 		"Can see current sessions and the map.",
 		"Can access and manage everything in an account.",
+		"Can manage the Network Next system, including access to configstore.",
 	}
 
-	// Upgrade account
-	roles := []*management.Role{
-		{
-			ID:          &roleNames[0],
-			Name:        &roleTypes[0],
-			Description: &roleDescriptions[0],
-		},
-		{
-			ID:          &roleNames[1],
-			Name:        &roleTypes[1],
-			Description: &roleDescriptions[1],
-		},
+	// set role information
+	roles := []*management.Role{}
+	if newCompany {
+		// setup new customer and make user the owner
+		if err := s.Storage.AddCustomer(ctx, routing.Customer{
+			Code: companyCode,
+			Name: companyName,
+		}); err != nil {
+			err = fmt.Errorf("UpdateCompanyInformation() failed to create new company: %v", err)
+			s.Logger.Log("err", err)
+			return err
+		}
+		roles = []*management.Role{
+			{
+				ID:          &roleNames[0],
+				Name:        &roleTypes[0],
+				Description: &roleDescriptions[0],
+			},
+			{
+				ID:          &roleNames[1],
+				Name:        &roleTypes[1],
+				Description: &roleDescriptions[1],
+			},
+		}
+	} else {
+		// add user to company as a viewer
+		roles = []*management.Role{
+			{
+				ID:          &roleNames[0],
+				Name:        &roleTypes[0],
+				Description: &roleDescriptions[0],
+			},
+		}
 	}
 
-	err = s.Auth0.Manager.User.AssignRoles(requestID, roles...)
-
-	if err != nil {
-		err := fmt.Errorf("UpgradeAccount() failed to assign user roles: %w", err)
-		s.Logger.Log("err", err)
-		return err
+	if !VerifyAllRoles(r, AdminRole) {
+		if err = s.Auth0.Manager.User.AssignRoles(requestID, roles...); err != nil {
+			err := fmt.Errorf("UpdateCompanyInformation() failed to assign user roles: %w", err)
+			s.Logger.Log("err", err)
+			return err
+		}
+		reply.NewRoles = roles
 	}
-
-	reply.NewRoles = roles
 
 	return nil
 }
@@ -786,16 +838,13 @@ func IsAnonymous(r *http.Request) bool {
 	return ok && anon
 }
 
-func AddTokenContext(r *http.Request, roles []string, companyName string, newsletterConsent bool) *http.Request {
+func AddTokenContext(r *http.Request, roles []string, companyCode string, newsletterConsent bool) *http.Request {
 	ctx := r.Context()
 	if len(roles) > 0 {
 		ctx = context.WithValue(ctx, rolesKey, roles)
 	}
-	if companyName != "" {
-		ctx = context.WithValue(ctx, companyKey, companyName)
-	}
-	if companyName != "" {
-		ctx = context.WithValue(ctx, companyKey, companyName)
+	if companyCode != "" {
+		ctx = context.WithValue(ctx, companyKey, companyCode)
 	}
 	ctx = context.WithValue(ctx, newsletterConsentKey, newsletterConsent)
 	return r.WithContext(ctx)
@@ -820,7 +869,6 @@ var OpsRole = func(req *http.Request) (bool, error) {
 
 var AdminRole = func(req *http.Request) (bool, error) {
 	requestRoles := req.Context().Value(rolesKey)
-
 	if requestRoles == nil {
 		return false, fmt.Errorf("AdminRole(): failed to get roles from context")
 	}

@@ -23,6 +23,7 @@ type Firestore struct {
 
 	datacenters    map[uint64]routing.Datacenter
 	relays         map[uint64]routing.Relay
+	customers      map[string]routing.Customer
 	buyers         map[uint64]routing.Buyer
 	sellers        map[string]routing.Seller
 	datacenterMaps map[uint64]routing.DatacenterMap
@@ -31,6 +32,7 @@ type Firestore struct {
 
 	datacenterMutex     sync.RWMutex
 	relayMutex          sync.RWMutex
+	customerMutex       sync.RWMutex
 	buyerMutex          sync.RWMutex
 	sellerMutex         sync.RWMutex
 	datacenterMapMutex  sync.RWMutex
@@ -38,24 +40,25 @@ type Firestore struct {
 }
 
 type customer struct {
-	Name   string                 `firestore:"name"`
-	Domain string                 `firestore:"automaticSigninDomain"`
-	Active bool                   `firestore:"active"`
-	Buyer  *firestore.DocumentRef `firestore:"buyer"`
-	Seller *firestore.DocumentRef `firestore:"seller"`
+	Code                   string                 `firestore:"code"`
+	Name                   string                 `firestore:"name"`
+	AutomaticSignInDomains string                 `firestore:"automaticSigninDomains"`
+	Active                 bool                   `firestore:"active"`
+	Buyer                  *firestore.DocumentRef `firestore:"buyer"`
+	Seller                 *firestore.DocumentRef `firestore:"seller"`
 }
 
 type buyer struct {
-	ID        int64  `firestore:"sdkVersion3PublicKeyId"`
-	Name      string `firestore:"name"`
-	Active    bool   `firestore:"active"`
-	Live      bool   `firestore:"isLiveCustomer"`
-	Debug     bool   `firestore:"isDebug"`
-	PublicKey []byte `firestore:"sdkVersion3PublicKeyData"`
+	ID          int64  `firestore:"sdkVersion3PublicKeyId"`
+	CompanyCode string `firestore:"companyCode"`
+	Live        bool   `firestore:"isLiveCustomer"`
+	Debug       bool   `firestore:"isDebug"`
+	PublicKey   []byte `firestore:"sdkVersion3PublicKeyData"`
 }
 
 type seller struct {
 	Name                      string `firestore:"name"`
+	CompanyCode               string `firestore:"companyCode"`
 	IngressPriceNibblinsPerGB int64  `firestore:"pricePublicIngressNibblins"`
 	EgressPriceNibblinsPerGB  int64  `firestore:"pricePublicEgressNibblins"`
 }
@@ -142,6 +145,7 @@ func NewFirestore(ctx context.Context, gcpProjectID string, logger log.Logger) (
 		datacenters:        make(map[uint64]routing.Datacenter),
 		datacenterMaps:     make(map[uint64]routing.DatacenterMap),
 		relays:             make(map[uint64]routing.Relay),
+		customers:          make(map[string]routing.Customer),
 		buyers:             make(map[uint64]routing.Buyer),
 		sellers:            make(map[string]routing.Seller),
 		syncSequenceNumber: -1,
@@ -231,6 +235,213 @@ func (fs *Firestore) CheckSequenceNumber(ctx context.Context) (bool, error) {
 	return false, nil
 }
 
+func (fs *Firestore) Customer(code string) (routing.Customer, error) {
+	fs.customerMutex.RLock()
+	defer fs.customerMutex.RUnlock()
+
+	c, found := fs.customers[code]
+	if !found {
+		return routing.Customer{}, &DoesNotExistError{resourceType: "customer", resourceRef: fmt.Sprintf("%s", code)}
+	}
+
+	return c, nil
+}
+
+func (fs *Firestore) Customers() []routing.Customer {
+	var customers []routing.Customer
+	for _, customer := range fs.customers {
+		customers = append(customers, customer)
+	}
+
+	sort.Slice(customers, func(i int, j int) bool { return customers[i].Name < customers[j].Name })
+	return customers
+}
+
+func (fs *Firestore) CustomerWithName(name string) (routing.Customer, error) {
+	fs.customerMutex.RLock()
+	defer fs.customerMutex.RUnlock()
+
+	for _, customer := range fs.customers {
+		if customer.Name == name {
+			return customer, nil
+		}
+	}
+
+	return routing.Customer{}, &DoesNotExistError{resourceType: "buyer", resourceRef: name}
+}
+
+func (fs *Firestore) AddCustomer(ctx context.Context, c routing.Customer) error {
+	_, err := fs.Customer(c.Code)
+	if err == nil {
+		return &AlreadyExistsError{resourceType: "customer", resourceRef: c.Code}
+	}
+
+	newCustomerData := customer{
+		Code:                   c.Code,
+		Name:                   c.Name,
+		AutomaticSignInDomains: "",
+		Active:                 false,
+	}
+
+	// Add the buyer in remote storage
+	_, _, err = fs.Client.Collection("Customer").Add(ctx, newCustomerData)
+	if err != nil {
+		return &FirestoreError{err: err}
+	}
+
+	// Add the buyer in cached storage
+	fs.customerMutex.Lock()
+	fs.customers[c.Code] = c
+	fs.customerMutex.Unlock()
+
+	fs.IncrementSequenceNumber(ctx)
+
+	return nil
+}
+
+func (fs *Firestore) RemoveCustomer(ctx context.Context, code string) error {
+	// Check if the buyer exists
+	fs.customerMutex.RLock()
+	_, ok := fs.customers[code]
+	fs.customerMutex.RUnlock()
+
+	if !ok {
+		return &DoesNotExistError{resourceType: "customer", resourceRef: code}
+	}
+
+	cdocs := fs.Client.Collection("Customer").Documents(ctx)
+	defer cdocs.Stop()
+	for {
+		cdoc, err := cdocs.Next()
+		if err == iterator.Done {
+			break
+		}
+
+		if err != nil {
+			return &FirestoreError{err: err}
+		}
+
+		// Unmarshal the buyer in firestore to see if it's the buyer we want to delete
+		var customerInRemoteStorage customer
+		err = cdoc.DataTo(&customerInRemoteStorage)
+		if err != nil {
+			return &UnmarshalError{err: err}
+		}
+
+		if customerInRemoteStorage.Code == code {
+			buyerIDString := customerInRemoteStorage.Buyer.ID
+
+			if buyerIDString != "" {
+				buyerID, err := strconv.ParseUint(buyerIDString, 16, 64)
+				if err != nil {
+
+				}
+				fs.RemoveBuyer(ctx, uint64(buyerID))
+			}
+			sellerID := customerInRemoteStorage.Seller.ID
+			if sellerID != "" {
+				fs.RemoveSeller(ctx, sellerID)
+			}
+
+			// Delete the buyer in remote storage
+			if _, err := cdoc.Ref.Delete(ctx); err != nil {
+				return &FirestoreError{err: err}
+			}
+
+			// Delete the buyer in cached storage
+			fs.customerMutex.Lock()
+			delete(fs.customers, code)
+			fs.customerMutex.Unlock()
+
+			fs.IncrementSequenceNumber(ctx)
+
+			return nil
+		}
+	}
+
+	return &DoesNotExistError{resourceType: "customer", resourceRef: code}
+}
+
+func (fs *Firestore) SetCustomer(ctx context.Context, c routing.Customer) error {
+	// Get a copy of the buyer in cached storage
+	fs.customerMutex.RLock()
+	customerInCachedStorage, ok := fs.customers[c.Code]
+	fs.customerMutex.RUnlock()
+
+	if !ok {
+		return &DoesNotExistError{resourceType: "customer", resourceRef: c.Code}
+	}
+
+	// Loop through all buyers in firestore
+	cdocs := fs.Client.Collection("Customer").Documents(ctx)
+	defer cdocs.Stop()
+	for {
+		cdoc, err := cdocs.Next()
+		if err == iterator.Done {
+			break
+		}
+
+		if err != nil {
+			return &FirestoreError{err: err}
+		}
+
+		// Unmarshal the buyer in firestore to see if it's the buyer we want to update
+		var customerInRemoteStorage customer
+		err = cdoc.DataTo(&customerInRemoteStorage)
+		if err != nil {
+			return &UnmarshalError{err: err}
+		}
+
+		// If the customer is the one we want to update, update it with the new data
+		if customerInRemoteStorage.Code == c.Code {
+			// Update the customer in firestore
+			newCustomerData := map[string]interface{}{
+				"name": c.Name,
+				"code": c.Code,
+			}
+
+			if _, err := cdoc.Ref.Set(ctx, newCustomerData, firestore.MergeAll); err != nil {
+				return &FirestoreError{err: err}
+			}
+
+			buyer, err := fs.BuyerWithCompanyCode(c.Code)
+			if err != nil {
+				err = fmt.Errorf("SetCustomer() failed to fetch buyer with company code: %v", err)
+				return err
+			}
+			buyer.CompanyCode = c.Code
+			if err := fs.SetBuyer(ctx, buyer); err != nil {
+				err = fmt.Errorf("SetCustomer() failed to update buyer company code: %v", err)
+				return err
+			}
+
+			seller, err := fs.SellerWithCompanyCode(c.Code)
+			if err != nil {
+				err = fmt.Errorf("SetCustomer() failed to fetch seller with company code: %v", err)
+				return err
+			}
+			seller.CompanyCode = c.Code
+			if err := fs.SetSeller(ctx, seller); err != nil {
+				err = fmt.Errorf("SetCustomer() failed to update seller company code: %v", err)
+				return err
+			}
+
+			// Update the cached version
+			customerInCachedStorage = c
+
+			fs.customerMutex.Lock()
+			fs.customers[c.Code] = customerInCachedStorage
+			fs.customerMutex.Unlock()
+
+			fs.IncrementSequenceNumber(ctx)
+
+			return nil
+		}
+	}
+
+	return &DoesNotExistError{resourceType: "customer", resourceRef: c.Code}
+}
+
 func (fs *Firestore) Buyer(id uint64) (routing.Buyer, error) {
 	fs.buyerMutex.RLock()
 	defer fs.buyerMutex.RUnlock()
@@ -241,19 +452,6 @@ func (fs *Firestore) Buyer(id uint64) (routing.Buyer, error) {
 	}
 
 	return b, nil
-}
-
-func (fs *Firestore) BuyerWithDomain(domain string) (routing.Buyer, error) {
-	fs.buyerMutex.RLock()
-	defer fs.buyerMutex.RUnlock()
-
-	for _, buyer := range fs.buyers {
-		if buyer.Domain == domain {
-			return buyer, nil
-		}
-	}
-
-	return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer", resourceRef: domain}
 }
 
 func (fs *Firestore) Buyers() []routing.Buyer {
@@ -269,14 +467,40 @@ func (fs *Firestore) Buyers() []routing.Buyer {
 	return buyers
 }
 
+func (fs *Firestore) BuyerWithCompanyCode(code string) (routing.Buyer, error) {
+	fs.buyerMutex.RLock()
+	defer fs.buyerMutex.RUnlock()
+
+	for _, buyer := range fs.buyers {
+		if buyer.CompanyCode == code {
+			return buyer, nil
+		}
+	}
+	return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer", resourceRef: code}
+}
+
 func (fs *Firestore) AddBuyer(ctx context.Context, b routing.Buyer) error {
+	// Check if there is a company with the new buyer already / if there is a customer with the same code
+	var company routing.Customer
+	for _, customer := range fs.customers {
+		if customer.Code == b.CompanyCode && customer.BuyerRef == "" {
+			company = customer
+		} else {
+			// If there is a company with that code with a buyer already
+			return &AlreadyExistsError{resourceType: "buyer", resourceRef: b.CompanyCode}
+		}
+	}
+
+	// If there is no company with that code error out
+	if company.Code == "" {
+		return &DoesNotExistError{resourceType: "customer", resourceRef: b.CompanyCode}
+	}
 	newBuyerData := buyer{
-		ID:        int64(b.ID),
-		Name:      b.Name,
-		Active:    b.Active,
-		Live:      b.Live,
-		Debug:     b.Debug,
-		PublicKey: b.PublicKey,
+		CompanyCode: company.Code,
+		ID:          int64(b.ID),
+		Live:        b.Live,
+		Debug:       b.Debug,
+		PublicKey:   b.PublicKey,
 	}
 
 	// Add the buyer in remote storage
@@ -286,12 +510,9 @@ func (fs *Firestore) AddBuyer(ctx context.Context, b routing.Buyer) error {
 	}
 
 	// Add the buyer's routing rules settings to remote storage
-	if err := fs.setRoutingRulesSettingsForBuyerID(ctx, ref.ID, b.Name, b.RoutingRulesSettings); err != nil {
+	if err := fs.setRoutingRulesSettingsForBuyerID(ctx, ref.ID, company.Name, b.RoutingRulesSettings); err != nil {
 		return &FirestoreError{err: err}
 	}
-
-	// Check if a customer already exists for this buyer
-	var customerFound bool
 
 	cdocs := fs.Client.Collection("Customer").Documents(ctx)
 	defer cdocs.Stop()
@@ -312,9 +533,7 @@ func (fs *Firestore) AddBuyer(ctx context.Context, b routing.Buyer) error {
 			return &UnmarshalError{err: err}
 		}
 
-		if customerInRemoteStorage.Name == b.Name && customerInRemoteStorage.Buyer == nil {
-			customerFound = true
-
+		if customerInRemoteStorage.Code == company.Code {
 			customerInRemoteStorage.Buyer = ref
 
 			// Update the customer references
@@ -323,21 +542,6 @@ func (fs *Firestore) AddBuyer(ctx context.Context, b routing.Buyer) error {
 			}
 
 			break
-		}
-	}
-
-	if !customerFound {
-		// Customer was not found, so make a new one
-		newCustomerData := customer{
-			Name:   b.Name,
-			Active: b.Active,
-			Domain: b.Domain,
-			Buyer:  ref,
-		}
-
-		// Create the customer object in remote storage
-		if _, _, err = fs.Client.Collection("Customer").Add(ctx, newCustomerData); err != nil {
-			return &FirestoreError{err: err}
 		}
 	}
 
@@ -480,8 +684,6 @@ func (fs *Firestore) SetBuyer(ctx context.Context, b routing.Buyer) error {
 		if uint64(buyerInRemoteStorage.ID) == b.ID {
 			// Update the buyer in firestore
 			newBuyerData := map[string]interface{}{
-				"name":                     b.Name,
-				"active":                   b.Active,
 				"isLiveCustomer":           b.Live,
 				"isDebug":                  b.Debug,
 				"sdkVersion3PublicKeyData": b.PublicKey,
@@ -491,8 +693,15 @@ func (fs *Firestore) SetBuyer(ctx context.Context, b routing.Buyer) error {
 				return &FirestoreError{err: err}
 			}
 
+			var company routing.Customer
+			for _, customer := range fs.customers {
+				if customer.BuyerRef == bdoc.Ref.ID {
+					company = customer
+				}
+			}
+
 			// Update the buyer's routing rules settings in firestore
-			if err := fs.setRoutingRulesSettingsForBuyerID(ctx, bdoc.Ref.ID, b.Name, b.RoutingRulesSettings); err != nil {
+			if err := fs.setRoutingRulesSettingsForBuyerID(ctx, bdoc.Ref.ID, company.Name, b.RoutingRulesSettings); err != nil {
 				return &FirestoreError{err: err}
 			}
 
@@ -535,6 +744,18 @@ func (fs *Firestore) Sellers() []routing.Seller {
 
 	sort.Slice(sellers, func(i int, j int) bool { return sellers[i].ID < sellers[j].ID })
 	return sellers
+}
+
+func (fs *Firestore) SellerWithCompanyCode(code string) (routing.Seller, error) {
+	fs.sellerMutex.RLock()
+	defer fs.sellerMutex.RUnlock()
+
+	for _, seller := range fs.sellers {
+		if seller.CompanyCode == code {
+			return seller, nil
+		}
+	}
+	return routing.Seller{}, &DoesNotExistError{resourceType: "seller", resourceRef: code}
 }
 
 func (fs *Firestore) AddSeller(ctx context.Context, s routing.Seller) error {
@@ -920,7 +1141,6 @@ func (fs *Firestore) AddRelay(ctx context.Context, r routing.Relay) error {
 		}
 
 		if err != nil {
-
 			return &FirestoreError{err: err}
 		}
 
@@ -1882,9 +2102,6 @@ func (fs *Firestore) syncCustomers(ctx context.Context) error {
 			}
 			buyers[uint64(b.ID)] = routing.Buyer{
 				ID:                   uint64(b.ID),
-				Name:                 b.Name,
-				Domain:               c.Domain,
-				Active:               b.Active,
 				Live:                 b.Live,
 				PublicKey:            b.PublicKey,
 				RoutingRulesSettings: rrs,

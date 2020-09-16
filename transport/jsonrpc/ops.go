@@ -92,9 +92,15 @@ type buyer struct {
 
 func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersReply) error {
 	for _, b := range s.Storage.Buyers() {
+		company, err := s.Storage.Customer(b.CompanyCode)
+		if err != nil {
+			err = fmt.Errorf("Buyers() failed to find company: %v", err)
+			s.Logger.Log("err", err)
+			return err
+		}
 		reply.Buyers = append(reply.Buyers, buyer{
 			ID:   b.ID,
-			Name: b.Name,
+			Name: company.Name,
 		})
 	}
 
@@ -272,36 +278,30 @@ type CustomersReply struct {
 
 type customer struct {
 	Name     string `json:"name"`
+	Code     string `json:"code"`
 	BuyerID  string `json:"buyer_id"`
 	SellerID string `json:"seller_id"`
 }
 
 func (s *OpsService) Customers(r *http.Request, args *CustomersArgs, reply *CustomersReply) error {
+	var buyerID string
 
-	customers := map[string]customer{}
-
-	for _, b := range s.Storage.Buyers() {
-		customers[b.Name] = customer{
-			BuyerID: fmt.Sprintf("%x", b.ID),
-			Name:    b.Name,
-		}
-	}
-
-	for _, s := range s.Storage.Sellers() {
-		if _, ok := customers[s.Name]; ok {
-			cust := customers[s.Name]
-			cust.SellerID = s.ID
-			customers[s.Name] = cust
-		} else {
-			customers[s.Name] = customer{
-				SellerID: s.ID,
-				Name:     s.Name,
-			}
-		}
-	}
+	customers := s.Storage.Customers()
 
 	for _, c := range customers {
-		reply.Customers = append(reply.Customers, c)
+		buyer, _ := s.Storage.BuyerWithCompanyCode(c.Code)
+		seller, _ := s.Storage.SellerWithCompanyCode(c.Code)
+		if buyer.ID == 0 {
+			buyerID = ""
+		} else {
+			buyerID = fmt.Sprintf("%x", buyer.ID)
+		}
+		reply.Customers = append(reply.Customers, customer{
+			Name:     c.Name,
+			Code:     c.Code,
+			BuyerID:  buyerID,
+			SellerID: seller.ID,
+		})
 	}
 
 	sort.Slice(reply.Customers, func(i int, j int) bool {
@@ -846,11 +846,18 @@ func (s *OpsService) ListDatacenterMaps(r *http.Request, args *ListDatacenterMap
 			return err
 		}
 
+		company, err := s.Storage.Customer(buyer.CompanyCode)
+		if err != nil {
+			err = fmt.Errorf("ListDatacenterMaps() failed to find buyer company: %w", err)
+			s.Logger.Log("err", err)
+			return err
+		}
+
 		dcmFull := DatacenterMapsFull{
 			Alias:          dcMap.Alias,
 			DatacenterName: datacenter.Name,
 			DatacenterID:   fmt.Sprintf("%016x", dcMap.Datacenter),
-			BuyerName:      buyer.Name,
+			BuyerName:      company.Name,
 			BuyerID:        fmt.Sprintf("%016x", dcMap.BuyerID),
 		}
 

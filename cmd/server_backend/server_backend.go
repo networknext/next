@@ -219,7 +219,7 @@ func main() {
 		fmt.Printf("adding dummy local buyer, sellers, datacenter, and relays\n")
 		if err := db.AddBuyer(ctx, routing.Buyer{
 			ID:                   13672574147039585173,
-			Name:                 "local",
+			CompanyCode:          "local",
 			Live:                 true,
 			PublicKey:            customerPublicKey,
 			RoutingRulesSettings: routing.LocalRoutingRulesSettings,

@@ -146,19 +146,27 @@ func main() {
 
 	{
 		if env == "local" {
+			if err := db.AddCustomer(ctx, routing.Customer{
+				Name:                   "Local",
+				Code:                   "local",
+				Active:                 true,
+				AutomaticSignInDomains: "gmail.com",
+			}); err != nil {
+				level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
+				os.Exit(1)
+			}
 			if err := db.AddBuyer(ctx, routing.Buyer{
 				ID:                   customerID,
-				Name:                 "local",
+				CompanyCode:          "local",
 				PublicKey:            customerPublicKey,
 				RoutingRulesSettings: routing.LocalRoutingRulesSettings,
 			}); err != nil {
 				level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
 				os.Exit(1)
 			}
-
 			if err := db.AddBuyer(ctx, routing.Buyer{
 				ID:                   0,
-				Name:                 "Ghost Army",
+				CompanyCode:          "ghost-army",
 				PublicKey:            customerPublicKey,
 				RoutingRulesSettings: routing.LocalRoutingRulesSettings,
 			}); err != nil {
@@ -548,7 +556,7 @@ func main() {
 			if user != nil {
 				claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
 
-				if requestData, ok := claims["https://networknext.com/userRoles"]; ok {
+				if requestData, ok := claims["https://networknext.com/userData"]; ok {
 					var userRoles []string
 					if roles, ok := requestData.(map[string]interface{})["roles"]; ok {
 						rolesInterface := roles.([]interface{})
@@ -557,15 +565,15 @@ func main() {
 							userRoles[i] = v.(string)
 						}
 					}
-					var companyName string
-					if company, ok := requestData.(map[string]interface{})["company"]; ok {
-						companyName = company.(string)
+					var companyCode string
+					if companyCodeInterface, ok := requestData.(map[string]interface{})["company_code"]; ok {
+						companyCode = companyCodeInterface.(string)
 					}
 					var newsletterConsent bool
 					if consent, ok := requestData.(map[string]interface{})["newsletter"]; ok {
 						newsletterConsent = consent.(bool)
 					}
-					return jsonrpc.AddTokenContext(i.Request, userRoles, companyName, newsletterConsent)
+					return jsonrpc.AddTokenContext(i.Request, userRoles, companyCode, newsletterConsent)
 				}
 			}
 			return jsonrpc.SetIsAnonymous(i.Request, i.Request.Header.Get("Authorization") == "")

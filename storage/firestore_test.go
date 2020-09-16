@@ -191,8 +191,6 @@ func TestFirestore(t *testing.T) {
 
 			expected := routing.Buyer{
 				ID:                   1,
-				Name:                 "local",
-				Active:               true,
 				Live:                 false,
 				PublicKey:            make([]byte, crypto.KeySize),
 				RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
@@ -220,16 +218,12 @@ func TestFirestore(t *testing.T) {
 		expected := []routing.Buyer{
 			{
 				ID:                   1,
-				Name:                 "local",
-				Active:               true,
 				Live:                 false,
 				PublicKey:            make([]byte, crypto.KeySize),
 				RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
 			},
 			{
 				ID:                   2,
-				Name:                 "local",
-				Active:               false,
 				Live:                 true,
 				PublicKey:            make([]byte, crypto.KeySize),
 				RoutingRulesSettings: routing.LocalRoutingRulesSettings,
@@ -257,19 +251,12 @@ func TestFirestore(t *testing.T) {
 
 			expected := routing.Buyer{
 				ID:                   1,
-				Name:                 "local",
-				Domain:               "example.com",
-				Active:               true,
 				Live:                 false,
 				PublicKey:            make([]byte, crypto.KeySize),
 				RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
 			}
 
-			expectedCustomer := customer{
-				Name:   expected.Name,
-				Domain: expected.Domain,
-				Active: expected.Active,
-			}
+			expectedCustomer := customer{}
 
 			err = fs.AddBuyer(ctx, expected)
 			assert.NoError(t, err)
@@ -317,19 +304,12 @@ func TestFirestore(t *testing.T) {
 
 			expected := routing.Buyer{
 				ID:                   1,
-				Name:                 "local",
-				Domain:               "example.com",
-				Active:               true,
 				Live:                 false,
 				PublicKey:            make([]byte, crypto.KeySize),
 				RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
 			}
 
-			expectedCustomer := customer{
-				Name:   expected.Name,
-				Domain: expected.Domain,
-				Active: expected.Active,
-			}
+			expectedCustomer := customer{}
 
 			// Add the preexisting customer
 			_, _, err = fs.Client.Collection("Customer").Add(ctx, expectedCustomer)
@@ -385,9 +365,6 @@ func TestFirestore(t *testing.T) {
 
 			expected := routing.Buyer{
 				ID:                   1,
-				Name:                 "local",
-				Domain:               "example.com",
-				Active:               true,
 				Live:                 false,
 				PublicKey:            make([]byte, crypto.KeySize),
 				RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
@@ -434,8 +411,6 @@ func TestFirestore(t *testing.T) {
 
 			buyer := routing.Buyer{
 				ID:                   1,
-				Name:                 "local",
-				Active:               true,
 				Live:                 false,
 				PublicKey:            make([]byte, crypto.KeySize),
 				RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
@@ -480,8 +455,6 @@ func TestFirestore(t *testing.T) {
 
 			buyer := routing.Buyer{
 				ID:                   1,
-				Name:                 "local",
-				Active:               true,
 				Live:                 false,
 				PublicKey:            make([]byte, crypto.KeySize),
 				RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
@@ -513,8 +486,6 @@ func TestFirestore(t *testing.T) {
 
 			buyer := routing.Buyer{
 				ID:                   1,
-				Name:                 "local",
-				Active:               true,
 				Live:                 false,
 				PublicKey:            make([]byte, crypto.KeySize),
 				RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
@@ -535,8 +506,6 @@ func TestFirestore(t *testing.T) {
 
 			expected := routing.Buyer{
 				ID:                   1,
-				Name:                 "local",
-				Active:               true,
 				Live:                 false,
 				PublicKey:            make([]byte, crypto.KeySize),
 				RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
@@ -546,7 +515,6 @@ func TestFirestore(t *testing.T) {
 			assert.NoError(t, err)
 
 			actual := expected
-			actual.Active = false
 			actual.Live = true
 
 			err = fs.SetBuyer(ctx, actual)
@@ -556,7 +524,6 @@ func TestFirestore(t *testing.T) {
 			assert.NoError(t, err)
 
 			assert.NotEqual(t, expected, actual)
-			actual.Active = true
 			actual.Live = false
 			assert.Equal(t, expected, actual)
 		})
@@ -843,8 +810,7 @@ func TestFirestore(t *testing.T) {
 
 			// Add a buyer so that the customer isn't removed
 			buyer := routing.Buyer{
-				ID:   1,
-				Name: "buyer name",
+				ID: 1,
 			}
 
 			err = fs.AddBuyer(ctx, buyer)
@@ -948,8 +914,7 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			buyer := routing.Buyer{
-				ID:   1,
-				Name: "customer name",
+				ID: 1,
 			}
 
 			err = fs.AddBuyer(ctx, buyer)
@@ -1014,13 +979,11 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			oldBuyer := routing.Buyer{
-				ID:   1,
-				Name: "customer name",
+				ID: 1,
 			}
 
 			newBuyer := routing.Buyer{
-				ID:   2,
-				Name: "different customer name",
+				ID: 2,
 			}
 
 			err = fs.AddBuyer(ctx, oldBuyer)
@@ -1128,8 +1091,7 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			buyer := routing.Buyer{
-				ID:   1,
-				Name: "customer",
+				ID: 1,
 			}
 
 			err = fs.AddBuyer(ctx, buyer)
@@ -2017,9 +1979,6 @@ func TestFirestore(t *testing.T) {
 
 		expectedBuyer := routing.Buyer{
 			ID:                   1,
-			Name:                 "local",
-			Domain:               "example.com",
-			Active:               true,
 			Live:                 false,
 			PublicKey:            make([]byte, crypto.KeySize),
 			RoutingRulesSettings: routing.DefaultRoutingRulesSettings,

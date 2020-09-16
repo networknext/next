@@ -14,7 +14,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/gomodule/redigo/redis"
@@ -953,7 +952,6 @@ func (s *BuyersService) SessionMapByte(r *http.Request, args *MapPointsArgs, rep
 }
 
 type GameConfigurationArgs struct {
-	Domain       string `json:"domain"`
 	NewPublicKey string `json:"new_public_key"`
 }
 
@@ -969,6 +967,19 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 	var err error
 	var buyer routing.Buyer
 
+	companyCode, ok := r.Context().Value(companyKey).(string)
+	if !ok {
+		err := fmt.Errorf("GameConfiguration(): user is not assigned to a company")
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	if companyCode == "" {
+		err = fmt.Errorf("GameConfiguration(): failed to parse company code")
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
 	if VerifyAnyRole(r, AnonymousRole, UnverifiedRole) {
 		err = fmt.Errorf("GameConfiguration(): %v", ErrInsufficientPrivileges)
 		level.Error(s.Logger).Log("err", err)
@@ -977,7 +988,7 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 
 	reply.GameConfiguration.PublicKey = ""
 
-	buyer, err = s.Storage.BuyerWithDomain(args.Domain)
+	buyer, err = s.Storage.BuyerWithCompanyCode(companyCode)
 	// Buyer not found
 	if err != nil {
 		return nil
@@ -1001,8 +1012,14 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 
 	ctx := context.Background()
 
-	if args.Domain == "" {
-		err = fmt.Errorf("UpdateGameConfiguration() domain is required")
+	companyCode, ok := r.Context().Value(companyKey).(string)
+	if !ok {
+		err := fmt.Errorf("UpdateGameConfiguration(): user is not assigned to a company")
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+	if companyCode == "" {
+		err = fmt.Errorf("UpdateGameConfiguration(): failed to parse company code")
 		level.Error(s.Logger).Log("err", err)
 		return err
 	}
@@ -1013,7 +1030,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		return err
 	}
 
-	buyer, err = s.Storage.BuyerWithDomain(args.Domain)
+	buyer, err = s.Storage.BuyerWithCompanyCode(companyCode)
 
 	byteKey, err := base64.StdEncoding.DecodeString(args.NewPublicKey)
 	if err != nil {
@@ -1024,19 +1041,15 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 
 	buyerID = binary.LittleEndian.Uint64(byteKey[0:8])
 
-	company := r.Context().Value(companyKey).(string)
-
 	// Buyer not found
 	if buyer.ID == 0 {
 
 		// Create new buyer
 		err = s.Storage.AddBuyer(ctx, routing.Buyer{
-			ID:        buyerID,
-			Name:      company,
-			Domain:    args.Domain,
-			Active:    true,
-			Live:      false,
-			PublicKey: byteKey[8:],
+			CompanyCode: companyCode,
+			ID:          buyerID,
+			Live:        false,
+			PublicKey:   byteKey[8:],
 		})
 
 		if err != nil {
@@ -1059,7 +1072,6 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 	}
 
 	live := buyer.Live
-	active := buyer.Active
 
 	if err = s.Storage.RemoveBuyer(ctx, buyer.ID); err != nil {
 		err = fmt.Errorf("UpdateGameConfiguration() failed to remove buyer")
@@ -1068,12 +1080,10 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 	}
 
 	err = s.Storage.AddBuyer(ctx, routing.Buyer{
-		ID:        buyerID,
-		Name:      company,
-		Domain:    args.Domain,
-		Active:    active,
-		Live:      live,
-		PublicKey: byteKey[8:],
+		CompanyCode: companyCode,
+		ID:          buyerID,
+		Live:        live,
+		PublicKey:   byteKey[8:],
 	})
 
 	if err != nil {
@@ -1102,9 +1112,10 @@ type BuyerListReply struct {
 }
 
 type buyerAccount struct {
-	ID     string `json:"id"`
-	Name   string `json:"name"`
-	IsLive bool   `json:"is_live"`
+	CompanyName string `json:"company_name"`
+	CompanyCode string `json:"company_code"`
+	ID          string `json:"id"`
+	IsLive      bool   `json:"is_live"`
 }
 
 func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *BuyerListReply) error {
@@ -1115,10 +1126,15 @@ func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *Buye
 
 	for _, b := range s.Storage.Buyers() {
 		id := fmt.Sprintf("%016x", b.ID)
+		customer, err := s.Storage.Customer(b.CompanyCode)
+		if err != nil {
+			continue
+		}
 		account := buyerAccount{
-			ID:     id,
-			Name:   b.Name,
-			IsLive: b.Live,
+			CompanyName: customer.Name,
+			CompanyCode: b.CompanyCode,
+			ID:          id,
+			IsLive:      b.Live,
 		}
 		if VerifyAllRoles(r, s.SameBuyerRole(id)) {
 			reply.Buyers = append(reply.Buyers, account)
@@ -1126,7 +1142,7 @@ func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *Buye
 	}
 
 	sort.Slice(reply.Buyers, func(i int, j int) bool {
-		return reply.Buyers[i].Name < reply.Buyers[j].Name
+		return reply.Buyers[i].CompanyName < reply.Buyers[j].CompanyName
 	})
 
 	return nil
@@ -1173,11 +1189,16 @@ func (s *BuyersService) DatacenterMapsForBuyer(r *http.Request, args *Datacenter
 			return err
 		}
 
+		customer, err := s.Storage.Customer(buyer.CompanyCode)
+		if err != nil {
+			continue
+		}
+
 		dcmFull := DatacenterMapsFull{
 			Alias:          dcMap.Alias,
 			DatacenterName: datacenter.Name,
 			DatacenterID:   fmt.Sprintf("%016x", dcMap.Datacenter),
-			BuyerName:      buyer.Name,
+			BuyerName:      customer.Name,
 			BuyerID:        fmt.Sprintf("%016x", dcMap.BuyerID),
 			SupplierName:   datacenter.SupplierName,
 		}
@@ -1232,19 +1253,18 @@ func (s *BuyersService) SameBuyerRole(buyerID string) RoleFunc {
 		if buyerID == "" {
 			return false, fmt.Errorf("SameBuyerRole(): buyerID is required")
 		}
-
-		requestUser := req.Context().Value("user")
-		if requestUser == nil {
-			return false, fmt.Errorf("SameBuyerRole(): unable to parse user from token")
-		}
-
-		requestEmail, ok := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["email"].(string)
+		companyCode, ok := req.Context().Value(companyKey).(string)
 		if !ok {
-			return false, fmt.Errorf("SameBuyerRole(): unable to parse email from token")
+			err := fmt.Errorf("SameBuyerRole(): user is not assigned to a company")
+			level.Error(s.Logger).Log("err", err)
+			return false, err
 		}
-		requestEmailParts := strings.Split(requestEmail, "@")
-		requestDomain := requestEmailParts[len(requestEmailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
-		buyer, err := s.Storage.BuyerWithDomain(requestDomain)
+		if companyCode == "" {
+			err := fmt.Errorf("SameBuyerRole(): failed to parse company code")
+			level.Error(s.Logger).Log("err", err)
+			return false, err
+		}
+		buyer, err := s.Storage.BuyerWithCompanyCode(companyCode)
 		if err != nil {
 			return false, fmt.Errorf("SameBuyerRole(): BuyerWithDomain error: %v", err)
 		}

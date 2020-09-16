@@ -69,7 +69,7 @@ func addBuyer(rpcClient jsonrpc.RPCClient, env Environment, buyer routing.Buyer)
 		return
 	}
 
-	fmt.Printf("Buyer \"%s\" added to storage.\n", buyer.Name)
+	fmt.Printf("Buyer \"%s\" added to storage.\n", buyer.CompanyCode)
 }
 
 func removeBuyer(rpcClient jsonrpc.RPCClient, env Environment, id string) {

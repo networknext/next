@@ -8,12 +8,24 @@ import (
 )
 
 type Storer interface {
+	Customer(code string) (routing.Customer, error)
+
+	CustomerWithName(name string) (routing.Customer, error)
+
+	Customers() []routing.Customer
+
+	AddCustomer(ctx context.Context, customer routing.Customer) error
+
+	RemoveCustomer(ctx context.Context, code string) error
+
+	SetCustomer(ctx context.Context, customer routing.Customer) error
+
 	// Buyer gets a copy of a buyer with the specified buyer ID,
 	// and returns an empty buyer and an error if a buyer with that ID doesn't exist in storage.
 	Buyer(id uint64) (routing.Buyer, error)
 
-	// BuyerWithDomain gets the Buyer with the matching domain name
-	BuyerWithDomain(domain string) (routing.Buyer, error)
+	// BuyerWithCompanyCode gets the Buyer with the matching company code
+	BuyerWithCompanyCode(code string) (routing.Buyer, error)
 
 	// Buyers returns a copy of all stored buyers.
 	Buyers() []routing.Buyer
@@ -50,6 +62,8 @@ type Storer interface {
 	// SellerIDFromCustomerName returns the seller ID associated with the given customer name and an error if the customer wasn't found.
 	// If the customer has no seller linked, then it will return an empty seller ID and no error.
 	SellerIDFromCustomerName(ctx context.Context, customerName string) (string, error)
+
+	SellerWithCompanyCode(code string) (routing.Seller, error)
 
 	// SetCustomerLink update the customer's buyer and seller references.
 	SetCustomerLink(ctx context.Context, customerName string, buyerID uint64, sellerID string) error

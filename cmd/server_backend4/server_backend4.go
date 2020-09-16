@@ -241,7 +241,7 @@ func mainReturnWithCode() int {
 
 		if err := storer.AddBuyer(ctx, routing.Buyer{
 			ID:                   13672574147039585173,
-			Name:                 "local",
+			CompanyCode:          "local",
 			Live:                 true,
 			PublicKey:            customerPublicKey,
 			RoutingRulesSettings: routing.LocalRoutingRulesSettings,
