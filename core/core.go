@@ -871,10 +871,6 @@ func GetRandomBestRoute(routeMatrix []RouteEntry, sourceRelays []int32, sourceRe
     bestRoutes := make([]BestRoute, 1024)
     GetBestRoutes(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, bestRoutes, &numBestRoutes)
 
-    if numBestRoutes == 0 {
-        return false
-    }
-
     randomIndex := rand.Intn(numBestRoutes)
 
     *out_bestRouteCost = bestRoutes[randomIndex].Cost
@@ -1045,10 +1041,6 @@ func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState, customer *
 
 func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, customer *CustomerConfig, internal *InternalConfig, directLatency int32, directPacketLoss float32, sourceRelays []int32, sourceRelayCost[]int32, destRelays []int32, out_routeCost *int32, out_routeNumRelays *int32, out_routeRelays []int32) bool {
 
-    if routeState.Next {
-        panic("only call MakeRouteDecision_TakeNetworkNext when *not* already taking network next")
-    }
-
     if EarlyOutDirect(routeShader, routeState, customer) {
         return false
     }
@@ -1161,7 +1153,7 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
         return false
     }
 
-    // stay on network next
+    // have still have a route, stay on network next
 
     *out_updatedRouteCost = bestRouteCost
     *out_updatedRouteNumRelays = bestRouteNumRelays
@@ -1171,10 +1163,6 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
 }
 
 func MakeRouteDecision_StayOnNetworkNext(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, customer *CustomerConfig, internal *InternalConfig, directLatency int32, nextLatency int32, currentRouteNumRelays int32, currentRouteRelays [MaxRelaysPerRoute]int32, sourceRelays []int32, sourceRelayCost[]int32, destRelays []int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32) bool {
-
-    if !routeState.Next {
-        panic("only call MakeRouteDecision_TakeNetworkNext when session is on network next")
-    }
 
     stayOnNetworkNext := MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix, routeShader, routeState, customer, internal, directLatency, nextLatency, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCost, destRelays, out_updatedRouteCost, out_updatedRouteNumRelays, out_updatedRouteRelays)
 
