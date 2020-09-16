@@ -1077,13 +1077,11 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 
     // if we are in pro mode, take network next pro-actively in multipath before anything goes wrong
 
-    userHasMultipathVeto := !customer.MultipathVetoUsers[routeState.UserID]
+    userHasMultipathVeto := customer.MultipathVetoUsers[routeState.UserID]
 
     proMode := false
     if routeShader.ProMode && !userHasMultipathVeto {
         maxCost = directLatency + internal.MaxLatencyTradeOff
-        reduceLatency = true
-        reducePacketLoss = true
         proMode = true
     }
 
@@ -1106,8 +1104,8 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
     routeState.Next = true
     routeState.ReduceLatency = reduceLatency
     routeState.ReducePacketLoss = reducePacketLoss
-    routeState.ProMode = proMode
-    routeState.Multipath = routeShader.Multipath && userHasMultipathVeto
+    routeState.ProMode = proMode    
+    routeState.Multipath = (proMode || routeShader.Multipath) && !userHasMultipathVeto
 
     *out_routeCost = bestRouteCost
     *out_routeNumRelays = bestRouteNumRelays
@@ -1141,14 +1139,14 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
         rttVeto = internal.RTTVeto_Multipath
     }
 
-    if nextLatency > directLatency + rttVeto {
+    if nextLatency > directLatency - rttVeto {
         routeState.LatencyWorse = true
         return false
     }
 
     // update the current best route
 
-    maxCost := directLatency + rttVeto
+    maxCost := directLatency - rttVeto
 
     bestRouteCost := int32(0)
     bestRouteNumRelays := int32(0)
