@@ -1019,6 +1019,8 @@ func TestRouteToken(t *testing.T) {
     routeToken.NextAddress = ParseAddress("127.0.0.1:40000")
     RandomBytes(routeToken.PrivateKey[:])
 
+    // write the token to a buffer and read it back in
+
     buffer := make([]byte, NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES)
 
     WriteRouteToken(&routeToken, buffer[:])
@@ -1029,12 +1031,34 @@ func TestRouteToken(t *testing.T) {
     assert.NoError(t, err)
     assert.Equal(t, routeToken, readRouteToken)
 
+    // can't read a token if the buffer is too small
+
+    err = ReadRouteToken(&readRouteToken, buffer[:10])
+
+    assert.Error(t, err)
+
+    // write an encrypted route token and read it back
+
     WriteEncryptedRouteToken(&routeToken, buffer, masterPrivateKey[:], relayPublicKey[:])
 
     err = ReadEncryptedRouteToken(&readRouteToken, buffer, masterPublicKey[:], relayPrivateKey[:])
 
     assert.NoError(t, err)
     assert.Equal(t, routeToken, readRouteToken)
+
+    // can't read an encrypted route token if the buffer is too small
+
+    err = ReadEncryptedRouteToken(&readRouteToken, buffer[:10], masterPublicKey[:], relayPrivateKey[:])
+
+    assert.Error(t, err)
+
+    // can't read an encrypted route token if the buffer is garbage
+
+    buffer = make([]byte, NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES)
+
+    err = ReadEncryptedRouteToken(&readRouteToken, buffer, masterPublicKey[:], relayPrivateKey[:])
+
+    assert.Error(t, err)
 }
 
 func TestRouteTokens(t *testing.T) {
