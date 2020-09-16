@@ -29,7 +29,7 @@ func (locator *goodIPLocator) LocateIP(ip net.IP) (routing.Location, error) {
 
 type badRouteProvider struct{}
 
-func (rp *badRouteProvider) GetDatacenterRelayIDs(datacenter routing.Datacenter) []uint64 {
+func (rp *badRouteProvider) GetDatacenterRelayIDs(datacenterID uint64) []uint64 {
 	return nil
 }
 func (rp *badRouteProvider) GetAcceptableRoutes(nearIDs []routing.NearRelayData, destIDs []uint64, prevRouteHash uint64, rttEpsilon int32) ([]routing.Route, error) {
@@ -41,7 +41,7 @@ func (rp *badRouteProvider) GetNearRelays(latitude float64, longitude float64, m
 
 type goodRouteProvider struct{}
 
-func (rp *goodRouteProvider) GetDatacenterRelayIDs(datacenter routing.Datacenter) []uint64 {
+func (rp *goodRouteProvider) GetDatacenterRelayIDs(datacenterID uint64) []uint64 {
 	return nil
 }
 func (rp *goodRouteProvider) GetAcceptableRoutes(nearIDs []routing.NearRelayData, destIDs []uint64, prevRouteHash uint64, rttEpsilon int32) ([]routing.Route, error) {
