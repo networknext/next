@@ -66,7 +66,7 @@ func (m *RouteMatrix4) Serialize(stream encoding.Stream) error {
 		}
 	}
 
-	return nil
+	return stream.Error()
 }
 
 func (m *RouteMatrix4) GetNearRelays(latitude float64, longitude float64, maxNearRelays int) ([]NearRelayData, error) {

@@ -2,6 +2,7 @@ package transport
 
 import (
 	"fmt"
+	"math"
 	"net"
 
 	"github.com/networknext/backend/crypto"
@@ -317,6 +318,10 @@ type SessionData4 struct {
 	SessionVersion  uint32
 	SliceNumber     uint32
 	ExpireTimestamp uint64
+	Initial         bool
+	Location        routing.Location
+	NearRelays      []routing.NearRelayData
+	DestRelayIDs    []uint64
 	Route           routing.Route
 }
 
@@ -350,20 +355,51 @@ func (sessionData *SessionData4) Serialize(stream encoding.Stream) error {
 	stream.SerializeBits(&sessionData.SessionVersion, 8)
 	stream.SerializeUint32(&sessionData.SliceNumber)
 	stream.SerializeUint64(&sessionData.ExpireTimestamp)
-	numRelays := int32(0)
-	hasRoute := false
-	if stream.IsWriting() {
-		numRelays = int32(sessionData.Route.NumRelays)
-		hasRoute = numRelays > 0
+	stream.SerializeBool(&sessionData.Initial)
+	locationSize := uint32(sessionData.Location.Size())
+	stream.SerializeUint32(&locationSize)
+	if stream.IsReading() {
+		locationBytes := make([]byte, locationSize)
+		stream.SerializeBytes(locationBytes)
+		if err := sessionData.Location.UnmarshalBinary(locationBytes); err != nil {
+			return err
+		}
+	} else {
+		locationBytes, err := sessionData.Location.MarshalBinary()
+		if err != nil {
+			return err
+		}
+		stream.SerializeBytes(locationBytes)
 	}
+	numNearRelays := int32(len(sessionData.NearRelays))
+	stream.SerializeInteger(&numNearRelays, 0, MaxNearRelays)
+	if stream.IsReading() {
+		sessionData.NearRelays = make([]routing.NearRelayData, numNearRelays)
+	}
+	for i := 0; i < int(numNearRelays); i++ {
+		nearRelay := &sessionData.NearRelays[i]
+		stream.SerializeUint64(&nearRelay.ID)
+		stream.SerializeAddress(nearRelay.Addr)
+		stream.SerializeString(&nearRelay.Name, math.MaxInt8)
+		stream.SerializeFloat64(&nearRelay.ClientStats.RTT)
+		stream.SerializeFloat64(&nearRelay.ClientStats.Jitter)
+		stream.SerializeFloat64(&nearRelay.ClientStats.PacketLoss)
+	}
+	numDestRelayIDs := int32(len(sessionData.DestRelayIDs))
+	stream.SerializeInteger(&numDestRelayIDs, 0, math.MaxInt32)
+	if stream.IsReading() {
+		sessionData.DestRelayIDs = make([]uint64, numDestRelayIDs)
+	}
+	for i := 0; i < int(numDestRelayIDs); i++ {
+		stream.SerializeUint64(&sessionData.DestRelayIDs[i])
+	}
+	numRouteRelays := int32(sessionData.Route.NumRelays)
+	hasRoute := numRouteRelays > 0
 	stream.SerializeBool(&hasRoute)
 	if hasRoute {
-		stream.SerializeInteger(&numRelays, 0, routing.MaxRelays)
-		if stream.IsReading() {
-			sessionData.Route.NumRelays = int(numRelays)
-		}
-
-		for i := 0; i < int(numRelays); i++ {
+		stream.SerializeInteger(&numRouteRelays, 0, routing.MaxRelays)
+		sessionData.Route.NumRelays = int(numRouteRelays)
+		for i := 0; i < int(numRouteRelays); i++ {
 			stream.SerializeUint64(&sessionData.Route.RelayIDs[i])
 		}
 	}
