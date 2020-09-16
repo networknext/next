@@ -1093,7 +1093,7 @@ func TestBestRouteCostSimple(t *testing.T) {
 
     relayDatacenters := env.GetRelayDatacenters()
 
-    numSegments := numRelays
+    numSegments := 64
 
     routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
 

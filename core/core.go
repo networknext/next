@@ -615,11 +615,12 @@ func ReadEncryptedRouteToken(tokenData []byte, senderPublicKey []byte, receiverP
     return ReadRouteToken(tokenData)
 }
 
-func WriteRouteTokens(expireTimestamp uint64, sessionId uint64, sessionVersion uint8, kbpsUp uint32, kbpsDown uint32, numNodes int, addresses []*net.UDPAddr, publicKeys [][]byte, masterPrivateKey [KeyBytes]byte) []byte {
+// todo
+// tokenData := make([]byte, numNodes*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES)
+
+func WriteRouteTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64, sessionVersion uint8, kbpsUp uint32, kbpsDown uint32, numNodes int, addresses []*net.UDPAddr, publicKeys [][]byte, masterPrivateKey [KeyBytes]byte) {
     privateKey := [KeyBytes]byte{}
     RandomBytes(privateKey[:])
-    // todo: avoid allocation here by passing in token data as arg
-    tokenData := make([]byte, numNodes*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES)
     for i := 0; i < numNodes; i++ {
         token := &RouteToken{}
         token.expireTimestamp = expireTimestamp
@@ -633,7 +634,6 @@ func WriteRouteTokens(expireTimestamp uint64, sessionId uint64, sessionVersion u
         copy(token.privateKey, privateKey[:])
         WriteEncryptedRouteToken(tokenData[i*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:], token, masterPrivateKey[:], publicKeys[i])
     }
-    return tokenData
 }
 
 func WriteContinueToken(token *ContinueToken, buffer []byte) {
