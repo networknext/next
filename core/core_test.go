@@ -3526,7 +3526,7 @@ func TestStayOnNetworkNext_ReduceLatency_SlightlyWorse(t *testing.T) {
 
     routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
 
-    directLatency := int32(19)
+    directLatency := int32(15)
     
     nextLatency := int32(20)
 
@@ -3559,6 +3559,64 @@ func TestStayOnNetworkNext_ReduceLatency_SlightlyWorse(t *testing.T) {
     expectedRouteState.UserID = 100
     expectedRouteState.Next = true
     expectedRouteState.ReduceLatency = true
+
+    assert.Equal(t, expectedRouteState, routeState)
+}
+
+func TestStayOnNetworkNext_ReduceLatency_RTTVeto(t *testing.T) {
+
+    t.Parallel()
+
+    env := NewTestEnvironment()
+
+    env.AddRelay("losangeles", "10.0.0.1")
+    env.AddRelay("chicago", "10.0.0.2")
+
+    env.SetCost("losangeles", "chicago", 10)
+
+    costMatrix, numRelays := env.GetCostMatrix()
+
+    relayDatacenters := env.GetRelayDatacenters()
+
+    numSegments := numRelays
+
+    routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+
+    directLatency := int32(5)
+    
+    nextLatency := int32(20)
+
+    sourceRelays := []int32{0}
+    sourceRelayCosts := []int32{10}
+
+    destRelays := []int32{1}
+
+    routeCost := int32(0)
+    routeNumRelays := int32(0)
+    routeRelays := [MaxRelaysPerRoute]int32{}
+
+    routeShader := NewRouteShader()
+    routeState := RouteState{}
+    customer := CustomerConfig{}
+    internal := NewInternalConfig()
+
+    routeState.Next = true
+    routeState.UserID = 100
+    routeState.ReduceLatency = true
+
+    currentRouteNumRelays := int32(2)
+    currentRouteRelays := [MaxRelaysPerRoute]int32{0,1}
+
+    result := MakeRouteDecision_StayOnNetworkNext(routeMatrix, &routeShader, &routeState, &customer, &internal, directLatency, nextLatency, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:])
+
+    assert.False(t, result)
+
+    expectedRouteState := RouteState{}
+    expectedRouteState.UserID = 100
+    expectedRouteState.Next = false
+    expectedRouteState.ReduceLatency = true
+    expectedRouteState.LatencyWorse = true
+    expectedRouteState.Veto = true
 
     assert.Equal(t, expectedRouteState, routeState)
 }
