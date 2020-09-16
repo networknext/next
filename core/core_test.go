@@ -967,6 +967,40 @@ func TestSlowerRoute(t *testing.T) {
     }
 }
 
+func TestEncrypt(t *testing.T) {
+
+    senderPublicKey := [...]byte{0x6f, 0x58, 0xb4, 0xd7, 0x3d, 0xdc, 0x73, 0x06, 0xb8, 0x97, 0x3d, 0x22, 0x4d, 0xe6, 0xf1, 0xfd, 0x2a, 0xf0, 0x26, 0x7e, 0x8b, 0x1d, 0x93, 0x73, 0xd0, 0x40, 0xa9, 0x8b, 0x86, 0x75, 0xcd, 0x43}
+    senderPrivateKey := [...]byte{0x2a, 0xad, 0xd5, 0x43, 0x4e, 0x52, 0xbf, 0x62, 0x0b, 0x76, 0x24, 0x18, 0xe1, 0x26, 0xfb, 0xda, 0x89, 0x95, 0x32, 0xde, 0x1d, 0x39, 0x7f, 0xcd, 0x7b, 0x7a, 0xd5, 0x96, 0x3b, 0x0d, 0x23, 0xe5}
+    
+    receiverPublicKey := [...]byte{0x6f, 0x58, 0xb4, 0xd7, 0x3d, 0xdc, 0x73, 0x06, 0xb8, 0x97, 0x3d, 0x22, 0x4d, 0xe6, 0xf1, 0xfd, 0x2a, 0xf0, 0x26, 0x7e, 0x8b, 0x1d, 0x93, 0x73, 0xd0, 0x40, 0xa9, 0x8b, 0x86, 0x75, 0xcd, 0x43}
+    receiverPrivateKey := [...]byte{0x2a, 0xad, 0xd5, 0x43, 0x4e, 0x52, 0xbf, 0x62, 0x0b, 0x76, 0x24, 0x18, 0xe1, 0x26, 0xfb, 0xda, 0x89, 0x95, 0x32, 0xde, 0x1d, 0x39, 0x7f, 0xcd, 0x7b, 0x7a, 0xd5, 0x96, 0x3b, 0x0d, 0x23, 0xe5}
+
+    nonce := make([]byte, NonceBytes)
+    RandomBytes(nonce)
+
+    data := make([]byte, 256)
+    for i := range data {
+        data[i] = byte(data[i])
+    }
+
+    encryptedData := make([]byte, 256 + MacBytes)
+
+    encryptedBytes := Encrypt(senderPrivateKey[:], receiverPublicKey[:], nonce, encryptedData, len(data))
+
+    assert.Equal(t, 256 + MacBytes, encryptedBytes)
+
+    err := Decrypt(senderPublicKey[:], receiverPrivateKey[:], nonce, encryptedData, encryptedBytes)
+
+    assert.NoError(t, err)
+
+    RandomBytes(senderPublicKey[:])
+
+    err = Decrypt(senderPublicKey[:], receiverPrivateKey[:], nonce, encryptedData, encryptedBytes)
+
+    assert.Error(t, err)
+
+}
+
 func TestRouteToken(t *testing.T) {
 
     t.Parallel()
@@ -983,7 +1017,8 @@ func TestRouteToken(t *testing.T) {
     routeToken.kbpsUp = 256
     routeToken.kbpsDown = 512
     routeToken.nextAddress = ParseAddress("127.0.0.1:40000")
-    routeToken.privateKey = RandomBytes(NEXT_PRIVATE_KEY_BYTES)
+    routeToken.privateKey = make([]byte, NEXT_PRIVATE_KEY_BYTES)
+    RandomBytes(routeToken.privateKey)
 
     buffer := make([]byte, NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES)
 
@@ -2574,11 +2609,11 @@ func TestTakeNetworkNext_ReducePacketLoss_ReducePacketLossAndLatency(t *testing.
 
 // -----------------------------------------------------------------------------
 
-// todo: test multipath take network next
+// todo: test multipath
 
 // -----------------------------------------------------------------------------
 
-// todo: test pro mode take network next
+// todo: test pro mode
 
 // -----------------------------------------------------------------------------
 
@@ -2758,37 +2793,28 @@ func TestStayOnNetworkNext_ReduceLatency_Simple(t *testing.T) {
 
 }
 
-// (routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, customer *CustomerConfig, internal *InternalConfig, 
-// directLatency int32, nextLatency int32, 
-// currentRouteNumRelays int32, currentRouteRelays [MaxRelaysPerRoute]int32, 
-// sourceRelays []int32, sourceRelayCost[]int32, 
-// destRelays []int32, 
-// out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32) bool {
-
 // todo: test that we can make rtt slightly worse, but not get kicked off
 
 // todo: test rtt veto
 
 // todo: test that we will change to a better route if one is available
 
-// todo: if our current routes goes away, test that we change to another route
+// todo: if our current route goes away, test that we change to another route
 
 // todo: if all routes go away, test that we get kicked off network next with "no route" and "veto" set
 
 // -----------------------------------------------------------------------------
 
-// todo: test that we can make rtt moderately worse, but not get kicked off
+// todo: test that we can make rtt moderately worse, but not get kicked off (PL)
 
 // todo: test rtt veto (PL)
 
 // -----------------------------------------------------------------------------
 
-// todo: test various multipath things
+// todo: test we can make rtt moderately worse, but not kicked off (multipath)
 
-// todo: test multipath overload
+// todo: test rtt veto works in multipath
 
-// -----------------------------------------------------------------------------
-
-// todo: test all the boring stuff, eg. network next disabled, selection % etc.
+// todo: test multipath overload works
 
 // -----------------------------------------------------------------------------

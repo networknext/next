@@ -538,16 +538,18 @@ const Crypto_box_PUBLICKEYBYTES = C.crypto_box_PUBLICKEYBYTES
 
 const KeyBytes = 32
 const NonceBytes = 24
+const MacBytes = C.crypto_box_MACBYTES
 const SignatureBytes = C.crypto_sign_BYTES
 const PublicKeyBytes = C.crypto_sign_PUBLICKEYBYTES
 
-func Encrypt(senderPrivateKey []byte, receiverPublicKey []byte, nonce []byte, buffer []byte, bytes int) {
+func Encrypt(senderPrivateKey []byte, receiverPublicKey []byte, nonce []byte, buffer []byte, bytes int) int {
     C.crypto_box_easy((*C.uchar)(&buffer[0]),
         (*C.uchar)(&buffer[0]),
         C.ulonglong(bytes),
         (*C.uchar)(&nonce[0]),
         (*C.uchar)(&receiverPublicKey[0]),
         (*C.uchar)(&senderPrivateKey[0]))
+    return bytes + C.crypto_box_MACBYTES
 }
 
 func Decrypt(senderPublicKey []byte, receiverPrivateKey []byte, nonce []byte, buffer []byte, bytes int) error {
@@ -565,10 +567,8 @@ func Decrypt(senderPublicKey []byte, receiverPrivateKey []byte, nonce []byte, bu
     }
 }
 
-func RandomBytes(bytes int) []byte {
-    buffer := make([]byte, bytes)
-    C.randombytes_buf(unsafe.Pointer(&buffer[0]), C.size_t(bytes))
-    return buffer
+func RandomBytes(buffer []byte) {
+    C.randombytes_buf(unsafe.Pointer(&buffer[0]), C.size_t(len(buffer)))
 }
 
 func WriteRouteToken(token *RouteToken, buffer []byte) {
@@ -598,10 +598,9 @@ func ReadRouteToken(buffer []byte) (*RouteToken, error) {
 }
 
 func WriteEncryptedRouteToken(buffer []byte, token *RouteToken, senderPrivateKey []byte, receiverPublicKey []byte) {
-    nonce := RandomBytes(NonceBytes)
-    copy(buffer, nonce)
+    RandomBytes(buffer[:NonceBytes])
     WriteRouteToken(token, buffer[NonceBytes:])
-    Encrypt(senderPrivateKey, receiverPublicKey, nonce, buffer[NonceBytes:], NEXT_ROUTE_TOKEN_BYTES)
+    Encrypt(senderPrivateKey, receiverPublicKey, buffer[0:NonceBytes], buffer[NonceBytes:], NEXT_ROUTE_TOKEN_BYTES)
 }
 
 func ReadEncryptedRouteToken(tokenData []byte, senderPublicKey []byte, receiverPrivateKey []byte) (*RouteToken, error) {
@@ -617,7 +616,9 @@ func ReadEncryptedRouteToken(tokenData []byte, senderPublicKey []byte, receiverP
 }
 
 func WriteRouteTokens(expireTimestamp uint64, sessionId uint64, sessionVersion uint8, kbpsUp uint32, kbpsDown uint32, numNodes int, addresses []*net.UDPAddr, publicKeys [][]byte, masterPrivateKey [KeyBytes]byte) []byte {
-    privateKey := RandomBytes(KeyBytes)
+    privateKey := [KeyBytes]byte{}
+    RandomBytes(privateKey[:])
+    // todo: avoid allocation here by passing in token data as arg
     tokenData := make([]byte, numNodes*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES)
     for i := 0; i < numNodes; i++ {
         token := &RouteToken{}
@@ -629,7 +630,7 @@ func WriteRouteTokens(expireTimestamp uint64, sessionId uint64, sessionVersion u
         if i != numNodes-1 {
             token.nextAddress = addresses[i+1]
         }
-        token.privateKey = privateKey
+        copy(token.privateKey, privateKey[:])
         WriteEncryptedRouteToken(tokenData[i*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:], token, masterPrivateKey[:], publicKeys[i])
     }
     return tokenData
@@ -653,10 +654,9 @@ func ReadContinueToken(buffer []byte) (*ContinueToken, error) {
 }
 
 func WriteEncryptedContinueToken(buffer []byte, token *ContinueToken, senderPrivateKey []byte, receiverPublicKey []byte) {
-    nonce := RandomBytes(NonceBytes)
-    copy(buffer, nonce)
+    RandomBytes(buffer[:NonceBytes])
     WriteContinueToken(token, buffer[NonceBytes:])
-    Encrypt(senderPrivateKey, receiverPublicKey, nonce, buffer[NonceBytes:], NEXT_CONTINUE_TOKEN_BYTES)
+    Encrypt(senderPrivateKey, receiverPublicKey, buffer[:NonceBytes], buffer[NonceBytes:], NEXT_CONTINUE_TOKEN_BYTES)
 }
 
 func ReadEncryptedContinueToken(tokenData []byte, senderPublicKey []byte, receiverPrivateKey []byte) (*ContinueToken, error) {
