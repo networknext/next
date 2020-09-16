@@ -897,7 +897,7 @@ func GetBestRoute_Initial(routeMatrix []RouteEntry, sourceRelays []int32, source
     return GetRandomBestRoute(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, out_bestRouteCost, out_bestRouteNumRelays, out_bestRouteRelays)
 }
 
-func GetBestRoute_Update(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost[] int32, destRelays []int32, maxCost int32, costThreshold int32, currentRouteNumRelays int32, currentRouteRelays [MaxRelaysPerRoute]int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays *[MaxRelaysPerRoute]int32) bool {
+func GetBestRoute_Update(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost[] int32, destRelays []int32, maxCost int32, routeSwitchThreshold int32, currentRouteNumRelays int32, currentRouteRelays [MaxRelaysPerRoute]int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays *[MaxRelaysPerRoute]int32) bool {
 
     // if the current route no longer exists, pick a new route
 
@@ -912,8 +912,8 @@ func GetBestRoute_Update(routeMatrix []RouteEntry, sourceRelays []int32, sourceR
 
     bestRouteCost := GetBestRouteCost(routeMatrix, sourceRelays, sourceRelayCost, destRelays)
 
-    if currentRouteCost > bestRouteCost + costThreshold {
-        GetRandomBestRoute(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, out_updatedRouteCost, out_updatedRouteNumRelays, out_updatedRouteRelays)
+    if currentRouteCost > bestRouteCost + routeSwitchThreshold {
+        GetRandomBestRoute(routeMatrix, sourceRelays, sourceRelayCost, destRelays, bestRouteCost + routeSwitchThreshold, out_updatedRouteCost, out_updatedRouteNumRelays, out_updatedRouteRelays)
         return true
     }
 
@@ -1000,7 +1000,7 @@ type InternalConfig struct {
 
 func NewInternalConfig() InternalConfig {
     return InternalConfig{
-        RouteSwitchThreshold: -5,
+        RouteSwitchThreshold: 5,
         MaxLatencyTradeOff: 10,
         RTTVeto_Default: -5,
         RTTVeto_PacketLoss: -20,
@@ -1122,7 +1122,7 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
 
     // if we overload the connection in multipath, leave network next
 
-    if routeState.Multipath && directLatency > internal.MultipathOverloadThreshold {
+    if routeState.Multipath && directLatency >= internal.MultipathOverloadThreshold {
         routeState.MultipathOverload = true
         return false
     }
