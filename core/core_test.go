@@ -1010,34 +1010,80 @@ func TestRouteToken(t *testing.T) {
     masterPublicKey := [...]byte{0x6f, 0x58, 0xb4, 0xd7, 0x3d, 0xdc, 0x73, 0x06, 0xb8, 0x97, 0x3d, 0x22, 0x4d, 0xe6, 0xf1, 0xfd, 0x2a, 0xf0, 0x26, 0x7e, 0x8b, 0x1d, 0x93, 0x73, 0xd0, 0x40, 0xa9, 0x8b, 0x86, 0x75, 0xcd, 0x43}
     masterPrivateKey := [...]byte{0x2a, 0xad, 0xd5, 0x43, 0x4e, 0x52, 0xbf, 0x62, 0x0b, 0x76, 0x24, 0x18, 0xe1, 0x26, 0xfb, 0xda, 0x89, 0x95, 0x32, 0xde, 0x1d, 0x39, 0x7f, 0xcd, 0x7b, 0x7a, 0xd5, 0x96, 0x3b, 0x0d, 0x23, 0xe5}
 
-    routeToken := &RouteToken{}
-    routeToken.expireTimestamp = uint64(time.Now().Unix() + 10)
-    routeToken.sessionId = 0x123131231313131
-    routeToken.sessionVersion = 100
-    routeToken.kbpsUp = 256
-    routeToken.kbpsDown = 512
-    routeToken.nextAddress = ParseAddress("127.0.0.1:40000")
-    routeToken.privateKey = make([]byte, NEXT_PRIVATE_KEY_BYTES)
-    RandomBytes(routeToken.privateKey)
+    routeToken := RouteToken{}
+    routeToken.ExpireTimestamp = uint64(time.Now().Unix() + 10)
+    routeToken.SessionId = 0x123131231313131
+    routeToken.SessionVersion = 100
+    routeToken.KbpsUp = 256
+    routeToken.KbpsDown = 512
+    routeToken.NextAddress = ParseAddress("127.0.0.1:40000")
+    RandomBytes(routeToken.PrivateKey[:])
 
     buffer := make([]byte, NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES)
 
-    WriteRouteToken(routeToken, buffer[:])
+    WriteRouteToken(&routeToken, buffer[:])
 
-    readRouteToken, err := ReadRouteToken(buffer)
+    var readRouteToken RouteToken
+    err := ReadRouteToken(&readRouteToken, buffer)
 
     assert.NoError(t, err)
     assert.Equal(t, routeToken, readRouteToken)
 
-    WriteEncryptedRouteToken(buffer, routeToken, masterPrivateKey[:], relayPublicKey[:])
+    WriteEncryptedRouteToken(&routeToken, buffer, masterPrivateKey[:], relayPublicKey[:])
 
-    readRouteToken, err = ReadEncryptedRouteToken(buffer, masterPublicKey[:], relayPrivateKey[:])
+    err = ReadEncryptedRouteToken(&readRouteToken, buffer, masterPublicKey[:], relayPrivateKey[:])
 
     assert.NoError(t, err)
     assert.Equal(t, routeToken, readRouteToken)
 }
 
-// todo: test WriteRouteTokens
+func TestRouteTokens(t *testing.T) {
+
+    t.Parallel()
+
+    relayPublicKey := [...]byte{0x71, 0x16, 0xce, 0xc5, 0x16, 0x1a, 0xda, 0xc7, 0xa5, 0x89, 0xb2, 0x51, 0x2b, 0x67, 0x4f, 0x8f, 0x98, 0x21, 0xad, 0x8f, 0xe6, 0x2d, 0x39, 0xca, 0xe3, 0x9b, 0xec, 0xdf, 0x3e, 0xfc, 0x2c, 0x24}
+    relayPrivateKey := [...]byte{0xb6, 0x7d, 0x01, 0x0d, 0xaf, 0xba, 0xd1, 0x40, 0x75, 0x99, 0x08, 0x15, 0x0d, 0x3a, 0xce, 0x7b, 0x82, 0x28, 0x01, 0x5f, 0x7d, 0xa0, 0x75, 0xb6, 0xc1, 0x15, 0x56, 0x33, 0xe1, 0x01, 0x99, 0xd6}
+    masterPublicKey := [...]byte{0x6f, 0x58, 0xb4, 0xd7, 0x3d, 0xdc, 0x73, 0x06, 0xb8, 0x97, 0x3d, 0x22, 0x4d, 0xe6, 0xf1, 0xfd, 0x2a, 0xf0, 0x26, 0x7e, 0x8b, 0x1d, 0x93, 0x73, 0xd0, 0x40, 0xa9, 0x8b, 0x86, 0x75, 0xcd, 0x43}
+    masterPrivateKey := [...]byte{0x2a, 0xad, 0xd5, 0x43, 0x4e, 0x52, 0xbf, 0x62, 0x0b, 0x76, 0x24, 0x18, 0xe1, 0x26, 0xfb, 0xda, 0x89, 0x95, 0x32, 0xde, 0x1d, 0x39, 0x7f, 0xcd, 0x7b, 0x7a, 0xd5, 0x96, 0x3b, 0x0d, 0x23, 0xe5}
+
+    addresses := make([]*net.UDPAddr, NEXT_MAX_NODES)
+    for i := range addresses {
+        addresses[i] = ParseAddress(fmt.Sprintf("127.0.0.1:%d",40000+i))
+    }
+
+    publicKeys := make([][]byte, NEXT_MAX_NODES)
+    for i := range publicKeys {
+        publicKeys[i] = make([]byte, PublicKeyBytes)
+        copy(publicKeys[i], relayPublicKey[:])
+    }
+
+    sessionId := uint64(0x123131231313131)
+    sessionVersion := byte(100)
+    kbpsUp := uint32(256)
+    kbpsDown := uint32(256)
+    expireTimestamp := uint64(time.Now().Unix() + 10)
+
+    tokenData := make([]byte, NEXT_MAX_NODES*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES)
+
+    WriteRouteTokens(tokenData, expireTimestamp, sessionId, sessionVersion, kbpsUp, kbpsDown, NEXT_MAX_NODES, addresses, publicKeys, masterPrivateKey)
+
+    for i := 0; i < NEXT_MAX_NODES; i++ {
+        var routeToken RouteToken
+        err := ReadEncryptedRouteToken(&routeToken, tokenData[i*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:], masterPublicKey[:], relayPrivateKey[:])
+        assert.NoError(t, err)
+        assert.Equal(t, sessionId, routeToken.SessionId)
+        assert.Equal(t, sessionVersion, routeToken.SessionVersion)
+        assert.Equal(t, kbpsUp, routeToken.KbpsUp)
+        assert.Equal(t, kbpsDown, routeToken.KbpsDown)
+        assert.Equal(t, expireTimestamp, routeToken.ExpireTimestamp)
+        if i != NEXT_MAX_NODES - 1 {
+            assert.Equal(t, addresses[i+1].String(), routeToken.NextAddress.String())
+        } else {
+            assert.True(t, routeToken.NextAddress == nil)
+        }
+        assert.Equal(t, publicKeys[i], relayPublicKey[:])
+    }
+}
 
 func TestContinueToken(t *testing.T) {
 
@@ -1049,9 +1095,9 @@ func TestContinueToken(t *testing.T) {
     masterPrivateKey := [...]byte{0x2a, 0xad, 0xd5, 0x43, 0x4e, 0x52, 0xbf, 0x62, 0x0b, 0x76, 0x24, 0x18, 0xe1, 0x26, 0xfb, 0xda, 0x89, 0x95, 0x32, 0xde, 0x1d, 0x39, 0x7f, 0xcd, 0x7b, 0x7a, 0xd5, 0x96, 0x3b, 0x0d, 0x23, 0xe5}
 
     continueToken := &ContinueToken{}
-    continueToken.expireTimestamp = uint64(time.Now().Unix() + 10)
-    continueToken.sessionId = 0x123131231313131
-    continueToken.sessionVersion = 100
+    continueToken.ExpireTimestamp = uint64(time.Now().Unix() + 10)
+    continueToken.SessionId = 0x123131231313131
+    continueToken.SessionVersion = 100
 
     buffer := make([]byte, NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES)
 

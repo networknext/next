@@ -518,19 +518,19 @@ func Optimize(numRelays int, numSegments int, cost []int32, costThreshold int32,
 // ---------------------------------------------------
 
 type RouteToken struct {
-    expireTimestamp uint64
-    sessionId       uint64
-    sessionVersion  uint8
-    kbpsUp          uint32
-    kbpsDown        uint32
-    nextAddress     *net.UDPAddr
-    privateKey      []byte
+    ExpireTimestamp uint64
+    SessionId       uint64
+    SessionVersion  uint8
+    KbpsUp          uint32
+    KbpsDown        uint32
+    NextAddress     *net.UDPAddr
+    PrivateKey      [NEXT_PRIVATE_KEY_BYTES]byte
 }
 
 type ContinueToken struct {
-    expireTimestamp uint64
-    sessionId       uint64
-    sessionVersion  uint8
+    ExpireTimestamp uint64
+    SessionId       uint64
+    SessionVersion  uint8
 }
 
 const Crypto_kx_PUBLICKEYBYTES = C.crypto_kx_PUBLICKEYBYTES
@@ -572,74 +572,69 @@ func RandomBytes(buffer []byte) {
 }
 
 func WriteRouteToken(token *RouteToken, buffer []byte) {
-    binary.LittleEndian.PutUint64(buffer[0:], token.expireTimestamp)
-    binary.LittleEndian.PutUint64(buffer[8:], token.sessionId)
-    buffer[8+8] = token.sessionVersion
-    binary.LittleEndian.PutUint32(buffer[8+8+1:], token.kbpsUp)
-    binary.LittleEndian.PutUint32(buffer[8+8+1+4:], token.kbpsDown)
-    WriteAddress(buffer[8+8+1+4+4:], token.nextAddress)
-    copy(buffer[8+8+1+4+4+NEXT_ADDRESS_BYTES:], token.privateKey)
+    binary.LittleEndian.PutUint64(buffer[0:], token.ExpireTimestamp)
+    binary.LittleEndian.PutUint64(buffer[8:], token.SessionId)
+    buffer[8+8] = token.SessionVersion
+    binary.LittleEndian.PutUint32(buffer[8+8+1:], token.KbpsUp)
+    binary.LittleEndian.PutUint32(buffer[8+8+1+4:], token.KbpsDown)
+    WriteAddress(buffer[8+8+1+4+4:], token.NextAddress)
+    copy(buffer[8+8+1+4+4+NEXT_ADDRESS_BYTES:], token.PrivateKey[:])
 }
 
-func ReadRouteToken(buffer []byte) (*RouteToken, error) {
+func ReadRouteToken(token *RouteToken, buffer []byte) error {
     if len(buffer) < NEXT_ROUTE_TOKEN_BYTES {
-        return nil, fmt.Errorf("buffer too small to read route token")
+        return fmt.Errorf("buffer too small to read route token")
     }
-    token := &RouteToken{}
-    token.expireTimestamp = binary.LittleEndian.Uint64(buffer[0:])
-    token.sessionId = binary.LittleEndian.Uint64(buffer[8:])
-    token.sessionVersion = buffer[8+8]
-    token.kbpsUp = binary.LittleEndian.Uint32(buffer[8+8+1:])
-    token.kbpsDown = binary.LittleEndian.Uint32(buffer[8+8+1+4:])
-    token.nextAddress = ReadAddress(buffer[8+8+1+4+4:])
-    token.privateKey = make([]byte, NEXT_PRIVATE_KEY_BYTES)
-    copy(token.privateKey, buffer[8+8+1+4+4+NEXT_ADDRESS_BYTES:])
-    return token, nil
+    token.ExpireTimestamp = binary.LittleEndian.Uint64(buffer[0:])
+    token.SessionId = binary.LittleEndian.Uint64(buffer[8:])
+    token.SessionVersion = buffer[8+8]
+    token.KbpsUp = binary.LittleEndian.Uint32(buffer[8+8+1:])
+    token.KbpsDown = binary.LittleEndian.Uint32(buffer[8+8+1+4:])
+    token.NextAddress = ReadAddress(buffer[8+8+1+4+4:])
+    copy(token.PrivateKey[:], buffer[8+8+1+4+4+NEXT_ADDRESS_BYTES:])
+    return nil
 }
 
-func WriteEncryptedRouteToken(buffer []byte, token *RouteToken, senderPrivateKey []byte, receiverPublicKey []byte) {
-    RandomBytes(buffer[:NonceBytes])
-    WriteRouteToken(token, buffer[NonceBytes:])
-    Encrypt(senderPrivateKey, receiverPublicKey, buffer[0:NonceBytes], buffer[NonceBytes:], NEXT_ROUTE_TOKEN_BYTES)
+func WriteEncryptedRouteToken(token *RouteToken, tokenData []byte, senderPrivateKey []byte, receiverPublicKey []byte) {
+    RandomBytes(tokenData[:NonceBytes])
+    WriteRouteToken(token, tokenData[NonceBytes:])
+    Encrypt(senderPrivateKey, receiverPublicKey, tokenData[0:NonceBytes], tokenData[NonceBytes:], NEXT_ROUTE_TOKEN_BYTES)
 }
 
-func ReadEncryptedRouteToken(tokenData []byte, senderPublicKey []byte, receiverPrivateKey []byte) (*RouteToken, error) {
+func ReadEncryptedRouteToken(token *RouteToken, tokenData []byte, senderPublicKey []byte, receiverPrivateKey []byte) error {
     if len(tokenData) < NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES {
-        return nil, fmt.Errorf("not enough bytes for encrypted route token")
+        return fmt.Errorf("not enough bytes for encrypted route token")
     }
     nonce := tokenData[0 : C.crypto_box_NONCEBYTES-1]
     tokenData = tokenData[C.crypto_box_NONCEBYTES:]
     if err := Decrypt(senderPublicKey, receiverPrivateKey, nonce, tokenData, NEXT_ROUTE_TOKEN_BYTES+C.crypto_box_MACBYTES); err != nil {
-        return nil, err
+        return err
     }
-    return ReadRouteToken(tokenData)
+    return ReadRouteToken(token, tokenData)
 }
-
-// todo
-// tokenData := make([]byte, numNodes*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES)
 
 func WriteRouteTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64, sessionVersion uint8, kbpsUp uint32, kbpsDown uint32, numNodes int, addresses []*net.UDPAddr, publicKeys [][]byte, masterPrivateKey [KeyBytes]byte) {
     privateKey := [KeyBytes]byte{}
     RandomBytes(privateKey[:])
     for i := 0; i < numNodes; i++ {
-        token := &RouteToken{}
-        token.expireTimestamp = expireTimestamp
-        token.sessionId = sessionId
-        token.sessionVersion = sessionVersion
-        token.kbpsUp = kbpsUp
-        token.kbpsDown = kbpsDown
+        var token RouteToken
+        token.ExpireTimestamp = expireTimestamp
+        token.SessionId = sessionId
+        token.SessionVersion = sessionVersion
+        token.KbpsUp = kbpsUp
+        token.KbpsDown = kbpsDown
         if i != numNodes-1 {
-            token.nextAddress = addresses[i+1]
+            token.NextAddress = addresses[i+1]
         }
-        copy(token.privateKey, privateKey[:])
-        WriteEncryptedRouteToken(tokenData[i*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:], token, masterPrivateKey[:], publicKeys[i])
+        copy(token.PrivateKey[:], privateKey[:])
+        WriteEncryptedRouteToken(&token, tokenData[i*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:], masterPrivateKey[:], publicKeys[i])
     }
 }
 
 func WriteContinueToken(token *ContinueToken, buffer []byte) {
-    binary.LittleEndian.PutUint64(buffer[0:], token.expireTimestamp)
-    binary.LittleEndian.PutUint64(buffer[8:], token.sessionId)
-    buffer[8+8] = token.sessionVersion
+    binary.LittleEndian.PutUint64(buffer[0:], token.ExpireTimestamp)
+    binary.LittleEndian.PutUint64(buffer[8:], token.SessionId)
+    buffer[8+8] = token.SessionVersion
 }
 
 func ReadContinueToken(buffer []byte) (*ContinueToken, error) {
@@ -647,9 +642,9 @@ func ReadContinueToken(buffer []byte) (*ContinueToken, error) {
         return nil, fmt.Errorf("buffer too small to read continue token")
     }
     token := &ContinueToken{}
-    token.expireTimestamp = binary.LittleEndian.Uint64(buffer[0:])
-    token.sessionId = binary.LittleEndian.Uint64(buffer[8:])
-    token.sessionVersion = buffer[8+8]
+    token.ExpireTimestamp = binary.LittleEndian.Uint64(buffer[0:])
+    token.SessionId = binary.LittleEndian.Uint64(buffer[8:])
+    token.SessionVersion = buffer[8+8]
     return token, nil
 }
 
@@ -675,9 +670,9 @@ func WriteContinueTokens(expireTimestamp uint64, sessionId uint64, sessionVersio
     tokenData := make([]byte, numNodes*NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES)
     for i := 0; i < numNodes; i++ {
         token := &ContinueToken{}
-        token.expireTimestamp = expireTimestamp
-        token.sessionId = sessionId
-        token.sessionVersion = sessionVersion
+        token.ExpireTimestamp = expireTimestamp
+        token.SessionId = sessionId
+        token.SessionVersion = sessionVersion
         WriteEncryptedContinueToken(tokenData[i*NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES:], token, masterPrivateKey[:], publicKeys[i])
     }
     return tokenData
