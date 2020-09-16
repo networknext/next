@@ -2,6 +2,7 @@ package transport
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"time"
@@ -32,6 +33,7 @@ func writeServerInitResponse4(w io.Writer, packet *ServerInitRequestPacket4, res
 
 	return nil
 }
+
 func writeSessionResponse4(w io.Writer, response *SessionResponsePacket4, sessionData *SessionData4) error {
 	sessionDataBuffer, err := MarshalSessionData(sessionData)
 	if err != nil {
@@ -223,7 +225,7 @@ func ServerUpdateHandlerFunc4(logger log.Logger, storer storage.Storer, datacent
 	}
 }
 
-func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IPLocator, getRouteProvider func() RouteProvider, routerPrivateKey []byte, postSessionHandler *PostSessionHandler, metrics *metrics.SessionMetrics) UDPHandlerFunc {
+func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IPLocator, getRouteMatrix4 func() RouteProvider, routerPrivateKey []byte, postSessionHandler *PostSessionHandler, metrics *metrics.SessionMetrics) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
 		metrics.Invocations.Add(1)
 
@@ -252,10 +254,7 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 		var sessionData SessionData4
 
 		ipLocator := getIPLocator()
-		routeMatrix := getRouteProvider()
-		location := routing.LocationNullIsland
-		var nearRelays []routing.NearRelayData
-		route := routing.Route{}
+		routeMatrix := getRouteMatrix4()
 		var err error
 
 		response := SessionResponsePacket4{
@@ -264,51 +263,49 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 			RouteType:   routing.RouteTypeDirect,
 		}
 
+		// If we've gotten this far, use a deferred function so that we always at least return a direct response
+		// and run the post session update logic
+		defer func() {
+			if err := writeSessionResponse4(w, &response, &sessionData); err != nil {
+				level.Error(logger).Log("msg", "failed to write session update response", "err", err)
+				metrics.ErrorMetrics.WriteResponseFailure.Add(1)
+				return
+			}
+
+			go PostSessionUpdate4(postSessionHandler, &packet, &sessionData.Location, sessionData.NearRelays, usageBytesUp, usageBytesDown, metrics)
+		}()
+
 		if newSession {
 			sessionData.Version = SessionDataVersion4
 			sessionData.SessionID = packet.SessionID
 			sessionData.SliceNumber = uint32(packet.SliceNumber + 1)
 
-			location, err = ipLocator.LocateIP(packet.ClientAddress.IP)
+			sessionData.Location, err = ipLocator.LocateIP(packet.ClientAddress.IP)
 			if err != nil {
 				level.Error(logger).Log("msg", "failed to locate IP", "err", err)
 				metrics.ErrorMetrics.ClientLocateFailure.Add(1)
-				if err := writeSessionResponse4(w, &response, &sessionData); err != nil {
-					level.Error(logger).Log("msg", "failed to write session update response", "err", err)
-					metrics.ErrorMetrics.WriteResponseFailure.Add(1)
-					return
-				}
-
-				go PostSessionUpdate4(postSessionHandler, &packet, &location, nearRelays, usageBytesUp, usageBytesDown, metrics)
 				return
 			}
 
-			nearRelays, err = routeMatrix.GetNearRelays(location.Latitude, location.Longitude, MaxNearRelays)
+			sessionData.NearRelays, err = routeMatrix.GetNearRelays(sessionData.Location.Latitude, sessionData.Location.Longitude, MaxNearRelays)
 			if err != nil {
 				level.Error(logger).Log("msg", "failed to get near relays", "err", err)
 				metrics.ErrorMetrics.NearRelaysLocateFailure.Add(1)
-				if err := writeSessionResponse4(w, &response, &sessionData); err != nil {
-					level.Error(logger).Log("msg", "failed to write session update response", "err", err)
-					metrics.ErrorMetrics.WriteResponseFailure.Add(1)
-					return
-				}
-
-				go PostSessionUpdate4(postSessionHandler, &packet, &location, nearRelays, usageBytesUp, usageBytesDown, metrics)
 				return
 			}
 
-			// todo: fix this
-			response.NumNearRelays = /*int32(len(nearRelays))*/ 0
+			response.NumNearRelays = int32(len(sessionData.NearRelays))
 			response.NearRelayIDs = make([]uint64, response.NumNearRelays)
 			response.NearRelayAddresses = make([]net.UDPAddr, response.NumNearRelays)
 			for i := int32(0); i < response.NumNearRelays; i++ {
-				response.NearRelayIDs[i] = nearRelays[i].ID
-				response.NearRelayAddresses[i] = *nearRelays[i].Addr
+				response.NearRelayIDs[i] = sessionData.NearRelays[i].ID
+				response.NearRelayAddresses[i] = *sessionData.NearRelays[i].Addr
 			}
 		} else {
 			if err := UnmarshalSessionData(&sessionData, packet.SessionData[:]); err != nil {
 				level.Error(logger).Log("msg", "could not read session data in session update packet", "err", err)
-				metrics.ErrorMetrics.ReadPacketFailure.Add(1)
+				fmt.Println(err)
+				metrics.SessionDataMetrics.ReadSessionDataFailure.Add(1)
 				return
 			}
 
@@ -320,106 +317,29 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 
 			if sessionData.SliceNumber != uint32(packet.SliceNumber) {
 				level.Error(logger).Log("err", "bad sequence number in session data")
-				metrics.SessionDataMetrics.BadSequenceNumber.Add(1)
+				metrics.SessionDataMetrics.BadSliceNumber.Add(1)
 				return
 			}
 
 			sessionData.SliceNumber = uint32(packet.SliceNumber + 1)
 
-			// todo: we need to store the near relays in the session data so that we can update their client stats
-
-			// for i := range nearRelays {
-			// 	for j, clientNearRelayID := range packet.NearRelayIDs {
-			// 		if nearRelays[i].ID == clientNearRelayID {
-			// 			nearRelays[i].ClientStats.RTT = float64(packet.NearRelayRTT[j])
-			// 			nearRelays[i].ClientStats.Jitter = float64(packet.NearRelayJitter[j])
-			// 			nearRelays[i].ClientStats.PacketLoss = float64(packet.NearRelayPacketLoss[j])
-			// 		}
-			// 	}
-			// }
-		}
-
-		var numRouteTokens int
-		var routeTokens []byte
-
-		if response.RouteType != routing.RouteTypeDirect {
-			var token routing.Token
-
-			relayTokens := make([]routing.RelayToken, route.NumRelays)
-			for i := range relayTokens {
-				relayTokens[i] = routing.RelayToken{
-					ID:        route.RelayIDs[i],
-					Addr:      route.RelayAddrs[i],
-					PublicKey: route.RelayPublicKeys[i],
+			for i := range sessionData.NearRelays {
+				for j, clientNearRelayID := range packet.NearRelayIDs {
+					if sessionData.NearRelays[i].ID == clientNearRelayID {
+						sessionData.NearRelays[i].ClientStats.RTT = float64(packet.NearRelayRTT[j])
+						sessionData.NearRelays[i].ClientStats.Jitter = float64(packet.NearRelayJitter[j])
+						sessionData.NearRelays[i].ClientStats.PacketLoss = float64(packet.NearRelayPacketLoss[j])
+					}
 				}
 			}
 
-			if route.Equals(sessionData.Route) {
-				token = &routing.ContinueRouteToken{
-					Expires: uint64(time.Now().Unix() + 15),
-
-					SessionID: packet.SessionID,
-
-					SessionVersion: uint8(sessionData.SessionVersion),
-
-					Client: routing.Client{
-						Addr:      packet.ClientAddress,
-						PublicKey: packet.ClientRoutePublicKey,
-					},
-
-					Server: routing.Server{
-						Addr:      packet.ServerAddress,
-						PublicKey: packet.ServerRoutePublicKey,
-					},
-
-					Relays: relayTokens,
-				}
-			} else {
-				sessionData.SessionVersion++
-				token = &routing.NextRouteToken{
-					Expires: uint64(time.Now().Unix() + 15),
-
-					SessionID: packet.SessionID,
-
-					SessionVersion: uint8(sessionData.SessionVersion),
-
-					// todo: add back when buyer lookup is implemented in the session update handler
-
-					// KbpsUp:   uint32(buyer.RoutingRulesSettings.EnvelopeKbpsUp),
-					// KbpsDown: uint32(buyer.RoutingRulesSettings.EnvelopeKbpsDown),
-
-					Client: routing.Client{
-						Addr:      packet.ClientAddress,
-						PublicKey: packet.ClientRoutePublicKey,
-					},
-
-					Server: routing.Server{
-						Addr:      packet.ServerAddress,
-						PublicKey: packet.ServerRoutePublicKey,
-					},
-
-					Relays: relayTokens,
-				}
-			}
-
-			routeTokens, numRouteTokens, err = token.Encrypt(routerPrivateKey)
-			if err != nil {
-				metrics.ErrorMetrics.EncryptionFailure.Add(1)
+			sessionData.DestRelayIDs = routeMatrix.GetDatacenterRelayIDs(packet.DatacenterID)
+			if len(sessionData.DestRelayIDs) == 0 {
+				level.Error(logger).Log("msg", "failed to get dest relays", "err", err)
+				metrics.ErrorMetrics.NoRelaysInDatacenter.Add(1)
 				return
 			}
-
-			response.RouteType = int32(token.Type())
-			response.NumTokens = int32(numRouteTokens)
-			response.Tokens = routeTokens
 		}
-
-		if err := writeSessionResponse4(w, &response, &sessionData); err != nil {
-			level.Error(logger).Log("msg", "failed to write session update response", "err", err)
-			metrics.ErrorMetrics.WriteResponseFailure.Add(1)
-			return
-		}
-
-		go PostSessionUpdate4(postSessionHandler, &packet, &location, nearRelays, usageBytesUp, usageBytesDown, metrics)
 
 		level.Debug(logger).Log("msg", "session updated successfully", "source_address", incoming.SourceAddr.String(), "server_address", packet.ServerAddress.String(), "client_address", packet.ClientAddress.String())
 	}

@@ -111,13 +111,15 @@ var EmptySessionErrorMetrics SessionErrorMetrics = SessionErrorMetrics{
 }
 
 type SessionDataErrorMetrics struct {
-	BadSessionID      Counter
-	BadSequenceNumber Counter
+	ReadSessionDataFailure Counter
+	BadSessionID           Counter
+	BadSliceNumber         Counter
 }
 
 var EmptySessionDataErrorMetrics SessionDataErrorMetrics = SessionDataErrorMetrics{
-	BadSessionID:      &EmptyCounter{},
-	BadSequenceNumber: &EmptyCounter{},
+	ReadSessionDataFailure: &EmptyCounter{},
+	BadSessionID:           &EmptyCounter{},
+	BadSliceNumber:         &EmptyCounter{},
 }
 
 type DecisionMetrics struct {
@@ -1506,6 +1508,16 @@ func NewSessionDataMetrics(ctx context.Context, metricsHandler Handler) (*Sessio
 	sessionDataMetrics := SessionDataErrorMetrics{}
 	var err error
 
+	sessionDataMetrics.ReadSessionDataFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Session Data Read Failure",
+		ServiceName: "server_backend",
+		ID:          "session_data.error.read_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	sessionDataMetrics.BadSessionID, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Session Data Bad Session ID",
 		ServiceName: "server_backend",
@@ -1516,10 +1528,10 @@ func NewSessionDataMetrics(ctx context.Context, metricsHandler Handler) (*Sessio
 		return nil, err
 	}
 
-	sessionDataMetrics.BadSequenceNumber, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Session Data Bad Sequence Number",
+	sessionDataMetrics.BadSliceNumber, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Session Data Bad Slice Number",
 		ServiceName: "server_backend",
-		ID:          "session_data.error.bad_sequence_number",
+		ID:          "session_data.error.bad_slice_number",
 		Unit:        "errors",
 	})
 	if err != nil {
