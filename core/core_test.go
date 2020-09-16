@@ -737,6 +737,8 @@ func TestIndirectRoute3(t *testing.T) {
 
     routes := env.GetRoutes(routeMatrix, "losangeles", "chicago")
 
+    // verify the optimizer finds the indirect 3 hop route when the direct route does not exist
+
     assert.Equal(t, 1, len(routes))
     if len(routes) == 1 {
         assert.Equal(t, int32(20), routes[0].cost)
@@ -775,6 +777,8 @@ func TestIndirectRoute4(t *testing.T) {
     routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
 
     routes := env.GetRoutes(routeMatrix, "losangeles", "chicago")
+
+    // verify the optimizer finds the indirect 4 hop route when the direct route does not exist
 
     assert.True(t, len(routes) >= 1)
     if len(routes) >= 1 {
@@ -815,6 +819,8 @@ func TestIndirectRoute5(t *testing.T) {
 
     routes := env.GetRoutes(routeMatrix, "losangeles", "chicago")
 
+    // verify the optimizer finds the indirect 5 hop route when the direct route does not exist
+
     assert.True(t, len(routes) >= 1)
     if len(routes) >= 1 {
         assert.Equal(t, int32(40), routes[0].cost)
@@ -845,6 +851,8 @@ func TestFasterRoute3(t *testing.T) {
     routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
 
     routes := env.GetRoutes(routeMatrix, "losangeles", "chicago")
+
+    // verify the optimizer finds the 3 hop route that is faster than direct
 
     assert.Equal(t, 2, len(routes))
     if len(routes) == 2 {
@@ -881,6 +889,8 @@ func TestFasterRoute4(t *testing.T) {
     routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
 
     routes := env.GetRoutes(routeMatrix, "losangeles", "chicago")
+
+    // verify the optimizer finds the 4 hop route that is faster than direct
 
     assert.Equal(t, 3, len(routes))
     if len(routes) == 3 {
@@ -922,6 +932,8 @@ func TestFasterRoute5(t *testing.T) {
 
     routes := env.GetRoutes(routeMatrix, "losangeles", "chicago")
 
+    // verify the optimizer finds the 5 hop route that is faster than direct
+
     assert.Equal(t, 7, len(routes))
     if len(routes) == 7 {
         assert.Equal(t, int32(40), routes[0].cost)
@@ -960,6 +972,8 @@ func TestSlowerRoute(t *testing.T) {
 
     routes := env.GetRoutes(routeMatrix, "losangeles", "chicago")
 
+    // all routes are slower than direct. verify that we only have the direct route between losangeles and chicago
+
     assert.Equal(t, 1, len(routes))
     if len(routes) == 1 {
         assert.Equal(t, int32(10), routes[0].cost)
@@ -974,6 +988,8 @@ func TestEncrypt(t *testing.T) {
     
     receiverPublicKey := [...]byte{0x6f, 0x58, 0xb4, 0xd7, 0x3d, 0xdc, 0x73, 0x06, 0xb8, 0x97, 0x3d, 0x22, 0x4d, 0xe6, 0xf1, 0xfd, 0x2a, 0xf0, 0x26, 0x7e, 0x8b, 0x1d, 0x93, 0x73, 0xd0, 0x40, 0xa9, 0x8b, 0x86, 0x75, 0xcd, 0x43}
     receiverPrivateKey := [...]byte{0x2a, 0xad, 0xd5, 0x43, 0x4e, 0x52, 0xbf, 0x62, 0x0b, 0x76, 0x24, 0x18, 0xe1, 0x26, 0xfb, 0xda, 0x89, 0x95, 0x32, 0xde, 0x1d, 0x39, 0x7f, 0xcd, 0x7b, 0x7a, 0xd5, 0x96, 0x3b, 0x0d, 0x23, 0xe5}
+
+    // encrypt random data and verify we can decrypt it
 
     nonce := make([]byte, NonceBytes)
     RandomBytes(nonce)
@@ -993,7 +1009,18 @@ func TestEncrypt(t *testing.T) {
 
     assert.NoError(t, err)
 
-    RandomBytes(senderPublicKey[:])
+    // decryption should fail with garbage data
+
+    garbageData := make([]byte, 256 + MacBytes)
+    RandomBytes(garbageData[:])
+
+    err = Decrypt(senderPublicKey[:], receiverPrivateKey[:], nonce, garbageData, encryptedBytes)
+
+    assert.Error(t, err)
+
+    // decryption should fail with the wrong receiver private key
+
+    RandomBytes(receiverPrivateKey[:])
 
     err = Decrypt(senderPublicKey[:], receiverPrivateKey[:], nonce, encryptedData, encryptedBytes)
 
@@ -1070,6 +1097,8 @@ func TestRouteTokens(t *testing.T) {
     masterPublicKey := [...]byte{0x6f, 0x58, 0xb4, 0xd7, 0x3d, 0xdc, 0x73, 0x06, 0xb8, 0x97, 0x3d, 0x22, 0x4d, 0xe6, 0xf1, 0xfd, 0x2a, 0xf0, 0x26, 0x7e, 0x8b, 0x1d, 0x93, 0x73, 0xd0, 0x40, 0xa9, 0x8b, 0x86, 0x75, 0xcd, 0x43}
     masterPrivateKey := [...]byte{0x2a, 0xad, 0xd5, 0x43, 0x4e, 0x52, 0xbf, 0x62, 0x0b, 0x76, 0x24, 0x18, 0xe1, 0x26, 0xfb, 0xda, 0x89, 0x95, 0x32, 0xde, 0x1d, 0x39, 0x7f, 0xcd, 0x7b, 0x7a, 0xd5, 0x96, 0x3b, 0x0d, 0x23, 0xe5}
 
+    // write a bunch of tokens to a buffer
+
     addresses := make([]*net.UDPAddr, NEXT_MAX_NODES)
     for i := range addresses {
         addresses[i] = ParseAddress(fmt.Sprintf("127.0.0.1:%d",40000+i))
@@ -1090,6 +1119,8 @@ func TestRouteTokens(t *testing.T) {
     tokenData := make([]byte, NEXT_MAX_NODES*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES)
 
     WriteRouteTokens(tokenData, expireTimestamp, sessionId, sessionVersion, kbpsUp, kbpsDown, NEXT_MAX_NODES, addresses, publicKeys, masterPrivateKey)
+
+    // read each token back individually and verify the token data matches what was written
 
     for i := 0; i < NEXT_MAX_NODES; i++ {
         var routeToken RouteToken
@@ -1118,29 +1149,91 @@ func TestContinueToken(t *testing.T) {
     masterPublicKey := [...]byte{0x6f, 0x58, 0xb4, 0xd7, 0x3d, 0xdc, 0x73, 0x06, 0xb8, 0x97, 0x3d, 0x22, 0x4d, 0xe6, 0xf1, 0xfd, 0x2a, 0xf0, 0x26, 0x7e, 0x8b, 0x1d, 0x93, 0x73, 0xd0, 0x40, 0xa9, 0x8b, 0x86, 0x75, 0xcd, 0x43}
     masterPrivateKey := [...]byte{0x2a, 0xad, 0xd5, 0x43, 0x4e, 0x52, 0xbf, 0x62, 0x0b, 0x76, 0x24, 0x18, 0xe1, 0x26, 0xfb, 0xda, 0x89, 0x95, 0x32, 0xde, 0x1d, 0x39, 0x7f, 0xcd, 0x7b, 0x7a, 0xd5, 0x96, 0x3b, 0x0d, 0x23, 0xe5}
 
-    continueToken := &ContinueToken{}
+    // write a continue token and verify we can read it back
+
+    continueToken := ContinueToken{}
     continueToken.ExpireTimestamp = uint64(time.Now().Unix() + 10)
     continueToken.SessionId = 0x123131231313131
     continueToken.SessionVersion = 100
 
     buffer := make([]byte, NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES)
 
-    WriteContinueToken(continueToken, buffer[:])
+    WriteContinueToken(&continueToken, buffer[:])
 
-    readContinueToken, err := ReadContinueToken(buffer)
+    var readContinueToken ContinueToken
+    
+    err := ReadContinueToken(&readContinueToken, buffer)
+
+    assert.NoError(t, err)
+    assert.Equal(t, continueToken, readContinueToken)
+
+    // read continue token should fail when the buffer is too small
+
+    err = ReadContinueToken(&readContinueToken, buffer[:10])
+
+    assert.Error(t, err)
+
+    // write an encrypted continue token and verify we can decrypt and read it back
+
+    WriteEncryptedContinueToken(&continueToken, buffer, masterPrivateKey[:], relayPublicKey[:])
+
+    err = ReadEncryptedContinueToken(&continueToken, buffer, masterPublicKey[:], relayPrivateKey[:])
 
     assert.NoError(t, err)
     assert.Equal(t, continueToken, readContinueToken)
 
-    WriteEncryptedContinueToken(buffer, continueToken, masterPrivateKey[:], relayPublicKey[:])
+    // read encrypted continue token should fail when buffer is too small
 
-    readContinueToken, err = ReadEncryptedContinueToken(buffer, masterPublicKey[:], relayPrivateKey[:])
+    err = ReadEncryptedContinueToken(&continueToken, buffer[:10], masterPublicKey[:], relayPrivateKey[:])
 
-    assert.NoError(t, err)
-    assert.Equal(t, continueToken, readContinueToken)
+    assert.Error(t, err)
+
+    // read encrypted continue token should fail on garbage data
+
+    garbageData := make([]byte, NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES)
+    RandomBytes(garbageData)
+
+    err = ReadEncryptedContinueToken(&continueToken, garbageData, masterPublicKey[:], relayPrivateKey[:])
+
+    assert.Error(t, err)
 }
 
-// todo: test "WriteContinueTokens"
+func TestContinueTokens(t *testing.T) {
+
+    t.Parallel()
+
+    relayPublicKey := [...]byte{0x71, 0x16, 0xce, 0xc5, 0x16, 0x1a, 0xda, 0xc7, 0xa5, 0x89, 0xb2, 0x51, 0x2b, 0x67, 0x4f, 0x8f, 0x98, 0x21, 0xad, 0x8f, 0xe6, 0x2d, 0x39, 0xca, 0xe3, 0x9b, 0xec, 0xdf, 0x3e, 0xfc, 0x2c, 0x24}
+    relayPrivateKey := [...]byte{0xb6, 0x7d, 0x01, 0x0d, 0xaf, 0xba, 0xd1, 0x40, 0x75, 0x99, 0x08, 0x15, 0x0d, 0x3a, 0xce, 0x7b, 0x82, 0x28, 0x01, 0x5f, 0x7d, 0xa0, 0x75, 0xb6, 0xc1, 0x15, 0x56, 0x33, 0xe1, 0x01, 0x99, 0xd6}
+    masterPublicKey := [...]byte{0x6f, 0x58, 0xb4, 0xd7, 0x3d, 0xdc, 0x73, 0x06, 0xb8, 0x97, 0x3d, 0x22, 0x4d, 0xe6, 0xf1, 0xfd, 0x2a, 0xf0, 0x26, 0x7e, 0x8b, 0x1d, 0x93, 0x73, 0xd0, 0x40, 0xa9, 0x8b, 0x86, 0x75, 0xcd, 0x43}
+    masterPrivateKey := [...]byte{0x2a, 0xad, 0xd5, 0x43, 0x4e, 0x52, 0xbf, 0x62, 0x0b, 0x76, 0x24, 0x18, 0xe1, 0x26, 0xfb, 0xda, 0x89, 0x95, 0x32, 0xde, 0x1d, 0x39, 0x7f, 0xcd, 0x7b, 0x7a, 0xd5, 0x96, 0x3b, 0x0d, 0x23, 0xe5}
+
+    // write a bunch of tokens to a buffer
+
+    publicKeys := make([][]byte, NEXT_MAX_NODES)
+    for i := range publicKeys {
+        publicKeys[i] = make([]byte, PublicKeyBytes)
+        copy(publicKeys[i], relayPublicKey[:])
+    }
+
+    sessionId := uint64(0x123131231313131)
+    sessionVersion := byte(100)
+    expireTimestamp := uint64(time.Now().Unix() + 10)
+
+    tokenData := make([]byte, NEXT_MAX_NODES*NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES)
+
+    WriteContinueTokens(tokenData, expireTimestamp, sessionId, sessionVersion, NEXT_MAX_NODES, publicKeys, masterPrivateKey)
+
+    // read each token back individually and verify the token data matches what was written
+
+    for i := 0; i < NEXT_MAX_NODES; i++ {
+        var routeToken ContinueToken
+        err := ReadEncryptedContinueToken(&routeToken, tokenData[i*NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES:], masterPublicKey[:], relayPrivateKey[:])
+        assert.NoError(t, err)
+        assert.Equal(t, sessionId, routeToken.SessionId)
+        assert.Equal(t, sessionVersion, routeToken.SessionVersion)
+        assert.Equal(t, expireTimestamp, routeToken.ExpireTimestamp)
+    }
+}
 
 func TestBestRouteCostSimple(t *testing.T) {
 
@@ -1214,8 +1307,8 @@ func TestBestRouteCostComplex(t *testing.T) {
 
     routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
 
-    sourceRelays := []string{"losangeles.a", "losangeles.b"}
-    sourceRelayCosts := []int32{10, 5}
+    sourceRelays := []string{"losangeles.a", "losangeles.b", "chicago.a", "chicago.b"}
+    sourceRelayCosts := []int32{10, 5, 100, 100}
 
     destRelays := []string{"chicago.a", "chicago.b"}
 
@@ -1255,7 +1348,7 @@ func TestBestRouteCostNoRoute(t *testing.T) {
     assert.Equal(t, int32(math.MaxInt32), bestRouteCost)
 }
 
-func TestCurrentRouteCost(t *testing.T) {
+func TestCurrentRouteCost_Simple(t *testing.T) {
 
     t.Parallel()
 
@@ -1292,7 +1385,7 @@ func TestCurrentRouteCost(t *testing.T) {
     assert.Equal(t, int32(40), currentRouteCost)
 }
 
-func TestCurrentRouteCostReverse(t *testing.T) {
+func TestCurrentRouteCost_Reverse(t *testing.T) {
 
     t.Parallel()
 
@@ -1329,7 +1422,7 @@ func TestCurrentRouteCostReverse(t *testing.T) {
     assert.Equal(t, int32(40), currentRouteCost)
 }
 
-func TestGetBestRoutesSimple(t *testing.T) {
+func TestGetBestRoutes_Simple(t *testing.T) {
 
     t.Parallel()
 
@@ -1379,7 +1472,7 @@ func TestGetBestRoutesSimple(t *testing.T) {
     assert.Equal(t, expectedBestRoutes, bestRoutes)
 }
 
-func TestGetBestRoutesReverse(t *testing.T) {
+func TestGetBestRoutes_Reverse(t *testing.T) {
 
     t.Parallel()
 
@@ -1429,7 +1522,7 @@ func TestGetBestRoutesReverse(t *testing.T) {
     assert.Equal(t, expectedBestRoutes, bestRoutes)
 }
 
-func TestGetBestRoutesComplex(t *testing.T) {
+func TestGetBestRoutes_Complex(t *testing.T) {
 
     t.Parallel()
 
@@ -1500,7 +1593,7 @@ func TestGetBestRoutesComplex(t *testing.T) {
     assert.Equal(t, expectedBestRoutes, bestRoutes)
 }
 
-func TestReframeRoute(t *testing.T) {
+func TestReframeRoute_Simple(t *testing.T) {
 
     t.Parallel()
 
@@ -1524,6 +1617,28 @@ func TestReframeRoute(t *testing.T) {
     assert.Equal(t, int32(0), routeRelays[0])
     assert.Equal(t, int32(4), routeRelays[1])
     assert.Equal(t, int32(3), routeRelays[2])
+}
+
+func TestReframeRoute_RelayNoLongerExists(t *testing.T) {
+
+    t.Parallel()
+
+    env := NewTestEnvironment()
+
+    env.AddRelay("losangeles.b", "10.0.0.2")
+    env.AddRelay("chicago.a", "10.0.0.3")
+    env.AddRelay("chicago.b", "10.0.0.4")
+    env.AddRelay("a", "10.0.0.5")
+    env.AddRelay("b", "10.0.0.6")
+
+    currentRoute := make([]string, 3)
+    currentRoute[0] = "losangeles.a"
+    currentRoute[1] = "a"
+    currentRoute[2] = "chicago.b"
+
+    numRouteRelays, _ := env.ReframeRoute(currentRoute)
+
+    assert.Equal(t, int32(0), numRouteRelays)
 }
 
 func TestReframeRelays(t *testing.T) {

@@ -641,45 +641,42 @@ func WriteContinueToken(token *ContinueToken, buffer []byte) {
     buffer[8+8] = token.SessionVersion
 }
 
-func ReadContinueToken(buffer []byte) (*ContinueToken, error) {
+func ReadContinueToken(token *ContinueToken, buffer []byte) error {
     if len(buffer) < NEXT_CONTINUE_TOKEN_BYTES {
-        return nil, fmt.Errorf("buffer too small to read continue token")
+        return fmt.Errorf("buffer too small to read continue token")
     }
-    token := &ContinueToken{}
     token.ExpireTimestamp = binary.LittleEndian.Uint64(buffer[0:])
     token.SessionId = binary.LittleEndian.Uint64(buffer[8:])
     token.SessionVersion = buffer[8+8]
-    return token, nil
+    return nil
 }
 
-func WriteEncryptedContinueToken(buffer []byte, token *ContinueToken, senderPrivateKey []byte, receiverPublicKey []byte) {
+func WriteEncryptedContinueToken(token *ContinueToken, buffer []byte, senderPrivateKey []byte, receiverPublicKey []byte) {
     RandomBytes(buffer[:NonceBytes])
     WriteContinueToken(token, buffer[NonceBytes:])
     Encrypt(senderPrivateKey, receiverPublicKey, buffer[:NonceBytes], buffer[NonceBytes:], NEXT_CONTINUE_TOKEN_BYTES)
 }
 
-func ReadEncryptedContinueToken(tokenData []byte, senderPublicKey []byte, receiverPrivateKey []byte) (*ContinueToken, error) {
+func ReadEncryptedContinueToken(token *ContinueToken, tokenData []byte, senderPublicKey []byte, receiverPrivateKey []byte) error {
     if len(tokenData) < NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES {
-        return nil, fmt.Errorf("not enough bytes for encrypted continue token")
+        return fmt.Errorf("not enough bytes for encrypted continue token")
     }
     nonce := tokenData[0 : C.crypto_box_NONCEBYTES-1]
     tokenData = tokenData[C.crypto_box_NONCEBYTES:]
     if err := Decrypt(senderPublicKey, receiverPrivateKey, nonce, tokenData, NEXT_CONTINUE_TOKEN_BYTES+C.crypto_box_MACBYTES); err != nil {
-        return nil, err
+        return err
     }
-    return ReadContinueToken(tokenData)
+    return ReadContinueToken(token, tokenData)
 }
 
-func WriteContinueTokens(expireTimestamp uint64, sessionId uint64, sessionVersion uint8, numNodes int, publicKeys [][]byte, masterPrivateKey [KeyBytes]byte) []byte {
-    tokenData := make([]byte, numNodes*NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES)
+func WriteContinueTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64, sessionVersion uint8, numNodes int, publicKeys [][]byte, masterPrivateKey [KeyBytes]byte) {
     for i := 0; i < numNodes; i++ {
-        token := &ContinueToken{}
+        var token ContinueToken
         token.ExpireTimestamp = expireTimestamp
         token.SessionId = sessionId
         token.SessionVersion = sessionVersion
-        WriteEncryptedContinueToken(tokenData[i*NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES:], token, masterPrivateKey[:], publicKeys[i])
+        WriteEncryptedContinueToken(&token, tokenData[i*NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES:], masterPrivateKey[:], publicKeys[i])
     }
-    return tokenData
 }
 
 // -----------------------------------------------------------------------------
