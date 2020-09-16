@@ -571,6 +571,8 @@ func RandomBytes(buffer []byte) {
     C.randombytes_buf(unsafe.Pointer(&buffer[0]), C.size_t(len(buffer)))
 }
 
+// -----------------------------------------------------------------------------
+
 func WriteRouteToken(token *RouteToken, buffer []byte) {
     binary.LittleEndian.PutUint64(buffer[0:], token.ExpireTimestamp)
     binary.LittleEndian.PutUint64(buffer[8:], token.SessionId)
@@ -631,6 +633,8 @@ func WriteRouteTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64
     }
 }
 
+// -----------------------------------------------------------------------------
+
 func WriteContinueToken(token *ContinueToken, buffer []byte) {
     binary.LittleEndian.PutUint64(buffer[0:], token.ExpireTimestamp)
     binary.LittleEndian.PutUint64(buffer[8:], token.SessionId)
@@ -678,7 +682,7 @@ func WriteContinueTokens(expireTimestamp uint64, sessionId uint64, sessionVersio
     return tokenData
 }
 
-// -------------------------------------------
+// -----------------------------------------------------------------------------
 
 func GetBestRouteCost(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost[] int32, destRelays []int32) int32 {
     bestRouteCost := int32(math.MaxInt32)
