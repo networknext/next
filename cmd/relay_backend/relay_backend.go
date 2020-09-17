@@ -924,7 +924,16 @@ func main() {
 
 			costMatrix4 := statsdb.GenerateCostMatrix4(relayIDs, float32(maxJitter), float32(maxPacketLoss))
 
-			routeEntries := core.Optimize(numRelays, costMatrix4, 5, relayDatacenterIDs)
+			numCPUs := runtime.NumCPU()
+			numSegments := numRelays
+			if numCPUs < numRelays {
+				numSegments = numRelays / 5
+				if numSegments == 0 {
+					numSegments = 1
+				}
+			}
+
+			routeEntries := core.Optimize(numRelays, numSegments, costMatrix4, 5, relayDatacenterIDs)
 			if len(routeEntries) == 0 {
 				level.Warn(logger).Log("matrix", "cost", "op", "optimize", "warn", "no route entries generated from cost matrix")
 				time.Sleep(syncInterval)
