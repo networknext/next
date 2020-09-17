@@ -978,7 +978,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 		// If the buyer's route shader has AB test enabled, send all odd numbered sessions direct.
 		// This lets us show customers the difference between network next enabled and disabled.
 
-		if buyer.RoutingRulesSettings.EnableABTest && header.SessionID%2 == 1 {
+		if buyer.RoutingRulesSettings.EnableABTest && packet.UserHash%2 == 1 {
 			routeDecision = routing.Decision{
 				OnNetworkNext: false,
 				Reason:        routing.DecisionABTestDirect,
