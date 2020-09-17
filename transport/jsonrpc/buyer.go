@@ -967,7 +967,7 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 	var err error
 	var buyer routing.Buyer
 
-	companyCode, ok := r.Context().Value(companyKey).(string)
+	companyCode, ok := r.Context().Value(Keys.CompanyKey).(string)
 	if !ok {
 		err := fmt.Errorf("GameConfiguration(): user is not assigned to a company")
 		level.Error(s.Logger).Log("err", err)
@@ -1012,7 +1012,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 
 	ctx := context.Background()
 
-	companyCode, ok := r.Context().Value(companyKey).(string)
+	companyCode, ok := r.Context().Value(Keys.CompanyKey).(string)
 	if !ok {
 		err := fmt.Errorf("UpdateGameConfiguration(): user is not assigned to a company")
 		level.Error(s.Logger).Log("err", err)
@@ -1249,11 +1249,12 @@ func (s *BuyersService) SameBuyerRole(buyerID string) RoleFunc {
 		if VerifyAllRoles(req, AnonymousRole) {
 			return false, nil
 		}
-
 		if buyerID == "" {
 			return false, fmt.Errorf("SameBuyerRole(): buyerID is required")
 		}
-		companyCode, ok := req.Context().Value(companyKey).(string)
+		companyCode, ok := req.Context().Value(Keys.CompanyKey).(string)
+		fmt.Println("companyCode")
+		fmt.Println(companyCode)
 		if !ok {
 			err := fmt.Errorf("SameBuyerRole(): user is not assigned to a company")
 			level.Error(s.Logger).Log("err", err)

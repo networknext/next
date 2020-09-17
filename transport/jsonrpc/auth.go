@@ -25,12 +25,19 @@ var (
 
 type contextType string
 
-const (
-	anonymousCallKey     contextType = "anonymous"
-	rolesKey             contextType = "roles"
-	companyKey           contextType = "company"
-	newsletterConsentKey contextType = "newsletter"
-)
+type contextKeys struct {
+	AnonymousCallKey     contextType
+	RolesKey             contextType
+	CompanyKey           contextType
+	NewsletterConsentKey contextType
+}
+
+var Keys contextKeys = contextKeys{
+	AnonymousCallKey:     "anonymous",
+	RolesKey:             "roles",
+	CompanyKey:           "company",
+	NewsletterConsentKey: "newsletter",
+}
 
 type AuthService struct {
 	Auth0   storage.Auth0
@@ -89,7 +96,7 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 		return err
 	}
 
-	requestCompany := r.Context().Value(companyKey)
+	requestCompany := r.Context().Value(Keys.CompanyKey)
 	if requestCompany == nil {
 		return fmt.Errorf("AllAcounts(): failed to get company from context")
 	}
@@ -669,33 +676,33 @@ func (s *AuthService) UpdateAccountSettings(r *http.Request, args *AccountSettin
 		return nil
 	}
 
+	var updateUser management.User
+
 	requestUser := r.Context().Value("user")
 	if requestUser == nil {
-		err := fmt.Errorf("UpdateUserPrivacyAndSecurity() unable to parse user from token")
+		err := fmt.Errorf("UpdateAccountSettings() unable to parse user from token")
 		s.Logger.Log("err", err)
 		return err
 	}
 
 	requestID, ok := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["sub"].(string)
 	if !ok {
-		err := fmt.Errorf("UpdateUserPrivacyAndSecurity() unable to parse id from token")
+		err := fmt.Errorf("UpdateAccountSettings() unable to parse id from token")
 		s.Logger.Log("err", err)
 		return err
 	}
 
-	userAccount, err := s.Auth0.Manager.User.Read(requestID)
-	if err != nil {
-		err := fmt.Errorf("UpdateUserPrivacyAndSecurity() failed to fetch user account: %w", err)
-		s.Logger.Log("err", err)
-		return err
+	if args.Password != "" {
+		updateUser.Password = &args.Password
 	}
 
-	userAccount.Password = &args.Password
-	userAccount.AppMetadata["newsletter"] = args.NewsLetterConsent
+	updateUser.AppMetadata = map[string]interface{}{
+		"newsletter": args.NewsLetterConsent,
+	}
 
-	err = s.Auth0.Manager.User.Update(requestID, userAccount)
+	err := s.Auth0.Manager.User.Update(requestID, &updateUser)
 	if err != nil {
-		err = fmt.Errorf("UpdateUserPrivacyAndSecurity() failed to update user password: %v", err)
+		err = fmt.Errorf("UpdateAccountSettings() failed to update user password: %v", err)
 		s.Logger.Log("err", err)
 		return err
 	}
@@ -829,24 +836,24 @@ func getPemCert(token *jwt.Token) (string, error) {
 
 func SetIsAnonymous(r *http.Request, value bool) *http.Request {
 	ctx := r.Context()
-	ctx = context.WithValue(ctx, anonymousCallKey, value)
+	ctx = context.WithValue(ctx, Keys.AnonymousCallKey, value)
 	return r.WithContext(ctx)
 }
 
 func IsAnonymous(r *http.Request) bool {
-	anon, ok := r.Context().Value(anonymousCallKey).(bool)
+	anon, ok := r.Context().Value(Keys.AnonymousCallKey).(bool)
 	return ok && anon
 }
 
 func AddTokenContext(r *http.Request, roles []string, companyCode string, newsletterConsent bool) *http.Request {
 	ctx := r.Context()
 	if len(roles) > 0 {
-		ctx = context.WithValue(ctx, rolesKey, roles)
+		ctx = context.WithValue(ctx, Keys.RolesKey, roles)
 	}
 	if companyCode != "" {
-		ctx = context.WithValue(ctx, companyKey, companyCode)
+		ctx = context.WithValue(ctx, Keys.CompanyKey, companyCode)
 	}
-	ctx = context.WithValue(ctx, newsletterConsentKey, newsletterConsent)
+	ctx = context.WithValue(ctx, Keys.NewsletterConsentKey, newsletterConsent)
 	return r.WithContext(ctx)
 }
 
@@ -868,7 +875,7 @@ var OpsRole = func(req *http.Request) (bool, error) {
 }
 
 var AdminRole = func(req *http.Request) (bool, error) {
-	requestRoles := req.Context().Value(rolesKey)
+	requestRoles := req.Context().Value(Keys.RolesKey)
 	if requestRoles == nil {
 		return false, fmt.Errorf("AdminRole(): failed to get roles from context")
 	}
@@ -887,7 +894,7 @@ var AdminRole = func(req *http.Request) (bool, error) {
 }
 
 var OwnerRole = func(req *http.Request) (bool, error) {
-	requestRoles := req.Context().Value(rolesKey)
+	requestRoles := req.Context().Value(Keys.RolesKey)
 
 	if requestRoles == nil {
 		return false, fmt.Errorf("OwnerRole(): failed to get roles from context")
@@ -908,7 +915,7 @@ var OwnerRole = func(req *http.Request) (bool, error) {
 
 // Ops checks the request for the appropriate "scope" in the JWT
 var AnonymousRole = func(req *http.Request) (bool, error) {
-	anon, ok := req.Context().Value(anonymousCallKey).(bool)
+	anon, ok := req.Context().Value(Keys.AnonymousCallKey).(bool)
 	return ok && anon, nil
 }
 
