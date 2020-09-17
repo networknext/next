@@ -1227,6 +1227,8 @@ type PostSessionUpdateParams struct {
 	nextRelaysPrice     []routing.Nibblin
 	nextBytesUp         uint64
 	nextBytesDown       uint64
+	envelopeBytesUp     uint64
+	envelopeBytesDown   uint64
 	prevInitial         bool
 	abTest              bool
 	packetLoss          float32
@@ -1397,6 +1399,8 @@ func buildBillingEntry(params *PostSessionUpdateParams) *billing.BillingEntry {
 		Initial:                   params.prevInitial,
 		NextBytesUp:               params.nextBytesUp,
 		NextBytesDown:             params.nextBytesDown,
+		EnvelopeBytesUp:           params.envelopeBytesUp,
+		EnvelopeBytesDown:         params.envelopeBytesDown,
 		DatacenterID:              params.serverDataReadOnly.Datacenter.ID,
 		RTTReduction:              params.prevRouteDecision.Reason&routing.DecisionRTTReduction != 0 || params.prevRouteDecision.Reason&routing.DecisionRTTReductionMultipath != 0,
 		PacketLossReduction:       params.prevRouteDecision.Reason&routing.DecisionHighPacketLossMultipath != 0,
@@ -1665,6 +1669,8 @@ func sendRouteResponse(w io.Writer, chosenRoute *routing.Route, params *SessionU
 		nextRelaysPrice:     nextRelaysPrice,
 		nextBytesUp:         usageBytesUp,
 		nextBytesDown:       usageBytesDown,
+		envelopeBytesUp:     envelopeBytesUp,
+		envelopeBytesDown:   envelopeBytesDown,
 		prevInitial:         prevInitial,
 		abTest:              buyer.RoutingRulesSettings.EnableABTest,
 		packetLoss:          float32(inGamePacketLoss),
