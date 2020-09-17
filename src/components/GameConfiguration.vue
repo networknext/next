@@ -38,7 +38,7 @@ import { Component, Vue } from 'vue-property-decorator'
 import Alert from '@/components/Alert.vue'
 import { AlertTypes } from '@/components/types/AlertTypes'
 import { UserProfile } from '@/components/types/AuthTypes.ts'
-import _ from 'lodash'
+import _, { cloneDeep } from 'lodash'
 
 /**
  * This component displays all of the necessary information for the game configuration tab
@@ -81,35 +81,35 @@ export default class GameConfiguration extends Vue {
       this.unwatch = this.$store.watch(
         (_, getters: any) => getters.userProfile,
         (userProfile: any) => {
-          this.updateCompanyName(userProfile)
+          this.checkUserProfile(userProfile)
         }
       )
     } else {
-      this.updateCompanyName(this.$store.getters.userProfile)
+      this.checkUserProfile(this.$store.getters.userProfile)
     }
   }
 
-  private updateCompanyName (userProfile: UserProfile) {
+  private checkUserProfile (userProfile: UserProfile) {
     if (this.companyName === '') {
       this.companyName = userProfile.companyName || ''
     }
+    if (this.pubKey === '') {
+      this.pubKey = userProfile.pubKey || ''
+    }
+    this.userProfile = cloneDeep(this.$store.getters.userProfile)
   }
 
   private updatePubKey () {
     // TODO: Figure out how to get rid of this. this.$apiService should be possible...
     // HACK: This is a hack to get tests to work properly
     const vm = (this as any)
-    const domain = this.userProfile.domain || ''
 
     vm.$apiService
       .updateGameConfiguration({
-        name: this.companyName,
-        domain: domain,
         new_public_key: this.pubKey
       })
       .then((response: any) => {
         this.userProfile.pubKey = response.game_config.public_key
-        this.userProfile.buyerID = response.game_config.buyer_id
         this.$store.commit('UPDATE_USER_PROFILE', this.userProfile)
         this.alertType = AlertTypes.SUCCESS
         this.message = 'Updated public key successfully'

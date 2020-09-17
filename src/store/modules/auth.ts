@@ -29,7 +29,7 @@ export default {
     isBuyer: (state: any) => (state.userProfile ? state.userProfile.buyerID !== '' : false),
     userProfile: (state: any) => state.userProfile,
     allBuyers: (state: any) => state.allBuyers,
-    registeredToCompany: (state: any) => (state.userProfile ? state.userProfile.companyName !== '' : false)
+    registeredToCompany: (state: any) => (state.userProfile ? state.userProfile.companyCode !== '' : false)
   },
   actions: {
     updateUserProfile ({ commit }: any, userProfile: any) {

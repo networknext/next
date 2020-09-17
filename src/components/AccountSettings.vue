@@ -286,7 +286,7 @@ export default class AccountSettings extends Vue {
 
   private updateAccountSettings () {
     (this as any).$apiService
-      .updateAccountSettings({ newPassword: this.newPassword, newsletterConsent: this.newsletterConsent })
+      .updateAccountSettings({ newPassword: this.newPassword, newsletter: this.newsletterConsent })
       .then((response: any) => {
         this.message = 'Account settings updated successfully'
         this.alertType = AlertTypes.SUCCESS

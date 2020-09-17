@@ -36,9 +36,10 @@ export class JSONRPCService {
     }
     Promise.all(promises)
       .then((responses: any) => {
+        let allBuyers = []
         if (store.getters.registeredToCompany) {
-          userProfile.publicKey = responses[1].game_config.public_key
-          userProfile.allBuyers = responses[2].buyers
+          allBuyers = responses[2].buyers
+          userProfile.pubKey = responses[1].game_config.public_key
         } else {
           userProfile.allBuyers = responses[1].buyers
         }
@@ -47,8 +48,7 @@ export class JSONRPCService {
         userProfile.companyName = responses[0].account.company_name || ''
         // userProfile.routeShader = responses[1].customer_route_shader
         store.commit('UPDATE_USER_PROFILE', userProfile)
-        store.commit('UPDATE_ALL_BUYERS', userProfile.allBuyers)
-        store.commit('UPDATE_USER_PROFILE', userProfile)
+        store.commit('UPDATE_ALL_BUYERS', allBuyers)
       })
       .catch((error: Error) => {
         console.log('Something went wrong fetching user details')
