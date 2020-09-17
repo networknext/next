@@ -964,7 +964,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 		// Selection percentage of 100% means all sessions are considered for acceleration.
 		// Selection percentage of 10% means that only 10% of sessions are.
 
-		if buyer.RoutingRulesSettings.Mode == routing.ModeForceDirect || (header.SessionID%100) >= uint64(buyer.RoutingRulesSettings.SelectionPercentage) {
+		if buyer.RoutingRulesSettings.Mode == routing.ModeForceDirect || (packet.UserHash%100) >= uint64(buyer.RoutingRulesSettings.SelectionPercentage) {
 			routeDecision = routing.Decision{
 				OnNetworkNext: false,
 				Reason:        routing.DecisionForceDirect,
@@ -978,7 +978,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 		// If the buyer's route shader has AB test enabled, send all odd numbered sessions direct.
 		// This lets us show customers the difference between network next enabled and disabled.
 
-		if buyer.RoutingRulesSettings.EnableABTest && header.SessionID%2 == 1 {
+		if buyer.RoutingRulesSettings.EnableABTest && packet.UserHash%2 == 1 {
 			routeDecision = routing.Decision{
 				OnNetworkNext: false,
 				Reason:        routing.DecisionABTestDirect,
