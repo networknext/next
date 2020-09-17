@@ -964,7 +964,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 		// Selection percentage of 100% means all sessions are considered for acceleration.
 		// Selection percentage of 10% means that only 10% of sessions are.
 
-		if buyer.RoutingRulesSettings.Mode == routing.ModeForceDirect || (header.SessionID%100) >= uint64(buyer.RoutingRulesSettings.SelectionPercentage) {
+		if buyer.RoutingRulesSettings.Mode == routing.ModeForceDirect || (packet.UserHash%100) >= uint64(buyer.RoutingRulesSettings.SelectionPercentage) {
 			routeDecision = routing.Decision{
 				OnNetworkNext: false,
 				Reason:        routing.DecisionForceDirect,
@@ -978,7 +978,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 		// If the buyer's route shader has AB test enabled, send all odd numbered sessions direct.
 		// This lets us show customers the difference between network next enabled and disabled.
 
-		if buyer.RoutingRulesSettings.EnableABTest && header.SessionID%2 == 1 {
+		if buyer.RoutingRulesSettings.EnableABTest && packet.UserHash%2 == 1 {
 			routeDecision = routing.Decision{
 				OnNetworkNext: false,
 				Reason:        routing.DecisionABTestDirect,
@@ -1227,6 +1227,8 @@ type PostSessionUpdateParams struct {
 	nextRelaysPrice     []routing.Nibblin
 	nextBytesUp         uint64
 	nextBytesDown       uint64
+	envelopeBytesUp     uint64
+	envelopeBytesDown   uint64
 	prevInitial         bool
 	abTest              bool
 	packetLoss          float32
@@ -1397,6 +1399,8 @@ func buildBillingEntry(params *PostSessionUpdateParams) *billing.BillingEntry {
 		Initial:                   params.prevInitial,
 		NextBytesUp:               params.nextBytesUp,
 		NextBytesDown:             params.nextBytesDown,
+		EnvelopeBytesUp:           params.envelopeBytesUp,
+		EnvelopeBytesDown:         params.envelopeBytesDown,
 		DatacenterID:              params.serverDataReadOnly.Datacenter.ID,
 		RTTReduction:              params.prevRouteDecision.Reason&routing.DecisionRTTReduction != 0 || params.prevRouteDecision.Reason&routing.DecisionRTTReductionMultipath != 0,
 		PacketLossReduction:       params.prevRouteDecision.Reason&routing.DecisionHighPacketLossMultipath != 0,
@@ -1665,6 +1669,8 @@ func sendRouteResponse(w io.Writer, chosenRoute *routing.Route, params *SessionU
 		nextRelaysPrice:     nextRelaysPrice,
 		nextBytesUp:         usageBytesUp,
 		nextBytesDown:       usageBytesDown,
+		envelopeBytesUp:     envelopeBytesUp,
+		envelopeBytesDown:   envelopeBytesDown,
 		prevInitial:         prevInitial,
 		abTest:              buyer.RoutingRulesSettings.EnableABTest,
 		packetLoss:          float32(inGamePacketLoss),

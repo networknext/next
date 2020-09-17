@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	BillingEntryVersion = uint8(9)
+	BillingEntryVersion = uint8(10)
 
 	BillingEntryMaxRelays           = 5
 	BillingEntryMaxISPLength        = 64
@@ -41,6 +41,8 @@ type BillingEntry struct {
 	Initial                   bool
 	NextBytesUp               uint64
 	NextBytesDown             uint64
+	EnvelopeBytesUp           uint64
+	EnvelopeBytesDown         uint64
 	DatacenterID              uint64
 	RTTReduction              bool
 	PacketLossReduction       bool
@@ -98,6 +100,8 @@ func WriteBillingEntry(entry *BillingEntry) []byte {
 	if entry.Next {
 		encoding.WriteUint64(data, &index, entry.NextBytesUp)
 		encoding.WriteUint64(data, &index, entry.NextBytesDown)
+		encoding.WriteUint64(data, &index, entry.EnvelopeBytesUp)
+		encoding.WriteUint64(data, &index, entry.EnvelopeBytesDown)
 	}
 
 	encoding.WriteUint64(data, &index, entry.DatacenterID)
@@ -219,6 +223,15 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 			}
 			if !encoding.ReadUint64(data, &index, &entry.NextBytesDown) {
 				return false
+			}
+
+			if entry.Version >= 10 {
+				if !encoding.ReadUint64(data, &index, &entry.EnvelopeBytesUp) {
+					return false
+				}
+				if !encoding.ReadUint64(data, &index, &entry.EnvelopeBytesDown) {
+					return false
+				}
 			}
 		}
 	}

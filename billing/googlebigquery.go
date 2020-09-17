@@ -104,6 +104,8 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 		e["initial"] = entry.Initial
 		e["nextBytesUp"] = int(entry.NextBytesUp)
 		e["nextBytesDown"] = int(entry.NextBytesDown)
+		e["envelopeBytesUp"] = int(entry.EnvelopeBytesUp)
+		e["envelopeBytesDown"] = int(entry.EnvelopeBytesDown)
 	}
 
 	e["datacenterID"] = int(entry.DatacenterID)
