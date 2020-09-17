@@ -964,7 +964,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 		// Selection percentage of 100% means all sessions are considered for acceleration.
 		// Selection percentage of 10% means that only 10% of sessions are.
 
-		if buyer.RoutingRulesSettings.Mode == routing.ModeForceDirect || (header.SessionID%100) >= uint64(buyer.RoutingRulesSettings.SelectionPercentage) {
+		if buyer.RoutingRulesSettings.Mode == routing.ModeForceDirect || (packet.UserHash%100) >= uint64(buyer.RoutingRulesSettings.SelectionPercentage) {
 			routeDecision = routing.Decision{
 				OnNetworkNext: false,
 				Reason:        routing.DecisionForceDirect,
