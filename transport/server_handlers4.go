@@ -10,6 +10,7 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/billing"
+	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
@@ -41,6 +42,7 @@ func writeSessionResponse4(w io.Writer, response *SessionResponsePacket4, sessio
 	}
 
 	if len(sessionDataBuffer) > MaxSessionDataSize {
+		fmt.Println(len(sessionDataBuffer))
 		return errors.New("session data too large")
 	}
 
@@ -225,7 +227,7 @@ func ServerUpdateHandlerFunc4(logger log.Logger, storer storage.Storer, datacent
 	}
 }
 
-func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IPLocator, getRouteMatrix4 func() RouteProvider, routerPrivateKey []byte, postSessionHandler *PostSessionHandler, metrics *metrics.SessionMetrics) UDPHandlerFunc {
+func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IPLocator, getRouteMatrix4 func() *routing.RouteMatrix4, storer storage.Storer, routerPrivateKey []byte, postSessionHandler *PostSessionHandler, metrics *metrics.SessionMetrics) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
 		metrics.Invocations.Add(1)
 
@@ -255,6 +257,8 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 
 		ipLocator := getIPLocator()
 		routeMatrix := getRouteMatrix4()
+		nearRelays := []routing.NearRelayData{}
+		destRelayIDs := []uint64{}
 		var err error
 
 		response := SessionResponsePacket4{
@@ -262,6 +266,8 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 			SliceNumber: packet.SliceNumber,
 			RouteType:   routing.RouteTypeDirect,
 		}
+
+		datacenter := routing.UnknownDatacenter
 
 		// If we've gotten this far, use a deferred function so that we always at least return a direct response
 		// and run the post session update logic
@@ -272,8 +278,14 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 				return
 			}
 
-			go PostSessionUpdate4(postSessionHandler, &packet, &sessionData.Location, sessionData.NearRelays, usageBytesUp, usageBytesDown, metrics)
+			go PostSessionUpdate4(postSessionHandler, &packet, &sessionData.Location, nearRelays, usageBytesUp, usageBytesDown, &datacenter, metrics)
 		}()
+
+		datacenter, err = storer.Datacenter(packet.DatacenterID)
+		if err != nil {
+			// todo: handle error here
+			return
+		}
 
 		if newSession {
 			sessionData.Version = SessionDataVersion4
@@ -286,22 +298,25 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 				metrics.ErrorMetrics.ClientLocateFailure.Add(1)
 				return
 			}
+		}
 
-			sessionData.NearRelays, err = routeMatrix.GetNearRelays(sessionData.Location.Latitude, sessionData.Location.Longitude, MaxNearRelays)
-			if err != nil {
-				level.Error(logger).Log("msg", "failed to get near relays", "err", err)
-				metrics.ErrorMetrics.NearRelaysLocateFailure.Add(1)
-				return
-			}
+		nearRelays, err = routeMatrix.GetNearRelays(sessionData.Location.Latitude, sessionData.Location.Longitude, MaxNearRelays)
+		if err != nil {
+			level.Error(logger).Log("msg", "failed to get near relays", "err", err)
+			metrics.ErrorMetrics.NearRelaysLocateFailure.Add(1)
+			return
+		}
 
-			response.NumNearRelays = int32(len(sessionData.NearRelays))
-			response.NearRelayIDs = make([]uint64, response.NumNearRelays)
-			response.NearRelayAddresses = make([]net.UDPAddr, response.NumNearRelays)
-			for i := int32(0); i < response.NumNearRelays; i++ {
-				response.NearRelayIDs[i] = sessionData.NearRelays[i].ID
-				response.NearRelayAddresses[i] = *sessionData.NearRelays[i].Addr
-			}
-		} else {
+		numNearRelays := int32(len(nearRelays))
+		response.NumNearRelays = numNearRelays
+		response.NearRelayIDs = make([]uint64, numNearRelays)
+		response.NearRelayAddresses = make([]net.UDPAddr, numNearRelays)
+		for i := int32(0); i < numNearRelays; i++ {
+			response.NearRelayIDs[i] = nearRelays[i].ID
+			response.NearRelayAddresses[i] = *nearRelays[i].Addr
+		}
+
+		if !newSession {
 			if err := UnmarshalSessionData(&sessionData, packet.SessionData[:]); err != nil {
 				level.Error(logger).Log("msg", "could not read session data in session update packet", "err", err)
 				fmt.Println(err)
@@ -323,29 +338,60 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 
 			sessionData.SliceNumber = uint32(packet.SliceNumber + 1)
 
-			for i := range sessionData.NearRelays {
+			for i := range nearRelays {
 				for j, clientNearRelayID := range packet.NearRelayIDs {
-					if sessionData.NearRelays[i].ID == clientNearRelayID {
-						sessionData.NearRelays[i].ClientStats.RTT = float64(packet.NearRelayRTT[j])
-						sessionData.NearRelays[i].ClientStats.Jitter = float64(packet.NearRelayJitter[j])
-						sessionData.NearRelays[i].ClientStats.PacketLoss = float64(packet.NearRelayPacketLoss[j])
+					if nearRelays[i].ID == clientNearRelayID {
+						nearRelays[i].ClientStats.RTT = float64(packet.NearRelayRTT[j])
+						nearRelays[i].ClientStats.Jitter = float64(packet.NearRelayJitter[j])
+						nearRelays[i].ClientStats.PacketLoss = float64(packet.NearRelayPacketLoss[j])
 					}
 				}
 			}
-
-			sessionData.DestRelayIDs = routeMatrix.GetDatacenterRelayIDs(packet.DatacenterID)
-			if len(sessionData.DestRelayIDs) == 0 {
-				level.Error(logger).Log("msg", "failed to get dest relays", "err", err)
-				metrics.ErrorMetrics.NoRelaysInDatacenter.Add(1)
-				return
-			}
 		}
+
+		destRelayIDs = routeMatrix.GetDatacenterRelayIDs(packet.DatacenterID)
+		if len(destRelayIDs) == 0 {
+			level.Error(logger).Log("msg", "failed to get dest relays", "err", err)
+			metrics.ErrorMetrics.NoRelaysInDatacenter.Add(1)
+			return
+		}
+
+		// todo: move this to route matrix 4
+		relayIDsToIndices := make(map[uint64]int32)
+		for i, relayID := range routeMatrix.RelayIDs {
+			relayIDsToIndices[relayID] = int32(i)
+		}
+
+		nearRelayIDs := make([]uint64, numNearRelays)
+		nearRelayCosts := make([]int32, numNearRelays)
+		nearRelayPacketLoss := make([]float32, numNearRelays)
+
+		for i := int32(0); i < numNearRelays; i++ {
+			nearRelay := &nearRelays[i]
+
+			nearRelayIDs[i] = nearRelay.ID
+			nearRelayCosts[i] = int32(nearRelay.ClientStats.RTT)
+			nearRelayPacketLoss[i] = float32(nearRelay.ClientStats.PacketLoss)
+		}
+
+		reframedNearRelays := make([]int32, numNearRelays)
+		var numDestRelays int32
+		reframedDestRelays := make([]int32, len(destRelayIDs))
+		core.ReframeRelays(relayIDsToIndices, nearRelayIDs, nearRelayCosts, nearRelayPacketLoss, destRelayIDs, &numNearRelays, reframedNearRelays, &numDestRelays, reframedDestRelays)
+
+		reframedNearRelays = reframedNearRelays[:numNearRelays]
+		reframedDestRelays = reframedDestRelays[:numDestRelays]
+
+		// var routeCost int32
+		// var routeNumRelays int32
+		// var routeRelays []int32
+		// core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, routeShader, routeState, customerConfig, internalConfig, int32(packet.DirectRTT), packet.DirectPacketLoss, nearRelays, nearRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays)
 
 		level.Debug(logger).Log("msg", "session updated successfully", "source_address", incoming.SourceAddr.String(), "server_address", packet.ServerAddress.String(), "client_address", packet.ClientAddress.String())
 	}
 }
 
-func PostSessionUpdate4(postSessionHandler *PostSessionHandler, packet *SessionUpdatePacket4, location *routing.Location, nearRelays []routing.NearRelayData, nextBytesUp uint64, nextBytesDown uint64, metrics *metrics.SessionMetrics) {
+func PostSessionUpdate4(postSessionHandler *PostSessionHandler, packet *SessionUpdatePacket4, location *routing.Location, nearRelays []routing.NearRelayData, nextBytesUp uint64, nextBytesDown uint64, datacenter *routing.Datacenter, metrics *metrics.SessionMetrics) {
 	billingEntry := &billing.BillingEntry{
 		BuyerID:                   packet.CustomerID,
 		UserHash:                  packet.UserHash,
@@ -369,7 +415,7 @@ func PostSessionUpdate4(postSessionHandler *PostSessionHandler, packet *SessionU
 		Initial:                   false,
 		NextBytesUp:               nextBytesUp,
 		NextBytesDown:             nextBytesDown,
-		DatacenterID:              0,
+		DatacenterID:              datacenter.ID,
 		RTTReduction:              false,
 		PacketLossReduction:       false,
 		NextRelaysPrice:           [routing.MaxRelays]uint64{},
@@ -408,8 +454,8 @@ func PostSessionUpdate4(postSessionHandler *PostSessionHandler, packet *SessionU
 		Meta: SessionMeta{
 			ID:              packet.SessionID,
 			UserHash:        packet.UserHash,
-			DatacenterName:  "local", // todo: we need the datacenter ID or name in the session update packet
-			DatacenterAlias: "local",
+			DatacenterName:  datacenter.Name,
+			DatacenterAlias: datacenter.AliasName,
 			OnNetworkNext:   packet.Next,
 			NextRTT:         float64(packet.NextRTT),
 			DirectRTT:       float64(packet.DirectRTT),

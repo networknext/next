@@ -457,7 +457,7 @@ func mainReturnWithCode() int {
 	routeMatrix4 := &routing.RouteMatrix4{}
 	var routeMatrix4Mutex sync.RWMutex
 
-	getRouteMatrix4Func := func() transport.RouteProvider {
+	getRouteMatrix4Func := func() *routing.RouteMatrix4 {
 		routeMatrix4Mutex.RLock()
 		rm4 := routeMatrix4
 		routeMatrix4Mutex.RUnlock()
@@ -699,7 +699,7 @@ func mainReturnWithCode() int {
 
 	serverInitHandler := transport.ServerInitHandlerFunc4(logger, storer, datacenterTracker, serverInitMetrics)
 	serverUpdateHandler := transport.ServerUpdateHandlerFunc4(logger, storer, datacenterTracker, serverUpdateMetrics)
-	sessionUpdateHandler := transport.SessionUpdateHandlerFunc4(logger, getIPLocatorFunc, getRouteMatrix4Func, routerPrivateKey, postSessionHandler, sessionUpdateMetrics)
+	sessionUpdateHandler := transport.SessionUpdateHandlerFunc4(logger, getIPLocatorFunc, getRouteMatrix4Func, storer, routerPrivateKey, postSessionHandler, sessionUpdateMetrics)
 
 	for i := 0; i < numThreads; i++ {
 		go func(thread int) {

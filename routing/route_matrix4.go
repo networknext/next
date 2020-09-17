@@ -118,8 +118,3 @@ func (m *RouteMatrix4) GetDatacenterRelayIDs(datacenterID uint64) []uint64 {
 
 	return relayIDs
 }
-
-// No-op, just for interface compatibility for now
-func (m *RouteMatrix4) GetAcceptableRoutes(nearIDs []NearRelayData, destIDs []uint64, prevRouteHash uint64, rttEpsilon int32) ([]Route, error) {
-	return nil, nil
-}

@@ -11,6 +11,7 @@ import (
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
+	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
 	"github.com/stretchr/testify/assert"
 )
@@ -27,30 +28,6 @@ func (locator *goodIPLocator) LocateIP(ip net.IP) (routing.Location, error) {
 	return routing.LocationNullIsland, nil
 }
 
-type badRouteProvider struct{}
-
-func (rp *badRouteProvider) GetDatacenterRelayIDs(datacenterID uint64) []uint64 {
-	return nil
-}
-func (rp *badRouteProvider) GetAcceptableRoutes(nearIDs []routing.NearRelayData, destIDs []uint64, prevRouteHash uint64, rttEpsilon int32) ([]routing.Route, error) {
-	return nil, errors.New("no acceptable routes")
-}
-func (rp *badRouteProvider) GetNearRelays(latitude float64, longitude float64, maxNearRelays int) ([]routing.NearRelayData, error) {
-	return nil, errors.New("no near relays")
-}
-
-type goodRouteProvider struct{}
-
-func (rp *goodRouteProvider) GetDatacenterRelayIDs(datacenterID uint64) []uint64 {
-	return nil
-}
-func (rp *goodRouteProvider) GetAcceptableRoutes(nearIDs []routing.NearRelayData, destIDs []uint64, prevRouteHash uint64, rttEpsilon int32) ([]routing.Route, error) {
-	return []routing.Route{}, nil
-}
-func (rp *goodRouteProvider) GetNearRelays(latitude float64, longitude float64, maxNearRelays int) ([]routing.NearRelayData, error) {
-	return []routing.NearRelayData{}, nil
-}
-
 func TestSessionUpdateHandler4ReadPacketFailure(t *testing.T) {
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
@@ -58,7 +35,7 @@ func TestSessionUpdateHandler4ReadPacketFailure(t *testing.T) {
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 
-	handler := transport.SessionUpdateHandlerFunc4(logger, nil, nil, nil, nil, metrics)
+	handler := transport.SessionUpdateHandlerFunc4(logger, nil, nil, nil, nil, nil, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: nil,
 	})
@@ -67,12 +44,16 @@ func TestSessionUpdateHandler4ReadPacketFailure(t *testing.T) {
 	assert.Equal(t, metrics.ErrorMetrics.ReadPacketFailure.Value(), 1.0)
 }
 
+// todo: datacenter lookup failure test
+
 func TestSessionUpdateHandler4ClientLocateFailure(t *testing.T) {
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
 	metrics, err := metrics.NewSessionMetrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
+	storer := &storage.InMemory{}
+	storer.AddDatacenter(context.Background(), routing.UnknownDatacenter)
 
 	requestPacket := transport.SessionUpdatePacket4{
 		SessionID:            1111,
@@ -87,9 +68,9 @@ func TestSessionUpdateHandler4ClientLocateFailure(t *testing.T) {
 		return &badIPLocator
 	}
 
-	var badRouteProvider badRouteProvider
-	routeProviderFunc := func() transport.RouteProvider {
-		return &badRouteProvider
+	var routeMatrix routing.RouteMatrix4
+	routeMatrixFunc := func() *routing.RouteMatrix4 {
+		return &routeMatrix
 	}
 
 	expectedResponse := transport.SessionResponsePacket4{
@@ -113,7 +94,7 @@ func TestSessionUpdateHandler4ClientLocateFailure(t *testing.T) {
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
 	postSessionHandler := transport.PostSessionHandler{}
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeProviderFunc, nil, &postSessionHandler, metrics)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, storer, nil, &postSessionHandler, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -137,6 +118,8 @@ func TestSessionUpdateHandler4NoNearRelays(t *testing.T) {
 	metrics, err := metrics.NewSessionMetrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
+	storer := &storage.InMemory{}
+	storer.AddDatacenter(context.Background(), routing.UnknownDatacenter)
 
 	requestPacket := transport.SessionUpdatePacket4{
 		SessionID:            1111,
@@ -151,9 +134,9 @@ func TestSessionUpdateHandler4NoNearRelays(t *testing.T) {
 		return &goodIPLocator
 	}
 
-	var badRouteProvider badRouteProvider
-	routeProviderFunc := func() transport.RouteProvider {
-		return &badRouteProvider
+	var routeMatrix routing.RouteMatrix4
+	routeMatrixFunc := func() *routing.RouteMatrix4 {
+		return &routeMatrix
 	}
 
 	expectedResponse := transport.SessionResponsePacket4{
@@ -177,7 +160,7 @@ func TestSessionUpdateHandler4NoNearRelays(t *testing.T) {
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
 	postSessionHandler := transport.PostSessionHandler{}
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeProviderFunc, nil, &postSessionHandler, metrics)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, storer, nil, &postSessionHandler, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -203,6 +186,8 @@ func TestSessionUpdateHandler4ReadSessionDataFailure(t *testing.T) {
 	metrics.SessionDataMetrics = *sessionDataMetrics
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
+	storer := &storage.InMemory{}
+	storer.AddDatacenter(context.Background(), routing.UnknownDatacenter)
 
 	requestPacket := transport.SessionUpdatePacket4{
 		SessionID:            1111,
@@ -218,17 +203,28 @@ func TestSessionUpdateHandler4ReadSessionDataFailure(t *testing.T) {
 		return &goodIPLocator
 	}
 
-	var goodRouteProvider goodRouteProvider
-	routeProviderFunc := func() transport.RouteProvider {
-		return &goodRouteProvider
+	relayAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+	assert.NoError(t, err)
+
+	routeMatrix := routing.RouteMatrix4{
+		RelayIDs:           []uint64{1},
+		RelayAddresses:     []net.UDPAddr{*relayAddr},
+		RelayNames:         []string{"test.relay"},
+		RelayLatitudes:     []float32{90},
+		RelayLongitudes:    []float32{180},
+		RelayDatacenterIDs: []uint64{10},
+	}
+	routeMatrixFunc := func() *routing.RouteMatrix4 {
+		return &routeMatrix
 	}
 
 	expectedResponse := transport.SessionResponsePacket4{
 		SessionID:          requestPacket.SessionID,
 		SliceNumber:        requestPacket.SliceNumber,
 		RouteType:          routing.RouteTypeDirect,
-		NearRelayIDs:       make([]uint64, 0),
-		NearRelayAddresses: make([]net.UDPAddr, 0),
+		NumNearRelays:      1,
+		NearRelayIDs:       []uint64{1},
+		NearRelayAddresses: []net.UDPAddr{*relayAddr},
 	}
 
 	expectedSessionData := transport.SessionData4{}
@@ -240,7 +236,7 @@ func TestSessionUpdateHandler4ReadSessionDataFailure(t *testing.T) {
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
 	postSessionHandler := transport.PostSessionHandler{}
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeProviderFunc, nil, &postSessionHandler, metrics)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, storer, nil, &postSessionHandler, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -266,6 +262,8 @@ func TestSessionUpdateHandler4SessionDataBadSessionID(t *testing.T) {
 	metrics.SessionDataMetrics = *sessionDataMetrics
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
+	storer := &storage.InMemory{}
+	storer.AddDatacenter(context.Background(), routing.UnknownDatacenter)
 
 	sessionDataStruct := transport.SessionData4{
 		Version:     transport.SessionDataVersion4,
@@ -296,17 +294,28 @@ func TestSessionUpdateHandler4SessionDataBadSessionID(t *testing.T) {
 		return &goodIPLocator
 	}
 
-	var goodRouteProvider goodRouteProvider
-	routeProviderFunc := func() transport.RouteProvider {
-		return &goodRouteProvider
+	relayAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+	assert.NoError(t, err)
+
+	routeMatrix := routing.RouteMatrix4{
+		RelayIDs:           []uint64{1},
+		RelayAddresses:     []net.UDPAddr{*relayAddr},
+		RelayNames:         []string{"test.relay"},
+		RelayLatitudes:     []float32{90},
+		RelayLongitudes:    []float32{180},
+		RelayDatacenterIDs: []uint64{10},
+	}
+	routeMatrixFunc := func() *routing.RouteMatrix4 {
+		return &routeMatrix
 	}
 
 	expectedResponse := transport.SessionResponsePacket4{
 		SessionID:          requestPacket.SessionID,
 		SliceNumber:        requestPacket.SliceNumber,
 		RouteType:          routing.RouteTypeDirect,
-		NearRelayIDs:       make([]uint64, 0),
-		NearRelayAddresses: make([]net.UDPAddr, 0),
+		NumNearRelays:      1,
+		NearRelayIDs:       []uint64{1},
+		NearRelayAddresses: []net.UDPAddr{*relayAddr},
 	}
 
 	expectedSessionData := transport.SessionData4{
@@ -323,7 +332,7 @@ func TestSessionUpdateHandler4SessionDataBadSessionID(t *testing.T) {
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
 	postSessionHandler := transport.PostSessionHandler{}
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeProviderFunc, nil, &postSessionHandler, metrics)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, storer, nil, &postSessionHandler, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -349,6 +358,8 @@ func TestSessionUpdateHandler4SessionDataBadSliceNumber(t *testing.T) {
 	metrics.SessionDataMetrics = *sessionDataMetrics
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
+	storer := &storage.InMemory{}
+	storer.AddDatacenter(context.Background(), routing.UnknownDatacenter)
 
 	sessionDataStruct := transport.SessionData4{
 		Version:     transport.SessionDataVersion4,
@@ -379,17 +390,28 @@ func TestSessionUpdateHandler4SessionDataBadSliceNumber(t *testing.T) {
 		return &goodIPLocator
 	}
 
-	var goodRouteProvider goodRouteProvider
-	routeProviderFunc := func() transport.RouteProvider {
-		return &goodRouteProvider
+	relayAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+	assert.NoError(t, err)
+
+	routeMatrix := routing.RouteMatrix4{
+		RelayIDs:           []uint64{1},
+		RelayAddresses:     []net.UDPAddr{*relayAddr},
+		RelayNames:         []string{"test.relay"},
+		RelayLatitudes:     []float32{90},
+		RelayLongitudes:    []float32{180},
+		RelayDatacenterIDs: []uint64{10},
+	}
+	routeMatrixFunc := func() *routing.RouteMatrix4 {
+		return &routeMatrix
 	}
 
 	expectedResponse := transport.SessionResponsePacket4{
 		SessionID:          requestPacket.SessionID,
 		SliceNumber:        requestPacket.SliceNumber,
 		RouteType:          routing.RouteTypeDirect,
-		NearRelayIDs:       make([]uint64, 0),
-		NearRelayAddresses: make([]net.UDPAddr, 0),
+		NumNearRelays:      1,
+		NearRelayIDs:       []uint64{1},
+		NearRelayAddresses: []net.UDPAddr{*relayAddr},
 	}
 
 	expectedSessionData := transport.SessionData4{
@@ -406,7 +428,7 @@ func TestSessionUpdateHandler4SessionDataBadSliceNumber(t *testing.T) {
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
 	postSessionHandler := transport.PostSessionHandler{}
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeProviderFunc, nil, &postSessionHandler, metrics)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, storer, nil, &postSessionHandler, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -430,6 +452,8 @@ func TestSessionUpdateHandler4InitialSlice(t *testing.T) {
 	metrics, err := metrics.NewSessionMetrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
+	storer := &storage.InMemory{}
+	storer.AddDatacenter(context.Background(), routing.UnknownDatacenter)
 
 	requestPacket := transport.SessionUpdatePacket4{
 		SessionID:            1111,
@@ -444,17 +468,28 @@ func TestSessionUpdateHandler4InitialSlice(t *testing.T) {
 		return &goodIPLocator
 	}
 
-	var goodRouteProvider goodRouteProvider
-	routeProviderFunc := func() transport.RouteProvider {
-		return &goodRouteProvider
+	relayAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+	assert.NoError(t, err)
+
+	routeMatrix := routing.RouteMatrix4{
+		RelayIDs:           []uint64{1},
+		RelayAddresses:     []net.UDPAddr{*relayAddr},
+		RelayNames:         []string{"test.relay"},
+		RelayLatitudes:     []float32{90},
+		RelayLongitudes:    []float32{180},
+		RelayDatacenterIDs: []uint64{10},
+	}
+	routeMatrixFunc := func() *routing.RouteMatrix4 {
+		return &routeMatrix
 	}
 
 	expectedResponse := transport.SessionResponsePacket4{
 		SessionID:          requestPacket.SessionID,
 		SliceNumber:        requestPacket.SliceNumber,
 		RouteType:          routing.RouteTypeDirect,
-		NearRelayIDs:       make([]uint64, 0),
-		NearRelayAddresses: make([]net.UDPAddr, 0),
+		NumNearRelays:      1,
+		NearRelayIDs:       []uint64{1},
+		NearRelayAddresses: []net.UDPAddr{*relayAddr},
 	}
 
 	expectedSessionData := transport.SessionData4{
@@ -470,7 +505,7 @@ func TestSessionUpdateHandler4InitialSlice(t *testing.T) {
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
 	postSessionHandler := transport.PostSessionHandler{}
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeProviderFunc, nil, &postSessionHandler, metrics)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, storer, nil, &postSessionHandler, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -492,6 +527,8 @@ func TestSessionUpdateHandler4DirectRoute(t *testing.T) {
 	metrics, err := metrics.NewSessionMetrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
+	storer := &storage.InMemory{}
+	storer.AddDatacenter(context.Background(), routing.UnknownDatacenter)
 
 	sessionDataStruct := transport.SessionData4{
 		Version:     transport.SessionDataVersion4,
@@ -522,17 +559,28 @@ func TestSessionUpdateHandler4DirectRoute(t *testing.T) {
 		return &goodIPLocator
 	}
 
-	var goodRouteProvider goodRouteProvider
-	routeProviderFunc := func() transport.RouteProvider {
-		return &goodRouteProvider
+	relayAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+	assert.NoError(t, err)
+
+	routeMatrix := routing.RouteMatrix4{
+		RelayIDs:           []uint64{1},
+		RelayAddresses:     []net.UDPAddr{*relayAddr},
+		RelayNames:         []string{"test.relay"},
+		RelayLatitudes:     []float32{90},
+		RelayLongitudes:    []float32{180},
+		RelayDatacenterIDs: []uint64{10},
+	}
+	routeMatrixFunc := func() *routing.RouteMatrix4 {
+		return &routeMatrix
 	}
 
 	expectedResponse := transport.SessionResponsePacket4{
 		SessionID:          requestPacket.SessionID,
 		SliceNumber:        requestPacket.SliceNumber,
 		RouteType:          routing.RouteTypeDirect,
-		NearRelayIDs:       make([]uint64, 0),
-		NearRelayAddresses: make([]net.UDPAddr, 0),
+		NumNearRelays:      1,
+		NearRelayIDs:       []uint64{1},
+		NearRelayAddresses: []net.UDPAddr{*relayAddr},
 	}
 
 	expectedSessionData := transport.SessionData4{
@@ -548,7 +596,7 @@ func TestSessionUpdateHandler4DirectRoute(t *testing.T) {
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
 	postSessionHandler := transport.PostSessionHandler{}
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeProviderFunc, nil, &postSessionHandler, metrics)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, storer, nil, &postSessionHandler, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})

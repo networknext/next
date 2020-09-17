@@ -2,7 +2,6 @@ package transport
 
 import (
 	"fmt"
-	"math"
 	"net"
 
 	"github.com/networknext/backend/crypto"
@@ -320,8 +319,6 @@ type SessionData4 struct {
 	ExpireTimestamp uint64
 	Initial         bool
 	Location        routing.Location
-	NearRelays      []routing.NearRelayData
-	DestRelayIDs    []uint64
 	Route           routing.Route
 }
 
@@ -370,28 +367,6 @@ func (sessionData *SessionData4) Serialize(stream encoding.Stream) error {
 			return err
 		}
 		stream.SerializeBytes(locationBytes)
-	}
-	numNearRelays := int32(len(sessionData.NearRelays))
-	stream.SerializeInteger(&numNearRelays, 0, MaxNearRelays)
-	if stream.IsReading() {
-		sessionData.NearRelays = make([]routing.NearRelayData, numNearRelays)
-	}
-	for i := 0; i < int(numNearRelays); i++ {
-		nearRelay := &sessionData.NearRelays[i]
-		stream.SerializeUint64(&nearRelay.ID)
-		stream.SerializeAddress(nearRelay.Addr)
-		stream.SerializeString(&nearRelay.Name, math.MaxInt8)
-		stream.SerializeFloat64(&nearRelay.ClientStats.RTT)
-		stream.SerializeFloat64(&nearRelay.ClientStats.Jitter)
-		stream.SerializeFloat64(&nearRelay.ClientStats.PacketLoss)
-	}
-	numDestRelayIDs := int32(len(sessionData.DestRelayIDs))
-	stream.SerializeInteger(&numDestRelayIDs, 0, math.MaxInt32)
-	if stream.IsReading() {
-		sessionData.DestRelayIDs = make([]uint64, numDestRelayIDs)
-	}
-	for i := 0; i < int(numDestRelayIDs); i++ {
-		stream.SerializeUint64(&sessionData.DestRelayIDs[i])
 	}
 	numRouteRelays := int32(sessionData.Route.NumRelays)
 	hasRoute := numRouteRelays > 0
