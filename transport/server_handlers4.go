@@ -42,7 +42,6 @@ func writeSessionResponse4(w io.Writer, response *SessionResponsePacket4, sessio
 	}
 
 	if len(sessionDataBuffer) > MaxSessionDataSize {
-		fmt.Println(len(sessionDataBuffer))
 		return errors.New("session data too large")
 	}
 
