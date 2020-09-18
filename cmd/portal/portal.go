@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -441,14 +442,12 @@ func main() {
 				continue
 			}
 
-			if res.ContentLength == -1 {
-				res.Body.Close()
+			data, err := ioutil.ReadAll(res.Body)
+			res.Body.Close()
+			if err != nil {
+				level.Error(logger).Log("unable to read relay stats body: %v", err)
 				continue
 			}
-
-			data := make([]byte, res.ContentLength)
-			res.Body.Read(data)
-			res.Body.Close()
 
 			index := 0
 
