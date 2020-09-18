@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/routing"
@@ -320,6 +321,7 @@ type SessionData4 struct {
 	Initial         bool
 	Location        routing.Location
 	Route           routing.Route
+	RouteState      core.RouteState
 }
 
 func UnmarshalSessionData(sessionData *SessionData4, data []byte) error {
@@ -378,6 +380,22 @@ func (sessionData *SessionData4) Serialize(stream encoding.Stream) error {
 			stream.SerializeUint64(&sessionData.Route.RelayIDs[i])
 		}
 	}
+	stream.SerializeUint64(&sessionData.RouteState.UserID)
+	stream.SerializeBool(&sessionData.RouteState.Next)
+	stream.SerializeBool(&sessionData.RouteState.Veto)
+	stream.SerializeBool(&sessionData.RouteState.Banned)
+	stream.SerializeBool(&sessionData.RouteState.Disabled)
+	stream.SerializeBool(&sessionData.RouteState.NotSelected)
+	stream.SerializeBool(&sessionData.RouteState.ABTest)
+	stream.SerializeBool(&sessionData.RouteState.A)
+	stream.SerializeBool(&sessionData.RouteState.B)
+	stream.SerializeBool(&sessionData.RouteState.ReduceLatency)
+	stream.SerializeBool(&sessionData.RouteState.ReducePacketLoss)
+	stream.SerializeBool(&sessionData.RouteState.ProMode)
+	stream.SerializeBool(&sessionData.RouteState.Multipath)
+	stream.SerializeBool(&sessionData.RouteState.LatencyWorse)
+	stream.SerializeBool(&sessionData.RouteState.MultipathOverload)
+	stream.SerializeBool(&sessionData.RouteState.NoRoute)
 
 	return stream.Error()
 }

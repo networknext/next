@@ -384,11 +384,14 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	routerPrivateKey, err := envvar.GetBase64("RELAY_BACKEND_PRIVATE_KEY", nil)
+	routerPrivateKeySlice, err := envvar.GetBase64("RELAY_ROUTER_PRIVATE_KEY", nil)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
+
+	routerPrivateKey := [crypto.KeySize]byte{}
+	copy(routerPrivateKey[:], routerPrivateKeySlice)
 
 	getIPLocatorFunc := func() routing.IPLocator {
 		return routing.NullIsland

@@ -1,6 +1,7 @@
 package transport
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -226,7 +227,7 @@ func ServerUpdateHandlerFunc4(logger log.Logger, storer storage.Storer, datacent
 	}
 }
 
-func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IPLocator, getRouteMatrix4 func() *routing.RouteMatrix4, storer storage.Storer, routerPrivateKey []byte, postSessionHandler *PostSessionHandler, metrics *metrics.SessionMetrics) UDPHandlerFunc {
+func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IPLocator, getRouteMatrix4 func() *routing.RouteMatrix4, storer storage.Storer, routerPrivateKey [crypto.KeySize]byte, postSessionHandler *PostSessionHandler, metrics *metrics.SessionMetrics) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
 		metrics.Invocations.Add(1)
 
@@ -258,6 +259,10 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 		routeMatrix := getRouteMatrix4()
 		nearRelays := []routing.NearRelayData{}
 		destRelayIDs := []uint64{}
+		datacenter := routing.UnknownDatacenter
+		routeShader := core.NewRouteShader()       // todo: sync this up to firestore
+		customerConfig := core.NewCustomerConfig() // todo: sync this up to firestore
+		internalConfig := core.NewInternalConfig() // todo: sync this up to firestore
 		var err error
 
 		response := SessionResponsePacket4{
@@ -265,8 +270,6 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 			SliceNumber: packet.SliceNumber,
 			RouteType:   routing.RouteTypeDirect,
 		}
-
-		datacenter := routing.UnknownDatacenter
 
 		// If we've gotten this far, use a deferred function so that we always at least return a direct response
 		// and run the post session update logic
@@ -290,6 +293,7 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 			sessionData.Version = SessionDataVersion4
 			sessionData.SessionID = packet.SessionID
 			sessionData.SliceNumber = uint32(packet.SliceNumber + 1)
+			sessionData.ExpireTimestamp = uint64(time.Now().Unix())
 
 			sessionData.Location, err = ipLocator.LocateIP(packet.ClientAddress.IP)
 			if err != nil {
@@ -318,7 +322,6 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 		if !newSession {
 			if err := UnmarshalSessionData(&sessionData, packet.SessionData[:]); err != nil {
 				level.Error(logger).Log("msg", "could not read session data in session update packet", "err", err)
-				fmt.Println(err)
 				metrics.SessionDataMetrics.ReadSessionDataFailure.Add(1)
 				return
 			}
@@ -336,6 +339,7 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 			}
 
 			sessionData.SliceNumber = uint32(packet.SliceNumber + 1)
+			sessionData.ExpireTimestamp += billing.BillingSliceSeconds
 
 			for i := range nearRelays {
 				for j, clientNearRelayID := range packet.NearRelayIDs {
@@ -381,13 +385,86 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 		reframedNearRelays = reframedNearRelays[:numNearRelays]
 		reframedDestRelays = reframedDestRelays[:numDestRelays]
 
-		// var routeCost int32
-		// var routeNumRelays int32
-		// var routeRelays []int32
-		// core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, routeShader, routeState, customerConfig, internalConfig, int32(packet.DirectRTT), packet.DirectPacketLoss, nearRelays, nearRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays)
+		var routeCost int32
+		var routeNumRelays int32
+		routeRelays := make([]int32, routing.MaxRelays)
+
+		// todo: use in local route shader
+		routeShader.LatencyThreshold = -1
+		routeShader.AcceptableLatency = -1
+
+		if !sessionData.RouteState.Next {
+			if core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, &routeShader, &sessionData.RouteState, &customerConfig, &internalConfig, int32(packet.DirectRTT), packet.DirectPacketLoss, reframedNearRelays, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays) {
+				// Next token
+
+				// Add another 10 seconds to the slice and increment the session version
+				sessionData.ExpireTimestamp += billing.BillingSliceSeconds
+				sessionData.SessionVersion++
+
+				numTokens := routeNumRelays + 2 // relays + client + server
+				routeAddresses, routePublicKeys := GetRouteAddressesAndPublicKeys(&packet.ClientAddress, packet.ClientRoutePublicKey, &packet.ServerAddress, packet.ServerRoutePublicKey, numTokens, routeRelays, routeMatrix.RelayIDs, storer)
+				tokenData := make([]byte, numTokens*routing.EncryptedNextRouteTokenSize4)
+				core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), uint32(routeShader.BandwidthEnvelopeUpKbps), uint32(routeShader.BandwidthEnvelopeDownKbps), int(numTokens), routeAddresses, routePublicKeys, routerPrivateKey)
+				response.RouteType = routing.RouteTypeNew
+				response.NumTokens = numTokens
+				response.Tokens = tokenData
+
+				fmt.Println(packet.ClientRoutePublicKey)
+				fmt.Println(routePublicKeys)
+				fmt.Printf("%s\n", base64.StdEncoding.EncodeToString(routerPrivateKey[:]))
+			}
+		} else {
+			reframedRouteRelays := [routing.MaxRelays]int32{}
+			if !core.ReframeRoute(relayIDsToIndices, sessionData.Route.RelayIDs[:], &reframedRouteRelays) {
+				// todo: handle error - route relay is no longer in route matrix
+			}
+
+			if core.MakeRouteDecision_StayOnNetworkNext(routeMatrix.RouteEntries, &routeShader, &sessionData.RouteState, &customerConfig, &internalConfig, int32(packet.DirectRTT), int32(sessionData.Route.Stats.RTT), int32(sessionData.Route.NumRelays), reframedRouteRelays, reframedNearRelays, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays) {
+				// Continue token
+
+				numTokens := routeNumRelays + 2 // relays + client + server
+				_, routePublicKeys := GetRouteAddressesAndPublicKeys(&packet.ClientAddress, packet.ClientRoutePublicKey, &packet.ServerAddress, packet.ServerRoutePublicKey, numTokens, routeRelays, routeMatrix.RelayIDs, storer)
+				tokenData := make([]byte, routing.EncryptedContinueRouteTokenSize4)
+				core.WriteContinueTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), int(numTokens), routePublicKeys, routerPrivateKey)
+				response.RouteType = routing.RouteTypeContinue
+				response.NumTokens = numTokens
+				response.Tokens = tokenData
+			}
+		}
 
 		level.Debug(logger).Log("msg", "session updated successfully", "source_address", incoming.SourceAddr.String(), "server_address", packet.ServerAddress.String(), "client_address", packet.ClientAddress.String())
 	}
+}
+
+func GetRouteAddressesAndPublicKeys(clientAddress *net.UDPAddr, clientPublicKey []byte, serverAddress *net.UDPAddr, serverPublicKey []byte, numTokens int32, routeRelays []int32, allRelayIDs []uint64, storer storage.Storer) ([]*net.UDPAddr, [][]byte) {
+	routeAddresses := make([]*net.UDPAddr, numTokens)
+	routePublicKeys := make([][]byte, numTokens)
+
+	routeAddresses[0] = clientAddress
+	routePublicKeys[0] = clientPublicKey
+	routeAddresses[numTokens-1] = serverAddress
+	routePublicKeys[numTokens-1] = serverPublicKey
+
+	totalNumRelays := int32(len(allRelayIDs))
+	for i := int32(1); i < numTokens-1; i++ {
+		for j := int32(0); j < totalNumRelays; j++ {
+			relayIndex := routeRelays[i]
+			if j == relayIndex {
+				relayID := allRelayIDs[relayIndex]
+				relay, err := storer.Relay(relayID)
+				if err != nil {
+					// todo: handle error?
+					continue
+				}
+
+				routeAddresses[i] = &relay.Addr
+				routePublicKeys[i] = relay.PublicKey
+				break
+			}
+		}
+	}
+
+	return routeAddresses, routePublicKeys
 }
 
 func PostSessionUpdate4(postSessionHandler *PostSessionHandler, packet *SessionUpdatePacket4, location *routing.Location, nearRelays []routing.NearRelayData, nextBytesUp uint64, nextBytesDown uint64, datacenter *routing.Datacenter, metrics *metrics.SessionMetrics) {
