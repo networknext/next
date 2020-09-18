@@ -528,6 +528,7 @@ func main() {
 				m[id] = relay
 			}
 
+			fmt.Printf("read in %d relays\n", count)
 			relayMap.Swap(&m)
 		}
 	}()
