@@ -861,8 +861,7 @@ func GetRandomBestRoute(routeMatrix []RouteEntry, sourceRelays []int32, sourceRe
         return false
     }
 
-    bestRouteCost := GetBestRouteCost(routeMatrix, sourceRelays, sourceRelayCost, destRelays)
-
+    bestRouteCost := GetBestRouteCost(routeMatrix, sourceRelays, sourceRelayCost, destRelays)    
     if bestRouteCost > maxCost {
         return false
     }
@@ -870,6 +869,10 @@ func GetRandomBestRoute(routeMatrix []RouteEntry, sourceRelays []int32, sourceRe
     numBestRoutes := 0
     bestRoutes := make([]BestRoute, 1024)
     GetBestRoutes(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, bestRoutes, &numBestRoutes)
+
+    if numBestRoutes == 0 {
+        return false
+    }
 
     randomIndex := rand.Intn(numBestRoutes)
 

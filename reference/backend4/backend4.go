@@ -2390,8 +2390,6 @@ func main() {
 		packetData = packetData[NEXT_PACKET_HASH_BYTES:]
 		packetBytes -= NEXT_PACKET_HASH_BYTES
 
-		// todo: check packet signature
-
 		packetType := packetData[0]
 
 		if packetType == NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET {			
@@ -2477,8 +2475,6 @@ func main() {
 					continue
 				}
 			}
-
-			// todo: various checks on the session data to make sure it's valid
 
 			sessionData.Version = SessionDataVersion
 			sessionData.SessionId = sessionUpdate.SessionId
