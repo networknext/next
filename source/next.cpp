@@ -9097,6 +9097,8 @@ struct NextBackendSessionUpdatePacket
     bool next;
     bool committed;
     bool reported;
+    bool exceeded_bandwidth_up;
+    bool exceeded_bandwidth_down;
     uint64_t tag;
     uint64_t flags;
     uint64_t user_flags;
@@ -9163,6 +9165,8 @@ struct NextBackendSessionUpdatePacket
         serialize_bool( stream, next );
         serialize_bool( stream, committed );
         serialize_bool( stream, reported );
+        serialize_bool( stream, exceeded_bandwidth_up );
+        serialize_bool( stream, exceeded_bandwidth_down );
 
         bool has_tag = Stream::IsWriting && tag != 0;
         bool has_flags = Stream::IsWriting && flags != 0;
