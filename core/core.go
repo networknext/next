@@ -1,4 +1,4 @@
-package main
+package core
 
 // #cgo pkg-config: libsodium
 // #include <sodium.h>
