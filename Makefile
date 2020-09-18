@@ -2,8 +2,6 @@ CXX_FLAGS := -Wall -Wextra -std=c++17
 GO = go
 GOFMT = gofmt
 
-FIRESTORE_EMULATOR_HOST = 127.0.0.1:8000
-
 OS := $(shell uname -s | tr A-Z a-z)
 ifeq ($(OS),darwin)
 	LDFLAGS = -lsodium -lcurl -lpthread -lm -framework CoreFoundation -framework SystemConfiguration -DNEXT_DEVELOPMENT
