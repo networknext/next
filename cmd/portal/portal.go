@@ -270,7 +270,6 @@ func main() {
 
 	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
 	_, emulatorOK := os.LookupEnv("FIRESTORE_EMULATOR_HOST")
-	fmt.Println(emulatorOK)
 	if emulatorOK {
 		gcpProjectID = "local"
 
