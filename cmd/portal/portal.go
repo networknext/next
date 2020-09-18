@@ -156,23 +156,14 @@ func main() {
 				os.Exit(1)
 			}
 			if err := db.AddBuyer(ctx, routing.Buyer{
-				ID:                   customerID,
-				CompanyCode:          "local",
+				ID:                   0,
+				CompanyCode:          "ghost-army",
 				PublicKey:            customerPublicKey,
 				RoutingRulesSettings: routing.LocalRoutingRulesSettings,
 			}); err != nil {
 				level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
 				os.Exit(1)
 			}
-			/* 			if err := db.AddBuyer(ctx, routing.Buyer{
-			   				ID:                   0,
-			   				CompanyCode:          "ghost-army",
-			   				PublicKey:            customerPublicKey,
-			   				RoutingRulesSettings: routing.LocalRoutingRulesSettings,
-			   			}); err != nil {
-			   				level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
-			   				os.Exit(1)
-			   			} */
 
 			seller := routing.Seller{
 				ID:                        "sellerID",
