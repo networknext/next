@@ -1253,8 +1253,6 @@ func (s *BuyersService) SameBuyerRole(buyerID string) RoleFunc {
 			return false, fmt.Errorf("SameBuyerRole(): buyerID is required")
 		}
 		companyCode, ok := req.Context().Value(Keys.CompanyKey).(string)
-		fmt.Println("companyCode")
-		fmt.Println(companyCode)
 		if !ok {
 			err := fmt.Errorf("SameBuyerRole(): user is not assigned to a company")
 			level.Error(s.Logger).Log("err", err)

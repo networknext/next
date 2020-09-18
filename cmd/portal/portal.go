@@ -164,15 +164,15 @@ func main() {
 				level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
 				os.Exit(1)
 			}
-			if err := db.AddBuyer(ctx, routing.Buyer{
-				ID:                   0,
-				CompanyCode:          "ghost-army",
-				PublicKey:            customerPublicKey,
-				RoutingRulesSettings: routing.LocalRoutingRulesSettings,
-			}); err != nil {
-				level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
-				os.Exit(1)
-			}
+			/* 			if err := db.AddBuyer(ctx, routing.Buyer{
+			   				ID:                   0,
+			   				CompanyCode:          "ghost-army",
+			   				PublicKey:            customerPublicKey,
+			   				RoutingRulesSettings: routing.LocalRoutingRulesSettings,
+			   			}); err != nil {
+			   				level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
+			   				os.Exit(1)
+			   			} */
 
 			seller := routing.Seller{
 				ID:                        "sellerID",
@@ -279,6 +279,7 @@ func main() {
 
 	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
 	_, emulatorOK := os.LookupEnv("FIRESTORE_EMULATOR_HOST")
+	fmt.Println(emulatorOK)
 	if emulatorOK {
 		gcpProjectID = "local"
 
