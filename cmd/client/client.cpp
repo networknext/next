@@ -26,6 +26,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <inttypes.h>
 
 static volatile int quit = 0;
 
@@ -60,13 +61,142 @@ int main()
     uint8_t packet_data[32];
     memset( packet_data, 0, sizeof( packet_data ) );
 
+    double accumulator = 0.0;
+
     while ( !quit )
     {
         next_client_update( client );
 
         next_client_send_packet( client, packet_data, sizeof( packet_data ) );
         
-        next_sleep( 1.0f / 60.0f );
+        next_sleep( 1.0 / 60.0 );
+
+        accumulator += 1.0 / 60.0;
+
+        if ( accumulator > 10.0 )
+        {
+            accumulator = 0.0;
+
+            printf( "================================================================\n" );
+            
+            const next_client_stats_t * stats = next_client_stats( client );
+
+            const char * platform = "unknown";
+
+            switch ( stats->platform_id )
+            {
+                case NEXT_PLATFORM_WINDOWS:
+                    platform = "windows";
+                    break;
+
+                case NEXT_PLATFORM_MAC:
+                    platform = "mac";
+                    break;
+
+                case NEXT_PLATFORM_LINUX:
+                    platform = "linux";
+                    break;
+
+                case NEXT_PLATFORM_SWITCH:
+                    platform = "nintendo switch";
+                    break;
+
+                case NEXT_PLATFORM_PS4:
+                    platform = "ps4";
+                    break;
+
+                case NEXT_PLATFORM_IOS:
+                    platform = "ios";
+                    break;
+
+                case NEXT_PLATFORM_XBOX_ONE:
+                    platform = "xbox one";
+                    break;
+
+                default:
+                    break;
+            }
+
+            const char * state_string = "???";
+
+            const int state = next_client_state( client );
+            
+            switch ( state )
+            {
+                case NEXT_CLIENT_STATE_CLOSED:
+                    state_string = "closed";
+                    break;
+
+                case NEXT_CLIENT_STATE_OPEN:
+                    state_string = "open";
+                    break;
+
+                case NEXT_CLIENT_STATE_ERROR:
+                    state_string = "error";
+                    break;
+
+                default:
+                    break;
+            }
+
+            printf( "state = %s (%d)\n", state_string, state );
+
+            printf( "session_id = %" PRIx64 "\n", next_client_session_id( client ) );
+
+            printf( "platform_id = %s (%d)\n", platform, (int) stats->platform_id );
+
+            const char * connection = "unknown";
+            
+            switch ( stats->connection_type )
+            {
+                case NEXT_CONNECTION_TYPE_WIRED:
+                    connection = "wired";
+                    break;
+
+                case NEXT_CONNECTION_TYPE_WIFI:
+                    connection = "wifi";
+                    break;
+
+                case NEXT_CONNECTION_TYPE_CELLULAR:
+                    connection = "cellular";
+                    break;
+
+                default:
+                    break;
+            }
+
+            printf( "connection_type = %s (%d)\n", connection, stats->connection_type );
+
+            printf( "committed = %s\n", stats->committed ? "true" : "false" );
+
+            printf( "multipath = %s\n", stats->multipath ? "true" : "false" );
+
+            printf( "reported = %s\n", stats->reported ? "true" : "false" );
+
+            printf( "direct_rtt = %.2fms\n", stats->direct_rtt );
+            printf( "direct_jitter = %.2fms\n", stats->direct_jitter );
+            printf( "direct_packet_loss = %.1f%%\n", stats->direct_packet_loss );
+
+            if ( stats->next )
+            {
+                printf( "next_rtt = %.2fms\n", stats->next_rtt );
+                printf( "next_jitter = %.2fms\n", stats->next_jitter );
+                printf( "next_packet_loss = %.1f%%\n", stats->next_packet_loss );
+                printf( "next_bandwidth_up = %.1fkbps\n", stats->next_kbps_up );
+                printf( "next_bandwidth_down = %.1fkbps\n", stats->next_kbps_down );
+            }
+
+            printf( "packets_sent_client_to_server = %" PRId64 "\n", stats->packets_sent_client_to_server );
+            printf( "packets_sent_server_to_client = %" PRId64 "\n", stats->packets_sent_server_to_client );
+            printf( "packets_lost_client_to_server = %" PRId64 "\n", stats->packets_lost_client_to_server );
+            printf( "packets_lost_server_to_client = %" PRId64 "\n", stats->packets_lost_server_to_client );
+            printf( "packets_out_of_order_client_to_server = %" PRId64 "\n", stats->packets_out_of_order_client_to_server );
+            printf( "packets_out_of_order_server_to_client = %" PRId64 "\n", stats->packets_out_of_order_server_to_client );
+            printf( "jitter_client_to_server = %f\n", stats->jitter_client_to_server );
+            printf( "jitter_server_to_client = %f\n", stats->jitter_server_to_client );
+
+            printf( "================================================================\n" );
+        }
     }
 
     next_client_destroy( client );
