@@ -88,6 +88,8 @@
 #define NEXT_CLIENT_COUNTER_MULTIPATH                                   8
 #define NEXT_CLIENT_COUNTER_PACKETS_LOST_CLIENT_TO_SERVER               9
 #define NEXT_CLIENT_COUNTER_PACKETS_LOST_SERVER_TO_CLIENT              10
+#define NEXT_CLIENT_COUNTER_PACKETS_OUT_OF_ORDER_CLIENT_TO_SERVER      11
+#define NEXT_CLIENT_COUNTER_PACKETS_OUT_OF_ORDER_SERVER_TO_CLIENT      12
 
 #define NEXT_CLIENT_COUNTER_MAX                                        64
 
@@ -3080,6 +3082,7 @@ struct NextRouteUpdatePacket
     uint8_t tokens[NEXT_MAX_TOKENS*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES];
     uint64_t packets_sent_server_to_client;
     uint64_t packets_lost_client_to_server;
+    uint64_t packets_out_of_order_client_to_server;
 
     NextRouteUpdatePacket()
     {
@@ -3112,6 +3115,7 @@ struct NextRouteUpdatePacket
         }
         serialize_uint64( stream, packets_sent_server_to_client );
         serialize_uint64( stream, packets_lost_client_to_server );
+        serialize_uint64( stream, packets_out_of_order_client_to_server );
         return true;
     }
 };
@@ -6544,7 +6548,9 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             client->route_update_sequence = packet.sequence;
             client->client_stats.packets_sent_server_to_client = packet.packets_sent_server_to_client;
             client->client_stats.packets_lost_client_to_server = packet.packets_lost_client_to_server;
+            client->client_stats.packets_out_of_order_client_to_server = packet.packets_out_of_order_client_to_server;
             client->counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_CLIENT_TO_SERVER] = packet.packets_lost_client_to_server;
+            client->counters[NEXT_CLIENT_COUNTER_PACKETS_OUT_OF_ORDER_CLIENT_TO_SERVER] = packet.packets_out_of_order_client_to_server;
         }
 
         if ( fallback_to_direct )
@@ -6850,8 +6856,10 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         {
             const int packets_lost = next_packet_loss_tracker_update( &client->packet_loss_tracker );
             client->client_stats.packets_lost_server_to_client += packets_lost;
-            client->client_stats.packets_out_of_order_server_to_client = client->out_of_order_tracker.num_out_of_order_packets;
             client->counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_SERVER_TO_CLIENT] += packets_lost;
+
+            client->client_stats.packets_out_of_order_server_to_client = client->out_of_order_tracker.num_out_of_order_packets;
+            client->counters[NEXT_CLIENT_COUNTER_PACKETS_OUT_OF_ORDER_SERVER_TO_CLIENT] = client->out_of_order_tracker.num_out_of_order_packets;
         }
 
         next_platform_mutex_acquire( &client->packets_sent_mutex );                
@@ -8640,6 +8648,8 @@ struct NextBackendSessionUpdatePacket
     uint64_t packets_sent_server_to_client;
     uint64_t packets_lost_client_to_server;
     uint64_t packets_lost_server_to_client;
+    uint64_t packets_out_of_order_client_to_server;
+    uint64_t packets_out_of_order_server_to_client;
 
     void Reset()
     {
@@ -8694,11 +8704,13 @@ struct NextBackendSessionUpdatePacket
         bool has_flags = Stream::IsWriting && flags != 0;
         bool has_user_flags = Stream::IsWriting && user_flags != 0;
         bool has_lost_packets = Stream::IsWriting && ( packets_lost_client_to_server + packets_lost_server_to_client ) > 0;
+        bool has_out_of_order_packets = Stream::IsWriting && ( packets_out_of_order_client_to_server + packets_out_of_order_server_to_client ) > 0;
 
         serialize_bool( stream, has_tag );
         serialize_bool( stream, has_flags );
         serialize_bool( stream, has_user_flags );
         serialize_bool( stream, has_lost_packets );
+        serialize_bool( stream, has_out_of_order_packets );
 
         if ( has_tag )
         {
@@ -8749,6 +8761,12 @@ struct NextBackendSessionUpdatePacket
         {
             serialize_uint64( stream, packets_lost_client_to_server );
             serialize_uint64( stream, packets_lost_server_to_client );
+        }
+
+        if ( has_out_of_order_packets )
+        {
+            serialize_uint64( stream, packets_out_of_order_client_to_server );
+            serialize_uint64( stream, packets_out_of_order_server_to_client );
         }
 
         return true;
@@ -8815,6 +8833,8 @@ struct next_session_entry_t
     uint64_t stats_packets_sent_server_to_client;
     uint64_t stats_packets_lost_client_to_server;
     uint64_t stats_packets_lost_server_to_client;
+    uint64_t stats_packets_out_of_order_client_to_server;
+    uint64_t stats_packets_out_of_order_server_to_client;
     uint64_t stats_user_flags;
     
     double next_packet_loss_update_time;
@@ -8910,6 +8930,7 @@ struct next_session_entry_t
     NEXT_DECLARE_SENTINEL(21)
 
     next_packet_loss_tracker_t packet_loss_tracker;
+    next_out_of_order_tracker_t out_of_order_tracker;
 
     NEXT_DECLARE_SENTINEL(22)
 
@@ -9003,6 +9024,7 @@ void next_session_entry_verify_sentinels( next_session_entry_t * entry )
     next_replay_protection_verify_sentinels( &entry->special_replay_protection );
     next_replay_protection_verify_sentinels( &entry->internal_replay_protection );
     next_packet_loss_tracker_verify_sentinels( &entry->packet_loss_tracker );
+    next_out_of_order_tracker_verify_sentinels( &entry->out_of_order_tracker );
 }
 
 struct next_session_manager_t
@@ -9159,6 +9181,7 @@ void next_clear_session_entry( next_session_entry_t * entry, const next_address_
     next_replay_protection_reset( &entry->internal_replay_protection );
 
     next_packet_loss_tracker_reset( &entry->packet_loss_tracker );
+    next_out_of_order_tracker_reset( &entry->out_of_order_tracker );
 
     next_session_entry_verify_sentinels( entry );
 
@@ -10118,6 +10141,7 @@ next_session_entry_t * next_server_internal_check_client_to_server_packet( next_
     if ( packet_type == NEXT_CLIENT_TO_SERVER_PACKET )
     {
         next_packet_loss_tracker_packet_received( &entry->packet_loss_tracker, clean_sequence );
+        next_out_of_order_tracker_packet_received( &entry->out_of_order_tracker, clean_sequence );
     }
 
     return entry;
@@ -10177,6 +10201,7 @@ void next_server_internal_update_route( next_server_internal_t * server )
                 memcpy( packet.tokens, entry->update_tokens, NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES * size_t(entry->update_num_tokens) );
             }
             packet.packets_lost_client_to_server = entry->stats_packets_lost_client_to_server;
+            packet.packets_out_of_order_client_to_server = entry->stats_packets_out_of_order_client_to_server;
 
             next_platform_mutex_acquire( &server->session_mutex );
             packet.packets_sent_server_to_client = entry->stats_packets_sent_server_to_client;
@@ -10374,6 +10399,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         next_replay_protection_advance_sequence( &entry->payload_replay_protection, clean_sequence );
 
         next_packet_loss_tracker_packet_received( &entry->packet_loss_tracker, clean_sequence );
+        
+        next_out_of_order_tracker_packet_received( &entry->out_of_order_tracker, clean_sequence );
 
         next_server_notify_packet_received_t * notify = (next_server_notify_packet_received_t*) next_malloc( server->context, sizeof( next_server_notify_packet_received_t ) );
         notify->type = NEXT_SERVER_NOTIFY_PACKET_RECEIVED;
@@ -11459,7 +11486,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         }
     }
 
-    // packet loss updates
+    // packet loss and out of order tracker updates
 
     const int max_entry_index = server->session_manager->max_entry_index;
 
@@ -11478,6 +11505,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             const int packets_lost = next_packet_loss_tracker_update( &session->packet_loss_tracker );
             session->stats_packets_lost_client_to_server += packets_lost;
             session->next_packet_loss_update_time = current_time + NEXT_SECONDS_BETWEEN_PACKET_LOSS_UPDATES;
+            session->stats_packets_out_of_order_client_to_server = session->out_of_order_tracker.num_out_of_order_packets;
         }
     }
 
@@ -11554,6 +11582,8 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             next_platform_mutex_release( &server->session_mutex );
             packet.packets_lost_client_to_server = session->stats_packets_lost_client_to_server;
             packet.packets_lost_server_to_client = session->stats_packets_lost_server_to_client;
+            packet.packets_out_of_order_client_to_server = session->stats_packets_out_of_order_client_to_server;
+            packet.packets_out_of_order_server_to_client = session->stats_packets_out_of_order_server_to_client;
             packet.user_flags = session->stats_user_flags;
             packet.next = session->stats_next;
             packet.committed = session->stats_committed;
