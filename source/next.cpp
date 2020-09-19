@@ -10275,6 +10275,8 @@ void next_server_internal_update_route( next_server_internal_t * server )
 
             next_platform_mutex_acquire( &server->session_mutex );
             packet.packets_sent_server_to_client = entry->stats_packets_sent_server_to_client;
+            // todo
+            printf( "packets sent server to client %d\n", int(packet.packets_sent_server_to_client) );
             next_platform_mutex_release( &server->session_mutex );
 
             next_server_internal_send_packet( server, &entry->address, NEXT_ROUTE_UPDATE_PACKET, &packet );            
