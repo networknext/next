@@ -207,6 +207,9 @@ type NextBackendSessionUpdatePacket struct {
 	Next             		  bool
 	Committed                 bool
 	Reported                  bool
+	FallbackToDirect          bool
+	ClientBandwidthOverLimit  bool
+	ServerBandwidthOverLimit  bool
 	Tag                       uint64
 	Flags                     uint32
 	UserFlags                 uint64
@@ -221,12 +224,14 @@ type NextBackendSessionUpdatePacket struct {
 	NearRelayRTT              []float32
 	NearRelayJitter           []float32
 	NearRelayPacketLoss       []float32
-	KbpsUp                    uint32
-	KbpsDown                  uint32
+	NextKbpsUp                uint32
+	NextKbpsDown              uint32
 	PacketsSentClientToServer uint64
 	PacketsSentServerToClient uint64
 	PacketsLostClientToServer uint64
 	PacketsLostServerToClient uint64
+	PacketsOutOfOrderClientToServer uint64
+	PacketsOutOfOrderServerToClient uint64
 }
 
 func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
@@ -270,16 +275,21 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 	stream.SerializeBool(&packet.Next)
 	stream.SerializeBool(&packet.Committed)
 	stream.SerializeBool(&packet.Reported)
+	stream.SerializeBool(&packet.FallbackToDirect)
+	stream.SerializeBool(&packet.ClientBandwidthOverLimit)
+	stream.SerializeBool(&packet.ServerBandwidthOverLimit)
 
 	hasTag := stream.IsWriting() && packet.Tag != 0
 	hasFlags := stream.IsWriting() && packet.Flags != 0
 	hasUserFlags := stream.IsWriting() && packet.UserFlags != 0
 	hasLostPackets := stream.IsWriting() && ( packet.PacketsLostClientToServer + packet.PacketsLostServerToClient ) > 0
+	hasOutOfOrderPackets := stream.IsWriting() && ( packet.PacketsOutOfOrderClientToServer + packet.PacketsOutOfOrderServerToClient ) > 0
 
 	stream.SerializeBool( &hasTag )
 	stream.SerializeBool( &hasFlags )
 	stream.SerializeBool( &hasUserFlags )
 	stream.SerializeBool( &hasLostPackets )
+	stream.SerializeBool( &hasOutOfOrderPackets )
 
 	if hasTag {
 		stream.SerializeUint64(&packet.Tag)
@@ -319,8 +329,8 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 	}
 
 	if packet.Next {
-		stream.SerializeUint32(&packet.KbpsUp)
-		stream.SerializeUint32(&packet.KbpsDown)
+		stream.SerializeUint32(&packet.NextKbpsUp)
+		stream.SerializeUint32(&packet.NextKbpsDown)
 	}
 
 	stream.SerializeUint64(&packet.PacketsSentClientToServer)
@@ -329,6 +339,11 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 	if hasLostPackets {
 		stream.SerializeUint64(&packet.PacketsLostClientToServer)
 		stream.SerializeUint64(&packet.PacketsLostServerToClient)
+	}
+
+	if hasOutOfOrderPackets {
+		stream.SerializeUint64(&packet.PacketsOutOfOrderClientToServer)
+		stream.SerializeUint64(&packet.PacketsOutOfOrderServerToClient)
 	}
 
 	return stream.Error()
@@ -2465,6 +2480,10 @@ func main() {
 				continue
 			}
 
+			if sessionUpdate.FallbackToDirect {
+				fmt.Printf("*** FALLBACK TO DIRECT ***\n")
+			}
+
 			sessionDataReadStream := CreateReadStream(sessionUpdate.SessionData[:sessionUpdate.SessionDataBytes])
 			var sessionData SessionData
 			sessionData.Version = SessionDataVersion
@@ -2599,7 +2618,7 @@ func main() {
 			}
 
 			backend.mutex.Lock()
-			if sessionData.SliceNumber == 0 {
+			if sessionData.SliceNumber == 1 {
 				backend.dirty = true
 			}
 			backend.sessionDatabase[sessionUpdate.SessionId] = sessionEntry
