@@ -3093,6 +3093,7 @@ struct NextClientStatsPacket
     uint64_t packets_sent_client_to_server;
     uint64_t packets_lost_server_to_client;
     uint64_t packets_out_of_order_server_to_client;
+    float jitter_server_to_client;
 
     NextClientStatsPacket()
     {
@@ -3133,6 +3134,7 @@ struct NextClientStatsPacket
         serialize_uint64( stream, packets_sent_client_to_server );
         serialize_uint64( stream, packets_lost_server_to_client );
         serialize_uint64( stream, packets_out_of_order_server_to_client );
+        serialize_float( stream, jitter_server_to_client );
         return true;
     }
 };
@@ -3151,6 +3153,7 @@ struct NextRouteUpdatePacket
     uint64_t packets_sent_server_to_client;
     uint64_t packets_lost_client_to_server;
     uint64_t packets_out_of_order_client_to_server;
+    float jitter_client_to_server;
 
     NextRouteUpdatePacket()
     {
@@ -3184,6 +3187,7 @@ struct NextRouteUpdatePacket
         serialize_uint64( stream, packets_sent_server_to_client );
         serialize_uint64( stream, packets_lost_client_to_server );
         serialize_uint64( stream, packets_out_of_order_client_to_server );
+        serialize_float( stream, jitter_client_to_server );
         return true;
     }
 };
@@ -3638,7 +3642,7 @@ int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_obj
     return (int) packet_id;
 }
 
-void next_post_validate_packet( uint8_t * packet_data, int packet_bytes, void * packet_object, const int * encrypted_packet, uint64_t * sequence, const uint8_t * encrypt_private_key, next_replay_protection_t * replay_protection, next_packet_loss_tracker_t * tracker )
+void next_post_validate_packet( uint8_t * packet_data, int packet_bytes, void * packet_object, const int * encrypted_packet, uint64_t * sequence, const uint8_t * encrypt_private_key, next_replay_protection_t * replay_protection, next_packet_loss_tracker_t * packet_loss_tracker, next_out_of_order_tracker_t * out_of_order_tracker, next_jitter_tracker_t * jitter_tracker )
 {
     (void) packet_bytes;
     (void) packet_object;
@@ -3662,9 +3666,19 @@ void next_post_validate_packet( uint8_t * packet_data, int packet_bytes, void * 
     {
         next_replay_protection_advance_sequence( replay_protection, *sequence );
 
-        if ( tracker )
+        if ( packet_loss_tracker )
         {
-            next_packet_loss_tracker_packet_received( tracker, *sequence );
+            next_packet_loss_tracker_packet_received( packet_loss_tracker, *sequence );
+        }
+
+        if ( out_of_order_tracker )
+        {
+            next_out_of_order_tracker_packet_received( out_of_order_tracker, *sequence );
+        }
+
+        if ( jitter_tracker )
+        {
+            next_jitter_tracker_packet_received( jitter_tracker, *sequence, next_time() );
         }
     }
 }
@@ -5675,6 +5689,7 @@ struct next_client_internal_t
 
     next_packet_loss_tracker_t packet_loss_tracker;
     next_out_of_order_tracker_t out_of_order_tracker;
+    next_jitter_tracker_t jitter_tracker;
 
     NEXT_DECLARE_SENTINEL(4)
 
@@ -5920,6 +5935,7 @@ next_client_internal_t * next_client_internal_create( void * context, const char
 
     next_packet_loss_tracker_reset( &client->packet_loss_tracker );
     next_out_of_order_tracker_reset( &client->out_of_order_tracker );
+    next_jitter_tracker_reset( &client->jitter_tracker );
 
     next_client_internal_verify_sentinels( client );
 
@@ -6045,6 +6061,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         next_out_of_order_tracker_packet_received( &client->out_of_order_tracker, clean_sequence );
 
+        next_jitter_tracker_packet_received( &client->jitter_tracker, clean_sequence, next_time() );
+
         return;
     }
 
@@ -6083,7 +6101,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             return;
         }
 
-        next_post_validate_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, NULL );
+        next_post_validate_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, NULL, NULL, NULL );
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client received upgrade request packet from server" );
 
@@ -6172,7 +6190,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client received upgrade confirm packet from server" );
 
-        next_post_validate_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, NULL );
+        next_post_validate_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, NULL, NULL, NULL );
 
         client->upgraded = true;
         client->upgrade_sequence = packet.upgrade_sequence;
@@ -6448,6 +6466,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         next_out_of_order_tracker_packet_received( &client->out_of_order_tracker, clean_sequence );
 
+        next_jitter_tracker_packet_received( &client->jitter_tracker, clean_sequence, next_time() );
+
         next_client_notify_packet_received_t * notify = (next_client_notify_packet_received_t*) next_malloc( client->context, sizeof( next_client_notify_packet_received_t ) );
         notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
         notify->direct = false;
@@ -6522,7 +6542,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             return;
         }
 
-        next_post_validate_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, NULL );
+        next_post_validate_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, NULL, NULL, NULL );
 
         next_relay_manager_process_pong( client->near_relay_manager, from, packet.ping_sequence );
 
@@ -6552,7 +6572,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         next_ping_history_pong_received( &client->direct_ping_history, packet.ping_sequence, next_time() );
 
-        next_post_validate_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, client->client_receive_key, &client->internal_replay_protection, &client->packet_loss_tracker );
+        next_post_validate_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, client->client_receive_key, &client->internal_replay_protection, &client->packet_loss_tracker, &client->out_of_order_tracker, &client->jitter_tracker );
 
         client->last_direct_pong_time = next_time();
 
@@ -6585,7 +6605,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             return;
         }
 
-        next_post_validate_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, client->client_receive_key, &client->internal_replay_protection, &client->packet_loss_tracker );
+        next_post_validate_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, client->client_receive_key, &client->internal_replay_protection, &client->packet_loss_tracker, &client->out_of_order_tracker, &client->jitter_tracker );
 
         bool fallback_to_direct = false;
 
@@ -6617,6 +6637,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             client->client_stats.packets_sent_server_to_client = packet.packets_sent_server_to_client;
             client->client_stats.packets_lost_client_to_server = packet.packets_lost_client_to_server;
             client->client_stats.packets_out_of_order_client_to_server = packet.packets_out_of_order_client_to_server;
+            client->client_stats.jitter_client_to_server = packet.jitter_client_to_server;
+            // todo: where are the server side equivalents for these set?
             client->counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_CLIENT_TO_SERVER] = packet.packets_lost_client_to_server;
             client->counters[NEXT_CLIENT_COUNTER_PACKETS_OUT_OF_ORDER_CLIENT_TO_SERVER] = packet.packets_out_of_order_client_to_server;
         }
@@ -6817,6 +6839,7 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
 
                 next_packet_loss_tracker_reset( &client->packet_loss_tracker );
                 next_out_of_order_tracker_reset( &client->out_of_order_tracker );
+                next_jitter_tracker_reset( &client->jitter_tracker );
 
                 client->counters[NEXT_CLIENT_COUNTER_CLOSE_SESSION]++;
             }
@@ -6928,6 +6951,8 @@ void next_client_internal_update_stats( next_client_internal_t * client )
 
             client->client_stats.packets_out_of_order_server_to_client = client->out_of_order_tracker.num_out_of_order_packets;
             client->counters[NEXT_CLIENT_COUNTER_PACKETS_OUT_OF_ORDER_SERVER_TO_CLIENT] = client->out_of_order_tracker.num_out_of_order_packets;
+
+            client->client_stats.jitter_server_to_client = client->jitter_tracker.jitter;
         }
 
         next_platform_mutex_acquire( &client->packets_sent_mutex );                
@@ -7003,6 +7028,8 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         next_platform_mutex_release( &client->packets_sent_mutex );                
 
         packet.packets_lost_server_to_client = client->client_stats.packets_lost_server_to_client;
+        packet.packets_out_of_order_server_to_client = client->client_stats.packets_out_of_order_server_to_client;
+        packet.jitter_server_to_client = client->client_stats.jitter_server_to_client;
 
         packet.user_flags = client->user_flags;
         client->user_flags = 0;
@@ -8718,6 +8745,8 @@ struct NextBackendSessionUpdatePacket
     uint64_t packets_lost_server_to_client;
     uint64_t packets_out_of_order_client_to_server;
     uint64_t packets_out_of_order_server_to_client;
+    float jitter_client_to_server;
+    float jitter_server_to_client;
 
     void Reset()
     {
@@ -8837,6 +8866,9 @@ struct NextBackendSessionUpdatePacket
             serialize_uint64( stream, packets_out_of_order_server_to_client );
         }
 
+        serialize_float( stream, jitter_client_to_server );
+        serialize_float( stream, jitter_server_to_client );
+
         return true;
     }
 };
@@ -8903,6 +8935,10 @@ struct next_session_entry_t
     uint64_t stats_packets_lost_server_to_client;
     uint64_t stats_packets_out_of_order_client_to_server;
     uint64_t stats_packets_out_of_order_server_to_client;
+
+    float stats_jitter_client_to_server;
+    float stats_jitter_server_to_client;
+
     uint64_t stats_user_flags;
     
     double next_tracker_update_time;
@@ -8999,6 +9035,7 @@ struct next_session_entry_t
 
     next_packet_loss_tracker_t packet_loss_tracker;
     next_out_of_order_tracker_t out_of_order_tracker;
+    next_jitter_tracker_t jitter_tracker;
 
     NEXT_DECLARE_SENTINEL(22)
 
@@ -9091,6 +9128,7 @@ void next_session_entry_verify_sentinels( next_session_entry_t * entry )
     next_replay_protection_verify_sentinels( &entry->internal_replay_protection );
     next_packet_loss_tracker_verify_sentinels( &entry->packet_loss_tracker );
     next_out_of_order_tracker_verify_sentinels( &entry->out_of_order_tracker );
+    next_jitter_tracker_verify_sentinels( &entry->jitter_tracker );
 }
 
 struct next_session_manager_t
@@ -9248,6 +9286,7 @@ void next_clear_session_entry( next_session_entry_t * entry, const next_address_
 
     next_packet_loss_tracker_reset( &entry->packet_loss_tracker );
     next_out_of_order_tracker_reset( &entry->out_of_order_tracker );
+    next_jitter_tracker_reset( &entry->jitter_tracker );
 
     next_session_entry_verify_sentinels( entry );
 
@@ -10208,6 +10247,7 @@ next_session_entry_t * next_server_internal_check_client_to_server_packet( next_
     {
         next_packet_loss_tracker_packet_received( &entry->packet_loss_tracker, clean_sequence );
         next_out_of_order_tracker_packet_received( &entry->out_of_order_tracker, clean_sequence );
+        next_jitter_tracker_packet_received( &entry->jitter_tracker, clean_sequence, next_time() );
     }
 
     return entry;
@@ -10268,6 +10308,7 @@ void next_server_internal_update_route( next_server_internal_t * server )
             }
             packet.packets_lost_client_to_server = entry->stats_packets_lost_client_to_server;
             packet.packets_out_of_order_client_to_server = entry->stats_packets_out_of_order_client_to_server;
+            packet.jitter_client_to_server = entry->stats_jitter_client_to_server;
 
             next_platform_mutex_acquire( &server->session_mutex );
             packet.packets_sent_server_to_client = entry->stats_packets_sent_server_to_client;
@@ -10467,6 +10508,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         next_packet_loss_tracker_packet_received( &entry->packet_loss_tracker, clean_sequence );
         
         next_out_of_order_tracker_packet_received( &entry->out_of_order_tracker, clean_sequence );
+        
+        next_jitter_tracker_packet_received( &entry->jitter_tracker, clean_sequence, next_time() );
 
         next_server_notify_packet_received_t * notify = (next_server_notify_packet_received_t*) next_malloc( server->context, sizeof( next_server_notify_packet_received_t ) );
         notify->type = NEXT_SERVER_NOTIFY_PACKET_RECEIVED;
@@ -10828,7 +10871,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             return;
         }
 
-        next_post_validate_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, NULL );
+        next_post_validate_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, NULL, NULL, NULL );
 
         if ( !upgraded )
         {
@@ -11096,7 +11139,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         if ( next_read_packet( packet_data, packet_bytes, &packet, next_signed_packets, next_encrypted_packets, &packet_sequence, NULL, session->receive_key, &session->internal_replay_protection ) != packet_id )
             return;
 
-        next_post_validate_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection, NULL );
+        next_post_validate_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection, NULL, NULL, NULL );
 
         NextDirectPongPacket response;
         response.ping_sequence = packet.ping_sequence;
@@ -11123,7 +11166,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         if ( next_read_packet( packet_data, packet_bytes, &packet, next_signed_packets, next_encrypted_packets, &packet_sequence, NULL, session->receive_key, &session->internal_replay_protection ) != packet_id )
             return;
 
-        next_post_validate_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection, NULL );
+        next_post_validate_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection, NULL, NULL, NULL );
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server received client stats packet for session %" PRIx64, session->session_id );
 
@@ -11183,7 +11226,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             return;
         }
 
-        next_post_validate_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection, NULL );
+        next_post_validate_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection, NULL, NULL, NULL );
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server received route update ack from client for session %" PRIx64, session->session_id );
 
@@ -11570,9 +11613,8 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         {
             const int packets_lost = next_packet_loss_tracker_update( &session->packet_loss_tracker );
             session->stats_packets_lost_client_to_server += packets_lost;
-            
             session->stats_packets_out_of_order_client_to_server = session->out_of_order_tracker.num_out_of_order_packets;
-
+            session->stats_jitter_client_to_server = session->jitter_tracker.jitter;
             session->next_tracker_update_time = current_time + NEXT_SECONDS_BETWEEN_PACKET_LOSS_UPDATES;
         }
     }
@@ -11652,6 +11694,8 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.packets_lost_server_to_client = session->stats_packets_lost_server_to_client;
             packet.packets_out_of_order_client_to_server = session->stats_packets_out_of_order_client_to_server;
             packet.packets_out_of_order_server_to_client = session->stats_packets_out_of_order_server_to_client;
+            packet.jitter_client_to_server = session->stats_jitter_client_to_server;
+            packet.jitter_server_to_client = session->stats_jitter_server_to_client;
             packet.user_flags = session->stats_user_flags;
             packet.next = session->stats_next;
             packet.committed = session->stats_committed;
@@ -13783,6 +13827,8 @@ static void test_packets()
         in.update_type = NEXT_UPDATE_TYPE_DIRECT;
         in.packets_sent_server_to_client = 11000;
         in.packets_lost_client_to_server = 10000;
+        in.packets_out_of_order_client_to_server = 9000;
+        in.jitter_client_to_server = 0.1f;
         uint64_t in_sequence = 1000;
         uint64_t out_sequence = 0;
         int packet_bytes = 0;
@@ -13801,6 +13847,8 @@ static void test_packets()
         check( in.update_type == out.update_type );
         check( in.packets_sent_server_to_client == out.packets_sent_server_to_client );
         check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );
+        check( in.packets_out_of_order_client_to_server == out.packets_out_of_order_client_to_server );
+        check( in.jitter_client_to_server == out.jitter_client_to_server );
     }
 
     // route update packet (route)
@@ -13824,6 +13872,8 @@ static void test_packets()
         next_random_bytes( in.tokens, NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES * NEXT_MAX_TOKENS );
         in.packets_sent_server_to_client = 11000;
         in.packets_lost_client_to_server = 10000;
+        in.packets_out_of_order_client_to_server = 9000;
+        in.jitter_client_to_server = 0.25f;
         uint64_t in_sequence = 1000;
         uint64_t out_sequence = 0;
         int packet_bytes = 0;
@@ -13846,6 +13896,8 @@ static void test_packets()
         check( memcmp( in.tokens, out.tokens, NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES * NEXT_MAX_TOKENS ) == 0 );
         check( in.packets_sent_server_to_client == out.packets_sent_server_to_client );
         check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );
+        check( in.packets_out_of_order_client_to_server == out.packets_out_of_order_client_to_server );
+        check( in.jitter_client_to_server == out.jitter_client_to_server );
     }
 
     // route update packet (update)
