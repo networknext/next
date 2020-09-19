@@ -6917,7 +6917,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
             client->client_stats.packets_out_of_order_server_to_client = client->out_of_order_tracker.num_out_of_order_packets;
             client->counters[NEXT_CLIENT_COUNTER_PACKETS_OUT_OF_ORDER_SERVER_TO_CLIENT] = client->out_of_order_tracker.num_out_of_order_packets;
 
-            client->client_stats.jitter_server_to_client = float( client->jitter_tracker.jitter * 0.001 );
+            client->client_stats.jitter_server_to_client = float( client->jitter_tracker.jitter * 1000 );
         }
 
         next_platform_mutex_acquire( &client->packets_sent_mutex );                
@@ -10271,7 +10271,7 @@ void next_server_internal_update_route( next_server_internal_t * server )
             }
             packet.packets_lost_client_to_server = entry->stats_packets_lost_client_to_server;
             packet.packets_out_of_order_client_to_server = entry->stats_packets_out_of_order_client_to_server;
-            packet.jitter_client_to_server = float( entry->stats_jitter_client_to_server * 0.001 );
+            packet.jitter_client_to_server = float( entry->stats_jitter_client_to_server * 1000 );
 
             next_platform_mutex_acquire( &server->session_mutex );
             packet.packets_sent_server_to_client = entry->stats_packets_sent_server_to_client;
