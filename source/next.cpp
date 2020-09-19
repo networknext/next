@@ -385,6 +385,7 @@ next_platform_mutex_helper_t::~next_platform_mutex_helper_t()
 
 // -------------------------------------------------------------
 
+// todo: remember to turn this off
 #define NEXT_ENABLE_MEMORY_CHECKS 1
 
 #if NEXT_ENABLE_MEMORY_CHECKS
@@ -2902,6 +2903,7 @@ struct next_jitter_tracker_t
 
     uint64_t last_packet_processed;
     double last_packet_time;
+    double last_packet_delta;
     double jitter;
 
     NEXT_DECLARE_SENTINEL(1)
@@ -2931,23 +2933,33 @@ void next_jitter_tracker_reset( next_jitter_tracker_t * tracker )
     
     tracker->last_packet_processed = 0;
     tracker->last_packet_time = 0.0;
+    tracker->last_packet_delta = 0.0;
     tracker->jitter = 0.0;
 
     next_jitter_tracker_verify_sentinels( tracker );
 }
 
-void next_jitter_tracker_packet_received( next_jitter_tracker_t * tracker, uint64_t sequence, double t )
+void next_jitter_tracker_packet_received( next_jitter_tracker_t * tracker, uint64_t sequence, double time )
 {
     next_jitter_tracker_verify_sentinels( tracker );
 
-    if ( sequence < tracker->last_packet_processed )
+    if ( sequence == tracker->last_packet_processed + 1 && tracker->last_packet_time > 0.0 )
     {
-        // todo: update jitter estimate
-        (void) t;
-        return;
+        const double delta = time - tracker->last_packet_time;
+        const double jitter = fabs( delta - tracker->last_packet_delta );
+        tracker->last_packet_delta = delta;
+        if ( fabs( jitter - tracker->jitter ) > 0.0001f )
+        {
+            tracker->jitter += ( jitter - tracker->jitter ) * 0.01f;
+        }
+        else
+        {
+            tracker->jitter = jitter;
+        }
     }
 
     tracker->last_packet_processed = sequence;
+    tracker->last_packet_time = time;
 }
 
 // -------------------------------------------------------------
@@ -15053,6 +15065,63 @@ static void test_jitter_tracker()
     }
 
     check( tracker.jitter == 0.0 );
+
+    for ( int i = 0; i < 1000; ++i )
+    {
+        t = i * dt;
+        if ( (i%3) == 0 )
+        {
+            t += 2;
+        }
+        if ( (i%5) == 0 )
+        {
+            t += 5;
+        }
+        if ( (i%6) == 0 )
+        {
+            t -= 10;
+        }
+        next_jitter_tracker_packet_received( &tracker, sequence, t );
+        sequence++;
+    }
+
+    check( tracker.jitter > 1.0 );
+
+    next_jitter_tracker_reset( &tracker );
+
+    check( tracker.jitter == 0.0 );
+
+    for ( int i = 0; i < 1000; ++i )
+    {
+        t = i * dt;
+        if ( (i%3) == 0 )
+        {
+            t += 0.01f;
+        }
+        if ( (i%5) == 0 )
+        {
+            t += 0.05;
+        }
+        if ( (i%6) == 0 )
+        {
+            t -= 0.1f;
+        }
+        next_jitter_tracker_packet_received( &tracker, sequence, t );
+        sequence++;
+    }
+
+    check( tracker.jitter > 0.05 );
+    check( tracker.jitter < 0.1 );    
+
+    for ( int i = 0; i < 10000; ++i )
+    {
+        t = i * dt;
+        next_jitter_tracker_packet_received( &tracker, sequence, t );
+        sequence++;
+    }
+
+    check( tracker.jitter >= 0.0 );
+    check( tracker.jitter <= 0.000001 );
 }
 
 static bool client_woke_up = false;
