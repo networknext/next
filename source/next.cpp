@@ -7673,8 +7673,6 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
             memcpy( buffer+10, packet_data, packet_bytes );
             next_platform_socket_send_packet( client->internal->socket, &client->server_address, buffer, packet_bytes + 10 );
             client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT]++;
-
-            // todo: separate counters for raw direct vs. upgraded direct so I can check these in functional tests!
         }
     }
     else
@@ -9578,22 +9576,15 @@ int next_read_backend_packet( uint8_t * packet_data, int packet_bytes, void * pa
 
     if ( !is_backend_packet( packet_data, packet_bytes ) )
     {
-        // todo
-        printf( "backend hash check failed %d\n", packet_id );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "backend packet hash check failed (%d)", packet_id );
         return NEXT_ERROR;
     }
 
     packet_bytes -= NEXT_BACKEND_PACKET_HASH_BYTES + 1;
     packet_data += NEXT_BACKEND_PACKET_HASH_BYTES + 1;
 
-    // todo
-    printf( "received backend packet %d\n", packet_id );
-
     if ( signed_packet && signed_packet[packet_id] )
     {
-        // todo
-        printf( "packet is signed\n" );
-
         next_assert( sign_public_key );
 
         if ( packet_bytes < int( crypto_sign_BYTES ) )
@@ -10289,8 +10280,6 @@ void next_server_internal_update_route( next_server_internal_t * server )
 
             next_platform_mutex_acquire( &server->session_mutex );
             packet.packets_sent_server_to_client = entry->stats_packets_sent_server_to_client;
-            // todo
-            printf( "packets sent server to client %d\n", int(packet.packets_sent_server_to_client) );
             next_platform_mutex_release( &server->session_mutex );
 
             next_server_internal_send_packet( server, &entry->address, NEXT_ROUTE_UPDATE_PACKET, &packet );            
@@ -11732,7 +11721,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         {
             session->session_update_packet.retry_number++;
 
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server resent session update packet to backend for session % (%d)" PRIx64, session->session_id, session->session_update_packet.retry_number );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server resent session update packet to backend for session %" PRIx64 " (%d)", session->session_id, session->session_update_packet.retry_number );
 
             int packet_bytes = 0;
             uint8_t packet_data[NEXT_MAX_PACKET_BYTES*2];
