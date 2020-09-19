@@ -40,6 +40,27 @@ void client_packet_received( next_client_t * client, void * context, const uint8
     (void) client; (void) context; (void) packet_data; (void) packet_bytes;
 }
 
+void generate_packet( uint8_t * packet_data, int & packet_bytes )
+{
+    packet_bytes = 1 + ( rand() % NEXT_MTU );
+    const int start = packet_bytes % 256;
+    for ( int i = 0; i < packet_bytes; ++i )
+        packet_data[i] = (uint8_t) ( start + i ) % 256;
+}
+
+void verify_packet( const uint8_t * packet_data, int packet_bytes )
+{
+    const int start = packet_bytes % 256;
+    for ( int i = 0; i < packet_bytes; ++i )
+    {
+        if ( packet_data[i] != (uint8_t) ( ( start + i ) % 256 ) )
+        {
+            printf( "%d: %d != %d (%d)\n", i, packet_data[i], ( start + i ) % 256, packet_bytes );
+        }
+        next_assert( packet_data[i] == (uint8_t) ( ( start + i ) % 256 ) );
+    }
+}
+
 int main()
 {
     printf( "\nWelcome to Network Next!\n\n" );
@@ -58,16 +79,16 @@ int main()
 
     next_client_open_session( client, "127.0.0.1:32202" );
 
-    uint8_t packet_data[32];
-    memset( packet_data, 0, sizeof( packet_data ) );
-
     double accumulator = 0.0;
 
     while ( !quit )
     {
         next_client_update( client );
 
-        next_client_send_packet( client, packet_data, sizeof( packet_data ) );
+        int packet_bytes = 0;
+        uint8_t packet_data[NEXT_MTU];
+        generate_packet( packet_data, packet_bytes );
+        next_client_send_packet( client, packet_data, packet_bytes );
         
         next_sleep( 1.0 / 60.0 );
 
