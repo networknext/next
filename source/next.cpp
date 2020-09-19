@@ -7663,8 +7663,6 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
         {
             // [255][session sequence][packet sequence](payload) style packets direct to server
 
-            printf( "client sent upgraded direct packet\n" );
-
             uint8_t buffer[10+NEXT_MTU];
             uint8_t * p = buffer;
             next_write_uint8( &p, NEXT_DIRECT_PACKET );
@@ -7673,6 +7671,7 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
             memcpy( buffer+10, packet_data, packet_bytes );
             next_platform_socket_send_packet( client->internal->socket, &client->server_address, buffer, packet_bytes + 10 );
             client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT]++;
+
             // todo: separate counters for raw direct vs. upgraded direct so I can check these in functional tests!
         }
     }
