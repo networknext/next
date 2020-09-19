@@ -6022,6 +6022,9 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     const int packet_id = packet_data[NEXT_PACKET_HASH_BYTES];
 
+    // todo
+    printf( "client received packet id %d\n", packet_id );
+
     // upgraded direct packet (255)
 
     if ( client->upgraded && packet_id == NEXT_DIRECT_PACKET && packet_bytes <= NEXT_MTU + NEXT_PACKET_HASH_BYTES + 10 && from_server_address )
