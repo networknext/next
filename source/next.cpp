@@ -12087,6 +12087,20 @@ void next_server_tag_session( next_server_t * server, const next_address_t * add
 
     next_assert( server->internal );
     
+    // don't tag sessions in direct only mode
+
+    int state = NEXT_SERVER_STATE_DIRECT_ONLY;
+    {
+        next_platform_mutex_guard( &server->internal->state_and_resolve_hostname_mutex );
+        state = server->internal->state;
+    }
+
+    if ( state == NEXT_SERVER_STATE_DIRECT_ONLY )
+    {
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server can't tag session. direct only mode" );
+        return 0;
+    }
+
     // send tag session command to internal server
 
     next_server_command_tag_session_t * command = (next_server_command_tag_session_t*) next_malloc( server->context, sizeof( next_server_command_tag_session_t ) );
