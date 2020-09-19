@@ -2956,6 +2956,7 @@ void next_jitter_tracker_packet_received( next_jitter_tracker_t * tracker, uint6
         {
             tracker->jitter = jitter;
         }
+        printf("jitter = %f\n", jitter );
     }
 
     tracker->last_packet_processed = sequence;
