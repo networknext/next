@@ -9568,14 +9568,21 @@ int next_read_backend_packet( uint8_t * packet_data, int packet_bytes, void * pa
     next_assert( packet_data );
     next_assert( packet_object );
 
-    next_assert( is_backend_packet( packet_data, packet_bytes ) );
-    next_assert( packet_bytes >= NEXT_BACKEND_PACKET_HASH_BYTES );
-
     uint8_t packet_id = packet_data[0];
 
     if ( packet_bytes < NEXT_BACKEND_PACKET_HASH_BYTES + 1 )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "backend packet is too small to be valid" );
+        return NEXT_ERROR;
+    }
+
+    next_assert( is_backend_packet( packet_data, packet_bytes ) );
+    next_assert( packet_bytes >= NEXT_BACKEND_PACKET_HASH_BYTES );
+
+    if ( !is_backend_packet( packet_data, packet_bytes ) )
+    {
+        // todo
+        printf( "backend hash check failed %d\n", packet_id );
         return NEXT_ERROR;
     }
 
