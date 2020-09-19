@@ -587,7 +587,7 @@ func RouteChanged(previous []uint64, current []uint64) bool {
 
 func IsNetworkNextPacket(packetData []byte) bool {
 	packetBytes := len(packetData)
-	if packetBytes <= NEXT_PACKET_HASH_BYTES {
+	if packetBytes <= 1 + NEXT_PACKET_HASH_BYTES {
 		fmt.Printf("packet too small\n")
 		return false
 	}
@@ -595,7 +595,7 @@ func IsNetworkNextPacket(packetData []byte) bool {
 		fmt.Printf("packet too big\n")
 		return false
 	}
-	messageLength := packetBytes - NEXT_PACKET_HASH_BYTES
+	messageLength := packetBytes - 1 - NEXT_PACKET_HASH_BYTES
 	if messageLength > 32 {
 		messageLength = 32
 	}
@@ -603,13 +603,13 @@ func IsNetworkNextPacket(packetData []byte) bool {
 	C.crypto_generichash(
 		(*C.uchar)(&hash[0]),
 		C.ulong(NEXT_PACKET_HASH_BYTES),
-		(*C.uchar)(&packetData[NEXT_PACKET_HASH_BYTES]),
+		(*C.uchar)(&packetData[1+NEXT_PACKET_HASH_BYTES]),
 		C.ulonglong(messageLength),
 		(*C.uchar)(&packetHashKey[0]),
 		C.ulong(C.crypto_generichash_KEYBYTES),
 	)
 	for i := 0; i < NEXT_PACKET_HASH_BYTES; i++ {
-		if hash[i] != packetData[i] {
+		if hash[i] != packetData[i+1] {
 			fmt.Printf("signature check failed\n")
 			return false
 		}
@@ -622,32 +622,33 @@ func SignNetworkNextPacket(packetData []byte, privateKey []byte) []byte {
 	for i := 0; i < len(packetData); i++ {
 		signedPacketData[i] = packetData[i]
 	}
-	messageLength := len(packetData)
+	messageLength := len(packetData) - 9
+	if messageLength < 0 {
+		panic("wtf")
+	}
 	var state C.crypto_sign_state
 	C.crypto_sign_init(&state)
-	C.crypto_sign_update(&state, (*C.uchar)(&signedPacketData[0]), C.ulonglong(messageLength))
+	C.crypto_sign_update(&state, (*C.uchar)(&signedPacketData[9]), C.ulonglong(messageLength))
 	C.crypto_sign_final_create(&state, (*C.uchar)(&signedPacketData[len(packetData)]), nil, (*C.uchar)(&privateKey[0]))
 	return signedPacketData
 }
 
-func HashNetworkNextPacket(packetData []byte) []byte {
-	hashedPacketData := make([]byte, len(packetData)+NEXT_PACKET_HASH_BYTES)
-	messageLength := len(packetData)
+func HashNetworkNextPacket(packetData []byte) {
+	messageLength := len(packetData) - 9
+	if messageLength <= 0 {
+		panic("wtf")
+	}
 	if messageLength > 32 {
 		messageLength = 32
 	}
 	C.crypto_generichash(
-		(*C.uchar)(&hashedPacketData[0]),
+		(*C.uchar)(&packetData[1]),
 		C.ulong(NEXT_PACKET_HASH_BYTES),
-		(*C.uchar)(&packetData[0]),
+		(*C.uchar)(&packetData[9]),
 		C.ulonglong(messageLength),
 		(*C.uchar)(&packetHashKey[0]),
 		C.ulong(C.crypto_generichash_KEYBYTES),
 	)
-	for i := 0; i < len(packetData); i++ {
-		hashedPacketData[NEXT_PACKET_HASH_BYTES+i] = packetData[i]
-	}
-	return hashedPacketData
 }
 
 // -----------------------------------------------------------
@@ -2402,6 +2403,10 @@ func main() {
 			continue
 		}
 
+		packetType := packetData[0]
+
+		fmt.Printf("packet type %d\n", packetType)
+
 		if !IsNetworkNextPacket(packetData) {
 			fmt.Printf("error: not network next packet (%d)\n", packetData[8])
 			continue
@@ -2409,8 +2414,6 @@ func main() {
 
 		packetData = packetData[NEXT_PACKET_HASH_BYTES:]
 		packetBytes -= NEXT_PACKET_HASH_BYTES
-
-		packetType := packetData[0]
 
 		if packetType == NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET {
 
@@ -2434,6 +2437,8 @@ func main() {
 
 			responsePacketType := uint32(NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET)
 			writeStream.SerializeBits(&responsePacketType, 8)
+			hash := uint64(0)
+			writeStream.SerializeUint64(&hash)
 			if err := initResponse.Serialize(writeStream); err != nil {
 				fmt.Printf("error: failed to write server init response packet: %v\n", err)
 				continue
@@ -2442,17 +2447,22 @@ func main() {
 
 			responsePacketData := writeStream.GetData()[0:writeStream.GetBytesProcessed()]
 
-			signedResponsePacketData := SignNetworkNextPacket(responsePacketData, backendPrivateKey[:])
+			responsePacketData = SignNetworkNextPacket(responsePacketData, backendPrivateKey[:])
 
-			hashedResponsePacketData := HashNetworkNextPacket(signedResponsePacketData)
+			HashNetworkNextPacket(responsePacketData)
 
-			_, err = connection.WriteToUDP(hashedResponsePacketData, from)
+			_, err = connection.WriteToUDP(responsePacketData, from)
 			if err != nil {
 				fmt.Printf("error: failed to send udp response: %v\n", err)
 				continue
 			}
 
-		} else if packetType == NEXT_BACKEND_SERVER_UPDATE_PACKET {
+			fmt.Printf( "responded to init request\n" )
+
+		} 
+
+		/*
+		else if packetType == NEXT_BACKEND_SERVER_UPDATE_PACKET {
 
 			readStream := CreateReadStream(packetData[1:])
 
@@ -2676,5 +2686,6 @@ func main() {
 				continue
 			}
 		}
+		*/
 	}
 }
