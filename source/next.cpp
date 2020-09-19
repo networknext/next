@@ -2948,12 +2948,13 @@ struct NextClientStatsPacket
     bool committed;
     bool multipath;
     bool reported;
+    bool bandwidth_over_limit;
     int platform_id;
     int connection_type;
     uint64_t flags;
     uint64_t user_flags;
-    float kbps_up;
-    float kbps_down;
+    float next_kbps_up;
+    float next_kbps_down;
     float direct_rtt;
     float direct_jitter;
     float direct_packet_loss;
@@ -2980,13 +2981,13 @@ struct NextClientStatsPacket
         serialize_bool( stream, committed );
         serialize_bool( stream, multipath );
         serialize_bool( stream, reported );
-        // todo: has flags, has user flags etc.
+        serialize_bool( stream, bandwidth_over_limit );
         serialize_bits( stream, flags, NEXT_FLAGS_COUNT );
         serialize_uint64( stream, user_flags );
         serialize_int( stream, platform_id, NEXT_PLATFORM_UNKNOWN, NEXT_PLATFORM_MAX );
         serialize_int( stream, connection_type, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_MAX );
-        serialize_float( stream, kbps_up );
-        serialize_float( stream, kbps_down );
+        serialize_float( stream, next_kbps_up );
+        serialize_float( stream, next_kbps_down );
         serialize_float( stream, direct_rtt );
         serialize_float( stream, direct_jitter );
         serialize_float( stream, direct_packet_loss );
@@ -5578,7 +5579,7 @@ struct next_client_internal_t
     NEXT_DECLARE_SENTINEL(9)
 
     next_platform_mutex_t bandwidth_mutex;
-    bool bandwidth_over_budget;
+    bool bandwidth_over_limit;
     float bandwidth_usage_kbps_up;
     float bandwidth_usage_kbps_down;
     float bandwidth_envelope_kbps_up;
@@ -6667,7 +6668,7 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 next_replay_protection_reset( &client->internal_replay_protection );
 
                 next_platform_mutex_acquire( &client->bandwidth_mutex );
-                client->bandwidth_over_budget = 0;
+                client->bandwidth_over_limit = 0;
                 client->bandwidth_usage_kbps_up = 0;
                 client->bandwidth_usage_kbps_down = 0;
                 client->bandwidth_envelope_kbps_up = 0;
@@ -6817,6 +6818,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
 
         packet.flags = flags;
         packet.reported = client->reported;
+        packet.bandwidth_over_limit = client->bandwidth_over_limit;
         packet.fallback_to_direct = client->fallback_to_direct;
         packet.multipath = client->multipath;
         packet.committed = client->client_stats.committed;
@@ -6824,9 +6826,15 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         packet.connection_type = client->client_stats.connection_type;
 
         next_platform_mutex_acquire( &client->bandwidth_mutex );
-        packet.kbps_up = (int) ceil( client->bandwidth_usage_kbps_up );
-        packet.kbps_down = (int) ceil( client->bandwidth_usage_kbps_down );
+        packet.next_kbps_up = (int) ceil( client->bandwidth_usage_kbps_up );
+        packet.next_kbps_down = (int) ceil( client->bandwidth_usage_kbps_down );
         next_platform_mutex_release( &client->bandwidth_mutex );
+
+        if ( !client->client_stats.next )
+        {
+            packet.next_kbps_up = 0;
+            packet.next_kbps_down = 0;
+        }
 
         packet.next = client->client_stats.next;
         packet.committed = client->client_stats.committed;
@@ -7491,7 +7499,7 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
             double usage_kbps_up = next_bandwidth_limiter_usage_kbps( &client->next_send_bandwidth, next_time() );
 
             next_platform_mutex_acquire( &client->internal->bandwidth_mutex );
-            client->internal->bandwidth_over_budget = over_budget;
+            client->internal->bandwidth_over_limit = over_budget;
             client->internal->bandwidth_usage_kbps_up = usage_kbps_up;
             next_platform_mutex_release( &client->internal->bandwidth_mutex );
 
@@ -8452,10 +8460,12 @@ struct next_session_entry_t
     bool stats_multipath;
     bool stats_committed;
     bool stats_fallback_to_direct;
+    bool stats_client_bandwidth_over_limit;
+    bool stats_server_bandwidth_over_limit;
     int stats_platform_id;
     int stats_connection_type;
-    float stats_kbps_up;
-    float stats_kbps_down;
+    float stats_next_kbps_up;
+    float stats_next_kbps_down;
     float stats_direct_rtt;
     float stats_direct_jitter;
     float stats_direct_packet_loss;
@@ -9097,8 +9107,8 @@ struct NextBackendSessionUpdatePacket
     bool next;
     bool committed;
     bool reported;
-    bool exceeded_bandwidth_up;
-    bool exceeded_bandwidth_down;
+    bool client_bandwidth_over_limit;
+    bool server_bandwidth_over_limit;
     uint64_t tag;
     uint64_t flags;
     uint64_t user_flags;
@@ -9113,8 +9123,8 @@ struct NextBackendSessionUpdatePacket
     float near_relay_rtt[NEXT_MAX_NEAR_RELAYS];
     float near_relay_jitter[NEXT_MAX_NEAR_RELAYS];
     float near_relay_packet_loss[NEXT_MAX_NEAR_RELAYS];
-    uint32_t kbps_up;
-    uint32_t kbps_down;
+    uint32_t actual_kbps_up;
+    uint32_t actual_kbps_down;
     uint64_t packets_sent_client_to_server;
     uint64_t packets_sent_server_to_client;
     uint64_t packets_lost_client_to_server;
@@ -9165,8 +9175,8 @@ struct NextBackendSessionUpdatePacket
         serialize_bool( stream, next );
         serialize_bool( stream, committed );
         serialize_bool( stream, reported );
-        serialize_bool( stream, exceeded_bandwidth_up );
-        serialize_bool( stream, exceeded_bandwidth_down );
+        serialize_bool( stream, client_bandwidth_over_limit );
+        serialize_bool( stream, server_bandwidth_over_limit );
 
         bool has_tag = Stream::IsWriting && tag != 0;
         bool has_flags = Stream::IsWriting && flags != 0;
@@ -9216,8 +9226,8 @@ struct NextBackendSessionUpdatePacket
 
         if ( next )
         {
-            serialize_uint32( stream, kbps_up );
-            serialize_uint32( stream, kbps_down );
+            serialize_uint32( stream, actual_kbps_up );
+            serialize_uint32( stream, actual_kbps_down );
         }
 
         serialize_uint64( stream, packets_sent_client_to_server );
@@ -10970,11 +10980,12 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             session->stats_reported = packet.reported;
             session->stats_multipath = packet.multipath;
             session->stats_fallback_to_direct = packet.fallback_to_direct;
+            session->stats_client_bandwidth_over_limit |= packet.bandwidth_over_limit;
 
             session->stats_platform_id = packet.platform_id;
             session->stats_connection_type = packet.connection_type;
-            session->stats_kbps_up = packet.kbps_up;
-            session->stats_kbps_down = packet.kbps_down;
+            session->stats_next_kbps_up = packet.next_kbps_up;
+            session->stats_next_kbps_down = packet.next_kbps_down;
             session->stats_direct_rtt = packet.direct_rtt;
             session->stats_direct_jitter = packet.direct_jitter;
             session->stats_direct_packet_loss = packet.direct_packet_loss;
@@ -11467,9 +11478,11 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.tag = session->tag;
             packet.flags = session->stats_flags;
             packet.reported = session->stats_reported;
+            packet.client_bandwidth_over_limit = session->stats_client_bandwidth_over_limit;
+            packet.server_bandwidth_over_limit = session->stats_server_bandwidth_over_limit;
             packet.connection_type = session->stats_connection_type;
-            packet.kbps_up = session->stats_kbps_up;
-            packet.kbps_down = session->stats_kbps_down;
+            packet.actual_kbps_up = session->stats_next_kbps_up;
+            packet.actual_kbps_down = session->stats_next_kbps_down;
             packet.packets_sent_client_to_server = session->stats_packets_sent_client_to_server;
             next_platform_mutex_acquire( &server->session_mutex );
             packet.packets_sent_server_to_client = session->stats_packets_sent_server_to_client;
@@ -11523,6 +11536,9 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             {
                 session->next_session_update_time += NEXT_SECONDS_BETWEEN_SESSION_UPDATES;
             }
+
+            session->stats_client_bandwidth_over_limit = false;
+            session->stats_server_bandwidth_over_limit = false;
 
             session->next_session_resend_time = current_time + NEXT_SESSION_UPDATE_RESEND_TIME;
 
@@ -12021,6 +12037,9 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
 
                 if ( over_budget )
                 {
+                    next_platform_mutex_acquire( &server->internal->session_mutex );
+                    internal_entry->stats_server_bandwidth_over_limit = true;
+                    next_platform_mutex_release( &server->internal->session_mutex );
                     send_over_network_next = false;
                     if ( !multipath )
                     {
@@ -14187,8 +14206,8 @@ static void test_backend_packets()
         next_address_parse( &in.server_address, "127.0.0.1:12345" );
         next_random_bytes( in.client_route_public_key, crypto_box_PUBLICKEYBYTES );
         next_random_bytes( in.server_route_public_key, crypto_box_PUBLICKEYBYTES );
-        in.kbps_up = 100.0f;
-        in.kbps_down = 200.0f;
+        in.actual_kbps_up = 100.0f;
+        in.actual_kbps_down = 200.0f;
         in.packets_lost_client_to_server = 100;
         in.packets_lost_server_to_client = 200;
         in.user_flags = 123;
@@ -14232,8 +14251,8 @@ static void test_backend_packets()
         check( next_address_equal( &in.server_address, &out.server_address ) );
         check( memcmp( in.client_route_public_key, out.client_route_public_key, crypto_box_PUBLICKEYBYTES ) == 0 );
         check( memcmp( in.server_route_public_key, out.server_route_public_key, crypto_box_PUBLICKEYBYTES ) == 0 );
-        check( in.kbps_up == out.kbps_up );
-        check( in.kbps_down == out.kbps_down );
+        check( in.actual_kbps_up == out.actual_kbps_up );
+        check( in.actual_kbps_down == out.actual_kbps_down );
         check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );
         check( in.packets_lost_server_to_client == out.packets_lost_server_to_client );
         check( in.user_flags == out.user_flags );
