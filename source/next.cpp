@@ -9576,9 +9576,6 @@ int next_read_backend_packet( uint8_t * packet_data, int packet_bytes, void * pa
         return NEXT_ERROR;
     }
 
-    next_assert( is_backend_packet( packet_data, packet_bytes ) );
-    next_assert( packet_bytes >= NEXT_BACKEND_PACKET_HASH_BYTES );
-
     if ( !is_backend_packet( packet_data, packet_bytes ) )
     {
         // todo
