@@ -5983,17 +5983,10 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     const int packet_id = packet_data[0];
 
-    // todo
-    printf( "client received packet id %d\n", packet_id );
-
     // upgraded direct packet (255)
 
-    // todo: double check the +10 here...
     if ( client->upgraded && packet_id == NEXT_DIRECT_PACKET && packet_bytes <= NEXT_MTU + 10 && from_server_address )
     {
-        // todo
-        printf( "client received upgraded direct packet\n" );
-
         const uint8_t * p = packet_data + 1;
 
         uint8_t packet_session_sequence = next_read_uint8( &p );
@@ -10441,9 +10434,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_DIRECT_PACKET && packet_bytes > 10 && packet_bytes <= 10 + NEXT_MTU )
     {
-        // todo
-        printf( "server received upgraded direct packet from client\n" );
-
         const uint8_t * p = packet_data + 1;
 
         uint8_t packet_session_sequence = next_read_uint8( &p );
@@ -12258,9 +12248,6 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
             {
                 // [255][session sequence][packet sequence](payload) style packet direct to client
 
-                // todo
-                printf( "server sent upgraded direct packet to client\n" );
-
                 uint8_t buffer[NEXT_MAX_PACKET_BYTES*2];
                 uint8_t * p = buffer;
                 next_write_uint8( &p, NEXT_DIRECT_PACKET );
@@ -12274,6 +12261,8 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
 
     if ( send_raw_direct )
     {
+        // [0](payload) raw direct packet
+
         uint8_t buffer[NEXT_MAX_PACKET_BYTES*2];
         buffer[0] = 0;
         memcpy( buffer + 1, packet_data, packet_bytes + 1 );
