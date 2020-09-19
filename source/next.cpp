@@ -2885,7 +2885,7 @@ void next_out_of_order_tracker_packet_received( next_out_of_order_tracker_t * tr
 
     if ( sequence < tracker->last_packet_processed )
     {
-        tracker->num_out_of_order_packets = 0;
+        tracker->num_out_of_order_packets++;
         return;
     }
 
@@ -14893,6 +14893,50 @@ static void test_packet_loss_tracker()
     check( next_packet_loss_tracker_update( &tracker ) == 0 );
 }
 
+static void test_out_of_order_tracker()
+{
+    next_out_of_order_tracker_t tracker;
+    next_out_of_order_tracker_reset( &tracker );
+
+    check( tracker.num_out_of_order_packets == 0 );
+
+    uint64_t sequence = 0;
+
+    for ( int i = 0; i < 1000; ++i )
+    {
+        next_out_of_order_tracker_packet_received( &tracker, sequence );
+        sequence++;
+    }
+
+    check( tracker.num_out_of_order_packets == 0 );
+
+    sequence = 500;
+    
+    for ( int i = 0; i < 500; ++i )
+    {
+        next_out_of_order_tracker_packet_received( &tracker, sequence );
+        sequence++;
+    }
+
+    check( tracker.num_out_of_order_packets == 499 );
+
+    next_out_of_order_tracker_reset( &tracker );
+
+    check( tracker.last_packet_processed == 0 );
+    check( tracker.num_out_of_order_packets == 0 );
+
+    for ( int i = 0; i < 1000; ++i )
+    {
+        uint64_t mod_sequence = ( sequence / 2 ) * 2;
+        if ( sequence % 2 )
+            mod_sequence -= 1;
+        next_out_of_order_tracker_packet_received( &tracker, mod_sequence );
+        sequence++;
+    }
+
+    check( tracker.num_out_of_order_packets == 500 );
+}
+
 static bool client_woke_up = false;
 static bool server_woke_up = false;
 
@@ -15009,6 +15053,7 @@ void next_test()
     RUN_TEST( test_bandwidth_limiter );
     RUN_TEST( test_free_retains_context );
     RUN_TEST( test_packet_loss_tracker );
+    RUN_TEST( test_out_of_order_tracker );
     RUN_TEST( test_wake_up );
 }
 
