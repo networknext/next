@@ -2520,7 +2520,10 @@ bool is_backend_packet( const uint8_t * packet_data, int packet_bytes )
     next_assert( message_length > 0 );
     next_assert( message_length <= 32 );
 
-    crypto_generichash( packet_data[1:], NEXT_BACKEND_PACKET_HASH_BYTES, message, message_length, next_backend_packet_hash_key, crypto_generichash_KEYBYTES );
+    uint8_t hash[NEXT_BACKEND_PACKET_HASH_BYTES];
+    crypto_generichash( hash, NEXT_BACKEND_PACKET_HASH_BYTES, message, message_length, next_backend_packet_hash_key, crypto_generichash_KEYBYTES );
+
+    return memcmp( hash, packet_data + 1, NEXT_BACKEND_PACKET_HASH_BYTES ) == 0;
 }
 
 void hash_backend_packet( uint8_t * packet_data, size_t packet_bytes )
