@@ -27,7 +27,9 @@ int main()
 {
     printf( "\nRunning SDK tests:\n\n" );
 
-    next_quiet( true );
+    // todo: turn logs back off
+    next_log_level( NEXT_LOG_LEVEL_DEBUG );
+    //next_quiet( true );
 
     if ( next_init( NULL, NULL ) != NEXT_OK )
     {
