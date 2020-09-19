@@ -228,6 +228,8 @@ struct next_client_stats_t
     uint64_t packets_lost_server_to_client;
     uint64_t packets_out_of_order_client_to_server;
     uint64_t packets_out_of_order_server_to_client;
+    float jitter_client_to_server;
+    float jitter_server_to_client;
     uint64_t user_flags;
 };
 

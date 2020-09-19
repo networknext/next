@@ -385,6 +385,8 @@ next_platform_mutex_helper_t::~next_platform_mutex_helper_t()
 
 // -------------------------------------------------------------
 
+#define NEXT_ENABLE_MEMORY_CHECKS 1
+
 #if NEXT_ENABLE_MEMORY_CHECKS
 
     #define NEXT_DECLARE_SENTINEL(n) uint32_t next_sentinel_##n[64];
@@ -2857,7 +2859,6 @@ void next_out_of_order_tracker_initialize_sentinels( next_out_of_order_tracker_t
     next_assert( tracker );
     NEXT_INITIALIZE_SENTINEL( tracker, 0 )
     NEXT_INITIALIZE_SENTINEL( tracker, 1 )
-    NEXT_INITIALIZE_SENTINEL( tracker, 2 )
 }
 
 void next_out_of_order_tracker_verify_sentinels( next_out_of_order_tracker_t * tracker )
@@ -2866,7 +2867,6 @@ void next_out_of_order_tracker_verify_sentinels( next_out_of_order_tracker_t * t
     next_assert( tracker );
     NEXT_VERIFY_SENTINEL( tracker, 0 )
     NEXT_VERIFY_SENTINEL( tracker, 1 )
-    NEXT_VERIFY_SENTINEL( tracker, 2 )
 }
 
 void next_out_of_order_tracker_reset( next_out_of_order_tracker_t * tracker )
@@ -2888,6 +2888,62 @@ void next_out_of_order_tracker_packet_received( next_out_of_order_tracker_t * tr
     if ( sequence < tracker->last_packet_processed )
     {
         tracker->num_out_of_order_packets++;
+        return;
+    }
+
+    tracker->last_packet_processed = sequence;
+}
+
+// -------------------------------------------------------------
+
+struct next_jitter_tracker_t
+{
+    NEXT_DECLARE_SENTINEL(0)
+
+    uint64_t last_packet_processed;
+    double last_packet_time;
+    double jitter;
+
+    NEXT_DECLARE_SENTINEL(1)
+};
+
+void next_jitter_tracker_initialize_sentinels( next_jitter_tracker_t * tracker )
+{
+    (void) tracker;
+    next_assert( tracker );
+    NEXT_INITIALIZE_SENTINEL( tracker, 0 )
+    NEXT_INITIALIZE_SENTINEL( tracker, 1 )
+}
+
+void next_jitter_tracker_verify_sentinels( next_jitter_tracker_t * tracker )
+{
+    (void) tracker;
+    next_assert( tracker );
+    NEXT_VERIFY_SENTINEL( tracker, 0 )
+    NEXT_VERIFY_SENTINEL( tracker, 1 )
+}
+
+void next_jitter_tracker_reset( next_jitter_tracker_t * tracker )
+{
+    next_assert( tracker );
+
+    next_jitter_tracker_initialize_sentinels( tracker );
+    
+    tracker->last_packet_processed = 0;
+    tracker->last_packet_time = 0.0;
+    tracker->jitter = 0.0;
+
+    next_jitter_tracker_verify_sentinels( tracker );
+}
+
+void next_jitter_tracker_packet_received( next_jitter_tracker_t * tracker, uint64_t sequence, double t )
+{
+    next_jitter_tracker_verify_sentinels( tracker );
+
+    if ( sequence < tracker->last_packet_processed )
+    {
+        // todo: update jitter estimate
+        (void) t;
         return;
     }
 
@@ -8986,7 +9042,6 @@ void next_session_entry_initialize_sentinels( next_session_entry_t * entry )
     NEXT_INITIALIZE_SENTINEL( entry, 23 )
     NEXT_INITIALIZE_SENTINEL( entry, 24 )
     NEXT_INITIALIZE_SENTINEL( entry, 25 )
-    NEXT_INITIALIZE_SENTINEL( entry, 26 )
 }
 
 void next_session_entry_verify_sentinels( next_session_entry_t * entry )
@@ -9019,7 +9074,6 @@ void next_session_entry_verify_sentinels( next_session_entry_t * entry )
     NEXT_VERIFY_SENTINEL( entry, 23 )
     NEXT_VERIFY_SENTINEL( entry, 24 )
     NEXT_VERIFY_SENTINEL( entry, 25 )
-    NEXT_VERIFY_SENTINEL( entry, 26 )
     next_replay_protection_verify_sentinels( &entry->payload_replay_protection );
     next_replay_protection_verify_sentinels( &entry->special_replay_protection );
     next_replay_protection_verify_sentinels( &entry->internal_replay_protection );
@@ -14979,6 +15033,28 @@ static void test_out_of_order_tracker()
     check( tracker.num_out_of_order_packets == 500 );
 }
 
+static void test_jitter_tracker()
+{
+    next_jitter_tracker_t tracker;
+    next_jitter_tracker_reset( &tracker );
+
+    check( tracker.jitter == 0.0 );
+
+    uint64_t sequence = 0;
+
+    double t = 0.0;
+    double dt = 1.0 / 60.0;
+
+    for ( int i = 0; i < 1000; ++i )
+    {
+        next_jitter_tracker_packet_received( &tracker, sequence, t );
+        sequence++;
+        t += dt;
+    }
+
+    check( tracker.jitter == 0.0 );
+}
+
 static bool client_woke_up = false;
 static bool server_woke_up = false;
 
@@ -15096,6 +15172,7 @@ void next_test()
     RUN_TEST( test_free_retains_context );
     RUN_TEST( test_packet_loss_tracker );
     RUN_TEST( test_out_of_order_tracker );
+    RUN_TEST( test_jitter_tracker );
     RUN_TEST( test_wake_up );
 }
 
