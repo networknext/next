@@ -9107,6 +9107,7 @@ struct NextBackendSessionUpdatePacket
     bool next;
     bool committed;
     bool reported;
+    bool fallback_to_direct;
     bool client_bandwidth_over_limit;
     bool server_bandwidth_over_limit;
     uint64_t tag;
@@ -9175,6 +9176,7 @@ struct NextBackendSessionUpdatePacket
         serialize_bool( stream, next );
         serialize_bool( stream, committed );
         serialize_bool( stream, reported );
+        serialize_bool( stream, fallback_to_direct );
         serialize_bool( stream, client_bandwidth_over_limit );
         serialize_bool( stream, server_bandwidth_over_limit );
 
@@ -11478,6 +11480,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.tag = session->tag;
             packet.flags = session->stats_flags;
             packet.reported = session->stats_reported;
+            packet.fallback_to_direct = session->stats_fallback_to_direct;
             packet.client_bandwidth_over_limit = session->stats_client_bandwidth_over_limit;
             packet.server_bandwidth_over_limit = session->stats_server_bandwidth_over_limit;
             packet.connection_type = session->stats_connection_type;
