@@ -465,20 +465,20 @@ static void default_log_function( int level, const char * format, ... )
     va_start( args, format );
     char buffer[1024];
     vsnprintf( buffer, sizeof( buffer ), format, args );
-	if ( level != NEXT_LOG_LEVEL_NONE )
-	{
+    if ( level != NEXT_LOG_LEVEL_NONE )
+    {
         if ( !log_quiet )
         {
             const char * level_string = next_log_level_string( level );
             printf( "%.6f: %s: %s\n", next_time(), level_string, buffer );
         }
-	}
-	else
-	{
-		printf( "%s\n", buffer );
-	}
-	va_end( args );
-	fflush( stdout );
+    }
+    else
+    {
+        printf( "%s\n", buffer );
+    }
+    va_end( args );
+    fflush( stdout );
 }
 
 static void (*log_function)( int level, const char * format, ... ) = default_log_function;
@@ -531,12 +531,12 @@ __inline void clear_and_free( void * context, void * p, size_t p_size )
 
 void next_printf( const char * format, ... )
 {
-	va_list args;
-	va_start( args, format );
-	char buffer[1024];
-	vsnprintf( buffer, sizeof(buffer), format, args );
-	log_function( NEXT_LOG_LEVEL_NONE, "%s", buffer );
-	va_end( args );
+    va_list args;
+    va_start( args, format );
+    char buffer[1024];
+    vsnprintf( buffer, sizeof(buffer), format, args );
+    log_function( NEXT_LOG_LEVEL_NONE, "%s", buffer );
+    va_end( args );
 }
 
 void next_printf( int level, const char * format, ... )
@@ -2703,7 +2703,7 @@ bool next_bandwidth_limiter_add_packet( next_bandwidth_limiter_t * bandwidth_lim
         bandwidth_limiter->last_check_time = current_time;
     }
     bandwidth_limiter->bits_sent += packet_bits;
-	return bandwidth_limiter->bits_sent > uint64_t(kbps_allowed) * 1000 * NEXT_BANDWIDTH_LIMITER_INTERVAL;
+    return bandwidth_limiter->bits_sent > uint64_t(kbps_allowed) * 1000 * NEXT_BANDWIDTH_LIMITER_INTERVAL;
 }
 
 void next_bandwidth_limiter_add_sample( next_bandwidth_limiter_t * bandwidth_limiter, double kbps )
@@ -3706,7 +3706,7 @@ int next_init( void * context, next_config_t * config_in )
             const uint8_t * p = decode_buffer;
             config.customer_id = next_read_uint64( &p );
             memcpy( config.customer_private_key, decode_buffer + 8, crypto_sign_SECRETKEYBYTES );
-			config.valid_customer_private_key = true;
+            config.valid_customer_private_key = true;
             next_printf( NEXT_LOG_LEVEL_INFO, "found valid customer private key" );
         }
         else
@@ -5783,8 +5783,8 @@ next_client_internal_t * next_client_internal_create( void * context, const char
         return NULL;
     }
 
-	char address_string[NEXT_MAX_ADDRESS_STRING_LENGTH];
-	next_printf( NEXT_LOG_LEVEL_INFO, "client bound to %s", next_address_to_string( &bind_address, address_string ) );
+    char address_string[NEXT_MAX_ADDRESS_STRING_LENGTH];
+    next_printf( NEXT_LOG_LEVEL_INFO, "client bound to %s", next_address_to_string( &bind_address, address_string ) );
     client->bound_port = bind_address.port;
 
     int result = next_platform_mutex_create( &client->packets_sent_mutex );
@@ -7390,7 +7390,7 @@ int next_client_state( next_client_t * client )
 {
     next_client_verify_sentinels( client );
 
-	return client->state;
+    return client->state;
 }
 
 void next_client_close_session( next_client_t * client )
@@ -9928,10 +9928,10 @@ next_server_internal_t * next_server_internal_create( void * context, const char
         return NULL;
     }
 
-	if ( !next_global_config.disable_network_next && server->valid_customer_private_key && !server->no_datacenter_specified )
-	{
+    if ( !next_global_config.disable_network_next && server->valid_customer_private_key && !server->no_datacenter_specified )
+    {
         next_server_internal_resolve_hostname( server );
-	}
+    }
 
     next_printf( NEXT_LOG_LEVEL_INFO, "server started on %s", next_address_to_string( &server_address, address_string ) );
 
@@ -11233,7 +11233,7 @@ void next_server_internal_upgrade_session( next_server_internal_t * server, cons
     if ( entry == NULL )
     {
         next_assert( !"could not add pending session entry. this should never happen!" );
-		return;
+        return;
     }
 
     entry->user_hash = user_hash;
@@ -13483,31 +13483,31 @@ static void test_server_ipv4()
 
 static void test_client_ipv6()
 {
-	next_client_t * client = next_client_create( NULL, "[::0]:0", test_client_packet_received_callback, NULL );
-	check( client );
-	check( next_client_port( client ) != 0 );
-	next_client_open_session( client, "[::1]:12345" );
-	uint8_t packet[256];
-	memset( packet, 0, sizeof(packet) );
-	next_client_send_packet( client, packet, sizeof(packet) );
-	next_client_update( client );
-	next_client_close_session( client );
-	next_client_destroy( client );
+    next_client_t * client = next_client_create( NULL, "[::0]:0", test_client_packet_received_callback, NULL );
+    check( client );
+    check( next_client_port( client ) != 0 );
+    next_client_open_session( client, "[::1]:12345" );
+    uint8_t packet[256];
+    memset( packet, 0, sizeof(packet) );
+    next_client_send_packet( client, packet, sizeof(packet) );
+    next_client_update( client );
+    next_client_close_session( client );
+    next_client_destroy( client );
 }
 
 static void test_server_ipv6()
 {
-	next_server_t * server = next_server_create( NULL, "[::1]:0", "[::0]:0", "local", test_server_packet_received_callback, NULL );
-	check( server );
-	check( next_server_port(server) != 0 );
-	next_address_t address;
-	next_address_parse( &address, "::1" );
-	address.port = server->bound_port;
-	uint8_t packet[256];
-	memset( packet, 0, sizeof(packet) );
-	next_server_send_packet( server, &address, packet, sizeof(packet) );
-	next_server_update( server );
-	next_server_destroy( server );
+    next_server_t * server = next_server_create( NULL, "[::1]:0", "[::0]:0", "local", test_server_packet_received_callback, NULL );
+    check( server );
+    check( next_server_port(server) != 0 );
+    next_address_t address;
+    next_address_parse( &address, "::1" );
+    address.port = server->bound_port;
+    uint8_t packet[256];
+    memset( packet, 0, sizeof(packet) );
+    next_server_send_packet( server, &address, packet, sizeof(packet) );
+    next_server_update( server );
+    next_server_destroy( server );
 }
 
 #endif // #if defined(NEXT_PLATFORM_HAS_IPV6)
@@ -15042,7 +15042,7 @@ static void test_wake_up()
 #define RUN_TEST( test_function )                                           \
     do                                                                      \
     {                                                                       \
-        next_printf( "    " #test_function );								\
+        next_printf( "    " #test_function );                               \
         fflush( stdout );                                                   \
         test_function();                                                    \
     }                                                                       \
