@@ -6638,7 +6638,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             client->client_stats.packets_lost_client_to_server = packet.packets_lost_client_to_server;
             client->client_stats.packets_out_of_order_client_to_server = packet.packets_out_of_order_client_to_server;
             client->client_stats.jitter_client_to_server = packet.jitter_client_to_server;
-            // todo: where are the server side equivalents for these set?
             client->counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_CLIENT_TO_SERVER] = packet.packets_lost_client_to_server;
             client->counters[NEXT_CLIENT_COUNTER_PACKETS_OUT_OF_ORDER_CLIENT_TO_SERVER] = packet.packets_out_of_order_client_to_server;
         }
