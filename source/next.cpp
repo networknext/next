@@ -12098,7 +12098,7 @@ void next_server_tag_session( next_server_t * server, const next_address_t * add
     if ( state == NEXT_SERVER_STATE_DIRECT_ONLY )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server can't tag session. direct only mode" );
-        return 0;
+        return;
     }
 
     // send tag session command to internal server
