@@ -3022,6 +3022,7 @@ struct NextClientStatsPacket
     float near_relay_packet_loss[NEXT_MAX_NEAR_RELAYS];
     uint64_t packets_sent_client_to_server;
     uint64_t packets_lost_server_to_client;
+    uint64_t packets_out_of_order_server_to_client;
 
     NextClientStatsPacket()
     {
@@ -3061,6 +3062,7 @@ struct NextClientStatsPacket
         }
         serialize_uint64( stream, packets_sent_client_to_server );
         serialize_uint64( stream, packets_lost_server_to_client );
+        serialize_uint64( stream, packets_out_of_order_server_to_client );
         return true;
     }
 };
@@ -5600,6 +5602,7 @@ struct next_client_internal_t
     NEXT_DECLARE_SENTINEL(3)
 
     next_packet_loss_tracker_t packet_loss_tracker;
+    next_out_of_order_tracker_t out_of_order_tracker;
 
     NEXT_DECLARE_SENTINEL(4)
 
@@ -5844,6 +5847,7 @@ next_client_internal_t * next_client_internal_create( void * context, const char
     next_replay_protection_reset( &client->internal_replay_protection );
 
     next_packet_loss_tracker_reset( &client->packet_loss_tracker );
+    next_out_of_order_tracker_reset( &client->out_of_order_tracker );
 
     next_client_internal_verify_sentinels( client );
 
@@ -5966,6 +5970,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         next_replay_protection_advance_sequence( &client->payload_replay_protection, clean_sequence );
 
         next_packet_loss_tracker_packet_received( &client->packet_loss_tracker, clean_sequence );
+
+        next_out_of_order_tracker_packet_received( &client->out_of_order_tracker, clean_sequence );
 
         return;
     }
@@ -6368,6 +6374,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         next_packet_loss_tracker_packet_received( &client->packet_loss_tracker, clean_sequence );
 
+        next_out_of_order_tracker_packet_received( &client->out_of_order_tracker, clean_sequence );
+
         next_client_notify_packet_received_t * notify = (next_client_notify_packet_received_t*) next_malloc( client->context, sizeof( next_client_notify_packet_received_t ) );
         notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
         notify->direct = false;
@@ -6734,6 +6742,7 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 next_platform_mutex_release( &client->route_manager_mutex );
 
                 next_packet_loss_tracker_reset( &client->packet_loss_tracker );
+                next_out_of_order_tracker_reset( &client->out_of_order_tracker );
 
                 client->counters[NEXT_CLIENT_COUNTER_CLOSE_SESSION]++;
             }
@@ -6841,6 +6850,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         {
             const int packets_lost = next_packet_loss_tracker_update( &client->packet_loss_tracker );
             client->client_stats.packets_lost_server_to_client += packets_lost;
+            client->client_stats.packets_out_of_order_server_to_client = client->out_of_order_tracker.num_out_of_order_packets;
             client->counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_SERVER_TO_CLIENT] += packets_lost;
         }
 
