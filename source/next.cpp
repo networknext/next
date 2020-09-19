@@ -6026,6 +6026,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( client->upgraded && packet_id == NEXT_DIRECT_PACKET && packet_bytes <= NEXT_MTU + NEXT_PACKET_HASH_BYTES + 10 && from_server_address )
     {
+        // todo
         printf( "client received upgraded direct packet\n" );
 
         const uint8_t * p = packet_data + NEXT_PACKET_HASH_BYTES + 1;
@@ -7705,6 +7706,8 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
         if ( send_direct )
         {
             // [255][session sequence][packet sequence](payload) style packets direct to server
+
+            printf( "client sent upgraded direct packet\n" );
 
             uint8_t buffer[NEXT_PACKET_HASH_BYTES+10+NEXT_MTU];
             uint8_t * p = buffer;
@@ -10477,6 +10480,9 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_DIRECT_PACKET && packet_bytes > NEXT_PACKET_HASH_BYTES + 10 && packet_bytes <= NEXT_PACKET_HASH_BYTES + 10 + NEXT_MTU )
     {
+        // todo
+        printf( "server received upgraded direct packet from client\n" );
+
         const uint8_t * p = packet_data + NEXT_PACKET_HASH_BYTES + 1;
 
         uint8_t packet_session_sequence = next_read_uint8( &p );
@@ -12301,6 +12307,9 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
             {
                 // [255][session sequence][packet sequence](payload) style packet direct to client
 
+                // todo
+                printf( "server sent upgraded direct packet to client\n" );
+
                 uint8_t buffer[NEXT_MAX_PACKET_BYTES*2];
                 uint8_t * p = buffer;
                 next_write_uint64( &p, 0 );
@@ -12316,6 +12325,9 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
 
     if ( send_raw_direct )
     {
+        // todo
+        printf( "server sent raw direct packet to client\n" );
+
         next_platform_socket_send_packet( server->internal->socket, to_address, packet_data, packet_bytes );
     }
 }

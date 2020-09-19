@@ -211,6 +211,7 @@ struct next_client_stats_t
     int platform_id;
     int connection_type;
     bool next;
+    bool upgraded;
     bool committed;
     bool multipath;
     bool reported;
