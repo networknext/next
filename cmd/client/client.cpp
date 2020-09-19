@@ -188,11 +188,15 @@ int main()
 
             printf( "connection_type = %s (%d)\n", connection, stats->connection_type );
 
-            printf( "committed = %s\n", stats->committed ? "true" : "false" );
+            printf( "fallback to direct = %s\n", stats->fallback_to_direct ? "true" : "false" );
 
-            printf( "multipath = %s\n", stats->multipath ? "true" : "false" );
-
-            printf( "reported = %s\n", stats->reported ? "true" : "false" );
+            if ( !stats->fallback_to_direct )
+            {
+                printf( "upgraded = %s\n", stats->upgraded ? "true" : "false" );
+                printf( "committed = %s\n", stats->committed ? "true" : "false" );
+                printf( "multipath = %s\n", stats->multipath ? "true" : "false" );
+                printf( "reported = %s\n", stats->reported ? "true" : "false" );
+            }
 
             printf( "direct_rtt = %.2fms\n", stats->direct_rtt );
             printf( "direct_jitter = %.2fms\n", stats->direct_jitter );
@@ -207,14 +211,17 @@ int main()
                 printf( "next_bandwidth_down = %.1fkbps\n", stats->next_kbps_down );
             }
 
-            printf( "packets_sent_client_to_server = %" PRId64 "\n", stats->packets_sent_client_to_server );
-            printf( "packets_sent_server_to_client = %" PRId64 "\n", stats->packets_sent_server_to_client );
-            printf( "packets_lost_client_to_server = %" PRId64 "\n", stats->packets_lost_client_to_server );
-            printf( "packets_lost_server_to_client = %" PRId64 "\n", stats->packets_lost_server_to_client );
-            printf( "packets_out_of_order_client_to_server = %" PRId64 "\n", stats->packets_out_of_order_client_to_server );
-            printf( "packets_out_of_order_server_to_client = %" PRId64 "\n", stats->packets_out_of_order_server_to_client );
-            printf( "jitter_client_to_server = %f\n", stats->jitter_client_to_server );
-            printf( "jitter_server_to_client = %f\n", stats->jitter_server_to_client );
+            if ( stats->upgraded && !stats->fallback_to_direct )
+            {
+                printf( "packets_sent_client_to_server = %" PRId64 "\n", stats->packets_sent_client_to_server );
+                printf( "packets_sent_server_to_client = %" PRId64 "\n", stats->packets_sent_server_to_client );
+                printf( "packets_lost_client_to_server = %" PRId64 "\n", stats->packets_lost_client_to_server );
+                printf( "packets_lost_server_to_client = %" PRId64 "\n", stats->packets_lost_server_to_client );
+                printf( "packets_out_of_order_client_to_server = %" PRId64 "\n", stats->packets_out_of_order_client_to_server );
+                printf( "packets_out_of_order_server_to_client = %" PRId64 "\n", stats->packets_out_of_order_server_to_client );
+                printf( "jitter_client_to_server = %f\n", stats->jitter_client_to_server );
+                printf( "jitter_server_to_client = %f\n", stats->jitter_server_to_client );
+            }
 
             printf( "================================================================\n" );
         }
