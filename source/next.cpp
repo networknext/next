@@ -6026,6 +6026,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( client->upgraded && packet_id == NEXT_DIRECT_PACKET && packet_bytes <= NEXT_MTU + NEXT_PACKET_HASH_BYTES + 10 && from_server_address )
     {
+        printf( "client received upgraded direct packet\n" );
+
         const uint8_t * p = packet_data + NEXT_PACKET_HASH_BYTES + 1;
 
         uint8_t packet_session_sequence = next_read_uint8( &p );
