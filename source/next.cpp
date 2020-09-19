@@ -6910,6 +6910,13 @@ void next_client_internal_update_direct_pings( next_client_internal_t * client )
         next_platform_mutex_release( &client->route_manager_mutex );
         client->fallback_to_direct = true;
     }
+
+    // todo: hack test
+    if ( next_time() > 30.0 && !client->fallback_to_direct )
+    {
+        printf( "*** fallback to direct ***\n" );
+        client->fallback_to_direct = true;
+    }
 }
 
 void next_client_internal_update_next_pings( next_client_internal_t * client )
