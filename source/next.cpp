@@ -2943,6 +2943,8 @@ void next_jitter_tracker_packet_received( next_jitter_tracker_t * tracker, uint6
 {
     next_jitter_tracker_verify_sentinels( tracker );
 
+    printf( "jitter sequence = %" PRId64 "\n", sequence );
+
     if ( sequence == tracker->last_packet_processed + 1 && tracker->last_packet_time > 0.0 )
     {
         const double delta = time - tracker->last_packet_time;
