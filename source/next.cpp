@@ -8837,7 +8837,7 @@ struct next_session_entry_t
     uint64_t stats_packets_out_of_order_server_to_client;
     uint64_t stats_user_flags;
     
-    double next_packet_loss_update_time;
+    double next_tracker_update_time;
     double next_session_update_time;
     double next_session_resend_time;
     double last_client_stats_update;
@@ -11486,7 +11486,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         }
     }
 
-    // packet loss and out of order tracker updates
+    // tracker updates
 
     const int max_entry_index = server->session_manager->max_entry_index;
 
@@ -11500,12 +11500,14 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         if ( session->stats_fallback_to_direct )
             continue;
 
-        if ( session->next_packet_loss_update_time <= current_time )
+        if ( session->next_tracker_update_time <= current_time )
         {
             const int packets_lost = next_packet_loss_tracker_update( &session->packet_loss_tracker );
             session->stats_packets_lost_client_to_server += packets_lost;
-            session->next_packet_loss_update_time = current_time + NEXT_SECONDS_BETWEEN_PACKET_LOSS_UPDATES;
+            
             session->stats_packets_out_of_order_client_to_server = session->out_of_order_tracker.num_out_of_order_packets;
+
+            session->next_tracker_update_time = current_time + NEXT_SECONDS_BETWEEN_PACKET_LOSS_UPDATES;
         }
     }
 
