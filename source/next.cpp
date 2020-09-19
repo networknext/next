@@ -9570,13 +9570,20 @@ int next_read_backend_packet( uint8_t * packet_data, int packet_bytes, void * pa
 
     next_assert( is_backend_packet( packet_data, packet_bytes ) );
     next_assert( packet_bytes >= NEXT_BACKEND_PACKET_HASH_BYTES );
+
+    if ( packet_bytes < NEXT_BACKEND_PACKET_HASH_BYTES + 1 )
+    {
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "backend packet is too small to be valid" );
+        return NEXT_ERROR;
+    }
+
     packet_bytes -= NEXT_BACKEND_PACKET_HASH_BYTES;
     packet_data += NEXT_BACKEND_PACKET_HASH_BYTES;
 
-    if ( packet_bytes < 1 )
-        return NEXT_ERROR;
-
     uint8_t packet_id = packet_data[0];
+
+    // todo
+    printf( "received backend packet %d\n", packet_id );
 
     if ( signed_packet && signed_packet[packet_id] )
     {
