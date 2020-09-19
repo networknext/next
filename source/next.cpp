@@ -8439,6 +8439,260 @@ int next_proxy_session_manager_num_entries( next_proxy_session_manager_t * sessi
 
 // ---------------------------------------------------------------
 
+struct NextBackendServerInitRequestPacket
+{
+    int version_major;
+    int version_minor;
+    int version_patch;
+    uint64_t customer_id;
+    uint64_t datacenter_id;
+    uint64_t request_id;
+    char datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH];
+
+    NextBackendServerInitRequestPacket()
+    {
+        version_major = NEXT_VERSION_MAJOR_INT;
+        version_minor = NEXT_VERSION_MINOR_INT;
+        version_patch = NEXT_VERSION_PATCH_INT;
+        customer_id = 0;
+        datacenter_id = 0;
+        request_id = 0;
+        datacenter_name[0] = '\0';
+    }
+
+    template <typename Stream> bool Serialize( Stream & stream )
+    {
+        serialize_bits( stream, version_major, 8 );
+        serialize_bits( stream, version_minor, 8 );
+        serialize_bits( stream, version_patch, 8 );
+        serialize_uint64( stream, customer_id );
+        serialize_uint64( stream, datacenter_id );
+        serialize_uint64( stream, request_id );
+        serialize_string( stream, datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
+        return true;
+    }
+};
+
+// ---------------------------------------------------------------
+
+struct NextBackendServerInitResponsePacket
+{
+    uint64_t request_id;
+    uint32_t response;
+
+    NextBackendServerInitResponsePacket()
+    {
+        memset( this, 0, sizeof(NextBackendServerInitResponsePacket) );
+    }
+
+    template <typename Stream> bool Serialize( Stream & stream )
+    {
+        serialize_uint64( stream, request_id );
+        serialize_bits( stream, response, 8 );
+        return true;
+    }
+};
+
+// ---------------------------------------------------------------
+
+struct NextBackendServerUpdatePacket
+{
+    int version_major;
+    int version_minor;
+    int version_patch;
+    uint64_t customer_id;
+    uint64_t datacenter_id;
+    uint32_t num_sessions;
+    next_address_t server_address;
+
+    NextBackendServerUpdatePacket()
+    {
+        version_major = NEXT_VERSION_MAJOR_INT;
+        version_minor = NEXT_VERSION_MINOR_INT;
+        version_patch = NEXT_VERSION_PATCH_INT;
+        customer_id = 0;
+        datacenter_id = 0;
+        num_sessions = 0;
+        memset( &server_address, 0, sizeof(next_address_t) );
+    }
+
+    template <typename Stream> bool Serialize( Stream & stream )
+    {
+        serialize_bits( stream, version_major, 8 );
+        serialize_bits( stream, version_minor, 8 );
+        serialize_bits( stream, version_patch, 8 );
+        serialize_uint64( stream, customer_id );
+        serialize_uint64( stream, datacenter_id );
+        serialize_uint32( stream, num_sessions );
+        serialize_address( stream, server_address );
+        return true;
+    }
+};
+
+// ---------------------------------------------------------------
+
+struct NextBackendSessionUpdatePacket
+{
+    int version_major;
+    int version_minor;
+    int version_patch;
+    uint64_t customer_id;
+    uint64_t datacenter_id;
+    uint64_t session_id;
+    uint32_t slice_number;
+    uint32_t retry_number;
+    int session_data_bytes;
+    uint8_t session_data[NEXT_MAX_SESSION_DATA_BYTES];
+    next_address_t client_address;
+    next_address_t server_address;
+    uint8_t client_route_public_key[crypto_box_PUBLICKEYBYTES];
+    uint8_t server_route_public_key[crypto_box_PUBLICKEYBYTES];
+    uint64_t user_hash;
+    int platform_id;
+    int connection_type;
+    bool next;
+    bool committed;
+    bool reported;
+    bool fallback_to_direct;
+    bool client_bandwidth_over_limit;
+    bool server_bandwidth_over_limit;
+    uint64_t tag;
+    uint64_t flags;
+    uint64_t user_flags;
+    float direct_rtt;
+    float direct_jitter;
+    float direct_packet_loss;
+    float next_rtt;
+    float next_jitter;
+    float next_packet_loss;
+    int num_near_relays;
+    uint64_t near_relay_ids[NEXT_MAX_NEAR_RELAYS];
+    float near_relay_rtt[NEXT_MAX_NEAR_RELAYS];
+    float near_relay_jitter[NEXT_MAX_NEAR_RELAYS];
+    float near_relay_packet_loss[NEXT_MAX_NEAR_RELAYS];
+    uint32_t next_kbps_up;
+    uint32_t next_kbps_down;
+    uint64_t packets_sent_client_to_server;
+    uint64_t packets_sent_server_to_client;
+    uint64_t packets_lost_client_to_server;
+    uint64_t packets_lost_server_to_client;
+
+    void Reset()
+    {
+        memset( this, 0, sizeof(NextBackendSessionUpdatePacket) );
+        version_major = NEXT_VERSION_MAJOR_INT;
+        version_minor = NEXT_VERSION_MINOR_INT;
+        version_patch = NEXT_VERSION_PATCH_INT;
+    }
+
+    template <typename Stream> bool Serialize( Stream & stream )
+    {
+        serialize_bits( stream, version_major, 8 );
+        serialize_bits( stream, version_minor, 8 );
+        serialize_bits( stream, version_patch, 8 );
+
+        serialize_uint64( stream, customer_id );
+        
+        serialize_uint64( stream, datacenter_id );
+
+        serialize_uint64( stream, session_id );
+        
+        serialize_uint32( stream, slice_number );
+
+        serialize_int( stream, retry_number, 0, NEXT_MAX_SESSION_UPDATE_RETRIES );
+
+        serialize_int( stream, session_data_bytes, 0, NEXT_MAX_SESSION_DATA_BYTES );
+        if ( session_data_bytes > 0 )
+        {
+            serialize_bytes( stream, session_data, session_data_bytes );
+        }
+
+        serialize_address( stream, client_address );
+        serialize_address( stream, server_address );
+
+        serialize_bytes( stream, client_route_public_key, crypto_box_PUBLICKEYBYTES );
+        serialize_bytes( stream, server_route_public_key, crypto_box_PUBLICKEYBYTES );
+
+        serialize_uint64( stream, user_hash );
+
+        serialize_int( stream, platform_id, NEXT_PLATFORM_UNKNOWN, NEXT_PLATFORM_MAX );
+
+        serialize_int( stream, connection_type, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_MAX );
+
+        serialize_bool( stream, next );
+        serialize_bool( stream, committed );
+        serialize_bool( stream, reported );
+        serialize_bool( stream, fallback_to_direct );
+        serialize_bool( stream, client_bandwidth_over_limit );
+        serialize_bool( stream, server_bandwidth_over_limit );
+
+        bool has_tag = Stream::IsWriting && tag != 0;
+        bool has_flags = Stream::IsWriting && flags != 0;
+        bool has_user_flags = Stream::IsWriting && user_flags != 0;
+        bool has_lost_packets = Stream::IsWriting && ( packets_lost_client_to_server + packets_lost_server_to_client ) > 0;
+
+        serialize_bool( stream, has_tag );
+        serialize_bool( stream, has_flags );
+        serialize_bool( stream, has_user_flags );
+        serialize_bool( stream, has_lost_packets );
+
+        if ( has_tag )
+        {
+            serialize_uint64( stream, tag );
+        }
+
+        if ( has_flags )
+        {
+            serialize_bits( stream, flags, NEXT_FLAGS_COUNT );
+        }
+
+        if ( has_user_flags )
+        {
+            serialize_uint64( stream, user_flags );
+        }
+
+        serialize_float( stream, direct_rtt );
+        serialize_float( stream, direct_jitter );
+        serialize_float( stream, direct_packet_loss );
+
+        if ( next )
+        {
+            serialize_float( stream, next_rtt );
+            serialize_float( stream, next_jitter );
+            serialize_float( stream, next_packet_loss );
+        }
+
+        serialize_int( stream, num_near_relays, 0, NEXT_MAX_NEAR_RELAYS );
+
+        for ( int i = 0; i < num_near_relays; ++i )
+        {
+            serialize_uint64( stream, near_relay_ids[i] );
+            serialize_float( stream, near_relay_rtt[i] );
+            serialize_float( stream, near_relay_jitter[i] );
+            serialize_float( stream, near_relay_packet_loss[i] );
+        }
+
+        if ( next )
+        {
+            serialize_uint32( stream, next_kbps_up );
+            serialize_uint32( stream, next_kbps_down );
+        }
+
+        serialize_uint64( stream, packets_sent_client_to_server );
+        serialize_uint64( stream, packets_sent_server_to_client );
+
+        if ( has_lost_packets )
+        {
+            serialize_uint64( stream, packets_lost_client_to_server );
+            serialize_uint64( stream, packets_lost_server_to_client );
+        }
+
+        return true;
+    }
+};
+
+// ---------------------------------------------------------------
+
 struct next_session_entry_t
 {
     NEXT_DECLARE_SENTINEL(0)
@@ -8531,13 +8785,9 @@ struct next_session_entry_t
 
     NEXT_DECLARE_SENTINEL(11)
 
-    int update_packet_bytes;
+    NextBackendSessionUpdatePacket session_update_packet;
 
     NEXT_DECLARE_SENTINEL(12)
-
-    uint8_t update_packet_data[NEXT_MAX_PACKET_BYTES];
-
-    NEXT_DECLARE_SENTINEL(13)
 
     bool has_pending_route;
     bool pending_route_committed;
@@ -8548,11 +8798,11 @@ struct next_session_entry_t
     int pending_route_kbps_down;
     next_address_t pending_route_send_address;
 
-    NEXT_DECLARE_SENTINEL(14)
+    NEXT_DECLARE_SENTINEL(13)
 
     uint8_t pending_route_private_key[crypto_box_SECRETKEYBYTES];
 
-    NEXT_DECLARE_SENTINEL(15)
+    NEXT_DECLARE_SENTINEL(14)
 
     bool has_current_route;
     bool current_route_committed;
@@ -8563,41 +8813,41 @@ struct next_session_entry_t
     int current_route_kbps_down;
     next_address_t current_route_send_address;
 
-    NEXT_DECLARE_SENTINEL(16)
+    NEXT_DECLARE_SENTINEL(15)
 
     uint8_t current_route_private_key[crypto_box_SECRETKEYBYTES];
 
-    NEXT_DECLARE_SENTINEL(17)
+    NEXT_DECLARE_SENTINEL(16)
 
     bool has_previous_route;
     next_address_t previous_route_send_address;
 
-    NEXT_DECLARE_SENTINEL(18)
+    NEXT_DECLARE_SENTINEL(17)
 
     uint8_t previous_route_private_key[crypto_box_SECRETKEYBYTES];
 
-    NEXT_DECLARE_SENTINEL(19)
+    NEXT_DECLARE_SENTINEL(18)
 
     uint8_t ephemeral_private_key[crypto_secretbox_KEYBYTES];
     uint8_t send_key[crypto_kx_SESSIONKEYBYTES];
     uint8_t receive_key[crypto_kx_SESSIONKEYBYTES];
     uint8_t client_route_public_key[crypto_box_PUBLICKEYBYTES];
 
-    NEXT_DECLARE_SENTINEL(20)
+    NEXT_DECLARE_SENTINEL(19)
 
     uint8_t upgrade_token[NEXT_UPGRADE_TOKEN_BYTES];
     
-    NEXT_DECLARE_SENTINEL(21)
+    NEXT_DECLARE_SENTINEL(20)
 
     next_replay_protection_t payload_replay_protection;
     next_replay_protection_t special_replay_protection;
     next_replay_protection_t internal_replay_protection;
 
-    NEXT_DECLARE_SENTINEL(22)
+    NEXT_DECLARE_SENTINEL(21)
 
     next_packet_loss_tracker_t packet_loss_tracker;
 
-    NEXT_DECLARE_SENTINEL(23)
+    NEXT_DECLARE_SENTINEL(22)
 
     bool mutex_multipath;
     bool mutex_committed;
@@ -8609,16 +8859,16 @@ struct next_session_entry_t
     bool mutex_send_over_network_next;
     next_address_t mutex_send_address;
  
-    NEXT_DECLARE_SENTINEL(24)
+    NEXT_DECLARE_SENTINEL(23)
 
     uint8_t mutex_private_key[crypto_box_SECRETKEYBYTES];
 
-    NEXT_DECLARE_SENTINEL(25)
+    NEXT_DECLARE_SENTINEL(24)
 
     int session_data_bytes;
     uint8_t session_data[NEXT_MAX_SESSION_DATA_BYTES];
 
-    NEXT_DECLARE_SENTINEL(26)
+    NEXT_DECLARE_SENTINEL(25)
 };
 
 void next_session_entry_initialize_sentinels( next_session_entry_t * entry )
@@ -8990,260 +9240,6 @@ int next_session_manager_num_entries( next_session_manager_t * session_manager )
     }
     return num_entries;
 }
-
-// ---------------------------------------------------------------
-
-struct NextBackendServerInitRequestPacket
-{
-    int version_major;
-    int version_minor;
-    int version_patch;
-    uint64_t customer_id;
-    uint64_t datacenter_id;
-    uint64_t request_id;
-    char datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH];
-
-    NextBackendServerInitRequestPacket()
-    {
-        version_major = NEXT_VERSION_MAJOR_INT;
-        version_minor = NEXT_VERSION_MINOR_INT;
-        version_patch = NEXT_VERSION_PATCH_INT;
-        customer_id = 0;
-        datacenter_id = 0;
-        request_id = 0;
-        datacenter_name[0] = '\0';
-    }
-
-    template <typename Stream> bool Serialize( Stream & stream )
-    {
-        serialize_bits( stream, version_major, 8 );
-        serialize_bits( stream, version_minor, 8 );
-        serialize_bits( stream, version_patch, 8 );
-        serialize_uint64( stream, customer_id );
-        serialize_uint64( stream, datacenter_id );
-        serialize_uint64( stream, request_id );
-        serialize_string( stream, datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
-        return true;
-    }
-};
-
-// ---------------------------------------------------------------
-
-struct NextBackendServerInitResponsePacket
-{
-    uint64_t request_id;
-    uint32_t response;
-
-    NextBackendServerInitResponsePacket()
-    {
-        memset( this, 0, sizeof(NextBackendServerInitResponsePacket) );
-    }
-
-    template <typename Stream> bool Serialize( Stream & stream )
-    {
-        serialize_uint64( stream, request_id );
-        serialize_bits( stream, response, 8 );
-        return true;
-    }
-};
-
-// ---------------------------------------------------------------
-
-struct NextBackendServerUpdatePacket
-{
-    int version_major;
-    int version_minor;
-    int version_patch;
-    uint64_t customer_id;
-    uint64_t datacenter_id;
-    uint32_t num_sessions;
-    next_address_t server_address;
-
-    NextBackendServerUpdatePacket()
-    {
-        version_major = NEXT_VERSION_MAJOR_INT;
-        version_minor = NEXT_VERSION_MINOR_INT;
-        version_patch = NEXT_VERSION_PATCH_INT;
-        customer_id = 0;
-        datacenter_id = 0;
-        num_sessions = 0;
-        memset( &server_address, 0, sizeof(next_address_t) );
-    }
-
-    template <typename Stream> bool Serialize( Stream & stream )
-    {
-        serialize_bits( stream, version_major, 8 );
-        serialize_bits( stream, version_minor, 8 );
-        serialize_bits( stream, version_patch, 8 );
-        serialize_uint64( stream, customer_id );
-        serialize_uint64( stream, datacenter_id );
-        serialize_uint32( stream, num_sessions );
-        serialize_address( stream, server_address );
-        return true;
-    }
-};
-
-// ---------------------------------------------------------------
-
-struct NextBackendSessionUpdatePacket
-{
-    int version_major;
-    int version_minor;
-    int version_patch;
-    uint64_t customer_id;
-    uint64_t datacenter_id;
-    uint64_t session_id;
-    uint32_t slice_number;
-    uint32_t retry_number;
-    int session_data_bytes;
-    uint8_t session_data[NEXT_MAX_SESSION_DATA_BYTES];
-    next_address_t client_address;
-    next_address_t server_address;
-    uint8_t client_route_public_key[crypto_box_PUBLICKEYBYTES];
-    uint8_t server_route_public_key[crypto_box_PUBLICKEYBYTES];
-    uint64_t user_hash;
-    int platform_id;
-    int connection_type;
-    bool next;
-    bool committed;
-    bool reported;
-    bool fallback_to_direct;
-    bool client_bandwidth_over_limit;
-    bool server_bandwidth_over_limit;
-    uint64_t tag;
-    uint64_t flags;
-    uint64_t user_flags;
-    float direct_rtt;
-    float direct_jitter;
-    float direct_packet_loss;
-    float next_rtt;
-    float next_jitter;
-    float next_packet_loss;
-    int num_near_relays;
-    uint64_t near_relay_ids[NEXT_MAX_NEAR_RELAYS];
-    float near_relay_rtt[NEXT_MAX_NEAR_RELAYS];
-    float near_relay_jitter[NEXT_MAX_NEAR_RELAYS];
-    float near_relay_packet_loss[NEXT_MAX_NEAR_RELAYS];
-    uint32_t actual_kbps_up;
-    uint32_t actual_kbps_down;
-    uint64_t packets_sent_client_to_server;
-    uint64_t packets_sent_server_to_client;
-    uint64_t packets_lost_client_to_server;
-    uint64_t packets_lost_server_to_client;
-
-    NextBackendSessionUpdatePacket()
-    {
-        memset( this, 0, sizeof(NextBackendSessionUpdatePacket) );
-        version_major = NEXT_VERSION_MAJOR_INT;
-        version_minor = NEXT_VERSION_MINOR_INT;
-        version_patch = NEXT_VERSION_PATCH_INT;
-    }
-
-    template <typename Stream> bool Serialize( Stream & stream )
-    {
-        serialize_bits( stream, version_major, 8 );
-        serialize_bits( stream, version_minor, 8 );
-        serialize_bits( stream, version_patch, 8 );
-
-        serialize_uint64( stream, customer_id );
-        
-        serialize_uint64( stream, datacenter_id );
-
-        serialize_uint64( stream, session_id );
-        
-        serialize_uint32( stream, slice_number );
-
-        serialize_int( stream, retry_number, 0, NEXT_MAX_SESSION_UPDATE_RETRIES );
-
-        serialize_int( stream, session_data_bytes, 0, NEXT_MAX_SESSION_DATA_BYTES );
-        if ( session_data_bytes > 0 )
-        {
-            serialize_bytes( stream, session_data, session_data_bytes );
-        }
-
-        serialize_address( stream, client_address );
-        serialize_address( stream, server_address );
-
-        serialize_bytes( stream, client_route_public_key, crypto_box_PUBLICKEYBYTES );
-        serialize_bytes( stream, server_route_public_key, crypto_box_PUBLICKEYBYTES );
-
-        serialize_uint64( stream, user_hash );
-
-        serialize_int( stream, platform_id, NEXT_PLATFORM_UNKNOWN, NEXT_PLATFORM_MAX );
-
-        serialize_int( stream, connection_type, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_MAX );
-
-        serialize_bool( stream, next );
-        serialize_bool( stream, committed );
-        serialize_bool( stream, reported );
-        serialize_bool( stream, fallback_to_direct );
-        serialize_bool( stream, client_bandwidth_over_limit );
-        serialize_bool( stream, server_bandwidth_over_limit );
-
-        bool has_tag = Stream::IsWriting && tag != 0;
-        bool has_flags = Stream::IsWriting && flags != 0;
-        bool has_user_flags = Stream::IsWriting && user_flags != 0;
-        bool has_lost_packets = Stream::IsWriting && ( packets_lost_client_to_server + packets_lost_server_to_client ) > 0;
-
-        serialize_bool( stream, has_tag );
-        serialize_bool( stream, has_flags );
-        serialize_bool( stream, has_user_flags );
-        serialize_bool( stream, has_lost_packets );
-
-        if ( has_tag )
-        {
-            serialize_uint64( stream, tag );
-        }
-
-        if ( has_flags )
-        {
-            serialize_bits( stream, flags, NEXT_FLAGS_COUNT );
-        }
-
-        if ( has_user_flags )
-        {
-            serialize_uint64( stream, user_flags );
-        }
-
-        serialize_float( stream, direct_rtt );
-        serialize_float( stream, direct_jitter );
-        serialize_float( stream, direct_packet_loss );
-
-        if ( next )
-        {
-            serialize_float( stream, next_rtt );
-            serialize_float( stream, next_jitter );
-            serialize_float( stream, next_packet_loss );
-        }
-
-        serialize_int( stream, num_near_relays, 0, NEXT_MAX_NEAR_RELAYS );
-
-        for ( int i = 0; i < num_near_relays; ++i )
-        {
-            serialize_uint64( stream, near_relay_ids[i] );
-            serialize_float( stream, near_relay_rtt[i] );
-            serialize_float( stream, near_relay_jitter[i] );
-            serialize_float( stream, near_relay_packet_loss[i] );
-        }
-
-        if ( next )
-        {
-            serialize_uint32( stream, actual_kbps_up );
-            serialize_uint32( stream, actual_kbps_down );
-        }
-
-        serialize_uint64( stream, packets_sent_client_to_server );
-        serialize_uint64( stream, packets_sent_server_to_client );
-
-        if ( has_lost_packets )
-        {
-            serialize_uint64( stream, packets_lost_client_to_server );
-            serialize_uint64( stream, packets_lost_server_to_client );
-        }
-
-        return true;
-    }
-};
 
 // ---------------------------------------------------------------
 
@@ -11471,6 +11467,8 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         {
             NextBackendSessionUpdatePacket packet;
 
+            packet.Reset();
+
             packet.customer_id = server->customer_id;
             packet.datacenter_id = server->datacenter_id;
             packet.session_id = session->session_id;
@@ -11484,8 +11482,8 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.client_bandwidth_over_limit = session->stats_client_bandwidth_over_limit;
             packet.server_bandwidth_over_limit = session->stats_server_bandwidth_over_limit;
             packet.connection_type = session->stats_connection_type;
-            packet.actual_kbps_up = session->stats_next_kbps_up;
-            packet.actual_kbps_down = session->stats_next_kbps_down;
+            packet.next_kbps_up = session->stats_next_kbps_up;
+            packet.next_kbps_down = session->stats_next_kbps_down;
             packet.packets_sent_client_to_server = session->stats_packets_sent_client_to_server;
             next_platform_mutex_acquire( &server->session_mutex );
             packet.packets_sent_server_to_client = session->stats_packets_sent_server_to_client;
@@ -11519,15 +11517,19 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.session_data_bytes = session->session_data_bytes;
             memcpy( packet.session_data, session->session_data, session->session_data_bytes );
 
-            if ( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_PACKET, &packet, session->update_packet_data, &session->update_packet_bytes, next_signed_packets, server->customer_private_key ) != NEXT_OK )
+            session->session_update_packet = packet;
+
+            int packet_bytes = 0;
+            uint8_t packet_data[NEXT_MAX_PACKET_BYTES*2];
+            if ( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key ) != NEXT_OK )
             {
                 next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write session update packet for backend" );
                 return;
             }
 
-            next_assert( next_is_network_next_packet( session->update_packet_data, session->update_packet_bytes ) );
+            next_assert( next_is_network_next_packet( packet_data, packet_bytes ) );
 
-            next_platform_socket_send_packet( server->socket, &server->backend_address, session->update_packet_data, session->update_packet_bytes );
+            next_platform_socket_send_packet( server->socket, &server->backend_address, packet_data, packet_bytes );
             
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent session update packet to backend for session %" PRIx64, session->session_id );
 
@@ -11550,11 +11552,21 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
         if ( session->waiting_for_update_response && session->next_session_resend_time <= current_time )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server resent session update packet to backend for session %" PRIx64, session->session_id );
+            session->session_update_packet.retry_number++;
 
-            next_assert( next_is_network_next_packet( session->update_packet_data, session->update_packet_bytes ) );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server resent session update packet to backend for session % (%d)" PRIx64, session->session_id, session->session_update_packet.retry_number );
 
-            next_platform_socket_send_packet( server->socket, &server->backend_address, session->update_packet_data, session->update_packet_bytes );
+            int packet_bytes = 0;
+            uint8_t packet_data[NEXT_MAX_PACKET_BYTES*2];
+            if ( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_PACKET, &session->session_update_packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key ) != NEXT_OK )
+            {
+                next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write session update packet for backend" );
+                return;
+            }
+
+            next_assert( next_is_network_next_packet( packet_data, packet_bytes ) );
+
+            next_platform_socket_send_packet( server->socket, &server->backend_address, packet_data, packet_bytes );
 
             session->next_session_resend_time += NEXT_SESSION_UPDATE_RESEND_TIME;
         }
@@ -14209,8 +14221,8 @@ static void test_backend_packets()
         next_address_parse( &in.server_address, "127.0.0.1:12345" );
         next_random_bytes( in.client_route_public_key, crypto_box_PUBLICKEYBYTES );
         next_random_bytes( in.server_route_public_key, crypto_box_PUBLICKEYBYTES );
-        in.actual_kbps_up = 100.0f;
-        in.actual_kbps_down = 200.0f;
+        in.next_kbps_up = 100.0f;
+        in.next_kbps_down = 200.0f;
         in.packets_lost_client_to_server = 100;
         in.packets_lost_server_to_client = 200;
         in.user_flags = 123;
@@ -14254,8 +14266,8 @@ static void test_backend_packets()
         check( next_address_equal( &in.server_address, &out.server_address ) );
         check( memcmp( in.client_route_public_key, out.client_route_public_key, crypto_box_PUBLICKEYBYTES ) == 0 );
         check( memcmp( in.server_route_public_key, out.server_route_public_key, crypto_box_PUBLICKEYBYTES ) == 0 );
-        check( in.actual_kbps_up == out.actual_kbps_up );
-        check( in.actual_kbps_down == out.actual_kbps_down );
+        check( in.next_kbps_up == out.next_kbps_up );
+        check( in.next_kbps_down == out.next_kbps_down );
         check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );
         check( in.packets_lost_server_to_client == out.packets_lost_server_to_client );
         check( in.user_flags == out.user_flags );
