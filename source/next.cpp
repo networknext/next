@@ -2945,8 +2945,6 @@ void next_jitter_tracker_packet_received( next_jitter_tracker_t * tracker, uint6
 {
     next_jitter_tracker_verify_sentinels( tracker );
 
-    printf( "jitter sequence = %" PRId64 "\n", sequence );
-
     if ( sequence == tracker->last_packet_processed + 1 && tracker->last_packet_time > 0.0 )
     {
         const double delta = time - tracker->last_packet_time;
@@ -2960,7 +2958,6 @@ void next_jitter_tracker_packet_received( next_jitter_tracker_t * tracker, uint6
         {
             tracker->jitter = jitter;
         }
-        printf("jitter = %f\n", jitter );
     }
 
     tracker->last_packet_processed = sequence;
@@ -7683,11 +7680,17 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
             memcpy( buffer+10, packet_data, packet_bytes );
             next_platform_socket_send_packet( client->internal->socket, &client->server_address, buffer, packet_bytes + 10 );
             client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT]++;
+            // todo: separate counters for raw direct vs. upgraded direct so I can check these in functional tests!
         }
     }
     else
     {
-        next_platform_socket_send_packet( client->internal->socket, &client->server_address, packet_data, packet_bytes );
+        // [0](payload) style direct packet
+
+        uint8_t buffer[NEXT_MAX_PACKET_BYTES*2];
+        buffer[0] = 0;
+        memcpy( buffer + 1, packet_data, packet_bytes );
+        next_platform_socket_send_packet( client->internal->socket, &client->server_address, buffer, packet_bytes + 1 );
         client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT]++;
     }
 
@@ -12271,8 +12274,6 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
 
     if ( send_raw_direct )
     {
-        printf( "server sent raw direct packet to client\n" );
-
         uint8_t buffer[NEXT_MAX_PACKET_BYTES*2];
         buffer[0] = 0;
         memcpy( buffer + 1, packet_data, packet_bytes + 1 );
