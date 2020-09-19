@@ -212,6 +212,7 @@ struct next_client_stats_t
     bool committed;
     bool multipath;
     bool reported;
+    bool fallback_to_direct;
     float direct_rtt;
     float direct_jitter;
     float direct_packet_loss;
