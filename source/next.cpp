@@ -2965,8 +2965,6 @@ void next_jitter_tracker_packet_received( next_jitter_tracker_t * tracker, uint6
                 tracker->jitter = jitter;
             }
         }
-        // todo
-        printf( "%d: delta = %f, jitter = %f\n", (int)sequence, delta, tracker->jitter );
     }
 
     tracker->last_packet_processed = sequence;
