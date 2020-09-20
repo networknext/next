@@ -2953,6 +2953,7 @@ void next_jitter_tracker_packet_received( next_jitter_tracker_t * tracker, uint6
         const double delta = time - tracker->last_packet_time;
         const double jitter = fabs( delta - tracker->last_packet_delta );
         tracker->last_packet_delta = delta;
+
         if ( fabs( jitter - tracker->jitter ) > 0.0001f )
         {
             tracker->jitter += ( jitter - tracker->jitter ) * 0.01f;
@@ -2961,6 +2962,15 @@ void next_jitter_tracker_packet_received( next_jitter_tracker_t * tracker, uint6
         {
             tracker->jitter = jitter;
         }
+
+        // todo
+        printf( "delta = %f, jitter = %f, smoothed = %f\n", delta, jitter, tracker->jitter );
+
+    }
+    else
+    {
+        // todo: printf
+        printf( "jitter skip calc\n" );
     }
 
     tracker->last_packet_processed = sequence;
