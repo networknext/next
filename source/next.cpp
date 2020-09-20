@@ -359,7 +359,7 @@ extern void next_platform_thread_join( next_platform_thread_t * thread );
 
 extern void next_platform_thread_destroy( next_platform_thread_t * thread );
 
-extern void next_platform_thread_high_priority( next_platform_thread_t * thread );
+extern bool next_platform_thread_high_priority( next_platform_thread_t * thread );
 
 extern int next_platform_mutex_create( next_platform_mutex_t * mutex );
 
@@ -7399,7 +7399,10 @@ next_client_t * next_client_create( void * context, const char * bind_address, v
         return NULL;
     }
 
-    next_platform_thread_high_priority( client->thread );
+    if ( next_platform_thread_high_priority( client->thread ) )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "client increased thread priority" );
+    }
 
     next_bandwidth_limiter_reset( &client->next_send_bandwidth );
     next_bandwidth_limiter_reset( &client->next_receive_bandwidth );
@@ -11919,7 +11922,10 @@ next_server_t * next_server_create( void * context, const char * server_address,
         return NULL;
     }
 
-    next_platform_thread_high_priority( server->thread );
+    if ( next_platform_thread_high_priority( server->thread ) )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "server increased thread priority" );
+    }
 
     server->pending_session_manager = next_proxy_session_manager_create( context, NEXT_INITIAL_PENDING_SESSION_SIZE );
     if ( server->pending_session_manager == NULL )

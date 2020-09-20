@@ -631,14 +631,11 @@ void next_platform_thread_destroy( next_platform_thread_t * thread )
     next_free( thread->context, thread );
 }
 
-void next_platform_thread_high_priority( next_platform_thread_t * thread )
+bool next_platform_thread_high_priority( next_platform_thread_t * thread )
 {
     struct sched_param param;
     param.sched_priority = sched_get_priority_max( SCHED_FIFO );
-    int ret = pthread_setschedparam( thread->handle, SCHED_FIFO, &param );
-    if (ret) {
-        next_printf( NEXT_LOG_LEVEL_INFO, "unable to increase server thread priority: %s", strerror(ret) );
-    }
+    return pthread_setschedparam( thread->handle, SCHED_FIFO, &param ) == 0;
 }
 
 // ---------------------------------------------------

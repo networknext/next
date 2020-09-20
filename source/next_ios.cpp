@@ -519,9 +519,11 @@ void next_platform_thread_destroy( next_platform_thread_t * thread )
     next_free( thread->context, thread );
 }
 
-void next_platform_thread_high_priority( next_platform_thread_t * thread )
+bool next_platform_thread_high_priority( next_platform_thread_t * thread )
 {
+    // todo
     (void)thread;
+    return false;
 }
 
 // ---------------------------------------------------
