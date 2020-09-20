@@ -3146,6 +3146,7 @@ struct NextRouteUpdatePacket
     uint64_t sequence;
     bool multipath;
     bool committed;
+    bool direct_only;
     int num_near_relays;
     uint64_t near_relay_ids[NEXT_MAX_NEAR_RELAYS];
     next_address_t near_relay_addresses[NEXT_MAX_NEAR_RELAYS];
@@ -3172,6 +3173,7 @@ struct NextRouteUpdatePacket
             serialize_address( stream, near_relay_addresses[i] );
         }
         serialize_int( stream, update_type, 0, NEXT_UPDATE_TYPE_CONTINUE );
+        serialize_bool( stream, direct_only );
         if ( update_type != NEXT_UPDATE_TYPE_DIRECT )
         {
             serialize_int( stream, num_tokens, 0, NEXT_MAX_TOKENS );
@@ -10233,13 +10235,13 @@ void next_server_internal_update_route( next_server_internal_t * server )
 
     const double current_time = next_time();
     
-    int state = NEXT_SERVER_STATE_DIRECT_ONLY;
+    int server_state = NEXT_SERVER_STATE_DIRECT_ONLY;
     {
         next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
-        state = server->state;
+        server_state = server->state;
     }
 
-    if ( state == NEXT_SERVER_STATE_DIRECT_ONLY && server->next_resolve_hostname_time <= current_time )
+    if ( server_state == NEXT_SERVER_STATE_DIRECT_ONLY && server->next_resolve_hostname_time <= current_time )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server resolving backend hostname" );
         next_server_internal_resolve_hostname( server );
@@ -10265,6 +10267,7 @@ void next_server_internal_update_route( next_server_internal_t * server )
             packet.update_type = entry->update_type;
             packet.multipath = entry->multipath;
             packet.committed = entry->committed;
+            packet.direct_only = server_state != NEXT_SERVER_STATE_INITIALIZED;
             packet.num_tokens = entry->update_num_tokens;
             if ( entry->update_type == NEXT_UPDATE_TYPE_ROUTE )
             {
@@ -12268,6 +12271,9 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
             {
                 // [255][session sequence][packet sequence](payload) style packet direct to client
 
+                // todo
+                printf( "upgraded direct (%d)\n", (int) internal_entry->stats_packets_sent_server_to_client );
+
                 uint8_t buffer[NEXT_MAX_PACKET_BYTES*2];
                 uint8_t * p = buffer;
                 next_write_uint8( &p, NEXT_DIRECT_PACKET );
@@ -12282,6 +12288,9 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
     if ( send_raw_direct )
     {
         // [0](payload) raw direct packet
+
+        // todo
+        printf( "raw direct\n" );
 
         uint8_t buffer[NEXT_MAX_PACKET_BYTES*2];
         buffer[0] = 0;
