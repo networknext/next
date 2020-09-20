@@ -2405,8 +2405,6 @@ func main() {
 
 		packetType := packetData[0]
 
-		fmt.Printf("packet type %d\n", packetType)
-
 		if !IsNetworkNextPacket(packetData) {
 			fmt.Printf("error: not network next packet (%d)\n", packetData[8])
 			continue
@@ -2457,12 +2455,7 @@ func main() {
 				continue
 			}
 
-			fmt.Printf( "responded to init request\n" )
-
-		} 
-
-		/*
-		else if packetType == NEXT_BACKEND_SERVER_UPDATE_PACKET {
+		} else if packetType == NEXT_BACKEND_SERVER_UPDATE_PACKET {
 
 			readStream := CreateReadStream(packetData[1:])
 
@@ -2668,6 +2661,8 @@ func main() {
 			}
 			responsePacketType := uint32(NEXT_BACKEND_SESSION_RESPONSE_PACKET)
 			writeStream.SerializeBits(&responsePacketType, 8)
+			hash := uint64(0)
+			writeStream.SerializeUint64(&hash)
 			if err := sessionResponse.Serialize(writeStream, sessionUpdate.VersionMajor, sessionUpdate.VersionMinor, sessionUpdate.VersionPatch); err != nil {
 				fmt.Printf("error: failed to write session response packet: %v\n", err)
 				continue
@@ -2676,16 +2671,15 @@ func main() {
 
 			responsePacketData := writeStream.GetData()[0:writeStream.GetBytesProcessed()]
 
-			signedResponsePacketData := SignNetworkNextPacket(responsePacketData, backendPrivateKey[:])
+			responsePacketData = SignNetworkNextPacket(responsePacketData, backendPrivateKey[:])
 
-			hashedResponsePacketData := HashNetworkNextPacket(signedResponsePacketData)
+			HashNetworkNextPacket(responsePacketData)
 
-			_, err = connection.WriteToUDP(hashedResponsePacketData, from)
+			_, err = connection.WriteToUDP(responsePacketData, from)
 			if err != nil {
 				fmt.Printf("error: failed to send udp response: %v\n", err)
 				continue
 			}
 		}
-		*/
 	}
 }
