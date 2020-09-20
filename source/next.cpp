@@ -6179,7 +6179,11 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         client->sending_upgrade_response = false;
 
+        // todo
+        printf( "route update timeout time = %f\n", next_time() + NEXT_CLIENT_ROUTE_UPDATE_TIMEOUT );
+        
         client->route_update_timeout_time = next_time() + NEXT_CLIENT_ROUTE_UPDATE_TIMEOUT;
+
         return;
     }
 
