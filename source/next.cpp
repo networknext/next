@@ -2956,7 +2956,7 @@ void next_jitter_tracker_packet_received( next_jitter_tracker_t * tracker, uint6
 
         if ( fabs( jitter - tracker->jitter ) > 0.00001 )
         {
-            tracker->jitter += ( jitter - tracker->jitter ) * 0.005;
+            tracker->jitter += ( jitter - tracker->jitter ) * 0.01;
         }
         else
         {
