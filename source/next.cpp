@@ -5976,7 +5976,7 @@ int next_client_internal_send_packet_to_server( next_client_internal_t * client,
     return NEXT_OK;
 }
 
-void next_client_internal_process_network_next_packet( next_client_internal_t * client, const next_address_t * from, uint8_t * packet_data, int packet_bytes )
+void next_client_internal_process_network_next_packet( next_client_internal_t * client, const next_address_t * from, uint8_t * packet_data, int packet_bytes, double packet_receive_time )
 {
     next_client_internal_verify_sentinels( client );
 
@@ -6019,7 +6019,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         next_out_of_order_tracker_packet_received( &client->out_of_order_tracker, clean_sequence );
 
-        next_jitter_tracker_packet_received( &client->jitter_tracker, clean_sequence, next_time() );
+        next_jitter_tracker_packet_received( &client->jitter_tracker, clean_sequence, packet_receive_time );
 
         next_client_notify_packet_received_t * notify = (next_client_notify_packet_received_t*) next_malloc( client->context, sizeof( next_client_notify_packet_received_t ) );
         notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
@@ -6694,6 +6694,8 @@ void next_client_internal_block_and_receive_packet( next_client_internal_t * cli
     
     int packet_bytes = next_platform_socket_receive_packet( client->socket, &from, packet_data, NEXT_MAX_PACKET_BYTES );
 
+    double packet_receive_time = next_time();
+
     next_assert( packet_bytes >= 0 );
 
     if ( packet_bytes == 0 )
@@ -6706,7 +6708,7 @@ void next_client_internal_block_and_receive_packet( next_client_internal_t * cli
 
     if ( packet_data[0] != 0 )
     {
-        next_client_internal_process_network_next_packet( client, &from, packet_data, packet_bytes );
+        next_client_internal_process_network_next_packet( client, &from, packet_data, packet_bytes, packet_receive_time );
     }
     else
     {
