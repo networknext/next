@@ -82,7 +82,7 @@ int main()
     {
         next_server_update( server );
 
-        next_sleep( 1.0 / 60.0 );
+        next_sleep( 1.0 / 1000.0 );
     }
     
     next_server_destroy( server );

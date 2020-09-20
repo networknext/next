@@ -89,7 +89,7 @@ int main()
         uint8_t packet_data[NEXT_MTU];
         generate_packet( packet_data, packet_bytes );
         next_client_send_packet( client, packet_data, packet_bytes );
-        
+
         next_sleep( 1.0 / 60.0 );
 
         accumulator += 1.0 / 60.0;
