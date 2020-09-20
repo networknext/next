@@ -90,6 +90,10 @@
 #define NEXT_CLIENT_COUNTER_PACKETS_LOST_SERVER_TO_CLIENT              10
 #define NEXT_CLIENT_COUNTER_PACKETS_OUT_OF_ORDER_CLIENT_TO_SERVER      11
 #define NEXT_CLIENT_COUNTER_PACKETS_OUT_OF_ORDER_SERVER_TO_CLIENT      12
+#define NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT_RAW                     13
+#define NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT_UPGRADED                14
+#define NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT_RAW                 15
+#define NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT_UPGRADED            16
 
 #define NEXT_CLIENT_COUNTER_MAX                                        64
 
@@ -6011,6 +6015,15 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             }
             return;
         }
+
+        next_replay_protection_advance_sequence( &client->payload_replay_protection, clean_sequence );
+
+        next_packet_loss_tracker_packet_received( &client->packet_loss_tracker, clean_sequence );
+
+        next_out_of_order_tracker_packet_received( &client->out_of_order_tracker, clean_sequence );
+
+        next_jitter_tracker_packet_received( &client->jitter_tracker, clean_sequence, next_time() );
+
         next_client_notify_packet_received_t * notify = (next_client_notify_packet_received_t*) next_malloc( client->context, sizeof( next_client_notify_packet_received_t ) );
         notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
         notify->direct = true;
@@ -6021,14 +6034,12 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             next_queue_push( client->notify_queue, notify );            
         }
         client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT]++;
+        client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT_UPGRADED]++;
 
-        next_replay_protection_advance_sequence( &client->payload_replay_protection, clean_sequence );
-
-        next_packet_loss_tracker_packet_received( &client->packet_loss_tracker, clean_sequence );
-
-        next_out_of_order_tracker_packet_received( &client->out_of_order_tracker, clean_sequence );
-
-        next_jitter_tracker_packet_received( &client->jitter_tracker, clean_sequence, next_time() );
+        if ( client->wake_up_callback )
+        {
+            client->wake_up_callback( client->context );
+        }
 
         return;
     }
@@ -6658,6 +6669,7 @@ void next_client_internal_process_game_packet( next_client_internal_t * client, 
             next_queue_push( client->notify_queue, notify );
         }
         client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT]++;
+        client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT_UPGRADED]++;
     }
 
     if ( client->wake_up_callback )
@@ -7696,6 +7708,7 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
             memcpy( buffer+10, packet_data, packet_bytes );
             next_platform_socket_send_packet( client->internal->socket, &client->server_address, buffer, packet_bytes + 10 );
             client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT]++;
+            client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT_UPGRADED]++;
         }
     }
     else
@@ -7707,6 +7720,7 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
         memcpy( buffer + 1, packet_data, packet_bytes );
         next_platform_socket_send_packet( client->internal->socket, &client->server_address, buffer, packet_bytes + 1 );
         client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT]++;
+        client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT_RAW]++;
     }
 
     next_platform_mutex_acquire( &client->internal->packets_sent_mutex );
@@ -7738,6 +7752,7 @@ void next_client_send_packet_direct( next_client_t * client, const uint8_t * pac
     next_platform_socket_send_packet( client->internal->socket, &client->server_address, packet_data, packet_bytes );
 
     client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT]++;
+    client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT_UPGRADED]++;
 
     client->internal->packets_sent++;
 }
@@ -10511,6 +10526,11 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         {
             next_platform_mutex_guard( &server->notify_mutex );
             next_queue_push( server->notify_queue, notify );            
+        }
+
+        if ( server->wake_up_callback )
+        {
+            server->wake_up_callback( server->context );
         }
 
         return;
