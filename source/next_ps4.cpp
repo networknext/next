@@ -171,9 +171,9 @@ void next_platform_thread_destroy( next_platform_thread_t * thread )
     next_free( thread->context, thread );
 }
 
-void next_platform_thread_set_sched_max( next_platform_thread_t * thread )
+void next_platform_thread_high_priority( next_platform_thread_t * thread )
 {
-    // linux only
+    // todo
     (void)thread;
 }
 
