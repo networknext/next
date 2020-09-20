@@ -2951,14 +2951,14 @@ void next_jitter_tracker_packet_received( next_jitter_tracker_t * tracker, uint6
     if ( sequence == tracker->last_packet_processed + 1 && tracker->last_packet_time > 0.0 )
     {
         const double delta = time - tracker->last_packet_time;
-        if ( delta > 0.005f )
+        if ( delta > 0.001 )
         {
             const double jitter = fabs( delta - tracker->last_packet_delta );
             tracker->last_packet_delta = delta;
 
-            if ( fabs( jitter - tracker->jitter ) > 0.0001f )
+            if ( fabs( jitter - tracker->jitter ) > 0.00001 )
             {
-                tracker->jitter += ( jitter - tracker->jitter ) * 0.01f;
+                tracker->jitter += ( jitter - tracker->jitter ) * 0.001;
             }
             else
             {
