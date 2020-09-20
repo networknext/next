@@ -6460,6 +6460,11 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT]++;
 
+        if ( client->wake_up_callback )
+        {
+            client->wake_up_callback( client->context );
+        }
+
         return;
     }
 
@@ -11081,6 +11086,11 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         {
             next_platform_mutex_guard( &server->notify_mutex );
             next_queue_push( server->notify_queue, notify );
+        }
+
+        if ( server->wake_up_callback )
+        {
+            server->wake_up_callback( server->context );
         }
 
         return;
