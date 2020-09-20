@@ -7531,6 +7531,9 @@ void next_client_close_session( next_client_t * client )
 
 void next_client_update( next_client_t * client )
 {
+    // todo: turn this back on
+    (void) client;
+    /*
     next_client_verify_sentinels( client );
 
     while ( true )
@@ -7601,6 +7604,7 @@ void next_client_update( next_client_t * client )
 
         next_free( client->context, entry );
     }
+    */
 }
 
 void next_client_send_packet( next_client_t * client, const uint8_t * packet_data, int packet_bytes )
