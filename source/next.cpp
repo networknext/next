@@ -2951,20 +2951,24 @@ void next_jitter_tracker_packet_received( next_jitter_tracker_t * tracker, uint6
     if ( sequence == tracker->last_packet_processed + 1 && tracker->last_packet_time > 0.0 )
     {
         const double delta = time - tracker->last_packet_time;
-        const double jitter = fabs( delta - tracker->last_packet_delta );
-        tracker->last_packet_delta = delta;
 
-        if ( fabs( jitter - tracker->jitter ) > 0.0001f )
+        if ( delta > 0.005f )       // todo: filter out packets received in clumps. we are looking for LATE packets
         {
-            tracker->jitter += ( jitter - tracker->jitter ) * 0.01f;
-        }
-        else
-        {
-            tracker->jitter = jitter;
-        }
+            const double jitter = fabs( delta - tracker->last_packet_delta );
+            tracker->last_packet_delta = delta;
 
-        // todo
-        printf( "delta = %f, jitter = %f, smoothed = %f\n", delta, jitter, tracker->jitter );
+            if ( fabs( jitter - tracker->jitter ) > 0.0001f )
+            {
+                tracker->jitter += ( jitter - tracker->jitter ) * 0.01f;
+            }
+            else
+            {
+                tracker->jitter = jitter;
+            }
+
+            // todo
+            printf( "delta = %f, jitter = %f, smoothed = %f\n", delta, jitter, tracker->jitter );
+        }
 
     }
 
