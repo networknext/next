@@ -6181,7 +6181,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         // todo
         printf( "route update timeout time = %f\n", next_time() + NEXT_CLIENT_ROUTE_UPDATE_TIMEOUT );
-        
+
         client->route_update_timeout_time = next_time() + NEXT_CLIENT_ROUTE_UPDATE_TIMEOUT;
 
         return;
@@ -7158,12 +7158,16 @@ void next_client_internal_update_fallback_to_direct( next_client_internal_t * cl
         return;
     }
 
-    if ( !client->fallback_to_direct && client->upgraded && client->route_update_timeout_time > 0.0 && next_time() <= client->route_update_timeout_time )
+    if ( !client->fallback_to_direct && client->upgraded && client->route_update_timeout_time > 0.0 )
     {
-        printf( "route update timeout time = %f\n", next_time() + NEXT_CLIENT_ROUTE_UPDATE_TIMEOUT );
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "client route update timeout. falling back to direct" );
-        client->counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT]++;
-        client->fallback_to_direct = fallback_to_direct;
+        printf( "current time = %f, route update timeout time = %f\n", next_time(), next_time() + NEXT_CLIENT_ROUTE_UPDATE_TIMEOUT );
+
+        if ( next_time() > client->route_update_timeout_time )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client route update timeout. falling back to direct" );
+            client->counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT]++;
+            client->fallback_to_direct = fallback_to_direct;
+        }
     }
 }
 
