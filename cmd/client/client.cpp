@@ -188,8 +188,6 @@ int main()
 
             printf( "connection_type = %s (%d)\n", connection, stats->connection_type );
 
-            printf( "fallback to direct = %s\n", stats->fallback_to_direct ? "true" : "false" );
-
             if ( !stats->fallback_to_direct )
             {
                 printf( "upgraded = %s\n", stats->upgraded ? "true" : "false" );
@@ -201,6 +199,8 @@ int main()
             printf( "direct_rtt = %.2fms\n", stats->direct_rtt );
             printf( "direct_jitter = %.2fms\n", stats->direct_jitter );
             printf( "direct_packet_loss = %.1f%%\n", stats->direct_packet_loss );
+
+            printf( "fallback_to_direct = %s\n", stats->fallback_to_direct ? "true" : "false" );
 
             if ( stats->next )
             {
