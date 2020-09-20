@@ -149,6 +149,8 @@
 
 #define NEXT_BACKEND_PACKET_HASH_BYTES                                  8
 
+#define NEXT_CLIENT_ROUTE_UPDATE_TIMEOUT                               15
+
 static const uint8_t next_backend_public_key[] = 
 { 
      76,  97, 202, 140,  71, 135,  62, 212, 
@@ -3146,7 +3148,6 @@ struct NextRouteUpdatePacket
     uint64_t sequence;
     bool multipath;
     bool committed;
-    bool direct_only;
     int num_near_relays;
     uint64_t near_relay_ids[NEXT_MAX_NEAR_RELAYS];
     next_address_t near_relay_addresses[NEXT_MAX_NEAR_RELAYS];
@@ -3173,7 +3174,6 @@ struct NextRouteUpdatePacket
             serialize_address( stream, near_relay_addresses[i] );
         }
         serialize_int( stream, update_type, 0, NEXT_UPDATE_TYPE_CONTINUE );
-        serialize_bool( stream, direct_only );
         if ( update_type != NEXT_UPDATE_TYPE_DIRECT )
         {
             serialize_int( stream, num_tokens, 0, NEXT_MAX_TOKENS );
@@ -5639,6 +5639,7 @@ struct next_client_internal_t
     double last_direct_pong_time;
     double last_stats_update_time;
     double last_stats_report_time;
+    double route_update_timeout_time;
     uint64_t route_update_sequence;
 
     NEXT_DECLARE_SENTINEL(1)
@@ -6178,6 +6179,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         client->sending_upgrade_response = false;
 
+        client->route_update_timeout_time = next_time() + NEXT_CLIENT_ROUTE_UPDATE_TIMEOUT;
         return;
     }
 
@@ -6549,9 +6551,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_ROUTE_UPDATE_PACKET )
     {
-        // todo
-        printf( "client received route update packet\n" );
-
         if ( client->fallback_to_direct )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route update packet from server. in fallback to direct state (1)" );
@@ -6578,7 +6577,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         bool fallback_to_direct = false;
 
-        if ( packet.sequence != client->route_update_sequence )
+        if ( packet.sequence > client->route_update_sequence )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client received route update packet from server" );
 
@@ -6602,13 +6601,18 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             }
 
             client->fallback_to_direct = fallback_to_direct;
-            client->route_update_sequence = packet.sequence;
-            client->client_stats.packets_sent_server_to_client = packet.packets_sent_server_to_client;
-            client->client_stats.packets_lost_client_to_server = packet.packets_lost_client_to_server;
-            client->client_stats.packets_out_of_order_client_to_server = packet.packets_out_of_order_client_to_server;
-            client->client_stats.jitter_client_to_server = packet.jitter_client_to_server;
-            client->counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_CLIENT_TO_SERVER] = packet.packets_lost_client_to_server;
-            client->counters[NEXT_CLIENT_COUNTER_PACKETS_OUT_OF_ORDER_CLIENT_TO_SERVER] = packet.packets_out_of_order_client_to_server;
+
+            if ( !fallback_to_direct )
+            {
+                client->route_update_sequence = packet.sequence;
+                client->client_stats.packets_sent_server_to_client = packet.packets_sent_server_to_client;
+                client->client_stats.packets_lost_client_to_server = packet.packets_lost_client_to_server;
+                client->client_stats.packets_out_of_order_client_to_server = packet.packets_out_of_order_client_to_server;
+                client->client_stats.jitter_client_to_server = packet.jitter_client_to_server;
+                client->counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_CLIENT_TO_SERVER] = packet.packets_lost_client_to_server;
+                client->counters[NEXT_CLIENT_COUNTER_PACKETS_OUT_OF_ORDER_CLIENT_TO_SERVER] = packet.packets_out_of_order_client_to_server;
+                client->route_update_timeout_time = next_time() + NEXT_CLIENT_ROUTE_UPDATE_TIMEOUT;
+            }
         }
 
         if ( fallback_to_direct )
@@ -6762,6 +6766,7 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 client->last_direct_pong_time = 0.0;
                 client->last_stats_update_time = 0.0;
                 client->last_stats_report_time = 0.0;
+                client->route_update_timeout_time = 0.0;
                 client->route_update_sequence = 0;
                 client->sending_upgrade_response = false;
                 client->upgrade_response_packet_bytes = 0;
@@ -7147,6 +7152,13 @@ void next_client_internal_update_fallback_to_direct( next_client_internal_t * cl
         client->counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT]++;
         client->fallback_to_direct = fallback_to_direct;
         return;
+    }
+
+    if ( !client->fallback_to_direct && client->upgraded && client->route_update_timeout_time > 0.0 && next_time() <= client->route_update_timeout_time )
+    {
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "client route update timeout. falling back to direct" );
+        client->counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT]++;
+        client->fallback_to_direct = fallback_to_direct;
     }
 }
 
@@ -10270,7 +10282,6 @@ void next_server_internal_update_route( next_server_internal_t * server )
             packet.update_type = entry->update_type;
             packet.multipath = entry->multipath;
             packet.committed = entry->committed;
-            packet.direct_only = server_state != NEXT_SERVER_STATE_INITIALIZED;
             packet.num_tokens = entry->update_num_tokens;
             if ( entry->update_type == NEXT_UPDATE_TYPE_ROUTE )
             {
