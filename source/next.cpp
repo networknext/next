@@ -2964,7 +2964,7 @@ void next_jitter_tracker_packet_received( next_jitter_tracker_t * tracker, uint6
         }
 
         // todo
-        // printf( "delta = %f, jitter = %f, smoothed = %f\n", delta, jitter, tracker->jitter );
+        printf( "delta = %f, jitter = %f, smoothed = %f\n", delta, jitter, tracker->jitter );
 
     }
 
