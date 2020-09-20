@@ -3633,7 +3633,7 @@ int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_obj
     return (int) packet_id;
 }
 
-void next_post_validate_packet( uint8_t * packet_data, int packet_bytes, void * packet_object, const int * encrypted_packet, uint64_t * sequence, const uint8_t * encrypt_private_key, next_replay_protection_t * replay_protection, next_packet_loss_tracker_t * packet_loss_tracker, next_out_of_order_tracker_t * out_of_order_tracker, next_jitter_tracker_t * jitter_tracker )
+void next_post_validate_packet( uint8_t * packet_data, int packet_bytes, void * packet_object, const int * encrypted_packet, uint64_t * sequence, const uint8_t * encrypt_private_key, next_replay_protection_t * replay_protection )
 {
     (void) packet_bytes;
     (void) packet_object;
@@ -3651,21 +3651,6 @@ void next_post_validate_packet( uint8_t * packet_data, int packet_bytes, void * 
     if ( encrypted_packet && encrypted_packet[packet_id] && payload_packet )
     {
         next_replay_protection_advance_sequence( replay_protection, *sequence );
-
-        if ( packet_loss_tracker )
-        {
-            next_packet_loss_tracker_packet_received( packet_loss_tracker, *sequence );
-        }
-
-        if ( out_of_order_tracker )
-        {
-            next_out_of_order_tracker_packet_received( out_of_order_tracker, *sequence );
-        }
-
-        if ( jitter_tracker )
-        {
-            next_jitter_tracker_packet_received( jitter_tracker, *sequence, next_time() );
-        }
     }
 }
 
@@ -6085,7 +6070,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             return;
         }
 
-        next_post_validate_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, NULL, NULL, NULL );
+        next_post_validate_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL );
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client received upgrade request packet from server" );
 
@@ -6174,7 +6159,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client received upgrade confirm packet from server" );
 
-        next_post_validate_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, NULL, NULL, NULL );
+        next_post_validate_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL );
 
         client->upgraded = true;
         client->upgrade_sequence = packet.upgrade_sequence;
@@ -6533,7 +6518,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             return;
         }
 
-        next_post_validate_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, NULL, NULL, NULL );
+        next_post_validate_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL );
 
         next_relay_manager_process_pong( client->near_relay_manager, from, packet.ping_sequence );
 
@@ -6563,7 +6548,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         next_ping_history_pong_received( &client->direct_ping_history, packet.ping_sequence, next_time() );
 
-        next_post_validate_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, client->client_receive_key, &client->internal_replay_protection, &client->packet_loss_tracker, &client->out_of_order_tracker, &client->jitter_tracker );
+        next_post_validate_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, client->client_receive_key, &client->internal_replay_protection );
 
         client->last_direct_pong_time = next_time();
 
@@ -6596,7 +6581,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             return;
         }
 
-        next_post_validate_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, client->client_receive_key, &client->internal_replay_protection, &client->packet_loss_tracker, &client->out_of_order_tracker, &client->jitter_tracker );
+        next_post_validate_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, client->client_receive_key, &client->internal_replay_protection );
 
         bool fallback_to_direct = false;
 
@@ -10899,7 +10884,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             return;
         }
 
-        next_post_validate_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, NULL, NULL, NULL );
+        next_post_validate_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL );
 
         if ( !upgraded )
         {
@@ -11166,7 +11151,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         if ( next_read_packet( packet_data, packet_bytes, &packet, next_signed_packets, next_encrypted_packets, &packet_sequence, NULL, session->receive_key, &session->internal_replay_protection ) != packet_id )
             return;
 
-        next_post_validate_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection, NULL, NULL, NULL );
+        next_post_validate_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection );
 
         NextDirectPongPacket response;
         response.ping_sequence = packet.ping_sequence;
@@ -11193,7 +11178,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         if ( next_read_packet( packet_data, packet_bytes, &packet, next_signed_packets, next_encrypted_packets, &packet_sequence, NULL, session->receive_key, &session->internal_replay_protection ) != packet_id )
             return;
 
-        next_post_validate_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection, NULL, NULL, NULL );
+        next_post_validate_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection );
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server received client stats packet for session %" PRIx64, session->session_id );
 
@@ -11253,7 +11238,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             return;
         }
 
-        next_post_validate_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection, NULL, NULL, NULL );
+        next_post_validate_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection );
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server received route update ack from client for session %" PRIx64, session->session_id );
 
