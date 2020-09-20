@@ -2952,7 +2952,7 @@ void next_jitter_tracker_packet_received( next_jitter_tracker_t * tracker, uint6
     {
         const double delta = time - tracker->last_packet_time;
 
-        if ( delta > 0.005f )       // todo: filter out packets received in clumps. we are looking for LATE packets
+        // if ( delta > 0.005f )       // todo: filter out packets received in clumps. we are looking for LATE packets
         {
             const double jitter = fabs( delta - tracker->last_packet_delta );
             tracker->last_packet_delta = delta;
