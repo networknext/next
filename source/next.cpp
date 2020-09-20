@@ -6179,9 +6179,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         client->sending_upgrade_response = false;
 
-        // todo
-        printf( "route update timeout time = %f\n", next_time() + NEXT_CLIENT_ROUTE_UPDATE_TIMEOUT );
-
         client->route_update_timeout_time = next_time() + NEXT_CLIENT_ROUTE_UPDATE_TIMEOUT;
 
         return;
@@ -12294,9 +12291,6 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
             {
                 // [255][session sequence][packet sequence](payload) style packet direct to client
 
-                // todo
-                printf( "upgraded direct (%d)\n", (int) internal_entry->stats_packets_sent_server_to_client );
-
                 uint8_t buffer[NEXT_MAX_PACKET_BYTES*2];
                 uint8_t * p = buffer;
                 next_write_uint8( &p, NEXT_DIRECT_PACKET );
@@ -12311,9 +12305,6 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
     if ( send_raw_direct )
     {
         // [0](payload) raw direct packet
-
-        // todo
-        printf( "raw direct\n" );
 
         uint8_t buffer[NEXT_MAX_PACKET_BYTES*2];
         buffer[0] = 0;
