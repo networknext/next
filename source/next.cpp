@@ -7160,7 +7160,7 @@ void next_client_internal_update_fallback_to_direct( next_client_internal_t * cl
 
     if ( !client->fallback_to_direct && client->upgraded && client->route_update_timeout_time > 0.0 )
     {
-        printf( "current time = %f, route update timeout time = %f\n", next_time(), next_time() + NEXT_CLIENT_ROUTE_UPDATE_TIMEOUT );
+        // printf( "current time = %f, route update timeout time = %f\n", next_time(), client->route_update_timeout_time );
 
         if ( next_time() > client->route_update_timeout_time )
         {
