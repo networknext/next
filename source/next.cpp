@@ -393,9 +393,6 @@ next_platform_mutex_helper_t::~next_platform_mutex_helper_t()
 
 // -------------------------------------------------------------
 
-// todo: remember to turn this off
-#define NEXT_ENABLE_MEMORY_CHECKS 1
-
 #if NEXT_ENABLE_MEMORY_CHECKS
 
     #define NEXT_DECLARE_SENTINEL(n) uint32_t next_sentinel_##n[64];
