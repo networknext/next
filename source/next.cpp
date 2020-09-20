@@ -7166,7 +7166,7 @@ void next_client_internal_update_fallback_to_direct( next_client_internal_t * cl
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client route update timeout. falling back to direct" );
             client->counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT]++;
-            client->fallback_to_direct = fallback_to_direct;
+            client->fallback_to_direct = true;
         }
     }
 }
