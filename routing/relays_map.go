@@ -196,7 +196,7 @@ func (r *RelayMap) MarshalBinary() ([]byte, error) {
 			// will be empty if relay has initialized but not updated
 			if relay.Version != "" {
 				s := strings.Split(relay.Version, ".")
-				if len(s) == 3 {
+				if len(s) != 3 {
 					return nil, fmt.Errorf("invalid relay version for relay %s: %s\nrelay = %+v", relay.Addr.String(), relay.Version, relay)
 				}
 
