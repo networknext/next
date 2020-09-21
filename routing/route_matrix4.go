@@ -100,7 +100,7 @@ func (m *RouteMatrix4) GetNearRelays(latitude float64, longitude float64, maxNea
 	// even when some relays have the same integer distance from the client. Without this
 	// the set of near relays passed down to the SDK can be different from one slice to the next!
 
-	sort.SliceStable(nearRelayData, func(i, j int) bool { return nearRelayData[i].distance > nearRelayData[j].distance })
+	sort.SliceStable(nearRelayData, func(i, j int) bool { return nearRelayData[i].distance < nearRelayData[j].distance })
 
 	if len(nearRelayData) > maxNearRelays {
 		nearRelayData = nearRelayData[:maxNearRelays]

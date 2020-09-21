@@ -972,8 +972,8 @@ func TestSessionUpdateHandler4NextRoute(t *testing.T) {
 		RelayIDs:           []uint64{1, 2},
 		RelayAddresses:     []net.UDPAddr{*relayAddr1, *relayAddr2},
 		RelayNames:         []string{"test.relay.1", "test.relay.2"},
-		RelayLatitudes:     []float32{89, 90},
-		RelayLongitudes:    []float32{179, 180},
+		RelayLatitudes:     []float32{90, 89},
+		RelayLongitudes:    []float32{180, 179},
 		RelayDatacenterIDs: []uint64{10, 10},
 		RouteEntries: []core.RouteEntry{
 			{
@@ -1023,9 +1023,9 @@ func TestSessionUpdateHandler4NextRoute(t *testing.T) {
 		Initial:         true,
 		Route: routing.Route{
 			NumRelays:       2,
-			RelayIDs:        [routing.MaxRelays]uint64{1, 2},
-			RelayAddrs:      [routing.MaxRelays]net.UDPAddr{*relayAddr1, *relayAddr2},
-			RelayNames:      [routing.MaxRelays]string{"test.relay.1", "test.relay.2"},
+			RelayIDs:        [routing.MaxRelays]uint64{2, 1},
+			RelayAddrs:      [routing.MaxRelays]net.UDPAddr{*relayAddr2, *relayAddr1},
+			RelayNames:      [routing.MaxRelays]string{"test.relay.2", "test.relay.1"},
 			RelayPublicKeys: [routing.MaxRelays][]byte{publicKey, publicKey},
 			RelaySellers:    [routing.MaxRelays]routing.Seller{{ID: "seller"}, {ID: "seller"}},
 		},
@@ -1178,8 +1178,8 @@ func TestSessionUpdateHandler4ContinueRoute(t *testing.T) {
 		RelayIDs:           []uint64{1, 2},
 		RelayAddresses:     []net.UDPAddr{*relayAddr1, *relayAddr2},
 		RelayNames:         []string{"test.relay.1", "test.relay.2"},
-		RelayLatitudes:     []float32{89, 90},
-		RelayLongitudes:    []float32{179, 180},
+		RelayLatitudes:     []float32{90, 89},
+		RelayLongitudes:    []float32{180, 179},
 		RelayDatacenterIDs: []uint64{10, 10},
 		RouteEntries: []core.RouteEntry{
 			{
@@ -1228,9 +1228,9 @@ func TestSessionUpdateHandler4ContinueRoute(t *testing.T) {
 		Initial:         false,
 		Route: routing.Route{
 			NumRelays:       2,
-			RelayIDs:        [routing.MaxRelays]uint64{1, 2},
-			RelayAddrs:      [routing.MaxRelays]net.UDPAddr{*relayAddr1, *relayAddr2},
-			RelayNames:      [routing.MaxRelays]string{"test.relay.1", "test.relay.2"},
+			RelayIDs:        [routing.MaxRelays]uint64{2, 1},
+			RelayAddrs:      [routing.MaxRelays]net.UDPAddr{*relayAddr2, *relayAddr1},
+			RelayNames:      [routing.MaxRelays]string{"test.relay.2", "test.relay.1"},
 			RelayPublicKeys: [routing.MaxRelays][]byte{publicKey, publicKey},
 			RelaySellers:    [routing.MaxRelays]routing.Seller{{ID: "seller"}, {ID: "seller"}},
 		},
