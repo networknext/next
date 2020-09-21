@@ -378,6 +378,14 @@ func (sessionData *SessionData4) Serialize(stream encoding.Stream) error {
 		sessionData.Route.NumRelays = int(numRouteRelays)
 		for i := 0; i < int(numRouteRelays); i++ {
 			stream.SerializeUint64(&sessionData.Route.RelayIDs[i])
+			stream.SerializeAddress(&sessionData.Route.RelayAddrs[i])
+			stream.SerializeString(&sessionData.Route.RelayNames[i], MaxDatacenterNameLength)
+
+			if stream.IsReading() && len(sessionData.Route.RelayPublicKeys[i]) == 0 {
+				sessionData.Route.RelayPublicKeys[i] = make([]byte, crypto.KeySize)
+			}
+			stream.SerializeBytes(sessionData.Route.RelayPublicKeys[i])
+			stream.SerializeString(&sessionData.Route.RelaySellers[i].ID, MaxDatacenterNameLength)
 		}
 	}
 	stream.SerializeUint64(&sessionData.RouteState.UserID)

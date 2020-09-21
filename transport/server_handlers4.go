@@ -437,7 +437,7 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 		// Store the route back into the session data
 		sessionData.Route = routing.Route{}
 		sessionData.Route.NumRelays = int(routeNumRelays)
-		for i := 0; i < len(routeRelays); i++ {
+		for i := int32(0); i < routeNumRelays; i++ {
 			relayIndex := routeRelays[i]
 			relayID := routeMatrix.RelayIDs[relayIndex]
 
