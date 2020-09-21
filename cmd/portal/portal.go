@@ -150,7 +150,25 @@ func main() {
 				Name:                   "Local",
 				Code:                   "local",
 				Active:                 true,
-				AutomaticSignInDomains: "gmail.com",
+				AutomaticSignInDomains: "",
+			}); err != nil {
+				level.Error(logger).Log("msg", "could not add customer to storage", "err", err)
+				os.Exit(1)
+			}
+			if err := db.AddCustomer(ctx, routing.Customer{
+				Name:                   "Ghost Army",
+				Code:                   "ghost-army",
+				Active:                 true,
+				AutomaticSignInDomains: "",
+			}); err != nil {
+				level.Error(logger).Log("msg", "could not add customer to storage", "err", err)
+				os.Exit(1)
+			}
+			if err := db.AddBuyer(ctx, routing.Buyer{
+				ID:                   customerID,
+				CompanyCode:          "local",
+				PublicKey:            customerPublicKey,
+				RoutingRulesSettings: routing.LocalRoutingRulesSettings,
 			}); err != nil {
 				level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
 				os.Exit(1)
