@@ -221,7 +221,7 @@ func ServerUpdateHandlerFunc4(logger log.Logger, storer storage.Storer, datacent
 			}
 		}
 
-		level.Debug(logger).Log("msg", "server updated successfully", "server_address", packet.ServerAddress.String())
+		level.Debug(logger).Log("msg", "server updated successfully", "source_address", incoming.SourceAddr.String(), "server_address", packet.ServerAddress.String())
 	}
 }
 
@@ -426,12 +426,33 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 
 				numTokens := routeNumRelays + 2 // relays + client + server
 				_, routePublicKeys := GetRouteAddressesAndPublicKeys(&packet.ClientAddress, packet.ClientRoutePublicKey, &packet.ServerAddress, packet.ServerRoutePublicKey, numTokens, routeRelays, routeMatrix.RelayIDs, storer)
-				tokenData := make([]byte, routing.EncryptedContinueRouteTokenSize4)
+				tokenData := make([]byte, numTokens*routing.EncryptedContinueRouteTokenSize4)
 				core.WriteContinueTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), int(numTokens), routePublicKeys, routerPrivateKey)
 				response.RouteType = routing.RouteTypeContinue
 				response.NumTokens = numTokens
 				response.Tokens = tokenData
 			}
+		}
+
+		// Store the route back into the session data
+		sessionData.Route = routing.Route{}
+		sessionData.Route.NumRelays = int(routeNumRelays)
+		for i := 0; i < len(routeRelays); i++ {
+			relayIndex := routeRelays[i]
+			relayID := routeMatrix.RelayIDs[relayIndex]
+
+			sessionData.Route.RelayIDs[i] = relayID
+			sessionData.Route.RelayAddrs[i] = routeMatrix.RelayAddresses[relayIndex]
+			sessionData.Route.RelayNames[i] = routeMatrix.RelayNames[relayIndex]
+			relay, err := storer.Relay(relayID)
+			if err != nil {
+				// todo: handle error
+				continue
+			}
+
+			sessionData.Route.RelayPublicKeys[i] = relay.PublicKey
+			sessionData.Route.RelaySellers[i] = relay.Seller
+			sessionData.Route.Stats.RTT = float64(routeCost)
 		}
 
 		level.Debug(logger).Log("msg", "session updated successfully", "source_address", incoming.SourceAddr.String(), "server_address", packet.ServerAddress.String(), "client_address", packet.ClientAddress.String())
