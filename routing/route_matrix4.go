@@ -11,6 +11,7 @@ import (
 )
 
 type RouteMatrix4 struct {
+	RelayIDsToIndices  map[uint64]int32
 	RelayIDs           []uint64
 	RelayAddresses     []net.UDPAddr
 	RelayNames         []string
@@ -25,6 +26,7 @@ func (m *RouteMatrix4) Serialize(stream encoding.Stream) error {
 	stream.SerializeUint32(&numRelays)
 
 	if stream.IsReading() {
+		m.RelayIDsToIndices = make(map[uint64]int32)
 		m.RelayIDs = make([]uint64, numRelays)
 		m.RelayAddresses = make([]net.UDPAddr, numRelays)
 		m.RelayNames = make([]string, numRelays)
@@ -40,6 +42,10 @@ func (m *RouteMatrix4) Serialize(stream encoding.Stream) error {
 		stream.SerializeFloat32(&m.RelayLatitudes[i])
 		stream.SerializeFloat32(&m.RelayLongitudes[i])
 		stream.SerializeUint64(&m.RelayDatacenterIDs[i])
+
+		if stream.IsReading() {
+			m.RelayIDsToIndices[m.RelayIDs[i]] = int32(i)
+		}
 	}
 
 	numEntries := uint32(len(m.RouteEntries))

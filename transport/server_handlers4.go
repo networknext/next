@@ -373,12 +373,6 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 			return
 		}
 
-		// todo: move this to route matrix 4
-		relayIDsToIndices := make(map[uint64]int32)
-		for i, relayID := range routeMatrix.RelayIDs {
-			relayIDsToIndices[relayID] = int32(i)
-		}
-
 		nearRelayIDs := make([]uint64, numNearRelays)
 		nearRelayCosts := make([]int32, numNearRelays)
 		nearRelayPacketLoss := make([]float32, numNearRelays)
@@ -394,7 +388,7 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 		reframedNearRelays := make([]int32, numNearRelays)
 		var numDestRelays int32
 		reframedDestRelays := make([]int32, len(destRelayIDs))
-		core.ReframeRelays(relayIDsToIndices, nearRelayIDs, nearRelayCosts, nearRelayPacketLoss, destRelayIDs, &numNearRelays, reframedNearRelays, &numDestRelays, reframedDestRelays)
+		core.ReframeRelays(routeMatrix.RelayIDsToIndices, nearRelayIDs, nearRelayCosts, nearRelayPacketLoss, destRelayIDs, &numNearRelays, reframedNearRelays, &numDestRelays, reframedDestRelays)
 
 		reframedNearRelays = reframedNearRelays[:numNearRelays]
 		reframedDestRelays = reframedDestRelays[:numDestRelays]
@@ -423,7 +417,7 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 			}
 		} else {
 			reframedRouteRelays := [routing.MaxRelays]int32{}
-			if !core.ReframeRoute(relayIDsToIndices, sessionData.Route.RelayIDs[:], &reframedRouteRelays) {
+			if !core.ReframeRoute(routeMatrix.RelayIDsToIndices, sessionData.Route.RelayIDs[:], &reframedRouteRelays) {
 				// todo: handle error - route relay is no longer in route matrix
 			}
 
