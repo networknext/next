@@ -177,10 +177,8 @@ func main() {
 		}
 	}
 
-	{
-		if env == "local" {
-			storage.SeedStorage(logger, ctx, db, relayPublicKey, customerID, customerPublicKey)
-		}
+	if env == "local" {
+		storage.SeedStorage(logger, ctx, db, relayPublicKey, customerID, customerPublicKey)
 	}
 
 	manager, err := management.New(
