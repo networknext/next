@@ -197,25 +197,25 @@ func (r *RelayMap) MarshalBinary() ([]byte, error) {
 			if relay.Version != "" {
 				s := strings.Split(relay.Version, ".")
 				if len(s) != 3 {
-					return nil, fmt.Errorf("invalid relay version for relay %s: %s\nrelay = %+v", relay.Addr.String(), relay.Version, relay)
+					continue
 				}
 
 				if v, err := strconv.ParseUint(s[0], 10, 32); err == nil {
 					major = uint8(v)
 				} else {
-					return nil, fmt.Errorf("invalid relay major version for relay %s: %s", relay.Addr.String(), s[0])
+					continue
 				}
 
 				if v, err := strconv.ParseUint(s[1], 10, 32); err == nil {
 					minor = uint8(v)
 				} else {
-					return nil, fmt.Errorf("invalid relay minor version for relay %s: %s", relay.Addr.String(), s[1])
+					continue
 				}
 
 				if v, err := strconv.ParseUint(s[2], 10, 32); err == nil {
 					patch = uint8(v)
 				} else {
-					return nil, fmt.Errorf("invalid relay patch version for relay %s: %s", relay.Addr.String(), s[2])
+					continue
 				}
 			}
 
