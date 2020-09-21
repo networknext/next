@@ -580,84 +580,6 @@ func TestSessionUpdateHandler4NoNearRelays(t *testing.T) {
 	assert.Equal(t, metrics.ErrorMetrics.NearRelaysLocateFailure.Value(), 1.0)
 }
 
-func TestSessionUpdateHandler4NoDestRelays(t *testing.T) {
-	logger := log.NewNopLogger()
-	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewSessionMetrics(context.Background(), &metricsHandler)
-	assert.NoError(t, err)
-	responseBuffer := bytes.NewBuffer(nil)
-	storer := &storage.InMemory{}
-	storer.AddBuyer(context.Background(), routing.Buyer{})
-	storer.AddDatacenter(context.Background(), routing.UnknownDatacenter)
-
-	requestPacket := transport.SessionUpdatePacket4{
-		SessionID:            1111,
-		ClientRoutePublicKey: make([]byte, crypto.KeySize),
-		ServerRoutePublicKey: make([]byte, crypto.KeySize),
-	}
-	requestData, err := transport.MarshalPacket(&requestPacket)
-	assert.NoError(t, err)
-
-	var goodIPLocator goodIPLocator
-	ipLocatorFunc := func() routing.IPLocator {
-		return &goodIPLocator
-	}
-
-	relayAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
-	assert.NoError(t, err)
-
-	routeMatrix := routing.RouteMatrix4{
-		RelayIDs:           []uint64{1},
-		RelayAddresses:     []net.UDPAddr{*relayAddr},
-		RelayNames:         []string{"test.relay"},
-		RelayLatitudes:     []float32{90},
-		RelayLongitudes:    []float32{180},
-		RelayDatacenterIDs: []uint64{10},
-	}
-	routeMatrixFunc := func() *routing.RouteMatrix4 {
-		return &routeMatrix
-	}
-
-	expectedResponse := transport.SessionResponsePacket4{
-		SessionID:          requestPacket.SessionID,
-		SliceNumber:        requestPacket.SliceNumber,
-		RouteType:          routing.RouteTypeDirect,
-		NumNearRelays:      1,
-		NearRelayIDs:       []uint64{1},
-		NearRelayAddresses: []net.UDPAddr{*relayAddr},
-	}
-
-	expectedSessionData := transport.SessionData4{
-		SessionID:       requestPacket.SessionID,
-		SliceNumber:     requestPacket.SliceNumber + 1,
-		Location:        routing.LocationNullIsland,
-		ExpireTimestamp: uint64(time.Now().Unix()),
-	}
-
-	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
-	assert.NoError(t, err)
-
-	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
-	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
-
-	postSessionHandler := transport.PostSessionHandler{}
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, storer, [crypto.KeySize]byte{}, &postSessionHandler, metrics)
-	handler(responseBuffer, &transport.UDPPacket{
-		Data: requestData,
-	})
-
-	var responsePacket transport.SessionResponsePacket4
-	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes())
-	assert.NoError(t, err)
-
-	var sessionData transport.SessionData4
-	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
-	assert.NoError(t, err)
-
-	assert.Equal(t, expectedSessionData, sessionData)
-	assert.Equal(t, expectedResponse, responsePacket)
-}
-
 func TestSessionUpdateHandler4FirstSlice(t *testing.T) {
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
@@ -744,6 +666,110 @@ func TestSessionUpdateHandler4FirstSlice(t *testing.T) {
 	assert.Equal(t, expectedResponse, responsePacket)
 
 	assertAllMetricsEqual(t, expectedMetrics.ErrorMetrics, expectedMetrics.SessionDataMetrics, metrics.ErrorMetrics, metrics.SessionDataMetrics)
+}
+
+func TestSessionUpdateHandler4NoDestRelays(t *testing.T) {
+	logger := log.NewNopLogger()
+	metricsHandler := metrics.LocalHandler{}
+	metrics, err := metrics.NewSessionMetrics(context.Background(), &metricsHandler)
+	assert.NoError(t, err)
+	responseBuffer := bytes.NewBuffer(nil)
+	storer := &storage.InMemory{}
+	storer.AddBuyer(context.Background(), routing.Buyer{
+		ID:             100,
+		RouteShader:    core.NewRouteShader(),
+		CustomerConfig: core.NewCustomerConfig(),
+		InternalConfig: core.NewInternalConfig(),
+	})
+	storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 10})
+
+	sessionDataStruct := transport.SessionData4{
+		Version:         transport.SessionDataVersion4,
+		SessionID:       1111,
+		SliceNumber:     1,
+		Location:        routing.LocationNullIsland,
+		ExpireTimestamp: uint64(time.Now().Unix()),
+	}
+
+	sessionDataSlice, err := transport.MarshalSessionData(&sessionDataStruct)
+	assert.NoError(t, err)
+
+	sessionDataArray := [transport.MaxSessionDataSize]byte{}
+	copy(sessionDataArray[:], sessionDataSlice)
+
+	requestPacket := transport.SessionUpdatePacket4{
+		SessionID:            1111,
+		CustomerID:           100,
+		DatacenterID:         10,
+		SliceNumber:          1,
+		SessionDataBytes:     int32(len(sessionDataSlice)),
+		SessionData:          sessionDataArray,
+		ClientRoutePublicKey: make([]byte, crypto.KeySize),
+		ServerRoutePublicKey: make([]byte, crypto.KeySize),
+	}
+	requestData, err := transport.MarshalPacket(&requestPacket)
+	assert.NoError(t, err)
+
+	var goodIPLocator goodIPLocator
+	ipLocatorFunc := func() routing.IPLocator {
+		return &goodIPLocator
+	}
+
+	relayAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+	assert.NoError(t, err)
+
+	routeMatrix := routing.RouteMatrix4{
+		RelayIDs:           []uint64{1},
+		RelayAddresses:     []net.UDPAddr{*relayAddr},
+		RelayNames:         []string{"test.relay"},
+		RelayLatitudes:     []float32{90},
+		RelayLongitudes:    []float32{180},
+		RelayDatacenterIDs: []uint64{0},
+	}
+	routeMatrixFunc := func() *routing.RouteMatrix4 {
+		return &routeMatrix
+	}
+
+	expectedResponse := transport.SessionResponsePacket4{
+		SessionID:          requestPacket.SessionID,
+		SliceNumber:        requestPacket.SliceNumber,
+		RouteType:          routing.RouteTypeDirect,
+		NumNearRelays:      1,
+		NearRelayIDs:       []uint64{1},
+		NearRelayAddresses: []net.UDPAddr{*relayAddr},
+	}
+
+	expectedSessionData := transport.SessionData4{
+		SessionID:       requestPacket.SessionID,
+		SliceNumber:     requestPacket.SliceNumber + 1,
+		Location:        routing.LocationNullIsland,
+		ExpireTimestamp: uint64(time.Now().Unix()) + billing.BillingSliceSeconds,
+	}
+
+	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
+	assert.NoError(t, err)
+
+	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
+	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
+
+	postSessionHandler := transport.PostSessionHandler{}
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, storer, [crypto.KeySize]byte{}, &postSessionHandler, metrics)
+	handler(responseBuffer, &transport.UDPPacket{
+		Data: requestData,
+	})
+
+	var responsePacket transport.SessionResponsePacket4
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes())
+	assert.NoError(t, err)
+
+	var sessionData transport.SessionData4
+	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
+	assert.NoError(t, err)
+
+	assert.Equal(t, expectedSessionData, sessionData)
+	assert.Equal(t, expectedResponse, responsePacket)
+
+	assert.Equal(t, metrics.ErrorMetrics.NoRelaysInDatacenter.Value(), 1.0)
 }
 
 func TestSessionUpdateHandler4DirectRoute(t *testing.T) {
