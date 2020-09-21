@@ -2,7 +2,6 @@ package routing
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"strconv"
 	"strings"
@@ -172,7 +171,7 @@ func (relayMap *RelayMap) TimeoutLoop(ctx context.Context, timeoutSeconds int64,
 }
 
 // | version | count | relay stats ... |
-func (r *RelayMap) MarshalBinary() ([]byte, error) {
+func (r *RelayMap) MarshalBinary() []byte {
 	numRelaysRightNow := r.GetRelayCount()
 
 	// preallocate the entire buffer size
@@ -251,8 +250,6 @@ func (r *RelayMap) MarshalBinary() ([]byte, error) {
 	index = 1
 	encoding.WriteUint64(data, &index, count)
 
-	fmt.Printf("%d relays sent to portal\n", count)
-
 	// truncate the data in case the expire edge case ocurred
-	return data[:1+8+count*RelayDataBytes], nil
+	return data[:1+8+count*RelayDataBytes]
 }
