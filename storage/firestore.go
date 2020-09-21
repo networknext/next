@@ -1889,7 +1889,7 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 func (fs *Firestore) syncBuyers(ctx context.Context) error {
 	buyers := make(map[uint64]routing.Buyer)
 
-	buyerDocs := fs.Client.Collection("Buyers").Documents(ctx)
+	buyerDocs := fs.Client.Collection("Buyer").Documents(ctx)
 	defer buyerDocs.Stop()
 
 	for {
@@ -1904,7 +1904,7 @@ func (fs *Firestore) syncBuyers(ctx context.Context) error {
 		var b buyer
 		err = buyerDoc.DataTo(&b)
 		if err != nil {
-			level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to unmarshal seller %v", buyerDoc.Ref.ID), "err", err)
+			level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to unmarshal buyer %v", buyerDoc.Ref.ID), "err", err)
 			continue
 		}
 		rrs, err := fs.getRoutingRulesSettingsForBuyerID(ctx, buyerDoc.Ref.ID)
@@ -1937,7 +1937,7 @@ func (fs *Firestore) syncBuyers(ctx context.Context) error {
 func (fs *Firestore) syncSellers(ctx context.Context) error {
 	sellers := make(map[string]routing.Seller)
 
-	sellerDocs := fs.Client.Collection("Sellers").Documents(ctx)
+	sellerDocs := fs.Client.Collection("Seller").Documents(ctx)
 	defer sellerDocs.Stop()
 
 	for {
@@ -1958,6 +1958,7 @@ func (fs *Firestore) syncSellers(ctx context.Context) error {
 
 		seller := routing.Seller{
 			ID:                        sellerDoc.Ref.ID,
+			CompanyCode:               s.CompanyCode,
 			Name:                      s.Name,
 			IngressPriceNibblinsPerGB: routing.Nibblin(s.IngressPriceNibblinsPerGB),
 			EgressPriceNibblinsPerGB:  routing.Nibblin(s.EgressPriceNibblinsPerGB),
@@ -2026,13 +2027,14 @@ func (fs *Firestore) syncDatacenterMaps(ctx context.Context) error {
 }
 
 func (fs *Firestore) syncCustomers(ctx context.Context) error {
-	buyers := make(map[uint64]routing.Buyer)
-	sellers := make(map[string]routing.Seller)
 
-	cdocs := fs.Client.Collection("Customer").Documents(ctx)
-	defer cdocs.Stop()
+	customers := make(map[string]routing.Customer)
+
+	customerDocs := fs.Client.Collection("Customer").Documents(ctx)
+	defer customerDocs.Stop()
+
 	for {
-		cdoc, err := cdocs.Next()
+		customerDoc, err := customerDocs.Next()
 		if err == iterator.Done {
 			break
 		}
@@ -2041,75 +2043,29 @@ func (fs *Firestore) syncCustomers(ctx context.Context) error {
 		}
 
 		var c customer
-		err = cdoc.DataTo(&c)
+		err = customerDoc.DataTo(&c)
 		if err != nil {
-			level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to unmarshal customer %v", cdoc.Ref.ID), "err", err)
+			level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to unmarshal customer %v", customerDoc.Ref.ID), "err", err)
 			continue
 		}
 
-		if !c.Active {
-			continue
+		customer := routing.Customer{
+			Code:                   c.Code,
+			Name:                   c.Name,
+			AutomaticSignInDomains: c.AutomaticSignInDomains,
+			Active:                 c.Active,
+			BuyerRef:               c.BuyerRef,
+			SellerRef:              c.SellerRef,
 		}
 
-		// Get the associated buyer for the customer
-		if c.BuyerRef != nil {
-			bdoc, err := c.BuyerRef.Get(ctx)
-			if err != nil {
-				level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to get buyer %v", c.BuyerRef.ID), "err", err)
-				continue
-			}
-			var b buyer
-			err = bdoc.DataTo(&b)
-			if err != nil {
-				level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to unmarshal seller %v", bdoc.Ref.ID), "err", err)
-				continue
-			}
-			rrs, err := fs.getRoutingRulesSettingsForBuyerID(ctx, bdoc.Ref.ID)
-			if err != nil {
-				level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to completely read route shader for buyer %v, some fields will have default values", bdoc.Ref.ID), "err", err)
-			}
-			buyers[uint64(b.ID)] = routing.Buyer{
-				ID:                   uint64(b.ID),
-				Live:                 b.Live,
-				PublicKey:            b.PublicKey,
-				RoutingRulesSettings: rrs,
-			}
-		}
-
-		// Get the associated seller for the customer
-		if c.SellerRef != nil {
-			sdoc, err := c.SellerRef.Get(ctx)
-			if err != nil {
-				level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to get seller %v", c.SellerRef.ID), "err", err)
-				continue
-			}
-			var s seller
-			err = sdoc.DataTo(&s)
-			if err != nil {
-				level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to unmarshal seller %v", sdoc.Ref.ID), "err", err)
-				continue
-			}
-
-			sellers[sdoc.Ref.ID] = routing.Seller{
-				ID:                        sdoc.Ref.ID,
-				Name:                      s.Name,
-				IngressPriceNibblinsPerGB: routing.Nibblin(s.IngressPriceNibblinsPerGB),
-				EgressPriceNibblinsPerGB:  routing.Nibblin(s.EgressPriceNibblinsPerGB),
-			}
-		}
-
+		customers[customer.Code] = customer
 	}
 
-	fs.buyerMutex.Lock()
-	fs.buyers = buyers
-	fs.buyerMutex.Unlock()
+	fs.customerMutex.Lock()
+	fs.customers = customers
+	fs.customerMutex.Unlock()
 
-	fs.sellerMutex.Lock()
-	fs.sellers = sellers
-	fs.sellerMutex.Unlock()
-
-	level.Info(fs.Logger).Log("during", "syncBuyers", "num", len(fs.buyers))
-	level.Info(fs.Logger).Log("during", "syncSellers", "num", len(fs.sellers))
+	level.Info(fs.Logger).Log("during", "syncCustomers", "num", len(fs.customers))
 
 	return nil
 }

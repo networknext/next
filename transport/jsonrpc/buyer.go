@@ -183,7 +183,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 }
 
 type TotalSessionsArgs struct {
-	BuyerID string `json:"buyer_id"`
+	CompanyCode string `json:"company_code"`
 }
 
 type TotalSessionsReply struct {
@@ -208,7 +208,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		}
 	}
 
-	switch args.BuyerID {
+	switch args.CompanyCode {
 	case "":
 		buyers := s.Storage.Buyers()
 
@@ -293,16 +293,23 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			reply.Direct = newCount
 		}
 	default:
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
+		buyer, err := s.Storage.BuyerWithCompanyCode(args.CompanyCode)
+		if err != nil {
+			err = fmt.Errorf("TotalSessions() failed getting company with code: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+		buyerID := fmt.Sprintf("%x", buyer.ID)
+		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
 			err := fmt.Errorf("TotalSessions(): %v", ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 
-		redisClient.Send("HLEN", fmt.Sprintf("d-%s-%d", args.BuyerID, minutes-1))
-		redisClient.Send("HLEN", fmt.Sprintf("d-%s-%d", args.BuyerID, minutes))
-		redisClient.Send("HLEN", fmt.Sprintf("n-%s-%d", args.BuyerID, minutes-1))
-		redisClient.Send("HLEN", fmt.Sprintf("n-%s-%d", args.BuyerID, minutes))
+		redisClient.Send("HLEN", fmt.Sprintf("d-%s-%d", buyerID, minutes-1))
+		redisClient.Send("HLEN", fmt.Sprintf("d-%s-%d", buyerID, minutes))
+		redisClient.Send("HLEN", fmt.Sprintf("n-%s-%d", buyerID, minutes-1))
+		redisClient.Send("HLEN", fmt.Sprintf("n-%s-%d", buyerID, minutes))
 		redisClient.Flush()
 
 		oldDirectCount, err := redis.Int(redisClient.Receive())
@@ -348,7 +355,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 }
 
 type TopSessionsArgs struct {
-	BuyerID string `json:"buyer_id"`
+	CompanyCode string `json:"company_code"`
 }
 
 type TopSessionsReply struct {
@@ -369,7 +376,7 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 	defer topSessionsClient.Close()
 
 	// get the top session IDs globally or for a buyer from the sorted set
-	switch args.BuyerID {
+	switch args.CompanyCode {
 	case "":
 		// Get top sessions from the past 2 minutes sorted by greatest to least improved RTT
 		topSessionsA, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("s-%d", minutes-1), "0", fmt.Sprintf("%d", TopSessionsSize)))
@@ -385,21 +392,28 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 			return err
 		}
 	default:
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
-			err = fmt.Errorf("TopSessions(): %v", ErrInsufficientPrivileges)
+		buyer, err := s.Storage.BuyerWithCompanyCode(args.CompanyCode)
+		if err != nil {
+			err = fmt.Errorf("TopSessions() failed getting company with code: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+		buyerID := fmt.Sprintf("%x", buyer.ID)
+		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
+			err := fmt.Errorf("TopSessions(): %v", ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 
-		topSessionsA, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("sc-%s-%d", args.BuyerID, minutes-1), "0", fmt.Sprintf("%d", TopSessionsSize)))
+		topSessionsA, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("sc-%s-%d", buyerID, minutes-1), "0", fmt.Sprintf("%d", TopSessionsSize)))
 		if err != nil && err != redis.ErrNil {
-			err = fmt.Errorf("TopSessions() failed getting top sessions A for buyer ID %016x: %v", args.BuyerID, err)
+			err = fmt.Errorf("TopSessions() failed getting top sessions A for buyer ID %016x: %v", buyerID, err)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
-		topSessionsB, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("sc-%s-%d", args.BuyerID, minutes), "0", fmt.Sprintf("%d", TopSessionsSize)))
+		topSessionsB, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("sc-%s-%d", buyerID, minutes), "0", fmt.Sprintf("%d", TopSessionsSize)))
 		if err != nil && err != redis.ErrNil {
-			err = fmt.Errorf("TopSessions() failed getting top sessions B for buyer ID %016x: %v", args.BuyerID, err)
+			err = fmt.Errorf("TopSessions() failed getting top sessions B for buyer ID %016x: %v", buyerID, err)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
@@ -439,7 +453,7 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 			continue
 		}
 
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
+		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
 			meta.Anonymise()
 		}
 
@@ -502,7 +516,14 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		return err
 	}
 
-	if !VerifyAllRoles(r, s.SameBuyerRole(fmt.Sprintf("%016x", reply.Meta.BuyerID))) {
+	buyer, err := s.Storage.Buyer(reply.Meta.BuyerID)
+	if err != nil {
+		err = fmt.Errorf("SessionDetails() failed to fetch buyer: %v", err)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	if !VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
 		reply.Meta.Anonymise()
 	}
 
@@ -538,7 +559,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 }
 
 type MapPointsArgs struct {
-	BuyerID string `json:"buyer_id"`
+	CompanyCode string `json:"company_code"`
 }
 
 type MapPointsReply struct {
@@ -875,17 +896,17 @@ func ReadMapPointsCache(points *mapPointsByte, data []byte) bool {
 func (s *BuyersService) SessionMap(r *http.Request, args *MapPointsArgs, reply *MapPointsReply) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	switch args.BuyerID {
+	switch args.CompanyCode {
 	case "":
 		// pull the local cache and reply with it
 		reply.Points = s.mapPointsCompactCache
 	default:
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
+		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
 			err := fmt.Errorf("SessionMap(): %v", ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
-		reply.Points = s.mapPointsCompactBuyerCache[args.BuyerID]
+		reply.Points = s.mapPointsCompactBuyerCache[args.CompanyCode]
 	}
 
 	return nil
@@ -894,17 +915,18 @@ func (s *BuyersService) SessionMap(r *http.Request, args *MapPointsArgs, reply *
 func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, reply *MapPointsReply) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	switch args.BuyerID {
+
+	switch args.CompanyCode {
 	case "":
 		// pull the local cache and reply with it
 		reply.Points = s.mapPointsCache
 	default:
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
+		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
 			err := fmt.Errorf("SessionMap(): %v", ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
-		reply.Points = s.mapPointsBuyerCache[args.BuyerID]
+		reply.Points = s.mapPointsBuyerCache[args.CompanyCode]
 	}
 
 	return nil
@@ -915,17 +937,17 @@ func (s *BuyersService) SessionMapPointsByte(r *http.Request, args *MapPointsArg
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	switch args.BuyerID {
+	switch args.CompanyCode {
 	case "":
 		// pull the local cache and reply with it
 		ReadMapPointsCache(&reply.Points, s.mapPointsCache)
 	default:
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
+		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
 			err := fmt.Errorf("SessionMap(): %v", ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
-		ReadMapPointsCache(&reply.Points, s.mapPointsBuyerCache[args.BuyerID])
+		ReadMapPointsCache(&reply.Points, s.mapPointsBuyerCache[args.CompanyCode])
 	}
 
 	return nil
@@ -935,17 +957,17 @@ func (s *BuyersService) SessionMapByte(r *http.Request, args *MapPointsArgs, rep
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	switch args.BuyerID {
+	switch args.CompanyCode {
 	case "":
 		// pull the local cache and reply with it
 		ReadMapPointsCache(&reply.Points, s.mapPointsByteCache)
 	default:
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
+		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
 			err := fmt.Errorf("SessionMap(): %v", ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
-		ReadMapPointsCache(&reply.Points, s.mapPointsBuyerByteCache[args.BuyerID])
+		ReadMapPointsCache(&reply.Points, s.mapPointsBuyerByteCache[args.CompanyCode])
 	}
 
 	return nil
