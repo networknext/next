@@ -187,35 +187,36 @@ func (r *RelayMap) MarshalBinary() ([]byte, error) {
 	// than the expected amount which will cause the portal to read
 	// garbage data. Manually counting and compareing accounts for that edge case
 	var count uint64 = 0
-	for i := range r.shard {
-		shard := r.shard[i]
+	for _, shard := range r.shard {
 		shard.mutex.RLock()
 		defer shard.mutex.RUnlock()
 		for _, relay := range shard.relays {
-			s := strings.Split(relay.Version, ".")
-			if len(s) != 3 {
-				return nil, fmt.Errorf("invalid relay version for relay %s: %s\nrelay = %v", relay.Addr.String(), relay.Version, relay)
-			}
+			var major, minor, patch uint8
 
-			var major uint8
-			if v, err := strconv.ParseUint(s[0], 10, 32); err == nil {
-				major = uint8(v)
-			} else {
-				return nil, fmt.Errorf("invalid relay major version for relay %s: %s", relay.Addr.String(), s[0])
-			}
+			// will be empty if relay has initialized but not updated
+			if relay.Version != "" {
+				s := strings.Split(relay.Version, ".")
+				if len(s) == 3 {
+					return nil, fmt.Errorf("invalid relay version for relay %s: %s\nrelay = %+v", relay.Addr.String(), relay.Version, relay)
+				}
 
-			var minor uint8
-			if v, err := strconv.ParseUint(s[1], 10, 32); err == nil {
-				minor = uint8(v)
-			} else {
-				return nil, fmt.Errorf("invalid relay minor version for relay %s: %s", relay.Addr.String(), s[1])
-			}
+				if v, err := strconv.ParseUint(s[0], 10, 32); err == nil {
+					major = uint8(v)
+				} else {
+					return nil, fmt.Errorf("invalid relay major version for relay %s: %s", relay.Addr.String(), s[0])
+				}
 
-			var patch uint8
-			if v, err := strconv.ParseUint(s[2], 10, 32); err == nil {
-				patch = uint8(v)
-			} else {
-				return nil, fmt.Errorf("invalid relay patch version for relay %s: %s", relay.Addr.String(), s[2])
+				if v, err := strconv.ParseUint(s[1], 10, 32); err == nil {
+					minor = uint8(v)
+				} else {
+					return nil, fmt.Errorf("invalid relay minor version for relay %s: %s", relay.Addr.String(), s[1])
+				}
+
+				if v, err := strconv.ParseUint(s[2], 10, 32); err == nil {
+					patch = uint8(v)
+				} else {
+					return nil, fmt.Errorf("invalid relay patch version for relay %s: %s", relay.Addr.String(), s[2])
+				}
 			}
 
 			encoding.WriteUint64(data, &index, relay.ID)
