@@ -22,7 +22,6 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/networknext/backend/analytics"
-	"github.com/networknext/backend/local"
 	"github.com/networknext/backend/logging"
 	"github.com/networknext/backend/transport"
 
@@ -199,7 +198,7 @@ func main() {
 	}
 
 	if env == "local" {
-		local.SeedFirestore(logger, ctx, db, relayPublicKey, customerID, customerPublicKey)
+		storage.SeedStorage(logger, ctx, db, relayPublicKey, customerID, customerPublicKey)
 	}
 
 	var metricsHandler metrics.Handler = &metrics.LocalHandler{}

@@ -25,7 +25,6 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/encoding"
-	"github.com/networknext/backend/local"
 	"github.com/networknext/backend/logging"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
@@ -180,7 +179,7 @@ func main() {
 
 	{
 		if env == "local" {
-			local.SeedFirestore(logger, ctx, db, relayPublicKey, customerID, customerPublicKey)
+			storage.SeedStorage(logger, ctx, db, relayPublicKey, customerID, customerPublicKey)
 		}
 	}
 
