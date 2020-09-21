@@ -27,6 +27,7 @@ import (
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
 	"github.com/networknext/backend/billing"
+	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/envvar"
@@ -245,11 +246,17 @@ func mainReturnWithCode() int {
 			return 1
 		}
 
+		routeShader := core.NewRouteShader()
+		routeShader.AcceptableLatency = -1
+		routeShader.LatencyThreshold = -1
 		if err := storer.AddBuyer(ctx, routing.Buyer{
 			ID:                   13672574147039585173,
 			Name:                 "local",
 			Live:                 true,
 			PublicKey:            customerPublicKey,
+			RouteShader:          routeShader,
+			CustomerConfig:       core.NewCustomerConfig(),
+			InternalConfig:       core.NewInternalConfig(),
 			RoutingRulesSettings: routing.LocalRoutingRulesSettings,
 		}); err != nil {
 			level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)

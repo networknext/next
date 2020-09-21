@@ -10,6 +10,7 @@ import (
 
 	"cloud.google.com/go/firestore"
 	"github.com/go-kit/kit/log"
+	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
@@ -2022,6 +2023,9 @@ func TestFirestore(t *testing.T) {
 			Active:               true,
 			Live:                 false,
 			PublicKey:            make([]byte, crypto.KeySize),
+			RouteShader:          core.NewRouteShader(),
+			CustomerConfig:       core.NewCustomerConfig(),
+			InternalConfig:       core.NewInternalConfig(),
 			RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
 		}
 

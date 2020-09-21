@@ -66,6 +66,7 @@ type SessionErrorMetrics struct {
 	ClientLocateFailure         Counter
 	ClientIPAnonymizeFailure    Counter
 	NearRelaysLocateFailure     Counter
+	DatacenterNotFound          Counter
 	DatacenterDisabled          Counter
 	NoRelaysInDatacenter        Counter
 	RouteFailure                Counter
@@ -98,6 +99,7 @@ var EmptySessionErrorMetrics SessionErrorMetrics = SessionErrorMetrics{
 	ClientLocateFailure:         &EmptyCounter{},
 	ClientIPAnonymizeFailure:    &EmptyCounter{},
 	NearRelaysLocateFailure:     &EmptyCounter{},
+	DatacenterNotFound:          &EmptyCounter{},
 	DatacenterDisabled:          &EmptyCounter{},
 	NoRelaysInDatacenter:        &EmptyCounter{},
 	RouteFailure:                &EmptyCounter{},
@@ -1333,6 +1335,16 @@ func NewSessionMetrics(ctx context.Context, metricsHandler Handler) (*SessionMet
 		DisplayName: "Session Near Relays Locate Failure",
 		ServiceName: "server_backend",
 		ID:          "session.error.near_relays_locate_failure",
+		Unit:        "errors",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sessionMetrics.ErrorMetrics.DatacenterNotFound, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Session Datacenter Not Found",
+		ServiceName: "server_backend",
+		ID:          "session.error.datacenter_not_found",
 		Unit:        "errors",
 	})
 	if err != nil {
