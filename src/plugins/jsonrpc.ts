@@ -41,12 +41,10 @@ export class JSONRPCService {
           allBuyers = responses[2].buyers
           userProfile.pubKey = responses[1].game_config.public_key
         } else {
-          userProfile.allBuyers = responses[1].buyers
+          allBuyers = responses[1].buyers
         }
-        // userProfile.buyerID = responses[0].account.buyer_id
         userProfile.buyerID = responses[0].account.id
         userProfile.companyName = responses[0].account.company_name || ''
-        // userProfile.routeShader = responses[1].customer_route_shader
         store.commit('UPDATE_USER_PROFILE', userProfile)
         store.commit('UPDATE_ALL_BUYERS', allBuyers)
       })
@@ -91,7 +89,7 @@ export class JSONRPCService {
     return this.call('AuthService.UpdateAccountSettings', args)
   }
 
-  public UpdateCompanyInformation (args: any): Promise<any> {
+  public updateCompanyInformation (args: any): Promise<any> {
     return this.call('AuthService.UpdateCompanyInformation', args)
   }
 

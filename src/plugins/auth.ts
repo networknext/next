@@ -43,6 +43,13 @@ export class AuthService {
     })
   }
 
+  public refreshToken () {
+    this.authClient.getTokenSilently({ ignoreCache: true })
+      .then(() => {
+        this.processAuthentication()
+      })
+  }
+
   private async processAuthentication () {
     this.authClient
       .isAuthenticated()
@@ -62,7 +69,6 @@ export class AuthService {
           routeShader: null,
           domain: '',
           pubKey: '',
-          buyerID: '',
           newsletterConsent: false
         }
 
@@ -103,22 +109,21 @@ export class AuthService {
 }
 
 export const AuthPlugin = {
+  service: {} as AuthService,
   install (Vue: any, options: any) {
-    const client = new AuthService({
-      domain: options.domain,
-      clientID: options.clientID
-    })
-
-    Vue.login = () => {
-      client.login()
-    }
-
-    Vue.logout = () => {
-      client.logout()
-    }
-
-    Vue.signUp = () => {
-      client.signUp()
-    }
+    this.service = new AuthService(options)
+    Vue.prototype.$authService = this.service
+  },
+  login: function () {
+    this.service.login()
+  },
+  logout: function () {
+    this.service.logout()
+  },
+  signUp: function () {
+    this.service.signUp()
+  },
+  refreshToken: function () {
+    this.service.refreshToken()
   }
 }

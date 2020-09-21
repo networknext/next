@@ -7,7 +7,7 @@
       Update user account profile.
     </p>
     <Alert :message="message" :alertType="alertType" v-if="message !== ''"/>
-    <form @submit.prevent="UpdateCompanyInformation()">
+    <form @submit.prevent="updateCompanyInformation()">
       <div class="form-group">
         <label for="companyName">
           Company Name
@@ -251,20 +251,11 @@ export default class AccountSettings extends Vue {
     }
   }
 
-  private UpdateCompanyInformation () {
+  private updateCompanyInformation () {
     (this as any).$apiService
-      .UpdateCompanyInformation({ company_name: this.companyName, company_code: this.companyCode })
+      .updateCompanyInformation({ company_name: this.companyName, company_code: this.companyCode })
       .then((response: any) => {
-        const roles = response.new_roles || []
-        const companyName = this.companyName
-        const companyCode = this.companyCode
-        const userProfile: UserProfile = cloneDeep(this.$store.getters.userProfile)
-        if (roles.length > 0) {
-          userProfile.roles = roles
-        }
-        userProfile.companyCode = companyCode
-        userProfile.companyName = companyName
-        this.$store.commit('UPDATE_USER_PROFILE', userProfile)
+        (this as any).$authService.refreshToken()
         this.message = 'Company name updated successfully'
         this.alertType = AlertTypes.SUCCESS
         setTimeout(() => {

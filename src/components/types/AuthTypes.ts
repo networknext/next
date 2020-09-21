@@ -10,6 +10,5 @@ export interface UserProfile {
   routeShader: any;
   domain: string;
   pubKey: string;
-  buyerID: string;
   newsletterConsent: boolean
 }

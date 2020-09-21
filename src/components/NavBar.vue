@@ -122,15 +122,15 @@ export default class NavBar extends Vue {
   }
 
   private login (): void {
-    this.vueInstance.login()
+    (this as any).$authService.login()
   }
 
   private logout (): void {
-    this.vueInstance.logout()
+    (this as any).$authService.logout()
   }
 
   private signUp (): void {
-    this.vueInstance.signUp()
+    (this as any).$authService.signUp()
   }
 
   private fetchPortalVersion (): void {

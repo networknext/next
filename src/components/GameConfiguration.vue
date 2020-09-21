@@ -116,6 +116,11 @@ export default class GameConfiguration extends Vue {
         setTimeout(() => {
           this.message = ''
         }, 5000)
+        vm.$apiService.fetchAllBuyers()
+          .then((response: any) => {
+            const allBuyers = response.buyers
+            this.$store.commit('UPDATE_ALL_BUYERS', allBuyers)
+          })
       })
       .catch((error: Error) => {
         console.log('Something went wrong updating the public key')
