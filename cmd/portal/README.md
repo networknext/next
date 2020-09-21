@@ -39,6 +39,7 @@ The default setting is `warn` when running `make JWT_AUDIENCE="oQJH3YPHdvZJnxCPo
 #### Optional
 
 - `BACKEND_LOG_LEVEL`: one of `none`, `error`, `warn`, `info`, `debug`
+- `LOCAL_RELAYS`: number of local relays to add to the storer starting at port 10000
 
 #### Structure
 
