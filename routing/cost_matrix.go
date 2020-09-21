@@ -23,7 +23,7 @@ const (
 type CostMatrix struct {
 	mu sync.RWMutex
 
-	RelayIndices map[uint64]int 			// todo: rename to RelayIDToIndex
+	RelayIndices map[uint64]int // todo: rename to RelayIDToIndex
 
 	RelayIDs              []uint64
 	RelayNames            []string
