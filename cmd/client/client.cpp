@@ -79,7 +79,9 @@ int main()
 
     next_client_open_session( client, "127.0.0.1:32202" );
 
+#if NEXT_VERSION_MAJOR_INT >= 4
     double accumulator = 0.0;
+#endif // #if NEXT_VERSION_MAJOR_INT >= 4
 
     while ( !quit )
     {
@@ -91,6 +93,8 @@ int main()
         next_client_send_packet( client, packet_data, packet_bytes );
 
         next_sleep( 1.0 / 60.0 );
+
+#if NEXT_VERSION_MAJOR_INT >= 4
 
         accumulator += 1.0 / 60.0;
 
@@ -224,7 +228,10 @@ int main()
             }
 
             printf( "================================================================\n" );
+
         }
+
+#endif // #if NEXT_VERSION_MAJOR_INT >= 4
     }
 
     next_client_destroy( client );
