@@ -9,6 +9,7 @@ import (
 	"html/template"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -679,6 +680,7 @@ func RelayStatsFunc(logger log.Logger, rmap *routing.RelayMap) func(http.Respons
 		} else {
 			level.Error(logger).Log("msg", "could not marshal relay map", "err", err)
 			http.Error(w, "could not marshal relay map", http.StatusInternalServerError)
+			os.Exit(1)
 		}
 	}
 }

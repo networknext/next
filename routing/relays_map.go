@@ -194,7 +194,7 @@ func (r *RelayMap) MarshalBinary() ([]byte, error) {
 		for _, relay := range shard.relays {
 			s := strings.Split(relay.Version, ".")
 			if len(s) != 3 {
-				return nil, fmt.Errorf("invalid relay version for relay %s: %s", relay.Addr.String(), relay.Version)
+				return nil, fmt.Errorf("invalid relay version for relay %s: %s\nrelay = %v", relay.Addr.String(), relay.Version, relay)
 			}
 
 			var major uint8
