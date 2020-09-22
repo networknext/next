@@ -953,9 +953,9 @@ build-all: build-sdk3 build-sdk4 build-load-test build-portal-cruncher build-ana
 .PHONY: rebuild-all
 rebuild-all: clean build-all ## rebuilds enerything
 
-.PHONY: update-submodules
-update-submodules:
-	git submodule update --remote --merge
+.PHONY: update-sdk4
+update-sdk4:
+	git submodule update --remote --merge sdk4
 
 .PHONY: clean
 clean: ## cleans everything
