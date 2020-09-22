@@ -151,7 +151,7 @@
 
 #define NEXT_DIRECT_PACKET                                            255
 
-#define NEXT_BACKEND_PACKET_HASH_BYTES                                  8
+#define NEXT_PACKET_HASH_BYTES                                          8
 
 #define NEXT_CLIENT_ROUTE_UPDATE_TIMEOUT                               15
 
@@ -2504,17 +2504,17 @@ uint64_t next_random_uint64()
     return value;
 }
 
-bool is_backend_packet( const uint8_t * packet_data, int packet_bytes )
+bool check_packet_hash( const uint8_t * packet_data, int packet_bytes )
 {
-    if ( packet_bytes <= 1 + NEXT_BACKEND_PACKET_HASH_BYTES )
+    if ( packet_bytes <= 1 + NEXT_PACKET_HASH_BYTES )
         return 0;
 
     if ( packet_bytes > NEXT_MAX_PACKET_BYTES )
         return false;
 
-    const uint8_t * message = packet_data + 1 + NEXT_BACKEND_PACKET_HASH_BYTES;
+    const uint8_t * message = packet_data + 1 + NEXT_PACKET_HASH_BYTES;
     
-    int message_length = packet_bytes - 1 - NEXT_BACKEND_PACKET_HASH_BYTES;
+    int message_length = packet_bytes - 1 - NEXT_PACKET_HASH_BYTES;
     if ( message_length > 32 )
     {
         message_length = 32;
@@ -2523,21 +2523,10 @@ bool is_backend_packet( const uint8_t * packet_data, int packet_bytes )
     next_assert( message_length > 0 );
     next_assert( message_length <= 32 );
 
-    uint8_t hash[NEXT_BACKEND_PACKET_HASH_BYTES];
-    crypto_generichash( hash, NEXT_BACKEND_PACKET_HASH_BYTES, message, message_length, next_backend_packet_hash_key, crypto_generichash_KEYBYTES );
+    uint8_t hash[NEXT_PACKET_HASH_BYTES];
+    crypto_generichash( hash, NEXT_PACKET_HASH_BYTES, message, message_length, next_backend_packet_hash_key, crypto_generichash_KEYBYTES );
 
-    return memcmp( hash, packet_data + 1, NEXT_BACKEND_PACKET_HASH_BYTES ) == 0;
-}
-
-void hash_backend_packet( uint8_t * packet_data, size_t packet_bytes )
-{
-    next_assert( packet_bytes > NEXT_BACKEND_PACKET_HASH_BYTES );
-    int message_length = packet_bytes - 1 - NEXT_BACKEND_PACKET_HASH_BYTES;
-    if ( message_length > 32 )
-    {
-        message_length = 32;
-    }
-    crypto_generichash( packet_data, NEXT_BACKEND_PACKET_HASH_BYTES, packet_data + 1 + NEXT_BACKEND_PACKET_HASH_BYTES, message_length, next_backend_packet_hash_key, crypto_generichash_KEYBYTES );
+    return memcmp( hash, packet_data + 1, NEXT_PACKET_HASH_BYTES ) == 0;
 }
 
 // -------------------------------------------------------------
@@ -5247,9 +5236,11 @@ void next_route_manager_begin_next_route( next_route_manager_t * route_manager, 
 
     uint8_t * packet_data = route_manager->route_data.pending_route_request_packet_data;
     const int packet_bytes = route_manager->route_data.pending_route_request_packet_bytes;
-    int message_length = packet_bytes - 1 - NEXT_BACKEND_PACKET_HASH_BYTES;
+    int message_length = packet_bytes - 1 - NEXT_PACKET_HASH_BYTES;
     if ( message_length > 32 ) { message_length = 32; }
-    crypto_generichash( packet_data + 1, NEXT_BACKEND_PACKET_HASH_BYTES, packet_data + 1 + NEXT_BACKEND_PACKET_HASH_BYTES, message_length, next_backend_packet_hash_key, crypto_generichash_KEYBYTES );
+    crypto_generichash( packet_data + 1, NEXT_PACKET_HASH_BYTES, packet_data + 1 + NEXT_PACKET_HASH_BYTES, message_length, next_backend_packet_hash_key, crypto_generichash_KEYBYTES );
+
+    next_assert( check_packet_hash( packet_data, packet_bytes ) );
 }
 
 void next_route_manager_continue_next_route( next_route_manager_t * route_manager, bool committed, int num_tokens, uint8_t * tokens, const uint8_t * public_key, const uint8_t * private_key )
@@ -5297,9 +5288,11 @@ void next_route_manager_continue_next_route( next_route_manager_t * route_manage
 
     uint8_t * packet_data = route_manager->route_data.pending_continue_request_packet_data;
     const int packet_bytes = route_manager->route_data.pending_continue_request_packet_bytes;
-    int message_length = packet_bytes - 1 - NEXT_BACKEND_PACKET_HASH_BYTES;
+    int message_length = packet_bytes - 1 - NEXT_PACKET_HASH_BYTES;
     if ( message_length > 32 ) { message_length = 32; }
-    crypto_generichash( packet_data + 1, NEXT_BACKEND_PACKET_HASH_BYTES, packet_data + 1 + NEXT_BACKEND_PACKET_HASH_BYTES, message_length, next_backend_packet_hash_key, crypto_generichash_KEYBYTES );
+    crypto_generichash( packet_data + 1, NEXT_PACKET_HASH_BYTES, packet_data + 1 + NEXT_PACKET_HASH_BYTES, message_length, next_backend_packet_hash_key, crypto_generichash_KEYBYTES );
+
+    next_assert( check_packet_hash( packet_data, packet_bytes ) );
 
     next_printf( NEXT_LOG_LEVEL_INFO, "client continues route (%s)", committed ? "committed" : "uncommitted" );
 }
@@ -9583,14 +9576,14 @@ int next_write_backend_packet( uint8_t packet_id, void * packet_object, uint8_t 
         next_assert( sign_private_key );
         crypto_sign_state state;
         crypto_sign_init( &state );
-        crypto_sign_update( &state, packet_data + 1 + NEXT_BACKEND_PACKET_HASH_BYTES, *packet_bytes - 1 - NEXT_BACKEND_PACKET_HASH_BYTES );
+        crypto_sign_update( &state, packet_data + 1 + NEXT_PACKET_HASH_BYTES, *packet_bytes - 1 - NEXT_PACKET_HASH_BYTES );
         crypto_sign_final_create( &state, packet_data + *packet_bytes, NULL, sign_private_key );
         *packet_bytes += crypto_sign_BYTES;
     }
 
-    const uint8_t * message = packet_data + 1 + NEXT_BACKEND_PACKET_HASH_BYTES;
+    const uint8_t * message = packet_data + 1 + NEXT_PACKET_HASH_BYTES;
     
-    int message_length = *packet_bytes - NEXT_BACKEND_PACKET_HASH_BYTES;
+    int message_length = *packet_bytes - NEXT_PACKET_HASH_BYTES;
     if ( message_length > 32 )
     {
         message_length = 32;
@@ -9599,9 +9592,8 @@ int next_write_backend_packet( uint8_t packet_id, void * packet_object, uint8_t 
     next_assert( message_length > 0 );
     next_assert( message_length <= 32 );
 
-    crypto_generichash( packet_data + 1, NEXT_BACKEND_PACKET_HASH_BYTES, message, message_length, next_backend_packet_hash_key, crypto_generichash_KEYBYTES );
+    crypto_generichash( packet_data + 1, NEXT_PACKET_HASH_BYTES, message, message_length, next_backend_packet_hash_key, crypto_generichash_KEYBYTES );
 
-    next_assert( is_backend_packet( packet_data, *packet_bytes ) );
 
     return NEXT_OK;
 }
@@ -9613,20 +9605,20 @@ int next_read_backend_packet( uint8_t * packet_data, int packet_bytes, void * pa
 
     uint8_t packet_id = packet_data[0];
 
-    if ( packet_bytes < NEXT_BACKEND_PACKET_HASH_BYTES + 1 )
+    if ( packet_bytes < NEXT_PACKET_HASH_BYTES + 1 )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "backend packet is too small to be valid" );
         return NEXT_ERROR;
     }
 
-    if ( !is_backend_packet( packet_data, packet_bytes ) )
+    if ( !check_packet_hash( packet_data, packet_bytes ) )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "backend packet hash check failed (%d)", packet_id );
         return NEXT_ERROR;
     }
 
-    packet_bytes -= NEXT_BACKEND_PACKET_HASH_BYTES + 1;
-    packet_data += NEXT_BACKEND_PACKET_HASH_BYTES + 1;
+    packet_bytes -= NEXT_PACKET_HASH_BYTES + 1;
+    packet_data += NEXT_PACKET_HASH_BYTES + 1;
 
     if ( signed_packet && signed_packet[packet_id] )
     {
@@ -10923,13 +10915,14 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_ROUTE_REQUEST_PACKET )
     {
-        if ( packet_bytes != 1 + NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES )
+        if ( packet_bytes != 1 + 8 + NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored route request packet. wrong size" );
             return;
         }
 
-        uint8_t * buffer = packet_data + 1;
+        uint8_t * buffer = packet_data + 1 + 8;
+        // todo: check packet hash
         next_route_token_t route_token;
         if ( next_read_encrypted_route_token( &buffer, &route_token, next_router_public_key, server->server_route_private_key ) != NEXT_OK )
         {
@@ -10995,13 +10988,14 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_CONTINUE_REQUEST_PACKET )
     {
-        if ( packet_bytes != 1 + NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES )
+        if ( packet_bytes != 1 + 8 + NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored continue request packet. wrong size" );
             return;
         }
 
-        uint8_t * buffer = packet_data + 1;
+        uint8_t * buffer = packet_data + 1 + 8;
+        // todo: check packet hash
         next_continue_token_t continue_token;
         if ( next_read_encrypted_continue_token( &buffer, &continue_token, next_router_public_key, server->server_route_private_key ) != NEXT_OK )
         {
@@ -11658,7 +11652,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             return;
         }
 
-        next_assert( is_backend_packet( packet_data, packet_bytes ) );
+        next_assert( check_packet_hash( packet_data, packet_bytes ) );
 
         next_platform_socket_send_packet( server->socket, &server->backend_address, packet_data, packet_bytes );
 
@@ -11749,7 +11743,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
                 return;
             }
 
-            next_assert( is_backend_packet( packet_data, packet_bytes ) );
+            next_assert( check_packet_hash( packet_data, packet_bytes ) );
 
             next_platform_socket_send_packet( server->socket, &server->backend_address, packet_data, packet_bytes );
             
@@ -11786,7 +11780,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
                 return;
             }
 
-            next_assert( is_backend_packet( packet_data, packet_bytes ) );
+            next_assert( check_packet_hash( packet_data, packet_bytes ) );
 
             next_platform_socket_send_packet( server->socket, &server->backend_address, packet_data, packet_bytes );
 
