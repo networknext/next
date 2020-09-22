@@ -10971,7 +10971,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_CONTINUE_REQUEST_PACKET )
     {
-        if ( packet_bytes != 1 + 8 + NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES )
+        if ( packet_bytes != 1 + NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored continue request packet. wrong size" );
             return;
