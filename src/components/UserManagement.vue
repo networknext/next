@@ -1,5 +1,30 @@
 <template>
   <div class="card-body">
+    <div id="auto-signin">
+      <h5 class="card-title">
+        Automatic Sign up
+      </h5>
+      <p class="card-text">
+        Save time by allowing users with verified email addresses automatic access to your Network Next account.
+      </p>
+      <Alert :message="messages.autoDomains" :alertType="alertTypes.autoDomains" v-if="messages.autoDomains !== ''"/>
+      <form v-on:submit.prevent="saveAutoSignUp()">
+        <div class="form-group">
+          <label for="auto-signup-domains">
+            Automatic Sign up Domains
+          </label>
+          <textarea class="form-control form-control-sm" id="auto-signup-domains" v-model="autoSignupDomains"></textarea>
+          <small class="form-text text-muted">
+            Setting this to a comma seperated list of email domains will allow anyone with that domain to assign themselves to your account using your company code ({{ companyCode }}) in the account settings page.
+          </small>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">
+          Save Automatic Sign up
+        </button>
+        <p class="text-muted text-small mt-2"></p>
+      </form>
+      <hr class="mt-4 mb-4">
+  </div>
     <h5 class="card-title">
       Add new users
     </h5>
@@ -131,7 +156,7 @@ import { Component, Vue } from 'vue-property-decorator'
 import Multiselect from 'vue-multiselect'
 import Alert from './Alert.vue'
 import { AlertTypes } from './types/AlertTypes'
-import _ from 'lodash'
+import _, { cloneDeep } from 'lodash'
 import { UserProfile } from './types/AuthTypes'
 
 /**
@@ -159,17 +184,22 @@ export default class UserManagement extends Vue {
   private alertTypes: any
   private showTable: boolean
   private newUserEmails: string
+  private autoSignupDomains: string
   private unwatch: any
+  private companyCode: string
+  private userProfile: UserProfile
 
   constructor () {
     super()
     this.newUserEmails = ''
     this.showTable = false
     this.messages = {
+      autoDomains: '',
       newUsers: '',
       editUser: ''
     }
     this.alertTypes = {
+      autoDomains: '',
       newUsers: '',
       editUser: ''
     }
@@ -177,6 +207,9 @@ export default class UserManagement extends Vue {
     this.newUserRoles = []
     this.companyUsers = []
     this.companyUsersReadOnly = []
+    this.companyCode = ''
+    this.autoSignupDomains = ''
+    this.userProfile = {} as UserProfile
   }
 
   private mounted () {
@@ -184,11 +217,11 @@ export default class UserManagement extends Vue {
       this.unwatch = this.$store.watch(
         (_, getters: any) => getters.userProfile,
         (userProfile: any) => {
-          this.loadUserAccounts(userProfile)
+          this.checkUserProfile(userProfile)
         }
       )
     } else {
-      this.loadUserAccounts(this.$store.getters.userProfile)
+      this.checkUserProfile(this.$store.getters.userProfile)
     }
   }
 
@@ -196,10 +229,12 @@ export default class UserManagement extends Vue {
     this.unwatch()
   }
 
-  private loadUserAccounts (userProfile: UserProfile) {
+  private checkUserProfile (userProfile: UserProfile) {
     if (!userProfile) {
       return
     }
+    this.companyCode = userProfile.companyCode || ''
+    this.autoSignupDomains = userProfile.domains.join(', ')
     const promises = [
       // TODO: Figure out how to get rid of this. this.$apiService should be possible...
       // HACK: This is a hack to get tests to work properly
@@ -217,10 +252,41 @@ export default class UserManagement extends Vue {
         this.companyUsersReadOnly = _.cloneDeep(this.companyUsers)
         this.showTable = true
       })
+    this.userProfile = cloneDeep(this.$store.getters.userProfile)
   }
 
   private editUser (account: any, index: number): void {
     this.setAccountState(true, false, account, index)
+  }
+
+  private saveAutoSignUp (): void {
+    const domains = this.autoSignupDomains
+      .split(/(,|\n)/g)
+      .map((x) => x.trim())
+      .filter((x) => x !== '' && x !== ',');
+
+    // TODO: Figure out how to get rid of this. this.$apiService should be possible...
+    // HACK: This is a hack to get tests to work properly
+    (this as any).$apiService
+      .updateAutoSignupDomains({ domains: domains })
+      .then((response: any) => {
+        this.userProfile.domains = domains
+        this.$store.commit('UPDATE_USER_PROFILE', this.userProfile)
+        this.alertTypes.autoDomains = AlertTypes.SUCCESS
+        this.messages.autoDomains = 'Successfully update signup domains'
+        setTimeout(() => {
+          this.messages.autoDomains = ''
+        }, 5000)
+      })
+      .catch((error: Error) => {
+        console.log('Something went wrong adding auto signup domains')
+        console.log(error)
+        this.alertTypes.autoDomains = AlertTypes.ERROR
+        this.messages.autoDomains = 'Failed to edit user account'
+        setTimeout(() => {
+          this.messages.autoDomains = ''
+        }, 5000)
+      })
   }
 
   private saveUser (account: any, index: number): void {

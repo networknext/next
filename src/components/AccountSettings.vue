@@ -35,7 +35,7 @@
         </small>
       </div>
       <button type="submit" class="btn btn-primary btn-sm" v-bind:disabled="!validCompanyInfo">
-        Update Company Name
+        Update Company Settings
       </button>
       <p class="text-muted text-small mt-2"></p>
     </form>
@@ -78,7 +78,6 @@
 </template>
 
 <script lang="ts">
-import { cloneDeep } from 'lodash'
 import { Component, Vue } from 'vue-property-decorator'
 import Alert from './Alert.vue'
 import { AlertTypes } from './types/AlertTypes'
@@ -165,6 +164,7 @@ export default class AccountSettings extends Vue {
     this.newsletterConsent = userProfile.newsletterConsent || false
     this.checkCompanyName()
     this.checkCompanyCode()
+    this.checkConfirmPassword()
   }
 
   private destory () {

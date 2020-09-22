@@ -67,9 +67,9 @@ export class AuthService {
           roles: [],
           verified: false,
           routeShader: null,
-          domain: '',
           pubKey: '',
-          newsletterConsent: false
+          newsletterConsent: false,
+          domains: []
         }
 
         this.authClient
@@ -80,13 +80,11 @@ export class AuthService {
             ]
             const roles: Array<any> = nnScope.roles || { roles: [] }
             const companyCode: string = nnScope.company_code || ''
-            const newsletterConsent: boolean = nnScope.newsletterConsent || false
+            const newsletterConsent: boolean = nnScope.newsletter || false
             const email = authResult.email || ''
-            const domain = email.split('@')[1]
             const token = authResult.__raw
 
             userProfile.roles = roles
-            userProfile.domain = domain
             userProfile.email = email
             userProfile.idToken = token
             userProfile.auth0ID = authResult.sub
@@ -113,17 +111,5 @@ export const AuthPlugin = {
   install (Vue: any, options: any) {
     this.service = new AuthService(options)
     Vue.prototype.$authService = this.service
-  },
-  login: function () {
-    this.service.login()
-  },
-  logout: function () {
-    this.service.logout()
-  },
-  signUp: function () {
-    this.service.signUp()
-  },
-  refreshToken: function () {
-    this.service.refreshToken()
   }
 }

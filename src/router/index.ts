@@ -97,7 +97,10 @@ const router = new VueRouter({
 })
 
 // Catch all for routes. This can be used for a lot of different things like separating anon portal from authorized portal etc
-router.beforeEach(async (to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
+router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
+  // TODO: Make sure these are doing what we want them to do.
+  // TODO: store.getters.isAdmin doesn't work here. store.getters shows that everything is initialized correctly but accessing any of the members within getters, doesn't work?!
+  // BUG: Re-routes valid users to the map when it should just refresh the page...
   if ((!store.getters.isAdmin && !store.getters.isOwner && (to.name === 'users' || to.name === 'game-config')) || to.name === 'undefined') {
     next('/')
     store.commit('UPDATE_CURRENT_PAGE', 'map')
