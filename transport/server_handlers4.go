@@ -2,6 +2,7 @@ package transport
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"math"
 	"net"
@@ -284,7 +285,7 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 			sessionData.Version = SessionDataVersion4
 			sessionData.SessionID = packet.SessionID
 			sessionData.SliceNumber = uint32(packet.SliceNumber + 1)
-			sessionData.ExpireTimestamp = uint64(time.Now().Unix())
+			sessionData.ExpireTimestamp = uint64(time.Now().Unix()) + billing.BillingSliceSeconds
 
 			sessionData.Location, err = ipLocator.LocateIP(packet.ClientAddress.IP)
 			if err != nil {
@@ -417,8 +418,10 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 			}
 		} else {
 			reframedRouteRelays := [routing.MaxRelays]int32{}
-			if !core.ReframeRoute(routeMatrix.RelayIDsToIndices, sessionData.Route.RelayIDs[:], &reframedRouteRelays) {
-				// todo: handle error - route relay is no longer in route matrix
+			if !core.ReframeRoute(routeMatrix.RelayIDsToIndices, sessionData.Route.RelayIDs[:sessionData.Route.NumRelays], &reframedRouteRelays) {
+				sessionData.Route = routing.Route{}
+				level.Warn(logger).Log("warn", "one or more relays no longer exist in the route matrix for this continue token")
+				return
 			}
 
 			if core.MakeRouteDecision_StayOnNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, &buyer.CustomerConfig, &buyer.InternalConfig, int32(packet.DirectRTT), int32(sessionData.Route.Stats.RTT), int32(sessionData.Route.NumRelays), reframedRouteRelays, reframedNearRelays, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays) {
@@ -431,6 +434,21 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 				response.RouteType = routing.RouteTypeContinue
 				response.NumTokens = numTokens
 				response.Tokens = tokenData
+			} else {
+				// todo: add metrics here to track why we veto a route
+
+				// Route was vetoed - check to see why
+				if sessionData.RouteState.NoRoute {
+					level.Warn(logger).Log("warn", "route no longer exists")
+				}
+
+				if sessionData.RouteState.MultipathOverload {
+					level.Warn(logger).Log("warn", "multipath overloaded this user's connection", "user_hash", fmt.Sprintf("%016x", sessionData.RouteState.UserID))
+				}
+
+				if sessionData.RouteState.LatencyWorse {
+					level.Warn(logger).Log("warn", "this route makes latency worse")
+				}
 			}
 		}
 
