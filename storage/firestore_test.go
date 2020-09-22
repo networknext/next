@@ -164,6 +164,296 @@ func TestFirestore(t *testing.T) {
 		})
 	})
 
+	t.Run("Customer", func(t *testing.T) {
+		t.Run("customer not found", func(t *testing.T) {
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			assert.NoError(t, err)
+
+			defer func() {
+				err := cleanFireStore(ctx, fs.Client)
+				assert.NoError(t, err)
+			}()
+
+			customer, err := fs.Customer("test")
+			assert.Empty(t, customer)
+			assert.EqualError(t, err, "customer with reference test not found")
+		})
+
+		t.Run("success", func(t *testing.T) {
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			assert.NoError(t, err)
+
+			defer func() {
+				err := cleanFireStore(ctx, fs.Client)
+				assert.NoError(t, err)
+			}()
+
+			expectedCustomer := routing.Customer{
+				Code: "local",
+				Name: "Local",
+			}
+
+			err = fs.AddCustomer(ctx, expectedCustomer)
+			assert.NoError(t, err)
+
+			actual, err := fs.Customer(expectedCustomer.Code)
+			assert.NoError(t, err)
+
+			assert.Equal(t, expectedCustomer, actual)
+		})
+	})
+
+	t.Run("Customers", func(t *testing.T) {
+		fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+		assert.NoError(t, err)
+
+		defer func() {
+			err := cleanFireStore(ctx, fs.Client)
+			assert.NoError(t, err)
+		}()
+
+		expectedCustomers := []routing.Customer{
+			{
+				Code: "local",
+				Name: "Local",
+			},
+			{
+				Code: "local-local",
+				Name: "Local Local",
+			},
+		}
+
+		for i := 0; i < len(expectedCustomers); i++ {
+			err = fs.AddCustomer(ctx, expectedCustomers[i])
+			assert.NoError(t, err)
+		}
+
+		actual := fs.Customers()
+		assert.Equal(t, expectedCustomers, actual)
+	})
+
+	t.Run("AddCustomer", func(t *testing.T) {
+		t.Run("new customer", func(t *testing.T) {
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			assert.NoError(t, err)
+
+			defer func() {
+				err := cleanFireStore(ctx, fs.Client)
+				assert.NoError(t, err)
+			}()
+
+			expectedCustomer := routing.Customer{
+				Code: "local",
+				Name: "Local",
+			}
+
+			err = fs.AddCustomer(ctx, expectedCustomer)
+			assert.NoError(t, err)
+
+			actual, err := fs.Customer(expectedCustomer.Code)
+			assert.NoError(t, err)
+
+			assert.Equal(t, expectedCustomer, actual)
+
+			// Check that the customer exists and is properly linked to the buyer
+
+			// Grab the customer
+			cdocs := fs.Client.Collection("Customer").Documents(ctx)
+
+			cdoc, err := cdocs.Next()
+			assert.NoError(t, err)
+
+			var customerInRemoteStorage customer
+			err = cdoc.DataTo(&customerInRemoteStorage)
+			assert.NoError(t, err)
+
+			cdocs.Stop()
+
+			assert.Equal(t, expectedCustomer, customerInRemoteStorage)
+		})
+
+		t.Run("existing customer", func(t *testing.T) {
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			assert.NoError(t, err)
+
+			defer func() {
+				err := cleanFireStore(ctx, fs.Client)
+				assert.NoError(t, err)
+			}()
+
+			expectedCustomer := routing.Customer{
+				Code:                   "local",
+				Name:                   "Local",
+				Active:                 false,
+				AutomaticSignInDomains: "",
+				BuyerRef:               nil,
+				SellerRef:              nil,
+			}
+
+			err = fs.AddCustomer(ctx, expectedCustomer)
+			assert.NoError(t, err)
+
+			actual, err := fs.Customer(expectedCustomer.Code)
+			assert.NoError(t, err)
+
+			err = fs.AddCustomer(ctx, expectedCustomer)
+			assert.Error(t, err)
+
+			assert.Equal(t, expectedCustomer, actual)
+
+			// Check that the customer exists and is properly linked to the buyer
+
+			// Grab the customer
+			cdocs := fs.Client.Collection("Customer").Documents(ctx)
+
+			cdoc, err := cdocs.Next()
+			assert.NoError(t, err)
+
+			var customerInRemoteStorage customer
+			err = cdoc.DataTo(&customerInRemoteStorage)
+			assert.NoError(t, err)
+
+			// Check to make sure this is the only customer
+			cdoc, err = cdocs.Next()
+			assert.Error(t, err)
+
+			cdocs.Stop()
+
+			assert.Equal(t, expectedCustomer, customerInRemoteStorage)
+		})
+	})
+
+	t.Run("RemoveCustomer", func(t *testing.T) {
+		t.Run("customer not found", func(t *testing.T) {
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			assert.NoError(t, err)
+
+			defer func() {
+				err := cleanFireStore(ctx, fs.Client)
+				assert.NoError(t, err)
+			}()
+
+			err = fs.RemoveCustomer(ctx, "test")
+			assert.EqualError(t, err, "customer with reference not test found")
+		})
+
+		t.Run("success - update existing customer", func(t *testing.T) {
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			assert.NoError(t, err)
+
+			defer func() {
+				err := cleanFireStore(ctx, fs.Client)
+				assert.NoError(t, err)
+			}()
+
+			actualCustomer := routing.Customer{
+				Code: "local",
+				Name: "Local",
+			}
+
+			updateCustomer := routing.Customer{
+				Code: "local",
+				Name: "local2",
+			}
+
+			err = fs.AddCustomer(ctx, actualCustomer)
+			assert.NoError(t, err)
+
+			err = fs.AddCustomer(ctx, updateCustomer)
+			assert.NoError(t, err)
+
+			// Check that the customer was updated successfully
+			cdocs := fs.Client.Collection("Customer").Documents(ctx)
+
+			cdoc, err := cdocs.Next()
+			assert.NoError(t, err)
+
+			var customerInRemoteStorage customer
+			err = cdoc.DataTo(&customerInRemoteStorage)
+			assert.NoError(t, err)
+
+			assert.Equal(t, updateCustomer, customerInRemoteStorage)
+		})
+
+		t.Run("success - removed customer", func(t *testing.T) {
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			assert.NoError(t, err)
+
+			defer func() {
+				err := cleanFireStore(ctx, fs.Client)
+				assert.NoError(t, err)
+			}()
+
+			actualCustomer := routing.Customer{
+				Code: "local",
+				Name: "Local",
+			}
+
+			err = fs.AddCustomer(ctx, actualCustomer)
+			assert.NoError(t, err)
+
+			err = fs.RemoveCustomer(ctx, actualCustomer.Code)
+			assert.NoError(t, err)
+
+			// Check that the customer was removed successfully
+			cdocs := fs.Client.Collection("Customer").Documents(ctx)
+
+			_, err = cdocs.Next()
+			assert.Error(t, err)
+		})
+	})
+
+	t.Run("SetCustomer", func(t *testing.T) {
+		t.Run("customer not found", func(t *testing.T) {
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			assert.NoError(t, err)
+
+			defer func() {
+				err := cleanFireStore(ctx, fs.Client)
+				assert.NoError(t, err)
+			}()
+
+			customer := routing.Customer{
+				Code: "local",
+				Name: "Local",
+			}
+
+			err = fs.SetCustomer(ctx, customer)
+			assert.EqualError(t, err, "customer with reference local not found")
+		})
+
+		t.Run("success", func(t *testing.T) {
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			assert.NoError(t, err)
+
+			defer func() {
+				err := cleanFireStore(ctx, fs.Client)
+				assert.NoError(t, err)
+			}()
+
+			actualCustomer := routing.Customer{
+				Code: "local",
+				Name: "Local",
+			}
+
+			err = fs.AddCustomer(ctx, actualCustomer)
+			assert.NoError(t, err)
+
+			actual := actualCustomer
+			actual.Active = true
+
+			err = fs.SetCustomer(ctx, actual)
+			assert.NoError(t, err)
+
+			actual, err = fs.Customer(actualCustomer.Code)
+			assert.NoError(t, err)
+
+			assert.NotEqual(t, actualCustomer, actual)
+			actual.Active = false
+			assert.Equal(t, actualCustomer, actual)
+		})
+	})
+
 	t.Run("Buyer", func(t *testing.T) {
 		t.Run("buyer not found", func(t *testing.T) {
 			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
