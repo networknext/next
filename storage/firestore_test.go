@@ -265,7 +265,7 @@ func TestFirestore(t *testing.T) {
 			cdoc, err := cdocs.Next()
 			assert.NoError(t, err)
 
-			var customerInRemoteStorage customer
+			var customerInRemoteStorage routing.Customer
 			err = cdoc.DataTo(&customerInRemoteStorage)
 			assert.NoError(t, err)
 
@@ -311,7 +311,7 @@ func TestFirestore(t *testing.T) {
 			cdoc, err := cdocs.Next()
 			assert.NoError(t, err)
 
-			var customerInRemoteStorage customer
+			var customerInRemoteStorage routing.Customer
 			err = cdoc.DataTo(&customerInRemoteStorage)
 			assert.NoError(t, err)
 
@@ -370,7 +370,7 @@ func TestFirestore(t *testing.T) {
 			cdoc, err := cdocs.Next()
 			assert.NoError(t, err)
 
-			var customerInRemoteStorage customer
+			var customerInRemoteStorage routing.Customer
 			err = cdoc.DataTo(&customerInRemoteStorage)
 			assert.NoError(t, err)
 
