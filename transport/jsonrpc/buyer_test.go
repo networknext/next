@@ -276,13 +276,13 @@ func TestTotalSessions(t *testing.T) {
 
 	ctx := context.Background()
 
-	storer.AddBuyer(ctx, routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
-	storer.AddBuyer(ctx, routing.Buyer{ID: 2, CompanyCode: "local-local", PublicKey: pubkey})
-	storer.AddBuyer(ctx, routing.Buyer{ID: 3, CompanyCode: "local-local-local", PublicKey: pubkey})
-
 	storer.AddCustomer(ctx, routing.Customer{Code: "local", Name: "Local"})
 	storer.AddCustomer(ctx, routing.Customer{Code: "local-local", Name: "Local Local"})
 	storer.AddCustomer(ctx, routing.Customer{Code: "local-local-local", Name: "Local Local Local"})
+
+	storer.AddBuyer(ctx, routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
+	storer.AddBuyer(ctx, routing.Buyer{ID: 2, CompanyCode: "local-local", PublicKey: pubkey})
+	storer.AddBuyer(ctx, routing.Buyer{ID: 3, CompanyCode: "local-local-local", PublicKey: pubkey})
 
 	logger := log.NewNopLogger()
 	svc := jsonrpc.BuyersService{

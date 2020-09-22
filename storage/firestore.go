@@ -1867,6 +1867,7 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 		seller := routing.Seller{
 			ID:                        sdoc.Ref.ID,
 			Name:                      s.Name,
+			CompanyCode:               s.CompanyCode,
 			IngressPriceNibblinsPerGB: routing.Nibblin(s.IngressPriceNibblinsPerGB),
 			EgressPriceNibblinsPerGB:  routing.Nibblin(s.EgressPriceNibblinsPerGB),
 		}

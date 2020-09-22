@@ -1263,7 +1263,7 @@ func (s *BuyersService) AddDatacenterMap(r *http.Request, args *AddDatacenterMap
 }
 
 // SameBuyerRole checks the JWT for the correct passed in buyerID
-func (s *BuyersService) SameBuyerRole(buyerID string) RoleFunc {
+func (s *BuyersService) SameBuyerRole(companyCode string) RoleFunc {
 	return func(req *http.Request) (bool, error) {
 		if VerifyAnyRole(req, AdminRole, OpsRole) {
 			return true, nil
@@ -1271,25 +1271,21 @@ func (s *BuyersService) SameBuyerRole(buyerID string) RoleFunc {
 		if VerifyAllRoles(req, AnonymousRole) {
 			return false, nil
 		}
-		if buyerID == "" {
+		if companyCode == "" {
 			return false, fmt.Errorf("SameBuyerRole(): buyerID is required")
 		}
-		companyCode, ok := req.Context().Value(Keys.CompanyKey).(string)
+		requestCompanyCode, ok := req.Context().Value(Keys.CompanyKey).(string)
 		if !ok {
 			err := fmt.Errorf("SameBuyerRole(): user is not assigned to a company")
 			level.Error(s.Logger).Log("err", err)
 			return false, err
 		}
-		if companyCode == "" {
+		if requestCompanyCode == "" {
 			err := fmt.Errorf("SameBuyerRole(): failed to parse company code")
 			level.Error(s.Logger).Log("err", err)
 			return false, err
 		}
-		buyer, err := s.Storage.BuyerWithCompanyCode(companyCode)
-		if err != nil {
-			return false, fmt.Errorf("SameBuyerRole(): BuyerWithDomain error: %v", err)
-		}
 
-		return buyerID == fmt.Sprintf("%016x", buyer.ID), nil
+		return companyCode == requestCompanyCode, nil
 	}
 }

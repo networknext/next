@@ -86,8 +86,9 @@ type BuyersReply struct {
 }
 
 type buyer struct {
-	ID   uint64 `json:"id"`
-	Name string `json:"name"`
+	CompanyName string `json:"company_name"`
+	CompanyCode string `json:"company_code"`
+	ID          uint64 `json:"id"`
 }
 
 func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersReply) error {
@@ -99,13 +100,14 @@ func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersRepl
 			return err
 		}
 		reply.Buyers = append(reply.Buyers, buyer{
-			ID:   b.ID,
-			Name: company.Name,
+			ID:          b.ID,
+			CompanyName: company.Name,
+			CompanyCode: company.Code,
 		})
 	}
 
 	sort.Slice(reply.Buyers, func(i int, j int) bool {
-		return reply.Buyers[i].Name < reply.Buyers[j].Name
+		return reply.Buyers[i].CompanyName < reply.Buyers[j].CompanyName
 	})
 
 	return nil

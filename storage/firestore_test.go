@@ -2347,8 +2347,6 @@ func TestFirestore(t *testing.T) {
 		err = fs.Sync(ctx)
 		assert.NoError(t, err)
 
-		fmt.Println(fs.Buyers())
-
 		actualBuyer, err := fs.Buyer(expectedBuyer.ID)
 		assert.NoError(t, err)
 
