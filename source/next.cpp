@@ -10921,8 +10921,13 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             return;
         }
 
+        if ( !check_packet_hash( packet_data, packet_bytes ) )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored route request packet. hash check failed" );
+            return;
+        }
+
         uint8_t * buffer = packet_data + 1 + 8;
-        // todo: check packet hash
         next_route_token_t route_token;
         if ( next_read_encrypted_route_token( &buffer, &route_token, next_router_public_key, server->server_route_private_key ) != NEXT_OK )
         {
@@ -10994,8 +10999,13 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             return;
         }
 
+        if ( !check_packet_hash( packet_data, packet_bytes ) )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored route continue packet. hash check failed" );
+            return;
+        }
+
         uint8_t * buffer = packet_data + 1 + 8;
-        // todo: check packet hash
         next_continue_token_t continue_token;
         if ( next_read_encrypted_continue_token( &buffer, &continue_token, next_router_public_key, server->server_route_private_key ) != NEXT_OK )
         {
