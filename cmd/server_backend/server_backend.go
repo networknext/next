@@ -8,6 +8,7 @@ package main
 import (
 	"context"
 	"encoding/base64"
+	"encoding/binary"
 	"expvar"
 	"fmt"
 	"net"
@@ -116,6 +117,7 @@ func main() {
 	fmt.Printf("env is %s\n", env)
 
 	var customerPublicKey []byte
+	var customerID uint64
 	var serverPrivateKey []byte
 	var routerPrivateKey []byte
 	var relayPublicKey []byte
@@ -161,6 +163,12 @@ func main() {
 					level.Error(logger).Log("envvar", "NEXT_CUSTOMER_PUBLIC_KEY", "msg", "could not parse", "err", err)
 					os.Exit(1)
 				}
+				customerPublicKey = customerPublicKey[8:]
+			}
+
+			if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
+				customerPublicKey, _ = base64.StdEncoding.DecodeString(key)
+				customerID = binary.LittleEndian.Uint64(customerPublicKey[:8])
 				customerPublicKey = customerPublicKey[8:]
 			}
 		}
@@ -215,11 +223,29 @@ func main() {
 	}
 
 	// Create dummy buyer and datacenter for local testing
-	if env == "local" {
-		fmt.Printf("adding dummy local buyer, sellers, datacenter, and relays\n")
+	if firestoreEmulatorOK {
+		storage.SeedStorage(logger, ctx, db, relayPublicKey, customerID, customerPublicKey)
+	}
+
+	if !firestoreEmulatorOK && env == "local" {
+		if err := db.AddCustomer(ctx, routing.Customer{
+			Code: "local",
+			Name: "Local",
+		}); err != nil {
+			level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
+			os.Exit(1)
+		}
+
+		if err := db.AddCustomer(ctx, routing.Customer{
+			Code: "ghost-army",
+			Name: "Ghost Army",
+		}); err != nil {
+			level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
+			os.Exit(1)
+		}
 		if err := db.AddBuyer(ctx, routing.Buyer{
 			ID:                   13672574147039585173,
-			Name:                 "local",
+			CompanyCode:          "local",
 			Live:                 true,
 			PublicKey:            customerPublicKey,
 			RoutingRulesSettings: routing.LocalRoutingRulesSettings,
@@ -229,14 +255,16 @@ func main() {
 		}
 		seller := routing.Seller{
 			ID:                        "sellerID",
-			Name:                      "local",
+			CompanyCode:               "local",
+			Name:                      "Local",
 			IngressPriceNibblinsPerGB: 0.1 * 1e9,
 			EgressPriceNibblinsPerGB:  0.5 * 1e9,
 		}
 
 		valveSeller := routing.Seller{
 			ID:                        "valve",
-			Name:                      "valve",
+			CompanyCode:               "valve",
+			Name:                      "Valve",
 			IngressPriceNibblinsPerGB: 0.1 * 1e9,
 			EgressPriceNibblinsPerGB:  0.5 * 1e9,
 		}
