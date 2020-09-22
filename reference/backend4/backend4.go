@@ -587,7 +587,7 @@ func RouteChanged(previous []uint64, current []uint64) bool {
 
 func IsNetworkNextPacket(packetData []byte) bool {
 	packetBytes := len(packetData)
-	if packetBytes <= 1 + NEXT_PACKET_HASH_BYTES {
+	if packetBytes <= 1+NEXT_PACKET_HASH_BYTES {
 		fmt.Printf("packet too small\n")
 		return false
 	}
@@ -931,6 +931,8 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	index = 0
 
 	WriteUint32(responseData, &index, NEXT_RELAY_UPDATE_RESPONSE_VERSION)
+
+	WriteUint64(responseData, &index, uint64(time.Now().Unix()))
 
 	WriteUint32(responseData, &index, uint32(len(relaysToPing)))
 
@@ -2580,7 +2582,7 @@ func main() {
 					sessionData.ExpireTimestamp += 20
 					sessionData.SessionVersion += 1
 
-					tokens, err = WriteRouteTokens(sessionData.ExpireTimestamp, sessionData.SessionId, uint8(sessionData.SessionVersion), 256, 256, numNodes, addresses, publicKeys, routerPrivateKey)
+					tokens, err = WriteRouteTokens(sessionData.ExpireTimestamp, sessionData.SessionId, uint8(sessionData.SessionVersion), 512, 512, numNodes, addresses, publicKeys, routerPrivateKey)
 
 					if err != nil {
 						fmt.Printf("error: could not write route tokens: %v\n", err)
