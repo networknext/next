@@ -5239,11 +5239,17 @@ void next_route_manager_begin_next_route( next_route_manager_t * route_manager, 
     route_manager->route_data.pending_route_session_version = route_token.session_version;
     route_manager->route_data.pending_route_kbps_up = route_token.kbps_up;
     route_manager->route_data.pending_route_kbps_down = route_token.kbps_down;
-    route_manager->route_data.pending_route_request_packet_bytes = 1 + ( num_tokens - 1 ) * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES;
+    route_manager->route_data.pending_route_request_packet_bytes = 1 + 8 + ( num_tokens - 1 ) * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES;
     route_manager->route_data.pending_route_request_packet_data[0] = NEXT_ROUTE_REQUEST_PACKET;
-    memcpy( route_manager->route_data.pending_route_request_packet_data + 1, tokens + NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES, ( size_t(num_tokens) - 1 ) * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES );
+    memcpy( route_manager->route_data.pending_route_request_packet_data + 1 + 8, tokens + NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES, ( size_t(num_tokens) - 1 ) * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES );
     memcpy( route_manager->route_data.pending_route_private_key, route_token.private_key, crypto_box_SECRETKEYBYTES );
     next_assert( route_manager->route_data.pending_route_request_packet_bytes <= NEXT_MAX_PACKET_BYTES );
+
+    uint8_t * packet_data = route_manager->route_data.pending_route_request_packet_data;
+    const int packet_bytes = route_manager->route_data.pending_route_request_packet_bytes;
+    int message_length = packet_bytes - 1 - NEXT_BACKEND_PACKET_HASH_BYTES;
+    if ( message_length > 32 ) { message_length = 32; }
+    crypto_generichash( packet_data + 1, NEXT_BACKEND_PACKET_HASH_BYTES, packet_data + 1 + NEXT_BACKEND_PACKET_HASH_BYTES, message_length, next_backend_packet_hash_key, crypto_generichash_KEYBYTES );
 }
 
 void next_route_manager_continue_next_route( next_route_manager_t * route_manager, bool committed, int num_tokens, uint8_t * tokens, const uint8_t * public_key, const uint8_t * private_key )
@@ -5284,10 +5290,16 @@ void next_route_manager_continue_next_route( next_route_manager_t * route_manage
     route_manager->route_data.pending_continue_committed = committed;
     route_manager->route_data.pending_continue_start_time = next_time();
     route_manager->route_data.pending_continue_last_send_time = -1000.0;
-    route_manager->route_data.pending_continue_request_packet_bytes = 1 + ( num_tokens - 1 ) * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES;
+    route_manager->route_data.pending_continue_request_packet_bytes = 1 + 8 + ( num_tokens - 1 ) * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES;
     route_manager->route_data.pending_continue_request_packet_data[0] = NEXT_CONTINUE_REQUEST_PACKET;
-    memcpy( route_manager->route_data.pending_continue_request_packet_data + 1, tokens + NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES, ( size_t(num_tokens) - 1 ) * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES );
+    memcpy( route_manager->route_data.pending_continue_request_packet_data + 1 + 8, tokens + NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES, ( size_t(num_tokens) - 1 ) * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES );
     next_assert( route_manager->route_data.pending_continue_request_packet_bytes <= NEXT_MAX_PACKET_BYTES );
+
+    uint8_t * packet_data = route_manager->route_data.pending_continue_request_packet_data;
+    const int packet_bytes = route_manager->route_data.pending_continue_request_packet_bytes;
+    int message_length = packet_bytes - 1 - NEXT_BACKEND_PACKET_HASH_BYTES;
+    if ( message_length > 32 ) { message_length = 32; }
+    crypto_generichash( packet_data + 1, NEXT_BACKEND_PACKET_HASH_BYTES, packet_data + 1 + NEXT_BACKEND_PACKET_HASH_BYTES, message_length, next_backend_packet_hash_key, crypto_generichash_KEYBYTES );
 
     next_printf( NEXT_LOG_LEVEL_INFO, "client continues route (%s)", committed ? "committed" : "uncommitted" );
 }
