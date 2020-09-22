@@ -106,7 +106,7 @@ func TestSessionUpdateHandler4ClientLocateFailure(t *testing.T) {
 		SessionID:       requestPacket.SessionID,
 		SliceNumber:     requestPacket.SliceNumber + 1,
 		Location:        routing.LocationNullIsland,
-		ExpireTimestamp: uint64(time.Now().Unix()),
+		ExpireTimestamp: uint64(time.Now().Unix()) + billing.BillingSliceSeconds,
 	}
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
@@ -414,7 +414,7 @@ func TestSessionUpdateHandler4BuyerNotFound(t *testing.T) {
 		SessionID:       requestPacket.SessionID,
 		SliceNumber:     requestPacket.SliceNumber + 1,
 		Location:        routing.LocationNullIsland,
-		ExpireTimestamp: uint64(time.Now().Unix()),
+		ExpireTimestamp: uint64(time.Now().Unix()) + billing.BillingSliceSeconds,
 	}
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
@@ -482,7 +482,7 @@ func TestSessionUpdateHandler4DatacenterNotFound(t *testing.T) {
 		SessionID:       requestPacket.SessionID,
 		SliceNumber:     requestPacket.SliceNumber + 1,
 		Location:        routing.LocationNullIsland,
-		ExpireTimestamp: uint64(time.Now().Unix()),
+		ExpireTimestamp: uint64(time.Now().Unix()) + billing.BillingSliceSeconds,
 	}
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
@@ -551,7 +551,7 @@ func TestSessionUpdateHandler4NoNearRelays(t *testing.T) {
 		SessionID:       requestPacket.SessionID,
 		SliceNumber:     requestPacket.SliceNumber + 1,
 		Location:        routing.LocationNullIsland,
-		ExpireTimestamp: uint64(time.Now().Unix()),
+		ExpireTimestamp: uint64(time.Now().Unix()) + billing.BillingSliceSeconds,
 	}
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
@@ -639,7 +639,7 @@ func TestSessionUpdateHandler4FirstSlice(t *testing.T) {
 		SessionID:       requestPacket.SessionID,
 		SliceNumber:     requestPacket.SliceNumber + 1,
 		Location:        routing.LocationNullIsland,
-		ExpireTimestamp: uint64(time.Now().Unix()),
+		ExpireTimestamp: uint64(time.Now().Unix()) + billing.BillingSliceSeconds,
 	}
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
