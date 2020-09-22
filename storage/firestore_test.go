@@ -299,7 +299,7 @@ func TestFirestore(t *testing.T) {
 			assert.NoError(t, err)
 
 			err = fs.AddCustomer(ctx, expectedCustomer)
-			assert.Error(t, err)
+			assert.NoError(t, err)
 
 			assert.Equal(t, expectedCustomer, actual)
 
@@ -336,7 +336,7 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			err = fs.RemoveCustomer(ctx, "test")
-			assert.EqualError(t, err, "customer with reference not test found")
+			assert.EqualError(t, err, "customer with reference test not found")
 		})
 
 		t.Run("success - update existing customer", func(t *testing.T) {
@@ -355,7 +355,7 @@ func TestFirestore(t *testing.T) {
 
 			updateCustomer := routing.Customer{
 				Code: "local",
-				Name: "local2",
+				Name: "Local2",
 			}
 
 			err = fs.AddCustomer(ctx, actualCustomer)
@@ -654,7 +654,7 @@ func TestFirestore(t *testing.T) {
 			assert.NoError(t, err)
 
 			err = fs.AddCustomer(ctx, expectedCustomer)
-			assert.Error(t, err)
+			assert.NoError(t, err)
 
 			assert.Equal(t, expected, actual)
 
@@ -686,7 +686,7 @@ func TestFirestore(t *testing.T) {
 
 			expectedCustomer.BuyerRef = bdoc.Ref
 
-			assert.Equal(t, expectedCustomer.BuyerRef.ID, customerInRemoteStorage.BuyerRef.ID)
+			assert.Nil(t, customerInRemoteStorage.BuyerRef)
 		})
 
 		t.Run("validate only 1 route shader", func(t *testing.T) {

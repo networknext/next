@@ -184,6 +184,8 @@ func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicK
 			}
 			shouldFill = true
 		}
+	default:
+		shouldFill = true
 	}
 	if shouldFill {
 		if err := db.AddCustomer(ctx, routing.Customer{

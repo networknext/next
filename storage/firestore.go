@@ -272,9 +272,17 @@ func (fs *Firestore) CustomerWithName(name string) (routing.Customer, error) {
 }
 
 func (fs *Firestore) AddCustomer(ctx context.Context, c routing.Customer) error {
-	_, err := fs.Customer(c.Code)
-	if err == nil {
-		return &AlreadyExistsError{resourceType: "customer", resourceRef: c.Code}
+	fs.customerMutex.RLock()
+	_, ok := fs.customers[c.Code]
+	fs.customerMutex.RUnlock()
+
+	if ok {
+		// Customer already exists, lets just update the entry with any new data
+		if err := fs.SetCustomer(ctx, c); err != nil {
+			err = fmt.Errorf("AddCustomer() failed to update customer: %v", err)
+			return err
+		}
+		return nil
 	}
 
 	newCustomerData := customer{
@@ -285,7 +293,7 @@ func (fs *Firestore) AddCustomer(ctx context.Context, c routing.Customer) error 
 	}
 
 	// Add the buyer in remote storage
-	_, _, err = fs.Client.Collection("Customer").Add(ctx, newCustomerData)
+	_, _, err := fs.Client.Collection("Customer").Add(ctx, newCustomerData)
 	if err != nil {
 		return &FirestoreError{err: err}
 	}
