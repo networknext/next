@@ -18,11 +18,12 @@ import (
 )
 
 type customer struct {
-	Name      string                 `firestore:"name"`
-	Code      string                 `firestore:"code"`
-	Active    bool                   `firestore:"active"`
-	BuyerRef  *firestore.DocumentRef `firestore:"buyerRef"`
-	SellerRef *firestore.DocumentRef `firestore:"sellerRef"`
+	Name                   string                 `firestore:"name"`
+	Code                   string                 `firestore:"code"`
+	Active                 bool                   `firestore:"active"`
+	AutomaticSignInDomains string                 `firestore:"automaticSigninDomains"`
+	BuyerRef               *firestore.DocumentRef `firestore:"buyerRef"`
+	SellerRef              *firestore.DocumentRef `firestore:"sellerRef"`
 }
 
 type buyer struct {
@@ -243,8 +244,9 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			expectedCustomer := routing.Customer{
-				Code: "local",
-				Name: "Local",
+				Code:                   "local",
+				Name:                   "Local",
+				AutomaticSignInDomains: "",
 			}
 
 			err = fs.AddCustomer(ctx, expectedCustomer)
