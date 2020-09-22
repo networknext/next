@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/binary"
 	"expvar"
 	"fmt"
 	"net"
@@ -22,6 +23,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/networknext/backend/analytics"
+	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/logging"
 	"github.com/networknext/backend/transport"
 
@@ -32,7 +34,6 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 
-	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
@@ -135,6 +136,13 @@ func main() {
 		}
 	}
 
+	var customerID uint64
+	if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
+		customerPublicKey, _ = base64.StdEncoding.DecodeString(key)
+		customerID = binary.LittleEndian.Uint64(customerPublicKey[:8])
+		customerPublicKey = customerPublicKey[8:]
+	}
+
 	var relayPublicKey []byte
 	{
 		if key := os.Getenv("RELAY_PUBLIC_KEY"); len(key) != 0 {
@@ -198,20 +206,38 @@ func main() {
 		}
 	}
 
-	if env == "local" {
+	if emulatorOK {
+		storage.SeedStorage(logger, ctx, db, relayPublicKey, customerID, customerPublicKey)
+	}
 
-		fmt.Printf("creating dummy local seller\n")
+	if !emulatorOK && env == "local" {
+		if err := db.AddCustomer(ctx, routing.Customer{
+			Code: "local",
+			Name: "Local",
+		}); err != nil {
+			level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
+			os.Exit(1)
+		}
 
+		if err := db.AddCustomer(ctx, routing.Customer{
+			Code: "ghost-army",
+			Name: "Ghost Army",
+		}); err != nil {
+			level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
+			os.Exit(1)
+		}
 		seller := routing.Seller{
 			ID:                        "sellerID",
-			Name:                      "local",
+			Name:                      "Local",
+			CompanyCode:               "local",
 			IngressPriceNibblinsPerGB: 0.1 * 1e9,
 			EgressPriceNibblinsPerGB:  0.5 * 1e9,
 		}
 
 		valveSeller := routing.Seller{
 			ID:                        "valve",
-			Name:                      "valve",
+			CompanyCode:               "valve",
+			Name:                      "Valve",
 			IngressPriceNibblinsPerGB: 0.1 * 1e9,
 			EgressPriceNibblinsPerGB:  0.5 * 1e9,
 		}
