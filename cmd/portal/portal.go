@@ -6,7 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"fmt"
-	"net"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/signal"
@@ -24,10 +24,8 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/logging"
-	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
 	"github.com/networknext/backend/transport/jsonrpc"
@@ -144,131 +142,6 @@ func main() {
 		LocalMode: true,
 	}
 
-	{
-		if env == "local" {
-			if err := db.AddBuyer(ctx, routing.Buyer{
-				ID:                   customerID,
-				Name:                 "local",
-				PublicKey:            customerPublicKey,
-				RoutingRulesSettings: routing.LocalRoutingRulesSettings,
-			}); err != nil {
-				level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
-				os.Exit(1)
-			}
-
-			if err := db.AddBuyer(ctx, routing.Buyer{
-				ID:                   0,
-				Name:                 "Ghost Army",
-				PublicKey:            customerPublicKey,
-				RoutingRulesSettings: routing.LocalRoutingRulesSettings,
-			}); err != nil {
-				level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
-				os.Exit(1)
-			}
-
-			seller := routing.Seller{
-				ID:                        "sellerID",
-				Name:                      "local",
-				IngressPriceNibblinsPerGB: 0.1 * 1e9,
-				EgressPriceNibblinsPerGB:  0.2 * 1e9,
-			}
-
-			did := crypto.HashID("local")
-			datacenter := routing.Datacenter{
-				ID:           did,
-				SignedID:     int64(did),
-				Name:         "local",
-				SupplierName: "usw2-az4",
-			}
-
-			if err := db.AddSeller(ctx, seller); err != nil {
-				level.Error(logger).Log("msg", "could not add seller to storage", "err", err)
-				os.Exit(1)
-			}
-
-			if err := db.AddDatacenter(ctx, datacenter); err != nil {
-				level.Error(logger).Log("msg", "could not add datacenter to storage", "err", err)
-				os.Exit(1)
-			}
-
-			addr1 := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10000}
-			rid1 := crypto.HashID(addr1.String())
-			if err := db.AddRelay(ctx, routing.Relay{
-				Name:           "local.test_relay.a",
-				ID:             rid1,
-				SignedID:       int64(rid1),
-				Addr:           addr1,
-				PublicKey:      relayPublicKey,
-				Seller:         seller,
-				Datacenter:     datacenter,
-				ManagementAddr: "127.0.0.1",
-				SSHUser:        "root",
-				SSHPort:        22,
-				MRC:            19700000000000,
-				Overage:        26000000000000,
-				BWRule:         routing.BWRuleBurst,
-				ContractTerm:   12,
-				StartDate:      time.Now(),
-				EndDate:        time.Now(),
-				Type:           routing.BareMetal,
-			}); err != nil {
-				level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
-				os.Exit(1)
-			}
-
-			addr2 := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10001}
-			rid2 := crypto.HashID(addr2.String())
-			if err := db.AddRelay(ctx, routing.Relay{
-				Name:           "local.test_relay.b",
-				ID:             rid2,
-				SignedID:       int64(rid2),
-				Addr:           addr2,
-				PublicKey:      relayPublicKey,
-				Seller:         seller,
-				Datacenter:     datacenter,
-				ManagementAddr: "127.0.0.1",
-				SSHUser:        "root",
-				SSHPort:        22,
-			}); err != nil {
-				level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
-				os.Exit(1)
-			}
-
-			addr3 := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10002}
-			rid3 := crypto.HashID(addr3.String())
-			if err := db.AddRelay(ctx, routing.Relay{
-				Name:           "abc.xyz",
-				ID:             rid3,
-				SignedID:       int64(rid3),
-				Addr:           addr3,
-				PublicKey:      relayPublicKey,
-				Seller:         seller,
-				Datacenter:     datacenter,
-				ManagementAddr: "127.0.0.1",
-				SSHUser:        "root",
-				SSHPort:        22,
-			}); err != nil {
-				level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
-				os.Exit(1)
-			}
-		}
-	}
-
-	manager, err := management.New(
-		os.Getenv("AUTH_DOMAIN"),
-		os.Getenv("AUTH_CLIENTID"),
-		os.Getenv("AUTH_CLIENTSECRET"),
-	)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		os.Exit(1)
-	}
-
-	auth0Client := storage.Auth0{
-		Manager: manager,
-		Logger:  logger,
-	}
-
 	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
 	_, emulatorOK := os.LookupEnv("FIRESTORE_EMULATOR_HOST")
 	if emulatorOK {
@@ -302,6 +175,25 @@ func main() {
 			// Set the Firestore Storer to give to handlers
 			db = fs
 		}
+	}
+
+	if env == "local" {
+		storage.SeedStorage(logger, ctx, db, relayPublicKey, customerID, customerPublicKey)
+	}
+
+	manager, err := management.New(
+		os.Getenv("AUTH_DOMAIN"),
+		os.Getenv("AUTH_CLIENTID"),
+		os.Getenv("AUTH_CLIENTSECRET"),
+	)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		os.Exit(1)
+	}
+
+	auth0Client := storage.Auth0{
+		Manager: manager,
+		Logger:  logger,
 	}
 
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
@@ -441,52 +333,55 @@ func main() {
 				continue
 			}
 
-			if res.ContentLength == -1 {
-				res.Body.Close()
-				fmt.Printf("content length invalid: %d\n", res.ContentLength)
+			data, err := ioutil.ReadAll(res.Body)
+			res.Body.Close()
+			if err != nil {
+				level.Error(logger).Log("msg", "unable to read relay stats body: %v", err)
 				continue
 			}
 
-			data := make([]byte, res.ContentLength)
-			res.Body.Read(data)
-			res.Body.Close()
+			if res.StatusCode != http.StatusOK {
+				level.Error(logger).Log("msg", "bad response from backend", "code", res.StatusCode, "err", string(data))
+				continue
+			}
 
 			index := 0
 
 			var version uint8
 			if !encoding.ReadUint8(data, &index, &version) {
-				level.Error(logger).Log("unable to read relay stats version")
+				level.Error(logger).Log("msg", "unable to read relay stats version")
 				continue
 			}
 
 			var count uint64
 			if !encoding.ReadUint64(data, &index, &count) {
-				level.Error(logger).Log("unable to read relay stats count")
+				level.Error(logger).Log("msg", "unable to read relay stats count")
 				continue
 			}
 
+			actualCount := 0
 			m := make(map[uint64]jsonrpc.RelayData)
 			for i := uint64(0); i < count; i++ {
 				var id uint64
 				if !encoding.ReadUint64(data, &index, &id) {
-					level.Error(logger).Log("unable to read relay stats id")
+					level.Error(logger).Log("msg", "unable to read relay stats id")
 					break
 				}
 
 				var relay jsonrpc.RelayData
 
 				if !encoding.ReadUint64(data, &index, &relay.SessionCount) {
-					level.Error(logger).Log("unable to read relay stats session count")
+					level.Error(logger).Log("msg", "unable to read relay stats session count")
 					break
 				}
 
 				if !encoding.ReadUint64(data, &index, &relay.Tx) {
-					level.Error(logger).Log("unable to read relay stats tx")
+					level.Error(logger).Log("msg", "unable to read relay stats tx")
 					break
 				}
 
 				if !encoding.ReadUint64(data, &index, &relay.Rx) {
-					level.Error(logger).Log("unable to read relay stats rx")
+					level.Error(logger).Log("msg", "unable to read relay stats rx")
 					break
 				}
 
@@ -512,25 +407,28 @@ func main() {
 
 				var unixTime uint64
 				if !encoding.ReadUint64(data, &index, &unixTime) {
-					level.Error(logger).Log("unable to read relay stats last update time")
+					level.Error(logger).Log("msg", "unable to read relay stats last update time")
 					break
 				}
 				relay.LastUpdateTime = time.Unix(int64(unixTime), 0)
 
 				if !encoding.ReadFloat32(data, &index, &relay.CPU) {
-					level.Error(logger).Log("unable to read relay stats cpu usage")
+					level.Error(logger).Log("msg", "unable to read relay stats cpu usage")
 					break
 				}
 
 				if !encoding.ReadFloat32(data, &index, &relay.Mem) {
-					level.Error(logger).Log("unable to read relay stats memory usage")
+					level.Error(logger).Log("msg", "unable to read relay stats memory usage")
 					break
 				}
 
 				m[id] = relay
+				actualCount++
 			}
 
 			fmt.Printf("read in %d relays\n", count)
+			fmt.Printf("actually read in %d relays\n", actualCount)
+
 			relayMap.Swap(&m)
 		}
 	}()

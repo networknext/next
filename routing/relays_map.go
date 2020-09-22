@@ -2,7 +2,6 @@ package routing
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"strconv"
 	"strings"
@@ -172,7 +171,7 @@ func (relayMap *RelayMap) TimeoutLoop(ctx context.Context, timeoutSeconds int64,
 }
 
 // | version | count | relay stats ... |
-func (r *RelayMap) MarshalBinary() ([]byte, error) {
+func (r *RelayMap) MarshalBinary() []byte {
 	numRelaysRightNow := r.GetRelayCount()
 
 	// preallocate the entire buffer size
@@ -187,35 +186,36 @@ func (r *RelayMap) MarshalBinary() ([]byte, error) {
 	// than the expected amount which will cause the portal to read
 	// garbage data. Manually counting and compareing accounts for that edge case
 	var count uint64 = 0
-	for i := range r.shard {
-		shard := r.shard[i]
+	for _, shard := range r.shard {
 		shard.mutex.RLock()
 		defer shard.mutex.RUnlock()
 		for _, relay := range shard.relays {
-			s := strings.Split(relay.Version, ".")
-			if len(s) != 3 {
-				return nil, fmt.Errorf("invalid relay version for relay %s: %s", relay.Addr.String(), relay.Version)
-			}
+			var major, minor, patch uint8
 
-			var major uint8
-			if v, err := strconv.ParseUint(s[0], 10, 32); err == nil {
-				major = uint8(v)
-			} else {
-				return nil, fmt.Errorf("invalid relay major version for relay %s: %s", relay.Addr.String(), s[0])
-			}
+			// will be empty if relay has initialized but not updated
+			if relay.Version != "" {
+				s := strings.Split(relay.Version, ".")
+				if len(s) != 3 {
+					continue
+				}
 
-			var minor uint8
-			if v, err := strconv.ParseUint(s[1], 10, 32); err == nil {
-				minor = uint8(v)
-			} else {
-				return nil, fmt.Errorf("invalid relay minor version for relay %s: %s", relay.Addr.String(), s[1])
-			}
+				if v, err := strconv.ParseUint(s[0], 10, 32); err == nil {
+					major = uint8(v)
+				} else {
+					continue
+				}
 
-			var patch uint8
-			if v, err := strconv.ParseUint(s[2], 10, 32); err == nil {
-				patch = uint8(v)
-			} else {
-				return nil, fmt.Errorf("invalid relay patch version for relay %s: %s", relay.Addr.String(), s[2])
+				if v, err := strconv.ParseUint(s[1], 10, 32); err == nil {
+					minor = uint8(v)
+				} else {
+					continue
+				}
+
+				if v, err := strconv.ParseUint(s[2], 10, 32); err == nil {
+					patch = uint8(v)
+				} else {
+					continue
+				}
 			}
 
 			encoding.WriteUint64(data, &index, relay.ID)
@@ -250,8 +250,6 @@ func (r *RelayMap) MarshalBinary() ([]byte, error) {
 	index = 1
 	encoding.WriteUint64(data, &index, count)
 
-	fmt.Printf("%d relays sent to portal\n", count)
-
 	// truncate the data in case the expire edge case ocurred
-	return data[:1+8+count*RelayDataBytes], nil
+	return data[:1+8+count*RelayDataBytes]
 }

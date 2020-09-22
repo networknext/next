@@ -42,6 +42,7 @@ The default setting is `warn` when running `make dev-relay-backend` and `make de
 - `GOOGLE_PROJECT_ID`: The Google project ID
 - `RELAY_DEV`: enable development features, like what is listed below in the [important](#important) section
 - `RELAY_STUBBED_DATA_FILENAME`: points to a json file that will be used to stub datacenter names and lat/long coords
+- `LOCAL_RELAYS`: number of local relays to add to the storer starting at port 10000
 
 #### IMPORTANT
 

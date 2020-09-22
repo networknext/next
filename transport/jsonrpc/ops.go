@@ -469,7 +469,6 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			SSHUser:             r.SSHUser,
 			SSHPort:             r.SSHPort,
 			State:               r.State.String(),
-			LastUpdateTime:      r.LastUpdateTime,
 			PublicKey:           base64.StdEncoding.EncodeToString(r.PublicKey),
 			UpdateKey:           base64.StdEncoding.EncodeToString(r.UpdateKey),
 			FirestoreID:         r.FirestoreID,
@@ -486,10 +485,11 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 
 		if relayData, ok := s.RelayMap.Get(r.ID); ok {
 			relay.SessionCount = relayData.SessionCount
-			relay.BytesSent = relayData.Tx
-			relay.BytesReceived = relayData.Rx
 			relay.Version = relayData.Version
 			relay.LastUpdateTime = relayData.LastUpdateTime
+
+			relay.BytesSent = relayData.Tx
+			relay.BytesReceived = relayData.Rx
 			relay.CPUUsage = relayData.CPU
 			relay.MemUsage = relayData.Mem
 		}
