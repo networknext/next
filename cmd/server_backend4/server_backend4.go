@@ -752,10 +752,10 @@ func mainReturnWithCode() int {
 					continue
 				}
 
-				data = data[crypto.PacketHashSize:size]
+				packetType := data[0]
+				data = data[crypto.PacketHashSize+1 : size]
 
 				var buffer bytes.Buffer
-				packetType := data[0]
 				packet := transport.UDPPacket{SourceAddr: *fromAddr, Data: data}
 
 				switch packetType {
@@ -774,7 +774,7 @@ func mainReturnWithCode() int {
 
 					// Sign and hash the response
 					response = crypto.SignPacket(privateKey, response)
-					response = crypto.HashPacket(crypto.PacketHashKey, response)
+					crypto.HashPacket(crypto.PacketHashKey, response)
 
 					if _, err := conn.WriteToUDP(response, fromAddr); err != nil {
 						level.Error(logger).Log("msg", "failed to write UDP response", "err", err)

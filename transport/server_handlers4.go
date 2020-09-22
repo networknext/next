@@ -24,11 +24,13 @@ func writeServerInitResponse4(w io.Writer, packet *ServerInitRequestPacket4, res
 		Response:  response,
 	}
 
-	responseData, err := MarshalPacket(&responsePacket)
+	responsePacketData, err := MarshalPacket(&responsePacket)
 	if err != nil {
 		return err
 	}
 
+	packetHeader := append([]byte{PacketTypeServerInitResponse4}, make([]byte, crypto.PacketHashSize)...)
+	responseData := append(packetHeader, responsePacketData...)
 	if _, err := w.Write(responseData); err != nil {
 		return err
 	}
@@ -49,11 +51,13 @@ func writeSessionResponse4(w io.Writer, response *SessionResponsePacket4, sessio
 	response.SessionDataBytes = int32(len(sessionDataBuffer))
 	copy(response.SessionData[:], sessionDataBuffer)
 
-	responseData, err := MarshalPacket(response)
+	responsePacketData, err := MarshalPacket(response)
 	if err != nil {
 		return err
 	}
 
+	packetHeader := append([]byte{PacketTypeSessionResponse4}, make([]byte, crypto.PacketHashSize)...)
+	responseData := append(packetHeader, responsePacketData...)
 	if _, err := w.Write(responseData); err != nil {
 		return err
 	}
@@ -320,7 +324,7 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 		if sessionData.Initial {
 			sliceDuration *= 2
 		}
-		usageBytesUp, usageBytesDown = CalculateNextBytesUpAndDown(uint64(packet.KbpsUp), uint64(packet.KbpsDown), sliceDuration)
+		usageBytesUp, usageBytesDown = CalculateNextBytesUpAndDown(uint64(packet.NextKbpsUp), uint64(packet.NextKbpsDown), sliceDuration)
 
 		buyer, err := storer.Buyer(packet.CustomerID)
 		if err != nil {
@@ -600,8 +604,8 @@ func PostSessionUpdate4(postSessionHandler *PostSessionHandler, packet *SessionU
 				PacketLoss: float64(packet.DirectPacketLoss),
 			},
 			Envelope: routing.Envelope{
-				Up:   int64(packet.KbpsUp),
-				Down: int64(packet.KbpsDown),
+				Up:   int64(packet.NextKbpsUp),
+				Down: int64(packet.NextKbpsDown),
 			},
 			IsMultiPath:       false,
 			IsTryBeforeYouBuy: false,
