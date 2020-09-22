@@ -319,7 +319,7 @@ func TestTotalSessions(t *testing.T) {
 	assert.Equal(t, 1, reply.Direct)
 
 	// test per buyer counts
-	err = svc.TotalSessions(req, &jsonrpc.TotalSessionsArgs{BuyerID: "0000000000000001"}, &reply)
+	err = svc.TotalSessions(req, &jsonrpc.TotalSessionsArgs{CompanyCode: "local"}, &reply)
 	assert.NoError(t, err)
 
 	assert.Equal(t, 1, reply.Next)

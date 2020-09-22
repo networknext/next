@@ -13,6 +13,7 @@ import (
 	jwtmiddleware "github.com/auth0/go-jwt-middleware"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/rs/cors"
@@ -59,7 +60,8 @@ type AccountArgs struct {
 }
 
 type AccountReply struct {
-	UserAccount account `json:"account"`
+	UserAccount account  `json:"account"`
+	Domains     []string `json:"domains"`
 }
 
 type account struct {
@@ -181,6 +183,10 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 		err := fmt.Errorf("UserAccount() failed to fetch user roles: %w", err)
 		s.Logger.Log("err", err)
 		return err
+	}
+
+	if VerifyAnyRole(r, AdminRole, OwnerRole) {
+		reply.Domains = strings.Split(company.AutomaticSignInDomains, ",")
 	}
 
 	reply.UserAccount = newAccount(userAccount, userRoles.Roles, buyer, company.Name)
@@ -739,6 +745,52 @@ func (s *AuthService) ResendVerificationEmail(r *http.Request, args *VerifyEmail
 	}
 
 	reply.Sent = true
+
+	return nil
+}
+
+type UpdateDomainsArgs struct {
+	Domains []string `json:"domains"`
+}
+
+type UpdateDomainsReply struct {
+}
+
+func (s *AuthService) UpdateAutoSignupDomains(r *http.Request, args *UpdateDomainsArgs, reply *UpdateDomainsReply) error {
+	if !VerifyAnyRole(r, AdminRole, OwnerRole) {
+		err := fmt.Errorf("UpdateAutoSignupDomains(): %v", ErrInsufficientPrivileges)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	companyCode, ok := r.Context().Value(Keys.CompanyKey).(string)
+	if !ok {
+		err := fmt.Errorf("UpdateAutoSignupDomains(): user is not assigned to a company")
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+	if companyCode == "" {
+		err := fmt.Errorf("UpdateAutoSignupDomains(): failed to parse company code")
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+	ctx := context.Background()
+
+	company, err := s.Storage.Customer(companyCode)
+	if err != nil {
+		err := fmt.Errorf("UpdateAutoSignupDomains(): failed to get request company")
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	company.AutomaticSignInDomains = strings.Join(args.Domains, ", ")
+
+	err = s.Storage.SetCustomer(ctx, company)
+	if err != nil {
+		err := fmt.Errorf("UpdateAutoSignupDomains(): failed to update company")
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
 
 	return nil
 }
