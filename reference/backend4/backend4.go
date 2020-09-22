@@ -2582,7 +2582,7 @@ func main() {
 					sessionData.ExpireTimestamp += 20
 					sessionData.SessionVersion += 1
 
-					tokens, err = WriteRouteTokens(sessionData.ExpireTimestamp, sessionData.SessionId, uint8(sessionData.SessionVersion), 512, 512, numNodes, addresses, publicKeys, routerPrivateKey)
+					tokens, err = WriteRouteTokens(sessionData.ExpireTimestamp, sessionData.SessionId, uint8(sessionData.SessionVersion), 1024, 1024, numNodes, addresses, publicKeys, routerPrivateKey)
 
 					if err != nil {
 						fmt.Printf("error: could not write route tokens: %v\n", err)
