@@ -429,7 +429,7 @@ type relay struct {
 	Addr                string                `json:"addr"`
 	Latitude            float64               `json:"latitude"`
 	Longitude           float64               `json:"longitude"`
-	NICSpeedMbps        int32                 `json:"nicSpeedMpbs"`
+	NICSpeedMbps        int32                 `json:"nicSpeedMbps"`
 	IncludedBandwidthGB int32                 `json:"includedBandwidthGB"`
 	State               string                `json:"state"`
 	LastUpdateTime      time.Time             `json:"lastUpdateTime"`
