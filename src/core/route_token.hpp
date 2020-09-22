@@ -8,39 +8,43 @@
 #include "util/macros.hpp"
 
 using crypto::GenericKey;
+using crypto::Nonce;
+using net::Address;
+
+namespace testing
+{
+  class _test_core_RouteTokenV4_write_;
+  class _test_core_RouteToken_write_;
+}  // namespace testing
 
 namespace core
 {
   class RouteTokenV4: public TokenV4
   {
+    friend testing::_test_core_RouteTokenV4_write_;
+
    public:
     RouteTokenV4() = default;
     virtual ~RouteTokenV4() override = default;
     // Token(17)
-    // KbpsUp (4) +
-    // KbpsDown (4) +
-    // NextAddr (net::Address::size) +
-    // PrivateKey (crypto_box_SECRETKEYBYTES) =
-    static const size_t SIZE_OF = TokenV4::SIZE_OF + 4 + 4 + net::Address::SIZE_OF + crypto_box_SECRETKEYBYTES;
+    // kbps_up (4) +
+    // kbps_down (4) +
+    // next_addr (Address::size) +
+    // private_key (crypto_box_SECRETKEYBYTES) =
+    static const size_t SIZE_OF = TokenV4::SIZE_OF + 4 + 4 + Address::SIZE_OF + crypto_box_SECRETKEYBYTES;
     static const size_t SIZE_OF_SIGNED = crypto_box_NONCEBYTES + RouteTokenV4::SIZE_OF + crypto_box_MACBYTES;
     static const size_t ENCRYPTION_LENGTH = RouteTokenV4::SIZE_OF + crypto_box_MACBYTES;
 
     uint32_t kbps_up;
     uint32_t kbps_down;
-    net::Address next_addr;
+    Address next_addr;
     GenericKey private_key;
 
     auto write_encrypted(
-     Packet& packet,
-     size_t& index,
-     const crypto::GenericKey& sender_private_key,
-     const crypto::GenericKey& receiver_public_key) -> bool;
+     Packet& packet, size_t& index, const GenericKey& sender_private_key, const GenericKey& receiver_public_key) -> bool;
 
     auto read_encrypted(
-     Packet& packet,
-     size_t& index,
-     const crypto::GenericKey& sender_public_key,
-     const crypto::GenericKey& receiver_private_key) -> bool;
+     Packet& packet, size_t& index, const GenericKey& sender_public_key, const GenericKey& receiver_private_key) -> bool;
 
    private:
     auto write(Packet& packet, size_t& index) -> bool;
@@ -50,29 +54,23 @@ namespace core
     auto encrypt(
      Packet& packet,
      const size_t& index,
-     const crypto::GenericKey& sender_private_key,
-     const crypto::GenericKey& receiver_public_key,
-     const std::array<uint8_t, crypto_box_NONCEBYTES>& nonce) -> bool;
+     const GenericKey& sender_private_key,
+     const GenericKey& receiver_public_key,
+     const Nonce& nonce) -> bool;
 
     auto decrypt(
      Packet& packet,
      const size_t& index,
-     const crypto::GenericKey& sender_public_key,
-     const crypto::GenericKey& receiver_private_key,
+     const GenericKey& sender_public_key,
+     const GenericKey& receiver_private_key,
      const size_t nonce_index) -> bool;
   };
 
   INLINE auto RouteTokenV4::write_encrypted(
-   Packet& packet,
-   size_t& index,
-   const crypto::GenericKey& sender_private_key,
-   const crypto::GenericKey& receiver_public_key) -> bool
+   Packet& packet, size_t& index, const GenericKey& sender_private_key, const GenericKey& receiver_public_key) -> bool
   {
-    const size_t start = index;
-    (void)start;
-
-    std::array<uint8_t, crypto_box_NONCEBYTES> nonce;
-    crypto::random_bytes(nonce, nonce.size());  // fill nonce
+    Nonce nonce;
+    crypto::make_nonce(nonce);
 
     if (!encoding::write_bytes(packet.buffer, index, nonce, nonce.size())) {
       LOG(ERROR, "could not write nonce");
@@ -90,18 +88,13 @@ namespace core
 
     index += crypto_box_MACBYTES;  // index at this point will be past nonce & token, so add the mac bytes to it
 
-    assert(index - start == RouteTokenV4::SIZE_OF_SIGNED);  // TODO move to test
-
     return true;
   }
 
   INLINE auto RouteTokenV4::read_encrypted(
-   Packet& packet,
-   size_t& index,
-   const crypto::GenericKey& sender_public_key,
-   const crypto::GenericKey& receiver_private_key) -> bool
+   Packet& packet, size_t& index, const GenericKey& sender_public_key, const GenericKey& receiver_private_key) -> bool
   {
-    const auto nonce_index = index;   // nonce is first in the packet's data
+    const auto nonce_index = index;  // nonce is first in the packet's data
     index += crypto_box_NONCEBYTES;  // followed by actual data
 
     if (!decrypt(packet, index, sender_public_key, receiver_private_key, nonce_index)) {
@@ -124,9 +117,6 @@ namespace core
       return false;
     }
 
-    const auto start = index;
-    (void)start;
-
     if (!TokenV4::write(packet, index)) {
       return false;
     }
@@ -146,8 +136,6 @@ namespace core
     if (!encoding::write_bytes(packet.buffer, index, this->private_key, this->private_key.size())) {
       return false;
     }
-
-    assert(index - start == RouteTokenV4::SIZE_OF);  // TODO move this to a test
 
     return true;
   }
@@ -234,34 +222,32 @@ namespace core
 
   class RouteToken: public Token
   {
+    friend testing::_test_core_RouteToken_write_;
+
    public:
     RouteToken() = default;
     virtual ~RouteToken() override = default;
     // Token(17)
-    // KbpsUp (4) +
-    // KbpsDown (4) +
-    // NextAddr (net::Address::size) +
-    // PrivateKey (crypto_box_SECRETKEYBYTES) =
-    static const size_t SIZE_OF = Token::SIZE_OF + 4 + 4 + net::Address::SIZE_OF + crypto_box_SECRETKEYBYTES;
+    // kbps_up (4) +
+    // kbps_down (4) +
+    // next_addr (Address::size) +
+    // private_key (crypto_box_SECRETKEYBYTES) =
+    static const size_t SIZE_OF = Token::SIZE_OF + 4 + 4 + Address::SIZE_OF + crypto_box_SECRETKEYBYTES;
     static const size_t SIZE_OF_ENCRYPTED = crypto_box_NONCEBYTES + RouteToken::SIZE_OF + crypto_box_MACBYTES;
     static const size_t ENCRYPTION_LENGTH = RouteToken::SIZE_OF + crypto_box_MACBYTES;
 
     uint32_t kbps_up;
     uint32_t kbps_down;
-    net::Address next_addr;
+    Address next_addr;
     GenericKey private_key;
 
     auto write_encrypted(
-     Packet& packet,
-     size_t& index,
-     const crypto::GenericKey& sender_private_key,
-     const crypto::GenericKey& receiver_public_key) -> bool;
+     Packet& packet, size_t& index, const crypto::GenericKey& sender_private_key, const crypto::GenericKey& receiver_public_key)
+     -> bool;
 
     auto read_encrypted(
-     Packet& packet,
-     size_t& index,
-     const crypto::GenericKey& sender_public_key,
-     const crypto::GenericKey& receiver_private_key) -> bool;
+     Packet& packet, size_t& index, const crypto::GenericKey& sender_public_key, const crypto::GenericKey& receiver_private_key)
+     -> bool;
 
    private:
     auto write(Packet& packet, size_t& index) -> bool;
@@ -271,29 +257,23 @@ namespace core
     auto encrypt(
      Packet& packet,
      const size_t& index,
-     const crypto::GenericKey& sender_private_key,
-     const crypto::GenericKey& receiver_public_key,
-     const std::array<uint8_t, crypto_box_NONCEBYTES>& nonce) -> bool;
+     const GenericKey& sender_private_key,
+     const GenericKey& receiver_public_key,
+     const Nonce& nonce) -> bool;
 
     auto decrypt(
      Packet& packet,
      const size_t& index,
-     const crypto::GenericKey& sender_public_key,
-     const crypto::GenericKey& receiver_private_key,
+     const GenericKey& sender_public_key,
+     const GenericKey& receiver_private_key,
      const size_t nonce_index) -> bool;
   };
 
   INLINE auto RouteToken::write_encrypted(
-   Packet& packet,
-   size_t& index,
-   const crypto::GenericKey& sender_private_key,
-   const crypto::GenericKey& receiver_public_key) -> bool
+   Packet& packet, size_t& index, const GenericKey& sender_private_key, const GenericKey& receiver_public_key) -> bool
   {
-    const size_t start = index;
-    (void)start;
-
-    std::array<uint8_t, crypto_box_NONCEBYTES> nonce;
-    crypto::random_bytes(nonce, nonce.size());  // fill nonce
+    Nonce nonce;
+    crypto::make_nonce(nonce);
 
     if (!encoding::write_bytes(packet.buffer, index, nonce, nonce.size())) {
       LOG(ERROR, "could not write nonce");
@@ -311,18 +291,13 @@ namespace core
 
     index += crypto_box_MACBYTES;  // index at this point will be past nonce & token, so add the mac bytes to it
 
-    assert(index - start == RouteToken::SIZE_OF_ENCRYPTED);  // TODO move to test
-
     return true;
   }
 
   INLINE auto RouteToken::read_encrypted(
-   Packet& packet,
-   size_t& index,
-   const crypto::GenericKey& sender_public_key,
-   const crypto::GenericKey& receiver_private_key) -> bool
+   Packet& packet, size_t& index, const GenericKey& sender_public_key, const GenericKey& receiver_private_key) -> bool
   {
-    const auto nonce_index = index;   // nonce is first in the packet's data
+    const auto nonce_index = index;  // nonce is first in the packet's data
     index += crypto_box_NONCEBYTES;  // followed by actual data
 
     if (!decrypt(packet, index, sender_public_key, receiver_private_key, nonce_index)) {
@@ -345,9 +320,6 @@ namespace core
       return false;
     }
 
-    const auto start = index;
-    (void)start;
-
     if (!Token::write(packet, index)) {
       return false;
     }
@@ -367,8 +339,6 @@ namespace core
     if (!encoding::write_bytes(packet.buffer, index, this->private_key, this->private_key.size())) {
       return false;
     }
-
-    assert(index - start == RouteToken::SIZE_OF);  // TODO move this to a test
 
     return true;
   }

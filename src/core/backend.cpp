@@ -362,7 +362,7 @@ namespace core
       InitRequest request;
       request.address = this->relay_address;
 
-      crypto::create_nonce_bytes(request.nonce);
+      crypto::make_nonce(request.nonce);
 
       // just has to be something the backend can decrypt
       GenericKey token = {};

@@ -46,6 +46,14 @@ namespace testing
     crypto::random_bytes(private_key, private_key.size());
     return private_key;
   }
+
+  INLINE auto gen_keypair() -> std::tuple<crypto::GenericKey, crypto::GenericKey>
+  {
+    GenericKey public_key;
+    GenericKey private_key;
+    crypto_box_keypair(public_key.data(), private_key.data());
+    return {public_key, private_key};
+  }
 #endif
 
 #ifdef OS_HELPERS

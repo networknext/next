@@ -15,6 +15,7 @@ using core::SessionMap;
 using crypto::GenericKey;
 using crypto::KEY_SIZE;
 using crypto::Keychain;
+using crypto::Nonce;
 using net::IHttpClient;
 using util::ThroughputRecorder;
 
@@ -41,7 +42,7 @@ namespace core
   {
     uint32_t magic = INIT_REQUEST_MAGIC;
     uint32_t version = INIT_REQUEST_VERSION;
-    std::array<uint8_t, crypto_box_NONCEBYTES> nonce;
+    Nonce nonce;
     std::string address;
     std::array<uint8_t, KEY_SIZE + crypto_box_MACBYTES> encrypted_token;
     std::string relay_version = RELAY_VERSION;

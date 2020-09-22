@@ -10,6 +10,7 @@
 
 using core::Packet;
 using crypto::GenericKey;
+using crypto::Nonce;
 
 namespace testing
 {
@@ -65,8 +66,8 @@ namespace core
   INLINE auto ContinueTokenV4::write_encrypted(
    Packet& packet, size_t& index, const GenericKey& sender_private_key, const GenericKey& receiver_public_key) -> bool
   {
-    std::array<uint8_t, crypto_box_NONCEBYTES> nonce;
-    if (!crypto::create_nonce_bytes(nonce)) {
+    Nonce nonce;
+    if (!crypto::make_nonce(nonce)) {
       return false;
     }
 
@@ -224,8 +225,8 @@ namespace core
   INLINE auto ContinueToken::write_encrypted(
    Packet& packet, size_t& index, const GenericKey& sender_private_key, const GenericKey& receiver_public_key) -> bool
   {
-    std::array<uint8_t, crypto_box_NONCEBYTES> nonce;
-    if (!crypto::create_nonce_bytes(nonce)) {
+    Nonce nonce;
+    if (!crypto::make_nonce(nonce)) {
       return false;
     }
 
