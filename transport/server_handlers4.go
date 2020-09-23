@@ -3,10 +3,12 @@ package transport
 import (
 	"errors"
 	"io"
+	"net"
 	"time"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
+	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
@@ -83,6 +85,7 @@ func ServerInitHandlerFunc4(logger log.Logger, storer storage.Storer, datacenter
 
 			if err := writeServerInitResponse4(w, &packet, InitResponseUnknownCustomer); err != nil {
 				level.Error(logger).Log("msg", "failed to write server init response", "err", err)
+				metrics.ErrorMetrics.WriteResponseFailure.Add(1)
 			}
 
 			return
@@ -92,7 +95,11 @@ func ServerInitHandlerFunc4(logger log.Logger, storer storage.Storer, datacenter
 			level.Error(logger).Log("err", "sdk too old", "version", packet.Version.String())
 			metrics.ErrorMetrics.SDKTooOld.Add(1)
 
-			writeServerInitResponse4(w, &packet, InitResponseOldSDKVersion)
+			if err := writeServerInitResponse4(w, &packet, InitResponseOldSDKVersion); err != nil {
+				level.Error(logger).Log("msg", "failed to write server init response", "err", err)
+				metrics.ErrorMetrics.WriteResponseFailure.Add(1)
+			}
+
 			return
 		}
 
@@ -123,7 +130,11 @@ func ServerInitHandlerFunc4(logger log.Logger, storer storage.Storer, datacenter
 					if err != nil {
 						level.Error(logger).Log("msg", "customer has a misconfigured datacenter alias", "err", "datacenter not in database", "datacenter", packet.DatacenterName)
 
-						writeServerInitResponse4(w, &packet, InitResponseUnknownDatacenter)
+						if err := writeServerInitResponse4(w, &packet, InitResponseUnknownDatacenter); err != nil {
+							level.Error(logger).Log("msg", "failed to write server init response", "err", err)
+							metrics.ErrorMetrics.WriteResponseFailure.Add(1)
+						}
+
 						return
 					}
 
@@ -133,7 +144,13 @@ func ServerInitHandlerFunc4(logger log.Logger, storer storage.Storer, datacenter
 			}
 		}
 
-		writeServerInitResponse4(w, &packet, InitResponseOK)
+		if err := writeServerInitResponse4(w, &packet, InitResponseOK); err != nil {
+			level.Error(logger).Log("msg", "failed to write server init response", "err", err)
+			metrics.ErrorMetrics.WriteResponseFailure.Add(1)
+			return
+		}
+
+		level.Debug(logger).Log("msg", "server initialized successfully", "source_address", incoming.SourceAddr.String())
 	}
 }
 
@@ -206,7 +223,7 @@ func ServerUpdateHandlerFunc4(logger log.Logger, storer storage.Storer, datacent
 	}
 }
 
-func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IPLocator, getRouteProvider func() RouteProvider, routerPrivateKey []byte, metrics *metrics.SessionMetrics) UDPHandlerFunc {
+func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IPLocator, getRouteProvider func() RouteProvider, routerPrivateKey []byte, postSessionHandler *PostSessionHandler, metrics *metrics.SessionMetrics) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
 		metrics.Invocations.Add(1)
 
@@ -229,10 +246,15 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 
 		newSession := packet.SliceNumber == 0
 
+		// todo: use 20 seconds if the previous slice was an initial route slice
+		usageBytesUp, usageBytesDown := CalculateNextBytesUpAndDown(uint64(packet.KbpsUp), uint64(packet.KbpsDown), billing.BillingSliceSeconds)
+
 		var sessionData SessionData4
 
 		ipLocator := getIPLocator()
 		routeMatrix := getRouteProvider()
+		location := routing.LocationNullIsland
+		var nearRelays []routing.NearRelayData
 		route := routing.Route{}
 		var err error
 
@@ -247,23 +269,38 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 			sessionData.SessionID = packet.SessionID
 			sessionData.SliceNumber = uint32(packet.SliceNumber + 1)
 
-			location, err := ipLocator.LocateIP(incoming.SourceAddr.IP)
+			location, err = ipLocator.LocateIP(packet.ClientAddress.IP)
 			if err != nil {
 				level.Error(logger).Log("msg", "failed to locate IP", "err", err)
 				metrics.ErrorMetrics.ClientLocateFailure.Add(1)
-				writeSessionResponse4(w, &response, &sessionData)
+				if err := writeSessionResponse4(w, &response, &sessionData); err != nil {
+					level.Error(logger).Log("msg", "failed to write session update response", "err", err)
+					metrics.ErrorMetrics.WriteResponseFailure.Add(1)
+					return
+				}
+
+				go PostSessionUpdate4(postSessionHandler, &packet, &location, nearRelays, usageBytesUp, usageBytesDown, metrics)
 				return
 			}
 
-			nearRelays, err := routeMatrix.GetNearRelays(location.Latitude, location.Longitude, MaxNearRelays)
+			nearRelays, err = routeMatrix.GetNearRelays(location.Latitude, location.Longitude, MaxNearRelays)
 			if err != nil {
 				level.Error(logger).Log("msg", "failed to get near relays", "err", err)
 				metrics.ErrorMetrics.NearRelaysLocateFailure.Add(1)
-				writeSessionResponse4(w, &response, &sessionData)
+				if err := writeSessionResponse4(w, &response, &sessionData); err != nil {
+					level.Error(logger).Log("msg", "failed to write session update response", "err", err)
+					metrics.ErrorMetrics.WriteResponseFailure.Add(1)
+					return
+				}
+
+				go PostSessionUpdate4(postSessionHandler, &packet, &location, nearRelays, usageBytesUp, usageBytesDown, metrics)
 				return
 			}
 
-			response.NumNearRelays = int32(len(nearRelays))
+			// todo: fix this
+			response.NumNearRelays = /*int32(len(nearRelays))*/ 0
+			response.NearRelayIDs = make([]uint64, response.NumNearRelays)
+			response.NearRelayAddresses = make([]net.UDPAddr, response.NumNearRelays)
 			for i := int32(0); i < response.NumNearRelays; i++ {
 				response.NearRelayIDs[i] = nearRelays[i].ID
 				response.NearRelayAddresses[i] = *nearRelays[i].Addr
@@ -376,6 +413,129 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 			response.Tokens = routeTokens
 		}
 
-		writeSessionResponse4(w, &response, &sessionData)
+		if err := writeSessionResponse4(w, &response, &sessionData); err != nil {
+			level.Error(logger).Log("msg", "failed to write session update response", "err", err)
+			metrics.ErrorMetrics.WriteResponseFailure.Add(1)
+			return
+		}
+
+		go PostSessionUpdate4(postSessionHandler, &packet, &location, nearRelays, usageBytesUp, usageBytesDown, metrics)
+
+		level.Debug(logger).Log("msg", "session updated successfully", "source_address", incoming.SourceAddr.String(), "server_address", packet.ServerAddress.String(), "client_address", packet.ClientAddress.String())
+	}
+}
+
+func PostSessionUpdate4(postSessionHandler *PostSessionHandler, packet *SessionUpdatePacket4, location *routing.Location, nearRelays []routing.NearRelayData, nextBytesUp uint64, nextBytesDown uint64, metrics *metrics.SessionMetrics) {
+	billingEntry := &billing.BillingEntry{
+		BuyerID:                   packet.CustomerID,
+		UserHash:                  packet.UserHash,
+		SessionID:                 packet.SessionID,
+		SliceNumber:               packet.SliceNumber,
+		DirectRTT:                 packet.DirectRTT,
+		DirectJitter:              packet.DirectJitter,
+		DirectPacketLoss:          packet.DirectPacketLoss,
+		Next:                      packet.Next,
+		NextRTT:                   packet.NextRTT,
+		NextJitter:                packet.NextJitter,
+		NextPacketLoss:            packet.NextPacketLoss,
+		NumNextRelays:             0,
+		NextRelays:                [routing.MaxRelays]uint64{},
+		TotalPrice:                0,
+		ClientToServerPacketsLost: packet.PacketsLostClientToServer,
+		ServerToClientPacketsLost: packet.PacketsLostServerToClient,
+		Committed:                 packet.Committed,
+		Flagged:                   packet.Reported,
+		Multipath:                 false,
+		Initial:                   false,
+		NextBytesUp:               nextBytesUp,
+		NextBytesDown:             nextBytesDown,
+		DatacenterID:              0,
+		RTTReduction:              false,
+		PacketLossReduction:       false,
+		NextRelaysPrice:           [routing.MaxRelays]uint64{},
+		Latitude:                  float32(location.Latitude),
+		Longitude:                 float32(location.Longitude),
+		ISP:                       location.ISP,
+		ABTest:                    false,
+		RouteDecision:             0,
+		ConnectionType:            uint8(packet.ConnectionType),
+		PlatformType:              uint8(packet.PlatformType),
+		SDKVersion:                packet.Version.String(),
+	}
+
+	if !postSessionHandler.IsBillingBufferFull() {
+		postSessionHandler.SendBillingEntry(billingEntry)
+		metrics.PostSessionBillingEntriesSent.Add(1)
+	} else {
+		metrics.PostSessionBillingBufferFull.Add(1)
+	}
+
+	nearRelayPortalData := make([]NearRelayPortalData, len(nearRelays))
+	for i := range nearRelayPortalData {
+		nearRelayPortalData[i] = NearRelayPortalData{
+			ID:          nearRelays[i].ID,
+			Name:        nearRelays[i].Name,
+			ClientStats: nearRelays[i].ClientStats,
+		}
+	}
+
+	var deltaRTT float32
+	if packet.Next && packet.NextRTT != 0 && packet.DirectRTT >= packet.NextRTT {
+		deltaRTT = packet.DirectRTT - packet.NextRTT
+	}
+
+	portalData := &SessionPortalData{
+		Meta: SessionMeta{
+			ID:              packet.SessionID,
+			UserHash:        packet.UserHash,
+			DatacenterName:  "local", // todo: we need the datacenter ID or name in the session update packet
+			DatacenterAlias: "local",
+			OnNetworkNext:   packet.Next,
+			NextRTT:         float64(packet.NextRTT),
+			DirectRTT:       float64(packet.DirectRTT),
+			DeltaRTT:        float64(deltaRTT),
+			Location:        *location,
+			ClientAddr:      packet.ClientAddress.String(),
+			ServerAddr:      packet.ServerAddress.String(),
+			Hops:            nil,
+			SDK:             packet.Version.String(),
+			Connection:      uint8(packet.ConnectionType),
+			NearbyRelays:    nearRelayPortalData,
+			Platform:        uint8(packet.PlatformType),
+			BuyerID:         packet.CustomerID,
+		},
+		Slice: SessionSlice{
+			Timestamp: time.Now(),
+			Next: routing.Stats{
+				RTT:        float64(packet.NextRTT),
+				Jitter:     float64(packet.NextJitter),
+				PacketLoss: float64(packet.NextPacketLoss),
+			},
+			Direct: routing.Stats{
+				RTT:        float64(packet.DirectRTT),
+				Jitter:     float64(packet.DirectJitter),
+				PacketLoss: float64(packet.DirectPacketLoss),
+			},
+			Envelope: routing.Envelope{
+				Up:   int64(packet.KbpsUp),
+				Down: int64(packet.KbpsDown),
+			},
+			IsMultiPath:       false,
+			IsTryBeforeYouBuy: false,
+			OnNetworkNext:     packet.Next,
+		},
+		Point: SessionMapPoint{
+			Latitude:  location.Latitude,
+			Longitude: location.Longitude,
+		},
+	}
+
+	if !postSessionHandler.IsPortalBufferFull() {
+		if portalData.Meta.NextRTT != 0 || portalData.Meta.DirectRTT != 0 {
+			postSessionHandler.SendPortalData(portalData)
+			metrics.PostSessionPortalEntriesSent.Add(1)
+		}
+	} else {
+		metrics.PostSessionPortalBufferFull.Add(1)
 	}
 }

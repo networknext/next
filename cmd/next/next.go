@@ -14,6 +14,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"hash/fnv"
 	"io"
 	"io/ioutil"
 	"net"
@@ -26,7 +27,6 @@ import (
 	"strings"
 	"sync"
 	"syscall"
-	"hash/fnv"
 
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"

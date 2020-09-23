@@ -1668,3 +1668,13 @@ func main() {
 }
 
 // todo: add test to verify that connection type and platform id are not zero on first slice
+
+// todo: test for fallback to direct
+
+// todo: add test for client bandwidth over limit
+
+// todo: add test for server bandwidth over limit
+
+// todo: add a test for session update retry
+
+// todo: add a test for out of order packets

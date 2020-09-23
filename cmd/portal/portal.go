@@ -444,6 +444,7 @@ func main() {
 
 			if res.ContentLength == -1 {
 				res.Body.Close()
+				fmt.Printf("content length invalid: %d\n", res.ContentLength)
 				continue
 			}
 
@@ -614,6 +615,7 @@ func main() {
 				m[id] = relay
 			}
 
+			fmt.Printf("read in %d relays\n", count)
 			relayMap.Swap(&m)
 		}
 	}()

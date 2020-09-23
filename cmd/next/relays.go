@@ -104,7 +104,7 @@ func opsRelays(
 		}
 		overage := "n/a"
 		if relay.Overage > 0 {
-			overage = fmt.Sprintf("%.2f", relay.Overage.ToCents()/100)
+			overage = fmt.Sprintf("%.5f", relay.Overage.ToCents()/100)
 		}
 
 		var bwRule string
