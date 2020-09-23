@@ -21,20 +21,10 @@ namespace core
   namespace handlers
   {
     INLINE void server_to_client_handler_sdk4(
-     Packet& packet,
-     SessionMap& session_map,
-     ThroughputRecorder& recorder,
-     const RouterInfo& router_info,
-     const Socket& socket,
-     bool is_signed)
+     Packet& packet, SessionMap& session_map, ThroughputRecorder& recorder, const RouterInfo& router_info, const Socket& socket)
     {
       size_t index = 0;
       size_t length = packet.length;
-
-      if (is_signed) {
-        index = PACKET_HASH_LENGTH;
-        length = packet.length - PACKET_HASH_LENGTH;
-      }
 
       // check if length excluding the hash is right,
       // and then check if the hash + everything else is too large

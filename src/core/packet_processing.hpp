@@ -64,25 +64,17 @@ namespace core
 
         pkt.addr = ping.address;
 
-        size_t index = crypto::PACKET_HASH_LENGTH;
-
         // write data to the buffer
-        {
-          if (!encoding::write_uint8(pkt.buffer, index, static_cast<uint8_t>(PacketType::RelayPing))) {
-            LOG(ERROR, "could not write packet type");
-            assert(false);
-          }
+        size_t index = 0;
 
-          if (!encoding::write_uint64(pkt.buffer, index, ping.sequence)) {
-            LOG(ERROR, "could not write sequence");
-            assert(false);
-          }
+        if (!encoding::write_uint8(pkt.buffer, index, static_cast<uint8_t>(PacketType::RelayPing))) {
+          LOG(ERROR, "could not write packet type");
+          assert(false);
+        }
 
-          size_t sign_index = 0;
-          if (!crypto::sign_network_next_packet_sdk4(pkt.buffer, sign_index, index)) {
-            LOG(ERROR, "unable to sign ping packet");
-            continue;
-          }
+        if (!encoding::write_uint64(pkt.buffer, index, ping.sequence)) {
+          LOG(ERROR, "could not write sequence");
+          assert(false);
         }
 
         pkt.length = index;
@@ -131,19 +123,13 @@ namespace core
       bool is_signed = false;
 
       PacketType type;
-      size_t sign_index = 0;
-      size_t sign_index_sdk4 = 0;
-      if (crypto::is_network_next_packet_sdk4(packet.buffer, sign_index_sdk4, packet.length)) {
-        type = static_cast<PacketType>(packet.buffer[crypto::PACKET_HASH_LENGTH]);
-        is_signed = true;
-        LOG(DEBUG, "sdk4 packet: ", type);
-      } else if (crypto::is_network_next_packet(packet.buffer, sign_index, packet.length)) {
+      if (crypto::is_network_next_packet(packet.buffer, 0, packet.length)) {
         type = static_cast<PacketType>(packet.buffer[crypto::PACKET_HASH_LENGTH]);
         is_signed = true;
         LOG(DEBUG, "sdk3 packet: ", type);
       } else {
         type = static_cast<PacketType>(packet.buffer[0]);
-        LOG(DEBUG, "pre-hash packet: ", type);
+        LOG(DEBUG, "non-hash packet: ", type);
       }
 
       size_t header_bytes = 0;
@@ -208,39 +194,39 @@ namespace core
           // SDK 4.x.x
         case PacketType::RouteRequest4: {
           recorder.route_request_rx.add(whole_packet_size);
-          handlers::route_request_handler_sdk4(packet, keychain, session_map, recorder, router_info, socket, is_signed);
+          handlers::route_request_handler_sdk4(packet, keychain, session_map, recorder, router_info, socket);
         } break;
         case PacketType::RouteResponse4: {
           recorder.route_response_rx.add(whole_packet_size);
-          handlers::route_response_handler_sdk4(packet, session_map, recorder, router_info, socket, is_signed);
+          handlers::route_response_handler_sdk4(packet, session_map, recorder, router_info, socket);
         } break;
         case PacketType::ClientToServer4: {
           recorder.client_to_server_rx.add(whole_packet_size);
-          handlers::client_to_server_handler_sdk4(packet, session_map, recorder, router_info, socket, is_signed);
+          handlers::client_to_server_handler_sdk4(packet, session_map, recorder, router_info, socket);
         } break;
         case PacketType::ServerToClient4: {
           recorder.server_to_client_rx.add(whole_packet_size);
-          handlers::server_to_client_handler_sdk4(packet, session_map, recorder, router_info, socket, is_signed);
+          handlers::server_to_client_handler_sdk4(packet, session_map, recorder, router_info, socket);
         } break;
         case PacketType::SessionPing4: {
           recorder.session_ping_rx.add(whole_packet_size);
-          handlers::session_ping_handler_sdk4(packet, session_map, recorder, router_info, socket, is_signed);
+          handlers::session_ping_handler_sdk4(packet, session_map, recorder, router_info, socket);
         } break;
         case PacketType::SessionPong4: {
           recorder.session_pong_rx.add(whole_packet_size);
-          handlers::session_pong_handler_sdk4(packet, session_map, recorder, router_info, socket, is_signed);
+          handlers::session_pong_handler_sdk4(packet, session_map, recorder, router_info, socket);
         } break;
         case PacketType::ContinueRequest4: {
           recorder.continue_request_rx.add(whole_packet_size);
-          handlers::continue_request_handler_sdk4(packet, session_map, keychain, recorder, router_info, socket, is_signed);
+          handlers::continue_request_handler_sdk4(packet, session_map, keychain, recorder, router_info, socket);
         } break;
         case PacketType::ContinueResponse4: {
           recorder.continue_response_rx.add(whole_packet_size);
-          handlers::continue_response_handler_sdk4(packet, session_map, recorder, router_info, socket, is_signed);
+          handlers::continue_response_handler_sdk4(packet, session_map, recorder, router_info, socket);
         } break;
         case PacketType::NearPing4: {
           recorder.near_ping_rx.add(whole_packet_size);
-          handlers::near_ping_handler(packet, recorder, socket, is_signed);
+          handlers::near_ping_handler_sdk4(packet, recorder, socket);
         } break;
         default: {
           recorder.unknown_rx.add(whole_packet_size);

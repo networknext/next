@@ -9,7 +9,6 @@
 using core::Packet;
 using core::RELAY_PING_PACKET_SIZE;
 using core::RelayManager;
-using crypto::PACKET_HASH_LENGTH;
 
 namespace core
 {
@@ -22,13 +21,13 @@ namespace core
         return;
       }
 
-      if (packet.length != PACKET_HASH_LENGTH + RELAY_PING_PACKET_SIZE) {
+      if (packet.length != RELAY_PING_PACKET_SIZE) {
         LOG(ERROR, "ignoring relay pong, invalid packet size");
         return;
       }
 
       uint64_t sequence_number;
-      size_t index = PACKET_HASH_LENGTH + 1;
+      size_t index = 1;
       if (!encoding::read_uint64(packet.buffer, index, sequence_number)) {
         LOG(ERROR, "could not read sequence number");
         return;

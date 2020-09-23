@@ -31,18 +31,12 @@ namespace core
      const Keychain& keychain,
      ThroughputRecorder& recorder,
      const RouterInfo& router_info,
-     const Socket& socket,
-     bool is_signed)
+     const Socket& socket)
     {
       LOG(DEBUG, "got continue request from ", packet.addr);
 
       size_t index = 0;
       size_t length = packet.length;
-
-      if (is_signed) {
-        index = PACKET_HASH_LENGTH;
-        length = packet.length - PACKET_HASH_LENGTH;
-      }
 
       if (length < int(1 + ContinueTokenV4::SIZE_OF_ENCRYPTED * 2)) {
         LOG(ERROR, "ignoring continue request. bad packet size (", length, ")");
@@ -86,16 +80,7 @@ namespace core
 
       length = packet.length - ContinueTokenV4::SIZE_OF_ENCRYPTED;
 
-      if (is_signed) {
-        size_t index = ContinueTokenV4::SIZE_OF_ENCRYPTED;
-        packet.buffer[index + PACKET_HASH_LENGTH] = static_cast<uint8_t>(PacketType::ContinueRequest4);
-        if (!crypto::sign_network_next_packet_sdk4(packet.buffer, index, length)) {
-          LOG(ERROR, "failed to sign continue request for session ", *session);
-          return;
-        }
-      } else {
-        packet.buffer[ContinueTokenV4::SIZE_OF_ENCRYPTED] = static_cast<uint8_t>(PacketType::ContinueRequest4);
-      }
+      packet.buffer[ContinueTokenV4::SIZE_OF_ENCRYPTED] = static_cast<uint8_t>(PacketType::ContinueRequest4);
 
       recorder.continue_request_tx.add(length);
 

@@ -22,20 +22,10 @@ namespace core
   namespace handlers
   {
     INLINE void continue_response_handler_sdk4(
-     Packet& packet,
-     SessionMap& session_map,
-     ThroughputRecorder& recorder,
-     const RouterInfo& router_info,
-     const Socket& socket,
-     bool is_signed)
+     Packet& packet, SessionMap& session_map, ThroughputRecorder& recorder, const RouterInfo& router_info, const Socket& socket)
     {
       size_t index = 0;
       size_t length = packet.length;
-
-      if (is_signed) {
-        index = PACKET_HASH_LENGTH;
-        length = packet.length - PACKET_HASH_LENGTH;
-      }
 
       if (length != PacketHeaderV4::SIZE_OF_SIGNED) {
         LOG(ERROR, "dropping continue response packet, invalid size: ", length);

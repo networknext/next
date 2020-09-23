@@ -17,6 +17,26 @@ namespace core
 {
   namespace handlers
   {
+    INLINE void near_ping_handler_sdk4(Packet& packet, ThroughputRecorder& recorder, const Socket& socket)
+    {
+      size_t length = packet.length;
+
+      if (length != 1 + 8 + 8 + 8 + 8) {
+        LOG(ERROR, "ignoring near ping packet, length invalid: ", length);
+        return;
+      }
+
+      length = packet.length - 16;
+
+      packet.buffer[0] = static_cast<uint8_t>(PacketType::NearPong);
+
+      recorder.near_ping_tx.add(length);
+
+      if (!socket.send(packet.addr, packet.buffer.data(), length)) {
+        LOG(ERROR, "failed to send near pong to ", packet.addr);
+      }
+    }
+
     INLINE void near_ping_handler(Packet& packet, ThroughputRecorder& recorder, const Socket& socket, bool is_signed)
     {
       size_t length = packet.length;
