@@ -26,7 +26,6 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/crypto"
-	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/logging"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
@@ -442,181 +441,28 @@ func main() {
 				continue
 			}
 
+			if res.StatusCode != http.StatusOK {
+				level.Error(logger).Log("msg", "bad relay_stats request")
+				continue
+			}
+
 			if res.ContentLength == -1 {
+				level.Error(logger).Log("msg", fmt.Sprintf("relay_stats content length invalid: %d\n", res.ContentLength))
 				res.Body.Close()
-				fmt.Printf("content length invalid: %d\n", res.ContentLength)
 				continue
 			}
 
 			data, err := ioutil.ReadAll(res.Body)
 			if err != nil {
 				level.Error(logger).Log("msg", "unable to read response body", "err", err)
+				res.Body.Close()
+				continue
 			}
 			res.Body.Close()
 
-			index := 0
-
-			var version uint8
-			if !encoding.ReadUint8(data, &index, &version) {
-				level.Error(logger).Log("msg", "unable to read relay stats version")
-				continue
+			if err := relayMap.ReadAndSwap(data); err != nil {
+				level.Error(logger).Log("msg", "unable to read relay stats map", "err", err)
 			}
-
-			if version != routing.VersionNumberRelayMap {
-				level.Error(logger).Log("msg", fmt.Sprintf("incorrect relay map version number: %d", version))
-				continue
-			}
-
-			var count uint64
-			if !encoding.ReadUint64(data, &index, &count) {
-				level.Error(logger).Log("unable to read relay stats count")
-				continue
-			}
-
-			m := make(map[uint64]jsonrpc.RelayData)
-			for i := uint64(0); i < count; i++ {
-				var id uint64
-				if !encoding.ReadUint64(data, &index, &id) {
-					level.Error(logger).Log("unable to read relay stats id")
-					break
-				}
-
-				var relay jsonrpc.RelayData
-
-				if !encoding.ReadUint64(data, &index, &relay.SessionCount) {
-					level.Error(logger).Log("unable to read relay stats session count")
-					break
-				}
-
-				if !encoding.ReadUint64(data, &index, &relay.TrafficStats.BytesReceived) {
-					level.Error(logger).Log("unable to read relay stats tx")
-					break
-				}
-
-				if !encoding.ReadUint64(data, &index, &relay.TrafficStats.BytesSent) {
-					level.Error(logger).Log("unable to read relay stats rx")
-					break
-				}
-
-				if !encoding.ReadUint64(data, &index, &relay.TrafficStats.OutboundPingTx) {
-					level.Error(logger).Log("msg", "invalid packet, could not read outbound ping tx")
-				}
-
-				if !encoding.ReadUint64(data, &index, &relay.TrafficStats.RouteRequestRx) {
-					level.Error(logger).Log("msg", "invalid packet, could not read route request rx")
-				}
-				if !encoding.ReadUint64(data, &index, &relay.TrafficStats.RouteRequestTx) {
-					level.Error(logger).Log("msg", "invalid packet, could not read route request tx")
-				}
-
-				if !encoding.ReadUint64(data, &index, &relay.TrafficStats.RouteResponseRx) {
-					level.Error(logger).Log("msg", "invalid packet, could not read route response rx")
-				}
-				if !encoding.ReadUint64(data, &index, &relay.TrafficStats.RouteResponseTx) {
-					level.Error(logger).Log("msg", "invalid packet, could not read route response tx")
-				}
-
-				if !encoding.ReadUint64(data, &index, &relay.TrafficStats.ClientToServerRx) {
-					level.Error(logger).Log("msg", "invalid packet, could not read client to server rx")
-				}
-				if !encoding.ReadUint64(data, &index, &relay.TrafficStats.ClientToServerTx) {
-					level.Error(logger).Log("msg", "invalid packet, could not read client to server tx")
-				}
-
-				if !encoding.ReadUint64(data, &index, &relay.TrafficStats.ServerToClientRx) {
-					level.Error(logger).Log("msg", "invalid packet, could not read server to client rx")
-				}
-				if !encoding.ReadUint64(data, &index, &relay.TrafficStats.ServerToClientTx) {
-					level.Error(logger).Log("msg", "invalid packet, could not read server to client tx")
-				}
-
-				if !encoding.ReadUint64(data, &index, &relay.TrafficStats.InboundPingRx) {
-					level.Error(logger).Log("msg", "invalid packet, could not read inbound ping rx")
-				}
-				if !encoding.ReadUint64(data, &index, &relay.TrafficStats.InboundPingTx) {
-					level.Error(logger).Log("msg", "invalid packet, could not read inbound ping tx")
-				}
-
-				if !encoding.ReadUint64(data, &index, &relay.TrafficStats.PongRx) {
-					level.Error(logger).Log("msg", "invalid packet, could not read pong rx")
-				}
-
-				if !encoding.ReadUint64(data, &index, &relay.TrafficStats.SessionPingRx) {
-					level.Error(logger).Log("msg", "invalid packet, could not read session ping rx")
-				}
-				if !encoding.ReadUint64(data, &index, &relay.TrafficStats.SessionPingTx) {
-					level.Error(logger).Log("msg", "invalid packet, could not read session ping tx")
-				}
-
-				if !encoding.ReadUint64(data, &index, &relay.TrafficStats.SessionPongRx) {
-					level.Error(logger).Log("msg", "invalid packet, could not read session pong rx")
-				}
-				if !encoding.ReadUint64(data, &index, &relay.TrafficStats.SessionPongTx) {
-					level.Error(logger).Log("msg", "invalid packet, could not read session pong tx")
-				}
-
-				if !encoding.ReadUint64(data, &index, &relay.TrafficStats.ContinueRequestRx) {
-					level.Error(logger).Log("msg", "invalid packet, could not read continue request rx")
-				}
-				if !encoding.ReadUint64(data, &index, &relay.TrafficStats.ContinueRequestTx) {
-					level.Error(logger).Log("msg", "invalid packet, could not read continue request tx")
-				}
-
-				if !encoding.ReadUint64(data, &index, &relay.TrafficStats.ContinueResponseRx) {
-					level.Error(logger).Log("msg", "invalid packet, could not read continue response rx")
-				}
-				if !encoding.ReadUint64(data, &index, &relay.TrafficStats.ContinueResponseTx) {
-					level.Error(logger).Log("msg", "invalid packet, could not read continue response tx")
-				}
-
-				if !encoding.ReadUint64(data, &index, &relay.TrafficStats.NearPingRx) {
-					level.Error(logger).Log("msg", "invalid packet, could not read near ping rx")
-				}
-				if !encoding.ReadUint64(data, &index, &relay.TrafficStats.NearPingTx) {
-					level.Error(logger).Log("msg", "invalid packet, could not read near ping tx")
-				}
-
-				if !encoding.ReadUint64(data, &index, &relay.TrafficStats.UnknownRx) {
-					level.Error(logger).Log("msg", "invalid packet, could not read unknown rx")
-				}
-
-				if !encoding.ReadUint8(data, &index, &relay.Version.Major) {
-					level.Error(logger).Log("msg", "unable to relay stats major version")
-					break
-				}
-
-				if !encoding.ReadUint8(data, &index, &relay.Version.Minor) {
-					level.Error(logger).Log("msg", "unable to relay stats minor version")
-					break
-				}
-
-				if !encoding.ReadUint8(data, &index, &relay.Version.Patch) {
-					level.Error(logger).Log("msg", "unable to relay stats patch version")
-					break
-				}
-
-				var unixTime uint64
-				if !encoding.ReadUint64(data, &index, &unixTime) {
-					level.Error(logger).Log("unable to read relay stats last update time")
-					break
-				}
-				relay.LastUpdateTime = time.Unix(int64(unixTime), 0)
-
-				if !encoding.ReadFloat32(data, &index, &relay.CPU) {
-					level.Error(logger).Log("unable to read relay stats cpu usage")
-					break
-				}
-
-				if !encoding.ReadFloat32(data, &index, &relay.Mem) {
-					level.Error(logger).Log("unable to read relay stats memory usage")
-					break
-				}
-
-				m[id] = relay
-			}
-
-			fmt.Printf("read in %d relays\n", count)
-			relayMap.Swap(&m)
 		}
 	}()
 

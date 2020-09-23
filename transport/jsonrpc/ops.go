@@ -15,6 +15,7 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/networknext/backend/crypto"
+	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 )
@@ -55,6 +56,87 @@ func (r *RelayStatsMap) Get(id uint64) (RelayData, bool) {
 	relay, ok := (*r.Internal)[id]
 	r.mu.RUnlock()
 	return relay, ok
+}
+
+func (r *RelayStatsMap) ReadAndSwap(data []byte) error {
+	index := 0
+
+	var version uint8
+	if !encoding.ReadUint8(data, &index, &version) {
+		return errors.New("unable to read relay stats version")
+	}
+
+	if version != routing.VersionNumberRelayMap {
+		return fmt.Errorf("incorrect relay map version number: %d", version)
+	}
+
+	var count uint64
+	if !encoding.ReadUint64(data, &index, &count) {
+		return errors.New("unable to read relay stats count")
+	}
+
+	m := make(map[uint64]RelayData)
+
+	for i := uint64(0); i < count; i++ {
+		var id uint64
+		if !encoding.ReadUint64(data, &index, &id) {
+			return errors.New("unable to read relay stats id")
+		}
+
+		var relay RelayData
+
+		if version == 0 {
+			if !encoding.ReadUint64(data, &index, &relay.SessionCount) {
+				return errors.New("unable to read relay stats session count")
+			}
+
+			if !encoding.ReadUint64(data, &index, &relay.TrafficStats.BytesReceived) {
+				return errors.New("unable to read relay stats tx")
+			}
+
+			if !encoding.ReadUint64(data, &index, &relay.TrafficStats.BytesSent) {
+				return errors.New("unable to read relay stats rx")
+			}
+		} else if version == 1 {
+			if err := relay.TrafficStats.ReadFrom(data, &index); err != nil {
+				return err
+			}
+		} else {
+			return fmt.Errorf("invalid relay map version: %d", version)
+		}
+
+		if !encoding.ReadUint8(data, &index, &relay.Version.Major) {
+			return errors.New("unable to relay stats major version")
+		}
+
+		if !encoding.ReadUint8(data, &index, &relay.Version.Minor) {
+			return errors.New("unable to relay stats minor version")
+		}
+
+		if !encoding.ReadUint8(data, &index, &relay.Version.Patch) {
+			return errors.New("unable to relay stats patch version")
+		}
+
+		var unixTime uint64
+		if !encoding.ReadUint64(data, &index, &unixTime) {
+			return errors.New("unable to read relay stats last update time")
+		}
+		relay.LastUpdateTime = time.Unix(int64(unixTime), 0)
+
+		if !encoding.ReadFloat32(data, &index, &relay.CPU) {
+			return errors.New("unable to read relay stats cpu usage")
+		}
+
+		if !encoding.ReadFloat32(data, &index, &relay.Mem) {
+			return errors.New("unable to read relay stats memory usage")
+		}
+
+		m[id] = relay
+	}
+
+	r.Swap(&m)
+
+	return nil
 }
 
 func (r *RelayStatsMap) Swap(m *map[uint64]RelayData) {
