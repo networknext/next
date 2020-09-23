@@ -16,7 +16,7 @@ type Buyer struct {
 	Debug                bool
 	PublicKey            []byte
 	RouteShader          core.RouteShader
-	CustomerConfig       core.CustomerConfig
+	CustomerData         core.CustomerData
 	InternalConfig       core.InternalConfig
 	RoutingRulesSettings RoutingRulesSettings
 }

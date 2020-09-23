@@ -142,7 +142,7 @@ type routeShader struct {
 	BandwidthEnvelopeDownKbps int32   `firestore:"bandwidthEnvelopeDownKbps"`
 }
 
-type customerConfig struct {
+type customerData struct {
 	BannedUsers        map[int64]bool `firestore:"bannedUsers"`
 	MultipathVetoUsers map[int64]bool `firestore:"multipathVetoUsers"`
 }
@@ -540,7 +540,7 @@ func (fs *Firestore) AddBuyer(ctx context.Context, b routing.Buyer) error {
 	}
 
 	// Add the buyer's customer config to remote storage
-	if err := fs.setCustomerConfigForBuyerID(ctx, ref.ID, company.Name, b.CustomerConfig); err != nil {
+	if err := fs.setCustomerDataForBuyerID(ctx, ref.ID, company.Name, b.CustomerData); err != nil {
 		return &FirestoreError{err: err}
 	}
 
@@ -608,7 +608,7 @@ func (fs *Firestore) RemoveBuyer(ctx context.Context, id uint64) error {
 			}
 
 			// Delete the buyer's customer config in remote storage
-			if err := fs.deleteCustomerConfigForBuyerID(ctx, bdoc.Ref.ID); err != nil {
+			if err := fs.deleteCustomerDataForBuyerID(ctx, bdoc.Ref.ID); err != nil {
 				return &FirestoreError{err: err}
 			}
 
@@ -713,7 +713,7 @@ func (fs *Firestore) SetBuyer(ctx context.Context, b routing.Buyer) error {
 			}
 
 			// Update the buyer's customer config in firestore
-			if err := fs.setCustomerConfigForBuyerID(ctx, bdoc.Ref.ID, company.Name, b.CustomerConfig); err != nil {
+			if err := fs.setCustomerDataForBuyerID(ctx, bdoc.Ref.ID, company.Name, b.CustomerData); err != nil {
 				return &FirestoreError{err: err}
 			}
 
@@ -2000,7 +2000,7 @@ func (fs *Firestore) syncBuyers(ctx context.Context) error {
 			level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to completely read route shader for buyer %v, some fields will have default values", buyerDoc.Ref.ID), "err", err)
 		}
 
-		cc, err := fs.getCustomerConfigForBuyerID(ctx, buyerDoc.Ref.ID)
+		cd, err := fs.getCustomerDataForBuyerID(ctx, buyerDoc.Ref.ID)
 		if err != nil {
 			level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to completely read customer config for buyer %v, some fields will have default values", buyerDoc.Ref.ID), "err", err)
 		}
@@ -2018,7 +2018,7 @@ func (fs *Firestore) syncBuyers(ctx context.Context) error {
 			PublicKey:            b.PublicKey,
 			RoutingRulesSettings: rrs,
 			RouteShader:          rs,
-			CustomerConfig:       cc,
+			CustomerData:         cd,
 			InternalConfig:       ic,
 		}
 
@@ -2189,11 +2189,11 @@ func (fs *Firestore) deleteRouteShaderForBuyerID(ctx context.Context, ID string)
 	return err
 }
 
-func (fs *Firestore) deleteCustomerConfigForBuyerID(ctx context.Context, ID string) error {
-	customerConfigID := ID + "_0"
+func (fs *Firestore) deleteCustomerDataForBuyerID(ctx context.Context, ID string) error {
+	customerDataID := ID + "_0"
 
 	// Attempt to delete route shader for buyer
-	_, err := fs.Client.Collection("CustomerConfig").Doc(customerConfigID).Delete(ctx)
+	_, err := fs.Client.Collection("CustomerData").Doc(customerDataID).Delete(ctx)
 	return err
 }
 
@@ -2355,50 +2355,50 @@ func (fs *Firestore) setRouteShaderForBuyerID(ctx context.Context, buyerID strin
 	return err
 }
 
-func (fs *Firestore) getCustomerConfigForBuyerID(ctx context.Context, buyerID string) (core.CustomerConfig, error) {
-	customerConfigID := buyerID + "_0"
-	cc := core.NewCustomerConfig()
+func (fs *Firestore) getCustomerDataForBuyerID(ctx context.Context, buyerID string) (core.CustomerData, error) {
+	customerDataID := buyerID + "_0"
+	cd := core.NewCustomerData()
 
-	ccDoc, err := fs.Client.Collection("CustomerConfig").Doc(customerConfigID).Get(ctx)
+	ccDoc, err := fs.Client.Collection("CustomerData").Doc(customerDataID).Get(ctx)
 	if err != nil {
-		return cc, err
+		return cd, err
 	}
 
-	var tempCC customerConfig
+	var tempCC customerData
 	err = ccDoc.DataTo(&tempCC)
 	if err != nil {
-		return cc, err
+		return cd, err
 	}
 
 	// Convert the banned user IDs and multipath vetoed user IDs to uint64
 	// (firestore can't store unsigned numbers)
 
-	cc.BannedUsers = map[uint64]bool{}
+	cd.BannedUsers = map[uint64]bool{}
 	for userID, v := range tempCC.BannedUsers {
-		cc.BannedUsers[uint64(userID)] = v
+		cd.BannedUsers[uint64(userID)] = v
 	}
 
-	cc.MultipathVetoUsers = map[uint64]bool{}
+	cd.MultipathVetoUsers = map[uint64]bool{}
 	for userID, v := range tempCC.MultipathVetoUsers {
-		cc.MultipathVetoUsers[uint64(userID)] = v
+		cd.MultipathVetoUsers[uint64(userID)] = v
 	}
 
-	return cc, nil
+	return cd, nil
 }
 
-func (fs *Firestore) setCustomerConfigForBuyerID(ctx context.Context, buyerID string, name string, customerConfig core.CustomerConfig) error {
-	customerConfigID := buyerID + "_0"
+func (fs *Firestore) setCustomerDataForBuyerID(ctx context.Context, buyerID string, name string, customerData core.CustomerData) error {
+	customerDataID := buyerID + "_0"
 
 	// Convert the banned user IDs and multipath vetoed user IDs to int64
 	// (firestore can't store unsigned numbers)
 
 	bannedUsers := map[int64]bool{}
-	for userID, v := range customerConfig.BannedUsers {
+	for userID, v := range customerData.BannedUsers {
 		bannedUsers[int64(userID)] = v
 	}
 
 	multipathVetoUsers := map[int64]bool{}
-	for userID, v := range customerConfig.MultipathVetoUsers {
+	for userID, v := range customerData.MultipathVetoUsers {
 		multipathVetoUsers[int64(userID)] = v
 	}
 
@@ -2408,7 +2408,7 @@ func (fs *Firestore) setCustomerConfigForBuyerID(ctx context.Context, buyerID st
 		"multipathVetoUsers": multipathVetoUsers,
 	}
 
-	_, err := fs.Client.Collection("CustomerConfig").Doc(customerConfigID).Set(ctx, ccFirestore, firestore.MergeAll)
+	_, err := fs.Client.Collection("CustomerData").Doc(customerDataID).Set(ctx, ccFirestore, firestore.MergeAll)
 	return err
 }
 

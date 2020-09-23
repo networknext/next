@@ -592,7 +592,7 @@ func TestSessionUpdateHandler4FirstSlice(t *testing.T) {
 	storer.AddBuyer(context.Background(), routing.Buyer{
 		ID:             100,
 		RouteShader:    core.NewRouteShader(),
-		CustomerConfig: core.NewCustomerConfig(),
+		CustomerData:   core.NewCustomerData(),
 		InternalConfig: core.NewInternalConfig(),
 	})
 	storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 10})
@@ -679,7 +679,7 @@ func TestSessionUpdateHandler4NoDestRelays(t *testing.T) {
 	storer.AddBuyer(context.Background(), routing.Buyer{
 		ID:             100,
 		RouteShader:    core.NewRouteShader(),
-		CustomerConfig: core.NewCustomerConfig(),
+		CustomerData:   core.NewCustomerData(),
 		InternalConfig: core.NewInternalConfig(),
 	})
 	storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 10})
@@ -784,7 +784,7 @@ func TestSessionUpdateHandler4DirectRoute(t *testing.T) {
 	storer.AddBuyer(context.Background(), routing.Buyer{
 		ID:             100,
 		RouteShader:    core.NewRouteShader(),
-		CustomerConfig: core.NewCustomerConfig(),
+		CustomerData:   core.NewCustomerData(),
 		InternalConfig: core.NewInternalConfig(),
 	})
 	storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 10})
@@ -892,7 +892,7 @@ func TestSessionUpdateHandler4NextRoute(t *testing.T) {
 	err = storer.AddBuyer(context.Background(), routing.Buyer{
 		ID:             100,
 		RouteShader:    core.NewRouteShader(),
-		CustomerConfig: core.NewCustomerConfig(),
+		CustomerData:   core.NewCustomerData(),
 		InternalConfig: core.NewInternalConfig(),
 	})
 	assert.NoError(t, err)
@@ -1084,7 +1084,7 @@ func TestSessionUpdateHandler4ContinueRoute(t *testing.T) {
 	err = storer.AddBuyer(context.Background(), routing.Buyer{
 		ID:             100,
 		RouteShader:    core.NewRouteShader(),
-		CustomerConfig: core.NewCustomerConfig(),
+		CustomerData:   core.NewCustomerData(),
 		InternalConfig: core.NewInternalConfig(),
 	})
 	assert.NoError(t, err)

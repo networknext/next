@@ -404,7 +404,7 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 
 		sessionData.Initial = false
 		if !sessionData.RouteState.Next {
-			if core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, &buyer.CustomerConfig, &buyer.InternalConfig, int32(packet.DirectRTT), packet.DirectPacketLoss, reframedNearRelays, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:]) {
+			if core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, &buyer.CustomerData, &buyer.InternalConfig, int32(packet.DirectRTT), packet.DirectPacketLoss, reframedNearRelays, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:]) {
 				// Next token
 
 				// Add another 10 seconds to the slice and increment the session version
@@ -421,7 +421,7 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 				response.Tokens = tokenData
 			}
 		} else {
-			if core.MakeRouteDecision_StayOnNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, &buyer.CustomerConfig, &buyer.InternalConfig, int32(packet.DirectRTT), sessionData.RouteCost, sessionData.RouteNumRelays, sessionData.RouteRelays, reframedNearRelays, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:]) {
+			if core.MakeRouteDecision_StayOnNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, &buyer.CustomerData, &buyer.InternalConfig, int32(packet.DirectRTT), sessionData.RouteCost, sessionData.RouteNumRelays, sessionData.RouteRelays, reframedNearRelays, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:]) {
 				// Continue token
 
 				// todo: need to check if the route has changed. If so, create a next token instead.

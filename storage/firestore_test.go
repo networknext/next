@@ -2570,7 +2570,7 @@ func TestFirestore(t *testing.T) {
 			Live:                 false,
 			PublicKey:            make([]byte, crypto.KeySize),
 			RouteShader:          core.NewRouteShader(),
-			CustomerConfig:       core.NewCustomerConfig(),
+			CustomerData:         core.NewCustomerData(),
 			InternalConfig:       core.NewInternalConfig(),
 			RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
 		}

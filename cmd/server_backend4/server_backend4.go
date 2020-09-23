@@ -255,7 +255,7 @@ func mainReturnWithCode() int {
 			Live:                 true,
 			PublicKey:            customerPublicKey,
 			RouteShader:          routeShader,
-			CustomerConfig:       core.NewCustomerConfig(),
+			CustomerData:         core.NewCustomerData(),
 			InternalConfig:       core.NewInternalConfig(),
 			RoutingRulesSettings: routing.LocalRoutingRulesSettings,
 		}); err != nil {
