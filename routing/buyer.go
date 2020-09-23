@@ -10,10 +10,8 @@ import (
 )
 
 type Buyer struct {
+	CompanyCode          string
 	ID                   uint64
-	Name                 string
-	Domain               string
-	Active               bool
 	Live                 bool
 	Debug                bool
 	PublicKey            []byte
