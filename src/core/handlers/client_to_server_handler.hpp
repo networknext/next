@@ -25,16 +25,10 @@ namespace core
      core::SessionMap& session_map,
      util::ThroughputRecorder& recorder,
      const RouterInfo& router_info,
-     const os::Socket& socket,
-     bool is_signed)
+     const os::Socket& socket)
     {
       size_t index = 0;
       size_t length = packet.length;
-
-      if (is_signed) {
-        index = PACKET_HASH_LENGTH;
-        length = packet.length - PACKET_HASH_LENGTH;
-      }
 
       // check if length excluding the hash is right,
       // and then check if the hash + everything else is too large

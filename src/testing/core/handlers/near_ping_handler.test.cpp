@@ -11,6 +11,35 @@ using os::Socket;
 using os::SocketConfig;
 using util::ThroughputRecorder;
 
+Test(core_handlers_near_ping_handler_sdk4)
+{
+  Packet packet;
+  ThroughputRecorder recorder;
+  Socket socket;
+
+  Address addr;
+  SocketConfig config = default_socket_config();
+
+  check(addr.parse("127.0.0.1"));
+  check(socket.create(addr, config));
+
+  packet.length = 1 + 8 + 8 + 8 + 8;
+  packet.addr = addr;
+
+  core::handlers::near_ping_handler_sdk4(packet, recorder, socket);
+  size_t prev_len = packet.length;
+  check(socket.recv(packet));
+  check(packet.length == prev_len - 16);
+
+  // no check for already received
+  packet.length = 1 + 8 + 8 + 8 + 8;
+
+  core::handlers::near_ping_handler_sdk4(packet, recorder, socket);
+  prev_len = packet.length;
+  check(socket.recv(packet));
+  check(packet.length == prev_len - 16);
+}
+
 Test(core_handlers_near_ping_handler_unsigned)
 {
   Packet packet;

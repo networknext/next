@@ -10,7 +10,6 @@ using core::RELAY_PING_PACKET_SIZE;
 using core::RelayManager;
 using core::RelayPingInfo;
 using core::PacketType;
-using crypto::PACKET_HASH_LENGTH;
 using net::Address;
 
 Test(core_handlers_relay_pong_handler)
@@ -22,7 +21,7 @@ Test(core_handlers_relay_pong_handler)
   check(addr.parse("127.0.0.1"));
 
   packet.addr = addr;
-  packet.length = PACKET_HASH_LENGTH + RELAY_PING_PACKET_SIZE;
+  packet.length = RELAY_PING_PACKET_SIZE;
 
   std::array<RelayPingInfo, 1024> relays;
   relays[0].id = 0;
@@ -53,7 +52,7 @@ Test(core_handlers_relay_pong_handler)
     std::cout << "pong received == " << pong_received << '\n';
   });
 
-  size_t index = crypto::PACKET_HASH_LENGTH;
+  size_t index = 0;
   encoding::write_uint8(packet.buffer, index, static_cast<uint8_t>(PacketType::RelayPong));
   encoding::write_uint64(packet.buffer, index, ping_data[0].sequence);
 

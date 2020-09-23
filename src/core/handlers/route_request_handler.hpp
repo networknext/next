@@ -30,16 +30,10 @@ namespace core
      SessionMap& session_map,
      ThroughputRecorder& recorder,
      const RouterInfo& router_info,
-     const Socket& socket,
-     bool is_signed)
+     const Socket& socket)
     {
       size_t index = 0;
       size_t length = packet.length;
-
-      if (is_signed) {
-        index = PACKET_HASH_LENGTH;
-        length = packet.length - PACKET_HASH_LENGTH;
-      }
 
       if (length < static_cast<size_t>(1 + RouteTokenV4::EncryptedByteSize * 2)) {
         LOG(ERROR, "ignoring route request. bad packet size (", length, ")");
@@ -95,15 +89,7 @@ namespace core
 
       length = packet.length - RouteTokenV4::EncryptedByteSize;
 
-      if (is_signed) {
-        size_t index = RouteTokenV4::EncryptedByteSize;
-        packet.buffer[index + PACKET_HASH_LENGTH] = static_cast<uint8_t>(PacketType::RouteRequest4);
-        if (!crypto::sign_network_next_packet_sdk4(packet.buffer, index, length)) {
-          LOG(ERROR, "unable to sign route request packet for session ", token);
-        }
-      } else {
-        packet.buffer[RouteTokenV4::EncryptedByteSize] = static_cast<uint8_t>(PacketType::RouteRequest4);
-      }
+      packet.buffer[RouteTokenV4::EncryptedByteSize] = static_cast<uint8_t>(PacketType::RouteRequest4);
 
       recorder.route_request_tx.add(length);
 
