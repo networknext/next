@@ -14,6 +14,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"hash/fnv"
 	"io"
 	"io/ioutil"
 	"net"
@@ -26,7 +27,6 @@ import (
 	"strings"
 	"sync"
 	"syscall"
-	"hash/fnv"
 
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
@@ -311,11 +311,9 @@ func handleJSONRPCErrorCustom(env Environment, err error, msg string) {
 }
 
 type buyer struct {
-	Name      string
-	Domain    string
-	Active    bool
-	Live      bool
-	PublicKey string
+	CompanyCode string
+	Live        bool
+	PublicKey   string
 }
 
 type seller struct {
@@ -1396,12 +1394,10 @@ func main() {
 
 					// Add the Buyer to storage
 					addBuyer(rpcClient, env, routing.Buyer{
-						ID:        binary.LittleEndian.Uint64(publicKey[:8]),
-						Name:      b.Name,
-						Domain:    b.Domain,
-						Active:    b.Active,
-						Live:      b.Live,
-						PublicKey: publicKey,
+						CompanyCode: b.CompanyCode,
+						ID:          binary.LittleEndian.Uint64(publicKey[:8]),
+						Live:        b.Live,
+						PublicKey:   publicKey,
 					})
 					return nil
 				},
@@ -1415,11 +1411,9 @@ func main() {
 							examplePublicKeyString := base64.StdEncoding.EncodeToString(examplePublicKey)
 
 							example := buyer{
-								Name:      "Psyonix",
-								Domain:    "example.com",
-								Active:    true,
-								Live:      true,
-								PublicKey: examplePublicKeyString,
+								CompanyCode: "psyonix",
+								Live:        true,
+								PublicKey:   examplePublicKeyString,
 							}
 
 							jsonBytes, err := json.MarshalIndent(example, "", "\t")

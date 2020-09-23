@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"fmt"
-	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -24,10 +23,8 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/logging"
-	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
 	"github.com/networknext/backend/transport/jsonrpc"
@@ -144,116 +141,6 @@ func main() {
 		LocalMode: true,
 	}
 
-	{
-		if env == "local" {
-			if err := db.AddBuyer(ctx, routing.Buyer{
-				ID:                   customerID,
-				Name:                 "local",
-				PublicKey:            customerPublicKey,
-				RoutingRulesSettings: routing.LocalRoutingRulesSettings,
-			}); err != nil {
-				level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
-				os.Exit(1)
-			}
-
-			if err := db.AddBuyer(ctx, routing.Buyer{
-				ID:                   0,
-				Name:                 "Ghost Army",
-				PublicKey:            customerPublicKey,
-				RoutingRulesSettings: routing.LocalRoutingRulesSettings,
-			}); err != nil {
-				level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
-				os.Exit(1)
-			}
-
-			seller := routing.Seller{
-				ID:                        "sellerID",
-				Name:                      "local",
-				IngressPriceNibblinsPerGB: 0.1 * 1e9,
-				EgressPriceNibblinsPerGB:  0.2 * 1e9,
-			}
-
-			did := crypto.HashID("local")
-			datacenter := routing.Datacenter{
-				ID:           did,
-				SignedID:     int64(did),
-				Name:         "local",
-				SupplierName: "usw2-az4",
-			}
-
-			if err := db.AddSeller(ctx, seller); err != nil {
-				level.Error(logger).Log("msg", "could not add seller to storage", "err", err)
-				os.Exit(1)
-			}
-
-			if err := db.AddDatacenter(ctx, datacenter); err != nil {
-				level.Error(logger).Log("msg", "could not add datacenter to storage", "err", err)
-				os.Exit(1)
-			}
-
-			addr1 := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10000}
-			rid1 := crypto.HashID(addr1.String())
-			if err := db.AddRelay(ctx, routing.Relay{
-				Name:           "local.test_relay.a",
-				ID:             rid1,
-				SignedID:       int64(rid1),
-				Addr:           addr1,
-				PublicKey:      relayPublicKey,
-				Seller:         seller,
-				Datacenter:     datacenter,
-				ManagementAddr: "127.0.0.1",
-				SSHUser:        "root",
-				SSHPort:        22,
-				MRC:            19700000000000,
-				Overage:        26000000000000,
-				BWRule:         routing.BWRuleBurst,
-				ContractTerm:   12,
-				StartDate:      time.Now(),
-				EndDate:        time.Now(),
-				Type:           routing.BareMetal,
-			}); err != nil {
-				level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
-				os.Exit(1)
-			}
-
-			addr2 := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10001}
-			rid2 := crypto.HashID(addr2.String())
-			if err := db.AddRelay(ctx, routing.Relay{
-				Name:           "local.test_relay.b",
-				ID:             rid2,
-				SignedID:       int64(rid2),
-				Addr:           addr2,
-				PublicKey:      relayPublicKey,
-				Seller:         seller,
-				Datacenter:     datacenter,
-				ManagementAddr: "127.0.0.1",
-				SSHUser:        "root",
-				SSHPort:        22,
-			}); err != nil {
-				level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
-				os.Exit(1)
-			}
-
-			addr3 := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10002}
-			rid3 := crypto.HashID(addr3.String())
-			if err := db.AddRelay(ctx, routing.Relay{
-				Name:           "abc.xyz",
-				ID:             rid3,
-				SignedID:       int64(rid3),
-				Addr:           addr3,
-				PublicKey:      relayPublicKey,
-				Seller:         seller,
-				Datacenter:     datacenter,
-				ManagementAddr: "127.0.0.1",
-				SSHUser:        "root",
-				SSHPort:        22,
-			}); err != nil {
-				level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
-				os.Exit(1)
-			}
-		}
-	}
-
 	manager, err := management.New(
 		os.Getenv("AUTH_DOMAIN"),
 		os.Getenv("AUTH_CLIENTID"),
@@ -335,6 +222,9 @@ func main() {
 		}
 	}
 
+	if env == "local" {
+		storage.SeedStorage(logger, ctx, db, relayPublicKey, customerID, customerPublicKey)
+	}
 	// We're not using the route matrix in the portal anymore, because RouteSelection()
 	// is commented out in the ops service.
 
@@ -443,6 +333,7 @@ func main() {
 
 			if res.ContentLength == -1 {
 				res.Body.Close()
+				fmt.Printf("content length invalid: %d\n", res.ContentLength)
 				continue
 			}
 
@@ -548,17 +439,24 @@ func main() {
 			if user != nil {
 				claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
 
-				if requestRoles, ok := claims["https://networknext.com/userRoles"]; ok {
-					if roles, ok := requestRoles.(map[string]interface{})["roles"]; ok {
+				if requestData, ok := claims["https://networknext.com/userData"]; ok {
+					var userRoles []string
+					if roles, ok := requestData.(map[string]interface{})["roles"]; ok {
 						rolesInterface := roles.([]interface{})
-						userRoles := make([]string, len(rolesInterface))
+						userRoles = make([]string, len(rolesInterface))
 						for i, v := range rolesInterface {
 							userRoles[i] = v.(string)
 						}
-						if len(userRoles) > 0 {
-							return jsonrpc.SetRoles(i.Request, userRoles)
-						}
 					}
+					var companyCode string
+					if companyCodeInterface, ok := requestData.(map[string]interface{})["company_code"]; ok {
+						companyCode = companyCodeInterface.(string)
+					}
+					var newsletterConsent bool
+					if consent, ok := requestData.(map[string]interface{})["newsletter"]; ok {
+						newsletterConsent = consent.(bool)
+					}
+					return jsonrpc.AddTokenContext(i.Request, userRoles, companyCode, newsletterConsent)
 				}
 			}
 			return jsonrpc.SetIsAnonymous(i.Request, i.Request.Header.Get("Authorization") == "")
