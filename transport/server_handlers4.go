@@ -268,8 +268,14 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 			RouteType:   routing.RouteTypeDirect,
 		}
 
+		var routeRelayIDs [routing.MaxRelays]uint64
+		var routeRelayNames [routing.MaxRelays]string
 		var usageBytesUp uint64
 		var usageBytesDown uint64
+		var envelopeBytesUp uint64
+		var envelopeBytesDown uint64
+		var totalPrice routing.Nibblin
+		var routeRelaysPrice [routing.MaxRelays]routing.Nibblin
 
 		var err error
 
@@ -282,7 +288,7 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 				return
 			}
 
-			go PostSessionUpdate4(postSessionHandler, &packet, &sessionData.Location, nearRelays, usageBytesUp, usageBytesDown, &datacenter, metrics)
+			go PostSessionUpdate4(postSessionHandler, &packet, &sessionData, routeRelayIDs, routeRelayNames, nearRelays, usageBytesUp, usageBytesDown, envelopeBytesUp, envelopeBytesDown, totalPrice, routeRelaysPrice, &datacenter, metrics)
 		}()
 
 		if newSession {
@@ -320,18 +326,18 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 			sessionData.ExpireTimestamp += billing.BillingSliceSeconds
 		}
 
-		sliceDuration := uint64(billing.BillingSliceSeconds)
-		if sessionData.Initial {
-			sliceDuration *= 2
-		}
-		usageBytesUp, usageBytesDown = CalculateNextBytesUpAndDown(uint64(packet.NextKbpsUp), uint64(packet.NextKbpsDown), sliceDuration)
-
 		buyer, err := storer.Buyer(packet.CustomerID)
 		if err != nil {
 			level.Error(logger).Log("msg", "buyer not found", "err", err)
 			metrics.ErrorMetrics.BuyerNotFound.Add(1)
 			return
 		}
+
+		sliceDuration := uint64(billing.BillingSliceSeconds)
+		if sessionData.Initial {
+			sliceDuration *= 2
+		}
+		usageBytesUp, usageBytesDown = CalculateNextBytesUpAndDown(uint64(packet.NextKbpsUp), uint64(packet.NextKbpsDown), sliceDuration)
 
 		datacenter, err = storer.Datacenter(packet.DatacenterID)
 		if err != nil {
@@ -456,6 +462,26 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 		sessionData.RouteCost = routeCost
 		sessionData.RouteRelays = routeRelays
 
+		// Convert the route relays back to relay IDs for use in the post session update
+		// and get all of the necessary relay information
+		routeRelaySellers := [routing.MaxRelays]routing.Seller{}
+		for i := int32(0); i < routeNumRelays; i++ {
+			relayID := routeMatrix.RelayIDs[routeRelays[i]]
+
+			relay, err := storer.Relay(relayID)
+			if err != nil {
+				continue
+			}
+
+			routeRelayIDs[i] = relay.ID
+			routeRelayNames[i] = relay.Name
+			routeRelaySellers[i] = relay.Seller
+		}
+
+		envelopeBytesUp, envelopeBytesDown = CalculateNextBytesUpAndDown(uint64(buyer.RouteShader.BandwidthEnvelopeUpKbps), uint64(buyer.RouteShader.BandwidthEnvelopeDownKbps), sliceDuration)
+		totalPrice = CalculateTotalPriceNibblins(int(routeNumRelays), routeRelaySellers, envelopeBytesUp, envelopeBytesDown)
+		routeRelaysPrice = CalculateRouteRelaysPrice(int(routeNumRelays), routeRelaySellers, envelopeBytesUp, envelopeBytesDown)
+
 		level.Debug(logger).Log("msg", "session updated successfully", "source_address", incoming.SourceAddr.String(), "server_address", packet.ServerAddress.String(), "client_address", packet.ClientAddress.String())
 	}
 }
@@ -491,7 +517,21 @@ func GetRouteAddressesAndPublicKeys(clientAddress *net.UDPAddr, clientPublicKey 
 	return routeAddresses, routePublicKeys
 }
 
-func PostSessionUpdate4(postSessionHandler *PostSessionHandler, packet *SessionUpdatePacket4, location *routing.Location, nearRelays []routing.NearRelayData, nextBytesUp uint64, nextBytesDown uint64, datacenter *routing.Datacenter, metrics *metrics.SessionMetrics) {
+func PostSessionUpdate4(postSessionHandler *PostSessionHandler, packet *SessionUpdatePacket4, sessionData *SessionData4, routeRelayIDs [routing.MaxRelays]uint64, routeRelayNames [routing.MaxRelays]string, nearRelays []routing.NearRelayData, nextBytesUp uint64, nextBytesDown uint64, nextEnvelopeBytesUp uint64, nextEnvelopeBytesDown uint64, totalPrice routing.Nibblin, routeRelayPrices [routing.MaxRelays]routing.Nibblin, datacenter *routing.Datacenter, metrics *metrics.SessionMetrics) {
+	nextRelaysPrice := [routing.MaxRelays]uint64{}
+	for i := 0; i < routing.MaxRelays; i++ {
+		nextRelaysPrice[i] = uint64(routeRelayPrices[i])
+	}
+
+	packetLossClientToServer := float32(packet.PacketsLostClientToServer) / float32(packet.PacketsSentClientToServer) * 100.0
+	packetLossServerToClient := float32(packet.PacketsLostServerToClient) / float32(packet.PacketsSentServerToClient) * 100.0
+
+	// Take the max of packet loss client -> server or server -> client
+	inGamePacketLoss := packetLossClientToServer
+	if inGamePacketLoss < packetLossServerToClient {
+		inGamePacketLoss = packetLossServerToClient
+	}
+
 	billingEntry := &billing.BillingEntry{
 		BuyerID:                   packet.CustomerID,
 		UserHash:                  packet.UserHash,
@@ -504,29 +544,32 @@ func PostSessionUpdate4(postSessionHandler *PostSessionHandler, packet *SessionU
 		NextRTT:                   packet.NextRTT,
 		NextJitter:                packet.NextJitter,
 		NextPacketLoss:            packet.NextPacketLoss,
-		NumNextRelays:             0,
-		NextRelays:                [routing.MaxRelays]uint64{},
-		TotalPrice:                0,
+		NumNextRelays:             uint8(sessionData.RouteNumRelays),
+		NextRelays:                routeRelayIDs,
+		TotalPrice:                uint64(totalPrice),
 		ClientToServerPacketsLost: packet.PacketsLostClientToServer,
 		ServerToClientPacketsLost: packet.PacketsLostServerToClient,
 		Committed:                 packet.Committed,
 		Flagged:                   packet.Reported,
-		Multipath:                 false,
-		Initial:                   false,
+		Multipath:                 sessionData.RouteState.Multipath,
+		Initial:                   sessionData.Initial,
 		NextBytesUp:               nextBytesUp,
 		NextBytesDown:             nextBytesDown,
+		EnvelopeBytesUp:           nextEnvelopeBytesUp,
+		EnvelopeBytesDown:         nextEnvelopeBytesDown,
 		DatacenterID:              datacenter.ID,
-		RTTReduction:              false,
-		PacketLossReduction:       false,
-		NextRelaysPrice:           [routing.MaxRelays]uint64{},
-		Latitude:                  float32(location.Latitude),
-		Longitude:                 float32(location.Longitude),
-		ISP:                       location.ISP,
-		ABTest:                    false,
+		RTTReduction:              sessionData.RouteState.ReduceLatency,
+		PacketLossReduction:       sessionData.RouteState.ReducePacketLoss,
+		NextRelaysPrice:           nextRelaysPrice,
+		Latitude:                  float32(sessionData.Location.Latitude),
+		Longitude:                 float32(sessionData.Location.Longitude),
+		ISP:                       sessionData.Location.ISP,
+		ABTest:                    sessionData.RouteState.ABTest,
 		RouteDecision:             0,
 		ConnectionType:            uint8(packet.ConnectionType),
 		PlatformType:              uint8(packet.PlatformType),
 		SDKVersion:                packet.Version.String(),
+		PacketLoss:                inGamePacketLoss,
 	}
 
 	if !postSessionHandler.IsBillingBufferFull() {
@@ -534,6 +577,16 @@ func PostSessionUpdate4(postSessionHandler *PostSessionHandler, packet *SessionU
 		metrics.PostSessionBillingEntriesSent.Add(1)
 	} else {
 		metrics.PostSessionBillingBufferFull.Add(1)
+	}
+
+	// todo: remove use of routing.NearRelayData
+
+	hops := make([]RelayHop, sessionData.RouteNumRelays)
+	for i := int32(0); i < sessionData.RouteNumRelays; i++ {
+		hops[i] = RelayHop{
+			ID:   routeRelayIDs[i],
+			Name: routeRelayNames[i],
+		}
 	}
 
 	nearRelayPortalData := make([]NearRelayPortalData, len(nearRelays))
@@ -560,10 +613,10 @@ func PostSessionUpdate4(postSessionHandler *PostSessionHandler, packet *SessionU
 			NextRTT:         float64(packet.NextRTT),
 			DirectRTT:       float64(packet.DirectRTT),
 			DeltaRTT:        float64(deltaRTT),
-			Location:        *location,
+			Location:        sessionData.Location,
 			ClientAddr:      packet.ClientAddress.String(),
 			ServerAddr:      packet.ServerAddress.String(),
-			Hops:            nil,
+			Hops:            hops,
 			SDK:             packet.Version.String(),
 			Connection:      uint8(packet.ConnectionType),
 			NearbyRelays:    nearRelayPortalData,
@@ -586,13 +639,13 @@ func PostSessionUpdate4(postSessionHandler *PostSessionHandler, packet *SessionU
 				Up:   int64(packet.NextKbpsUp),
 				Down: int64(packet.NextKbpsDown),
 			},
-			IsMultiPath:       false,
-			IsTryBeforeYouBuy: false,
+			IsMultiPath:       sessionData.RouteState.Multipath,
+			IsTryBeforeYouBuy: false, // todo: implement committed? /*!sessionData.RouteState.Committed*/
 			OnNetworkNext:     packet.Next,
 		},
 		Point: SessionMapPoint{
-			Latitude:  location.Latitude,
-			Longitude: location.Longitude,
+			Latitude:  sessionData.Location.Latitude,
+			Longitude: sessionData.Location.Longitude,
 		},
 	}
 
