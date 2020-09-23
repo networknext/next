@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"math/rand"
 	"net"
 	"reflect"
 	"testing"
@@ -122,7 +123,7 @@ func TestSessionUpdateHandler4ClientLocateFailure(t *testing.T) {
 	})
 
 	var responsePacket transport.SessionResponsePacket4
-	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes())
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
 	assert.NoError(t, err)
 
 	var sessionData transport.SessionData4
@@ -189,7 +190,7 @@ func TestSessionUpdateHandler4ReadSessionDataFailure(t *testing.T) {
 	})
 
 	var responsePacket transport.SessionResponsePacket4
-	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes())
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
 	assert.NoError(t, err)
 
 	var sessionData transport.SessionData4
@@ -276,7 +277,7 @@ func TestSessionUpdateHandler4SessionDataBadSessionID(t *testing.T) {
 	})
 
 	var responsePacket transport.SessionResponsePacket4
-	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes())
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
 	assert.NoError(t, err)
 
 	var sessionData transport.SessionData4
@@ -363,7 +364,7 @@ func TestSessionUpdateHandler4SessionDataBadSliceNumber(t *testing.T) {
 	})
 
 	var responsePacket transport.SessionResponsePacket4
-	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes())
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
 	assert.NoError(t, err)
 
 	var sessionData transport.SessionData4
@@ -430,7 +431,7 @@ func TestSessionUpdateHandler4BuyerNotFound(t *testing.T) {
 	})
 
 	var responsePacket transport.SessionResponsePacket4
-	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes())
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
 	assert.NoError(t, err)
 
 	var sessionData transport.SessionData4
@@ -498,7 +499,7 @@ func TestSessionUpdateHandler4DatacenterNotFound(t *testing.T) {
 	})
 
 	var responsePacket transport.SessionResponsePacket4
-	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes())
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
 	assert.NoError(t, err)
 
 	var sessionData transport.SessionData4
@@ -567,7 +568,7 @@ func TestSessionUpdateHandler4NoNearRelays(t *testing.T) {
 	})
 
 	var responsePacket transport.SessionResponsePacket4
-	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes())
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
 	assert.NoError(t, err)
 
 	var sessionData transport.SessionData4
@@ -655,7 +656,7 @@ func TestSessionUpdateHandler4FirstSlice(t *testing.T) {
 	})
 
 	var responsePacket transport.SessionResponsePacket4
-	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes())
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
 	assert.NoError(t, err)
 
 	var sessionData transport.SessionData4
@@ -759,7 +760,7 @@ func TestSessionUpdateHandler4NoDestRelays(t *testing.T) {
 	})
 
 	var responsePacket transport.SessionResponsePacket4
-	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes())
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
 	assert.NoError(t, err)
 
 	var sessionData transport.SessionData4
@@ -864,7 +865,7 @@ func TestSessionUpdateHandler4DirectRoute(t *testing.T) {
 	})
 
 	var responsePacket transport.SessionResponsePacket4
-	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes())
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
 	assert.NoError(t, err)
 
 	var sessionData transport.SessionData4
@@ -878,6 +879,9 @@ func TestSessionUpdateHandler4DirectRoute(t *testing.T) {
 }
 
 func TestSessionUpdateHandler4NextRoute(t *testing.T) {
+	// Seed the RNG so we don't get different results from running `make test`
+	// and running the test directly in VSCode
+	rand.Seed(0)
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
 	expectedMetrics := metrics.EmptySessionMetrics
@@ -1021,14 +1025,9 @@ func TestSessionUpdateHandler4NextRoute(t *testing.T) {
 		Location:        routing.LocationNullIsland,
 		ExpireTimestamp: expireTimestamp,
 		Initial:         true,
-		Route: routing.Route{
-			NumRelays:       2,
-			RelayIDs:        [routing.MaxRelays]uint64{2, 1},
-			RelayAddrs:      [routing.MaxRelays]net.UDPAddr{*relayAddr2, *relayAddr1},
-			RelayNames:      [routing.MaxRelays]string{"test.relay.2", "test.relay.1"},
-			RelayPublicKeys: [routing.MaxRelays][]byte{publicKey, publicKey},
-			RelaySellers:    [routing.MaxRelays]routing.Seller{{ID: "seller"}, {ID: "seller"}},
-		},
+		RouteNumRelays:  2,
+		RouteCost:       45,
+		RouteRelays:     [routing.MaxRelays]int32{1, 0},
 		RouteState: core.RouteState{
 			UserID:        requestPacket.UserHash,
 			Next:          true,
@@ -1049,7 +1048,7 @@ func TestSessionUpdateHandler4NextRoute(t *testing.T) {
 	})
 
 	var responsePacket transport.SessionResponsePacket4
-	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes())
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
 	assert.NoError(t, err)
 
 	var sessionData transport.SessionData4
@@ -1072,6 +1071,9 @@ func TestSessionUpdateHandler4NextRoute(t *testing.T) {
 }
 
 func TestSessionUpdateHandler4ContinueRoute(t *testing.T) {
+	// Seed the RNG so we don't get different results from running `make test`
+	// and running the test directly in VSCode
+	rand.Seed(0)
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
 	expectedMetrics := metrics.EmptySessionMetrics
@@ -1124,14 +1126,8 @@ func TestSessionUpdateHandler4ContinueRoute(t *testing.T) {
 		SliceNumber:     1,
 		Location:        routing.LocationNullIsland,
 		ExpireTimestamp: uint64(time.Now().Unix()),
-		Route: routing.Route{
-			NumRelays:       2,
-			RelayIDs:        [routing.MaxRelays]uint64{1, 2},
-			RelayAddrs:      [routing.MaxRelays]net.UDPAddr{*relayAddr1, *relayAddr2},
-			RelayNames:      [routing.MaxRelays]string{"test.relay.1", "test.relay.2"},
-			RelayPublicKeys: [routing.MaxRelays][]byte{publicKey, publicKey},
-			RelaySellers:    [routing.MaxRelays]routing.Seller{{ID: "seller"}, {ID: "seller"}},
-		},
+		RouteNumRelays:  2,
+		RouteRelays:     [routing.MaxRelays]int32{0, 1},
 		RouteState: core.RouteState{
 			Next:          true,
 			ReduceLatency: true,
@@ -1203,11 +1199,9 @@ func TestSessionUpdateHandler4ContinueRoute(t *testing.T) {
 	expireTimestamp := uint64(time.Now().Unix()) + billing.BillingSliceSeconds
 
 	tokenData := make([]byte, core.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES*4)
-	routeAddresses := make([]*net.UDPAddr, 0)
-	routeAddresses = append(routeAddresses, clientAddr, relayAddr1, relayAddr2, serverAddr)
 	routePublicKeys := make([][]byte, 0)
 	routePublicKeys = append(routePublicKeys, publicKey, publicKey, publicKey, publicKey)
-	core.WriteRouteTokens(tokenData, expireTimestamp, requestPacket.SessionID, uint8(sessionDataStruct.SessionVersion), 1024, 1024, 4, routeAddresses, routePublicKeys, privateKey)
+	core.WriteContinueTokens(tokenData, expireTimestamp, requestPacket.SessionID, uint8(sessionDataStruct.SessionVersion), 4, routePublicKeys, privateKey)
 	expectedResponse := transport.SessionResponsePacket4{
 		SessionID:          requestPacket.SessionID,
 		SliceNumber:        requestPacket.SliceNumber,
@@ -1226,14 +1220,9 @@ func TestSessionUpdateHandler4ContinueRoute(t *testing.T) {
 		Location:        routing.LocationNullIsland,
 		ExpireTimestamp: expireTimestamp,
 		Initial:         false,
-		Route: routing.Route{
-			NumRelays:       2,
-			RelayIDs:        [routing.MaxRelays]uint64{2, 1},
-			RelayAddrs:      [routing.MaxRelays]net.UDPAddr{*relayAddr2, *relayAddr1},
-			RelayNames:      [routing.MaxRelays]string{"test.relay.2", "test.relay.1"},
-			RelayPublicKeys: [routing.MaxRelays][]byte{publicKey, publicKey},
-			RelaySellers:    [routing.MaxRelays]routing.Seller{{ID: "seller"}, {ID: "seller"}},
-		},
+		RouteNumRelays:  2,
+		RouteCost:       45,
+		RouteRelays:     [routing.MaxRelays]int32{1, 0},
 		RouteState: core.RouteState{
 			UserID:        requestPacket.UserHash,
 			Next:          true,
@@ -1254,7 +1243,7 @@ func TestSessionUpdateHandler4ContinueRoute(t *testing.T) {
 	})
 
 	var responsePacket transport.SessionResponsePacket4
-	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes())
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
 	assert.NoError(t, err)
 
 	var sessionData transport.SessionData4

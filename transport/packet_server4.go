@@ -2,6 +2,7 @@ package transport
 
 import (
 	"fmt"
+	"math"
 	"net"
 
 	"github.com/networknext/backend/core"
@@ -247,6 +248,7 @@ func (packet *SessionUpdatePacket4) Serialize(stream encoding.Stream) error {
 	}
 	stream.SerializeFloat32(&packet.JitterClientToServer)
 	stream.SerializeFloat32(&packet.JitterServerToClient)
+
 	return stream.Error()
 }
 
@@ -312,7 +314,9 @@ type SessionData4 struct {
 	ExpireTimestamp uint64
 	Initial         bool
 	Location        routing.Location
-	Route           routing.Route
+	RouteNumRelays  int32
+	RouteCost       int32
+	RouteRelays     [routing.MaxRelays]int32
 	RouteState      core.RouteState
 }
 
@@ -362,22 +366,13 @@ func (sessionData *SessionData4) Serialize(stream encoding.Stream) error {
 		}
 		stream.SerializeBytes(locationBytes)
 	}
-	numRouteRelays := int32(sessionData.Route.NumRelays)
-	hasRoute := numRouteRelays > 0
+	hasRoute := sessionData.RouteNumRelays > 0
 	stream.SerializeBool(&hasRoute)
 	if hasRoute {
-		stream.SerializeInteger(&numRouteRelays, 0, routing.MaxRelays)
-		sessionData.Route.NumRelays = int(numRouteRelays)
-		for i := 0; i < int(numRouteRelays); i++ {
-			stream.SerializeUint64(&sessionData.Route.RelayIDs[i])
-			stream.SerializeAddress(&sessionData.Route.RelayAddrs[i])
-			stream.SerializeString(&sessionData.Route.RelayNames[i], MaxDatacenterNameLength)
-
-			if stream.IsReading() && len(sessionData.Route.RelayPublicKeys[i]) == 0 {
-				sessionData.Route.RelayPublicKeys[i] = make([]byte, crypto.KeySize)
-			}
-			stream.SerializeBytes(sessionData.Route.RelayPublicKeys[i])
-			stream.SerializeString(&sessionData.Route.RelaySellers[i].ID, MaxDatacenterNameLength)
+		stream.SerializeInteger(&sessionData.RouteNumRelays, 0, routing.MaxRelays)
+		stream.SerializeInteger(&sessionData.RouteCost, 0, routing.InvalidRouteValue)
+		for i := int32(0); i < sessionData.RouteNumRelays; i++ {
+			stream.SerializeInteger(&sessionData.RouteRelays[i], 0, math.MaxInt32)
 		}
 	}
 	stream.SerializeUint64(&sessionData.RouteState.UserID)
