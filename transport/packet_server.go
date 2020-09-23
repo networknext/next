@@ -56,6 +56,17 @@ const (
 	FallbackFlagsDirectRouteExpired         = (1 << 9)
 	FallbackFlagsUpgradeResponseTimedOut    = (1 << 10)
 	FallbackFlagsCount                      = 11
+
+	FallbackFlagsBadRouteToken4              = (1 << 0)
+	FallbackFlagsNoNextRouteToContinue4      = (1 << 1)
+	FallbackFlagsPreviousUpdateStillPending4 = (1 << 2)
+	FallbackFlagsBadContinueToken4           = (1 << 3)
+	FallbackFlagsRouteExpired4               = (1 << 4)
+	FallbackFlagsRouteRequestTimedOut4       = (1 << 5)
+	FallbackFlagsContinueRequestTimedOut4    = (1 << 6)
+	FallbackFlagsClientTimedOut4             = (1 << 7)
+	FallbackFlagsTryBeforeYouBuyAbort4       = (1 << 8)
+	FallbackFlagsCount4                      = 9
 )
 
 // ConnectionTypeText is similar to http.StatusText(int) which converts the code to a readable text format

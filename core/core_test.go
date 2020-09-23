@@ -1,8 +1,7 @@
-package main
+package core
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"hash/fnv"
 	"io/ioutil"
 	"math"
@@ -13,6 +12,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func FuckOffGolang() {
@@ -1927,7 +1928,7 @@ func TestEarlyOutDirect(t *testing.T) {
 
 	routeShader := NewRouteShader()
 	routeState := RouteState{}
-	customer := NewCustomerConfig()
+	customer := NewCustomerData()
 	assert.False(t, EarlyOutDirect(&routeShader, &routeState, &customer))
 
 	routeState = RouteState{Veto: true}
@@ -1983,14 +1984,14 @@ func TestEarlyOutDirect(t *testing.T) {
 
 	routeShader = NewRouteShader()
 	routeState = RouteState{}
-	customer = NewCustomerConfig()
+	customer = NewCustomerData()
 	customer.BannedUsers[1000] = true
 	assert.False(t, EarlyOutDirect(&routeShader, &routeState, &customer))
 
 	routeShader = NewRouteShader()
 	routeState = RouteState{}
 	routeState.UserID = 1000
-	customer = NewCustomerConfig()
+	customer = NewCustomerData()
 	customer.BannedUsers[1000] = true
 	assert.True(t, EarlyOutDirect(&routeShader, &routeState, &customer))
 	assert.True(t, routeState.Banned)
@@ -2390,7 +2391,7 @@ func TestTakeNetworkNext_EarlyOutDirect_Veto(t *testing.T) {
 
 	routeShader := NewRouteShader()
 	routeState := RouteState{}
-	customer := CustomerConfig{}
+	customer := CustomerData{}
 	internal := NewInternalConfig()
 
 	routeState.UserID = 100
@@ -2446,7 +2447,7 @@ func TestTakeNetworkNext_EarlyOutDirect_Banned(t *testing.T) {
 
 	routeShader := NewRouteShader()
 	routeState := RouteState{}
-	customer := CustomerConfig{}
+	customer := CustomerData{}
 	internal := NewInternalConfig()
 
 	routeState.UserID = 100
@@ -2503,7 +2504,7 @@ func TestTakeNetworkNext_EarlyOutDirect_Disabled(t *testing.T) {
 
 	routeShader := NewRouteShader()
 	routeState := RouteState{}
-	customer := CustomerConfig{}
+	customer := CustomerData{}
 	internal := NewInternalConfig()
 
 	routeState.UserID = 100
@@ -2560,7 +2561,7 @@ func TestTakeNetworkNext_EarlyOutDirect_NotSelected(t *testing.T) {
 
 	routeShader := NewRouteShader()
 	routeState := RouteState{}
-	customer := CustomerConfig{}
+	customer := CustomerData{}
 	internal := NewInternalConfig()
 
 	routeState.UserID = 100
@@ -2617,7 +2618,7 @@ func TestTakeNetworkNext_EarlyOutDirect_B(t *testing.T) {
 
 	routeShader := NewRouteShader()
 	routeState := RouteState{}
-	customer := CustomerConfig{}
+	customer := CustomerData{}
 	internal := NewInternalConfig()
 
 	routeState.UserID = 100
@@ -2670,7 +2671,7 @@ func TestTakeNetworkNext_ReduceLatency_Simple(t *testing.T) {
 
 	routeShader := NewRouteShader()
 	routeState := RouteState{}
-	customer := CustomerConfig{}
+	customer := CustomerData{}
 	internal := NewInternalConfig()
 
 	routeState.UserID = 100
@@ -2726,7 +2727,7 @@ func TestTakeNetworkNext_ReduceLatency_LatencyIsAcceptable(t *testing.T) {
 
 	routeShader := NewRouteShader()
 	routeState := RouteState{}
-	customer := CustomerConfig{}
+	customer := CustomerData{}
 	internal := NewInternalConfig()
 
 	routeShader.AcceptableLatency = 50
@@ -2782,7 +2783,7 @@ func TestTakeNetworkNext_ReduceLatency_NotEnoughReduction(t *testing.T) {
 
 	routeShader := NewRouteShader()
 	routeState := RouteState{}
-	customer := CustomerConfig{}
+	customer := CustomerData{}
 	internal := NewInternalConfig()
 
 	routeShader.LatencyThreshold = 20
@@ -2834,7 +2835,7 @@ func TestTakeNetworkNext_ReducePacketLoss_Simple(t *testing.T) {
 
 	routeShader := NewRouteShader()
 	routeState := RouteState{}
-	customer := CustomerConfig{}
+	customer := CustomerData{}
 	internal := NewInternalConfig()
 
 	routeState.UserID = 100
@@ -2884,7 +2885,7 @@ func TestTakeNetworkNext_ReducePacketLoss_TradeLatency(t *testing.T) {
 
 	routeShader := NewRouteShader()
 	routeState := RouteState{}
-	customer := CustomerConfig{}
+	customer := CustomerData{}
 	internal := NewInternalConfig()
 
 	routeState.UserID = 100
@@ -2934,7 +2935,7 @@ func TestTakeNetworkNext_ReducePacketLoss_DontTradeTooMuchLatency(t *testing.T) 
 
 	routeShader := NewRouteShader()
 	routeState := RouteState{}
-	customer := CustomerConfig{}
+	customer := CustomerData{}
 	internal := NewInternalConfig()
 
 	routeState.UserID = 100
@@ -2982,7 +2983,7 @@ func TestTakeNetworkNext_ReducePacketLoss_ReducePacketLossAndLatency(t *testing.
 
 	routeShader := NewRouteShader()
 	routeState := RouteState{}
-	customer := CustomerConfig{}
+	customer := CustomerData{}
 	internal := NewInternalConfig()
 
 	routeState.UserID = 100
@@ -3035,7 +3036,7 @@ func TestTakeNetworkNext_ReduceLatency_Multipath(t *testing.T) {
 
 	routeShader := NewRouteShader()
 	routeState := RouteState{}
-	customer := CustomerConfig{}
+	customer := CustomerData{}
 	internal := NewInternalConfig()
 
 	routeShader.Multipath = true
@@ -3088,7 +3089,7 @@ func TestTakeNetworkNext_ReducePacketLoss_Multipath(t *testing.T) {
 
 	routeShader := NewRouteShader()
 	routeState := RouteState{}
-	customer := CustomerConfig{}
+	customer := CustomerData{}
 	internal := NewInternalConfig()
 
 	routeShader.Multipath = true
@@ -3141,7 +3142,7 @@ func TestTakeNetworkNext_ReducePacketLossAndLatency_Multipath(t *testing.T) {
 
 	routeShader := NewRouteShader()
 	routeState := RouteState{}
-	customer := CustomerConfig{}
+	customer := CustomerData{}
 	internal := NewInternalConfig()
 
 	routeShader.Multipath = true
@@ -3195,7 +3196,7 @@ func TestTakeNetworkNext_ReducePacketLossAndLatency_MultipathVeto(t *testing.T) 
 
 	routeShader := NewRouteShader()
 	routeState := RouteState{}
-	customer := CustomerConfig{}
+	customer := CustomerData{}
 	internal := NewInternalConfig()
 
 	routeShader.Multipath = true
@@ -3256,7 +3257,7 @@ func TestTakeNetworkNext_ProMode(t *testing.T) {
 
 	routeShader := NewRouteShader()
 	routeState := RouteState{}
-	customer := CustomerConfig{}
+	customer := CustomerData{}
 	internal := NewInternalConfig()
 
 	routeShader.ProMode = true
@@ -3311,7 +3312,7 @@ func TestTakeNetworkNext_ProMode_MultipathVeto(t *testing.T) {
 
 	routeShader := NewRouteShader()
 	routeState := RouteState{}
-	customer := CustomerConfig{}
+	customer := CustomerData{}
 	internal := NewInternalConfig()
 
 	routeShader.ProMode = true
@@ -3367,7 +3368,7 @@ func TestStayOnNetworkNext_EarlyOut_Veto(t *testing.T) {
 
 	routeShader := NewRouteShader()
 	routeState := RouteState{}
-	customer := CustomerConfig{}
+	customer := CustomerData{}
 	internal := NewInternalConfig()
 
 	routeState.Next = true
@@ -3424,7 +3425,7 @@ func TestStayOnNetworkNext_EarlyOut_Banned(t *testing.T) {
 
 	routeShader := NewRouteShader()
 	routeState := RouteState{}
-	customer := CustomerConfig{}
+	customer := CustomerData{}
 	internal := NewInternalConfig()
 
 	routeState.Next = true
@@ -3484,7 +3485,7 @@ func TestStayOnNetworkNext_ReduceLatency_Simple(t *testing.T) {
 
 	routeShader := NewRouteShader()
 	routeState := RouteState{}
-	customer := CustomerConfig{}
+	customer := CustomerData{}
 	internal := NewInternalConfig()
 
 	routeState.Next = true
@@ -3540,7 +3541,7 @@ func TestStayOnNetworkNext_ReduceLatency_SlightlyWorse(t *testing.T) {
 
 	routeShader := NewRouteShader()
 	routeState := RouteState{}
-	customer := CustomerConfig{}
+	customer := CustomerData{}
 	internal := NewInternalConfig()
 
 	routeState.Next = true
@@ -3596,7 +3597,7 @@ func TestStayOnNetworkNext_ReduceLatency_RTTVeto(t *testing.T) {
 
 	routeShader := NewRouteShader()
 	routeState := RouteState{}
-	customer := CustomerConfig{}
+	customer := CustomerData{}
 	internal := NewInternalConfig()
 
 	routeState.Next = true
@@ -3652,7 +3653,7 @@ func TestStayOnNetworkNext_ReduceLatency_NoRoute(t *testing.T) {
 
 	routeShader := NewRouteShader()
 	routeState := RouteState{}
-	customer := CustomerConfig{}
+	customer := CustomerData{}
 	internal := NewInternalConfig()
 
 	routeState.Next = true
@@ -3712,7 +3713,7 @@ func TestStayOnNetworkNext_ReduceLatency_SwitchToNewRoute(t *testing.T) {
 
 	routeShader := NewRouteShader()
 	routeState := RouteState{}
-	customer := CustomerConfig{}
+	customer := CustomerData{}
 	internal := NewInternalConfig()
 
 	routeState.Next = true
@@ -3773,7 +3774,7 @@ func TestStayOnNetworkNext_ReduceLatency_SwitchToBetterRoute(t *testing.T) {
 
 	routeShader := NewRouteShader()
 	routeState := RouteState{}
-	customer := CustomerConfig{}
+	customer := CustomerData{}
 	internal := NewInternalConfig()
 
 	routeState.Next = true
@@ -3833,7 +3834,7 @@ func TestStayOnNetworkNext_ReducePacketLoss_LatencyTradeOff(t *testing.T) {
 
 	routeShader := NewRouteShader()
 	routeState := RouteState{}
-	customer := CustomerConfig{}
+	customer := CustomerData{}
 	internal := NewInternalConfig()
 
 	routeState.Next = true
@@ -3889,7 +3890,7 @@ func TestStayOnNetworkNext_ReducePacketLoss_RTTVeto(t *testing.T) {
 
 	routeShader := NewRouteShader()
 	routeState := RouteState{}
-	customer := CustomerConfig{}
+	customer := CustomerData{}
 	internal := NewInternalConfig()
 
 	routeState.Next = true
@@ -3947,7 +3948,7 @@ func TestStayOnNetworkNext_ReducePacketLoss_NoRoute(t *testing.T) {
 
 	routeShader := NewRouteShader()
 	routeState := RouteState{}
-	customer := CustomerConfig{}
+	customer := CustomerData{}
 	internal := NewInternalConfig()
 
 	routeState.Next = true
@@ -4005,7 +4006,7 @@ func TestStayOnNetworkNext_MultipathOverload(t *testing.T) {
 
 	routeShader := NewRouteShader()
 	routeState := RouteState{}
-	customer := CustomerConfig{}
+	customer := CustomerData{}
 	internal := NewInternalConfig()
 
 	routeState.Next = true
@@ -4065,7 +4066,7 @@ func TestStayOnNetworkNext_Multipath_LatencyTradeOff(t *testing.T) {
 
 	routeShader := NewRouteShader()
 	routeState := RouteState{}
-	customer := CustomerConfig{}
+	customer := CustomerData{}
 	internal := NewInternalConfig()
 
 	routeState.Next = true
@@ -4123,7 +4124,7 @@ func TestStayOnNetworkNext_Multipath_RTTVeto(t *testing.T) {
 
 	routeShader := NewRouteShader()
 	routeState := RouteState{}
-	customer := CustomerConfig{}
+	customer := CustomerData{}
 	internal := NewInternalConfig()
 
 	routeState.Next = true
