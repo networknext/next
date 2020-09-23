@@ -256,11 +256,13 @@ func sessionsByBuyer(rpcClient jsonrpc.RPCClient, env Environment, buyerName str
 	buyers := buyersReply.Buyers
 	topSessionArgs := localjsonrpc.TopSessionsArgs{}
 
+	var buyerID uint64
 	if len(buyers) > 0 && buyerName != "" {
 		r := regexp.MustCompile("(?i)" + buyerName) // case-insensitive regex
 		for _, buyer := range buyers {
-			if r.MatchString(buyer.Name) {
-				topSessionArgs.BuyerID = fmt.Sprintf("%016x", buyer.ID)
+			if r.MatchString(buyer.CompanyName) {
+				topSessionArgs.CompanyCode = buyer.CompanyCode
+				buyerID = buyer.ID
 				break
 			}
 		}
@@ -273,7 +275,7 @@ func sessionsByBuyer(rpcClient jsonrpc.RPCClient, env Environment, buyerName str
 	}
 
 	if len(topSessionsReply.Sessions) == 0 {
-		handleRunTimeError(fmt.Sprintf("No sessions found for buyer ID: %v\n", topSessionArgs.BuyerID), 0)
+		handleRunTimeError(fmt.Sprintf("No sessions found for buyer ID: %v\n", buyerID), 0)
 	}
 
 	sessions := []struct {

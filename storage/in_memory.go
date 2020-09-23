@@ -9,6 +9,7 @@ import (
 )
 
 type InMemory struct {
+	localCustomers      []routing.Customer
 	localBuyers         []routing.Buyer
 	localSellers        []routing.Seller
 	localRelays         []routing.Relay
@@ -28,16 +29,6 @@ func (m *InMemory) Buyer(id uint64) (routing.Buyer, error) {
 	return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer", resourceRef: id}
 }
 
-func (m *InMemory) BuyerWithDomain(domain string) (routing.Buyer, error) {
-	for _, buyer := range m.localBuyers {
-		if buyer.Domain == domain {
-			return buyer, nil
-		}
-	}
-
-	return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer", resourceRef: domain}
-}
-
 func (m *InMemory) Buyers() []routing.Buyer {
 	buyers := make([]routing.Buyer, len(m.localBuyers))
 	for i := range buyers {
@@ -45,6 +36,16 @@ func (m *InMemory) Buyers() []routing.Buyer {
 	}
 
 	return buyers
+}
+
+func (m *InMemory) BuyerWithCompanyCode(code string) (routing.Buyer, error) {
+	for _, buyer := range m.localBuyers {
+		if buyer.CompanyCode == code {
+			return buyer, nil
+		}
+	}
+
+	return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer", resourceRef: code}
 }
 
 func (m *InMemory) AddBuyer(ctx context.Context, buyer routing.Buyer) error {
@@ -111,6 +112,16 @@ func (m *InMemory) Sellers() []routing.Seller {
 	return sellers
 }
 
+func (m *InMemory) SellerWithCompanyCode(code string) (routing.Seller, error) {
+	for _, seller := range m.localSellers {
+		if seller.CompanyCode == code {
+			return seller, nil
+		}
+	}
+
+	return routing.Seller{}, &DoesNotExistError{resourceType: "seller", resourceRef: code}
+}
+
 func (m *InMemory) AddSeller(ctx context.Context, seller routing.Seller) error {
 	for _, b := range m.localSellers {
 		if b.ID == seller.ID {
@@ -154,6 +165,80 @@ func (m *InMemory) SetSeller(ctx context.Context, seller routing.Seller) error {
 	}
 
 	return &DoesNotExistError{resourceType: "seller", resourceRef: seller.ID}
+}
+
+func (m *InMemory) Customer(code string) (routing.Customer, error) {
+	for _, customer := range m.localCustomers {
+		if customer.Code == code {
+			return customer, nil
+		}
+	}
+
+	return routing.Customer{}, &DoesNotExistError{resourceType: "customer", resourceRef: code}
+}
+
+func (m *InMemory) Customers() []routing.Customer {
+	customers := make([]routing.Customer, len(m.localCustomers))
+	for i := range customers {
+		customers[i] = m.localCustomers[i]
+	}
+
+	return customers
+}
+
+func (m *InMemory) CustomerWithName(name string) (routing.Customer, error) {
+	for _, customer := range m.localCustomers {
+		if customer.Name == name {
+			return customer, nil
+		}
+	}
+
+	return routing.Customer{}, &DoesNotExistError{resourceType: "customer", resourceRef: name}
+}
+
+func (m *InMemory) AddCustomer(ctx context.Context, customer routing.Customer) error {
+	for _, c := range m.localCustomers {
+		if c.Code == customer.Code {
+			return &AlreadyExistsError{resourceType: "customer", resourceRef: customer.Code}
+		}
+	}
+
+	m.localCustomers = append(m.localCustomers, customer)
+	return nil
+}
+
+func (m *InMemory) RemoveCustomer(ctx context.Context, code string) error {
+	customerIndex := -1
+	for i, customer := range m.localCustomers {
+		if customer.Code == code {
+			customerIndex = i
+		}
+	}
+
+	if customerIndex < 0 {
+		return &DoesNotExistError{resourceType: "customer", resourceRef: code}
+	}
+
+	if customerIndex+1 == len(m.localCustomers) {
+		m.localCustomers = m.localCustomers[:customerIndex]
+		return nil
+	}
+
+	frontSlice := m.localCustomers[:customerIndex]
+	backSlice := m.localCustomers[customerIndex+1:]
+	m.localCustomers = append(frontSlice, backSlice...)
+	return nil
+}
+
+func (m *InMemory) SetCustomer(ctx context.Context, customer routing.Customer) error {
+	for i := range m.localCustomers {
+		if m.localCustomers[i].Code == customer.Code {
+			m.localCustomers[i] = customer
+			return nil
+		}
+	}
+
+	return &DoesNotExistError{resourceType: "customer", resourceRef: customer.Code}
 }
 
 // SetCustomerLink is a no-op since InMemory has no concept on customers
