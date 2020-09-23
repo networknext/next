@@ -304,22 +304,9 @@ func relays(
 			// Relay should be hidden, so don't include in final output
 			includeRelay = false
 		}
-
-		var rx string
-		bitsReceived := relay.BytesReceived * 8
-		if bitsReceived > 1000000000 {
-			rx = fmt.Sprintf("%.02fGbps", float64(bitsReceived)/float64(1000000000))
-		} else {
-			rx = fmt.Sprintf("%.02fMbps", float64(bitsReceived)/float64(1000000))
-		}
-
-		var tx string
-		bitsTransmitted := relay.BytesSent * 8
-		if bitsTransmitted > 1000000000 {
-			tx = fmt.Sprintf("%.02fGbps", float64(bitsTransmitted)/float64(1000000000))
-		} else {
-			tx = fmt.Sprintf("%.02fMbps", float64(bitsTransmitted)/float64(1000000))
-		}
+		unitFormat(0)
+		bitsTransmitted := unitFormat(relay.TrafficStats.BytesSent * 8)
+		bitsReceived := unitFormat(relay.TrafficStats.BytesReceived * 8)
 
 		cpuUsage := fmt.Sprintf("%.02f%%", relay.CPUUsage)
 		memUsage := fmt.Sprintf("%.02f%%", relay.MemUsage)
@@ -360,8 +347,8 @@ func relays(
 					address,
 					relay.State,
 					fmt.Sprintf("%d", relay.SessionCount),
-					tx,
-					rx,
+					bitsTransmitted,
+					bitsReceived,
 					relay.Version,
 					lastUpdated,
 				})
@@ -392,8 +379,8 @@ func relays(
 				Address:     address,
 				State:       relay.State,
 				Sessions:    fmt.Sprintf("%d", relay.SessionCount),
-				Tx:          tx,
-				Rx:          rx,
+				Tx:          bitsTransmitted,
+				Rx:          bitsReceived,
 				Version:     relay.Version,
 				CPUUsage:    cpuUsage,
 				MemUsage:    memUsage,
