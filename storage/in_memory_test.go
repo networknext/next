@@ -27,8 +27,7 @@ func TestInMemoryGetBuyer(t *testing.T) {
 		inMemory := storage.InMemory{}
 
 		expected := routing.Buyer{
-			ID:   1,
-			Name: "buyer name",
+			ID: 1,
 		}
 
 		err := inMemory.AddBuyer(ctx, expected)
@@ -58,8 +57,7 @@ func TestInMemoryGetBuyers(t *testing.T) {
 		inMemory := storage.InMemory{}
 
 		expected := routing.Buyer{
-			ID:   1,
-			Name: "buyer name",
+			ID: 1,
 		}
 
 		err := inMemory.AddBuyer(ctx, expected)
@@ -79,8 +77,7 @@ func TestInMemoryAddBuyer(t *testing.T) {
 		inMemory := storage.InMemory{}
 
 		buyer := routing.Buyer{
-			ID:   0,
-			Name: "buyer name",
+			ID: 0,
 		}
 
 		err := inMemory.AddBuyer(ctx, buyer)
@@ -94,8 +91,7 @@ func TestInMemoryAddBuyer(t *testing.T) {
 		inMemory := storage.InMemory{}
 
 		buyer := routing.Buyer{
-			ID:   1,
-			Name: "buyer name",
+			ID: 1,
 		}
 
 		err := inMemory.AddBuyer(ctx, buyer)
@@ -124,12 +120,10 @@ func TestInMemoryRemoveBuyer(t *testing.T) {
 
 		buyers := []routing.Buyer{
 			{
-				ID:   1,
-				Name: "buyer name",
+				ID: 1,
 			},
 			{
-				ID:   2,
-				Name: "buyer name",
+				ID: 2,
 			},
 		}
 
@@ -151,12 +145,10 @@ func TestInMemoryRemoveBuyer(t *testing.T) {
 
 		buyers := []routing.Buyer{
 			{
-				ID:   1,
-				Name: "buyer name",
+				ID: 1,
 			},
 			{
-				ID:   2,
-				Name: "buyer name",
+				ID: 2,
 			},
 		}
 
@@ -183,8 +175,7 @@ func TestInMemorySetBuyer(t *testing.T) {
 		inMemory := storage.InMemory{}
 
 		buyer := routing.Buyer{
-			ID:   0,
-			Name: "buyer name",
+			ID: 0,
 		}
 
 		err := inMemory.SetBuyer(ctx, buyer)
@@ -195,14 +186,11 @@ func TestInMemorySetBuyer(t *testing.T) {
 		inMemory := storage.InMemory{}
 
 		buyer := routing.Buyer{
-			ID:   1,
-			Name: "buyer name",
+			ID: 1,
 		}
 
 		err := inMemory.AddBuyer(ctx, buyer)
 		assert.NoError(t, err)
-
-		buyer.Name = "new buyer name"
 
 		err = inMemory.SetBuyer(ctx, buyer)
 		assert.NoError(t, err)
