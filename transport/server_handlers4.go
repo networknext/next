@@ -425,8 +425,12 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 				response.RouteType = routing.RouteTypeNew
 				response.NumTokens = numTokens
 				response.Tokens = tokenData
+				response.Committed = true // todo: add committed logic later
 			}
 		} else {
+			// todo: do actually need to store route relays as IDs and reframe route here,
+			// since route matrix could change between updates
+
 			if core.MakeRouteDecision_StayOnNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, &buyer.CustomerData, &buyer.InternalConfig, int32(packet.DirectRTT), sessionData.RouteCost, sessionData.RouteNumRelays, sessionData.RouteRelays, reframedNearRelays, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:]) {
 				// Continue token
 
@@ -439,6 +443,7 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 				response.RouteType = routing.RouteTypeContinue
 				response.NumTokens = numTokens
 				response.Tokens = tokenData
+				response.Committed = true // todo: add committed logic later
 			} else {
 				// todo: add metrics here to track why we veto a route
 
