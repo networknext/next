@@ -299,7 +299,7 @@ func TestFirestore(t *testing.T) {
 			assert.NoError(t, err)
 
 			err = fs.AddCustomer(ctx, expectedCustomer)
-			assert.NoError(t, err)
+			assert.Error(t, err)
 
 			assert.Equal(t, expectedCustomer, actual)
 
@@ -361,7 +361,7 @@ func TestFirestore(t *testing.T) {
 			err = fs.AddCustomer(ctx, actualCustomer)
 			assert.NoError(t, err)
 
-			err = fs.AddCustomer(ctx, updateCustomer)
+			err = fs.SetCustomer(ctx, updateCustomer)
 			assert.NoError(t, err)
 
 			// Check that the customer was updated successfully
@@ -654,7 +654,7 @@ func TestFirestore(t *testing.T) {
 			assert.NoError(t, err)
 
 			err = fs.AddCustomer(ctx, expectedCustomer)
-			assert.NoError(t, err)
+			assert.Error(t, err)
 
 			assert.Equal(t, expected, actual)
 
@@ -686,7 +686,7 @@ func TestFirestore(t *testing.T) {
 
 			expectedCustomer.BuyerRef = bdoc.Ref
 
-			assert.Nil(t, customerInRemoteStorage.BuyerRef)
+			assert.Equal(t, expectedCustomer.BuyerRef.ID, customerInRemoteStorage.BuyerRef.ID)
 		})
 
 		t.Run("validate only 1 route shader", func(t *testing.T) {
@@ -1030,7 +1030,7 @@ func TestFirestore(t *testing.T) {
 			assert.NoError(t, err)
 
 			err = fs.AddSeller(ctx, expected)
-			assert.NoError(t, err)
+			assert.Error(t, err)
 
 			// Grab the seller to compare the reference on the customer
 			sdocs := fs.Client.Collection("Seller").Documents(ctx)

@@ -277,12 +277,7 @@ func (fs *Firestore) AddCustomer(ctx context.Context, c routing.Customer) error 
 	fs.customerMutex.RUnlock()
 
 	if ok {
-		// Customer already exists, lets just update the entry with any new data
-		if err := fs.SetCustomer(ctx, c); err != nil {
-			err = fmt.Errorf("AddCustomer() failed to update customer: %v", err)
-			return err
-		}
-		return nil
+		return &AlreadyExistsError{resourceType: "customer", resourceRef: c.Code}
 	}
 
 	newCustomerData := customer{
@@ -487,12 +482,7 @@ func (fs *Firestore) AddBuyer(ctx context.Context, b routing.Buyer) error {
 	}
 
 	if ok {
-		// Buyer already exists, lets just update the entry with any new data
-		if err := fs.SetBuyer(ctx, b); err != nil {
-			err = fmt.Errorf("AddBuyer() failed to update buyer: %v", err)
-			return err
-		}
-		return nil
+		return &AlreadyExistsError{resourceType: "buyer", resourceRef: b.ID}
 	}
 
 	newBuyerData := buyer{
@@ -729,12 +719,7 @@ func (fs *Firestore) AddSeller(ctx context.Context, s routing.Seller) error {
 	}
 
 	if ok {
-		// Seller already exists, lets just update the entry with any new data
-		if err := fs.SetSeller(ctx, s); err != nil {
-			err = fmt.Errorf("AddSeller() failed to update seller: %v", err)
-			return err
-		}
-		return nil
+		return &AlreadyExistsError{resourceType: "seller", resourceRef: s.ID}
 	}
 
 	newSellerData := seller{
