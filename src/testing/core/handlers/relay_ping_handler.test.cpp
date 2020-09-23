@@ -36,7 +36,7 @@ TEST(core_handlers_relay_ping_handler)
   CHECK(socket.recv(packet));
   CHECK(prev_len == packet.length);
 
-  check(recorder.inbound_ping_tx.num_packets == 1);
-  check(recorder.inbound_ping_tx.num_bytes == RELAY_PING_PACKET_SIZE);
-  check(static_cast<PacketType>(packet.buffer[0]) == PacketType::RelayPong);
+  CHECK(recorder.inbound_ping_tx.num_packets == 1);
+  CHECK(recorder.inbound_ping_tx.num_bytes == RELAY_PING_PACKET_SIZE);
+  CHECK(static_cast<PacketType>(packet.buffer[0]) == PacketType::RelayPong);
 }

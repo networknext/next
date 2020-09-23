@@ -21,7 +21,7 @@ using os::Socket;
 using os::SocketConfig;
 using util::ThroughputRecorder;
 
-Test(core_handlers_route_response_handler_sdk4)
+TEST(core_handlers_route_response_handler_sdk4)
 {
   Packet packet;
   SessionMap map;
@@ -73,7 +73,7 @@ Test(core_handlers_route_response_handler_sdk4)
   CHECK(recorder.route_response_tx.num_bytes == PacketHeaderV4::SIZE_OF_SIGNED);
 
   core::handlers::route_response_handler_sdk4(packet, map, recorder, router_info, socket);
-  check(!socket.recv(packet));
+  CHECK(!socket.recv(packet));
 }
 
 TEST(core_handlers_route_response_handler_unsigned)

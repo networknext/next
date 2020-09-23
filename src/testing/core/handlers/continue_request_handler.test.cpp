@@ -20,7 +20,7 @@ using os::Socket;
 using os::SocketConfig;
 using util::ThroughputRecorder;
 
-Test(core_handlers_continue_request_handler_sdk4)
+TEST(core_handlers_continue_request_handler_sdk4)
 {
   Packet packet;
   SessionMap map;

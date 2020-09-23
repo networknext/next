@@ -20,7 +20,7 @@ using os::Socket;
 using os::SocketConfig;
 using util::ThroughputRecorder;
 
-Test(core_handlers_server_to_client_handler_sdk4)
+TEST(core_handlers_server_to_client_handler_sdk4)
 {
   Packet packet;
   SessionMap map;
@@ -73,7 +73,7 @@ Test(core_handlers_server_to_client_handler_sdk4)
   CHECK(recorder.server_to_client_tx.num_bytes == packet.length);
 
   core::handlers::server_to_client_handler_sdk4(packet, map, recorder, router_info, socket);
-  check(!socket.recv(packet));
+  CHECK(!socket.recv(packet));
 }
 
 TEST(core_handlers_server_to_client_handler_unsigned)

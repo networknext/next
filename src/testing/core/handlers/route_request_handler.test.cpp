@@ -17,7 +17,7 @@ using os::Socket;
 using os::SocketConfig;
 using util::ThroughputRecorder;
 
-Test(core_handlers_route_request_handler_sdk4)
+TEST(core_handlers_route_request_handler_sdk4)
 {
   Packet packet;
   Keychain keychain = make_keychain();
@@ -85,7 +85,7 @@ Test(core_handlers_route_request_handler_sdk4)
     std::cout << "next = " << next << '\n';
     std::cout << "packet = " << packet.addr << '\n';
   });
-  check(packet.length == prev_len - RouteTokenV4::EncryptedByteSize);
+  CHECK(packet.length == prev_len - RouteTokenV4::SIZE_OF_SIGNED);
 }
 
 TEST(core_handlers_route_request_handler_unsigned)

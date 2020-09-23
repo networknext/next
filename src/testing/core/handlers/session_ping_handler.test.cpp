@@ -20,7 +20,7 @@ using os::Socket;
 using os::SocketConfig;
 using util::ThroughputRecorder;
 
-Test(core_handlers_session_ping_handler_sdk4)
+TEST(core_handlers_session_ping_handler_sdk4)
 {
   Packet packet;
   SessionMap map;
@@ -69,7 +69,7 @@ Test(core_handlers_session_ping_handler_sdk4)
   CHECK(prev_len == packet.length);
 
   core::handlers::session_ping_handler_sdk4(packet, map, recorder, router_info, socket);
-  check(!socket.recv(packet));
+  CHECK(!socket.recv(packet));
 }
 
 TEST(core_handlers_session_ping_handler_unsigned)
