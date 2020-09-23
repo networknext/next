@@ -1127,7 +1127,7 @@ func TestSessionUpdateHandler4ContinueRoute(t *testing.T) {
 		Location:        routing.LocationNullIsland,
 		ExpireTimestamp: uint64(time.Now().Unix()),
 		RouteNumRelays:  2,
-		RouteRelayIDs:   [routing.MaxRelays]uint64{1, 2},
+		RouteRelayIDs:   [routing.MaxRelays]uint64{2, 1},
 		RouteState: core.RouteState{
 			Next:          true,
 			ReduceLatency: true,

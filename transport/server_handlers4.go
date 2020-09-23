@@ -409,61 +409,37 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 
 		sessionData.Initial = false
 
-		handleTakeNetworkNext := func() {
-			if core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, &buyer.CustomerData, &buyer.InternalConfig, int32(packet.DirectRTT), packet.DirectPacketLoss, reframedNearRelays, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:]) {
-				// Next token
-
-				// Add another 10 seconds to the slice and increment the session version
-				sessionData.Initial = true
-				sessionData.ExpireTimestamp += billing.BillingSliceSeconds
-				sessionData.SessionVersion++
-
-				numTokens := routeNumRelays + 2 // relays + client + server
-				routeAddresses, routePublicKeys := GetRouteAddressesAndPublicKeys(&packet.ClientAddress, packet.ClientRoutePublicKey, &packet.ServerAddress, packet.ServerRoutePublicKey, numTokens, routeRelays[:], routeMatrix.RelayIDs, storer)
-				tokenData := make([]byte, numTokens*routing.EncryptedNextRouteTokenSize4)
-				core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), uint32(buyer.RouteShader.BandwidthEnvelopeUpKbps), uint32(buyer.RouteShader.BandwidthEnvelopeDownKbps), int(numTokens), routeAddresses, routePublicKeys, routerPrivateKey)
-				response.RouteType = routing.RouteTypeNew
-				response.NumTokens = numTokens
-				response.Tokens = tokenData
-				response.Committed = true // todo: add committed logic later
-			}
-		}
-
 		if !sessionData.RouteState.Next {
-			handleTakeNetworkNext()
+			if core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, &buyer.CustomerData, &buyer.InternalConfig, int32(packet.DirectRTT), packet.DirectPacketLoss, reframedNearRelays, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:]) {
+				HandleNextToken(&sessionData, storer, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
+			} else {
+				HandleVeto(logger, &sessionData.RouteState)
+			}
 		} else {
 			if !core.ReframeRoute(routeMatrix.RelayIDsToIndices, sessionData.RouteRelayIDs[:sessionData.RouteNumRelays], &routeRelays) {
 				level.Warn(logger).Log("warn", "one or more relays in the route no longer exist, finding new route.")
-				handleTakeNetworkNext()
+
+				if core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, &buyer.CustomerData, &buyer.InternalConfig, int32(packet.DirectRTT), packet.DirectPacketLoss, reframedNearRelays, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:]) {
+					HandleNextToken(&sessionData, storer, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
+				} else {
+					HandleVeto(logger, &sessionData.RouteState)
+				}
 			} else {
+				prevRouteNumRelays := sessionData.RouteNumRelays
+				prevRouteRelays := routeRelays
+
 				if core.MakeRouteDecision_StayOnNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, &buyer.CustomerData, &buyer.InternalConfig, int32(packet.DirectRTT), sessionData.RouteCost, sessionData.RouteNumRelays, routeRelays, reframedNearRelays, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:]) {
 					// Continue token
 
-					// todo: need to check if the route has changed. If so, create a next token instead.
-
-					numTokens := routeNumRelays + 2 // relays + client + server
-					_, routePublicKeys := GetRouteAddressesAndPublicKeys(&packet.ClientAddress, packet.ClientRoutePublicKey, &packet.ServerAddress, packet.ServerRoutePublicKey, numTokens, routeRelays[:], routeMatrix.RelayIDs, storer)
-					tokenData := make([]byte, numTokens*routing.EncryptedContinueRouteTokenSize4)
-					core.WriteContinueTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), int(numTokens), routePublicKeys, routerPrivateKey)
-					response.RouteType = routing.RouteTypeContinue
-					response.NumTokens = numTokens
-					response.Tokens = tokenData
-					response.Committed = true // todo: add committed logic later
+					// Check if the route has changed
+					if core.RouteHash(routeRelays[:routeNumRelays]...) != core.RouteHash(prevRouteRelays[:prevRouteNumRelays]...) {
+						// Create a next token here rather than a continue token since the route has switched
+						HandleNextToken(&sessionData, storer, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
+					} else {
+						HandleContinueToken(&sessionData, storer, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
+					}
 				} else {
-					// todo: add metrics here to track why we veto a route
-
-					// Route was vetoed - check to see why
-					if sessionData.RouteState.NoRoute {
-						level.Warn(logger).Log("warn", "route no longer exists")
-					}
-
-					if sessionData.RouteState.MultipathOverload {
-						level.Warn(logger).Log("warn", "multipath overloaded this user's connection", "user_hash", fmt.Sprintf("%016x", sessionData.RouteState.UserID))
-					}
-
-					if sessionData.RouteState.LatencyWorse {
-						level.Warn(logger).Log("warn", "this route makes latency worse")
-					}
+					HandleVeto(logger, &sessionData.RouteState)
 				}
 			}
 		}
@@ -492,6 +468,50 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 		routeRelaysPrice = CalculateRouteRelaysPrice(int(routeNumRelays), routeRelaySellers, envelopeBytesUp, envelopeBytesDown)
 
 		level.Debug(logger).Log("msg", "session updated successfully", "source_address", incoming.SourceAddr.String(), "server_address", packet.ServerAddress.String(), "client_address", packet.ClientAddress.String())
+	}
+}
+
+func HandleNextToken(sessionData *SessionData4, storer storage.Storer, buyer *routing.Buyer, packet *SessionUpdatePacket4, routeNumRelays int32, routeRelays []int32, allRelayIDs []uint64, routerPrivateKey [crypto.KeySize]byte, response *SessionResponsePacket4) {
+	// Add another 10 seconds to the slice and increment the session version
+	sessionData.Initial = true
+	sessionData.ExpireTimestamp += billing.BillingSliceSeconds
+	sessionData.SessionVersion++
+
+	numTokens := routeNumRelays + 2 // relays + client + server
+	routeAddresses, routePublicKeys := GetRouteAddressesAndPublicKeys(&packet.ClientAddress, packet.ClientRoutePublicKey, &packet.ServerAddress, packet.ServerRoutePublicKey, numTokens, routeRelays, allRelayIDs, storer)
+	tokenData := make([]byte, numTokens*routing.EncryptedNextRouteTokenSize4)
+	core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), uint32(buyer.RouteShader.BandwidthEnvelopeUpKbps), uint32(buyer.RouteShader.BandwidthEnvelopeDownKbps), int(numTokens), routeAddresses, routePublicKeys, routerPrivateKey)
+	response.RouteType = routing.RouteTypeNew
+	response.NumTokens = numTokens
+	response.Tokens = tokenData
+	response.Committed = true // todo: add committed logic later
+}
+
+func HandleContinueToken(sessionData *SessionData4, storer storage.Storer, buyer *routing.Buyer, packet *SessionUpdatePacket4, routeNumRelays int32, routeRelays []int32, allRelayIDs []uint64, routerPrivateKey [crypto.KeySize]byte, response *SessionResponsePacket4) {
+	numTokens := routeNumRelays + 2 // relays + client + server
+	_, routePublicKeys := GetRouteAddressesAndPublicKeys(&packet.ClientAddress, packet.ClientRoutePublicKey, &packet.ServerAddress, packet.ServerRoutePublicKey, numTokens, routeRelays, allRelayIDs, storer)
+	tokenData := make([]byte, numTokens*routing.EncryptedContinueRouteTokenSize4)
+	core.WriteContinueTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), int(numTokens), routePublicKeys, routerPrivateKey)
+	response.RouteType = routing.RouteTypeContinue
+	response.NumTokens = numTokens
+	response.Tokens = tokenData
+	response.Committed = true // todo: add committed logic later
+}
+
+func HandleVeto(logger log.Logger, routeState *core.RouteState) {
+	// todo: add metrics here to track why we veto a route
+
+	// Route was vetoed - check to see why
+	if routeState.NoRoute {
+		level.Warn(logger).Log("warn", "route no longer exists")
+	}
+
+	if routeState.MultipathOverload {
+		level.Warn(logger).Log("warn", "multipath overloaded this user's connection", "user_hash", fmt.Sprintf("%016x", routeState.UserID))
+	}
+
+	if routeState.LatencyWorse {
+		level.Warn(logger).Log("warn", "this route makes latency worse")
 	}
 }
 
