@@ -12,6 +12,7 @@ DIST_DIR="${DIR}/../dist"
 ENV=
 SERVICE=
 CUSTOMER=
+ARTIFACT_BUCKET=
 
 build-artifacts() {
   printf "Building ${SERVICE} ${ENV} artifact... \n"
@@ -21,10 +22,11 @@ build-artifacts() {
 		cp ${DIR}/${SERVICE}/${SERVICE}.service ${DIST_DIR}/artifact/${SERVICE}/${SERVICE}.service
 		cp ${DIR}/${SERVICE}/install.sh ${DIST_DIR}/artifact/${SERVICE}/install.sh
 		cd ${DIST_DIR}/artifact/${SERVICE} && tar -zcf ../../${SERVICE}.${ENV}.tar.gz ${SERVICE} ${SERVICE}.service install.sh && cd ../..
-  elif [ "$SERVICE" = "portal" ]; then
-    cp ${DIST_DIR}/${SERVICE} ${DIST_DIR}/artifact/${SERVICE}/app
-    cp -r ./cmd/${SERVICE}/public ${DIST_DIR}/artifact/${SERVICE}
-    cp ./cmd/${SERVICE}/${ENV}.env ${DIST_DIR}/artifact/${SERVICE}/app.env
+  elif [ "$SERVICE" = "portal" ] || [ "$SERVICE" = "portal-test" ]; then
+    gsutil cp ${ARTIFACT_BUCKET}/${SERVICE}-dist.${ENV}.tar.gz ${DIST_DIR}/artifact/${SERVICE}/.
+    tar -xvf ${DIST_DIR}/artifact/${SERVICE}/${SERVICE}-dist.${ENV}.tar.gz --directory ${DIST_DIR}/artifact/${SERVICE}
+    cp ${DIST_DIR}/portal ${DIST_DIR}/artifact/${SERVICE}/app
+    cp ./cmd/portal/${ENV}.env ${DIST_DIR}/artifact/${SERVICE}/app.env
     cp ${DIR}/${SYSTEMD_SERVICE_FILE} ${DIST_DIR}/artifact/${SERVICE}/${SYSTEMD_SERVICE_FILE}
     cd ${DIST_DIR}/artifact/${SERVICE} && tar -zcf ../../${SERVICE}.${ENV}.tar.gz public app app.env ${SYSTEMD_SERVICE_FILE} && cd ../..
   elif { [ "$SERVICE" = "server_backend" ] || [ "$SERVICE" = "server_backend4" ]; } && [ -n "$CUSTOMER" ]; then
@@ -48,10 +50,11 @@ build-artifacts() {
 }
 
 print_usage() {
-  printf "Usage: build-artifacts.sh -e environment -s service\n\n"
-  printf "s [string]\Building environment [dev, staging, prod]\n"
-  printf "e [string]\tService being built [portal, portal_cruncher, server_backend, etc]\n"
+  printf "Usage: build-artifacts.sh -e environment -s service -b artifact bucket\n\n"
+  printf "e [string]\tBuilding environment [dev, staging, prod]\n"
+  printf "s [string]\tService being built [portal, portal_cruncher, server_backend, etc]\n"
   printf "c [string][optional]\tCustomer server backend name [esl-22dr]\n"
+  printf "b [string][optional]\tBucket for portal dist folder\n"
 
   printf "Example:\n\n"
   printf "> build-artifacts.sh -e dev -s portal\n"
@@ -63,11 +66,12 @@ then
   exit 1
 fi
 
-while getopts 'e:s:c:h' flag; do
+while getopts 'e:b:s:c:h' flag; do
   case "${flag}" in
     e) ENV="${OPTARG}" ;;
     s) SERVICE="${OPTARG}" ;;
     c) CUSTOMER="${OPTARG}" ;;
+    b) ARTIFACT_BUCKET="${OPTARG}" ;;
     h) print_usage
        exit 1 ;;
     *) print_usage
