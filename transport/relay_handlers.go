@@ -297,7 +297,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 
 		// Check if the relay state isn't set to enabled, and as a failsafe quarantine the relay
 		if relay.State != routing.RelayStateEnabled {
-			level.Error(locallogger).Log("msg", "non-enabled relay attempting to update", "relay_name", relay.Name, "relay_address", relay.Addr, "relay_state", relay.State)
+			level.Error(locallogger).Log("msg", "non-enabled relay attempting to update", "relay_name", relay.Name, "relay_address", relay.Addr.String(), "relay_state", relay.State)
 			http.Error(writer, "cannot allow non-enabled relay to update", http.StatusUnauthorized)
 			params.Metrics.ErrorMetrics.RelayNotEnabled.Add(1)
 			return
