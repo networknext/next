@@ -2,7 +2,6 @@ package transport
 
 import (
 	"fmt"
-	"math"
 	"net"
 
 	"github.com/networknext/backend/core"
@@ -316,7 +315,7 @@ type SessionData4 struct {
 	Location        routing.Location
 	RouteNumRelays  int32
 	RouteCost       int32
-	RouteRelays     [routing.MaxRelays]int32
+	RouteRelayIDs   [routing.MaxRelays]uint64
 	RouteState      core.RouteState
 }
 
@@ -372,7 +371,7 @@ func (sessionData *SessionData4) Serialize(stream encoding.Stream) error {
 		stream.SerializeInteger(&sessionData.RouteNumRelays, 0, routing.MaxRelays)
 		stream.SerializeInteger(&sessionData.RouteCost, 0, routing.InvalidRouteValue)
 		for i := int32(0); i < sessionData.RouteNumRelays; i++ {
-			stream.SerializeInteger(&sessionData.RouteRelays[i], 0, math.MaxInt32)
+			stream.SerializeUint64(&sessionData.RouteRelayIDs[i])
 		}
 	}
 	stream.SerializeUint64(&sessionData.RouteState.UserID)

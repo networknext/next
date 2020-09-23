@@ -1027,7 +1027,7 @@ func TestSessionUpdateHandler4NextRoute(t *testing.T) {
 		Initial:         true,
 		RouteNumRelays:  2,
 		RouteCost:       45,
-		RouteRelays:     [routing.MaxRelays]int32{1, 0},
+		RouteRelayIDs:   [routing.MaxRelays]uint64{2, 1},
 		RouteState: core.RouteState{
 			UserID:        requestPacket.UserHash,
 			Next:          true,
@@ -1127,7 +1127,7 @@ func TestSessionUpdateHandler4ContinueRoute(t *testing.T) {
 		Location:        routing.LocationNullIsland,
 		ExpireTimestamp: uint64(time.Now().Unix()),
 		RouteNumRelays:  2,
-		RouteRelays:     [routing.MaxRelays]int32{0, 1},
+		RouteRelayIDs:   [routing.MaxRelays]uint64{1, 2},
 		RouteState: core.RouteState{
 			Next:          true,
 			ReduceLatency: true,
@@ -1222,7 +1222,7 @@ func TestSessionUpdateHandler4ContinueRoute(t *testing.T) {
 		Initial:         false,
 		RouteNumRelays:  2,
 		RouteCost:       45,
-		RouteRelays:     [routing.MaxRelays]int32{1, 0},
+		RouteRelayIDs:   [routing.MaxRelays]uint64{2, 1},
 		RouteState: core.RouteState{
 			UserID:        requestPacket.UserHash,
 			Next:          true,

@@ -268,7 +268,6 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 			RouteType:   routing.RouteTypeDirect,
 		}
 
-		var routeRelayIDs [routing.MaxRelays]uint64
 		var routeRelayNames [routing.MaxRelays]string
 		var usageBytesUp uint64
 		var usageBytesDown uint64
@@ -288,7 +287,7 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 				return
 			}
 
-			go PostSessionUpdate4(postSessionHandler, &packet, &sessionData, routeRelayIDs, routeRelayNames, nearRelays, usageBytesUp, usageBytesDown, envelopeBytesUp, envelopeBytesDown, totalPrice, routeRelaysPrice, &datacenter, metrics)
+			go PostSessionUpdate4(postSessionHandler, &packet, &sessionData, routeRelayNames, nearRelays, usageBytesUp, usageBytesDown, envelopeBytesUp, envelopeBytesDown, totalPrice, routeRelaysPrice, &datacenter, metrics)
 		}()
 
 		if newSession {
@@ -409,7 +408,8 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 		routeRelays := [routing.MaxRelays]int32{}
 
 		sessionData.Initial = false
-		if !sessionData.RouteState.Next {
+
+		handleTakeNetworkNext := func() {
 			if core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, &buyer.CustomerData, &buyer.InternalConfig, int32(packet.DirectRTT), packet.DirectPacketLoss, reframedNearRelays, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:]) {
 				// Next token
 
@@ -427,37 +427,43 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 				response.Tokens = tokenData
 				response.Committed = true // todo: add committed logic later
 			}
+		}
+
+		if !sessionData.RouteState.Next {
+			handleTakeNetworkNext()
 		} else {
-			// todo: do actually need to store route relays as IDs and reframe route here,
-			// since route matrix could change between updates
-
-			if core.MakeRouteDecision_StayOnNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, &buyer.CustomerData, &buyer.InternalConfig, int32(packet.DirectRTT), sessionData.RouteCost, sessionData.RouteNumRelays, sessionData.RouteRelays, reframedNearRelays, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:]) {
-				// Continue token
-
-				// todo: need to check if the route has changed. If so, create a next token instead.
-
-				numTokens := routeNumRelays + 2 // relays + client + server
-				_, routePublicKeys := GetRouteAddressesAndPublicKeys(&packet.ClientAddress, packet.ClientRoutePublicKey, &packet.ServerAddress, packet.ServerRoutePublicKey, numTokens, routeRelays[:], routeMatrix.RelayIDs, storer)
-				tokenData := make([]byte, numTokens*routing.EncryptedContinueRouteTokenSize4)
-				core.WriteContinueTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), int(numTokens), routePublicKeys, routerPrivateKey)
-				response.RouteType = routing.RouteTypeContinue
-				response.NumTokens = numTokens
-				response.Tokens = tokenData
-				response.Committed = true // todo: add committed logic later
+			if !core.ReframeRoute(routeMatrix.RelayIDsToIndices, sessionData.RouteRelayIDs[:sessionData.RouteNumRelays], &routeRelays) {
+				level.Warn(logger).Log("warn", "one or more relays in the route no longer exist, finding new route.")
+				handleTakeNetworkNext()
 			} else {
-				// todo: add metrics here to track why we veto a route
+				if core.MakeRouteDecision_StayOnNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, &buyer.CustomerData, &buyer.InternalConfig, int32(packet.DirectRTT), sessionData.RouteCost, sessionData.RouteNumRelays, routeRelays, reframedNearRelays, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:]) {
+					// Continue token
 
-				// Route was vetoed - check to see why
-				if sessionData.RouteState.NoRoute {
-					level.Warn(logger).Log("warn", "route no longer exists")
-				}
+					// todo: need to check if the route has changed. If so, create a next token instead.
 
-				if sessionData.RouteState.MultipathOverload {
-					level.Warn(logger).Log("warn", "multipath overloaded this user's connection", "user_hash", fmt.Sprintf("%016x", sessionData.RouteState.UserID))
-				}
+					numTokens := routeNumRelays + 2 // relays + client + server
+					_, routePublicKeys := GetRouteAddressesAndPublicKeys(&packet.ClientAddress, packet.ClientRoutePublicKey, &packet.ServerAddress, packet.ServerRoutePublicKey, numTokens, routeRelays[:], routeMatrix.RelayIDs, storer)
+					tokenData := make([]byte, numTokens*routing.EncryptedContinueRouteTokenSize4)
+					core.WriteContinueTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), int(numTokens), routePublicKeys, routerPrivateKey)
+					response.RouteType = routing.RouteTypeContinue
+					response.NumTokens = numTokens
+					response.Tokens = tokenData
+					response.Committed = true // todo: add committed logic later
+				} else {
+					// todo: add metrics here to track why we veto a route
 
-				if sessionData.RouteState.LatencyWorse {
-					level.Warn(logger).Log("warn", "this route makes latency worse")
+					// Route was vetoed - check to see why
+					if sessionData.RouteState.NoRoute {
+						level.Warn(logger).Log("warn", "route no longer exists")
+					}
+
+					if sessionData.RouteState.MultipathOverload {
+						level.Warn(logger).Log("warn", "multipath overloaded this user's connection", "user_hash", fmt.Sprintf("%016x", sessionData.RouteState.UserID))
+					}
+
+					if sessionData.RouteState.LatencyWorse {
+						level.Warn(logger).Log("warn", "this route makes latency worse")
+					}
 				}
 			}
 		}
@@ -465,20 +471,18 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 		// Store the route back into the session data
 		sessionData.RouteNumRelays = routeNumRelays
 		sessionData.RouteCost = routeCost
-		sessionData.RouteRelays = routeRelays
 
-		// Convert the route relays back to relay IDs for use in the post session update
-		// and get all of the necessary relay information
 		routeRelaySellers := [routing.MaxRelays]routing.Seller{}
 		for i := int32(0); i < routeNumRelays; i++ {
 			relayID := routeMatrix.RelayIDs[routeRelays[i]]
+			sessionData.RouteRelayIDs[i] = relayID
 
+			// Get all of the necessary relay information for the post session update
 			relay, err := storer.Relay(relayID)
 			if err != nil {
 				continue
 			}
 
-			routeRelayIDs[i] = relay.ID
 			routeRelayNames[i] = relay.Name
 			routeRelaySellers[i] = relay.Seller
 		}
@@ -522,7 +526,7 @@ func GetRouteAddressesAndPublicKeys(clientAddress *net.UDPAddr, clientPublicKey 
 	return routeAddresses, routePublicKeys
 }
 
-func PostSessionUpdate4(postSessionHandler *PostSessionHandler, packet *SessionUpdatePacket4, sessionData *SessionData4, routeRelayIDs [routing.MaxRelays]uint64, routeRelayNames [routing.MaxRelays]string, nearRelays []routing.NearRelayData, nextBytesUp uint64, nextBytesDown uint64, nextEnvelopeBytesUp uint64, nextEnvelopeBytesDown uint64, totalPrice routing.Nibblin, routeRelayPrices [routing.MaxRelays]routing.Nibblin, datacenter *routing.Datacenter, metrics *metrics.SessionMetrics) {
+func PostSessionUpdate4(postSessionHandler *PostSessionHandler, packet *SessionUpdatePacket4, sessionData *SessionData4, routeRelayNames [routing.MaxRelays]string, nearRelays []routing.NearRelayData, nextBytesUp uint64, nextBytesDown uint64, nextEnvelopeBytesUp uint64, nextEnvelopeBytesDown uint64, totalPrice routing.Nibblin, routeRelayPrices [routing.MaxRelays]routing.Nibblin, datacenter *routing.Datacenter, metrics *metrics.SessionMetrics) {
 	nextRelaysPrice := [routing.MaxRelays]uint64{}
 	for i := 0; i < routing.MaxRelays; i++ {
 		nextRelaysPrice[i] = uint64(routeRelayPrices[i])
@@ -550,7 +554,7 @@ func PostSessionUpdate4(postSessionHandler *PostSessionHandler, packet *SessionU
 		NextJitter:                packet.NextJitter,
 		NextPacketLoss:            packet.NextPacketLoss,
 		NumNextRelays:             uint8(sessionData.RouteNumRelays),
-		NextRelays:                routeRelayIDs,
+		NextRelays:                sessionData.RouteRelayIDs,
 		TotalPrice:                uint64(totalPrice),
 		ClientToServerPacketsLost: packet.PacketsLostClientToServer,
 		ServerToClientPacketsLost: packet.PacketsLostServerToClient,
@@ -589,7 +593,7 @@ func PostSessionUpdate4(postSessionHandler *PostSessionHandler, packet *SessionU
 	hops := make([]RelayHop, sessionData.RouteNumRelays)
 	for i := int32(0); i < sessionData.RouteNumRelays; i++ {
 		hops[i] = RelayHop{
-			ID:   routeRelayIDs[i],
+			ID:   sessionData.RouteRelayIDs[i],
 			Name: routeRelayNames[i],
 		}
 	}
