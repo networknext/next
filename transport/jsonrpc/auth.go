@@ -115,7 +115,7 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 
 	requestEmail, ok := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["email"].(string)
 	if !ok {
-		err := fmt.Errorf("UpdateCompanyInformation() unable to parse email from token")
+		err := fmt.Errorf("AllAcounts() unable to parse email from token")
 		s.Logger.Log("err", err)
 		return err
 	}
@@ -726,11 +726,6 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 				return err
 			}
 		}
-		err = s.Auth0.Manager.User.Update(requestID, &management.User{
-			AppMetadata: map[string]interface{}{
-				"company_code": args.CompanyCode,
-			},
-		})
 		if err = s.Auth0.Manager.User.Update(requestID, &management.User{
 			AppMetadata: map[string]interface{}{
 				"company_code": args.CompanyCode,
