@@ -26,9 +26,9 @@ export default {
     isAnonymous: (state: any) => state.userProfile === null,
     isAnonymousPlus: (state: any, getters: any) => !getters.isAnonymous ? !state.userProfile.verified : false,
     isABTester: (state: any, getters: any) => (getters.isBuyer && state.abTesters.includes(getters.userProfile.id)) || getters.isAdmin,
-    isBuyer: (state: any) => (state.userProfile ? state.userProfile.buyerID !== '' : false),
     userProfile: (state: any) => state.userProfile,
-    allBuyers: (state: any) => state.allBuyers
+    allBuyers: (state: any) => state.allBuyers,
+    registeredToCompany: (state: any) => (state.userProfile ? state.userProfile.companyCode !== '' : false)
   },
   actions: {
     updateUserProfile ({ commit }: any, userProfile: any) {

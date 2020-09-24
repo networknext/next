@@ -1,7 +1,6 @@
 import { shallowMount, createLocalVue } from '@vue/test-utils'
 import Vuex from 'vuex'
 import GameConfiguration from '@/components/GameConfiguration.vue'
-import { text } from '@fortawesome/fontawesome-svg-core'
 
 describe('GameConfiguration.vue', () => {
 
@@ -81,9 +80,9 @@ describe('GameConfiguration.vue', () => {
       const input = wrapper.findAll('input')
       const textArea = wrapper.findAll('textarea')
       expect(input.length).toBe(1)
-      expect(input.at(0).attributes('disabled')).toBe(undefined)
+      expect(input.at(0).attributes('disabled')).toBe("disabled")
       expect(textArea.length).toBe(1)
-      expect(input.at(0).attributes('disabled')).toBe(undefined)
+      expect(textArea.at(0).attributes('disabled')).toBe(undefined)
 
       // Check button
       const button = wrapper.findAll('button')

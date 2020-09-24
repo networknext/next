@@ -345,7 +345,7 @@ export default class SessionDetails extends Vue {
     let i = 0
     for (i; i < allBuyers.length; i++) {
       if (allBuyers[i].id === buyerId) {
-        return allBuyers[i].name
+        return allBuyers[i].company_name
       }
     }
     return 'Private'

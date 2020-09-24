@@ -154,7 +154,7 @@ export default class SessionsWorkspace extends Vue {
   private fetchSessions (): void {
     (this as any).$apiService
       .fetchTopSessions({
-        buyer_id: this.$store.getters.currentFilter.buyerID || ''
+        company_code: this.$store.getters.currentFilter.companyCode || ''
       })
       .then((response: any) => {
         this.sessions = response.sessions
@@ -166,12 +166,12 @@ export default class SessionsWorkspace extends Vue {
   }
 
   // TODO: Move this somewhere with other helper functions
-  private getCustomerName (buyerId: string): string {
+  private getCustomerName (buyerID: string): string {
     const allBuyers = this.$store.getters.allBuyers
     let i = 0
     for (i; i < allBuyers.length; i++) {
-      if (allBuyers[i].id === buyerId) {
-        return allBuyers[i].name
+      if (allBuyers[i].id === buyerID) {
+        return allBuyers[i].company_name
       }
     }
     return 'Private'
