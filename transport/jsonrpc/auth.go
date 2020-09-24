@@ -564,19 +564,6 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 		return err
 	}
 
-	roleNames := []string{
-		"rol_8r0281hf2oC4cvrD",
-		"rol_ScQpWhLvmTKRlqLU",
-	}
-	roleTypes := []string{
-		"Owner",
-		"Viewer",
-	}
-	roleDescriptions := []string{
-		"Can access and manage everything in an account.",
-		"Can see current sessions and the map.",
-	}
-
 	removeRoles := []*management.Role{
 		{
 			ID:          &roleNames[0],
@@ -686,22 +673,6 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 	}
 	requestEmailParts := strings.Split(requestEmail, "@")
 	requestDomain := requestEmailParts[len(requestEmailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
-
-	roleNames := []string{
-		"rol_ScQpWhLvmTKRlqLU",
-		"rol_8r0281hf2oC4cvrD",
-		"rol_YfFrtom32or4vH89",
-	}
-	roleTypes := []string{
-		"Viewer",
-		"Owner",
-		"Admin",
-	}
-	roleDescriptions := []string{
-		"Can see current sessions and the map.",
-		"Can access and manage everything in an account.",
-		"Can manage the Network Next system, including access to configstore.",
-	}
 
 	ctx := context.Background()
 
