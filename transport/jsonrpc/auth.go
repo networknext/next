@@ -788,6 +788,13 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 			return err
 		}
 
+		_, err := s.Storage.Customer(newCompanyCode)
+		if err == nil {
+			err = fmt.Errorf("UpdateCompanyInformation() company already exists: %v", err)
+			s.Logger.Log("err", err)
+			return err
+		}
+
 		oldCompany, err := s.Storage.Customer(oldCompanyCode)
 		if err != nil {
 			err = fmt.Errorf("UpdateCompanyInformation() failed to fetch company: %v", err)
