@@ -1,7 +1,6 @@
 import { shallowMount, createLocalVue } from '@vue/test-utils'
 import Vuex from 'vuex'
 import GameConfiguration from '@/components/GameConfiguration.vue'
-import { text } from '@fortawesome/fontawesome-svg-core'
 
 describe('GameConfiguration.vue', () => {
 

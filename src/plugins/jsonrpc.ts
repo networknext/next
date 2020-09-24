@@ -36,7 +36,6 @@ export class JSONRPCService {
     }
     Promise.all(promises)
       .then((responses: any) => {
-        console.log(responses)
         let allBuyers = []
         if (store.getters.registeredToCompany) {
           allBuyers = responses[2].buyers

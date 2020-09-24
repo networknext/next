@@ -66,7 +66,7 @@
       <div class="form-check">
         <input type="checkbox" class="form-check-input" id="newsletterConsent" v-model="newsletterConsent" @change="checkConfirmPassword()"/>
         <small>
-          I would like to recieve the Network Next newsletter
+          I would like to receive the Network Next newsletter
         </small>
       </div>
       <button type="submit" class="btn btn-primary btn-sm" v-bind:disabled="!validPasswordForm" style="margin-top: 1rem;">

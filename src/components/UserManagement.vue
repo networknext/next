@@ -69,12 +69,8 @@
     <p class="card-text">
       Manage the list of users that currently have access to your Network Next account.
     </p>
-    <div id="account-table-spinner" v-show="!showTable">
-      <div class="spinner-border" role="status">
-        <span class="sr-only">Loading...</span>
-      </div>
-    </div>
-    <table class="table table-sm mt-4" v-show="showTable">
+    <Alert :message="messages.editUser" :alertType="alertTypes.editUser" v-if="messages.editUser !== ''"/>
+    <table class="table table-sm mt-4">
       <thead class="thead-light">
         <tr>
           <th style="width: 20%;">
@@ -88,9 +84,15 @@
           </th>
         </tr>
       </thead>
-      <tbody>
+      <tbody v-if="companyUsers.length === 0">
+        <tr>
+          <td colspan="7" class="text-muted">
+              There are no users assigned to your company.
+          </td>
+        </tr>
+      </tbody>
+      <tbody v-if="companyUsers.length > 0">
         <tr v-for="(account, index) in companyUsers" :key="index">
-          <Alert :message="messages.editUser" :alertType="alertTypes.newUser" v-if="messages.editUser !== ''"/>
           <td>
             {{ account.email }}
           </td>
@@ -250,7 +252,6 @@ export default class UserManagement extends Vue {
           user.delete = false
         })
         this.companyUsersReadOnly = _.cloneDeep(this.companyUsers)
-        this.showTable = true
       })
     this.userProfile = cloneDeep(this.$store.getters.userProfile)
   }
@@ -386,7 +387,7 @@ export default class UserManagement extends Vue {
           account.delete = false
         })
 
-        this.companyUsers.concat(newAccounts)
+        this.companyUsers = this.companyUsers.concat(newAccounts)
         this.alertTypes.newUsers = AlertTypes.SUCCESS
         this.messages.newUsers = 'User account(s) added successfully'
         setTimeout(() => {
