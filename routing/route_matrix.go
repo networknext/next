@@ -326,6 +326,16 @@ func (m *RouteMatrix) GetEntryIndex(nearRelayID uint64, destRelayID uint64) (int
 	return TriMatrixIndex(nearidx, destidx), destidx > nearidx
 }
 
+func (m *RouteMatrix) IsRelayAvailable(id uint64) bool {
+	for _, relayID := range m.RelayIDs {
+		if id == relayID {
+			return true
+		}
+	}
+
+	return false
+}
+
 // implements the io.ReadFrom interface
 func (m *RouteMatrix) ReadFrom(r io.Reader) (int64, error) {
 	if r == nil {
