@@ -125,6 +125,10 @@ ifndef MAXMIND_ISP_DB_URI
 export MAXMIND_ISP_DB_URI = ./testdata/GeoIP2-ISP-Test.mmdb
 endif
 
+ifndef LOCAL_RELAYS
+export LOCAL_RELAYS = 10
+endif
+
 ifndef SESSION_MAP_INTERVAL
 export SESSION_MAP_INTERVAL = 1s
 endif
@@ -946,7 +950,7 @@ dev-relay: build-relay ## runs a local relay
 
 .PHONY: dev-multi-relays
 dev-multi-relays: build-relay ## runs 10 local relays
-	./scripts/relay-spawner.sh -n 20 -p 10000
+	./scripts/relay-spawner.sh -n 10 -p 10000
 
 #######################
 
