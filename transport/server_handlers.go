@@ -580,6 +580,7 @@ type RouteProvider interface {
 	GetDatacenterRelayIDs(datacenter routing.Datacenter) []uint64
 	GetAcceptableRoutes(nearIDs []routing.NearRelayData, destIDs []uint64, prevRouteHash uint64, rttEpsilon int32) ([]routing.Route, error)
 	GetNearRelays(latitude float64, longitude float64, maxNearRelays int) ([]routing.NearRelayData, error)
+	IsRelayAvailable(id uint64) bool
 }
 
 type SessionUpdateParams struct {
@@ -857,10 +858,18 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 
 		routeMatrix := params.GetRouteProvider()
 
-		if newSession {
+		dirty := false
+		for i := range nearRelayData {
+			if !routeMatrix.IsRelayAvailable(nearRelayData[i].ID) {
+				dirty = true
+				break
+			}
+		}
 
-			// If this is a new session, get the near relays from the route matrix to send down to the client.
-			// Because this is an expensive function, we only want to do this on the first slice.
+		if dirty || newSession {
+
+			// If this is a new session or the near relays are dirty, get the near relays from the route matrix to send down to the client.
+			// Because this is an expensive function, we only want to do this on the first slice or if a relay has gone offline.
 
 			if nearRelayData, err = routeMatrix.GetNearRelays(location.Latitude, location.Longitude, MaxNearRelays); err != nil {
 				routeDecision = routing.Decision{

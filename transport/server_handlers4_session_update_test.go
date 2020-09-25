@@ -38,6 +38,9 @@ func (rp *badRouteProvider) GetAcceptableRoutes(nearIDs []routing.NearRelayData,
 func (rp *badRouteProvider) GetNearRelays(latitude float64, longitude float64, maxNearRelays int) ([]routing.NearRelayData, error) {
 	return nil, errors.New("no near relays")
 }
+func (rp *badRouteProvider) IsRelayAvailable(id uint64) bool {
+	return false
+}
 
 type goodRouteProvider struct{}
 
@@ -49,6 +52,9 @@ func (rp *goodRouteProvider) GetAcceptableRoutes(nearIDs []routing.NearRelayData
 }
 func (rp *goodRouteProvider) GetNearRelays(latitude float64, longitude float64, maxNearRelays int) ([]routing.NearRelayData, error) {
 	return []routing.NearRelayData{}, nil
+}
+func (rp *goodRouteProvider) IsRelayAvailable(id uint64) bool {
+	return true
 }
 
 func TestSessionUpdateHandler4ReadPacketFailure(t *testing.T) {
