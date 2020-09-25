@@ -70,7 +70,7 @@ export default class SessionMap extends Vue {
     // HACK: This is a hack to get tests to work properly
     (this as any).$apiService
       .fetchMapSessions({
-        buyer_id: this.$store.getters.currentFilter.buyerID || ''
+        company_code: this.$store.getters.currentFilter.companyCode || ''
       })
       .then((response: any) => {
         if (!this.mapInstance) {
@@ -87,12 +87,25 @@ export default class SessionMap extends Vue {
         }
 
         const sessions = response.map_points || []
-        const onNN = sessions.filter((point: any) => {
+        let onNN = []
+        let direct = []
+
+        if (this.$store.getters.isAnonymous || this.$store.getters.isAnonymousPlus || this.$store.getters.currentFilter.companyCode === '') {
+          onNN = sessions
+        } else {
+          onNN = sessions.filter((point: any) => {
+            return (point[2] === 1)
+          })
+          direct = sessions.filter((point: any) => {
+            return (point[2] === 0)
+          })
+        }
+        /* const onNN = sessions.filter((point: any) => {
           return point[2] === true
         })
         const direct = sessions.filter((point: any) => {
           return point[2] === false
-        })
+        }) */
 
         const cellSize = 10
         const aggregation = 'MEAN'
