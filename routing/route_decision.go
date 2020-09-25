@@ -317,16 +317,18 @@ func DecideCommitted(onNNLastSlice bool, maxObservedSlices uint8, yolo bool, com
 // DecideMultipath will decide if we should serve a network next route to be used for multipath
 // If the decision function can't find a good enough reason to send a network next route, then it decides to go direct
 // If multipath isn't enabled then the decision isn't affected
-func DecideMultipath(rttMultipath bool, jitterMultipath bool, packetLossMultipath bool, rttThreshold float64, packetLossThreshold float64, inGamePacketLoss float64) DecisionFunc {
+func DecideMultipath(rttMultipath bool, jitterMultipath bool, packetLossMultipath bool, rttThreshold float64, packetLossThreshold float64, inGamePacketLoss float64, connectionWired bool) DecisionFunc {
 	return func(prevDecision Decision, predictedNextStats, lastNextStats, lastDirectStats *Stats) Decision {
 		decision := prevDecision
 
 		// If there was a ping spike and the session was using multipath, it might have been due
 		// to an overloaded connection from 2x multipath bandwidth, so "multipath veto" this user
-		if (IsMultipath(decision) || IsVetoed(decision)) && (lastDirectStats.RTT >= 500 || lastNextStats.RTT >= 500) {
-			decision.OnNetworkNext = false
-			decision.Reason = DecisionMultipathVetoRTT
-			return decision
+		if IsMultipath(decision) || IsVetoed(decision) {
+			if (lastDirectStats.RTT >= 500 || lastNextStats.RTT >= 500) || (connectionWired && (lastDirectStats.Jitter >= 500 || lastNextStats.Jitter >= 500)) {
+				decision.OnNetworkNext = false
+				decision.Reason = DecisionMultipathVetoRTT
+				return decision
+			}
 		}
 
 		// If the route decision was already set to veto, don't unveto it
