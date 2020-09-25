@@ -189,6 +189,15 @@ func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicK
 	}
 	if shouldFill {
 		if err := db.AddCustomer(ctx, routing.Customer{
+			Name:                   "Network Next",
+			Code:                   "next",
+			Active:                 true,
+			AutomaticSignInDomains: "networknext.com",
+		}); err != nil {
+			level.Error(logger).Log("msg", "could not add customer to storage", "err", err)
+			os.Exit(1)
+		}
+		if err := db.AddCustomer(ctx, routing.Customer{
 			Name:                   "Ghost Army",
 			Code:                   "ghost-army",
 			Active:                 true,
