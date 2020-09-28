@@ -119,7 +119,7 @@ export default class SessionCounts extends Vue {
     const allBuyers = this.$store.getters.allBuyers
     let i = 0
     for (i; i < allBuyers.length; i++) {
-      if (allBuyers[i].company_name === this.$store.getters.userProfile.companyName) {
+      if (allBuyers[i].company_code === this.$store.getters.userProfile.companyCode) {
         return allBuyers[i].company_name
       }
     }
