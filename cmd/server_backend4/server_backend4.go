@@ -255,7 +255,18 @@ func mainReturnWithCode() int {
 			Live:                 true,
 			PublicKey:            customerPublicKey,
 			RouteShader:          routeShader,
-			CustomerData:         core.NewCustomerData(),
+			InternalConfig:       core.NewInternalConfig(),
+			RoutingRulesSettings: routing.LocalRoutingRulesSettings,
+		}); err != nil {
+			level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
+			return 1
+		}
+		if err := storer.AddBuyer(ctx, routing.Buyer{
+			ID:                   12345,
+			CompanyCode:          "local2",
+			Live:                 true,
+			PublicKey:            customerPublicKey,
+			RouteShader:          routeShader,
 			InternalConfig:       core.NewInternalConfig(),
 			RoutingRulesSettings: routing.LocalRoutingRulesSettings,
 		}); err != nil {
@@ -640,6 +651,43 @@ func mainReturnWithCode() int {
 	postSessionHandler := transport.NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, portalPublisher, postSessionPortalMaxRetries, biller, logger, sessionUpdateMetrics)
 	postSessionHandler.StartProcessing(ctx)
 
+	// Create the multipath veto handler to handle syncing multipath vetoes to and from redis
+	redisMultipathVetoHost := envvar.Get("REDIS_HOST_MULTIPATH_VETO", "127.0.0.1:6379")
+	multipathVetoSyncFrequency, err := envvar.GetDuration("MULTIPATH_VETO_SYNC_FREQUENCY", time.Second*10)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisMultipathVetoHost, storer)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	if err := multipathVetoHandler.Sync(); err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	// Start a routine to sync multipath vetoed users from redis to this instance
+	{
+		ticker := time.NewTicker(multipathVetoSyncFrequency)
+		go func(ctx context.Context) {
+			for {
+				select {
+				case <-ticker.C:
+					if err := multipathVetoHandler.Sync(); err != nil {
+						level.Error(logger).Log("err", err)
+					}
+					break
+				case <-ctx.Done():
+					break
+				}
+			}
+		}(ctx)
+	}
+
 	// Start HTTP server
 	{
 		router := mux.NewRouter()
@@ -709,7 +757,7 @@ func mainReturnWithCode() int {
 
 	serverInitHandler := transport.ServerInitHandlerFunc4(logger, storer, datacenterTracker, serverInitMetrics)
 	serverUpdateHandler := transport.ServerUpdateHandlerFunc4(logger, storer, datacenterTracker, serverUpdateMetrics)
-	sessionUpdateHandler := transport.SessionUpdateHandlerFunc4(logger, getIPLocatorFunc, getRouteMatrix4Func, storer, routerPrivateKey, postSessionHandler, sessionUpdateMetrics)
+	sessionUpdateHandler := transport.SessionUpdateHandlerFunc4(logger, getIPLocatorFunc, getRouteMatrix4Func, multipathVetoHandler, storer, routerPrivateKey, postSessionHandler, sessionUpdateMetrics)
 
 	for i := 0; i < numThreads; i++ {
 		go func(thread int) {

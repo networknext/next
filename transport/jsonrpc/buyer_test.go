@@ -261,7 +261,7 @@ func TestTotalSessions(t *testing.T) {
 	t.Parallel()
 
 	redisServer, _ := miniredis.Run()
-	redisPool := storage.NewRedisPool(redisServer.Addr())
+	redisPool := storage.NewRedisPool(redisServer.Addr(), 1, 1)
 
 	minutes := time.Now().Unix() / 60
 
@@ -778,7 +778,7 @@ func TestGameConfiguration(t *testing.T) {
 	t.Parallel()
 
 	redisServer, _ := miniredis.Run()
-	redisPool := storage.NewRedisPool(redisServer.Addr())
+	redisPool := storage.NewRedisPool(redisServer.Addr(), 1, 1)
 	storer := storage.InMemory{}
 	pubkey := make([]byte, 4)
 	storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})

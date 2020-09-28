@@ -128,23 +128,19 @@ type routingRulesSettings struct {
 }
 
 type routeShader struct {
-	DisableNetworkNext        bool    `firestore:"disableNetworkNext"`
-	SelectionPercent          int     `firestore:"selectionPercent"`
-	ABTest                    bool    `firestore:"abTest"`
-	ProMode                   bool    `firestore:"proMode"`
-	ReduceLatency             bool    `firestore:"reduceLatency"`
-	ReducePacketLoss          bool    `firestore:"reducePacketLoss"`
-	Multipath                 bool    `firestore:"multipath"`
-	AcceptableLatency         int32   `firestore:"acceptableLatency"`
-	LatencyThreshold          int32   `firestore:"latencyThreshold"`
-	AcceptablePacketLoss      float32 `firestore:"acceptablePacketLoss"`
-	BandwidthEnvelopeUpKbps   int32   `firestore:"bandwidthEnvelopeUpKbps"`
-	BandwidthEnvelopeDownKbps int32   `firestore:"bandwidthEnvelopeDownKbps"`
-}
-
-type customerData struct {
-	BannedUsers        map[int64]bool `firestore:"bannedUsers"`
-	MultipathVetoUsers map[int64]bool `firestore:"multipathVetoUsers"`
+	DisableNetworkNext        bool           `firestore:"disableNetworkNext"`
+	SelectionPercent          int            `firestore:"selectionPercent"`
+	ABTest                    bool           `firestore:"abTest"`
+	ProMode                   bool           `firestore:"proMode"`
+	ReduceLatency             bool           `firestore:"reduceLatency"`
+	ReducePacketLoss          bool           `firestore:"reducePacketLoss"`
+	Multipath                 bool           `firestore:"multipath"`
+	AcceptableLatency         int32          `firestore:"acceptableLatency"`
+	LatencyThreshold          int32          `firestore:"latencyThreshold"`
+	AcceptablePacketLoss      float32        `firestore:"acceptablePacketLoss"`
+	BandwidthEnvelopeUpKbps   int32          `firestore:"bandwidthEnvelopeUpKbps"`
+	BandwidthEnvelopeDownKbps int32          `firestore:"bandwidthEnvelopeDownKbps"`
+	BannedUsers               map[int64]bool `firestore:"bannedUsers"`
 }
 
 type internalConfig struct {
@@ -539,11 +535,6 @@ func (fs *Firestore) AddBuyer(ctx context.Context, b routing.Buyer) error {
 		return &FirestoreError{err: err}
 	}
 
-	// Add the buyer's customer config to remote storage
-	if err := fs.setCustomerDataForBuyerID(ctx, ref.ID, company.Name, b.CustomerData); err != nil {
-		return &FirestoreError{err: err}
-	}
-
 	// Add the buyer's internal config to remote storage
 	if err := fs.setInternalConfigForBuyerID(ctx, ref.ID, company.Name, b.InternalConfig); err != nil {
 		return &FirestoreError{err: err}
@@ -604,11 +595,6 @@ func (fs *Firestore) RemoveBuyer(ctx context.Context, id uint64) error {
 
 			// Delete the buyer's route shader in remote storage
 			if err := fs.deleteRouteShaderForBuyerID(ctx, bdoc.Ref.ID); err != nil {
-				return &FirestoreError{err: err}
-			}
-
-			// Delete the buyer's customer config in remote storage
-			if err := fs.deleteCustomerDataForBuyerID(ctx, bdoc.Ref.ID); err != nil {
 				return &FirestoreError{err: err}
 			}
 
@@ -709,11 +695,6 @@ func (fs *Firestore) SetBuyer(ctx context.Context, b routing.Buyer) error {
 
 			// Update the buyer's route shader in firestore
 			if err := fs.setRouteShaderForBuyerID(ctx, bdoc.Ref.ID, company.Name, b.RouteShader); err != nil {
-				return &FirestoreError{err: err}
-			}
-
-			// Update the buyer's customer config in firestore
-			if err := fs.setCustomerDataForBuyerID(ctx, bdoc.Ref.ID, company.Name, b.CustomerData); err != nil {
 				return &FirestoreError{err: err}
 			}
 
@@ -2000,11 +1981,6 @@ func (fs *Firestore) syncBuyers(ctx context.Context) error {
 			level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to completely read route shader for buyer %v, some fields will have default values", buyerDoc.Ref.ID), "err", err)
 		}
 
-		cd, err := fs.getCustomerDataForBuyerID(ctx, buyerDoc.Ref.ID)
-		if err != nil {
-			level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to completely read customer config for buyer %v, some fields will have default values", buyerDoc.Ref.ID), "err", err)
-		}
-
 		ic, err := fs.getInternalConfigForBuyerID(ctx, buyerDoc.Ref.ID)
 		if err != nil {
 			level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to completely read internal config for buyer %v, some fields will have default values", buyerDoc.Ref.ID), "err", err)
@@ -2018,7 +1994,6 @@ func (fs *Firestore) syncBuyers(ctx context.Context) error {
 			PublicKey:            b.PublicKey,
 			RoutingRulesSettings: rrs,
 			RouteShader:          rs,
-			CustomerData:         cd,
 			InternalConfig:       ic,
 		}
 
@@ -2189,14 +2164,6 @@ func (fs *Firestore) deleteRouteShaderForBuyerID(ctx context.Context, ID string)
 	return err
 }
 
-func (fs *Firestore) deleteCustomerDataForBuyerID(ctx context.Context, ID string) error {
-	customerDataID := ID + "_0"
-
-	// Attempt to delete route shader for buyer
-	_, err := fs.Client.Collection("CustomerData").Doc(customerDataID).Delete(ctx)
-	return err
-}
-
 func (fs *Firestore) deleteInternalConfigForBuyerID(ctx context.Context, ID string) error {
 	internalConfigID := ID + "_0"
 
@@ -2329,11 +2296,24 @@ func (fs *Firestore) getRouteShaderForBuyerID(ctx context.Context, buyerID strin
 	rs.BandwidthEnvelopeUpKbps = tempRS.BandwidthEnvelopeUpKbps
 	rs.BandwidthEnvelopeDownKbps = tempRS.BandwidthEnvelopeDownKbps
 
+	// Convert user IDs from int64 to uint64
+	bannedUsers := make(map[uint64]bool)
+	for k, v := range tempRS.BannedUsers {
+		rs.BannedUsers[uint64(k)] = v
+	}
+	rs.BannedUsers = bannedUsers
+
 	return rs, nil
 }
 
 func (fs *Firestore) setRouteShaderForBuyerID(ctx context.Context, buyerID string, name string, routeShader core.RouteShader) error {
 	routeShaderID := buyerID + "_0"
+
+	// Convert user IDs from uint64 to int64
+	bannedUsers := make(map[int64]bool)
+	for k, v := range routeShader.BannedUsers {
+		bannedUsers[int64(k)] = v
+	}
 
 	rsFirestore := map[string]interface{}{
 		"displayName":               name,
@@ -2349,66 +2329,10 @@ func (fs *Firestore) setRouteShaderForBuyerID(ctx context.Context, buyerID strin
 		"acceptablePacketLoss":      routeShader.AcceptablePacketLoss,
 		"bandwidthEnvelopeUpKbps":   routeShader.BandwidthEnvelopeUpKbps,
 		"bandwidthEnvelopeDownKbps": routeShader.BandwidthEnvelopeDownKbps,
+		"bannedUsers":               bannedUsers,
 	}
 
 	_, err := fs.Client.Collection("RouteShader4").Doc(routeShaderID).Set(ctx, rsFirestore, firestore.MergeAll)
-	return err
-}
-
-func (fs *Firestore) getCustomerDataForBuyerID(ctx context.Context, buyerID string) (core.CustomerData, error) {
-	customerDataID := buyerID + "_0"
-	cd := core.NewCustomerData()
-
-	ccDoc, err := fs.Client.Collection("CustomerData").Doc(customerDataID).Get(ctx)
-	if err != nil {
-		return cd, err
-	}
-
-	var tempCC customerData
-	err = ccDoc.DataTo(&tempCC)
-	if err != nil {
-		return cd, err
-	}
-
-	// Convert the banned user IDs and multipath vetoed user IDs to uint64
-	// (firestore can't store unsigned numbers)
-
-	cd.BannedUsers = map[uint64]bool{}
-	for userID, v := range tempCC.BannedUsers {
-		cd.BannedUsers[uint64(userID)] = v
-	}
-
-	cd.MultipathVetoUsers = map[uint64]bool{}
-	for userID, v := range tempCC.MultipathVetoUsers {
-		cd.MultipathVetoUsers[uint64(userID)] = v
-	}
-
-	return cd, nil
-}
-
-func (fs *Firestore) setCustomerDataForBuyerID(ctx context.Context, buyerID string, name string, customerData core.CustomerData) error {
-	customerDataID := buyerID + "_0"
-
-	// Convert the banned user IDs and multipath vetoed user IDs to int64
-	// (firestore can't store unsigned numbers)
-
-	bannedUsers := map[int64]bool{}
-	for userID, v := range customerData.BannedUsers {
-		bannedUsers[int64(userID)] = v
-	}
-
-	multipathVetoUsers := map[int64]bool{}
-	for userID, v := range customerData.MultipathVetoUsers {
-		multipathVetoUsers[int64(userID)] = v
-	}
-
-	ccFirestore := map[string]interface{}{
-		"displayName":        name,
-		"bannedUsers":        bannedUsers,
-		"multipathVetoUsers": multipathVetoUsers,
-	}
-
-	_, err := fs.Client.Collection("CustomerData").Doc(customerDataID).Set(ctx, ccFirestore, firestore.MergeAll)
 	return err
 }
 

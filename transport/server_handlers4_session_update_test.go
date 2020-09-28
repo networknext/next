@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alicebob/miniredis"
 	"github.com/go-kit/kit/log"
 	"github.com/networknext/backend/billing"
 	"github.com/networknext/backend/core"
@@ -58,13 +59,38 @@ func TestSessionUpdateHandler4ReadPacketFailure(t *testing.T) {
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 
-	handler := transport.SessionUpdateHandlerFunc4(logger, nil, nil, nil, [crypto.KeySize]byte{}, nil, metrics)
+	handler := transport.SessionUpdateHandlerFunc4(logger, nil, nil, nil, nil, [crypto.KeySize]byte{}, nil, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: nil,
 	})
 
 	assert.Nil(t, responseBuffer.Bytes())
 	assert.Equal(t, metrics.ErrorMetrics.ReadPacketFailure.Value(), 1.0)
+}
+
+func TestSessionUpdateHandler4BuyerNotFound(t *testing.T) {
+	logger := log.NewNopLogger()
+	metricsHandler := metrics.LocalHandler{}
+	metrics, err := metrics.NewSessionMetrics(context.Background(), &metricsHandler)
+	assert.NoError(t, err)
+	responseBuffer := bytes.NewBuffer(nil)
+	storer := &storage.InMemory{}
+
+	requestPacket := transport.SessionUpdatePacket4{
+		SessionID:            1111,
+		ClientRoutePublicKey: make([]byte, crypto.KeySize),
+		ServerRoutePublicKey: make([]byte, crypto.KeySize),
+	}
+	requestData, err := transport.MarshalPacket(&requestPacket)
+	assert.NoError(t, err)
+
+	handler := transport.SessionUpdateHandlerFunc4(logger, nil, nil, nil, storer, [crypto.KeySize]byte{}, nil, metrics)
+	handler(responseBuffer, &transport.UDPPacket{
+		Data: requestData,
+	})
+
+	assert.Nil(t, responseBuffer.Bytes())
+	assert.Equal(t, metrics.ErrorMetrics.BuyerNotFound.Value(), 1.0)
 }
 
 func TestSessionUpdateHandler4ClientLocateFailure(t *testing.T) {
@@ -116,8 +142,8 @@ func TestSessionUpdateHandler4ClientLocateFailure(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.PostSessionHandler{}
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, storer, [crypto.KeySize]byte{}, &postSessionHandler, metrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, nil)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, nil, storer, [crypto.KeySize]byte{}, postSessionHandler, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -183,8 +209,8 @@ func TestSessionUpdateHandler4ReadSessionDataFailure(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.PostSessionHandler{}
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, storer, [crypto.KeySize]byte{}, &postSessionHandler, metrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, nil)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, nil, storer, [crypto.KeySize]byte{}, postSessionHandler, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -270,8 +296,8 @@ func TestSessionUpdateHandler4SessionDataBadSessionID(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.PostSessionHandler{}
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, storer, [crypto.KeySize]byte{}, &postSessionHandler, metrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, nil)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, nil, storer, [crypto.KeySize]byte{}, postSessionHandler, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -357,8 +383,8 @@ func TestSessionUpdateHandler4SessionDataBadSliceNumber(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.PostSessionHandler{}
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, storer, [crypto.KeySize]byte{}, &postSessionHandler, metrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, nil)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, nil, storer, [crypto.KeySize]byte{}, postSessionHandler, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -375,73 +401,6 @@ func TestSessionUpdateHandler4SessionDataBadSliceNumber(t *testing.T) {
 	assert.Equal(t, expectedResponse, responsePacket)
 
 	assert.Equal(t, metrics.SessionDataMetrics.BadSliceNumber.Value(), 1.0)
-}
-
-func TestSessionUpdateHandler4BuyerNotFound(t *testing.T) {
-	logger := log.NewNopLogger()
-	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewSessionMetrics(context.Background(), &metricsHandler)
-	assert.NoError(t, err)
-	responseBuffer := bytes.NewBuffer(nil)
-	storer := &storage.InMemory{}
-
-	requestPacket := transport.SessionUpdatePacket4{
-		SessionID:            1111,
-		ClientRoutePublicKey: make([]byte, crypto.KeySize),
-		ServerRoutePublicKey: make([]byte, crypto.KeySize),
-	}
-	requestData, err := transport.MarshalPacket(&requestPacket)
-	assert.NoError(t, err)
-
-	var goodIPLocator goodIPLocator
-	ipLocatorFunc := func() routing.IPLocator {
-		return &goodIPLocator
-	}
-
-	var routeMatrix routing.RouteMatrix4
-	routeMatrixFunc := func() *routing.RouteMatrix4 {
-		return &routeMatrix
-	}
-
-	expectedResponse := transport.SessionResponsePacket4{
-		SessionID:          requestPacket.SessionID,
-		SliceNumber:        requestPacket.SliceNumber,
-		RouteType:          routing.RouteTypeDirect,
-		NearRelayIDs:       []uint64{},
-		NearRelayAddresses: []net.UDPAddr{},
-	}
-
-	expectedSessionData := transport.SessionData4{
-		SessionID:       requestPacket.SessionID,
-		SliceNumber:     requestPacket.SliceNumber + 1,
-		Location:        routing.LocationNullIsland,
-		ExpireTimestamp: uint64(time.Now().Unix()) + billing.BillingSliceSeconds,
-	}
-
-	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
-	assert.NoError(t, err)
-
-	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
-	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
-
-	postSessionHandler := transport.PostSessionHandler{}
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, storer, [crypto.KeySize]byte{}, &postSessionHandler, metrics)
-	handler(responseBuffer, &transport.UDPPacket{
-		Data: requestData,
-	})
-
-	var responsePacket transport.SessionResponsePacket4
-	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
-	assert.NoError(t, err)
-
-	var sessionData transport.SessionData4
-	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
-	assert.NoError(t, err)
-
-	assert.Equal(t, expectedSessionData, sessionData)
-	assert.Equal(t, expectedResponse, responsePacket)
-
-	assert.Equal(t, metrics.ErrorMetrics.BuyerNotFound.Value(), 1.0)
 }
 
 func TestSessionUpdateHandler4DatacenterNotFound(t *testing.T) {
@@ -492,8 +451,8 @@ func TestSessionUpdateHandler4DatacenterNotFound(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.PostSessionHandler{}
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, storer, [crypto.KeySize]byte{}, &postSessionHandler, metrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, nil)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, nil, storer, [crypto.KeySize]byte{}, postSessionHandler, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -561,8 +520,8 @@ func TestSessionUpdateHandler4NoNearRelays(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.PostSessionHandler{}
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, storer, [crypto.KeySize]byte{}, &postSessionHandler, metrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, nil)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, nil, storer, [crypto.KeySize]byte{}, postSessionHandler, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -592,7 +551,6 @@ func TestSessionUpdateHandler4FirstSlice(t *testing.T) {
 	storer.AddBuyer(context.Background(), routing.Buyer{
 		ID:             100,
 		RouteShader:    core.NewRouteShader(),
-		CustomerData:   core.NewCustomerData(),
 		InternalConfig: core.NewInternalConfig(),
 	})
 	storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 10})
@@ -627,6 +585,12 @@ func TestSessionUpdateHandler4FirstSlice(t *testing.T) {
 		return &routeMatrix
 	}
 
+	redisServer, err := miniredis.Run()
+	assert.NoError(t, err)
+
+	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), storer)
+	assert.NoError(t, err)
+
 	expectedResponse := transport.SessionResponsePacket4{
 		SessionID:          requestPacket.SessionID,
 		SliceNumber:        requestPacket.SliceNumber,
@@ -649,8 +613,8 @@ func TestSessionUpdateHandler4FirstSlice(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.PostSessionHandler{}
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, storer, [crypto.KeySize]byte{}, &postSessionHandler, metrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, nil)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, [crypto.KeySize]byte{}, postSessionHandler, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -679,7 +643,6 @@ func TestSessionUpdateHandler4NoDestRelays(t *testing.T) {
 	storer.AddBuyer(context.Background(), routing.Buyer{
 		ID:             100,
 		RouteShader:    core.NewRouteShader(),
-		CustomerData:   core.NewCustomerData(),
 		InternalConfig: core.NewInternalConfig(),
 	})
 	storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 10})
@@ -731,6 +694,12 @@ func TestSessionUpdateHandler4NoDestRelays(t *testing.T) {
 		return &routeMatrix
 	}
 
+	redisServer, err := miniredis.Run()
+	assert.NoError(t, err)
+
+	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), storer)
+	assert.NoError(t, err)
+
 	expectedResponse := transport.SessionResponsePacket4{
 		SessionID:          requestPacket.SessionID,
 		SliceNumber:        requestPacket.SliceNumber,
@@ -753,8 +722,8 @@ func TestSessionUpdateHandler4NoDestRelays(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.PostSessionHandler{}
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, storer, [crypto.KeySize]byte{}, &postSessionHandler, metrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, nil)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, [crypto.KeySize]byte{}, postSessionHandler, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -784,7 +753,6 @@ func TestSessionUpdateHandler4DirectRoute(t *testing.T) {
 	storer.AddBuyer(context.Background(), routing.Buyer{
 		ID:             100,
 		RouteShader:    core.NewRouteShader(),
-		CustomerData:   core.NewCustomerData(),
 		InternalConfig: core.NewInternalConfig(),
 	})
 	storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 10})
@@ -836,6 +804,12 @@ func TestSessionUpdateHandler4DirectRoute(t *testing.T) {
 		return &routeMatrix
 	}
 
+	redisServer, err := miniredis.Run()
+	assert.NoError(t, err)
+
+	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), storer)
+	assert.NoError(t, err)
+
 	expectedResponse := transport.SessionResponsePacket4{
 		SessionID:          requestPacket.SessionID,
 		SliceNumber:        requestPacket.SliceNumber,
@@ -858,8 +832,8 @@ func TestSessionUpdateHandler4DirectRoute(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.PostSessionHandler{}
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, storer, [crypto.KeySize]byte{}, &postSessionHandler, metrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, nil)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, [crypto.KeySize]byte{}, postSessionHandler, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -892,7 +866,6 @@ func TestSessionUpdateHandler4NextRoute(t *testing.T) {
 	err = storer.AddBuyer(context.Background(), routing.Buyer{
 		ID:             100,
 		RouteShader:    core.NewRouteShader(),
-		CustomerData:   core.NewCustomerData(),
 		InternalConfig: core.NewInternalConfig(),
 	})
 	assert.NoError(t, err)
@@ -997,6 +970,12 @@ func TestSessionUpdateHandler4NextRoute(t *testing.T) {
 	routeMatrixFunc := func() *routing.RouteMatrix4 {
 		return &routeMatrix
 	}
+
+	redisServer, err := miniredis.Run()
+	assert.NoError(t, err)
+
+	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), storer)
+	assert.NoError(t, err)
 
 	expireTimestamp := uint64(time.Now().Unix()) + billing.BillingSliceSeconds*2
 	sessionVersion := sessionDataStruct.SessionVersion + 1
@@ -1041,8 +1020,8 @@ func TestSessionUpdateHandler4NextRoute(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.PostSessionHandler{}
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, storer, privateKey, &postSessionHandler, metrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, nil)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, privateKey, postSessionHandler, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -1084,7 +1063,6 @@ func TestSessionUpdateHandler4ContinueRoute(t *testing.T) {
 	err = storer.AddBuyer(context.Background(), routing.Buyer{
 		ID:             100,
 		RouteShader:    core.NewRouteShader(),
-		CustomerData:   core.NewCustomerData(),
 		InternalConfig: core.NewInternalConfig(),
 	})
 	assert.NoError(t, err)
@@ -1196,6 +1174,12 @@ func TestSessionUpdateHandler4ContinueRoute(t *testing.T) {
 		return &routeMatrix
 	}
 
+	redisServer, err := miniredis.Run()
+	assert.NoError(t, err)
+
+	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), storer)
+	assert.NoError(t, err)
+
 	expireTimestamp := uint64(time.Now().Unix()) + billing.BillingSliceSeconds
 
 	tokenData := make([]byte, core.NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES*4)
@@ -1236,8 +1220,8 @@ func TestSessionUpdateHandler4ContinueRoute(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.PostSessionHandler{}
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, storer, privateKey, &postSessionHandler, metrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, nil)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, privateKey, postSessionHandler, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -1279,7 +1263,6 @@ func TestSessionUpdateHandler4RouteNoLongerExists(t *testing.T) {
 	err = storer.AddBuyer(context.Background(), routing.Buyer{
 		ID:             100,
 		RouteShader:    core.NewRouteShader(),
-		CustomerData:   core.NewCustomerData(),
 		InternalConfig: core.NewInternalConfig(),
 	})
 	assert.NoError(t, err)
@@ -1391,6 +1374,12 @@ func TestSessionUpdateHandler4RouteNoLongerExists(t *testing.T) {
 		return &routeMatrix
 	}
 
+	redisServer, err := miniredis.Run()
+	assert.NoError(t, err)
+
+	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), storer)
+	assert.NoError(t, err)
+
 	expireTimestamp := uint64(time.Now().Unix()) + billing.BillingSliceSeconds*2
 	sessionVersion := sessionDataStruct.SessionVersion + 1
 
@@ -1434,8 +1423,8 @@ func TestSessionUpdateHandler4RouteNoLongerExists(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.PostSessionHandler{}
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, storer, privateKey, &postSessionHandler, metrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, nil)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, privateKey, postSessionHandler, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -1477,7 +1466,6 @@ func TestSessionUpdateHandler4RouteSwitched(t *testing.T) {
 	err = storer.AddBuyer(context.Background(), routing.Buyer{
 		ID:             100,
 		RouteShader:    core.NewRouteShader(),
-		CustomerData:   core.NewCustomerData(),
 		InternalConfig: core.NewInternalConfig(),
 	})
 	assert.NoError(t, err)
@@ -1589,6 +1577,12 @@ func TestSessionUpdateHandler4RouteSwitched(t *testing.T) {
 		return &routeMatrix
 	}
 
+	redisServer, err := miniredis.Run()
+	assert.NoError(t, err)
+
+	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), storer)
+	assert.NoError(t, err)
+
 	expireTimestamp := uint64(time.Now().Unix()) + billing.BillingSliceSeconds*2
 	sessionVersion := sessionDataStruct.SessionVersion + 1
 
@@ -1632,8 +1626,8 @@ func TestSessionUpdateHandler4RouteSwitched(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.PostSessionHandler{}
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, storer, privateKey, &postSessionHandler, metrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, nil)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, privateKey, postSessionHandler, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -1674,7 +1668,6 @@ func TestSessionUpdateHandler4VetoNoRoute(t *testing.T) {
 	err = storer.AddBuyer(context.Background(), routing.Buyer{
 		ID:             100,
 		RouteShader:    core.NewRouteShader(),
-		CustomerData:   core.NewCustomerData(),
 		InternalConfig: core.NewInternalConfig(),
 	})
 	assert.NoError(t, err)
@@ -1773,6 +1766,12 @@ func TestSessionUpdateHandler4VetoNoRoute(t *testing.T) {
 		return &routeMatrix
 	}
 
+	redisServer, err := miniredis.Run()
+	assert.NoError(t, err)
+
+	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), storer)
+	assert.NoError(t, err)
+
 	expectedResponse := transport.SessionResponsePacket4{
 		SessionID:          requestPacket.SessionID,
 		SliceNumber:        requestPacket.SliceNumber,
@@ -1803,8 +1802,8 @@ func TestSessionUpdateHandler4VetoNoRoute(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.PostSessionHandler{}
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, storer, privateKey, &postSessionHandler, metrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, nil)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, privateKey, postSessionHandler, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -1842,12 +1841,13 @@ func TestSessionUpdateHandler4VetoMultipathOverloaded(t *testing.T) {
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 	storer := &storage.InMemory{}
-	err = storer.AddBuyer(context.Background(), routing.Buyer{
+	buyer := routing.Buyer{
 		ID:             100,
+		CompanyCode:    "local",
 		RouteShader:    core.NewRouteShader(),
-		CustomerData:   core.NewCustomerData(),
 		InternalConfig: core.NewInternalConfig(),
-	})
+	}
+	err = storer.AddBuyer(context.Background(), buyer)
 	assert.NoError(t, err)
 	err = storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 10})
 	assert.NoError(t, err)
@@ -1890,6 +1890,7 @@ func TestSessionUpdateHandler4VetoMultipathOverloaded(t *testing.T) {
 		RouteNumRelays:  2,
 		RouteRelayIDs:   [routing.MaxRelays]uint64{2, 1},
 		RouteState: core.RouteState{
+			UserID:        1234567890,
 			Next:          true,
 			ReduceLatency: true,
 			Multipath:     true,
@@ -1916,7 +1917,9 @@ func TestSessionUpdateHandler4VetoMultipathOverloaded(t *testing.T) {
 		ServerAddress:        *serverAddr,
 		ClientRoutePublicKey: publicKey,
 		ServerRoutePublicKey: publicKey,
+		UserHash:             sessionDataStruct.RouteState.UserID,
 		DirectRTT:            500,
+		Next:                 true,
 		NumNearRelays:        2,
 		NearRelayIDs:         []uint64{1, 2},
 		NearRelayRTT:         []float32{10, 15},
@@ -1958,6 +1961,12 @@ func TestSessionUpdateHandler4VetoMultipathOverloaded(t *testing.T) {
 		return &routeMatrix
 	}
 
+	redisServer, err := miniredis.Run()
+	assert.NoError(t, err)
+
+	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), storer)
+	assert.NoError(t, err)
+
 	expectedResponse := transport.SessionResponsePacket4{
 		SessionID:          requestPacket.SessionID,
 		SliceNumber:        requestPacket.SliceNumber,
@@ -1977,9 +1986,9 @@ func TestSessionUpdateHandler4VetoMultipathOverloaded(t *testing.T) {
 		RouteState: core.RouteState{
 			UserID:            requestPacket.UserHash,
 			Veto:              true,
-			ReduceLatency:     true,
 			Multipath:         true,
 			MultipathOverload: true,
+			ReduceLatency:     true,
 		},
 	}
 
@@ -1989,8 +1998,8 @@ func TestSessionUpdateHandler4VetoMultipathOverloaded(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.PostSessionHandler{}
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, storer, privateKey, &postSessionHandler, metrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, nil)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, privateKey, postSessionHandler, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -2031,7 +2040,6 @@ func TestSessionUpdateHandler4VetoLatencyWorse(t *testing.T) {
 	err = storer.AddBuyer(context.Background(), routing.Buyer{
 		ID:             100,
 		RouteShader:    core.NewRouteShader(),
-		CustomerData:   core.NewCustomerData(),
 		InternalConfig: core.NewInternalConfig(),
 	})
 	assert.NoError(t, err)
@@ -2145,6 +2153,12 @@ func TestSessionUpdateHandler4VetoLatencyWorse(t *testing.T) {
 		return &routeMatrix
 	}
 
+	redisServer, err := miniredis.Run()
+	assert.NoError(t, err)
+
+	multipathVetoHandler, err := storage.NewMultipathVetoHandler(redisServer.Addr(), storer)
+	assert.NoError(t, err)
+
 	expectedResponse := transport.SessionResponsePacket4{
 		SessionID:          requestPacket.SessionID,
 		SliceNumber:        requestPacket.SliceNumber,
@@ -2175,8 +2189,8 @@ func TestSessionUpdateHandler4VetoLatencyWorse(t *testing.T) {
 	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
 	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
 
-	postSessionHandler := transport.PostSessionHandler{}
-	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, storer, privateKey, &postSessionHandler, metrics)
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, nil)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, multipathVetoHandler, storer, privateKey, postSessionHandler, metrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})

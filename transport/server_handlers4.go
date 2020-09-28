@@ -231,7 +231,7 @@ func ServerUpdateHandlerFunc4(logger log.Logger, storer storage.Storer, datacent
 	}
 }
 
-func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IPLocator, getRouteMatrix4 func() *routing.RouteMatrix4, storer storage.Storer, routerPrivateKey [crypto.KeySize]byte, postSessionHandler *PostSessionHandler, metrics *metrics.SessionMetrics) UDPHandlerFunc {
+func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IPLocator, getRouteMatrix4 func() *routing.RouteMatrix4, multipathVetoHandler *storage.MultipathVetoHandler, storer storage.Storer, routerPrivateKey [crypto.KeySize]byte, postSessionHandler *PostSessionHandler, metrics *metrics.SessionMetrics) UDPHandlerFunc {
 	return func(w io.Writer, incoming *UDPPacket) {
 		metrics.Invocations.Add(1)
 
@@ -252,6 +252,13 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 			return
 		}
 
+		buyer, err := storer.Buyer(packet.CustomerID)
+		if err != nil {
+			level.Error(logger).Log("msg", "buyer not found", "err", err)
+			metrics.ErrorMetrics.BuyerNotFound.Add(1)
+			return
+		}
+
 		newSession := packet.SliceNumber == 0
 
 		var sessionData SessionData4
@@ -268,15 +275,9 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 			RouteType:   routing.RouteTypeDirect,
 		}
 
+		var routeNumRelays int32
 		var routeRelayNames [routing.MaxRelays]string
-		var usageBytesUp uint64
-		var usageBytesDown uint64
-		var envelopeBytesUp uint64
-		var envelopeBytesDown uint64
-		var totalPrice routing.Nibblin
-		var routeRelaysPrice [routing.MaxRelays]routing.Nibblin
-
-		var err error
+		var routeRelaySellers [routing.MaxRelays]routing.Seller
 
 		// If we've gotten this far, use a deferred function so that we always at least return a direct response
 		// and run the post session update logic
@@ -287,7 +288,7 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 				return
 			}
 
-			go PostSessionUpdate4(postSessionHandler, &packet, &sessionData, routeRelayNames, nearRelays, usageBytesUp, usageBytesDown, envelopeBytesUp, envelopeBytesDown, totalPrice, routeRelaysPrice, &datacenter, metrics)
+			go PostSessionUpdate4(postSessionHandler, &packet, &sessionData, &buyer, multipathVetoHandler, int(routeNumRelays), routeRelayNames, routeRelaySellers, nearRelays, &datacenter, metrics)
 		}()
 
 		if newSession {
@@ -295,6 +296,7 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 			sessionData.SessionID = packet.SessionID
 			sessionData.SliceNumber = uint32(packet.SliceNumber + 1)
 			sessionData.ExpireTimestamp = uint64(time.Now().Unix()) + billing.BillingSliceSeconds
+			sessionData.RouteState.UserID = packet.UserHash
 
 			sessionData.Location, err = ipLocator.LocateIP(packet.ClientAddress.IP)
 			if err != nil {
@@ -324,19 +326,6 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 			sessionData.SliceNumber = uint32(packet.SliceNumber + 1)
 			sessionData.ExpireTimestamp += billing.BillingSliceSeconds
 		}
-
-		buyer, err := storer.Buyer(packet.CustomerID)
-		if err != nil {
-			level.Error(logger).Log("msg", "buyer not found", "err", err)
-			metrics.ErrorMetrics.BuyerNotFound.Add(1)
-			return
-		}
-
-		sliceDuration := uint64(billing.BillingSliceSeconds)
-		if sessionData.Initial {
-			sliceDuration *= 2
-		}
-		usageBytesUp, usageBytesDown = CalculateNextBytesUpAndDown(uint64(packet.NextKbpsUp), uint64(packet.NextKbpsDown), sliceDuration)
 
 		datacenter, err = storer.Datacenter(packet.DatacenterID)
 		if err != nil {
@@ -405,27 +394,28 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 		reframedDestRelays = reframedDestRelays[:numDestRelays]
 
 		var routeCost int32
-		var routeNumRelays int32
 		routeRelays := [routing.MaxRelays]int32{}
 
 		sessionData.Initial = false
 
+		multipathVetoMap := multipathVetoHandler.GetMapCopy(buyer.CompanyCode)
+
 		if !sessionData.RouteState.Next {
-			if core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, &buyer.CustomerData, &buyer.InternalConfig, int32(packet.DirectRTT), packet.DirectPacketLoss, reframedNearRelays, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:]) {
+			if core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, multipathVetoMap, &buyer.InternalConfig, int32(packet.DirectRTT), packet.DirectPacketLoss, reframedNearRelays, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:]) {
 				HandleNextToken(&sessionData, storer, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
 			}
 		} else {
 			if !core.ReframeRoute(routeMatrix.RelayIDsToIndices, sessionData.RouteRelayIDs[:sessionData.RouteNumRelays], &routeRelays) {
 				level.Warn(logger).Log("warn", "one or more relays in the route no longer exist, finding new route.")
 
-				if core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, &buyer.CustomerData, &buyer.InternalConfig, int32(packet.DirectRTT), packet.DirectPacketLoss, reframedNearRelays, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:]) {
+				if core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, multipathVetoMap, &buyer.InternalConfig, int32(packet.DirectRTT), packet.DirectPacketLoss, reframedNearRelays, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:]) {
 					HandleNextToken(&sessionData, storer, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
 				}
 			} else {
 				prevRouteNumRelays := sessionData.RouteNumRelays
 				prevRouteRelays := routeRelays
 
-				if core.MakeRouteDecision_StayOnNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, &buyer.CustomerData, &buyer.InternalConfig, int32(packet.DirectRTT), int32(packet.NextRTT), sessionData.RouteNumRelays, routeRelays, reframedNearRelays, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:]) {
+				if core.MakeRouteDecision_StayOnNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, &buyer.InternalConfig, int32(packet.DirectRTT), int32(packet.NextRTT), sessionData.RouteNumRelays, routeRelays, reframedNearRelays, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:]) {
 					// Continue token
 
 					// Check if the route has changed
@@ -436,7 +426,24 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 						HandleContinueToken(&sessionData, storer, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
 					}
 				} else {
-					HandleVeto(logger, &sessionData.RouteState, metrics)
+					// Route was vetoed - check to see why
+					if sessionData.RouteState.NoRoute {
+						level.Warn(logger).Log("warn", "route no longer exists")
+						metrics.ErrorMetrics.RouteFailure.Add(1)
+					}
+
+					if sessionData.RouteState.MultipathOverload {
+						level.Warn(logger).Log("warn", "multipath overloaded this user's connection", "user_hash", fmt.Sprintf("%016x", sessionData.RouteState.UserID))
+						metrics.DecisionMetrics.MultipathVetoRTT.Add(1)
+
+						// We will handling updating the multipath veto redis in the post session update
+						// to avoid blocking the routing response
+					}
+
+					if sessionData.RouteState.LatencyWorse {
+						level.Warn(logger).Log("warn", "this route makes latency worse")
+						metrics.DecisionMetrics.VetoRTT.Add(1)
+					}
 				}
 			}
 		}
@@ -445,7 +452,6 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 		sessionData.RouteNumRelays = routeNumRelays
 		sessionData.RouteCost = routeCost
 
-		routeRelaySellers := [routing.MaxRelays]routing.Seller{}
 		for i := int32(0); i < routeNumRelays; i++ {
 			relayID := routeMatrix.RelayIDs[routeRelays[i]]
 			sessionData.RouteRelayIDs[i] = relayID
@@ -459,10 +465,6 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 			routeRelayNames[i] = relay.Name
 			routeRelaySellers[i] = relay.Seller
 		}
-
-		envelopeBytesUp, envelopeBytesDown = CalculateNextBytesUpAndDown(uint64(buyer.RouteShader.BandwidthEnvelopeUpKbps), uint64(buyer.RouteShader.BandwidthEnvelopeDownKbps), sliceDuration)
-		totalPrice = CalculateTotalPriceNibblins(int(routeNumRelays), routeRelaySellers, envelopeBytesUp, envelopeBytesDown)
-		routeRelaysPrice = CalculateRouteRelaysPrice(int(routeNumRelays), routeRelaySellers, envelopeBytesUp, envelopeBytesDown)
 
 		level.Debug(logger).Log("msg", "session updated successfully", "source_address", incoming.SourceAddr.String(), "server_address", packet.ServerAddress.String(), "client_address", packet.ClientAddress.String())
 	}
@@ -495,24 +497,6 @@ func HandleContinueToken(sessionData *SessionData4, storer storage.Storer, buyer
 	response.Committed = true // todo: add committed logic later
 }
 
-func HandleVeto(logger log.Logger, routeState *core.RouteState, metrics *metrics.SessionMetrics) {
-	// Route was vetoed - check to see why
-	if routeState.NoRoute {
-		level.Warn(logger).Log("warn", "route no longer exists")
-		metrics.ErrorMetrics.RouteFailure.Add(1)
-	}
-
-	if routeState.MultipathOverload {
-		level.Warn(logger).Log("warn", "multipath overloaded this user's connection", "user_hash", fmt.Sprintf("%016x", routeState.UserID))
-		metrics.DecisionMetrics.MultipathVetoRTT.Add(1)
-	}
-
-	if routeState.LatencyWorse {
-		level.Warn(logger).Log("warn", "this route makes latency worse")
-		metrics.DecisionMetrics.VetoRTT.Add(1)
-	}
-}
-
 func GetRouteAddressesAndPublicKeys(clientAddress *net.UDPAddr, clientPublicKey []byte, serverAddress *net.UDPAddr, serverPublicKey []byte, numTokens int32, routeRelays []int32, allRelayIDs []uint64, storer storage.Storer) ([]*net.UDPAddr, [][]byte) {
 	routeAddresses := make([]*net.UDPAddr, numTokens)
 	routePublicKeys := make([][]byte, numTokens)
@@ -543,7 +527,23 @@ func GetRouteAddressesAndPublicKeys(clientAddress *net.UDPAddr, clientPublicKey 
 	return routeAddresses, routePublicKeys
 }
 
-func PostSessionUpdate4(postSessionHandler *PostSessionHandler, packet *SessionUpdatePacket4, sessionData *SessionData4, routeRelayNames [routing.MaxRelays]string, nearRelays []routing.NearRelayData, nextBytesUp uint64, nextBytesDown uint64, nextEnvelopeBytesUp uint64, nextEnvelopeBytesDown uint64, totalPrice routing.Nibblin, routeRelayPrices [routing.MaxRelays]routing.Nibblin, datacenter *routing.Datacenter, metrics *metrics.SessionMetrics) {
+func PostSessionUpdate4(postSessionHandler *PostSessionHandler, packet *SessionUpdatePacket4, sessionData *SessionData4, buyer *routing.Buyer, multipathVetoHandler *storage.MultipathVetoHandler, routeNumRelays int, routeRelayNames [routing.MaxRelays]string, routeRelaySellers [routing.MaxRelays]routing.Seller, nearRelays []routing.NearRelayData, datacenter *routing.Datacenter, metrics *metrics.SessionMetrics) {
+	sliceDuration := uint64(billing.BillingSliceSeconds)
+	if sessionData.Initial {
+		sliceDuration *= 2
+	}
+	nextBytesUp, nextBytesDown := CalculateNextBytesUpAndDown(uint64(packet.NextKbpsUp), uint64(packet.NextKbpsDown), sliceDuration)
+	nextEnvelopeBytesUp, nextEnvelopeBytesDown := CalculateNextBytesUpAndDown(uint64(buyer.RouteShader.BandwidthEnvelopeUpKbps), uint64(buyer.RouteShader.BandwidthEnvelopeDownKbps), sliceDuration)
+	totalPrice := CalculateTotalPriceNibblins(int(routeNumRelays), routeRelaySellers, nextEnvelopeBytesUp, nextEnvelopeBytesDown)
+	routeRelayPrices := CalculateRouteRelaysPrice(int(routeNumRelays), routeRelaySellers, nextEnvelopeBytesUp, nextEnvelopeBytesDown)
+
+	// Check if we should multipath veto the user
+	if packet.Next && sessionData.RouteState.MultipathOverload {
+		if err := multipathVetoHandler.MultipathVetoUser(buyer.CompanyCode, packet.UserHash); err != nil {
+			level.Error(postSessionHandler.logger).Log("err", err)
+		}
+	}
+
 	nextRelaysPrice := [routing.MaxRelays]uint64{}
 	for i := 0; i < routing.MaxRelays; i++ {
 		nextRelaysPrice[i] = uint64(routeRelayPrices[i])
