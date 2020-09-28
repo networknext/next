@@ -125,6 +125,10 @@ ifndef MAXMIND_ISP_DB_URI
 export MAXMIND_ISP_DB_URI = ./testdata/GeoIP2-ISP-Test.mmdb
 endif
 
+ifndef LOCAL_RELAYS
+export LOCAL_RELAYS = 10
+endif
+
 ifndef SESSION_MAP_INTERVAL
 export SESSION_MAP_INTERVAL = 1s
 endif
@@ -341,7 +345,7 @@ test-load: ## runs load tests
 
 .PHONY: dev-portal
 dev-portal: build-portal ## runs a local portal
-	@PORT=20000 BASIC_AUTH_USERNAME=local BASIC_AUTH_PASSWORD=local UI_DIR=./cmd/portal/public ./dist/portal
+	@PORT=20000 BASIC_AUTH_USERNAME=local BASIC_AUTH_PASSWORD=local UI_DIR=./cmd/portal/dist ./dist/portal
 
 .PHONY: dev-relay-backend
 dev-relay-backend: build-relay-backend ## runs a local relay backend
@@ -575,7 +579,11 @@ build-relay-artifacts-dev: build-relay
 
 .PHONY: build-portal-artifacts-dev
 build-portal-artifacts-dev: build-portal
-	./deploy/build-artifacts.sh -e dev -s portal
+	./deploy/build-artifacts.sh -e dev -s portal -b $(ARTIFACT_BUCKET)
+
+.PHONY: build-portal-artifacts-dev-test
+build-portal-artifacts-dev-test: build-portal
+	./deploy/build-artifacts.sh -e dev -s portal-test -b $(ARTIFACT_BUCKET)
 
 .PHONY: build-portal-cruncher-artifacts-dev
 build-portal-cruncher-artifacts-dev: build-portal-cruncher
@@ -611,7 +619,7 @@ build-relay-artifacts-staging: build-relay
 
 .PHONY: build-portal-artifacts-staging
 build-portal-artifacts-staging: build-portal
-	./deploy/build-artifacts.sh -e staging -s portal
+	./deploy/build-artifacts.sh -e staging -s portal -b $(ARTIFACT_BUCKET_STAGING)
 
 .PHONY: build-relay-backend-artifacts-staging
 build-relay-backend-artifacts-staging: build-relay-backend
@@ -651,7 +659,7 @@ build-relay-artifacts-prod: build-relay
 
 .PHONY: build-portal-artifacts-prod
 build-portal-artifacts-prod: build-portal
-	./deploy/build-artifacts.sh -e prod -s portal
+	./deploy/build-artifacts.sh -e prod -s portal -b $(ARTIFACT_BUCKET_PROD)
 
 .PHONY: build-portal-cruncher-artifacts-prod
 build-portal-cruncher-artifacts-prod: build-portal-cruncher
@@ -688,6 +696,10 @@ publish-relay-artifacts-dev:
 .PHONY: publish-portal-artifacts-dev
 publish-portal-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s portal
+
+.PHONY: publish-portal-artifacts-dev-test
+publish-portal-artifacts-dev-test:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s portal-test
 
 .PHONY: publish-portal-cruncher-artifacts-dev
 publish-portal-cruncher-artifacts-dev:
@@ -938,7 +950,7 @@ dev-relay: build-relay ## runs a local relay
 
 .PHONY: dev-multi-relays
 dev-multi-relays: build-relay ## runs 10 local relays
-	./scripts/relay-spawner.sh -n 20 -p 10000
+	./scripts/relay-spawner.sh -n 10 -p 10000
 
 #######################
 
@@ -953,9 +965,9 @@ build-all: build-sdk3 build-sdk4 build-load-test build-portal-cruncher build-ana
 .PHONY: rebuild-all
 rebuild-all: clean build-all ## rebuilds enerything
 
-.PHONY: update-submodules
-update-submodules:
-	git submodule update --remote --merge
+.PHONY: update-sdk4
+update-sdk4:
+	git submodule update --remote --merge sdk4
 
 .PHONY: clean
 clean: ## cleans everything

@@ -5,15 +5,15 @@
 package main
 
 import (
-	"os"
 	"fmt"
 	"hash/fnv"
+	"os"
 )
 
 func main() {
-	
+
 	args := os.Args[1:]
-	
+
 	if len(args) != 1 {
 		fmt.Printf("\nNetwork Next User Hash Tool\n\nUsage:\n\n    go run userhash.go [userid]\n\n")
 		os.Exit(1)
@@ -28,4 +28,3 @@ func main() {
 	fmt.Printf("\nuser hash: \"%s\" -> %d\n\n", userId, userHash)
 
 }
-					

@@ -354,9 +354,9 @@ func main() {
 
 	// todo: manifest for testbed directory
 
-	bash("find . -name '.DS_Store' -type f -delete") 
+	bash("find . -name '.DS_Store' -type f -delete")
 
-	fmt.Printf("\nManifest:\n\n" )
+	fmt.Printf("\nManifest:\n\n")
 	for _, file := range manifest {
 		fmt.Printf("    %s\n", file)
 		if _, err := os.Stat(file); os.IsNotExist(err) {
