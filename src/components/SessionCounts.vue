@@ -65,6 +65,9 @@ export default class SessionCounts extends Vue {
   }
 
   get allBuyers () {
+    if (!this.$store.getters.isAdmin) {
+      return []
+    }
     return this.$store.getters.allBuyers.filter((buyer: any) => {
       return buyer.is_live || this.$store.getters.isAdmin
     })
