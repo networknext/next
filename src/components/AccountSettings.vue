@@ -40,7 +40,7 @@
       <p class="text-muted text-small mt-2"></p>
     </form>
     <form @submit.prevent="updateAccountSettings()">
-      <div class="form-group">
+      <div class="form-group" v-if="false">
         <label for="newPassword">
           Update Password
         </label>
@@ -50,7 +50,7 @@
           <br/>
         </small>
       </div>
-      <div class="form-group" v-if="validPassword">
+      <div class="form-group" v-if="false && validPassword">
         <label for="confirmPassword">
           Confirm Password
         </label>
