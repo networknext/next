@@ -279,8 +279,6 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 		var routeRelayNames [routing.MaxRelays]string
 		var routeRelaySellers [routing.MaxRelays]routing.Seller
 
-		var committed bool
-
 		// If we've gotten this far, use a deferred function so that we always at least return a direct response
 		// and run the post session update logic
 		defer func() {
@@ -290,7 +288,7 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 				return
 			}
 
-			go PostSessionUpdate4(postSessionHandler, &packet, &sessionData, &buyer, multipathVetoHandler, routeRelayNames, routeRelaySellers, nearRelays, &datacenter, committed, metrics)
+			go PostSessionUpdate4(postSessionHandler, &packet, &sessionData, &buyer, multipathVetoHandler, routeRelayNames, routeRelaySellers, nearRelays, &datacenter, metrics)
 		}()
 
 		if newSession {
@@ -417,7 +415,7 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 				prevRouteNumRelays := sessionData.RouteNumRelays
 				prevRouteRelays := routeRelays
 
-				if core.MakeRouteDecision_StayOnNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, &buyer.InternalConfig, int32(packet.DirectRTT), int32(packet.NextRTT), sessionData.RouteNumRelays, routeRelays, reframedNearRelays, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:]) {
+				if core.MakeRouteDecision_StayOnNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, &buyer.InternalConfig, int32(packet.DirectRTT), int32(packet.NextRTT), packet.DirectPacketLoss, packet.NextPacketLoss, sessionData.RouteNumRelays, routeRelays, reframedNearRelays, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:]) {
 					// Continue token
 
 					// Check if the route has changed
@@ -450,6 +448,8 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 			}
 		}
 
+		response.Committed = sessionData.RouteState.Committed
+
 		// Store the route back into the session data
 		sessionData.RouteNumRelays = routeNumRelays
 		sessionData.RouteCost = routeCost
@@ -468,79 +468,8 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 			routeRelaySellers[i] = relay.Seller
 		}
 
-		// Handle committed logic
-		// todo: need try before you buy flag in route shader?
-		committed = Committed(&sessionData, &packet, &response)
-		response.Committed = committed
-
-		// If the commited logic vetoed the route, then reset the route to direct
-		if !sessionData.RouteState.Next {
-			routeNumRelays = 0
-			routeCost = 0
-			sessionData.RouteNumRelays = 0
-			sessionData.RouteCost = 0
-
-			for i := int32(0); i < routing.MaxRelays; i++ {
-				sessionData.RouteRelayIDs[i] = 0
-				routeRelayNames[i] = ""
-				routeRelaySellers[i] = routing.Seller{}
-			}
-		}
-
 		level.Debug(logger).Log("msg", "session updated successfully", "source_address", incoming.SourceAddr.String(), "server_address", packet.ServerAddress.String(), "client_address", packet.ClientAddress.String())
 	}
-}
-
-// Committed returns if we should commit to the route, and if we should take the next route or not.
-func Committed(sessionData *SessionData4, packet *SessionUpdatePacket4, response *SessionResponsePacket4) bool {
-	// We're not on a next route yet, so there's nothing to commit to
-	if !sessionData.RouteState.Next {
-		sessionData.CommitPending = false
-		sessionData.CommitCounter = 0
-		return false
-	}
-
-	if !sessionData.CommitPending {
-		// We haven't tried to commit to a route yet, so try now
-		if !packet.Committed {
-			sessionData.CommitPending = true
-			sessionData.CommitCounter++
-			return false
-		}
-
-		// We're already committed to a route
-		sessionData.CommitPending = false
-		sessionData.CommitCounter = 0
-		return true
-	}
-
-	// The next route was the same or better than direct, so commit to it
-	if packet.NextRTT <= packet.DirectRTT && packet.NextPacketLoss <= packet.DirectPacketLoss {
-		sessionData.CommitPending = false
-		sessionData.CommitCounter = 0
-		return true
-	}
-
-	// The route wasn't so bad that it was vetoed, so continue to observe the route for up to 3 slices
-	if !sessionData.RouteState.Veto && sessionData.CommitCounter < 3 {
-		if packet.NextRTT > packet.DirectRTT || packet.NextPacketLoss > packet.DirectPacketLoss {
-			sessionData.CommitPending = true
-			sessionData.CommitCounter++
-			return false
-		}
-	}
-
-	// The route was either vetoed or we couldn't get an improvement after 3 slices,
-	// so don't commit and go direct
-	sessionData.CommitPending = false
-	sessionData.CommitCounter = 0
-
-	sessionData.RouteState.Next = false
-	sessionData.RouteState.Veto = true
-	response.RouteType = routing.RouteTypeDirect
-	response.NumTokens = 0
-	response.Tokens = nil
-	return false
 }
 
 func HandleNextToken(sessionData *SessionData4, storer storage.Storer, buyer *routing.Buyer, packet *SessionUpdatePacket4, routeNumRelays int32, routeRelays []int32, allRelayIDs []uint64, routerPrivateKey [crypto.KeySize]byte, response *SessionResponsePacket4) {
@@ -598,7 +527,7 @@ func GetRouteAddressesAndPublicKeys(clientAddress *net.UDPAddr, clientPublicKey 
 	return routeAddresses, routePublicKeys
 }
 
-func PostSessionUpdate4(postSessionHandler *PostSessionHandler, packet *SessionUpdatePacket4, sessionData *SessionData4, buyer *routing.Buyer, multipathVetoHandler *storage.MultipathVetoHandler, routeRelayNames [routing.MaxRelays]string, routeRelaySellers [routing.MaxRelays]routing.Seller, nearRelays []routing.NearRelayData, datacenter *routing.Datacenter, committed bool, metrics *metrics.SessionMetrics) {
+func PostSessionUpdate4(postSessionHandler *PostSessionHandler, packet *SessionUpdatePacket4, sessionData *SessionData4, buyer *routing.Buyer, multipathVetoHandler *storage.MultipathVetoHandler, routeRelayNames [routing.MaxRelays]string, routeRelaySellers [routing.MaxRelays]routing.Seller, nearRelays []routing.NearRelayData, datacenter *routing.Datacenter, metrics *metrics.SessionMetrics) {
 	sliceDuration := uint64(billing.BillingSliceSeconds)
 	if sessionData.Initial {
 		sliceDuration *= 2
@@ -735,7 +664,7 @@ func PostSessionUpdate4(postSessionHandler *PostSessionHandler, packet *SessionU
 				Down: int64(packet.NextKbpsDown),
 			},
 			IsMultiPath:       sessionData.RouteState.Multipath,
-			IsTryBeforeYouBuy: !committed,
+			IsTryBeforeYouBuy: !sessionData.RouteState.Committed,
 			OnNetworkNext:     packet.Next,
 		},
 		Point: SessionMapPoint{

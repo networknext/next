@@ -1011,9 +1011,8 @@ func TestSessionUpdateHandler4NextRoute(t *testing.T) {
 			UserID:        requestPacket.UserHash,
 			Next:          true,
 			ReduceLatency: true,
+			Committed:     true,
 		},
-		CommitPending: true,
-		CommitCounter: 1,
 	}
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
@@ -1111,9 +1110,8 @@ func TestSessionUpdateHandler4ContinueRoute(t *testing.T) {
 		RouteState: core.RouteState{
 			Next:          true,
 			ReduceLatency: true,
+			Committed:     true,
 		},
-		CommitPending: true,
-		CommitCounter: 1,
 	}
 
 	sessionDataSlice, err := transport.MarshalSessionData(&sessionDataStruct)
@@ -1215,6 +1213,7 @@ func TestSessionUpdateHandler4ContinueRoute(t *testing.T) {
 			UserID:        requestPacket.UserHash,
 			Next:          true,
 			ReduceLatency: true,
+			Committed:     true,
 		},
 	}
 
@@ -1419,6 +1418,7 @@ func TestSessionUpdateHandler4RouteNoLongerExists(t *testing.T) {
 			UserID:        requestPacket.UserHash,
 			Next:          true,
 			ReduceLatency: true,
+			Committed:     true,
 		},
 	}
 
@@ -1623,6 +1623,7 @@ func TestSessionUpdateHandler4RouteSwitched(t *testing.T) {
 			UserID:        requestPacket.UserHash,
 			Next:          true,
 			ReduceLatency: true,
+			Committed:     true,
 		},
 	}
 
@@ -2235,10 +2236,12 @@ func TestSessionUpdateHandler4CommitPending(t *testing.T) {
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 	storer := &storage.InMemory{}
+	internalConfig := core.NewInternalConfig()
+	internalConfig.TryBeforeYouBuy = true
 	err = storer.AddBuyer(context.Background(), routing.Buyer{
 		ID:             100,
 		RouteShader:    core.NewRouteShader(),
-		InternalConfig: core.NewInternalConfig(),
+		InternalConfig: internalConfig,
 	})
 	assert.NoError(t, err)
 	err = storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 10})
@@ -2284,9 +2287,9 @@ func TestSessionUpdateHandler4CommitPending(t *testing.T) {
 		RouteState: core.RouteState{
 			Next:          true,
 			ReduceLatency: true,
+			CommitPending: true,
+			CommitCounter: 1,
 		},
-		CommitPending: true,
-		CommitCounter: 1,
 	}
 
 	sessionDataSlice, err := transport.MarshalSessionData(&sessionDataStruct)
@@ -2342,10 +2345,10 @@ func TestSessionUpdateHandler4CommitPending(t *testing.T) {
 				RouteNumRelays: [core.MaxRoutesPerEntry]int32{2},
 				RouteRelays: [core.MaxRoutesPerEntry][core.MaxRelaysPerRoute]int32{
 					{
-						0, 1,
+						1, 0,
 					},
 				},
-				RouteHash: [core.MaxRoutesPerEntry]uint32{core.RouteHash(0, 1)},
+				RouteHash: [core.MaxRoutesPerEntry]uint32{core.RouteHash(1, 0)},
 			},
 		},
 	}
@@ -2384,15 +2387,15 @@ func TestSessionUpdateHandler4CommitPending(t *testing.T) {
 		ExpireTimestamp: expireTimestamp,
 		Initial:         false,
 		RouteNumRelays:  2,
-		RouteCost:       45,
+		RouteCost:       50,
 		RouteRelayIDs:   [routing.MaxRelays]uint64{2, 1},
 		RouteState: core.RouteState{
 			UserID:        requestPacket.UserHash,
 			Next:          true,
 			ReduceLatency: true,
+			CommitPending: true,
+			CommitCounter: 2,
 		},
-		CommitPending: true,
-		CommitCounter: 2,
 	}
 
 	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
@@ -2441,10 +2444,12 @@ func TestSessionUpdateHandler4CommitVeto(t *testing.T) {
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 	storer := &storage.InMemory{}
+	internalConfig := core.NewInternalConfig()
+	internalConfig.TryBeforeYouBuy = true
 	err = storer.AddBuyer(context.Background(), routing.Buyer{
 		ID:             100,
 		RouteShader:    core.NewRouteShader(),
-		InternalConfig: core.NewInternalConfig(),
+		InternalConfig: internalConfig,
 	})
 	assert.NoError(t, err)
 	err = storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 10})
@@ -2490,9 +2495,9 @@ func TestSessionUpdateHandler4CommitVeto(t *testing.T) {
 		RouteState: core.RouteState{
 			Next:          true,
 			ReduceLatency: true,
+			CommitPending: true,
+			CommitCounter: 3,
 		},
-		CommitPending: true,
-		CommitCounter: 3,
 	}
 
 	sessionDataSlice, err := transport.MarshalSessionData(&sessionDataStruct)
@@ -2548,10 +2553,10 @@ func TestSessionUpdateHandler4CommitVeto(t *testing.T) {
 				RouteNumRelays: [core.MaxRoutesPerEntry]int32{2},
 				RouteRelays: [core.MaxRoutesPerEntry][core.MaxRelaysPerRoute]int32{
 					{
-						0, 1,
+						1, 0,
 					},
 				},
-				RouteHash: [core.MaxRoutesPerEntry]uint32{core.RouteHash(0, 1)},
+				RouteHash: [core.MaxRoutesPerEntry]uint32{core.RouteHash(1, 0)},
 			},
 		},
 	}
@@ -2585,6 +2590,7 @@ func TestSessionUpdateHandler4CommitVeto(t *testing.T) {
 			UserID:        requestPacket.UserHash,
 			Veto:          true,
 			ReduceLatency: true,
+			CommitVeto:    true,
 		},
 	}
 

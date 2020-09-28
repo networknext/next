@@ -317,8 +317,6 @@ type SessionData4 struct {
 	RouteCost       int32
 	RouteRelayIDs   [routing.MaxRelays]uint64
 	RouteState      core.RouteState
-	CommitPending   bool
-	CommitCounter   int32
 }
 
 func UnmarshalSessionData(sessionData *SessionData4, data []byte) error {
@@ -389,11 +387,13 @@ func (sessionData *SessionData4) Serialize(stream encoding.Stream) error {
 	stream.SerializeBool(&sessionData.RouteState.ReducePacketLoss)
 	stream.SerializeBool(&sessionData.RouteState.ProMode)
 	stream.SerializeBool(&sessionData.RouteState.Multipath)
+	stream.SerializeBool(&sessionData.RouteState.Committed)
+	stream.SerializeBool(&sessionData.RouteState.CommitPending)
+	stream.SerializeInteger(&sessionData.RouteState.CommitCounter, 0, 3)
 	stream.SerializeBool(&sessionData.RouteState.LatencyWorse)
 	stream.SerializeBool(&sessionData.RouteState.MultipathOverload)
 	stream.SerializeBool(&sessionData.RouteState.NoRoute)
-	stream.SerializeBool(&sessionData.CommitPending)
-	stream.SerializeInteger(&sessionData.CommitCounter, 0, 3)
+	stream.SerializeBool(&sessionData.RouteState.CommitVeto)
 
 	return stream.Error()
 }
