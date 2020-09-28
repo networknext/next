@@ -171,6 +171,10 @@ export default class NavBar extends Vue {
   }
 
   private signUp (): void {
+    this.$gtag.event('clicked sign up', {
+      event_category: 'Account Creation',
+      event_label: 'Sign up'
+    });
     (this as any).$authService.signUp()
   }
 
