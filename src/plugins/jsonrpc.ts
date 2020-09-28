@@ -86,6 +86,10 @@ export class JSONRPCService {
     })
   }
 
+  public impersonate (args: any): Promise<any> {
+    return this.call('AuthService.Impersonate', args)
+  }
+
   public updateAccountSettings (args: any): Promise<any> {
     return this.call('AuthService.UpdateAccountSettings', args)
   }
