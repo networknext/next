@@ -93,7 +93,7 @@ export class AuthService {
             userProfile.newsletterConsent = newsletterConsent
 
             store.commit('UPDATE_USER_PROFILE', userProfile)
-            store.commit('UPDATE_CURRENT_FILTER', { companyCode: companyCode })
+            store.commit('UPDATE_CURRENT_FILTER', { companyCode: roles.includes('Admin') ? '' : companyCode })
           })
           .catch((error: Error) => {
             console.log('Something went wrong fetching user details')
