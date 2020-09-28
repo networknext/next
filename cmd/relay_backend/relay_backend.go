@@ -929,12 +929,21 @@ func main() {
 		}
 	}
 
+	routeMatrixBufferSize := 100000
+	if routeMatrixBufferSizeString, ok := os.LookupEnv("ROUTE_MATRIX_BUFFER_SIZE"); ok {
+		routeMatrixBufferSize, err = strconv.Atoi(routeMatrixBufferSizeString)
+		if err != nil {
+			level.Error(logger).Log("envvar", "ROUTE_MATRIX_BUFFER_SIZE", "value", routeMatrixBufferSize, "err", err)
+			os.Exit(1)
+		}
+	}
+
 	serveRouteMatrixSDK4Func := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/octet-stream")
 
 		routeMatrix4 := getRouteMatrix4Func()
 
-		ws, err := encoding.CreateWriteStream(10000) // something adequately large for now
+		ws, err := encoding.CreateWriteStream(routeMatrixBufferSize)
 		if err != nil {
 			level.Error(logger).Log("msg", "failed to create write stream in SDK4 route entries serving function", "err", err)
 			return
