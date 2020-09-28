@@ -1158,7 +1158,7 @@ func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *Buye
 			ID:          id,
 			IsLive:      b.Live,
 		}
-		if VerifyAllRoles(r, s.SameBuyerRole(id)) {
+		if VerifyAllRoles(r, s.SameBuyerRole(b.CompanyCode)) {
 			reply.Buyers = append(reply.Buyers, account)
 		}
 	}
