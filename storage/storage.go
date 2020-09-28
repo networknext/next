@@ -189,6 +189,15 @@ func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicK
 	}
 	if shouldFill {
 		if err := db.AddCustomer(ctx, routing.Customer{
+			Name:                   "Network Next",
+			Code:                   "next",
+			Active:                 true,
+			AutomaticSignInDomains: "networknext.com",
+		}); err != nil {
+			level.Error(logger).Log("msg", "could not add customer to storage", "err", err)
+			os.Exit(1)
+		}
+		if err := db.AddCustomer(ctx, routing.Customer{
 			Name:                   "Ghost Army",
 			Code:                   "ghost-army",
 			Active:                 true,
@@ -218,6 +227,7 @@ func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicK
 		if err := db.AddBuyer(ctx, routing.Buyer{
 			ID:                   customerID,
 			CompanyCode:          "local",
+			Live:                 true,
 			PublicKey:            customerPublicKey,
 			RoutingRulesSettings: routing.LocalRoutingRulesSettings,
 		}); err != nil {
@@ -227,6 +237,7 @@ func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicK
 		if err := db.AddBuyer(ctx, routing.Buyer{
 			ID:                   0,
 			CompanyCode:          "ghost-army",
+			Live:                 true,
 			PublicKey:            customerPublicKey,
 			RoutingRulesSettings: routing.LocalRoutingRulesSettings,
 		}); err != nil {
@@ -270,7 +281,7 @@ func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicK
 			numRelays := uint64(10)
 			numRelays, err := strconv.ParseUint(val, 10, 64)
 			if err != nil {
-				level.Warn(logger).Log("msg", fmt.Sprintf("LOCAL_PORTAL_RELAYS not valid number, defaulting to 10: %v\n", err))
+				level.Warn(logger).Log("msg", fmt.Sprintf("LOCAL_RELAYS not valid number, defaulting to 10: %v\n", err))
 			}
 			level.Info(logger).Log("msg", fmt.Sprintf("adding %d relays to local firestore\n", numRelays))
 			for i := uint64(0); i < numRelays; i++ {
@@ -287,6 +298,7 @@ func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicK
 					ManagementAddr: addr.String(),
 					SSHUser:        "root",
 					SSHPort:        22,
+					MaxSessions:    3000,
 					MRC:            19700000000000,
 					Overage:        26000000000000,
 					BWRule:         routing.BWRuleBurst,
@@ -317,6 +329,7 @@ func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicK
 				ManagementAddr: "127.0.0.1",
 				SSHUser:        "root",
 				SSHPort:        22,
+				MaxSessions:    3000,
 				MRC:            19700000000000,
 				Overage:        26000000000000,
 				BWRule:         routing.BWRuleBurst,
@@ -341,6 +354,7 @@ func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicK
 				ManagementAddr: "127.0.0.1",
 				SSHUser:        "root",
 				SSHPort:        22,
+				MaxSessions:    3000,
 			}); err != nil {
 				level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
 				os.Exit(1)
@@ -358,6 +372,7 @@ func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicK
 				ManagementAddr: "127.0.0.1",
 				SSHUser:        "root",
 				SSHPort:        22,
+				MaxSessions:    3000,
 			}); err != nil {
 				level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
 				os.Exit(1)

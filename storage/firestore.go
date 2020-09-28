@@ -683,7 +683,7 @@ func (fs *Firestore) SetBuyer(ctx context.Context, b routing.Buyer) error {
 
 			var company routing.Customer
 			for _, customer := range fs.customers {
-				if customer.BuyerRef.ID == bdoc.Ref.ID {
+				if customer.BuyerRef != nil && customer.BuyerRef.ID == bdoc.Ref.ID {
 					company = customer
 				}
 			}

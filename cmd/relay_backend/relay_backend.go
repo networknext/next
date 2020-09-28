@@ -40,10 +40,6 @@ import (
 	"github.com/networknext/backend/storage"
 )
 
-// MaxRelayCount is the maximum number of relays you can run locally with the firestore emulator
-// An equal number of valve relays will also be added
-const MaxRelayCount = 10
-
 var (
 	buildtime     string
 	commitMessage string
