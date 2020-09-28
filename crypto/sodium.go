@@ -9,31 +9,27 @@ func sodiumSignPacket(packetData []byte, privateKey []byte) []byte {
 	for i := 0; i < len(packetData); i++ {
 		signedPacketData[i] = packetData[i]
 	}
+	messageLength := len(packetData) - PacketHashSize - 1
 	var state C.crypto_sign_state
 	C.crypto_sign_init(&state)
-	C.crypto_sign_update(&state, (*C.uchar)(&signedPacketData[0]), C.ulonglong(len(signedPacketData)-C.crypto_sign_BYTES))
+	C.crypto_sign_update(&state, (*C.uchar)(&signedPacketData[PacketHashSize+1]), C.ulonglong(messageLength))
 	C.crypto_sign_final_create(&state, (*C.uchar)(&signedPacketData[len(packetData)]), nil, (*C.uchar)(&privateKey[0]))
 	return signedPacketData
 }
 
-func sodiumHashPacket(packetData []byte, hashKey []byte) []byte {
-	hashedPacketData := make([]byte, len(packetData)+PacketHashSize)
-	messageLength := len(packetData)
+func sodiumHashPacket(packetData []byte, hashKey []byte) {
+	messageLength := len(packetData) - PacketHashSize - 1
 	if messageLength > 32 {
 		messageLength = 32
 	}
 	C.crypto_generichash(
-		(*C.uchar)(&hashedPacketData[0]),
+		(*C.uchar)(&packetData[1]),
 		C.ulong(PacketHashSize),
-		(*C.uchar)(&packetData[0]),
+		(*C.uchar)(&packetData[PacketHashSize+1]),
 		C.ulonglong(messageLength),
 		(*C.uchar)(&hashKey[0]),
 		C.ulong(C.crypto_generichash_KEYBYTES),
 	)
-	for i := 0; i < len(packetData); i++ {
-		hashedPacketData[PacketHashSize+i] = packetData[i]
-	}
-	return hashedPacketData
 }
 
 func sodiumSign(sign_data []byte, private_key []byte) []byte {
@@ -98,10 +94,10 @@ func sodiumCheck(data []byte, key []byte) bool {
 
 func sodiumIsNetworkNextPacket(packetData []byte, hashKey []byte) bool {
 	packetBytes := len(packetData)
-	if packetBytes <= PacketHashSize {
+	if packetBytes <= 1+PacketHashSize {
 		return false
 	}
-	messageLength := packetBytes - PacketHashSize
+	messageLength := packetBytes - 1 - PacketHashSize
 	if messageLength > 32 {
 		messageLength = 32
 	}
@@ -109,13 +105,13 @@ func sodiumIsNetworkNextPacket(packetData []byte, hashKey []byte) bool {
 	C.crypto_generichash(
 		(*C.uchar)(&hash[0]),
 		C.ulong(PacketHashSize),
-		(*C.uchar)(&packetData[PacketHashSize]),
+		(*C.uchar)(&packetData[1+PacketHashSize]),
 		C.ulonglong(messageLength),
 		(*C.uchar)(&hashKey[0]),
 		C.ulong(C.crypto_generichash_KEYBYTES),
 	)
 	for i := 0; i < PacketHashSize; i++ {
-		if hash[i] != packetData[i] {
+		if hash[i] != packetData[i+1] {
 			return false
 		}
 	}
