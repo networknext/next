@@ -18,5 +18,4 @@ blocks:
           commands:
             - make build-portal-artifacts-prod
       secrets:
-      secrets:
         - name: google-cloud-platform-prod
