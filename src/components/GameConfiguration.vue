@@ -9,10 +9,9 @@
         <input
           type="text"
           class="form-control"
-          placeholder="Enter your company name"
           id="company-input"
-          :disabled="!$store.getters.isOwner && !$store.getters.isAdmin"
-          v-model="company"
+          :disabled="true"
+          v-bind:value="companyName"
         />
         <br />
         <label>Public Key</label>
@@ -39,7 +38,7 @@ import { Component, Vue } from 'vue-property-decorator'
 import Alert from '@/components/Alert.vue'
 import { AlertTypes } from '@/components/types/AlertTypes'
 import { UserProfile } from '@/components/types/AuthTypes.ts'
-import _ from 'lodash'
+import _, { cloneDeep } from 'lodash'
 
 /**
  * This component displays all of the necessary information for the game configuration tab
@@ -57,43 +56,71 @@ import _ from 'lodash'
   }
 })
 export default class GameConfiguration extends Vue {
-  private company: string
+  private companyName: string
   private pubKey: string
   private message: string
   private alertType: string
   private userProfile: UserProfile
+  private unwatch: any
 
   constructor () {
     super()
-    this.userProfile = _.cloneDeep(this.$store.getters.userProfile)
-    this.company = this.userProfile.company || ''
-    this.pubKey = this.userProfile.pubKey || ''
+    this.companyName = ''
+    this.pubKey = ''
     this.message = ''
     this.alertType = ''
+    this.userProfile = {} as UserProfile
+  }
+
+  private destroy () {
+    this.unwatch()
+  }
+
+  private mounted () {
+    if (!this.$store.getters.userProfile) {
+      this.unwatch = this.$store.watch(
+        (_, getters: any) => getters.userProfile,
+        (userProfile: any) => {
+          this.checkUserProfile(userProfile)
+        }
+      )
+    } else {
+      this.checkUserProfile(this.$store.getters.userProfile)
+    }
+  }
+
+  private checkUserProfile (userProfile: UserProfile) {
+    if (this.companyName === '') {
+      this.companyName = userProfile.companyName || ''
+    }
+    if (this.pubKey === '') {
+      this.pubKey = userProfile.pubKey || ''
+    }
+    this.userProfile = cloneDeep(this.$store.getters.userProfile)
   }
 
   private updatePubKey () {
     // TODO: Figure out how to get rid of this. this.$apiService should be possible...
     // HACK: This is a hack to get tests to work properly
     const vm = (this as any)
-    const domain = this.userProfile.domain || ''
 
     vm.$apiService
       .updateGameConfiguration({
-        name: this.company,
-        domain: domain,
         new_public_key: this.pubKey
       })
       .then((response: any) => {
         this.userProfile.pubKey = response.game_config.public_key
-        this.userProfile.company = response.game_config.company
-        this.userProfile.buyerID = response.game_config.buyer_id
         this.$store.commit('UPDATE_USER_PROFILE', this.userProfile)
         this.alertType = AlertTypes.SUCCESS
         this.message = 'Updated public key successfully'
         setTimeout(() => {
           this.message = ''
         }, 5000)
+        vm.$apiService.fetchAllBuyers()
+          .then((response: any) => {
+            const allBuyers = response.buyers
+            this.$store.commit('UPDATE_ALL_BUYERS', allBuyers)
+          })
       })
       .catch((error: Error) => {
         console.log('Something went wrong updating the public key')

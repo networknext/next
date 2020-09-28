@@ -13,29 +13,39 @@ export class JSONRPCService {
 
     store.watch(
       (_, getters: any) => getters.idToken,
-      (newValue: string) => {
-        // it is enough to know that the token has changed - the value is
-        // not relevant here
-        this.processAuthChange(newValue)
+      () => {
+        this.processAuthChange()
       }
     )
   }
 
-  private processAuthChange (idToken: string): void {
-    // let userProfile: UserProfile
+  private processAuthChange (): void {
     const userProfile = _.cloneDeep(store.getters.userProfile)
-    Promise.all([
-      this.fetchUserAccount({ user_id: userProfile.auth0ID }, idToken),
-      this.fetchGameConfiguration({ domain: userProfile.domain }, idToken),
-      this.fetchAllBuyers(idToken)
-    ])
+    let promises = []
+    if (store.getters.registeredToCompany) {
+      promises = [
+        this.fetchUserAccount({ user_id: userProfile.auth0ID }),
+        this.fetchGameConfiguration(),
+        this.fetchAllBuyers()
+      ]
+    } else {
+      promises = [
+        this.fetchUserAccount({ user_id: userProfile.auth0ID }),
+        this.fetchAllBuyers()
+      ]
+    }
+    Promise.all(promises)
       .then((responses: any) => {
-        // userProfile.buyerID = responses[0].account.buyer_id
+        let allBuyers = []
+        if (store.getters.registeredToCompany) {
+          allBuyers = responses[2].buyers
+          userProfile.pubKey = responses[1].game_config.public_key
+        } else {
+          allBuyers = responses[1].buyers
+        }
         userProfile.buyerID = responses[0].account.id
-        userProfile.company = responses[1].game_config.company
-        userProfile.pubKey = responses[1].game_config.public_key
-        // userProfile.routeShader = responses[1].customer_route_shader
-        const allBuyers = responses[2].buyers || []
+        userProfile.companyName = responses[0].account.company_name || ''
+        userProfile.domains = responses[0].domains || []
         store.commit('UPDATE_USER_PROFILE', userProfile)
         store.commit('UPDATE_ALL_BUYERS', allBuyers)
       })
@@ -45,9 +55,9 @@ export class JSONRPCService {
       })
   }
 
-  private call (method: string, params: any, token: string): Promise<any> {
-    if (!store.getters.isAnonymous || token) {
-      this.headers.Authorization = `Bearer ${store.getters.idToken || token}`
+  private call (method: string, params: any): Promise<any> {
+    if (!store.getters.isAnonymous) {
+      this.headers.Authorization = `Bearer ${store.getters.idToken}`
     }
     return new Promise((resolve: any, reject: any) => {
       const options = params || {}
@@ -76,68 +86,84 @@ export class JSONRPCService {
     })
   }
 
+  public updateAccountSettings (args: any): Promise<any> {
+    return this.call('AuthService.UpdateAccountSettings', args)
+  }
+
+  public updateAutoSignupDomains (args: any): Promise<any> {
+    return this.call('AuthService.UpdateAutoSignupDomains', args)
+  }
+
+  public updateCompanyInformation (args: any): Promise<any> {
+    return this.call('AuthService.UpdateCompanyInformation', args)
+  }
+
+  public upgradeAccount (args: any): Promise<any> {
+    return this.call('AuthService.UpgradeAccount', args)
+  }
+
   public fetchTotalSessionCounts (args: any): Promise<any> {
-    return this.call('BuyersService.TotalSessions', args, '')
+    return this.call('BuyersService.TotalSessions', args)
   }
 
   public fetchMapSessions (args: any): Promise<any> {
-    return this.call('BuyersService.SessionMap', args, '')
+    return this.call('BuyersService.SessionMap', args)
   }
 
   public fetchSessionDetails (args: any): Promise<any> {
-    return this.call('BuyersService.SessionDetails', args, '')
+    return this.call('BuyersService.SessionDetails', args)
   }
 
   public fetchTopSessions (args: any): Promise<any> {
-    return this.call('BuyersService.TopSessions', args, '')
+    return this.call('BuyersService.TopSessions', args)
   }
 
-  public fetchAllBuyers (token: string): Promise<any> {
-    return this.call('BuyersService.Buyers', {}, token)
+  public fetchAllBuyers (): Promise<any> {
+    return this.call('BuyersService.Buyers', {})
   }
 
   public fetchUserSessions (args: any): Promise<any> {
-    return this.call('BuyersService.UserSessions', args, '')
+    return this.call('BuyersService.UserSessions', args)
   }
 
   public fetchAllRoles (): Promise<any> {
-    return this.call('AuthService.AllRoles', {}, '')
+    return this.call('AuthService.AllRoles', {})
   }
 
-  public fetchAllAccounts (args: any): Promise<any> {
-    return this.call('AuthService.AllAccounts', args, '')
+  public fetchAllAccounts (): Promise<any> {
+    return this.call('AuthService.AllAccounts', {})
   }
 
   public updateUserRoles (args: any): Promise<any> {
-    return this.call('AuthService.UpdateUserRoles', args, '')
+    return this.call('AuthService.UpdateUserRoles', args)
   }
 
   public deleteUserAccount (args: any): Promise<any> {
-    return this.call('AuthService.DeleteUserAccount', args, '')
+    return this.call('AuthService.DeleteUserAccount', args)
   }
 
   public addNewUserAccounts (args: any): Promise<any> {
-    return this.call('AuthService.AddUserAccount', args, '')
+    return this.call('AuthService.AddUserAccount', args)
   }
 
-  public fetchUserAccount (args: any, token: string): Promise<any> {
-    return this.call('AuthService.UserAccount', args, token)
+  public fetchUserAccount (args: any): Promise<any> {
+    return this.call('AuthService.UserAccount', args)
   }
 
-  public fetchGameConfiguration (args: any, token: string): Promise<any> {
-    return this.call('BuyersService.GameConfiguration', args, token)
+  public fetchGameConfiguration (): Promise<any> {
+    return this.call('BuyersService.GameConfiguration', {})
   }
 
   public updateRouteShader (args: any): Promise<any> {
-    return this.call('BuyersService.UpdateRouteShader', args, '')
+    return this.call('BuyersService.UpdateRouteShader', args)
   }
 
   public updateGameConfiguration (args: any): Promise<any> {
-    return this.call('BuyersService.UpdateGameConfiguration', args, '')
+    return this.call('BuyersService.UpdateGameConfiguration', args)
   }
 
   public resendVerificationEmail (args: any): Promise<any> {
-    return this.call('AuthService.ResendVerificationEmail', args, '')
+    return this.call('AuthService.ResendVerificationEmail', args)
   }
 }
 
@@ -146,53 +172,5 @@ export const JSONRPCPlugin = {
   install (Vue: any) {
     this.service = new JSONRPCService()
     Vue.prototype.$apiService = this.service
-  },
-  fetchTotalSessionCounts: function (args: any): Promise<any> {
-    return this.service.fetchTotalSessionCounts(args)
-  },
-  fetchMapSessions: function (args: any): Promise<any> {
-    return this.service.fetchMapSessions(args)
-  },
-  fetchSessionDetails: function (args: any): Promise<any> {
-    return this.service.fetchSessionDetails(args)
-  },
-  fetchTopSessions: function (args: any): Promise<any> {
-    return this.service.fetchTopSessions(args)
-  },
-  fetchAllBuyers: function (args: any): Promise<any> {
-    return this.service.fetchAllBuyers(args)
-  },
-  fetchUserSessions: function (args: any): Promise<any> {
-    return this.service.fetchUserSessions(args)
-  },
-  fetchAllRoles: function (): Promise<any> {
-    return this.service.fetchAllRoles()
-  },
-  fetchAllAccounts: function (args: any): Promise<any> {
-    return this.service.fetchAllAccounts(args)
-  },
-  updateUserRoles: function (args: any): Promise<any> {
-    return this.service.updateUserRoles(args)
-  },
-  deleteUserAccount: function (args: any): Promise<any> {
-    return this.service.deleteUserAccount(args)
-  },
-  addNewUserAccounts: function (args: any): Promise<any> {
-    return this.service.addNewUserAccounts(args)
-  },
-  fetchUserAccount: function (args: any, token: string): Promise<any> {
-    return this.service.fetchUserAccount(args, token)
-  },
-  fetchGameConfiguration: function (args: any, token: string): Promise<any> {
-    return this.service.fetchGameConfiguration(args, token)
-  },
-  updateRouteShader: function (args: any): Promise<any> {
-    return this.service.updateRouteShader(args)
-  },
-  updateGameConfiguration: function (args: any): Promise<any> {
-    return this.service.updateGameConfiguration(args)
-  },
-  resendVerificationEmail: function (args: any): Promise<any> {
-    return this.service.resendVerificationEmail(args)
   }
 }

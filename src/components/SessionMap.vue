@@ -1,7 +1,7 @@
 <template>
   <div v-bind:class="{
-    'map-container-no-offset': $store.getters.userProfile === null || !$store.getters.userProfile.verified,
-    'map-container-offset': $store.getters.userProfile !== null && !$store.getters.userProfile.verified,
+    'map-container-no-offset': !$store.getters.isAnonymousPlus,
+    'map-container-offset': $store.getters.isAnonymousPlus,
   }">
     <div class="map" id="map"></div>
     <canvas id="deck-canvas"></canvas>
@@ -70,7 +70,7 @@ export default class SessionMap extends Vue {
     // HACK: This is a hack to get tests to work properly
     (this as any).$apiService
       .fetchMapSessions({
-        buyer_id: this.$store.getters.currentFilter.buyerID || ''
+        company_code: this.$store.getters.currentFilter.companyCode || ''
       })
       .then((response: any) => {
         if (!this.mapInstance) {
@@ -83,15 +83,29 @@ export default class SessionMap extends Vue {
             bearing: 0,
             container: 'map'
           })
+          // this.mapInstance.setRenderWorldCopies(status === 'false')
         }
 
         const sessions = response.map_points || []
-        const onNN = sessions.filter((point: any) => {
+        let onNN = []
+        let direct = []
+
+        if (this.$store.getters.isAnonymous || this.$store.getters.isAnonymousPlus || this.$store.getters.currentFilter.companyCode === '') {
+          onNN = sessions
+        } else {
+          onNN = sessions.filter((point: any) => {
+            return (point[2] === 1)
+          })
+          direct = sessions.filter((point: any) => {
+            return (point[2] === 0)
+          })
+        }
+        /* const onNN = sessions.filter((point: any) => {
           return point[2] === true
         })
         const direct = sessions.filter((point: any) => {
           return point[2] === false
-        })
+        }) */
 
         const cellSize = 10
         const aggregation = 'MEAN'
@@ -126,17 +140,10 @@ export default class SessionMap extends Vue {
 
         if (!this.deckGlInstance) {
           // creating the deck.gl instance
-          const mapParent = document.getElementById('map')
-          let width = 0
-          let height = 0
-          if (mapParent) {
-            width = mapParent.offsetWidth
-            height = mapParent.offsetHeight
-          }
           this.deckGlInstance = new Deck({
             canvas: document.getElementById('deck-canvas'),
-            width: width,
-            height: height,
+            width: '100%',
+            height: '100%',
             initialViewState: this.viewState,
             controller: {
               dragRotate: false,
@@ -175,15 +182,17 @@ export default class SessionMap extends Vue {
 <style scoped lang="scss">
 .map-container-offset {
   width: 100%;
-  height: calc(-160px + 90vh);
+  height: calc(-160px + 95vh);
   position: relative;
   overflow: hidden;
+  max-height: 1000px;
 }
 .map-container-no-offset {
   width: 100%;
   height: calc(-160px + 100vh);
   position: relative;
   overflow: hidden;
+  max-height: 1000px;
 }
 .map {
   position: absolute;

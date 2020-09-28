@@ -40,11 +40,14 @@ export class AuthService {
     this.authClient.loginWithPopup({
       connection: 'Username-Password-Authentication',
       screen_hint: 'signup'
-    }).then((response: any) => {
-      console.log(response)
-    }).catch((error: Error) => {
-      console.log(error)
     })
+  }
+
+  public refreshToken () {
+    this.authClient.getTokenSilently({ ignoreCache: true })
+      .then(() => {
+        this.processAuthentication()
+      })
   }
 
   private async processAuthentication () {
@@ -56,33 +59,38 @@ export class AuthService {
         }
         const userProfile: UserProfile = {
           auth0ID: '',
-          company: '',
+          companyCode: '',
+          companyName: '',
           email: '',
           idToken: '',
           name: '',
           roles: [],
           verified: false,
           routeShader: null,
-          domain: '',
           pubKey: '',
-          buyerID: ''
+          newsletterConsent: false,
+          domains: []
         }
 
         this.authClient
           .getIdTokenClaims()
           .then((authResult: any) => {
-            const roles: Array<any> = authResult[
-              'https://networknext.com/userRoles'
-            ].roles || { roles: [] }
+            const nnScope = authResult[
+              'https://networknext.com/userData'
+            ]
+            const roles: Array<any> = nnScope.roles || { roles: [] }
+            const companyCode: string = nnScope.company_code || ''
+            const newsletterConsent: boolean = nnScope.newsletter || false
             const email = authResult.email || ''
-            const domain = email.split('@')[1]
             const token = authResult.__raw
 
             userProfile.roles = roles
-            userProfile.domain = domain
             userProfile.email = email
             userProfile.idToken = token
             userProfile.auth0ID = authResult.sub
+            userProfile.verified = authResult.email_verified
+            userProfile.companyCode = companyCode
+            userProfile.newsletterConsent = newsletterConsent
 
             store.commit('UPDATE_USER_PROFILE', userProfile)
           })
@@ -99,22 +107,9 @@ export class AuthService {
 }
 
 export const AuthPlugin = {
+  service: {} as AuthService,
   install (Vue: any, options: any) {
-    const client = new AuthService({
-      domain: options.domain,
-      clientID: options.clientID
-    })
-
-    Vue.login = () => {
-      client.login()
-    }
-
-    Vue.logout = () => {
-      client.logout()
-    }
-
-    Vue.signUp = () => {
-      client.signUp()
-    }
+    this.service = new AuthService(options)
+    Vue.prototype.$authService = this.service
   }
 }

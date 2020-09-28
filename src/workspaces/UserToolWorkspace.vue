@@ -41,7 +41,7 @@
         </div>
       </div>
     </form>
-    <Alert :message="message" :alertType="alertType" v-if="getAlertMessage !== '' && $route.path === '/user-tool'"/>
+    <Alert :message="message" :alertType="alertType" v-if="alertMessage !== '' && $route.path === '/user-tool'"/>
     <router-view />
   </div>
 </template>

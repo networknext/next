@@ -345,7 +345,7 @@ export default class SessionDetails extends Vue {
     let i = 0
     for (i; i < allBuyers.length; i++) {
       if (allBuyers[i].id === buyerId) {
-        return allBuyers[i].name
+        return allBuyers[i].company_name
       }
     }
     return 'Private'
@@ -705,7 +705,7 @@ export default class SessionDetails extends Vue {
     }
 
     if (latencyChartElement) {
-      this.latencyComparisonChart = new uPlot(latencyComparisonOpts, bandwidthData, latencyChartElement)
+      this.latencyComparisonChart = new uPlot(latencyComparisonOpts, latencyData, latencyChartElement)
     }
 
     if (this.jitterComparisonChart) {
@@ -713,7 +713,7 @@ export default class SessionDetails extends Vue {
     }
 
     if (jitterChartElement) {
-      this.jitterComparisonChart = new uPlot(latencyComparisonOpts, bandwidthData, jitterChartElement)
+      this.jitterComparisonChart = new uPlot(latencyComparisonOpts, jitterData, jitterChartElement)
     }
 
     if (this.packetLossComparisonChart) {
@@ -721,7 +721,7 @@ export default class SessionDetails extends Vue {
     }
 
     if (packetLossChartElement) {
-      this.packetLossComparisonChart = new uPlot(packetLossComparisonOpts, bandwidthData, packetLossChartElement)
+      this.packetLossComparisonChart = new uPlot(packetLossComparisonOpts, packetLossData, packetLossChartElement)
     }
 
     if (this.bandwidthChart) {

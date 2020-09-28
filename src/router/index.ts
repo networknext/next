@@ -11,6 +11,7 @@ import SettingsWorkspace from '@/workspaces/SettingsWorkspace.vue'
 import UserManagement from '@/components/UserManagement.vue'
 import UserToolWorkspace from '@/workspaces/UserToolWorkspace.vue'
 import RouteShader from '@/components/RouteShader.vue'
+import AccountSettings from '@/components/AccountSettings.vue'
 import SessionDetails from '@/components/SessionDetails.vue'
 import UserSessions from '@/components/UserSessions.vue'
 
@@ -63,6 +64,11 @@ const routes: Array<RouteConfig> = [
     component: SettingsWorkspace,
     children: [
       {
+        path: 'account',
+        name: 'account-settings',
+        component: AccountSettings
+      },
+      {
         path: 'game-config',
         name: 'config',
         component: GameConfiguration
@@ -91,15 +97,18 @@ const router = new VueRouter({
 })
 
 // Catch all for routes. This can be used for a lot of different things like separating anon portal from authorized portal etc
-router.beforeEach(async (to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
-  if ((!store.getters.isAdmin && !store.getters.isOwner && to.name === 'settings') || to.name === 'undefined') {
+router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
+  // TODO: Make sure these are doing what we want them to do.
+  // TODO: store.getters.isAdmin doesn't work here. store.getters shows that everything is initialized correctly but accessing any of the members within getters, doesn't work?!
+  // BUG: Re-routes valid users to the map when it should just refresh the page...
+  if ((!store.getters.isAdmin && !store.getters.isOwner && (to.name === 'users' || to.name === 'game-config')) || to.name === 'undefined') {
     next('/')
     store.commit('UPDATE_CURRENT_PAGE', 'map')
     return
   }
   if (to.name === 'settings') {
-    store.commit('UPDATE_CURRENT_PAGE', 'users')
-    next('/settings/users')
+    store.commit('UPDATE_CURRENT_PAGE', 'account-settings')
+    next('/settings/account')
     return
   }
   store.commit('UPDATE_CURRENT_PAGE', to.name)
