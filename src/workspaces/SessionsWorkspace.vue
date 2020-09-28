@@ -120,14 +120,13 @@ import SessionCounts from '@/components/SessionCounts.vue'
 })
 export default class SessionsWorkspace extends Vue {
   private sessions: Array<any>
-  private sessionsLoop: number
+  private sessionsLoop: any
   private showTable: boolean
   private unwatch: any
 
   constructor () {
     super()
     this.sessions = []
-    this.sessionsLoop = -1
     this.showTable = false
   }
 
@@ -178,6 +177,9 @@ export default class SessionsWorkspace extends Vue {
   }
 
   private restartLoop () {
+    if (this.sessionsLoop) {
+      clearInterval(this.sessionsLoop)
+    }
     this.fetchSessions()
     this.sessionsLoop = setInterval(() => {
       this.fetchSessions()

@@ -29,7 +29,7 @@ import mapboxgl from 'mapbox-gl'
 export default class SessionMap extends Vue {
   private deckGlInstance: any
   private mapInstance: any
-  private mapLoop: number
+  private mapLoop: any
   private viewState: any
   private unwatch: any
 
@@ -44,7 +44,6 @@ export default class SessionMap extends Vue {
       minZoom: 2,
       maxZoom: 16
     }
-    this.mapLoop = -1
   }
 
   private mounted () {
@@ -170,6 +169,9 @@ export default class SessionMap extends Vue {
   }
 
   private restartLoop () {
+    if (this.mapLoop) {
+      clearInterval(this.mapLoop)
+    }
     this.fetchMapSessions()
     this.mapLoop = setInterval(() => {
       this.fetchMapSessions()

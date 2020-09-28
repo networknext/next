@@ -58,7 +58,7 @@ interface TotalSessionsReply {
 export default class SessionCounts extends Vue {
   private totalSessionsReply: TotalSessionsReply
   private showCount: boolean
-  private countLoop: number
+  private countLoop: any
 
   get totalSessions () {
     return this.totalSessionsReply.direct + this.totalSessionsReply.onNN
@@ -79,7 +79,6 @@ export default class SessionCounts extends Vue {
       direct: 0,
       onNN: 0
     }
-    this.countLoop = -1
     this.showCount = false
   }
 
@@ -135,6 +134,9 @@ export default class SessionCounts extends Vue {
   }
 
   private restartLoop () {
+    if (this.countLoop) {
+      clearInterval(this.countLoop)
+    }
     this.fetchSessionCounts()
     this.countLoop = setInterval(() => {
       this.fetchSessionCounts()
