@@ -37,9 +37,10 @@ namespace core
       (void)socket;
 
       mPacket.Buffer[crypto::PacketHashLength] = static_cast<uint8_t>(packets::Type::NewRelayPong);
-      mRecorder.addToSent(mPacket.Len);
 
       crypto::SignNetworkNextPacket(mPacket.Buffer, mPacket.Len);
+
+      mRecorder.InboundPingTx.add(mPacket.Len);
 
 #ifdef RELAY_MULTISEND
       buff.push(mPacket);

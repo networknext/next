@@ -142,91 +142,91 @@ namespace core
         }
 
         if (packet.Len == packets::NewRelayPingPacket::ByteSize) {
-          mRecorder.addToReceived(wholePacketSize);
+          mRecorder.InboundPingRx.add(wholePacketSize);
 
           handlers::NewRelayPingHandler handler(packet, mRecorder);
 
           handler.handle(outputBuff, mSocket);
         } else {
-          mRecorder.addToUnknown(wholePacketSize);
+          mRecorder.UnknownRx.add(wholePacketSize);
         }
       } break;
       case packets::Type::NewRelayPong: {
         if (packet.Len == packets::NewRelayPingPacket::ByteSize) {
-          mRecorder.addToReceived(wholePacketSize);
+          mRecorder.PongRx.add(wholePacketSize);
 
           handlers::NewRelayPongHandler handler(packet, mRelayManager);
 
           handler.handle();
         } else {
-          mRecorder.addToUnknown(wholePacketSize);
+          mRecorder.UnknownRx.add(wholePacketSize);
         }
       } break;
       case packets::Type::RouteRequest: {
-        mRecorder.addToReceived(wholePacketSize);
+        mRecorder.RouteRequestRx.add(wholePacketSize);
 
         handlers::RouteRequestHandler handler(packet, packet.Addr, mKeychain, mSessionMap, mRecorder, mRouterInfo);
 
         handler.handle(outputBuff, mSocket, isSigned);
       } break;
       case packets::Type::RouteResponse: {
-        mRecorder.addToReceived(wholePacketSize);
+        mRecorder.RouteResponseRx.add(wholePacketSize);
 
         handlers::RouteResponseHandler handler(packet, mSessionMap, mRecorder);
 
         handler.handle(outputBuff, mSocket, isSigned);
       } break;
       case packets::Type::ContinueRequest: {
-        mRecorder.addToReceived(wholePacketSize);
+        mRecorder.ContinueRequestRx.add(wholePacketSize);
 
         handlers::ContinueRequestHandler handler(packet, mSessionMap, mKeychain, mRecorder, mRouterInfo);
 
         handler.handle(outputBuff, mSocket, isSigned);
       } break;
       case packets::Type::ContinueResponse: {
-        mRecorder.addToReceived(wholePacketSize);
+        mRecorder.ContinueResponseRx.add(wholePacketSize);
 
         handlers::ContinueResponseHandler handler(packet, mSessionMap, mRecorder);
 
         handler.handle(outputBuff, mSocket, isSigned);
       } break;
       case packets::Type::ClientToServer: {
-        mRecorder.addToReceived(wholePacketSize);
+        mRecorder.ClientToServerRx.add(wholePacketSize);
 
         handlers::ClientToServerHandler handler(packet, mSessionMap, mRecorder);
 
         handler.handle(outputBuff, mSocket, isSigned);
       } break;
       case packets::Type::ServerToClient: {
-        mRecorder.addToReceived(wholePacketSize);
+        mRecorder.ServerToClientRx.add(wholePacketSize);
 
         handlers::ServerToClientHandler handler(packet, mSessionMap, mRecorder);
 
         handler.handle(outputBuff, mSocket, isSigned);
       } break;
       case packets::Type::SessionPing: {
-        mRecorder.addToReceived(wholePacketSize);
+        mRecorder.SessionPingRx.add(wholePacketSize);
 
         handlers::SessionPingHandler handler(packet, mSessionMap, mRecorder);
 
         handler.handle(outputBuff, mSocket, isSigned);
       } break;
       case packets::Type::SessionPong: {
-        mRecorder.addToReceived(wholePacketSize);
+        mRecorder.SessionPongRx.add(wholePacketSize);
 
         handlers::SessionPongHandler handler(packet, mSessionMap, mRecorder);
 
         handler.handle(outputBuff, mSocket, isSigned);
       } break;
       case packets::Type::NearPing: {
-        mRecorder.addToReceived(wholePacketSize);
+        mRecorder.NearPingRx.add(wholePacketSize);
 
         handlers::NearPingHandler handler(packet, mRecorder);
 
         handler.handle(outputBuff, mSocket, isSigned);
       } break;
       default: {
-        mRecorder.addToUnknown(wholePacketSize);
+        mRecorder.UnknownRx.add(wholePacketSize);
       } break;
     }
   }

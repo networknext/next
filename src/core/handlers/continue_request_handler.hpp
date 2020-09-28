@@ -111,7 +111,7 @@ namespace core
         mPacket.Buffer[ContinueToken::EncryptedByteSize] = static_cast<uint8_t>(packets::Type::ContinueRequest);
       }
 
-      mRecorder.addToSent(length);
+      mRecorder.ContinueRequestTx.add(length);
 
 #ifdef RELAY_MULTISEND
       buff.push(session->NextAddr, &mPacket.Buffer[ContinueToken::EncryptedByteSize], length);

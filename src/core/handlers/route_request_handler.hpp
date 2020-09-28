@@ -131,7 +131,7 @@ namespace core
         mPacket.Buffer[RouteToken::EncryptedByteSize] = static_cast<uint8_t>(packets::Type::RouteRequest);
       }
 
-      mRecorder.addToSent(length);
+      mRecorder.RouteRequestTx.add(length);
 
 #ifdef RELAY_MULTISEND
       buff.push(token.NextAddr, &mPacket.Buffer[RouteToken::EncryptedByteSize], length);

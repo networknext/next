@@ -25,13 +25,8 @@ namespace core
   const uint32_t InitRequestMagic = 0x9083708f;
 
   const uint32_t InitRequestVersion = 0;
-  const uint32_t InitResponseVersion = 0;
-
-  const uint32_t UpdateRequestVersion = 0;
-  const uint32_t UpdateResponseVersion = 0;
 
   const uint8_t MaxUpdateAttempts = 11;  // 1 initial + 10 more for failures
-
   // | magic | version | nonce | address | encrypted token | relay version |
   struct InitRequest
   {
@@ -65,8 +60,29 @@ namespace core
     std::array<uint8_t, crypto::KeySize> PublicKey;
     RelayStats PingStats;
     uint64_t SessionCount;
-    uint64_t BytesSent;
-    uint64_t BytesReceived;
+    uint64_t OutboundPingTx;
+    uint64_t RouteRequestRx;
+    uint64_t RouteRequestTx;
+    uint64_t RouteResponseRx;
+    uint64_t RouteResponseTx;
+    uint64_t ClientToServerRx;
+    uint64_t ClientToServerTx;
+    uint64_t ServerToClientRx;
+    uint64_t ServerToClientTx;
+    uint64_t InboundPingRx;
+    uint64_t InboundPingTx;
+    uint64_t PongRx;
+    uint64_t SessionPingRx;
+    uint64_t SessionPingTx;
+    uint64_t SessionPongRx;
+    uint64_t SessionPongTx;
+    uint64_t ContinueRequestRx;
+    uint64_t ContinueRequestTx;
+    uint64_t ContinueResponseRx;
+    uint64_t ContinueResponseTx;
+    uint64_t NearPingRx;
+    uint64_t NearPingTx;
+    uint64_t UnknownRx;
     bool ShuttingDown;
     double CPUUsage;
     double MemUsage;
@@ -107,6 +123,7 @@ namespace core
      std::string base64RelayPublicKey,
      const core::SessionMap& sessions,
      net::IHttpClient& client);
+    ~Backend() = default;
 
     auto init() -> bool;
 
@@ -129,6 +146,7 @@ namespace core
     const std::string mBase64RelayPublicKey;
     const core::SessionMap& mSessionMap;
     net::IHttpClient& mRequester;
+
     auto update(util::ThroughputRecorder& recorder, bool shutdown) -> bool;
   };
 }  // namespace core
