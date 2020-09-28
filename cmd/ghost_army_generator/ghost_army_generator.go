@@ -32,18 +32,14 @@ func (self sortableEntries) Less(i, j int) bool {
 // Input files can be in any order
 
 func main() {
-	if len(os.Args) < 3 {
-		fmt.Println("you must supply at least 2 arguments: <input file name(s)> <output file name>")
+	if len(os.Args) < 4 {
+		fmt.Println("you must supply at least 3 arguments: <datacenter csv> <output file> <input file name(s)>")
 		os.Exit(1)
 	}
 
-	var datacenterCSV string
-	if v, ok := os.LookupEnv("DATACENTERS_CSV"); ok {
-		datacenterCSV = v
-	} else {
-		fmt.Println("you must set DATACENTERS_CSV to a file")
-		os.Exit(1)
-	}
+	datacenterCSV := os.Args[1]
+	outfile := os.Args[2]
+	infiles := os.Args[3:]
 
 	// parse datacenter csv
 	inputfile, err := os.Open(datacenterCSV)
@@ -59,8 +55,7 @@ func main() {
 	}
 	inputfile.Close()
 
-	var dcmap ghostarmy.DatacenterMap
-	dcmap = make(map[uint64]ghostarmy.StrippedDatacenter)
+	dcmap := make(map[uint64]ghostarmy.StrippedDatacenter)
 
 	for lineNum, line := range lines {
 		if lineNum == 0 {
@@ -108,13 +103,6 @@ func main() {
 		isps = append(isps, scanner.Text())
 	}
 	file.Close()
-
-	infiles := make([]string, len(os.Args)-2)
-	for i := 1; i < len(os.Args)-1; i++ {
-		infiles[i-1] = os.Args[i]
-	}
-
-	outfile := os.Args[len(os.Args)-1]
 
 	// convert to binary
 
