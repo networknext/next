@@ -77,7 +77,7 @@
         <a data-test="loginButton" class="login btn-sm btn-primary" href="#" @click="login()">Log in</a>
       </li>
     </ul>
-    <ul class="navbar-nav px-3" v-if="$store.getters.isAdmin">
+    <ul class="navbar-nav px-3" v-if="false && $store.getters.isAdmin"><!-- DISABLED -->
       <li class="nav-item text-nowrap">
         <select v-on:change="impersonate($event.target.value)">
           <option :value="''">Impersonate</option>
