@@ -18,8 +18,8 @@ import {
 } from '@fortawesome/free-solid-svg-icons'
 import { library } from '@fortawesome/fontawesome-svg-core'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-import NavBar from './components/NavBar.vue'
-import Workspace from './components/workspaces/Workspace.vue'
+import NavBar from '@/components/NavBar.vue'
+import Workspace from '@/workspaces/Workspace.vue'
 
 /**
  * Main component that is used to mount the entire Vue app. Contains the

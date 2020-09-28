@@ -1,5 +1,30 @@
 <template>
   <div class="card-body">
+    <div id="auto-signin">
+      <h5 class="card-title">
+        Automatic Sign up
+      </h5>
+      <p class="card-text">
+        Save time by allowing users with verified email addresses automatic access to your Network Next account.
+      </p>
+      <Alert :message="messages.autoDomains" :alertType="alertTypes.autoDomains" v-if="messages.autoDomains !== ''"/>
+      <form v-on:submit.prevent="saveAutoSignUp()">
+        <div class="form-group">
+          <label for="auto-signup-domains">
+            Automatic Sign up Domains
+          </label>
+          <textarea class="form-control form-control-sm" id="auto-signup-domains" v-model="autoSignupDomains"></textarea>
+          <small class="form-text text-muted">
+            Setting this to a comma seperated list of email domains will allow anyone with that domain to assign themselves to your account using your company code ({{ companyCode }}) in the account settings page.
+          </small>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">
+          Save Automatic Sign up
+        </button>
+        <p class="text-muted text-small mt-2"></p>
+      </form>
+      <hr class="mt-4 mb-4">
+  </div>
     <h5 class="card-title">
       Add new users
     </h5>
@@ -44,12 +69,8 @@
     <p class="card-text">
       Manage the list of users that currently have access to your Network Next account.
     </p>
-    <div id="account-table-spinner" v-show="!showTable">
-      <div class="spinner-border" role="status">
-        <span class="sr-only">Loading...</span>
-      </div>
-    </div>
-    <table class="table table-sm mt-4" v-show="showTable">
+    <Alert :message="messages.editUser" :alertType="alertTypes.editUser" v-if="messages.editUser !== ''"/>
+    <table class="table table-sm mt-4">
       <thead class="thead-light">
         <tr>
           <th style="width: 20%;">
@@ -63,9 +84,15 @@
           </th>
         </tr>
       </thead>
-      <tbody>
+      <tbody v-if="companyUsers.length === 0">
+        <tr>
+          <td colspan="7" class="text-muted">
+              There are no users assigned to your company.
+          </td>
+        </tr>
+      </tbody>
+      <tbody v-if="companyUsers.length > 0">
         <tr v-for="(account, index) in companyUsers" :key="index">
-          <Alert :message="messages.editUser" :alertType="alertTypes.newUser" v-if="messages.editUser !== ''"/>
           <td>
             {{ account.email }}
           </td>
@@ -129,10 +156,10 @@
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
 import Multiselect from 'vue-multiselect'
-import APIService from '../services/api.service'
 import Alert from './Alert.vue'
 import { AlertTypes } from './types/AlertTypes'
-import _ from 'lodash'
+import _, { cloneDeep } from 'lodash'
+import { UserProfile } from './types/AuthTypes'
 
 /**
  * This component displays all of the necessary information for the user management tab
@@ -151,7 +178,6 @@ import _ from 'lodash'
   }
 })
 export default class UserManagement extends Vue {
-  private apiService: APIService
   private allRoles: Array<any>
   private companyUsers: Array<any>
   private companyUsersReadOnly: Array<any>
@@ -160,17 +186,22 @@ export default class UserManagement extends Vue {
   private alertTypes: any
   private showTable: boolean
   private newUserEmails: string
+  private autoSignupDomains: string
+  private unwatch: any
+  private companyCode: string
+  private userProfile: UserProfile
 
   constructor () {
     super()
-    this.apiService = Vue.prototype.$apiService
     this.newUserEmails = ''
     this.showTable = false
     this.messages = {
+      autoDomains: '',
       newUsers: '',
       editUser: ''
     }
     this.alertTypes = {
+      autoDomains: '',
       newUsers: '',
       editUser: ''
     }
@@ -178,12 +209,39 @@ export default class UserManagement extends Vue {
     this.newUserRoles = []
     this.companyUsers = []
     this.companyUsersReadOnly = []
+    this.companyCode = ''
+    this.autoSignupDomains = ''
+    this.userProfile = {} as UserProfile
   }
 
-  private mounted (): void {
+  private mounted () {
+    if (!this.$store.getters.userProfile) {
+      this.unwatch = this.$store.watch(
+        (_, getters: any) => getters.userProfile,
+        (userProfile: any) => {
+          this.checkUserProfile(userProfile)
+        }
+      )
+    } else {
+      this.checkUserProfile(this.$store.getters.userProfile)
+    }
+  }
+
+  private destory () {
+    this.unwatch()
+  }
+
+  private checkUserProfile (userProfile: UserProfile) {
+    if (!userProfile) {
+      return
+    }
+    this.companyCode = userProfile.companyCode || ''
+    this.autoSignupDomains = userProfile.domains.join(', ')
     const promises = [
-      this.apiService.fetchAllAccounts({}),
-      this.apiService.fetchAllRoles()
+      // TODO: Figure out how to get rid of this. this.$apiService should be possible...
+      // HACK: This is a hack to get tests to work properly
+      (this as any).$apiService.fetchAllAccounts(),
+      (this as any).$apiService.fetchAllRoles()
     ]
     Promise.all(promises)
       .then((responses: any) => {
@@ -194,18 +252,52 @@ export default class UserManagement extends Vue {
           user.delete = false
         })
         this.companyUsersReadOnly = _.cloneDeep(this.companyUsers)
-        this.showTable = true
       })
+    this.userProfile = cloneDeep(this.$store.getters.userProfile)
   }
 
   private editUser (account: any, index: number): void {
     this.setAccountState(true, false, account, index)
   }
 
+  private saveAutoSignUp (): void {
+    const domains = this.autoSignupDomains
+      .split(/(,|\n)/g)
+      .map((x) => x.trim())
+      .filter((x) => x !== '' && x !== ',');
+
+    // TODO: Figure out how to get rid of this. this.$apiService should be possible...
+    // HACK: This is a hack to get tests to work properly
+    (this as any).$apiService
+      .updateAutoSignupDomains({ domains: domains })
+      .then((response: any) => {
+        this.userProfile.domains = domains
+        this.$store.commit('UPDATE_USER_PROFILE', this.userProfile)
+        this.alertTypes.autoDomains = AlertTypes.SUCCESS
+        this.messages.autoDomains = 'Successfully update signup domains'
+        setTimeout(() => {
+          this.messages.autoDomains = ''
+        }, 5000)
+      })
+      .catch((error: Error) => {
+        console.log('Something went wrong adding auto signup domains')
+        console.log(error)
+        this.alertTypes.autoDomains = AlertTypes.ERROR
+        this.messages.autoDomains = 'Failed to edit user account'
+        setTimeout(() => {
+          this.messages.autoDomains = ''
+        }, 5000)
+      })
+  }
+
   private saveUser (account: any, index: number): void {
     if (account.edit) {
+      // HACK because eslint likes to complain...
+      // TODO: Figure out how to get rid of this. this.$apiService should be possible...
+      // HACK: This is a hack to get tests to work properly
+      const vm = (this as any)
       const roles = account.roles
-      this.apiService
+      vm.$apiService
         .updateUserRoles({ user_id: `auth0|${account.user_id}`, roles: roles })
         .then((response: any) => {
           account.roles = response.roles
@@ -230,7 +322,9 @@ export default class UserManagement extends Vue {
       return
     }
     if (account.delete) {
-      this.apiService
+      // TODO: Figure out how to get rid of this. this.$apiService should be possible...
+      // HACK: This is a hack to get tests to work properly
+      (this as any).$apiService
         .deleteUserAccount({ user_id: `auth0|${account.user_id}` })
         .then((response: any) => {
           this.companyUsers.splice(index, 1)
@@ -281,7 +375,9 @@ export default class UserManagement extends Vue {
         name: 'Viewer'
       }]
     }
-    this.apiService
+    // TODO: Figure out how to get rid of this. this.$apiService should be possible...
+    // HACK: This is a hack to get tests to work properly
+    (this as any).$apiService
       .addNewUserAccounts({ emails: emails, roles: roles })
       .then((response: any) => {
         const newAccounts: Array<any> = response.accounts
@@ -291,7 +387,7 @@ export default class UserManagement extends Vue {
           account.delete = false
         })
 
-        this.companyUsers.concat(newAccounts)
+        this.companyUsers = this.companyUsers.concat(newAccounts)
         this.alertTypes.newUsers = AlertTypes.SUCCESS
         this.messages.newUsers = 'User account(s) added successfully'
         setTimeout(() => {

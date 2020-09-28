@@ -1,0 +1,21 @@
+version: v1.0
+name: Staging Deploy
+agent:
+  machine:
+    type: e1-standard-8
+    os_image: ubuntu1804
+global_job_config:
+  prologue:
+    commands:
+      - checkout
+      - npm i
+blocks:
+  - name: Build & Publish Artifacts
+    dependencies: []
+    task:
+      jobs:
+        - name: Portal
+          commands:
+            - make build-portal-artifacts-staging
+      secrets:
+        - name: google-cloud-platform-staging

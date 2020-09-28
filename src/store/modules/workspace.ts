@@ -10,7 +10,7 @@ export default {
   state: {
     currentPage: 'map',
     filter: {
-      buyerID: ''
+      companyCode: ''
     }
   },
   getters: {

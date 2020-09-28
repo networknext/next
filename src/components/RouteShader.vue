@@ -99,10 +99,9 @@
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
 import _ from 'lodash'
-import APIService from '../services/api.service'
 import Alert from '@/components/Alert.vue'
 import { AlertTypes } from './types/AlertTypes'
-import { UserProfile } from '@/services/auth.service'
+import { UserProfile } from '@/components/types/AuthTypes.ts'
 
 /**
  * This component displays all of the necessary information for the route shader tab
@@ -120,7 +119,6 @@ import { UserProfile } from '@/services/auth.service'
   }
 })
 export default class RouteShader extends Vue {
-  private apiService: APIService
   private routeShader: any
   private message: string
   private alertType: string
@@ -128,7 +126,6 @@ export default class RouteShader extends Vue {
 
   constructor () {
     super()
-    this.apiService = Vue.prototype.$apiService
     this.userProfile = _.cloneDeep(this.$store.getters.userProfile)
     this.routeShader = this.userProfile.routeShader
     this.message = ''
@@ -136,7 +133,9 @@ export default class RouteShader extends Vue {
   }
 
   public updateRouteShader () {
-    this.apiService
+    // TODO: Figure out how to get rid of this. this.$apiService should be possible...
+    // HACK: This is a hack to get tests to work properly
+    (this as any).$apiService
       .updateRouteShader(this.routeShader)
       .then((response: any) => {
         this.userProfile.routeShader = this.routeShader
