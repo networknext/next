@@ -1,12 +1,16 @@
-import { shallowMount, createLocalVue } from '@vue/test-utils'
+import { shallowMount, createLocalVue, mount } from '@vue/test-utils'
 import Vuex from 'vuex'
 import GameConfiguration from '@/components/GameConfiguration.vue'
+import { waitFor } from './utils'
+import { JSONRPCPlugin } from '@/plugins/jsonrpc'
+import { UserProfile } from '@/components/types/AuthTypes'
 
 describe('GameConfiguration.vue', () => {
 
   const localVue = createLocalVue()
 
   localVue.use(Vuex)
+  localVue.use(JSONRPCPlugin)
 
   const defaultStore = new Vuex.Store({
     state: {
@@ -90,6 +94,57 @@ describe('GameConfiguration.vue', () => {
       wrapper.destroy()
     })
 
-    // TODO: Add in tests that check api response handling and the alert functionality
+    const spy = jest.spyOn(localVue.prototype.$apiService, 'updateGameConfiguration').mockImplementationOnce(() => {
+      return Promise.resolve({
+        game_config: {
+          company: 'test company',
+          buyer_id: '123456789',
+          public_key: 'abcdefghijklmnopqrstuvwxyz'
+        }
+      })
+    })
+
+    it('checks the components response to the update game configuration call', async () => {
+      const store = new Vuex.Store({
+        state: {
+          userProfile: {
+            company: '',
+            pubKey: '',
+            buyerID: ''
+          }
+        },
+        getters: {
+          userProfile: (state: any) => state.userProfile,
+          isOwner: () => true,
+          isAdmin: () => false
+        },
+        mutations: {
+          UPDATE_USER_PROFILE (state: any, userProfile: UserProfile) {
+            state.userProfile = userProfile
+          },
+        }
+      })
+      const wrapper = mount(GameConfiguration, { localVue, store })
+      // Check inputs
+      const input = wrapper.findAll('input')
+      const textArea = wrapper.findAll('textarea')
+      input.at(0).setValue('test company')
+      textArea.at(0).setValue('abcdefghijklmnopqrstuvwxyz')
+
+      wrapper.find('form').trigger('submit')
+
+      expect(spy).toBeCalled()
+
+      await waitFor(wrapper, '.alert')
+      const alert = wrapper.find('.alert')
+      expect(alert.exists()).toBe(true)
+      expect(alert.classes().includes('alert-success')).toBe(true)
+      expect(alert.text()).toBe('Updated public key successfully')
+
+      expect(wrapper.vm.$store.state.userProfile.company).toBe('test company')
+      expect(wrapper.vm.$store.state.userProfile.pubKey).toBe('abcdefghijklmnopqrstuvwxyz')
+      expect(wrapper.vm.$store.state.userProfile.buyerID).toBe('123456789')
+      wrapper.destroy()
+    })
   })
 })

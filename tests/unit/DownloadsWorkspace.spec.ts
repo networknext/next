@@ -1,12 +1,7 @@
 import { shallowMount, createLocalVue } from '@vue/test-utils'
 import DownloadsWorkspace from '@/workspaces/DownloadsWorkspace.vue'
 import {
-  faCheck,
-  faCircle,
-  faDownload,
-  faPen,
-  faTimes,
-  faTrash
+  faDownload
 } from '@fortawesome/free-solid-svg-icons'
 import { library } from '@fortawesome/fontawesome-svg-core'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
@@ -16,12 +11,7 @@ describe('Alert.vue', () => {
   const localVue = createLocalVue()
 
   const ICONS = [
-    faCheck,
-    faCircle,
-    faDownload,
-    faPen,
-    faTimes,
-    faTrash
+    faDownload
   ]
 
   library.add(...ICONS)
