@@ -1108,13 +1108,13 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 	return true
 }
 
-func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, internal *InternalConfig, directLatency int32, nextLatency int32, directPacketLoss float32, nextPacketLoss float32, currentRouteNumRelays int32, currentRouteRelays [MaxRelaysPerRoute]int32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32) bool {
+func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, internal *InternalConfig, directLatency int32, nextLatency int32, directPacketLoss float32, nextPacketLoss float32, currentRouteNumRelays int32, currentRouteRelays [MaxRelaysPerRoute]int32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32) (bool, bool) {
 
 	if EarlyOutDirect(routeShader, routeState) {
 		routeState.Committed = false
 		routeState.CommitPending = false
 		routeState.CommitCounter = 0
-		return false
+		return false, false
 	}
 
 	// if we overload the connection in multipath, leave network next
@@ -1125,7 +1125,7 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
 		routeState.Committed = false
 		routeState.CommitPending = false
 		routeState.CommitCounter = 0
-		return false
+		return false, false
 	}
 
 	// if we have made rtt significantly worse, leave network next
@@ -1146,7 +1146,7 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
 		routeState.Committed = false
 		routeState.CommitPending = false
 		routeState.CommitCounter = 0
-		return false
+		return false, false
 	}
 
 	// update the current best route
@@ -1167,12 +1167,12 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
 		routeState.Committed = false
 		routeState.CommitPending = false
 		routeState.CommitCounter = 0
-		return false
+		return false, false
 	}
 
 	// try the route before committing to it
 	if !TryBeforeYouBuy(routeState, internal, directLatency, nextLatency, directPacketLoss, nextPacketLoss, routeSwitched) {
-		return false
+		return false, false
 	}
 
 	// have still have a route, stay on network next
@@ -1181,19 +1181,19 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
 	*out_updatedRouteNumRelays = bestRouteNumRelays
 	copy(out_updatedRouteRelays, bestRouteRelays[:bestRouteNumRelays])
 
-	return true
+	return true, routeSwitched
 }
 
-func MakeRouteDecision_StayOnNetworkNext(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, internal *InternalConfig, directLatency int32, nextLatency int32, directPacketLoss float32, nextPacketLoss float32, currentRouteNumRelays int32, currentRouteRelays [MaxRelaysPerRoute]int32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32) bool {
+func MakeRouteDecision_StayOnNetworkNext(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, internal *InternalConfig, directLatency int32, nextLatency int32, directPacketLoss float32, nextPacketLoss float32, currentRouteNumRelays int32, currentRouteRelays [MaxRelaysPerRoute]int32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32) (bool, bool) {
 
-	stayOnNetworkNext := MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix, routeShader, routeState, internal, directLatency, nextLatency, directPacketLoss, nextPacketLoss, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCost, destRelays, out_updatedRouteCost, out_updatedRouteNumRelays, out_updatedRouteRelays)
+	stayOnNetworkNext, nextRouteSwitched := MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix, routeShader, routeState, internal, directLatency, nextLatency, directPacketLoss, nextPacketLoss, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCost, destRelays, out_updatedRouteCost, out_updatedRouteNumRelays, out_updatedRouteRelays)
 
 	if routeState.Next && !stayOnNetworkNext {
 		routeState.Next = false
 		routeState.Veto = true
 	}
 
-	return stayOnNetworkNext
+	return stayOnNetworkNext, nextRouteSwitched
 }
 
 func TryBeforeYouBuy(routeState *RouteState, internal *InternalConfig, directLatency int32, nextLatency int32, directPacketLoss float32, nextPacketLoss float32, routeSwitched bool) bool {

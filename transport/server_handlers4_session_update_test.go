@@ -1165,10 +1165,10 @@ func TestSessionUpdateHandler4ContinueRoute(t *testing.T) {
 				RouteNumRelays: [core.MaxRoutesPerEntry]int32{2},
 				RouteRelays: [core.MaxRoutesPerEntry][core.MaxRelaysPerRoute]int32{
 					{
-						0, 1,
+						1, 0,
 					},
 				},
-				RouteHash: [core.MaxRoutesPerEntry]uint32{core.RouteHash(0, 1)},
+				RouteHash: [core.MaxRoutesPerEntry]uint32{core.RouteHash(1, 0)},
 			},
 		},
 	}
@@ -1207,7 +1207,7 @@ func TestSessionUpdateHandler4ContinueRoute(t *testing.T) {
 		ExpireTimestamp: expireTimestamp,
 		Initial:         false,
 		RouteNumRelays:  2,
-		RouteCost:       45,
+		RouteCost:       50,
 		RouteRelayIDs:   [routing.MaxRelays]uint64{2, 1},
 		RouteState: core.RouteState{
 			UserID:        requestPacket.UserHash,

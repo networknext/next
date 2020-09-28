@@ -412,14 +412,11 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 					HandleNextToken(&sessionData, storer, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
 				}
 			} else {
-				prevRouteNumRelays := sessionData.RouteNumRelays
-				prevRouteRelays := routeRelays
-
-				if core.MakeRouteDecision_StayOnNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, &buyer.InternalConfig, int32(packet.DirectRTT), int32(packet.NextRTT), packet.DirectPacketLoss, packet.NextPacketLoss, sessionData.RouteNumRelays, routeRelays, reframedNearRelays, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:]) {
+				if stay, nextRouteSwitched := core.MakeRouteDecision_StayOnNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, &buyer.InternalConfig, int32(packet.DirectRTT), int32(packet.NextRTT), packet.DirectPacketLoss, packet.NextPacketLoss, sessionData.RouteNumRelays, routeRelays, reframedNearRelays, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:]); stay {
 					// Continue token
 
 					// Check if the route has changed
-					if core.RouteHash(routeRelays[:routeNumRelays]...) != core.RouteHash(prevRouteRelays[:prevRouteNumRelays]...) {
+					if nextRouteSwitched {
 						// Create a next token here rather than a continue token since the route has switched
 						HandleNextToken(&sessionData, storer, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
 					} else {
