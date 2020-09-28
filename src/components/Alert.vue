@@ -1,5 +1,5 @@
 <template>
-  <div :class="[{'alert': true}, className ? className : 'alert-secondary']" role="alert">
+  <div :class="[{'alert': true}, className]" role="alert">
     {{ alertMessage }}
     <slot></slot>
   </div>
@@ -22,10 +22,12 @@ import { Component, Vue, Prop } from 'vue-property-decorator'
  *  Similar idea to the sessions count component
  */
 
+import { AlertTypes } from '@/components/types/AlertTypes'
+
 @Component
 export default class Alert extends Vue {
   @Prop({ required: false, type: String, default: '' }) message!: string
-  @Prop({ required: false, type: String, default: '' }) alertType!: string
+  @Prop({ required: false, type: String, default: AlertTypes.DEFAULT }) alertType!: string
 
   get alertMessage (): string {
     return this.message

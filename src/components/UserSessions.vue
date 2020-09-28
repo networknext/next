@@ -36,7 +36,7 @@
         </tr>
       </thead>
       <tbody v-if="sessions.length > 0">
-        <tr v-for="(session, index) in sessions" v-bind:key="index">
+        <tr id="data-row" v-for="(session, index) in sessions" v-bind:key="index">
           <td>
               <router-link v-bind:to="`/session-tool/${session.id}`" class="text-dark fixed-width">{{ session.id }}</router-link>
           </td>
@@ -69,8 +69,7 @@
 </template>
 
 <script lang="ts">
-import { Component, Vue, Prop } from 'vue-property-decorator'
-import APIService from '../services/api.service'
+import { Component, Vue } from 'vue-property-decorator'
 import { AlertTypes } from './types/AlertTypes'
 
 /**
@@ -80,7 +79,6 @@ import { AlertTypes } from './types/AlertTypes'
 
 @Component
 export default class UserSessions extends Vue {
-  private apiService: APIService
   private sessions: Array<any>
   private sessionLoop: any
   private showSessions: boolean
@@ -90,7 +88,6 @@ export default class UserSessions extends Vue {
 
   constructor () {
     super()
-    this.apiService = Vue.prototype.$apiService
     this.searchID = ''
     this.sessions = []
     this.showSessions = false
@@ -114,7 +111,9 @@ export default class UserSessions extends Vue {
       return
     }
 
-    this.apiService.fetchUserSessions({ user_hash: this.searchID })
+    // TODO: Figure out how to get rid of this. this.$apiService should be possible...
+    // HACK: This is a hack to get tests to work properly
+    (this as any).$apiService.fetchUserSessions({ user_hash: this.searchID })
       .then((response: any) => {
         this.sessions = response.sessions || []
         this.showSessions = true

@@ -21,13 +21,16 @@
     <div class="card" style="margin-bottom: 250px;">
       <div class="card-header">
         <ul class="nav nav-tabs card-header-tabs">
-          <li class="nav-item" v-if="$store.getters.isAdmin || $store.getters.isOwner">
+          <li class="nav-item" v-if="!$store.getters.isAnonymous && !$store.getters.isAnonymousPlus">
+            <router-link to="/settings/account" class="nav-link" v-bind:class="{ active: $store.getters.currentPage === 'account-settings'}">Account Settings</router-link>
+          </li>
+          <li class="nav-item" v-if="$store.getters.registeredToCompany && ($store.getters.isAdmin || $store.getters.isOwner)">
             <router-link to="/settings/users" class="nav-link" v-bind:class="{ active: $store.getters.currentPage === 'users'}">Users</router-link>
           </li>
-          <li class="nav-item">
+          <li class="nav-item" v-if="$store.getters.registeredToCompany && ($store.getters.isAdmin || $store.getters.isOwner)">
             <router-link to="/settings/game-config" class="nav-link" v-bind:class="{ active: $store.getters.currentPage === 'config'}">Game Configuration</router-link>
           </li>
-          <li class="nav-item" v-if="$store.getters.isABTester">
+          <li class="nav-item" v-if="$store.getters.isABTester && false"><!-- Disabled -->
             <router-link to="/settings/route-shader" class="nav-link" v-bind:class="{ active: $store.getters.currentPage === 'shader'}">Route Shader</router-link>
           </li>
         </ul>

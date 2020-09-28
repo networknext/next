@@ -261,7 +261,6 @@ import { Component, Vue } from 'vue-property-decorator'
 import 'uplot/dist/uPlot.min.css'
 
 import Alert from '@/components/Alert.vue'
-import APIService from '@/services/api.service'
 import { AlertTypes } from './types/AlertTypes'
 
 /**
@@ -281,7 +280,6 @@ import { AlertTypes } from './types/AlertTypes'
 })
 export default class SessionDetails extends Vue {
   private showDetails = false
-  private apiService: APIService
 
   private searchID: string
 
@@ -314,7 +312,6 @@ export default class SessionDetails extends Vue {
 
   constructor () {
     super()
-    this.apiService = Vue.prototype.$apiService
     this.searchID = ''
     this.message = ''
     this.alertType = AlertTypes.ERROR
@@ -326,7 +323,7 @@ export default class SessionDetails extends Vue {
       this.fetchSessionDetails()
       this.detailsLoop = setInterval(() => {
         this.fetchSessionDetails()
-      }, 1000)
+      }, 10000)
     }
   }
 
@@ -348,14 +345,14 @@ export default class SessionDetails extends Vue {
     let i = 0
     for (i; i < allBuyers.length; i++) {
       if (allBuyers[i].id === buyerId) {
-        return allBuyers[i].name
+        return allBuyers[i].company_name
       }
     }
     return 'Private'
   }
 
   private fetchSessionDetails () {
-    this.apiService.fetchSessionDetails({ session_id: this.searchID })
+    (this as any).$apiService.fetchSessionDetails({ session_id: this.searchID })
       .then((response: any) => {
         this.meta = response.meta
         this.slices = response.slices
@@ -375,13 +372,16 @@ export default class SessionDetails extends Vue {
           const aggregation = 'MEAN'
           const gpuAggregation = navigator.appVersion.indexOf('Win') === -1
 
+          this.viewState.latitude = this.meta.location.latitude
+          this.viewState.longitude = this.meta.location.longitude
+
           if (!this.mapInstance) {
             this.mapInstance = new mapboxgl.Map({
               accessToken: process.env.VUE_APP_MAPBOX_TOKEN,
               style: 'mapbox://styles/mapbox/dark-v10',
               center: [
-                0,
-                0
+                this.meta.location.longitude,
+                this.meta.location.latitude
               ],
               zoom: 2,
               pitch: 0,
@@ -419,7 +419,8 @@ export default class SessionDetails extends Vue {
                   zoom: viewState.zoom,
                   bearing: viewState.bearing,
                   pitch: viewState.pitch,
-                  minZoom: 2
+                  minZoom: 2,
+                  maxZoom: 16
                 })
               },
               layers: [sessionLocationLayer]
@@ -704,7 +705,7 @@ export default class SessionDetails extends Vue {
     }
 
     if (latencyChartElement) {
-      this.latencyComparisonChart = new uPlot(latencyComparisonOpts, bandwidthData, latencyChartElement)
+      this.latencyComparisonChart = new uPlot(latencyComparisonOpts, latencyData, latencyChartElement)
     }
 
     if (this.jitterComparisonChart) {
@@ -712,7 +713,7 @@ export default class SessionDetails extends Vue {
     }
 
     if (jitterChartElement) {
-      this.jitterComparisonChart = new uPlot(latencyComparisonOpts, bandwidthData, jitterChartElement)
+      this.jitterComparisonChart = new uPlot(latencyComparisonOpts, jitterData, jitterChartElement)
     }
 
     if (this.packetLossComparisonChart) {
@@ -720,7 +721,7 @@ export default class SessionDetails extends Vue {
     }
 
     if (packetLossChartElement) {
-      this.packetLossComparisonChart = new uPlot(packetLossComparisonOpts, bandwidthData, packetLossChartElement)
+      this.packetLossComparisonChart = new uPlot(packetLossComparisonOpts, packetLossData, packetLossChartElement)
     }
 
     if (this.bandwidthChart) {
