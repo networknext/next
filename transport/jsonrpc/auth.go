@@ -981,6 +981,47 @@ func (s *AuthService) UpdateAutoSignupDomains(r *http.Request, args *UpdateDomai
 	return nil
 }
 
+type ImpersonateArgs struct {
+	CompanyCode string `json:"company_code"`
+}
+
+type ImpersonateReply struct {
+}
+
+func (s *AuthService) Impersonate(r *http.Request, args *ImpersonateArgs, reply *ImpersonateReply) error {
+	if !VerifyAllRoles(r, AdminRole) {
+		err := fmt.Errorf("Impersonate(): %v", ErrInsufficientPrivileges)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	// Gather request user information
+	requestUser := r.Context().Value("user")
+	if requestUser == nil {
+		err := fmt.Errorf("Impersonate() unable to parse user from token")
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	requestID, ok := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["sub"].(string)
+	if !ok {
+		err := fmt.Errorf("Impersonate() unable to parse id from token")
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	if err := s.Auth0.Manager.User.Update(requestID, &management.User{
+		AppMetadata: map[string]interface{}{
+			"company_code": args.CompanyCode,
+		},
+	}); err != nil {
+		err = fmt.Errorf("UpdateCompanyInformation() failed to update user company name: %v", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+	return nil
+}
+
 type response struct {
 	Message string `json:"message"`
 }
