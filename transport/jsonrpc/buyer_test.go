@@ -159,8 +159,13 @@ func TestDatacenterMaps(t *testing.T) {
 	storer := storage.InMemory{}
 
 	buyer := routing.Buyer{
-		ID:   0xbdbebdbf0f7be395,
-		Name: "local.buyer",
+		ID:          0xbdbebdbf0f7be395,
+		CompanyCode: "local",
+	}
+
+	customer := routing.Customer{
+		Code: "local",
+		Name: "Local",
 	}
 
 	datacenter := routing.Datacenter{
@@ -168,8 +173,10 @@ func TestDatacenterMaps(t *testing.T) {
 		Name: "local.datacenter",
 	}
 
-	storer.AddBuyer(context.Background(), buyer)
-	storer.AddDatacenter(context.Background(), datacenter)
+	ctx := context.Background()
+	storer.AddBuyer(ctx, buyer)
+	storer.AddCustomer(ctx, customer)
+	storer.AddDatacenter(ctx, datacenter)
 
 	logger := log.NewNopLogger()
 
@@ -266,9 +273,16 @@ func TestTotalSessions(t *testing.T) {
 
 	storer := storage.InMemory{}
 	pubkey := make([]byte, 4)
-	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, Name: "local.local.0", PublicKey: pubkey, Domain: "networknext.com"})
-	storer.AddBuyer(context.Background(), routing.Buyer{ID: 2, Name: "local.local.1", PublicKey: pubkey, Domain: "networknext.com"})
-	storer.AddBuyer(context.Background(), routing.Buyer{ID: 3, Name: "local.local.2", PublicKey: pubkey, Domain: "networknext.com"})
+
+	ctx := context.Background()
+
+	storer.AddCustomer(ctx, routing.Customer{Code: "local", Name: "Local"})
+	storer.AddCustomer(ctx, routing.Customer{Code: "local-local", Name: "Local Local"})
+	storer.AddCustomer(ctx, routing.Customer{Code: "local-local-local", Name: "Local Local Local"})
+
+	storer.AddBuyer(ctx, routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
+	storer.AddBuyer(ctx, routing.Buyer{ID: 2, CompanyCode: "local-local", PublicKey: pubkey})
+	storer.AddBuyer(ctx, routing.Buyer{ID: 3, CompanyCode: "local-local-local", PublicKey: pubkey})
 
 	logger := log.NewNopLogger()
 	svc := jsonrpc.BuyersService{
@@ -290,6 +304,10 @@ func TestTotalSessions(t *testing.T) {
 	req.Header.Add("Authorization", "Bearer "+jwtSideload)
 	res := httptest.NewRecorder()
 
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local")
+	req = req.WithContext(reqContext)
+
 	authMiddleware.ServeHTTP(res, req)
 	assert.Equal(t, http.StatusOK, res.Code)
 
@@ -301,7 +319,7 @@ func TestTotalSessions(t *testing.T) {
 	assert.Equal(t, 1, reply.Direct)
 
 	// test per buyer counts
-	err = svc.TotalSessions(req, &jsonrpc.TotalSessionsArgs{BuyerID: "0000000000000001"}, &reply)
+	err = svc.TotalSessions(req, &jsonrpc.TotalSessionsArgs{CompanyCode: "local"}, &reply)
 	assert.NoError(t, err)
 
 	assert.Equal(t, 1, reply.Next)
@@ -763,7 +781,8 @@ func TestGameConfiguration(t *testing.T) {
 	redisPool := storage.NewRedisPool(redisServer.Addr())
 	storer := storage.InMemory{}
 	pubkey := make([]byte, 4)
-	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, Name: "local.local.1", Domain: "local.com", PublicKey: pubkey})
+	storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
+	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
 
 	logger := log.NewNopLogger()
 	svc := jsonrpc.BuyersService{
@@ -785,24 +804,28 @@ func TestGameConfiguration(t *testing.T) {
 	req.Header.Add("Authorization", "Bearer "+jwtSideload)
 	res := httptest.NewRecorder()
 
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local")
+	req = req.WithContext(reqContext)
+
 	authMiddleware.ServeHTTP(res, req)
 	assert.Equal(t, http.StatusOK, res.Code)
 
 	t.Run("missing name", func(t *testing.T) {
 		var reply jsonrpc.GameConfigurationReply
-		err := svc.UpdateGameConfiguration(req, &jsonrpc.GameConfigurationArgs{Domain: "local.com"}, &reply)
+		err := svc.UpdateGameConfiguration(req, &jsonrpc.GameConfigurationArgs{}, &reply)
 		assert.Error(t, err)
 	})
 
 	t.Run("missing domain", func(t *testing.T) {
 		var reply jsonrpc.GameConfigurationReply
-		err := svc.UpdateGameConfiguration(req, &jsonrpc.GameConfigurationArgs{Name: "local.local.1"}, &reply)
+		err := svc.UpdateGameConfiguration(req, &jsonrpc.GameConfigurationArgs{}, &reply)
 		assert.Error(t, err)
 	})
 
 	t.Run("single", func(t *testing.T) {
 		var reply jsonrpc.GameConfigurationReply
-		err := svc.GameConfiguration(req, &jsonrpc.GameConfigurationArgs{Domain: "local.com"}, &reply)
+		err := svc.GameConfiguration(req, &jsonrpc.GameConfigurationArgs{}, &reply)
 		assert.NoError(t, err)
 
 		assert.Equal(t, reply.GameConfiguration.PublicKey, "AQAAAAAAAAAAAAAA")
@@ -810,7 +833,7 @@ func TestGameConfiguration(t *testing.T) {
 
 	t.Run("failed to update public key", func(t *testing.T) {
 		var reply jsonrpc.GameConfigurationReply
-		err := svc.UpdateGameConfiguration(req, &jsonrpc.GameConfigurationArgs{Domain: "local.com", Name: "local.local.1", NewPublicKey: "askjfgbdalksjdf balkjsdbf lkja flfakjs bdlkafs"}, &reply)
+		err := svc.UpdateGameConfiguration(req, &jsonrpc.GameConfigurationArgs{NewPublicKey: "askjfgbdalksjdf balkjsdbf lkja flfakjs bdlkafs"}, &reply)
 
 		assert.Error(t, err)
 

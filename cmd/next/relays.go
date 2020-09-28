@@ -252,7 +252,7 @@ func relays(
 		return
 	}
 
-	sort.Slice(reply.Relays, func(i int, j int) bool {
+	sort.SliceStable(reply.Relays, func(i int, j int) bool {
 		return reply.Relays[i].SessionCount > reply.Relays[j].SessionCount
 	})
 

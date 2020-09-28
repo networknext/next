@@ -6,15 +6,16 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"fmt"
-	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/handlers"
+	"github.com/gorilla/mux"
 	"github.com/gorilla/rpc/v2"
 	"github.com/gorilla/rpc/v2/json2"
 	"gopkg.in/auth0.v4/management"
@@ -24,10 +25,8 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/logging"
-	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
 	"github.com/networknext/backend/transport/jsonrpc"
@@ -144,116 +143,6 @@ func main() {
 		LocalMode: true,
 	}
 
-	{
-		if env == "local" {
-			if err := db.AddBuyer(ctx, routing.Buyer{
-				ID:                   customerID,
-				Name:                 "local",
-				PublicKey:            customerPublicKey,
-				RoutingRulesSettings: routing.LocalRoutingRulesSettings,
-			}); err != nil {
-				level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
-				os.Exit(1)
-			}
-
-			if err := db.AddBuyer(ctx, routing.Buyer{
-				ID:                   0,
-				Name:                 "Ghost Army",
-				PublicKey:            customerPublicKey,
-				RoutingRulesSettings: routing.LocalRoutingRulesSettings,
-			}); err != nil {
-				level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
-				os.Exit(1)
-			}
-
-			seller := routing.Seller{
-				ID:                        "sellerID",
-				Name:                      "local",
-				IngressPriceNibblinsPerGB: 0.1 * 1e9,
-				EgressPriceNibblinsPerGB:  0.2 * 1e9,
-			}
-
-			did := crypto.HashID("local")
-			datacenter := routing.Datacenter{
-				ID:           did,
-				SignedID:     int64(did),
-				Name:         "local",
-				SupplierName: "usw2-az4",
-			}
-
-			if err := db.AddSeller(ctx, seller); err != nil {
-				level.Error(logger).Log("msg", "could not add seller to storage", "err", err)
-				os.Exit(1)
-			}
-
-			if err := db.AddDatacenter(ctx, datacenter); err != nil {
-				level.Error(logger).Log("msg", "could not add datacenter to storage", "err", err)
-				os.Exit(1)
-			}
-
-			addr1 := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10000}
-			rid1 := crypto.HashID(addr1.String())
-			if err := db.AddRelay(ctx, routing.Relay{
-				Name:           "local.test_relay.a",
-				ID:             rid1,
-				SignedID:       int64(rid1),
-				Addr:           addr1,
-				PublicKey:      relayPublicKey,
-				Seller:         seller,
-				Datacenter:     datacenter,
-				ManagementAddr: "127.0.0.1",
-				SSHUser:        "root",
-				SSHPort:        22,
-				MRC:            19700000000000,
-				Overage:        26000000000000,
-				BWRule:         routing.BWRuleBurst,
-				ContractTerm:   12,
-				StartDate:      time.Now(),
-				EndDate:        time.Now(),
-				Type:           routing.BareMetal,
-			}); err != nil {
-				level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
-				os.Exit(1)
-			}
-
-			addr2 := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10001}
-			rid2 := crypto.HashID(addr2.String())
-			if err := db.AddRelay(ctx, routing.Relay{
-				Name:           "local.test_relay.b",
-				ID:             rid2,
-				SignedID:       int64(rid2),
-				Addr:           addr2,
-				PublicKey:      relayPublicKey,
-				Seller:         seller,
-				Datacenter:     datacenter,
-				ManagementAddr: "127.0.0.1",
-				SSHUser:        "root",
-				SSHPort:        22,
-			}); err != nil {
-				level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
-				os.Exit(1)
-			}
-
-			addr3 := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10002}
-			rid3 := crypto.HashID(addr3.String())
-			if err := db.AddRelay(ctx, routing.Relay{
-				Name:           "abc.xyz",
-				ID:             rid3,
-				SignedID:       int64(rid3),
-				Addr:           addr3,
-				PublicKey:      relayPublicKey,
-				Seller:         seller,
-				Datacenter:     datacenter,
-				ManagementAddr: "127.0.0.1",
-				SSHUser:        "root",
-				SSHPort:        22,
-			}); err != nil {
-				level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
-				os.Exit(1)
-			}
-		}
-	}
-
 	manager, err := management.New(
 		os.Getenv("AUTH_DOMAIN"),
 		os.Getenv("AUTH_CLIENTID"),
@@ -335,6 +224,9 @@ func main() {
 		}
 	}
 
+	if env == "local" {
+		storage.SeedStorage(logger, ctx, db, relayPublicKey, customerID, customerPublicKey)
+	}
 	// We're not using the route matrix in the portal anymore, because RouteSelection()
 	// is commented out in the ops service.
 
@@ -530,7 +422,6 @@ func main() {
 				m[id] = relay
 			}
 
-			fmt.Printf("read in %d relays\n", count)
 			relayMap.Swap(&m)
 		}
 	}()
@@ -550,17 +441,24 @@ func main() {
 			if user != nil {
 				claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
 
-				if requestRoles, ok := claims["https://networknext.com/userRoles"]; ok {
-					if roles, ok := requestRoles.(map[string]interface{})["roles"]; ok {
+				if requestData, ok := claims["https://networknext.com/userData"]; ok {
+					var userRoles []string
+					if roles, ok := requestData.(map[string]interface{})["roles"]; ok {
 						rolesInterface := roles.([]interface{})
-						userRoles := make([]string, len(rolesInterface))
+						userRoles = make([]string, len(rolesInterface))
 						for i, v := range rolesInterface {
 							userRoles[i] = v.(string)
 						}
-						if len(userRoles) > 0 {
-							return jsonrpc.SetRoles(i.Request, userRoles)
-						}
 					}
+					var companyCode string
+					if companyCodeInterface, ok := requestData.(map[string]interface{})["company_code"]; ok {
+						companyCode = companyCodeInterface.(string)
+					}
+					var newsletterConsent bool
+					if consent, ok := requestData.(map[string]interface{})["newsletter"]; ok {
+						newsletterConsent = consent.(bool)
+					}
+					return jsonrpc.AddTokenContext(i.Request, userRoles, companyCode, newsletterConsent)
 				}
 			}
 			return jsonrpc.SetIsAnonymous(i.Request, i.Request.Header.Get("Authorization") == "")
@@ -587,14 +485,15 @@ func main() {
 			allowCORS = ok
 		}
 
-		http.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s), allowCORS))
+		r := mux.NewRouter()
 
-		if allowCORS {
-			http.Handle("/", middleware.CacheControl(os.Getenv("HTTP_CACHE_CONTROL"), http.FileServer(http.Dir(uiDir))))
-		}
+		r.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s), allowCORS))
+		r.HandleFunc("/health", transport.HealthHandlerFunc())
+		r.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage))
 
-		http.HandleFunc("/health", transport.HealthHandlerFunc())
-		http.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage))
+		spa := spaHandler{staticPath: uiDir, indexPath: "index.html"}
+
+		r.PathPrefix("/").Handler(middleware.CacheControl(os.Getenv("HTTP_CACHE_CONTROL"), handlers.CompressHandler(spa)))
 
 		level.Info(logger).Log("addr", ":"+port)
 
@@ -609,6 +508,7 @@ func main() {
 			server := &http.Server{
 				Addr:      ":" + port,
 				TLSConfig: &tls.Config{Certificates: []tls.Certificate{cert}},
+				Handler:   r,
 			}
 
 			err = server.ListenAndServeTLS("", "")
@@ -619,7 +519,7 @@ func main() {
 		}
 
 		// Fall through to running on any other port defined with TLS disabled
-		err := http.ListenAndServe(":"+port, nil)
+		err := http.ListenAndServe(":"+port, r)
 		if err != nil {
 			level.Error(logger).Log("err", err)
 			os.Exit(1)
@@ -629,4 +529,47 @@ func main() {
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)
 	<-sigint
+}
+
+// spaHandler implements the http.Handler interface, so we can use it
+// to respond to HTTP requests. The path to the static directory and
+// path to the index file within that static directory are used to
+// serve the SPA in the given static directory.
+type spaHandler struct {
+	staticPath string
+	indexPath  string
+}
+
+// ServeHTTP inspects the URL path to locate a file within the static dir
+// on the SPA handler. If a file is found, it will be served. If not, the
+// file located at the index path on the SPA handler will be served. This
+// is suitable behavior for serving an SPA (single page application).
+func (h spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// get the absolute path to prevent directory traversal
+	path, err := filepath.Abs(r.URL.Path)
+	if err != nil {
+		// if we failed to get the absolute path respond with a 400 bad request
+		// and stop
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// prepend the path with the path to the static directory
+	path = filepath.Join(h.staticPath, path)
+
+	// check whether a file exists at the given path
+	_, err = os.Stat(path)
+	if os.IsNotExist(err) {
+		// file does not exist, serve index.html
+		http.ServeFile(w, r, filepath.Join(h.staticPath, h.indexPath))
+		return
+	} else if err != nil {
+		// if we got an error (that wasn't that the file doesn't exist) stating the
+		// file, return a 500 internal server error and stop
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// otherwise, use http.FileServer to serve the static dir
+	http.FileServer(http.Dir(h.staticPath)).ServeHTTP(w, r)
 }

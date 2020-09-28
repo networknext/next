@@ -90,8 +90,8 @@ type RoutingRulesSettings struct {
 
 var DefaultRoutingRulesSettings = RoutingRulesSettings{
 	MaxNibblinsPerGB:             250000000,
-	EnvelopeKbpsUp:               256,
-	EnvelopeKbpsDown:             256,
+	EnvelopeKbpsUp:               1024,
+	EnvelopeKbpsDown:             1024,
 	AcceptableLatency:            -1.0,
 	RTTThreshold:                 5.0,
 	RTTEpsilon:                   2.0,
@@ -109,8 +109,8 @@ var DefaultRoutingRulesSettings = RoutingRulesSettings{
 // forcing with 'Mode: ModeForceNext`).
 var LocalRoutingRulesSettings = RoutingRulesSettings{
 	MaxNibblinsPerGB:             250000000,
-	EnvelopeKbpsUp:               100,
-	EnvelopeKbpsDown:             100,
+	EnvelopeKbpsUp:               1024,
+	EnvelopeKbpsDown:             1024,
 	AcceptableLatency:            -1.0,
 	RTTThreshold:                 -5,
 	RTTEpsilon:                   0.1,
