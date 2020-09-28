@@ -24,7 +24,7 @@
         <div class="btn-group-vertical btn-group-sm float-right">
           <a
             href="#"
-            onclick="window.open('https://storage.googleapis.com/portal_sdk_download_storage_prod/next-3.4.6.zip')"
+            onclick="window.open('https://storage.googleapis.com/portal_sdk_download_storage/next-3.4.6.zip')"
             class="btn btn-primary m-1 btn-width"
             title="SDK v3.4.6"
           >
