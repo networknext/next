@@ -33,7 +33,7 @@ describe('Alert.vue', () => {
       expect(wrapper.findAll('.btn').length).toBe(2)
       expect(wrapper.findAll('.btn').at(0).text()).toBe('SDK v3.4.6')
       expect(wrapper.findAll('.btn').at(0).attributes('onclick'))
-        .toBe("window.open('https://storage.googleapis.com/portal_sdk_download_storage_prod/next-3.4.6.zip')")
+        .toBe("window.open('https://storage.googleapis.com/portal_sdk_download_storage/next-3.4.6.zip')")
       expect(wrapper.findAll('.btn').at(1).text()).toBe('v3.4.6 Documentation')
       expect(wrapper.findAll('.btn').at(1).attributes('onclick'))
         .toBe("window.open('https://network-next-sdk.readthedocs-hosted.com/en/latest/')")
