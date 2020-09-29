@@ -121,8 +121,11 @@ type Storer interface {
 	// RemoveDatacenterMap removes an entry from the DatacenterMaps table
 	RemoveDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error
 
+	// UpdateRelay updates only the specified fields in the provided relay
+	UpdateRelay(ctx context.Context, relay routing.Relay, dirtyFields map[string]interface{}) error
+
 	// SetRelayMetadata provides write access to ops metadat (mrc, overage, etc)
-	SetRelayMetadata(ctx context.Context, relay routing.Relay) error
+	// SetRelayMetadata(ctx context.Context, relay routing.Relay) error
 }
 
 type UnmarshalError struct {
@@ -140,6 +143,25 @@ type DoesNotExistError struct {
 
 func (e *DoesNotExistError) Error() string {
 	return fmt.Sprintf("%s with reference %v not found", e.resourceType, e.resourceRef)
+}
+
+type MultipleDBEntriesError struct {
+	resourceType string
+	resourceRef  interface{}
+}
+
+func (e *MultipleDBEntriesError) Error() string {
+	return fmt.Sprintf("Multiple entries in the DB for %s with reference %v", e.resourceType, e.resourceRef)
+}
+
+type DatabaseError struct {
+	dbErr        error
+	resourceType string
+	resourceRef  interface{}
+}
+
+func (e *DatabaseError) Error() string {
+	return fmt.Sprintf("Database error for %s with reference %v", e.resourceType, e.resourceRef)
 }
 
 type AlreadyExistsError struct {
