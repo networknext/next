@@ -115,25 +115,25 @@ func main() {
 		}
 	}
 
-	redisPoolTopSessions := storage.NewRedisPool(os.Getenv("REDIS_HOST_TOP_SESSIONS"))
+	redisPoolTopSessions := storage.NewRedisPool(os.Getenv("REDIS_HOST_TOP_SESSIONS"), 5, 64)
 	if err := storage.ValidateRedisPool(redisPoolTopSessions); err != nil {
 		level.Error(logger).Log("envvar", "REDIS_HOST_TOP_SESSIONS", "err", err)
 		os.Exit(1)
 	}
 
-	redisPoolSessionMap := storage.NewRedisPool(os.Getenv("REDIS_HOST_SESSION_MAP"))
+	redisPoolSessionMap := storage.NewRedisPool(os.Getenv("REDIS_HOST_SESSION_MAP"), 5, 64)
 	if err := storage.ValidateRedisPool(redisPoolSessionMap); err != nil {
 		level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_MAP", "err", err)
 		os.Exit(1)
 	}
 
-	redisPoolSessionMeta := storage.NewRedisPool(os.Getenv("REDIS_HOST_SESSION_META"))
+	redisPoolSessionMeta := storage.NewRedisPool(os.Getenv("REDIS_HOST_SESSION_META"), 5, 64)
 	if err := storage.ValidateRedisPool(redisPoolSessionMeta); err != nil {
 		level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_META", "err", err)
 		os.Exit(1)
 	}
 
-	redisPoolSessionSlices := storage.NewRedisPool(os.Getenv("REDIS_HOST_SESSION_SLICES"))
+	redisPoolSessionSlices := storage.NewRedisPool(os.Getenv("REDIS_HOST_SESSION_SLICES"), 5, 64)
 	if err := storage.ValidateRedisPool(redisPoolSessionSlices); err != nil {
 		level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_SLICES", "err", err)
 		os.Exit(1)
