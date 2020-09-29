@@ -162,11 +162,11 @@ func (relayMap *RelayMap) TimeoutLoop(ctx context.Context, timeoutSeconds int64,
 				if len(deleteList) > 0 {
 					relayMap.shard[index].mutex.Lock()
 					for i := range deleteList {
-						relayMap.cleanupCallback(relayMap.shard[index].relays[deleteList[i]])
-						delete(relayMap.shard[index].relays, deleteList[i])
 						if _, ok := relayMap.shard[index].relays[deleteList[i]]; ok {
 							atomic.AddUint64(&relayMap.numRelays, ^uint64(0))
 						}
+						relayMap.cleanupCallback(relayMap.shard[index].relays[deleteList[i]])
+						delete(relayMap.shard[index].relays, deleteList[i])
 					}
 					relayMap.shard[index].mutex.Unlock()
 				}
