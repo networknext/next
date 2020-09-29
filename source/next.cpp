@@ -2487,7 +2487,7 @@ namespace next
 
 void next_random_bytes( uint8_t * buffer, int bytes )
 {
-    randombytes_buf( buffer, bytes );
+    next_randombytes_buf( buffer, bytes );
 }
 
 float next_random_float()
@@ -2526,7 +2526,7 @@ bool check_packet_hash( const uint8_t * packet_data, int packet_bytes )
     next_assert( message_length <= 32 );
 
     uint8_t hash[NEXT_PACKET_HASH_BYTES];
-    crypto_generichash( hash, NEXT_PACKET_HASH_BYTES, message, message_length, next_backend_packet_hash_key, NEXT_CRYPTO_GENERICHASH_KEYBYTES );
+    next_crypto_generichash( hash, NEXT_PACKET_HASH_BYTES, message, message_length, next_backend_packet_hash_key, NEXT_CRYPTO_GENERICHASH_KEYBYTES );
 
     return memcmp( hash, packet_data + 1, NEXT_PACKET_HASH_BYTES ) == 0;
 }
@@ -9578,7 +9578,7 @@ int next_write_backend_packet( uint8_t packet_id, void * packet_object, uint8_t 
     next_assert( message_length > 0 );
     next_assert( message_length <= 32 );
 
-    crypto_generichash( packet_data + 1, NEXT_PACKET_HASH_BYTES, message, message_length, next_backend_packet_hash_key, NEXT_CRYPTO_GENERICHASH_KEYBYTES );
+    next_crypto_generichash( packet_data + 1, NEXT_PACKET_HASH_BYTES, message, message_length, next_backend_packet_hash_key, NEXT_CRYPTO_GENERICHASH_KEYBYTES );
 
 
     return NEXT_OK;

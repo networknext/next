@@ -52,4 +52,8 @@
 #define NEXT_CRYPTO_AEAD_CHACHA20POLY1305_IETF_KEYBYTES     32
 #define NEXT_CRYPTO_AEAD_CHACHA20POLY1305_IETF_NPUBBYTES    12
 
+extern void next_randombytes_buf( uint8_t * buffer, int bytes );
+
+extern int next_crypto_generichash( unsigned char * out, size_t outlen, const unsigned char * in, unsigned long long inlen, const unsigned char * key, size_t keylen );
+
 #endif // #ifndef NEXT_CRYPTO_H
