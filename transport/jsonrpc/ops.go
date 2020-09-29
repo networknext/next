@@ -895,7 +895,7 @@ func (s *OpsService) ListDatacenterMaps(r *http.Request, args *ListDatacenterMap
 // (from the original routing.Relay type) may or may not be covered in the future.
 type IncomingRelay struct {
 	Name      string `json:"displayName"`
-	Address   string `json:"publicAddress"`
+	Addr      string `json:"publicAddress"`
 	PublicKey string `json:"publicKey"`
 	// UpdateKey          []byte                 `json:"updateKey"`
 	NICSpeedMbps        int64 `json:"nicSpeedMbps"`
@@ -933,7 +933,8 @@ type UpdateRelayReply struct {
 
 // UpdateRelay makes a request to storage to update only the dirty fields for
 // the provided Relay. It also sanitizes all inputs priot to sending to the
-// Storage function.
+// Storage function. Sanitized inputs are stored back into the DirtyFields
+// struct as there is no valid way to access a struct field by variable name later on.
 func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *UpdateRelayReply) error {
 
 	relay := routing.Relay{}
@@ -944,14 +945,14 @@ func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *
 		case "Name":
 			name := fmt.Sprintf("%s", value)
 			if len(name) < 100 {
-				relay.Name = name
+				args.DirtyFields[key] = name
 			} else {
 				returnErr := fmt.Errorf("Relay name too long (%d)", len(name))
 				s.Logger.Log("err", returnErr)
 				return returnErr
 			}
 
-		case "Address":
+		case "Addr":
 			address := fmt.Sprintf("%s", value)
 			if len(address) < 25 {
 				addr, err := net.ResolveUDPAddr("udp", address)
@@ -959,7 +960,7 @@ func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *
 					s.Logger.Log("err", err)
 					return err
 				}
-				relay.Addr = *addr
+				args.DirtyFields[key] = *addr
 			} else {
 				returnErr := fmt.Errorf("Relay addr string too long (%d)", len(address))
 				s.Logger.Log("err", returnErr)
@@ -974,7 +975,7 @@ func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *
 					s.Logger.Log("err", err)
 					return err
 				}
-				relay.PublicKey = publicKey
+				args.DirtyFields[key] = publicKey
 			} else {
 				returnErr := fmt.Errorf("Relay PublicKey string too long (%d)", len(pkey))
 				s.Logger.Log("err", returnErr)
@@ -984,7 +985,7 @@ func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *
 		case "NICSpeedMbps":
 			nic, ok := value.(int32)
 			if ok && nic < 1e9 {
-				relay.NICSpeedMbps = nic
+				args.DirtyFields[key] = nic
 			} else {
 				returnErr := fmt.Errorf("Relay NICSpeedMbps too large")
 				s.Logger.Log("err", returnErr)
@@ -994,7 +995,7 @@ func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *
 		case "IncludedBandwidthGB":
 			bw, ok := value.(int32)
 			if ok && bw < 1e9 {
-				relay.IncludedBandwidthGB = bw
+				args.DirtyFields[key] = bw
 			} else {
 				returnErr := fmt.Errorf("Relay IncludedBandwidthGB too large")
 				s.Logger.Log("err", returnErr)
@@ -1004,7 +1005,7 @@ func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *
 		case "ManagementAddr":
 			mgmt := fmt.Sprintf("%s", value)
 			if len(mgmt) < 25 {
-				relay.ManagementAddr = mgmt
+				args.DirtyFields[key] = mgmt
 			} else {
 				returnErr := fmt.Errorf("Relay ManagementAddr string too long (%d)", len(mgmt))
 				s.Logger.Log("err", returnErr)
@@ -1014,7 +1015,7 @@ func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *
 		case "SSHUser":
 			user := fmt.Sprintf("%s", value)
 			if len(user) < 32 {
-				relay.SSHUser = user
+				args.DirtyFields[key] = user
 			} else {
 				returnErr := fmt.Errorf("Relay SSHUser too long (%d)", len(user))
 				s.Logger.Log("err", returnErr)
@@ -1024,7 +1025,7 @@ func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *
 		case "SSHPort":
 			port, ok := value.(int64)
 			if ok && port < 1e5 {
-				relay.SSHPort = port
+				args.DirtyFields[key] = port
 			} else {
 				returnErr := fmt.Errorf("Relay SSHPort too large")
 				s.Logger.Log("err", returnErr)
@@ -1040,7 +1041,7 @@ func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *
 					s.Logger.Log("err", returnErr)
 					return returnErr
 				} else {
-					relay.State = state
+					args.DirtyFields[key] = state
 				}
 			} else {
 				returnErr := fmt.Errorf("Relay State too long (%d)", len(stateValue))
@@ -1051,7 +1052,7 @@ func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *
 		case "MaxSessions":
 			maxSessions, ok := value.(uint32)
 			if ok && maxSessions < 1e5 {
-				relay.MaxSessions = uint32(maxSessions)
+				args.DirtyFields[key] = uint32(maxSessions)
 			} else {
 				returnErr := fmt.Errorf("Relay MaxSessions too large")
 				s.Logger.Log("err", returnErr)
@@ -1061,7 +1062,7 @@ func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *
 		case "MRC":
 			mrc, ok := value.(uint64)
 			if ok && mrc < 1e15 {
-				relay.MRC = routing.Nibblin(mrc)
+				args.DirtyFields[key] = routing.Nibblin(mrc)
 			} else {
 				returnErr := fmt.Errorf("Relay MRC too large")
 				s.Logger.Log("err", returnErr)
@@ -1071,7 +1072,7 @@ func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *
 		case "Overage":
 			overage, ok := value.(uint64)
 			if ok && overage < 1e15 {
-				relay.Overage = routing.Nibblin(uint64(overage))
+				args.DirtyFields[key] = routing.Nibblin(uint64(overage))
 			} else {
 				returnErr := fmt.Errorf("Relay Overage too large")
 				s.Logger.Log("err", returnErr)
@@ -1081,7 +1082,7 @@ func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *
 		case "BWRule":
 			bwRule, ok := value.(uint32)
 			if ok && bwRule < 6 {
-				relay.BWRule = routing.BandWidthRule(bwRule)
+				args.DirtyFields[key] = routing.BandWidthRule(bwRule)
 			} else {
 				returnErr := fmt.Errorf("Invalid relay BWRule")
 				s.Logger.Log("err", returnErr)
@@ -1091,7 +1092,7 @@ func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *
 		case "ContractTerm":
 			term, ok := value.(int32)
 			if ok && term < 48 {
-				relay.ContractTerm = int32(term)
+				args.DirtyFields[key] = term
 			} else {
 				returnErr := fmt.Errorf("Relay ContractTerm too large")
 				s.Logger.Log("err", returnErr)
@@ -1106,7 +1107,7 @@ func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *
 				s.Logger.Log("err", returnErr)
 				return returnErr
 			} else {
-				relay.StartDate = d
+				args.DirtyFields[key] = d
 			}
 
 		case "EndDate":
@@ -1117,13 +1118,13 @@ func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *
 				s.Logger.Log("err", returnErr)
 				return returnErr
 			} else {
-				relay.EndDate = d
+				args.DirtyFields[key] = d
 			}
 
 		case "Type":
 			machineType, ok := value.(uint32)
 			if ok && machineType < 6 {
-				relay.Type = routing.MachineType(machineType)
+				args.DirtyFields[key] = routing.MachineType(machineType)
 			} else {
 				returnErr := fmt.Errorf("Invalid relay Type too large")
 				s.Logger.Log("err", returnErr)
