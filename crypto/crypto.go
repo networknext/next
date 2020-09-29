@@ -148,8 +148,8 @@ func Hash(key []byte, data []byte) []byte {
 // HashPacket wraps hashPacket with is a wrapper around libsodium
 // We wrap this to avoid including C in other libs breaking
 // code linting
-func HashPacket(key []byte, data []byte) []byte {
-	return sodiumHashPacket(data, key)
+func HashPacket(key []byte, data []byte) {
+	sodiumHashPacket(data, key)
 }
 
 // Check wraps sodiumCheck with is a wrapper around libsodium

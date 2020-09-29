@@ -1179,7 +1179,7 @@ func TestRouteMatrix(t *testing.T) {
 
 	t.Run("RelaysIn", func(t *testing.T) {
 		t.Run("datacenter not found", func(t *testing.T) {
-			actual := routeMatrix.GetDatacenterRelayIDs(routing.Datacenter{ID: 0})
+			actual := routeMatrix.GetDatacenterRelayIDs(0)
 			assert.Nil(t, actual)
 		})
 
@@ -1187,7 +1187,7 @@ func TestRouteMatrix(t *testing.T) {
 			routeMatrixCopy := routeMatrix
 			routeMatrixCopy.DatacenterRelays[0] = []uint64{}
 
-			actual := routeMatrixCopy.GetDatacenterRelayIDs(routing.Datacenter{ID: 0})
+			actual := routeMatrixCopy.GetDatacenterRelayIDs(0)
 			assert.Empty(t, actual)
 		})
 
@@ -1199,7 +1199,7 @@ func TestRouteMatrix(t *testing.T) {
 				DatacenterRelays: map[uint64][]uint64{0: {0, 1}},
 			}
 
-			actual := routeMatrix.GetDatacenterRelayIDs(routing.Datacenter{ID: 0})
+			actual := routeMatrix.GetDatacenterRelayIDs(0)
 			assert.NotNil(t, actual)
 		})
 
@@ -1209,7 +1209,7 @@ func TestRouteMatrix(t *testing.T) {
 				1447163127,
 			}
 
-			actual := routeMatrix.GetDatacenterRelayIDs(routing.Datacenter{ID: 69517923})
+			actual := routeMatrix.GetDatacenterRelayIDs(69517923)
 			assert.Equal(t, expected, actual)
 		})
 	})
@@ -1686,6 +1686,6 @@ func BenchmarkRelaysIn(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		routeMatrix.GetDatacenterRelayIDs(routing.Datacenter{ID: routeMatrix.DatacenterIDs[0], Name: routeMatrix.DatacenterNames[0]})
+		routeMatrix.GetDatacenterRelayIDs(routeMatrix.DatacenterIDs[0])
 	}
 }
