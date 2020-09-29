@@ -380,7 +380,7 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 
 		destRelayIDs = routeMatrix.GetDatacenterRelayIDs(packet.DatacenterID)
 		if len(destRelayIDs) == 0 {
-			level.Error(logger).Log("msg", "failed to get dest relays", "err", err)
+			level.Error(logger).Log("msg", "failed to get dest relays")
 			metrics.ErrorMetrics.NoRelaysInDatacenter.Add(1)
 			return
 		}
