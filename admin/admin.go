@@ -7,3 +7,7 @@ import (
 var (
 	ErrInsufficientPrivileges = errors.New("insufficient privileges")
 )
+
+const (
+	TopSessionsSize = 1000
+)
