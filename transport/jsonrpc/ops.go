@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"regexp"
 	"sort"
@@ -871,18 +872,288 @@ func (s *OpsService) ListDatacenterMaps(r *http.Request, args *ListDatacenterMap
 	return nil
 }
 
-type RelayMetadataArgs struct {
-	Relay routing.Relay
+// type RelayMetadataArgs struct {
+// 	Relay routing.Relay
+// }
+
+// type RelayMetadataReply struct {
+// 	Ok           bool
+// 	ErrorMessage string
+// }
+
+// func (s *OpsService) RelayMetadata(r *http.Request, args *RelayMetadataArgs, reply *RelayMetadataReply) error {
+
+// 	err := s.Storage.SetRelayMetadata(context.Background(), args.Relay)
+// 	if err != nil {
+// 		return err // TODO detail
+// 	}
+
+// 	return nil
+// }
+
+// IncomingRelay - UpdateRelay() receives a relay object from the caller. Commented out fields
+// (from the original routing.Relay type) may or may not be covered in the future.
+type IncomingRelay struct {
+	Name      string `json:"displayName"`
+	Addr      string `json:"publicAddress"`
+	PublicKey string `json:"publicKey"`
+	// UpdateKey          []byte                 `json:"updateKey"`
+	NICSpeedMbps        int64 `json:"nicSpeedMbps"`
+	IncludedBandwidthGB int64 `json:"includedBandwidthGB"`
+	// Datacenter         *firestore.DocumentRef `json:"datacenter"`
+	// Seller             *firestore.DocumentRef `json:"seller"`
+	ManagementAddr string `json:"managementAddress"`
+	SSHUser        string `json:"sshUser"`
+	SSHPort        int64  `json:"sshPort"`
+	State          string `json:"state"`
+	// LastUpdateTime time.Time `json:"lastUpdateTime"`
+	MaxSessions  int64  `json:"maxSessions"`
+	MRC          int64  `json:"monthlyRecurringChargeNibblins"`
+	Overage      int64  `json:"overage"`
+	BWRule       int64  `json:"bandwidthRule"`
+	ContractTerm int64  `json:"contractTerm"`
+	StartDate    string `json:"startDate"`
+	EndDate      string `json:"endDate"`
+	Type         int64  `json:"machineType"`
 }
 
-type RelayMetadataReply struct {
+// UpdateRelayArgs contains both the relay to be updated and
+// a listing of the dirty fields
+type UpdateRelayArgs struct {
+	Relay       IncomingRelay
+	DirtyFields map[string]interface{}
+}
+
+// UpdateRelayReply contains info to send back to the remote caller. ErrorMessage
+// should be detailed and aimed at a web browser user
+type UpdateRelayReply struct {
 	Ok           bool
 	ErrorMessage string
 }
 
-func (s *OpsService) RelayMetadata(r *http.Request, args *RelayMetadataArgs, reply *RelayMetadataReply) error {
+// UpdateRelay makes a request to storage to update only the dirty fields for
+// the provided Relay. It also sanitizes all inputs priot to sending to the
+// Storage function. Sanitized inputs are stored back into the DirtyFields
+// struct as there is no valid way to access a struct field by variable name later on.
+func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *UpdateRelayReply) error {
 
-	err := s.Storage.SetRelayMetadata(context.Background(), args.Relay)
+	// relay only needs the Name field set for Firestore. It will need the
+	// ID/PK set for SQL usage (TODO)
+	relay := routing.Relay{}
+
+	// avoid simple SQL injection hits
+	for key, value := range args.DirtyFields {
+		switch key {
+		case "Name":
+			name := fmt.Sprintf("%s", value)
+			if len(name) < 100 {
+				args.DirtyFields[key] = name
+				relay.Name = name // used for lookup in the Storage function
+			} else {
+				returnErr := fmt.Errorf("Relay name too long (%d)", len(name))
+				s.Logger.Log("err", returnErr)
+				return returnErr
+			}
+
+		case "Addr":
+			address := fmt.Sprintf("%s", value)
+			if len(address) < 25 {
+				addr, err := net.ResolveUDPAddr("udp", address)
+				if err != nil {
+					s.Logger.Log("err", err)
+					return err
+				}
+				args.DirtyFields[key] = *addr
+				relay.Addr = *addr
+			} else {
+				returnErr := fmt.Errorf("Relay addr string too long (%d)", len(address))
+				s.Logger.Log("err", returnErr)
+				return returnErr
+			}
+
+		case "PublicKey":
+			pkey := fmt.Sprintf("%s", value)
+			if len(pkey) < 1000 {
+				publicKey, err := base64.StdEncoding.DecodeString(pkey)
+				if err != nil {
+					s.Logger.Log("err", err)
+					return err
+				}
+				args.DirtyFields[key] = publicKey
+				relay.PublicKey = publicKey
+			} else {
+				returnErr := fmt.Errorf("Relay PublicKey string too long (%d)", len(pkey))
+				s.Logger.Log("err", returnErr)
+				return returnErr
+			}
+
+		case "NICSpeedMbps":
+			nic, ok := value.(int32)
+			if ok && nic < 1e9 {
+				args.DirtyFields[key] = nic
+				relay.NICSpeedMbps = nic
+			} else {
+				returnErr := fmt.Errorf("Relay NICSpeedMbps too large")
+				s.Logger.Log("err", returnErr)
+				return returnErr
+			}
+
+		case "IncludedBandwidthGB":
+			bw, ok := value.(int32)
+			if ok && bw < 1e9 {
+				args.DirtyFields[key] = bw
+				relay.IncludedBandwidthGB = bw
+			} else {
+				returnErr := fmt.Errorf("Relay IncludedBandwidthGB too large")
+				s.Logger.Log("err", returnErr)
+				return returnErr
+			}
+
+		case "ManagementAddr":
+			mgmt := fmt.Sprintf("%s", value)
+			if len(mgmt) < 25 {
+				args.DirtyFields[key] = mgmt
+				relay.ManagementAddr = mgmt
+			} else {
+				returnErr := fmt.Errorf("Relay ManagementAddr string too long (%d)", len(mgmt))
+				s.Logger.Log("err", returnErr)
+				return returnErr
+			}
+
+		case "SSHUser":
+			user := fmt.Sprintf("%s", value)
+			if len(user) < 32 {
+				args.DirtyFields[key] = user
+				relay.SSHUser = user
+			} else {
+				returnErr := fmt.Errorf("Relay SSHUser too long (%d)", len(user))
+				s.Logger.Log("err", returnErr)
+				return returnErr
+			}
+
+		case "SSHPort":
+			port, ok := value.(int64)
+			if ok && port < 1e5 {
+				args.DirtyFields[key] = port
+				relay.SSHPort = port
+			} else {
+				returnErr := fmt.Errorf("Relay SSHPort too large")
+				s.Logger.Log("err", returnErr)
+				return returnErr
+			}
+
+		case "State":
+			stateValue := fmt.Sprintf("%s", value)
+			if len(stateValue) < 32 {
+				state, err := routing.ParseRelayState(stateValue)
+				if err != nil {
+					returnErr := fmt.Errorf("Invalid relay state (%s)", stateValue)
+					s.Logger.Log("err", returnErr)
+					return returnErr
+				} else {
+					args.DirtyFields[key] = state
+					relay.State = state
+				}
+			} else {
+				returnErr := fmt.Errorf("Relay State too long (%d)", len(stateValue))
+				s.Logger.Log("err", returnErr)
+				return returnErr
+			}
+
+		case "MaxSessions":
+			maxSessions, ok := value.(uint32)
+			if ok && maxSessions < 1e5 {
+				args.DirtyFields[key] = maxSessions
+				relay.MaxSessions = maxSessions
+			} else {
+				returnErr := fmt.Errorf("Relay MaxSessions too large")
+				s.Logger.Log("err", returnErr)
+				return returnErr
+			}
+
+		case "MRC":
+			mrc, ok := value.(uint64)
+			if ok && mrc < 1e15 {
+				args.DirtyFields[key] = routing.Nibblin(mrc)
+				relay.MRC = routing.Nibblin(mrc)
+			} else {
+				returnErr := fmt.Errorf("Relay MRC too large")
+				s.Logger.Log("err", returnErr)
+				return returnErr
+			}
+
+		case "Overage":
+			overage, ok := value.(uint64)
+			if ok && overage < 1e15 {
+				args.DirtyFields[key] = routing.Nibblin(overage)
+				relay.Overage = routing.Nibblin(overage)
+			} else {
+				returnErr := fmt.Errorf("Relay Overage too large")
+				s.Logger.Log("err", returnErr)
+				return returnErr
+			}
+
+		case "BWRule":
+			bwRule, ok := value.(uint32)
+			if ok && bwRule < 6 {
+				args.DirtyFields[key] = routing.BandWidthRule(bwRule)
+				relay.BWRule = routing.BandWidthRule(bwRule)
+			} else {
+				returnErr := fmt.Errorf("Invalid relay BWRule")
+				s.Logger.Log("err", returnErr)
+				return returnErr
+			}
+
+		case "ContractTerm":
+			term, ok := value.(int32)
+			if ok && term < 48 {
+				args.DirtyFields[key] = term
+				relay.ContractTerm = term
+			} else {
+				returnErr := fmt.Errorf("Relay ContractTerm too large")
+				s.Logger.Log("err", returnErr)
+				return returnErr
+			}
+
+		case "StartDate":
+			startDate := fmt.Sprintf("%s", value)
+			d, err := time.Parse("2006-01-02", startDate)
+			if err != nil {
+				returnErr := fmt.Errorf("Invalid relay StartDate %s", startDate)
+				s.Logger.Log("err", returnErr)
+				return returnErr
+			} else {
+				args.DirtyFields[key] = d
+				relay.StartDate = d
+			}
+
+		case "EndDate":
+			endDate := fmt.Sprintf("%s", value)
+			d, err := time.Parse("2006-01-02", endDate)
+			if err != nil {
+				returnErr := fmt.Errorf("Invalid relay EndDate %s", endDate)
+				s.Logger.Log("err", returnErr)
+				return returnErr
+			} else {
+				args.DirtyFields[key] = d
+				relay.EndDate = d
+			}
+
+		case "Type":
+			machineType, ok := value.(uint32)
+			if ok && machineType < 6 {
+				args.DirtyFields[key] = routing.MachineType(machineType)
+				relay.Type = routing.MachineType(machineType)
+			} else {
+				returnErr := fmt.Errorf("Invalid relay Type too large")
+				s.Logger.Log("err", returnErr)
+				return returnErr
+			}
+		}
+	}
+
+	// Make call to Storage with sanitized inputs
+	err := s.Storage.UpdateRelay(context.Background(), relay, args.DirtyFields)
 	if err != nil {
 		return err // TODO detail
 	}
