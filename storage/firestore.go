@@ -150,6 +150,7 @@ type internalConfig struct {
 	RTTVeto_PacketLoss         int32 `firestore:"rttVeto_packetLoss"`
 	RTTVeto_Multipath          int32 `firestore:"rttVeto_multipath"`
 	MultipathOverloadThreshold int32 `firestore:"multipathOverloadThreshold"`
+	TryBeforeYouBuy            bool  `firestore:"tryBeforeYouBuy"`
 }
 
 type FirestoreError struct {
@@ -2357,6 +2358,7 @@ func (fs *Firestore) getInternalConfigForBuyerID(ctx context.Context, buyerID st
 	ic.RTTVeto_PacketLoss = tempIC.RTTVeto_PacketLoss
 	ic.RTTVeto_Multipath = tempIC.RTTVeto_Multipath
 	ic.MultipathOverloadThreshold = tempIC.MultipathOverloadThreshold
+	ic.TryBeforeYouBuy = tempIC.TryBeforeYouBuy
 
 	return ic, nil
 }
@@ -2372,6 +2374,7 @@ func (fs *Firestore) setInternalConfigForBuyerID(ctx context.Context, buyerID st
 		"rttVeto_packetLoss":         internalConfig.RTTVeto_PacketLoss,
 		"rttVeto_multipath":          internalConfig.RTTVeto_Multipath,
 		"multipathOverloadThreshold": internalConfig.MultipathOverloadThreshold,
+		"tryBeforeYouBuy":            internalConfig.TryBeforeYouBuy,
 	}
 
 	_, err := fs.Client.Collection("InternalConfig").Doc(internalConfigID).Set(ctx, icFirestore, firestore.MergeAll)
