@@ -4,11 +4,11 @@ import Vue from 'vue'
 import App from './App.vue'
 import router from './router'
 import store from './store'
-import Vuelidate from 'vuelidate'
 import 'bootstrap'
 import 'bootstrap/dist/css/bootstrap.min.css'
 import { JSONRPCPlugin } from './plugins/jsonrpc'
 import { AuthPlugin } from './plugins/auth'
+import VueGtag from 'vue-gtag'
 
 /**
  * Main file responsible for mounting the App component,
@@ -26,7 +26,9 @@ const win: any = window
 const clientID = process.env.VUE_APP_AUTH0_CLIENTID
 const domain = process.env.VUE_APP_AUTH0_DOMAIN
 
-Vue.use(Vuelidate)
+Vue.use(VueGtag, {
+  config: { id: 'UA-141272717-2' }
+}, router)
 
 Vue.use(AuthPlugin, {
   domain: domain,
