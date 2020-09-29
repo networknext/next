@@ -127,6 +127,11 @@ func (relayMap *RelayMap) RemoveRelayData(relayAddress string) {
 	relayHash := crypto.HashID(relayAddress)
 	index := relayHash % NumRelayMapShards
 	relayMap.shard[index].mutex.Lock()
+	// decrement the counter only if the map contains the entry
+	if _, ok := relayMap.shard[index].relays[relayAddress]; ok {
+		atomic.AddUint64(&relayMap.numRelays, ^uint64(0))
+	}
+	relayMap.cleanupCallback(relayMap.shard[index].relays[relayAddress])
 	delete(relayMap.shard[index].relays, relayAddress)
 	relayMap.shard[index].mutex.Unlock()
 }
@@ -157,9 +162,11 @@ func (relayMap *RelayMap) TimeoutLoop(ctx context.Context, timeoutSeconds int64,
 				if len(deleteList) > 0 {
 					relayMap.shard[index].mutex.Lock()
 					for i := range deleteList {
+						if _, ok := relayMap.shard[index].relays[deleteList[i]]; ok {
+							atomic.AddUint64(&relayMap.numRelays, ^uint64(0))
+						}
 						relayMap.cleanupCallback(relayMap.shard[index].relays[deleteList[i]])
 						delete(relayMap.shard[index].relays, deleteList[i])
-						atomic.AddUint64(&relayMap.numRelays, ^uint64(0))
 					}
 					relayMap.shard[index].mutex.Unlock()
 				}
