@@ -1416,13 +1416,15 @@ func (fs *Firestore) UpdateRelay(ctx context.Context, modifiedRelay routing.Rela
 	}
 
 	// docs is a slice of length 1
-	// Iterate through the list of dirty fields and update
 	for _, doc := range docs {
-		for key, value := range dirtyFields {
-			_, err = doc.Ref.Update(ctx, []firestore.Update{{Path: key, Value: value}})
-			if err != nil {
-				return &DatabaseError{dbErr: err, resourceType: "relay", resourceRef: fmt.Sprintf("%x", modifiedRelay.ID)}
-			}
+		// 	for key, value := range dirtyFields {
+		// 		_, err = doc.Ref.Update(ctx, []firestore.Update{{Path: key, Value: value}})
+		// 		if err != nil {
+		// 			return &DatabaseError{dbErr: err, resourceType: "relay", resourceRef: fmt.Sprintf("%x", modifiedRelay.ID)}
+		// 		}
+		// 	}
+		if _, err := doc.Ref.Set(ctx, dirtyFields, firestore.MergeAll); err != nil {
+			return &FirestoreError{err: err}
 		}
 	}
 

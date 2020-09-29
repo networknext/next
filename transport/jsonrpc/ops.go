@@ -935,6 +935,9 @@ type UpdateRelayReply struct {
 // the provided Relay. It also sanitizes all inputs priot to sending to the
 // Storage function. Sanitized inputs are stored back into the DirtyFields
 // struct as there is no valid way to access a struct field by variable name later on.
+//
+// TODO: The key names here represent the Firestore field names. These will not be
+//       the same with an RDBMS so care must be taken when create the Storage SQL implentation.
 func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *UpdateRelayReply) error {
 
 	// relay only needs the Name field set for Firestore. It will need the
@@ -944,7 +947,7 @@ func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *
 	// avoid simple SQL injection hits
 	for key, value := range args.DirtyFields {
 		switch key {
-		case "Name":
+		case "displayName":
 			name := fmt.Sprintf("%s", value)
 			if len(name) < 100 {
 				args.DirtyFields[key] = name
@@ -955,7 +958,7 @@ func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *
 				return returnErr
 			}
 
-		case "Addr":
+		case "publicAddress":
 			address := fmt.Sprintf("%s", value)
 			if len(address) < 25 {
 				addr, err := net.ResolveUDPAddr("udp", address)
@@ -971,7 +974,7 @@ func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *
 				return returnErr
 			}
 
-		case "PublicKey":
+		case "publicKey":
 			pkey := fmt.Sprintf("%s", value)
 			if len(pkey) < 1000 {
 				publicKey, err := base64.StdEncoding.DecodeString(pkey)
@@ -987,7 +990,7 @@ func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *
 				return returnErr
 			}
 
-		case "NICSpeedMbps":
+		case "nicSpeedMbps":
 			nic, ok := value.(int32)
 			if ok && nic < 1e9 {
 				args.DirtyFields[key] = nic
@@ -998,7 +1001,7 @@ func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *
 				return returnErr
 			}
 
-		case "IncludedBandwidthGB":
+		case "includedBandwidthGB":
 			bw, ok := value.(int32)
 			if ok && bw < 1e9 {
 				args.DirtyFields[key] = bw
@@ -1009,7 +1012,7 @@ func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *
 				return returnErr
 			}
 
-		case "ManagementAddr":
+		case "managementAddress":
 			mgmt := fmt.Sprintf("%s", value)
 			if len(mgmt) < 25 {
 				args.DirtyFields[key] = mgmt
@@ -1020,7 +1023,7 @@ func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *
 				return returnErr
 			}
 
-		case "SSHUser":
+		case "sshUser":
 			user := fmt.Sprintf("%s", value)
 			if len(user) < 32 {
 				args.DirtyFields[key] = user
@@ -1031,7 +1034,7 @@ func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *
 				return returnErr
 			}
 
-		case "SSHPort":
+		case "sshPort":
 			port, ok := value.(int64)
 			if ok && port < 65336 {
 				args.DirtyFields[key] = port
@@ -1042,7 +1045,7 @@ func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *
 				return returnErr
 			}
 
-		case "State":
+		case "state":
 			stateValue := fmt.Sprintf("%s", value)
 			if len(stateValue) < 32 {
 				state, err := routing.ParseRelayState(stateValue)
@@ -1060,7 +1063,7 @@ func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *
 				return returnErr
 			}
 
-		case "MaxSessions":
+		case "maxSessions":
 			maxSessions, ok := value.(uint32)
 			if ok && maxSessions < 1e5 {
 				args.DirtyFields[key] = maxSessions
@@ -1071,7 +1074,7 @@ func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *
 				return returnErr
 			}
 
-		case "MRC":
+		case "monthlyRecurringChargeNibblins":
 			mrc, ok := value.(uint64)
 			if ok && mrc < 1e15 {
 				args.DirtyFields[key] = routing.Nibblin(mrc)
@@ -1082,7 +1085,7 @@ func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *
 				return returnErr
 			}
 
-		case "Overage":
+		case "overage":
 			overage, ok := value.(uint64)
 			if ok && overage < 1e15 {
 				args.DirtyFields[key] = routing.Nibblin(overage)
@@ -1093,7 +1096,7 @@ func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *
 				return returnErr
 			}
 
-		case "BWRule":
+		case "bandwidthRule":
 			bwRule, ok := value.(uint32)
 			if ok && bwRule < 6 {
 				args.DirtyFields[key] = routing.BandWidthRule(bwRule)
@@ -1104,7 +1107,7 @@ func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *
 				return returnErr
 			}
 
-		case "ContractTerm":
+		case "contractTerm":
 			term, ok := value.(int32)
 			if ok && term < 48 {
 				args.DirtyFields[key] = term
@@ -1115,7 +1118,7 @@ func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *
 				return returnErr
 			}
 
-		case "StartDate":
+		case "startDate":
 			startDate := fmt.Sprintf("%s", value)
 			d, err := time.Parse("2006-01-02", startDate)
 			if err != nil {
@@ -1127,7 +1130,7 @@ func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *
 				relay.StartDate = d
 			}
 
-		case "EndDate":
+		case "endDate":
 			endDate := fmt.Sprintf("%s", value)
 			d, err := time.Parse("2006-01-02", endDate)
 			if err != nil {
@@ -1139,7 +1142,7 @@ func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *
 				relay.EndDate = d
 			}
 
-		case "Type":
+		case "machineType":
 			machineType, ok := value.(uint32)
 			if ok && machineType < 6 {
 				args.DirtyFields[key] = routing.MachineType(machineType)
