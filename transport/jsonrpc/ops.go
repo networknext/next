@@ -871,18 +871,44 @@ func (s *OpsService) ListDatacenterMaps(r *http.Request, args *ListDatacenterMap
 	return nil
 }
 
-type RelayMetadataArgs struct {
-	Relay routing.Relay
+// type RelayMetadataArgs struct {
+// 	Relay routing.Relay
+// }
+
+// type RelayMetadataReply struct {
+// 	Ok           bool
+// 	ErrorMessage string
+// }
+
+// func (s *OpsService) RelayMetadata(r *http.Request, args *RelayMetadataArgs, reply *RelayMetadataReply) error {
+
+// 	err := s.Storage.SetRelayMetadata(context.Background(), args.Relay)
+// 	if err != nil {
+// 		return err // TODO detail
+// 	}
+
+// 	return nil
+// }
+
+// UpdateRelayArgs contains both the relay to be updated and
+// a listing of the dirty fields
+type UpdateRelayArgs struct {
+	Relay       routing.Relay
+	DirtyFields map[string]interface{}
 }
 
-type RelayMetadataReply struct {
+// UpdateRelayReply contains info to send back to the remote caller. ErrorMessage
+// should be detailed and aimed at a web browser user
+type UpdateRelayReply struct {
 	Ok           bool
 	ErrorMessage string
 }
 
-func (s *OpsService) RelayMetadata(r *http.Request, args *RelayMetadataArgs, reply *RelayMetadataReply) error {
+// UpdateRelay makes a request to storage to update only the dirty fields for
+// the provided Relay
+func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *UpdateRelayReply) error {
 
-	err := s.Storage.SetRelayMetadata(context.Background(), args.Relay)
+	err := s.Storage.UpdateRelay(context.Background(), args.Relay, args.DirtyFields)
 	if err != nil {
 		return err // TODO detail
 	}
