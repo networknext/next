@@ -1033,7 +1033,7 @@ func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *
 
 		case "SSHPort":
 			port, ok := value.(int64)
-			if ok && port < 1e5 {
+			if ok && port < 65336 {
 				args.DirtyFields[key] = port
 				relay.SSHPort = port
 			} else {
