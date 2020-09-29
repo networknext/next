@@ -891,9 +891,9 @@ func (s *OpsService) ListDatacenterMaps(r *http.Request, args *ListDatacenterMap
 // 	return nil
 // }
 
-// UpdateRelay() receives a relay object from the caller. Commented out fields
-// (fro the original routing.Relay type) may or may not be covered in the future.
-type incomingRelay struct {
+// IncomingRelay - UpdateRelay() receives a relay object from the caller. Commented out fields
+// (from the original routing.Relay type) may or may not be covered in the future.
+type IncomingRelay struct {
 	Name      string `json:"displayName"`
 	Address   string `json:"publicAddress"`
 	PublicKey string `json:"publicKey"`
@@ -920,7 +920,7 @@ type incomingRelay struct {
 // UpdateRelayArgs contains both the relay to be updated and
 // a listing of the dirty fields
 type UpdateRelayArgs struct {
-	Relay       incomingRelay
+	Relay       IncomingRelay
 	DirtyFields map[string]interface{}
 }
 
