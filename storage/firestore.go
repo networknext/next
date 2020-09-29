@@ -1238,7 +1238,6 @@ func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 		// If the relay is the one we want to update, update it with the new data
 		rid := crypto.HashID(relayInRemoteStorage.Address)
 		if rid == r.ID {
-			fmt.Println("Found relay - updating")
 			// Set the data to update the relay with
 			newRelayData := map[string]interface{}{
 				"name":            r.Name,
