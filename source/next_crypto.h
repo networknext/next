@@ -56,4 +56,17 @@ extern void next_randombytes_buf( uint8_t * buffer, int bytes );
 
 extern int next_crypto_generichash( unsigned char * out, size_t outlen, const unsigned char * in, unsigned long long inlen, const unsigned char * key, size_t keylen );
 
+struct next_crypto_sign_state_t
+{
+    uint8_t dummy[1024];
+};
+
+int next_crypto_sign_init( struct next_crypto_sign_state_t * state );
+
+int next_crypto_sign_update( struct next_crypto_sign_state_t * state, const unsigned char * m, unsigned long long mlen );
+
+int next_crypto_sign_final_create( struct next_crypto_sign_state_t * state, unsigned char * sig, unsigned long long * siglen_p, const unsigned char *sk );
+
+int next_crypto_sign_final_verify( struct next_crypto_sign_state_t * state, const unsigned char * sig, const unsigned char * pk );
+
 #endif // #ifndef NEXT_CRYPTO_H

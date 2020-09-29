@@ -3396,10 +3396,10 @@ int next_write_packet( uint8_t packet_id, void * packet_object, uint8_t * packet
     if ( signed_packet && signed_packet[packet_id] )
     {
         next_assert( sign_private_key );
-        crypto_sign_state state;
-        crypto_sign_init( &state );
-        crypto_sign_update( &state, packet_data, *packet_bytes );
-        crypto_sign_final_create( &state, packet_data + *packet_bytes, NULL, sign_private_key );
+        next_crypto_sign_state_t state;
+        next_crypto_sign_init( &state );
+        next_crypto_sign_update( &state, packet_data, *packet_bytes );
+        next_crypto_sign_final_create( &state, packet_data + *packet_bytes, NULL, sign_private_key );
         *packet_bytes += NEXT_CRYPTO_SIGN_BYTES;
     }
 
@@ -3461,10 +3461,10 @@ int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_obj
             return NEXT_ERROR;
         }
 
-        crypto_sign_state state;
-        crypto_sign_init( &state );
-        crypto_sign_update( &state, packet_data, packet_bytes - NEXT_CRYPTO_SIGN_BYTES );
-        if ( crypto_sign_final_verify( &state, packet_data + packet_bytes - NEXT_CRYPTO_SIGN_BYTES, sign_public_key ) != 0 )
+        next_crypto_sign_state_t state;
+        next_crypto_sign_init( &state );
+        next_crypto_sign_update( &state, packet_data, packet_bytes - NEXT_CRYPTO_SIGN_BYTES );
+        if ( next_crypto_sign_final_verify( &state, packet_data + packet_bytes - NEXT_CRYPTO_SIGN_BYTES, sign_public_key ) != 0 )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "signed packet did not verify" );
             return NEXT_ERROR;
@@ -9560,10 +9560,10 @@ int next_write_backend_packet( uint8_t packet_id, void * packet_object, uint8_t 
     if ( signed_packet && signed_packet[packet_id] )
     {
         next_assert( sign_private_key );
-        crypto_sign_state state;
-        crypto_sign_init( &state );
-        crypto_sign_update( &state, packet_data + 1 + NEXT_PACKET_HASH_BYTES, *packet_bytes - 1 - NEXT_PACKET_HASH_BYTES );
-        crypto_sign_final_create( &state, packet_data + *packet_bytes, NULL, sign_private_key );
+        next_crypto_sign_state_t state;
+        next_crypto_sign_init( &state );
+        next_crypto_sign_update( &state, packet_data + 1 + NEXT_PACKET_HASH_BYTES, *packet_bytes - 1 - NEXT_PACKET_HASH_BYTES );
+        next_crypto_sign_final_create( &state, packet_data + *packet_bytes, NULL, sign_private_key );
         *packet_bytes += NEXT_CRYPTO_SIGN_BYTES;
     }
 
@@ -9616,10 +9616,10 @@ int next_read_backend_packet( uint8_t * packet_data, int packet_bytes, void * pa
             return NEXT_ERROR;
         }
 
-        crypto_sign_state state;
-        crypto_sign_init( &state );
-        crypto_sign_update( &state, packet_data, packet_bytes - NEXT_CRYPTO_SIGN_BYTES );
-        if ( crypto_sign_final_verify( &state, packet_data + packet_bytes - NEXT_CRYPTO_SIGN_BYTES, sign_public_key ) != 0 )
+        next_crypto_sign_state_t state;
+        next_crypto_sign_init( &state );
+        next_crypto_sign_update( &state, packet_data, packet_bytes - NEXT_CRYPTO_SIGN_BYTES );
+        if ( next_crypto_sign_final_verify( &state, packet_data + packet_bytes - NEXT_CRYPTO_SIGN_BYTES, sign_public_key ) != 0 )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "signed packet did not verify" );
             return NEXT_ERROR;
@@ -13297,19 +13297,19 @@ static void test_crypto_sign_detached()
     unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
     crypto_sign_keypair( public_key, private_key );
 
-    crypto_sign_state state;
+    next_crypto_sign_state_t state;
 
     unsigned char signature[NEXT_CRYPTO_SIGN_BYTES];
 
-    crypto_sign_init( &state );
-    crypto_sign_update( &state, MESSAGE_PART1, MESSAGE_PART1_LEN );
-    crypto_sign_update( &state, MESSAGE_PART2, MESSAGE_PART2_LEN );
-    crypto_sign_final_create( &state, signature, NULL, private_key );
+    next_crypto_sign_init( &state );
+    next_crypto_sign_update( &state, MESSAGE_PART1, MESSAGE_PART1_LEN );
+    next_crypto_sign_update( &state, MESSAGE_PART2, MESSAGE_PART2_LEN );
+    next_crypto_sign_final_create( &state, signature, NULL, private_key );
 
-    crypto_sign_init( &state );
-    crypto_sign_update( &state, MESSAGE_PART1, MESSAGE_PART1_LEN );
-    crypto_sign_update( &state, MESSAGE_PART2, MESSAGE_PART2_LEN );
-    check( crypto_sign_final_verify( &state, signature, public_key ) == 0 );
+    next_crypto_sign_init( &state );
+    next_crypto_sign_update( &state, MESSAGE_PART1, MESSAGE_PART1_LEN );
+    next_crypto_sign_update( &state, MESSAGE_PART2, MESSAGE_PART2_LEN );
+    check( next_crypto_sign_final_verify( &state, signature, public_key ) == 0 );
 }
 
 static void test_crypto_key_exchange()
