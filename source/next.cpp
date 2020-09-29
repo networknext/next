@@ -2467,6 +2467,8 @@ namespace next
 
 // -------------------------------------------------------------
 
+#include "next_crypto.h"
+
 #ifdef _MSC_VER
 #pragma warning(disable:4996)
 #pragma warning(push)
@@ -2524,7 +2526,7 @@ bool check_packet_hash( const uint8_t * packet_data, int packet_bytes )
     next_assert( message_length <= 32 );
 
     uint8_t hash[NEXT_PACKET_HASH_BYTES];
-    crypto_generichash( hash, NEXT_PACKET_HASH_BYTES, message, message_length, next_backend_packet_hash_key, crypto_generichash_KEYBYTES );
+    crypto_generichash( hash, NEXT_PACKET_HASH_BYTES, message, message_length, next_backend_packet_hash_key, NEXT_CRYPTO_GENERICHASH_KEYBYTES );
 
     return memcmp( hash, packet_data + 1, NEXT_PACKET_HASH_BYTES ) == 0;
 }
@@ -2554,8 +2556,8 @@ struct NextUpgradeToken
         memset( buffer, 0, NEXT_UPGRADE_TOKEN_BYTES );
 
         uint8_t * nonce = buffer;
-        next_random_bytes( nonce, crypto_secretbox_NONCEBYTES );
-        buffer += crypto_secretbox_NONCEBYTES;
+        next_random_bytes( nonce, NEXT_CRYPTO_SECRETBOX_NONCEBYTES );
+        buffer += NEXT_CRYPTO_SECRETBOX_NONCEBYTES;
 
         uint8_t * p = buffer;
         
@@ -2566,11 +2568,11 @@ struct NextUpgradeToken
         
         int bytes_written = p - buffer;
 
-        crypto_secretbox_easy( buffer, buffer, NEXT_UPGRADE_TOKEN_BYTES - crypto_secretbox_NONCEBYTES - crypto_secretbox_MACBYTES, nonce, private_key );
+        crypto_secretbox_easy( buffer, buffer, NEXT_UPGRADE_TOKEN_BYTES - NEXT_CRYPTO_SECRETBOX_NONCEBYTES - NEXT_CRYPTO_SECRETBOX_MACBYTES, nonce, private_key );
 
-        next_assert( crypto_secretbox_NONCEBYTES + bytes_written + crypto_secretbox_MACBYTES <= NEXT_UPGRADE_TOKEN_BYTES );
+        next_assert( NEXT_CRYPTO_SECRETBOX_NONCEBYTES + bytes_written + NEXT_CRYPTO_SECRETBOX_MACBYTES <= NEXT_UPGRADE_TOKEN_BYTES );
 
-        return crypto_secretbox_NONCEBYTES + bytes_written + crypto_secretbox_MACBYTES;
+        return NEXT_CRYPTO_SECRETBOX_NONCEBYTES + bytes_written + NEXT_CRYPTO_SECRETBOX_MACBYTES;
     }
 
     bool Read( const uint8_t * buffer, const uint8_t * private_key )
@@ -2581,9 +2583,9 @@ struct NextUpgradeToken
         const uint8_t * nonce = buffer;
 
         uint8_t decrypted[NEXT_UPGRADE_TOKEN_BYTES];
-        memcpy( decrypted, buffer + crypto_secretbox_NONCEBYTES, NEXT_UPGRADE_TOKEN_BYTES - crypto_secretbox_NONCEBYTES );
+        memcpy( decrypted, buffer + NEXT_CRYPTO_SECRETBOX_NONCEBYTES, NEXT_UPGRADE_TOKEN_BYTES - NEXT_CRYPTO_SECRETBOX_NONCEBYTES );
 
-        if ( crypto_secretbox_open_easy( decrypted, decrypted, NEXT_UPGRADE_TOKEN_BYTES - crypto_secretbox_NONCEBYTES, nonce, private_key ) != 0 )
+        if ( crypto_secretbox_open_easy( decrypted, decrypted, NEXT_UPGRADE_TOKEN_BYTES - NEXT_CRYPTO_SECRETBOX_NONCEBYTES, nonce, private_key ) != 0 )
             return false;
 
         const uint8_t * p = decrypted;
@@ -2964,7 +2966,7 @@ struct NextUpgradeRequestPacket
     uint64_t protocol_version;
     uint64_t session_id;
     next_address_t server_address;
-    uint8_t server_kx_public_key[crypto_kx_PUBLICKEYBYTES];
+    uint8_t server_kx_public_key[NEXT_CRYPTO_KX_PUBLICKEYBYTES];
     uint8_t upgrade_token[NEXT_UPGRADE_TOKEN_BYTES];
 
     NextUpgradeRequestPacket()
@@ -2977,7 +2979,7 @@ struct NextUpgradeRequestPacket
         serialize_uint64( stream, protocol_version );
         serialize_uint64( stream, session_id );
         serialize_address( stream, server_address );
-        serialize_bytes( stream, server_kx_public_key, crypto_kx_PUBLICKEYBYTES );
+        serialize_bytes( stream, server_kx_public_key, NEXT_CRYPTO_KX_PUBLICKEYBYTES );
         serialize_bytes( stream, upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );
         return true;
     }
@@ -2986,8 +2988,8 @@ struct NextUpgradeRequestPacket
 struct NextUpgradeResponsePacket
 {
     uint8_t client_open_session_sequence;
-    uint8_t client_kx_public_key[crypto_kx_PUBLICKEYBYTES];
-    uint8_t client_route_public_key[crypto_box_PUBLICKEYBYTES];
+    uint8_t client_kx_public_key[NEXT_CRYPTO_KX_PUBLICKEYBYTES];
+    uint8_t client_route_public_key[NEXT_CRYPTO_BOX_PUBLICKEYBYTES];
     uint8_t upgrade_token[NEXT_UPGRADE_TOKEN_BYTES];
     int platform_id;
     int connection_type;
@@ -3000,8 +3002,8 @@ struct NextUpgradeResponsePacket
     template <typename Stream> bool Serialize( Stream & stream )
     {
         serialize_bits( stream, client_open_session_sequence, 8 );
-        serialize_bytes( stream, client_kx_public_key, crypto_kx_PUBLICKEYBYTES );
-        serialize_bytes( stream, client_route_public_key, crypto_box_PUBLICKEYBYTES );
+        serialize_bytes( stream, client_kx_public_key, NEXT_CRYPTO_KX_PUBLICKEYBYTES );
+        serialize_bytes( stream, client_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
         serialize_bytes( stream, upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );
         serialize_int( stream, platform_id, NEXT_PLATFORM_UNKNOWN, NEXT_PLATFORM_MAX );
         serialize_int( stream, connection_type, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_MAX );
@@ -3014,8 +3016,8 @@ struct NextUpgradeConfirmPacket
     uint64_t upgrade_sequence;
     uint64_t session_id;
     next_address_t server_address;
-    uint8_t client_kx_public_key[crypto_kx_PUBLICKEYBYTES];
-    uint8_t server_kx_public_key[crypto_kx_PUBLICKEYBYTES];
+    uint8_t client_kx_public_key[NEXT_CRYPTO_KX_PUBLICKEYBYTES];
+    uint8_t server_kx_public_key[NEXT_CRYPTO_KX_PUBLICKEYBYTES];
 
     NextUpgradeConfirmPacket()
     {
@@ -3027,8 +3029,8 @@ struct NextUpgradeConfirmPacket
         serialize_uint64( stream, upgrade_sequence );
         serialize_uint64( stream, session_id );
         serialize_address( stream, server_address );
-        serialize_bytes( stream, client_kx_public_key, crypto_kx_PUBLICKEYBYTES );
-        serialize_bytes( stream, server_kx_public_key, crypto_kx_PUBLICKEYBYTES );
+        serialize_bytes( stream, client_kx_public_key, NEXT_CRYPTO_KX_PUBLICKEYBYTES );
+        serialize_bytes( stream, server_kx_public_key, NEXT_CRYPTO_KX_PUBLICKEYBYTES );
         return true;
     }
 };
@@ -3398,7 +3400,7 @@ int next_write_packet( uint8_t packet_id, void * packet_object, uint8_t * packet
         crypto_sign_init( &state );
         crypto_sign_update( &state, packet_data, *packet_bytes );
         crypto_sign_final_create( &state, packet_data + *packet_bytes, NULL, sign_private_key );
-        *packet_bytes += crypto_sign_BYTES;
+        *packet_bytes += NEXT_CRYPTO_SIGN_BYTES;
     }
 
     if ( encrypted_packet && encrypted_packet[packet_id] )
@@ -3417,7 +3419,7 @@ int next_write_packet( uint8_t packet_id, void * packet_object, uint8_t * packet
                                               additional, 1,
                                               NULL, nonce, encrypt_private_key );
 
-        next_assert( encrypted_bytes == uint64_t(message_length) + crypto_aead_chacha20poly1305_ABYTES );
+        next_assert( encrypted_bytes == uint64_t(message_length) + NEXT_CRYPTO_AEAD_CHACHA20POLY1305_ABYTES );
 
         *packet_bytes = 1 + 8 + encrypted_bytes;
 
@@ -3453,7 +3455,7 @@ int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_obj
     {
         next_assert( sign_public_key );
 
-        if ( packet_bytes < int( 1 + crypto_sign_BYTES ) )
+        if ( packet_bytes < int( 1 + NEXT_CRYPTO_SIGN_BYTES ) )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "signed packet is too small to be valid" );
             return NEXT_ERROR;
@@ -3461,8 +3463,8 @@ int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_obj
 
         crypto_sign_state state;
         crypto_sign_init( &state );
-        crypto_sign_update( &state, packet_data, packet_bytes - crypto_sign_BYTES );
-        if ( crypto_sign_final_verify( &state, packet_data + packet_bytes - crypto_sign_BYTES, sign_public_key ) != 0 )
+        crypto_sign_update( &state, packet_data, packet_bytes - NEXT_CRYPTO_SIGN_BYTES );
+        if ( crypto_sign_final_verify( &state, packet_data + packet_bytes - NEXT_CRYPTO_SIGN_BYTES, sign_public_key ) != 0 )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "signed packet did not verify" );
             return NEXT_ERROR;
@@ -3477,7 +3479,7 @@ int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_obj
         next_assert( encrypt_private_key );
         next_assert( replay_protection );
 
-        if ( packet_bytes <= (int) ( 1 + 8 + crypto_aead_chacha20poly1305_ABYTES ) )
+        if ( packet_bytes <= (int) ( 1 + 8 + NEXT_CRYPTO_AEAD_CHACHA20POLY1305_ABYTES ) )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "encrypted packet is too small to be valid" );
             return NEXT_ERROR;
@@ -3504,7 +3506,7 @@ int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_obj
             return NEXT_ERROR;
         }
 
-        next_assert( decrypted_bytes == uint64_t(message_length) - crypto_aead_chacha20poly1305_ABYTES );
+        next_assert( decrypted_bytes == uint64_t(message_length) - NEXT_CRYPTO_AEAD_CHACHA20POLY1305_ABYTES );
 
         packet_data += 1 + 8;
         packet_bytes -= 1 + 8;
@@ -3709,10 +3711,10 @@ int next_init( void * context, next_config_t * config_in )
     if ( customer_public_key )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "customer public key is '%s'", customer_public_key );
-        uint8_t decode_buffer[8+crypto_sign_PUBLICKEYBYTES];
+        uint8_t decode_buffer[8+NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
         if ( next_base64_decode_data( customer_public_key, decode_buffer, sizeof(decode_buffer) ) == sizeof(decode_buffer) )
         {
-            memcpy( config.customer_public_key, decode_buffer + 8, crypto_sign_PUBLICKEYBYTES );
+            memcpy( config.customer_public_key, decode_buffer + 8, NEXT_CRYPTO_SIGN_PUBLICKEYBYTES );
             next_printf( NEXT_LOG_LEVEL_INFO, "found valid customer public key" );
         }
         else
@@ -3734,12 +3736,12 @@ int next_init( void * context, next_config_t * config_in )
     if ( customer_private_key )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "customer private key is '%s'", customer_private_key );
-        uint8_t decode_buffer[8+crypto_sign_SECRETKEYBYTES];
+        uint8_t decode_buffer[8+NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
         if ( customer_private_key && next_base64_decode_data( customer_private_key, decode_buffer, sizeof(decode_buffer) ) == sizeof(decode_buffer) )
         {
             const uint8_t * p = decode_buffer;
             config.customer_id = next_read_uint64( &p );
-            memcpy( config.customer_private_key, decode_buffer + 8, crypto_sign_SECRETKEYBYTES );
+            memcpy( config.customer_private_key, decode_buffer + 8, NEXT_CRYPTO_SIGN_SECRETKEYBYTES );
             config.valid_customer_private_key = true;
             next_printf( NEXT_LOG_LEVEL_INFO, "found valid customer private key" );
         }
@@ -4552,7 +4554,7 @@ struct next_route_token_t
     int kbps_up;
     int kbps_down;
     next_address_t next_address;
-    uint8_t private_key[crypto_box_SECRETKEYBYTES];
+    uint8_t private_key[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
 };
 
 void next_write_route_token( next_route_token_t * token, uint8_t * buffer, int buffer_length )
@@ -4573,7 +4575,7 @@ void next_write_route_token( next_route_token_t * token, uint8_t * buffer, int b
     next_write_uint32( &buffer, token->kbps_up );
     next_write_uint32( &buffer, token->kbps_down );
     next_write_address( &buffer, &token->next_address );
-    next_write_bytes( &buffer, token->private_key, crypto_box_SECRETKEYBYTES );
+    next_write_bytes( &buffer, token->private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
 
     next_assert( buffer - start == NEXT_ROUTE_TOKEN_BYTES );
 }
@@ -4593,7 +4595,7 @@ void next_read_route_token( next_route_token_t * token, const uint8_t * buffer )
     token->kbps_up = next_read_uint32( &buffer );
     token->kbps_down = next_read_uint32( &buffer );
     next_read_address( &buffer, &token->next_address );
-    next_read_bytes( &buffer, token->private_key, crypto_box_SECRETKEYBYTES );
+    next_read_bytes( &buffer, token->private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
     next_assert( buffer - start == NEXT_ROUTE_TOKEN_BYTES );
 }
 
@@ -4602,7 +4604,7 @@ int next_encrypt_route_token( uint8_t * sender_private_key, uint8_t * receiver_p
     next_assert( sender_private_key );
     next_assert( receiver_public_key );
     next_assert( buffer );
-    next_assert( buffer_length >= (int) ( NEXT_ROUTE_TOKEN_BYTES + crypto_box_MACBYTES ) );
+    next_assert( buffer_length >= (int) ( NEXT_ROUTE_TOKEN_BYTES + NEXT_CRYPTO_BOX_MACBYTES ) );
 
     (void) buffer_length;
 
@@ -4620,7 +4622,7 @@ int next_decrypt_route_token( const uint8_t * sender_public_key, const uint8_t *
     next_assert( receiver_private_key );
     next_assert( buffer );
 
-    if ( crypto_box_open_easy( buffer, buffer, NEXT_ROUTE_TOKEN_BYTES + crypto_box_MACBYTES, nonce, sender_public_key, receiver_private_key ) != 0 )
+    if ( crypto_box_open_easy( buffer, buffer, NEXT_ROUTE_TOKEN_BYTES + NEXT_CRYPTO_BOX_MACBYTES, nonce, sender_public_key, receiver_private_key ) != 0 )
     {
         return NEXT_ERROR;
     }
@@ -4635,21 +4637,21 @@ int next_write_encrypted_route_token( uint8_t ** buffer, next_route_token_t * to
     next_assert( sender_private_key );
     next_assert( receiver_public_key );
 
-    unsigned char nonce[crypto_box_NONCEBYTES];
-    next_random_bytes( nonce, crypto_box_NONCEBYTES );
+    unsigned char nonce[NEXT_CRYPTO_BOX_NONCEBYTES];
+    next_random_bytes( nonce, NEXT_CRYPTO_BOX_NONCEBYTES );
 
     uint8_t * start = *buffer;
 
     (void) start;
 
-    next_write_bytes( buffer, nonce, crypto_box_NONCEBYTES );
+    next_write_bytes( buffer, nonce, NEXT_CRYPTO_BOX_NONCEBYTES );
 
     next_write_route_token( token, *buffer, NEXT_ROUTE_TOKEN_BYTES );
 
-    if ( next_encrypt_route_token( sender_private_key, receiver_public_key, nonce, *buffer, NEXT_ROUTE_TOKEN_BYTES + crypto_box_NONCEBYTES ) != NEXT_OK )
+    if ( next_encrypt_route_token( sender_private_key, receiver_public_key, nonce, *buffer, NEXT_ROUTE_TOKEN_BYTES + NEXT_CRYPTO_BOX_NONCEBYTES ) != NEXT_OK )
         return NEXT_ERROR;
 
-    *buffer += NEXT_ROUTE_TOKEN_BYTES + crypto_box_MACBYTES;
+    *buffer += NEXT_ROUTE_TOKEN_BYTES + NEXT_CRYPTO_BOX_MACBYTES;
 
     next_assert( ( *buffer - start ) == NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES );
 
@@ -4665,7 +4667,7 @@ int next_read_encrypted_route_token( uint8_t ** buffer, next_route_token_t * tok
 
     const uint8_t * nonce = *buffer;
 
-    *buffer += crypto_box_NONCEBYTES;
+    *buffer += NEXT_CRYPTO_BOX_NONCEBYTES;
 
     if ( next_decrypt_route_token( sender_public_key, receiver_private_key, nonce, *buffer ) != NEXT_OK )
     {
@@ -4674,7 +4676,7 @@ int next_read_encrypted_route_token( uint8_t ** buffer, next_route_token_t * tok
 
     next_read_route_token( token, *buffer );
 
-    *buffer += NEXT_ROUTE_TOKEN_BYTES + crypto_box_MACBYTES;
+    *buffer += NEXT_ROUTE_TOKEN_BYTES + NEXT_CRYPTO_BOX_MACBYTES;
 
     return NEXT_OK;
 }
@@ -4728,7 +4730,7 @@ int next_encrypt_continue_token( uint8_t * sender_private_key, uint8_t * receive
     next_assert( sender_private_key );
     next_assert( receiver_public_key );
     next_assert( buffer );
-    next_assert( buffer_length >= (int) ( NEXT_CONTINUE_TOKEN_BYTES + crypto_box_MACBYTES ) );
+    next_assert( buffer_length >= (int) ( NEXT_CONTINUE_TOKEN_BYTES + NEXT_CRYPTO_BOX_MACBYTES ) );
 
     (void) buffer_length;
 
@@ -4746,7 +4748,7 @@ int next_decrypt_continue_token( const uint8_t * sender_public_key, const uint8_
     next_assert( receiver_private_key );
     next_assert( buffer );
 
-    if ( crypto_box_open_easy( buffer, buffer, NEXT_CONTINUE_TOKEN_BYTES + crypto_box_MACBYTES, nonce, sender_public_key, receiver_private_key ) != 0 )
+    if ( crypto_box_open_easy( buffer, buffer, NEXT_CONTINUE_TOKEN_BYTES + NEXT_CRYPTO_BOX_MACBYTES, nonce, sender_public_key, receiver_private_key ) != 0 )
     {
         return NEXT_ERROR;
     }
@@ -4761,19 +4763,19 @@ int next_write_encrypted_continue_token( uint8_t ** buffer, next_continue_token_
     next_assert( sender_private_key );
     next_assert( receiver_public_key );
 
-    unsigned char nonce[crypto_box_NONCEBYTES];
-    next_random_bytes( nonce, crypto_box_NONCEBYTES );
+    unsigned char nonce[NEXT_CRYPTO_BOX_NONCEBYTES];
+    next_random_bytes( nonce, NEXT_CRYPTO_BOX_NONCEBYTES );
 
     uint8_t * start = *buffer;
 
-    next_write_bytes( buffer, nonce, crypto_box_NONCEBYTES );
+    next_write_bytes( buffer, nonce, NEXT_CRYPTO_BOX_NONCEBYTES );
 
     next_write_continue_token( token, *buffer, NEXT_CONTINUE_TOKEN_BYTES );
 
-    if ( next_encrypt_continue_token( sender_private_key, receiver_public_key, nonce, *buffer, NEXT_CONTINUE_TOKEN_BYTES + crypto_box_NONCEBYTES ) != NEXT_OK )
+    if ( next_encrypt_continue_token( sender_private_key, receiver_public_key, nonce, *buffer, NEXT_CONTINUE_TOKEN_BYTES + NEXT_CRYPTO_BOX_NONCEBYTES ) != NEXT_OK )
         return NEXT_ERROR;
 
-    *buffer += NEXT_CONTINUE_TOKEN_BYTES + crypto_box_MACBYTES;
+    *buffer += NEXT_CONTINUE_TOKEN_BYTES + NEXT_CRYPTO_BOX_MACBYTES;
 
     (void) start;
 
@@ -4791,7 +4793,7 @@ int next_read_encrypted_continue_token( uint8_t ** buffer, next_continue_token_t
 
     const uint8_t * nonce = *buffer;
 
-    *buffer += crypto_box_NONCEBYTES;
+    *buffer += NEXT_CRYPTO_BOX_NONCEBYTES;
 
     if ( next_decrypt_continue_token( sender_public_key, receiver_private_key, nonce, *buffer ) != NEXT_OK )
     {
@@ -4800,7 +4802,7 @@ int next_read_encrypted_continue_token( uint8_t ** buffer, next_continue_token_t
 
     next_read_continue_token( token, *buffer );
 
-    *buffer += NEXT_CONTINUE_TOKEN_BYTES + crypto_box_MACBYTES;
+    *buffer += NEXT_CONTINUE_TOKEN_BYTES + NEXT_CRYPTO_BOX_MACBYTES;
 
     return NEXT_OK;
 }
@@ -4984,7 +4986,7 @@ int next_read_header( int direction, uint8_t * type, uint64_t * sequence, uint64
     unsigned long long decrypted_length;
 
     int result = crypto_aead_chacha20poly1305_ietf_decrypt( buffer + 18, &decrypted_length, NULL,
-                                                            buffer + 18, (unsigned long long) crypto_aead_chacha20poly1305_IETF_ABYTES,
+                                                            buffer + 18, (unsigned long long) NEXT_CRYPTO_AEAD_CHACHA20POLY1305_IETF_ABYTES,
                                                             additional, (unsigned long long) additional_length,
                                                             nonce, private_key );
 
@@ -5018,7 +5020,7 @@ struct next_route_data_t
 
     NEXT_DECLARE_SENTINEL(1)
 
-    uint8_t current_route_private_key[crypto_box_SECRETKEYBYTES];
+    uint8_t current_route_private_key[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
 
     NEXT_DECLARE_SENTINEL(2)
 
@@ -5028,7 +5030,7 @@ struct next_route_data_t
 
     NEXT_DECLARE_SENTINEL(3)
 
-    uint8_t previous_route_private_key[crypto_box_SECRETKEYBYTES];
+    uint8_t previous_route_private_key[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
 
     NEXT_DECLARE_SENTINEL(4)
 
@@ -5049,7 +5051,7 @@ struct next_route_data_t
 
     NEXT_DECLARE_SENTINEL(6)
 
-    uint8_t pending_route_private_key[crypto_box_SECRETKEYBYTES];
+    uint8_t pending_route_private_key[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
     
     NEXT_DECLARE_SENTINEL(7)
 
@@ -5172,7 +5174,7 @@ void next_route_manager_fallback_to_direct( next_route_manager_t * route_manager
     route_manager->route_data.previous_route = route_manager->route_data.current_route;
     route_manager->route_data.previous_route_session_id = route_manager->route_data.current_route_session_id;
     route_manager->route_data.previous_route_session_version = route_manager->route_data.current_route_session_version;
-    memcpy( route_manager->route_data.previous_route_private_key, route_manager->route_data.current_route_private_key, crypto_box_SECRETKEYBYTES );
+    memcpy( route_manager->route_data.previous_route_private_key, route_manager->route_data.current_route_private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
 
     route_manager->route_data.current_route = false;
 }
@@ -5192,7 +5194,7 @@ void next_route_manager_direct_route( next_route_manager_t * route_manager, bool
     route_manager->route_data.previous_route = route_manager->route_data.current_route;
     route_manager->route_data.previous_route_session_id = route_manager->route_data.current_route_session_id;
     route_manager->route_data.previous_route_session_version = route_manager->route_data.current_route_session_version;
-    memcpy( route_manager->route_data.previous_route_private_key, route_manager->route_data.current_route_private_key, crypto_box_SECRETKEYBYTES );
+    memcpy( route_manager->route_data.previous_route_private_key, route_manager->route_data.current_route_private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
 
     route_manager->route_data.current_route = false;
 }
@@ -5231,7 +5233,7 @@ void next_route_manager_begin_next_route( next_route_manager_t * route_manager, 
     route_manager->route_data.pending_route_request_packet_bytes = 1 + ( num_tokens - 1 ) * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES;
     route_manager->route_data.pending_route_request_packet_data[0] = NEXT_ROUTE_REQUEST_PACKET;
     memcpy( route_manager->route_data.pending_route_request_packet_data + 1, tokens + NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES, ( size_t(num_tokens) - 1 ) * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES );
-    memcpy( route_manager->route_data.pending_route_private_key, route_token.private_key, crypto_box_SECRETKEYBYTES );
+    memcpy( route_manager->route_data.pending_route_private_key, route_token.private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
     next_assert( route_manager->route_data.pending_route_request_packet_bytes <= NEXT_MAX_PACKET_BYTES );
 }
 
@@ -5637,13 +5639,13 @@ struct next_client_internal_t
 
     NEXT_DECLARE_SENTINEL(4)
 
-    uint8_t customer_public_key[crypto_sign_PUBLICKEYBYTES];
-    uint8_t client_kx_public_key[crypto_kx_PUBLICKEYBYTES];
-    uint8_t client_kx_private_key[crypto_kx_SECRETKEYBYTES];
-    uint8_t client_send_key[crypto_kx_SESSIONKEYBYTES];
-    uint8_t client_receive_key[crypto_kx_SESSIONKEYBYTES];
-    uint8_t client_route_public_key[crypto_box_PUBLICKEYBYTES];
-    uint8_t client_route_private_key[crypto_box_SECRETKEYBYTES];
+    uint8_t customer_public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
+    uint8_t client_kx_public_key[NEXT_CRYPTO_KX_PUBLICKEYBYTES];
+    uint8_t client_kx_private_key[NEXT_CRYPTO_KX_SECRETKEYBYTES];
+    uint8_t client_send_key[NEXT_CRYPTO_KX_SESSIONKEYBYTES];
+    uint8_t client_receive_key[NEXT_CRYPTO_KX_SESSIONKEYBYTES];
+    uint8_t client_route_public_key[NEXT_CRYPTO_BOX_PUBLICKEYBYTES];
+    uint8_t client_route_private_key[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
 
     NEXT_DECLARE_SENTINEL(5)
 
@@ -5784,7 +5786,7 @@ next_client_internal_t * next_client_internal_create( void * context, const char
 
     client->context = context;
 
-    memcpy( client->customer_public_key, next_global_config.customer_public_key, crypto_sign_PUBLICKEYBYTES );
+    memcpy( client->customer_public_key, next_global_config.customer_public_key, NEXT_CRYPTO_SIGN_PUBLICKEYBYTES );
 
     client->command_queue = next_queue_create( context, NEXT_COMMAND_QUEUE_LENGTH );
     if ( !client->command_queue )
@@ -6057,8 +6059,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         NextUpgradeResponsePacket response;
         response.client_open_session_sequence = client->open_session_sequence;
-        memcpy( response.client_kx_public_key, client->client_kx_public_key, crypto_kx_PUBLICKEYBYTES );
-        memcpy( response.client_route_public_key, client->client_route_public_key, crypto_box_PUBLICKEYBYTES );
+        memcpy( response.client_kx_public_key, client->client_kx_public_key, NEXT_CRYPTO_KX_PUBLICKEYBYTES );
+        memcpy( response.client_route_public_key, client->client_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
         memcpy( response.upgrade_token, packet.upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );
         response.platform_id = next_platform_id();
         response.connection_type = next_platform_connection_type();
@@ -6118,7 +6120,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             return;
         }
 
-        if ( memcmp( packet.client_kx_public_key, client->client_kx_public_key, crypto_kx_PUBLICKEYBYTES ) != 0 )
+        if ( memcmp( packet.client_kx_public_key, client->client_kx_public_key, NEXT_CRYPTO_KX_PUBLICKEYBYTES ) != 0 )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade confirm packet from server. client public key does not match" );
             return;
@@ -6130,8 +6132,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             return;
         }
 
-        uint8_t client_send_key[crypto_kx_SESSIONKEYBYTES];
-        uint8_t client_receive_key[crypto_kx_SESSIONKEYBYTES];
+        uint8_t client_send_key[NEXT_CRYPTO_KX_SESSIONKEYBYTES];
+        uint8_t client_receive_key[NEXT_CRYPTO_KX_SESSIONKEYBYTES];
         if ( crypto_kx_client_session_keys( client_receive_key, client_send_key, client->client_kx_public_key, client->client_kx_private_key, packet.server_kx_public_key ) != 0 )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade confirm packet from server. could not generate session keys from server public key" );
@@ -6146,8 +6148,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         client->upgrade_sequence = packet.upgrade_sequence;
         client->session_id = packet.session_id;
         client->last_direct_pong_time = next_time();
-        memcpy( client->client_send_key, client_send_key, crypto_kx_SESSIONKEYBYTES );
-        memcpy( client->client_receive_key, client_receive_key, crypto_kx_SESSIONKEYBYTES );
+        memcpy( client->client_send_key, client_send_key, NEXT_CRYPTO_KX_SESSIONKEYBYTES );
+        memcpy( client->client_receive_key, client_receive_key, NEXT_CRYPTO_KX_SESSIONKEYBYTES );
 
         next_client_notify_upgraded_t * notify = (next_client_notify_upgraded_t*) next_malloc( client->context, sizeof(next_client_notify_upgraded_t) );
         next_assert( notify );
@@ -6180,8 +6182,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         }
 
         next_platform_mutex_acquire( &client->route_manager_mutex );
-        uint8_t route_private_key[crypto_box_SECRETKEYBYTES];
-        memcpy( route_private_key, client->route_manager->route_data.pending_route_private_key, crypto_box_SECRETKEYBYTES );
+        uint8_t route_private_key[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
+        memcpy( route_private_key, client->route_manager->route_data.pending_route_private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
         const bool fallback_to_direct = client->route_manager->fallback_to_direct;
         const bool pending_route = client->route_manager->route_data.pending_route;
         const uint64_t pending_route_session_id = client->route_manager->route_data.pending_route_session_id;
@@ -6248,7 +6250,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             route_manager->route_data.previous_route = route_manager->route_data.current_route;
             route_manager->route_data.previous_route_session_id = route_manager->route_data.current_route_session_id;
             route_manager->route_data.previous_route_session_version = route_manager->route_data.current_route_session_version;
-            memcpy( route_manager->route_data.previous_route_private_key, route_manager->route_data.current_route_private_key, crypto_box_SECRETKEYBYTES );
+            memcpy( route_manager->route_data.previous_route_private_key, route_manager->route_data.current_route_private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
         }
 
         route_manager->route_data.current_route_committed = route_manager->route_data.pending_route_committed;
@@ -6257,7 +6259,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         route_manager->route_data.current_route_kbps_up = route_manager->route_data.pending_route_kbps_up;
         route_manager->route_data.current_route_kbps_down = route_manager->route_data.pending_route_kbps_down;
         route_manager->route_data.current_route_next_address = route_manager->route_data.pending_route_next_address;
-        memcpy( route_manager->route_data.current_route_private_key, route_manager->route_data.pending_route_private_key, crypto_box_SECRETKEYBYTES );
+        memcpy( route_manager->route_data.current_route_private_key, route_manager->route_data.pending_route_private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
 
         if ( !route_manager->route_data.current_route )
         {
@@ -6305,8 +6307,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         }
 
         next_platform_mutex_acquire( &client->route_manager_mutex );
-        uint8_t current_route_private_key[crypto_box_SECRETKEYBYTES];
-        memcpy( current_route_private_key, client->route_manager->route_data.current_route_private_key, crypto_box_SECRETKEYBYTES );
+        uint8_t current_route_private_key[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
+        memcpy( current_route_private_key, client->route_manager->route_data.current_route_private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
         const bool fallback_to_direct = client->route_manager->fallback_to_direct;
         const bool current_route = client->route_manager->route_data.current_route;
         const bool pending_continue = client->route_manager->route_data.pending_continue;
@@ -6776,12 +6778,12 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
 
                 next_relay_manager_reset( client->near_relay_manager );
 
-                memset( client->client_kx_public_key, 0, crypto_kx_PUBLICKEYBYTES );
-                memset( client->client_kx_private_key, 0, crypto_kx_SECRETKEYBYTES );
-                memset( client->client_send_key, 0, crypto_kx_SESSIONKEYBYTES );
-                memset( client->client_receive_key, 0, crypto_kx_SESSIONKEYBYTES );
-                memset( client->client_route_public_key, 0, crypto_box_PUBLICKEYBYTES );
-                memset( client->client_route_private_key, 0, crypto_box_SECRETKEYBYTES );
+                memset( client->client_kx_public_key, 0, NEXT_CRYPTO_KX_PUBLICKEYBYTES );
+                memset( client->client_kx_private_key, 0, NEXT_CRYPTO_KX_SECRETKEYBYTES );
+                memset( client->client_send_key, 0, NEXT_CRYPTO_KX_SESSIONKEYBYTES );
+                memset( client->client_receive_key, 0, NEXT_CRYPTO_KX_SESSIONKEYBYTES );
+                memset( client->client_route_public_key, 0, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
+                memset( client->client_route_private_key, 0, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
 
                 next_ping_history_clear( &client->next_ping_history );
                 next_ping_history_clear( &client->direct_ping_history );
@@ -7074,8 +7076,8 @@ void next_client_internal_update_next_pings( next_client_internal_t * client )
         const uint64_t session_id = client->route_manager->route_data.current_route_session_id;
         const uint8_t session_version = client->route_manager->route_data.current_route_session_version;
         const next_address_t to = client->route_manager->route_data.current_route_next_address;
-        uint8_t private_key[crypto_box_SECRETKEYBYTES];
-        memcpy( private_key, client->route_manager->route_data.current_route_private_key, crypto_box_SECRETKEYBYTES );
+        uint8_t private_key[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
+        memcpy( private_key, client->route_manager->route_data.current_route_private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
         next_platform_mutex_release( &client->route_manager_mutex );
 
         uint64_t sequence = client->special_send_sequence++;
@@ -8014,7 +8016,7 @@ struct next_pending_session_entry_t
     uint64_t tag;
     double upgrade_time;
     double last_packet_send_time;
-    uint8_t private_key[crypto_secretbox_KEYBYTES];
+    uint8_t private_key[NEXT_CRYPTO_SECRETBOX_KEYBYTES];
     uint8_t upgrade_token[NEXT_UPGRADE_TOKEN_BYTES];
 
     NEXT_DECLARE_SENTINEL(1)
@@ -8195,7 +8197,7 @@ next_pending_session_entry_t * next_pending_session_manager_add( next_pending_se
             entry->session_id = session_id;
             entry->upgrade_time = current_time;
             entry->last_packet_send_time = -1000.0;
-            memcpy( entry->private_key, private_key, crypto_secretbox_KEYBYTES );
+            memcpy( entry->private_key, private_key, NEXT_CRYPTO_SECRETBOX_KEYBYTES );
             memcpy( entry->upgrade_token, upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );
             if ( i > pending_session_manager->max_entry_index )
             {
@@ -8217,7 +8219,7 @@ next_pending_session_entry_t * next_pending_session_manager_add( next_pending_se
     entry->session_id = session_id;
     entry->upgrade_time = current_time;
     entry->last_packet_send_time = -1000.0;
-    memcpy( entry->private_key, private_key, crypto_secretbox_KEYBYTES );
+    memcpy( entry->private_key, private_key, NEXT_CRYPTO_SECRETBOX_KEYBYTES );
     memcpy( entry->upgrade_token, upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );
 
     next_pending_session_manager_verify_sentinels( pending_session_manager );
@@ -8700,8 +8702,8 @@ struct NextBackendSessionUpdatePacket
     uint8_t session_data[NEXT_MAX_SESSION_DATA_BYTES];
     next_address_t client_address;
     next_address_t server_address;
-    uint8_t client_route_public_key[crypto_box_PUBLICKEYBYTES];
-    uint8_t server_route_public_key[crypto_box_PUBLICKEYBYTES];
+    uint8_t client_route_public_key[NEXT_CRYPTO_BOX_PUBLICKEYBYTES];
+    uint8_t server_route_public_key[NEXT_CRYPTO_BOX_PUBLICKEYBYTES];
     uint64_t user_hash;
     int platform_id;
     int connection_type;
@@ -8769,8 +8771,8 @@ struct NextBackendSessionUpdatePacket
         serialize_address( stream, client_address );
         serialize_address( stream, server_address );
 
-        serialize_bytes( stream, client_route_public_key, crypto_box_PUBLICKEYBYTES );
-        serialize_bytes( stream, server_route_public_key, crypto_box_PUBLICKEYBYTES );
+        serialize_bytes( stream, client_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
+        serialize_bytes( stream, server_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
 
         serialize_uint64( stream, user_hash );
 
@@ -8976,7 +8978,7 @@ struct next_session_entry_t
 
     NEXT_DECLARE_SENTINEL(13)
 
-    uint8_t pending_route_private_key[crypto_box_SECRETKEYBYTES];
+    uint8_t pending_route_private_key[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
 
     NEXT_DECLARE_SENTINEL(14)
 
@@ -8991,7 +8993,7 @@ struct next_session_entry_t
 
     NEXT_DECLARE_SENTINEL(15)
 
-    uint8_t current_route_private_key[crypto_box_SECRETKEYBYTES];
+    uint8_t current_route_private_key[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
 
     NEXT_DECLARE_SENTINEL(16)
 
@@ -9000,14 +9002,14 @@ struct next_session_entry_t
 
     NEXT_DECLARE_SENTINEL(17)
 
-    uint8_t previous_route_private_key[crypto_box_SECRETKEYBYTES];
+    uint8_t previous_route_private_key[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
 
     NEXT_DECLARE_SENTINEL(18)
 
-    uint8_t ephemeral_private_key[crypto_secretbox_KEYBYTES];
-    uint8_t send_key[crypto_kx_SESSIONKEYBYTES];
-    uint8_t receive_key[crypto_kx_SESSIONKEYBYTES];
-    uint8_t client_route_public_key[crypto_box_PUBLICKEYBYTES];
+    uint8_t ephemeral_private_key[NEXT_CRYPTO_SECRETBOX_KEYBYTES];
+    uint8_t send_key[NEXT_CRYPTO_KX_SESSIONKEYBYTES];
+    uint8_t receive_key[NEXT_CRYPTO_KX_SESSIONKEYBYTES];
+    uint8_t client_route_public_key[NEXT_CRYPTO_BOX_PUBLICKEYBYTES];
 
     NEXT_DECLARE_SENTINEL(19)
 
@@ -9039,7 +9041,7 @@ struct next_session_entry_t
  
     NEXT_DECLARE_SENTINEL(23)
 
-    uint8_t mutex_private_key[crypto_box_SECRETKEYBYTES];
+    uint8_t mutex_private_key[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
 
     NEXT_DECLARE_SENTINEL(24)
 
@@ -9302,7 +9304,7 @@ next_session_entry_t * next_session_manager_add( next_session_manager_t * sessio
             session_manager->addresses[i] = *address;
             next_session_entry_t * entry = &session_manager->entries[i];
             next_clear_session_entry( entry, address, session_id );
-            memcpy( entry->ephemeral_private_key, ephemeral_private_key, crypto_secretbox_KEYBYTES );
+            memcpy( entry->ephemeral_private_key, ephemeral_private_key, NEXT_CRYPTO_SECRETBOX_KEYBYTES );
             memcpy( entry->upgrade_token, upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );
             if ( i > session_manager->max_entry_index )
             {
@@ -9323,7 +9325,7 @@ next_session_entry_t * next_session_manager_add( next_session_manager_t * sessio
     session_manager->addresses[i] = *address;
     next_session_entry_t * entry = &session_manager->entries[i];
     next_clear_session_entry( entry, address, session_id );
-    memcpy( entry->ephemeral_private_key, ephemeral_private_key, crypto_secretbox_KEYBYTES );
+    memcpy( entry->ephemeral_private_key, ephemeral_private_key, NEXT_CRYPTO_SECRETBOX_KEYBYTES );
     memcpy( entry->upgrade_token, upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );
 
     next_session_manager_verify_sentinels( session_manager );
@@ -9562,7 +9564,7 @@ int next_write_backend_packet( uint8_t packet_id, void * packet_object, uint8_t 
         crypto_sign_init( &state );
         crypto_sign_update( &state, packet_data + 1 + NEXT_PACKET_HASH_BYTES, *packet_bytes - 1 - NEXT_PACKET_HASH_BYTES );
         crypto_sign_final_create( &state, packet_data + *packet_bytes, NULL, sign_private_key );
-        *packet_bytes += crypto_sign_BYTES;
+        *packet_bytes += NEXT_CRYPTO_SIGN_BYTES;
     }
 
     const uint8_t * message = packet_data + 1 + NEXT_PACKET_HASH_BYTES;
@@ -9576,7 +9578,7 @@ int next_write_backend_packet( uint8_t packet_id, void * packet_object, uint8_t 
     next_assert( message_length > 0 );
     next_assert( message_length <= 32 );
 
-    crypto_generichash( packet_data + 1, NEXT_PACKET_HASH_BYTES, message, message_length, next_backend_packet_hash_key, crypto_generichash_KEYBYTES );
+    crypto_generichash( packet_data + 1, NEXT_PACKET_HASH_BYTES, message, message_length, next_backend_packet_hash_key, NEXT_CRYPTO_GENERICHASH_KEYBYTES );
 
 
     return NEXT_OK;
@@ -9608,7 +9610,7 @@ int next_read_backend_packet( uint8_t * packet_data, int packet_bytes, void * pa
     {
         next_assert( sign_public_key );
 
-        if ( packet_bytes < int( crypto_sign_BYTES ) )
+        if ( packet_bytes < int( NEXT_CRYPTO_SIGN_BYTES ) )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "signed packet is too small to be valid" );
             return NEXT_ERROR;
@@ -9616,8 +9618,8 @@ int next_read_backend_packet( uint8_t * packet_data, int packet_bytes, void * pa
 
         crypto_sign_state state;
         crypto_sign_init( &state );
-        crypto_sign_update( &state, packet_data, packet_bytes - crypto_sign_BYTES );
-        if ( crypto_sign_final_verify( &state, packet_data + packet_bytes - crypto_sign_BYTES, sign_public_key ) != 0 )
+        crypto_sign_update( &state, packet_data, packet_bytes - NEXT_CRYPTO_SIGN_BYTES );
+        if ( crypto_sign_final_verify( &state, packet_data + packet_bytes - NEXT_CRYPTO_SIGN_BYTES, sign_public_key ) != 0 )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "signed packet did not verify" );
             return NEXT_ERROR;
@@ -9769,7 +9771,7 @@ struct next_server_internal_t
 
     NEXT_DECLARE_SENTINEL(1)
 
-    uint8_t customer_private_key[crypto_sign_SECRETKEYBYTES];
+    uint8_t customer_private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
 
     NEXT_DECLARE_SENTINEL(2)
 
@@ -9802,10 +9804,10 @@ struct next_server_internal_t
 
     NEXT_DECLARE_SENTINEL(3)
 
-    uint8_t server_kx_public_key[crypto_kx_PUBLICKEYBYTES];
-    uint8_t server_kx_private_key[crypto_kx_SECRETKEYBYTES];
-    uint8_t server_route_public_key[crypto_box_PUBLICKEYBYTES];
-    uint8_t server_route_private_key[crypto_box_SECRETKEYBYTES];
+    uint8_t server_kx_public_key[NEXT_CRYPTO_KX_PUBLICKEYBYTES];
+    uint8_t server_kx_private_key[NEXT_CRYPTO_KX_SECRETKEYBYTES];
+    uint8_t server_route_public_key[NEXT_CRYPTO_BOX_PUBLICKEYBYTES];
+    uint8_t server_route_private_key[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
 
     NEXT_DECLARE_SENTINEL(4)
 };
@@ -9916,7 +9918,7 @@ next_server_internal_t * next_server_internal_create( void * context, const char
 
     server->context = context;
     server->customer_id = next_global_config.customer_id;
-    memcpy( server->customer_private_key, next_global_config.customer_private_key, crypto_sign_SECRETKEYBYTES );
+    memcpy( server->customer_private_key, next_global_config.customer_private_key, NEXT_CRYPTO_SIGN_SECRETKEYBYTES );
     server->valid_customer_private_key = next_global_config.valid_customer_private_key;
 
     if ( server->valid_customer_private_key )
@@ -10194,7 +10196,7 @@ next_session_entry_t * next_server_internal_check_client_to_server_packet( next_
         {
             entry->has_previous_route = true;
             entry->previous_route_send_address = entry->current_route_send_address;
-            memcpy( entry->previous_route_private_key, entry->current_route_private_key, crypto_box_SECRETKEYBYTES );
+            memcpy( entry->previous_route_private_key, entry->current_route_private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
         }
 
         entry->has_pending_route = false;
@@ -10205,7 +10207,7 @@ next_session_entry_t * next_server_internal_check_client_to_server_packet( next_
         entry->current_route_kbps_up = entry->pending_route_kbps_up;
         entry->current_route_kbps_down = entry->pending_route_kbps_down;
         entry->current_route_send_address = entry->pending_route_send_address;
-        memcpy( entry->current_route_private_key, entry->pending_route_private_key, crypto_box_SECRETKEYBYTES );
+        memcpy( entry->current_route_private_key, entry->pending_route_private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
 
         next_platform_mutex_acquire( &server->session_mutex );
         entry->mutex_envelope_kbps_up = entry->current_route_kbps_up;
@@ -10214,7 +10216,7 @@ next_session_entry_t * next_server_internal_check_client_to_server_packet( next_
         entry->mutex_session_id = entry->session_id;
         entry->mutex_session_version = entry->current_route_session_version;
         entry->mutex_send_address = entry->current_route_send_address;
-        memcpy( entry->mutex_private_key, entry->current_route_private_key, crypto_box_SECRETKEYBYTES );
+        memcpy( entry->mutex_private_key, entry->current_route_private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
         next_platform_mutex_release( &server->session_mutex );
     }
     else
@@ -10370,7 +10372,7 @@ void next_server_internal_update_pending_upgrades( next_server_internal_t * serv
             packet.protocol_version = next_protocol_version();
             packet.session_id = entry->session_id;
             packet.server_address = server->server_address;
-            memcpy( packet.server_kx_public_key, server->server_kx_public_key, crypto_kx_PUBLICKEYBYTES );
+            memcpy( packet.server_kx_public_key, server->server_kx_public_key, NEXT_CRYPTO_KX_PUBLICKEYBYTES );
             memcpy( packet.upgrade_token, entry->upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );        
 
             next_server_internal_send_packet( server, &entry->address, NEXT_UPGRADE_REQUEST_PACKET, &packet );
@@ -10702,7 +10704,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
                     entry->has_previous_route = entry->has_current_route;
                     entry->has_current_route = false;
                     entry->previous_route_send_address = entry->current_route_send_address;
-                    memcpy( entry->previous_route_private_key, entry->current_route_private_key, crypto_box_SECRETKEYBYTES );
+                    memcpy( entry->previous_route_private_key, entry->current_route_private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
                 }
             }
 
@@ -10788,8 +10790,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
                 return;
             }
 
-            uint8_t server_send_key[crypto_kx_SESSIONKEYBYTES];
-            uint8_t server_receive_key[crypto_kx_SESSIONKEYBYTES];
+            uint8_t server_send_key[NEXT_CRYPTO_KX_SESSIONKEYBYTES];
+            uint8_t server_receive_key[NEXT_CRYPTO_KX_SESSIONKEYBYTES];
             if ( crypto_kx_server_session_keys( server_receive_key, server_send_key, server->server_kx_public_key, server->server_kx_private_key, packet.client_kx_public_key ) != 0 )
             {
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server could not generate session keys from client public key" );
@@ -10812,9 +10814,9 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
                 return;
             }
 
-            memcpy( entry->send_key, server_send_key, crypto_kx_SESSIONKEYBYTES );
-            memcpy( entry->receive_key, server_receive_key, crypto_kx_SESSIONKEYBYTES );
-            memcpy( entry->client_route_public_key, packet.client_route_public_key, crypto_box_PUBLICKEYBYTES );
+            memcpy( entry->send_key, server_send_key, NEXT_CRYPTO_KX_SESSIONKEYBYTES );
+            memcpy( entry->receive_key, server_receive_key, NEXT_CRYPTO_KX_SESSIONKEYBYTES );
+            memcpy( entry->client_route_public_key, packet.client_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
             entry->last_client_stats_update = next_time();
             entry->user_hash = pending_entry->user_hash;
             entry->tag = pending_entry->tag;
@@ -10878,8 +10880,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         response.upgrade_sequence = server->upgrade_sequence++;
         response.session_id = upgrade_token.session_id;
         response.server_address = server->server_address;
-        memcpy( response.client_kx_public_key, packet.client_kx_public_key, crypto_kx_PUBLICKEYBYTES );
-        memcpy( response.server_kx_public_key, server->server_kx_public_key, crypto_kx_PUBLICKEYBYTES );
+        memcpy( response.client_kx_public_key, packet.client_kx_public_key, NEXT_CRYPTO_KX_PUBLICKEYBYTES );
+        memcpy( response.server_kx_public_key, server->server_kx_public_key, NEXT_CRYPTO_KX_PUBLICKEYBYTES );
 
         if ( next_server_internal_send_packet( server, from, NEXT_UPGRADE_CONFIRM_PACKET, &response ) != NEXT_OK )
         {
@@ -10944,7 +10946,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             entry->pending_route_kbps_up = route_token.kbps_up;
             entry->pending_route_kbps_down = route_token.kbps_down;
             entry->pending_route_send_address = *from;
-            memcpy( entry->pending_route_private_key, route_token.private_key, crypto_box_SECRETKEYBYTES );
+            memcpy( entry->pending_route_private_key, route_token.private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
             entry->most_recent_session_version = route_token.session_version;
         }
 
@@ -11318,7 +11320,7 @@ void next_server_internal_upgrade_session( next_server_internal_t * server, cons
     upgrade_token.client_address = *address;
     upgrade_token.server_address = server->server_address;
 
-    unsigned char session_private_key[crypto_secretbox_KEYBYTES];
+    unsigned char session_private_key[NEXT_CRYPTO_SECRETBOX_KEYBYTES];
     crypto_secretbox_keygen( session_private_key );
 
     uint8_t upgrade_token_data[NEXT_UPGRADE_TOKEN_BYTES];
@@ -11707,8 +11709,8 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             }
             packet.client_address = session->address;
             packet.server_address = server->server_address;
-            memcpy( packet.client_route_public_key, session->client_route_public_key, crypto_box_PUBLICKEYBYTES );
-            memcpy( packet.server_route_public_key, server->server_route_public_key, crypto_box_PUBLICKEYBYTES );
+            memcpy( packet.client_route_public_key, session->client_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
+            memcpy( packet.server_route_public_key, server->server_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
 
             next_assert( session->session_data_bytes >= 0 );
             next_assert( session->session_data_bytes <= NEXT_MAX_SESSION_DATA_BYTES );
@@ -12229,7 +12231,7 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
         uint64_t session_id = 0;
         uint8_t session_version = 0;
         next_address_t session_address;
-        uint8_t session_private_key[crypto_box_SECRETKEYBYTES];
+        uint8_t session_private_key[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
 
         next_platform_mutex_acquire( &server->internal->session_mutex );
         next_session_entry_t * internal_entry = next_session_manager_find_by_address( server->internal->session_manager, to_address );
@@ -12247,7 +12249,7 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
             session_id = internal_entry->mutex_session_id;
             session_version = internal_entry->mutex_session_version;
             session_address = internal_entry->mutex_send_address;
-            memcpy( session_private_key, internal_entry->mutex_private_key, crypto_box_SECRETKEYBYTES );
+            memcpy( session_private_key, internal_entry->mutex_private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
             internal_entry->stats_packets_sent_server_to_client++;
         }
         next_platform_mutex_release( &server->internal->session_mutex );
@@ -13173,17 +13175,17 @@ static void test_crypto_box()
 {
     #define CRYPTO_BOX_MESSAGE (const unsigned char *) "test"
     #define CRYPTO_BOX_MESSAGE_LEN 4
-    #define CRYPTO_BOX_CIPHERTEXT_LEN ( crypto_box_MACBYTES + CRYPTO_BOX_MESSAGE_LEN )
+    #define CRYPTO_BOX_CIPHERTEXT_LEN ( NEXT_CRYPTO_BOX_MACBYTES + CRYPTO_BOX_MESSAGE_LEN )
 
-    unsigned char sender_publickey[crypto_box_PUBLICKEYBYTES];
-    unsigned char sender_secretkey[crypto_box_SECRETKEYBYTES];
+    unsigned char sender_publickey[NEXT_CRYPTO_BOX_PUBLICKEYBYTES];
+    unsigned char sender_secretkey[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
     crypto_box_keypair( sender_publickey, sender_secretkey );
 
-    unsigned char receiver_publickey[crypto_box_PUBLICKEYBYTES];
-    unsigned char receiver_secretkey[crypto_box_SECRETKEYBYTES];
+    unsigned char receiver_publickey[NEXT_CRYPTO_BOX_PUBLICKEYBYTES];
+    unsigned char receiver_secretkey[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
     crypto_box_keypair( receiver_publickey, receiver_secretkey );
 
-    unsigned char nonce[crypto_box_NONCEBYTES];
+    unsigned char nonce[NEXT_CRYPTO_BOX_NONCEBYTES];
     unsigned char ciphertext[CRYPTO_BOX_CIPHERTEXT_LEN];
     next_random_bytes( nonce, sizeof nonce );
     check( crypto_box_easy( ciphertext, CRYPTO_BOX_MESSAGE, CRYPTO_BOX_MESSAGE_LEN, nonce, receiver_publickey, sender_secretkey ) == 0 );
@@ -13198,14 +13200,14 @@ static void test_crypto_secret_box()
 {
     #define CRYPTO_SECRET_BOX_MESSAGE ((const unsigned char *) "test")
     #define CRYPTO_SECRET_BOX_MESSAGE_LEN 4
-    #define CRYPTO_SECRET_BOX_CIPHERTEXT_LEN (crypto_secretbox_MACBYTES + CRYPTO_SECRET_BOX_MESSAGE_LEN)
+    #define CRYPTO_SECRET_BOX_CIPHERTEXT_LEN (NEXT_CRYPTO_SECRETBOX_MACBYTES + CRYPTO_SECRET_BOX_MESSAGE_LEN)
 
-    unsigned char key[crypto_secretbox_KEYBYTES];
-    unsigned char nonce[crypto_secretbox_NONCEBYTES];
+    unsigned char key[NEXT_CRYPTO_SECRETBOX_KEYBYTES];
+    unsigned char nonce[NEXT_CRYPTO_SECRETBOX_NONCEBYTES];
     unsigned char ciphertext[CRYPTO_SECRET_BOX_CIPHERTEXT_LEN];
 
     crypto_secretbox_keygen( key );
-    randombytes_buf( nonce, crypto_secretbox_NONCEBYTES );
+    randombytes_buf( nonce, NEXT_CRYPTO_SECRETBOX_NONCEBYTES );
     crypto_secretbox_easy( ciphertext, CRYPTO_SECRET_BOX_MESSAGE, CRYPTO_SECRET_BOX_MESSAGE_LEN, nonce, key );
 
     unsigned char decrypted[CRYPTO_SECRET_BOX_MESSAGE_LEN];
@@ -13219,9 +13221,9 @@ static void test_crypto_aead()
     #define CRYPTO_AEAD_ADDITIONAL_DATA (const unsigned char *) "123456"
     #define CRYPTO_AEAD_ADDITIONAL_DATA_LEN 6
 
-    unsigned char nonce[crypto_aead_chacha20poly1305_NPUBBYTES];
-    unsigned char key[crypto_aead_chacha20poly1305_KEYBYTES];
-    unsigned char ciphertext[CRYPTO_AEAD_MESSAGE_LEN + crypto_aead_chacha20poly1305_ABYTES];
+    unsigned char nonce[NEXT_CRYPTO_AEAD_CHACHA20POLY1305_NPUBBYTES];
+    unsigned char key[NEXT_CRYPTO_AEAD_CHACHA20POLY1305_KEYBYTES];
+    unsigned char ciphertext[CRYPTO_AEAD_MESSAGE_LEN + NEXT_CRYPTO_AEAD_CHACHA20POLY1305_ABYTES];
     unsigned long long ciphertext_len;
 
     crypto_aead_chacha20poly1305_keygen( key );
@@ -13249,19 +13251,19 @@ static void test_crypto_aead_ietf()
     #define CRYPTO_AEAD_IETF_ADDITIONAL_DATA (const unsigned char *) "123456"
     #define CRYPTO_AEAD_IETF_ADDITIONAL_DATA_LEN 6
 
-    unsigned char nonce[crypto_aead_xchacha20poly1305_ietf_NPUBBYTES];
-    unsigned char key[crypto_aead_xchacha20poly1305_ietf_KEYBYTES];
-    unsigned char ciphertext[CRYPTO_AEAD_IETF_MESSAGE_LEN + crypto_aead_xchacha20poly1305_ietf_ABYTES];
+    unsigned char nonce[NEXT_CRYPTO_AEAD_CHACHA20POLY1305_IETF_NPUBBYTES];
+    unsigned char key[NEXT_CRYPTO_AEAD_CHACHA20POLY1305_IETF_KEYBYTES];
+    unsigned char ciphertext[CRYPTO_AEAD_IETF_MESSAGE_LEN + NEXT_CRYPTO_AEAD_CHACHA20POLY1305_IETF_ABYTES];
     unsigned long long ciphertext_len;
 
-    crypto_aead_xchacha20poly1305_ietf_keygen( key );
+    crypto_aead_chacha20poly1305_ietf_keygen( key );
     randombytes_buf( nonce, sizeof(nonce) );
 
-    crypto_aead_xchacha20poly1305_ietf_encrypt( ciphertext, &ciphertext_len, CRYPTO_AEAD_IETF_MESSAGE, CRYPTO_AEAD_IETF_MESSAGE_LEN, CRYPTO_AEAD_IETF_ADDITIONAL_DATA, CRYPTO_AEAD_IETF_ADDITIONAL_DATA_LEN, NULL, nonce, key);
+    crypto_aead_chacha20poly1305_ietf_encrypt( ciphertext, &ciphertext_len, CRYPTO_AEAD_IETF_MESSAGE, CRYPTO_AEAD_IETF_MESSAGE_LEN, CRYPTO_AEAD_IETF_ADDITIONAL_DATA, CRYPTO_AEAD_IETF_ADDITIONAL_DATA_LEN, NULL, nonce, key);
 
     unsigned char decrypted[CRYPTO_AEAD_IETF_MESSAGE_LEN];
     unsigned long long decrypted_len;
-    check(crypto_aead_xchacha20poly1305_ietf_decrypt( decrypted, &decrypted_len, NULL, ciphertext, ciphertext_len, CRYPTO_AEAD_IETF_ADDITIONAL_DATA, CRYPTO_AEAD_IETF_ADDITIONAL_DATA_LEN, nonce, key ) == 0 );
+    check(crypto_aead_chacha20poly1305_ietf_decrypt( decrypted, &decrypted_len, NULL, ciphertext, ciphertext_len, CRYPTO_AEAD_IETF_ADDITIONAL_DATA, CRYPTO_AEAD_IETF_ADDITIONAL_DATA_LEN, nonce, key ) == 0 );
 }
 
 static void test_crypto_sign()
@@ -13269,11 +13271,11 @@ static void test_crypto_sign()
     #define CRYPTO_SIGN_MESSAGE (const unsigned char *) "test"
     #define CRYPTO_SIGN_MESSAGE_LEN 4
 
-    unsigned char public_key[crypto_sign_PUBLICKEYBYTES];
-    unsigned char private_key[crypto_sign_SECRETKEYBYTES];
+    unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
+    unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
     crypto_sign_keypair( public_key, private_key );
 
-    unsigned char signed_message[crypto_sign_BYTES + CRYPTO_SIGN_MESSAGE_LEN];
+    unsigned char signed_message[NEXT_CRYPTO_SIGN_BYTES + CRYPTO_SIGN_MESSAGE_LEN];
     unsigned long long signed_message_len;
 
     crypto_sign( signed_message, &signed_message_len, CRYPTO_SIGN_MESSAGE, CRYPTO_SIGN_MESSAGE_LEN, private_key );
@@ -13291,13 +13293,13 @@ static void test_crypto_sign_detached()
     #define MESSAGE_PART2 ((const unsigned char *) "is longer than expected")
     #define MESSAGE_PART2_LEN 23
 
-    unsigned char public_key[crypto_sign_PUBLICKEYBYTES];
-    unsigned char private_key[crypto_sign_SECRETKEYBYTES];
+    unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
+    unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
     crypto_sign_keypair( public_key, private_key );
 
     crypto_sign_state state;
 
-    unsigned char signature[crypto_sign_BYTES];
+    unsigned char signature[NEXT_CRYPTO_SIGN_BYTES];
 
     crypto_sign_init( &state );
     crypto_sign_update( &state, MESSAGE_PART1, MESSAGE_PART1_LEN );
@@ -13312,24 +13314,24 @@ static void test_crypto_sign_detached()
 
 static void test_crypto_key_exchange()
 {
-    uint8_t client_public_key[crypto_kx_PUBLICKEYBYTES];
-    uint8_t client_private_key[crypto_kx_SECRETKEYBYTES];
+    uint8_t client_public_key[NEXT_CRYPTO_KX_PUBLICKEYBYTES];
+    uint8_t client_private_key[NEXT_CRYPTO_KX_SECRETKEYBYTES];
     crypto_kx_keypair( client_public_key, client_private_key );
 
-    uint8_t server_public_key[crypto_kx_PUBLICKEYBYTES];
-    uint8_t server_private_key[crypto_kx_SECRETKEYBYTES];
+    uint8_t server_public_key[NEXT_CRYPTO_KX_PUBLICKEYBYTES];
+    uint8_t server_private_key[NEXT_CRYPTO_KX_SECRETKEYBYTES];
     crypto_kx_keypair( server_public_key, server_private_key );
 
-    uint8_t client_send_key[crypto_kx_SESSIONKEYBYTES];
-    uint8_t client_receive_key[crypto_kx_SESSIONKEYBYTES];
+    uint8_t client_send_key[NEXT_CRYPTO_KX_SESSIONKEYBYTES];
+    uint8_t client_receive_key[NEXT_CRYPTO_KX_SESSIONKEYBYTES];
     check( crypto_kx_client_session_keys( client_receive_key, client_send_key, client_public_key, client_private_key, server_public_key ) == 0 );
 
-    uint8_t server_send_key[crypto_kx_SESSIONKEYBYTES];
-    uint8_t server_receive_key[crypto_kx_SESSIONKEYBYTES];
+    uint8_t server_send_key[NEXT_CRYPTO_KX_SESSIONKEYBYTES];
+    uint8_t server_receive_key[NEXT_CRYPTO_KX_SESSIONKEYBYTES];
     check( crypto_kx_server_session_keys( server_receive_key, server_send_key, server_public_key, server_private_key, client_public_key ) == 0 );
 
-    check( memcmp( client_send_key, server_receive_key, crypto_kx_SESSIONKEYBYTES ) == 0 );
-    check( memcmp( server_send_key, client_receive_key, crypto_kx_SESSIONKEYBYTES ) == 0 );
+    check( memcmp( client_send_key, server_receive_key, NEXT_CRYPTO_KX_SESSIONKEYBYTES ) == 0 );
+    check( memcmp( server_send_key, client_receive_key, NEXT_CRYPTO_KX_SESSIONKEYBYTES ) == 0 );
 }
 
 static void test_basic_read_and_write()
@@ -13639,7 +13641,7 @@ static void test_upgrade_token()
     next_address_parse( &in.client_address, "127.0.0.1:40000" );
     next_address_parse( &in.server_address, "127.0.0.1:50000" );
 
-    unsigned char private_key[crypto_secretbox_KEYBYTES];
+    unsigned char private_key[NEXT_CRYPTO_SECRETBOX_KEYBYTES];
     crypto_secretbox_keygen( private_key );
 
     uint8_t buffer[NEXT_UPGRADE_TOKEN_BYTES];
@@ -13657,15 +13659,15 @@ static void test_packets()
 
     // upgrade request
     {
-        unsigned char public_key[crypto_sign_PUBLICKEYBYTES];
-        unsigned char private_key[crypto_sign_SECRETKEYBYTES];
+        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
+        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
         crypto_sign_keypair( public_key, private_key );
 
         static NextUpgradeRequestPacket in, out;
         in.protocol_version = next_protocol_version();
         in.session_id = 1231234127431LL;
         next_address_parse( &in.server_address, "127.0.0.1:12345" );
-        next_random_bytes( in.server_kx_public_key, crypto_kx_PUBLICKEYBYTES );
+        next_random_bytes( in.server_kx_public_key, NEXT_CRYPTO_KX_PUBLICKEYBYTES );
         next_random_bytes( in.upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );
 
         int packet_bytes = 0;
@@ -13676,15 +13678,15 @@ static void test_packets()
         check( in.protocol_version == out.protocol_version );
         check( in.session_id == out.session_id );
         check( next_address_equal( &in.server_address, &out.server_address ) );
-        check( memcmp( in.server_kx_public_key, out.server_kx_public_key, crypto_kx_PUBLICKEYBYTES ) == 0 );
+        check( memcmp( in.server_kx_public_key, out.server_kx_public_key, NEXT_CRYPTO_KX_PUBLICKEYBYTES ) == 0 );
         check( memcmp( in.upgrade_token, out.upgrade_token, NEXT_UPGRADE_TOKEN_BYTES ) == 0 );
     }
 
     // upgrade response
     {
         static NextUpgradeResponsePacket in, out;
-        next_random_bytes( in.client_kx_public_key, crypto_kx_PUBLICKEYBYTES );
-        next_random_bytes( in.client_route_public_key, crypto_box_PUBLICKEYBYTES );
+        next_random_bytes( in.client_kx_public_key, NEXT_CRYPTO_KX_PUBLICKEYBYTES );
+        next_random_bytes( in.client_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
         next_random_bytes( in.upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );
         in.platform_id = NEXT_PLATFORM_WINDOWS;
         in.connection_type = NEXT_CONNECTION_TYPE_CELLULAR;
@@ -13693,8 +13695,8 @@ static void test_packets()
         check( next_write_packet( NEXT_UPGRADE_RESPONSE_PACKET, &in, buffer, &packet_bytes, NULL, NULL, NULL, NULL, NULL ) == NEXT_OK );
         check( next_read_packet( buffer, packet_bytes, &out, NULL, NULL, NULL, NULL, NULL, NULL ) == NEXT_UPGRADE_RESPONSE_PACKET );
 
-        check( memcmp( in.client_kx_public_key, out.client_kx_public_key, crypto_kx_PUBLICKEYBYTES ) == 0 );
-        check( memcmp( in.client_route_public_key, out.client_route_public_key, crypto_box_PUBLICKEYBYTES ) == 0 );
+        check( memcmp( in.client_kx_public_key, out.client_kx_public_key, NEXT_CRYPTO_KX_PUBLICKEYBYTES ) == 0 );
+        check( memcmp( in.client_route_public_key, out.client_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES ) == 0 );
         check( memcmp( in.upgrade_token, out.upgrade_token, NEXT_UPGRADE_TOKEN_BYTES ) == 0 );
         check( in.platform_id == out.platform_id );
         check( in.connection_type == out.connection_type );
@@ -13702,16 +13704,16 @@ static void test_packets()
 
     // upgrade confirm
     {
-        unsigned char public_key[crypto_sign_PUBLICKEYBYTES];
-        unsigned char private_key[crypto_sign_SECRETKEYBYTES];
+        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
+        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
         crypto_sign_keypair( public_key, private_key );
 
         static NextUpgradeConfirmPacket in, out;
         in.upgrade_sequence = 1000;
         in.session_id = 1231234127431LL;
         next_address_parse( &in.server_address, "127.0.0.1:12345" );
-        next_random_bytes( in.client_kx_public_key, crypto_kx_PUBLICKEYBYTES );
-        next_random_bytes( in.server_kx_public_key, crypto_kx_PUBLICKEYBYTES );
+        next_random_bytes( in.client_kx_public_key, NEXT_CRYPTO_KX_PUBLICKEYBYTES );
+        next_random_bytes( in.server_kx_public_key, NEXT_CRYPTO_KX_PUBLICKEYBYTES );
 
         int packet_bytes = 0;
         check( next_write_packet( NEXT_UPGRADE_CONFIRM_PACKET, &in, buffer, &packet_bytes, next_signed_packets, NULL, NULL, private_key, NULL ) == NEXT_OK );
@@ -13721,11 +13723,11 @@ static void test_packets()
         check( in.upgrade_sequence == out.upgrade_sequence );
         check( in.session_id == out.session_id );
         check( next_address_equal( &in.server_address, &out.server_address ) );
-        check( memcmp( in.client_kx_public_key, out.client_kx_public_key, crypto_kx_PUBLICKEYBYTES ) == 0 );
-        check( memcmp( in.server_kx_public_key, out.server_kx_public_key, crypto_kx_PUBLICKEYBYTES ) == 0 );
+        check( memcmp( in.client_kx_public_key, out.client_kx_public_key, NEXT_CRYPTO_KX_PUBLICKEYBYTES ) == 0 );
+        check( memcmp( in.server_kx_public_key, out.server_kx_public_key, NEXT_CRYPTO_KX_PUBLICKEYBYTES ) == 0 );
     }
 
-    uint8_t private_key[crypto_aead_chacha20poly1305_KEYBYTES];
+    uint8_t private_key[NEXT_CRYPTO_AEAD_CHACHA20POLY1305_KEYBYTES];
     next_random_bytes( private_key, sizeof(private_key) );
 
     // direct ping packet
@@ -14008,7 +14010,7 @@ static void test_pending_session_manager()
 
     // test private keys
 
-    uint8_t private_keys[InitialSize*3*crypto_secretbox_KEYBYTES];
+    uint8_t private_keys[InitialSize*3*NEXT_CRYPTO_SECRETBOX_KEYBYTES];
     next_random_bytes( private_keys, sizeof(private_keys) );
 
     // test upgrade tokens 
@@ -14020,13 +14022,13 @@ static void test_pending_session_manager()
 
     for ( int i = 0; i < InitialSize*3; ++i )
     {
-        next_pending_session_entry_t * entry = next_pending_session_manager_add( pending_session_manager, &address, uint64_t(i)+1000, &private_keys[i*crypto_secretbox_KEYBYTES], &upgrade_tokens[i*NEXT_UPGRADE_TOKEN_BYTES], time );
+        next_pending_session_entry_t * entry = next_pending_session_manager_add( pending_session_manager, &address, uint64_t(i)+1000, &private_keys[i*NEXT_CRYPTO_SECRETBOX_KEYBYTES], &upgrade_tokens[i*NEXT_UPGRADE_TOKEN_BYTES], time );
         check( entry );
         check( entry->session_id == uint64_t(i) + 1000 );
         check( entry->upgrade_time == time );
         check( entry->last_packet_send_time < 0.0 );
         check( next_address_equal( &address, &entry->address ) == 1 );        
-        check( memcmp( entry->private_key, &private_keys[i*crypto_secretbox_KEYBYTES], crypto_secretbox_KEYBYTES ) == 0 );
+        check( memcmp( entry->private_key, &private_keys[i*NEXT_CRYPTO_SECRETBOX_KEYBYTES], NEXT_CRYPTO_SECRETBOX_KEYBYTES ) == 0 );
         check( memcmp( entry->upgrade_token, &upgrade_tokens[i*NEXT_UPGRADE_TOKEN_BYTES], NEXT_UPGRADE_TOKEN_BYTES ) == 0 );
         address.port++;
     }
@@ -14127,7 +14129,7 @@ static void test_proxy_session_manager()
 
     // test private keys
 
-    uint8_t private_keys[InitialSize*3*crypto_secretbox_KEYBYTES];
+    uint8_t private_keys[InitialSize*3*NEXT_CRYPTO_SECRETBOX_KEYBYTES];
     next_random_bytes( private_keys, sizeof(private_keys) );
 
     // test upgrade tokens 
@@ -14236,7 +14238,7 @@ static void test_session_manager()
 
     // test private keys
 
-    uint8_t private_keys[InitialSize*3*crypto_secretbox_KEYBYTES];
+    uint8_t private_keys[InitialSize*3*NEXT_CRYPTO_SECRETBOX_KEYBYTES];
     next_random_bytes( private_keys, sizeof(private_keys) );
 
     // test upgrade tokens 
@@ -14248,11 +14250,11 @@ static void test_session_manager()
 
     for ( int i = 0; i < InitialSize*3; ++i )
     {
-        next_session_entry_t * entry = next_session_manager_add( session_manager, &address, uint64_t(i)+1000, &private_keys[i*crypto_secretbox_KEYBYTES], &upgrade_tokens[i*NEXT_UPGRADE_TOKEN_BYTES] );
+        next_session_entry_t * entry = next_session_manager_add( session_manager, &address, uint64_t(i)+1000, &private_keys[i*NEXT_CRYPTO_SECRETBOX_KEYBYTES], &upgrade_tokens[i*NEXT_UPGRADE_TOKEN_BYTES] );
         check( entry );
         check( entry->session_id == uint64_t(i) + 1000 );
         check( next_address_equal( &address, &entry->address ) == 1 );
-        check( memcmp( entry->ephemeral_private_key, &private_keys[i*crypto_secretbox_KEYBYTES], crypto_secretbox_KEYBYTES ) == 0 );
+        check( memcmp( entry->ephemeral_private_key, &private_keys[i*NEXT_CRYPTO_SECRETBOX_KEYBYTES], NEXT_CRYPTO_SECRETBOX_KEYBYTES ) == 0 );
         check( memcmp( entry->upgrade_token, &upgrade_tokens[i*NEXT_UPGRADE_TOKEN_BYTES], NEXT_UPGRADE_TOKEN_BYTES ) == 0 );
         address.port++;
     }
@@ -14340,8 +14342,8 @@ static void test_backend_packets()
 
     // server init
     {
-        unsigned char public_key[crypto_sign_PUBLICKEYBYTES];
-        unsigned char private_key[crypto_sign_SECRETKEYBYTES];
+        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
+        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
         crypto_sign_keypair( public_key, private_key );
 
         static NextBackendServerInitRequestPacket in, out;
@@ -14365,8 +14367,8 @@ static void test_backend_packets()
 
     // server init response
     {
-        unsigned char public_key[crypto_sign_PUBLICKEYBYTES];
-        unsigned char private_key[crypto_sign_SECRETKEYBYTES];
+        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
+        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
         crypto_sign_keypair( public_key, private_key );
 
         static NextBackendServerInitResponsePacket in, out;
@@ -14383,8 +14385,8 @@ static void test_backend_packets()
 
     // server update
     {
-        unsigned char public_key[crypto_sign_PUBLICKEYBYTES];
-        unsigned char private_key[crypto_sign_SECRETKEYBYTES];
+        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
+        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
         crypto_sign_keypair( public_key, private_key );
 
         static NextBackendServerUpdatePacket in, out;
@@ -14408,8 +14410,8 @@ static void test_backend_packets()
 
     // session update
     {
-        unsigned char public_key[crypto_sign_PUBLICKEYBYTES];
-        unsigned char private_key[crypto_sign_SECRETKEYBYTES];
+        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
+        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
         crypto_sign_keypair( public_key, private_key );
 
         static NextBackendSessionUpdatePacket in, out;
@@ -14441,8 +14443,8 @@ static void test_backend_packets()
         }
         next_address_parse( &in.client_address, "127.0.0.1:40000" );
         next_address_parse( &in.server_address, "127.0.0.1:12345" );
-        next_random_bytes( in.client_route_public_key, crypto_box_PUBLICKEYBYTES );
-        next_random_bytes( in.server_route_public_key, crypto_box_PUBLICKEYBYTES );
+        next_random_bytes( in.client_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
+        next_random_bytes( in.server_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
         in.next_kbps_up = 100.0f;
         in.next_kbps_down = 200.0f;
         in.packets_lost_client_to_server = 100;
@@ -14486,8 +14488,8 @@ static void test_backend_packets()
         }
         check( next_address_equal( &in.client_address, &out.client_address ) );
         check( next_address_equal( &in.server_address, &out.server_address ) );
-        check( memcmp( in.client_route_public_key, out.client_route_public_key, crypto_box_PUBLICKEYBYTES ) == 0 );
-        check( memcmp( in.server_route_public_key, out.server_route_public_key, crypto_box_PUBLICKEYBYTES ) == 0 );
+        check( memcmp( in.client_route_public_key, out.client_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES ) == 0 );
+        check( memcmp( in.server_route_public_key, out.server_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES ) == 0 );
         check( in.next_kbps_up == out.next_kbps_up );
         check( in.next_kbps_down == out.next_kbps_down );
         check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );
@@ -14502,8 +14504,8 @@ static void test_backend_packets()
 
     // session response packet (direct)
     {
-        unsigned char public_key[crypto_sign_PUBLICKEYBYTES];
-        unsigned char private_key[crypto_sign_SECRETKEYBYTES];
+        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
+        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
         crypto_sign_keypair( public_key, private_key );
 
         static NextBackendSessionResponsePacket in, out;
@@ -14543,8 +14545,8 @@ static void test_backend_packets()
 
     // session response packet (route)
     {
-        unsigned char public_key[crypto_sign_PUBLICKEYBYTES];
-        unsigned char private_key[crypto_sign_SECRETKEYBYTES];
+        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
+        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
         crypto_sign_keypair( public_key, private_key );
 
         static NextBackendSessionResponsePacket in, out;
@@ -14592,8 +14594,8 @@ static void test_backend_packets()
 
     // session response packet (continue)
     {
-        unsigned char public_key[crypto_sign_PUBLICKEYBYTES];
-        unsigned char private_key[crypto_sign_SECRETKEYBYTES];
+        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
+        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
         crypto_sign_keypair( public_key, private_key );
 
         static NextBackendSessionResponsePacket in, out;
@@ -14738,16 +14740,16 @@ static void test_route_token()
 
     next_write_route_token( &input_token, buffer, NEXT_ROUTE_TOKEN_BYTES );
 
-    unsigned char sender_public_key[crypto_box_PUBLICKEYBYTES];
-    unsigned char sender_private_key[crypto_box_SECRETKEYBYTES];
+    unsigned char sender_public_key[NEXT_CRYPTO_BOX_PUBLICKEYBYTES];
+    unsigned char sender_private_key[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
     crypto_box_keypair( sender_public_key, sender_private_key );
 
-    unsigned char receiver_public_key[crypto_box_PUBLICKEYBYTES];
-    unsigned char receiver_private_key[crypto_box_SECRETKEYBYTES];
+    unsigned char receiver_public_key[NEXT_CRYPTO_BOX_PUBLICKEYBYTES];
+    unsigned char receiver_private_key[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
     crypto_box_keypair( receiver_public_key, receiver_private_key );
 
-    unsigned char nonce[crypto_box_NONCEBYTES];
-    next_random_bytes( nonce, crypto_box_NONCEBYTES );
+    unsigned char nonce[NEXT_CRYPTO_BOX_NONCEBYTES];
+    next_random_bytes( nonce, NEXT_CRYPTO_BOX_NONCEBYTES );
 
     check( next_encrypt_route_token( sender_private_key, receiver_public_key, nonce, buffer, sizeof( buffer ) ) == NEXT_OK );
 
@@ -14762,7 +14764,7 @@ static void test_route_token()
     check( input_token.session_version == output_token.session_version );
     check( input_token.kbps_up == output_token.kbps_up );
     check( input_token.kbps_down == output_token.kbps_down );
-    check( memcmp( input_token.private_key, output_token.private_key, crypto_box_SECRETKEYBYTES ) == 0 );
+    check( memcmp( input_token.private_key, output_token.private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES ) == 0 );
     check( next_address_equal( &input_token.next_address, &output_token.next_address ) == 1 );
 
     uint8_t * p = buffer;
@@ -14778,7 +14780,7 @@ static void test_route_token()
     check( input_token.session_version == output_token.session_version );
     check( input_token.kbps_up == output_token.kbps_up );
     check( input_token.kbps_down == output_token.kbps_down );
-    check( memcmp( input_token.private_key, output_token.private_key, crypto_box_SECRETKEYBYTES ) == 0 );
+    check( memcmp( input_token.private_key, output_token.private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES ) == 0 );
     check( next_address_equal( &input_token.next_address, &output_token.next_address ) == 1 );
 }
 
@@ -14795,16 +14797,16 @@ static void test_continue_token()
 
     next_write_continue_token( &input_token, buffer, NEXT_CONTINUE_TOKEN_BYTES );
 
-    unsigned char sender_public_key[crypto_box_PUBLICKEYBYTES];
-    unsigned char sender_private_key[crypto_box_SECRETKEYBYTES];
+    unsigned char sender_public_key[NEXT_CRYPTO_BOX_PUBLICKEYBYTES];
+    unsigned char sender_private_key[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
     crypto_box_keypair( sender_public_key, sender_private_key );
 
-    unsigned char receiver_public_key[crypto_box_PUBLICKEYBYTES];
-    unsigned char receiver_private_key[crypto_box_SECRETKEYBYTES];
+    unsigned char receiver_public_key[NEXT_CRYPTO_BOX_PUBLICKEYBYTES];
+    unsigned char receiver_private_key[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
     crypto_box_keypair( receiver_public_key, receiver_private_key );
 
-    unsigned char nonce[crypto_box_NONCEBYTES];
-    next_random_bytes( nonce, crypto_box_NONCEBYTES );
+    unsigned char nonce[NEXT_CRYPTO_BOX_NONCEBYTES];
+    next_random_bytes( nonce, NEXT_CRYPTO_BOX_NONCEBYTES );
 
     check( next_encrypt_continue_token( sender_private_key, receiver_public_key, nonce, buffer, sizeof( buffer ) ) == NEXT_OK );
 
@@ -14834,9 +14836,9 @@ static void test_continue_token()
 
 static void test_header()
 {
-    uint8_t private_key[crypto_box_SECRETKEYBYTES];
+    uint8_t private_key[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
 
-    next_random_bytes( private_key, crypto_box_SECRETKEYBYTES );
+    next_random_bytes( private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
 
     uint8_t buffer[NEXT_MTU];
 
