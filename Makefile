@@ -2,9 +2,9 @@ ARTIFACT_BUCKET = gs://development_artifacts
 ARTIFACT_BUCKET_STAGING = gs://staging_artifacts
 ARTIFACT_BUCKET_PROD = gs://prod_artifacts
 
-.PHONY: build-portal-test-artifacts-dev
-build-portal-test-artifacts-dev:
-	./deploy/build-artifact.sh -e dev-test -b $(ARTIFACT_BUCKET) -s portal-test
+.PHONY: build-portal-artifacts-local
+build-portal-artifacts-local:
+	./deploy/build-artifact.sh -e local -b $(ARTIFACT_BUCKET_PROD) -s portal
 
 .PHONY: build-portal-artifacts-dev
 build-portal-artifacts-dev:
