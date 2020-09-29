@@ -939,163 +939,201 @@ func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *
 	relay := routing.Relay{}
 
 	// avoid simple SQL injection hits
-	if len(args.Relay.Name) < 100 {
-		relay.Name = args.Relay.Name
-	} else {
-		returnErr := fmt.Errorf("Relay name too long (%d)", len(args.Relay.Name))
-		s.Logger.Log("err", returnErr)
-		return returnErr
-	}
+	for key, value := range args.DirtyFields {
+		switch key {
+		case "Name":
+			name := fmt.Sprintf("%s", value)
+			if len(name) < 100 {
+				relay.Name = name
+			} else {
+				returnErr := fmt.Errorf("Relay name too long (%d)", len(name))
+				s.Logger.Log("err", returnErr)
+				return returnErr
+			}
 
-	if len(args.Relay.Address) < 25 {
-		addr, err := net.ResolveUDPAddr("udp", args.Relay.Address)
-		if err != nil {
-			s.Logger.Log("err", err)
-			return err
+		case "Address":
+			address := fmt.Sprintf("%s", value)
+			if len(address) < 25 {
+				addr, err := net.ResolveUDPAddr("udp", address)
+				if err != nil {
+					s.Logger.Log("err", err)
+					return err
+				}
+				relay.Addr = *addr
+			} else {
+				returnErr := fmt.Errorf("Relay addr string too long (%d)", len(address))
+				s.Logger.Log("err", returnErr)
+				return returnErr
+			}
+
+		case "PublicKey":
+			pkey := fmt.Sprintf("%s", value)
+			if len(pkey) < 1000 {
+				publicKey, err := base64.StdEncoding.DecodeString(pkey)
+				if err != nil {
+					s.Logger.Log("err", err)
+					return err
+				}
+				relay.PublicKey = publicKey
+			} else {
+				returnErr := fmt.Errorf("Relay PublicKey string too long (%d)", len(pkey))
+				s.Logger.Log("err", returnErr)
+				return returnErr
+			}
+
+		case "NICSpeedMbps":
+			nic, ok := value.(int32)
+			if ok && nic < 1e9 {
+				relay.NICSpeedMbps = nic
+			} else {
+				returnErr := fmt.Errorf("Relay NICSpeedMbps too large")
+				s.Logger.Log("err", returnErr)
+				return returnErr
+			}
+
+		case "IncludedBandwidthGB":
+			bw, ok := value.(int32)
+			if ok && bw < 1e9 {
+				relay.IncludedBandwidthGB = bw
+			} else {
+				returnErr := fmt.Errorf("Relay IncludedBandwidthGB too large")
+				s.Logger.Log("err", returnErr)
+				return returnErr
+			}
+
+		case "ManagementAddr":
+			mgmt := fmt.Sprintf("%s", value)
+			if len(mgmt) < 25 {
+				relay.ManagementAddr = mgmt
+			} else {
+				returnErr := fmt.Errorf("Relay ManagementAddr string too long (%d)", len(mgmt))
+				s.Logger.Log("err", returnErr)
+				return returnErr
+			}
+
+		case "SSHUser":
+			user := fmt.Sprintf("%s", value)
+			if len(user) < 32 {
+				relay.SSHUser = user
+			} else {
+				returnErr := fmt.Errorf("Relay SSHUser too long (%d)", len(user))
+				s.Logger.Log("err", returnErr)
+				return returnErr
+			}
+
+		case "SSHPort":
+			port, ok := value.(int64)
+			if ok && port < 1e5 {
+				relay.SSHPort = port
+			} else {
+				returnErr := fmt.Errorf("Relay SSHPort too large")
+				s.Logger.Log("err", returnErr)
+				return returnErr
+			}
+
+		case "State":
+			stateValue := fmt.Sprintf("%s", value)
+			if len(stateValue) < 32 {
+				state, err := routing.ParseRelayState(stateValue)
+				if err != nil {
+					returnErr := fmt.Errorf("Invalid relay state (%s)", stateValue)
+					s.Logger.Log("err", returnErr)
+					return returnErr
+				} else {
+					relay.State = state
+				}
+			} else {
+				returnErr := fmt.Errorf("Relay State too long (%d)", len(stateValue))
+				s.Logger.Log("err", returnErr)
+				return returnErr
+			}
+
+		case "MaxSessions":
+			maxSessions, ok := value.(uint32)
+			if ok && maxSessions < 1e5 {
+				relay.MaxSessions = uint32(maxSessions)
+			} else {
+				returnErr := fmt.Errorf("Relay MaxSessions too large")
+				s.Logger.Log("err", returnErr)
+				return returnErr
+			}
+
+		case "MRC":
+			mrc, ok := value.(uint64)
+			if ok && mrc < 1e15 {
+				relay.MRC = routing.Nibblin(mrc)
+			} else {
+				returnErr := fmt.Errorf("Relay MRC too large")
+				s.Logger.Log("err", returnErr)
+				return returnErr
+			}
+
+		case "Overage":
+			overage, ok := value.(uint64)
+			if ok && overage < 1e15 {
+				relay.Overage = routing.Nibblin(uint64(overage))
+			} else {
+				returnErr := fmt.Errorf("Relay Overage too large")
+				s.Logger.Log("err", returnErr)
+				return returnErr
+			}
+
+		case "BWRule":
+			bwRule, ok := value.(uint32)
+			if ok && bwRule < 6 {
+				relay.BWRule = routing.BandWidthRule(bwRule)
+			} else {
+				returnErr := fmt.Errorf("Invalid relay BWRule")
+				s.Logger.Log("err", returnErr)
+				return returnErr
+			}
+
+		case "ContractTerm":
+			term, ok := value.(int32)
+			if ok && term < 48 {
+				relay.ContractTerm = int32(term)
+			} else {
+				returnErr := fmt.Errorf("Relay ContractTerm too large")
+				s.Logger.Log("err", returnErr)
+				return returnErr
+			}
+
+		case "StartDate":
+			startDate := fmt.Sprintf("%s", value)
+			d, err := time.Parse("2006-01-02", startDate)
+			if err != nil {
+				returnErr := fmt.Errorf("Invalid relay StartDate %s", startDate)
+				s.Logger.Log("err", returnErr)
+				return returnErr
+			} else {
+				relay.StartDate = d
+			}
+
+		case "EndDate":
+			endDate := fmt.Sprintf("%s", value)
+			d, err := time.Parse("2006-01-02", endDate)
+			if err != nil {
+				returnErr := fmt.Errorf("Invalid relay EndDate %s", endDate)
+				s.Logger.Log("err", returnErr)
+				return returnErr
+			} else {
+				relay.EndDate = d
+			}
+
+		case "Type":
+			machineType, ok := value.(uint32)
+			if ok && machineType < 6 {
+				relay.Type = routing.MachineType(machineType)
+			} else {
+				returnErr := fmt.Errorf("Invalid relay Type too large")
+				s.Logger.Log("err", returnErr)
+				return returnErr
+			}
 		}
-		relay.Addr = *addr
-	} else {
-		returnErr := fmt.Errorf("Relay addr string too long (%d)", len(args.Relay.Address))
-		s.Logger.Log("err", returnErr)
-		return returnErr
-	}
-
-	if len(args.Relay.PublicKey) < 1000 {
-		publicKey, err := base64.StdEncoding.DecodeString(args.Relay.PublicKey)
-		if err != nil {
-			s.Logger.Log("err", err)
-			return err
-		}
-		relay.PublicKey = publicKey
-	} else {
-		returnErr := fmt.Errorf("Relay PublicKey string too long (%d)", len(args.Relay.PublicKey))
-		s.Logger.Log("err", returnErr)
-		return returnErr
-	}
-
-	if args.Relay.NICSpeedMbps < 1e9 {
-		relay.NICSpeedMbps = int32(args.Relay.NICSpeedMbps)
-	} else {
-		returnErr := fmt.Errorf("Relay NICSpeedMbps too large")
-		s.Logger.Log("err", returnErr)
-		return returnErr
-	}
-
-	if args.Relay.IncludedBandwidthGB < 1e9 {
-		relay.IncludedBandwidthGB = int32(args.Relay.IncludedBandwidthGB)
-	} else {
-		returnErr := fmt.Errorf("Relay IncludedBandwidthGB too large")
-		s.Logger.Log("err", returnErr)
-		return returnErr
-	}
-
-	if len(args.Relay.ManagementAddr) < 25 {
-		relay.ManagementAddr = args.Relay.ManagementAddr
-	} else {
-		returnErr := fmt.Errorf("Relay ManagementAddr string too long (%d)", len(args.Relay.ManagementAddr))
-		s.Logger.Log("err", returnErr)
-		return returnErr
-	}
-
-	if len(args.Relay.SSHUser) < 32 {
-		relay.SSHUser = args.Relay.SSHUser
-	} else {
-		returnErr := fmt.Errorf("Relay SSHUser too long (%d)", len(args.Relay.SSHUser))
-		s.Logger.Log("err", returnErr)
-		return returnErr
-	}
-
-	if args.Relay.SSHPort < 1e5 {
-		relay.SSHPort = int64(args.Relay.SSHPort)
-	} else {
-		returnErr := fmt.Errorf("Relay SSHPort too large")
-		s.Logger.Log("err", returnErr)
-		return returnErr
-	}
-
-	if len(args.Relay.State) < 32 {
-		state, err := routing.ParseRelayState(args.Relay.State)
-		if err != nil {
-			returnErr := fmt.Errorf("Invalid relay state (%s)", args.Relay.State)
-			s.Logger.Log("err", returnErr)
-			return returnErr
-		} else {
-			relay.State = state
-		}
-	} else {
-		returnErr := fmt.Errorf("Relay State too long (%d)", len(args.Relay.State))
-		s.Logger.Log("err", returnErr)
-		return returnErr
-	}
-
-	if args.Relay.MaxSessions < 1e5 {
-		relay.MaxSessions = uint32(args.Relay.MaxSessions)
-	} else {
-		returnErr := fmt.Errorf("Relay MaxSessions too large")
-		s.Logger.Log("err", returnErr)
-		return returnErr
-	}
-
-	if args.Relay.MRC < 1e15 {
-		relay.MRC = routing.Nibblin(uint64(args.Relay.MaxSessions))
-	} else {
-		returnErr := fmt.Errorf("Relay MRC too large")
-		s.Logger.Log("err", returnErr)
-		return returnErr
-	}
-
-	if args.Relay.Overage < 1e15 {
-		relay.Overage = routing.Nibblin(uint64(args.Relay.Overage))
-	} else {
-		returnErr := fmt.Errorf("Relay Overage too large")
-		s.Logger.Log("err", returnErr)
-		return returnErr
-	}
-
-	if args.Relay.BWRule < 6 {
-		relay.BWRule = routing.BandWidthRule(uint32(args.Relay.BWRule))
-	} else {
-		returnErr := fmt.Errorf("Relay BWRule too large")
-		s.Logger.Log("err", returnErr)
-		return returnErr
-	}
-
-	if args.Relay.ContractTerm < 48 {
-		relay.ContractTerm = int32(args.Relay.ContractTerm)
-	} else {
-		returnErr := fmt.Errorf("Relay ContractTerm too large")
-		s.Logger.Log("err", returnErr)
-		return returnErr
-	}
-
-	d, err := time.Parse("2006-01-02", args.Relay.StartDate)
-	if err != nil {
-		returnErr := fmt.Errorf("Invalid relay StartDate %s", args.Relay.StartDate)
-		s.Logger.Log("err", returnErr)
-		return returnErr
-	} else {
-		relay.StartDate = d
-	}
-
-	d, err = time.Parse("2006-01-02", args.Relay.EndDate)
-	if err != nil {
-		returnErr := fmt.Errorf("Invalid relay EndDate %s", args.Relay.EndDate)
-		s.Logger.Log("err", returnErr)
-		return returnErr
-	} else {
-		relay.EndDate = d
-	}
-
-	if args.Relay.Type < 6 {
-		relay.Type = routing.MachineType(uint32(args.Relay.Type))
-	} else {
-		returnErr := fmt.Errorf("Relay Type too large")
-		s.Logger.Log("err", returnErr)
-		return returnErr
 	}
 
 	// Make call to Storage with sanitized inputs
-	err = s.Storage.UpdateRelay(context.Background(), relay, args.DirtyFields)
+	err := s.Storage.UpdateRelay(context.Background(), relay, args.DirtyFields)
 	if err != nil {
 		return err // TODO detail
 	}
