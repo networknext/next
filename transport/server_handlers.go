@@ -1031,7 +1031,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 		var bestRoute *routing.Route
 		bestRoute, routeDecision = GetBestRoute(routeMatrix, nearRelayData, datacenterRelays, params.Storer, params.Metrics, &buyer,
 			sessionDataReadOnly.RouteHash, sessionDataReadOnly.RouteDecision, &lastNextStats, &lastDirectStats, inGamePacketLoss,
-			nextSliceCounter, &committedData, multipathVetoReason, packet.UserHash, packet.ConnectionType == ConnectionTypeWired, &directRoute)
+			nextSliceCounter, &committedData, multipathVetoReason, packet.UserHash, &directRoute)
 
 		if routeDecision.OnNetworkNext {
 			nextSliceCounter++
@@ -1050,7 +1050,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 // This function can either return a network next route or a direct route, and it also returns a reason as to why the route was chosen.
 func GetBestRoute(routeMatrix RouteProvider, nearRelayData []routing.NearRelayData, datacenterRelayIDs []uint64, storer storage.Storer, metrics *metrics.SessionMetrics,
 	buyer *routing.Buyer, prevRouteHash uint64, prevRouteDecision routing.Decision, lastNextStats *routing.Stats, lastDirectStats *routing.Stats, inGamePacketLoss float64,
-	onNNSliceCounter uint64, committedData *routing.CommittedData, multipathVetoReason routing.DecisionReason, userHash uint64, connectionWired bool, directRoute *routing.Route) (*routing.Route, routing.Decision) {
+	onNNSliceCounter uint64, committedData *routing.CommittedData, multipathVetoReason routing.DecisionReason, userHash uint64, directRoute *routing.Route) (*routing.Route, routing.Decision) {
 
 	// We need to get a next route to compare against direct
 	nextRoute := GetNextRoute(routeMatrix, nearRelayData, datacenterRelayIDs, storer, metrics, float64(buyer.RoutingRulesSettings.RTTEpsilon), prevRouteHash)
@@ -1101,7 +1101,7 @@ func GetBestRoute(routeMatrix RouteProvider, nearRelayData []routing.NearRelayDa
 	if multipathVetoReason&routing.DecisionMultipathVetoRTT == 0 {
 		deciderFuncs = append(deciderFuncs,
 			routing.DecideMultipath(buyer.RoutingRulesSettings.EnableMultipathForRTT, buyer.RoutingRulesSettings.EnableMultipathForJitter, buyer.RoutingRulesSettings.EnableMultipathForPacketLoss,
-				float64(buyer.RoutingRulesSettings.RTTThreshold), float64(buyer.RoutingRulesSettings.MultipathPacketLossThreshold), inGamePacketLoss, connectionWired))
+				float64(buyer.RoutingRulesSettings.RTTThreshold), float64(buyer.RoutingRulesSettings.MultipathPacketLossThreshold), inGamePacketLoss))
 	}
 
 	if buyer.RoutingRulesSettings.EnableTryBeforeYouBuy {
