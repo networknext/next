@@ -13,7 +13,7 @@ import (
 
 func TestNewMultipathVetoHandlerCouldNotPing(t *testing.T) {
 	_, err := storage.NewMultipathVetoHandler("0.1.2.3:6379", nil)
-	assert.EqualError(t, err, "could not ping multipath veto redis instance: dial tcp 0.1.2.3:6379: connect: invalid argument")
+	assert.Contains(t, err.Error(), "could not ping multipath veto redis instance: dial tcp 0.1.2.3:6379: connect")
 }
 
 func TestNewMultipathVetoHandlerSuccess(t *testing.T) {
