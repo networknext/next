@@ -410,6 +410,11 @@ func mainReturnWithCode() int {
 
 					start := time.Now()
 
+					if routeEntriesReader == nil {
+						time.Sleep(syncInterval)
+						continue
+					}
+
 					buffer, err := ioutil.ReadAll(routeEntriesReader)
 
 					if routeEntriesReader != nil {
