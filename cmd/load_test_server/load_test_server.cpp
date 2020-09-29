@@ -43,20 +43,8 @@ void server_packet_received( next_server_t * server, void * context, const next_
 
     if ( !next_server_session_upgraded( server, from ) )
     {
-        char buff[256];
-        bzero(buff, sizeof(buff));
-        next_address_to_string(from, buff);
-        size_t len = strlen(buff);
-        uint64_t fnv = 0xCBF29CE484222325;
-        for ( size_t i = 0; i < len; ++i ) {
-            fnv ^= buff[i];
-            fnv *= 0x00000100000001B3;
-        }
-        std::stringstream fnv_ss;
-
-        fnv_ss << fnv;
-
-        next_server_upgrade_session( server, from, fnv_ss.str().c_str() );
+        char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+        next_server_upgrade_session( server, from, next_address_to_string( from, buffer ) );
     }
 }
 
@@ -105,7 +93,7 @@ int main()
     {
         next_server_update( server );
 
-        next_sleep( 1.0 / 60.0 );
+        next_sleep( 1.0 );
     }
 
     next_server_destroy( server );
