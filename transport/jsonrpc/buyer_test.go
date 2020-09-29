@@ -10,9 +10,11 @@ import (
 
 	"github.com/alicebob/miniredis"
 	"github.com/go-kit/kit/log"
+	"github.com/networknext/backend/admin"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport/jsonrpc"
+	"github.com/networknext/backend/transport/middleware"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -32,7 +34,7 @@ import (
 	noopHandler := func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}
-	authMiddleware := jsonrpc.AuthMiddleware("oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n", http.HandlerFunc(noopHandler))
+	authMiddleware := middleware.AuthControl("oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n", http.HandlerFunc(noopHandler))
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Add("Authorization", "Bearer "+jwtSideload)
@@ -100,7 +102,7 @@ import (
 // 	noopHandler := func(w http.ResponseWriter, _ *http.Request) {
 // 		w.WriteHeader(http.StatusOK)
 // 	}
-// 	authMiddleware := jsonrpc.AuthMiddleware("oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n", http.HandlerFunc(noopHandler))
+// 	authMiddleware := middleware.AuthControl("oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n", http.HandlerFunc(noopHandler))
 
 // 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 // 	req.Header.Add("Authorization", "Bearer "+jwtSideload)
@@ -188,7 +190,7 @@ func TestDatacenterMaps(t *testing.T) {
 	noopHandler := func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}
-	authMiddleware := jsonrpc.AuthMiddleware("oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n", http.HandlerFunc(noopHandler), false)
+	authMiddleware := middleware.AuthControl("oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n", http.HandlerFunc(noopHandler), false)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Add("Authorization", "Bearer "+jwtSideload)
@@ -298,14 +300,14 @@ func TestTotalSessions(t *testing.T) {
 	noopHandler := func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}
-	authMiddleware := jsonrpc.AuthMiddleware("oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n", http.HandlerFunc(noopHandler), false)
+	authMiddleware := middleware.AuthControl("oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n", http.HandlerFunc(noopHandler), false)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Add("Authorization", "Bearer "+jwtSideload)
 	res := httptest.NewRecorder()
 
 	reqContext := req.Context()
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local")
+	reqContext = context.WithValue(reqContext, admin.Keys.CompanyKey, "local")
 	req = req.WithContext(reqContext)
 
 	authMiddleware.ServeHTTP(res, req)
@@ -384,7 +386,7 @@ func TestTotalSessions(t *testing.T) {
 // 	noopHandler := func(w http.ResponseWriter, _ *http.Request) {
 // 		w.WriteHeader(http.StatusOK)
 // 	}
-// 	authMiddleware := jsonrpc.AuthMiddleware("oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n", http.HandlerFunc(noopHandler))
+// 	authMiddleware := middleware.AuthControl("oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n", http.HandlerFunc(noopHandler))
 
 // 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 // 	req.Header.Add("Authorization", "Bearer "+jwtSideload)
@@ -498,7 +500,7 @@ func TestTotalSessions(t *testing.T) {
 // 	noopHandler := func(w http.ResponseWriter, _ *http.Request) {
 // 		w.WriteHeader(http.StatusOK)
 // 	}
-// 	authMiddleware := jsonrpc.AuthMiddleware("oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n", http.HandlerFunc(noopHandler))
+// 	authMiddleware := middleware.AuthControl("oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n", http.HandlerFunc(noopHandler))
 
 // 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 // 	req.Header.Add("Authorization", "Bearer "+jwtSideload)
@@ -606,7 +608,7 @@ func TestTotalSessions(t *testing.T) {
 // 	noopHandler := func(w http.ResponseWriter, _ *http.Request) {
 // 		w.WriteHeader(http.StatusOK)
 // 	}
-// 	authMiddleware := jsonrpc.AuthMiddleware("oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n", http.HandlerFunc(noopHandler))
+// 	authMiddleware := middleware.AuthControl("oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n", http.HandlerFunc(noopHandler))
 
 // 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 // 	req.Header.Add("Authorization", "Bearer "+jwtSideload)
@@ -721,7 +723,7 @@ func TestTotalSessions(t *testing.T) {
 // 	noopHandler := func(w http.ResponseWriter, _ *http.Request) {
 // 		w.WriteHeader(http.StatusOK)
 // 	}
-// 	authMiddleware := jsonrpc.AuthMiddleware("oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n", http.HandlerFunc(noopHandler))
+// 	authMiddleware := middleware.AuthControl("oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n", http.HandlerFunc(noopHandler))
 
 // 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 // 	req.Header.Add("Authorization", "Bearer "+jwtSideload)
@@ -798,14 +800,14 @@ func TestGameConfiguration(t *testing.T) {
 	noopHandler := func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}
-	authMiddleware := jsonrpc.AuthMiddleware("oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n", http.HandlerFunc(noopHandler), false)
+	authMiddleware := middleware.AuthControl("oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n", http.HandlerFunc(noopHandler), false)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Add("Authorization", "Bearer "+jwtSideload)
 	res := httptest.NewRecorder()
 
 	reqContext := req.Context()
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local")
+	reqContext = context.WithValue(reqContext, admin.Keys.CompanyKey, "local")
 	req = req.WithContext(reqContext)
 
 	authMiddleware.ServeHTTP(res, req)
@@ -860,7 +862,7 @@ func TestSameBuyerRoleFunction(t *testing.T) {
 	noopHandler := func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}
-	authMiddleware := jsonrpc.AuthMiddleware("oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n", http.HandlerFunc(noopHandler))
+	authMiddleware := middleware.AuthControl("oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n", http.HandlerFunc(noopHandler))
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Add("Authorization", "Bearer "+jwtSideload)

@@ -13,7 +13,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/rpc/v2"
@@ -25,6 +24,7 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
+	"github.com/networknext/backend/admin"
 	"github.com/networknext/backend/encoding"
 	"github.com/networknext/backend/logging"
 	"github.com/networknext/backend/storage"
@@ -437,31 +437,7 @@ func main() {
 
 		s := rpc.NewServer()
 		s.RegisterInterceptFunc(func(i *rpc.RequestInfo) *http.Request {
-			user := i.Request.Context().Value("user")
-			if user != nil {
-				claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
-
-				if requestData, ok := claims["https://networknext.com/userData"]; ok {
-					var userRoles []string
-					if roles, ok := requestData.(map[string]interface{})["roles"]; ok {
-						rolesInterface := roles.([]interface{})
-						userRoles = make([]string, len(rolesInterface))
-						for i, v := range rolesInterface {
-							userRoles[i] = v.(string)
-						}
-					}
-					var companyCode string
-					if companyCodeInterface, ok := requestData.(map[string]interface{})["company_code"]; ok {
-						companyCode = companyCodeInterface.(string)
-					}
-					var newsletterConsent bool
-					if consent, ok := requestData.(map[string]interface{})["newsletter"]; ok {
-						newsletterConsent = consent.(bool)
-					}
-					return jsonrpc.AddTokenContext(i.Request, userRoles, companyCode, newsletterConsent)
-				}
-			}
-			return jsonrpc.SetIsAnonymous(i.Request, i.Request.Header.Get("Authorization") == "")
+			return admin.RPCInterceptHandler(i)
 		})
 		s.RegisterCodec(json2.NewCodec(), "application/json")
 		s.RegisterService(&jsonrpc.OpsService{
@@ -487,7 +463,7 @@ func main() {
 
 		r := mux.NewRouter()
 
-		r.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s), allowCORS))
+		r.Handle("/rpc", middleware.AuthControl(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s), allowCORS))
 		r.HandleFunc("/health", transport.HealthHandlerFunc())
 		r.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage))
 

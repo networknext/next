@@ -2,14 +2,10 @@ package jsonrpc
 
 import (
 	"context"
-	"encoding/base64"
-	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -17,8 +13,8 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/gomodule/redigo/redis"
+	"github.com/networknext/backend/admin"
 	"github.com/networknext/backend/encoding"
-	ghostarmy "github.com/networknext/backend/ghost_army"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport"
@@ -53,34 +49,11 @@ type FlushSessionsArgs struct{}
 type FlushSessionsReply struct{}
 
 func (s *BuyersService) FlushSessions(r *http.Request, args *FlushSessionsArgs, reply *FlushSessionsReply) error {
-	if !VerifyAllRoles(r, OpsRole) {
-		return fmt.Errorf("FlushSessions(): %v", ErrInsufficientPrivileges)
-	}
-
-	topSessions := s.RedisPoolTopSessions.Get()
-	defer topSessions.Close()
-	if _, err := topSessions.Do("FLUSHALL", "ASYNC"); err != nil {
+	if err := admin.FlushSessions(r, s.RedisPoolTopSessions, s.RedisPoolSessionMeta, s.RedisPoolSessionSlices, s.RedisPoolSessionMap); err != nil {
+		err = fmt.Errorf("FlushSessions() failed to flush sessions: %v", err)
+		level.Error(s.Logger).Log("err", err)
 		return err
 	}
-
-	sessionMeta := s.RedisPoolSessionMeta.Get()
-	defer sessionMeta.Close()
-	if _, err := sessionMeta.Do("FLUSHALL", "ASYNC"); err != nil {
-		return err
-	}
-
-	sessionSlices := s.RedisPoolSessionSlices.Get()
-	defer sessionSlices.Close()
-	if _, err := sessionSlices.Do("FLUSHALL", "ASYNC"); err != nil {
-		return err
-	}
-
-	sessionMap := s.RedisPoolSessionMap.Get()
-	defer sessionMap.Close()
-	if _, err := sessionMap.Do("FLUSHALL", "ASYNC"); err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -155,7 +128,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	// 			continue
 	// 		}
 
-	// 		if VerifyAnyRole(r, AnonymousRole, UnverifiedRole) || !VerifyAllRoles(r, s.SameBuyerRole(fmt.Sprintf("%016x", meta.BuyerID))) {
+	// 		if admin.admin.VerifyAnyRole(r, admin.AnonymousRole, admin.UnverifiedRole) || !admin.VerifyAllRoles(r, admin.VerifyAnyRole(fmt.Sprintf("%016x", meta.BuyerID))) {
 	// 			meta.Anonymise()
 	// 		}
 
@@ -192,165 +165,15 @@ type TotalSessionsReply struct {
 }
 
 func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, reply *TotalSessionsReply) error {
-	if r.Body != nil {
-		defer r.Body.Close()
+	buyer, _ := s.Storage.BuyerWithCompanyCode(args.CompanyCode)
+	output, err := admin.TotalSessions(r, s.RedisPoolSessionMap, buyer, s.Storage.Buyers())
+	if err != nil {
+		err = fmt.Errorf("TotalSessions() failed to gather total sessions: %v", err)
+		level.Error(s.Logger).Log("err", err)
+		return err
 	}
-
-	redisClient := s.RedisPoolSessionMap.Get()
-	defer redisClient.Close()
-	minutes := time.Now().Unix() / 60
-
-	ghostArmyBuyerID := ghostarmy.GhostArmyBuyerID(os.Getenv("ENV"))
-	var ghostArmyScalar uint64 = 25
-	if v, ok := os.LookupEnv("GHOST_ARMY_SCALER"); ok {
-		if v, err := strconv.ParseUint(v, 10, 64); err == nil {
-			ghostArmyScalar = v
-		}
-	}
-
-	switch args.CompanyCode {
-	case "":
-		buyers := s.Storage.Buyers()
-
-		var oldCount int
-		var newCount int
-
-		for _, buyer := range buyers {
-			stringID := fmt.Sprintf("%016x", buyer.ID)
-			redisClient.Send("HLEN", fmt.Sprintf("n-%s-%d", stringID, minutes-1))
-			redisClient.Send("HLEN", fmt.Sprintf("n-%s-%d", stringID, minutes))
-		}
-		redisClient.Flush()
-
-		var ghostArmyNextCount int
-		for _, buyer := range buyers {
-			firstCount, err := redis.Int(redisClient.Receive())
-			if err != nil {
-				err = fmt.Errorf("TotalSessions() failed getting total session count next: %v", err)
-				level.Error(s.Logger).Log("err", err)
-				return err
-			}
-			oldCount += firstCount
-
-			secondCount, err := redis.Int(redisClient.Receive())
-			if err != nil {
-				err = fmt.Errorf("TotalSessions() failed getting total session count next: %v", err)
-				level.Error(s.Logger).Log("err", err)
-				return err
-			}
-			newCount += secondCount
-
-			if buyer.ID == ghostArmyBuyerID {
-				if firstCount > secondCount {
-					ghostArmyNextCount = firstCount
-				} else {
-					ghostArmyNextCount = secondCount
-				}
-			}
-		}
-
-		reply.Next = oldCount
-		if newCount > oldCount {
-			reply.Next = newCount
-		}
-
-		oldCount = 0
-		newCount = 0
-
-		for _, buyer := range buyers {
-			stringID := fmt.Sprintf("%016x", buyer.ID)
-			redisClient.Send("HLEN", fmt.Sprintf("d-%s-%d", stringID, minutes-1))
-			redisClient.Send("HLEN", fmt.Sprintf("d-%s-%d", stringID, minutes))
-		}
-		redisClient.Flush()
-
-		for _, buyer := range buyers {
-			count, err := redis.Int(redisClient.Receive())
-			if err != nil {
-				err = fmt.Errorf("TotalSessions() failed getting total session count direct: %v", err)
-				level.Error(s.Logger).Log("err", err)
-				return err
-			}
-			oldCount += count
-
-			count, err = redis.Int(redisClient.Receive())
-			if err != nil {
-				err = fmt.Errorf("TotalSessions() failed getting total session count direct: %v", err)
-				level.Error(s.Logger).Log("err", err)
-				return err
-			}
-
-			if buyer.ID == ghostArmyBuyerID {
-				// scale by next values because ghost army data contains 0 direct
-				// if ghost army is turned off then this number will be 0 and have no effect
-				count = ghostArmyNextCount * int(ghostArmyScalar)
-			}
-			newCount += count
-		}
-
-		reply.Direct = oldCount
-		if newCount > oldCount {
-			reply.Direct = newCount
-		}
-	default:
-		buyer, err := s.Storage.BuyerWithCompanyCode(args.CompanyCode)
-		if err != nil {
-			err = fmt.Errorf("TotalSessions() failed getting company with code: %v", err)
-			level.Error(s.Logger).Log("err", err)
-			return err
-		}
-		buyerID := fmt.Sprintf("%016x", buyer.ID)
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
-			err := fmt.Errorf("TotalSessions(): %v", ErrInsufficientPrivileges)
-			level.Error(s.Logger).Log("err", err)
-			return err
-		}
-
-		redisClient.Send("HLEN", fmt.Sprintf("d-%s-%d", buyerID, minutes-1))
-		redisClient.Send("HLEN", fmt.Sprintf("d-%s-%d", buyerID, minutes))
-		redisClient.Send("HLEN", fmt.Sprintf("n-%s-%d", buyerID, minutes-1))
-		redisClient.Send("HLEN", fmt.Sprintf("n-%s-%d", buyerID, minutes))
-		redisClient.Flush()
-
-		oldDirectCount, err := redis.Int(redisClient.Receive())
-		if err != nil {
-			err = fmt.Errorf("TotalSessions() failed getting buyer session direct counts: %v", err)
-			level.Error(s.Logger).Log("err", err)
-			return err
-		}
-
-		newDirectCount, err := redis.Int(redisClient.Receive())
-		if err != nil {
-			err = fmt.Errorf("TotalSessions() failed getting buyer session direct counts: %v", err)
-			level.Error(s.Logger).Log("err", err)
-			return err
-		}
-
-		reply.Direct = oldDirectCount
-		if newDirectCount > oldDirectCount {
-			reply.Direct = newDirectCount
-		}
-
-		oldNextCount, err := redis.Int(redisClient.Receive())
-		if err != nil {
-			err = fmt.Errorf("TotalSessions() failed getting buyer session next counts: %v", err)
-			level.Error(s.Logger).Log("err", err)
-			return err
-		}
-
-		newNextCount, err := redis.Int(redisClient.Receive())
-		if err != nil {
-			err = fmt.Errorf("TotalSessions() failed getting buyer session next counts: %v", err)
-			level.Error(s.Logger).Log("err", err)
-			return err
-		}
-
-		reply.Next = oldNextCount
-		if newNextCount > oldNextCount {
-			reply.Next = newNextCount
-		}
-	}
-
+	reply.Next = output.Next
+	reply.Direct = output.Direct
 	return nil
 }
 
@@ -364,126 +187,14 @@ type TopSessionsReply struct {
 
 // TopSessions generates the top sessions sorted by improved RTT
 func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, reply *TopSessionsReply) error {
-	var err error
-	var topSessionsA []string
-	var topSessionsB []string
-
-	reply.Sessions = make([]transport.SessionMeta, 0)
-
-	minutes := time.Now().Unix() / 60
-
-	topSessionsClient := s.RedisPoolTopSessions.Get()
-	defer topSessionsClient.Close()
-
-	// get the top session IDs globally or for a buyer from the sorted set
-	switch args.CompanyCode {
-	case "":
-		// Get top sessions from the past 2 minutes sorted by greatest to least improved RTT
-		topSessionsA, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("s-%d", minutes-1), "0", fmt.Sprintf("%d", TopSessionsSize)))
-		if err != nil && err != redis.ErrNil {
-			err = fmt.Errorf("TopSessions() failed getting top sessions A: %v", err)
-			level.Error(s.Logger).Log("err", err)
-			return err
-		}
-		topSessionsB, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("s-%d", minutes), "0", fmt.Sprintf("%d", TopSessionsSize)))
-		if err != nil && err != redis.ErrNil {
-			err = fmt.Errorf("TopSessions() failed getting top sessions B: %v", err)
-			level.Error(s.Logger).Log("err", err)
-			return err
-		}
-	default:
-		buyer, err := s.Storage.BuyerWithCompanyCode(args.CompanyCode)
-		if err != nil {
-			err = fmt.Errorf("TopSessions() failed getting company with code: %v", err)
-			level.Error(s.Logger).Log("err", err)
-			return err
-		}
-		buyerID := fmt.Sprintf("%x", buyer.ID)
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
-			err := fmt.Errorf("TopSessions(): %v", ErrInsufficientPrivileges)
-			level.Error(s.Logger).Log("err", err)
-			return err
-		}
-
-		topSessionsA, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("sc-%s-%d", buyerID, minutes-1), "0", fmt.Sprintf("%d", TopSessionsSize)))
-		if err != nil && err != redis.ErrNil {
-			err = fmt.Errorf("TopSessions() failed getting top sessions A for buyer ID %016x: %v", buyerID, err)
-			level.Error(s.Logger).Log("err", err)
-			return err
-		}
-		topSessionsB, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("sc-%s-%d", buyerID, minutes), "0", fmt.Sprintf("%d", TopSessionsSize)))
-		if err != nil && err != redis.ErrNil {
-			err = fmt.Errorf("TopSessions() failed getting top sessions B for buyer ID %016x: %v", buyerID, err)
-			level.Error(s.Logger).Log("err", err)
-			return err
-		}
+	buyer, _ := s.Storage.BuyerWithCompanyCode(args.CompanyCode)
+	sessions, err := admin.TopSessions(r, s.RedisPoolTopSessions, s.RedisPoolSessionMeta, buyer)
+	if err != nil {
+		err = fmt.Errorf("TopSessions() failed to gather top sessions: %v", err)
+		level.Error(s.Logger).Log("err", err)
+		return err
 	}
-
-	sessionMetaClient := s.RedisPoolSessionMeta.Get()
-	defer sessionMetaClient.Close()
-
-	sessionIDsRetreivedMap := make(map[string]bool)
-	for _, sessionID := range topSessionsA {
-		sessionMetaClient.Send("GET", fmt.Sprintf("sm-%s", sessionID))
-		sessionIDsRetreivedMap[sessionID] = true
-	}
-	for _, sessionID := range topSessionsB {
-		if _, ok := sessionIDsRetreivedMap[sessionID]; !ok {
-			sessionMetaClient.Send("GET", fmt.Sprintf("sm-%s", sessionID))
-			sessionIDsRetreivedMap[sessionID] = true
-		}
-	}
-	sessionMetaClient.Flush()
-
-	var sessionMetasNext []transport.SessionMeta
-	var sessionMetasDirect []transport.SessionMeta
-	var meta transport.SessionMeta
-	for i := 0; i < len(sessionIDsRetreivedMap); i++ {
-		metaString, err := redis.String(sessionMetaClient.Receive())
-		if err != nil && err != redis.ErrNil {
-			err = fmt.Errorf("TopSessions() failed getting top sessions meta: %v", err)
-			level.Error(s.Logger).Log("err", err)
-			return err
-		}
-
-		splitMetaStrings := strings.Split(metaString, "|")
-		if err := meta.ParseRedisString(splitMetaStrings); err != nil {
-			err = fmt.Errorf("TopSessions() failed to parse redis string into meta: %v", err)
-			level.Error(s.Logger).Log("err", err, "redisString", metaString)
-			continue
-		}
-
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
-			meta.Anonymise()
-		}
-
-		// Split the sessions metas into two slices so we can sort them separately.
-		// This is necessary because if we were to force sessions next, then sorting
-		// by improvement won't always put next sessions on top.
-		if meta.OnNetworkNext {
-			sessionMetasNext = append(sessionMetasNext, meta)
-		} else {
-			sessionMetasDirect = append(sessionMetasDirect, meta)
-		}
-	}
-
-	// These sorts are necessary because we are combining two ZREVRANGEs from two separate minute buckets.
-	sort.Slice(sessionMetasNext, func(i, j int) bool {
-		return sessionMetasNext[i].DeltaRTT > sessionMetasNext[j].DeltaRTT
-	})
-
-	sort.Slice(sessionMetasDirect, func(i, j int) bool {
-		return sessionMetasDirect[i].DirectRTT > sessionMetasDirect[j].DirectRTT
-	})
-
-	sessionMetas := append(sessionMetasNext, sessionMetasDirect...)
-
-	if len(sessionMetas) > TopSessionsSize {
-		reply.Sessions = sessionMetas[:TopSessionsSize]
-		return nil
-	}
-
-	reply.Sessions = sessionMetas
+	reply.Sessions = sessions
 	return nil
 }
 
@@ -497,64 +208,14 @@ type SessionDetailsReply struct {
 }
 
 func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs, reply *SessionDetailsReply) error {
-	var err error
-
-	sessionMetaClient := s.RedisPoolSessionMeta.Get()
-	defer sessionMetaClient.Close()
-
-	metaString, err := redis.String(sessionMetaClient.Do("GET", fmt.Sprintf("sm-%s", args.SessionID)))
-	if err != nil && err != redis.ErrNil {
-		err = fmt.Errorf("SessionDetails() failed getting session meta: %v", err)
-		level.Error(s.Logger).Log("err", err)
-		return err
-	}
-
-	metaStringsSplit := strings.Split(metaString, "|")
-	if err := reply.Meta.ParseRedisString(metaStringsSplit); err != nil {
-		err = fmt.Errorf("SessionDetails() SessionMeta unmarshaling error: %v", err)
-		level.Error(s.Logger).Log("err", err)
-		return err
-	}
-
-	buyer, err := s.Storage.Buyer(reply.Meta.BuyerID)
+	output, err := admin.SessionDetails(r, s.Storage, s.RedisPoolSessionMeta, s.RedisPoolSessionSlices, args.SessionID)
 	if err != nil {
-		err = fmt.Errorf("SessionDetails() failed to fetch buyer: %v", err)
+		err = fmt.Errorf("TopSessions() failed to gather top sessions: %v", err)
 		level.Error(s.Logger).Log("err", err)
 		return err
 	}
-
-	if !VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
-		reply.Meta.Anonymise()
-	}
-
-	reply.Slices = make([]transport.SessionSlice, 0)
-
-	sessionSlicesClient := s.RedisPoolSessionSlices.Get()
-	defer sessionSlicesClient.Close()
-
-	slices, err := redis.Strings(sessionSlicesClient.Do("LRANGE", fmt.Sprintf("ss-%s", args.SessionID), "0", "-1"))
-	if err != nil && err != redis.ErrNil {
-		err = fmt.Errorf("SessionDetails() failed getting session slices: %v", err)
-		level.Error(s.Logger).Log("err", err)
-		return err
-	}
-
-	for i := 0; i < len(slices); i++ {
-		sliceStrings := strings.Split(slices[i], "|")
-		var sessionSlice transport.SessionSlice
-		if err := sessionSlice.ParseRedisString(sliceStrings); err != nil {
-			err = fmt.Errorf("SessionDetails() SessionSlice parsing error: %v", err)
-			level.Error(s.Logger).Log("err", err)
-			return err
-		}
-
-		reply.Slices = append(reply.Slices, sessionSlice)
-	}
-
-	sort.Slice(reply.Slices, func(i, j int) bool {
-		return reply.Slices[i].Timestamp.Before(reply.Slices[j].Timestamp)
-	})
-
+	reply.Meta = output.Meta
+	reply.Slices = output.Slices
 	return nil
 }
 
@@ -586,83 +247,16 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	var err error
-
-	buyers := s.Storage.Buyers()
-
-	// slices to hold all the final map points
-	mapPointsBuyers := make(map[string][]transport.SessionMapPoint, 0)
-	mapPointsBuyersCompact := make(map[string][][]interface{}, 0)
-	mapPointsGlobal := make([]transport.SessionMapPoint, 0)
-	mapPointsGlobalCompact := make([][]interface{}, 0)
-
-	s.mapPointsBuyerCache = make(map[string]json.RawMessage, 0)
-	s.mapPointsCompactBuyerCache = make(map[string]json.RawMessage, 0)
-
-	for _, buyer := range buyers {
-		directPointStrings, nextPointStrings, err := s.getDirectAndNextMapPointStrings(&buyer)
-		if err != nil && err != redis.ErrNil {
-			err = fmt.Errorf("SessionMapPoints() failed getting map points for buyer %s: %v", buyer.CompanyCode, err)
-			level.Error(s.Logger).Log("err", err)
-			return err
-		}
-
-		var point transport.SessionMapPoint
-		for _, directPointString := range directPointStrings {
-			directSplitStrings := strings.Split(directPointString, "|")
-			if err := point.ParseRedisString(directSplitStrings); err != nil {
-				err = fmt.Errorf("SessionMapPoints() failed to parse direct map point for buyer %s: %v", buyer.CompanyCode, err)
-				level.Error(s.Logger).Log("err", err)
-				return err
-			}
-
-			if point.Latitude != 0 && point.Longitude != 0 {
-				mapPointsBuyers[buyer.CompanyCode] = append(mapPointsBuyers[buyer.CompanyCode], point)
-				mapPointsGlobal = append(mapPointsGlobal, point)
-
-				mapPointsBuyersCompact[buyer.CompanyCode] = append(mapPointsBuyersCompact[buyer.CompanyCode], []interface{}{point.Longitude, point.Latitude, false})
-				mapPointsGlobalCompact = append(mapPointsGlobalCompact, []interface{}{point.Longitude, point.Latitude, false})
-			}
-		}
-
-		for _, nextPointString := range nextPointStrings {
-			nextSplitStrings := strings.Split(nextPointString, "|")
-			if err := point.ParseRedisString(nextSplitStrings); err != nil {
-				err = fmt.Errorf("SessionMapPoints() failed to next parse map point for buyer %s: %v", buyer.CompanyCode, err)
-				level.Error(s.Logger).Log("err", err)
-				return err
-			}
-
-			if point.Latitude != 0 && point.Longitude != 0 {
-				mapPointsBuyers[buyer.CompanyCode] = append(mapPointsBuyers[buyer.CompanyCode], point)
-				mapPointsGlobal = append(mapPointsGlobal, point)
-
-				mapPointsBuyersCompact[buyer.CompanyCode] = append(mapPointsBuyersCompact[buyer.CompanyCode], []interface{}{point.Longitude, point.Latitude, true})
-				mapPointsGlobalCompact = append(mapPointsGlobalCompact, []interface{}{point.Longitude, point.Latitude, true})
-			}
-		}
-
-		s.mapPointsBuyerCache[buyer.CompanyCode], err = json.Marshal(mapPointsBuyers[buyer.CompanyCode])
-		if err != nil {
-			return err
-		}
-
-		s.mapPointsCompactBuyerCache[buyer.CompanyCode], err = json.Marshal(mapPointsBuyersCompact[buyer.CompanyCode])
-		if err != nil {
-			return err
-		}
-	}
-
-	// marshal the map points slice to local cache
-	s.mapPointsCache, err = json.Marshal(mapPointsGlobal)
+	caches, err := admin.GenerateMapPointsPerBuyer(s.RedisPoolSessionMap, s.Storage.Buyers())
 	if err != nil {
+		err = fmt.Errorf("GenerateMapPointsPerBuyer() failed to generate map points: %v", err)
+		level.Error(s.Logger).Log("err", err)
 		return err
 	}
-
-	s.mapPointsCompactCache, err = json.Marshal(mapPointsGlobalCompact)
-	if err != nil {
-		return err
-	}
+	s.mapPointsBuyerCache = caches.MapPointsBuyerCache
+	s.mapPointsCompactBuyerCache = caches.MapPointsCompactBuyerCache
+	s.mapPointsCache = caches.MapPointsCache
+	s.mapPointsCompactCache = caches.MapPointsCompactCache
 	return nil
 }
 
@@ -899,8 +493,8 @@ func (s *BuyersService) SessionMap(r *http.Request, args *MapPointsArgs, reply *
 		// pull the local cache and reply with it
 		reply.Points = s.mapPointsCompactCache
 	default:
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
-			err := fmt.Errorf("SessionMap(): %v", ErrInsufficientPrivileges)
+		if !admin.VerifyAllRoles(r, admin.SameBuyerRole(args.CompanyCode)) {
+			err := fmt.Errorf("SessionMap(): %v", admin.ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
@@ -919,8 +513,8 @@ func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, r
 		// pull the local cache and reply with it
 		reply.Points = s.mapPointsCache
 	default:
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
-			err := fmt.Errorf("SessionMap(): %v", ErrInsufficientPrivileges)
+		if !admin.VerifyAllRoles(r, admin.SameBuyerRole(args.CompanyCode)) {
+			err := fmt.Errorf("SessionMap(): %v", admin.ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
@@ -940,8 +534,8 @@ func (s *BuyersService) SessionMapPointsByte(r *http.Request, args *MapPointsArg
 		// pull the local cache and reply with it
 		ReadMapPointsCache(&reply.Points, s.mapPointsCache)
 	default:
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
-			err := fmt.Errorf("SessionMap(): %v", ErrInsufficientPrivileges)
+		if !admin.VerifyAllRoles(r, admin.SameBuyerRole(args.CompanyCode)) {
+			err := fmt.Errorf("SessionMap(): %v", admin.ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
@@ -960,8 +554,8 @@ func (s *BuyersService) SessionMapByte(r *http.Request, args *MapPointsArgs, rep
 		// pull the local cache and reply with it
 		ReadMapPointsCache(&reply.Points, s.mapPointsByteCache)
 	default:
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
-			err := fmt.Errorf("SessionMap(): %v", ErrInsufficientPrivileges)
+		if !admin.VerifyAllRoles(r, admin.SameBuyerRole(args.CompanyCode)) {
+			err := fmt.Errorf("SessionMap(): %v", admin.ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
@@ -987,8 +581,8 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 	var err error
 	var buyer routing.Buyer
 
-	companyCode, ok := r.Context().Value(Keys.CompanyKey).(string)
-	if !ok {
+	companyCode, err := admin.RequestCompany(r)
+	if err != nil {
 		err := fmt.Errorf("GameConfiguration(): user is not assigned to a company")
 		level.Error(s.Logger).Log("err", err)
 		return err
@@ -1000,8 +594,8 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 		return err
 	}
 
-	if VerifyAnyRole(r, AnonymousRole, UnverifiedRole) {
-		err = fmt.Errorf("GameConfiguration(): %v", ErrInsufficientPrivileges)
+	if admin.VerifyAnyRole(r, admin.AnonymousRole, admin.UnverifiedRole) {
+		err = fmt.Errorf("GameConfiguration(): %v", admin.ErrInsufficientPrivileges)
 		level.Error(s.Logger).Log("err", err)
 		return err
 	}
@@ -1020,108 +614,20 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 }
 
 func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfigurationArgs, reply *GameConfigurationReply) error {
-	var err error
-	var buyerID uint64
-	var buyer routing.Buyer
-
-	if !VerifyAnyRole(r, AdminRole, OwnerRole) {
-		err = fmt.Errorf("UpdateGameConfiguration(): %v", ErrInsufficientPrivileges)
-		level.Error(s.Logger).Log("err", err)
-		return err
-	}
-
-	ctx := context.Background()
-
-	companyCode, ok := r.Context().Value(Keys.CompanyKey).(string)
-	if !ok {
-		err := fmt.Errorf("UpdateGameConfiguration(): user is not assigned to a company")
-		level.Error(s.Logger).Log("err", err)
-		return err
-	}
-	if companyCode == "" {
-		err = fmt.Errorf("UpdateGameConfiguration(): failed to parse company code")
-		level.Error(s.Logger).Log("err", err)
-		return err
-	}
-
 	if args.NewPublicKey == "" {
-		err = fmt.Errorf("UpdateGameConfiguration() new public key is required")
+		err := fmt.Errorf("UpdateGameConfiguration() new public key is required")
 		level.Error(s.Logger).Log("err", err)
 		return err
 	}
 
-	buyer, err = s.Storage.BuyerWithCompanyCode(companyCode)
-
-	byteKey, err := base64.StdEncoding.DecodeString(args.NewPublicKey)
+	key, err := admin.UpdateGameConfiguration(r, s.Storage, args.NewPublicKey)
 	if err != nil {
-		err = fmt.Errorf("UpdateGameConfiguration() could not decode public key string")
+		err := fmt.Errorf("UpdateGameConfiguration() new public key is required")
 		level.Error(s.Logger).Log("err", err)
 		return err
 	}
 
-	buyerID = binary.LittleEndian.Uint64(byteKey[0:8])
-
-	// Buyer not found
-	if buyer.ID == 0 {
-
-		// Create new buyer
-		err = s.Storage.AddBuyer(ctx, routing.Buyer{
-			CompanyCode: companyCode,
-			ID:          buyerID,
-			Live:        false,
-			PublicKey:   byteKey[8:],
-		})
-
-		if err != nil {
-			err = fmt.Errorf("UpdateGameConfiguration() failed to add buyer")
-			level.Error(s.Logger).Log("err", err)
-			return err
-		}
-
-		// Check if buyer is associated with the ID and everything worked
-		if buyer, err = s.Storage.Buyer(buyerID); err != nil {
-			err = fmt.Errorf("UpdateGameConfiguration() buyer creation failed: %v", err)
-			level.Error(s.Logger).Log("err", err)
-			return err
-		}
-
-		// Setup reply
-		reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
-
-		return nil
-	}
-
-	live := buyer.Live
-
-	if err = s.Storage.RemoveBuyer(ctx, buyer.ID); err != nil {
-		err = fmt.Errorf("UpdateGameConfiguration() failed to remove buyer")
-		level.Error(s.Logger).Log("err", err)
-		return err
-	}
-
-	err = s.Storage.AddBuyer(ctx, routing.Buyer{
-		CompanyCode: companyCode,
-		ID:          buyerID,
-		Live:        live,
-		PublicKey:   byteKey[8:],
-	})
-
-	if err != nil {
-		err = fmt.Errorf("UpdateGameConfiguration() buyer update failed: %v", err)
-		level.Error(s.Logger).Log("err", err)
-		return err
-	}
-
-	// Check if buyer is associated with the ID and everything worked
-	if buyer, err = s.Storage.Buyer(buyerID); err != nil {
-		err = fmt.Errorf("UpdateGameConfiguration() buyer update check failed: %v", err)
-		level.Error(s.Logger).Log("err", err)
-		return err
-	}
-
-	// Set reply
-	reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
-
+	reply.GameConfiguration.PublicKey = key
 	return nil
 }
 
@@ -1140,7 +646,7 @@ type buyerAccount struct {
 
 func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *BuyerListReply) error {
 	reply.Buyers = make([]buyerAccount, 0)
-	if VerifyAllRoles(r, AnonymousRole) {
+	if admin.VerifyAllRoles(r, admin.AnonymousRole) {
 		return nil
 	}
 
@@ -1156,7 +662,7 @@ func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *Buye
 			ID:          id,
 			IsLive:      b.Live,
 		}
-		if VerifyAllRoles(r, s.SameBuyerRole(b.CompanyCode)) {
+		if admin.VerifyAllRoles(r, admin.SameBuyerRole(b.CompanyCode)) {
 			reply.Buyers = append(reply.Buyers, account)
 		}
 	}
@@ -1186,7 +692,7 @@ type DatacenterMapsReply struct {
 }
 
 func (s *BuyersService) DatacenterMapsForBuyer(r *http.Request, args *DatacenterMapsArgs, reply *DatacenterMapsReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if admin.VerifyAllRoles(r, admin.AnonymousRole) {
 		return nil
 	}
 
@@ -1258,32 +764,4 @@ func (s *BuyersService) AddDatacenterMap(r *http.Request, args *AddDatacenterMap
 
 	return s.Storage.AddDatacenterMap(ctx, args.DatacenterMap)
 
-}
-
-// SameBuyerRole checks the JWT for the correct passed in buyerID
-func (s *BuyersService) SameBuyerRole(companyCode string) RoleFunc {
-	return func(req *http.Request) (bool, error) {
-		if VerifyAnyRole(req, AdminRole, OpsRole) {
-			return true, nil
-		}
-		if VerifyAllRoles(req, AnonymousRole) {
-			return false, nil
-		}
-		if companyCode == "" {
-			return false, fmt.Errorf("SameBuyerRole(): buyerID is required")
-		}
-		requestCompanyCode, ok := req.Context().Value(Keys.CompanyKey).(string)
-		if !ok {
-			err := fmt.Errorf("SameBuyerRole(): user is not assigned to a company")
-			level.Error(s.Logger).Log("err", err)
-			return false, err
-		}
-		if requestCompanyCode == "" {
-			err := fmt.Errorf("SameBuyerRole(): failed to parse company code")
-			level.Error(s.Logger).Log("err", err)
-			return false, err
-		}
-
-		return companyCode == requestCompanyCode, nil
-	}
 }
