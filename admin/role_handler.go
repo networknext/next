@@ -100,6 +100,31 @@ var UnverifiedRole = func(req *http.Request) (bool, error) {
 	return false, nil
 }
 
+var SameBuyerRole = func(companyCode string) RoleFunc {
+	return func(req *http.Request) (bool, error) {
+		if VerifyAnyRole(req, AdminRole, OpsRole) {
+			return true, nil
+		}
+		if VerifyAllRoles(req, AnonymousRole) {
+			return false, nil
+		}
+		if companyCode == "" {
+			return false, fmt.Errorf("SameBuyerRole(): buyerID is required")
+		}
+		requestCompanyCode, ok := req.Context().Value(Keys.CompanyKey).(string)
+		if !ok {
+			err := fmt.Errorf("SameBuyerRole(): user is not assigned to a company")
+			return false, err
+		}
+		if requestCompanyCode == "" {
+			err := fmt.Errorf("SameBuyerRole(): failed to parse company code")
+			return false, err
+		}
+
+		return companyCode == requestCompanyCode, nil
+	}
+}
+
 func VerifyAllRoles(req *http.Request, roleFuncs ...RoleFunc) bool {
 	for _, f := range roleFuncs {
 		authorized, err := f(req)

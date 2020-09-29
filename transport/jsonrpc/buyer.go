@@ -17,6 +17,7 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/gomodule/redigo/redis"
+	"github.com/networknext/backend/admin"
 	"github.com/networknext/backend/encoding"
 	ghostarmy "github.com/networknext/backend/ghost_army"
 	"github.com/networknext/backend/routing"
@@ -53,8 +54,8 @@ type FlushSessionsArgs struct{}
 type FlushSessionsReply struct{}
 
 func (s *BuyersService) FlushSessions(r *http.Request, args *FlushSessionsArgs, reply *FlushSessionsReply) error {
-	if !VerifyAllRoles(r, OpsRole) {
-		return fmt.Errorf("FlushSessions(): %v", ErrInsufficientPrivileges)
+	if !admin.VerifyAllRoles(r, admin.OpsRole) {
+		return fmt.Errorf("FlushSessions(): %v", admin.ErrInsufficientPrivileges)
 	}
 
 	topSessions := s.RedisPoolTopSessions.Get()
@@ -155,7 +156,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	// 			continue
 	// 		}
 
-	// 		if VerifyAnyRole(r, AnonymousRole, UnverifiedRole) || !VerifyAllRoles(r, s.SameBuyerRole(fmt.Sprintf("%016x", meta.BuyerID))) {
+	// 		if admin.admin.VerifyAnyRole(r, admin.AnonymousRole, admin.UnverifiedRole) || !admin.VerifyAllRoles(r, admin.VerifyAnyRole(fmt.Sprintf("%016x", meta.BuyerID))) {
 	// 			meta.Anonymise()
 	// 		}
 
@@ -300,8 +301,8 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			return err
 		}
 		buyerID := fmt.Sprintf("%016x", buyer.ID)
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
-			err := fmt.Errorf("TotalSessions(): %v", ErrInsufficientPrivileges)
+		if !admin.VerifyAllRoles(r, admin.SameBuyerRole(args.CompanyCode)) {
+			err := fmt.Errorf("TotalSessions(): %v", admin.ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
@@ -399,8 +400,8 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 			return err
 		}
 		buyerID := fmt.Sprintf("%x", buyer.ID)
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
-			err := fmt.Errorf("TopSessions(): %v", ErrInsufficientPrivileges)
+		if !admin.VerifyAllRoles(r, admin.SameBuyerRole(args.CompanyCode)) {
+			err := fmt.Errorf("TopSessions(): %v", admin.ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
@@ -453,7 +454,7 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 			continue
 		}
 
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
+		if !admin.VerifyAllRoles(r, admin.SameBuyerRole(args.CompanyCode)) {
 			meta.Anonymise()
 		}
 
@@ -523,7 +524,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		return err
 	}
 
-	if !VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+	if !admin.VerifyAllRoles(r, admin.SameBuyerRole(buyer.CompanyCode)) {
 		reply.Meta.Anonymise()
 	}
 
@@ -899,8 +900,8 @@ func (s *BuyersService) SessionMap(r *http.Request, args *MapPointsArgs, reply *
 		// pull the local cache and reply with it
 		reply.Points = s.mapPointsCompactCache
 	default:
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
-			err := fmt.Errorf("SessionMap(): %v", ErrInsufficientPrivileges)
+		if !admin.VerifyAllRoles(r, admin.SameBuyerRole(args.CompanyCode)) {
+			err := fmt.Errorf("SessionMap(): %v", admin.ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
@@ -919,8 +920,8 @@ func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, r
 		// pull the local cache and reply with it
 		reply.Points = s.mapPointsCache
 	default:
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
-			err := fmt.Errorf("SessionMap(): %v", ErrInsufficientPrivileges)
+		if !admin.VerifyAllRoles(r, admin.SameBuyerRole(args.CompanyCode)) {
+			err := fmt.Errorf("SessionMap(): %v", admin.ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
@@ -940,8 +941,8 @@ func (s *BuyersService) SessionMapPointsByte(r *http.Request, args *MapPointsArg
 		// pull the local cache and reply with it
 		ReadMapPointsCache(&reply.Points, s.mapPointsCache)
 	default:
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
-			err := fmt.Errorf("SessionMap(): %v", ErrInsufficientPrivileges)
+		if !admin.VerifyAllRoles(r, admin.SameBuyerRole(args.CompanyCode)) {
+			err := fmt.Errorf("SessionMap(): %v", admin.ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
@@ -960,8 +961,8 @@ func (s *BuyersService) SessionMapByte(r *http.Request, args *MapPointsArgs, rep
 		// pull the local cache and reply with it
 		ReadMapPointsCache(&reply.Points, s.mapPointsByteCache)
 	default:
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
-			err := fmt.Errorf("SessionMap(): %v", ErrInsufficientPrivileges)
+		if !admin.VerifyAllRoles(r, admin.SameBuyerRole(args.CompanyCode)) {
+			err := fmt.Errorf("SessionMap(): %v", admin.ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
@@ -987,7 +988,7 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 	var err error
 	var buyer routing.Buyer
 
-	companyCode, ok := r.Context().Value(Keys.CompanyKey).(string)
+	companyCode, ok := r.Context().Value(admin.Keys.CompanyKey).(string)
 	if !ok {
 		err := fmt.Errorf("GameConfiguration(): user is not assigned to a company")
 		level.Error(s.Logger).Log("err", err)
@@ -1000,8 +1001,8 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 		return err
 	}
 
-	if VerifyAnyRole(r, AnonymousRole, UnverifiedRole) {
-		err = fmt.Errorf("GameConfiguration(): %v", ErrInsufficientPrivileges)
+	if admin.VerifyAnyRole(r, admin.AnonymousRole, admin.UnverifiedRole) {
+		err = fmt.Errorf("GameConfiguration(): %v", admin.ErrInsufficientPrivileges)
 		level.Error(s.Logger).Log("err", err)
 		return err
 	}
@@ -1024,15 +1025,15 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 	var buyerID uint64
 	var buyer routing.Buyer
 
-	if !VerifyAnyRole(r, AdminRole, OwnerRole) {
-		err = fmt.Errorf("UpdateGameConfiguration(): %v", ErrInsufficientPrivileges)
+	if !admin.VerifyAnyRole(r, admin.AdminRole, admin.OwnerRole) {
+		err = fmt.Errorf("UpdateGameConfiguration(): %v", admin.ErrInsufficientPrivileges)
 		level.Error(s.Logger).Log("err", err)
 		return err
 	}
 
 	ctx := context.Background()
 
-	companyCode, ok := r.Context().Value(Keys.CompanyKey).(string)
+	companyCode, ok := r.Context().Value(admin.Keys.CompanyKey).(string)
 	if !ok {
 		err := fmt.Errorf("UpdateGameConfiguration(): user is not assigned to a company")
 		level.Error(s.Logger).Log("err", err)
@@ -1140,7 +1141,7 @@ type buyerAccount struct {
 
 func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *BuyerListReply) error {
 	reply.Buyers = make([]buyerAccount, 0)
-	if VerifyAllRoles(r, AnonymousRole) {
+	if admin.VerifyAllRoles(r, admin.AnonymousRole) {
 		return nil
 	}
 
@@ -1156,7 +1157,7 @@ func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *Buye
 			ID:          id,
 			IsLive:      b.Live,
 		}
-		if VerifyAllRoles(r, s.SameBuyerRole(b.CompanyCode)) {
+		if admin.VerifyAllRoles(r, admin.SameBuyerRole(b.CompanyCode)) {
 			reply.Buyers = append(reply.Buyers, account)
 		}
 	}
@@ -1186,7 +1187,7 @@ type DatacenterMapsReply struct {
 }
 
 func (s *BuyersService) DatacenterMapsForBuyer(r *http.Request, args *DatacenterMapsArgs, reply *DatacenterMapsReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if admin.VerifyAllRoles(r, admin.AnonymousRole) {
 		return nil
 	}
 
@@ -1258,32 +1259,4 @@ func (s *BuyersService) AddDatacenterMap(r *http.Request, args *AddDatacenterMap
 
 	return s.Storage.AddDatacenterMap(ctx, args.DatacenterMap)
 
-}
-
-// SameBuyerRole checks the JWT for the correct passed in buyerID
-func (s *BuyersService) SameBuyerRole(companyCode string) RoleFunc {
-	return func(req *http.Request) (bool, error) {
-		if VerifyAnyRole(req, AdminRole, OpsRole) {
-			return true, nil
-		}
-		if VerifyAllRoles(req, AnonymousRole) {
-			return false, nil
-		}
-		if companyCode == "" {
-			return false, fmt.Errorf("SameBuyerRole(): buyerID is required")
-		}
-		requestCompanyCode, ok := req.Context().Value(Keys.CompanyKey).(string)
-		if !ok {
-			err := fmt.Errorf("SameBuyerRole(): user is not assigned to a company")
-			level.Error(s.Logger).Log("err", err)
-			return false, err
-		}
-		if requestCompanyCode == "" {
-			err := fmt.Errorf("SameBuyerRole(): failed to parse company code")
-			level.Error(s.Logger).Log("err", err)
-			return false, err
-		}
-
-		return companyCode == requestCompanyCode, nil
-	}
 }

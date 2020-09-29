@@ -6,6 +6,8 @@ import (
 	"net/http"
 
 	"github.com/dgrijalva/jwt-go"
+
+	"github.com/gorilla/rpc/v2"
 )
 
 type contextType string
@@ -22,6 +24,34 @@ var Keys contextKeys = contextKeys{
 	RolesKey:             "roles",
 	CompanyKey:           "company",
 	NewsletterConsentKey: "newsletter",
+}
+
+func RPCInterceptHandler(i *rpc.RequestInfo) *http.Request {
+	user := i.Request.Context().Value("user")
+	if user != nil {
+		claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
+
+		if requestData, ok := claims["https://networknext.com/userData"]; ok {
+			var userRoles []string
+			if roles, ok := requestData.(map[string]interface{})["roles"]; ok {
+				rolesInterface := roles.([]interface{})
+				userRoles = make([]string, len(rolesInterface))
+				for i, v := range rolesInterface {
+					userRoles[i] = v.(string)
+				}
+			}
+			var companyCode string
+			if companyCodeInterface, ok := requestData.(map[string]interface{})["company_code"]; ok {
+				companyCode = companyCodeInterface.(string)
+			}
+			var newsletterConsent bool
+			if consent, ok := requestData.(map[string]interface{})["newsletter"]; ok {
+				newsletterConsent = consent.(bool)
+			}
+			return AddTokenContext(i.Request, userRoles, companyCode, newsletterConsent)
+		}
+	}
+	return SetIsAnonymous(i.Request, i.Request.Header.Get("Authorization") == "")
 }
 
 func SetIsAnonymous(r *http.Request, value bool) *http.Request {
@@ -48,10 +78,11 @@ func AddTokenContext(r *http.Request, roles []string, companyCode string, newsle
 }
 
 func RequestUser(r *http.Request) (*jwt.Token, error) {
-	requestUser := r.Context().Value("user")
-	if requestUser == nil {
-		return nil, err
+	requestUser, ok := r.Context().Value("user").(*jwt.Token)
+	if !ok || requestUser == nil {
+		return nil, fmt.Errorf("RequestEmail() unable to parse request user from token")
 	}
+	return requestUser, nil
 }
 
 func RequestEmail(requestUser *jwt.Token) (string, error) {
@@ -63,8 +94,9 @@ func RequestEmail(requestUser *jwt.Token) (string, error) {
 }
 
 func RequestCompany(r *http.Request) (string, error) {
-	requestCompany := r.Context().Value(Keys.CompanyKey)
-	if requestCompany == nil {
+	requestCompany, ok := r.Context().Value(Keys.CompanyKey).(string)
+	if !ok || requestCompany == "" {
 		return "", fmt.Errorf("RequestCompany(): failed to get company from context")
 	}
+	return requestCompany, nil
 }
