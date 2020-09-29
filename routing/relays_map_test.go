@@ -13,7 +13,7 @@ import (
 	"gopkg.in/go-playground/assert.v1"
 )
 
-func TestRelayMap(t *testing.T) {
+func TestRelayMapRemovesRelayCorrectly(t *testing.T) {
 	callbackHit := new(int)
 	rmap := routing.NewRelayMap(func(relay *routing.RelayData) error {
 		(*callbackHit)++
