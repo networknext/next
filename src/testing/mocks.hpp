@@ -11,14 +11,14 @@ namespace testing
     std::string Hostname;           // The hostname used
     std::string Endpoint;           // The endpoint to hit
 
-    auto sendRequest(
+    auto send_request(
      const std::string hostname,
      const std::string endpoint,
      const std::vector<uint8_t>& request,
      std::vector<uint8_t>& response) -> bool override;
   };
 
-  inline auto MockHttpClient::sendRequest(
+  inline auto MockHttpClient::send_request(
    const std::string hostname, const std::string endpoint, const std::vector<uint8_t>& request, std::vector<uint8_t>& response)
    -> bool
   {

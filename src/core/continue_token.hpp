@@ -1,86 +1,191 @@
-#ifndef CORE_CONTINUE_TOKEN_HPP
-#define CORE_CONTINUE_TOKEN_HPP
+#pragma once
 
+#include "crypto/bytes.hpp"
 #include "crypto/keychain.hpp"
 #include "packet.hpp"
 #include "router_info.hpp"
 #include "token.hpp"
+#include "util/macros.hpp"
+
+using core::Packet;
+using crypto::GenericKey;
+
+namespace testing
+{
+  class _test_core_ContinueToken_write_;
+  class _test_core_ContinueToken_read_;
+}  // namespace testing
 
 namespace core
 {
   class ContinueToken: public Token
   {
+    friend testing::_test_core_ContinueToken_write_;
+    friend testing::_test_core_ContinueToken_read_;
+
    public:
-    ContinueToken(const RouterInfo& routerInfo);
+    ContinueToken() = default;
     virtual ~ContinueToken() override = default;
 
-    static const size_t ByteSize = Token::ByteSize;
-    static const size_t EncryptedByteSize = crypto_box_NONCEBYTES + ContinueToken::ByteSize + crypto_box_MACBYTES;
-    static const size_t EncryptionLength = ContinueToken::ByteSize + crypto_box_MACBYTES;
+    static const size_t SIZE_OF = Token::SIZE_OF;
+    static const size_t SIZE_OF_ENCRYPTED = crypto_box_NONCEBYTES + ContinueToken::SIZE_OF + crypto_box_MACBYTES;
+    static const size_t ENCRYPTION_LENGTH = ContinueToken::SIZE_OF + crypto_box_MACBYTES;
 
-    bool writeEncrypted(
-     uint8_t* packetData,
-     size_t packetLength,
+    auto write_encrypted(
+     Packet& packet,
      size_t& index,
-     const crypto::GenericKey& senderPrivateKey,
-     const crypto::GenericKey& receiverPublicKey);
+     const GenericKey& sender_private_key,
+     const GenericKey& receiver_public_key) -> bool;
 
-    bool readEncrypted(
-     uint8_t* packetData,
-     size_t packetLength,
+    auto read_encrypted(
+     Packet& packet,
      size_t& index,
-     const crypto::GenericKey& senderPublicKey,
-     const crypto::GenericKey& receiverPrivateKey);
+     const GenericKey& sender_public_key,
+     const GenericKey& receiver_private_key) -> bool;
+
+    auto operator==(const ContinueToken& other) const -> bool;
 
    private:
-    void write(uint8_t* packetData, size_t packetLength, size_t& index);
+    auto write(Packet& packet, size_t& index) -> bool;
 
-    void read(uint8_t* packetData, size_t packetLength, size_t& index);
+    auto read(const Packet& packet, size_t& index) -> bool;
 
-    bool encrypt(
-     uint8_t* packetData,
-     size_t packetLength,
+    auto encrypt(
+     Packet& packet,
      const size_t& index,
-     const crypto::GenericKey& senderPrivateKey,
-     const crypto::GenericKey& receiverPublicKey,
-     const std::array<uint8_t, crypto_box_NONCEBYTES>& nonce);
+     const GenericKey& sender_private_key,
+     const GenericKey& receiver_public_key,
+     const std::array<uint8_t, crypto_box_NONCEBYTES>& nonce) -> bool;
 
-    bool decrypt(
-     uint8_t* packetData,
-     size_t packetLength,
+    auto decrypt(
+     Packet& packet,
      const size_t& index,
-     const crypto::GenericKey& senderPublicKey,
-     const crypto::GenericKey& receiverPrivateKey,
-     const size_t nonceIndex);
+     const GenericKey& sender_public_key,
+     const GenericKey& receiver_private_key,
+     const size_t nonce_index) -> bool;
   };
 
-  inline ContinueToken::ContinueToken(const RouterInfo& routerInfo): Token(routerInfo) {}
-}  // namespace core
-
-namespace legacy
-{
-  struct relay_continue_token_t
+  INLINE auto ContinueToken::write_encrypted(
+   Packet& packet,
+   size_t& index,
+   const GenericKey& sender_private_key,
+   const GenericKey& receiver_public_key) -> bool
   {
-    uint64_t expire_timestamp;
-    uint64_t session_id;
-    uint8_t session_version;
-    uint8_t session_flags;
-  };
+    std::array<uint8_t, crypto_box_NONCEBYTES> nonce;
+    if (!crypto::CreateNonceBytes(nonce)) {
+      return false;
+    }
 
-  void relay_write_continue_token(relay_continue_token_t* token, uint8_t* buffer, int buffer_length);
+    // write nonce to the buffer
+    if (!encoding::write_bytes(packet.buffer, index, nonce, nonce.size())) {
+      LOG(ERROR, "could not write nonce");
+      return false;
+    }
 
-  void relay_read_continue_token(relay_continue_token_t* token, const uint8_t* buffer);
+    const size_t after_nonce = index;
 
-  int relay_encrypt_continue_token(
-   uint8_t* sender_private_key, uint8_t* receiver_public_key, uint8_t* nonce, uint8_t* buffer, int buffer_length);
+    // write the token data to the buffer
+    if (!this->write(packet, index)) {
+      return false;
+    }
 
-  int relay_decrypt_continue_token(
-   const uint8_t* sender_public_key, const uint8_t* receiver_private_key, const uint8_t* nonce, uint8_t* buffer);
+    // encrypt at the start of the packet, function knows where to end
+    if (!this->encrypt(packet, after_nonce, sender_private_key, receiver_public_key, nonce)) {
+      return false;
+    }
 
-  int relay_write_encrypted_continue_token(
-   uint8_t** buffer, relay_continue_token_t* token, uint8_t* sender_private_key, uint8_t* receiver_public_key);
+    // index at this point will be past nonce & token, so add the mac bytes to it
+    index += crypto_box_MACBYTES;
 
-  int relay_read_encrypted_continue_token(
-   uint8_t** buffer, relay_continue_token_t* token, const uint8_t* sender_public_key, const uint8_t* receiver_private_key);
-}  // namespace legacy
-#endif
+    return true;
+  }
+
+  INLINE auto ContinueToken::read_encrypted(
+   Packet& packet,
+   size_t& index,
+   const GenericKey& sender_public_key,
+   const GenericKey& receiver_private_key) -> bool
+  {
+    const auto nonce_index = index;   // nonce is first in the packet's data
+    index += crypto_box_NONCEBYTES;  // followed by actual data
+
+    if (!decrypt(packet, index, sender_public_key, receiver_private_key, nonce_index)) {
+      LOG(ERROR, "failed to decrypt continue token");
+      return false;
+    }
+
+    if (!read(packet, index)) {
+      return false;
+    }
+
+    index += crypto_box_MACBYTES;  // adjust the index past the encryption data
+
+    return true;
+  }
+
+  INLINE auto ContinueToken::operator==(const ContinueToken& other) const -> bool
+  {
+    return this->expire_timestamp == other.expire_timestamp && this->session_id == other.session_id &&
+           this->session_version == other.session_version && this->session_flags == other.session_flags;
+  }
+
+  INLINE auto ContinueToken::write(Packet& packet, size_t& index) -> bool
+  {
+    return Token::write(packet, index);
+  }
+
+  INLINE auto ContinueToken::read(const Packet& packet, size_t& index) -> bool
+  {
+    return Token::read(packet, index);
+  }
+
+  INLINE bool ContinueToken::encrypt(
+   Packet& packet,
+   const size_t& index,
+   const GenericKey& sender_private_key,
+   const GenericKey& receiver_public_key,
+   const std::array<uint8_t, crypto_box_NONCEBYTES>& nonce)
+  {
+    if (index + ContinueToken::ENCRYPTION_LENGTH > packet.buffer.size()) {
+      return false;
+    }
+
+    if (
+     crypto_box_easy(
+      &packet.buffer[index],
+      &packet.buffer[index],
+      ContinueToken::SIZE_OF,
+      nonce.data(),
+      receiver_public_key.data(),
+      sender_private_key.data()) != 0) {
+      return false;
+    }
+
+    return true;
+  }
+
+  INLINE bool ContinueToken::decrypt(
+   Packet& packet,
+   const size_t& index,
+   const GenericKey& sender_public_key,
+   const GenericKey& receiver_private_key,
+   const size_t nonce_index)
+  {
+    if (index + ContinueToken::ENCRYPTION_LENGTH > packet.buffer.size()) {
+      return false;
+    }
+
+    if (
+     crypto_box_open_easy(
+      &packet.buffer[index],
+      &packet.buffer[index],
+      ContinueToken::ENCRYPTION_LENGTH,
+      &packet.buffer[nonce_index],
+      sender_public_key.data(),
+      receiver_private_key.data()) != 0) {
+      return false;
+    }
+
+    return true;
+  }
+}  // namespace core

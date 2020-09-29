@@ -18,20 +18,15 @@ BENCHMARK_MAKEFILE 		:= Makefile.benchmark
 LIBS                  := libsodium glib-2.0 libgtop-2.0
 
 SRC										:= src
-LIB 									:= lib
 BIN										:= bin
 OBJ										:= obj
 
 # include path is the same as the src dir
 INCLUDE								:= $(SRC)
-INCLUDE_DIRS					:= -I$(INCLUDE) -I$(LIB) $(shell pkg-config --cflags-only-I $(LIBS))
+INCLUDE_DIRS					:= -I$(INCLUDE) $(shell pkg-config --cflags-only-I $(LIBS))
 
 # gcc silently appends the linked libstdc++.so to the end if not specified, hence "-Wl,-Bdynamic" must appear at the end
 LIBRARIES							:= -Wl,-Bstatic $(shell pkg-config --static --libs $(LIBS)) -lXau -Wl,-Bdynamic
-
-LIB_SUB_DIRS					:= $(shell find lib/* -type d -print)
-LIB_OBJ_DIRS					:= $(patsubst $(LIB)/%, $(OBJ)/$(LIB)/%, $(LIB_SUB_DIRS))
-LIB_FILES							:= $(call rwildcard,$(LIB),*.cpp)
 
 SRC_SUB_DIRS					:= $(shell find src/* -type d -print)
 SRC_OBJ_DIRS					:= $(patsubst $(SRC)/%, $(OBJ)/$(SRC)/%, $(SRC_SUB_DIRS))

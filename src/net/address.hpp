@@ -1,14 +1,13 @@
-#ifndef RELAY_RELAY_ADDRESS
-#define RELAY_RELAY_ADDRESS
-
-#include "relay/relay_platform.hpp"
+#pragma once
 
 #include "util/logger.hpp"
+#include "util/macros.hpp"
 
 namespace net
 {
-  const uint8_t IPv4UDPHeaderSize = 28;
-  const uint8_t IPv6UDPHeaderSize = 48;
+  // TODO these don't consider the ethernet header or the other parts of the packet
+  static const uint8_t IPv4UDPHeaderSize = 28;
+  static const uint8_t IPv6UDPHeaderSize = 48;
 
   enum class AddressType : uint8_t
   {
@@ -17,9 +16,8 @@ namespace net
     IPv6
   };
 
-  class Address
+  struct Address
   {
-   public:
     // Type (1) +
     // Port (2) +
     // IP (16) =
@@ -34,18 +32,27 @@ namespace net
 
     ~Address() = default;
 
-    bool parse(const std::string& address_string_in);
-    bool resolve(const std::string& hostname, const std::string& port);
+    // parses the string into an address
+    // can be either ipv4 or ipv6
+    auto parse(const std::string& address_string_in) -> bool;
 
+    // resolves the hostname to an address
+    auto resolve(const std::string& hostname, const std::string& port) -> bool;
+
+    // swaps this and the parameter
     void swap(Address& other);
 
-    void toString(std::string& buffer) const;
-    auto toString() const -> std::string;  // slow, use only for debugging or logging
+    // resizes the buffer string to fit the address length
+    auto to_string(std::string& buffer) const -> bool;
 
-    // generic conversion function with specializations, looks better this way
+    // slow, use only for debugging or logging
+    auto to_string() const -> std::string;
+
+    // generic conversion function with specializations
     template <typename T>
-    void to(T& thing) const;
+    void into(T& thing) const;
 
+    // resets all fields, puts address type to 'None'
     void reset();
 
     auto operator==(const Address& other) const -> bool;
@@ -66,12 +73,153 @@ namespace net
     };
   };
 
-  [[gnu::always_inline]] inline Address::Address(const Address& other)
+  INLINE Address::Address(): Type(AddressType::None), Port(0)
+  {
+    IPv6.fill(0);
+  }
+
+  INLINE Address::Address(const Address& other)
   {
     *this = other;
   }
 
-  [[gnu::always_inline]] inline void Address::swap(Address& other)
+  INLINE Address::Address(Address&& other)
+  {
+    this->Type = other.Type;
+    this->Port = other.Port;
+
+    switch (other.Type) {
+      case AddressType::IPv4: {
+        this->IPv4 = std::move(other.IPv4);
+      } break;
+      case AddressType::IPv6: {
+        this->IPv6 = std::move(other.IPv6);
+      } break;
+      case AddressType::None:
+        break;
+    }
+  }
+
+  INLINE auto Address::parse(const std::string& address_in) -> bool
+  {
+    if (address_in.length() > MaxStrLen) {
+      LOG(ERROR, "can not parse address: too long");
+      return false;
+    }
+
+    std::array<char, MaxStrLen> address = {};
+    std::copy(address_in.begin(), address_in.end(), address.begin());
+
+    // first try to parse the string as an IPv6 address:
+    {
+      size_t index = 0;
+
+      // 1. if the first character is '[' then it's probably an ipv6 in form "[addr6]:portnum"
+      if (address[index] == '[') {
+        // note: no need to search past 6 characters as ":65535" is longest possible port value
+        for (int i = address_in.length() - 1, j = 0; j < 6; i--, j++) {
+          if (i < 0) {
+            return false;
+          }
+
+          if (address[i] == ':') {
+            char* end = nullptr;
+            this->Port = (uint16_t)(std::strtol(&address[i + 1], &end, 10));
+            if (end == nullptr) {
+              return false;
+            }
+            // 1 char back will be a ']', so end the string there
+            address[i - 1] = '\0';
+            break;
+          }
+
+          if (address[i] == ']') {
+            // no port number
+            address[i] = '\0';
+            break;
+          }
+        }
+        // increment the index past the '['
+        index++;
+      }
+
+      // 2. otherwise try to parse as a raw IPv6 address using inet_pton
+
+      // &address[index] now points to the start of the address and the null term replaced the ']' and/or ':'
+      sockaddr_in6 sockaddr;
+      if (inet_pton(AF_INET6, &address[index], &sockaddr.sin6_addr) == 1) {
+        this->Type = AddressType::IPv6;
+        auto addr = sockaddr.sin6_addr.__in6_u.__u6_addr16;
+        for (size_t i = 0; i < 8; i++) {
+          this->IPv6[i] = ntohs(addr[i]);
+        }
+        return true;
+      }
+    }
+
+    // if not ipv6, then try to parse as an ipv4 address
+    {
+      // 1. look for ":portnum" and if found parse it
+      for (int i = address_in.length() - 1, j = 0; j < 6; i--, j--) {
+        if (i < 0) {
+          break;
+        }
+
+        if (address[i] == ':') {
+          char* end = nullptr;
+          this->Port = (uint16_t)(std::strtol(&address[i + 1], &end, 10));
+          if (end == nullptr) {
+            return false;
+          }
+          address[i] = '\0';
+          break;
+        }
+      }
+
+      // 2. parse the beging of the ipv4 address via inet_pton
+
+      // &address[index] now points to the start of the address and the null term replaced the ':'
+      sockaddr_in sockaddr4;
+      if (inet_pton(AF_INET, address.data(), &sockaddr4.sin_addr) == 1) {
+        this->Type = AddressType::IPv4;
+        const auto& addr4 = sockaddr4.sin_addr.s_addr;
+        for (int i = 0; i < 4; i++) {
+          this->IPv4[i] = (uint8_t)((addr4 >> 8 * i) & 0xFF);
+        }
+        return true;
+      }
+    }
+
+    // if invalid, reset to default
+    reset();
+
+    return false;
+  }
+
+  INLINE auto Address::resolve(const std::string& hostname, const std::string& port) -> bool
+  {
+    bool success = false;
+    addrinfo hints = {};
+    addrinfo* result = nullptr;
+
+    if (getaddrinfo(hostname.c_str(), port.c_str(), &hints, &result) == 0 && result != nullptr) {
+      if (result->ai_addr->sa_family == AF_INET6) {
+        sockaddr_in6* addr_ipv6 = (sockaddr_in6*)(result->ai_addr);
+        *this = *addr_ipv6;
+        success = true;
+      } else if (result->ai_addr->sa_family == AF_INET) {
+        sockaddr_in* addr_ipv4 = (sockaddr_in*)(result->ai_addr);
+        *this = *addr_ipv4;
+        success = true;
+      }
+
+      freeaddrinfo(result);
+    }
+
+    return success;
+  }
+
+  INLINE void Address::swap(Address& other)
   {
     std::swap(this->Type, other.Type);
     std::swap(this->Port, other.Port);
@@ -83,7 +231,7 @@ namespace net
     }
   }
 
-  inline void Address::reset()
+  INLINE void Address::reset()
   {
     GCC_NO_OPT_OUT;
     if (Type == AddressType::IPv4) {
@@ -96,27 +244,72 @@ namespace net
     Port = 0;
   }
 
-  inline auto Address::toString() const -> std::string
+  INLINE auto Address::to_string(std::string& output) const -> bool
+  {
+    std::array<char, MaxStrLen> buff = {};
+    unsigned int total = 0;
+
+    if (Type == AddressType::IPv6) {
+      std::array<uint16_t, 8> ipv6_network_order;
+      for (size_t i = 0; i < 8; i++) {
+        ipv6_network_order[i] = htons(this->IPv6[i]);
+      }
+
+      std::array<char, MaxStrLen> addr_buff = {};
+      if (
+       inet_ntop(
+        AF_INET6,
+        reinterpret_cast<void*>(ipv6_network_order.data()),
+        addr_buff.data(),
+        static_cast<socklen_t>(sizeof(addr_buff))) == nullptr) {
+        LOG(ERROR, "unable to convert binary ip data to string");
+        return false;
+      }
+
+      if (Port == 0) {
+        total += strlen(addr_buff.data());
+        std::copy(addr_buff.begin(), addr_buff.begin() + total, buff.begin());
+      } else {
+        total += snprintf(buff.data(), MaxStrLen, "[%s]:%hu", addr_buff.data(), Port);
+      }
+    } else if (Type == AddressType::IPv4) {
+      if (Port == 0) {
+        total += snprintf(buff.data(), MaxStrLen, "%d.%d.%d.%d", IPv4[0], IPv4[1], IPv4[2], IPv4[3]);
+      } else {
+        total += snprintf(buff.data(), MaxStrLen, "%d.%d.%d.%d:%hu", IPv4[0], IPv4[1], IPv4[2], IPv4[3], Port);
+      }
+    } else {
+      total += snprintf(buff.data(), sizeof("NONE"), "NONE");
+    }
+
+    // output.resize(total);
+    output.assign(buff.begin(), buff.begin() + total);
+    // std::copy(buff.begin(), buff.begin() + total, output.begin());
+
+    return true;
+  }
+
+  INLINE auto Address::to_string() const -> std::string
   {
     std::string buff;
-    toString(buff);
+    this->to_string(buff);
     return buff;
   }
 
   // TODO cache this, likely these won't change
   template <>
-  inline void Address::to(sockaddr_in& sin) const
+  INLINE void Address::into(sockaddr_in& sin) const
   {
     sin = {};
     sin.sin_family = AF_INET;
-    sin.sin_addr.s_addr =
-     (((uint32_t)IPv4[0])) | (((uint32_t)IPv4[1]) << 8) | (((uint32_t)IPv4[2]) << 16) | (((uint32_t)IPv4[3]) << 24);
+    sin.sin_addr.s_addr = static_cast<uint32_t>(IPv4[0]) << 0 | static_cast<uint32_t>(IPv4[1]) << 8 |
+                          static_cast<uint32_t>(IPv4[2]) << 16 | static_cast<uint32_t>(IPv4[3]) << 24;
 
     sin.sin_port = htons(Port);
   }
 
   template <>
-  inline void Address::to(sockaddr_in6& sin) const
+  INLINE void Address::into(sockaddr_in6& sin) const
   {
     sin = {};
     sin.sin6_family = AF_INET6;
@@ -129,17 +322,17 @@ namespace net
   }
 
   template <>
-  inline void Address::to(mmsghdr& hdr) const
+  INLINE void Address::into(mmsghdr& hdr) const
   {
     assert(hdr.msg_hdr.msg_name != nullptr);
 
     switch (Type) {
       case AddressType::IPv4: {
-        this->to(*reinterpret_cast<sockaddr_in*>(hdr.msg_hdr.msg_name));
+        this->into(*reinterpret_cast<sockaddr_in*>(hdr.msg_hdr.msg_name));
         hdr.msg_hdr.msg_namelen = sizeof(sockaddr_in);
       } break;
       case AddressType::IPv6: {
-        this->to(*reinterpret_cast<sockaddr_in6*>(hdr.msg_hdr.msg_name));
+        this->into(*reinterpret_cast<sockaddr_in6*>(hdr.msg_hdr.msg_name));
         hdr.msg_hdr.msg_namelen = sizeof(sockaddr_in6);
       } break;
       case AddressType::None: {
@@ -148,7 +341,7 @@ namespace net
     }
   }
 
-  inline auto Address::operator==(const Address& other) const -> bool
+  INLINE auto Address::operator==(const Address& other) const -> bool
   {
     if (this->Type != other.Type || this->Port != other.Port) {
       return false;
@@ -176,12 +369,12 @@ namespace net
     }
   }
 
-  inline auto Address::operator!=(const Address& other) const -> bool
+  INLINE auto Address::operator!=(const Address& other) const -> bool
   {
     return !(*this == other);
   }
 
-  [[gnu::always_inline]] inline auto Address::operator=(const Address& other) -> Address&
+  INLINE auto Address::operator=(const Address& other) -> Address&
   {
     this->Type = other.Type;
     this->Port = other.Port;
@@ -195,7 +388,7 @@ namespace net
     return *this;
   }
 
-  [[gnu::always_inline]] inline auto Address::operator=(const Address&& other) -> Address&
+  INLINE auto Address::operator=(const Address&& other) -> Address&
   {
     this->Type = other.Type;
     this->Port = other.Port;
@@ -216,78 +409,51 @@ namespace net
 
   /* Helpers to reduce the amount of times static_cast has to be written */
 
-  inline auto operator==(const AddressType at, uint8_t t) -> bool
+  INLINE auto operator==(const AddressType at, uint8_t t) -> bool
   {
     return static_cast<uint8_t>(at) == t;
   }
 
-  inline auto operator==(const uint8_t t, const AddressType at) -> bool
+  INLINE auto operator==(const uint8_t t, const AddressType at) -> bool
   {
     return static_cast<uint8_t>(at) == t;
   }
 
-  inline auto operator!=(const AddressType at, uint8_t t) -> bool
+  INLINE auto operator!=(const AddressType at, uint8_t t) -> bool
   {
     return static_cast<uint8_t>(at) != t;
   }
 
-  inline auto operator!=(const uint8_t t, const AddressType at) -> bool
+  INLINE auto operator!=(const uint8_t t, const AddressType at) -> bool
   {
     return static_cast<uint8_t>(at) != t;
   }
 
-  inline auto Address::operator=(const sockaddr_in& addr) -> Address&
+  INLINE auto Address::operator=(const sockaddr_in& addr) -> Address&
   {
     this->Type = net::AddressType::IPv4;
     this->IPv4[0] = static_cast<uint8_t>((addr.sin_addr.s_addr & 0x000000FF));
     this->IPv4[1] = static_cast<uint8_t>((addr.sin_addr.s_addr & 0x0000FF00) >> 8);
     this->IPv4[2] = static_cast<uint8_t>((addr.sin_addr.s_addr & 0x00FF0000) >> 16);
     this->IPv4[3] = static_cast<uint8_t>((addr.sin_addr.s_addr & 0xFF000000) >> 24);
-    this->Port = relay::relay_platform_ntohs(addr.sin_port);
+    this->Port = ntohs(addr.sin_port);
     return *this;
   }
 
-  inline auto Address::operator=(const sockaddr_in6& addr) -> Address&
+  INLINE auto Address::operator=(const sockaddr_in6& addr) -> Address&
   {
     this->Type = net::AddressType::IPv6;
     for (int i = 0; i < 8; i++) {
-      this->IPv6[i] = relay::relay_platform_ntohs(reinterpret_cast<const uint16_t*>(&addr.sin6_addr)[i]);
+      this->IPv6[i] = ntohs(reinterpret_cast<const uint16_t*>(&addr.sin6_addr)[i]);
     }
-    this->Port = relay::relay_platform_ntohs(addr.sin6_port);
+    this->Port = ntohs(addr.sin6_port);
     return *this;
   }
 
-  inline std::ostream& operator<<(std::ostream& os, const Address& addr)
+  INLINE std::ostream& operator<<(std::ostream& os, const Address& addr)
   {
     std::string str;
-    addr.toString(str);
+    addr.to_string(str);
     return os << str;
   }
 }  // namespace net
-
-namespace legacy
-{
-  struct relay_address_t
-  {
-    union
-    {
-      uint8_t ipv4[4];
-      uint16_t ipv6[8];
-    } data;
-    uint16_t port;
-    uint8_t type;
-  };
-
-  int relay_address_parse(relay_address_t* address, const char* address_string_in);
-  const char* relay_address_to_string(const relay_address_t* address, char* buffer);
-  int relay_address_equal(const relay_address_t* a, const relay_address_t* b);
-
-  inline std::ostream& operator<<(std::ostream& os, const relay_address_t& addr)
-  {
-    char buff[128];
-    memset(buff, 0, sizeof(buff));
-    relay_address_to_string(&addr, buff);
-    return os << buff;
-  }
-}  // namespace legacy
-#endif

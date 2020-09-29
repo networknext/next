@@ -7,155 +7,154 @@
 
 #include "bench/bench.hpp"
 #include "core/backend.hpp"
-#include "core/packet_processor.hpp"
-#include "core/ping_processor.hpp"
+#include "core/packet_processing.hpp"
+#include "core/packet_header.hpp"
 #include "core/router_info.hpp"
 #include "crypto/bytes.hpp"
 #include "crypto/hash.hpp"
 #include "crypto/keychain.hpp"
 #include "encoding/base64.hpp"
-#include "relay/relay.hpp"
-#include "relay/relay_platform.hpp"
+#include "net/http.hpp"
+#include "os/socket.hpp"
 #include "testing/test.hpp"
 #include "util/env.hpp"
 
 using namespace std::chrono_literals;
+using core::Backend;
+using crypto::KEY_SIZE;
+using crypto::Keychain;
+using net::Address;
+using net::BeastWrapper;
+using os::Socket;
+using os::SocketConfig;
+using os::SocketPtr;
+using os::SocketType;
+using util::Env;
 
-volatile bool gAlive = true;
-volatile bool gShouldCleanShutdown = false;
+namespace base64 = encoding::base64;
+
+struct
+{
+  volatile bool alive;
+  volatile bool should_clean_shutdown;
+} Globals = {
+ .alive = true,
+ .should_clean_shutdown = false,
+};
 
 namespace
 {
-  // TODO move this out of main and somewhere else to allow for test coverage
-  inline bool getCryptoKeys(const util::Env& env, crypto::Keychain& keychain, std::string& b64RelayPubKey)
+  INLINE void set_thread_affinity(std::thread& thread, int core_id)
+  {
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(core_id, &cpuset);
+    auto res = pthread_setaffinity_np(thread.native_handle(), sizeof(cpuset), &cpuset);
+    if (res != 0) {
+      LOG(ERROR, "error setting thread affinity: ", res);
+    }
+  }
+
+  INLINE void set_thread_sched_max(std::thread& thread)
+  {
+    struct sched_param param;
+    param.sched_priority = sched_get_priority_max(SCHED_FIFO);
+    int ret = pthread_setschedparam(thread.native_handle(), SCHED_FIFO, &param);
+    if (ret) {
+      LOG(ERROR, "unable to increase server thread priority: ", strerror(ret));
+    }
+  }
+
+  INLINE void get_crypto_keys(const Env& env, Keychain& keychain)
   {
     // relay private key
     {
-      std::string b64RelayPrivateKey = env.RelayPrivateKey;
-      auto len = encoding::base64::Decode(b64RelayPrivateKey, keychain.RelayPrivateKey);
-      if (len != crypto::KeySize) {
-        std::cout << "error: invalid relay private key\n";
-        return false;
+      auto len = base64::decode(env.relay_private_key, keychain.relay_private_key);
+      if (len != KEY_SIZE) {
+        LOG(FATAL, "invalid relay private key");
       }
-      std::cout << "    relay private key is '" << env.RelayPrivateKey << "'\n";
+
+      LOG(INFO, "relay private key is '", env.relay_private_key, '\'');
     }
 
     // relay public key
     {
-      b64RelayPubKey = env.RelayPublicKey;
-      auto len = encoding::base64::Decode(b64RelayPubKey, keychain.RelayPublicKey);
-      if (len != crypto::KeySize) {
-        std::cout << "error: invalid relay public key\n";
-        return false;
+      auto len = base64::decode(env.relay_public_key, keychain.relay_public_key);
+      if (len != KEY_SIZE) {
+        LOG(FATAL, "invalid relay public key");
       }
 
-      std::cout << "    relay public key is '" << env.RelayPublicKey << "'\n";
+      LOG(INFO, "relay public key is '", env.relay_public_key, '\'');
     }
 
     // router public key
     {
-      std::string b64RouterPublicKey = env.RelayRouterPublicKey;
-      auto len = encoding::base64::Decode(b64RouterPublicKey, keychain.RouterPublicKey);
-      if (len != crypto::KeySize) {
-        std::cout << "error: invalid router public key\n";
-        return false;
+      auto len = base64::decode(env.relay_router_public_key, keychain.backend_public_key);
+      if (len != KEY_SIZE) {
+        LOG(FATAL, "invalid router public key");
       }
 
-      std::cout << "    router public key is '" << env.RelayRouterPublicKey << "'\n";
+      LOG(INFO, "router public key is '", env.relay_router_public_key, '\'');
     }
-
-    // update key
-
-    if (env.RelayV3Enabled == "1") {
-      std::string b64UpdateKey = env.RelayV3UpdateKey;
-      auto len = encoding::base64::Decode(b64UpdateKey, keychain.UpdateKey);
-      if (len != crypto_sign_SECRETKEYBYTES) {
-        std::cout << "error: invalid update key\n";
-        return false;
-      }
-
-      std::cout << "    update key is '" << env.RelayV3UpdateKey << "'\n";
-    }
-
-    return true;
   }
 
-  inline bool getNumProcessors(const util::Env& env, unsigned int& numProcs)
+  INLINE auto get_num_cpus(const std::optional<std::string>& envvar) -> size_t
   {
-    if (env.ProcessorCount.empty()) {
-      numProcs = std::thread::hardware_concurrency();  // first core reserved for updates/outgoing pings
-      if (numProcs > 0) {
-        Log("RELAY_MAX_CORES not set, autodetected number of processors available: ", numProcs);
-      } else {
-        Log("error: RELAY_MAX_CORES not set, could not detect processor count, please set the env var");
-        return false;
+    size_t num_cpus = 0;
+    if (envvar.has_value()) {
+      try {
+        num_cpus = std::stoull(*envvar);
+      } catch (std::exception& e) {
+        LOG(FATAL, "could not parse RELAY_MAX_CORES to a number, value: ", *envvar);
       }
     } else {
+      num_cpus = std::thread::hardware_concurrency();  // first core reserved for updates/outgoing pings
+      if (num_cpus > 0) {
+        LOG(INFO, "RELAY_MAX_CORES not set, autodetected number of processors available: ", num_cpus);
+      } else {
+        LOG(FATAL, "RELAY_MAX_CORES not set, could not detect processor count, please set the env var");
+      }
+    }
+    return num_cpus;
+  }
+
+  INLINE auto get_buffer_size(const std::optional<std::string>& envvar) -> size_t
+  {
+    size_t socket_buffer_size = 1000000;
+
+    if (envvar.has_value()) {
       try {
-        numProcs = std::stoi(env.ProcessorCount);
+        socket_buffer_size = std::stoull(*envvar);
       } catch (std::exception& e) {
-        Log("could not parse RELAY_MAX_CORES to a number, value: ", env.ProcessorCount);
+        LOG(ERROR, "Could not parse ", *envvar, " env var to a number: ", e.what());
       }
     }
 
-    return true;
+    return socket_buffer_size;
   }
 
-  inline int getBufferSize(const std::string& envvar)
+  INLINE void setup_signal_handlers()
   {
-    int socketBufferSize = 1000000;
-
-    if (!envvar.empty()) {
-      try {
-        socketBufferSize = std::stoi(envvar);
-      } catch (std::exception& e) {
-        Log("Could not parse ", envvar, " env var to a number: ", e.what());
-      }
-    }
-
-    return socketBufferSize;
-  }
-
-  inline void setupSignalHandlers()
-  {
-#ifndef NDEBUG
-    signal(SIGSEGV, [](int) {
-      gAlive = false;
-      const auto StacktraceDepth = 13;
-      void* arr[StacktraceDepth];
-
-      // get stack frames
-      size_t size = backtrace(arr, StacktraceDepth);
-
-      // print the stack trace
-      std::cerr << "stacktrace\n";
-      backtrace_symbols_fd(arr, size, STDERR_FILENO);
-      exit(1);
-    });
-#endif
-
-#if not defined TEST_BUILD and not defined BENCH_BUILD
-    auto gracefulShutdownHandler = [](int) {
-      if (gAlive) {
-        gAlive = false;
+    auto graceful_shutdown_handler = [](int) {
+      if (Globals.alive) {
+        Globals.alive = false;
       } else {
         std::exit(1);
       }
     };
 
-    auto cleanShutdownHandler = [](int) {
-      if (gAlive) {
-        gShouldCleanShutdown = true;
-        gAlive = false;
+    auto clean_shutdown_handler = [](int) {
+      if (Globals.alive) {
+        Globals.should_clean_shutdown = true;
+        Globals.alive = false;
       } else {
         std::exit(1);
       }
     };
 
-    signal(SIGINT, gracefulShutdownHandler);  // ctrl-c
-    signal(SIGTERM, cleanShutdownHandler);    // systemd stop
-    signal(SIGHUP, cleanShutdownHandler);     // terminal session ends
-#endif
+    std::signal(SIGINT, graceful_shutdown_handler);  // ctrl-c
+    std::signal(SIGTERM, clean_shutdown_handler);    // systemd stop
+    std::signal(SIGHUP, clean_shutdown_handler);     // terminal session ends
   }
 }  // namespace
 
@@ -172,247 +171,188 @@ int main(int argc, const char* argv[])
   return 0;
 #endif
 
-  std::cout << "\nNetwork Next Relay\n";
+  LOG(INFO, "Network Next Relay");
 
-  std::cout << "\nEnvironment:\n\n";
+  Env env;
 
-  util::Env env;
-
-  // relay address - the address other devices should use to talk to this
-  // sent to the relay backend and is the addr everything communicates with
-  net::Address relayAddr;
-  {
-    if (!relayAddr.parse(env.RelayAddress)) {
-      Log("error: invalid relay address: ", env.RelayAddress);
-      return 1;
-    }
-
-    std::cout << "    relay address is '" << relayAddr << "'\n";
-  }
-
-  crypto::Keychain keychain;
-  std::string b64RelayPubKey;
-  if (!getCryptoKeys(env, keychain, b64RelayPubKey)) {
+  Address relay_addr;
+  if (!relay_addr.parse(env.relay_address)) {
+    LOG(FATAL, "invalid relay address: ", env.relay_address);
     return 1;
   }
 
-  std::cout << "    backend hostname is '" << env.BackendHostname << "'\n";
-  std::cout << "    v3 backend hostname is '" << env.RelayV3BackendHostname << ':' << env.RelayV3BackendPort << "'\n";
+  LOG(INFO, "relay address is '", relay_addr, '\'');
 
-  unsigned int numProcessors = 0;
-  if (!getNumProcessors(env, numProcessors)) {
-    return 1;
+  Keychain keychain;
+  get_crypto_keys(env, keychain);
+
+  LOG(INFO, "backend hostname is '", env.backend_hostname, '\'');
+
+  unsigned int num_cpus = get_num_cpus(env.max_cpus);
+  int socket_recv_buff_size = get_buffer_size(env.recv_buffer_size);
+  int socket_send_buff_size = get_buffer_size(env.send_buffer_size);
+
+  if (sodium_init() == -1) {
+    LOG(FATAL, "failed to initialize sodium");
   }
 
-  int socketRecvBuffSize = getBufferSize(env.RecvBufferSize);
-  int socketSendBuffSize = getBufferSize(env.SendBufferSize);
-
-  if (relay::relay_initialize() != RELAY_OK) {
-    Log("error: failed to initialize relay\n\n");
-    return 1;
-  }
-
-  Log("Initializing relay");
+  LOG(DEBUG, "initializing relay");
 
   bool success = false;
 
-  core::RouterInfo routerInfo;
-  core::RelayManager<core::Relay> relayManager;
+  core::RouterInfo router_info;
+  core::RelayManager relay_manager;
   util::ThroughputRecorder recorder;
 
-  // used to make sockets and threads serially
-  std::atomic<bool> socketAndThreadReady(false);
-
-  std::vector<os::SocketPtr> sockets;
+  std::vector<SocketPtr> sockets;
   std::vector<std::shared_ptr<std::thread>> threads;
 
   // decides if the relay should receive packets
-  std::atomic<bool> shouldReceive(true);
+  std::atomic<bool> should_receive(true);
 
   // session map to be shared across packet processors
   core::SessionMap sessions;
 
-  auto nextSocket = [&sockets] {
-    static size_t socketChooser = 0;
-    return sockets[socketChooser++ % sockets.size()];
-  };
-
-  // wait until a thread is ready to do its job.
-  // serializes the thread spawning so the relay doesn't
-  // communicate with the backend until it is fully ready
-  // to receive packets
-  auto wait = [&socketAndThreadReady] {
-    while (!socketAndThreadReady) {
-      std::this_thread::sleep_for(10ms);
-    }
-
-    socketAndThreadReady = false;
-  };
-
-  // closes all opened sockets in the vector
-  auto closeSockets = [&sockets] {
+  auto close_sockets = [&sockets] {
     for (auto& socket : sockets) {
       socket->close();
     }
   };
 
-  // joins all threads that were placed in the vector
-  auto joinThreads = [&threads] {
+  auto join_threads = [&threads] {
     for (auto& thread : threads) {
       thread->join();
     }
   };
 
-  auto cleanup = [&closeSockets, &joinThreads] {
-    gAlive = false;
-    closeSockets();
-    relay::relay_term();
+  auto cleanup = [&] {
+    if (Globals.alive) {
+      Globals.alive = false;
+      close_sockets();
+    }
   };
 
   // makes a shared ptr to a socket object
-  auto makeSocket = [&sockets, socketSendBuffSize, socketRecvBuffSize](uint16_t& portNumber) -> os::SocketPtr {
-    // don't set addr, so that it's 0.0.0.0:some-port
-    net::Address addr;
-    addr.Port = portNumber;
-    addr.Type = net::AddressType::IPv4;
-    auto socket = std::make_shared<os::Socket>(os::SocketType::Blocking);
-    if (!socket->create(addr, socketSendBuffSize, socketRecvBuffSize, 0.0f, true)) {
+  auto make_socket = [&](Address& addr_in, SocketConfig config) -> SocketPtr {
+    Address addr;
+    addr.Port = addr_in.Port;
+    addr.Type = addr_in.Type;
+    auto socket = std::make_shared<Socket>();
+    if (!socket->create(addr, config)) {
       return nullptr;
     }
 
     // if port was 0, this will set the reference parameter to what it changed to
-    portNumber = addr.Port;
+    addr_in.Port = addr.Port;
 
     sockets.push_back(socket);
 
     return socket;
   };
 
+  SocketConfig config;
+  config.socket_type = SocketType::Blocking;
+  config.reuse_port = true;
+  config.send_buffer_size = socket_send_buff_size;
+  config.recv_buffer_size = socket_recv_buff_size;
+
+  size_t num_threads = (num_cpus == 1) ? num_cpus : num_cpus - 1;
+  LOG(DEBUG, "creating ", num_cpus, " packet processing thread", (num_cpus != 1) ? "s" : "");
+
   // packet processing setup
-  Log("creating ", (numProcessors == 1) ? 1 : numProcessors - 1, " packet processing threads");
-  {
-    for (unsigned int i = ((numProcessors == 1) ? 0 : 1); i < numProcessors && gAlive; i++) {
-      auto socket = makeSocket(relayAddr.Port);
-      if (!socket) {
-        Log("could not create socket");
-        cleanup();
-      }
-
-      auto thread = std::make_shared<std::thread>(
-       [&socketAndThreadReady, &shouldReceive, socket, &keychain, &sessions, &relayManager, &recorder, &routerInfo] {
-         core::PacketProcessor processor(
-          shouldReceive, *socket, keychain, sessions, relayManager, gAlive, recorder, routerInfo);
-         processor.process(socketAndThreadReady);
-       });
-
-      wait();  // wait the the packet processor is ready to receive
-
-      sockets.push_back(socket);
-      threads.push_back(thread);
-
-      {
-        auto [ok, err] = os::SetThreadAffinity(*thread, (std::thread::hardware_concurrency() == 1) ? 0 : i);
-        if (!ok) {
-          Log(err);
-        }
-      }
-
-      {
-        auto [ok, err] = os::SetThreadSchedMax(*thread);
-        if (!ok) {
-          Log(err);
-        }
-      }
+  for (unsigned int i = (num_cpus == 1) ? 0 : 1; i < num_threads && Globals.alive; i++) {
+    auto socket = make_socket(relay_addr, config);
+    if (!socket) {
+      LOG(ERROR, "could not create socket");
+      cleanup();
     }
-  }
 
-  // ping processing setup
-  if (gAlive) {
-    auto socket = nextSocket();
-    auto thread = std::make_shared<std::thread>([&socketAndThreadReady, socket, &relayManager, &recorder] {
-      core::PingProcessor pingProcessor(*socket, relayManager, gAlive, recorder);
-      pingProcessor.process(socketAndThreadReady);
+    auto thread = std::make_shared<std::thread>([&, socket] {
+      core::recv_loop(should_receive, *socket, keychain, sessions, relay_manager, Globals.alive, recorder, router_info);
     });
 
-    wait();
+    set_thread_affinity(*thread, (std::thread::hardware_concurrency() == 1) ? 0 : i);
+
+    set_thread_sched_max(*thread);
 
     sockets.push_back(socket);
     threads.push_back(thread);
+  }
 
-    {
-      auto [ok, err] = os::SetThreadAffinity(*thread, 0);
-      if (!ok) {
-        Log(err);
-      }
-    }
+  // gets a socket from those available round robbin style
+  auto next_socket = [&] {
+    static size_t socket_chooser = 0;
+    return sockets[socket_chooser++ % sockets.size()];
+  };
 
-    {
-      auto [ok, err] = os::SetThreadSchedMax(*thread);
-      if (!ok) {
-        Log(err);
-      }
-    }
+  // ping processing setup
+  if (Globals.alive) {
+    auto socket = next_socket();
+    auto thread = std::make_shared<std::thread>([&, socket] {
+      core::ping_loop(*socket, relay_manager, Globals.alive, recorder);
+    });
+
+    set_thread_affinity(*thread, 0);
+
+    set_thread_sched_max(*thread);
+
+    sockets.push_back(socket);
+    threads.push_back(thread);
   }
 
   // new backend setup
   {
-    std::thread updateThread(
-     [&env, &relayAddr, &keychain, &routerInfo, &relayManager, &b64RelayPubKey, &sessions, &cleanup, &recorder, &success] {
-       bool relayInitialized = false;
+    std::thread thread([&] {
+      BeastWrapper wrapper;
+      core::Backend backend(
+       env.backend_hostname,
+       relay_addr.to_string(),
+       keychain,
+       router_info,
+       relay_manager,
+       env.relay_public_key,
+       sessions,
+       wrapper);
 
-       net::BeastWrapper wrapper;
-       core::Backend backend(
-        env.BackendHostname, relayAddr.toString(), keychain, routerInfo, relayManager, b64RelayPubKey, sessions, wrapper);
+      size_t attempts = 0;
+      while (attempts < 60) {
+        if (backend.init()) {
+          std::cout << '\n';
+          break;
+        }
 
-       for (int i = 0; i < 60; ++i) {
-         if (backend.init()) {
-           std::cout << '\n';
-           relayInitialized = true;
-           break;
-         }
-
-         std::this_thread::sleep_for(1s);
-       }
-
-       if (!relayInitialized) {
-         Log("error: could not initialize relay");
-         cleanup();
-       }
-
-       Log("relay initialized with new backend");
-
-       if (gAlive) {
-         setupSignalHandlers();
-
-         success = backend.updateCycle(gAlive, gShouldCleanShutdown, recorder, sessions);
-       }
-     });
-
-    {
-      auto [ok, err] = os::SetThreadAffinity(updateThread, 0);
-      if (!ok) {
-        Log(err);
+        std::this_thread::sleep_for(1s);
+        attempts++;
       }
-    }
 
-    {
-      auto [ok, err] = os::SetThreadSchedMax(updateThread);
-      if (!ok) {
-        Log(err);
+      if (attempts < 60) {
+        LOG(INFO, "relay initialized with new backend");
+      } else {
+        LOG(ERROR, "could not initialize relay");
+        cleanup();
       }
-    }
 
-    updateThread.join();
+      if (Globals.alive) {
+        setup_signal_handlers();
+
+        success = backend.update_loop(Globals.alive, Globals.should_clean_shutdown, recorder, sessions);
+      }
+    });
+
+    set_thread_affinity(thread, 0);
+
+    set_thread_sched_max(thread);
+
+    thread.join();
   }
 
-  Log("cleaning up");
-
-  shouldReceive = false;
+  should_receive = false;
 
   cleanup();
-  joinThreads();
 
-  LogDebug("Receiving Address: ", relayAddr);
+  join_threads();
+
+  LOG(DEBUG, "Receiving Address: ", relay_addr);
 
   return success ? 0 : 1;
 }

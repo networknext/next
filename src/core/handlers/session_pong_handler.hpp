@@ -1,118 +1,91 @@
-#ifndef CORE_HANDLERS_SESSION_PONG_HANDLER_HPP
-#define CORE_HANDLERS_SESSION_PONG_HANDLER_HPP
+#pragma once
 
-#include "base_handler.hpp"
+#include "core/packet.hpp"
+#include "core/packet_header.hpp"
+#include "core/packet_types.hpp"
+#include "core/session_map.hpp"
+#include "core/throughput_recorder.hpp"
+#include "crypto/hash.hpp"
 #include "crypto/keychain.hpp"
-#include "os/platform.hpp"
-#include "util/throughput_recorder.hpp"
+#include "os/socket.hpp"
+
+using core::PacketDirection;
+using core::PacketHeader;
+using core::RouterInfo;
+using core::SessionMap;
+using crypto::PACKET_HASH_LENGTH;
+using os::Socket;
+using util::ThroughputRecorder;
 
 namespace core
 {
   namespace handlers
   {
-    class SessionPongHandler: public BaseHandler
+    inline void session_pong_handler(
+     Packet& packet,
+     SessionMap& session_map,
+     ThroughputRecorder& recorder,
+     const RouterInfo& router_info,
+     const Socket& socket,
+     bool is_signed)
     {
-     public:
-      SessionPongHandler(GenericPacket<>& packet, core::SessionMap& sessions, util::ThroughputRecorder& recorder);
+      size_t index = 0;
+      size_t length = packet.length;
 
-      template <size_t Size>
-      void handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket, bool isSigned);
-
-     private:
-      core::SessionMap& mSessionMap;
-      util::ThroughputRecorder& mRecorder;
-    };
-
-    inline SessionPongHandler::SessionPongHandler(
-     GenericPacket<>& packet, core::SessionMap& sessions, util::ThroughputRecorder& recorder)
-     : BaseHandler(packet), mSessionMap(sessions), mRecorder(recorder)
-    {}
-
-    template <size_t Size>
-    inline void SessionPongHandler::handle(core::GenericPacketBuffer<Size>& buff, const os::Socket& socket, bool isSigned)
-    {
-      (void)buff;
-      (void)socket;
-
-      uint8_t* data;
-      size_t length;
-
-      if (isSigned) {
-        data = &mPacket.Buffer[crypto::PacketHashLength];
-        length = mPacket.Len - crypto::PacketHashLength;
-      } else {
-        data = &mPacket.Buffer[0];
-        length = mPacket.Len;
+      if (is_signed) {
+        index = PACKET_HASH_LENGTH;
+        length = packet.length - PACKET_HASH_LENGTH;
       }
 
-      if (length > RELAY_HEADER_BYTES + 32) {
-        Log("ignoring session pong, packet size too large: ", length);
+      if (length > PacketHeader::SIZE_OF + 32) {
+        LOG(ERROR, "ignoring session pong, packet size too large: ", length);
         return;
       }
 
-      packets::Type type;
-      uint64_t sequence;
-      uint64_t session_id;
-      uint8_t session_version;
+      PacketHeader header;
 
-      if (
-       relay::relay_peek_header(
-        RELAY_DIRECTION_SERVER_TO_CLIENT, &type, &sequence, &session_id, &session_version, data, length) != RELAY_OK) {
-        Log("ignoring session pong packet, relay header could not be read");
-        return;
+      {
+        size_t i = index;
+        if (!header.read(packet, i, PacketDirection::ServerToClient)) {
+          LOG(ERROR, "ignoring session pong packet, relay header could not be read");
+          return;
+        }
       }
 
-      uint64_t hash = session_id ^ session_version;
+      uint64_t hash = header.hash();
 
-      auto session = mSessionMap.get(hash);
+      auto session = session_map.get(hash);
 
       if (!session) {
-        Log(
-         "ignoring session pong packet, session does not exist: session = ",
-         std::hex,
-         session_id,
-         '.',
-         std::dec,
-         static_cast<unsigned int>(session_version));
+        LOG(ERROR, "ignoring session pong packet, session does not exist: session = ", header);
         return;
       }
 
-      if (session->expired()) {
-        Log("ignoring session pong packet, session expired: session = ", *session);
-        mSessionMap.erase(hash);
+      if (session->expired(router_info)) {
+        LOG(ERROR, "ignoring session pong packet, session expired: session = ", *session);
+        session_map.erase(hash);
         return;
       }
 
-      uint64_t clean_sequence = relay::relay_clean_sequence(sequence);
+      uint64_t clean_sequence = header.clean_sequence();
 
-      if (clean_sequence <= session->ServerToClientSeq) {
-        Log(
-         "ignoring session pong packet, packet already received: session = ",
-         *session,
-         ", ",
-         clean_sequence,
-         " <= ",
-         session->ServerToClientSeq);
+      if (clean_sequence <= session->server_to_client_sequence) {
+        LOG(ERROR, "ignoring session pong packet, packet already received: session = ", *session);
         return;
       }
 
-      if (relay::relay_verify_header(RELAY_DIRECTION_SERVER_TO_CLIENT, session->PrivateKey.data(), data, length) != RELAY_OK) {
-        Log("ignoring session pong packet, could not verify header: session = ", *session);
+      if (!header.verify(packet, index, PacketDirection::ServerToClient, session->private_key)) {
+        LOG(ERROR, "ignoring session pong packet, could not verify header: session = ", *session);
         return;
       }
 
-      session->ServerToClientSeq = clean_sequence;
+      session->server_to_client_sequence = clean_sequence;
 
-      mRecorder.SessionPongTx.add(mPacket.Len);
+      recorder.session_pong_tx.add(packet.length);
 
-#ifdef RELAY_MULTISEND
-      buff.push(session->PrevAddr, mPacket.Buffer.data(), mPacket.Len);
-#else
-      if (!socket.send(session->PrevAddr, mPacket.Buffer.data(), mPacket.Len)) {
-        Log("failed to send session pong to ", session->PrevAddr);
+      if (!socket.send(session->prev_addr, packet.buffer.data(), packet.length)) {
+        LOG(ERROR, "failed to send session pong to ", session->prev_addr);
       }
-#endif
     }
   }  // namespace handlers
 }  // namespace core
-#endif

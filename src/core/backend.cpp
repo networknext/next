@@ -1,16 +1,23 @@
 #include "includes.h"
 #include "backend.hpp"
 
+#include "crypto/bytes.hpp"
+#include "crypto/keychain.hpp"
 #include "encoding/base64.hpp"
 #include "encoding/read.hpp"
 #include "encoding/write.hpp"
+#include "net/http.hpp"
+#include "os/system.hpp"
+
+using core::RelayStats;
+using crypto::KEY_SIZE;
 
 namespace
 {
-  const uint32_t InitResponseVersion = 0;
+  const uint32_t INIT_RESPONSE_VERSION = 0;
 
-  const uint32_t UpdateRequestVersion = 1;
-  const uint32_t UpdateResponseVersion = 0;
+  const uint32_t UPDATE_REQUEST_VERSION = 1;
+  const uint32_t UPDATE_RESPONSE_VERSION = 0;
 }  // namespace
 
 namespace core
@@ -19,40 +26,40 @@ namespace core
 
   auto InitRequest::size() -> size_t
   {
-    return 4 + 4 + Nonce.size() + 4 + Address.length() + EncryptedToken.size() + 4 + RelayVersion.length();
+    return 4 + 4 + nonce.size() + 4 + address.length() + encrypted_token.size() + 4 + relay_version.length();
   }
 
   auto InitRequest::into(std::vector<uint8_t>& v) -> bool
   {
     size_t index = 0;
 
-    if (!encoding::WriteUint32(v, index, Magic)) {
-      Log("could not write init request magic");
+    if (!encoding::write_uint32(v, index, magic)) {
+      LOG(ERROR, "could not write init request magic");
       return false;
     }
 
-    if (!encoding::WriteUint32(v, index, Version)) {
-      Log("could not write init request version");
+    if (!encoding::write_uint32(v, index, version)) {
+      LOG(ERROR, "could not write init request version");
       return false;
     }
 
-    if (!encoding::WriteBytes(v, index, Nonce, Nonce.size())) {
-      Log("could not write init request nonce bytes");
+    if (!encoding::write_bytes(v, index, nonce, nonce.size())) {
+      LOG(ERROR, "could not write init request nonce bytes");
       return false;
     }
 
-    if (!encoding::WriteString(v, index, Address)) {
-      Log("could not write init request address");
+    if (!encoding::write_string(v, index, address)) {
+      LOG(ERROR, "could not write init request address");
       return false;
     }
 
-    if (!encoding::WriteBytes(v, index, EncryptedToken, EncryptedToken.size())) {
-      Log("could not write init request token");
+    if (!encoding::write_bytes(v, index, encrypted_token, encrypted_token.size())) {
+      LOG(ERROR, "could not write init request token");
       return false;
     }
 
-    if (!encoding::WriteString(v, index, RelayVersion)) {
-      Log("could not write init request relay version");
+    if (!encoding::write_string(v, index, relay_version)) {
+      LOG(ERROR, "could not write init request relay version");
       return false;
     }
 
@@ -62,12 +69,24 @@ namespace core
   auto InitRequest::from(const std::vector<uint8_t>& v) -> bool
   {
     size_t index = 0;
-    Magic = encoding::ReadUint32(v, index);
-    Version = encoding::ReadUint32(v, index);
-    encoding::ReadBytes(v, index, Nonce, Nonce.size());
-    Address = encoding::ReadString(v, index);
-    encoding::ReadBytes(v, index, EncryptedToken, EncryptedToken.size());
-    RelayVersion = encoding::ReadString(v, index);
+    if (!encoding::read_uint32(v, index, this->magic)) {
+      return false;
+    }
+    if (!encoding::read_uint32(v, index, this->version)) {
+      return false;
+    }
+    if (!encoding::read_bytes(v, index, this->nonce, this->nonce.size())) {
+      return false;
+    }
+    if (!encoding::read_string(v, index, this->address)) {
+      return false;
+    }
+    if (!encoding::read_bytes(v, index, this->encrypted_token, this->encrypted_token.size())) {
+      return false;
+    }
+    if (!encoding::read_string(v, index, this->relay_version)) {
+      return false;
+    }
     return true;
   }
 
@@ -75,18 +94,18 @@ namespace core
   auto InitResponse::into(std::vector<uint8_t>& v) -> bool
   {
     size_t index = 0;
-    if (!encoding::WriteUint32(v, index, Version)) {
-      LogTest("unable to write version");
+    if (!encoding::write_uint32(v, index, version)) {
+      LOG(TRACE, "unable to write version");
       return false;
     }
 
-    if (!encoding::WriteUint64(v, index, Timestamp)) {
-      LogTest("unable to write timestamp");
+    if (!encoding::write_uint64(v, index, timestamp)) {
+      LOG(TRACE, "unable to write timestamp");
       return false;
     }
 
-    if (!encoding::WriteBytes(v, index, PublicKey, PublicKey.size())) {
-      LogTest("unable to write public key");
+    if (!encoding::write_bytes(v, index, public_key, public_key.size())) {
+      LOG(TRACE, "unable to write public key");
       return false;
     }
 
@@ -96,72 +115,150 @@ namespace core
   auto InitResponse::from(const std::vector<uint8_t>& v) -> bool
   {
     size_t index = 0;
-    Version = encoding::ReadUint32(v, index);
-    Timestamp = encoding::ReadUint64(v, index);
-    encoding::ReadBytes(v, index, PublicKey, PublicKey.size());
+    if (!encoding::read_uint32(v, index, this->version)) {
+      return false;
+    }
+    if (!encoding::read_uint64(v, index, this->timestamp)) {
+      return false;
+    }
+    if (!encoding::read_bytes(v, index, public_key, public_key.size())) {
+      return false;
+    }
     return true;
   }
 
   auto UpdateRequest::from(const std::vector<uint8_t>& v) -> bool
   {
     size_t index = 0;
-    Version = encoding::ReadUint32(v, index);
-    Address = encoding::ReadString(v, index);
-    encoding::ReadBytes(v, index, PublicKey, PublicKey.size());
-
-    PingStats.NumRelays = encoding::ReadUint32(v, index);
-
-    for (size_t i = 0; i < PingStats.NumRelays; i++) {
-      PingStats.IDs[i] = encoding::ReadUint64(v, index);
-      encoding::ReadBytes(
-       v.data(), v.size(), index, reinterpret_cast<uint8_t*>(&PingStats.RTT[i]), sizeof(float), sizeof(float));
-      encoding::ReadBytes(
-       v.data(), v.size(), index, reinterpret_cast<uint8_t*>(&PingStats.Jitter[i]), sizeof(float), sizeof(float));
-      encoding::ReadBytes(
-       v.data(), v.size(), index, reinterpret_cast<uint8_t*>(&PingStats.PacketLoss[i]), sizeof(float), sizeof(float));
+    if (!encoding::read_uint32(v, index, this->version)) {
+      return false;
+    }
+    if (!encoding::read_string(v, index, this->address)) {
+      return false;
+    }
+    if (!encoding::read_bytes(v, index, public_key, public_key.size())) {
+      return false;
+    }
+    if (!encoding::read_uint32(v, index, this->ping_stats.num_relays)) {
+      return false;
     }
 
-    SessionCount = encoding::ReadUint64(v, index);
-    OutboundPingTx = encoding::ReadUint64(v, index);
-    RouteRequestRx = encoding::ReadUint64(v, index);
-    RouteRequestTx = encoding::ReadUint64(v, index);
-    RouteResponseRx = encoding::ReadUint64(v, index);
-    RouteResponseTx = encoding::ReadUint64(v, index);
-    ClientToServerRx = encoding::ReadUint64(v, index);
-    ClientToServerTx = encoding::ReadUint64(v, index);
-    ServerToClientRx = encoding::ReadUint64(v, index);
-    ServerToClientTx = encoding::ReadUint64(v, index);
-    InboundPingRx = encoding::ReadUint64(v, index);
-    InboundPingTx = encoding::ReadUint64(v, index);
-    PongRx = encoding::ReadUint64(v, index);
-    SessionPingRx = encoding::ReadUint64(v, index);
-    SessionPingTx = encoding::ReadUint64(v, index);
-    SessionPongRx = encoding::ReadUint64(v, index);
-    SessionPongTx = encoding::ReadUint64(v, index);
-    ContinueRequestRx = encoding::ReadUint64(v, index);
-    ContinueRequestTx = encoding::ReadUint64(v, index);
-    ContinueResponseRx = encoding::ReadUint64(v, index);
-    ContinueResponseTx = encoding::ReadUint64(v, index);
-    NearPingRx = encoding::ReadUint64(v, index);
-    NearPingTx = encoding::ReadUint64(v, index);
-    UnknownRx = encoding::ReadUint64(v, index);
-    ShuttingDown = static_cast<bool>(encoding::ReadUint8(v, index));
+    for (size_t i = 0; i < ping_stats.num_relays; i++) {
+      if (!encoding::read_uint64(v, index, this->ping_stats.ids[i])) {
+        return false;
+      }
+      if (!encoding::read_bytes(
+           v.data(), v.size(), index, reinterpret_cast<uint8_t*>(&ping_stats.rtt[i]), sizeof(float), sizeof(float))) {
+        return false;
+      }
+      if (!encoding::read_bytes(
+           v.data(), v.size(), index, reinterpret_cast<uint8_t*>(&ping_stats.jitter[i]), sizeof(float), sizeof(float))) {
+        return false;
+      }
+      if (!encoding::read_bytes(
+           v.data(), v.size(), index, reinterpret_cast<uint8_t*>(&ping_stats.packet_loss[i]), sizeof(float), sizeof(float))) {
+        return false;
+      }
+    }
+    if (!encoding::read_uint64(v, index, this->session_count)) {
+      return false;
+    }
+    if (!encoding::read_uint64(v, index, this->outbound_ping_tx)) {
+      return false;
+    }
+    if (!encoding::read_uint64(v, index, this->route_request_rx)) {
+      return false;
+    }
+    if (!encoding::read_uint64(v, index, this->route_request_tx)) {
+      return false;
+    }
+    if (!encoding::read_uint64(v, index, this->route_response_rx)) {
+      return false;
+    }
+    if (!encoding::read_uint64(v, index, this->route_response_tx)) {
+      return false;
+    }
+    if (!encoding::read_uint64(v, index, this->client_to_server_rx)) {
+      return false;
+    }
+    if (!encoding::read_uint64(v, index, this->client_to_server_tx)) {
+      return false;
+    }
+    if (!encoding::read_uint64(v, index, this->server_to_client_rx)) {
+      return false;
+    }
+    if (!encoding::read_uint64(v, index, this->server_to_client_tx)) {
+      return false;
+    }
+    if (!encoding::read_uint64(v, index, this->inbound_ping_rx)) {
+      return false;
+    }
+    if (!encoding::read_uint64(v, index, this->inbound_ping_tx)) {
+      return false;
+    }
+    if (!encoding::read_uint64(v, index, this->pong_rx)) {
+      return false;
+    }
+    if (!encoding::read_uint64(v, index, this->session_ping_rx)) {
+      return false;
+    }
+    if (!encoding::read_uint64(v, index, this->session_ping_tx)) {
+      return false;
+    }
+    if (!encoding::read_uint64(v, index, this->session_pong_rx)) {
+      return false;
+    }
+    if (!encoding::read_uint64(v, index, this->session_pong_tx)) {
+      return false;
+    }
+    if (!encoding::read_uint64(v, index, this->continue_request_rx)) {
+      return false;
+    }
+    if (!encoding::read_uint64(v, index, this->continue_request_tx)) {
+      return false;
+    }
+    if (!encoding::read_uint64(v, index, this->continue_response_rx)) {
+      return false;
+    }
+    if (!encoding::read_uint64(v, index, this->continue_response_tx)) {
+      return false;
+    }
+    if (!encoding::read_uint64(v, index, this->near_ping_rx)) {
+      return false;
+    }
+    if (!encoding::read_uint64(v, index, this->near_ping_tx)) {
+      return false;
+    }
+    if (!encoding::read_uint64(v, index, this->unknown_rx)) {
+      return false;
+    }
+    uint8_t shutdown_flag;
+    if (!encoding::read_uint8(v, index, shutdown_flag)) {
+      return false;
+    }
+    this->shutting_down = static_cast<bool>(shutdown_flag);
 
-    CPUUsage = encoding::ReadDouble(v, index);
-    MemUsage = encoding::ReadDouble(v, index);
-    RelayVersion = encoding::ReadString(v, index);
+    if (!encoding::read_double(v, index, this->cpu_usage)) {
+      return false;
+    }
+    if (!encoding::read_double(v, index, this->mem_usage)) {
+      return false;
+    }
+    if (!encoding::read_string(v, index, this->relay_version)) {
+      return false;
+    }
 
     return true;
   }
 
   auto UpdateResponse::size() -> size_t
   {
-    size_t size = 4 + 8 + 4 + NumRelays * (8 + 4);
+    size_t size = 4 + 8 + 4 + this->num_relays * (8 + 4);
 
-    for (size_t i = 0; i < NumRelays; i++) {
+    for (size_t i = 0; i < this->num_relays; i++) {
       // only used in tests, so being lazy here;
       const auto& relay = Relays[i];
-      size += relay.Addr.toString().length();
+      size += relay.address.to_string().length();
     }
 
     return size;
@@ -172,31 +269,31 @@ namespace core
   {
     size_t index = 0;
 
-    if (!encoding::WriteUint32(v, index, Version)) {
-      LogTest("could not write version");
+    if (!encoding::write_uint32(v, index, this->version)) {
+      LOG(TRACE, "could not write version");
       return false;
     }
 
-    if (!encoding::WriteUint64(v, index, Timestamp)) {
-      LogTest("could not write timestamp");
+    if (!encoding::write_uint64(v, index, this->timestamp)) {
+      LOG(TRACE, "could not write timestamp");
       return false;
     }
 
-    if (!encoding::WriteUint32(v, index, NumRelays)) {
-      LogTest("could not write num relays");
+    if (!encoding::write_uint32(v, index, this->num_relays)) {
+      LOG(TRACE, "could not write num relays");
       return false;
     }
 
-    for (size_t i = 0; i < NumRelays; i++) {
+    for (size_t i = 0; i < this->num_relays; i++) {
       const auto& relay = Relays[i];
 
-      if (!encoding::WriteUint64(v, index, relay.ID)) {
-        LogTest("could not write relay id");
+      if (!encoding::write_uint64(v, index, relay.id)) {
+        LOG(TRACE, "could not write relay id");
         return false;
       }
 
-      if (!encoding::WriteString(v, index, relay.Addr.toString())) {
-        LogTest("could not write relay address");
+      if (!encoding::write_string(v, index, relay.address.to_string())) {
+        LOG(TRACE, "could not write relay address");
         return false;
       }
     }
@@ -208,15 +305,26 @@ namespace core
   {
     size_t index = 0;
 
-    Version = encoding::ReadUint32(v, index);
-    Timestamp = encoding::ReadUint64(v, index);
-    NumRelays = encoding::ReadUint32(v, index);
-    for (size_t i = 0; i < NumRelays; i++) {
+    if (!encoding::read_uint32(v, index, version)) {
+      return false;
+    }
+    if (!encoding::read_uint64(v, index, this->timestamp)) {
+      return false;
+    }
+    if (!encoding::read_uint32(v, index, this->num_relays)) {
+      return false;
+    }
+    for (size_t i = 0; i < this->num_relays; i++) {
       auto& relay = Relays[i];
-      relay.ID = encoding::ReadUint64(v, index);
-      std::string addr = encoding::ReadString(v, index);
-      if (!relay.Addr.parse(addr)) {
-        Log("unable to parse relay address: ", addr);
+      if (!encoding::read_uint64(v, index, relay.id)) {
+        return false;
+      }
+      std::string addr;
+      if (!encoding::read_string(v, index, addr)) {
+        return false;
+      }
+      if (!relay.address.parse(addr)) {
+        LOG(ERROR, "unable to parse relay address: ", addr);
         return false;
       }
     }
@@ -228,31 +336,31 @@ namespace core
    std::string hostname,
    std::string address,
    const crypto::Keychain& keychain,
-   RouterInfo& routerInfo,
-   RelayManager<Relay>& relayManager,
-   std::string base64RelayPublicKey,
+   RouterInfo& router_info,
+   RelayManager& relay_manager,
+   std::string base64_relay_public_key,
    const core::SessionMap& sessions,
    net::IHttpClient& client)
-   : mHostname(hostname),
-     mAddressStr(address),
-     mKeychain(keychain),
-     mRouterInfo(routerInfo),
-     mRelayManager(relayManager),
-     mBase64RelayPublicKey(base64RelayPublicKey),
-     mSessionMap(sessions),
-     mRequester(client)
+   : hostname(hostname),
+     relay_address(address),
+     keychain(keychain),
+     router_info(router_info),
+     relay_manager(relay_manager),
+     base64_relay_public_key(base64_relay_public_key),
+     session_map(sessions),
+     http_client(client)
   {}
 
   auto Backend::init() -> bool
   {
-    std::vector<uint8_t> requestData, responseData;
+    std::vector<uint8_t> request_data, response_data;
 
     // serialize request
     {
       InitRequest request;
-      request.Address = mAddressStr;
+      request.address = this->relay_address;
 
-      crypto::CreateNonceBytes(request.Nonce);
+      crypto::CreateNonceBytes(request.nonce);
 
       // just has to be something the backend can decrypt
       std::array<uint8_t, RELAY_TOKEN_BYTES> token = {};
@@ -260,90 +368,92 @@ namespace core
 
       if (
        crypto_box_easy(
-        request.EncryptedToken.data(),
+        request.encrypted_token.data(),
         token.data(),
         token.size(),
-        request.Nonce.data(),
-        mKeychain.RouterPublicKey.data(),
-        mKeychain.RelayPrivateKey.data()) != 0) {
-        Log("failed to encrypt init token");
+        request.nonce.data(),
+        this->keychain.backend_public_key.data(),
+        this->keychain.relay_private_key.data()) != 0) {
+        LOG(TRACE, "failed to encrypt init token");
         return false;
       }
 
-      requestData.resize(request.size());
-      if (!request.into(requestData)) {
+      request_data.resize(request.size());
+      if (!request.into(request_data)) {
         return false;
       }
     }
 
     // send request
 
-    if (!mRequester.sendRequest(mHostname, "/relay_init", requestData, responseData)) {
-      Log("init request failed");
+    if (!this->http_client.send_request(this->hostname, "/relay_init", request_data, response_data)) {
+      LOG(ERROR, "init request failed");
       return false;
     }
 
     // deserialize response
     {
       InitResponse response;
-      if (!response.from(responseData)) {
+      if (!response.from(response_data)) {
         return false;
       }
 
-      if (response.Version != InitResponseVersion) {
-        Log("error: bad relay init response version. expected ", InitResponseVersion, ", got ", response.Version);
+      if (response.version != INIT_RESPONSE_VERSION) {
+        LOG(ERROR, "error: bad relay init response version. expected ", INIT_RESPONSE_VERSION, ", got ", response.version);
         return false;
       }
 
       // for old relay compat the router sends this back in millis, so convert back to seconds
-      mRouterInfo.setTimestamp(response.Timestamp / 1000);
+      this->router_info.set_timestamp(response.timestamp / 1000);
     }
 
     return true;
   }
 
-  bool Backend::updateCycle(
-   const volatile bool& loopHandle,
-   const volatile bool& shouldCleanShutdown,
+  bool Backend::update_loop(
+   const volatile bool& should_loop,
+   const volatile bool& should_shutdown_clean,
    util::ThroughputRecorder& recorder,
    core::SessionMap& sessions)
   {
-    bool successfulRoutine = true;
-    std::vector<uint8_t> update_response_memory;
-    update_response_memory.resize(RESPONSE_MAX_BYTES);
-
     // update once every 10 seconds
     // if the update fails, try again, once per second for (MaxUpdateAttempts - 1) seconds
     // if there's still no successful update, exit the loop and return false, and skip the clean shutdown
-    uint8_t updateAttempts = 0;
 
-    util::Clock backendTimeout;
-    while (loopHandle) {
+    bool success = true;
+    uint8_t update_attempts = 0;
+    util::Clock backend_timeout;
+
+    while (should_loop) {
       if (update(recorder, false)) {
-        updateAttempts = 0;
-        backendTimeout.reset();
+        update_attempts = 0;
+        backend_timeout.reset();
       } else {
-        auto timeSinceLastUpdate = backendTimeout.elapsed<util::Second>();
-        if (++updateAttempts == MaxUpdateAttempts) {
-          Log("could not update relay, max attempts reached, aborting program");
-          successfulRoutine = false;
+        auto time_since_last_update = backend_timeout.elapsed<util::Second>();
+        if (++update_attempts == MAX_UPDATE_ATTEMPTS) {
+          LOG(ERROR, "could not update relay, max attempts reached, aborting program");
+          success = false;
           break;
-        } else if (timeSinceLastUpdate > 30) {
-          Log("could not update relay for over 30 seconds, aborting program");
-          successfulRoutine = false;
+        } else if (time_since_last_update > 30) {
+          LOG(ERROR, "could not update relay for over 30 seconds, aborting program");
+          success = false;
           break;
         }
 
-        Log(
-         "could not update relay, attempts: ", (unsigned int)updateAttempts, ", time since last update: ", timeSinceLastUpdate);
+        LOG(
+         INFO,
+         "could not update relay, attempts: ",
+         static_cast<unsigned int>(update_attempts),
+         ", time since last update: ",
+         time_since_last_update);
       }
 
-      sessions.purge(mRouterInfo.currentTime());
+      sessions.purge(this->router_info.current_time());
 
       std::this_thread::sleep_for(1s);
     }
 
-    if (shouldCleanShutdown) {
+    if (should_shutdown_clean) {
       unsigned int seconds = 0;
       while (seconds++ < 60 && !update(recorder, true)) {
         std::this_thread::sleep_for(1s);
@@ -354,7 +464,7 @@ namespace core
       }
     }
 
-    return successfulRoutine;
+    return success;
   }
 
   auto Backend::update(util::ThroughputRecorder& recorder, bool shutdown) -> bool
@@ -363,110 +473,110 @@ namespace core
 
     // serialize request
     {
-      core::RelayStats stats;
-      mRelayManager.getStats(stats);
+      RelayStats stats;
+      this->relay_manager.get_stats(stats);
 
-      const size_t requestSize = 4 +                     // request version
-                                 4 +                     // address length
-                                 mAddressStr.length() +  // address
-                                 crypto::KeySize +       // public key
-                                 4 +                     // number of relay ping stats
-                                 stats.NumRelays * 20 +  // relay ping stats
-                                 8 +                     // session count
-                                 8 +                     // outbound ping tx
-                                 8 +                     // route request rx
-                                 8 +                     // route request tx
-                                 8 +                     // route response rx
-                                 8 +                     // route response tx
-                                 8 +                     // client to server rx
-                                 8 +                     // client to server tx
-                                 8 +                     // server to client rx
-                                 8 +                     // server to client tx
-                                 8 +                     // inbound ping rx
-                                 8 +                     // inbound ping tx
-                                 8 +                     // pong rx
-                                 8 +                     // session ping rx
-                                 8 +                     // session ping tx
-                                 8 +                     // session pong rx
-                                 8 +                     // session pong tx
-                                 8 +                     // continue request rx
-                                 8 +                     // continue request tx
-                                 8 +                     // continue response rx
-                                 8 +                     // continue response tx
-                                 8 +                     // near ping rx
-                                 8 +                     // near ping tx
-                                 8 +                     // unknown Rx
-                                 1 +                     // shut down flag
-                                 8 +                     // cpu usage
-                                 8 +                     // memory usage
-                                 4 +                     // relay version length
-                                 strlen(RELAY_VERSION);  // relay version string
-      req.resize(requestSize);
+      const size_t request_size = 4 +                             // request version
+                                  4 +                             // address length
+                                  this->relay_address.length() +  // address
+                                  KEY_SIZE +                      // public key
+                                  4 +                             // number of relay ping stats
+                                  stats.num_relays * 20 +         // relay ping stats
+                                  8 +                             // session count
+                                  8 +                             // outbound ping tx
+                                  8 +                             // route request rx
+                                  8 +                             // route request tx
+                                  8 +                             // route response rx
+                                  8 +                             // route response tx
+                                  8 +                             // client to server rx
+                                  8 +                             // client to server tx
+                                  8 +                             // server to client rx
+                                  8 +                             // server to client tx
+                                  8 +                             // inbound ping rx
+                                  8 +                             // inbound ping tx
+                                  8 +                             // pong rx
+                                  8 +                             // session ping rx
+                                  8 +                             // session ping tx
+                                  8 +                             // session pong rx
+                                  8 +                             // session pong tx
+                                  8 +                             // continue request rx
+                                  8 +                             // continue request tx
+                                  8 +                             // continue response rx
+                                  8 +                             // continue response tx
+                                  8 +                             // near ping rx
+                                  8 +                             // near ping tx
+                                  8 +                             // unknown Rx
+                                  1 +                             // shut down flag
+                                  8 +                             // cpu usage
+                                  8 +                             // memory usage
+                                  4 +                             // relay version length
+                                  strlen(RELAY_VERSION);          // relay version string
+      req.resize(request_size);
 
       size_t index = 0;
 
-      encoding::WriteUint32(req, index, UpdateRequestVersion);
-      encoding::WriteString(req, index, mAddressStr);
-      encoding::WriteBytes(req, index, mKeychain.RelayPublicKey, mKeychain.RelayPublicKey.size());
-      encoding::WriteUint32(req, index, stats.NumRelays);
+      encoding::write_uint32(req, index, UPDATE_REQUEST_VERSION);
+      encoding::write_string(req, index, this->relay_address);
+      encoding::write_bytes(req, index, this->keychain.relay_public_key, this->keychain.relay_public_key.size());
+      encoding::write_uint32(req, index, stats.num_relays);
 
-      for (unsigned int i = 0; i < stats.NumRelays; ++i) {
-        encoding::WriteUint64(req, index, stats.IDs[i]);
-        encoding::WriteBytes(req.data(), req.size(), index, reinterpret_cast<uint8_t*>(&stats.RTT[i]), sizeof(float));
-        encoding::WriteBytes(req.data(), req.size(), index, reinterpret_cast<uint8_t*>(&stats.Jitter[i]), sizeof(float));
-        encoding::WriteBytes(req.data(), req.size(), index, reinterpret_cast<uint8_t*>(&stats.PacketLoss[i]), sizeof(float));
+      for (unsigned int i = 0; i < stats.num_relays; ++i) {
+        encoding::write_uint64(req, index, stats.ids[i]);
+        encoding::write_bytes(req.data(), req.size(), index, reinterpret_cast<uint8_t*>(&stats.rtt[i]), sizeof(float));
+        encoding::write_bytes(req.data(), req.size(), index, reinterpret_cast<uint8_t*>(&stats.jitter[i]), sizeof(float));
+        encoding::write_bytes(req.data(), req.size(), index, reinterpret_cast<uint8_t*>(&stats.packet_loss[i]), sizeof(float));
       }
 
-      encoding::WriteUint64(req, index, mSessionMap.size());
+      encoding::write_uint64(req, index, this->session_map.size());
 
-      util::ThroughputRecorder trafficStats(std::move(recorder));
+      util::ThroughputRecorder traffic_stats(std::move(recorder));
 
-      encoding::WriteUint64(req, index, trafficStats.OutboundPingTx.ByteCount.load());
+      encoding::write_uint64(req, index, traffic_stats.outbound_ping_tx.num_bytes.load());
 
-      encoding::WriteUint64(req, index, trafficStats.RouteRequestRx.ByteCount.load());
-      encoding::WriteUint64(req, index, trafficStats.RouteRequestTx.ByteCount.load());
+      encoding::write_uint64(req, index, traffic_stats.route_request_rx.num_bytes.load());
+      encoding::write_uint64(req, index, traffic_stats.route_request_tx.num_bytes.load());
 
-      encoding::WriteUint64(req, index, trafficStats.RouteResponseRx.ByteCount.load());
-      encoding::WriteUint64(req, index, trafficStats.RouteResponseTx.ByteCount.load());
+      encoding::write_uint64(req, index, traffic_stats.route_response_rx.num_bytes.load());
+      encoding::write_uint64(req, index, traffic_stats.route_response_tx.num_bytes.load());
 
-      encoding::WriteUint64(req, index, trafficStats.ClientToServerRx.ByteCount.load());
-      encoding::WriteUint64(req, index, trafficStats.ClientToServerTx.ByteCount.load());
+      encoding::write_uint64(req, index, traffic_stats.client_to_server_rx.num_bytes.load());
+      encoding::write_uint64(req, index, traffic_stats.client_to_server_tx.num_bytes.load());
 
-      encoding::WriteUint64(req, index, trafficStats.ServerToClientRx.ByteCount.load());
-      encoding::WriteUint64(req, index, trafficStats.ServerToClientTx.ByteCount.load());
+      encoding::write_uint64(req, index, traffic_stats.server_to_client_rx.num_bytes.load());
+      encoding::write_uint64(req, index, traffic_stats.server_to_client_tx.num_bytes.load());
 
-      encoding::WriteUint64(req, index, trafficStats.InboundPingRx.ByteCount.load());
-      encoding::WriteUint64(req, index, trafficStats.InboundPingTx.ByteCount.load());
+      encoding::write_uint64(req, index, traffic_stats.inbound_ping_rx.num_bytes.load());
+      encoding::write_uint64(req, index, traffic_stats.inbound_ping_tx.num_bytes.load());
 
-      encoding::WriteUint64(req, index, trafficStats.PongRx.ByteCount.load());
+      encoding::write_uint64(req, index, traffic_stats.pong_rx.num_bytes.load());
 
-      encoding::WriteUint64(req, index, trafficStats.SessionPingRx.ByteCount.load());
-      encoding::WriteUint64(req, index, trafficStats.SessionPingTx.ByteCount.load());
+      encoding::write_uint64(req, index, traffic_stats.session_ping_rx.num_bytes.load());
+      encoding::write_uint64(req, index, traffic_stats.session_ping_tx.num_bytes.load());
 
-      encoding::WriteUint64(req, index, trafficStats.SessionPongRx.ByteCount.load());
-      encoding::WriteUint64(req, index, trafficStats.SessionPongTx.ByteCount.load());
+      encoding::write_uint64(req, index, traffic_stats.session_pong_rx.num_bytes.load());
+      encoding::write_uint64(req, index, traffic_stats.session_pong_tx.num_bytes.load());
 
-      encoding::WriteUint64(req, index, trafficStats.ContinueRequestRx.ByteCount.load());
-      encoding::WriteUint64(req, index, trafficStats.ContinueRequestTx.ByteCount.load());
+      encoding::write_uint64(req, index, traffic_stats.continue_request_rx.num_bytes.load());
+      encoding::write_uint64(req, index, traffic_stats.continue_request_tx.num_bytes.load());
 
-      encoding::WriteUint64(req, index, trafficStats.ContinueResponseRx.ByteCount.load());
-      encoding::WriteUint64(req, index, trafficStats.ContinueResponseTx.ByteCount.load());
+      encoding::write_uint64(req, index, traffic_stats.continue_response_rx.num_bytes.load());
+      encoding::write_uint64(req, index, traffic_stats.continue_response_tx.num_bytes.load());
 
-      encoding::WriteUint64(req, index, trafficStats.NearPingRx.ByteCount.load());
-      encoding::WriteUint64(req, index, trafficStats.NearPingTx.ByteCount.load());
+      encoding::write_uint64(req, index, traffic_stats.near_ping_rx.num_bytes.load());
+      encoding::write_uint64(req, index, traffic_stats.near_ping_tx.num_bytes.load());
 
-      encoding::WriteUint64(req, index, trafficStats.UnknownRx.ByteCount.load());
+      encoding::write_uint64(req, index, traffic_stats.unknown_rx.num_bytes.load());
 
-      encoding::WriteUint8(req, index, shutdown);
+      encoding::write_uint8(req, index, shutdown);
 
-      auto sysStats = os::GetUsage();
-      encoding::WriteDouble(req, index, sysStats.CPU);
-      encoding::WriteDouble(req, index, sysStats.Mem);
-      encoding::WriteString(req, index, RELAY_VERSION);
+      auto sys_stats = os::GetUsage();
+      encoding::write_double(req, index, sys_stats.CPU);
+      encoding::write_double(req, index, sys_stats.Mem);
+      encoding::write_string(req, index, RELAY_VERSION);
     }
 
-    if (!mRequester.sendRequest(mHostname, "/relay_update", req, res)) {
-      Log("update request failed");
+    if (!this->http_client.send_request(this->hostname, "/relay_update", req, res)) {
+      LOG(ERROR, "update request failed");
       return false;
     }
 
@@ -479,23 +589,23 @@ namespace core
     {
       UpdateResponse response;
       if (!response.from(res)) {
-        Log("could not deserialize update response");
+        LOG(ERROR, "could not deserialize update response");
         return false;
       }
 
-      if (response.Version != UpdateResponseVersion) {
-        Log("error: bad relay version response version. expected ", UpdateResponseVersion, ", got ", response.Version);
+      if (response.version != UPDATE_RESPONSE_VERSION) {
+        LOG(ERROR, "bad relay version response version. expected ", UPDATE_RESPONSE_VERSION, ", got ", response.version);
         return false;
       }
 
-      mRouterInfo.setTimestamp(response.Timestamp);
+      this->router_info.set_timestamp(response.timestamp);
 
-      if (response.NumRelays > MAX_RELAYS) {
-        Log("error: too many relays to ping. max is ", MAX_RELAYS, ", got ", response.NumRelays, '\n');
+      if (response.num_relays > MAX_RELAYS) {
+        LOG(ERROR, "too many relays to ping. max is ", MAX_RELAYS, ", got ", response.num_relays, '\n');
         return false;
       }
 
-      mRelayManager.update(response.NumRelays, response.Relays);
+      this->relay_manager.update(response.num_relays, response.Relays);
     }
 
     return true;

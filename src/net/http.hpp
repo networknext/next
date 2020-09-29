@@ -9,7 +9,7 @@ namespace net
   {
    public:
     virtual ~IHttpClient() = default;
-    virtual auto sendRequest(
+    virtual auto send_request(
      const std::string hostname,
      const std::string endpoint,
      const std::vector<uint8_t>& request,
@@ -30,7 +30,7 @@ namespace net
     BeastWrapper();
     ~BeastWrapper();
 
-    auto sendRequest(
+    auto send_request(
      const std::string hostname,
      const std::string endpoint,
      const std::vector<uint8_t>& request,
@@ -57,11 +57,11 @@ namespace net
     // so don't bother reporting it
 
     if (ec && ec != beast::errc::not_connected) {
-      Log("error shutting down socket");
+      LOG(ERROR, "shutting down socket: ", ec);
     }
   }
 
-  inline auto BeastWrapper::sendRequest(
+  inline auto BeastWrapper::send_request(
    const std::string hostname, const std::string endpoint, const std::vector<uint8_t>& request, std::vector<uint8_t>& response)
    -> bool
   {
@@ -106,7 +106,7 @@ namespace net
       http::write(wrapper.stream, req, ec);
 
       if (ec) {
-        Log("failed to send http request: ", ec);
+        LOG(ERROR, "failed to send http request: ", ec);
         return false;
       }
 
@@ -119,13 +119,13 @@ namespace net
       // Receive the HTTP response
       http::read(wrapper.stream, buffer, res, ec);
       if (ec) {
-        Log("failed to send http request: ", ec);
+        LOG(ERROR, "failed to send http request: ", ec);
         return false;
       }
 
       // Check the status code
       if (res.result() != http::status::ok) {
-        Log("http call to '", hostname, endpoint, "' did not return a success, code: ", res.result_int());
+        LOG(ERROR, "http call to '", hostname, endpoint, "' did not return a success, code: ", res.result_int());
         return false;
       }
 
@@ -134,7 +134,7 @@ namespace net
 
       return true;
     } catch (std::exception& e) {
-      Log("could not send http request: ", e.what());
+      LOG(ERROR, "could not send http request: ", e.what());
       return false;
     }
   }

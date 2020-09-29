@@ -1,43 +1,37 @@
-#ifndef CORE_SESSION_HPP
-#define CORE_SESSION_HPP
+#pragma once
 
 #include "expireable.hpp"
 #include "net/address.hpp"
 #include "replay_protection.hpp"
-#include "util/logger.hpp"
 #include "router_info.hpp"
+#include "util/logger.hpp"
+#include "util/macros.hpp"
 
 namespace core
 {
   class Session: public Expireable
   {
    public:
-    Session(const RouterInfo& routerInfo);
+    Session() = default;
     virtual ~Session() override = default;
 
-    uint64_t SessionID;
-    uint8_t SessionVersion;
-    uint64_t ClientToServerSeq;
-    uint64_t ServerToClientSeq;
-    int KbpsUp;
-    int KbpsDown;
-    net::Address PrevAddr;
-    net::Address NextAddr;
-    std::array<uint8_t, crypto_box_SECRETKEYBYTES> PrivateKey;
-    // Not tested or benchmarked yet, don't use
-    // ReplayProtection ServerToClientProtection;
-    // ReplayProtection ClientToServerProtection;
-    legacy::relay_replay_protection_t ServerToClientProtection;
-    legacy::relay_replay_protection_t ClientToServerProtection;
+    uint64_t session_id;
+    uint8_t session_version;
+    uint64_t client_to_server_sequence;
+    uint64_t server_to_client_sequence;
+    uint32_t kbps_up;
+    uint32_t kbps_down;
+    net::Address prev_addr;
+    net::Address next_addr;
+    std::array<uint8_t, crypto_box_SECRETKEYBYTES> private_key;
+    ReplayProtection client_to_server_protection;
+    ReplayProtection server_to_client_protection;
   };
-
-  inline Session::Session(const RouterInfo& routerInfo): Expireable(routerInfo) {}
 
   using SessionPtr = std::shared_ptr<Session>;
 
-  inline std::ostream& operator<<(std::ostream& os, const Session& session)
+  INLINE std::ostream& operator<<(std::ostream& os, const Session& session)
   {
-    return os << std::hex << session.SessionID << '.' << std::dec << static_cast<unsigned int>(session.SessionVersion);
+    return os << std::hex << session.session_id << '.' << std::dec << static_cast<unsigned int>(session.session_version);
   }
 }  // namespace core
-#endif

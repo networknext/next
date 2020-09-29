@@ -5,29 +5,33 @@ util::Clock Timer;
 
 namespace
 {
-  bool gBenchmarkInit = false;
-  std::unique_ptr<std::deque<benchmarking::Benchmark*>> gBenchmarks;
+  struct
+  {
+    bool benchmark_init = false;
+    std::unique_ptr<std::deque<bench::Benchmark*>> benchmarks;
+  } Globals;
+
 }  // namespace
 
-namespace benchmarking
+namespace bench
 {
-  Benchmark::Benchmark(const char* name, bool enabled): BenchmarkName(name), Enabled(enabled)
+  Benchmark::Benchmark(const char* name, bool enabled): benchmark_name(name), enabled(enabled)
   {
     // to prevent static initialization fiasco
-    if (!gBenchmarkInit) {
-      gBenchmarks = std::make_unique<std::deque<Benchmark*>>();
-      gBenchmarkInit = true;
+    if (!Globals.benchmark_init) {
+      Globals.benchmarks = std::make_unique<std::deque<Benchmark*>>();
+      Globals.benchmark_init = true;
     }
-    gBenchmarks->push_back(this);
+    Globals.benchmarks->push_back(this);
   }
 
-  void Benchmark::Run()
+  void Benchmark::run()
   {
-    std::cout << "Benchmark Count: " << gBenchmarks->size() << '\n';
+    std::cout << "Benchmark Count: " << Globals.benchmarks->size() << '\n';
 
-    for (auto benchmark : *gBenchmarks) {
-      if (benchmark->Enabled) {
-        std::cout << BENCH_BREAK << "Running '\x1b[35m" << benchmark->BenchmarkName << "\x1b[m'\n";
+    for (auto benchmark : *Globals.benchmarks) {
+      if (benchmark->enabled) {
+        std::cout << BENCH_BREAK << "Running '\x1b[35m" << benchmark->benchmark_name << "\x1b[m'\n";
         benchmark->body();
       }
     }

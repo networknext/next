@@ -1,12 +1,10 @@
-#ifndef BENCH_BENCH_HPP
-#define BENCH_BENCH_HPP
-
+#pragma once
 #include "util/clock.hpp"
 
 #define BENCH_BREAK "\n=============================================\n\n"
 
 #define BENCHMARK_CLASS_CREATOR(benchmark_name, enabled)                               \
-  class _bench_##benchmark_name##_: public benchmarking::Benchmark                     \
+  class _bench_##benchmark_name##_: public bench::Benchmark                     \
   {                                                                                    \
    public:                                                                             \
     _bench_##benchmark_name##_(): benchmarking::Benchmark(#benchmark_name, enabled) {} \
@@ -27,7 +25,7 @@
     The first parameter is the name of the benchmark to run. It must be unique across the codebase since it is transformed into
     a class. However it can be the same name as a test.
 
-    The second is wheter to enable it. False by default because there will likely be more benchmarks than desired
+    The second is whether to enable it. False by default because there will likely be more benchmarks than desired
 */
 
 #define Bench(...) BENCHMARK_MACRO_CHOOSER(__VA_ARGS__)(__VA_ARGS__)
@@ -44,15 +42,15 @@
 
 extern util::Clock Timer;
 
-namespace benchmarking
+namespace bench
 {
   class Benchmark
   {
    public:
-    static void Run();
+    static void run();
 
-    const char* BenchmarkName;
-    const bool Enabled;
+    const char* benchmark_name;
+    const bool enabled;
 
    protected:
     Benchmark(const char* name, bool enabled);
@@ -60,4 +58,3 @@ namespace benchmarking
     virtual void body() = 0;
   };
 }  // namespace benchmarking
-#endif

@@ -8,14 +8,19 @@ include $(MAKEFILE_DIR)/Makefile.common
 
 EXE										:= relay
 
-LIB_OBJ_FILES					:= $(patsubst $(LIB)/%.cpp, $(OBJ)/$(LIB)/%.o, $(LIB_FILES))
-LIB_DEP_FILES					:= $(patsubst $(LIB)/%.cpp, $(OBJ)/$(LIB)/%.d, $(LIB_FILES))
-
 SRC_OBJ_FILES					:= $(patsubst $(SRC)/%.cpp, $(OBJ)/$(SRC)/%.o, $(SRC_FILES))
 SRC_DEP_FILES					:= $(patsubst $(SRC)/%.cpp, $(OBJ)/$(SRC)/%.d, $(SRC_FILES))
 
+DEF_FLAGS							:= -DNDEBUG
+
+ifeq ($(LOG_ALL),true)
+DEF_FLAGS 						:= $(DEF_FLAGS) -DLOG_ALL
+else
+DEF_FLAGS             := $(DEF_FLAGS) -DRELAY_LOG_LEVEL=3
+endif
+
 COMMON_FLAGS 					:= $(CXX) $(CXX_FLAGS) $(CXX_PERF_FLAGS)
-COMMON_COMPILE_FLAGS 	:= $(COMMON_FLAGS) -c -DNDEBUG
+COMMON_COMPILE_FLAGS 	:= $(COMMON_FLAGS) -c $(DEF_FLAGS)
 
 DIST_DIR							:= ../../dist
 
@@ -32,7 +37,7 @@ run: $(BIN)/$(EXE)
 
 .PHONY: clean
 clean:
-	@rm -f $(BIN)/$(EXE) $(SRC_OBJ_FILES) $(SRC_DEP_FILES) $(LIB_OBJ_FILES) $(LIB_DEP_FILES) $(GCH)
+	@rm -f $(BIN)/$(EXE) $(SRC_OBJ_FILES) $(SRC_DEP_FILES) $(GCH)
 
 ##############
 ### Builds ###
@@ -47,7 +52,7 @@ $(OBJ)/%.o: %.cpp $(GCH)
 	$(COMMON_COMPILE_FLAGS) -o $@ $(INCLUDE_DIRS) -MMD -MP $<
 
 # the executable
-$(BIN)/$(EXE): $(SRC_OBJ_FILES) $(LIB_OBJ_FILES)
+$(BIN)/$(EXE): $(SRC_OBJ_FILES)
 	$(COMMON_FLAGS) -o $@ $^ $(LIBRARIES)
 
--include $(SRC_DEP_FILES) $(LIB_DEP_FILES)
+-include $(SRC_DEP_FILES)
