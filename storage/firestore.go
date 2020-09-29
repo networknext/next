@@ -1413,7 +1413,7 @@ func (fs *Firestore) UpdateRelay(ctx context.Context, modifiedRelay routing.Rela
 		return &DatabaseError{dbErr: err, resourceType: "relay", resourceRef: fmt.Sprintf("%x", modifiedRelay.ID)}
 	}
 	if len(docs) > 1 {
-		return &DatabaseError{dbErr: err, resourceType: "relay", resourceRef: fmt.Sprintf("%x", modifiedRelay.ID)}
+		return &MultipleDBEntriesError{resourceType: "relay", resourceRef: fmt.Sprintf("%x", modifiedRelay.ID)}
 	}
 
 	// docs is a slice of length 1
