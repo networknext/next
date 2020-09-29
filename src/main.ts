@@ -26,9 +26,11 @@ const win: any = window
 const clientID = process.env.VUE_APP_AUTH0_CLIENTID
 const domain = process.env.VUE_APP_AUTH0_DOMAIN
 
-Vue.use(VueGtag, {
-  config: { id: 'UA-141272717-2' }
-}, router)
+if (process.env.VUE_APP_MODE === 'prod') {
+  Vue.use(VueGtag, {
+    config: { id: 'UA-141272717-2' }
+  }, router)
+}
 
 Vue.use(AuthPlugin, {
   domain: domain,
