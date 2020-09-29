@@ -325,7 +325,6 @@ type seller struct {
 type relay struct {
 	Name                string
 	Addr                string
-	PublicKey           string
 	SellerID            string
 	DatacenterName      string
 	NicSpeedMbps        uint64
@@ -929,19 +928,13 @@ func main() {
 						handleRunTimeError(fmt.Sprintf("Could not resolve udp address %s: %v\n", relay.Addr, err), 1)
 					}
 
-					publicKey, err := base64.StdEncoding.DecodeString(relay.PublicKey)
-					if err != nil {
-						handleRunTimeError(fmt.Sprintf("Could not decode bas64 public key %s: %v\n", relay.PublicKey, err), 1)
-					}
-
 					// Build the actual Relay struct from the input relay struct
 					rid := crypto.HashID(relay.Addr)
 					realRelay := routing.Relay{
-						ID:        rid,
-						SignedID:  int64(rid),
-						Name:      relay.Name,
-						Addr:      *addr,
-						PublicKey: publicKey,
+						ID:       rid,
+						SignedID: int64(rid),
+						Name:     relay.Name,
+						Addr:     *addr,
 						Seller: routing.Seller{
 							ID: relay.SellerID,
 						},
@@ -970,7 +963,6 @@ func main() {
 							example := relay{
 								Name:                "amazon.ohio.2",
 								Addr:                "127.0.0.1:40000",
-								PublicKey:           "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
 								SellerID:            "5tCm7KjOw3EBYojLe6PC",
 								DatacenterName:      "amazon.ohio.2",
 								NicSpeedMbps:        1000,
