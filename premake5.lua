@@ -41,7 +41,8 @@ project "sodium"
 	includedirs { "sodium" }
 	files {
 		"sodium/**.c",
-		"sodium/**.h"
+		"sodium/**.h",
+		"sodium/**.S"
 	}
 	filter "system:windows"
 		disablewarnings { "4221", "4244", "4715", "4197", "4146", "4324", "4456", "4100", "4459", "4245" }
