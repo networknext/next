@@ -170,3 +170,5 @@ add %r11,%rsp
 ret
 
 #endif
+
+.globl fe51_nsquare_S_dummy

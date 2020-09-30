@@ -1293,3 +1293,5 @@ add %r11,%rsp
 ret
 
 #endif
+
+.globl ladder_base_S_dummy

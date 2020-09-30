@@ -117,4 +117,8 @@ struct crypto_stream_salsa20_implementation
         SODIUM_C99(.stream_xor_ic =) stream_ref_xor_ic,
     };
 
+#else
+
+int salsa20_ref_dummy = 0;
+
 #endif

@@ -195,3 +195,5 @@ mov %rsi,%rdx
 ret
 
 #endif
+
+.globl fe51_mul_S_dummy

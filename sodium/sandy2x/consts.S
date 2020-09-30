@@ -23,3 +23,5 @@ subc2: .quad 0x07FFFFFE, 0x03FFFFFE
 REDMASK51:   .quad 0x0007FFFFFFFFFFFF
 
 #endif
+
+.globl consts_S_dummy
