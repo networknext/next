@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "../onetimeauth_poly1305.h"
+#include "onetimeauth_poly1305.h"
 #include "crypto_verify_16.h"
 #include "poly1305_sse2.h"
 #include "private_common.h"

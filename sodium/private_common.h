@@ -1,21 +1,6 @@
 #ifndef common_H
 #define common_H 1
 
-#if !defined(_MSC_VER) && 0
-# warning *** This is unstable, untested, development code.
-# warning It might not compile. It might not work as expected.
-# warning It might be totally insecure.
-# warning Do not use this except if you are planning to contribute code.
-# warning Use releases available at https://download.libsodium.org/libsodium/releases/ instead.
-# warning Alternatively, use the "stable" branch in the git repository.
-#endif
-
-#if !defined(_MSC_VER) && (!defined(CONFIGURED) || CONFIGURED != 1) && 0
-# warning *** The library is being compiled using an undocumented method.
-# warning This is not supported. It has not been tested, it might not
-# warning work as expected, and performance is likely to be suboptimal.
-#endif
-
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -225,6 +210,8 @@ xor_buf(unsigned char *out, const unsigned char *in, size_t n)
 #  define CRYPTO_ALIGN(x) __attribute__ ((aligned(x)))
 # endif
 #endif
+
+// todo: if clang or gcc, and x64, do the intrinsics as well
 
 #if defined(_MSC_VER) && \
     (defined(_M_X64) || defined(_M_AMD64) || defined(_M_IX86))

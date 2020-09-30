@@ -8,7 +8,7 @@
 
 #include "poly1305_donna.h"
 #if defined(HAVE_TI_MODE) && defined(HAVE_EMMINTRIN_H)
-# include "sse2/poly1305_sse2.h"
+# include "poly1305_sse2.h"
 #endif
 
 static const crypto_onetimeauth_poly1305_implementation *implementation =

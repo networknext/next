@@ -7,7 +7,7 @@
 #include <stdio.h>
 
 #ifdef HAVE_AMD64_ASM
-# include "xmm6/salsa20_xmm6.h"
+# include "salsa20_xmm6.h"
 #else
 # include "ref_salsa20.h"
 #endif
