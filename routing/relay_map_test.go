@@ -17,6 +17,13 @@ func TestRelayMapTimeoutLoop(t *testing.T) {
 		return nil
 	})
 
+	var relay routing.RelayData
+	addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:12345")
+	assert.NoError(t, err)
+	relay.Addr = *addr
+	relay.LastUpdateTime = time.Now().Add(-time.Second * 2)
+	rmap.UpdateRelayData(relay.Addr.String(), &relay)
+
 	ctx := context.Background()
 
 	go func() {
@@ -26,14 +33,7 @@ func TestRelayMapTimeoutLoop(t *testing.T) {
 		rmap.TimeoutLoop(ctx, timeout, ticker.C)
 	}()
 
-	var relay routing.RelayData
-	addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:12345")
-	assert.NoError(t, err)
-	relay.Addr = *addr
-	relay.LastUpdateTime = time.Now().Add(-time.Second * 2)
-
-	rmap.UpdateRelayData(relay.Addr.String(), &relay)
-	time.Sleep(time.Millisecond * 1000)
+	time.Sleep(time.Second * 2)
 
 	assert.Equal(t, 1, *expiredRelays)
 

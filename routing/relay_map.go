@@ -104,7 +104,7 @@ func (relayMap *RelayMap) RemoveRelayData(relayAddress string) {
 }
 
 func (relayMap *RelayMap) TimeoutLoop(ctx context.Context, timeoutSeconds int64, c <-chan time.Time) {
-	deleteList := make([]string, 10)
+	deleteList := make([]string, 0)
 	for {
 		select {
 		case <-c:
@@ -113,6 +113,7 @@ func (relayMap *RelayMap) TimeoutLoop(ctx context.Context, timeoutSeconds int64,
 
 			relayMap.mutex.RLock()
 			for k, v := range relayMap.relays {
+				fmt.Println("last update time:", v.LastUpdateTime.Unix(), "timeout:", timeoutTimestamp)
 				if v.LastUpdateTime.Unix() < timeoutTimestamp {
 					deleteList = append(deleteList, k)
 				}
