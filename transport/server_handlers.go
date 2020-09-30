@@ -946,25 +946,11 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 			return
 		}
 
-		// Force direct mode sends all sessions direct.
-		// It's useful for disabling acceleration for a customer when something goes wrong.
-
-		if buyer.RoutingRulesSettings.Mode == routing.ModeForceDirect {
-			routeDecision = routing.Decision{
-				OnNetworkNext: false,
-				Reason:        routing.DecisionForceDirect,
-			}
-
-			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelayData, routeDecision, sessionDataReadOnly.RouteDecision, sessionDataReadOnly.Initial, vetoReason, multipathVetoReason, nextSliceCounter,
-				committedData, sessionDataReadOnly.RouteHash, sessionDataReadOnly.RouteDecision.OnNetworkNext, timestamp, inGamePacketLoss, routeExpireTimestamp, sessionDataReadOnly.TokenVersion, params.RouterPrivateKey, nil, postSessionUpdateFunc) //, sliceMutexes)
-			return
-		}
-
 		// The selection percentage is used to accelerate only a certain percentage of sessions.
 		// Selection percentage of 100% means all sessions are considered for acceleration.
 		// Selection percentage of 10% means that only 10% of sessions are.
 
-		if buyer.RoutingRulesSettings.Mode == routing.ModeForceDirect || (packet.UserHash%100) >= uint64(buyer.RoutingRulesSettings.SelectionPercentage) {
+		if packet.UserHash%100 >= uint64(buyer.RoutingRulesSettings.SelectionPercentage) {
 			routeDecision = routing.Decision{
 				OnNetworkNext: false,
 				Reason:        routing.DecisionForceDirect,
@@ -1115,6 +1101,18 @@ func GetBestRoute(routeMatrix RouteProvider, nearRelayData []routing.NearRelayDa
 	}
 
 	routeDecision := nextRoute.Decide(prevRouteDecision, lastNextStats, lastDirectStats, deciderFuncs...)
+
+	// If the buyer's route shader is set to force direct, send back a direct route with the predicted
+	// stats attached. That way we can track how much we could be improving this session in the billing entry.
+	if buyer.RoutingRulesSettings.Mode == routing.ModeForceDirect {
+		routeDecision = routing.Decision{
+			OnNetworkNext: false,
+			Reason:        routing.DecisionForceDirect,
+		}
+
+		directRoute.Stats = nextRoute.Stats
+		return directRoute, routeDecision
+	}
 
 	// As a safety measure, if the route decision goes from on network next to direct with yolo enabled for any reason, veto the session with yolo reason
 	if buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce && prevRouteDecision.OnNetworkNext && !routeDecision.OnNetworkNext {
@@ -1414,6 +1412,7 @@ func buildBillingEntry(params *PostSessionUpdateParams) *billing.BillingEntry {
 		PlatformType:              uint8(params.packet.PlatformID),
 		SDKVersion:                params.packet.Version.String(),
 		PacketLoss:                params.packetLoss,
+		PredictedNextRTT:          float32(params.chosenRoute.Stats.RTT),
 	}
 }
 
