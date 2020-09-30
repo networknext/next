@@ -197,21 +197,6 @@ func main() {
 		storage.SeedStorage(logger, ctx, db, relayPublicKey, customerID, customerPublicKey)
 	}
 
-	manager, err := management.New(
-		os.Getenv("AUTH_DOMAIN"),
-		os.Getenv("AUTH_CLIENTID"),
-		os.Getenv("AUTH_CLIENTSECRET"),
-	)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		os.Exit(1)
-	}
-
-	auth0Client := storage.Auth0{
-		Manager: manager,
-		Logger:  logger,
-	}
-
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
 	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
 	// on creation so we can use that for the default then
