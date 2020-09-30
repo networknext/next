@@ -30,8 +30,8 @@
 
 #include <sodium.h>
 
-#if SODIUM_LIBRARY_VERSION_MAJOR <= 7 && ( SODIUM_LIBRARY_VERSION_MAJOR && SODIUM_LIBRARY_VERSION_MINOR < 3 )
-#error this version of sodium does not support overlapping buffers. please upgrade your libsodium!
+#if SODIUM_LIBRARY_VERSION_MAJOR <= 17
+#error please upgrade your libsodium!
 #endif
 
 #ifdef _MSC_VER
