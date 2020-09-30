@@ -963,7 +963,7 @@ format:
 build-all: build-sdk3 build-sdk4 build-load-test build-portal-cruncher build-analytics build-billing build-relay-backend build-server-backend build-relay-ref build-client3 build-client4 build-server3 build-server4 build-functional build-next ## builds everything
 
 .PHONY: rebuild-all
-rebuild-all: clean build-all ## rebuilds enerything
+rebuild-all: clean build-all ## rebuilds everything
 
 .PHONY: update-sdk4
 update-sdk4:
