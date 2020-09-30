@@ -3681,7 +3681,7 @@ int next_init( void * context, next_config_t * config_in )
         return NEXT_ERROR;
     }
 
-    if ( sodium_init() == -1 )
+    if ( next_crypto_init() == -1 )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "failed to initialize sodium" );
         return NEXT_ERROR;
