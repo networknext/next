@@ -311,11 +311,9 @@ func handleJSONRPCErrorCustom(env Environment, err error, msg string) {
 }
 
 type buyer struct {
-	Name      string
-	Domain    string
-	Active    bool
-	Live      bool
-	PublicKey string
+	CompanyCode string
+	Live        bool
+	PublicKey   string
 }
 
 type seller struct {
@@ -327,7 +325,6 @@ type seller struct {
 type relay struct {
 	Name                string
 	Addr                string
-	PublicKey           string
 	SellerID            string
 	DatacenterName      string
 	NicSpeedMbps        uint64
@@ -931,19 +928,13 @@ func main() {
 						handleRunTimeError(fmt.Sprintf("Could not resolve udp address %s: %v\n", relay.Addr, err), 1)
 					}
 
-					publicKey, err := base64.StdEncoding.DecodeString(relay.PublicKey)
-					if err != nil {
-						handleRunTimeError(fmt.Sprintf("Could not decode bas64 public key %s: %v\n", relay.PublicKey, err), 1)
-					}
-
 					// Build the actual Relay struct from the input relay struct
 					rid := crypto.HashID(relay.Addr)
 					realRelay := routing.Relay{
-						ID:        rid,
-						SignedID:  int64(rid),
-						Name:      relay.Name,
-						Addr:      *addr,
-						PublicKey: publicKey,
+						ID:       rid,
+						SignedID: int64(rid),
+						Name:     relay.Name,
+						Addr:     *addr,
 						Seller: routing.Seller{
 							ID: relay.SellerID,
 						},
@@ -972,7 +963,6 @@ func main() {
 							example := relay{
 								Name:                "amazon.ohio.2",
 								Addr:                "127.0.0.1:40000",
-								PublicKey:           "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
 								SellerID:            "5tCm7KjOw3EBYojLe6PC",
 								DatacenterName:      "amazon.ohio.2",
 								NicSpeedMbps:        1000,
@@ -1179,6 +1169,19 @@ func main() {
 							return nil
 						},
 					},
+				},
+			},
+			{
+				Name:       "traffic",
+				ShortUsage: "next relay traffic [regex]",
+				ShortHelp:  "Display detailed traffic stats for the specified relays",
+				Exec: func(ctx context.Context, args []string) error {
+					if len(args) > 0 {
+						relayTraffic(rpcClient, env, args[0])
+					} else {
+						relayTraffic(rpcClient, env, "")
+					}
+					return nil
 				},
 			},
 		},
@@ -1396,12 +1399,10 @@ func main() {
 
 					// Add the Buyer to storage
 					addBuyer(rpcClient, env, routing.Buyer{
-						ID:        binary.LittleEndian.Uint64(publicKey[:8]),
-						Name:      b.Name,
-						Domain:    b.Domain,
-						Active:    b.Active,
-						Live:      b.Live,
-						PublicKey: publicKey,
+						CompanyCode: b.CompanyCode,
+						ID:          binary.LittleEndian.Uint64(publicKey[:8]),
+						Live:        b.Live,
+						PublicKey:   publicKey,
 					})
 					return nil
 				},
@@ -1415,11 +1416,9 @@ func main() {
 							examplePublicKeyString := base64.StdEncoding.EncodeToString(examplePublicKey)
 
 							example := buyer{
-								Name:      "Psyonix",
-								Domain:    "example.com",
-								Active:    true,
-								Live:      true,
-								PublicKey: examplePublicKeyString,
+								CompanyCode: "psyonix",
+								Live:        true,
+								PublicKey:   examplePublicKeyString,
 							}
 
 							jsonBytes, err := json.MarshalIndent(example, "", "\t")

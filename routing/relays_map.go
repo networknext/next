@@ -15,10 +15,41 @@ import (
 
 const (
 	NumRelayMapShards     = 10
-	VersionNumberRelayMap = 0
+	VersionNumberRelayMap = 1
 
-	// | id (8) | sessions (8) | tx (8) | rx (8) | version major (1), minor (1), patch (1) | last update time (8) | cpu usage (4) | mem usage (4) |
-	RelayDataBytes = 8 + 8 + 8 + 8 + 1 + 1 + 1 + 8 + 4 + 4
+	RelayDataBytes = 8 + // id
+		8 + // sessions
+		8 + // tx
+		8 + // rx
+		8 + // outbound ping tx
+		8 + // route request rx
+		8 + // route request tx
+		8 + // route response rx
+		8 + // route response tx
+		8 + // client to server rx
+		8 + // client to server tx
+		8 + // server to client rx
+		8 + // server to client tx
+		8 + // inbound ping rx
+		8 + // inbound ping tx
+		8 + // pong rx
+		8 + // session ping rx
+		8 + // session ping tx
+		8 + // session pong rx
+		8 + // session pong tx
+		8 + // continue request rx
+		8 + // continue request tx
+		8 + // continue response rx
+		8 + // continue response tx
+		8 + // near ping rx
+		8 + // near ping tx
+		8 + // unknown Rx
+		1 + // version major
+		1 + // version minor
+		1 + // version patch
+		8 + // last update time
+		4 + // cpu usage
+		4 // mem usage
 )
 
 type RelayData struct {
@@ -219,9 +250,7 @@ func (r *RelayMap) MarshalBinary() []byte {
 			}
 
 			encoding.WriteUint64(data, &index, relay.ID)
-			encoding.WriteUint64(data, &index, relay.TrafficStats.SessionCount)
-			encoding.WriteUint64(data, &index, relay.TrafficStats.BytesSent)
-			encoding.WriteUint64(data, &index, relay.TrafficStats.BytesReceived)
+			relay.TrafficStats.WriteTo(data, &index)
 			encoding.WriteUint8(data, &index, major)
 			encoding.WriteUint8(data, &index, minor)
 			encoding.WriteUint8(data, &index, patch)
