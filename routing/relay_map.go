@@ -144,7 +144,6 @@ func (relayMap *RelayMap) TimeoutLoop(ctx context.Context, timeoutSeconds int64,
 
 			relayMap.mutex.RLock()
 			for k, v := range relayMap.relays {
-				fmt.Println("last update time:", v.LastUpdateTime.Unix(), "timeout:", timeoutTimestamp)
 				if v.LastUpdateTime.Unix() < timeoutTimestamp {
 					deleteList = append(deleteList, k)
 				}
