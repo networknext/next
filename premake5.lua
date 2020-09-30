@@ -28,7 +28,7 @@ project "next"
 		"source/next_*.h",
 		"source/next_*.cpp",
 	}
-	includedirs { "include", "sodium/include/" }
+	includedirs { "include", "sodium" }
 	filter "system:windows"
 		linkoptions { "/ignore:4221" }
 		disablewarnings { "4324" }
