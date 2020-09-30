@@ -1148,6 +1148,8 @@ func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *Buye
 		id := fmt.Sprintf("%016x", b.ID)
 		customer, err := s.Storage.Customer(b.CompanyCode)
 		if err != nil {
+			err = fmt.Errorf("Buyers() buyer is not assigned to customer: %v", b.ID)
+			level.Error(s.Logger).Log("err", err)
 			continue
 		}
 		account := buyerAccount{
@@ -1211,6 +1213,8 @@ func (s *BuyersService) DatacenterMapsForBuyer(r *http.Request, args *Datacenter
 
 		customer, err := s.Storage.Customer(buyer.CompanyCode)
 		if err != nil {
+			err = fmt.Errorf("DatacenterMapsForBuyer() buyer is not associated with a company")
+			level.Error(s.Logger).Log("err", err)
 			continue
 		}
 

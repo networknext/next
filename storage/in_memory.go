@@ -372,6 +372,32 @@ func (m *InMemory) SetRelayMetadata(ctx context.Context, relay routing.Relay) er
 }
 
 func (m *InMemory) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error {
+	// ToDo: make sure buyer and datacenter exist?
+	bID := dcMap.BuyerID
+
+	dcID := dcMap.Datacenter
+
+	found := false
+	for _, b := range m.localBuyers {
+		if b.ID == bID {
+			found = true
+		}
+	}
+
+	if !found {
+		return &DoesNotExistError{resourceType: "BuyerID", resourceRef: dcMap.BuyerID}
+	}
+
+	found = false
+	for _, d := range m.localDatacenters {
+		if d.ID == dcID {
+			found = true
+		}
+	}
+
+	if !found {
+		return &DoesNotExistError{resourceType: "Datacenter", resourceRef: dcMap.Datacenter}
+	}
 
 	for _, dc := range m.localDatacenterMaps {
 		if dc.BuyerID == dcMap.BuyerID && dc.Alias == dcMap.Alias && dc.Datacenter == dcMap.Datacenter {

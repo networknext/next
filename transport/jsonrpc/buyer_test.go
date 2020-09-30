@@ -17,10 +17,16 @@ import (
 )
 
 // This test depends on auth0 and the JWT doesn't have the right permissions.
-/* func TestBuyersList(t *testing.T) {
+func TestBuyersList(t *testing.T) {
+	t.Parallel()
 
 	storer := storage.InMemory{}
-	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, Name: "local.local.1"})
+	storer.AddCustomer(context.Background(), routing.Customer{Name: "Local", Code: "local"})
+	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local"})
+	storer.AddCustomer(context.Background(), routing.Customer{Name: "Local Local", Code: "local-local"})
+	storer.AddBuyer(context.Background(), routing.Buyer{ID: 2, CompanyCode: "local-local"})
+	storer.AddCustomer(context.Background(), routing.Customer{Name: "Local Local Local", Code: "local-local-local"})
+	storer.AddBuyer(context.Background(), routing.Buyer{ID: 3, CompanyCode: "local-local-local"})
 
 	logger := log.NewNopLogger()
 
@@ -28,6 +34,98 @@ import (
 		Storage: &storer,
 		Logger:  logger,
 	}
+
+	t.Run("list - empty", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		reqContext := req.Context()
+		reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "test")
+		req = req.WithContext(reqContext)
+		var reply jsonrpc.BuyerListReply
+		err := svc.Buyers(req, &jsonrpc.BuyerListArgs{}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, 0, len(reply.Buyers))
+	})
+
+	t.Run("list - !admin", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		reqContext := req.Context()
+		reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local")
+		req = req.WithContext(reqContext)
+		var reply jsonrpc.BuyerListReply
+		err := svc.Buyers(req, &jsonrpc.BuyerListArgs{}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, 1, len(reply.Buyers))
+		assert.Equal(t, "0000000000000001", reply.Buyers[0].ID)
+		assert.Equal(t, "local", reply.Buyers[0].CompanyCode)
+	})
+
+	t.Run("list - admin", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		reqContext := req.Context()
+		reqContext = context.WithValue(reqContext, jsonrpc.Keys.RolesKey, []string{
+			"Admin",
+		})
+		req = req.WithContext(reqContext)
+		assert.True(t, jsonrpc.VerifyAllRoles(req, jsonrpc.AdminRole))
+		var reply jsonrpc.BuyerListReply
+		err := svc.Buyers(req, &jsonrpc.BuyerListArgs{}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, 3, len(reply.Buyers))
+		assert.Equal(t, "0000000000000001", reply.Buyers[0].ID)
+		assert.Equal(t, "local", reply.Buyers[0].CompanyCode)
+		assert.Equal(t, "0000000000000002", reply.Buyers[1].ID)
+		assert.Equal(t, "local-local", reply.Buyers[1].CompanyCode)
+		assert.Equal(t, "0000000000000003", reply.Buyers[2].ID)
+		assert.Equal(t, "local-local-local", reply.Buyers[2].CompanyCode)
+	})
+}
+
+// User Sessions is currently disabled
+/* func TestUserSessions(t *testing.T) {
+	t.Parallel()
+
+	redisServer, _ := miniredis.Run()
+	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+
+	userHash1 := fmt.Sprintf("%x", 111)
+	userHash2 := fmt.Sprintf("%x", 222)
+
+	sessionID1 := fmt.Sprintf("%x", 111)
+	sessionID2 := fmt.Sprintf("%x", 222)
+	sessionID3 := fmt.Sprintf("%x", 333)
+	sessionID4 := "missing"
+
+	redisServer.SetAdd(fmt.Sprintf("user-%s-sessions", userHash2), sessionID1)
+	redisServer.SetAdd(fmt.Sprintf("user-%s-sessions", userHash1), sessionID2)
+	redisServer.SetAdd(fmt.Sprintf("user-%s-sessions", userHash1), sessionID3)
+	redisServer.SetAdd(fmt.Sprintf("user-%s-sessions", userHash1), sessionID4)
+
+	redisClient.Set(fmt.Sprintf("session-%s-meta", sessionID1), routing.SessionMeta{ID: sessionID1}, time.Hour)
+	redisClient.Set(fmt.Sprintf("session-%s-meta", sessionID2), routing.SessionMeta{ID: sessionID2}, time.Hour)
+	redisClient.Set(fmt.Sprintf("session-%s-meta", sessionID3), routing.SessionMeta{ID: sessionID3}, time.Hour)
+
+	logger := log.NewNopLogger()
+
+	svc := jsonrpc.BuyersService{
+		RedisClient: redisClient,
+		Logger:      logger,
+	}
+
+	manager, err := management.New(
+		"networknext.auth0.com",
+		"0Hn8oZfUwy5UPo6bUk0hYCQ2hMJnwQYg",
+		"l2namTU5jKVAkuCwV3votIPcP87jcOuJREtscx07aLgo8EykReX69StUVBfJOzx5",
+	)
+	assert.NoError(t, err)
+
+	auth0Client := storage.Auth0{
+		Manager: manager,
+		Logger:  logger,
+	}
+
 	jwtSideload := "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik5rWXpOekkwTkVVNVFrSTVNRVF4TURRMk5UWTBNakkzTmpOQlJESkVNa1E0TnpGRFF6QkdRdyJ9.eyJuaWNrbmFtZSI6InRlc3QiLCJuYW1lIjoidGVzdEBuZXR3b3JrbmV4dC5jb20iLCJwaWN0dXJlIjoiaHR0cHM6Ly9zLmdyYXZhdGFyLmNvbS9hdmF0YXIvMmRhNWMwMjU5ZTQ3NmI1MDg0MTBlZWY3ZjI5Zjc1NGE_cz00ODAmcj1wZyZkPWh0dHBzJTNBJTJGJTJGY2RuLmF1dGgwLmNvbSUyRmF2YXRhcnMlMkZ0ZS5wbmciLCJ1cGRhdGVkX2F0IjoiMjAyMC0wNi0yM1QxMzozOToyMS44ODFaIiwiZW1haWwiOiJ0ZXN0QG5ldHdvcmtuZXh0LmNvbSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJpc3MiOiJodHRwczovL25ldHdvcmtuZXh0LmF1dGgwLmNvbS8iLCJzdWIiOiJhdXRoMHw1Yjk2ZjYxY2YxNjQyNzIxYWQ4NGVlYjYiLCJhdWQiOiJvUUpIM1lQSGR2WkpueENQbzFJcnR6NVVLaTV6cnI2biIsImlhdCI6MTU5MjkxOTU2NSwiZXhwIjoxNzUwNzA0MzI1LCJub25jZSI6ImRHZFNUWEpRTnpkdE5GcHNjR0Z1YVg1dlQxVlNhVFZXUjJoK2VHdG1hMnB2TkcweFZuNTFZalJJZmc9PSJ9.BvMe5fWJcheGzKmt3nCIeLjMD-C5426cpjtJiR55i7lmbT0k4h8Z2X6rynZ_aKR-gaCTY7FG5gI-Ty9ZY1zboWcIkxaTi0VKQzdMUTYVMXVEK2cQ1NVbph7_RSJhLfgO5y7PkmuMZXJEFdrI_2PkO4b3tOU-vpUHFUPtTsESV79a81kXn2C5j_KkKzCOPZ4zol1aEU3WliaaJNT38iSz3NX9URshrrdCE39JRClx6wbUgrfCGnVtfens-Sg7atijivaOx8IlUGOxLMEciYwBL2aY5EXaa7tp7c8ZvoEEj7uZH2R35fV7eUzACwShU-JLR9oOsNEhS4XO1AzTMtNHQA"
 	noopHandler := func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -41,119 +139,63 @@ import (
 	authMiddleware.ServeHTTP(res, req)
 	assert.Equal(t, http.StatusOK, res.Code)
 
+	user := req.Context().Value("user")
+	assert.NotEqual(t, user, nil)
+	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
+
+	requestID, ok := claims["sub"]
+
+	assert.True(t, ok)
+	assert.Equal(t, "auth0|5b96f61cf1642721ad84eeb6", requestID)
+
+	roles, err := auth0Client.Manager.User.Roles(requestID.(string))
+
+	assert.NoError(t, err)
+	req = jsonrpc.SetRoles(req, *roles)
+
+	t.Run("missing user_hash", func(t *testing.T) {
+		var reply jsonrpc.UserSessionsReply
+		err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{}, &reply)
+		assert.NoError(t, err)
+		assert.Equal(t, 0, len(reply.Sessions))
+	})
+
+	t.Run("user_hash not found", func(t *testing.T) {
+		var reply jsonrpc.UserSessionsReply
+		err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserHash: "12345"}, &reply)
+		assert.NoError(t, err)
+		assert.Equal(t, 0, len(reply.Sessions))
+	})
+
 	t.Run("list", func(t *testing.T) {
-		var reply jsonrpc.BuyerListReply
-		err := svc.Buyers(req, &jsonrpc.BuyerListArgs{}, &reply)
+		var reply jsonrpc.UserSessionsReply
+		err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserHash: userHash1}, &reply)
 		assert.NoError(t, err)
 
-		assert.Equal(t, "0000000000000001", reply.Buyers[0].ID)
-		assert.Equal(t, "local.local.1", reply.Buyers[0].Name)
+		assert.Equal(t, len(reply.Sessions), 2)
+
+		assert.Equal(t, reply.Sessions[0].ID, sessionID3)
+		assert.Equal(t, reply.Sessions[1].ID, sessionID2)
 	})
 } */
-
-// todo: this test is failing with "context deadline exceeded". I believe it's reaching out to Auth0, in which case
-// it should be rewritten to not do that.
-
-// func TestUserSessions(t *testing.T) {
-// 	t.Parallel()
-
-// 	redisServer, _ := miniredis.Run()
-// 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
-
-// 	userHash1 := fmt.Sprintf("%x", 111)
-// 	userHash2 := fmt.Sprintf("%x", 222)
-
-// 	sessionID1 := fmt.Sprintf("%x", 111)
-// 	sessionID2 := fmt.Sprintf("%x", 222)
-// 	sessionID3 := fmt.Sprintf("%x", 333)
-// 	sessionID4 := "missing"
-
-// 	redisServer.SetAdd(fmt.Sprintf("user-%s-sessions", userHash2), sessionID1)
-// 	redisServer.SetAdd(fmt.Sprintf("user-%s-sessions", userHash1), sessionID2)
-// 	redisServer.SetAdd(fmt.Sprintf("user-%s-sessions", userHash1), sessionID3)
-// 	redisServer.SetAdd(fmt.Sprintf("user-%s-sessions", userHash1), sessionID4)
-
-// 	redisClient.Set(fmt.Sprintf("session-%s-meta", sessionID1), routing.SessionMeta{ID: sessionID1}, time.Hour)
-// 	redisClient.Set(fmt.Sprintf("session-%s-meta", sessionID2), routing.SessionMeta{ID: sessionID2}, time.Hour)
-// 	redisClient.Set(fmt.Sprintf("session-%s-meta", sessionID3), routing.SessionMeta{ID: sessionID3}, time.Hour)
-
-// 	logger := log.NewNopLogger()
-
-// 	svc := jsonrpc.BuyersService{
-// 		RedisClient: redisClient,
-// 		Logger:      logger,
-// 	}
-
-// 	manager, err := management.New(
-// 		"networknext.auth0.com",
-// 		"0Hn8oZfUwy5UPo6bUk0hYCQ2hMJnwQYg",
-// 		"l2namTU5jKVAkuCwV3votIPcP87jcOuJREtscx07aLgo8EykReX69StUVBfJOzx5",
-// 	)
-// 	assert.NoError(t, err)
-
-// 	auth0Client := storage.Auth0{
-// 		Manager: manager,
-// 		Logger:  logger,
-// 	}
-
-// 	jwtSideload := "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik5rWXpOekkwTkVVNVFrSTVNRVF4TURRMk5UWTBNakkzTmpOQlJESkVNa1E0TnpGRFF6QkdRdyJ9.eyJuaWNrbmFtZSI6InRlc3QiLCJuYW1lIjoidGVzdEBuZXR3b3JrbmV4dC5jb20iLCJwaWN0dXJlIjoiaHR0cHM6Ly9zLmdyYXZhdGFyLmNvbS9hdmF0YXIvMmRhNWMwMjU5ZTQ3NmI1MDg0MTBlZWY3ZjI5Zjc1NGE_cz00ODAmcj1wZyZkPWh0dHBzJTNBJTJGJTJGY2RuLmF1dGgwLmNvbSUyRmF2YXRhcnMlMkZ0ZS5wbmciLCJ1cGRhdGVkX2F0IjoiMjAyMC0wNi0yM1QxMzozOToyMS44ODFaIiwiZW1haWwiOiJ0ZXN0QG5ldHdvcmtuZXh0LmNvbSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJpc3MiOiJodHRwczovL25ldHdvcmtuZXh0LmF1dGgwLmNvbS8iLCJzdWIiOiJhdXRoMHw1Yjk2ZjYxY2YxNjQyNzIxYWQ4NGVlYjYiLCJhdWQiOiJvUUpIM1lQSGR2WkpueENQbzFJcnR6NVVLaTV6cnI2biIsImlhdCI6MTU5MjkxOTU2NSwiZXhwIjoxNzUwNzA0MzI1LCJub25jZSI6ImRHZFNUWEpRTnpkdE5GcHNjR0Z1YVg1dlQxVlNhVFZXUjJoK2VHdG1hMnB2TkcweFZuNTFZalJJZmc9PSJ9.BvMe5fWJcheGzKmt3nCIeLjMD-C5426cpjtJiR55i7lmbT0k4h8Z2X6rynZ_aKR-gaCTY7FG5gI-Ty9ZY1zboWcIkxaTi0VKQzdMUTYVMXVEK2cQ1NVbph7_RSJhLfgO5y7PkmuMZXJEFdrI_2PkO4b3tOU-vpUHFUPtTsESV79a81kXn2C5j_KkKzCOPZ4zol1aEU3WliaaJNT38iSz3NX9URshrrdCE39JRClx6wbUgrfCGnVtfens-Sg7atijivaOx8IlUGOxLMEciYwBL2aY5EXaa7tp7c8ZvoEEj7uZH2R35fV7eUzACwShU-JLR9oOsNEhS4XO1AzTMtNHQA"
-// 	noopHandler := func(w http.ResponseWriter, _ *http.Request) {
-// 		w.WriteHeader(http.StatusOK)
-// 	}
-// 	authMiddleware := jsonrpc.AuthMiddleware("oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n", http.HandlerFunc(noopHandler))
-
-// 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-// 	req.Header.Add("Authorization", "Bearer "+jwtSideload)
-// 	res := httptest.NewRecorder()
-
-// 	authMiddleware.ServeHTTP(res, req)
-// 	assert.Equal(t, http.StatusOK, res.Code)
-
-// 	user := req.Context().Value("user")
-// 	assert.NotEqual(t, user, nil)
-// 	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
-
-// 	requestID, ok := claims["sub"]
-
-// 	assert.True(t, ok)
-// 	assert.Equal(t, "auth0|5b96f61cf1642721ad84eeb6", requestID)
-
-// 	roles, err := auth0Client.Manager.User.Roles(requestID.(string))
-
-// 	assert.NoError(t, err)
-// 	req = jsonrpc.SetRoles(req, *roles)
-
-// 	t.Run("missing user_hash", func(t *testing.T) {
-// 		var reply jsonrpc.UserSessionsReply
-// 		err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{}, &reply)
-// 		assert.NoError(t, err)
-// 		assert.Equal(t, 0, len(reply.Sessions))
-// 	})
-
-// 	t.Run("user_hash not found", func(t *testing.T) {
-// 		var reply jsonrpc.UserSessionsReply
-// 		err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserHash: "12345"}, &reply)
-// 		assert.NoError(t, err)
-// 		assert.Equal(t, 0, len(reply.Sessions))
-// 	})
-
-// 	t.Run("list", func(t *testing.T) {
-// 		var reply jsonrpc.UserSessionsReply
-// 		err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserHash: userHash1}, &reply)
-// 		assert.NoError(t, err)
-
-// 		assert.Equal(t, len(reply.Sessions), 2)
-
-// 		assert.Equal(t, reply.Sessions[0].ID, sessionID3)
-// 		assert.Equal(t, reply.Sessions[1].ID, sessionID2)
-// 	})
-// }
 
 func TestDatacenterMaps(t *testing.T) {
 	dcMap := routing.DatacenterMap{
 		Alias:      "some.server.alias",
 		BuyerID:    0xbdbebdbf0f7be395,
 		Datacenter: 0x7edb88d7b6fc0713,
+	}
+
+	dcMapBuyerDNE := routing.DatacenterMap{
+		Alias:      "some.server.alias.dne",
+		BuyerID:    0xbdbebdbf0f7be399,
+		Datacenter: 0x7edb88d7b6fc0713,
+	}
+
+	dcMapDCDNE := routing.DatacenterMap{
+		Alias:      "some.server.alias.dne",
+		BuyerID:    0xbdbebdbf0f7be395,
+		Datacenter: 0x7edb88d7b6fc0710,
 	}
 
 	storer := storage.InMemory{}
@@ -168,6 +210,16 @@ func TestDatacenterMaps(t *testing.T) {
 		Name: "Local",
 	}
 
+	buyer2 := routing.Buyer{
+		ID:          0xbdbebdbf0f7be390,
+		CompanyCode: "local-local",
+	}
+
+	customer2 := routing.Customer{
+		Code: "local-local",
+		Name: "Local Local",
+	}
+
 	datacenter := routing.Datacenter{
 		ID:   0x7edb88d7b6fc0713,
 		Name: "local.datacenter",
@@ -177,6 +229,8 @@ func TestDatacenterMaps(t *testing.T) {
 	storer.AddBuyer(ctx, buyer)
 	storer.AddCustomer(ctx, customer)
 	storer.AddDatacenter(ctx, datacenter)
+	storer.AddBuyer(ctx, buyer2)
+	storer.AddCustomer(ctx, customer2)
 
 	logger := log.NewNopLogger()
 
@@ -184,18 +238,29 @@ func TestDatacenterMaps(t *testing.T) {
 		Storage: &storer,
 		Logger:  logger,
 	}
-	jwtSideload := "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik5rWXpOekkwTkVVNVFrSTVNRVF4TURRMk5UWTBNakkzTmpOQlJESkVNa1E0TnpGRFF6QkdRdyJ9.eyJuaWNrbmFtZSI6InRlc3QiLCJuYW1lIjoidGVzdEBuZXR3b3JrbmV4dC5jb20iLCJwaWN0dXJlIjoiaHR0cHM6Ly9zLmdyYXZhdGFyLmNvbS9hdmF0YXIvMmRhNWMwMjU5ZTQ3NmI1MDg0MTBlZWY3ZjI5Zjc1NGE_cz00ODAmcj1wZyZkPWh0dHBzJTNBJTJGJTJGY2RuLmF1dGgwLmNvbSUyRmF2YXRhcnMlMkZ0ZS5wbmciLCJ1cGRhdGVkX2F0IjoiMjAyMC0wNi0yM1QxMzozOToyMS44ODFaIiwiZW1haWwiOiJ0ZXN0QG5ldHdvcmtuZXh0LmNvbSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJpc3MiOiJodHRwczovL25ldHdvcmtuZXh0LmF1dGgwLmNvbS8iLCJzdWIiOiJhdXRoMHw1Yjk2ZjYxY2YxNjQyNzIxYWQ4NGVlYjYiLCJhdWQiOiJvUUpIM1lQSGR2WkpueENQbzFJcnR6NVVLaTV6cnI2biIsImlhdCI6MTU5MjkxOTU2NSwiZXhwIjoxNzUwNzA0MzI1LCJub25jZSI6ImRHZFNUWEpRTnpkdE5GcHNjR0Z1YVg1dlQxVlNhVFZXUjJoK2VHdG1hMnB2TkcweFZuNTFZalJJZmc9PSJ9.BvMe5fWJcheGzKmt3nCIeLjMD-C5426cpjtJiR55i7lmbT0k4h8Z2X6rynZ_aKR-gaCTY7FG5gI-Ty9ZY1zboWcIkxaTi0VKQzdMUTYVMXVEK2cQ1NVbph7_RSJhLfgO5y7PkmuMZXJEFdrI_2PkO4b3tOU-vpUHFUPtTsESV79a81kXn2C5j_KkKzCOPZ4zol1aEU3WliaaJNT38iSz3NX9URshrrdCE39JRClx6wbUgrfCGnVtfens-Sg7atijivaOx8IlUGOxLMEciYwBL2aY5EXaa7tp7c8ZvoEEj7uZH2R35fV7eUzACwShU-JLR9oOsNEhS4XO1AzTMtNHQA"
-	noopHandler := func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}
-	authMiddleware := jsonrpc.AuthMiddleware("oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n", http.HandlerFunc(noopHandler), false)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.Header.Add("Authorization", "Bearer "+jwtSideload)
 	res := httptest.NewRecorder()
 
-	authMiddleware.ServeHTTP(res, req)
 	assert.Equal(t, http.StatusOK, res.Code)
+
+	t.Run("add buyer dne", func(t *testing.T) {
+		var reply jsonrpc.AddDatacenterMapReply
+		var args = jsonrpc.AddDatacenterMapArgs{
+			DatacenterMap: dcMapBuyerDNE,
+		}
+		err := svc.AddDatacenterMap(req, &args, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("add dc dne", func(t *testing.T) {
+		var reply jsonrpc.AddDatacenterMapReply
+		var args = jsonrpc.AddDatacenterMapArgs{
+			DatacenterMap: dcMapDCDNE,
+		}
+		err := svc.AddDatacenterMap(req, &args, &reply)
+		assert.Error(t, err)
+	})
 
 	t.Run("add", func(t *testing.T) {
 		var reply jsonrpc.AddDatacenterMapReply
@@ -204,22 +269,31 @@ func TestDatacenterMaps(t *testing.T) {
 		}
 		err := svc.AddDatacenterMap(req, &args, &reply)
 		assert.NoError(t, err)
-
 	})
 
-	t.Run("list", func(t *testing.T) {
-		var reply jsonrpc.DatacenterMapsReply
-		var args = jsonrpc.DatacenterMapsArgs{
-			ID: 0xbdbebdbf0f7be395,
-		}
-		err := svc.DatacenterMapsForBuyer(req, &args, &reply)
-		assert.NoError(t, err)
+	/* 	t.Run("list", func(t *testing.T) {
+	   		var reply jsonrpc.DatacenterMapsReply
+	   		var args = jsonrpc.DatacenterMapsArgs{
+	   			ID: 0xbdbebdbf0f7be395,
+	   		}
+	   		err := svc.DatacenterMapsForBuyer(req, &args, &reply)
+	   		assert.NoError(t, err)
 
-		assert.Equal(t, "7edb88d7b6fc0713", reply.DatacenterMaps[0].DatacenterID)
-		assert.Equal(t, "some.server.alias", reply.DatacenterMaps[0].Alias)
-		assert.Equal(t, "bdbebdbf0f7be395", reply.DatacenterMaps[0].BuyerID)
+	   		assert.Equal(t, "7edb88d7b6fc0713", reply.DatacenterMaps[0].DatacenterID)
+	   		assert.Equal(t, "some.server.alias", reply.DatacenterMaps[0].Alias)
+	   		assert.Equal(t, "bdbebdbf0f7be395", reply.DatacenterMaps[0].BuyerID)
+	   	})
 
-	})
+	   	t.Run("list empty", func(t *testing.T) {
+	   		var reply jsonrpc.DatacenterMapsReply
+	   		var args = jsonrpc.DatacenterMapsArgs{
+	   			ID: 0xbdbebdbf0f7be390,
+	   		}
+	   		err := svc.DatacenterMapsForBuyer(req, &args, &reply)
+	   		assert.NoError(t, err)
+
+	   		assert.Equal(t, 0, len(reply.DatacenterMaps))
+	   	}) */
 
 	// belongs in ops
 	// t.Run("list w/o buyer ID", func(t *testing.T) {
