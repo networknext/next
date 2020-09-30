@@ -346,7 +346,7 @@ test-load: ## runs load tests
 #######################
 
 .PHONY: dev-portal
-dev-portal: build-portal ## runs a local portal
+dev-portal: build-portal-local ## runs a local portal
 	@PORT=20000 BASIC_AUTH_USERNAME=local BASIC_AUTH_PASSWORD=local UI_DIR=./cmd/portal/dist ./dist/portal
 
 .PHONY: dev-relay-backend
@@ -447,6 +447,16 @@ build-portal-cruncher:
 
 .PHONY: build-portal
 build-portal:
+	@printf "Building portal... \n"
+	@printf "TIMESTAMP: ${TIMESTAMP}\n"
+	@printf "SHA: ${SHA}\n"
+	@printf "RELEASE: ${RELEASE}\n"
+	@printf "COMMITMESSAGE: ${COMMITMESSAGE}\n"
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/portal ./cmd/portal/portal.go
+	@printf "done\n"
+
+.PHONY: build-portal-local
+build-portal-local:
 	@printf "Building portal... \n"
 	@printf "TIMESTAMP: ${TIMESTAMP}\n"
 	@printf "SHA: ${SHA}\n"
@@ -968,7 +978,7 @@ format:
 build-all: build-sdk3 build-sdk4 build-load-test build-portal-cruncher build-analytics build-billing build-relay-backend build-server-backend build-relay-ref build-client3 build-client4 build-server3 build-server4 build-functional build-next ## builds everything
 
 .PHONY: rebuild-all
-rebuild-all: clean build-all ## rebuilds enerything
+rebuild-all: clean build-all ## rebuilds everything
 
 .PHONY: update-sdk4
 update-sdk4:
