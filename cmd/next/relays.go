@@ -252,7 +252,7 @@ func relays(
 		return
 	}
 
-	sort.Slice(reply.Relays, func(i int, j int) bool {
+	sort.SliceStable(reply.Relays, func(i int, j int) bool {
 		return reply.Relays[i].SessionCount > reply.Relays[j].SessionCount
 	})
 
@@ -264,9 +264,6 @@ func relays(
 		Sessions    string
 		Tx          string
 		Rx          string
-		Version     string
-		CPUUsage    string `table:"CPU Usage"`
-		MemUsage    string `table:"Memory Usage"`
 		LastUpdated string
 	}{}
 
@@ -307,9 +304,6 @@ func relays(
 		unitFormat(0)
 		bitsTransmitted := unitFormat(relay.TrafficStats.BytesSent * 8)
 		bitsReceived := unitFormat(relay.TrafficStats.BytesReceived * 8)
-
-		cpuUsage := fmt.Sprintf("%.02f%%", relay.CPUUsage)
-		memUsage := fmt.Sprintf("%.02f%%", relay.MemUsage)
 
 		lastUpdateDuration := time.Since(relay.LastUpdateTime).Truncate(time.Second)
 		lastUpdated := "n/a"
@@ -369,9 +363,6 @@ func relays(
 				Sessions    string
 				Tx          string
 				Rx          string
-				Version     string
-				CPUUsage    string `table:"CPU Usage"`
-				MemUsage    string `table:"Memory Usage"`
 				LastUpdated string
 			}{
 				Name:        relay.Name,
@@ -381,9 +372,6 @@ func relays(
 				Sessions:    fmt.Sprintf("%d", relay.SessionCount),
 				Tx:          bitsTransmitted,
 				Rx:          bitsReceived,
-				Version:     relay.Version,
-				CPUUsage:    cpuUsage,
-				MemUsage:    memUsage,
 				LastUpdated: lastUpdated,
 			})
 		}

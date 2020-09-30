@@ -303,4 +303,12 @@ func TestDecideMultipath(t *testing.T) {
 	predictedNNStats = &routing.Stats{}
 	decision = routeDecisionFunc(decision, predictedNNStats, &routing.Stats{}, directStats)
 	assert.Equal(t, routing.Decision{true, routing.DecisionHighPacketLossMultipath}, decision)
+
+	// Test multipath veto with high RTT
+	routeDecisionFunc = routing.DecideMultipath(true, true, true, rttThreshold, packetLossThreshold, 0)
+	decision = routing.Decision{true, routing.DecisionRTTReductionMultipath}
+	directStats = &routing.Stats{RTT: 500}
+	predictedNNStats = &routing.Stats{}
+	decision = routeDecisionFunc(decision, predictedNNStats, &routing.Stats{}, directStats)
+	assert.Equal(t, routing.Decision{false, routing.DecisionMultipathVetoRTT}, decision)
 }
