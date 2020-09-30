@@ -229,7 +229,7 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			return
 		}
 
-		if relayUpdateRequest.Version != VersionNumberUpdateRequest {
+		if relayUpdateRequest.Version > VersionNumberUpdateRequest {
 			level.Error(locallogger).Log("msg", "version mismatch", "version", relayUpdateRequest.Version)
 			http.Error(writer, "version mismatch", http.StatusBadRequest)
 			params.Metrics.ErrorMetrics.InvalidVersion.Add(1)

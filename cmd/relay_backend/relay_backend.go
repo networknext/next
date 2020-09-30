@@ -452,7 +452,7 @@ func main() {
 				length := routing.TriMatrixLength(len(cpy.Entries))
 				if length > 0 { // prevent crash with only 1 relay
 					entries := make([]analytics.PingStatsEntry, length)
-					ids := make([]uint64, length)
+					ids := make([]uint64, len(cpy.Entries))
 
 					idx := 0
 					for k := range cpy.Entries {
