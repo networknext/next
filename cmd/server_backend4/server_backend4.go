@@ -287,6 +287,21 @@ func mainReturnWithCode() int {
 	// Create datacenter tracker
 	datacenterTracker := transport.NewDatacenterTracker()
 
+	go func() {
+		unknownDatacenters := datacenterTracker.GetUnknownDatacenters()
+		emptyDatacenters := datacenterTracker.GetEmptyDatacenters()
+
+		for _, datacenter := range unknownDatacenters {
+			level.Warn(logger).Log("msg", "unknown datacenter", "datacenter", datacenter)
+		}
+
+		for _, datacenter := range emptyDatacenters {
+			level.Warn(logger).Log("msg", "empty datacenter", "datacenter", datacenter)
+		}
+
+		time.Sleep(10 * time.Second)
+	}()
+
 	if !envvar.Exists("SERVER_BACKEND_PRIVATE_KEY") {
 		level.Error(logger).Log("err", "SERVER_BACKEND_PRIVATE_KEY not set")
 		return 1
@@ -656,9 +671,9 @@ func mainReturnWithCode() int {
 
 	connections := make([]*net.UDPConn, numThreads)
 
-	serverInitHandler := transport.ServerInitHandlerFunc4(logger, storer, datacenterTracker, serverInitMetrics)
-	serverUpdateHandler := transport.ServerUpdateHandlerFunc4(logger, storer, datacenterTracker, serverUpdateMetrics)
-	sessionUpdateHandler := transport.SessionUpdateHandlerFunc4(logger, getIPLocatorFunc, getRouteMatrix4Func, multipathVetoHandler, storer, routerPrivateKey, postSessionHandler, sessionUpdateMetrics)
+	serverInitHandler := transport.ServerInitHandlerFunc4(log.With(logger, "handler", "server_init"), storer, datacenterTracker, serverInitMetrics)
+	serverUpdateHandler := transport.ServerUpdateHandlerFunc4(log.With(logger, "handler", "server_update"), storer, datacenterTracker, serverUpdateMetrics)
+	sessionUpdateHandler := transport.SessionUpdateHandlerFunc4(log.With(logger, "handler", "session_update"), getIPLocatorFunc, getRouteMatrix4Func, multipathVetoHandler, storer, routerPrivateKey, postSessionHandler, sessionUpdateMetrics)
 
 	for i := 0; i < numThreads; i++ {
 		go func(thread int) {
