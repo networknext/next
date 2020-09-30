@@ -31,7 +31,7 @@
 #include <sodium.h>
 
 #if SODIUM_LIBRARY_VERSION_MAJOR < 10 || ( SODIUM_LIBRARY_VERSION_MAJOR == 10 && SODIUM_LIBRARY_VERSION_MINOR < 2 )
-#error please upgrade your libsodium!
+#error please upgrade your libsodium to at least version 1.0.17
 #endif
 
 #ifdef _MSC_VER
