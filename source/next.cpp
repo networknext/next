@@ -3447,7 +3447,7 @@ int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_obj
 
         next_crypto_sign_state_t state;
         next_crypto_sign_init( &state );
-        next_crypto_sign_update( &state, packet_data, packet_bytes - NEXT_CRYPTO_SIGN_BYTES );
+        next_crypto_sign_update( &state, packet_data, size_t(packet_bytes) - NEXT_CRYPTO_SIGN_BYTES );
         if ( next_crypto_sign_final_verify( &state, packet_data + packet_bytes - NEXT_CRYPTO_SIGN_BYTES, sign_public_key ) != 0 )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "signed packet did not verify" );
@@ -4447,7 +4447,7 @@ void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platfor
     
     next_assert( socket );
 
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES*2];
+    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
 
     double current_time = next_time();
 
@@ -5924,7 +5924,7 @@ int next_client_internal_send_packet_to_server( next_client_internal_t * client,
 
     int packet_bytes = 0;
 
-    uint8_t buffer[NEXT_MAX_PACKET_BYTES*2];
+    uint8_t buffer[NEXT_MAX_PACKET_BYTES];
 
     if ( next_write_packet( packet_id, packet_object, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, &client->internal_send_sequence, NULL, client->client_send_key ) != NEXT_OK )
     {
@@ -6647,7 +6647,7 @@ void next_client_internal_block_and_receive_packet( next_client_internal_t * cli
 {
     next_client_internal_verify_sentinels( client );
 
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES*2];
+    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
 
     next_address_t from;
     
@@ -7065,7 +7065,7 @@ void next_client_internal_update_next_pings( next_client_internal_t * client )
         uint64_t sequence = client->special_send_sequence++;
         sequence |= (1ULL<<62);
 
-        uint8_t packet_data[NEXT_MAX_PACKET_BYTES*2];
+        uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
 
         if ( next_write_header( NEXT_DIRECTION_CLIENT_TO_SERVER, NEXT_PING_PACKET, sequence, session_id, session_version, private_key, packet_data ) != NEXT_OK )
         {
@@ -7162,8 +7162,8 @@ void next_client_internal_update_route_manager( next_client_internal_t * client 
     int route_request_packet_bytes;
     int continue_request_packet_bytes;
 
-    uint8_t route_request_packet_data[NEXT_MAX_PACKET_BYTES*2];
-    uint8_t continue_request_packet_data[NEXT_MAX_PACKET_BYTES*2];
+    uint8_t route_request_packet_data[NEXT_MAX_PACKET_BYTES];
+    uint8_t continue_request_packet_data[NEXT_MAX_PACKET_BYTES];
 
     next_platform_mutex_acquire( &client->route_manager_mutex );
     const bool send_route_request = next_route_manager_send_route_request( client->route_manager, &route_request_to, route_request_packet_data, &route_request_packet_bytes );
@@ -7653,7 +7653,7 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
 
             int next_packet_bytes = 0;
             next_address_t next_to;
-            uint8_t next_packet_data[NEXT_MAX_PACKET_BYTES*2];
+            uint8_t next_packet_data[NEXT_MAX_PACKET_BYTES];
 
             next_platform_mutex_acquire( &client->internal->route_manager_mutex );
             next_route_manager_prepare_send_packet( client->internal->route_manager, send_sequence, &next_to, packet_data, packet_bytes, next_packet_data, &next_packet_bytes );
@@ -7683,7 +7683,7 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
     {
         // [0](payload) style direct packet
 
-        uint8_t buffer[NEXT_MAX_PACKET_BYTES*2];
+        uint8_t buffer[NEXT_MAX_PACKET_BYTES];
         buffer[0] = 0;
         memcpy( buffer + 1, packet_data, packet_bytes );
         next_platform_socket_send_packet( client->internal->socket, &client->server_address, buffer, packet_bytes + 1 );
@@ -9544,7 +9544,7 @@ int next_write_backend_packet( uint8_t packet_id, void * packet_object, uint8_t 
         next_assert( sign_private_key );
         next_crypto_sign_state_t state;
         next_crypto_sign_init( &state );
-        next_crypto_sign_update( &state, packet_data + 1 + NEXT_PACKET_HASH_BYTES, *packet_bytes - 1 - NEXT_PACKET_HASH_BYTES );
+        next_crypto_sign_update( &state, packet_data + 1 + NEXT_PACKET_HASH_BYTES, size_t(*packet_bytes) - 1 - NEXT_PACKET_HASH_BYTES );
         next_crypto_sign_final_create( &state, packet_data + *packet_bytes, NULL, sign_private_key );
         *packet_bytes += NEXT_CRYPTO_SIGN_BYTES;
     }
@@ -9600,7 +9600,7 @@ int next_read_backend_packet( uint8_t * packet_data, int packet_bytes, void * pa
 
         next_crypto_sign_state_t state;
         next_crypto_sign_init( &state );
-        next_crypto_sign_update( &state, packet_data, packet_bytes - NEXT_CRYPTO_SIGN_BYTES );
+        next_crypto_sign_update( &state, packet_data, size_t(packet_bytes) - NEXT_CRYPTO_SIGN_BYTES );
         if ( next_crypto_sign_final_verify( &state, packet_data + packet_bytes - NEXT_CRYPTO_SIGN_BYTES, sign_public_key ) != 0 )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "signed packet did not verify" );
@@ -9839,7 +9839,7 @@ void next_server_internal_resolve_hostname( next_server_internal_t * server )
 
     next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
     server->state = NEXT_SERVER_STATE_RESOLVING_HOSTNAME;
-    server->next_resolve_hostname_time = next_time() + 5*60 + next_random_float() * 5*60;
+	server->next_resolve_hostname_time = next_time() + 5.0*60.0 + ( next_random_float() * 5.0*60.0 );
 }
 
 void next_server_internal_destroy( next_server_internal_t * server );
@@ -10082,7 +10082,7 @@ int next_server_internal_send_packet( next_server_internal_t * server, const nex
 
     int packet_bytes = 0;
     
-    uint8_t buffer[NEXT_MAX_PACKET_BYTES*2];
+    uint8_t buffer[NEXT_MAX_PACKET_BYTES];
 
     uint64_t * sequence = NULL;
     uint8_t * send_key = NULL;
@@ -10248,7 +10248,7 @@ void next_server_internal_update_route( next_server_internal_t * server )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server resolving backend hostname" );
         next_server_internal_resolve_hostname( server );
-        server->next_resolve_hostname_time = current_time + 5*60 + next_random_float() * 5*60;
+        server->next_resolve_hostname_time = current_time + 5.0*60.0 + next_random_float() * 5.0*60.0;
     }
 
     const int max_index = server->session_manager->max_entry_index;
@@ -10932,7 +10932,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             entry->most_recent_session_version = route_token.session_version;
         }
 
-        uint8_t response[NEXT_MAX_PACKET_BYTES*2];
+        uint8_t response[NEXT_MAX_PACKET_BYTES];
 
         uint64_t session_send_sequence = entry->special_send_sequence++;
         session_send_sequence |= uint64_t(1) << 63;
@@ -11000,7 +11000,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         entry->current_route_expire_time += NEXT_SLICE_SECONDS;
         entry->has_previous_route = false;
 
-        uint8_t response[NEXT_MAX_PACKET_BYTES*2];
+        uint8_t response[NEXT_MAX_PACKET_BYTES];
 
         uint64_t session_send_sequence = entry->special_send_sequence++;
         session_send_sequence |= uint64_t(1) << 63;
@@ -11108,6 +11108,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
     if ( packet_id == NEXT_DIRECT_PING_PACKET )
     {
         next_assert( session );
+		if ( session == NULL )
+			return;
 
         uint64_t packet_sequence = 0;
 
@@ -11134,6 +11136,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
     if ( packet_id == NEXT_CLIENT_STATS_PACKET )
     {
         next_assert( session );
+		if ( session == NULL )
+			return;
 
         NextClientStatsPacket packet;
 
@@ -11246,7 +11250,7 @@ void next_server_internal_block_and_receive_packet( next_server_internal_t * ser
 {
     next_server_internal_verify_sentinels( server );
 
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES*2];
+    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
 
     next_address_t from;
     
@@ -11527,7 +11531,9 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         state = server->state;
     }
 
-    if ( state == NEXT_SERVER_STATE_INITIALIZING )
+	uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
+	
+	if ( state == NEXT_SERVER_STATE_INITIALIZING )
     {
         next_assert( server->backend_address.type == NEXT_ADDRESS_IPV4 || server->backend_address.type == NEXT_ADDRESS_IPV6 );
 
@@ -11548,7 +11554,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             server->server_init_request_id = packet.request_id;
 
             int packet_bytes = 0;
-            uint8_t packet_data[NEXT_MAX_PACKET_BYTES*2];
             if ( next_write_backend_packet( NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key ) != NEXT_OK )
             {
                 next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write server init request packet for backend" );
@@ -11567,7 +11572,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             next_printf( NEXT_LOG_LEVEL_INFO, "server did not get an init response from backend. falling back to direct only" );
             next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
             server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
-            server->next_resolve_hostname_time = current_time + 5*60 + next_random_float() * 5*60;
+            server->next_resolve_hostname_time = current_time + 5.0*60.0 + next_random_float() * 5.0*60.0;
         }
     }
 
@@ -11611,7 +11616,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         packet.server_address = server->server_address;
 
         int packet_bytes = 0;
-        uint8_t packet_data[NEXT_MAX_PACKET_BYTES*2];
         if ( next_write_backend_packet( NEXT_BACKEND_SERVER_UPDATE_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write server update packet for backend" );
@@ -11702,7 +11706,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             session->session_update_packet = packet;
 
             int packet_bytes = 0;
-            uint8_t packet_data[NEXT_MAX_PACKET_BYTES*2];
             if ( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key ) != NEXT_OK )
             {
                 next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write session update packet for backend" );
@@ -11739,7 +11742,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server resent session update packet to backend for session %" PRIx64 " (%d)", session->session_id, session->session_update_packet.retry_number );
 
             int packet_bytes = 0;
-            uint8_t packet_data[NEXT_MAX_PACKET_BYTES*2];
             if ( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_PACKET, &session->session_update_packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key ) != NEXT_OK )
             {
                 next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write session update packet for backend" );
@@ -12267,7 +12269,7 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
             {
                 // send over network next
 
-                uint8_t next_packet_data[NEXT_MAX_PACKET_BYTES*2];
+                static uint8_t next_packet_data[NEXT_MAX_PACKET_BYTES];
                 
                 if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_SERVER_TO_CLIENT_PACKET, send_sequence, session_id, session_version, session_private_key, next_packet_data ) != NEXT_OK )
                 {
@@ -12286,7 +12288,7 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
             {
                 // [255][session sequence][packet sequence](payload) style packet direct to client
 
-                uint8_t buffer[NEXT_MAX_PACKET_BYTES*2];
+                static uint8_t buffer[NEXT_MAX_PACKET_BYTES];
                 uint8_t * p = buffer;
                 next_write_uint8( &p, NEXT_DIRECT_PACKET );
                 next_write_uint8( &p, open_session_sequence );
@@ -12301,9 +12303,9 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
     {
         // [0](payload) raw direct packet
 
-        uint8_t buffer[NEXT_MAX_PACKET_BYTES*2];
+        static uint8_t buffer[NEXT_MAX_PACKET_BYTES];
         buffer[0] = 0;
-        memcpy( buffer + 1, packet_data, packet_bytes + 1 );
+        memcpy( buffer + 1, packet_data, size_t(packet_bytes) + 1 );
         next_platform_socket_send_packet( server->internal->socket, to_address, buffer, packet_bytes + 1 );
     }
 }
@@ -15089,7 +15091,7 @@ static void test_jitter_tracker()
         t += dt;
     }
 
-    check( tracker.jitter == 0.0 );
+    check( tracker.jitter < 0.000001 );
 
     for ( int i = 0; i < 1000; ++i )
     {
