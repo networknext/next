@@ -99,10 +99,11 @@ void next_platform_thread_destroy( next_platform_thread_t * thread )
     next_free( thread->context, thread );
 }
 
-void next_platform_thread_set_sched_max( next_platform_thread_t * thread )
+bool next_platform_thread_high_priority( next_platform_thread_t * thread )
 {
-    // linux only
+    // todo
     (void)thread;
+    return false;
 }
 
 int next_platform_mutex_create( next_platform_mutex_t * mutex )

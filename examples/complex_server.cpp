@@ -215,8 +215,10 @@ void server_packet_received( next_server_t * server, void * _context, const next
 
     if ( !next_server_session_upgraded( server, from ) )
     {
-        next_server_upgrade_session( server, from, NULL );
-        next_server_tag_session( server, from, "pro" );
+        if ( next_server_upgrade_session( server, from, NULL ) )
+        {
+            next_server_tag_session( server, from, "pro" );
+        }
     }
 }
 

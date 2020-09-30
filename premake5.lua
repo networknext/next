@@ -28,7 +28,7 @@ project "next"
 		"source/next_*.h",
 		"source/next_*.cpp",
 	}
-	includedirs { "include", "sodium/include/" }
+	includedirs { "include", "sodium" }
 	filter "system:windows"
 		linkoptions { "/ignore:4221" }
 		disablewarnings { "4324" }
@@ -37,11 +37,13 @@ project "next"
 
 project "sodium"
 	kind "StaticLib"
-	defines { "SODIUM_STATIC", "SODIUM_EXPORT=", "CONFIGURED=1" }
-	includedirs { "sodium/include/sodium" }
+	vectorextensions "AVX2"
+	defines { "NEXT_CRYPTO_LOGS=1", "HAVE_TI_MODE=1", "HAVE_AVX_ASM=1", "HAVE_AMD64_ASM=1", "HAVE_CPUID=1" }
+	includedirs { "sodium" }
 	files {
 		"sodium/**.c",
-		"sodium/**.h"
+		"sodium/**.h",
+		"sodium/**.S"
 	}
 	filter "system:windows"
 		disablewarnings { "4221", "4244", "4715", "4197", "4146", "4324", "4456", "4100", "4459", "4245" }

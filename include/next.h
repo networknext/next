@@ -49,7 +49,6 @@
 #define NEXT_ETHERNET_HEADER_BYTES                               18
 #define NEXT_IPV4_HEADER_BYTES                                   20
 #define NEXT_UDP_HEADER_BYTES                                     8
-#define NEXT_PACKET_HASH_BYTES                                    8
 #define NEXT_HEADER_BYTES                                        34
 
 #define NEXT_LOG_LEVEL_NONE                                       0
@@ -187,8 +186,6 @@ NEXT_EXPORT_FUNC void next_allocator( void * (*malloc_function)( void * context,
 
 NEXT_EXPORT_FUNC const char * next_user_id_string( uint64_t user_id, char * buffer );
 
-NEXT_EXPORT_FUNC bool next_is_network_next_packet( const uint8_t * packet_data, int packet_bytes );
-
 // -----------------------------------------
 
 struct next_address_t
@@ -210,13 +207,15 @@ struct next_client_stats_t
 {
     int platform_id;
     int connection_type;
+    bool next;
+    bool upgraded;
     bool committed;
     bool multipath;
-    bool flagged;
+    bool reported;
+    bool fallback_to_direct;
     float direct_rtt;
     float direct_jitter;
     float direct_packet_loss;
-    bool next;
     float next_rtt;
     float next_jitter;
     float next_packet_loss;
@@ -226,6 +225,10 @@ struct next_client_stats_t
     uint64_t packets_sent_server_to_client;
     uint64_t packets_lost_client_to_server;
     uint64_t packets_lost_server_to_client;
+    uint64_t packets_out_of_order_client_to_server;
+    uint64_t packets_out_of_order_server_to_client;
+    float jitter_client_to_server;
+    float jitter_server_to_client;
     uint64_t user_flags;
 };
 
@@ -257,7 +260,7 @@ NEXT_EXPORT_FUNC void next_client_send_packet( next_client_t * client, const uin
 
 NEXT_EXPORT_FUNC void next_client_send_packet_direct( next_client_t * client, const uint8_t * packet_data, int packet_bytes );
 
-NEXT_EXPORT_FUNC void next_client_flag_session( next_client_t * client );
+NEXT_EXPORT_FUNC void next_client_report_session( next_client_t * client );
 
 NEXT_EXPORT_FUNC uint64_t next_client_session_id( next_client_t * client );
 

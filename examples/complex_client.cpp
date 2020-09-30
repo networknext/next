@@ -296,8 +296,6 @@ int main()
 
             printf( "================================================================\n" );
             
-            printf( "Client Stats:\n" );
-
             const next_client_stats_t * stats = next_client_stats( client );
 
             const char * platform = "unknown";
@@ -358,11 +356,11 @@ int main()
                     break;
             }
 
-            printf( " + State = %s (%d)\n", state_string, state );
+            printf( "state = %s (%d)\n", state_string, state );
 
-            printf( " + Session Id = %" PRIx64 "\n", next_client_session_id( client ) );
+            printf( "session_id = %" PRIx64 "\n", next_client_session_id( client ) );
 
-            printf( " + Platform = %s (%d)\n", platform, (int) stats->platform_id );
+            printf( "platform_id = %s (%d)\n", platform, (int) stats->platform_id );
 
             const char * connection = "unknown";
             
@@ -384,25 +382,41 @@ int main()
                     break;
             }
 
-            printf( " + Connection = %s (%d)\n", connection, stats->connection_type );
+            printf( "connection_type = %s (%d)\n", connection, stats->connection_type );
 
-            printf( " + Committed = %s\n", stats->committed ? "yes" : "no" );
+            if ( !stats->fallback_to_direct )
+            {
+                printf( "upgraded = %s\n", stats->upgraded ? "true" : "false" );
+                printf( "committed = %s\n", stats->committed ? "true" : "false" );
+                printf( "multipath = %s\n", stats->multipath ? "true" : "false" );
+                printf( "reported = %s\n", stats->reported ? "true" : "false" );
+            }
 
-            printf( " + Multipath = %s\n", stats->multipath ? "yes" : "no" );
+            printf( "fallback_to_direct = %s\n", stats->fallback_to_direct ? "true" : "false" );
 
-            printf( " + Flagged = %s\n", stats->flagged ? "yes" : "no" );
-
-            printf( " + Direct RTT = %.2fms\n", stats->direct_rtt );
-            printf( " + Direct Jitter = %.2fms\n", stats->direct_jitter );
-            printf( " + Direct Packet Loss = %.1f%%\n", stats->direct_packet_loss );
+            printf( "direct_rtt = %.2fms\n", stats->direct_rtt );
+            printf( "direct_jitter = %.2fms\n", stats->direct_jitter );
+            printf( "direct_packet_loss = %.1f%%\n", stats->direct_packet_loss );
 
             if ( stats->next )
             {
-                printf( " + Next RTT = %.2fms\n", stats->next_rtt );
-                printf( " + Next Jitter = %.2fms\n", stats->next_jitter );
-                printf( " + Next Packet Loss = %.1f%%\n", stats->next_packet_loss );
-                printf( " + Next Bandwidth Up = %.1fkbps\n", stats->next_kbps_up );
-                printf( " + Next Bandwidth Down = %.1fkbps\n", stats->next_kbps_down );
+                printf( "next_rtt = %.2fms\n", stats->next_rtt );
+                printf( "next_jitter = %.2fms\n", stats->next_jitter );
+                printf( "next_packet_loss = %.1f%%\n", stats->next_packet_loss );
+                printf( "next_bandwidth_up = %.1fkbps\n", stats->next_kbps_up );
+                printf( "next_bandwidth_down = %.1fkbps\n", stats->next_kbps_down );
+            }
+
+            if ( stats->upgraded && !stats->fallback_to_direct )
+            {
+                printf( "packets_sent_client_to_server = %" PRId64 "\n", stats->packets_sent_client_to_server );
+                printf( "packets_sent_server_to_client = %" PRId64 "\n", stats->packets_sent_server_to_client );
+                printf( "packets_lost_client_to_server = %" PRId64 "\n", stats->packets_lost_client_to_server );
+                printf( "packets_lost_server_to_client = %" PRId64 "\n", stats->packets_lost_server_to_client );
+                printf( "packets_out_of_order_client_to_server = %" PRId64 "\n", stats->packets_out_of_order_client_to_server );
+                printf( "packets_out_of_order_server_to_client = %" PRId64 "\n", stats->packets_out_of_order_server_to_client );
+                printf( "jitter_client_to_server = %f\n", stats->jitter_client_to_server );
+                printf( "jitter_server_to_client = %f\n", stats->jitter_server_to_client );
             }
 
             printf( "================================================================\n" );
