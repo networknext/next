@@ -2134,6 +2134,7 @@ func TestFirestore(t *testing.T) {
 			err = fs.AddRelay(ctx, expected)
 			assert.NoError(t, err)
 
+			// change relay state and test
 			actual := expected
 			actual.State = routing.RelayStateDisabled
 
@@ -2145,6 +2146,58 @@ func TestFirestore(t *testing.T) {
 
 			assert.NotEqual(t, expected, actual)
 			actual.State = routing.RelayStateEnabled
+
+			// change relay name and test
+			actual = expected
+			actual.Name = "frobozz.1"
+
+			err = fs.SetRelay(ctx, actual)
+			assert.NoError(t, err)
+
+			actual, err = fs.Relay(expected.ID)
+			assert.NoError(t, err)
+
+			assert.NotEqual(t, expected.Name, actual.Name)
+			actual.Name = expected.Name
+
+			// change relay lastUpdateTime and test
+			actual = expected
+			actual.LastUpdateTime = expected.LastUpdateTime.AddDate(1, 0, 0) // add 1 year
+
+			err = fs.SetRelay(ctx, actual)
+			assert.NoError(t, err)
+
+			actual, err = fs.Relay(expected.ID)
+			assert.NoError(t, err)
+
+			assert.NotEqual(t, expected.LastUpdateTime, actual.LastUpdateTime)
+			actual.LastUpdateTime = expected.LastUpdateTime
+
+			// change relay public key and test
+			actual = expected
+			actual.PublicKey = []byte("SayxSkEo6pfk3efbEGU35B2kTVuGCqPVNL4sy2tG3Dc=")
+
+			err = fs.SetRelay(ctx, actual)
+			assert.NoError(t, err)
+
+			actual, err = fs.Relay(expected.ID)
+			assert.NoError(t, err)
+
+			assert.NotEqual(t, expected.PublicKey, actual.PublicKey)
+			actual.PublicKey = expected.PublicKey
+
+			// change relay NIC speed and test
+			actual = expected
+			actual.NICSpeedMbps = 10000
+
+			err = fs.SetRelay(ctx, actual)
+			assert.NoError(t, err)
+
+			actual, err = fs.Relay(expected.ID)
+			assert.NoError(t, err)
+
+			assert.NotEqual(t, expected.NICSpeedMbps, actual.NICSpeedMbps)
+			actual.NICSpeedMbps = expected.NICSpeedMbps
 
 			assert.Equal(t, expected.ID, actual.ID)
 			assert.Equal(t, expected.Name, actual.Name)
