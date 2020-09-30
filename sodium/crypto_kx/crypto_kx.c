@@ -10,16 +10,6 @@
 #include "utils.h"
 
 int
-crypto_kx_seed_keypair(unsigned char pk[crypto_kx_PUBLICKEYBYTES],
-                       unsigned char sk[crypto_kx_SECRETKEYBYTES],
-                       const unsigned char seed[crypto_kx_SEEDBYTES])
-{
-    crypto_generichash(sk, crypto_kx_SECRETKEYBYTES,
-                       seed, crypto_kx_SEEDBYTES, NULL, 0);
-    return crypto_scalarmult_base(pk, sk);
-}
-
-int
 crypto_kx_keypair(unsigned char pk[crypto_kx_PUBLICKEYBYTES],
                   unsigned char sk[crypto_kx_SECRETKEYBYTES])
 {
@@ -110,34 +100,4 @@ crypto_kx_server_session_keys(unsigned char rx[crypto_kx_SESSIONKEYBYTES],
     sodium_memzero(keys, sizeof keys);
 
     return 0;
-}
-
-size_t
-crypto_kx_publickeybytes(void)
-{
-    return crypto_kx_PUBLICKEYBYTES;
-}
-
-size_t
-crypto_kx_secretkeybytes(void)
-{
-    return crypto_kx_SECRETKEYBYTES;
-}
-
-size_t
-crypto_kx_seedbytes(void)
-{
-    return crypto_kx_SEEDBYTES;
-}
-
-size_t
-crypto_kx_sessionkeybytes(void)
-{
-    return crypto_kx_SESSIONKEYBYTES;
-}
-
-const char *
-crypto_kx_primitive(void)
-{
-    return crypto_kx_PRIMITIVE;
 }
