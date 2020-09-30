@@ -23,6 +23,7 @@
 # endif
 #endif
 #include "private_common.h"
+#include <printf.h>
 
 /* C++Builder defines a "random" macro */
 #undef random
@@ -85,6 +86,8 @@ randombytes_random(void)
 void
 randombytes_stir(void)
 {
+    printf( "randombytes_stir\n" );
+
 #ifndef __EMSCRIPTEN__
     randombytes_init_if_needed();
     if (implementation->stir != NULL) {
