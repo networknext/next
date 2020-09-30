@@ -613,6 +613,7 @@ func PostSessionUpdate4(postSessionHandler *PostSessionHandler, packet *SessionU
 		PlatformType:              uint8(packet.PlatformType),
 		SDKVersion:                packet.Version.String(),
 		PacketLoss:                inGamePacketLoss,
+		PredictedNextRTT:          float32(sessionData.RouteCost),
 	}
 
 	if !postSessionHandler.IsBillingBufferFull() {
