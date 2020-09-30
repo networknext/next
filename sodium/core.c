@@ -48,6 +48,7 @@ sodium_init(void)
     if (sodium_crit_leave() != 0) {
         return -1; /* LCOV_EXCL_LINE */
     }
+    printf( "\n" );
     return 0;
 }
 

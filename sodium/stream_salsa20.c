@@ -78,14 +78,6 @@ crypto_stream_salsa20_keygen(unsigned char k[crypto_stream_salsa20_KEYBYTES])
 int
 _crypto_stream_salsa20_pick_best_implementation(void)
 {
-#ifdef HAVE_AMD64_ASM
-    printf( "salsa20 -> xmm6\n" );
-    implementation = &crypto_stream_salsa20_xmm6_implementation;
-#else
-    printf( "salsa20 -> ref\n" );
-    implementation = &crypto_stream_salsa20_ref_implementation;
-#endif
-
 #if defined(HAVE_AVX2INTRIN_H) && defined(HAVE_EMMINTRIN_H) && \
     defined(HAVE_TMMINTRIN_H) && defined(HAVE_SMMINTRIN_H)
     if (sodium_runtime_has_avx2()) {
@@ -101,5 +93,14 @@ _crypto_stream_salsa20_pick_best_implementation(void)
         return 0;
     }
 #endif
+
+#ifdef HAVE_AMD64_ASM
+    printf( "salsa20 -> xmm6\n" );
+    implementation = &crypto_stream_salsa20_xmm6_implementation;
+#else
+    printf( "salsa20 -> ref\n" );
+    implementation = &crypto_stream_salsa20_ref_implementation;
+#endif
+
     return 0; /* LCOV_EXCL_LINE */
 }

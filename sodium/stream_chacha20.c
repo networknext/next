@@ -8,7 +8,7 @@
 #include "stream_chacha20.h"
 #include <stdio.h>
 
-#include "ref_chacha20.h"
+#include "chacha20-ref.h"
 #if defined(HAVE_AVX2INTRIN_H) && defined(HAVE_EMMINTRIN_H) && \
     defined(HAVE_TMMINTRIN_H) && defined(HAVE_SMMINTRIN_H)
 # include "dolbeau/chacha20_dolbeau-avx2.h"

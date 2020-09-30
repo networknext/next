@@ -86,8 +86,6 @@ randombytes_random(void)
 void
 randombytes_stir(void)
 {
-    printf( "randombytes_stir\n" );
-
 #ifndef __EMSCRIPTEN__
     randombytes_init_if_needed();
     if (implementation->stir != NULL) {

@@ -11,7 +11,7 @@ Public domain.
 #include "utils.h"
 
 #include "stream_salsa20.h"
-#include "ref_salsa20.h"
+#include "salsa20-ref.h"
 
 #ifndef HAVE_AMD64_ASM
 
