@@ -19,8 +19,8 @@
 # include <emmintrin.h>
 # include <tmmintrin.h>
 
-# include "../stream_chacha20.h"
-# include "chacha20_dolbeau-ssse3.h"
+# include "stream_chacha20.h"
+# include "dolbeau_chacha20-ssse3.h"
 
 # define ROUNDS 20
 
@@ -72,9 +72,9 @@ chacha20_encrypt_bytes(chacha_ctx *ctx, const uint8_t *m, uint8_t *c,
     if (!bytes) {
         return; /* LCOV_EXCL_LINE */
     }
-# include "u4.h"
-# include "u1.h"
-# include "u0.h"
+# include "dolbeau_u4.h"
+# include "dolbeau_u1.h"
+# include "dolbeau_u0.h"
 }
 
 static int

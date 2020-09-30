@@ -11,10 +11,10 @@
 #include "chacha20-ref.h"
 #if defined(HAVE_AVX2INTRIN_H) && defined(HAVE_EMMINTRIN_H) && \
     defined(HAVE_TMMINTRIN_H) && defined(HAVE_SMMINTRIN_H)
-# include "dolbeau/chacha20_dolbeau-avx2.h"
+# include "dolbeau_chacha20-avx2.h"
 #endif
 #if defined(HAVE_EMMINTRIN_H) && defined(HAVE_TMMINTRIN_H)
-# include "dolbeau/chacha20_dolbeau-ssse3.h"
+# include "dolbeau_chacha20-ssse3.h"
 #endif
 
 static const crypto_stream_chacha20_implementation *implementation =
