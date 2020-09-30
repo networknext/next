@@ -60,7 +60,6 @@ int next_crypto_sign_keypair( unsigned char * pk, unsigned char * sk )
 
 int next_crypto_sign_init( struct next_crypto_sign_state_t * state )
 {
-    next_assert( sizeof(next_crypto_sign_state_t) >= sizeof(crypto_sign_state) );
     return crypto_sign_init( (crypto_sign_state*) state );
 }
 

@@ -10,17 +10,15 @@ solution "next"
 		symbols "On"
 		defines { "_DEBUG" }
 	filter "configurations:Release"
-		symbols "On"
 		optimize "Speed"
 		defines { "NDEBUG" }
+		editandcontinue "Off"
 	filter "system:windows"
 		architecture "x86_64"
-	filter "system:windows"
 		location ("visualstudio")
 
 project "next"
 	kind "StaticLib"
-	defines { "NEXT_EXPORT", "SODIUM_STATIC" }
 	links { "sodium" }
 	files {
 		"include/next.h",
@@ -38,18 +36,21 @@ project "next"
 project "sodium"
 	kind "StaticLib"
 	vectorextensions "AVX2"
-	defines { "NEXT_CRYPTO_LOGS=1", "HAVE_TI_MODE=1", "HAVE_AVX_ASM=1", "HAVE_AMD64_ASM=1", "HAVE_CPUID=1" }
+	defines { "NEXT_CRYPTO_LOGS=1" }
 	includedirs { "sodium" }
 	files {
 		"sodium/**.c",
 		"sodium/**.h",
-		"sodium/**.S"
 	}
+	filter "system:not windows"
+	    -- todo: move these into config.h for x64 only GCC/Clang
+		defines { "HAVE_TI_MODE=1", "HAVE_AVX_ASM=1", "HAVE_AMD64_ASM=1", "HAVE_CPUID=1" }
+		files {
+			"sodium/**.S"
+		}
 	filter "system:windows"
 		disablewarnings { "4221", "4244", "4715", "4197", "4146", "4324", "4456", "4100", "4459", "4245" }
 		linkoptions { "/ignore:4221" }
-	filter { "action:vs2010"}
-		defines { "inline=__inline;NATIVE_LITTLE_ENDIAN;_CRT_SECURE_NO_WARNINGS;" }
 	configuration { "gmake" }
   		buildoptions { "-Wno-unused-parameter", "-Wno-unused-function", "-Wno-unknown-pragmas", "-Wno-unused-variable", "-Wno-type-limits" }
 
@@ -70,7 +71,6 @@ project "soak"
 	links { "next", "sodium" }
 	files { "soak.cpp" }
 	includedirs { "include" }
-	defines { "SODIUM_STATIC" }
 	filter "system:windows"
 		disablewarnings { "4324" }
 	filter "system:not windows"
@@ -83,7 +83,6 @@ project "simple_client"
 	links { "next", "sodium" }
 	files { "examples/simple_client.cpp" }
 	includedirs { "include" }
-	defines { "SODIUM_STATIC" }
 	filter "system:windows"
 		disablewarnings { "4324" }
 	filter "system:not windows"
@@ -96,7 +95,6 @@ project "simple_server"
 	links { "next", "sodium" }
 	files { "examples/simple_server.cpp" }
 	includedirs { "include" }
-	defines { "SODIUM_STATIC" }
 	filter "system:windows"
 		disablewarnings { "4324" }
 	filter "system:not windows"
@@ -109,7 +107,6 @@ project "upgraded_client"
 	links { "next", "sodium" }
 	files { "examples/upgraded_client.cpp" }
 	includedirs { "include" }
-	defines { "SODIUM_STATIC" }
 	filter "system:windows"
 		disablewarnings { "4324" }
 	filter "system:not windows"
@@ -122,7 +119,6 @@ project "upgraded_server"
 	links { "next", "sodium" }
 	files { "examples/upgraded_server.cpp" }
 	includedirs { "include" }
-	defines { "SODIUM_STATIC" }
 	filter "system:windows"
 		disablewarnings { "4324" }
 	filter "system:not windows"
@@ -135,7 +131,6 @@ project "complex_client"
 	links { "next", "sodium" }
 	files { "examples/complex_client.cpp" }
 	includedirs { "include" }
-	defines { "SODIUM_STATIC" }
 	filter "system:windows"
 		disablewarnings { "4324" }
 	filter "system:not windows"
@@ -148,7 +143,6 @@ project "complex_server"
 	links { "next", "sodium" }
 	files { "examples/complex_server.cpp" }
 	includedirs { "include" }
-	defines { "SODIUM_STATIC" }
 	filter "system:windows"
 		disablewarnings { "4324" }
 	filter "system:not windows"

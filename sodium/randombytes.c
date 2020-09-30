@@ -23,7 +23,7 @@
 # endif
 #endif
 #include "private_common.h"
-#include <printf.h>
+#include <stdio.h>
 
 /* C++Builder defines a "random" macro */
 #undef random

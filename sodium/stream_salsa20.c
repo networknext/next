@@ -9,7 +9,7 @@
 #ifdef HAVE_AMD64_ASM
 # include "salsa20-xmm6.h"
 #else
-# include "ref_salsa20.h"
+# include "salsa20-ref.h"
 #endif
 #if !defined(HAVE_AMD64_ASM) && defined(HAVE_EMMINTRIN_H)
 # include "xmm6int_salsa20-sse2.h"
