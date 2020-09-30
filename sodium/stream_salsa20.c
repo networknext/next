@@ -4,6 +4,7 @@
 #include "randombytes.h"
 #include "runtime.h"
 #include "stream_salsa20.h"
+#include <stdio.h>
 
 #ifdef HAVE_AMD64_ASM
 # include "xmm6/salsa20_xmm6.h"
@@ -78,20 +79,24 @@ int
 _crypto_stream_salsa20_pick_best_implementation(void)
 {
 #ifdef HAVE_AMD64_ASM
+    printf( "salsa20 -> xmm6\n" );
     implementation = &crypto_stream_salsa20_xmm6_implementation;
 #else
+    printf( "salsa20 -> ref\n" );
     implementation = &crypto_stream_salsa20_ref_implementation;
 #endif
 
 #if defined(HAVE_AVX2INTRIN_H) && defined(HAVE_EMMINTRIN_H) && \
     defined(HAVE_TMMINTRIN_H) && defined(HAVE_SMMINTRIN_H)
     if (sodium_runtime_has_avx2()) {
+        printf( "salsa20 -> avx2\n" );
         implementation = &crypto_stream_salsa20_xmm6int_avx2_implementation;
         return 0;
     }
 #endif
 #if !defined(HAVE_AMD64_ASM) && defined(HAVE_EMMINTRIN_H)
     if (sodium_runtime_has_sse2()) {
+        printf( "salsa20 -> sse2\n" );
         implementation = &crypto_stream_salsa20_xmm6int_sse2_implementation;
         return 0;
     }

@@ -3,6 +3,7 @@
 #include "private_implementations.h"
 #include "scalarmult_curve25519.h"
 #include "runtime.h"
+#include <stdio.h>
 
 #ifdef HAVE_AVX_ASM
 # include "sandy2x/curve25519_sandy2x.h"
@@ -52,8 +53,10 @@ _crypto_scalarmult_curve25519_pick_best_implementation(void)
 
 #ifdef HAVE_AVX_ASM
     if (sodium_runtime_has_avx()) {
+        printf( "curve25519 -> avx\n" );
         implementation = &crypto_scalarmult_curve25519_sandy2x_implementation;
     }
 #endif
+    printf( "curve25519 -> ref\n" );
     return 0;
 }
