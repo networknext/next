@@ -27,7 +27,6 @@ extern "C" {
 #define crypto_sign_edwards25519sha512batch_SECRETKEYBYTES (32U + 32U)
 #define crypto_sign_edwards25519sha512batch_MESSAGEBYTES_MAX (SODIUM_SIZE_MAX - crypto_sign_edwards25519sha512batch_BYTES)
 
-SODIUM_EXPORT
 int crypto_sign_edwards25519sha512batch(unsigned char *sm,
                                         unsigned long long *smlen_p,
                                         const unsigned char *m,
@@ -35,7 +34,6 @@ int crypto_sign_edwards25519sha512batch(unsigned char *sm,
                                         const unsigned char *sk)
             __attribute__ ((deprecated)) __attribute__ ((nonnull(1, 3, 5)));
 
-SODIUM_EXPORT
 int crypto_sign_edwards25519sha512batch_open(unsigned char *m,
                                              unsigned long long *mlen_p,
                                              const unsigned char *sm,
@@ -43,7 +41,6 @@ int crypto_sign_edwards25519sha512batch_open(unsigned char *m,
                                              const unsigned char *pk)
             __attribute__ ((deprecated)) __attribute__ ((nonnull(3, 5)));
 
-SODIUM_EXPORT
 int crypto_sign_edwards25519sha512batch_keypair(unsigned char *pk,
                                                 unsigned char *sk)
             __attribute__ ((deprecated)) __attribute__ ((nonnull));

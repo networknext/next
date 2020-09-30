@@ -21,15 +21,12 @@ extern "C" {
 #endif
 
 #define crypto_hash_BYTES crypto_hash_sha512_BYTES
-SODIUM_EXPORT
 size_t crypto_hash_bytes(void);
 
-SODIUM_EXPORT
 int crypto_hash(unsigned char *out, const unsigned char *in,
                 unsigned long long inlen) __attribute__ ((nonnull));
 
 #define crypto_hash_PRIMITIVE "sha512"
-SODIUM_EXPORT
 const char *crypto_hash_primitive(void)
             __attribute__ ((warn_unused_result));
 

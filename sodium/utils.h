@@ -18,10 +18,8 @@ extern "C" {
 # endif
 #endif
 
-SODIUM_EXPORT
 void sodium_memzero(void * const pnt, const size_t len) __attribute__ ((nonnull));
 
-SODIUM_EXPORT
 void sodium_stackzero(const size_t len);
 
 /*
@@ -30,7 +28,6 @@ void sodium_stackzero(const size_t len);
  * It returns 0 if the keys are equal, and -1 if they differ.
  * This function is not designed for lexicographical comparisons.
  */
-SODIUM_EXPORT
 int sodium_memcmp(const void * const b1_, const void * const b2_, size_t len)
             __attribute__ ((warn_unused_result)) __attribute__ ((nonnull));
 
@@ -40,31 +37,24 @@ int sodium_memcmp(const void * const b1_, const void * const b2_, size_t len)
  * and counters stored in little-endian format.
  * However, it is slower than sodium_memcmp().
  */
-SODIUM_EXPORT
 int sodium_compare(const unsigned char *b1_, const unsigned char *b2_,
                    size_t len)
             __attribute__ ((warn_unused_result)) __attribute__ ((nonnull));
 
-SODIUM_EXPORT
 int sodium_is_zero(const unsigned char *n, const size_t nlen);
 
-SODIUM_EXPORT
 void sodium_increment(unsigned char *n, const size_t nlen);
 
-SODIUM_EXPORT
 void sodium_add(unsigned char *a, const unsigned char *b, const size_t len)
             __attribute__ ((nonnull));
 
-SODIUM_EXPORT
 void sodium_sub(unsigned char *a, const unsigned char *b, const size_t len)
             __attribute__ ((nonnull));
 
-SODIUM_EXPORT
 char *sodium_bin2hex(char * const hex, const size_t hex_maxlen,
                      const unsigned char * const bin, const size_t bin_len)
             __attribute__ ((nonnull));
 
-SODIUM_EXPORT
 int sodium_hex2bin(unsigned char * const bin, const size_t bin_maxlen,
                    const char * const hex, const size_t hex_len,
                    const char * const ignore, size_t * const bin_len,
@@ -85,26 +75,21 @@ int sodium_hex2bin(unsigned char * const bin, const size_t bin_maxlen,
     ((((BIN_LEN) - ((BIN_LEN) / 3U) * 3U) | (((BIN_LEN) - ((BIN_LEN) / 3U) * 3U) >> 1)) & 1U) * \
      (4U - (~((((VARIANT) & 2U) >> 1) - 1U) & (3U - ((BIN_LEN) - ((BIN_LEN) / 3U) * 3U)))) + 1U)
 
-SODIUM_EXPORT
 size_t sodium_base64_encoded_len(const size_t bin_len, const int variant);
 
-SODIUM_EXPORT
 char *sodium_bin2base64(char * const b64, const size_t b64_maxlen,
                         const unsigned char * const bin, const size_t bin_len,
                         const int variant) __attribute__ ((nonnull));
 
-SODIUM_EXPORT
 int sodium_base642bin(unsigned char * const bin, const size_t bin_maxlen,
                       const char * const b64, const size_t b64_len,
                       const char * const ignore, size_t * const bin_len,
                       const char ** const b64_end, const int variant)
             __attribute__ ((nonnull(1, 3)));
 
-SODIUM_EXPORT
 int sodium_mlock(void * const addr, const size_t len)
             __attribute__ ((nonnull));
 
-SODIUM_EXPORT
 int sodium_munlock(void * const addr, const size_t len)
             __attribute__ ((nonnull));
 
@@ -141,32 +126,24 @@ int sodium_munlock(void * const addr, const size_t len)
  * state = sodium_malloc(crypto_generichash_statebytes());
  */
 
-SODIUM_EXPORT
 void *sodium_malloc(const size_t size)
             __attribute__ ((malloc));
 
-SODIUM_EXPORT
 void *sodium_allocarray(size_t count, size_t size)
             __attribute__ ((malloc));
 
-SODIUM_EXPORT
 void sodium_free(void *ptr);
 
-SODIUM_EXPORT
 int sodium_mprotect_noaccess(void *ptr) __attribute__ ((nonnull));
 
-SODIUM_EXPORT
 int sodium_mprotect_readonly(void *ptr) __attribute__ ((nonnull));
 
-SODIUM_EXPORT
 int sodium_mprotect_readwrite(void *ptr) __attribute__ ((nonnull));
 
-SODIUM_EXPORT
 int sodium_pad(size_t *padded_buflen_p, unsigned char *buf,
                size_t unpadded_buflen, size_t blocksize, size_t max_buflen)
             __attribute__ ((nonnull(2)));
 
-SODIUM_EXPORT
 int sodium_unpad(size_t *unpadded_buflen_p, const unsigned char *buf,
                  size_t padded_buflen, size_t blocksize)
             __attribute__ ((nonnull(2)));

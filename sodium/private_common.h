@@ -196,6 +196,7 @@ xor_buf(unsigned char *out, const unsigned char *in, size_t n)
     }
 }
 
+
 #if !defined(__clang__) && !defined(__GNUC__)
 # ifdef __attribute__
 #  undef __attribute__
@@ -211,7 +212,21 @@ xor_buf(unsigned char *out, const unsigned char *in, size_t n)
 # endif
 #endif
 
-// todo: if clang or gcc, and x64, do the intrinsics as well
+#if defined(__clang__) || defined(__GNUC__) && defined(__x86_64__)
+
+# define HAVE_MMINTRIN_H  1
+# define HAVE_EMMINTRIN_H 1
+# define HAVE_PMMINTRIN_H 1
+# define HAVE_TMMINTRIN_H 1
+# define HAVE_SMMINTRIN_H 1
+# define HAVE_AVXINTRIN_H 1
+# define HAVE_WMMINTRIN_H 1
+# define HAVE_AVX2INTRIN_H 1
+# define HAVE_AVX_ASM 1
+# define HAVE_AMD64_ASM 1
+# define HAVE_CPUID 1
+
+#endif
 
 #if defined(_MSC_VER) && \
     (defined(_M_X64) || defined(_M_AMD64) || defined(_M_IX86))

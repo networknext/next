@@ -11,7 +11,6 @@
 extern "C" {
 # endif
 
-SODIUM_EXPORT
 extern struct randombytes_implementation randombytes_nativeclient_implementation;
 
 # ifdef __cplusplus
