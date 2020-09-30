@@ -600,11 +600,9 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 	s.mapPointsCompactBuyerCache = make(map[string]json.RawMessage, 0)
 
 	for _, buyer := range buyers {
-		stringID := fmt.Sprintf("%016x", buyer.ID)
-
 		directPointStrings, nextPointStrings, err := s.getDirectAndNextMapPointStrings(&buyer)
 		if err != nil && err != redis.ErrNil {
-			err = fmt.Errorf("SessionMapPoints() failed getting map points for buyer %s: %v", stringID, err)
+			err = fmt.Errorf("SessionMapPoints() failed getting map points for buyer %s: %v", buyer.CompanyCode, err)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
@@ -613,16 +611,16 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 		for _, directPointString := range directPointStrings {
 			directSplitStrings := strings.Split(directPointString, "|")
 			if err := point.ParseRedisString(directSplitStrings); err != nil {
-				err = fmt.Errorf("SessionMapPoints() failed to parse direct map point for buyer %s: %v", stringID, err)
+				err = fmt.Errorf("SessionMapPoints() failed to parse direct map point for buyer %s: %v", buyer.CompanyCode, err)
 				level.Error(s.Logger).Log("err", err)
 				return err
 			}
 
 			if point.Latitude != 0 && point.Longitude != 0 {
-				mapPointsBuyers[stringID] = append(mapPointsBuyers[stringID], point)
+				mapPointsBuyers[buyer.CompanyCode] = append(mapPointsBuyers[buyer.CompanyCode], point)
 				mapPointsGlobal = append(mapPointsGlobal, point)
 
-				mapPointsBuyersCompact[stringID] = append(mapPointsBuyersCompact[stringID], []interface{}{point.Longitude, point.Latitude, false})
+				mapPointsBuyersCompact[buyer.CompanyCode] = append(mapPointsBuyersCompact[buyer.CompanyCode], []interface{}{point.Longitude, point.Latitude, false})
 				mapPointsGlobalCompact = append(mapPointsGlobalCompact, []interface{}{point.Longitude, point.Latitude, false})
 			}
 		}
@@ -630,26 +628,26 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 		for _, nextPointString := range nextPointStrings {
 			nextSplitStrings := strings.Split(nextPointString, "|")
 			if err := point.ParseRedisString(nextSplitStrings); err != nil {
-				err = fmt.Errorf("SessionMapPoints() failed to next parse map point for buyer %s: %v", stringID, err)
+				err = fmt.Errorf("SessionMapPoints() failed to next parse map point for buyer %s: %v", buyer.CompanyCode, err)
 				level.Error(s.Logger).Log("err", err)
 				return err
 			}
 
 			if point.Latitude != 0 && point.Longitude != 0 {
-				mapPointsBuyers[stringID] = append(mapPointsBuyers[stringID], point)
+				mapPointsBuyers[buyer.CompanyCode] = append(mapPointsBuyers[buyer.CompanyCode], point)
 				mapPointsGlobal = append(mapPointsGlobal, point)
 
-				mapPointsBuyersCompact[stringID] = append(mapPointsBuyersCompact[stringID], []interface{}{point.Longitude, point.Latitude, true})
+				mapPointsBuyersCompact[buyer.CompanyCode] = append(mapPointsBuyersCompact[buyer.CompanyCode], []interface{}{point.Longitude, point.Latitude, true})
 				mapPointsGlobalCompact = append(mapPointsGlobalCompact, []interface{}{point.Longitude, point.Latitude, true})
 			}
 		}
 
-		s.mapPointsBuyerCache[stringID], err = json.Marshal(mapPointsBuyers[stringID])
+		s.mapPointsBuyerCache[buyer.CompanyCode], err = json.Marshal(mapPointsBuyers[buyer.CompanyCode])
 		if err != nil {
 			return err
 		}
 
-		s.mapPointsCompactBuyerCache[stringID], err = json.Marshal(mapPointsBuyersCompact[stringID])
+		s.mapPointsCompactBuyerCache[buyer.CompanyCode], err = json.Marshal(mapPointsBuyersCompact[buyer.CompanyCode])
 		if err != nil {
 			return err
 		}
@@ -1158,7 +1156,7 @@ func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *Buye
 			ID:          id,
 			IsLive:      b.Live,
 		}
-		if VerifyAllRoles(r, s.SameBuyerRole(id)) {
+		if VerifyAllRoles(r, s.SameBuyerRole(b.CompanyCode)) {
 			reply.Buyers = append(reply.Buyers, account)
 		}
 	}

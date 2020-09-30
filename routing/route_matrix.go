@@ -130,8 +130,8 @@ func (m *RouteMatrix) GetNearRelays(latitude float64, longitude float64, maxNear
 }
 
 // GetDatacenterRelays will return the set of Relays in the provided Datacenter
-func (m *RouteMatrix) GetDatacenterRelayIDs(d Datacenter) []uint64 {
-	relayIDs, ok := m.DatacenterRelays[d.ID]
+func (m *RouteMatrix) GetDatacenterRelayIDs(datacenterID uint64) []uint64 {
+	relayIDs, ok := m.DatacenterRelays[datacenterID]
 	if !ok {
 		return nil
 	}

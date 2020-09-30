@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
+	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 )
@@ -191,6 +192,12 @@ func (e *SequenceNumbersOutOfSync) Error() string {
 }
 
 func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicKey []byte, customerID uint64, customerPublicKey []byte) {
+	routeShader := core.NewRouteShader()
+	routeShader.AcceptableLatency = -1
+	routeShader.LatencyThreshold = -1
+
+	internalConfig := core.NewInternalConfig()
+
 	shouldFill := false
 	switch db := db.(type) {
 	case *Firestore:
@@ -251,6 +258,8 @@ func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicK
 			CompanyCode:          "local",
 			Live:                 true,
 			PublicKey:            customerPublicKey,
+			RouteShader:          routeShader,
+			InternalConfig:       internalConfig,
 			RoutingRulesSettings: routing.LocalRoutingRulesSettings,
 		}); err != nil {
 			level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
@@ -261,6 +270,8 @@ func SeedStorage(logger log.Logger, ctx context.Context, db Storer, relayPublicK
 			CompanyCode:          "ghost-army",
 			Live:                 true,
 			PublicKey:            customerPublicKey,
+			RouteShader:          routeShader,
+			InternalConfig:       internalConfig,
 			RoutingRulesSettings: routing.LocalRoutingRulesSettings,
 		}); err != nil {
 			level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
