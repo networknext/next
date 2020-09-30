@@ -4608,7 +4608,7 @@ int next_encrypt_route_token( uint8_t * sender_private_key, uint8_t * receiver_p
 
     (void) buffer_length;
 
-    if ( crypto_box_easy( buffer, buffer, NEXT_ROUTE_TOKEN_BYTES, nonce, receiver_public_key, sender_private_key ) != 0 )
+    if ( next_crypto_box_easy( buffer, buffer, NEXT_ROUTE_TOKEN_BYTES, nonce, receiver_public_key, sender_private_key ) != 0 )
     {
         return NEXT_ERROR;
     }
@@ -4622,7 +4622,7 @@ int next_decrypt_route_token( const uint8_t * sender_public_key, const uint8_t *
     next_assert( receiver_private_key );
     next_assert( buffer );
 
-    if ( crypto_box_open_easy( buffer, buffer, NEXT_ROUTE_TOKEN_BYTES + NEXT_CRYPTO_BOX_MACBYTES, nonce, sender_public_key, receiver_private_key ) != 0 )
+    if ( next_crypto_box_open_easy( buffer, buffer, NEXT_ROUTE_TOKEN_BYTES + NEXT_CRYPTO_BOX_MACBYTES, nonce, sender_public_key, receiver_private_key ) != 0 )
     {
         return NEXT_ERROR;
     }
@@ -4734,7 +4734,7 @@ int next_encrypt_continue_token( uint8_t * sender_private_key, uint8_t * receive
 
     (void) buffer_length;
 
-    if ( crypto_box_easy( buffer, buffer, NEXT_CONTINUE_TOKEN_BYTES, nonce, receiver_public_key, sender_private_key ) != 0 )
+    if ( next_crypto_box_easy( buffer, buffer, NEXT_CONTINUE_TOKEN_BYTES, nonce, receiver_public_key, sender_private_key ) != 0 )
     {
         return NEXT_ERROR;
     }
@@ -4748,7 +4748,7 @@ int next_decrypt_continue_token( const uint8_t * sender_public_key, const uint8_
     next_assert( receiver_private_key );
     next_assert( buffer );
 
-    if ( crypto_box_open_easy( buffer, buffer, NEXT_CONTINUE_TOKEN_BYTES + NEXT_CRYPTO_BOX_MACBYTES, nonce, sender_public_key, receiver_private_key ) != 0 )
+    if ( next_crypto_box_open_easy( buffer, buffer, NEXT_CONTINUE_TOKEN_BYTES + NEXT_CRYPTO_BOX_MACBYTES, nonce, sender_public_key, receiver_private_key ) != 0 )
     {
         return NEXT_ERROR;
     }
@@ -6134,7 +6134,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         uint8_t client_send_key[NEXT_CRYPTO_KX_SESSIONKEYBYTES];
         uint8_t client_receive_key[NEXT_CRYPTO_KX_SESSIONKEYBYTES];
-        if ( crypto_kx_client_session_keys( client_receive_key, client_send_key, client->client_kx_public_key, client->client_kx_private_key, packet.server_kx_public_key ) != 0 )
+        if ( next_crypto_kx_client_session_keys( client_receive_key, client_send_key, client->client_kx_public_key, client->client_kx_private_key, packet.server_kx_public_key ) != 0 )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade confirm packet from server. could not generate session keys from server public key" );
             return;
@@ -6723,8 +6723,8 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 client->last_direct_ping_time = next_time();
                 client->last_stats_update_time = next_time(); 
                 client->last_stats_report_time = next_time() + next_random_float();
-                crypto_kx_keypair( client->client_kx_public_key, client->client_kx_private_key );
-                crypto_box_keypair( client->client_route_public_key, client->client_route_private_key );
+                next_crypto_kx_keypair( client->client_kx_public_key, client->client_kx_private_key );
+                next_crypto_box_keypair( client->client_route_public_key, client->client_route_private_key );
                 char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
                 next_printf( NEXT_LOG_LEVEL_INFO, "client opened session to %s", next_address_to_string( &open_session_command->server_address, buffer ) );
                 client->counters[NEXT_CLIENT_COUNTER_OPEN_SESSION]++;
@@ -10036,9 +10036,9 @@ next_server_internal_t * next_server_internal_create( void * context, const char
 
     next_printf( NEXT_LOG_LEVEL_INFO, "server started on %s", next_address_to_string( &server_address, address_string ) );
 
-    crypto_kx_keypair( server->server_kx_public_key, server->server_kx_private_key );
+    next_crypto_kx_keypair( server->server_kx_public_key, server->server_kx_private_key );
 
-    crypto_box_keypair( server->server_route_public_key, server->server_route_private_key );
+    next_crypto_box_keypair( server->server_route_public_key, server->server_route_private_key );
 
     server->last_backend_server_update = next_time() - NEXT_SECONDS_BETWEEN_SERVER_UPDATES * next_random_float();
 
@@ -10792,7 +10792,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
             uint8_t server_send_key[NEXT_CRYPTO_KX_SESSIONKEYBYTES];
             uint8_t server_receive_key[NEXT_CRYPTO_KX_SESSIONKEYBYTES];
-            if ( crypto_kx_server_session_keys( server_receive_key, server_send_key, server->server_kx_public_key, server->server_kx_private_key, packet.client_kx_public_key ) != 0 )
+            if ( next_crypto_kx_server_session_keys( server_receive_key, server_send_key, server->server_kx_public_key, server->server_kx_private_key, packet.client_kx_public_key ) != 0 )
             {
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server could not generate session keys from client public key" );
                 return;
@@ -13179,19 +13179,19 @@ static void test_crypto_box()
 
     unsigned char sender_publickey[NEXT_CRYPTO_BOX_PUBLICKEYBYTES];
     unsigned char sender_secretkey[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
-    crypto_box_keypair( sender_publickey, sender_secretkey );
+    next_crypto_box_keypair( sender_publickey, sender_secretkey );
 
     unsigned char receiver_publickey[NEXT_CRYPTO_BOX_PUBLICKEYBYTES];
     unsigned char receiver_secretkey[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
-    crypto_box_keypair( receiver_publickey, receiver_secretkey );
+    next_crypto_box_keypair( receiver_publickey, receiver_secretkey );
 
     unsigned char nonce[NEXT_CRYPTO_BOX_NONCEBYTES];
     unsigned char ciphertext[CRYPTO_BOX_CIPHERTEXT_LEN];
     next_random_bytes( nonce, sizeof nonce );
-    check( crypto_box_easy( ciphertext, CRYPTO_BOX_MESSAGE, CRYPTO_BOX_MESSAGE_LEN, nonce, receiver_publickey, sender_secretkey ) == 0 );
+    check( next_crypto_box_easy( ciphertext, CRYPTO_BOX_MESSAGE, CRYPTO_BOX_MESSAGE_LEN, nonce, receiver_publickey, sender_secretkey ) == 0 );
 
     unsigned char decrypted[CRYPTO_BOX_MESSAGE_LEN];
-    check( crypto_box_open_easy( decrypted, ciphertext, CRYPTO_BOX_CIPHERTEXT_LEN, nonce, sender_publickey, receiver_secretkey ) == 0 );
+    check( next_crypto_box_open_easy( decrypted, ciphertext, CRYPTO_BOX_CIPHERTEXT_LEN, nonce, sender_publickey, receiver_secretkey ) == 0 );
 
     check( memcmp( decrypted, CRYPTO_BOX_MESSAGE, CRYPTO_BOX_MESSAGE_LEN ) == 0 );
 }
@@ -13316,19 +13316,19 @@ static void test_crypto_key_exchange()
 {
     uint8_t client_public_key[NEXT_CRYPTO_KX_PUBLICKEYBYTES];
     uint8_t client_private_key[NEXT_CRYPTO_KX_SECRETKEYBYTES];
-    crypto_kx_keypair( client_public_key, client_private_key );
+    next_crypto_kx_keypair( client_public_key, client_private_key );
 
     uint8_t server_public_key[NEXT_CRYPTO_KX_PUBLICKEYBYTES];
     uint8_t server_private_key[NEXT_CRYPTO_KX_SECRETKEYBYTES];
-    crypto_kx_keypair( server_public_key, server_private_key );
+    next_crypto_kx_keypair( server_public_key, server_private_key );
 
     uint8_t client_send_key[NEXT_CRYPTO_KX_SESSIONKEYBYTES];
     uint8_t client_receive_key[NEXT_CRYPTO_KX_SESSIONKEYBYTES];
-    check( crypto_kx_client_session_keys( client_receive_key, client_send_key, client_public_key, client_private_key, server_public_key ) == 0 );
+    check( next_crypto_kx_client_session_keys( client_receive_key, client_send_key, client_public_key, client_private_key, server_public_key ) == 0 );
 
     uint8_t server_send_key[NEXT_CRYPTO_KX_SESSIONKEYBYTES];
     uint8_t server_receive_key[NEXT_CRYPTO_KX_SESSIONKEYBYTES];
-    check( crypto_kx_server_session_keys( server_receive_key, server_send_key, server_public_key, server_private_key, client_public_key ) == 0 );
+    check( next_crypto_kx_server_session_keys( server_receive_key, server_send_key, server_public_key, server_private_key, client_public_key ) == 0 );
 
     check( memcmp( client_send_key, server_receive_key, NEXT_CRYPTO_KX_SESSIONKEYBYTES ) == 0 );
     check( memcmp( server_send_key, client_receive_key, NEXT_CRYPTO_KX_SESSIONKEYBYTES ) == 0 );
@@ -14742,11 +14742,11 @@ static void test_route_token()
 
     unsigned char sender_public_key[NEXT_CRYPTO_BOX_PUBLICKEYBYTES];
     unsigned char sender_private_key[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
-    crypto_box_keypair( sender_public_key, sender_private_key );
+    next_crypto_box_keypair( sender_public_key, sender_private_key );
 
     unsigned char receiver_public_key[NEXT_CRYPTO_BOX_PUBLICKEYBYTES];
     unsigned char receiver_private_key[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
-    crypto_box_keypair( receiver_public_key, receiver_private_key );
+    next_crypto_box_keypair( receiver_public_key, receiver_private_key );
 
     unsigned char nonce[NEXT_CRYPTO_BOX_NONCEBYTES];
     next_random_bytes( nonce, NEXT_CRYPTO_BOX_NONCEBYTES );
@@ -14799,11 +14799,11 @@ static void test_continue_token()
 
     unsigned char sender_public_key[NEXT_CRYPTO_BOX_PUBLICKEYBYTES];
     unsigned char sender_private_key[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
-    crypto_box_keypair( sender_public_key, sender_private_key );
+    next_crypto_box_keypair( sender_public_key, sender_private_key );
 
     unsigned char receiver_public_key[NEXT_CRYPTO_BOX_PUBLICKEYBYTES];
     unsigned char receiver_private_key[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
-    crypto_box_keypair( receiver_public_key, receiver_private_key );
+    next_crypto_box_keypair( receiver_public_key, receiver_private_key );
 
     unsigned char nonce[NEXT_CRYPTO_BOX_NONCEBYTES];
     next_random_bytes( nonce, NEXT_CRYPTO_BOX_NONCEBYTES );

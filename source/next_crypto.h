@@ -87,4 +87,16 @@ int next_crypto_aead_chacha20poly1305_ietf_encrypt( unsigned char * c, unsigned 
 
 int next_crypto_aead_chacha20poly1305_ietf_decrypt( unsigned char * m, unsigned long long * mlen_p, unsigned char * nsec, const unsigned char * c, unsigned long long clen, const unsigned char * ad, unsigned long long adlen, const unsigned char * npub, const unsigned char * k );
 
+int next_crypto_kx_keypair( unsigned char * pk, unsigned char * sk );
+
+int next_crypto_kx_client_session_keys( unsigned char * rx, unsigned char * tx, const unsigned char * client_pk, const unsigned char * client_sk, const unsigned char * server_pk );
+
+int next_crypto_kx_server_session_keys( unsigned char * rx, unsigned char * tx, const unsigned char * server_pk, const unsigned char * server_sk, const unsigned char * client_pk );
+
+int next_crypto_box_keypair( unsigned char * pk, unsigned char * sk );
+
+int next_crypto_box_easy( unsigned char * c, const unsigned char * m, unsigned long long mlen, const unsigned char * n, const unsigned char * pk, const unsigned char * sk );
+
+int next_crypto_box_open_easy( unsigned char * m, const unsigned char * c, unsigned long long clen, const unsigned char * n, const unsigned char * pk, const unsigned char * sk );
+
 #endif // #ifndef NEXT_CRYPTO_H
