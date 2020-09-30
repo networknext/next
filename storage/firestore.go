@@ -1473,8 +1473,10 @@ func (fs *Firestore) UpdateRelay(ctx context.Context, modifiedRelay routing.Rela
 	}
 
 	// docs is a slice of length 1
+	counter := 1
 	for _, doc := range docs {
 		fmt.Printf("found relay: %v\n", doc.Ref)
+		fmt.Printf("counter    : %d\n", counter)
 		// for key, value := range dirtyFields {
 		// 	fmt.Printf("key: %s, value: %v\n", key, value)
 		// 	_, err = doc.Ref.Update(ctx, []firestore.Update{{Path: "state", Value: routing.RelayStateDisabled}})
@@ -1485,6 +1487,7 @@ func (fs *Firestore) UpdateRelay(ctx context.Context, modifiedRelay routing.Rela
 		if _, err := (*doc).Ref.Set(ctx, dirtyFields, firestore.MergeAll); err != nil {
 			return &FirestoreError{err: err}
 		}
+		counter += 1
 	}
 
 	fs.relayMutex.Lock()
