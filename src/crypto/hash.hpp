@@ -22,18 +22,18 @@ namespace crypto
   // index is the start of the packet, including the area reserved for the hash
   // length is the total length of the packet, including the hash
   template <typename T>
-  auto is_network_next_packet(const T& buffer, size_t& index, size_t length) -> bool;
+  auto is_network_next_packet(const T& buffer, const size_t index, const size_t length) -> bool;
 
   // index is the start of the packet, including the area reserved for the hash
   // length is the total length of the packet, including the hash
   template <typename T>
-  auto sign_network_next_packet(T& buffer, size_t& index, size_t length) -> bool;
+  auto sign_network_next_packet(T& buffer, const size_t index, const size_t length) -> bool;
 
   // fnv1a 64
   auto fnv(const std::string& str) -> uint64_t;
 
   template <typename T>
-  INLINE auto is_network_next_packet(const T& buffer, size_t& index, size_t length) -> bool
+  INLINE auto is_network_next_packet(const T& buffer, const size_t index, const size_t length) -> bool
   {
     if (length <= PACKET_HASH_LENGTH) {
       return false;
@@ -56,7 +56,7 @@ namespace crypto
   }
 
   template <typename T>
-  INLINE auto sign_network_next_packet(T& buffer, size_t& index, size_t length) -> bool
+  INLINE auto sign_network_next_packet(T& buffer, const size_t index, const size_t length) -> bool
   {
     if (length <= PACKET_HASH_LENGTH) {
       return false;

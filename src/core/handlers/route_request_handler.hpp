@@ -9,21 +9,96 @@
 #include "crypto/keychain.hpp"
 #include "net/address.hpp"
 #include "os/socket.hpp"
+#include "util/macros.hpp"
 
 using core::PacketType;
 using core::RouterInfo;
 using core::RouteToken;
+using core::RouteTokenV4;
 using core::SessionMap;
 using crypto::Keychain;
 using crypto::PACKET_HASH_LENGTH;
 using os::Socket;
 using util::ThroughputRecorder;
-
 namespace core
 {
   namespace handlers
   {
-    inline void route_request_handler(
+    INLINE void route_request_handler_sdk4(
+     Packet& packet,
+     const Keychain& keychain,
+     SessionMap& session_map,
+     ThroughputRecorder& recorder,
+     const RouterInfo& router_info,
+     const Socket& socket)
+    {
+      size_t index = 0;
+      size_t length = packet.length;
+
+      if (length < static_cast<size_t>(1 + RouteTokenV4::EncryptedByteSize * 2)) {
+        LOG(ERROR, "ignoring route request. bad packet size (", length, ")");
+        return;
+      }
+
+      RouteTokenV4 token;
+      {
+        size_t i = index + 1;
+        if (!token.read_encrypted(packet, i, keychain.backend_public_key, keychain.relay_private_key)) {
+          LOG(ERROR, "ignoring route request. could not read route token");
+          return;
+        }
+      }
+
+      if (token.expired(router_info)) {
+        LOG(INFO, "ignoring route request, token expired, session = ", token);
+        return;
+      }
+
+      uint64_t hash = token.hash();
+
+      // create a new session and add it to the session map
+      if (!session_map.get(hash)) {
+        // create the session
+        auto session = std::make_shared<Session>();
+        assert(session);
+
+        // fill it with data in the token
+        session->expire_timestamp = token.expire_timestamp;
+        session->session_id = token.session_id;
+        session->session_version = token.session_version;
+
+        // initialize the rest of the fields
+        session->client_to_server_sequence = 0;
+        session->server_to_client_sequence = 0;
+        session->kbps_up = token.KbpsUp;
+        session->kbps_down = token.KbpsDown;
+        session->prev_addr = packet.addr;
+        session->next_addr = token.NextAddr;
+        std::copy(token.PrivateKey.begin(), token.PrivateKey.end(), session->private_key.begin());
+        session->client_to_server_protection.reset();
+        session->server_to_client_protection.reset();
+
+        session_map.set(hash, session);
+
+        LOG(INFO, "session created: ", *session);
+      } else {
+        LOG(DEBUG, "received additional route request for session: ", token);
+      }
+
+      // remove this part of the token by offseting it the request packet bytes
+
+      length = packet.length - RouteTokenV4::EncryptedByteSize;
+
+      packet.buffer[RouteTokenV4::EncryptedByteSize] = static_cast<uint8_t>(PacketType::RouteRequest4);
+
+      recorder.route_request_tx.add(length);
+
+      if (!socket.send(token.NextAddr, &packet.buffer[RouteTokenV4::EncryptedByteSize], length)) {
+        LOG(ERROR, "failed to forward route request to ", token.NextAddr);
+      }
+    }
+
+    INLINE void route_request_handler(
      Packet& packet,
      const Keychain& keychain,
      SessionMap& session_map,

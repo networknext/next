@@ -8,16 +8,69 @@
 #include "testing/helpers.hpp"
 
 using core::Packet;
+using core::PacketDirection;
+using core::PacketHeader;
+using core::PacketHeaderV4;
+using core::PacketType;
 using core::RouterInfo;
 using core::Session;
 using core::SessionMap;
-using core::PacketDirection;
-using core::PacketHeader;
-using core::PacketType;
 using net::Address;
 using os::Socket;
 using os::SocketConfig;
 using util::ThroughputRecorder;
+
+Test(core_handlers_session_ping_handler_sdk4)
+{
+  Packet packet;
+  SessionMap map;
+  ThroughputRecorder recorder;
+  RouterInfo router_info;
+  Socket socket;
+
+  const GenericKey private_key = random_private_key();
+
+  router_info.set_timestamp(0);
+
+  Address addr;
+  SocketConfig config = default_socket_config();
+
+  check(addr.parse("127.0.0.1"));
+  check(socket.create(addr, config));
+
+  packet.length = PacketHeaderV4::SIZE_OF_SIGNED + 32;
+  packet.addr = addr;
+
+  PacketHeaderV4 header;
+  {
+    header.type = PacketType::ClientToServer;
+    header.sequence = 123123130131LL;
+    header.session_id = 0x12313131;
+    header.session_version = 0x12;
+  };
+
+  auto session = std::make_shared<Session>();
+  session->next_addr = addr;
+  session->expire_timestamp = 10;
+  session->private_key = private_key;
+  session->client_to_server_sequence = 0;
+
+  map.set(header.hash(), session);
+
+  size_t index = 0;
+
+  check(header.write(packet, index, PacketDirection::ClientToServer, private_key));
+  check(index == PacketHeaderV4::SIZE_OF_SIGNED);
+
+  core::handlers::session_ping_handler_sdk4(packet, map, recorder, router_info, socket);
+
+  size_t prev_len = packet.length;
+  check(socket.recv(packet));
+  check(prev_len == packet.length);
+
+  core::handlers::session_ping_handler_sdk4(packet, map, recorder, router_info, socket);
+  check(!socket.recv(packet));
+}
 
 Test(core_handlers_session_ping_handler_unsigned)
 {
@@ -37,14 +90,15 @@ Test(core_handlers_session_ping_handler_unsigned)
   check(addr.parse("127.0.0.1"));
   check(socket.create(addr, config));
 
-  packet.length = PacketHeader::SIZE_OF + 32;
+  packet.length = PacketHeader::SIZE_OF_SIGNED + 32;
   packet.addr = addr;
 
-  PacketHeader header = {
-   .type = PacketType::ClientToServer,
-   .sequence = 123123130131LL,
-   .session_id = 0x12313131,
-   .session_version = 0x12,
+  PacketHeader header;
+  {
+    header.type = PacketType::ClientToServer;
+    header.sequence = 123123130131LL;
+    header.session_id = 0x12313131;
+    header.session_version = 0x12;
   };
 
   auto session = std::make_shared<Session>();
@@ -58,7 +112,7 @@ Test(core_handlers_session_ping_handler_unsigned)
   size_t index = 0;
 
   check(header.write(packet, index, PacketDirection::ClientToServer, private_key));
-  check(index == PacketHeader::SIZE_OF);
+  check(index == PacketHeader::SIZE_OF_SIGNED);
 
   core::handlers::session_ping_handler(packet, map, recorder, router_info, socket, false);
 
@@ -88,14 +142,15 @@ Test(core_handlers_session_ping_handler_signed)
   check(addr.parse("127.0.0.1"));
   check(socket.create(addr, config));
 
-  packet.length = crypto::PACKET_HASH_LENGTH + PacketHeader::SIZE_OF + 32;
+  packet.length = crypto::PACKET_HASH_LENGTH + PacketHeader::SIZE_OF_SIGNED + 32;
   packet.addr = addr;
 
-  PacketHeader header = {
-   .type = PacketType::ClientToServer,
-   .sequence = 123123130131LL,
-   .session_id = 0x12313131,
-   .session_version = 0x12,
+  PacketHeader header;
+  {
+    header.type = PacketType::ClientToServer;
+    header.sequence = 123123130131LL;
+    header.session_id = 0x12313131;
+    header.session_version = 0x12;
   };
 
   auto session = std::make_shared<Session>();
@@ -112,7 +167,7 @@ Test(core_handlers_session_ping_handler_signed)
   size_t index = crypto::PACKET_HASH_LENGTH;
 
   check(header.write(packet, index, PacketDirection::ClientToServer, private_key));
-  check(index == crypto::PACKET_HASH_LENGTH + PacketHeader::SIZE_OF);
+  check(index == crypto::PACKET_HASH_LENGTH + PacketHeader::SIZE_OF_SIGNED);
 
   core::handlers::session_ping_handler(packet, map, recorder, router_info, socket, true);
 

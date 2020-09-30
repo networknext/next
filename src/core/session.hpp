@@ -34,4 +34,24 @@ namespace core
   {
     return os << std::hex << session.session_id << '.' << std::dec << static_cast<unsigned int>(session.session_version);
   }
+
+  class SessionHasher
+  {
+   public:
+    SessionHasher() = default;
+    virtual ~SessionHasher() = default;
+    // session id (8) +
+    // session version (1) +
+    static const size_t SIZE_OF = 9;
+
+    uint64_t session_id;
+    uint8_t session_version;
+
+    auto hash() -> uint64_t;
+  };
+
+  INLINE auto SessionHasher::hash() -> uint64_t
+  {
+    return this->session_id ^ this->session_version;
+  }
 }  // namespace core

@@ -10,7 +10,6 @@
 using core::Packet;
 using core::RELAY_PING_PACKET_SIZE;
 using core::PacketType;
-using crypto::PACKET_HASH_LENGTH;
 using net::Address;
 using os::Socket;
 using os::SocketConfig;
@@ -29,7 +28,7 @@ Test(core_handlers_relay_ping_handler)
   check(socket.create(addr, config));
 
   packet.addr = addr;
-  packet.length = PACKET_HASH_LENGTH + RELAY_PING_PACKET_SIZE;
+  packet.length = RELAY_PING_PACKET_SIZE;
 
   core::handlers::relay_ping_handler(packet, recorder, socket, true);
 
@@ -38,6 +37,6 @@ Test(core_handlers_relay_ping_handler)
   check(prev_len == packet.length);
 
   check(recorder.inbound_ping_tx.num_packets == 1);
-  check(recorder.inbound_ping_tx.num_bytes == PACKET_HASH_LENGTH + RELAY_PING_PACKET_SIZE);
-  check(static_cast<PacketType>(packet.buffer[crypto::PACKET_HASH_LENGTH]) == PacketType::RelayPong);
+  check(recorder.inbound_ping_tx.num_bytes == RELAY_PING_PACKET_SIZE);
+  check(static_cast<PacketType>(packet.buffer[0]) == PacketType::RelayPong);
 }

@@ -213,25 +213,6 @@ int main(int argc, const char* argv[])
   // session map to be shared across packet processors
   core::SessionMap sessions;
 
-  auto close_sockets = [&sockets] {
-    for (auto& socket : sockets) {
-      socket->close();
-    }
-  };
-
-  auto join_threads = [&threads] {
-    for (auto& thread : threads) {
-      thread->join();
-    }
-  };
-
-  auto cleanup = [&] {
-    if (Globals.alive) {
-      Globals.alive = false;
-      close_sockets();
-    }
-  };
-
   // makes a shared ptr to a socket object
   auto make_socket = [&](Address& addr_in, SocketConfig config) -> SocketPtr {
     Address addr;
@@ -264,11 +245,12 @@ int main(int argc, const char* argv[])
     auto socket = make_socket(relay_addr, config);
     if (!socket) {
       LOG(ERROR, "could not create socket");
-      cleanup();
+      Globals.alive = false;
     }
 
-    auto thread = std::make_shared<std::thread>([&, socket] {
+    auto thread = std::make_shared<std::thread>([&, socket, i] {
       core::recv_loop(should_receive, *socket, keychain, sessions, relay_manager, Globals.alive, recorder, router_info);
+      LOG(DEBUG, "exiting recv loop #", i);
     });
 
     set_thread_affinity(*thread, (std::thread::hardware_concurrency() == 1) ? 0 : i);
@@ -279,17 +261,12 @@ int main(int argc, const char* argv[])
     threads.push_back(thread);
   }
 
-  // gets a socket from those available round robbin style
-  auto next_socket = [&] {
-    static size_t socket_chooser = 0;
-    return sockets[socket_chooser++ % sockets.size()];
-  };
-
   // ping processing setup
   if (Globals.alive) {
-    auto socket = next_socket();
+    auto socket = sockets[0];  // will always have at least 1
     auto thread = std::make_shared<std::thread>([&, socket] {
       core::ping_loop(*socket, relay_manager, Globals.alive, recorder);
+      LOG(DEBUG, "exiting ping loop");
     });
 
     set_thread_affinity(*thread, 0);
@@ -301,7 +278,7 @@ int main(int argc, const char* argv[])
   }
 
   // new backend setup
-  {
+  if (Globals.alive) {
     std::thread thread([&] {
       BeastWrapper wrapper;
       core::Backend backend(
@@ -329,7 +306,7 @@ int main(int argc, const char* argv[])
         LOG(INFO, "relay initialized with new backend");
       } else {
         LOG(ERROR, "could not initialize relay");
-        cleanup();
+        Globals.alive = false;
       }
 
       if (Globals.alive) {
@@ -346,11 +323,17 @@ int main(int argc, const char* argv[])
     thread.join();
   }
 
+  LOG(DEBUG, "clean shutdown = ", Globals.should_clean_shutdown ? "true" : "false");
+
   should_receive = false;
 
-  cleanup();
+  for (auto& socket : sockets) {
+    socket->close();
+  }
 
-  join_threads();
+  for (auto& thread : threads) {
+    thread->join();
+  }
 
   LOG(DEBUG, "Receiving Address: ", relay_addr);
 
