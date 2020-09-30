@@ -548,10 +548,6 @@ deploy-server-backend-velan:
 deploy-server-backend-esl:
 	./deploy/deploy.sh -e prod -c esl-22dr -t server-backend -n server_backend -b gs://prod_artifacts
 
-.PHONY: deploy-server-backend4-dev
-deploy-server-backend4-dev:
-	./deploy/deploy.sh -e dev -c dev-1 -t server-backend4 -n server_backend4 -b gs://development_artifacts
-
 .PHONY: deploy-ghost-army-dev
 deploy-ghost-army-dev:
 	./deploy/deploy.sh -e dev -c 1 -t ghost-army -n ghost_army -b gs://development_artifacts
