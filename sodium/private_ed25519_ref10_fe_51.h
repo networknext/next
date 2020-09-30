@@ -1,6 +1,6 @@
 #include <string.h>
 
-#include "private/common.h"
+#include "private_common.h"
 #include "utils.h"
 
 /*

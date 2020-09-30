@@ -3,7 +3,7 @@
    and 128 bit addition
 */
 
-#include "private/common.h"
+#include "private_common.h"
 
 #define MUL(out, x, y) out = ((uint128_t) x * y)
 #define ADD(out, in) out += in
