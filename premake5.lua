@@ -37,7 +37,7 @@ project "next"
 
 project "sodium"
 	kind "StaticLib"
-	defines { "SODIUM_STATIC", "SODIUM_EXPORT=", "CONFIGURED=1", "HAVE_TI_MODE=1", "HAVE_AVX_ASM=1" }
+	defines { "SODIUM_STATIC", "SODIUM_EXPORT=", "CONFIGURED=1", "HAVE_TI_MODE=1", "HAVE_AVX_ASM=1", "HAVE_AMD64_ASM=1" }
 	includedirs { "sodium" }
 	files {
 		"sodium/**.c",
