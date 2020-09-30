@@ -7,7 +7,7 @@
 #ifdef HAVE_AVX_ASM
 # include "sandy2x/curve25519_sandy2x.h"
 #endif
-#include "ref10/x25519_ref10.h"
+#include "ref10_x25519.h"
 static const crypto_scalarmult_curve25519_implementation *implementation =
     &crypto_scalarmult_curve25519_ref10_implementation;
 

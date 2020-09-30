@@ -2,11 +2,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "../scalarmult_curve25519.h"
+#include "scalarmult_curve25519.h"
 #include "export.h"
 #include "private/ed25519_ref10.h"
 #include "utils.h"
-#include "x25519_ref10.h"
+#include "ref10_x25519.h"
 
 /*
  * Reject small order points early to mitigate the implications of
