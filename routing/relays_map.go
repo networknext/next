@@ -18,7 +18,6 @@ const (
 	NumRelayMapShards     = 10
 	VersionNumberRelayMap = 1
 
-	// | id (8) | sessions (8) | tx (8) | rx (8) | version major (1), minor (1), patch (1) | last update time (8) | cpu usage (4) | mem usage (4) |
 	RelayDataBytes = 8 + // id
 		8 + // sessions
 		8 + // tx
