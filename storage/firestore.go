@@ -1303,6 +1303,7 @@ func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 				"stateUpdateTime": time.Now(),
 				"publicKey":       r.PublicKey,
 				"nicSpeedMbps":    int64(r.NICSpeedMbps),
+				"bandwidthRule":   int64(r.BWRule),
 			}
 
 			// Update the relay in firestore
@@ -1458,48 +1459,44 @@ func (fs *Firestore) RemoveDatacenterMap(ctx context.Context, dcMap routing.Data
 	return &DoesNotExistError{resourceType: "datacenterMap", resourceRef: fmt.Sprintf("%v", dcMap)}
 }
 
-func (fs *Firestore) SetRelayMetadata(ctx context.Context, modifiedRelay routing.Relay) error {
+// UpdateRelay updates only the specified fields in the provided relay. The inputs are sanitized
+// by the caller.
+func (fs *Firestore) UpdateRelay(ctx context.Context, modifiedRelay routing.Relay, dirtyFields map[string]interface{}) error {
 
-	// Loop through all relays in firestore
-	rdocs := fs.Client.Collection("Relay").Documents(ctx)
-	defer rdocs.Stop()
-	for {
-		rdoc, err := rdocs.Next()
-		if err == iterator.Done {
-			break
-		}
-
-		if err != nil {
-			return &FirestoreError{err: err}
-		}
-
-		// Unmarshal the relay in firestore to see if it's the relay we want to update
-		var relayInRemoteStorage relay
-		err = rdoc.DataTo(&relayInRemoteStorage)
-		if err != nil {
-			level.Error(fs.Logger).Log("err", &UnmarshalError{err: err})
-			continue
-		}
-
-		// If the relay is the one we want to update, update it with the new data
-		rid := crypto.HashID(relayInRemoteStorage.Address)
-		if rid == modifiedRelay.ID {
-			// Update the relay in firestore
-			if _, err := rdoc.Ref.Set(ctx, modifiedRelay, firestore.MergeAll); err != nil {
-				return &FirestoreError{err: err}
-			}
-
-			fs.relayMutex.Lock()
-			fs.relays[modifiedRelay.ID] = modifiedRelay
-			fs.relayMutex.Unlock()
-
-			fs.IncrementSequenceNumber(ctx)
-
-			return nil
-		}
+	query := fs.Client.Collection("Relay").Where("displayName", "==", modifiedRelay.Name)
+	docs, err := query.Documents(ctx).GetAll()
+	if err != nil {
+		return &DatabaseError{dbErr: err, resourceType: "relay", resourceRef: fmt.Sprintf("%x", modifiedRelay.ID)}
+	}
+	if len(docs) > 1 {
+		return &MultipleDBEntriesError{resourceType: "relay", resourceRef: fmt.Sprintf("%x", modifiedRelay.ID)}
 	}
 
-	return &DoesNotExistError{resourceType: "relay", resourceRef: fmt.Sprintf("%x", modifiedRelay.ID)}
+	// docs is a slice of length 1
+	counter := 1
+	for _, doc := range docs {
+		fmt.Printf("found relay: %v\n", doc.Ref)
+		fmt.Printf("counter    : %d\n", counter)
+		// for key, value := range dirtyFields {
+		// 	fmt.Printf("key: %s, value: %v\n", key, value)
+		// 	_, err = doc.Ref.Update(ctx, []firestore.Update{{Path: "state", Value: routing.RelayStateDisabled}})
+		// 	if err != nil {
+		// 		return &DatabaseError{dbErr: err, resourceType: "relay", resourceRef: fmt.Sprintf("%x", modifiedRelay.ID)}
+		// 	}
+		// }
+		if _, err := (*doc).Ref.Set(ctx, dirtyFields, firestore.MergeAll); err != nil {
+			return &FirestoreError{err: err}
+		}
+		counter += 1
+	}
+
+	fs.relayMutex.Lock()
+	fs.relays[modifiedRelay.ID] = modifiedRelay
+	fs.relayMutex.Unlock()
+
+	fs.IncrementSequenceNumber(ctx)
+
+	return nil
 
 }
 

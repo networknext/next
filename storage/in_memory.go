@@ -354,7 +354,7 @@ func (m *InMemory) SetRelay(ctx context.Context, relay routing.Relay) error {
 	return &DoesNotExistError{resourceType: "relay", resourceRef: relay.ID}
 }
 
-func (m *InMemory) SetRelayMetadata(ctx context.Context, relay routing.Relay) error {
+func (m *InMemory) UpdateRelay(ctx context.Context, relay routing.Relay, dirtyFields map[string]interface{}) error {
 	for i := 0; i < len(m.localRelays); i++ {
 		if m.localRelays[i].ID == relay.ID {
 			m.localRelays[i] = relay
