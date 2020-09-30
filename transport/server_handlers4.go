@@ -329,9 +329,29 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 
 		datacenter, err = storer.Datacenter(packet.DatacenterID)
 		if err != nil {
-			level.Error(logger).Log("msg", "datacenter not found", "err", err)
-			metrics.ErrorMetrics.DatacenterNotFound.Add(1)
-			return
+			aliasFound := false
+
+			// search the list of aliases created by/for this buyer
+			datacenterAliases := storer.GetDatacenterMapsForBuyer(packet.CustomerID)
+			for _, dcMap := range datacenterAliases {
+				if packet.DatacenterID == crypto.HashID(dcMap.Alias) {
+					datacenter, err = storer.Datacenter(dcMap.Datacenter)
+					if err != nil {
+						level.Error(logger).Log("msg", "customer has a misconfigured datacenter alias", "err", "datacenter not in database", "datacenter", packet.DatacenterID)
+						return
+					}
+
+					datacenter.AliasName = dcMap.Alias
+					aliasFound = true
+					break
+				}
+			}
+
+			if !aliasFound {
+				level.Error(logger).Log("msg", "datacenter not found", "err", err)
+				metrics.ErrorMetrics.DatacenterNotFound.Add(1)
+				return
+			}
 		}
 
 		nearRelays, err = routeMatrix.GetNearRelays(sessionData.Location.Latitude, sessionData.Location.Longitude, MaxNearRelays)
@@ -378,7 +398,7 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 			return
 		}
 
-		destRelayIDs = routeMatrix.GetDatacenterRelayIDs(packet.DatacenterID)
+		destRelayIDs = routeMatrix.GetDatacenterRelayIDs(datacenter.ID)
 		if len(destRelayIDs) == 0 {
 			level.Error(logger).Log("msg", "failed to get dest relays")
 			metrics.ErrorMetrics.NoRelaysInDatacenter.Add(1)
