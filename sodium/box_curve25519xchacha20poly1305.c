@@ -10,7 +10,7 @@
 #include "crypto_hash_sha512.h"
 #include "crypto_scalarmult_curve25519.h"
 #include "crypto_secretbox_xchacha20poly1305.h"
-#include "private/common.h"
+#include "private_common.h"
 #include "randombytes.h"
 #include "utils.h"
 

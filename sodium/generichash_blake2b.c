@@ -5,8 +5,8 @@
 
 #include "blake2.h"
 #include "crypto_generichash_blake2b.h"
-#include "private/common.h"
-#include "private/implementations.h"
+#include "private_common.h"
+#include "private_implementations.h"
 
 int
 crypto_generichash_blake2b(unsigned char *out, size_t outlen,

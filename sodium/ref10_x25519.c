@@ -4,7 +4,7 @@
 
 #include "scalarmult_curve25519.h"
 #include "export.h"
-#include "private/ed25519_ref10.h"
+#include "private_ed25519_ref10.h"
 #include "utils.h"
 #include "ref10_x25519.h"
 

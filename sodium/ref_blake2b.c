@@ -21,7 +21,7 @@
 
 #include "blake2.h"
 #include "core.h"
-#include "private/common.h"
+#include "private_common.h"
 #include "runtime.h"
 #include "utils.h"
 

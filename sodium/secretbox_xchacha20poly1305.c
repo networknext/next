@@ -10,7 +10,7 @@
 #include "crypto_onetimeauth_poly1305.h"
 #include "crypto_secretbox_xchacha20poly1305.h"
 #include "crypto_stream_chacha20.h"
-#include "private/common.h"
+#include "private_common.h"
 #include "utils.h"
 
 #define crypto_secretbox_xchacha20poly1305_ZEROBYTES 32U

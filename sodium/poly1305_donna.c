@@ -1,7 +1,7 @@
 
 #include "poly1305_donna.h"
 #include "crypto_verify_16.h"
-#include "private/common.h"
+#include "private_common.h"
 #include "utils.h"
 
 #ifdef HAVE_TI_MODE

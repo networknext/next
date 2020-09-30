@@ -18,8 +18,8 @@
 #include "randombytes.h"
 #include "runtime.h"
 #include "utils.h"
-#include "private/implementations.h"
-#include "private/mutex.h"
+#include "private_implementations.h"
+#include "private_mutex.h"
 
 static volatile int initialized;
 static volatile int locked;

@@ -1,8 +1,8 @@
 
 #include "onetimeauth_poly1305.h"
 #include "crypto_onetimeauth_poly1305.h"
-#include "private/common.h"
-#include "private/implementations.h"
+#include "private_common.h"
+#include "private_implementations.h"
 #include "randombytes.h"
 #include "runtime.h"
 

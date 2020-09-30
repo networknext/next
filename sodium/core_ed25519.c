@@ -2,8 +2,8 @@
 #include <stdint.h>
 
 #include "crypto_core_ed25519.h"
-#include "private/common.h"
-#include "private/ed25519_ref10.h"
+#include "private_common.h"
+#include "private_ed25519_ref10.h"
 #include "randombytes.h"
 #include "utils.h"
 

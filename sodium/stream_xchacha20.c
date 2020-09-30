@@ -4,7 +4,7 @@
 #include "crypto_core_hchacha20.h"
 #include "crypto_stream_chacha20.h"
 #include "crypto_stream_xchacha20.h"
-#include "private/common.h"
+#include "private_common.h"
 #include "randombytes.h"
 
 size_t

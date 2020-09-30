@@ -49,7 +49,7 @@
 #include "core.h"
 #include "crypto_core_salsa20.h"
 #include "crypto_stream_salsa20.h"
-#include "private/common.h"
+#include "private_common.h"
 #include "randombytes.h"
 #include "randombytes_salsa20_random.h"
 #include "runtime.h"

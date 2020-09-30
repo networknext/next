@@ -5,7 +5,7 @@
 #include "crypto_scalarmult_curve25519.h"
 #include "crypto_sign_ed25519.h"
 #include "ref10_sign_ed25519.h"
-#include "private/ed25519_ref10.h"
+#include "private_ed25519_ref10.h"
 #include "randombytes.h"
 #include "utils.h"
 

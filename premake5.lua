@@ -38,7 +38,7 @@ project "next"
 project "sodium"
 	kind "StaticLib"
 	defines { "SODIUM_STATIC", "SODIUM_EXPORT=", "CONFIGURED=1" }
-	includedirs { "sodium/include/sodium" }
+	includedirs { "sodium" }
 	files {
 		"sodium/**.c",
 		"sodium/**.h"

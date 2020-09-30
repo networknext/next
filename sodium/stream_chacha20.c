@@ -1,13 +1,13 @@
 #include "crypto_stream_chacha20.h"
 #include "core.h"
-#include "private/chacha20_ietf_ext.h"
-#include "private/common.h"
-#include "private/implementations.h"
+#include "private_chacha20_ietf_ext.h"
+#include "private_common.h"
+#include "private_implementations.h"
 #include "randombytes.h"
 #include "runtime.h"
 #include "stream_chacha20.h"
 
-#include "chacha20_ref.h"
+#include "ref_chacha20.h"
 #if defined(HAVE_AVX2INTRIN_H) && defined(HAVE_EMMINTRIN_H) && \
     defined(HAVE_TMMINTRIN_H) && defined(HAVE_SMMINTRIN_H)
 # include "dolbeau/chacha20_dolbeau-avx2.h"

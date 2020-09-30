@@ -6,7 +6,7 @@
 #include "core.h"
 #include "crypto_box.h"
 #include "crypto_secretbox.h"
-#include "private/common.h"
+#include "private_common.h"
 #include "utils.h"
 
 int

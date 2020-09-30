@@ -1,6 +1,6 @@
 #include "crypto_stream_salsa20.h"
-#include "private/common.h"
-#include "private/implementations.h"
+#include "private_common.h"
+#include "private_implementations.h"
 #include "randombytes.h"
 #include "runtime.h"
 #include "stream_salsa20.h"
@@ -8,7 +8,7 @@
 #ifdef HAVE_AMD64_ASM
 # include "xmm6/salsa20_xmm6.h"
 #else
-# include "salsa20_ref.h"
+# include "ref_salsa20.h"
 #endif
 #if !defined(HAVE_AMD64_ASM) && defined(HAVE_EMMINTRIN_H)
 # include "xmm6int/salsa20_xmm6int-sse2.h"

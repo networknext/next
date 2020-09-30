@@ -34,7 +34,7 @@
 #include <sys/types.h>
 
 #include "crypto_hash_sha512.h"
-#include "private/common.h"
+#include "private_common.h"
 #include "utils.h"
 
 static void

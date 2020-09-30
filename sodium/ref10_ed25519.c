@@ -4,8 +4,8 @@
 #include <string.h>
 
 #include "crypto_verify_32.h"
-#include "private/common.h"
-#include "private/ed25519_ref10.h"
+#include "private_common.h"
+#include "private_ed25519_ref10.h"
 #include "utils.h"
 
 static inline uint64_t

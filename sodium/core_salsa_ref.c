@@ -5,7 +5,7 @@
 #include "crypto_core_salsa20.h"
 #include "crypto_core_salsa2012.h"
 #include "crypto_core_salsa208.h"
-#include "private/common.h"
+#include "private_common.h"
 
 static void
 crypto_core_salsa(unsigned char *out, const unsigned char *in,
