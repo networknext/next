@@ -4,7 +4,7 @@
    REDMASK51 is from amd64-51/consts.s.
 */
 
-#include "consts_namespace.h"
+#include "sandy2x_consts_namespace.h"
 .data
 .p2align 4
 v0_0: .quad 0, 0

@@ -10,12 +10,12 @@
 #ifdef HAVE_AVX_ASM
 
 #include "utils.h"
-#include "curve25519_sandy2x.h"
-#include "../scalarmult_curve25519.h"
-#include "fe.h"
-#include "fe51.h"
-#include "ladder.h"
-#include "ladder_base.h"
+#include "sandy2x_curve25519.h"
+#include "scalarmult_curve25519.h"
+#include "sandy2x_fe.h"
+#include "sandy2x_fe51.h"
+#include "sandy2x_ladder.h"
+#include "sandy2x_ladder_base.h"
 
 #define x1 var[0]
 #define x2 var[1]
