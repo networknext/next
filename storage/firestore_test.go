@@ -2665,4 +2665,111 @@ func TestFirestore(t *testing.T) {
 
 		assert.Equal(t, expectedRelay, actualRelay)
 	})
+
+	t.Run("UpdateRelay", func(t *testing.T) {
+		t.Run("relay not found", func(t *testing.T) {
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			assert.NoError(t, err)
+
+			defer func() {
+				err := cleanFireStore(ctx, fs.Client)
+				assert.NoError(t, err)
+			}()
+
+			addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+			assert.NoError(t, err)
+
+			relay := routing.Relay{
+				ID:        1,
+				Name:      "local",
+				Addr:      *addr,
+				PublicKey: make([]byte, crypto.KeySize),
+			}
+
+			err = fs.SetRelay(ctx, relay)
+			assert.EqualError(t, err, "relay with reference 1 not found")
+		})
+
+		t.Run("success", func(t *testing.T) {
+			fs, err := storage.NewFirestore(ctx, "default", log.NewNopLogger())
+			assert.NoError(t, err)
+
+			defer func() {
+				err := cleanFireStore(ctx, fs.Client)
+				assert.NoError(t, err)
+			}()
+
+			addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+			assert.NoError(t, err)
+
+			seller := routing.Seller{
+				CompanyCode:               "local",
+				ID:                        "seller ID",
+				Name:                      "Local",
+				IngressPriceNibblinsPerGB: 10,
+				EgressPriceNibblinsPerGB:  20,
+			}
+
+			company := routing.Customer{
+				Code: "local",
+				Name: "Local",
+			}
+
+			datacenter := routing.Datacenter{
+				ID:      crypto.HashID("datacenter name"),
+				Name:    "datacenter name",
+				Enabled: true,
+				Location: routing.Location{
+					Latitude:  70.5,
+					Longitude: 120.5,
+				},
+			}
+
+			expected := routing.Relay{
+				ID:           crypto.HashID(addr.String()),
+				Name:         "local",
+				Addr:         *addr,
+				PublicKey:    make([]byte, crypto.KeySize),
+				Seller:       seller,
+				Datacenter:   datacenter,
+				State:        routing.RelayStateEnabled,
+				MRC:          19700000000000,
+				Overage:      26000000000000,
+				BWRule:       routing.BWRuleBurst,
+				ContractTerm: 12,
+				StartDate:    time.Now(),
+				EndDate:      time.Now(),
+				Type:         routing.BareMetal,
+			}
+
+			err = fs.AddCustomer(ctx, company)
+			assert.NoError(t, err)
+
+			err = fs.AddSeller(ctx, seller)
+			assert.NoError(t, err)
+
+			err = fs.AddDatacenter(ctx, datacenter)
+			assert.NoError(t, err)
+
+			err = fs.AddRelay(ctx, expected)
+			assert.NoError(t, err)
+
+			updates := map[string]interface{}{
+				"state": routing.RelayStateDisabled,
+			}
+
+			err = fs.UpdateRelay(ctx, expected, updates)
+			assert.NoError(t, err)
+
+			newRelay, err := fs.Relay(expected.ID)
+			assert.NoError(t, err)
+
+			fmt.Printf("expected.State: %v\n", expected.State)
+			fmt.Printf("newRelay.State: %v\n", newRelay.State)
+
+			assert.NotEqual(t, expected.State, newRelay.State)
+
+		})
+	})
+
 }

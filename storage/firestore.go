@@ -1474,13 +1474,15 @@ func (fs *Firestore) UpdateRelay(ctx context.Context, modifiedRelay routing.Rela
 
 	// docs is a slice of length 1
 	for _, doc := range docs {
-		// 	for key, value := range dirtyFields {
-		// 		_, err = doc.Ref.Update(ctx, []firestore.Update{{Path: key, Value: value}})
-		// 		if err != nil {
-		// 			return &DatabaseError{dbErr: err, resourceType: "relay", resourceRef: fmt.Sprintf("%x", modifiedRelay.ID)}
-		// 		}
+		fmt.Printf("found relay: %v\n", doc.Ref)
+		// for key, value := range dirtyFields {
+		// 	fmt.Printf("key: %s, value: %v\n", key, value)
+		// 	_, err = doc.Ref.Update(ctx, []firestore.Update{{Path: "state", Value: routing.RelayStateDisabled}})
+		// 	if err != nil {
+		// 		return &DatabaseError{dbErr: err, resourceType: "relay", resourceRef: fmt.Sprintf("%x", modifiedRelay.ID)}
 		// 	}
-		if _, err := doc.Ref.Set(ctx, dirtyFields, firestore.MergeAll); err != nil {
+		// }
+		if _, err := (*doc).Ref.Set(ctx, dirtyFields, firestore.MergeAll); err != nil {
 			return &FirestoreError{err: err}
 		}
 	}
