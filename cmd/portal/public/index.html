@@ -3,15 +3,12 @@
         <meta http-equiv='cache-control' content='no-cache'>
         <meta http-equiv='expires' content='0'>
         <meta http-equiv='pragma' content='no-cache'>
-        <script async src="https://www.googletagmanager.com/gtag/js?id=UA-141272717-2"></script>
         <script>
-            if (window.location.hostname === 'portal.networknext.com') {
-              window.dataLayer = window.dataLayer || [];
-              function gtag(){dataLayer.push(arguments);}
-              gtag('js', new Date());
-
-              gtag('config', 'UA-141272717-2');
-            }
+          (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+          new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+          j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+          'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+          })(window,document,'script','dataLayer','GTM-MS33H3R');
         </script>
         <title>Network Next</title>
         <link rel="icon" href="/favicon.ico">
@@ -288,14 +285,16 @@
         </style>
     </head>
     <body class="hidden" id="app">
+        <noscript>
+            <iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MS33H3R"
+                    height="0" width="0" style="display:none;visibility:hidden">
+            </iframe>
+        </noscript>
         <div id="root">
             <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark p-0 shadow">
-                <a class="navbar-brand col-sm-3 col-md-2 mr-0" href="https://networknext.com" v-on:click="gtag('event', 'redirect to networknext.com', {
-                  'event_category': 'Redirect',
-                  'event_label': 'Redirect to networknext.com'
-                })">
+                <a class="navbar-brand col-sm-3 col-md-2 mr-0" href="https://networknext.com">
                     <div class="logo-container">
-                        <img class="logo-fit" src="logo.png">
+                        <img id="wix-redirect" class="logo-fit" src="logo.png">
                     </div>
                 </a>
                 <ul class="navbar-nav px-3 w-100 mr-auto">
@@ -360,7 +359,7 @@
             <div style="padding-top: 48px;">
                 <div class="alert alert-primary" style="text-align: center;" role="alert" v-if="alerts.verifyEmail.show">
                     Please confirm your email address: {{ handlers.userHandler.userInfo.email }}
-                    <a href="#" v-on:click="handlers.authHandler.resendVerificationEmail()">
+                    <a id="resend-email" href="#" v-on:click="handlers.authHandler.resendVerificationEmail()">
                         Resend email
                     </a>
                 </div>
@@ -546,7 +545,7 @@
                                                 <i class="fas fa-circle fa-w-16 fa-fw text-primary" v-if="!session.on_network_next"></i>
                                             </td>
                                             <td>
-                                                <a class="text-dark fixed-width" href="#" v-on:click="handlers.workspaceHandler.changePage('sessionTool', session.id)">
+                                                <a class="text-dark fixed-width" id="session-lookup" href="#" v-on:click="handlers.workspaceHandler.changePage('sessionTool', session.id)">
                                                     {{ session.id }}
                                                 </a>
                                             </td>
