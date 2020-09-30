@@ -102,19 +102,7 @@ func TestServerInitHandler4MisconfiguredDatacenterAlias(t *testing.T) {
 	storer := &storage.InMemory{}
 
 	err := storer.AddBuyer(context.Background(), routing.Buyer{
-		CompanyCode: "local",
-		ID:          123,
-	})
-	assert.NoError(t, err)
-
-	err = storer.AddCustomer(context.Background(), routing.Customer{
-		Code: "local",
-		Name: "Local",
-	})
-	assert.NoError(t, err)
-
-	err = storer.AddDatacenter(context.Background(), routing.Datacenter{
-		ID: crypto.HashID("datacenter.name"),
+		ID: 123,
 	})
 	assert.NoError(t, err)
 
