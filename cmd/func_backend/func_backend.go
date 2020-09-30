@@ -850,6 +850,8 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
 	WriteUint32(responseData, &index, UpdateResponseVersion)
 
+	WriteUint64(responseData, &index, uint64(time.Now().Unix()))
+
 	WriteUint32(responseData, &index, uint32(len(relaysToPing)))
 
 	for i := range relaysToPing {
