@@ -85,6 +85,7 @@ _crypto_onetimeauth_poly1305_pick_best_implementation(void)
     if (sodium_runtime_has_sse2()) {
         printf( "poly1305 -> sse3\n" );
         implementation = &crypto_onetimeauth_poly1305_sse2_implementation;
+        return 0;
     }
 #endif
     printf( "poly1305 -> ref\n" );

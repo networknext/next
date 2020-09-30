@@ -37,7 +37,8 @@ project "next"
 
 project "sodium"
 	kind "StaticLib"
-	defines { "SODIUM_STATIC", "SODIUM_EXPORT=", "CONFIGURED=1", "HAVE_TI_MODE=1", "HAVE_AVX_ASM=1", "HAVE_AMD64_ASM=1" }
+	vectorextensions "AVX2"
+	defines { "SODIUM_STATIC", "SODIUM_EXPORT=", "CONFIGURED=1", "HAVE_TI_MODE=1", "HAVE_AVX_ASM=1", "HAVE_AMD64_ASM=1", "HAVE_EMMINTRIN_H=1", "HAVE_PMMINTRIN_H=1", "HAVE_TMMINTRIN_H=1", "HAVE_SMMINTRIN_H=1", "HAVE_AVX_ASM=1", "HAVE_AVXINTRIN_H=1", "HAVE_AVX2INTRIN_H=1", "HAVE_AVX512FINTRIN_H=1", "HAVE_WMMINTRIN_H=1", "HAVE_CPUID=1" }
 	includedirs { "sodium" }
 	files {
 		"sodium/**.c",

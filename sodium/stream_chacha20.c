@@ -6,6 +6,7 @@
 #include "randombytes.h"
 #include "runtime.h"
 #include "stream_chacha20.h"
+#include <stdio.h>
 
 #include "ref_chacha20.h"
 #if defined(HAVE_AVX2INTRIN_H) && defined(HAVE_EMMINTRIN_H) && \
@@ -170,7 +171,6 @@ _crypto_stream_chacha20_pick_best_implementation(void)
 #if defined(HAVE_AVX2INTRIN_H) && defined(HAVE_EMMINTRIN_H) && \
     defined(HAVE_TMMINTRIN_H) && defined(HAVE_SMMINTRIN_H)
     if (sodium_runtime_has_avx2()) {
-        // todo
         printf( "chacha20 -> avx2\n" );
         implementation = &crypto_stream_chacha20_dolbeau_avx2_implementation;
         return 0;
@@ -183,5 +183,6 @@ _crypto_stream_chacha20_pick_best_implementation(void)
         return 0;
     }
 #endif
+    printf( "chacha20 -> ref\n" );
     return 0;
 }

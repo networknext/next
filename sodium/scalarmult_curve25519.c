@@ -55,6 +55,7 @@ _crypto_scalarmult_curve25519_pick_best_implementation(void)
     if (sodium_runtime_has_avx()) {
         printf( "curve25519 -> avx\n" );
         implementation = &crypto_scalarmult_curve25519_sandy2x_implementation;
+        return 0;
     }
 #endif
     printf( "curve25519 -> ref\n" );

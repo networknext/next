@@ -113,7 +113,5 @@ crypto_generichash_blake2b_final(crypto_generichash_blake2b_state *state,
 int
 _crypto_generichash_blake2b_pick_best_implementation(void)
 {
-    printf( "_crypto_generichash_blake2b_pick_best_implementation\n" );
-    fflush(stdout);
     return blake2b_pick_best_implementation();
 }

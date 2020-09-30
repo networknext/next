@@ -18,6 +18,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "blake2.h"
 #include "core.h"
@@ -414,6 +415,7 @@ blake2b_pick_best_implementation(void)
 #if defined(HAVE_AVX2INTRIN_H) && defined(HAVE_TMMINTRIN_H) && \
     defined(HAVE_SMMINTRIN_H)
     if (sodium_runtime_has_avx2()) {
+        printf( "blake2b -> avx2\n" );
         blake2b_compress = blake2b_compress_avx2;
         return 0;
     }
@@ -421,16 +423,20 @@ blake2b_pick_best_implementation(void)
 #if defined(HAVE_EMMINTRIN_H) && defined(HAVE_TMMINTRIN_H) && \
     defined(HAVE_SMMINTRIN_H)
     if (sodium_runtime_has_sse41()) {
+        printf( "blake2b -> sse41\n" );
         blake2b_compress = blake2b_compress_sse41;
         return 0;
     }
 #endif
 #if defined(HAVE_EMMINTRIN_H) && defined(HAVE_TMMINTRIN_H)
     if (sodium_runtime_has_ssse3()) {
+        printf( "blake2b -> ssse3\n" );
         blake2b_compress = blake2b_compress_ssse3;
         return 0;
     }
 #endif
+
+    printf( "blake2b -> ref\n" );
     blake2b_compress = blake2b_compress_ref;
 
     return 0;
