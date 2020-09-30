@@ -2568,7 +2568,7 @@ struct NextUpgradeToken
         
         int bytes_written = p - buffer;
 
-        crypto_secretbox_easy( buffer, buffer, NEXT_UPGRADE_TOKEN_BYTES - NEXT_CRYPTO_SECRETBOX_NONCEBYTES - NEXT_CRYPTO_SECRETBOX_MACBYTES, nonce, private_key );
+        next_crypto_secretbox_easy( buffer, buffer, NEXT_UPGRADE_TOKEN_BYTES - NEXT_CRYPTO_SECRETBOX_NONCEBYTES - NEXT_CRYPTO_SECRETBOX_MACBYTES, nonce, private_key );
 
         next_assert( NEXT_CRYPTO_SECRETBOX_NONCEBYTES + bytes_written + NEXT_CRYPTO_SECRETBOX_MACBYTES <= NEXT_UPGRADE_TOKEN_BYTES );
 
@@ -2585,7 +2585,7 @@ struct NextUpgradeToken
         uint8_t decrypted[NEXT_UPGRADE_TOKEN_BYTES];
         memcpy( decrypted, buffer + NEXT_CRYPTO_SECRETBOX_NONCEBYTES, NEXT_UPGRADE_TOKEN_BYTES - NEXT_CRYPTO_SECRETBOX_NONCEBYTES );
 
-        if ( crypto_secretbox_open_easy( decrypted, decrypted, NEXT_UPGRADE_TOKEN_BYTES - NEXT_CRYPTO_SECRETBOX_NONCEBYTES, nonce, private_key ) != 0 )
+        if ( next_crypto_secretbox_open_easy( decrypted, decrypted, NEXT_UPGRADE_TOKEN_BYTES - NEXT_CRYPTO_SECRETBOX_NONCEBYTES, nonce, private_key ) != 0 )
             return false;
 
         const uint8_t * p = decrypted;
@@ -3414,10 +3414,10 @@ int next_write_packet( uint8_t packet_id, void * packet_object, uint8_t * packet
 
         unsigned long long encrypted_bytes = 0;
 
-        crypto_aead_chacha20poly1305_encrypt( message, &encrypted_bytes,
-                                              message, message_length,
-                                              additional, 1,
-                                              NULL, nonce, encrypt_private_key );
+        next_crypto_aead_chacha20poly1305_encrypt( message, &encrypted_bytes,
+                                                   message, message_length,
+                                                   additional, 1,
+                                                   NULL, nonce, encrypt_private_key );
 
         next_assert( encrypted_bytes == uint64_t(message_length) + NEXT_CRYPTO_AEAD_CHACHA20POLY1305_ABYTES );
 
@@ -3496,11 +3496,11 @@ int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_obj
 
         unsigned long long decrypted_bytes;
 
-        if ( crypto_aead_chacha20poly1305_decrypt( message, &decrypted_bytes,
-                                                   NULL,
-                                                   message, message_length,
-                                                   additional, 1,
-                                                   nonce, encrypt_private_key ) != 0 )
+        if ( next_crypto_aead_chacha20poly1305_decrypt( message, &decrypted_bytes,
+                                                        NULL,
+                                                        message, message_length,
+                                                        additional, 1,
+                                                        nonce, encrypt_private_key ) != 0 )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "encrypted packet failed to decrypt" );
             return NEXT_ERROR;
@@ -4862,10 +4862,10 @@ int next_write_header( int direction, uint8_t type, uint64_t sequence, uint64_t 
 
     unsigned long long encrypted_length = 0;
 
-    int result = crypto_aead_chacha20poly1305_ietf_encrypt( buffer, &encrypted_length,
-                                                            buffer, 0,
-                                                            additional, (unsigned long long) additional_length,
-                                                            NULL, nonce, private_key );
+    int result = next_crypto_aead_chacha20poly1305_ietf_encrypt( buffer, &encrypted_length,
+                                                                 buffer, 0,
+                                                                 additional, (unsigned long long) additional_length,
+                                                                 NULL, nonce, private_key );
 
     if ( result != 0 )
         return NEXT_ERROR;
@@ -4985,10 +4985,10 @@ int next_read_header( int direction, uint8_t * type, uint64_t * sequence, uint64
 
     unsigned long long decrypted_length;
 
-    int result = crypto_aead_chacha20poly1305_ietf_decrypt( buffer + 18, &decrypted_length, NULL,
-                                                            buffer + 18, (unsigned long long) NEXT_CRYPTO_AEAD_CHACHA20POLY1305_IETF_ABYTES,
-                                                            additional, (unsigned long long) additional_length,
-                                                            nonce, private_key );
+    int result = next_crypto_aead_chacha20poly1305_ietf_decrypt( buffer + 18, &decrypted_length, NULL,
+                                                                 buffer + 18, (unsigned long long) NEXT_CRYPTO_AEAD_CHACHA20POLY1305_IETF_ABYTES,
+                                                                 additional, (unsigned long long) additional_length,
+                                                                 nonce, private_key );
 
     if ( result != 0 )
     {
@@ -11321,7 +11321,7 @@ void next_server_internal_upgrade_session( next_server_internal_t * server, cons
     upgrade_token.server_address = server->server_address;
 
     unsigned char session_private_key[NEXT_CRYPTO_SECRETBOX_KEYBYTES];
-    crypto_secretbox_keygen( session_private_key );
+    next_crypto_secretbox_keygen( session_private_key );
 
     uint8_t upgrade_token_data[NEXT_UPGRADE_TOKEN_BYTES];
 
@@ -13208,10 +13208,10 @@ static void test_crypto_secret_box()
 
     crypto_secretbox_keygen( key );
     randombytes_buf( nonce, NEXT_CRYPTO_SECRETBOX_NONCEBYTES );
-    crypto_secretbox_easy( ciphertext, CRYPTO_SECRET_BOX_MESSAGE, CRYPTO_SECRET_BOX_MESSAGE_LEN, nonce, key );
+    next_crypto_secretbox_easy( ciphertext, CRYPTO_SECRET_BOX_MESSAGE, CRYPTO_SECRET_BOX_MESSAGE_LEN, nonce, key );
 
     unsigned char decrypted[CRYPTO_SECRET_BOX_MESSAGE_LEN];
-    check( crypto_secretbox_open_easy( decrypted, ciphertext, CRYPTO_SECRET_BOX_CIPHERTEXT_LEN, nonce, key ) == 0 );
+    check( next_crypto_secretbox_open_easy( decrypted, ciphertext, CRYPTO_SECRET_BOX_CIPHERTEXT_LEN, nonce, key ) == 0 );
 }
 
 static void test_crypto_aead()
@@ -13226,22 +13226,22 @@ static void test_crypto_aead()
     unsigned char ciphertext[CRYPTO_AEAD_MESSAGE_LEN + NEXT_CRYPTO_AEAD_CHACHA20POLY1305_ABYTES];
     unsigned long long ciphertext_len;
 
-    crypto_aead_chacha20poly1305_keygen( key );
+    next_crypto_aead_chacha20poly1305_keygen( key );
     randombytes_buf( nonce, sizeof(nonce) );
 
-    crypto_aead_chacha20poly1305_encrypt( ciphertext, &ciphertext_len,
-                                          CRYPTO_AEAD_MESSAGE, CRYPTO_AEAD_MESSAGE_LEN,
-                                          CRYPTO_AEAD_ADDITIONAL_DATA, CRYPTO_AEAD_ADDITIONAL_DATA_LEN,
-                                          NULL, nonce, key );
+    next_crypto_aead_chacha20poly1305_encrypt( ciphertext, &ciphertext_len,
+                                               CRYPTO_AEAD_MESSAGE, CRYPTO_AEAD_MESSAGE_LEN,
+                                               CRYPTO_AEAD_ADDITIONAL_DATA, CRYPTO_AEAD_ADDITIONAL_DATA_LEN,
+                                               NULL, nonce, key );
 
     unsigned char decrypted[CRYPTO_AEAD_MESSAGE_LEN];
     unsigned long long decrypted_len;
-    check( crypto_aead_chacha20poly1305_decrypt( decrypted, &decrypted_len,
-                                                 NULL,
-                                                 ciphertext, ciphertext_len,
-                                                 CRYPTO_AEAD_ADDITIONAL_DATA,
-                                                 CRYPTO_AEAD_ADDITIONAL_DATA_LEN,
-                                                 nonce, key) == 0 );
+    check( next_crypto_aead_chacha20poly1305_decrypt( decrypted, &decrypted_len,
+                                                      NULL,
+                                                      ciphertext, ciphertext_len,
+                                                      CRYPTO_AEAD_ADDITIONAL_DATA,
+                                                      CRYPTO_AEAD_ADDITIONAL_DATA_LEN,
+                                                      nonce, key) == 0 );
 }
 
 static void test_crypto_aead_ietf()
@@ -13256,14 +13256,14 @@ static void test_crypto_aead_ietf()
     unsigned char ciphertext[CRYPTO_AEAD_IETF_MESSAGE_LEN + NEXT_CRYPTO_AEAD_CHACHA20POLY1305_IETF_ABYTES];
     unsigned long long ciphertext_len;
 
-    crypto_aead_chacha20poly1305_ietf_keygen( key );
+    next_crypto_aead_chacha20poly1305_ietf_keygen( key );
     randombytes_buf( nonce, sizeof(nonce) );
 
-    crypto_aead_chacha20poly1305_ietf_encrypt( ciphertext, &ciphertext_len, CRYPTO_AEAD_IETF_MESSAGE, CRYPTO_AEAD_IETF_MESSAGE_LEN, CRYPTO_AEAD_IETF_ADDITIONAL_DATA, CRYPTO_AEAD_IETF_ADDITIONAL_DATA_LEN, NULL, nonce, key);
+    next_crypto_aead_chacha20poly1305_ietf_encrypt( ciphertext, &ciphertext_len, CRYPTO_AEAD_IETF_MESSAGE, CRYPTO_AEAD_IETF_MESSAGE_LEN, CRYPTO_AEAD_IETF_ADDITIONAL_DATA, CRYPTO_AEAD_IETF_ADDITIONAL_DATA_LEN, NULL, nonce, key);
 
     unsigned char decrypted[CRYPTO_AEAD_IETF_MESSAGE_LEN];
     unsigned long long decrypted_len;
-    check(crypto_aead_chacha20poly1305_ietf_decrypt( decrypted, &decrypted_len, NULL, ciphertext, ciphertext_len, CRYPTO_AEAD_IETF_ADDITIONAL_DATA, CRYPTO_AEAD_IETF_ADDITIONAL_DATA_LEN, nonce, key ) == 0 );
+    check( next_crypto_aead_chacha20poly1305_ietf_decrypt( decrypted, &decrypted_len, NULL, ciphertext, ciphertext_len, CRYPTO_AEAD_IETF_ADDITIONAL_DATA, CRYPTO_AEAD_IETF_ADDITIONAL_DATA_LEN, nonce, key ) == 0 );
 }
 
 static void test_crypto_sign()
