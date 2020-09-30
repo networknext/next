@@ -43,7 +43,6 @@ project "sodium"
 		"sodium/**.h",
 	}
 	filter "system:not windows"
-	    -- todo: move these into config.h for x64 only GCC/Clang
 		defines { "HAVE_TI_MODE=1", "HAVE_AVX_ASM=1", "HAVE_AMD64_ASM=1", "HAVE_CPUID=1" }
 		files {
 			"sodium/**.S"
