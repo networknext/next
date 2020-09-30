@@ -63,6 +63,8 @@ struct next_crypto_sign_state_t
     uint8_t dummy[1024];
 };
 
+int next_crypto_sign_keypair( unsigned char * pk, unsigned char * sk );
+
 int next_crypto_sign_init( struct next_crypto_sign_state_t * state );
 
 int next_crypto_sign_update( struct next_crypto_sign_state_t * state, const unsigned char * m, unsigned long long mlen );

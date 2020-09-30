@@ -48,7 +48,9 @@ sodium_init(void)
     if (sodium_crit_leave() != 0) {
         return -1; /* LCOV_EXCL_LINE */
     }
+    #if NEXT_CRYPTO_LOGS
     printf( "\n" );
+    #endif // #if NEXT_CRYPTO_LOGS
     return 0;
 }
 

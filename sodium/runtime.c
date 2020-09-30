@@ -238,7 +238,8 @@ _sodium_runtime_get_cpu_features(void)
     ret &= _sodium_runtime_intel_cpu_features(&_cpu_features);
     _cpu_features.initialized = 1;
 
-    printf( "CPU features: " );
+    #if NEXT_CRYPTO_LOGS
+    printf( "\nCPU features: " );
     if ( _cpu_features.has_sse2 ) printf( "sse2 " );
     if ( _cpu_features.has_ssse3 ) printf( "ssse3 " );
     if ( _cpu_features.has_sse41 ) printf( "sse41 " );
@@ -246,7 +247,8 @@ _sodium_runtime_get_cpu_features(void)
     if ( _cpu_features.has_avx2 ) printf( "avx2 " );
     if ( _cpu_features.has_avx512f ) printf( "avx512f " );
     printf( "\n\n" );
-
+    #endif // #if NEXT_CRYPTO_LOGS
+    
     return ret;
 }
 

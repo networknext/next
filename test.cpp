@@ -25,14 +25,14 @@
 
 int main()
 {
-    printf( "\nRunning SDK tests:\n\n" );
-
     next_quiet( true );
 
     if ( next_init( NULL, NULL ) != NEXT_OK )
     {
         printf( "error: failed to initialize network next\n" );
     }
+
+    printf( "Running SDK tests:\n\n" );
 
     next_test();
 

@@ -2469,22 +2469,6 @@ namespace next
 
 #include "next_crypto.h"
 
-#ifdef _MSC_VER
-#pragma warning(disable:4996)
-#pragma warning(push)
-#pragma warning(disable:4324)
-#endif // #ifdef _MSC_VER
-
-#include <sodium.h>
-
-#if SODIUM_LIBRARY_VERSION_MAJOR <= 7 && ( SODIUM_LIBRARY_VERSION_MAJOR && SODIUM_LIBRARY_VERSION_MINOR < 3 )
-#error this version of sodium does not support overlapping buffers. please upgrade your libsodium!
-#endif
-
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
-
 void next_random_bytes( uint8_t * buffer, int bytes )
 {
     next_randombytes_buf( buffer, bytes );
@@ -13206,8 +13190,8 @@ static void test_crypto_secret_box()
     unsigned char nonce[NEXT_CRYPTO_SECRETBOX_NONCEBYTES];
     unsigned char ciphertext[CRYPTO_SECRET_BOX_CIPHERTEXT_LEN];
 
-    crypto_secretbox_keygen( key );
-    randombytes_buf( nonce, NEXT_CRYPTO_SECRETBOX_NONCEBYTES );
+    next_crypto_secretbox_keygen( key );
+    next_random_bytes( nonce, NEXT_CRYPTO_SECRETBOX_NONCEBYTES );
     next_crypto_secretbox_easy( ciphertext, CRYPTO_SECRET_BOX_MESSAGE, CRYPTO_SECRET_BOX_MESSAGE_LEN, nonce, key );
 
     unsigned char decrypted[CRYPTO_SECRET_BOX_MESSAGE_LEN];
@@ -13227,7 +13211,7 @@ static void test_crypto_aead()
     unsigned long long ciphertext_len;
 
     next_crypto_aead_chacha20poly1305_keygen( key );
-    randombytes_buf( nonce, sizeof(nonce) );
+    next_random_bytes( nonce, sizeof(nonce) );
 
     next_crypto_aead_chacha20poly1305_encrypt( ciphertext, &ciphertext_len,
                                                CRYPTO_AEAD_MESSAGE, CRYPTO_AEAD_MESSAGE_LEN,
@@ -13257,32 +13241,13 @@ static void test_crypto_aead_ietf()
     unsigned long long ciphertext_len;
 
     next_crypto_aead_chacha20poly1305_ietf_keygen( key );
-    randombytes_buf( nonce, sizeof(nonce) );
+    next_random_bytes( nonce, sizeof(nonce) );
 
     next_crypto_aead_chacha20poly1305_ietf_encrypt( ciphertext, &ciphertext_len, CRYPTO_AEAD_IETF_MESSAGE, CRYPTO_AEAD_IETF_MESSAGE_LEN, CRYPTO_AEAD_IETF_ADDITIONAL_DATA, CRYPTO_AEAD_IETF_ADDITIONAL_DATA_LEN, NULL, nonce, key);
 
     unsigned char decrypted[CRYPTO_AEAD_IETF_MESSAGE_LEN];
     unsigned long long decrypted_len;
     check( next_crypto_aead_chacha20poly1305_ietf_decrypt( decrypted, &decrypted_len, NULL, ciphertext, ciphertext_len, CRYPTO_AEAD_IETF_ADDITIONAL_DATA, CRYPTO_AEAD_IETF_ADDITIONAL_DATA_LEN, nonce, key ) == 0 );
-}
-
-static void test_crypto_sign()
-{
-    #define CRYPTO_SIGN_MESSAGE (const unsigned char *) "test"
-    #define CRYPTO_SIGN_MESSAGE_LEN 4
-
-    unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
-    unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
-    crypto_sign_keypair( public_key, private_key );
-
-    unsigned char signed_message[NEXT_CRYPTO_SIGN_BYTES + CRYPTO_SIGN_MESSAGE_LEN];
-    unsigned long long signed_message_len;
-
-    crypto_sign( signed_message, &signed_message_len, CRYPTO_SIGN_MESSAGE, CRYPTO_SIGN_MESSAGE_LEN, private_key );
-
-    unsigned char unsigned_message[CRYPTO_SIGN_MESSAGE_LEN];
-    unsigned long long unsigned_message_len;
-    check( crypto_sign_open( unsigned_message, &unsigned_message_len, signed_message, signed_message_len, public_key ) == 0 );
 }
 
 static void test_crypto_sign_detached()
@@ -13295,7 +13260,7 @@ static void test_crypto_sign_detached()
 
     unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
     unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
-    crypto_sign_keypair( public_key, private_key );
+    next_crypto_sign_keypair( public_key, private_key );
 
     next_crypto_sign_state_t state;
 
@@ -13642,7 +13607,7 @@ static void test_upgrade_token()
     next_address_parse( &in.server_address, "127.0.0.1:50000" );
 
     unsigned char private_key[NEXT_CRYPTO_SECRETBOX_KEYBYTES];
-    crypto_secretbox_keygen( private_key );
+    next_crypto_secretbox_keygen( private_key );
 
     uint8_t buffer[NEXT_UPGRADE_TOKEN_BYTES];
 
@@ -13661,7 +13626,7 @@ static void test_packets()
     {
         unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
         unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
-        crypto_sign_keypair( public_key, private_key );
+        next_crypto_sign_keypair( public_key, private_key );
 
         static NextUpgradeRequestPacket in, out;
         in.protocol_version = next_protocol_version();
@@ -13706,7 +13671,7 @@ static void test_packets()
     {
         unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
         unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
-        crypto_sign_keypair( public_key, private_key );
+        next_crypto_sign_keypair( public_key, private_key );
 
         static NextUpgradeConfirmPacket in, out;
         in.upgrade_sequence = 1000;
@@ -14344,7 +14309,7 @@ static void test_backend_packets()
     {
         unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
         unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
-        crypto_sign_keypair( public_key, private_key );
+        next_crypto_sign_keypair( public_key, private_key );
 
         static NextBackendServerInitRequestPacket in, out;
         in.request_id = next_random_uint64();
@@ -14369,7 +14334,7 @@ static void test_backend_packets()
     {
         unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
         unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
-        crypto_sign_keypair( public_key, private_key );
+        next_crypto_sign_keypair( public_key, private_key );
 
         static NextBackendServerInitResponsePacket in, out;
         in.request_id = next_random_uint64();
@@ -14387,7 +14352,7 @@ static void test_backend_packets()
     {
         unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
         unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
-        crypto_sign_keypair( public_key, private_key );
+        next_crypto_sign_keypair( public_key, private_key );
 
         static NextBackendServerUpdatePacket in, out;
         in.customer_id = 1231234127431LL;
@@ -14412,7 +14377,7 @@ static void test_backend_packets()
     {
         unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
         unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
-        crypto_sign_keypair( public_key, private_key );
+        next_crypto_sign_keypair( public_key, private_key );
 
         static NextBackendSessionUpdatePacket in, out;
         in.slice_number = 10000;
@@ -14506,7 +14471,7 @@ static void test_backend_packets()
     {
         unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
         unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
-        crypto_sign_keypair( public_key, private_key );
+        next_crypto_sign_keypair( public_key, private_key );
 
         static NextBackendSessionResponsePacket in, out;
         in.slice_number = 10000;
@@ -14547,7 +14512,7 @@ static void test_backend_packets()
     {
         unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
         unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
-        crypto_sign_keypair( public_key, private_key );
+        next_crypto_sign_keypair( public_key, private_key );
 
         static NextBackendSessionResponsePacket in, out;
         in.slice_number = 10000;
@@ -14596,7 +14561,7 @@ static void test_backend_packets()
     {
         unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
         unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
-        crypto_sign_keypair( public_key, private_key );
+        next_crypto_sign_keypair( public_key, private_key );
 
         static NextBackendSessionResponsePacket in, out;
         in.slice_number = 10000;
@@ -15274,7 +15239,6 @@ void next_test()
     RUN_TEST( test_crypto_secret_box );
     RUN_TEST( test_crypto_aead );
     RUN_TEST( test_crypto_aead_ietf );
-    RUN_TEST( test_crypto_sign );
     RUN_TEST( test_crypto_sign_detached );
     RUN_TEST( test_crypto_key_exchange );
     RUN_TEST( test_basic_read_and_write );

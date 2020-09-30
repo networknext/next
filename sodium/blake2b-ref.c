@@ -415,7 +415,9 @@ blake2b_pick_best_implementation(void)
 #if defined(HAVE_AVX2INTRIN_H) && defined(HAVE_TMMINTRIN_H) && \
     defined(HAVE_SMMINTRIN_H)
     if (sodium_runtime_has_avx2()) {
+        #if NEXT_CRYPTO_LOGS
         printf( "blake2b -> avx2\n" );
+        #endif // #if NEXT_CRYPTO_LOGS
         blake2b_compress = blake2b_compress_avx2;
         return 0;
     }
@@ -423,20 +425,27 @@ blake2b_pick_best_implementation(void)
 #if defined(HAVE_EMMINTRIN_H) && defined(HAVE_TMMINTRIN_H) && \
     defined(HAVE_SMMINTRIN_H)
     if (sodium_runtime_has_sse41()) {
+        #if NEXT_CRYPTO_LOGS
         printf( "blake2b -> sse41\n" );
+        #endif // #if NEXT_CRYPTO_LOGS
         blake2b_compress = blake2b_compress_sse41;
         return 0;
     }
 #endif
 #if defined(HAVE_EMMINTRIN_H) && defined(HAVE_TMMINTRIN_H)
     if (sodium_runtime_has_ssse3()) {
+        #if NEXT_CRYPTO_LOGS
         printf( "blake2b -> ssse3\n" );
+        #endif // #if NEXT_CRYPTO_LOGS
         blake2b_compress = blake2b_compress_ssse3;
         return 0;
     }
 #endif
 
+    #if NEXT_CRYPTO_LOGS
     printf( "blake2b -> ref\n" );
+    #endif // #if NEXT_CRYPTO_LOGS
+
     blake2b_compress = blake2b_compress_ref;
 
     return 0;
