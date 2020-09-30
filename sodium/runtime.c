@@ -6,6 +6,7 @@
 
 #include "private_common.h"
 #include "runtime.h"
+#include <stdio.h>
 
 typedef struct CPUFeatures_ {
     int initialized;
@@ -231,11 +232,22 @@ _sodium_runtime_intel_cpu_features(CPUFeatures * const cpu_features)
 int
 _sodium_runtime_get_cpu_features(void)
 {
+    printf( "get cpu features:\n" );
+
     int ret = -1;
 
     ret &= _sodium_runtime_arm_cpu_features(&_cpu_features);
     ret &= _sodium_runtime_intel_cpu_features(&_cpu_features);
     _cpu_features.initialized = 1;
+
+    printf( "has_neon = %s\n", _cpu_features.has_neon ? "yes" : "no" );
+    printf( "has_sse2 = %s\n", _cpu_features.has_sse2 ? "yes" : "no" );
+    printf( "has_sse3 = %s\n", _cpu_features.has_sse3 ? "yes" : "no" );
+    printf( "has_ssse3 = %s\n", _cpu_features.has_ssse3 ? "yes" : "no" );
+    printf( "has_sse41 = %s\n", _cpu_features.has_sse41 ? "yes" : "no" );
+    printf( "has_avx = %s\n", _cpu_features.has_avx ? "yes" : "no" );
+    printf( "has_avx2 = %s\n", _cpu_features.has_avx2 ? "yes" : "no" );
+    printf( "has_avx512f = %s\n", _cpu_features.has_avx512f ? "yes" : "no" );
 
     return ret;
 }
