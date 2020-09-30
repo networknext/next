@@ -8,23 +8,15 @@
 #include "private_sse2_64_32.h"
 #include "utils.h"
 
-#if defined(HAVE_AVX2INTRIN_H) && defined(HAVE_EMMINTRIN_H) && \
-    defined(HAVE_TMMINTRIN_H) && defined(HAVE_SMMINTRIN_H)
+#ifdef HAVE_EMMINTRIN_H
 
 # ifdef __GNUC__
 #  pragma GCC target("sse2")
-#  pragma GCC target("ssse3")
-#  pragma GCC target("sse4.1")
-#  pragma GCC target("avx2")
 # endif
+# include <emmintrin.h>
 
-#include <emmintrin.h>
-#include <immintrin.h>
-#include <smmintrin.h>
-#include <tmmintrin.h>
-
-# include "../stream_salsa20.h"
-# include "salsa20_xmm6int-avx2.h"
+# include "stream_salsa20.h"
+# include "xmm6int_salsa20-sse2.h"
 
 # define ROUNDS 20
 
@@ -72,14 +64,13 @@ salsa20_encrypt_bytes(salsa_ctx *ctx, const uint8_t *m, uint8_t *c,
         return; /* LCOV_EXCL_LINE */
     }
 
-#include "u8.h"
-#include "u4.h"
-#include "u1.h"
-#include "u0.h"
+#include "xmm6int_u4.h"
+#include "xmm6int_u1.h"
+#include "xmm6int_u0.h"
 }
 
 static int
-stream_avx2(unsigned char *c, unsigned long long clen, const unsigned char *n,
+stream_sse2(unsigned char *c, unsigned long long clen, const unsigned char *n,
             const unsigned char *k)
 {
     struct salsa_ctx ctx;
@@ -98,7 +89,7 @@ stream_avx2(unsigned char *c, unsigned long long clen, const unsigned char *n,
 }
 
 static int
-stream_avx2_xor_ic(unsigned char *c, const unsigned char *m,
+stream_sse2_xor_ic(unsigned char *c, const unsigned char *m,
                    unsigned long long mlen, const unsigned char *n, uint64_t ic,
                    const unsigned char *k)
 {
@@ -111,7 +102,7 @@ stream_avx2_xor_ic(unsigned char *c, const unsigned char *m,
         return 0;
     }
     ic_high = (uint32_t) (ic >> 32);
-    ic_low  = (uint32_t) ic;
+    ic_low  = (uint32_t) (ic);
     STORE32_LE(&ic_bytes[0], ic_low);
     STORE32_LE(&ic_bytes[4], ic_high);
     salsa_keysetup(&ctx, k);
@@ -123,11 +114,11 @@ stream_avx2_xor_ic(unsigned char *c, const unsigned char *m,
 }
 
 struct crypto_stream_salsa20_implementation
-    crypto_stream_salsa20_xmm6int_avx2_implementation = {
-        SODIUM_C99(.stream =) stream_avx2,
-        SODIUM_C99(.stream_xor_ic =) stream_avx2_xor_ic
+    crypto_stream_salsa20_xmm6int_sse2_implementation = {
+        SODIUM_C99(.stream =) stream_sse2,
+        SODIUM_C99(.stream_xor_ic =) stream_sse2_xor_ic
     };
 
 #endif
 
-int salsa2_xmm6int_link_warning_dummy = 0;
+int salsa20_xmm6int_sse2_link_warning_dummy = 0;

@@ -4,7 +4,7 @@
 #include "utils.h"
 
 #include "stream_salsa20.h"
-#include "salsa20_xmm6.h"
+#include "salsa20-xmm6.h"
 
 #ifdef HAVE_AMD64_ASM
 

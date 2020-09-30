@@ -4,7 +4,7 @@
 
 #include "onetimeauth_poly1305.h"
 #include "crypto_verify_16.h"
-#include "poly1305_sse2.h"
+#include "poly1305-sse2.h"
 #include "private_common.h"
 #include "private_sse2_64_32.h"
 #include "utils.h"
