@@ -30,7 +30,7 @@
 
 #include <sodium.h>
 
-#if SODIUM_LIBRARY_VERSION_MAJOR <= 17
+#if SODIUM_LIBRARY_VERSION_MAJOR < 10 || ( SODIUM_LIBRARY_VERSION_MAJOR == 10 && SODIUM_LIBRARY_VERSION_MINOR < 2 )
 #error please upgrade your libsodium!
 #endif
 

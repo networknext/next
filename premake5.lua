@@ -38,7 +38,7 @@ project "next"
 project "sodium"
 	kind "StaticLib"
 	vectorextensions "AVX2"
-	defines { "CONFIGURED=1", "NEXT_CRYPTO_LOGS=1", "HAVE_TI_MODE=1", "HAVE_AVX_ASM=1", "HAVE_AMD64_ASM=1", "HAVE_CPUID=1" }
+	defines { "NEXT_CRYPTO_LOGS=1", "HAVE_TI_MODE=1", "HAVE_AVX_ASM=1", "HAVE_AMD64_ASM=1", "HAVE_CPUID=1" }
 	includedirs { "sodium" }
 	files {
 		"sodium/**.c",
