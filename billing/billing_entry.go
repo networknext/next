@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	BillingEntryVersion = uint8(10)
+	BillingEntryVersion = uint8(11)
 
 	BillingEntryMaxRelays           = 5
 	BillingEntryMaxISPLength        = 64
@@ -56,6 +56,7 @@ type BillingEntry struct {
 	PlatformType              uint8
 	SDKVersion                string
 	PacketLoss                float32
+	PredictedNextRTT          float32
 }
 
 func WriteBillingEntry(entry *BillingEntry) []byte {
@@ -127,6 +128,8 @@ func WriteBillingEntry(entry *BillingEntry) []byte {
 	encoding.WriteString(data, &index, entry.SDKVersion, BillingEntryMaxSDKVersionLength)
 
 	encoding.WriteFloat32(data, &index, entry.PacketLoss)
+
+	encoding.WriteFloat32(data, &index, entry.PredictedNextRTT)
 
 	return data[:index]
 }
@@ -305,6 +308,12 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 
 	if entry.Version >= 9 {
 		if !encoding.ReadFloat32(data, &index, &entry.PacketLoss) {
+			return false
+		}
+	}
+
+	if entry.Version >= 11 {
+		if !encoding.ReadFloat32(data, &index, &entry.PredictedNextRTT) {
 			return false
 		}
 	}
