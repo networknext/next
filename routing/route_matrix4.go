@@ -64,7 +64,7 @@ func (m *RouteMatrix4) Serialize(stream encoding.Stream) error {
 		stream.SerializeInteger(&entry.NumRoutes, 0, math.MaxInt32)
 
 		for i := 0; i < MaxRoutesPerRelayPair; i++ {
-			stream.SerializeInteger(&entry.RouteCost[i], 0, InvalidRouteValue)
+			stream.SerializeInteger(&entry.RouteCost[i], -1, InvalidRouteValue)
 			stream.SerializeInteger(&entry.RouteNumRelays[i], 0, MaxRelays)
 			stream.SerializeUint32(&entry.RouteHash[i])
 
