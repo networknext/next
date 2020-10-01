@@ -228,12 +228,7 @@ func (fs *Firestore) IncrementSequenceNumber(ctx context.Context) error {
 	return nil
 }
 
-// CheckSequenceNumber is called in the Firestore sync*() operations to see if a sync is required.
-// Returns true if the remote number != the local number which forces the caller to sync from
-// Firestore and updates the local sequence number. Returns false (no need to sync) and does
-// not modify the local number, otherwise.
-func (fs *Firestore) CheckSequenceNumber(ctx context.Context) (bool, error) {
-
+func (fs *Firestore) GetSequenceNumber(ctx context.Context) (int64, error) {
 	var num struct {
 		Value int64 `firestore:"value"`
 	}
@@ -241,21 +236,34 @@ func (fs *Firestore) CheckSequenceNumber(ctx context.Context) (bool, error) {
 	seqDocs := fs.Client.Collection("MetaData")
 	seq, err := seqDocs.Doc("SyncSequenceNumber").Get(ctx)
 	if err != nil {
-		return false, &DoesNotExistError{resourceType: "sequence number", resourceRef: ""}
+		return 0, &DoesNotExistError{resourceType: "sequence number", resourceRef: ""}
 	}
 
 	err = seq.DataTo(&num)
 	if err != nil {
-		return false, &UnmarshalError{err: err}
+		return 0, &UnmarshalError{err: err}
+	}
+
+	return num.Value, nil
+}
+
+// CheckSequenceNumber is called in the Firestore sync*() operations to see if a sync is required.
+// Returns true if the remote number != the local number which forces the caller to sync from
+// Firestore and updates the local sequence number. Returns false (no need to sync) and does
+// not modify the local number, otherwise.
+func (fs *Firestore) CheckSequenceNumber(ctx context.Context) (bool, error) {
+	num, err := fs.GetSequenceNumber(ctx)
+	if err != nil {
+		return false, err
 	}
 
 	fs.sequenceNumberMutex.RLock()
 	localSeqNum := fs.syncSequenceNumber
 	fs.sequenceNumberMutex.RUnlock()
 
-	if localSeqNum != num.Value {
+	if localSeqNum != num {
 		fs.sequenceNumberMutex.Lock()
-		fs.syncSequenceNumber = num.Value
+		fs.syncSequenceNumber = num
 		fs.sequenceNumberMutex.Unlock()
 		return true, nil
 	}

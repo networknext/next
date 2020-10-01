@@ -561,7 +561,6 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			SSHUser:             r.SSHUser,
 			SSHPort:             r.SSHPort,
 			State:               r.State.String(),
-			LastUpdateTime:      r.LastUpdateTime,
 			PublicKey:           base64.StdEncoding.EncodeToString(r.PublicKey),
 			UpdateKey:           base64.StdEncoding.EncodeToString(r.UpdateKey),
 			FirestoreID:         r.FirestoreID,

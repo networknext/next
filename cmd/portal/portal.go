@@ -333,8 +333,15 @@ func main() {
 				continue
 			}
 
+			data, err := ioutil.ReadAll(res.Body)
+			res.Body.Close()
+			if err != nil {
+				level.Error(logger).Log("msg", "unable to read relay stats body: %v", err)
+				continue
+			}
+
 			if res.StatusCode != http.StatusOK {
-				level.Error(logger).Log("msg", "bad relay_stats request")
+				level.Error(logger).Log("msg", "bad response from backend", "code", res.StatusCode, "err", string(data))
 				continue
 			}
 
@@ -343,14 +350,6 @@ func main() {
 				res.Body.Close()
 				continue
 			}
-
-			data, err := ioutil.ReadAll(res.Body)
-			if err != nil {
-				level.Error(logger).Log("msg", "unable to read response body", "err", err)
-				res.Body.Close()
-				continue
-			}
-			res.Body.Close()
 
 			if err := relayMap.ReadAndSwap(data); err != nil {
 				level.Error(logger).Log("msg", "unable to read relay stats map", "err", err)

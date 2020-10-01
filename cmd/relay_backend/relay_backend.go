@@ -126,13 +126,6 @@ func main() {
 	fmt.Printf("env is %s\n", env)
 
 	var customerPublicKey []byte
-	{
-		if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
-			customerPublicKey, _ = base64.StdEncoding.DecodeString(key)
-			customerPublicKey = customerPublicKey[8:]
-		}
-	}
-
 	var customerID uint64
 	if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
 		customerPublicKey, _ = base64.StdEncoding.DecodeString(key)
