@@ -497,6 +497,13 @@ func HandleNextToken(sessionData *SessionData4, storer storage.Storer, buyer *ro
 
 	numTokens := routeNumRelays + 2 // relays + client + server
 	routeAddresses, routePublicKeys := GetRouteAddressesAndPublicKeys(&packet.ClientAddress, packet.ClientRoutePublicKey, &packet.ServerAddress, packet.ServerRoutePublicKey, numTokens, routeRelays, allRelayIDs, storer)
+	if routeAddresses == nil || routePublicKeys == nil {
+		response.RouteType = routing.RouteTypeDirect
+		response.NumTokens = 0
+		response.Tokens = nil
+		return
+	}
+
 	tokenData := make([]byte, numTokens*routing.EncryptedNextRouteTokenSize4)
 	core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), uint32(buyer.RouteShader.BandwidthEnvelopeUpKbps), uint32(buyer.RouteShader.BandwidthEnvelopeDownKbps), int(numTokens), routeAddresses, routePublicKeys, routerPrivateKey)
 	response.RouteType = routing.RouteTypeNew
@@ -506,7 +513,14 @@ func HandleNextToken(sessionData *SessionData4, storer storage.Storer, buyer *ro
 
 func HandleContinueToken(sessionData *SessionData4, storer storage.Storer, buyer *routing.Buyer, packet *SessionUpdatePacket4, routeNumRelays int32, routeRelays []int32, allRelayIDs []uint64, routerPrivateKey [crypto.KeySize]byte, response *SessionResponsePacket4) {
 	numTokens := routeNumRelays + 2 // relays + client + server
-	_, routePublicKeys := GetRouteAddressesAndPublicKeys(&packet.ClientAddress, packet.ClientRoutePublicKey, &packet.ServerAddress, packet.ServerRoutePublicKey, numTokens, routeRelays, allRelayIDs, storer)
+	routeAddresses, routePublicKeys := GetRouteAddressesAndPublicKeys(&packet.ClientAddress, packet.ClientRoutePublicKey, &packet.ServerAddress, packet.ServerRoutePublicKey, numTokens, routeRelays, allRelayIDs, storer)
+	if routeAddresses == nil || routePublicKeys == nil {
+		response.RouteType = routing.RouteTypeDirect
+		response.NumTokens = 0
+		response.Tokens = nil
+		return
+	}
+
 	tokenData := make([]byte, numTokens*routing.EncryptedContinueRouteTokenSize4)
 	core.WriteContinueTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), int(numTokens), routePublicKeys, routerPrivateKey)
 	response.RouteType = routing.RouteTypeContinue
@@ -524,9 +538,12 @@ func GetRouteAddressesAndPublicKeys(clientAddress *net.UDPAddr, clientPublicKey 
 	routePublicKeys[numTokens-1] = serverPublicKey
 
 	totalNumRelays := int32(len(allRelayIDs))
-	for i := int32(1); i < numTokens-1; i++ {
+	foundRelayCount := int32(0)
+	for i := int32(0); i < numTokens-2; i++ {
+		relayIndex := routeRelays[i]
+
 		for j := int32(0); j < totalNumRelays; j++ {
-			relayIndex := routeRelays[i]
+
 			if j == relayIndex {
 				relayID := allRelayIDs[relayIndex]
 				relay, err := storer.Relay(relayID)
@@ -534,11 +551,16 @@ func GetRouteAddressesAndPublicKeys(clientAddress *net.UDPAddr, clientPublicKey 
 					continue
 				}
 
-				routeAddresses[i] = &relay.Addr
-				routePublicKeys[i] = relay.PublicKey
+				routeAddresses[i+1] = &relay.Addr
+				routePublicKeys[i+1] = relay.PublicKey
+				foundRelayCount++
 				break
 			}
 		}
+	}
+
+	if foundRelayCount != numTokens-2 {
+		return nil, nil
 	}
 
 	return routeAddresses, routePublicKeys

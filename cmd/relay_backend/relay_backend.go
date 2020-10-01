@@ -949,7 +949,11 @@ func main() {
 			return
 		}
 
-		routeMatrix4.Serialize(ws)
+		if err := routeMatrix4.Serialize(ws); err != nil {
+			level.Error(logger).Log("msg", "failed to serialize route matrix in SDK4 route entries serving function", "err", err)
+			return
+		}
+
 		ws.Flush()
 		data := ws.GetData()[:ws.GetBytesProcessed()]
 
@@ -987,6 +991,7 @@ func main() {
 	router.HandleFunc("/route_matrix_sdk4", serveRouteMatrixSDK4Func).Methods("GET")
 	router.Handle("/debug/vars", expvar.Handler())
 	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(relayMap, getRouteMatrixFunc, statsdb, "local", "local", maxJitter))
+	router.HandleFunc("/relay_dashboard4", transport.RelayDashboardHandlerFunc4(relayMap, getRouteMatrix4Func, statsdb, "local", "local", maxJitter))
 	router.HandleFunc("/routes", transport.RoutesHandlerFunc(getRouteMatrixFunc, statsdb, "local", "local"))
 	router.HandleFunc("/relay_stats", transport.RelayStatsFunc(logger, relayMap))
 
