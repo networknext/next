@@ -19,7 +19,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// This test depends on auth0 and the JWT doesn't have the right permissions.
 var storer = storage.InMemory{}
 
 func TestBuyersList(t *testing.T) {
@@ -322,9 +321,6 @@ func TestTotalSessions(t *testing.T) {
 		assert.Equal(t, 1, reply.Next)
 	})
 }
-
-// todo: this test is failing with "context deadline exceeded". I believe it's reaching out to Auth0, in which case
-// it should be rewritten to not do that.
 
 func TestTopSessions(t *testing.T) {
 	t.Parallel()
