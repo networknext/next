@@ -548,10 +548,6 @@ deploy-server-backend-velan:
 deploy-server-backend-esl:
 	./deploy/deploy.sh -e prod -c esl-22dr -t server-backend -n server_backend -b gs://prod_artifacts
 
-.PHONY: deploy-server-backend4-dev
-deploy-server-backend4-dev:
-	./deploy/deploy.sh -e dev -c dev-1 -t server-backend4 -n server_backend4 -b gs://development_artifacts
-
 .PHONY: deploy-ghost-army-dev
 deploy-ghost-army-dev:
 	./deploy/deploy.sh -e dev -c 1 -t ghost-army -n ghost_army -b gs://development_artifacts
@@ -887,15 +883,15 @@ build-server4: build-sdk4
 	@printf "done\n"
 
 .PHONY: build-functional-server
-build-functional-server: build-sdk3
+build-functional-server: build-sdk4
 	@printf "Building functional server... "
-	@$(CXX) -Isdk3/include -o $(DIST_DIR)/func_server ./cmd/func_server/func_server.cpp $(DIST_DIR)/$(SDK3NAME).so $(LDFLAGS)
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/func_server ./cmd/func_server/func_server.cpp $(DIST_DIR)/$(SDK4NAME).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional-client
-build-functional-client:
+build-functional-client: build-sdk4
 	@printf "Building functional client... "
-	@$(CXX) -Isdk3/include -o $(DIST_DIR)/func_client ./cmd/func_client/func_client.cpp $(DIST_DIR)/$(SDK3NAME).so $(LDFLAGS)
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/func_client ./cmd/func_client/func_client.cpp $(DIST_DIR)/$(SDK4NAME).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional
@@ -941,7 +937,7 @@ build-ghost-army-analyzer:
 # Relay Build Process #
 #######################
 
-RELAY_DIR := ./cmd/relay
+RELAY_DIR := ./relay
 RELAY_MAKEFILE := Makefile
 RELAY_EXE := relay
 
@@ -956,7 +952,7 @@ build-relay:
 	@printf "Building relay... "
 	@mkdir -p $(DIST_DIR)
 	@cd $(RELAY_DIR) && $(MAKE) release
-	@cp cmd/relay/bin/relay $(DIST_DIR)
+	@cp $(RELAY_DIR)/bin/relay $(DIST_DIR)
 	@echo "done"
 
 .PHONY: dev-relay
