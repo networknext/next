@@ -219,21 +219,6 @@ func TestDatacenterMaps(t *testing.T) {
 		assert.Equal(t, 0, len(reply.DatacenterMaps))
 	})
 
-	// belongs in ops
-	// t.Run("list w/o buyer ID", func(t *testing.T) {
-	// 	var reply jsonrpc.DatacenterMapsReply
-	// 	var args = jsonrpc.DatacenterMapsArgs{
-	// 		ID: "",
-	// 	}
-	// 	err := svc.ListDatacenterMaps(req, &args, &reply)
-	// 	assert.NoError(t, err)
-
-	// 	assert.Equal(t, "7edb88d7b6fc0713", reply.DatacenterMaps[id].Datacenter)
-	// 	assert.Equal(t, "some.server.alias", reply.DatacenterMaps[id].Alias)
-	// 	assert.Equal(t, "bdbebdbf0f7be395", reply.DatacenterMaps[id].BuyerID)
-
-	// })
-
 	t.Run("remove", func(t *testing.T) {
 		var reply jsonrpc.RemoveDatacenterMapReply
 		var args = jsonrpc.RemoveDatacenterMapArgs{
@@ -798,85 +783,182 @@ func TestGameConfiguration(t *testing.T) {
 		Logger:                 logger,
 	}
 
-	jwtSideload := "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik5rWXpOekkwTkVVNVFrSTVNRVF4TURRMk5UWTBNakkzTmpOQlJESkVNa1E0TnpGRFF6QkdRdyJ9.eyJuaWNrbmFtZSI6InRlc3QiLCJuYW1lIjoidGVzdEBuZXR3b3JrbmV4dC5jb20iLCJwaWN0dXJlIjoiaHR0cHM6Ly9zLmdyYXZhdGFyLmNvbS9hdmF0YXIvMmRhNWMwMjU5ZTQ3NmI1MDg0MTBlZWY3ZjI5Zjc1NGE_cz00ODAmcj1wZyZkPWh0dHBzJTNBJTJGJTJGY2RuLmF1dGgwLmNvbSUyRmF2YXRhcnMlMkZ0ZS5wbmciLCJ1cGRhdGVkX2F0IjoiMjAyMC0wNi0yM1QxMzozOToyMS44ODFaIiwiZW1haWwiOiJ0ZXN0QG5ldHdvcmtuZXh0LmNvbSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJpc3MiOiJodHRwczovL25ldHdvcmtuZXh0LmF1dGgwLmNvbS8iLCJzdWIiOiJhdXRoMHw1Yjk2ZjYxY2YxNjQyNzIxYWQ4NGVlYjYiLCJhdWQiOiJvUUpIM1lQSGR2WkpueENQbzFJcnR6NVVLaTV6cnI2biIsImlhdCI6MTU5MjkxOTU2NSwiZXhwIjoxNzUwNzA0MzI1LCJub25jZSI6ImRHZFNUWEpRTnpkdE5GcHNjR0Z1YVg1dlQxVlNhVFZXUjJoK2VHdG1hMnB2TkcweFZuNTFZalJJZmc9PSJ9.BvMe5fWJcheGzKmt3nCIeLjMD-C5426cpjtJiR55i7lmbT0k4h8Z2X6rynZ_aKR-gaCTY7FG5gI-Ty9ZY1zboWcIkxaTi0VKQzdMUTYVMXVEK2cQ1NVbph7_RSJhLfgO5y7PkmuMZXJEFdrI_2PkO4b3tOU-vpUHFUPtTsESV79a81kXn2C5j_KkKzCOPZ4zol1aEU3WliaaJNT38iSz3NX9URshrrdCE39JRClx6wbUgrfCGnVtfens-Sg7atijivaOx8IlUGOxLMEciYwBL2aY5EXaa7tp7c8ZvoEEj7uZH2R35fV7eUzACwShU-JLR9oOsNEhS4XO1AzTMtNHQA"
-	noopHandler := func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}
-	authMiddleware := jsonrpc.AuthMiddleware("oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n", http.HandlerFunc(noopHandler), false)
-
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.Header.Add("Authorization", "Bearer "+jwtSideload)
-	res := httptest.NewRecorder()
+
+	jsonrpc.SetIsAnonymous(req, true)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.GameConfigurationReply
+		err := svc.GameConfiguration(req, &jsonrpc.GameConfigurationArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	jsonrpc.SetIsAnonymous(req, false)
+
+	t.Run("no company", func(t *testing.T) {
+		var reply jsonrpc.GameConfigurationReply
+		err := svc.GameConfiguration(req, &jsonrpc.GameConfigurationArgs{}, &reply)
+		assert.Error(t, err)
+	})
 
 	reqContext := req.Context()
 	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local")
 	req = req.WithContext(reqContext)
 
-	authMiddleware.ServeHTTP(res, req)
-	assert.Equal(t, http.StatusOK, res.Code)
-
-	t.Run("missing name", func(t *testing.T) {
-		var reply jsonrpc.GameConfigurationReply
-		err := svc.UpdateGameConfiguration(req, &jsonrpc.GameConfigurationArgs{}, &reply)
-		assert.Error(t, err)
-	})
-
-	t.Run("missing domain", func(t *testing.T) {
-		var reply jsonrpc.GameConfigurationReply
-		err := svc.UpdateGameConfiguration(req, &jsonrpc.GameConfigurationArgs{}, &reply)
-		assert.Error(t, err)
-	})
-
-	t.Run("single", func(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
 		var reply jsonrpc.GameConfigurationReply
 		err := svc.GameConfiguration(req, &jsonrpc.GameConfigurationArgs{}, &reply)
 		assert.NoError(t, err)
 
 		assert.Equal(t, reply.GameConfiguration.PublicKey, "AQAAAAAAAAAAAAAA")
 	})
-
-	t.Run("failed to update public key", func(t *testing.T) {
-		var reply jsonrpc.GameConfigurationReply
-		err := svc.UpdateGameConfiguration(req, &jsonrpc.GameConfigurationArgs{NewPublicKey: "askjfgbdalksjdf balkjsdbf lkja flfakjs bdlkafs"}, &reply)
-
-		assert.Error(t, err)
-
-		assert.Equal(t, "", reply.GameConfiguration.PublicKey)
-	})
 }
 
-/*
-func TestSameBuyerRoleFunction(t *testing.T) {
+func TestUpdateGameConfiguration(t *testing.T) {
+	t.Parallel()
+
 	redisServer, _ := miniredis.Run()
-	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
+	redisPool := storage.NewRedisPool(redisServer.Addr(), 1, 1)
 	storer := storage.InMemory{}
 	pubkey := make([]byte, 4)
-	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, Name: "local.local.1", Domain: "networknext.com", PublicKey: pubkey})
+	storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
+	storer.AddCustomer(context.Background(), routing.Customer{Code: "local-local", Name: "Local Local"})
+	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey, Live: true})
 
 	logger := log.NewNopLogger()
 	svc := jsonrpc.BuyersService{
-		RedisClient: redisClient,
-		Storage:     &storer,
-		Logger:      logger,
+		RedisPoolTopSessions:   redisPool,
+		RedisPoolSessionMeta:   redisPool,
+		RedisPoolSessionSlices: redisPool,
+		RedisPoolSessionMap:    redisPool,
+		Storage:                &storer,
+		Logger:                 logger,
 	}
-
-	jwtSideload := "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik5rWXpOekkwTkVVNVFrSTVNRVF4TURRMk5UWTBNakkzTmpOQlJESkVNa1E0TnpGRFF6QkdRdyJ9.eyJuaWNrbmFtZSI6InRlc3QiLCJuYW1lIjoidGVzdEBuZXR3b3JrbmV4dC5jb20iLCJwaWN0dXJlIjoiaHR0cHM6Ly9zLmdyYXZhdGFyLmNvbS9hdmF0YXIvMmRhNWMwMjU5ZTQ3NmI1MDg0MTBlZWY3ZjI5Zjc1NGE_cz00ODAmcj1wZyZkPWh0dHBzJTNBJTJGJTJGY2RuLmF1dGgwLmNvbSUyRmF2YXRhcnMlMkZ0ZS5wbmciLCJ1cGRhdGVkX2F0IjoiMjAyMC0wNi0yM1QxMzozOToyMS44ODFaIiwiZW1haWwiOiJ0ZXN0QG5ldHdvcmtuZXh0LmNvbSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJpc3MiOiJodHRwczovL25ldHdvcmtuZXh0LmF1dGgwLmNvbS8iLCJzdWIiOiJhdXRoMHw1Yjk2ZjYxY2YxNjQyNzIxYWQ4NGVlYjYiLCJhdWQiOiJvUUpIM1lQSGR2WkpueENQbzFJcnR6NVVLaTV6cnI2biIsImlhdCI6MTU5MjkxOTU2NSwiZXhwIjoxNzUwNzA0MzI1LCJub25jZSI6ImRHZFNUWEpRTnpkdE5GcHNjR0Z1YVg1dlQxVlNhVFZXUjJoK2VHdG1hMnB2TkcweFZuNTFZalJJZmc9PSJ9.BvMe5fWJcheGzKmt3nCIeLjMD-C5426cpjtJiR55i7lmbT0k4h8Z2X6rynZ_aKR-gaCTY7FG5gI-Ty9ZY1zboWcIkxaTi0VKQzdMUTYVMXVEK2cQ1NVbph7_RSJhLfgO5y7PkmuMZXJEFdrI_2PkO4b3tOU-vpUHFUPtTsESV79a81kXn2C5j_KkKzCOPZ4zol1aEU3WliaaJNT38iSz3NX9URshrrdCE39JRClx6wbUgrfCGnVtfens-Sg7atijivaOx8IlUGOxLMEciYwBL2aY5EXaa7tp7c8ZvoEEj7uZH2R35fV7eUzACwShU-JLR9oOsNEhS4XO1AzTMtNHQA"
-	noopHandler := func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}
-	authMiddleware := jsonrpc.AuthMiddleware("oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n", http.HandlerFunc(noopHandler))
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.Header.Add("Authorization", "Bearer "+jwtSideload)
-	res := httptest.NewRecorder()
 
-	authMiddleware.ServeHTTP(res, req)
-	assert.Equal(t, http.StatusOK, res.Code)
+	jsonrpc.SetIsAnonymous(req, true)
 
-	t.Run("samebuyer role function", func(t *testing.T) {
-		sameBuyerRoleFunc := svc.SameBuyerRole("1")
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.GameConfigurationReply
+		err := svc.UpdateGameConfiguration(req, &jsonrpc.GameConfigurationArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	jsonrpc.SetIsAnonymous(req, false)
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, jsonrpc.Keys.RolesKey, []string{
+		"Owner",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("no company", func(t *testing.T) {
+		var reply jsonrpc.GameConfigurationReply
+		err := svc.UpdateGameConfiguration(req, &jsonrpc.GameConfigurationArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	reqContext = req.Context()
+	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local-local")
+	req = req.WithContext(reqContext)
+
+	t.Run("no public key", func(t *testing.T) {
+		var reply jsonrpc.GameConfigurationReply
+		err := svc.UpdateGameConfiguration(req, &jsonrpc.GameConfigurationArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("success - new buyer", func(t *testing.T) {
+		var reply jsonrpc.GameConfigurationReply
+		err := svc.UpdateGameConfiguration(req, &jsonrpc.GameConfigurationArgs{NewPublicKey: "KcZ+NlIAkrMfc9ir79ZMGJxLnPEDuHkf6Yi0akyyWWcR3JaMY+yp2A=="}, &reply)
+		assert.NoError(t, err)
+
+		newBuyer, err := storer.BuyerWithCompanyCode("local-local")
+		assert.NoError(t, err)
+
+		assert.Equal(t, "local-local", newBuyer.CompanyCode)
+		assert.False(t, newBuyer.Live)
+		assert.Equal(t, "12939405032490452521", fmt.Sprintf("%d", newBuyer.ID))
+		assert.Equal(t, "KcZ+NlIAkrMfc9ir79ZMGJxLnPEDuHkf6Yi0akyyWWcR3JaMY+yp2A==", reply.GameConfiguration.PublicKey)
+	})
+
+	reqContext = req.Context()
+	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local")
+	req = req.WithContext(reqContext)
+
+	t.Run("success - existing buyer", func(t *testing.T) {
+		var reply jsonrpc.GameConfigurationReply
+		err := svc.UpdateGameConfiguration(req, &jsonrpc.GameConfigurationArgs{NewPublicKey: "45Q+5CKzGkcf3mh8cD43UM8L6Wn81tVwmmlT3Xvs9HWSJp5Zyh5xZg=="}, &reply)
+		assert.NoError(t, err)
+
+		oldBuyer, err := storer.BuyerWithCompanyCode("local")
+		assert.NoError(t, err)
+
+		assert.Equal(t, "local", oldBuyer.CompanyCode)
+		assert.Equal(t, "5123604488526927075", fmt.Sprintf("%d", oldBuyer.ID))
+		assert.True(t, oldBuyer.Live)
+		assert.Equal(t, "45Q+5CKzGkcf3mh8cD43UM8L6Wn81tVwmmlT3Xvs9HWSJp5Zyh5xZg==", reply.GameConfiguration.PublicKey)
+	})
+}
+
+func TestSameBuyerRoleFunction(t *testing.T) {
+	redisServer, _ := miniredis.Run()
+	redisPool := storage.NewRedisPool(redisServer.Addr(), 1, 1)
+
+	storer := storage.InMemory{}
+	pubkey := make([]byte, 4)
+	storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
+	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
+
+	logger := log.NewNopLogger()
+	svc := jsonrpc.BuyersService{
+		RedisPoolSessionMap:    redisPool,
+		RedisPoolSessionMeta:   redisPool,
+		RedisPoolSessionSlices: redisPool,
+		RedisPoolTopSessions:   redisPool,
+		Storage:                &storer,
+		Logger:                 logger,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("fail - no company", func(t *testing.T) {
+		sameBuyerRoleFunc := svc.SameBuyerRole("local-local")
+		verified, err := sameBuyerRoleFunc(req)
+		assert.Error(t, err)
+		assert.False(t, verified)
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local")
+	req = req.WithContext(reqContext)
+
+	t.Run("fail - not same buyer", func(t *testing.T) {
+		sameBuyerRoleFunc := svc.SameBuyerRole("local-local")
+		verified, err := sameBuyerRoleFunc(req)
+		assert.NoError(t, err)
+		assert.False(t, verified)
+	})
+
+	t.Run("success - !admin", func(t *testing.T) {
+		sameBuyerRoleFunc := svc.SameBuyerRole("local")
 		verified, err := sameBuyerRoleFunc(req)
 		assert.NoError(t, err)
 		assert.True(t, verified)
 	})
-} */
+
+	reqContext = req.Context()
+	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local-local")
+	reqContext = context.WithValue(reqContext, jsonrpc.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("success - admin", func(t *testing.T) {
+		sameBuyerRoleFunc := svc.SameBuyerRole("local")
+		verified, err := sameBuyerRoleFunc(req)
+		assert.NoError(t, err)
+		assert.True(t, verified)
+	})
+}
