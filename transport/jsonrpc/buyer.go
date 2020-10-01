@@ -398,7 +398,7 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
-		buyerID := fmt.Sprintf("%x", buyer.ID)
+		buyerID := fmt.Sprintf("%016x", buyer.ID)
 		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
 			err := fmt.Errorf("TopSessions(): %v", ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
