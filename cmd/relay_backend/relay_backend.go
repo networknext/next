@@ -393,7 +393,7 @@ func main() {
 	relayMap := routing.NewRelayMap(cleanupCallback)
 	go func() {
 		timeout := int64(routing.RelayTimeout.Seconds())
-		frequency := time.Millisecond * 100
+		frequency := time.Second
 		ticker := time.NewTicker(frequency)
 		relayMap.TimeoutLoop(ctx, timeout, ticker.C)
 	}()

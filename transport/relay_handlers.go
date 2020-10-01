@@ -117,8 +117,8 @@ func RelayInitHandlerFunc(logger log.Logger, params *RelayInitHandlerConfig) fun
 			return
 		}
 
-		params.RelayMap.Lock(relayInitRequest.Address.String())
-		defer params.RelayMap.Unlock(relayInitRequest.Address.String())
+		params.RelayMap.Lock()
+		defer params.RelayMap.Unlock()
 		relayData := params.RelayMap.GetRelayData(relayInitRequest.Address.String())
 		if relayData != nil {
 			level.Warn(locallogger).Log("msg", "relay already initialized")
@@ -243,9 +243,9 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 			return
 		}
 
-		params.RelayMap.RLock(relayUpdateRequest.Address.String())
+		params.RelayMap.RLock()
 		relayDataReadOnly := params.RelayMap.GetRelayData(relayUpdateRequest.Address.String())
-		params.RelayMap.RUnlock(relayUpdateRequest.Address.String())
+		params.RelayMap.RUnlock()
 
 		if relayDataReadOnly == nil {
 			level.Warn(locallogger).Log("msg", "relay not initialized")
@@ -284,7 +284,9 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 				return
 			}
 
+			params.RelayMap.Lock()
 			params.RelayMap.RemoveRelayData(relayUpdateRequest.Address.String())
+			params.RelayMap.Unlock()
 			return
 		}
 
@@ -357,9 +359,9 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 		}
 
 		// Update the relay data
-		params.RelayMap.Lock(relayUpdateRequest.Address.String())
+		params.RelayMap.Lock()
 		params.RelayMap.UpdateRelayData(relayUpdateRequest.Address.String(), relayData)
-		params.RelayMap.Unlock(relayUpdateRequest.Address.String())
+		params.RelayMap.Unlock()
 
 		level.Debug(relayslogger).Log(
 			"id", relayDataReadOnly.ID,

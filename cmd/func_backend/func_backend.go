@@ -136,7 +136,9 @@ func TimeoutThread() {
 		allRelayData := backend.relayMap.GetAllRelayData()
 		for _, relayData := range allRelayData {
 			if currentTimestamp-relayData.LastUpdateTime.Unix() > unixTimeout {
+				backend.relayMap.Lock()
 				backend.relayMap.RemoveRelayData(relayData.Addr.String())
+				backend.relayMap.Unlock()
 				backend.dirty = true
 				continue
 			}
