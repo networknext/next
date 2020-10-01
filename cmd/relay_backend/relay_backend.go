@@ -856,8 +856,6 @@ func main() {
 				}
 			}
 
-			fmt.Println("cost matrix:", costMatrix4)
-
 			routeEntries := core.Optimize(numRelays, numSegments, costMatrix4, 5, relayDatacenterIDs)
 			if len(routeEntries) == 0 {
 				level.Warn(logger).Log("matrix", "cost", "op", "optimize", "warn", "no route entries generated from cost matrix")
@@ -873,26 +871,6 @@ func main() {
 				RelayLongitudes:    relayLongitudes,
 				RelayDatacenterIDs: relayDatacenterIDs,
 				RouteEntries:       routeEntries,
-			}
-
-			fmt.Printf("%d route entries\n\n", len(routeEntries))
-			for _, routeEntry := range routeEntries {
-				for i := int32(0); i < routeEntry.NumRoutes; i++ {
-					routeCost := routeEntry.RouteCost[i]
-					routeString := "relays: "
-					for j := int32(0); j < routeEntry.RouteNumRelays[i]; j++ {
-						relayIndex := routeEntry.RouteRelays[i][j]
-						relayName := routeMatrix4New.RelayNames[relayIndex]
-						routeString += relayName
-						if j < routeEntry.RouteNumRelays[i]-1 {
-							routeString += " -> "
-						}
-					}
-
-					fmt.Printf("route cost: %d\n", routeCost)
-					fmt.Printf("route:\n")
-					fmt.Printf("\t%s\n\n", routeString)
-				}
 			}
 
 			routeMatrix4Mutex.Lock()
@@ -971,7 +949,11 @@ func main() {
 			return
 		}
 
-		routeMatrix4.Serialize(ws)
+		if err := routeMatrix4.Serialize(ws); err != nil {
+			level.Error(logger).Log("msg", "failed to serialize route matrix in SDK4 route entries serving function", "err", err)
+			return
+		}
+
 		ws.Flush()
 		data := ws.GetData()[:ws.GetBytesProcessed()]
 

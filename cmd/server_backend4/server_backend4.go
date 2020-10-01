@@ -443,7 +443,11 @@ func mainReturnWithCode() int {
 					}
 
 					rs := encoding.CreateReadStream(buffer)
-					routeMatrix4.Serialize(rs)
+					if err := routeMatrix4.Serialize(rs); err != nil {
+						level.Error(logger).Log("msg", "could not serialize route matrix", "err", err)
+						time.Sleep(syncInterval)
+						continue // Don't swap route matrix if we fail to serialize
+					}
 
 					routeEntriesTime := time.Since(start)
 
