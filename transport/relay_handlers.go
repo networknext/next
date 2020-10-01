@@ -284,7 +284,9 @@ func RelayUpdateHandlerFunc(logger log.Logger, relayslogger log.Logger, params *
 				return
 			}
 
+			params.RelayMap.Lock()
 			params.RelayMap.RemoveRelayData(relayUpdateRequest.Address.String())
+			params.RelayMap.Unlock()
 			return
 		}
 
