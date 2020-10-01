@@ -885,13 +885,13 @@ build-server4: build-sdk4
 .PHONY: build-functional-server
 build-functional-server: build-sdk4
 	@printf "Building functional server... "
-	@$(CXX) -Isdk4/include -o $(DIST_DIR)/func_server ./cmd/func_server/func_server.cpp $(DIST_DIR)/$(SDK3NAME).so $(LDFLAGS)
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/func_server ./cmd/func_server/func_server.cpp $(DIST_DIR)/$(SDK4NAME).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional-client
 build-functional-client: build-sdk4
 	@printf "Building functional client... "
-	@$(CXX) -Isdk4/include -o $(DIST_DIR)/func_client ./cmd/func_client/func_client.cpp $(DIST_DIR)/$(SDK3NAME).so $(LDFLAGS)
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/func_client ./cmd/func_client/func_client.cpp $(DIST_DIR)/$(SDK4NAME).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional
