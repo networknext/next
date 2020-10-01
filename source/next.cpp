@@ -116,7 +116,9 @@
 #define NEXT_FLAGS_CONTINUE_REQUEST_TIMED_OUT                      (1<<6)
 #define NEXT_FLAGS_CLIENT_TIMED_OUT                                (1<<7)
 #define NEXT_FLAGS_UPGRADE_RESPONSE_TIMED_OUT                      (1<<8)
-#define NEXT_FLAGS_COUNT                                                9
+#define NEXT_FLAGS_ROUTE_UPDATE_TIMED_OUT                          (1<<9)
+#define NEXT_FLAGS_DIRECT_PONG_TIMED_OUT                          (1<<10)
+#define NEXT_FLAGS_COUNT                                               11
 
 #define NEXT_MAX_DATACENTER_NAME_LENGTH                               256
 
@@ -7007,6 +7009,14 @@ void next_client_internal_update_direct_pings( next_client_internal_t * client )
 
     double current_time = next_time();
 
+    if ( client->last_direct_pong_time + NEXT_SESSION_TIMEOUT < current_time && !client->fallback_to_direct )
+    {
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "client direct pong timed out. falling back to direct" );
+        next_platform_mutex_acquire( &client->route_manager_mutex );
+        next_route_manager_fallback_to_direct( client->route_manager, NEXT_FLAGS_DIRECT_PONG_TIMED_OUT );
+        next_platform_mutex_release( &client->route_manager_mutex );
+    }
+
     if ( client->last_direct_ping_time + ( 1.0 / NEXT_DIRECT_PINGS_PER_SECOND ) <= current_time )
     {
         NextDirectPingPacket packet;
@@ -7019,14 +7029,6 @@ void next_client_internal_update_direct_pings( next_client_internal_t * client )
         }
 
         client->last_direct_ping_time = current_time;
-    }
-
-    if ( client->last_direct_pong_time + NEXT_SESSION_TIMEOUT < current_time && !client->fallback_to_direct )
-    {
-        next_platform_mutex_acquire( &client->route_manager_mutex );
-        next_route_manager_fallback_to_direct( client->route_manager, NEXT_FLAGS_CLIENT_TIMED_OUT );
-        next_platform_mutex_release( &client->route_manager_mutex );
-        client->fallback_to_direct = true;
     }
 }
 
@@ -7132,12 +7134,16 @@ void next_client_internal_update_fallback_to_direct( next_client_internal_t * cl
 
     if ( !client->fallback_to_direct && client->upgraded && client->route_update_timeout_time > 0.0 )
     {
-        // printf( "current time = %f, route update timeout time = %f\n", next_time(), client->route_update_timeout_time );
-
         if ( next_time() > client->route_update_timeout_time )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client route update timeout. falling back to direct" );
+        
+            next_platform_mutex_acquire( &client->route_manager_mutex );
+            next_route_manager_fallback_to_direct( client->route_manager, NEXT_FLAGS_ROUTE_UPDATE_TIMED_OUT );
+            next_platform_mutex_release( &client->route_manager_mutex );
+        
             client->counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT]++;
+        
             client->fallback_to_direct = true;
         }
     }
