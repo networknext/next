@@ -102,8 +102,7 @@ func (rmap *RelayMap) RUnlock() {
 }
 
 func (relayMap *RelayMap) GetRelayCount() uint64 {
-	count := uint64(len(relayMap.relays))
-	return count
+	return uint64(len(relayMap.relays))
 }
 
 func (relayMap *RelayMap) UpdateRelayData(relayAddress string, relayData *RelayData) {
@@ -115,26 +114,25 @@ func (relayMap *RelayMap) GetRelayData(relayAddress string) *RelayData {
 }
 
 func (relayMap *RelayMap) GetAllRelayData() []*RelayData {
+	relayMap.RLock()
 	relays := make([]*RelayData, len(relayMap.relays))
 
-	relayMap.mutex.RLock()
 	index := 0
 	for _, relayData := range relayMap.relays {
 		relays[index] = relayData
 		index++
 	}
-	relayMap.mutex.RUnlock()
+
+	relayMap.RUnlock()
 
 	return relays
 }
 
 func (relayMap *RelayMap) RemoveRelayData(relayAddress string) {
-	relayMap.mutex.Lock()
 	if relay, ok := relayMap.relays[relayAddress]; ok {
 		relayMap.cleanupCallback(relay)
 		delete(relayMap.relays, relayAddress)
 	}
-	relayMap.mutex.Unlock()
 }
 
 func (relayMap *RelayMap) TimeoutLoop(ctx context.Context, timeoutSeconds int64, c <-chan time.Time) {
@@ -145,21 +143,21 @@ func (relayMap *RelayMap) TimeoutLoop(ctx context.Context, timeoutSeconds int64,
 			deleteList = deleteList[:0]
 			timeoutTimestamp := time.Now().Unix() - timeoutSeconds
 
-			relayMap.mutex.RLock()
+			relayMap.RLock()
 			for k, v := range relayMap.relays {
 				if v.LastUpdateTime.Unix() < timeoutTimestamp {
 					deleteList = append(deleteList, k)
 				}
 			}
-			relayMap.mutex.RUnlock()
+			relayMap.RUnlock()
 
 			if len(deleteList) > 0 {
-				relayMap.mutex.Lock()
+				relayMap.Lock()
 				for i := range deleteList {
 					relayMap.cleanupCallback(relayMap.relays[deleteList[i]])
 					delete(relayMap.relays, deleteList[i])
 				}
-				relayMap.mutex.Unlock()
+				relayMap.Unlock()
 			}
 		case <-ctx.Done():
 			return
@@ -169,8 +167,10 @@ func (relayMap *RelayMap) TimeoutLoop(ctx context.Context, timeoutSeconds int64,
 
 // | version | count | relay data ... |
 func (r *RelayMap) MarshalBinary() ([]byte, error) {
-	r.mutex.RLock()
-	numRelays := uint64(len(r.relays))
+	r.RLock()
+	defer r.RUnlock()
+
+	numRelays := r.GetRelayCount()
 
 	// preallocate the entire buffer size
 	data := make([]byte, 1+8+numRelays*RelayDataBytes)
@@ -216,7 +216,6 @@ func (r *RelayMap) MarshalBinary() ([]byte, error) {
 		encoding.WriteFloat32(data, &index, relay.CPUUsage)
 		encoding.WriteFloat32(data, &index, relay.MemUsage)
 	}
-	r.mutex.RUnlock()
 
 	return data, nil
 }
