@@ -7723,10 +7723,12 @@ void next_client_send_packet_direct( next_client_t * client, const uint8_t * pac
         return;
     }
 
-    next_platform_socket_send_packet( client->internal->socket, &client->server_address, packet_data, packet_bytes );
-
+    uint8_t buffer[NEXT_MAX_PACKET_BYTES];
+    buffer[0] = 0;
+    memcpy( buffer + 1, packet_data, packet_bytes );
+    next_platform_socket_send_packet( client->internal->socket, &client->server_address, buffer, packet_bytes + 1 );
     client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT]++;
-    client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT_UPGRADED]++;
+    client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT_RAW]++;
 
     client->internal->packets_sent++;
 }
@@ -12275,7 +12277,7 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
             {
                 // send over network next
 
-                static uint8_t next_packet_data[NEXT_MAX_PACKET_BYTES];
+                uint8_t next_packet_data[NEXT_MAX_PACKET_BYTES];
                 
                 if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_SERVER_TO_CLIENT_PACKET, send_sequence, session_id, session_version, session_private_key, next_packet_data ) != NEXT_OK )
                 {
@@ -12294,7 +12296,7 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
             {
                 // [255][session sequence][packet sequence](payload) style packet direct to client
 
-                static uint8_t buffer[NEXT_MAX_PACKET_BYTES];
+                uint8_t buffer[NEXT_MAX_PACKET_BYTES];
                 uint8_t * p = buffer;
                 next_write_uint8( &p, NEXT_DIRECT_PACKET );
                 next_write_uint8( &p, open_session_sequence );
@@ -12309,7 +12311,7 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
     {
         // [0](payload) raw direct packet
 
-        static uint8_t buffer[NEXT_MAX_PACKET_BYTES];
+        uint8_t buffer[NEXT_MAX_PACKET_BYTES];
         buffer[0] = 0;
         memcpy( buffer + 1, packet_data, size_t(packet_bytes) + 1 );
         next_platform_socket_send_packet( server->internal->socket, to_address, buffer, packet_bytes + 1 );
@@ -12337,7 +12339,10 @@ void next_server_send_packet_direct( next_server_t * server, const next_address_
         return;
     }
 
-    next_platform_socket_send_packet( server->internal->socket, to_address, packet_data, packet_bytes );
+    uint8_t buffer[NEXT_MAX_PACKET_BYTES];
+    buffer[0] = 0;
+    memcpy( buffer + 1, packet_data, size_t(packet_bytes) + 1 );
+    next_platform_socket_send_packet( server->internal->socket, to_address, buffer, packet_bytes + 1 );
 }
 
 // ---------------------------------------------------------------
