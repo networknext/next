@@ -130,7 +130,10 @@ func (relayMap *RelayMap) GetAllRelayData() []*RelayData {
 
 func (relayMap *RelayMap) RemoveRelayData(relayAddress string) {
 	relayMap.mutex.Lock()
-	delete(relayMap.relays, relayAddress)
+	if relay, ok := relayMap.relays[relayAddress]; ok {
+		relayMap.cleanupCallback(relay)
+		delete(relayMap.relays, relayAddress)
+	}
 	relayMap.mutex.Unlock()
 }
 

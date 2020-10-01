@@ -62,6 +62,44 @@ func TestRelayMapTimeoutLoop(t *testing.T) {
 	ctx.Done()
 }
 
+func TestRelayMapGetAllRelayData(t *testing.T) {
+	relays := make([]*routing.RelayData, 10)
+	rmap := routing.NewRelayMap(func(relay *routing.RelayData) error { return nil })
+	for i := 0; i < len(relays); i++ {
+		relay := newRelay()
+		relays[i] = relay
+		addr, _ := net.ResolveUDPAddr("udp", fmt.Sprintf("127.0.0.1:%d", 10000+i))
+		relay.Addr = *addr
+		rmap.UpdateRelayData(relay.Addr.String(), relay)
+	}
+
+	for _, relay := range rmap.GetAllRelayData() {
+		relay.Version = "some other version"
+		expected := rmap.GetRelayData(relay.Addr.String())
+		assert.NotNil(t, expected)
+		assert.Equal(t, relay.Version, expected.Version)
+	}
+}
+
+func TestRelayMapRemoveRelay(t *testing.T) {
+	removedRelays := new(int)
+	rmap := routing.NewRelayMap(func(relay *routing.RelayData) error {
+		(*removedRelays)++
+		return nil
+	})
+
+	relays := make([]*routing.RelayData, 10)
+	for i := 0; i < len(relays); i++ {
+		relay := newRelay()
+		relays[i] = relay
+		rmap.UpdateRelayData(fmt.Sprintf("127.0.0.1:%d", 10000+i), relay)
+	}
+
+	rmap.RemoveRelayData("127.0.0.1:10000")
+	assert.Equal(t, 1, *removedRelays)
+	assert.Equal(t, uint64(9), rmap.GetRelayCount())
+}
+
 func TestRelayMapMarshalBinary(t *testing.T) {
 	t.Run("invalid version", func(t *testing.T) {
 		rmap := routing.NewRelayMap(func(relay *routing.RelayData) error { return nil })
@@ -123,22 +161,22 @@ func TestRelayMapMarshalBinary(t *testing.T) {
 			assert.True(t, encoding.ReadFloat32(bin, &index, &relay.MemUsage))
 
 			// relays are written via iterating the map, so they are in a semi-random order
-			var actual *routing.RelayData = nil
+			var expected *routing.RelayData = nil
 			for j := uint64(0); j < numRelays; j++ {
 				if relay.ID == relays[j].ID {
-					actual = relays[j]
+					expected = relays[j]
 					checkedRelays[relay.ID] = true
 					break
 				}
 			}
-			assert.NotNil(t, actual)
+			assert.NotNil(t, expected)
 
-			assert.Equal(t, actual.ID, relay.ID)
-			assert.Equal(t, actual.TrafficStats, relay.TrafficStats)
-			assert.Equal(t, actual.Version, relay.Version)
-			assert.Equal(t, actual.LastUpdateTime, relay.LastUpdateTime)
-			assert.Equal(t, actual.CPUUsage, relay.CPUUsage)
-			assert.Equal(t, actual.MemUsage, relay.MemUsage)
+			assert.Equal(t, expected.ID, relay.ID)
+			assert.Equal(t, expected.TrafficStats, relay.TrafficStats)
+			assert.Equal(t, expected.Version, relay.Version)
+			assert.Equal(t, expected.LastUpdateTime, relay.LastUpdateTime)
+			assert.Equal(t, expected.CPUUsage, relay.CPUUsage)
+			assert.Equal(t, expected.MemUsage, relay.MemUsage)
 		}
 		assert.Equal(t, numRelays, uint64(len(checkedRelays)))
 	})
