@@ -60,11 +60,11 @@ func (m *RouteMatrix4) Serialize(stream encoding.Stream) error {
 	for i := uint32(0); i < numEntries; i++ {
 		entry := &m.RouteEntries[i]
 
-		stream.SerializeInteger(&entry.DirectCost, 0, 10000)
+		stream.SerializeInteger(&entry.DirectCost, -1, InvalidRouteValue)
 		stream.SerializeInteger(&entry.NumRoutes, 0, math.MaxInt32)
 
 		for i := 0; i < MaxRoutesPerRelayPair; i++ {
-			stream.SerializeInteger(&entry.RouteCost[i], 0, 10000)
+			stream.SerializeInteger(&entry.RouteCost[i], 0, InvalidRouteValue)
 			stream.SerializeInteger(&entry.RouteNumRelays[i], 0, MaxRelays)
 			stream.SerializeUint32(&entry.RouteHash[i])
 
@@ -94,7 +94,7 @@ func (m *RouteMatrix4) GetNearRelays(latitude float64, longitude float64, maxNea
 		nearRelayData[i].Name = m.RelayNames[i]
 		lat2 := float64(m.RelayLatitudes[i])
 		long2 := float64(m.RelayLongitudes[i])
-		nearRelayData[i].distance = int(core.HaversineDistance(lat1, long1, lat2, long2))
+		nearRelayData[i].Distance = int(core.HaversineDistance(lat1, long1, lat2, long2))
 	}
 
 	// IMPORTANT: Sort near relays by distance using a *stable sort*
@@ -102,7 +102,7 @@ func (m *RouteMatrix4) GetNearRelays(latitude float64, longitude float64, maxNea
 	// even when some relays have the same integer distance from the client. Without this
 	// the set of near relays passed down to the SDK can be different from one slice to the next!
 
-	sort.SliceStable(nearRelayData, func(i, j int) bool { return nearRelayData[i].distance < nearRelayData[j].distance })
+	sort.SliceStable(nearRelayData, func(i, j int) bool { return nearRelayData[i].Distance < nearRelayData[j].Distance })
 
 	if len(nearRelayData) > maxNearRelays {
 		nearRelayData = nearRelayData[:maxNearRelays]

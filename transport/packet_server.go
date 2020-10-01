@@ -65,7 +65,7 @@ const (
 	FallbackFlagsRouteRequestTimedOut4       = (1 << 5)
 	FallbackFlagsContinueRequestTimedOut4    = (1 << 6)
 	FallbackFlagsClientTimedOut4             = (1 << 7)
-	FallbackFlagsTryBeforeYouBuyAbort4       = (1 << 8)
+	FallbackFlagsUpgradeResponseTimedOut4    = (1 << 8)
 	FallbackFlagsCount4                      = 9
 )
 
