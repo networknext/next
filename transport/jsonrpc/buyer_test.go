@@ -20,10 +20,11 @@ import (
 )
 
 // This test depends on auth0 and the JWT doesn't have the right permissions.
+var storer = storage.InMemory{}
+
 func TestBuyersList(t *testing.T) {
 	t.Parallel()
 
-	storer := storage.InMemory{}
 	storer.AddCustomer(context.Background(), routing.Customer{Name: "Local", Code: "local"})
 	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local"})
 	storer.AddCustomer(context.Background(), routing.Customer{Name: "Local Local", Code: "local-local"})
@@ -155,8 +156,6 @@ func TestDatacenterMaps(t *testing.T) {
 		Datacenter: 0x7edb88d7b6fc0713,
 	}
 
-	storer := storage.InMemory{}
-
 	buyer := routing.Buyer{
 		ID:          0xbdbebdbf0f7be395,
 		CompanyCode: "local",
@@ -254,7 +253,6 @@ func TestTotalSessions(t *testing.T) {
 
 	redisServer.HSet(fmt.Sprintf("d-0000000000000001-%d", minutes), "789", "")
 
-	storer := storage.InMemory{}
 	pubkey := make([]byte, 4)
 
 	ctx := context.Background()
@@ -361,7 +359,6 @@ func TestTopSessions(t *testing.T) {
 	redisClient.Set(fmt.Sprintf("sm-%s", sessionID2), transport.SessionMeta{ID: 222, DeltaRTT: 100}.RedisString(), time.Hour)
 	redisClient.Set(fmt.Sprintf("sm-%s", sessionID3), transport.SessionMeta{ID: 333, DeltaRTT: 150}.RedisString(), time.Hour)
 
-	storer := storage.InMemory{}
 	pubkey := make([]byte, 4)
 	storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
 	storer.AddBuyer(context.Background(), routing.Buyer{ID: 111, CompanyCode: "local", PublicKey: pubkey})
@@ -573,7 +570,6 @@ func TestSessionMapPoints(t *testing.T) {
 	redisClient.HSet(fmt.Sprintf("n-%s-%d", buyerID2, minutes), sessionID2, points[1].RedisString())
 	redisClient.HSet(fmt.Sprintf("d-%s-%d", buyerID1, minutes), sessionID3, points[2].RedisString())
 
-	storer := storage.InMemory{}
 	pubkey := make([]byte, 4)
 	storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
 	storer.AddCustomer(context.Background(), routing.Customer{Code: "local-local", Name: "Local Local"})
@@ -682,7 +678,6 @@ func TestSessionMap(t *testing.T) {
 	redisClient.HSet(fmt.Sprintf("n-%s-%d", buyerID2, minutes), sessionID2, points[1].RedisString())
 	redisClient.HSet(fmt.Sprintf("d-%s-%d", buyerID1, minutes), sessionID3, points[2].RedisString())
 
-	storer := storage.InMemory{}
 	pubkey := make([]byte, 4)
 	storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
 	storer.AddCustomer(context.Background(), routing.Customer{Code: "local-local", Name: "Local Local"})
@@ -768,7 +763,6 @@ func TestGameConfiguration(t *testing.T) {
 
 	redisServer, _ := miniredis.Run()
 	redisPool := storage.NewRedisPool(redisServer.Addr(), 1, 1)
-	storer := storage.InMemory{}
 	pubkey := make([]byte, 4)
 	storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
 	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
@@ -819,7 +813,6 @@ func TestUpdateGameConfiguration(t *testing.T) {
 
 	redisServer, _ := miniredis.Run()
 	redisPool := storage.NewRedisPool(redisServer.Addr(), 1, 1)
-	storer := storage.InMemory{}
 	pubkey := make([]byte, 4)
 	storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
 	storer.AddCustomer(context.Background(), routing.Customer{Code: "local-local", Name: "Local Local"})
@@ -906,7 +899,6 @@ func TestSameBuyerRoleFunction(t *testing.T) {
 	redisServer, _ := miniredis.Run()
 	redisPool := storage.NewRedisPool(redisServer.Addr(), 1, 1)
 
-	storer := storage.InMemory{}
 	pubkey := make([]byte, 4)
 	storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
 	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
