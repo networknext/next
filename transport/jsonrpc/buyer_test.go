@@ -19,10 +19,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var storer = storage.InMemory{}
-
 func TestBuyersList(t *testing.T) {
 	t.Parallel()
+	var storer = storage.InMemory{}
 
 	storer.AddCustomer(context.Background(), routing.Customer{Name: "Local", Code: "local"})
 	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local"})
@@ -149,6 +148,7 @@ func TestBuyersList(t *testing.T) {
 } */
 
 func TestDatacenterMaps(t *testing.T) {
+	var storer = storage.InMemory{}
 	dcMap := routing.DatacenterMap{
 		Alias:      "some.server.alias",
 		BuyerID:    0xbdbebdbf0f7be395,
@@ -240,6 +240,7 @@ func TestDatacenterMaps(t *testing.T) {
 
 func TestTotalSessions(t *testing.T) {
 	t.Parallel()
+	var storer = storage.InMemory{}
 
 	redisServer, _ := miniredis.Run()
 	redisPool := storage.NewRedisPool(redisServer.Addr(), 1, 1)
@@ -324,6 +325,7 @@ func TestTotalSessions(t *testing.T) {
 
 func TestTopSessions(t *testing.T) {
 	t.Parallel()
+	var storer = storage.InMemory{}
 
 	redisServer, _ := miniredis.Run()
 	redisPool := storage.NewRedisPool(redisServer.Addr(), 5, 5)
@@ -540,6 +542,7 @@ func TestSessionDetails(t *testing.T) {
 
 func TestSessionMapPoints(t *testing.T) {
 	t.Parallel()
+	var storer = storage.InMemory{}
 
 	redisServer, _ := miniredis.Run()
 	redisPool := storage.NewRedisPool(redisServer.Addr(), 5, 5)
@@ -648,6 +651,7 @@ func TestSessionMapPoints(t *testing.T) {
 
 func TestSessionMap(t *testing.T) {
 	t.Parallel()
+	var storer = storage.InMemory{}
 
 	redisServer, _ := miniredis.Run()
 	redisPool := storage.NewRedisPool(redisServer.Addr(), 5, 5)
@@ -756,6 +760,7 @@ func TestSessionMap(t *testing.T) {
 
 func TestGameConfiguration(t *testing.T) {
 	t.Parallel()
+	var storer = storage.InMemory{}
 
 	redisServer, _ := miniredis.Run()
 	redisPool := storage.NewRedisPool(redisServer.Addr(), 1, 1)
@@ -806,6 +811,7 @@ func TestGameConfiguration(t *testing.T) {
 
 func TestUpdateGameConfiguration(t *testing.T) {
 	t.Parallel()
+	var storer = storage.InMemory{}
 
 	redisServer, _ := miniredis.Run()
 	redisPool := storage.NewRedisPool(redisServer.Addr(), 1, 1)
@@ -894,6 +900,7 @@ func TestUpdateGameConfiguration(t *testing.T) {
 func TestSameBuyerRoleFunction(t *testing.T) {
 	redisServer, _ := miniredis.Run()
 	redisPool := storage.NewRedisPool(redisServer.Addr(), 1, 1)
+	var storer = storage.InMemory{}
 
 	pubkey := make([]byte, 4)
 	storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
