@@ -524,9 +524,12 @@ func GetRouteAddressesAndPublicKeys(clientAddress *net.UDPAddr, clientPublicKey 
 	routePublicKeys[numTokens-1] = serverPublicKey
 
 	totalNumRelays := int32(len(allRelayIDs))
-	for i := int32(1); i < numTokens-1; i++ {
+	foundRelayCount := int32(0)
+	for i := int32(0); i < numTokens-2; i++ {
+		relayIndex := routeRelays[i]
+
 		for j := int32(0); j < totalNumRelays; j++ {
-			relayIndex := routeRelays[i]
+
 			if j == relayIndex {
 				relayID := allRelayIDs[relayIndex]
 				relay, err := storer.Relay(relayID)
@@ -534,11 +537,16 @@ func GetRouteAddressesAndPublicKeys(clientAddress *net.UDPAddr, clientPublicKey 
 					continue
 				}
 
-				routeAddresses[i] = &relay.Addr
-				routePublicKeys[i] = relay.PublicKey
+				routeAddresses[i+1] = &relay.Addr
+				routePublicKeys[i+1] = relay.PublicKey
+				foundRelayCount++
 				break
 			}
 		}
+	}
+
+	if foundRelayCount != numTokens-2 {
+		return nil, nil
 	}
 
 	return routeAddresses, routePublicKeys
