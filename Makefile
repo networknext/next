@@ -419,12 +419,12 @@ dev-server4: build-sdk4 build-server4  ## runs a local server (sdk4)
 
 $(DIST_DIR)/$(SDK3NAME).so: dist
 	@printf "Building sdk3... "
-	@$(CXX) -fPIC -Isdk3/include -shared -o $(DIST_DIR)/$(SDK3NAME).so ./sdk3/source/next.cpp ./sdk3/source/next_ios.cpp ./sdk3/source/next_linux.cpp ./sdk3/source/next_mac.cpp ./sdk3/source/next_ps4.cpp ./sdk3/source/next_switch.cpp ./sdk3/source/next_windows.cpp ./sdk3/source/next_xboxone.cpp $(LDFLAGS)
+	@$(CXX) -fPIC -Isdk3/include -shared -o $(DIST_DIR)/$(SDK3NAME).so ./sdk3/source/*.cpp $(LDFLAGS)
 	@printf "done\n"
 
 $(DIST_DIR)/$(SDK4NAME).so: dist
 	@printf "Building sdk4... "
-	@$(CXX) -fPIC -Isdk4/include -shared -o $(DIST_DIR)/$(SDK4NAME).so ./sdk4/source/next.cpp ./sdk4/source/next_ios.cpp ./sdk4/source/next_linux.cpp ./sdk4/source/next_mac.cpp ./sdk4/source/next_ps4.cpp ./sdk4/source/next_switch.cpp ./sdk4/source/next_windows.cpp ./sdk4/source/next_xboxone.cpp $(LDFLAGS)
+	@$(CXX) -fPIC -Isdk4/include -shared -o $(DIST_DIR)/$(SDK4NAME).so ./sdk4/source/*.cpp $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-sdk3
@@ -974,7 +974,7 @@ format:
 build-all: build-sdk3 build-sdk4 build-load-test build-portal-cruncher build-analytics build-billing build-relay-backend build-server-backend build-relay-ref build-client3 build-client4 build-server3 build-server4 build-functional build-next ## builds everything
 
 .PHONY: rebuild-all
-rebuild-all: clean build-all ## rebuilds enerything
+rebuild-all: clean build-all ## rebuilds everything
 
 .PHONY: update-sdk4
 update-sdk4:
