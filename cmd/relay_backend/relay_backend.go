@@ -1009,6 +1009,7 @@ func main() {
 	router.HandleFunc("/route_matrix_sdk4", serveRouteMatrixSDK4Func).Methods("GET")
 	router.Handle("/debug/vars", expvar.Handler())
 	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(relayMap, getRouteMatrixFunc, statsdb, "local", "local", maxJitter))
+	router.HandleFunc("/relay_dashboard4", transport.RelayDashboardHandlerFunc4(relayMap, getRouteMatrix4Func, statsdb, "local", "local", maxJitter))
 	router.HandleFunc("/routes", transport.RoutesHandlerFunc(getRouteMatrixFunc, statsdb, "local", "local"))
 	router.HandleFunc("/relay_stats", transport.RelayStatsFunc(logger, relayMap))
 
