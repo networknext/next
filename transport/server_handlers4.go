@@ -497,6 +497,13 @@ func HandleNextToken(sessionData *SessionData4, storer storage.Storer, buyer *ro
 
 	numTokens := routeNumRelays + 2 // relays + client + server
 	routeAddresses, routePublicKeys := GetRouteAddressesAndPublicKeys(&packet.ClientAddress, packet.ClientRoutePublicKey, &packet.ServerAddress, packet.ServerRoutePublicKey, numTokens, routeRelays, allRelayIDs, storer)
+	if routeAddresses == nil || routePublicKeys == nil {
+		response.RouteType = routing.RouteTypeDirect
+		response.NumTokens = 0
+		response.Tokens = nil
+		return
+	}
+
 	tokenData := make([]byte, numTokens*routing.EncryptedNextRouteTokenSize4)
 	core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), uint32(buyer.RouteShader.BandwidthEnvelopeUpKbps), uint32(buyer.RouteShader.BandwidthEnvelopeDownKbps), int(numTokens), routeAddresses, routePublicKeys, routerPrivateKey)
 	response.RouteType = routing.RouteTypeNew
@@ -506,7 +513,14 @@ func HandleNextToken(sessionData *SessionData4, storer storage.Storer, buyer *ro
 
 func HandleContinueToken(sessionData *SessionData4, storer storage.Storer, buyer *routing.Buyer, packet *SessionUpdatePacket4, routeNumRelays int32, routeRelays []int32, allRelayIDs []uint64, routerPrivateKey [crypto.KeySize]byte, response *SessionResponsePacket4) {
 	numTokens := routeNumRelays + 2 // relays + client + server
-	_, routePublicKeys := GetRouteAddressesAndPublicKeys(&packet.ClientAddress, packet.ClientRoutePublicKey, &packet.ServerAddress, packet.ServerRoutePublicKey, numTokens, routeRelays, allRelayIDs, storer)
+	routeAddresses, routePublicKeys := GetRouteAddressesAndPublicKeys(&packet.ClientAddress, packet.ClientRoutePublicKey, &packet.ServerAddress, packet.ServerRoutePublicKey, numTokens, routeRelays, allRelayIDs, storer)
+	if routeAddresses == nil || routePublicKeys == nil {
+		response.RouteType = routing.RouteTypeDirect
+		response.NumTokens = 0
+		response.Tokens = nil
+		return
+	}
+
 	tokenData := make([]byte, numTokens*routing.EncryptedContinueRouteTokenSize4)
 	core.WriteContinueTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), int(numTokens), routePublicKeys, routerPrivateKey)
 	response.RouteType = routing.RouteTypeContinue
