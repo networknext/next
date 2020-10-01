@@ -6,12 +6,12 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/binary"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"math"
 	"math/rand"
 	"net"
@@ -19,11 +19,14 @@ import (
 	"os"
 	"sort"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/gorilla/mux"
+	"golang.org/x/sys/unix"
 
 	"github.com/networknext/backend/billing"
+	"github.com/networknext/backend/core"
 	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/transport"
@@ -168,6 +171,266 @@ func (backend *Backend) GetNearRelays() []*routing.RelayData {
 	return allRelayData
 }
 
+func ServerInitHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
+	var initRequest transport.ServerInitRequestPacket4
+	if err := transport.UnmarshalPacket(&initRequest, incoming.Data); err != nil {
+		fmt.Printf("error: failed to read server init request packet: %v\n", err)
+		return
+	}
+
+	initResponse := &transport.ServerInitResponsePacket4{
+		RequestID: initRequest.RequestID,
+		Response:  transport.InitResponseOK,
+	}
+
+	initResponseData, err := transport.MarshalPacket(initResponse)
+	if err != nil {
+		fmt.Printf("error: failed to marshal server init response: %v\n", err)
+		return
+	}
+
+	packetHeader := append([]byte{transport.PacketTypeServerInitResponse4}, make([]byte, crypto.PacketHashSize)...)
+	responseData := append(packetHeader, initResponseData...)
+	if _, err := w.Write(responseData); err != nil {
+		fmt.Printf("error: failed to write server init response: %v\n", err)
+		return
+	}
+}
+
+func ServerUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
+	var serverUpdate transport.ServerUpdatePacket4
+	if err := transport.UnmarshalPacket(&serverUpdate, incoming.Data); err != nil {
+		fmt.Printf("error: failed to read server update packet: %v\n", err)
+		return
+	}
+}
+
+func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
+	var sessionUpdate transport.SessionUpdatePacket4
+	if err := transport.UnmarshalPacket(&sessionUpdate, incoming.Data); err != nil {
+		fmt.Printf("error: failed to read session update packet: %v\n", err)
+		return
+	}
+
+	if sessionUpdate.FallbackToDirect {
+		fmt.Printf("error: fallback to direct %s\n", incoming.SourceAddr.String())
+		return
+	}
+
+	newSession := sessionUpdate.SliceNumber == 0
+
+	var sessionData transport.SessionData4
+	if newSession {
+		sessionData.Version = transport.SessionDataVersion4
+		sessionData.SessionID = sessionUpdate.SessionID
+		sessionData.SliceNumber = uint32(sessionUpdate.SliceNumber + 1)
+		sessionData.ExpireTimestamp = uint64(time.Now().Unix()) + billing.BillingSliceSeconds
+		sessionData.RouteState.UserID = sessionUpdate.UserHash
+		sessionData.Location = routing.LocationNullIsland
+	} else {
+		if err := transport.UnmarshalSessionData(&sessionData, sessionUpdate.SessionData[:]); err != nil {
+			fmt.Printf("could not read session data in session update packet: %v\n", err)
+			return
+		}
+
+		sessionData.SliceNumber = uint32(sessionUpdate.SliceNumber + 1)
+		sessionData.ExpireTimestamp += billing.BillingSliceSeconds
+	}
+
+	nearRelays := backend.GetNearRelays()
+
+	var sessionResponse *transport.SessionResponsePacket4
+
+	takeNetworkNext := len(nearRelays) > 0
+
+	if backend.mode == BACKEND_MODE_IDEMPOTENT && rand.Intn(10) == 0 {
+		return
+	}
+
+	if backend.mode == BACKEND_MODE_FORCE_DIRECT {
+		takeNetworkNext = false
+	}
+
+	if backend.mode == BACKEND_MODE_RANDOM {
+		takeNetworkNext = takeNetworkNext && rand.Float32() > 0.5
+	}
+
+	if backend.mode == BACKEND_MODE_ON_OFF {
+		// Alternate between direct and next routes for each slice
+		if (sessionUpdate.SliceNumber & 1) == 0 {
+			takeNetworkNext = false
+		}
+	}
+
+	if backend.mode == BACKEND_MODE_ON_ON_OFF {
+		// Alternate between direct, a new route token and a continue route token for every 3 slices
+		if (sessionUpdate.SliceNumber & 2) == 0 {
+			takeNetworkNext = false
+		}
+	}
+
+	if backend.mode == BACKEND_MODE_ROUTE_SWITCHING {
+		rand.Shuffle(len(nearRelays), func(i, j int) {
+			nearRelays[i], nearRelays[j] = nearRelays[j], nearRelays[i]
+		})
+	}
+
+	multipath := len(nearRelays) > 0 && backend.mode == BACKEND_MODE_MULTIPATH
+
+	committed := true
+
+	if backend.mode == BACKEND_MODE_UNCOMMITTED {
+		committed = false
+		if sessionUpdate.Committed {
+			panic("slices must not be committed in this mode")
+		}
+	}
+
+	if backend.mode == BACKEND_MODE_UNCOMMITTED_TO_COMMITTED {
+		committed = sessionUpdate.SliceNumber > 2
+		if sessionUpdate.SliceNumber <= 2 && sessionUpdate.Committed {
+			panic("slices 0,1,2,3 should not be committed")
+		}
+		if sessionUpdate.SliceNumber >= 4 && !sessionUpdate.Committed {
+			panic("slices 4 and greater should be committed")
+		}
+	}
+
+	if backend.mode == BACKEND_MODE_USER_FLAGS {
+		if sessionUpdate.SliceNumber >= 2 && sessionUpdate.UserFlags != 0x123 {
+			panic("user flags not set on session update")
+		}
+	}
+
+	// Extract ids and addresses into own list to make response
+	var nearRelayIDs = [MaxRelays]uint64{}
+	var nearRelayAddresses = [MaxRelays]net.UDPAddr{}
+	var nearRelayPublicKeys = [MaxRelays][]byte{}
+	for i, relay := range nearRelays {
+		nearRelayIDs[i] = relay.ID
+		nearRelayAddresses[i] = relay.Addr
+		nearRelayPublicKeys[i] = relay.PublicKey
+	}
+
+	if !takeNetworkNext {
+
+		// direct route
+		sessionResponse = &transport.SessionResponsePacket4{
+			SessionID:          sessionUpdate.SessionID,
+			SliceNumber:        sessionUpdate.SliceNumber,
+			NumNearRelays:      int32(len(nearRelays)),
+			NearRelayIDs:       nearRelayIDs[:len(nearRelays)],
+			NearRelayAddresses: nearRelayAddresses[:len(nearRelays)],
+			RouteType:          int32(routing.RouteTypeDirect),
+			NumTokens:          0,
+			Tokens:             nil,
+		}
+
+	} else {
+
+		// Make next route from near relays (but respect hop limit)
+		numRelays := len(nearRelays)
+		if numRelays > routing.MaxRelays {
+			numRelays = routing.MaxRelays
+		}
+		nextRoute := routing.Route{
+			NumRelays:       numRelays,
+			RelayIDs:        nearRelayIDs,
+			RelayAddrs:      nearRelayAddresses,
+			RelayPublicKeys: nearRelayPublicKeys,
+		}
+
+		relayTokens := make([]routing.RelayToken, nextRoute.NumRelays)
+		for i := range relayTokens {
+			relayTokens[i] = routing.RelayToken{
+				ID:        nextRoute.RelayIDs[i],
+				Addr:      nextRoute.RelayAddrs[i],
+				PublicKey: nextRoute.RelayPublicKeys[i],
+			}
+		}
+
+		var routeType int32
+		sameRoute := nextRoute.NumRelays == int(sessionData.RouteNumRelays) && nextRoute.RelayIDs == sessionData.RouteRelayIDs
+
+		routerPrivateKey := [crypto.KeySize]byte{}
+		copy(routerPrivateKey[:], crypto.RouterPrivateKey)
+
+		tokenAddresses := make([]*net.UDPAddr, nextRoute.NumRelays+2)
+		tokenAddresses[0] = &sessionUpdate.ClientAddress
+		tokenAddresses[len(tokenAddresses)-1] = &sessionUpdate.ServerAddress
+		for i := 0; i < nextRoute.NumRelays; i++ {
+			tokenAddresses[1+i] = &nearRelayAddresses[i]
+		}
+
+		tokenPublicKeys := make([][]byte, nextRoute.NumRelays+2)
+		tokenPublicKeys[0] = sessionUpdate.ClientRoutePublicKey
+		tokenPublicKeys[len(tokenPublicKeys)-1] = sessionUpdate.ServerRoutePublicKey
+		for i := 0; i < nextRoute.NumRelays; i++ {
+			tokenPublicKeys[1+i] = nearRelayPublicKeys[i]
+		}
+
+		numTokens := nextRoute.NumRelays + 2
+
+		var tokenData []byte
+		if sameRoute {
+			tokenData = make([]byte, numTokens*routing.EncryptedContinueRouteTokenSize4)
+			core.WriteContinueTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), int(numTokens), nextRoute.RelayPublicKeys[:], routerPrivateKey)
+			routeType = routing.RouteTypeContinue
+		} else {
+			sessionData.ExpireTimestamp += billing.BillingSliceSeconds
+			sessionData.SessionVersion++
+
+			tokenData = make([]byte, numTokens*routing.EncryptedNextRouteTokenSize4)
+			core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), 1024, 1024, int(numTokens), tokenAddresses, tokenPublicKeys, routerPrivateKey)
+			routeType = routing.RouteTypeNew
+		}
+
+		sessionResponse = &transport.SessionResponsePacket4{
+			SessionID:          sessionUpdate.SessionID,
+			SliceNumber:        sessionUpdate.SliceNumber,
+			NumNearRelays:      int32(len(nearRelays)),
+			NearRelayIDs:       nearRelayIDs[:len(nearRelays)],
+			NearRelayAddresses: nearRelayAddresses[:len(nearRelays)],
+			RouteType:          routeType,
+			Multipath:          multipath,
+			Committed:          committed,
+			NumTokens:          int32(numTokens),
+			Tokens:             tokenData,
+		}
+	}
+
+	if sessionResponse == nil {
+		fmt.Printf("error: nil session response\n")
+		return
+	}
+
+	sessionDataBuffer, err := transport.MarshalSessionData(&sessionData)
+	if err != nil {
+		fmt.Printf("error: failed to marshal session data: %v\n", err)
+		return
+	}
+
+	if len(sessionDataBuffer) > transport.MaxSessionDataSize {
+		fmt.Printf("session data too large\n")
+	}
+
+	sessionResponse.SessionDataBytes = int32(len(sessionDataBuffer))
+	copy(sessionResponse.SessionData[:], sessionDataBuffer)
+
+	sessionResponseData, err := transport.MarshalPacket(sessionResponse)
+	if err != nil {
+		fmt.Printf("error: failed to marshal session response: %v\n", err)
+		return
+	}
+
+	packetHeader := append([]byte{transport.PacketTypeSessionResponse4}, make([]byte, crypto.PacketHashSize)...)
+	responseData := append(packetHeader, sessionResponseData...)
+	if _, err := w.Write(responseData); err != nil {
+		fmt.Printf("error: failed to write session response: %v\n", err)
+		return
+	}
+}
+
 func main() {
 
 	rand.Seed(time.Now().UnixNano())
@@ -229,350 +492,85 @@ func main() {
 
 	go WebServer()
 
-	listenAddress := net.UDPAddr{
-		Port: NEXT_SERVER_BACKEND_PORT,
-		IP:   net.ParseIP("0.0.0.0"),
-	}
-
 	fmt.Printf("started functional backend on ports %d and %d\n", NEXT_RELAY_BACKEND_PORT, NEXT_SERVER_BACKEND_PORT)
 
-	connection, err := net.ListenUDP("udp", &listenAddress)
-	if err != nil {
-		fmt.Printf("error: could not listen on %s\n", listenAddress.String())
-		return
-	}
-
-	defer connection.Close()
-
-	mux := transport.UDPServerMux{
-		Conn:          connection,
-		MaxPacketSize: transport.DefaultMaxPacketSize,
-
-		ServerInitHandlerFunc: func(w io.Writer, incoming *transport.UDPPacket) {
-
-			initRequest := &transport.ServerInitRequestPacket{}
-			if err = initRequest.UnmarshalBinary(incoming.Data); err != nil {
-				fmt.Printf("error: failed to read server init request packet: %v\n", err)
-				return
-			}
-
-			initResponse := &transport.ServerInitResponsePacket{
-				RequestID: initRequest.RequestID,
-				Response:  transport.InitResponseOK,
-			}
-
-			initResponse.Signature = crypto.Sign(crypto.BackendPrivateKey, initResponse.GetSignData())
-
-			responsePacketData, err := initResponse.MarshalBinary()
-			if err != nil {
-				fmt.Printf("error: failed to write init response packet: %v\n", err)
-				return
-			}
-
-			_, err = w.Write(responsePacketData)
-			if err != nil {
-				fmt.Printf("error: failed to send udp response: %v\n", err)
-				return
-			}
-		},
-
-		ServerUpdateHandlerFunc: func(w io.Writer, incoming *transport.UDPPacket) {
-
-			serverUpdate := &transport.ServerUpdatePacket{}
-			if err = serverUpdate.UnmarshalBinary(incoming.Data); err != nil {
-				fmt.Printf("error: failed to read server update packet: %v\n", err)
-				return
-			}
-
-			serverEntry := ServerEntry{}
-			serverEntry.address = &incoming.SourceAddr
-			serverEntry.publicKey = serverUpdate.ServerRoutePublicKey
-			serverEntry.lastUpdate = time.Now().Unix()
-
-			key := string(incoming.SourceAddr.String())
-
-			backend.mutex.Lock()
-			_, ok := backend.serverDatabase[key]
-			if !ok {
-				backend.dirty = true
-			}
-			backend.serverDatabase[key] = serverEntry
-			backend.mutex.Unlock()
-		},
-
-		SessionUpdateHandlerFunc: func(w io.Writer, incoming *transport.UDPPacket) {
-
-			sessionUpdate := &transport.SessionUpdatePacket{}
-			if err = sessionUpdate.UnmarshalBinary(incoming.Data); err != nil {
-				fmt.Printf("error: failed to read server session update packet: %v\n", err)
-				return
-			}
-
-			if sessionUpdate.FallbackToDirect {
-				fmt.Printf("error: fallback to direct %s\n", incoming.SourceAddr.String())
-				return
-			}
-
-			backend.mutex.RLock()
-			serverEntry, ok := backend.serverDatabase[string(incoming.SourceAddr.String())]
-			backend.mutex.RUnlock()
-			if !ok {
-				fmt.Printf("error: could not find server %s\n", incoming.SourceAddr.String())
-				return
-			}
-
-			nearRelays := backend.GetNearRelays()
-
-			var sessionResponse *transport.SessionResponsePacket
-
-			backend.mutex.RLock()
-			sessionEntry, ok := backend.sessionDatabase[sessionUpdate.SessionID]
-			backend.mutex.RUnlock()
-
-			newSession := !ok
-
-			if newSession {
-				sessionEntry.SessionID = sessionUpdate.SessionID
-				sessionEntry.Version = 0
-			} else {
-				switch seq := sessionUpdate.Sequence; {
-				case seq < sessionEntry.Sequence:
-					fmt.Printf("error: session sequence number (%v) is older than sequence number in cache (%v), ignoring...\n", seq, sessionEntry.Sequence)
-					return
-				case seq == sessionEntry.Sequence:
-					_, err = w.Write(sessionEntry.Response)
-					if err != nil {
-						fmt.Printf("error: failed to respond with session entry cache: %v\n", err)
-					}
-					return
-				}
-			}
-
-			sessionEntry.TimestampExpire = time.Now().Add(time.Minute * 5)
-
-			takeNetworkNext := len(nearRelays) > 0
-
-			if backend.mode == BACKEND_MODE_IDEMPOTENT && rand.Intn(10) == 0 {
-				return
-			}
-
-			if backend.mode == BACKEND_MODE_FORCE_DIRECT {
-				takeNetworkNext = false
-			}
-
-			if backend.mode == BACKEND_MODE_RANDOM {
-				takeNetworkNext = takeNetworkNext && rand.Float32() > 0.5
-			}
-
-			if backend.mode == BACKEND_MODE_ON_OFF {
-				// Alternate between direct and next routes for each slice
-				if (sessionUpdate.Sequence & 1) == 0 {
-					takeNetworkNext = false
-				}
-			}
-
-			if backend.mode == BACKEND_MODE_ON_ON_OFF {
-				// Alternate between direct, a new route token and a continue route token for every 3 slices
-				if (sessionUpdate.Sequence & 2) == 0 {
-					takeNetworkNext = false
-				}
-			}
-
-			if backend.mode == BACKEND_MODE_ROUTE_SWITCHING {
-				rand.Shuffle(len(nearRelays), func(i, j int) {
-					nearRelays[i], nearRelays[j] = nearRelays[j], nearRelays[i]
-				})
-			}
-
-			multipath := len(nearRelays) > 0 && backend.mode == BACKEND_MODE_MULTIPATH
-
-			committed := true
-
-			if backend.mode == BACKEND_MODE_UNCOMMITTED {
-				committed = false
-				if sessionUpdate.Committed {
-					panic("slices must not be committed in this mode")
-				}
-			}
-
-			if backend.mode == BACKEND_MODE_UNCOMMITTED_TO_COMMITTED {
-				committed = sessionUpdate.Sequence > 2
-				if sessionUpdate.Sequence <= 2 && sessionUpdate.Committed {
-					panic("slices 0,1,2,3 should not be committed")
-				}
-				if sessionUpdate.Sequence >= 4 && !sessionUpdate.Committed {
-					panic("slices 4 and greater should be committed")
-				}
-			}
-
-			if backend.mode == BACKEND_MODE_USER_FLAGS {
-				if sessionUpdate.Sequence >= 2 && sessionUpdate.UserFlags != 0x123 {
-					panic("user flags not set on session update")
-				}
-			}
-
-			// Extract ids and addresses into own list to make response
-			var nearRelayIDs = [MaxRelays]uint64{}
-			var nearRelayAddresses = [MaxRelays]net.UDPAddr{}
-			var nearRelayPublicKeys = [MaxRelays][]byte{}
-			for i, relay := range nearRelays {
-				nearRelayIDs[i] = relay.ID
-				nearRelayAddresses[i] = relay.Addr
-				nearRelayPublicKeys[i] = relay.PublicKey
-			}
-
-			if !takeNetworkNext {
-
-				// direct route
-				sessionResponse = &transport.SessionResponsePacket{
-					Sequence:             sessionUpdate.Sequence,
-					SessionID:            sessionUpdate.SessionID,
-					NumNearRelays:        int32(len(nearRelays)),
-					NearRelayIDs:         nearRelayIDs[:len(nearRelays)],
-					NearRelayAddresses:   nearRelayAddresses[:len(nearRelays)],
-					RouteType:            int32(routing.RouteTypeDirect),
-					NumTokens:            0,
-					Tokens:               nil,
-					ServerRoutePublicKey: serverEntry.publicKey,
-				}
-
-				directRoute := &routing.Route{}
-				sessionEntry.RouteHash = directRoute.Hash64()
-
-			} else {
-
-				// Make next route from near relays (but respect hop limit)
-				numRelays := len(nearRelays)
-				if numRelays > routing.MaxRelays {
-					numRelays = routing.MaxRelays
-				}
-				nextRoute := routing.Route{
-					NumRelays:       numRelays,
-					RelayIDs:        nearRelayIDs,
-					RelayAddrs:      nearRelayAddresses,
-					RelayPublicKeys: nearRelayPublicKeys,
-				}
-
-				if newSession {
-					sessionEntry.TimestampExpire = time.Now().Add(billing.BillingSliceSeconds * 2 * time.Second)
-				} else {
-					sessionEntry.TimestampExpire = sessionEntry.TimestampExpire.Add(billing.BillingSliceSeconds * time.Second)
-				}
-
-				relayTokens := make([]routing.RelayToken, nextRoute.NumRelays)
-				for i := range relayTokens {
-					relayTokens[i] = routing.RelayToken{
-						ID:        nextRoute.RelayIDs[i],
-						Addr:      nextRoute.RelayAddrs[i],
-						PublicKey: nextRoute.RelayPublicKeys[i],
-					}
-				}
-
-				var token routing.Token
-				if nextRoute.Hash64() == sessionEntry.RouteHash {
-					token = &routing.ContinueRouteToken{
-						Expires: uint64(sessionEntry.TimestampExpire.Unix()),
-
-						SessionID: sessionUpdate.SessionID,
-
-						SessionVersion: sessionEntry.Version,
-						SessionFlags:   0,
-
-						Client: routing.Client{
-							Addr:      sessionUpdate.ClientAddress,
-							PublicKey: sessionUpdate.ClientRoutePublicKey,
-						},
-
-						Server: routing.Server{
-							Addr:      sessionUpdate.ServerAddress,
-							PublicKey: serverEntry.publicKey,
-						},
-
-						Relays: relayTokens,
-					}
-				} else {
-					sessionEntry.Version++
-
-					token = &routing.NextRouteToken{
-						Expires: uint64(sessionEntry.TimestampExpire.Unix()),
-
-						SessionID: sessionUpdate.SessionID,
-
-						SessionVersion: sessionEntry.Version,
-						SessionFlags:   0, // Haven't figured out what this is for. // glenn: it's unused, but left in for binary compatibility reasons until we migrate to new backend.
-
-						Client: routing.Client{
-							Addr:      sessionUpdate.ClientAddress,
-							PublicKey: sessionUpdate.ClientRoutePublicKey,
-						},
-
-						Server: routing.Server{
-							Addr:      sessionUpdate.ServerAddress,
-							PublicKey: serverEntry.publicKey,
-						},
-
-						Relays: relayTokens,
-
-						KbpsUp:   256 * 100,
-						KbpsDown: 256 * 100,
-					}
-				}
-
-				tokens, numtokens, err := token.Encrypt(crypto.RouterPrivateKey)
+	lc := net.ListenConfig{
+		Control: func(network string, address string, c syscall.RawConn) error {
+			err := c.Control(func(fileDescriptor uintptr) {
+				err := unix.SetsockoptInt(int(fileDescriptor), unix.SOL_SOCKET, unix.SO_REUSEADDR, 1)
 				if err != nil {
-					fmt.Printf("error: failed to encrypt route token: %v\n", err)
-					return
+					panic(fmt.Sprintf("failed to set reuse address socket option: %v", err))
 				}
-				sessionEntry.RouteHash = nextRoute.Hash64()
 
-				sessionResponse = &transport.SessionResponsePacket{
-					Sequence:             sessionUpdate.Sequence,
-					SessionID:            sessionUpdate.SessionID,
-					NumNearRelays:        int32(len(nearRelays)),
-					NearRelayIDs:         nearRelayIDs[:len(nearRelays)],
-					NearRelayAddresses:   nearRelayAddresses[:len(nearRelays)],
-					RouteType:            int32(token.Type()),
-					Multipath:            multipath,
-					Committed:            committed,
-					NumTokens:            int32(numtokens),
-					Tokens:               tokens,
-					ServerRoutePublicKey: serverEntry.publicKey,
+				err = unix.SetsockoptInt(int(fileDescriptor), unix.SOL_SOCKET, unix.SO_REUSEPORT, 1)
+				if err != nil {
+					panic(fmt.Sprintf("failed to set reuse port socket option: %v", err))
 				}
-			}
+			})
 
-			if sessionResponse == nil {
-				fmt.Printf("error: nil session response\n")
-				return
-			}
-
-			sessionResponse.Signature = crypto.Sign(crypto.BackendPrivateKey, sessionResponse.GetSignData())
-
-			responsePacketData, err := sessionResponse.MarshalBinary()
-			if err != nil {
-				fmt.Printf("error: failed to write session response packet: %v\n", err)
-				return
-			}
-
-			sessionEntry.Sequence = sessionResponse.Sequence
-			sessionEntry.Response = responsePacketData
-
-			backend.mutex.Lock()
-			if newSession {
-				backend.dirty = true
-			}
-			backend.sessionDatabase[sessionUpdate.SessionID] = sessionEntry
-			backend.mutex.Unlock()
-
-			_, err = w.Write(responsePacketData)
-			if err != nil {
-				fmt.Printf("error: failed to send udp response: %v\n", err)
-				return
-			}
+			return err
 		},
 	}
 
-	if err := mux.Start(context.Background()); err != nil {
-		log.Fatalf("failed to start udp server: %v", err)
+	for {
+		lp, err := lc.ListenPacket(context.Background(), "udp", "0.0.0.0:"+fmt.Sprintf("%d", NEXT_SERVER_BACKEND_PORT))
+		if err != nil {
+			panic(fmt.Sprintf("could not bind socket: %v", err))
+		}
+
+		conn := lp.(*net.UDPConn)
+
+		dataArray := [transport.DefaultMaxPacketSize]byte{}
+		for {
+			data := dataArray[:]
+			size, fromAddr, err := conn.ReadFromUDP(data)
+			if err != nil {
+				fmt.Printf("failed to read udp packet: %v\n", err)
+				break
+			}
+
+			if size <= 0 {
+				continue
+			}
+
+			data = data[:size]
+
+			// Check the packet hash is legit and remove the hash from the beginning of the packet
+			// to continue processing the packet as normal
+			if !crypto.IsNetworkNextPacket(crypto.PacketHashKey, data) {
+				fmt.Println("received non network next packet")
+				continue
+			}
+
+			packetType := data[0]
+			data = data[crypto.PacketHashSize+1 : size]
+
+			var buffer bytes.Buffer
+			packet := transport.UDPPacket{SourceAddr: *fromAddr, Data: data}
+
+			switch packetType {
+			case transport.PacketTypeServerInitRequest4:
+				ServerInitHandlerFunc(&buffer, &packet)
+			case transport.PacketTypeServerUpdate4:
+				ServerUpdateHandlerFunc(&buffer, &packet)
+			case transport.PacketTypeSessionUpdate4:
+				SessionUpdateHandlerFunc(&buffer, &packet)
+			default:
+				fmt.Printf("unknown packet type %d\n", packet.Data[0])
+			}
+
+			if buffer.Len() > 0 {
+				response := buffer.Bytes()
+
+				// Sign and hash the response
+				response = crypto.SignPacket(crypto.BackendPrivateKey, response)
+				crypto.HashPacket(crypto.PacketHashKey, response)
+
+				if _, err := conn.WriteToUDP(response, fromAddr); err != nil {
+					fmt.Printf("failed to write UDP response: %v\n", err)
+				}
+			}
+		}
 	}
 }
 
