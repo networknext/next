@@ -51,8 +51,8 @@ void server_packet_received( next_server_t * server, void * context, const next_
     // verify_packet( packet_data, packet_bytes );
 
     // todo
-    next_assert( packet_bytes == 1 );
-    printf( "server received %d\n", packet_data[0] );
+    next_assert( packet_bytes == 2 );
+    printf( "server received %d\n", ( int(packet_data[1]) << 8 ) | int(packet_data[0]) );
 
     next_server_send_packet( server, from, packet_data, packet_bytes );
 

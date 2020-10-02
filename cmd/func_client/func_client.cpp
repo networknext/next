@@ -1,4 +1,4 @@
-/*
+ /*
     Network Next SDK. Copyright © 2017 - 2020 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
@@ -54,8 +54,8 @@ void client_packet_received( next_client_t * client, void * context, const uint8
     (void) client; (void) context;
     // verify_packet( packet_data, packet_bytes );
     // todo:
-    next_assert( packet_bytes == 1 );
-    printf( "client received %d\n", packet_data[0] );
+    next_assert( packet_bytes == 2 );
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "client received %d", ( int(packet_data[1]) << 8 ) | int(packet_data[0]) );
 }
 
 #define NEXT_CLIENT_COUNTER_MAX 64
@@ -168,7 +168,7 @@ int main()
 
     bool second_connect_completed = false;
 
-    uint8_t packet_sequence = 0;
+    int packet_sequence = 0;
 
     // IMPORTANT: Have to wait a bit here or the first packet will get dropped
     // because of a race condition between the server getting set via OPEN_SESSION_COMMAND
@@ -204,8 +204,10 @@ int main()
             generate_packet( packet_data, packet_bytes );
             */
 
-            int packet_bytes = 1;
-            packet_data[0] = packet_sequence++;
+            int packet_bytes = 2;
+            packet_data[0] = uint8_t( packet_sequence & 0xFF );
+            packet_data[1] = uint8_t( ( packet_sequence >> 8 ) & 0xFF );
+            packet_sequence++;
 
             next_client_send_packet( client, packet_data, packet_bytes );
         }

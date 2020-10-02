@@ -484,7 +484,7 @@ func test_fallback_to_direct() {
 	fmt.Printf("test_fallback_to_direct\n")
 
 	clientConfig := &ClientConfig{}
-	clientConfig.duration = 60.0
+	clientConfig.duration = 70.0
 	clientConfig.stop_sending_packets_time = 50.0
 	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 
@@ -512,7 +512,6 @@ func test_fallback_to_direct() {
 	relay_1_cmd.Process.Signal(os.Interrupt)
 	relay_2_cmd.Process.Signal(os.Interrupt)
 	relay_3_cmd.Process.Signal(os.Interrupt)
-	// backend_cmd.Process.Signal(os.Interrupt)	// temp
 
 	server_cmd.Wait()
 	relay_1_cmd.Wait()
@@ -525,6 +524,8 @@ func test_fallback_to_direct() {
 	totalPacketsSent := client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] + client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT]
 	totalPacketsReceived := client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] + client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT]
 
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, totalPacketsReceived == totalPacketsSent, relay_1_stdout, relay_2_stdout, relay_3_stdout)
+	
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_OPEN_SESSION] == 1)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLOSE_SESSION] == 1)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_UPGRADE_SESSION] == 1)
@@ -534,7 +535,6 @@ func test_fallback_to_direct() {
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] > 0, relay_1_stdout, relay_2_stdout, relay_3_stdout)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] > 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, totalPacketsSent >= 50*60)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, totalPacketsReceived == totalPacketsSent)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_MULTIPATH] == 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0)
@@ -1670,7 +1670,7 @@ func main() {
 		test_direct_raw,
 		test_direct_upgraded,
 		test_network_next_route,
-		// test_fallback_to_direct,
+		test_fallback_to_direct,
 		/*
 		test_disable_network_next_on_server,
 		test_disable_network_next_on_client,
@@ -1718,7 +1718,7 @@ func main() {
 
 // todo: add test to verify that connection type and platform id are not zero on first slice
 
-// todo: test for fallback to direct
+// todo: test for fallback to direct showing up on the backend
 
 // todo: add test for client bandwidth over limit
 
@@ -1727,7 +1727,5 @@ func main() {
 // todo: add a test for session update retry
 
 // todo: add a test for out of order packets
-
-// todo: add test for raw direct vs. upgraded direct packet send and receive
 
 // todo: add func test for sending packets with network next disabled (calls send packet raw)
