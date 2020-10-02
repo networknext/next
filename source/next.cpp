@@ -5157,12 +5157,14 @@ void next_route_manager_fallback_to_direct( next_route_manager_t * route_manager
 
     next_printf( NEXT_LOG_LEVEL_INFO, "client fallback to direct" );
 
+    /*
     route_manager->route_data.previous_route = route_manager->route_data.current_route;
     route_manager->route_data.previous_route_session_id = route_manager->route_data.current_route_session_id;
     route_manager->route_data.previous_route_session_version = route_manager->route_data.current_route_session_version;
     memcpy( route_manager->route_data.previous_route_private_key, route_manager->route_data.current_route_private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
 
     route_manager->route_data.current_route = false;
+    */
 }
 
 void next_route_manager_direct_route( next_route_manager_t * route_manager, bool quiet )
@@ -5343,7 +5345,11 @@ bool next_route_manager_process_server_to_client_packet( next_route_manager_t * 
     (void) from;
 
     if ( packet_bytes <= NEXT_HEADER_BYTES )
+    {
+        // todo
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server to client packet is too small" );
         return false;
+    }
 
     uint8_t packet_type = 0;
     uint64_t packet_sequence = 0;
@@ -5356,7 +5362,11 @@ bool next_route_manager_process_server_to_client_packet( next_route_manager_t * 
     {
         from_current_route = false;
         if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, route_manager->route_data.previous_route_private_key, packet_data, packet_bytes ) != NEXT_OK )
+        {
+            // todo
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored server to client packet. could not read header" );
             return false;
+        }
     }
 
     if ( !route_manager->route_data.current_route && !route_manager->route_data.previous_route )
