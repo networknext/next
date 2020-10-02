@@ -509,7 +509,7 @@ func TestSessionUpdateHandler4SessionDataBadSliceNumber(t *testing.T) {
 	assert.Equal(t, metrics.SessionDataMetrics.BadSliceNumber.Value(), 1.0)
 }
 
-func TestSessionUpdateHandler4DatacenterNotFound(t *testing.T) {
+func TestSessionUpdateHandler4BuyerNotLive(t *testing.T) {
 	logger := log.NewNopLogger()
 	metricsHandler := metrics.LocalHandler{}
 	metrics, err := metrics.NewSessionMetrics(context.Background(), &metricsHandler)
@@ -517,6 +517,75 @@ func TestSessionUpdateHandler4DatacenterNotFound(t *testing.T) {
 	responseBuffer := bytes.NewBuffer(nil)
 	storer := &storage.InMemory{}
 	storer.AddBuyer(context.Background(), routing.Buyer{})
+	storer.AddDatacenter(context.Background(), routing.UnknownDatacenter)
+
+	requestPacket := transport.SessionUpdatePacket4{
+		SessionID:            1111,
+		ClientRoutePublicKey: make([]byte, crypto.KeySize),
+		ServerRoutePublicKey: make([]byte, crypto.KeySize),
+	}
+	requestData, err := transport.MarshalPacket(&requestPacket)
+	assert.NoError(t, err)
+
+	var ipLocator goodIPLocator
+	ipLocatorFunc := func() routing.IPLocator {
+		return &ipLocator
+	}
+
+	var routeMatrix routing.RouteMatrix4
+	routeMatrixFunc := func() *routing.RouteMatrix4 {
+		return &routeMatrix
+	}
+
+	expectedResponse := transport.SessionResponsePacket4{
+		SessionID:          requestPacket.SessionID,
+		SliceNumber:        requestPacket.SliceNumber,
+		RouteType:          routing.RouteTypeDirect,
+		NearRelayIDs:       make([]uint64, 0),
+		NearRelayAddresses: make([]net.UDPAddr, 0),
+	}
+
+	expectedSessionData := transport.SessionData4{
+		SessionID:       requestPacket.SessionID,
+		SliceNumber:     requestPacket.SliceNumber + 1,
+		Location:        routing.LocationNullIsland,
+		ExpireTimestamp: uint64(time.Now().Unix()) + billing.BillingSliceSeconds,
+	}
+
+	expectedSessionDataSlice, err := transport.MarshalSessionData(&expectedSessionData)
+	assert.NoError(t, err)
+
+	expectedResponse.SessionDataBytes = int32(len(expectedSessionDataSlice))
+	copy(expectedResponse.SessionData[:], expectedSessionDataSlice)
+
+	postSessionHandler := transport.NewPostSessionHandler(0, 0, nil, 0, nil, logger, nil)
+	handler := transport.SessionUpdateHandlerFunc4(logger, ipLocatorFunc, routeMatrixFunc, nil, storer, [crypto.KeySize]byte{}, postSessionHandler, metrics)
+	handler(responseBuffer, &transport.UDPPacket{
+		Data: requestData,
+	})
+
+	var responsePacket transport.SessionResponsePacket4
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
+	assert.NoError(t, err)
+
+	var sessionData transport.SessionData4
+	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
+	assert.NoError(t, err)
+
+	assert.Equal(t, expectedSessionData, sessionData)
+	assert.Equal(t, expectedResponse, responsePacket)
+
+	assert.Equal(t, metrics.DecisionMetrics.BuyerNotLive.Value(), 1.0)
+}
+
+func TestSessionUpdateHandler4DatacenterNotFound(t *testing.T) {
+	logger := log.NewNopLogger()
+	metricsHandler := metrics.LocalHandler{}
+	metrics, err := metrics.NewSessionMetrics(context.Background(), &metricsHandler)
+	assert.NoError(t, err)
+	responseBuffer := bytes.NewBuffer(nil)
+	storer := &storage.InMemory{}
+	storer.AddBuyer(context.Background(), routing.Buyer{Live: true})
 
 	requestPacket := transport.SessionUpdatePacket4{
 		SessionID:            1111,
@@ -584,7 +653,7 @@ func TestSessionUpdateHandler4NoNearRelays(t *testing.T) {
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 	storer := &storage.InMemory{}
-	storer.AddBuyer(context.Background(), routing.Buyer{})
+	storer.AddBuyer(context.Background(), routing.Buyer{Live: true})
 	storer.AddDatacenter(context.Background(), routing.UnknownDatacenter)
 
 	requestPacket := transport.SessionUpdatePacket4{
@@ -656,6 +725,7 @@ func TestSessionUpdateHandler4FirstSlice(t *testing.T) {
 	storer := &storage.InMemory{}
 	storer.AddBuyer(context.Background(), routing.Buyer{
 		ID:             100,
+		Live:           true,
 		RouteShader:    core.NewRouteShader(),
 		InternalConfig: core.NewInternalConfig(),
 	})
@@ -748,6 +818,7 @@ func TestSessionUpdateHandler4NoDestRelays(t *testing.T) {
 	storer := &storage.InMemory{}
 	storer.AddBuyer(context.Background(), routing.Buyer{
 		ID:             100,
+		Live:           true,
 		RouteShader:    core.NewRouteShader(),
 		InternalConfig: core.NewInternalConfig(),
 	})
@@ -858,6 +929,7 @@ func TestSessionUpdateHandler4DirectRoute(t *testing.T) {
 	storer := &storage.InMemory{}
 	storer.AddBuyer(context.Background(), routing.Buyer{
 		ID:             100,
+		Live:           true,
 		RouteShader:    core.NewRouteShader(),
 		InternalConfig: core.NewInternalConfig(),
 	})
@@ -971,6 +1043,7 @@ func TestSessionUpdateHandler4NextRoute(t *testing.T) {
 	storer := &storage.InMemory{}
 	err = storer.AddBuyer(context.Background(), routing.Buyer{
 		ID:             100,
+		Live:           true,
 		RouteShader:    core.NewRouteShader(),
 		InternalConfig: core.NewInternalConfig(),
 	})
@@ -1169,6 +1242,7 @@ func TestSessionUpdateHandler4ContinueRoute(t *testing.T) {
 	storer := &storage.InMemory{}
 	err = storer.AddBuyer(context.Background(), routing.Buyer{
 		ID:             100,
+		Live:           true,
 		RouteShader:    core.NewRouteShader(),
 		InternalConfig: core.NewInternalConfig(),
 	})
@@ -1371,6 +1445,7 @@ func TestSessionUpdateHandler4RouteNoLongerExists(t *testing.T) {
 	storer := &storage.InMemory{}
 	err = storer.AddBuyer(context.Background(), routing.Buyer{
 		ID:             100,
+		Live:           true,
 		RouteShader:    core.NewRouteShader(),
 		InternalConfig: core.NewInternalConfig(),
 	})
@@ -1576,6 +1651,7 @@ func TestSessionUpdateHandler4RouteSwitched(t *testing.T) {
 	storer := &storage.InMemory{}
 	err = storer.AddBuyer(context.Background(), routing.Buyer{
 		ID:             100,
+		Live:           true,
 		RouteShader:    core.NewRouteShader(),
 		InternalConfig: core.NewInternalConfig(),
 	})
@@ -1780,6 +1856,7 @@ func TestSessionUpdateHandler4VetoNoRoute(t *testing.T) {
 	storer := &storage.InMemory{}
 	err = storer.AddBuyer(context.Background(), routing.Buyer{
 		ID:             100,
+		Live:           true,
 		RouteShader:    core.NewRouteShader(),
 		InternalConfig: core.NewInternalConfig(),
 	})
@@ -1956,7 +2033,7 @@ func TestSessionUpdateHandler4VetoMultipathOverloaded(t *testing.T) {
 	storer := &storage.InMemory{}
 	buyer := routing.Buyer{
 		ID:             100,
-		CompanyCode:    "local",
+		Live:           true,
 		RouteShader:    core.NewRouteShader(),
 		InternalConfig: core.NewInternalConfig(),
 	}
@@ -2152,6 +2229,7 @@ func TestSessionUpdateHandler4VetoLatencyWorse(t *testing.T) {
 	storer := &storage.InMemory{}
 	err = storer.AddBuyer(context.Background(), routing.Buyer{
 		ID:             100,
+		Live:           true,
 		RouteShader:    core.NewRouteShader(),
 		InternalConfig: core.NewInternalConfig(),
 	})
@@ -2346,6 +2424,7 @@ func TestSessionUpdateHandler4CommitPending(t *testing.T) {
 	internalConfig.TryBeforeYouBuy = true
 	err = storer.AddBuyer(context.Background(), routing.Buyer{
 		ID:             100,
+		Live:           true,
 		RouteShader:    core.NewRouteShader(),
 		InternalConfig: internalConfig,
 	})
@@ -2554,6 +2633,7 @@ func TestSessionUpdateHandler4CommitVeto(t *testing.T) {
 	internalConfig.TryBeforeYouBuy = true
 	err = storer.AddBuyer(context.Background(), routing.Buyer{
 		ID:             100,
+		Live:           true,
 		RouteShader:    core.NewRouteShader(),
 		InternalConfig: internalConfig,
 	})

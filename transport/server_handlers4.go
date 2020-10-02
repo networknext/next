@@ -327,6 +327,12 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 			sessionData.ExpireTimestamp += billing.BillingSliceSeconds
 		}
 
+		// Don't accelerate any sessions if the buyer is not yet live
+		if !buyer.Live {
+			metrics.DecisionMetrics.BuyerNotLive.Add(1)
+			return
+		}
+
 		datacenter, err = storer.Datacenter(packet.DatacenterID)
 		if err != nil {
 			aliasFound := false
@@ -419,6 +425,12 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 		sessionData.Initial = false
 
 		multipathVetoMap := multipathVetoHandler.GetMapCopy(buyer.CompanyCode)
+
+		level.Debug(logger).Log("buyer", buyer.CompanyCode,
+			"acceptable_latency", buyer.RouteShader.AcceptableLatency,
+			"rtt_threshold", buyer.RouteShader.LatencyThreshold,
+			"selection_percent", buyer.RouteShader.SelectionPercent,
+			"route_switch_threshold", buyer.InternalConfig.RouteSwitchThreshold)
 
 		if !sessionData.RouteState.Next {
 			if core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, multipathVetoMap, &buyer.InternalConfig, int32(packet.DirectRTT), packet.DirectPacketLoss, reframedNearRelays, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:]) {

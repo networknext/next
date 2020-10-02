@@ -969,6 +969,7 @@ type RouteState struct {
 	ABTest            bool
 	A                 bool
 	B                 bool
+	ForcedNext        bool
 	ReduceLatency     bool
 	ReducePacketLoss  bool
 	ProMode           bool
@@ -990,6 +991,7 @@ type InternalConfig struct {
 	RTTVeto_Multipath          int32
 	MultipathOverloadThreshold int32
 	TryBeforeYouBuy            bool
+	ForceNext                  bool
 }
 
 func NewInternalConfig() InternalConfig {
@@ -1001,6 +1003,7 @@ func NewInternalConfig() InternalConfig {
 		RTTVeto_Multipath:          -20,
 		MultipathOverloadThreshold: 500,
 		TryBeforeYouBuy:            false,
+		ForceNext:                  false,
 	}
 }
 
@@ -1076,6 +1079,12 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 		proMode = true
 	}
 
+	// if we are forcing a network next route, set the max cost to max 32 bit integer to accept all routes
+	if internal.ForceNext {
+		maxCost = math.MaxInt32
+		routeState.ForcedNext = true
+	}
+
 	// get the initial best route
 
 	bestRouteCost := int32(0)
@@ -1117,41 +1126,50 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
 		return false, false
 	}
 
-	// if we overload the connection in multipath, leave network next
+	var maxCost int32
 
-	if routeState.Multipath && directLatency >= internal.MultipathOverloadThreshold {
-		routeState.MultipathOverload = true
+	// only check if the route is worse if we are not forcing a network next route
+	if !internal.ForceNext {
 
-		routeState.Committed = false
-		routeState.CommitPending = false
-		routeState.CommitCounter = 0
-		return false, false
-	}
+		// if we overload the connection in multipath, leave network next
 
-	// if we have made rtt significantly worse, leave network next
+		if routeState.Multipath && directLatency >= internal.MultipathOverloadThreshold {
+			routeState.MultipathOverload = true
 
-	rttVeto := internal.RTTVeto_Default
+			routeState.Committed = false
+			routeState.CommitPending = false
+			routeState.CommitCounter = 0
+			return false, false
+		}
 
-	if routeState.ReducePacketLoss {
-		rttVeto = internal.RTTVeto_PacketLoss
-	}
+		// if we have made rtt significantly worse, leave network next
 
-	if routeState.Multipath {
-		rttVeto = internal.RTTVeto_Multipath
-	}
+		rttVeto := internal.RTTVeto_Default
 
-	if nextLatency > directLatency-rttVeto {
-		routeState.LatencyWorse = true
+		if routeState.ReducePacketLoss {
+			rttVeto = internal.RTTVeto_PacketLoss
+		}
 
-		routeState.Committed = false
-		routeState.CommitPending = false
-		routeState.CommitCounter = 0
-		return false, false
+		if routeState.Multipath {
+			rttVeto = internal.RTTVeto_Multipath
+		}
+
+		if nextLatency > directLatency-rttVeto {
+			routeState.LatencyWorse = true
+
+			routeState.Committed = false
+			routeState.CommitPending = false
+			routeState.CommitCounter = 0
+			return false, false
+		}
+
+		maxCost = directLatency - rttVeto
+	} else {
+
+		maxCost = math.MaxInt32
 	}
 
 	// update the current best route
-
-	maxCost := directLatency - rttVeto
 
 	bestRouteCost := int32(0)
 	bestRouteNumRelays := int32(0)
