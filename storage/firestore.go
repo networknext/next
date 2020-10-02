@@ -1973,10 +1973,12 @@ func (fs *Firestore) syncBuyers(ctx context.Context) error {
 			level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to unmarshal buyer %v", buyerDoc.Ref.ID), "err", err)
 			continue
 		}
+
 		rrs, err := fs.getRoutingRulesSettingsForBuyerID(ctx, buyerDoc.Ref.ID)
 		if err != nil {
 			level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to completely read route shader for buyer %v, some fields will have default values", buyerDoc.Ref.ID), "err", err)
 		}
+
 		rs, err := fs.getRouteShaderForBuyerID(ctx, buyerDoc.Ref.ID)
 		if err != nil {
 			level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to completely read route shader for buyer %v, some fields will have default values", buyerDoc.Ref.ID), "err", err)
@@ -1997,6 +1999,12 @@ func (fs *Firestore) syncBuyers(ctx context.Context) error {
 			RouteShader:          rs,
 			InternalConfig:       ic,
 		}
+
+		level.Debug(fs.Logger).Log("buyer", buyer.CompanyCode,
+			"acceptable_latency", buyer.RouteShader.AcceptableLatency,
+			"rtt_threshold", buyer.RouteShader.LatencyThreshold,
+			"selection_percent", buyer.RouteShader.SelectionPercent,
+			"route_switch_threshold", buyer.InternalConfig.RouteSwitchThreshold)
 
 		buyers[buyer.ID] = buyer
 	}
@@ -2284,6 +2292,11 @@ func (fs *Firestore) getRouteShaderForBuyerID(ctx context.Context, buyerID strin
 		return rs, err
 	}
 
+	level.Debug(fs.Logger).Log("buyerID", buyerID,
+		"acceptable_latency", tempRS.AcceptableLatency,
+		"rtt_threshold", tempRS.LatencyThreshold,
+		"selection_percent", tempRS.SelectionPercent)
+
 	rs.DisableNetworkNext = tempRS.DisableNetworkNext
 	rs.SelectionPercent = tempRS.SelectionPercent
 	rs.ABTest = tempRS.ABTest
@@ -2298,11 +2311,9 @@ func (fs *Firestore) getRouteShaderForBuyerID(ctx context.Context, buyerID strin
 	rs.BandwidthEnvelopeDownKbps = tempRS.BandwidthEnvelopeDownKbps
 
 	// Convert user IDs from int64 to uint64
-	bannedUsers := make(map[uint64]bool)
 	for k, v := range tempRS.BannedUsers {
 		rs.BannedUsers[uint64(k)] = v
 	}
-	rs.BannedUsers = bannedUsers
 
 	return rs, nil
 }
