@@ -577,7 +577,7 @@ func ServerUpdateHandlerFunc(params *ServerUpdateParams) UDPHandlerFunc {
 }
 
 type RouteProvider interface {
-	GetDatacenterRelayIDs(datacenter routing.Datacenter) []uint64
+	GetDatacenterRelayIDs(datacenterID uint64) []uint64
 	GetAcceptableRoutes(nearIDs []routing.NearRelayData, destIDs []uint64, prevRouteHash uint64, rttEpsilon int32) ([]routing.Route, error)
 	GetNearRelays(latitude float64, longitude float64, maxNearRelays int) ([]routing.NearRelayData, error)
 }
@@ -743,6 +743,15 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 			PacketLoss: float64(packet.DirectPacketLoss),
 		}
 
+		packetLossClientToServer := float64(packet.PacketsLostClientToServer) / float64(packet.PacketsSentClientToServer) * 100.0
+		packetLossServerToClient := float64(packet.PacketsLostServerToClient) / float64(packet.PacketsSentServerToClient) * 100.0
+
+		// Take the max of packet loss client -> server or server -> client
+		inGamePacketLoss := packetLossClientToServer
+		if inGamePacketLoss < packetLossServerToClient {
+			inGamePacketLoss = packetLossServerToClient
+		}
+
 		// todo: all the super manual send route responses below are really gross
 		// todo: it should be much easier to send a route response. maybe package up all the data we need into a struct
 		// and add some helper functions based around that struct, and common things we do below.
@@ -795,7 +804,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 				params.Metrics.ErrorMetrics.ClientLocateFailure.Add(1)
 
 				sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelayData, routeDecision, sessionDataReadOnly.RouteDecision, sessionDataReadOnly.Initial, vetoReason, multipathVetoReason, nextSliceCounter,
-					committedData, sessionDataReadOnly.RouteHash, sessionDataReadOnly.RouteDecision.OnNetworkNext, timestamp, routeExpireTimestamp, sessionDataReadOnly.TokenVersion, params.RouterPrivateKey, nil, postSessionUpdateFunc) //sliceMutexes)
+					committedData, sessionDataReadOnly.RouteHash, sessionDataReadOnly.RouteDecision.OnNetworkNext, timestamp, inGamePacketLoss, routeExpireTimestamp, sessionDataReadOnly.TokenVersion, params.RouterPrivateKey, nil, postSessionUpdateFunc) //sliceMutexes)
 
 				return
 			}
@@ -824,7 +833,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 			params.Metrics.ErrorMetrics.ClientIPAnonymizeFailure.Add(1)
 
 			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelayData, routeDecision, sessionDataReadOnly.RouteDecision, sessionDataReadOnly.Initial, vetoReason, multipathVetoReason, nextSliceCounter,
-				committedData, sessionDataReadOnly.RouteHash, sessionDataReadOnly.RouteDecision.OnNetworkNext, timestamp, routeExpireTimestamp, sessionDataReadOnly.TokenVersion, params.RouterPrivateKey, nil, postSessionUpdateFunc) //sliceMutexes)
+				committedData, sessionDataReadOnly.RouteHash, sessionDataReadOnly.RouteDecision.OnNetworkNext, timestamp, inGamePacketLoss, routeExpireTimestamp, sessionDataReadOnly.TokenVersion, params.RouterPrivateKey, nil, postSessionUpdateFunc) //sliceMutexes)
 			return
 		}
 
@@ -837,7 +846,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 			}
 
 			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelayData, routeDecision, sessionDataReadOnly.RouteDecision, sessionDataReadOnly.Initial, vetoReason, multipathVetoReason, nextSliceCounter,
-				committedData, sessionDataReadOnly.RouteHash, sessionDataReadOnly.RouteDecision.OnNetworkNext, timestamp, routeExpireTimestamp, sessionDataReadOnly.TokenVersion, params.RouterPrivateKey, nil, postSessionUpdateFunc) //sliceMutexes)
+				committedData, sessionDataReadOnly.RouteHash, sessionDataReadOnly.RouteDecision.OnNetworkNext, timestamp, inGamePacketLoss, routeExpireTimestamp, sessionDataReadOnly.TokenVersion, params.RouterPrivateKey, nil, postSessionUpdateFunc) //sliceMutexes)
 
 			return
 		}
@@ -865,7 +874,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 
 				params.Metrics.ErrorMetrics.NearRelaysLocateFailure.Add(1)
 				sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelayData, routeDecision, sessionDataReadOnly.RouteDecision, sessionDataReadOnly.Initial, vetoReason, multipathVetoReason, nextSliceCounter,
-					committedData, sessionDataReadOnly.RouteHash, sessionDataReadOnly.RouteDecision.OnNetworkNext, timestamp, routeExpireTimestamp, sessionDataReadOnly.TokenVersion, params.RouterPrivateKey, nil, postSessionUpdateFunc) //, sliceMutexes)
+					committedData, sessionDataReadOnly.RouteHash, sessionDataReadOnly.RouteDecision.OnNetworkNext, timestamp, inGamePacketLoss, routeExpireTimestamp, sessionDataReadOnly.TokenVersion, params.RouterPrivateKey, nil, postSessionUpdateFunc) //, sliceMutexes)
 				return
 			}
 
@@ -904,7 +913,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 			}
 
 			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelayData, routeDecision, sessionDataReadOnly.RouteDecision, sessionDataReadOnly.Initial, vetoReason, multipathVetoReason, nextSliceCounter,
-				committedData, sessionDataReadOnly.RouteHash, sessionDataReadOnly.RouteDecision.OnNetworkNext, timestamp, routeExpireTimestamp, sessionDataReadOnly.TokenVersion, params.RouterPrivateKey, nil, postSessionUpdateFunc) //, sliceMutexes
+				committedData, sessionDataReadOnly.RouteHash, sessionDataReadOnly.RouteDecision.OnNetworkNext, timestamp, inGamePacketLoss, routeExpireTimestamp, sessionDataReadOnly.TokenVersion, params.RouterPrivateKey, nil, postSessionUpdateFunc) //, sliceMutexes
 			return
 		}
 
@@ -917,7 +926,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 			}
 
 			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelayData, routeDecision, sessionDataReadOnly.RouteDecision, sessionDataReadOnly.Initial, vetoReason, multipathVetoReason, nextSliceCounter,
-				committedData, sessionDataReadOnly.RouteHash, sessionDataReadOnly.RouteDecision.OnNetworkNext, timestamp, routeExpireTimestamp, sessionDataReadOnly.TokenVersion, params.RouterPrivateKey, nil, postSessionUpdateFunc) //, sliceMutexes)
+				committedData, sessionDataReadOnly.RouteHash, sessionDataReadOnly.RouteDecision.OnNetworkNext, timestamp, inGamePacketLoss, routeExpireTimestamp, sessionDataReadOnly.TokenVersion, params.RouterPrivateKey, nil, postSessionUpdateFunc) //, sliceMutexes)
 			return
 		}
 
@@ -932,22 +941,8 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 			}
 
 			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelayData, routeDecision, sessionDataReadOnly.RouteDecision, sessionDataReadOnly.Initial, vetoReason, multipathVetoReason, nextSliceCounter,
-				committedData, sessionDataReadOnly.RouteHash, sessionDataReadOnly.RouteDecision.OnNetworkNext, timestamp, routeExpireTimestamp, sessionDataReadOnly.TokenVersion, params.RouterPrivateKey, nil, postSessionUpdateFunc) //sliceMutexes)
+				committedData, sessionDataReadOnly.RouteHash, sessionDataReadOnly.RouteDecision.OnNetworkNext, timestamp, inGamePacketLoss, routeExpireTimestamp, sessionDataReadOnly.TokenVersion, params.RouterPrivateKey, nil, postSessionUpdateFunc) //sliceMutexes)
 
-			return
-		}
-
-		// Force direct mode sends all sessions direct.
-		// It's useful for disabling acceleration for a customer when something goes wrong.
-
-		if buyer.RoutingRulesSettings.Mode == routing.ModeForceDirect {
-			routeDecision = routing.Decision{
-				OnNetworkNext: false,
-				Reason:        routing.DecisionForceDirect,
-			}
-
-			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelayData, routeDecision, sessionDataReadOnly.RouteDecision, sessionDataReadOnly.Initial, vetoReason, multipathVetoReason, nextSliceCounter,
-				committedData, sessionDataReadOnly.RouteHash, sessionDataReadOnly.RouteDecision.OnNetworkNext, timestamp, routeExpireTimestamp, sessionDataReadOnly.TokenVersion, params.RouterPrivateKey, nil, postSessionUpdateFunc) //, sliceMutexes)
 			return
 		}
 
@@ -955,28 +950,28 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 		// Selection percentage of 100% means all sessions are considered for acceleration.
 		// Selection percentage of 10% means that only 10% of sessions are.
 
-		if buyer.RoutingRulesSettings.Mode == routing.ModeForceDirect || (header.SessionID%100) >= uint64(buyer.RoutingRulesSettings.SelectionPercentage) {
+		if packet.UserHash%100 >= uint64(buyer.RoutingRulesSettings.SelectionPercentage) {
 			routeDecision = routing.Decision{
 				OnNetworkNext: false,
 				Reason:        routing.DecisionForceDirect,
 			}
 
 			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelayData, routeDecision, sessionDataReadOnly.RouteDecision, sessionDataReadOnly.Initial, vetoReason, multipathVetoReason, nextSliceCounter,
-				committedData, sessionDataReadOnly.RouteHash, sessionDataReadOnly.RouteDecision.OnNetworkNext, timestamp, routeExpireTimestamp, sessionDataReadOnly.TokenVersion, params.RouterPrivateKey, nil, postSessionUpdateFunc) //, sliceMutexes)
+				committedData, sessionDataReadOnly.RouteHash, sessionDataReadOnly.RouteDecision.OnNetworkNext, timestamp, inGamePacketLoss, routeExpireTimestamp, sessionDataReadOnly.TokenVersion, params.RouterPrivateKey, nil, postSessionUpdateFunc) //, sliceMutexes)
 			return
 		}
 
 		// If the buyer's route shader has AB test enabled, send all odd numbered sessions direct.
 		// This lets us show customers the difference between network next enabled and disabled.
 
-		if buyer.RoutingRulesSettings.EnableABTest && header.SessionID%2 == 1 {
+		if buyer.RoutingRulesSettings.EnableABTest && packet.UserHash%2 == 1 {
 			routeDecision = routing.Decision{
 				OnNetworkNext: false,
 				Reason:        routing.DecisionABTestDirect,
 			}
 
 			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelayData, routeDecision, sessionDataReadOnly.RouteDecision, sessionDataReadOnly.Initial, vetoReason, multipathVetoReason, nextSliceCounter,
-				committedData, sessionDataReadOnly.RouteHash, sessionDataReadOnly.RouteDecision.OnNetworkNext, timestamp, routeExpireTimestamp, sessionDataReadOnly.TokenVersion, params.RouterPrivateKey, nil, postSessionUpdateFunc) //, sliceMutexes)
+				committedData, sessionDataReadOnly.RouteHash, sessionDataReadOnly.RouteDecision.OnNetworkNext, timestamp, inGamePacketLoss, routeExpireTimestamp, sessionDataReadOnly.TokenVersion, params.RouterPrivateKey, nil, postSessionUpdateFunc) //, sliceMutexes)
 			return
 		}
 
@@ -984,7 +979,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 		// Routes are planned between the near relays for this session,
 		// and the set of dest relays in the datacenter.
 
-		datacenterRelays := routeMatrix.GetDatacenterRelayIDs(serverDataReadOnly.Datacenter)
+		datacenterRelays := routeMatrix.GetDatacenterRelayIDs(serverDataReadOnly.Datacenter.ID)
 		if len(datacenterRelays) == 0 {
 			routeDecision = routing.Decision{
 				OnNetworkNext: false,
@@ -1000,7 +995,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 			params.DatacenterTracker.AddEmptyDatacenter(serverDataReadOnly.Datacenter.Name)
 
 			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelayData, routeDecision, sessionDataReadOnly.RouteDecision, sessionDataReadOnly.Initial, vetoReason, multipathVetoReason, nextSliceCounter,
-				committedData, sessionDataReadOnly.RouteHash, sessionDataReadOnly.RouteDecision.OnNetworkNext, timestamp, routeExpireTimestamp, sessionDataReadOnly.TokenVersion, params.RouterPrivateKey, nil, postSessionUpdateFunc) //, sliceMutexes)
+				committedData, sessionDataReadOnly.RouteHash, sessionDataReadOnly.RouteDecision.OnNetworkNext, timestamp, inGamePacketLoss, routeExpireTimestamp, sessionDataReadOnly.TokenVersion, params.RouterPrivateKey, nil, postSessionUpdateFunc) //, sliceMutexes)
 			return
 		}
 
@@ -1013,7 +1008,7 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 			}
 
 			sendRouteResponse(w, &directRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelayData, routeDecision, sessionDataReadOnly.RouteDecision, sessionDataReadOnly.Initial, vetoReason, multipathVetoReason, nextSliceCounter,
-				committedData, sessionDataReadOnly.RouteHash, sessionDataReadOnly.RouteDecision.OnNetworkNext, timestamp, routeExpireTimestamp, sessionDataReadOnly.TokenVersion, params.RouterPrivateKey, nil, postSessionUpdateFunc) //, sliceMutexes)
+				committedData, sessionDataReadOnly.RouteHash, sessionDataReadOnly.RouteDecision.OnNetworkNext, timestamp, inGamePacketLoss, routeExpireTimestamp, sessionDataReadOnly.TokenVersion, params.RouterPrivateKey, nil, postSessionUpdateFunc) //, sliceMutexes)
 			return
 		}
 
@@ -1021,7 +1016,8 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 
 		var bestRoute *routing.Route
 		bestRoute, routeDecision = GetBestRoute(routeMatrix, nearRelayData, datacenterRelays, params.Storer, params.Metrics, &buyer,
-			sessionDataReadOnly.RouteHash, sessionDataReadOnly.RouteDecision, &lastNextStats, &lastDirectStats, nextSliceCounter, &committedData, multipathVetoReason, packet.UserHash, &directRoute)
+			sessionDataReadOnly.RouteHash, sessionDataReadOnly.RouteDecision, &lastNextStats, &lastDirectStats, inGamePacketLoss,
+			nextSliceCounter, &committedData, multipathVetoReason, packet.UserHash, &directRoute)
 
 		if routeDecision.OnNetworkNext {
 			nextSliceCounter++
@@ -1032,14 +1028,14 @@ func SessionUpdateHandlerFunc(params *SessionUpdateParams) func(io.Writer, *UDPP
 		// Send a session update response back to the SDK.
 
 		sendRouteResponse(w, bestRoute, params, &packet, &response, serverDataReadOnly, &buyer, &lastNextStats, &lastDirectStats, &location, nearRelayData, routeDecision, sessionDataReadOnly.RouteDecision, sessionDataReadOnly.Initial, vetoReason, multipathVetoReason, nextSliceCounter,
-			committedData, sessionDataReadOnly.RouteHash, sessionDataReadOnly.RouteDecision.OnNetworkNext, timestamp, routeExpireTimestamp, sessionDataReadOnly.TokenVersion, params.RouterPrivateKey, nil, postSessionUpdateFunc) //sliceMutexes)
+			committedData, sessionDataReadOnly.RouteHash, sessionDataReadOnly.RouteDecision.OnNetworkNext, timestamp, inGamePacketLoss, routeExpireTimestamp, sessionDataReadOnly.TokenVersion, params.RouterPrivateKey, nil, postSessionUpdateFunc) //sliceMutexes)
 	}
 }
 
 // GetBestRoute returns the best route that a session can take for this slice. If we can't serve a network next route, the returned route will be the passed in direct route.
 // This function can either return a network next route or a direct route, and it also returns a reason as to why the route was chosen.
 func GetBestRoute(routeMatrix RouteProvider, nearRelayData []routing.NearRelayData, datacenterRelayIDs []uint64, storer storage.Storer, metrics *metrics.SessionMetrics,
-	buyer *routing.Buyer, prevRouteHash uint64, prevRouteDecision routing.Decision, lastNextStats *routing.Stats, lastDirectStats *routing.Stats,
+	buyer *routing.Buyer, prevRouteHash uint64, prevRouteDecision routing.Decision, lastNextStats *routing.Stats, lastDirectStats *routing.Stats, inGamePacketLoss float64,
 	onNNSliceCounter uint64, committedData *routing.CommittedData, multipathVetoReason routing.DecisionReason, userHash uint64, directRoute *routing.Route) (*routing.Route, routing.Decision) {
 
 	// We need to get a next route to compare against direct
@@ -1090,7 +1086,8 @@ func GetBestRoute(routeMatrix RouteProvider, nearRelayData []routing.NearRelayDa
 	// Only run the multipath decision func if the user hasn't been multipath vetoed
 	if multipathVetoReason&routing.DecisionMultipathVetoRTT == 0 {
 		deciderFuncs = append(deciderFuncs,
-			routing.DecideMultipath(buyer.RoutingRulesSettings.EnableMultipathForRTT, buyer.RoutingRulesSettings.EnableMultipathForJitter, buyer.RoutingRulesSettings.EnableMultipathForPacketLoss, float64(buyer.RoutingRulesSettings.RTTThreshold), float64(buyer.RoutingRulesSettings.MultipathPacketLossThreshold)))
+			routing.DecideMultipath(buyer.RoutingRulesSettings.EnableMultipathForRTT, buyer.RoutingRulesSettings.EnableMultipathForJitter, buyer.RoutingRulesSettings.EnableMultipathForPacketLoss,
+				float64(buyer.RoutingRulesSettings.RTTThreshold), float64(buyer.RoutingRulesSettings.MultipathPacketLossThreshold), inGamePacketLoss))
 	}
 
 	if buyer.RoutingRulesSettings.EnableTryBeforeYouBuy {
@@ -1104,6 +1101,18 @@ func GetBestRoute(routeMatrix RouteProvider, nearRelayData []routing.NearRelayDa
 	}
 
 	routeDecision := nextRoute.Decide(prevRouteDecision, lastNextStats, lastDirectStats, deciderFuncs...)
+
+	// If the buyer's route shader is set to force direct, send back a direct route with the predicted
+	// stats attached. That way we can track how much we could be improving this session in the billing entry.
+	if buyer.RoutingRulesSettings.Mode == routing.ModeForceDirect {
+		routeDecision = routing.Decision{
+			OnNetworkNext: false,
+			Reason:        routing.DecisionForceDirect,
+		}
+
+		directRoute.Stats = nextRoute.Stats
+		return directRoute, routeDecision
+	}
 
 	// As a safety measure, if the route decision goes from on network next to direct with yolo enabled for any reason, veto the session with yolo reason
 	if buyer.RoutingRulesSettings.EnableYouOnlyLiveOnce && prevRouteDecision.OnNetworkNext && !routeDecision.OnNetworkNext {
@@ -1162,9 +1171,9 @@ func CalculateNextBytesUpAndDown(kbpsUp uint64, kbpsDown uint64, sliceDuration u
 	return bytesUp, bytesDown
 }
 
-func CalculateTotalPriceNibblins(chosenRoute *routing.Route, envelopeBytesUp uint64, envelopeBytesDown uint64) routing.Nibblin {
+func CalculateTotalPriceNibblins(routeNumRelays int, relaySellers [routing.MaxRelays]routing.Seller, envelopeBytesUp uint64, envelopeBytesDown uint64) routing.Nibblin {
 
-	if chosenRoute.NumRelays == 0 {
+	if routeNumRelays == 0 {
 		return 0
 	}
 
@@ -1172,7 +1181,7 @@ func CalculateTotalPriceNibblins(chosenRoute *routing.Route, envelopeBytesUp uin
 	envelopeDownGB := float64(envelopeBytesDown) / 1000000000.0
 
 	sellerPriceNibblinsPerGB := routing.Nibblin(0)
-	for _, seller := range chosenRoute.RelaySellers {
+	for _, seller := range relaySellers {
 		sellerPriceNibblinsPerGB += seller.EgressPriceNibblinsPerGB
 	}
 
@@ -1182,18 +1191,18 @@ func CalculateTotalPriceNibblins(chosenRoute *routing.Route, envelopeBytesUp uin
 	return routing.Nibblin(totalPriceNibblins)
 }
 
-func CalculateRouteRelaysPrice(chosenRoute *routing.Route, envelopeBytesUp uint64, envelopeBytesDown uint64) []routing.Nibblin {
-	if chosenRoute.NumRelays == 0 {
-		return nil
-	}
+func CalculateRouteRelaysPrice(routeNumRelays int, relaySellers [routing.MaxRelays]routing.Seller, envelopeBytesUp uint64, envelopeBytesDown uint64) [routing.MaxRelays]routing.Nibblin {
+	relayPrices := [routing.MaxRelays]routing.Nibblin{}
 
-	relayPrices := make([]routing.Nibblin, chosenRoute.NumRelays)
+	if routeNumRelays == 0 {
+		return relayPrices
+	}
 
 	envelopeUpGB := float64(envelopeBytesUp) / 1000000000.0
 	envelopeDownGB := float64(envelopeBytesDown) / 1000000000.0
 
 	for i := 0; i < len(relayPrices); i++ {
-		relayPriceNibblins := float64(chosenRoute.RelaySellers[i].EgressPriceNibblinsPerGB) * (envelopeUpGB + envelopeDownGB)
+		relayPriceNibblins := float64(relaySellers[i].EgressPriceNibblinsPerGB) * (envelopeUpGB + envelopeDownGB)
 		relayPrices[i] = routing.Nibblin(relayPriceNibblins)
 	}
 
@@ -1213,11 +1222,14 @@ type PostSessionUpdateParams struct {
 	nearRelays          []routing.NearRelayData
 	timeNow             time.Time
 	totalPriceNibblins  routing.Nibblin
-	nextRelaysPrice     []routing.Nibblin
+	nextRelaysPrice     [routing.MaxRelays]routing.Nibblin
 	nextBytesUp         uint64
 	nextBytesDown       uint64
+	envelopeBytesUp     uint64
+	envelopeBytesDown   uint64
 	prevInitial         bool
 	abTest              bool
+	packetLoss          float32
 }
 
 type PostSessionUpdateFunc = func(params *PostSessionUpdateParams)
@@ -1357,9 +1369,9 @@ func buildBillingEntry(params *PostSessionUpdateParams) *billing.BillingEntry {
 		nextRelays[i] = params.chosenRoute.RelayIDs[i]
 	}
 
-	nextRelaysPriceArray := [billing.BillingEntryMaxRelays]uint64{}
-	for i := 0; i < len(nextRelaysPriceArray) && i < len(params.nextRelaysPrice); i++ {
-		nextRelaysPriceArray[i] = uint64(params.nextRelaysPrice[i])
+	nextRelaysPriceUint64 := [routing.MaxRelays]uint64{}
+	for i := 0; i < routing.MaxRelays; i++ {
+		nextRelaysPriceUint64[i] = uint64(params.nextRelaysPrice[i])
 	}
 
 	return &billing.BillingEntry{
@@ -1385,10 +1397,12 @@ func buildBillingEntry(params *PostSessionUpdateParams) *billing.BillingEntry {
 		Initial:                   params.prevInitial,
 		NextBytesUp:               params.nextBytesUp,
 		NextBytesDown:             params.nextBytesDown,
+		EnvelopeBytesUp:           params.envelopeBytesUp,
+		EnvelopeBytesDown:         params.envelopeBytesDown,
 		DatacenterID:              params.serverDataReadOnly.Datacenter.ID,
 		RTTReduction:              params.prevRouteDecision.Reason&routing.DecisionRTTReduction != 0 || params.prevRouteDecision.Reason&routing.DecisionRTTReductionMultipath != 0,
 		PacketLossReduction:       params.prevRouteDecision.Reason&routing.DecisionHighPacketLossMultipath != 0,
-		NextRelaysPrice:           nextRelaysPriceArray,
+		NextRelaysPrice:           nextRelaysPriceUint64,
 		Latitude:                  float32(params.location.Latitude),
 		Longitude:                 float32(params.location.Longitude),
 		ISP:                       params.location.ISP,
@@ -1397,6 +1411,8 @@ func buildBillingEntry(params *PostSessionUpdateParams) *billing.BillingEntry {
 		ConnectionType:            uint8(params.packet.ConnectionType),
 		PlatformType:              uint8(params.packet.PlatformID),
 		SDKVersion:                params.packet.Version.String(),
+		PacketLoss:                params.packetLoss,
+		PredictedNextRTT:          float32(params.chosenRoute.Stats.RTT),
 	}
 }
 
@@ -1479,8 +1495,9 @@ func marshalResponse(response *SessionResponsePacket, privateKey []byte) ([]byte
 }
 
 func sendRouteResponse(w io.Writer, chosenRoute *routing.Route, params *SessionUpdateParams, packet *SessionUpdatePacket, response *SessionResponsePacket, serverDataReadOnly *ServerData,
-	buyer *routing.Buyer, lastNextStats *routing.Stats, lastDirectStats *routing.Stats, location *routing.Location, nearRelayData []routing.NearRelayData, routeDecision routing.Decision, prevRouteDecision routing.Decision, prevInitial bool, vetoReason routing.DecisionReason, multipathVetoReason routing.DecisionReason,
-	onNNSliceCounter uint64, committedData routing.CommittedData, prevRouteHash uint64, prevOnNetworkNext bool, timeNow time.Time, routeExpireTimestamp uint64, tokenVersion uint8, routerPrivateKey []byte, sliceMutexes []sync.Mutex, postSessionUpdateFunc PostSessionUpdateFunc) {
+	buyer *routing.Buyer, lastNextStats *routing.Stats, lastDirectStats *routing.Stats, location *routing.Location, nearRelayData []routing.NearRelayData, routeDecision routing.Decision, prevRouteDecision routing.Decision,
+	prevInitial bool, vetoReason routing.DecisionReason, multipathVetoReason routing.DecisionReason, onNNSliceCounter uint64, committedData routing.CommittedData, prevRouteHash uint64, prevOnNetworkNext bool, timeNow time.Time,
+	inGamePacketLoss float64, routeExpireTimestamp uint64, tokenVersion uint8, routerPrivateKey []byte, sliceMutexes []sync.Mutex, postSessionUpdateFunc PostSessionUpdateFunc) {
 	// Update response data
 	{
 		response.Committed = committedData.Committed
@@ -1630,9 +1647,9 @@ func sendRouteResponse(w io.Writer, chosenRoute *routing.Route, params *SessionU
 	envelopeBytesUp, envelopeBytesDown := CalculateNextBytesUpAndDown(uint64(buyer.RoutingRulesSettings.EnvelopeKbpsUp), uint64(buyer.RoutingRulesSettings.EnvelopeKbpsDown), lastSliceDuration)
 
 	// Calculate the total price for the billing entry
-	totalPriceNibblins := CalculateTotalPriceNibblins(chosenRoute, envelopeBytesUp, envelopeBytesDown)
+	totalPriceNibblins := CalculateTotalPriceNibblins(chosenRoute.NumRelays, chosenRoute.RelaySellers, envelopeBytesUp, envelopeBytesDown)
 
-	nextRelaysPrice := CalculateRouteRelaysPrice(chosenRoute, envelopeBytesUp, envelopeBytesDown)
+	nextRelaysPrice := CalculateRouteRelaysPrice(chosenRoute.NumRelays, chosenRoute.RelaySellers, envelopeBytesUp, envelopeBytesDown)
 
 	// IMPORTANT: run post in parallel so it doesn't block the response
 	postSessionUpdateFunc(&PostSessionUpdateParams{
@@ -1651,8 +1668,11 @@ func sendRouteResponse(w io.Writer, chosenRoute *routing.Route, params *SessionU
 		nextRelaysPrice:     nextRelaysPrice,
 		nextBytesUp:         usageBytesUp,
 		nextBytesDown:       usageBytesDown,
+		envelopeBytesUp:     envelopeBytesUp,
+		envelopeBytesDown:   envelopeBytesDown,
 		prevInitial:         prevInitial,
 		abTest:              buyer.RoutingRulesSettings.EnableABTest,
+		packetLoss:          float32(inGamePacketLoss),
 	})
 
 	// Send the Session Response back to the server

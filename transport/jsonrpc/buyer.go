@@ -14,7 +14,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/gomodule/redigo/redis"
@@ -184,7 +183,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 }
 
 type TotalSessionsArgs struct {
-	BuyerID string `json:"buyer_id"`
+	CompanyCode string `json:"company_code"`
 }
 
 type TotalSessionsReply struct {
@@ -209,7 +208,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		}
 	}
 
-	switch args.BuyerID {
+	switch args.CompanyCode {
 	case "":
 		buyers := s.Storage.Buyers()
 
@@ -294,16 +293,23 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			reply.Direct = newCount
 		}
 	default:
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
+		buyer, err := s.Storage.BuyerWithCompanyCode(args.CompanyCode)
+		if err != nil {
+			err = fmt.Errorf("TotalSessions() failed getting company with code: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+		buyerID := fmt.Sprintf("%016x", buyer.ID)
+		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
 			err := fmt.Errorf("TotalSessions(): %v", ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 
-		redisClient.Send("HLEN", fmt.Sprintf("d-%s-%d", args.BuyerID, minutes-1))
-		redisClient.Send("HLEN", fmt.Sprintf("d-%s-%d", args.BuyerID, minutes))
-		redisClient.Send("HLEN", fmt.Sprintf("n-%s-%d", args.BuyerID, minutes-1))
-		redisClient.Send("HLEN", fmt.Sprintf("n-%s-%d", args.BuyerID, minutes))
+		redisClient.Send("HLEN", fmt.Sprintf("d-%s-%d", buyerID, minutes-1))
+		redisClient.Send("HLEN", fmt.Sprintf("d-%s-%d", buyerID, minutes))
+		redisClient.Send("HLEN", fmt.Sprintf("n-%s-%d", buyerID, minutes-1))
+		redisClient.Send("HLEN", fmt.Sprintf("n-%s-%d", buyerID, minutes))
 		redisClient.Flush()
 
 		oldDirectCount, err := redis.Int(redisClient.Receive())
@@ -349,7 +355,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 }
 
 type TopSessionsArgs struct {
-	BuyerID string `json:"buyer_id"`
+	CompanyCode string `json:"company_code"`
 }
 
 type TopSessionsReply struct {
@@ -370,7 +376,7 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 	defer topSessionsClient.Close()
 
 	// get the top session IDs globally or for a buyer from the sorted set
-	switch args.BuyerID {
+	switch args.CompanyCode {
 	case "":
 		// Get top sessions from the past 2 minutes sorted by greatest to least improved RTT
 		topSessionsA, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("s-%d", minutes-1), "0", fmt.Sprintf("%d", TopSessionsSize)))
@@ -386,21 +392,28 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 			return err
 		}
 	default:
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
-			err = fmt.Errorf("TopSessions(): %v", ErrInsufficientPrivileges)
+		buyer, err := s.Storage.BuyerWithCompanyCode(args.CompanyCode)
+		if err != nil {
+			err = fmt.Errorf("TopSessions() failed getting company with code: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+		buyerID := fmt.Sprintf("%x", buyer.ID)
+		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
+			err := fmt.Errorf("TopSessions(): %v", ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 
-		topSessionsA, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("sc-%s-%d", args.BuyerID, minutes-1), "0", fmt.Sprintf("%d", TopSessionsSize)))
+		topSessionsA, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("sc-%s-%d", buyerID, minutes-1), "0", fmt.Sprintf("%d", TopSessionsSize)))
 		if err != nil && err != redis.ErrNil {
-			err = fmt.Errorf("TopSessions() failed getting top sessions A for buyer ID %016x: %v", args.BuyerID, err)
+			err = fmt.Errorf("TopSessions() failed getting top sessions A for buyer ID %016x: %v", buyerID, err)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
-		topSessionsB, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("sc-%s-%d", args.BuyerID, minutes), "0", fmt.Sprintf("%d", TopSessionsSize)))
+		topSessionsB, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("sc-%s-%d", buyerID, minutes), "0", fmt.Sprintf("%d", TopSessionsSize)))
 		if err != nil && err != redis.ErrNil {
-			err = fmt.Errorf("TopSessions() failed getting top sessions B for buyer ID %016x: %v", args.BuyerID, err)
+			err = fmt.Errorf("TopSessions() failed getting top sessions B for buyer ID %016x: %v", buyerID, err)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
@@ -440,7 +453,7 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 			continue
 		}
 
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
+		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
 			meta.Anonymise()
 		}
 
@@ -503,7 +516,14 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		return err
 	}
 
-	if !VerifyAllRoles(r, s.SameBuyerRole(fmt.Sprintf("%016x", reply.Meta.BuyerID))) {
+	buyer, err := s.Storage.Buyer(reply.Meta.BuyerID)
+	if err != nil {
+		err = fmt.Errorf("SessionDetails() failed to fetch buyer: %v", err)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	if !VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
 		reply.Meta.Anonymise()
 	}
 
@@ -539,7 +559,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 }
 
 type MapPointsArgs struct {
-	BuyerID string `json:"buyer_id"`
+	CompanyCode string `json:"company_code"`
 }
 
 type MapPointsReply struct {
@@ -580,11 +600,9 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 	s.mapPointsCompactBuyerCache = make(map[string]json.RawMessage, 0)
 
 	for _, buyer := range buyers {
-		stringID := fmt.Sprintf("%016x", buyer.ID)
-
 		directPointStrings, nextPointStrings, err := s.getDirectAndNextMapPointStrings(&buyer)
 		if err != nil && err != redis.ErrNil {
-			err = fmt.Errorf("SessionMapPoints() failed getting map points for buyer %s: %v", stringID, err)
+			err = fmt.Errorf("SessionMapPoints() failed getting map points for buyer %s: %v", buyer.CompanyCode, err)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
@@ -593,16 +611,16 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 		for _, directPointString := range directPointStrings {
 			directSplitStrings := strings.Split(directPointString, "|")
 			if err := point.ParseRedisString(directSplitStrings); err != nil {
-				err = fmt.Errorf("SessionMapPoints() failed to parse direct map point for buyer %s: %v", stringID, err)
+				err = fmt.Errorf("SessionMapPoints() failed to parse direct map point for buyer %s: %v", buyer.CompanyCode, err)
 				level.Error(s.Logger).Log("err", err)
 				return err
 			}
 
 			if point.Latitude != 0 && point.Longitude != 0 {
-				mapPointsBuyers[stringID] = append(mapPointsBuyers[stringID], point)
+				mapPointsBuyers[buyer.CompanyCode] = append(mapPointsBuyers[buyer.CompanyCode], point)
 				mapPointsGlobal = append(mapPointsGlobal, point)
 
-				mapPointsBuyersCompact[stringID] = append(mapPointsBuyersCompact[stringID], []interface{}{point.Longitude, point.Latitude, false})
+				mapPointsBuyersCompact[buyer.CompanyCode] = append(mapPointsBuyersCompact[buyer.CompanyCode], []interface{}{point.Longitude, point.Latitude, false})
 				mapPointsGlobalCompact = append(mapPointsGlobalCompact, []interface{}{point.Longitude, point.Latitude, false})
 			}
 		}
@@ -610,26 +628,26 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 		for _, nextPointString := range nextPointStrings {
 			nextSplitStrings := strings.Split(nextPointString, "|")
 			if err := point.ParseRedisString(nextSplitStrings); err != nil {
-				err = fmt.Errorf("SessionMapPoints() failed to next parse map point for buyer %s: %v", stringID, err)
+				err = fmt.Errorf("SessionMapPoints() failed to next parse map point for buyer %s: %v", buyer.CompanyCode, err)
 				level.Error(s.Logger).Log("err", err)
 				return err
 			}
 
 			if point.Latitude != 0 && point.Longitude != 0 {
-				mapPointsBuyers[stringID] = append(mapPointsBuyers[stringID], point)
+				mapPointsBuyers[buyer.CompanyCode] = append(mapPointsBuyers[buyer.CompanyCode], point)
 				mapPointsGlobal = append(mapPointsGlobal, point)
 
-				mapPointsBuyersCompact[stringID] = append(mapPointsBuyersCompact[stringID], []interface{}{point.Longitude, point.Latitude, true})
+				mapPointsBuyersCompact[buyer.CompanyCode] = append(mapPointsBuyersCompact[buyer.CompanyCode], []interface{}{point.Longitude, point.Latitude, true})
 				mapPointsGlobalCompact = append(mapPointsGlobalCompact, []interface{}{point.Longitude, point.Latitude, true})
 			}
 		}
 
-		s.mapPointsBuyerCache[stringID], err = json.Marshal(mapPointsBuyers[stringID])
+		s.mapPointsBuyerCache[buyer.CompanyCode], err = json.Marshal(mapPointsBuyers[buyer.CompanyCode])
 		if err != nil {
 			return err
 		}
 
-		s.mapPointsCompactBuyerCache[stringID], err = json.Marshal(mapPointsBuyersCompact[stringID])
+		s.mapPointsCompactBuyerCache[buyer.CompanyCode], err = json.Marshal(mapPointsBuyersCompact[buyer.CompanyCode])
 		if err != nil {
 			return err
 		}
@@ -876,17 +894,17 @@ func ReadMapPointsCache(points *mapPointsByte, data []byte) bool {
 func (s *BuyersService) SessionMap(r *http.Request, args *MapPointsArgs, reply *MapPointsReply) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	switch args.BuyerID {
+	switch args.CompanyCode {
 	case "":
 		// pull the local cache and reply with it
 		reply.Points = s.mapPointsCompactCache
 	default:
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
+		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
 			err := fmt.Errorf("SessionMap(): %v", ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
-		reply.Points = s.mapPointsCompactBuyerCache[args.BuyerID]
+		reply.Points = s.mapPointsCompactBuyerCache[args.CompanyCode]
 	}
 
 	return nil
@@ -895,17 +913,18 @@ func (s *BuyersService) SessionMap(r *http.Request, args *MapPointsArgs, reply *
 func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, reply *MapPointsReply) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	switch args.BuyerID {
+
+	switch args.CompanyCode {
 	case "":
 		// pull the local cache and reply with it
 		reply.Points = s.mapPointsCache
 	default:
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
+		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
 			err := fmt.Errorf("SessionMap(): %v", ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
-		reply.Points = s.mapPointsBuyerCache[args.BuyerID]
+		reply.Points = s.mapPointsBuyerCache[args.CompanyCode]
 	}
 
 	return nil
@@ -916,17 +935,17 @@ func (s *BuyersService) SessionMapPointsByte(r *http.Request, args *MapPointsArg
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	switch args.BuyerID {
+	switch args.CompanyCode {
 	case "":
 		// pull the local cache and reply with it
 		ReadMapPointsCache(&reply.Points, s.mapPointsCache)
 	default:
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
+		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
 			err := fmt.Errorf("SessionMap(): %v", ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
-		ReadMapPointsCache(&reply.Points, s.mapPointsBuyerCache[args.BuyerID])
+		ReadMapPointsCache(&reply.Points, s.mapPointsBuyerCache[args.CompanyCode])
 	}
 
 	return nil
@@ -936,25 +955,23 @@ func (s *BuyersService) SessionMapByte(r *http.Request, args *MapPointsArgs, rep
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	switch args.BuyerID {
+	switch args.CompanyCode {
 	case "":
 		// pull the local cache and reply with it
 		ReadMapPointsCache(&reply.Points, s.mapPointsByteCache)
 	default:
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.BuyerID)) {
+		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
 			err := fmt.Errorf("SessionMap(): %v", ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
-		ReadMapPointsCache(&reply.Points, s.mapPointsBuyerByteCache[args.BuyerID])
+		ReadMapPointsCache(&reply.Points, s.mapPointsBuyerByteCache[args.CompanyCode])
 	}
 
 	return nil
 }
 
 type GameConfigurationArgs struct {
-	Domain       string `json:"domain"`
-	Name         string `json:"name"`
 	NewPublicKey string `json:"new_public_key"`
 }
 
@@ -963,13 +980,25 @@ type GameConfigurationReply struct {
 }
 
 type gameConfiguration struct {
-	Company   string `json:"company"`
 	PublicKey string `json:"public_key"`
 }
 
 func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurationArgs, reply *GameConfigurationReply) error {
 	var err error
 	var buyer routing.Buyer
+
+	companyCode, ok := r.Context().Value(Keys.CompanyKey).(string)
+	if !ok {
+		err := fmt.Errorf("GameConfiguration(): user is not assigned to a company")
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	if companyCode == "" {
+		err = fmt.Errorf("GameConfiguration(): failed to parse company code")
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
 
 	if VerifyAnyRole(r, AnonymousRole, UnverifiedRole) {
 		err = fmt.Errorf("GameConfiguration(): %v", ErrInsufficientPrivileges)
@@ -978,16 +1007,14 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 	}
 
 	reply.GameConfiguration.PublicKey = ""
-	reply.GameConfiguration.Company = ""
 
-	buyer, err = s.Storage.BuyerWithDomain(args.Domain)
+	buyer, err = s.Storage.BuyerWithCompanyCode(companyCode)
 	// Buyer not found
 	if err != nil {
 		return nil
 	}
 
 	reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
-	reply.GameConfiguration.Company = buyer.Name
 
 	return nil
 }
@@ -1005,14 +1032,14 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 
 	ctx := context.Background()
 
-	if args.Domain == "" {
-		err = fmt.Errorf("UpdateGameConfiguration() domain is required")
+	companyCode, ok := r.Context().Value(Keys.CompanyKey).(string)
+	if !ok {
+		err := fmt.Errorf("UpdateGameConfiguration(): user is not assigned to a company")
 		level.Error(s.Logger).Log("err", err)
 		return err
 	}
-
-	if args.Name == "" {
-		err = fmt.Errorf("UpdateGameConfiguration() company name is required")
+	if companyCode == "" {
+		err = fmt.Errorf("UpdateGameConfiguration(): failed to parse company code")
 		level.Error(s.Logger).Log("err", err)
 		return err
 	}
@@ -1023,7 +1050,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		return err
 	}
 
-	buyer, err = s.Storage.BuyerWithDomain(args.Domain)
+	buyer, err = s.Storage.BuyerWithCompanyCode(companyCode)
 
 	byteKey, err := base64.StdEncoding.DecodeString(args.NewPublicKey)
 	if err != nil {
@@ -1039,12 +1066,10 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 
 		// Create new buyer
 		err = s.Storage.AddBuyer(ctx, routing.Buyer{
-			ID:        buyerID,
-			Name:      args.Name,
-			Domain:    args.Domain,
-			Active:    true,
-			Live:      false,
-			PublicKey: byteKey[8:],
+			CompanyCode: companyCode,
+			ID:          buyerID,
+			Live:        false,
+			PublicKey:   byteKey[8:],
 		})
 
 		if err != nil {
@@ -1062,13 +1087,11 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 
 		// Setup reply
 		reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
-		reply.GameConfiguration.Company = buyer.Name
 
 		return nil
 	}
 
 	live := buyer.Live
-	active := buyer.Active
 
 	if err = s.Storage.RemoveBuyer(ctx, buyer.ID); err != nil {
 		err = fmt.Errorf("UpdateGameConfiguration() failed to remove buyer")
@@ -1077,12 +1100,10 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 	}
 
 	err = s.Storage.AddBuyer(ctx, routing.Buyer{
-		ID:        buyerID,
-		Name:      args.Name,
-		Domain:    args.Domain,
-		Active:    active,
-		Live:      live,
-		PublicKey: byteKey[8:],
+		CompanyCode: companyCode,
+		ID:          buyerID,
+		Live:        live,
+		PublicKey:   byteKey[8:],
 	})
 
 	if err != nil {
@@ -1100,7 +1121,6 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 
 	// Set reply
 	reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
-	reply.GameConfiguration.Company = buyer.Name
 
 	return nil
 }
@@ -1112,9 +1132,10 @@ type BuyerListReply struct {
 }
 
 type buyerAccount struct {
-	ID     string `json:"id"`
-	Name   string `json:"name"`
-	IsLive bool   `json:"is_live"`
+	CompanyName string `json:"company_name"`
+	CompanyCode string `json:"company_code"`
+	ID          string `json:"id"`
+	IsLive      bool   `json:"is_live"`
 }
 
 func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *BuyerListReply) error {
@@ -1125,18 +1146,23 @@ func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *Buye
 
 	for _, b := range s.Storage.Buyers() {
 		id := fmt.Sprintf("%016x", b.ID)
-		account := buyerAccount{
-			ID:     id,
-			Name:   b.Name,
-			IsLive: b.Live,
+		customer, err := s.Storage.Customer(b.CompanyCode)
+		if err != nil {
+			continue
 		}
-		if VerifyAllRoles(r, s.SameBuyerRole(id)) {
+		account := buyerAccount{
+			CompanyName: customer.Name,
+			CompanyCode: b.CompanyCode,
+			ID:          id,
+			IsLive:      b.Live,
+		}
+		if VerifyAllRoles(r, s.SameBuyerRole(b.CompanyCode)) {
 			reply.Buyers = append(reply.Buyers, account)
 		}
 	}
 
 	sort.Slice(reply.Buyers, func(i int, j int) bool {
-		return reply.Buyers[i].Name < reply.Buyers[j].Name
+		return reply.Buyers[i].CompanyName < reply.Buyers[j].CompanyName
 	})
 
 	return nil
@@ -1183,11 +1209,16 @@ func (s *BuyersService) DatacenterMapsForBuyer(r *http.Request, args *Datacenter
 			return err
 		}
 
+		customer, err := s.Storage.Customer(buyer.CompanyCode)
+		if err != nil {
+			continue
+		}
+
 		dcmFull := DatacenterMapsFull{
 			Alias:          dcMap.Alias,
 			DatacenterName: datacenter.Name,
 			DatacenterID:   fmt.Sprintf("%016x", dcMap.Datacenter),
-			BuyerName:      buyer.Name,
+			BuyerName:      customer.Name,
 			BuyerID:        fmt.Sprintf("%016x", dcMap.BuyerID),
 			SupplierName:   datacenter.SupplierName,
 		}
@@ -1230,7 +1261,7 @@ func (s *BuyersService) AddDatacenterMap(r *http.Request, args *AddDatacenterMap
 }
 
 // SameBuyerRole checks the JWT for the correct passed in buyerID
-func (s *BuyersService) SameBuyerRole(buyerID string) RoleFunc {
+func (s *BuyersService) SameBuyerRole(companyCode string) RoleFunc {
 	return func(req *http.Request) (bool, error) {
 		if VerifyAnyRole(req, AdminRole, OpsRole) {
 			return true, nil
@@ -1238,27 +1269,21 @@ func (s *BuyersService) SameBuyerRole(buyerID string) RoleFunc {
 		if VerifyAllRoles(req, AnonymousRole) {
 			return false, nil
 		}
-
-		if buyerID == "" {
+		if companyCode == "" {
 			return false, fmt.Errorf("SameBuyerRole(): buyerID is required")
 		}
-
-		requestUser := req.Context().Value("user")
-		if requestUser == nil {
-			return false, fmt.Errorf("SameBuyerRole(): unable to parse user from token")
-		}
-
-		requestEmail, ok := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["email"].(string)
+		requestCompanyCode, ok := req.Context().Value(Keys.CompanyKey).(string)
 		if !ok {
-			return false, fmt.Errorf("SameBuyerRole(): unable to parse email from token")
+			err := fmt.Errorf("SameBuyerRole(): user is not assigned to a company")
+			level.Error(s.Logger).Log("err", err)
+			return false, err
 		}
-		requestEmailParts := strings.Split(requestEmail, "@")
-		requestDomain := requestEmailParts[len(requestEmailParts)-1] // Domain is the last entry of the split since an email as only one @ sign
-		buyer, err := s.Storage.BuyerWithDomain(requestDomain)
-		if err != nil {
-			return false, fmt.Errorf("SameBuyerRole(): BuyerWithDomain error: %v", err)
+		if requestCompanyCode == "" {
+			err := fmt.Errorf("SameBuyerRole(): failed to parse company code")
+			level.Error(s.Logger).Log("err", err)
+			return false, err
 		}
 
-		return buyerID == fmt.Sprintf("%016x", buyer.ID), nil
+		return companyCode == requestCompanyCode, nil
 	}
 }

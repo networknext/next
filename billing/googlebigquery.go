@@ -104,6 +104,8 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 		e["initial"] = entry.Initial
 		e["nextBytesUp"] = int(entry.NextBytesUp)
 		e["nextBytesDown"] = int(entry.NextBytesDown)
+		e["envelopeBytesUp"] = int(entry.EnvelopeBytesUp)
+		e["envelopeBytesDown"] = int(entry.EnvelopeBytesDown)
 	}
 
 	e["datacenterID"] = int(entry.DatacenterID)
@@ -128,6 +130,14 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 	e["connectionType"] = int(entry.ConnectionType)
 	e["platformType"] = int(entry.PlatformType)
 	e["sdkVersion"] = entry.SDKVersion
+
+	if entry.PacketLoss > 0.0 {
+		e["packetLoss"] = entry.PacketLoss
+	}
+
+	if entry.PredictedNextRTT > 0.0 {
+		e["predictedNextRTT"] = entry.PredictedNextRTT
+	}
 
 	return e, "", nil
 }

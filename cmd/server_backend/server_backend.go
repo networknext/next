@@ -8,9 +8,9 @@ package main
 import (
 	"context"
 	"encoding/base64"
+	"encoding/binary"
 	"expvar"
 	"fmt"
-	"net"
 	"runtime"
 	"sync"
 
@@ -26,7 +26,6 @@ import (
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
 	"github.com/networknext/backend/billing"
-	"github.com/networknext/backend/crypto"
 	"github.com/networknext/backend/logging"
 	"github.com/networknext/backend/metrics"
 	"github.com/networknext/backend/routing"
@@ -116,6 +115,7 @@ func main() {
 	fmt.Printf("env is %s\n", env)
 
 	var customerPublicKey []byte
+	var customerID uint64
 	var serverPrivateKey []byte
 	var routerPrivateKey []byte
 	var relayPublicKey []byte
@@ -161,6 +161,12 @@ func main() {
 					level.Error(logger).Log("envvar", "NEXT_CUSTOMER_PUBLIC_KEY", "msg", "could not parse", "err", err)
 					os.Exit(1)
 				}
+				customerPublicKey = customerPublicKey[8:]
+			}
+
+			if key := os.Getenv("NEXT_CUSTOMER_PUBLIC_KEY"); len(key) != 0 {
+				customerPublicKey, _ = base64.StdEncoding.DecodeString(key)
+				customerID = binary.LittleEndian.Uint64(customerPublicKey[:8])
 				customerPublicKey = customerPublicKey[8:]
 			}
 		}
@@ -216,96 +222,7 @@ func main() {
 
 	// Create dummy buyer and datacenter for local testing
 	if env == "local" {
-		fmt.Printf("adding dummy local buyer, sellers, datacenter, and relays\n")
-		if err := db.AddBuyer(ctx, routing.Buyer{
-			ID:                   13672574147039585173,
-			Name:                 "local",
-			Live:                 true,
-			PublicKey:            customerPublicKey,
-			RoutingRulesSettings: routing.LocalRoutingRulesSettings,
-		}); err != nil {
-			level.Error(logger).Log("msg", "could not add buyer to storage", "err", err)
-			os.Exit(1)
-		}
-		seller := routing.Seller{
-			ID:                        "sellerID",
-			Name:                      "local",
-			IngressPriceNibblinsPerGB: 0.1 * 1e9,
-			EgressPriceNibblinsPerGB:  0.5 * 1e9,
-		}
-
-		valveSeller := routing.Seller{
-			ID:                        "valve",
-			Name:                      "valve",
-			IngressPriceNibblinsPerGB: 0.1 * 1e9,
-			EgressPriceNibblinsPerGB:  0.5 * 1e9,
-		}
-
-		datacenter := routing.Datacenter{
-			ID:       crypto.HashID("local"),
-			Name:     "local",
-			Enabled:  true,
-			Location: routing.LocationNullIsland,
-		}
-
-		if err := db.AddSeller(ctx, seller); err != nil {
-			level.Error(logger).Log("msg", "could not add seller to storage", "err", err)
-			os.Exit(1)
-		}
-
-		if err := db.AddSeller(ctx, valveSeller); err != nil {
-			level.Error(logger).Log("msg", "could not add valve seller to storage", "err", err)
-			os.Exit(1)
-		}
-
-		if err := db.AddDatacenter(ctx, datacenter); err != nil {
-			level.Error(logger).Log("msg", "could not add datacenter to storage", "err", err)
-			os.Exit(1)
-		}
-
-		for i := int64(0); i < MaxRelayCount; i++ {
-			addressString := "127.0.0.1:1000" + strconv.FormatInt(i, 10)
-			addr, err := net.ResolveUDPAddr("udp", addressString)
-			if err != nil {
-				level.Error(logger).Log("msg", "could parse udp address", "address", addressString, "err", err)
-				os.Exit(1)
-			}
-
-			if err := db.AddRelay(ctx, routing.Relay{
-				ID:          crypto.HashID(addr.String()),
-				Name:        addr.String(),
-				Addr:        *addr,
-				PublicKey:   relayPublicKey,
-				Seller:      seller,
-				Datacenter:  datacenter,
-				MaxSessions: 3000,
-			}); err != nil {
-				level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
-				os.Exit(1)
-			}
-		}
-
-		for i := int64(0); i < MaxRelayCount; i++ {
-			addressString := "127.0.0.1:1001" + strconv.FormatInt(i, 10)
-			addr, err := net.ResolveUDPAddr("udp", addressString)
-			if err != nil {
-				level.Error(logger).Log("msg", "could parse udp address", "address", addressString, "err", err)
-				os.Exit(1)
-			}
-
-			if err := db.AddRelay(ctx, routing.Relay{
-				ID:          crypto.HashID(addr.String()),
-				Name:        addr.String(),
-				Addr:        *addr,
-				PublicKey:   relayPublicKey,
-				Seller:      valveSeller,
-				Datacenter:  datacenter,
-				MaxSessions: 3000,
-			}); err != nil {
-				level.Error(logger).Log("msg", "could not add relay to storage", "err", err)
-				os.Exit(1)
-			}
-		}
+		storage.SeedStorage(logger, ctx, db, relayPublicKey, customerID, customerPublicKey)
 	}
 
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set

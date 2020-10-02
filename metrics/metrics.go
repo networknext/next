@@ -27,6 +27,10 @@ type Handler interface {
 	Close() error
 }
 
+type Valuer interface {
+	Value() float64
+}
+
 // Counter is an interface that represents a metric counter, based on go-kit's generic counter.
 type Counter interface {
 	With(labelValues ...string) metrics.Counter

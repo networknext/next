@@ -1,6 +1,7 @@
 CXX_FLAGS := -Wall -Wextra -std=c++17
 GO = go
 GOFMT = gofmt
+TAR = tar
 
 OS := $(shell uname -s | tr A-Z a-z)
 ifeq ($(OS),darwin)
@@ -22,6 +23,7 @@ COMMITMESSAGE ?= $(shell git log -1 --pretty=%B | tr '\n' ' ')
 CURRENT_DIR = $(shell pwd -P)
 DEPLOY_DIR = ./deploy
 DIST_DIR = ./dist
+PORTAL_DIR=./cmd/portal
 ARTIFACT_BUCKET = gs://development_artifacts
 ARTIFACT_BUCKET_STAGING = gs://staging_artifacts
 ARTIFACT_BUCKET_PROD = gs://prod_artifacts
@@ -123,6 +125,10 @@ endif
 
 ifndef MAXMIND_ISP_DB_URI
 export MAXMIND_ISP_DB_URI = ./testdata/GeoIP2-ISP-Test.mmdb
+endif
+
+ifndef LOCAL_RELAYS
+export LOCAL_RELAYS = 10
 endif
 
 ifndef SESSION_MAP_INTERVAL
@@ -340,8 +346,8 @@ test-load: ## runs load tests
 #######################
 
 .PHONY: dev-portal
-dev-portal: build-portal ## runs a local portal
-	@PORT=20000 BASIC_AUTH_USERNAME=local BASIC_AUTH_PASSWORD=local UI_DIR=./cmd/portal/public ./dist/portal
+dev-portal: build-portal-local ## runs a local portal
+	@PORT=20000 BASIC_AUTH_USERNAME=local BASIC_AUTH_PASSWORD=local UI_DIR=./cmd/portal/dist ./dist/portal
 
 .PHONY: dev-relay-backend
 dev-relay-backend: build-relay-backend ## runs a local relay backend
@@ -413,12 +419,12 @@ dev-server4: build-sdk4 build-server4  ## runs a local server (sdk4)
 
 $(DIST_DIR)/$(SDK3NAME).so: dist
 	@printf "Building sdk3... "
-	@$(CXX) -fPIC -Isdk3/include -shared -o $(DIST_DIR)/$(SDK3NAME).so ./sdk3/source/next.cpp ./sdk3/source/next_ios.cpp ./sdk3/source/next_linux.cpp ./sdk3/source/next_mac.cpp ./sdk3/source/next_ps4.cpp ./sdk3/source/next_switch.cpp ./sdk3/source/next_windows.cpp ./sdk3/source/next_xboxone.cpp $(LDFLAGS)
+	@$(CXX) -fPIC -Isdk3/include -shared -o $(DIST_DIR)/$(SDK3NAME).so ./sdk3/source/*.cpp $(LDFLAGS)
 	@printf "done\n"
 
 $(DIST_DIR)/$(SDK4NAME).so: dist
 	@printf "Building sdk4... "
-	@$(CXX) -fPIC -Isdk4/include -shared -o $(DIST_DIR)/$(SDK4NAME).so ./sdk4/source/next.cpp ./sdk4/source/next_ios.cpp ./sdk4/source/next_linux.cpp ./sdk4/source/next_mac.cpp ./sdk4/source/next_ps4.cpp ./sdk4/source/next_switch.cpp ./sdk4/source/next_windows.cpp ./sdk4/source/next_xboxone.cpp $(LDFLAGS)
+	@$(CXX) -fPIC -Isdk4/include -shared -o $(DIST_DIR)/$(SDK4NAME).so ./sdk4/source/*.cpp $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-sdk3
@@ -446,6 +452,19 @@ build-portal:
 	@printf "SHA: ${SHA}\n"
 	@printf "RELEASE: ${RELEASE}\n"
 	@printf "COMMITMESSAGE: ${COMMITMESSAGE}\n"
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/portal ./cmd/portal/portal.go
+	@printf "done\n"
+
+.PHONY: build-portal-local
+build-portal-local:
+	@printf "Building portal... \n"
+	@printf "TIMESTAMP: ${TIMESTAMP}\n"
+	@printf "SHA: ${SHA}\n"
+	@printf "RELEASE: ${RELEASE}\n"
+	@printf "COMMITMESSAGE: ${COMMITMESSAGE}\n"
+	@gsutil cp $(ARTIFACT_BUCKET_PROD)/portal-dist.local.tar.gz $(PORTAL_DIR)/portal-dist.local.tar.gz
+	@$(TAR) -xvf $(PORTAL_DIR)/portal-dist.local.tar.gz --directory $(PORTAL_DIR)
+	@rm -fr $(PORTAL_DIR)/portal-dist.local.tar.gz
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/portal ./cmd/portal/portal.go
 	@printf "done\n"
 
@@ -529,10 +548,6 @@ deploy-server-backend-velan:
 deploy-server-backend-esl:
 	./deploy/deploy.sh -e prod -c esl-22dr -t server-backend -n server_backend -b gs://prod_artifacts
 
-.PHONY: deploy-server-backend4-dev
-deploy-server-backend4-dev:
-	./deploy/deploy.sh -e dev -c dev-1 -t server-backend4 -n server_backend4 -b gs://development_artifacts
-
 .PHONY: deploy-ghost-army-dev
 deploy-ghost-army-dev:
 	./deploy/deploy.sh -e dev -c 1 -t ghost-army -n ghost_army -b gs://development_artifacts
@@ -575,7 +590,11 @@ build-relay-artifacts-dev: build-relay
 
 .PHONY: build-portal-artifacts-dev
 build-portal-artifacts-dev: build-portal
-	./deploy/build-artifacts.sh -e dev -s portal
+	./deploy/build-artifacts.sh -e dev -s portal -b $(ARTIFACT_BUCKET)
+
+.PHONY: build-portal-artifacts-dev-test
+build-portal-artifacts-dev-test: build-portal
+	./deploy/build-artifacts.sh -e dev -s portal-test -b $(ARTIFACT_BUCKET)
 
 .PHONY: build-portal-cruncher-artifacts-dev
 build-portal-cruncher-artifacts-dev: build-portal-cruncher
@@ -611,7 +630,7 @@ build-relay-artifacts-staging: build-relay
 
 .PHONY: build-portal-artifacts-staging
 build-portal-artifacts-staging: build-portal
-	./deploy/build-artifacts.sh -e staging -s portal
+	./deploy/build-artifacts.sh -e staging -s portal -b $(ARTIFACT_BUCKET_STAGING)
 
 .PHONY: build-relay-backend-artifacts-staging
 build-relay-backend-artifacts-staging: build-relay-backend
@@ -651,7 +670,7 @@ build-relay-artifacts-prod: build-relay
 
 .PHONY: build-portal-artifacts-prod
 build-portal-artifacts-prod: build-portal
-	./deploy/build-artifacts.sh -e prod -s portal
+	./deploy/build-artifacts.sh -e prod -s portal -b $(ARTIFACT_BUCKET_PROD)
 
 .PHONY: build-portal-cruncher-artifacts-prod
 build-portal-cruncher-artifacts-prod: build-portal-cruncher
@@ -688,6 +707,10 @@ publish-relay-artifacts-dev:
 .PHONY: publish-portal-artifacts-dev
 publish-portal-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s portal
+
+.PHONY: publish-portal-artifacts-dev-test
+publish-portal-artifacts-dev-test:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s portal-test
 
 .PHONY: publish-portal-cruncher-artifacts-dev
 publish-portal-cruncher-artifacts-dev:
@@ -860,15 +883,15 @@ build-server4: build-sdk4
 	@printf "done\n"
 
 .PHONY: build-functional-server
-build-functional-server: build-sdk3
+build-functional-server: build-sdk4
 	@printf "Building functional server... "
-	@$(CXX) -Isdk3/include -o $(DIST_DIR)/func_server ./cmd/func_server/func_server.cpp $(DIST_DIR)/$(SDK3NAME).so $(LDFLAGS)
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/func_server ./cmd/func_server/func_server.cpp $(DIST_DIR)/$(SDK4NAME).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional-client
-build-functional-client:
+build-functional-client: build-sdk4
 	@printf "Building functional client... "
-	@$(CXX) -Isdk3/include -o $(DIST_DIR)/func_client ./cmd/func_client/func_client.cpp $(DIST_DIR)/$(SDK3NAME).so $(LDFLAGS)
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/func_client ./cmd/func_client/func_client.cpp $(DIST_DIR)/$(SDK4NAME).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional
@@ -904,11 +927,17 @@ build-ghost-army-generator:
 	@$(GO) build -o ./dist/gag ./cmd/ghost_army_generator/*.go
 	@printf "done\n"
 
+.PHONY: build-ghost-army-analyzer
+build-ghost-army-analyzer:
+	@printf "Building ghost army analyzer... "
+	@$(GO) build -o ./dist/gaa ./cmd/ghost_army_analyzer/*.go
+	@printf "done\n"
+
 #######################
 # Relay Build Process #
 #######################
 
-RELAY_DIR := ./cmd/relay
+RELAY_DIR := ./relay
 RELAY_MAKEFILE := Makefile
 RELAY_EXE := relay
 
@@ -923,7 +952,7 @@ build-relay:
 	@printf "Building relay... "
 	@mkdir -p $(DIST_DIR)
 	@cd $(RELAY_DIR) && $(MAKE) release
-	@cp cmd/relay/bin/relay $(DIST_DIR)
+	@cp $(RELAY_DIR)/bin/relay $(DIST_DIR)
 	@echo "done"
 
 .PHONY: dev-relay
@@ -932,7 +961,7 @@ dev-relay: build-relay ## runs a local relay
 
 .PHONY: dev-multi-relays
 dev-multi-relays: build-relay ## runs 10 local relays
-	./scripts/relay-spawner.sh -n 20 -p 10000
+	./scripts/relay-spawner.sh -n 10 -p 10000
 
 #######################
 
@@ -945,11 +974,11 @@ format:
 build-all: build-sdk3 build-sdk4 build-load-test build-portal-cruncher build-analytics build-billing build-relay-backend build-server-backend build-relay-ref build-client3 build-client4 build-server3 build-server4 build-functional build-next ## builds everything
 
 .PHONY: rebuild-all
-rebuild-all: clean build-all ## rebuilds enerything
+rebuild-all: clean build-all ## rebuilds everything
 
-.PHONY: update-submodules
-update-submodules:
-	git submodule update --remote --merge
+.PHONY: update-sdk4
+update-sdk4:
+	git submodule update --remote --merge sdk4
 
 .PHONY: clean
 clean: ## cleans everything

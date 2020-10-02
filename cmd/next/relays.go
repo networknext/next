@@ -252,7 +252,7 @@ func relays(
 		return
 	}
 
-	sort.Slice(reply.Relays, func(i int, j int) bool {
+	sort.SliceStable(reply.Relays, func(i int, j int) bool {
 		return reply.Relays[i].SessionCount > reply.Relays[j].SessionCount
 	})
 
@@ -264,9 +264,6 @@ func relays(
 		Sessions    string
 		Tx          string
 		Rx          string
-		Version     string
-		CPUUsage    string `table:"CPU Usage"`
-		MemUsage    string `table:"Memory Usage"`
 		LastUpdated string
 	}{}
 
@@ -304,25 +301,9 @@ func relays(
 			// Relay should be hidden, so don't include in final output
 			includeRelay = false
 		}
-
-		var rx string
-		bitsReceived := relay.BytesReceived * 8
-		if bitsReceived > 1000000000 {
-			rx = fmt.Sprintf("%.02fGbps", float64(bitsReceived)/float64(1000000000))
-		} else {
-			rx = fmt.Sprintf("%.02fMbps", float64(bitsReceived)/float64(1000000))
-		}
-
-		var tx string
-		bitsTransmitted := relay.BytesSent * 8
-		if bitsTransmitted > 1000000000 {
-			tx = fmt.Sprintf("%.02fGbps", float64(bitsTransmitted)/float64(1000000000))
-		} else {
-			tx = fmt.Sprintf("%.02fMbps", float64(bitsTransmitted)/float64(1000000))
-		}
-
-		cpuUsage := fmt.Sprintf("%.02f%%", relay.CPUUsage)
-		memUsage := fmt.Sprintf("%.02f%%", relay.MemUsage)
+		unitFormat(0)
+		bitsTransmitted := unitFormat(relay.TrafficStats.BytesSent * 8)
+		bitsReceived := unitFormat(relay.TrafficStats.BytesReceived * 8)
 
 		lastUpdateDuration := time.Since(relay.LastUpdateTime).Truncate(time.Second)
 		lastUpdated := "n/a"
@@ -360,8 +341,8 @@ func relays(
 					address,
 					relay.State,
 					fmt.Sprintf("%d", relay.SessionCount),
-					tx,
-					rx,
+					bitsTransmitted,
+					bitsReceived,
 					relay.Version,
 					lastUpdated,
 				})
@@ -382,9 +363,6 @@ func relays(
 				Sessions    string
 				Tx          string
 				Rx          string
-				Version     string
-				CPUUsage    string `table:"CPU Usage"`
-				MemUsage    string `table:"Memory Usage"`
 				LastUpdated string
 			}{
 				Name:        relay.Name,
@@ -392,11 +370,8 @@ func relays(
 				Address:     address,
 				State:       relay.State,
 				Sessions:    fmt.Sprintf("%d", relay.SessionCount),
-				Tx:          tx,
-				Rx:          rx,
-				Version:     relay.Version,
-				CPUUsage:    cpuUsage,
-				MemUsage:    memUsage,
+				Tx:          bitsTransmitted,
+				Rx:          bitsReceived,
 				LastUpdated: lastUpdated,
 			})
 		}
