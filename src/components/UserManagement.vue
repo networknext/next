@@ -52,7 +52,7 @@
         <label for="customerId">
           Permission Level
         </label>
-        <multiselect placeholder="" track-by="id" label="id" v-model="newUserRoles" :options="allRoles" multiple></multiselect>
+        <multiselect placeholder="" track-by="name" label="name" v-model="newUserRoles" :options="allRoles" multiple></multiselect>
         <small class="form-text text-muted">
           The permission level to grant the added user accounts.
         </small>
@@ -97,7 +97,7 @@
             {{ account.email }}
           </td>
           <td>
-            <multiselect placeholder="" track-by="id" label="id" v-model="account.roles" :options="allRoles" multiple :disabled="!account.edit"></multiselect>
+            <multiselect placeholder="" track-by="name" label="name" v-model="account.roles" :options="allRoles" multiple :disabled="!account.edit"></multiselect>
           </td>
           <td class="td-btn" v-show="!account.edit && !account.delete">
             <button
