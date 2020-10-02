@@ -7567,12 +7567,14 @@ void next_client_update( next_client_t * client )
                 next_client_notify_stats_updated_t * stats_updated = (next_client_notify_stats_updated_t*) notify;
                 client->client_stats = stats_updated->stats;
                 client->fallback_to_direct = stats_updated->fallback_to_direct;
+                /*
                 if ( client->fallback_to_direct && client->upgraded )
                 {
                     next_printf( NEXT_LOG_LEVEL_DEBUG, "clearing upgraded flag" );
                     client->upgraded = false;
                     client->session_id = 0;
                 }
+                */
             }
             break;
 
