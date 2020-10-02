@@ -545,7 +545,7 @@ func (s *AuthService) UserRoles(r *http.Request, args *RolesArgs, reply *RolesRe
 func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *RolesReply) error {
 	var err error
 	if !VerifyAnyRole(r, AdminRole, OwnerRole) {
-		err := fmt.Errorf("UserAccount(): %v", ErrInsufficientPrivileges)
+		err := fmt.Errorf("UpdateUserRoles(): %v", ErrInsufficientPrivileges)
 		s.Logger.Log("err", err)
 		return err
 	}
@@ -576,19 +576,7 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 		},
 	}
 
-	// Need all this for admins that accidently delete admin role and for tests
-	found := false
-
-	for _, role := range userRoles.Roles {
-		if found {
-			continue
-		}
-		if *role.Name == "Admin" {
-			found = true
-		}
-	}
-
-	if found {
+	if VerifyAllRoles(r, AdminRole) {
 		err = s.UserManager.RemoveRoles(args.UserID, removeRoles...)
 		if err != nil {
 			err := fmt.Errorf("UpdateUserRoles() failed to remove current user role: %w", err)
@@ -607,6 +595,15 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 	if len(args.Roles) == 0 {
 		reply.Roles = make([]*management.Role, 0)
 		return nil
+	}
+
+	// Make sure someone who isn't admin isn't assigning admin
+	for _, role := range args.Roles {
+		if *role.ID == "Admin" && !VerifyAllRoles(r, AdminRole) {
+			err := fmt.Errorf("UpdateUserRoles(): %v", ErrInsufficientPrivileges)
+			s.Logger.Log("err", err)
+			return err
+		}
 	}
 
 	err = s.UserManager.AssignRoles(args.UserID, args.Roles...)
