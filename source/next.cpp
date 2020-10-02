@@ -5155,6 +5155,9 @@ void next_route_manager_fallback_to_direct( next_route_manager_t * route_manager
 
     route_manager->fallback_to_direct = true;
 
+    // todo
+    printf( "******* FALLBACK TO DIRECT *******\n" );
+
     next_printf( NEXT_LOG_LEVEL_INFO, "client fallback to direct" );
 
     route_manager->route_data.previous_route = route_manager->route_data.current_route;
@@ -11310,6 +11313,9 @@ void next_server_internal_block_and_receive_packet( next_server_internal_t * ser
     if ( next_packet_loss && ( rand() % 10 ) == 0 )
          return;
 #endif // #if NEXT_DEVELOPMENT
+
+    // todo
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "server received packet %d (%d bytes)", packet_data[0], packet_bytes );
 
     if ( packet_data[0] != 0 )
     {
