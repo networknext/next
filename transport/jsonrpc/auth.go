@@ -31,6 +31,7 @@ type contextKeys struct {
 	RolesKey             contextType
 	CompanyKey           contextType
 	NewsletterConsentKey contextType
+	UserKey              contextType
 }
 
 var Keys contextKeys = contextKeys{
@@ -107,7 +108,7 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 		return err
 	}
 
-	requestUser := r.Context().Value("user")
+	requestUser := r.Context().Value(Keys.UserKey)
 	if requestUser == nil {
 		err = fmt.Errorf("AllAcounts() unable to parse user from token")
 		s.Logger.Log("err", err)
@@ -164,7 +165,7 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 
 	// Check if this is for authed user profile or other users
 
-	user := r.Context().Value("user")
+	user := r.Context().Value(Keys.UserKey)
 	if user == nil {
 		err := fmt.Errorf("UserAccount() failed to fetch calling user from token")
 		s.Logger.Log("err", err)
@@ -271,7 +272,7 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 	}
 
 	// Gather request user information
-	requestUser := req.Context().Value("user")
+	requestUser := req.Context().Value(Keys.UserKey)
 	if requestUser == nil {
 		err := fmt.Errorf("AddUserAccount() unable to parse user from token")
 		s.Logger.Log("err", err)
@@ -650,7 +651,7 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 	}
 
 	// grab request user information
-	requestUser := r.Context().Value("user")
+	requestUser := r.Context().Value(Keys.UserKey)
 	if requestUser == nil {
 		err := fmt.Errorf("UpdateCompanyInformation() unable to parse user from token")
 		s.Logger.Log("err", err)
@@ -871,7 +872,7 @@ func (s *AuthService) UpdateAccountSettings(r *http.Request, args *AccountSettin
 
 	var updateUser management.User
 
-	requestUser := r.Context().Value("user")
+	requestUser := r.Context().Value(Keys.UserKey)
 	if requestUser == nil {
 		err := fmt.Errorf("UpdateAccountSettings() unable to parse user from token")
 		s.Logger.Log("err", err)
@@ -1101,7 +1102,7 @@ type RoleFunc func(req *http.Request) (bool, error)
 
 // Ops checks the request for the appropriate "scope" in the JWT
 var OpsRole = func(req *http.Request) (bool, error) {
-	user := req.Context().Value("user")
+	user := req.Context().Value(Keys.UserKey)
 
 	if user != nil {
 		claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
@@ -1160,7 +1161,7 @@ var AnonymousRole = func(req *http.Request) (bool, error) {
 
 // Ops checks the request for the appropriate "scope" in the JWT
 var UnverifiedRole = func(req *http.Request) (bool, error) {
-	user := req.Context().Value("user")
+	user := req.Context().Value(Keys.UserKey)
 
 	if user == nil {
 		return false, fmt.Errorf("UnverifiedRole(): failed to fetch user from token")

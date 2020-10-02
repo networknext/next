@@ -2,14 +2,18 @@ package jsonrpc_test
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/dgrijalva/jwt-go"
+	"github.com/go-kit/kit/log"
 	"github.com/networknext/backend/routing"
 	"github.com/networknext/backend/storage"
 	"github.com/networknext/backend/transport/jsonrpc"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/auth0.v4/management"
 )
 
 // All tests listed below depend on test@networknext.com being a user in auth0
@@ -52,6 +56,161 @@ func TestAuthMiddleware(t *testing.T) {
 
 		authMiddleware.ServeHTTP(res, req)
 		assert.Equal(t, http.StatusOK, res.Code)
+	})
+}
+
+func TestAllAccounts(t *testing.T) {
+	t.Parallel()
+	var userManager = storage.NewLocalUserManager()
+	var jobManager = storage.LocalJobManager{}
+	var storer = storage.InMemory{}
+
+	logger := log.NewNopLogger()
+
+	svc := jsonrpc.AuthService{
+		UserManager: userManager,
+		JobManager:  &jobManager,
+		Storage:     &storer,
+		Logger:      logger,
+	}
+
+	IDs := []string{
+		"123",
+		"456",
+		"789",
+	}
+
+	emails := []string{
+		"test@test.com",
+		"test@test1.com",
+		"test@test2.com",
+	}
+
+	names := []string{
+		"Frank",
+		"George",
+		"Lenny",
+	}
+
+	roleNames := []string{
+		"rol_ScQpWhLvmTKRlqLU",
+		"rol_8r0281hf2oC4cvrD",
+		"rol_YfFrtom32or4vH89",
+	}
+	roleTypes := []string{
+		"Viewer",
+		"Owner",
+		"Admin",
+	}
+	roleDescriptions := []string{
+		"Can see current sessions and the map.",
+		"Can access and manage everything in an account.",
+		"Can manage the Network Next system, including access to configstore.",
+	}
+
+	userManager.Create(&management.User{
+		ID:    &IDs[0],
+		Email: &emails[0],
+		AppMetadata: map[string]interface{}{
+			"company_code": "test",
+		},
+		Identities: []*management.UserIdentity{
+			{
+				UserID: &IDs[0],
+			},
+		},
+	})
+
+	userManager.Create(&management.User{
+		ID:    &IDs[1],
+		Email: &emails[1],
+		AppMetadata: map[string]interface{}{
+			"company_code": "test2",
+		},
+		Identities: []*management.UserIdentity{
+			{
+				UserID: &IDs[1],
+			},
+		},
+		Name: &names[1],
+	})
+
+	userManager.AssignRoles(IDs[1], []*management.Role{
+		{
+			ID:          &roleTypes[0],
+			Name:        &roleNames[0],
+			Description: &roleDescriptions[0],
+		},
+	}...)
+
+	userManager.Create(&management.User{
+		ID:    &IDs[2],
+		Email: &emails[2],
+	})
+
+	storer.AddCustomer(context.Background(), routing.Customer{Code: "test", Name: "Test"})
+	storer.AddBuyer(context.Background(), routing.Buyer{CompanyCode: "test", ID: 123})
+	storer.AddCustomer(context.Background(), routing.Customer{Code: "test2", Name: "Test Test"})
+	storer.AddBuyer(context.Background(), routing.Buyer{CompanyCode: "test2", ID: 456})
+	storer.AddCustomer(context.Background(), routing.Customer{Code: "test3", Name: "Test Test Test"})
+	storer.AddBuyer(context.Background(), routing.Buyer{CompanyCode: "test3", ID: 789})
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("all - failure", func(t *testing.T) {
+		reqContext := req.Context()
+		reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "test")
+		req = req.WithContext(reqContext)
+		var reply jsonrpc.AccountsReply
+		err := svc.AllAccounts(req, &jsonrpc.AccountsArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("all - success - no users in company", func(t *testing.T) {
+		reqContext := req.Context()
+		reqContext = context.WithValue(reqContext, jsonrpc.Keys.UserKey, &jwt.Token{
+			Claims: jwt.MapClaims{
+				"email": "test@test.com",
+			},
+		})
+		reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "test")
+		reqContext = context.WithValue(reqContext, jsonrpc.Keys.RolesKey, []string{
+			"Admin",
+		})
+		req = req.WithContext(reqContext)
+		var reply jsonrpc.AccountsReply
+		err := svc.AllAccounts(req, &jsonrpc.AccountsArgs{}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, 0, len(reply.UserAccounts))
+	})
+
+	t.Run("all - success", func(t *testing.T) {
+		reqContext := req.Context()
+		reqContext = context.WithValue(reqContext, jsonrpc.Keys.UserKey, &jwt.Token{
+			Claims: jwt.MapClaims{
+				"email": "test@test.com",
+			},
+		})
+		reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "test2")
+		reqContext = context.WithValue(reqContext, jsonrpc.Keys.RolesKey, []string{
+			"Admin",
+		})
+		req = req.WithContext(reqContext)
+		var reply jsonrpc.AccountsReply
+		err := svc.AllAccounts(req, &jsonrpc.AccountsArgs{}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, 1, len(reply.UserAccounts))
+		assert.Equal(t, "George", reply.UserAccounts[0].Name)
+		assert.Equal(t, "test@test1.com", reply.UserAccounts[0].Email)
+		assert.Equal(t, "test2", reply.UserAccounts[0].CompanyCode)
+		assert.Equal(t, "Test Test", reply.UserAccounts[0].CompanyName)
+		assert.Equal(t, IDs[1], reply.UserAccounts[0].UserID)
+		assert.Equal(t, fmt.Sprintf("%016x", 456), reply.UserAccounts[0].ID)
+		assert.Equal(t, roleNames[0], *reply.UserAccounts[0].Roles[0].Name)
+		assert.Equal(t, roleTypes[0], *reply.UserAccounts[0].Roles[0].ID)
+		assert.Equal(t, roleDescriptions[0], *reply.UserAccounts[0].Roles[0].Description)
 	})
 }
 
