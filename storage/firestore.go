@@ -128,19 +128,19 @@ type routingRulesSettings struct {
 }
 
 type routeShader struct {
-	DisableNetworkNext        bool           `firestore:"disableNetworkNext"`
-	SelectionPercent          int            `firestore:"selectionPercent"`
-	ABTest                    bool           `firestore:"abTest"`
-	ProMode                   bool           `firestore:"proMode"`
-	ReduceLatency             bool           `firestore:"reduceLatency"`
-	ReducePacketLoss          bool           `firestore:"reducePacketLoss"`
-	Multipath                 bool           `firestore:"multipath"`
-	AcceptableLatency         int32          `firestore:"acceptableLatency"`
-	LatencyThreshold          int32          `firestore:"latencyThreshold"`
-	AcceptablePacketLoss      float32        `firestore:"acceptablePacketLoss"`
-	BandwidthEnvelopeUpKbps   int32          `firestore:"bandwidthEnvelopeUpKbps"`
-	BandwidthEnvelopeDownKbps int32          `firestore:"bandwidthEnvelopeDownKbps"`
-	BannedUsers               map[int64]bool `firestore:"bannedUsers"`
+	DisableNetworkNext        bool            `firestore:"disableNetworkNext"`
+	SelectionPercent          int             `firestore:"selectionPercent"`
+	ABTest                    bool            `firestore:"abTest"`
+	ProMode                   bool            `firestore:"proMode"`
+	ReduceLatency             bool            `firestore:"reduceLatency"`
+	ReducePacketLoss          bool            `firestore:"reducePacketLoss"`
+	Multipath                 bool            `firestore:"multipath"`
+	AcceptableLatency         int32           `firestore:"acceptableLatency"`
+	LatencyThreshold          int32           `firestore:"latencyThreshold"`
+	AcceptablePacketLoss      float32         `firestore:"acceptablePacketLoss"`
+	BandwidthEnvelopeUpKbps   int32           `firestore:"bandwidthEnvelopeUpKbps"`
+	BandwidthEnvelopeDownKbps int32           `firestore:"bandwidthEnvelopeDownKbps"`
+	BannedUsers               map[string]bool `firestore:"bannedUsers"`
 }
 
 type internalConfig struct {
@@ -527,17 +527,17 @@ func (fs *Firestore) AddBuyer(ctx context.Context, b routing.Buyer) error {
 	}
 
 	// Add the buyer's routing rules settings to remote storage
-	if err := fs.setRoutingRulesSettingsForBuyerID(ctx, ref.ID, company.Name, b.RoutingRulesSettings); err != nil {
+	if err := fs.SetRoutingRulesSettingsForBuyerID(ctx, ref.ID, company.Name, b.RoutingRulesSettings); err != nil {
 		return &FirestoreError{err: err}
 	}
 
 	// Add the buyer's route shader to remote storage
-	if err := fs.setRouteShaderForBuyerID(ctx, ref.ID, company.Name, b.RouteShader); err != nil {
+	if err := fs.SetRouteShaderForBuyerID(ctx, ref.ID, company.Name, b.RouteShader); err != nil {
 		return &FirestoreError{err: err}
 	}
 
 	// Add the buyer's internal config to remote storage
-	if err := fs.setInternalConfigForBuyerID(ctx, ref.ID, company.Name, b.InternalConfig); err != nil {
+	if err := fs.SetInternalConfigForBuyerID(ctx, ref.ID, company.Name, b.InternalConfig); err != nil {
 		return &FirestoreError{err: err}
 	}
 
@@ -590,17 +590,17 @@ func (fs *Firestore) RemoveBuyer(ctx context.Context, id uint64) error {
 
 		if uint64(buyerInRemoteStorage.ID) == id {
 			// Delete the buyer's routing rules settings in remote storage
-			if err := fs.deleteRouteRulesSettingsForBuyerID(ctx, bdoc.Ref.ID); err != nil {
+			if err := fs.DeleteRouteRulesSettingsForBuyerID(ctx, bdoc.Ref.ID); err != nil {
 				return &FirestoreError{err: err}
 			}
 
 			// Delete the buyer's route shader in remote storage
-			if err := fs.deleteRouteShaderForBuyerID(ctx, bdoc.Ref.ID); err != nil {
+			if err := fs.DeleteRouteShaderForBuyerID(ctx, bdoc.Ref.ID); err != nil {
 				return &FirestoreError{err: err}
 			}
 
 			// Delete the buyer's internal config in remote storage
-			if err := fs.deleteInternalConfigForBuyerID(ctx, bdoc.Ref.ID); err != nil {
+			if err := fs.DeleteInternalConfigForBuyerID(ctx, bdoc.Ref.ID); err != nil {
 				return &FirestoreError{err: err}
 			}
 
@@ -690,17 +690,17 @@ func (fs *Firestore) SetBuyer(ctx context.Context, b routing.Buyer) error {
 			}
 
 			// Update the buyer's routing rules settings in firestore
-			if err := fs.setRoutingRulesSettingsForBuyerID(ctx, bdoc.Ref.ID, company.Name, b.RoutingRulesSettings); err != nil {
+			if err := fs.SetRoutingRulesSettingsForBuyerID(ctx, bdoc.Ref.ID, company.Name, b.RoutingRulesSettings); err != nil {
 				return &FirestoreError{err: err}
 			}
 
 			// Update the buyer's route shader in firestore
-			if err := fs.setRouteShaderForBuyerID(ctx, bdoc.Ref.ID, company.Name, b.RouteShader); err != nil {
+			if err := fs.SetRouteShaderForBuyerID(ctx, bdoc.Ref.ID, company.Name, b.RouteShader); err != nil {
 				return &FirestoreError{err: err}
 			}
 
 			// Update the buyer's internal config in firestore
-			if err := fs.setInternalConfigForBuyerID(ctx, bdoc.Ref.ID, company.Name, b.InternalConfig); err != nil {
+			if err := fs.SetInternalConfigForBuyerID(ctx, bdoc.Ref.ID, company.Name, b.InternalConfig); err != nil {
 				return &FirestoreError{err: err}
 			}
 
@@ -1973,16 +1973,18 @@ func (fs *Firestore) syncBuyers(ctx context.Context) error {
 			level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to unmarshal buyer %v", buyerDoc.Ref.ID), "err", err)
 			continue
 		}
-		rrs, err := fs.getRoutingRulesSettingsForBuyerID(ctx, buyerDoc.Ref.ID)
-		if err != nil {
-			level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to completely read route shader for buyer %v, some fields will have default values", buyerDoc.Ref.ID), "err", err)
-		}
-		rs, err := fs.getRouteShaderForBuyerID(ctx, buyerDoc.Ref.ID)
+
+		rrs, err := fs.GetRoutingRulesSettingsForBuyerID(ctx, buyerDoc.Ref.ID)
 		if err != nil {
 			level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to completely read route shader for buyer %v, some fields will have default values", buyerDoc.Ref.ID), "err", err)
 		}
 
-		ic, err := fs.getInternalConfigForBuyerID(ctx, buyerDoc.Ref.ID)
+		rs, err := fs.GetRouteShaderForBuyerID(ctx, buyerDoc.Ref.ID)
+		if err != nil {
+			level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to completely read route shader for buyer %v, some fields will have default values", buyerDoc.Ref.ID), "err", err)
+		}
+
+		ic, err := fs.GetInternalConfigForBuyerID(ctx, buyerDoc.Ref.ID)
 		if err != nil {
 			level.Warn(fs.Logger).Log("msg", fmt.Sprintf("failed to completely read internal config for buyer %v, some fields will have default values", buyerDoc.Ref.ID), "err", err)
 		}
@@ -2147,7 +2149,7 @@ func (fs *Firestore) syncCustomers(ctx context.Context) error {
 	return nil
 }
 
-func (fs *Firestore) deleteRouteRulesSettingsForBuyerID(ctx context.Context, ID string) error {
+func (fs *Firestore) DeleteRouteRulesSettingsForBuyerID(ctx context.Context, ID string) error {
 	// Comment below taken from old backend, at least attempting to explain why we need to append _0 (no existing entries have suffixes other than _0)
 	// "Must be of the form '<buyer key>_<tag id>'. The buyer key can be found by looking at the ID under Buyer; it should be something like 763IMDH693HLsr2LGTJY. The tag ID should be 0 (for default) or the fnv64a hash of the tag the customer is using. Therefore this value should look something like: 763IMDH693HLsr2LGTJY_0. This value can not be changed after the entity is created."
 	routeShaderID := ID + "_0"
@@ -2157,26 +2159,26 @@ func (fs *Firestore) deleteRouteRulesSettingsForBuyerID(ctx context.Context, ID 
 	return err
 }
 
-func (fs *Firestore) deleteRouteShaderForBuyerID(ctx context.Context, ID string) error {
-	routeShaderID := ID + "_0"
+func (fs *Firestore) DeleteRouteShaderForBuyerID(ctx context.Context, firestoreID string) error {
+	routeShaderID := firestoreID + "_0"
 
 	// Attempt to delete route shader for buyer
 	_, err := fs.Client.Collection("RouteShader4").Doc(routeShaderID).Delete(ctx)
 	return err
 }
 
-func (fs *Firestore) deleteInternalConfigForBuyerID(ctx context.Context, ID string) error {
-	internalConfigID := ID + "_0"
+func (fs *Firestore) DeleteInternalConfigForBuyerID(ctx context.Context, firestoreID string) error {
+	internalConfigID := firestoreID + "_0"
 
 	// Attempt to delete route shader for buyer
 	_, err := fs.Client.Collection("InternalConfig").Doc(internalConfigID).Delete(ctx)
 	return err
 }
 
-func (fs *Firestore) getRoutingRulesSettingsForBuyerID(ctx context.Context, ID string) (routing.RoutingRulesSettings, error) {
+func (fs *Firestore) GetRoutingRulesSettingsForBuyerID(ctx context.Context, firestoreID string) (routing.RoutingRulesSettings, error) {
 	// Comment below taken from old backend, at least attempting to explain why we need to append _0 (no existing entries have suffixes other than _0)
 	// "Must be of the form '<buyer key>_<tag id>'. The buyer key can be found by looking at the ID under Buyer; it should be something like 763IMDH693HLsr2LGTJY. The tag ID should be 0 (for default) or the fnv64a hash of the tag the customer is using. Therefore this value should look something like: 763IMDH693HLsr2LGTJY_0. This value can not be changed after the entity is created."
-	routeShaderID := ID + "_0"
+	routeShaderID := firestoreID + "_0"
 
 	// Set up our return value with default settings, which will be used if no settings found for buyer or other errors are encountered
 	rrs := routing.DefaultRoutingRulesSettings
@@ -2228,10 +2230,10 @@ func (fs *Firestore) getRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 	return rrs, nil
 }
 
-func (fs *Firestore) setRoutingRulesSettingsForBuyerID(ctx context.Context, ID string, name string, rrs routing.RoutingRulesSettings) error {
+func (fs *Firestore) SetRoutingRulesSettingsForBuyerID(ctx context.Context, firestoreID string, name string, rrs routing.RoutingRulesSettings) error {
 	// Comment below taken from old backend, at least attempting to explain why we need to append _0 (no existing entries have suffixes other than _0)
 	// "Must be of the form '<buyer key>_<tag id>'. The buyer key can be found by looking at the ID under Buyer; it should be something like 763IMDH693HLsr2LGTJY. The tag ID should be 0 (for default) or the fnv64a hash of the tag the customer is using. Therefore this value should look something like: 763IMDH693HLsr2LGTJY_0. This value can not be changed after the entity is created."
-	routeShaderID := ID + "_0"
+	routeShaderID := firestoreID + "_0"
 
 	// Convert the excluded user hashes to strings
 	excludedUserHashes := map[string]bool{}
@@ -2269,8 +2271,8 @@ func (fs *Firestore) setRoutingRulesSettingsForBuyerID(ctx context.Context, ID s
 	return err
 }
 
-func (fs *Firestore) getRouteShaderForBuyerID(ctx context.Context, buyerID string) (core.RouteShader, error) {
-	routeShaderID := buyerID + "_0"
+func (fs *Firestore) GetRouteShaderForBuyerID(ctx context.Context, firestoreID string) (core.RouteShader, error) {
+	routeShaderID := firestoreID + "_0"
 	rs := core.NewRouteShader()
 
 	rsDoc, err := fs.Client.Collection("RouteShader4").Doc(routeShaderID).Get(ctx)
@@ -2297,23 +2299,26 @@ func (fs *Firestore) getRouteShaderForBuyerID(ctx context.Context, buyerID strin
 	rs.BandwidthEnvelopeUpKbps = tempRS.BandwidthEnvelopeUpKbps
 	rs.BandwidthEnvelopeDownKbps = tempRS.BandwidthEnvelopeDownKbps
 
-	// Convert user IDs from int64 to uint64
-	bannedUsers := make(map[uint64]bool)
-	for k, v := range tempRS.BannedUsers {
-		rs.BannedUsers[uint64(k)] = v
+	// Convert user IDs from string to uint64
+	for userHashString := range tempRS.BannedUsers {
+		userHash, err := strconv.ParseUint(userHashString, 16, 64)
+		if err != nil {
+			level.Warn(fs.Logger).Log("msg", "failed to parse banned user hash", "user_hash", userHashString, "err", err)
+			continue
+		}
+		rs.BannedUsers[userHash] = true
 	}
-	rs.BannedUsers = bannedUsers
 
 	return rs, nil
 }
 
-func (fs *Firestore) setRouteShaderForBuyerID(ctx context.Context, buyerID string, name string, routeShader core.RouteShader) error {
-	routeShaderID := buyerID + "_0"
+func (fs *Firestore) SetRouteShaderForBuyerID(ctx context.Context, firestoreID string, name string, routeShader core.RouteShader) error {
+	routeShaderID := firestoreID + "_0"
 
-	// Convert user IDs from uint64 to int64
-	bannedUsers := make(map[int64]bool)
-	for k, v := range routeShader.BannedUsers {
-		bannedUsers[int64(k)] = v
+	// Convert user IDs from uint64 to string
+	bannedUsers := map[string]bool{}
+	for userHash := range routeShader.BannedUsers {
+		bannedUsers[fmt.Sprintf("%016x", userHash)] = true
 	}
 
 	rsFirestore := map[string]interface{}{
@@ -2333,12 +2338,12 @@ func (fs *Firestore) setRouteShaderForBuyerID(ctx context.Context, buyerID strin
 		"bannedUsers":               bannedUsers,
 	}
 
-	_, err := fs.Client.Collection("RouteShader4").Doc(routeShaderID).Set(ctx, rsFirestore, firestore.MergeAll)
+	_, err := fs.Client.Collection("RouteShader4").Doc(routeShaderID).Set(ctx, rsFirestore)
 	return err
 }
 
-func (fs *Firestore) getInternalConfigForBuyerID(ctx context.Context, buyerID string) (core.InternalConfig, error) {
-	internalConfigID := buyerID + "_0"
+func (fs *Firestore) GetInternalConfigForBuyerID(ctx context.Context, firestoreID string) (core.InternalConfig, error) {
+	internalConfigID := firestoreID + "_0"
 	ic := core.NewInternalConfig()
 
 	icDoc, err := fs.Client.Collection("InternalConfig").Doc(internalConfigID).Get(ctx)
@@ -2363,8 +2368,8 @@ func (fs *Firestore) getInternalConfigForBuyerID(ctx context.Context, buyerID st
 	return ic, nil
 }
 
-func (fs *Firestore) setInternalConfigForBuyerID(ctx context.Context, buyerID string, name string, internalConfig core.InternalConfig) error {
-	internalConfigID := buyerID + "_0"
+func (fs *Firestore) SetInternalConfigForBuyerID(ctx context.Context, firestoreID string, name string, internalConfig core.InternalConfig) error {
+	internalConfigID := firestoreID + "_0"
 
 	icFirestore := map[string]interface{}{
 		"displayName":                name,
@@ -2377,6 +2382,6 @@ func (fs *Firestore) setInternalConfigForBuyerID(ctx context.Context, buyerID st
 		"tryBeforeYouBuy":            internalConfig.TryBeforeYouBuy,
 	}
 
-	_, err := fs.Client.Collection("InternalConfig").Doc(internalConfigID).Set(ctx, icFirestore, firestore.MergeAll)
+	_, err := fs.Client.Collection("InternalConfig").Doc(internalConfigID).Set(ctx, icFirestore)
 	return err
 }
