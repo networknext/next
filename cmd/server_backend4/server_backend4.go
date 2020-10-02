@@ -442,8 +442,9 @@ func mainReturnWithCode() int {
 						continue // Don't swap route matrix if we fail to read
 					}
 
+					var newRouteMatrix4 routing.RouteMatrix4
 					rs := encoding.CreateReadStream(buffer)
-					if err := routeMatrix4.Serialize(rs); err != nil {
+					if err := newRouteMatrix4.Serialize(rs); err != nil {
 						level.Error(logger).Log("msg", "could not serialize route matrix", "err", err)
 						time.Sleep(syncInterval)
 						continue // Don't swap route matrix if we fail to serialize
@@ -458,11 +459,15 @@ func mainReturnWithCode() int {
 					}
 
 					numRoutes := int32(0)
-					for i := range routeMatrix4.RouteEntries {
-						numRoutes += routeMatrix4.RouteEntries[i].NumRoutes
+					for i := range newRouteMatrix4.RouteEntries {
+						numRoutes += newRouteMatrix4.RouteEntries[i].NumRoutes
 					}
 					serverBackendMetrics.RouteMatrix.RouteCount.Set(float64(numRoutes))
 					serverBackendMetrics.RouteMatrix.Bytes.Set(float64(len(buffer)))
+
+					routeMatrix4Mutex.Lock()
+					routeMatrix4 = &newRouteMatrix4
+					routeMatrix4Mutex.Unlock()
 
 					time.Sleep(syncInterval)
 				}
