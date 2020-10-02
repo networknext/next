@@ -51,6 +51,9 @@ func assertAllMetricsEqual(t *testing.T, expectedSessionMetrics metrics.SessionE
 		assert.Equal(t, expectedField.(metrics.Valuer).Value(), actualField.(metrics.Valuer).Value())
 	}
 }
+func (rp *badRouteProvider) IsRelayAvailable(id uint64) bool {
+	return false
+}
 
 // todo: these should be their own type/file and not tested alongside the session update handler
 func TestGetRouteAddressesAndPublicKeysFailure(t *testing.T) {
@@ -156,6 +159,9 @@ func TestGetRouteAddressesAndPublicKeysSuccess(t *testing.T) {
 	routeAddresses, routePublicKeys := transport.GetRouteAddressesAndPublicKeys(clientAddr, clientPublicKey, serverAddr, serverPublicKey, 5, routeRelays, allRelayIDs, storer)
 	assert.Equal(t, expectedRouteAddresses, routeAddresses)
 	assert.Equal(t, expectedRoutePublicKeys, routePublicKeys)
+}
+func (rp *goodRouteProvider) IsRelayAvailable(id uint64) bool {
+	return true
 }
 
 func TestSessionUpdateHandler4ReadPacketFailure(t *testing.T) {

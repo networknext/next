@@ -231,7 +231,7 @@ func main() {
 	var instanceID uint64
 	if gcpOK {
 		// Get the instance number of this server_backend instance
-		{
+		if env != "local" {
 			instanceIDString, err := metadataapi.InstanceID()
 			if err != nil {
 				level.Error(logger).Log("msg", "could not read instance id from GCP", "err", err)
