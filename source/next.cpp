@@ -11193,7 +11193,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
             if ( !session->stats_fallback_to_direct && packet.fallback_to_direct )
             {
-                next_printf( NEXT_LOG_LEVER_INFO, "server session fell back to direct %" PRIx64, session->session_id );
+                next_printf( NEXT_LOG_LEVEL_INFO, "server session fell back to direct %" PRIx64, session->session_id );
                 // todo: send a notify?
             }
 
