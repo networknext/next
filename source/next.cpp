@@ -11193,7 +11193,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
             if ( !session->stats_fallback_to_direct && packet.fallback_to_direct )
             {
-                next_printf( "server session fell back to direct" );
+                next_printf( NEXT_LOG_LEVER_INFO, "server session fell back to direct %" PRIx64, session->session_id );
                 // todo: send a notify?
             }
 
@@ -11805,6 +11805,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             next_printf( NEXT_LOG_LEVEL_ERROR, "server timed out waiting for backend response for session %" PRIx64, session->session_id );
             session->waiting_for_update_response = false;
             session->next_session_update_time = -1.0;
+            session->committed = false; // todo: try this!
         }
     }
 }
