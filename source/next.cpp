@@ -5155,9 +5155,6 @@ void next_route_manager_fallback_to_direct( next_route_manager_t * route_manager
 
     route_manager->fallback_to_direct = true;
 
-    // todo
-    printf( "******* FALLBACK TO DIRECT *******\n" );
-
     next_printf( NEXT_LOG_LEVEL_INFO, "client fallback to direct" );
 
     route_manager->route_data.previous_route = route_manager->route_data.current_route;
@@ -5347,7 +5344,6 @@ bool next_route_manager_process_server_to_client_packet( next_route_manager_t * 
 
     if ( packet_bytes <= NEXT_HEADER_BYTES )
     {
-        // todo
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server to client packet is too small" );
         return false;
     }
@@ -5364,7 +5360,6 @@ bool next_route_manager_process_server_to_client_packet( next_route_manager_t * 
         from_current_route = false;
         if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, route_manager->route_data.previous_route_private_key, packet_data, packet_bytes ) != NEXT_OK )
         {
-            // todo
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored server to client packet. could not read header" );
             return false;
         }
@@ -5961,12 +5956,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     const int packet_id = packet_data[0];
 
-    // todo
-    if ( !from_server_address && packet_id == NEXT_DIRECT_PACKET )
-    {
-        printf( "upgraded direct packet not from server address" );
-    }
-
     // upgraded direct packet (255)
 
     if ( client->upgraded && packet_id == NEXT_DIRECT_PACKET && packet_bytes <= NEXT_MTU + 10 && from_server_address )
@@ -6012,9 +6001,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         }
         client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT]++;
         client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT_UPGRADED]++;
-
-        // todo
-        printf( "receive upgraded direct packet\n" );
 
         if ( client->wake_up_callback )
         {
@@ -6390,9 +6376,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_SERVER_TO_CLIENT_PACKET )
     {
-        // todo
-        printf( "recv server to client packet\n" );
-
         uint64_t payload_sequence = 0;
 
         next_platform_mutex_acquire( &client->route_manager_mutex );
@@ -6415,8 +6398,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         if ( already_received && client->multipath )
         {
-            // todo: not sure if this is correct. to be exact, should check if already received - direct only.
-            printf( "already received\n" );
             client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT]++;
             return;
         }
@@ -6644,12 +6625,6 @@ void next_client_internal_process_raw_direct_packet( next_client_internal_t * cl
     next_assert( packet_data );
 
     const bool from_server_address = client->server_address.type != 0 && next_address_equal( from, &client->server_address );
-
-    // todo
-    if ( !from_server_address )
-    {
-        printf( "not from server address\n" );
-    }
 
     if ( packet_bytes <= NEXT_MTU && from_server_address )
     {
@@ -7692,9 +7667,6 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
 
             next_platform_socket_send_packet( client->internal->socket, &next_to, next_packet_data, next_packet_bytes );
 
-            // todo
-            printf( "client send next\n" );
-
             client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT]++;
         }
 
@@ -7711,9 +7683,6 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
             next_platform_socket_send_packet( client->internal->socket, &client->server_address, buffer, packet_bytes + 10 );
             client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT]++;
             client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT_UPGRADED]++;
-
-            // todo
-            printf( "client send upgraded direct\n" );
         }
     }
     else
@@ -7760,9 +7729,6 @@ void next_client_send_packet_direct( next_client_t * client, const uint8_t * pac
     next_platform_socket_send_packet( client->internal->socket, &client->server_address, buffer, packet_bytes + 1 );
     client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT]++;
     client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT_RAW]++;
-
-    // todo
-    printf( "client send raw direct (2)\n" );
 
     client->internal->packets_sent++;
 }
@@ -11197,7 +11163,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             if ( !session->stats_fallback_to_direct && packet.fallback_to_direct )
             {
                 next_printf( NEXT_LOG_LEVEL_INFO, "server session fell back to direct %" PRIx64, session->session_id );
-                // todo: send a notify?
             }
 
             session->stats_sequence = packet_sequence;
@@ -11313,9 +11278,6 @@ void next_server_internal_block_and_receive_packet( next_server_internal_t * ser
     if ( next_packet_loss && ( rand() % 10 ) == 0 )
          return;
 #endif // #if NEXT_DEVELOPMENT
-
-    // todo
-    next_printf( NEXT_LOG_LEVEL_DEBUG, "server received packet %d (%d bytes)", packet_data[0], packet_bytes );
 
     if ( packet_data[0] != 0 )
     {
@@ -12240,8 +12202,6 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
 
     if ( next_global_config.disable_network_next )
     {
-        // todo
-        printf( "server send raw direct packet (next disabled)\n" );
         next_server_send_packet_direct( server, to_address, packet_data, packet_bytes );
         return;
     }
@@ -12340,18 +12300,12 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
 
                 int next_packet_bytes = NEXT_HEADER_BYTES + packet_bytes;
 
-                // todo
-                printf( "server send next\n" );
-
                 next_platform_socket_send_packet( server->internal->socket, &session_address, next_packet_data, next_packet_bytes );
             }
 
             if ( send_upgraded_direct )
             {
                 // [255][session sequence][packet sequence](payload) style packet direct to client
-
-                // todo
-                printf( "server send upgraded direct\n" );
 
                 uint8_t buffer[NEXT_MAX_PACKET_BYTES];
                 uint8_t * p = buffer;
@@ -12367,9 +12321,6 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
     if ( send_raw_direct )
     {
         // [0](payload) raw direct packet
-
-        // todo
-        printf( "server send raw direct\n" );
 
         uint8_t buffer[NEXT_MAX_PACKET_BYTES];
         buffer[0] = 0;
