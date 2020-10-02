@@ -7567,14 +7567,6 @@ void next_client_update( next_client_t * client )
                 next_client_notify_stats_updated_t * stats_updated = (next_client_notify_stats_updated_t*) notify;
                 client->client_stats = stats_updated->stats;
                 client->fallback_to_direct = stats_updated->fallback_to_direct;
-                /*
-                if ( client->fallback_to_direct && client->upgraded )
-                {
-                    next_printf( NEXT_LOG_LEVEL_DEBUG, "clearing upgraded flag" );
-                    client->upgraded = false;
-                    client->session_id = 0;
-                }
-                */
             }
             break;
 
@@ -12222,6 +12214,8 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
 
     if ( next_global_config.disable_network_next )
     {
+        // todo
+        printf( "server send raw direct packet (next disabled)\n" );
         next_server_send_packet_direct( server, to_address, packet_data, packet_bytes );
         return;
     }
@@ -12320,12 +12314,18 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
 
                 int next_packet_bytes = NEXT_HEADER_BYTES + packet_bytes;
 
+                // todo
+                printf( "server send next\n" );
+
                 next_platform_socket_send_packet( server->internal->socket, &session_address, next_packet_data, next_packet_bytes );
             }
 
             if ( send_upgraded_direct )
             {
                 // [255][session sequence][packet sequence](payload) style packet direct to client
+
+                // todo
+                printf( "server send upgraded direct\n" );
 
                 uint8_t buffer[NEXT_MAX_PACKET_BYTES];
                 uint8_t * p = buffer;
@@ -12341,6 +12341,9 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
     if ( send_raw_direct )
     {
         // [0](payload) raw direct packet
+
+        // todo
+        printf( "server send raw direct\n" );
 
         uint8_t buffer[NEXT_MAX_PACKET_BYTES];
         buffer[0] = 0;
@@ -12372,7 +12375,7 @@ void next_server_send_packet_direct( next_server_t * server, const next_address_
 
     uint8_t buffer[NEXT_MAX_PACKET_BYTES];
     buffer[0] = 0;
-    memcpy( buffer + 1, packet_data, size_t(packet_bytes) + 1 );
+    memcpy( buffer + 1, packet_data, packet_bytes );
     next_platform_socket_send_packet( server->internal->socket, to_address, buffer, packet_bytes + 1 );
 }
 
