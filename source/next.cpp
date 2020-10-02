@@ -12313,7 +12313,7 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
 
         uint8_t buffer[NEXT_MAX_PACKET_BYTES];
         buffer[0] = 0;
-        memcpy( buffer + 1, packet_data, size_t(packet_bytes) + 1 );
+        memcpy( buffer + 1, packet_data, packet_bytes );
         next_platform_socket_send_packet( server->internal->socket, to_address, buffer, packet_bytes + 1 );
     }
 }
