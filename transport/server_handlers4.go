@@ -327,6 +327,12 @@ func SessionUpdateHandlerFunc4(logger log.Logger, getIPLocator func() routing.IP
 			sessionData.ExpireTimestamp += billing.BillingSliceSeconds
 		}
 
+		// Don't accelerate any sessions if the buyer is not yet live
+		if !buyer.Live {
+			metrics.DecisionMetrics.BuyerNotLive.Add(1)
+			return
+		}
+
 		datacenter, err = storer.Datacenter(packet.DatacenterID)
 		if err != nil {
 			aliasFound := false
