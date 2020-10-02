@@ -153,10 +153,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	auth0Client := storage.Auth0{
-		Manager: manager,
-		Logger:  logger,
-	}
+	var userManager storage.UserManager = manager.User
+	var jobManager storage.JobManager = manager.Job
 
 	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
 	_, emulatorOK := os.LookupEnv("FIRESTORE_EMULATOR_HOST")
@@ -406,9 +404,10 @@ func main() {
 		}, "")
 		s.RegisterService(&buyerService, "")
 		s.RegisterService(&jsonrpc.AuthService{
-			Logger:  logger,
-			Auth0:   auth0Client,
-			Storage: db,
+			Logger:      logger,
+			UserManager: userManager,
+			JobManager:  jobManager,
+			Storage:     db,
 		}, "")
 
 		allowCORSStr := os.Getenv("CORS")
