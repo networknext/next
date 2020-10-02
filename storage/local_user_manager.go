@@ -2,6 +2,7 @@ package storage
 
 import (
 	"fmt"
+	"math/rand"
 	"sync"
 
 	"gopkg.in/auth0.v4/management"
@@ -20,6 +21,17 @@ func NewLocalUserManager() *LocalUserManager {
 }
 
 func (ljm *LocalUserManager) Create(user *management.User) error {
+	emptyName := ""
+	if user.ID == nil {
+		newID := fmt.Sprintf("%d", rand.Intn(10000))
+		user.ID = &newID
+		user.Identities = []*management.UserIdentity{
+			{
+				UserID: &newID,
+			},
+		}
+		user.Name = &emptyName
+	}
 	for _, u := range ljm.localUsers {
 		if u.ID == user.ID {
 			return &AlreadyExistsError{resourceType: "user", resourceRef: user.ID}
@@ -95,8 +107,6 @@ func (ljm *LocalUserManager) RemoveRoles(id string, roles ...*management.Role) e
 			}
 		}
 	}
-
-	fmt.Println(newRoles)
 
 	ljm.rolesMutex.Lock()
 	ljm.localRoles[id] = newRoles

@@ -289,30 +289,9 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 	}
 
 	// Gather request user information
-	requestUser := req.Context().Value(Keys.UserKey)
-	if requestUser == nil {
-		err := fmt.Errorf("AddUserAccount() unable to parse user from token")
-		s.Logger.Log("err", err)
-		return err
-	}
-
-	requestID, ok := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["sub"].(string)
-	if !ok {
-		err := fmt.Errorf("AddUserAccount() unable to parse id from token")
-		s.Logger.Log("err", err)
-		return err
-	}
-
-	userAccount, err := s.UserManager.Read(requestID)
-	if err != nil {
-		err := fmt.Errorf("AddUserAccount() failed to fetch user account: %w", err)
-		s.Logger.Log("err", err)
-		return err
-	}
-
-	userCompanyCode, ok := userAccount.AppMetadata["company_code"].(string)
-	if !ok {
-		err := fmt.Errorf("AddUserAccount() user is not assigned to a company: %w", err)
+	userCompanyCode, ok := req.Context().Value(Keys.CompanyKey).(string)
+	if !ok || userCompanyCode == "" {
+		err := fmt.Errorf("AddUserAccount() user is not assigned to a company")
 		s.Logger.Log("err", err)
 		return err
 	}
@@ -321,10 +300,11 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 	emails := args.Emails
 	falseValue := false
 
-	for _, b := range s.Storage.Buyers() {
-		if b.CompanyCode == userCompanyCode {
-			buyer = b
-		}
+	buyer, err := s.Storage.BuyerWithCompanyCode(userCompanyCode)
+	if err != nil {
+		err := fmt.Errorf("AddUserAccount() failed to fetch request buyer: %v", err)
+		s.Logger.Log("err", err)
+		return err
 	}
 
 	registered := make(map[string]*management.User)
@@ -396,6 +376,8 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 				AppMetadata: map[string]interface{}{
 					"company_code": userCompanyCode,
 				},
+				Identities: user.Identities,
+				Name:       user.Name,
 			}
 			if err = s.UserManager.Update(*user.ID, newUser); err != nil {
 				err := fmt.Errorf("AddUserAccount() failed to update user: %w", err)

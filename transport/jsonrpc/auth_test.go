@@ -644,6 +644,190 @@ func TestDeleteAccount(t *testing.T) {
 	})
 }
 
+func TestAddUserAccount(t *testing.T) {
+	t.Parallel()
+	var userManager = storage.NewLocalUserManager()
+	var jobManager = storage.LocalJobManager{}
+	var storer = storage.InMemory{}
+
+	logger := log.NewNopLogger()
+
+	svc := jsonrpc.AuthService{
+		UserManager: userManager,
+		JobManager:  &jobManager,
+		Storage:     &storer,
+		Logger:      logger,
+	}
+
+	roleNames := []string{
+		"rol_ScQpWhLvmTKRlqLU",
+		"rol_8r0281hf2oC4cvrD",
+		"rol_YfFrtom32or4vH89",
+	}
+	roleTypes := []string{
+		"Viewer",
+		"Owner",
+		"Admin",
+	}
+	roleDescriptions := []string{
+		"Can see current sessions and the map.",
+		"Can access and manage everything in an account.",
+		"Can manage the Network Next system, including access to configstore.",
+	}
+
+	IDs := []string{
+		"123",
+		"456",
+		"789",
+	}
+
+	emails := []string{
+		"test@test.com",
+		"test@test1.com",
+		"test@test2.com",
+	}
+
+	names := []string{
+		"Frank",
+		"George",
+		"Lenny",
+	}
+
+	userManager.Create(&management.User{
+		ID:    &IDs[1],
+		Email: &emails[1],
+		AppMetadata: map[string]interface{}{
+			"company_code": "test",
+		},
+		Identities: []*management.UserIdentity{
+			{
+				UserID: &IDs[1],
+			},
+		},
+		Name: &names[1],
+	})
+
+	userManager.AssignRoles(IDs[1], []*management.Role{
+		{
+			ID:          &roleTypes[0],
+			Name:        &roleNames[0],
+			Description: &roleDescriptions[0],
+		},
+	}...)
+
+	storer.AddCustomer(context.Background(), routing.Customer{Code: "test", Name: "Test", AutomaticSignInDomains: "google.com,test.com"})
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("failure - insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.AccountsReply
+		err := svc.AddUserAccount(req, &jsonrpc.AccountsArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("failure - no roles", func(t *testing.T) {
+		reqContext := req.Context()
+		reqContext = context.WithValue(reqContext, jsonrpc.Keys.RolesKey, []string{
+			"Owner",
+		})
+		req = req.WithContext(reqContext)
+		var reply jsonrpc.AccountsReply
+		err := svc.AddUserAccount(req, &jsonrpc.AccountsArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("failure - admin role - !admin", func(t *testing.T) {
+		var reply jsonrpc.AccountsReply
+		err := svc.AddUserAccount(req, &jsonrpc.AccountsArgs{Roles: []*management.Role{
+			{
+				ID:          &roleTypes[2],
+				Name:        &roleNames[2],
+				Description: &roleDescriptions[2],
+			},
+		}}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("failure - admin role - !admin", func(t *testing.T) {
+		var reply jsonrpc.AccountsReply
+		err := svc.AddUserAccount(req, &jsonrpc.AccountsArgs{Roles: []*management.Role{
+			{
+				ID:          &roleTypes[2],
+				Name:        &roleNames[2],
+				Description: &roleDescriptions[2],
+			},
+		}}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("failure - no request company code", func(t *testing.T) {
+		var reply jsonrpc.AccountsReply
+		err := svc.AddUserAccount(req, &jsonrpc.AccountsArgs{Roles: []*management.Role{
+			{
+				ID:          &roleTypes[0],
+				Name:        &roleNames[0],
+				Description: &roleDescriptions[0],
+			},
+		}}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("failure - no buyer", func(t *testing.T) {
+		reqContext := req.Context()
+		reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "test")
+		req = req.WithContext(reqContext)
+		var reply jsonrpc.AccountsReply
+		err := svc.AddUserAccount(req, &jsonrpc.AccountsArgs{Roles: []*management.Role{
+			{
+				ID:          &roleTypes[0],
+				Name:        &roleNames[0],
+				Description: &roleDescriptions[0],
+			},
+		}}, &reply)
+		assert.Error(t, err)
+	})
+
+	storer.AddBuyer(context.Background(), routing.Buyer{CompanyCode: "test", ID: 123})
+
+	t.Run("success - not registered", func(t *testing.T) {
+		reqContext := req.Context()
+		reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "test")
+		req = req.WithContext(reqContext)
+		var reply jsonrpc.AccountsReply
+		err := svc.AddUserAccount(req, &jsonrpc.AccountsArgs{Roles: []*management.Role{
+			{
+				ID:          &roleTypes[0],
+				Name:        &roleNames[0],
+				Description: &roleDescriptions[0],
+			},
+		}, Emails: []string{"test@test123.com"}}, &reply)
+		assert.NoError(t, err)
+		users, err := userManager.List()
+		found := false
+		for _, u := range users.Users {
+			if *u.Email == "test@test123.com" {
+				found = true
+			}
+		}
+		assert.True(t, found)
+	})
+
+	t.Run("success - registered", func(t *testing.T) {
+		reqContext := req.Context()
+		reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "test")
+		req = req.WithContext(reqContext)
+		var reply jsonrpc.AccountsReply
+		err := svc.AddUserAccount(req, &jsonrpc.AccountsArgs{Roles: []*management.Role{
+			{
+				ID:          &roleTypes[0],
+				Name:        &roleNames[0],
+				Description: &roleDescriptions[0],
+			},
+		}, Emails: []string{"test@test1.com"}}, &reply)
+		assert.NoError(t, err)
+	})
+}
+
 func TestRoleVerification(t *testing.T) {
 	db := storage.InMemory{}
 	db.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
