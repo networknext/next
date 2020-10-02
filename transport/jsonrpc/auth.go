@@ -212,7 +212,7 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 		return err
 	}
 
-	if VerifyAnyRole(r, AdminRole, OwnerRole) {
+	if VerifyAnyRole(r, AdminRole, OwnerRole) && requestID == args.UserID {
 		reply.Domains = strings.Split(company.AutomaticSignInDomains, ",")
 	}
 
