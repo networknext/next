@@ -11805,7 +11805,12 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             next_printf( NEXT_LOG_LEVEL_ERROR, "server timed out waiting for backend response for session %" PRIx64, session->session_id );
             session->waiting_for_update_response = false;
             session->next_session_update_time = -1.0;
-            session->committed = false; // todo: try this!
+
+            // IMPORTANT: Send packets direct from now on for this session
+            session->committed = false;
+            next_platform_mutex_acquire( &server->session_mutex );
+            session->mutex_committed = false;
+            next_platform_mutex_release( &server->session_mutex );
         }
     }
 }
