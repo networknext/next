@@ -11187,10 +11187,16 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         next_post_validate_packet( packet_data, packet_bytes, &packet, next_encrypted_packets, &packet_sequence, session->receive_key, &session->internal_replay_protection );
 
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "server received client stats packet for session %" PRIx64, session->session_id );
-
         if ( packet_sequence > session->stats_sequence )
         {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server received client stats packet for session %" PRIx64, session->session_id );
+
+            if ( !session->stats_fallback_to_direct && packet.fallback_to_direct )
+            {
+                next_printf( "server session fell back to direct" );
+                // todo: send a notify?
+            }
+
             session->stats_sequence = packet_sequence;
 
             session->stats_flags |= packet.flags;
