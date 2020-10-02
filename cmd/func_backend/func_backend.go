@@ -44,7 +44,6 @@ const BACKEND_MODE_ROUTE_SWITCHING = 6
 const BACKEND_MODE_UNCOMMITTED = 7
 const BACKEND_MODE_UNCOMMITTED_TO_COMMITTED = 8
 const BACKEND_MODE_USER_FLAGS = 9
-const BACKEND_MODE_IDEMPOTENT = 10
 
 type Backend struct {
 	mutex           sync.RWMutex
@@ -242,10 +241,6 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 	var sessionResponse *transport.SessionResponsePacket4
 
 	takeNetworkNext := len(nearRelays) > 0
-
-	if backend.mode == BACKEND_MODE_IDEMPOTENT && rand.Intn(10) == 0 {
-		return
-	}
 
 	if backend.mode == BACKEND_MODE_FORCE_DIRECT {
 		takeNetworkNext = false
@@ -480,10 +475,6 @@ func main() {
 
 	if os.Getenv("BACKEND_MODE") == "USER_FLAGS" {
 		backend.mode = BACKEND_MODE_USER_FLAGS
-	}
-
-	if os.Getenv("BACKEND_MODE") == "IDEMPOTENT" {
-		backend.mode = BACKEND_MODE_IDEMPOTENT
 	}
 
 	go OptimizeThread()
