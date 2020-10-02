@@ -6611,7 +6611,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
     }
 }
 
-void next_client_internal_process_game_packet( next_client_internal_t * client, const next_address_t * from, uint8_t * packet_data, int packet_bytes )
+void next_client_internal_process_raw_direct_packet( next_client_internal_t * client, const next_address_t * from, uint8_t * packet_data, int packet_bytes )
 {
     next_client_internal_verify_sentinels( client );
 
@@ -6632,7 +6632,7 @@ void next_client_internal_process_game_packet( next_client_internal_t * client, 
             next_queue_push( client->notify_queue, notify );
         }
         client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT]++;
-        client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT_UPGRADED]++;
+        client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT_RAW]++;
     }
 
     if ( client->wake_up_callback )
@@ -6673,7 +6673,7 @@ void next_client_internal_block_and_receive_packet( next_client_internal_t * cli
     }
     else
     {
-        next_client_internal_process_game_packet( client, &from, packet_data + 1, packet_bytes - 1 );
+        next_client_internal_process_raw_direct_packet( client, &from, packet_data + 1, packet_bytes - 1 );
     }
 }
 
