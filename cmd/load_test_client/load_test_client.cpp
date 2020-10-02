@@ -125,7 +125,7 @@ int main()
 
         next_client_update( client );
 
-        next_sleep( 1.0f / 10.0f );
+        next_sleep( 1.0f );
     }
 
     next_client_destroy( client );

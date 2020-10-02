@@ -1,4 +1,4 @@
-package main
+package core
 
 // #cgo pkg-config: libsodium
 // #include <sodium.h>
@@ -938,6 +938,7 @@ type RouteShader struct {
 	AcceptablePacketLoss      float32
 	BandwidthEnvelopeUpKbps   int32
 	BandwidthEnvelopeDownKbps int32
+	BannedUsers               map[uint64]bool
 }
 
 func NewRouteShader() RouteShader {
@@ -954,6 +955,7 @@ func NewRouteShader() RouteShader {
 		AcceptablePacketLoss:      1.0,
 		BandwidthEnvelopeUpKbps:   1024,
 		BandwidthEnvelopeDownKbps: 1024,
+		BannedUsers:               make(map[uint64]bool),
 	}
 }
 
@@ -971,21 +973,13 @@ type RouteState struct {
 	ReducePacketLoss  bool
 	ProMode           bool
 	Multipath         bool
+	Committed         bool
+	CommitPending     bool
+	CommitCounter     int32
 	LatencyWorse      bool
 	MultipathOverload bool
 	NoRoute           bool
-}
-
-type CustomerConfig struct {
-	BannedUsers        map[uint64]bool
-	MultipathVetoUsers map[uint64]bool
-}
-
-func NewCustomerConfig() CustomerConfig {
-	return CustomerConfig{
-		BannedUsers:        make(map[uint64]bool),
-		MultipathVetoUsers: make(map[uint64]bool),
-	}
+	CommitVeto        bool
 }
 
 type InternalConfig struct {
@@ -995,6 +989,7 @@ type InternalConfig struct {
 	RTTVeto_PacketLoss         int32
 	RTTVeto_Multipath          int32
 	MultipathOverloadThreshold int32
+	TryBeforeYouBuy            bool
 }
 
 func NewInternalConfig() InternalConfig {
@@ -1005,10 +1000,11 @@ func NewInternalConfig() InternalConfig {
 		RTTVeto_PacketLoss:         -20,
 		RTTVeto_Multipath:          -20,
 		MultipathOverloadThreshold: 500,
+		TryBeforeYouBuy:            false,
 	}
 }
 
-func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState, customer *CustomerConfig) bool {
+func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState) bool {
 
 	if routeState.Veto || routeState.Banned || routeState.Disabled || routeState.NotSelected || routeState.B {
 		return true
@@ -1034,7 +1030,7 @@ func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState, customer *
 		}
 	}
 
-	if customer.BannedUsers[routeState.UserID] {
+	if routeShader.BannedUsers[routeState.UserID] {
 		routeState.Banned = true
 		return true
 	}
@@ -1042,9 +1038,9 @@ func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState, customer *
 	return false
 }
 
-func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, customer *CustomerConfig, internal *InternalConfig, directLatency int32, directPacketLoss float32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_routeCost *int32, out_routeNumRelays *int32, out_routeRelays []int32) bool {
+func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, multipathVetoUsers map[uint64]bool, internal *InternalConfig, directLatency int32, directPacketLoss float32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_routeCost *int32, out_routeNumRelays *int32, out_routeRelays []int32) bool {
 
-	if EarlyOutDirect(routeShader, routeState, customer) {
+	if EarlyOutDirect(routeShader, routeState) {
 		return false
 	}
 
@@ -1072,7 +1068,7 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 
 	// if we are in pro mode, take network next pro-actively in multipath before anything goes wrong
 
-	userHasMultipathVeto := customer.MultipathVetoUsers[routeState.UserID]
+	userHasMultipathVeto := multipathVetoUsers[routeState.UserID]
 
 	proMode := false
 	if routeShader.ProMode && !userHasMultipathVeto {
@@ -1094,6 +1090,9 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 		return false
 	}
 
+	// set up the committed counter if try before you buy is enabled
+	TryBeforeYouBuy(routeState, internal, directLatency, 0, directPacketLoss, 0, true)
+
 	// take network next
 
 	routeState.Next = true
@@ -1109,17 +1108,24 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 	return true
 }
 
-func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, customer *CustomerConfig, internal *InternalConfig, directLatency int32, nextLatency int32, currentRouteNumRelays int32, currentRouteRelays [MaxRelaysPerRoute]int32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32) bool {
+func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, internal *InternalConfig, directLatency int32, nextLatency int32, directPacketLoss float32, nextPacketLoss float32, currentRouteNumRelays int32, currentRouteRelays [MaxRelaysPerRoute]int32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32) (bool, bool) {
 
-	if EarlyOutDirect(routeShader, routeState, customer) {
-		return false
+	if EarlyOutDirect(routeShader, routeState) {
+		routeState.Committed = false
+		routeState.CommitPending = false
+		routeState.CommitCounter = 0
+		return false, false
 	}
 
 	// if we overload the connection in multipath, leave network next
 
 	if routeState.Multipath && directLatency >= internal.MultipathOverloadThreshold {
 		routeState.MultipathOverload = true
-		return false
+
+		routeState.Committed = false
+		routeState.CommitPending = false
+		routeState.CommitCounter = 0
+		return false, false
 	}
 
 	// if we have made rtt significantly worse, leave network next
@@ -1136,7 +1142,11 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
 
 	if nextLatency > directLatency-rttVeto {
 		routeState.LatencyWorse = true
-		return false
+
+		routeState.Committed = false
+		routeState.CommitPending = false
+		routeState.CommitCounter = 0
+		return false, false
 	}
 
 	// update the current best route
@@ -1147,13 +1157,22 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
 	bestRouteNumRelays := int32(0)
 	bestRouteRelays := [MaxRelaysPerRoute]int32{}
 
-	GetBestRoute_Update(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, internal.RouteSwitchThreshold, currentRouteNumRelays, currentRouteRelays, &bestRouteCost, &bestRouteNumRelays, &bestRouteRelays)
+	routeSwitched := GetBestRoute_Update(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, internal.RouteSwitchThreshold, currentRouteNumRelays, currentRouteRelays, &bestRouteCost, &bestRouteNumRelays, &bestRouteRelays)
 
 	// if we no longer have a network next route, leave network next
 
 	if bestRouteNumRelays == 0 {
 		routeState.NoRoute = true
-		return false
+
+		routeState.Committed = false
+		routeState.CommitPending = false
+		routeState.CommitCounter = 0
+		return false, false
+	}
+
+	// try the route before committing to it
+	if !TryBeforeYouBuy(routeState, internal, directLatency, nextLatency, directPacketLoss, nextPacketLoss, routeSwitched) {
+		return false, false
 	}
 
 	// have still have a route, stay on network next
@@ -1162,19 +1181,84 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, rout
 	*out_updatedRouteNumRelays = bestRouteNumRelays
 	copy(out_updatedRouteRelays, bestRouteRelays[:bestRouteNumRelays])
 
-	return true
+	return true, routeSwitched
 }
 
-func MakeRouteDecision_StayOnNetworkNext(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, customer *CustomerConfig, internal *InternalConfig, directLatency int32, nextLatency int32, currentRouteNumRelays int32, currentRouteRelays [MaxRelaysPerRoute]int32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32) bool {
+func MakeRouteDecision_StayOnNetworkNext(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, internal *InternalConfig, directLatency int32, nextLatency int32, directPacketLoss float32, nextPacketLoss float32, currentRouteNumRelays int32, currentRouteRelays [MaxRelaysPerRoute]int32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32) (bool, bool) {
 
-	stayOnNetworkNext := MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix, routeShader, routeState, customer, internal, directLatency, nextLatency, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCost, destRelays, out_updatedRouteCost, out_updatedRouteNumRelays, out_updatedRouteRelays)
+	stayOnNetworkNext, nextRouteSwitched := MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix, routeShader, routeState, internal, directLatency, nextLatency, directPacketLoss, nextPacketLoss, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCost, destRelays, out_updatedRouteCost, out_updatedRouteNumRelays, out_updatedRouteRelays)
 
 	if routeState.Next && !stayOnNetworkNext {
 		routeState.Next = false
 		routeState.Veto = true
 	}
 
-	return stayOnNetworkNext
+	return stayOnNetworkNext, nextRouteSwitched
+}
+
+func TryBeforeYouBuy(routeState *RouteState, internal *InternalConfig, directLatency int32, nextLatency int32, directPacketLoss float32, nextPacketLoss float32, routeSwitched bool) bool {
+	// always commit to a route if the TryBeforeYouBuy flag isn't set
+	if !internal.TryBeforeYouBuy {
+		routeState.Committed = true
+		routeState.CommitPending = false
+		routeState.CommitCounter = 0
+		return true
+	}
+
+	// always commit to the route when using multipath
+	if routeState.Multipath {
+		routeState.Committed = true
+		routeState.CommitPending = false
+		routeState.CommitCounter = 0
+		return true
+	}
+
+	// reset the commit when the route has switched
+	if routeSwitched {
+		routeState.Committed = false
+		routeState.CommitPending = false
+		routeState.CommitCounter = 0
+	}
+
+	if !routeState.CommitPending {
+		// start observing the route to see if it should be committed to
+		if !routeState.Committed {
+			routeState.CommitPending = true
+			routeState.CommitCounter = 0
+			return true
+		}
+
+		// the route is already committed to
+		routeState.Committed = true
+		routeState.CommitPending = false
+		routeState.CommitCounter = 0
+		return true
+	}
+
+	// the route was the same or better than direct, so commit to it
+	if nextLatency <= directLatency && nextPacketLoss <= directPacketLoss {
+		routeState.Committed = true
+		routeState.CommitPending = false
+		routeState.CommitCounter = 0
+		return true
+	}
+
+	// the route wasn't so bad that it was vetoed, so continue to observe the route for up to 3 slices
+	if !routeState.Veto && routeState.CommitCounter < 3 {
+		if nextLatency > directLatency || nextPacketLoss > directPacketLoss {
+			routeState.Committed = false
+			routeState.CommitPending = true
+			routeState.CommitCounter++
+			return true
+		}
+	}
+
+	// an improvement couldn't be found after 3 slices, so veto the route
+	routeState.Committed = false
+	routeState.CommitPending = false
+	routeState.CommitCounter = 0
+	routeState.CommitVeto = true
+	return false
 }
 
 // -------------------------------------------

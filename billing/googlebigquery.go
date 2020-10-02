@@ -135,5 +135,9 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 		e["packetLoss"] = entry.PacketLoss
 	}
 
+	if entry.PredictedNextRTT > 0.0 {
+		e["predictedNextRTT"] = entry.PredictedNextRTT
+	}
+
 	return e, "", nil
 }
