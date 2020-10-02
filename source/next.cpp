@@ -6370,6 +6370,9 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_SERVER_TO_CLIENT_PACKET )
     {
+        // todo
+        printf( "recv next packet\n" );
+
         uint64_t payload_sequence = 0;
 
         next_platform_mutex_acquire( &client->route_manager_mutex );
@@ -6392,6 +6395,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         if ( already_received && client->multipath )
         {
+            // todo: not sure if this is correct. to be exact, should check if already received - direct only.
             client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT]++;
             return;
         }
@@ -6620,6 +6624,12 @@ void next_client_internal_process_raw_direct_packet( next_client_internal_t * cl
 
     const bool from_server_address = client->server_address.type != 0 && next_address_equal( from, &client->server_address );
 
+    // todo
+    if ( !from_server_address )
+    {
+        printf( "not from server address\n" );
+    }
+
     if ( packet_bytes <= NEXT_MTU && from_server_address )
     {
         next_client_notify_packet_received_t * notify = (next_client_notify_packet_received_t*) next_malloc( client->context, sizeof( next_client_notify_packet_received_t ) );
@@ -6669,10 +6679,14 @@ void next_client_internal_block_and_receive_packet( next_client_internal_t * cli
 
     if ( packet_data[0] != 0 )
     {
+        printf( "recv next packet\n" );
+
         next_client_internal_process_network_next_packet( client, &from, packet_data, packet_bytes, packet_receive_time );
     }
     else
     {
+        printf( "recv raw direct packet\n" );
+
         next_client_internal_process_raw_direct_packet( client, &from, packet_data + 1, packet_bytes - 1 );
     }
 }
@@ -7667,6 +7681,9 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
 
             next_platform_socket_send_packet( client->internal->socket, &next_to, next_packet_data, next_packet_bytes );
 
+            // todo
+            printf( "client send next\n" );
+
             client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT]++;
         }
 
@@ -7683,6 +7700,9 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
             next_platform_socket_send_packet( client->internal->socket, &client->server_address, buffer, packet_bytes + 10 );
             client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT]++;
             client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT_UPGRADED]++;
+
+            // todo
+            printf( "client send upgraded direct\n" );
         }
     }
     else
@@ -7695,6 +7715,9 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
         next_platform_socket_send_packet( client->internal->socket, &client->server_address, buffer, packet_bytes + 1 );
         client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT]++;
         client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT_RAW]++;
+
+        // todo
+        printf( "client send raw direct\n" );
     }
 
     next_platform_mutex_acquire( &client->internal->packets_sent_mutex );
@@ -7729,6 +7752,9 @@ void next_client_send_packet_direct( next_client_t * client, const uint8_t * pac
     next_platform_socket_send_packet( client->internal->socket, &client->server_address, buffer, packet_bytes + 1 );
     client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT]++;
     client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT_RAW]++;
+
+    // todo
+    printf( "client send raw direct (2)\n" );
 
     client->internal->packets_sent++;
 }
