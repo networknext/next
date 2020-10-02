@@ -6618,11 +6618,9 @@ void next_client_internal_process_raw_direct_packet( next_client_internal_t * cl
     next_assert( from );
     next_assert( packet_data );
 
-    printf( "recv: %d (%d)\n", packet_data[0], packet_bytes );
+    const bool from_server_address = client->server_address.type != 0 && next_address_equal( from, &client->server_address );
 
-    // const bool from_server_address = client->server_address.type != 0 && next_address_equal( from, &client->server_address );
-
-    if ( packet_bytes <= NEXT_MTU ) // todo: test && from_server_address )
+    if ( packet_bytes <= NEXT_MTU && from_server_address )
     {
         next_client_notify_packet_received_t * notify = (next_client_notify_packet_received_t*) next_malloc( client->context, sizeof( next_client_notify_packet_received_t ) );
         notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
