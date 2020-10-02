@@ -367,7 +367,7 @@ func main() {
 
 		s := rpc.NewServer()
 		s.RegisterInterceptFunc(func(i *rpc.RequestInfo) *http.Request {
-			user := i.Request.Context().Value("user")
+			user := i.Request.Context().Value(jsonrpc.Keys.UserKey)
 			if user != nil {
 				claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
 

@@ -24,14 +24,12 @@ var (
 	ErrInsufficientPrivileges = errors.New("insufficient privileges")
 )
 
-type contextType string
-
 type contextKeys struct {
-	AnonymousCallKey     contextType
-	RolesKey             contextType
-	CompanyKey           contextType
-	NewsletterConsentKey contextType
-	UserKey              contextType
+	AnonymousCallKey     string
+	RolesKey             string
+	CompanyKey           string
+	NewsletterConsentKey string
+	UserKey              string
 }
 
 var Keys contextKeys = contextKeys{
@@ -39,6 +37,7 @@ var Keys contextKeys = contextKeys{
 	RolesKey:             "roles",
 	CompanyKey:           "company",
 	NewsletterConsentKey: "newsletter",
+	UserKey:              "user",
 }
 
 type AuthService struct {
@@ -485,31 +484,31 @@ func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesRep
 	if VerifyAllRoles(r, AdminRole) {
 		reply.Roles = []*management.Role{
 			{
-				ID:          &roleNames[0],
-				Name:        &roleTypes[0],
+				ID:          &roleTypes[0],
+				Name:        &roleNames[0],
 				Description: &roleDescriptions[0],
 			},
 			{
-				ID:          &roleNames[1],
-				Name:        &roleTypes[1],
+				ID:          &roleTypes[1],
+				Name:        &roleNames[1],
 				Description: &roleDescriptions[1],
 			},
 			{
-				ID:          &roleNames[2],
-				Name:        &roleTypes[2],
+				ID:          &roleTypes[2],
+				Name:        &roleNames[2],
 				Description: &roleDescriptions[2],
 			},
 		}
 	} else {
 		reply.Roles = []*management.Role{
 			{
-				ID:          &roleNames[0],
-				Name:        &roleTypes[0],
+				ID:          &roleTypes[0],
+				Name:        &roleNames[0],
 				Description: &roleDescriptions[0],
 			},
 			{
-				ID:          &roleNames[1],
-				Name:        &roleTypes[1],
+				ID:          &roleTypes[1],
+				Name:        &roleNames[1],
 				Description: &roleDescriptions[1],
 			},
 		}
@@ -1003,6 +1002,7 @@ func AuthMiddleware(audience string, next http.Handler, allowCORS bool) http.Han
 	}
 
 	mw := jwtmiddleware.New(jwtmiddleware.Options{
+		UserProperty: Keys.UserKey,
 		ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
 			// Check if OpsService token
 			claims := token.Claims.(jwt.MapClaims)
